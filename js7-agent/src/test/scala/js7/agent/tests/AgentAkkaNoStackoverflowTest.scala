@@ -17,7 +17,7 @@ final class AgentAkkaNoStackoverflowTest extends OurTestSuite with AgentTester
     val exception = intercept[RuntimeException] {
       provideAgentDirectory { directory =>
         val conf = AgentConfiguration.forTest(directory, "AgentAkkaNoStackoverflowTest")
-        TestAgent.blockingRun(conf, 99.s) { agent =>
+        TestAgent.blockingRun(conf, 99.s) { _ =>
           logger.warn("THROW TEST ERROR")
           sys.error("TEST ERROR")
         }

@@ -207,17 +207,14 @@ trait ControllerClusterForScalaTest
 
   protected final def runControllers(primary: DirectoryProvider, backup: DirectoryProvider)
     (body: (TestController, TestController) => Unit)
-  : Unit = {
-    /*withOptionalClusterWatchService()*/ {
-      backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
-        primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
-          primaryController.eventWatch.await[ClusterCoupled]()
-          backupController.eventWatch.await[ClusterCoupled]()
-          body(primaryController, backupController)
-        }
+  : Unit =
+    backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
+      primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
+        primaryController.eventWatch.await[ClusterCoupled]()
+        backupController.eventWatch.await[ClusterCoupled]()
+        body(primaryController, backupController)
       }
     }
-  }
 
   protected final def withOptionalClusterWatchService[A](
     clusterWatchId: ClusterWatchId = ControllerClusterForScalaTest.clusterWatchId)

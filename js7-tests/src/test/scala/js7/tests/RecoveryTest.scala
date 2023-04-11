@@ -50,7 +50,7 @@ final class RecoveryTest extends OurTestSuite
         bareSubagents = Map.empty,
         TestWorkflow :: QuickWorkflow :: Nil,
         signer = new SillySigner(SillySignature("MY-SILLY-SIGNATURE")),
-        verifier = new SillySignatureVerifier(SillySignature("MY-SILLY-SIGNATURE") :: Nil, "RecoveryTest"),
+        verifier = new SillySignatureVerifier(Seq(SillySignature("MY-SILLY-SIGNATURE")), "RecoveryTest"),
         testName = Some("RecoveryTest"),
         controllerConfig = TestConfig)
       autoClosing(directoryProvider) { _ =>
@@ -72,31 +72,37 @@ final class RecoveryTest extends OurTestSuite
           runAgents(directoryProvider) { _ =>
             controller.addOrderBlocking(order1)
             controller.addOrderBlocking(QuickOrder)
-            /*lastEventId =*/ lastEventIdOf(controller.eventWatch.await[OrderFinished](after = lastEventId, predicate = _.key == QuickOrder.id))
-            lastEventId = lastEventIdOf(controller.eventWatch.await[OrderProcessed](after = lastEventId, predicate = _.key == order1.id))
+            /*lastEventId =*/ lastEventIdOf(controller.eventWatch
+              .await[OrderFinished](after = lastEventId, predicate = _.key == QuickOrder.id))
+            lastEventId = lastEventIdOf(controller.eventWatch
+              .await[OrderProcessed](after = lastEventId, predicate = _.key == order1.id))
+
             controller.addOrderBlocking(order2)
-            lastEventId = lastEventIdOf(controller.eventWatch.await[OrderProcessed](after = lastEventId, predicate = _.key == order1.id))
+            lastEventId = lastEventIdOf(controller.eventWatch
+              .await[OrderProcessed](after = lastEventId, predicate = _.key == order1.id))
           }
 
           logger.info("*** RESTARTING AGENTS ***\n")
           runAgents(directoryProvider) { _ =>
-            lastEventId = lastEventIdOf(controller.eventWatch.await[OrderProcessed](after = lastEventId, predicate = _.key == order1.id))
+            lastEventId = lastEventIdOf(controller.eventWatch
+              .await[OrderProcessed](after = lastEventId, predicate = _.key == order1.id))
             controller.addOrderBlocking(order3)
           }
         }
 
         for (i <- 1 to 2) withClue(s"Run #$i:") {
           val myLastEventId = lastEventId
-          //sys.runtime.gc()  // For a clean memory view
           logger.info(s"*** RESTARTING CONTROLLER AND AGENTS #$i ***\n")
           runAgents(directoryProvider) { _ =>
             runController(directoryProvider) { controller =>
-              val orderId = controller.eventWatch.await[OrderFinished](after = myLastEventId, predicate = _.key == orders(i).id).last.value.key
-              val orderStampeds = controller.eventWatch.await[Event](_.key == orderId)
+              val orderId = controller.eventWatch
+                .await[OrderFinished](after = myLastEventId, predicate = _.key == orders(i).id)
+                .last.value.key
+              val orderStampedSeq = controller.eventWatch.await[Event](_.key == orderId)
               withClue(s"$orderId") {
-                try assert(deleteRestartedJobEvents(orderStampeds.map(_.value.event).iterator).toVector == ExpectedOrderEvents)
+                try assert(deleteRestartedJobEvents(orderStampedSeq.map(_.value.event).iterator).toVector == ExpectedOrderEvents)
                 catch { case NonFatal(t) =>
-                  logger.error("Test failed due to unexpected events:\n" + orderStampeds.mkString("\n"))
+                  logger.error("Test failed due to unexpected events:\n" + orderStampedSeq.mkString("\n"))
                   throw t
                 }
                 assert(controller.controllerState().idToOrder.keySet ==

@@ -146,7 +146,7 @@ extends MainService with Service.StoppableByRequest
 
 object ClusterWatchService
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   def resource(conf: ClusterWatchConf): Resource[Task, ClusterWatchService] = {
     import conf.{clusterNodeAdmissions, config, httpsConfig}

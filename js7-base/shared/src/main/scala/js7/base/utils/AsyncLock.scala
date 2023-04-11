@@ -23,7 +23,7 @@ final class AsyncLock private(
   asyncLock =>
 
   private val lockM = MVar[Task].empty[Locked]().memoize
-  private val log = if (noLog) js7.base.log.Logger.empty else logger
+  private val log = if (noLog) Logger.empty else logger
 
   def lock[A](task: Task[A])(implicit src: sourcecode.Enclosing): Task[A] =
     lock(src.value)(task)
@@ -96,17 +96,20 @@ final class AsyncLock private(
 
   private def release(locked: Locked, exitCase: ExitCase[Throwable]): Task[Unit] =
     Task.defer {
-      if (!noMinorLog) exitCase match {
-        case ExitCase.Completed =>
-          log.trace(s"↙ ⚪️${locked.nr} $name released by ${locked.acquirer} ↙")
-
-        case ExitCase.Canceled =>
-          log.trace(s"↙ ⚫${locked.nr} $name released by ${locked.acquirer} · Canceled ↙")
-
-        case ExitCase.Error(t) =>
-          log.trace(s"↙ 💥${locked.nr} $name released by ${locked.acquirer} · ${t.toStringWithCauses} ↙")
-      }
+      logRelease(locked, exitCase)
       lockM.flatMap(_.take).void
+    }
+
+  private def logRelease(locked: Locked, exitCase: ExitCase[Throwable]): Unit =
+    if (!noMinorLog) exitCase match {
+      case ExitCase.Completed =>
+        log.trace(s"↙ ⚪️${locked.nr} $name released by ${locked.acquirer} ↙")
+
+      case ExitCase.Canceled =>
+        log.trace(s"↙ ⚫${locked.nr} $name released by ${locked.acquirer} · Canceled ↙")
+
+      case ExitCase.Error(t) =>
+        log.trace(s"↙ 💥${locked.nr} $name released by ${locked.acquirer} · ${t.toStringWithCauses} ↙")
     }
 
   override def toString = s"AsyncLock:$name"

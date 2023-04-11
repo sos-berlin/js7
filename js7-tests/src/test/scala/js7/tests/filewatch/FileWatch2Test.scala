@@ -47,7 +47,7 @@ final class FileWatch2Test extends OurTestSuite with DirectoryProviderForScalaTe
     js7.controller.agent-driver.event-buffer-delay = 0s"""
 
   // TODO MacOS: Waiting for JDK-8293067
-  //  https://bugs.java.com/bugdatabase/view_bug.do?bug_id=8293067
+  //  https://bugs.java.com/bugdatabase/view_bug?bug_id=8293067
   //  https://github.com/openjdk/jdk/pull/10140
   private val pollTimeout = if (isMac && isIntelliJIdea/*because it's slow*/) "2.5s" else "1s"
 
