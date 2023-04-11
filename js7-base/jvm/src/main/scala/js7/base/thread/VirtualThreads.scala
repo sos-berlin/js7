@@ -84,7 +84,7 @@ object VirtualThreads
 
     val testThread = newThread { () =>
       logger.debug(
-        s"""Using Java 19 VirtualThreads for some operations "${Thread.currentThread}"""")
+        s"""Using Java VirtualThreads for some operations "${Thread.currentThread}"""")
     }
     testThread.start()
     testThread.join()

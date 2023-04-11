@@ -288,7 +288,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
             .flatMapT(_ =>
               driver.reset(force)
                 .onErrorHandle(t =>
-                  logger.error(s"$subagentId reset => $t", t.nullIfNoStackTrace))
+                  logger.error(s"$subagentId reset => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
                 .startAndForget
                 .map(Right(_)))
         case _ =>

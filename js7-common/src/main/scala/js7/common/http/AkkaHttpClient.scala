@@ -354,18 +354,21 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
     }
 
   private def logResponseError(response: HttpResponse, responseLogPrefix: String): Unit = {
-    val sym = response.status.isFailure ?? (response.status match {
-      case Unauthorized => "⛔"
-      case Forbidden =>
-        response.entity match {
-          case HttpEntity.Strict(`application/json`, bytes)
-            if (bytes.parseJsonAs[Problem].exists(_ is InvalidSessionTokenProblem)) =>
-            "🔒" // The SessionToken has probably expired. Then the caller will re-login.
-          case _ =>
-            "⛔"
-        }
-      case _ => "❓"
-    })
+    val sym =
+      if (!response.status.isFailure)
+        " ✔"
+      else response.status match {
+        case Unauthorized => "⛔"
+        case Forbidden =>
+          response.entity match {
+            case HttpEntity.Strict(`application/json`, bytes)
+              if (bytes.parseJsonAs[Problem].exists(_ is InvalidSessionTokenProblem)) =>
+              "🔒" // The SessionToken has probably expired. Then the caller will re-login.
+            case _ =>
+              "⛔"
+          }
+        case _ => "❓"
+      }
 
     val suffix = response.status.isFailure ??
       (try response.entity match {

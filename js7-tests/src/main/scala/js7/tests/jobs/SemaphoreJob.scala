@@ -2,9 +2,8 @@ package js7.tests.jobs
 
 import cats.effect.ExitCase
 import js7.base.log.Logger
-import js7.base.log.Logger.syntax.*
-import js7.base.monixutils.MonixBase.syntax.*
-import js7.base.utils.ScalaUtils.syntax.RichJavaClass
+import js7.base.time.ScalaTime.*
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.order.Outcome
 import js7.launcher.OrderProcess
 import js7.launcher.internal.InternalJob
@@ -12,6 +11,7 @@ import js7.tests.jobs.SemaphoreJob.*
 import monix.catnap.Semaphore
 import monix.eval.Task
 import monix.execution.Scheduler
+import scala.concurrent.TimeoutException
 import scala.reflect.ClassTag
 
 abstract class SemaphoreJob(companion: SemaphoreJob.Companion[? <: SemaphoreJob])
@@ -19,8 +19,8 @@ extends InternalJob
 {
   final def toOrderProcess(step: Step) =
     OrderProcess {
-      val semaName = s"${getClass.shortClassName}.semaphore ${step.order.id}"
       val orderId = step.order.id
+      val semaName = s"${getClass.shortClassName}.semaphore for $orderId"
       logger.debugTask(s"SemaphoreJob/$orderId")(
         step
           .outTaskObserver.send(companion.stdoutLine)
@@ -32,19 +32,27 @@ extends InternalJob
                   case true => Task.unit
                   case false =>
                     sema.count
-                      .flatMap { n =>
-                        logger.info(s"🟣 $semaName acquire ... (n=$n)")
+                      .flatMap { count =>
+                        logger.info(s"🟡 $semaName is locked (count=$count)")
+                        val durations = Iterator(3.s, 7.s) ++ Iterator.continually(10.s)
                         sema.acquire
+                          .timeoutTo(durations.next(), Task.raiseError(new TimeoutException))
+                          .onErrorRestartLoop(()) {
+                            case (_: TimeoutException, _, retry) =>
+                              sema.count.flatMap { count =>
+                                logger.info(s"🟠 $semaName is still locked (count=$count)")
+                                retry(())
+                              }
+                            case (t, _, _) => Task.raiseError(t)
+                          }
                       }
-                      .guaranteeCase(exitCase => Task {
+                      .guaranteeCase(exitCase => Task(
                         exitCase match {
-                          case ExitCase.Error(_) => logger.debug(s"💥 $orderId $exitCase")
-                          case ExitCase.Canceled => logger.debug(s"⚫️ $orderId $exitCase")
-                          case ExitCase.Completed => logger.debug(s"🔵 $orderId acquired")
-                        }
-                      })
+                          case ExitCase.Error(_)  => logger.info(s"💥 $semaName $exitCase")
+                          case ExitCase.Canceled  => logger.info(s"⚫️ $semaName $exitCase")
+                          case ExitCase.Completed => logger.info(s"🟢 $semaName acquired")
+                        }))
                 })
-            .logWhenItTakesLonger(s"$semaName")
             .as(Outcome.succeeded)))
     }
 }

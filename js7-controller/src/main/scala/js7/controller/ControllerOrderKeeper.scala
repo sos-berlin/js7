@@ -1103,14 +1103,6 @@ with MainJournalingActor[ControllerState, Event]
         }
     }
 
-  private def logEvent(event: Event): Unit =
-    event match {
-      case VersionAdded(version) => logger.trace(s"Version '${version.string}' added")
-      case e: VersionedItemEvent => logger.trace(s"${e.path} ${e.getClass.simpleScalaName}")
-      case e: InventoryItemEvent => logger.trace(s"${e.key} ${e.getClass.simpleScalaName}")
-      case _ =>
-    }
-
   private def registerAgent(agent: AgentRef, agentRunId: Option[AgentRunId], eventId: EventId)
   : AgentEntry = {
     val allocated = AgentDriver
@@ -1246,7 +1238,6 @@ with MainJournalingActor[ControllerState, Event]
   }
 
   private def handleItemEvent(event: InventoryItemEvent): Unit = {
-    logEvent(event)
     event match {
       case UnsignedSimpleItemAdded(agentRef: AgentRef) =>
         val agentDriver = registerAgent(agentRef, agentRunId = None, eventId = EventId.BeforeFirst)
