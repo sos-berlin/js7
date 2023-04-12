@@ -107,6 +107,7 @@ extends HasCloser
   val controller = new ControllerTree(directory / "controller",
     keyStore = controllerKeyStore, trustStores = controllerTrustStores,
     agentHttpsMutual = agentHttpsMutual)
+
   val agentToTree: Map[AgentPath, AgentTree] = {
     val ports = agentPorts ++ Vector.fill(agentPaths.length - agentPorts.length)(findFreeTcpPort())
     agentPaths
@@ -117,8 +118,12 @@ extends HasCloser
 
         val localSubagentItem = SubagentItem(
           localSubagentId, agentPath, disabled = subagentsDisabled,
-          uri = Uri(s"$localhost:$primaryPort"),
-          backupUri = for (backupPort <- maybeBackupPort) yield Uri(s"$localhost:$backupPort"))
+          uri = Uri(s"$localhost:$primaryPort"))
+        // FIXME backup Subagent
+        val directorSubagentItems = for (port <- Nel.of(primaryPort, maybeBackupPort)) yield
+          SubagentItem(
+            localSubagentId, agentPath, disabled = subagentsDisabled,
+            uri = Uri(s"$localhost:$port"))
 
         agentPath ->
           new AgentTree(directory, agentPath,
@@ -133,6 +138,7 @@ extends HasCloser
       }
       .toMap
   }
+
   val agents: Vector[AgentTree] = agentToTree.values.toVector
   lazy val agentRefs: Vector[AgentRef] =
     for (a <- agents) yield AgentRef(a.agentPath, Seq(a.localSubagentId))

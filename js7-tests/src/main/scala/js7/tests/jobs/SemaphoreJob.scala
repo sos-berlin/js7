@@ -20,8 +20,8 @@ extends InternalJob
   final def toOrderProcess(step: Step) =
     OrderProcess {
       val orderId = step.order.id
-      val semaName = s"${getClass.shortClassName}.semaphore for $orderId"
-      logger.debugTask(s"SemaphoreJob/$orderId")(
+      val semaName = s"${getClass.shortClassName}($orderId) semaphore"
+      /*logger.debugTask(s"${getClass.shortClassName}($orderId)")*/(
         step
           .outTaskObserver.send(companion.stdoutLine)
           .*>(companion.semaphore

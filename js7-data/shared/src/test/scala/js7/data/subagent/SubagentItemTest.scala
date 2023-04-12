@@ -16,7 +16,6 @@ final class SubagentItemTest extends OurTestSuite
         SubagentId("SUBAGENT"),
         AgentPath("AGENT"),
         Uri("https://example.com"),
-        Some(Uri("https://backup.example.com")),
         disabled = true,
         Some(ItemRevision(1))),
       json"""{
@@ -24,7 +23,6 @@ final class SubagentItemTest extends OurTestSuite
         "id": "SUBAGENT",
         "agentPath": "AGENT",
         "uri": "https://example.com",
-        "backupUri": "https://backup.example.com",
         "disabled": true,
         "itemRevision": 1
       }""")

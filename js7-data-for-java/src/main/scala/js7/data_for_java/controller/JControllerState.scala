@@ -79,13 +79,14 @@ extends JJournaledState[JControllerState, ControllerState]
   @Deprecated
   @Nonnull
   def agentToUri(@Nonnull agentPath: AgentPath): JOptional[Uri] =
-    (asScala.agentToUri(agentPath): @nowarn("msg=deprecated"))
+    Some((asScala.agentToUris(agentPath): @nowarn("msg=deprecated")).head)
       .toJava
 
   /** Looks up the URIs of an AgentPath. */
   @Nonnull
   def agentToUris(@Nonnull agentPath: AgentPath): java.util.List[Uri] =
     asScala.agentToUris(agentPath)
+      .toList
       .asJava
 
   /** Looks up an AgentRefState. */

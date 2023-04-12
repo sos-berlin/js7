@@ -60,7 +60,7 @@ object MonixBase
           case _ => task
         }
 
-      def raceWith[B >: A](other: Task[B]): Task[Either[A, B]] =
+      def raceWith[B](other: Task[B]): Task[Either[A, B]] =
         Task.race(task, other)
 
       def startAndForgetOrLog(what: => String): Task[Unit] =

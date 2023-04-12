@@ -112,7 +112,7 @@ private[history] final class InMemoryHistory
             startedAt = Optional.of(startedAt/*timestamp*/))
         }
         val agentPath = getOrThrow(order.attached)
-        val agentUri = eventAndState.state.agentToUri(agentPath).get()
+        val agentUri = eventAndState.state.agentToUris(agentPath).get(0)
         val maybeJobName = eventAndState.state.repo.idToCheckedWorkflow(order.workflowId)
           .flatMap(_.checkedJobName(order.workflowPosition.position))
           .fold(_ => Optional.empty[String], (jobName: WorkflowJob.Name) => Optional.of(jobName.string))

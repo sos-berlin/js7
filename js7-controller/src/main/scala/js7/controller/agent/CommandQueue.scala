@@ -1,5 +1,6 @@
 package js7.controller.agent
 
+import cats.effect.concurrent.Deferred
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.Batch
 import js7.base.log.Logger.syntax.*
@@ -40,7 +41,8 @@ private[agent] abstract class CommandQueue(
   private var isCoupled = false
   private var freshlyCoupled = false
   private var openRequestCount = 0
-  private var isTerminating = false
+  @deprecated private val isTerminating = false
+  private val terminated = Deferred.unsafe[Task, Unit]
 
   private object queue {
     private val queue = mutable.Queue.empty[Queueable]
@@ -102,7 +104,7 @@ private[agent] abstract class CommandQueue(
       queue.removeAlreadyAttachedOrders()
       isCoupled = true
       freshlyCoupled = true
-      maySendLocked
+      maybeStartSendingLocked
     })
 
   final def onDecoupled(): Task[Unit] =
@@ -125,34 +127,19 @@ private[agent] abstract class CommandQueue(
             queue.enqueue(input)
             Task
               .when(queue.size == batchSize || freshlyCoupled)(
-                maySendLocked)
+                maybeStartSendingLocked)
               .as(true)
           }
       }
     })
 
-  final def reset: Task[Unit] =
-    /*FIXME lock*/(Task {
-      attachedOrderIds.clear()
-      isCoupled = false
-      freshlyCoupled = false
-    })
+  final def untilTerminated: Task[Unit] =
+    terminated.get
 
-  final def terminate: Task[Unit] =
-    lock.lock(Task {
-      if (executingInputs.nonEmpty) {
-        logger.info(s"🟡 Waiting for responses to AgentCommands: ${executingInputs.map(_.toShortString).mkString(", ")}")
-      }
-      isTerminating = true
-    })
+  final def maybeStartSending: Task[Unit] =
+    lock.lock(maybeStartSendingLocked)
 
-  final def isTerminated =
-    isTerminating && executingInputs.isEmpty
-
-  final def maySend: Task[Unit] =
-    lock.lock(maySendLocked)
-
-  private def maySendLocked: Task[Unit] =
+  private def maybeStartSendingLocked: Task[Unit] =
     logger.traceTask(Task.defer(Task.when(isCoupled && !isTerminating) {
       lazy val inputs = queue.view
         .filterNot(executingInputs)
@@ -169,7 +156,7 @@ private[agent] abstract class CommandQueue(
         delayNextCommand
           .*>(sendNow(inputs))
           .onErrorHandle(t => Task(logger.error(t.toStringWithCauses, t)))
-          .startAndForget /*TODO*/
+          .startAndForget
       })
     }))
 
@@ -191,15 +178,19 @@ private[agent] abstract class CommandQueue(
         .materialize
         .flatMap {
           case Success(Right(queuedInputResponses)) =>
+            logger.debug(s"✔︎ sendNow queueables=${queuable.map(_.toShortString)}")
             asyncOnBatchSucceeded(queuedInputResponses)
 
           case Success(Left(problem)) =>
+            logger.debug(s"💥 sendNow: $problem")
+            logger.debug(s"💥 sendNow: queueables=${queuable.map(_.toShortString)}")
             asyncOnBatchFailed(queuable, problem)
 
           case Failure(t) =>
+            logger.debug(s"💥 sendNow: $t")
+            logger.debug(s"💥 sendNow: queueables=${queuable.map(_.toShortString)}")
             asyncOnBatchFailed(queuable, Problem.fromThrowable(t))
         }
-        .startAndForget
     }
 
   private def queuableToAgentCommand(queuable: Queueable): AgentCommand =
@@ -290,9 +281,10 @@ private[agent] abstract class CommandQueue(
     Task.defer {
       executingInputs --= inputs
       openRequestCount -= 1
-      maySend
-        .onErrorHandle(t => Task(logger.error(t.toStringWithCauses, t)))
-        .startAndForget /*TODO*/
+      if (isTerminating && executingInputs.isEmpty)
+        terminated.complete(())
+      else
+        maybeStartSendingLocked
     }
 }
 

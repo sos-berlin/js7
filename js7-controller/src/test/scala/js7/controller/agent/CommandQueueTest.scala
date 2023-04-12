@@ -133,7 +133,7 @@ final class CommandQueueTest extends OurTestSuite
       .to(ArraySeq)
       .traverse(order => commandQueue.enqueue(AgentDriver.Queueable.AttachOrder(order, TestAgentPath)))
       .await(99.s)
-    commandQueue.maySend.await(99.s)
+    commandQueue.maybeStartSending.await(99.s)
     waitForCondition(9.s, 10.ms) { commandQueueSucceeded.get() == n }
     assert(commandQueueSucceeded.get() == n)
   }

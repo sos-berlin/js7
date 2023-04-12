@@ -68,8 +68,10 @@ final class ResetAgentTest extends OurTestSuite with ControllerAgentForScalaTest
 
     controller.api.executeCommand(ResetAgent(agentPath)).await(99.s).orThrow
     myAgent.untilTerminated.await(99.s)
+
     agent.stop.await(99.s)
     eventWatch.await[OrderTerminated](_.key == orderId)
+
     assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
       OrderAdded(lockWorkflow.id),
       OrderMoved(Position(0) / "try+0" % 0),
@@ -93,8 +95,10 @@ final class ResetAgentTest extends OurTestSuite with ControllerAgentForScalaTest
     eventWatch.await[OrderAttachable](_.key == orderId)
 
     barrier.flatMap(_.tryPut(())).runSyncUnsafe()
+
     myAgent = directoryProvider.startAgent(agentPath) await 99.s
     eventWatch.await[OrderTerminated](_.key == orderId)
+
     assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
       OrderAdded(lockWorkflow.id),
       OrderMoved(Position(0) / "try+0" % 0),

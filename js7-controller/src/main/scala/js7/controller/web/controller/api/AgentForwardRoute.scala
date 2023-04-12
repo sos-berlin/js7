@@ -11,7 +11,7 @@ import js7.agent.client.AgentClient
 import js7.base.auth.{AgentDirectorForwardPermission, UserAndPassword, ValidUserPermission}
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.generic.SecretString
-import js7.base.problem.{Checked, Problem}
+import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
@@ -74,13 +74,13 @@ trait AgentForwardRoute extends ControllerRouteProvider
     def forward2(agentRef: AgentRef, remainingUrl: String)
     : Task[HttpResponse] =
       controllerState
-        .map(_.flatMap(s =>
-          s.agentToUri(agentRef.path)
-            .map(uri =>
-              uri -> uri.asAkka.copy(
-                path = AkkaUri.Path((uri.asAkka.path ?/ "agent" / "api").toString + remainingUrl),
-                rawQueryString = request.uri.rawQueryString))
-            .toRight(Problem.pure("AgentRef has no URI"))))
+        .map(_.map { s =>
+          val uri = s.agentToUris(agentRef.path).head // FIXME Use AgentDriver and select the active Director
+          val akkaUri = uri.asAkka.copy(
+            path = AkkaUri.Path((uri.asAkka.path ?/ "agent" / "api").toString + remainingUrl),
+            rawQueryString = request.uri.rawQueryString)
+          uri -> akkaUri
+        })
         .flatMap {
           case Left(problem) =>
             Task.pure(HttpResponse(

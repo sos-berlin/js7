@@ -7,6 +7,7 @@ import js7.base.crypt.Signed
 import js7.base.problem.Checked.RichCheckedIterable
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.problem.{Checked, Problem}
+import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.Collections.RichMap
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
@@ -584,17 +585,13 @@ with SnapshotableState[ControllerState]
     idToOrder.valuesIterator.map(_.workflowId).toSet
       .tap(o => logger.trace(s"${idToOrder.size} orders => isWorkflowUsedByOrders size=${o.size}"))
 
-  @deprecated
-  def agentToUri(agentPath: AgentPath): Option[Uri] =
-    agentToUris(agentPath).headOption
-
-  def agentToUris(agentPath: AgentPath): List[Uri] =
-    for {
-      agentRef <- keyToItem(AgentRef).get(agentPath).toList
-      uris <- agentRef.director
-        .fold(agentRef.uri.toList)(director =>
-          keyToItem(SubagentItem).get(director).toList.flatMap(_.uris))
-    } yield uris
+  def agentToUris(agentPath: AgentPath): Nel[Uri] =
+    Nel.fromListUnsafe(
+      for {
+        agentRef <- keyToItem(AgentRef).get(agentPath).toList
+        director <- agentRef.directors
+        subagent <- keyToItem(SubagentItem).get(director).toList
+      } yield subagent.uri)
 
   def itemToAttachedState(itemKey: InventoryItemKey, itemRevision: Option[ItemRevision], agentPath: AgentPath)
   : ItemAttachedState =

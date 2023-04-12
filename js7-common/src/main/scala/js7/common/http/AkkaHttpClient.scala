@@ -272,7 +272,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
         lazy val logPrefix = s"#$number $toString: ${sessionToken.fold("")(_.short)}"
         lazy val responseLog0 = s"$logPrefix ${requestToString(req, logData, isResponse = true)} "
         def responseLogPrefix = responseLog0 + since.elapsed.pretty
-        logger.trace(s">--> $logPrefix: ${requestToString(req, logData)}")
+        logger.trace(s">-->  $logPrefix: ${requestToString(req, logData)}")
         Task
           .deferFutureAction { scheduler =>
             responseFuture = http.singleRequest(req,
@@ -289,7 +289,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
           .guaranteeCase {
             case ExitCase.Canceled => Task {
               canceled = true
-              logger.debug(s"<~~⚫️ $responseLogPrefix => canceled")
+              logger.debug(s"<~~ ⚫️$responseLogPrefix => canceled")
               if (responseFuture != null) {
                 // TODO Akka's max-open-requests may be exceeded when new requests are opened
                 //  while many canceled requests are still not completed by Akka
@@ -300,7 +300,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
                   responseFuture
                     .flatMap(_
                       .discardEntityBytes().future.andThen { case tried =>
-                        logger.debug(s"⚫️$responseLogPrefix discardResponse => " +
+                        logger.debug(s"    ⚫️$responseLogPrefix discardResponse => " +
                           tried.fold(_.toStringWithCauses, _ => "ok"))
                       })
                     .map((_: Done) => ())
@@ -316,7 +316,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
                 case _ => "💥"
               }
               logger.debug(
-                s"<~~$sym$responseLogPrefix => failed with ${throwable.toStringWithCauses}")
+                s"<~~ $sym$responseLogPrefix => failed with ${throwable.toStringWithCauses}")
               Task.raiseError(toPrettyProblem(throwable).throwable)
             }
 

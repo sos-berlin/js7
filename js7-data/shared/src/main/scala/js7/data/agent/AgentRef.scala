@@ -10,7 +10,7 @@ import js7.data.subagent.{SubagentId, SubagentItem}
 
 final case class AgentRef(
   path: AgentPath,
-  directors: Seq[SubagentId],
+  directors: Seq[SubagentId]/*TODO NonEmptyList since v2.2*/,
   uri: Option/*COMPATIBLE with v2.1*/[Uri] = None,
   itemRevision: Option[ItemRevision] = None)
 extends UnsignedSimpleItem
@@ -43,7 +43,9 @@ extends UnsignedSimpleItem
 
   override def referencedItemPaths = directors.view
 
-  def director = directors.headOption
+  @deprecated
+  def director: Option[SubagentId] =
+    directors.headOption
 
   // COMPATIBLE with v2.1
   /** Converts a legacy AgentRef to a modern AgentRef and a local SubagentItem. */

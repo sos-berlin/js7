@@ -5,10 +5,10 @@ import akka.pattern.{ask, pipe}
 import cats.instances.either.*
 import cats.instances.future.*
 import cats.instances.vector.*
-import cats.syntax.parallel.*
 import cats.syntax.flatMap.*
 import cats.syntax.foldable.*
 import cats.syntax.option.*
+import cats.syntax.parallel.*
 import cats.syntax.traverse.*
 import java.time.ZoneId
 import js7.agent.data.event.AgentEvent
@@ -66,7 +66,6 @@ import js7.data.item.BasicItemEvent.{ItemAttached, ItemAttachedToMe, ItemDeleted
 import js7.data.item.ItemAttachedState.{Attachable, Detachable, Detached}
 import js7.data.item.UnsignedItemEvent.{UnsignedItemAdded, UnsignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
-import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemEvent}
 import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemKey, ItemAddedOrChanged, ItemRevision, SignableItemKey, UnsignedItem, UnsignedItemKey}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderNoticePosted, OrderNoticePostedV2_3, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
@@ -310,11 +309,6 @@ with MainJournalingActor[ControllerState, Event]
       ).throwable
     this._controllerState = controllerState
     //controllerMetaState = controllerState.controllerMetaState.copy(totalRunningTime = recovered.totalRunningTime)
-    for (agentRef <- controllerState.pathToUnsignedSimple(AgentRef).values) {
-      val agentRefState = controllerState.keyTo(AgentRefState)
-        .getOrElse(agentRef.path, AgentRefState(agentRef))
-      registerAgent(agentRef, agentRefState.agentRunId, eventId = agentRefState.eventId)
-    }
 
     for (
       boardState <- controllerState.keyTo(BoardState).values;
@@ -371,28 +365,25 @@ with MainJournalingActor[ControllerState, Event]
       // Proceed order before starting AgentDrivers, so AgentDrivers may match recovered OrderIds with Agent's OrderIds
       orderRegister ++= _controllerState.idToOrder.keys.map(_ -> new OrderEntry(scheduler.now))
 
-      if (persistedEventId > EventId.BeforeFirst) {  // Recovered?
-        logger.info(s"${_controllerState.idToOrder.size} Orders, " +
-          s"${_controllerState.repo.typedCount[Workflow]} Workflows and " +
-          s"${_controllerState.keyTo(AgentRefState).size} AgentRefs recovered")
-      }
-      // Any ordering when continuing orders???
-      proceedWithOrders(_controllerState.idToOrder.keys)
-      orderQueue.enqueue(_controllerState.idToOrder.keys)
-
       // Start fetching events from Agents after AttachOrder has been sent to AgentDrivers.
       // This is to handle race-condition: An Agent may have already completed an order.
       // So send AttachOrder before DetachOrder.
       // The Agent will ignore the duplicate AttachOrder if it arrives before DetachOrder.
-      agentRegister.values.map(_.agentDriver)
-        .toVector
-        .traverse(agentDriver =>
-          agentDriver
-            .startFetchingEvents
-            .logAndIgnoreError(s"startFetchingEvents($agentDriver)")
-            .onErrorHandle(t => logger.error(
-              s"$agentDriver.startFetchingEvents => ${t.toStringWithCauses}", t.nullIfNoStackTrace)))
-        .awaitInfinite // TODO
+      for (agentRef <- _controllerState.pathToUnsignedSimple(AgentRef).values) {
+        val agentRefState = _controllerState.keyTo(AgentRefState)
+          .getOrElse(agentRef.path, AgentRefState(agentRef))
+        registerAgent(agentRef, agentRefState.agentRunId, eventId = agentRefState.eventId)
+      }
+
+      // Any ordering when continuing orders???
+      proceedWithOrders(_controllerState.idToOrder.keys)
+      orderQueue.enqueue(_controllerState.idToOrder.keys)
+
+      if (persistedEventId > EventId.BeforeFirst) { // Recovered?
+        logger.info(s"${_controllerState.idToOrder.size} Orders, " +
+          s"${_controllerState.repo.typedCount[Workflow]} Workflows and " +
+          s"${_controllerState.keyTo(AgentRefState).size} AgentRefs recovered")
+      }
 
     case Command.Execute(_: ControllerCommand.ShutDown, _, _) =>
       stash()
@@ -638,12 +629,6 @@ with MainJournalingActor[ControllerState, Event]
             case Resetting(_) | Reset(_) =>
               agentEntry = registerAgent(agentRefState.agentRef,
                 agentRunId = None, eventId = EventId.BeforeFirst)
-              agentEntry.agentDriver
-                .startFetchingEvents
-                .onErrorHandle(t => logger.error(
-                  s"${agentEntry.agentDriver}.startFetchingEvents => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
-                .logWhenItTakesLonger(s"${agentEntry.agentDriver}.startFetchingEvents")
-                .awaitInfinite // TODO
             //??? reattachToAgent(agentPath)
 
             case _ =>
@@ -910,20 +895,16 @@ with MainJournalingActor[ControllerState, Event]
                                 .agentDriver.reset(force = force)
                                 .tapError(t => Task(
                                   logger.error("ResetAgent: " + t.toStringWithCauses, t)))
-                                .materialize.map(Checked.fromTry)
-                                .flatMapT {
-                                  case true =>
-                                    persistence.persist(_
-                                      .keyTo(AgentRefState).checked(agentPath)
-                                      .map(_.couplingState)
-                                      .map {
-                                        case Resetting(_) => (agentPath <-: AgentReset) :: Nil
-                                        case _ => Nil
-                                      })
-                                  case false =>
-                                    Task.right(())
-                                }
-                                .flatMapT(_ => Task.pure(Right(ControllerCommand.Response.Accepted)))
+                                .materializeIntoChecked
+                                .flatMapT(_ =>
+                                  persistence.persist(_
+                                    .keyTo(AgentRefState).checked(agentPath)
+                                    .map(_.couplingState)
+                                    .map {
+                                      case Resetting(_) => (agentPath <-: AgentReset) :: Nil
+                                      case _ => Nil
+                                    }))
+                                .rightAs(ControllerCommand.Response.Accepted)
                                 .runToFuture
                             }.flatten
                        }
@@ -1240,41 +1221,30 @@ with MainJournalingActor[ControllerState, Event]
   private def handleItemEvent(event: InventoryItemEvent): Unit = {
     event match {
       case UnsignedSimpleItemAdded(agentRef: AgentRef) =>
-        val agentDriver = registerAgent(agentRef, agentRunId = None, eventId = EventId.BeforeFirst)
-          .agentDriver
-        agentDriver
-          .startFetchingEvents
-          .onErrorHandle(t => logger.error(
-            s"$agentDriver.startFetchingEvents => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
-          .logWhenItTakesLonger(s"$agentDriver.startFetchingEvents}")
-          .awaitInfinite // TODO
+        registerAgent(agentRef, agentRunId = None, eventId = EventId.BeforeFirst)
 
         // TODO Not required in a future implementation, when Agents must be defined when referenced
         //reattachToAgent(agentRef.path)
 
       case UnsignedSimpleItemChanged(agentRef: AgentRef) =>
         agentRegister(agentRef.path) = agentRegister(agentRef.path).copy(agentRef = agentRef)
-        for (uri <- persistence.unsafeCurrentState().agentToUri(agentRef.path)) {
-          val agentDriver = agentRegister(agentRef.path).agentDriver
-          agentDriver
-            .changeUri(agentRef, uri)
-            .onErrorHandle(t => logger.error(
-              s"$agentDriver.changeUri => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
-            .logWhenItTakesLonger(s"$agentDriver.changeUri($uri)")
-            .awaitInfinite // TODO
-        }
+        val agentDriver = agentRegister(agentRef.path).agentDriver
+        agentDriver
+          .changeAgentRef(agentRef)
+          .onErrorHandle(t => logger.error(
+            s"$agentDriver.changeAgentRef => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+          .logWhenItTakesLonger(s"$agentDriver.changeAgentRef")
+          .awaitInfinite // TODO
 
       case UnsignedSimpleItemChanged(subagentItem: SubagentItem) =>
         for (agentRef <- persistence.unsafeCurrentState().keyToItem(AgentRef).get(subagentItem.agentPath)) {
-          for (uri <- persistence.unsafeCurrentState().agentToUri(agentRef.path)) {
-            val agentDriver = agentRegister(agentRef.path).agentDriver
-            agentDriver
-              .changeUri(agentRef, uri)
-              .onErrorHandle(t => logger.error(
-                s"$agentDriver.changeUri => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
-              .logWhenItTakesLonger(s"$agentDriver.changeUri($uri)")
-              .awaitInfinite // TODO
-          }
+          val agentDriver = agentRegister(agentRef.path).agentDriver
+          agentDriver
+            .changeAgentRef(agentRef)
+            .onErrorHandle(t => logger.error(
+              s"$agentDriver.changeAgentRef => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+            .logWhenItTakesLonger(s"$agentDriver.changeAgentRef")
+            .awaitInfinite // TODO
         }
 
       case ItemDetached(itemKey, agentPath: AgentPath) =>
@@ -1308,13 +1278,13 @@ with MainJournalingActor[ControllerState, Event]
           for ((agentPath, attachedState) <- agentToAttachedState) {
             // TODO Does nothing if Agent is added later! (should be impossible, anyway)
             for (agentEntry <- agentRegister.get(agentPath)) {
+              val agentDriver = agentEntry.agentDriver
               if (!agentEntry.isResetting) {
                 attachedState match {
                   case Attachable =>
                     itemKey match {
                       case itemKey: SignableItemKey =>
                         for (signedItem <- _controllerState.keyToSignedItem.get(itemKey)) {
-                          val agentDriver = agentEntry.agentDriver
                           agentDriver
                             .send(AgentDriver.Queueable.AttachSignedItem(signedItem))
                             .onErrorHandle(t => logger.error(
@@ -1326,7 +1296,6 @@ with MainJournalingActor[ControllerState, Event]
                       case itemKey: UnsignedItemKey =>
                         for (item <- _controllerState.keyToItem.get(itemKey)) {
                           val unsignedItem = item.asInstanceOf[UnsignedItem]
-                          val agentDriver = agentEntry.agentDriver
                           agentDriver
                             .send(AgentDriver.Queueable.AttachUnsignedItem(unsignedItem))
                             .onErrorHandle(t => logger.error(
@@ -1339,8 +1308,7 @@ with MainJournalingActor[ControllerState, Event]
                   case Detachable =>
                     if (/*!agentEntry.isDeleted && */!agentEntry.detachingItems.contains(itemKey)) {
                       agentEntry.detachingItems += itemKey
-                      val agentDriver = agentEntry.agentDriver
-                      agentEntry.agentDriver
+                      agentDriver
                         .send(AgentDriver.Queueable.DetachItem(itemKey))
                         .onErrorHandle(t => logger.error(
                           s"$agentDriver.send(DetachItem) => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
