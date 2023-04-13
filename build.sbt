@@ -70,7 +70,6 @@ addCommandAlias("quickPublishLocal", "; compile; publishLocal; project js7JS; co
 
 //scalafixDependencies in ThisBuild += "org.scalatest" %% "autofix" % "3.1.0.0"
 //addCompilerPlugin(scalafixSemanticdb) // enable SemanticDB
-val jdkVersion = "1.8"
 
 ThisBuild / scalacOptions ++= (if (isForDevelopment) Nil else
   Seq("-Wconf:cat=unused-imports:error"))
@@ -155,9 +154,9 @@ val commonSettings = Seq(
       </developer>
     </developers>,
   scalaVersion := Dependencies.scalaVersion,
-  Compile / javacOptions ++= Seq("-encoding", "UTF-8", "-source", jdkVersion),  // This is for javadoc, too
+  Compile / javacOptions ++= Seq("-encoding", "UTF-8"),  // This is for javadoc, too
   Compile / compile / javacOptions ++= Seq(
-    "-target", jdkVersion, "-deprecation", "-Xlint:all", "-Xlint:-serial", "-Xdiags:verbose"),
+    "-deprecation", "-Xlint:all", "-Xlint:-serial", "-Xdiags:verbose"),
   dependencyOverrides ++= {
     if (sys.props.contains("evictionWarnings"))
       Nil
