@@ -22,7 +22,7 @@ import js7.core.web.EntitySizeLimitProvider
 import js7.data.agent.Problems.AgentNotDedicatedProblem
 import js7.data.subagent.Problems.SubagentAlreadyDedicatedProblem
 import js7.data.subagent.SubagentCommand
-import js7.subagent.SubagentCommandExecutor
+import js7.subagent.Subagent
 import js7.subagent.web.PseudoAgentRoute.*
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -33,7 +33,7 @@ private trait PseudoAgentRoute extends SessionRoute with EntitySizeLimitProvider
   protected def executeCommand(command: Numbered[SubagentCommand])
   : Task[Checked[SubagentCommand.Response]]
 
-  protected val commandExecutor: SubagentCommandExecutor
+  protected val subagent: Subagent
   protected def restartAsDirector: Task[Unit]
   protected def overviewRoute: Route
 
@@ -85,7 +85,7 @@ private trait PseudoAgentRoute extends SessionRoute with EntitySizeLimitProvider
           completeWithRestartAsDirector)))
 
   private def checkSubagent(route: Route): Route =
-    if (commandExecutor.checkedDedicated.isRight)
+    if (subagent.checkedDedicated.isRight)
       complete(BadRequest -> SubagentAlreadyDedicatedProblem)
     else
       route

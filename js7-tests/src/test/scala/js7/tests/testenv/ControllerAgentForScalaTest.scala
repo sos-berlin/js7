@@ -22,7 +22,7 @@ import js7.data.item.{VersionId, VersionedItem, VersionedItemPath}
 import js7.data.order.{OrderId, OrderObstacle, OrderObstacleCalculator}
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentDedicated}
 import js7.data.subagent.{SubagentId, SubagentItem}
-import js7.subagent.BareSubagent
+import js7.subagent.Subagent
 import js7.tests.testenv.ControllerAgentForScalaTest.*
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
@@ -43,7 +43,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
   protected final lazy val agent: TestAgent = agents.head
 
   protected final lazy val (bareSubagents, bareSubagentIdToRelease)
-  : (Seq[BareSubagent], Map[SubagentId, Task[Unit]]) =
+  : (Seq[Subagent], Map[SubagentId, Task[Unit]]) =
     directoryProvider
       .startBareSubagents()
       .map(pairs => pairs.map(_._1) -> pairs.map(_._2).toMap)
@@ -144,7 +144,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
   protected final def stopBareSubagent(subagentId: SubagentId): Unit =
     bareSubagentIdToRelease(subagentId).await(99.s)
 
-  protected final def startBareSubagent(subagentId: SubagentId): (BareSubagent, Task[Unit]) = {
+  protected final def startBareSubagent(subagentId: SubagentId): (Subagent, Task[Unit]) = {
     val subagentItem = directoryProvider.subagentItems
       .find(_.id == subagentId)
       .getOrElse(throw new NoSuchElementException(s"Missing $subagentId"))
@@ -173,7 +173,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
     suffix: String = "",
     awaitDedicated: Boolean = true,
     suppressSignatureKeys: Boolean = false)
-    (body: BareSubagent => A)
+    (body: Subagent => A)
   : A =
     subagentResource(subagentItem,
       config = config,
@@ -196,7 +196,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
     suffix: String = "",
     awaitDedicated: Boolean = true,
     suppressSignatureKeys: Boolean = false)
-  : Resource[Task, BareSubagent] =
+  : Resource[Task, Subagent] =
     Resource.suspend(Task {
       val eventId = eventWatch.lastAddedEventId
       directoryProvider

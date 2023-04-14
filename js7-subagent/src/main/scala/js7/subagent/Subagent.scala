@@ -1,62 +1,82 @@
 package js7.subagent
 
-import cats.effect.ExitCase
+import cats.effect.concurrent.Deferred
+import cats.effect.{ExitCase, Resource}
 import js7.base.Js7Version
+import js7.base.configutils.Configs.RichConfig
+import js7.base.eventbus.StandardEventBus
+import js7.base.io.process.ProcessSignal
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.AsyncMap
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
+import js7.base.service.{MainService, Service}
+import js7.base.thread.IOExecutor
+import js7.base.time.AlarmClock
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.RightUnit
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{ProgramTermination, SetOnce}
+import js7.common.system.ThreadPools.unlimitedSchedulerResource
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.event.EventId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId, Outcome}
-import js7.data.subagent.Problems.{SubagentAlreadyDedicatedProblem, SubagentIdMismatchProblem, SubagentIsShuttingDownProblem, SubagentRunIdMismatchProblem}
-import js7.data.subagent.SubagentCommand.{CoupleDirector, DedicateSubagent, ShutDown}
+import js7.data.subagent.Problems.{SubagentAlreadyDedicatedProblem, SubagentIdMismatchProblem, SubagentIsShuttingDownProblem, SubagentNotDedicatedProblem, SubagentRunIdMismatchProblem}
+import js7.data.subagent.SubagentCommand.{CoupleDirector, DedicateSubagent}
 import js7.data.subagent.SubagentEvent.SubagentShutdown
 import js7.data.subagent.{SubagentId, SubagentRunId, SubagentState}
 import js7.data.value.expression.Expression
 import js7.data.workflow.position.WorkflowPosition
 import js7.journal.watch.InMemoryJournal
 import js7.launcher.configuration.JobLauncherConf
-import js7.subagent.SubagentExecutor.*
+import js7.subagent.Subagent.*
 import js7.subagent.configuration.SubagentConf
 import monix.eval.Task
+import monix.execution.Scheduler
 import monix.execution.atomic.Atomic
 
-trait SubagentExecutor
+final class Subagent private(
+  val journal: InMemoryJournal[SubagentState],
+  val conf: SubagentConf,
+  jobLauncherConf: JobLauncherConf,
+  val testEventBus: StandardEventBus[Any])
+extends MainService with Service.StoppableByRequest
 {
-  protected[this] val dedicatedOnce: SetOnce[Dedicated]
-  protected val journal: InMemoryJournal[SubagentState]
-  protected val subagentConf: SubagentConf
-  protected val jobLauncherConf: JobLauncherConf
+  subagent =>
 
-  protected def onStop = Task.unit
-
+  private val dedicatedOnce = SetOnce[Dedicated](SubagentNotDedicatedProblem)
   val subagentRunId = SubagentRunId.fromJournalId(journal.journalId)
-  private val subagentDriverConf = SubagentDriver.Conf.fromConfig(subagentConf.config,
+  private val subagentDriverConf = SubagentDriver.Conf.fromConfig(conf.config,
     commitDelay = 0.s)
   private val orderToProcessing = AsyncMap.stoppable[OrderId, Processing]()
 
   private val shuttingDown = Atomic(false)
-  private val terminatedOnce = SetOnce[ProgramTermination]
+  private val terminated = Deferred.unsafe[Task, ProgramTermination]
   @volatile private var _dontWaitForDirector = false
+
+  protected def start =
+    startService(Task
+      .race(
+        untilStopRequested *> shutdown(processSignal = None),
+        untilTerminated)
+      .void)
 
   def isShuttingDown: Boolean =
     shuttingDown()
 
   def untilTerminated: Task[ProgramTermination] =
-    terminatedOnce.task
+    terminated.get
 
-  final def shutdown(shutDown: ShutDown): Task[ProgramTermination] = {
-    import shutDown.{dontWaitForDirector, processSignal, restart}
+  def shutdown(
+    processSignal: Option[ProcessSignal] = None,
+    restart: Boolean = false,
+    dontWaitForDirector: Boolean = false)
+  : Task[ProgramTermination] = {
     logger.debugTask(
       "shutdown",
       Seq(processSignal, restart ? "restart", dontWaitForDirector ? "dontWaitForDirector")
@@ -65,8 +85,8 @@ trait SubagentExecutor
       _dontWaitForDirector |= dontWaitForDirector
       val first = !shuttingDown.getAndSet(true)
       Task
-        .when(first)(
-          onStop.*>(dedicatedOnce
+        .when(first) {
+          (dedicatedOnce
             .toOption
             .fold(Task.unit)(_.localSubagentDriver.stop(processSignal))
             .*>(orderToProcessing.initiateStopWithProblem(SubagentIsShuttingDownProblem))
@@ -74,11 +94,11 @@ trait SubagentExecutor
               val orderIds = orderToProcessing.toMap.keys.toVector.sorted
               if (dontWaitForDirector) Task {
                 for (orderId <- orderIds) logger.warn(
-                  s"$shutDown: Agent Director has not yet acknowledged processing of $orderId")
+                  s"Shutdown: Agent Director has not yet acknowledged processing of $orderId")
               } else Task.defer {
                 for (orderId <- orderIds) logger.info(
-                  s"🟡 Delaying $shutDown until Agent Director has acknowledged processing of $orderId")
-                  // Await process termination and DetachProcessedOrder commands
+                  s"🟡 Delaying shutdown until Agent Director has acknowledged processing of $orderId")
+                // Await process termination and DetachProcessedOrder commands
                 orderToProcessing.whenStopped
                   .logWhenItTakesLonger("Director-acknowledged Order processes")
               }
@@ -88,16 +108,16 @@ trait SubagentExecutor
               .persistKeyedEvent(NoKey <-: SubagentShutdown)
               .rightAs(())
               .map(_.onProblemHandle(problem => logger.warn(s"Shutdown: $problem"))))
-            .*>(Task {
-              logger.info(
-                s"Subagent${dedicatedOnce.toOption.fold("")(_.toString + " ")} stopped")
-              terminatedOnce.trySet(ProgramTermination(restart = restart))
-            })))
-        .*>(terminatedOnce.task)
+            .*>(Task.defer {
+              logger.info(s"$subagent stopped")
+              terminated.complete(ProgramTermination(restart = restart)).attempt.void
+            }))
+        }
+        .*>(untilTerminated)
     })
   }
 
-  protected def executeDedicateSubagent(cmd: DedicateSubagent)
+  def executeDedicateSubagent(cmd: DedicateSubagent)
   : Task[Checked[DedicateSubagent.Response]] =
     Task.defer {
       val isFirst = dedicatedOnce.trySet(
@@ -129,9 +149,9 @@ trait SubagentExecutor
       controllerId,
       jobLauncherConf,
       subagentDriverConf,
-      subagentConf)
+      conf)
 
-  protected def executeCoupleDirector(cmd: CoupleDirector): Task[Checked[Unit]] =
+  def executeCoupleDirector(cmd: CoupleDirector): Task[Checked[Unit]] =
     Task {
       for {
         _ <- checkSubagentId(cmd.subagentId)
@@ -158,7 +178,7 @@ trait SubagentExecutor
       } else
         Checked.unit)
 
-  protected final def startOrderProcess(
+  def startOrderProcess(
     order: Order[Order.Processing],
     defaultArguments: Map[String, Expression])
   : Task[Checked[Unit]] =
@@ -211,19 +231,55 @@ trait SubagentExecutor
           .map(_.orThrow._1.eventId)
       }
 
-  protected def detachProcessedOrder(orderId: OrderId): Task[Checked[Unit]] =
+  def detachProcessedOrder(orderId: OrderId): Task[Checked[Unit]] =
     orderToProcessing.remove(orderId).as(Checked.unit)
 
-  protected def releaseEvents(eventId: EventId): Task[Checked[Unit]] =
+  def releaseEvents(eventId: EventId): Task[Checked[Unit]] =
     journal.releaseEvents(eventId)
+
+  private[subagent] def checkedDedicated: Checked[Dedicated] =
+    dedicatedOnce.checked
 
   def subagentId: Option[SubagentId] =
     dedicatedOnce.toOption.map(_.subagentId)
+
+  override def toString = s"Subagent(${dedicatedOnce.toOption getOrElse ""})"
 }
 
-object SubagentExecutor
+object Subagent
 {
   private val logger = Logger(getClass)
+
+  def resource(
+    conf: SubagentConf,
+    js7Scheduler: Scheduler,
+    iox: IOExecutor,
+    testEventBus: StandardEventBus[Any])
+  : Resource[Task, Subagent] =
+    Resource.suspend(Task {
+      import conf.config
+
+      implicit val s: Scheduler = js7Scheduler
+      val alarmClockCheckingInterval = config.finiteDuration("js7.time.clock-setting-check-interval")
+        .orThrow
+      val inMemoryJournalSize = config.getInt("js7.journal.event-buffer-size")
+
+      (for {
+        // For BlockingInternalJob (thread-blocking Java jobs)
+        blockingInternalJobScheduler <- unlimitedSchedulerResource[Task](
+          "JS7 blocking job", conf.config)
+        clock <- AlarmClock.resource[Task](Some(alarmClockCheckingInterval))
+        journal = new InMemoryJournal(SubagentState.empty,
+          size = inMemoryJournalSize,
+          waitingFor = "JS7 Agent Director")
+        jobLauncherConf = conf.toJobLauncherConf(iox, blockingInternalJobScheduler, clock).orThrow
+        subagent <- Service.resource(Task(
+          new Subagent(journal, conf, jobLauncherConf, testEventBus)))
+      } yield {
+        logger.info("Subagent is ready to be dedicated" + "\n" + "─" * 80)
+        subagent
+      }).executeOn(js7Scheduler)
+    })
 
   private[subagent] final class Dedicated(
     val localSubagentDriver: LocalSubagentDriver[SubagentState])

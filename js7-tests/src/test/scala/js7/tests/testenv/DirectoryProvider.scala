@@ -53,8 +53,8 @@ import js7.data.job.RelativePathExecutable
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.proxy.ControllerApi
 import js7.service.pgp.PgpSigner
-import js7.subagent.BareSubagent
 import js7.subagent.configuration.SubagentConf
+import js7.subagent.{BareSubagent, Subagent}
 import js7.tests.testenv.DirectoryProvider.*
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -120,10 +120,10 @@ extends HasCloser
           localSubagentId, agentPath, disabled = subagentsDisabled,
           uri = Uri(s"$localhost:$primaryPort"))
         // FIXME backup Subagent
-        val directorSubagentItems = for (port <- Nel.of(primaryPort, maybeBackupPort)) yield
-          SubagentItem(
-            localSubagentId, agentPath, disabled = subagentsDisabled,
-            uri = Uri(s"$localhost:$port"))
+        //val directorSubagentItems = for (port <- Nel.of(primaryPort, maybeBackupPort)) yield
+        //  SubagentItem(
+        //    localSubagentId, agentPath, disabled = subagentsDisabled,
+        //    uri = Uri(s"$localhost:$port"))
 
         agentPath ->
           new AgentTree(directory, agentPath,
@@ -320,7 +320,7 @@ extends HasCloser
       agentToTree(agentPath).agentConfiguration,
       testWiring)
 
-  def startBareSubagents(): Task[Seq[(BareSubagent, (SubagentId, Task[Unit]))]] =
+  def startBareSubagents(): Task[Seq[(Subagent, (SubagentId, Task[Unit]))]] =
     agents
       .flatMap(a => a.bareSubagentItems.map(_ -> a.agentConfiguration.config))
       .parTraverse { case (subagentItem, config) =>
@@ -360,7 +360,7 @@ extends HasCloser
     config: Config = ConfigFactory.empty,
     suffix: String = "",
     suppressSignatureKeys: Boolean = false)
-  : Resource[Task, BareSubagent] =
+  : Resource[Task, Subagent] =
     subagentResource2(subagentItem.id, subagentItem.uri, subagentItem.agentPath,
       config, suffix, suppressSignatureKeys)
 
@@ -371,7 +371,7 @@ extends HasCloser
     config: Config = ConfigFactory.empty,
     suffix: String = "",
     suppressSignatureKeys: Boolean = false)
-  : Resource[Task, BareSubagent] =
+  : Resource[Task, Subagent] =
     for {
       dir <- subagentEnvironment(subagentId, suffix = suffix)
       trustedSignatureDir = dir / "config" / "private" /

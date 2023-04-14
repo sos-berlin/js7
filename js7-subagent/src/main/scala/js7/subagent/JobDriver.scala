@@ -26,7 +26,7 @@ import monix.execution.Scheduler
 import monix.execution.cancelables.SerialCancelable
 import scala.concurrent.Promise
 
-final class JobDriver(
+private final class JobDriver(
   jobConf: JobConf,
   pathToJobResource: JobResourcePath => Checked[JobResource],
   checkedJobLauncher: Checked[JobLauncher],
@@ -236,7 +236,7 @@ final class JobDriver(
   private def orderProcessCount = orderToProcess.size
 }
 
-object JobDriver
+private object JobDriver
 {
   private final class Entry(val orderId: OrderId) {
     var orderProcess: Option[OrderProcess] = None

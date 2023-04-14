@@ -1,51 +1,27 @@
 package js7.subagent
 
-import cats.effect.Resource
 import cats.syntax.traverse.*
 import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier
-import js7.base.eventbus.StandardEventBus
 import js7.base.log.Logger
 import js7.base.problem.Checked
-import js7.base.service.Service
 import js7.base.stream.Numbered
-import js7.base.thread.IOExecutor
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.SetOnce
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.subagent.Problems.SubagentNotDedicatedProblem
 import js7.data.subagent.SubagentCommand.{AttachSignedItem, CoupleDirector, DedicateSubagent, DetachProcessedOrder, KillProcess, NoOperation, ReleaseEvents, ShutDown, StartOrderProcess}
 import js7.data.subagent.SubagentEvent.SubagentItemAttached
 import js7.data.subagent.{SubagentCommand, SubagentState}
 import js7.journal.watch.InMemoryJournal
-import js7.launcher.configuration.JobLauncherConf
-import js7.subagent.BareSubagent.ItemSignatureKeysUpdated
-import js7.subagent.SubagentCommandExecutor.*
-import js7.subagent.SubagentExecutor.Dedicated
-import js7.subagent.configuration.SubagentConf
+import js7.subagent.SubagentCommandExecuter.*
 import monix.eval.Task
 import monix.reactive.Observable
 import scala.concurrent.duration.Deadline.now
 
-final class SubagentCommandExecutor private(
+private final class SubagentCommandExecuter(
+  val subagent: Subagent,
   signatureVerifier: DirectoryWatchingSignatureVerifier,
-  val testEventBus: StandardEventBus[Any],
-  protected val journal: InMemoryJournal[SubagentState],
-  protected val subagentConf: SubagentConf,
-  protected val jobLauncherConf: JobLauncherConf)
-extends SubagentExecutor with Service.StoppableByRequest
+  journal: InMemoryJournal[SubagentState])
 {
-  protected[subagent] final val dedicatedOnce = SetOnce[Dedicated](SubagentNotDedicatedProblem)
-
-  override protected def onStop =
-    signatureVerifier.stop
-
-  protected def start =
-    startService(untilStopRequested)
-
-  def checkedDedicated: Checked[Dedicated] =
-    dedicatedOnce.checked
-
   def executeCommand(numbered: Numbered[SubagentCommand]): Task[Checked[numbered.value.Response]] =
     Task.defer {
       val command = numbered.value
@@ -54,7 +30,7 @@ extends SubagentExecutor with Service.StoppableByRequest
       command
         .match_ {
           case StartOrderProcess(order, defaultArguments) =>
-            startOrderProcess(order, defaultArguments)
+            subagent.startOrderProcess(order, defaultArguments)
               .rightAs(SubagentCommand.Accepted)
 
           //case AttachItem(item) =>
@@ -77,36 +53,36 @@ extends SubagentExecutor with Service.StoppableByRequest
                 journal
                   .persistKeyedEvent(NoKey <-: SubagentItemAttached(signed.value))
                   .rightAs(SubagentCommand.Accepted)
-              }
+            }
 
           case KillProcess(orderId, signal) =>
-            checkedDedicated
+            subagent.checkedDedicated
               .traverse(_
                 .localSubagentDriver
                 .killProcess(orderId, signal))
               .rightAs(SubagentCommand.Accepted)
 
           case cmd: DedicateSubagent =>
-            executeDedicateSubagent(cmd)
+            subagent.executeDedicateSubagent(cmd)
 
           case cmd: CoupleDirector =>
-            executeCoupleDirector(cmd)
+            subagent.executeCoupleDirector(cmd)
               .rightAs(SubagentCommand.Accepted)
 
-          case shutDown: ShutDown =>
+          case ShutDown(processSignal, dontWaitForDirector, restart) =>
             logger.info(s"❗ $command")
-            shutdown(shutDown)
+            subagent.shutdown(processSignal, dontWaitForDirector, restart)
               .as(Right(SubagentCommand.Accepted))
 
           case DetachProcessedOrder(orderId) =>
             // DO NOT execute concurrently with a following StartOrderProcess(orderId)
             // OrderId must be released before start of next order.
             // Otherwise idempotency detection would kick in.
-            detachProcessedOrder(orderId)
+            subagent.detachProcessedOrder(orderId)
               .rightAs(SubagentCommand.Accepted)
 
           case ReleaseEvents(eventId) =>
-            releaseEvents(eventId)
+            subagent.releaseEvents(eventId)
               .rightAs(SubagentCommand.Accepted)
 
           case NoOperation =>
@@ -123,7 +99,7 @@ extends SubagentExecutor with Service.StoppableByRequest
                 .bindCorrelId(subcmd =>
                   executeCommand(numbered.copy(value = subcmd))
                     .map(_.map(o => o: SubagentCommand.Response))))
-              .takeWhileInclusive(_.isRight)  // Don't continue after first problem
+              .takeWhileInclusive(_.isRight) // Don't continue after first problem
               .map(_.rightAs(()))
               .foldL
               .rightAs(SubagentCommand.Accepted)
@@ -135,24 +111,6 @@ extends SubagentExecutor with Service.StoppableByRequest
     }
 }
 
-object SubagentCommandExecutor
-{
+private object SubagentCommandExecuter {
   private val logger = Logger(getClass)
-
-  def checkedResource(
-    journal: InMemoryJournal[SubagentState],
-    subagentConf: SubagentConf,
-    jobLauncherConf: JobLauncherConf)
-    (implicit iox: IOExecutor)
-  : Checked[Resource[Task, SubagentCommandExecutor]] =
-    for (prepared <- DirectoryWatchingSignatureVerifier.prepare(subagentConf.config)) yield
-      for {
-        testEventBus <- Resource.eval(Task(new StandardEventBus[Any]))
-        signatureVerifier <- prepared.toResource(
-          onUpdated = () => testEventBus.publish(ItemSignatureKeysUpdated))
-        executor <- Service.resource(Task(
-          new SubagentCommandExecutor(
-            signatureVerifier,
-            testEventBus, journal, subagentConf, jobLauncherConf)))
-      } yield executor
 }

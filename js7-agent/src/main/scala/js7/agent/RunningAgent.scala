@@ -25,8 +25,8 @@ import js7.base.eventbus.StandardEventBus
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.SIGTERM
+import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.RichMonixTask
 import js7.base.problem.Checked.*
 import js7.base.problem.Problems.ShuttingDownProblem
@@ -46,7 +46,7 @@ import js7.common.akkahttp.web.session.SessionRegister
 import js7.common.akkautils.Akkas
 import js7.common.system.JavaInformations.javaInformation
 import js7.common.system.SystemInformations.systemInformation
-import js7.common.system.ThreadPools.newUnlimitedScheduler
+import js7.common.system.ThreadPools.unlimitedSchedulerResource
 import js7.common.system.startup.{ServiceMain, StartUp}
 import js7.core.command.CommandMeta
 import js7.data.Problems.{BackupClusterNodeNotAppointed, ClusterNodeIsNotActiveProblem, ClusterNodeIsNotReadyProblem}

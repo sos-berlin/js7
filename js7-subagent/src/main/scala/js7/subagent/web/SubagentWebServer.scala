@@ -5,15 +5,15 @@ import cats.effect.Resource
 import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.journal.watch.EventWatch
-import js7.subagent.SubagentCommandExecutor
+import js7.subagent.SubagentCommandExecuter
 import js7.subagent.configuration.SubagentConf
 import monix.eval.Task
 
 object SubagentWebServer
 {
   def resource(
+    subagentCommandExecuter: SubagentCommandExecuter,
     eventWatch: EventWatch,
-    commandExecutor: SubagentCommandExecutor,
     sessionRegister: SessionRegister[SimpleSession],
     restartAsDirector: Task[Unit],
     conf: SubagentConf)
@@ -27,8 +27,8 @@ object SubagentWebServer
           new SubagentBoundRoute(
             binding,
             whenShuttingDown,
+            subagentCommandExecuter,
             eventWatch,
-            commandExecutor,
             sessionRegister,
             restartAsDirector,
             conf.config))))

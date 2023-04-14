@@ -431,6 +431,7 @@ extends SubagentDriver with SubagentEventListener[S0]
 
   protected def emitSubagentCouplingFailed(maybeProblem: Option[Problem]): Task[Unit] =
     logger.debugTask("emitSubagentCouplingFailed", maybeProblem)(
+      // TODO Suppress duplicate errors
       persistence
         .lock(subagentId)(
           persistence.persist(_
