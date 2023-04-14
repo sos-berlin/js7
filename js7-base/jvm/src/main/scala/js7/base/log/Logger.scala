@@ -110,6 +110,10 @@ object Logger
       def traceTask[A](function: String, args: => Any = "")(task: Task[A]): Task[A] =
         logF[Task, A](logger, LogLevel.Trace, function, args)(task)
 
+      def traceF[F[_], A](functionName: String, args: => Any = "")(body: F[A])(implicit F: Sync[F])
+      : F[A] =
+        logF[F, A](logger, LogLevel.Trace, functionName, args)(body)
+
       def traceTaskWithResult[A](task: Task[A])(implicit src: sourcecode.Name): Task[A] =
         traceTaskWithResult[A](src.value, task = task)
 
@@ -129,15 +133,25 @@ object Logger
 
       def infoResource[A](function: String, args: => Any = "")(resource: Resource[Task, A])
       : Resource[Task, A] =
-        logResource[Task, A](logger, LogLevel.Info, function, args)(resource)
+        logResourceUse[Task, A](logger, LogLevel.Info, function, args)(resource)
 
       def debugResource[A](resource: Resource[Task, A])(implicit src: sourcecode.Name)
       : Resource[Task, A] =
-        debugResource(src.value)(resource)
+        debugResource(src.value + ".use")(resource)
 
       def debugResource[A](function: String, args: => Any = "")(resource: Resource[Task, A])
       : Resource[Task, A] =
-        logResource[Task, A](logger, LogLevel.Debug, function, args)(resource)
+        logResourceUse[Task, A](logger, LogLevel.Debug, function, args)(resource)
+
+      def traceResource[F[_], A](resource: Resource[F, A])
+        (implicit F: Applicative[F] & Sync[F], src: sourcecode.Name)
+      : Resource[F, A] =
+        traceResource(src.value + ".use")(resource)
+
+      def traceResource[F[_], A](function: String, args: => Any = "")(resource: Resource[F, A])
+        (implicit F: Applicative[F] & Sync[F])
+      : Resource[F, A] =
+        logResourceUse[F, A](logger, LogLevel.Trace, function, args)(resource)
 
       def infoObservable[A](function: String, args: => Any = "")(observable: Observable[A])
       : Observable[A] =
@@ -193,7 +207,7 @@ object Logger
         }
       }
 
-    private def logResource[F[_], A](logger: ScalaLogger, logLevel: LogLevel, function: String,
+    private def logResourceUse[F[_], A](logger: ScalaLogger, logLevel: LogLevel, function: String,
       args: => Any = "")
       (resource: Resource[F, A])
       (implicit F: Applicative[F] & Sync[F])

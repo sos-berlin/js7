@@ -11,6 +11,7 @@ import js7.base.data.ByteArray
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.watch.BasicDirectoryWatcher.systemWatchDelay
+import js7.base.monixutils.MonixBase.syntax.RichMonixTask
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
@@ -213,9 +214,12 @@ final class WatchSignatureKeysTest extends OurTestSuite with ControllerAgentForS
 
   private def whenControllerAndAgentUpdated(): Future[Unit] =
     Task.parZip3(
-      controller.testEventBus.when[RunningController.ItemSignatureKeysUpdated],
-      agent.testEventBus.when[AgentActor.ItemSignatureKeysUpdated],
+      controller.testEventBus.when[RunningController.ItemSignatureKeysUpdated]
+        .logWhenItTakesLonger("RunningController.ItemSignatureKeysUpdated"),
+      agent.testEventBus.when[AgentActor.ItemSignatureKeysUpdated]
+        .logWhenItTakesLonger("AgentActor.ItemSignatureKeysUpdated"),
       bareSubagents.head.testEventBus.when[BareSubagent.ItemSignatureKeysUpdated]
+        .logWhenItTakesLonger("BareSubagent.ItemSignatureKeysUpdated")
     ).void.runToFuture
 
   private def testOrder(versionId: VersionId): Unit = {

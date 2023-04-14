@@ -75,6 +75,7 @@ object VirtualThreads
           .asInstanceOf[ThreadFactory]
 
         testThreadFactory(factory)
+        logger.debug(s"newVirtualThreadFactory => $factory")
         Some(factory)
       } catch(throwableToNone)
 

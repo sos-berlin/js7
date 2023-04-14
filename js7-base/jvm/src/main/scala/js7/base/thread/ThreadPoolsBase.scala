@@ -3,6 +3,7 @@ package js7.base.thread
 import com.typesafe.config.Config
 import java.util.concurrent.{ArrayBlockingQueue, ExecutorService, LinkedBlockingQueue, SynchronousQueue, ThreadFactory, ThreadPoolExecutor}
 import js7.base.configutils.Configs.ConvertibleConfig
+import js7.base.log.Logger
 import js7.base.system.Java8Polyfill.*
 import js7.base.thread.VirtualThreads.maybeNewVirtualThreadExecutorService
 import js7.base.time.JavaTimeConverters.AsScalaDuration
@@ -11,6 +12,8 @@ import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
 
 object ThreadPoolsBase
 {
+  private val logger = Logger[this.type]
+
   def newBlockingExecutor(config: Config, name: String): ExecutorService = {
     val keepAlive = config.getDuration("js7.thread-pools.io.keep-alive").toFiniteDuration
     val virtualAllowed = config.optionAs[String]("js7.thread-pools.virtual")
@@ -44,8 +47,8 @@ object ThreadPoolsBase
     corePoolSize: Int = 0,
     maximumPoolSize: Int,
     queueSize: Option[Int])
-  : ThreadPoolExecutor =
-    new ThreadPoolExecutor(
+  : ThreadPoolExecutor = {
+    val result = new ThreadPoolExecutor(
       corePoolSize,
       maximumPoolSize,
       keepAlive.toMillis,
@@ -56,6 +59,9 @@ object ThreadPoolsBase
         case Some(n) => new ArrayBlockingQueue[Runnable](n)
       },
       myThreadFactory(name))
+    logger.debug(s"newThreadPoolExecutor => $result")
+    result
+  }
 
   private def myThreadFactory(name: String): ThreadFactory =
     runnable => {

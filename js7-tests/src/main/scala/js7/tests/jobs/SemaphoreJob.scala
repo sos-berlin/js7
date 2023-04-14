@@ -12,6 +12,7 @@ import monix.catnap.Semaphore
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.TimeoutException
+import scala.concurrent.duration.Deadline.now
 import scala.reflect.ClassTag
 
 abstract class SemaphoreJob(companion: SemaphoreJob.Companion[? <: SemaphoreJob])
@@ -31,16 +32,20 @@ extends InternalJob
                 .flatMap {
                   case true => Task.unit
                   case false =>
+                    val since = now
                     sema.count
                       .flatMap { count =>
                         logger.info(s"🟡 $semaName is locked (count=$count)")
                         val durations = Iterator(3.s, 7.s) ++ Iterator.continually(10.s)
-                        sema.acquire
-                          .timeoutTo(durations.next(), Task.raiseError(new TimeoutException))
+                        Task
+                          .defer(sema
+                            .acquire
+                            .timeoutTo(durations.next(), Task.raiseError(new TimeoutException)))
                           .onErrorRestartLoop(()) {
                             case (_: TimeoutException, _, retry) =>
                               sema.count.flatMap { count =>
-                                logger.info(s"🟠 $semaName is still locked (count=$count)")
+                                logger.info(
+                                  s"🟠 $semaName is still locked (count=$count) since ${since.elapsed.pretty}")
                                 retry(())
                               }
                             case (t, _, _) => Task.raiseError(t)
