@@ -142,7 +142,7 @@ val publishSettings = Seq(
 
 val commonSettings = Seq(
   organization := "com.sos-berlin.js7.engine",
-  organizationName := "Software- und Organsiations-Service GmbH, Berlin",
+  organizationName := "Software- und Organisations-Service GmbH, Berlin",
   organizationHomepage := Some(url("https://js7.sh")),
   licenses += "GPLv3" -> url("https://www.gnu.org/licenses/gpl-3.0.txt"),
   pomExtra :=
