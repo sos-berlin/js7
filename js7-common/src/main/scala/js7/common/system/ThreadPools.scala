@@ -59,7 +59,12 @@ object ThreadPools
     }
   }
 
-  def newUnlimitedScheduler(name: String, config: Config): SchedulerService =
+  def unlimitedSchedulerResource[F[_]](name: String, config: Config)(implicit F: Sync[F])
+  : Resource[F, Scheduler] =
+    schedulerServiceToResource(F.delay(newUnlimitedScheduler(name, config)))
+      .map(CorrelId.enableScheduler)
+
+  private def newUnlimitedScheduler(name: String, config: Config): SchedulerService =
     ExecutorScheduler(
       newBlockingExecutor(config, name),
       uncaughtExceptionReporter, SynchronousExecution, Features.empty)

@@ -183,12 +183,7 @@ object RunningAgent {
       x <- recoveringResource
       (initiallyRecovered, actorSystem, clusterNode) = x
       iox <- IOExecutor.resource[Task](config, conf.name + "-I/O")
-      blockingJobScheduler <- Resource
-        .make(
-          acquire = Task(newUnlimitedScheduler("JS7 blocking job", config)))(
-          release = scheduler => Task(scheduler.shutdown()))
-        .map(CorrelId.enableScheduler)
-
+      blockingJobScheduler <- unlimitedSchedulerResource[Task]("JS7 blocking job", config)
       agent <- resource2(clusterNode, initiallyRecovered, testWiring, conf, testEventBus, clock,
         blockingJobScheduler)(
         actorSystem, iox, scheduler)
