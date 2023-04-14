@@ -32,7 +32,7 @@ import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 final class AgentCommandTest extends OurTestSuite
 {
   "Batch" in {
-    check(AgentCommand.Batch(
+    testJson[AgentCommand](AgentCommand.Batch(
       List(
         CorrelIdWrapped(CorrelId.empty, AgentCommand.NoOperation),
         CorrelIdWrapped(CorrelId("_CORREL_"), AgentCommand.EmergencyStop()))),
@@ -65,7 +65,7 @@ final class AgentCommandTest extends OurTestSuite
   }
 
   "MarkOrder" in {
-    check(AgentCommand.MarkOrder(OrderId("ORDER"), OrderMark.Cancelling(CancellationMode.FreshOnly)),
+    testJson[AgentCommand](AgentCommand.MarkOrder(OrderId("ORDER"), OrderMark.Cancelling(CancellationMode.FreshOnly)),
       json"""{
         "TYPE": "MarkOrder",
         "orderId": "ORDER",
@@ -80,12 +80,12 @@ final class AgentCommandTest extends OurTestSuite
 
   "EmergencyStop" - {
     "restart=false" in {
-      check(AgentCommand.EmergencyStop(),
+      testJson[AgentCommand](AgentCommand.EmergencyStop(),
         json"""{ "TYPE": "EmergencyStop" }""")
     }
 
     "restart=true" in {
-      check(AgentCommand.EmergencyStop(restart = true),
+      testJson[AgentCommand](AgentCommand.EmergencyStop(restart = true),
         json"""{
           "TYPE": "EmergencyStop",
           "restart": true
@@ -94,7 +94,7 @@ final class AgentCommandTest extends OurTestSuite
   }
 
   "ReleaseEvents" in {
-    check(AgentCommand.ReleaseEvents(123L),
+    testJson[AgentCommand](AgentCommand.ReleaseEvents(123L),
       json"""{
         "TYPE": "ReleaseEvents",
         "untilEventId": 123
@@ -102,7 +102,7 @@ final class AgentCommandTest extends OurTestSuite
   }
 
   "NoOperation" in {
-    check(AgentCommand.NoOperation,
+    testJson[AgentCommand](AgentCommand.NoOperation,
       json"""{
         "TYPE": "NoOperation"
       }""")
@@ -134,7 +134,7 @@ final class AgentCommandTest extends OurTestSuite
   }
 
   "CoupleController" in {
-    check(
+    testJson[AgentCommand](
       AgentCommand.CoupleController(
         AgentPath("AGENT"),
         AgentRunId(JournalId(UUID.fromString("11111111-2222-3333-4444-555555555555"))),
@@ -148,7 +148,7 @@ final class AgentCommandTest extends OurTestSuite
   }
 
   "Reset" in {
-    check(
+    testJson[AgentCommand](
       AgentCommand.Reset(
         Some(AgentRunId(JournalId(UUID.fromString("11111111-2222-3333-4444-555555555555"))))),
       json"""{
@@ -175,7 +175,7 @@ final class AgentCommandTest extends OurTestSuite
     }
 
     "JSON without sigkillDelay" in {
-      check(AgentCommand.ShutDown(processSignal = Some(SIGTERM)),
+      testJson[AgentCommand](AgentCommand.ShutDown(processSignal = Some(SIGTERM)),
         json"""{
           "TYPE": "ShutDown",
           "processSignal": "SIGTERM",
@@ -185,7 +185,7 @@ final class AgentCommandTest extends OurTestSuite
     }
 
     "JSON with restart" in {
-      check(AgentCommand.ShutDown(restart = true),
+      testJson[AgentCommand](AgentCommand.ShutDown(restart = true),
         json"""{
           "TYPE": "ShutDown",
           "restart": true,
@@ -195,7 +195,7 @@ final class AgentCommandTest extends OurTestSuite
   }
 
   "AttachItem" in {
-    check(
+    testJson[AgentCommand](
       AgentCommand.AttachItem(
         FileWatch(OrderWatchPath("PATH"), WorkflowPath("WORKFLOW"), AgentPath("AGENT"),
           expr("'DIRECTORY'"))),
@@ -214,7 +214,7 @@ final class AgentCommandTest extends OurTestSuite
 
   "AttachSignedItem VersionedItem (without ItemRevision)" in {
     val itemSigner = new ItemSigner(SillySigner.Default, AgentState.signableItemJsonCodec)
-    check(
+    testJson[AgentCommand](
       AgentCommand.AttachSignedItem(
         itemSigner.sign(SimpleTestWorkflow)),
       json"""{
@@ -232,7 +232,7 @@ final class AgentCommandTest extends OurTestSuite
   "AttachSignedItem JobResource (with ItemRevision)" in {
     val jobResource = JobResource(JobResourcePath("JOB-RESOURCE"), itemRevision = Some(ItemRevision(7)))
     val itemSigner = new ItemSigner(SillySigner.Default, AgentState.signableItemJsonCodec)
-    check(
+    testJson[AgentCommand](
       AgentCommand.AttachSignedItem(itemSigner.sign(jobResource)),
       json"""{
         "TYPE": "AttachSignedItem",
@@ -248,14 +248,14 @@ final class AgentCommandTest extends OurTestSuite
   }
 
   "DetachItem" in {
-    check(
+    testJson[AgentCommand](
       AgentCommand.DetachItem(OrderWatchPath("PATH")),
       json"""{
         "TYPE": "DetachItem",
         "key": "OrderWatch:PATH"
       }""")
 
-    check(
+    testJson[AgentCommand](
       AgentCommand.DetachItem(WorkflowPath("WORKFLOW") ~ VersionId("1")),
       json"""{
         "TYPE": "DetachItem",
@@ -265,7 +265,7 @@ final class AgentCommandTest extends OurTestSuite
 
   "OrderCommand" - {
     "AttachOrder" in {
-      check(AgentCommand.AttachOrder(
+      testJson[AgentCommand](AgentCommand.AttachOrder(
           Order(
             OrderId("ORDER-ID"),
             SimpleTestWorkflow.id /: Position(3),
@@ -299,7 +299,7 @@ final class AgentCommandTest extends OurTestSuite
   }
 
   "ResetSubagent" in {
-    check(
+    testJson[AgentCommand](
       AgentCommand.ResetSubagent(SubagentId("SUBAGENT"), force = false),
       json"""{
         "TYPE": "ResetSubagent",

@@ -84,7 +84,7 @@ final class OrderActorTest extends OurTestSuite with HasCloser with BeforeAndAft
   }
 
   "Shell script" in {
-    pending // FIXME ?
+    pending // TODO ?
     val pathExecutable = RelativePathExecutable(s"TEST-1$sh", v1Compatible = true)
     pathExecutable.toFile(directoryProvider.agentDirectory / "config" / "executables")
       .writeUtf8Executable(TestScript)
@@ -100,7 +100,7 @@ final class OrderActorTest extends OurTestSuite with HasCloser with BeforeAndAft
   }
 
   "Shell script with big stdout and stderr" in {
-    pending // FIXME ?
+    pending // TODO ?
     val n = 1000
     def line(x: String, i: Int) = (s" $x$i" * ((i+n/100-1)/(n/100))).trim.ensuring(_.length < 8000)  // Windows: Maximum command line length is 8191 characters
     val expectedStderr = (for (i <- 1 to n) yield line("e", i) + Nl).mkString

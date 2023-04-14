@@ -56,7 +56,7 @@ final class AkkaHttpClientTest extends OurTestSuite with BeforeAndAfterAll with 
 
   override def afterAll() = {
     closer.close()
-    // FIXME shutdownAllConnectionPools blocks longer than 99s after "connection refused"
+    // TODO shutdownAllConnectionPools blocks longer than 99s after "connection refused"
     Akkas.terminateAndWait(actorSystem, 9.s)
     super.afterAll()
   }
