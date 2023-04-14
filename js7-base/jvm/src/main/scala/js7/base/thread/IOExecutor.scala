@@ -4,6 +4,7 @@ import cats.effect.{Resource, Sync}
 import com.typesafe.config.Config
 import java.lang.Thread.currentThread
 import java.util.concurrent.{Executor, ExecutorService}
+import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
 import js7.base.system.Java8Polyfill.*
 import js7.base.thread.Futures.promiseFuture
@@ -33,8 +34,13 @@ final class IOExecutor(executor: Executor, name: String) extends Executor
 
   def execute(runnable: Runnable) = executionContext.execute(runnable)
 
-  def apply[F[_], A](task: F[A])(implicit F: TaskLike[F]): Task[A] =
-    F(task) executeOn scheduler
+  def apply[F[_], A](body: F[A])(implicit F: TaskLike[F], src: sourcecode.FullName): Task[A] = {
+    // logger.traceF lets Monix check for cancellation, too (but why?)
+    // Without it, the body seems be executed after a cancellation,
+    // despite executor has already been terminated (observed with DirectoryWatcher).
+    logger.traceF(s"${src.value} --> IOExecutor($name).apply")(
+      F(body) executeOn scheduler)
+  }
 }
 
 object IOExecutor
@@ -52,11 +58,15 @@ object IOExecutor
   }
 
   def resource[F[_]](config: Config, name: String)(implicit F: Sync[F]): Resource[F, IOExecutor] =
-    Resource
-      .make(
-        acquire = F.delay(newBlockingExecutor(config, name)))(
-        release = o => F.delay(o.shutdown()))
-      .map(new IOExecutor(_, name))
+    logger.traceResource(
+      Resource
+        .make(
+          acquire = F.delay(newBlockingExecutor(config, name)))(
+          release = executor => F.delay {
+            logger.debug(s"shutdown $executor")
+            executor.shutdown()
+          })
+        .map(new IOExecutor(_, name)))
 
   def ioFuture[A](body: => A)(implicit iox: IOExecutor): Future[A] =
     try
