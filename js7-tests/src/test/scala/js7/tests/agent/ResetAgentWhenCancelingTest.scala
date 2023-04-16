@@ -3,6 +3,7 @@ package js7.tests.agent
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.deleteDirectoryContentRecursively
 import js7.base.test.OurTestSuite
+import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
@@ -45,9 +46,10 @@ with BlockingItemUpdater
     controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
     eventWatch.await[OrderStdoutWritten](_.key == orderId)
 
-    val agentTerminated = agent.terminate()
-    sleep(500.ms) // Give terminate some time to take effect
+    val agentTerminated = agent.terminate().runToFuture
+    sleep(500.ms) // Give terminate some time to take effect !!!
     TestJob.continue()
+    // May wait forever and fail when second job has been started while terminating !!!
     agentTerminated.await(99.s)
 
     controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
