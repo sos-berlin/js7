@@ -70,9 +70,7 @@ object ServiceMain
           conf
         }
         logging.logFirstLines(name, commandLineArguments, conf)
-        logging.blockingRun(name, conf.config)(
-          service = toServiceResource(conf, _),
-          use = use)
+        logging.blockingRun(name, conf.config, toServiceResource(conf, _))(use)
       }
 
       JavaMainLockfileSupport.runMain(args, useLockFile = useLockFile)(body)
@@ -139,18 +137,23 @@ object ServiceMain
     }
 
     /** Adds an own ThreadPool and a shutdown hook. */
-    def blockingRun[S <: MainService: Tag](
+    def blockingRun[S <: MainService: Tag](name: String, config: Config)(
+      resource: Scheduler => Resource[Task, S])
+    : ProgramTermination =
+      blockingRun(name, config, resource)((_: S).untilTerminated)
+
+    /** Adds an own ThreadPool and a shutdown hook. */
+    def blockingRun[S <: MainService: Tag, R](
       name: String,
       config: Config,
-      timeout: Duration = Duration.Inf)(
-      service: Scheduler => Resource[Task, S],
-      use: S => Task[ProgramTermination] = (_: S).untilTerminated)
-    : ProgramTermination =
+      resource: Scheduler => Resource[Task, S])(
+      use: S => Task[R])
+    : R =
       ThreadPools.standardSchedulerResource[SyncIO](name, config)
         .use(implicit scheduler => SyncIO(
-          withShutdownHook(service(scheduler))
+          withShutdownHook(resource(scheduler))
             .use(use)
-            .await(timeout)))
+            .awaitInfinite))
         .unsafeRunSync()
 
     private def withShutdownHook[S <: MainService: Tag](serviceResource: Resource[Task, S])

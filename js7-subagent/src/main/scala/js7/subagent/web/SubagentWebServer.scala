@@ -15,7 +15,7 @@ object SubagentWebServer
     subagentCommandExecuter: SubagentCommandExecuter,
     eventWatch: EventWatch,
     sessionRegister: SessionRegister[SimpleSession],
-    restartAsDirector: Task[Unit],
+    convertToDirector: Task[Unit],
     conf: SubagentConf)
     (implicit actorSystem: ActorSystem)
   : Resource[Task, AkkaWebServer & AkkaWebServer.HasUri] =
@@ -30,6 +30,6 @@ object SubagentWebServer
             subagentCommandExecuter,
             eventWatch,
             sessionRegister,
-            restartAsDirector,
+            convertToDirector,
             conf.config))))
 }

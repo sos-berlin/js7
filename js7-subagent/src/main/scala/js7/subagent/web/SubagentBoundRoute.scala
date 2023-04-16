@@ -35,7 +35,7 @@ private final class SubagentBoundRoute(
   subagentCommandExecuter: SubagentCommandExecuter,
   protected val eventWatch: EventWatch,
   protected val sessionRegister: SessionRegister[SimpleSession],
-  protected val restartAsDirector: Task[Unit],
+  protected val convertToDirector: Task[Unit],
   protected val config: Config)
   (implicit
     protected val scheduler: Scheduler,

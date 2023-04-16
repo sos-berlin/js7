@@ -22,8 +22,8 @@ final class AgentMain
 {
   private lazy val logger = Logger(getClass)
 
-  private def run(commandLineArguments: CommandLineArguments, conf: AgentConfiguration): ReturnCode = {
-    ServiceMain.logging.logFirstLines("Agent", commandLineArguments, conf)
+  private def run(args: CommandLineArguments, conf: AgentConfiguration): ReturnCode = {
+    ServiceMain.logging.logFirstLines("Agent", args, conf)
     if (conf.scriptInjectionAllowed) logger.info("SIGNED SCRIPT INJECTION IS ALLOWED")
 
     ServiceMain.handleProgramTermination("Agent") {
@@ -45,8 +45,7 @@ final class AgentMain
   private def blockingRunDirector(conf: AgentConfiguration): ProgramTermination = {
     logger.info("Continue as Agent Director\n" + "─" * 80)
     printlnWithClock("Continue as Agent Director")
-    ServiceMain.logging.blockingRun("Agent", conf.config)(
-      service = RunningAgent.resource(conf)(_))
+    ServiceMain.logging.blockingRun("Agent", conf.config)(RunningAgent.resource(conf)(_))
   }
 }
 

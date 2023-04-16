@@ -25,6 +25,7 @@ import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.ControllerId
 import js7.subagent.BareSubagent
+import js7.subagent.ConvertibleToDirector.ConvertToDirector
 import js7.tests.testenv.DirectoryProvider
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
@@ -98,7 +99,7 @@ with ProvideActorSystem
               "Subagent becomes a fresh Agent Director - try again after a second")))
           }
           val result = subagentTerminated.await(99.s)
-          assert(result == Left(BareSubagent.StartAsAgentDirector))
+          assert(result == Left(ConvertToDirector))
         }
       }
     }

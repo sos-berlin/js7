@@ -34,7 +34,7 @@ private trait PseudoAgentRoute extends SessionRoute with EntitySizeLimitProvider
   : Task[Checked[SubagentCommand.Response]]
 
   protected val subagent: Subagent
-  protected def restartAsDirector: Task[Unit]
+  protected def convertToDirector: Task[Unit]
   protected def overviewRoute: Route
 
   private implicit def implicitScheduler: Scheduler = scheduler
@@ -57,7 +57,7 @@ private trait PseudoAgentRoute extends SessionRoute with EntitySizeLimitProvider
           json(TypedJsonCodec.TypeFieldName).flatMap(_.asString) match {
             case Some("DedicateAgentDirector" | "CoupleController") =>
               checkSubagent(
-                completeWithRestartAsDirector)
+                completeWithConvertToDirector)
 
             case typeName =>
               if (typeName contains SubagentCommand.jsonCodec.typeName[SubagentCommand.ShutDown])
@@ -82,7 +82,7 @@ private trait PseudoAgentRoute extends SessionRoute with EntitySizeLimitProvider
       authorizedUser(ValidUserPermission)(_ =>
         checkSubagent(
           // Simply touching this web service is enough to restart as an Agent Director
-          completeWithRestartAsDirector)))
+          completeWithConvertToDirector)))
 
   private def checkSubagent(route: Route): Route =
     if (subagent.checkedDedicated.isRight)
@@ -90,14 +90,13 @@ private trait PseudoAgentRoute extends SessionRoute with EntitySizeLimitProvider
     else
       route
 
-  private def completeWithRestartAsDirector =
+  private def completeWithConvertToDirector =
     completeTask(
-      restartAsDirector
-        .delayExecution(200.ms) // Delay in background to allow to respond properly (for test)
-        .onErrorHandle { t =>
-          logger.error(s"restartAsDirector => ${t.toStringWithCauses}")
-        }
-        .start
+      // Delay in background to allow to respond properly before WebServer shuts down (for testing)
+      Task.sleep(200.ms)
+        .*>(convertToDirector)
+        .onErrorHandle(t => logger.error(s"convertToDirector => ${t.toStringWithCauses}"))
+        .startAndForget
         .as(ServiceUnavailable -> Problem(
           "Subagent becomes a fresh Agent Director - try again after a second")))
 }
