@@ -61,7 +61,7 @@ final class AgentTest extends OurTestSuite with AgentTester
             val agentApi = agent.untilReady.await(99.s).api.apply(CommandMeta(TestUser))
             agentApi
               .commandExecute(
-                DedicateAgentDirector(Some(subagentId), controllerId, agentPath))
+                DedicateAgentDirector(Seq(subagentId), controllerId, agentPath))
               .await(99.s).orThrow
             agentApi
               .commandExecute(

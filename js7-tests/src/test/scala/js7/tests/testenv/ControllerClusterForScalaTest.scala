@@ -139,7 +139,6 @@ trait ControllerClusterForScalaTest
             js7.auth.users.TEST-USER.password = "plain:TEST-PASSWORD"
             js7.auth.users.TEST-USER.permissions = [ AgentDirectorForward ]"""),
         agentPorts = agentPorts,
-        backupAgentPorts = backupAgentPorts,
         agentConfig = config"""
           js7.job.execution.signed-script-injection-allowed = on
           js7.journal.cluster.heartbeat = ${clusterTiming.heartbeat}
@@ -152,7 +151,7 @@ trait ControllerClusterForScalaTest
 
       val backup = new DirectoryProvider(
         agentPaths, Map.empty, Nil, testName = Some(s"$testName-Backup"),
-        doNotAddItems = true,
+        isBackup = true,
         controllerConfig = combine(
           backupControllerConfig,
           config"""

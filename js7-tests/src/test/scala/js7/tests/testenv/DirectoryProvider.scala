@@ -80,7 +80,7 @@ final class DirectoryProvider(
   agentHttpsMutual: Boolean = false,
   agentConfig: Config = ConfigFactory.empty,
   agentPorts: Seq[Int] = Nil,
-  backupAgentPorts: Seq[Int] = Nil/*Required for SubagentItem.backupUri*/,
+  isBackup: Boolean = false,
   subagentsDisabled: Boolean = false,
   provideAgentHttpsCertificate: Boolean = false,
   provideAgentClientCertificate: Boolean = false,
@@ -108,17 +108,16 @@ extends HasCloser
     keyStore = controllerKeyStore, trustStores = controllerTrustStores,
     agentHttpsMutual = agentHttpsMutual)
 
-  val agentToTree: Map[AgentPath, AgentTree] = {
-    val ports = agentPorts ++ Vector.fill(agentPaths.length - agentPorts.length)(findFreeTcpPort())
+  val agentToTree: Map[AgentPath, AgentTree] =
     agentPaths
-      .zip(ports.zipAll(backupAgentPorts.take(ports.length).map(Some(_)), -999/*unused*/, None))
-      .map { case (agentPath, (primaryPort, maybeBackupPort)) =>
-        val localSubagentId = toLocalSubagentId(agentPath)
+      .zip(agentPorts ++ Seq.fill(agentPaths.length - agentPorts.length)(findFreeTcpPort()))
+      .map { case (agentPath, port) =>
+        val localSubagentId = toLocalSubagentId(agentPath, isBackup = isBackup)
         val localhost = if (agentHttps) "https://localhost" else "http://127.0.0.1"
 
         val localSubagentItem = SubagentItem(
           localSubagentId, agentPath, disabled = subagentsDisabled,
-          uri = Uri(s"$localhost:$primaryPort"))
+          uri = Uri(s"$localhost:$port"))
         // FIXME backup Subagent
         //val directorSubagentItems = for (port <- Nel.of(primaryPort, maybeBackupPort)) yield
         //  SubagentItem(
@@ -137,7 +136,6 @@ extends HasCloser
             agentConfig)
       }
       .toMap
-  }
 
   val agents: Vector[AgentTree] = agentToTree.values.toVector
   lazy val agentRefs: Vector[AgentRef] =
@@ -248,7 +246,7 @@ extends HasCloser
       name = controllerName)
 
     def startForTest(runningController: RunningController): Unit = {
-      if (!doNotAddItems && (agentRefs.nonEmpty || items.nonEmpty)) {
+      if (!doNotAddItems && !isBackup && (agentRefs.nonEmpty || items.nonEmpty)) {
         if (!itemsHasBeenAdded.getAndSet(true)) {
           runningController.waitUntilReady()
           runningController.updateUnsignedSimpleItemsAsSystemUser(agentRefs ++ subagentItems)
@@ -450,8 +448,8 @@ object DirectoryProvider
   private val Vinitial = VersionId("INITIAL")
   private val logger = Logger[this.type]
 
-  def toLocalSubagentId(agentPath: AgentPath): SubagentId =
-    SubagentId(agentPath.string + "-0")
+  def toLocalSubagentId(agentPath: AgentPath, isBackup: Boolean = false): SubagentId =
+    SubagentId(agentPath.string + (if (!isBackup) "-0" else "-1"))
 
   sealed trait Tree {
     val directory: Path

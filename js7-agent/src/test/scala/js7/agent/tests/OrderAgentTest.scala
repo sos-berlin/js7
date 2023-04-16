@@ -66,7 +66,7 @@ final class OrderAgentTest extends OurTestSuite
 
           assert(agentClient
             .commandExecute(
-              DedicateAgentDirector(Some(subagentId), controllerId, agentPath))
+              DedicateAgentDirector(Seq(subagentId), controllerId, agentPath))
             .await(99.s) ==
             Left(Problem(s"HTTP 401 Unauthorized: POST ${agent.localUri}/agent/api/command => " +
               "The resource requires authentication, which was not supplied with the request")))
@@ -75,7 +75,7 @@ final class OrderAgentTest extends OurTestSuite
           // Without Login, this registers all anonymous clients
           assert(agentClient
             .commandExecute(
-              DedicateAgentDirector(Some(subagentId), controllerId, agentPath))
+              DedicateAgentDirector(Seq(subagentId), controllerId, agentPath))
             .await(99.s).orThrow.isInstanceOf[DedicateAgentDirector.Response])
 
           agentClient
@@ -149,7 +149,7 @@ final class OrderAgentTest extends OurTestSuite
           assert(
             agentClient
               .commandExecute(
-                DedicateAgentDirector(Some(SubagentId("SUBAGENT")), controllerId, agentPath))
+                DedicateAgentDirector(Seq(SubagentId("SUBAGENT")), controllerId, agentPath))
               .await(99.s).isRight)
 
           val orders = for (i <- 1 to n) yield

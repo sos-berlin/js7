@@ -349,7 +349,7 @@ extends Service.StoppableByRequest
               useDirectorDriver(directorDriver =>
                 directorDriver
                   .executeCommand(
-                    DedicateAgentDirector(agentRef.director, controllerId, agentPath))
+                    DedicateAgentDirector(agentRef.directors, controllerId, agentPath))
                   .flatMapT { case DedicateAgentDirector.Response(agentRunId, agentEventId) =>
                     (if (noJournal)
                       Task.pure(Checked.unit)

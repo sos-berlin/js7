@@ -32,7 +32,7 @@ final class AttachSignedItemTest extends OurTestSuite with DirectoryProviderForS
         CommandMeta(SimpleUser(directoryProvider.agents(0).userAndPassword.get.userId)))
       assert(agentApi
         .commandExecute(
-          DedicateAgentDirector(Some(SubagentId("SUBAGENT")), controllerId, agentPath))
+          DedicateAgentDirector(Seq(SubagentId("SUBAGENT")), controllerId, agentPath))
         .await(99.s).toOption.get
         .isInstanceOf[DedicateAgentDirector.Response])
 

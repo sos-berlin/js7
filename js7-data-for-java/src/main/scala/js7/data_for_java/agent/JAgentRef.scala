@@ -23,10 +23,6 @@ extends JJsonable[JAgentRef] with JUnsignedSimpleItem
     asScala.path
 
   @Nonnull
-  def director: java.util.Optional[SubagentId] =
-    asScala.director.toJava
-
-  @Nonnull
   def directors: java.util.List[SubagentId] =
     asScala.directors.asJava
 

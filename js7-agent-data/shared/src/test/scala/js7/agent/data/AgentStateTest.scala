@@ -36,7 +36,7 @@ import js7.data.value.expression.Expression
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.position.*
 import js7.data.workflow.{Workflow, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
-import js7.tester.CirceJsonTester.removeJNull
+import js7.tester.CirceJsonTester.{removeJNull, testJson, testJsonDecoder}
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 
@@ -51,6 +51,46 @@ final class AgentStateTest extends OurAsyncTestSuite
     Uri("https://localhost:0"),
     disabled = false,
     itemRevision = Some(ItemRevision(7)))
+
+  "AgentMetaState" in {
+    testJson(
+      AgentMetaState(
+        Seq(subagentItem.id, SubagentId("BACKUP")),
+        AgentPath("AGENT"),
+        AgentRunId(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))),
+        ControllerId("CONTROLLER")),
+      json"""{
+      "directors": [ "SUBAGENT", "BACKUP" ],
+      "agentPath": "AGENT",
+      "agentRunId": "ABEiM0RVZneImaq7zN3u_w",
+      "controllerId": "CONTROLLER"
+    }""")
+
+    testJsonDecoder(
+      AgentMetaState(
+        Seq(subagentItem.id),
+        AgentPath("AGENT"),
+        AgentRunId(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))),
+        ControllerId("CONTROLLER")),
+      json"""{
+      "subagentId": "SUBAGENT",
+      "agentPath": "AGENT",
+      "agentRunId": "ABEiM0RVZneImaq7zN3u_w",
+      "controllerId": "CONTROLLER"
+    }""")
+
+    testJsonDecoder(
+      AgentMetaState(
+        Nil,
+        AgentPath("AGENT"),
+        AgentRunId(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))),
+        ControllerId("CONTROLLER")),
+      json"""{
+      "agentPath": "AGENT",
+      "agentRunId": "ABEiM0RVZneImaq7zN3u_w",
+      "controllerId": "CONTROLLER"
+    }""")
+  }
 
   private val subagentSelection = SubagentSelection(
     SubagentSelectionId("SELECTION"),
@@ -86,7 +126,7 @@ final class AgentStateTest extends OurAsyncTestSuite
 
   private val agentState = locally {
     val meta = AgentMetaState(
-      Some(subagentItem.id),
+      Seq(subagentItem.id),
       AgentPath("AGENT"),
       AgentRunId(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))),
       ControllerId("CONTROLLER"))
@@ -104,7 +144,7 @@ final class AgentStateTest extends OurAsyncTestSuite
     ).applyEvents(Seq(
       JournalEventsReleased(UserId("USER"), 500L),
       AgentDedicated(
-        Some(subagentItem.id),
+        Seq(subagentItem.id),
         meta.agentPath,
         meta.agentRunId,
         meta.controllerId),
@@ -143,7 +183,7 @@ final class AgentStateTest extends OurAsyncTestSuite
     }
 
     val dedicated = AgentDedicated(
-      Some(SubagentId("SUBAGENT")),
+      Seq(SubagentId("PRIMARY-SUBAGENT"), SubagentId("BACKUP-SUBAGENT")),
       AgentPath("A"),
       AgentRunId(JournalId.random()),
       ControllerId("C"))
@@ -173,7 +213,7 @@ final class AgentStateTest extends OurAsyncTestSuite
           }""",
           json"""{
             "TYPE": "AgentMetaState",
-            "subagentId": "SUBAGENT",
+            "directors": [ "SUBAGENT" ],
             "agentPath": "AGENT",
             "agentRunId": "ABEiM0RVZneImaq7zN3u_w",
             "controllerId": "CONTROLLER"
@@ -330,12 +370,12 @@ final class AgentStateTest extends OurAsyncTestSuite
     val agentPath = AgentPath("AGENT")
     var agentState = AgentState.empty
     val meta = AgentMetaState(
-      Some(subagentItem.id),
+      Seq(subagentItem.id),
       AgentPath("AGENT"),
       AgentRunId(JournalId(UUID.fromString("11111111-2222-3333-4444-555555555555"))),
       ControllerId("CONTROLLER"))
     agentState = agentState.applyEvent(AgentDedicated(
-      Some(subagentItem.id),
+      Seq(subagentItem.id),
       meta.agentPath,
       meta.agentRunId,
       meta.controllerId)).orThrow

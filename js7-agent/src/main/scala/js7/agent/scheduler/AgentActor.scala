@@ -138,7 +138,7 @@ private[agent] final class AgentActor(
             }
         }
 
-      case AgentCommand.DedicateAgentDirector(maybeSubagentId, controllerId, agentPath)
+      case AgentCommand.DedicateAgentDirector(directors, controllerId, agentPath)
         if !terminating =>
         // Command is idempotent until AgentState has been touched
         val agentRunId = AgentRunId(persistence.journalId)
@@ -147,7 +147,7 @@ private[agent] final class AgentActor(
             if (!agentState.isDedicated)
               for (_ <- UserId.checked(agentPath.string)/*used for Subagent login*/) yield
                 Seq(NoKey <-:
-                  AgentDedicated(maybeSubagentId, agentPath, agentRunId, controllerId))
+                  AgentDedicated(directors, agentPath, agentRunId, controllerId))
             else if (agentPath != agentState.agentPath)
               Left(AgentPathMismatchProblem(agentPath, agentState.agentPath))
             else if (controllerId != agentState.meta.controllerId)

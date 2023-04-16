@@ -61,7 +61,7 @@ with ProvideActorSystem
 
         val commands = Seq(
           CoupleController(agentPath, AgentRunId.empty, 0L),
-          DedicateAgentDirector(None, controllerId, agentPath))
+          DedicateAgentDirector(Nil, controllerId, agentPath))
 
         for (command <- commands) {
           val subagentTerminated = Future {

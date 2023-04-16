@@ -19,8 +19,7 @@ import js7.agent.data.views.AgentOverview
 import js7.agent.web.AgentWebServer
 import js7.agent.web.common.AgentSession
 import js7.base.BuildInfo
-import js7.base.auth.{SessionToken, SimpleUser, UserId}
-import js7.base.configutils.Configs.ConvertibleConfig
+import js7.base.auth.{SessionToken, SimpleUser}
 import js7.base.eventbus.StandardEventBus
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.process.ProcessSignal
@@ -38,8 +37,8 @@ import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, ProgramTermination}
 import js7.base.web.Uri
+import js7.cluster.ClusterNode
 import js7.cluster.ClusterNode.RestartAfterJournalTruncationException
-import js7.cluster.{ClusterConf, ClusterNode}
 import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.session.SessionRegister
@@ -149,12 +148,7 @@ object RunningAgent {
   def resource(conf: AgentConfiguration, testWiring: TestWiring = TestWiring.empty)
     (implicit scheduler: Scheduler)
   : Resource[Task, RunningAgent] = Resource.suspend(Task {
-    import conf.{config, httpsConfig, implicitAkkaAskTimeout, journalConf, journalMeta}
-
-    val clusterConf = {
-      val userId = config.as[UserId]("js7.auth.cluster.user")
-      ClusterConf.fromConfig(userId, config).orThrow
-    }
+    import conf.{clusterConf, config, httpsConfig, implicitAkkaAskTimeout, journalConf, journalMeta}
 
     // Recover and initialize other stuff in parallel
     val clock = testWiring.alarmClock getOrElse AlarmClock(

@@ -1,6 +1,6 @@
 package js7.agent.data.commands
 
-import io.circe.generic.semiauto.deriveCodec
+import io.circe.generic.semiauto.{deriveCodec, deriveEncoder}
 import io.circe.{Codec, Decoder, Encoder, Json, JsonObject}
 import js7.agent.data.AgentState
 import js7.agent.data.AgentState.{inventoryItemKeyJsonCodec, signableItemJsonCodec, unsignedSimpleItemJsonCodec}
@@ -95,7 +95,7 @@ object AgentCommand extends CommonCommand.Companion
     * Command may be given twice (in case of a sudden restart).
     */
   final case class DedicateAgentDirector(
-    subagentId: Option[SubagentId],
+    directors: Seq[SubagentId],
     controllerId: ControllerId,
     agentPath: AgentPath)
   extends AgentCommand {
@@ -106,6 +106,17 @@ object AgentCommand extends CommonCommand.Companion
       * @param agentRunId Use the value for `CoupleController`. */
     final case class Response(agentRunId: AgentRunId, agentEventId: EventId)
     extends AgentCommand.Response
+
+    implicit val jsonEncoder: Encoder.AsObject[DedicateAgentDirector] = deriveEncoder
+    implicit val jsonDecoder: Decoder[DedicateAgentDirector] =
+      c => for {
+        directors <- c.get[Option[SubagentId]]("subagentId").flatMap {
+          case None => c.get[Option[Seq[SubagentId]]]("directors").map(_.toVector.flatten)
+          case Some(subagentId) => Right(Seq(subagentId))
+        }
+        controllerId <- c.get[ControllerId]("controllerId")
+        agentPath <- c.get[AgentPath]("agentPath")
+      } yield DedicateAgentDirector(directors, controllerId, agentPath)
   }
 
   /** Couples the registered Controller identified by current User.
@@ -241,7 +252,7 @@ object AgentCommand extends CommonCommand.Companion
       Subtype[EmergencyStop],
       Subtype(deriveCodec[ReleaseEvents]),
       Subtype(NoOperation),
-      Subtype(deriveCodec[DedicateAgentDirector]),
+      Subtype[DedicateAgentDirector],
       Subtype(deriveCodec[CoupleController]),
       Subtype(deriveCodec[Reset]),
       Subtype[ShutDown],

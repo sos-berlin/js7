@@ -1,6 +1,5 @@
 package js7.agent.data.commands
 
-import io.circe.Json
 import java.util.UUID
 import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand.{Batch, DetachOrder, NoOperation, ShutDown}
@@ -109,8 +108,19 @@ final class AgentCommandTest extends OurTestSuite
   }
 
   "DedicateAgentDirector" in {
-    check(AgentCommand.DedicateAgentDirector(
-      Some(SubagentId("SUBAGENT")),
+    testJson[AgentCommand](AgentCommand.DedicateAgentDirector(
+      Seq(SubagentId("SUBAGENT"), SubagentId("BACKUP-SUBAGENT")),
+      ControllerId("CONTROLLER"),
+      AgentPath("AGENT")),
+      json"""{
+        "TYPE": "DedicateAgentDirector",
+        "directors": ["SUBAGENT", "BACKUP-SUBAGENT" ],
+        "controllerId": "CONTROLLER",
+        "agentPath": "AGENT"
+      }""")
+
+    testJsonDecoder[AgentCommand](AgentCommand.DedicateAgentDirector(
+      Seq(SubagentId("SUBAGENT")),
       ControllerId("CONTROLLER"),
       AgentPath("AGENT")),
       json"""{
@@ -322,7 +332,4 @@ final class AgentCommandTest extends OurTestSuite
         CorrelIdWrapped(CorrelId("_CORREL_"), NoOperation))
       ).toString == "Batch(2×DetachOrder, ShutDown, 3×NoOperation)")
   }
-
-  private def check(command: AgentCommand, json: Json): Unit =
-    testJson(command, json)
 }

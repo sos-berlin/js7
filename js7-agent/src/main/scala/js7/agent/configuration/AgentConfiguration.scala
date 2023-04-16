@@ -7,6 +7,7 @@ import java.nio.file.Files.{createDirectory, exists}
 import java.nio.file.{Path, Paths}
 import js7.agent.configuration.AgentConfiguration.*
 import js7.agent.data.AgentState
+import js7.base.auth.UserId
 import js7.base.configutils.Configs
 import js7.base.configutils.Configs.*
 import js7.base.convert.AsJava.asAbsolutePath
@@ -20,6 +21,7 @@ import js7.base.time.JavaTimeConverters.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.base.utils.Tests.isTest
+import js7.cluster.ClusterConf
 import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.commandline.CommandLineArguments
 import js7.common.configuration.CommonConfiguration
@@ -44,6 +46,7 @@ final case class AgentConfiguration(
   killScript: Option[ProcessKillScript],  // TODO Duplicate with SubagentConf
   akkaAskTimeout: Timeout,
   journalConf: JournalConf,
+  clusterConf: ClusterConf,
   name: String,
   config: Config)  // Should not be the first argument to avoid the misleading call AgentConfiguration(config)
 extends CommonConfiguration
@@ -154,6 +157,10 @@ object AgentConfiguration
       killScript = Some(DelayUntilFinishKillScript),  // Changed later
       akkaAskTimeout = config.getDuration("js7.akka.ask-timeout").toFiniteDuration,
       journalConf = JournalConf.fromConfig(config),
+      clusterConf = {
+        val userId = config.as[UserId]("js7.auth.cluster.user-id")  // FIXME Use AgentPath (or SubagentId?)
+        ClusterConf.fromConfig(userId, config).orThrow
+      },
       name = name,
       config = config)
     v = v.withKillScript(config.optionAs[String]("js7.job.execution.kill.script"))

@@ -5,12 +5,15 @@ import java.nio.file.Files.createTempDirectory
 import java.nio.file.{Path, Paths}
 import js7.agent.configuration.AgentConfiguration.DefaultConfig
 import js7.agent.configuration.AgentConfigurationTest.*
+import js7.base.auth.UserId
 import js7.base.configutils.Configs.*
 import js7.base.convert.As.StringAsBoolean
 import js7.base.io.file.FileUtils.*
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.test.OurTestSuite
+import js7.base.utils.ScalaUtils.syntax.*
+import js7.cluster.ClusterConf
 import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.commandline.CommandLineArguments
 import js7.journal.configuration.JournalConf
@@ -41,6 +44,7 @@ final class AgentConfigurationTest extends OurTestSuite
         akkaAskTimeout = 1.hour,
         journalConf = JournalConf.fromConfig(DefaultConfig)
           .copy(slowCheckState = sys.props.get("js7.test").fold(false)(StringAsBoolean(_))),
+        clusterConf = ClusterConf.fromConfig(UserId("USER"), DefaultConfig).orThrow,
         name = AgentConfiguration.DefaultName,
         config = DefaultConfig))
     }

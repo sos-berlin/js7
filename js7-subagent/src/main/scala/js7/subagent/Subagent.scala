@@ -275,10 +275,8 @@ object Subagent
         jobLauncherConf = conf.toJobLauncherConf(iox, blockingInternalJobScheduler, clock).orThrow
         subagent <- Service.resource(Task(
           new Subagent(journal, conf, jobLauncherConf, testEventBus)))
-      } yield {
-        logger.info("Subagent is ready to be dedicated" + "\n" + "─" * 80)
-        subagent
-      }).executeOn(js7Scheduler)
+      } yield subagent
+      ).executeOn(js7Scheduler)
     })
 
   private[subagent] final class Dedicated(

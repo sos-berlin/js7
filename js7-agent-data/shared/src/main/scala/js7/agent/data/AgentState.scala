@@ -1,7 +1,7 @@
 package js7.agent.data
 
-import io.circe.Codec
-import io.circe.generic.semiauto.deriveCodec
+import io.circe.generic.semiauto.deriveEncoder
+import io.circe.{Decoder, Encoder}
 import js7.agent.data.AgentState.{AgentMetaState, allowedItemStates}
 import js7.agent.data.event.AgentEvent
 import js7.agent.data.event.AgentEvent.AgentDedicated
@@ -231,12 +231,12 @@ with SnapshotableState[AgentState]
               keyToUnsignedItemState_ = keyToUnsignedItemState_.updated(subagentId, subagentItemState))
         }
 
-      case KeyedEvent(_: NoKey, AgentDedicated(subagentId, agentPath, agentRunId, controllerId)) =>
+      case KeyedEvent(_: NoKey, AgentDedicated(directors, agentPath, agentRunId, controllerId)) =>
         Right(copy(meta = meta.copy(
           agentPath = agentPath,
           agentRunId = agentRunId,
           controllerId = controllerId,
-          subagentId = subagentId)))
+          directors = directors)))
 
       case _ => applyStandardEvent(keyedEvent)
     }
@@ -330,19 +330,29 @@ with ItemContainer.Companion[AgentState]
     inventoryItems.map(_.Path) :+ AgentPath
 
   final case class AgentMetaState(
-    subagentId: Option[SubagentId],
+    directors: Seq[SubagentId],
     agentPath: AgentPath,
     agentRunId: AgentRunId,
     controllerId: ControllerId)
   object AgentMetaState
   {
     val empty = AgentMetaState(
-      None,
+      Vector.empty,
       AgentPath.empty,
       AgentRunId.empty,
       ControllerId("NOT-YET-INITIALIZED"))
 
-    implicit val jsonCodec: Codec.AsObject[AgentMetaState] = deriveCodec
+    implicit val jsonEncoder: Encoder.AsObject[AgentMetaState] = deriveEncoder
+    implicit val jsonDecoder: Decoder[AgentMetaState] =
+      c => for {
+        directors <- c.get[Option[SubagentId]]("subagentId").flatMap {
+          case None => c.get[Option[Seq[SubagentId]]]("directors").map(_.toVector.flatten)
+          case Some(subagentId) => Right(Seq(subagentId))
+        }
+        agentPath <- c.get[AgentPath]("agentPath")
+        agentRunId <- c.get[AgentRunId]("agentRunId")
+        controllerId <- c.get[ControllerId]("controllerId")
+      } yield AgentMetaState(directors, agentPath, agentRunId, controllerId)
   }
 
   val snapshotObjectJsonCodec = TypedJsonCodec[Any](

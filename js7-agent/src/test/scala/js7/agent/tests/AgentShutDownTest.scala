@@ -55,7 +55,7 @@ final class AgentShutDownTest extends OurTestSuite with BeforeAndAfterAll with T
         client.login() await 99.s
         client
           .commandExecute(DedicateAgentDirector(
-            Some(SubagentId("SUBAGENT")), controllerId, agentPath))
+            Seq(SubagentId("SUBAGENT")), controllerId, agentPath))
           .await(99.s)
 
         val subagentId = SubagentId("SUBAGENT")

@@ -70,11 +70,11 @@ extends SignatureVerifier with Service
       startService(
         companionToDir
           .toVector
-      .map { case (companion, (directory, directoryState)) =>
-        CorrelId.bindNew(
-          observeDirectory(companion, directory, directoryState)
-            .onErrorRestartLoop(()) { (t, _, retry) =>
-              logger.error(s"${companion.typeName}: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
+          .map { case (companion, (directory, directoryState)) =>
+            CorrelId.bindNew(
+              observeDirectory(companion, directory, directoryState)
+                .onErrorRestartLoop(()) { (t, _, retry) =>
+                  logger.error(s"${companion.typeName}: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
                   retry(()).delayExecution(10.s)
                 })
           }

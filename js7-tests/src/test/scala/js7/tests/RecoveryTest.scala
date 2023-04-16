@@ -156,7 +156,7 @@ private object RecoveryTest {
 
   private val TestConfig = config"js7.journal.remove-obsolete-files = false"
   private val AgentPaths = AgentPath("agent-111") :: AgentPath("agent-222") :: Nil
-  private val subagentIds = AgentPaths.map(toLocalSubagentId)
+  private val subagentIds = AgentPaths.map(toLocalSubagentId(_))
   private val TestPathExecutable = RelativePathExecutable("TEST.cmd", v1Compatible = true)
 
   private val TestWorkflow = Workflow(WorkflowPath("test") ~ "INITIAL",

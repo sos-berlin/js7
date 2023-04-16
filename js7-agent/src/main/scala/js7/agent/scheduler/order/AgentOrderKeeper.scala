@@ -88,7 +88,8 @@ final class AgentOrderKeeper(
 
   private val persistence = persistenceAllocated.allocatedThing
   private val ownAgentPath = persistence.unsafeCurrentState().meta.agentPath
-  private val localSubagentId = persistence.unsafeCurrentState().meta.subagentId
+  private val localSubagentId: Option[SubagentId] =
+    persistence.unsafeCurrentState().meta.directors.get(conf.clusterConf.isBackup.toInt)
   private val controllerId = persistence.unsafeCurrentState().meta.controllerId
   private implicit val instructionExecutorService: InstructionExecutorService =
     new InstructionExecutorService(clock)

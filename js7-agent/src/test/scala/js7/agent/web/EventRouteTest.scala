@@ -44,7 +44,7 @@ final class EventRouteTest extends OurTestSuite with AgentTester
   "(DedicateAgentDirector)" in {
     val DedicateAgentDirector.Response(agentRunId, _) = agentClient
       .commandExecute(
-        DedicateAgentDirector(Some(SubagentId("SUBAGENT")), controllerId, agentPath))
+        DedicateAgentDirector(Seq(SubagentId("SUBAGENT")), controllerId, agentPath))
       .await(99.s).orThrow
     this.agentRunId = agentRunId
   }

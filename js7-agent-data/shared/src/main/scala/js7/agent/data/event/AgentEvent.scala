@@ -1,6 +1,7 @@
 package js7.agent.data.event
 
-import io.circe.generic.semiauto.deriveCodec
+import io.circe.generic.semiauto.{deriveCodec, deriveEncoder}
+import io.circe.{Decoder, Encoder}
 import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.utils.IntelliJUtils.intelliJuseImport
@@ -22,11 +23,24 @@ object AgentEvent
 
   /** Agent has been dedicated to a Controller. */
   final case class AgentDedicated(
-    subagentId: Option[SubagentId],
+    directors: Seq[SubagentId],
     agentPath: AgentPath,
     agentRunId: AgentRunId,
     controllerId: ControllerId)
   extends AgentEvent
+  object AgentDedicated {
+    implicit val jsonEncoder: Encoder.AsObject[AgentDedicated] = deriveEncoder
+    implicit val jsonDecoder: Decoder[AgentDedicated] =
+      c => for {
+        directors <- c.get[Option[SubagentId]]("subagentId").flatMap {
+          case None => c.get[Option[Seq[SubagentId]]]("directors").map(_.toVector.flatten)
+          case Some(subagentId) => Right(Seq(subagentId))
+        }
+        agentPath <- c.get[AgentPath]("agentPath")
+        agentRunId <- c.get[AgentRunId]("agentRunId")
+        controllerId <- c.get[ControllerId]("controllerId")
+      } yield AgentDedicated(directors, agentPath, agentRunId, controllerId)
+  }
 
   /** Agent is up and running. */
   final case class AgentReady(
@@ -39,7 +53,7 @@ object AgentEvent
   case object AgentShutDown extends AgentEvent
 
   implicit val jsonCodec: TypedJsonCodec[AgentEvent] = TypedJsonCodec(
-    Subtype(deriveCodec[AgentDedicated], aliases = Seq("AgentCreated")),
+    Subtype[AgentDedicated](aliases = Seq("AgentCreated")),
     Subtype(deriveCodec[AgentReady]),
     Subtype(AgentShutDown))
 }
