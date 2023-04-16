@@ -30,8 +30,8 @@ import js7.base.utils.CatsBlocking.BlockingTaskResource
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.Closer.syntax.RichClosersAny
-import js7.base.utils.HasCloser
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.{Allocated, HasCloser}
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatchService
 import js7.common.akkahttp.web.data.WebServerPort
@@ -318,16 +318,15 @@ extends HasCloser
       agentToTree(agentPath).agentConfiguration,
       testWiring)
 
-  def startBareSubagents(): Task[Seq[(Subagent, (SubagentId, Task[Unit]))]] =
+  def startBareSubagents(): Task[Map[SubagentId, Allocated[Task, Subagent]]] =
     agents
       .flatMap(a => a.bareSubagentItems.map(_ -> a.agentConfiguration.config))
       .parTraverse { case (subagentItem, config) =>
         subagentResource(subagentItem, config)
-          .allocated
-          .map { case (bareSubagent, release) =>
-            bareSubagent -> (subagentItem.id -> release.memoize)
-          }
+          .toAllocated
+          .map(subagentItem.id -> _)
       }
+      .map(_.toMap)
 
   def updateVersionedItems(
     controller: TestController,
@@ -359,34 +358,24 @@ extends HasCloser
     suffix: String = "",
     suppressSignatureKeys: Boolean = false)
   : Resource[Task, Subagent] =
-    subagentResource2(subagentItem.id, subagentItem.uri, subagentItem.agentPath,
-      config, suffix, suppressSignatureKeys)
-
-  private def subagentResource2(
-    subagentId: SubagentId,
-    uri: Uri,
-    agentPath: AgentPath,
-    config: Config = ConfigFactory.empty,
-    suffix: String = "",
-    suppressSignatureKeys: Boolean = false)
-  : Resource[Task, Subagent] =
     for {
-      dir <- subagentEnvironment(subagentId, suffix = suffix)
+      dir <- subagentEnvironment(subagentItem.id, suffix = suffix)
       trustedSignatureDir = dir / "config" / "private" /
         verifier.companion.recommendedKeyDirectoryName
       conf = {
         createDirectories(trustedSignatureDir)
         if (!suppressSignatureKeys) provideSignatureKeys(trustedSignatureDir)
         toSubagentConf(
-          agentPath,
+          subagentItem.agentPath,
           dir,
           trustedSignatureDir,
-          uri.port.orThrow,
+          subagentItem.uri.port.orThrow,
           config,
-          name = subagentId.string)
+          name = subagentItem.id.string
+        ).finishAndProvideFiles
       }
       scheduler <- BareSubagent.threadPoolResource[Task](conf)
-      subagent <- BareSubagent.resource(conf.finishAndProvideFiles, scheduler)
+      subagent <- BareSubagent.resource(conf, scheduler)
     } yield subagent
 
   private def subagentEnvironment(subagentId: SubagentId, suffix: String): Resource[Task, Path] =

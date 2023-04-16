@@ -178,7 +178,8 @@ final class WatchSignatureKeysTest extends OurTestSuite with ControllerAgentForS
       .void.runToFuture
     val agentUpdated = agent.testEventBus.when[AgentActor.ItemSignatureKeysUpdated]
       .void.runToFuture
-    val subagentUpdated = bareSubagents.head.testEventBus.when[BareSubagent.ItemSignatureKeysUpdated]
+    val subagentUpdated = subagentIdToBare(bareSubagentId).allocatedThing.testEventBus
+      .when[BareSubagent.ItemSignatureKeysUpdated]
       .void.runToFuture
 
     X509Cert.fromPem(cCertAndKey.certificatePem).orThrow // Check
@@ -218,7 +219,8 @@ final class WatchSignatureKeysTest extends OurTestSuite with ControllerAgentForS
         .logWhenItTakesLonger("RunningController.ItemSignatureKeysUpdated"),
       agent.testEventBus.when[AgentActor.ItemSignatureKeysUpdated]
         .logWhenItTakesLonger("AgentActor.ItemSignatureKeysUpdated"),
-      bareSubagents.head.testEventBus.when[BareSubagent.ItemSignatureKeysUpdated]
+      subagentIdToBare(bareSubagentId).allocatedThing.testEventBus
+        .when[BareSubagent.ItemSignatureKeysUpdated]
         .logWhenItTakesLonger("BareSubagent.ItemSignatureKeysUpdated")
     ).void.runToFuture
 

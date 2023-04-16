@@ -42,11 +42,9 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
     .await(99.s)
   protected final lazy val agent: TestAgent = agents.head
 
-  protected final lazy val (bareSubagents, bareSubagentIdToRelease)
-  : (Seq[Subagent], Map[SubagentId, Task[Unit]]) =
+  protected final lazy val subagentIdToBare: Map[SubagentId, Allocated[Task, Subagent]] =
     directoryProvider
       .startBareSubagents()
-      .map(pairs => pairs.map(_._1) -> pairs.map(_._2).toMap)
       .await(99.s)
 
   protected final lazy val controller: TestController = {
@@ -85,7 +83,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
   override def beforeAll() = {
     super.beforeAll()
 
-    bareSubagents
+    subagentIdToBare
     agents
     for (service <- clusterWatchServiceResource)
       clusterWatchServiceOnce := service.toAllocated.await(99.s)
@@ -108,7 +106,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
           Seq(controller.terminate().void),
           clusterWatchServiceOnce.toOption.map(_.stop).toList,
           agents.map(_.terminate().void),
-          bareSubagentIdToRelease.values
+          subagentIdToBare.values.map(_.stop)
         ).flatten.map(_.onErrorHandle { t =>
           logger.error(t.toStringWithCauses, t)
           throw t
@@ -142,7 +140,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
   }
 
   protected final def stopBareSubagent(subagentId: SubagentId): Unit =
-    bareSubagentIdToRelease(subagentId).await(99.s)
+    subagentIdToBare(subagentId).stop.await(99.s)
 
   protected final def startBareSubagent(subagentId: SubagentId): (Subagent, Task[Unit]) = {
     val subagentItem = directoryProvider.subagentItems
@@ -203,13 +201,12 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
         .subagentResource(subagentItem, config,
           suffix = suffix,
           suppressSignatureKeys = suppressSignatureKeys)
-        .map { subagent =>
+        .evalTap(_ => Task {
           if (awaitDedicated) {
             val e = eventWatch.await[SubagentDedicated](after = eventId).head.eventId
             eventWatch.await[SubagentCoupled](after = e)
           }
-          subagent
-        }
+        })
     })
 }
 
