@@ -1,6 +1,7 @@
 package js7.subagent
 
-import cats.effect.{Resource, Sync}
+import cats.effect.concurrent.Deferred
+import cats.effect.{Resource, Sync, SyncIO}
 import java.nio.file.Path
 import js7.base.auth.SimpleUser
 import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier
@@ -11,6 +12,7 @@ import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Checked
 import js7.base.thread.IOExecutor
+import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ProgramTermination
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
@@ -18,7 +20,6 @@ import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.akkautils.Akkas
 import js7.common.system.ThreadPools
-import js7.common.system.startup.ServiceMain
 import js7.subagent.ConvertibleToDirector.{ConvertToDirector, convertibleToDirector}
 import js7.subagent.configuration.SubagentConf
 import js7.subagent.web.SubagentWebServer
@@ -29,12 +30,33 @@ object BareSubagent
 {
   private val logger = Logger[this.type]
 
-  // Startable without a Scheduler
-  def blockingRun(conf: SubagentConf): Either[ConvertToDirector, ProgramTermination] =
-    convertibleToDirector(convertible =>
-      ServiceMain.logging
-        .blockingRun("Subagent", conf.config, convertible.resource(conf, _))(
-          convertible.use))
+  def blockingRun(conf: SubagentConf, orCommonScheduler: Option[Scheduler] = None)
+  : Either[ConvertToDirector, ProgramTermination] =
+    threadPoolResource[SyncIO](conf, orCommonScheduler)
+      .use(implicit scheduler => SyncIO {
+        val restartAsDirectorVar = Deferred.unsafe[Task, Unit]
+        val restartAsDirector = restartAsDirectorVar.complete(())
+        resource(conf, scheduler, restartAsDirector)
+          .use(bareSubagent => Task
+            .race(
+              restartAsDirectorVar.get,
+              bareSubagent.untilTerminated)
+            .flatMap {
+              case Left(()) =>
+                bareSubagent.shutdown(dontWaitForDirector = true)
+                  .as(Left(ConvertToDirector))
+              case Right(o) => Task.right(o)
+            })
+          .runSyncUnsafe()
+      })
+      .unsafeRunSync()
+
+  // ConvertibleToDirector requires an Allocated[…, Subagent]
+  //def blockingRun(conf: SubagentConf): Either[ConvertToDirector, ProgramTermination] =
+  //  convertibleToDirector(convertible =>
+  //    ServiceMain.logging
+  //      .blockingRun("Subagent", conf.config, convertible.resource(conf, _))(
+  //        convertible.use(_)))
 
   def run(conf: SubagentConf)(implicit scheduler: Scheduler)
   : Task[Either[ConvertToDirector, ProgramTermination]] =
@@ -42,7 +64,8 @@ object BareSubagent
       convertibleToDirector(convertible =>
         convertible
           .resource(conf, scheduler)
-          .use(convertible.use)))
+          .toAllocated
+          .flatMap(convertible.use)))
 
   def resource(
     conf: SubagentConf,

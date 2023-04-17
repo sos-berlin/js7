@@ -2,7 +2,7 @@ package js7.subagent
 
 import cats.effect.Resource
 import cats.effect.concurrent.Deferred
-import js7.base.utils.ProgramTermination
+import js7.base.utils.{Allocated, ProgramTermination}
 import js7.subagent.ConvertibleToDirector.*
 import js7.subagent.configuration.SubagentConf
 import monix.eval.Task
@@ -15,12 +15,14 @@ final class ConvertibleToDirector {
     BareSubagent.resource(conf, scheduler,
       convertToDirector = restartAsDirectorVar.complete(()).attempt.void)
 
-  def use(subagent: Subagent): Task[Either[ConvertToDirector, ProgramTermination]] =
+  def use(subagentAllocated: Allocated[Task, Subagent])
+  : Task[Either[ConvertToDirector, ProgramTermination]] =
     Task
-      .race(restartAsDirectorVar.get, subagent.untilTerminated)
+      .race(restartAsDirectorVar.get, subagentAllocated.allocatedThing.untilTerminated)
       .flatMap {
         case Left(()) =>
-          subagent.shutdown(dontWaitForDirector = true)
+          subagentAllocated.allocatedThing.shutdown(dontWaitForDirector = true)
+            .*>(subagentAllocated.stop)
             .as(Left(ConvertToDirector))
 
         case Right(o) =>
