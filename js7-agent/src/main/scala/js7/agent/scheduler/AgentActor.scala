@@ -245,7 +245,7 @@ private[agent] final class AgentActor(
   private def continueTermination(): Unit =
     if (terminating) {
       if (started.isEmpty) {
-        // When no AgentOrderKeeper has been startet, we need to stop the journal ourselves
+        // When no AgentOrderKeeper has been started, we need to stop the journal ourselve
         //persistence.journalActor ! JournalActor.Input.Terminate
         persistenceAllocated.stop.runAsyncAndForget
       }
