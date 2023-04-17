@@ -39,8 +39,8 @@ final class ControllerUris private(controllerUri: Uri)
       api("/" + encodePath("snapshot", ""), eventId.toList.map("eventId" -> _.toString)*)
   }
 
-  def agentCommand(agentPath: AgentPath): Uri =
-    agentForward(agentPath) / "command"
+  //def agentCommand(agentPath: AgentPath): Uri =
+  //  agentForward(agentPath) / "command"
 
   def agentForward(agentPath: AgentPath): Uri =
     api("/agent-forward") / encodeSegment(agentPath.string)

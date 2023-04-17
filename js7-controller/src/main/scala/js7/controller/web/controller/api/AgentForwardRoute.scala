@@ -2,13 +2,14 @@ package js7.controller.web.controller.api
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.HttpMethods.GET
+import akka.http.scaladsl.model.StatusCodes.Forbidden
 import akka.http.scaladsl.model.headers.{Accept, `Accept-Charset`, `Accept-Encoding`, `Accept-Ranges`, `Cache-Control`, `Content-Encoding`, `Content-Length`, `Content-Range`, `Content-Type`, `If-Match`, `If-Modified-Since`, `If-None-Match`, `If-Range`}
 import akka.http.scaladsl.model.{HttpEntity, HttpHeader, HttpRequest, HttpResponse, headers, Uri as AkkaUri}
 import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.{PathMatchers, Route}
 import com.typesafe.config.ConfigUtil
 import js7.agent.client.AgentClient
-import js7.base.auth.{AgentDirectorForwardPermission, UserAndPassword, ValidUserPermission}
+import js7.base.auth.{UserAndPassword, ValidUserPermission}
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.generic.SecretString
 import js7.base.problem.Checked
@@ -61,8 +62,9 @@ trait AgentForwardRoute extends ControllerRouteProvider
         if (request.method == GET && remaining.isEmpty)
           forward1(remainingUrl = "")
         else
-          authorizedUser(AgentDirectorForwardPermission)(_ =>
-            forward1(remaining)))
+          //authorizedUser(AgentDirectorForwardPermission)(_ =>
+          //  forward1(remaining))
+          complete(Forbidden))
 
     def forward1(remainingUrl: String): Route =
       completeTask(

@@ -43,9 +43,9 @@ final class ControllerUrisTest extends OurTestSuite
         Uri("https://example.com/controller/api/agent-forward/FOLDER%2FAGENT"))
     }
 
-    "agentCommand" in {
-      assert(controllerUris.agentCommand(AgentPath("FOLDER/AGENT")) ==
-        Uri("https://example.com/controller/api/agent-forward/FOLDER%2FAGENT/command"))
-    }
+    //"agentCommand" in {
+    //  assert(controllerUris.agentCommand(AgentPath("FOLDER/AGENT")) ==
+    //    Uri("https://example.com/controller/api/agent-forward/FOLDER%2FAGENT/command"))
+    //}
   }
 }
