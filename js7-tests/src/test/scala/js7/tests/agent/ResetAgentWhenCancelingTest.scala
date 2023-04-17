@@ -55,7 +55,7 @@ with BlockingItemUpdater
     controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
 
     // Delete Agent's journal
-    deleteDirectoryContentRecursively(directoryProvider.agents.head.stateDir)
+    deleteDirectoryContentRecursively(directoryProvider.agentEnvs.head.stateDir)
 
     val freshAgent = directoryProvider.startAgent(agentPath) await 99.s
     controller.api.executeCommand(ResetAgent(agentPath)).await(99.s).orThrow

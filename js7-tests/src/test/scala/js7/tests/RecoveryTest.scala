@@ -47,14 +47,13 @@ final class RecoveryTest extends OurTestSuite
       var lastEventId = EventId.BeforeFirst
       val directoryProvider = new DirectoryProvider(
         AgentPaths,
-        bareSubagents = Map.empty,
-        TestWorkflow :: QuickWorkflow :: Nil,
+        items = TestWorkflow :: QuickWorkflow :: Nil,
         signer = new SillySigner(SillySignature("MY-SILLY-SIGNATURE")),
         verifier = new SillySignatureVerifier(Seq(SillySignature("MY-SILLY-SIGNATURE")), "RecoveryTest"),
         testName = Some("RecoveryTest"),
         controllerConfig = TestConfig)
       autoClosing(directoryProvider) { _ =>
-        for (agent <- directoryProvider.agentToTree.values)
+        for (agent <- directoryProvider.agentToEnv.values)
           agent.writeExecutable(TestPathExecutable, script(1.s, resultVariable = Some("var1")))
 
         runController(directoryProvider) { controller =>
@@ -132,8 +131,8 @@ final class RecoveryTest extends OurTestSuite
   private def runAgents(directoryProvider: DirectoryProvider)
     (body: IndexedSeq[TestAgent] => Unit)
   : Unit = {
-    val agents = directoryProvider.agents
-      .map(_.agentConfiguration)
+    val agents = directoryProvider.agentEnvs
+      .map(_.agentConf)
       .traverse(TestAgent.start(_))
       .await(10.s)
     multipleAutoClosing(agents) { _ =>

@@ -60,9 +60,9 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite with ControllerAge
     eventWatch.await[OrderProcessingStarted](_.key == caughtOrderId).head.eventId
     eventWatch.await[OrderStdoutWritten](_.key == caughtOrderId)
 
-    val agentTree = directoryProvider.agents.head
+    val agentEnv = directoryProvider.agentEnvs.head
     locally {
-      val agentClient = AgentClient(agentUri = agent.localUri, agentTree.userAndPassword)
+      val agentClient = AgentClient(agentUri = agent.localUri, agentEnv.userAndPassword)
       agentClient.login() await 99.s
       agentClient
         .commandExecute(AgentCommand.ShutDown(processSignal = Some(SIGKILL)))
@@ -71,7 +71,7 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite with ControllerAge
       agent.stop.await(99.s)
     }
 
-    TestAgent.blockingRun(agentTree.agentConfiguration) { restartedAgent =>
+    TestAgent.blockingRun(agentEnv.agentConf) { restartedAgent =>
       eventWatch.await[OrderFailed](_.key == simpleOrderId)
 
       assert(eventWatch.keyedEvents[Event](after = addOrderEventId)

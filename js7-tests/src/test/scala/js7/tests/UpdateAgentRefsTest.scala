@@ -26,7 +26,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.UpdateAgentRefsTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerTestUtils.newControllerApi
-import js7.tests.testenv.{DirectoryProvider, DirectoryProviderForScalaTest}
+import js7.tests.testenv.{DirectoryProviderForScalaTest, SubagentEnv}
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import scala.annotation.tailrec
@@ -46,17 +46,17 @@ final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForSc
   protected val items = Nil
 
   private lazy val agentPort1 :: agentPort2 :: agentPort3 :: Nil = findFreeTcpPorts(3)
-  private lazy val agentFileTree = new DirectoryProvider.AgentTree(directoryProvider.directory,
-    agentPath,
+  private lazy val agentEnv = new SubagentEnv(
     SubagentItem(
       SubagentId(agentPath.string + "-0"), agentPath, disabled = subagentsDisabled,
       uri = Uri(s"http://127.0.0.1:$agentPort1")),
     "AGENT",
+    directoryProvider.directory,
     config = agentConfig)
 
   private lazy val controller = directoryProvider.newController()
 
-  private lazy val controllerApi = newControllerApi(controller, Some(directoryProvider.controller.userAndPassword))
+  private lazy val controllerApi = newControllerApi(controller, Some(directoryProvider.controllerEnv.userAndPassword))
   private var agent: TestAgent = null
 
   override def afterAll() = {
@@ -68,10 +68,10 @@ final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForSc
   private val agentRef = AgentRef(agentPath, directors = Seq(subagentId))
 
   "Add AgentRef and run an order" in {
-    directoryProvider.prepareAgentFiles(agentFileTree)
+    directoryProvider.prepareAgentFiles(agentEnv)
 
     val subagentItem = SubagentItem(subagentId, agentPath, Uri(s"http://127.0.0.1:$agentPort1"))
-    agent = TestAgent.start(agentFileTree.agentConfiguration) await 99.s
+    agent = TestAgent.start(agentEnv.agentConf) await 99.s
 
     controllerApi
       .updateItems(
@@ -84,10 +84,10 @@ final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForSc
     controller.runOrder(FreshOrder(OrderId("🔷"), workflow.path, deleteWhenTerminated = true))
   }
 
-  private lazy val outdatedState = agentFileTree.stateDir.resolveSibling(Paths.get("state~"))
+  private lazy val outdatedState = agentEnv.stateDir.resolveSibling(Paths.get("state~"))
 
   "Delete AgentRef" in {
-    copyDirectoryContent(agentFileTree.stateDir, outdatedState)
+    copyDirectoryContent(agentEnv.stateDir, outdatedState)
 
     assert(controllerApi.updateItems(Observable(DeleteSimple(agentPath))).await(99.s) ==
       Left(Problem.combine(
@@ -109,7 +109,7 @@ final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForSc
   }
 
   "Add AgentRef again: Agent's journal should be new due to implicit Reset" in {
-    agent = TestAgent.start(agentFileTree.agentConfiguration) await 99.s
+    agent = TestAgent.start(agentEnv.agentConf) await 99.s
 
     val eventId = controller.eventWatch.lastFileEventId
     val versionId = VersionId("AGAIN")
@@ -142,7 +142,7 @@ final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForSc
   "Change Directors's URI and keep Agent's state (move the Agent)" in {
     val subagentItem = SubagentItem(subagentId, agentPath, Uri(s"http://127.0.0.1:$agentPort2"))
     agent = TestAgent.start(
-      agentFileTree.agentConfiguration.copy(
+      agentEnv.agentConf.copy(
         webServerPorts = List(WebServerPort.localhost(agentPort2)))
     ) await 99.s
     controllerApi.updateUnsignedSimpleItems(Seq(subagentItem)).await(99.s).orThrow
@@ -151,12 +151,12 @@ final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForSc
   }
 
   "Coupling fails with outdated Director" in {
-    deleteDirectoryRecursively(agentFileTree.stateDir)
-    move(outdatedState, agentFileTree.stateDir)
+    deleteDirectoryRecursively(agentEnv.stateDir)
+    move(outdatedState, agentEnv.stateDir)
     val eventId = controller.eventWatch.lastFileEventId
 
     agent = TestAgent.start(
-      agentFileTree.agentConfiguration.copy(
+      agentEnv.agentConf.copy(
         webServerPorts = List(WebServerPort.localhost(agentPort2)))
     ) await 99.s
 
@@ -172,9 +172,9 @@ final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForSc
   "Change Directors's URI and start Agent with clean state: fails" in {
     val subagentItem = SubagentItem(subagentId, agentPath, Uri(s"http://127.0.0.1:$agentPort3"))
     // DELETE AGENT'S STATE DIRECTORY
-    deleteDirectoryContentRecursively(agentFileTree.stateDir)
+    deleteDirectoryContentRecursively(agentEnv.stateDir)
     agent = TestAgent.start(
-      agentFileTree.agentConfiguration.copy(
+      agentEnv.agentConf.copy(
         webServerPorts = List(WebServerPort.localhost(agentPort3)))
     ) await 99.s
 

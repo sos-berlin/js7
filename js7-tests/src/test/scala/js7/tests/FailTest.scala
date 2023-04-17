@@ -32,7 +32,8 @@ final class FailTest extends OurTestSuite with ControllerAgentForScalaTest
   private val orderIdIterator = Iterator.from(1).map(i => OrderId(s"♦️-$i"))
 
   override def beforeAll() = {
-    directoryProvider.agents.head.writeExecutable(RelativePathExecutable("test.cmd"), (isWindows ?? "@echo off\n") + "exit 3")
+    directoryProvider.agentEnvs.head
+      .writeExecutable(RelativePathExecutable("test.cmd"), (isWindows ?? "@echo off\n") + "exit 3")
     super.beforeAll()
   }
 

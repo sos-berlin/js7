@@ -61,7 +61,7 @@ final class BigJsonControllerClusterTest extends OurTestSuite with ControllerClu
       assert(controllerState.clusterState.asInstanceOf[ClusterState.Coupled].setting.activeId ==
         NodeId("Primary"))
 
-      assertEqualJournalFiles(primary.controller, backup.controller, n = 1)
+      assertEqualJournalFiles(primary.controllerEnv, backup.controllerEnv, n = 1)
 
       controllerApi.stop await 99.s
     }

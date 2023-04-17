@@ -41,12 +41,12 @@ final class CoupleControllerTest extends OurTestSuite with DirectoryProviderForS
     js7.journal.remove-obsolete-files = false
     """.withFallback(super.agentConfig)
 
-  private lazy val agentStateDir = directoryProvider.agents.head.dataDir / "state"
+  private lazy val agentStateDir = directoryProvider.agentEnvs.head.dataDir / "state"
   private val orderGenerator = Iterator.from(1).map(i => FreshOrder(OrderId(i.toString), TestWorkflow.path))
 
   override def beforeAll() = {
     super.beforeAll()
-    directoryProvider.agents(0).writeExecutable(TestPathExecutable, script(0.s))
+    directoryProvider.agentEnvs(0).writeExecutable(TestPathExecutable, script(0.s))
   }
 
   // Test does not work reliable.

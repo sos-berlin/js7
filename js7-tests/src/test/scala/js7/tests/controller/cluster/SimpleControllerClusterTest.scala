@@ -53,7 +53,7 @@ final class SimpleControllerClusterTest extends ControllerClusterTester
         .sequence.orThrow
       whenFinished await 99.s
 
-      assertEqualJournalFiles(primary.controller, backup.controller, n = 1)
+      assertEqualJournalFiles(primary.controllerEnv, backup.controllerEnv, n = 1)
     }
   }
 }

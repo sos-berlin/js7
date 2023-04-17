@@ -37,11 +37,11 @@ final class UpdateRepoX509RootTest extends OurTestSuite with ControllerAgentForS
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]"""
 
   override def beforeAll() = {
-    createDirectory(directoryProvider.controller.configDir / "private" / "trusted-x509-keys")
+    createDirectory(directoryProvider.controllerEnv.configDir / "private" / "trusted-x509-keys")
     copy(root.certificateFile,
-      directoryProvider.controller.configDir / "private" / "trusted-x509-keys" / "Root.crt")
+      directoryProvider.controllerEnv.configDir / "private" / "trusted-x509-keys" / "Root.crt")
 
-    (directoryProvider.controller.configDir / "private" / "private.conf") ++=
+    (directoryProvider.controllerEnv.configDir / "private" / "private.conf") ++=
       s"""js7.configuration.trusted-signature-keys {
          |  X509 = $${js7.config-directory}"/private/trusted-x509-keys"
          |}

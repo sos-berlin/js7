@@ -20,7 +20,7 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 /* A test to play with. */
 final class PlayTest extends OurTestSuite with ControllerAgentForScalaTest
 {
-  protected val agentPaths = PlayTest.agentPaths
+  protected val agentPaths = Seq(AgentPath("AGENT"))
   protected val items = Nil
   override protected val controllerConfig = config"""
     js7.web.server.auth.public = on
@@ -80,7 +80,6 @@ final class PlayTest extends OurTestSuite with ControllerAgentForScalaTest
 object PlayTest
 {
   private val logger = Logger(getClass)
-  private val agentPaths = Seq(AgentPath("primaryAgent"), AgentPath("secondaryAgent"))  // Names for Andreas' test cases
 
   private final class TestInternalJob extends InternalJob
   {

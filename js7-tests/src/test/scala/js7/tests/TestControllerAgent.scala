@@ -72,14 +72,14 @@ object TestControllerAgent
     val directoryProvider = new DirectoryProvider(
       conf.agentPaths, Map.empty, makeWorkflow(conf) :: Nil, useDirectory = Some(conf.directory))
     autoClosing(directoryProvider) { directoryProvider =>
-      directoryProvider.controller.configDir / "controller.conf" ++=
+      directoryProvider.controllerEnv.configDir / "controller.conf" ++=
         "js7.web.server.auth.loopback-is-public = on\n"
-      directoryProvider.agents foreach { _.configDir / "agent.conf" ++=
+      directoryProvider.agentEnvs foreach { _.configDir / "agent.conf" ++=
         "js7.web.server.auth.loopback-is-public = on\n" }
       withCloser { implicit closer =>
         for (agentPath <- conf.agentPaths) {
           TestPathExecutable
-            .toFile(directoryProvider.agentToTree(agentPath).configDir / "executables")
+            .toFile(directoryProvider.agentToEnv(agentPath).configDir / "executables")
             .writeUtf8Executable(
               if (isWindows) s"""
                  |@echo off

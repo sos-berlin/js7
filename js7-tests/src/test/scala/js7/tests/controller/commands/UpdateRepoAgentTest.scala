@@ -32,7 +32,7 @@ final class UpdateRepoAgentTest extends OurTestSuite
       items = workflow :: Nil,
       testName = Some("UpdateRepoAgentTest"))
     autoClosing(directoryProvider) { _ =>
-      (directoryProvider.controller.configDir / "private" / "private.conf") ++=
+      (directoryProvider.controllerEnv.configDir / "private" / "private.conf") ++=
         """js7.auth.users {
           |  TEST-USER {
           |    password = "plain:TEST-PASSWORD"
@@ -40,7 +40,7 @@ final class UpdateRepoAgentTest extends OurTestSuite
           |  }
           |}
           |""".stripMargin
-      directoryProvider.agentToTree(agentPath)
+      directoryProvider.agentToEnv(agentPath)
         .writeExecutable(RelativePathExecutable("SCRIPT.cmd"), ":")
 
       // Start Agent before Controller to bind the reserved TCP port early, and the Controller needs not to wait
@@ -55,7 +55,7 @@ final class UpdateRepoAgentTest extends OurTestSuite
           // Start a new Agent with same state but a (hopefully) different HTTP port
           val port = findFreeTcpPort()
           agent2 = TestAgent.start(AgentConfiguration.forTest(
-            directoryProvider.agents.head.directory,
+            directoryProvider.agentEnvs.head.directory,
             name = "UpdateRepoAgentTest",
             httpPort = Some(port))
           ).await(99.s)

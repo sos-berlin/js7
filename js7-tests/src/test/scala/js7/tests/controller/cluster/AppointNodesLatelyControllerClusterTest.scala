@@ -30,7 +30,7 @@ final class AppointNodesLatelyControllerClusterTest extends OurTestSuite with Co
       }
 
       primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
-        assert(listJournalFiles(primary.controller.dataDir / "state" / "controller").head
+        assert(listJournalFiles(primary.controllerEnv.dataDir / "state" / "controller").head
           .fileEventId > EventId.BeforeFirst)
 
         var backupController = backup.newController(httpPort = Some(backupControllerPort))

@@ -31,19 +31,19 @@ final class ReplicatingControllerClusterTest extends ControllerClusterTester
 
         primaryController.runOrder(FreshOrder(OrderId("🔷"), TestWorkflow.path))
 
-        assertEqualJournalFiles(primary.controller, backup.controller, n = 1)
+        assertEqualJournalFiles(primary.controllerEnv, backup.controllerEnv, n = 1)
 
         primaryController.api.executeCommand(TakeSnapshot).await(99.s).orThrow
-        assertEqualJournalFiles(primary.controller, backup.controller, n = 1)
+        assertEqualJournalFiles(primary.controllerEnv, backup.controllerEnv, n = 1)
 
         primaryController.runOrder(FreshOrder(OrderId("🟦"), TestWorkflow.path))
-        assertEqualJournalFiles(primary.controller, backup.controller, n = 1)
+        assertEqualJournalFiles(primary.controllerEnv, backup.controllerEnv, n = 1)
 
         simulateKillActiveNode(primaryController) await 99.s
         primaryController.terminate().await(99.s)
       }
       // Test may fail here if computer is slow, and backup controller failed over before termination !!!
-      assertEqualJournalFiles(primary.controller, backup.controller, n = 1)
+      assertEqualJournalFiles(primary.controllerEnv, backup.controllerEnv, n = 1)
 
       // RESTART
 

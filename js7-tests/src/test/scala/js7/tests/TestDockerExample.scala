@@ -24,7 +24,7 @@ import js7.base.utils.SyncResource.syntax.RichSyncResource
 import js7.common.utils.JavaShutdownHook
 import js7.controller.RunningController
 import js7.controller.configuration.ControllerConfiguration
-import js7.controller.tests.TestEnvironment
+import js7.controller.tests.TestDockerEnvironment
 import js7.data.agent.AgentPath
 import monix.execution.Scheduler.Implicits.traced as scheduler
 
@@ -51,7 +51,7 @@ object TestDockerExample
   }
 
   private def run(directory: Path): Unit = {
-    val env = new TestEnvironment(TestAgentPaths, directory)
+    val env = new TestDockerEnvironment(TestAgentPaths, directory)
     def provide(path: String) = {
       val dir = if (path.startsWith("controller")) directory else env.agentsDir
       createDirectories((dir / path).getParent)

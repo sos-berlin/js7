@@ -144,9 +144,7 @@ trait ControllerClusterForScalaTest
           js7.journal.cluster.heartbeat = ${clusterTiming.heartbeat}
           js7.journal.cluster.heartbeat-timeout = ${clusterTiming.heartbeatTimeout}
           js7.journal.release-events-delay = 0s
-          js7.journal.remove-obsolete-files = $removeObsoleteJournalFiles
-          js7.auth.cluster.password = "PRIMARY-AGENT-PASSWORD"
-          js7.auth.users.Agent.password = "plain:BACKUP-AGENT-PASSWORD""""
+          js7.journal.remove-obsolete-files = $removeObsoleteJournalFiles"""
       ).closeWithCloser
 
       val backup = new DirectoryProvider(
@@ -174,18 +172,18 @@ trait ControllerClusterForScalaTest
           js7.journal.cluster.node.is-backup = yes
           js7.journal.release-events-delay = 0s
           js7.journal.remove-obsolete-files = $removeObsoleteJournalFiles
-          js7.auth.cluster.password = "BACKUP-AGENT-PASSWORD"
-          js7.auth.users.Agent.password = "plain:PRIMARY-AGENT-PASSWORD"
+          #js7.auth.cluster.password = "BACKUP-AGENT-PASSWORD"
+          #js7.auth.users.Agent.password = "plain:AGENT-PASSWORD"
           js7.auth.users.Controller.password = "plain:AGENT-PASSWORD" """
       ).closeWithCloser
 
       // Replicate credentials required for agents
       Files.copy(
-        primary.controller.configDir / "private" / "private.conf",
-        backup.controller.configDir / "private" / "private.conf",
+        primary.controllerEnv.configDir / "private" / "private.conf",
+        backup.controllerEnv.configDir / "private" / "private.conf",
         REPLACE_EXISTING)
 
-      for (a <- primary.agents ++ backup.agents) a.writeExecutable(TestPathExecutable, shellScript)
+      for (a <- primary.agentEnvs ++ backup.agentEnvs) a.writeExecutable(TestPathExecutable, shellScript)
 
       val setting = ClusterSetting(
         Map(
@@ -258,8 +256,8 @@ object ControllerClusterForScalaTest
   val clusterWatchId = ClusterWatchId("CLUSTER-WATCH")
 
   def assertEqualJournalFiles(
-    primary: DirectoryProvider.Tree,
-    backup: DirectoryProvider.Tree,
+    primary: TestEnv,
+    backup: TestEnv,
     n: Int)
     (implicit pos: source.Position)
   : Unit = {

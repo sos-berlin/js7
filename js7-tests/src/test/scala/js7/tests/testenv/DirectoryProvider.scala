@@ -1,17 +1,14 @@
 package js7.tests.testenv
 
 import cats.effect.Resource
-import cats.syntax.foldable.*
 import cats.syntax.parallel.*
 import cats.syntax.traverse.*
-import com.typesafe.config.ConfigUtil.quoteString
 import com.typesafe.config.{Config, ConfigFactory}
-import java.nio.file.Files.{createDirectories, createDirectory, createTempDirectory}
+import java.nio.file.Files.{createDirectory, createTempDirectory}
 import java.nio.file.Path
-import js7.agent.configuration.AgentConfiguration
 import js7.agent.{RunningAgent, TestAgent}
-import js7.base.auth.{Admission, UserAndPassword, UserId}
-import js7.base.configutils.Configs.{HoconStringInterpolator, *}
+import js7.base.auth.Admission
+import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.crypt.{DocumentSigner, SignatureVerifier, Signed, SignedString}
 import js7.base.generic.SecretString
 import js7.base.io.JavaResource
@@ -49,7 +46,6 @@ import js7.data.cluster.ClusterWatchId
 import js7.data.controller.ControllerState.signableItemJsonCodec
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion, RemoveVersioned}
 import js7.data.item.{InventoryItem, ItemOperation, ItemSigner, SignableItem, SignableSimpleItem, UnsignedSimpleItem, VersionId, VersionedItem, VersionedItemPath}
-import js7.data.job.RelativePathExecutable
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.proxy.ControllerApi
 import js7.service.pgp.PgpSigner
@@ -72,7 +68,7 @@ import scala.util.control.NonFatal
 @TestOnly
 final class DirectoryProvider(
   agentPaths: Seq[AgentPath],
-  bareSubagents: Map[AgentPath, Seq[SubagentId]] = Map.empty,
+  agentToBareSubagent: Map[AgentPath, Seq[SubagentId]] = Map.empty,
   items: Seq[InventoryItem] = Nil,
   controllerConfig: Config = ConfigFactory.empty,
   controllerTestWiring: RunningController.TestWiring = RunningController.TestWiring.empty,
@@ -104,11 +100,15 @@ extends HasCloser
         }
       })
 
-  val controller = new ControllerTree(directory / "controller",
-    keyStore = controllerKeyStore, trustStores = controllerTrustStores,
+  val controllerEnv = new ControllerEnv(directory / "controller",
+    verifier = verifier,
+    keyStore = controllerKeyStore,
+    trustStores = controllerTrustStores,
     agentHttpsMutual = agentHttpsMutual)
 
-  val agentToTree: Map[AgentPath, AgentTree] =
+  createDirectory(directory / "subagents")
+
+  val agentToEnv: Map[AgentPath, SubagentEnv] =
     agentPaths
       .zip(agentPorts ++ Seq.fill(agentPaths.length - agentPorts.length)(findFreeTcpPort()))
       .map { case (agentPath, port) =>
@@ -118,37 +118,37 @@ extends HasCloser
         val localSubagentItem = SubagentItem(
           localSubagentId, agentPath, disabled = subagentsDisabled,
           uri = Uri(s"$localhost:$port"))
-        // FIXME backup Subagent
+        // TODO backup Subagent
         //val directorSubagentItems = for (port <- Nel.of(primaryPort, maybeBackupPort)) yield
         //  SubagentItem(
         //    localSubagentId, agentPath, disabled = subagentsDisabled,
         //    uri = Uri(s"$localhost:$port"))
 
-        agentPath ->
-          new AgentTree(directory, agentPath,
-            localSubagentItem,
-            testName.fold("")(_ + "-") ++ localSubagentId.string,
-            mutualHttps = agentHttpsMutual,
-            provideHttpsCertificate = provideAgentHttpsCertificate,
-            provideClientCertificate = provideAgentClientCertificate,
-            bareSubagents.getOrElse(agentPath, Nil),
-            subagentsDisabled = subagentsDisabled,
-            agentConfig)
+        agentPath -> newSubagentEnv(localSubagentItem)
       }
       .toMap
 
-  val agents: Vector[AgentTree] = agentToTree.values.toVector
+  val agentEnvs: Vector[SubagentEnv] = agentToEnv.values.toVector
   lazy val agentRefs: Vector[AgentRef] =
-    for (a <- agents) yield AgentRef(a.agentPath, Seq(a.localSubagentId))
-  lazy val subagentItems: Vector[SubagentItem] = agents.flatMap(_.subagentItems)
-  lazy val subagentId: SubagentId = agents.head.localSubagentId
+    for (a <- agentEnvs) yield AgentRef(a.agentPath, Seq(a.localSubagentId))
+  lazy val subagentItems: Vector[SubagentItem] = agentEnvs.flatMap(_.subagentItems)
+  lazy val subagentId: SubagentId = agentEnvs.head.localSubagentId
 
-  private val itemsHasBeenAdded = AtomicBoolean(false)
+  private val itemsHaveBeenAdded = AtomicBoolean(false)
 
   closeOnError(this) {
-    controller.createDirectoriesAndFiles()
-    writeTrustedSignatureKeys(verifier, controller.configDir, "controller.conf")
-    agents foreach prepareAgentFiles
+    controllerEnv.createDirectoriesAndFiles()
+    agentEnvs foreach prepareAgentFiles
+
+    items
+      .collect { case o: SubagentItem => o }
+      .map(_.agentPath)
+      .distinct
+      .foreach { agentPath =>
+        controllerEnv.writeAgentAuthentication(
+          agentPath,
+          SecretString(s"$agentPath-PASSWORD")/*FIXME Duplicate in SubagentEnv*/)
+      }
   }
 
   val itemSigner = new ItemSigner(signer, signableItemJsonCodec)
@@ -167,7 +167,7 @@ extends HasCloser
         runningController.actorSystem))
 
   def controllerAdmission(runningController: RunningController): Admission =
-    Admission(runningController.localUri, Some(controller.userAndPassword))
+    Admission(runningController.localUri, Some(controllerEnv.userAndPassword))
 
   def run[A](body: (TestController, IndexedSeq[TestAgent]) => A): A =
     runAgents()(agents =>
@@ -239,7 +239,7 @@ extends HasCloser
     httpsPort: Option[Int] = None)
   : Resource[Task, RunningController] = {
     val conf = ControllerConfiguration.forTest(
-      configAndData = controller.directory,
+      configAndData = controllerEnv.directory,
       config.withFallback(controllerConfig),
       httpPort = httpPort,
       httpsPort = httpsPort,
@@ -247,7 +247,7 @@ extends HasCloser
 
     def startForTest(runningController: RunningController): Unit = {
       if (!doNotAddItems && !isBackup && (agentRefs.nonEmpty || items.nonEmpty)) {
-        if (!itemsHasBeenAdded.getAndSet(true)) {
+        if (!itemsHaveBeenAdded.getAndSet(true)) {
           runningController.waitUntilReady()
           runningController.updateUnsignedSimpleItemsAsSystemUser(agentRefs ++ subagentItems)
             .await(99.s).orThrow
@@ -287,9 +287,9 @@ extends HasCloser
     agentPaths: Seq[AgentPath] = DirectoryProvider.this.agentPaths)(
     body: Vector[TestAgent] => A)
   : A =
-    multipleAutoClosing(agents
+    multipleAutoClosing(agentEnvs
       .filter(o => agentPaths.contains(o.agentPath))
-      .map(_.agentConfiguration)
+      .map(_.agentConf)
       .parTraverse(a => TestAgent.start(a))
       .await(99.s))
     { agents =>
@@ -308,19 +308,19 @@ extends HasCloser
 
   def startAgents(testWiring: RunningAgent.TestWiring = RunningAgent.TestWiring.empty)
   : Task[Seq[TestAgent]] =
-    agents.parTraverse(a => startAgent(a.agentPath, testWiring))
+    agentEnvs.parTraverse(a => startAgent(a.agentPath, testWiring))
 
   def startAgent(
     agentPath: AgentPath,
     testWiring: RunningAgent.TestWiring = RunningAgent.TestWiring.empty)
   : Task[TestAgent] =
     TestAgent.start(
-      agentToTree(agentPath).agentConfiguration,
+      agentToEnv(agentPath).agentConf,
       testWiring)
 
   def startBareSubagents(): Task[Map[SubagentId, Allocated[Task, Subagent]]] =
-    agents
-      .flatMap(a => a.bareSubagentItems.map(_ -> a.agentConfiguration.config))
+    agentEnvs
+      .flatMap(a => a.bareSubagentItems.map(_ -> a.agentConf.config))
       .parTraverse { case (subagentItem, config) =>
         subagentResource(subagentItem, config)
           .toAllocated
@@ -346,12 +346,12 @@ extends HasCloser
 
   private def controllerName = testName.fold(ControllerConfiguration.DefaultName)(_ + "-Controller")
 
-  def prepareAgentFiles(agentTree: AgentTree): Unit = {
-    agentTree.createDirectoriesAndFiles()
-    controller.writeAgentAuthentication(agentTree)
-    agentTree.writeTrustedSignatureKeys(verifier)
+  def prepareAgentFiles(env: SubagentEnv): Unit = {
+    env.createDirectoriesAndFiles()
+    controllerEnv.writeAgentAuthentication(env)
   }
 
+  @deprecated // Duplicate in SubagentEnv ?
   def subagentResource(
     subagentItem: SubagentItem,
     config: Config = ConfigFactory.empty,
@@ -359,49 +359,64 @@ extends HasCloser
     suppressSignatureKeys: Boolean = false)
   : Resource[Task, Subagent] =
     for {
-      dir <- subagentEnvironment(subagentItem.id, suffix = suffix)
-      trustedSignatureDir = dir / "config" / "private" /
+      subagentEnv <- subagentEnvResource(subagentItem, suffix = suffix,
+        suppressSignatureKeys = suppressSignatureKeys)
+      trustedSignatureDir = subagentEnv.configDir / "private" /
         verifier.companion.recommendedKeyDirectoryName
-      conf = {
-        createDirectories(trustedSignatureDir)
-        if (!suppressSignatureKeys) provideSignatureKeys(trustedSignatureDir)
-        toSubagentConf(
-          subagentItem.agentPath,
-          dir,
-          trustedSignatureDir,
-          subagentItem.uri.port.orThrow,
-          config,
-          name = subagentItem.id.string
-        ).finishAndProvideFiles
-      }
+      conf = toSubagentConf(
+        subagentItem.agentPath,
+        subagentEnv.directory,
+        trustedSignatureDir,
+        subagentItem.uri.port.orThrow,
+        config,
+        name = subagentItem.id.string
+      ).finishAndProvideFiles
       scheduler <- BareSubagent.threadPoolResource[Task](conf)
       subagent <- BareSubagent.resource(conf, scheduler)
     } yield subagent
 
-  private def subagentEnvironment(subagentId: SubagentId, suffix: String): Resource[Task, Path] =
-    Resource.make(
-      acquire = Task {
-        val dir = bareSubagentToDirectory(subagentId, suffix)
-        createDirectories(directory / "subagents")
-        createDirectory(dir)
-        createDirectory(dir / "data")
-        createDirectory(dir / "data" / "logs")
-        dir
-      })(
-      release = dir => Task {
-        deleteDirectoryRecursively(dir)
-      })
+  def subagentEnvResource(
+    subagentItem: SubagentItem,
+    suffix: String = "",
+    isClusterBackup: Boolean = false,
+    suppressSignatureKeys: Boolean = false)
+  : Resource[Task, SubagentEnv] =
+    Resource
+      .make(
+        acquire = Task(
+          newSubagentEnv(subagentItem, suffix = suffix, isClusterBackup = isClusterBackup,
+            suppressSignatureKeys = suppressSignatureKeys)))(
+        release = env => Task(
+          env.delete()))
+      .evalTap(env => Task(
+        env.createDirectoriesAndFiles()))
 
+  def newSubagentEnv(
+    subagentItem: SubagentItem,
+    suffix: String = "",
+    isClusterBackup: Boolean = false,
+    suppressSignatureKeys: Boolean = false)
+  : SubagentEnv =
+    new SubagentEnv(
+      subagentItem = subagentItem,
+      name = testName.fold("")(_ + "-") ++ subagentItem.id.string,
+      rootDirectory = directory,
+      suffix = suffix,
+      verifier = verifier,
+      mutualHttps = agentHttpsMutual,
+      provideHttpsCertificate = provideAgentHttpsCertificate,
+      provideClientCertificate = provideAgentClientCertificate,
+      bareSubagentIds = agentToBareSubagent.getOrElse(subagentItem.agentPath, Nil),
+      subagentsDisabled = subagentsDisabled,
+      isClusterBackup = isClusterBackup,
+      suppressSignatureKeys = suppressSignatureKeys,
+      config = agentConfig)
+
+  @deprecated
   def bareSubagentToDirectory(subagentId: SubagentId, suffix: String = ""): Path =
     directory / "subagents" / (subagentId.string + suffix)
 
-  private def provideSignatureKeys(trustedSignatureDir: Path) =
-    for ((key, i) <- verifier.publicKeys.zipWithIndex) {
-      val file = trustedSignatureDir / (s"key-${i+1}${verifier.companion.filenameExtension}")
-      logger.trace(s"$file := key")
-      file := key
-    }
-
+  @deprecated // Duplicate in SubagentEnv ?
   def toSubagentConf(
     agentPath: AgentPath,
     directory: Path,
@@ -440,149 +455,6 @@ object DirectoryProvider
   def toLocalSubagentId(agentPath: AgentPath, isBackup: Boolean = false): SubagentId =
     SubagentId(agentPath.string + (if (!isBackup) "-0" else "-1"))
 
-  sealed trait Tree {
-    val directory: Path
-    lazy val configDir = directory / "config"
-    lazy val dataDir = directory / "data"
-    lazy val stateDir = dataDir / "state"
-
-    def journalFileBase: Path
-
-    private[DirectoryProvider] def createDirectoriesAndFiles(): Unit = {
-      createDirectory(directory)
-      createDirectory(configDir)
-      createDirectory(configDir / "private")
-      createDirectory(dataDir)
-      createDirectory(dataDir / "work")
-    }
-  }
-
-  final class ControllerTree(val directory: Path,
-    keyStore: Option[JavaResource], trustStores: Iterable[JavaResource], agentHttpsMutual: Boolean)
-  extends Tree
-  {
-    val journalFileBase = stateDir / "controller"
-    val userAndPassword = UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD"))
-    // TODO Like AgentTree, use this port in startController
-    //lazy val port = findFreeTcpPort()
-    //lazy val localUri = Uri((if (https) "https://localhost" else "http://127.0.0.1") + ":" + port)
-
-    override private[DirectoryProvider] def createDirectoriesAndFiles(): Unit = {
-      super.createDirectoriesAndFiles()
-      for (keyStore <- keyStore) {
-        configDir / "private/private.conf" ++=
-           """js7.web.https.keystore {
-             |  store-password = "jobscheduler"
-             |  key-password = "jobscheduler"
-             |}
-             |""".stripMargin
-        configDir / "private/https-keystore.p12" := keyStore.contentBytes
-        provideTrustStore(AgentTrustStoreResource, "agent-https-truststore.p12")
-        for ((o, i) <- trustStores.zipWithIndex) {
-          provideTrustStore(o, s"extra-${i+1}-https-truststore.p12")
-        }
-      }
-    }
-
-    private def provideTrustStore(resource: JavaResource, filename: String): Unit = {
-      val trustStore = configDir / "private" / filename
-      trustStore := resource.contentBytes
-      configDir / "private/private.conf" ++= s"""
-         |js7.auth.users.${userAndPassword.userId.string}.password = "plain:${userAndPassword.password.string}"
-         |js7.web.https.truststores += {
-         |  file = ${quoteString(trustStore.toString)}
-         |  store-password = "jobscheduler"
-         |}
-         |""".stripMargin
-    }
-
-    def writeAgentAuthentication(agentTree: AgentTree): Unit =
-      if (!agentHttpsMutual) {
-        val quotedAgentPath = quoteString(agentTree.agentPath.string)
-        val quotedPassword = quoteString(agentTree.password.string)
-        (configDir / "private" / "private.conf") ++=
-          s"js7.auth.agents.$quotedAgentPath = $quotedPassword\n"
-      } else {
-        // Agent uses the distinguished name of the Controller's HTTPS certificate
-      }
-  }
-
-  final class AgentTree(rootDirectory: Path,
-    val agentPath: AgentPath,
-    localSubagentItem: SubagentItem,
-    name: String,
-    mutualHttps: Boolean = false,
-    provideHttpsCertificate: Boolean = false, provideClientCertificate: Boolean = false,
-    bareSubagentIds: Seq[SubagentId] = Nil,
-    subagentsDisabled: Boolean = false,
-    config: Config = ConfigFactory.empty)
-  extends Tree {
-    val directory = rootDirectory / agentPath.string
-    val journalFileBase = stateDir / "agent"
-
-    val localUri = localSubagentItem.uri
-    private val port = localSubagentItem.uri.port.orThrow
-    private val https = localSubagentItem.uri.string.startsWith("https:")
-    lazy val agentConfiguration = AgentConfiguration.forTest(directory,
-      name = name,
-      config.withFallback(bareSubagentIds
-        .map(subagentId => config"""js7.auth.subagents.${subagentId.string} = "AGENT-PASSWORD" """)
-        .combineAll),
-      httpPort = !https ? port,
-      httpsPort = https ? port)
-    lazy val password = SecretString(s"$agentPath-PASSWORD")
-    lazy val userAndPassword = Some(UserAndPassword(UserId("Controller"), password))
-    lazy val executables = configDir / "executables"
-    lazy val bareSubagentItems =
-      for (subagentId <- bareSubagentIds) yield
-        SubagentItem(
-          subagentId, agentPath, Uri(s"http://localhost:${findFreeTcpPort()}"),
-          disabled = subagentsDisabled)
-    lazy val subagentItems = localSubagentItem +: bareSubagentItems
-
-    def localSubagentId: SubagentId =
-      localSubagentItem.id
-
-    override def createDirectoriesAndFiles(): Unit = {
-      super.createDirectoriesAndFiles()
-      createDirectory(executables)
-      if (provideHttpsCertificate) {
-        (configDir / "private/https-keystore.p12") := AgentKeyStoreResource.contentBytes
-        if (provideClientCertificate) {
-          configDir / "private/controller-https-truststore.p12" := ExportedControllerTrustStoreResource.contentBytes
-          configDir / "private/private.conf" ++= s"""
-             |js7.web.https.truststores = [
-             |  {
-             |    file = $${js7.config-directory}/private/controller-https-truststore.p12
-             |    store-password = "jobscheduler"
-             |  }
-             |]""".stripMargin
-        }
-      }
-      configDir / "private" / "private.conf" ++= s"""
-         |js7.auth.users {
-         |  Controller {
-         |    password = ${quoteString("plain:" + password.string)}
-         |    distinguished-names = [
-         |      "CN=Primary Controller, DC=primary-controller, DC=DirectoryProvider, DC=tests, DC=js7, DC=sh",
-         |      "CN=Backup Controller,DC=backup-controller,DC=HttpsTestBase,DC=tests,DC=js7,DC=sh"
-         |    ]
-         |  }
-         |}
-         |js7.web.server.auth.https-client-authentication = $mutualHttps
-         |js7.web.https.keystore {
-         |  store-password = "jobscheduler"
-         |  key-password = "jobscheduler"
-         |}
-         |""".stripMargin
-    }
-
-    def writeTrustedSignatureKeys(verifier: SignatureVerifier): Unit =
-      DirectoryProvider.writeTrustedSignatureKeys(verifier, configDir, "agent.conf")
-
-    def writeExecutable(path: RelativePathExecutable, string: String): Unit =
-      path.toFile(executables).writeUtf8Executable(string)
-  }
 
   final val StdoutOutput = if (isWindows) "TEST\r\n" else "TEST ☘\n"
 
@@ -616,25 +488,6 @@ object DirectoryProvider
           |done
           |""".stripMargin + (delete ?? s"rm '$file'\n")
 
-  private def writeTrustedSignatureKeys(
-    verifier: SignatureVerifier,
-    configDir: Path,
-    confFilename: String)
-  : Unit = {
-    val dir = "private/" + verifier.companion.recommendedKeyDirectoryName
-    createDirectory(configDir / dir)
-    for ((key, i) <- verifier.publicKeys.zipWithIndex) {
-      val file = configDir / dir / (s"key-${i+1}${verifier.companion.filenameExtension}")
-      logger.trace(s"$file := key")
-      file := key
-    }
-    configDir / confFilename ++=
-      s"""js7.configuration.trusted-signature-keys {
-         |  ${verifier.companion.typeName} = $${js7.config-directory}"/$dir"
-         |}
-         |""".stripMargin
-  }
-
   /* Following resources have been generated with the command line:
      js7-common/src/main/resources/js7/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh \
         --distinguished-name="CN=Primary Controller, DC=primary-controller, DC=DirectoryProvider, DC=tests, DC=js7, DC=sh" \
@@ -642,8 +495,8 @@ object DirectoryProvider
         --host=localhost \
         --config-directory=js7-tests/src/test/resources/js7/tests/controller/config
    */
-  val ControllerKeyStoreResource = JavaResource("js7/tests/controller/config/private/https-keystore.p12")
-  lazy val controllerClientKeyStoreRef = KeyStoreRef(
+  private[testenv] val ControllerKeyStoreResource = JavaResource("js7/tests/controller/config/private/https-keystore.p12")
+  private[testenv] lazy val controllerClientKeyStoreRef = KeyStoreRef(
     ControllerKeyStoreResource.url,
     alias = None,
     SecretString("jobscheduler"),
@@ -666,8 +519,10 @@ object DirectoryProvider
         --host=localhost \
         --config-directory=js7-tests/src/test/resources/js7/tests/agent/config
    */
-  private val AgentKeyStoreResource   = JavaResource("js7/tests/agent/config/private/https-keystore.p12")
-  private val AgentTrustStoreResource = JavaResource("js7/tests/agent/config/export/https-truststore.p12")
+  private[testenv] val AgentKeyStoreResource   = JavaResource(
+    "js7/tests/agent/config/private/https-keystore.p12")
+  private[testenv] val AgentTrustStoreResource = JavaResource(
+    "js7/tests/agent/config/export/https-truststore.p12")
 
   final lazy val (defaultSigner, defaultVerifier) = PgpSigner.forTest()
 

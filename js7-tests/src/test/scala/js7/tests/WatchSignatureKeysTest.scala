@@ -72,9 +72,9 @@ final class WatchSignatureKeysTest extends OurTestSuite with ControllerAgentForS
     X509SignatureVerifier.checked(Seq(aCertAndKey.certificate)).orThrow
 
   private lazy val controllersKeyDirectory =
-    directoryProvider.controller.configDir / "private" / "trusted-x509-keys"
+    directoryProvider.controllerEnv.configDir / "private" / "trusted-x509-keys"
   private lazy val agentsKeyDirectory =
-    directoryProvider.agents.head.configDir / "private" / "trusted-x509-keys"
+    directoryProvider.agentEnvs.head.configDir / "private" / "trusted-x509-keys"
   private lazy val subagentsKeyDirectory = directoryProvider
     .bareSubagentToDirectory(bareSubagentId) / "config" / "private" / "trusted-x509-keys"
 

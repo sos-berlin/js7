@@ -17,8 +17,8 @@ final class ControllerClientMainTest extends OurTestSuite with ControllerAgentFo
 {
   protected val agentPaths = Nil
   protected val items = Nil
-  private def configDirectory = directoryProvider.controller.configDir
-  private def dataDirectory = directoryProvider.controller.dataDir
+  private def configDirectory = directoryProvider.controllerEnv.configDir
+  private def dataDirectory = directoryProvider.controllerEnv.dataDir
   private val httpsPort = findFreeTcpPort()
   override protected lazy val controllerHttpPort = None
   override protected lazy val controllerHttpsPort = Some(httpsPort)

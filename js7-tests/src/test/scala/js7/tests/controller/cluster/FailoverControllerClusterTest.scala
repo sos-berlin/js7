@@ -25,8 +25,8 @@ import js7.data.order.{FreshOrder, OrderId}
 import js7.data.value.NumberValue
 import js7.journal.files.JournalFiles
 import js7.journal.files.JournalFiles.JournalMetaOps
-import js7.tests.controller.cluster.FailoverControllerClusterTest.*
 import js7.tests.controller.cluster.ControllerClusterTester.*
+import js7.tests.controller.cluster.FailoverControllerClusterTest.*
 import js7.tests.testenv.ControllerClusterForScalaTest.assertEqualJournalFiles
 import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.Deadline.now
@@ -81,7 +81,7 @@ class FailoverControllerClusterTest protected extends ControllerClusterTester
         // The primary truncates the journal file according to the position of FailedOver.
         val line = Stamped[KeyedEvent[ControllerEvent]](EventId.MaxValue - 2, ControllerTestEvent)
           .asJson.compactPrint + "\n"
-        JournalFiles.listJournalFiles(primary.controller.stateDir / "controller")
+        JournalFiles.listJournalFiles(primary.controllerEnv.stateDir / "controller")
           .last.file
           .append(line)
       }
@@ -99,7 +99,7 @@ class FailoverControllerClusterTest protected extends ControllerClusterTester
       }
       primaryController.eventWatch.await[ClusterCoupled](after = failedOverEventId)
       backupController.eventWatch.await[ClusterCoupled](after = failedOverEventId)
-      assertEqualJournalFiles(primary.controller, backup.controller, n = 1)
+      assertEqualJournalFiles(primary.controllerEnv, backup.controllerEnv, n = 1)
 
       backupController.api.executeCommand(ClusterSwitchOver()).await(99.s).orThrow
       val recoupledEventId = primaryController.eventWatch.await[ClusterSwitchedOver](after = failedOverEventId).head.eventId

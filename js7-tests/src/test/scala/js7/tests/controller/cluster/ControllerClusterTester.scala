@@ -2,6 +2,7 @@ package js7.tests.controller.cluster
 
 import js7.base.test.OurTestSuite
 import js7.data.agent.AgentPath
+import js7.data.item.InventoryItem
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.controller.cluster.ControllerClusterTester.*
@@ -12,7 +13,8 @@ private[cluster] trait ControllerClusterTester
 extends OurTestSuite
 with ControllerClusterForScalaTest
 {
-  protected def items = Seq(TestWorkflow)
+  protected def items: Seq[InventoryItem] =
+    Seq(TestWorkflow)
 }
 
 object ControllerClusterTester

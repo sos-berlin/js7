@@ -25,8 +25,8 @@ final class IfTest extends OurTestSuite
 {
   "test" in {
     autoClosing(new DirectoryProvider(agentPath :: Nil, items = Seq(TestWorkflow), testName = Some("IfTest"))) { directoryProvider =>
-      for (a <- directoryProvider.agents) a.writeExecutable(RelativePathExecutable(s"TEST$sh"), ":")
-      for (a <- directoryProvider.agents) a.writeExecutable(RelativePathExecutable(s"TEST-RC$sh"), jobScript)
+      for (a <- directoryProvider.agentEnvs) a.writeExecutable(RelativePathExecutable(s"TEST$sh"), ":")
+      for (a <- directoryProvider.agentEnvs) a.writeExecutable(RelativePathExecutable(s"TEST-RC$sh"), jobScript)
 
       directoryProvider.run { (controller, _) =>
         for (returnCode <- ExpectedEvents.keys) withClue(s"$returnCode: ") {
@@ -52,7 +52,7 @@ final class IfTest extends OurTestSuite
     val directoryProvider = new DirectoryProvider(agentPath :: Nil, items = Seq(workflow),
       testName = Some("IfTest"))
     autoClosing(directoryProvider) { directoryProvider =>
-      for (a <- directoryProvider.agents) a.writeExecutable(RelativePathExecutable(s"TEST$sh"), ":")
+      for (a <- directoryProvider.agentEnvs) a.writeExecutable(RelativePathExecutable(s"TEST$sh"), ":")
       directoryProvider.run { (controller, _) =>
         val orderId = OrderId("❌")
         controller.addOrderBlocking(FreshOrder(orderId, TestWorkflow.id.path))

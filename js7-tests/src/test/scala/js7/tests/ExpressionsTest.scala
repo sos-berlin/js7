@@ -24,8 +24,8 @@ final class ExpressionsTest extends OurTestSuite
 {
   "test" in {
     autoClosing(new DirectoryProvider(TestAgentPath :: Nil, items = Seq(TestWorkflow), testName = Some("ExpressionsTest"))) { directoryProvider =>
-      for (a <- directoryProvider.agents) a.writeExecutable(RelativePathExecutable(s"TEST$sh"), ":")
-      for (a <- directoryProvider.agents) a.writeExecutable(RelativePathExecutable(s"TEST-RC$sh", v1Compatible = true), jobScript)
+      for (a <- directoryProvider.agentEnvs) a.writeExecutable(RelativePathExecutable(s"TEST$sh"), ":")
+      for (a <- directoryProvider.agentEnvs) a.writeExecutable(RelativePathExecutable(s"TEST-RC$sh", v1Compatible = true), jobScript)
 
       directoryProvider.run { (controller, _) =>
         for (order <- orders) withClue(s"Order ${order.id.string}: ") {

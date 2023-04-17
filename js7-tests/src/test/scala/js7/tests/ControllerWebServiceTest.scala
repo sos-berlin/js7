@@ -43,7 +43,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.journal.EventIdClock
 import js7.tester.CirceJsonTester.testJson
 import js7.tests.ControllerWebServiceTest.*
-import js7.tests.testenv.{ControllerAgentForScalaTest, DirectoryProvider}
+import js7.tests.testenv.{ControllerAgentForScalaTest, ControllerEnv, SubagentEnv}
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
@@ -66,8 +66,8 @@ extends OurTestSuite with BeforeAndAfterAll with ControllerAgentForScalaTest
 
   protected val agentPaths = TestAgentPath :: AgentPath("AGENT-A") :: Nil
   protected val items = Nil
-  private lazy val agent1Uri = directoryProvider.agents(0).localUri
-  private lazy val agent2Uri = directoryProvider.agents(1).localUri
+  private lazy val agent1Uri = directoryProvider.agentEnvs(0).localUri
+  private lazy val agent2Uri = directoryProvider.agentEnvs(1).localUri
   private lazy val httpClient = new SimpleAkkaHttpClient(label = "ControllerWebServiceTest", uri, "/controller")
     .closeWithCloser
 
@@ -85,11 +85,11 @@ extends OurTestSuite with BeforeAndAfterAll with ControllerAgentForScalaTest
   private implicit def materializer: Materializer = httpClient.materializer
 
   override def beforeAll() = {
-    directoryProvider.controller.configDir / "controller.conf" ++=
+    directoryProvider.controllerEnv.configDir / "controller.conf" ++=
       """js7.journal.sync = off
          js7.journal.delay = 0s"""
-    writeControllerConfiguration(directoryProvider.controller)
-    writeAgentConfiguration(directoryProvider.agents(0))
+    writeControllerConfiguration(directoryProvider.controllerEnv)
+    writeAgentConfiguration(directoryProvider.agentEnvs(0))
     super.beforeAll()
   }
 
@@ -421,7 +421,7 @@ extends OurTestSuite with BeforeAndAfterAll with ControllerAgentForScalaTest
 
 object ControllerWebServiceTest
 {
-  private def writeControllerConfiguration(controller: DirectoryProvider.ControllerTree): Unit = {
+  private def writeControllerConfiguration(controller: ControllerEnv): Unit = {
     controller.configDir / "controller.conf" ++= """
       |js7.web.server.test = true
       |""".stripMargin
@@ -435,7 +435,7 @@ object ControllerWebServiceTest
       |""".stripMargin)
   }
 
-  private def writeAgentConfiguration(agent: DirectoryProvider.AgentTree): Unit = {
+  private def writeAgentConfiguration(agent: SubagentEnv): Unit = {
     agent.writeExecutable(RelativePathExecutable(s"A$sh"), operatingSystem.sleepingShellScript(1.s))  // Allow some time to check web service before order finishes
     agent.writeExecutable(RelativePathExecutable(s"B$sh"), operatingSystem.sleepingShellScript(0.s))
   }

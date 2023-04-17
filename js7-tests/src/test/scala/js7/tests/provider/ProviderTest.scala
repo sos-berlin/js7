@@ -91,7 +91,7 @@ final class ProviderTest extends OurTestSuite with ControllerAgentForScalaTest
          |js7.provider.controller.password = "$loginPassword"
          """.stripMargin
 
-    directoryProvider.controller.configDir / "private" / "private.conf" ++=
+    directoryProvider.controllerEnv.configDir / "private" / "private.conf" ++=
      s"""js7.auth.users {
         |  $loginName {
         |    password = "plain:$loginPassword"
@@ -100,7 +100,7 @@ final class ProviderTest extends OurTestSuite with ControllerAgentForScalaTest
         |}
       """.stripMargin
 
-    directoryProvider.agents.head.writeExecutable(RelativePathExecutable("EXECUTABLE.cmd"), ":")
+    directoryProvider.agentEnvs.head.writeExecutable(RelativePathExecutable("EXECUTABLE.cmd"), ":")
 
     createDirectories(providerDirectory / "private")
     createDirectories(providerDirectory / "live" / "folder")

@@ -29,10 +29,10 @@ import js7.data.job.RelativePathExecutable
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.tests.https.HttpsTestBase.*
 import js7.tests.testenv.DirectoryProvider.{ExportedControllerTrustStoreRef, ExportedControllerTrustStoreResource}
-import js7.tests.testenv.{ControllerAgentForScalaTest, DirectoryProvider}
+import js7.tests.testenv.{ControllerAgentForScalaTest, ControllerEnv, DirectoryProvider, SubagentEnv}
+import monix.execution.Scheduler.Implicits.global
 import org.scalatest.BeforeAndAfterAll
 import scala.concurrent.duration.*
-import monix.execution.Scheduler.Implicits.global
 
 /**
   * Controller and Agent with server-side HTTPS.
@@ -175,8 +175,8 @@ extends OurTestSuite with BeforeAndAfterAll with ControllerAgentForScalaTest wit
 
   override def beforeAll() = {
     clientKeyStore := ClientKeyStoreResource.contentBytes
-    provideAgentConfiguration(directoryProvider.agents(0))
-    provideControllerConfiguration(directoryProvider.controller)
+    provideAgentConfiguration(directoryProvider.agentEnvs(0))
+    provideControllerConfiguration(directoryProvider.controllerEnv)
     // We have provided our own certificates: backupDirectoryProvider.controller.provideHttpsCertificates()
 
     super.beforeAll()
@@ -224,10 +224,10 @@ private[https] object HttpsTestBase
       execute executable="TEST$sh", agent="TEST-AGENT";
     }""").orThrow
 
-  private def provideAgentConfiguration(agent: DirectoryProvider.AgentTree): Unit =
+  private def provideAgentConfiguration(agent: SubagentEnv): Unit =
     agent.writeExecutable(RelativePathExecutable(s"TEST$sh"), operatingSystem.sleepingShellScript(0.seconds))
 
-  private def provideControllerConfiguration(controller: DirectoryProvider.ControllerTree): Unit =
+  private def provideControllerConfiguration(controller: ControllerEnv): Unit =
     controller.configDir / "private/private.conf" ++= """
       |js7.auth.users {
       |  TEST-USER: "plain:TEST-PASSWORD"

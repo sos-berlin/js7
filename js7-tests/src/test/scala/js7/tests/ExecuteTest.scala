@@ -59,7 +59,7 @@ final class ExecuteTest extends OurTestSuite with ControllerAgentForScalaTest
   private lazy val myReturnCodeScriptFile = createTempFile("ExecuteTest-myExitCode-", ".cmd")
 
   override def beforeAll() = {
-    for (a <- directoryProvider.agents) {
+    for (a <- directoryProvider.agentEnvs) {
      a.writeExecutable(RelativePathExecutable("TEST-SCRIPT.cmd"), returnCodeScript("myExitCode"))
     }
     argScriptFile.writeUtf8Executable(

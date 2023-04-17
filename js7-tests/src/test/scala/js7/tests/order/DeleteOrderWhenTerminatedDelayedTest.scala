@@ -27,7 +27,7 @@ final class DeleteOrderWhenTerminatedDelayedTest extends OurTestSuite with Contr
     .withFallback(super.controllerConfig)
 
   override def beforeAll() = {
-    for (a <- directoryProvider.agents) a.writeExecutable(pathExecutable, script(1.s))
+    for (a <- directoryProvider.agentEnvs) a.writeExecutable(pathExecutable, script(1.s))
     super.beforeAll()
   }
 

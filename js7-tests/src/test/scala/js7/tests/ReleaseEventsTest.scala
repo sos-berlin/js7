@@ -49,8 +49,8 @@ final class ReleaseEventsTest extends OurTestSuite with DirectoryProviderForScal
     """
 
   "ReleaseEvents" in {
-    for ((_, tree) <- directoryProvider.agentToTree) {
-      tree.writeExecutable(TestPathExecutable, script(0.s))
+    for ((_, env) <- directoryProvider.agentToEnv) {
+      env.writeExecutable(TestPathExecutable, script(0.s))
     }
 
     directoryProvider.run { (controller, _) =>
@@ -58,8 +58,8 @@ final class ReleaseEventsTest extends OurTestSuite with DirectoryProviderForScal
       controller.runOrder(aOrder)
     }
 
-    def controllerJournalFiles = listJournalFiles(directoryProvider.controller.dataDir / "state" / "controller")
-    def agentJournalFiles = listJournalFiles(directoryProvider.agents(0).dataDir / "state" / "agent")
+    def controllerJournalFiles = listJournalFiles(directoryProvider.controllerEnv.dataDir / "state" / "controller")
+    def agentJournalFiles = listJournalFiles(directoryProvider.agentEnvs(0).dataDir / "state" / "agent")
 
     def assertControllerJournalFileCount(n: Int): Unit = {
       waitForCondition(9.s, 10.ms) { controllerJournalFiles.size == n }

@@ -60,7 +60,7 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
     """
 
   // Calculate directory path from an environment variable
-  private val watchPrefix = (directoryProvider.agents(0).dataDir / "work").toString + File.separator
+  private val watchPrefix = (directoryProvider.agentEnvs(0).dataDir / "work").toString + File.separator
   private val watchDirectory = Paths.get(watchPrefix + "files")
   private val envName = getClass.getName
   EnvScope.putForTest(envName, "files")
@@ -73,7 +73,7 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
   private def fileToOrderId(filename: String): OrderId =
     FileWatchManager.relativePathToOrderId(fileWatch, filename).get.orThrow
 
-  private lazy val waitingWatchDirectory = directoryProvider.agents(0).dataDir / "work/files-waiting"
+  private lazy val waitingWatchDirectory = directoryProvider.agentEnvs(0).dataDir / "work/files-waiting"
   private lazy val waitingFileWatch = FileWatch(
     OrderWatchPath("WAITING-WATCH"),
     waitingWorkflow.path,

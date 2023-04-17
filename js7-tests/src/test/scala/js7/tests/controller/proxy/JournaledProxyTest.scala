@@ -65,7 +65,7 @@ extends OurTestSuite with BeforeAndAfterAll with ProvideActorSystem with Control
 
   override def beforeAll() = {
     super.beforeAll()
-    directoryProvider.agents.head.writeExecutable(RelativePathExecutable("TEST.cmd"), script(100.ms))
+    directoryProvider.agentEnvs.head.writeExecutable(RelativePathExecutable("TEST.cmd"), script(100.ms))
     proxy
   }
 

@@ -23,7 +23,7 @@ final class FileWatchInjectionTest extends OurTestSuite with ControllerAgentForS
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]"""
 
-  private val sourceDirectory = directoryProvider.agents(0).dataDir / "tmp/files"
+  private val sourceDirectory = directoryProvider.agentEnvs(0).dataDir / "tmp/files"
 
   private lazy val fileWatch = FileWatch(
     OrderWatchPath("TEST-WATCH"),

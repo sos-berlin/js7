@@ -44,7 +44,7 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
 
   protected final lazy val directoryProvider = new DirectoryProvider(
     agentPaths,
-    bareSubagentIds,
+    agentToBareSubagent = bareSubagentIds,
     items = items,
     controllerConfig = controllerConfig,
     agentHttps = agentHttps,
@@ -72,7 +72,7 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
     Uri(controllerHttpPort
       .map(port => s"http://127.0.0.1:$port")
       .getOrElse(s"https://localhost:${controllerHttpsPort.get}")),
-    Some(directoryProvider.controller.userAndPassword))
+    Some(directoryProvider.controllerEnv.userAndPassword))
   protected def agentHttpsMutual = false
   protected def provideAgentHttpsCertificate = false
   protected def provideAgentClientCertificate = false

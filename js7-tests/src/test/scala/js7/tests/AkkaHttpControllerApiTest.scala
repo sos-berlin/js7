@@ -4,9 +4,9 @@ import js7.base.BuildInfo
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax.*
+import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.base.test.OurTestSuite
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.web.Uri
 import js7.controller.client.AkkaHttpControllerApi
@@ -39,7 +39,7 @@ final class AkkaHttpControllerApiTest extends OurTestSuite with ControllerAgentF
     ).closeWithCloser
 
   override def beforeAll() = {
-    directoryProvider.controller.configDir / "private" / "private.conf" ++= """
+    directoryProvider.controllerEnv.configDir / "private" / "private.conf" ++= """
         |js7.auth.users.TEST-USER = "plain:TEST-PASSWORD"
         |""".stripMargin
     super.beforeAll()

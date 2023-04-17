@@ -33,7 +33,7 @@ final class RetryTest extends OurTestSuite with ControllerAgentForScalaTest
   protected val items = Nil
 
   override def beforeAll() = {
-    for (a <- directoryProvider.agents) {
+    for (a <- directoryProvider.agentEnvs) {
       a.writeExecutable(RelativePathExecutable(s"OKAY$sh"), ":")
       a.writeExecutable(RelativePathExecutable(s"FAIL-1$sh"), if (isWindows) "@exit 1" else "exit 1")
       a.writeExecutable(RelativePathExecutable(s"FAIL-2$sh"), if (isWindows) "@exit 2" else "exit 2")

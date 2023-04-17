@@ -33,11 +33,11 @@ final class ObsoleteJournalFilesRemovedTest extends OurTestSuite with DirectoryP
 
 
   "Obsolete journal files are removed if nothing has been configured" in {
-    for ((_, tree) <- directoryProvider.agentToTree) {
-      tree.writeExecutable(pathExecutable, script(0.s))
+    for ((_, env) <- directoryProvider.agentToEnv) {
+      env.writeExecutable(pathExecutable, script(0.s))
     }
 
-    def controllerJournalFiles = listJournalFiles(directoryProvider.controller.dataDir / "state" / "controller")
+    def controllerJournalFiles = listJournalFiles(directoryProvider.controllerEnv.dataDir / "state" / "controller")
 
     directoryProvider.run { (controller, _) =>
       controller.runOrder(aOrder)

@@ -58,8 +58,8 @@ final class FileWatch2Test extends OurTestSuite with DirectoryProviderForScalaTe
     js7.job.execution.signed-script-injection-allowed = on
     """
 
-  private val aDirectory = directoryProvider.agents(0).dataDir / "work/a-files"
-  private val bDirectory = directoryProvider.agents(0).dataDir / "work/b-files"
+  private val aDirectory = directoryProvider.agentEnvs(0).dataDir / "work/a-files"
+  private val bDirectory = directoryProvider.agentEnvs(0).dataDir / "work/b-files"
 
   val orderWatchPath = OrderWatchPath("FILE-WATCH")
 
@@ -197,7 +197,7 @@ final class FileWatch2Test extends OurTestSuite with DirectoryProviderForScalaTe
             assert(!exists(file))
           }
           val client = AgentClient(agentUri = aAgent.localUri,
-            directoryProvider.agents.head.userAndPassword)(aAgent.actorSystem)
+            directoryProvider.agentEnvs.head.userAndPassword)(aAgent.actorSystem)
           checkAgentEvents(client)
         }
       }

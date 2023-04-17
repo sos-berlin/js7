@@ -51,11 +51,11 @@ final class JControllerProxyTest extends OurTestSuite with DirectoryProviderForS
 
   override def beforeAll() = {
     super.beforeAll()
-    (directoryProvider.controller.configDir / "private" / "private.conf") ++= """
+    (directoryProvider.controllerEnv.configDir / "private" / "private.conf") ++= """
       |js7.auth.users.TEST-USER = "plain:TEST-PASSWORD"
       |""".stripMargin
 
-    for (configDir <- List(directoryProvider.controller.configDir, directoryProvider.agents(0).configDir)) {
+    for (configDir <- List(directoryProvider.controllerEnv.configDir, directoryProvider.agentEnvs(0).configDir)) {
       (configDir / "private" / "private.conf") ++= s"""
         |js7.configuration.trusted-signature-keys.Silly = $${js7.config-directory}"/private/trusted-silly-signature-keys"
         |""".stripMargin
@@ -63,7 +63,7 @@ final class JControllerProxyTest extends OurTestSuite with DirectoryProviderForS
       configDir / "private/trusted-silly-signature-keys/key.silly" := "MY-SILLY-SIGNATURE"
     }
 
-    directoryProvider.agents.head.writeExecutable(RelativePathExecutable("TEST.cmd"), script(1.s))
+    directoryProvider.agentEnvs.head.writeExecutable(RelativePathExecutable("TEST.cmd"), script(1.s))
   }
 
   "JControllerProxy" in {

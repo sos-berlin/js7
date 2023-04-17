@@ -62,7 +62,7 @@ final class ProxyHistoryTest extends OurTestSuite with ProvideActorSystem with C
 
   "Read event stream in small parts and write history" in {
     withControllerAndBackup() { (primary, _, backup, _, _) =>
-      def listJournalFilenames = listJournalFiles(primary.controller.dataDir / "state" / "controller")
+      def listJournalFilenames = listJournalFiles(primary.controllerEnv.dataDir / "state" / "controller")
         .map(_.file.getFileName.toString)
 
       def assertJournalFileCount(n: Int)(implicit pos: source.Position): Unit = {
@@ -217,7 +217,7 @@ final class ProxyHistoryTest extends OurTestSuite with ProvideActorSystem with C
         val api = context.newControllerApi(
           admissions.map(JAdmission.apply).toList.asJava,
           JHttpsConfig.empty)
-        val javaTester = new JControllerApiHistoryTester(api, TestWorkflow.path, primary.agents.map(_.localUri).asJava)
+        val javaTester = new JControllerApiHistoryTester(api, TestWorkflow.path, primary.agentEnvs.map(_.localUri).asJava)
         javaTester.test()
         javaTester.testTorn()
       }

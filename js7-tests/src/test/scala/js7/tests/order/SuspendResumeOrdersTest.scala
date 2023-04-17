@@ -56,7 +56,7 @@ with BlockingItemUpdater
   import controller.api.{addOrder, executeCommand}
 
   override def beforeAll() = {
-    for (a <- directoryProvider.agents) {
+    for (a <- directoryProvider.agentEnvs) {
       a.writeExecutable(pathExecutable, waitingForFileScript(triggerFile, delete = true))
     }
     super.beforeAll()

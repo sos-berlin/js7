@@ -6,14 +6,14 @@ import java.nio.file.Path
 import js7.base.io.file.FileUtils.deleteDirectoryContentRecursively
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger
-import js7.controller.tests.TestEnvironment.*
+import js7.controller.tests.TestDockerEnvironment.*
 import js7.data.agent.AgentPath
 import js7.data.item.{SourceType, VersionedItemPath}
 
 /**
   * @author Joacim Zschimmer
   */
-final class TestEnvironment(agentPaths: Seq[AgentPath], temporaryDirectory: Path)
+final class TestDockerEnvironment(agentPaths: Seq[AgentPath], temporaryDirectory: Path)
 extends AutoCloseable {
 
   if (exists(temporaryDirectory)) {
@@ -47,6 +47,6 @@ extends AutoCloseable {
   def agentsDir = temporaryDirectory / "agents"
 }
 
-object TestEnvironment {
+object TestDockerEnvironment {
   private val logger = Logger(getClass)
 }

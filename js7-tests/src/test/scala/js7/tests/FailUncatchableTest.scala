@@ -187,10 +187,11 @@ final class FailUncatchableTest extends OurTestSuite
   private def runUntil[E <: OrderEvent: ClassTag: Tag](workflowNotation: String): Vector[KeyedEvent[OrderEvent]] = {
     val workflow = WorkflowParser.parse(TestWorkflowId, workflowNotation).orThrow
     val directoryProvider = new DirectoryProvider(
-      TestAgentPath :: Nil, Map.empty, workflow :: Nil, testName = Some("FailUncatchableTest"))
+      Seq(TestAgentPath), items = Seq(workflow), testName = Some("FailUncatchableTest"))
     autoClosing(directoryProvider) { _ =>
-      directoryProvider.agents.head.writeExecutable(RelativePathExecutable("test.cmd"), "exit 3")
-      directoryProvider.agents.head.writeExecutable(RelativePathExecutable("sleep.cmd"), DirectoryProvider.script(100.ms))
+      directoryProvider.agentEnvs.head.writeExecutable(RelativePathExecutable("test.cmd"), "exit 3")
+      directoryProvider.agentEnvs.head
+        .writeExecutable(RelativePathExecutable("sleep.cmd"), DirectoryProvider.script(100.ms))
       directoryProvider.run { (controller, _) =>
         controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
         controller.eventWatch.await[E](_.key == orderId)

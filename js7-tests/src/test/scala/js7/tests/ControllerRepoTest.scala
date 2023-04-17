@@ -58,8 +58,8 @@ final class ControllerRepoTest extends OurTestSuite
       import provider.itemSigner
 
       for (v <- 1 to 4)  // For each version, we use a dedicated job which echos the VersionId
-        provider.agents.head.writeExecutable(RelativePathExecutable(s"EXECUTABLE-V$v$sh"), (isWindows ?? "@") + s"echo /VERSION-$v/")
-      provider.controller.configDir / "controller.conf" ++=
+        provider.agentEnvs.head.writeExecutable(RelativePathExecutable(s"EXECUTABLE-V$v$sh"), (isWindows ?? "@") + s"echo /VERSION-$v/")
+      provider.controllerEnv.configDir / "controller.conf" ++=
         """js7.auth.users.TEST-USER {
           |  password = "plain:TEST-PASSWORD"
           |  permissions = [ UpdateItem ]

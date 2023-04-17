@@ -179,7 +179,7 @@ final class ResetAgentTest extends OurTestSuite with ControllerAgentForScalaTest
     myAgent.stop.await(99.s)
 
     // Create some file to let it look like the Agent could not delete the journal
-    val stateDir = directoryProvider.agentToTree(agentPath).stateDir
+    val stateDir = directoryProvider.agentToEnv(agentPath).stateDir
     val markerFile = stateDir / "agent-DELETE!"
     touchFile(markerFile)
     val journalFile = stateDir / "agent--0.journal"
@@ -204,12 +204,12 @@ final class ResetAgentTest extends OurTestSuite with ControllerAgentForScalaTest
     // is easy to code. It is expected to work for different ControllerId, too.
 
     val eventId = eventWatch.lastAddedEventId
-    val agentTree = directoryProvider.agents(0)
+    val agentEnv = directoryProvider.agentEnvs(0)
     val secondProvider = new DirectoryProvider(
       testName = Some("ResetAgentTest-second"),
       agentPaths = Nil,
       controllerConfig = config"""
-        js7.auth.agents.AGENT = "${agentTree.password.string}"
+        js7.auth.agents.AGENT = "${agentEnv.password.string}"
       """.withFallback(controllerConfig))
     autoClosing(secondProvider) { _ =>
       secondProvider.runController() { secondController =>
@@ -217,11 +217,11 @@ final class ResetAgentTest extends OurTestSuite with ControllerAgentForScalaTest
         val secondControllerApi = new ControllerApi(
           admissionsToApiResources(Nel.one(Admission(
             secondController.localUri,
-            Some(directoryProvider.controller.userAndPassword))
+            Some(directoryProvider.controllerEnv.userAndPassword))
           ))(secondController.actorSystem))
         secondControllerApi.updateItems(Observable(
-          AddOrChangeSimple(AgentRef(agentPath, Seq(agentTree.localSubagentId))),
-          AddOrChangeSimple(SubagentItem(agentTree.localSubagentId, agentPath, agents(0).localUri)),
+          AddOrChangeSimple(AgentRef(agentPath, Seq(agentEnv.localSubagentId))),
+          AddOrChangeSimple(SubagentItem(agentEnv.localSubagentId, agentPath, agents(0).localUri)),
           AddOrChangeSigned(secondProvider.toSignedString(jobResource)),
           AddVersion(v1),
           AddOrChangeSigned(secondProvider.toSignedString(simpleWorkflow.withVersion(v1))))

@@ -29,7 +29,7 @@ final class AttachSignedItemTest extends OurTestSuite with DirectoryProviderForS
     directoryProvider.runAgents() { agents =>
       val agent = agents.head
       val agentApi = agent.untilReady.await(99.s).api.apply(
-        CommandMeta(SimpleUser(directoryProvider.agents(0).userAndPassword.get.userId)))
+        CommandMeta(SimpleUser(directoryProvider.agentEnvs(0).userAndPassword.get.userId)))
       assert(agentApi
         .commandExecute(
           DedicateAgentDirector(Seq(SubagentId("SUBAGENT")), controllerId, agentPath))

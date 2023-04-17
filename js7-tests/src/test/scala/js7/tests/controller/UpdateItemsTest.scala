@@ -45,7 +45,7 @@ with BlockingItemUpdater
   protected val items = Nil
 
   override def beforeAll() = {
-    (directoryProvider.controller.configDir / "private" / "private.conf") ++=
+    (directoryProvider.controllerEnv.configDir / "private" / "private.conf") ++=
        """js7.auth.users {
          |  TEST-USER {
          |    permissions = [ UpdateItem ]
@@ -55,9 +55,9 @@ with BlockingItemUpdater
          |  }
          |}
          |""".stripMargin
-    directoryProvider.agentToTree(agentPath).writeExecutable(RelativePathExecutable("SCRIPT1.cmd"), sleepingShellScript(2 * Tick))
-    directoryProvider.agentToTree(agentPath).writeExecutable(RelativePathExecutable("SCRIPT2.cmd"), ":")
-    directoryProvider.agentToTree(agentPath).writeExecutable(RelativePathExecutable("SCRIPT4.cmd"), ":")
+    directoryProvider.agentToEnv(agentPath).writeExecutable(RelativePathExecutable("SCRIPT1.cmd"), sleepingShellScript(2 * Tick))
+    directoryProvider.agentToEnv(agentPath).writeExecutable(RelativePathExecutable("SCRIPT2.cmd"), ":")
+    directoryProvider.agentToEnv(agentPath).writeExecutable(RelativePathExecutable("SCRIPT4.cmd"), ":")
     super.beforeAll()
   }
 

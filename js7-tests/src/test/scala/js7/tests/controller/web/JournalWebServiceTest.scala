@@ -53,7 +53,7 @@ final class JournalWebServiceTest extends OurTestSuite with BeforeAndAfterAll wi
 
   override def beforeAll() = {
     super.beforeAll()
-    directoryProvider.agents(0).writeExecutable(pathExecutable, script(3.s))
+    directoryProvider.agentEnvs(0).writeExecutable(pathExecutable, script(3.s))
   }
 
   override protected val controllerConfig = config"""

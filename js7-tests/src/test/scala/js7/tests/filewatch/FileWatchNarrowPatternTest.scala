@@ -36,7 +36,7 @@ final class FileWatchNarrowPatternTest extends OurTestSuite with ControllerAgent
     js7.job.execution.signed-script-injection-allowed = on
     """
 
-  private val sourceDirectory = directoryProvider.agents(0).dataDir / "work/files"
+  private val sourceDirectory = directoryProvider.agentEnvs(0).dataDir / "work/files"
 
   private lazy val fileWatch = FileWatch(
     OrderWatchPath("TEST-WATCH"),
