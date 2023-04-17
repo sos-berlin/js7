@@ -2,7 +2,6 @@ package js7.agent.client
 
 import akka.actor.ActorSystem
 import cats.effect.Resource
-import js7.agent.data.AgentApi
 import js7.agent.data.AgentState.keyedEventJsonCodec
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.*
@@ -27,7 +26,7 @@ import monix.reactive.Observable
  * @author Joacim Zschimmer
  */
 trait AgentClient
-extends AgentApi with HttpSessionApi with AkkaHttpClient
+extends HttpSessionApi with AkkaHttpClient
 with SessionApi.HasUserAndPassword
 with HttpClusterNodeApi
 {
