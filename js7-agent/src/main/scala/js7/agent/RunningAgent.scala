@@ -62,7 +62,7 @@ import scala.concurrent.{Future, Promise}
 final class RunningAgent private(
   val eventWatch: EventWatch,
   clusterNode: ClusterNode[AgentState],
-  persistence: Task[FileStatePersistence[AgentState]],
+  val persistence: Task[FileStatePersistence[AgentState]],
   webServer: AkkaWebServer & AkkaWebServer.HasUri,
   actorTermination: Task[ProgramTermination],
   val untilReady: Task[MainActor.Ready],

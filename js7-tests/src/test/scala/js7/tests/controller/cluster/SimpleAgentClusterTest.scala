@@ -1,69 +1,84 @@
 package js7.tests.controller.cluster
 
-import js7.agent.data.commands.AgentCommand
+import akka.actor.PoisonPill
+import cats.effect.Resource
+import cats.syntax.all.*
+import js7.agent.ConvertibleSubagent
 import js7.base.log.Logger
-import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
+import js7.base.utils.CatsBlocking.BlockingTaskResource
 import js7.base.utils.ScalaUtils.syntax.RichEither
-import js7.data.agent.AgentPath
+import js7.base.web.Uri
+import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
+import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterNodesAppointed, ClusterWatchRegistered}
-import js7.data.node.NodeId
 import js7.data.order.OrderEvent.{OrderDetachable, OrderFinished, OrderProcessingStarted}
 import js7.data.order.{FreshOrder, OrderId}
+import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.controller.cluster.ControllerClusterTester.*
 import js7.tests.controller.cluster.SimpleAgentClusterTest.*
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.testenv.ControllerClusterForScalaTest.assertEqualJournalFiles
+import js7.tests.testenv.SubagentEnv
+import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
+import scala.util.Try
 
 final class SimpleAgentClusterTest extends ControllerClusterTester
 {
-  private lazy val agentPath = agentPaths.head
+  protected override val agentPaths = Nil
 
-  override protected def items = Seq(TestWorkflow, workflow)
+  private lazy val subagentItems = Seq(
+    SubagentItem(SubagentId("SUBAGENT-0"), agentPath, Uri("http://127.0.0.1:" + findFreeTcpPort())),
+    SubagentItem(SubagentId("SUBAGENT-1"), agentPath, Uri("http://127.0.0.1:" + findFreeTcpPort())))
+
+  override protected def items = Seq(TestWorkflow, workflow, agentRef) ++ subagentItems
 
   "Cluster replicates journal files properly" in {
-    withControllerAndBackupWithoutAgents() { (primary, backup, setting) =>
-      backup.runAgents() { backupAgents =>
-        runControllers(primary, backup) { (primaryController, backupController) =>
+    withControllerAndBackupWithoutAgents() { (primary, backup, _) =>
+      val subagentResources: Resource[Task, Seq[(SubagentEnv, ConvertibleSubagent)]] =
+        Seq(
+          primary /*any DirectoryProvider*/ .subagentEnvResource(subagentItems(0)),
+          primary /*any DirectoryProvider*/ .subagentEnvResource(subagentItems(1), isClusterBackup = true)
+        ).sequence
+          .flatMap(_.traverse(env => env.convertibleSubagentResource.map(env -> _)))
+
+      subagentResources.blockingUse(99.s) { envsAndConvertibleSubagents =>
+        val (subagentEnvs, convertibleSubagents) = envsAndConvertibleSubagents.unzip
+        runControllers(primary, backup) { (primaryController, _) =>
           import primaryController.eventWatch.await
           val failOverOrderId = OrderId("🔸")
-
           primary.runAgents() { primaryAgents =>
-            primaryController.api
-              .executeAgentCommand(agentPath, AgentCommand.ClusterAppointNodes(
-                Map(
-                  NodeId("Primary") -> primary.agents.head.localUri,
-                  NodeId("Backup") -> backup.agents.head.localUri),
-                NodeId("Primary")))
-              .await(99.s).orThrow
-
-            primaryAgents(0).eventWatch.await[ClusterNodesAppointed]()
-            primaryAgents(0).eventWatch.await[ClusterWatchRegistered]()
-            primaryAgents(0).eventWatch.await[ClusterCoupled]()
+            val agent = convertibleSubagents(0).untilDirectorStarted.await(99.s)
+            agent.eventWatch.await[ClusterNodesAppointed]()
+            agent.eventWatch.await[ClusterWatchRegistered]()
+            agent.eventWatch.await[ClusterCoupled]()
 
             val stampedSeq = primaryController.runOrder(FreshOrder(OrderId("🔹"), TestWorkflow.path))
             assert(stampedSeq.last.value == OrderFinished())
 
-            assertEqualJournalFiles(primary.controller, backup.controller, n = 1)
-            assertEqualJournalFiles(primary.agents(0), backup.agents(0), n = 1)
+            assertEqualJournalFiles(primary.controllerEnv, backup.controllerEnv, n = 1)
+            assertEqualJournalFiles(subagentEnvs(0), subagentEnvs(1), n = 1)
 
             primaryController.api.addOrder(FreshOrder(failOverOrderId, workflow.path)).await(99.s).orThrow
             await[OrderProcessingStarted](_.key == failOverOrderId)
             //TODO: await[OrderStdoutWritten](_.key == failOverOrderId)
 
             // Kill Agent roughly — TODO Proper fast Agent termination desired
-            primaryAgents(0).actorSystem.terminate().await(99.s)
-            primaryAgents(0).untilTerminated.await(99.s)
+            //agent.actorSystem.terminate().await(99.s)
+            agent.persistence.await(99.s).journalActor ! PoisonPill
+            Try(agent.untilTerminated.await(99.s))
           }
 
-          pending // FIXME
-          val eventId = backupAgents(0).eventWatch.await[ClusterFailedOver]().head.eventId
+          val backupDirector = convertibleSubagents(1).untilDirectorStarted.await(99.s)
+          val eventId = backupDirector.eventWatch.await[ClusterFailedOver]().head.eventId
           ASemaphoreJob.continue()
-          backupAgents(0).eventWatch.await[OrderProcessingStarted](_.key == failOverOrderId, after = eventId)
-          backupAgents(0).eventWatch.await[OrderDetachable](_.key == failOverOrderId, after = eventId)
+
+          pending // FIXME emit OrderProcessingFailed(ProcessLost)
+          backupDirector.eventWatch.await[OrderProcessingStarted](_.key == failOverOrderId, after = eventId)
+          backupDirector.eventWatch.await[OrderDetachable](_.key == failOverOrderId, after = eventId)
           //FIXME backupAgents(0).eventWatch.await[OrderFinished](_.key == failOverOrderId, after = eventId)
         }
       }
@@ -73,6 +88,13 @@ final class SimpleAgentClusterTest extends ControllerClusterTester
 
 object SimpleAgentClusterTest {
   private val logger = Logger[this.type]
+
+  private val subagentIds = Seq(
+    SubagentId("SUBAGENT-0"),
+    SubagentId("SUBAGENT-1"))
+
+  private val agentPath = AgentPath("AGENT")
+  private val agentRef = AgentRef(agentPath, subagentIds)
 
   private val workflow = Workflow(
     WorkflowPath("MY-WORKFLOW"),
