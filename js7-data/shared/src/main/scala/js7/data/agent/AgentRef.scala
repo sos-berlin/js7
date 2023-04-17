@@ -26,8 +26,8 @@ extends UnsignedSimpleItem
           Left(Problem.pure(s"Missing Director in $path"))
         else if (directors.nonEmpty && uri.nonEmpty)
           Left(Problem.pure("AgentRef.directors cannot be used with .uri"))
-        else if (directors.sizeIs > 1)
-          Left(Problem.pure(s"Only one Agent Director is allowed in $path"))
+        else if (directors.sizeIs > 2)
+          Left(Problem.pure(s"Not more than two Agent Directors are allowed in $path"))
         else
           Checked.unit
     } yield this

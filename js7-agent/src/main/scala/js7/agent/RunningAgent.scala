@@ -214,6 +214,7 @@ object RunningAgent {
           new MainActor(recoveredExtract.totalRunningSince,
             persistenceAllocated, conf, testWiring.commandHandler,
             mainActorReadyPromise, terminationPromise,
+            clusterNode,
             conf.toJobLauncherConf(iox, blockingJobScheduler, clock)
               .orThrow,
             testEventBus, clock)(scheduler, iox)

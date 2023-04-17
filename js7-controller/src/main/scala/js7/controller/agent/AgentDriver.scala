@@ -81,7 +81,7 @@ extends Service.StoppableByRequest
 
   private object state {
     val lock = AsyncLock()
-    var director: Option[SubagentId] = initialAgentRef.director
+    var directors: Seq[SubagentId] = initialAgentRef.directors
     /** Only filled when coupled */
     var lastFetchedEventId = initialEventId
     var lastCommittedEventId = initialEventId
@@ -255,7 +255,7 @@ extends Service.StoppableByRequest
       //directorDriverAllocated.use { directorDriverAllocated =>
         //val directorDriver = directorDriverAllocated.allocatedThing
         state.lock.lock(Task.defer {
-          state.director = agentRef.director
+          state.directors = agentRef.directors
           // TODO Restart DirectorDriver only if one of the URIs has changed
           //Task.when(uri != directorDriver.client.baseUri || state.isReset) {
             //logger.debug(s"changeAgentRef $uri")
@@ -408,14 +408,28 @@ extends Service.StoppableByRequest
         .update(allocated =>
           Task.when(allocated != null)(allocated.stop) *>
             directorDriverResource.toAllocated)
-        .void)
+        .void
+        .*>(persistence.state
+          .map(_.agentToUris(agentPath))
+          .map(_.toList)
+          .flatMap(uris =>
+            Task.when(uris.lengthIs == 2)(
+              commandQueue
+                .enqueue(
+                  Queueable.ClusterAppointNodes(
+                    Map(
+                      NodeId("Primary") -> uris(0),
+                      NodeId("Backup") -> uris(1)),
+                    NodeId("Primary")))
+                .void))))
 
   private def directorDriverResource: Resource[Task, DirectorDriver] =
     for {
       clients <- clientsResource
       _ <- clusterWatchResource(clients)
       directorDriver <- DirectorDriver.resource(
-        agentPath, state.lastFetchedEventId, clients.head/*TODO active cluster node*/,
+        agentPath, state.lastFetchedEventId,
+        clients.head/*FIXME active cluster node*/,
         dedicateAgentIfNeeded, onCouplingFailed, onCoupled, onDecoupled,
         onEventsFetched,
         persistence, conf)
@@ -427,7 +441,7 @@ extends Service.StoppableByRequest
       Resource.eval(Task.pure(clients)),
       controllerConfiguration.config)
 
-  // TODO Detect active and passive node !
+  // FIXME Detect active and passive node !
   private def clientsResource: Resource[Task, Nel[AgentClient]] =
     Resource
       .eval(persistence.state.map(_.agentToUris(agentPath)))

@@ -11,6 +11,7 @@ import js7.base.log.Logger
 import js7.base.thread.IOExecutor
 import js7.base.time.AlarmClock
 import js7.base.utils.{Allocated, ProgramTermination}
+import js7.cluster.ClusterNode
 import js7.common.akkautils.CatchingSupervisorStrategy
 import js7.core.command.CommandMeta
 import js7.journal.state.FileStatePersistence
@@ -31,6 +32,7 @@ final class MainActor(
   testCommandHandler: Option[CommandHandler],
   readyPromise: Promise[Ready],
   terminationPromise: Promise[ProgramTermination],
+  clusterNode: ClusterNode[AgentState],
   jobLauncherConf: JobLauncherConf,
   testEventBus: StandardEventBus[Any],
   clock: AlarmClock)
@@ -44,7 +46,9 @@ extends Actor {
   private val agentActor = watch(actorOf(
     Props {
       new AgentActor(totalRunningSince,
-        terminationPromise, persistenceAllocated, clock, agentConfiguration,
+        terminationPromise, persistenceAllocated,
+        clusterNode,
+        clock, agentConfiguration,
         jobLauncherConf, testEventBus)
     },
     "agent"))

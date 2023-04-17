@@ -1,7 +1,7 @@
 package js7.subagent.web
 
 import akka.http.scaladsl.model.StatusCodes.{BadRequest, NotFound, ServiceUnavailable}
-import akka.http.scaladsl.server.Directives.{Segment, as, complete, entity, get, pathEnd, pathEndOrSingleSlash, pathPrefix, post, withSizeLimit}
+import akka.http.scaladsl.server.Directives.{Segment, as, complete, entity, get, path, pathEnd, pathEndOrSingleSlash, pathPrefix, post, withSizeLimit}
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.server.RouteConcatenation.*
 import cats.syntax.traverse.*
@@ -23,12 +23,12 @@ import js7.data.agent.Problems.AgentNotDedicatedProblem
 import js7.data.subagent.Problems.SubagentAlreadyDedicatedProblem
 import js7.data.subagent.SubagentCommand
 import js7.subagent.Subagent
-import js7.subagent.web.PseudoAgentRoute.*
+import js7.subagent.web.PseudoDirectorRoute.*
 import monix.eval.Task
 import monix.execution.Scheduler
 
 /** Looks like Agent Director web service to detect a client's request for an Director. */
-private trait PseudoAgentRoute extends SessionRoute with EntitySizeLimitProvider
+private trait PseudoDirectorRoute extends SessionRoute with EntitySizeLimitProvider
 {
   protected def executeCommand(command: Numbered[SubagentCommand])
   : Task[Checked[SubagentCommand.Response]]
@@ -46,6 +46,7 @@ private trait PseudoAgentRoute extends SessionRoute with EntitySizeLimitProvider
           case "session" => sessionRoute
           case "command" => agentCommandRoute
           case "event" => pseudoAgentEventRoute
+          case "cluster" => pseudoClusterRoute
           case "clusterWatch" => pseudoAgentClusterWatchRoute
           case _ => complete(NotFound)
         })
@@ -77,6 +78,14 @@ private trait PseudoAgentRoute extends SessionRoute with EntitySizeLimitProvider
         checkSubagent(
           complete(AgentNotDedicatedProblem))))
 
+  private lazy val pseudoClusterRoute: Route =
+    (path("command") & post)(
+      authorizedUser(ValidUserPermission)(_ =>
+        checkSubagent(
+          // Simply touching this web service is enough to restart as an Agent Director
+          // Limit to ClusterStartBackupNode ???
+          completeWithConvertToDirector)))
+
   private lazy val pseudoAgentClusterWatchRoute: Route =
     (pathEnd & (post | get))(
       authorizedUser(ValidUserPermission)(_ =>
@@ -101,7 +110,7 @@ private trait PseudoAgentRoute extends SessionRoute with EntitySizeLimitProvider
           "Subagent becomes a fresh Agent Director - try again after a second")))
 }
 
-object PseudoAgentRoute
+object PseudoDirectorRoute
 {
   private val logger = Logger[this.type]
 }

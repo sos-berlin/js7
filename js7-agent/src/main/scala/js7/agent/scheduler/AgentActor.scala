@@ -25,6 +25,7 @@ import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.RightUnit
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, ProgramTermination, SetOnce}
+import js7.cluster.ClusterNode
 import js7.common.akkautils.{SimpleStateActor, SupervisorStrategies}
 import js7.data.agent.Problems.{AgentAlreadyDedicatedProblem, AgentIsShuttingDown, AgentNotDedicatedProblem, AgentPathMismatchProblem, AgentRunIdMismatchProblem, AgentWrongControllerProblem}
 import js7.data.agent.{AgentPath, AgentRunId}
@@ -45,6 +46,7 @@ private[agent] final class AgentActor(
   totalRunningSince: Deadline,
   terminatePromise: Promise[ProgramTermination],
   persistenceAllocated: Allocated[Task, FileStatePersistence[AgentState]],
+  clusterNode: ClusterNode[AgentState],
   clock: AlarmClock,
   agentConf: AgentConfiguration,
   jobLauncherConf: JobLauncherConf,
@@ -176,6 +178,22 @@ private[agent] final class AgentActor(
             _ <- eventWatch.checkEventId(eventId)
           } yield
             CoupleController.Response(persistence.unsafeCurrentState().idToOrder.keySet))
+
+      case AgentCommand.ClusterAppointNodes(idToUri, activeId) =>
+        response.completeWith(
+          Task(clusterNode.workingClusterNode)
+            .flatMapT(_.appointNodes(idToUri, activeId))
+            .rightAs(AgentCommand.Response.Accepted)
+            .runToFuture)
+
+      case AgentCommand.ClusterSwitchOver =>
+        response.completeWith(
+          Task.left(Problem("Agent still not support ClusterSwitchOver command"))
+          // Notify AgentOrderKeeper ???
+          //Task(clusterNode.workingClusterNode)
+          //  .flatMapT(_.switchOver)
+          //  .rightAs(AgentCommand.Response.Accepted)
+            .runToFuture)
 
       case command @ (_: AgentCommand.OrderCommand |
                       _: AgentCommand.TakeSnapshot |
