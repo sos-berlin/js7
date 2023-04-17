@@ -7,10 +7,10 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.DurationRichInt
 import js7.data.agent.AgentPath
-import js7.data.controller.ControllerCommand.ResumeOrder
+import js7.data.controller.ControllerCommand.{CancelOrders, ResumeOrder}
 import js7.data.lock.{Lock, LockPath}
 import js7.data.order.Order.{Stopped, StoppedWhileFresh}
-import js7.data.order.OrderEvent.{LockDemand, OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderLocksAcquired, OrderLocksReleased, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderResumed, OrderStarted, OrderStopped, OrderTerminated}
+import js7.data.order.OrderEvent.{LockDemand, OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderLocksAcquired, OrderLocksReleased, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderResumed, OrderStarted, OrderStopped, OrderTerminated}
 import js7.data.order.{FreshOrder, HistoricOutcome, OrderEvent, OrderId, Outcome}
 import js7.data.value.BooleanValue
 import js7.data.value.expression.ExpressionParser.expr
@@ -148,6 +148,49 @@ with BlockingItemUpdater
         OrderLocksReleased(List(aLockPath)),
         OrderMoved(Position(1)),
         OrderFinished()))
+    }
+  }
+
+  "Cancel a stopped locking Order" in {
+    val workflow = Workflow.of(WorkflowPath("LOCK-CANCEL-WORKFLOW"),
+      Options(
+        stopOnFailure = Some(true),
+        block = Workflow.of(
+          LockInstruction.single(aLockPath,
+            lockedWorkflow = Workflow.of(
+              FailingJob.execute(agentPath))))))
+
+    withTemporaryItem(workflow) { workflow =>
+      val orderId = OrderId("CANCEL-IN-LOCK")
+      controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+      eventWatch.await[OrderStopped](_.key == orderId)
+
+      val stoppedPosition = controller.controllerState.await(99.s).idToOrder(orderId).position
+      assert(stoppedPosition == Position(0) / "options" % 0 / "lock" % 0)
+
+      controllerApi
+        .executeCommand(
+          CancelOrders(Seq(orderId)))
+        .await(99.s).orThrow
+      eventWatch.await[OrderTerminated](_.key == orderId)
+
+      assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
+        OrderAdded(workflow.id),
+        OrderMoved(Position(0) / "options" % 0),
+        OrderStarted,
+
+        OrderLocksAcquired(List(LockDemand(aLockPath))),
+
+        OrderAttachable(agentPath),
+        OrderAttached(agentPath),
+        OrderProcessingStarted(Some(subagentId)),
+        OrderProcessed(Outcome.Failed(Some("💥FailingJob failed💥"))),
+        OrderDetachable,
+        OrderDetached,
+        OrderStopped,
+
+        OrderLocksReleased(List(aLockPath)),
+        OrderCancelled))
     }
   }
 
