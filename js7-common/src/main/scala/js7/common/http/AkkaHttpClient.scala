@@ -333,7 +333,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
               logResponseError(response, responseLogPrefix))))
       })
 
-  private def logWait(untilResponded: Task[HttpResponse], responseLogPrefix: String): Task[HttpResponse] =
+  private def logWait(untilResponded: Task[HttpResponse], responseLogPrefix: => String): Task[HttpResponse] =
     Task.defer {
       var waitingLogged = false
       untilResponded

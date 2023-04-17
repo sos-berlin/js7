@@ -49,7 +49,8 @@ extends SignatureVerifier
     publicKeyRingCollection.getPublicKey(signature.getKeyID) match {
       // Public key is matched with the only 64-bit long key ID ???
       case null =>
-        logger.debug(s"$MessageSignedByUnknownProblem, no public key for ${signature.show}")
+        logger.debug(
+          s"⛔ $MessageSignedByUnknownProblem, no public key for ${signature.show} publicKeyOrigin=$publicKeyOrigin")
         Left(MessageSignedByUnknownProblem)
       case publicKey =>
         Right(publicKey)
