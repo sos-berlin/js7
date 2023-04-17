@@ -710,6 +710,7 @@ final case class Order[+S <: Order.State](
      isState[BetweenCycles] ||
      isState[FailedWhileFresh] ||
      isState[DelayedAfterError] ||
+     isState[Stopped] ||
      isState[Failed] ||
      isState[Broken]) &&
     (isDetached || isAttached)
