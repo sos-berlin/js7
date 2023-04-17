@@ -318,7 +318,7 @@ extends SubagentDriver with SubagentEventListener[S0]
       .rightAs(())
 
   /** Continue a recovered processing Order. */
-  def continueProcessingOrder(order: Order[Order.Processing]) =
+  def recoverOrderProcessing(order: Order[Order.Processing]) =
     processOrder(order)
 
   def processOrder(order: Order[Order.Processing]): Task[Checked[OrderProcessed]] =

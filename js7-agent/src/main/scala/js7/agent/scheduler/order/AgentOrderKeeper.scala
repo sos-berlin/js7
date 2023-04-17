@@ -209,7 +209,7 @@ final class AgentOrderKeeper(
 
       // FIXME (?) Continue deletion of Subagent AFTER Orders has been recovered
       // startSubagent
-      // subagentKeeper.continueProcessingOrder
+      // subagentKeeper.recoverOrderProcessing
       subagentKeeper
         .initialize(localSubagentId, controllerId)
         .*>(

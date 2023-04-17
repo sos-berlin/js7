@@ -54,13 +54,14 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
           sender ! Output.RecoveryFinished
 
         case Some(o) =>
+          // TODO Process all recovered Orders in a batch!
           subagentKeeper
-            .continueProcessingOrder(
+            .recoverOrderProcessing(
               o,
               events => self ! Internal.UpdateEvents(events, orderCorrelId))
             .materializeIntoChecked
             .map(_.onProblemHandle(problem =>
-              logger.error(s"continueProcessingOrder: $problem")))
+              logger.error(s"recoverOrderProcessing: $problem")))
             .foreach { _ =>
               sender ! Output.RecoveryFinished
             }

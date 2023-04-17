@@ -221,7 +221,7 @@ extends SubagentDriver
             .map(workflowJob -> _))
       .flatMap(_.sequence)
 
-  def continueProcessingOrder(order: Order[Order.Processing]) =
+  def recoverOrderProcessing(order: Order[Order.Processing]) =
     persistence
       .persistKeyedEvent(order.id <-: OrderProcessed.processLostDueToRestart)
       .map(_.map(_._1.value.event))

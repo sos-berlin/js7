@@ -40,7 +40,7 @@ trait SubagentDriver
 
   def processOrder(order: Order[Order.Processing]): Task[Checked[OrderProcessed]]
 
-  def continueProcessingOrder(order: Order[Order.Processing]): Task[Checked[OrderProcessed]]
+  def recoverOrderProcessing(order: Order[Order.Processing]): Task[Checked[OrderProcessed]]
 
   def killProcess(orderId: OrderId, signal: ProcessSignal): Task[Unit]
 

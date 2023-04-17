@@ -159,11 +159,11 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
       }
   }
 
-  def continueProcessingOrder(
+  def recoverOrderProcessing(
     order: Order[Order.Processing],
     onEvents: Seq[OrderCoreEvent] => Unit)
   : Task[Checked[Unit]] =
-    logger.traceTask("continueProcessingOrder", order.id)(Task.defer {
+    logger.traceTask("recoverOrderProcessing", order.id)(Task.defer {
       val subagentId = order.state.subagentId getOrElse legacyLocalSubagentId
       stateVar.get.idToDriver.get(subagentId)
         .match_ {
@@ -175,10 +175,10 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
 
           case Some(subagentDriver) =>
             forProcessingOrder(order.id, subagentDriver, onEvents)(
-              subagentDriver.continueProcessingOrder(order)
+              subagentDriver.recoverOrderProcessing(order)
             ).materializeIntoChecked
               .map(_.onProblemHandle(problem =>
-                logger.error(s"continueProcessingOrder ${order.id} => $problem")))
+                logger.error(s"recoverOrderProcessing ${order.id} => $problem")))
               .startAndForget // ???
               .as(Checked.unit)
         }
