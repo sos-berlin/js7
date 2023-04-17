@@ -11,7 +11,6 @@ import js7.base.auth.SessionToken
 import js7.base.eventbus.StandardEventBus
 import js7.base.io.process.ProcessSignal
 import js7.base.log.{CorrelId, Logger}
-import js7.base.monixutils.MonixBase.syntax.RichMonixResource
 import js7.base.problem.Checked
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -19,7 +18,6 @@ import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.syntax.{RichEither, RichThrowable}
 import js7.base.utils.{Allocated, ProgramTermination}
 import js7.base.web.Uri
-import js7.common.system.ThreadPools.standardSchedulerResource
 import js7.common.system.startup.MainServices
 import js7.core.command.CommandMeta
 import js7.journal.watch.EventWatch
@@ -78,7 +76,7 @@ extends AutoCloseable {
     agent.executeCommandAsSystemUser(command)
 
   def executeCommand(cmd: AgentCommand, meta: CommandMeta): Task[Checked[AgentCommand.Response]] =
-    agent.executeCommand1(cmd: AgentCommand, meta)
+    agent.executeCommand(cmd: AgentCommand, meta)
 
   //def blockingUse[R](stopTimeout: Duration)(body: TestAgent => R)(implicit scheduler: Scheduler)
   //: R = {
@@ -89,6 +87,12 @@ extends AutoCloseable {
 
 object TestAgent {
   private val logger = Logger[this.type]
+
+  def start(conf: AgentConfiguration, testWiring: TestWiring = TestWiring.empty): Task[TestAgent] =
+    CorrelId.bindNew(
+      RunningAgent.resourceWithOwnThreadPool(conf, testWiring)
+        .toAllocated
+        .map(new TestAgent(_)))
 
   def blockingRun(
     conf: AgentConfiguration,
@@ -113,16 +117,6 @@ object TestAgent {
         logger.error(t.toStringWithCauses, t.nullIfNoStackTrace)
         throw t
       })
-
-  def start(conf: AgentConfiguration, testWiring: TestWiring = TestWiring.empty): Task[TestAgent] =
-    CorrelId.bindNew(
-      standardSchedulerResource[Task](conf.name, conf.config)
-        .flatMap(js7Scheduler =>
-          RunningAgent
-            .resource(conf, testWiring)(js7Scheduler)
-            .executeOn(js7Scheduler)))
-      .toAllocated
-      .map(new TestAgent(_))
 
   private def resource(conf: AgentConfiguration, testWiring: TestWiring = TestWiring.empty)
     (implicit scheduler: Scheduler)

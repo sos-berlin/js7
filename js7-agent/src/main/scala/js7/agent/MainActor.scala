@@ -5,12 +5,9 @@ import js7.agent.MainActor.*
 import js7.agent.command.{CommandActor, CommandHandler}
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
-import js7.agent.data.commands.AgentCommand
 import js7.agent.scheduler.{AgentActor, AgentHandle}
-import js7.base.auth.UserId
 import js7.base.eventbus.StandardEventBus
-import js7.base.log.{CorrelId, Logger}
-import js7.base.problem.Checked
+import js7.base.log.Logger
 import js7.base.thread.IOExecutor
 import js7.base.time.AlarmClock
 import js7.base.utils.{Allocated, ProgramTermination}
@@ -83,11 +80,6 @@ extends Actor {
     case AgentActor.Output.Ready =>
       readyPromise.success(Ready(api))
 
-    case Input.ExternalCommand(cmd, userId, correlId, response) =>  // For RunningController
-      correlId.bind {
-        agentHandle.executeCommand(cmd, userId, response)
-      }
-
     case Terminated(`agentActor`) =>
       logger.debug("Stop")
       terminationPromise.trySuccess(ProgramTermination())
@@ -103,11 +95,5 @@ object MainActor
 
   object Input {
     final case class Start(agentState: AgentState)
-
-    final case class ExternalCommand(
-      command: AgentCommand,
-      userId: UserId,
-      correlId: CorrelId,
-      response: Promise[Checked[AgentCommand.Response]])
   }
 }

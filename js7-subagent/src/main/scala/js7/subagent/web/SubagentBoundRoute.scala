@@ -45,7 +45,7 @@ with WebLogDirectives
 with CommandRoute
 with SessionRoute
 with EventRoute
-with PseudoAgentRoute
+with PseudoDirectorRoute
 {
   protected val subagent = subagentCommandExecuter.subagent
   protected val actorRefFactory = actorSystem
