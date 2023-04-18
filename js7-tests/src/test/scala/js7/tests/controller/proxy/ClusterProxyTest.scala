@@ -32,14 +32,14 @@ trait ClusterProxyTest extends BeforeAndAfterAll with ControllerClusterForScalaT
     Admission(Uri(s"http://127.0.0.1:$backupControllerPort"), Some(backupUserAndPassword)))
 
   protected lazy val controllerApi = new ControllerApi(
-    for {
-      x <- admissions.zipWithIndex
-      (a, i) = x
-    } yield AkkaHttpControllerApi.resource(
-      a.uri,
-      a.userAndPassword,
-      name = s"${getClass.simpleScalaName}-Controller-$i")(
-      actorSystem),
+    admissions.zipWithIndex
+      .traverse { case (a, i) =>
+        AkkaHttpControllerApi.resource(
+          a.uri,
+          a.userAndPassword,
+          name = s"${getClass.simpleScalaName}-Controller-$i")(
+          actorSystem)
+      },
     ProxyConfs.fromConfig(config))
 
   override def afterAll() = {
@@ -76,7 +76,7 @@ private[proxy] object ClusterProxyTest
 
   private[proxy] val workflow = WorkflowParser.parse(
     WorkflowPath("WORKFLOW") ~ "INITIAL",
-    s"""
+    """
       define workflow {
         execute executable="TEST.cmd", agent="AGENT", parallelism=10;
       }"""

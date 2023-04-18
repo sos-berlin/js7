@@ -139,21 +139,21 @@ object JournaledProxy
   private val logger = scribe.Logger[this.type]
 
   def observable[S <: JournaledState[S]](
-    apiResources: Nel[Resource[Task, RequiredApi_[S]]],
+    apisResource: Resource[Task, Nel[RequiredApi_[S]]],
     fromEventId: Option[EventId],
     onProxyEvent: ProxyEvent => Unit = _ => (),
     proxyConf: ProxyConf)
     (implicit S: JournaledState.Companion[S])
   : Observable[EventAndState[Event, S]] =
   {
-    //if (apiResources.isEmpty) throw new IllegalArgumentException("apiResources must not be empty")
+    //if (apisResource.isEmpty) throw new IllegalArgumentException("apisResource must not be empty")
 
     def observable2: Observable[EventAndState[Event, S]] =
       Observable.tailRecM(none[S])(maybeState =>
         Observable
           .fromResource(
             ActiveClusterNodeSelector.selectActiveNodeApi[RequiredApi_[S]](
-              apiResources,
+              apisResource,
               _ => onCouplingError,
               failureDelay = proxyConf.recouplingStreamReaderConf.failureDelay))
           .flatMap(api =>

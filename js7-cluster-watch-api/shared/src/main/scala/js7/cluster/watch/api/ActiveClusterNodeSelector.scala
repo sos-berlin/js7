@@ -25,12 +25,12 @@ object ActiveClusterNodeSelector {
     *         (EventApi, Some(NodeId)) iff apis.size > 1
     */
   final def selectActiveNodeApi[Api <: ClusterNodeApi](
-    apiResources: Nel[Resource[Task, Api]],
+    apisResource: Resource[Task, Nel[Api]],
     onCouplingError: Api => Throwable => Task[Unit] =
       (_: Api) => (t: Throwable) => SessionApi.onErrorTryAgain(toString, t).void,
     failureDelay: FiniteDuration)
   : Resource[Task, Api] =
-    apiResources.sequence.flatMap(apis =>
+    apisResource.flatMap(apis =>
       Resource.eval(
         selectActiveNodeApiOnly[Api](
           apis,

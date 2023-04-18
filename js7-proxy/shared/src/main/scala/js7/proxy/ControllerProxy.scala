@@ -39,7 +39,7 @@ object ControllerProxy
 {
   private[proxy] def start(
     api: ControllerApi,
-    apiResources: Nel[Resource[Task, HttpControllerApi]],
+    apisResource: Resource[Task, Nel[HttpControllerApi]],
     proxyEventBus: StandardEventBus[ProxyEvent],
     eventBus: JournaledStateEventBus[ControllerState],
     proxyConf: ProxyConf = ProxyConf.default)
@@ -47,7 +47,7 @@ object ControllerProxy
     Task.deferAction { implicit s =>
       val proxy = new ControllerProxy(
         api,
-        JournaledProxy.observable(apiResources, fromEventId = None, proxyEventBus.publish, proxyConf),
+        JournaledProxy.observable(apisResource, fromEventId = None, proxyEventBus.publish, proxyConf),
         proxyEventBus,
         eventBus,
         proxyConf)

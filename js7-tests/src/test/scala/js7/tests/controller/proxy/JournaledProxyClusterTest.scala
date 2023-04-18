@@ -1,6 +1,7 @@
 package js7.tests.controller.proxy
 
 import akka.actor.ActorSystem
+import cats.syntax.traverse.*
 import io.circe.Encoder
 import io.circe.syntax.*
 import izumi.reflect.Tag
@@ -52,9 +53,13 @@ final class JournaledProxyClusterTest extends OurTestSuite with ClusterProxyTest
   "JournaledProxy[ControllerState]" in {
     runControllerAndBackup() { (_, primaryController, _, _, backupController, _, _) =>
       primaryController.waitUntilReady()
-      val controllerApiResources = Nel.of(
-        AkkaHttpControllerApi.resource(primaryController.localUri, Some(primaryUserAndPassword), name = "JournaledProxy-Primary"),
-        AkkaHttpControllerApi.resource(backupController.localUri, Some(backupUserAndPassword), name = "JournaledProxy-Backup"))
+      val controllerApiResources = Nel
+        .of(
+          AkkaHttpControllerApi.resource(primaryController.localUri, Some(primaryUserAndPassword),
+            name = "JournaledProxy-Primary"),
+          AkkaHttpControllerApi.resource(backupController.localUri, Some(backupUserAndPassword),
+            name = "JournaledProxy-Backup"))
+        .sequence
       val proxy = new ControllerApi(controllerApiResources).startProxy().await(99.s)
       try {
         val whenProcessed = proxy.eventBus.when[OrderProcessed].runToFuture
@@ -92,7 +97,7 @@ final class JournaledProxyClusterTest extends OurTestSuite with ClusterProxyTest
     runControllerAndBackup() { (primary, primaryController, _, _, _, _, _) =>
       primaryController.waitUntilReady()
       val controllerApiResource = AkkaHttpControllerApi.resource(primaryController.localUri, Some(primaryUserAndPassword), name = "JournaledProxy")
-      val api = new ControllerApi(Nel.one(controllerApiResource))
+      val api = new ControllerApi(controllerApiResource map Nel.one)
       val workflowPaths = (1 to n).map(i => WorkflowPath(s"WORKFLOW-$i"))
       val sw = new Stopwatch
       val operations = Observable.fromIterable(workflowPaths)
@@ -133,8 +138,10 @@ final class JournaledProxyClusterTest extends OurTestSuite with ClusterProxyTest
     logger.info(s"Adding $n big orders")
     runControllerAndBackup() { (_, primaryController, _, _, _, _, _) =>
       primaryController.waitUntilReady()
-      val api = new ControllerApi(Nel.one(
-        AkkaHttpControllerApi.resource(primaryController.localUri, Some(primaryUserAndPassword), name = "JournaledProxy")))
+      val api = new ControllerApi(
+        AkkaHttpControllerApi
+          .resource(primaryController.localUri, Some(primaryUserAndPassword), name = "JournaledProxy")
+          .map(Nel.one))
       val orderIds = (1 to n).map(i => OrderId(s"ORDER-$i"))
       val logLine = measureTimeOfSingleRun(n, "orders") {
         api.addOrders(

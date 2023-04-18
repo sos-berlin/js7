@@ -39,7 +39,7 @@ import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.RunningController
 import js7.controller.RunningController.TestWiring
 import js7.controller.client.AkkaHttpControllerApi
-import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
+import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResource
 import js7.controller.configuration.ControllerConfiguration
 import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.cluster.ClusterWatchId
@@ -162,7 +162,7 @@ extends HasCloser
   /** Proxy's ControllerApi */
   def controllerApiResource(runningController: RunningController): Resource[Task, ControllerApi] =
     ControllerApi.resource(
-      admissionsToApiResources(
+      admissionsToApiResource(
         Nel.one(controllerAdmission(runningController)))(
         runningController.actorSystem))
 

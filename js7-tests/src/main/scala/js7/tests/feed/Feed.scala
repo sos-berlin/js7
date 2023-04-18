@@ -8,7 +8,7 @@ import js7.base.data.ByteArray
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.akkautils.Akkas
-import js7.controller.client.AkkaHttpControllerApi.admissionToApiResource
+import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResource
 import js7.data.controller.ControllerState
 import js7.data.item.ItemOperation
 import js7.data.order.FreshOrder
@@ -62,7 +62,7 @@ object Feed
     Akkas.actorSystemResource("Feed")
       .flatMap(actorSystem =>
         ControllerApi.resource(
-          settings.admissions.map(admissionToApiResource(_)(actorSystem))))
+          admissionsToApiResource(settings.admissions)(actorSystem)))
       .use { controllerApi =>
         val feed = new Feed(controllerApi, settings)
         feed.run(in)

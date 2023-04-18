@@ -154,7 +154,7 @@ object ClusterWatchService
       akka <- actorSystemResource(name = "ClusterWatch", config)
       service <- resource(
         conf.clusterWatchId,
-        apiResources = clusterNodeAdmissions
+        apisResource = clusterNodeAdmissions
           .traverse(admission => AkkaHttpClient
             .resource(admission.uri, uriPrefixPath = "", httpsConfig, name = "ClusterNode")(akka)
             .flatMap(HttpClusterNodeApi.resource(admission, _, uriPrefix = "controller"))),
@@ -164,15 +164,15 @@ object ClusterWatchService
 
   def resource(
     clusterWatchId: ClusterWatchId,
-    apiResources: Resource[Task, Nel[HttpClusterNodeApi]],
+    apisResource: Resource[Task, Nel[HttpClusterNodeApi]],
     config: Config,
     eventBus: ClusterWatchEventBus = new ClusterWatchEventBus)
   : Resource[Task, ClusterWatchService] =
-    resource2(clusterWatchId, apiResources, config.withFallback(defaultConfig), eventBus)
+    resource2(clusterWatchId, apisResource, config.withFallback(defaultConfig), eventBus)
 
   private def restartableResource(
     clusterWatchId: ClusterWatchId,
-    apiResources: Resource[Task, Nel[HttpClusterNodeApi]],
+    apisResource: Resource[Task, Nel[HttpClusterNodeApi]],
     config: Config)
   : Resource[Task, RestartAfterFailureService[ClusterWatchService]] =
     Resource.suspend(Task {
@@ -183,12 +183,12 @@ object ClusterWatchService
         .asScala.map(_.toFiniteDuration).toVector
 
       Service.restartAfterFailure(startDelays = startDelays, runDelays = runDelays)(
-        resource2(clusterWatchId, apiResources, cfg))
+        resource2(clusterWatchId, apisResource, cfg))
     })
 
   private def resource2(
     clusterWatchId: ClusterWatchId,
-    apiResources: Resource[Task, Nel[HttpClusterNodeApi]],
+    apisResource: Resource[Task, Nel[HttpClusterNodeApi]],
     config: Config,
     eventBus: ClusterWatchEventBus = new ClusterWatchEventBus)
   : Resource[Task, ClusterWatchService] =
@@ -198,7 +198,7 @@ object ClusterWatchService
         .asScala.map(_.toFiniteDuration).toVector
 
       for {
-        nodeApis <- apiResources
+        nodeApis <- apisResource
         service <-
           Service.resource(
             Task.deferAction(scheduler => Task(

@@ -14,7 +14,7 @@ import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
+import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResource
 import js7.data.Problems.AgentResetProblem
 import js7.data.agent.AgentRefStateEvent.{AgentCoupled, AgentCouplingFailed, AgentDedicated, AgentReset}
 import js7.data.agent.Problems.AgentAlreadyDedicatedProblem
@@ -215,7 +215,7 @@ final class ResetAgentTest extends OurTestSuite with ControllerAgentForScalaTest
       secondProvider.runController() { secondController =>
         val v1 = VersionId("1")
         val secondControllerApi = new ControllerApi(
-          admissionsToApiResources(Nel.one(Admission(
+          admissionsToApiResource(Nel.one(Admission(
             secondController.localUri,
             Some(directoryProvider.controllerEnv.userAndPassword))
           ))(secondController.actorSystem))

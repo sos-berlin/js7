@@ -53,16 +53,14 @@ object AkkaHttpControllerApi
     } yield api
   }
 
-  def admissionsToApiResources(
+  def admissionsToApiResource(
     admissions: Nel[Admission],
     httpsConfig: HttpsConfig = HttpsConfig.empty,
     name: String = defaultName)
     (implicit actorSystem: ActorSystem)
-  : Nel[Resource[Task, HttpControllerApi]] =
-    for {
-      x <- admissions.zipWithIndex
-      (a, i) = x
-    } yield admissionToApiResource(a, httpsConfig, name = s"$name-$i")
+  : Resource[Task, Nel[HttpControllerApi]] =
+    admissions.zipWithIndex
+      .traverse { case (a, i) => admissionToApiResource(a, httpsConfig, name = s"$name-$i") }
 
   def admissionToApiResource(
     admission: Admission,

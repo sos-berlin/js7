@@ -1,6 +1,5 @@
 package js7.proxy.javaapi
 
-import cats.syntax.traverse.*
 import com.typesafe.config.Config
 import io.vavr.control.Either as VEither
 import java.time.Instant
@@ -337,7 +336,7 @@ final class JControllerApi(val asScala: ControllerApi, config: Config)
         case Some(service) => Task.some(service)
         case None =>
           ClusterWatchService
-            .resource(clusterWatchId, asScala.apiResources.sequence, config, eventBus.asScala)
+            .resource(clusterWatchId, asScala.apisResource, config, eventBus.asScala)
             .toAllocated
             .map(Some(_))
       }

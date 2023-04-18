@@ -242,8 +242,9 @@ object Provider
     for {
       api <- AkkaHttpControllerApi.resource(conf.controllerUri, userAndPassword, conf.httpsConfig)
       controllerApi <- ControllerApi.resource(
-        Nel.one(AkkaHttpControllerApi.admissionToApiResource(
-          Admission(conf.controllerUri, userAndPassword), conf.httpsConfig)))
+        AkkaHttpControllerApi.admissionsToApiResource(
+          Nel.one(Admission(conf.controllerUri, userAndPassword)),
+          conf.httpsConfig))
 
       itemSigner = toItemSigner(conf).orThrow
       provider <- Service.resource(Task(new Provider(itemSigner, api, controllerApi, conf)))

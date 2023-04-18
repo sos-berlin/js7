@@ -40,7 +40,7 @@ private final class TestControllerProxy(controllerUri: Uri, httpPort: Int)(impli
         val eventBus = new JournaledStateEventBus[ControllerState]
         var currentState: ControllerState = null
         eventBus.subscribe[Event] { e => currentState = e.state }
-        val api = new ControllerApi(Nel.one(apiResource))
+        val api = new ControllerApi(apiResource map Nel.one)
         api.startProxy(proxyEventBus, eventBus)
           .flatMap { proxy =>
             AkkaWebServer

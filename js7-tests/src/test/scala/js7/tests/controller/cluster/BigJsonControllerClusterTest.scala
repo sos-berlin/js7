@@ -8,7 +8,7 @@ import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.Nel
 import js7.common.configuration.Js7Configuration
-import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
+import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResource
 import js7.data.agent.AgentPath
 import js7.data.cluster.{ClusterEvent, ClusterState, ClusterTiming}
 import js7.data.node.NodeId
@@ -47,7 +47,7 @@ final class BigJsonControllerClusterTest extends OurTestSuite with ControllerClu
         Admission(primaryController.localUri, Some(userAndPassword)),
         Admission(backupController.localUri, Some(userAndPassword)))
       val controllerApi = new ControllerApi(
-        admissionsToApiResources(admissions)(primaryController.actorSystem))
+        admissionsToApiResource(admissions)(primaryController.actorSystem))
 
       val orderId = OrderId("BIG-ORDER")
       controllerApi

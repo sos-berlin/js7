@@ -2,7 +2,7 @@ package js7.tests.testenv
 
 import js7.base.auth.{Admission, UserAndPassword}
 import js7.base.utils.CatsUtils.Nel
-import js7.controller.client.AkkaHttpControllerApi.admissionToApiResource
+import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResource
 import js7.proxy.ControllerApi
 import org.jetbrains.annotations.TestOnly
 
@@ -10,8 +10,9 @@ import org.jetbrains.annotations.TestOnly
 object ControllerTestUtils
 {
   def newControllerApi(controller: TestController, userAndPassword: Option[UserAndPassword] = None) =
-    new ControllerApi(Nel.one(
-      admissionToApiResource(Admission(controller.localUri, userAndPassword))(controller.actorSystem)))
+    new ControllerApi(
+      admissionsToApiResource(Nel.one(Admission(controller.localUri, userAndPassword)))(
+        controller.actorSystem))
 
   object syntax
   {

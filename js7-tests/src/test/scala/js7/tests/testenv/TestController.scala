@@ -16,7 +16,7 @@ import js7.base.utils.ScalaUtils.syntax.{RichEither, RichEitherF}
 import js7.base.utils.{Allocated, Lazy, ProgramTermination}
 import js7.base.web.Uri
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
-import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
+import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResource
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.problems.ControllerIsShuttingDownProblem
 import js7.controller.{OrderApi, RunningController}
@@ -44,7 +44,7 @@ extends AutoCloseable
     runningController.conf
 
   private val apiLazy = Lazy(new ControllerApi(
-    admissionsToApiResources(Nel.one(admission))(actorSystem),
+    admissionsToApiResource(Nel.one(admission))(actorSystem),
     failWhenUnreachable = true))
 
   implicit lazy val api: ControllerApi =

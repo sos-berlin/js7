@@ -192,7 +192,7 @@ final class ControllerRepoTest extends OurTestSuite
         actorSystemResource(name = "ControllerRepoTest-SPEED")
           .use(actorSystem => Task {
             val apiResource  = admissionToApiResource(Admission(uri, credentials))(actorSystem)
-            val controllerApi = new ControllerApi(Nel.one(apiResource))
+            val controllerApi = new ControllerApi(apiResource map Nel.one)
             for (_ <- 1 to n) {
               val t = now
               controllerApi.updateItems(Observable.fromIterable(operations))

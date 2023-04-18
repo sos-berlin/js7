@@ -8,7 +8,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.akkautils.Akkas
-import js7.controller.client.AkkaHttpControllerApi.admissionToApiResource
+import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResource
 import js7.data.order.{FreshOrder, OrderId}
 import js7.proxy.ControllerApi
 import js7.proxy.configuration.ProxyConfs
@@ -91,7 +91,7 @@ object TestAddOrders
     Akkas.actorSystemResource("TestAddOrders", config)
       .flatMap(actorSystem =>
         ControllerApi.resource(
-          settings.admissions.map(admissionToApiResource(_)(actorSystem)),
+          admissionsToApiResource(settings.admissions)(actorSystem),
           ProxyConfs.fromConfig(config)))
       .use { controllerApi =>
         val testAddOrders = new TestAddOrders(controllerApi, settings)

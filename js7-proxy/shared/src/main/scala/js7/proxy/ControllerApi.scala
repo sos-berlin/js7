@@ -39,14 +39,14 @@ import scala.concurrent.duration.Deadline.now
 import scala.util.Failure
 
 final class ControllerApi(
-  val apiResources: Nel[Resource[Task, HttpControllerApi]],
+  val apisResource: Resource[Task, Nel[HttpControllerApi]],
   proxyConf: ProxyConf = ProxyConf.default,
   failWhenUnreachable: Boolean = false)
 extends ControllerApiWithHttp
 {
   private val apiCache = new RefCountedResource(
     ActiveClusterNodeSelector.selectActiveNodeApi[HttpControllerApi](
-      apiResources,
+      apisResource,
       failureDelay = proxyConf.recouplingStreamReaderConf.failureDelay))
 
   protected def apiResource(implicit src: sourcecode.Enclosing) =
@@ -68,7 +68,7 @@ extends ControllerApiWithHttp
   def when(predicate: EventAndState[Event, ControllerState] => Boolean)
   : Task[EventAndState[Event, ControllerState]] =
     CorrelId.bindIfEmpty(
-      JournaledProxy.observable(apiResources, None, _ => (), proxyConf)
+      JournaledProxy.observable(apisResource, None, _ => (), proxyConf)
         .filter(predicate)
         .headOptionL
         .map(_.getOrElse(throw new EndOfEventStreamException)))
@@ -80,14 +80,14 @@ extends ControllerApiWithHttp
   : Observable[EventAndState[Event, ControllerState]] =
     // CorrelId.bind ???
     logger.debugObservable(
-      JournaledProxy.observable(apiResources, fromEventId, proxyEventBus.publish, proxyConf))
+      JournaledProxy.observable(apisResource, fromEventId, proxyEventBus.publish, proxyConf))
 
   def startProxy(
     proxyEventBus: StandardEventBus[ProxyEvent] = new StandardEventBus,
     eventBus: JournaledStateEventBus[ControllerState] = new JournaledStateEventBus[ControllerState])
   : Task[ControllerProxy] =
     CorrelId.bindIfEmpty(logger.debugTask(
-      ControllerProxy.start(this, apiResources, proxyEventBus, eventBus, proxyConf)))
+      ControllerProxy.start(this, apisResource, proxyEventBus, eventBus, proxyConf)))
 
   def clusterAppointNodes(idToUri: Map[NodeId, Uri], activeId: NodeId)
   : Task[Checked[Accepted]] =
@@ -213,8 +213,8 @@ object ControllerApi
   private val logger = Logger[this.type]
 
   def resource(
-    apiResources: Nel[Resource[Task, HttpControllerApi]],
+    apisResource: Resource[Task, Nel[HttpControllerApi]],
     proxyConf: ProxyConf = ProxyConf.default)
   : Resource[Task, ControllerApi] =
-    Resource.make(Task { new ControllerApi(apiResources, proxyConf) })(_.stop)
+    Resource.make(Task { new ControllerApi(apisResource, proxyConf) })(_.stop)
 }

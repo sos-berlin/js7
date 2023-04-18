@@ -57,10 +57,14 @@ extends OurTestSuite with BeforeAndAfterAll with ProvideActorSystem with Control
 
   private implicit def implicitActorSystem: ActorSystem = actorSystem
   private val versionId = VersionId("MY-VERSION")
-  private lazy val api = new ControllerApi(Nel.one(AkkaHttpControllerApi.resource(
-    controller.localUri,
-    Some(primaryUserAndPassword),
-    name = "JournaledProxyTest")))
+
+  private lazy val api = new ControllerApi(AkkaHttpControllerApi
+    .resource(
+      controller.localUri,
+      Some(primaryUserAndPassword),
+      name = "JournaledProxyTest")
+    .map(Nel.one))
+
   private lazy val proxy = api.startProxy().await(99.s)
 
   override def beforeAll() = {
