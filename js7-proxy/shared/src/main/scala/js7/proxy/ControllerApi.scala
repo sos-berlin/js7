@@ -16,6 +16,7 @@ import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.HttpClient.{HttpException, isTemporaryUnreachable, liftProblem}
 import js7.base.web.{HttpClient, Uri}
+import js7.cluster.watch.api.ActiveClusterNodeSelector
 import js7.controller.client.HttpControllerApi
 import js7.data.cluster.ClusterState
 import js7.data.controller.ControllerCommand.Response.Accepted
@@ -44,10 +45,9 @@ final class ControllerApi(
 extends ControllerApiWithHttp
 {
   private val apiCache = new RefCountedResource(
-    JournaledProxy.selectActiveNodeApi(
+    ActiveClusterNodeSelector.selectActiveNodeApi[HttpControllerApi](
       apiResources,
-      onCouplingError = _ => t => SessionApi.onErrorTryAgain(toString, t).void,
-      proxyConf))
+      failureDelay = proxyConf.recouplingStreamReaderConf.failureDelay))
 
   protected def apiResource(implicit src: sourcecode.Enclosing) =
     apiCache.resource

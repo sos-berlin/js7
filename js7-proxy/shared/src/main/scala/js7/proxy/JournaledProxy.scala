@@ -1,13 +1,12 @@
 package js7.proxy
 
-import cats.effect.{ExitCase, Resource}
+import cats.effect.Resource
 import cats.syntax.option.*
-import cats.syntax.traverse.*
 import js7.base.generic.Completed
 import js7.base.monixutils.MonixBase.durationOfTask
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Checked.*
-import js7.base.problem.{Checked, Problem, ProblemException}
+import js7.base.problem.{Problem, ProblemException}
 import js7.base.session.SessionApi
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
@@ -16,16 +15,17 @@ import js7.base.utils.ScalaUtils.checkedCast
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.SetOnce
 import js7.base.web.HttpClient
+import js7.cluster.watch.api.ActiveClusterNodeSelector
 import js7.common.http.RecouplingStreamReader
 import js7.common.http.configuration.RecouplingStreamReaderConf
-import js7.data.cluster.{ClusterNodeApi, ClusterNodeState}
+import js7.data.cluster.ClusterNodeApi
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventApi, EventId, EventRequest, EventSeqTornProblem, JournaledState, SnapshotableState, Stamped}
 import js7.proxy.JournaledProxy.*
 import js7.proxy.configuration.ProxyConf
 import js7.proxy.data.event.ProxyEvent.{ProxyCoupled, ProxyCouplingError, ProxyDecoupled}
 import js7.proxy.data.event.{EventAndState, ProxyEvent, ProxyStarted}
-import monix.eval.{Fiber, Task}
+import monix.eval.Task
 import monix.execution.cancelables.SerialCancelable
 import monix.execution.{Cancelable, CancelableFuture, Scheduler}
 import monix.reactive.Observable
@@ -136,9 +136,6 @@ object JournaledProxy
   private type RequiredApi_[S <: JournaledState[S]] =
     EventApi & ClusterNodeApi & SessionApi.HasUserAndPassword { type State = S }
 
-  private type RequiredApi =
-    EventApi & ClusterNodeApi & SessionApi.HasUserAndPassword
-
   private val logger = scribe.Logger[this.type]
 
   def observable[S <: JournaledState[S]](
@@ -153,7 +150,12 @@ object JournaledProxy
 
     def observable2: Observable[EventAndState[Event, S]] =
       Observable.tailRecM(none[S])(maybeState =>
-        Observable.fromResource(selectActiveNodeApi(apiResources, _ => onCouplingError, proxyConf))
+        Observable
+          .fromResource(
+            ActiveClusterNodeSelector.selectActiveNodeApi[RequiredApi_[S]](
+              apiResources,
+              _ => onCouplingError,
+              failureDelay = proxyConf.recouplingStreamReaderConf.failureDelay))
           .flatMap(api =>
             Observable
               .fromTask(
@@ -281,118 +283,6 @@ object JournaledProxy
       }
 
     def stopRequested = false
-  }
-
-  /** Selects the API for the active node, waiting until one is active.
-    * The returned EventApi is logged-in.
-    * @param onCouplingError Boolean return value is ignored, will always continue trying
-    * @return (EventApi, None) iff apis.size == 1
-    *         (EventApi, Some(NodeId)) iff apis.size > 1
-    */
-  final def selectActiveNodeApi[Api <: RequiredApi](
-    apiResources: Nel[Resource[Task, Api]],
-    onCouplingError: EventApi => Throwable => Task[Unit],
-    proxyConf: ProxyConf)
-  : Resource[Task, Api] =
-    apiResources.sequence.flatMap(apis =>
-      Resource.eval(
-        selectActiveNodeApiOnly(
-          apis,
-          (api: EventApi) => throwable => onCouplingError(api)(throwable),
-          proxyConf)))
-
-  private def selectActiveNodeApiOnly[Api <: RequiredApi](
-    apis: Nel[Api],
-    onCouplingError: Api => Throwable => Task[Unit],
-    proxyConf: ProxyConf)
-  : Task[Api] =
-    apis match {
-      case Nel(api, Nil) =>
-        api
-          .loginUntilReachable(
-            onError = t => onCouplingError(api)(t).as(true),
-            onlyIfNotLoggedIn = true)
-          .map((_: Completed) => api)
-
-      case _ =>
-        import proxyConf.recouplingStreamReaderConf.failureDelay
-        Task
-          .tailRecM(())(_ => apis
-            .traverse(api =>
-              fetchClusterNodeState(api)
-                .materializeIntoChecked  /*don't let the whole operation fail*/
-                .start
-                .map(ApiWithFiber(api, _)))
-            .flatMap((apisWithClusterNodeStateFibers: Nel[ApiWithFiber[Api]]) =>
-              Observable.fromIterable(apisWithClusterNodeStateFibers.toList)
-                .map(o => Observable
-                  .fromTask(o.fiber.join)
-                  .map(ApiWithNodeState(o.api, _)))
-                // Query nodes in parallel and continue with first response first
-                .merge(implicitly[Observable[ApiWithNodeState[Api]] <:< Observable[ApiWithNodeState[Api]]]/*required for Scala 3???*/)
-                .takeWhileInclusive(o => !o.clusterNodeState.forall(_.isActive))
-                .toListL
-                .flatMap { list =>
-                  val maybeActive = list.lastOption collect {
-                    case ApiWithNodeState(api, Right(nodeState)) if nodeState.isActive =>
-                      api -> nodeState
-                  }
-                  logProblems(list, maybeActive)
-                  apisWithClusterNodeStateFibers
-                    .collect { case o if list.forall(_.api ne o.api) =>
-                      logger.debug(s"Cancel discarded request to '${o.api}'")
-                      o.fiber.cancel
-                    }
-                    .sequence
-                    .flatMap(_ => maybeActive match {
-                      case None => Task.sleep(failureDelay).as(Left(()))
-                      case Some(x) => Task.pure(Right(x))
-                    })
-                }
-                .guaranteeCase {
-                  case ExitCase.Completed => Task.unit
-                  case exitCase =>
-                    logger.debug(exitCase.toString)
-                    apisWithClusterNodeStateFibers
-                      .map(_.fiber.cancel)
-                      .sequence
-                      .map(_ => ())
-                }))
-          .onErrorRestartLoop(()) { (throwable, _, tryAgain) =>
-            logger.warn(throwable.toStringWithCauses)
-            if (throwable.getStackTrace.nonEmpty) logger.debug(throwable.toString, throwable)
-            tryAgain(()).delayExecution(failureDelay)
-      }
-      .map { case (api, clusterNodeState) =>
-        val x = if (clusterNodeState.isActive) "active" else "maybe passive"
-        logger.info(s"Selected $x node ${api.baseUri} '${clusterNodeState.nodeId}'")
-        api
-      }
-    }
-
-  private case class ApiWithFiber[Api <: RequiredApi](
-    api: Api,
-    fiber: Fiber[Checked[ClusterNodeState]])
-
-  private case class ApiWithNodeState[Api <: RequiredApi](
-    api: Api,
-    clusterNodeState: Checked[ClusterNodeState])
-
-  private def fetchClusterNodeState[Api <: RequiredApi](api: Api): Task[Checked[ClusterNodeState]] =
-    HttpClient
-      .liftProblem(
-        api.retryIfSessionLost()(
-          api.clusterNodeState))
-
-  private def logProblems[Api <: RequiredApi](
-    list: List[ApiWithNodeState[Api]],
-    maybeActive: Option[(Api, ClusterNodeState)])
-  : Unit = {
-    list.collect { case ApiWithNodeState(api, Left(problem)) => api -> problem }
-      .foreach { case (api, problem) => logger.warn(
-        s"Cluster node '${api.baseUri}' is not accessible: $problem")
-    }
-    if (maybeActive.isEmpty) logger.warn("No cluster node seems to be active")
   }
 
   final class EndOfEventStreamException extends RuntimeException("Event stream terminated unexpectedly")
