@@ -1,7 +1,7 @@
 package js7.subagent.web
 
 import akka.http.scaladsl.model.StatusCodes.{BadRequest, NotFound, ServiceUnavailable}
-import akka.http.scaladsl.server.Directives.{Segment, as, complete, entity, get, path, pathEnd, pathEndOrSingleSlash, pathPrefix, post, withSizeLimit}
+import akka.http.scaladsl.server.Directives.{Segment, as, complete, entity, get, parameter, path, pathEnd, pathEndOrSingleSlash, pathPrefix, post, withSizeLimit}
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.server.RouteConcatenation.*
 import cats.syntax.traverse.*
@@ -19,7 +19,9 @@ import js7.common.akkahttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
 import js7.common.akkahttp.StandardMarshallers.*
 import js7.common.akkahttp.web.session.SessionRoute
 import js7.core.web.EntitySizeLimitProvider
+import js7.data.agent.AgentClusterConf
 import js7.data.agent.Problems.AgentNotDedicatedProblem
+import js7.data.cluster.{ClusterNodeState, ClusterState}
 import js7.data.subagent.Problems.SubagentAlreadyDedicatedProblem
 import js7.data.subagent.SubagentCommand
 import js7.subagent.Subagent
@@ -79,12 +81,27 @@ private trait PseudoDirectorRoute extends SessionRoute with EntitySizeLimitProvi
           complete(AgentNotDedicatedProblem))))
 
   private lazy val pseudoClusterRoute: Route =
-    (path("command") & post)(
-      authorizedUser(ValidUserPermission)(_ =>
-        checkSubagent(
-          // Simply touching this web service is enough to restart as an Agent Director
-          // Limit to ClusterStartBackupNode ???
-          completeWithConvertToDirector)))
+    pathEnd(get(
+      parameter("return") {
+        case "ClusterNodeState" =>
+          // FIXME Sollte ActiveClusterNodeSelector das selbst erkennen?
+          //  Dann können wir auf diesen Pseudo-Webservice verzichten und auch auf is-backup.
+          val isBackup = config.getBoolean("js7.journal.cluster.node.is-backup")
+          val ownClusterNodeId =
+            if (isBackup) AgentClusterConf.backupNodeId else AgentClusterConf.primaryNodeId
+          complete(
+            ClusterNodeState(ownClusterNodeId, isBackup = isBackup, ClusterState.Empty))
+
+        case _ =>
+          complete(NotFound)
+      })
+    ) ~
+      path("command")(post(
+        authorizedUser(ValidUserPermission)(_ =>
+          checkSubagent(
+            // Simply touching this web service is enough to restart as an Agent Director
+            // Limit to ClusterStartBackupNode ???
+            completeWithConvertToDirector))))
 
   private lazy val pseudoAgentClusterWatchRoute: Route =
     (pathEnd & (post | get))(

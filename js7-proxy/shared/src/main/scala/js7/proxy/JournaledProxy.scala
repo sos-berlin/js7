@@ -154,8 +154,8 @@ object JournaledProxy
           .fromResource(
             ActiveClusterNodeSelector.selectActiveNodeApi[RequiredApi_[S]](
               apisResource,
-              _ => onCouplingError,
-              failureDelay = proxyConf.recouplingStreamReaderConf.failureDelay))
+              failureDelay = proxyConf.recouplingStreamReaderConf.failureDelay,
+              _ => onCouplingError))
           .flatMap(api =>
             Observable
               .fromTask(

@@ -1,14 +1,16 @@
 package js7.tests.controller.cluster
 
-import akka.actor.PoisonPill
 import cats.effect.Resource
 import cats.syntax.all.*
-import js7.agent.ConvertibleSubagent
+import js7.agent.data.commands.AgentCommand
+import js7.agent.{ConvertibleSubagent, TestAgent}
+import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
+import js7.base.utils.Allocated
 import js7.base.utils.CatsBlocking.BlockingTaskResource
-import js7.base.utils.ScalaUtils.syntax.RichEither
+import js7.base.utils.ScalaUtils.syntax.{RichEither, RichThrowable}
 import js7.base.web.Uri
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.data.agent.{AgentPath, AgentRef}
@@ -24,7 +26,7 @@ import js7.tests.testenv.ControllerClusterForScalaTest.assertEqualJournalFiles
 import js7.tests.testenv.SubagentEnv
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
-import scala.util.Try
+import scala.util.control.NonFatal
 
 final class SimpleAgentClusterTest extends ControllerClusterTester
 {
@@ -40,48 +42,61 @@ final class SimpleAgentClusterTest extends ControllerClusterTester
     withControllerAndBackupWithoutAgents() { (primary, backup, _) =>
       val subagentResources: Resource[Task, Seq[(SubagentEnv, ConvertibleSubagent)]] =
         Seq(
-          primary /*any DirectoryProvider*/ .subagentEnvResource(subagentItems(0)),
-          primary /*any DirectoryProvider*/ .subagentEnvResource(subagentItems(1), isClusterBackup = true)
+          primary/*any DirectoryProvider*/.subagentEnvResource(subagentItems(0)),
+          primary/*any DirectoryProvider*/.subagentEnvResource(subagentItems(1),
+            isClusterBackup = true)
         ).sequence
           .flatMap(_.traverse(env => env.convertibleSubagentResource.map(env -> _)))
 
-      subagentResources.blockingUse(99.s) { envsAndConvertibleSubagents =>
+      subagentResources.blockingUse(99.s)(envsAndConvertibleSubagents => try {
         val (subagentEnvs, convertibleSubagents) = envsAndConvertibleSubagents.unzip
         runControllers(primary, backup) { (primaryController, _) =>
           import primaryController.eventWatch.await
           val failOverOrderId = OrderId("🔸")
-          primary.runAgents() { primaryAgents =>
-            val agent = convertibleSubagents(0).untilDirectorStarted.await(99.s)
-            agent.eventWatch.await[ClusterNodesAppointed]()
-            agent.eventWatch.await[ClusterWatchRegistered]()
-            agent.eventWatch.await[ClusterCoupled]()
+          val agent = convertibleSubagents(0).untilDirectorStarted.await(99.s)
+          agent.eventWatch.await[ClusterNodesAppointed]()
+          agent.eventWatch.await[ClusterWatchRegistered]()
+          agent.eventWatch.await[ClusterCoupled]()
 
-            val stampedSeq = primaryController.runOrder(FreshOrder(OrderId("🔹"), TestWorkflow.path))
-            assert(stampedSeq.last.value == OrderFinished())
+          val stampedSeq = primaryController.runOrder(FreshOrder(OrderId("🔹"), TestWorkflow.path))
+          assert(stampedSeq.last.value == OrderFinished())
 
-            assertEqualJournalFiles(primary.controllerEnv, backup.controllerEnv, n = 1)
-            assertEqualJournalFiles(subagentEnvs(0), subagentEnvs(1), n = 1)
+          assertEqualJournalFiles(primary.controllerEnv, backup.controllerEnv, n = 1)
+          assertEqualJournalFiles(subagentEnvs(0), subagentEnvs(1), n = 1)
 
-            primaryController.api.addOrder(FreshOrder(failOverOrderId, workflow.path)).await(99.s).orThrow
-            await[OrderProcessingStarted](_.key == failOverOrderId)
-            //TODO: await[OrderStdoutWritten](_.key == failOverOrderId)
+          primaryController.api.addOrder(FreshOrder(failOverOrderId, workflow.path)).await(99.s).orThrow
+          await[OrderProcessingStarted](_.key == failOverOrderId)
+          //TODO: await[OrderStdoutWritten](_.key == failOverOrderId)
 
-            // Kill Agent roughly — TODO Proper fast Agent termination desired
-            //agent.actorSystem.terminate().await(99.s)
-            agent.persistence.await(99.s).journalActor ! PoisonPill
-            Try(agent.untilTerminated.await(99.s))
-          }
+          // Kill Agent roughly — TODO Proper fast Agent termination desired
+          //agent.persistence.await(99.s).journalActor ! PoisonPill
+          //Try(agent.untilTerminated.await(99.s))
+          new TestAgent(new Allocated(agent, Task.unit))
+            .terminate(
+              processSignal = Some(SIGKILL),
+              clusterAction = Some(AgentCommand.ShutDown.ClusterAction.Failover))
+            .await(99.s)
 
           val backupDirector = convertibleSubagents(1).untilDirectorStarted.await(99.s)
           val eventId = backupDirector.eventWatch.await[ClusterFailedOver]().head.eventId
           ASemaphoreJob.continue()
 
-          pending // FIXME emit OrderProcessingFailed(ProcessLost)
+          // FIXME emit OrderProcessingFailed(ProcessLost)
           backupDirector.eventWatch.await[OrderProcessingStarted](_.key == failOverOrderId, after = eventId)
           backupDirector.eventWatch.await[OrderDetachable](_.key == failOverOrderId, after = eventId)
-          //FIXME backupAgents(0).eventWatch.await[OrderFinished](_.key == failOverOrderId, after = eventId)
+
+          primaryController.eventWatch.await[OrderFinished](_.key == failOverOrderId)
         }
-      }
+      } catch {
+        case NonFatal(t) =>
+          // TODO Move this code to blockingUse
+          logger.error(t.toStringWithCauses, t)
+          try envsAndConvertibleSubagents.parTraverse(_._2.stop).await(99.s)
+          catch {
+            case NonFatal(t2) => t.addSuppressed(t2)
+          }
+          throw t
+      })
     }
   }
 }

@@ -1099,6 +1099,7 @@ with MainJournalingActor[ControllerState, Event]
         },
         persistence, agentDriverConfiguration, controllerConfiguration, context.system)
       .toAllocated
+      .logWhenItTakesLonger("registerAgent")
       .awaitInfinite // TODO Blocking
 
     allocated.allocatedThing.untilStopped

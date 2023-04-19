@@ -19,16 +19,12 @@ object ActiveClusterNodeSelector {
   private val logger = Logger[this.type]
 
   /** Selects the API for the active node, waiting until one is active.
-    * The returned EventApi is logged-in.
-    * @param onCouplingError Boolean return value is ignored, will always continue trying
-    * @return (EventApi, None) iff apis.size == 1
-    *         (EventApi, Some(NodeId)) iff apis.size > 1
-    */
+   * The returned EventApi is logged-in. */
   final def selectActiveNodeApi[Api <: ClusterNodeApi](
     apisResource: Resource[Task, Nel[Api]],
+    failureDelay: FiniteDuration,
     onCouplingError: Api => Throwable => Task[Unit] =
-      (_: Api) => (t: Throwable) => SessionApi.onErrorTryAgain(toString, t).void,
-    failureDelay: FiniteDuration)
+      (_: Api) => (t: Throwable) => SessionApi.onErrorTryAgain(toString, t).void)
   : Resource[Task, Api] =
     apisResource.flatMap(apis =>
       Resource.eval(

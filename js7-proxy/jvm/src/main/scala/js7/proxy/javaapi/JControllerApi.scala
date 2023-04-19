@@ -336,7 +336,7 @@ final class JControllerApi(val asScala: ControllerApi, config: Config)
         case Some(service) => Task.some(service)
         case None =>
           ClusterWatchService
-            .resource(clusterWatchId, asScala.apisResource, config, eventBus.asScala)
+            .resource(clusterWatchId, asScala.apisResource, config, eventBus = eventBus.asScala)
             .toAllocated
             .map(Some(_))
       }

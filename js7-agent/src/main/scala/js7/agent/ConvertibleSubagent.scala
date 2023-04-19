@@ -5,6 +5,7 @@ import cats.effect.concurrent.Deferred
 import js7.agent.ConvertibleSubagent.*
 import js7.agent.configuration.AgentConfiguration
 import js7.base.eventbus.StandardEventBus
+import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.RichMonixResource
 import js7.base.service.{MainService, Service}
@@ -35,7 +36,7 @@ extends MainService with Service.StoppableByRequest
       case Left(ConvertToDirector) =>
         logger.info("Continue as Agent Director\n" + "─" * 80)
         printlnWithClock("Continue as Agent Director")
-        // TODO Subagent mit laufenden Jobs lebendig übergeben,
+        // TODO Subagent mit laufendem Jobs lebendig übergeben,
         //  dabei Webserver und Journal (wie?) tauschen
         agentResource
           .use { agent =>
@@ -54,6 +55,17 @@ extends MainService with Service.StoppableByRequest
         _subagentAllocated.stop/*duplicate???*/ *>
           terminated.complete(termination)
     })
+
+  override def stop =
+    Task.defer {
+      // TODO Stop Director
+      Option(_subagentAllocated)
+        .fold(Task.unit)(_.stop)
+        .*>(_subagentOrDirector
+          .toOption
+          .fold(Task.unit)(_.terminate(Some(SIGKILL)).void))
+        .*>(super.stop)
+    }
 
   def untilDirectorStarted: Task[RunningAgent] =
     director.get

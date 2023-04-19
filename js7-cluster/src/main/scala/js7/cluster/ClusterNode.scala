@@ -120,12 +120,6 @@ extends Service.StoppableByRequest
       .dematerialize
       .flatMap(workingNode =>
         currentStateRef.set(workingNode.persistence.state.map(Right(_)))))
-      //.guaranteeCase {
-      //  case ExitCase.Completed => Task.unit
-      //  // Duplicate ?
-      //  case ExitCase.Error(t) => Task(logger.error(t.toStringWithCauses, t.nullIfNoStackTrace))
-      //  case ExitCase.Canceled => Task(logger.warn("❌ untilWorkingNodeStarted canceled"))
-      //})
 
   private def untilRecovered: Task[Recovered[S]] =
     logger.debugTask(prepared

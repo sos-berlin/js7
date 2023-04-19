@@ -21,6 +21,7 @@ import scala.util.chaining.scalaUtilChainingOps
 
 final class ClusterWatch(
   now: () => MonixDeadline,
+  onClusterStateChanged: (HasNodes) => Unit = _ => (),
   requireManualNodeLossConfirmation: Boolean = false,
   val eventBus: ClusterWatchEventBus = new ClusterWatchEventBus)
 {
@@ -78,6 +79,8 @@ final class ClusterWatch(
           updatedClusterState,
           lastHeartbeat = now(),
           requireManualNodeLossConfirmation = requireManualNodeLossConfirmation))
+
+        onClusterStateChanged(updatedClusterState)
         Right(Confirmed(manualConfirmer = maybeManualConfirmer))
     }
   }

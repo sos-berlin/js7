@@ -18,7 +18,7 @@ import js7.base.monixutils.AsyncVariable
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Checked.*
 import js7.base.problem.Problems.InvalidSessionTokenProblem
-import js7.base.problem.{Checked, Problem}
+import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.service.Service
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
@@ -28,13 +28,15 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, AsyncLock, SetOnce}
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatchService
+import js7.cluster.watch.api.ActiveClusterNodeSelector
 import js7.common.http.RecouplingStreamReader
 import js7.controller.agent.AgentDriver.*
 import js7.controller.agent.CommandQueue.QueuedInputResponse
 import js7.controller.configuration.ControllerConfiguration
 import js7.data.agent.AgentRefStateEvent.{AgentCouplingFailed, AgentDedicated}
 import js7.data.agent.Problems.AgentNotDedicatedProblem
-import js7.data.agent.{AgentPath, AgentRef, AgentRunId}
+import js7.data.agent.{AgentClusterConf, AgentPath, AgentRef, AgentRunId}
+import js7.data.cluster.ClusterState.HasNodes
 import js7.data.cluster.ClusterWatchId
 import js7.data.controller.ControllerState
 import js7.data.event.{AnyKeyedEvent, EventId, KeyedEvent, Stamped}
@@ -78,6 +80,7 @@ extends Service.StoppableByRequest
   private var noJournal = false
   private val directorDriverAllocated = AsyncVariable(
     null.asInstanceOf[Allocated[Task, DirectorDriver]])
+  private var clusterState: Option[HasNodes] = None
 
   private object state {
     val lock = AsyncLock()
@@ -87,11 +90,12 @@ extends Service.StoppableByRequest
     var lastCommittedEventId = initialEventId
     var releaseEventsCancelable: Option[Cancelable] = None
     var delayNextReleaseEvents = false
-    //?var isReset = false
   }
 
   private def onCouplingFailed(problem: Problem): Task[Boolean] =
     Task.defer {
+      // TODO Differentiate between the two Directors
+      //  Lesser problem when the active one is reachable.
       val agentCouplingFailed = AgentCouplingFailed(problem)
       if (lastCouplingFailed contains agentCouplingFailed) {
         logger.debug(s"Coupling failed: $problem")
@@ -183,7 +187,7 @@ extends Service.StoppableByRequest
             Task
               .when(markedOrders.nonEmpty)(
                 onOrderMarked(markedOrders))
-              .*>(Task.defer {
+              .*>(Task {
                 val releaseEvents = succeededInputs.collect {
                   case o: Queueable.ReleaseEventsQueueable => o
                 }
@@ -191,7 +195,6 @@ extends Service.StoppableByRequest
                   state.releaseEventsCancelable.foreach(_.cancel())
                   state.releaseEventsCancelable = None
                 }
-                stopIfTerminated
               })
           }
       }
@@ -202,33 +205,33 @@ extends Service.StoppableByRequest
           startNewDirectorDriver
             .onErrorHandle(t => Task(logger.error(
               s"asyncOnBatchFailed => ${t.toStringWithCauses}", t)))
+            .cancelWhen(untilStopRequested)
             .startAndForget)
 
     private def onBatchFailed(queueables: Seq[Queueable], problem: Problem): Task[Unit] =
       Task.defer {
         problem match {
-          case DecoupledProblem |
-               //InvalidSessionTokenProblem |
-               RecouplingStreamReader.TerminatedProblem =>
+          case DecoupledProblem | RecouplingStreamReader.TerminatedProblem =>
             logger.debug(s"Command batch failed: $problem")
           case _ =>
             logger.warn(s"Command batch failed: $problem")
         }
-        commandQueue.handleBatchFailed(queueables) *>
-          stopIfTerminated
+        commandQueue.handleBatchFailed(queueables)
       }
   }
 
   protected def start =
-    for {
-      _ <- startNewDirectorDriver
-      started <- startService(
-        untilStopRequested
-          .*>(Task {
-            state.releaseEventsCancelable.foreach(_.cancel())
-          })
-          .*>(directorDriverAllocated.value.flatMap(_.stop)))
-    } yield started
+    startService(
+      startNewDirectorDriver
+        .cancelWhen(untilStopRequested)
+        .*>(untilStopRequested)
+        .*>(Task {
+          state.releaseEventsCancelable.foreach(_.cancel())
+        })
+        .*>(directorDriverAllocated.value.flatMap {
+          case null => Task.unit
+          case o => o.stop
+        }))
 
   def send(input: Queueable): Task[Unit] =
     logger.traceTask("send", input.toShortString)(Task.defer {
@@ -247,6 +250,7 @@ extends Service.StoppableByRequest
               }
               .onErrorHandle(t => Task(logger.error(
                 s"send(${input.toShortString}) => ${t.toStringWithCauses}", t)))
+              .cancelWhen(untilStopRequested)
               .startAndForget))
     })
 
@@ -255,6 +259,7 @@ extends Service.StoppableByRequest
       //directorDriverAllocated.use { directorDriverAllocated =>
         //val directorDriver = directorDriverAllocated.allocatedThing
         state.lock.lock(Task.defer {
+          // FIXME Handle Cluster node URI change or forbid this
           state.directors = agentRef.directors
           // TODO Restart DirectorDriver only if one of the URIs has changed
           //Task.when(uri != directorDriver.client.baseUri || state.isReset) {
@@ -263,6 +268,7 @@ extends Service.StoppableByRequest
             startNewDirectorDriver
               .onErrorHandle(t => Task(logger.error(
                 s"startNewDirectorDriver => ${t.toStringWithCauses}", t)))
+              .cancelWhen(untilStopRequested)
               .startAndForget/*Not locked*/
           }))
 
@@ -391,17 +397,7 @@ extends Service.StoppableByRequest
             Task.unit
         }.map(_.combineAll))
 
-  private def stopIfTerminated: Task[Unit] = // ???
-    Task.unit
-    //Task(if (commandQueue.isTerminated) {
-    //  logger.debug("Stop")
-    //  //state.currentFetchedFuture.foreach(_.cancel())
-    //  state.releaseEventsCancelable.foreach(_.cancel())
-    //  //Task.fromFuture(eventFetcherTerminated.future)
-    //  //  .onErrorHandle(t => logger.debug(t.toStringWithCauses))
-    //  //  .*>(stopThis.startAndForget/*TODO*/)
-    //})
-
+  // FIXME ClusterWatch nur neu starten, wenn URIs geändert, weil Zustand verloren geht
   private def startNewDirectorDriver: Task[Unit] =
     logger.debugTask(
       directorDriverAllocated
@@ -416,32 +412,61 @@ extends Service.StoppableByRequest
             Task.when(uris.lengthIs == 2)(
               commandQueue
                 .enqueue(
+                  // FIXME Nur senden, wenn ClusterState.Empty !
                   Queueable.ClusterAppointNodes(
                     Map(
-                      NodeId("Primary") -> uris(0),
-                      NodeId("Backup") -> uris(1)),
+                      AgentClusterConf.primaryNodeId -> uris(0),
+                      AgentClusterConf.backupNodeId -> uris(1)),
                     NodeId("Primary")))
                 .void))))
 
   private def directorDriverResource: Resource[Task, DirectorDriver] =
     for {
-      clients <- clientsResource
-      _ <- clusterWatchResource(clients)
+      _ <- clusterWatchResource
+      client <- activeClientResource
       directorDriver <- DirectorDriver.resource(
         agentPath, state.lastFetchedEventId,
-        clients.head/*FIXME active cluster node*/,
+        client,
         dedicateAgentIfNeeded, onCouplingFailed, onCoupled, onDecoupled,
         onEventsFetched,
         persistence, conf)
     } yield directorDriver
 
-  private def clusterWatchResource(clients: Nel[AgentClient]): Resource[Task, ClusterWatchService] =
-    ClusterWatchService.resource(
-      clusterWatchId,
-      Resource.eval(Task.pure(clients)),
-      controllerConfiguration.config)
+  private def clusterWatchResource: Resource[Task, ClusterWatchService] =
+    for {
+      clients <- clientsResource
+      clusterWatchService <- ClusterWatchService.resource(
+        clusterWatchId,
+        Resource.eval(Task.pure(clients)),
+        controllerConfiguration.config,
+        onClusterStateChanged = onClusterStateChanged)
+    } yield clusterWatchService
 
-  // FIXME Detect active and passive node !
+  private def onClusterStateChanged(hasNodes: HasNodes): Unit =
+    if (!this.clusterState.contains(hasNodes)) {
+      logger.info(hasNodes.toShortString)
+      val activeNodeChanged = this.clusterState.forall(_.activeId != hasNodes.activeId)
+      this.clusterState = Some(hasNodes)
+      if (activeNodeChanged) {
+        startNewDirectorDriver
+          .onErrorHandle(t => Task(logger.error(
+            s"onClusterStateChanged/startNewDirectorDriver => ${t.toStringWithCauses}", t)))
+          .cancelWhen(untilStopRequested)
+          .runToFuture // ???
+      }
+    }
+
+  private def activeClientResource: Resource[Task, AgentClient] = {
+    ActiveClusterNodeSelector.selectActiveNodeApi[AgentClient](
+      clientsResource,
+      failureDelay = conf.recouplingStreamReader.failureDelay,
+      onCouplingError = _ => throwable =>
+        onCouplingFailed(throwable match {
+          case ProblemException(problem) => problem
+          case t => Problem.fromThrowable(t)
+        }).void)
+  }
+
   private def clientsResource: Resource[Task, Nel[AgentClient]] =
     Resource
       .eval(persistence.state.map(_.agentToUris(agentPath)))

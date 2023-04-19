@@ -25,6 +25,7 @@ import js7.common.akkautils.Akkas.actorSystemResource
 import js7.common.configuration.Js7Configuration.defaultConfig
 import js7.common.http.AkkaHttpClient
 import js7.data.cluster.ClusterEvent.ClusterNodeLostEvent
+import js7.data.cluster.ClusterState.HasNodes
 import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
 import js7.data.cluster.{ClusterState, ClusterWatchId, ClusterWatchRequest, ClusterWatchRunId}
 import js7.data.node.NodeId
@@ -40,10 +41,14 @@ final class ClusterWatchService private[ClusterWatchService](
   now: () => MonixDeadline,
   keepAlive: FiniteDuration,
   retryDelays: NonEmptySeq[FiniteDuration],
+  onClusterStateChanged: (HasNodes) => Unit,
   val eventBus: ClusterWatchEventBus)
 extends MainService with Service.StoppableByRequest
 {
-  private val clusterWatch = new ClusterWatch(now, eventBus = eventBus)
+  private val clusterWatch = new ClusterWatch(
+    now,
+    onClusterStateChanged = onClusterStateChanged,
+    eventBus = eventBus)
   val clusterWatchRunId = ClusterWatchRunId.random()
   private val delayConf = DelayConf(retryDelays, resetWhen = retryDelays.last)
 
@@ -166,14 +171,18 @@ object ClusterWatchService
     clusterWatchId: ClusterWatchId,
     apisResource: Resource[Task, Nel[HttpClusterNodeApi]],
     config: Config,
+    onClusterStateChanged: (HasNodes) => Unit = _ => (),
     eventBus: ClusterWatchEventBus = new ClusterWatchEventBus)
   : Resource[Task, ClusterWatchService] =
-    resource2(clusterWatchId, apisResource, config.withFallback(defaultConfig), eventBus)
+    resource2(
+      clusterWatchId, apisResource, config.withFallback(defaultConfig),
+      onClusterStateChanged, eventBus)
 
   private def restartableResource(
     clusterWatchId: ClusterWatchId,
     apisResource: Resource[Task, Nel[HttpClusterNodeApi]],
-    config: Config)
+    config: Config,
+    onClusterStateChanged: (HasNodes) => Unit = _ => ())
   : Resource[Task, RestartAfterFailureService[ClusterWatchService]] =
     Resource.suspend(Task {
       val cfg = config.withFallback(defaultConfig)
@@ -183,13 +192,14 @@ object ClusterWatchService
         .asScala.map(_.toFiniteDuration).toVector
 
       Service.restartAfterFailure(startDelays = startDelays, runDelays = runDelays)(
-        resource2(clusterWatchId, apisResource, cfg))
+        resource2(clusterWatchId, apisResource, cfg, onClusterStateChanged))
     })
 
   private def resource2(
     clusterWatchId: ClusterWatchId,
     apisResource: Resource[Task, Nel[HttpClusterNodeApi]],
     config: Config,
+    onClusterStateChanged: (HasNodes) => Unit,
     eventBus: ClusterWatchEventBus = new ClusterWatchEventBus)
   : Resource[Task, ClusterWatchService] =
     Resource.suspend(Task {
@@ -208,6 +218,7 @@ object ClusterWatchService
                 () => scheduler.now,
                 keepAlive = keepAlive,
                 retryDelays = NonEmptySeq.fromSeq(retryDelays) getOrElse NonEmptySeq.of(1.s),
+                onClusterStateChanged,
                 eventBus))))
       } yield service
     })
