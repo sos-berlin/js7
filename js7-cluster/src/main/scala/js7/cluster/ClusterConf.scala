@@ -47,29 +47,26 @@ object ClusterConf
             .map { case (k, v) =>
               v.unwrapped match {
                 case v: String => NodeId.checked(k).flatMap(id => Uri.checked(v).map(id -> _))
-                case _ => Left(Problem("A cluster node URI is expected to be configured as a string"))
+                case _ => Left(Problem(
+                  "A cluster node URI is expected to be configured as a string"))
               }
             }
             .toVector
             .sequence
             .map(o => Some(o.toMap))
       }
-      nodeId = config.optionAs[NodeId]("js7.journal.cluster.node.id")
-        .getOrElse(NodeId(
-          if (config.getBoolean("js7.journal.cluster.node.is-backup"))
-            "Backup"
-           else
-            "Primary"))
+      nodeId = config.optionAs[NodeId]("js7.journal.cluster.node.id") getOrElse
+        NodeId(if (isBackup) "Backup" else "Primary")
       userAndPassword <- config.checkedOptionAs[SecretString]("js7.auth.cluster.password")
         .map(_.map(UserAndPassword(userId, _)))
       recouplingStreamReaderConf <- RecouplingStreamReaderConfs.fromConfig(config)
-      heartbeat <- Right(config.getDuration("js7.journal.cluster.heartbeat").toFiniteDuration)
-      heartbeatTimeout <- Right(config.getDuration("js7.journal.cluster.heartbeat-timeout").toFiniteDuration)
+      heartbeat = config.getDuration("js7.journal.cluster.heartbeat").toFiniteDuration
+      heartbeatTimeout = config.getDuration("js7.journal.cluster.heartbeat-timeout").toFiniteDuration
       timing <- ClusterTiming.checked(heartbeat, heartbeatTimeout)
-      clusterWatchId <- Right(config.optionAs[ClusterWatchId]("clusterWatchId"))
+      clusterWatchId = config.optionAs[ClusterWatchId]("clusterWatchId")
       clusterWatchUniquenessMemorySize = config.getInt("js7.journal.cluster.watch.uniqueness-memory-size")
-      testHeartbeatLoss <- Right(config.optionAs[String]("js7.journal.cluster.TEST-HEARTBEAT-LOSS"))
-      testAckLoss <- Right(config.optionAs[String]("js7.journal.cluster.TEST-ACK-LOSS"))
+      testHeartbeatLoss = config.optionAs[String]("js7.journal.cluster.TEST-HEARTBEAT-LOSS")
+      testAckLoss = config.optionAs[String]("js7.journal.cluster.TEST-ACK-LOSS")
       setting <- maybeIdToUri.traverse(ClusterSetting.checked(_, nodeId, timing, clusterWatchId))
     } yield
       new ClusterConf(
