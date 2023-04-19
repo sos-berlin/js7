@@ -44,6 +44,13 @@ trait SubagentDriver
 
   def killProcess(orderId: OrderId, signal: ProcessSignal): Task[Unit]
 
+  // TODO Emit one batch for all recovered orders!
+  final def emitOrderProcessLost(order: Order[Order.Processing])
+  : Task[Checked[OrderProcessed]] =
+    persistence
+      .persistKeyedEvent(order.id <-: OrderProcessed.processLostDueToRestart)
+      .map(_.map(_._1.value.event))
+
   final def orderToExecuteDefaultArguments(order: Order[Order.Processing])
   : Task[Checked[Map[String, Expression]]] =
     persistence.state

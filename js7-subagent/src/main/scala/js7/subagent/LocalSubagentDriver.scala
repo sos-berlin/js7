@@ -226,9 +226,7 @@ extends SubagentDriver
       .flatMap(_.sequence)
 
   def recoverOrderProcessing(order: Order[Order.Processing]) =
-    persistence
-      .persistKeyedEvent(order.id <-: OrderProcessed.processLostDueToRestart)
-      .map(_.map(_._1.value.event))
+    emitOrderProcessLost(order)
 
   def killProcess(orderId: OrderId, signal: ProcessSignal) =
     for {

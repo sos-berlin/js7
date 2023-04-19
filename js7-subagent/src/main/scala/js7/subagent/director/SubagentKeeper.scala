@@ -41,6 +41,7 @@ import scala.concurrent.Promise
 
 final class SubagentKeeper[S <: SubagentDirectorState[S]](
   agentPath: AgentPath,
+  failedOverSubagentId: Option[SubagentId],
   persistence: StatePersistence[S],
   jobLauncherConf: JobLauncherConf,
   directorConf: DirectorConf,
@@ -82,8 +83,8 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
     logger.debugTask(Task.defer {
       initialized.orThrow // Must be initialized!
 
-      // FIXME continueDetaching AFTER recovered Orders has continueProcessingOrder
-      //  Using .startAndForget for both may result let continueProcessingOrder fail
+      // FIXME continueDetaching AFTER recovered Orders has recoverOrderProcessing
+      //  Using .startAndForget for both may result let recoverOrderProcessing fail
       //  due to stopped RemoteSubagentDriver
       //  NO ACTORS!
       // SubagentDeleteTest may fail occasionally
@@ -175,7 +176,10 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
 
           case Some(subagentDriver) =>
             forProcessingOrder(order.id, subagentDriver, onEvents)(
-              subagentDriver.recoverOrderProcessing(order)
+              if (failedOverSubagentId contains subagentDriver.subagentId)
+                subagentDriver.emitOrderProcessLost(order)
+              else
+                subagentDriver.recoverOrderProcessing(order)
             ).materializeIntoChecked
               .map(_.onProblemHandle(problem =>
                 logger.error(s"recoverOrderProcessing ${order.id} => $problem")))
@@ -398,7 +402,6 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
             assert(oldDriver.subagentId == newDriver.subagentId)
             val name = "addOrChange " + oldDriver.subagentItem.pathRev
             oldDriver
-              // FIXME Kill the processes ?
               .stopDispatcherAndEmitProcessLostEvents(ProcessLostDueSubagentUriChangeProblem, None)
               .*>(oldDriver.stop)  // Maybe try to send Shutdown command ???
               .*>(subagentItemLockKeeper

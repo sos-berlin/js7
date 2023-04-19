@@ -31,6 +31,7 @@ import js7.data.agent.Problems.{AgentAlreadyDedicatedProblem, AgentIsShuttingDow
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
+import js7.data.subagent.SubagentId
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.state.FileStatePersistence
 import js7.launcher.configuration.JobLauncherConf
@@ -44,6 +45,7 @@ import scala.concurrent.{Future, Promise}
   */
 private[agent] final class AgentActor(
   totalRunningSince: Deadline,
+  failedOverSubagentId: Option[SubagentId],
   terminatePromise: Promise[ProgramTermination],
   persistenceAllocated: Allocated[Task, FileStatePersistence[AgentState]],
   clusterNode: ClusterNode[AgentState],
@@ -281,6 +283,7 @@ private[agent] final class AgentActor(
             Props {
               new AgentOrderKeeper(
                 totalRunningSince,
+                failedOverSubagentId,
                 requireNonNull(recoveredAgentState),
                 allocatedSignatureVerifier.allocatedThing,
                 jobLauncherConf,

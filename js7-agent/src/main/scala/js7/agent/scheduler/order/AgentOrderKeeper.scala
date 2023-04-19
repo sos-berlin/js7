@@ -73,6 +73,7 @@ import scala.util.{Failure, Success, Try}
  */
 final class AgentOrderKeeper(
   totalRunningSince: Deadline,
+  failedOverSubagentId: Option[SubagentId],
   recoveredAgentState : AgentState,
   signatureVerifier: SignatureVerifier,
   jobLauncherConf: JobLauncherConf,
@@ -189,7 +190,9 @@ with Stash
   import shutdown.shuttingDown
 
   private val subagentKeeper =
-    new SubagentKeeper(ownAgentPath, persistence, jobLauncherConf, conf.subagentDirectorConf,
+    new SubagentKeeper(
+      ownAgentPath, failedOverSubagentId,
+      persistence, jobLauncherConf, conf.subagentDirectorConf,
       context.system)
 
   watch(journalActor)

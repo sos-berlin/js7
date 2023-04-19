@@ -266,19 +266,19 @@ object ClusterNode
     config: Config)
     (implicit S: SnapshotableState.Companion[S], scheduler: Scheduler, akkaTimeout: Timeout)
   : Resource[Task, (Recovered.Extract, ActorSystem, ClusterNode[S])] =
-    StateRecoverer.resource[S](journalMeta, config)
-      .parZip(
-        akkaResource/*start in parallel*/)
+    StateRecoverer
+      .resource[S](journalMeta, config)
+      .parZip(akkaResource/*start in parallel*/)
       .flatMap { case (recovered, actorSystem) =>
         implicit val a = actorSystem
-        for (clusterNode <-
-               resource(
-                 recovered, journalMeta, journalConf, clusterConf, config,
-                 clusterNodeApi(_, _, actorSystem),
-                 new LicenseChecker(LicenseCheckContext(configDirectory)),
-                 eventIdClock, testEventBus
-               ).orThrow)
-        yield (recovered.extract, actorSystem, clusterNode)
+        val clusterNodeResource = resource(
+          recovered, journalMeta, journalConf, clusterConf, config,
+          clusterNodeApi(_, _, actorSystem),
+          new LicenseChecker(LicenseCheckContext(configDirectory)),
+          eventIdClock, testEventBus
+        ).orThrow
+        for (clusterNode <- clusterNodeResource) yield
+          (recovered.extract, actorSystem, clusterNode)
       }
 
   private def resource[S <: SnapshotableState[S] : diffx.Diff : Tag](

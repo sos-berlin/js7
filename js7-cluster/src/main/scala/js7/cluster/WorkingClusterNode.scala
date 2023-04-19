@@ -37,7 +37,10 @@ import monix.execution.Scheduler
   * WorkingClusterNode also starts ActiveClusterNodes after
   * the ClusterNodesAppointed event.
   */
-final class WorkingClusterNode[S <: SnapshotableState[S]: SnapshotableState.Companion: diffx.Diff: Tag](
+final class WorkingClusterNode[
+  S <: SnapshotableState[S]: SnapshotableState.Companion: diffx.Diff: Tag
+] private(
+  val failedNodeId: Option[NodeId],
   val persistenceAllocated: Allocated[Task, FileStatePersistence[S]],
   common: ClusterCommon,
   clusterConf: ClusterConf)
@@ -190,7 +193,7 @@ object WorkingClusterNode
         .toAllocated/* ControllerOrderKeeper and AgentOrderKeeper both require Allocated*/)
       workingClusterNode <- Resource.make(
         acquire = Task.defer {
-          val w = new WorkingClusterNode(persistenceAllocated, common, clusterConf)
+          val w = new WorkingClusterNode(recovered.failedNodeId, persistenceAllocated, common, clusterConf)
           w.start(recovered.clusterState, recovered.eventId).as(w)
         })(
         release = _.stop)

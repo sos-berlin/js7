@@ -1,8 +1,11 @@
 package js7.journal.recover
 
+import cats.syntax.option.*
 import com.typesafe.config.Config
 import js7.data.cluster.ClusterState
+import js7.data.cluster.ClusterState.FailedOver
 import js7.data.event.{EventId, JournalId, SnapshotableState}
+import js7.data.node.NodeId
 import js7.journal.data.JournalMeta
 import js7.journal.watch.JournalEventWatch
 import scala.concurrent.duration.*
@@ -31,6 +34,11 @@ extends AutoCloseable
 
   def clusterState: ClusterState =
     state.clusterState
+
+  def failedNodeId: Option[NodeId] =
+    clusterState.some.collect {
+      case o: FailedOver => o.passiveId
+    }
 
   def state: S =
     recoveredJournalFile.fold(S.empty)(_.state)

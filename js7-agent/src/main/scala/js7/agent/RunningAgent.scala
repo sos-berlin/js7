@@ -186,10 +186,10 @@ object RunningAgent {
     for {
       _ <- Resource.eval(Task(initialize()))
       x <- recoveringResource
-      (initiallyRecovered, actorSystem, clusterNode) = x
+      (recoveredExtract, actorSystem, clusterNode) = x
       iox <- IOExecutor.resource[Task](config, conf.name + "-I/O")
       blockingJobScheduler <- unlimitedSchedulerResource[Task]("JS7 blocking job", config)
-      agent <- resource2(clusterNode, initiallyRecovered, testWiring, conf, testEventBus, clock,
+      agent <- resource2(clusterNode, recoveredExtract, testWiring, conf, testEventBus, clock,
         blockingJobScheduler)(
         actorSystem, iox, scheduler)
     } yield agent
@@ -208,13 +208,25 @@ object RunningAgent {
     import conf.config
 
     def startMainActor(
+      failedNodeId: Option[NodeId],
       persistenceAllocated: Allocated[Task, FileStatePersistence[AgentState]])
     : MainActorStarted = {
+      val failedOverSubagentId: Option[SubagentId] = {
+        val directors = persistenceAllocated.allocatedThing.unsafeCurrentState().meta.directors
+        failedNodeId.flatMap {
+          case AgentClusterConf.primaryNodeId => directors.get(0)
+          case AgentClusterConf.backupNodeId => directors.get(1)
+          case nodeId => throw new AssertionError(s"🔥 Unexpected $nodeId")
+        }
+      }
+
       val mainActorReadyPromise = Promise[MainActor.Ready]()
       val terminationPromise = Promise[ProgramTermination]()
       val actor = actorSystem.actorOf(
         Props {
-          new MainActor(recoveredExtract.totalRunningSince,
+          new MainActor(
+            recoveredExtract.totalRunningSince,
+            failedOverSubagentId,
             persistenceAllocated, conf, testWiring.commandHandler,
             mainActorReadyPromise, terminationPromise,
             clusterNode,
@@ -240,7 +252,9 @@ object RunningAgent {
           .flatMapT(workingClusterNode =>
             persistenceDeferred.complete(workingClusterNode.persistenceAllocated.allocatedThing)
               .*>(Task(
-                startMainActor(workingClusterNode.persistenceAllocated)))
+                startMainActor(
+                  workingClusterNode.failedNodeId,
+                  workingClusterNode.persistenceAllocated)))
               .map(Right(_)))
           .onErrorRecover { case t: RestartAfterJournalTruncationException =>
             logger.info(t.getMessage)

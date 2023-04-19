@@ -203,7 +203,10 @@ private object OrderActorTest {
     //persistence.persistKeyedEvent()
     private val agentConf = AgentConfiguration.forTest(dir, name = "OrderActorTest", config)
     val subagentKeeper =
-      new SubagentKeeper(TestAgentPath, persistence, jobLauncherConf,
+      new SubagentKeeper(
+        TestAgentPath,
+        failedOverSubagentId = None,
+        persistence, jobLauncherConf,
         agentConf.subagentDirectorConf, context.system)
     subagentKeeper.initialize(localSubagentId = None, controllerId).await(99.s)
     subagentKeeper.start.await(99.s)
