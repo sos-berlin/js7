@@ -9,11 +9,11 @@ failMsg=""
 
 for i in {2..999999}; do
   echo -e "\n\n———————————————————— $i ———————————————————$failMsg\n"
-  echo -n "" >target/build.log
-  time if ! bin/sbt-batch "$@" | tee target/build.out; then :
+  echo -n "" >logs/build.log
+  time if ! bin/sbt-batch "$@" | tee logs/build.out; then :
     ts=$(date +%Y%m%d-%H%M%S)
-    gzip <target/build.out >"target/build-$ts-$i.out.gz"
-    gzip <target/build.log >"target/build-$ts-$i.log.gz"
+    gzip <logs/build.out >"logs/build-$ts-$i.out.gz"
+    gzip <logs/build.log >"logs/build-$ts-$i.log.gz"
     failureCount=$(($failureCount + 1))
     failMsg=" \e[1;31m$failureCount FAILURES\e[0m"
   fi

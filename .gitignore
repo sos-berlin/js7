@@ -7,6 +7,8 @@
 #/project/project/project/target/
 #/project/project/project/project/target/
 
+/logs
+
 # INTELLIJ IDEA
 /.idea/
 /out

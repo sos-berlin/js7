@@ -1,11 +1,17 @@
 import BuildInfos.prettyVersion
 import java.lang.ProcessBuilder.Redirect
+import java.nio.file.Files.{createDirectories, deleteIfExists}
+import java.nio.file.Paths
 import java.security.Security
 import sbt.ModuleID
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 object BuildUtils
 {
+  createDirectories(Paths.get("logs"))
+  //Files.list(Paths.get("logs")).toArray(new Array[Path](_)).foreach(Files.delete)
+  deleteIfExists(Paths.get("logs/build.log"))
+
   val isWindows = sys.props("os.name") startsWith "Windows"
   val isMac = sys.props("os.name") startsWith "Mac OS"
 
@@ -20,7 +26,7 @@ object BuildUtils
     factor
   }
 
-  private val logger = org.slf4j.LoggerFactory.getLogger(getClass)
+  private val logger = org.slf4j.LoggerFactory.getLogger("BuildUtils")
 
   // Initial call to Logger for proper slf4j and log4j initialization ???
   logger.info(s"Building $prettyVersion, test.parallel=$testParallelization")

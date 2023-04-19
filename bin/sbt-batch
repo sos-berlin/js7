@@ -3,7 +3,7 @@ set -euo pipefail
 
 cd "${0%/*}"/../js7-controller/..
 
-rm -f target/build.log
+rm -f logs/build.log
 if [ "$OSTYPE" = "cygwin" ]; then
   exec cmd /c bin/sbt-batch.cmd "$@"
 else
