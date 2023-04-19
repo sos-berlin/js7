@@ -4,7 +4,8 @@ import akka.Done
 import akka.actor.ActorSystem
 import akka.http.scaladsl.marshalling.Marshal
 import akka.http.scaladsl.model.ContentTypes.`application/json`
-import akka.http.scaladsl.model.HttpEntity.{Chunk, ChunkStreamPart, LastChunk}
+import akka.http.scaladsl.model.HttpCharsets.`UTF-8`
+import akka.http.scaladsl.model.HttpEntity.{Chunk, ChunkStreamPart, Chunked, LastChunk}
 import akka.http.scaladsl.model.HttpMethods.{GET, POST}
 import akka.http.scaladsl.model.MediaTypes.`text/plain`
 import akka.http.scaladsl.model.StatusCodes.{Forbidden, GatewayTimeout, Unauthorized}
@@ -329,8 +330,14 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
           .pipeIf(logger.underlying.isDebugEnabled)(
             _.pipeIf(!request.headers.contains(StreamingJsonHeader))(
               logWait(_, responseLogPrefix)
-            ).tapEval(response => Task(
-              logResponseError(response, responseLogPrefix))))
+            ).map { response => Task(
+              logResponse(response, responseLogPrefix))
+              if (false) {
+                lazy val prefix = "#" + number
+                logResponseStream(response, prefix)
+              } else
+                response
+            })
       })
 
   private def logWait(untilResponded: Task[HttpResponse], responseLogPrefix: => String): Task[HttpResponse] =
@@ -353,7 +360,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
         }))
     }
 
-  private def logResponseError(response: HttpResponse, responseLogPrefix: String): Unit = {
+  private def logResponse(response: HttpResponse, responseLogPrefix: String): Unit = {
     val sym =
       if (!response.status.isFailure)
         " ✔"
@@ -374,16 +381,40 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
       (try response.entity match {
         case HttpEntity.Strict(`application/json`, bytes) =>
           bytes.parseJsonAs[Problem].toOption.fold("")(" · " + _)
+
         case HttpEntity.Strict(ContentType.WithCharset(`text/plain`, charset), bytes) =>
           bytes.decodeString(charset.nioCharset)
             .parseJsonAs[Problem].toOption.fold("")(" · " + _)
+
         case _ => ""
       } catch {
         case NonFatal(_) => ""
       })
-
-    logger.debug(s"<--<$sym$responseLogPrefix => ${response.status}$suffix")
+    val arrow = if (response.entity.isChunked) "<-<-" else "<--<"
+    logger.debug(s"$arrow$sym$responseLogPrefix => ${response.status}$suffix")
   }
+
+  private def logResponseStream(response: HttpResponse, responseLogPrefix: => String)
+  : HttpResponse =
+    if (!logger.underlying.isTraceEnabled)
+      response
+    else
+      response.entity match {
+        case chunked: Chunked =>
+          val isUtf8 = chunked.contentType.charsetOption.contains(`UTF-8`)
+            || chunked.contentType.mediaType.toString == `application/x-ndjson`.toString
+          response.withEntity(chunked.copy(
+            chunks = chunked.chunks.map { chunk =>
+              logger.trace(s"-<--  $responseLogPrefix ${
+                if (isUtf8)
+                  chunk.data.utf8String
+                    .truncateWithEllipsis(80, showLength = true, firstLineOnly = true)
+                else
+                  chunk.data.length + " bytes"}")
+              chunk
+            }))
+        case _ => response
+      }
 
   private def unmarshal[A: FromResponseUnmarshaller](method: HttpMethod, uri: Uri)(httpResponse: HttpResponse) =
     if (!httpResponse.status.isSuccess)
