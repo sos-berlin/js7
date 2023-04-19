@@ -8,7 +8,7 @@ import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.AsyncMap
 import js7.base.monixutils.MonixBase.syntax.*
-import js7.base.problem.{Checked, ProblemException}
+import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.utils.ScalaUtils.chunkStrings
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.system.PlatformInfos.currentPlatformInfo
@@ -52,6 +52,7 @@ extends SubagentDriver
   private val jobKeyToJobDriver = AsyncMap.empty[JobKey, JobDriver]
   private val orderIdToJobDriver = AsyncMap.stoppable[OrderId, JobDriver]()
   @volatile private var stopping = false
+  @volatile private var _testFailover = false
 
   protected def isStopping = stopping
 
@@ -99,9 +100,12 @@ extends SubagentDriver
     orderToExecuteDefaultArguments(order)
       .flatMapT(defaultArguments =>
         processOrder2(order, defaultArguments)
-          .flatMap(outcome =>
-            persistence
-              .persistKeyedEvent(order.id <-: OrderProcessed(outcome)))
+          .flatMap {
+            case outcome: Outcome.Killed if _testFailover =>
+              Task.left(Problem(s"Suppressed due to failover: OrderProcessed($outcome)"))
+            case outcome =>
+              persistence.persistKeyedEvent(order.id <-: OrderProcessed(outcome))
+          }
           .map(_.map(_._1.value.event)))
 
   def processOrder2(
@@ -231,6 +235,9 @@ extends SubagentDriver
       maybeJobDriver <- Task(orderIdToJobDriver.get(orderId))
       _ <- maybeJobDriver.fold(Task.unit)(_.killOrder(orderId, signal))
     } yield ()
+
+  def testFailover(): Unit =
+    _testFailover = true
 
   override def toString =
     s"LocalSubagentDriver(${subagentId.string})"

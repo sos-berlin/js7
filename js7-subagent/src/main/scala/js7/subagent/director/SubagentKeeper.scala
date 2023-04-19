@@ -467,6 +467,12 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
       .update(state => Task(state.removeSelection(subagentSelectionId)))
       .void
 
+  def testFailover(): Unit =
+    stateVar.get.idToDriver.values.foreach {
+      case o: LocalSubagentDriver[?] => o.testFailover()
+      case _ =>
+    }
+
   override def toString = s"SubagentKeeper(${orderToSubagent.size} processing orders)"
 }
 

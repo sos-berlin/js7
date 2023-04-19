@@ -80,8 +80,8 @@ final class AgentOrderKeeper(
   private implicit val clock: AlarmClock,
   conf: AgentConfiguration)
   (implicit protected val scheduler: Scheduler, iox: IOExecutor)
-  extends MainJournalingActor[AgentState, Event]
-  with Stash
+extends MainJournalingActor[AgentState, Event]
+with Stash
 {
   import conf.implicitAkkaAskTimeout
   import context.{actorOf, watch}
@@ -119,18 +119,25 @@ final class AgentOrderKeeper(
 
     def start(cmd: AgentCommand.ShutDown): Unit =
       if (!shuttingDown) {
-        shutDownCommand = Some(cmd)
-        since := now
-        fileWatchManager.stop.runAsyncAndForget
-        if (cmd.suppressSnapshot) {
-          snapshotFinished = true
+        if (cmd.isFailover) {
+          // Dirty exit
+          subagentKeeper.testFailover()
+          persistenceAllocated.stop.runAsyncAndForget
+          context.stop(self)
         } else {
-          journalActor ! JournalActor.Input.TakeSnapshot  // Take snapshot before OrderActors are stopped
-          stillTerminatingSchedule = Some(scheduler.scheduleAtFixedRate(5.seconds, 10.seconds) {
-            self ! Internal.StillTerminating
-          })
+          shutDownCommand = Some(cmd)
+          since := now
+          fileWatchManager.stop.runAsyncAndForget
+          if (cmd.suppressSnapshot || cmd.isFailover) {
+            snapshotFinished = true
+          } else {
+            journalActor ! JournalActor.Input.TakeSnapshot  // Take snapshot before OrderActors are stopped
+            stillTerminatingSchedule = Some(scheduler.scheduleAtFixedRate(5.seconds, 10.seconds) {
+              self ! Internal.StillTerminating
+            })
+          }
+          continue()
         }
-        continue()
       }
 
     def close() = {

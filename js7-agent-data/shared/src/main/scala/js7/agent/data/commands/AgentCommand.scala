@@ -153,6 +153,9 @@ object AgentCommand extends CommonCommand.Companion
     restart: Boolean = false)
   extends ShutdownOrAbort {
     type Response = Response.Accepted
+
+    def isFailover: Boolean =
+      clusterAction contains ShutDown.ClusterAction.Failover
   }
   object ShutDown {
     sealed trait ClusterAction

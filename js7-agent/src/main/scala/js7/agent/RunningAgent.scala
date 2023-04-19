@@ -48,7 +48,10 @@ import js7.common.system.SystemInformations.systemInformation
 import js7.common.system.ThreadPools.{standardSchedulerResource, unlimitedSchedulerResource}
 import js7.common.system.startup.{ServiceMain, StartUp}
 import js7.core.command.CommandMeta
-import js7.data.Problems.{BackupClusterNodeNotAppointed, ClusterNodeIsNotActiveProblem, ClusterNodeIsNotReadyProblem}
+import js7.data.Problems.{BackupClusterNodeNotAppointed, ClusterNodeIsNotActiveProblem, ClusterNodeIsNotReadyProblem, PassiveClusterNodeShutdownNotAllowedProblem}
+import js7.data.agent.AgentClusterConf
+import js7.data.node.NodeId
+import js7.data.subagent.SubagentId
 import js7.journal.EventIdClock
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.recover.Recovered
@@ -304,31 +307,31 @@ object RunningAgent {
         .match_ {
           case cmd: AgentCommand.ShutDown =>
             logger.info(s"❗ $cmd")
-            //🔨if (cmd.clusterAction.nonEmpty && !clusterNode.isWorkingNode)
-            //🔨  Task.pure(Left(PassiveClusterNodeShutdownNotAllowedProblem))
-            //🔨else {
-            //🔨if (cmd.dontNotifyActiveNode && clusterNode.isPassive) {
-            //🔨  clusterNode.dontNotifyActiveNodeAboutShutdown()
-            //🔨}
-            clusterNode.stopRecovery(ProgramTermination(restart = cmd.restart)) >>
-              currentMainActor
-                .flatMap(_.traverse(_.whenReady.map(_.api)))
-                .flatMap {
-                  case Left(ClusterNodeIsNotActiveProblem | ShuttingDownProblem
-                            | BackupClusterNodeNotAppointed) =>
-                    Task.right(AgentCommand.Response.Accepted)
+            if (cmd.clusterAction.nonEmpty && !clusterNode.isWorkingNode)
+              Task.left(PassiveClusterNodeShutdownNotAllowedProblem)
+            else {
+              //⚒️if (cmd.dontNotifyActiveNode && clusterNode.isPassive) {
+              //⚒️  clusterNode.dontNotifyActiveNodeAboutShutdown()
+              //⚒️}
+              clusterNode.stopRecovery(ProgramTermination(restart = cmd.restart)) >>
+                currentMainActor
+                  .flatMap(_.traverse(_.whenReady.map(_.api)))
+                  .flatMap {
+                    case Left(ClusterNodeIsNotActiveProblem | ShuttingDownProblem
+                              | BackupClusterNodeNotAppointed) =>
+                      Task.right(AgentCommand.Response.Accepted)
 
-                  case Left(problem @ ClusterNodeIsNotReadyProblem /*???*/) =>
-                    logger.error(s"❓ $cmd => $problem")
-                    Task.right(AgentCommand.Response.Accepted)
+                    case Left(problem @ ClusterNodeIsNotReadyProblem /*???*/) =>
+                      logger.error(s"❓ $cmd => $problem")
+                      Task.right(AgentCommand.Response.Accepted)
 
-                  case Left(problem) =>
-                    Task.pure(Left(problem))
+                    case Left(problem) =>
+                      Task.pure(Left(problem))
 
-                  case Right(api) =>
-                    api(meta).commandExecute(cmd)
-                }
-          //🔨}
+                    case Right(api) =>
+                      api(meta).commandExecute(cmd)
+                  }
+            }
 
           case ClusterAppointNodes(idToUri, activeId) =>
             Task(clusterNode.workingClusterNode)
