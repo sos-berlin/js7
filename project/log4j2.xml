@@ -6,7 +6,7 @@
       <patternLayout pattern="%highlight{%d{DEFAULT} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger - %message}{INFO=blue,WARN=red bold}%n"/>
     </console>
     <rollingRandomAccessFile name="file"
-                             fileName="target/build.log"
+                             fileName="logs/build.log"
                              filePattern="target/build-%d{yyyy-MM-dd}-%i.log.gz"
                              append="true"
                              immediateFlush="${sys:js7.log4j.immediateFlush:-true}">
