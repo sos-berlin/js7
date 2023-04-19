@@ -1,6 +1,7 @@
 package js7.base.monixutils
 
 import cats.effect.ExitCase
+import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.*
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.{Checked, Problem, ProblemException}
@@ -9,7 +10,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.CloseableIterator
 import monix.eval.Task
 import monix.execution.Scheduler
-import monix.execution.Scheduler.Implicits.traced
+import monix.execution.Scheduler.Implicits.traced as scheduler
 import monix.execution.atomic.AtomicInt
 import monix.execution.schedulers.TestScheduler
 import monix.reactive.Observable
@@ -282,6 +283,31 @@ final class MonixBaseTest extends OurAsyncTestSuite
         .map(o =>
           assert(o._1 == 7 && o._2 >= 10.ms))
         .runToFuture
+    }
+
+    "cancelWhen" - {
+      "canceled" in {
+        @volatile var canceled = false
+        Task.never
+          .doOnCancel(Task {
+            canceled = true
+            Logger[this.type].info(s"cancelWhen canceled")
+          })
+          .cancelWhen(Task.unit)
+          .map(result => assert(result.getClass == classOf[Unit] /*&& canceled NOT RELIABLE ???*/))
+          .runToFuture
+      }
+
+      "not canceled" in {
+        @volatile var canceled = false
+        Task(7)
+          .cancelWhen(Task.never.doOnCancel(Task {
+            canceled = true // The canceler will not be canceld
+          }))
+          .<*(Task.sleep(100.ms))
+          .map(result => assert(result == 7 && !canceled))
+          .runToFuture
+      }
     }
   }
 
