@@ -81,7 +81,6 @@ final class SimpleAgentClusterTest extends ControllerClusterTester
           val eventId = backupDirector.eventWatch.await[ClusterFailedOver]().head.eventId
           ASemaphoreJob.continue()
 
-          // FIXME emit OrderProcessingFailed(ProcessLost)
           backupDirector.eventWatch.await[OrderProcessingStarted](_.key == failOverOrderId, after = eventId)
           backupDirector.eventWatch.await[OrderDetachable](_.key == failOverOrderId, after = eventId)
 

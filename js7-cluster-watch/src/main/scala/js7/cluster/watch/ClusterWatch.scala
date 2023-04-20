@@ -75,12 +75,15 @@ final class ClusterWatch(
 
       case Right((maybeManualConfirmer, updatedClusterState)) =>
         _nodeToLossRejected.clear()
+        val changed = !_state.exists(_.clusterState == updatedClusterState)
         _state = Some(State(
           updatedClusterState,
           lastHeartbeat = now(),
           requireManualNodeLossConfirmation = requireManualNodeLossConfirmation))
 
-        onClusterStateChanged(updatedClusterState)
+        if (changed) {
+          onClusterStateChanged(updatedClusterState)
+        }
         Right(Confirmed(manualConfirmer = maybeManualConfirmer))
     }
   }

@@ -34,12 +34,12 @@ object BareSubagent
   : Either[ConvertToDirector, ProgramTermination] =
     threadPoolResource[SyncIO](conf, orCommonScheduler)
       .use(implicit scheduler => SyncIO {
-        val restartAsDirectorVar = Deferred.unsafe[Task, Unit]
-        val restartAsDirector = restartAsDirectorVar.complete(())
-        resource(conf, scheduler, restartAsDirector)
+        val convertToDirectorVar = Deferred.unsafe[Task, Unit]
+        val convertToDirector = convertToDirectorVar.complete(()).attempt.void
+        resource(conf, scheduler, convertToDirector)
           .use(bareSubagent => Task
             .race(
-              restartAsDirectorVar.get,
+              convertToDirectorVar.get,
               bareSubagent.untilTerminated)
             .flatMap {
               case Left(()) =>
