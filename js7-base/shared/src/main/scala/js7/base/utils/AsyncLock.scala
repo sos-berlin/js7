@@ -18,7 +18,7 @@ final class AsyncLock private(
   name: String,
   warnTimeouts: IterableOnce[FiniteDuration],
   noLog: Boolean,
-  noMinorLog: Boolean = false)
+  logMinor: Boolean)
 {
   asyncLock =>
 
@@ -47,7 +47,7 @@ final class AsyncLock private(
     lockM.flatMap(mvar => Task.defer {
       mvar.tryPut(locked).flatMap(hasAcquired =>
         if (hasAcquired) {
-          if (!noMinorLog) log.trace(s"↘ ⚪️${locked.nr} $name acquired by ${locked.who} ↘")
+          if (logMinor) log.trace(s"↘ ⚪️${locked.nr} $name acquired by ${locked.who} ↘")
           locked.startMetering()
           Task.unit
         } else
@@ -86,7 +86,7 @@ final class AsyncLock private(
                       Left(())  // Locked again by someone else, so try again
                     else {
                       // "…" denotes just-in-time availability
-                      if (!noMinorLog) log.trace(s"↘ ⚪️${locked.nr} $name acquired by…${locked.who} ↘")
+                      if (logMinor) log.trace(s"↘ ⚪️${locked.nr} $name acquired by…${locked.who} ↘")
                       locked.startMetering()
                       Right(())  // The lock is ours!
                     }
@@ -101,7 +101,7 @@ final class AsyncLock private(
     }
 
   private def logRelease(locked: Locked, exitCase: ExitCase[Throwable]): Unit =
-    if (!noMinorLog) exitCase match {
+    if (logMinor) exitCase match {
       case ExitCase.Completed =>
         log.trace(s"↙ ⚪️${locked.nr} $name released by ${locked.acquirer} ↙")
 
@@ -150,16 +150,16 @@ object AsyncLock
   private val waitCounter = Atomic(0)
 
   def apply()(implicit enclosing: sourcecode.Enclosing): AsyncLock =
-    apply(noMinorLog = false)
+    apply(logMinor = false)
 
-  def apply(noMinorLog: Boolean)(implicit enclosing: sourcecode.Enclosing): AsyncLock =
-    apply(name = enclosing.value, noMinorLog = noMinorLog)
+  def apply(logMinor: Boolean)(implicit enclosing: sourcecode.Enclosing): AsyncLock =
+    apply(name = enclosing.value, logMinor = logMinor)
 
   def apply(
     name: String,
     logWorryDurations: IterableOnce[FiniteDuration] = DefaultWorryDurations,
     suppressLog: Boolean = false,
-    noMinorLog: Boolean = false)
+    logMinor: Boolean = false)
   : AsyncLock =
-    new AsyncLock(name, logWorryDurations, suppressLog, noMinorLog = noMinorLog)
+    new AsyncLock(name, logWorryDurations, suppressLog, logMinor = logMinor)
 }

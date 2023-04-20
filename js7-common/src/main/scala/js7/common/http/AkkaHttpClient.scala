@@ -270,17 +270,17 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
         @volatile var canceled = false
         var responseFuture: Future[HttpResponse] = null
         val since = now
-        lazy val logPrefix = s"#$number $toString: ${sessionToken.fold("")(_.short)}"
+        lazy val logPrefix = s"#$number $toString${sessionToken.fold("")(o => " " + o.short)}"
         lazy val responseLog0 = s"$logPrefix ${requestToString(req, logData, isResponse = true)} "
         def responseLogPrefix = responseLog0 + since.elapsed.pretty
-        logger.trace(s">-->  $logPrefix: ${requestToString(req, logData)}")
+        logger.trace(s">-->  $logPrefix ${requestToString(req, logData)}")
         Task
           .deferFutureAction { scheduler =>
             responseFuture = http.singleRequest(req,
               if (req.uri.scheme == "https") httpsConnectionContext else http.defaultClientHttpsContext)
             responseFuture
               .recover { case t if canceled =>
-                logger.trace(s"$logPrefix: Ignored after cancel: ${t.toStringWithCauses}")
+                logger.trace(s"$logPrefix Ignored after cancel: ${t.toStringWithCauses}")
                 // Task guarantee below may report a failure after cancel
                 // via thread pools's reportFailure. To avoid this, we convert the failure
                 // to a dummy successful response, which will get lost immediately.
@@ -330,13 +330,10 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
           .pipeIf(logger.underlying.isDebugEnabled)(
             _.pipeIf(!request.headers.contains(StreamingJsonHeader))(
               logWait(_, responseLogPrefix)
-            ).map { response => Task(
-              logResponse(response, responseLogPrefix))
-              if (false) {
-                lazy val prefix = "#" + number
-                logResponseStream(response, prefix)
-              } else
-                response
+            ).map { response =>
+              logResponse(response, responseLogPrefix)
+              lazy val prefix = "#" + number
+              logResponseStream(response, prefix)
             })
       })
 
@@ -348,7 +345,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
           val sym = if (!waitingLogged) "🟡" else "🟠"
           waitingLogged = true
           logger.debug(
-            s"$sym$responseLogPrefix => Still waiting for response${closed ?? " (closed)"}")
+            s"••••$sym$responseLogPrefix => Still waiting for response${closed ?? " (closed)"}")
         })
         .guaranteeCase(exitCase => Task(if (waitingLogged) {
           val sym = exitCase match {
@@ -356,7 +353,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
             case ExitCase.Canceled => "⚫️"
             case ExitCase.Completed => "🔵"
           }
-          logger.debug(s"$sym$responseLogPrefix => $exitCase")
+          logger.debug(s"<~~ $sym$responseLogPrefix => $exitCase")
         }))
     }
 
@@ -404,15 +401,19 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
           val isUtf8 = chunked.contentType.charsetOption.contains(`UTF-8`)
             || chunked.contentType.mediaType.toString == `application/x-ndjson`.toString
           response.withEntity(chunked.copy(
-            chunks = chunked.chunks.map { chunk =>
-              logger.trace(s"-<--  $responseLogPrefix ${
-                if (isUtf8)
-                  chunk.data.utf8String
-                    .truncateWithEllipsis(80, showLength = true, firstLineOnly = true)
-                else
-                  chunk.data.length + " bytes"}")
-              chunk
-            }))
+            chunks = chunked.chunks
+              .map { chunk =>
+                if (chunk.isLastChunk()) {
+                  val arrow = if (chunk.isLastChunk()) "<--|" else "-<--"
+                  logger.trace(s"$arrow  $responseLogPrefix ${
+                    if (isUtf8)
+                      chunk.data.utf8String
+                        .truncateWithEllipsis(100, showLength = true, firstLineOnly = true)
+                    else
+                      s"${chunk.data.length} bytes"}")
+                }
+                chunk
+              }))
         case _ => response
       }
 
@@ -426,7 +427,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
             .recover { case t =>
               if (!materializer.isShutdown) {
                 logger.debug(
-                  s"$toString: Error when unmarshalling response of ${method.name} $uri: ${t.toStringWithCauses}", t)
+                  s"💥 $toString: Error when unmarshalling response of ${method.name} $uri: ${t.toStringWithCauses}", t)
               }
               throw t
             }
@@ -511,6 +512,17 @@ object AkkaHttpClient
   : Resource[Task, AkkaHttpClient] =
     Resource.fromAutoCloseable(Task(new AkkaHttpClient.Standard(
       uri, uriPrefixPath = uriPrefixPath, actorSystem, httpsConfig, name = name)))
+    //Resource.make(
+    //  acquire = Task(new AkkaHttpClient.Standard(
+    //    uri, uriPrefixPath = uriPrefixPath, actorSystem, httpsConfig, name = name)))(
+    //  release = { client =>
+    //    val logout = client match {
+    //      case client: HttpSessionApi => client.logout()
+    //      case _ => Task.unit
+    //    }
+    //    logout
+    //      .guarantee(Task(client.close()))
+    //  })
 
   final case class `x-js7-session`(sessionToken: SessionToken)
   extends ModeledCustomHeader[`x-js7-session`] {

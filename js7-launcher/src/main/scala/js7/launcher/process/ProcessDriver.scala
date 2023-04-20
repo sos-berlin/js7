@@ -156,7 +156,7 @@ object ProcessDriver
   private val logger = Logger(getClass)
 
   /** Linux may return a "busy" error when starting many processes at once. */
-  private val globalStartProcessLock = AsyncLock("globalStartProcessLock", noMinorLog = true)
+  private val globalStartProcessLock = AsyncLock("globalStartProcessLock")
 
   private object taskIdGenerator extends AbstractIterator[TaskId] {
     private val generator = newGenerator()

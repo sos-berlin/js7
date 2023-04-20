@@ -42,7 +42,7 @@ extends Service.StoppableByRequest
   private val nextRequestId = Atomic(if (isTest) 1 else
     Random.nextLong((Long.MaxValue - (3 * 32_000_000/*a year*/) / timing.heartbeat.toSeconds))
       / 1000_000 * 1000_000)
-  private val lock = AsyncLock(noMinorLog = true)
+  private val lock = AsyncLock()
   private val _requested = Atomic(None: Option[Requested])
   private val pubsub = new Fs2PubSub[Task, ClusterWatchRequest]
 
