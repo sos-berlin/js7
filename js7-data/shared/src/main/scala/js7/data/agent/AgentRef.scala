@@ -43,10 +43,6 @@ extends UnsignedSimpleItem
 
   override def referencedItemPaths = directors.view
 
-  @deprecated
-  def director: Option[SubagentId] =
-    directors.headOption
-
   // COMPATIBLE with v2.1
   /** Converts a legacy AgentRef to a modern AgentRef and a local SubagentItem. */
   def convertFromV2_1: Checked[(AgentRef, Option[SubagentItem])] =

@@ -30,7 +30,7 @@ import js7.cluster.watch.ClusterWatchService
 import js7.cluster.watch.api.ActiveClusterNodeSelector
 import js7.common.http.RecouplingStreamReader
 import js7.controller.agent.AgentDriver.*
-import js7.controller.agent.CommandQueue.QueuedInputResponse
+import js7.controller.agent.CommandQueue.QueueableResponse
 import js7.controller.configuration.ControllerConfiguration
 import js7.data.agent.AgentRefStateEvent.{AgentCouplingFailed, AgentDedicated}
 import js7.data.agent.Problems.AgentNotDedicatedProblem
@@ -175,10 +175,10 @@ extends Service.StoppableByRequest
             directorDriver.executeCommand(command, mustBeCoupled = true))
       })
 
-    protected def asyncOnBatchSucceeded(queuedInputResponses: Seq[QueuedInputResponse]) =
+    protected def asyncOnBatchSucceeded(queueableResponses: Seq[QueueableResponse]) =
       Task.defer {
         lastCouplingFailed = None
-        handleBatchSucceeded(queuedInputResponses)
+        handleBatchSucceeded(queueableResponses)
           .flatMap { succeededInputs =>
             val markedOrders = succeededInputs.view
               .collect { case o: Queueable.MarkOrder => o.orderId -> o.mark }
@@ -227,7 +227,7 @@ extends Service.StoppableByRequest
         .*>(clusterWatchAllocated.release))
 
   def send(input: Queueable): Task[Unit] =
-    logger.traceTask("send", input.toShortString)(Task.defer {
+    /*logger.traceTask("send", input.toShortString)*/(Task.defer {
       if (isTerminating)
         Task.raiseError(new IllegalStateException(s"$agentDriver is terminating"))
       else

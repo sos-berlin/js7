@@ -3,7 +3,6 @@ package js7.controller.agent
 import cats.effect.concurrent.Deferred
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.Batch
-import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, CorrelIdWrapped, Logger}
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.{RichDeadline, RichFiniteDuration}
@@ -30,18 +29,18 @@ private[agent] abstract class CommandQueue(
 {
   protected def commandParallelism: Int
   protected def executeCommand(command: AgentCommand.Batch): Task[Checked[command.Response]]
-  protected def asyncOnBatchSucceeded(queuedInputResponses: Seq[QueuedInputResponse]): Task[Unit]
-  protected def asyncOnBatchFailed(inputs: Vector[Queueable], problem: Problem): Task[Unit]
+  protected def asyncOnBatchSucceeded(queueableResponses: Seq[QueueableResponse]): Task[Unit]
+  protected def asyncOnBatchFailed(queueables: Vector[Queueable], problem: Problem): Task[Unit]
 
   private val logger = Logger.withPrefix[this.type](agentPath.string)
   private val lock = AsyncLock()
   private val attachedOrderIds = mutable.Set.empty[OrderId]
-  private val executingInputs = mutable.Set.empty[Queueable]
+  private val isExecuting = mutable.Set.empty[Queueable]
   private var delayCommandExecutionAfterErrorUntil = now
   private var isCoupled = false
   private var freshlyCoupled = false
   private var openRequestCount = 0
-  @deprecated private val isTerminating = false
+  private val isTerminating = false
   private val terminated = Deferred.unsafe[Task, Unit]
 
   private object queue {
@@ -49,8 +48,8 @@ private[agent] abstract class CommandQueue(
     private val queueSet = mutable.Set.empty[Queueable]
     private val detachQueue = mutable.Queue.empty[Queueable]  // DetachOrder is sent to Agent before any AttachOrder, to relieve the Agent
 
-    def enqueue(input: Queueable): Unit =
-      input match {
+    def enqueue(queueable: Queueable): Unit =
+      queueable match {
         case o: Queueable.DetachOrder => detachQueue += o
 
         case attach: Queueable.AttachUnsignedItem =>
@@ -112,19 +111,20 @@ private[agent] abstract class CommandQueue(
       isCoupled = false
     })
 
-  final def enqueue(input: Queueable): Task[Boolean] =
+  final def enqueue(queueable: Queueable): Task[Boolean] =
     lock.lock(Task.defer {
       assertThat(!isTerminating)
-      input match {
+      queueable match {
         case Queueable.AttachOrder(order, _) if attachedOrderIds contains order.id =>
           logger.debug(s"AttachOrder(${order.id} ignored because Order is already attached to Agent")
           Task.pure(false)
         case _ =>
-          if (queue contains input) {
-            logger.trace(s"Ignore duplicate $input")
+          if (queue contains queueable) {
+            logger.trace(s"Ignore duplicate $queueable")
             Task.pure(false)
           } else {
-            queue.enqueue(input)
+            logger.trace(s"enqueue $queueable")
+            queue.enqueue(queueable)
             Task
               .when(queue.size == batchSize || freshlyCoupled)(
                 maybeStartSendingLocked)
@@ -140,21 +140,21 @@ private[agent] abstract class CommandQueue(
     lock.lock(maybeStartSendingLocked)
 
   private def maybeStartSendingLocked: Task[Unit] =
-    logger.traceTask(Task.defer(Task.when(isCoupled && !isTerminating) {
-      lazy val inputs = queue.view
-        .filterNot(executingInputs)
+    /*logger.traceTask*/(Task.defer(Task.when(isCoupled && !isTerminating) {
+      lazy val queueables = queue.view
+        .filterNot(isExecuting)
         .take(if (freshlyCoupled) 1 else batchSize)  // if freshlyCoupled, send only command to try connection
         .toVector
 
       val canSend = openRequestCount < commandParallelism
         && (!freshlyCoupled || openRequestCount == 0)
-        && inputs.nonEmpty
+        && queueables.nonEmpty
 
       Task.when(canSend)(Task.defer {
-        executingInputs ++= inputs
+        isExecuting ++= queueables
         openRequestCount += 1
         delayNextCommand
-          .*>(sendNow(inputs))
+          .*>(sendNow(queueables))
           .onErrorHandle(t => Task(logger.error(t.toStringWithCauses, t)))
           .startAndForget
       })
@@ -174,12 +174,12 @@ private[agent] abstract class CommandQueue(
       val subcmds = queuable.map(o => CorrelIdWrapped(CorrelId.current, queuableToAgentCommand(o)))
       executeCommand(Batch(subcmds))
         .map(_.map(response =>
-          for ((i, r) <- queuable zip response.responses) yield QueuedInputResponse(i, r)))
+          for ((i, r) <- queuable zip response.responses) yield QueueableResponse(i, r)))
         .materialize
         .flatMap {
-          case Success(Right(queuedInputResponses)) =>
+          case Success(Right(queueableResponses)) =>
             logger.debug(s"✔︎ sendNow queueables=${queuable.map(_.toShortString)}")
-            asyncOnBatchSucceeded(queuedInputResponses)
+            asyncOnBatchSucceeded(queueableResponses)
 
           case Success(Left(problem)) =>
             logger.debug(s"💥 sendNow: $problem")
@@ -237,7 +237,7 @@ private[agent] abstract class CommandQueue(
       logger.trace(s"attachedOrderIds=${attachedOrderIds.toSeq.sorted.mkString(" ")}")
     }))
 
-  final def handleBatchSucceeded(responses: Seq[QueuedInputResponse]): Task[Seq[Queueable]] =
+  final def handleBatchSucceeded(responses: Seq[QueueableResponse]): Task[Seq[Queueable]] =
     lock.lock(Task.defer {
       freshlyCoupled = false
 
@@ -245,43 +245,43 @@ private[agent] abstract class CommandQueue(
       // The dequeued commands will not be repeated !!!
       queue.dequeueAll(responses.view
         .flatMap(r => r.response.left.forall(_.httpStatusCode != 503/*ServiceUnavailable*/) ?
-          r.input)
+          r.queueable)
         .toSet)
-      onQueuedInputsResponded(responses.map(_.input).toSet)
+      onQueueableResponded(responses.map(_.queueable).toSet)
         .*>(Task {
           responses.flatMap {
-            case QueuedInputResponse(input, Right(AgentCommand.Response.Accepted)) =>
-              Some(input)
+            case QueueableResponse(queueable, Right(AgentCommand.Response.Accepted)) =>
+              Some(queueable)
 
-            case QueuedInputResponse(_, Right(o)) =>
+            case QueueableResponse(_, Right(o)) =>
               sys.error(s"Unexpected response from Agent: $o")
 
-            //case QueuedInputResponse(input, Left(AgentIsShuttingDown)) =>
+            //case QueueableResponse(queueable, Left(AgentIsShuttingDown)) =>
             // TODO Be sure to repeat the command after coupling
 
-            case QueuedInputResponse(input, Left(problem)) =>
+            case QueueableResponse(queueable, Left(problem)) =>
               // MarkOrder(FreshOnly) fails if order has started !!!
-              logger.error(s"Agent rejected ${input.toShortString}: $problem")
+              logger.error(s"Agent rejected ${queueable.toShortString}: $problem")
               // Agent's state does not match controller's state ???
               None
           }
         })
     })
 
-  final def handleBatchFailed(inputs: Seq[Queueable]): Task[Unit] =
+  final def handleBatchFailed(queuables: Seq[Queueable]): Task[Unit] =
     lock.lock(Task.defer {
       delayCommandExecutionAfterErrorUntil = now + commandErrorDelay
       logger.trace(
         s"delayCommandExecutionAfterErrorUntil=${delayCommandExecutionAfterErrorUntil.toTimestamp}")
-      // Don't remove from queue. Queued inputs will be processed again
-      onQueuedInputsResponded(inputs.toSet)
+      // Don't remove from queue. Queued queuables will be processed again
+      onQueueableResponded(queuables.toSet)
     })
 
-  private def onQueuedInputsResponded(inputs: Set[Queueable]): Task[Unit] =
+  private def onQueueableResponded(queueables: Set[Queueable]): Task[Unit] =
     Task.defer {
-      executingInputs --= inputs
+      isExecuting --= queueables
       openRequestCount -= 1
-      if (isTerminating && executingInputs.isEmpty)
+      if (isTerminating && isExecuting.isEmpty)
         terminated.complete(())
       else
         maybeStartSendingLocked
@@ -290,7 +290,7 @@ private[agent] abstract class CommandQueue(
 
 object CommandQueue
 {
-  private[agent] final case class QueuedInputResponse(
-    input: Queueable,
+  private[agent] final case class QueueableResponse(
+    queueable: Queueable,
     response: Checked[AgentCommand.Response])
 }
