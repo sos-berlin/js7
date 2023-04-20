@@ -6,6 +6,7 @@ import java.lang.Thread.currentThread
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.convert.As
 import js7.base.log.{CorrelId, Logger}
+import js7.base.monixutils.MonixBase.syntax.RichMonixResource
 import js7.base.system.Java8Polyfill.*
 import js7.base.thread.ThreadPoolsBase.{newBlockingExecutor, newBlockingNonVirtualExecutor}
 import js7.base.time.JavaTimeConverters.AsScalaDuration
@@ -14,6 +15,7 @@ import js7.base.utils.ByteUnits.toKiBGiB
 import js7.base.utils.Closer
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.system.startup.Halt.haltJava
+import monix.eval.Task
 import monix.execution.ExecutionModel.SynchronousExecution
 import monix.execution.atomic.AtomicInt
 import monix.execution.schedulers.{ExecutorScheduler, SchedulerService}
@@ -75,6 +77,14 @@ object ThreadPools
       uncaughtExceptionReporter, SynchronousExecution, Features.empty)
 
   private val nextNumber = AtomicInt(0)
+
+  def ownThreadPoolResource[A](name: String, config: Config)
+    (resource: Scheduler => Resource[Task, A])
+  : Resource[Task, A] =
+    for {
+      ownScheduler <- standardSchedulerResource[Task](name, config)
+      agent <- resource(ownScheduler).executeOn(ownScheduler)
+    } yield agent
 
   def standardSchedulerResource[F[_]](name: String, config: Config, orCommon: Option[Scheduler])
     (implicit F: Sync[F])

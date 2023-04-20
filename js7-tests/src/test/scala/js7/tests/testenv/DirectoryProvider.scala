@@ -34,6 +34,7 @@ import js7.cluster.watch.ClusterWatchService
 import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.akkautils.Akkas
 import js7.common.configuration.Js7Configuration
+import js7.common.system.ThreadPools
 import js7.common.utils.Exceptions.repeatUntilNoException
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.RunningController
@@ -371,8 +372,8 @@ extends HasCloser
         config,
         name = subagentItem.id.string
       ).finishAndProvideFiles
-      scheduler <- BareSubagent.threadPoolResource[Task](conf)
-      subagent <- BareSubagent.resource(conf, scheduler)
+      subagent <- ThreadPools.ownThreadPoolResource(conf.name, conf.config)(
+        BareSubagent.resource(conf, _))
     } yield subagent
 
   def subagentEnvResource(

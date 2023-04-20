@@ -18,6 +18,7 @@ import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.syntax.{RichEither, RichThrowable}
 import js7.base.utils.{Allocated, ProgramTermination}
 import js7.base.web.Uri
+import js7.common.system.ThreadPools
 import js7.common.system.startup.MainServices
 import js7.core.command.CommandMeta
 import js7.journal.watch.EventWatch
@@ -90,7 +91,9 @@ object TestAgent {
 
   def start(conf: AgentConfiguration, testWiring: TestWiring = TestWiring.empty): Task[TestAgent] =
     CorrelId.bindNew(
-      RunningAgent.resourceWithOwnThreadPool(conf, testWiring)
+      ThreadPools
+        .ownThreadPoolResource(conf.name, conf.config)(
+          RunningAgent.resource(conf, testWiring)(_))
         .toAllocated
         .map(new TestAgent(_)))
 

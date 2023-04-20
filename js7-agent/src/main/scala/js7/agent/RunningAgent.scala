@@ -26,7 +26,7 @@ import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.monixutils.MonixBase.syntax.{RichMonixResource, RichMonixTask}
+import js7.base.monixutils.MonixBase.syntax.RichMonixTask
 import js7.base.problem.Checked.*
 import js7.base.problem.Problems.ShuttingDownProblem
 import js7.base.problem.{Checked, Problem}
@@ -45,7 +45,7 @@ import js7.common.akkahttp.web.session.SessionRegister
 import js7.common.akkautils.Akkas
 import js7.common.system.JavaInformations.javaInformation
 import js7.common.system.SystemInformations.systemInformation
-import js7.common.system.ThreadPools.{standardSchedulerResource, unlimitedSchedulerResource}
+import js7.common.system.ThreadPools.unlimitedSchedulerResource
 import js7.common.system.startup.{ServiceMain, StartUp}
 import js7.core.command.CommandMeta
 import js7.data.Problems.{BackupClusterNodeNotAppointed, ClusterNodeIsNotActiveProblem, ClusterNodeIsNotReadyProblem, PassiveClusterNodeShutdownNotAllowedProblem}
@@ -147,14 +147,6 @@ extends MainService with Service.StoppableByRequest
 
 object RunningAgent {
   private val logger = Logger(getClass)
-
-  def resourceWithOwnThreadPool(conf: AgentConfiguration, testWiring: TestWiring)
-  : Resource[Task, RunningAgent] =
-    for {
-      js7Scheduler <- standardSchedulerResource[Task](conf.name, conf.config)
-      agent <- resource(conf, testWiring)(js7Scheduler)
-        .executeOn(js7Scheduler)
-    } yield agent
 
   def resource(conf: AgentConfiguration, testWiring: TestWiring = TestWiring.empty)
     (implicit scheduler: Scheduler)
