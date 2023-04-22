@@ -73,6 +73,8 @@ with ClusterNodeRouteBindings[ControllerState]
     GateKeeper.Configuration.fromConfig(config, SimpleUser.apply, Seq(
       UpdateItemPermission, AgentDirectorForwardPermission)))
 
+  def boundMessageSuffix = gateKeeper.secureStateString
+
   protected def executeCommand(command: ControllerCommand, meta: CommandMeta)
   : Task[Checked[command.Response]] =
     commandExecutor.executeCommand(command, meta)

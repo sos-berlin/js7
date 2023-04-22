@@ -209,12 +209,14 @@ object AkkaWebServer
   trait BoundRoute {
     def webServerRoute: Route
     /** Suffix for the bound log message, for example a security hint. */
-    def boundMessageSuffix = ""
+    def boundMessageSuffix: String
   }
   object BoundRoute {
     def apply(route: Route, whenTerminating: Future[Deadline]): BoundRoute =
       new BoundRoute {
         def webServerRoute = route
+
+        def boundMessageSuffix = ""
       }
   }
 }

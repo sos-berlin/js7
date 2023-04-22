@@ -55,7 +55,7 @@ with ClusterNodeRouteBindings[AgentState]
   protected def config = agentConfiguration.config
   protected def actorRefFactory = actorSystem
 
-  override def boundMessageSuffix = gateKeeper.secureStateString
+  def boundMessageSuffix = gateKeeper.secureStateString
 
   protected def checkedClusterState =
     agentState

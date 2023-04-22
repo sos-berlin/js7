@@ -69,8 +69,10 @@ extends Service.StoppableByRequest
 
   private val agentPath = initialAgentRef.path
   private val logger = Logger.withPrefix[this.type](agentPath.string)
-  private val clusterWatchId = ClusterWatchId(controllerId.string + "/" +
-    controllerConfiguration.clusterConf.ownId.string + "/" + agentPath.string)
+  private val clusterWatchId = ClusterWatchId(
+    controllerId.string + "/" +
+      controllerConfiguration.clusterConf.ownId.string + "/" +
+      agentPath.string)
 
   private val agentRunIdOnce = SetOnce.fromOption(initialAgentRunId)
   private var isTerminating = false
@@ -464,7 +466,7 @@ extends Service.StoppableByRequest
     SessionApi.resource(Task {
       val agentUserAndPassword = controllerConfiguration.config
         .optionAs[SecretString]("js7.auth.agents." + ConfigUtil.joinPath(agentPath.string))
-        .map(password => UserAndPassword(controllerConfiguration.controllerId.toUserId, password))
+        .map(password => UserAndPassword(controllerId.toUserId, password))
       AgentClient(uri, agentUserAndPassword, label = agentPath.toString,
         controllerConfiguration.httpsConfig)(actorSystem)
     })

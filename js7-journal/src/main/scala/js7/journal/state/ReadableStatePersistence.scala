@@ -12,8 +12,8 @@ trait ReadableStatePersistence[S <: JournaledState[S]]
 
   def unsafeCurrentState(): S
 
-  val state: Task[S] =
-    Task(unsafeCurrentState())
-
   def eventWatch: EventWatch
+
+  final val state: Task[S] =
+    Task(unsafeCurrentState())
 }
