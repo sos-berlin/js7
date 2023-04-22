@@ -12,7 +12,7 @@ import js7.base.time.WaitForCondition.waitForCondition
 import js7.data.event.{EventId, EventRequest, KeyedEvent, Stamped}
 import js7.journal.test.{TestAggregate, TestEvent, TestState}
 import js7.journal.watch.InMemoryJournalTest.*
-import js7.journal.{EventIdClock, EventIdGenerator}
+import js7.journal.{EventIdClock, EventIdGenerator, InMemoryJournal}
 import monix.execution.Scheduler.Implicits.traced
 import scala.collection.mutable
 
@@ -20,40 +20,43 @@ final class InMemoryJournalTest extends OurTestSuite
 {
   "Initial values" in {
     val journal = newJournal()
-    assert(journal.tornEventId == EventId.BeforeFirst)
-    assert(journal.lastAddedEventId == EventId.BeforeFirst)
+    import journal.eventWatch
+    assert(eventWatch.tornEventId == EventId.BeforeFirst)
+    assert(eventWatch.lastAddedEventId == EventId.BeforeFirst)
   }
 
   "persist" in {
     val journal = newJournal()
+    import journal.eventWatch
 
     journal.persistKeyedEvent("A" <-: TestEvent.Added("a")).await(99.s).orThrow
     assert(journal.unsafeCurrentState() == TestState(1000, keyToAggregate = Map(
       "A" -> TestAggregate("A", "a"))))
-    assert(journal.tornEventId == EventId.BeforeFirst)
-    assert(journal.lastAddedEventId == 1000)
-    assert(journal.observe(EventRequest.singleClass[TestEvent](0)).toListL.await(99.s) == List(
+    assert(eventWatch.tornEventId == EventId.BeforeFirst)
+    assert(eventWatch.lastAddedEventId == 1000)
+    assert(eventWatch.observe(EventRequest.singleClass[TestEvent](0)).toListL.await(99.s) == List(
       Stamped(1000, "A" <-: TestEvent.Added("a"))))
 
     journal.persistKeyedEvent("A" <-: TestEvent.Appended('1')).await(99.s).orThrow
     assert(journal.unsafeCurrentState() == TestState(1001, keyToAggregate = Map(
       "A" -> TestAggregate("A", "a1"))))
-    assert(journal.tornEventId == EventId.BeforeFirst)
-    assert(journal.lastAddedEventId == 1001)
+    assert(eventWatch.tornEventId == EventId.BeforeFirst)
+    assert(eventWatch.lastAddedEventId == 1001)
 
-    assert(journal.observe(EventRequest.singleClass[TestEvent](0)).toListL.await(99.s) == List(
+    assert(eventWatch.observe(EventRequest.singleClass[TestEvent](0)).toListL.await(99.s) == List(
       Stamped(1000, "A" <-: TestEvent.Added("a")),
       Stamped(1001, "A" <-: TestEvent.Appended('1'))))
-    assert(journal.observe(EventRequest.singleClass[TestEvent](1000)).toListL.await(99.s) == List(
+    assert(eventWatch.observe(EventRequest.singleClass[TestEvent](1000)).toListL.await(99.s) == List(
       Stamped(1001, "A" <-: TestEvent.Appended('1'))))
-    assert(journal.observe(EventRequest.singleClass[TestEvent](1001)).toListL.await(99.s).isEmpty)
+    assert(eventWatch.observe(EventRequest.singleClass[TestEvent](1001)).toListL.await(99.s).isEmpty)
   }
 
   "test" in {
     val journal = newJournal()
+    import journal.eventWatch
 
     val observed = mutable.Buffer.empty[Stamped[KeyedEvent[TestEvent]]]
-    val observing = journal
+    val observing = eventWatch
       .observe(EventRequest.singleClass[TestEvent](
         after = EventId.BeforeFirst,
         timeout = Some(99.s)))
@@ -64,14 +67,14 @@ final class InMemoryJournalTest extends OurTestSuite
         case TestState.empty => Right(Seq(
           "A" <-: TestEvent.Added("A"),
           "B" <-: TestEvent.Added("B")))
-        case o => Left(Problem("FAILED"))
+        case _ => Left(Problem("FAILED"))
       }
 
     journal.persist(firstUpdate).await(99.s).orThrow
     assert(journal.persist(firstUpdate).await(99.s) == Left(Problem("FAILED")))
 
-    assert(journal.tornEventId == EventId.BeforeFirst)
-    assert(journal.lastAddedEventId == 1001)
+    assert(eventWatch.tornEventId == EventId.BeforeFirst)
+    assert(eventWatch.lastAddedEventId == 1001)
     waitForCondition(10.s, 10.ms)(synchronized(observed.size == 2))
     assert(observed == Seq(
       Stamped(1000, "A" <-: TestEvent.Added("A")),
@@ -90,11 +93,11 @@ final class InMemoryJournalTest extends OurTestSuite
 
     observing.cancel()
 
-    assert(journal.tornEventId == EventId.BeforeFirst)
+    assert(eventWatch.tornEventId == EventId.BeforeFirst)
     journal.releaseEvents(1001).await(99.s).orThrow
-    assert(journal.tornEventId == 1001)
+    assert(eventWatch.tornEventId == 1001)
 
-    assert(journal
+    assert(eventWatch
       .observe(EventRequest.singleClass[TestEvent](
         after = EventId.BeforeFirst))
       .toListL
@@ -103,7 +106,7 @@ final class InMemoryJournalTest extends OurTestSuite
       .failed
       .exists(_.isInstanceOf[TornException]))
 
-    assert(journal
+    assert(eventWatch
       .observe(EventRequest.singleClass[TestEvent](
         after = 1001))
       .toListL
@@ -113,9 +116,10 @@ final class InMemoryJournalTest extends OurTestSuite
   "size" in {
     val size = 3
     val journal = newJournal(size = size)
+    import journal.eventWatch
 
     val observed = mutable.Buffer.empty[Stamped[KeyedEvent[TestEvent]]]
-    val observing = journal
+    val observing = eventWatch
       .observe(EventRequest.singleClass[TestEvent](
         after = EventId.BeforeFirst,
         timeout = Some(99.s)))
@@ -146,12 +150,14 @@ final class InMemoryJournalTest extends OurTestSuite
   "persist more than size events at once" in {
     val size = 3
     val journal = newJournal(size = size)
+    import journal.eventWatch
+
     val events = (0 until 3 * size).map(_.toString).map(x => x <-: TestEvent.Added(x))
     journal
       .persistKeyedEvents(events)
       .await(99.s)
     assert(journal.queueLength == 3 * size)
-    assert(journal
+    assert(eventWatch
       .observe(EventRequest.singleClass[TestEvent](after = EventId.BeforeFirst))
       .map(_.value)
       .toListL

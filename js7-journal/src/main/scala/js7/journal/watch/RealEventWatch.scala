@@ -40,7 +40,7 @@ trait RealEventWatch extends EventWatch
   private lazy val committedEventIdSync =
     new IncreasingNumberSync(initial = tornEventId, o => "EventId " + EventId.toString(o))
 
-  protected final def onEventsCommitted(eventId: EventId): Unit =
+  private[journal] final def onEventsCommitted(eventId: EventId): Unit =
     committedEventIdSync.onAdded(eventId)
 
   final def observe[E <: Event](

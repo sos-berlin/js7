@@ -1,4 +1,4 @@
-package js7.journal.watch
+package js7.journal
 
 import cats.syntax.traverse.*
 import js7.base.log.CorrelId
@@ -12,7 +12,7 @@ import js7.data.event.{Event, EventId, JournalId, JournalInfo, JournaledState, K
 import js7.journal.log.JournalLogger
 import js7.journal.log.JournalLogger.SimpleLoggable
 import js7.journal.state.StatePersistence
-import js7.journal.{CommitOptions, EventIdGenerator}
+import js7.journal.watch.RealEventWatch
 import monix.catnap.Semaphore
 import monix.eval.Task
 import monix.execution.atomic.Atomic
@@ -25,7 +25,7 @@ final class InMemoryJournal[S <: JournaledState[S]](
   waitingFor: String = "releaseEvents",
   eventIdGenerator: EventIdGenerator = new EventIdGenerator)
   (implicit protected val S: JournaledState.Companion[S])
-extends StatePersistence[S] with RealEventWatch
+extends StatePersistence[S]
 {
   val journalId = JournalId.random()
 
@@ -46,18 +46,25 @@ extends StatePersistence[S] with RealEventWatch
 
   val whenNoFailoverByOtherNode = Task.unit
 
-  def eventWatch = this
+  val eventWatch: RealEventWatch = new RealEventWatch {
+    protected def eventsAfter(after: EventId) =
+      eventsAfter_(after)
+        .map(iterator => CloseableIterator.fromIterator(iterator))
 
-  protected def isActiveNode = true
+    protected val isActiveNode = true
 
-  def tornEventId = queue.tornEventId
+    def journalInfo: JournalInfo = {
+      val q = queue
+      JournalInfo(
+        lastEventId = q.lastEventId,
+        tornEventId = q.tornEventId,
+        journalFiles = Nil)
+    }
 
-  def journalInfo: JournalInfo = {
-    val q = queue
-    JournalInfo(
-      lastEventId = q.lastEventId,
-      tornEventId = q.tornEventId,
-      journalFiles = Nil)
+    def tornEventId: EventId =
+      queue.tornEventId
+
+    override def toString = "InMemoryJournal.EventWatch"
   }
 
   def unsafeCurrentState(): S =
@@ -109,7 +116,7 @@ extends StatePersistence[S] with RealEventWatch
                 q = q.copy(lastEventId = eventId)
                 _state = updated.withEventId(eventId)
                 log(_eventCount.get(), stampedEvents)
-                onEventsCommitted(eventId)
+                eventWatch.onEventsCommitted(eventId)
               }
               queue = q
               stampedEvents -> updated
@@ -144,10 +151,6 @@ extends StatePersistence[S] with RealEventWatch
           .as(Checked.unit)
       }
     })
-
-  protected def eventsAfter(after: EventId): Option[CloseableIterator[Stamped[KeyedEvent[Event]]]] =
-    eventsAfter_(after)
-      .map(iterator => CloseableIterator.fromIterator(iterator))
 
   private def eventsAfter_(after: EventId): Option[Iterator[Stamped[KeyedEvent[Event]]]] = {
     val q = queue

@@ -107,7 +107,7 @@ object BareSubagent
         actorSystem, SimpleSession(_), config)
       _ <- sessionRegister.placeSessionTokenInDirectory(SimpleUser.System, conf.workDirectory)
       webServer <- SubagentWebServer.resource(
-        commandExecutor, subagent.journal, sessionRegister, convertToDirector, conf)(actorSystem)
+        commandExecutor, subagent.journal.eventWatch, sessionRegister, convertToDirector, conf)(actorSystem)
       _ <- provideUriFile(conf, webServer.localHttpUri)
     } yield webServer
   }

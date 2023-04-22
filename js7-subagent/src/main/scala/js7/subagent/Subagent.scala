@@ -32,7 +32,7 @@ import js7.data.subagent.SubagentEvent.SubagentShutdown
 import js7.data.subagent.{SubagentId, SubagentRunId, SubagentState}
 import js7.data.value.expression.Expression
 import js7.data.workflow.position.WorkflowPosition
-import js7.journal.watch.InMemoryJournal
+import js7.journal.InMemoryJournal
 import js7.launcher.configuration.JobLauncherConf
 import js7.subagent.Subagent.*
 import js7.subagent.configuration.SubagentConf
@@ -156,7 +156,7 @@ extends MainService with Service.StoppableByRequest
       for {
         _ <- checkSubagentId(cmd.subagentId)
         _ <- checkSubagentRunId(cmd.subagentRunId)
-        _ <- journal.checkEventId(cmd.eventId)
+        _ <- journal.eventWatch.checkEventId(cmd.eventId)
       } yield ()
     }
 

@@ -11,7 +11,7 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.subagent.SubagentCommand.{AttachSignedItem, CoupleDirector, DedicateSubagent, DetachProcessedOrder, KillProcess, NoOperation, ReleaseEvents, ShutDown, StartOrderProcess}
 import js7.data.subagent.SubagentEvent.SubagentItemAttached
 import js7.data.subagent.{SubagentCommand, SubagentState}
-import js7.journal.watch.InMemoryJournal
+import js7.journal.InMemoryJournal
 import js7.subagent.SubagentCommandExecuter.*
 import monix.eval.Task
 import monix.reactive.Observable
