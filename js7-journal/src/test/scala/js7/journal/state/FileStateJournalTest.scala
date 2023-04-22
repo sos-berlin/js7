@@ -30,7 +30,7 @@ import js7.data.event.{Event, EventId, JournalEvent, KeyedEvent, KeyedEventTyped
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
 import js7.journal.recover.StateRecoverer
-import js7.journal.state.FileStatePersistenceTest.*
+import js7.journal.state.FileStateJournalTest.*
 import js7.journal.test.TestData
 import js7.journal.watch.JournalEventWatch
 import js7.journal.{EventIdClock, EventIdGenerator, JournalActor}
@@ -44,13 +44,13 @@ import scala.concurrent.Future
 /**
   * @author Joacim Zschimmer
   */
-final class FileStatePersistenceTest extends OurTestSuite with BeforeAndAfterAll
+final class FileStateJournalTest extends OurTestSuite with BeforeAndAfterAll
 {
   coupleScribeWithSlf4j()
 
   private implicit lazy val scheduler: SchedulerService =
     Scheduler(Executors.newCachedThreadPool())  // Scheduler.Implicits.global blocks on 2-processor machine
-  protected lazy val directory = createTempDirectory("FileStatePersistenceTest-")
+  protected lazy val directory = createTempDirectory("FileStateJournalTest-")
   private lazy val journalMeta = testJournalMeta(fileBase = directory)
 
   override def afterAll() = {
@@ -71,23 +71,23 @@ final class FileStatePersistenceTest extends OurTestSuite with BeforeAndAfterAll
         .toMap)
 
   "First run" - {
-    lazy val runningPersistence = new RunningPersistence
-    lazy val persistence = runningPersistence.start()
+    lazy val runningJournal = new RunningJournal
+    lazy val journal = runningJournal.start()
 
     "Start" in {
-       persistence
+       journal
     }
 
     "persistKeyedEvent with simple KeyedEvent" in {
-      assert(persistence.persistKeyedEvent(NumberKey("ONE") <-: NumberAdded).runSyncUnsafe().isRight)
-      assert(persistence.persistKeyedEvent(NumberKey("ONE") <-: NumberAdded).runSyncUnsafe() ==
+      assert(journal.persistKeyedEvent(NumberKey("ONE") <-: NumberAdded).runSyncUnsafe().isRight)
+      assert(journal.persistKeyedEvent(NumberKey("ONE") <-: NumberAdded).runSyncUnsafe() ==
         Left(Problem("Event 'ONE <-: NumberAdded' cannot be applied to " +
-          "'FileStatePersistenceTest.TestState': Duplicate NumberThing: ONE")))
-      intercept[MatchError] { persistence.persistKeyedEvent(NumberKey("ONE") <-: NumberUnhandled).runSyncUnsafe() }
+          "'FileStateJournalTest.TestState': Duplicate NumberThing: ONE")))
+      intercept[MatchError] { journal.persistKeyedEvent(NumberKey("ONE") <-: NumberUnhandled).runSyncUnsafe() }
     }
 
     "persistEvent" in {
-      assert(persistence
+      assert(journal
         .persistEvent[NumberEvent](NumberKey("TWO"))(implicitly[sourcecode.Enclosing])(
           _ => Right(NumberAdded)).runSyncUnsafe().isRight)
     }
@@ -95,7 +95,7 @@ final class FileStatePersistenceTest extends OurTestSuite with BeforeAndAfterAll
     "Concurrent update" in {
       val updated = keys
         .map(key =>
-          persistence.persistKeyedEvent(key <-: NumberAdded)
+          journal.persistKeyedEvent(key <-: NumberAdded)
             .runToFuture: Future[Checked[(Stamped[KeyedEvent[TestEvent]], TestState)]])
         .await(99.s)
       assert(updated.collectFirst { case Left(problem) => problem }.isEmpty)
@@ -103,69 +103,69 @@ final class FileStatePersistenceTest extends OurTestSuite with BeforeAndAfterAll
       val keyFutures = for (key <- keys) yield
         Future {
           for (i <- 0 until n) yield
-            persistence.persistKeyedEvent(key <-: NumberSlowlyIncremented(i * 1000))
+            journal.persistKeyedEvent(key <-: NumberSlowlyIncremented(i * 1000))
               .runToFuture.await(99.s)
         }
       assert(keyFutures.await(99.s).flatten.collectFirst { case Left(problem) => problem }.isEmpty)
     }
 
     "currentState" in {
-      assert(persistence.unsafeCurrentState() ==
+      assert(journal.unsafeCurrentState() ==
         TestState(eventId = 1000000 + 2 + keys.size * (1 + n), expectedThingCollection))
     }
 
     "Stop" in {
-      runningPersistence.stop()
+      runningJournal.stop()
     }
   }
 
   "Second run, with recovered state" - {
-    lazy val runningPersistence = new RunningPersistence
-    lazy val persistence = runningPersistence.start()
+    lazy val runningJournal = new RunningJournal
+    lazy val journal = runningJournal.start()
 
     "Start" in {
-      persistence
+      journal
     }
 
     "currentState" in {
-      assert(persistence.unsafeCurrentState() ==
+      assert(journal.unsafeCurrentState() ==
         TestState(eventId = 1000000 + 4 + keys.size * (1 + n), expectedThingCollection))
     }
 
     "Stop" in {
-      runningPersistence.stop()
+      runningJournal.stop()
     }
   }
 
-  private class RunningPersistence extends ProvideActorSystem {
+  private class RunningJournal extends ProvideActorSystem {
     protected def config = TestConfig
-    private var persistenceAllocated: Allocated[Task, FileStatePersistence[TestState]] = null
-    def persistence = persistenceAllocated.allocatedThing
+    private var journalAllocated: Allocated[Task, FileStateJournal[TestState]] = null
+    def journal = journalAllocated.allocatedThing
 
     def start() = {
       val recovered = StateRecoverer.recover[TestState](journalMeta, JournalEventWatch.TestConfig)
       implicit val a = actorSystem
       implicit val timeout: Timeout = Timeout(99.s)
-      persistenceAllocated = FileStatePersistence
+      journalAllocated = FileStateJournal
         .resource(recovered, JournalConf.fromConfig(TestConfig),
           new EventIdGenerator(EventIdClock.fixed(epochMilli = 1000/*EventIds start at 1000000*/)))
         .toAllocated
         .await(99.s)
-      persistence
+      journal
     }
 
     def stop() = {
-      (persistence.journalActor ? JournalActor.Input.TakeSnapshot)(99.s) await 99.s
-      if (persistence != null) {
-        persistenceAllocated.stop.await(99.s)
+      (journal.journalActor ? JournalActor.Input.TakeSnapshot)(99.s) await 99.s
+      if (journal != null) {
+        journalAllocated.stop.await(99.s)
       }
-      persistenceAllocated.stop.await(99.s)
+      journalAllocated.stop.await(99.s)
       close()
     }
   }
 }
 
-private object FileStatePersistenceTest
+private object FileStateJournalTest
 {
   private val TestConfig = TestData.TestConfig
     .withFallback(config"""

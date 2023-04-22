@@ -29,10 +29,10 @@ import scala.concurrent.Promise
 
 // TODO Lock for NoKey is to wide. Restrict to a set of Event superclasses, like ClusterEvent, ControllerEvent?
 //  Der Aufrufer kann sich um die Sperren uns dessen Granularität kümmern.
-//  FileStatePersistence stellt dazu LockKeeper bereit
+//  FileStateJournal stellt dazu LockKeeper bereit
 //  Wir werden vielleicht mehrere Schlüssel auf einmal sperren wollen (für fork/join?)
 
-final class FileStatePersistence[S <: SnapshotableState[S]: Tag](
+final class FileStateJournal[S <: SnapshotableState[S]: Tag](
   val journalId: JournalId,
   val journalHeader: JournalHeader,
   val journalConf: JournalConf,
@@ -43,8 +43,8 @@ final class FileStatePersistence[S <: SnapshotableState[S]: Tag](
   val journalActor: ActorRef @@ JournalActor.type)
   (implicit
     protected val S: SnapshotableState.Companion[S])
-extends StatePersistence[S]
-with FileStatePersistence.PossibleFailover
+extends StateJournal[S]
+with FileStateJournal.PossibleFailover
 {
   def persistKeyedEvent[E <: Event](
     keyedEvent: KeyedEvent[E],
@@ -124,10 +124,10 @@ with FileStatePersistence.PossibleFailover
   def unsafeCurrentState(): S =
     getCurrentState()
 
-  override def toString = s"FileStatePersistence[$S]"
+  override def toString = s"FileStateJournal[$S]"
 }
 
-object FileStatePersistence
+object FileStateJournal
 {
   private val logger = Logger[this.type]
 
@@ -140,7 +140,7 @@ object FileStatePersistence
       scheduler: Scheduler,
       actorRefFactory: ActorRefFactory,
       timeout: akka.util.Timeout)
-  : Task[FileStatePersistence[S]] =
+  : Task[FileStateJournal[S]] =
     resource(recovered, journalConf, eventIdGenerator, keyedEventBus)
       .allocated
       .map(_._1)
@@ -154,7 +154,7 @@ object FileStatePersistence
       scheduler: Scheduler,
       actorRefFactory: ActorRefFactory,
       timeout: akka.util.Timeout)
-  : Resource[Task, FileStatePersistence[S]] = {
+  : Resource[Task, FileStateJournal[S]] = {
     Resource.make(
       acquire = Task.defer {
         import recovered.journalMeta
@@ -209,18 +209,18 @@ object FileStatePersistence
                   encodeAsActorName("StateJournalingActor:" + S))
                 .taggedWith[StateJournalingActor.type]
 
-              val persistence = new FileStatePersistence[S](
+              val journal = new FileStateJournal[S](
                 journalId, journalHeader, journalConf,
                 recovered.eventWatch,
                 getCurrentState, persistTask, persistLaterTask,
                 journalActor)
 
-              (persistence, journalActor, actor, journalActorStopped)
+              (journal, journalActor, actor, journalActorStopped)
             }
           }
       })(
-      release = { case (persistence, journalActor, actor, journalActorStopped) =>
-        logger.debugTask(s"$persistence stop")(
+      release = { case (journal, journalActor, actor, journalActorStopped) =>
+        logger.debugTask(s"$journal stop")(
           Task.defer {
             actorRefFactory.stop(actor)
             journalActor ! JournalActor.Input.Terminate

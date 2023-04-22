@@ -15,7 +15,7 @@ import js7.common.akkautils.SupervisorStrategies
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
 import js7.journal.recover.StateRecoverer
-import js7.journal.state.FileStatePersistence
+import js7.journal.state.FileStateJournal
 import js7.journal.test.TestActor.*
 import js7.journal.{EventIdClock, EventIdGenerator, JournalActor}
 import monix.eval.Task
@@ -35,16 +35,16 @@ extends Actor with Stash
   private val journalConf = JournalConf.fromConfig(config)
   private val keyToAggregate = mutable.Map[String, ActorRef]()
   private var terminator: ActorRef = null
-  private var persistenceAllocated: Allocated[Task, FileStatePersistence[TestState]] = null
-  private def persistence = persistenceAllocated.allocatedThing
+  private var journalAllocated: Allocated[Task, FileStateJournal[TestState]] = null
+  private def journal = journalAllocated.allocatedThing
 
-  private def journalActor = persistence.journalActor
+  private def journalActor = journal.journalActor
 
   override def preStart() = {
     super.preStart()
     StateRecoverer.recover[TestState](journalMeta, config)
     val recovered = StateRecoverer.recover[TestState](journalMeta, config)
-    persistenceAllocated = FileStatePersistence
+    journalAllocated = FileStateJournal
       .resource(recovered, journalConf,
         new EventIdGenerator(EventIdClock.fixed(epochMilli = 1000/*EventIds start at 1000000*/)))
       .toAllocated
@@ -60,7 +60,7 @@ extends Actor with Stash
   }
 
   override def postStop() = {
-    persistenceAllocated.stop await 99.s
+    journalAllocated.stop await 99.s
     journalStopped.success(())
     super.postStop()
   }

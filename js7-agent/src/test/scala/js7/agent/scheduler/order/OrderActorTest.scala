@@ -47,7 +47,7 @@ import js7.data.workflow.position.Position
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
 import js7.journal.recover.Recovered
-import js7.journal.state.FileStatePersistence
+import js7.journal.state.FileStateJournal
 import js7.launcher.configuration.JobLauncherConf
 import js7.launcher.process.ProcessConfiguration
 import js7.subagent.director.SubagentKeeper
@@ -197,16 +197,16 @@ private object OrderActorTest {
 
     private val journalMeta = JournalMeta(AgentState, dir / "data" / "state" / "agent")
     private val recovered = Recovered.noJournalFile[AgentState](journalMeta, now, config)
-    private val persistence = FileStatePersistence
+    private val journal = FileStateJournal
       .start(recovered, JournalConf.fromConfig(config))
       .await(99.s)
-    //persistence.persistKeyedEvent()
+    //journal.persistKeyedEvent()
     private val agentConf = AgentConfiguration.forTest(dir, name = "OrderActorTest", config)
     val subagentKeeper =
       new SubagentKeeper(
         TestAgentPath,
         failedOverSubagentId = None,
-        persistence, jobLauncherConf,
+        journal, jobLauncherConf,
         agentConf.subagentDirectorConf, context.system)
     subagentKeeper.initialize(localSubagentId = None, controllerId).await(99.s)
     subagentKeeper.start.await(99.s)
@@ -215,7 +215,7 @@ private object OrderActorTest {
       OrderActor.props(TestOrder.id,
         CorrelId.generate(),
         subagentKeeper,
-        persistence.journalActor,
+        journal.journalActor,
         JournalConf.fromConfig(config)),
       s"Order-${TestOrder.id.string}"))
 

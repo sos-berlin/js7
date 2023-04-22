@@ -55,7 +55,7 @@ import js7.data.subagent.SubagentId
 import js7.journal.EventIdClock
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.recover.Recovered
-import js7.journal.state.FileStatePersistence
+import js7.journal.state.FileStateJournal
 import js7.journal.watch.EventWatch
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -65,7 +65,7 @@ import scala.concurrent.{Future, Promise}
 final class RunningAgent private(
   val eventWatch: EventWatch,
   clusterNode: ClusterNode[AgentState],
-  val persistence: Task[FileStatePersistence[AgentState]],
+  val journal: Task[FileStateJournal[AgentState]],
   webServer: AkkaWebServer & AkkaWebServer.HasUri,
   actorTermination: Task[ProgramTermination],
   val untilReady: Task[MainActor.Ready],
@@ -201,10 +201,10 @@ object RunningAgent {
 
     def startMainActor(
       failedNodeId: Option[NodeId],
-      persistenceAllocated: Allocated[Task, FileStatePersistence[AgentState]])
+      journalAllocated: Allocated[Task, FileStateJournal[AgentState]])
     : MainActorStarted = {
       val failedOverSubagentId: Option[SubagentId] = {
-        val directors = persistenceAllocated.allocatedThing.unsafeCurrentState().meta.directors
+        val directors = journalAllocated.allocatedThing.unsafeCurrentState().meta.directors
         failedNodeId.flatMap {
           case AgentClusterConf.primaryNodeId => directors.get(0)
           case AgentClusterConf.backupNodeId => directors.get(1)
@@ -219,7 +219,7 @@ object RunningAgent {
           new MainActor(
             recoveredExtract.totalRunningSince,
             failedOverSubagentId,
-            persistenceAllocated, conf, testWiring.commandHandler,
+            journalAllocated, conf, testWiring.commandHandler,
             mainActorReadyPromise, terminationPromise,
             clusterNode,
             conf.toJobLauncherConf(iox, blockingJobScheduler, clock)
@@ -228,7 +228,7 @@ object RunningAgent {
         },
         "main").taggedWith[MainActor]
 
-      actor ! MainActor.Input.Start(persistenceAllocated.allocatedThing.unsafeCurrentState())
+      actor ! MainActor.Input.Start(journalAllocated.allocatedThing.unsafeCurrentState())
 
       MainActorStarted(
         actor,
@@ -236,17 +236,17 @@ object RunningAgent {
         terminationPromise.future)
     }
 
-    val persistenceDeferred = Deferred.unsafe[Task, FileStatePersistence[AgentState]]
+    val journalDeferred = Deferred.unsafe[Task, FileStateJournal[AgentState]]
 
     val mainActorStarted: Task[Either[ProgramTermination, MainActorStarted]] =
       logger.traceTaskWithResult(
         clusterNode.untilActivated
           .flatMapT(workingClusterNode =>
-            persistenceDeferred.complete(workingClusterNode.persistenceAllocated.allocatedThing)
+            journalDeferred.complete(workingClusterNode.journalAllocated.allocatedThing)
               .*>(Task(
                 startMainActor(
                   workingClusterNode.failedNodeId,
-                  workingClusterNode.persistenceAllocated)))
+                  workingClusterNode.journalAllocated)))
               .map(Right(_)))
           .onErrorRecover { case t: RestartAfterJournalTruncationException =>
             logger.info(t.getMessage)
@@ -375,7 +375,7 @@ object RunningAgent {
         new RunningAgent(
           recoveredExtract.eventWatch,
           clusterNode,
-          persistenceDeferred.get,
+          journalDeferred.get,
           webServer, /*Task(mainActor),*/
           untilMainActorTerminated,
           untilReady, executeCommand, sessionRegister, sessionToken,

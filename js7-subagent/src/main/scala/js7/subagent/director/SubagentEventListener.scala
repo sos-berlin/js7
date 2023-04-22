@@ -79,7 +79,7 @@ private trait SubagentEventListener[S_ <: SubagentDirectorState[S_]]
     logger.debugTask(recouplingStreamReader
       .observe(
         client,
-        after = persistence.unsafeCurrentState().idToSubagentItemState(subagentId).eventId)
+        after = journal.unsafeCurrentState().idToSubagentItemState(subagentId).eventId)
       .takeUntilEval(stopObserving.flatMap(_.read))
       .pipe(obs =>
         if (!bufferDelay.isPositive)
@@ -99,7 +99,7 @@ private trait SubagentEventListener[S_ <: SubagentDirectorState[S_]]
             .concat(lastEventId.map(subagentId <-: SubagentEventsObserved(_)))
             .toVector
           // TODO Save Stamped timestamp
-          persistence
+          journal
             .persistKeyedEvents(events, CommitOptions(transaction = true))
             .map(_.orThrow/*???*/)
             // After an OrderProcessed event an DetachProcessedOrder must be sent,
@@ -173,7 +173,7 @@ private trait SubagentEventListener[S_ <: SubagentDirectorState[S_]]
 
       protected def getObservable(api: SubagentClient, after: EventId) =
         logger.debugTask(s"getObservable(after=$after)")(
-          persistence.state.map(_.idToSubagentItemState.checked(subagentId).map(_.subagentRunId))
+          journal.state.map(_.idToSubagentItemState.checked(subagentId).map(_.subagentRunId))
             .flatMapT {
               case None => Task.left(Problem.pure("Subagent not yet dedicated"))
               case Some(subagentRunId) => getObservable(api, after, subagentRunId)
@@ -249,7 +249,7 @@ private trait SubagentEventListener[S_ <: SubagentDirectorState[S_]]
       Task.defer(Task.when(!_isHeartbeating.getAndSet(true) && isCoupled)(
         // Different to AgentDriver,
         // for Subagents the Coupling state is tied to the continuous flow of events.
-        persistence.persistKeyedEvent(subagentId <-: SubagentCoupled)
+        journal.persistKeyedEvent(subagentId <-: SubagentCoupled)
           .map(_.orThrow))))
 
   protected final def isHeartbeating = _isHeartbeating.get()

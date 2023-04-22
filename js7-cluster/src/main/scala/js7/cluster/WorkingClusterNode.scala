@@ -25,7 +25,7 @@ import js7.data.node.NodeId
 import js7.journal.EventIdGenerator
 import js7.journal.configuration.JournalConf
 import js7.journal.recover.Recovered
-import js7.journal.state.FileStatePersistence
+import js7.journal.state.FileStateJournal
 import monix.eval.Task
 import monix.execution.Scheduler
 
@@ -41,18 +41,18 @@ final class WorkingClusterNode[
   S <: SnapshotableState[S]: SnapshotableState.Companion: diffx.Diff: Tag
 ] private(
   val failedNodeId: Option[NodeId],
-  val persistenceAllocated: Allocated[Task, FileStatePersistence[S]],
+  val journalAllocated: Allocated[Task, FileStateJournal[S]],
   common: ClusterCommon,
   clusterConf: ClusterConf)
   (implicit scheduler: Scheduler)
 //TODO extends Service
 {
-  val persistence: FileStatePersistence[S] = persistenceAllocated.allocatedThing
+  val journal: FileStateJournal[S] = journalAllocated.allocatedThing
   private val _activeClusterNode = SetOnce.undefined[ActiveClusterNode[S]](
     "ActiveClusterNode[S]",
     ClusterNodeIsNotActiveProblem)
   private val activeClusterNodeTask = Task { _activeClusterNode.checked }
-  private val currentClusterState = persistence.clusterState
+  private val currentClusterState = journal.clusterState
 
   def start(clusterState: ClusterState, eventId: EventId): Task[Checked[Unit]] =
     clusterState match {
@@ -93,7 +93,7 @@ final class WorkingClusterNode[
       clusterConf.maybeClusterSetting match {
         case None => Task.pure(Right(Completed))
         case Some(setting) =>
-          persistence.clusterState.flatMap {
+          journal.clusterState.flatMap {
             case _: ClusterState.HasNodes => Task.pure(Right(Completed))
             case ClusterState.Empty =>
               appointNodes(setting)
@@ -117,7 +117,7 @@ final class WorkingClusterNode[
     logger.debugTask(
       currentClusterState.flatMap {
         case ClusterState.Empty =>
-          persistence.persistKeyedEvent(NoKey <-: ClusterNodesAppointed(setting))
+          journal.persistKeyedEvent(NoKey <-: ClusterNodesAppointed(setting))
             .flatMapT { case (_, state) =>
               state.clusterState match {
                 case clusterState: HasNodes =>
@@ -135,7 +135,7 @@ final class WorkingClusterNode[
 
   private def startActiveClusterNode(eventId: EventId): Task[Checked[Unit]] =
     Task.defer {
-      val activeClusterNode = new ActiveClusterNode(persistence, common, clusterConf)
+      val activeClusterNode = new ActiveClusterNode(journal, common, clusterConf)
       if (_activeClusterNode.trySet(activeClusterNode))
         activeClusterNode.start(eventId)
       else
@@ -188,12 +188,12 @@ object WorkingClusterNode
     for {
       _ <- Resource.eval(Task.unless(recovered.clusterState == ClusterState.Empty)(
         common.requireValidLicense.map(_.orThrow)))
-      persistenceAllocated <- Resource.eval(FileStatePersistence
+      journalAllocated <- Resource.eval(FileStateJournal
         .resource(recovered, journalConf, eventIdGenerator, keyedEventBus)
         .toAllocated/* ControllerOrderKeeper and AgentOrderKeeper both require Allocated*/)
       workingClusterNode <- Resource.make(
         acquire = Task.defer {
-          val w = new WorkingClusterNode(recovered.failedNodeId, persistenceAllocated, common, clusterConf)
+          val w = new WorkingClusterNode(recovered.failedNodeId, journalAllocated, common, clusterConf)
           w.start(recovered.clusterState, recovered.eventId).as(w)
         })(
         release = _.stop)

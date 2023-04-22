@@ -69,7 +69,7 @@ final class SimpleAgentClusterTest extends ControllerClusterTester
           //TODO: await[OrderStdoutWritten](_.key == failOverOrderId)
 
           // Kill Agent roughly — TODO Proper fast Agent termination desired
-          //agent.persistence.await(99.s).journalActor ! PoisonPill
+          //agent.journal.await(99.s).journalActor ! PoisonPill
           //Try(agent.untilTerminated.await(99.s))
           new TestAgent(new Allocated(agent, Task.unit))
             .terminate(

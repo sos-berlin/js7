@@ -119,7 +119,7 @@ extends Service.StoppableByRequest
         workingNodeStarted.complete(triedWorkingNode.map(Right(_))).attempt)
       .dematerialize
       .flatMap(workingNode =>
-        currentStateRef.set(workingNode.persistence.state.map(Right(_)))))
+        currentStateRef.set(workingNode.journal.state.map(Right(_)))))
 
   private def untilRecovered: Task[Recovered[S]] =
     logger.debugTask(prepared
@@ -182,7 +182,7 @@ extends Service.StoppableByRequest
             else {
               workingNodeStarted.get
                 .dematerialize
-                .flatMap(_.traverse(_.persistence.clusterState))
+                .flatMap(_.traverse(_.journal.clusterState))
                 .map(Some(_))
                 .timeoutTo(duration/*???*/ - 500.ms, Task.none)
                 .flatMap {
@@ -191,7 +191,7 @@ extends Service.StoppableByRequest
                       "ClusterInhibitActivation timed out — please try again"))
 
                   case Some(Left(_: ProgramTermination)) =>
-                    // No persistence
+                    // No journal
                     Task.left(Problem.pure(
                       "ClusterInhibitActivation command failed due to cluster is being terminated"))
 

@@ -11,7 +11,7 @@ import js7.data.order.{Order, OrderId}
 import js7.data.subagent.{SubagentDriverState, SubagentId}
 import js7.data.value.expression.Expression
 import js7.data.workflow.instructions.Execute
-import js7.journal.state.StatePersistence
+import js7.journal.state.StateJournal
 import monix.eval.Task
 import scala.concurrent.duration.FiniteDuration
 
@@ -28,7 +28,7 @@ trait SubagentDriver
   def isCoupled =
     !isStopping && !isShuttingDown
 
-  protected def persistence: StatePersistence[S]
+  protected def journal: StateJournal[S]
 
   protected val conf: SubagentDriver.Conf
 
@@ -47,13 +47,13 @@ trait SubagentDriver
   // TODO Emit one batch for all recovered orders!
   final def emitOrderProcessLost(order: Order[Order.Processing])
   : Task[Checked[OrderProcessed]] =
-    persistence
+    journal
       .persistKeyedEvent(order.id <-: OrderProcessed.processLostDueToRestart)
       .map(_.map(_._1.value.event))
 
   final def orderToExecuteDefaultArguments(order: Order[Order.Processing])
   : Task[Checked[Map[String, Expression]]] =
-    persistence.state
+    journal.state
       .map(_
         .idToWorkflow
         .checked(order.workflowId)

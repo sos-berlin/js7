@@ -33,7 +33,7 @@ import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.subagent.SubagentId
 import js7.journal.files.JournalFiles.JournalMetaOps
-import js7.journal.state.FileStatePersistence
+import js7.journal.state.FileStateJournal
 import js7.launcher.configuration.JobLauncherConf
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -47,7 +47,7 @@ private[agent] final class AgentActor(
   totalRunningSince: Deadline,
   failedOverSubagentId: Option[SubagentId],
   terminatePromise: Promise[ProgramTermination],
-  persistenceAllocated: Allocated[Task, FileStatePersistence[AgentState]],
+  journalAllocated: Allocated[Task, FileStateJournal[AgentState]],
   clusterNode: ClusterNode[AgentState],
   clock: AlarmClock,
   agentConf: AgentConfiguration,
@@ -58,8 +58,8 @@ private[agent] final class AgentActor(
 {
   import agentConf.{implicitAkkaAskTimeout, journalMeta}
   import context.{actorOf, watch}
-  val persistence = persistenceAllocated.allocatedThing
-  import persistence.eventWatch
+  val journal = journalAllocated.allocatedThing
+  import journal.eventWatch
 
   override val supervisorStrategy = SupervisorStrategies.escalate
 
@@ -79,7 +79,7 @@ private[agent] final class AgentActor(
     .awaitInfinite
 
   override def preStart() = {
-    watch(persistence.journalActor)
+    watch(journal.journalActor)
     super.preStart()
   }
 
@@ -115,7 +115,7 @@ private[agent] final class AgentActor(
       logger.debug("AgentOrderKeeper terminated")
       continueTermination()
 
-    case Terminated(actor) if actor == persistence.journalActor && terminating =>
+    case Terminated(actor) if actor == journal.journalActor && terminating =>
       for (_ <- terminateCompleted.future) {
         context.stop(self)
       }
@@ -145,8 +145,8 @@ private[agent] final class AgentActor(
       case AgentCommand.DedicateAgentDirector(directors, controllerId, agentPath)
         if !terminating =>
         // Command is idempotent until AgentState has been touched
-        val agentRunId = AgentRunId(persistence.journalId)
-        persistence
+        val agentRunId = AgentRunId(journal.journalId)
+        journal
           .persist(agentState =>
             if (!agentState.isDedicated)
               for (_ <- UserId.checked(agentPath.string)/*used for Subagent login*/) yield
@@ -179,7 +179,7 @@ private[agent] final class AgentActor(
             _ <- checkAgentRunId(agentRunId)
             _ <- eventWatch.checkEventId(eventId)
           } yield
-            CoupleController.Response(persistence.unsafeCurrentState().idToOrder.keySet))
+            CoupleController.Response(journal.unsafeCurrentState().idToOrder.keySet))
 
       case AgentCommand.ClusterAppointNodes(idToUri, activeId) =>
         response.completeWith(
@@ -222,7 +222,7 @@ private[agent] final class AgentActor(
   }
 
   private def checkAgentPath(requestedAgentPath: AgentPath): Checked[Unit] = {
-    val agentState = persistence.unsafeCurrentState()
+    val agentState = journal.unsafeCurrentState()
     if (!agentState.isDedicated)
       Left(AgentNotDedicatedProblem)
     else if (requestedAgentPath != agentState.agentPath)
@@ -232,7 +232,7 @@ private[agent] final class AgentActor(
   }
 
   private def checkAgentRunId(requestedAgentRunId: AgentRunId): Checked[Unit] = {
-    val agentState = persistence.unsafeCurrentState()
+    val agentState = journal.unsafeCurrentState()
     if (!agentState.isDedicated)
       Left(AgentNotDedicatedProblem)
     else if (requestedAgentRunId != agentState.meta.agentRunId) {
@@ -248,8 +248,8 @@ private[agent] final class AgentActor(
     if (terminating) {
       if (started.isEmpty) {
         // When no AgentOrderKeeper has been started, we need to stop the journal ourselve
-        //persistence.journalActor ! JournalActor.Input.Terminate
-        persistenceAllocated.stop.runAsyncAndForget
+        //journal.journalActor ! JournalActor.Input.Terminate
+        journalAllocated.stop.runAsyncAndForget
       }
     }
 
@@ -287,7 +287,7 @@ private[agent] final class AgentActor(
                 requireNonNull(recoveredAgentState),
                 allocatedSignatureVerifier.allocatedThing,
                 jobLauncherConf,
-                persistenceAllocated,
+                journalAllocated,
                 clock,
                 agentConf)
               },

@@ -45,7 +45,7 @@ import js7.data.node.NodeId
 import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderDetached}
 import js7.data.order.{Order, OrderId, OrderMark}
 import js7.data.subagent.SubagentId
-import js7.journal.state.StatePersistence
+import js7.journal.state.StateJournal
 import monix.eval.Task
 import monix.execution.atomic.AtomicInt
 import monix.execution.{Cancelable, Scheduler}
@@ -56,7 +56,7 @@ final class AgentDriver private(
   initialEventId: EventId,
   onEvents: (AgentRunId, Seq[Stamped[AnyKeyedEvent]]) => Task[Option[EventId]],
   onOrderMarked: Map[OrderId, OrderMark] => Task[Unit],
-  persistence: StatePersistence[ControllerState],
+  journal: StateJournal[ControllerState],
   conf: AgentDriverConfiguration,
   controllerConfiguration: ControllerConfiguration,
   actorSystem: ActorSystem)
@@ -111,7 +111,7 @@ extends Service.StoppableByRequest
           for (t <- problem.throwableOption if t.getStackTrace.nonEmpty) logger.debug(
             s"Coupling failed: $problem", t)
           Task.unless(noJournal)(
-            persistence.persistKeyedEvent(agentPath <-: agentCouplingFailed)
+            journal.persistKeyedEvent(agentPath <-: agentCouplingFailed)
               .map(_.orThrow))
         }
       }
@@ -135,7 +135,7 @@ extends Service.StoppableByRequest
 
   // TODO For v2.6 inserted, but maybe duplicate
   private def attachAttachbles: Task[Unit] =
-    persistence.state.flatMap(controllerState => controllerState
+    journal.state.flatMap(controllerState => controllerState
       .itemToAgentToAttachedState
       .view
       .flatMap { case (itemKey, agentPathToAttachedState) =>
@@ -335,7 +335,7 @@ extends Service.StoppableByRequest
       agentRunIdOnce.toOption match {
         case Some(agentRunId) => Task.right(agentRunId -> state.lastFetchedEventId)
         case None =>
-          persistence.state
+          journal.state
             .map(_.keyToItem(AgentRef).checked(agentPath))
             .flatMapT(agentRef =>
               directorDriverAllocated.use(directorDriver =>
@@ -346,7 +346,7 @@ extends Service.StoppableByRequest
                     (if (noJournal)
                       Task.pure(Checked.unit)
                     else
-                      persistence
+                      journal
                         .persistKeyedEvent(
                           agentPath <-: AgentDedicated(agentRunId, Some(agentEventId)))
                         .flatMapT { _ =>
@@ -359,7 +359,7 @@ extends Service.StoppableByRequest
     })
 
   private def reattachSubagents(): Task[Unit] =
-    persistence.state.flatMap(controllerState =>
+    journal.state.flatMap(controllerState =>
       controllerState
         .itemToAgentToAttachedState
         .toVector
@@ -387,7 +387,7 @@ extends Service.StoppableByRequest
     logger.debugTask(
       clusterWatchAllocated
         .acquire(clusterWatchResource)
-        .*>(persistence.state
+        .*>(journal.state
           .map(_.agentToUris(agentPath).toList)
           .flatMap(uris =>
             Task.when(uris.lengthIs == 2)(
@@ -422,7 +422,7 @@ extends Service.StoppableByRequest
         client,
         dedicateAgentIfNeeded, onCouplingFailed, onCoupled, onDecoupled,
         onEventsFetched,
-        persistence, conf)
+        journal, conf)
     } yield directorDriver
 
   private def clusterWatchResource: Resource[Task, ClusterWatchService] =
@@ -459,7 +459,7 @@ extends Service.StoppableByRequest
 
   private def clientsResource: Resource[Task, Nel[AgentClient]] =
     Resource
-      .eval(persistence.state.map(_.agentToUris(agentPath)))
+      .eval(journal.state.map(_.agentToUris(agentPath)))
       .flatMap(_.traverse(clientResource))
 
   private def clientResource(uri: Uri): Resource[Task, AgentClient] =
@@ -480,7 +480,7 @@ private[controller] object AgentDriver
     agentRef: AgentRef, agentRunId: Option[AgentRunId], eventId: EventId,
     onEvents: (AgentRunId, Seq[Stamped[AnyKeyedEvent]]) => Task[Option[EventId]],
     onOrderMarked: Map[OrderId, OrderMark] => Task[Unit],
-    persistence: StatePersistence[ControllerState],
+    journal: StateJournal[ControllerState],
     agentDriverConf: AgentDriverConfiguration, controllerConf: ControllerConfiguration,
     actorSystem: ActorSystem)
     (implicit s: Scheduler)
@@ -489,7 +489,7 @@ private[controller] object AgentDriver
       new AgentDriver(
         agentRef, agentRunId, eventId,
         onEvents, onOrderMarked,
-        persistence, agentDriverConf, controllerConf, actorSystem)))
+        journal, agentDriverConf, controllerConf, actorSystem)))
 
   sealed trait Queueable {
     def toShortString = toString

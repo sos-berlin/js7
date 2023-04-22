@@ -36,7 +36,7 @@ import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchEvent, Order
 import js7.data.value.expression.Expression
 import js7.data.value.expression.scopes.{EnvScope, NowScope}
 import js7.data.value.{NamedValues, StringValue}
-import js7.journal.state.StatePersistence
+import js7.journal.state.StateJournal
 import monix.eval.Task
 import monix.reactive.Observable
 import monix.reactive.subjects.PublishSubject
@@ -46,7 +46,7 @@ import scala.jdk.CollectionConverters.*
 /** Persists, recovers and runs FileWatches. */
 final class FileWatchManager(
   ownAgentPath: AgentPath,
-  persistence: StatePersistence[AgentState],
+  journal: StateJournal[AgentState],
   config: Config)
   (implicit iox: IOExecutor)
 {
@@ -68,7 +68,7 @@ final class FileWatchManager(
       .map(_.unorderedFold)
 
   def start: Task[Checked[Unit]] =
-    persistence.state
+    journal.state
       .map(_.keyTo(FileWatchState).values)
       .flatMap(_
         .toVector
@@ -77,7 +77,7 @@ final class FileWatchManager(
 
   def update(fileWatch: FileWatch): Task[Checked[Unit]] =
     lockKeeper.lock(fileWatch.path) {
-      persistence
+      journal
         .persist(agentState =>
           Right(
             agentState.keyTo(FileWatchState).get(fileWatch.path) match {
@@ -104,7 +104,7 @@ final class FileWatchManager(
 
   def remove(fileWatchPath: OrderWatchPath): Task[Checked[Unit]] =
     lockKeeper.lock(fileWatchPath) {
-      persistence
+      journal
         .persist(agentState =>
           Right(
             agentState.keyTo(FileWatchState).get(fileWatchPath) match {
@@ -215,12 +215,12 @@ final class FileWatchManager(
     directory: Path,
     dirEventSeqs: List[Seq[DirectoryEvent]])
   : Task[Checked[(Seq[Stamped[KeyedEvent[OrderWatchEvent]]], AgentState)]] =
-    persistence.state
+    journal.state
       .flatMap(agentState =>
         if (!agentState.keyTo(FileWatchState).contains(fileWatch.path))
           Task.right(Nil -> agentState)
         else
-          persistence.persist { agentState =>
+          journal.persist { agentState =>
             Right(
               dirEventSeqs
                 .view

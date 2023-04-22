@@ -11,7 +11,7 @@ import js7.base.utils.{AsyncLock, CloseableIterator}
 import js7.data.event.{Event, EventId, JournalId, JournalInfo, JournaledState, KeyedEvent, Stamped}
 import js7.journal.log.JournalLogger
 import js7.journal.log.JournalLogger.SimpleLoggable
-import js7.journal.state.StatePersistence
+import js7.journal.state.StateJournal
 import js7.journal.watch.RealEventWatch
 import monix.catnap.Semaphore
 import monix.eval.Task
@@ -25,7 +25,7 @@ final class InMemoryJournal[S <: JournaledState[S]](
   waitingFor: String = "releaseEvents",
   eventIdGenerator: EventIdGenerator = new EventIdGenerator)
   (implicit protected val S: JournaledState.Companion[S])
-extends StatePersistence[S]
+extends StateJournal[S]
 {
   val journalId = JournalId.random()
 

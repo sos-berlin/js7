@@ -28,7 +28,7 @@ import js7.data.item.InventoryItemEvent
 import js7.data.order.{OrderEvent, OrderId}
 import js7.data.orderwatch.OrderWatchEvent
 import js7.data.subagent.SubagentItemStateEvent
-import js7.journal.state.StatePersistence
+import js7.journal.state.StateJournal
 import monix.eval.Task
 import monix.reactive.Observable
 import scala.util.chaining.scalaUtilChainingOps
@@ -42,7 +42,7 @@ private[agent] final class DirectorDriver private(
   onCoupled_ : Set[OrderId] => Task[Unit],
   onDecoupled_ : Task[Unit],
   onEvents: (Seq[Stamped[AnyKeyedEvent]], EventId) => Task[Unit],
-  persistence: StatePersistence[ControllerState],
+  journal: StateJournal[ControllerState],
   conf: AgentDriverConfiguration)
 extends Service.StoppableByRequest
 {
@@ -70,7 +70,7 @@ extends Service.StoppableByRequest
     private var attachedOrderIds: Set[OrderId] = null
 
     override protected def couple(eventId: EventId) =
-      persistence.state
+      journal.state
         .map(_.keyTo(AgentRefState).checked(agentPath))
         .flatMapT(agentRefState =>
           ((agentRefState.couplingState, agentRefState.agentRunId) match {
@@ -84,7 +84,7 @@ extends Service.StoppableByRequest
                   case o => o
                 }
                 .flatMapT(_ =>
-                  persistence.persistKeyedEvent(agentPath <-: AgentReset))
+                  journal.persistKeyedEvent(agentPath <-: AgentReset))
 
             case _ =>
               Task.pure(Checked.unit)
@@ -95,9 +95,9 @@ extends Service.StoppableByRequest
             .flatMapT { case CoupleController.Response(orderIds) =>
               logger.trace(s"CoupleController returned attached OrderIds={${orderIds.toSeq.sorted.mkString(" ")}}")
               attachedOrderIds = orderIds
-              persistence
+              journal
                 .lock(agentPath)(
-                  persistence.persist(controllerState =>
+                  journal.persist(controllerState =>
                     for (a <- controllerState.keyTo(AgentRefState).checked(agentPath)) yield
                       (a.couplingState != Coupled || a.problem.nonEmpty)
                         .thenList(agentPath <-: AgentCoupled)))
@@ -164,7 +164,7 @@ extends Service.StoppableByRequest
           // When the other cluster node may have failed-over,
           // wait until we know that it hasn't (or this node is aborted).
           // Avoids "Unknown OrderId" failures due to double activation.
-          .fromTask(persistence.whenNoFailoverByOtherNode
+          .fromTask(journal.whenNoFailoverByOtherNode
             .logWhenItTakesLonger("whenNoFailoverByOtherNode"))
           .map(_ => o))
         .mapEval(onEventsFetched)
@@ -239,7 +239,7 @@ private[agent] object DirectorDriver {
     onCoupled: Set[OrderId] => Task[Unit],
     onDecoupled: Task[Unit],
     onEvents: (Seq[Stamped[AnyKeyedEvent]], EventId) => Task[Unit],  // TODO Stream
-    persistence: StatePersistence[ControllerState],
+    journal: StateJournal[ControllerState],
     conf: AgentDriverConfiguration)
   : Resource[Task, DirectorDriver] =
     Service.resource(Task(
@@ -247,5 +247,5 @@ private[agent] object DirectorDriver {
         agentPath, initialEventId, client,
         dedicateAgentIfNeeded,
         onCouplingFailed, onCoupled, onDecoupled, onEvents,
-        persistence, conf)))
+        journal, conf)))
 }

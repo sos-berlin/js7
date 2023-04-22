@@ -29,7 +29,7 @@ import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.subagent.Problems.ProcessLostDueSubagentUriChangeProblem
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentResetStarted}
 import js7.data.subagent.{SubagentDirectorState, SubagentId, SubagentItem, SubagentItemState, SubagentSelection, SubagentSelectionId}
-import js7.journal.state.StatePersistence
+import js7.journal.state.StateJournal
 import js7.launcher.configuration.JobLauncherConf
 import js7.subagent.configuration.DirectorConf
 import js7.subagent.director.SubagentKeeper.*
@@ -42,7 +42,7 @@ import scala.concurrent.Promise
 final class SubagentKeeper[S <: SubagentDirectorState[S]](
   agentPath: AgentPath,
   failedOverSubagentId: Option[SubagentId],
-  persistence: StatePersistence[S],
+  journal: StateJournal[S],
   jobLauncherConf: JobLauncherConf,
   directorConf: DirectorConf,
   actorSystem: ActorSystem)
@@ -193,7 +193,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
     events: Seq[OrderCoreEvent],
     onEvents: Seq[OrderCoreEvent] => Unit)
   : Task[Checked[(Seq[Stamped[KeyedEvent[OrderCoreEvent]]], S)]] =
-    persistence
+    journal
       .persistKeyedEvents(events.map(orderId <-: _))
       .map(_.map { o =>
         onEvents(events)
@@ -233,7 +233,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
 
   private def orderToSubagentSelectionId(order: Order[Order.IsFreshOrReady])
   : Task[Checked[DeterminedSubagentSelection]] =
-    for (agentState <- persistence.state) yield
+    for (agentState <- journal.state) yield
       for {
         job <- agentState.workflowJob(order.workflowPosition)
         scope <- agentState.toPureOrderScope(order)
@@ -288,7 +288,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
       .flatMap(s => Task(s.idToDriver.checked(subagentId)))
       .flatMapT {
         case driver: RemoteSubagentDriver[S] @unchecked =>
-          persistence.persistKeyedEvent(subagentId <-: SubagentResetStarted(force))
+          journal.persistKeyedEvent(subagentId <-: SubagentResetStarted(force))
             .flatMapT(_ =>
               driver.reset(force)
                 .onErrorHandle(t =>
@@ -314,7 +314,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
               .*>(stateVar.update(state => Task(
                 state.removeSubagent(subagentId))))
               .*>(subagentDriver.stop(signal = None)))))
-              .*>(persistence
+              .*>(journal
                 .persistKeyedEvent(ItemDetached(subagentId, agentPath))
                 .orThrow
                 .void)
@@ -327,7 +327,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
       .map(_.map(_.flatten))
 
   private def continueDetaching: Task[Checked[Unit]] =
-    persistence.state.flatMap(_
+    journal.state.flatMap(_
       .idToSubagentItemState.values
       .view
       .collect { case o if o.isDetaching => o.subagentId }
@@ -424,7 +424,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
   private def coupleLocalSubagent: Task[Unit] =
     Task.defer {
       initialized.orThrow.localSubagentId.traverse(localSubagentId =>
-        persistence
+        journal
           .persist(agentState => Right(agentState
             .idToSubagentItemState.get(localSubagentId)
             .exists(_.couplingState != Coupled)
@@ -442,7 +442,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
   private def newLocalSubagentDriver(subagentId: SubagentId, initialized: Initialized) =
     new LocalSubagentDriver(
       subagentId,
-      persistence,
+      journal,
       initialized.agentPath,
       initialized.controllerId,
       jobLauncherConf,
@@ -453,7 +453,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
     new RemoteSubagentDriver(
       subagentItem,
       directorConf.httpsConfig,
-      persistence,
+      journal,
       initialized.controllerId,
       driverConf,
       directorConf.subagentConf,

@@ -90,7 +90,7 @@ private final class ClusterWatchSynchronizer(
         // ClusterSwitchedOver must be emitted by the passive cluster node,
         // so we do not suspend a heartbeat (because heartbeat restart would fail).
         // A ClusterSwitchedOver event will be written to the journal after applyEvent.
-        // So persistence.clusterState will reflect the outdated ClusterState for a short while.
+        // So journal.clusterState will reflect the outdated ClusterState for a short while.
         clusterWatch
           .applyEvent(event, updatedClusterState)
           .flatTapT(_ => Task

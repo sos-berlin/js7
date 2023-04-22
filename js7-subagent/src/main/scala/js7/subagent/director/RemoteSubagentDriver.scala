@@ -40,7 +40,7 @@ import js7.data.subagent.SubagentItemStateEvent.{SubagentCouplingFailed, Subagen
 import js7.data.subagent.{SubagentCommand, SubagentDirectorState, SubagentId, SubagentItem, SubagentItemState, SubagentRunId}
 import js7.data.workflow.Workflow
 import js7.data.workflow.position.WorkflowPosition
-import js7.journal.state.StatePersistence
+import js7.journal.state.StateJournal
 import js7.subagent.SubagentDriver
 import js7.subagent.configuration.SubagentConf
 import js7.subagent.director.RemoteSubagentDriver.*
@@ -58,7 +58,7 @@ import scala.util.{Failure, Success}
 private final class RemoteSubagentDriver[S0 <: SubagentDirectorState[S0]](
   val subagentItem: SubagentItem,
   httpsConfig: HttpsConfig,
-  protected val persistence: StatePersistence[S0],
+  protected val journal: StateJournal[S0],
   controllerId: ControllerId,
   protected val conf: SubagentDriver.Conf,
   protected val subagentConf: SubagentConf,
@@ -82,7 +82,7 @@ extends SubagentDriver with SubagentEventListener[S0]
   override def isCoupled =
     super.isCoupled &&
       isHeartbeating &&
-      persistence.unsafeCurrentState()
+      journal.unsafeCurrentState()
         .idToSubagentItemState.get(subagentId)
         .exists(s => s.couplingState == Coupled
           /*Due to isHeartbeating we can ignore s.problem to allow SubagentCoupled event.*/)
@@ -215,7 +215,7 @@ extends SubagentDriver with SubagentEventListener[S0]
     val cmd = DedicateSubagent(subagentId, subagentItem.agentPath, controllerId)
     logger.debugTask(
       postCommandUntilSucceeded(cmd) // TODO Cancelable, whenStoppedCancelAndFail?
-        .flatMap(response => persistence
+        .flatMap(response => journal
           .persistKeyedEvent(
             subagentId <-: SubagentDedicated(response.subagentRunId, Some(currentPlatformInfo())))
           .tapEval(checked => Task.when(checked.isRight)(Task {
@@ -286,7 +286,7 @@ extends SubagentDriver with SubagentEventListener[S0]
           .when(subagentDiedEvent.isDefined)(
             dispatcher.stopAndFailCommands)
           .*>(attachedItemKeys.update(_ => Task.pure(Map.empty)))
-          .*>(persistence
+          .*>(journal
             .persist(state => Right(orderIds.view
               .filter(orderId =>
                 // Just to be sure, condition should always be true:
@@ -307,7 +307,7 @@ extends SubagentDriver with SubagentEventListener[S0]
   // Be sure that only on OrderProcessed event is emitted!
   private def onStartOrderProcessFailed(startOrderProcess: StartOrderProcess, problem: Problem)
   : Task[Checked[Unit]] =
-    persistence
+    journal
       .persist(state => Right(
         state.idToOrder.get(startOrderProcess.orderId)
           .filter(o => // Just to be sure, condition should always be true:
@@ -356,7 +356,7 @@ extends SubagentDriver with SubagentEventListener[S0]
                           Outcome.processLost(SubagentShutDownBeforeProcessStartProblem)
                         case _ => Outcome.Disrupted(problem)
                       })
-                    persistence
+                    journal
                       .persistKeyedEvent(order.id <-: orderProcessed)
                       .rightAs(orderProcessed)
                       .<*(deferred.complete(orderProcessed))
@@ -432,9 +432,9 @@ extends SubagentDriver with SubagentEventListener[S0]
   protected def emitSubagentCouplingFailed(maybeProblem: Option[Problem]): Task[Unit] =
     logger.debugTask("emitSubagentCouplingFailed", maybeProblem)(
       // TODO Suppress duplicate errors
-      persistence
+      journal
         .lock(subagentId)(
-          persistence.persist(_
+          journal.persist(_
             .idToSubagentItemState.checked(subagentId)
             .map { subagentItemState =>
               val problem = maybeProblem
@@ -621,7 +621,7 @@ extends SubagentDriver with SubagentEventListener[S0]
 
   private def signableItemsForOrderProcessing(workflowPosition: WorkflowPosition)
   : Task[Checked[Seq[Signed[SignableItem]]]] =
-    for (s <- persistence.state) yield
+    for (s <- journal.state) yield
       for {
         signedWorkflow <- s.keyToSigned(Workflow).checked(workflowPosition.workflowId)
         workflow = signedWorkflow.value
@@ -632,7 +632,7 @@ extends SubagentDriver with SubagentEventListener[S0]
       } yield signedJobResources :+ signedWorkflow
 
   private def currentSubagentItemState: Task[Checked[SubagentItemState]] =
-    persistence.state.map(_.idToSubagentItemState.checked(subagentId))
+    journal.state.map(_.idToSubagentItemState.checked(subagentId))
 
   override def toString =
     s"RemoteSubagentDriver(${subagentItem.pathRev})"

@@ -54,7 +54,7 @@ import js7.data.event.EventId
 import js7.data.item.{ItemOperation, SignableItem, UnsignedSimpleItem}
 import js7.data.order.FreshOrder
 import js7.journal.JournalActor.Output
-import js7.journal.state.FileStatePersistence
+import js7.journal.state.FileStateJournal
 import js7.journal.watch.StrictEventWatch
 import js7.journal.{EventIdClock, JournalActor}
 import monix.eval.Task
@@ -245,7 +245,7 @@ object RunningController
           clusterNode.untilActivated
             .map(_.flatMap { workingClusterNode =>
               startControllerOrderKeeper(
-                workingClusterNode.persistenceAllocated,
+                workingClusterNode.journalAllocated,
                 clusterNode.workingClusterNode.orThrow,
                 alarmClock,
                 conf, testEventBus)
@@ -356,7 +356,7 @@ object RunningController
           ControllerState.signableItemJsonCodec))
 
   private def startControllerOrderKeeper(
-    persistenceAllocated: Allocated[Task, FileStatePersistence[ControllerState]],
+    journalAllocated: Allocated[Task, FileStateJournal[ControllerState]],
     workingClusterNode: WorkingClusterNode[ControllerState],
     alarmClock: AlarmClock,
     conf: ControllerConfiguration,
@@ -367,7 +367,7 @@ object RunningController
       val terminationPromise = Promise[ProgramTermination]()
       val actor = actorSystem.actorOf(
         Props {
-          new ControllerOrderKeeper(terminationPromise, persistenceAllocated, workingClusterNode,
+          new ControllerOrderKeeper(terminationPromise, journalAllocated, workingClusterNode,
             alarmClock, conf, testEventPublisher)
         },
         "ControllerOrderKeeper")

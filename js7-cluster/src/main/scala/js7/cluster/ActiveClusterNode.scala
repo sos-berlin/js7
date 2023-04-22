@@ -30,7 +30,7 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, KeyedEvent, SnapshotableState, Stamped}
 import js7.data.node.NodeId
 import js7.journal.JournalActor
-import js7.journal.state.FileStatePersistence
+import js7.journal.state.FileStateJournal
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.atomic.AtomicBoolean
@@ -41,14 +41,14 @@ import scala.concurrent.duration.*
 import scala.util.{Failure, Success}
 
 final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
-  persistence: FileStatePersistence[S],
+  journal: FileStateJournal[S],
   common: ClusterCommon,
   clusterConf: ClusterConf)
   (implicit scheduler: Scheduler)
 {
   private implicit val askTimeout = common.journalActorAskTimeout
   private val clusterStateLock = AsyncLock("ClusterState")
-  private val journalActor = persistence.journalActor
+  private val journalActor = journal.journalActor
   private val isFetchingAcks = AtomicBoolean(false)
   private val fetchingAcks = SerialCancelable()
   private val fetchingAcksTerminatedUnexpectedlyPromise = Promise[Checked[Completed]]()
@@ -66,7 +66,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
     // When ClusterWatchId changes at start, an ClusterWatchRegistered event is emitted,
     // changing the ClusterState (the ClusterWatchId part).
     // In this case we continue with the updated ClusterState
-    def currentClusterState = persistence.clusterState.map(_.asInstanceOf[HasNodes])
+    def currentClusterState = journal.clusterState.map(_.asInstanceOf[HasNodes])
 
     currentClusterState
       .flatMap { initialClusterState =>
@@ -93,8 +93,8 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
           s"Requesting the passive node's acknowledgement for the last recovered event ($eventId)")
         awaitAcknowledgement(clusterState.passiveUri, eventId)
           .flatMapT(ackEventId =>
-            // In case of ClusterWatchRegistered, check persistence.currentState.eventId too
-            if (ackEventId == eventId || ackEventId == persistence.unsafeCurrentState().eventId) {
+            // In case of ClusterWatchRegistered, check journal.currentState.eventId too
+            if (ackEventId == eventId || ackEventId == journal.unsafeCurrentState().eventId) {
               logger.info("Passive node acknowledged the recovered state")
               Task.right(Completed)
             } else
@@ -113,7 +113,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
   def beforeJournalingStarts: Task[Checked[Unit]] =
     Task.defer {
       logger.trace("beforeJournalingStarts")
-      persistence.clusterState flatMap {
+      journal.clusterState flatMap {
         case clusterState: Coupled =>
           // Inhibit activation of peer again. If recovery or asking ClusterWatch took a long time,
           // peer may have activated itself.
@@ -315,13 +315,13 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
 
   private def startSendingClusterStartBackupNode(clusterState: NodesAppointed): Unit = {
     val sending =
-      persistence.eventWatch.started
+      journal.eventWatch.started
         .flatMap(_ => common
           .tryEndlesslyToSendCommand(
             clusterState.passiveUri,
             ClusterStartBackupNode(
               clusterState.setting,
-              fileEventId = persistence.eventWatch.lastFileEventId)))
+              fileEventId = journal.eventWatch.lastFileEventId)))
         .runToFuture
     sending.onComplete {
       case Success(()) =>
@@ -371,18 +371,18 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
           // FIXME (1) Exklusiver Zugriff (Lock) wegen parallelen ClusterCommand.ClusterRecouple,
           //  das ein ClusterPassiveLost auslöst, mit ClusterCouplingPrepared infolge.
           //  Dann können wir kein ClusterPassiveLost ausgeben.
-          //  StatePersistence Lock in die Anwendungsebene (hier) heben
+          //  StateJournal Lock in die Anwendungsebene (hier) heben
           //  -- Nicht nötig durch die Abfrage auf initialState ?
           // FIXME (2) Deadlock when called immediately after start of Controller, before Journal has been started ?
-          //  persistence.awaitCurrentState may not response GetJournalState.
+          //  journal.awaitCurrentState may not response GetJournalState.
           /*
             ClusterPassiveLost kann während eines persist passieren, dass auf Ack des Passiven
             wartet.
             Während eines ClusterCoupled ?
             Kein lock hier, wegen möglichen Deadlocks !!!
            */
-          persistence.forPossibleFailoverByOtherNode(
-            persistence.clusterState.flatMap {
+          journal.forPossibleFailoverByOtherNode(
+            journal.clusterState.flatMap {
               case clusterState: Coupled =>
                 val passiveLost = ClusterPassiveLost(passiveId)
                 suspendHeartbeat(forEvent = true)(
@@ -510,14 +510,14 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
 
   private def nonLockingRegisterClusterWatchId(confirmation: ClusterWatchConfirmation)
   : Task[Checked[Unit]] =
-    persistence.clusterState
+    journal.clusterState
       .flatMap(clusterState =>
         Task(ifClusterWatchRegistered(clusterState, confirmation.clusterWatchId))
           .flatMapT(
             if (_) // Short cut
               Task.right(Nil -> clusterState)
             else
-              persistence
+              journal
                 .persistTransaction[ClusterEvent](NoKey)(s =>
                   ifClusterWatchRegistered(s.clusterState, confirmation.clusterWatchId)
                     .map(!_ thenList ClusterWatchRegistered(confirmation.clusterWatchId)))
@@ -564,7 +564,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
   : Task[Checked[(Seq[Stamped[KeyedEvent[ClusterEvent]]], ClusterState)]] =
     Task.defer {
       assertThat(!clusterWatchSynchronizer.isHeartbeating)
-      persistence
+      journal
         .persistTransaction[ClusterEvent](NoKey)(state =>
           toEvents(state.clusterState).flatMap {
             case Some(event) if !state.clusterState.isEmptyOrActive(ownId) =>
@@ -598,7 +598,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
     (implicit enclosing: sourcecode.Enclosing)
   : Task[A] =
     clusterWatchSynchronizer
-      .suspendHeartbeat(persistence.clusterState, forEvent = forEvent)(
+      .suspendHeartbeat(journal.clusterState, forEvent = forEvent)(
         task)
 }
 

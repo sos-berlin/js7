@@ -59,7 +59,7 @@ extends UnsignedSimpleItemState
       case AgentCoupled =>
         couplingState match {
           case Resetting(_) =>
-            // Required until ControllerOrderKeeper ResetAgent uses persistence.lock !!!
+            // Required until ControllerOrderKeeper ResetAgent uses journal.lock !!!
             scribe.debug("(WARN) Ignoring AgentCoupled event due to Resetting state")
             Right(this)
 

@@ -25,7 +25,7 @@ import js7.data.value.expression.scopes.FileValueState
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.WorkflowPosition
 import js7.journal.CommitOptions
-import js7.journal.state.StatePersistence
+import js7.journal.state.StateJournal
 import js7.launcher.StdObservers
 import js7.launcher.configuration.JobLauncherConf
 import js7.launcher.internal.JobLauncher
@@ -38,7 +38,7 @@ import scala.concurrent.Promise
 
 final class LocalSubagentDriver[S0 <: SubagentDriverState[S0]](
   val subagentId: SubagentId,
-  protected val persistence: StatePersistence[S0],
+  protected val journal: StateJournal[S0],
   val agentPath: AgentPath,
   val controllerId: ControllerId,
   jobLauncherConf: JobLauncherConf,
@@ -60,8 +60,8 @@ extends SubagentDriver
 
   def start = Task.defer {
     logger.debug("Start LocalSubagentDriver")
-    val runId = SubagentRunId.fromJournalId(persistence.journalId)
-    persistence.persistKeyedEvent(
+    val runId = SubagentRunId.fromJournalId(journal.journalId)
+    journal.persistKeyedEvent(
       subagentId <-: SubagentDedicated(runId, Some(currentPlatformInfo()))
     ).map(_.orThrow)
   }
@@ -104,7 +104,7 @@ extends SubagentDriver
             case outcome: Outcome.Killed if _testFailover =>
               Task.left(Problem(s"Suppressed due to failover: OrderProcessed($outcome)"))
             case outcome =>
-              persistence.persistKeyedEvent(order.id <-: OrderProcessed(outcome))
+              journal.persistKeyedEvent(order.id <-: OrderProcessed(outcome))
           }
           .map(_.map(_._1.value.event)))
 
@@ -191,7 +191,7 @@ extends SubagentDriver
   private val stdoutCommitDelay = CommitOptions(delay = subagentConf.stdoutCommitDelay)
 
   private def persistStdouterr(orderId: OrderId, t: StdoutOrStderr, chunk: String): Task[Unit] =
-    persistence
+    journal
       .persistKeyedEventsLater((orderId <-: OrderStdWritten(t)(chunk)) :: Nil, stdoutCommitDelay)
       .map {
         case Left(problem) => logger.error(s"Emission of OrderStdWritten event failed: $problem")
@@ -201,7 +201,7 @@ extends SubagentDriver
   // Create the JobDriver if needed
   private def jobDriver(workflowPosition: WorkflowPosition)
   : Task[Checked[(WorkflowJob, JobDriver)]] =
-    persistence.state
+    journal.state
       .map(state =>
         for {
           workflow <- state.idToWorkflow.checked(workflowPosition.workflowId)
@@ -218,7 +218,7 @@ extends SubagentDriver
                   jobLauncherConf.systemEncoding)
                 new JobDriver(
                   jobConf,
-                  id => persistence.unsafeCurrentState().pathToJobResource.checked(id)/*live!*/,
+                  id => journal.unsafeCurrentState().pathToJobResource.checked(id)/*live!*/,
                   JobLauncher.checked(jobConf, jobLauncherConf),
                   fileValueState)
               }))

@@ -52,7 +52,7 @@ import js7.data.subagent.{SubagentId, SubagentItem, SubagentSelection, SubagentS
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowPathControl}
-import js7.journal.state.FileStatePersistence
+import js7.journal.state.FileStateJournal
 import js7.journal.{JournalActor, MainJournalingActor}
 import js7.launcher.configuration.JobLauncherConf
 import js7.launcher.configuration.Problems.SignedInjectionNotAllowed
@@ -77,7 +77,7 @@ final class AgentOrderKeeper(
   recoveredAgentState : AgentState,
   signatureVerifier: SignatureVerifier,
   jobLauncherConf: JobLauncherConf,
-  persistenceAllocated: Allocated[Task, FileStatePersistence[AgentState]],
+  journalAllocated: Allocated[Task, FileStateJournal[AgentState]],
   private implicit val clock: AlarmClock,
   conf: AgentConfiguration)
   (implicit protected val scheduler: Scheduler, iox: IOExecutor)
@@ -87,24 +87,24 @@ with Stash
   import conf.implicitAkkaAskTimeout
   import context.{actorOf, watch}
 
-  private val persistence = persistenceAllocated.allocatedThing
-  private val ownAgentPath = persistence.unsafeCurrentState().meta.agentPath
+  private val journal = journalAllocated.allocatedThing
+  private val ownAgentPath = journal.unsafeCurrentState().meta.agentPath
   private val localSubagentId: Option[SubagentId] =
-    persistence.unsafeCurrentState().meta.directors.get(conf.clusterConf.isBackup.toInt)
-  private val controllerId = persistence.unsafeCurrentState().meta.controllerId
+    journal.unsafeCurrentState().meta.directors.get(conf.clusterConf.isBackup.toInt)
+  private val controllerId = journal.unsafeCurrentState().meta.controllerId
   private implicit val instructionExecutorService: InstructionExecutorService =
     new InstructionExecutorService(clock)
 
   override val supervisorStrategy = SupervisorStrategies.escalate
 
   protected val journalActor: ActorRef @@ JournalActor.type =
-    persistence.journalActor.taggedWith[JournalActor.type]
+    journal.journalActor.taggedWith[JournalActor.type]
   protected def journalConf = conf.journalConf
 
   private var journalState = JournalState.empty
   private val jobRegister = mutable.Map.empty[JobKey, JobEntry]
   private val workflowRegister = new WorkflowRegister(ownAgentPath)
-  private val fileWatchManager = new FileWatchManager(ownAgentPath, persistence, conf.config)
+  private val fileWatchManager = new FileWatchManager(ownAgentPath, journal, conf.config)
   private val orderRegister = new OrderRegister
 
   private object shutdown {
@@ -123,7 +123,7 @@ with Stash
         if (cmd.isFailover) {
           // Dirty exit
           subagentKeeper.testFailover()
-          persistenceAllocated.stop.runAsyncAndForget
+          journalAllocated.stop.runAsyncAndForget
           context.stop(self)
         } else {
           shutDownCommand = Some(cmd)
@@ -180,7 +180,7 @@ with Stash
             if (jobRegister.isEmpty && !terminatingJournal) {
               persist(AgentShutDown) { (_, _) =>
                 terminatingJournal = true
-                persistenceAllocated.stop.runAsyncAndForget
+                journalAllocated.stop.runAsyncAndForget
               }
             }
           }
@@ -192,7 +192,7 @@ with Stash
   private val subagentKeeper =
     new SubagentKeeper(
       ownAgentPath, failedOverSubagentId,
-      persistence, jobLauncherConf, conf.subagentDirectorConf,
+      journal, jobLauncherConf, conf.subagentDirectorConf,
       context.system)
 
   watch(journalActor)
@@ -355,7 +355,7 @@ with Stash
 
               case event: OrderProcessed =>
                 (for {
-                  jobKey <- persistence.unsafeCurrentState().jobKey(previousOrderOrNull.workflowPosition)
+                  jobKey <- journal.unsafeCurrentState().jobKey(previousOrderOrNull.workflowPosition)
                   jobEntry <- jobRegister.checked(jobKey)
                 } yield jobEntry)
                 match {
@@ -401,7 +401,7 @@ with Stash
       attachSignedItem(signed)
 
     case DetachItem(itemKey) if itemKey.isAssignableToAgent =>
-      if (!persistence.unsafeCurrentState().keyToItem.contains(itemKey)) {
+      if (!journal.unsafeCurrentState().keyToItem.contains(itemKey)) {
         logger.warn(s"DetachItem($itemKey) but item is unknown")
         Future.successful(Right(AgentCommand.Response.Accepted))
       } else
@@ -412,7 +412,7 @@ with Stash
               .runToFuture
 
           case subagentId: SubagentId =>
-            persistence
+            journal
               .persistKeyedEvent(NoKey <-: ItemDetachingFromMe(subagentId))
               .flatMapT(_ => subagentKeeper
                 .startRemoveSubagent(subagentId)
@@ -422,7 +422,7 @@ with Stash
               .runToFuture
 
           case selectionId: SubagentSelectionId =>
-            persistence
+            journal
               .persistKeyedEvent(NoKey <-: ItemDetached(selectionId, ownAgentPath))
               .flatMapT(_ => subagentKeeper
                 .removeSubagentSelection(selectionId)
@@ -514,7 +514,7 @@ with Stash
   private def proceedWithItem(item: InventoryItem): Task[Checked[Unit]] =
     item match {
       case subagentItem: SubagentItem =>
-        persistence.state.flatMap(_
+        journal.state.flatMap(_
           .idToSubagentItemState.get(subagentItem.id)
           .fold(Task.pure(Checked.unit))(subagentItemState => subagentKeeper
             .proceedWithSubagent(subagentItemState)
@@ -526,7 +526,7 @@ with Stash
       case workflowPathControl: WorkflowPathControl =>
         if (!workflowPathControl.suspended) {
           // Slow !!!
-          for (order <- persistence.unsafeCurrentState().orders
+          for (order <- journal.unsafeCurrentState().orders
                if order.workflowPath == workflowPathControl.workflowPath) {
             proceedWithOrder(order)
           }
@@ -571,7 +571,7 @@ with Stash
           case Some(orderEntry) =>
             // TODO Antwort erst nach OrderDetached _und_ Terminated senden, wenn Actor aus orderRegister entfernt worden ist
             // Bei langsamem Agenten, schnellem Controller-Wiederanlauf kann DetachOrder doppelt kommen, während OrderActor sich noch beendet.
-            persistence.unsafeCurrentState().idToOrder.checked(orderId).flatMap(_.detaching) match {
+            journal.unsafeCurrentState().idToOrder.checked(orderId).flatMap(_.detaching) match {
               case Left(problem) => Future.successful(Left(problem))
               case Right(_) =>
                 val promise = Promise[Unit]()
@@ -659,7 +659,7 @@ with Stash
     // updatedOrderId may be outdated, changed by more events in the same batch
     // Nevertheless, updateOrderId is the result of the event.
     val orderId = previousOrder.id
-    val agentState = persistence.unsafeCurrentState()
+    val agentState = journal.unsafeCurrentState()
     val orderEventHandler = new OrderEventHandler(agentState.idToWorkflow.checked)
 
     orderEventHandler.handleEvent(previousOrder, event)
@@ -687,7 +687,7 @@ with Stash
   }
 
   private def proceedWithOrder(orderId: OrderId): Unit =
-    persistence.unsafeCurrentState().idToOrder.checked(orderId) match {
+    journal.unsafeCurrentState().idToOrder.checked(orderId) match {
       case Left(problem) => logger.error(s"Internal: proceedWithOrder($orderId) => $problem")
       case Right(order) => proceedWithOrder(order)
     }
@@ -722,7 +722,7 @@ with Stash
           //  Then, two OrderMoved are emitted, because the second event is based on the same Order state.
         }
         if (keyedEvents.isEmpty
-          && persistence.unsafeCurrentState().isOrderProcessable(order)
+          && journal.unsafeCurrentState().isOrderProcessable(order)
           && order.isAttached
           && !shuttingDown) {
           onOrderIsProcessable(order)
@@ -732,7 +732,7 @@ with Stash
   }
 
   private def onOrderIsProcessable(order: Order[Order.State]): Unit =
-    persistence.unsafeCurrentState()
+    journal.unsafeCurrentState()
       .idToWorkflow.checked(order.workflowId)
       .map(workflow => workflow -> workflow.instruction(order.position))
       .match_ {
@@ -818,7 +818,7 @@ with Stash
     }
 
   private def orderEventSource =
-    new OrderEventSource(persistence.unsafeCurrentState())
+    new OrderEventSource(journal.unsafeCurrentState())
 
   override def toString = "AgentOrderKeeper"
 }
