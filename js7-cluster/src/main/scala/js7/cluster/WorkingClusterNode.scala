@@ -25,7 +25,7 @@ import js7.data.node.NodeId
 import js7.journal.EventIdGenerator
 import js7.journal.configuration.JournalConf
 import js7.journal.recover.Recovered
-import js7.journal.state.FileStateJournal
+import js7.journal.state.FileJournal
 import monix.eval.Task
 import monix.execution.Scheduler
 
@@ -41,13 +41,13 @@ final class WorkingClusterNode[
   S <: SnapshotableState[S]: SnapshotableState.Companion: diffx.Diff: Tag
 ] private(
   val failedNodeId: Option[NodeId],
-  val journalAllocated: Allocated[Task, FileStateJournal[S]],
+  val journalAllocated: Allocated[Task, FileJournal[S]],
   common: ClusterCommon,
   clusterConf: ClusterConf)
   (implicit scheduler: Scheduler)
 //TODO extends Service
 {
-  val journal: FileStateJournal[S] = journalAllocated.allocatedThing
+  val journal: FileJournal[S] = journalAllocated.allocatedThing
   private val _activeClusterNode = SetOnce.undefined[ActiveClusterNode[S]](
     "ActiveClusterNode[S]",
     ClusterNodeIsNotActiveProblem)
@@ -188,7 +188,7 @@ object WorkingClusterNode
     for {
       _ <- Resource.eval(Task.unless(recovered.clusterState == ClusterState.Empty)(
         common.requireValidLicense.map(_.orThrow)))
-      journalAllocated <- Resource.eval(FileStateJournal
+      journalAllocated <- Resource.eval(FileJournal
         .resource(recovered, journalConf, eventIdGenerator, keyedEventBus)
         .toAllocated/* ControllerOrderKeeper and AgentOrderKeeper both require Allocated*/)
       workingClusterNode <- Resource.make(

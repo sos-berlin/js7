@@ -54,7 +54,7 @@ import js7.data.event.EventId
 import js7.data.item.{ItemOperation, SignableItem, UnsignedSimpleItem}
 import js7.data.order.FreshOrder
 import js7.journal.JournalActor.Output
-import js7.journal.state.FileStateJournal
+import js7.journal.state.FileJournal
 import js7.journal.watch.StrictEventWatch
 import js7.journal.{EventIdClock, JournalActor}
 import monix.eval.Task
@@ -356,7 +356,7 @@ object RunningController
           ControllerState.signableItemJsonCodec))
 
   private def startControllerOrderKeeper(
-    journalAllocated: Allocated[Task, FileStateJournal[ControllerState]],
+    journalAllocated: Allocated[Task, FileJournal[ControllerState]],
     workingClusterNode: WorkingClusterNode[ControllerState],
     alarmClock: AlarmClock,
     conf: ControllerConfiguration,

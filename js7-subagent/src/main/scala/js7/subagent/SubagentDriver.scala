@@ -11,7 +11,7 @@ import js7.data.order.{Order, OrderId}
 import js7.data.subagent.{SubagentDriverState, SubagentId}
 import js7.data.value.expression.Expression
 import js7.data.workflow.instructions.Execute
-import js7.journal.state.StateJournal
+import js7.journal.state.Journal
 import monix.eval.Task
 import scala.concurrent.duration.FiniteDuration
 
@@ -28,7 +28,7 @@ trait SubagentDriver
   def isCoupled =
     !isStopping && !isShuttingDown
 
-  protected def journal: StateJournal[S]
+  protected def journal: Journal[S]
 
   protected val conf: SubagentDriver.Conf
 

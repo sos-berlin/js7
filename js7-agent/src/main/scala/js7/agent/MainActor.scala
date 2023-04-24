@@ -15,7 +15,7 @@ import js7.cluster.ClusterNode
 import js7.common.akkautils.CatchingSupervisorStrategy
 import js7.core.command.CommandMeta
 import js7.data.subagent.SubagentId
-import js7.journal.state.FileStateJournal
+import js7.journal.state.FileJournal
 import js7.launcher.configuration.JobLauncherConf
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -29,7 +29,7 @@ import scala.util.control.NoStackTrace
 final class MainActor(
   totalRunningSince: Deadline,
   failedOverSubagentId: Option[SubagentId],
-  journalAllocated: Allocated[Task, FileStateJournal[AgentState]],
+  journalAllocated: Allocated[Task, FileJournal[AgentState]],
   agentConfiguration: AgentConfiguration,
   testCommandHandler: Option[CommandHandler],
   readyPromise: Promise[Ready],

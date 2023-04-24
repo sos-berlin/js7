@@ -28,7 +28,7 @@ import js7.data.item.InventoryItemEvent
 import js7.data.order.{OrderEvent, OrderId}
 import js7.data.orderwatch.OrderWatchEvent
 import js7.data.subagent.SubagentItemStateEvent
-import js7.journal.state.StateJournal
+import js7.journal.state.Journal
 import monix.eval.Task
 import monix.reactive.Observable
 import scala.util.chaining.scalaUtilChainingOps
@@ -42,7 +42,7 @@ private[agent] final class DirectorDriver private(
   onCoupled_ : Set[OrderId] => Task[Unit],
   onDecoupled_ : Task[Unit],
   onEvents: (Seq[Stamped[AnyKeyedEvent]], EventId) => Task[Unit],
-  journal: StateJournal[ControllerState],
+  journal: Journal[ControllerState],
   conf: AgentDriverConfiguration)
 extends Service.StoppableByRequest
 {
@@ -239,7 +239,7 @@ private[agent] object DirectorDriver {
     onCoupled: Set[OrderId] => Task[Unit],
     onDecoupled: Task[Unit],
     onEvents: (Seq[Stamped[AnyKeyedEvent]], EventId) => Task[Unit],  // TODO Stream
-    journal: StateJournal[ControllerState],
+    journal: Journal[ControllerState],
     conf: AgentDriverConfiguration)
   : Resource[Task, DirectorDriver] =
     Service.resource(Task(

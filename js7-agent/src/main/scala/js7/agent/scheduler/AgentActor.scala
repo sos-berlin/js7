@@ -33,7 +33,7 @@ import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.subagent.SubagentId
 import js7.journal.files.JournalFiles.JournalMetaOps
-import js7.journal.state.FileStateJournal
+import js7.journal.state.FileJournal
 import js7.launcher.configuration.JobLauncherConf
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -47,7 +47,7 @@ private[agent] final class AgentActor(
   totalRunningSince: Deadline,
   failedOverSubagentId: Option[SubagentId],
   terminatePromise: Promise[ProgramTermination],
-  journalAllocated: Allocated[Task, FileStateJournal[AgentState]],
+  journalAllocated: Allocated[Task, FileJournal[AgentState]],
   clusterNode: ClusterNode[AgentState],
   clock: AlarmClock,
   agentConf: AgentConfiguration,

@@ -7,7 +7,7 @@ import js7.data.event.{Event, JournalId, JournaledState, KeyedEvent, Stamped}
 import js7.journal.CommitOptions
 import monix.eval.Task
 
-trait StateJournal[S <: JournaledState[S]]
+trait Journal[S <: JournaledState[S]]
 extends ReadableStateJournal[S]
 {
   protected type State = S

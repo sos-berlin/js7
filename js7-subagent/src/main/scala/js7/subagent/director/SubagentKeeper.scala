@@ -29,7 +29,7 @@ import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.subagent.Problems.ProcessLostDueSubagentUriChangeProblem
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentResetStarted}
 import js7.data.subagent.{SubagentDirectorState, SubagentId, SubagentItem, SubagentItemState, SubagentSelection, SubagentSelectionId}
-import js7.journal.state.StateJournal
+import js7.journal.state.Journal
 import js7.launcher.configuration.JobLauncherConf
 import js7.subagent.configuration.DirectorConf
 import js7.subagent.director.SubagentKeeper.*
@@ -42,7 +42,7 @@ import scala.concurrent.Promise
 final class SubagentKeeper[S <: SubagentDirectorState[S]](
   agentPath: AgentPath,
   failedOverSubagentId: Option[SubagentId],
-  journal: StateJournal[S],
+  journal: Journal[S],
   jobLauncherConf: JobLauncherConf,
   directorConf: DirectorConf,
   actorSystem: ActorSystem)

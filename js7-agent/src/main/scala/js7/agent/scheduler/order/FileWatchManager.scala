@@ -36,7 +36,7 @@ import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchEvent, Order
 import js7.data.value.expression.Expression
 import js7.data.value.expression.scopes.{EnvScope, NowScope}
 import js7.data.value.{NamedValues, StringValue}
-import js7.journal.state.StateJournal
+import js7.journal.state.Journal
 import monix.eval.Task
 import monix.reactive.Observable
 import monix.reactive.subjects.PublishSubject
@@ -46,7 +46,7 @@ import scala.jdk.CollectionConverters.*
 /** Persists, recovers and runs FileWatches. */
 final class FileWatchManager(
   ownAgentPath: AgentPath,
-  journal: StateJournal[AgentState],
+  journal: Journal[AgentState],
   config: Config)
   (implicit iox: IOExecutor)
 {

@@ -45,7 +45,7 @@ import js7.data.node.NodeId
 import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderDetached}
 import js7.data.order.{Order, OrderId, OrderMark}
 import js7.data.subagent.SubagentId
-import js7.journal.state.StateJournal
+import js7.journal.state.Journal
 import monix.eval.Task
 import monix.execution.atomic.AtomicInt
 import monix.execution.{Cancelable, Scheduler}
@@ -56,7 +56,7 @@ final class AgentDriver private(
   initialEventId: EventId,
   onEvents: (AgentRunId, Seq[Stamped[AnyKeyedEvent]]) => Task[Option[EventId]],
   onOrderMarked: Map[OrderId, OrderMark] => Task[Unit],
-  journal: StateJournal[ControllerState],
+  journal: Journal[ControllerState],
   conf: AgentDriverConfiguration,
   controllerConfiguration: ControllerConfiguration,
   actorSystem: ActorSystem)
@@ -480,7 +480,7 @@ private[controller] object AgentDriver
     agentRef: AgentRef, agentRunId: Option[AgentRunId], eventId: EventId,
     onEvents: (AgentRunId, Seq[Stamped[AnyKeyedEvent]]) => Task[Option[EventId]],
     onOrderMarked: Map[OrderId, OrderMark] => Task[Unit],
-    journal: StateJournal[ControllerState],
+    journal: Journal[ControllerState],
     agentDriverConf: AgentDriverConfiguration, controllerConf: ControllerConfiguration,
     actorSystem: ActorSystem)
     (implicit s: Scheduler)

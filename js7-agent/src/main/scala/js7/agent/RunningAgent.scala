@@ -55,7 +55,7 @@ import js7.data.subagent.SubagentId
 import js7.journal.EventIdClock
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.recover.Recovered
-import js7.journal.state.FileStateJournal
+import js7.journal.state.FileJournal
 import js7.journal.watch.EventWatch
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -65,7 +65,7 @@ import scala.concurrent.{Future, Promise}
 final class RunningAgent private(
   val eventWatch: EventWatch,
   clusterNode: ClusterNode[AgentState],
-  val journal: Task[FileStateJournal[AgentState]],
+  val journal: Task[FileJournal[AgentState]],
   webServer: AkkaWebServer & AkkaWebServer.HasUri,
   actorTermination: Task[ProgramTermination],
   val untilReady: Task[MainActor.Ready],
@@ -201,7 +201,7 @@ object RunningAgent {
 
     def startMainActor(
       failedNodeId: Option[NodeId],
-      journalAllocated: Allocated[Task, FileStateJournal[AgentState]])
+      journalAllocated: Allocated[Task, FileJournal[AgentState]])
     : MainActorStarted = {
       val failedOverSubagentId: Option[SubagentId] = {
         val directors = journalAllocated.allocatedThing.unsafeCurrentState().meta.directors
@@ -236,7 +236,7 @@ object RunningAgent {
         terminationPromise.future)
     }
 
-    val journalDeferred = Deferred.unsafe[Task, FileStateJournal[AgentState]]
+    val journalDeferred = Deferred.unsafe[Task, FileJournal[AgentState]]
 
     val mainActorStarted: Task[Either[ProgramTermination, MainActorStarted]] =
       logger.traceTaskWithResult(

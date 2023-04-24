@@ -52,7 +52,7 @@ import js7.data.subagent.{SubagentId, SubagentItem, SubagentSelection, SubagentS
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowPathControl}
-import js7.journal.state.FileStateJournal
+import js7.journal.state.FileJournal
 import js7.journal.{JournalActor, MainJournalingActor}
 import js7.launcher.configuration.JobLauncherConf
 import js7.launcher.configuration.Problems.SignedInjectionNotAllowed
@@ -77,7 +77,7 @@ final class AgentOrderKeeper(
   recoveredAgentState : AgentState,
   signatureVerifier: SignatureVerifier,
   jobLauncherConf: JobLauncherConf,
-  journalAllocated: Allocated[Task, FileStateJournal[AgentState]],
+  journalAllocated: Allocated[Task, FileJournal[AgentState]],
   private implicit val clock: AlarmClock,
   conf: AgentConfiguration)
   (implicit protected val scheduler: Scheduler, iox: IOExecutor)

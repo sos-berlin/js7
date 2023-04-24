@@ -25,7 +25,7 @@ import js7.data.value.expression.scopes.FileValueState
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.WorkflowPosition
 import js7.journal.CommitOptions
-import js7.journal.state.StateJournal
+import js7.journal.state.Journal
 import js7.launcher.StdObservers
 import js7.launcher.configuration.JobLauncherConf
 import js7.launcher.internal.JobLauncher
@@ -38,7 +38,7 @@ import scala.concurrent.Promise
 
 final class LocalSubagentDriver[S0 <: SubagentDriverState[S0]](
   val subagentId: SubagentId,
-  protected val journal: StateJournal[S0],
+  protected val journal: Journal[S0],
   val agentPath: AgentPath,
   val controllerId: ControllerId,
   jobLauncherConf: JobLauncherConf,

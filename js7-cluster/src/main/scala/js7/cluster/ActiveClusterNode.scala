@@ -30,7 +30,7 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, KeyedEvent, SnapshotableState, Stamped}
 import js7.data.node.NodeId
 import js7.journal.JournalActor
-import js7.journal.state.FileStateJournal
+import js7.journal.state.FileJournal
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.atomic.AtomicBoolean
@@ -41,7 +41,7 @@ import scala.concurrent.duration.*
 import scala.util.{Failure, Success}
 
 final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
-  journal: FileStateJournal[S],
+  journal: FileJournal[S],
   common: ClusterCommon,
   clusterConf: ClusterConf)
   (implicit scheduler: Scheduler)
@@ -371,7 +371,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
           // FIXME (1) Exklusiver Zugriff (Lock) wegen parallelen ClusterCommand.ClusterRecouple,
           //  das ein ClusterPassiveLost auslöst, mit ClusterCouplingPrepared infolge.
           //  Dann können wir kein ClusterPassiveLost ausgeben.
-          //  StateJournal Lock in die Anwendungsebene (hier) heben
+          //  Journal Lock in die Anwendungsebene (hier) heben
           //  -- Nicht nötig durch die Abfrage auf initialState ?
           // FIXME (2) Deadlock when called immediately after start of Controller, before Journal has been started ?
           //  journal.awaitCurrentState may not response GetJournalState.

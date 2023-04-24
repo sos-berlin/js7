@@ -29,10 +29,10 @@ import scala.concurrent.Promise
 
 // TODO Lock for NoKey is to wide. Restrict to a set of Event superclasses, like ClusterEvent, ControllerEvent?
 //  Der Aufrufer kann sich um die Sperren uns dessen Granularität kümmern.
-//  FileStateJournal stellt dazu LockKeeper bereit
+//  FileJournal stellt dazu LockKeeper bereit
 //  Wir werden vielleicht mehrere Schlüssel auf einmal sperren wollen (für fork/join?)
 
-final class FileStateJournal[S <: SnapshotableState[S]: Tag](
+final class FileJournal[S <: SnapshotableState[S]: Tag](
   val journalId: JournalId,
   val journalHeader: JournalHeader,
   val journalConf: JournalConf,
@@ -43,8 +43,8 @@ final class FileStateJournal[S <: SnapshotableState[S]: Tag](
   val journalActor: ActorRef @@ JournalActor.type)
   (implicit
     protected val S: SnapshotableState.Companion[S])
-extends StateJournal[S]
-with FileStateJournal.PossibleFailover
+extends Journal[S]
+with FileJournal.PossibleFailover
 {
   def persistKeyedEvent[E <: Event](
     keyedEvent: KeyedEvent[E],
@@ -124,10 +124,10 @@ with FileStateJournal.PossibleFailover
   def unsafeCurrentState(): S =
     getCurrentState()
 
-  override def toString = s"FileStateJournal[$S]"
+  override def toString = s"FileJournal[$S]"
 }
 
-object FileStateJournal
+object FileJournal
 {
   private val logger = Logger[this.type]
 
@@ -140,7 +140,7 @@ object FileStateJournal
       scheduler: Scheduler,
       actorRefFactory: ActorRefFactory,
       timeout: akka.util.Timeout)
-  : Task[FileStateJournal[S]] =
+  : Task[FileJournal[S]] =
     resource(recovered, journalConf, eventIdGenerator, keyedEventBus)
       .allocated
       .map(_._1)
@@ -154,7 +154,7 @@ object FileStateJournal
       scheduler: Scheduler,
       actorRefFactory: ActorRefFactory,
       timeout: akka.util.Timeout)
-  : Resource[Task, FileStateJournal[S]] = {
+  : Resource[Task, FileJournal[S]] = {
     Resource.make(
       acquire = Task.defer {
         import recovered.journalMeta
@@ -209,7 +209,7 @@ object FileStateJournal
                   encodeAsActorName("StateJournalingActor:" + S))
                 .taggedWith[StateJournalingActor.type]
 
-              val journal = new FileStateJournal[S](
+              val journal = new FileJournal[S](
                 journalId, journalHeader, journalConf,
                 recovered.eventWatch,
                 getCurrentState, persistTask, persistLaterTask,

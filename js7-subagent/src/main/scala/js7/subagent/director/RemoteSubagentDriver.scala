@@ -40,7 +40,7 @@ import js7.data.subagent.SubagentItemStateEvent.{SubagentCouplingFailed, Subagen
 import js7.data.subagent.{SubagentCommand, SubagentDirectorState, SubagentId, SubagentItem, SubagentItemState, SubagentRunId}
 import js7.data.workflow.Workflow
 import js7.data.workflow.position.WorkflowPosition
-import js7.journal.state.StateJournal
+import js7.journal.state.Journal
 import js7.subagent.SubagentDriver
 import js7.subagent.configuration.SubagentConf
 import js7.subagent.director.RemoteSubagentDriver.*
@@ -58,7 +58,7 @@ import scala.util.{Failure, Success}
 private final class RemoteSubagentDriver[S0 <: SubagentDirectorState[S0]](
   val subagentItem: SubagentItem,
   httpsConfig: HttpsConfig,
-  protected val journal: StateJournal[S0],
+  protected val journal: Journal[S0],
   controllerId: ControllerId,
   protected val conf: SubagentDriver.Conf,
   protected val subagentConf: SubagentConf,

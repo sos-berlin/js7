@@ -30,7 +30,7 @@ import js7.data.event.{Event, EventId, JournalEvent, KeyedEvent, KeyedEventTyped
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
 import js7.journal.recover.StateRecoverer
-import js7.journal.state.FileStateJournalTest.*
+import js7.journal.state.FileJournalTest.*
 import js7.journal.test.TestData
 import js7.journal.watch.JournalEventWatch
 import js7.journal.{EventIdClock, EventIdGenerator, JournalActor}
@@ -44,13 +44,13 @@ import scala.concurrent.Future
 /**
   * @author Joacim Zschimmer
   */
-final class FileStateJournalTest extends OurTestSuite with BeforeAndAfterAll
+final class FileJournalTest extends OurTestSuite with BeforeAndAfterAll
 {
   coupleScribeWithSlf4j()
 
   private implicit lazy val scheduler: SchedulerService =
     Scheduler(Executors.newCachedThreadPool())  // Scheduler.Implicits.global blocks on 2-processor machine
-  protected lazy val directory = createTempDirectory("FileStateJournalTest-")
+  protected lazy val directory = createTempDirectory("FileJournalTest-")
   private lazy val journalMeta = testJournalMeta(fileBase = directory)
 
   override def afterAll() = {
@@ -82,7 +82,7 @@ final class FileStateJournalTest extends OurTestSuite with BeforeAndAfterAll
       assert(journal.persistKeyedEvent(NumberKey("ONE") <-: NumberAdded).runSyncUnsafe().isRight)
       assert(journal.persistKeyedEvent(NumberKey("ONE") <-: NumberAdded).runSyncUnsafe() ==
         Left(Problem("Event 'ONE <-: NumberAdded' cannot be applied to " +
-          "'FileStateJournalTest.TestState': Duplicate NumberThing: ONE")))
+          "'FileJournalTest.TestState': Duplicate NumberThing: ONE")))
       intercept[MatchError] { journal.persistKeyedEvent(NumberKey("ONE") <-: NumberUnhandled).runSyncUnsafe() }
     }
 
@@ -139,14 +139,14 @@ final class FileStateJournalTest extends OurTestSuite with BeforeAndAfterAll
 
   private class RunningJournal extends ProvideActorSystem {
     protected def config = TestConfig
-    private var journalAllocated: Allocated[Task, FileStateJournal[TestState]] = null
+    private var journalAllocated: Allocated[Task, FileJournal[TestState]] = null
     def journal = journalAllocated.allocatedThing
 
     def start() = {
       val recovered = StateRecoverer.recover[TestState](journalMeta, JournalEventWatch.TestConfig)
       implicit val a = actorSystem
       implicit val timeout: Timeout = Timeout(99.s)
-      journalAllocated = FileStateJournal
+      journalAllocated = FileJournal
         .resource(recovered, JournalConf.fromConfig(TestConfig),
           new EventIdGenerator(EventIdClock.fixed(epochMilli = 1000/*EventIds start at 1000000*/)))
         .toAllocated
@@ -165,7 +165,7 @@ final class FileStateJournalTest extends OurTestSuite with BeforeAndAfterAll
   }
 }
 
-private object FileStateJournalTest
+private object FileJournalTest
 {
   private val TestConfig = TestData.TestConfig
     .withFallback(config"""
