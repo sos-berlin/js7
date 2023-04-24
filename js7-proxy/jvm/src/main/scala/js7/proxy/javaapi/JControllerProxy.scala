@@ -5,6 +5,7 @@ import java.util.Objects.requireNonNull
 import java.util.concurrent.CompletableFuture
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
+import js7.base.monixutils.MonixBase.syntax.RichMonixTask
 import js7.base.problem.Checked.*
 import js7.base.problem.Problem
 import js7.base.thread.MonixBlocking.syntax.*
@@ -94,6 +95,7 @@ final class JControllerProxy private[proxy](
       .headL
       .runToFuture
     val isAdded = api.asScala.addOrder(order.asScala)
+      .logWhenItTakesLonger
       .await(99.s)
       .orThrow
     if (!isAdded) throw new IllegalStateException(s"Order has already been added: ${order.id}")

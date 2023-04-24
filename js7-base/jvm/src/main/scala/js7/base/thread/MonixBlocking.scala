@@ -4,6 +4,7 @@ import izumi.reflect.Tag
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.thread.Futures.implicits.*
+import js7.base.time.ScalaTime.*
 import js7.base.utils.StackTraces.StackTraceThrowable
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -21,10 +22,10 @@ object MonixBlocking
   object syntax {
     implicit class RichTask[A](private val underlying: Task[A]) extends AnyVal
     {
-      def await(duration: Duration)(implicit s: Scheduler): A = {
+      def await(duration: Duration)(implicit s: Scheduler, src: sourcecode.Enclosing): A = {
         try
           logger
-            .debugTask(
+            .traceTask(s"${src.value} await ${duration.pretty}")(
               underlying)
             .runSyncStep
             .fold(_.runSyncUnsafe(duration), identity)
@@ -36,7 +37,7 @@ object MonixBlocking
         }
       }
 
-      def awaitInfinite(implicit s: Scheduler): A =
+      def awaitInfinite(implicit s: Scheduler, src: sourcecode.Enclosing): A =
         await(Duration.Inf)
     }
 

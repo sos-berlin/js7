@@ -1,9 +1,12 @@
 package js7.journal.watch
 
 import izumi.reflect.Tag
+import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CloseableIterator
+import js7.base.utils.ScalaUtils.implicitClass
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import js7.journal.watch.EventWatch.Every
 import monix.eval.Task
@@ -71,6 +74,7 @@ final class StrictEventWatch(val underlying: FileEventWatch)
   : Seq[Stamped[KeyedEvent[E]]] =
     underlying
       .untilAllKeys(keys, predicate, after = after, timeout = Some(timeout))
+      .logWhenItTakesLonger(s"awaitKeys[${implicitClass[E].shortClassName}]")
       .await(timeout)
 
   /** TEST ONLY - Blocking. */

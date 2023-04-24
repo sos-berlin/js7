@@ -5,6 +5,7 @@ import com.typesafe.config.Config
 import izumi.reflect.Tag
 import js7.base.service.MainService
 import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.utils.AllocatedForJvm.*
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ProgramTermination
 import js7.base.utils.SyncResource.syntax.*
@@ -12,7 +13,6 @@ import js7.common.system.ThreadPools
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.duration.*
-import js7.base.utils.AllocatedForJvm.*
 
 // Needs access to js7-common/ThreadPools
 object MainServices
@@ -31,7 +31,9 @@ object MainServices
     ThreadPools
       .standardSchedulerResource[SyncIO](threadPoolName, config)
       .useSync { implicit scheduler =>
-        resource(scheduler).toAllocated.await(timeout)
+        resource(scheduler)
+          .toAllocated
+          .await(timeout)
           .blockingUse(timeout)(use(_, scheduler))
       }
 }

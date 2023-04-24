@@ -3,6 +3,7 @@ package js7.base.thread
 import izumi.reflect.Tag
 import java.util.concurrent.TimeoutException
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.StackTraces.*
 import monix.execution.CancelableFuture
@@ -18,14 +19,6 @@ import scala.util.{Failure, Success}
 object Futures {
 
   private val logger = Logger[this.type]
-
-  /**
-   * Like [[Await]]`.result` - in case of exception, own stack trace is added.
-   */
-  def awaitResult[A](future: Future[A], atMost: FiniteDuration): A = {
-    import implicits.SuccessFuture
-    Await.ready[A](future, atMost.toCoarsest).successValue
-  }
 
   /**
    * Maps an exception of body to Future.failed.
@@ -106,32 +99,36 @@ object Futures {
         }
 
       // Separate implementation to differentiate calls to awaitInfinite and await(Duration)
-      def awaitInfinite: A =
-        Await.ready(delegate, Duration.Inf).value.get match {
-          case Success(o) => o
-          case Failure(t) =>
-            delegate match {
-              case o: CancelableFuture[A] => o.cancel()
-              case _ =>
-            }
-            throw t.appendCurrentStackTrace
+      def awaitInfinite(implicit src: sourcecode.Enclosing): A =
+        logger.traceCall[A](s"${src.value} awaitInfinite") {
+          Await.ready(delegate, Duration.Inf).value.get match {
+            case Success(o) => o
+            case Failure(t) =>
+              delegate match {
+                case o: CancelableFuture[A] => o.cancel()
+                case _ =>
+              }
+              throw t.appendCurrentStackTrace
+          }
         }
 
-      def await(duration: FiniteDuration)(implicit A: Tag[A]): A = {
-        try Await.ready(delegate, duration)
-        catch { case _: TimeoutException =>
-          throw new TimeoutException(s"await(${duration.pretty}): Future[${A.tag.toString}] has not been completed in time")
+
+      def await(duration: FiniteDuration)(implicit A: Tag[A], src: sourcecode.Enclosing): A =
+        logger.traceCall[A](s"${src.value} await ${duration.pretty}") {
+          try Await.ready(delegate, duration)
+          catch { case _: TimeoutException =>
+            throw new TimeoutException(s"await(${duration.pretty}): Future[${A.tag.toString}] has not been completed in time")
+          }
+          delegate.value.get match {
+            case Success(o) => o
+            case Failure(t) =>
+              delegate match {
+                case o: CancelableFuture[A] => o.cancel()
+                case _ =>
+              }
+              throw t.appendCurrentStackTrace
+          }
         }
-        delegate.value.get match {
-          case Success(o) => o
-          case Failure(t) =>
-            delegate match {
-              case o: CancelableFuture[A] => o.cancel()
-              case _ =>
-            }
-            throw t.appendCurrentStackTrace
-        }
-      }
     }
 
     implicit final class RichFutures[A, M[X] <: IterableOnce[X]](private val future: M[Future[A]]) extends AnyVal

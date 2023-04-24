@@ -13,7 +13,7 @@ object AllocatedForJvm {
   implicit final class BlockingAllocated[F[_], A](private val allocated: Allocated[F, A])
   extends AnyVal {
     def blockingUse[R](stopTimeout: Duration)(body: A => R)
-      (implicit s: Scheduler, @unused evidence: F :<: Task)
+      (implicit s: Scheduler, @unused evidence: F :<: Task, src: sourcecode.Enclosing)
     : R = {
       val stop = allocated.stop.asInstanceOf[Task[Unit]]
       val ac: AutoCloseable = () =>
