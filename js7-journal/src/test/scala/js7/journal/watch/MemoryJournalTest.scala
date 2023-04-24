@@ -11,12 +11,12 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.data.event.{EventId, EventRequest, KeyedEvent, Stamped}
 import js7.journal.test.{TestAggregate, TestEvent, TestState}
-import js7.journal.watch.InMemoryJournalTest.*
-import js7.journal.{EventIdClock, EventIdGenerator, InMemoryJournal}
+import js7.journal.watch.MemoryJournalTest.*
+import js7.journal.{EventIdClock, EventIdGenerator, MemoryJournal}
 import monix.execution.Scheduler.Implicits.traced
 import scala.collection.mutable
 
-final class InMemoryJournalTest extends OurTestSuite
+final class MemoryJournalTest extends OurTestSuite
 {
   "Initial values" in {
     val journal = newJournal()
@@ -165,10 +165,10 @@ final class InMemoryJournalTest extends OurTestSuite
   }
 }
 
-object InMemoryJournalTest
+object MemoryJournalTest
 {
   private def newJournal(size: Int = Int.MaxValue) =
-    new InMemoryJournal(
+    new MemoryJournal(
       TestState.empty,
       size = size,
       eventIdGenerator = new EventIdGenerator(EventIdClock.fixed(1)))

@@ -19,7 +19,7 @@ import monix.execution.atomic.Atomic
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.Deadline.now
 
-final class InMemoryJournal[S <: JournaledState[S]](
+final class MemoryJournal[S <: JournaledState[S]](
   initial: S,
   size: Int,
   waitingFor: String = "releaseEvents",
@@ -29,8 +29,8 @@ extends Journal[S]
 {
   val journalId = JournalId.random()
 
-  private val stateLock = AsyncLock("InMemoryJournal.state")
-  private val queueLock = AsyncLock("InMemoryJournal.queue")
+  private val stateLock = AsyncLock("MemoryJournal.state")
+  private val queueLock = AsyncLock("MemoryJournal.queue")
   // TODO Pause journal if queue is events are not released for a long time, despite length of queue?
   private val semaphore = Semaphore[Task](size).memoize
   private val semaMininum = size max 1
@@ -64,7 +64,7 @@ extends Journal[S]
     def tornEventId: EventId =
       queue.tornEventId
 
-    override def toString = "InMemoryJournal.EventWatch"
+    override def toString = "MemoryJournal.EventWatch"
   }
 
   def unsafeCurrentState(): S =

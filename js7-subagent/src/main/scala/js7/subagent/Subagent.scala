@@ -32,7 +32,7 @@ import js7.data.subagent.SubagentEvent.SubagentShutdown
 import js7.data.subagent.{SubagentId, SubagentRunId, SubagentState}
 import js7.data.value.expression.Expression
 import js7.data.workflow.position.WorkflowPosition
-import js7.journal.InMemoryJournal
+import js7.journal.MemoryJournal
 import js7.launcher.configuration.JobLauncherConf
 import js7.subagent.Subagent.*
 import js7.subagent.configuration.SubagentConf
@@ -41,7 +41,7 @@ import monix.execution.Scheduler
 import monix.execution.atomic.Atomic
 
 final class Subagent private(
-  val journal: InMemoryJournal[SubagentState],
+  val journal: MemoryJournal[SubagentState],
   val conf: SubagentConf,
   jobLauncherConf: JobLauncherConf,
   val testEventBus: StandardEventBus[Any])
@@ -262,15 +262,15 @@ object Subagent
       implicit val s: Scheduler = js7Scheduler
       val alarmClockCheckingInterval = config.finiteDuration("js7.time.clock-setting-check-interval")
         .orThrow
-      val inMemoryJournalSize = config.getInt("js7.journal.event-buffer-size")
+      val memoryJournalSize = config.getInt("js7.journal.in-memory.event-count")
 
       (for {
         // For BlockingInternalJob (thread-blocking Java jobs)
         blockingInternalJobScheduler <- unlimitedSchedulerResource[Task](
           "JS7 blocking job", conf.config)
         clock <- AlarmClock.resource[Task](Some(alarmClockCheckingInterval))
-        journal = new InMemoryJournal(SubagentState.empty,
-          size = inMemoryJournalSize,
+        journal = new MemoryJournal(SubagentState.empty,
+          size = memoryJournalSize,
           waitingFor = "JS7 Agent Director")
         jobLauncherConf = conf.toJobLauncherConf(iox, blockingInternalJobScheduler, clock).orThrow
         subagent <- Service.resource(Task(
