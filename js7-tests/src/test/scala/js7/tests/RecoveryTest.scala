@@ -1,6 +1,6 @@
 package js7.tests
 
-import cats.syntax.traverse.*
+import cats.syntax.parallel.*
 import js7.agent.TestAgent
 import js7.base.configutils.Configs.*
 import js7.base.crypt.silly.{SillySignature, SillySignatureVerifier, SillySigner}
@@ -8,7 +8,7 @@ import js7.base.log.Logger
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.base.utils.AutoClosing.{autoClosing, multipleAutoClosing}
+import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerEvent
@@ -133,20 +133,18 @@ final class RecoveryTest extends OurTestSuite
   : Unit = {
     val agents = directoryProvider.agentEnvs
       .map(_.agentConf)
-      .traverse(TestAgent.start(_))
-      .await(10.s)
-    multipleAutoClosing(agents) { _ =>
-      // TODO Duplicate code in DirectoryProvider
-      try body(agents)
-      catch { case NonFatal(t) =>
-        logger.error(t.toStringWithCauses) /* Akka may crash before the caller gets the error so we log the error here */
-        try agents.traverse(_.terminate()) await 99.s
-        catch { case t2: Throwable if t2 ne t => t.addSuppressed(t2) }
-        throw t
-      }
-      logger.info("🔥🔥🔥 TERMINATE AGENTS 🔥🔥🔥")
-      for (agent <- agents) agent.terminate(suppressSnapshot = true).await(99.s)
+      .parTraverse(TestAgent.start(_))
+      .await(99.s)
+    try body(agents)
+    catch { case NonFatal(t) =>
+      // TODO Compare DirectorProvider
+      logger.error(t.toStringWithCauses) /* Akka may crash before the caller gets the error so we log the error here */
+      try agents.parTraverse(_.terminate()) await 99.s
+      catch { case t2: Throwable if t2 ne t => t.addSuppressed(t2) }
+      throw t
     }
+    //logger.info("🔥🔥🔥 TERMINATE AGENTS 🔥🔥🔥")
+    agents.parTraverse(_.terminate(suppressSnapshot = true)).await(99.s)
   }
 }
 

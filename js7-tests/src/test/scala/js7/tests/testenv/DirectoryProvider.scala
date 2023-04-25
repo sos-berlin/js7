@@ -22,7 +22,7 @@ import js7.base.problem.Checked.*
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.base.utils.AutoClosing.{closeOnError, multipleAutoClosing}
+import js7.base.utils.AutoClosing.closeOnError
 import js7.base.utils.CatsBlocking.BlockingTaskResource
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.CatsUtils.syntax.RichResource
@@ -287,25 +287,25 @@ extends HasCloser
   def runAgents[A](
     agentPaths: Seq[AgentPath] = DirectoryProvider.this.agentPaths)(
     body: Vector[TestAgent] => A)
-  : A =
-    multipleAutoClosing(agentEnvs
+  : A = {
+    val agents = agentEnvs
       .filter(o => agentPaths.contains(o.agentPath))
       .map(_.agentConf)
       .parTraverse(a => TestAgent.start(a))
-      .await(99.s))
-    { agents =>
-      val result =
-        try body(agents)
-        catch { case NonFatal(t) =>
-          // Akka may crash before the caller gets the error so we log the error here
-          logger.error(s"💥💥💥 ${t.toStringWithCauses}", t.nullIfNoStackTrace)
-          try agents.traverse(_.stop) await 99.s
-          catch { case t2: Throwable if t2 ne t => t.addSuppressed(t2) }
-          throw t
-        }
+      .await(99.s)
+
+    val result =
+      try body(agents)
+      catch { case NonFatal(t) =>
+        // Akka may crash before the caller gets the error so we log the error here
+        logger.error(s"💥💥💥 ${t.toStringWithCauses}", t.nullIfNoStackTrace)
+        try agents.parTraverse(_.stop) await 99.s
+        catch { case t2: Throwable if t2 ne t => t.addSuppressed(t2) }
+        throw t
+      }
       agents.traverse(_.terminate()) await 99.s
-      result
-    }
+    result
+  }
 
   def startAgents(testWiring: RunningAgent.TestWiring = RunningAgent.TestWiring.empty)
   : Task[Seq[TestAgent]] =

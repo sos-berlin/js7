@@ -1,7 +1,7 @@
 package js7.tests
 
 import cats.effect.SyncIO
-import cats.syntax.parallel.*
+import cats.syntax.all.*
 import java.nio.file.Files.{createDirectories, createDirectory, setPosixFilePermissions}
 import java.nio.file.attribute.PosixFilePermissions
 import java.nio.file.{Files, Path}
@@ -26,6 +26,7 @@ import js7.controller.RunningController
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.tests.TestDockerEnvironment
 import js7.data.agent.AgentPath
+import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced as scheduler
 
 /**
@@ -69,10 +70,11 @@ object TestDockerExample
     withCloser { implicit closer =>
       val conf = ControllerConfiguration.forTest(configAndData = env.controllerDir, httpPort = Some(4444))
       val agents = for (agentPath <- TestAgentPaths) yield {
-        val agent = TestAgent.start(AgentConfiguration.forTest(
-          configAndData = env.agentDir(agentPath),
-          name = AgentConfiguration.DefaultName)
-        ).map(_.closeWithCloser)
+        val agent = TestAgent
+          .start(AgentConfiguration.forTest(
+            configAndData = env.agentDir(agentPath),
+            name = AgentConfiguration.DefaultName))
+          .flatTap(agent => Task(closer.onClose(agent.stop.await(99.s))))
           .await(99.s)
         //env.file(agentPath, SourceType.Json) := AgentRef(AgentPath.NoId, uri = agent.localUri.toString)
         agent

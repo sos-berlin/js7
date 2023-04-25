@@ -27,15 +27,11 @@ import monix.execution.Scheduler
 import scala.concurrent.duration.FiniteDuration
 import scala.util.control.NonFatal
 
-final class TestAgent(allocated: Allocated[Task, RunningAgent])
-extends AutoCloseable {
+final class TestAgent(allocated: Allocated[Task, RunningAgent]) {
   val agent = allocated.allocatedThing
 
   implicit val scheduler: Scheduler =
     agent.scheduler
-
-  def close(): Unit =
-    stop.await(99.s)
 
   def stop: Task[Unit] =
     allocated.stop
