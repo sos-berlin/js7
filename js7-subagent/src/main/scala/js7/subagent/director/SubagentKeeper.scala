@@ -83,16 +83,10 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
     logger.debugTask(Task.defer {
       initialized.orThrow // Must be initialized!
 
-      // FIXME continueDetaching AFTER recovered Orders has recoverOrderProcessing
-      //  Using .startAndForget for both may result let recoverOrderProcessing fail
-      //  due to stopped RemoteSubagentDriver
-      //  NO ACTORS!
-      // SubagentDeleteTest may fail occasionally
-      continueDetaching *>
-        stateVar.get.idToDriver.values
-          .toVector
-          .parUnorderedTraverse(_.start)
-          .map(_.combineAll)
+      stateVar.get.idToDriver.values
+        .toVector
+        .parUnorderedTraverse(_.start)
+        .map(_.combineAll)
     })
 
   def stop: Task[Unit] =
@@ -326,7 +320,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
       .map(_.combineProblems)
       .map(_.map(_.flatten))
 
-  private def continueDetaching: Task[Checked[Unit]] =
+  def continueDetaching: Task[Checked[Unit]] =
     journal.state.flatMap(_
       .idToSubagentItemState.values
       .view

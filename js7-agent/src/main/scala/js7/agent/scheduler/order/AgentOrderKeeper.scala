@@ -225,9 +225,9 @@ with Stash
         .*>(
           subagentKeeper
             .recoverSubagents(recoveredAgentState.idToSubagentItemState.values.toVector)
-            .flatMapT(_ =>
-              subagentKeeper.recoverSubagentSelections(
-                recoveredAgentState.pathToUnsignedSimple(SubagentSelection).values.toVector))
+        .flatMapT(_ =>
+          subagentKeeper.recoverSubagentSelections(
+            recoveredAgentState.pathToUnsignedSimple(SubagentSelection).values.toVector))
             .map(_.orThrow))
         .materialize
         .foreach { tried =>
@@ -241,6 +241,10 @@ with Stash
 
     def continue() =
       if (remainingOrders == 0) {
+        subagentKeeper.continueDetaching
+          .logWhenItTakesLonger("subagentKeeper.continueDetaching")
+          .awaitInfinite
+
         if (!journalState.userIdToReleasedEventId.contains(controllerId.toUserId)) {
           // Automatically add Controller's UserId to list of users allowed to release events,
           // to avoid deletion of journal files due to an empty list, before controller has read the events.
