@@ -322,6 +322,17 @@ object MonixBase
           case Left(problem) => Task.raiseError(problem.throwable)
           case Right(a) => Task.pure(a)
         }
+
+      def guaranteeExceptWhenRight(release: Task[Unit]): Task[Checked[A]] =
+        task
+          .guaranteeCase {
+            case ExitCase.Completed => Task.unit
+            case _ => release
+          }
+          .flatTap {
+            case Left(problem) => release.as(Left(problem))
+            case Right(_: A) => Task.unit
+          }
     }
 
     implicit final class RichMonixResource[A](private val resource: Resource[Task, A])

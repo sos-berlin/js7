@@ -16,6 +16,7 @@ import js7.base.monixutils.{AsyncMap, AsyncVariable}
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.{DelayIterator, DelayIterators}
+import js7.base.utils.CatsUtils.syntax.RichF
 import js7.base.utils.ScalaUtils.checkedCast
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{LockKeeper, SetOnce}
@@ -34,7 +35,7 @@ import js7.launcher.configuration.JobLauncherConf
 import js7.subagent.configuration.DirectorConf
 import js7.subagent.director.SubagentKeeper.*
 import js7.subagent.{LocalSubagentDriver, SubagentDriver}
-import monix.eval.{Coeval, Task}
+import monix.eval.{Coeval, Fiber, Task}
 import monix.reactive.Observable
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.Promise
@@ -147,38 +148,42 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
       })
       .flatMapT(order =>
         forProcessingOrder(order.id, subagentDriver, onEvents)(
-          subagentDriver.processOrder(order)))
+          subagentDriver.startOrderProcessing(order)))
       .onErrorHandle { t =>
-        logger.error(s"processOrder ${order.id} => ${t.toStringWithCauses}", t.nullIfNoStackTrace)
+        logger.error(s"startOrderProcessing ${order.id} => ${t.toStringWithCauses}", t.nullIfNoStackTrace)
         Left(Problem.fromThrowable(t))
       }
+      .containsType[Checked[Fiber[OrderProcessed]]]
+      .rightAs(())
   }
 
   def recoverOrderProcessing(
     order: Order[Order.Processing],
     onEvents: Seq[OrderCoreEvent] => Unit)
-  : Task[Checked[Unit]] =
+  : Task[Checked[Fiber[OrderProcessed]]] =
     logger.traceTask("recoverOrderProcessing", order.id)(Task.defer {
       val subagentId = order.state.subagentId getOrElse legacyLocalSubagentId
       stateVar.get.idToDriver.get(subagentId)
         .match_ {
           case None =>
-            val event = OrderProcessed(Outcome.Disrupted(Problem.pure(
-              s"Missing $subagentId SubagentItem to continue processing of ${order.id}")))
-            persist(order.id, event :: Nil, onEvents)
-              .map(_.map { case (_, s) => event -> s })
+            val orderProcessed = OrderProcessed(Outcome.Disrupted(Problem.pure(
+              s"$subagentId is missed")))
+            persist(order.id, orderProcessed :: Nil, onEvents)
+              .flatMapT(_ => Task.pure(orderProcessed).start.map(Right(_)))
 
           case Some(subagentDriver) =>
             forProcessingOrder(order.id, subagentDriver, onEvents)(
               if (failedOverSubagentId contains subagentDriver.subagentId)
                 subagentDriver.emitOrderProcessLost(order)
+                  .flatMap(_.traverse(orderProcessed => Task.pure(orderProcessed).start))
               else
                 subagentDriver.recoverOrderProcessing(order)
             ).materializeIntoChecked
-              .map(_.onProblemHandle(problem =>
-                logger.error(s"recoverOrderProcessing ${order.id} => $problem")))
-              .startAndForget // ???
-              .as(Checked.unit)
+              .flatTap {
+                case Left(problem) => Task(logger.error(
+                  s"recoverOrderProcessing ${order.id} => $problem"))
+                case Right(_) => Task.unit
+              }
         }
     })
 
@@ -198,17 +203,27 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
     orderId: OrderId,
     subagentDriver: SubagentDriver,
     onEvents: Seq[OrderCoreEvent] => Unit)
-    (body: Task[Checked[OrderProcessed]])
-  : Task[Checked[Unit]] =
-    Resource
-      .make(
-        acquire = orderToSubagent.put(orderId, subagentDriver).void)(
-        release = _ => orderToSubagent.remove(orderId).void)
-      .use(_ =>
-        body
-          .map(_.map(orderProcessed =>
+    (body: Task[Checked[Fiber[OrderProcessed]]])
+  : Task[Checked[Fiber[OrderProcessed]]] = {
+    val release = orderToSubagent.remove(orderId).void
+    orderToSubagent
+      .put(orderId, subagentDriver)
+      .*>(body
+        .flatMap {
+          case Left(problem) => Task.left(problem)
+          case Right(fiber) =>
             // OrderProcessed event has been persisted by SubagentDriver
-            onEvents(orderProcessed :: Nil))))
+            fiber.join
+              .map { orderProcessed =>
+                onEvents(orderProcessed :: Nil)
+                orderProcessed
+              }
+              .guarantee(release)
+              .start
+              .map(Right(_))
+        })
+      .guaranteeExceptWhenRight(release)
+  }
 
   private def selectSubagentDriverCancelable(order: Order[Order.IsFreshOrReady])
   : Task[Checked[Option[SelectedDriver]]] =
@@ -272,7 +287,9 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
         .*>(orderToSubagent
           .get(orderId)
           .match_ {
-            case None => Task(logger.warn(s"killProcess($orderId): Unknown OrderId"))
+            case None => Task(logger.error(
+              s"killProcess($orderId): unexpected internal state: orderToSubagent does not contain the OrderId"))
+
             case Some(driver) => driver.killProcess(orderId, signal)
           })
     }
@@ -320,15 +337,14 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
       .map(_.combineProblems)
       .map(_.map(_.flatten))
 
-  def continueDetaching: Task[Checked[Unit]] =
+  def continueDetaching: Task[Unit] =
     journal.state.flatMap(_
       .idToSubagentItemState.values
       .view
       .collect { case o if o.isDetaching => o.subagentId }
       .toVector
       .traverse(startRemoveSubagent)
-      .map(_.combineAll)
-      .map(Right(_)))
+      .map(_.combineAll))
 
   def recoverSubagentSelections(subagentSelections: Seq[SubagentSelection]): Task[Checked[Unit]] =
     logger.debugTask(
@@ -417,8 +433,8 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
 
   private def coupleLocalSubagent: Task[Unit] =
     Task.defer {
-      initialized.orThrow.localSubagentId.traverse(localSubagentId =>
-        journal
+      initialized.orThrow.localSubagentId
+        .traverse(localSubagentId => journal
           .persist(agentState => Right(agentState
             .idToSubagentItemState.get(localSubagentId)
             .exists(_.couplingState != Coupled)

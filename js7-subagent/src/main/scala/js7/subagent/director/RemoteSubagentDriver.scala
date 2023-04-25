@@ -45,7 +45,7 @@ import js7.subagent.SubagentDriver
 import js7.subagent.configuration.SubagentConf
 import js7.subagent.director.RemoteSubagentDriver.*
 import monix.catnap.MVar
-import monix.eval.Task
+import monix.eval.{Fiber, Task}
 import scala.annotation.unused
 import scala.concurrent.duration.Deadline.now
 import scala.util.{Failure, Success}
@@ -135,11 +135,11 @@ extends SubagentDriver with SubagentEventListener[S0]
     logger
       .debugTask(
         stoppingVar.flatMap(_.tryPut(()))
-          .*>(Task.defer {
-            stopping = true
-            Task.parZip2(dispatcher.shutdown, stopEventListener)
-              .*>(client.tryLogout.void)
-              .logWhenItTakesLonger(s"RemoteSubagentDriver($subagentId).stop")
+      .*>(Task.defer {
+        stopping = true
+        Task.parZip2(dispatcher.shutdown, stopEventListener)
+          .*>(client.tryLogout.void)
+          .logWhenItTakesLonger(s"RemoteSubagentDriver($subagentId).stop")
           }))
       .memoize
 
@@ -319,54 +319,62 @@ extends SubagentDriver with SubagentEventListener[S0]
 
   /** Continue a recovered processing Order. */
   def recoverOrderProcessing(order: Order[Order.Processing]) =
-    processOrder(order)
+    startOrderProcessing(order)
 
-  def processOrder(order: Order[Order.Processing]): Task[Checked[OrderProcessed]] =
-    logger.traceTask("processOrder", order.id)(
+
+  def startOrderProcessing(order: Order[Order.Processing]): Task[Checked[Fiber[OrderProcessed]]] =
+    logger.traceTask("startOrderProcessing", order.id)(
       requireNotStopping.flatMapT(_ =>
-        runProcessingOrder(order)))
+        startProcessingOrder2(order)))
 
-  private def runProcessingOrder(order: Order[Order.Processing]): Task[Checked[OrderProcessed]] =
+  private def startProcessingOrder2(order: Order[Order.Processing]): Task[Checked[Fiber[OrderProcessed]]] =
     orderToDeferred
       .insert(order.id, Deferred.unsafe)
       // OrderProcessed event will fulfill and remove the Deferred
-      .flatMapT(deferredOutcome =>
-        orderToExecuteDefaultArguments(order)
-          .map(_.map(StartOrderProcess(order, _)))
-          .flatMapT(dispatcher.executeCommand)
-          .materializeIntoChecked
-          .flatMap {
-            case Left(problem) =>
-              // StartOrderProcess failed
-              orderToDeferred
-                .remove(order.id)
-                .flatMap {
-                  case None =>
-                    // Deferred has been removed
-                    if (problem != CommandDispatcher.StoppedProblem) {
-                      // onSubagentDied has stopped all queued StartOrderProcess commands
-                      logger.warn(s"${order.id} got OrderProcessed, so we ignore $problem")
-                    }
-                    deferredOutcome.get.map(Right(_))
+      .flatMap {
+        case Left(problem) => Task.left(problem)
+        case Right(deferredOutcome) =>
+          orderToExecuteDefaultArguments(order)
+            .map(_.map(StartOrderProcess(order, _)))
+            .flatMapT(dispatcher.executeCommand)
+            .materializeIntoChecked
+            .flatMap {
+              case Left(problem) =>
+                // StartOrderProcess failed
+                orderToDeferred
+                  .remove(order.id)
+                  .flatMap {
+                    case None =>
+                      // Deferred has been removed
+                      if (problem != CommandDispatcher.StoppedProblem) {
+                        // onSubagentDied has stopped all queued StartOrderProcess commands
+                        logger.warn(s"${order.id} got OrderProcessed, so we ignore $problem")
+                      }
+                      Task.right(())
 
-                  case Some(deferred) =>
-                    val orderProcessed = OrderProcessed(
-                      problem match {
-                        case SubagentIsShuttingDownProblem =>
-                          Outcome.processLost(SubagentShutDownBeforeProcessStartProblem)
-                        case _ => Outcome.Disrupted(problem)
-                      })
-                    journal
-                      .persistKeyedEvent(order.id <-: orderProcessed)
-                      .rightAs(orderProcessed)
-                      .<*(deferred.complete(orderProcessed))
-                }
+                    case Some(deferred) =>
+                      assert(deferred eq deferredOutcome)
+                      val orderProcessed = OrderProcessed(
+                        problem match {
+                          case SubagentIsShuttingDownProblem =>
+                            Outcome.processLost(SubagentShutDownBeforeProcessStartProblem)
+                          case _ => Outcome.Disrupted(problem)
+                        })
+                      journal
+                        .persistKeyedEvent(order.id <-: orderProcessed)
+                        .orThrow
+                        .*>(deferred.complete(orderProcessed))
+                        .as(orderProcessed)
+                  }
 
-            case Right(()) =>
-              // Command succeeded, wait for Deferred
-              deferredOutcome.get
-                .map(Right(_))
-          })
+              case Right(()) =>
+                // Command succeeded, wait for Deferred
+                Task.right(())
+            }
+            .*>(deferredOutcome.get)
+            .start
+            .map(Right(_))
+      }
 
   protected def onOrderProcessed(orderId: OrderId, orderProcessed: OrderProcessed)
   : Task[Option[Task[Unit]]] =

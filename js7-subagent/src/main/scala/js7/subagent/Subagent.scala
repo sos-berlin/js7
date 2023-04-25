@@ -210,7 +210,7 @@ extends MainService with Service.StoppableByRequest
                   case _ => orderToProcessing.remove(order.id).void // Tidy-up on failure
                 }
                 .startAndForget
-                // TODO Asynchronous processOrder should not execute AFTER shutdown
+                // TODO Asynchronous startOrderProcessing should not execute AFTER shutdown
                 .as(Right(Processing(order.workflowPosition))))
         })
         .rightAs(())

@@ -1,14 +1,12 @@
 package js7.subagent
 
-import cats.syntax.foldable.*
-import cats.syntax.parallel.*
-import cats.syntax.traverse.*
+import cats.syntax.all.*
 import js7.base.io.process.{ProcessSignal, Stderr, Stdout, StdoutOrStderr}
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.AsyncMap
 import js7.base.monixutils.MonixBase.syntax.*
-import js7.base.problem.{Checked, Problem, ProblemException}
+import js7.base.problem.{Checked, ProblemException}
 import js7.base.utils.ScalaUtils.chunkStrings
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.system.PlatformInfos.currentPlatformInfo
@@ -31,7 +29,7 @@ import js7.launcher.configuration.JobLauncherConf
 import js7.launcher.internal.JobLauncher
 import js7.subagent.LocalSubagentDriver.*
 import js7.subagent.configuration.SubagentConf
-import monix.eval.Task
+import monix.eval.{Fiber, Task}
 import monix.reactive.Observable
 import monix.reactive.subjects.PublishSubject
 import scala.concurrent.Promise
@@ -96,17 +94,20 @@ extends SubagentDriver
   def tryShutdown =
     Task.unit
 
-  def processOrder(order: Order[Order.Processing]): Task[Checked[OrderProcessed]] =
+  def startOrderProcessing(order: Order[Order.Processing]): Task[Checked[Fiber[OrderProcessed]]] =
     orderToExecuteDefaultArguments(order)
       .flatMapT(defaultArguments =>
         processOrder2(order, defaultArguments)
-          .flatMap {
-            case outcome: Outcome.Killed if _testFailover =>
-              Task.left(Problem(s"Suppressed due to failover: OrderProcessed($outcome)"))
-            case outcome =>
-              journal.persistKeyedEvent(order.id <-: OrderProcessed(outcome))
-          }
-          .map(_.map(_._1.value.event)))
+          .map(OrderProcessed(_))
+          .flatTap(orderProcessed =>
+            if (_testFailover && orderProcessed.outcome.isInstanceOf[Outcome.Killed])
+              Task(logger.warn(
+                s"Suppressed due to failover by command: ${order.id} <-: $orderProcessed"))
+            else
+              journal.persistKeyedEvent(order.id <-: orderProcessed)
+                .orThrow)
+          .start
+          .map(Right(_)))
 
   def processOrder2(
     order: Order[Order.Processing],
@@ -227,6 +228,9 @@ extends SubagentDriver
 
   def recoverOrderProcessing(order: Order[Order.Processing]) =
     emitOrderProcessLost(order)
+      .map(_.orThrow)
+      .start
+      .map(Right(_))
 
   def killProcess(orderId: OrderId, signal: ProcessSignal) =
     for {

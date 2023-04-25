@@ -10,6 +10,7 @@ import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.RichCheckedTask
+import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.*
@@ -20,6 +21,7 @@ import js7.journal.configuration.JournalConf
 import js7.journal.{JournalActor, KeyedJournalingActor}
 import js7.subagent.director.RemoteSubagentDriver.SubagentDriverStoppedProblem
 import js7.subagent.director.SubagentKeeper
+import monix.eval.{Fiber, Task}
 import monix.execution.Scheduler
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
@@ -60,9 +62,11 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
               o,
               events => self ! Internal.UpdateEvents(events, orderCorrelId))
             .materializeIntoChecked
-            .map(_.onProblemHandle(problem =>
-              logger.error(s"recoverOrderProcessing: $problem")))
-            .foreach { _ =>
+            .tapEval {
+              case Left(problem) => Task(logger.error(s"recoverOrderProcessing(${o.id}): $problem"))
+              case Right(_) => Task.unit
+            }
+            .foreach { (_: Checked[Fiber[OrderProcessed]]) =>
               sender ! Output.RecoveryFinished
             }
       }
@@ -122,13 +126,13 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
                 .materialize
                 .map {
                   case Failure(t) =>
-                    logger.error(s"processOrder => ${t.toStringWithCauses}")  // OrderFailed ???
+                    logger.error(s"startOrderProcessing => ${t.toStringWithCauses}")  // OrderFailed ???
 
                   case Success(Left(problem: SubagentDriverStoppedProblem)) =>
-                    logger.debug(s"processOrder => $problem")
+                    logger.debug(s"startOrderProcessing => $problem")
 
                   case Success(Left(problem)) =>
-                    logger.error(s"processOrder => $problem")  // ???
+                    logger.error(s"startOrderProcessing => $problem")  // ???
 
                   case Success(Right(())) =>
                 }

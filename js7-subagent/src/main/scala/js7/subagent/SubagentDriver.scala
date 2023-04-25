@@ -12,7 +12,7 @@ import js7.data.subagent.{SubagentDriverState, SubagentId}
 import js7.data.value.expression.Expression
 import js7.data.workflow.instructions.Execute
 import js7.journal.state.Journal
-import monix.eval.Task
+import monix.eval.{Fiber, Task}
 import scala.concurrent.duration.FiniteDuration
 
 trait SubagentDriver
@@ -38,9 +38,9 @@ trait SubagentDriver
 
   def tryShutdown: Task[Unit]
 
-  def processOrder(order: Order[Order.Processing]): Task[Checked[OrderProcessed]]
+  def startOrderProcessing(order: Order[Order.Processing]): Task[Checked[Fiber[OrderProcessed]]]
 
-  def recoverOrderProcessing(order: Order[Order.Processing]): Task[Checked[OrderProcessed]]
+  def recoverOrderProcessing(order: Order[Order.Processing]): Task[Checked[Fiber[OrderProcessed]]]
 
   def killProcess(orderId: OrderId, signal: ProcessSignal): Task[Unit]
 

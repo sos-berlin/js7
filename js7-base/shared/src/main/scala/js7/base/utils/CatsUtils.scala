@@ -40,6 +40,12 @@ object CatsUtils
     })
 
   object syntax {
+    implicit final class RichF[F[_], A](private val underlying: F[A]) extends AnyVal {
+      /** Compiles iff A == B or A extends B. */
+      @inline def containsType[B >: A]: F[A] =
+        underlying
+    }
+
     implicit final class RichTimer[F[_]](private val timer: Timer[F]) extends AnyVal {
       def now(implicit F: Functor[F]): F[Deadline] =
         for (nanos <- timer.clock.monotonic(NANOSECONDS)) yield
