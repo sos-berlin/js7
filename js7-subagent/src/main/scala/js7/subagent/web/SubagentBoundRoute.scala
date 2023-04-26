@@ -22,8 +22,7 @@ import js7.common.system.JavaInformations.javaInformation
 import js7.common.system.SystemInformations.systemInformation
 import js7.common.system.startup.StartUp
 import js7.data.subagent.{SubagentCommand, SubagentOverview}
-import js7.journal.watch.EventWatch
-import js7.subagent.SubagentCommandExecuter
+import js7.subagent.SubagentCommandExecutor
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.Future
@@ -32,8 +31,7 @@ import scala.concurrent.duration.Deadline
 private final class SubagentBoundRoute(
   binding: WebServerBinding,
   protected val whenShuttingDown: Future[Deadline],
-  subagentCommandExecuter: SubagentCommandExecuter,
-  protected val eventWatch: EventWatch,
+  subagentCommandExecuter: SubagentCommandExecutor,
   protected val sessionRegister: SessionRegister[SimpleSession],
   protected val convertToDirector: Task[Unit],
   protected val config: Config)
@@ -48,6 +46,7 @@ with EventRoute
 with PseudoDirectorRoute
 {
   protected val subagent = subagentCommandExecuter.subagent
+  protected val eventWatch = subagent.journal.eventWatch
   protected val actorRefFactory = actorSystem
 
   protected val gateKeeper = GateKeeper(

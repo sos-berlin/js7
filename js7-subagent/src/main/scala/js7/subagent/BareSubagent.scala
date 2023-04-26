@@ -79,8 +79,12 @@ object BareSubagent
       (for {
         iox <- IOExecutor.resource[Task](config, name = conf.name + "-I/O")
         testEventBus <- Resource.eval(Task(new StandardEventBus[Any]))
+
+        // Stop Subagent _after_ web service to allow last commands!
+        subagentDeferred <- Resource.eval(Deferred[Task, Subagent])
+        _ <- webServerResource(convertToDirector, subagentDeferred.get, conf, testEventBus, iox)
         subagent <- Subagent.resource(conf, js7Scheduler, iox, testEventBus)
-        _ <- webServerResource(convertToDirector, subagent, testEventBus, iox)
+        _ <- Resource.eval(subagentDeferred.complete(subagent))
       } yield {
         logger.info("Subagent is ready to be dedicated" + "\n" + "─" * 80)
         subagent
@@ -89,25 +93,25 @@ object BareSubagent
 
   private def webServerResource(
     convertToDirector: Task[Unit] = Task.unit,
-    subagent: Subagent,
+    subagent: Task[Subagent],
+    conf: SubagentConf,
     testEventBus: StandardEventBus[Any],
     iox: IOExecutor)
     (implicit scheduler: Scheduler)
   : Resource[Task, AkkaWebServer] = {
-    import subagent.conf
-    import subagent.conf.config
+    import conf.config
     for {
       signatureVerifier <- DirectoryWatchingSignatureVerifier.prepare(config)
         .orThrow
         .toResource(onUpdated = () => testEventBus.publish(ItemSignatureKeysUpdated))(iox)
-      commandExecutor = new SubagentCommandExecuter(subagent, signatureVerifier, subagent.journal)
-
       actorSystem <- Akkas.actorSystemResource(conf.name, config)
       sessionRegister = SessionRegister.start[SimpleSession](
         actorSystem, SimpleSession(_), config)
       _ <- sessionRegister.placeSessionTokenInDirectory(SimpleUser.System, conf.workDirectory)
       webServer <- SubagentWebServer.resource(
-        commandExecutor, subagent.journal.eventWatch, sessionRegister, convertToDirector, conf)(actorSystem)
+        commandExecutor = subagent.map(new SubagentCommandExecutor(_, signatureVerifier)).memoize,
+        sessionRegister, convertToDirector, conf)(
+        actorSystem, scheduler)
       _ <- provideUriFile(conf, webServer.localHttpUri)
     } yield webServer
   }

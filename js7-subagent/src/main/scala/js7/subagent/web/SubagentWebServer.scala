@@ -4,32 +4,30 @@ import akka.actor.ActorSystem
 import cats.effect.Resource
 import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
-import js7.journal.watch.EventWatch
-import js7.subagent.SubagentCommandExecuter
+import js7.subagent.SubagentCommandExecutor
 import js7.subagent.configuration.SubagentConf
 import monix.eval.Task
+import monix.execution.Scheduler
 
 object SubagentWebServer
 {
   def resource(
-    subagentCommandExecuter: SubagentCommandExecuter,
-    eventWatch: EventWatch,
+    commandExecutor: Task[SubagentCommandExecutor],
     sessionRegister: SessionRegister[SimpleSession],
     convertToDirector: Task[Unit],
     conf: SubagentConf)
-    (implicit actorSystem: ActorSystem)
+    (implicit actorSystem: ActorSystem, scheduler: Scheduler)
   : Resource[Task, AkkaWebServer & AkkaWebServer.HasUri] =
     AkkaWebServer.resource(
       conf.webServerBindings,
       conf.config,
       (binding, whenShuttingDown) =>
-        Task.deferAction(implicit s => Task(
+        for (commandExecutor <- commandExecutor) yield
           new SubagentBoundRoute(
             binding,
             whenShuttingDown,
-            subagentCommandExecuter,
-            eventWatch,
+            commandExecutor,
             sessionRegister,
             convertToDirector,
-            conf.config))))
+            conf.config))
 }

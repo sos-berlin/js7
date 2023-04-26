@@ -8,20 +8,20 @@ import js7.base.stream.Numbered
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.event.KeyedEvent.NoKey
+import js7.data.subagent.SubagentCommand
 import js7.data.subagent.SubagentCommand.{AttachSignedItem, CoupleDirector, DedicateSubagent, DetachProcessedOrder, KillProcess, NoOperation, ReleaseEvents, ShutDown, StartOrderProcess}
 import js7.data.subagent.SubagentEvent.SubagentItemAttached
-import js7.data.subagent.{SubagentCommand, SubagentState}
-import js7.journal.MemoryJournal
-import js7.subagent.SubagentCommandExecuter.*
+import js7.subagent.SubagentCommandExecutor.*
 import monix.eval.Task
 import monix.reactive.Observable
 import scala.concurrent.duration.Deadline.now
 
-private final class SubagentCommandExecuter(
+private final class SubagentCommandExecutor(
   val subagent: Subagent,
-  signatureVerifier: DirectoryWatchingSignatureVerifier,
-  journal: MemoryJournal[SubagentState])
+  signatureVerifier: DirectoryWatchingSignatureVerifier)
 {
+  private val journal = subagent.journal
+
   def executeCommand(numbered: Numbered[SubagentCommand]): Task[Checked[numbered.value.Response]] =
     Task.defer {
       val command = numbered.value
@@ -111,6 +111,6 @@ private final class SubagentCommandExecuter(
     }
 }
 
-private object SubagentCommandExecuter {
+private object SubagentCommandExecutor {
   private val logger = Logger(getClass)
 }
