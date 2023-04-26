@@ -1,5 +1,6 @@
 package js7.journal
 
+import cats.effect.Resource
 import cats.syntax.traverse.*
 import js7.base.log.CorrelId
 import js7.base.monixutils.MonixBase.syntax.*
@@ -180,4 +181,16 @@ extends Journal[S]
     tornEventId: EventId,
     lastEventId: EventId,
     events: Vector[Stamped[KeyedEvent[Event]]])
+}
+
+object MemoryJournal {
+  def resource[S <: JournaledState[S]](
+    initial: S,
+    size: Int,
+    waitingFor: String = "releaseEvents",
+    eventIdGenerator: EventIdGenerator = new EventIdGenerator)
+    (implicit S: JournaledState.Companion[S])
+  : Resource[Task, MemoryJournal[S]] =
+    Resource.eval(Task(
+      new MemoryJournal[S](initial, size, waitingFor, eventIdGenerator)))
 }
