@@ -14,7 +14,6 @@ import js7.cluster.ClusterNode
 import js7.cluster.web.ClusterNodeRouteBindings
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.akkahttp.WebLogDirectives
-import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkahttp.web.auth.CSRF.forbidCSRF
 import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.data.WebServerBinding
@@ -30,32 +29,29 @@ import scala.concurrent.duration.Deadline
 /**
  * @author Joacim Zschimmer
  */
-private final class AgentBoundRoute(
+private final class AgentRoute(
   protected val agentOverview: Task[AgentOverview],
   binding: WebServerBinding,
   protected val whenShuttingDown: Future[Deadline],
   protected val executeCommand: (AgentCommand, CommandMeta) => Task[Checked[AgentCommand.Response]],
   protected val clusterNode: ClusterNode[AgentState],
   protected val agentConfiguration: AgentConfiguration,
-  gateKeeperConfiguration: GateKeeper.Configuration[SimpleUser],
+  gateKeeperConf: GateKeeper.Configuration[SimpleUser],
   protected val sessionRegister: SessionRegister[AgentSession],
   protected val eventWatch: FileEventWatch)
   (implicit
     protected val actorSystem: ActorSystem,
     protected val scheduler: Scheduler)
-extends AkkaWebServer.BoundRoute
-with WebLogDirectives
+extends WebLogDirectives
 with ApiRoute
 with ClusterNodeRouteBindings[AgentState]
 {
-  protected val gateKeeper = GateKeeper(binding, gateKeeperConfiguration)
+  protected val gateKeeper = GateKeeper(binding, gateKeeperConf)
 
   protected val agentState = clusterNode.currentState
   protected def akkaAskTimeout = agentConfiguration.akkaAskTimeout
   protected def config = agentConfiguration.config
   protected def actorRefFactory = actorSystem
-
-  def boundMessageSuffix = gateKeeper.secureStateString
 
   protected def checkedClusterState =
     agentState
@@ -67,7 +63,7 @@ with ClusterNodeRouteBindings[AgentState]
   protected def nodeId =
     clusterNode.clusterConf.ownId
 
-  lazy val webServerRoute: Route =
+  val webServerRoute: Route =
     (decodeRequest & encodeResponse) {  // Before handleErrorAndLog to allow simple access to HttpEntity.Strict
       webLog {
         seal {

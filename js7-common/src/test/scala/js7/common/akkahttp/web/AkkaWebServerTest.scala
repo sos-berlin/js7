@@ -65,12 +65,11 @@ final class AkkaWebServerTest extends OurTestSuite with BeforeAndAfterAll
         # TODO Add test with client certificate
         js7.web.server.auth.https-client-authentication = off
         js7.web.server.shutdown-timeout = 10s""",
-      toBoundRoute = (binding, whenTerminating) =>
-        Task(AkkaWebServer.BoundRoute(
+      toBoundRoute = (_, _) =>
+        AkkaWebServer.BoundRoute.simple(
           path("TEST") {
             complete("OKAY")
-          },
-          whenTerminating)))
+          }))
     .toAllocated
     .await(99.s)
 

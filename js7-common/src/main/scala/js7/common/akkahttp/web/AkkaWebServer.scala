@@ -10,7 +10,6 @@ import akka.stream.TLSClientAuth
 import cats.effect.Resource
 import cats.syntax.all.*
 import com.typesafe.config.{Config, ConfigFactory}
-import js7.base.auth.SimpleUser
 import js7.base.configutils.Configs.*
 import js7.base.generic.Completed
 import js7.base.io.https.Https.loadSSLContext
@@ -19,12 +18,9 @@ import js7.base.log.Logger.syntax.*
 import js7.base.problem.Problem
 import js7.base.service.Service
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.SetOnce
 import js7.base.web.Uri
-import js7.common.akkahttp.ExceptionHandling
 import js7.common.akkahttp.StandardMarshallers.*
 import js7.common.akkahttp.web.AkkaWebServer.*
-import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.data.{WebServerBinding, WebServerPort}
 import js7.common.http.JsonStreamingSupport
 import js7.common.internet.IP.inetSocketAddressShow
@@ -127,12 +123,12 @@ object AkkaWebServer
     resource(
       Seq(WebServerBinding.http(port)),
       config,
-      (_, whenTerminating) => Task.pure(BoundRoute(route, whenTerminating)))
+      (_, _) => BoundRoute.simple(route))
 
   def resource(
     bindings: Seq[WebServerBinding],
     config: Config,
-    toBoundRoute: (WebServerBinding, Future[Deadline]) => Task[BoundRoute])
+    toBoundRoute: (WebServerBinding, Future[Deadline]) => BoundRoute)
     (implicit actorSystem: ActorSystem)
   : Resource[Task, AkkaWebServer & HasUri] =
     Service.resource(Task.defer {
@@ -153,7 +149,7 @@ object AkkaWebServer
           binding: WebServerBinding,
           httpsConnectionContext: Option[HttpsConnectionContext] = None)
         : Task[Http.ServerBinding] =
-          Task.deferAction { implicit scheduler =>
+          Task.defer {
             val serverBuilder = akkaHttp
               .newServerAt(
                 interface = binding.address.getAddress.getHostAddress,
@@ -168,18 +164,19 @@ object AkkaWebServer
 
             val terminatingPromise = Promise[Deadline]()
             val whenTerminating = terminatingPromise.future
-            val boundRoute = new DelegatingBoundRoute(
-              binding.scheme, toBoundRoute(binding, whenTerminating), config)
+            val boundRoute = toBoundRoute(binding, whenTerminating)
+            val name = s"${binding.scheme}://${binding.address.show}"
             for {
               serverBinding <-
                 Task.deferFutureAction { implicit scheduler =>
-                  val whenBound = serverBuilder.bind(boundRoute.webServerRoute)
+                  val routeDelegator = new DelayedRouteDelegator(boundRoute, name)
+                  val whenBound = serverBuilder.bind(routeDelegator.webServerRoute)
                   terminatingPromise.completeWith(whenBound.flatMap(_.whenTerminationSignalIssued))
                   whenBound
                 }
             } yield {
-              logger.info(
-                s"Bound ${binding.scheme}://${serverBinding.localAddress.show}${boundRoute.boundMessageSuffix}")
+              val securityHint = boundRoute.startupSecurityHint(binding.scheme)
+              logger.debug(s"$name is bound$securityHint")
               serverBinding
             }
           }
@@ -215,55 +212,49 @@ object AkkaWebServer
     s"$prefix-$scheme-${address.getAddress.getHostAddress}:${address.getPort}"
   }
 
+  private lazy val stillNotAvailableRoute: Route =
+    complete(ServiceUnavailable -> Problem("Web services are still not available"))
+
   trait BoundRoute {
-    def webServerRoute: Route
-    /** Suffix for the bound log message, for example a security hint. */
-    def boundMessageSuffix: String
+    def stillNotAvailableRoute: Route =
+      AkkaWebServer.stillNotAvailableRoute
+
+    def webServerRoute: Task[Route]
+
+    def startupSecurityHint(scheme: WebServerBinding.Scheme): String
   }
   object BoundRoute {
-    def apply(route: Route, whenTerminating: Future[Deadline]): BoundRoute =
+    def simple(route: Route): BoundRoute =
       new BoundRoute {
-        def webServerRoute = route
-
-        def boundMessageSuffix = ""
+        def webServerRoute = Task.pure(route)
+        def startupSecurityHint(scheme: WebServerBinding.Scheme) = ""
       }
   }
 
-  private final class DelegatingBoundRoute(
-    scheme: WebServerBinding.Scheme,
-    realBoundRoute: Task[BoundRoute],
-    protected val config: Config)
+  /** Returns 503 ServiceUnavailable until the Route is provided. */
+  private final class DelayedRouteDelegator(boundRoute: BoundRoute, name: String)
     (implicit scheduler: Scheduler)
-  extends BoundRoute {
-    private val whenRealBound = realBoundRoute.runToFuture
-    private val _boundRoute = Atomic(none[BoundRoute])
+  {
+    private val _realRoute = Atomic(none[Route])
 
-    private object stillNotAvailable extends BoundRoute {
-      val webServerRoute =
-        complete(ServiceUnavailable -> Problem("Still starting"))
+    private val whenRealRoute = boundRoute.webServerRoute
+      .tapEval(realRoute => Task {
+        if (_realRoute.compareAndSet(None, Some(realRoute))) {
+          logger.info(s"$name web services are available")
+        }
+      })
+      .runToFuture
 
-      lazy val boundMessageSuffix =
-        GateKeeper.Configuration.fromConfig(config, SimpleUser.apply, Nil)
-          .secureStateString(scheme)
-    }
-
-    def webServerRoute =
+    def webServerRoute: Route =
       extractRequest/*force recalculation with each call*/(_ =>
-        selectBoundRoute.webServerRoute)
+        selectBoundRoute)
 
-    def boundMessageSuffix =
-      selectBoundRoute.boundMessageSuffix
-
-    def selectBoundRoute: BoundRoute =
-      _boundRoute.get().getOrElse(
-        whenRealBound.value match {
-          case None => stillNotAvailable
+    def selectBoundRoute: Route =
+      _realRoute.get().getOrElse(
+        whenRealRoute.value match {
+          case None => boundRoute.stillNotAvailableRoute
           case Some(Failure(t)) => throw t
-          case Some(Success(realBoundRoute)) =>
-            if (!_boundRoute.compareAndSet(None, Some(realBoundRoute))) {
-              logger.debug(s"$realBoundRoute is ready")
-            }
-            realBoundRoute
+          case Some(Success(realRoute)) => realRoute
         })
   }
 }

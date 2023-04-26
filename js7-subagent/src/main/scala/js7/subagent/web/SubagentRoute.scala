@@ -8,12 +8,11 @@ import akka.http.scaladsl.server.RouteConcatenation.*
 import akka.http.scaladsl.server.directives.CodingDirectives.{decodeRequest, encodeResponse}
 import com.typesafe.config.Config
 import js7.base.BuildInfo
-import js7.base.auth.{AgentDirectorPermission, SimpleUser}
+import js7.base.auth.SimpleUser
 import js7.base.stream.Numbered
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegment
 import js7.common.akkahttp.CirceJsonSupport.jsonMarshaller
 import js7.common.akkahttp.WebLogDirectives
-import js7.common.akkahttp.web.AkkaWebServer.BoundRoute
 import js7.common.akkahttp.web.auth.CSRF.forbidCSRF
 import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.data.WebServerBinding
@@ -28,18 +27,18 @@ import monix.execution.Scheduler
 import scala.concurrent.Future
 import scala.concurrent.duration.Deadline
 
-private final class SubagentBoundRoute(
+private final class SubagentRoute(
   binding: WebServerBinding,
   protected val whenShuttingDown: Future[Deadline],
   subagentCommandExecuter: SubagentCommandExecutor,
   protected val sessionRegister: SessionRegister[SimpleSession],
   protected val convertToDirector: Task[Unit],
-  protected val config: Config)
+  protected val config: Config,
+  gateKeeperConf: GateKeeper.Configuration[SimpleUser])
   (implicit
     protected val scheduler: Scheduler,
     protected val actorSystem: ActorSystem)
-extends BoundRoute
-with WebLogDirectives
+extends WebLogDirectives
 with CommandRoute
 with SessionRoute
 with EventRoute
@@ -49,12 +48,7 @@ with PseudoDirectorRoute
   protected val eventWatch = subagent.journal.eventWatch
   protected val actorRefFactory = actorSystem
 
-  protected val gateKeeper = GateKeeper(
-    binding,
-    GateKeeper.Configuration.fromConfig(config, SimpleUser.apply, Seq(
-      AgentDirectorPermission)))
-
-  override val boundMessageSuffix = gateKeeper.secureStateString
+  protected val gateKeeper = GateKeeper(binding, gateKeeperConf)
 
   protected def executeCommand(command: Numbered[SubagentCommand]) =
     subagentCommandExecuter.executeCommand(command)

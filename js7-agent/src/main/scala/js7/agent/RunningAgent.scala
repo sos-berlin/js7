@@ -366,7 +366,7 @@ object RunningAgent {
         .resource(
           agentOverview, conf, gateKeeperConf, executeCommand, clusterNode,
           sessionRegister,
-          recoveredExtract.eventWatch)(actorSystem)
+          recoveredExtract.eventWatch)(actorSystem, scheduler)
         .evalTap(webServer => Task {
           conf.workDirectory / "http-uri" :=
             webServer.localHttpUri.fold(_ => "", o => s"$o/agent")
