@@ -15,6 +15,10 @@ final case class PlatformInfo(
   operatingSystemDistribution: Option[String] = None,
   cpuModel: Option[String] = None,
   java: JavaInformation)
+{
+  override def toString =
+    s"PlatformInfo($timestamp,$js7Version,${operatingSystemDistribution getOrElse ""})"
+}
 
 object PlatformInfo {
   implicit val jsonCodec: Codec.AsObject[PlatformInfo] = deriveCodec[PlatformInfo]

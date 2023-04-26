@@ -73,8 +73,8 @@ trait AkkaWebServer extends Service
     }
 
   private def terminateBindings: Task[Unit] =
-    logger.debugTask(
-      serverBindings.parTraverse(binding =>
+    serverBindings
+      .parTraverse(binding =>
         logger
           .debugTask(s"$toString terminate $binding")(
             Task.deferFuture(
@@ -83,8 +83,8 @@ trait AkkaWebServer extends Service
           .onErrorHandle { t =>
             logger.error(s"$toString $binding.terminate => ${t.toStringWithCauses}",
               t.nullIfNoStackTrace)
-          }
-      ).void)
+          })
+      .map(_.combineAll)
 
   override def toString = s"${getClass.shortClassName}"
 }

@@ -5,6 +5,7 @@ import com.typesafe.config.Config
 import java.lang.Thread.currentThread
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.convert.As
+import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.RichMonixResource
 import js7.base.system.Java8Polyfill.*
@@ -20,8 +21,10 @@ import monix.execution.ExecutionModel.SynchronousExecution
 import monix.execution.atomic.AtomicInt
 import monix.execution.schedulers.{ExecutorScheduler, SchedulerService}
 import monix.execution.{ExecutionModel, Features, Scheduler, UncaughtExceptionReporter}
+import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
+
 
 /**
   * @author Joacim Zschimmer
@@ -129,15 +132,27 @@ object ThreadPools
       ExecutionModel.Default)
 
     closer.onClose {
-      logger.debug(s"Shutdown $myName thread pool")
+      shutdownThreadPool(scheduler, myName, shutdownTimeout)
+    }
+
+    CorrelId.enableScheduler(scheduler)
+  }
+
+  private def shutdownThreadPool(
+    scheduler: ExecutorScheduler,
+    name: String,
+    shutdownTimeout: FiniteDuration)
+  : Unit = {
+    val prefix = s"Scheduler($name)"
+    logger.debugCall(s"$prefix.shutdown", "") {
       scheduler.shutdown()
       if (shutdownTimeout.isPositive) {
-        logger.debug(s"awaitTermination(${shutdownTimeout.pretty}) ...")
+        logger.debug(s"$prefix.awaitTermination(${shutdownTimeout.pretty}) ...")
         if (!scheduler.awaitTermination(shutdownTimeout)) {
           logger.whenDebugEnabled {
-            logger.debug(s"awaitTermination(${shutdownTimeout.pretty}) timed out")
+            logger.debug(s"$prefix.awaitTermination(${shutdownTimeout.pretty}) timed out")
             Thread.getAllStackTraces.asScala
-              .filter(_._1.getName startsWith myName)
+              .filter(_._1.getName startsWith name)
               .toSeq.sortBy(_._1.threadId)
               .foreach { case (thread, stacktrace) =>
                 logger.debug(s"Thread #${thread.threadId} ${thread.getName} ⏎" +
@@ -149,8 +164,6 @@ object ThreadPools
         }
       }
     }
-
-    CorrelId.enableScheduler(scheduler)
   }
 
   java8Polyfill()

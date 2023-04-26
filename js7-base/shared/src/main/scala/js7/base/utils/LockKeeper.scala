@@ -1,14 +1,16 @@
 package js7.base.utils
 
 import cats.effect.Resource
-import js7.base.log.CorrelId
+import js7.base.log.{BlockingSymbol, CorrelId}
 import js7.base.monixutils.MonixBase.syntax.*
+import js7.base.time.ScalaTime.{RichDeadline, RichDuration}
 import js7.base.utils.LockKeeper.*
 import js7.base.utils.ScalaUtils.syntax.*
 import monix.eval.Task
 import monix.execution.atomic.AtomicBoolean
 import scala.collection.mutable
 import scala.concurrent.Promise
+import scala.concurrent.duration.Deadline.now
 
 // TODO Timeout, web service for inspection ?
 
@@ -26,6 +28,7 @@ final class LockKeeper[K]
 
   private def acquire(key: K)(implicit enclosing: sourcecode.Enclosing): Task[Token] =
     Task.defer {
+      var wasQueued, info = false
       val result = synchronized {
         keyToQueue.get(key) match {
           case None =>
@@ -33,15 +36,26 @@ final class LockKeeper[K]
             Task.pure(new Token(key))
 
           case Some(queue) =>
+            val since = now
+            wasQueued = true
             val promise = Promise[Token]()
             queue += promise
-            logger.trace(s"↘ Acquire lock '$key': queuing (#${queue.length}) (${enclosing.value})")
+            val sym = new BlockingSymbol
+            logger.info(s"🟡 Waiting for $key (in ${enclosing.value})")
             CorrelId.current.bind(
               Task.fromFuture(promise.future)
-                .logWhenItTakesLonger(s"$key (${enclosing.value})"))
+                .whenItTakesLonger()(_ => Task {
+                  sym.onInfo()
+                  info = true
+                  logger.info(s"$sym Still waiting for $key (in ${enclosing.value}) since ${since.elapsed.pretty}")
+                }))
         }
       }
-      logger.trace(s"↙ Acquired lock '$key' (${enclosing.value})")
+      if (info) {
+        logger.info(s"🟢 Acquired lock '$key' (${enclosing.value})")
+      } else {
+        //logger.trace(s"↙ Acquired lock '$key' (${enclosing.value})")
+      }
       result
     }
 
@@ -60,10 +74,10 @@ final class LockKeeper[K]
           }
         }
         // Log late, but outside the synchronized block
-        if (!handedOver)
-          logger.trace(s"↙ Released lock '$key'")
-        else
-          logger.trace(s"↙ Released lock '$key', handed over to queued request")
+        //if (!handedOver)
+        //  logger.trace(s"↙ Released lock '$key'")
+        //else
+        //  logger.trace(s"↙ Released lock '$key', handed over to queued request")
       }
     }
 
