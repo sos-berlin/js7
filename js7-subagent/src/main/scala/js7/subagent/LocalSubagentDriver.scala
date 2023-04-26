@@ -1,23 +1,25 @@
 package js7.subagent
 
+import cats.effect.Resource
 import cats.syntax.all.*
+import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.io.process.{ProcessSignal, Stderr, Stdout, StdoutOrStderr}
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.AsyncMap
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.{Checked, ProblemException}
+import js7.base.service.Service
+import js7.base.utils.AsyncLock
 import js7.base.utils.ScalaUtils.chunkStrings
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.common.system.PlatformInfos.currentPlatformInfo
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.job.{JobConf, JobKey}
 import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten}
 import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.subagent.Problems.SubagentShutDownBeforeProcessStartProblem
-import js7.data.subagent.SubagentItemStateEvent.SubagentDedicated
-import js7.data.subagent.{SubagentDriverState, SubagentId, SubagentRunId}
+import js7.data.subagent.{SubagentDriverState, SubagentId}
 import js7.data.value.expression.Expression
 import js7.data.value.expression.scopes.FileValueState
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -34,7 +36,7 @@ import monix.reactive.Observable
 import monix.reactive.subjects.PublishSubject
 import scala.concurrent.Promise
 
-final class LocalSubagentDriver[S0 <: SubagentDriverState[S0]](
+final class LocalSubagentDriver[S0 <: SubagentDriverState[S0]] private(
   val subagentId: SubagentId,
   protected val journal: Journal[S0],
   val agentPath: AgentPath,
@@ -42,13 +44,14 @@ final class LocalSubagentDriver[S0 <: SubagentDriverState[S0]](
   jobLauncherConf: JobLauncherConf,
   protected val conf: SubagentDriver.Conf,
   subagentConf: SubagentConf)
-extends SubagentDriver
+extends Service.StoppableByRequest with SubagentDriver
 {
   protected type S = S0
 
   private val fileValueState = new FileValueState(subagentConf.valueDirectory)
   private val jobKeyToJobDriver = AsyncMap.empty[JobKey, JobDriver]
   private val orderIdToJobDriver = AsyncMap.stoppable[OrderId, JobDriver]()
+  private val stoppingLock = AsyncLock()
   @volatile private var stopping = false
   @volatile private var _testFailover = false
 
@@ -56,30 +59,26 @@ extends SubagentDriver
 
   protected def isShuttingDown = false
 
-  def start = Task.defer {
-    logger.debug("Start LocalSubagentDriver")
-    val runId = SubagentRunId.fromJournalId(journal.journalId)
-    journal.persistKeyedEvent(
-      subagentId <-: SubagentDedicated(runId, Some(currentPlatformInfo()))
-    ).map(_.orThrow)
-  }
+  def start =
+    startService(
+      untilStopRequested *>
+        terminate(Some(SIGTERM)))
 
-  def stop(signal: Option[ProcessSignal]) =
-    logger.debugTask(
-      Task.defer {
-        stopping = true
-        val orderCount = orderIdToJobDriver.toMap.size
-        if (orderCount > 0) {
-          logger.info(s"Stopping, waiting for $orderCount processes")
-        }
-        Task
-          .parZip2(
-            orderIdToJobDriver.stop,
-            signal.fold(Task.unit)(killAllAndStop))
-          .*>(Task {
-            fileValueState.close()
-          })
-      })
+  def terminate(signal: Option[ProcessSignal]) =
+    stoppingLock.lock(Task.defer {
+      stopping = true
+      val orderCount = orderIdToJobDriver.toMap.size
+      if (orderCount > 0) {
+        logger.info(s"Stopping, waiting for $orderCount processes")
+      }
+      Task
+        .parZip2(
+          orderIdToJobDriver.stop,
+          signal.fold(Task.unit)(killAllAndStop))
+        .*>(Task {
+          fileValueState.close()
+        })
+    })
 
   private def killAllAndStop(signal: ProcessSignal): Task[Unit] =
     logger.debugTask("killAllAndStop", signal)(
@@ -248,4 +247,17 @@ extends SubagentDriver
 object LocalSubagentDriver
 {
   private val logger = Logger(getClass)
+
+  def resource[S <: SubagentDriverState[S]](
+    subagentId: SubagentId,
+    journal: Journal[S],
+    agentPath: AgentPath,
+    controllerId: ControllerId,
+    jobLauncherConf: JobLauncherConf,
+    conf: SubagentDriver.Conf,
+    subagentConf: SubagentConf)
+  : Resource[Task, LocalSubagentDriver[S]] =
+  Service.resource(Task(
+    new LocalSubagentDriver[S](
+      subagentId, journal, agentPath, controllerId, jobLauncherConf, conf, subagentConf)))
 }

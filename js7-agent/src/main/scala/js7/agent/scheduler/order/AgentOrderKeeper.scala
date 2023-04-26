@@ -88,10 +88,12 @@ with Stash
   import context.{actorOf, watch}
 
   private val journal = journalAllocated.allocatedThing
-  private val ownAgentPath = journal.unsafeCurrentState().meta.agentPath
-  private val localSubagentId: Option[SubagentId] =
-    journal.unsafeCurrentState().meta.directors.get(conf.clusterConf.isBackup.toInt)
-  private val controllerId = journal.unsafeCurrentState().meta.controllerId
+  private val (ownAgentPath, localSubagentId, controllerId) = {
+    val meta = journal.unsafeCurrentState().meta
+    (meta.agentPath,
+      meta.directors.get(conf.clusterConf.isBackup.toInt),
+      meta.controllerId)
+  }
   private implicit val instructionExecutorService: InstructionExecutorService =
     new InstructionExecutorService(clock)
 
@@ -191,7 +193,8 @@ with Stash
 
   private val subagentKeeper =
     new SubagentKeeper(
-      ownAgentPath, failedOverSubagentId,
+      localSubagentId, ownAgentPath, controllerId,
+      failedOverSubagentId,
       journal, jobLauncherConf, conf.subagentDirectorConf,
       context.system)
 
@@ -217,22 +220,18 @@ with Stash
       become("Recovering")(recovering(recoveredAgentState))
       unstashAll()
 
-      // FIXME (?) Continue deletion of Subagent AFTER Orders has been recovered
-      // startSubagent
-      // subagentKeeper.recoverOrderProcessing
-      subagentKeeper
-        .initialize(localSubagentId, controllerId)
-        .*>(
-          subagentKeeper
-            .recoverSubagents(recoveredAgentState.idToSubagentItemState.values.toVector)
+      subagentKeeper.start
+        .*>(journal.state.flatMap(state => subagentKeeper.recoverSubagents(
+          state.idToSubagentItemState.values.toVector)))
         .flatMapT(_ =>
           subagentKeeper.recoverSubagentSelections(
             recoveredAgentState.pathToUnsignedSimple(SubagentSelection).values.toVector))
-            .map(_.orThrow))
+        .map(_.orThrow)
         .materialize
         .foreach { tried =>
           self.forward(Internal.SubagentKeeperInitialized(recoveredAgentState, tried))
         }
+
     case _ => stash()
   }
 
@@ -309,14 +308,6 @@ with Stash
           proceedWithOrder(order)
         }
 
-        subagentKeeper.start
-          .runToFuture
-          .onComplete { tried =>
-            for (t <- tried.failed) logger.error(s"subagentKeeper.start: ${t.toStringWithCauses}")
-            self ! Internal.Ready
-          }
-
-      case Internal.Ready =>
         logger.info(ServiceMain.readyMessageWithLine(s"$ownAgentPath is ready"))
         become("ready")(ready)
         unstashAll()
@@ -842,7 +833,6 @@ object AgentOrderKeeper {
     final case class Recover(agentState: AgentState)
     final case class SubagentKeeperInitialized(agentState: AgentState, tried: Try[Unit])
     final case class OrdersRecovered(agentState: AgentState)
-    case object Ready
     final case class Due(orderId: OrderId)
     final case class JobDue(jobKey: JobKey)
     case object JobDriverStopped

@@ -16,9 +16,10 @@ import js7.base.service.{MainService, Service}
 import js7.base.thread.IOExecutor
 import js7.base.time.AlarmClock
 import js7.base.time.ScalaTime.*
+import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.RightUnit
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{ProgramTermination, SetOnce}
+import js7.base.utils.{Allocated, ProgramTermination, SetOnce}
 import js7.common.system.ThreadPools.unlimitedSchedulerResource
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
@@ -88,7 +89,7 @@ extends MainService with Service.StoppableByRequest
         .when(first) {
           (dedicatedOnce
             .toOption
-            .fold(Task.unit)(_.localSubagentDriver.stop(processSignal))
+            .fold(Task.unit)(_.terminate(processSignal))
             .*>(orderToProcessing.initiateStopWithProblem(SubagentIsShuttingDownProblem))
             .*>(Task.defer {
               val orderIds = orderToProcessing.toMap.keys.toVector.sorted
@@ -119,37 +120,40 @@ extends MainService with Service.StoppableByRequest
 
   def executeDedicateSubagent(cmd: DedicateSubagent)
   : Task[Checked[DedicateSubagent.Response]] =
-    Task.defer {
-      val isFirst = dedicatedOnce.trySet(
-        new Dedicated(
-          newLocalSubagentDriver(cmd.subagentId, cmd.agentPath, cmd.controllerId)))
-      if (!isFirst) {
-        // TODO Idempotent: Frisch gewidmeter Subagent ist okay. Kein Kommando darf eingekommen sein.
-        //if (cmd.subagentId == dedicatedOnce.orThrow.subagentId)
-        //  Task.pure(Right(DedicateSubagent.Response(subagentRunId, EventId.BeforeFirst)))
-        //else
-        logger.warn(s"$cmd => $SubagentAlreadyDedicatedProblem: $dedicatedOnce")
-        Task.left(SubagentAlreadyDedicatedProblem)
-      } else {
-        // TODO Check agentPath, controllerId (handle in SubagentState?)
-        logger.info(s"Subagent dedicated to be ${cmd.subagentId} in ${cmd.agentPath}, is ready")
-        Task.right(DedicateSubagent.Response(subagentRunId, EventId.BeforeFirst, Some(Js7Version)))
-      }
-    }
+    allocateLocalSubagentDriver(cmd.subagentId, cmd.agentPath, cmd.controllerId)
+      .flatMap(allocatedLocalSubagentDriver => Task.defer {
+        val isFirst = dedicatedOnce.trySet(
+          new Dedicated(allocatedLocalSubagentDriver))
+        if (!isFirst) {
+          // TODO Idempotent: Frisch gewidmeter Subagent ist okay. Kein Kommando darf eingekommen sein.
+          //if (cmd.subagentId == dedicatedOnce.orThrow.subagentId)
+          //  Task.pure(Right(DedicateSubagent.Response(subagentRunId, EventId.BeforeFirst)))
+          //else
+          logger.warn(s"$cmd => $SubagentAlreadyDedicatedProblem: $dedicatedOnce")
+          Task.left(SubagentAlreadyDedicatedProblem)
+        } else {
+          // TODO Check agentPath, controllerId (handle in SubagentState?)
+          logger.info(s"Subagent dedicated to be ${cmd.subagentId} in ${cmd.agentPath}, is ready")
+          Task.right(
+            DedicateSubagent.Response(subagentRunId, EventId.BeforeFirst, Some(Js7Version)))
+        }
+      })
 
-  private def newLocalSubagentDriver(
+  private def allocateLocalSubagentDriver(
     subagentId: SubagentId,
     agentPath: AgentPath,
     controllerId: ControllerId)
-  =
-    new LocalSubagentDriver[SubagentState](
-      subagentId,
-      journal,
-      agentPath,
-      controllerId,
-      jobLauncherConf,
-      subagentDriverConf,
-      conf)
+  : Task[Allocated[Task, LocalSubagentDriver[SubagentState]]] =
+    LocalSubagentDriver
+      .resource[SubagentState](
+        subagentId,
+        journal,
+        agentPath,
+        controllerId,
+        jobLauncherConf,
+        subagentDriverConf,
+        conf)
+      .toAllocated
 
   def executeCoupleDirector(cmd: CoupleDirector): Task[Checked[Unit]] =
     Task {
@@ -280,13 +284,21 @@ object Subagent
     })
 
   private[subagent] final class Dedicated(
-    val localSubagentDriver: LocalSubagentDriver[SubagentState])
+    val allocatedLocalSubagentDriver: Allocated[Task, LocalSubagentDriver[SubagentState]])
   {
-    def subagentId = localSubagentDriver.subagentId
-    def agentPath = localSubagentDriver.agentPath
-    def controllerId = localSubagentDriver.controllerId
+    val localSubagentDriver: LocalSubagentDriver[SubagentState] =
+      allocatedLocalSubagentDriver.allocatedThing
 
-    override def toString = s"Dedicated($subagentId $agentPath $controllerId)"
+    val subagentId = localSubagentDriver.subagentId
+
+    def terminate(signal: Option[ProcessSignal]) =
+      localSubagentDriver.terminate(signal) *>
+        allocatedLocalSubagentDriver.stop
+
+    override def toString = {
+      import localSubagentDriver.{agentPath, controllerId}
+      s"Dedicated($subagentId $agentPath $controllerId)"
+    }
   }
 
   private final case class Processing(

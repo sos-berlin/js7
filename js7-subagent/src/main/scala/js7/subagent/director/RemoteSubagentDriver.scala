@@ -1,6 +1,7 @@
 package js7.subagent.director
 
 import akka.actor.ActorSystem
+import cats.effect.Resource
 import cats.effect.concurrent.Deferred
 import cats.syntax.flatMap.*
 import cats.syntax.foldable.*
@@ -19,6 +20,7 @@ import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.monixutils.{AsyncMap, AsyncVariable, Switch}
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
+import js7.base.service.Service
 import js7.base.stream.Numbered
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
@@ -55,7 +57,7 @@ import scala.util.{Failure, Success}
 // - dedicate, couple, reset, delete, ...
 // - Which operations may overlap with, wait for or cancel the older?
 
-private final class RemoteSubagentDriver[S0 <: SubagentDirectorState[S0]](
+private final class RemoteSubagentDriver[S0 <: SubagentDirectorState[S0]] private(
   val subagentItem: SubagentItem,
   httpsConfig: HttpsConfig,
   protected val journal: Journal[S0],
@@ -64,7 +66,9 @@ private final class RemoteSubagentDriver[S0 <: SubagentDirectorState[S0]](
   protected val subagentConf: SubagentConf,
   protected val recouplingStreamReaderConf: RecouplingStreamReaderConf,
   actorSystem: ActorSystem)
-extends SubagentDriver with SubagentEventListener[S0]
+extends Service.StoppableByRequest
+with SubagentDriver
+with SubagentEventListener[S0]
 {
   protected type S = S0
 
@@ -104,9 +108,11 @@ extends SubagentDriver with SubagentEventListener[S0]
 
   private val orderToDeferred = AsyncMap.stoppable[OrderId, Deferred[Task, OrderProcessed]]()
 
-  val start: Task[Unit] =
-    logger.debugTask(
-      startEventListener)
+  def start =
+    startEventListener *>
+      startService(
+        untilStopRequested *>
+          terminate)
 
   def startMovedSubagent(previous: RemoteSubagentDriver[S]): Task[Unit] =
     logger.debugTask(
@@ -128,19 +134,18 @@ extends SubagentDriver with SubagentEventListener[S0]
             .*>*/(Task.unit/*dispatcher.start(subagentRunId)*/)
         })
 
-  def stop(@unused signal: Option[ProcessSignal]): Task[Unit] =
-    stop
+  def terminate(@unused signal: Option[ProcessSignal]): Task[Unit] =
+    terminate
 
-  val stop: Task[Unit] =
-    logger
-      .debugTask(
-        stoppingVar.flatMap(_.tryPut(()))
+  private val terminate: Task[Unit] =
+    stoppingVar
+      .flatMap(_.tryPut(()))
       .*>(Task.defer {
         stopping = true
         Task.parZip2(dispatcher.shutdown, stopEventListener)
           .*>(client.tryLogout.void)
           .logWhenItTakesLonger(s"RemoteSubagentDriver($subagentId).stop")
-          }))
+      })
       .memoize
 
   private val resetLock = AsyncLock()
@@ -319,7 +324,9 @@ extends SubagentDriver with SubagentEventListener[S0]
 
   /** Continue a recovered processing Order. */
   def recoverOrderProcessing(order: Order[Order.Processing]) =
-    startOrderProcessing(order)
+    logger.traceTask("recoverOrderProcessing", order.id)(
+      requireNotStopping.flatMapT(_ =>
+        startOrderProcessing(order)))
 
 
   def startOrderProcessing(order: Order[Order.Processing]): Task[Checked[Fiber[OrderProcessed]]] =
@@ -650,6 +657,21 @@ object RemoteSubagentDriver
 {
   private val reconnectErrorDelay = 5.s/*TODO*/
   private val tryPostErrorDelay = 5.s/*TODO*/
+
+  private[director] def resource[S <: SubagentDirectorState[S]](
+    subagentItem: SubagentItem,
+    httpsConfig: HttpsConfig,
+    journal: Journal[S],
+    controllerId: ControllerId,
+    conf: SubagentDriver.Conf,
+    subagentConf: SubagentConf,
+    recouplingStreamReaderConf: RecouplingStreamReaderConf,
+    actorSystem: ActorSystem)
+  : Resource[Task, RemoteSubagentDriver[S]] =
+    Service.resource(Task(
+      new RemoteSubagentDriver[S](
+        subagentItem, httpsConfig, journal, controllerId,
+        conf, subagentConf, recouplingStreamReaderConf, actorSystem)))
 
   final case class SubagentDriverStoppedProblem(subagentId: SubagentId) extends Problem.Coded {
     def arguments = Map("subagentId" -> subagentId.string)

@@ -204,11 +204,12 @@ private object OrderActorTest {
     private val agentConf = AgentConfiguration.forTest(dir, name = "OrderActorTest", config)
     val subagentKeeper =
       new SubagentKeeper(
+        localSubagentId = None,
         TestAgentPath,
+        controllerId,
         failedOverSubagentId = None,
         journal, jobLauncherConf,
         agentConf.subagentDirectorConf, context.system)
-    subagentKeeper.initialize(localSubagentId = None, controllerId).await(99.s)
     subagentKeeper.start.await(99.s)
 
     private val orderActor = watch(actorOf(

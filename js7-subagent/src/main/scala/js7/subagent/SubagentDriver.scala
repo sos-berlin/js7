@@ -32,9 +32,7 @@ trait SubagentDriver
 
   protected val conf: SubagentDriver.Conf
 
-  def start: Task[Unit]
-
-  def stop(signal: Option[ProcessSignal]): Task[Unit]
+  def terminate(signal: Option[ProcessSignal]): Task[Unit]
 
   def tryShutdown: Task[Unit]
 

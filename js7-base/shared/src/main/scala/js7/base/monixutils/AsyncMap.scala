@@ -205,8 +205,10 @@ object AsyncMap
           whenEmpty.complete(())))
 
     final val stop: Task[Unit] =
-      logger.traceTask(
-        initiateStop *> whenStopped)
+      logger
+        .traceTask(s"$name.stop")(
+          initiateStop *> whenStopped)
+        .memoize
 
     override protected[monixutils] final def onEntryInsert(): Checked[Unit] =
       Option(stoppingProblem).toLeft(())
