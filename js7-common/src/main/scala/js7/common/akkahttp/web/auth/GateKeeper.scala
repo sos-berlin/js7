@@ -24,7 +24,6 @@ import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.auth.IdToUser
 import monix.eval.Task
 import monix.execution.Scheduler
-import scala.collection.immutable.Set
 import scala.concurrent.duration.*
 
 /**
@@ -45,7 +44,7 @@ final class GateKeeper[U <: User](
 
   import configuration.{getIsPublic, idToUser, isPublic, loopbackIsPublic, realm}
 
-  private val httpClientAuthRequired = scheme == WebServerBinding.Https && configuration.httpsClientAuthRequired
+  private val httpsClientAuthRequired = scheme == WebServerBinding.Https && configuration.httpsClientAuthRequired
   private val authenticator = new OurMemoizingAuthenticator(idToUser)
   private val basicChallenge = HttpChallenges.basic(realm)
   val credentialsMissing = AuthenticationFailedRejection(CredentialsMissing, basicChallenge)
@@ -85,14 +84,14 @@ final class GateKeeper[U <: User](
     *     - iff the HTTPS distinguished name refers to more than one UserId, or
     *   - Right(User)
     *     - iff the the HTTPS distinguished name refers to only one UserId, or
-    *     - if !httpClientAuthRequired, the HTTP authenticated UserId, or
+    *     - if !httpsClientAuthRequired, the HTTP authenticated UserId, or
     *     - if not HTTP authentication, User is Anonymous.
     */
   val preAuthenticate: Directive1[Either[Set[UserId], U]] =
     Directive(inner =>
       seal {
         httpAuthenticate { httpUser =>
-          if (!httpClientAuthRequired)
+          if (!httpsClientAuthRequired)
             inner(Tuple1(Right(httpUser)))
           else
             clientHttpsAuthenticate {
@@ -227,18 +226,7 @@ final class GateKeeper[U <: User](
   def invalidAuthenticationDelay = configuration.invalidAuthenticationDelay
 
   def secureStateString: String =
-    if (configuration.isPublic)
-      " - ACCESS IS PUBLIC - EVERYONE HAS ACCESS (public = true)"
-    else if (configuration.loopbackIsPublic && configuration.getIsPublic)
-      " - ACCESS VIA LOOPBACK (127.*.*.*) INTERFACE OR VIA HTTP METHODS GET OR HEAD IS PUBLIC (loopback-is-public = true, get-is-public = true) "
-    else if (configuration.loopbackIsPublic)
-      " - ACCESS VIA LOOPBACK (127.*.*.*) INTERFACE IS PUBLIC (loopback-is-public = true)"
-    else if (configuration.getIsPublic)
-      " - ACCESS VIA HTTP METHODS GET OR HEAD IS PUBLIC (get-is-public = true)"
-    else if (httpClientAuthRequired)
-      " - HTTPS client authentication (mutual TLS) required"
-    else
-      ""
+    configuration.secureStateString(scheme)
 }
 
 object GateKeeper
@@ -278,6 +266,20 @@ object GateKeeper
     val publicGetPermissions = Set[Permission](GetPermission)
     val anonymous: U = idToUser(UserId.Anonymous)
       .getOrElse(sys.error("Anonymous user has not been defined"))  // Should not happen
+
+    def secureStateString(scheme: WebServerBinding.Scheme): String =
+      if (isPublic)
+        " - ACCESS IS PUBLIC - EVERYONE HAS ACCESS (public = true)"
+      else if (loopbackIsPublic && getIsPublic)
+        " - ACCESS VIA LOOPBACK (127.*.*.*) INTERFACE OR VIA HTTP METHODS GET OR HEAD IS PUBLIC (loopback-is-public = true, get-is-public = true) "
+      else if (loopbackIsPublic)
+        " - ACCESS VIA LOOPBACK (127.*.*.*) INTERFACE IS PUBLIC (loopback-is-public = true)"
+      else if (getIsPublic)
+        " - ACCESS VIA HTTP METHODS GET OR HEAD IS PUBLIC (get-is-public = true)"
+      else if (scheme == WebServerBinding.Https && httpsClientAuthRequired)
+        " - HTTPS client authentication (mutual TLS) required"
+      else
+        ""
   }
 
   object Configuration {

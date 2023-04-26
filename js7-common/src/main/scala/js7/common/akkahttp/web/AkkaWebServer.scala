@@ -1,35 +1,42 @@
 package js7.common.akkahttp.web
 
 import akka.actor.ActorSystem
+import akka.http.scaladsl.model.StatusCodes.ServiceUnavailable
+import akka.http.scaladsl.server.Directives.{complete, extractRequest}
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.settings.{ParserSettings, ServerSettings}
 import akka.http.scaladsl.{ConnectionContext, Http, HttpsConnectionContext}
 import akka.stream.TLSClientAuth
 import cats.effect.Resource
-import cats.syntax.foldable.*
-import cats.syntax.parallel.*
-import cats.syntax.show.*
-import cats.syntax.traverse.*
+import cats.syntax.all.*
 import com.typesafe.config.{Config, ConfigFactory}
+import js7.base.auth.SimpleUser
 import js7.base.configutils.Configs.*
 import js7.base.generic.Completed
 import js7.base.io.https.Https.loadSSLContext
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
+import js7.base.problem.Problem
 import js7.base.service.Service
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.SetOnce
 import js7.base.web.Uri
+import js7.common.akkahttp.ExceptionHandling
+import js7.common.akkahttp.StandardMarshallers.*
 import js7.common.akkahttp.web.AkkaWebServer.*
+import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.data.{WebServerBinding, WebServerPort}
 import js7.common.http.JsonStreamingSupport
 import js7.common.internet.IP.inetSocketAddressShow
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import monix.eval.Task
 import monix.execution.Scheduler
+import monix.execution.atomic.Atomic
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.Deadline
 import scala.concurrent.{Future, Promise}
 import scala.util.chaining.scalaUtilChainingOps
+import scala.util.{Failure, Success}
 
 /**
  * @author Joacim Zschimmer
@@ -125,7 +132,7 @@ object AkkaWebServer
   def resource(
     bindings: Seq[WebServerBinding],
     config: Config,
-    route: (WebServerBinding, Future[Deadline]) => Task[BoundRoute])
+    toBoundRoute: (WebServerBinding, Future[Deadline]) => Task[BoundRoute])
     (implicit actorSystem: ActorSystem)
   : Resource[Task, AkkaWebServer & HasUri] =
     Service.resource(Task.defer {
@@ -146,7 +153,7 @@ object AkkaWebServer
           binding: WebServerBinding,
           httpsConnectionContext: Option[HttpsConnectionContext] = None)
         : Task[Http.ServerBinding] =
-          Task.defer {
+          Task.deferAction { implicit scheduler =>
             val serverBuilder = akkaHttp
               .newServerAt(
                 interface = binding.address.getAddress.getHostAddress,
@@ -159,13 +166,15 @@ object AkkaWebServer
                       .withCustomMediaTypes(JsonStreamingSupport.CustomMediaTypes *)
                       .withMaxContentLength(JsonStreamingSupport.JsonObjectMaxSize /*js7.conf ???*/)))
 
-            val whenTerminating = Promise[Deadline]()
+            val terminatingPromise = Promise[Deadline]()
+            val whenTerminating = terminatingPromise.future
+            val boundRoute = new DelegatingBoundRoute(
+              binding.scheme, toBoundRoute(binding, whenTerminating), config)
             for {
-              boundRoute <- route(binding, whenTerminating.future)
               serverBinding <-
-                Task.deferFutureAction { implicit s =>
+                Task.deferFutureAction { implicit scheduler =>
                   val whenBound = serverBuilder.bind(boundRoute.webServerRoute)
-                  whenTerminating.completeWith(whenBound.flatMap(_.whenTerminationSignalIssued))
+                  terminatingPromise.completeWith(whenBound.flatMap(_.whenTerminationSignalIssued))
                   whenBound
                 }
             } yield {
@@ -218,5 +227,43 @@ object AkkaWebServer
 
         def boundMessageSuffix = ""
       }
+  }
+
+  private final class DelegatingBoundRoute(
+    scheme: WebServerBinding.Scheme,
+    realBoundRoute: Task[BoundRoute],
+    protected val config: Config)
+    (implicit scheduler: Scheduler)
+  extends BoundRoute {
+    private val whenRealBound = realBoundRoute.runToFuture
+    private val _boundRoute = Atomic(none[BoundRoute])
+
+    private object stillNotAvailable extends BoundRoute {
+      val webServerRoute =
+        complete(ServiceUnavailable -> Problem("Still starting"))
+
+      lazy val boundMessageSuffix =
+        GateKeeper.Configuration.fromConfig(config, SimpleUser.apply, Nil)
+          .secureStateString(scheme)
+    }
+
+    def webServerRoute =
+      extractRequest/*force recalculation with each call*/(_ =>
+        selectBoundRoute.webServerRoute)
+
+    def boundMessageSuffix =
+      selectBoundRoute.boundMessageSuffix
+
+    def selectBoundRoute: BoundRoute =
+      _boundRoute.get().getOrElse(
+        whenRealBound.value match {
+          case None => stillNotAvailable
+          case Some(Failure(t)) => throw t
+          case Some(Success(realBoundRoute)) =>
+            if (!_boundRoute.compareAndSet(None, Some(realBoundRoute))) {
+              logger.debug(s"$realBoundRoute is ready")
+            }
+            realBoundRoute
+        })
   }
 }
