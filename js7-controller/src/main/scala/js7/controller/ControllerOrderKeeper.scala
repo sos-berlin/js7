@@ -45,7 +45,7 @@ import js7.controller.problems.{ControllerIsNotReadyProblem, ControllerIsShuttin
 import js7.core.command.CommandMeta
 import js7.core.problems.ReverseReleaseEventsProblem
 import js7.data.Problems.{CannotDeleteChildOrderProblem, CannotDeleteWatchingOrderProblem, UnknownOrderProblem}
-import js7.data.agent.AgentRefStateEvent.{AgentEventsObserved, AgentReady, AgentReset, AgentShutDown}
+import js7.data.agent.AgentRefStateEvent.{AgentEventsObserved, AgentMirroredEvent, AgentReady, AgentReset, AgentShutDown}
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
 import js7.data.board.BoardEvent.{NoticeDeleted, NoticePosted}
 import js7.data.board.{BoardPath, BoardState, Notice, NoticeId}
@@ -526,8 +526,8 @@ with MainJournalingActor[ControllerState, Event]
                           case _ => Timestamped(keyedEvent) :: Nil
                         }
 
-                      case KeyedEvent(_: NoKey, _: ClusterEvent) =>
-                        Nil
+                      case ke @ KeyedEvent(_: NoKey, _: ClusterEvent) =>
+                        Timestamped(agentPath <-: AgentMirroredEvent(ke)) :: Nil
 
                       case _ =>
                         logger.error(s"Unknown event received from ${agentEntry.agentPath}: $keyedEvent")

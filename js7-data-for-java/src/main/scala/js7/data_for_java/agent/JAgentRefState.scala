@@ -6,6 +6,7 @@ import javax.annotation.Nonnull
 import js7.base.problem.Problem
 import js7.data.agent.{AgentPath, AgentRefState}
 import js7.data.platform.PlatformInfo
+import js7.data_for_java.cluster.JClusterState
 import js7.data_for_java.common.JJsonable
 import scala.jdk.OptionConverters.*
 
@@ -34,6 +35,10 @@ extends JJsonable[JAgentRefState]
   @Nonnull
   def problem: Optional[Problem] =
     asScala.problem.toJava
+
+  @Nonnull
+  def clusterState: JClusterState =
+    JClusterState(asScala.clusterState)
 }
 
 object JAgentRefState extends JJsonable.Companion[JAgentRefState]
@@ -42,6 +47,6 @@ object JAgentRefState extends JJsonable.Companion[JAgentRefState]
   override def fromJson(jsonString: String): VEither[Problem, JAgentRefState] =
     super.fromJson(jsonString)
 
-  protected def jsonEncoder = AgentRefState.jsonCodec
-  protected def jsonDecoder = AgentRefState.jsonCodec
+  protected def jsonEncoder = AgentRefState.jsonEncoder
+  protected def jsonDecoder = AgentRefState.jsonDecoder
 }

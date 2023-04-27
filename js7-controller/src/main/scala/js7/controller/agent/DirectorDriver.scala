@@ -21,6 +21,7 @@ import js7.controller.agent.DirectorDriver.*
 import js7.data.agent.AgentRefStateEvent.{AgentCoupled, AgentReset}
 import js7.data.agent.Problems.AgentNotDedicatedProblem
 import js7.data.agent.{AgentPath, AgentRefState, AgentRunId}
+import js7.data.cluster.ClusterEvent
 import js7.data.controller.ControllerState
 import js7.data.delegate.DelegateCouplingState.{Coupled, Resetting}
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, Stamped}
@@ -228,7 +229,8 @@ private[agent] object DirectorDriver {
     AgentEvent.AgentShutDown.getClass,
     classOf[SubagentItemStateEvent],
     classOf[InventoryItemEvent],
-    classOf[OrderWatchEvent])
+    classOf[OrderWatchEvent],
+    classOf[ClusterEvent])
 
   def resource(
     agentPath: AgentPath,

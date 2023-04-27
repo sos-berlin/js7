@@ -1,10 +1,14 @@
 package js7.data.agent
 
+import io.circe.Codec
+import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.CirceUtils.{DecodeWithDefaults, deriveConfiguredCodec}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Problem
 import js7.base.utils.IntelliJUtils.intelliJuseImport
-import js7.data.event.{Event, EventId}
+import js7.data.cluster.ClusterEvent
+import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
+import js7.data.event.{Event, EventId, KeyedEvent, KeyedEventTypedJsonCodec}
 import js7.data.platform.PlatformInfo
 
 /**
@@ -52,6 +56,17 @@ object AgentRefStateEvent
   type AgentReset = AgentReset.type
   case object AgentReset extends AgentRefStateEvent
 
+  final case class AgentMirroredEvent(event: KeyedEvent[Event])
+  extends AgentRefStateEvent
+  object AgentMirroredEvent {
+    private implicit val innerEventCodec: Codec.AsObject[KeyedEvent[Event]] =
+      KeyedEventTypedJsonCodec[Event](
+        KeyedSubtype[ClusterEvent])
+
+    private[AgentRefStateEvent] implicit def jsonCodec: Codec.AsObject[AgentMirroredEvent] =
+      deriveCodec[AgentMirroredEvent]
+  }
+
   implicit val jsonCodec: TypedJsonCodec[AgentRefStateEvent] = TypedJsonCodec(
     Subtype(deriveConfiguredCodec[AgentDedicated], aliases = Seq("AgentCreated")),
     Subtype(AgentCoupled),
@@ -60,7 +75,8 @@ object AgentRefStateEvent
     Subtype(deriveConfiguredCodec[AgentEventsObserved]),
     Subtype(AgentShutDown),
     Subtype(deriveConfiguredCodec[AgentResetStarted]),
-    Subtype(AgentReset))
+    Subtype(AgentReset),
+    Subtype[AgentMirroredEvent])
 
   intelliJuseImport(DecodeWithDefaults)
 }

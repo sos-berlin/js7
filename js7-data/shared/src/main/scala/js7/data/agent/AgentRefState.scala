@@ -1,12 +1,15 @@
 package js7.data.agent
 
-import io.circe.Codec
-import io.circe.generic.semiauto.deriveCodec
+import io.circe.generic.semiauto.deriveEncoder
+import io.circe.{Decoder, Encoder}
 import js7.base.problem.{Checked, Problem}
-import js7.data.agent.AgentRefStateEvent.{AgentCoupled, AgentCouplingFailed, AgentDedicated, AgentEventsObserved, AgentReady, AgentReset, AgentResetStarted, AgentShutDown}
+import js7.base.utils.ScalaUtils.syntax.RichJavaClass
+import js7.data.agent.AgentRefStateEvent.{AgentCoupled, AgentCouplingFailed, AgentDedicated, AgentEventsObserved, AgentMirroredEvent, AgentReady, AgentReset, AgentResetStarted, AgentShutDown}
+import js7.data.cluster.{ClusterEvent, ClusterState}
 import js7.data.delegate.DelegateCouplingState
 import js7.data.delegate.DelegateCouplingState.{Coupled, Reset, Resetting, ShutDown}
-import js7.data.event.EventId
+import js7.data.event.KeyedEvent.NoKey
+import js7.data.event.{EventId, KeyedEvent}
 import js7.data.item.UnsignedSimpleItemState
 import js7.data.platform.PlatformInfo
 
@@ -17,6 +20,7 @@ final case class AgentRefState(
   couplingState: DelegateCouplingState,
   eventId: EventId,
   problem: Option[Problem],
+  clusterState: ClusterState,
   platformInfo: Option[PlatformInfo])
 extends UnsignedSimpleItemState
 {
@@ -98,6 +102,16 @@ extends UnsignedSimpleItemState
           couplingState = Reset.byCommand,
           agentRunId = None,
           problem = None))
+
+      case AgentMirroredEvent(keyedEvent) =>
+        keyedEvent match {
+          case KeyedEvent(_: NoKey, event: ClusterEvent) =>
+            for (clusterState <- clusterState.applyEvent(event)) yield
+              copy(clusterState = clusterState)
+
+          case _ => Left(Problem(
+            s"Unknown mirrored Event in AgentMirroredEvent: ${keyedEvent.getClass.shortClassName}"))
+        }
     }
 }
 
@@ -107,8 +121,24 @@ object AgentRefState extends UnsignedSimpleItemState.Companion[AgentRefState]
   type Item = AgentRef
   override type ItemState = AgentRefState
 
-  implicit val jsonCodec: Codec.AsObject[AgentRefState] = deriveCodec
-
   def apply(agentRef: AgentRef) =
-    new AgentRefState(agentRef, None, None, Reset.fresh, EventId.BeforeFirst, None, None)
+    new AgentRefState(agentRef, None, None, Reset.fresh, EventId.BeforeFirst, None,
+      ClusterState.Empty, None)
+
+  implicit val jsonEncoder: Encoder.AsObject[AgentRefState] =
+    deriveEncoder
+
+  implicit val jsonDecoder: Decoder[AgentRefState] =
+    c => for {
+      agentRef <- c.get[AgentRef]("agentRef")
+      agentRunId <- c.get[Option[AgentRunId]]("agentRunId")
+      timezone <- c.get[Option[String]]("timezone")
+      couplingState <- c.get[DelegateCouplingState]("couplingState")
+      eventId <- c.get[EventId]("eventId")
+      problem <- c.get[Option[Problem]]("problem")
+      clusterState <- c.getOrElse[ClusterState]("clusterState")(ClusterState.Empty)
+      platformInfo <- c.get[Option[PlatformInfo]]("platformInfo")
+    } yield
+      AgentRefState(
+        agentRef, agentRunId, timezone, couplingState, eventId, problem, clusterState, platformInfo)
 }

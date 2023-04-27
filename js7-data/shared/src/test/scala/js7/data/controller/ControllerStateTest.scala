@@ -211,6 +211,9 @@ final class ControllerStateTest extends OurAsyncTestSuite
         "couplingState": {
           "TYPE": "Coupled"
         },
+        "clusterState": {
+          "TYPE": "Empty"
+        },
         "eventId": 7
       }, {
         "TYPE": "SubagentItemState",
@@ -525,7 +528,8 @@ object ControllerStateTest
       Timezone("Europe/Berlin")),
     Map(
       agentRef.path -> AgentRefState(
-        agentRef, None, None, DelegateCouplingState.Coupled, EventId(7), None, None),
+        agentRef, None, None, DelegateCouplingState.Coupled, EventId(7), None,
+        ClusterState.Empty, None),
       lock.path -> LockState(lock),
       boardState.path -> boardState,
       subagentItem.id -> subagentItemState,

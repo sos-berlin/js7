@@ -1,7 +1,7 @@
 package js7.data.event
 
 import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, Encoder, HCursor, Json}
+import io.circe.{Codec, Decoder, Encoder, HCursor, Json}
 import js7.base.circeutils.typed.TypedJsonCodec.{TypeFieldName, UnknownClassForJsonException, typeName, unknownJsonTypeFailure}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.utils.Collections.*
@@ -18,8 +18,7 @@ final class KeyedEventTypedJsonCodec[E <: Event: ClassTag](
   private val superclassName: String,
   private val printName: String,
   private val subtypes: Seq[KeyedSubtype[? <: E]])
-extends Encoder.AsObject[KeyedEvent[E]]
-with Decoder[KeyedEvent[E]]
+extends Codec.AsObject[KeyedEvent[E]]
 {
   private val classToEncoder: Map[Class[?], Encoder.AsObject[KeyedEvent[E]]] =
     subtypes

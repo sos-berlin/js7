@@ -13,8 +13,9 @@ import js7.base.utils.CatsBlocking.BlockingTaskResource
 import js7.base.utils.ScalaUtils.syntax.{RichEither, RichThrowable}
 import js7.base.web.Uri
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
-import js7.data.agent.{AgentPath, AgentRef}
+import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterNodesAppointed, ClusterWatchRegistered}
+import js7.data.cluster.ClusterState
 import js7.data.order.OrderEvent.{OrderDetachable, OrderFinished, OrderProcessingStarted}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.subagent.{SubagentId, SubagentItem}
@@ -60,6 +61,9 @@ final class SimpleAgentClusterTest extends ControllerClusterTester
 
           val stampedSeq = primaryController.runOrder(FreshOrder(OrderId("🔹"), TestWorkflow.path))
           assert(stampedSeq.last.value == OrderFinished())
+
+          assert(primaryController.controllerState().keyTo(AgentRefState)(agentPath)
+            .clusterState.isInstanceOf[ClusterState.Coupled])
 
           assertEqualJournalFiles(primary.controllerEnv, backup.controllerEnv, n = 1)
           assertEqualJournalFiles(subagentEnvs(0), subagentEnvs(1), n = 1)
