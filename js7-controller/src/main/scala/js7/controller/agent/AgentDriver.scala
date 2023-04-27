@@ -245,7 +245,7 @@ extends Service.StoppableByRequest
               }
               .onErrorHandle(t => Task(logger.error(
                 s"send(${input.toShortString}) => ${t.toStringWithCauses}", t)))
-              .cancelWhen(untilStopRequested)
+              .raceFold(untilStopRequested)
               .startAndForget))
     })
 
@@ -405,7 +405,7 @@ extends Service.StoppableByRequest
     startNewDirectorDriver
       .onErrorHandle(t => Task(logger.error(
         s"${src.value} startDirectorDriver => ${t.toStringWithCauses}", t)))
-      .cancelWhen(untilStopRequested)
+      .raceFold(untilStopRequested)
       .startAndForget
 
   private def startNewDirectorDriver: Task[Unit] =

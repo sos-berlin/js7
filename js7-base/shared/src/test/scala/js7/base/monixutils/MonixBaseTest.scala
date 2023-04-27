@@ -285,27 +285,27 @@ final class MonixBaseTest extends OurAsyncTestSuite
         .runToFuture
     }
 
-    "cancelWhen" - {
+    "raceFold" - {
       "canceled" in {
         @volatile var canceled = false
         Task.never
           .doOnCancel(Task {
             canceled = true
-            Logger[this.type].info(s"cancelWhen canceled")
+            Logger[this.type].info(s"raceFold canceled")
           })
-          .cancelWhen(Task.unit)
+          .raceFold(Task.unit)
           .map(result => assert(result.getClass == classOf[Unit] /*&& canceled NOT RELIABLE ???*/))
           .runToFuture
       }
 
       "not canceled" in {
-        @volatile var canceled = false
+        @volatile var cancelerIsCanceled = false
         Task(7)
-          .cancelWhen(Task.never.doOnCancel(Task {
-            canceled = true // The canceler will not be canceld
+          .raceFold(Task.never.doOnCancel(Task {
+            cancelerIsCanceled = true // The canceler will not be canceld
           }))
           .<*(Task.sleep(100.ms))
-          .map(result => assert(result == 7 && !canceled))
+          .map(result => assert(result == 7 && cancelerIsCanceled))
           .runToFuture
       }
     }

@@ -146,7 +146,7 @@ extends Service.StoppableByRequest
           .*>(Task.defer(Task
             .unless(isStopRequested)(
               again(())))))
-      .cancelWhen(untilStopRequested)
+      .raceFold(untilStopRequested)
       .guarantee(untilFetchingStopped.complete(()))
 
   private def observeAndConsumeEvents: Task[Completed] =

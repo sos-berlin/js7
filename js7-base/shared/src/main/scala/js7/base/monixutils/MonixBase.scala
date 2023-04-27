@@ -60,13 +60,10 @@ object MonixBase
           case _ => task
         }
 
-      def cancelWhen[B >: A](canceler: Task[B]): Task[B] =
+      def raceFold[B >: A](canceler: Task[B]): Task[B] =
         Task
-          .racePair(canceler.uncancelable, task)
-          .flatMap {
-            case Left((canceled, fiber)) => fiber.cancel.as(canceled)
-            case Right((_, canceled)) => Task.pure(canceled)
-          }
+          .race(canceler, task)
+          .map(_.fold(identity, identity))
 
       def startAndForgetOrLog(what: => String): Task[Unit] =
         task
