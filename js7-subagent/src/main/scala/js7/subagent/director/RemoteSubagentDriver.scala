@@ -617,7 +617,8 @@ with SubagentEventListener[S0]
         }
     }
 
-  private def dependentSignedItems(command: SubagentCommand): Task[Checked[Seq[Signed[SignableItem]]]] =
+  private def dependentSignedItems(command: SubagentCommand)
+  : Task[Checked[Seq[Signed[SignableItem]]]] =
     command match {
       case startOrderProcess: StartOrderProcess =>
         val alreadyAttached = attachedItemKeys.get

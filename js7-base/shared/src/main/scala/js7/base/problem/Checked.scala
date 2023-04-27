@@ -162,7 +162,7 @@ object Checked
         .orThrow
 
     def orThrowWithoutStacktrace: A =
-      underlying.left.map(_.throwable).orThrow
+      orThrow //?
   }
 
   implicit final class RichCheckedIterable[A](private val underlying: IterableOnce[Checked[A]]) extends AnyVal {

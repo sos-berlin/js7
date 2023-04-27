@@ -560,8 +560,9 @@ object ScalaUtils
             if (t.getStackTrace.isEmpty) t = t.appendCurrentStackTrace
             throw t.dropTopMethodsFromStackTrace("orThrow$extension")
 
-          case Left(_) => throw new NoSuchElementException(s"Either.orThrow on $either")
-            .dropTopMethodsFromStackTrace("orThrow$extension")
+          case Left(_) =>
+            throw new NoSuchElementException(s"Either.orThrow on $either")
+              .dropTopMethodsFromStackTrace("orThrow$extension")
 
           case Right(r) => r
         }

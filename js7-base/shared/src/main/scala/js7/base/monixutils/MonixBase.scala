@@ -331,7 +331,7 @@ object MonixBase
           }
           .flatTap {
             case Left(problem) => release.as(Left(problem))
-            case Right(_: A) => Task.unit
+            case Right(_) => Task.unit
           }
     }
 
