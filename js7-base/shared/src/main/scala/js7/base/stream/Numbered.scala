@@ -4,7 +4,7 @@ import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, DecodingFailure, Encoder, Json}
 import js7.base.circeutils.CirceUtils.requireJson
 
-final case class Numbered[A](number: Long, value: A)
+final case class Numbered[+A](number: Long, value: A)
 {
   override def toString =
     s"#$number $value"

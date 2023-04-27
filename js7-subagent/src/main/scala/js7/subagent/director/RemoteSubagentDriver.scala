@@ -19,14 +19,13 @@ import js7.base.log.{CorrelId, CorrelIdWrapped, Logger}
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.monixutils.{AsyncMap, AsyncVariable, Switch}
 import js7.base.problem.Checked.*
-import js7.base.problem.{Checked, Problem}
+import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.service.Service
 import js7.base.stream.Numbered
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{AsyncLock, SetOnce}
 import js7.base.web.HttpClient
-import js7.base.web.HttpClient.HttpException
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.common.system.PlatformInfos.currentPlatformInfo
 import js7.data.controller.ControllerId
@@ -192,6 +191,7 @@ with SubagentEventListener[S0]
         .executeSubagentCommand(Numbered(0,
           SubagentCommand.ShutDown(processSignal, dontWaitForDirector = dontWaitForDirector,
             restart = true)))
+        .orThrow
         .void
         .onErrorHandle(t =>  // Ignore when Subagent is unreachable
           logger.error(s"SubagentCommand.ShutDown => ${t.toStringWithCauses}"))
@@ -228,8 +228,7 @@ with SubagentEventListener[S0]
             shuttingDown = false
           }))
           .rightAs(response)
-          .map(_.orThrow)
-          /*.<*(dispatcher.start(response.subagentRunId))*/))
+          .orThrow))
   }
 
   private def couple(subagentRunId: SubagentRunId, eventId: EventId): Task[EventId] = {
@@ -237,10 +236,10 @@ with SubagentEventListener[S0]
       SubagentEventListener.heartbeatTiming)
     // TODO Must be stoppable, whenStoppedCancelAndFail?
     client.login(onlyIfNotLoggedIn = true)
-      .*>(client.executeSubagentCommand(Numbered(0, cmd)))
+      .*>(client.executeSubagentCommand(Numbered(0, cmd)).orThrow)
       .as(subagentRunId -> eventId)
       .onErrorRestartLoop(()) {
-        case (HttpException.HasProblem(SubagentNotDedicatedProblem), _, _) =>
+        case (ProblemException(SubagentNotDedicatedProblem), _, _) =>
           orderToDeferred.toMap.size match {
             case 0 => logger.info("Subagent restarted")
             case n => logger.warn(s"Subagent restarted, $n Order processes are lost")
@@ -423,15 +422,17 @@ with SubagentEventListener[S0]
   private def postCommandUntilSucceeded(command: SubagentCommand): Task[command.Response] =
     logger.traceTask("postCommandUntilSucceeded", command.toShortString)(
       client.login(onlyIfNotLoggedIn = true)
-        .*>(client.executeSubagentCommand(Numbered(0, command)))
+        .*>(client.executeSubagentCommand(Numbered(0, command)).orThrow)
         .map(_.asInstanceOf[command.Response])
         .onErrorRestartLoop(()) { (throwable, _, retry) =>
           logger.warn(
             s"${command.getClass.simpleScalaName} command failed: ${throwable.toStringWithCauses}")
-          emitSubagentCouplingFailed(Some(HttpClient.throwableToProblem(throwable)))
+          emitSubagentCouplingFailed(Some(Problem.reverseThrowable(throwable)))
             .*>(Task.sleep(5.s/*TODO*/))
             .*>(retry(()))
-        })
+        }
+        .cancelWhen(
+          untilStopRequested *> Task.raiseError(beingStoppedProblem.throwable)))
 
   private def whenStoppedCancelAndFail[A](task: Task[A]): Task[A] =
     Task
@@ -509,7 +510,7 @@ with SubagentEventListener[S0]
             .materialize
             .flatMap {
               case Failure(throwable) =>
-                retryAfterError(Problem.fromThrowable(throwable))
+                retryAfterError(Problem.reverseThrowable(throwable))
 
               case Success(checked @ Left(_: SubagentDriverStoppedProblem)) =>
                 logger.debug(s"postQueuedCommand($commandString) stopped")
@@ -614,12 +615,12 @@ with SubagentEventListener[S0]
                   .appended(command)
                   .map(CorrelIdWrapped(correlId, _))))
           }
-          HttpClient.liftProblem(
-            client
-              .executeSubagentCommand(cmd)
-              .*>(attachedItemKeys.update(o => Task.pure(
-                o ++ signedItems.view.map(_.value.keyAndRevision))))
-              .void)
+          client
+            .executeSubagentCommand(cmd)
+            .flatMapT(_ => attachedItemKeys
+              .update(o => Task.pure(
+                o ++ signedItems.view.map(_.value.keyAndRevision)))
+              .as(Checked.unit))
         }
     }
 

@@ -4,12 +4,13 @@ import akka.actor.ActorSystem
 import io.circe.Decoder
 import js7.base.auth.Admission
 import js7.base.io.https.HttpsConfig
+import js7.base.problem.Checked
 import js7.base.session.SessionApi
 import js7.base.stream.Numbered
 import js7.base.time.ScalaTime.RichFiniteDuration
 import js7.base.web.Uri
-import js7.common.http.AkkaHttpClient
 import js7.base.web.Uris.encodeQuery
+import js7.common.http.AkkaHttpClient
 import js7.data.event.{Event, EventRequest, KeyedEvent, Stamped}
 import js7.data.session.HttpSessionApi
 import js7.data.subagent.{SubagentCommand, SubagentRunId}
@@ -23,7 +24,7 @@ final class SubagentClient(
   protected val httpsConfig: HttpsConfig = HttpsConfig.empty,
   protected val name: String,
   protected val actorSystem: ActorSystem)
-extends /*EventApi with*/ SessionApi.HasUserAndPassword with HttpSessionApi with AkkaHttpClient
+extends SubagentApi with SessionApi.HasUserAndPassword with HttpSessionApi with AkkaHttpClient
 {
   import admission.uri
 
@@ -41,13 +42,13 @@ extends /*EventApi with*/ SessionApi.HasUserAndPassword with HttpSessionApi with
   protected def userAndPassword = admission.userAndPassword
 
   def executeSubagentCommand[A <: SubagentCommand](numbered: Numbered[A])
-  : Task[numbered.value.Response] =
-    retryIfSessionLost()(
+  : Task[Checked[numbered.value.Response]] =
+    liftProblem(retryIfSessionLost()(
       httpClient
         .post[Numbered[SubagentCommand], SubagentCommand.Response](
           commandUri,
           numbered.asInstanceOf[Numbered[SubagentCommand]])
-        .map(_.asInstanceOf[numbered.value.Response]))
+        .map(_.asInstanceOf[numbered.value.Response])))
 
   def eventObservable[E <: Event: ClassTag](
     request: EventRequest[E],
