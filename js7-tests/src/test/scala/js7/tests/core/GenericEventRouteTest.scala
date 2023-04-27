@@ -96,7 +96,6 @@ extends OurTestSuite with BeforeAndAfterAll with ProvideActorSystem with Generic
   private lazy val route = pathSegments("event")(
     new GenericEventRouteProvider {
       def keyedEventTypedJsonCodec = ControllerState.keyedEventJsonCodec/*Example for test*/
-      override def isRelevantEvent(keyedEvent: KeyedEvent[Event]) = true
     }.route)
 
   private lazy val allocatedServer = AkkaWebServer

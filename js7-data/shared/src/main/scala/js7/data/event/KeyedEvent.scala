@@ -39,7 +39,9 @@ object KeyedEvent {
 
   def of[E <: Event { type Key = NoKey }](event: E) = new KeyedEvent[E](NoKey, event)
 
-  implicit def jsonEncoder[E <: Event](implicit eventEncoder: Encoder.AsObject[E], keyEncoder: Encoder[E#Key]): Encoder.AsObject[KeyedEvent[E]] =
+  implicit def jsonEncoder[E <: Event]
+  (implicit eventEncoder: Encoder.AsObject[E], keyEncoder: Encoder[E#Key])
+  : Encoder.AsObject[KeyedEvent[E]] =
     keyedEvent => {
       val jsonObject = keyedEvent.event.asJsonObject
       keyedEvent.key match {
@@ -50,7 +52,8 @@ object KeyedEvent {
       }
     }
 
-  implicit def jsonDecoder[E <: Event](implicit decoder: Decoder[E], keyDecoder: Decoder[E#Key]): Decoder[KeyedEvent[E]] =
+  implicit def jsonDecoder[E <: Event](implicit decoder: Decoder[E], keyDecoder: Decoder[E#Key])
+  : Decoder[KeyedEvent[E]] =
     cursor => for {
       key <- cursor.getOrElse[E#Key](KeyFieldName)(NoKey.asInstanceOf[E#Key])
       event <- cursor.as[E]
