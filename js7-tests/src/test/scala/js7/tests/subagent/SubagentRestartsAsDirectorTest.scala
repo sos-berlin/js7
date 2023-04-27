@@ -79,7 +79,9 @@ with ProvideActorSystem
                   uri / "agent/api/session",
                   Login(None, Some(Js7Version)))
                 .onErrorRestartLoop(99) {
-                  case (t, n, retry) if n > 0 && t.getMessage.contains("Connection refused") =>
+                  case (t, n, retry) if n > 0
+                    && (t.getMessage.contains("Connection refused")
+                     || t.getMessage.contains("WebServiceStillNotAvailable")) =>
                     assert(subagentTerminated.value == None)
                     retry(n -1).delayExecution(500.ms)
                   case (t, _, _) => Task.raiseError(t)

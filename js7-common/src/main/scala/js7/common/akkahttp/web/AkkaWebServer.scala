@@ -1,7 +1,6 @@
 package js7.common.akkahttp.web
 
 import akka.actor.ActorSystem
-import akka.http.scaladsl.model.StatusCodes.ServiceUnavailable
 import akka.http.scaladsl.server.Directives.{complete, extractRequest}
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.settings.{ParserSettings, ServerSettings}
@@ -15,7 +14,7 @@ import js7.base.generic.Completed
 import js7.base.io.https.Https.loadSSLContext
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.problem.Problem
+import js7.base.problem.Problems.WebServiceStillNotAvailableProblem
 import js7.base.service.Service
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
@@ -213,7 +212,7 @@ object AkkaWebServer
   }
 
   private lazy val stillNotAvailableRoute: Route =
-    complete(ServiceUnavailable -> Problem("Web services are still not available"))
+    complete(WebServiceStillNotAvailableProblem)
 
   trait BoundRoute {
     def stillNotAvailableRoute: Route =
