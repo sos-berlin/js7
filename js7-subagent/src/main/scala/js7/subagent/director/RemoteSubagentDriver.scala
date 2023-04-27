@@ -45,7 +45,6 @@ import js7.journal.state.Journal
 import js7.subagent.SubagentDriver
 import js7.subagent.configuration.SubagentConf
 import js7.subagent.director.RemoteSubagentDriver.*
-import monix.catnap.MVar
 import monix.eval.{Fiber, Task}
 import scala.annotation.unused
 import scala.concurrent.duration.Deadline.now
@@ -77,7 +76,6 @@ with SubagentEventListener[S0]
   private val initiallyCoupled = SetOnce[SubagentRunId]
   @volatile private var lastSubagentRunId: Option[SubagentRunId] = None
   @volatile private var stopping = false
-  private val stoppingVar = MVar.empty[Task, Unit]().memoize
   @volatile private var shuttingDown = false
 
   def subagentId = subagentItem.id
@@ -110,15 +108,22 @@ with SubagentEventListener[S0]
   def start =
     startEventListener *>
       startService(
-        untilStopRequested *>
-          terminate)
+        untilStopRequested *> onStop)
+
+  private def onStop =
+    Task.defer {
+      stopping = true
+      Task.parZip2(dispatcher.shutdown, stopEventListener)
+        .*>(client.tryLogout.void)
+        .logWhenItTakesLonger(s"RemoteSubagentDriver($subagentId).stop")
+    }
 
   def startMovedSubagent(previous: RemoteSubagentDriver[S]): Task[Unit] =
     logger.debugTask(
       startEventListener
         //.*>(previous.stopDispatcherAndEmitProcessLostEvents(None))
         .*>(Task.race(
-          stoppingVar.flatMap(_.read),
+          untilStopRequested,
           initiallyCoupled.task))
         .flatMap {
           case Left(())/*stopped*/ => Task.unit
@@ -134,18 +139,7 @@ with SubagentEventListener[S0]
         })
 
   def terminate(@unused signal: Option[ProcessSignal]): Task[Unit] =
-    terminate
-
-  private val terminate: Task[Unit] =
-    stoppingVar
-      .flatMap(_.tryPut(()))
-      .*>(Task.defer {
-        stopping = true
-        Task.parZip2(dispatcher.shutdown, stopEventListener)
-          .*>(client.tryLogout.void)
-          .logWhenItTakesLonger(s"RemoteSubagentDriver($subagentId).stop")
-      })
-      .memoize
+    stop
 
   private val resetLock = AsyncLock()
 
@@ -219,7 +213,7 @@ with SubagentEventListener[S0]
   private def dedicate: Task[DedicateSubagent.Response] = {
     val cmd = DedicateSubagent(subagentId, subagentItem.agentPath, controllerId)
     logger.debugTask(
-      postCommandUntilSucceeded(cmd) // TODO Cancelable, whenStoppedCancelAndFail?
+      postCommandUntilSucceeded(cmd)
         .flatMap(response => journal
           .persistKeyedEvent(
             subagentId <-: SubagentDedicated(response.subagentRunId, Some(currentPlatformInfo())))
@@ -231,38 +225,38 @@ with SubagentEventListener[S0]
           .orThrow))
   }
 
-  private def couple(subagentRunId: SubagentRunId, eventId: EventId): Task[EventId] = {
-    val cmd = CoupleDirector(subagentId, subagentRunId, eventId,
-      SubagentEventListener.heartbeatTiming)
-    // TODO Must be stoppable, whenStoppedCancelAndFail?
-    client.login(onlyIfNotLoggedIn = true)
-      .*>(client.executeSubagentCommand(Numbered(0, cmd)).orThrow)
-      .as(subagentRunId -> eventId)
-      .onErrorRestartLoop(()) {
-        case (ProblemException(SubagentNotDedicatedProblem), _, _) =>
-          orderToDeferred.toMap.size match {
-            case 0 => logger.info("Subagent restarted")
-            case n => logger.warn(s"Subagent restarted, $n Order processes are lost")
-          }
-          onSubagentDied(ProcessLostDueToRestartProblem, SubagentRestarted)
-            .*>(dedicate)
-            .map(response => response.subagentRunId -> response.subagentEventId)
+  private def couple(subagentRunId: SubagentRunId, eventId: EventId): Task[EventId] =
+    logger.traceTask(cancelAndFailWhenStopping {
+      val cmd = CoupleDirector(subagentId, subagentRunId, eventId,
+        SubagentEventListener.heartbeatTiming)
+      client.login(onlyIfNotLoggedIn = true)
+        .*>(client.executeSubagentCommand(Numbered(0, cmd)).orThrow)
+        .as(subagentRunId -> eventId)
+        .onErrorRestartLoop(()) {
+          case (ProblemException(SubagentNotDedicatedProblem), _, _) =>
+            orderToDeferred.toMap.size match {
+              case 0 => logger.info("Subagent restarted")
+              case n => logger.warn(s"Subagent restarted, $n Order processes are lost")
+            }
+            onSubagentDied(ProcessLostDueToRestartProblem, SubagentRestarted)
+              .*>(dedicate)
+              .map(response => response.subagentRunId -> response.subagentEventId)
 
-        case (throwable, _, retry) =>
-          logger.warn(s"DedicateSubagent failed: ${throwable.toStringWithCauses}")
-          emitSubagentCouplingFailed(Some(HttpClient.throwableToProblem(throwable)))
-            .*>(Task.sleep(reconnectErrorDelay))
-            .*>(retry(()))
-      }
-      .flatTap { case (subagentRunId, _) =>
-        Task {
-          shuttingDown = false
-          initiallyCoupled.trySet(subagentRunId)
-        } *>
-          dispatcher.start(subagentRunId)  // Dispatcher may have been stopped after SubagentReset
-      }
-      .map(_._2/*EventId*/)
-  }
+          case (throwable, _, retry) =>
+            logger.warn(s"DedicateSubagent failed: ${throwable.toStringWithCauses}")
+            emitSubagentCouplingFailed(Some(HttpClient.throwableToProblem(throwable)))
+              .*>(Task.sleep(reconnectErrorDelay))
+              .*>(retry(()))
+        }
+        .flatTap { case (subagentRunId, _) =>
+          Task {
+            shuttingDown = false
+            initiallyCoupled.trySet(subagentRunId)
+          } *>
+            dispatcher.start(subagentRunId)  // Dispatcher may have been stopped after SubagentReset
+        }
+        .map(_._2/*EventId*/)
+    })
 
   // May run concurrently with onStartOrderProcessFailed !!!
   // We make sure that only one OrderProcessed event is emitted.
@@ -418,29 +412,28 @@ with SubagentEventListener[S0]
       !stopping !! Problem.pure(s"RemoteSubagentDriver $subagentId is stopping")
     }
 
-  // TODO How to cancel this ?
   private def postCommandUntilSucceeded(command: SubagentCommand): Task[command.Response] =
     logger.traceTask("postCommandUntilSucceeded", command.toShortString)(
-      client.login(onlyIfNotLoggedIn = true)
-        .*>(client.executeSubagentCommand(Numbered(0, command)).orThrow)
-        .map(_.asInstanceOf[command.Response])
-        .onErrorRestartLoop(()) { (throwable, _, retry) =>
-          logger.warn(
-            s"${command.getClass.simpleScalaName} command failed: ${throwable.toStringWithCauses}")
-          emitSubagentCouplingFailed(Some(Problem.reverseThrowable(throwable)))
-            .*>(Task.sleep(5.s/*TODO*/))
-            .*>(retry(()))
-        }
-        .cancelWhen(
-          untilStopRequested *> Task.raiseError(beingStoppedProblem.throwable)))
+      cancelAndFailWhenStopping(
+        client.login(onlyIfNotLoggedIn = true)
+          .*>(client.executeSubagentCommand(Numbered(0, command)).orThrow)
+          .map(_.asInstanceOf[command.Response])
+          .onErrorRestartLoop(()) { (throwable, _, retry) =>
+            logger.warn(
+              s"${command.getClass.simpleScalaName} command failed: ${throwable.toStringWithCauses}")
+            emitSubagentCouplingFailed(Some(Problem.reverseThrowable(throwable)))
+              .*>(Task.sleep(5.s/*TODO*/))
+              .*>(retry(()))
+          }))
 
-  private def whenStoppedCancelAndFail[A](task: Task[A]): Task[A] =
+  private def cancelAndFailWhenStopping[A](task: Task[A]): Task[A] =
     Task
-      .race(stoppingVar.flatMap(_.read), task)
+      .race(untilStopRequested, task)
       .flatMap {
         case Left(()) =>
-          logger.debug("⚫ whenStoppedCancelAndFail!")
-          Task.raiseError(Problem("postCommandUntilSucceeded stopped").throwable)
+          logger.debug("⚫ cancelAndFailWhenStopping!")
+          Task.raiseError(Problem("RemoteSubagentDriver is being stopped").throwable)
+
         case Right(a) =>
           Task.pure(a)
       }
