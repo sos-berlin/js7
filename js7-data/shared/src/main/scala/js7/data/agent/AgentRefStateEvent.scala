@@ -1,8 +1,9 @@
 package js7.data.agent
 
 import io.circe.Codec
-import io.circe.generic.semiauto.deriveCodec
-import js7.base.circeutils.CirceUtils.{DecodeWithDefaults, deriveConfiguredCodec}
+import io.circe.generic.extras.JsonKey
+import io.circe.generic.extras.semiauto.deriveConfiguredCodec
+import js7.base.circeutils.CirceUtils.DecodeWithDefaults
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Problem
 import js7.base.utils.IntelliJUtils.intelliJuseImport
@@ -56,7 +57,7 @@ object AgentRefStateEvent
   type AgentReset = AgentReset.type
   case object AgentReset extends AgentRefStateEvent
 
-  final case class AgentMirroredEvent(event: KeyedEvent[Event])
+  final case class AgentMirroredEvent(@JsonKey("event") keyedEvent: KeyedEvent[Event])
   extends AgentRefStateEvent
   object AgentMirroredEvent {
     private implicit val innerEventCodec: Codec.AsObject[KeyedEvent[Event]] =
@@ -64,7 +65,7 @@ object AgentRefStateEvent
         KeyedSubtype[ClusterEvent])
 
     private[AgentRefStateEvent] implicit def jsonCodec: Codec.AsObject[AgentMirroredEvent] =
-      deriveCodec[AgentMirroredEvent]
+      deriveConfiguredCodec[AgentMirroredEvent]
   }
 
   implicit val jsonCodec: TypedJsonCodec[AgentRefStateEvent] = TypedJsonCodec(
