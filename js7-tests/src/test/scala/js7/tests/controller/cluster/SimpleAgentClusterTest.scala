@@ -13,6 +13,7 @@ import js7.base.utils.CatsBlocking.BlockingTaskResource
 import js7.base.utils.ScalaUtils.syntax.{RichEither, RichThrowable}
 import js7.base.web.Uri
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
+import js7.data.agent.AgentRefStateEvent.AgentMirroredEvent
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterNodesAppointed, ClusterWatchRegistered}
 import js7.data.cluster.ClusterState
@@ -53,7 +54,7 @@ final class SimpleAgentClusterTest extends ControllerClusterTester
         val (subagentEnvs, convertibleSubagents) = envsAndConvertibleSubagents.unzip
         runControllers(primary, backup) { (primaryController, _) =>
           import primaryController.eventWatch.await
-          val failOverOrderId = OrderId("🔸")
+          val failOverOrderId = OrderId("🔺")
           val agent = convertibleSubagents(0).untilDirectorStarted.await(99.s)
           agent.eventWatch.await[ClusterNodesAppointed]()
           agent.eventWatch.await[ClusterWatchRegistered]()
@@ -62,8 +63,9 @@ final class SimpleAgentClusterTest extends ControllerClusterTester
           val stampedSeq = primaryController.runOrder(FreshOrder(OrderId("🔹"), TestWorkflow.path))
           assert(stampedSeq.last.value == OrderFinished())
 
-          assert(primaryController.controllerState().keyTo(AgentRefState)(agentPath)
-            .clusterState.isInstanceOf[ClusterState.Coupled])
+          def agentClusterState() = primaryController.controllerState().keyTo(AgentRefState)(agentPath)
+            .clusterState
+          assert(agentClusterState().isInstanceOf[ClusterState.Coupled])
 
           assertEqualJournalFiles(primary.controllerEnv, backup.controllerEnv, n = 1)
           assertEqualJournalFiles(subagentEnvs(0), subagentEnvs(1), n = 1)
@@ -82,13 +84,21 @@ final class SimpleAgentClusterTest extends ControllerClusterTester
             .await(99.s)
 
           val backupDirector = convertibleSubagents(1).untilDirectorStarted.await(99.s)
-          val eventId = backupDirector.eventWatch.await[ClusterFailedOver]().head.eventId
+          val eventId = primaryController.eventWatch
+            .await[AgentMirroredEvent](_.event.keyedEvent.event.isInstanceOf[ClusterFailedOver])
+            .head.eventId
           ASemaphoreJob.continue()
 
-          backupDirector.eventWatch.await[OrderProcessingStarted](_.key == failOverOrderId, after = eventId)
-          backupDirector.eventWatch.await[OrderDetachable](_.key == failOverOrderId, after = eventId)
+          primaryController.eventWatch.await[OrderProcessingStarted](_.key == failOverOrderId, after = eventId)
+          primaryController.eventWatch.await[OrderDetachable](_.key == failOverOrderId, after = eventId)
+          assert(agentClusterState().isInstanceOf[ClusterState.FailedOver])
 
           primaryController.eventWatch.await[OrderFinished](_.key == failOverOrderId)
+
+          ASemaphoreJob.continue()
+          val bOrderId = OrderId("🔸")
+          primaryController.runOrder(FreshOrder(bOrderId, workflow.path))
+          assert(agentClusterState().isInstanceOf[ClusterState.FailedOver])
         }
       } catch {
         case NonFatal(t) =>
