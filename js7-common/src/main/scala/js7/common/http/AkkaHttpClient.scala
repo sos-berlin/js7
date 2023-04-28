@@ -18,6 +18,7 @@ import akka.stream.Materializer
 import akka.util.ByteString
 import cats.effect.concurrent.Deferred
 import cats.effect.{ExitCase, Resource}
+import cats.syntax.flatMap.*
 import io.circe.syntax.*
 import io.circe.{Decoder, Encoder, Json}
 import java.util.Locale
@@ -287,6 +288,19 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
                 HttpResponse(GatewayTimeout, entity = "CANCELED")
               }(scheduler)
           }
+          .onErrorRecoverWith {
+            case t: akka.stream.StreamTcpException => Task.raiseError(makeAkkaExceptionLegible(t))
+          }
+          .map(decompressResponse)
+          .pipeIf(logger.underlying.isDebugEnabled)(
+            logResponding(request, _, responseLogPrefix)
+              .map { response =>
+                lazy val prefix = "#" + number
+                if (!logger.underlying.isTraceEnabled)
+                  response
+                else
+                  logResponseStream(response, prefix)
+              })
           .guaranteeCase {
             case ExitCase.Canceled => Task {
               canceled = true
@@ -323,44 +337,36 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
 
             case ExitCase.Completed => Task.unit
           }
-          .onErrorRecoverWith {
-            case t: akka.stream.StreamTcpException => Task.raiseError(makeAkkaExceptionLegible(t))
-          }
-          .map(decompressResponse)
-          .pipeIf(logger.underlying.isDebugEnabled)(
-            _.pipeIf(!request.headers.contains(StreamingJsonHeader))(
-              logWait(_, responseLogPrefix)
-            ).map { response =>
-              logResponse(response, responseLogPrefix)
-              lazy val prefix = "#" + number
-              logResponseStream(response, prefix)
-            })
       })
 
-  private def logWait(untilResponded: Task[HttpResponse], responseLogPrefix: => String): Task[HttpResponse] =
-    Task.defer {
+  private def logResponding(
+    request: HttpRequest,
+    untilResponded: Task[HttpResponse],
+    responseLogPrefix: => String)
+  : Task[HttpResponse] =
+    if (request.headers.contains(StreamingJsonHeader)) {
+      untilResponded.map { response =>
+        logResponse(response, responseLogPrefix, " ✔")
+        response
+      }
+    } else {
       var waitingLogged = false
       untilResponded
         .whenItTakesLonger()(_ => Task {
           val sym = if (!waitingLogged) "🟡" else "🟠"
           waitingLogged = true
           logger.debug(
-            s"••••$sym$responseLogPrefix => Still waiting for response${closed ?? " (closed)"}")
+            s"... $sym$responseLogPrefix => Still waiting for response${closed ?? " (closed)"}")
         })
-        .guaranteeCase(exitCase => Task(if (waitingLogged) {
-          val sym = exitCase match {
-            case ExitCase.Error(_) => "💥"
-            case ExitCase.Canceled => "⚫️"
-            case ExitCase.Completed => "🔵"
-          }
-          logger.debug(s"<~~ $sym$responseLogPrefix => $exitCase")
-        }))
+        .flatTap(response => Task(
+          logResponse(response, responseLogPrefix, if (waitingLogged) "🔵" else " ✔")
+        ))
     }
 
-  private def logResponse(response: HttpResponse, responseLogPrefix: String): Unit = {
+  private def logResponse(response: HttpResponse, responseLogPrefix: String, good: String): Unit = {
     val sym =
       if (!response.status.isFailure)
-        " ✔"
+        good
       else response.status match {
         case Unauthorized => "⛔"
         case Forbidden =>
@@ -393,29 +399,26 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
 
   private def logResponseStream(response: HttpResponse, responseLogPrefix: => String)
   : HttpResponse =
-    if (!logger.underlying.isTraceEnabled)
-      response
-    else
-      response.entity match {
-        case chunked: Chunked =>
-          val isUtf8 = chunked.contentType.charsetOption.contains(`UTF-8`)
-            || chunked.contentType.mediaType.toString == `application/x-ndjson`.toString
-          response.withEntity(chunked.copy(
-            chunks = chunked.chunks
-              .map { chunk =>
-                if (chunk.isLastChunk()) {
-                  val arrow = if (chunk.isLastChunk()) "<--|" else "-<--"
-                  logger.trace(s"$arrow  $responseLogPrefix ${
-                    if (isUtf8)
-                      chunk.data.utf8String
-                        .truncateWithEllipsis(100, showLength = true, firstLineOnly = true)
-                    else
-                      s"${chunk.data.length} bytes"}")
-                }
-                chunk
-              }))
-        case _ => response
-      }
+    response.entity match {
+      case chunked: Chunked =>
+        val isUtf8 = chunked.contentType.charsetOption.contains(`UTF-8`)
+          || chunked.contentType.mediaType.toString == `application/x-ndjson`.toString
+        response.withEntity(chunked.copy(
+          chunks = chunked.chunks
+            .map { chunk =>
+              if (chunk.isLastChunk()) {
+                val arrow = if (chunk.isLastChunk()) "<--|" else "-<--"
+                logger.trace(s"$arrow  $responseLogPrefix ${
+                  if (isUtf8)
+                    chunk.data.utf8String.truncateWithEllipsis(
+                      100, showLength = true, firstLineOnly = true, quote = true)
+                  else
+                    s"${chunk.data.length} bytes"}")
+              }
+              chunk
+            }))
+      case _ => response
+    }
 
   private def unmarshal[A: FromResponseUnmarshaller](method: HttpMethod, uri: Uri)(httpResponse: HttpResponse) =
     if (!httpResponse.status.isSuccess)

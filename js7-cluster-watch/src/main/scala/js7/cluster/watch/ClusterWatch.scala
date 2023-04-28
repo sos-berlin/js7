@@ -21,10 +21,13 @@ import scala.util.chaining.scalaUtilChainingOps
 
 final class ClusterWatch(
   now: () => MonixDeadline,
+  label: String = "",
   onClusterStateChanged: (HasNodes) => Unit = _ => (),
   requireManualNodeLossConfirmation: Boolean = false,
   val eventBus: ClusterWatchEventBus = new ClusterWatchEventBus)
 {
+  private val logger = Logger.withPrefix[this.type](label)
+
   // Variables are synchronized
   private val _nodeToLossRejected = mutable.Map.empty[NodeId, LossRejected]
   private var _state: Option[State] = None
@@ -141,7 +144,7 @@ final class ClusterWatch(
 
 object ClusterWatch
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   // ClusterNodeLossEvent has been rejected, but the user may confirm it later
   private case class LossRejected(

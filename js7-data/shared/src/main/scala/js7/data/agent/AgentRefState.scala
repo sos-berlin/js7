@@ -106,8 +106,9 @@ extends UnsignedSimpleItemState
       case AgentMirroredEvent(keyedEvent) =>
         keyedEvent match {
           case KeyedEvent(_: NoKey, event: ClusterEvent) =>
-            for (clusterState <- clusterState.applyEvent(event)) yield
-              copy(clusterState = clusterState)
+            clusterState.applyEvent(event)
+              .map(clusterState => copy(clusterState = clusterState))
+              .left.map(_.withPrefix(s"$agentPath <-: AgentMirroredEvent"))
 
           case _ => Left(Problem(
             s"Unknown mirrored Event in AgentMirroredEvent: ${keyedEvent.getClass.shortClassName}"))

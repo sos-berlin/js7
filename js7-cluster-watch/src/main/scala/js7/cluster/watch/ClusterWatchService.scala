@@ -39,6 +39,7 @@ final class ClusterWatchService private[ClusterWatchService](
   val clusterWatchId: ClusterWatchId,
   nodeApis: Nel[HttpClusterNodeApi],
   now: () => MonixDeadline,
+  label: String,
   keepAlive: FiniteDuration,
   retryDelays: NonEmptySeq[FiniteDuration],
   onClusterStateChanged: (HasNodes) => Unit,
@@ -47,6 +48,7 @@ extends MainService with Service.StoppableByRequest
 {
   private val clusterWatch = new ClusterWatch(
     now,
+    label = label,
     onClusterStateChanged = onClusterStateChanged,
     eventBus = eventBus)
   val clusterWatchRunId = ClusterWatchRunId.random()
@@ -171,17 +173,19 @@ object ClusterWatchService
     clusterWatchId: ClusterWatchId,
     apisResource: Resource[Task, Nel[HttpClusterNodeApi]],
     config: Config,
+    label: String = "",
     onClusterStateChanged: (HasNodes) => Unit = _ => (),
     eventBus: ClusterWatchEventBus = new ClusterWatchEventBus)
   : Resource[Task, ClusterWatchService] =
     resource2(
-      clusterWatchId, apisResource, config.withFallback(defaultConfig),
+      clusterWatchId, apisResource, config.withFallback(defaultConfig), label = label,
       onClusterStateChanged, eventBus)
 
   private def restartableResource(
     clusterWatchId: ClusterWatchId,
     apisResource: Resource[Task, Nel[HttpClusterNodeApi]],
     config: Config,
+    label: String = "",
     onClusterStateChanged: (HasNodes) => Unit = _ => ())
   : Resource[Task, RestartAfterFailureService[ClusterWatchService]] =
     Resource.suspend(Task {
@@ -192,13 +196,14 @@ object ClusterWatchService
         .asScala.map(_.toFiniteDuration).toVector
 
       Service.restartAfterFailure(startDelays = startDelays, runDelays = runDelays)(
-        resource2(clusterWatchId, apisResource, cfg, onClusterStateChanged))
+        resource2(clusterWatchId, apisResource, cfg, label = label, onClusterStateChanged))
     })
 
   private def resource2(
     clusterWatchId: ClusterWatchId,
     apisResource: Resource[Task, Nel[HttpClusterNodeApi]],
     config: Config,
+    label: String,
     onClusterStateChanged: (HasNodes) => Unit,
     eventBus: ClusterWatchEventBus = new ClusterWatchEventBus)
   : Resource[Task, ClusterWatchService] =
@@ -216,6 +221,7 @@ object ClusterWatchService
                 clusterWatchId,
                 nodeApis,
                 () => scheduler.now,
+                label = label,
                 keepAlive = keepAlive,
                 retryDelays = NonEmptySeq.fromSeq(retryDelays) getOrElse NonEmptySeq.of(1.s),
                 onClusterStateChanged,

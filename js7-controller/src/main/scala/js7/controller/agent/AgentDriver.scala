@@ -432,6 +432,7 @@ extends Service.StoppableByRequest
         clusterWatchId,
         Resource.eval(Task.pure(clients)),
         controllerConfiguration.config,
+        label = agentPath.toString,
         onClusterStateChanged = onClusterStateChanged)
     } yield clusterWatchService
 
