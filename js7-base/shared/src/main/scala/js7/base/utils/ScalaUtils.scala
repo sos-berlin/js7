@@ -633,20 +633,36 @@ object ScalaUtils
     implicit final class RichString(private val underlying: String) extends AnyVal
     {
       /** Truncate to `n`, replacing the tail with ellipsis and, if the string is long, the total character count. */
-      def truncateWithEllipsis(n: Int, showLength: Boolean = false, firstLineOnly: Boolean = false)
-      : String = {
-        val suffix = if (showLength) s"$Ellipsis(length ${underlying.length})" else Ellipsis
-        val nn = max(suffix.length, n)
-        val firstLine = if (firstLineOnly) underlying.firstLineLengthN(nn) else underlying.length
-        val result = underlying
-          .pipeIf((nn min firstLine) < underlying.lengthIs)(_
-            .take(nn - suffix.length min firstLineLength) + suffix)
+      def truncateWithEllipsis(
+        n: Int,
+        showLength: Boolean = false,
+        firstLineOnly: Boolean = false,
+        quote: Boolean = false)
+      : String =
+        if (underlying.length <= n && !quote && !underlying.exists(_.isControl))
+          underlying
+        else {
+          val sb = new StringBuilder(n + 2 * quote.toInt)
+          if (quote) sb.append('»')
+          val suffix = if (showLength) s"$Ellipsis(length ${underlying.length})" else Ellipsis
+          val nn = max(/*suffix.length*/3, n)
+          val firstLine = if (firstLineOnly) underlying.firstLineLengthN(nn) else underlying.length
+          val truncate = (nn min firstLine) < underlying.length
+          val truncateAt =
+            if (truncate) nn - suffix.length min firstLineLength else underlying.length
 
-        if (result.exists(_.isControl))
-          result.map(c => if (c.isControl) '·' else c)
-        else
-          result
-      }
+          var i = 0
+          while (i < truncateAt) {
+            var c = underlying(i)
+            if (c.isControl) c = '·'
+            sb.append(c)
+            i += 1
+          }
+
+          if (quote) sb.append('«')
+          if (truncate) sb.append(suffix)
+          sb.toString
+        }
 
       def replaceChar(from: Char, to: Char): String =
         if (underlying contains from) {
