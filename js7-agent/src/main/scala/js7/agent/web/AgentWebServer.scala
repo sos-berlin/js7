@@ -30,12 +30,11 @@ object AgentWebServer
     sessionRegister: SessionRegister[AgentSession],
     eventWatch: FileEventWatch)
     (implicit actorSystem: ActorSystem, scheduler: Scheduler)
-  : Resource[Task, AkkaWebServer & AkkaWebServer.HasUri] =
+  : Resource[Task, AkkaWebServer] =
     AkkaWebServer.resource(
       agentConfiguration.webServerBindings,
       agentConfiguration.config,
       (binding, whenShuttingDown) => new AkkaWebServer.BoundRoute {
-
         def startupSecurityHint(scheme: WebServerBinding.Scheme) =
           gateKeeperConf.secureStateString(scheme)
 
@@ -52,5 +51,7 @@ object AgentWebServer
               sessionRegister,
               eventWatch
             ).webServerRoute)
+
+        override def toString = "Agent Director web services"
       })
 }

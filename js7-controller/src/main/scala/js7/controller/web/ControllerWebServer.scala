@@ -59,5 +59,7 @@ object ControllerWebServer
               eventWatch,
               gateKeeperConf
             ).webServerRoute)
+
+        override def toString = "Controller web services"
       })
 }

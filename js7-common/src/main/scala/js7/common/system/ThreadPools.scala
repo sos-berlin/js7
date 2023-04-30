@@ -15,6 +15,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.ByteUnits.toKiBGiB
 import js7.base.utils.Closer
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.Tests.isTest
 import js7.common.system.startup.Halt.haltJava
 import monix.eval.Task
 import monix.execution.ExecutionModel.SynchronousExecution
@@ -118,7 +119,7 @@ object ThreadPools
 
   def newStandardScheduler(name: String, config: Config, closer: Closer): Scheduler = {
     val nr = nextNumber.incrementAndGet()
-    val myName = if (nr == 1) name else s"$name-#$nr"
+    val myName = if (isTest && nr > 1) s"$name-#$nr" else name
     val shutdownTimeout = config.getDuration("js7.thread-pools.standard.shutdown-timeout").toFiniteDuration
     val parallelism = config.as("js7.thread-pools.standard.parallelism")(ThreadCount)
     val maxThreads = config.getInt("js7.thread-pools.standard.maximum")

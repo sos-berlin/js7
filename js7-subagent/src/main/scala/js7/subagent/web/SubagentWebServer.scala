@@ -43,5 +43,7 @@ object SubagentWebServer
               conf.config,
               gateKeeperConf
             ).webServerRoute
+
+        override def toString = "Subagent web services"
       })
 }
