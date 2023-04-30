@@ -66,7 +66,7 @@ final class RunningAgent private(
   val eventWatch: EventWatch,
   clusterNode: ClusterNode[AgentState],
   val journal: Task[FileJournal[AgentState]],
-  webServer: AkkaWebServer & AkkaWebServer.HasUri,
+  webServer: AkkaWebServer,
   actorTermination: Task[ProgramTermination],
   val untilReady: Task[MainActor.Ready],
   val executeCommand: (AgentCommand, CommandMeta) => Task[Checked[AgentCommand.Response]],

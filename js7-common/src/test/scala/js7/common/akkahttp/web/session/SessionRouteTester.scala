@@ -86,7 +86,7 @@ trait SessionRouteTester extends BeforeAndAfterAll with ScalatestRouteTest with 
     .testUriAndResource()(route)
 
   protected lazy val localUri = localUri_
-  protected final lazy val allocatedWebServer: Allocated[Task, AkkaWebServer & AkkaWebServer.HasUri] =
+  protected final lazy val allocatedWebServer: Allocated[Task, AkkaWebServer] =
     webServerResource.toAllocated.await(99.s)
 
   override def afterAll() = {

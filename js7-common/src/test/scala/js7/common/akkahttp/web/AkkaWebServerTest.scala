@@ -56,7 +56,7 @@ final class AkkaWebServerTest extends OurTestSuite with BeforeAndAfterAll
       .orThrow
   }
 
-  private lazy val webServer: Allocated[Task, AkkaWebServer & AkkaWebServer.HasUri] = AkkaWebServer
+  private lazy val webServer: Allocated[Task, AkkaWebServer] = AkkaWebServer
     .resource(
       Seq(
         WebServerBinding.Http(new InetSocketAddress("127.0.0.1", httpPort)),

@@ -10,7 +10,6 @@ import cats.effect.Resource
 import cats.syntax.all.*
 import com.typesafe.config.{Config, ConfigFactory}
 import js7.base.configutils.Configs.*
-import js7.base.generic.Completed
 import js7.base.io.https.Https.loadSSLContext
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
@@ -36,48 +35,27 @@ import scala.util.{Failure, Success}
 /**
  * @author Joacim Zschimmer
  */
-trait AkkaWebServer extends Service
+final class AkkaWebServer private(
+  serverBindings: Seq[Bound],
+  protected val webServerPorts: Seq[WebServerPort],
+  config: Config)
+  (implicit protected val actorSystem: ActorSystem)
+extends WebServerBinding.HasLocalUris
+with Service.StoppableByRequest
 {
-  protected def serverBindings: Seq[Http.ServerBinding]
-  protected def config: Config
-  protected implicit def actorSystem: ActorSystem
-  protected def scheduler: Scheduler
-
-  private val shuttingDownPromise = Promise[Completed]()
   private val shutdownTimeout = config.finiteDuration("js7.web.server.shutdown-timeout").orThrow
 
-  private val untilTerminated: Task[Unit] =
-    serverBindings
-      .traverse(o => Task
-        .fromFuture(o.whenTerminated)
-        .map((_: Http.HttpTerminated) => ()))
-      .map(_.combineAll)
-      .memoize
-
-  protected final def start =
+  protected def start =
     startService(
-      untilTerminated)
+      untilStopRequested *> onStop)
 
-  protected val stop =
-    terminate.*>(untilStopped).memoize
-
-  private def terminate: Task[Unit] =
-    Task.defer {
-      if (!shuttingDownPromise.trySuccess(Completed))
-        Task.unit
-      else if (serverBindings == null)
-        Task.unit
-      else
-        terminateBindings
-    }
-
-  private def terminateBindings: Task[Unit] =
+  private def onStop: Task[Unit] =
     serverBindings
       .parTraverse(binding =>
         logger
           .debugTask(s"$toString terminate $binding")(
             Task.deferFuture(
-              binding.terminate(hardDeadline = shutdownTimeout)))
+              binding.akkaBinding.terminate(hardDeadline = shutdownTimeout)))
           .void
           .onErrorHandle { t =>
             logger.error(s"$toString $binding.terminate => ${t.toStringWithCauses}",
@@ -98,27 +76,27 @@ object AkkaWebServer
 
   @TestOnly
   def testResource()(route: Route)(implicit as: ActorSystem)
-  : Resource[Task, AkkaWebServer & HasUri] =
+  : Resource[Task, AkkaWebServer] =
     testUriAndResource()(route)._2
 
   @TestOnly
   def testUriAndResource()(route: Route)(implicit as: ActorSystem)
-  : (Uri, Resource[Task, AkkaWebServer & HasUri]) =
+  : (Uri, Resource[Task, AkkaWebServer]) =
     testResource(ConfigFactory.empty)(route)
 
   @TestOnly
   def testResource(config: Config)(route: Route)(implicit as: ActorSystem)
-  : (Uri, Resource[Task, AkkaWebServer & HasUri]) =
+  : (Uri, Resource[Task, AkkaWebServer]) =
     testResource(findFreeTcpPort(), config, route = route)
 
   @TestOnly
   def testResource(port: Int = findFreeTcpPort(), config: Config = ConfigFactory.empty, route: Route)(implicit as: ActorSystem)
-  : (Uri, Resource[Task, AkkaWebServer & HasUri]) =
+  : (Uri, Resource[Task, AkkaWebServer]) =
     Uri(s"http://127.0.0.1:$port") -> httpResource(port = port, config.withFallback(testConfig), route)
 
   def httpResource(port: Int, config: Config, route: Route)
     (implicit actorSystem: ActorSystem)
-  : Resource[Task, AkkaWebServer & HasUri] =
+  : Resource[Task, AkkaWebServer] =
     resource(
       Seq(WebServerBinding.http(port)),
       config,
@@ -129,9 +107,9 @@ object AkkaWebServer
     config: Config,
     toBoundRoute: (WebServerBinding, Future[Deadline]) => BoundRoute)
     (implicit actorSystem: ActorSystem)
-  : Resource[Task, AkkaWebServer & HasUri] =
+  : Resource[Task, AkkaWebServer] =
     Service.resource(Task.defer {
-      Task.deferAction { scheduler =>
+      Task.defer {
         val httpsClientAuthRequired = config.getBoolean("js7.web.server.auth.https-client-authentication")
         val akkaHttp = Http(actorSystem)
 
@@ -165,51 +143,32 @@ object AkkaWebServer
             val whenTerminating = terminatingPromise.future
             val boundRoute = toBoundRoute(binding, whenTerminating)
             val name = s"${binding.scheme}://${binding.address.show}"
-            for {
-              serverBinding <-
-                Task.deferFutureAction { implicit scheduler =>
-                  val routeDelegator = new DelayedRouteDelegator(boundRoute, name)
-                  val whenBound = serverBuilder.bind(routeDelegator.webServerRoute)
-                  terminatingPromise.completeWith(whenBound.flatMap(_.whenTerminationSignalIssued))
-                  whenBound
-                }
-            } yield {
-              val securityHint = boundRoute.startupSecurityHint(binding.scheme)
-              logger.debug(s"$name is bound$securityHint")
-              serverBinding
-            }
+            Task
+              .deferFutureAction { implicit scheduler =>
+                val routeDelegator = new DelayedRouteDelegator(binding, boundRoute, name)
+                val whenBound = serverBuilder.bind(routeDelegator.webServerRoute)
+                terminatingPromise.completeWith(whenBound.flatMap(_.whenTerminationSignalIssued))
+                whenBound
+              }
+              .<*(Task {
+                // An info line will be logged by DelayedRouteDelegator
+                val securityHint = boundRoute.startupSecurityHint(binding.scheme)
+                logger.debug(s"$name is bound to $boundRoute$securityHint")
+              })
           }
 
         bindings
           .traverse {
-            case o: WebServerBinding.Http => bind(o)
-            case o: WebServerBinding.Https => bindHttps(o)
+            case o: WebServerBinding.Http => bind(o).map(Bound(o, _))
+            case o: WebServerBinding.Https => bindHttps(o).map(Bound(o, _))
           }.map(serverBindings =>
-            new Standard(
+            new AkkaWebServer(
               serverBindings,
               webServerPorts = bindings.map(_.toWebServerPort).toList,
               config
-            )(actorSystem, scheduler))
+            )(actorSystem))
       }
     })
-
-  final class Standard(
-    protected val serverBindings: Seq[Http.ServerBinding],
-    protected val webServerPorts: Seq[WebServerPort],
-    protected val config: Config)
-    (implicit
-      protected val actorSystem: ActorSystem,
-      protected val scheduler: Scheduler)
-    extends AkkaWebServer with HasUri
-
-  trait HasUri extends WebServerBinding.HasLocalUris {
-    this: AkkaWebServer =>
-  }
-
-  def actorName(prefix: String, binding: WebServerBinding) = {
-    import binding.{address, scheme}
-    s"$prefix-$scheme-${address.getAddress.getHostAddress}:${address.getPort}"
-  }
 
   private lazy val stillNotAvailableRoute: Route =
     complete(WebServiceStillNotAvailableProblem)
@@ -224,14 +183,17 @@ object AkkaWebServer
   }
   object BoundRoute {
     def simple(route: Route): BoundRoute =
-      new BoundRoute {
-        def webServerRoute = Task.pure(route)
-        def startupSecurityHint(scheme: WebServerBinding.Scheme) = ""
-      }
+      new Simple(route)
+
+    final class Simple(route: Route) extends BoundRoute {
+      def webServerRoute = Task.pure(route)
+
+      def startupSecurityHint(scheme: WebServerBinding.Scheme) = ""
+    }
   }
 
   /** Returns 503 ServiceUnavailable until the Route is provided. */
-  private final class DelayedRouteDelegator(boundRoute: BoundRoute, name: String)
+  private final class DelayedRouteDelegator(binding: WebServerBinding, boundRoute: BoundRoute, name: String)
     (implicit scheduler: Scheduler)
   {
     private val _realRoute = Atomic(none[Route])
@@ -239,7 +201,8 @@ object AkkaWebServer
     private val whenRealRoute = boundRoute.webServerRoute
       .tapEval(realRoute => Task {
         if (_realRoute.compareAndSet(None, Some(realRoute))) {
-          logger.info(s"$name web services are available")
+          val securityHint = boundRoute.startupSecurityHint(binding.scheme)
+          logger.info(s"$name web services are available$securityHint")
         }
       })
       .runToFuture
@@ -255,5 +218,13 @@ object AkkaWebServer
           case Some(Failure(t)) => throw t
           case Some(Success(realRoute)) => realRoute
         })
+  }
+
+  private final case class Bound(
+    webServerBinding: WebServerBinding,
+    akkaBinding: Http.ServerBinding)
+  {
+    override def toString =
+      s"${webServerBinding.scheme}://${akkaBinding.localAddress.show}"
   }
 }

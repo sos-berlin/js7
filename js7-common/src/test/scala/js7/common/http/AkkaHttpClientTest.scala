@@ -98,7 +98,7 @@ final class AkkaHttpClientTest extends OurTestSuite with BeforeAndAfterAll with 
 
   "With a server" - {
     implicit val aJsonCodec: Codec.AsObject[A] = deriveCodec
-    lazy val allocatedWebServer: Allocated[Task, AkkaWebServer & AkkaWebServer.HasUri] = AkkaWebServer
+    lazy val allocatedWebServer: Allocated[Task, AkkaWebServer] = AkkaWebServer
       .testResource() {
         decodeRequest {
           import CirceJsonSupport.jsonMarshaller

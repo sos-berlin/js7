@@ -20,7 +20,7 @@ object SubagentWebServer
     convertToDirector: Task[Unit],
     conf: SubagentConf)
     (implicit actorSystem: ActorSystem, scheduler: Scheduler)
-  : Resource[Task, AkkaWebServer & AkkaWebServer.HasUri] =
+  : Resource[Task, AkkaWebServer] =
     AkkaWebServer.resource(
       conf.webServerBindings,
       conf.config,
