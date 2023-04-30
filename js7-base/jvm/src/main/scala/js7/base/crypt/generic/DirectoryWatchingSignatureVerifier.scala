@@ -30,7 +30,6 @@ import js7.base.utils.ScalaUtils.checkedCast
 import js7.base.utils.ScalaUtils.syntax.{RichThrowable, *}
 import monix.eval.Task
 import monix.reactive.Observable
-import monix.reactive.subjects.PublishSubject
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
@@ -40,11 +39,9 @@ final class DirectoryWatchingSignatureVerifier private(
   settings: Settings,
   onUpdated: () => Unit)
   (implicit iox: IOExecutor)
-extends SignatureVerifier with Service
+extends SignatureVerifier with Service.StoppableByRequest
 {
   @volatile private var state = State(Map.empty)
-
-  private val stopRequested = PublishSubject[Unit]()
 
   protected type MySignature = GenericSignature
 
@@ -82,15 +79,6 @@ extends SignatureVerifier with Service
           .map(_.combineAll))
     }
 
-  private val memoizedStop: Task[Unit] =
-    Task.defer {
-      stopRequested.onComplete()
-      untilStopped
-    }.memoize
-
-  def stop: Task[Unit] =
-    logger.debugTask(memoizedStop)
-
   private def observeDirectory(
     companion: SignatureVerifier.Companion,
     directory: Path,
@@ -98,7 +86,7 @@ extends SignatureVerifier with Service
   : Task[Unit] =
     DirectoryWatcher
       .observable(directoryState, toWatchOptions(directory))
-      .takeUntil(stopRequested)
+      .takeUntilEval(untilStopRequested)
       .flatMap(Observable.fromIterable)
       .debounce(settings.directorySilence)
       .bufferIntrospective(1024)
