@@ -18,7 +18,7 @@ import monix.execution.atomic.Atomic
 import scala.concurrent.duration.*
 import scala.util.{Failure, Success, Try}
 
-trait Service extends AnyRef {
+trait Service {
   service =>
 
   private val started = Atomic(false)

@@ -75,7 +75,6 @@ with SubagentEventListener[S0]
   private val attachedItemKeys = AsyncVariable(Map.empty[InventoryItemKey, Option[ItemRevision]])
   private val initiallyCoupled = SetOnce[SubagentRunId]
   @volatile private var lastSubagentRunId: Option[SubagentRunId] = None
-  @volatile private var stopping = false
   @volatile private var shuttingDown = false
 
   def subagentId = subagentItem.id
@@ -87,8 +86,6 @@ with SubagentEventListener[S0]
         .idToSubagentItemState.get(subagentId)
         .exists(s => s.couplingState == Coupled
           /*Due to isHeartbeating we can ignore s.problem to allow SubagentCoupled event.*/)
-
-  protected def isStopping = stopping
 
   protected def isShuttingDown = shuttingDown
 
@@ -112,7 +109,6 @@ with SubagentEventListener[S0]
 
   private def onStop =
     Task.defer {
-      stopping = true
       Task.parZip2(dispatcher.shutdown, stopEventListener)
         .*>(client.tryLogout.void)
         .logWhenItTakesLonger(s"RemoteSubagentDriver($subagentId).stop")
@@ -406,11 +402,6 @@ with SubagentEventListener[S0]
         case Left(problem) => logger.error(s"killProcess $orderId => $problem")
         case Right(_) =>
       }
-
-  private def requireNotStopping: Task[Checked[Unit]] =
-    Task {
-      !stopping !! Problem.pure(s"RemoteSubagentDriver $subagentId is stopping")
-    }
 
   private def postCommandUntilSucceeded(command: SubagentCommand): Task[command.Response] =
     logger.traceTask("postCommandUntilSucceeded", command.toShortString)(

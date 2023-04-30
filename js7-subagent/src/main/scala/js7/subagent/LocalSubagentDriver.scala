@@ -52,10 +52,7 @@ extends Service.StoppableByRequest with SubagentDriver
   private val jobKeyToJobDriver = AsyncMap.empty[JobKey, JobDriver]
   private val orderIdToJobDriver = AsyncMap.stoppable[OrderId, JobDriver]()
   private val stoppingLock = AsyncLock()
-  @volatile private var stopping = false
   @volatile private var _testFailover = false
-
-  protected def isStopping = stopping
 
   protected def isShuttingDown = false
 
@@ -66,7 +63,6 @@ extends Service.StoppableByRequest with SubagentDriver
 
   def terminate(signal: Option[ProcessSignal]) =
     stoppingLock.lock(Task.defer {
-      stopping = true
       val orderCount = orderIdToJobDriver.toMap.size
       if (orderCount > 0) {
         logger.info(s"Stopping, waiting for $orderCount processes")
