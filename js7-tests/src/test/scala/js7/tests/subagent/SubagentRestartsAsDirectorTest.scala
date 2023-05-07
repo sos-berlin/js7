@@ -98,7 +98,7 @@ with ProvideActorSystem
                   command))
               .await(99.s)
             assert(checked == Left(Problem(
-              "Subagent is converting to an Agent Director - try again after a second")))
+              "Subagent is converting to an Agent Director - try again in a second")))
           }
           val result = subagentTerminated.await(99.s)
           assert(result == Left(ConvertToDirector))

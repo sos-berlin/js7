@@ -17,7 +17,7 @@ final case class PlatformInfo(
   java: JavaInformation)
 {
   override def toString =
-    s"PlatformInfo($timestamp,$js7Version,${operatingSystemDistribution getOrElse ""})"
+    s"PlatformInfo($js7Version,${operatingSystemDistribution getOrElse ""})"
 }
 
 object PlatformInfo {

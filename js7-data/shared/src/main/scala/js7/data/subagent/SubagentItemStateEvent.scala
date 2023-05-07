@@ -20,6 +20,9 @@ object SubagentItemStateEvent extends Event.Companion[SubagentItemStateEvent]
     subagentRunId: SubagentRunId,
     platformInfo: Option[PlatformInfo])
   extends SubagentItemStateEvent
+  {
+    override def toShortString = s"SubagentDedicated($subagentRunId)"
+  }
 
   type SubagentCoupled = SubagentCoupled.type
   /** Subagent is coupled and alive. */

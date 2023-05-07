@@ -124,7 +124,7 @@ private trait PseudoDirectorRoute extends SessionRoute with EntitySizeLimitProvi
         .onErrorHandle(t => logger.error(s"convertToDirector => ${t.toStringWithCauses}"))
         .startAndForget
         .as(ServiceUnavailable -> Problem(
-          "Subagent is converting to an Agent Director - try again after a second")))
+          "Subagent is converting to an Agent Director - try again in a second")))
 }
 
 object PseudoDirectorRoute
