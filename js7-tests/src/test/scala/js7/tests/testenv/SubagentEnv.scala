@@ -30,7 +30,6 @@ final class SubagentEnv(
   subagentItem: SubagentItem,
   name: String,
   rootDirectory: Path,
-  suffix: String = "",
   protected val verifier: SignatureVerifier = defaultVerifier,
   mutualHttps: Boolean = false,
   provideHttpsCertificate: Boolean = false,
@@ -42,7 +41,7 @@ final class SubagentEnv(
   config: Config = ConfigFactory.empty)
 extends TestEnv {
   val agentPath = subagentItem.agentPath
-  val directory = rootDirectory / "subagents" / (localSubagentId.string + suffix)
+  val directory = rootDirectory / "subagents" / name
   val journalFileBase = stateDir / "agent"
 
   val localUri = subagentItem.uri

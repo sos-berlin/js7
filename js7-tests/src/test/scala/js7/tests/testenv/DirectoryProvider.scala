@@ -400,9 +400,8 @@ extends HasCloser
   : SubagentEnv =
     new SubagentEnv(
       subagentItem = subagentItem,
-      name = testName.fold("")(_ + "-") + subagentItem.id.string + suffix,
+      name = subagentName(subagentItem.id, suffix = suffix),
       rootDirectory = directory,
-      suffix = suffix,
       verifier = verifier,
       mutualHttps = agentHttpsMutual,
       provideHttpsCertificate = provideAgentHttpsCertificate,
@@ -413,9 +412,11 @@ extends HasCloser
       suppressSignatureKeys = suppressSignatureKeys,
       config = agentConfig)
 
-  @deprecated
   def bareSubagentToDirectory(subagentId: SubagentId, suffix: String = ""): Path =
-    directory / "subagents" / (subagentId.string + suffix)
+    directory / "subagents" / subagentName(subagentId, suffix)
+
+  def subagentName(subagentId: SubagentId, suffix: String = ""): String =
+    testName.fold("")(_ + "-") + subagentId.string + suffix
 
   @deprecated // Duplicate in SubagentEnv ?
   def toSubagentConf(
