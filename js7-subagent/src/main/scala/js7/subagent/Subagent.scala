@@ -303,4 +303,7 @@ object Subagent
 
   private final case class Processing(
     workflowPosition: WorkflowPosition/*for check only*/)
+
+  type ItemSignatureKeysUpdated = ItemSignatureKeysUpdated.type
+  case object ItemSignatureKeysUpdated
 }

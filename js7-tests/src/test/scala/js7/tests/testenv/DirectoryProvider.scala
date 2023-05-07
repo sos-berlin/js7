@@ -400,7 +400,7 @@ extends HasCloser
   : SubagentEnv =
     new SubagentEnv(
       subagentItem = subagentItem,
-      name = testName.fold("")(_ + "-") ++ subagentItem.id.string,
+      name = testName.fold("")(_ + "-") + subagentItem.id.string + suffix,
       rootDirectory = directory,
       suffix = suffix,
       verifier = verifier,

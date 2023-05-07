@@ -92,14 +92,16 @@ extends TestEnv {
     if (provideHttpsCertificate) {
       (configDir / "private/https-keystore.p12") := AgentKeyStoreResource.contentBytes
       if (provideClientCertificate) {
-        configDir / "private/controller-https-truststore.p12" := ExportedControllerTrustStoreResource.contentBytes
+        configDir / "private/controller-https-truststore.p12" :=
+          ExportedControllerTrustStoreResource.contentBytes
         configDir / "private/private.conf" ++= s"""
          |js7.web.https.truststores = [
          |  {
          |    file = $${js7.config-directory}/private/controller-https-truststore.p12
          |    store-password = "jobscheduler"
          |  }
-         |]""".stripMargin
+         |]
+         |""".stripMargin
       }
     }
     configDir / "private" / "private.conf" ++= s"""

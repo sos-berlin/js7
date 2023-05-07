@@ -21,6 +21,7 @@ import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.akkautils.Akkas
 import js7.common.system.ThreadPools
 import js7.subagent.ConvertibleToDirector.{ConvertToDirector, convertibleToDirector}
+import js7.subagent.Subagent.ItemSignatureKeysUpdated
 import js7.subagent.configuration.SubagentConf
 import js7.subagent.web.SubagentWebServer
 import monix.eval.Task
@@ -126,7 +127,4 @@ object BareSubagent
     (implicit F: Sync[F])
   : Resource[F, Scheduler] =
     ThreadPools.standardSchedulerResource[F](conf.name, conf.config, orCommon = orCommon)
-
-  type ItemSignatureKeysUpdated = ItemSignatureKeysUpdated.type
-  case object ItemSignatureKeysUpdated
 }

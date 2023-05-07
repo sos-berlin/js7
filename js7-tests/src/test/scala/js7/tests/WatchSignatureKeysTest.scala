@@ -27,7 +27,7 @@ import js7.data.order.OrderEvent.{OrderAdded, OrderFinished, OrderProcessingStar
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.subagent.SubagentId
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.subagent.BareSubagent
+import js7.subagent.Subagent
 import js7.tests.WatchSignatureKeysTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
@@ -179,7 +179,7 @@ final class WatchSignatureKeysTest extends OurTestSuite with ControllerAgentForS
     val agentUpdated = agent.testEventBus.when[AgentActor.ItemSignatureKeysUpdated]
       .void.runToFuture
     val subagentUpdated = subagentIdToBare(bareSubagentId).allocatedThing.testEventBus
-      .when[BareSubagent.ItemSignatureKeysUpdated]
+      .when[Subagent.ItemSignatureKeysUpdated]
       .void.runToFuture
 
     X509Cert.fromPem(cCertAndKey.certificatePem).orThrow // Check
@@ -220,7 +220,7 @@ final class WatchSignatureKeysTest extends OurTestSuite with ControllerAgentForS
       agent.testEventBus.when[AgentActor.ItemSignatureKeysUpdated]
         .logWhenItTakesLonger("AgentActor.ItemSignatureKeysUpdated"),
       subagentIdToBare(bareSubagentId).allocatedThing.testEventBus
-        .when[BareSubagent.ItemSignatureKeysUpdated]
+        .when[Subagent.ItemSignatureKeysUpdated]
         .logWhenItTakesLonger("BareSubagent.ItemSignatureKeysUpdated")
     ).void.runToFuture
 

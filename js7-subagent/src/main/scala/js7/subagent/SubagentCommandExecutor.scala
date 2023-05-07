@@ -86,7 +86,7 @@ private final class SubagentCommandExecutor(
               .rightAs(SubagentCommand.Accepted)
 
           case NoOperation =>
-            Task.pure(Right(SubagentCommand.Accepted))
+            Task.right(SubagentCommand.Accepted)
 
           case SubagentCommand.Batch(correlIdWrappedCommands) =>
             // TODO Sobald Kommandos in einem Stream geschickt werden,
