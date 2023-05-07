@@ -16,7 +16,7 @@ import monix.eval.Task
 import monix.reactive.Observable
 import scala.concurrent.duration.Deadline.now
 
-private final class SubagentCommandExecutor(
+private[subagent] final class SubagentCommandExecutor(
   val subagent: Subagent,
   signatureVerifier: DirectoryWatchingSignatureVerifier)
 {

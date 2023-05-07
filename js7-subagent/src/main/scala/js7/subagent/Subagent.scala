@@ -4,6 +4,7 @@ import cats.effect.concurrent.Deferred
 import cats.effect.{ExitCase, Resource}
 import js7.base.Js7Version
 import js7.base.configutils.Configs.RichConfig
+import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier
 import js7.base.eventbus.StandardEventBus
 import js7.base.io.process.ProcessSignal
 import js7.base.log.Logger
@@ -43,6 +44,7 @@ import monix.execution.atomic.Atomic
 
 final class Subagent private(
   val journal: MemoryJournal[SubagentState],
+  signatureVerifier: DirectoryWatchingSignatureVerifier,
   val conf: SubagentConf,
   jobLauncherConf: JobLauncherConf,
   val testEventBus: StandardEventBus[Any])
@@ -50,6 +52,8 @@ extends MainService with Service.StoppableByRequest
 {
   subagent =>
 
+  private[subagent] val commandExecutor =
+    new SubagentCommandExecutor(this, signatureVerifier)
   private val dedicatedOnce = SetOnce[Dedicated](SubagentNotDedicatedProblem)
   val subagentRunId = SubagentRunId.fromJournalId(journal.journalId)
   private val subagentDriverConf = SubagentDriver.Conf.fromConfig(conf.config,
@@ -277,8 +281,11 @@ object Subagent
           size = memoryJournalSize,
           waitingFor = "JS7 Agent Director")
         jobLauncherConf = conf.toJobLauncherConf(iox, blockingInternalJobScheduler, clock).orThrow
+        signatureVerifier <- DirectoryWatchingSignatureVerifier.prepare(config)
+          .orThrow
+          .toResource(onUpdated = () => testEventBus.publish(ItemSignatureKeysUpdated))(iox)
         subagent <- Service.resource(Task(
-          new Subagent(journal, conf, jobLauncherConf, testEventBus)))
+          new Subagent(journal, signatureVerifier, conf, jobLauncherConf, testEventBus)))
       } yield subagent
       ).executeOn(js7Scheduler)
     })
@@ -291,14 +298,18 @@ object Subagent
 
     val subagentId = localSubagentDriver.subagentId
 
+    def agentPath: AgentPath =
+      localSubagentDriver.agentPath
+
+    def controllerId: ControllerId =
+      localSubagentDriver.controllerId
+
     def terminate(signal: Option[ProcessSignal]) =
       localSubagentDriver.terminate(signal) *>
         allocatedLocalSubagentDriver.stop
 
-    override def toString = {
-      import localSubagentDriver.{agentPath, controllerId}
+    override def toString =
       s"Dedicated($subagentId $agentPath $controllerId)"
-    }
   }
 
   private final case class Processing(

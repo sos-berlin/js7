@@ -7,7 +7,7 @@ import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
-import js7.subagent.SubagentCommandExecutor
+import js7.subagent.Subagent
 import js7.subagent.configuration.SubagentConf
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -15,7 +15,7 @@ import monix.execution.Scheduler
 object SubagentWebServer
 {
   def resource(
-    commandExecutor: Task[SubagentCommandExecutor],
+    subagent: Task[Subagent],
     sessionRegister: SessionRegister[SimpleSession],
     convertToDirector: Task[Unit],
     conf: SubagentConf)
@@ -33,11 +33,11 @@ object SubagentWebServer
           gateKeeperConf.secureStateString(scheme)
 
         val webServerRoute =
-          for (commandExecutor <- commandExecutor) yield
+          for (subagent <- subagent) yield
             new SubagentRoute(
               binding,
               whenShuttingDown,
-              commandExecutor,
+              subagent,
               sessionRegister,
               convertToDirector,
               conf.config,

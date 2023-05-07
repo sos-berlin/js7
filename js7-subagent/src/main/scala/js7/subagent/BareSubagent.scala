@@ -4,7 +4,6 @@ import cats.effect.concurrent.Deferred
 import cats.effect.{Resource, Sync, SyncIO}
 import java.nio.file.Path
 import js7.base.auth.SimpleUser
-import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier
 import js7.base.eventbus.StandardEventBus
 import js7.base.io.file.FileUtils.provideFile
 import js7.base.io.file.FileUtils.syntax.*
@@ -14,14 +13,12 @@ import js7.base.problem.Checked
 import js7.base.thread.IOExecutor
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ProgramTermination
-import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.akkautils.Akkas
 import js7.common.system.ThreadPools
 import js7.subagent.ConvertibleToDirector.{ConvertToDirector, convertibleToDirector}
-import js7.subagent.Subagent.ItemSignatureKeysUpdated
 import js7.subagent.configuration.SubagentConf
 import js7.subagent.web.SubagentWebServer
 import monix.eval.Task
@@ -102,16 +99,12 @@ object BareSubagent
   : Resource[Task, AkkaWebServer] = {
     import conf.config
     for {
-      signatureVerifier <- DirectoryWatchingSignatureVerifier.prepare(config)
-        .orThrow
-        .toResource(onUpdated = () => testEventBus.publish(ItemSignatureKeysUpdated))(iox)
       actorSystem <- Akkas.actorSystemResource(conf.name, config)
       sessionRegister = SessionRegister.start[SimpleSession](
         actorSystem, SimpleSession(_), config)
       _ <- sessionRegister.placeSessionTokenInDirectory(SimpleUser.System, conf.workDirectory)
       webServer <- SubagentWebServer.resource(
-        commandExecutor = subagent.map(new SubagentCommandExecutor(_, signatureVerifier)).memoize,
-        sessionRegister, convertToDirector, conf)(
+        subagent, sessionRegister, convertToDirector, conf)(
         actorSystem, scheduler)
       _ <- provideUriFile(conf, webServer.localHttpUri)
     } yield webServer
