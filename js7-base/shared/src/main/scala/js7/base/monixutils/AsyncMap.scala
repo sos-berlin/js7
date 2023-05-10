@@ -191,24 +191,27 @@ object AsyncMap
         .*>(Task(logger.debug(s"$name stopped")))
         .memoize
 
-    /** Initiate stop. */
-    final val initiateStop: Task[Unit] =
-      initiateStopWithProblem(Problem.pure(s"$name is being stopped"))
-
-    final def initiateStopWithProblem(problem: Problem): Task[Unit] =
-      shortLock
-        .lock(Task {
-          stoppingProblem = problem
-          isEmpty
-        })
-        .flatMap(Task.when(_)(
-          whenEmpty.complete(())))
-
     final val stop: Task[Unit] =
       logger
         .traceTask(s"$name.stop")(
           initiateStop *> whenStopped)
         .memoize
+
+    /** Initiate stop. */
+    final def initiateStop: Task[Unit] =
+      initiateStopWithProblem(Problem.pure(s"$name is being stopped"))
+
+    final def initiateStopWithProblem(problem: Problem): Task[Unit] =
+      Task.defer {
+        logger.trace(s"$name initiateStopWithProblem $problem")
+        shortLock
+          .lock(Task {
+            stoppingProblem = problem
+            isEmpty
+          })
+          .flatMap(Task.when(_)(
+            whenEmpty.complete(())))
+      }
 
     override protected[monixutils] final def onEntryInsert(): Checked[Unit] =
       Option(stoppingProblem).toLeft(())

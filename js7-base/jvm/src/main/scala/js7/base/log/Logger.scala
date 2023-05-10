@@ -96,10 +96,15 @@ object Logger
       def debugTaskWithResult[A](task: Task[A])(implicit src: sourcecode.Name): Task[A] =
         debugTaskWithResult[A](src.value)(task)
 
-      def debugTaskWithResult[A](
-        function: String,
-        args: => Any = "",
-        result: A => Any = identity[A](_))
+      def debugTaskWithResult[A](function: String)(task: Task[A])
+      : Task[A] =
+        logF[Task, A](logger, LogLevel.Debug, function)(task)
+
+      def debugTaskWithResult[A](function: String, args: => Any)(task: Task[A])
+      : Task[A] =
+        logF[Task, A](logger, LogLevel.Debug, function, args)(task)
+
+      def debugTaskWithResult[A](function: String, args: => Any = "", result: A => Any = null)
         (task: Task[A])
       : Task[A] =
         logF[Task, A](logger, LogLevel.Debug, function, args, result)(task)
