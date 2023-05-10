@@ -1,6 +1,7 @@
 package js7.subagent.director
 
 import akka.actor.ActorSystem
+import cats.effect.Resource
 import io.circe.Decoder
 import js7.base.auth.Admission
 import js7.base.io.https.HttpsConfig
@@ -19,14 +20,19 @@ import monix.reactive.Observable
 import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
 
-final class SubagentClient(
+final class HttpSubagentApi private(
   admission: Admission,
   protected val httpsConfig: HttpsConfig = HttpsConfig.empty,
   protected val name: String,
   protected val actorSystem: ActorSystem)
-extends SubagentApi with SessionApi.HasUserAndPassword with HttpSessionApi with AkkaHttpClient
+extends SubagentApi
+with SessionApi.HasUserAndPassword
+with HttpSessionApi
+with AkkaHttpClient
 {
   import admission.uri
+
+  def isLocal = false
 
   protected def uriPrefixPath = "/subagent"
 
@@ -65,4 +71,15 @@ extends SubagentApi with SessionApi.HasUserAndPassword with HttpSessionApi with 
                 (heartbeat.map("heartbeat" -> _.toDecimalString) ++
                 request.toQueryParameters))),
         responsive = true))
+}
+
+object HttpSubagentApi {
+  def resource(
+    admission: Admission,
+    httpsConfig: HttpsConfig = HttpsConfig.empty,
+    name: String,
+    actorSystem: ActorSystem)
+  : Resource[Task, HttpSubagentApi] =
+    SessionApi.resource(Task(
+      new HttpSubagentApi(admission, httpsConfig, name, actorSystem)))
 }

@@ -1,8 +1,8 @@
 package js7.subagent.director
 
 import cats.syntax.traverse.*
-import js7.base.log.{CorrelId, Logger}
 import js7.base.log.Logger.syntax.*
+import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.Switch
 import js7.base.problem.{Checked, Problem}
 import js7.base.stream.{Numbered, ObservableNumberedQueue}
@@ -81,7 +81,7 @@ private trait CommandDispatcher
     executeCommands(command :: Nil)
       .map(_.head)
 
-  final def executeCommands(commands: Iterable[Command]): Task[Seq[Checked[Response]]] =
+  private def executeCommands(commands: Iterable[Command]): Task[Seq[Checked[Response]]] =
     enqueueCommands(commands)
       .flatMap(_.sequence)
 
@@ -89,7 +89,7 @@ private trait CommandDispatcher
     enqueueCommands(command :: Nil)
       .map(_.head)
 
-  def enqueueCommands(commands: Iterable[Command]): Task[Seq[Task[Checked[Response]]]] = {
+  private def enqueueCommands(commands: Iterable[Command]): Task[Seq[Task[Checked[Response]]]] = {
     val executes: Seq[Execute] = commands.view.map(new Execute(_)).toVector
     queue
       .enqueue(executes)

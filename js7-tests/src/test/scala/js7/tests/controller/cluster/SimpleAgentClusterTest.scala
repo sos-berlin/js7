@@ -89,8 +89,10 @@ final class SimpleAgentClusterTest extends ControllerClusterTester
             .head.eventId
           ASemaphoreJob.continue()
 
-          primaryController.eventWatch.await[OrderProcessingStarted](_.key == failOverOrderId, after = eventId)
-          primaryController.eventWatch.await[OrderDetachable](_.key == failOverOrderId, after = eventId)
+          primaryController.eventWatch.await[OrderProcessingStarted](_.key == failOverOrderId,
+            after = eventId)
+          primaryController.eventWatch.await[OrderDetachable](_.key == failOverOrderId,
+            after = eventId)
           assert(agentClusterState().isInstanceOf[ClusterState.FailedOver])
 
           primaryController.eventWatch.await[OrderFinished](_.key == failOverOrderId)

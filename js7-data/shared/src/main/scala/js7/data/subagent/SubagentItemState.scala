@@ -2,6 +2,7 @@ package js7.data.subagent
 
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
+import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import js7.base.version.Version
@@ -10,6 +11,7 @@ import js7.data.delegate.DelegateCouplingState.{Coupled, Reset, Resetting}
 import js7.data.event.EventId
 import js7.data.item.UnsignedSimpleItemState
 import js7.data.platform.PlatformInfo
+import js7.data.subagent.SubagentItemState.logger
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentCouplingFailed, SubagentDedicated, SubagentEventsObserved, SubagentReset, SubagentResetStarted, SubagentResetStartedByController, SubagentRestarted, SubagentShutdown}
 
 final case class SubagentItemState(
@@ -48,14 +50,17 @@ extends UnsignedSimpleItemState
         Right(copy(
           problem = Some(problem)))
 
-      case SubagentDedicated(subagentRunId, platformInfo) =>
-        if (this.subagentRunId.exists(_ != subagentRunId))
-          Left(Problem.pure("Duplicate SubagentDedicated event: " + (item.id <-: event) +
-            ", this.subagentRunId=" + this.subagentRunId))
-        else
+      case SubagentDedicated(runId, platformInfo) =>
+        if (subagentRunId.exists(_ != runId)) {
+          val problem = Problem.pure(
+            s"$subagentId has already been dedicated with a different SubagentId")
+          logger.warn(
+            s" $problem • ${item.id} <-: SubagentDedicated($runId) but subagentRunId=$subagentRunId")
+          Left(problem)
+        } else
           Right(copy(
             couplingState = Coupled,
-            subagentRunId = Some(subagentRunId),
+            subagentRunId = Some(runId),
             platformInfo = platformInfo,
             problem = None))
 
@@ -104,6 +109,8 @@ object SubagentItemState extends UnsignedSimpleItemState.Companion[SubagentItemS
   type Key = SubagentId
   type Item = SubagentItem
   override type ItemState = SubagentItemState
+
+  private val logger = Logger[this.type]
 
   def initial(subagentItem: SubagentItem) =
     SubagentItemState(subagentItem, None, DelegateCouplingState.Reset.fresh,

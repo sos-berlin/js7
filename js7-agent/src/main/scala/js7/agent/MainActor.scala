@@ -16,7 +16,6 @@ import js7.common.akkautils.CatchingSupervisorStrategy
 import js7.core.command.CommandMeta
 import js7.data.subagent.SubagentId
 import js7.journal.state.FileJournal
-import js7.launcher.configuration.JobLauncherConf
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.Promise
@@ -35,7 +34,6 @@ final class MainActor(
   readyPromise: Promise[Ready],
   terminationPromise: Promise[ProgramTermination],
   clusterNode: ClusterNode[AgentState],
-  jobLauncherConf: JobLauncherConf,
   testEventBus: StandardEventBus[Any],
   clock: AlarmClock)
   (implicit scheduler: Scheduler, iox: IOExecutor)
@@ -51,8 +49,7 @@ extends Actor {
         totalRunningSince, failedOverSubagentId,
         terminationPromise, journalAllocated,
         clusterNode,
-        clock, agentConfiguration,
-        jobLauncherConf, testEventBus)
+        clock, agentConfiguration, testEventBus)
     },
     "agent"))
   private val agentHandle = new AgentHandle(agentActor)

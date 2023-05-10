@@ -65,6 +65,13 @@ object MonixBase
           .race(canceler, task)
           .map(_.fold(identity, identity))
 
+      def guaranteeExceptWhenCompleted(release: Task[Unit]): Task[A] =
+        task
+          .guaranteeCase {
+            case ExitCase.Completed => Task.unit
+            case _ => release
+          }
+
       def startAndForgetOrLog(what: => String): Task[Unit] =
         task
           .logAndIgnoreError(what)

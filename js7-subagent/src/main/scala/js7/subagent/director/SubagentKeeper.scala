@@ -7,7 +7,12 @@ import cats.instances.option.*
 import cats.syntax.flatMap.*
 import cats.syntax.foldable.*
 import cats.syntax.traverse.*
+import com.typesafe.config.ConfigUtil
 import izumi.reflect.Tag
+import js7.base.auth.{Admission, UserAndPassword}
+import js7.base.configutils.Configs.ConvertibleConfig
+import js7.base.eventbus.StandardEventBus
+import js7.base.generic.SecretString
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger.syntax.*
@@ -16,10 +21,12 @@ import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.monixutils.{AsyncMap, AsyncVariable}
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
+import js7.base.thread.IOExecutor
 import js7.base.time.{DelayIterator, DelayIterators}
 import js7.base.utils.CatsUtils.syntax.{RichF, RichResource}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, LockKeeper}
+import js7.base.web.Uri
 import js7.common.system.PlatformInfos.currentPlatformInfo
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
@@ -30,13 +37,13 @@ import js7.data.order.OrderEvent.{OrderCoreEvent, OrderProcessed, OrderProcessin
 import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.subagent.Problems.ProcessLostDueSubagentUriChangeProblem
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentDedicated, SubagentResetStarted}
-import js7.data.subagent.{SubagentDirectorState, SubagentId, SubagentItem, SubagentItemState, SubagentRunId, SubagentSelection, SubagentSelectionId}
+import js7.data.subagent.{SubagentDirectorState, SubagentId, SubagentItem, SubagentItemState, SubagentSelection, SubagentSelectionId}
 import js7.journal.state.Journal
-import js7.launcher.configuration.JobLauncherConf
 import js7.subagent.configuration.DirectorConf
 import js7.subagent.director.SubagentKeeper.*
-import js7.subagent.{LocalSubagentDriver, SubagentDriver}
+import js7.subagent.{LocalSubagentApi, Subagent}
 import monix.eval.{Coeval, Fiber, Task}
+import monix.execution.Scheduler
 import monix.reactive.Observable
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.Promise
@@ -47,11 +54,15 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
   controllerId: ControllerId,
   failedOverSubagentId: Option[SubagentId],
   journal: Journal[S],
-  jobLauncherConf: JobLauncherConf,
   directorConf: DirectorConf,
-  actorSystem: ActorSystem)
+  iox: IOExecutor,
+  actorSystem: ActorSystem,
+  testEventBus: StandardEventBus[Any])
+  (implicit scheduler: Scheduler)
 {
-  private var reconnectDelayer: DelayIterator = null
+  private val reconnectDelayer: DelayIterator = DelayIterators
+    .fromConfig(directorConf.config, "js7.subagent-driver.reconnect-delays")(scheduler)
+    .orThrow
   private val legacyLocalSubagentId = SubagentId.legacyLocalFromAgentPath(agentPath) // COMPATIBLE with v2.2
   private val driverConf = SubagentDriver.Conf.fromConfig(directorConf.config,
     commitDelay = directorConf.journalConf.delay)
@@ -66,35 +77,34 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
 
   def start: Task[Unit] =
     logger.debugTask(
-      Task.deferAction { scheduler =>
-        reconnectDelayer = DelayIterators
-          .fromConfig(directorConf.config, "js7.subagent-driver.reconnect-delays")(scheduler)
-          .orThrow
-
+      Task {
         if (localSubagentId.isDefined)
           Task.unit
         else // COMPATIBLE with v2.2 which does not know Subagents
           stateVar
-            .update(state =>
-              allocateLocalSubagentDriver(legacyLocalSubagentId)
+            .update { state =>
+              val subagentItem = SubagentItem(legacyLocalSubagentId, agentPath,
+                uri = Uri("http://127.0.0.1:99999"/*dummy???*/))
+              allocateLocalSubagentDriver(subagentItem)
                 .map(allocatedDriver =>
                   state.insertSubagentDriver(allocatedDriver))
-                .orThrow)
+                .orThrow
+            }
             .void
     })
 
   def stop: Task[Unit] =
-    stateVar
-      .updateWithResult(state => Task(
-        state.clear -> state.subagentToEntry.values))
-      .flatMap(entries =>
-        entries.toVector
-          .parUnorderedTraverse(_.terminate(Some(SIGKILL)))
-          .map(_.combineAll))
+    logger.traceTask(
+      stateVar
+        .updateWithResult(state => Task(
+          state.clear -> state.subagentToEntry.values))
+        .flatMap(entries =>
+          entries.toVector
+            .parUnorderedTraverse(_.terminate(Some(SIGKILL)))
+            .map(_.combineAll)))
 
   def orderIsLocal(orderId: OrderId): Boolean =
-    orderToSubagent.toMap.get(orderId)
-      .exists(_.isInstanceOf[LocalSubagentDriver[?]])
+    orderToSubagent.toMap.get(orderId).exists(_.isLocal)
 
   def processOrder(
     order: Order[Order.IsFreshOrReady],
@@ -143,7 +153,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
         forProcessingOrder(order.id, subagentDriver, onEvents)(
           subagentDriver.startOrderProcessing(order)))
       .onErrorHandle { t =>
-        logger.error(s"startOrderProcessing ${order.id} => ${t.toStringWithCauses}", t.nullIfNoStackTrace)
+        logger.error(s"startOrderProcess ${order.id} => ${t.toStringWithCauses}", t.nullIfNoStackTrace)
         Left(Problem.fromThrowable(t))
       }
       .containsType[Checked[Fiber[OrderProcessed]]]
@@ -291,7 +301,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
     stateVar.value
       .flatMap(s => Task(s.idToDriver.checked(subagentId)))
       .flatMapT {
-        case driver: RemoteSubagentDriver[S] @unchecked =>
+        case driver: SubagentDriver @unchecked =>
           journal.persistKeyedEvent(subagentId <-: SubagentResetStarted(force))
             .flatMapT(_ =>
               driver.reset(force)
@@ -359,7 +369,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
       stateVar.value
         .map(_.idToDriver.get(subagentItem.id))
         .flatMap {
-          case Some(_: LocalSubagentDriver[?]) =>
+          case Some(driver) if driver.isLocal =>
             stateVar
               .updateChecked(state => Task(
                 state.setDisabled(subagentItem.id, subagentItem.disabled)))
@@ -378,7 +388,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
 
                 case Some(existingAllo) =>
                   val existingAllocated = existingAllo
-                    .asInstanceOf[Allocated[Task, RemoteSubagentDriver[S]]]
+                    .asInstanceOf[Allocated[Task, SubagentDriver]]
                   val existingDriver = existingAllocated.allocatedThing
                   Task
                     .defer(
@@ -386,7 +396,8 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
                         Task.right(state -> None)
                       else {
                         // Subagent moved
-                        allocateRemoteSubagentDriver(subagentItem)
+                        subagentDriverResource(subagentItem)
+                          .toAllocated
                           .map(allocatedDriver =>
                             state.replaceSubagentDriver(allocatedDriver, subagentItem)
                               .map(_ -> Some(Some(existingAllocated) -> allocatedDriver.allocatedThing)))
@@ -400,7 +411,8 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
               })
         }
         .flatMapT {
-          case Some((Some(oldAllocatedDriver), newDriver: RemoteSubagentDriver[S] @unchecked)) =>
+          case Some((Some(oldAllocatedDriver), newDriver: SubagentDriver @unchecked))
+            if !newDriver.isLocal =>
             val oldDriver = oldAllocatedDriver.allocatedThing
             assert(oldDriver.subagentId == newDriver.subagentId)
             val name = "addOrChange " + oldDriver.subagentItem.pathRev
@@ -416,7 +428,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
                 .startAndForget
                 .as(Right(None)))
 
-          case Some((None, newDriver: LocalSubagentDriver[?])) =>
+          case Some((None, newDriver: SubagentDriver)) if newDriver.isLocal=>
             emitLocalSubagentCoupled
               .as(Right(Some(newDriver)))
 
@@ -436,47 +448,67 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
 
   private def allocateSubagentDriver(subagentItem: SubagentItem) =
     if (localSubagentId contains subagentItem.id)
-      allocateLocalSubagentDriver(subagentItem.id)
+      allocateLocalSubagentDriver(subagentItem)
     else
-      allocateRemoteSubagentDriver(subagentItem)
+      subagentDriverResource(subagentItem).toAllocated
 
-  private def allocateLocalSubagentDriver(subagentId: SubagentId)
-  : Task[Allocated[Task, LocalSubagentDriver[S]]] =
+  private def allocateLocalSubagentDriver(subagentItem: SubagentItem)
+  : Task[Allocated[Task, SubagentDriver]] =
     emitLocalSubagentCoupled *>
-      LocalSubagentDriver
-        .resource(
-          subagentId,
-          journal,
-          agentPath,
-          controllerId,
-          jobLauncherConf,
-          driverConf,
-          directorConf.subagentConf)
-        .evalTap(_ =>
-          journal
-            .persist(state => Right(
-              if (state.idToSubagentItemState.get(subagentId).exists(_.subagentRunId.isEmpty))
-                List(subagentId <-: SubagentDedicated(
-                  SubagentRunId.fromJournalId(journal.journalId),
-                  Some(currentPlatformInfo())))
-              else
-                Nil))
-            .map(_.orThrow))
-        .toAllocated
+      localSubagentDriverResource(subagentItem).toAllocated
 
-  private def allocateRemoteSubagentDriver(subagentItem: SubagentItem)
-  : Task[Allocated[Task, RemoteSubagentDriver[S]]] =
-    RemoteSubagentDriver
-      .resource(
+  private def localSubagentDriverResource(subagentItem: SubagentItem)
+  : Resource[Task, SubagentDriver] =
+    for {
+      subagent <- Subagent.resource(directorConf.subagentConf, scheduler, iox, testEventBus)
+      driver <- SubagentDriver.resource(
         subagentItem,
-        directorConf.httpsConfig,
+        new LocalSubagentApi(subagent),
         journal,
         controllerId,
         driverConf,
         directorConf.subagentConf,
-        directorConf.recouplingStreamReaderConf,
-        actorSystem)
-      .toAllocated
+        directorConf.recouplingStreamReaderConf)
+      _ <- Resource.eval(journal
+        .persist(state => Right(
+          if (state.idToSubagentItemState.get(subagentItem.id).exists(_.subagentRunId.isEmpty))
+            List(subagentItem.id <-:
+              SubagentDedicated(subagent.subagentRunId, Some(currentPlatformInfo())))
+          else
+            Nil))
+        .map(_.orThrow))
+    } yield driver
+
+  private def subagentDriverResource(subagentItem: SubagentItem)
+  : Resource[Task, SubagentDriver] =
+    for {
+      api <- subagentApiResource(subagentItem)
+      driver <- subagentDriverResource(subagentItem, api)
+    } yield driver
+
+  private def subagentApiResource(subagentItem: SubagentItem): Resource[Task, HttpSubagentApi] =
+    HttpSubagentApi.resource(
+      Admission(
+        subagentItem.uri,
+        directorConf.config
+          .optionAs[SecretString](
+            "js7.auth.subagents." + ConfigUtil.joinPath(subagentItem.id.string))
+          .map(UserAndPassword(subagentItem.agentPath.toUserId.orThrow, _))),
+      directorConf.httpsConfig,
+      name = subagentItem.id.toString,
+      actorSystem)
+
+  private def subagentDriverResource(subagentItem: SubagentItem, api: HttpSubagentApi)
+  : Resource[Task, SubagentDriver] =
+    SubagentDriver
+      .resource(
+        subagentItem,
+        api,
+        journal,
+        controllerId,
+        driverConf,
+        directorConf.subagentConf,
+        directorConf.recouplingStreamReaderConf)
 
   def addOrReplaceSubagentSelection(selection: SubagentSelection): Task[Checked[Unit]] =
     stateVar
@@ -489,9 +521,8 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
       .void
 
   def testFailover(): Unit =
-    stateVar.get.idToDriver.values.foreach {
-      case o: LocalSubagentDriver[?] => o.testFailover()
-      case _ =>
+    stateVar.get.idToDriver.values.filter(_.isLocal).foreach {
+      _.testFailover()
     }
 
   override def toString = s"SubagentKeeper(${orderToSubagent.size} processing orders)"

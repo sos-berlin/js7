@@ -16,14 +16,11 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.service.{MainService, Service}
 import js7.base.thread.IOExecutor
 import js7.base.time.AlarmClock
-import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.RightUnit
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, ProgramTermination, SetOnce}
 import js7.common.system.ThreadPools.unlimitedSchedulerResource
-import js7.data.agent.AgentPath
-import js7.data.controller.ControllerId
 import js7.data.event.EventId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.order.OrderEvent.OrderProcessed
@@ -38,7 +35,7 @@ import js7.journal.MemoryJournal
 import js7.launcher.configuration.JobLauncherConf
 import js7.subagent.Subagent.*
 import js7.subagent.configuration.SubagentConf
-import monix.eval.Task
+import monix.eval.{Fiber, Task}
 import monix.execution.Scheduler
 import monix.execution.atomic.Atomic
 
@@ -54,10 +51,9 @@ extends MainService with Service.StoppableByRequest
 
   private[subagent] val commandExecutor =
     new SubagentCommandExecutor(this, signatureVerifier)
-  private val dedicatedOnce = SetOnce[Dedicated](SubagentNotDedicatedProblem)
+  private val dedicatedAllocated =
+    SetOnce[Allocated[Task, DedicatedSubagent]](SubagentNotDedicatedProblem)
   val subagentRunId = SubagentRunId.fromJournalId(journal.journalId)
-  private val subagentDriverConf = SubagentDriver.Conf.fromConfig(conf.config,
-    commitDelay = 0.s)
   private val orderToProcessing = AsyncMap.stoppable[OrderId, Processing]()
 
   private val shuttingDown = Atomic(false)
@@ -91,9 +87,11 @@ extends MainService with Service.StoppableByRequest
       val first = !shuttingDown.getAndSet(true)
       Task
         .when(first) {
-          (dedicatedOnce
+          (dedicatedAllocated
             .toOption
-            .fold(Task.unit)(_.terminate(processSignal))
+            .fold(Task.unit)(allocated =>
+              allocated.allocatedThing.terminate(processSignal) *>
+                allocated.stop)
             .*>(orderToProcessing.initiateStopWithProblem(SubagentIsShuttingDownProblem))
             .*>(Task.defer {
               val orderIds = orderToProcessing.toMap.keys.toVector.sorted
@@ -124,16 +122,17 @@ extends MainService with Service.StoppableByRequest
 
   def executeDedicateSubagent(cmd: DedicateSubagent)
   : Task[Checked[DedicateSubagent.Response]] =
-    allocateLocalSubagentDriver(cmd.subagentId, cmd.agentPath, cmd.controllerId)
-      .flatMap(allocatedLocalSubagentDriver => Task.defer {
-        val isFirst = dedicatedOnce.trySet(
-          new Dedicated(allocatedLocalSubagentDriver))
+    DedicatedSubagent
+      .resource(cmd.subagentId, journal, cmd.agentPath, cmd.controllerId, jobLauncherConf, conf)
+      .toAllocated
+      .flatMap(allocatedDedicatedSubagent => Task.defer {
+        val isFirst = dedicatedAllocated.trySet(allocatedDedicatedSubagent)
         if (!isFirst) {
           // TODO Idempotent: Frisch gewidmeter Subagent ist okay. Kein Kommando darf eingekommen sein.
-          //if (cmd.subagentId == dedicatedOnce.orThrow.subagentId)
+          //if (cmd.subagentId == dedicatedAllocated.orThrow.subagentId)
           //  Task.pure(Right(DedicateSubagent.Response(subagentRunId, EventId.BeforeFirst)))
           //else
-          logger.warn(s"$cmd => $SubagentAlreadyDedicatedProblem: $dedicatedOnce")
+          logger.warn(s"$cmd => $SubagentAlreadyDedicatedProblem: $dedicatedAllocated")
           Task.left(SubagentAlreadyDedicatedProblem)
         } else {
           // TODO Check agentPath, controllerId (handle in SubagentState?)
@@ -142,22 +141,6 @@ extends MainService with Service.StoppableByRequest
             DedicateSubagent.Response(subagentRunId, EventId.BeforeFirst, Some(Js7Version)))
         }
       })
-
-  private def allocateLocalSubagentDriver(
-    subagentId: SubagentId,
-    agentPath: AgentPath,
-    controllerId: ControllerId)
-  : Task[Allocated[Task, LocalSubagentDriver[SubagentState]]] =
-    LocalSubagentDriver
-      .resource[SubagentState](
-        subagentId,
-        journal,
-        agentPath,
-        controllerId,
-        jobLauncherConf,
-        subagentDriverConf,
-        conf)
-      .toAllocated
 
   def executeCoupleDirector(cmd: CoupleDirector): Task[Checked[Unit]] =
     Task {
@@ -169,14 +152,14 @@ extends MainService with Service.StoppableByRequest
     }
 
   private def checkSubagentId(requestedSubagentId: SubagentId): Checked[Unit] =
-    dedicatedOnce.checked.flatMap(dedicated =>
+    checkedDedicatedSubagent.flatMap(dedicated =>
       if (requestedSubagentId != dedicated.subagentId)
         Left(SubagentIdMismatchProblem(requestedSubagentId, dedicated.subagentId))
       else
         RightUnit)
 
   def checkSubagentRunId(requestedSubagentRunId: SubagentRunId): Checked[Unit] =
-    dedicatedOnce.checked.flatMap(dedicated =>
+    checkedDedicatedSubagent.flatMap(dedicated =>
       if (requestedSubagentRunId != this.subagentRunId) {
         val problem = SubagentRunIdMismatchProblem(dedicated.subagentId)
         logger.warn(
@@ -205,8 +188,8 @@ extends MainService with Service.StoppableByRequest
                 Right(existing)) // Idempotency: Order process has already been started
 
           case None =>
-            Task(dedicatedOnce.checked).flatMapT(dedicated =>
-              processOrder(dedicated.localSubagentDriver, order, defaultArguments)
+            Task(checkedDedicatedSubagent).flatMapT(dedicated =>
+              startOrderProcess(dedicated, order, defaultArguments)
                 .guaranteeCase {
                   case ExitCase.Completed =>
                     Task.unless(!_dontWaitForDirector) {
@@ -217,27 +200,28 @@ extends MainService with Service.StoppableByRequest
 
                   case _ => orderToProcessing.remove(order.id).void // Tidy-up on failure
                 }
-                .startAndForget
-                // TODO Asynchronous startOrderProcessing should not execute AFTER shutdown
                 .as(Right(Processing(order.workflowPosition))))
         })
         .rightAs(())
     }
 
-  private def processOrder(
-    driver: LocalSubagentDriver[SubagentState],
+  private def startOrderProcess(
+    dedicatedSubagent: DedicatedSubagent,
     order: Order[Order.Processing],
     defaultArguments: Map[String, Expression])
-  : Task[EventId] =
-    driver
-      .processOrder2(order, defaultArguments)
-      .onErrorHandle(Outcome.Failed.fromThrowable)
-      .flatMap { outcome =>
-        val orderProcessed = order.id <-: OrderProcessed(outcome)
-        journal
-          .persistKeyedEvent(orderProcessed)
-          .map(_.orThrow._1.eventId)
-      }
+  : Task[Fiber[EventId]] =
+    dedicatedSubagent
+      .startOrderProcess(order, defaultArguments)
+      .flatMap(_
+        .join
+        .onErrorHandle(Outcome.Failed.fromThrowable)
+        .flatMap { outcome =>
+          val orderProcessed = order.id <-: OrderProcessed(outcome)
+          journal
+            .persistKeyedEvent(orderProcessed)
+            .map(_.orThrow._1.eventId)
+        }
+        .start)
 
   def detachProcessedOrder(orderId: OrderId): Task[Checked[Unit]] =
     orderToProcessing.remove(orderId).as(Checked.unit)
@@ -245,13 +229,13 @@ extends MainService with Service.StoppableByRequest
   def releaseEvents(eventId: EventId): Task[Checked[Unit]] =
     journal.releaseEvents(eventId)
 
-  private[subagent] def checkedDedicated: Checked[Dedicated] =
-    dedicatedOnce.checked
-
   def subagentId: Option[SubagentId] =
-    dedicatedOnce.toOption.map(_.subagentId)
+    checkedDedicatedSubagent.toOption.map(_.subagentId)
 
-  override def toString = s"Subagent(${dedicatedOnce.toOption getOrElse ""})"
+  private[subagent] def checkedDedicatedSubagent: Checked[DedicatedSubagent] =
+    dedicatedAllocated.checked.map(_.allocatedThing)
+
+  override def toString = s"Subagent(${checkedDedicatedSubagent.toOption getOrElse ""})"
 }
 
 object Subagent
@@ -289,28 +273,6 @@ object Subagent
       } yield subagent
       ).executeOn(js7Scheduler)
     })
-
-  private[subagent] final class Dedicated(
-    val allocatedLocalSubagentDriver: Allocated[Task, LocalSubagentDriver[SubagentState]])
-  {
-    val localSubagentDriver: LocalSubagentDriver[SubagentState] =
-      allocatedLocalSubagentDriver.allocatedThing
-
-    val subagentId = localSubagentDriver.subagentId
-
-    def agentPath: AgentPath =
-      localSubagentDriver.agentPath
-
-    def controllerId: ControllerId =
-      localSubagentDriver.controllerId
-
-    def terminate(signal: Option[ProcessSignal]) =
-      localSubagentDriver.terminate(signal) *>
-        allocatedLocalSubagentDriver.stop
-
-    override def toString =
-      s"Dedicated($subagentId $agentPath $controllerId)"
-  }
 
   private final case class Processing(
     workflowPosition: WorkflowPosition/*for check only*/)

@@ -24,7 +24,7 @@ import js7.data.other.HeartbeatTiming
 import js7.data.subagent.Problems.ProcessLostDueToShutdownProblem
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentEventsObserved, SubagentShutdown}
 import js7.data.subagent.SubagentState.keyedEventJsonCodec
-import js7.data.subagent.{SubagentDirectorState, SubagentEvent, SubagentRunId}
+import js7.data.subagent.{SubagentEvent, SubagentRunId}
 import js7.journal.CommitOptions
 import js7.subagent.director.SubagentEventListener.*
 import monix.catnap.MVar
@@ -33,12 +33,12 @@ import monix.execution.atomic.Atomic
 import monix.reactive.Observable
 import scala.util.chaining.scalaUtilChainingOps
 
-private trait SubagentEventListener[S_ <: SubagentDirectorState[S_]]
+private trait SubagentEventListener
 {
   // S_ == S
-  this: RemoteSubagentDriver[S_] =>
+  this: SubagentDriver =>
 
-  private val logger = Logger.withPrefix[SubagentEventListener[S]](subagentItem.pathRev.toString)
+  private val logger = Logger.withPrefix[SubagentEventListener](subagentItem.pathRev.toString)
   private lazy val stdoutCommitOptions = CommitOptions(delay = subagentConf.stdoutCommitDelay)  // TODO Use it!
   private val stopObserving = MVar.empty[Task, Unit]().memoize
   @volatile private var observing: Fiber[Unit] = Fiber(Task.unit, Task.unit)
@@ -78,7 +78,7 @@ private trait SubagentEventListener[S_ <: SubagentDirectorState[S_]]
     val bufferDelay = conf.eventBufferDelay max conf.commitDelay
     logger.debugTask(recouplingStreamReader
       .observe(
-        client,
+        api,
         after = journal.unsafeCurrentState().idToSubagentItemState(subagentId).eventId)
       .takeUntilEval(stopObserving.flatMap(_.read))
       .pipe(obs =>
@@ -154,7 +154,7 @@ private trait SubagentEventListener[S_ <: SubagentDirectorState[S_]]
     }
 
   private def newEventListener() =
-    new RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], SubagentClient](
+    new RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], SubagentApi](
       _.eventId, recouplingStreamReaderConf)
     {
       private var lastProblem: Option[Problem] = None
@@ -171,7 +171,7 @@ private trait SubagentEventListener[S_ <: SubagentDirectorState[S_]]
             lastProblem = None
           })
 
-      protected def getObservable(api: SubagentClient, after: EventId) =
+      protected def getObservable(api: SubagentApi, after: EventId) =
         logger.debugTask(s"getObservable(after=$after)")(
           journal.state.map(_.idToSubagentItemState.checked(subagentId).map(_.subagentRunId))
             .flatMapT {
@@ -179,7 +179,7 @@ private trait SubagentEventListener[S_ <: SubagentDirectorState[S_]]
               case Some(subagentRunId) => getObservable(api, after, subagentRunId)
             })
 
-      private def getObservable(api: SubagentClient, after: EventId, subagentRunId: SubagentRunId) =
+      private def getObservable(api: SubagentApi, after: EventId, subagentRunId: SubagentRunId) =
         api.login(onlyIfNotLoggedIn = true) *>
           api
             .eventObservable(
@@ -219,7 +219,7 @@ private trait SubagentEventListener[S_ <: SubagentDirectorState[S_]]
               //}))
             .map(Right(_))
 
-      override protected def onCouplingFailed(api: SubagentClient, problem: Problem) =
+      override protected def onCouplingFailed(api: SubagentApi, problem: Problem) =
         stopObserving.flatMap(_.tryRead).map(_.isDefined)
           .flatMap(stopped =>
             if (stopped)
@@ -252,7 +252,7 @@ private trait SubagentEventListener[S_ <: SubagentDirectorState[S_]]
         journal.persistKeyedEvent(subagentId <-: SubagentCoupled)
           .map(_.orThrow))))
 
-  protected final def isHeartbeating = _isHeartbeating.get()
+  protected final def isHeartbeating = isLocal || _isHeartbeating.get()
 
   private def onSubagentDecoupled(problem: Option[Problem]): Task[Unit] =
     Task.defer {

@@ -223,6 +223,19 @@ object SessionApi
       loginUntilReachable_(userAndPassword, delays, onError, onlyIfNotLoggedIn = onlyIfNotLoggedIn)
   }
 
+  trait Dummy extends SessionApi.HasUserAndPassword {
+    protected def userAndPassword = None
+
+    def hasSession = true
+
+    def login_(userAndPassword: Option[UserAndPassword], onlyIfNotLoggedIn: Boolean) =
+      Task.completed
+
+    def logout() = Task.completed
+
+    def clearSession() = {}
+  }
+
   private val initialLoginDelays = {
     val seq = Seq(
       100.ms, 900.ms, 1.s, 1.s, 1.s, 2.s, 2.s, 2.s, // 10s

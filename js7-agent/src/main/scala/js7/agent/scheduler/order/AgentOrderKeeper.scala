@@ -13,6 +13,7 @@ import js7.agent.data.event.AgentEvent.{AgentReady, AgentShutDown}
 import js7.agent.scheduler.order.AgentOrderKeeper.*
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.crypt.{SignatureVerifier, Signed}
+import js7.base.eventbus.StandardEventBus
 import js7.base.generic.Completed
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.{RichCheckedTask, RichMonixTask}
@@ -54,7 +55,6 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowPathControl}
 import js7.journal.state.FileJournal
 import js7.journal.{JournalActor, MainJournalingActor}
-import js7.launcher.configuration.JobLauncherConf
 import js7.launcher.configuration.Problems.SignedInjectionNotAllowed
 import js7.subagent.director.SubagentKeeper
 import monix.eval.Task
@@ -76,10 +76,10 @@ final class AgentOrderKeeper(
   failedOverSubagentId: Option[SubagentId],
   recoveredAgentState : AgentState,
   signatureVerifier: SignatureVerifier,
-  jobLauncherConf: JobLauncherConf,
   journalAllocated: Allocated[Task, FileJournal[AgentState]],
   private implicit val clock: AlarmClock,
-  conf: AgentConfiguration)
+  conf: AgentConfiguration,
+  testEventBus: StandardEventBus[Any])
   (implicit protected val scheduler: Scheduler, iox: IOExecutor)
 extends MainJournalingActor[AgentState, Event]
 with Stash
@@ -195,8 +195,8 @@ with Stash
     new SubagentKeeper(
       localSubagentId, ownAgentPath, controllerId,
       failedOverSubagentId,
-      journal, jobLauncherConf, conf.subagentDirectorConf,
-      context.system)
+      journal, conf.subagentDirectorConf,
+      iox, context.system, testEventBus)
 
   watch(journalActor)
   self ! Internal.Recover(recoveredAgentState)

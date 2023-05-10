@@ -7,7 +7,6 @@ import js7.base.utils.Allocated
 import js7.base.utils.Collections.RichMap
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentSelection, SubagentSelectionId}
-import js7.subagent.SubagentDriver
 import js7.subagent.director.DirectorState.*
 import monix.eval.Task
 import scala.collection.MapView
@@ -41,7 +40,7 @@ private final case class DirectorState(
           if (disabled)
             selectionToPrioritized
           else
-          // Add SubagentId to default SubagentSelection
+            // Add SubagentId to default SubagentSelection
             selectionToPrioritized
               .updated(
                 None,

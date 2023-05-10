@@ -12,6 +12,7 @@ import js7.base.catsutils.UnsafeMemoizable
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StackTraces.*
+import monix.eval.{Fiber, Task}
 import scala.concurrent.duration.*
 
 /**
@@ -24,6 +25,9 @@ object CatsUtils
 
   def combine[A: Monoid](as: A*): A =
     as.combineAll
+
+  def completedFiber[A](a: A): Fiber[A] =
+    Fiber(Task.pure(a), Task.unit)
 
   private def bytesToInputStreamResource(bytes: collection.Seq[Byte]): Resource[SyncIO, InputStream] =
     bytesToInputStreamResource(bytes.toArray)

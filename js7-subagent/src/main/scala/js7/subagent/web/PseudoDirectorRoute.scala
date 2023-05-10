@@ -111,7 +111,7 @@ private trait PseudoDirectorRoute extends SessionRoute with EntitySizeLimitProvi
           completeWithConvertToDirector)))
 
   private def checkSubagent(route: Route): Route =
-    if (subagent.checkedDedicated.isRight)
+    if (subagent.checkedDedicatedSubagent.isRight)
       complete(BadRequest -> SubagentAlreadyDedicatedProblem)
     else
       route

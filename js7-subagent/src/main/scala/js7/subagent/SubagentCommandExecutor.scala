@@ -3,10 +3,11 @@ package js7.subagent
 import cats.syntax.traverse.*
 import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier
 import js7.base.log.Logger
+import js7.base.monixutils.MonixBase.syntax.RichMonixTask
 import js7.base.problem.Checked
 import js7.base.stream.Numbered
 import js7.base.time.ScalaTime.*
-import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.ScalaUtils.syntax.{RichString, *}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.subagent.SubagentCommand
 import js7.data.subagent.SubagentCommand.{AttachSignedItem, CoupleDirector, DedicateSubagent, DetachProcessedOrder, KillProcess, NoOperation, ReleaseEvents, ShutDown, StartOrderProcess}
@@ -56,9 +57,8 @@ private[subagent] final class SubagentCommandExecutor(
             }
 
           case KillProcess(orderId, signal) =>
-            subagent.checkedDedicated
+            subagent.checkedDedicatedSubagent
               .traverse(_
-                .localSubagentDriver
                 .killProcess(orderId, signal))
               .rightAs(SubagentCommand.Accepted)
 
@@ -108,6 +108,7 @@ private[subagent] final class SubagentCommandExecutor(
           s"#${numbered.number} <- ${command.getClass.simpleScalaName}" +
             s" ${since.elapsed.pretty} => ${checked.left.map("⚠️ " + _.toString)}")))
         .map(_.map(_.asInstanceOf[numbered.value.Response]))
+        .logWhenItTakesLonger(s"executeCommand(${numbered.toString.truncateWithEllipsis(100)})")
     }
 }
 

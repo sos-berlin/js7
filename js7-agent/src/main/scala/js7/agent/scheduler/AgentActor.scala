@@ -34,7 +34,6 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.subagent.SubagentId
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.state.FileJournal
-import js7.launcher.configuration.JobLauncherConf
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.duration.Deadline
@@ -51,7 +50,6 @@ private[agent] final class AgentActor(
   clusterNode: ClusterNode[AgentState],
   clock: AlarmClock,
   agentConf: AgentConfiguration,
-  jobLauncherConf: JobLauncherConf,
   testEventBus: StandardEventBus[Any])
   (implicit protected val scheduler: Scheduler, iox: IOExecutor)
   extends Actor with Stash with SimpleStateActor
@@ -258,6 +256,7 @@ private[agent] final class AgentActor(
     shutDownCommand := shutDown
     val future = started.toOption match {
       case None =>
+        logger.debug("⚠️ terminateOrderKeeper but not started")
         Future.successful(AgentCommand.Response.Accepted)
       case Some(started) =>
         (started.actor ? shutDown).mapTo[AgentCommand.Response.Accepted]
@@ -286,10 +285,10 @@ private[agent] final class AgentActor(
                 failedOverSubagentId,
                 requireNonNull(recoveredAgentState),
                 allocatedSignatureVerifier.allocatedThing,
-                jobLauncherConf,
                 journalAllocated,
                 clock,
-                agentConf)
+                agentConf,
+                testEventBus)
               },
             "AgentOrderKeeper")
           watch(actor)

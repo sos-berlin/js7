@@ -19,7 +19,6 @@ import js7.data.order.OrderEvent.*
 import js7.data.order.{Order, OrderEvent, OrderId, OrderMark}
 import js7.journal.configuration.JournalConf
 import js7.journal.{JournalActor, KeyedJournalingActor}
-import js7.subagent.director.RemoteSubagentDriver.SubagentDriverStoppedProblem
 import js7.subagent.director.SubagentKeeper
 import monix.eval.{Fiber, Task}
 import monix.execution.Scheduler
@@ -128,8 +127,8 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
                   case Failure(t) =>
                     logger.error(s"startOrderProcessing => ${t.toStringWithCauses}")  // OrderFailed ???
 
-                  case Success(Left(problem: SubagentDriverStoppedProblem)) =>
-                    logger.debug(s"startOrderProcessing => $problem")
+                  //case Success(Left(problem: SubagentDriverStoppedProblem)) =>
+                  //  logger.debug(s"startOrderProcessing => $problem")
 
                   case Success(Left(problem)) =>
                     logger.error(s"startOrderProcessing => $problem")  // ???

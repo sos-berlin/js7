@@ -45,7 +45,6 @@ import js7.common.akkahttp.web.session.SessionRegister
 import js7.common.akkautils.Akkas
 import js7.common.system.JavaInformations.javaInformation
 import js7.common.system.SystemInformations.systemInformation
-import js7.common.system.ThreadPools.unlimitedSchedulerResource
 import js7.common.system.startup.{ServiceMain, StartUp}
 import js7.core.command.CommandMeta
 import js7.data.Problems.{BackupClusterNodeNotAppointed, ClusterNodeIsNotActiveProblem, ClusterNodeIsNotReadyProblem, PassiveClusterNodeShutdownNotAllowedProblem}
@@ -180,9 +179,7 @@ object RunningAgent {
       x <- recoveringResource
       (recoveredExtract, actorSystem, clusterNode) = x
       iox <- IOExecutor.resource[Task](config, conf.name + "-I/O")
-      blockingJobScheduler <- unlimitedSchedulerResource[Task]("JS7 blocking job", config)
-      agent <- resource2(clusterNode, recoveredExtract, testWiring, conf, testEventBus, clock,
-        blockingJobScheduler)(
+      agent <- resource2(clusterNode, recoveredExtract, testWiring, conf, testEventBus, clock)(
         actorSystem, iox, scheduler)
     } yield agent
   })
@@ -193,8 +190,7 @@ object RunningAgent {
     testWiring: TestWiring,
     conf: AgentConfiguration,
     testEventBus: StandardEventBus[Any],
-    clock: AlarmClock,
-    blockingJobScheduler: Scheduler)
+    clock: AlarmClock)
     (implicit actorSystem: ActorSystem, iox: IOExecutor, scheduler: Scheduler)
   : Resource[Task, RunningAgent] = {
     import conf.config
@@ -222,9 +218,8 @@ object RunningAgent {
             journalAllocated, conf, testWiring.commandHandler,
             mainActorReadyPromise, terminationPromise,
             clusterNode,
-            conf.toJobLauncherConf(iox, blockingJobScheduler, clock)
-              .orThrow,
-            testEventBus, clock)(scheduler, iox)
+            testEventBus, clock)(
+            scheduler, iox)
         },
         "main").taggedWith[MainActor]
 

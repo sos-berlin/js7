@@ -12,6 +12,7 @@ import js7.base.monixutils.MonixDeadline.syntax.DeadlineSchedule
 import js7.base.monixutils.{AsyncMap, MonixDeadline}
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime.*
+import js7.base.utils.CatsUtils.completedFiber
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.job.{JobConf, JobResource, JobResourcePath}
 import js7.data.order.Outcome.Succeeded
@@ -21,7 +22,7 @@ import js7.data.value.expression.scopes.FileValueState
 import js7.launcher.internal.JobLauncher
 import js7.launcher.{OrderProcess, ProcessOrder, StdObservers}
 import js7.subagent.JobDriver.*
-import monix.eval.Task
+import monix.eval.{Fiber, Task}
 import monix.execution.Scheduler
 import monix.execution.cancelables.SerialCancelable
 import scala.concurrent.Promise
@@ -75,54 +76,74 @@ private final class JobDriver(
         })
     }
 
-  def processOrder(
+  def startOrderProcess(
     order: Order[Order.Processing],
     defaultArguments: Map[String, Expression],
     stdObservers: StdObservers)
+  : Task[Fiber[Outcome]] = {
+    val entry = new Entry(order.id)
+    Task(checkedJobLauncher)
+      .flatTapT(_ =>
+        orderToProcess.insert(order.id, entry))
+      .flatMap {
+        case Left(problem) =>
+          Task.pure(completedFiber(Outcome.Disrupted(problem)))
+
+        case Right(jobLauncher: JobLauncher) =>
+          processOrder(order, defaultArguments, stdObservers, jobLauncher, entry)
+            .guarantee(removeEntry(entry))
+            .start
+      }
+  }
+
+  private def processOrder(
+    order: Order[Order.Processing],
+    defaultArguments: Map[String, Expression],
+    stdObservers: StdObservers,
+    jobLauncher: JobLauncher,
+    entry: Entry)
   : Task[Outcome] =
-    Task.defer {
-      val entry = new Entry(order.id)
-      Task.pure(checkedJobLauncher)
-        .flatMapT(jobLauncher => orderToProcess.insert(order.id, entry)
-          .flatMapT(_ => Task.pure(processOrderResource(order, defaultArguments, stdObservers)))
-          .flatMapT(_.use(processOrder =>
-            jobLauncher.startIfNeeded
-              .flatMapT(_ => jobLauncher.toOrderProcess(processOrder))
-              .flatMapT { orderProcess =>
-                entry.orderProcess = Some(orderProcess)
-                // Start the orderProcess. The future completes the stdObservers (stdout, stderr)
-                orderProcess.start(processOrder.stdObservers)
-                  .flatMap { runningProcess =>
-                    val whenCompleted = runningProcess.runToFuture
-                    entry.terminated.completeWith(whenCompleted)
-                    val maybeKillAfterStart = entry.killSignal.traverse(killOrder(entry, _))
-                    val awaitTermination = Task.defer {
-                      entry.runningSince = scheduler.now
-                      scheduleTimeout(entry)
-                      Task
-                        .fromFuture(whenCompleted)
-                        .map(entry.modifyOutcome)
-                        .map {
-                          case outcome: Succeeded =>
-                            readErrorLine(processOrder).getOrElse(outcome)
-                          case outcome => outcome
-                        }
-                    }
-                    Task.parMap2(maybeKillAfterStart, awaitTermination)((_, outcome) => outcome)
-                  }
-                  .onErrorHandle { t =>
-                    logger.error(s"${order.id}: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
-                    Outcome.Failed.fromThrowable(t)
-                  }
-                  .map(Right(_))
-              })))
-        .materializeIntoChecked
-        .map {
-          case Left(problem) => Outcome.Disrupted(problem)
-          case Right(outcome) => outcome
-        }
-        .guarantee(removeEntry(entry))
-    }
+    Task(processOrderResource(order, defaultArguments, stdObservers))
+      .flatMapT(_.use(processOrder_ =>
+        processOrder2(jobLauncher, processOrder_, entry)))
+      .materializeIntoChecked
+      .map {
+        case Left(problem) => Outcome.Disrupted(problem)
+        case Right(outcome) => outcome
+      }
+
+  private def processOrder2(jobLauncher: JobLauncher, processOrder: ProcessOrder, entry: Entry)
+  : Task[Checked[Outcome]] =
+    jobLauncher.startIfNeeded
+      .flatMapT(_ => jobLauncher.toOrderProcess(processOrder))
+      .flatMapT { orderProcess =>
+        entry.orderProcess = Some(orderProcess)
+        // Start the orderProcess. The future completes the stdObservers (stdout, stderr)
+        orderProcess.start(processOrder.stdObservers)
+          .flatMap { runningProcess =>
+            val whenCompleted = runningProcess.runToFuture
+            entry.terminated.completeWith(whenCompleted)
+            val maybeKillAfterStart = entry.killSignal.traverse(killOrder(entry, _))
+            val awaitTermination = Task.defer {
+              entry.runningSince = scheduler.now
+              scheduleTimeout(entry)
+              Task
+                .fromFuture(whenCompleted)
+                .map(entry.modifyOutcome)
+                .map {
+                  case outcome: Succeeded =>
+                    readErrorLine(processOrder).getOrElse(outcome)
+                  case outcome => outcome
+                }
+            }
+            Task.parMap2(maybeKillAfterStart, awaitTermination)((_, outcome) => outcome)
+          }
+          .onErrorHandle { t =>
+            logger.error(s"${processOrder.order.id}: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
+            Outcome.Failed.fromThrowable(t)
+          }
+          .map(Right(_))
+      }
 
   private def processOrderResource(
     order: Order[Order.Processing],
@@ -180,7 +201,7 @@ private final class JobDriver(
     Task.defer(
       orderToProcess
         .get(orderId)
-        .fold(Task.unit)(
+        .fold(Task(logger.debug(s"⚠️ killOrder $orderId => no process for Order")))(
           killOrder(_, signal)))
 
   private def killOrder(entry: Entry, signal_ : ProcessSignal): Task[Unit] = {
