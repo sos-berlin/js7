@@ -94,10 +94,10 @@ extends MainService
   val untilTerminated =
     Task.fromFuture(terminated)
 
-  def start =
+  protected def start =
     startService(untilTerminated.void)
 
-  def stop =
+  protected def stop =
     shutdown(ShutDown()).void
 
   def shutdown(cmd: ShutDown): Task[ProgramTermination] =

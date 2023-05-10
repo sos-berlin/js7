@@ -73,7 +73,7 @@ with MainService with Service.StoppableByRequest {
   val untilTerminated =
     untilStopped.as(ProgramTermination())
 
-  def start =
+  protected def start =
     startService(run)
 
   private def run: Task[Unit] =
