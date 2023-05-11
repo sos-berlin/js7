@@ -15,7 +15,7 @@ final case class SubagentState(
   eventId: EventId,
   idToWorkflow: Map[WorkflowId, Workflow],
   pathToJobResource: Map[JobResourcePath, JobResource])
-extends SubagentDriverState[SubagentState]
+extends JournaledState[SubagentState]
 with ItemContainer
 {
   val companion: SubagentState.type = SubagentState
