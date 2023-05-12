@@ -2,6 +2,7 @@ package js7.subagent
 
 import cats.effect.concurrent.Deferred
 import cats.effect.{ExitCase, Resource}
+import cats.syntax.traverse.*
 import js7.base.Js7Version
 import js7.base.configutils.Configs.RichConfig
 import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier
@@ -223,6 +224,11 @@ extends MainService with Service.StoppableByRequest
         }
         .start)
 
+  def killProcess(orderId: OrderId, signal: ProcessSignal): Task[Checked[Unit]] =
+    subagent.checkedDedicatedSubagent
+      .traverse(_
+        .killProcess(orderId, signal))
+
   def detachProcessedOrder(orderId: OrderId): Task[Checked[Unit]] =
     orderToProcessing.remove(orderId).as(Checked.unit)
 
@@ -232,7 +238,13 @@ extends MainService with Service.StoppableByRequest
   def subagentId: Option[SubagentId] =
     checkedDedicatedSubagent.toOption.map(_.subagentId)
 
-  private[subagent] def checkedDedicatedSubagent: Checked[DedicatedSubagent] =
+  def isDedicated: Boolean =
+    dedicatedAllocated.isDefined
+
+  def checkIsDedicated: Checked[Unit] =
+    dedicatedAllocated.checked.map(_ => ())
+
+  private def checkedDedicatedSubagent: Checked[DedicatedSubagent] =
     dedicatedAllocated.checked.map(_.allocatedThing)
 
   override def toString = s"Subagent(${checkedDedicatedSubagent.toOption getOrElse ""})"

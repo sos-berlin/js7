@@ -384,7 +384,7 @@ with SubagentEventListener
             .map(Right(_))
       }
 
-  def orderToExecuteDefaultArguments(order: Order[Order.Processing])
+  private def orderToExecuteDefaultArguments(order: Order[Order.Processing])
   : Task[Checked[Map[String, Expression]]] =
     journal.state
       .map(_
