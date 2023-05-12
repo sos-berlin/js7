@@ -77,7 +77,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
 
   def start: Task[Unit] =
     logger.debugTask(
-      Task {
+      Task.defer {
         if (localSubagentId.isDefined)
           Task.unit
         else // COMPATIBLE with v2.2 which does not know Subagents

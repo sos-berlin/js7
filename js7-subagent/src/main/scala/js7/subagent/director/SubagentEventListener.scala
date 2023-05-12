@@ -10,22 +10,25 @@ import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.monixutils.ObservablePauseDetector.RichPauseObservable
 import js7.base.monixutils.Switch
 import js7.base.problem.Checked.*
-import js7.base.problem.Problem
+import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AsyncLock
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.http.RecouplingStreamReader
+import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.data.event.JournalEvent.StampedHeartbeat
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, Stamped}
 import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten}
 import js7.data.order.{OrderEvent, OrderId}
 import js7.data.other.HeartbeatTiming
-import js7.data.subagent.Problems.ProcessLostDueToShutdownProblem
-import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentEventsObserved, SubagentShutdown}
+import js7.data.subagent.Problems.{ProcessLostDueToShutdownProblem, ProcessLostProblem}
+import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentDied, SubagentEventsObserved, SubagentShutdown}
 import js7.data.subagent.SubagentState.keyedEventJsonCodec
-import js7.data.subagent.{SubagentEvent, SubagentRunId}
+import js7.data.subagent.{SubagentDirectorState, SubagentEvent, SubagentId, SubagentRunId}
 import js7.journal.CommitOptions
+import js7.journal.state.Journal
+import js7.subagent.configuration.SubagentConf
 import js7.subagent.director.SubagentEventListener.*
 import monix.catnap.MVar
 import monix.eval.{Fiber, Task}
@@ -35,10 +38,24 @@ import scala.util.chaining.scalaUtilChainingOps
 
 private trait SubagentEventListener
 {
-  // S_ == S
-  this: SubagentDriver =>
+  protected def subagentId: SubagentId
+  protected def subagentConf: SubagentConf
+  protected def conf: SubagentDriver.Conf
+  protected def recouplingStreamReaderConf: RecouplingStreamReaderConf
+  protected def api: SubagentApi
+  protected def journal: Journal[? <: SubagentDirectorState[?]]
+  protected def detachProcessedOrder(orderId: OrderId): Task[Unit]
+  protected def releaseEvents(eventId: EventId): Task[Unit]
+  protected def onOrderProcessed(orderId: OrderId, orderProcessed: OrderProcessed)
+  : Task[Option[Task[Unit]]]
+  protected def onSubagentDied(orderProblem: ProcessLostProblem, subagentDiedEvent: SubagentDied)
+  : Task[Unit]
+  protected def dedicateOrCouple: Task[Checked[(SubagentRunId, EventId)]]
+  protected def emitSubagentCouplingFailed(maybeProblem: Option[Problem]): Task[Unit]
+  protected def isCoupled: Boolean
+  protected def isLocal: Boolean
 
-  private val logger = Logger.withPrefix[SubagentEventListener](subagentItem.pathRev.toString)
+  private val logger = Logger.withPrefix[SubagentEventListener](subagentId.toString)
   private lazy val stdoutCommitOptions = CommitOptions(delay = subagentConf.stdoutCommitDelay)  // TODO Use it!
   private val stopObserving = MVar.empty[Task, Unit]().memoize
   @volatile private var observing: Fiber[Unit] = Fiber(Task.unit, Task.unit)
@@ -73,49 +90,50 @@ private trait SubagentEventListener
             })
       }))
 
-  private def observeEvents: Task[Unit] = {
-    val recouplingStreamReader = newEventListener()
-    val bufferDelay = conf.eventBufferDelay max conf.commitDelay
-    logger.debugTask(recouplingStreamReader
-      .observe(
-        api,
-        after = journal.unsafeCurrentState().idToSubagentItemState(subagentId).eventId)
-      .takeUntilEval(stopObserving.flatMap(_.read))
-      .pipe(obs =>
-        if (!bufferDelay.isPositive)
-          obs.map(_ :: Nil)
-        else
-          obs.buffer(
-            Some(conf.eventBufferDelay max conf.commitDelay),
-            maxCount = conf.eventBufferSize)  // ticks
-          .filter(_.nonEmpty))   // Ignore empty ticks
-      .mapEval(_
-        .traverse(handleEvent)
-        .flatMap { updatedStampedSeq0 =>
-          val (updatedStampedSeqSeq, followUps) = updatedStampedSeq0.unzip
-          val updatedStampedSeq = updatedStampedSeqSeq.flatten
-          val lastEventId = updatedStampedSeq.lastOption.map(_.eventId)
-          val events = updatedStampedSeq.view.map(_.value)
-            .concat(lastEventId.map(subagentId <-: SubagentEventsObserved(_)))
-            .toVector
-          // TODO Save Stamped timestamp
-          journal
-            .persistKeyedEvents(events, CommitOptions(transaction = true))
-            .map(_.orThrow/*???*/)
-            // After an OrderProcessed event an DetachProcessedOrder must be sent,
-            // to terminate StartOrderProcess command idempotency detection and
-            // allow a new StartOrderProcess command for a next process.
-            .*>(updatedStampedSeq
-              .collect { case Stamped(_, _, KeyedEvent(o: OrderId, _: OrderProcessed)) => o }
-              .traverse(detachProcessedOrder))
-            .*>(lastEventId.traverse(releaseEvents))
-            .*>(followUps.combineAll)
-        })
-      .guarantee(recouplingStreamReader
-        .terminateAndLogout
-        .logWhenItTakesLonger)
-      .completedL)
-  }
+  private def observeEvents: Task[Unit] =
+    Task.defer {
+      val recouplingStreamReader = newEventListener()
+      val bufferDelay = conf.eventBufferDelay max conf.commitDelay
+      logger.debugTask(recouplingStreamReader
+        .observe(
+          api,
+          after = journal.unsafeCurrentState().idToSubagentItemState(subagentId).eventId)
+        .takeUntilEval(stopObserving.flatMap(_.read))
+        .pipe(obs =>
+          if (!bufferDelay.isPositive)
+            obs.map(_ :: Nil)
+          else
+            obs.buffer(
+              Some(conf.eventBufferDelay max conf.commitDelay),
+              maxCount = conf.eventBufferSize)  // ticks
+            .filter(_.nonEmpty))   // Ignore empty ticks
+        .mapEval(_
+          .traverse(handleEvent)
+          .flatMap { updatedStampedSeq0 =>
+            val (updatedStampedSeqSeq, followUps) = updatedStampedSeq0.unzip
+            val updatedStampedSeq = updatedStampedSeqSeq.flatten
+            val lastEventId = updatedStampedSeq.lastOption.map(_.eventId)
+            val events = updatedStampedSeq.view.map(_.value)
+              .concat(lastEventId.map(subagentId <-: SubagentEventsObserved(_)))
+              .toVector
+            // TODO Save Stamped timestamp
+            journal
+              .persistKeyedEvents(events, CommitOptions(transaction = true))
+              .map(_.orThrow/*???*/)
+              // After an OrderProcessed event an DetachProcessedOrder must be sent,
+              // to terminate StartOrderProcess command idempotency detection and
+              // allow a new StartOrderProcess command for a next process.
+              .*>(updatedStampedSeq
+                .collect { case Stamped(_, _, KeyedEvent(o: OrderId, _: OrderProcessed)) => o }
+                .traverse(detachProcessedOrder))
+              .*>(lastEventId.traverse(releaseEvents))
+              .*>(followUps.combineAll)
+          })
+        .guarantee(recouplingStreamReader
+          .terminateAndLogout
+          .logWhenItTakesLonger)
+        .completedL)
+    }
 
   /** Returns optionally the event and a follow-up task. */
   private def handleEvent(stamped: Stamped[AnyKeyedEvent])

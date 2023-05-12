@@ -418,7 +418,7 @@ with SubagentEventListener
   //      })
   //  }
 
-  def killProcess(orderId: OrderId, signal: ProcessSignal) =
+  def killProcess(orderId: OrderId, signal: ProcessSignal): Task[Unit] =
     dispatcher.executeCommand(KillProcess(orderId, signal))
       .map {
         // TODO Stop postQueuedCommand loop for this OrderId
