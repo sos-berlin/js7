@@ -32,7 +32,7 @@ import scala.concurrent.Promise
 //  FileJournal stellt dazu LockKeeper bereit
 //  Wir werden vielleicht mehrere Schlüssel auf einmal sperren wollen (für fork/join?)
 
-final class FileJournal[S <: SnapshotableState[S]: Tag](
+final class FileJournal[S <: SnapshotableState[S]: Tag] private(
   val journalId: JournalId,
   val journalHeader: JournalHeader,
   val journalConf: JournalConf,

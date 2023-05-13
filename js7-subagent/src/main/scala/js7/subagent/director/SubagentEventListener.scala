@@ -103,10 +103,11 @@ private trait SubagentEventListener
           if (!bufferDelay.isPositive)
             obs.map(_ :: Nil)
           else
-            obs.buffer(
-              Some(conf.eventBufferDelay max conf.commitDelay),
-              maxCount = conf.eventBufferSize)  // ticks
-            .filter(_.nonEmpty))   // Ignore empty ticks
+            obs
+              .buffer(
+                Some(conf.eventBufferDelay max conf.commitDelay),
+                maxCount = conf.eventBufferSize) // ticks
+              .filter(_.nonEmpty))   // Ignore empty ticks
         .mapEval(_
           .traverse(handleEvent)
           .flatMap { updatedStampedSeq0 =>

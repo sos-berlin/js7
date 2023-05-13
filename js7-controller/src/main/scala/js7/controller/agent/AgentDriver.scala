@@ -129,12 +129,12 @@ extends Service.StoppableByRequest
           state.delayNextReleaseEvents = false
         })
         .*>(commandQueue.onCoupled(attachedOrderIds))
-        .<*(attachAttachbles)
+        .<*(attachAttachables)
         .as(Completed)
     }
 
   // TODO For v2.6 inserted, but maybe duplicate
-  private def attachAttachbles: Task[Unit] =
+  private def attachAttachables: Task[Unit] =
     journal.state.flatMap(controllerState => controllerState
       .itemToAgentToAttachedState
       .view
