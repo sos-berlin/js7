@@ -704,7 +704,15 @@ with Stash
         }
       }
       if (!delayed) {
-        val keyedEvents = orderEventSource.nextEvents(order.id)
+        val agentState = journal.unsafeCurrentState()
+        val oes = new OrderEventSource(agentState)
+        if (order != agentState.idToOrder(order.id)) {
+          // FIXME order should be equal !
+          logger.debug(s"🔥 ERROR order    =$order")
+          logger.debug(s"🔥 ERROR idToOrder=${agentState.idToOrder(order.id)}")
+          //assertThat(oes.state.idToOrder(order.id) == order)
+        }
+        val keyedEvents = oes.nextEvents(order.id)
         keyedEvents foreach { case KeyedEvent(orderId_, event) =>
           val future = orderRegister(orderId_).actor ?
             OrderActor.Command.HandleEvents(event :: Nil, CorrelId.current)
