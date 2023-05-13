@@ -121,8 +121,7 @@ extends MainService with Service.StoppableByRequest
     })
   }
 
-  def executeDedicateSubagent(cmd: DedicateSubagent)
-  : Task[Checked[DedicateSubagent.Response]] =
+  def executeDedicateSubagent(cmd: DedicateSubagent): Task[Checked[DedicateSubagent.Response]] =
     DedicatedSubagent
       .resource(cmd.subagentId, journal, cmd.agentPath, cmd.controllerId, jobLauncherConf, conf)
       .toAllocated
@@ -173,7 +172,7 @@ extends MainService with Service.StoppableByRequest
   def startOrderProcess(
     order: Order[Order.Processing],
     defaultArguments: Map[String, Expression])
-  : Task[Checked[Unit]] =
+  : Task[Checked[Fiber[OrderProcessed]]] =
     Task.defer {
       orderToProcessing
         .updateChecked(order.id, {
@@ -201,27 +200,25 @@ extends MainService with Service.StoppableByRequest
 
                   case _ => orderToProcessing.remove(order.id).void // Tidy-up on failure
                 }
-                .as(Right(Processing(order.workflowPosition))))
+                .map(fiber => Right(Processing(order.workflowPosition, fiber))))
         })
-        .rightAs(())
+        .map(_.map(_.fiber))
     }
 
   private def startOrderProcess(
     dedicatedSubagent: DedicatedSubagent,
     order: Order[Order.Processing],
     defaultArguments: Map[String, Expression])
-  : Task[Fiber[EventId]] =
+  : Task[Fiber[OrderProcessed]] =
     dedicatedSubagent
       .startOrderProcess(order, defaultArguments)
       .flatMap(_
         .join
         .onErrorHandle(Outcome.Failed.fromThrowable)
-        .flatMap { outcome =>
-          val orderProcessed = order.id <-: OrderProcessed(outcome)
+        .flatMap(outcome =>
           journal
-            .persistKeyedEvent(orderProcessed)
-            .map(_.orThrow._1.eventId)
-        }
+            .persistKeyedEvent(order.id <-: OrderProcessed(outcome))
+            .map(_.orThrow._1.value.event))
         .start)
 
   def killProcess(orderId: OrderId, signal: ProcessSignal): Task[Checked[Unit]] =
@@ -287,7 +284,8 @@ object Subagent
     })
 
   private final case class Processing(
-    workflowPosition: WorkflowPosition/*for check only*/)
+    workflowPosition: WorkflowPosition/*for check only*/,
+    fiber: Fiber[OrderProcessed])
 
   type ItemSignatureKeysUpdated = ItemSignatureKeysUpdated.type
   case object ItemSignatureKeysUpdated

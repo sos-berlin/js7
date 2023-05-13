@@ -12,7 +12,7 @@ import monix.reactive.Observable
 import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
 
-final class LocalSubagentApi(subagent: Subagent)
+private final class LocalSubagentApi(subagent: Subagent)
 extends SubagentApi
 with SessionApi.Dummy
 {

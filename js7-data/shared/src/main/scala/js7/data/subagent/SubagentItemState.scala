@@ -53,9 +53,9 @@ extends UnsignedSimpleItemState
       case SubagentDedicated(runId, platformInfo) =>
         if (subagentRunId.exists(_ != runId)) {
           val problem = Problem.pure(
-            s"$subagentId has already been dedicated with a different SubagentId")
+            s"$subagentId has already been dedicated with a different SubagentRunId")
           logger.warn(
-            s" $problem • ${item.id} <-: SubagentDedicated($runId) but subagentRunId=$subagentRunId")
+            s" $problem · ${item.id} <-: SubagentDedicated($runId) but subagentRunId=$subagentRunId")
           Left(problem)
         } else
           Right(copy(

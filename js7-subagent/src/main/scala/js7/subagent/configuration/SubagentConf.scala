@@ -16,6 +16,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.IOExecutor
 import js7.base.time.AlarmClock
+import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.configuration.{CommonConfiguration, Js7Configuration}
@@ -24,7 +25,6 @@ import js7.launcher.configuration.{JobLauncherConf, ProcessKillScript}
 import js7.launcher.forwindows.configuration.WindowsConf
 import js7.launcher.process.ProcessKillScriptProvider
 import js7.subagent.configuration.SubagentConf.*
-import js7.subagent.director.RemoteSubagentDriver.StdouterrConf
 import monix.execution.Scheduler
 import scala.concurrent.duration.FiniteDuration
 
@@ -226,5 +226,12 @@ object SubagentConf
   private def autoCreateDirectory(directory: Path): Path = {
     if (!exists(directory)) createDirectory(directory)
     directory
+  }
+
+  final case class StdouterrConf(chunkSize: Int, delay: FiniteDuration)
+  object StdouterrConf {
+    def fromConfig(config: Config): StdouterrConf = new StdouterrConf(
+      chunkSize = config.memorySizeAsInt("js7.order.stdout-stderr.chunk-size").orThrow,
+      delay = config.getDuration("js7.order.stdout-stderr.delay").toFiniteDuration)
   }
 }

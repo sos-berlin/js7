@@ -220,7 +220,7 @@ extends Service.StoppableByRequest
     } yield ()
 
   override def toString =
-    s"DedicatedSubagent(${subagentId.string} $agentPath $controllerId)"
+    s"DedicatedSubagent($subagentId $agentPath $controllerId)"
 }
 
 private object DedicatedSubagent

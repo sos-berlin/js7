@@ -1,16 +1,21 @@
 package js7.subagent.director
 
+import cats.effect.concurrent.Deferred
 import cats.syntax.all.*
 import js7.base.crypt.Signed
 import js7.base.io.process.ProcessSignal
+import js7.base.monixutils.AsyncMap
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.data.delegate.DelegateCouplingState.Coupled
 import js7.data.item.SignableItem
 import js7.data.job.{JobConf, JobResource}
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId}
 import js7.data.subagent.{SubagentDirectorState, SubagentId, SubagentItem}
+import js7.data.value.expression.Expression
 import js7.data.workflow.Workflow
+import js7.data.workflow.instructions.Execute
 import js7.data.workflow.position.WorkflowPosition
 import js7.journal.state.Journal
 import monix.eval.{Fiber, Task}
@@ -20,12 +25,11 @@ trait SubagentDriver {
 
   def subagentItem: SubagentItem
 
-  final def subagentId: SubagentId =
-    subagentItem.id
+  protected def isHeartbeating: Boolean
 
-  def isCoupled: Boolean
+  protected def isStopping: Boolean
 
-  def isLocal: Boolean
+  protected def isShuttingDown: Boolean
 
   protected val journal: Journal[? <: SubagentDirectorState[?]]
 
@@ -33,18 +37,47 @@ trait SubagentDriver {
 
   def recoverOrderProcessing(order: Order[Order.Processing]): Task[Checked[Fiber[OrderProcessed]]]
 
+  def killProcess(orderId: OrderId, signal: ProcessSignal): Task[Unit]
+
+  def tryShutdown: Task[Unit]
+
+  def terminate(@unused signal: Option[ProcessSignal]): Task[Unit]
+
+  protected def api: SubagentApi
+
+  protected final val orderToDeferred =
+    AsyncMap.stoppable[OrderId, Deferred[Task, OrderProcessed]]()
+
+  final def subagentId: SubagentId =
+    subagentItem.id
+
+  final def isCoupled: Boolean =
+    !isStopping &&
+      !isShuttingDown &&
+      isHeartbeating &&
+      journal.unsafeCurrentState()
+        .idToSubagentItemState.get(subagentId)
+        .exists(s => s.couplingState == Coupled
+          /*Due to isHeartbeating we can ignore s.problem to allow SubagentCoupled event.*/)
+
+  protected final def orderToExecuteDefaultArguments(order: Order[Order.Processing])
+  : Task[Checked[Map[String, Expression]]] =
+    journal.state
+      .map(_
+        .idToWorkflow
+        .checked(order.workflowId)
+        .map(_.instruction(order.position))
+        .map {
+          case o: Execute.Named => o.defaultArguments
+          case _ => Map.empty[String, Expression]
+        })
+
   // TODO Emit one batch for all recovered orders!
   final def emitOrderProcessLost(order: Order[Order.Processing])
   : Task[Checked[OrderProcessed]] =
     journal
       .persistKeyedEvent(order.id <-: OrderProcessed.processLostDueToRestart)
       .map(_.map(_._1.value.event))
-
-  def killProcess(orderId: OrderId, signal: ProcessSignal): Task[Unit]
-
-  def tryShutdown: Task[Unit]
-
-  def terminate(@unused signal: Option[ProcessSignal]): Task[Unit]
 
   protected final def signableItemsForOrderProcessing(workflowPosition: WorkflowPosition)
   : Task[Checked[Seq[Signed[SignableItem]]]] =

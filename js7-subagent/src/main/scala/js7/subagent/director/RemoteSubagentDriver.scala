@@ -13,12 +13,11 @@ import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, CorrelIdWrapped, Logger}
 import js7.base.monixutils.MonixBase.syntax.*
-import js7.base.monixutils.{AsyncMap, AsyncVariable, Switch}
+import js7.base.monixutils.{AsyncVariable, Switch}
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.service.Service
 import js7.base.stream.Numbered
-import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{AsyncLock, SetOnce}
@@ -26,20 +25,14 @@ import js7.base.web.HttpClient
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.common.system.PlatformInfos.currentPlatformInfo
 import js7.data.controller.ControllerId
-import js7.data.delegate.DelegateCouplingState.Coupled
 import js7.data.event.EventId
 import js7.data.item.{InventoryItemKey, ItemRevision, SignableItem}
-import js7.data.job.{JobConf, JobResource}
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.subagent.Problems.{ProcessLostDueToResetProblem, ProcessLostDueToRestartProblem, ProcessLostProblem, SubagentIsShuttingDownProblem, SubagentNotDedicatedProblem, SubagentShutDownBeforeProcessStartProblem}
 import js7.data.subagent.SubagentCommand.{AttachSignedItem, CoupleDirector, DedicateSubagent, KillProcess, StartOrderProcess}
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCouplingFailed, SubagentDedicated, SubagentDied, SubagentReset, SubagentRestarted}
 import js7.data.subagent.{SubagentCommand, SubagentDirectorState, SubagentItem, SubagentItemState, SubagentRunId}
-import js7.data.value.expression.Expression
-import js7.data.workflow.Workflow
-import js7.data.workflow.instructions.Execute
-import js7.data.workflow.position.WorkflowPosition
 import js7.journal.state.Journal
 import js7.subagent.configuration.SubagentConf
 import js7.subagent.director.RemoteSubagentDriver.*
@@ -56,10 +49,10 @@ import scala.util.{Failure, Success}
 
 private final class RemoteSubagentDriver private(
   val subagentItem: SubagentItem,
-  protected val api: SubagentApi,
+  protected val api: HttpSubagentApi,
   protected val journal: Journal[? <: SubagentDirectorState[?]],
   controllerId: ControllerId,
-  protected val conf: Conf,
+  protected val conf: RemoteSubagentDriver.Conf,
   protected val subagentConf: SubagentConf,
   protected val recouplingStreamReaderConf: RecouplingStreamReaderConf)
 extends SubagentDriver
@@ -72,23 +65,11 @@ with SubagentEventListener
   private val initiallyCoupled = SetOnce[SubagentRunId]
   @volatile private var lastSubagentRunId: Option[SubagentRunId] = None
   @volatile private var shuttingDown = false
-  @volatile private var _testFailover = false
 
   def isLocal: Boolean =
     api.isLocal
 
-  def isCoupled: Boolean =
-    !isStopping &&
-      !isShuttingDown &&
-      isHeartbeating &&
-      journal.unsafeCurrentState()
-        .idToSubagentItemState.get(subagentId)
-        .exists(s => s.couplingState == Coupled
-          /*Due to isHeartbeating we can ignore s.problem to allow SubagentCoupled event.*/)
-
   protected def isShuttingDown = shuttingDown
-
-  private val orderToDeferred = AsyncMap.stoppable[OrderId, Deferred[Task, OrderProcessed]]()
 
   protected def start =
     startEventListener *>
@@ -96,10 +77,9 @@ with SubagentEventListener
         untilStopRequested *> onStop)
 
   private def onStop =
-    tryShutdownLocalSubagent() *>
-      Task.parZip2(dispatcher.shutdown, stopEventListener)
-        .*>(api.tryLogout.void)
-        .logWhenItTakesLonger(s"RemoteSubagentDriver($subagentId).stop")
+    Task.parZip2(dispatcher.shutdown, stopEventListener)
+      .*>(api.tryLogout.void)
+      .logWhenItTakesLonger(s"RemoteSubagentDriver($subagentId).stop")
 
   def startMovedSubagent(previous: RemoteSubagentDriver): Task[Unit] =
     logger.debugTask(
@@ -123,11 +103,7 @@ with SubagentEventListener
 
   def terminate(@unused signal: Option[ProcessSignal]): Task[Unit] =
     logger.traceTask(
-      tryShutdownLocalSubagent(signal) *> stop)
-
-  private def tryShutdownLocalSubagent(processSignal: Option[ProcessSignal] = None): Task[Unit] =
-    Task.when(isLocal)(
-      tryShutdownSubagent(processSignal, dontWaitForDirector = _testFailover))
+      stop)
 
   private val resetLock = AsyncLock()
 
@@ -270,7 +246,7 @@ with SubagentEventListener
         val deferred = oToP.values
         Task
           .when(subagentDiedEvent.isDefined)(
-            dispatcher.stopAndFailCommands)
+            if (isLocal) dispatcher.shutdown else dispatcher.stopAndFailCommands)
           .*>(attachedItemKeys.update(_ => Task.pure(Map.empty)))
           .*>(journal
             .persist(state => Right(orderIds.view
@@ -327,7 +303,7 @@ with SubagentEventListener
       // OrderProcessed event will fulfill and remove the Deferred
       .flatMap {
         case Left(problem) => Task.left(problem)
-        case Right(deferredOutcome) =>
+        case Right(deferred) =>
           orderToExecuteDefaultArguments(order)
             .map(_.map(StartOrderProcess(order, _)))
             .flatMapT(dispatcher.executeCommand)
@@ -347,7 +323,7 @@ with SubagentEventListener
                       Task.right(())
 
                     case Some(deferred) =>
-                      assert(deferred eq deferredOutcome)
+                      assert(deferred eq deferred)
 
                       val orderProcessed = OrderProcessed(
                         problem match {
@@ -356,37 +332,21 @@ with SubagentEventListener
                           case _ => Outcome.Disrupted(problem)
                         })
 
-                      if (_testFailover && orderProcessed.outcome.isInstanceOf[Outcome.Killed])
-                        Task(logger.warn(
-                          s"Suppressed due to failover by command: ${order.id} <-: $orderProcessed"))
-                      else
-                        journal
-                          .persistKeyedEvent(order.id <-: orderProcessed)
-                          .orThrow
-                          .*>(deferred.complete(orderProcessed))
-                          .as(orderProcessed)
+                      journal
+                        .persistKeyedEvent(order.id <-: orderProcessed)
+                        .orThrow
+                        .*>(deferred.complete(orderProcessed))
+                        .as(orderProcessed)
                   }
 
               case Right(()) =>
                 // Command succeeded, wait for Deferred
                 Task.right(())
             }
-            .*>(deferredOutcome.get)
+            .*>(deferred.get)
             .start
             .map(Right(_))
       }
-
-  private def orderToExecuteDefaultArguments(order: Order[Order.Processing])
-  : Task[Checked[Map[String, Expression]]] =
-    journal.state
-      .map(_
-        .idToWorkflow
-        .checked(order.workflowId)
-        .map(_.instruction(order.position))
-        .map {
-          case o: Execute.Named => o.defaultArguments
-          case _ => Map.empty[String, Expression]
-        })
 
   protected def onOrderProcessed(orderId: OrderId, orderProcessed: OrderProcessed)
   : Task[Option[Task[Unit]]] =
@@ -636,23 +596,8 @@ with SubagentEventListener
         Task.right(Nil)
     }
 
-  private def signableItemsForOrderProcessing(workflowPosition: WorkflowPosition)
-  : Task[Checked[Seq[Signed[SignableItem]]]] =
-    for (s <- journal.state) yield
-      for {
-        signedWorkflow <- s.keyToSigned(Workflow).checked(workflowPosition.workflowId)
-        workflow = signedWorkflow.value
-        jobKey <- workflow.positionToJobKey(workflowPosition.position)
-        job <- workflow.keyToJob.checked(jobKey)
-        jobResourcePaths = JobConf.jobResourcePathsFor(job, workflow)
-        signedJobResources <- jobResourcePaths.traverse(s.keyToSigned(JobResource).checked)
-      } yield signedJobResources :+ signedWorkflow
-
   private def currentSubagentItemState: Task[Checked[SubagentItemState]] =
     journal.state.map(_.idToSubagentItemState.checked(subagentId))
-
-  def testFailover(): Unit =
-    _testFailover = true
 
   override def toString =
     s"RemoteSubagentDriver(${subagentItem.pathRev})"
@@ -665,7 +610,7 @@ object RemoteSubagentDriver
 
   private[director] def resource[S <: SubagentDirectorState[S]](
     subagentItem: SubagentItem,
-    api: SubagentApi,
+    api: HttpSubagentApi,
     journal: Journal[S],
     controllerId: ControllerId,
     conf: Conf,
@@ -683,7 +628,6 @@ object RemoteSubagentDriver
     eventBufferDelay: FiniteDuration,
     eventBufferSize: Int,
     commitDelay: FiniteDuration)
-
   object Conf {
     def fromConfig(config: Config, commitDelay: FiniteDuration) = {
       new Conf(
@@ -691,13 +635,6 @@ object RemoteSubagentDriver
         eventBufferSize = config.getInt("js7.subagent-driver.event-buffer-size"),
         commitDelay = commitDelay)
     }
-  }
-
-  final case class StdouterrConf(chunkSize: Int, delay: FiniteDuration)
-  object StdouterrConf {
-    def fromConfig(config: Config): StdouterrConf = new StdouterrConf(
-      chunkSize = config.memorySizeAsInt("js7.order.stdout-stderr.chunk-size").orThrow,
-      delay = config.getDuration("js7.order.stdout-stderr.delay").toFiniteDuration)
   }
 
   //final case class SubagentDriverStoppedProblem(subagentId: SubagentId) extends Problem.Coded {
