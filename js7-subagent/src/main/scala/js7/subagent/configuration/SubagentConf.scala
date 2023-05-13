@@ -24,7 +24,7 @@ import js7.launcher.configuration.{JobLauncherConf, ProcessKillScript}
 import js7.launcher.forwindows.configuration.WindowsConf
 import js7.launcher.process.ProcessKillScriptProvider
 import js7.subagent.configuration.SubagentConf.*
-import js7.subagent.director.SubagentDriver.StdouterrConf
+import js7.subagent.director.RemoteSubagentDriver.StdouterrConf
 import monix.execution.Scheduler
 import scala.concurrent.duration.FiniteDuration
 

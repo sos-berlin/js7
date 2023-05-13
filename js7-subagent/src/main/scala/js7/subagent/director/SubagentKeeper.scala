@@ -64,7 +64,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
     .fromConfig(directorConf.config, "js7.subagent-driver.reconnect-delays")(scheduler)
     .orThrow
   private val legacyLocalSubagentId = SubagentId.legacyLocalFromAgentPath(agentPath) // COMPATIBLE with v2.2
-  private val driverConf = SubagentDriver.Conf.fromConfig(directorConf.config,
+  private val driverConf = RemoteSubagentDriver.Conf.fromConfig(directorConf.config,
     commitDelay = directorConf.journalConf.delay)
   /** defaultPrioritized is used when no SubagentSelectionId is given. */
   private val defaultPrioritized = Prioritized.empty[SubagentId](
@@ -215,7 +215,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
         .flatMap {
           case Left(problem) => Task.left(problem)
           case Right(fiber) =>
-            // OrderProcessed event has been persisted by SubagentDriver
+            // OrderProcessed event has been persisted by RemoteSubagentDriver
             fiber.join
               .map { orderProcessed =>
                 onEvents(orderProcessed :: Nil)
@@ -301,7 +301,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
     stateVar.value
       .flatMap(s => Task(s.idToDriver.checked(subagentId)))
       .flatMapT {
-        case driver: SubagentDriver @unchecked =>
+        case driver: RemoteSubagentDriver =>
           journal.persistKeyedEvent(subagentId <-: SubagentResetStarted(force))
             .flatMapT(_ =>
               driver.reset(force)
@@ -361,7 +361,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
       addOrChange(subagentItemState)
         .rightAs(()))
 
-  // May return a new, non-started SubagentDriver
+  // May return a new, non-started RemoteSubagentDriver
   private def addOrChange(subagentItemState: SubagentItemState)
   : Task[Checked[Option[SubagentDriver]]] =
     logger.debugTask("addOrChange", subagentItemState.pathRev) {
@@ -411,14 +411,13 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
               })
         }
         .flatMapT {
-          case Some((Some(oldAllocatedDriver), newDriver: SubagentDriver @unchecked))
+          case Some((Some(Allocated(oldDriver: RemoteSubagentDriver, stopOld)), newDriver: RemoteSubagentDriver))
             if !newDriver.isLocal =>
-            val oldDriver = oldAllocatedDriver.allocatedThing
             assert(oldDriver.subagentId == newDriver.subagentId)
             val name = "addOrChange " + oldDriver.subagentItem.pathRev
             oldDriver
               .stopDispatcherAndEmitProcessLostEvents(ProcessLostDueSubagentUriChangeProblem, None)
-              .*>(oldAllocatedDriver.stop)  // Maybe try to send Shutdown command ???
+              .*>(stopOld)  // Maybe try to send Shutdown command ???
               .*>(subagentItemLockKeeper
                 .lock(oldDriver.subagentId)(
                   newDriver.startMovedSubagent(oldDriver))
@@ -428,7 +427,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
                 .startAndForget
                 .as(Right(None)))
 
-          case Some((None, newDriver: SubagentDriver)) if newDriver.isLocal=>
+          case Some((None, newDriver: RemoteSubagentDriver)) if newDriver.isLocal=>
             emitLocalSubagentCoupled
               .as(Right(Some(newDriver)))
 
@@ -461,7 +460,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
   : Resource[Task, SubagentDriver] =
     for {
       subagent <- Subagent.resource(directorConf.subagentConf, scheduler, iox, testEventBus)
-      driver <- SubagentDriver.resource(
+      driver <- RemoteSubagentDriver.resource(
         subagentItem,
         new LocalSubagentApi(subagent),
         journal,
@@ -500,7 +499,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
 
   private def subagentDriverResource(subagentItem: SubagentItem, api: HttpSubagentApi)
   : Resource[Task, SubagentDriver] =
-    SubagentDriver
+    RemoteSubagentDriver
       .resource(
         subagentItem,
         api,

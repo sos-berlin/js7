@@ -40,7 +40,7 @@ private trait SubagentEventListener
 {
   protected def subagentId: SubagentId
   protected def subagentConf: SubagentConf
-  protected def conf: SubagentDriver.Conf
+  protected def conf: RemoteSubagentDriver.Conf
   protected def recouplingStreamReaderConf: RecouplingStreamReaderConf
   protected def api: SubagentApi
   protected def journal: Journal[? <: SubagentDirectorState[?]]
