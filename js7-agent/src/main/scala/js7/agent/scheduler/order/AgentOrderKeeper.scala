@@ -34,6 +34,7 @@ import js7.common.system.PlatformInfos.currentPlatformInfo
 import js7.common.system.startup.ServiceMain
 import js7.common.utils.Exceptions.wrapException
 import js7.core.problems.ReverseReleaseEventsProblem
+import js7.data.agent.AgentRef
 import js7.data.agent.Problems.{AgentDuplicateOrder, AgentIsShuttingDown}
 import js7.data.calendar.Calendar
 import js7.data.event.JournalEvent.JournalEventsReleased
@@ -90,9 +91,14 @@ with Stash
   private val journal = journalAllocated.allocatedThing
   private val (ownAgentPath, localSubagentId, controllerId) = {
     val meta = journal.unsafeCurrentState().meta
-    (meta.agentPath,
-      meta.directors.get(conf.clusterConf.isBackup.toInt),
-      meta.controllerId)
+    val subagentId =
+      if (!conf.clusterConf.isBackup)
+        meta.directors.headOption
+      else if (meta.directors.size == 1) throw new IllegalStateException(
+        "Missing definition of backup Subagent in AgentMetaState")
+      else
+        meta.directors.get(1)
+    (meta.agentPath, subagentId, meta.controllerId)
   }
   private implicit val instructionExecutorService: InstructionExecutorService =
     new InstructionExecutorService(clock)
@@ -445,6 +451,15 @@ with Stash
 
   private def attachUnsignedItem(item: UnsignedItem): Future[Checked[Response.Accepted]] =
     item match {
+      case agentRef: AgentRef =>
+        if (agentRef.path != ownAgentPath)
+          Future.successful(Left(Problem(s"Alien AgentRef(${agentRef.path})")))
+        else
+          persist(ItemAttachedToMe(agentRef)) { (stampedEvent, journaledState) =>
+            proceedWithItem(agentRef).runToFuture
+          }.flatten
+            .rightAs(AgentCommand.Response.Accepted)
+
       case fileWatch: FileWatch =>
         if (!conf.scriptInjectionAllowed)
           Future.successful(Left(SignedInjectionNotAllowed))

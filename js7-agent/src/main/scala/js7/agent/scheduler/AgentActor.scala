@@ -146,7 +146,9 @@ private[agent] final class AgentActor(
         val agentRunId = AgentRunId(journal.journalId)
         journal
           .persist(agentState =>
-            if (!agentState.isDedicated)
+            if (!agentState.isDedicated
+              || agentPath == agentState.agentPath
+              && agentState.meta.directors != directors)
               for (_ <- UserId.checked(agentPath.string)/*used for Subagent login*/) yield
                 Seq(NoKey <-:
                   AgentDedicated(directors, agentPath, agentRunId, controllerId))
@@ -158,6 +160,7 @@ private[agent] final class AgentActor(
               Left(AgentAlreadyDedicatedProblem)
             else
               Right(Nil))
+          .flatTapT(_ => appointClusterNodes)
           .flatMapT(eventAndState => Task {
             logger.info(s"Dedicating $agentPath to '$controllerId'")
             addOrderKeeper(agentPath, controllerId)
@@ -241,6 +244,23 @@ private[agent] final class AgentActor(
     } else
       Checked.unit
   }
+
+  @deprecated // Maybe the Director itself appoints the cluster nodes ???
+  private def appointClusterNodes: Task[Checked[Unit]] =
+    Task.right(())
+    //logger.debugTask(journal.state
+    //  .map(state =>
+    //    for {
+    //      subagentItems <- state.meta.directors.traverse(state.keyToItem(SubagentItem).checked)
+    //      workingClusterNode <- clusterNode.workingClusterNode
+    //    } yield subagentItems -> workingClusterNode)
+    //  .flatMapT { case (subagentItems, workingClusterNode) =>
+    //    workingClusterNode.appointNodes(
+    //      Map(
+    //        AgentClusterConf.primaryNodeId -> subagentItems(0).uri,
+    //        AgentClusterConf.backupNodeId -> subagentItems(1).uri),
+    //      AgentClusterConf.primaryNodeId)
+    //  })
 
   private def continueTermination(): Unit =
     if (terminating) {

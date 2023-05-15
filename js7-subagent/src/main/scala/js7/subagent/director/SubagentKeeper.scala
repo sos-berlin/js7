@@ -62,7 +62,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
   private val reconnectDelayer: DelayIterator = DelayIterators
     .fromConfig(directorConf.config, "js7.subagent-driver.reconnect-delays")(scheduler)
     .orThrow
-  private val legacyLocalSubagentId = SubagentId.legacyLocalFromAgentPath(agentPath) // COMPATIBLE with v2.2
+  private lazy val legacyLocalSubagentId = SubagentId.legacyLocalFromAgentPath(agentPath) // COMPATIBLE with v2.2
   private val driverConf = RemoteSubagentDriver.Conf.fromConfig(directorConf.config,
     commitDelay = directorConf.journalConf.delay)
   /** defaultPrioritized is used when no SubagentSelectionId is given. */
@@ -76,21 +76,22 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
 
   def start: Task[Unit] =
     logger.debugTask(
-      Task.defer {
-        if (localSubagentId.isDefined)
-          Task.unit
-        else // COMPATIBLE with v2.2 which does not know Subagents
-          stateVar
-            .update { state =>
-              val subagentItem = SubagentItem(legacyLocalSubagentId, agentPath,
-                uri = Uri("http://127.0.0.1:99999"/*dummy???*/))
-              allocateLocalSubagentDriver(subagentItem)
-                .map(allocatedDriver =>
-                  state.insertSubagentDriver(allocatedDriver))
-                .orThrow
-            }
-            .void
-    })
+      Task.unless(localSubagentId.isDefined) {
+        // COMPATIBLE with v2.2 which does not know Subagents
+        val subagentId = localSubagentId getOrElse legacyLocalSubagentId
+        logger.warn(
+          s"Automatically create local $subagentId for compatibility with legacy v2.2 AgentRef")
+        stateVar
+          .update { state =>
+            val subagentItem = SubagentItem(
+              subagentId, agentPath, uri = Uri("NO-URL://LEGACY-SUBAGENT"))
+            allocateLocalSubagentDriver(subagentItem)
+              .map(allocatedDriver =>
+                state.insertSubagentDriver(allocatedDriver))
+              .orThrow
+          }
+          .void
+      })
 
   def stop: Task[Unit] =
     logger.traceTask(

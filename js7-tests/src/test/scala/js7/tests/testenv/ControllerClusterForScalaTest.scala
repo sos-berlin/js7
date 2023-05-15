@@ -137,7 +137,7 @@ trait ControllerClusterForScalaTest
             js7.auth.cluster.password = "PRIMARY-CONTROLLER-PASSWORD"
             js7.auth.users.Controller.password = "plain:BACKUP-CONTROLLER-PASSWORD"
             js7.auth.users.TEST-USER.password = "plain:TEST-PASSWORD"
-            js7.auth.users.TEST-USER.permissions = [ AgentDirectorForward ]"""),
+            js7.auth.users.TEST-USER.permissions = [ UpdateItem, AgentDirectorForward ]"""),
         agentPorts = agentPorts,
         agentConfig = config"""
           js7.job.execution.signed-script-injection-allowed = on

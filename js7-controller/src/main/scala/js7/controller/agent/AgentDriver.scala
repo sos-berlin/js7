@@ -34,7 +34,7 @@ import js7.controller.agent.CommandQueue.QueueableResponse
 import js7.controller.configuration.ControllerConfiguration
 import js7.data.agent.AgentRefStateEvent.{AgentCouplingFailed, AgentDedicated}
 import js7.data.agent.Problems.AgentNotDedicatedProblem
-import js7.data.agent.{AgentClusterConf, AgentPath, AgentRef, AgentRunId}
+import js7.data.agent.{AgentClusterConf, AgentPath, AgentRef, AgentRefState, AgentRunId}
 import js7.data.cluster.ClusterState.HasNodes
 import js7.data.cluster.ClusterWatchId
 import js7.data.controller.ControllerState
@@ -169,7 +169,7 @@ extends Service.StoppableByRequest
     protected def executeCommand(command: AgentCommand.Batch) =
       logger.traceTask(Task.defer {
         val expectedSessionNumber = sessionNumber.get()
-        directorDriverAllocated.use(directorDriver =>
+        directorDriverAllocated.checked.flatMapT(directorDriver =>
           // Fail on recoupling, later read restarted Agent's attached OrderIds before issuing again AttachOrder
           if (sessionNumber.get() != expectedSessionNumber)
             Task.left(DecoupledProblem)
@@ -330,32 +330,33 @@ extends Service.StoppableByRequest
       }
     })
 
-  private def dedicateAgentIfNeeded: Task[Checked[(AgentRunId, EventId)]] =
+  private def dedicateAgentIfNeeded(directorDriver: DirectorDriver): Task[Checked[(AgentRunId, EventId)]] =
     logger.traceTask(Task.defer {
-      agentRunIdOnce.toOption match {
-        case Some(agentRunId) => Task.right(agentRunId -> state.lastFetchedEventId)
-        case None =>
-          journal.state
-            .map(_.keyToItem(AgentRef).checked(agentPath))
-            .flatMapT(agentRef =>
-              directorDriverAllocated.use(directorDriver =>
-                directorDriver
-                  .executeCommand(
-                    DedicateAgentDirector(agentRef.directors, controllerId, agentPath))
-                  .flatMapT { case DedicateAgentDirector.Response(agentRunId, agentEventId) =>
-                    (if (noJournal)
-                      Task.pure(Checked.unit)
-                    else
-                      journal
-                        .persistKeyedEvent(
-                          agentPath <-: AgentDedicated(agentRunId, Some(agentEventId)))
-                        .flatMapT { _ =>
-                          agentRunIdOnce := agentRunId
-                          reattachSubagents().map(Right(_))
-                        })
+      journal.state
+        .map(_.keyTo(AgentRefState).checked(agentPath))
+        .flatMapT { agentRefState =>
+          import agentRefState.agentRef.directors
+          agentRefState.agentRunId match {
+            case Some(agentRunId) => Task.right(agentRunId -> state.lastFetchedEventId)
+            case None =>
+              directorDriver
+                .executeCommand(
+                  DedicateAgentDirector(directors, controllerId, agentPath))
+                .flatMapT { case DedicateAgentDirector.Response(agentRunId, agentEventId) =>
+                  (if (noJournal)
+                    Task.pure(Checked.unit)
+                  else
+                    journal
+                      .persistKeyedEvent(
+                        agentPath <-: AgentDedicated(agentRunId, Some(agentEventId)))
+                      .flatMapT { _ =>
+                        agentRunIdOnce := agentRunId
+                        reattachSubagents().map(Right(_))
+                      })
                     .rightAs(agentRunId -> agentEventId)
-                  }))
-      }
+                }
+          }
+        }
     })
 
   private def reattachSubagents(): Task[Unit] =
@@ -391,15 +392,18 @@ extends Service.StoppableByRequest
           .map(_.agentToUris(agentPath).toList)
           .flatMap(uris =>
             Task.when(uris.lengthIs == 2)(
-              commandQueue
-                .enqueue(
-                  // FIXME Nur senden, wenn ClusterState.Empty !
-                  Queueable.ClusterAppointNodes(
-                    Map(
-                      AgentClusterConf.primaryNodeId -> uris(0),
-                      AgentClusterConf.backupNodeId -> uris(1)),
-                    NodeId("Primary")))
-                .void))))
+              // TODO Nur senden, wenn ClusterState.Empty !
+              appointClusterNodes(uris(0), uris(1))))))
+
+  private def appointClusterNodes(primaryUri: Uri, backupUri: Uri): Task[Unit] =
+    commandQueue
+      .enqueue(
+        Queueable.ClusterAppointNodes(
+          Map(
+            AgentClusterConf.primaryNodeId -> primaryUri,
+            AgentClusterConf.backupNodeId -> backupUri),
+          NodeId("Primary")))
+      .void
 
   private def startAndForgetDirectorDriver(implicit src: sourcecode.Enclosing): Task[Unit] =
     startNewDirectorDriver
@@ -522,6 +526,7 @@ private[controller] object AgentDriver
 
     final case class ResetSubagent(subagentId: SubagentId, force: Boolean) extends Queueable
 
+    @deprecated // ???
     final case class ClusterAppointNodes(idToUri: Map[NodeId, Uri], activeId: NodeId) extends Queueable
 
     case object ClusterSwitchOver extends Queueable

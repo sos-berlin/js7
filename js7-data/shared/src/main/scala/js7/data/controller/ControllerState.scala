@@ -162,10 +162,15 @@ with SnapshotableState[ControllerState]
                   changedAgentRef
                     .convertFromV2_1
                     .flatMap { case (agentRef, maybeSubagentItem) =>
+                      def checkIsExtending(a: AgentRef, b: AgentRef) =
+                        (a.directors == b.directors
+                          || a.directors.length == 1 && b.directors.length == 2
+                          && a.directors(0) == b.directors(0)
+                        ) !! Problem.pure("Agent Directors cannot not be changed")
+
                       for {
                         agentRefState <- keyTo(AgentRefState).checked(agentRef.path)
-                        _ <- (agentRef.directors == agentRefState.agentRef.directors) !!
-                          Problem.pure("Agent Director cannot not be changed")
+                        _ <- checkIsExtending(agentRefState.agentRef, agentRef)
                         updatedAgentRef <- agentRefState.updateItem(agentRef)
                       } yield
                         copy(

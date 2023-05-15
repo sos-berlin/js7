@@ -234,6 +234,7 @@ object AgentCommand extends CommonCommand.Companion
     type Response = Response.Accepted
   }
 
+  @deprecated //???
   final case class ClusterAppointNodes(
     idToUri: Map[NodeId, Uri],
     activeId: NodeId)

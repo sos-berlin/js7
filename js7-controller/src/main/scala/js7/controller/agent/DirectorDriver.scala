@@ -38,7 +38,7 @@ private[agent] final class DirectorDriver private(
   agentPath: AgentPath,
   initialEventId: EventId,
   client: AgentClient,
-  dedicateAgentIfNeeded: Task[Checked[(AgentRunId, EventId)]],
+  dedicateAgentIfNeeded: DirectorDriver => Task[Checked[(AgentRunId, EventId)]],
   onCouplingFailed_ : Problem => Task[Boolean],
   onCoupled_ : Set[OrderId] => Task[Unit],
   onDecoupled_ : Task[Unit],
@@ -90,7 +90,7 @@ extends Service.StoppableByRequest
             case _ =>
               Task.pure(Checked.unit)
           }))
-        .flatMapT(_ => dedicateAgentIfNeeded)
+        .flatMapT(_ => dedicateAgentIfNeeded(directorDriver))
         .flatMapT { case (agentRunId, agentEventId) =>
           executeCommand(CoupleController(agentPath, agentRunId, eventId = agentEventId))
             .flatMapT { case CoupleController.Response(orderIds) =>
@@ -236,7 +236,7 @@ private[agent] object DirectorDriver {
     agentPath: AgentPath,
     initialEventId: EventId,
     client: AgentClient,
-    dedicateAgentIfNeeded: Task[Checked[(AgentRunId, EventId)]],
+    dedicateAgentIfNeeded: DirectorDriver => Task[Checked[(AgentRunId, EventId)]],
     onCouplingFailed: Problem => Task[Boolean],
     onCoupled: Set[OrderId] => Task[Unit],
     onDecoupled: Task[Unit],
