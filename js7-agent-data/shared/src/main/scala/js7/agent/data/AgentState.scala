@@ -12,7 +12,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.RichMap
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isTest
-import js7.data.agent.{AgentPath, AgentRefState, AgentRunId}
+import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
 import js7.data.calendar.{Calendar, CalendarPath, CalendarState}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.ControllerId
@@ -83,6 +83,7 @@ with SnapshotableState[AgentState]
   def toSnapshotObservable = Observable(
     standards.toSnapshotObservable,
     Observable.fromIterable(meta != AgentMetaState.empty thenList meta),
+    Observable.fromIterable(keyToItem(AgentRef).values),
     Observable.fromIterable(keyTo(SubagentItemState).values).flatMap(_.toSnapshotObservable),
     Observable.fromIterable(keyTo(SubagentSelectionState).values).flatMap(_.toSnapshotObservable),
     Observable.fromIterable(keyTo(FileWatchState).values).flatMap(_.toSnapshotObservable),
@@ -161,15 +162,25 @@ with SnapshotableState[AgentState]
                     case Some(subagentState) => subagentState.copy(subagentItem = subagentItem)
                   })))
 
+          case ItemAttachedToMe(agentRef: AgentRef) if agentRef.path == meta.agentPath =>
+            Right(copy(
+              keyToUnsignedItemState_ =
+                keyToUnsignedItemState_.updated(agentRef.path, agentRef.toInitialItemState),
+              meta = meta.copy(
+                directors = agentRef.directors)))
+
           case ItemAttachedToMe(item: UnsignedItem) =>
             item match {
               case _: WorkflowPathControl |
                    _: WorkflowControl |
                    _: Calendar |
-                   _: SubagentSelection =>
+                   _: SubagentSelection |
+                   _: AgentRef |
+                   _: SubagentItem =>
                 // May replace an existing Item
                 Right(copy(
-                  keyToUnsignedItemState_ = keyToUnsignedItemState_.updated(item.key, item.toInitialItemState)))
+                  keyToUnsignedItemState_ =
+                    keyToUnsignedItemState_.updated(item.key, item.toInitialItemState)))
 
               case _ => eventNotApplicable(keyedEvent)
             }
@@ -237,7 +248,6 @@ with SnapshotableState[AgentState]
           agentRunId = agentRunId,
           controllerId = controllerId,
           directors = directors)))
-
       case _ => applyStandardEvent(keyedEvent)
     }
 
@@ -323,11 +333,11 @@ with ItemContainer.Companion[AgentState]
   def newBuilder() = new AgentStateBuilder
 
   protected val inventoryItems = Vector(
-    FileWatch, JobResource, Calendar, Workflow, WorkflowPathControl, WorkflowControl,
-    SubagentItem, SubagentSelection)
+    AgentRef, SubagentItem, SubagentSelection,
+    FileWatch, JobResource, Calendar, Workflow, WorkflowPathControl, WorkflowControl)
 
-  override lazy val itemPaths =
-    inventoryItems.map(_.Path) :+ AgentPath
+  //protected override def itemPaths =
+  //  super.itemPaths :+ AgentPath
 
   final case class AgentMetaState(
     directors: Seq[SubagentId],

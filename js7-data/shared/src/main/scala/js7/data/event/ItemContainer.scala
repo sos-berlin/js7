@@ -35,7 +35,7 @@ object ItemContainer
 
     protected def inventoryItems: Seq[InventoryItem.Companion_]
 
-    lazy val itemPaths: Seq[InventoryItemPath.AnyCompanion] =
+    protected def itemPaths: Seq[InventoryItemPath.AnyCompanion] =
       inventoryItems.map(_.Path)
 
     final lazy val delegateIds: Seq[DelegateId.Companion_] =

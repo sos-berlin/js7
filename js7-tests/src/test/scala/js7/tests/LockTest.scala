@@ -1077,6 +1077,10 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
 
     // No Lock is attached to any Agent
     assert(controllerState.itemToAgentToAttachedState == Map(
+      agentPath -> Map(
+        agentPath -> Attached(Some(ItemRevision(0)))),
+      bAgentPath -> Map(
+        bAgentPath -> Attached(Some(ItemRevision(0)))),
       SubagentId("AGENT-0") -> Map(
         AgentPath("AGENT") -> Attached(Some(ItemRevision(0)))),
       SubagentId("B-AGENT-0") -> Map(

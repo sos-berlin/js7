@@ -17,6 +17,8 @@ import js7.data.agent.AgentRefStateEvent.AgentMirroredEvent
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterNodesAppointed, ClusterWatchRegistered}
 import js7.data.cluster.ClusterState
+import js7.data.item.ItemAttachedState.Attached
+import js7.data.item.ItemRevision
 import js7.data.order.OrderEvent.{OrderDetachable, OrderFinished, OrderProcessingStarted}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.subagent.{SubagentId, SubagentItem}
@@ -59,6 +61,11 @@ final class SimpleAgentClusterTest extends ControllerClusterTester
           agent.eventWatch.await[ClusterNodesAppointed]()
           agent.eventWatch.await[ClusterWatchRegistered]()
           agent.eventWatch.await[ClusterCoupled]()
+
+          assert(primaryController.controllerState().itemToAgentToAttachedState == Map(
+            agentPath      -> Map(agentPath -> Attached(Some(ItemRevision(0)))),
+            subagentIds(0) -> Map(agentPath -> Attached(Some(ItemRevision(0)))),
+            subagentIds(1) -> Map(agentPath -> Attached(Some(ItemRevision(0))))))
 
           val stampedSeq = primaryController.runOrder(FreshOrder(OrderId("🔹"), TestWorkflow.path))
           assert(stampedSeq.last.value == OrderFinished())

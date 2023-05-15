@@ -43,6 +43,8 @@ extends UnsignedSimpleItem
 
   override def referencedItemPaths = directors.view
 
+  override val dedicatedAgentPath = Some(path)
+
   // COMPATIBLE with v2.1
   /** Converts a legacy AgentRef to a modern AgentRef and a local SubagentItem. */
   def convertFromV2_1: Checked[(AgentRef, Option[SubagentItem])] =
