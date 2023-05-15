@@ -45,7 +45,7 @@ final class AgentsSubagentIdsScope(state: StateView) extends Scope
                 .map(_.subagentIds.map(_.string))
           }
           .map(strings =>
-            ListValue(strings.map(StringValue(_)).toVector))
+            ListValue(strings.toVector.sorted.map(StringValue(_))))
     }
   }
 
