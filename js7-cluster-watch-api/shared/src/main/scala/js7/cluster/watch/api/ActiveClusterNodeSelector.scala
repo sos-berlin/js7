@@ -61,7 +61,7 @@ object ActiveClusterNodeSelector {
                   .map(ApiWithNodeState(o.api, _)))
                 // Query nodes in parallel and continue with first response first
                 .merge(implicitly[Observable[ApiWithNodeState[Api]] <:< Observable[ApiWithNodeState[Api]]]/*required for Scala 3???*/)
-                .takeWhileInclusive(o => !o.clusterNodeState.forall(_.isActive))
+                .takeWhileInclusive(o => !o.clusterNodeState.exists(_.isActive))
                 .toListL
                 .flatMap { list =>
                   val maybeActive = list.lastOption collect {
