@@ -446,16 +446,14 @@ final class ControllerCommandTest extends OurTestSuite
         Map(
           NodeId("A") -> Uri("https://A"),
           NodeId("B") -> Uri("https://B")),
-        activeId = NodeId("A"),
-        Some(AgentPath("AGENT"))),
+        activeId = NodeId("A")),
       json"""{
         "TYPE": "ClusterAppointNodes",
         "idToUri": {
           "A": "https://A",
           "B": "https://B"
         },
-        "activeId": "A",
-        "agentPath": "AGENT"
+        "activeId": "A"
       }""")
   }
 

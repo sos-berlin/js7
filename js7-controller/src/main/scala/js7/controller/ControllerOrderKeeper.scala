@@ -936,24 +936,6 @@ with MainJournalingActor[ControllerState, Event]
               .map(_ => Right(ControllerCommand.Response.Accepted))
         }
 
-      case ControllerCommand.ClusterAppointNodes(idToUri, activeNode, Some(agentPath)) =>
-        Future.successful {
-          agentRegister.checked(agentPath)
-            .map(_.agentDriver)
-            .map { agentDriver =>
-              agentDriver
-                .send(AgentDriver.Queueable.ClusterAppointNodes(idToUri, activeNode))
-                .onErrorHandle(t => logger.error(
-                  s"$agentDriver.send(ClusterAppointNodes) => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
-                .logWhenItTakesLonger(s"$agentDriver.send(ClusterAppointNodes)")
-                .awaitInfinite // TODO
-              // - Asynchronous, no response awaited
-              // - No error checking
-              // - Gets lost on Agent restart
-              ControllerCommand.Response.Accepted
-            }
-        }
-
       case ControllerCommand.ClusterSwitchOver(Some(agentPath)) =>
         Future.successful {
           agentRegister.checked(agentPath)

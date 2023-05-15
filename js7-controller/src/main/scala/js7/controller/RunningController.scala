@@ -405,7 +405,7 @@ object RunningController
               }
           }
 
-        case ControllerCommand.ClusterAppointNodes(idToUri, activeId, None) =>
+        case ControllerCommand.ClusterAppointNodes(idToUri, activeId) =>
           Task(clusterNode.workingClusterNode)
             .flatMapT(_.appointNodes(idToUri, activeId))
             .rightAs(ControllerCommand.Response.Accepted)

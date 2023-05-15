@@ -242,8 +242,7 @@ object ControllerCommand extends CommonCommand.Companion
 
   final case class ClusterAppointNodes(
     idToUri: Map[NodeId, Uri],
-    activeId: NodeId,
-    agentPath: Option[AgentPath] = None)
+    activeId: NodeId)
   extends ControllerCommand {
     type Response = Response.Accepted
   }
