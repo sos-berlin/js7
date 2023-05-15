@@ -3,31 +3,29 @@ package js7.base.utils
 import cats.effect.Resource
 import izumi.reflect.Tag
 import js7.base.monixutils.AsyncVariable
+import js7.base.problem.{Checked, Problem}
 import js7.base.utils.CatsUtils.syntax.RichResource
 import monix.eval.Task
 
-final class MutableAllocated[S](implicit S: Tag[S]) {
-  private val allocatedVar = AsyncVariable(null.asInstanceOf[Allocated[Task, S]])
+final class MutableAllocated[A](implicit src: sourcecode.Enclosing, tag: Tag[A]) {
+  private val allocatedVar = AsyncVariable(null.asInstanceOf[Allocated[Task, A]])
 
-  def value: Task[S] =
-    allocatedVar.value.flatMap {
-      case null =>
-        Task.raiseError(new IllegalStateException(s"MutableAllocated[$S] has not been initialized"))
-
-      case allocated =>
-        Task.pure(allocated.allocatedThing)
+  def value: Task[A] =
+    checked.flatMap {
+      case Left(problem) => Task.raiseError(new IllegalStateException(problem.toString))
+      case Right(a) => Task.pure(a)
     }
 
-  def use[R](body: S => Task[R]): Task[R] =
-    allocatedVar.use {
+  def checked: Task[Checked[A]] =
+    allocatedVar.value.map {
       case null =>
-        Task.raiseError(new IllegalStateException(s"MutableAllocated[$S] has not been initialized"))
+        Left(Problem(s"$toString has not been initialized"))
 
       case allocated =>
-        body(allocated.allocatedThing)
+        Right(allocated.allocatedThing)
     }
 
-  def acquire(resource: Resource[Task, S]): Task[S] =
+  def acquire(resource: Resource[Task, A]): Task[A] =
     allocatedVar
       .update(allocated =>
         Task.when(allocated != null)(allocated.stop) *>
@@ -39,4 +37,6 @@ final class MutableAllocated[S](implicit S: Tag[S]) {
       case null => Task.unit
       case o => o.stop
     }
+
+  override def toString = s"${src.value}: MutableAllocated[${tag.tag}]"
 }

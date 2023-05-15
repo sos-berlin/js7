@@ -1,9 +1,9 @@
 package js7.base.monixutils
 
 import js7.base.problem.Problem
+import js7.base.test.OurAsyncTestSuite
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
-import js7.base.test.OurAsyncTestSuite
 
 final class AsyncVariableTest extends OurAsyncTestSuite
 {
@@ -49,6 +49,11 @@ final class AsyncVariableTest extends OurAsyncTestSuite
           assert(checked == Right("hej") && asyncVariable.get == 7))
         .runToFuture
     }
+  }
+
+  "toString" in {
+    assert(asyncVariable.toString ==
+      "js7.base.monixutils.AsyncVariableTest#asyncVariable: AsyncVariable[Int]")
   }
 
   "Massive parallel" in {

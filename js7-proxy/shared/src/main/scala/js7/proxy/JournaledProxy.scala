@@ -15,10 +15,9 @@ import js7.base.utils.ScalaUtils.checkedCast
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.SetOnce
 import js7.base.web.HttpClient
-import js7.cluster.watch.api.ActiveClusterNodeSelector
+import js7.cluster.watch.api.{ActiveClusterNodeSelector, HttpClusterNodeApi}
 import js7.common.http.RecouplingStreamReader
 import js7.common.http.configuration.RecouplingStreamReaderConf
-import js7.data.cluster.ClusterNodeApi
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventApi, EventId, EventRequest, EventSeqTornProblem, JournaledState, SnapshotableState, Stamped}
 import js7.proxy.JournaledProxy.*
@@ -134,7 +133,7 @@ trait JournaledProxy[S <: SnapshotableState[S]]
 object JournaledProxy
 {
   private type RequiredApi_[S <: JournaledState[S]] =
-    EventApi & ClusterNodeApi & SessionApi.HasUserAndPassword { type State = S }
+    EventApi & HttpClusterNodeApi & SessionApi.HasUserAndPassword { type State = S }
 
   private val logger = scribe.Logger[this.type]
 

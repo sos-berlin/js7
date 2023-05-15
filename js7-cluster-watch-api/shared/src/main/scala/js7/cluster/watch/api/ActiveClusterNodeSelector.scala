@@ -20,7 +20,7 @@ object ActiveClusterNodeSelector {
 
   /** Selects the API for the active node, waiting until one is active.
    * The returned EventApi is logged-in. */
-  final def selectActiveNodeApi[Api <: ClusterNodeApi](
+  final def selectActiveNodeApi[Api <: HttpClusterNodeApi](
     apisResource: Resource[Task, Nel[Api]],
     failureDelay: FiniteDuration,
     onCouplingError: Api => Throwable => Task[Unit] =
@@ -33,7 +33,7 @@ object ActiveClusterNodeSelector {
           api => throwable => onCouplingError(api)(throwable),
           failureDelay)))
 
-  private def selectActiveNodeApiOnly[Api <: ClusterNodeApi](
+  private def selectActiveNodeApiOnly[Api <: HttpClusterNodeApi](
     apis: Nel[Api],
     onCouplingError: Api => Throwable => Task[Unit],
     failureDelay: FiniteDuration)
@@ -68,10 +68,10 @@ object ActiveClusterNodeSelector {
                     case ApiWithNodeState(api, Right(nodeState)) if nodeState.isActive =>
                       api -> nodeState
                   }
-                  logProblems(list, maybeActive)
+                  logProblems(list, maybeActive, n = apis.length)
                   apisWithClusterNodeStateFibers
                     .collect { case o if list.forall(_.api ne o.api) =>
-                      logger.debug(s"Cancel discarded request to '${o.api}'")
+                      logger.trace(s"Cancel discarded request to ${o.api.baseUri}")
                       o.fiber.cancel
                     }
                     .sequence
@@ -83,7 +83,7 @@ object ActiveClusterNodeSelector {
                 .guaranteeCase {
                   case ExitCase.Completed => Task.unit
                   case exitCase =>
-                    logger.debug(exitCase.toString)
+                    logger.debug(s"selectActiveNodeApiOnly => $exitCase")
                     apisWithClusterNodeStateFibers
                       .map(_.fiber.cancel)
                       .sequence
@@ -96,33 +96,45 @@ object ActiveClusterNodeSelector {
       }
       .map { case (api, clusterNodeState) =>
         val x = if (clusterNodeState.isActive) "active" else "maybe passive"
-        logger.info(s"Selected $x node $api '${clusterNodeState.nodeId}'")
+        logger.info(s"Selected $x ${clusterNodeState.nodeId} ${api.baseUri}")
         api
       }
     }
 
-  private case class ApiWithFiber[Api <: ClusterNodeApi](
+  private case class ApiWithFiber[Api <: HttpClusterNodeApi](
     api: Api,
     fiber: Fiber[Checked[ClusterNodeState]])
 
-  private case class ApiWithNodeState[Api <: ClusterNodeApi](
+  private case class ApiWithNodeState[Api <: HttpClusterNodeApi](
     api: Api,
     clusterNodeState: Checked[ClusterNodeState])
 
-  private def fetchClusterNodeState[Api <: ClusterNodeApi](api: ClusterNodeApi): Task[Checked[ClusterNodeState]] =
+  private def fetchClusterNodeState(api: HttpClusterNodeApi)
+  : Task[Checked[ClusterNodeState]] =
     HttpClient
       .liftProblem(
         api.retryIfSessionLost()(
           api.clusterNodeState))
+      .tapEval(checked => Task(
+        logger.trace(s"${api.baseUri} => ${checked.fold(identity, identity)}")))
 
-  private def logProblems[Api <: ClusterNodeApi](
+  private def logProblems[Api <: HttpClusterNodeApi](
     list: List[ApiWithNodeState[Api]],
-    maybeActive: Option[(ClusterNodeApi, ClusterNodeState)])
+    maybeActive: Option[(ClusterNodeApi, ClusterNodeState)],
+    n: Int)
   : Unit = {
     list.collect { case ApiWithNodeState(api, Left(problem)) => api -> problem }
       .foreach { case (api, problem) => logger.warn(
-        s"Cluster node '$api' is not accessible: $problem")
-    }
-    if (maybeActive.isEmpty) logger.warn("No cluster node seems to be active")
+        s"Cluster node ${api.baseUri} is not accessible: $problem")
+      }
+    // Different clusterStates only iff nodes are not coupled
+    val clusterStates = list
+      .collect {
+        case ApiWithNodeState(api, Right(clusterNodeState)) =>
+          s"${api.baseUri} => ${clusterNodeState.clusterState.getClass.simpleScalaName}"
+      }
+      .mkString(" · ")
+    if (maybeActive.isEmpty) logger.warn(
+      s"No cluster node (out of $n) seems to be active${clusterStates.nonEmpty ?? s": $clusterStates"}")
   }
 }

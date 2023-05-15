@@ -18,47 +18,47 @@ import scala.reflect.ClassTag
 abstract class SemaphoreJob(companion: SemaphoreJob.Companion[? <: SemaphoreJob])
 extends InternalJob
 {
-  final def toOrderProcess(step: Step) =
-    OrderProcess {
-      val orderId = step.order.id
-      val semaName = s"${getClass.shortClassName}($orderId) semaphore"
-      /*logger.debugTask(s"${getClass.shortClassName}($orderId)")*/(
-        step
-          .outTaskObserver.send(companion.stdoutLine)
-          .*>(companion.semaphore
-            .flatMap(sema =>
-              sema
-                .tryAcquire
-                .flatMap {
-                  case true => Task.unit
-                  case false =>
-                    val since = now
-                    sema.count
-                      .flatMap { count =>
-                        logger.info(s"🟡 $semaName is locked (count=$count)")
-                        val durations = Iterator(3.s, 7.s) ++ Iterator.continually(10.s)
-                        Task
-                          .defer(sema
-                            .acquire
-                            .timeoutTo(durations.next(), Task.raiseError(new TimeoutException)))
-                          .onErrorRestartLoop(()) {
-                            case (_: TimeoutException, _, retry) =>
-                              sema.count.flatMap { count =>
-                                logger.info(
-                                  s"🟠 $semaName is still locked (count=$count) since ${since.elapsed.pretty}")
-                                retry(())
-                              }
-                            case (t, _, _) => Task.raiseError(t)
-                          }
-                      }
-                      .guaranteeCase(exitCase => Task(
-                        exitCase match {
-                          case ExitCase.Error(_)  => logger.info(s"💥 $semaName $exitCase")
-                          case ExitCase.Canceled  => logger.info(s"⚫️ $semaName $exitCase")
-                          case ExitCase.Completed => logger.info(s"🟢 $semaName acquired")
-                        }))
-                })
-            .as(Outcome.succeeded)))
+  final def toOrderProcess(step: Step) = {
+    val orderId = step.order.id
+    val semaName = s"${getClass.shortClassName}($orderId) semaphore"
+    OrderProcess(
+      for {
+        _ <- step.outTaskObserver.send(companion.stdoutLine)
+        sema <- companion.semaphore
+        acquired <- sema.tryAcquire
+        count <- sema.count
+        _ <-
+          if (acquired)
+            Task(logger.info(s"⚪️ $semaName acquired"))
+          else
+            untilAcquired(sema, semaName, count)
+      } yield Outcome.succeeded)
+  }
+
+  private def untilAcquired(sema: Semaphore[Task], semaName: String, count: Long): Task[Unit] =
+    Task.defer {
+      val since = now
+      logger.info(s"🟡 $semaName is locked (count=$count)")
+      val durations = Iterator(3.s, 7.s) ++ Iterator.continually(10.s)
+      Task
+        .defer(sema
+          .acquire
+          .timeoutTo(durations.next(), Task.raiseError(new TimeoutException)))
+        .onErrorRestartLoop(()) {
+          case (_: TimeoutException, _, retry) =>
+            sema.count.flatMap { count =>
+              logger.info(
+                s"🟠 $semaName is still locked (count=$count) since ${since.elapsed.pretty}")
+              retry(())
+            }
+          case (t, _, _) => Task.raiseError(t)
+        }
+        .guaranteeCase(exitCase => Task(
+          exitCase match {
+            case ExitCase.Error(_) => logger.error(s"💥 $semaName $exitCase")
+            case ExitCase.Canceled => logger.info(s"⚫️ $semaName $exitCase")
+            case ExitCase.Completed => logger.info(s"🟢 $semaName acquired")
+          }))
     }
 }
 

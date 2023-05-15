@@ -315,7 +315,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
                   responseFuture
                     .flatMap(_
                       .discardEntityBytes().future.andThen { case tried =>
-                        logger.debug(s"    ⚫️$responseLogPrefix discardResponse => " +
+                        logger.debug(s"    🗑️ $responseLogPrefix discardEntityBytes => " +
                           tried.fold(_.toStringWithCauses, _ => "ok"))
                       })
                     .map((_: Done) => ())
@@ -326,8 +326,11 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
 
             case ExitCase.Error(throwable) => Task.defer {
               val sym = throwable match {
-                case t: akka.stream.StreamTcpException if t.getMessage.contains(
-                  "failed because of java.net.ConnectException: ") => "⭕"
+                case _: java.net.ConnectException => "⭕"
+                case t: akka.stream.StreamTcpException
+                  if t.getMessage.contains("java.net.ConnectException: ") => "⭕"
+                case t: LegiableAkkaHttpException
+                  if t.getMessage.contains("java.net.ConnectException: ") => "⭕"
                 case _ => "💥"
               }
               logger.debug(
@@ -492,10 +495,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
       .toList
       .flatMap(_.subgroups)
       .match_ {
-        case List(m1, m2) =>
-          new RuntimeException(s"$name $m1): $m2") with NoStackTrace {
-            override def toString = getMessage
-          }
+        case List(m1, m2) => new LegiableAkkaHttpException(s"$name $m1): $m2", t)
         case _ => t
       }
 
@@ -676,5 +676,13 @@ object AkkaHttpClient
         }
       else
         None
+  }
+
+  private final class LegiableAkkaHttpException(
+    message: String,
+    cause: akka.stream.StreamTcpException)
+  extends RuntimeException(message, cause)
+  with NoStackTrace {
+    override def toString = getMessage
   }
 }
