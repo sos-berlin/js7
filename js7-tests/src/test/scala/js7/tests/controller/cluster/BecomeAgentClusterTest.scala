@@ -43,9 +43,8 @@ with BlockingItemUpdater
 
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on
-    #!!! js7.journal.cluster.heartbeat = 0.5s
-    #!!! js7.journal.cluster.heartbeat-timeout = 0.5s
-
+    js7.journal.cluster.heartbeat = 0.5s
+    js7.journal.cluster.heartbeat-timeout = 0.5s
     """
 
   protected override val agentPaths = Seq(agentPath)

@@ -11,6 +11,7 @@ import js7.base.utils.AsyncLock
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichThrowable}
 import js7.controller.agent.AgentDriver.Queueable
 import js7.controller.agent.CommandQueue.*
+import js7.controller.agent.DirectorDriver.DirectorDriverStoppedProblem
 import js7.data.agent.AgentPath
 import js7.data.order.OrderId
 import monix.eval.Task
@@ -243,8 +244,14 @@ private[agent] abstract class CommandQueue(
 
       // Dequeue commands including rejected ones, but not those with ServiceUnavailable response.
       // The dequeued commands will not be repeated !!!
+
+      def isRepeatable(problem: Problem) = problem match {
+        case _: DirectorDriverStoppedProblem => true
+        case _ => problem.httpStatusCode == 503/*ServiceUnavailable*/
+      }
+
       queue.dequeueAll(responses.view
-        .flatMap(r => r.response.left.forall(_.httpStatusCode != 503/*ServiceUnavailable*/) ?
+        .flatMap(r => r.response.left.forall(prblm => !isRepeatable(prblm)) ?
           r.queueable)
         .toSet)
       onQueueableResponded(responses.map(_.queueable).toSet)

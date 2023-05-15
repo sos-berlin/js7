@@ -123,10 +123,11 @@ object ActiveClusterNodeSelector {
     maybeActive: Option[(ClusterNodeApi, ClusterNodeState)],
     n: Int)
   : Unit = {
-    list.collect { case ApiWithNodeState(api, Left(problem)) => api -> problem }
-      .foreach { case (api, problem) => logger.warn(
-        s"Cluster node ${api.baseUri} is not accessible: $problem")
-      }
+    list.foreach {
+      case ApiWithNodeState(api, Left(problem)) =>
+        logger.warn(s"Cluster node ${api.baseUri} is not accessible: $problem")
+      case _ =>
+    }
     // Different clusterStates only iff nodes are not coupled
     val clusterStates = list
       .collect {

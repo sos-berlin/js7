@@ -215,7 +215,7 @@ extends Service.StoppableByRequest
         client.retryIfSessionLost()(
           client.commandExecute(command)))
       .map {
-        case Left(()) => Left(Problem(s"$directorDriver has been stopped"))
+        case Left(()) => Left(DirectorDriverStoppedProblem(agentPath))
         case Right(o) => o
       }
 
@@ -250,4 +250,9 @@ private[agent] object DirectorDriver {
         dedicateAgentIfNeeded,
         onCouplingFailed, onCoupled, onDecoupled, onEvents,
         journal, conf)))
+
+  final case class DirectorDriverStoppedProblem(agentPath: AgentPath)
+  extends Problem.Coded {
+    def arguments = Map("agentPath" -> agentPath.string)
+  }
 }

@@ -17,6 +17,7 @@ import js7.data.agent.AgentRefStateEvent.AgentMirroredEvent
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterNodesAppointed, ClusterWatchRegistered}
 import js7.data.cluster.ClusterState
+import js7.data.item.BasicItemEvent.ItemAttached
 import js7.data.item.ItemAttachedState.Attached
 import js7.data.item.ItemRevision
 import js7.data.order.OrderEvent.{OrderDetachable, OrderFinished, OrderProcessingStarted}
@@ -61,6 +62,11 @@ final class SimpleAgentClusterTest extends ControllerClusterTester
           agent.eventWatch.await[ClusterNodesAppointed]()
           agent.eventWatch.await[ClusterWatchRegistered]()
           agent.eventWatch.await[ClusterCoupled]()
+
+          for (delegateId <- agentPath +: subagentIds) {
+            primaryController.eventWatch.await[ItemAttached](ke => ke.event.delegateId == agentPath
+              && ke.event.key == delegateId)
+          }
 
           assert(primaryController.controllerState().itemToAgentToAttachedState == Map(
             agentPath      -> Map(agentPath -> Attached(Some(ItemRevision(0)))),

@@ -1,6 +1,7 @@
 package js7.controller.agent
 
 import akka.actor.ActorSystem
+import cats.data.NonEmptyList
 import cats.effect.Resource
 import cats.syntax.foldable.*
 import cats.syntax.traverse.*
@@ -31,6 +32,7 @@ import js7.cluster.watch.api.ActiveClusterNodeSelector
 import js7.common.http.RecouplingStreamReader
 import js7.controller.agent.AgentDriver.*
 import js7.controller.agent.CommandQueue.QueueableResponse
+import js7.controller.agent.DirectorDriver.DirectorDriverStoppedProblem
 import js7.controller.configuration.ControllerConfiguration
 import js7.data.agent.AgentRefStateEvent.{AgentCouplingFailed, AgentDedicated}
 import js7.data.agent.Problems.AgentNotDedicatedProblem
@@ -44,7 +46,7 @@ import js7.data.item.{InventoryItemKey, ItemAttachedState, SignableItem, Unsigne
 import js7.data.node.NodeId
 import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderDetached}
 import js7.data.order.{Order, OrderId, OrderMark}
-import js7.data.subagent.SubagentId
+import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.journal.state.Journal
 import monix.eval.Task
 import monix.execution.atomic.AtomicInt
@@ -201,17 +203,18 @@ extends Service.StoppableByRequest
       }
 
     protected def asyncOnBatchFailed(queueables: Vector[Queueable], problem: Problem) =
-      Task.defer(
-        onBatchFailed(queueables, problem) *>
+      onBatchFailed(queueables, problem) *>
+        Task.when(!problem.isInstanceOf[DirectorDriverStoppedProblem])(
           startAndForgetDirectorDriver)
 
     private def onBatchFailed(queueables: Seq[Queueable], problem: Problem): Task[Unit] =
       Task.defer {
+        val msg = s"Command batch ${queueables.map(_.getClass.scalaName)} failed: $problem"
         problem match {
           case DecoupledProblem | RecouplingStreamReader.TerminatedProblem =>
-            logger.debug(s"Command batch failed: $problem")
+            logger.debug(msg)
           case _ =>
-            logger.warn(s"Command batch failed: $problem")
+            logger.warn(msg)
         }
         commandQueue.handleBatchFailed(queueables)
       }
@@ -250,7 +253,7 @@ extends Service.StoppableByRequest
     })
 
   def changeAgentRef(agentRef: AgentRef): Task[Unit] =
-    logger.traceTask(
+    logger.traceTask("changeAgentRef", agentRef)(
       state.lock.lock(Task {
         state.directors = agentRef.directors
       }) *>
@@ -462,10 +465,20 @@ extends Service.StoppableByRequest
         }).void)
   }
 
-  private def clientsResource: Resource[Task, Nel[AgentClient]] =
+  private def clientsResource: Resource[Task, Nel[AgentClient]] = {
     Resource
-      .eval(journal.state.map(_.agentToUris(agentPath)))
+      .eval(agentToUris(agentPath).orThrow/*AgentRef and SubagentItems must exist !!!*/)
       .flatMap(_.traverse(clientResource))
+      .evalTap(apis => Task(logger.trace(s"### clientsResource => $apis")))
+  }
+
+  private def agentToUris(agentPath: AgentPath): Task[Checked[Nel[Uri]]] =
+    for (state <- journal.state) yield
+      state.keyToItem(AgentRef).checked(agentPath)
+        .flatMap(_.directors
+          .traverse(subagentId => state.keyToItem(SubagentItem).checked(subagentId))
+          .map(_.map(_.uri).toList))
+          .map(NonEmptyList.fromListUnsafe)
 
   private def clientResource(uri: Uri): Resource[Task, AgentClient] =
     SessionApi.resource(Task {
