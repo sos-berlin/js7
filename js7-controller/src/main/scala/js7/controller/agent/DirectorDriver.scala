@@ -42,24 +42,23 @@ private[agent] final class DirectorDriver private(
   onCouplingFailed_ : Problem => Task[Boolean],
   onCoupled_ : Set[OrderId] => Task[Unit],
   onDecoupled_ : Task[Unit],
-  onEvents: Seq[Stamped[AnyKeyedEvent]] => Task[Unit],
+  adoptEvents: Seq[Stamped[AnyKeyedEvent]] => Task[Unit],
   journal: Journal[ControllerState],
   conf: AgentDriverConfiguration)
 extends Service.StoppableByRequest
 {
   directorDriver =>
 
-  private val logger = Logger.withPrefix[this.type](agentPath.string)
-  private var lastFetchedEventId = initialEventId
-  private var isStopRequested = false
+  private val logger = Logger.withPrefix[this.type](agentPath.toString)
+  private var adoptedEventId = initialEventId
   private val untilFetchingStopped = Deferred.unsafe[Task, Unit]
 
   protected def start =
-    startService(
-      continuallyFetchEvents *>
-        untilStopRequested *>
-        Task { isStopRequested = true } *>
-        stopEventFetcher)
+    Task(logger.trace(s"initialEventId=$initialEventId")) *>
+      startService(
+        continuallyFetchEvents *>
+          untilStopRequested *>
+          stopEventFetcher)
 
   private def stopEventFetcher: Task[Unit] =
     eventFetcher.terminateAndLogout *>
@@ -132,7 +131,7 @@ extends Service.StoppableByRequest
           .as(Completed)
       }
 
-    protected def stopRequested = isStopRequested
+    protected def stopRequested = directorDriver.isStopping
   }
 
   private def continuallyFetchEvents: Task[Unit] =
@@ -140,19 +139,20 @@ extends Service.StoppableByRequest
       .onErrorHandle(t => logger.error(t.toStringWithCauses, t))
       .flatMapLoop(())((_, _, again) =>
         eventFetcher.decouple
-          .*>(eventFetcher.pauseBeforeNextTry(conf.recouplingStreamReader.delay))
+          .*>(eventFetcher
+            .pauseBeforeNextTry(conf.recouplingStreamReader.delay)
+            .raceFold(untilStopRequested))
           .materialize
-          .onErrorHandle(t => Task(logger.error(t.toStringWithCauses, t)))
-          .*>(Task.defer(Task
-            .unless(isStopRequested)(
-              again(())))))
-      .raceFold(untilStopRequested)
+          .onErrorHandle(t => logger.error(t.toStringWithCauses, t))
+          .*>(Task.defer(Task.unless(isStopping)(
+            again(())))))
+      //.raceFold(untilStopRequested)
       .guarantee(untilFetchingStopped.complete(()))
 
   private def observeAndConsumeEvents: Task[Completed] =
     logger.traceTask(Task.defer {
       val delay = conf.eventBufferDelay max conf.commitDelay
-      eventFetcher.observe(client, after = lastFetchedEventId)
+      eventFetcher.observe(client, after = adoptedEventId)
         .pipe(obs =>
           if (delay.isZeroOrBelow)
             obs.bufferIntrospective(conf.eventBufferSize)
@@ -169,6 +169,7 @@ extends Service.StoppableByRequest
             .logWhenItTakesLonger("whenNoFailoverByOtherNode"))
           .map(_ => o))
         .mapEval(onEventsFetched)
+        .takeUntilEval(untilStopRequested)
         .completedL
         .as(Completed)
     })
@@ -177,14 +178,16 @@ extends Service.StoppableByRequest
     Task.defer {
       assertThat(stampedEvents.nonEmpty)
       val reducedStampedEvents = stampedEvents dropWhile { stamped =>
-        val drop = stamped.eventId <= lastFetchedEventId
+        val drop = stamped.eventId <= adoptedEventId
         if (drop) logger.debug(s"Drop duplicate received event: $stamped")
         drop
       }
-      val lastEventId = stampedEvents.last.eventId
-      // The events must be journaled and handled by ControllerOrderKeeper
-      lastFetchedEventId = lastEventId
-      onEvents(reducedStampedEvents)
+      Task.when(reducedStampedEvents.nonEmpty) {
+        val lastEventId = stampedEvents.last.eventId
+        // The events must be journaled and handled by ControllerOrderKeeper
+        adoptedEventId = lastEventId
+        adoptEvents(reducedStampedEvents)
+      }
     }
 
   def resetAgentAndStop(agentRunId: Option[AgentRunId]): Task[Checked[Unit]] =
@@ -240,7 +243,7 @@ private[agent] object DirectorDriver {
     onCouplingFailed: Problem => Task[Boolean],
     onCoupled: Set[OrderId] => Task[Unit],
     onDecoupled: Task[Unit],
-    onEvents: Seq[Stamped[AnyKeyedEvent]] => Task[Unit],  // TODO Stream
+    adoptEvents: Seq[Stamped[AnyKeyedEvent]] => Task[Unit],  // TODO Stream
     journal: Journal[ControllerState],
     conf: AgentDriverConfiguration)
   : Resource[Task, DirectorDriver] =
@@ -248,7 +251,7 @@ private[agent] object DirectorDriver {
       new DirectorDriver(
         agentPath, initialEventId, client,
         dedicateAgentIfNeeded,
-        onCouplingFailed, onCoupled, onDecoupled, onEvents,
+        onCouplingFailed, onCoupled, onDecoupled, adoptEvents,
         journal, conf)))
 
   final case class DirectorDriverStoppedProblem(agentPath: AgentPath)

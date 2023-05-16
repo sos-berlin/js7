@@ -56,7 +56,7 @@ final class AgentDriver private(
   initialAgentRef: AgentRef,
   initialAgentRunId: Option[AgentRunId],
   initialEventId: EventId,
-  onEvents: (AgentRunId, Seq[Stamped[AnyKeyedEvent]]) => Task[Option[EventId]],
+  adoptEvents: (AgentRunId, Seq[Stamped[AnyKeyedEvent]]) => Task[Option[EventId]],
   onOrderMarked: Map[OrderId, OrderMark] => Task[Unit],
   journal: Journal[ControllerState],
   conf: AgentDriverConfiguration,
@@ -88,9 +88,7 @@ extends Service.StoppableByRequest
   private object state {
     val lock = AsyncLock()
     var directors: Seq[SubagentId] = initialAgentRef.directors
-    /** Only filled when coupled */
-    var lastFetchedEventId = initialEventId
-    var lastCommittedEventId = initialEventId
+    var adoptedEventId = initialEventId
     var releaseEventsCancelable: Option[Cancelable] = None
     var delayNextReleaseEvents = false
   }
@@ -246,8 +244,8 @@ extends Service.StoppableByRequest
                 case Left(()) => Task.unit // stop requested
                 case Right(()) => commandQueue.maybeStartSending
               }
-              .onErrorHandle(t => Task(logger.error(
-                s"send(${input.toShortString}) => ${t.toStringWithCauses}", t)))
+              .onErrorHandle(t => logger.error(
+                s"send(${input.toShortString}) => ${t.toStringWithCauses}", t))
               .raceFold(untilStopRequested)
               .startAndForget))
     })
@@ -306,20 +304,17 @@ extends Service.StoppableByRequest
             stampedEvents.view.collect {
               case Stamped(_, _, KeyedEvent(orderId: OrderId, OrderDetached)) => orderId
             }))
-        .*>(onEvents(agentRunIdOnce.orThrow, stampedEvents))
-        .flatMap(_.fold(Task.unit) { committedEventId =>
-          state.lastFetchedEventId = committedEventId
-          releaseEvents(committedEventId)
-        })
+        .*>(adoptEvents(agentRunIdOnce.orThrow, stampedEvents))
+        .flatMap(_.fold(Task.unit)(releaseAdoptedEvents))
         .onErrorHandle(t =>
-          logger.error(s"$agentDriver.onEvents => " + t.toStringWithCauses, t.nullIfNoStackTrace))
-        .logWhenItTakesLonger(s"$agentDriver.onEvents")
+          logger.error(s"$agentDriver.adoptEvents => " + t.toStringWithCauses, t.nullIfNoStackTrace))
+        .logWhenItTakesLonger(s"$agentDriver.adoptEvents")
     }
   }
 
-  private def releaseEvents(lastEventId: EventId): Task[Unit] =
+  private def releaseAdoptedEvents(adoptedEventId: EventId): Task[Unit] =
     state.lock.lock(Task {
-      state.lastCommittedEventId = lastEventId
+      state.adoptedEventId = adoptedEventId
       if (state.releaseEventsCancelable.isEmpty) {
         val delay = if (state.delayNextReleaseEvents) conf.releaseEventsPeriod else ZeroDuration
         state.delayNextReleaseEvents = true
@@ -327,21 +322,22 @@ extends Service.StoppableByRequest
           Task
             .unless(isTerminating)(
               commandQueue
-                .enqueue(Queueable.ReleaseEventsQueueable(state.lastCommittedEventId)).void
-                .onErrorHandle(t => Task(logger.error(t.toStringWithCauses, t))))
+                .enqueue(Queueable.ReleaseEventsQueueable(state.adoptedEventId)).void
+                .onErrorHandle(t => logger.error(t.toStringWithCauses, t)))
             .runAsyncAndForget
         })
       }
     })
 
-  private def dedicateAgentIfNeeded(directorDriver: DirectorDriver): Task[Checked[(AgentRunId, EventId)]] =
+  private def dedicateAgentIfNeeded(directorDriver: DirectorDriver)
+  : Task[Checked[(AgentRunId, EventId)]] =
     logger.traceTask(Task.defer {
       journal.state
         .map(_.keyTo(AgentRefState).checked(agentPath))
         .flatMapT { agentRefState =>
           import agentRefState.agentRef.directors
           agentRefState.agentRunId match {
-            case Some(agentRunId) => Task.right(agentRunId -> state.lastFetchedEventId)
+            case Some(agentRunId) => Task.right(agentRunId -> state.adoptedEventId)
             case None =>
               directorDriver
                 .executeCommand(
@@ -411,8 +407,8 @@ extends Service.StoppableByRequest
 
   private def startAndForgetDirectorDriver(implicit src: sourcecode.Enclosing): Task[Unit] =
     startNewDirectorDriver
-      .onErrorHandle(t => Task(logger.error(
-        s"${src.value} startDirectorDriver => ${t.toStringWithCauses}", t)))
+      .onErrorHandle(t => logger.error(
+        s"${src.value} startDirectorDriver => ${t.toStringWithCauses}", t))
       .raceFold(untilStopRequested)
       .startAndForget
 
@@ -425,8 +421,10 @@ extends Service.StoppableByRequest
   private def directorDriverResource: Resource[Task, DirectorDriver] =
     for {
       client <- activeClientResource
+      //adoptedEventId <- Resource.eval(Task(state.adoptedEventId))
+      afterEventId <- Resource.eval(journal.state.map(_.keyTo(AgentRefState)(agentPath).eventId))
       directorDriver <- DirectorDriver.resource(
-        agentPath, state.lastFetchedEventId,
+        agentPath, afterEventId,
         client,
         dedicateAgentIfNeeded, onCouplingFailed, onCoupled, onDecoupled,
         onEventsFetched,
@@ -496,7 +494,7 @@ private[controller] object AgentDriver
 {
   def resource(
     agentRef: AgentRef, agentRunId: Option[AgentRunId], eventId: EventId,
-    onEvents: (AgentRunId, Seq[Stamped[AnyKeyedEvent]]) => Task[Option[EventId]],
+    adoptEvents: (AgentRunId, Seq[Stamped[AnyKeyedEvent]]) => Task[Option[EventId]],
     onOrderMarked: Map[OrderId, OrderMark] => Task[Unit],
     journal: Journal[ControllerState],
     agentDriverConf: AgentDriverConfiguration, controllerConf: ControllerConfiguration,
@@ -506,7 +504,7 @@ private[controller] object AgentDriver
     Service.resource(Task(
       new AgentDriver(
         agentRef, agentRunId, eventId,
-        onEvents, onOrderMarked,
+        adoptEvents, onOrderMarked,
         journal, agentDriverConf, controllerConf, actorSystem)))
 
   sealed trait Queueable {
