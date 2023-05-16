@@ -137,7 +137,7 @@ extends Service.StoppableByRequest
 
   private def continuallyFetchEvents: Task[Unit] =
     observeAndConsumeEvents
-      .onErrorHandle(t => Task(logger.error(t.toStringWithCauses, t)))
+      .onErrorHandle(t => logger.error(t.toStringWithCauses, t))
       .flatMapLoop(())((_, _, again) =>
         eventFetcher.decouple
           .*>(eventFetcher.pauseBeforeNextTry(conf.recouplingStreamReader.delay))

@@ -156,7 +156,7 @@ private[agent] abstract class CommandQueue(
         openRequestCount += 1
         delayNextCommand
           .*>(sendNow(queueables))
-          .onErrorHandle(t => Task(logger.error(t.toStringWithCauses, t)))
+          .onErrorHandle(t => logger.error(t.toStringWithCauses, t))
           .startAndForget
       })
     }))
