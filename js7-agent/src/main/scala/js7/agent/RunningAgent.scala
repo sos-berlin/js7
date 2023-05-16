@@ -95,9 +95,7 @@ extends MainService with Service.StoppableByRequest
       for (_ <- actorTermination.attempt) isActorTerminated = true
       startService(
         untilStopRequested
-          .*>(shutdown)
-          /*// Stop WebServer early to close TCP connections — required for testing
-          .*>(webServer.stop)*/)
+          .*>(shutdown))
     }
 
   private def shutdown: Task[Unit] =
@@ -118,7 +116,7 @@ extends MainService with Service.StoppableByRequest
     logger.debugTask(
       terminating {
         executeCommand(
-          AgentCommand.ShutDown(processSignal, clusterAction, suppressSnapshot = suppressSnapshot),
+          ShutDown(processSignal, clusterAction, suppressSnapshot = suppressSnapshot),
           CommandMeta(SimpleUser.System)
         ).map(_.orThrow)
       })
@@ -306,7 +304,7 @@ object RunningAgent {
     : Task[Checked[AgentCommand.Response]] =
       logger.debugTask("executeCommand", cmd.getClass.shortClassName)(cmd
         .match_ {
-          case cmd: AgentCommand.ShutDown =>
+          case cmd: ShutDown =>
             logger.info(s"❗ $cmd")
             if (cmd.clusterAction.nonEmpty && !clusterNode.isWorkingNode)
               Task.left(PassiveClusterNodeShutdownNotAllowedProblem)

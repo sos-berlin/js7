@@ -276,7 +276,7 @@ private[agent] final class AgentActor(
     shutDownCommand := shutDown
     val future = started.toOption match {
       case None =>
-        logger.debug("⚠️ terminateOrderKeeper but not started")
+        logger.debug("⚠️ terminateOrderKeeper but AgentOrderKeeper has not been started")
         Future.successful(AgentCommand.Response.Accepted)
       case Some(started) =>
         (started.actor ? shutDown).mapTo[AgentCommand.Response.Accepted]
