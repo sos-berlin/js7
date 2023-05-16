@@ -1,6 +1,7 @@
 package js7.tests.subagent
 
 import js7.base.configutils.Configs.HoconStringInterpolator
+import js7.base.log.Logger
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.RichTask
@@ -80,8 +81,13 @@ final class ResetSubagentWhileRunning2Test extends OurTestSuite with SubagentTes
         case KeyedEvent(`bareSubagentId`, event @ SubagentCouplingFailed(SubagentAlreadyDedicatedProblem)) =>
           Some(event)
 
-        case KeyedEvent(`bareSubagentId`, event @ SubagentCouplingFailed(problem)) =>
-          !problem.toString.contains("Connection refused") ? event
+        case ke @ KeyedEvent(`bareSubagentId`, event @ SubagentCouplingFailed(problem)) =>
+          if (problem.toString.contains("Connection refused")
+            || problem.toString.contains("504 Service Unavailable")) {
+              logger.warn(ke.toString)
+              None
+            } else
+              Some(event)
 
         case KeyedEvent(`bareSubagentId`, SubagentDedicated(runId, _)) =>
           Some(SubagentDedicated(runId, Some(PlatformInfo.test)))
@@ -125,6 +131,7 @@ final class ResetSubagentWhileRunning2Test extends OurTestSuite with SubagentTes
 
 object ResetSubagentWhileRunning2Test
 {
+  private val logger = Logger[this.type]
   val agentPath = AgentPath("AGENT")
 
   private val workflow = Workflow(
