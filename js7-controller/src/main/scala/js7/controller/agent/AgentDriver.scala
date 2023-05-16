@@ -294,10 +294,9 @@ extends Service.StoppableByRequest
         .flatMap(_.resetAgentAndStop(agentRunId)) // Stops the directorDriver, too
         .flatTapT(_ => stop.map(Right(_))))
 
-  private def onEventsFetched(stampedEvents: Seq[Stamped[AnyKeyedEvent]], lastEventId: EventId): Task[Unit] = {
+  private def onEventsFetched(stampedEvents: Seq[Stamped[AnyKeyedEvent]]): Task[Unit] = {
     assertThat(stampedEvents.nonEmpty)
     Task.defer {
-      state.lastFetchedEventId = lastEventId
       commandQueue.onOrdersAttached(
         stampedEvents.view.collect {
           case Stamped(_, _, KeyedEvent(orderId: OrderId, _: OrderAttachedToAgent)) => orderId
@@ -308,8 +307,10 @@ extends Service.StoppableByRequest
               case Stamped(_, _, KeyedEvent(orderId: OrderId, OrderDetached)) => orderId
             }))
         .*>(onEvents(agentRunIdOnce.orThrow, stampedEvents))
-        .flatMap(_.fold(Task.unit)(
-          releaseEvents))
+        .flatMap(_.fold(Task.unit) { committedEventId =>
+          state.lastFetchedEventId = committedEventId
+          releaseEvents(committedEventId)
+        })
         .onErrorHandle(t =>
           logger.error(s"$agentDriver.onEvents => " + t.toStringWithCauses, t.nullIfNoStackTrace))
         .logWhenItTakesLonger(s"$agentDriver.onEvents")
@@ -469,7 +470,6 @@ extends Service.StoppableByRequest
     Resource
       .eval(agentToUris(agentPath).orThrow/*AgentRef and SubagentItems must exist !!!*/)
       .flatMap(_.traverse(clientResource))
-      .evalTap(apis => Task(logger.trace(s"### clientsResource => $apis")))
   }
 
   private def agentToUris(agentPath: AgentPath): Task[Checked[Nel[Uri]]] =

@@ -42,7 +42,7 @@ private[agent] final class DirectorDriver private(
   onCouplingFailed_ : Problem => Task[Boolean],
   onCoupled_ : Set[OrderId] => Task[Unit],
   onDecoupled_ : Task[Unit],
-  onEvents: (Seq[Stamped[AnyKeyedEvent]], EventId) => Task[Unit],
+  onEvents: Seq[Stamped[AnyKeyedEvent]] => Task[Unit],
   journal: Journal[ControllerState],
   conf: AgentDriverConfiguration)
 extends Service.StoppableByRequest
@@ -184,7 +184,7 @@ extends Service.StoppableByRequest
       val lastEventId = stampedEvents.last.eventId
       // The events must be journaled and handled by ControllerOrderKeeper
       lastFetchedEventId = lastEventId
-      onEvents(reducedStampedEvents, lastEventId)
+      onEvents(reducedStampedEvents)
     }
 
   def resetAgentAndStop(agentRunId: Option[AgentRunId]): Task[Checked[Unit]] =
@@ -240,7 +240,7 @@ private[agent] object DirectorDriver {
     onCouplingFailed: Problem => Task[Boolean],
     onCoupled: Set[OrderId] => Task[Unit],
     onDecoupled: Task[Unit],
-    onEvents: (Seq[Stamped[AnyKeyedEvent]], EventId) => Task[Unit],  // TODO Stream
+    onEvents: Seq[Stamped[AnyKeyedEvent]] => Task[Unit],  // TODO Stream
     journal: Journal[ControllerState],
     conf: AgentDriverConfiguration)
   : Resource[Task, DirectorDriver] =
