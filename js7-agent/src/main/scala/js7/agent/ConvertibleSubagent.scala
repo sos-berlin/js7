@@ -52,7 +52,7 @@ extends MainService with Service.StoppableByRequest
 
       case Right(termination) =>
         logger.trace(s"### #$toString: $termination")
-        _subagentAllocated.stop/*duplicate???*/ *>
+        _subagentAllocated.release/*duplicate???*/ *>
           terminated.complete(termination)
     })
 
@@ -60,7 +60,7 @@ extends MainService with Service.StoppableByRequest
     Task.defer {
       // TODO Stop Director
       Option(_subagentAllocated)
-        .fold(Task.unit)(_.stop)
+        .fold(Task.unit)(_.release)
         .*>(_subagentOrDirector
           .toOption
           .fold(Task.unit)(_.terminate(Some(SIGKILL)).void))

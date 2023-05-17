@@ -144,7 +144,7 @@ final class RestartAfterFailureServiceTest extends OurTestSuite
       .flatTap(_ => Task.sleep(testDuration))
       .flatMap(allocatedServices => allocatedServices
         .parTraverse(_
-          .stop
+          .release
           .handleError(t => logger.debug(s"stop => $t"))))
       .await(99.s)
 

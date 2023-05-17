@@ -126,7 +126,7 @@ extends OurTestSuite with BeforeAndAfterAll with ProvideActorSystem with Generic
   }
 
   override def afterAll() = {
-    allocatedServer.stop.await(99.s)
+    allocatedServer.release.await(99.s)
     Akkas.terminateAndWait(actorSystem, 99.s)
     super.afterAll()
   }

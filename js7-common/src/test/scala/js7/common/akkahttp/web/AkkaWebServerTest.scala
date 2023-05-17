@@ -79,7 +79,7 @@ final class AkkaWebServerTest extends OurTestSuite with BeforeAndAfterAll
   }
 
   override def afterAll() = {
-    webServer.stop.await(99.s)
+    webServer.release.await(99.s)
     Akkas.terminateAndWait(actorSystem, 10.s)
     deleteDirectoryRecursively(directory)
     super.afterAll()

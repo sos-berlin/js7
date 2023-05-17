@@ -202,7 +202,7 @@ final class AkkaHttpClientTest extends OurTestSuite with BeforeAndAfterAll with 
 
     "close" in {
       httpClient.close()
-      allocatedWebServer.stop.await(99.s)
+      allocatedWebServer.release.await(99.s)
     }
   }
 

@@ -42,7 +42,7 @@ final class ProcessDriverTest extends OurTestSuite with BeforeAndAfterAll with T
 
   override protected def afterAll() = {
     closer.close()
-    ioxAllocated.stop.await(99.s)
+    ioxAllocated.release.await(99.s)
     super.afterAll()
   }
 

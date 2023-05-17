@@ -103,7 +103,7 @@ extends Service.StoppableByRequest
               passiveClusterNode.onShutdown(_testDontNotifyActiveNodeAboutShutdown)
 
             case Some(Right(workingClusterNodeAllocated)) =>
-              workingClusterNodeAllocated.stop
+              workingClusterNodeAllocated.release
 
             case _ => Task.unit
           })))

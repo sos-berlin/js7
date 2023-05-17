@@ -80,7 +80,7 @@ final class JournalRouteTest extends OurTestSuite with RouteTester with JournalR
   }
 
   override def afterAll() = {
-    allocatedWebServer.stop.await(99.s)
+    allocatedWebServer.release.await(99.s)
     eventWriter.close()
     deleteDirectoryRecursively(directory)
     super.afterAll()

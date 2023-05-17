@@ -132,6 +132,6 @@ private object DirectorState
 
     def terminate(signal: Option[ProcessSignal]): Task[Unit] =
       driver.terminate(signal)
-        .*>(allocatedDriver.stop)
+        .*>(allocatedDriver.release)
   }
 }

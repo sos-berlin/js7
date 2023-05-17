@@ -54,7 +54,7 @@ final class TestController(allocated: Allocated[Task, RunningController], admiss
 
   val stop: Task[Unit] =
     stopControllerApi
-      .guarantee(allocated.stop)
+      .guarantee(allocated.release)
       .memoize
 
   private def stopControllerApi: Task[Unit] =

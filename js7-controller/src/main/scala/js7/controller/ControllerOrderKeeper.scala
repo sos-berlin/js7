@@ -206,7 +206,7 @@ with MainJournalingActor[ControllerState, Event]
             // The event forces the cluster to acknowledge this event and the snapshot taken
             terminatingJournal = true
             persistKeyedEventTask(NoKey <-: ControllerShutDown)((_, _) => Completed)
-              .tapEval(_ => journalAllocated.stop)
+              .tapEval(_ => journalAllocated.release)
               .runToFuture
               .onComplete {
                 case Success(Right(Completed)) =>
@@ -264,7 +264,7 @@ with MainJournalingActor[ControllerState, Event]
 
     def start(): Task[Checked[Completed]] =
       clusterNode.switchOver   // Will terminate `cluster`, letting ControllerOrderKeeper terminate
-        .flatMapT(o => journalAllocated.stop.as(Right(o)))
+        .flatMapT(o => journalAllocated.release.as(Right(o)))
 
     def close() = stillSwitchingOverSchedule.cancel()
   }
@@ -1686,9 +1686,8 @@ private[controller] object ControllerOrderKeeper
     val agentDriver: AgentDriver =
       allocatedAgentDriver.allocatedThing
 
-    // TODO Call this?
-    def stop: Task[Unit] =
-      allocatedAgentDriver.stop
+    def release: Task[Unit] =
+      allocatedAgentDriver.release
   }
 
   private class OrderEntry(now: MonixDeadline)

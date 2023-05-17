@@ -411,12 +411,12 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
               })
         }
         .flatMapT {
-          case Some((Some(Allocated(oldDriver: RemoteSubagentDriver, stopOld)), newDriver: RemoteSubagentDriver)) =>
+          case Some((Some(Allocated(oldDriver: RemoteSubagentDriver, releaseOld)), newDriver: RemoteSubagentDriver)) =>
             assert(oldDriver.subagentId == newDriver.subagentId)
             val name = "addOrChange " + oldDriver.subagentItem.pathRev
             oldDriver
               .stopDispatcherAndEmitProcessLostEvents(ProcessLostDueSubagentUriChangeProblem, None)
-              .*>(stopOld)  // Maybe try to send Shutdown command ???
+              .*>(releaseOld)  // Maybe try to send Shutdown command ???
               .*>(subagentItemLockKeeper
                 .lock(oldDriver.subagentId)(
                   newDriver.startMovedSubagent(oldDriver))

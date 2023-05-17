@@ -104,9 +104,9 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
       .parSequenceN(sys.runtime.availableProcessors)(
         Seq(
           Seq(controller.terminate().void),
-          clusterWatchServiceOnce.toOption.map(_.stop).toList,
+          clusterWatchServiceOnce.toOption.map(_.release).toList,
           agents.map(_.terminate().void),
-          subagentIdToBare.values.map(_.stop)
+          subagentIdToBare.values.map(_.release)
         ).flatten.map(_.onErrorHandle { t =>
           logger.error(t.toStringWithCauses, t)
           throw t
@@ -140,7 +140,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
   }
 
   protected final def stopBareSubagent(subagentId: SubagentId): Unit =
-    subagentIdToBare(subagentId).stop.await(99.s)
+    subagentIdToBare(subagentId).release.await(99.s)
 
   protected final def startBareSubagent(subagentId: SubagentId): (Subagent, Task[Unit]) = {
     val subagentItem = directoryProvider.subagentItems

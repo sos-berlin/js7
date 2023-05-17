@@ -131,7 +131,7 @@ with Stash
         if (cmd.isFailover) {
           // Dirty exit
           subagentKeeper.testFailover()
-          journalAllocated.stop.runAsyncAndForget
+          journalAllocated.release.runAsyncAndForget
           context.stop(self)
         } else {
           shutDownCommand = Some(cmd)
@@ -188,7 +188,7 @@ with Stash
             if (jobRegister.isEmpty && !terminatingJournal) {
               persist(AgentShutDown) { (_, _) =>
                 terminatingJournal = true
-                journalAllocated.stop.runAsyncAndForget
+                journalAllocated.release.runAsyncAndForget
               }
             }
           }

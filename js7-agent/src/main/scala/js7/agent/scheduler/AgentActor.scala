@@ -87,7 +87,7 @@ private[agent] final class AgentActor(
       logger.warn("DELETE JOURNAL FILES DUE TO AGENT RESET")
       journalMeta.deleteJournal(ignoreFailure = true)
     }
-    allocatedSignatureVerifier.stop.awaitInfinite
+    allocatedSignatureVerifier.release.awaitInfinite
     terminatePromise.trySuccess(
       ProgramTermination(restart = shutDownCommand.toOption.fold(false)(_.restart)))
     logger.debug("Stopped")
@@ -267,7 +267,7 @@ private[agent] final class AgentActor(
       if (started.isEmpty) {
         // When no AgentOrderKeeper has been started, we need to stop the journal ourselve
         //journal.journalActor ! JournalActor.Input.Terminate
-        journalAllocated.stop.runAsyncAndForget
+        journalAllocated.release.runAsyncAndForget
       }
     }
 

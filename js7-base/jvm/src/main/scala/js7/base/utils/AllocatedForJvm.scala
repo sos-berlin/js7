@@ -15,7 +15,7 @@ object AllocatedForJvm {
     def blockingUse[R](stopTimeout: Duration)(body: A => R)
       (implicit s: Scheduler, @unused evidence: F :<: Task, src: sourcecode.Enclosing)
     : R = {
-      val stop = allocated.stop.asInstanceOf[Task[Unit]]
+      val stop = allocated.release.asInstanceOf[Task[Unit]]
       val ac: AutoCloseable = () =>
         stop
           .logWhenItTakesLonger(s"${allocated.toAllocatedString}.blockingUse.stop")

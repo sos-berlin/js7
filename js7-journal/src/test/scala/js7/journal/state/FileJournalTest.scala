@@ -157,9 +157,9 @@ final class FileJournalTest extends OurTestSuite with BeforeAndAfterAll
     def stop() = {
       (journal.journalActor ? JournalActor.Input.TakeSnapshot)(99.s) await 99.s
       if (journal != null) {
-        journalAllocated.stop.await(99.s)
+        journalAllocated.release.await(99.s)
       }
-      journalAllocated.stop.await(99.s)
+      journalAllocated.release.await(99.s)
       close()
     }
   }

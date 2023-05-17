@@ -350,7 +350,7 @@ final class JControllerApi(val asScala: ControllerApi, config: Config)
 
   private def stopClusterWatch_ : Task[Unit] =
     clusterWatchService
-      .update(_.fold(Task.none)(_.stop.as(None)))
+      .update(_.fold(Task.none)(_.release.as(None)))
       .void
 
   private def runTask[A](task: Task[A]): CompletableFuture[A] =

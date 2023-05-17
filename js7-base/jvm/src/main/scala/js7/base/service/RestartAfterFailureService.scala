@@ -37,7 +37,7 @@ extends Service
     Task.defer {
       stopping = true
       untilStopRequested.complete(()) *>
-        currentAllocatedService.get().fold(Task.unit)(_.stop)
+        currentAllocatedService.get().fold(Task.unit)(_.release)
     }.memoize
 
   protected def start: Task[Service.Started] =
@@ -65,8 +65,8 @@ extends Service
     Task.defer {
       currentAllocatedService
         .getAndSet(Some(allocated))
-        .fold(Task.unit)(_.stop.when(stopping))
-        .*>(allocated.stop.when(stopping))
+        .fold(Task.unit)(_.release.when(stopping))
+        .*>(allocated.release.when(stopping))
     }
 
   private def runUnderlyingService(service: S) =

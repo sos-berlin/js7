@@ -92,7 +92,7 @@ extends MainService with Service.StoppableByRequest
             .toOption
             .fold(Task.unit)(allocated =>
               allocated.allocatedThing.terminate(processSignal) *>
-                allocated.stop)
+                allocated.release)
             .*>(orderToProcessing.initiateStopWithProblem(SubagentIsShuttingDownProblem))
             .*>(Task.defer {
               val orderIds = orderToProcessing.toMap.keys.toVector.sorted

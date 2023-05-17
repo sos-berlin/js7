@@ -28,14 +28,14 @@ final class MutableAllocated[A](implicit src: sourcecode.Enclosing, tag: Tag[A])
   def acquire(resource: Resource[Task, A]): Task[A] =
     allocatedVar
       .update(allocated =>
-        Task.when(allocated != null)(allocated.stop) *>
+        Task.when(allocated != null)(allocated.release) *>
           resource.toAllocated)
       .map(_.allocatedThing)
 
   def release: Task[Unit] =
     allocatedVar.value.flatMap {
       case null => Task.unit
-      case o => o.stop
+      case o => o.release
     }
 
   override def toString = s"${src.value}: MutableAllocated[${tag.tag}]"

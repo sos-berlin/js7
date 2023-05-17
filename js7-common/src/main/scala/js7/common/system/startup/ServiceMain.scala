@@ -171,7 +171,7 @@ object ServiceMain
     : Unit = {
       logger.warn(s"Trying to shut down JS7 $allocatedService due to Java shutdown")
       val stop = logger.debugTask("onJavaShutDown stop service")(
-        allocatedService.stop)
+        allocatedService.release)
       for (t <- stop.attempt.runSyncUnsafe().left) {
         logger.error(s"onJavaShutdown: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
       }

@@ -22,7 +22,7 @@ final class ConvertibleToDirector {
       .flatMap {
         case Left(()) =>
           subagentAllocated.allocatedThing.shutdown(dontWaitForDirector = true)
-            .*>(subagentAllocated.stop)
+            .*>(subagentAllocated.release)
             .as(Left(ConvertToDirector))
 
         case Right(o) =>

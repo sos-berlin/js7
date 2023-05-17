@@ -60,7 +60,7 @@ extends Actor with Stash
   }
 
   override def postStop() = {
-    journalAllocated.stop await 99.s
+    journalAllocated.release await 99.s
     journalStopped.success(())
     super.postStop()
   }
