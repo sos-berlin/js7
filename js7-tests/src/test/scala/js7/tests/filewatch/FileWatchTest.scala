@@ -47,7 +47,7 @@ final class FileWatchTest
 extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
 {
   protected val agentPaths = Seq(aAgentPath, bAgentPath)
-  protected val items = Seq(workflow, waitingWorkflow)
+  protected val items = Nil // No Workflow, because we add Workflow and FileWatch in same operation
 
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
@@ -87,7 +87,7 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
       // Create FileWatch and test with an already waiting Order
       createDirectory(watchDirectory)
       createDirectory(waitingWatchDirectory)
-      updateItems(fileWatch, waitingFileWatch)
+      updateItems(workflow, waitingWorkflow, fileWatch, waitingFileWatch)
       eventWatch.await[ItemAttached](_.event.key == fileWatch.path)
       eventWatch.await[ItemAttached](_.event.key == waitingFileWatch.path)
     }
@@ -376,11 +376,11 @@ object FileWatchTest
   private val bAgentPath = AgentPath("AGENT-B")
 
   private val workflow = Workflow(
-    WorkflowPath("WORKFLOW") ~ "INITIAL",
+    WorkflowPath("WORKFLOW"),
     Vector(DeleteFileJob.execute(aAgentPath)))
 
   private val waitingWorkflow = Workflow(
-    WorkflowPath("WAITING-WORKFLOW") ~ "INITIAL",
+    WorkflowPath("WAITING-WORKFLOW"),
     Vector(
       TestJob.execute(aAgentPath)),
     orderPreparation = OrderPreparation(OrderParameterList(
