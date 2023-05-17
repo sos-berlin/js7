@@ -1,4 +1,4 @@
-package js7.tests.controller.cluster
+package js7.tests.cluster.controller
 
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.thread.MonixBlocking.syntax.*

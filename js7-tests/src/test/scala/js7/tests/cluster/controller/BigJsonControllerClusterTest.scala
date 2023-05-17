@@ -1,4 +1,4 @@
-package js7.tests.controller.cluster
+package js7.tests.cluster.controller
 
 import js7.base.auth.Admission
 import js7.base.configutils.Configs.RichConfig
@@ -20,7 +20,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.launcher.OrderProcess
 import js7.launcher.internal.InternalJob
 import js7.proxy.ControllerApi
-import js7.tests.controller.cluster.BigJsonControllerClusterTest.*
+import js7.tests.cluster.controller.BigJsonControllerClusterTest.*
 import js7.tests.testenv.ControllerClusterForScalaTest
 import js7.tests.testenv.ControllerClusterForScalaTest.assertEqualJournalFiles
 import monix.execution.Scheduler.Implicits.traced

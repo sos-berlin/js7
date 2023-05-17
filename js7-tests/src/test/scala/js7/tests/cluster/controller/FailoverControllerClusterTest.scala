@@ -1,4 +1,4 @@
-package js7.tests.controller.cluster
+package js7.tests.cluster.controller
 
 import io.circe.syntax.EncoderOps
 import java.nio.file.Files.size
@@ -25,8 +25,8 @@ import js7.data.order.{FreshOrder, OrderId}
 import js7.data.value.NumberValue
 import js7.journal.files.JournalFiles
 import js7.journal.files.JournalFiles.JournalMetaOps
-import js7.tests.controller.cluster.ControllerClusterTester.*
-import js7.tests.controller.cluster.FailoverControllerClusterTest.*
+import js7.tests.cluster.controller.ControllerClusterTester.*
+import js7.tests.cluster.controller.FailoverControllerClusterTest.*
 import js7.tests.testenv.ControllerClusterForScalaTest.assertEqualJournalFiles
 import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.Deadline.now

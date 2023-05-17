@@ -1,4 +1,4 @@
-package js7.tests.controller.cluster
+package js7.tests.cluster.controller
 
 import cats.effect.IO
 import cats.effect.concurrent.Deferred
@@ -13,7 +13,7 @@ import js7.cluster.watch.ClusterWatchMain
 import js7.data.cluster.ClusterEvent.ClusterCoupled
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.controller.cluster.ClusterWatchMainTest.*
+import js7.tests.cluster.controller.ClusterWatchMainTest.*
 import js7.tests.testenv.ControllerClusterForScalaTest
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced as scheduler

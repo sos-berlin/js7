@@ -1,4 +1,4 @@
-package js7.tests.controller.cluster
+package js7.tests.cluster.controller
 
 import js7.base.problem.Checked.Ops
 import js7.base.thread.MonixBlocking.syntax.*
@@ -8,7 +8,7 @@ import js7.data.cluster.{ClusterEvent, ClusterTiming}
 import js7.data.controller.ControllerCommand.TakeSnapshot
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
-import js7.tests.controller.cluster.ControllerClusterTester.*
+import js7.tests.cluster.controller.ControllerClusterTester.*
 import js7.tests.testenv.ControllerClusterForScalaTest.assertEqualJournalFiles
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable

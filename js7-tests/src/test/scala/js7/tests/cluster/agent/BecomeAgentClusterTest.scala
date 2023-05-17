@@ -1,4 +1,4 @@
-package js7.tests.controller.cluster
+package js7.tests.cluster.agent
 
 import cats.effect.Resource
 import js7.agent.ConvertibleSubagent
@@ -24,7 +24,7 @@ import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.controller.cluster.BecomeAgentClusterTest.*
+import js7.tests.cluster.agent.BecomeAgentClusterTest.*
 import js7.tests.jobs.{EmptyJob, SemaphoreJob}
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest, SubagentEnv}

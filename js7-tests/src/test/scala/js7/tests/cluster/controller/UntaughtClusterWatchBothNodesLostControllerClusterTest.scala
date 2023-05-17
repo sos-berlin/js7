@@ -1,4 +1,4 @@
-package js7.tests.controller.cluster
+package js7.tests.cluster.controller
 
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.log.Logger
@@ -11,7 +11,7 @@ import js7.cluster.watch.api.ClusterWatchProblems.{ClusterNodeIsNotLostProblem, 
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterPassiveLost}
 import js7.data.cluster.ClusterState.{Coupled, PassiveLost}
 import js7.data.cluster.ClusterWatchCheckEvent
-import js7.tests.controller.cluster.UntaughtClusterWatchBothNodesLostControllerClusterTest.*
+import js7.tests.cluster.controller.UntaughtClusterWatchBothNodesLostControllerClusterTest.*
 import monix.execution.Scheduler.Implicits.global
 
 // Connection between cluster nodes is broken, leading to ClusterPassiveLost and ClusterFailedOver.

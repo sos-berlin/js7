@@ -1,4 +1,4 @@
-package js7.tests.controller.cluster
+package js7.tests.cluster.controller
 
 import java.nio.file.Files.size
 import js7.base.configutils.Configs.HoconStringInterpolator
@@ -19,8 +19,8 @@ import js7.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.value.NumberValue
 import js7.journal.files.JournalFiles.JournalMetaOps
-import js7.tests.controller.cluster.ControllerClusterTester.*
-import js7.tests.controller.cluster.UntaughtClusterWatchFailoverControllerClusterTest.*
+import js7.tests.cluster.controller.ControllerClusterTester.*
+import js7.tests.cluster.controller.UntaughtClusterWatchFailoverControllerClusterTest.*
 import monix.execution.Scheduler.Implicits.global
 import scala.concurrent.duration.Deadline.now
 

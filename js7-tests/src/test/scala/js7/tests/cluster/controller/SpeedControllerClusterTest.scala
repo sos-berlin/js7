@@ -1,4 +1,4 @@
-package js7.tests.controller.cluster
+package js7.tests.cluster.controller
 
 import js7.base.problem.Checked.Ops
 import js7.base.test.OurTestSuite
@@ -11,7 +11,7 @@ import js7.data.order.{FreshOrder, OrderId}
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.workflow.instructions.Prompt
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.controller.cluster.SpeedControllerClusterTest.*
+import js7.tests.cluster.controller.SpeedControllerClusterTest.*
 import js7.tests.testenv.ControllerClusterForScalaTest
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced

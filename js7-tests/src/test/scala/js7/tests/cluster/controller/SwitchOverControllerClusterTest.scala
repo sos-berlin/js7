@@ -1,4 +1,4 @@
-package js7.tests.controller.cluster
+package js7.tests.cluster.controller
 
 import js7.base.log.Logger
 import js7.base.problem.Checked.*
@@ -12,8 +12,8 @@ import js7.data.controller.ControllerCommand.ClusterSwitchOver
 import js7.data.event.EventId
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted}
 import js7.data.order.{FreshOrder, OrderId}
-import js7.tests.controller.cluster.ControllerClusterTester.*
-import js7.tests.controller.cluster.SwitchOverControllerClusterTest.*
+import js7.tests.cluster.controller.ControllerClusterTester.*
+import js7.tests.cluster.controller.SwitchOverControllerClusterTest.*
 import js7.tests.testenv.TestController
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable

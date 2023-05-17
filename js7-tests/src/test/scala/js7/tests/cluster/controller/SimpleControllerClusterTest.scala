@@ -1,4 +1,4 @@
-package js7.tests.controller.cluster
+package js7.tests.cluster.controller
 
 import cats.instances.vector.*
 import cats.syntax.traverse.*
@@ -12,7 +12,7 @@ import js7.data.controller.ControllerCommand
 import js7.data.event.EventRequest
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
-import js7.tests.controller.cluster.ControllerClusterTester.*
+import js7.tests.cluster.controller.ControllerClusterTester.*
 import js7.tests.testenv.ControllerClusterForScalaTest.assertEqualJournalFiles
 import monix.execution.Scheduler.Implicits.traced
 

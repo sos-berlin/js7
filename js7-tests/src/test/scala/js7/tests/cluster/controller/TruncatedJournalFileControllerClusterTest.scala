@@ -1,4 +1,4 @@
-package js7.tests.controller.cluster
+package js7.tests.cluster.controller
 
 import java.io.RandomAccessFile
 import js7.base.io.file.FileUtils.syntax.*
@@ -9,7 +9,7 @@ import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterPassiveLost}
 import js7.data.cluster.ClusterState.Coupled
 import js7.data.order.{FreshOrder, OrderId}
 import js7.journal.files.JournalFiles.listJournalFiles
-import js7.tests.controller.cluster.ControllerClusterTester.*
+import js7.tests.cluster.controller.ControllerClusterTester.*
 import js7.tests.testenv.ControllerEnv
 import monix.execution.Scheduler.Implicits.traced
 

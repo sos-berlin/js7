@@ -1,4 +1,4 @@
-package js7.tests.controller.cluster
+package js7.tests.cluster.controller
 
 import js7.base.problem.Checked.Ops
 import js7.base.thread.MonixBlocking.syntax.*
@@ -12,7 +12,7 @@ import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.order.OrderEvent.{OrderFinished, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.controller.cluster.JobResourceControllerClusterTest.*
+import js7.tests.cluster.controller.JobResourceControllerClusterTest.*
 import js7.tests.jobs.EmptyJob
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable

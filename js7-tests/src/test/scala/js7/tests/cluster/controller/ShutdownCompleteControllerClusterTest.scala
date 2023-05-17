@@ -1,4 +1,4 @@
-package js7.tests.controller.cluster
+package js7.tests.cluster.controller
 
 final class ShutdownCompleteControllerClusterTest {
   //"CompleteShutDown" in {

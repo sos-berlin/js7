@@ -1,4 +1,4 @@
-package js7.tests.controller.cluster
+package js7.tests.cluster.controller
 
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.problem.Checked.*
@@ -14,7 +14,7 @@ import js7.data.event.EventId
 import js7.data.order.OrderEvent.{OrderFinished, OrderStarted}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.journal.files.JournalFiles.listJournalFiles
-import js7.tests.controller.cluster.ControllerClusterTester.*
+import js7.tests.cluster.controller.ControllerClusterTester.*
 import monix.execution.Scheduler.Implicits.traced
 
 final class AppointNodesLatelyControllerClusterTest extends OurTestSuite with ControllerClusterTester

@@ -1,4 +1,4 @@
-package js7.tests.controller.cluster
+package js7.tests.cluster.controller
 
 import js7.base.log.Logger
 import js7.base.thread.Futures.implicits.SuccessFuture
@@ -11,7 +11,7 @@ import js7.cluster.ClusterNode.ClusterWatchConfirmed
 import js7.cluster.watch.api.ClusterWatchProblems.{ClusterWatchRequestDoesNotMatchProblem, OtherClusterWatchStillAliveProblem}
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterCouplingPrepared, ClusterWatchRegistered}
 import js7.data.cluster.{ClusterState, ClusterWatchId}
-import js7.tests.controller.cluster.ChangeClusterWatchTest.*
+import js7.tests.cluster.controller.ChangeClusterWatchTest.*
 import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.Promise
 

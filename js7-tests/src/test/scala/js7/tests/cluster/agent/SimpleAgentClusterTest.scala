@@ -1,4 +1,4 @@
-package js7.tests.controller.cluster
+package js7.tests.cluster.agent
 
 import cats.effect.Resource
 import cats.syntax.all.*
@@ -24,8 +24,9 @@ import js7.data.order.OrderEvent.{OrderDetachable, OrderFinished, OrderProcessin
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.controller.cluster.ControllerClusterTester.*
-import js7.tests.controller.cluster.SimpleAgentClusterTest.*
+import js7.tests.cluster.agent.SimpleAgentClusterTest.*
+import js7.tests.cluster.controller.ControllerClusterTester
+import js7.tests.cluster.controller.ControllerClusterTester.*
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.testenv.ControllerClusterForScalaTest.assertEqualJournalFiles
 import js7.tests.testenv.SubagentEnv
