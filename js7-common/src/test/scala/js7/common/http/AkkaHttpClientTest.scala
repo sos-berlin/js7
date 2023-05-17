@@ -36,7 +36,7 @@ import js7.common.http.AkkaHttpClient.{HttpException, `x-js7-correlation-id`, `x
 import js7.common.http.AkkaHttpClientTest.*
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.StreamingSupport.AkkaObservable
-import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
+import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
@@ -259,7 +259,7 @@ final class AkkaHttpClientTest extends OurTestSuite with BeforeAndAfterAll with 
   }
 
   "Connection refused, try two times" - {
-    lazy val uri = Uri(s"http://127.0.0.1:${findFreeTcpPort()}")
+    lazy val uri = findFreeLocalUri()
 
     def newHttpClient() = new AkkaHttpClient {
       protected val actorSystem = AkkaHttpClientTest.this.actorSystem

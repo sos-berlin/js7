@@ -11,8 +11,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.Allocated
 import js7.base.utils.CatsBlocking.BlockingTaskResource
 import js7.base.utils.ScalaUtils.syntax.{RichEither, RichThrowable}
-import js7.base.web.Uri
-import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
+import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.data.agent.AgentRefStateEvent.AgentMirroredEvent
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterNodesAppointed, ClusterWatchRegistered}
@@ -39,8 +38,8 @@ final class SimpleAgentClusterTest extends ControllerClusterTester
   protected override val agentPaths = Nil
 
   private lazy val subagentItems = Seq(
-    SubagentItem(SubagentId("SUBAGENT-0"), agentPath, Uri("http://127.0.0.1:" + findFreeTcpPort())),
-    SubagentItem(SubagentId("SUBAGENT-1"), agentPath, Uri("http://127.0.0.1:" + findFreeTcpPort())))
+    SubagentItem(SubagentId("SUBAGENT-0"), agentPath, findFreeLocalUri()),
+    SubagentItem(SubagentId("SUBAGENT-1"), agentPath, findFreeLocalUri()))
 
   override protected def items = Seq(TestWorkflow, workflow, agentRef) ++ subagentItems
 

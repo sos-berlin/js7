@@ -4,8 +4,7 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
-import js7.base.web.Uri
-import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
+import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.data.agent.AgentPath
 import js7.data.item.BasicItemEvent.ItemDeleted
 import js7.data.item.ItemOperation.{AddOrChangeSimple, DeleteSimple}
@@ -43,7 +42,7 @@ final class SubagentDeleteWhileMovedTest extends OurTestSuite with SubagentTeste
     // Change URI, but do not start a corresponding Subagent
     eventId = eventWatch.lastAddedEventId
     locally {
-      val bare1SubagentItem = bareSubagentItem.copy(uri = Uri("http://localhost:" + findFreeTcpPort()))
+      val bare1SubagentItem = bareSubagentItem.copy(uri = findFreeLocalUri())
       val agentEventId = agent.eventWatch.lastAddedEventId
       controller.api.updateItems(Observable(AddOrChangeSimple(bare1SubagentItem)))
         .await(99.s).orThrow

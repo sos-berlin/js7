@@ -6,8 +6,7 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
-import js7.base.web.Uri
-import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
+import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.data.agent.AgentPath
 import js7.data.item.BasicItemEvent.ItemAttached
 import js7.data.item.ItemOperation.AddOrChangeSimple
@@ -138,7 +137,7 @@ object SubagentDisabledTest
   private val bSubagentId = SubagentId("B-SUBAGENT")
 
   private def newSubagentItem(id: SubagentId) =
-    SubagentItem(id, agentPath, Uri(s"http://localhost:${findFreeTcpPort()}"))
+    SubagentItem(id, agentPath, findFreeLocalUri())
 
   private val versionId = VersionId("VERSION")
   private val workflow = Workflow(

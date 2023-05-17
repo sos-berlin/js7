@@ -5,8 +5,7 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
-import js7.base.web.Uri
-import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
+import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.data.agent.AgentPath
 import js7.data.item.ItemOperation.AddOrChangeSimple
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten}
@@ -27,7 +26,7 @@ final class SubagentMoveTest extends OurTestSuite with SubagentTester
   protected implicit val scheduler = Scheduler.traced
 
   private lazy val bare1SubagentItem =
-    bareSubagentItem.copy(uri = Uri("http://localhost:" + findFreeTcpPort()))
+    bareSubagentItem.copy(uri = findFreeLocalUri())
 
   "Restart Subagent at another URI" in {
     runSubagent(bareSubagentItem, awaitDedicated = false) { bareSubagent =>

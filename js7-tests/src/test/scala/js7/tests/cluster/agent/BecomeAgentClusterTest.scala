@@ -11,8 +11,7 @@ import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsBlocking.BlockingTaskResource
 import js7.base.utils.ScalaUtils.syntax.{RichEither, RichThrowable}
-import js7.base.web.Uri
-import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
+import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.data.agent.AgentRefStateEvent.AgentMirroredEvent
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterNodesAppointed, ClusterWatchRegistered}
@@ -50,7 +49,7 @@ with BlockingItemUpdater
   protected override val agentPaths = Seq(agentPath)
 
   private lazy val backupSubagentItem = SubagentItem(
-    SubagentId("Backup-SUBAGENT"), agentPath, Uri("http://127.0.0.1:" + findFreeTcpPort()))
+    SubagentId("Backup-SUBAGENT"), agentPath, findFreeLocalUri())
 
   override protected def items = Seq(workflow)
 

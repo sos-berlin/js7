@@ -1,8 +1,7 @@
 package js7.tests.subagent
 
 import js7.base.configutils.Configs.HoconStringInterpolator
-import js7.base.web.Uri
-import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
+import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.tests.subagent.SubagentMultipleOrdersTest.agentPath
 import js7.tests.testenv.ControllerAgentForScalaTest
@@ -29,7 +28,7 @@ trait SubagentTester extends ControllerAgentForScalaTest
   protected lazy val bareSubagentItem = SubagentItem(
     bareSubagentId,
     agentPath,
-    Uri(s"http://localhost:${findFreeTcpPort()}"))
+    findFreeLocalUri())
 
   protected val scheduler: Scheduler
 }

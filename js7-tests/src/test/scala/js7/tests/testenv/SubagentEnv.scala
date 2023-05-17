@@ -17,8 +17,7 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.problem.Checked.*
 import js7.base.utils.CatsUtils.combine
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.web.Uri
-import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
+import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.data.job.RelativePathExecutable
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.subagent.configuration.SubagentConf
@@ -74,7 +73,7 @@ extends TestEnv {
   lazy val bareSubagentItems =
     for (subagentId <- bareSubagentIds) yield
       SubagentItem(
-        subagentId, agentPath, Uri(s"http://localhost:${findFreeTcpPort()}"),
+        subagentId, agentPath, findFreeLocalUri(),
         disabled = subagentsDisabled)
   lazy val subagentItems = subagentItem +: bareSubagentItems
 

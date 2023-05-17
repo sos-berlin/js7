@@ -17,10 +17,9 @@ import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.HasCloser
-import js7.base.web.Uri
 import js7.common.akkahttp.web.auth.OurMemoizingAuthenticator
 import js7.common.http.AkkaHttpClient
-import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
+import js7.common.utils.FreeTcpPortFinder.{findFreeLocalUri, findFreeTcpPort}
 import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.Assertions.*
 import org.scalatest.BeforeAndAfterAll
@@ -97,7 +96,7 @@ extends OurTestSuite with BeforeAndAfterAll with HasCloser with TestAgentProvide
       client.requireIsResponding()
     }
     assert(output == List("JS7 Agent is responding"))
-    val agentUri = Uri(s"http://127.0.0.1:${findFreeTcpPort()}")
+    val agentUri = findFreeLocalUri()
     autoClosing(new AkkaHttpAgentTextApi(agentUri, None, _ => ())) { client =>
       val t = intercept[Exception] {
         client.requireIsResponding()

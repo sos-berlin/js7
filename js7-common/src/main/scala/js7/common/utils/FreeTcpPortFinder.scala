@@ -3,10 +3,11 @@ package js7.common.utils
 import java.net.{BindException, ServerSocket}
 import js7.base.log.Logger
 import js7.base.system.OperatingSystem.isMac
+import js7.base.web.Uri
 import scala.math.abs
+import scala.sys.process.*
 import scala.util.Random
 import scala.util.control.NonFatal
-import sys.process.*
 
 object FreeTcpPortFinder
 {
@@ -42,6 +43,9 @@ object FreeTcpPortFinder
     val first = availablePorts.head + abs(Random.nextInt(availablePorts.length - requiredPortCount))
     Iterator.range(first, availablePorts.last).filter(portIsFree)
   }
+
+  def findFreeLocalUri(): Uri =
+    Uri("http://localhost:" + findFreeTcpPort())
 
   def findFreeTcpPort(): Int =
     findFreeTcpPorts(1).head

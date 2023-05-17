@@ -4,8 +4,7 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.web.Uri
-import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
+import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.data.item.ItemOperation
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.tests.jobresource.JobResourceTest.agentPath
@@ -21,7 +20,7 @@ final class JobResourceAtBareSubagentTest extends JobResourceTest
   private lazy val bareSubagentItem = SubagentItem(
     SubagentId("BARE-SUBAGENT"),
     agentPath,
-    Uri("http://localhost:" + findFreeTcpPort()))
+    findFreeLocalUri())
 
   private lazy val (bSubagent, bSubagentRelease) =
     directoryProvider.subagentResource(bareSubagentItem).allocated.await(99.s)

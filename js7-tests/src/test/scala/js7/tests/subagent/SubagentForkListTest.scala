@@ -6,8 +6,7 @@ import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
-import js7.base.web.Uri
-import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
+import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.data.agent.AgentPath
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
@@ -42,7 +41,7 @@ extends OurTestSuite with SubagentTester with BlockingItemUpdater
   private lazy val bSubagentItem = SubagentItem(
     bSubagentId,
     agentPath,
-    Uri(s"http://localhost:${findFreeTcpPort()}"))
+    findFreeLocalUri())
 
   protected implicit val scheduler = Scheduler.traced
 
