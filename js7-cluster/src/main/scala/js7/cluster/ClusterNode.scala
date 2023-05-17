@@ -15,8 +15,8 @@ import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.problem.Checked.CheckedOption
 import js7.base.problem.{Checked, Problem}
-import js7.base.service.Service
 import js7.base.service.Service.Started
+import js7.base.service.{MainServiceTerminationException, Service}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.CatsUtils.syntax.RichResource
@@ -495,9 +495,13 @@ object ClusterNode
   }
 
   // TODO Provisional fix because it's not easy to restart the recovery
+  // ServiceMain catches this exception by its `MainServiceTerminationException` trait !!!
   final class RestartAfterJournalTruncationException
   extends RuntimeException("Restart after journal truncation")
-  with NoStackTrace
+  with MainServiceTerminationException
+  with NoStackTrace {
+    def termination = ProgramTermination(restart = true)
+  }
 
   final case class ClusterWatchConfirmed(
     command: ClusterWatchConfirm,

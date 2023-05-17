@@ -31,7 +31,7 @@ import js7.tests.testenv.ControllerClusterForScalaTest.assertEqualJournalFiles
 import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.Deadline.now
 
-class FailoverControllerClusterTest protected extends ControllerClusterTester
+abstract class FailoverControllerClusterTest protected extends ControllerClusterTester
 {
   override protected def primaryControllerConfig =
     // Short timeout because something blocks web server shutdown occasionally
@@ -94,7 +94,9 @@ class FailoverControllerClusterTest protected extends ControllerClusterTester
         try {
           primaryController.stop.await(99.s)
           fail("RestartAfterJournalTruncationException expected")
-        } catch { case t: RestartAfterJournalTruncationException => /*weird???*/}
+        } catch { case t: RestartAfterJournalTruncationException =>
+          logger.info(t.toString)
+        }
         primaryController = primary.newController(httpPort = Some(primaryControllerPort))
       }
       primaryController.eventWatch.await[ClusterCoupled](after = failedOverEventId)
@@ -144,9 +146,6 @@ final class NonTruncatingFailoverControllerClusterTest extends FailoverControlle
 
 final class TruncatingFailoverControllerClusterTest extends FailoverControllerClusterTest {
   "Failover and recouple with non-replicated (truncated) events" in {
-    // The intermediate fix will HALT the complete JVM
-    // to allow a restart with the truncated journal file
-    //pending
     test(addNonReplicatedEvents = true)
   }
 }

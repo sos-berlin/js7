@@ -38,7 +38,6 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, ProgramTermination}
 import js7.base.web.Uri
 import js7.cluster.ClusterNode
-import js7.cluster.ClusterNode.RestartAfterJournalTruncationException
 import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.session.SessionRegister
@@ -241,10 +240,10 @@ object RunningAgent {
                   workingClusterNode.failedNodeId,
                   workingClusterNode.journalAllocated)))
               .map(Right(_)))
-          .onErrorRecover { case t: RestartAfterJournalTruncationException =>
-            logger.info(t.getMessage)
-            Left(ProgramTermination(restart = true))
-          }
+          //.onErrorRecover { case t: RestartAfterJournalTruncationException =>
+          //  logger.info(t.getMessage)
+          //  Left(t.termination)
+          //}
       ).memoize
 
     @deprecated val whenReady = Promise[Unit] // NOT USED ?

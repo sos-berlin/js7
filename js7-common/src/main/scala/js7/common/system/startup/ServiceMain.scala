@@ -9,7 +9,7 @@ import js7.base.configutils.Configs.logConfig
 import js7.base.io.process.ReturnCode
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{Log4j, Logger}
-import js7.base.service.{MainService, Service}
+import js7.base.service.{MainService, MainServiceTerminationException, Service}
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
@@ -143,18 +143,26 @@ object ServiceMain
       blockingRun(name, config, resource)((_: S).untilTerminated)
 
     /** Adds an own ThreadPool and a shutdown hook. */
-    def blockingRun[S <: MainService: Tag, R](
+    private[ServiceMain] def blockingRun[S <: MainService: Tag](
       name: String,
       config: Config,
       resource: Scheduler => Resource[Task, S])(
-      use: S => Task[R])
-    : R =
+      use: S => Task[ProgramTermination])
+    : ProgramTermination =
       ThreadPools.standardSchedulerResource[SyncIO](name, config)
         .use(implicit scheduler => SyncIO(
           withShutdownHook(resource(scheduler))
             .use(use)
+            .onErrorHandle(catchMainServiceTermination)
             .awaitInfinite))
         .unsafeRunSync()
+
+    private def catchMainServiceTermination: PartialFunction[Throwable, ProgramTermination] = {
+      case t: MainServiceTerminationException =>
+        logger.debug(t.toStringWithCauses)
+        logger.info(t.getMessage)
+        t.termination
+    }
 
     private def withShutdownHook[S <: MainService: Tag](serviceResource: Resource[Task, S])
       (implicit scheduler: Scheduler)

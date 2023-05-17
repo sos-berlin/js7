@@ -51,9 +51,12 @@ trait Service {
             .guaranteeCase {
               case ExitCase.Error(t) =>
                 // A service should not die
-                logger.error(
-                  s"$service died after ${since.elapsed.pretty}: ${t.toStringWithCauses}",
-                  t.nullIfNoStackTrace)
+                val msg = s"$service died after ${since.elapsed.pretty}: ${t.toStringWithCauses}"
+                if (t.isInstanceOf[MainServiceTerminationException]) {
+                  logger.debug(msg)
+                } else {
+                  logger.error(msg, t.nullIfNoStackTrace)
+                }
                 stopped.complete(Failure(t))
 
               case ExitCase.Canceled =>
