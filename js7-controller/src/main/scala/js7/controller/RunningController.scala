@@ -37,7 +37,7 @@ import js7.cluster.{ClusterNode, WorkingClusterNode}
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.akkautils.Akkas.actorSystemResource
 import js7.common.system.ThreadPools
-import js7.controller.RunningController.*
+import js7.controller.RunningController.logger
 import js7.controller.client.AkkaHttpControllerApi
 import js7.controller.command.ControllerCommandExecutor
 import js7.controller.configuration.ControllerConfiguration
@@ -87,7 +87,7 @@ final class RunningController private(
   val testEventBus: StandardEventBus[Any],
   val actorSystem: ActorSystem)
   (implicit val scheduler: Scheduler)
-extends MainService
+extends MainService with Service.StoppableByRequest
 {
   @TestOnly lazy val localUri = localUri_()
 
@@ -95,10 +95,9 @@ extends MainService
     Task.fromFuture(terminated)
 
   protected def start =
-    startService(untilTerminated.void)
-
-  protected def stop =
-    shutdown(ShutDown()).void
+    startService(
+      untilStopRequested *>
+        shutdown(ShutDown()).void)
 
   def shutdown(cmd: ShutDown): Task[ProgramTermination] =
     Task.defer {

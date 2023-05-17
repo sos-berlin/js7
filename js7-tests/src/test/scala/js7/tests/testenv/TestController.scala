@@ -51,7 +51,6 @@ final class TestController(allocated: Allocated[Task, RunningController], admiss
   implicit lazy val api: ControllerApi =
     apiLazy.value
 
-
   val stop: Task[Unit] =
     stopControllerApi
       .guarantee(allocated.release)
@@ -103,14 +102,12 @@ final class TestController(allocated: Allocated[Task, RunningController], admiss
     clusterAction: Option[ShutDown.ClusterAction] = None,
     dontNotifyActiveNode: Boolean = false)
   : Task[ProgramTermination] =
-    logger.traceTask {
-      val cmd = ShutDown(
+    logger.traceTask(
+      shutdown(ShutDown(
         suppressSnapshot = suppressSnapshot,
         clusterAction = clusterAction,
         dontNotifyActiveNode = dontNotifyActiveNode)
-
-      shutdown(cmd).guarantee(stop)
-    }
+      ).guarantee(stop))
 
   private def shutdown(cmd: ShutDown): Task[ProgramTermination] =
     logger.debugTask(Task.defer {

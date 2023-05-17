@@ -39,7 +39,7 @@ object ServiceMain
       ServiceMain.runningSince.fold("")(o => s" (after ${o.elapsed.pretty})") +
       "\n" + "─" * 80
 
-  def mainMainThenExit[Conf <: BasicConfiguration, S <: MainService: Tag](
+  def mainThenExit[Conf <: BasicConfiguration, S <: MainService: Tag](
     args: Array[String],
     name: String,
     argsToConf: CommandLineArguments => Conf,
