@@ -12,7 +12,7 @@ import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, Cluster
 import js7.data.cluster.ClusterState.{Coupled, PassiveLost}
 import js7.data.cluster.ClusterWatchCheckEvent
 import js7.tests.cluster.controller.UntaughtClusterWatchBothNodesLostControllerClusterTest.*
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 
 // Connection between cluster nodes is broken, leading to ClusterPassiveLost and ClusterFailedOver.
 final class UntaughtClusterWatchBothNodesLostControllerClusterTest extends ControllerClusterTester

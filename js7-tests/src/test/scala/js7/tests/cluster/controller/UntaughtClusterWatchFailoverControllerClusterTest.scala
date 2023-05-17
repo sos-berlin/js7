@@ -21,7 +21,7 @@ import js7.data.value.NumberValue
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.tests.cluster.controller.ControllerClusterTester.*
 import js7.tests.cluster.controller.UntaughtClusterWatchFailoverControllerClusterTest.*
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.Deadline.now
 
 final class UntaughtClusterWatchFailoverControllerClusterTest extends ControllerClusterTester

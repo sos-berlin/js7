@@ -30,7 +30,7 @@ import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.tests.https.HttpsTestBase.*
 import js7.tests.testenv.DirectoryProvider.{ExportedControllerTrustStoreRef, ExportedControllerTrustStoreResource}
 import js7.tests.testenv.{ControllerAgentForScalaTest, ControllerEnv, DirectoryProvider, SubagentEnv}
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.BeforeAndAfterAll
 import scala.concurrent.duration.*
 

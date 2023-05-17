@@ -3,7 +3,7 @@ package js7.base.utils
 import cats.syntax.all.*
 import js7.base.test.OurAsyncTestSuite
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import monix.execution.atomic.Atomic
 
 final class OnceTest extends OurAsyncTestSuite {
