@@ -613,6 +613,7 @@ with MainJournalingActor[ControllerState, Event]
     case Internal.AgentDriverStopped(agentPath) if agentRegister contains agentPath =>
       var agentEntry = agentRegister(agentPath)
       agentEntry.actorTerminated = true
+      agentEntry.release.runAsyncAndForget/*???*/ // Release in case there are surrounding Resources
       if (switchover.isDefined && journalTerminated && runningAgentDriverCount == 0) {
         val delay = shutdown.delayUntil.timeLeft
         if (delay.isPositive) {
