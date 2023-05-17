@@ -58,7 +58,7 @@ class FailoverControllerClusterTest protected extends ControllerClusterTester
       primaryController.api.executeCommand(ShutDown(clusterAction = Some(ShutDown.ClusterAction.Failover)))
         .await(99.s).orThrow
       primaryController.terminated await 99.s
-      primaryController.close()
+      primaryController.stop.await(99.s)
       logger.info("💥 Controller shut down with backup fail-over while script is running 💥")
       assert(since.elapsed < sleepWhileFailing, "— The Controller should have terminated while the shell script runs")
 
@@ -92,7 +92,7 @@ class FailoverControllerClusterTest protected extends ControllerClusterTester
         val termination = primaryController.terminated.await(99.s)
         assert(termination.restart)
         try {
-          primaryController.close()
+          primaryController.stop.await(99.s)
           fail("RestartAfterJournalTruncationException expected")
         } catch { case t: RestartAfterJournalTruncationException => /*weird???*/}
         primaryController = primary.newController(httpPort = Some(primaryControllerPort))
@@ -105,7 +105,7 @@ class FailoverControllerClusterTest protected extends ControllerClusterTester
       val recoupledEventId = primaryController.eventWatch.await[ClusterSwitchedOver](after = failedOverEventId).head.eventId
 
       backupController.terminated await 99.s
-      backupController.close()
+      backupController.stop.await(99.s)
 
       backupController = backup.newController(httpPort = Some(backupControllerPort))
 
@@ -126,8 +126,8 @@ class FailoverControllerClusterTest protected extends ControllerClusterTester
       assert(primaryController.clusterState.await(99.s) == stillCoupled)
       assert(backupController.clusterState.await(99.s) == stillCoupled)
 
-      primaryController.close()
-      backupController.close()
+      primaryController.stop.await(99.s)
+      backupController.stop.await(99.s)
     }
   }
 }

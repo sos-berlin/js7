@@ -190,7 +190,7 @@ extends OurTestSuite with BeforeAndAfterAll with ControllerAgentForScalaTest wit
     delete(clientKeyStore)
     super.afterAll()
     if (useCluster) {
-      backupController.close()
+      backupController.stop.await(99.s)
       backupDirectoryProvider.close()
     }
   }

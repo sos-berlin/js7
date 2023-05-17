@@ -200,7 +200,7 @@ extends HasCloser
         catch { case NonFatal(t) =>
           // Akka may crash before the caller gets the error so we log the error here
           logger.error(s"💥💥💥 ${t.toStringWithCauses}", t.nullIfNoStackTrace)
-          try testController.close()
+          try testController.stop.await(99.s)
           catch { case t2: Throwable if t2 ne t => t.addSuppressed(t2) }
           throw t
         }

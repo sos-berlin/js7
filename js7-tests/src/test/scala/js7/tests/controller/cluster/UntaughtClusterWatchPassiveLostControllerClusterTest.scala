@@ -30,7 +30,7 @@ final class UntaughtClusterWatchPassiveLostControllerClusterTest extends Control
         // KILL BACKUP
         backupController.terminate(dontNotifyActiveNode = true)
           .await(99.s)
-        backupController.close()
+        backupController.stop.await(99.s)
       }
 
       primaryController.testEventBus
@@ -60,7 +60,7 @@ final class UntaughtClusterWatchPassiveLostControllerClusterTest extends Control
         val ClusterPassiveLost(`backupId`) = primaryController.eventWatch.await[ClusterPassiveLost]()
           .head.value.event
 
-        primaryController.close()
+        primaryController.stop.await(99.s)
       }
     }
   }

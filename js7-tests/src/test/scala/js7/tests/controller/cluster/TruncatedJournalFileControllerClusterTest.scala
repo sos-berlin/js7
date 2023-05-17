@@ -23,7 +23,7 @@ final class TruncatedJournalFileControllerClusterTest extends ControllerClusterT
         val backupController = backup.newController(httpPort = Some(backupControllerPort))
 
         backupController.eventWatch.await[ClusterCoupled]()
-        backupController.close()
+        backupController.stop.await(99.s)
         primaryController.eventWatch.await[ClusterPassiveLost]()
 
         primaryController.terminate(suppressSnapshot = true) await 99.s

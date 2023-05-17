@@ -32,14 +32,15 @@ import js7.journal.watch.StrictEventWatch
 import js7.proxy.ControllerApi
 import js7.tests.testenv.TestController.*
 import monix.eval.Task
-import monix.execution.Scheduler
 import monix.reactive.Observable
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
 final class TestController(allocated: Allocated[Task, RunningController], admission: Admission)
-extends AutoCloseable
 {
+  val runningController: RunningController =
+    allocated.allocatedThing
+
   val conf: ControllerConfiguration =
     runningController.conf
 
@@ -50,14 +51,6 @@ extends AutoCloseable
   implicit lazy val api: ControllerApi =
     apiLazy.value
 
-  def runningController: RunningController =
-    allocated.allocatedThing
-
-  implicit val scheduler: Scheduler =
-    runningController.scheduler
-
-  def close() =
-    stop.await(99.s)
 
   val stop: Task[Unit] =
     stopControllerApi
@@ -85,8 +78,10 @@ extends AutoCloseable
   def orderApi: OrderApi =
     runningController.orderApi
 
-  def controllerState(): ControllerState =
+  def controllerState(): ControllerState = {
+    import runningController.scheduler
     runningController.controllerState.await(99.s)
+  }
 
   def sessionRegister: SessionRegister[SimpleSession] =
     runningController.sessionRegister
@@ -143,10 +138,13 @@ extends AutoCloseable
   def updateItemsAsSystemUser(operations: Observable[ItemOperation]): Task[Checked[Completed]] =
     runningController.updateItemsAsSystemUser(operations)
 
-  def addOrderBlocking(order: FreshOrder): Unit =
+  def addOrderBlocking(order: FreshOrder): Unit = {
+    import runningController.scheduler
     runningController.addOrder(order).await(99.s).orThrow
+  }
 
   def runOrder(order: FreshOrder): Seq[Stamped[OrderEvent]] = {
+    import runningController.scheduler
     val timeout = 99.s
     logger.debugTask("runOrder", order.id)(Task.defer {
       val eventId = eventWatch.lastAddedEventId

@@ -135,7 +135,7 @@ final class ChangeClusterWatchTest extends ControllerClusterTester
           // resulting in a deadlock.
           // Duplicate ClusterWatchId is not considered a real world problem !!!
           assert(whenConfirmed.await(99.s).result == Right(()))
-          primaryController.close()
+          primaryController.stop.await(99.s)
         }
       }
     }

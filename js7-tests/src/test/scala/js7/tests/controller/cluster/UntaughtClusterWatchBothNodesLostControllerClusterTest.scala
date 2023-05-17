@@ -80,8 +80,8 @@ final class UntaughtClusterWatchBothNodesLostControllerClusterTest extends Contr
         assert(clusterWatchService.manuallyConfirmNodeLoss(backupId, "CONFIRMER")
           == Left(ClusterNodeIsNotLostProblem(backupId)))
 
-        primaryController.close()
-        backupController.close()
+        primaryController.stop.await(99.s)
+        backupController.stop.await(99.s)
       }
     }
   }

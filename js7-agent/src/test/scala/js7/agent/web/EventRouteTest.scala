@@ -21,7 +21,7 @@ import js7.data.event.{Event, EventId, EventRequest, EventSeqTornProblem, Journa
 import js7.data.problems.UnknownEventIdProblem
 import js7.data.subagent.SubagentId
 import js7.journal.files.JournalFiles.listJournalFiles
-import monix.execution.Scheduler
+import monix.execution.Scheduler.Implicits.traced
 
 /**
   * @author Joacim Zschimmer
@@ -30,7 +30,6 @@ final class EventRouteTest extends OurTestSuite with AgentTester
 {
   protected val akkaAskTimeout = 99.s
 
-  implicit private lazy val scheduler: Scheduler = agent.scheduler
   implicit private lazy val actorSystem: ActorSystem = agent.actorSystem
   private val agentClient = AgentClient(agent.localUri, Some(TestUserAndPassword)).closeWithCloser
   private var agentRunId: AgentRunId = _

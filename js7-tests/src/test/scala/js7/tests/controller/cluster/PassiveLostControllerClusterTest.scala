@@ -51,8 +51,8 @@ final class PassiveLostControllerClusterTest extends ControllerClusterTester
         backupController.eventWatch.await[OrderFinished](_.key == orderId, after = passiveLost)
       }
 
-      primaryController.close()
-      backupController.close()
+      primaryController.stop.await(99.s)
+      backupController.stop.await(99.s)
     }
   }
 }

@@ -30,11 +30,8 @@ import scala.util.control.NonFatal
 final class TestAgent(allocated: Allocated[Task, RunningAgent]) {
   val agent = allocated.allocatedThing
 
-  implicit val scheduler: Scheduler =
-    agent.scheduler
-
   def stop: Task[Unit] =
-    allocated.stop
+    allocated.release
 
   def terminate(
     processSignal: Option[ProcessSignal] = None,
@@ -60,8 +57,10 @@ final class TestAgent(allocated: Allocated[Task, RunningAgent]) {
   def untilReady: Task[MainActor.Ready] =
     agent.untilReady
 
-  def currentAgentState(): AgentState =
+  def currentAgentState(): AgentState = {
+    import agent.scheduler
     agent.agentState.await(99.s).orThrow
+  }
 
   def eventWatch: EventWatch =
     agent.eventWatch

@@ -13,6 +13,7 @@ import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.tests.controller.agent.DuplicateAgentRefTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
+import monix.execution.Scheduler.Implicits.traced
 
 final class DuplicateAgentRefTest extends OurTestSuite with ControllerAgentForScalaTest
 {
@@ -22,8 +23,6 @@ final class DuplicateAgentRefTest extends OurTestSuite with ControllerAgentForSc
 
   protected val agentPaths = aAgentPath :: Nil
   protected val items = Nil
-
-  import controller.scheduler
 
   override def beforeAll() = {
     (directoryProvider.controllerEnv.configDir / "private" / "private.conf") ++=

@@ -24,7 +24,7 @@ final class ShutdownPassiveControllerClusterTest extends ControllerClusterTester
         primaryController.eventWatch.await[ClusterCoupled]()
 
         backupController.api.executeCommand(ShutDown()).await(99.s).orThrow
-        backupController.close()
+        backupController.stop.await(99.s)
 
         primaryController.eventWatch.await[ClusterPassiveLost]()
       }
