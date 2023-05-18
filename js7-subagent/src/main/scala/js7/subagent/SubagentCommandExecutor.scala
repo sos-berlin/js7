@@ -1,5 +1,6 @@
 package js7.subagent
 
+import cats.syntax.traverse.*
 import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.RichMonixTask
@@ -56,15 +57,16 @@ private[subagent] final class SubagentCommandExecutor(
             }
 
           case KillProcess(orderId, signal) =>
-            subagent
-              .killProcess(orderId, signal)
+            subagent.checkedDedicatedSubagent
+              .traverse(_.killProcess(orderId, signal))
               .rightAs(SubagentCommand.Accepted)
 
           case cmd: DedicateSubagent =>
             subagent.executeDedicateSubagent(cmd)
 
           case cmd: CoupleDirector =>
-            subagent.executeCoupleDirector(cmd)
+            Task(subagent.checkedDedicatedSubagent)
+              .flatMapT(_.executeCoupleDirector(cmd))
               .rightAs(SubagentCommand.Accepted)
 
           case ShutDown(processSignal, dontWaitForDirector, restart) =>

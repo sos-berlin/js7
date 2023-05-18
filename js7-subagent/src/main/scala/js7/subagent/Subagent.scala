@@ -1,7 +1,7 @@
 package js7.subagent
 
+import cats.effect.Resource
 import cats.effect.concurrent.Deferred
-import cats.effect.{ExitCase, Resource}
 import cats.syntax.traverse.*
 import js7.base.Js7Version
 import js7.base.configutils.Configs.RichConfig
@@ -10,35 +10,31 @@ import js7.base.eventbus.StandardEventBus
 import js7.base.io.process.ProcessSignal
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.monixutils.AsyncMap
 import js7.base.monixutils.MonixBase.syntax.*
+import js7.base.problem.Checked
 import js7.base.problem.Checked.*
-import js7.base.problem.{Checked, Problem}
 import js7.base.service.{MainService, Service}
 import js7.base.thread.IOExecutor
 import js7.base.time.AlarmClock
 import js7.base.utils.CatsUtils.syntax.RichResource
-import js7.base.utils.ScalaUtils.RightUnit
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, ProgramTermination, SetOnce}
 import js7.common.system.ThreadPools.unlimitedSchedulerResource
 import js7.data.event.EventId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.order.OrderEvent.OrderProcessed
-import js7.data.order.{Order, OrderId, Outcome}
-import js7.data.subagent.Problems.{SubagentAlreadyDedicatedProblem, SubagentIdMismatchProblem, SubagentIsShuttingDownProblem, SubagentNotDedicatedProblem, SubagentRunIdMismatchProblem}
-import js7.data.subagent.SubagentCommand.{CoupleDirector, DedicateSubagent}
+import js7.data.order.{Order, OrderId}
+import js7.data.subagent.Problems.{SubagentAlreadyDedicatedProblem, SubagentNotDedicatedProblem}
+import js7.data.subagent.SubagentCommand.DedicateSubagent
 import js7.data.subagent.SubagentEvent.SubagentShutdown
 import js7.data.subagent.{SubagentId, SubagentRunId, SubagentState}
 import js7.data.value.expression.Expression
-import js7.data.workflow.position.WorkflowPosition
 import js7.journal.MemoryJournal
 import js7.launcher.configuration.JobLauncherConf
 import js7.subagent.Subagent.*
 import js7.subagent.configuration.SubagentConf
 import monix.eval.{Fiber, Task}
 import monix.execution.Scheduler
-import monix.execution.atomic.Atomic
 
 final class Subagent private(
   val journal: MemoryJournal[SubagentState],
@@ -50,16 +46,12 @@ extends MainService with Service.StoppableByRequest
 {
   subagent =>
 
+  val subagentRunId = SubagentRunId.fromJournalId(journal.journalId)
   private[subagent] val commandExecutor =
     new SubagentCommandExecutor(this, signatureVerifier)
   private val dedicatedAllocated =
     SetOnce[Allocated[Task, DedicatedSubagent]](SubagentNotDedicatedProblem)
-  val subagentRunId = SubagentRunId.fromJournalId(journal.journalId)
-  private val orderToProcessing = AsyncMap.stoppable[OrderId, Processing]()
-
-  private val shuttingDown = Atomic(false)
   private val terminated = Deferred.unsafe[Task, ProgramTermination]
-  @volatile private var _dontWaitForDirector = false
 
   protected def start =
     startService(Task
@@ -69,7 +61,7 @@ extends MainService with Service.StoppableByRequest
       .void)
 
   def isShuttingDown: Boolean =
-    shuttingDown()
+    dedicatedAllocated.toOption.fold(false)(_.allocatedThing.isShuttingDown)
 
   def untilTerminated: Task[ProgramTermination] =
     terminated.get
@@ -84,46 +76,29 @@ extends MainService with Service.StoppableByRequest
       Seq(processSignal, restart ? "restart", dontWaitForDirector ? "dontWaitForDirector")
         .flatten.mkString(" ")
     )(Task.defer {
-      _dontWaitForDirector |= dontWaitForDirector
-      val first = !shuttingDown.getAndSet(true)
-      Task
-        .when(first) {
-          (dedicatedAllocated
-            .toOption
-            .fold(Task.unit)(allocated =>
-              allocated.allocatedThing.terminate(processSignal) *>
-                allocated.release)
-            .*>(orderToProcessing.initiateStopWithProblem(SubagentIsShuttingDownProblem))
-            .*>(Task.defer {
-              val orderIds = orderToProcessing.toMap.keys.toVector.sorted
-              if (dontWaitForDirector) Task {
-                for (orderId <- orderIds) logger.warn(
-                  s"Shutdown: Agent Director has not yet acknowledged processing of $orderId")
-              } else Task.defer {
-                for (orderId <- orderIds) logger.info(
-                  s"🟡 Delaying shutdown until Agent Director has acknowledged processing of $orderId")
-                // Await process termination and DetachProcessedOrder commands
-                orderToProcessing.whenStopped
-                  .logWhenItTakesLonger("Director-acknowledged Order processes")
-              }
-            })
-            .*>(journal
-              // The event may get lost due to immediate shutdown !!!
-              .persistKeyedEvent(NoKey <-: SubagentShutdown)
-              .rightAs(())
-              .map(_.onProblemHandle(problem => logger.warn(s"Shutdown: $problem"))))
-            .*>(Task.defer {
-              logger.info(s"$subagent stopped")
-              terminated.complete(ProgramTermination(restart = restart)).attempt.void
-            }))
-        }
+      dedicatedAllocated
+        .toOption
+        .fold(Task.unit)(allocated =>
+          allocated.allocatedThing
+            .terminate(processSignal, dontWaitForDirector = dontWaitForDirector)
+            .*>(allocated.release))
+        .*>(journal
+          // The event may get lost due to immediate shutdown !!!
+          .persistKeyedEvent(NoKey <-: SubagentShutdown)
+          .rightAs(())
+          .map(_.onProblemHandle(problem => logger.warn(s"Shutdown: $problem")))
+          .*>(Task.defer {
+            logger.info(s"$subagent stopped")
+            terminated.complete(ProgramTermination(restart = restart)).attempt.void
+          }))
         .*>(untilTerminated)
     })
   }
 
   def executeDedicateSubagent(cmd: DedicateSubagent): Task[Checked[DedicateSubagent.Response]] =
     DedicatedSubagent
-      .resource(cmd.subagentId, journal, cmd.agentPath, cmd.controllerId, jobLauncherConf, conf)
+      .resource(cmd.subagentId, subagentRunId, journal, cmd.agentPath, cmd.controllerId,
+        jobLauncherConf, conf)
       .toAllocated
       .flatMap(allocatedDedicatedSubagent => Task.defer {
         val isFirst = dedicatedAllocated.trySet(allocatedDedicatedSubagent)
@@ -142,84 +117,12 @@ extends MainService with Service.StoppableByRequest
         }
       })
 
-  def executeCoupleDirector(cmd: CoupleDirector): Task[Checked[Unit]] =
-    Task {
-      for {
-        _ <- checkSubagentId(cmd.subagentId)
-        _ <- checkSubagentRunId(cmd.subagentRunId)
-        _ <- journal.eventWatch.checkEventId(cmd.eventId)
-      } yield ()
-    }
-
-  private def checkSubagentId(requestedSubagentId: SubagentId): Checked[Unit] =
-    checkedDedicatedSubagent.flatMap(dedicated =>
-      if (requestedSubagentId != dedicated.subagentId)
-        Left(SubagentIdMismatchProblem(requestedSubagentId, dedicated.subagentId))
-      else
-        RightUnit)
-
-  def checkSubagentRunId(requestedSubagentRunId: SubagentRunId): Checked[Unit] =
-    checkedDedicatedSubagent.flatMap(dedicated =>
-      if (requestedSubagentRunId != this.subagentRunId) {
-        val problem = SubagentRunIdMismatchProblem(dedicated.subagentId)
-        logger.warn(
-          s"$problem, requestedSubagentRunId=$requestedSubagentRunId, " +
-            s"agentRunId=${this.subagentRunId}")
-        Left(problem)
-      } else
-        Checked.unit)
-
   def startOrderProcess(
     order: Order[Order.Processing],
     defaultArguments: Map[String, Expression])
   : Task[Checked[Fiber[OrderProcessed]]] =
-    Task.defer {
-      orderToProcessing
-        .updateChecked(order.id, {
-          case Some(existing) =>
-            Task.pure(
-              if (existing.workflowPosition != order.workflowPosition) {
-                val problem = Problem.pure("Duplicate SubagentCommand.StartOrder with different Order position")
-                logger.warn(s"$problem:")
-                logger.warn(s"  Added order   : ${order.id} ${order.workflowPosition}")
-                logger.warn(s"  Existing order: ${order.id} ${existing.workflowPosition}")
-                Left(problem)
-              } else
-                Right(existing)) // Idempotency: Order process has already been started
-
-          case None =>
-            Task(checkedDedicatedSubagent).flatMapT(dedicated =>
-              startOrderProcess(dedicated, order, defaultArguments)
-                .guaranteeCase {
-                  case ExitCase.Completed =>
-                    Task.unless(!_dontWaitForDirector) {
-                      logger.warn(
-                        s"dontWaitForDirector: ${order.id} <-: OrderProcessed event may get lost")
-                      orderToProcessing.remove(order.id).void
-                    }
-
-                  case _ => orderToProcessing.remove(order.id).void // Tidy-up on failure
-                }
-                .map(fiber => Right(Processing(order.workflowPosition, fiber))))
-        })
-        .map(_.map(_.fiber))
-    }
-
-  private def startOrderProcess(
-    dedicatedSubagent: DedicatedSubagent,
-    order: Order[Order.Processing],
-    defaultArguments: Map[String, Expression])
-  : Task[Fiber[OrderProcessed]] =
-    dedicatedSubagent
-      .startOrderProcess(order, defaultArguments)
-      .flatMap(_
-        .join
-        .onErrorHandle(Outcome.Failed.fromThrowable)
-        .flatMap(outcome =>
-          journal
-            .persistKeyedEvent(order.id <-: OrderProcessed(outcome))
-            .map(_.orThrow._1.value.event))
-        .start)
+    Task(checkedDedicatedSubagent)
+      .flatMapT(_.startOrderProcess(order, defaultArguments))
 
   def killProcess(orderId: OrderId, signal: ProcessSignal): Task[Checked[Unit]] =
     subagent.checkedDedicatedSubagent
@@ -227,7 +130,8 @@ extends MainService with Service.StoppableByRequest
         .killProcess(orderId, signal))
 
   def detachProcessedOrder(orderId: OrderId): Task[Checked[Unit]] =
-    orderToProcessing.remove(orderId).as(Checked.unit)
+    Task(checkedDedicatedSubagent)
+      .flatMapT(_.detachProcessedOrder(orderId))
 
   def releaseEvents(eventId: EventId): Task[Checked[Unit]] =
     journal.releaseEvents(eventId)
@@ -241,7 +145,7 @@ extends MainService with Service.StoppableByRequest
   def checkIsDedicated: Checked[Unit] =
     dedicatedAllocated.checked.map(_ => ())
 
-  private def checkedDedicatedSubagent: Checked[DedicatedSubagent] =
+  private[subagent] def checkedDedicatedSubagent: Checked[DedicatedSubagent] =
     dedicatedAllocated.checked.map(_.allocatedThing)
 
   override def toString = s"Subagent(${checkedDedicatedSubagent.toOption getOrElse ""})"
@@ -282,10 +186,6 @@ object Subagent
       } yield subagent
       ).executeOn(js7Scheduler)
     })
-
-  private final case class Processing(
-    workflowPosition: WorkflowPosition/*for check only*/,
-    fiber: Fiber[OrderProcessed])
 
   type ItemSignatureKeysUpdated = ItemSignatureKeysUpdated.type
   case object ItemSignatureKeysUpdated
