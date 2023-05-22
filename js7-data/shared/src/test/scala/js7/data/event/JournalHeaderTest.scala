@@ -15,6 +15,7 @@ final class JournalHeaderTest extends OurTestSuite
   "JSON" in {
     testJson[JournalHeader](
       JournalHeader(
+        typeName = Some("TestState"),
         JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF")),
         eventId = EventId(777),
         totalEventCount = 999,
@@ -36,12 +37,14 @@ final class JournalHeaderTest extends OurTestSuite
         "initiallyStartedAt": "2019-05-22T12:00:00Z",
         "version": "3",
         "js7Version": "2.0-JS7",
-        "buildId": "BUILD"
+        "buildId": "BUILD",
+        "typeName": "TestState"
       }""")
 
     // COMPATIBLE with 2.0.0
     testJsonDecoder[JournalHeader](
       JournalHeader(
+        typeName = None,
         JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF")),
         eventId = EventId(777),
         totalEventCount = 999,

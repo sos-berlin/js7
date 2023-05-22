@@ -179,7 +179,7 @@ object FileJournal
             JournalActor.Input.Start(
               recovered.state,
               Some(recovered.eventWatch),
-              recovered.recoveredJournalFile.fold(JournalHeaders.initial(journalId))(_.nextJournalHeader),
+              recovered.recoveredJournalFile.fold(JournalHeaders.initial[S](journalId))(_.nextJournalHeader),
               recovered.totalRunningSince)
             )(Timeout(1.h /*???*/)
           ).mapTo[JournalActor.Output.Ready].map(_.journalHeader))

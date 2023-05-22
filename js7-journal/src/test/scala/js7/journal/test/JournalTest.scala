@@ -183,6 +183,7 @@ object JournalTest
   private val FirstJournal = Vector(
     json"""{
       "TYPE": "JS7.Journal",
+      "typeName": "TestState",
       "journalId" : "ABEiM0RVZneImaq7zN3u_w",
       "eventId": 0,
       "generation": 1,
@@ -274,6 +275,7 @@ object JournalTest
   private val SecondJournal = Vector(
     json"""{
       "TYPE": "JS7.Journal",
+      "typeName": "TestState",
       "version": "${JournalHeader.Version}",
       "js7Version": "${BuildInfo.longVersion}",
       "buildId": "${BuildInfo.buildId}",

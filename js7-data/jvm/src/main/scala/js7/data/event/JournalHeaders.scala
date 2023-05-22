@@ -29,6 +29,7 @@ object JournalHeaders
 
   def forTest(journalId: JournalId, eventId: EventId = EventId.BeforeFirst): JournalHeader =
     new JournalHeader(
+      typeName = Some("Test"),
       journalId,
       eventId = eventId,
       generation = 1,
@@ -40,8 +41,11 @@ object JournalHeaders
       version = Version,
       buildId = BuildInfo.buildId)
 
-  def initial(journalId: JournalId) =
+  def initial[S <: EventDrivenState[S, Event]](journalId: JournalId)
+    (implicit S: EventDrivenState.Companion[S, Event])
+  : JournalHeader =
     new JournalHeader(
+      typeName = Some(S.name),
       journalId,
       eventId = EventId.BeforeFirst,
       generation = 0,

@@ -17,6 +17,7 @@ import scala.concurrent.duration.FiniteDuration
   * @author Joacim Zschimmer
   */
 final case class JournalHeader(
+  typeName: Option[String]/*since v2.6*/,
   journalId: JournalId,
   eventId: EventId,
   generation: Long,

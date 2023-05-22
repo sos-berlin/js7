@@ -5,6 +5,7 @@ import js7.base.BuildInfo
 import js7.base.circeutils.CirceUtils.*
 import js7.base.test.OurTestSuite
 import js7.base.time.Timestamp
+import js7.data.event.JournalHeadersTest.*
 import js7.tester.CirceJsonTester.testJson
 import scala.concurrent.duration.*
 
@@ -12,7 +13,7 @@ final class JournalHeadersTest extends OurTestSuite
 {
   "JSON" in {
     testJson[JournalHeader](
-      JournalHeaders.initial(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))).copy(
+      JournalHeaders.initial[TestState](JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))).copy(
         eventId = EventId(777),
         totalEventCount = 999,
         initiallyStartedAt = Timestamp.parse("2019-05-22T12:00:00.000Z"),
@@ -20,6 +21,7 @@ final class JournalHeadersTest extends OurTestSuite
         timestamp = Timestamp.parse("2019-05-23T22:22:22.222Z")),
       json"""{
         "TYPE": "JS7.Journal",
+        "typeName": "JournalHeadersTest.TestState",
         "journalId": "ABEiM0RVZneImaq7zN3u_w",
         "eventId": 777,
         "generation": 0,
@@ -32,4 +34,12 @@ final class JournalHeadersTest extends OurTestSuite
         "buildId": "${BuildInfo.buildId}"
       }""")
   }
+}
+
+private object JournalHeadersTest {
+  final case class TestState(string: String) extends EventDrivenState[TestState, Event] {
+    def companion = TestState
+    def applyEvent(keyedEvent: KeyedEvent[Event]) = throw new NotImplementedError
+  }
+  object TestState extends js7.data.event.EventDrivenState.Companion[TestState, Event]
 }
