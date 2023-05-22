@@ -38,7 +38,7 @@ trait RouteTester extends ScalatestRouteTest with ExceptionHandling
     isLoopback = true)
 
   protected final lazy val sessionRegister =
-    SessionRegister.start(system, SimpleSession.apply, SessionRegister.TestConfig)
+    SessionRegister.forTest(system, SimpleSession.apply, SessionRegister.TestConfig)
 
   override final def testConfig = config
 

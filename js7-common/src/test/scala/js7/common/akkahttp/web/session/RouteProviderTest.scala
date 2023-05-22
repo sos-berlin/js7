@@ -38,7 +38,7 @@ final class RouteProviderTest extends OurTestSuite with RouteProvider with Scala
   protected def whenShuttingDown = Future.never
   implicit protected def scheduler = Scheduler.traced
   protected val config = config"js7.web.server.verbose-error-messages = on"
-  protected lazy val sessionRegister = SessionRegister.start(system, SimpleSession.apply, SessionRegister.TestConfig)
+  protected lazy val sessionRegister = SessionRegister.forTest(system, SimpleSession.apply, SessionRegister.TestConfig)
   private implicit val routeTestTimeout: RouteTestTimeout = RouteTestTimeout(99.s)
 
   protected val gateKeeper = new GateKeeper(

@@ -55,7 +55,7 @@ trait SessionRouteTester extends BeforeAndAfterAll with ScalatestRouteTest with 
       }""")
 
   protected final lazy val sessionRegister =
-    SessionRegister.start(system, SimpleSession.apply, SessionRegister.TestConfig)
+    SessionRegister.forTest(system, SimpleSession.apply, SessionRegister.TestConfig)
 
   protected def route =
     Route.seal(

@@ -85,7 +85,7 @@ extends OurTestSuite with BeforeAndAfterAll with ProvideActorSystem with Generic
 
   protected lazy val gateKeeper = new GateKeeper(WebServerBinding.Http,
     GateKeeper.Configuration.fromConfig(config, SimpleUser.apply))
-  protected final lazy val sessionRegister = SessionRegister.start(
+  protected final lazy val sessionRegister = SessionRegister.forTest(
     actorSystem, SimpleSession.apply, SessionRegister.TestConfig)
   private val shuttingDown = Promise[Deadline]()
   protected val whenShuttingDown = shuttingDown.future

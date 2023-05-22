@@ -36,7 +36,7 @@ trait WebServiceTest extends HasCloser with BeforeAndAfterAll with ScalatestRout
     WebServerBinding.Http,
     GateKeeper.Configuration.fromConfig(testConfig, SimpleUser.apply))
 
-  protected final val sessionRegister = SessionRegister.start[AgentSession](
+  protected final val sessionRegister = SessionRegister.forTest[AgentSession](
     actorRefFactory, AgentSession.apply, SessionRegister.TestConfig)
 
   override def testConfig =

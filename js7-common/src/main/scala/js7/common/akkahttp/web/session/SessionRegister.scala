@@ -7,6 +7,7 @@ import cats.effect.Resource
 import cats.syntax.apply.*
 import cats.syntax.flatMap.*
 import com.typesafe.config.Config
+import izumi.reflect.Tag
 import java.nio.file.Files.{createFile, deleteIfExists}
 import java.nio.file.Path
 import js7.base.Js7Version
@@ -15,12 +16,13 @@ import js7.base.configutils.Configs.*
 import js7.base.generic.Completed
 import js7.base.io.file.FileUtils.provideFile
 import js7.base.io.file.FileUtils.syntax.*
-import js7.base.log.Logger
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
+import js7.base.service.Service
 import js7.base.time.JavaTimeConverters.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.version.Version
+import js7.common.akkautils.Akkas
 import js7.common.http.AkkaHttpClient.`x-js7-session`
 import js7.common.system.ServerOperatingSystem.operatingSystem
 import monix.eval.Task
@@ -31,15 +33,19 @@ import scala.concurrent.Promise
 /**
   * @author Joacim Zschimmer
   */
-final class SessionRegister[S <: Session] private[session](
+final class SessionRegister[S <: Session: Tag] private[session](
   actor: ActorRef,
   implicit private val akkaAskTimeout: Timeout,
   componentName: String)
+extends Service.StoppableByRequest
 {
   private val systemSessionPromise = Promise[Checked[S]]()
   val systemSession: Task[Checked[S]] = Task.fromFuture(systemSessionPromise.future)
   val systemUser: Task[Checked[SimpleUser]] =
     systemSession.map(_.map(_.currentUser./*???*/asInstanceOf[SimpleUser]))
+
+  protected def start =
+    startService(untilStopRequested)
 
   def placeSessionTokenInDirectory(user: SimpleUser, workDirectory: Path)
   : Resource[Task, SessionToken] = {
@@ -109,17 +115,36 @@ final class SessionRegister[S <: Session] private[session](
   private[js7] def count: Task[Int] =
     Task.deferFuture(
       (actor ? SessionActor.Command.GetCount).mapTo[Int])
+
+  override def toString = s"SessionRegister[${implicitly[Tag[S]].tag.shortName}]"
 }
 
 object SessionRegister
 {
-  private val logger = Logger[this.type]
+  def resource[S <: Session: Tag](
+    newSession: SessionInit => S,
+    config: Config)
+    (implicit arf: ActorRefFactory, scheduler: Scheduler)
+  : Resource[Task, SessionRegister[S]] =
+    for {
+      actor <- Akkas.actorResource[Task](
+        SessionActor.props(newSession, config),
+        implicitly[Tag[S]].tag.longName)
+      sessionRegister <- Service.resource(Task(new SessionRegister[S](
+        actor,
+        akkaAskTimeout = config.getDuration("js7.akka.ask-timeout").toFiniteDuration,
+        componentName = config.getString("js7.component.name"))))
+    } yield sessionRegister
 
-  def start[S <: Session]
+  // Does not stop the Actor !!!
+  @TestOnly
+  def forTest[S <: Session: Tag]
     (actorRefFactory: ActorRefFactory, newSession: SessionInit => S, config: Config)
     (implicit scheduler: Scheduler)
   : SessionRegister[S] = {
-    val sessionActor = actorRefFactory.actorOf(SessionActor.props(newSession, config), "session")
+    val sessionActor = actorRefFactory.actorOf(
+      SessionActor.props(newSession, config),
+      implicitly[Tag[S]].tag.longName)
     new SessionRegister[S](sessionActor,
       akkaAskTimeout = config.getDuration("js7.akka.ask-timeout").toFiniteDuration,
       componentName = config.getString("js7.component.name"))

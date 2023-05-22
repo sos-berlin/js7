@@ -16,7 +16,7 @@ import js7.common.akkahttp.web.session.RouteProviderTest.MySession
 import js7.common.akkahttp.web.session.SessionRegisterTest.*
 import js7.common.akkautils.Akkas
 import js7.common.akkautils.Akkas.newActorSystem
-import monix.execution.Scheduler.Implicits.traced
+import monix.execution.Scheduler.Implicits.traced as scheduler
 import monix.execution.schedulers.TestScheduler
 import scala.concurrent.duration.*
 
@@ -34,7 +34,10 @@ final class SessionRegisterTest extends OurTestSuite with ScalatestRouteTest
 
   private val testScheduler = TestScheduler()
   private val unknownSessionToken = SessionToken(SecretString("UNKNOWN"))
-  private lazy val sessionRegister = SessionRegister.start(system, MySession.apply, SessionRegister.TestConfig)(testScheduler)
+  private lazy val sessionRegister = {
+    implicit val scheduler = testScheduler
+    SessionRegister.forTest(system, MySession.apply, SessionRegister.TestConfig)
+  }
   private var sessionToken = SessionToken(SecretString("INVALID"))
 
   "Logout unknown SessionToken" in {
@@ -75,7 +78,10 @@ final class SessionRegisterTest extends OurTestSuite with ScalatestRouteTest
 
   "But late authentication is allowed, changing from anonymous to non-anonymous User" in {
     val mySystem = newActorSystem("SessionRegisterTest")
-    val mySessionRegister = SessionRegister.start(mySystem, MySession.apply, SessionRegister.TestConfig)(testScheduler)
+    val mySessionRegister = {
+      implicit val scheduler = testScheduler
+      SessionRegister.forTest(mySystem, MySession.apply, SessionRegister.TestConfig)
+    }
     val sessionToken = mySessionRegister.login(SimpleUser.TestAnonymous, Some(Js7Version))
       .await(99.s).orThrow
 

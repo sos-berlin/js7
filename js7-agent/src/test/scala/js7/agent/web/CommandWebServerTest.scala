@@ -71,7 +71,7 @@ final class CommandWebServerTest extends OurAsyncTestSuite
             WebServerBinding.Http,
             GateKeeper.Configuration.fromConfig(config, SimpleUser.apply))
 
-          protected val sessionRegister = SessionRegister.start[AgentSession](
+          protected val sessionRegister = SessionRegister.forTest[AgentSession](
             actorSystem, AgentSession.apply, SessionRegister.TestConfig)
         }.commandRoute
       }

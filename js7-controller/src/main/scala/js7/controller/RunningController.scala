@@ -299,9 +299,8 @@ object RunningController
 
       val orderApi = new MainOrderApi(controllerState)
       val itemUpdater = new MyItemUpdater(itemVerifier, currentOrderKeeperActor)
-      val sessionRegister = SessionRegister.start(actorSystem, SimpleSession.apply, config)
 
-      val webServerResource: Resource[Task, ControllerWebServer] =
+      def webServerResource(sessionRegister: SessionRegister[SimpleSession]): Resource[Task, ControllerWebServer] =
         ControllerWebServer
           .resource(
             orderApi, commandExecutor, itemUpdater, clusterNode,
@@ -312,7 +311,9 @@ object RunningController
             conf.workDirectory / "http-uri" :=
               webServer.localHttpUri.fold(_ => "", o => s"$o/controller")))
 
-      def runningControllerResource(webServer: ControllerWebServer)
+      def runningControllerResource(
+        webServer: ControllerWebServer,
+        sessionRegister: SessionRegister[SimpleSession])
       : Resource[Task, RunningController] =
         Service.resource(Task(
           new RunningController(
@@ -327,9 +328,10 @@ object RunningController
             actorSystem)))
 
       for {
+        sessionRegister <- SessionRegister.resource(SimpleSession.apply, config)
         _ <- sessionRegister.placeSessionTokenInDirectory(SimpleUser.System, conf.workDirectory)
-        webServer <- webServerResource
-        runningController <- runningControllerResource(webServer)
+        webServer <- webServerResource(sessionRegister)
+        runningController <- runningControllerResource(webServer, sessionRegister)
       } yield runningController
     }
   }
