@@ -41,7 +41,6 @@ object WebServerBinding
   extends WebServerBinding {
     def scheme = Http
     def toWebServerPort = WebServerPort.Http(address)
-
   }
   object Http extends Scheme {
     val name = "http"

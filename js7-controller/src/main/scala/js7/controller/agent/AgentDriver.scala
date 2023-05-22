@@ -464,11 +464,10 @@ extends Service.StoppableByRequest
         }).void)
   }
 
-  private def clientsResource: Resource[Task, Nel[AgentClient]] = {
+  private def clientsResource: Resource[Task, Nel[AgentClient]] =
     Resource
       .eval(agentToUris(agentPath).orThrow/*AgentRef and SubagentItems must exist !!!*/)
       .flatMap(_.traverse(clientResource))
-  }
 
   private def agentToUris(agentPath: AgentPath): Task[Checked[Nel[Uri]]] =
     for (state <- journal.state) yield

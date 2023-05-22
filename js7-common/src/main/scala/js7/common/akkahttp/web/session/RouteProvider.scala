@@ -79,7 +79,8 @@ trait RouteProvider extends ExceptionHandling
     * The request is `Forbidden` if
     * the SessionToken is invalid or
     * the given `userId` is not Anonymous and does not match the sessions UserId.*/
-  protected final def sessionOption(idsOrUser: Either[Set[UserId], SimpleUser]): Directive[Tuple1[Option[OurSession]]] =
+  protected final def sessionOption(idsOrUser: Either[Set[UserId], SimpleUser])
+  : Directive[Tuple1[Option[OurSession]]] =
     new Directive[Tuple1[Option[OurSession]]] {
       def tapply(inner: Tuple1[Option[OurSession]] => Route) =
         sessionTokenOption {

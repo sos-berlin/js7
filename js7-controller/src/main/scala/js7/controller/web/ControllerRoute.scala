@@ -75,7 +75,6 @@ with TestRoute
   : Task[Checked[command.Response]] =
     commandExecutor.executeCommand(command, meta)
 
-
   val webServerRoute: Route =
     (decodeRequest & encodeResponse) {  // Before handleErrorAndLog to allow simple access to HttpEntity.Strict
       webLog {

@@ -44,7 +44,8 @@ final class GateKeeper[U <: User](
 
   import configuration.{getIsPublic, idToUser, isPublic, loopbackIsPublic, realm}
 
-  private val httpsClientAuthRequired = scheme == WebServerBinding.Https && configuration.httpsClientAuthRequired
+  private val httpsClientAuthRequired =
+    scheme == WebServerBinding.Https && configuration.httpsClientAuthRequired
   private val authenticator = new OurMemoizingAuthenticator(idToUser)
   private val basicChallenge = HttpChallenges.basic(realm)
   val credentialsMissing = AuthenticationFailedRejection(CredentialsMissing, basicChallenge)
@@ -54,14 +55,16 @@ final class GateKeeper[U <: User](
   private val credentialRejectionHandler = RejectionHandler.newBuilder()
     .handle {
       case AuthenticationFailedRejection(AuthenticationFailedRejection.CredentialsRejected, challenge) =>
-        logger.warn(s"HTTP request with invalid authentication rejected - delaying response for ${invalidAuthenticationDelay.pretty}")
+        logger.warn(s"HTTP request with invalid authentication rejected - delaying response for ${
+          invalidAuthenticationDelay.pretty}")
         respondWithHeader(`WWW-Authenticate`(challenge)) {
           completeDelayed(
             Unauthorized)
         }
 
-      case AuthenticationFailedRejection(AuthenticationFailedRejection.CredentialsMissing, challenge) =>
-        // Handling of this case too avoids Akka-streams message "Substream Source cannot be materialized more than once"
+      case AuthenticationFailedRejection(CredentialsMissing, challenge) =>
+        // Handling of this case too avoids Akka-streams message
+        // "Substream Source cannot be materialized more than once"
         respondWithHeader(`WWW-Authenticate`(challenge)) {
           complete {
             Unauthorized

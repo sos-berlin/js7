@@ -106,7 +106,8 @@ object IdToUser
           val encodedPassword = c.optionAs[SecretString]("password")
           val permissions = c.stringSeq("permissions", Nil).toSet
           val distinguishedNames = c.seqAs[DistinguishedName]("distinguished-names", Nil)
-         Some(RawUserAccount(userId, encodedPassword = encodedPassword, permissions = permissions, distinguishedNames))
+          Some(RawUserAccount(userId, encodedPassword = encodedPassword, permissions = permissions,
+            distinguishedNames))
       }
 
     val distinguishedNameToUserIds: Map[DistinguishedName, Set[UserId]] =
@@ -141,7 +142,8 @@ object IdToUser
     logger.trace("distinguishedNameToUserIds=" + distinguishedNameToUserIds.map { case (k, v) => s"\n  $k --> $v" }.mkString)
     assert(distinguishedNameToUserIds.values.forall(_.nonEmpty))  // Set[UserId] is not empty
 
-    new IdToUser(userIdToRaw, dn => distinguishedNameToUserIds.getOrElse(dn, Set.empty), toUser, toPermission)
+    new IdToUser(userIdToRaw, dn => distinguishedNameToUserIds.getOrElse(dn, Set.empty),
+      toUser, toPermission)
   }
 
   private val identityHasher: String => String =

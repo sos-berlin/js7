@@ -57,18 +57,17 @@ with Service.StoppableByRequest
             Task.deferFuture(
               binding.akkaBinding.terminate(hardDeadline = shutdownTimeout)))
           .void
-          .onErrorHandle { t =>
+          .onErrorHandle(t =>
             logger.error(s"$toString $binding.terminate => ${t.toStringWithCauses}",
-              t.nullIfNoStackTrace)
-          })
+              t.nullIfNoStackTrace)))
       .map(_.combineAll)
 
-  override def toString = s"${getClass.shortClassName}"
+  override def toString = s"AkkaWebServer(${serverBindings mkString " "})"
 }
 
 object AkkaWebServer
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
   private[web] val testConfig = config"""
     js7.web.server.auth.https-client-authentication = off
     js7.web.server.shutdown-timeout = 10s
@@ -109,65 +108,67 @@ object AkkaWebServer
     (implicit actorSystem: ActorSystem)
   : Resource[Task, AkkaWebServer] =
     Service.resource(Task.defer {
-      Task.defer {
-        val httpsClientAuthRequired = config.getBoolean("js7.web.server.auth.https-client-authentication")
-        val akkaHttp = Http(actorSystem)
+      val httpsClientAuthRequired = config.getBoolean(
+        "js7.web.server.auth.https-client-authentication")
+      val akkaHttp = Http(actorSystem)
 
-        def bindHttps(https: WebServerBinding.Https): Task[Http.ServerBinding] = {
-          logger.info(s"Using HTTPS certificate in ${https.keyStoreRef.url} for port ${https.toWebServerPort}")
-          bind(
-            https,
-            Some(ConnectionContext.https(
-              loadSSLContext(Some(https.keyStoreRef), https.trustStoreRefs),
-              clientAuth = httpsClientAuthRequired ? TLSClientAuth.Need)))
+      def bindHttps(https: WebServerBinding.Https): Task[Http.ServerBinding] = {
+        logger.info(
+          s"Using HTTPS certificate in ${https.keyStoreRef.url} for port ${https.toWebServerPort}")
+        bind(
+          https,
+          Some(ConnectionContext.https(
+            loadSSLContext(Some(https.keyStoreRef), https.trustStoreRefs),
+            clientAuth = httpsClientAuthRequired ? TLSClientAuth.Need)))
+      }
+
+      def bind(
+        binding: WebServerBinding,
+        httpsConnectionContext: Option[HttpsConnectionContext] = None)
+      : Task[Http.ServerBinding] =
+        Task.defer {
+          val serverBuilder = akkaHttp
+            .newServerAt(
+              interface = binding.address.getAddress.getHostAddress,
+              port = binding.address.getPort)
+            .pipe(o => httpsConnectionContext.fold(o)(o.enableHttps))
+            .withSettings(
+              ServerSettings(actorSystem)
+                .withParserSettings(
+                  ParserSettings(actorSystem)
+                    .withCustomMediaTypes(JsonStreamingSupport.CustomMediaTypes *)
+                    .withMaxContentLength(JsonStreamingSupport.JsonObjectMaxSize /*js7.conf ???*/)))
+
+          val terminatingPromise = Promise[Deadline]()
+          val whenTerminating = terminatingPromise.future
+          val boundRoute = toBoundRoute(binding, whenTerminating)
+          val name = s"${binding.scheme}://${binding.address.show}"
+          Task
+            .deferFutureAction { implicit scheduler =>
+              val routeDelegator =
+                new DelayedRouteDelegator(binding, boundRoute, name)
+              val whenBound = serverBuilder.bind(routeDelegator.webServerRoute)
+              terminatingPromise.completeWith(whenBound.flatMap(_.whenTerminationSignalIssued))
+              whenBound
+            }
+            .<*(Task {
+              // An info line will be logged by DelayedRouteDelegator
+              val securityHint = boundRoute.startupSecurityHint(binding.scheme)
+              logger.debug(s"$name is bound to $boundRoute$securityHint")
+            })
         }
 
-        def bind(
-          binding: WebServerBinding,
-          httpsConnectionContext: Option[HttpsConnectionContext] = None)
-        : Task[Http.ServerBinding] =
-          Task.defer {
-            val serverBuilder = akkaHttp
-              .newServerAt(
-                interface = binding.address.getAddress.getHostAddress,
-                port = binding.address.getPort)
-              .pipe(o => httpsConnectionContext.fold(o)(o.enableHttps))
-              .withSettings(
-                ServerSettings(actorSystem)
-                  .withParserSettings(
-                    ParserSettings(actorSystem)
-                      .withCustomMediaTypes(JsonStreamingSupport.CustomMediaTypes *)
-                      .withMaxContentLength(JsonStreamingSupport.JsonObjectMaxSize /*js7.conf ???*/)))
-
-            val terminatingPromise = Promise[Deadline]()
-            val whenTerminating = terminatingPromise.future
-            val boundRoute = toBoundRoute(binding, whenTerminating)
-            val name = s"${binding.scheme}://${binding.address.show}"
-            Task
-              .deferFutureAction { implicit scheduler =>
-                val routeDelegator = new DelayedRouteDelegator(binding, boundRoute, name)
-                val whenBound = serverBuilder.bind(routeDelegator.webServerRoute)
-                terminatingPromise.completeWith(whenBound.flatMap(_.whenTerminationSignalIssued))
-                whenBound
-              }
-              .<*(Task {
-                // An info line will be logged by DelayedRouteDelegator
-                val securityHint = boundRoute.startupSecurityHint(binding.scheme)
-                logger.debug(s"$name is bound to $boundRoute$securityHint")
-              })
-          }
-
-        bindings
-          .traverse {
-            case o: WebServerBinding.Http => bind(o).map(Bound(o, _))
-            case o: WebServerBinding.Https => bindHttps(o).map(Bound(o, _))
-          }.map(serverBindings =>
-            new AkkaWebServer(
-              serverBindings,
-              webServerPorts = bindings.map(_.toWebServerPort).toList,
-              config
-            )(actorSystem))
-      }
+      bindings
+        .traverse {
+          case o: WebServerBinding.Http => bind(o).map(Bound(o, _))
+          case o: WebServerBinding.Https => bindHttps(o).map(Bound(o, _))
+        }
+        .map(serverBindings =>
+          new AkkaWebServer(
+            serverBindings,
+            webServerPorts = bindings.map(_.toWebServerPort).toList,
+            config
+          )(actorSystem))
     })
 
   private lazy val stillNotAvailableRoute: Route =
@@ -193,19 +194,23 @@ object AkkaWebServer
   }
 
   /** Returns 503 ServiceUnavailable until the Route is provided. */
-  private final class DelayedRouteDelegator(binding: WebServerBinding, boundRoute: BoundRoute, name: String)
+  private final class DelayedRouteDelegator(
+    binding: WebServerBinding,
+    boundRoute: BoundRoute,
+    name: String)
     (implicit scheduler: Scheduler)
   {
     private val _realRoute = Atomic(none[Route])
 
-    private val whenRealRoute = boundRoute.webServerRoute
-      .tapEval(realRoute => Task {
-        if (_realRoute.compareAndSet(None, Some(realRoute))) {
-          val securityHint = boundRoute.startupSecurityHint(binding.scheme)
-          logger.info(s"$name web services are available$securityHint")
-        }
-      })
-      .runToFuture
+    private val whenRealRoute: Future[Route] =
+      boundRoute.webServerRoute
+        .tapEval(realRoute => Task {
+          if (_realRoute.compareAndSet(None, Some(realRoute))) {
+            val securityHint = boundRoute.startupSecurityHint(binding.scheme)
+            logger.info(s"$name web services are available$securityHint")
+          }
+        })
+        .runToFuture
 
     def webServerRoute: Route =
       extractRequest/*force recalculation with each call*/(_ =>

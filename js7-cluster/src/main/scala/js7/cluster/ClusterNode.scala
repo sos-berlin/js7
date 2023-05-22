@@ -265,14 +265,14 @@ object ClusterNode
       .parZip(akkaResource/*start in parallel*/)
       .flatMap { case (recovered, actorSystem) =>
         implicit val a = actorSystem
-        val clusterNodeResource = resource(
+        resource (
           recovered, journalMeta, journalConf, clusterConf, config,
           clusterNodeApi(_, _, actorSystem),
           new LicenseChecker(LicenseCheckContext(configDirectory)),
           eventIdClock, testEventBus
         ).orThrow
-        for (clusterNode <- clusterNodeResource) yield
-          (recovered.extract, actorSystem, clusterNode)
+          .map(clusterNode =>
+            (recovered.extract, actorSystem, clusterNode))
       }
 
   private def resource[S <: SnapshotableState[S] : diffx.Diff : Tag](
