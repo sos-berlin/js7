@@ -52,4 +52,9 @@ object Problems
   type ProcessLostDueSubagentUriChangeProblem = ProcessLostDueSubagentUriChangeProblem.type
   case object ProcessLostDueSubagentUriChangeProblem
   extends ProcessLostProblem with Problem.ArgumentlessCoded
+
+  type NoDirectorProblem = NoDirectorProblem.type
+  case object NoDirectorProblem extends Problem.ArgumentlessCoded {
+    override val httpStatusCode = 503 // Service Unavailable
+  }
 }

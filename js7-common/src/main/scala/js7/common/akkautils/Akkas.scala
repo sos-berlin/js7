@@ -1,10 +1,10 @@
 package js7.common.akkautils
 
-import akka.actor.{ActorContext, ActorPath, ActorSystem, ChildActorPath, RootActorPath, Terminated}
+import akka.actor.{ActorContext, ActorPath, ActorRef, ActorRefFactory, ActorSystem, ChildActorPath, Props, RootActorPath, Terminated}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.Uri
 import akka.util.ByteString
-import cats.effect.Resource
+import cats.effect.{Resource, Sync}
 import com.typesafe.config.{Config, ConfigException, ConfigFactory}
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
@@ -165,4 +165,11 @@ object Akkas
     Resource.make(
       acquire = Task(newActorSystem(name, config, scheduler)).executeOn(scheduler))(
       release = terminate)
+
+  def actorResource[F[_]](props: Props, name: String)
+    (implicit arf: ActorRefFactory, F: Sync[F])
+  : Resource[F, ActorRef] =
+    Resource.make(
+      acquire = F.delay(arf.actorOf(props, name)))(
+      release = a => F.delay(arf.stop(a)))
 }

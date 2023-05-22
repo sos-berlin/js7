@@ -10,6 +10,7 @@ import js7.agent.{RunningAgent, TestAgent}
 import js7.base.auth.Admission
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.crypt.{DocumentSigner, SignatureVerifier, Signed, SignedString}
+import js7.base.eventbus.StandardEventBus
 import js7.base.generic.SecretString
 import js7.base.io.JavaResource
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
@@ -20,6 +21,7 @@ import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.RichMonixResource
 import js7.base.problem.Checked.*
 import js7.base.system.OperatingSystem.isWindows
+import js7.base.thread.IOExecutor
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.closeOnError
@@ -50,8 +52,8 @@ import js7.data.item.{InventoryItem, ItemOperation, ItemSigner, SignableItem, Si
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.proxy.ControllerApi
 import js7.service.pgp.PgpSigner
+import js7.subagent.Subagent
 import js7.subagent.configuration.SubagentConf
-import js7.subagent.{BareSubagent, Subagent}
 import js7.tests.testenv.DirectoryProvider.*
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -352,6 +354,45 @@ extends HasCloser
     controllerEnv.writeAgentAuthentication(env)
   }
 
+  def directorEnvResource(
+    subagentItem: SubagentItem,
+    suffix: String = "",
+    moreSubagentIds: Seq[SubagentId] = Nil,
+    isClusterBackup: Boolean = false,
+    suppressSignatureKeys: Boolean = false)
+  : Resource[Task, DirectorEnv] =
+    Resource
+      .make(
+        acquire = Task(
+          newDirectorEnv(subagentItem, suffix = suffix,
+            moreSubagentIds = moreSubagentIds,
+            isClusterBackup = isClusterBackup,
+            suppressSignatureKeys = suppressSignatureKeys)))(
+        release = env => Task(
+          env.delete()))
+      .evalTap(env => Task(
+        env.createDirectoriesAndFiles()))
+
+  def newDirectorEnv(
+    subagentItem: SubagentItem,
+    moreSubagentIds: Seq[SubagentId] = Nil,
+    suffix: String = "",
+    isClusterBackup: Boolean = false,
+    suppressSignatureKeys: Boolean = false)
+  : DirectorEnv =
+    new DirectorEnv(
+      subagentItem = subagentItem,
+      name = subagentName(subagentItem.id, suffix = suffix),
+      moreSubagentIds = moreSubagentIds,
+      rootDirectory = directory,
+      verifier = verifier,
+      mutualHttps = agentHttpsMutual,
+      provideHttpsCertificate = provideAgentHttpsCertificate,
+      provideClientCertificate = provideAgentClientCertificate,
+      isClusterBackup = isClusterBackup,
+      suppressSignatureKeys = suppressSignatureKeys,
+      config = agentConfig)
+
   @deprecated // Duplicate in SubagentEnv ?
   def subagentResource(
     subagentItem: SubagentItem,
@@ -372,8 +413,10 @@ extends HasCloser
         config,
         name = subagentItem.id.string
       ).finishAndProvideFiles
+      iox <- IOExecutor.resource[Task](conf.config, name = conf.name + "-I/O")
+      testEventBus <- Resource.eval(Task(new StandardEventBus[Any]))
       subagent <- ThreadPools.ownThreadPoolResource(conf.name, conf.config)(
-        BareSubagent.resource(conf, _))
+        scheduler => Subagent.resource(conf, iox, testEventBus).executeOn(scheduler))
     } yield subagent
 
   def subagentEnvResource(

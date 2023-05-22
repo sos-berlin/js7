@@ -3,14 +3,17 @@ package js7.subagent
 import cats.effect.Resource
 import cats.effect.concurrent.Deferred
 import cats.syntax.traverse.*
+import java.nio.file.Path
 import js7.base.Js7Version
+import js7.base.auth.SimpleUser
 import js7.base.configutils.Configs.RichConfig
 import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier
 import js7.base.eventbus.StandardEventBus
+import js7.base.io.file.FileUtils.provideFile
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.process.ProcessSignal
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Checked
 import js7.base.problem.Checked.*
 import js7.base.service.{MainService, Service}
@@ -19,24 +22,29 @@ import js7.base.time.AlarmClock
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, ProgramTermination, SetOnce}
+import js7.base.web.Uri
+import js7.common.akkahttp.web.AkkaWebServer
+import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
+import js7.common.akkautils.Akkas
 import js7.common.system.ThreadPools.unlimitedSchedulerResource
 import js7.data.event.EventId
-import js7.data.event.KeyedEvent.NoKey
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId}
 import js7.data.subagent.Problems.{SubagentAlreadyDedicatedProblem, SubagentNotDedicatedProblem}
 import js7.data.subagent.SubagentCommand.DedicateSubagent
-import js7.data.subagent.SubagentEvent.SubagentShutdown
 import js7.data.subagent.{SubagentId, SubagentRunId, SubagentState}
 import js7.data.value.expression.Expression
 import js7.journal.MemoryJournal
 import js7.launcher.configuration.JobLauncherConf
 import js7.subagent.Subagent.*
 import js7.subagent.configuration.SubagentConf
+import js7.subagent.web.SubagentWebServer
 import monix.eval.{Fiber, Task}
 import monix.execution.Scheduler
 
 final class Subagent private(
+  webServer: AkkaWebServer,
+  directorRouteVariable: DirectorRouteVariable,
   val journal: MemoryJournal[SubagentState],
   signatureVerifier: DirectoryWatchingSignatureVerifier,
   val conf: SubagentConf,
@@ -46,11 +54,17 @@ extends MainService with Service.StoppableByRequest
 {
   subagent =>
 
+  if (conf.scriptInjectionAllowed) logger.info("SIGNED SCRIPT INJECTION IS ALLOWED")
+
   val subagentRunId = SubagentRunId.fromJournalId(journal.journalId)
   private[subagent] val commandExecutor =
     new SubagentCommandExecutor(this, signatureVerifier)
   private val dedicatedAllocated =
     SetOnce[Allocated[Task, DedicatedSubagent]](SubagentNotDedicatedProblem)
+
+  // Wollen wir SubagentCommand.DedicateDirector ???
+  //private val directorRegisterable = AsyncVariable(none[DirectorRegisterable])
+
   private val terminated = Deferred.unsafe[Task, ProgramTermination]
 
   protected def start =
@@ -70,7 +84,7 @@ extends MainService with Service.StoppableByRequest
     processSignal: Option[ProcessSignal] = None,
     restart: Boolean = false,
     dontWaitForDirector: Boolean = false)
-  : Task[ProgramTermination] = {
+  : Task[ProgramTermination] =
     logger.debugTask(
       "shutdown",
       Seq(processSignal, restart ? "restart", dontWaitForDirector ? "dontWaitForDirector")
@@ -81,24 +95,54 @@ extends MainService with Service.StoppableByRequest
         .fold(Task.unit)(allocated =>
           allocated.allocatedThing
             .terminate(processSignal, dontWaitForDirector = dontWaitForDirector)
-            .*>(allocated.release))
-        .*>(journal
-          // The event may get lost due to immediate shutdown !!!
-          .persistKeyedEvent(NoKey <-: SubagentShutdown)
-          .rightAs(())
-          .map(_.onProblemHandle(problem => logger.warn(s"Shutdown: $problem")))
-          .*>(Task.defer {
-            logger.info(s"$subagent stopped")
-            terminated.complete(ProgramTermination(restart = restart)).attempt.void
-          }))
-        .*>(untilTerminated)
+            .guarantee(allocated.release))
+        .*>(Task.defer {
+          logger.info(s"$subagent stopped")
+          val termination = ProgramTermination(restart = restart)
+          terminated.complete(termination).attempt.as(termination)
+        })
     })
-  }
+
+  def directorRegisteringResource(toRoute: DirectorRouteVariable.ToRoute): Resource[Task, Unit] =
+    for {
+      _ <- directorRouteVariable.registeringRouteResource(toRoute)
+      //_ <- Resource.make(
+      //  acquire = registerDirector(registerable))(
+      //  release = unregisterDirector)
+    } yield ()
+
+  //def directorRegisteringResource(registerable: DirectorRegisterable): Resource[Task, Unit] =
+  //  for {
+  //    _ <- webServer.registeringRouteResource(registerable.toRoute)
+  //    //_ <- Resource.make(
+  //    //  acquire = registerDirector(registerable))(
+  //    //  release = unregisterDirector)
+  //  } yield ()
+
+  //private def registerDirector(registerable: DirectorRegisterable): Task[registerable.type] =
+  //  directorRegisterable
+  //    .update {
+  //      case Some(_) =>
+  //        Task.raiseError(new IllegalStateException(
+  //          "Subagent has already registered an Director"))
+  //
+  //      case None =>
+  //        Task.some(registerable)
+  //    }
+  //    .as(registerable)
+  //
+  //private def unregisterDirector(registerable: DirectorRegisterable): Task[Unit] =
+  //  directorRegisterable
+  //    .update(maybe => Task.when(!maybe.contains(registerable))(
+  //      Task.raiseError(new IllegalStateException(
+  //        "unregisterDirector tried to unregister an alien Director")))
+  //      .as(None))
+  //    .void
 
   def executeDedicateSubagent(cmd: DedicateSubagent): Task[Checked[DedicateSubagent.Response]] =
     DedicatedSubagent
-      .resource(cmd.subagentId, subagentRunId, journal, cmd.agentPath, cmd.controllerId,
-        jobLauncherConf, conf)
+      .resource(cmd.subagentId, subagentRunId, commandExecutor, journal,
+        cmd.agentPath, cmd.controllerId, jobLauncherConf, conf)
       .toAllocated
       .flatMap(allocatedDedicatedSubagent => Task.defer {
         val isFirst = dedicatedAllocated.trySet(allocatedDedicatedSubagent)
@@ -142,50 +186,80 @@ extends MainService with Service.StoppableByRequest
   def isDedicated: Boolean =
     dedicatedAllocated.isDefined
 
-  def checkIsDedicated: Checked[Unit] =
-    dedicatedAllocated.checked.map(_ => ())
-
   private[subagent] def checkedDedicatedSubagent: Checked[DedicatedSubagent] =
     dedicatedAllocated.checked.map(_.allocatedThing)
 
-  override def toString = s"Subagent(${checkedDedicatedSubagent.toOption getOrElse ""})"
+  def supressJournalLogging(suppressed: Boolean): Unit =
+    journal.suppressLogging(suppressed)
+
+  override def toString = s"Subagent${checkedDedicatedSubagent.toOption.fold("")(o => s"($o)")}"
+
+  def localUri: Uri =
+    webServer.localUri
 }
 
 object Subagent
 {
   private val logger = Logger(getClass)
 
-  def resource(
-    conf: SubagentConf,
-    js7Scheduler: Scheduler,
-    iox: IOExecutor,
-    testEventBus: StandardEventBus[Any])
-  : Resource[Task, Subagent] =
-    Resource.suspend(Task {
-      import conf.config
+  def resource(conf: SubagentConf, iox: IOExecutor, testEventBus: StandardEventBus[Any])
+    (implicit scheduler: Scheduler)
+  : Resource[Task, Subagent] = {
+    import conf.config
 
-      implicit val s: Scheduler = js7Scheduler
-      val alarmClockCheckingInterval = config.finiteDuration("js7.time.clock-setting-check-interval")
+    val alarmClockCheckingInterval = config.finiteDuration("js7.time.clock-setting-check-interval")
+      .orThrow
+
+    for {
+      // Stop Subagent _after_ web service to allow Subagent to execute last commands!
+      subagentDeferred <- Resource.eval(Deferred[Task, Subagent])
+      directorRouteVariable = new DirectorRouteVariable
+      webServer <- webServerResource(directorRouteVariable, subagentDeferred.get, conf)
+      // For BlockingInternalJob (thread-blocking Java jobs)
+      blockingInternalJobScheduler <- unlimitedSchedulerResource[Task](
+        "JS7 blocking job", conf.config)
+      clock <- AlarmClock.resource[Task](Some(alarmClockCheckingInterval))
+      journal <- MemoryJournal.resource(
+        SubagentState.empty,
+        size = config.getInt("js7.journal.in-memory.event-count"),
+        waitingFor = "JS7 Agent Director",
+        infoLogEvents = config.seqAs[String]("js7.journal.log.info-events").toSet)
+      jobLauncherConf = conf.toJobLauncherConf(iox, blockingInternalJobScheduler, clock).orThrow
+      signatureVerifier <- DirectoryWatchingSignatureVerifier.prepare(config)
         .orThrow
-      val memoryJournalSize = config.getInt("js7.journal.in-memory.event-count")
+        .toResource(onUpdated = () => testEventBus.publish(ItemSignatureKeysUpdated))(iox)
+      subagent <- Service.resource(Task(
+        new Subagent(webServer, directorRouteVariable, journal, signatureVerifier, conf, jobLauncherConf, testEventBus)))
+      _ <- Resource.eval(subagentDeferred.complete(subagent))
+    } yield {
+      logger.info("Subagent is ready to be dedicated" + "\n" + "─" * 80)
+      subagent
+    }
+  }
 
-      (for {
-        // For BlockingInternalJob (thread-blocking Java jobs)
-        blockingInternalJobScheduler <- unlimitedSchedulerResource[Task](
-          "JS7 blocking job", conf.config)
-        clock <- AlarmClock.resource[Task](Some(alarmClockCheckingInterval))
-        journal = new MemoryJournal(SubagentState.empty,
-          size = memoryJournalSize,
-          waitingFor = "JS7 Agent Director")
-        jobLauncherConf = conf.toJobLauncherConf(iox, blockingInternalJobScheduler, clock).orThrow
-        signatureVerifier <- DirectoryWatchingSignatureVerifier.prepare(config)
-          .orThrow
-          .toResource(onUpdated = () => testEventBus.publish(ItemSignatureKeysUpdated))(iox)
-        subagent <- Service.resource(Task(
-          new Subagent(journal, signatureVerifier, conf, jobLauncherConf, testEventBus)))
-      } yield subagent
-      ).executeOn(js7Scheduler)
-    })
+  private def webServerResource(directorRouteVariable: DirectorRouteVariable, subagent: Task[Subagent], conf: SubagentConf)
+    (implicit scheduler: Scheduler)
+  : Resource[Task, AkkaWebServer] = {
+    import conf.config
+    for {
+      actorSystem <- Akkas.actorSystemResource(conf.name, config)
+      sessionRegister <- {
+        implicit val a = actorSystem
+        SessionRegister.resource(SimpleSession(_), config)
+      }
+      _ <- sessionRegister.placeSessionTokenInDirectory(SimpleUser.System, conf.workDirectory)
+      webServer <-
+        SubagentWebServer.resource(subagent, directorRouteVariable.route, sessionRegister, conf)(
+          actorSystem, scheduler)
+      _ <- provideUriFile(conf, webServer.localHttpUri)
+    } yield webServer
+  }
+
+  private def provideUriFile(conf: SubagentConf, uri: Checked[Uri]): Resource[Task, Path] =
+    provideFile[Task](conf.workDirectory / "http-uri")
+      .evalTap(file => Task {
+        for (uri <- uri) file := s"$uri/subagent"
+      })
 
   type ItemSignatureKeysUpdated = ItemSignatureKeysUpdated.type
   case object ItemSignatureKeysUpdated

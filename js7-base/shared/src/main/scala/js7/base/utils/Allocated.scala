@@ -13,12 +13,15 @@ final class Allocated[F[_]: UnsafeMemoizable, +A: Tag](val allocatedThing: A, re
   val release: F[Unit] =
     release_.unsafeMemoize
 
+  def map[B: Tag](f: A => B): Allocated[F, B] =
+    new Allocated(f(allocatedThing), release_)
+
   def toSingleUseResource(implicit F: Applicative[F]): Resource[F, Allocated[F, A]] =
     Resource.make(
       acquire = F.pure(this))(
       release = _.release)
 
-  def useSync[R](body: A => R)(implicit @unused evidence: F :<: SyncIO)
+  def blockingUse[R](body: A => R)(implicit @unused evidence: F :<: SyncIO)
   : R = {
     val ac: AutoCloseable = () => release.asInstanceOf[SyncIO[Unit]].unsafeRunSync()
     autoClosing(ac)(_ => body(allocatedThing))

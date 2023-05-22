@@ -9,20 +9,25 @@ import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.AsyncMap
 import js7.base.monixutils.MonixBase.syntax.*
+import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.service.Service
+import js7.base.stream.Numbered
 import js7.base.utils.AsyncLock
 import js7.base.utils.CatsUtils.completedFiber
 import js7.base.utils.ScalaUtils.chunkStrings
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.core.command.CommandMeta
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
+import js7.data.event.KeyedEvent.NoKey
 import js7.data.job.{JobConf, JobKey}
 import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten}
 import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.subagent.Problems.{SubagentIdMismatchProblem, SubagentIsShuttingDownProblem, SubagentRunIdMismatchProblem, SubagentShutDownBeforeProcessStartProblem}
 import js7.data.subagent.SubagentCommand.CoupleDirector
-import js7.data.subagent.{SubagentId, SubagentRunId, SubagentState}
+import js7.data.subagent.SubagentEvent.SubagentShutdown
+import js7.data.subagent.{SubagentCommand, SubagentId, SubagentRunId, SubagentState}
 import js7.data.value.expression.Expression
 import js7.data.value.expression.scopes.FileValueState
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -40,10 +45,11 @@ import monix.reactive.Observable
 import monix.reactive.subjects.PublishSubject
 import scala.concurrent.Promise
 
-private final class DedicatedSubagent private(
+final class DedicatedSubagent private(
   val subagentId: SubagentId,
   val subagentRunId: SubagentRunId,
-  protected val journal: Journal[SubagentState],
+  val commandExecutor: SubagentCommandExecutor,
+  val journal: Journal[SubagentState],
   val agentPath: AgentPath,
   val controllerId: ControllerId,
   jobLauncherConf: JobLauncherConf,
@@ -57,6 +63,7 @@ extends Service.StoppableByRequest
   private val orderIdToJobDriver = AsyncMap.stoppable[OrderId, JobDriver]()
   private val stoppingLock = AsyncLock()
   private val orderToProcessing = AsyncMap.stoppable[OrderId, Processing]()
+  //private val director = AsyncVariable(none[Allocated[Task, DirectorRegisterable]])
   @volatile private var _dontWaitForDirector = false
   private val shuttingDown = Atomic(false)
 
@@ -68,6 +75,11 @@ extends Service.StoppableByRequest
   protected def start =
     startService(
       untilStopRequested *>
+        //director
+        //  .use {
+        //  case None => Task.unit
+        //  case Some(allocated) => allocated.release
+        //} *>
         terminate(Some(SIGTERM)))
 
   private[subagent] def terminate(
@@ -101,8 +113,34 @@ extends Service.StoppableByRequest
                   orderToProcessing.whenStopped
                     .logWhenItTakesLonger("Director-acknowledged Order processes")
             })
+            .*>(journal
+              // The event may get lost due to immediate shutdown !!!
+              .persistKeyedEvent(NoKey <-: SubagentShutdown))
+            .map(_.onProblemHandle(problem => logger.warn(s"SubagentShutdown: $problem")))
         })
     })
+
+  def executeCommand(numbered: Numbered[SubagentCommand], meta: CommandMeta)
+  : Task[Checked[numbered.value.Response]] =
+    commandExecutor.executeCommand(numbered, meta)
+
+  //private[subagent] def dedicateDirector(cmd: DedicateDirector, meta: CommandMeta)
+  //: Task[Checked[Unit]] =
+  //  director.value.flatMap {
+  //    case Some(allo) =>
+  //      allo.allocatedThing.dedicateDirector(cmd, meta)
+  //
+  //    case None =>
+  //      director
+  //        .updateChecked {
+  //          case Some(allo) => Task.right(Some(allo))
+  //          case None =>
+  //            toDirector(cmd, meta)
+  //              .flatMapT(_.toAllocated.map(allo => Right(Some(allo))))
+  //        }
+  //        .startAndForget
+  //        .as(Left(AgentDirectorIsStartingProblem))
+  //  }
 
   private[subagent] def executeCoupleDirector(cmd: CoupleDirector): Task[Checked[Unit]] =
     Task {
@@ -199,7 +237,7 @@ extends Service.StoppableByRequest
             .map(_.orThrow._1.value.event))
         .start)
 
-  def startOrderProcess3(order: Order[Order.Processing], defaultArguments: Map[String, Expression])
+  private def startOrderProcess3(order: Order[Order.Processing], defaultArguments: Map[String, Expression])
   : Task[Fiber[Outcome]] =
     jobDriver(order.workflowPosition).flatMap {
       case Left(problem) =>
@@ -340,13 +378,14 @@ extends Service.StoppableByRequest
     s"DedicatedSubagent($subagentId $agentPath $controllerId)"
 }
 
-private object DedicatedSubagent
+object DedicatedSubagent
 {
   private val logger = Logger(getClass)
 
   def resource(
     subagentId: SubagentId,
     subagentRunId: SubagentRunId,
+    commandExecutor: SubagentCommandExecutor,
     journal: Journal[SubagentState],
     agentPath: AgentPath,
     controllerId: ControllerId,
@@ -355,7 +394,8 @@ private object DedicatedSubagent
   : Resource[Task, DedicatedSubagent] =
   Service.resource(Task(
     new DedicatedSubagent(
-      subagentId, subagentRunId, journal, agentPath, controllerId, jobLauncherConf, subagentConf)))
+      subagentId, subagentRunId, commandExecutor, journal, agentPath, controllerId,
+      jobLauncherConf, subagentConf)))
 
   private final class Processing(
     val workflowPosition: WorkflowPosition /*for check only*/ ,

@@ -168,6 +168,9 @@ extends Journal[S]
     }
   }
 
+  def suppressLogging(supress: Boolean): Unit =
+    journalLogger.suppress(supress)
+
   /** To simulate sudden death. */
   @TestOnly
   def stopEventWatch() =

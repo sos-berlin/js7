@@ -1,15 +1,15 @@
 package js7.tests.cluster.agent
 
-import cats.effect.Resource
-import js7.agent.ConvertibleSubagent
 import js7.agent.data.commands.AgentCommand
+import js7.agent.{RunningAgent, TestAgent}
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.base.utils.CatsBlocking.BlockingTaskResource
+import js7.base.utils.Allocated
+import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.syntax.{RichEither, RichThrowable}
 import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.data.agent.AgentRefStateEvent.AgentMirroredEvent
@@ -19,14 +19,14 @@ import js7.data.cluster.ClusterState
 import js7.data.item.BasicItemEvent.ItemAttached
 import js7.data.item.ItemAttachedState.Attached
 import js7.data.item.ItemRevision
-import js7.data.order.OrderEvent.OrderFinished
+import js7.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.cluster.agent.BecomeAgentClusterTest.*
 import js7.tests.jobs.{EmptyJob, SemaphoreJob}
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest, SubagentEnv}
+import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import scala.util.control.NonFatal
@@ -59,12 +59,14 @@ with BlockingItemUpdater
   }
 
   "Add a backup Subagent" in {
-    val subagentResource: Resource[Task, (SubagentEnv, ConvertibleSubagent)] =
+    val subagentAllocated: Allocated[Task, RunningAgent] =
       directoryProvider
-        .subagentEnvResource(backupSubagentItem, isClusterBackup = true)
-        .flatMap(env => env.convertibleSubagentResource.map(env -> _))
+        .directorEnvResource(backupSubagentItem, isClusterBackup = true)
+        .flatMap(_.directorResource)
+        .toAllocated
+        .await(99.s)
 
-    subagentResource.blockingUse(99.s) { case (subagentEnv, convertibleSubagent) =>
+    TestAgent(subagentAllocated).useSync(99.s) { backupDirector =>
       try {
         assert(controller.runOrder(FreshOrder(OrderId("🟦"), workflow.path))
           .last.value == OrderFinished())
@@ -106,12 +108,9 @@ with BlockingItemUpdater
           .clusterState
         assert(agentClusterState().isInstanceOf[ClusterState.Coupled])
 
-        //assertEqualJournalFiles(directoryProvider.subagentEnv(x), subagentEnv, n = 1)
-
         val failOverOrderId = OrderId("🔺")
         controller.api.addOrder(FreshOrder(failOverOrderId, workflow.path)).await(99.s).orThrow
-        //await[OrderProcessingStarted](_.key == failOverOrderId)
-        ////TODO: await[OrderStdoutWritten](_.key == failOverOrderId)
+        controller.eventWatch.await[OrderProcessingStarted](_.key == failOverOrderId)
 
         // Kill Agent roughly
         agent.terminate(
@@ -119,30 +118,12 @@ with BlockingItemUpdater
           clusterAction = Some(AgentCommand.ShutDown.ClusterAction.Failover))
           .await(99.s)
 
-        val backupDirector = convertibleSubagent.untilDirectorStarted.await(99.s)
         eventId = controller.eventWatch
           .await[AgentMirroredEvent](_.event.keyedEvent.event.isInstanceOf[ClusterFailedOver])
           .head.eventId
-        //ASemaphoreJob.continue()
-        //
-        //controller.eventWatch.await[OrderProcessingStarted](_.key == failOverOrderId, after = eventId)
-        //controller.eventWatch.await[OrderDetachable](_.key == failOverOrderId, after = eventId)
-        //assert(agentClusterState().isInstanceOf[ClusterState.FailedOver])
-        //
-        //controller.eventWatch.await[OrderFinished](_.key == failOverOrderId)
-        //
-        //ASemaphoreJob.continue()
-        //val bOrderId = OrderId("🔸")
-        //controller.runOrder(FreshOrder(bOrderId, workflow.path))
-        //assert(agentClusterState().isInstanceOf[ClusterState.FailedOver])
       } catch {
         case NonFatal(t) =>
-          // TODO Move this code to blockingUse
           logger.error(t.toStringWithCauses, t)
-          try convertibleSubagent.stop.await(99.s)
-          catch {
-            case NonFatal(t2) => t.addSuppressed(t2)
-          }
           throw t
       }
     }

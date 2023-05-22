@@ -56,13 +56,11 @@ object StandardDirectives
   def lazyRoute(lazyRoute: => Route): Route =
     ctx => Future.successful(lazyRoute(ctx)).flatten
 
-  def routeTask(routeTask: Task[Route])(implicit s: Scheduler): Route = {
-    val future = routeTask.runToFuture
-    routeFuture(future)
-  }
+  def taskRoute(routeTask: Task[Route])(implicit s: Scheduler): Route =
+    ctx => routeTask.runToFuture.flatMap(_(ctx))
 
-  def routeFuture(routeFuture: Future[Route])(implicit scheduler: Scheduler): Route =
-    ctx => routeFuture.flatMap(_(ctx))
+  //def routeFuture(routeFuture: Future[Route])(implicit scheduler: Scheduler): Route =
+  //  ctx => routeFuture.flatMap(_(ctx))
 
   private val removeEtag: Directive0 =
     mapResponse(r => r.withHeaders(r.headers filter {

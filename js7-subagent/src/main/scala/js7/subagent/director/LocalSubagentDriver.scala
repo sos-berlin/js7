@@ -13,6 +13,7 @@ import js7.base.service.Service
 import js7.base.stream.Numbered
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.system.PlatformInfos.currentPlatformInfo
+import js7.core.command.CommandMeta
 import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, Stamped}
@@ -31,6 +32,7 @@ import scala.annotation.unused
 private final class LocalSubagentDriver private(
   val subagentItem: SubagentItem,
   subagent: Subagent,
+  initialEventId: EventId,
   protected val journal: Journal[? <: SubagentDirectorState[?]],
   controllerId: ControllerId,
   protected val subagentConf: SubagentConf)
@@ -38,9 +40,13 @@ extends SubagentDriver
 with Service.StoppableByRequest
 {
   private val logger = Logger.withPrefix[this.type](subagentItem.pathRev.toString)
+  // isDedicated when this Director gets activated after fail-over.
+  private val wasRemote = subagent.isDedicated
   protected val api = new LocalSubagentApi(subagent)
   @volatile private var shuttingDown = false
   @volatile private var _testFailover = false
+
+  subagent.supressJournalLogging(true) // Events are logged by the Director's Journal
 
   protected def isHeartbeating = true
 
@@ -54,12 +60,15 @@ with Service.StoppableByRequest
           tryShutdownLocalSubagent())
 
   private def dedicate: Task[Checked[Unit]] =
-    logger.debugTask(
-      subagent
-        .executeDedicateSubagent(
-          DedicateSubagent(subagentId, subagentItem.agentPath, controllerId))
-        .flatMapT(response =>
-          persistDedicated(response.subagentRunId)))
+    logger.debugTask(Task.defer(
+      if (wasRemote)
+        Task.right(())
+      else
+        subagent
+          .executeDedicateSubagent(
+            DedicateSubagent(subagentId, subagentItem.agentPath, controllerId))
+          .flatMapT(response =>
+            persistDedicated(response.subagentRunId))))
 
   private def persistDedicated(subagentRunId: SubagentRunId): Task[Checked[Unit]] =
     journal
@@ -74,7 +83,7 @@ with Service.StoppableByRequest
     subagent.journal.eventWatch
       .observe(EventRequest.singleClass[Event](
         // TODO Bei Failover EventId des Failovers verwenden!
-        after = EventId.BeforeFirst,
+        after = initialEventId,
         timeout = None))
       .mapEval(handleEvent)
       .mapEval {
@@ -90,7 +99,9 @@ with Service.StoppableByRequest
               .tapEval {
                 case Stamped(_, _, KeyedEvent(orderId: OrderId, _: OrderProcessed)) =>
                   subagent.commandExecutor
-                    .executeCommand(Numbered(0, SubagentCommand.DetachProcessedOrder(orderId)))
+                    .executeCommand(
+                      Numbered(0, SubagentCommand.DetachProcessedOrder(orderId)),
+                      CommandMeta.System)
                     .orThrow
                 case _ => Task.unit
               }
@@ -177,10 +188,14 @@ with Service.StoppableByRequest
   /** Continue a recovered processing Order. */
   def recoverOrderProcessing(order: Order[Order.Processing]) =
     logger.traceTask("recoverOrderProcessing", order.id)(
-      emitOrderProcessLost(order)
-        .map(_.orThrow)
-        .start
-        .map(Right(_)))
+      if (wasRemote)
+        requireNotStopping.flatMapT(_ =>
+          startOrderProcessing(order)) // TODO startOrderProcessing again ?
+      else
+        emitOrderProcessLost(order)
+          .map(_.orThrow)
+          .start
+          .map(Right(_)))
 
   def startOrderProcessing(order: Order[Order.Processing]): Task[Checked[Fiber[OrderProcessed]]] =
     logger.traceTask("startOrderProcessing", order.id)(
@@ -194,7 +209,9 @@ with Service.StoppableByRequest
       //  alreadyAttached.get(signed.value.key) contains signed.value.itemRevision)))
       .flatMapT(_
         .traverse(signedItem =>
-          subagent.commandExecutor.executeCommand(Numbered(0, AttachSignedItem(signedItem))))
+          subagent.commandExecutor.executeCommand(
+            Numbered(0, AttachSignedItem(signedItem)),
+            CommandMeta.System))
         .map(_.map(_.rightAs(())).combineAll))
 
   private def startProcessingOrder2(order: Order[Order.Processing])
@@ -251,12 +268,8 @@ with Service.StoppableByRequest
 
   def killProcess(orderId: OrderId, signal: ProcessSignal): Task[Unit] =
     subagent.killProcess(orderId, signal)
-      .map {
-        // TODO Stop postQueuedCommand loop for this OrderId
-        // Subagent may have been restarted
-        case Left(problem) => logger.error(s"killProcess $orderId => $problem")
-        case Right(_) =>
-      }
+      // TODO Stop postQueuedCommand loop for this OrderId
+      .map(_.onProblemHandle(problem => logger.error(s"killProcess $orderId => $problem")))
 
   protected def emitSubagentCouplingFailed(maybeProblem: Option[Problem]): Task[Unit] =
     logger.debugTask("emitSubagentCouplingFailed", maybeProblem)(
@@ -289,11 +302,12 @@ with Service.StoppableByRequest
       SubagentCommand.ReleaseEvents(eventId))
 
   private def enqueueCommandAndForget(cmd: SubagentCommand.Queueable): Task[Unit] =
-    subagent.commandExecutor.executeCommand(Numbered(0, cmd))
+    subagent.commandExecutor.executeCommand(Numbered(0, cmd), CommandMeta.System)
       .start
       .map(_
         .join
         .map(_.orThrow)
+        .void
         .onErrorHandle(t =>
           logger.error(s"${cmd.toShortString} => ${t.toStringWithCauses}",
             t.nullIfNoStackTrace))
@@ -311,12 +325,13 @@ object LocalSubagentDriver
   private[director] def resource[S <: SubagentDirectorState[S]](
     subagentItem: SubagentItem,
     subagent: Subagent,
+    eventId: EventId,
     journal: Journal[S],
     controllerId: ControllerId,
     subagentConf: SubagentConf)
   : Resource[Task, LocalSubagentDriver] = {
     Service.resource(Task {
-      new LocalSubagentDriver(subagentItem, subagent, journal, controllerId, subagentConf)
+      new LocalSubagentDriver(subagentItem, subagent, eventId, journal, controllerId, subagentConf)
     })
   }
 }

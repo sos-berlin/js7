@@ -30,10 +30,12 @@ import js7.common.akkautils.{SimpleStateActor, SupervisorStrategies}
 import js7.data.agent.Problems.{AgentAlreadyDedicatedProblem, AgentIsShuttingDown, AgentNotDedicatedProblem, AgentPathMismatchProblem, AgentRunIdMismatchProblem, AgentWrongControllerProblem}
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.ControllerId
+import js7.data.event.EventId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.subagent.SubagentId
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.state.FileJournal
+import js7.subagent.Subagent
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.duration.Deadline
@@ -43,6 +45,7 @@ import scala.concurrent.{Future, Promise}
   * @author Joacim Zschimmer
   */
 private[agent] final class AgentActor(
+  subagent: Subagent,
   totalRunningSince: Deadline,
   failedOverSubagentId: Option[SubagentId],
   terminatePromise: Promise[ProgramTermination],
@@ -68,6 +71,7 @@ private[agent] final class AgentActor(
   private def terminating = shutDownCommand.isDefined
   private val terminateCompleted = Promise[Completed]()
 
+  // TODO Use Subagent's DirectoryWatchingSignatureVerifier
   private val allocatedSignatureVerifier = DirectoryWatchingSignatureVerifier
     .checkedResource(
       config = agentConf.config,
@@ -143,33 +147,13 @@ private[agent] final class AgentActor(
       case AgentCommand.DedicateAgentDirector(directors, controllerId, agentPath)
         if !terminating =>
         // Command is idempotent until AgentState has been touched
-        val agentRunId = AgentRunId(journal.journalId)
-        journal
-          .persist(agentState =>
-            if (!agentState.isDedicated
-              || agentPath == agentState.agentPath
-              && agentState.meta.directors != directors)
-              for (_ <- UserId.checked(agentPath.string)/*used for Subagent login*/) yield
-                Seq(NoKey <-:
-                  AgentDedicated(directors, agentPath, agentRunId, controllerId))
-            else if (agentPath != agentState.agentPath)
-              Left(AgentPathMismatchProblem(agentPath, agentState.agentPath))
-            else if (controllerId != agentState.meta.controllerId)
-              Left(AgentWrongControllerProblem(controllerId, agentState.meta.controllerId))
-            else if (!agentState.isFreshlyDedicated)
-              Left(AgentAlreadyDedicatedProblem)
-            else
-              Right(Nil))
-          .flatTapT(_ => appointClusterNodes)
-          .flatMapT(eventAndState => Task {
-            logger.info(s"Dedicating $agentPath to '$controllerId'")
-            addOrderKeeper(agentPath, controllerId)
-              .rightAs(eventAndState._2.eventId)
-          })
+        dedicate(directors, controllerId, agentPath)
           .runToFuture
-          .onComplete { triedEventId =>
-            response.complete(triedEventId.map(_.map(eventId =>
-              AgentCommand.DedicateAgentDirector.Response(agentRunId, eventId))))
+          .onComplete { tried =>
+            response.complete(
+              tried.map(_.map { case (agentRunId, eventId) =>
+                AgentCommand.DedicateAgentDirector.Response(agentRunId, eventId)
+              }))
           }
 
       case AgentCommand.CoupleController(agentPath, agentRunId, eventId) if !terminating =>
@@ -221,6 +205,35 @@ private[agent] final class AgentActor(
             new RuntimeException(s"Unexpected command for AgentActor: $command"))
     }
   }
+
+  private def dedicate(directors: Seq[SubagentId], controllerId: ControllerId, agentPath: AgentPath)
+  : Task[Checked[(AgentRunId, EventId)]] =
+    Task.defer {
+      // Command is idempotent until AgentState has been touched
+      val agentRunId = AgentRunId(journal.journalId)
+      journal
+        .persist(agentState =>
+          if (!agentState.isDedicated
+            || agentPath == agentState.agentPath
+            && agentState.meta.directors != directors)
+            for (_ <- UserId.checked(agentPath.string) /*used for Subagent login*/ ) yield
+              Seq(NoKey <-:
+                AgentDedicated(directors, agentPath, agentRunId, controllerId))
+          else if (agentPath != agentState.agentPath)
+            Left(AgentPathMismatchProblem(agentPath, agentState.agentPath))
+          else if (controllerId != agentState.meta.controllerId)
+            Left(AgentWrongControllerProblem(controllerId, agentState.meta.controllerId))
+          else if (!agentState.isFreshlyDedicated)
+            Left(AgentAlreadyDedicatedProblem)
+          else
+            Right(Nil))
+        .flatTapT(_ => appointClusterNodes)
+        .flatMapT(eventAndState => Task {
+          logger.info(s"Dedicating $agentPath to '$controllerId'")
+          addOrderKeeper(agentPath, controllerId)
+            .rightAs(agentRunId -> eventAndState._2.eventId)
+        })
+    }
 
   private def checkAgentPath(requestedAgentPath: AgentPath): Checked[Unit] = {
     val agentState = journal.unsafeCurrentState()
@@ -301,14 +314,14 @@ private[agent] final class AgentActor(
           val actor = actorOf(
             Props {
               new AgentOrderKeeper(
+                subagent,
                 totalRunningSince,
                 failedOverSubagentId,
                 requireNonNull(recoveredAgentState),
                 allocatedSignatureVerifier.allocatedThing,
                 journalAllocated,
                 clock,
-                agentConf,
-                testEventBus)
+                agentConf)
               },
             "AgentOrderKeeper")
           watch(actor)

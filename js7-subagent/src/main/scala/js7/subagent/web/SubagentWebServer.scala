@@ -7,8 +7,8 @@ import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
-import js7.subagent.Subagent
 import js7.subagent.configuration.SubagentConf
+import js7.subagent.{DirectorRouteVariable, Subagent}
 import monix.eval.Task
 import monix.execution.Scheduler
 
@@ -16,11 +16,11 @@ object SubagentWebServer
 {
   def resource(
     subagent: Task[Subagent],
+    toDirectorRoute: DirectorRouteVariable.ToRoute,
     sessionRegister: SessionRegister[SimpleSession],
-    convertToDirector: Task[Unit],
     conf: SubagentConf)
     (implicit actorSystem: ActorSystem, scheduler: Scheduler)
-  : Resource[Task, AkkaWebServer] =
+  : Resource[Task, (AkkaWebServer)] =
     AkkaWebServer.resource(
       conf.webServerBindings,
       conf.config,
@@ -32,16 +32,11 @@ object SubagentWebServer
         def startupSecurityHint(scheme: WebServerBinding.Scheme) =
           gateKeeperConf.secureStateString(scheme)
 
-        val webServerRoute =
+        def webServerRoute =
           for (subagent <- subagent) yield
-            new SubagentRoute(
-              binding,
-              whenShuttingDown,
-              subagent,
-              sessionRegister,
-              convertToDirector,
-              conf.config,
-              gateKeeperConf
+            new SubagentRoute(binding, whenShuttingDown, gateKeeperConf, sessionRegister,
+              toDirectorRoute(binding, whenShuttingDown),
+              subagent, conf.config
             ).webServerRoute
 
         override def toString = "Subagent web services"

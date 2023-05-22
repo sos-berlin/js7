@@ -16,6 +16,7 @@ import js7.common.akkautils.CatchingSupervisorStrategy
 import js7.core.command.CommandMeta
 import js7.data.subagent.SubagentId
 import js7.journal.state.FileJournal
+import js7.subagent.Subagent
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.Promise
@@ -26,6 +27,7 @@ import scala.util.control.NoStackTrace
   * @author Joacim Zschimmer
   */
 final class MainActor(
+  subagent: Subagent,
   totalRunningSince: Deadline,
   failedOverSubagentId: Option[SubagentId],
   journalAllocated: Allocated[Task, FileJournal[AgentState]],
@@ -46,6 +48,7 @@ extends Actor {
   private val agentActor = watch(actorOf(
     Props {
       new AgentActor(
+        subagent,
         totalRunningSince, failedOverSubagentId,
         terminationPromise, journalAllocated,
         clusterNode,

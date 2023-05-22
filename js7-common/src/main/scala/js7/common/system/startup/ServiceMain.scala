@@ -28,15 +28,12 @@ import scala.concurrent.duration.{Deadline, Duration, NANOSECONDS}
 
 object ServiceMain
 {
-  private var _runningSince: Option[Deadline] = None
   lazy val startedAt = Timestamp.now
-
-  def runningSince: Option[Deadline] =
-    _runningSince
+  private var _runningSince: Option[Deadline] = None
 
   def readyMessageWithLine(prefix: String): String =
     prefix +
-      ServiceMain.runningSince.fold("")(o => s" (after ${o.elapsed.pretty})") +
+      _runningSince.fold("")(o => s" (after ${o.elapsed.pretty})") +
       "\n" + "─" * 80
 
   def mainThenExit[Conf <: BasicConfiguration, S <: MainService: Tag](
@@ -81,8 +78,8 @@ object ServiceMain
     // Do not use Logger here !!!  Logger will be initialized later
     val nanoTime = System.nanoTime() // Before anything else, fetch clock
     printlnWithClock(s"JS7 $name ${BuildInfo.longVersion}")
-    _runningSince = Some(Deadline(Duration(nanoTime, NANOSECONDS)))
     startedAt
+    _runningSince = Some(Deadline(Duration(nanoTime, NANOSECONDS)))
     StartUp.initializeMain()
   }
 

@@ -9,7 +9,7 @@ import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.MonixDeadline
 import js7.base.monixutils.MonixDeadline.syntax.DeadlineSchedule
 import js7.base.problem.Checked
-import js7.base.service.{MainService, RestartAfterFailureService, Service}
+import js7.base.service.{MainService, Service}
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.Nel
@@ -155,7 +155,7 @@ object ClusterWatchService
 {
   private val logger = Logger[this.type]
 
-  def resource(conf: ClusterWatchConf): Resource[Task, ClusterWatchService] = {
+  def completeResource(conf: ClusterWatchConf): Resource[Task, ClusterWatchService] = {
     import conf.{clusterNodeAdmissions, config, httpsConfig}
     for {
       akka <- actorSystemResource(name = "ClusterWatch", config)
@@ -180,24 +180,6 @@ object ClusterWatchService
     resource2(
       clusterWatchId, apisResource, config.withFallback(defaultConfig), label = label,
       onClusterStateChanged, eventBus)
-
-  private def restartableResource(
-    clusterWatchId: ClusterWatchId,
-    apisResource: Resource[Task, Nel[HttpClusterNodeApi]],
-    config: Config,
-    label: String = "",
-    onClusterStateChanged: (HasNodes) => Unit = _ => ())
-  : Resource[Task, RestartAfterFailureService[ClusterWatchService]] =
-    Resource.suspend(Task {
-      val cfg = config.withFallback(defaultConfig)
-      val startDelays = Nil // Do not restart on start failure
-      val runDelays = cfg
-        .getDurationList("js7.journal.cluster.watch.restart-after-failure-delays")
-        .asScala.map(_.toFiniteDuration).toVector
-
-      Service.restartAfterFailure(startDelays = startDelays, runDelays = runDelays)(
-        resource2(clusterWatchId, apisResource, cfg, label = label, onClusterStateChanged))
-    })
 
   private def resource2(
     clusterWatchId: ClusterWatchId,

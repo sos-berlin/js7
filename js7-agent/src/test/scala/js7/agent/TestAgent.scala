@@ -10,10 +10,12 @@ import js7.agent.data.commands.AgentCommand.ShutDown
 import js7.base.auth.SessionToken
 import js7.base.eventbus.StandardEventBus
 import js7.base.io.process.ProcessSignal
+import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.{CorrelId, Logger}
 import js7.base.problem.Checked
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
+import js7.base.utils.AllocatedForJvm.BlockingAllocated
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.syntax.{RichEither, RichThrowable}
 import js7.base.utils.{Allocated, ProgramTermination}
@@ -33,6 +35,11 @@ final class TestAgent(allocated: Allocated[Task, RunningAgent]) {
   def stop: Task[Unit] =
     allocated.release
 
+  def killForFailOver: Task[ProgramTermination] =
+    terminate(
+      processSignal = Some(SIGKILL),
+      clusterAction = Some(AgentCommand.ShutDown.ClusterAction.Failover))
+
   def terminate(
     processSignal: Option[ProcessSignal] = None,
     clusterAction: Option[ShutDown.ClusterAction] = None,
@@ -44,6 +51,10 @@ final class TestAgent(allocated: Allocated[Task, RunningAgent]) {
 
   def untilTerminated: Task[ProgramTermination] =
     agent.untilTerminated
+
+  def useSync[R](timeout: FiniteDuration)(body: TestAgent => R)(implicit scheduler: Scheduler)
+  : R =
+    allocated.useSync(timeout)(_ => body(this))
 
   implicit def actorSystem: ActorSystem =
     agent.actorSystem
@@ -73,16 +84,13 @@ final class TestAgent(allocated: Allocated[Task, RunningAgent]) {
 
   def executeCommand(cmd: AgentCommand, meta: CommandMeta): Task[Checked[AgentCommand.Response]] =
     agent.executeCommand(cmd: AgentCommand, meta)
-
-  //def blockingUse[R](stopTimeout: Duration)(body: TestAgent => R)(implicit scheduler: Scheduler)
-  //: R = {
-  //  val ac: AutoCloseable = () => stop.await(stopTimeout)
-  //  autoClosing(ac)(_ => body(this))
-  //}
 }
 
 object TestAgent {
   private val logger = Logger[this.type]
+
+  def apply(allocated: Allocated[Task, RunningAgent]): TestAgent =
+    new TestAgent(allocated)
 
   def start(conf: AgentConfiguration, testWiring: TestWiring = TestWiring.empty): Task[TestAgent] =
     CorrelId.bindNew(

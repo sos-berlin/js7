@@ -11,7 +11,6 @@ import com.typesafe.config.ConfigUtil
 import izumi.reflect.Tag
 import js7.base.auth.{Admission, UserAndPassword}
 import js7.base.configutils.Configs.ConvertibleConfig
-import js7.base.eventbus.StandardEventBus
 import js7.base.generic.SecretString
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.SIGKILL
@@ -21,16 +20,14 @@ import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.monixutils.{AsyncMap, AsyncVariable}
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
-import js7.base.thread.IOExecutor
 import js7.base.time.{DelayIterator, DelayIterators}
 import js7.base.utils.CatsUtils.syntax.{RichF, RichResource}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, LockKeeper}
-import js7.base.web.Uri
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.delegate.DelegateCouplingState.Coupled
-import js7.data.event.{KeyedEvent, Stamped}
+import js7.data.event.{EventId, KeyedEvent, Stamped}
 import js7.data.item.BasicItemEvent.ItemDetached
 import js7.data.order.OrderEvent.{OrderCoreEvent, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{Order, OrderId, Outcome}
@@ -48,15 +45,14 @@ import org.jetbrains.annotations.TestOnly
 import scala.concurrent.Promise
 
 final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
-  localSubagentId: Option[SubagentId],
+  localSubagentId: SubagentId,
+  localSubagent: Subagent,
   agentPath: AgentPath,
   controllerId: ControllerId,
   failedOverSubagentId: Option[SubagentId],
   journal: Journal[S],
   directorConf: DirectorConf,
-  iox: IOExecutor,
-  actorSystem: ActorSystem,
-  testEventBus: StandardEventBus[Any])
+  actorSystem: ActorSystem)
   (implicit scheduler: Scheduler)
 {
   private val reconnectDelayer: DelayIterator = DelayIterators
@@ -75,23 +71,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
   private val subagentItemLockKeeper = new LockKeeper[SubagentId]
 
   def start: Task[Unit] =
-    logger.debugTask(
-      Task.unless(localSubagentId.isDefined) {
-        // COMPATIBLE with v2.2 which does not know Subagents
-        val subagentId = localSubagentId getOrElse legacyLocalSubagentId
-        logger.warn(
-          s"Automatically create local $subagentId for compatibility with legacy v2.2 AgentRef")
-        stateVar
-          .update { state =>
-            val subagentItem = SubagentItem(
-              subagentId, agentPath, uri = Uri("NO-URL://LEGACY-SUBAGENT"))
-            allocateLocalSubagentDriver(subagentItem)
-              .map(allocatedDriver =>
-                state.insertSubagentDriver(allocatedDriver))
-              .orThrow
-          }
-          .void
-      })
+    logger.debugTask(Task.unit)
 
   def stop: Task[Unit] =
     logger.traceTask(
@@ -380,7 +360,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
             stateVar.updateCheckedWithResult(state =>
               state.idToAllocatedDriver.get(subagentItem.id) match {
                 case None =>
-                  allocateSubagentDriver(subagentItem)
+                  allocateSubagentDriver(subagentItem, subagentItemState.eventId)
                     .map(allocatedDriver =>
                       state.insertSubagentDriver(allocatedDriver, subagentItem)
                         .flatMap(_.setDisabled(subagentItem.id, subagentItem.disabled))
@@ -435,37 +415,34 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
     }
 
   private def emitLocalSubagentCoupled: Task[Unit] =
-    localSubagentId.traverse(localSubagentId =>
-      journal
-        .persist(agentState => Right(agentState
-          .idToSubagentItemState.get(localSubagentId)
-          .exists(_.couplingState != Coupled)
-          .thenList(localSubagentId <-: SubagentCoupled)))
-        .orThrow)
+    journal
+      .persist(agentState => Right(agentState
+        .idToSubagentItemState.get(localSubagentId)
+        .exists(_.couplingState != Coupled)
+        .thenList(localSubagentId <-: SubagentCoupled)))
+      .orThrow
       .void
 
-  private def allocateSubagentDriver(subagentItem: SubagentItem) =
-    if (localSubagentId contains subagentItem.id)
-      allocateLocalSubagentDriver(subagentItem)
+  private def allocateSubagentDriver(subagentItem: SubagentItem, eventId: EventId) =
+    if (subagentItem.id == localSubagentId)
+      allocateLocalSubagentDriver(subagentItem, eventId)
     else
       subagentDriverResource(subagentItem).toAllocated
 
-  private def allocateLocalSubagentDriver(subagentItem: SubagentItem)
+  private def allocateLocalSubagentDriver(subagentItem: SubagentItem, eventId: EventId)
   : Task[Allocated[Task, SubagentDriver]] =
     emitLocalSubagentCoupled *>
-      localSubagentDriverResource(subagentItem).toAllocated
+      localSubagentDriverResource(subagentItem, eventId).toAllocated
 
-  private def localSubagentDriverResource(subagentItem: SubagentItem)
+  private def localSubagentDriverResource(subagentItem: SubagentItem, eventId: EventId)
   : Resource[Task, SubagentDriver] =
-    for {
-      subagent <- Subagent.resource(directorConf.subagentConf, scheduler, iox, testEventBus)
-      driver <- LocalSubagentDriver.resource(
-        subagentItem,
-        subagent,
-        journal,
-        controllerId,
-        directorConf.subagentConf)
-    } yield driver
+    LocalSubagentDriver.resource(
+      subagentItem,
+      localSubagent,
+      eventId,
+      journal,
+      controllerId,
+      directorConf.subagentConf)
 
   private def subagentDriverResource(subagentItem: SubagentItem)
   : Resource[Task, SubagentDriver] =

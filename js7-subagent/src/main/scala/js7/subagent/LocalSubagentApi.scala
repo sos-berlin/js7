@@ -4,6 +4,7 @@ import io.circe.Decoder
 import js7.base.problem.Checked
 import js7.base.session.SessionApi
 import js7.base.stream.Numbered
+import js7.core.command.CommandMeta
 import js7.data.event.{Event, EventRequest, KeyedEvent, Stamped}
 import js7.data.subagent.{SubagentCommand, SubagentRunId}
 import js7.subagent.director.SubagentApi
@@ -27,12 +28,11 @@ with SessionApi.Dummy
     heartbeat: Option[FiniteDuration] = None)
     (implicit kd: Decoder[KeyedEvent[E]])
   : Task[Observable[Stamped[KeyedEvent[E]]]] =
-    Task {
-      subagent.journal.eventWatch.observe(request)
-    }
+    Task.pure(
+      subagent.journal.eventWatch.observe(request))
 
   def executeSubagentCommand[A <: SubagentCommand](numbered: Numbered[A])
   : Task[Checked[numbered.value.Response]] =
-    subagent.commandExecutor.executeCommand(numbered)
+    subagent.commandExecutor.executeCommand(numbered, CommandMeta.System)
       .asInstanceOf[Task[Checked[numbered.value.Response]]]
 }

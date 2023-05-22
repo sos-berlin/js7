@@ -8,6 +8,7 @@ import js7.base.problem.Checked
 import js7.base.stream.Numbered
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.{RichString, *}
+import js7.core.command.CommandMeta
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.subagent.SubagentCommand
 import js7.data.subagent.SubagentCommand.{AttachSignedItem, CoupleDirector, DedicateSubagent, DetachProcessedOrder, KillProcess, NoOperation, ReleaseEvents, ShutDown, StartOrderProcess}
@@ -23,7 +24,8 @@ private[subagent] final class SubagentCommandExecutor(
 {
   private val journal = subagent.journal
 
-  def executeCommand(numbered: Numbered[SubagentCommand]): Task[Checked[numbered.value.Response]] =
+  def executeCommand(numbered: Numbered[SubagentCommand], meta: CommandMeta)
+  : Task[Checked[numbered.value.Response]] =
     Task.defer {
       val command = numbered.value
       logger.debug(s"#${numbered.number} -> $command")
@@ -97,7 +99,7 @@ private[subagent] final class SubagentCommandExecutor(
               // mapEval is executed one by one with takeWhileInclusive
               .mapEval(_
                 .bindCorrelId(subcmd =>
-                  executeCommand(numbered.copy(value = subcmd))
+                  executeCommand(numbered.copy(value = subcmd), meta)
                     .map(_.map(o => o: SubagentCommand.Response))))
               .takeWhileInclusive(_.isRight) // Don't continue after first problem
               .map(_.rightAs(()))

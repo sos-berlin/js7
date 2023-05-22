@@ -21,7 +21,7 @@ object SyncResource
     extends AnyVal {
       /** Like `SyncIO`'s `use`, but synchronously. */
       def useSync[B](f: A => B)(implicit F: Bracket[SyncIO, Throwable], A: Tag[A]): B =
-        underlying.toAllocated.unsafeRunSync().useSync(f)
+        underlying.toAllocated.unsafeRunSync().blockingUse(f)
     }
 
     implicit final class ByteArrayAsResource[A](private val underlying: Array[Byte]) extends AnyVal {

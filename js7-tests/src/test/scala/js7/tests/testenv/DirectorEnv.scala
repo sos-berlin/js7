@@ -1,10 +1,12 @@
 package js7.tests.testenv
 
+import cats.effect.Resource
 import cats.syntax.foldable.*
 import com.typesafe.config.ConfigUtil.quoteString
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Files.createDirectory
 import java.nio.file.Path
+import js7.agent.RunningAgent
 import js7.agent.configuration.AgentConfiguration
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.configutils.Configs.{HoconStringInterpolator, *}
@@ -12,26 +14,27 @@ import js7.base.crypt.SignatureVerifier
 import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax.*
+import js7.base.monixutils.MonixBase.syntax.RichMonixResource
 import js7.base.problem.Checked.*
 import js7.base.utils.CatsUtils.combine
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
+import js7.common.system.ThreadPools
 import js7.data.job.RelativePathExecutable
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.subagent.configuration.SubagentConf
 import js7.tests.testenv.DirectoryProvider.*
+import monix.eval.Task
 
-/** Environment with config and data directories for a Subagent. */
-final class SubagentEnv(
+/** Environment with config and data directories for a Subagent with Agent Director. */
+final class DirectorEnv(
   subagentItem: SubagentItem,
   name: String,
+  moreSubagentIds: Seq[SubagentId] = Nil,
   rootDirectory: Path,
   protected val verifier: SignatureVerifier = defaultVerifier,
   mutualHttps: Boolean = false,
   provideHttpsCertificate: Boolean = false,
   provideClientCertificate: Boolean = false,
-  bareSubagentIds: Seq[SubagentId] = Nil,
-  subagentsDisabled: Boolean = false,
   isClusterBackup: Boolean = false,
   override protected val suppressSignatureKeys: Boolean = false,
   config: Config = ConfigFactory.empty)
@@ -58,8 +61,10 @@ extends TestEnv {
                 password: "plain:AGENT-PASSWORD"
               }
               """))
-        .withFallback(bareSubagentIds
-          .map(subagentId => config"""js7.auth.subagents.${subagentId.string} = "AGENT-PASSWORD" """)
+        .withFallback(moreSubagentIds
+          .map(subagentId => config"""
+             js7.auth.subagents.${subagentId.string} = "AGENT-PASSWORD"
+             """)
           .combineAll),
       httpPort = !https ? port,
       httpsPort = https ? port)
@@ -67,12 +72,6 @@ extends TestEnv {
   lazy val password = SecretString(s"$agentPath-PASSWORD") // TODO AgentPath — or SubagentId?
   lazy val userAndPassword = Some(UserAndPassword(UserId("Controller"), password))
   lazy val executables = configDir / "executables"
-  lazy val bareSubagentItems =
-    for (subagentId <- bareSubagentIds) yield
-      SubagentItem(
-        subagentId, agentPath, findFreeLocalUri(),
-        disabled = subagentsDisabled)
-  lazy val subagentItems = subagentItem +: bareSubagentItems
 
   def delete(): Unit =
     deleteDirectoryRecursively(directory)
@@ -128,4 +127,9 @@ extends TestEnv {
 
   lazy val subagentConf: SubagentConf =
     agentConf.subagentConf
+
+  def directorResource: Resource[Task, RunningAgent] =
+    ThreadPools
+      .ownThreadPoolResource(agentConf.name, agentConf.config)(scheduler =>
+        RunningAgent.resource(agentConf)(scheduler).executeOn(scheduler))
 }

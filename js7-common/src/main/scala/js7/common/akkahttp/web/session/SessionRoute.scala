@@ -11,7 +11,6 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.session.SessionCommand
 import js7.base.session.SessionCommand.{Login, Logout}
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.Tests.isTest
 import js7.common.akkahttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
 import js7.common.akkahttp.StandardMarshallers.*
 import js7.common.akkahttp.web.session.SessionRoute.*
@@ -99,9 +98,6 @@ trait SessionRoute extends RouteProvider
                         Right(authenticatedUser))
               })
 
-        if (isTest) for (problem <- result.left) {
-          //Logger[this.type].trace(s"### ⛔ authenticateOrUseHttpUser(${userAndPassword.userId} ${userAndPassword.password.string}) => $problem")
-        }
         result
     }
   }

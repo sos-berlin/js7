@@ -16,12 +16,11 @@ import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.{ClusterAppointNodes, ClusterSwitchOver, ShutDown}
 import js7.agent.data.views.AgentOverview
-import js7.agent.web.AgentWebServer
+import js7.agent.web.AgentRoute
 import js7.agent.web.common.AgentSession
 import js7.base.BuildInfo
 import js7.base.auth.{SessionToken, SimpleUser}
 import js7.base.eventbus.StandardEventBus
-import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.Logger
@@ -38,7 +37,6 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, ProgramTermination}
 import js7.base.web.Uri
 import js7.cluster.ClusterNode
-import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.session.SessionRegister
 import js7.common.akkautils.Akkas
@@ -55,6 +53,7 @@ import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.recover.Recovered
 import js7.journal.state.FileJournal
 import js7.journal.watch.EventWatch
+import js7.subagent.Subagent
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.atomic.Atomic
@@ -64,7 +63,7 @@ final class RunningAgent private(
   val eventWatch: EventWatch,
   clusterNode: ClusterNode[AgentState],
   val journal: Task[FileJournal[AgentState]],
-  webServer: AkkaWebServer,
+  getLocalUri: () => Uri,
   actorTermination: Task[ProgramTermination],
   val untilReady: Task[MainActor.Ready],
   val executeCommand: (AgentCommand, CommandMeta) => Task[Checked[AgentCommand.Response]],
@@ -76,7 +75,7 @@ final class RunningAgent private(
   (implicit val scheduler: Scheduler)
 extends MainService with Service.StoppableByRequest
 {
-  lazy val localUri: Uri = webServer.localUri
+  lazy val localUri: Uri = getLocalUri()
 
   val untilTerminated: Task[ProgramTermination] =
     actorTermination
@@ -144,7 +143,9 @@ extends MainService with Service.StoppableByRequest
 object RunningAgent {
   private val logger = Logger(getClass)
 
-  def resource(conf: AgentConfiguration, testWiring: TestWiring = TestWiring.empty)
+  def resource(
+    conf: AgentConfiguration,
+    testWiring: TestWiring = TestWiring.empty)
     (implicit scheduler: Scheduler)
   : Resource[Task, RunningAgent] = Resource.suspend(Task {
     import conf.{clusterConf, config, httpsConfig, implicitAkkaAskTimeout, journalConf, journalMeta}
@@ -166,22 +167,24 @@ object RunningAgent {
         journalMeta, journalConf, clusterConf, eventIdClock, testEventBus, config)
 
     def initialize(): Unit = {
-      if (!StartUp.isMain) logger.debug("JS7 Agent starting ..." + "\n" + "┈" * 80)
+      if (!StartUp.isMain) logger.debug("JS7 Agent starting ...\n" + "┈" * 80)
       conf.createDirectories()
       conf.journalMeta.deleteJournalIfMarked().orThrow
     }
 
     for {
       _ <- Resource.eval(Task(initialize()))
-      x <- recoveringResource
-      (recoveredExtract, actorSystem, clusterNode) = x
+      tuple <- recoveringResource
+      (recoveredExtract, actorSystem, clusterNode) = tuple
       iox <- IOExecutor.resource[Task](config, conf.name + "-I/O")
-      agent <- resource2(clusterNode, recoveredExtract, testWiring, conf, testEventBus, clock)(
-        actorSystem, iox, scheduler)
+      subagent <- Subagent.resource(conf.subagentConf, iox, testEventBus)
+      agent <- resource2(subagent, clusterNode, recoveredExtract,
+        testWiring, conf, testEventBus, clock)(actorSystem, iox, scheduler)
     } yield agent
   })
 
   private def resource2(
+    subagent: Subagent,
     clusterNode: ClusterNode[AgentState],
     recoveredExtract: Recovered.Extract,
     testWiring: TestWiring,
@@ -210,6 +213,7 @@ object RunningAgent {
       val actor = actorSystem.actorOf(
         Props {
           new MainActor(
+            subagent,
             recoveredExtract.totalRunningSince,
             failedOverSubagentId,
             journalAllocated, conf, testWiring.commandHandler,
@@ -289,7 +293,6 @@ object RunningAgent {
       .memoize
 
     val gateKeeperConf = GateKeeper.Configuration.fromConfig(config, SimpleUser.apply)
-    val sessionRegister = SessionRegister.start[AgentSession](actorSystem, AgentSession.apply, config)
 
     val agentOverview = Task(AgentOverview(
       startedAt = ServiceMain.startedAt,
@@ -351,28 +354,32 @@ object RunningAgent {
         .map(_.map((_: AgentCommand.Response).asInstanceOf[cmd.Response])))
 
     for {
+      sessionRegister <- SessionRegister.resource(AgentSession.apply, config)
       sessionToken <- sessionRegister
         .placeSessionTokenInDirectory(SimpleUser.System, conf.workDirectory)
-
-      webServer <- AgentWebServer
-        .resource(
-          agentOverview, conf, gateKeeperConf, executeCommand, clusterNode,
-          sessionRegister,
-          recoveredExtract.eventWatch)(actorSystem, scheduler)
-        .evalTap(webServer => Task {
-          conf.workDirectory / "http-uri" :=
-            webServer.localHttpUri.fold(_ => "", o => s"$o/agent")
-        })
       agent <- Service.resource(Task(
         new RunningAgent(
           recoveredExtract.eventWatch,
           clusterNode,
           journalDeferred.get,
-          webServer, /*Task(mainActor),*/
+          () => subagent.localUri,
           untilMainActorTerminated,
           untilReady, executeCommand, sessionRegister, sessionToken,
           testEventBus,
           actorSystem, config)))
+      _ <- subagent.directorRegisteringResource(
+        (binding, whenShuttingDown) => Task.pure(
+          new AgentRoute(
+            agentOverview,
+            binding,
+            whenShuttingDown,
+            agent.executeCommand,
+            clusterNode,
+            conf,
+            gateKeeperConf,
+            sessionRegister,
+            recoveredExtract.eventWatch
+          ).agentRoute))
     } yield agent
   }
 

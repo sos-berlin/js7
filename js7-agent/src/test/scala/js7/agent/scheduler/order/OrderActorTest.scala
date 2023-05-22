@@ -12,7 +12,6 @@ import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.agent.scheduler.order.OrderActorTest.*
 import js7.agent.tests.TestAgentDirectoryProvider
-import js7.base.eventbus.StandardEventBus
 import js7.base.generic.Completed
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.process.Processes.ShellFileExtension as sh
@@ -205,13 +204,13 @@ private object OrderActorTest {
     private val agentConf = AgentConfiguration.forTest(dir, name = "OrderActorTest", config)
 
     val subagentKeeper = new SubagentKeeper(
-      localSubagentId = None,
+      localSubagentId = ???,
+      localSubagent = ???,
       TestAgentPath,
       controllerId,
       failedOverSubagentId = None,
       journal,
-      agentConf.subagentDirectorConf, globalIOX, context.system,
-      testEventBus = new StandardEventBus[Any])
+      agentConf.subagentDirectorConf, context.system)
     subagentKeeper.start.await(99.s)
 
     private val orderActor = watch(actorOf(

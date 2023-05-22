@@ -12,6 +12,7 @@ import js7.base.auth.SimpleUser
 import js7.base.stream.Numbered
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegment
 import js7.common.akkahttp.CirceJsonSupport.jsonMarshaller
+import js7.common.akkahttp.StandardDirectives.taskRoute
 import js7.common.akkahttp.WebLogDirectives
 import js7.common.akkahttp.web.auth.CSRF.forbidCSRF
 import js7.common.akkahttp.web.auth.GateKeeper
@@ -20,6 +21,7 @@ import js7.common.akkahttp.web.session.{SessionRegister, SessionRoute, SimpleSes
 import js7.common.system.JavaInformations.javaInformation
 import js7.common.system.SystemInformations.systemInformation
 import js7.common.system.startup.StartUp
+import js7.core.command.CommandMeta
 import js7.data.subagent.{SubagentCommand, SubagentOverview}
 import js7.subagent.Subagent
 import monix.eval.Task
@@ -30,11 +32,11 @@ import scala.concurrent.duration.Deadline
 private final class SubagentRoute(
   binding: WebServerBinding,
   protected val whenShuttingDown: Future[Deadline],
-  protected val subagent: Subagent,
+  gateKeeperConf: GateKeeper.Configuration[SimpleUser],
   protected val sessionRegister: SessionRegister[SimpleSession],
-  protected val convertToDirector: Task[Unit],
-  protected val config: Config,
-  gateKeeperConf: GateKeeper.Configuration[SimpleUser])
+  directorRoute: Task[Route],
+  protected val subagent: Subagent,
+  protected val config: Config)
   (implicit
     protected val scheduler: Scheduler,
     protected val actorSystem: ActorSystem)
@@ -42,16 +44,13 @@ extends WebLogDirectives
 with CommandRoute
 with SessionRoute
 with EventRoute
-with PseudoDirectorRoute
 {
-  protected val subagentCommandExecuter = subagent.commandExecutor
   protected val eventWatch = subagent.journal.eventWatch
   protected val actorRefFactory = actorSystem
-
   protected val gateKeeper = GateKeeper(binding, gateKeeperConf)
 
-  protected def executeCommand(command: Numbered[SubagentCommand]) =
-    subagentCommandExecuter.executeCommand(command)
+  protected def executeCommand(command: Numbered[SubagentCommand], meta: CommandMeta) =
+    subagent.commandExecutor.executeCommand(command, meta)
 
   protected def overviewRoute: Route =
     complete(SubagentOverview(
@@ -62,18 +61,18 @@ with PseudoDirectorRoute
       system = systemInformation(),
       java = javaInformation()))
 
-  val webServerRoute: Route =
+  def webServerRoute: Route =
     (decodeRequest & encodeResponse)( // Before handleErrorAndLog to allow simple access to HttpEntity.Strict
       webLog(seal(forbidCSRF(route))))
 
   private lazy val route =
     pathPrefix(Segment) {
       case "subagent" => subagentRoute
-      case "agent" => pseudoAgentRoute
+      case "agent" => taskRoute(directorRoute)
       case _ => complete(NotFound)
     }
 
-  private lazy val subagentRoute: Route =
+  lazy val subagentRoute: Route =
     pathSegment("api")(
       pathEndOrSingleSlash(overviewRoute) ~
         pathPrefix(Segment) {

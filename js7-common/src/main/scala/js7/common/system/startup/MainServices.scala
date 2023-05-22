@@ -34,6 +34,6 @@ object MainServices
         resource(scheduler)
           .toAllocated
           .await(timeout)
-          .blockingUse(timeout)(use(_, scheduler))
+          .useSync(timeout)(use(_, scheduler))
       }
 }

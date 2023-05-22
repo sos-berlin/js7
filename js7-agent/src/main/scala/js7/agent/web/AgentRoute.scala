@@ -2,7 +2,6 @@ package js7.agent.web
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.server.Route
-import akka.http.scaladsl.server.directives.CodingDirectives.{decodeRequest, encodeResponse}
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
@@ -14,7 +13,6 @@ import js7.cluster.ClusterNode
 import js7.cluster.web.ClusterNodeRouteBindings
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.akkahttp.WebLogDirectives
-import js7.common.akkahttp.web.auth.CSRF.forbidCSRF
 import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.akkahttp.web.session.SessionRegister
@@ -29,7 +27,7 @@ import scala.concurrent.duration.Deadline
 /**
  * @author Joacim Zschimmer
  */
-private final class AgentRoute(
+final class AgentRoute(
   protected val agentOverview: Task[AgentOverview],
   binding: WebServerBinding,
   protected val whenShuttingDown: Future[Deadline],
@@ -63,19 +61,8 @@ with ClusterNodeRouteBindings[AgentState]
   protected def nodeId =
     clusterNode.clusterConf.ownId
 
-  val webServerRoute: Route =
-    (decodeRequest & encodeResponse) {  // Before handleErrorAndLog to allow simple access to HttpEntity.Strict
-      webLog {
-        seal {
-          forbidCSRF {
-            agentRoute
-          }
-        }
-      }
-    }
-
-  private lazy val agentRoute: Route =
-    pathSegments("agent/api") {
+  lazy val agentRoute: Route =
+    pathSegments("api") {
       apiRoute
     }
 }

@@ -13,7 +13,6 @@ import js7.agent.data.event.AgentEvent.{AgentReady, AgentShutDown}
 import js7.agent.scheduler.order.AgentOrderKeeper.*
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.crypt.{SignatureVerifier, Signed}
-import js7.base.eventbus.StandardEventBus
 import js7.base.generic.Completed
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.{RichCheckedTask, RichMonixTask}
@@ -57,6 +56,7 @@ import js7.data.workflow.{Workflow, WorkflowControl, WorkflowPathControl}
 import js7.journal.state.FileJournal
 import js7.journal.{JournalActor, MainJournalingActor}
 import js7.launcher.configuration.Problems.SignedInjectionNotAllowed
+import js7.subagent.Subagent
 import js7.subagent.director.SubagentKeeper
 import monix.eval.Task
 import monix.execution.{Cancelable, Scheduler}
@@ -73,14 +73,14 @@ import scala.util.{Failure, Success, Try}
  * @author Joacim Zschimmer
  */
 final class AgentOrderKeeper(
+  localSubagent: Subagent,
   totalRunningSince: Deadline,
   failedOverSubagentId: Option[SubagentId],
   recoveredAgentState : AgentState,
   signatureVerifier: SignatureVerifier,
   journalAllocated: Allocated[Task, FileJournal[AgentState]],
   private implicit val clock: AlarmClock,
-  conf: AgentConfiguration,
-  testEventBus: StandardEventBus[Any])
+  conf: AgentConfiguration)
   (implicit protected val scheduler: Scheduler, iox: IOExecutor)
 extends MainJournalingActor[AgentState, Event]
 with Stash
@@ -91,13 +91,15 @@ with Stash
   private val journal = journalAllocated.allocatedThing
   private val (ownAgentPath, localSubagentId, controllerId) = {
     val meta = journal.unsafeCurrentState().meta
-    val subagentId =
-      if (!conf.clusterConf.isBackup)
-        meta.directors.headOption
-      else if (meta.directors.size == 1) throw new IllegalStateException(
+    val subagentId: SubagentId =
+      if (meta.directors.isEmpty) throw new IllegalStateException(
+        "Missing definition of Subagents in AgentMetaState")
+      else if (!conf.clusterConf.isBackup)
+        meta.directors.head
+      else if (meta.directors.sizeIs < 2) throw new IllegalStateException(
         "Missing definition of backup Subagent in AgentMetaState")
       else
-        meta.directors.get(1)
+        meta.directors(1)
     (meta.agentPath, subagentId, meta.controllerId)
   }
   private implicit val instructionExecutorService: InstructionExecutorService =
@@ -199,10 +201,8 @@ with Stash
 
   private val subagentKeeper =
     new SubagentKeeper(
-      localSubagentId, ownAgentPath, controllerId,
-      failedOverSubagentId,
-      journal, conf.subagentDirectorConf,
-      iox, context.system, testEventBus)
+      localSubagentId, localSubagent, ownAgentPath, controllerId, failedOverSubagentId,
+      journal, conf.subagentDirectorConf, context.system)
 
   watch(journalActor)
   self ! Internal.Recover(recoveredAgentState)
