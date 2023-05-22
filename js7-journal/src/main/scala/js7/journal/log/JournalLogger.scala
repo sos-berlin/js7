@@ -24,7 +24,7 @@ private[journal] final class JournalLogger(
 
   private val infoLoggableEventClasses = new SubclassCache(infoLogEvents)
   private val sb = new StringBuilder
-  private var suppressed = true
+  private var suppressed = false
 
   //def logHeader(header: JournalHeader): Unit =
   //  logger.trace(

@@ -104,12 +104,13 @@ extends MainService with Service.StoppableByRequest
     })
 
   def directorRegisteringResource(toRoute: DirectorRouteVariable.ToRoute): Resource[Task, Unit] =
-    for {
-      _ <- directorRouteVariable.registeringRouteResource(toRoute)
-      //_ <- Resource.make(
-      //  acquire = registerDirector(registerable))(
-      //  release = unregisterDirector)
-    } yield ()
+    logger.debugResource(
+      for {
+        _ <- directorRouteVariable.registeringRouteResource(toRoute)
+        //_ <- Resource.make(
+        //  acquire = registerDirector(registerable))(
+        //  release = unregisterDirector)
+      } yield ())
 
   //def directorRegisteringResource(registerable: DirectorRegisterable): Resource[Task, Unit] =
   //  for {

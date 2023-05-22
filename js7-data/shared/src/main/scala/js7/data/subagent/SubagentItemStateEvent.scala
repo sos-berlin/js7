@@ -37,6 +37,7 @@ object SubagentItemStateEvent extends Event.Companion[SubagentItemStateEvent]
   final case class SubagentEventsObserved(untilEventId: EventId)
   extends SubagentItemStateEvent
   {
+    override def isMinor = true
     override def toString = s"SubagentEventsObserved(${EventId.toString(untilEventId)})"
   }
 
