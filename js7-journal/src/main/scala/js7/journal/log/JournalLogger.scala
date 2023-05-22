@@ -15,23 +15,23 @@ import scala.concurrent.duration.Deadline
 import scala.concurrent.duration.Deadline.now
 
 private[journal] final class JournalLogger(
-  syncOrFlushChars: String,
+  syncOrFlushString: String,
   infoLogEvents: Set[String],
   suppressTiming: Boolean = false)
 {
-  private val syncOrFlushCharsAndSpace = syncOrFlushChars + " "
-  private val syncOrFlushWidth = 6 max syncOrFlushCharsAndSpace.length
-  private val ackSyncOrFlushString = syncOrFlushCharsAndSpace.toUpperCase(ROOT)
+  private val syncOrFlushWidth = 6 max syncOrFlushString.length
+  private val ackSyncOrFlushString = syncOrFlushString.toUpperCase(ROOT)
 
   private val infoLoggableEventClasses = new SubclassCache(infoLogEvents)
   private val sb = new StringBuilder
+  private var suppressed = true
 
   //def logHeader(header: JournalHeader): Unit =
   //  logger.trace(
   //    f"  ${" " * syncOrFlushWidth}      * ${header.eventId}%16d $header")
 
   def logCommitted(persists: IndexedSeqView[Loggable], ack: Boolean = false): Unit =
-    logger.whenInfoEnabled {
+    if (!suppressed) logger.whenInfoEnabled {
       val committedAt = now
       val myPersists = dropEmptyPersists(persists)
 
@@ -49,6 +49,9 @@ private[journal] final class JournalLogger(
         logPersists(loggablePersists.toVector.view, committedAt, isLoggable)(infoLogPersist)
       }
     }
+
+  def suppress(supressed: Boolean): Unit =
+    this.suppressed = supressed
 
   private def dropEmptyPersists(persists: IndexedSeqView[Loggable]): IndexedSeqView[Loggable] = {
     val dropLeft = persists.segmentLength(_.stampedSeq.isEmpty)
@@ -85,12 +88,12 @@ private[journal] final class JournalLogger(
   private def traceLogPersist(ack: Boolean)(frame: PersistFrame, stamped: Stamped[AnyKeyedEvent]): Unit = {
     import frame.*
     sb.clear()
-    sb.append(':')  // Something simple to grep
+    sb.append(':')  // Allow simple filtering of log file: grep " - :" x.log
     //? sb.fillRight(5) { sb.append(nr) }
     sb.append(persistMarker)
     sb.fillRight(syncOrFlushWidth) {
       if (isLastEvent && persist.isLastOfFlushedOrSynced) {
-        sb.append(if (ack) ackSyncOrFlushString else syncOrFlushCharsAndSpace)
+        sb.append(if (ack) ackSyncOrFlushString else syncOrFlushString)
       } else if (isFirstEvent && persistIndex == 0 && persistCount >= 2) {
         sb.append(persistCount)  // Wrongly counts multiple isLastOfFlushedOrSynced (but only SnapshotTaken)
       } else if (nr == beforeLastEventNr && persistEventCount >= 10_000) {

@@ -8,7 +8,7 @@ trait JournalLogging
   protected val conf: JournalConf
 
   protected final val journalLogger = new JournalLogger(
-    syncOrFlushChars =
+    syncOrFlushString =
       if (!conf.syncOnCommit)
         "flush"
       else if (conf.simulateSync.isDefined)

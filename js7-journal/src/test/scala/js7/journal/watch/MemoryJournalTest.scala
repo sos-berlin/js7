@@ -171,5 +171,6 @@ object MemoryJournalTest
     new MemoryJournal(
       TestState.empty,
       size = size,
+      infoLogEvents = Set.empty,
       eventIdGenerator = new EventIdGenerator(EventIdClock.fixed(1)))
 }

@@ -20,10 +20,11 @@ import monix.execution.atomic.Atomic
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.Deadline.now
 
-final class MemoryJournal[S <: JournaledState[S]](
+final class MemoryJournal[S <: JournaledState[S]] private[journal](
   initial: S,
   size: Int,
   waitingFor: String = "releaseEvents",
+  infoLogEvents: Set[String],
   eventIdGenerator: EventIdGenerator = new EventIdGenerator)
   (implicit protected val S: JournaledState.Companion[S])
 extends Journal[S]
@@ -40,10 +41,8 @@ extends Journal[S]
   @volatile private var eventWatchStopped = false
   private val _eventCount = Atomic(0L)
 
-  private val journalLogger = new JournalLogger(
-    syncOrFlushChars = "memory",
-    infoLogEvents = Set.empty,
-    suppressTiming = true)
+  private val journalLogger =
+    new JournalLogger("memory", infoLogEvents, suppressTiming = true)
 
   val whenNoFailoverByOtherNode = Task.unit
 
@@ -188,9 +187,10 @@ object MemoryJournal {
     initial: S,
     size: Int,
     waitingFor: String = "releaseEvents",
+    infoLogEvents: Set[String] = Set.empty,
     eventIdGenerator: EventIdGenerator = new EventIdGenerator)
     (implicit S: JournaledState.Companion[S])
   : Resource[Task, MemoryJournal[S]] =
     Resource.eval(Task(
-      new MemoryJournal[S](initial, size, waitingFor, eventIdGenerator)))
+      new MemoryJournal[S](initial, size, waitingFor, infoLogEvents, eventIdGenerator)))
 }

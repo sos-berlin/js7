@@ -62,8 +62,8 @@ object JournalFiles
     try {
       val markerFile = deletionMarkerFile(fileBase)
       if (exists(markerFile)) {
-        logger.warn(
-          s"DELETE JOURNAL DUE TO JOURNAL RESET IN PREVIOUS RUN ($markerFile marker file found)")
+        logger.debug(s"Marker file found: $markerFile")
+        logger.warn("DELETE JOURNAL DUE TO JOURNAL RESET IN PREVIOUS RUN")
         deleteJournal(fileBase)
       }
       Checked.unit
@@ -79,7 +79,7 @@ object JournalFiles
     var failed = false
     for (file <- listFiles(fileBase)(_.filter(file => matches(file.getFileName.toString)).toVector)) {
       try {
-        logger.info(s"DELETE JOURNAL FILE: $file")
+        logger.info(s"DELETE JOURNAL FILE $file")
         delete(file)
       } catch { case e: IOException if ignoreFailure =>
         logger.warn(s"Delete journal file: $file => ${e.toStringWithCauses}")

@@ -207,7 +207,7 @@ extends Service.StoppableByRequest
 
     private def onBatchFailed(queueables: Seq[Queueable], problem: Problem): Task[Unit] =
       Task.defer {
-        val msg = s"Command batch ${queueables.map(_.getClass.scalaName)} failed: $problem"
+        val msg = s"Command batch ${queueables.map(_.getClass.simpleScalaName)} failed: $problem"
         problem match {
           case DecoupledProblem | RecouplingStreamReader.TerminatedProblem =>
             logger.debug(msg)

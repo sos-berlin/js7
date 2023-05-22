@@ -139,7 +139,8 @@ object IdToUser
         .groupMap(_._1)(_._2)
         .map { case (k, v) => k -> v.toSet }
 
-    logger.trace("distinguishedNameToUserIds=" + distinguishedNameToUserIds.map { case (k, v) => s"\n  $k --> $v" }.mkString)
+    logger.debug(s"distinguishedNameToUserIds=⏎${
+      distinguishedNameToUserIds.map { case (k, v) => s"\n  $k --> ${v mkString " "}" }.mkString}")
     assert(distinguishedNameToUserIds.values.forall(_.nonEmpty))  // Set[UserId] is not empty
 
     new IdToUser(userIdToRaw, dn => distinguishedNameToUserIds.getOrElse(dn, Set.empty),
