@@ -14,7 +14,7 @@ import js7.agent.command.CommandHandler
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
-import js7.agent.data.commands.AgentCommand.{ClusterAppointNodes, ClusterSwitchOver, ShutDown}
+import js7.agent.data.commands.AgentCommand.{ClusterSwitchOver, ShutDown}
 import js7.agent.data.views.AgentOverview
 import js7.agent.web.AgentRoute
 import js7.agent.web.common.AgentSession
@@ -333,11 +333,6 @@ object RunningAgent {
                       api(meta).commandExecute(cmd)
                   }
             }
-
-          case ClusterAppointNodes(idToUri, activeId) =>
-            Task(clusterNode.workingClusterNode)
-              .flatMapT(_.appointNodes(idToUri, activeId))
-              .rightAs(AgentCommand.Response.Accepted)
 
           case ClusterSwitchOver =>
             Task.left(Problem("Agent still not support ClusterSwitchOver command"))

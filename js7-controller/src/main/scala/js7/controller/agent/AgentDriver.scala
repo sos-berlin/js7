@@ -36,14 +36,13 @@ import js7.controller.agent.DirectorDriver.DirectorDriverStoppedProblem
 import js7.controller.configuration.ControllerConfiguration
 import js7.data.agent.AgentRefStateEvent.{AgentCouplingFailed, AgentDedicated}
 import js7.data.agent.Problems.AgentNotDedicatedProblem
-import js7.data.agent.{AgentClusterConf, AgentPath, AgentRef, AgentRefState, AgentRunId}
+import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
 import js7.data.cluster.ClusterState.HasNodes
 import js7.data.cluster.ClusterWatchId
 import js7.data.controller.ControllerState
 import js7.data.event.{AnyKeyedEvent, EventId, KeyedEvent, Stamped}
 import js7.data.item.ItemAttachedState.{Attachable, Attached}
 import js7.data.item.{InventoryItemKey, ItemAttachedState, SignableItem, UnsignedItem}
-import js7.data.node.NodeId
 import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderDetached}
 import js7.data.order.{Order, OrderId, OrderMark}
 import js7.data.subagent.{SubagentId, SubagentItem}
@@ -386,24 +385,7 @@ extends Service.StoppableByRequest
 
   private def startNewClusterWatch: Task[Unit] =
     logger.debugTask(
-      clusterWatchAllocated
-        .acquire(clusterWatchResource)
-        .*>(journal.state
-          .map(_.agentToUris(agentPath).toList)
-          .flatMap(uris =>
-            Task.when(uris.lengthIs == 2)(
-              // TODO Nur senden, wenn ClusterState.Empty !
-              appointClusterNodes(uris(0), uris(1))))))
-
-  private def appointClusterNodes(primaryUri: Uri, backupUri: Uri): Task[Unit] =
-    commandQueue
-      .enqueue(
-        Queueable.ClusterAppointNodes(
-          Map(
-            AgentClusterConf.primaryNodeId -> primaryUri,
-            AgentClusterConf.backupNodeId -> backupUri),
-          NodeId("Primary")))
-      .void
+      clusterWatchAllocated.acquire(clusterWatchResource).void)
 
   private def startAndForgetDirectorDriver(implicit src: sourcecode.Enclosing): Task[Unit] =
     startNewDirectorDriver
@@ -535,9 +517,6 @@ private[controller] object AgentDriver
     private[agent] final case class ReleaseEventsQueueable(agentEventId: EventId) extends Queueable
 
     final case class ResetSubagent(subagentId: SubagentId, force: Boolean) extends Queueable
-
-    @deprecated // ???
-    final case class ClusterAppointNodes(idToUri: Map[NodeId, Uri], activeId: NodeId) extends Queueable
 
     case object ClusterSwitchOver extends Queueable
   }

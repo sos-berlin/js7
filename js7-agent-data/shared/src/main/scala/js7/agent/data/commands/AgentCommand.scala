@@ -16,13 +16,11 @@ import js7.base.problem.Checked.implicits.{checkedJsonDecoder, checkedJsonEncode
 import js7.base.utils.Big
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.web.Uri
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.command.CommonCommand
 import js7.data.controller.ControllerId
 import js7.data.event.{EventId, ItemContainer}
 import js7.data.item.{InventoryItemKey, SignableItem, UnsignedItem}
-import js7.data.node.NodeId
 import js7.data.order.{Order, OrderId, OrderMark}
 import js7.data.subagent.SubagentId
 
@@ -234,14 +232,6 @@ object AgentCommand extends CommonCommand.Companion
     type Response = Response.Accepted
   }
 
-  @deprecated //???
-  final case class ClusterAppointNodes(
-    idToUri: Map[NodeId, Uri],
-    activeId: NodeId)
-    extends AgentCommand {
-    type Response = Response.Accepted
-  }
-
   case object ClusterSwitchOver
     extends AgentCommand {
     type Response = Response.Accepted
@@ -267,7 +257,6 @@ object AgentCommand extends CommonCommand.Companion
       Subtype(deriveCodec[DetachOrder]),
       Subtype(TakeSnapshot),
       Subtype(deriveCodec[ResetSubagent]),
-      Subtype(deriveCodec[ClusterAppointNodes]),
       Subtype(ClusterSwitchOver))
   }
 

@@ -2,6 +2,7 @@ package js7.agent.scheduler
 
 import akka.actor.{Actor, ActorRef, Props, Stash, Terminated}
 import akka.pattern.ask
+import cats.syntax.traverse.*
 import java.util.Objects.requireNonNull
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
@@ -15,6 +16,7 @@ import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier
 import js7.base.eventbus.StandardEventBus
 import js7.base.generic.Completed
 import js7.base.io.process.ProcessSignal.SIGKILL
+import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
@@ -25,14 +27,18 @@ import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.RightUnit
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, ProgramTermination, SetOnce}
+import js7.base.web.Uri
 import js7.cluster.ClusterNode
 import js7.common.akkautils.{SimpleStateActor, SupervisorStrategies}
 import js7.data.agent.Problems.{AgentAlreadyDedicatedProblem, AgentIsShuttingDown, AgentNotDedicatedProblem, AgentPathMismatchProblem, AgentRunIdMismatchProblem, AgentWrongControllerProblem}
-import js7.data.agent.{AgentPath, AgentRunId}
+import js7.data.agent.{AgentClusterConf, AgentPath, AgentRef, AgentRunId}
+import js7.data.cluster.ClusterState
+import js7.data.cluster.ClusterState.HasNodes
 import js7.data.controller.ControllerId
 import js7.data.event.EventId
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.subagent.SubagentId
+import js7.data.node.NodeId
+import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.state.FileJournal
 import js7.subagent.Subagent
@@ -166,13 +172,6 @@ private[agent] final class AgentActor(
           } yield
             CoupleController.Response(journal.unsafeCurrentState().idToOrder.keySet))
 
-      case AgentCommand.ClusterAppointNodes(idToUri, activeId) =>
-        response.completeWith(
-          Task(clusterNode.workingClusterNode)
-            .flatMapT(_.appointNodes(idToUri, activeId))
-            .rightAs(AgentCommand.Response.Accepted)
-            .runToFuture)
-
       case AgentCommand.ClusterSwitchOver =>
         response.completeWith(
           Task.left(Problem("Agent still not support ClusterSwitchOver command"))
@@ -227,7 +226,6 @@ private[agent] final class AgentActor(
             Left(AgentAlreadyDedicatedProblem)
           else
             Right(Nil))
-        .flatTapT(_ => appointClusterNodes)
         .flatMapT(eventAndState => Task {
           logger.info(s"Dedicating $agentPath to '$controllerId'")
           addOrderKeeper(agentPath, controllerId)
@@ -257,23 +255,6 @@ private[agent] final class AgentActor(
     } else
       Checked.unit
   }
-
-  @deprecated // Maybe the Director itself appoints the cluster nodes ???
-  private def appointClusterNodes: Task[Checked[Unit]] =
-    Task.right(())
-    //logger.debugTask(journal.state
-    //  .map(state =>
-    //    for {
-    //      subagentItems <- state.meta.directors.traverse(state.keyToItem(SubagentItem).checked)
-    //      workingClusterNode <- clusterNode.workingClusterNode
-    //    } yield subagentItems -> workingClusterNode)
-    //  .flatMapT { case (subagentItems, workingClusterNode) =>
-    //    workingClusterNode.appointNodes(
-    //      Map(
-    //        AgentClusterConf.primaryNodeId -> subagentItems(0).uri,
-    //        AgentClusterConf.backupNodeId -> subagentItems(1).uri),
-    //      AgentClusterConf.primaryNodeId)
-    //  })
 
   private def continueTermination(): Unit =
     if (terminating) {
@@ -318,6 +299,7 @@ private[agent] final class AgentActor(
                 totalRunningSince,
                 failedOverSubagentId,
                 requireNonNull(recoveredAgentState),
+                appointClusterNodes,
                 allocatedSignatureVerifier.allocatedThing,
                 journalAllocated,
                 clock,
@@ -329,6 +311,39 @@ private[agent] final class AgentActor(
           Checked.unit
       }
     }
+
+  private def appointClusterNodes: Task[Unit] =
+    logger.debugTask(journal.state
+      .flatMap(agentState =>
+        Task.when(agentState.isDedicated)(
+          demandedClusterNodeUris(agentState)
+            .fold(Task.unit) { idToUri =>
+              agentState.clusterState
+                .match_ {
+                  case ClusterState.Empty =>
+                    Some(AgentClusterConf.primaryNodeId)
+                  case clusterState: HasNodes =>
+                    (clusterState.setting.idToUri != idToUri) ? clusterState.activeId
+                }
+                .fold(Task.unit)(activeNodeId =>
+                  Task(clusterNode.workingClusterNode)
+                    .flatMapT(_.appointNodes(idToUri, activeNodeId))
+                    .map(_.onProblemHandle(problem =>
+                      logger.error(s"appointClusterNodes: $problem"))))
+            })))
+
+  /** Returns Some when AgentRef and the Director's SubagentIds are available. */
+  private def demandedClusterNodeUris(state: AgentState): Option[Map[NodeId, Uri]] =
+    for {
+      agentRef <- state.keyToItem(AgentRef).get(state.meta.agentPath)
+      if agentRef.directors.length == 2
+      subagentItems <- agentRef.directors.traverse(state.keyToItem(SubagentItem).get)
+      if subagentItems.length == 2
+    } yield
+      Map(
+        AgentClusterConf.primaryNodeId -> subagentItems(0).uri,
+        AgentClusterConf.backupNodeId -> subagentItems(1).uri)
+
 
   override def toString = "AgentActor"
 }

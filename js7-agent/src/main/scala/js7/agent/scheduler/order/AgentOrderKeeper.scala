@@ -77,6 +77,7 @@ final class AgentOrderKeeper(
   totalRunningSince: Deadline,
   failedOverSubagentId: Option[SubagentId],
   recoveredAgentState : AgentState,
+  tryAppointClusterNodes: Task[Unit],
   signatureVerifier: SignatureVerifier,
   journalAllocated: Allocated[Task, FileJournal[AgentState]],
   private implicit val clock: AlarmClock,
@@ -456,7 +457,9 @@ with Stash
           Future.successful(Left(Problem(s"Alien AgentRef(${agentRef.path})")))
         else
           persist(ItemAttachedToMe(agentRef)) { (stampedEvent, journaledState) =>
-            proceedWithItem(agentRef).runToFuture
+            proceedWithItem(agentRef)
+              .flatTapT(_ => tryAppointClusterNodes.map(Right(_)))
+              .runToFuture
           }.flatten
             .rightAs(AgentCommand.Response.Accepted)
 
@@ -471,7 +474,12 @@ with Stash
       case item @ (_: Calendar | _: SubagentItem | _: SubagentSelection |
                    _: WorkflowPathControl | _: WorkflowControl) =>
         persist(ItemAttachedToMe(item)) { (stampedEvent, journaledState) =>
-          proceedWithItem(item).runToFuture
+          proceedWithItem(item)
+            .flatTapT(_ => Task
+              .when(item.isInstanceOf[SubagentItem])(
+                tryAppointClusterNodes)
+              .map(Right(_)))
+            .runToFuture
         }.flatten
           .rightAs(AgentCommand.Response.Accepted)
 

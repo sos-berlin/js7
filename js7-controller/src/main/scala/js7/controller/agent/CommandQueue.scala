@@ -220,9 +220,6 @@ private[agent] abstract class CommandQueue(
       case Queueable.ResetSubagent(subagentId, force) =>
         AgentCommand.ResetSubagent(subagentId, force = force)
 
-      case Queueable.ClusterAppointNodes(idToUri, activeId) =>
-        AgentCommand.ClusterAppointNodes(idToUri, activeId)
-
       case Queueable.ClusterSwitchOver =>
         AgentCommand.ClusterSwitchOver
     }
