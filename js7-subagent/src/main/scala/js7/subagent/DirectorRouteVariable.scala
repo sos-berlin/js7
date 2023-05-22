@@ -25,6 +25,7 @@ private final class DirectorRouteVariable {
         if (_toRoute ne noDirector) throw new IllegalStateException(
           "registeringRouteResource called twice")
         _toRoute = toRoute
+        cache.clear()
       }))(
       release = _ => lock.lock(Task {
         _toRoute = noDirector
