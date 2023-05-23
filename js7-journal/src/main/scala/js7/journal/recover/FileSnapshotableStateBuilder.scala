@@ -21,6 +21,7 @@ final class FileSnapshotableStateBuilder[S <: SnapshotableState[S]](
   journalFileForInfo: Path,
   expectedJournalId: Option[JournalId],
   newBuilder: () => SnapshotableStateBuilder[S])
+  (implicit S: SnapshotableState.Companion[S])
 {
   def this(journalFileForInfo: Path, expectedJournalId: Option[JournalId])
     (implicit S: SnapshotableState.Companion[S])
@@ -66,7 +67,7 @@ final class FileSnapshotableStateBuilder[S <: SnapshotableState[S]](
         journalRecord match {
           case journalHeader: JournalHeader =>
             logger.debug(journalHeader.toString)
-            JournalHeader.checkedHeader(journalHeader, journalFileForInfo, expectedJournalId)
+            JournalHeader.checkedHeader[S](journalHeader, journalFileForInfo, expectedJournalId)
               .orThrow
             builder.addSnapshotObject(journalHeader)
             _progress = AfterHeader

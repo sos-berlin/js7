@@ -1,14 +1,14 @@
 package js7.data.event
 
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.ScalaUtils.syntax.{RichJavaClass, RichString}
+import js7.base.utils.ScalaUtils.syntax.RichString
 import js7.data.event.EventDrivenState.*
 
-trait EventDrivenState[Self <: EventDrivenState[Self, E], E <: Event]
+trait EventDrivenState[Self <: EventDrivenState[Self, E], E <: Event] extends BasicState[Self]
 {
   this: Self =>
 
-  def companion: Companion[Self, E]
+  override def companion: Companion[Self, E]
 
   def applyEvent(keyedEvent: KeyedEvent[E]): Checked[Self]
 
@@ -46,13 +46,10 @@ trait EventDrivenState[Self <: EventDrivenState[Self, E], E <: Event]
 
 object EventDrivenState
 {
-  trait Companion[S <: EventDrivenState[S, E], E <: Event]
+  trait Companion[S <: EventDrivenState[S, E], E <: Event] extends BasicState.Companion[S]
   {
     implicit final val implicitEventDrivenStateCompanion: Companion[S, E] =
       this
-
-    def name: String =
-      getClass.shortClassName
 
     override def toString = name
   }

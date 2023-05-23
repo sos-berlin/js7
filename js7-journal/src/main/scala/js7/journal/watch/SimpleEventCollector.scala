@@ -24,6 +24,7 @@ extends AutoCloseable
   private val journalMeta = JournalMeta(
     new SnapshotableState.HasCodec {
       implicit val keyedEventJsonCodec = eventTypedJsonCodec
+      val name: String = "TestState"
       val snapshotObjectJsonCodec = TypedJsonCodec()
     },
     directory / "TEST")
@@ -35,7 +36,7 @@ extends AutoCloseable
     val eventWatch = new JournalEventWatch(journalMeta, config withFallback JournalEventWatch.TestConfig)
     val eventWriter = {
       val w = EventJournalWriter.forTest(journalMeta, tornEventId, journalId, Some(eventWatch))
-      w.writeHeader(JournalHeaders.forTest(journalId, tornEventId))
+      w.writeHeader(JournalHeaders.forTest("TestState", journalId, tornEventId))
       w.beginEventSection(sync = false)
       w.onJournalingStarted()
       w

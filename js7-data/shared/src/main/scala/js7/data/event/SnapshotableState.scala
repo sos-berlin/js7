@@ -85,7 +85,9 @@ object SnapshotableState
   }
 
   trait HasCodec
-  extends HasSnapshotCodec with JournaledState.HasEventCodec
+  extends HasSnapshotCodec with JournaledState.HasEventCodec {
+    def name: String // Defined in BasicState.Companion
+  }
 
   trait Companion[S <: SnapshotableState[S]]
   extends JournaledState.Companion[S]

@@ -521,7 +521,9 @@ extends Actor with Stash with JournalLogging
     }
 
     assertThat(journalHeader != null)
-    journalHeader = journalHeader.nextGeneration(eventId = lastWrittenEventId, totalEventCount = totalEventCount,
+    journalHeader = journalHeader.nextGeneration[S](
+      eventId = lastWrittenEventId,
+      totalEventCount = totalEventCount,
       totalRunningTime = totalRunningSince.elapsed roundUpToNext 1.ms)
     val file = journalMeta.file(after = lastWrittenEventId)
 

@@ -21,7 +21,7 @@ final class HistoricEventReaderTest extends OurTestSuite
       val journalMeta = JournalMeta(TestState, dir resolve "test")
 
       autoClosing(EventJournalWriter.forTest(journalMeta, after = After, journalId)) { writer =>
-        writer.writeHeader(JournalHeaders.forTest(journalId, eventId = After))
+        writer.writeHeader(JournalHeaders.forTest(TestState.name, journalId, eventId = After))
         writer.beginEventSection(sync = false)
         writer.writeEvents(TestEvents)
         writer.endEventSection(sync = false)

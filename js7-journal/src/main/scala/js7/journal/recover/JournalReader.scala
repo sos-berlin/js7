@@ -38,7 +38,8 @@ extends AutoCloseable
 
   val journalHeader = {
     val json = jsonReader.toJson(rawJournalHeader).value
-    JournalHeader.checkedHeader(json, journalFile, expectedJournalId).orThrow
+    JournalHeader.checkedHeader(json, journalFile, expectedType = S.name, expectedJournalId)
+      .orThrow
   }
 
   val fileEventId = journalHeader.eventId

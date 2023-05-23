@@ -29,6 +29,8 @@ private[watch] object TestData
   case object BEvent extends TestEvent
 
   object TestState extends SnapshotableState.HasCodec {
+    val name = "TestState"
+
     implicit val snapshotObjectJsonCodec = TypedJsonCodec(
       Subtype(AEvent),
       Subtype(BEvent))
@@ -40,7 +42,7 @@ private[watch] object TestData
 
   def writeJournalSnapshot[E <: Event](journalMeta: JournalMeta, after: EventId, snapshotObjects: Seq[Any]): Path =
     autoClosing(SnapshotJournalWriter.forTest(journalMeta, after = after)) { writer =>
-      writer.writeHeader(JournalHeaders.forTest(journalId, eventId = after))
+      writer.writeHeader(JournalHeaders.forTest(TestState.name, journalId, eventId = after))
       writer.beginSnapshotSection()
       for (o <- snapshotObjects) {
         writer.writeSnapshot(ByteArray(journalMeta.snapshotObjectJsonCodec.encodeObject(o).compactPrint))
@@ -55,7 +57,7 @@ private[watch] object TestData
     journalId: JournalId = this.journalId): Path
   =
     autoClosing(EventJournalWriter.forTest(journalMeta, after = after, journalId)) { writer =>
-      writer.writeHeader(JournalHeaders.forTest(journalId, eventId = after))
+      writer.writeHeader(JournalHeaders.forTest(TestState.name, journalId, eventId = after))
       writer.beginEventSection(sync = false)
       writer.writeEvents(stampedEvents take 1)
       writer.writeEvents(stampedEvents drop 1 take 2, transaction = true)

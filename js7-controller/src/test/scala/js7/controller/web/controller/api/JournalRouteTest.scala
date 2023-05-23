@@ -204,7 +204,7 @@ final class JournalRouteTest extends OurTestSuite with RouteTester with JournalR
 
   private def writeSnapshot(eventId: EventId): Unit =
     autoClosing(newSnapshotJournalWriter(eventId)) { writer =>
-      writer.writeHeader(JournalHeaders.forTest(journalId))
+      writer.writeHeader(JournalHeaders.forTest("TestState", journalId))
       writer.beginSnapshotSection()
       writer.endSnapshotSection()
       writer.beginEventSection(sync = false)

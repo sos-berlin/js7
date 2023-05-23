@@ -423,7 +423,7 @@ final class JournalEventWatchTest extends OurTestSuite with BeforeAndAfterAll
   : Unit =
     autoClosing(new JournalEventWatch(journalMeta, JournalEventWatch.TestConfig)) { eventWatch =>
       autoClosing(EventJournalWriter.forTest(journalMeta, after = lastEventId, journalId, Some(eventWatch))) { writer =>
-        writer.writeHeader(JournalHeaders.forTest(journalId, eventId = lastEventId))
+        writer.writeHeader(JournalHeaders.forTest(TestState.name, journalId, eventId = lastEventId))
         writer.beginEventSection(sync = false)
         writer.onJournalingStarted()
         body(writer, eventWatch)
@@ -471,6 +471,7 @@ private object JournalEventWatchTest
   private case class ASnapshot(string: String)
 
   private object TestState extends SnapshotableState.HasCodec {
+    val name = "TestState"
     implicit val keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event] =
       KeyedEventTypedJsonCodec(
         KeyedSubtype[JournalEvent],

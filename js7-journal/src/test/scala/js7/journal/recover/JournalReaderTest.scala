@@ -29,6 +29,7 @@ import monix.execution.Scheduler.Implicits.traced
 final class JournalReaderTest extends OurTestSuite with TestJournalMixin
 {
   private val journalId = JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))
+  private val stateName = "TestState"
 
   "Journal file without snapshots or events" in {
     withTestActor() { (_, _ ) => }
@@ -48,7 +49,7 @@ final class JournalReaderTest extends OurTestSuite with TestJournalMixin
     val file = currentFile
     delete(file)  // File of last test
     autoClosing(new SnapshotJournalWriter(journalMeta.S, file, after = EventId.BeforeFirst, simulateSync = None)) { writer =>
-      writer.writeHeader(JournalHeaders.forTest(journalId))
+      writer.writeHeader(JournalHeaders.forTest(stateName, journalId))
       writer.beginSnapshotSection()
       writer.endSnapshotSection()
       writer.beginEventSection(sync = false)
@@ -66,7 +67,7 @@ final class JournalReaderTest extends OurTestSuite with TestJournalMixin
     val file = currentFile
     delete(file)  // File of last test
     autoClosing(new SnapshotJournalWriter(journalMeta.S, file, after = EventId.BeforeFirst, simulateSync = None)) { writer =>
-      writer.writeHeader(JournalHeaders.forTest(journalId))
+      writer.writeHeader(JournalHeaders.forTest(stateName, journalId))
       writer.beginSnapshotSection()
       writer.endSnapshotSection()
       writer.beginEventSection(sync = false)
@@ -118,7 +119,7 @@ final class JournalReaderTest extends OurTestSuite with TestJournalMixin
       val file = currentFile
       delete(file)  // File of last test
       autoClosing(new EventJournalWriter(journalMeta.S, file, after = 0L, journalId, observer = None, simulateSync = None, withoutSnapshots = true)) { writer =>
-        writer.writeHeader(JournalHeaders.forTest(journalId, eventId = EventId.BeforeFirst))
+        writer.writeHeader(JournalHeaders.forTest(stateName, journalId, eventId = EventId.BeforeFirst))
         writer.beginEventSection(sync = false)
         writer.writeEvents(first :: Nil)
         writer.writeEvents(ta, transaction = true)
@@ -154,7 +155,7 @@ final class JournalReaderTest extends OurTestSuite with TestJournalMixin
         def write[A](a: A)(implicit encoder: Encoder[A]) = writer.write(encoder(a).toByteArray)
         def writeEvent(a: Stamped[KeyedEvent[TestEvent]]) = write(a)
 
-        write(JournalHeaders.forTest(journalId, eventId = EventId.BeforeFirst).asJson)
+        write(JournalHeaders.forTest(stateName, journalId, eventId = EventId.BeforeFirst).asJson)
         write(JournalSeparators.EventHeader)
         writeEvent(first)
         write(JournalSeparators.Transaction)

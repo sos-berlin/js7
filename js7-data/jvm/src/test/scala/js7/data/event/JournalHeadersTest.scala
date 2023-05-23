@@ -12,8 +12,9 @@ import scala.concurrent.duration.*
 final class JournalHeadersTest extends OurTestSuite
 {
   "JSON" in {
+    val journalId = JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))
     testJson[JournalHeader](
-      JournalHeaders.initial[TestState](JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))).copy(
+      JournalHeaders.initial[TestState](journalId).copy(
         eventId = EventId(777),
         totalEventCount = 999,
         initiallyStartedAt = Timestamp.parse("2019-05-22T12:00:00.000Z"),
@@ -37,9 +38,8 @@ final class JournalHeadersTest extends OurTestSuite
 }
 
 private object JournalHeadersTest {
-  final case class TestState(string: String) extends EventDrivenState[TestState, Event] {
+  final case class TestState(string: String) extends BasicState[TestState] {
     def companion = TestState
-    def applyEvent(keyedEvent: KeyedEvent[Event]) = throw new NotImplementedError
   }
-  object TestState extends js7.data.event.EventDrivenState.Companion[TestState, Event]
+  object TestState extends BasicState.Companion[TestState]
 }

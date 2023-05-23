@@ -131,20 +131,6 @@ object FileJournal
 {
   private val logger = Logger[this.type]
 
-  def start[S <: SnapshotableState[S]: SnapshotableState.Companion: diffx.Diff: Tag](
-    recovered: Recovered[S],
-    journalConf: JournalConf,
-    eventIdGenerator: EventIdGenerator = new EventIdGenerator,
-    keyedEventBus: EventPublisher[Stamped[AnyKeyedEvent]] = new StandardEventBus)
-    (implicit
-      scheduler: Scheduler,
-      actorRefFactory: ActorRefFactory,
-      timeout: akka.util.Timeout)
-  : Task[FileJournal[S]] =
-    resource(recovered, journalConf, eventIdGenerator, keyedEventBus)
-      .allocated
-      .map(_._1)
-
   def resource[S <: SnapshotableState[S]: SnapshotableState.Companion: diffx.Diff: Tag](
     recovered: Recovered[S],
     journalConf: JournalConf,

@@ -10,13 +10,15 @@ object JournalHeaders
 {
   implicit final class RichJournalHeader(private val self: JournalHeader) extends AnyVal
   {
-    def nextGeneration(
+    def nextGeneration[S <: BasicState[S]](
       eventId: EventId,
       totalEventCount: Long,
       totalRunningTime: FiniteDuration,
       timestamp: Timestamp = Timestamp.now)
+      (implicit S: BasicState.Companion[S])
   : JournalHeader =
       self.copy(
+        typeName = Some(S.name),
         eventId = eventId,
         generation = self.generation + 1,
         totalEventCount = totalEventCount,
@@ -27,9 +29,9 @@ object JournalHeaders
         buildId = BuildInfo.buildId)
   }
 
-  def forTest(journalId: JournalId, eventId: EventId = EventId.BeforeFirst): JournalHeader =
+  def forTest(typeName: String, journalId: JournalId, eventId: EventId = EventId.BeforeFirst): JournalHeader =
     new JournalHeader(
-      typeName = Some("Test"),
+      typeName = Some(typeName),
       journalId,
       eventId = eventId,
       generation = 1,
@@ -41,8 +43,7 @@ object JournalHeaders
       version = Version,
       buildId = BuildInfo.buildId)
 
-  def initial[S <: EventDrivenState[S, Event]](journalId: JournalId)
-    (implicit S: EventDrivenState.Companion[S, Event])
+  def initial[S <: BasicState[S]](journalId: JournalId)(implicit S: BasicState.Companion[S])
   : JournalHeader =
     new JournalHeader(
       typeName = Some(S.name),
