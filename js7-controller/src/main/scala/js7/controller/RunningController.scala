@@ -45,6 +45,7 @@ import js7.controller.item.ItemUpdater
 import js7.controller.problems.ControllerIsShuttingDownProblem
 import js7.controller.web.ControllerWebServer
 import js7.core.command.{CommandExecutor, CommandMeta}
+import js7.core.license.LicenseChecker
 import js7.data.Problems.{ClusterNodeIsNotActiveProblem, PassiveClusterNodeShutdownNotAllowedProblem}
 import js7.data.cluster.ClusterState
 import js7.data.controller.ControllerCommand.{AddOrder, ShutDown}
@@ -57,6 +58,7 @@ import js7.journal.JournalActor.Output
 import js7.journal.state.FileJournal
 import js7.journal.watch.StrictEventWatch
 import js7.journal.{EventIdClock, JournalActor}
+import js7.license.LicenseCheckContext
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
@@ -224,20 +226,20 @@ object RunningController
     val testEventBus = new StandardEventBus[Any]
 
     // Recover and initialize other stuff in parallel
-    val recoveringResource =
+    val clusterNodeResource =
       ClusterNode.recoveringResource[ControllerState](
         actorSystemResource(conf.name, config),
         (uri, name, actorSystem) => AkkaHttpControllerApi.resource(
           uri, clusterConf.peersUserAndPassword, httpsConfig, name = name)(actorSystem),
-        configDirectory = conf.configDirectory,
+        new LicenseChecker(LicenseCheckContext(conf.configDirectory)),
         journalMeta, journalConf, clusterConf, eventIdClock, testEventBus, config)
 
-    val resources = CorrelId.bindNew(recoveringResource)
+    val resources = CorrelId.bindNew(clusterNodeResource)
       .parZip(CorrelId.bindNew(
         itemVerifierResource(config, testEventBus)))
 
-    resources.flatMap { case ((recoveredExtract, actorSystem, clusterNode), itemVerifier) =>
-      implicit val implicitActorSystem = actorSystem
+    resources.flatMap { case (clusterNode, itemVerifier) =>
+      import clusterNode.actorSystem
 
       val orderKeeperStarted: Task[Either[ProgramTermination, OrderKeeperStarted]] =
         logger.traceTaskWithResult(
@@ -299,6 +301,7 @@ object RunningController
 
       val orderApi = new MainOrderApi(controllerState)
       val itemUpdater = new MyItemUpdater(itemVerifier, currentOrderKeeperActor)
+      import clusterNode.recoveredExtract
 
       def webServerResource(sessionRegister: SessionRegister[SimpleSession]): Resource[Task, ControllerWebServer] =
         ControllerWebServer

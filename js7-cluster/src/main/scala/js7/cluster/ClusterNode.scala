@@ -1,6 +1,6 @@
 package js7.cluster
 
-import akka.actor.{ActorRefFactory, ActorSystem}
+import akka.actor.ActorSystem
 import akka.util.Timeout
 import cats.effect.concurrent.{Deferred, Ref}
 import cats.effect.{ExitCase, Resource}
@@ -37,7 +37,6 @@ import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
 import js7.journal.recover.{Recovered, StateRecoverer}
 import js7.journal.{EventIdClock, EventIdGenerator}
-import js7.license.LicenseCheckContext
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.atomic.AtomicAny
@@ -53,10 +52,12 @@ final class ClusterNode[S <: SnapshotableState[S]: diffx.Diff: Tag] private(
   val clusterConf: ClusterConf,
   eventIdGenerator: EventIdGenerator,
   eventBus: EventPublisher[Stamped[AnyKeyedEvent]],
-  common: ClusterCommon)
+  common: ClusterCommon,
+  val recoveredExtract: Recovered.Extract,
+  implicit val actorSystem: ActorSystem)
   (implicit S: SnapshotableState.Companion[S],
     scheduler: Scheduler,
-    actorRefFactory: ActorRefFactory, timeout: akka.util.Timeout)
+    timeout: akka.util.Timeout)
 extends Service.StoppableByRequest
 {
   clusterNode =>
@@ -97,19 +98,16 @@ extends Service.StoppableByRequest
           Task.race(recoveryStopRequested.get, fiber.join))
         .*>(untilStopRequested)
         .guaranteeCase(exitCase =>
-          Task.defer(passiveOrWorkingNode.get() match {
-            case Some(Left(passiveClusterNode))
-              if exitCase == ExitCase.Completed =>
-              passiveClusterNode.onShutdown(_testDontNotifyActiveNodeAboutShutdown)
+          stopRecovery(ProgramTermination()/*???*/) *>
+            Task.defer(passiveOrWorkingNode.get() match {
+              case Some(Left(passiveClusterNode)) if exitCase == ExitCase.Completed =>
+                passiveClusterNode.onShutdown(_testDontNotifyActiveNodeAboutShutdown)
 
-            case Some(Right(workingClusterNodeAllocated)) =>
-              workingClusterNodeAllocated.release
+              case Some(Right(workingClusterNodeAllocated)) =>
+                workingClusterNodeAllocated.release
 
-            case _ => Task.unit
-          })))
-
-  override protected def stop =
-    stopRecovery(ProgramTermination()/*???*/) *> super.stop
+              case _ => Task.unit
+            })))
 
   private def untilWorkingNodeStarted: Task[Unit] =
     logger.debugTask(untilRecovered
@@ -251,7 +249,7 @@ object ClusterNode
   def recoveringResource[S <: SnapshotableState[S] : diffx.Diff : Tag](
     akkaResource: Resource[Task, ActorSystem],
     clusterNodeApi: (Uri, String, ActorSystem) => Resource[Task, ClusterNodeApi],
-    configDirectory: Path,
+    licenseChecker: LicenseChecker,
     journalMeta: JournalMeta,
     journalConf: JournalConf,
     clusterConf: ClusterConf,
@@ -259,36 +257,33 @@ object ClusterNode
     testEventBus: EventPublisher[Any],
     config: Config)
     (implicit S: SnapshotableState.Companion[S], scheduler: Scheduler, akkaTimeout: Timeout)
-  : Resource[Task, (Recovered.Extract, ActorSystem, ClusterNode[S])] =
+  : Resource[Task, ClusterNode[S]] =
     StateRecoverer
       .resource[S](journalMeta, config)
       .parZip(akkaResource/*start in parallel*/)
       .flatMap { case (recovered, actorSystem) =>
         implicit val a = actorSystem
-        resource (
-          recovered, journalMeta, journalConf, clusterConf, config,
+        resource(
+          recovered,
           clusterNodeApi(_, _, actorSystem),
-          new LicenseChecker(LicenseCheckContext(configDirectory)),
-          eventIdClock, testEventBus
+          licenseChecker, journalMeta, journalConf, clusterConf, eventIdClock, testEventBus, config
         ).orThrow
-          .map(clusterNode =>
-            (recovered.extract, actorSystem, clusterNode))
       }
 
   private def resource[S <: SnapshotableState[S] : diffx.Diff : Tag](
     recovered: Recovered[S],
+    clusterNodeApi: (Uri, String) => Resource[Task, ClusterNodeApi],
+    licenseChecker: LicenseChecker,
     journalMeta: JournalMeta,
     journalConf: JournalConf,
     clusterConf: ClusterConf,
-    config: Config,
-    clusterNodeApi: (Uri, String) => Resource[Task, ClusterNodeApi],
-    licenseChecker: LicenseChecker,
     eventIdClock: EventIdClock,
-    eventBus: EventPublisher[Any])
+    testEventBus: EventPublisher[Any],
+    config: Config)
     (implicit
       S: SnapshotableState.Companion[S],
       scheduler: Scheduler,
-      actorRefFactory: ActorRefFactory,
+      actorSystem: ActorSystem,
       akkaTimeout: akka.util.Timeout)
   : Checked[Resource[Task, ClusterNode[S]]] = {
     val checked = recovered.clusterState match {
@@ -306,16 +301,16 @@ object ClusterNode
     for (_ <- checked) yield
       for {
         clusterWatchCounterpart <-
-          ClusterWatchCounterpart.resource(clusterConf, clusterConf.timing, eventBus)
+          ClusterWatchCounterpart.resource(clusterConf, clusterConf.timing, testEventBus)
         common <- ClusterCommon.resource(clusterWatchCounterpart, clusterNodeApi, clusterConf,
-          licenseChecker, eventBus)
-        clusterNode <- resource2(recovered, common, journalMeta, journalConf, clusterConf, config,
+          licenseChecker, testEventBus)
+        clusterNode <- resource(recovered, common, journalMeta, journalConf, clusterConf, config,
           new EventIdGenerator(eventIdClock),
-          eventBus)
+          testEventBus)
       } yield clusterNode
   }
 
-  private def resource2[S <: SnapshotableState[S] : diffx.Diff : Tag](
+  private def resource[S <: SnapshotableState[S] : diffx.Diff : Tag](
     recovered: Recovered[S],
     common: ClusterCommon,
     journalMeta: JournalMeta, journalConf: JournalConf, clusterConf: ClusterConf,
@@ -325,7 +320,7 @@ object ClusterNode
     (implicit
       S: SnapshotableState.Companion[S],
       scheduler: Scheduler,
-      actorRefFactory: ActorRefFactory,
+      actorSystem: ActorSystem,
       timeout: akka.util.Timeout)
   : Resource[Task, ClusterNode[S]] = {
     import clusterConf.ownId
@@ -491,7 +486,7 @@ object ClusterNode
       } yield new ClusterNode(
         prepared, passiveOrWorkingNode, currentStateRef,
         journalConf, clusterConf,
-        eventIdGenerator, eventBus.narrowPublisher, common))
+        eventIdGenerator, eventBus.narrowPublisher, common, recovered.extract, actorSystem))
   }
 
   // TODO Provisional fix because it's not easy to restart the recovery

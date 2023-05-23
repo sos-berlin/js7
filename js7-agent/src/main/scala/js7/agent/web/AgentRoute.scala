@@ -18,7 +18,6 @@ import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.akkahttp.web.session.SessionRegister
 import js7.core.command.CommandMeta
 import js7.data.event.Stamped
-import js7.journal.watch.FileEventWatch
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.Future
@@ -35,8 +34,7 @@ final class AgentRoute(
   protected val clusterNode: ClusterNode[AgentState],
   protected val agentConfiguration: AgentConfiguration,
   gateKeeperConf: GateKeeper.Configuration[SimpleUser],
-  protected val sessionRegister: SessionRegister[AgentSession],
-  protected val eventWatch: FileEventWatch)
+  protected val sessionRegister: SessionRegister[AgentSession])
   (implicit
     protected val actorSystem: ActorSystem,
     protected val scheduler: Scheduler)
@@ -47,6 +45,7 @@ with ClusterNodeRouteBindings[AgentState]
   protected val gateKeeper = GateKeeper(binding, gateKeeperConf)
 
   protected val agentState = clusterNode.currentState
+  protected def eventWatch = clusterNode.recoveredExtract.eventWatch
   protected def akkaAskTimeout = agentConfiguration.akkaAskTimeout
   protected def config = agentConfiguration.config
   protected def actorRefFactory = actorSystem

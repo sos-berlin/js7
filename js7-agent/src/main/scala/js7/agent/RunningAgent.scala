@@ -44,15 +44,16 @@ import js7.common.system.JavaInformations.javaInformation
 import js7.common.system.SystemInformations.systemInformation
 import js7.common.system.startup.{ServiceMain, StartUp}
 import js7.core.command.CommandMeta
+import js7.core.license.LicenseChecker
 import js7.data.Problems.{BackupClusterNodeNotAppointed, ClusterNodeIsNotActiveProblem, ClusterNodeIsNotReadyProblem, PassiveClusterNodeShutdownNotAllowedProblem}
 import js7.data.agent.AgentClusterConf
 import js7.data.node.NodeId
 import js7.data.subagent.SubagentId
 import js7.journal.EventIdClock
 import js7.journal.files.JournalFiles.JournalMetaOps
-import js7.journal.recover.Recovered
 import js7.journal.state.FileJournal
-import js7.journal.watch.EventWatch
+import js7.journal.watch.JournalEventWatch
+import js7.license.LicenseCheckContext
 import js7.subagent.Subagent
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -60,7 +61,6 @@ import monix.execution.atomic.Atomic
 import scala.concurrent.{Future, Promise}
 
 final class RunningAgent private(
-  val eventWatch: EventWatch,
   clusterNode: ClusterNode[AgentState],
   val journal: Task[FileJournal[AgentState]],
   getLocalUri: () => Uri,
@@ -76,6 +76,7 @@ final class RunningAgent private(
 extends MainService with Service.StoppableByRequest
 {
   lazy val localUri: Uri = getLocalUri()
+  val eventWatch: JournalEventWatch = clusterNode.recoveredExtract.eventWatch
 
   val untilTerminated: Task[ProgramTermination] =
     actorTermination
@@ -158,12 +159,12 @@ object RunningAgent {
     val eventIdClock = testWiring.eventIdClock getOrElse EventIdClock(clock)
     val testEventBus = new StandardEventBus[Any]
 
-    val recoveringResource =
+    val recoveringClusterNodeResource =
       ClusterNode.recoveringResource[AgentState](
         akkaResource = Akkas.actorSystemResource(conf.name, config),
         (uri, label, actorSystem) => AgentClient.resource(
           uri, clusterConf.peersUserAndPassword, label, httpsConfig)(actorSystem),
-        configDirectory = conf.configDirectory,
+        new LicenseChecker(LicenseCheckContext(conf.configDirectory)),
         journalMeta, journalConf, clusterConf, eventIdClock, testEventBus, config)
 
     def initialize(): Unit = {
@@ -174,25 +175,24 @@ object RunningAgent {
 
     for {
       _ <- Resource.eval(Task(initialize()))
-      tuple <- recoveringResource
-      (recoveredExtract, actorSystem, clusterNode) = tuple
+      clusterNode <- recoveringClusterNodeResource
       iox <- IOExecutor.resource[Task](config, conf.name + "-I/O")
       subagent <- Subagent.resource(conf.subagentConf, iox, testEventBus)
-      agent <- resource2(subagent, clusterNode, recoveredExtract,
-        testWiring, conf, testEventBus, clock)(actorSystem, iox, scheduler)
+      agent <- resource2(subagent, clusterNode, testWiring, conf, testEventBus, clock)(
+        iox, scheduler)
     } yield agent
   })
 
   private def resource2(
     subagent: Subagent,
     clusterNode: ClusterNode[AgentState],
-    recoveredExtract: Recovered.Extract,
     testWiring: TestWiring,
     conf: AgentConfiguration,
     testEventBus: StandardEventBus[Any],
     clock: AlarmClock)
-    (implicit actorSystem: ActorSystem, iox: IOExecutor, scheduler: Scheduler)
+    (implicit iox: IOExecutor, scheduler: Scheduler)
   : Resource[Task, RunningAgent] = {
+    import clusterNode.actorSystem
     import conf.config
 
     def startMainActor(
@@ -214,11 +214,10 @@ object RunningAgent {
         Props {
           new MainActor(
             subagent,
-            recoveredExtract.totalRunningSince,
             failedOverSubagentId,
+            clusterNode,
             journalAllocated, conf, testWiring.commandHandler,
             mainActorReadyPromise, terminationPromise,
-            clusterNode,
             testEventBus, clock)(
             scheduler, iox)
         },
@@ -354,7 +353,6 @@ object RunningAgent {
         .placeSessionTokenInDirectory(SimpleUser.System, conf.workDirectory)
       agent <- Service.resource(Task(
         new RunningAgent(
-          recoveredExtract.eventWatch,
           clusterNode,
           journalDeferred.get,
           () => subagent.localUri,
@@ -372,8 +370,7 @@ object RunningAgent {
             clusterNode,
             conf,
             gateKeeperConf,
-            sessionRegister,
-            recoveredExtract.eventWatch
+            sessionRegister
           ).agentRoute))
     } yield agent
   }

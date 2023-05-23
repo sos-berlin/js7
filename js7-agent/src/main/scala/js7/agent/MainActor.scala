@@ -20,7 +20,6 @@ import js7.subagent.Subagent
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.Promise
-import scala.concurrent.duration.Deadline
 import scala.util.control.NoStackTrace
 
 /**
@@ -28,14 +27,13 @@ import scala.util.control.NoStackTrace
   */
 final class MainActor(
   subagent: Subagent,
-  totalRunningSince: Deadline,
   failedOverSubagentId: Option[SubagentId],
+  clusterNode: ClusterNode[AgentState],
   journalAllocated: Allocated[Task, FileJournal[AgentState]],
   agentConfiguration: AgentConfiguration,
   testCommandHandler: Option[CommandHandler],
   readyPromise: Promise[Ready],
   terminationPromise: Promise[ProgramTermination],
-  clusterNode: ClusterNode[AgentState],
   testEventBus: StandardEventBus[Any],
   clock: AlarmClock)
   (implicit scheduler: Scheduler, iox: IOExecutor)
@@ -49,9 +47,9 @@ extends Actor {
     Props {
       new AgentActor(
         subagent,
-        totalRunningSince, failedOverSubagentId,
-        terminationPromise, journalAllocated,
+        failedOverSubagentId,
         clusterNode,
+        terminationPromise, journalAllocated,
         clock, agentConfiguration, testEventBus)
     },
     "agent"))

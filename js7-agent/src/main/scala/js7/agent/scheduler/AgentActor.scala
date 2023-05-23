@@ -44,7 +44,6 @@ import js7.journal.state.FileJournal
 import js7.subagent.Subagent
 import monix.eval.Task
 import monix.execution.Scheduler
-import scala.concurrent.duration.Deadline
 import scala.concurrent.{Future, Promise}
 
 /**
@@ -52,11 +51,10 @@ import scala.concurrent.{Future, Promise}
   */
 private[agent] final class AgentActor(
   subagent: Subagent,
-  totalRunningSince: Deadline,
   failedOverSubagentId: Option[SubagentId],
+  clusterNode: ClusterNode[AgentState],
   terminatePromise: Promise[ProgramTermination],
   journalAllocated: Allocated[Task, FileJournal[AgentState]],
-  clusterNode: ClusterNode[AgentState],
   clock: AlarmClock,
   agentConf: AgentConfiguration,
   testEventBus: StandardEventBus[Any])
@@ -296,7 +294,7 @@ private[agent] final class AgentActor(
             Props {
               new AgentOrderKeeper(
                 subagent,
-                totalRunningSince,
+                clusterNode.recoveredExtract.totalRunningSince,
                 failedOverSubagentId,
                 requireNonNull(recoveredAgentState),
                 appointClusterNodes,
