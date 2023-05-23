@@ -7,7 +7,6 @@ import cats.effect.{ExitCase, Resource}
 import cats.syntax.flatMap.*
 import cats.syntax.traverse.*
 import com.softwaremill.diffx
-import com.typesafe.config.Config
 import izumi.reflect.Tag
 import java.nio.file.Path
 import js7.base.eventbus.EventPublisher
@@ -251,19 +250,18 @@ object ClusterNode
     journalLocation: JournalLocation,
     clusterConf: ClusterConf,
     eventIdClock: EventIdClock,
-    testEventBus: EventPublisher[Any],
-    config: Config)
+    testEventBus: EventPublisher[Any])
     (implicit S: SnapshotableState.Companion[S], scheduler: Scheduler, akkaTimeout: Timeout)
   : Resource[Task, ClusterNode[S]] =
     StateRecoverer
-      .resource[S](journalLocation, config)
+      .resource[S](journalLocation, clusterConf.config)
       .parZip(akkaResource/*start in parallel*/)
       .flatMap { case (recovered, actorSystem) =>
         implicit val a = actorSystem
         resource(
           recovered,
           clusterNodeApi(_, _, actorSystem),
-          licenseChecker, journalLocation, clusterConf, eventIdClock, testEventBus, config
+          licenseChecker, journalLocation, clusterConf, eventIdClock, testEventBus
         ).orThrow
       }
 
@@ -274,8 +272,7 @@ object ClusterNode
     journalLocation: JournalLocation,
     clusterConf: ClusterConf,
     eventIdClock: EventIdClock,
-    testEventBus: EventPublisher[Any],
-    config: Config)
+    testEventBus: EventPublisher[Any])
     (implicit
       S: SnapshotableState.Companion[S],
       scheduler: Scheduler,
@@ -300,7 +297,7 @@ object ClusterNode
           ClusterWatchCounterpart.resource(clusterConf, clusterConf.timing, testEventBus)
         common <- ClusterCommon.resource(clusterWatchCounterpart, clusterNodeApi, clusterConf,
           licenseChecker, testEventBus)
-        clusterNode <- resource(recovered, common, journalLocation, clusterConf, config,
+        clusterNode <- resource(recovered, common, journalLocation, clusterConf,
           new EventIdGenerator(eventIdClock),
           testEventBus)
       } yield clusterNode
@@ -311,7 +308,6 @@ object ClusterNode
     common: ClusterCommon,
     journalLocation: JournalLocation,
     clusterConf: ClusterConf,
-    config: Config,
     eventIdGenerator: EventIdGenerator,
     eventBus: EventPublisher[Any])
     (implicit
@@ -320,7 +316,7 @@ object ClusterNode
       actorSystem: ActorSystem,
       timeout: akka.util.Timeout)
   : Resource[Task, ClusterNode[S]] = {
-    import clusterConf.ownId
+    import clusterConf.{config, ownId}
 
     if (recovered.clusterState != Empty) logger.info(
       s"This is cluster $ownId, recovered ClusterState is ${recovered.clusterState}")
@@ -453,7 +449,7 @@ object ClusterNode
       assertThat(!passiveOrWorkingNode.get().exists(_.isLeft))
       val node = new PassiveClusterNode(ownId, setting, recovered,
         eventIdGenerator, initialFileEventId,
-        otherFailedOver, clusterConf, config, common)
+        otherFailedOver, clusterConf, common)
       passiveOrWorkingNode := Some(Left(node))
       node
     }

@@ -232,7 +232,7 @@ object RunningController
         (uri, name, actorSystem) => AkkaHttpControllerApi.resource(
           uri, clusterConf.peersUserAndPassword, httpsConfig, name = name)(actorSystem),
         new LicenseChecker(LicenseCheckContext(conf.configDirectory)),
-        journalLocation, clusterConf, eventIdClock, testEventBus, config)
+        journalLocation, clusterConf, eventIdClock, testEventBus)
 
     val resources = CorrelId.bindNew(clusterNodeResource)
       .parZip(CorrelId.bindNew(

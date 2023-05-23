@@ -33,24 +33,28 @@ final class AgentConfigurationTest extends OurTestSuite
           s"--config-directory=$config",
           s"--data-directory=$data")))
       c.createDirectories()
-      assert(c.copy(config = DefaultConfig) == AgentConfiguration(
-        configDirectory = config,
-        dataDirectory = data,
-        webServerPorts = Nil,
-        logDirectory = data / "logs",
-        jobWorkingDirectory = WorkingDirectory,
-        killScript = Some(ProcessKillScript(""))/*unused, replaced by SubagentConf.killScript*/,
-        akkaAskTimeout = 1.hour,
-        clusterConf = {
-          val clusterConf = ClusterConf
-            .fromConfig(UserId("USER"), DefaultConfig)
-            .orThrow
-          clusterConf.copy(
-            journalConf = clusterConf.journalConf.copy(
-              slowCheckState = sys.props.get("js7.test").fold(false)(StringAsBoolean(_))))
-        },
-        name = AgentConfiguration.DefaultName,
-        config = DefaultConfig))
+      assert(c.copy(
+        config = DefaultConfig,
+        clusterConf = c.clusterConf.copy(
+          config = DefaultConfig)) ==
+        AgentConfiguration(
+          configDirectory = config,
+          dataDirectory = data,
+          webServerPorts = Nil,
+          logDirectory = data / "logs",
+          jobWorkingDirectory = WorkingDirectory,
+          killScript = Some(ProcessKillScript("")) /*unused, replaced by SubagentConf.killScript*/ ,
+          akkaAskTimeout = 1.hour,
+          clusterConf = {
+            val clusterConf = ClusterConf
+              .fromConfig(UserId("USER"), DefaultConfig)
+              .orThrow
+            clusterConf.copy(
+              journalConf = clusterConf.journalConf.copy(
+                slowCheckState = sys.props.get("js7.test").fold(false)(StringAsBoolean(_))))
+          },
+          name = AgentConfiguration.DefaultName,
+          config = DefaultConfig))
     }
   }
 

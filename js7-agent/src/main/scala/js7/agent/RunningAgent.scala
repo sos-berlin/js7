@@ -165,7 +165,7 @@ object RunningAgent {
         (uri, label, actorSystem) => AgentClient.resource(
           uri, clusterConf.peersUserAndPassword, label, httpsConfig)(actorSystem),
         new LicenseChecker(LicenseCheckContext(conf.configDirectory)),
-        journalLocation, clusterConf, eventIdClock, testEventBus, config)
+        journalLocation, clusterConf, eventIdClock, testEventBus)
 
     def initialize(): Unit = {
       if (!StartUp.isMain) logger.debug("JS7 Agent starting ...\n" + "┈" * 80)

@@ -43,7 +43,8 @@ final class ClusterConfTest extends OurTestSuite
             delay = 1.s,
             failureDelay = 5.s),
           ClusterTiming(7.s, 5.s),
-        clusterWatchUniquenessMemorySize = 100)))
+          clusterWatchUniquenessMemorySize = 100,
+          config = config)))
     }
 
     "Full configuration" in {
@@ -81,7 +82,8 @@ final class ClusterConfTest extends OurTestSuite
             delay = 1.s,
             failureDelay = 5.s),
           ClusterTiming(7.s, 5.s),
-          clusterWatchUniquenessMemorySize = 100)))
+          clusterWatchUniquenessMemorySize = 100,
+          config = config)))
     }
   }
 }

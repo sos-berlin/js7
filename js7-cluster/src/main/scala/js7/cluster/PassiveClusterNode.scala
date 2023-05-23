@@ -2,7 +2,6 @@ package js7.cluster
 
 import cats.effect.concurrent.Deferred
 import com.softwaremill.diffx
-import com.typesafe.config.Config
 import io.circe.syntax.*
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
@@ -61,11 +60,10 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
   initialFileEventId: Option[EventId],
   otherFailed: Boolean,
   clusterConf: ClusterConf,
-  config: Config,
   common: ClusterCommon)
   (implicit S: SnapshotableState.Companion[S])
 {
-  import clusterConf.journalConf
+  import clusterConf.{config, journalConf}
   import recovered.{eventWatch, journalLocation}
   import setting.{activeId, idToUri}
 

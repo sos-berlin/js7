@@ -25,7 +25,8 @@ final case class ClusterConf(
   timing: ClusterTiming,
   clusterWatchUniquenessMemorySize: Int,
   testHeartbeatLossPropertyKey: Option[String] = None,
-  testAckLossPropertyKey: Option[String] = None)
+  testAckLossPropertyKey: Option[String] = None,
+  config: Config)
 {
   def isPrimary = !isBackup
 }
@@ -82,6 +83,7 @@ object ClusterConf
         timing,
         clusterWatchUniquenessMemorySize,
         testHeartbeatLoss,
-        testAckLoss)
+        testAckLoss,
+        config = config)
   }
 }
