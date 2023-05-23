@@ -48,7 +48,7 @@ private[journal] trait TestJournalMixin extends BeforeAndAfterAll { this: Suite 
   protected lazy val directory = createTempDirectory("JournalTest-")
   private val disturbanceCounter = new AtomicInteger
 
-  protected val journalMeta = testJournalMeta(directory / "test")
+  protected val journalLocation = testJournalMeta(directory / "test")
 
   override def afterAll() = {
     deleteDirectoryRecursively(directory)
@@ -61,7 +61,7 @@ private[journal] trait TestJournalMixin extends BeforeAndAfterAll { this: Suite 
     try {
       DeadLetterActor.subscribe(actorSystem, (logLevel,  msg) => logger.log(logLevel, msg()))
       val whenJournalStopped = Promise[Unit]()
-      val actor = actorSystem.actorOf(Props { new TestActor(config_, journalMeta, whenJournalStopped) }, "TestActor")
+      val actor = actorSystem.actorOf(Props { new TestActor(config_, journalLocation, whenJournalStopped) }, "TestActor")
       body(actorSystem, actor)
       sleep(100.ms)  // Wait to let Terminated message of aggregate actors arrive at JournalActor (???)
       (actor ? TestActor.Input.Terminate) await 99.s
@@ -136,7 +136,7 @@ private[journal] trait TestJournalMixin extends BeforeAndAfterAll { this: Suite 
     }).toSet
 
   protected final def journalJsons: Vector[Json] =
-    journalJsons(journalMeta.currentFile.orThrow)
+    journalJsons(journalLocation.currentFile.orThrow)
 
   protected final def journalJsons(file: Path): Vector[Json] =
     autoClosing(InputStreamJsonSeqReader.open(file)) { reader =>

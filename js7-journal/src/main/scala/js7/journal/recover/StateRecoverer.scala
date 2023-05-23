@@ -11,7 +11,7 @@ import js7.base.utils.SetOnce
 import js7.common.jsonseq.InputStreamJsonSeqReader
 import js7.common.utils.UntilNoneIterator
 import js7.data.event.{EventId, SnapshotableState}
-import js7.journal.data.JournalMeta
+import js7.journal.data.JournalLocation
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.recover.JournalProgress.{AfterSnapshotSection, InCommittedEventsSection}
 import js7.journal.recover.StateRecoverer.*
@@ -21,7 +21,7 @@ import scala.concurrent.duration.Deadline.now
 
 private final class StateRecoverer[S <: SnapshotableState[S]](
   protected val file: Path,
-  journalMeta: JournalMeta,
+  journalLocation: JournalLocation,
   newFileJournaledStateBuilder: () => FileSnapshotableStateBuilder[S])
   (implicit S: SnapshotableState.Companion[S])
 {
@@ -49,7 +49,7 @@ private final class StateRecoverer[S <: SnapshotableState[S]](
           _firstEventPosition := jsonReader.position
         }
       }
-      for (h <- fileJournaledStateBuilder.fileJournalHeader if journalMeta.file(h.eventId) != file) {
+      for (h <- fileJournaledStateBuilder.fileJournalHeader if journalLocation.file(h.eventId) != file) {
         sys.error(s"JournalHeaders eventId=${h.eventId} does not match the filename '${file.getFileName}'")
       }
       fileJournaledStateBuilder.logStatistics()
@@ -67,31 +67,31 @@ object StateRecoverer
 {
   private val logger = Logger(getClass)
 
-  def resource[S <: SnapshotableState[S]](journalMeta: JournalMeta, config: Config)
+  def resource[S <: SnapshotableState[S]](journalLocation: JournalLocation, config: Config)
     (implicit S: SnapshotableState.Companion[S])
   : Resource[Task, Recovered[S]] =
     Resource.fromAutoCloseable(Task(
-      StateRecoverer.recover[S](journalMeta, config)))
+      StateRecoverer.recover[S](journalLocation, config)))
 
   def recover[S <: SnapshotableState[S]](
-    journalMeta: JournalMeta,
+    journalLocation: JournalLocation,
     config: Config,
     runningSince: Deadline = now)
     (implicit S: SnapshotableState.Companion[S])
   : Recovered[S] = {
-    val file = journalMeta.currentFile.toOption
+    val file = journalLocation.currentFile.toOption
     val fileJournaledStateBuilder = new FileSnapshotableStateBuilder(
-      journalFileForInfo = file getOrElse journalMeta.file(EventId.BeforeFirst)/*the expected new filename*/,
+      journalFileForInfo = file getOrElse journalLocation.file(EventId.BeforeFirst)/*the expected new filename*/,
       expectedJournalId = None)
 
     file match {
       case Some(file) =>
-        val recoverer = new StateRecoverer(file, journalMeta, () => fileJournaledStateBuilder)
+        val recoverer = new StateRecoverer(file, journalLocation, () => fileJournaledStateBuilder)
         recoverer.recoverAll()
         val nextJournalHeader = fileJournaledStateBuilder.nextJournalHeader
           .getOrElse(sys.error(s"Missing JournalHeader in file '${file.getFileName}'"))
         Recovered.fromJournalFile(
-          journalMeta,
+          journalLocation,
           RecoveredJournalFile(
             file,
             length = recoverer.position,
@@ -108,7 +108,7 @@ object StateRecoverer
       case None =>
         // An active cluster node will start a new journal
         // A passive cluster node will provide the JournalId later
-        Recovered.noJournalFile(journalMeta, runningSince, config)
+        Recovered.noJournalFile(journalLocation, runningSince, config)
     }
   }
 }

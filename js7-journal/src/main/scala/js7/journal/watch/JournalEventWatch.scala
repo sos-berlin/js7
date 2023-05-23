@@ -24,7 +24,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{CloseableIterator, SetOnce}
 import js7.common.jsonseq.PositionAnd
 import js7.data.event.{Event, EventId, JournalHeader, JournalId, JournalInfo, JournalPosition, KeyedEvent, Stamped}
-import js7.journal.data.JournalMeta
+import js7.journal.data.JournalLocation
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.watch.JournalEventWatch.*
 import monix.eval.Task
@@ -41,7 +41,7 @@ import scala.util.Try
   * The last one (with highest after-EventId) is the currently written file while the others are historic.
   */
 final class JournalEventWatch(
-  val journalMeta: JournalMeta,
+  val journalLocation: JournalLocation,
   config: Config,
   announceNextFileEventId: Option[EventId] = None)
 extends AutoCloseable
@@ -50,7 +50,7 @@ with FileEventWatch
 with JournalingObserver
 {
   logger.debug(
-    s"new JournalEventWatch($journalMeta, announceNextFileEventId=$announceNextFileEventId)")
+    s"new JournalEventWatch($journalLocation, announceNextFileEventId=$announceNextFileEventId)")
 
   private val keepOpenCount = config.getInt("js7.journal.watch.keep-open")
   private val releaseEventsDelay =
@@ -59,7 +59,7 @@ with JournalingObserver
   // Read journal file names from directory while constructing
   @volatile private var fileEventIdToHistoric: SortedMap[EventId, HistoricJournalFile] =
     SortedMap.empty[EventId, HistoricJournalFile] ++
-      journalMeta.listJournalFiles
+      journalLocation.listJournalFiles
         .map(o => new HistoricJournalFile(o.fileEventId, o.file))
         .toKeyedMap(_.fileEventId)
   for (historic <- fileEventIdToHistoric.values) logger.debug(historic.toString)
@@ -119,7 +119,7 @@ with JournalingObserver
     journalIdOnce.toOption match {
       case None => journalIdOnce := expectedJournalId
       case Some(o) => require(expectedJournalId == o, s"JournalId $o does not match expected $expectedJournalId")
-        //throw JournalIdMismatchProblem(journalMeta.fileBase, expectedJournalId = expectedJournalId, o).throwable
+        //throw JournalIdMismatchProblem(journalLocation.fileBase, expectedJournalId = expectedJournalId, o).throwable
     }
     synchronized {
       _isActiveNode = isActiveNode
@@ -146,7 +146,7 @@ with JournalingObserver
       }
 
       val currentEventReader = new CurrentEventReader(
-        journalMeta,
+        journalLocation,
         expectedJournalId,
         firstEventPositionAndFileEventId, flushedLengthAndEventId,
         isActiveNode = isActiveNode, config)
@@ -228,7 +228,7 @@ with JournalingObserver
   }
 
   private def deleteGarbageFiles(untilFileEventId: EventId): Unit =
-    for (file <- journalMeta.listGarbageFiles(untilFileEventId = untilFileEventId)) {
+    for (file <- journalLocation.listGarbageFiles(untilFileEventId = untilFileEventId)) {
       logger.info(s"Delete garbage journal file '${file.getFileName}'")
       try delete(file)
       catch { case e: IOException =>
@@ -250,7 +250,7 @@ with JournalingObserver
 
   def snapshotAfter(after: EventId) =
     rawSnapshotAfter(after)
-      .map(_.mapParallelBatch()(_.parseJsonAs(journalMeta.snapshotObjectJsonCodec).orThrow))
+      .map(_.mapParallelBatch()(_.parseJsonAs(journalLocation.snapshotObjectJsonCodec).orThrow))
 
   def rawSnapshotAfter(after: EventId) =
     maybeCurrentEventReader match {
@@ -279,7 +279,7 @@ with JournalingObserver
     result
   }
 
-  override def toString = s"JournalEventWatch(${journalMeta.name})"
+  override def toString = s"JournalEventWatch(${journalLocation.name})"
 
   private def historicEventsAfter(after: EventId): Option[CloseableIterator[Stamped[KeyedEvent[Event]]]] =
     historicJournalFileAfter(after) flatMap { historicJournalFile =>
@@ -394,7 +394,7 @@ with JournalingObserver
     def eventReader: EventReader =
       _eventReader.get() match {
         case null =>
-          val r = new HistoricEventReader(journalMeta, journalIdOnce.orThrow,
+          val r = new HistoricEventReader(journalLocation, journalIdOnce.orThrow,
             fileEventId = fileEventId, file, config)
           if (_eventReader.compareAndSet(null, r)) {
             logger.debug(s"Using $r")
@@ -431,7 +431,7 @@ with JournalingObserver
   }
 
   private def checkedCurrentEventReader: Checked[CurrentEventReader] =
-    maybeCurrentEventReader.toChecked(JournalFileIsNotReadyProblem(journalMeta.fileBase))
+    maybeCurrentEventReader.toChecked(JournalFileIsNotReadyProblem(journalLocation.fileBase))
 }
 
 object JournalEventWatch

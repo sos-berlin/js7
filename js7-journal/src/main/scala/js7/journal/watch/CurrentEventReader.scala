@@ -6,14 +6,14 @@ import js7.base.stream.IncreasingNumberSync
 import js7.base.utils.CloseableIterator
 import js7.common.jsonseq.PositionAnd
 import js7.data.event.{EventId, JournalId, JournalPosition}
-import js7.journal.data.JournalMeta
+import js7.journal.data.JournalLocation
 import js7.journal.files.JournalFiles.JournalMetaOps
 
 /**
   * @author Joacim Zschimmer
   */
 private[watch] final class CurrentEventReader(
-  protected val journalMeta: JournalMeta,
+  protected val journalLocation: JournalLocation,
   protected val expectedJournalId: JournalId,
   /** Length and after-EventId of initialized and empty journal. */
   firstEventPositionAndFileEventId: PositionAnd[EventId],
@@ -25,7 +25,7 @@ extends EventReader
   protected def isHistoric = false
   protected def firstEventPosition = firstEventPositionAndFileEventId.position
   def fileEventId = firstEventPositionAndFileEventId.value
-  val journalFile = journalMeta.file(after = fileEventId)
+  val journalFile = journalLocation.file(after = fileEventId)
 
   /** May contain size(file) + 1 to allow EOF detection. */
   private val flushedLengthSync = new IncreasingNumberSync(initial = 0, o => s"position $o")

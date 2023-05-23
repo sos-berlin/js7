@@ -30,7 +30,7 @@ import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.{AnyKeyedEvent, EventId, JournalEvent, JournalHeader, KeyedEvent, SnapshotableState, Stamped}
 import js7.journal.JournalActor.*
 import js7.journal.configuration.JournalConf
-import js7.journal.data.JournalMeta
+import js7.journal.data.JournalLocation
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.log.JournalLogger.Loggable
 import js7.journal.watch.JournalingObserver
@@ -47,7 +47,7 @@ import scala.util.control.NonFatal
   * @author Joacim Zschimmer
   */
 final class JournalActor[S <: SnapshotableState[S]: diffx.Diff] private(
-  journalMeta: JournalMeta,
+  journalLocation: JournalLocation,
   protected val conf: JournalConf,
   keyedEventBus: EventPublisher[Stamped[AnyKeyedEvent]],
   scheduler: Scheduler,
@@ -56,7 +56,7 @@ final class JournalActor[S <: SnapshotableState[S]: diffx.Diff] private(
   (implicit S: SnapshotableState.Companion[S])
 extends Actor with Stash with JournalLogging
 {
-  assert(journalMeta.S eq S)
+  assert(journalLocation.S eq S)
 
   import context.{become, stop}
 
@@ -130,7 +130,7 @@ extends Actor with Stash with JournalLogging
       eventIdGenerator.updateLastEventId(lastWrittenEventId)
       val sender = this.sender()
       locally {
-        val file = toSnapshotTemporary(journalMeta.file(after = lastWrittenEventId))
+        val file = toSnapshotTemporary(journalLocation.file(after = lastWrittenEventId))
         if (exists(file)) {
           logger.warn(s"JournalWriter: Deleting existent file '$file'")
           delete(file)
@@ -525,12 +525,12 @@ extends Actor with Stash with JournalLogging
       eventId = lastWrittenEventId,
       totalEventCount = totalEventCount,
       totalRunningTime = totalRunningSince.elapsed roundUpToNext 1.ms)
-    val file = journalMeta.file(after = lastWrittenEventId)
+    val file = journalLocation.file(after = lastWrittenEventId)
 
     logger.info(s"Starting new journal file #${journalHeader.generation} '${file.getFileName}' with a snapshot")
     logger.debug(journalHeader.toString)
 
-    snapshotWriter = new SnapshotJournalWriter(journalMeta.S, toSnapshotTemporary(file), after = lastWrittenEventId,
+    snapshotWriter = new SnapshotJournalWriter(journalLocation.S, toSnapshotTemporary(file), after = lastWrittenEventId,
       simulateSync = conf.simulateSync)(scheduler)
     snapshotWriter.writeHeader(journalHeader)
     snapshotWriter.beginSnapshotSection()
@@ -588,7 +588,7 @@ extends Actor with Stash with JournalLogging
     lastSnapshotTakenEventId = snapshotTaken.eventId
     snapshotWriter.closeAndLog()
 
-    move(snapshotWriter.file, journalMeta.file(after = fileEventId), ATOMIC_MOVE)
+    move(snapshotWriter.file, journalLocation.file(after = fileEventId), ATOMIC_MOVE)
     snapshotWriter = null
 
     eventWriter = newEventJsonWriter(after = fileEventId)
@@ -599,12 +599,12 @@ extends Actor with Stash with JournalLogging
 
   private def newEventJsonWriter(after: EventId, withoutSnapshots: Boolean = false) = {
     assertThat(journalHeader != null)
-    val file = journalMeta.file(after = after)
-    val w = new EventJournalWriter(journalMeta.S, file,
+    val file = journalLocation.file(after = after)
+    val w = new EventJournalWriter(journalLocation.S, file,
       after = after, journalHeader.journalId,
       journalingObserver.orThrow, simulateSync = conf.simulateSync,
       withoutSnapshots = withoutSnapshots, initialEventCount = 1/*SnapshotTaken*/)(scheduler)
-    journalMeta.updateSymbolicLink(file)
+    journalLocation.updateSymbolicLink(file)
     w
   }
 
@@ -652,7 +652,7 @@ extends Actor with Stash with JournalLogging
       case None =>
         // Without a JournalingObserver, we can delete all previous journal files (for Agent)
         val until = untilEventId min journalHeader.eventId
-        for (j <- journalMeta.listJournalFiles if j.fileEventId < until) {
+        for (j <- journalLocation.listJournalFiles if j.fileEventId < until) {
           val file = j.file
           assertThat(file != eventWriter.file)
           try delete(file)
@@ -704,7 +704,7 @@ object JournalActor
   //private val ClusterNodeHasBeenSwitchedOverProblem = Problem.pure("After switchover, this cluster node is no longer active")
 
   def props[S <: SnapshotableState[S]: SnapshotableState.Companion: diffx.Diff](
-    journalMeta: JournalMeta,
+    journalLocation: JournalLocation,
     conf: JournalConf,
     keyedEventBus: EventPublisher[Stamped[AnyKeyedEvent]],
     scheduler: Scheduler,
@@ -712,7 +712,7 @@ object JournalActor
     stopped: Promise[Stopped] = Promise())
   =
     Props {
-      new JournalActor[S](journalMeta, conf, keyedEventBus, scheduler, eventIdGenerator, stopped)
+      new JournalActor[S](journalLocation, conf, keyedEventBus, scheduler, eventIdGenerator, stopped)
     }
 
   private def toSnapshotTemporary(file: Path) = file.resolveSibling(s"${file.getFileName}$TmpSuffix")

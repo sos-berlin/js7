@@ -8,7 +8,7 @@ import js7.base.utils.Assertions.assertThat
 import js7.common.jsonseq.PositionAnd
 import js7.data.event.JournalSeparators.{Commit, Transaction}
 import js7.data.event.{Event, EventId, JournalId, JournaledState, KeyedEvent, Stamped}
-import js7.journal.data.JournalMeta
+import js7.journal.data.JournalLocation
 import js7.journal.files.JournalFiles.*
 import js7.journal.watch.JournalingObserver
 import js7.journal.write.EventJournalWriter.*
@@ -120,11 +120,11 @@ private[journal] object EventJournalWriter
   private val TransactionByteArray = Transaction.asJson.toByteArray
   private val CommitByteArray = Commit.asJson.toByteArray
 
-  def forTest(journalMeta: JournalMeta, after: EventId, journalId: JournalId,
+  def forTest(journalLocation: JournalLocation, after: EventId, journalId: JournalId,
     observer: Option[JournalingObserver] = None, withoutSnapshots: Boolean = true)
     (implicit scheduler: Scheduler)
   =
-    new EventJournalWriter(journalMeta.S, journalMeta.file(after), after, journalId, observer,
+    new EventJournalWriter(journalLocation.S, journalLocation.file(after), after, journalId, observer,
       simulateSync = None, withoutSnapshots = withoutSnapshots)
 
   final class SerializationException(cause: Throwable) extends RuntimeException("JSON serialization error", cause)

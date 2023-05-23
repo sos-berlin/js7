@@ -149,7 +149,7 @@ object RunningAgent {
     testWiring: TestWiring = TestWiring.empty)
     (implicit scheduler: Scheduler)
   : Resource[Task, RunningAgent] = Resource.suspend(Task {
-    import conf.{clusterConf, config, httpsConfig, implicitAkkaAskTimeout, journalMeta}
+    import conf.{clusterConf, config, httpsConfig, implicitAkkaAskTimeout, journalLocation}
 
     // Recover and initialize other stuff in parallel
     val clock = testWiring.alarmClock getOrElse AlarmClock(
@@ -165,12 +165,12 @@ object RunningAgent {
         (uri, label, actorSystem) => AgentClient.resource(
           uri, clusterConf.peersUserAndPassword, label, httpsConfig)(actorSystem),
         new LicenseChecker(LicenseCheckContext(conf.configDirectory)),
-        journalMeta, clusterConf, eventIdClock, testEventBus, config)
+        journalLocation, clusterConf, eventIdClock, testEventBus, config)
 
     def initialize(): Unit = {
       if (!StartUp.isMain) logger.debug("JS7 Agent starting ...\n" + "┈" * 80)
       conf.createDirectories()
-      conf.journalMeta.deleteJournalIfMarked().orThrow
+      conf.journalLocation.deleteJournalIfMarked().orThrow
     }
 
     for {

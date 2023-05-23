@@ -66,7 +66,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
   (implicit S: SnapshotableState.Companion[S])
 {
   import clusterConf.journalConf
-  import recovered.{eventWatch, journalMeta}
+  import recovered.{eventWatch, journalLocation}
   import setting.{activeId, idToUri}
 
   private val jsonReadAhead = config.getInt("js7.web.client.json-read-ahead")
@@ -491,7 +491,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
                 isReplicatingHeadOfFile = false
                 out.close()
                 move(tmpFile, file, ATOMIC_MOVE)
-                journalMeta.updateSymbolicLink(file)
+                journalLocation.updateSymbolicLink(file)
                 logger.info(s"Snapshot '${file.getFileName}' " +
                   s"(${EventId.toString(continuation.fileEventId)}) replicated - " +
                   bytesPerSecondString(startedAt.elapsed, size(file)))
@@ -680,7 +680,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
       def lastProperEventPosition: Long
       def maybeJournalId: Option[JournalId]
       def maybeRecoveredJournalFile: Option[RecoveredJournalFile[S]]
-      final lazy val file = journalMeta.file(fileEventId)
+      final lazy val file = journalLocation.file(fileEventId)
     }
 
     private[PassiveClusterNode] sealed trait HasRecoveredJournalFile

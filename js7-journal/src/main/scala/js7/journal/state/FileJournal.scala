@@ -143,7 +143,7 @@ object FileJournal
   : Resource[Task, FileJournal[S]] = {
     Resource.make(
       acquire = Task.defer {
-        import recovered.journalMeta
+        import recovered.journalLocation
         val S = implicitly[SnapshotableState.Companion[S]]
         val journalId = recovered.journalId getOrElse JournalId.random()
 
@@ -154,7 +154,7 @@ object FileJournal
         val journalActorStopped = Promise[JournalActor.Stopped]()
         val journalActor = actorRefFactory
           .actorOf(
-            JournalActor.props[S](journalMeta, journalConf, keyedEventBus, scheduler,
+            JournalActor.props[S](journalLocation, journalConf, keyedEventBus, scheduler,
               eventIdGenerator, journalActorStopped),
             "Journal")
           .taggedWith[JournalActor.type]

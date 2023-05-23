@@ -45,7 +45,7 @@ import js7.data.workflow.WorkflowPath
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
 import js7.journal.configuration.JournalConf
-import js7.journal.data.JournalMeta
+import js7.journal.data.JournalLocation
 import js7.journal.recover.Recovered
 import js7.journal.state.FileJournal
 import js7.launcher.configuration.JobLauncherConf
@@ -195,8 +195,8 @@ private object OrderActorTest {
       blockingJobScheduler = globalIOX.scheduler,
       AlarmClock())
 
-    private val journalMeta = JournalMeta(AgentState, dir / "data" / "state" / "agent")
-    private val recovered = Recovered.noJournalFile[AgentState](journalMeta, now, config)
+    private val journalLocation = JournalLocation(AgentState, dir / "data" / "state" / "agent")
+    private val recovered = Recovered.noJournalFile[AgentState](journalLocation, now, config)
     private val (journal, stopJournal) = FileJournal
       .resource(recovered, JournalConf.fromConfig(config))
       .allocated

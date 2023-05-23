@@ -30,7 +30,7 @@ import js7.data.event.{EventId, JournalHeaders, JournalId, Stamped}
 import js7.data.order.OrderEvent.OrderAdded
 import js7.data.order.OrderId
 import js7.data.workflow.WorkflowPath
-import js7.journal.data.JournalMeta
+import js7.journal.data.JournalLocation
 import js7.journal.files.JournalFiles.*
 import js7.journal.watch.JournalEventWatch
 import js7.journal.web.JournalRoute
@@ -53,11 +53,11 @@ final class JournalRouteTest extends OurTestSuite with RouteTester with JournalR
   protected def whenShuttingDown = Future.never
   protected implicit def scheduler: Scheduler = Scheduler.traced
   private lazy val directory = createTempDirectory("JournalRouteTest-")
-  private lazy val journalMeta = JournalMeta(ControllerState, directory / "test")
+  private lazy val journalLocation = JournalLocation(ControllerState, directory / "test")
   override protected def config = config"js7.web.chunk-size = 1MiB"
     .withFallback(JournalEventWatch.TestConfig)
     .withFallback(super.config)
-  protected var eventWatch: JournalEventWatch = new JournalEventWatch(journalMeta, config)
+  protected var eventWatch: JournalEventWatch = new JournalEventWatch(journalLocation, config)
   private val journalId = JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))
   private var eventWriter: EventJournalWriter = null
 
@@ -72,7 +72,7 @@ final class JournalRouteTest extends OurTestSuite with RouteTester with JournalR
 
   override def beforeAll() = {
     super.beforeAll()
-    eventWatch = new JournalEventWatch(journalMeta, config)
+    eventWatch = new JournalEventWatch(journalLocation, config)
     allocatedWebServer
     writeSnapshot(EventId.BeforeFirst)
     eventWriter = newEventJournalWriter(EventId.BeforeFirst)
@@ -87,7 +87,7 @@ final class JournalRouteTest extends OurTestSuite with RouteTester with JournalR
   }
 
   implicit private val sessionToken: Task[Option[SessionToken]] = Task.pure(None)
-  private lazy val file0 = journalMeta.file(0L)
+  private lazy val file0 = journalLocation.file(0L)
 
   "/journal from start" in {
     val lines = client.getRawLinesObservable(Uri(s"$uri/journal?timeout=0&file=0&position=0"))
@@ -107,7 +107,7 @@ final class JournalRouteTest extends OurTestSuite with RouteTester with JournalR
     var observing: CancelableFuture[Unit] = null
 
     "Nothing yet written" in {
-      val initialFileLength = size(journalMeta.file(0L))
+      val initialFileLength = size(journalLocation.file(0L))
       observing = client
         .getRawLinesObservable(Uri(s"$uri/journal?timeout=9&markEOF=true&file=0&position=$initialFileLength"))
         .await(99.s).foreach(observed += _.utf8String)
@@ -156,14 +156,14 @@ final class JournalRouteTest extends OurTestSuite with RouteTester with JournalR
     eventWatch.close()
 
     writeSnapshot(2000L)
-    val file2 = journalMeta.file(2000L)
+    val file2 = journalLocation.file(2000L)
     val file2size = size(file2)
     file2 ++= "{"  // Truncated record
 
-    val file3 = journalMeta.file(3000L)
+    val file3 = journalLocation.file(3000L)
     writeSnapshot(3000L)
 
-    eventWatch = new JournalEventWatch(journalMeta, config)
+    eventWatch = new JournalEventWatch(journalLocation, config)
     eventWatch.onJournalingStarted(file3, journalId,
       PositionAnd(size(file3), 3000L), PositionAnd(size(file3), 3000L), isActiveNode = true)
 
@@ -175,12 +175,12 @@ final class JournalRouteTest extends OurTestSuite with RouteTester with JournalR
   }
 
   "Acknowledgements" - {
-    lazy val file4 = journalMeta.file(4000L)
+    lazy val file4 = journalLocation.file(4000L)
 
     "Reading acknowledgements from active node is pointless and rejected" in {
       writeSnapshot(4000L)
       val file4size = size(file4)
-      eventWatch = new JournalEventWatch(journalMeta, config)
+      eventWatch = new JournalEventWatch(journalLocation, config)
       eventWatch.onJournalingStarted(file4, journalId, PositionAnd(file4size, 4000L), PositionAnd(file4size, 4000L), isActiveNode = true)
       val bad = HttpClient.liftProblem(client.getRawLinesObservable(Uri(
         s"$uri/journal?timeout=0&markEOF=true&file=4000&position=$file4size&return=ack")))
@@ -192,7 +192,7 @@ final class JournalRouteTest extends OurTestSuite with RouteTester with JournalR
 
     "Reading acknowledgements from passive node is good" in {
       val file4size = size(file4)
-      eventWatch = new JournalEventWatch(journalMeta, config)
+      eventWatch = new JournalEventWatch(journalLocation, config)
       eventWatch.onJournalingStarted(file4, journalId, PositionAnd(file4size, 4000L), PositionAnd(file4size, 4000L), isActiveNode = false)
       val lines = client.getRawLinesObservable(Uri(s"$uri/journal?timeout=0&markEOF=true&file=4000&position=$file4size&return=ack"))
         .await(99.s).toListL.await(99.s)
@@ -212,8 +212,8 @@ final class JournalRouteTest extends OurTestSuite with RouteTester with JournalR
     }
 
   private def newSnapshotJournalWriter(eventId: EventId) =
-    new SnapshotJournalWriter(journalMeta.S, journalMeta.file(eventId), after = eventId, simulateSync = None)
+    new SnapshotJournalWriter(journalLocation.S, journalLocation.file(eventId), after = eventId, simulateSync = None)
 
   private def newEventJournalWriter(eventId: EventId) =
-    new EventJournalWriter(journalMeta.S, journalMeta.file(eventId), after = eventId, journalId, Some(eventWatch), simulateSync = None)
+    new EventJournalWriter(journalLocation.S, journalLocation.file(eventId), after = eventId, journalId, Some(eventWatch), simulateSync = None)
 }

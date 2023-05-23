@@ -66,7 +66,7 @@ abstract class FailoverControllerClusterTest protected extends ControllerCluster
         backupController.eventWatch.await[ClusterFailedOver](_.key == NoKey).head
       assert(failedOver.failedAt.fileEventId == backupController.eventWatch.fileEventIds.last ||
              failedOver.failedAt.fileEventId == backupController.eventWatch.fileEventIds.dropRight(1).last)
-      val expectedFailedFile = primaryController.conf.journalMeta.file(failedOver.failedAt.fileEventId)
+      val expectedFailedFile = primaryController.conf.journalLocation.file(failedOver.failedAt.fileEventId)
       assert(failedOver.failedAt.position == size(expectedFailedFile))
 
       waitForCondition(10.s, 10.ms)(backupController.clusterState.await(99.s).isInstanceOf[FailedOver])  // Is a delay okay ???

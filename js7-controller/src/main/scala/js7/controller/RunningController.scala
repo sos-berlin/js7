@@ -221,7 +221,7 @@ object RunningController
     eventIdClock: EventIdClock)
     (implicit scheduler: Scheduler, iox: IOExecutor)
   : Resource[Task, RunningController] = {
-    import conf.{clusterConf, config, httpsConfig, implicitAkkaAskTimeout, journalMeta}
+    import conf.{clusterConf, config, httpsConfig, implicitAkkaAskTimeout, journalLocation}
 
     val testEventBus = new StandardEventBus[Any]
 
@@ -232,7 +232,7 @@ object RunningController
         (uri, name, actorSystem) => AkkaHttpControllerApi.resource(
           uri, clusterConf.peersUserAndPassword, httpsConfig, name = name)(actorSystem),
         new LicenseChecker(LicenseCheckContext(conf.configDirectory)),
-        journalMeta, clusterConf, eventIdClock, testEventBus, config)
+        journalLocation, clusterConf, eventIdClock, testEventBus, config)
 
     val resources = CorrelId.bindNew(clusterNodeResource)
       .parZip(CorrelId.bindNew(

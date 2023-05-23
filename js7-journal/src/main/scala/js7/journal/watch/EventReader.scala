@@ -19,7 +19,7 @@ import js7.common.jsonseq.InputStreamJsonSeqReader.JsonSeqFileClosedProblem
 import js7.common.jsonseq.{InputStreamJsonSeqReader, PositionAnd}
 import js7.common.utils.UntilNoneIterator
 import js7.data.event.{Event, EventId, JournalId, JournalSeparators, KeyedEvent, Stamped}
-import js7.journal.data.JournalMeta
+import js7.journal.data.JournalLocation
 import js7.journal.recover.JournalReader
 import js7.journal.watch.EventReader.*
 import monix.eval.Task
@@ -34,7 +34,7 @@ private[watch] trait EventReader
 extends AutoCloseable
 {
   /** `committedLength` does not grow if `isOwnJournalIndex`. */
-  protected def journalMeta: JournalMeta
+  protected def journalLocation: JournalLocation
   protected def expectedJournalId: JournalId
   protected def isHistoric: Boolean
   protected def journalFile: Path
@@ -53,7 +53,7 @@ extends AutoCloseable
   private lazy val journalIndexFactor = config.getInt("js7.journal.watch.index-factor")
   private lazy val limitTailRecM = config.getInt("js7.monix.tailrecm-limit")
   protected final lazy val iteratorPool = new FileEventIteratorPool(
-    journalMeta, expectedJournalId, journalFile, fileEventId, () => committedLength)
+    journalLocation, expectedJournalId, journalFile, fileEventId, () => committedLength)
   @volatile
   private var _closeAfterUse = false
   @volatile
@@ -165,10 +165,10 @@ extends AutoCloseable
   }
 
   final def snapshot: Observable[Any] =
-    JournalReader.snapshot(journalMeta.S, journalFile, expectedJournalId)
+    JournalReader.snapshot(journalLocation.S, journalFile, expectedJournalId)
 
   final def rawSnapshot: Observable[ByteArray] =
-    JournalReader.rawSnapshot(journalMeta.S, journalFile, expectedJournalId)
+    JournalReader.rawSnapshot(journalLocation.S, journalFile, expectedJournalId)
 
   /** Observes a journal file lines and length. */
   final def observeFile(position: Long, timeout: FiniteDuration, markEOF: Boolean = false, onlyAcks: Boolean)

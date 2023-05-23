@@ -4,7 +4,7 @@ import js7.base.io.file.FileUtils.*
 import js7.base.test.OurTestSuite
 import js7.base.utils.AutoClosing.autoClosing
 import js7.data.event.{JournalHeaders, Stamped}
-import js7.journal.data.JournalMeta
+import js7.journal.data.JournalLocation
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.watch.HistoricEventReaderTest.*
 import js7.journal.watch.TestData.{AEvent, BEvent, TestState, journalId}
@@ -18,16 +18,16 @@ final class HistoricEventReaderTest extends OurTestSuite
 {
   "eventsAfter" in {
     withTemporaryDirectory("HistoricEventReaderTest-") { dir =>
-      val journalMeta = JournalMeta(TestState, dir resolve "test")
+      val journalLocation = JournalLocation(TestState, dir resolve "test")
 
-      autoClosing(EventJournalWriter.forTest(journalMeta, after = After, journalId)) { writer =>
+      autoClosing(EventJournalWriter.forTest(journalLocation, after = After, journalId)) { writer =>
         writer.writeHeader(JournalHeaders.forTest(TestState.name, journalId, eventId = After))
         writer.beginEventSection(sync = false)
         writer.writeEvents(TestEvents)
         writer.endEventSection(sync = false)
       }
 
-      autoClosing(new HistoricEventReader(journalMeta, journalId, fileEventId = After, journalMeta.file(After), JournalEventWatch.TestConfig)) { reader =>
+      autoClosing(new HistoricEventReader(journalLocation, journalId, fileEventId = After, journalLocation.file(After), JournalEventWatch.TestConfig)) { reader =>
         assert(reader.eventsAfter(After + 5) == None)
         assert(reader.eventsAfter(After + 15) == None)
         assert(reader.eventsAfter(After + 25) == None)

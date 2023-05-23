@@ -15,8 +15,8 @@ final class StateRecovererTest extends OurTestSuite
   //  // Lesen einer abgebrochenen Transaktion liefert korrekten Zustand und Datei-Position (vor der Transaktion)
   //  val config = ConfigFactory.empty
   //  FileUtils.withTemporaryFile("StateRecovererTest", ".tmp") { file =>
-  //    val journalMeta = JournalMeta(snapshotObjectJsonCodec, keyedEventJsonCodec, Paths.get(file.toString + "-test"))
-  //    StateRecoverer.recover[TestState, TestEvent](journalMeta, newStateBuilder, config)
+  //    val journalLocation = JournalLocation(snapshotObjectJsonCodec, keyedEventJsonCodec, Paths.get(file.toString + "-test"))
+  //    StateRecoverer.recover[TestState, TestEvent](journalLocation, newStateBuilder, config)
   //  }
   //}
 }

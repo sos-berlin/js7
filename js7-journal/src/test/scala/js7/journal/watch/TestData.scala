@@ -10,7 +10,7 @@ import js7.data.event.JournalEvent.SnapshotTaken
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{Event, EventId, JournalHeaders, JournalId, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotableState, Stamped}
-import js7.journal.data.JournalMeta
+import js7.journal.data.JournalLocation
 import js7.journal.write.{EventJournalWriter, SnapshotJournalWriter}
 import monix.execution.Scheduler.Implicits.traced
 
@@ -40,12 +40,12 @@ private[watch] object TestData
       KeyedSubtype(BEvent))
   }
 
-  def writeJournalSnapshot[E <: Event](journalMeta: JournalMeta, after: EventId, snapshotObjects: Seq[Any]): Path =
-    autoClosing(SnapshotJournalWriter.forTest(journalMeta, after = after)) { writer =>
+  def writeJournalSnapshot[E <: Event](journalLocation: JournalLocation, after: EventId, snapshotObjects: Seq[Any]): Path =
+    autoClosing(SnapshotJournalWriter.forTest(journalLocation, after = after)) { writer =>
       writer.writeHeader(JournalHeaders.forTest(TestState.name, journalId, eventId = after))
       writer.beginSnapshotSection()
       for (o <- snapshotObjects) {
-        writer.writeSnapshot(ByteArray(journalMeta.snapshotObjectJsonCodec.encodeObject(o).compactPrint))
+        writer.writeSnapshot(ByteArray(journalLocation.snapshotObjectJsonCodec.encodeObject(o).compactPrint))
       }
       writer.endSnapshotSection()
       writer.beginEventSection(sync = false)
@@ -53,10 +53,10 @@ private[watch] object TestData
       writer.file
     }
 
-  def writeJournal(journalMeta: JournalMeta, after: EventId, stampedEvents: Seq[Stamped[KeyedEvent[Event]]],
+  def writeJournal(journalLocation: JournalLocation, after: EventId, stampedEvents: Seq[Stamped[KeyedEvent[Event]]],
     journalId: JournalId = this.journalId): Path
   =
-    autoClosing(EventJournalWriter.forTest(journalMeta, after = after, journalId)) { writer =>
+    autoClosing(EventJournalWriter.forTest(journalLocation, after = after, journalId)) { writer =>
       writer.writeHeader(JournalHeaders.forTest(TestState.name, journalId, eventId = after))
       writer.beginEventSection(sync = false)
       writer.writeEvents(stampedEvents take 1)

@@ -33,7 +33,7 @@ import js7.data.cluster.ClusterState.{Coupled, Empty, FailedOver, HasNodes}
 import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
 import js7.data.cluster.{ClusterCommand, ClusterNodeApi, ClusterSetting, ClusterWatchRequest, ClusterWatchingCommand}
 import js7.data.event.{AnyKeyedEvent, EventId, JournalPosition, SnapshotableState, Stamped}
-import js7.journal.data.JournalMeta
+import js7.journal.data.JournalLocation
 import js7.journal.recover.{Recovered, StateRecoverer}
 import js7.journal.{EventIdClock, EventIdGenerator}
 import monix.eval.Task
@@ -248,7 +248,7 @@ object ClusterNode
     akkaResource: Resource[Task, ActorSystem],
     clusterNodeApi: (Uri, String, ActorSystem) => Resource[Task, ClusterNodeApi],
     licenseChecker: LicenseChecker,
-    journalMeta: JournalMeta,
+    journalLocation: JournalLocation,
     clusterConf: ClusterConf,
     eventIdClock: EventIdClock,
     testEventBus: EventPublisher[Any],
@@ -256,14 +256,14 @@ object ClusterNode
     (implicit S: SnapshotableState.Companion[S], scheduler: Scheduler, akkaTimeout: Timeout)
   : Resource[Task, ClusterNode[S]] =
     StateRecoverer
-      .resource[S](journalMeta, config)
+      .resource[S](journalLocation, config)
       .parZip(akkaResource/*start in parallel*/)
       .flatMap { case (recovered, actorSystem) =>
         implicit val a = actorSystem
         resource(
           recovered,
           clusterNodeApi(_, _, actorSystem),
-          licenseChecker, journalMeta, clusterConf, eventIdClock, testEventBus, config
+          licenseChecker, journalLocation, clusterConf, eventIdClock, testEventBus, config
         ).orThrow
       }
 
@@ -271,7 +271,7 @@ object ClusterNode
     recovered: Recovered[S],
     clusterNodeApi: (Uri, String) => Resource[Task, ClusterNodeApi],
     licenseChecker: LicenseChecker,
-    journalMeta: JournalMeta,
+    journalLocation: JournalLocation,
     clusterConf: ClusterConf,
     eventIdClock: EventIdClock,
     testEventBus: EventPublisher[Any],
@@ -300,7 +300,7 @@ object ClusterNode
           ClusterWatchCounterpart.resource(clusterConf, clusterConf.timing, testEventBus)
         common <- ClusterCommon.resource(clusterWatchCounterpart, clusterNodeApi, clusterConf,
           licenseChecker, testEventBus)
-        clusterNode <- resource(recovered, common, journalMeta, clusterConf, config,
+        clusterNode <- resource(recovered, common, journalLocation, clusterConf, config,
           new EventIdGenerator(eventIdClock),
           testEventBus)
       } yield clusterNode
@@ -309,7 +309,7 @@ object ClusterNode
   private def resource[S <: SnapshotableState[S] : diffx.Diff : Tag](
     recovered: Recovered[S],
     common: ClusterCommon,
-    journalMeta: JournalMeta,
+    journalLocation: JournalLocation,
     clusterConf: ClusterConf,
     config: Config,
     eventIdGenerator: EventIdGenerator,
@@ -412,7 +412,7 @@ object ClusterNode
     }
 
     def truncateJournalAndRecoverAgain(otherFailedOver: FailedOver): Option[Recovered[S]] =
-      for (file <- truncateJournal(journalMeta.fileBase, otherFailedOver.failedAt, keepTruncatedRest))
+      for (file <- truncateJournal(journalLocation.fileBase, otherFailedOver.failedAt, keepTruncatedRest))
         yield recoverFromTruncated(file, otherFailedOver.failedAt)
 
     def recoverFromTruncated(file: Path, failedAt: JournalPosition): Recovered[S] = {
@@ -420,7 +420,7 @@ object ClusterNode
       throw new RestartAfterJournalTruncationException
 
       // May take a long time !!!
-      val recovered = StateRecoverer.recover[S](journalMeta, config)
+      val recovered = StateRecoverer.recover[S](journalLocation, config)
 
       // Assertions
       val recoveredJournalFile = recovered.recoveredJournalFile

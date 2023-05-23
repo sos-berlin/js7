@@ -8,7 +8,7 @@ import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax.*
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{AnyKeyedEvent, Event, EventId, JournalHeaders, JournalId, KeyedEventTypedJsonCodec, SnapshotableState, Stamped}
-import js7.journal.data.JournalMeta
+import js7.journal.data.JournalLocation
 import js7.journal.write.EventJournalWriter
 import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly
@@ -21,7 +21,7 @@ final class SimpleEventCollector(
 extends AutoCloseable
 {
   private val directory = createTempDirectory("SimpleEventCollector-")
-  private val journalMeta = JournalMeta(
+  private val journalLocation = JournalLocation(
     new SnapshotableState.HasCodec {
       implicit val keyedEventJsonCodec = eventTypedJsonCodec
       val name: String = "TestState"
@@ -33,9 +33,9 @@ extends AutoCloseable
 
   lazy val (eventWriter, eventWatch) = {
     // Start the other when accessing one.
-    val eventWatch = new JournalEventWatch(journalMeta, config withFallback JournalEventWatch.TestConfig)
+    val eventWatch = new JournalEventWatch(journalLocation, config withFallback JournalEventWatch.TestConfig)
     val eventWriter = {
-      val w = EventJournalWriter.forTest(journalMeta, tornEventId, journalId, Some(eventWatch))
+      val w = EventJournalWriter.forTest(journalLocation, tornEventId, journalId, Some(eventWatch))
       w.writeHeader(JournalHeaders.forTest("TestState", journalId, tornEventId))
       w.beginEventSection(sync = false)
       w.onJournalingStarted()

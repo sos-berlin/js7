@@ -5,14 +5,14 @@ import java.nio.file.{Files, Path}
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.monixutils.MonixDeadline
 import js7.data.event.{EventId, JournalId}
-import js7.journal.data.JournalMeta
+import js7.journal.data.JournalLocation
 import monix.eval.Task
 
 /**
   * @author Joacim Zschimmer
   */
 private[journal] final class HistoricEventReader(
-  protected val journalMeta: JournalMeta,
+  protected val journalLocation: JournalLocation,
   protected val expectedJournalId: JournalId,
   val fileEventId: EventId,
   protected val journalFile: Path,

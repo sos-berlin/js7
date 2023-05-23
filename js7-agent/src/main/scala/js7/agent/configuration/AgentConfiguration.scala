@@ -25,7 +25,7 @@ import js7.common.configuration.CommonConfiguration
 import js7.common.http.configuration.RecouplingStreamReaderConfs
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.journal.configuration.JournalConf
-import js7.journal.data.JournalMeta
+import js7.journal.data.JournalLocation
 import js7.launcher.configuration.ProcessKillScript
 import js7.subagent.configuration.{DirectorConf, SubagentConf}
 import scala.jdk.CollectionConverters.*
@@ -92,7 +92,7 @@ extends CommonConfiguration
   lazy val scriptInjectionAllowed =
     config.getBoolean("js7.job.execution.signed-script-injection-allowed")
 
-  val journalMeta = JournalMeta(AgentState, stateDirectory / "agent" )
+  val journalLocation = JournalLocation(AgentState, stateDirectory / "agent" )
 
   def journalConf: JournalConf =
     clusterConf.journalConf

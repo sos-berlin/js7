@@ -13,7 +13,7 @@ import js7.base.utils.Allocated
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.common.akkautils.SupervisorStrategies
 import js7.journal.configuration.JournalConf
-import js7.journal.data.JournalMeta
+import js7.journal.data.JournalLocation
 import js7.journal.recover.StateRecoverer
 import js7.journal.state.FileJournal
 import js7.journal.test.TestActor.*
@@ -27,7 +27,7 @@ import scala.concurrent.duration.DurationInt
 /**
   * @author Joacim Zschimmer
   */
-private[journal] final class TestActor(config: Config, journalMeta: JournalMeta, journalStopped: Promise[Unit])
+private[journal] final class TestActor(config: Config, journalLocation: JournalLocation, journalStopped: Promise[Unit])
 extends Actor with Stash
 {
   override val supervisorStrategy = SupervisorStrategies.escalate
@@ -42,8 +42,8 @@ extends Actor with Stash
 
   override def preStart() = {
     super.preStart()
-    StateRecoverer.recover[TestState](journalMeta, config)
-    val recovered = StateRecoverer.recover[TestState](journalMeta, config)
+    StateRecoverer.recover[TestState](journalLocation, config)
+    val recovered = StateRecoverer.recover[TestState](journalLocation, config)
     journalAllocated = FileJournal
       .resource(recovered, journalConf,
         new EventIdGenerator(EventIdClock.fixed(epochMilli = 1000/*EventIds start at 1000000*/)))

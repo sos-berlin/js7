@@ -82,7 +82,7 @@ final class UntaughtClusterWatchFailoverControllerClusterTest extends Controller
             backupController.eventWatch.await[ClusterFailedOver]().head
           assert(clusterFailedOver.failedAt.fileEventId == backupController.eventWatch.fileEventIds.last ||
                  clusterFailedOver.failedAt.fileEventId == backupController.eventWatch.fileEventIds.dropRight(1).last)
-          val expectedFailedFile = primaryController.conf.journalMeta
+          val expectedFailedFile = primaryController.conf.journalLocation
             .file(clusterFailedOver.failedAt.fileEventId)
           assert(clusterFailedOver.failedAt.position == size(expectedFailedFile))
 

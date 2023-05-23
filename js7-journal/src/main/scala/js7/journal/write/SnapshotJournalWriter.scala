@@ -8,7 +8,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}
 import js7.data.event.JournalSeparators.{SnapshotFooter, SnapshotHeader}
 import js7.data.event.{EventId, SnapshotableState}
-import js7.journal.data.JournalMeta
+import js7.journal.data.JournalLocation
 import js7.journal.files.JournalFiles.*
 import monix.execution.Scheduler
 import scala.concurrent.duration.*
@@ -63,6 +63,6 @@ extends JournalWriter(S, after = after, append = false)
 
 object SnapshotJournalWriter
 {
-  def forTest(journalMeta: JournalMeta, after: EventId)(implicit scheduler: Scheduler) =
-    new SnapshotJournalWriter(journalMeta.S, journalMeta.file(after), after = after, simulateSync = None)
+  def forTest(journalLocation: JournalLocation, after: EventId)(implicit scheduler: Scheduler) =
+    new SnapshotJournalWriter(journalLocation.S, journalLocation.file(after), after = after, simulateSync = None)
 }

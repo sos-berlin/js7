@@ -114,7 +114,7 @@ final class JournalTest extends OurTestSuite with BeforeAndAfterAll with TestJou
 
   "Massive parallel" - {
     def run(n: Int, coalesceEventLimit: Int): Unit = {
-      journalMeta.listJournalFiles.map(_.file) foreach delete
+      journalLocation.listJournalFiles.map(_.file) foreach delete
       val config = config"""
        js7.journal.coalesce-event-limit = $coalesceEventLimit
        js7.journal.slow-check-state = false"""
@@ -155,7 +155,7 @@ final class JournalTest extends OurTestSuite with BeforeAndAfterAll with TestJou
 
   if (sys.props contains "test.speed")
   "Speed test" in {
-    deleteIfExists(journalMeta.fileBase)
+    deleteIfExists(journalLocation.fileBase)
     val keys = for (i <- 1 to 100000) yield s"TEST-$i"
     withTestActor() { (_, actor) =>
       val stopwatch = new Stopwatch
@@ -175,7 +175,7 @@ final class JournalTest extends OurTestSuite with BeforeAndAfterAll with TestJou
   }
 
   private def journalFileNames =
-    journalMeta.listJournalFiles.map(_.file.getFileName.toString)
+    journalLocation.listJournalFiles.map(_.file.getFileName.toString)
 }
 
 object JournalTest

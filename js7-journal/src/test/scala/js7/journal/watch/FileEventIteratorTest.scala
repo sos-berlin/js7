@@ -7,7 +7,7 @@ import js7.base.io.file.FileUtils
 import js7.base.test.OurTestSuite
 import js7.common.jsonseq.PositionAnd
 import js7.data.event.{EventId, JournalSeparators, Stamped}
-import js7.journal.data.JournalMeta
+import js7.journal.data.JournalLocation
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.watch.FileEventIteratorTest.*
 import js7.journal.watch.TestData.{AEvent, TestState, journalId, writeJournal}
@@ -20,11 +20,11 @@ final class FileEventIteratorTest extends OurTestSuite
 {
   "FileEventIterator" in {
     FileUtils.withTemporaryDirectory("FileEventIteratorPoolTest-") { dir =>
-      val journalMeta = JournalMeta(TestState, dir resolve "test")
-      val journalFile = journalMeta.file(after = After)
-      writeJournal(journalMeta, after = After, TestEvents)
+      val journalLocation = JournalLocation(TestState, dir resolve "test")
+      val journalFile = journalLocation.file(after = After)
+      writeJournal(journalLocation, after = After, TestEvents)
 
-      val iterator = new FileEventIterator(journalMeta.S, journalFile, journalId, fileEventId = After,
+      val iterator = new FileEventIterator(journalLocation.S, journalFile, journalId, fileEventId = After,
         () => Files.size(journalFile))
       iterator.firstEventPosition  // Must be called before reading
       iterator.next()

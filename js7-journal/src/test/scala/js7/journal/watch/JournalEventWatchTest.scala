@@ -25,7 +25,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.jsonseq.PositionAnd
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{Event, EventId, EventRequest, EventSeq, JournalEvent, JournalHeader, JournalHeaders, JournalId, JournalPosition, JournalSeparators, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotableState, Stamped, TearableEventSeq}
-import js7.journal.data.JournalMeta
+import js7.journal.data.JournalLocation
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.watch.JournalEventWatchTest.*
 import js7.journal.watch.TestData.{writeJournal, writeJournalSnapshot}
@@ -44,11 +44,11 @@ final class JournalEventWatchTest extends OurTestSuite with BeforeAndAfterAll
   import TestState.keyedEventJsonCodec
 
   "JournalId is checked" in {
-    withJournalMeta { journalMeta =>
+    withJournalMeta { journalLocation =>
       val myJournalId = JournalId.random()
-      writeJournal(journalMeta, EventId.BeforeFirst, MyEvents1, journalId = myJournalId)
+      writeJournal(journalLocation, EventId.BeforeFirst, MyEvents1, journalId = myJournalId)
       val exception = intercept[IllegalArgumentException] {
-        withJournal(journalMeta, MyEvents1.last.eventId) { (_, eventWatch) =>
+        withJournal(journalLocation, MyEvents1.last.eventId) { (_, eventWatch) =>
         }
       }
       assert(exception.getMessage startsWith "requirement failed: JournalId ")
@@ -56,9 +56,9 @@ final class JournalEventWatchTest extends OurTestSuite with BeforeAndAfterAll
   }
 
   "eventWatch.when" in {
-    withJournalMeta { journalMeta =>
-      writeJournal(journalMeta, EventId.BeforeFirst, MyEvents1)
-      withJournal(journalMeta, MyEvents1.last.eventId) { (writer, eventWatch) =>
+    withJournalMeta { journalLocation =>
+      writeJournal(journalLocation, EventId.BeforeFirst, MyEvents1)
+      withJournal(journalLocation, MyEvents1.last.eventId) { (writer, eventWatch) =>
         def when(after: EventId) =
           eventWatch.when(EventRequest.singleClass[MyEvent](after = after, timeout = Some(30.s))).await(99.s).strict
         def observeFile(journalPosition: JournalPosition): List[Json] =
@@ -94,23 +94,23 @@ final class JournalEventWatchTest extends OurTestSuite with BeforeAndAfterAll
           .await(99.s) == EventSeq.Empty(220L))
 
         eventWatch.releaseEvents(untilEventId = 0L)
-        assert(journalMeta.listJournalFiles.map(_.file)
-          == Vector(journalMeta.file(0L), journalMeta.file(120L)))
+        assert(journalLocation.listJournalFiles.map(_.file)
+          == Vector(journalLocation.file(0L), journalLocation.file(120L)))
         assert(when(EventId.BeforeFirst) == EventSeq.NonEmpty(MyEvents1 ++ MyEvents2))
 
         eventWatch.releaseEvents(untilEventId = 110L)
-        assert(journalMeta.listJournalFiles.map(_.file)
-          == Vector(journalMeta.file(0L), journalMeta.file(120L)))
+        assert(journalLocation.listJournalFiles.map(_.file)
+          == Vector(journalLocation.file(0L), journalLocation.file(120L)))
         assert(when(EventId.BeforeFirst) == EventSeq.NonEmpty(MyEvents1 ++ MyEvents2))
 
         eventWatch.releaseEvents(untilEventId = 120L)
-        assert(journalMeta.listJournalFiles.map(_.file)
-          == Vector(journalMeta.file(120L)))
+        assert(journalLocation.listJournalFiles.map(_.file)
+          == Vector(journalLocation.file(120L)))
         assert(when(EventId.BeforeFirst) == TearableEventSeq.Torn(120L))
 
         eventWatch.releaseEvents(untilEventId = 220L)
-        assert(journalMeta.listJournalFiles.map(_.file)
-          == Vector(journalMeta.file(120L)))
+        assert(journalLocation.listJournalFiles.map(_.file)
+          == Vector(journalLocation.file(120L)))
         assert(when(EventId.BeforeFirst) == TearableEventSeq.Torn(120L))
       }
     }
@@ -216,9 +216,9 @@ final class JournalEventWatchTest extends OurTestSuite with BeforeAndAfterAll
     }
 
     "Second onJournalingStarted (snapshot)" in {
-      withJournalMeta { journalMeta =>
-        autoClosing(new JournalEventWatch(journalMeta, JournalEventWatch.TestConfig)) { eventWatch =>
-          autoClosing(EventJournalWriter.forTest(journalMeta, after = EventId.BeforeFirst, journalId, Some(eventWatch))) { writer =>
+      withJournalMeta { journalLocation =>
+        autoClosing(new JournalEventWatch(journalLocation, JournalEventWatch.TestConfig)) { eventWatch =>
+          autoClosing(EventJournalWriter.forTest(journalLocation, after = EventId.BeforeFirst, journalId, Some(eventWatch))) { writer =>
             writer.beginEventSection(sync = false)
             writer.onJournalingStarted()
             val stampedSeq =
@@ -232,7 +232,7 @@ final class JournalEventWatchTest extends OurTestSuite with BeforeAndAfterAll
           }
           assert(eventWatch.fileEventIds == EventId.BeforeFirst :: Nil)
 
-          autoClosing(EventJournalWriter.forTest(journalMeta, after = 3L, journalId, Some(eventWatch))) { writer =>
+          autoClosing(EventJournalWriter.forTest(journalLocation, after = 3L, journalId, Some(eventWatch))) { writer =>
             writer.beginEventSection(sync = false)
             writer.onJournalingStarted()
             val stampedSeq =
@@ -287,8 +287,8 @@ final class JournalEventWatchTest extends OurTestSuite with BeforeAndAfterAll
     }
 
     "observe after=(unknown EventId)" in {
-      withJournalMeta { journalMeta =>
-        withJournal(journalMeta, lastEventId = EventId(100)) { (writer, eventWatch) =>
+      withJournalMeta { journalLocation =>
+        withJournal(journalLocation, lastEventId = EventId(100)) { (writer, eventWatch) =>
           writer.writeEvents(MyEvents1)
           writer.flush(sync = false)
           writer.onCommitted(writer.fileLengthAndEventId, MyEvents1.length)
@@ -312,11 +312,11 @@ final class JournalEventWatchTest extends OurTestSuite with BeforeAndAfterAll
   }
 
   "snapshotAfter" in {
-    withJournalMeta { journalMeta =>
-      autoClosing(new JournalEventWatch(journalMeta, JournalEventWatch.TestConfig)) { eventWatch =>
+    withJournalMeta { journalLocation =>
+      autoClosing(new JournalEventWatch(journalLocation, JournalEventWatch.TestConfig)) { eventWatch =>
         // --0.journal with no snapshot objects
-        writeJournalSnapshot(journalMeta, after = EventId.BeforeFirst, Nil)
-        autoClosing(EventJournalWriter.forTest(journalMeta, after = EventId.BeforeFirst, journalId, Some(eventWatch), withoutSnapshots = false)) { writer =>
+        writeJournalSnapshot(journalLocation, after = EventId.BeforeFirst, Nil)
+        autoClosing(EventJournalWriter.forTest(journalLocation, after = EventId.BeforeFirst, journalId, Some(eventWatch), withoutSnapshots = false)) { writer =>
           writer.onJournalingStarted()  // Notifies eventWatch about this journal file
 
           val Some(observable) = eventWatch.snapshotAfter(EventId.BeforeFirst)
@@ -328,10 +328,10 @@ final class JournalEventWatchTest extends OurTestSuite with BeforeAndAfterAll
       // --100.journal with some snapshot objects
       val snapshotObjects = List[Any](ASnapshot("ONE"), ASnapshot("TWO"))
       val after = EventId(100)
-      val file = writeJournalSnapshot(journalMeta, after = after, snapshotObjects)
-      autoClosing(new JournalEventWatch(journalMeta, JournalEventWatch.TestConfig)) { eventWatch =>
+      val file = writeJournalSnapshot(journalLocation, after = after, snapshotObjects)
+      autoClosing(new JournalEventWatch(journalLocation, JournalEventWatch.TestConfig)) { eventWatch =>
         val lengthAndEventId = PositionAnd(Files.size(file), after)
-        eventWatch.onJournalingStarted(journalMeta.file(after), journalId,
+        eventWatch.onJournalingStarted(journalLocation.file(after), journalId,
           lengthAndEventId, lengthAndEventId, isActiveNode = true)
         locally {
           val Some(observable) = eventWatch.snapshotAfter(EventId.BeforeFirst)
@@ -408,21 +408,21 @@ final class JournalEventWatchTest extends OurTestSuite with BeforeAndAfterAll
   private def withJournalEventWatch(lastEventId: EventId)
     (body: (EventJournalWriter, JournalEventWatch) => Unit)
   : Unit =
-    withJournalMeta { journalMeta =>
-      withJournal(journalMeta, lastEventId)(body)
+    withJournalMeta { journalLocation =>
+      withJournal(journalLocation, lastEventId)(body)
     }
 
-  private def withJournalMeta(body: JournalMeta => Unit): Unit =
+  private def withJournalMeta(body: JournalLocation => Unit): Unit =
     withTemporaryDirectory("JournalEventWatchTest") { directory =>
-      val journalMeta = JournalMeta(TestState, directory / "test")
-      body(journalMeta)
+      val journalLocation = JournalLocation(TestState, directory / "test")
+      body(journalLocation)
     }
 
-  private def withJournal(journalMeta: JournalMeta, lastEventId: EventId)
+  private def withJournal(journalLocation: JournalLocation, lastEventId: EventId)
     (body: (EventJournalWriter, JournalEventWatch) => Unit)
   : Unit =
-    autoClosing(new JournalEventWatch(journalMeta, JournalEventWatch.TestConfig)) { eventWatch =>
-      autoClosing(EventJournalWriter.forTest(journalMeta, after = lastEventId, journalId, Some(eventWatch))) { writer =>
+    autoClosing(new JournalEventWatch(journalLocation, JournalEventWatch.TestConfig)) { eventWatch =>
+      autoClosing(EventJournalWriter.forTest(journalLocation, after = lastEventId, journalId, Some(eventWatch))) { writer =>
         writer.writeHeader(JournalHeaders.forTest(TestState.name, journalId, eventId = lastEventId))
         writer.beginEventSection(sync = false)
         writer.onJournalingStarted()

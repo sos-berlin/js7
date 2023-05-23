@@ -5,7 +5,7 @@ import js7.base.log.Logger
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.jsonseq.PositionAnd
 import js7.data.event.{EventId, JournalId}
-import js7.journal.data.JournalMeta
+import js7.journal.data.JournalLocation
 import js7.journal.watch.FileEventIteratorPool.*
 import monix.execution.atomic.AtomicBoolean
 import scala.collection.mutable
@@ -15,7 +15,7 @@ import scala.util.control.NonFatal
   * @author Joacim Zschimmer
   */
 private[watch] final class FileEventIteratorPool(
-  journalMeta: JournalMeta,
+  journalLocation: JournalLocation,
   expectedJournalId: JournalId,
   journalFile: Path,
   fileEventId: EventId,
@@ -69,7 +69,7 @@ private[watch] final class FileEventIteratorPool(
       if (closed.get()) throw new ClosedException(journalFile)
       // Exception when file has been deleted
       val result = new FileEventIterator(
-        journalMeta.S, journalFile,
+        journalLocation.S, journalFile,
         expectedJournalId,
         fileEventId = fileEventId,
         committedLength

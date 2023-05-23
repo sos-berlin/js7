@@ -28,7 +28,7 @@ import js7.common.akkautils.ProvideActorSystem
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{Event, EventId, JournalEvent, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotableState, SnapshotableStateBuilder, Stamped}
 import js7.journal.configuration.JournalConf
-import js7.journal.data.JournalMeta
+import js7.journal.data.JournalLocation
 import js7.journal.recover.StateRecoverer
 import js7.journal.state.FileJournalTest.*
 import js7.journal.test.TestData
@@ -51,7 +51,7 @@ final class FileJournalTest extends OurTestSuite with BeforeAndAfterAll
   private implicit lazy val scheduler: SchedulerService =
     Scheduler(Executors.newCachedThreadPool())  // Scheduler.Implicits.global blocks on 2-processor machine
   protected lazy val directory = createTempDirectory("FileJournalTest-")
-  private lazy val journalMeta = testJournalMeta(fileBase = directory)
+  private lazy val journalLocation = testJournalMeta(fileBase = directory)
 
   override def afterAll() = {
     deleteDirectoryRecursively(directory)
@@ -143,7 +143,7 @@ final class FileJournalTest extends OurTestSuite with BeforeAndAfterAll
     def journal = journalAllocated.allocatedThing
 
     def start() = {
-      val recovered = StateRecoverer.recover[TestState](journalMeta, JournalEventWatch.TestConfig)
+      val recovered = StateRecoverer.recover[TestState](journalLocation, JournalEventWatch.TestConfig)
       implicit val a = actorSystem
       implicit val timeout: Timeout = Timeout(99.s)
       journalAllocated = FileJournal
@@ -177,7 +177,7 @@ private object FileJournalTest
       """)
 
   private def testJournalMeta(fileBase: Path) =
-    JournalMeta(TestState, fileBase)
+    JournalLocation(TestState, fileBase)
 
   final case class NumberThing(key: NumberKey, number: Int) {
     def update(event: NumberEvent): Checked[NumberThing] =

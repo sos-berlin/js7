@@ -61,7 +61,7 @@ private[agent] final class AgentActor(
   (implicit protected val scheduler: Scheduler, iox: IOExecutor)
   extends Actor with Stash with SimpleStateActor
 {
-  import agentConf.{implicitAkkaAskTimeout, journalMeta}
+  import agentConf.{implicitAkkaAskTimeout, journalLocation}
   import context.{actorOf, watch}
   val journal = journalAllocated.allocatedThing
   import journal.eventWatch
@@ -93,7 +93,7 @@ private[agent] final class AgentActor(
     super.postStop()
     if (isResetting) {
       logger.warn("DELETE JOURNAL FILES DUE TO AGENT RESET")
-      journalMeta.deleteJournal(ignoreFailure = true)
+      journalLocation.deleteJournal(ignoreFailure = true)
     }
     allocatedSignatureVerifier.release.awaitInfinite
     terminatePromise.trySuccess(

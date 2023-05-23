@@ -12,7 +12,7 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.data.event.EventId
-import js7.journal.data.JournalMeta
+import js7.journal.data.JournalLocation
 import scala.jdk.CollectionConverters.*
 import scala.util.Try
 
@@ -96,31 +96,31 @@ object JournalFiles
   private[files] def deletionMarkerFile(fileBase: Path): Path =
     Paths.get(s"$fileBase-DELETE!")
 
-  implicit final class JournalMetaOps(private val journalMeta: JournalMeta) extends AnyVal
+  implicit final class JournalMetaOps(private val journalLocation: JournalLocation) extends AnyVal
   {
     def file(after: EventId): Path =
-      JournalFile.toFile(journalMeta.fileBase, after)
+      JournalFile.toFile(journalLocation.fileBase, after)
 
     def currentFile: Checked[Path] =
-      JournalFiles.currentFile(journalMeta.fileBase)
+      JournalFiles.currentFile(journalLocation.fileBase)
 
     def listJournalFiles: Vector[JournalFile] =
-      JournalFiles.listJournalFiles(journalMeta.fileBase)
+      JournalFiles.listJournalFiles(journalLocation.fileBase)
 
     def listGarbageFiles(untilFileEventId: EventId): Vector[Path] =
-      JournalFiles.listGarbageFiles(journalMeta.fileBase, untilFileEventId)
+      JournalFiles.listGarbageFiles(journalLocation.fileBase, untilFileEventId)
 
     def updateSymbolicLink(toFile: Path): Unit = {
-      val symLink = Paths.get(s"${journalMeta.fileBase}-journal")  // We preserve the suffix ".journal" for the real journal files
+      val symLink = Paths.get(s"${journalLocation.fileBase}-journal")  // We preserve the suffix ".journal" for the real journal files
       Try { if (exists(symLink, NOFOLLOW_LINKS)) delete(symLink) }
       Try { createSymbolicLink(symLink, toFile.getFileName) }
     }
 
     def deleteJournalIfMarked(): Checked[Unit] =
-      JournalFiles.deleteJournalIfMarked(journalMeta.fileBase)
+      JournalFiles.deleteJournalIfMarked(journalLocation.fileBase)
 
     def deleteJournal(ignoreFailure: Boolean = false): Unit =
-      JournalFiles.deleteJournal(journalMeta.fileBase, ignoreFailure)
+      JournalFiles.deleteJournal(journalLocation.fileBase, ignoreFailure)
   }
 
   def updateSymbolicLink(fileBase: Path, toFile: Path): Unit = {

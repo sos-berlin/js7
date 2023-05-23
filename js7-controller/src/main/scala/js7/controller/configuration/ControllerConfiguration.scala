@@ -20,7 +20,7 @@ import js7.common.configuration.{BasicConfiguration, CommonConfiguration, Js7Con
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.data.controller.{ControllerId, ControllerState}
 import js7.journal.configuration.JournalConf
-import js7.journal.data.JournalMeta
+import js7.journal.data.JournalLocation
 import scala.jdk.CollectionConverters.*
 
 /**
@@ -48,7 +48,7 @@ extends BasicConfiguration with CommonConfiguration
 
   def workDirectory: Path = dataDirectory / "work"
 
-  lazy val journalMeta = JournalMeta(ControllerState, stateDirectory / "controller")
+  lazy val journalLocation = JournalLocation(ControllerState, stateDirectory / "controller")
 
   def journalConf: JournalConf =
     clusterConf.journalConf

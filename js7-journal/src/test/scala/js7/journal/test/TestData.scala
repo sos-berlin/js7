@@ -4,7 +4,7 @@ import java.nio.file.Path
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.configutils.Configs.*
 import js7.common.configuration.Js7Configuration
-import js7.journal.data.JournalMeta
+import js7.journal.data.JournalLocation
 
 /**
   * @author Joacim Zschimmer
@@ -27,5 +27,5 @@ private[journal] object TestData
     Subtype[TestAggregate])
 
   def testJournalMeta(fileBase: Path) =
-    JournalMeta(TestState, fileBase)
+    JournalLocation(TestState, fileBase)
 }
