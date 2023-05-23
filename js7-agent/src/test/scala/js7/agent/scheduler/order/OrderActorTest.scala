@@ -197,8 +197,9 @@ private object OrderActorTest {
 
     private val journalMeta = JournalMeta(AgentState, dir / "data" / "state" / "agent")
     private val recovered = Recovered.noJournalFile[AgentState](journalMeta, now, config)
-    private val journal = FileJournal
-      .start(recovered, JournalConf.fromConfig(config))
+    private val (journal, stopJournal) = FileJournal
+      .resource(recovered, JournalConf.fromConfig(config))
+      .allocated
       .await(99.s)
     //journal.persistKeyedEvent()
     private val agentConf = AgentConfiguration.forTest(dir, name = "OrderActorTest", config)
@@ -240,6 +241,7 @@ private object OrderActorTest {
 
     override def postStop() = {
       recovered.eventWatch.close()
+      stopJournal.await(99.s)
       super.postStop()
     }
 

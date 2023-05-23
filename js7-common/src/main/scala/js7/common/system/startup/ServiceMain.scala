@@ -74,7 +74,7 @@ object ServiceMain
     }
   }
 
-  def startUp(name: String): Unit = {
+  private def startUp(name: String): Unit = {
     // Do not use Logger here !!!  Logger will be initialized later
     val nanoTime = System.nanoTime() // Before anything else, fetch clock
     printlnWithClock(s"JS7 $name ${BuildInfo.longVersion}")
@@ -83,14 +83,14 @@ object ServiceMain
     StartUp.initializeMain()
   }
 
-  def handleProgramTermination(name: String)(body: => ProgramTermination): ReturnCode =
+  private def handleProgramTermination(name: String)(body: => ProgramTermination): ReturnCode =
     try {
       val termination = body
       logging.onProgramTermination(name, termination)
     } catch logging.catcher
 
   /** For usage after logging system has properly been initialized. */
-  object logging {
+  private object logging {
     private lazy val logger = Logger[ServiceMain.type]
 
     def onProgramTermination(name: String, termination: ProgramTermination): ReturnCode =
@@ -133,11 +133,11 @@ object ServiceMain
       logJavaSettings()
     }
 
-    /** Adds an own ThreadPool and a shutdown hook. */
-    def blockingRun[S <: MainService: Tag](name: String, config: Config)(
-      resource: Scheduler => Resource[Task, S])
-    : ProgramTermination =
-      blockingRun(name, config, resource)((_: S).untilTerminated)
+    ///** Adds an own ThreadPool and a shutdown hook. */
+    //def blockingRun[S <: MainService: Tag](name: String, config: Config)(
+    //  resource: Scheduler => Resource[Task, S])
+    //: ProgramTermination =
+    //  blockingRun(name, config, resource)((_: S).untilTerminated)
 
     /** Adds an own ThreadPool and a shutdown hook. */
     private[ServiceMain] def blockingRun[S <: MainService: Tag](
