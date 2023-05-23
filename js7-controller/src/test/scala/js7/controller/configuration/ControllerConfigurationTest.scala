@@ -46,16 +46,17 @@ final class ControllerConfigurationTest extends OurTestSuite with BeforeAndAfter
       webServerPorts = Nil,
       ZoneId.systemDefault,
       akkaAskTimeout = 1.h,
-      journalConf = JournalConf.fromConfig(configuration.config)
-        .copy(slowCheckState = sys.props.get("js7.test").fold(false)(StringAsBoolean(_))),
-      clusterConf = ClusterConf(NodeId("Primary"), isBackup = false, None, None,
+      clusterConf = ClusterConf(
+        JournalConf.fromConfig(configuration.config)
+          .copy(slowCheckState = sys.props.get("js7.test").fold(false)(StringAsBoolean(_))),
+        NodeId("Primary"), isBackup = false, None, None,
         RecouplingStreamReaderConf(
           timeout = 6500.ms,  // Between 3s and 10s
           delay = 1.s,
           failureDelay = 5.s),
         ClusterTiming(3.s, 10.s),
         clusterWatchUniquenessMemorySize = 1000),
-      name = ControllerConfiguration.DefaultName,
+        name = ControllerConfiguration.DefaultName,
       config = DefaultConfig))
   }
 

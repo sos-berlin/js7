@@ -604,8 +604,13 @@ lazy val `js7-journal` = project
 lazy val `js7-cluster` = project
   .dependsOn(
     `js7-cluster-watch-api`.jvm,
-    `js7-core`, `js7-common-http`.jvm, `js7-common`,
-    `js7-base`.jvm % "test->test", `js7-tester`.jvm % "test", `js7-license-fake` % "test")
+    `js7-core`,
+    `js7-common-http`.jvm,
+    `js7-common`,
+    `js7-base`.jvm % "test->test",
+    `js7-tester`.jvm % "test",
+    `js7-license-fake` % "test",
+    `js7-journal` % "test->test")
   .settings(commonSettings)
   .settings {
     import Dependencies._

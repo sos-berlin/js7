@@ -45,7 +45,6 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, JournalId, JournalPosition, JournalSeparators, KeyedEvent, SnapshotableState, SnapshotableStateBuilder, Stamped}
 import js7.data.node.NodeId
 import js7.journal.EventIdGenerator
-import js7.journal.configuration.JournalConf
 import js7.journal.files.JournalFiles.*
 import js7.journal.recover.{FileSnapshotableStateBuilder, JournalProgress, Recovered, RecoveredJournalFile}
 import monix.eval.Task
@@ -61,12 +60,12 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
   /** For backup initialization, only when ClusterState.Empty. */
   initialFileEventId: Option[EventId],
   otherFailed: Boolean,
-  journalConf: JournalConf,
   clusterConf: ClusterConf,
   config: Config,
   common: ClusterCommon)
   (implicit S: SnapshotableState.Companion[S])
 {
+  import clusterConf.journalConf
   import recovered.{eventWatch, journalMeta}
   import setting.{activeId, idToUri}
 

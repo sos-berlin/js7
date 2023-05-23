@@ -33,7 +33,6 @@ final case class ControllerConfiguration(
   webServerPorts: Seq[WebServerPort],
   timeZone: ZoneId,
   akkaAskTimeout: Timeout,
-  journalConf: JournalConf,
   clusterConf: ClusterConf,
   name: String,
   config: Config)
@@ -50,6 +49,9 @@ extends BasicConfiguration with CommonConfiguration
   def workDirectory: Path = dataDirectory / "work"
 
   lazy val journalMeta = JournalMeta(ControllerState, stateDirectory / "controller")
+
+  def journalConf: JournalConf =
+    clusterConf.journalConf
 
   // Suppresses Config (which may contain secrets)
   override def toString = s"ControllerConfiguration($controllerId,$dataDirectory,$configDirectory,$webServerPorts," +
@@ -117,7 +119,6 @@ object ControllerConfiguration
       webServerPorts = Nil,
       timeZone = ZoneId.systemDefault,
       akkaAskTimeout = config.getDuration("js7.akka.ask-timeout").toFiniteDuration,
-      journalConf = JournalConf.fromConfig(config),
       clusterConf = ClusterConf.fromConfig(controllerId.toUserId, config).orThrow,
       name = name,
       config = config)

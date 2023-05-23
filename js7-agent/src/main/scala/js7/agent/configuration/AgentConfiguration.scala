@@ -14,9 +14,6 @@ import js7.base.convert.AsJava.asAbsolutePath
 import js7.base.io.JavaResource
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.{EmptyPath, WorkingDirectory}
-import js7.base.problem.Checked
-import js7.base.thread.IOExecutor
-import js7.base.time.AlarmClock
 import js7.base.time.JavaTimeConverters.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.RichEither
@@ -29,9 +26,8 @@ import js7.common.http.configuration.RecouplingStreamReaderConfs
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
-import js7.launcher.configuration.{JobLauncherConf, ProcessKillScript}
+import js7.launcher.configuration.ProcessKillScript
 import js7.subagent.configuration.{DirectorConf, SubagentConf}
-import monix.execution.Scheduler
 import scala.jdk.CollectionConverters.*
 
 /**
@@ -45,7 +41,6 @@ final case class AgentConfiguration(
   jobWorkingDirectory: Path = WorkingDirectory,
   killScript: Option[ProcessKillScript],  // TODO Duplicate with SubagentConf
   akkaAskTimeout: Timeout,
-  journalConf: JournalConf,
   clusterConf: ClusterConf,
   name: String,
   config: Config)  // Should not be the first argument to avoid the misleading call AgentConfiguration(config)
@@ -97,11 +92,10 @@ extends CommonConfiguration
   lazy val scriptInjectionAllowed =
     config.getBoolean("js7.job.execution.signed-script-injection-allowed")
 
-  def toJobLauncherConf(iox: IOExecutor, blockingJobScheduler: Scheduler, clock: AlarmClock)
-  : Checked[JobLauncherConf] =
-    subagentConf.toJobLauncherConf(iox, blockingJobScheduler, clock)
-
   val journalMeta = JournalMeta(AgentState, stateDirectory / "agent" )
+
+  def journalConf: JournalConf =
+    clusterConf.journalConf
 
   lazy val subagentDirectorConf =
     DirectorConf(journalConf, httpsConfig, recouplingStreamReaderConf, subagentConf)
@@ -156,7 +150,6 @@ object AgentConfiguration
       logDirectory = config.optionAs("js7.job.execution.log.directory")(asAbsolutePath) getOrElse defaultLogDirectory(dataDirectory),
       killScript = Some(DelayUntilFinishKillScript),  // Changed later
       akkaAskTimeout = config.getDuration("js7.akka.ask-timeout").toFiniteDuration,
-      journalConf = JournalConf.fromConfig(config),
       clusterConf = {
         val userId = config.as[UserId]("js7.auth.cluster.user-id")  // FIXME Use AgentPath (or SubagentId?)
         ClusterConf.fromConfig(userId, config).orThrow

@@ -33,7 +33,6 @@ import js7.data.cluster.ClusterState.{Coupled, Empty, FailedOver, HasNodes}
 import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
 import js7.data.cluster.{ClusterCommand, ClusterNodeApi, ClusterSetting, ClusterWatchRequest, ClusterWatchingCommand}
 import js7.data.event.{AnyKeyedEvent, EventId, JournalPosition, SnapshotableState, Stamped}
-import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
 import js7.journal.recover.{Recovered, StateRecoverer}
 import js7.journal.{EventIdClock, EventIdGenerator}
@@ -48,7 +47,6 @@ final class ClusterNode[S <: SnapshotableState[S]: diffx.Diff: Tag] private(
   prepared: Prepared[S],
   passiveOrWorkingNode: AtomicAny[Option[Either[PassiveClusterNode[S], Allocated[Task, WorkingClusterNode[S]]]]],
   currentStateRef: Ref[Task, Task[Either[Problem, S]]],
-  journalConf: JournalConf,
   val clusterConf: ClusterConf,
   eventIdGenerator: EventIdGenerator,
   eventBus: EventPublisher[Stamped[AnyKeyedEvent]],
@@ -138,7 +136,7 @@ extends Service.StoppableByRequest
     logger.traceTask(
       WorkingClusterNode
         .resource(
-          recovered, common, journalConf, clusterConf, eventIdGenerator, eventBus)
+          recovered, common, clusterConf, eventIdGenerator, eventBus)
         .toAllocated
         .flatTap(allocated => Task {
           passiveOrWorkingNode := Some(Right(allocated))
@@ -251,7 +249,6 @@ object ClusterNode
     clusterNodeApi: (Uri, String, ActorSystem) => Resource[Task, ClusterNodeApi],
     licenseChecker: LicenseChecker,
     journalMeta: JournalMeta,
-    journalConf: JournalConf,
     clusterConf: ClusterConf,
     eventIdClock: EventIdClock,
     testEventBus: EventPublisher[Any],
@@ -266,7 +263,7 @@ object ClusterNode
         resource(
           recovered,
           clusterNodeApi(_, _, actorSystem),
-          licenseChecker, journalMeta, journalConf, clusterConf, eventIdClock, testEventBus, config
+          licenseChecker, journalMeta, clusterConf, eventIdClock, testEventBus, config
         ).orThrow
       }
 
@@ -275,7 +272,6 @@ object ClusterNode
     clusterNodeApi: (Uri, String) => Resource[Task, ClusterNodeApi],
     licenseChecker: LicenseChecker,
     journalMeta: JournalMeta,
-    journalConf: JournalConf,
     clusterConf: ClusterConf,
     eventIdClock: EventIdClock,
     testEventBus: EventPublisher[Any],
@@ -304,7 +300,7 @@ object ClusterNode
           ClusterWatchCounterpart.resource(clusterConf, clusterConf.timing, testEventBus)
         common <- ClusterCommon.resource(clusterWatchCounterpart, clusterNodeApi, clusterConf,
           licenseChecker, testEventBus)
-        clusterNode <- resource(recovered, common, journalMeta, journalConf, clusterConf, config,
+        clusterNode <- resource(recovered, common, journalMeta, clusterConf, config,
           new EventIdGenerator(eventIdClock),
           testEventBus)
       } yield clusterNode
@@ -313,7 +309,8 @@ object ClusterNode
   private def resource[S <: SnapshotableState[S] : diffx.Diff : Tag](
     recovered: Recovered[S],
     common: ClusterCommon,
-    journalMeta: JournalMeta, journalConf: JournalConf, clusterConf: ClusterConf,
+    journalMeta: JournalMeta,
+    clusterConf: ClusterConf,
     config: Config,
     eventIdGenerator: EventIdGenerator,
     eventBus: EventPublisher[Any])
@@ -456,7 +453,7 @@ object ClusterNode
       assertThat(!passiveOrWorkingNode.get().exists(_.isLeft))
       val node = new PassiveClusterNode(ownId, setting, recovered,
         eventIdGenerator, initialFileEventId,
-        otherFailedOver, journalConf, clusterConf, config, common)
+        otherFailedOver, clusterConf, config, common)
       passiveOrWorkingNode := Some(Left(node))
       node
     }
@@ -485,7 +482,7 @@ object ClusterNode
             .map(_.toChecked(ClusterNodeIsNotReadyProblem).flatten))
       } yield new ClusterNode(
         prepared, passiveOrWorkingNode, currentStateRef,
-        journalConf, clusterConf,
+        clusterConf,
         eventIdGenerator, eventBus.narrowPublisher, common, recovered.extract, actorSystem))
   }
 

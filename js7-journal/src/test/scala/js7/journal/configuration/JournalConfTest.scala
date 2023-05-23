@@ -42,7 +42,7 @@ final class JournalConfTest extends OurTestSuite
 
 object JournalConfTest
 {
-  private val config = config"""
+  val config = config"""
      js7.journal {
        sync = on
        delay = 1ms
@@ -60,7 +60,7 @@ object JournalConfTest
        log.info-events = ["MyEvent"]
      }"""
 
-  private val journalConf = JournalConf(
+  val journalConf = JournalConf(
     syncOnCommit = true,
     simulateSync = None,
     delay = 2.ms,

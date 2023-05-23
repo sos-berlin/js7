@@ -16,7 +16,6 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.cluster.ClusterConf
 import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.commandline.CommandLineArguments
-import js7.journal.configuration.JournalConf
 import js7.launcher.configuration.ProcessKillScript
 import scala.concurrent.duration.*
 
@@ -42,9 +41,14 @@ final class AgentConfigurationTest extends OurTestSuite
         jobWorkingDirectory = WorkingDirectory,
         killScript = Some(ProcessKillScript(""))/*unused, replaced by SubagentConf.killScript*/,
         akkaAskTimeout = 1.hour,
-        journalConf = JournalConf.fromConfig(DefaultConfig)
-          .copy(slowCheckState = sys.props.get("js7.test").fold(false)(StringAsBoolean(_))),
-        clusterConf = ClusterConf.fromConfig(UserId("USER"), DefaultConfig).orThrow,
+        clusterConf = {
+          val clusterConf = ClusterConf
+            .fromConfig(UserId("USER"), DefaultConfig)
+            .orThrow
+          clusterConf.copy(
+            journalConf = clusterConf.journalConf.copy(
+              slowCheckState = sys.props.get("js7.test").fold(false)(StringAsBoolean(_))))
+        },
         name = AgentConfiguration.DefaultName,
         config = DefaultConfig))
     }

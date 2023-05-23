@@ -23,7 +23,6 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, EventId, SnapshotableState, Stamped}
 import js7.data.node.NodeId
 import js7.journal.EventIdGenerator
-import js7.journal.configuration.JournalConf
 import js7.journal.recover.Recovered
 import js7.journal.state.FileJournal
 import monix.eval.Task
@@ -179,7 +178,6 @@ object WorkingClusterNode
   def resource[S <: SnapshotableState[S]: SnapshotableState.Companion: diffx.Diff: Tag](
     recovered: Recovered[S],
     common: ClusterCommon,
-    journalConf: JournalConf,
     clusterConf: ClusterConf,
     eventIdGenerator: EventIdGenerator = new EventIdGenerator,
     keyedEventBus: EventPublisher[Stamped[AnyKeyedEvent]] = new StandardEventBus)
@@ -189,7 +187,7 @@ object WorkingClusterNode
       _ <- Resource.eval(Task.unless(recovered.clusterState == ClusterState.Empty)(
         common.requireValidLicense.map(_.orThrow)))
       journalAllocated <- Resource.eval(FileJournal
-        .resource(recovered, journalConf, eventIdGenerator, keyedEventBus)
+        .resource(recovered, clusterConf.journalConf, eventIdGenerator, keyedEventBus)
         .toAllocated/* ControllerOrderKeeper and AgentOrderKeeper both require Allocated*/)
       workingClusterNode <- Resource.make(
         acquire = Task.defer {

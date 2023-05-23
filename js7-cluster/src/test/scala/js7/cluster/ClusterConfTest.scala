@@ -10,6 +10,7 @@ import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.common.message.ProblemCodeMessages
 import js7.data.cluster.{ClusterSetting, ClusterTiming}
 import js7.data.node.NodeId
+import js7.journal.configuration.JournalConfTest
 
 /**
   * @author Joacim Zschimmer
@@ -28,10 +29,11 @@ final class ClusterConfTest extends OurTestSuite
         js7.web.client.idle-get-timeout = 50s
         js7.web.client.polling-delay = 1s
         js7.web.client.failure-delay = 5s
-        """
+        """.withFallback(JournalConfTest.config)
       val clusterConf = ClusterConf.fromConfig(UserId("USER"), config)
       assert(clusterConf == Right(
         ClusterConf(
+          JournalConfTest.journalConf,
           NodeId("Primary"),
           isBackup = false,
           None,
@@ -59,10 +61,11 @@ final class ClusterConfTest extends OurTestSuite
         js7.web.client.idle-get-timeout = 50s
         js7.web.client.polling-delay = 1s
         js7.web.client.failure-delay = 5s
-        """
+        """.withFallback(JournalConfTest.config)
       val checkedClusterConf = ClusterConf.fromConfig(UserId("USER"), config)
       assert(checkedClusterConf == Right(
         ClusterConf(
+          JournalConfTest.journalConf,
           NodeId("PRIMARY"),
           isBackup = false,
           Some(ClusterSetting(

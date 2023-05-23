@@ -12,9 +12,11 @@ import js7.base.web.Uri
 import js7.common.http.configuration.{RecouplingStreamReaderConf, RecouplingStreamReaderConfs}
 import js7.data.cluster.{ClusterSetting, ClusterTiming, ClusterWatchId}
 import js7.data.node.NodeId
+import js7.journal.configuration.JournalConf
 import scala.jdk.CollectionConverters.*
 
 final case class ClusterConf(
+  journalConf: JournalConf,
   ownId: NodeId,
   isBackup: Boolean,
   maybeClusterSetting: Option[ClusterSetting],
@@ -70,6 +72,7 @@ object ClusterConf
       setting <- maybeIdToUri.traverse(ClusterSetting.checked(_, nodeId, timing, clusterWatchId))
     } yield
       new ClusterConf(
+        JournalConf.fromConfig(config),
         nodeId,
         isBackup = isBackup,
         setting,
