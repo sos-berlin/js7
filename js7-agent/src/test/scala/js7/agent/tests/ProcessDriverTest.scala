@@ -24,7 +24,7 @@ import js7.data.value.{NamedValues, NumberValue, StringValue}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Position
 import js7.launcher.StdObservers
-import js7.launcher.configuration.TaskConfiguration
+import js7.launcher.configuration.{JobLauncherConf, TaskConfiguration}
 import js7.launcher.process.{ProcessDriver, RichProcess}
 import js7.subagent.configuration.SubagentConf
 import monix.eval.Task
@@ -62,7 +62,7 @@ final class ProcessDriverTest extends OurTestSuite with BeforeAndAfterAll with T
         Order.Processing(SubagentId("SUBAGENT")),
         historicOutcomes = Vector(HistoricOutcome(Position(999), Outcome.Succeeded(Map("a" -> StringValue("A"))))))
 
-      val jobLauncherConf = SubagentConf.jobLauncherConf(
+      val jobLauncherConf = JobLauncherConf.checked(
         executablesDirectory = executableDirectory,
         shellScriptTmpDirectory = executableDirectory,
         workTmpDirectory = executableDirectory,

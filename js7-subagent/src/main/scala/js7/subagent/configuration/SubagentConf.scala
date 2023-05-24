@@ -20,7 +20,6 @@ import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.configuration.{CommonConfiguration, Js7Configuration}
-import js7.common.http.configuration.RecouplingStreamReaderConfs
 import js7.launcher.configuration.{JobLauncherConf, ProcessKillScript}
 import js7.launcher.forwindows.configuration.WindowsConf
 import js7.launcher.process.ProcessKillScriptProvider
@@ -97,7 +96,7 @@ extends CommonConfiguration
     else if (killForWindows.nonEmpty && !killForWindows.contains("$pid"))
       Left(Problem(s"Setting $sigkillWindowsName must contain \"$$pid\""))
     else
-      SubagentConf.jobLauncherConf(
+      JobLauncherConf.checked(
         executablesDirectory = executablesDirectory,
         shellScriptTmpDirectory = shellScriptTmpDirectory,
         workTmpDirectory = workTmpDirectory,
@@ -179,48 +178,6 @@ object SubagentConf
       stdoutCommitDelay = myConfig.finiteDuration("js7.order.stdout-stderr.commit-delay").orThrow,
       name = name,
       myConfig)
-  }
-
-  def jobLauncherConf(
-    executablesDirectory: Path,
-    shellScriptTmpDirectory: Path,
-    workTmpDirectory: Path,
-    jobWorkingDirectory: Path,
-    systemEncoding: Charset,
-    killScript: Option[ProcessKillScript],
-    scriptInjectionAllowed: Boolean = false,
-    iox: IOExecutor, blockingJobScheduler: Scheduler, clock: AlarmClock, config: Config)
-  : Checked[JobLauncherConf] = {
-    val sigtermName = "js7.job.execution.kill-with-sigterm-command"
-    val sigkillName = "js7.job.execution.kill-with-sigkill-command"
-    val sigkillWindowsName = "js7.job.execution.kill-command-for-windows"
-    val killWithSigterm = config.seqAs[String](sigtermName)
-    val killWithSigkill = config.seqAs[String](sigkillName)
-    val killForWindows = config.seqAs[String](sigkillWindowsName)
-    if (killWithSigterm.nonEmpty && !killWithSigterm.contains("$pid"))
-      Left(Problem(s"Setting $sigtermName must contain \"$$pid\""))
-    else if (killWithSigkill.nonEmpty && !killWithSigkill.contains("$pid"))
-      Left(Problem(s"Setting $sigkillName must contain \"$$pid\""))
-    else if (killForWindows.nonEmpty && !killForWindows.contains("$pid"))
-      Left(Problem(s"Setting $sigkillWindowsName must contain \"$$pid\""))
-    else Right(
-      JobLauncherConf(
-        executablesDirectory = executablesDirectory,
-        shellScriptTmpDirectory = shellScriptTmpDirectory,
-        tmpDirectory = workTmpDirectory,
-        workingDirectory = jobWorkingDirectory,
-        systemEncoding = config.optionAs[String]("js7.job.execution.encoding")
-          .map(Charset.forName /*throws*/)
-          .getOrElse(systemEncoding),
-        killWithSigterm = config.seqAs[String](sigtermName),
-        killWithSigkill = config.seqAs[String](sigkillName),
-        killForWindows = config.seqAs[String](sigkillWindowsName),
-        killScript = killScript,
-        scriptInjectionAllowed = scriptInjectionAllowed,
-        RecouplingStreamReaderConfs.fromConfig(config).orThrow,
-        iox,
-        blockingJobScheduler = blockingJobScheduler,
-        clock))
   }
 
   private def autoCreateDirectory(directory: Path): Path = {
