@@ -82,35 +82,21 @@ extends CommonConfiguration
   }
 
   def toJobLauncherConf(iox: IOExecutor, blockingJobScheduler: Scheduler, clock: AlarmClock)
-  : Checked[JobLauncherConf] = {
-    val sigtermName = "js7.job.execution.kill-with-sigterm-command"
-    val sigkillName = "js7.job.execution.kill-with-sigkill-command"
-    val sigkillWindowsName = "js7.job.execution.kill-command-for-windows"
-    val killWithSigterm = config.seqAs[String](sigtermName)
-    val killWithSigkill = config.seqAs[String](sigkillName)
-    val killForWindows = config.seqAs[String](sigkillWindowsName)
-    if (killWithSigterm.nonEmpty && !killWithSigterm.contains("$pid"))
-      Left(Problem(s"Setting $sigtermName must contain \"$$pid\""))
-    else if (killWithSigkill.nonEmpty && !killWithSigkill.contains("$pid"))
-      Left(Problem(s"Setting $sigkillName must contain \"$$pid\""))
-    else if (killForWindows.nonEmpty && !killForWindows.contains("$pid"))
-      Left(Problem(s"Setting $sigkillWindowsName must contain \"$$pid\""))
-    else
-      JobLauncherConf.checked(
-        executablesDirectory = executablesDirectory,
-        shellScriptTmpDirectory = shellScriptTmpDirectory,
-        workTmpDirectory = workTmpDirectory,
-        jobWorkingDirectory = jobWorkingDirectory,
-        systemEncoding = config.optionAs[String]("js7.job.execution.encoding")
-          .map(Charset.forName/*throws*/)
-          .getOrElse(systemEncoding.orThrow),
-        killScript = killScript,
-        scriptInjectionAllowed = scriptInjectionAllowed,
-        iox,
-        blockingJobScheduler = blockingJobScheduler,
-        clock,
-        config)
-  }
+  : Checked[JobLauncherConf] =
+    JobLauncherConf.checked(
+      executablesDirectory = executablesDirectory,
+      shellScriptTmpDirectory = shellScriptTmpDirectory,
+      workTmpDirectory = workTmpDirectory,
+      jobWorkingDirectory = jobWorkingDirectory,
+      systemEncoding = config.optionAs[String]("js7.job.execution.encoding")
+        .map(Charset.forName /*throws*/)
+        .getOrElse(systemEncoding.orThrow),
+      killScript = killScript,
+      scriptInjectionAllowed = scriptInjectionAllowed,
+      iox,
+      blockingJobScheduler = blockingJobScheduler,
+      clock,
+      config)
 
   private def provideKillScript(): SubagentConf =
     killScript match {
