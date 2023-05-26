@@ -19,6 +19,9 @@ object WebServerPort
   def localhost(port: Int): Http =
     Http(new InetSocketAddress("127.0.0.1", port))
 
+  def localHttps(port: Int): Https =
+    Https(new InetSocketAddress("localhost", port))
+
   final case class Http(address: InetSocketAddress) extends WebServerPort {
     def scheme = WebServerBinding.Http
   }

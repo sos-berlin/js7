@@ -2,20 +2,15 @@ package js7.agent.configuration
 
 import akka.util.Timeout
 import com.typesafe.config.{Config, ConfigFactory}
-import java.net.InetSocketAddress
 import java.nio.file.Files.{createDirectory, exists}
-import java.nio.file.{Path, Paths}
-import js7.agent.configuration.AgentConfiguration.*
+import java.nio.file.Path
 import js7.agent.data.AgentState
 import js7.base.auth.UserId
 import js7.base.configutils.Configs
 import js7.base.configutils.Configs.*
-import js7.base.convert.AsJava.asAbsolutePath
 import js7.base.io.JavaResource
 import js7.base.io.file.FileUtils.syntax.*
-import js7.base.io.file.FileUtils.{EmptyPath, WorkingDirectory}
 import js7.base.time.JavaTimeConverters.*
-import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.base.utils.Tests.isTest
 import js7.cluster.ClusterConf
@@ -26,175 +21,107 @@ import js7.common.http.configuration.RecouplingStreamReaderConfs
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalLocation
-import js7.launcher.configuration.ProcessKillScript
 import js7.subagent.configuration.{DirectorConf, SubagentConf}
-import scala.jdk.CollectionConverters.*
 
 /**
  * @author Joacim Zschimmer
  */
 final case class AgentConfiguration(
-  configDirectory: Path,
-  dataDirectory: Path,
-  webServerPorts: Seq[WebServerPort],
-  logDirectory: Path,
-  jobWorkingDirectory: Path = WorkingDirectory,
-  killScript: Option[ProcessKillScript],  // TODO Duplicate with SubagentConf
+  subagentConf: SubagentConf,
   akkaAskTimeout: Timeout,
   clusterConf: ClusterConf,
-  name: String,
-  config: Config)  // Should not be the first argument to avoid the misleading call AgentConfiguration(config)
+  name: String)
 extends CommonConfiguration
 {
-  require(jobWorkingDirectory.isAbsolute)
+  def configDirectory: Path =
+    subagentConf.configDirectory
 
-  val recouplingStreamReaderConf = RecouplingStreamReaderConfs.fromConfig(config).orThrow
+  def dataDirectory: Path =
+    subagentConf.dataDirectory
+
+  lazy val stateDirectory: Path =
+    dataDirectory / "state"
+
+  def workDirectory: Path =
+    subagentConf.workDirectory
+
+  def webServerPorts: Seq[WebServerPort] =
+    subagentConf.webServerPorts
+
+  def config: Config =
+    subagentConf.config
 
   implicit def implicitAkkaAskTimeout: Timeout = akkaAskTimeout
 
-  private def withCommandLineArguments(a: CommandLineArguments): AgentConfiguration = {
-    val common = CommonConfiguration.Common.fromCommandLineArguments(a)
-    copy(
-      webServerPorts = common.webServerPorts,
-      logDirectory = a.optionAs("--log-directory=")(asAbsolutePath) getOrElse logDirectory,
-      jobWorkingDirectory = a.as("--job-working-directory=", jobWorkingDirectory)(asAbsolutePath))
-    .withKillScript(a.optionAs[String]("--kill-script="))
-  }
-
-  private def withKillScript(killScriptPath: Option[String]) = killScriptPath match {
-    case None => this  // --kill-script= not given: Agent uses the internally provided kill script
-    case Some("") => copy(killScript = None)      // --kill-script= (empty argument) means: don't use any kill script
-    case Some(o) => copy(killScript = Some(ProcessKillScript(Paths.get(o).toAbsolutePath)))
-  }
-
-  def executablesDirectory: Path =
-    (configDirectory / "executables").toRealPath()
-
-  def stateDirectory: Path =
-    dataDirectory / "state"
-
   def createDirectories(): Unit = {
-    if (logDirectory == defaultLogDirectory(dataDirectory) && !exists(logDirectory)) {
-      createDirectory(logDirectory)
-    }
+    subagentConf.finishAndProvideFiles()
     if (!exists(stateDirectory)) {
       createDirectory(stateDirectory)
     }
-    if (!exists(workDirectory)) {
-      assertThat(workDirectory == dataDirectory / "work")
-      createDirectory(workDirectory)
-    }
   }
 
-  lazy val workDirectory: Path =
-    dataDirectory  / "work"
-
-  lazy val scriptInjectionAllowed =
-    config.getBoolean("js7.job.execution.signed-script-injection-allowed")
-
-  val journalLocation = JournalLocation(AgentState, stateDirectory / "agent" )
+  val journalLocation: JournalLocation =
+    JournalLocation(AgentState, stateDirectory / "agent" )
 
   def journalConf: JournalConf =
     clusterConf.journalConf
 
-  lazy val subagentDirectorConf =
-    DirectorConf(journalConf, httpsConfig, recouplingStreamReaderConf, subagentConf)
-
-  lazy val subagentConf =
-    SubagentConf.of(
-      configDirectory = configDirectory,
-      dataDirectory = dataDirectory,
-      logDirectory = logDirectory,
-      jobWorkingDirectory = jobWorkingDirectory,
-      webServerPorts,
-      killScript,
-      config,
-      name = name
-    ).finishAndProvideFiles
+  val directorConf: DirectorConf =
+    DirectorConf(
+      journalConf,
+      httpsConfig,
+      RecouplingStreamReaderConfs.fromConfig(config).orThrow,
+      subagentConf)
 
   // Suppresses Config (which may contain secrets)
-  override def toString = s"AgentConfiguration($configDirectory,$dataDirectory,$webServerPorts," +
-    s"$logDirectory,$jobWorkingDirectory,$killScript,$akkaAskTimeout,$journalConf,$name,Config)"
+  override def toString =
+    s"AgentConfiguration($configDirectory,$dataDirectory,$webServerPorts,$name,Config)"
 }
 
 object AgentConfiguration
 {
   val DefaultName = if (isTest) "Agent" else "JS7"
-  private val DelayUntilFinishKillScript = ProcessKillScript(EmptyPath)  // Marker for finish
 
-  val DefaultConfig = Configs
+  val DefaultConfig: Config = Configs
     .loadResource(JavaResource("js7/agent/configuration/agent.conf"))
     .withFallback(SubagentConf.DefaultConfig)
 
-  def fromCommandLine(arguments: CommandLineArguments, extraDefaultConfig: Config = ConfigFactory.empty) = {
-    val common = CommonConfiguration.Common.fromCommandLineArguments(arguments)
-    val c = fromDirectories(
-      configDirectory = common.configDirectory,
-      dataDirectory = common.dataDirectory,
-      extraDefaultConfig)
-    c.copy(webServerPorts = common.webServerPorts ++ c.webServerPorts)
-    .withCommandLineArguments(arguments)
+  def fromCommandLine(args: CommandLineArguments, extraConfig: Config = ConfigFactory.empty) = {
+    val subagentConf = SubagentConf.fromCommandLine(args,
+      extraConfig = extraConfig, internalConfig = DefaultConfig)
+    args.requireNoMoreArguments()
+    fromDirectories(subagentConf)
   }
 
+  def forTest(
+    configAndData: Path,
+    name: String,
+    extraConfig: Config = ConfigFactory.empty,
+    httpPort: Option[Int] = Some(findFreeTcpPort()),
+    httpsPort: Option[Int] = None)
+  : AgentConfiguration =
+    fromDirectories(
+      SubagentConf.forTest(
+        configAndData = configAndData,
+        name = name,
+        extraConfig = extraConfig,
+        internalConfig = DefaultConfig,
+        httpPort = httpPort,
+        httpsPort = httpsPort),
+      name = name)
+
   private def fromDirectories(
-    configDirectory: Path,
-    dataDirectory: Path,
-    extraDefaultConfig: Config,
+    subagentConf: SubagentConf,
     name: String = DefaultName)
   : AgentConfiguration = {
-    val config = resolvedConfig(configDirectory, extraDefaultConfig)
-    var v = new AgentConfiguration(
-      configDirectory = configDirectory,
-      dataDirectory = dataDirectory,
-      webServerPorts = Nil,
-      logDirectory = config.optionAs("js7.job.execution.log.directory")(asAbsolutePath) getOrElse defaultLogDirectory(dataDirectory),
-      killScript = Some(DelayUntilFinishKillScript),  // Changed later
+    import subagentConf.config
+    new AgentConfiguration(
+      subagentConf,
       akkaAskTimeout = config.getDuration("js7.akka.ask-timeout").toFiniteDuration,
       clusterConf = {
         val userId = config.as[UserId]("js7.auth.cluster.user-id")  // FIXME Use AgentPath (or SubagentId?)
         ClusterConf.fromConfig(userId, config).orThrow
       },
-      name = name,
-      config = config)
-    v = v.withKillScript(config.optionAs[String]("js7.job.execution.kill.script"))
-    //for (o <- config.optionAs("js7.web.server.https-port")(StringToServerInetSocketAddress)) {
-    //  v = v addHttps o
-    //}
-    v
-  }
-
-  private def resolvedConfig(configDirectory: Path, extraDefaultConfig: Config): Config = {
-    ConfigFactory.systemProperties
-      .withFallback(configDirectoryConfig(configDirectory))
-      .withFallback(extraDefaultConfig)
-      .withFallback(DefaultConfig)
-      .resolve
-  }
-
-  // Same code in TextAgentClient.configDirectoryConfig
-  private def configDirectoryConfig(configDirectory: Path): Config =
-    ConfigFactory.parseMap(Map(
-        "js7.config-directory" -> configDirectory.toString
-      ).asJava)
-      .withFallback(parseConfigIfExists(configDirectory / "private/private.conf", secret = true))
-      .withFallback(parseConfigIfExists(configDirectory / "agent.conf", secret = false))
-
-  private def defaultLogDirectory(data: Path) = data / "logs"
-
-  def forTest(
-    configAndData: Path,
-    name: String,
-    config: Config = ConfigFactory.empty,
-    httpPort: Option[Int] = Some(findFreeTcpPort()),
-    httpsPort: Option[Int] = None)
-  : AgentConfiguration =
-    fromDirectories(
-      configDirectory = configAndData / "config",
-      dataDirectory = configAndData / "data",
-      config,
       name = name)
-    .copy(
-      webServerPorts  =
-        httpPort.map(port => WebServerPort.localhost(port)) ++:
-        httpsPort.map(port => WebServerPort.Https(new InetSocketAddress("127.0.0.1", port))).toList)
+  }
 }

@@ -39,7 +39,7 @@ with SessionApi.HasUserAndPassword
       trustStoreRefs = configDirectory.toList
         .flatMap { configDir =>
           // Use Controller's keystore as truststore for client access, using also Controller's store-password
-          val controllersConfig = configDirectoryConfig(configDir)
+          val controllersConfig = configDirectoryToConfig(configDir)
           KeyStoreRef.clientFromConfig(controllersConfig, configDirectory = configDir)
             .map(TrustStoreRef.fromKeyStore)
             .toOption
@@ -69,8 +69,8 @@ with SessionApi.HasUserAndPassword
 
 object AkkaHttpAgentTextApi
 {
-  // Like AgentConfiguration.configDirectoryConfig
-  private def configDirectoryConfig(configDirectory: Path): Config =
+  // Like AgentConfiguration.configDirectoryToConfig
+  private def configDirectoryToConfig(configDirectory: Path): Config =
     ConfigFactory
       .empty
       .withFallback(parseConfigIfExists(configDirectory / "private/private.conf", secret = true))

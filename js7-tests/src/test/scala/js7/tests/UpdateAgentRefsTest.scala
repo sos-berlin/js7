@@ -143,7 +143,8 @@ final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForSc
     val subagentItem = SubagentItem(subagentId, agentPath, Uri(s"http://127.0.0.1:$agentPort2"))
     agent = TestAgent.start(
       agentEnv.agentConf.copy(
-        webServerPorts = List(WebServerPort.localhost(agentPort2)))
+        subagentConf = agentEnv.agentConf.subagentConf.copy(
+          webServerPorts = List(WebServerPort.localhost(agentPort2))))
     ) await 99.s
     controllerApi.updateUnsignedSimpleItems(Seq(subagentItem)).await(99.s).orThrow
     controller.runOrder(FreshOrder(OrderId("🔶"), workflow.path))
@@ -157,7 +158,8 @@ final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForSc
 
     agent = TestAgent.start(
       agentEnv.agentConf.copy(
-        webServerPorts = List(WebServerPort.localhost(agentPort2)))
+        subagentConf = agentEnv.agentConf.subagentConf.copy(
+          webServerPorts = List(WebServerPort.localhost(agentPort2))))
     ) await 99.s
 
     // TODO May timeout due to repeated
@@ -175,7 +177,8 @@ final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForSc
     deleteDirectoryContentRecursively(agentEnv.stateDir)
     agent = TestAgent.start(
       agentEnv.agentConf.copy(
-        webServerPorts = List(WebServerPort.localhost(agentPort3)))
+        subagentConf = agentEnv.agentConf.subagentConf.copy(
+          webServerPorts = List(WebServerPort.localhost(agentPort3))))
     ) await 99.s
 
     val eventId = controller.eventWatch.lastFileEventId

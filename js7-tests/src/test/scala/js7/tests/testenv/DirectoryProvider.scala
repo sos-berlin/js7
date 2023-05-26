@@ -412,7 +412,7 @@ extends HasCloser
         subagentItem.uri.port.orThrow,
         config,
         name = subagentItem.id.string
-      ).finishAndProvideFiles
+      ).finishAndProvideFiles()
       iox <- IOExecutor.resource[Task](conf.config, name = conf.name + "-I/O")
       testEventBus <- Resource.eval(Task(new StandardEventBus[Any]))
       subagent <- ThreadPools.ownThreadPoolResource(conf.name, conf.config)(
@@ -461,7 +461,7 @@ extends HasCloser
   def subagentName(subagentId: SubagentId, suffix: String = ""): String =
     testName.fold("")(_ + "-") + subagentId.string + suffix
 
-  @deprecated // Duplicate in SubagentEnv ?
+  @deprecated // Duplicate in AgentEnv ?
   def toSubagentConf(
     agentPath: AgentPath,
     directory: Path,
@@ -474,11 +474,11 @@ extends HasCloser
       configDirectory = directory / "config",
       dataDirectory = directory / "data",
       logDirectory = directory / "data" / "logs",
-      jobWorkingDirectory = directory,
+      jobWorkingDirectory = directory / "data" / "work",
       Seq(WebServerPort.localhost(port)),
       killScript = None,
       name = testName.fold("")(_ + "-") + name,
-      config = config
+      extraConfig = config
         .withFallback(config"""
           js7.job.execution.signed-script-injection-allowed = yes
           js7.auth.users.${agentPath.string} {
@@ -488,8 +488,7 @@ extends HasCloser
           js7.configuration.trusted-signature-keys {
             ${verifier.companion.typeName} = "$trustedSignatureDir"
           }
-          """)
-        .withFallback(SubagentConf.DefaultConfig))
+          """))
 }
 
 object DirectoryProvider

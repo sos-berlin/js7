@@ -56,7 +56,9 @@ final class AgentTest extends OurTestSuite with AgentTester
           TestPathExecutable.toFile(directory / "config" / "executables").writeUtf8Executable(TestScript)
           var agentConf = AgentConfiguration.forTest(directory, name = "AgentTest")
           if (directory != WorkingDirectory) {
-            agentConf = agentConf.copy(jobWorkingDirectory = workingDirectory)
+            agentConf = agentConf.copy(
+              subagentConf = agentConf.subagentConf.copy(
+                jobWorkingDirectory = workingDirectory))
           }
           TestAgent.blockingRun(agentConf, 99.s) { agent =>
             val agentApi = agent.untilReady.await(99.s).api.apply(CommandMeta(TestUser))

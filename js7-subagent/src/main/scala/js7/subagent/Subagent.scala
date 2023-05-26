@@ -238,7 +238,10 @@ object Subagent
     }
   }
 
-  private def webServerResource(directorRouteVariable: DirectorRouteVariable, subagent: Task[Subagent], conf: SubagentConf)
+  private def webServerResource(
+    directorRouteVariable: DirectorRouteVariable,
+    subagent: Task[Subagent],
+    conf: SubagentConf)
     (implicit scheduler: Scheduler)
   : Resource[Task, AkkaWebServer] = {
     import conf.config

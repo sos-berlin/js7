@@ -125,7 +125,7 @@ object ControllerConfiguration
   }
 
   private def resolvedConfig(configDirectory: Path, dataDirectory: Path, extraDefaultConfig: Config): Config = {
-    val config = configDirectoryConfig(configDirectory)
+    val config = configDirectoryToConfig(configDirectory)
     ConfigFactory.parseMap(Map(
         "js7.config-directory" -> configDirectory.toString,
         "js7.data-directory" -> dataDirectory.toString
@@ -137,8 +137,8 @@ object ControllerConfiguration
       .resolve()
   }
 
-  // Same code in AkkaHttpControllerTextApi.configDirectoryConfig
-  private def configDirectoryConfig(configDirectory: Path): Config =
+  // Same code in AkkaHttpControllerTextApi.configDirectoryToConfig
+  private def configDirectoryToConfig(configDirectory: Path): Config =
     parseConfigIfExists(configDirectory / "private/private.conf", secret = true)
       .withFallback(parseConfigIfExists(configDirectory / "controller.conf", secret = false))
 }

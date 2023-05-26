@@ -22,9 +22,8 @@ import js7.launcher.process.ProcessKillScriptProvider.*
 final class ProcessKillScriptProvider extends HasCloser
 {
   def provideTo(directory: Path): ProcessKillScript = {
-    val resource = if (isWindows) WindowsScriptResource else UnixScriptResource
-    val file = directory / resource.simpleName
-    val content = resource.contentBytes
+    val file = toKillScriptFile(directory)
+    val content = javaResource.contentBytes
     if (!isUnchanged(file, content)) {
       if (isUnix) {
         try setPosixFilePermissions(file, PosixFilePermissions.fromString("rw-------"))
@@ -33,7 +32,9 @@ final class ProcessKillScriptProvider extends HasCloser
       file := content
       file.makeExecutable()
       onClose {
-        ignoreException(logger.asLazy.error) { delete(file) }
+        ignoreException(logger.asLazy.error) {
+          delete(file)
+        }
       }
     }
 
@@ -58,4 +59,12 @@ object ProcessKillScriptProvider {
   private val logger = Logger(getClass)
   private val WindowsScriptResource = JavaResource("js7/launcher/process/scripts/windows/kill_task.cmd")
   private val UnixScriptResource = JavaResource("js7/launcher/process/scripts/unix/kill_task.sh")
+
+  private val javaResource = if (isWindows) WindowsScriptResource else UnixScriptResource
+
+  def directoryToProcessKillScript(directory: Path): ProcessKillScript =
+    ProcessKillScript(toKillScriptFile(directory))
+
+  private def toKillScriptFile(directory: Path): Path =
+    directory / javaResource.simpleName
 }

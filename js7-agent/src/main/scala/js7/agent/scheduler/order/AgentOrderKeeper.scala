@@ -203,7 +203,7 @@ with Stash
   private val subagentKeeper =
     new SubagentKeeper(
       localSubagentId, localSubagent, ownAgentPath, controllerId, failedOverSubagentId,
-      journal, conf.subagentDirectorConf, context.system)
+      journal, conf.directorConf, context.system)
 
   watch(journalActor)
   self ! Internal.Recover(recoveredAgentState)
@@ -464,7 +464,7 @@ with Stash
             .rightAs(AgentCommand.Response.Accepted)
 
       case fileWatch: FileWatch =>
-        if (!conf.scriptInjectionAllowed)
+        if (!conf.subagentConf.scriptInjectionAllowed)
           Future.successful(Left(SignedInjectionNotAllowed))
         else
           fileWatchManager.update(fileWatch)

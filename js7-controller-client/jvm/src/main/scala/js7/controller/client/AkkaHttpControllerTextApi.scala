@@ -48,7 +48,7 @@ with SessionApi.HasUserAndPassword
       keyStoreRef = None,
       trustStoreRefs = configDirectory
         .flatMap(dir =>
-          KeyStoreRef.clientFromConfig(configDirectoryConfig(dir), configDirectory = dir)
+          KeyStoreRef.clientFromConfig(configDirectoryToConfig(dir), configDirectory = dir)
             .toOption)
         .map(TrustStoreRef.fromKeyStore)
         .toSeq)
@@ -63,8 +63,8 @@ with SessionApi.HasUserAndPassword
 
 object AkkaHttpControllerTextApi
 {
-  // Like ControllerConfiguration.configDirectoryConfig
-  private def configDirectoryConfig(configDirectory: Path): Config =
+  // Like ControllerConfiguration.configDirectoryToConfig
+  private def configDirectoryToConfig(configDirectory: Path): Config =
     ConfigFactory
       .empty
       .withFallback(parseConfigIfExists(configDirectory / "private/private.conf", secret = true))

@@ -3,8 +3,9 @@ package js7.common.configuration
 import cats.syntax.semigroup.*
 import com.typesafe.config.Config
 import java.nio.file.Path
-import js7.base.configutils.Configs.RichConfig
-import js7.base.convert.AsJava.StringAsPath
+import js7.base.configutils.Configs.*
+import js7.base.convert.AsJava.*
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.https.{HttpsConfig, KeyStoreRef, TrustStoreRef}
 import js7.base.log.Logger
 import js7.base.problem.Checked.Ops
@@ -70,16 +71,20 @@ object CommonConfiguration
     configDirectory: Path,
     dataDirectory: Path,
     webServerPorts: Seq[WebServerPort])
+  {
+    val workDirectory = dataDirectory / "work"
+    val logDirectory = dataDirectory / "logs"
+  }
 
   object Common {
-    def fromCommandLineArguments(a: CommandLineArguments): Common =
+    def fromCommandLineArguments(a: CommandLineArguments): Common = {
       Common(
         // Startup code parses --data-directory= too, to allow placing a lock file !!!
-        dataDirectory = a.as[Path]("--data-directory=").toAbsolutePath,
         configDirectory = a.as[Path]("--config-directory=").toAbsolutePath,
+        dataDirectory = a.as[Path]("--data-directory=").toAbsolutePath,
         webServerPorts =
           a.seqAs("--http-port=")(StringToServerInetSocketAddress).map(WebServerPort.Http(_)) ++
-          a.seqAs("--https-port=")(StringToServerInetSocketAddress).map(WebServerPort.Https(_))
-      )
+          a.seqAs("--https-port=")(StringToServerInetSocketAddress).map(WebServerPort.Https(_)))
+    }
   }
 }

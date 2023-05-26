@@ -211,7 +211,7 @@ private object OrderActorTest {
       controllerId,
       failedOverSubagentId = None,
       journal,
-      agentConf.subagentDirectorConf, context.system)
+      agentConf.directorConf, context.system)
     subagentKeeper.start.await(99.s)
 
     private val orderActor = watch(actorOf(
