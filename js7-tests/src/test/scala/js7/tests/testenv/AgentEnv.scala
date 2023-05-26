@@ -22,7 +22,7 @@ import js7.subagent.configuration.SubagentConf
 import js7.tests.testenv.DirectoryProvider.*
 
 /** Environment with config and data directories for a Subagent. */
-final class SubagentEnv(
+final class AgentEnv(
   subagentItem: SubagentItem,
   name: String,
   rootDirectory: Path,

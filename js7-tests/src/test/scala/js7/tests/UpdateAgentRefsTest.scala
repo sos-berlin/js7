@@ -26,7 +26,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.UpdateAgentRefsTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerTestUtils.newControllerApi
-import js7.tests.testenv.{DirectoryProviderForScalaTest, SubagentEnv}
+import js7.tests.testenv.{AgentEnv, DirectoryProviderForScalaTest}
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import scala.annotation.tailrec
@@ -46,7 +46,7 @@ final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForSc
   protected val items = Nil
 
   private lazy val agentPort1 :: agentPort2 :: agentPort3 :: Nil = findFreeTcpPorts(3)
-  private lazy val agentEnv = new SubagentEnv(
+  private lazy val agentEnv = new AgentEnv(
     SubagentItem(
       SubagentId(agentPath.string + "-0"), agentPath, disabled = subagentsDisabled,
       uri = Uri(s"http://127.0.0.1:$agentPort1")),

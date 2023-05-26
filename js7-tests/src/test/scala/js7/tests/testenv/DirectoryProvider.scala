@@ -111,7 +111,7 @@ extends HasCloser
 
   createDirectory(directory / "subagents")
 
-  val agentToEnv: Map[AgentPath, SubagentEnv] =
+  val agentToEnv: Map[AgentPath, AgentEnv] =
     agentPaths
       .zip(agentPorts ++ Seq.fill(agentPaths.length - agentPorts.length)(findFreeTcpPort()))
       .map { case (agentPath, port) =>
@@ -127,11 +127,11 @@ extends HasCloser
         //    localSubagentId, agentPath, disabled = subagentsDisabled,
         //    uri = Uri(s"$localhost:$port"))
 
-        agentPath -> newSubagentEnv(localSubagentItem)
+        agentPath -> newAgentEnv(localSubagentItem)
       }
       .toMap
 
-  val agentEnvs: Vector[SubagentEnv] = agentToEnv.values.toVector
+  val agentEnvs: Vector[AgentEnv] = agentToEnv.values.toVector
   lazy val agentRefs: Vector[AgentRef] =
     for (a <- agentEnvs) yield AgentRef(a.agentPath, Seq(a.localSubagentId))
   lazy val subagentItems: Vector[SubagentItem] = agentEnvs.flatMap(_.subagentItems)
@@ -150,7 +150,7 @@ extends HasCloser
       .foreach { agentPath =>
         controllerEnv.writeAgentAuthentication(
           agentPath,
-          SecretString(s"$agentPath-PASSWORD")/*FIXME Duplicate in SubagentEnv*/)
+          SecretString(s"$agentPath-PASSWORD")/*FIXME Duplicate in AgentEnv*/)
       }
   }
 
@@ -349,7 +349,7 @@ extends HasCloser
 
   private def controllerName = testName.fold(ControllerConfiguration.DefaultName)(_ + "-Controller")
 
-  def prepareAgentFiles(env: SubagentEnv): Unit = {
+  def prepareAgentFiles(env: AgentEnv): Unit = {
     env.createDirectoriesAndFiles()
     controllerEnv.writeAgentAuthentication(env)
   }
@@ -393,7 +393,7 @@ extends HasCloser
       suppressSignatureKeys = suppressSignatureKeys,
       config = agentConfig)
 
-  @deprecated // Duplicate in SubagentEnv ?
+  @deprecated // Duplicate in AgentEnv ?
   def subagentResource(
     subagentItem: SubagentItem,
     config: Config = ConfigFactory.empty,
@@ -401,13 +401,13 @@ extends HasCloser
     suppressSignatureKeys: Boolean = false)
   : Resource[Task, Subagent] =
     for {
-      subagentEnv <- subagentEnvResource(subagentItem, suffix = suffix,
+      agentEnv <- agentEnvResource(subagentItem, suffix = suffix,
         suppressSignatureKeys = suppressSignatureKeys)
-      trustedSignatureDir = subagentEnv.configDir / "private" /
+      trustedSignatureDir = agentEnv.configDir / "private" /
         verifier.companion.recommendedKeyDirectoryName
       conf = toSubagentConf(
         subagentItem.agentPath,
-        subagentEnv.directory,
+        agentEnv.directory,
         trustedSignatureDir,
         subagentItem.uri.port.orThrow,
         config,
@@ -419,29 +419,29 @@ extends HasCloser
         scheduler => Subagent.resource(conf, iox, testEventBus).executeOn(scheduler))
     } yield subagent
 
-  def subagentEnvResource(
+  def agentEnvResource(
     subagentItem: SubagentItem,
     suffix: String = "",
     isClusterBackup: Boolean = false,
     suppressSignatureKeys: Boolean = false)
-  : Resource[Task, SubagentEnv] =
+  : Resource[Task, AgentEnv] =
     Resource
       .make(
         acquire = Task(
-          newSubagentEnv(subagentItem, suffix = suffix, isClusterBackup = isClusterBackup,
+          newAgentEnv(subagentItem, suffix = suffix, isClusterBackup = isClusterBackup,
             suppressSignatureKeys = suppressSignatureKeys)))(
         release = env => Task(
           env.delete()))
       .evalTap(env => Task(
         env.createDirectoriesAndFiles()))
 
-  def newSubagentEnv(
+  def newAgentEnv(
     subagentItem: SubagentItem,
     suffix: String = "",
     isClusterBackup: Boolean = false,
     suppressSignatureKeys: Boolean = false)
-  : SubagentEnv =
-    new SubagentEnv(
+  : AgentEnv =
+    new AgentEnv(
       subagentItem = subagentItem,
       name = subagentName(subagentItem.id, suffix = suffix),
       rootDirectory = directory,
