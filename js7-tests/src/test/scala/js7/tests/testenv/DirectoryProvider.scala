@@ -28,7 +28,7 @@ import js7.base.utils.AutoClosing.closeOnError
 import js7.base.utils.CatsBlocking.BlockingTaskResource
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.CatsUtils.syntax.RichResource
-import js7.base.utils.Closer.syntax.RichClosersAny
+import js7.base.utils.Closer.syntax.{RichClosersAny, RichClosersAutoCloseable}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, HasCloser}
 import js7.base.web.Uri
@@ -107,7 +107,8 @@ extends HasCloser
     verifier = verifier,
     keyStore = controllerKeyStore,
     trustStores = controllerTrustStores,
-    agentHttpsMutual = agentHttpsMutual)
+    agentHttpsMutual = agentHttpsMutual
+  ).closeWithCloser
 
   createDirectory(directory / "subagents")
 
@@ -362,14 +363,11 @@ extends HasCloser
     suppressSignatureKeys: Boolean = false)
   : Resource[Task, DirectorEnv] =
     Resource
-      .make(
-        acquire = Task(
-          newDirectorEnv(subagentItem, suffix = suffix,
-            moreSubagentIds = moreSubagentIds,
-            isClusterBackup = isClusterBackup,
-            suppressSignatureKeys = suppressSignatureKeys)))(
-        release = env => Task(
-          env.delete()))
+      .fromAutoCloseable(Task(
+        newDirectorEnv(subagentItem, suffix = suffix,
+          moreSubagentIds = moreSubagentIds,
+          isClusterBackup = isClusterBackup,
+          suppressSignatureKeys = suppressSignatureKeys)))
       .evalTap(env => Task(
         env.createDirectoriesAndFiles()))
 
@@ -426,12 +424,9 @@ extends HasCloser
     suppressSignatureKeys: Boolean = false)
   : Resource[Task, AgentEnv] =
     Resource
-      .make(
-        acquire = Task(
-          newAgentEnv(subagentItem, suffix = suffix, isClusterBackup = isClusterBackup,
-            suppressSignatureKeys = suppressSignatureKeys)))(
-        release = env => Task(
-          env.delete()))
+      .fromAutoCloseable(Task(
+        newAgentEnv(subagentItem, suffix = suffix, isClusterBackup = isClusterBackup,
+          suppressSignatureKeys = suppressSignatureKeys)))
       .evalTap(env => Task(
         env.createDirectoriesAndFiles()))
 

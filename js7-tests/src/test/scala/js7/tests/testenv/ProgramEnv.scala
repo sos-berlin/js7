@@ -1,13 +1,16 @@
 package js7.tests.testenv
 
+import java.io.IOException
 import java.nio.file.Files.createDirectory
 import java.nio.file.Path
 import js7.base.crypt.SignatureVerifier
+import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger
+import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.tests.testenv.ProgramEnv.*
 
-trait ProgramEnv {
+trait ProgramEnv extends AutoCloseable {
   val directory: Path
   protected def verifier: SignatureVerifier
   protected def suppressSignatureKeys: Boolean = false
@@ -17,6 +20,12 @@ trait ProgramEnv {
   lazy val stateDir = dataDir / "state"
   private val trustedSignatureKeysDir =
     "private/" + verifier.companion.recommendedKeyDirectoryName
+
+  def close() =
+    try deleteDirectoryRecursively(directory)
+    catch {
+      case e: IOException => logger.error(s"Remove $directory => ${e.toStringWithCauses}")
+    }
 
   def journalFileBase: Path
 

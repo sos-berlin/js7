@@ -10,7 +10,6 @@ import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.configutils.Configs.{HoconStringInterpolator, *}
 import js7.base.crypt.SignatureVerifier
 import js7.base.generic.SecretString
-import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.problem.Checked.*
 import js7.base.utils.CatsUtils.combine
@@ -67,9 +66,6 @@ extends ProgramEnv {
   lazy val userAndPassword = Some(UserAndPassword(UserId("Controller"), password))
   private lazy val executables = configDir / "executables"
   lazy val subagentItems = subagentItem +: extraSubagentItems
-
-  def delete(): Unit =
-    deleteDirectoryRecursively(directory)
 
   def localSubagentId: SubagentId =
     subagentItem.id

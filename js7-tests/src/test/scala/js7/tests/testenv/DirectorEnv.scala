@@ -12,7 +12,6 @@ import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.configutils.Configs.{HoconStringInterpolator, *}
 import js7.base.crypt.SignatureVerifier
 import js7.base.generic.SecretString
-import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.monixutils.MonixBase.syntax.RichMonixResource
 import js7.base.problem.Checked.*
@@ -72,9 +71,6 @@ extends ProgramEnv {
   lazy val password = SecretString(s"$agentPath-PASSWORD") // TODO AgentPath — or SubagentId?
   lazy val userAndPassword = Some(UserAndPassword(UserId("Controller"), password))
   lazy val executables = configDir / "executables"
-
-  def delete(): Unit =
-    deleteDirectoryRecursively(directory)
 
   def localSubagentId: SubagentId =
     subagentItem.id
