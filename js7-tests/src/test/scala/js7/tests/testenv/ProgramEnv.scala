@@ -5,9 +5,9 @@ import java.nio.file.Path
 import js7.base.crypt.SignatureVerifier
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger
-import js7.tests.testenv.TestEnv.*
+import js7.tests.testenv.ProgramEnv.*
 
-trait TestEnv {
+trait ProgramEnv {
   val directory: Path
   protected def verifier: SignatureVerifier
   protected def suppressSignatureKeys: Boolean = false
@@ -46,6 +46,6 @@ trait TestEnv {
   }
 }
 
-object TestEnv {
+object ProgramEnv {
   private val logger = Logger[this.type]
 }

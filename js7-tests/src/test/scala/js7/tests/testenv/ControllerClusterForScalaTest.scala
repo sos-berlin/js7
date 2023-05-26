@@ -256,8 +256,8 @@ object ControllerClusterForScalaTest
   val clusterWatchId = ClusterWatchId("CLUSTER-WATCH")
 
   def assertEqualJournalFiles(
-    primary: TestEnv,
-    backup: TestEnv,
+    primary: ProgramEnv,
+    backup: ProgramEnv,
     n: Int)
     (implicit pos: source.Position)
   : Unit = {

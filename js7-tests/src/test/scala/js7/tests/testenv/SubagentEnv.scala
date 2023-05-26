@@ -35,7 +35,7 @@ final class SubagentEnv(
   isClusterBackup: Boolean = false,
   override protected val suppressSignatureKeys: Boolean = false,
   config: Config = ConfigFactory.empty)
-extends TestEnv {
+extends ProgramEnv {
   val agentPath = subagentItem.agentPath
   val directory = rootDirectory / "subagents" / name
   val journalFileBase = stateDir / "agent"

@@ -18,7 +18,7 @@ final class ControllerEnv(
   keyStore: Option[JavaResource],
   trustStores: Iterable[JavaResource],
   agentHttpsMutual: Boolean)
-extends TestEnv {
+extends ProgramEnv {
   val journalFileBase = stateDir / "controller"
   val userAndPassword = UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD"))
   // TODO Like SubagentEnv, use this port in startController
