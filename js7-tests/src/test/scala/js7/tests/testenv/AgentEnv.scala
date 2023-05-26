@@ -15,7 +15,6 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.problem.Checked.*
 import js7.base.utils.CatsUtils.combine
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.data.job.RelativePathExecutable
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.subagent.configuration.SubagentConf
@@ -30,8 +29,7 @@ final class AgentEnv(
   mutualHttps: Boolean = false,
   provideHttpsCertificate: Boolean = false,
   provideClientCertificate: Boolean = false,
-  bareSubagentIds: Seq[SubagentId] = Nil,
-  subagentsDisabled: Boolean = false,
+  val extraSubagentItems: Seq[SubagentItem] = Nil,
   isClusterBackup: Boolean = false,
   override protected val suppressSignatureKeys: Boolean = false,
   config: Config = ConfigFactory.empty)
@@ -58,7 +56,8 @@ extends ProgramEnv {
                 password: "plain:AGENT-PASSWORD"
               }
               """))
-        .withFallback(bareSubagentIds
+        .withFallback(extraSubagentItems
+          .map(_.id)
           .map(subagentId => config"""js7.auth.subagents.${subagentId.string} = "AGENT-PASSWORD" """)
           .combineAll),
       httpPort = !https ? port,
@@ -66,13 +65,8 @@ extends ProgramEnv {
 
   lazy val password = SecretString(s"$agentPath-PASSWORD") // TODO AgentPath — or SubagentId?
   lazy val userAndPassword = Some(UserAndPassword(UserId("Controller"), password))
-  lazy val executables = configDir / "executables"
-  lazy val bareSubagentItems =
-    for (subagentId <- bareSubagentIds) yield
-      SubagentItem(
-        subagentId, agentPath, findFreeLocalUri(),
-        disabled = subagentsDisabled)
-  lazy val subagentItems = subagentItem +: bareSubagentItems
+  private lazy val executables = configDir / "executables"
+  lazy val subagentItems = subagentItem +: extraSubagentItems
 
   def delete(): Unit =
     deleteDirectoryRecursively(directory)

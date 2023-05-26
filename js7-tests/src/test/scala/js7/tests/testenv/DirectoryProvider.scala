@@ -71,7 +71,7 @@ import scala.util.control.NonFatal
 @TestOnly
 final class DirectoryProvider(
   agentPaths: Seq[AgentPath],
-  agentToBareSubagent: Map[AgentPath, Seq[SubagentId]] = Map.empty,
+  extraSubagentItems: Seq[SubagentItem] = Nil,
   items: Seq[InventoryItem] = Nil,
   controllerConfig: Config = ConfigFactory.empty,
   controllerTestWiring: RunningController.TestWiring = RunningController.TestWiring.empty,
@@ -80,7 +80,7 @@ final class DirectoryProvider(
   agentConfig: Config = ConfigFactory.empty,
   agentPorts: Seq[Int] = Nil,
   isBackup: Boolean = false,
-  subagentsDisabled: Boolean = false,
+  primarySubagentsDisabled: Boolean = false,
   provideAgentHttpsCertificate: Boolean = false,
   provideAgentClientCertificate: Boolean = false,
   controllerKeyStore: Option[JavaResource] = Some(ControllerKeyStoreResource),
@@ -119,12 +119,12 @@ extends HasCloser
         val localhost = if (agentHttps) "https://localhost" else "http://127.0.0.1"
 
         val localSubagentItem = SubagentItem(
-          localSubagentId, agentPath, disabled = subagentsDisabled,
+          localSubagentId, agentPath, disabled = primarySubagentsDisabled,
           uri = Uri(s"$localhost:$port"))
         // TODO backup Subagent
         //val directorSubagentItems = for (port <- Nel.of(primaryPort, maybeBackupPort)) yield
         //  SubagentItem(
-        //    localSubagentId, agentPath, disabled = subagentsDisabled,
+        //    localSubagentId, agentPath, disabled = primarySubagentsDisabled,
         //    uri = Uri(s"$localhost:$port"))
 
         agentPath -> newAgentEnv(localSubagentItem)
@@ -321,9 +321,9 @@ extends HasCloser
       agentToEnv(agentPath).agentConf,
       testWiring)
 
-  def startBareSubagents(): Task[Map[SubagentId, Allocated[Task, Subagent]]] =
+  def startExtraSubagents(): Task[Map[SubagentId, Allocated[Task, Subagent]]] =
     agentEnvs
-      .flatMap(a => a.bareSubagentItems.map(_ -> a.agentConf.config))
+      .flatMap(a => a.extraSubagentItems.map(_ -> a.agentConf.config))
       .parTraverse { case (subagentItem, config) =>
         subagentResource(subagentItem, config)
           .toAllocated
@@ -449,8 +449,8 @@ extends HasCloser
       mutualHttps = agentHttpsMutual,
       provideHttpsCertificate = provideAgentHttpsCertificate,
       provideClientCertificate = provideAgentClientCertificate,
-      bareSubagentIds = agentToBareSubagent.getOrElse(subagentItem.agentPath, Nil),
-      subagentsDisabled = subagentsDisabled,
+      extraSubagentItems = extraSubagentItems
+        .collect { case o: SubagentItem if o.agentPath == subagentItem.agentPath => o },
       isClusterBackup = isClusterBackup,
       suppressSignatureKeys = suppressSignatureKeys,
       config = agentConfig)

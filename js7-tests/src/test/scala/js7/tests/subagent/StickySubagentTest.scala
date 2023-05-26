@@ -5,6 +5,7 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.AnswerOrderPrompt
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderStarted, OrderStickySubagentEntered, OrderStickySubagentLeaved, OrderTerminated}
@@ -12,7 +13,7 @@ import js7.data.order.Outcome.Disrupted.ProcessLost
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
 import js7.data.subagent.Problems.{ProcessLostDueToRestartProblem, SubagentNotDedicatedProblem}
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentCouplingFailed}
-import js7.data.subagent.{SubagentId, SubagentSelection, SubagentSelectionId}
+import js7.data.subagent.{SubagentId, SubagentItem, SubagentSelection, SubagentSelectionId}
 import js7.data.value.StringValue
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.value.expression.ExpressionParser.expr
@@ -38,14 +39,16 @@ final class StickySubagentTest extends OurTestSuite with ControllerAgentForScala
     """
 
   protected val agentPaths = Seq(aAgentPath, bAgentPath)
+
+  override protected lazy val extraSubagentItems = Seq(
+    SubagentItem(a1SubagentId, aAgentPath, findFreeLocalUri()),
+    SubagentItem(a2SubagentId, aAgentPath, findFreeLocalUri()))
+
   protected lazy val items = Seq(
     withSubagentSelectionWorkflow, withoutSubagentSelectionWorkflow,
     simpleWithSubagentSelectionWorkflow,
     failAtControllerWorkflow, failAtAgentWorkflow,
     aSubagentSelection, a2SubagentSelection)
-  override protected lazy val bareSubagentIds = Map(
-    aAgentPath -> Seq(a1SubagentId, a2SubagentId),
-    bAgentPath -> Nil)
 
   protected implicit val scheduler = Scheduler.traced
 

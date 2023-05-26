@@ -119,7 +119,7 @@ trait ControllerClusterForScalaTest
         .grouped(2).map(seq => (seq(0), seq(1))).toVector.unzip
 
       val primary = new DirectoryProvider(
-        agentPaths, Map.empty, items, testName = Some(s"$testName-Primary"),
+        agentPaths, items = items, testName = Some(s"$testName-Primary"),
         controllerConfig = combine(
           primaryControllerConfig,
           configIf(configureClusterNodes, config"""
@@ -148,7 +148,7 @@ trait ControllerClusterForScalaTest
       ).closeWithCloser
 
       val backup = new DirectoryProvider(
-        agentPaths, Map.empty, Nil, testName = Some(s"$testName-Backup"),
+        agentPaths, Nil, testName = Some(s"$testName-Backup"),
         isBackup = true,
         controllerConfig = combine(
           backupControllerConfig,

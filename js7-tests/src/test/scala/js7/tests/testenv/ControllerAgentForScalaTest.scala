@@ -42,9 +42,9 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
     .await(99.s)
   protected final lazy val agent: TestAgent = agents.head
 
-  protected final lazy val subagentIdToBare: Map[SubagentId, Allocated[Task, Subagent]] =
+  protected final lazy val idToAllocatedSubagent: Map[SubagentId, Allocated[Task, Subagent]] =
     directoryProvider
-      .startBareSubagents()
+      .startExtraSubagents()
       .await(99.s)
 
   protected final lazy val controller: TestController = {
@@ -83,7 +83,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
   override def beforeAll() = {
     super.beforeAll()
 
-    subagentIdToBare
+    idToAllocatedSubagent
     agents
     for (service <- clusterWatchServiceResource)
       clusterWatchServiceOnce := service.toAllocated.await(99.s)
@@ -106,7 +106,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
           Seq(controller.terminate().void),
           clusterWatchServiceOnce.toOption.map(_.release).toList,
           agents.map(_.terminate().void),
-          subagentIdToBare.values.map(_.release)
+          idToAllocatedSubagent.values.map(_.release)
         ).flatten.map(_.onErrorHandle { t =>
           logger.error(t.toStringWithCauses, t)
           throw t
@@ -140,7 +140,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
   }
 
   protected final def stopBareSubagent(subagentId: SubagentId): Unit =
-    subagentIdToBare(subagentId).release.await(99.s)
+    idToAllocatedSubagent(subagentId).release.await(99.s)
 
   protected final def startBareSubagent(subagentId: SubagentId): (Subagent, Task[Unit]) = {
     val subagentItem = directoryProvider.subagentItems

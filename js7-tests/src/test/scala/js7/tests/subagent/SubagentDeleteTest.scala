@@ -25,7 +25,7 @@ final class SubagentDeleteTest extends OurTestSuite with SubagentTester
 {
   protected val agentPaths = Seq(agentPath)
   protected lazy val items = Seq(workflow, bareSubagentItem)
-  override protected val subagentsDisabled = true
+  override protected val primarySubagentsDisabled = true
 
   protected implicit val scheduler = Scheduler.traced
 

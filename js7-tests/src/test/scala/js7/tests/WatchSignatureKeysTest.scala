@@ -19,13 +19,14 @@ import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
+import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.controller.RunningController
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerState
 import js7.data.item.{ItemSigner, VersionId}
 import js7.data.order.OrderEvent.{OrderAdded, OrderFinished, OrderProcessingStarted}
 import js7.data.order.{FreshOrder, OrderId}
-import js7.data.subagent.SubagentId
+import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.subagent.Subagent
 import js7.tests.WatchSignatureKeysTest.*
@@ -55,9 +56,8 @@ final class WatchSignatureKeysTest extends OurTestSuite with ControllerAgentForS
     """
 
   protected val agentPaths = Seq(agentPath)
-  override protected lazy val bareSubagentIds = Map(
-    agentPath -> Seq(bareSubagentId))
-
+  override protected lazy val extraSubagentItems = Seq(
+    SubagentItem(bareSubagentId, agentPath, findFreeLocalUri()))
   protected val items = Nil
 
   private lazy val workDir = createTempDirectory("WatchSignatureKeysTest")
@@ -178,7 +178,7 @@ final class WatchSignatureKeysTest extends OurTestSuite with ControllerAgentForS
       .void.runToFuture
     val agentUpdated = agent.testEventBus.when[AgentActor.ItemSignatureKeysUpdated]
       .void.runToFuture
-    val subagentUpdated = subagentIdToBare(bareSubagentId).allocatedThing.testEventBus
+    val subagentUpdated = idToAllocatedSubagent(bareSubagentId).allocatedThing.testEventBus
       .when[Subagent.ItemSignatureKeysUpdated]
       .void.runToFuture
 
@@ -219,7 +219,7 @@ final class WatchSignatureKeysTest extends OurTestSuite with ControllerAgentForS
         .logWhenItTakesLonger("RunningController.ItemSignatureKeysUpdated"),
       agent.testEventBus.when[AgentActor.ItemSignatureKeysUpdated]
         .logWhenItTakesLonger("AgentActor.ItemSignatureKeysUpdated"),
-      subagentIdToBare(bareSubagentId).allocatedThing.testEventBus
+      idToAllocatedSubagent(bareSubagentId).allocatedThing.testEventBus
         .when[Subagent.ItemSignatureKeysUpdated]
         .logWhenItTakesLonger("BareSubagent.ItemSignatureKeysUpdated")
     ).void.runToFuture

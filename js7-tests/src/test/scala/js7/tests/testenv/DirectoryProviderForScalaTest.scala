@@ -15,7 +15,7 @@ import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.RunningController
 import js7.data.agent.AgentPath
 import js7.data.item.{InventoryItem, SignableItem}
-import js7.data.subagent.SubagentId
+import js7.data.subagent.SubagentItem
 import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly
 import org.scalatest.BeforeAndAfterAll
@@ -37,21 +37,20 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
   protected def agentPaths: Seq[AgentPath]
   protected def agentHttps = false
   protected def agentPorts: Seq[Int] = Nil
-  protected def doNotAddItems = false
 
-  protected def bareSubagentIds: Map[AgentPath, Seq[SubagentId]] = Map.empty
-  protected def subagentsDisabled = false
+  protected def primarySubagentsDisabled = false
+  protected def extraSubagentItems: Seq[SubagentItem] = Nil
 
   protected final lazy val directoryProvider = new DirectoryProvider(
     agentPaths,
-    agentToBareSubagent = bareSubagentIds,
+    extraSubagentItems = extraSubagentItems,
     items = items,
     controllerConfig = controllerConfig,
     agentHttps = agentHttps,
     agentHttpsMutual = agentHttpsMutual,
     agentConfig = agentConfig,
     agentPorts = agentPorts,
-    subagentsDisabled = subagentsDisabled,
+    primarySubagentsDisabled = primarySubagentsDisabled,
     provideAgentHttpsCertificate = provideAgentHttpsCertificate,
     provideAgentClientCertificate = provideAgentClientCertificate,
     controllerTrustStores = controllerTrustStores,
@@ -79,6 +78,7 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
   protected def controllerTrustStores: Iterable[JavaResource] = Nil
   protected def controllerConfig: Config = ConfigFactory.empty
   protected def items: Seq[InventoryItem]
+  protected def doNotAddItems = false
   protected def signer: DocumentSigner = DirectoryProvider.defaultSigner
   protected def verifier: SignatureVerifier = DirectoryProvider.defaultVerifier
 

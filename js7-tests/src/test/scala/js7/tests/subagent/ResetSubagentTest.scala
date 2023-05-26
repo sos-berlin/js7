@@ -22,8 +22,8 @@ import monix.execution.Scheduler
 final class ResetSubagentTest extends OurTestSuite with SubagentTester
 {
   protected val agentPaths = Seq(agentPath)
+  override protected val primarySubagentsDisabled = true
   protected lazy val items = Seq(workflow, bareSubagentItem)
-  override protected val subagentsDisabled = true
 
   protected implicit val scheduler = Scheduler.traced
 

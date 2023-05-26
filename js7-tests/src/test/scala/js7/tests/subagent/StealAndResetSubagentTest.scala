@@ -30,7 +30,7 @@ final class StealAndResetSubagentTest extends OurTestSuite with SubagentTester
 
   protected val agentPaths = Seq(agentPath, thieveAgentPath)
   protected lazy val items = Seq(aWorkflow, thieveWorkflow, bareSubagentItem)
-  override protected val subagentsDisabled = true
+  override protected val primarySubagentsDisabled = true
 
   protected implicit val scheduler = Scheduler.traced
 
