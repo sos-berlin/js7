@@ -16,7 +16,6 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.IOExecutor
 import js7.base.time.AlarmClock
-import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.configuration.{CommonConfiguration, Js7Configuration}
@@ -170,11 +169,4 @@ object SubagentConf
     if (!exists(directory)) createDirectory(directory)
     directory
   }
-
-  final case class StdouterrConf(chunkSize: Int, delay: FiniteDuration)
-  object StdouterrConf {
-    def fromConfig(config: Config): StdouterrConf = new StdouterrConf(
-      chunkSize = config.memorySizeAsInt("js7.order.stdout-stderr.chunk-size").orThrow,
-      delay = config.getDuration("js7.order.stdout-stderr.delay").toFiniteDuration)
   }
-}
