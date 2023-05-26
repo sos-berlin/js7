@@ -489,7 +489,7 @@ extends HasCloser
             ${verifier.companion.typeName} = "$trustedSignatureDir"
           }
           """)
-        .withFallback(SubagentConf.defaultConfig))
+        .withFallback(SubagentConf.DefaultConfig))
 }
 
 object DirectoryProvider

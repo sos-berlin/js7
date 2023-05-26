@@ -37,7 +37,7 @@ import org.scalatest.BeforeAndAfterAll
   */
 final class ProcessDriverTest extends OurTestSuite with BeforeAndAfterAll with TestAgentDirectoryProvider
 {
-  private lazy val ioxAllocated = IOExecutor.resource[Task](SubagentConf.defaultConfig, "ProcessDriverTest")
+  private lazy val ioxAllocated = IOExecutor.resource[Task](SubagentConf.DefaultConfig, "ProcessDriverTest")
     .toAllocated.await(99.s)
 
   override protected def afterAll() = {
@@ -73,7 +73,7 @@ final class ProcessDriverTest extends OurTestSuite with BeforeAndAfterAll with T
         ioxAllocated.allocatedThing,
         blockingJobScheduler = scheduler,
         AlarmClock(),
-        SubagentConf.defaultConfig
+        SubagentConf.DefaultConfig
       ).orThrow
 
       val taskRunner = new ProcessDriver(order.id, taskConfiguration, jobLauncherConf)

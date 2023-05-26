@@ -124,7 +124,7 @@ object AgentConfiguration
 
   val DefaultConfig = Configs
     .loadResource(JavaResource("js7/agent/configuration/agent.conf"))
-    .withFallback(SubagentConf.defaultConfig)
+    .withFallback(SubagentConf.DefaultConfig)
 
   def fromCommandLine(arguments: CommandLineArguments, extraDefaultConfig: Config = ConfigFactory.empty) = {
     val common = CommonConfiguration.Common.fromCommandLineArguments(arguments)

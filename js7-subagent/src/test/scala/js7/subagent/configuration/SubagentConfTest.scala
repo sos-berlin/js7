@@ -42,7 +42,7 @@ final class SubagentConfTest extends OurTestSuite
   }
 
   "js7.windows.codepages are known" in {
-    val cpToEncoding = SubagentConf.defaultConfig.getObject("js7.windows.codepages")
+    val cpToEncoding = SubagentConf.DefaultConfig.getObject("js7.windows.codepages")
       .asScala
       .to(View)
       .map { case (cp, v) => cp.toInt -> v.unwrapped.asInstanceOf[String] }
@@ -63,7 +63,7 @@ final class SubagentConfTest extends OurTestSuite
   }
 
   "Configured codepages that can also be derived" in {
-    for ((cp, nameObj) <- SubagentConf.defaultConfig.getObject("js7.windows.codepages")
+    for ((cp, nameObj) <- SubagentConf.DefaultConfig.getObject("js7.windows.codepages")
       .asScala.toVector.sortBy(_._1.toInt)) {
       try {
         val name = nameObj.unwrapped.asInstanceOf[String]
@@ -81,7 +81,7 @@ final class SubagentConfTest extends OurTestSuite
 
   "Known codepages" in {
     // Slow due to many Charset.forName
-    val configuredCodepages  = SubagentConf.defaultConfig.getObject("js7.windows.codepages")
+    val configuredCodepages  = SubagentConf.DefaultConfig.getObject("js7.windows.codepages")
       .asScala.keySet
     // Parallelize for shorter test duration (4s instead of 17s)
     val cpToEnc = Observable.fromIterable(1 to 32767)
@@ -100,7 +100,7 @@ final class SubagentConfTest extends OurTestSuite
   }
 
   "Encodings without codepage (informative)" in {
-    val supportedEncodings = SubagentConf.defaultConfig.getObject("js7.windows.codepages")
+    val supportedEncodings = SubagentConf.DefaultConfig.getObject("js7.windows.codepages")
       .asScala.values.view.map(_.unwrapped.asInstanceOf[String]).toSet
     val javaEncodings = Charset.availableCharsets().asScala.values.toSet
     val unsupported = javaEncodings

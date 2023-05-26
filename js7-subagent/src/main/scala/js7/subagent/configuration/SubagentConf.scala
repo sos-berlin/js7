@@ -133,7 +133,7 @@ object SubagentConf
   private def defaultLogDirectory(data: Path) = data / "logs"
   private val DelayUntilFinishKillScript = ProcessKillScript(EmptyPath)  // Marker for finish
 
-  val defaultConfig = Configs
+  val DefaultConfig = Configs
     .loadResource(JavaResource("js7/subagent/configuration/subagent.conf"))
     .withFallback(Js7Configuration.defaultConfig)
 
@@ -147,7 +147,7 @@ object SubagentConf
     config: Config,
     name: String = "JS7")
   : SubagentConf = {
-    val myConfig = config.withFallback(SubagentConf.defaultConfig)
+    val myConfig = config.withFallback(SubagentConf.DefaultConfig)
     val outErrConf = StdouterrConf.fromConfig(myConfig)
     SubagentConf(
       configDirectory = configDirectory,
