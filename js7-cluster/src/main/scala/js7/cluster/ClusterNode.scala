@@ -13,7 +13,7 @@ import js7.base.eventbus.EventPublisher
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.problem.Checked.CheckedOption
-import js7.base.problem.{Checked, Problem}
+import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.service.Service.Started
 import js7.base.service.{MainServiceTerminationException, Service}
 import js7.base.time.ScalaTime.*
@@ -26,7 +26,7 @@ import js7.cluster.ClusterConf.ClusterProductName
 import js7.cluster.ClusterNode.*
 import js7.cluster.JournalTruncator.truncateJournal
 import js7.core.license.LicenseChecker
-import js7.data.Problems.{BackupClusterNodeNotAppointed, ClusterNodeIsNotActiveProblem, ClusterNodeIsNotBackupProblem, ClusterNodeIsNotReadyProblem, PrimaryClusterNodeMayNotBecomeBackupProblem}
+import js7.data.Problems.{BackupClusterNodeNotAppointed, ClusterNodeIsNotActiveProblem, ClusterNodeIsNotBackupProblem, ClusterNodeIsNotReadyProblem, PassiveClusterNodeResetProblem, PrimaryClusterNodeMayNotBecomeBackupProblem}
 import js7.data.cluster.ClusterCommand.{ClusterInhibitActivation, ClusterStartBackupNode}
 import js7.data.cluster.ClusterState.{Coupled, Empty, FailedOver, HasNodes}
 import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
@@ -40,7 +40,7 @@ import monix.execution.Scheduler
 import monix.execution.atomic.AtomicAny
 import scala.concurrent.Promise
 import scala.util.control.NoStackTrace
-import scala.util.{Success, Try}
+import scala.util.{Failure, Success, Try}
 
 final class ClusterNode[S <: SnapshotableState[S]: diffx.Diff: Tag] private(
   prepared: Prepared[S],
@@ -90,6 +90,11 @@ extends Service.StoppableByRequest
   protected def start: Task[Started] =
     startService(
       untilWorkingNodeStarted
+        .onErrorRecover {
+          case ProblemException(prblm @ PassiveClusterNodeResetProblem) =>
+            // untilWorkingNodeStarted has logged and handled PassiveClusterNodeResetProblem
+            logger.debug(prblm.toString)
+        }
         .start
         .flatMap(fiber =>
           Task.race(recoveryStopRequested.get, fiber.join))
@@ -111,7 +116,15 @@ extends Service.StoppableByRequest
       .flatMap(startWorkingNode)
       .materialize
       .flatTap(triedWorkingNode =>
-        workingNodeStarted.complete(triedWorkingNode.map(Right(_))).attempt)
+        workingNodeStarted
+          .complete(triedWorkingNode match {
+            case Failure(prblm @ ProblemException(PassiveClusterNodeResetProblem)) =>
+              logger.warn(s"Should restart after $prblm")
+              Success(Left(ProgramTermination(restart = true)))
+            case Failure(t) => Failure(t)
+            case Success(o) => Success(Right(o))
+          })
+          .attempt)
       .dematerialize
       .flatMap(workingNode =>
         currentStateRef.set(workingNode.journal.state.map(Right(_)))))
@@ -119,7 +132,7 @@ extends Service.StoppableByRequest
   private def untilRecovered: Task[Recovered[S]] =
     logger.debugTask(prepared
       .untilRecovered
-      .map(_.orThrow)
+      .map(_.orThrowWithoutOurStackTrace)
       .flatTap(recovered => Task.raiseUnless(recovered.clusterState.isEmptyOrActive(ownId))(
         new IllegalStateException("Controller has recovered from Journal but is not the " +
           s"active node in ClusterState: id=$ownId, failedOver=${recovered.clusterState}"))))

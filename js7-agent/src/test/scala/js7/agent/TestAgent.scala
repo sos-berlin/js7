@@ -3,6 +3,7 @@ package js7.agent
 import akka.actor.ActorSystem
 import cats.effect.{ExitCase, Resource}
 import js7.agent.RunningAgent.TestWiring
+import js7.agent.TestAgent.*
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
@@ -11,6 +12,7 @@ import js7.base.auth.SessionToken
 import js7.base.eventbus.StandardEventBus
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.SIGKILL
+import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
 import js7.base.problem.Checked
 import js7.base.thread.MonixBlocking.syntax.*
@@ -52,9 +54,9 @@ final class TestAgent(allocated: Allocated[Task, RunningAgent]) {
   def untilTerminated: Task[ProgramTermination] =
     agent.untilTerminated
 
-  def useSync[R](timeout: FiniteDuration)(body: TestAgent => R)(implicit scheduler: Scheduler)
-  : R =
-    allocated.useSync(timeout)(_ => body(this))
+  def useSync[R](timeout: FiniteDuration)(body: TestAgent => R)(implicit scheduler: Scheduler): R =
+    logger.debugCall[R](s"useSync »${agent.conf.name}«")(
+      allocated.useSync(timeout)(_ => body(this)))
 
   implicit def actorSystem: ActorSystem =
     agent.actorSystem
@@ -84,6 +86,14 @@ final class TestAgent(allocated: Allocated[Task, RunningAgent]) {
 
   def executeCommand(cmd: AgentCommand, meta: CommandMeta): Task[Checked[AgentCommand.Response]] =
     agent.executeCommand(cmd: AgentCommand, meta)
+
+  def name: String =
+    conf.name
+
+  def conf: AgentConfiguration =
+    agent.conf
+
+  override def toString = s"TestAgent($name)"
 }
 
 object TestAgent {

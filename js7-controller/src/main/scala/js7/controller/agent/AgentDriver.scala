@@ -222,11 +222,11 @@ extends Service.StoppableByRequest
       startNewClusterWatch
         .*>(startAndForgetDirectorDriver)
         .*>(untilStopRequested)
-        .*>(Task {
+        .guarantee(Task {
           state.releaseEventsCancelable.foreach(_.cancel())
         })
-        .*>(directorDriverAllocated.release)
-        .*>(clusterWatchAllocated.release))
+        .guarantee(directorDriverAllocated.release)
+        .guarantee(clusterWatchAllocated.release))
 
   def send(input: Queueable): Task[Unit] =
     /*logger.traceTask("send", input.toShortString)*/(Task.defer {

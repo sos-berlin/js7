@@ -10,6 +10,7 @@ import java.io.{ByteArrayInputStream, InputStream, PrintWriter, StringWriter}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.concurrent.atomic.AtomicBoolean
 import js7.base.exceptions.PublicException
+import js7.base.log.Logger
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.utils.ScalaUtils.syntax.RichString
@@ -26,6 +27,7 @@ object ScalaUtils
   private val Ellipsis = "..."
   val RightUnit: Either[Nothing, Unit] = Right(())
   private val spaceArray = (" " * 64).toCharArray
+  private lazy val logger = Logger[this.type]
 
   object syntax
   {
@@ -559,6 +561,19 @@ object ScalaUtils
             var t = problem.throwable
             if (t.getStackTrace.isEmpty) t = t.appendCurrentStackTrace
             throw t.dropTopMethodsFromStackTrace("orThrow$extension")
+
+          case Left(_) =>
+            throw new NoSuchElementException(s"Either.orThrow on $either")
+              .dropTopMethodsFromStackTrace("orThrow$extension")
+
+          case Right(r) => r
+        }
+
+      def orThrowWithoutOurStackTrace: R =
+        either match {
+          case Left(problem: Problem) =>
+            logger.debug(s"💥 $problem", problem.throwable)
+            throw problem.throwable.dropTopMethodsFromStackTrace("orThrow$extension")
 
           case Left(_) =>
             throw new NoSuchElementException(s"Either.orThrow on $either")

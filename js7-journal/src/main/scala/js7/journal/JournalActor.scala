@@ -21,7 +21,7 @@ import js7.base.utils.SetOnce
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.common.akkautils.SupervisorStrategies
 import js7.common.jsonseq.PositionAnd
-import js7.data.cluster.ClusterEvent.{ClusterActiveNodeShutDown, ClusterCoupled, ClusterFailedOver, ClusterPassiveLost, ClusterSwitchedOver}
+import js7.data.cluster.ClusterEvent.{ClusterActiveNodeShutDown, ClusterCoupled, ClusterFailedOver, ClusterPassiveLost, ClusterResetStarted, ClusterSwitchedOver}
 import js7.data.cluster.{ClusterEvent, ClusterState}
 import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
 import js7.data.event.JournalHeaders.*
@@ -216,6 +216,10 @@ extends Actor with Stash with JournalLogging
               case Some(Stamped(_, _, KeyedEvent(_, event: ClusterActiveNodeShutDown))) =>
                 commit()
                 commitWithoutAcknowledgement(event)  // No events, only switch off acks
+
+              case Some(Stamped(_, _, KeyedEvent(_, ClusterResetStarted))) =>
+                commit()
+                requireClusterAcknowledgement = false
 
               case _ =>
                 if (persistBuffer.eventCount >= conf.coalesceEventLimit) {

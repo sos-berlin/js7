@@ -5,7 +5,7 @@ import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
-import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterSettingUpdated, ClusterSwitchedOver, ClusterWatchRegistered}
+import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterResetStarted, ClusterSettingUpdated, ClusterSwitchedOver, ClusterWatchRegistered}
 import js7.data.cluster.ClusterSetting.syntax.*
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventDrivenState, JournalPosition, KeyedEvent}
@@ -74,6 +74,9 @@ extends EventDrivenState[ClusterState, ClusterEvent]
       case (state: HasNodes, ClusterWatchRegistered(clusterWatchId)) =>
         Right(state.withSetting(setting = state.setting.copy(
           clusterWatchId = Some(clusterWatchId))))
+
+      case (_: Coupled, ClusterResetStarted) =>
+        Right(this) // Do we want an own state ???
 
       case (_, keyedEvent) =>
         eventNotApplicable(keyedEvent)

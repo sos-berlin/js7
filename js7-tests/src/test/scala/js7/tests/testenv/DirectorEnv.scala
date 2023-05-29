@@ -8,6 +8,7 @@ import java.nio.file.Files.createDirectory
 import java.nio.file.Path
 import js7.agent.RunningAgent
 import js7.agent.configuration.AgentConfiguration
+import js7.agent.data.AgentState
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.configutils.Configs.{HoconStringInterpolator, *}
 import js7.base.crypt.SignatureVerifier
@@ -17,9 +18,10 @@ import js7.base.monixutils.MonixBase.syntax.RichMonixResource
 import js7.base.problem.Checked.*
 import js7.base.utils.CatsUtils.combine
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.common.system.ThreadPools
+import js7.common.system.ThreadPools.ownThreadPoolResource
 import js7.data.job.RelativePathExecutable
 import js7.data.subagent.{SubagentId, SubagentItem}
+import js7.journal.data.JournalLocation
 import js7.subagent.configuration.SubagentConf
 import js7.tests.testenv.DirectoryProvider.*
 import monix.eval.Task
@@ -43,7 +45,7 @@ extends ProgramEnv {
   val agentPath = subagentItem.agentPath
   val directory = rootDirectory / "subagents" / name
   val journalFileBase = stateDir / "agent"
-
+  val journalLocation = JournalLocation(AgentState, journalFileBase)
   val localUri = subagentItem.uri
 
   lazy val agentConf: AgentConfiguration = {

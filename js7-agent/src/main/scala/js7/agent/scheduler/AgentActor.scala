@@ -18,6 +18,7 @@ import js7.base.generic.Completed
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
+import js7.base.monixutils.MonixBase.syntax.RichCheckedTask
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.thread.IOExecutor
@@ -32,6 +33,7 @@ import js7.cluster.ClusterNode
 import js7.common.akkautils.{SimpleStateActor, SupervisorStrategies}
 import js7.data.agent.Problems.{AgentAlreadyDedicatedProblem, AgentIsShuttingDown, AgentNotDedicatedProblem, AgentPathMismatchProblem, AgentRunIdMismatchProblem, AgentWrongControllerProblem}
 import js7.data.agent.{AgentClusterConf, AgentPath, AgentRef, AgentRunId}
+import js7.data.cluster.ClusterEvent.ClusterResetStarted
 import js7.data.cluster.ClusterState
 import js7.data.cluster.ClusterState.HasNodes
 import js7.data.controller.ControllerId
@@ -92,7 +94,6 @@ private[agent] final class AgentActor(
   override def postStop() = {
     super.postStop()
     if (isResetting) {
-      logger.warn("DELETE JOURNAL FILES DUE TO AGENT RESET")
       journalLocation.deleteJournal(ignoreFailure = true)
     }
     allocatedSignatureVerifier.release.awaitInfinite
@@ -116,6 +117,11 @@ private[agent] final class AgentActor(
       cmd.correlId.bind {
         executeExternalCommand(cmd)
       }
+
+    case ContinueReset(response) =>
+      response.completeWith(terminateOrderKeeper(
+        AgentCommand.ShutDown(processSignal = Some(SIGKILL),
+          suppressSnapshot = true, restart = true)))
 
     case Terminated(a) if started.toOption.exists(_.actor == a) =>
       logger.debug("AgentOrderKeeper terminated")
@@ -142,9 +148,22 @@ private[agent] final class AgentActor(
           case Right(()) =>
             isResetting = true
             if (!terminating) {
-              response.completeWith(terminateOrderKeeper(
-                AgentCommand.ShutDown(processSignal = Some(SIGKILL),
-                  suppressSnapshot = true, restart = true)))
+              journal
+                .persist(_.clusterState match {
+                  case _: ClusterState.Coupled =>
+                    // Is it a good idea to persist something when Agent must be reset ???
+                    Right((NoKey <-: ClusterResetStarted) :: Nil)
+                  case _ => Right(Nil)
+                })
+                .materializeIntoChecked
+                .flatMap {
+                  case Left(problem) => Task(response.success(Left(problem)))
+                  case Right(_) =>
+                    Task.right {
+                    self ! ContinueReset(response)
+                    }
+                }
+                .runToFuture
             }
         }
 
@@ -264,21 +283,23 @@ private[agent] final class AgentActor(
     }
 
   private def terminateOrderKeeper(shutDown: AgentCommand.ShutDown)
-  : Future[Checked[AgentCommand.Response.Accepted]] = {
-    shutDownCommand := shutDown
-    val future = started.toOption match {
-      case None =>
-        logger.debug("⚠️ terminateOrderKeeper but AgentOrderKeeper has not been started")
-        Future.successful(AgentCommand.Response.Accepted)
-      case Some(started) =>
-        (started.actor ? shutDown).mapTo[AgentCommand.Response.Accepted]
+  : Future[Checked[AgentCommand.Response.Accepted]] =
+    if (!shutDownCommand.trySet(shutDown))
+      Future.successful(Left(Problem("Agent Director is already shutting down")))
+    else {
+      val future = started.toOption match {
+        case None =>
+          logger.debug("⚠️ terminateOrderKeeper but AgentOrderKeeper has not been started")
+          Future.successful(AgentCommand.Response.Accepted)
+        case Some(started) =>
+          (started.actor ? shutDown).mapTo[AgentCommand.Response.Accepted]
+      }
+      future.map { ordersTerminated =>
+        terminateCompleted.success(Completed)  // Wait for child Actor termination
+        continueTermination()
+        Right(ordersTerminated)
+      }
     }
-    future.map { ordersTerminated =>
-      terminateCompleted.success(Completed)  // Wait for child Actor termination
-      continueTermination()
-      Right(ordersTerminated)
-    }
-  }
 
   private def addOrderKeeper(agentPath: AgentPath, controllerId: ControllerId): Checked[Unit] =
     synchronized {
@@ -367,6 +388,8 @@ object AgentActor
     agentPath: AgentPath,
     controllerId: ControllerId,
     actor: ActorRef)
+
+  private case class ContinueReset(response: Promise[Checked[AgentCommand.Response]])
 
   type ItemSignatureKeysUpdated = ItemSignatureKeysUpdated.type
   case object ItemSignatureKeysUpdated

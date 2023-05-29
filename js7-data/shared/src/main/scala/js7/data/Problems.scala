@@ -140,4 +140,6 @@ object Problems
     def arguments = Map("clusterState" -> clusterState.toString)
   }
   object ClusterSettingNotUpdatable extends Problem.Coded.Companion
+
+  case object PassiveClusterNodeResetProblem extends Problem.ArgumentlessCoded
 }

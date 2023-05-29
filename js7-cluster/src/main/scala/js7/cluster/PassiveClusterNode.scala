@@ -1,6 +1,7 @@
 package js7.cluster
 
 import cats.effect.concurrent.Deferred
+import cats.syntax.flatMap.*
 import com.softwaremill.diffx
 import io.circe.syntax.*
 import java.nio.ByteBuffer
@@ -34,8 +35,9 @@ import js7.cluster.PassiveClusterNode.*
 import js7.cluster.watch.api.ClusterWatchProblems.{ClusterFailOverWhilePassiveLostProblem, NoClusterWatchProblem, UntaughtClusterWatchProblem}
 import js7.common.http.RecouplingStreamReader
 import js7.common.jsonseq.PositionAnd
+import js7.data.Problems.PassiveClusterNodeResetProblem
 import js7.data.cluster.ClusterCommand.{ClusterCouple, ClusterPassiveDown, ClusterPrepareCoupling, ClusterRecouple}
-import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterSwitchedOver}
+import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterResetStarted, ClusterSwitchedOver}
 import js7.data.cluster.ClusterState.{Coupled, IsDecoupled, PreparedToBeCoupled}
 import js7.data.cluster.{ClusterEvent, ClusterNodeApi, ClusterSetting, ClusterState}
 import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
@@ -191,6 +193,11 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
               stopped = true
             })
             .guarantee(activeApiCache.clear)
+            .flatTap {
+              case Left(PassiveClusterNodeResetProblem) => Task(
+                journalLocation.deleteJournal(ignoreFailure = true))
+              case _ => Task.unit
+            }
         })))
 
   private def cutJournalFile(file: Path, length: Long, eventId: EventId): Unit =
@@ -570,6 +577,12 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
                           awaitingCoupledEvent = false
                           releaseEvents()
                           Observable.pure(Right(()))
+
+                        case ClusterResetStarted =>
+                          assertThat(activeId != ownId)
+                          Observable.fromTask(Task
+                            .sleep(1.s) // Allow event acknowledgment !!!
+                            .as(Left(PassiveClusterNodeResetProblem)))
 
                         case _ =>
                           Observable.pure(Right(()))

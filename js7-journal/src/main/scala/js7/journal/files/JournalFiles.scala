@@ -119,8 +119,10 @@ object JournalFiles
     def deleteJournalIfMarked(): Checked[Unit] =
       JournalFiles.deleteJournalIfMarked(journalLocation.fileBase)
 
-    def deleteJournal(ignoreFailure: Boolean = false): Unit =
+    def deleteJournal(ignoreFailure: Boolean = false): Unit = {
+      logger.warn("DELETE JOURNAL FILES DUE TO AGENT RESET")
       JournalFiles.deleteJournal(journalLocation.fileBase, ignoreFailure)
+    }
   }
 
   def updateSymbolicLink(fileBase: Path, toFile: Path): Unit = {

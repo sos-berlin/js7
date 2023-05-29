@@ -7,7 +7,6 @@ import cats.effect.concurrent.Deferred
 import cats.syntax.traverse.*
 import com.softwaremill.diffx.generic.auto.*
 import com.softwaremill.tagging.{@@, Tagger}
-import com.typesafe.config.Config
 import js7.agent.RunningAgent.*
 import js7.agent.client.AgentClient
 import js7.agent.command.CommandHandler
@@ -64,48 +63,47 @@ final class RunningAgent private(
   clusterNode: ClusterNode[AgentState],
   val journal: Task[FileJournal[AgentState]],
   getLocalUri: () => Uri,
-  actorTermination: Task[ProgramTermination],
+  untilMainActorTerminated: Task[ProgramTermination],
   val untilReady: Task[MainActor.Ready],
   val executeCommand: (AgentCommand, CommandMeta) => Task[Checked[AgentCommand.Response]],
   sessionRegister: SessionRegister[AgentSession],
   val sessionToken: SessionToken,
   val testEventBus: StandardEventBus[Any],
   val actorSystem: ActorSystem,
-  val config: Config)
+  val conf: AgentConfiguration)
   (implicit val scheduler: Scheduler)
 extends MainService with Service.StoppableByRequest
 {
   lazy val localUri: Uri = getLocalUri()
   val eventWatch: JournalEventWatch = clusterNode.recoveredExtract.eventWatch
+  @volatile private var isActorTerminated = false
+  private val isTerminating = Atomic(false)
 
   val untilTerminated: Task[ProgramTermination] =
-    actorTermination
+    untilMainActorTerminated
+      .guarantee(Task(isTerminating := true))
+      .memoize
 
   def agentState: Task[Checked[AgentState]] =
     clusterNode.currentState
 
-  private val isTerminating = Atomic(false)
-  @volatile private var isActorTerminated = false
-
-  logger.debug("Ready")
-
   protected def start: Task[Service.Started] =
     Task.defer {
-      for (_ <- actorTermination.attempt) isActorTerminated = true
+      for (_ <- untilMainActorTerminated.attempt) isActorTerminated = true
       startService(
         untilStopRequested
           .*>(shutdown))
     }
 
   private def shutdown: Task[Unit] =
-    terminating(Task {
+    logger.debugTask(terminating(Task {
       executeCommandAsSystemUser(ShutDown(Some(SIGTERM)))
         .runAsyncUncancelable {
           case Left(throwable) => logger.warn(throwable.toStringWithCauses)
           case Right(Left(problem)) => logger.warn(problem.toString)
           case Right(Right(_)) =>
         }
-    }).void
+    }).void)
 
   private[agent] def terminate(
     processSignal: Option[ProcessSignal] = None,
@@ -359,7 +357,7 @@ object RunningAgent {
           untilMainActorTerminated,
           untilReady, executeCommand, sessionRegister, sessionToken,
           testEventBus,
-          actorSystem, config)))
+          actorSystem, conf)))
       _ <- subagent.directorRegisteringResource(
         (binding, whenShuttingDown) => Task.pure(
           new AgentRoute(
