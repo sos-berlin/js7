@@ -1,5 +1,6 @@
 package js7.tests.testenv
 
+import cats.effect.Resource
 import com.typesafe.config.ConfigUtil.quoteString
 import java.nio.file.Path
 import js7.base.auth.{UserAndPassword, UserId}
@@ -7,8 +8,10 @@ import js7.base.crypt.SignatureVerifier
 import js7.base.generic.SecretString
 import js7.base.io.JavaResource
 import js7.base.io.file.FileUtils.syntax.*
+import js7.controller.RunningController
 import js7.data.agent.AgentPath
 import js7.tests.testenv.DirectoryProvider.{AgentTrustStoreResource, defaultVerifier}
+import monix.eval.Task
 import scala.collection.immutable.Iterable
 
 /** Environment with config and data directories for a Controller. */
@@ -19,13 +22,17 @@ final class ControllerEnv(
   trustStores: Iterable[JavaResource],
   agentHttpsMutual: Boolean)
 extends ProgramEnv {
+  type Program = RunningController
+
+  def programResource: Resource[Task, RunningController] = ???
+
   val journalFileBase = stateDir / "controller"
   val userAndPassword = UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD"))
   // TODO Like SubagentEnv, use this port in startController
   //lazy val port = findFreeTcpPort()
   //lazy val localUri = Uri((if (https) "https://localhost" else "http://127.0.0.1") + ":" + port)
 
-  override private[testenv] def createDirectoriesAndFiles(): Unit = {
+  override protected[testenv] def createDirectoriesAndFiles(): Unit = {
     super.createDirectoriesAndFiles()
     for (keyStore <- keyStore) {
       configDir / "private/private.conf" ++= """

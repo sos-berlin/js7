@@ -1,5 +1,6 @@
 package js7.tests.testenv
 
+import cats.effect.Resource
 import java.io.IOException
 import java.nio.file.Files.createDirectory
 import java.nio.file.Path
@@ -9,8 +10,13 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.tests.testenv.ProgramEnv.*
+import monix.eval.Task
 
 trait ProgramEnv extends AutoCloseable {
+  type Program
+
+  def programResource: Resource[Task, Program]
+
   val directory: Path
   protected def verifier: SignatureVerifier
   protected def suppressSignatureKeys: Boolean = false
@@ -29,7 +35,7 @@ trait ProgramEnv extends AutoCloseable {
 
   def journalFileBase: Path
 
-  private[testenv] def createDirectoriesAndFiles(): Unit = {
+  protected def createDirectoriesAndFiles(): Unit = {
     createDirectory(directory)
     createDirectory(configDir)
     createDirectory(configDir / "private")

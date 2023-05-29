@@ -38,6 +38,8 @@ final class DirectorEnv(
   override protected val suppressSignatureKeys: Boolean = false,
   config: Config = ConfigFactory.empty)
 extends ProgramEnv {
+  type Program = RunningAgent
+
   val agentPath = subagentItem.agentPath
   val directory = rootDirectory / "subagents" / name
   val journalFileBase = stateDir / "agent"
@@ -72,10 +74,19 @@ extends ProgramEnv {
   lazy val userAndPassword = Some(UserAndPassword(UserId("Controller"), password))
   lazy val executables = configDir / "executables"
 
+  def programResource: Resource[Task, RunningAgent] =
+    directorResource
+
+  def directorResource: Resource[Task, RunningAgent] =
+    ownThreadPoolResource(agentConf.name, agentConf.config)(scheduler =>
+      RunningAgent
+        .resource(agentConf)(scheduler)
+        .executeOn(scheduler))
+
   def localSubagentId: SubagentId =
     subagentItem.id
 
-  override def createDirectoriesAndFiles(): Unit = {
+  override protected[testenv] def createDirectoriesAndFiles(): Unit = {
     super.createDirectoriesAndFiles()
     //createDirectory(trustedSignatureDir)
     createDirectory(executables)
@@ -123,9 +134,4 @@ extends ProgramEnv {
 
   lazy val subagentConf: SubagentConf =
     agentConf.subagentConf
-
-  def directorResource: Resource[Task, RunningAgent] =
-    ThreadPools
-      .ownThreadPoolResource(agentConf.name, agentConf.config)(scheduler =>
-        RunningAgent.resource(agentConf)(scheduler).executeOn(scheduler))
 }
