@@ -9,7 +9,7 @@ import js7.data.controller.ControllerCommand.TakeSnapshot
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
 import js7.tests.cluster.controller.ControllerClusterTester.*
-import js7.tests.testenv.ControllerClusterForScalaTest.assertEqualJournalFiles
+import js7.tests.testenv.ProgramEnvTester.assertEqualJournalFiles
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 

@@ -27,7 +27,7 @@ import js7.journal.files.JournalFiles
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.tests.cluster.controller.ControllerClusterTester.*
 import js7.tests.cluster.controller.FailoverControllerClusterTest.*
-import js7.tests.testenv.ControllerClusterForScalaTest.assertEqualJournalFiles
+import js7.tests.testenv.ProgramEnvTester.assertEqualJournalFiles
 import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.Deadline.now
 

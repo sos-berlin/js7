@@ -24,8 +24,8 @@ import js7.tests.cluster.agent.SimpleAgentClusterTest.*
 import js7.tests.cluster.controller.ControllerClusterTester
 import js7.tests.cluster.controller.ControllerClusterTester.*
 import js7.tests.jobs.SemaphoreJob
-import js7.tests.testenv.ControllerClusterForScalaTest.assertEqualJournalFiles
 import js7.tests.testenv.DirectorEnv
+import js7.tests.testenv.ProgramEnvTester.assertEqualJournalFiles
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import scala.util.control.NonFatal

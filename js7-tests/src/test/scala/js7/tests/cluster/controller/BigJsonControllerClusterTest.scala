@@ -22,7 +22,7 @@ import js7.launcher.internal.InternalJob
 import js7.proxy.ControllerApi
 import js7.tests.cluster.controller.BigJsonControllerClusterTest.*
 import js7.tests.testenv.ControllerClusterForScalaTest
-import js7.tests.testenv.ControllerClusterForScalaTest.assertEqualJournalFiles
+import js7.tests.testenv.ProgramEnvTester.assertEqualJournalFiles
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 

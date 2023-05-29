@@ -13,7 +13,6 @@ import js7.base.io.https.HttpsConfig
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.problem.Checked.*
 import js7.base.time.ScalaTime.*
-import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.CatsBlocking.BlockingTaskResource
 import js7.base.utils.CatsUtils.{Nel, combine}
 import js7.base.utils.Closer.syntax.*
@@ -34,14 +33,12 @@ import js7.data.controller.ControllerCommand.ShutDown
 import js7.data.item.InventoryItem
 import js7.data.job.RelativePathExecutable
 import js7.data.node.NodeId
-import js7.journal.files.JournalFiles.listJournalFiles
 import js7.tests.testenv.ControllerClusterForScalaTest.*
 import js7.tests.testenv.DirectoryProvider.script
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced as scheduler
 import org.jetbrains.annotations.TestOnly
 import org.scalactic.source
-import org.scalatest.Assertions.*
 
 @TestOnly
 trait ControllerClusterForScalaTest
@@ -255,24 +252,9 @@ object ControllerClusterForScalaTest
   val TestPathExecutable = RelativePathExecutable("TEST.cmd")
   val clusterWatchId = ClusterWatchId("CLUSTER-WATCH")
 
-  def assertEqualJournalFiles(
-    primary: ProgramEnv,
-    backup: ProgramEnv,
-    n: Int)
+  @deprecated
+  def assertEqualJournalFiles(primary: ProgramEnv, backup: ProgramEnv, n: Int)
     (implicit pos: source.Position)
-  : Unit = {
-    waitForCondition(9.s, 10.ms) { listJournalFiles(primary.journalFileBase).size == n }
-    val journalFiles = listJournalFiles(primary.journalFileBase)
-    // Snapshot is not being acknowledged, so a new journal file starts asynchronously (or when one event has been written)
-    assert(journalFiles.size == n)
-    waitForCondition(9.s, 10.ms) { listJournalFiles(backup.journalFileBase).size == n }
-    for (primaryFile <- journalFiles.map(_.file)) {
-      withClue(s"$primaryFile: ") {
-        val backupJournalFile = backup.stateDir.resolve(primaryFile.getFileName)
-        waitForCondition(9.s, 100.ms)(backupJournalFile.contentString == primaryFile.contentString)
-        assert(backupJournalFile.contentString == primaryFile.contentString)
-        assert(backupJournalFile.byteArray == primaryFile.byteArray)
-      }
-    }
-  }
+  : Unit =
+    ProgramEnvTester.assertEqualJournalFiles(primary, backup, n)
 }
