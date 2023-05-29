@@ -1,10 +1,9 @@
 package js7.data.delegate
 
-import js7.base.circeutils.CirceUtils.DecodeWithDefaults
 import io.circe.generic.semiauto.deriveCodec
 import io.circe.{Decoder, Encoder, Json}
 import js7.base.annotation.javaApi
-import js7.base.circeutils.CirceUtils.deriveConfiguredCodec
+import js7.base.circeutils.CirceUtils.{DecodeWithDefaults, deriveConfiguredCodec}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass

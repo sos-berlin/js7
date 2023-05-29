@@ -230,7 +230,8 @@ object Subagent
         .orThrow
         .toResource(onUpdated = () => testEventBus.publish(ItemSignatureKeysUpdated))(iox)
       subagent <- Service.resource(Task(
-        new Subagent(webServer, directorRouteVariable, journal, signatureVerifier, conf, jobLauncherConf, testEventBus)))
+        new Subagent(webServer, directorRouteVariable, journal, signatureVerifier,
+          conf, jobLauncherConf, testEventBus)))
       _ <- Resource.eval(subagentDeferred.complete(subagent))
     } yield {
       logger.info("Subagent is ready to be dedicated" + "\n" + "─" * 80)

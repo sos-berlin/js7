@@ -53,9 +53,7 @@ with BlockingItemUpdater
     SubagentItem(primarySubagentId, agentPath, findFreeLocalUri())
   private lazy val backupSubagentItem =
     SubagentItem(backupSubagentId, agentPath, findFreeLocalUri())
-  private lazy val agentRef = AgentRef(
-    agentPath,
-    Seq(primarySubagentId, backupSubagentId))
+  private lazy val agentRef = AgentRef(agentPath, Seq(primarySubagentId, backupSubagentId))
 
   protected def items = Nil
 

@@ -41,7 +41,8 @@ trait ProgramEnv extends AutoCloseable {
     createDirectory(configDir / trustedSignatureKeysDir)
     if (!suppressSignatureKeys) {
       for ((key, i) <- verifier.publicKeys.zipWithIndex) {
-        val file = configDir / trustedSignatureKeysDir / (s"key-${i + 1}${verifier.companion.filenameExtension}")
+        val file = configDir / trustedSignatureKeysDir /
+          s"key-${i + 1}${verifier.companion.filenameExtension}"
         logger.trace(s"$file := key")
         file := key
       }

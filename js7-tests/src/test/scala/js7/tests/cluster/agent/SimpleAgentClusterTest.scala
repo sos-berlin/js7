@@ -59,11 +59,10 @@ final class SimpleAgentClusterTest extends ControllerClusterTester
           .toAllocated
           .await(99.s)
 
-      val primaryDirectorEnv = primaryDirectorAllocated.allocatedThing._1
-      val backupDirectorEnv = backupDirectorAllocated.allocatedThing._1
-
       TestAgent(primaryDirectorAllocated.map(_._2)).useSync(99.s) { primaryDirector =>
+        val primaryDirectorEnv = primaryDirectorAllocated.allocatedThing._1
         TestAgent(backupDirectorAllocated.map(_._2)).useSync(99.s) { backupDirector =>
+          val backupDirectorEnv = backupDirectorAllocated.allocatedThing._1
           try {
             runControllers(primary, backup) { (primaryController, _) =>
               import primaryController.eventWatch.await

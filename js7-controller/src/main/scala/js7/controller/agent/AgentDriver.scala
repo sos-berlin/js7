@@ -343,7 +343,7 @@ extends Service.StoppableByRequest
                   DedicateAgentDirector(directors, controllerId, agentPath))
                 .flatMapT { case DedicateAgentDirector.Response(agentRunId, agentEventId) =>
                   (if (noJournal)
-                    Task.pure(Checked.unit)
+                    Task.right(())
                   else
                     journal
                       .persistKeyedEvent(
@@ -351,8 +351,8 @@ extends Service.StoppableByRequest
                       .flatMapT { _ =>
                         agentRunIdOnce := agentRunId
                         reattachSubagents().map(Right(_))
-                      })
-                    .rightAs(agentRunId -> agentEventId)
+                      }
+                  ).rightAs(agentRunId -> agentEventId)
                 }
           }
         }

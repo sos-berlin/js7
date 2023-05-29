@@ -129,9 +129,9 @@ object Problems
       "clusterState" -> clusterState.toString)
   }
 
-  object ClusterNodeIsNotBackupProblem extends Problem.ArgumentlessCoded
+  case object ClusterNodeIsNotBackupProblem extends Problem.ArgumentlessCoded
 
-  object PrimaryClusterNodeMayNotBecomeBackupProblem extends Problem.ArgumentlessCoded
+  case object PrimaryClusterNodeMayNotBecomeBackupProblem extends Problem.ArgumentlessCoded
 
   case object ClusterNodesAlreadyAppointed extends Problem.ArgumentlessCoded
 
