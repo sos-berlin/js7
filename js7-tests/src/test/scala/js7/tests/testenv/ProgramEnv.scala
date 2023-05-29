@@ -21,10 +21,10 @@ trait ProgramEnv extends AutoCloseable {
   protected def verifier: SignatureVerifier
   protected def suppressSignatureKeys: Boolean = false
 
-  lazy val configDir = directory / "config"
-  lazy val dataDir = directory / "data"
-  lazy val stateDir = dataDir / "state"
-  private val trustedSignatureKeysDir =
+  final lazy val configDir = directory / "config"
+  final lazy val dataDir = directory / "data"
+  final lazy val stateDir = dataDir / "state"
+  private lazy val trustedSignatureKeysDir =
     "private/" + verifier.companion.recommendedKeyDirectoryName
 
   def close() =
@@ -42,6 +42,12 @@ trait ProgramEnv extends AutoCloseable {
     createDirectory(dataDir)
     createDirectory(dataDir / "work")
   }
+
+  //protected final def programConfig: Config =
+  //  config"""
+  //    js7.configuration.trusted-signature-keys {
+  //      ${verifier.companion.typeName} = $${js7.config-directory}"/$trustedSignatureKeysDir"
+  //    }"""
 
   protected final def writeTrustedSignatureKeys(confFilename: String): Unit = {
     createDirectory(configDir / trustedSignatureKeysDir)

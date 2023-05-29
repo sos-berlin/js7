@@ -29,7 +29,7 @@ import js7.data.job.RelativePathExecutable
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.tests.https.HttpsTestBase.*
 import js7.tests.testenv.DirectoryProvider.{ExportedControllerTrustStoreRef, ExportedControllerTrustStoreResource}
-import js7.tests.testenv.{AgentEnv, ControllerAgentForScalaTest, ControllerEnv, DirectoryProvider}
+import js7.tests.testenv.{ControllerAgentForScalaTest, ControllerEnv, DirectorEnv, DirectoryProvider}
 import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.BeforeAndAfterAll
 import scala.concurrent.duration.*
@@ -224,7 +224,7 @@ private[https] object HttpsTestBase
       execute executable="TEST$sh", agent="TEST-AGENT";
     }""").orThrow
 
-  private def provideAgentConfiguration(agent: AgentEnv): Unit =
+  private def provideAgentConfiguration(agent: DirectorEnv): Unit =
     agent.writeExecutable(RelativePathExecutable(s"TEST$sh"), operatingSystem.sleepingShellScript(0.seconds))
 
   private def provideControllerConfiguration(controller: ControllerEnv): Unit =

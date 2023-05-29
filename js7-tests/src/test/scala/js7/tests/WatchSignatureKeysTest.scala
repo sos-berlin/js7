@@ -11,6 +11,7 @@ import js7.base.data.ByteArray
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.watch.BasicDirectoryWatcher.systemWatchDelay
+import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.RichMonixTask
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
@@ -191,6 +192,7 @@ final class WatchSignatureKeysTest extends OurTestSuite with ControllerAgentForS
           val n = 40
           for (i <- 0 until n) withClue(s"${(i.s / 10).pretty} -> ") {
             for (file <- View(controllerFile, agentFile, subagentFile)) {
+              logger.debug(f"$file write ${pem(i)}%02x")
               file.write(pem(i))
               file.flush()
             }
@@ -201,6 +203,7 @@ final class WatchSignatureKeysTest extends OurTestSuite with ControllerAgentForS
           assert(!subagentUpdated.isCompleted)
           controllerFile.write(pem, n, pem.length - n)
           agentFile.write(pem, n, pem.length - n)
+          subagentFile.write(pem, n, pem.length - n)
         }
       }
     }
@@ -235,6 +238,7 @@ final class WatchSignatureKeysTest extends OurTestSuite with ControllerAgentForS
 
 object WatchSignatureKeysTest
 {
+  private val logger = Logger[this.type]
   private val agentPath = AgentPath("AGENT")
   private val bareSubagentId = SubagentId("BARE-SUBAGENT")
   private val workflow = Workflow(

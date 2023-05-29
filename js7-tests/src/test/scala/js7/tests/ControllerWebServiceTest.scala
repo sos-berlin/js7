@@ -43,7 +43,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.journal.EventIdClock
 import js7.tester.CirceJsonTester.testJson
 import js7.tests.ControllerWebServiceTest.*
-import js7.tests.testenv.{AgentEnv, ControllerAgentForScalaTest, ControllerEnv}
+import js7.tests.testenv.{ControllerAgentForScalaTest, ControllerEnv, DirectorEnv}
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
@@ -435,8 +435,8 @@ object ControllerWebServiceTest
       |""".stripMargin)
   }
 
-  private def writeAgentConfiguration(agent: AgentEnv): Unit = {
-    agent.writeExecutable(RelativePathExecutable(s"A$sh"), operatingSystem.sleepingShellScript(1.s))  // Allow some time to check web service before order finishes
-    agent.writeExecutable(RelativePathExecutable(s"B$sh"), operatingSystem.sleepingShellScript(0.s))
+  private def writeAgentConfiguration(env: DirectorEnv): Unit = {
+    env.writeExecutable(RelativePathExecutable(s"A$sh"), operatingSystem.sleepingShellScript(1.s))  // Allow some time to check web service before order finishes
+    env.writeExecutable(RelativePathExecutable(s"B$sh"), operatingSystem.sleepingShellScript(0.s))
   }
 }

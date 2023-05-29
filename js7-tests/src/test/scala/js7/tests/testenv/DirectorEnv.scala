@@ -26,9 +26,8 @@ import monix.eval.Task
 
 /** Environment with config and data directories for a Subagent with Agent Director. */
 final class DirectorEnv(
-  subagentItem: SubagentItem,
+  val subagentItem: SubagentItem,
   name: String,
-  moreSubagentIds: Seq[SubagentId] = Nil,
   rootDirectory: Path,
   protected val verifier: SignatureVerifier = defaultVerifier,
   mutualHttps: Boolean = false,
@@ -36,6 +35,7 @@ final class DirectorEnv(
   provideClientCertificate: Boolean = false,
   isClusterBackup: Boolean = false,
   override protected val suppressSignatureKeys: Boolean = false,
+  moreSubagentIds: Seq[SubagentId] = Nil,
   config: Config = ConfigFactory.empty)
 extends ProgramEnv {
   type Program = RunningAgent
@@ -45,10 +45,11 @@ extends ProgramEnv {
   val journalFileBase = stateDir / "agent"
 
   val localUri = subagentItem.uri
-  private val port = subagentItem.uri.port.orThrow
-  private val https = subagentItem.uri.string.startsWith("https:")
 
-  lazy val agentConf: AgentConfiguration =
+  lazy val agentConf: AgentConfiguration = {
+    val isHttps = subagentItem.uri.string.startsWith("https:")
+    val port = subagentItem.uri.port.orThrow
+
     AgentConfiguration.forTest(directory,
       name = name,
       config
@@ -57,7 +58,7 @@ extends ProgramEnv {
             configIf(isClusterBackup,
               config"""js7.journal.cluster.node.is-backup = yes"""),
             config"""
-              js7.auth.users.${agentPath.string} {
+              js7.auth.users.$agentPath {
                 permissions: [ AgentDirector ]
                 password: "plain:AGENT-PASSWORD"
               }
@@ -66,9 +67,11 @@ extends ProgramEnv {
           .map(subagentId => config"""
              js7.auth.subagents.${subagentId.string} = "AGENT-PASSWORD"
              """)
-          .combineAll),
-      httpPort = !https ? port,
-      httpsPort = https ? port)
+          .combineAll)
+        /*.withFallback(programConfig)*/,
+      httpPort = !isHttps ? port,
+      httpsPort = isHttps ? port)
+  }
 
   lazy val password = SecretString(s"$agentPath-PASSWORD") // TODO AgentPath — or SubagentId?
   lazy val userAndPassword = Some(UserAndPassword(UserId("Controller"), password))
@@ -88,7 +91,6 @@ extends ProgramEnv {
 
   override protected[testenv] def createDirectoriesAndFiles(): Unit = {
     super.createDirectoriesAndFiles()
-    //createDirectory(trustedSignatureDir)
     createDirectory(executables)
     if (provideHttpsCertificate) {
       (configDir / "private/https-keystore.p12") := AgentKeyStoreResource.contentBytes

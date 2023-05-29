@@ -62,7 +62,7 @@ extends ProgramEnv {
      |""".stripMargin
   }
 
-  def writeAgentAuthentication(env: AgentEnv): Unit =
+  def writeAgentAuthentication(env: DirectorEnv): Unit =
     writeAgentAuthentication(env.agentPath, env.password)
 
   def writeAgentAuthentication(agentPath: AgentPath, password: SecretString): Unit =
