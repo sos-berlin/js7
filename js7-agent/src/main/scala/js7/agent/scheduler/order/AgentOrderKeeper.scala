@@ -731,8 +731,8 @@ with Stash
         val oes = new OrderEventSource(agentState)
         if (order != agentState.idToOrder(order.id)) {
           // FIXME order should be equal !
-          logger.debug(s"🔥 ERROR order    =$order")
-          logger.debug(s"🔥 ERROR idToOrder=${agentState.idToOrder(order.id)}")
+          logger.debug(s"❌ ERROR order    =$order")
+          logger.debug(s"❌ ERROR idToOrder=${agentState.idToOrder(order.id)}")
           //assertThat(oes.state.idToOrder(order.id) == order)
         }
         val keyedEvents = oes.nextEvents(order.id)

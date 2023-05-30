@@ -327,9 +327,10 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
             case ExitCase.Error(throwable) => Task.defer {
               val sym = throwable match {
                 case _: java.net.ConnectException => "⭕"
+                case _: akka.stream.scaladsl.TcpIdleTimeoutException => "🔥"
                 case t: akka.stream.StreamTcpException
                   if t.getMessage.contains("java.net.ConnectException: ") => "⭕"
-                case t: LegiableAkkaHttpException
+                case t: LegibleAkkaHttpException
                   if t.getMessage.contains("java.net.ConnectException: ") => "⭕"
                 case _ => "💥"
               }
@@ -400,26 +401,34 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
     logger.debug(s"$arrow$sym$responseLogPrefix => ${response.status}$suffix")
   }
 
+  // >-->  request
+  // <--<  non-chunked response
+  // <-<- ✔header of chunked response
+  // <-<-  chunk
+  // <--|  last chunk
+
   private def logResponseStream(response: HttpResponse, responseLogPrefix: => String)
   : HttpResponse =
     response.entity match {
       case chunked: Chunked =>
         val isUtf8 = chunked.contentType.charsetOption.contains(`UTF-8`)
           || chunked.contentType.mediaType.toString == `application/x-ndjson`.toString
-        response.withEntity(chunked.copy(
-          chunks = chunked.chunks
-            .map { chunk =>
-              if (chunk.isLastChunk()) {
-                val arrow = if (chunk.isLastChunk()) "<--|" else "-<--"
-                logger.trace(s"$arrow  $responseLogPrefix ${
-                  if (isUtf8)
-                    chunk.data.utf8String.truncateWithEllipsis(
-                      100, showLength = true, firstLineOnly = true, quote = true)
-                  else
-                    s"${chunk.data.length} bytes"}")
-              }
-              chunk
-            }))
+        response.pipeIf(logger.underlying.isTraceEnabled)(_
+          .withEntity(chunked.copy(
+            chunks = chunked.chunks
+              .map { chunk =>
+                if (chunk.isLastChunk) {
+                  val arrow = if (chunk.isLastChunk) "<--|  " else "<-<-  "
+                  val data =
+                    if (isUtf8)
+                      chunk.data.utf8String.truncateWithEllipsis(
+                        200, showLength = true, firstLineOnly = true, quote = true)
+                    else
+                      s"${chunk.data.length} bytes"
+                  logger.trace(s"$arrow$responseLogPrefix $data")
+                }
+                chunk
+              })))
       case _ => response
     }
 
@@ -495,7 +504,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
       .toList
       .flatMap(_.subgroups)
       .match_ {
-        case List(m1, m2) => new LegiableAkkaHttpException(s"$name $m1): $m2", t)
+        case List(m1, m2) => new LegibleAkkaHttpException(s"$name $m1): $m2", t)
         case _ => t
       }
 
@@ -678,7 +687,7 @@ object AkkaHttpClient
         None
   }
 
-  private final class LegiableAkkaHttpException(
+  private final class LegibleAkkaHttpException(
     message: String,
     cause: akka.stream.StreamTcpException)
   extends RuntimeException(message, cause)

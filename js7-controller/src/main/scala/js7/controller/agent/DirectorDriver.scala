@@ -53,12 +53,14 @@ extends Service.StoppableByRequest
   private var adoptedEventId = initialEventId
   private val untilFetchingStopped = Deferred.unsafe[Task, Unit]
 
+  logger.trace(s"initialEventId=$initialEventId")
+
   protected def start =
-    Task(logger.trace(s"initialEventId=$initialEventId")) *>
-      startService(
-        continuallyFetchEvents *>
-          untilStopRequested *>
-          stopEventFetcher)
+    startService(
+      continuallyFetchEvents *>
+        Task(assertThat(isStopping)) *>
+        onFetchedEventsLock.lock(Task.unit) *>
+        stopEventFetcher)
 
   private def stopEventFetcher: Task[Unit] =
     eventFetcher.terminateAndLogout *>
