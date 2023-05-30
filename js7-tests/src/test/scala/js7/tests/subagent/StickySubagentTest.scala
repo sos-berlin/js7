@@ -40,7 +40,7 @@ final class StickySubagentTest extends OurTestSuite with ControllerAgentForScala
 
   protected val agentPaths = Seq(aAgentPath, bAgentPath)
 
-  override protected lazy val extraSubagentItems = Seq(
+  override protected lazy val bareSubagentItems = Seq(
     SubagentItem(a1SubagentId, aAgentPath, findFreeLocalUri()),
     SubagentItem(a2SubagentId, aAgentPath, findFreeLocalUri()))
 

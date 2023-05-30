@@ -44,7 +44,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
 
   protected final lazy val idToAllocatedSubagent: Map[SubagentId, Allocated[Task, Subagent]] =
     directoryProvider
-      .startExtraSubagents()
+      .startBareSubagents()
       .await(99.s)
 
   protected final lazy val controller: TestController = {

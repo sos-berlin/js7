@@ -24,15 +24,16 @@ final class ControllerEnv(
 extends ProgramEnv {
   type Program = RunningController
 
+  protected def confFilename = "controller.conf"
+
   def programResource: Resource[Task, RunningController] = ???
 
   val journalFileBase = stateDir / "controller"
   val userAndPassword = UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD"))
-  // TODO Like SubagentEnv, use this port in startController
-  //lazy val port = findFreeTcpPort()
-  //lazy val localUri = Uri((if (https) "https://localhost" else "http://127.0.0.1") + ":" + port)
 
-  override protected[testenv] def createDirectoriesAndFiles(): Unit = {
+  initialize()
+
+  protected override def createDirectoriesAndFiles(): Unit = {
     super.createDirectoriesAndFiles()
     for (keyStore <- keyStore) {
       configDir / "private/private.conf" ++= """
@@ -47,7 +48,6 @@ extends ProgramEnv {
         provideTrustStore(o, s"extra-${i + 1}-https-truststore.p12")
       }
     }
-    writeTrustedSignatureKeys("controller.conf")
   }
 
   private def provideTrustStore(resource: JavaResource, filename: String): Unit = {
@@ -63,7 +63,7 @@ extends ProgramEnv {
   }
 
   def writeAgentAuthentication(env: DirectorEnv): Unit =
-    writeAgentAuthentication(env.agentPath, env.password)
+    writeAgentAuthentication(env.agentPath, env.controllerPassword)
 
   def writeAgentAuthentication(agentPath: AgentPath, password: SecretString): Unit =
     if (!agentHttpsMutual) {

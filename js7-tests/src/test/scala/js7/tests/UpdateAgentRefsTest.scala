@@ -52,7 +52,7 @@ final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForSc
       uri = Uri(s"http://127.0.0.1:$agentPort1")),
     "AGENT",
     directoryProvider.directory,
-    config = agentConfig)
+    extraConfig = agentConfig)
 
   private lazy val controller = directoryProvider.newController()
 

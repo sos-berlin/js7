@@ -209,7 +209,7 @@ final class ResetAgentTest extends OurTestSuite with ControllerAgentForScalaTest
       testName = Some("ResetAgentTest-second"),
       agentPaths = Nil,
       controllerConfig = config"""
-        js7.auth.agents.AGENT = "${agentEnv.password.string}"
+        js7.auth.agents.AGENT = "${agentEnv.controllerPassword.string}"
       """.withFallback(controllerConfig))
     autoClosing(secondProvider) { _ =>
       secondProvider.runController() { secondController =>

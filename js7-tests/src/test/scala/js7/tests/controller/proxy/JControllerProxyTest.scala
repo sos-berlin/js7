@@ -39,11 +39,16 @@ final class JControllerProxyTest extends OurTestSuite with DirectoryProviderForS
         password = "plain:PROXYS-PASSWORD-FOR-PRIMARY"
         permissions = [ UpdateItem ]
       }
+      TEST-USER = "plain:TEST-PASSWORD"
     }
+    js7.configuration.trusted-signature-keys.Silly =
+      $${js7.config-directory}"/private/trusted-silly-signature-keys"
     """
 
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on
+    js7.configuration.trusted-signature-keys.Silly =
+      $${js7.config-directory}"/private/trusted-silly-signature-keys"
     """
 
   protected val agentPaths = AgentPath("AGENT") :: Nil
@@ -51,18 +56,10 @@ final class JControllerProxyTest extends OurTestSuite with DirectoryProviderForS
 
   override def beforeAll() = {
     super.beforeAll()
-    (directoryProvider.controllerEnv.configDir / "private" / "private.conf") ++= """
-      |js7.auth.users.TEST-USER = "plain:TEST-PASSWORD"
-      |""".stripMargin
-
     for (configDir <- List(directoryProvider.controllerEnv.configDir, directoryProvider.agentEnvs(0).configDir)) {
-      (configDir / "private" / "private.conf") ++= s"""
-        |js7.configuration.trusted-signature-keys.Silly = $${js7.config-directory}"/private/trusted-silly-signature-keys"
-        |""".stripMargin
       createDirectory(configDir / "private/trusted-silly-signature-keys")
       configDir / "private/trusted-silly-signature-keys/key.silly" := "MY-SILLY-SIGNATURE"
     }
-
     directoryProvider.agentEnvs.head.writeExecutable(RelativePathExecutable("TEST.cmd"), script(1.s))
   }
 

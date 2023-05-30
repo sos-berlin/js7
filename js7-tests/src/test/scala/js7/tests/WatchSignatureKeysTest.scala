@@ -57,7 +57,7 @@ final class WatchSignatureKeysTest extends OurTestSuite with ControllerAgentForS
     """
 
   protected val agentPaths = Seq(agentPath)
-  override protected lazy val extraSubagentItems = Seq(
+  override protected lazy val bareSubagentItems = Seq(
     SubagentItem(bareSubagentId, agentPath, findFreeLocalUri()))
   protected val items = Nil
 
@@ -81,7 +81,7 @@ final class WatchSignatureKeysTest extends OurTestSuite with ControllerAgentForS
 
   private val nextVersion = Iterator.from(1).map(i => VersionId(s"V$i")).next _
 
-  override def beforeAll(): Unit = {
+  override def beforeAll() = {
     super.beforeAll()
     // Use only our BareSubagent
     enableSubagents(toLocalSubagentId(agentPath) -> false)

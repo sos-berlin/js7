@@ -197,7 +197,7 @@ final class FileWatch2Test extends OurTestSuite with DirectoryProviderForScalaTe
             assert(!exists(file))
           }
           val client = AgentClient(agentUri = aAgent.localUri,
-            directoryProvider.agentEnvs.head.userAndPassword)(aAgent.actorSystem)
+            directoryProvider.agentEnvs.head.controllerUserAndPassword)(aAgent.actorSystem)
           checkAgentEvents(client)
         }
       }

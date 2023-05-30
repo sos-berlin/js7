@@ -62,7 +62,7 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite with ControllerAge
 
     val agentEnv = directoryProvider.agentEnvs.head
     locally {
-      val agentClient = AgentClient(agentUri = agent.localUri, agentEnv.userAndPassword)
+      val agentClient = AgentClient(agentUri = agent.localUri, agentEnv.controllerUserAndPassword)
       agentClient.login() await 99.s
       agentClient
         .commandExecute(AgentCommand.ShutDown(processSignal = Some(SIGKILL)))

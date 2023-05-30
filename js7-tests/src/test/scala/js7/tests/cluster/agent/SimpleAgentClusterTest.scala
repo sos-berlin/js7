@@ -46,15 +46,18 @@ final class SimpleAgentClusterTest extends ControllerClusterTester
       val primaryDirectorAllocated: Allocated[Task, (DirectorEnv, RunningAgent)] =
         primary
           .directorEnvResource(
-            subagentItems(0), moreSubagentIds = Seq(subagentItems(1).id))
+            subagentItems(0),
+            moreSubagentIds = Seq(subagentItems(1).id))
           .flatMap(env => env.directorResource.map(env -> _))
           .toAllocated
           .await(99.s)
 
       val backupDirectorAllocated: Allocated[Task, (DirectorEnv, RunningAgent)] =
         primary
-          .directorEnvResource(subagentItems(1), isClusterBackup = true,
-            moreSubagentIds = Seq(subagentItems(0).id))
+          .directorEnvResource(
+            subagentItems(1),
+            moreSubagentIds = Seq(subagentItems(0).id),
+            isClusterBackup = true)
           .flatMap(env => env.directorResource.map(env -> _))
           .toAllocated
           .await(99.s)

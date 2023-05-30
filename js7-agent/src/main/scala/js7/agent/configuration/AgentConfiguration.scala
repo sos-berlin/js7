@@ -110,7 +110,7 @@ object AgentConfiguration
         httpsPort = httpsPort),
       name = name)
 
-  private def fromDirectories(
+  def fromDirectories(
     subagentConf: SubagentConf,
     name: String = DefaultName)
   : AgentConfiguration = {

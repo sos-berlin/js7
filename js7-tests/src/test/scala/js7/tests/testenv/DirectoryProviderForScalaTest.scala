@@ -39,11 +39,11 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
   protected def agentPorts: Seq[Int] = Nil
 
   protected def primarySubagentsDisabled = false
-  protected def extraSubagentItems: Seq[SubagentItem] = Nil
+  protected def bareSubagentItems: Seq[SubagentItem] = Nil
 
   protected final lazy val directoryProvider = new DirectoryProvider(
     agentPaths,
-    extraSubagentItems = extraSubagentItems,
+    bareSubagentItems = bareSubagentItems,
     items = items,
     controllerConfig = controllerConfig,
     agentHttps = agentHttps,

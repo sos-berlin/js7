@@ -1,6 +1,7 @@
 package js7.tests.testenv
 
 import cats.effect.Resource
+import com.typesafe.config.{Config, ConfigFactory}
 import java.io.IOException
 import java.nio.file.Files.createDirectory
 import java.nio.file.Path
@@ -8,6 +9,7 @@ import js7.base.crypt.SignatureVerifier
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger
+import js7.base.utils.AutoClosing.closeOnError
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.tests.testenv.ProgramEnv.*
 import monix.eval.Task
@@ -15,11 +17,13 @@ import monix.eval.Task
 trait ProgramEnv extends AutoCloseable {
   type Program
 
-  def programResource: Resource[Task, Program]
-
   val directory: Path
+  protected def confFilename: String
+  def programResource: Resource[Task, Program]
   protected def verifier: SignatureVerifier
   protected def suppressSignatureKeys: Boolean = false
+
+  protected def onInitialize() = {}
 
   final lazy val configDir = directory / "config"
   final lazy val dataDir = directory / "data"
@@ -35,7 +39,15 @@ trait ProgramEnv extends AutoCloseable {
 
   def journalFileBase: Path
 
+  protected def ownConfig: Config =
+    ConfigFactory.empty
+
   protected def createDirectoriesAndFiles(): Unit = {
+    createDirectories()
+    writeTrustedSignatureKeys()
+  }
+
+  private def createDirectories() = {
     createDirectory(directory)
     createDirectory(configDir)
     createDirectory(configDir / "private")
@@ -43,14 +55,9 @@ trait ProgramEnv extends AutoCloseable {
     createDirectory(dataDir / "work")
   }
 
-  //protected final def programConfig: Config =
-  //  config"""
-  //    js7.configuration.trusted-signature-keys {
-  //      ${verifier.companion.typeName} = $${js7.config-directory}"/$trustedSignatureKeysDir"
-  //    }"""
-
-  protected final def writeTrustedSignatureKeys(confFilename: String): Unit = {
+  private def writeTrustedSignatureKeys() = {
     createDirectory(configDir / trustedSignatureKeysDir)
+
     if (!suppressSignatureKeys) {
       for ((key, i) <- verifier.publicKeys.zipWithIndex) {
         val file = configDir / trustedSignatureKeysDir /
@@ -60,12 +67,18 @@ trait ProgramEnv extends AutoCloseable {
       }
     }
 
-    configDir / confFilename ++=
-      s"""js7.configuration.trusted-signature-keys {
-         |  ${verifier.companion.typeName} = $${js7.config-directory}"/$trustedSignatureKeysDir"
-         |}
-         |""".stripMargin
+    configDir / confFilename ++= s"""
+     |js7.configuration.trusted-signature-keys {
+     |  ${verifier.companion.typeName} = $${js7.config-directory}"/$trustedSignatureKeysDir"
+     |}
+     |""".stripMargin
   }
+
+  protected def initialize(): Unit =
+    closeOnError(this) {
+      createDirectoriesAndFiles()
+      onInitialize()
+    }
 }
 
 object ProgramEnv {

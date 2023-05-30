@@ -10,7 +10,6 @@ import js7.agent.{RunningAgent, TestAgent}
 import js7.base.auth.Admission
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.crypt.{DocumentSigner, SignatureVerifier, Signed, SignedString}
-import js7.base.eventbus.StandardEventBus
 import js7.base.generic.SecretString
 import js7.base.io.JavaResource
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
@@ -21,7 +20,6 @@ import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.RichMonixResource
 import js7.base.problem.Checked.*
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.thread.IOExecutor
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.closeOnError
@@ -36,7 +34,6 @@ import js7.cluster.watch.ClusterWatchService
 import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.akkautils.Akkas
 import js7.common.configuration.Js7Configuration
-import js7.common.system.ThreadPools
 import js7.common.utils.Exceptions.repeatUntilNoException
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.RunningController
@@ -71,7 +68,7 @@ import scala.util.control.NonFatal
 @TestOnly
 final class DirectoryProvider(
   agentPaths: Seq[AgentPath],
-  extraSubagentItems: Seq[SubagentItem] = Nil,
+  bareSubagentItems: Seq[SubagentItem] = Nil,
   items: Seq[InventoryItem] = Nil,
   controllerConfig: Config = ConfigFactory.empty,
   controllerTestWiring: RunningController.TestWiring = RunningController.TestWiring.empty,
@@ -125,7 +122,7 @@ extends HasCloser
 
         agentPath -> newDirectorEnv(
           localSubagentItem,
-          moreSubagentIds = extraSubagentItems
+          otherSubagentIds = bareSubagentItems
             .collect { case o: SubagentItem if o.agentPath == agentPath => o.id })
       }
       .toMap
@@ -133,13 +130,12 @@ extends HasCloser
   val agentEnvs: Vector[DirectorEnv] = agentToEnv.values.toVector
   lazy val agentRefs: Vector[AgentRef] =
     for (a <- agentEnvs) yield AgentRef(a.agentPath, Seq(a.localSubagentId))
-  lazy val subagentItems: Vector[SubagentItem] = agentEnvs.map(_.subagentItem) ++ extraSubagentItems
+  lazy val subagentItems: Vector[SubagentItem] = agentEnvs.map(_.subagentItem) ++ bareSubagentItems
   lazy val subagentId: SubagentId = agentEnvs.head.localSubagentId
 
   private val itemsHaveBeenAdded = AtomicBoolean(false)
 
   closeOnError(this) {
-    controllerEnv.createDirectoriesAndFiles()
     agentEnvs foreach prepareAgentFiles
 
     items
@@ -320,8 +316,8 @@ extends HasCloser
       agentToEnv(agentPath).agentConf,
       testWiring)
 
-  def startExtraSubagents(): Task[Map[SubagentId, Allocated[Task, Subagent]]] =
-    extraSubagentItems
+  def startBareSubagents(): Task[Map[SubagentId, Allocated[Task, Subagent]]] =
+    bareSubagentItems
       .parTraverse(subagentItem =>
         subagentResource(subagentItem, agentConfig)
           .toAllocated
@@ -347,7 +343,7 @@ extends HasCloser
   private def controllerName = testName.fold(ControllerConfiguration.DefaultName)(_ + "-Controller")
 
   def prepareAgentFiles(env: DirectorEnv): Unit = {
-    env.createDirectoriesAndFiles()
+    //env.createDirectoriesAndFiles()
     controllerEnv.writeAgentAuthentication(env)
   }
 
@@ -363,13 +359,11 @@ extends HasCloser
         newDirectorEnv(subagentItem, suffix, moreSubagentIds,
           isClusterBackup = isClusterBackup,
           suppressSignatureKeys = suppressSignatureKeys)))
-      .evalTap(env => Task(
-        env.createDirectoriesAndFiles()))
 
-  def newDirectorEnv(
+  private def newDirectorEnv(
     subagentItem: SubagentItem,
     suffix: String = "",
-    moreSubagentIds: Seq[SubagentId] = Nil,
+    otherSubagentIds: Seq[SubagentId] = Nil,
     isClusterBackup: Boolean = false,
     suppressSignatureKeys: Boolean = false)
   : DirectorEnv =
@@ -383,8 +377,8 @@ extends HasCloser
       provideClientCertificate = provideAgentClientCertificate,
       isClusterBackup = isClusterBackup,
       suppressSignatureKeys = suppressSignatureKeys,
-      moreSubagentIds = moreSubagentIds,
-      config = agentConfig)
+      otherSubagentIds = otherSubagentIds,
+      extraConfig = agentConfig)
 
   @deprecated // Duplicate in DirectorEnv ?
   def subagentResource(
@@ -394,23 +388,32 @@ extends HasCloser
     suppressSignatureKeys: Boolean = false)
   : Resource[Task, Subagent] =
     for {
-      directorEnv <- directorEnvResource(subagentItem, suffix = suffix,
-        suppressSignatureKeys = suppressSignatureKeys)
-      trustedSignatureDir = directorEnv.configDir / "private" /
-        verifier.companion.recommendedKeyDirectoryName
-      conf = toSubagentConf(
-        subagentItem.agentPath,
-        directorEnv.directory,
-        trustedSignatureDir,
-        subagentItem.uri.port.orThrow,
-        config,
-        name = subagentItem.id.string
-      ).finishAndProvideFiles()
-      iox <- IOExecutor.resource[Task](conf.config, name = conf.name + "-I/O")
-      testEventBus <- Resource.eval(Task(new StandardEventBus[Any]))
-      subagent <- ThreadPools.ownThreadPoolResource(conf.name, conf.config)(
-        scheduler => Subagent.resource(conf, iox, testEventBus).executeOn(scheduler))
-    } yield subagent
+      directorEnv <- subagentEnvResource(subagentItem, suffix = suffix,
+        suppressSignatureKeys = suppressSignatureKeys,
+        extraConfig = config)
+      subagent <- directorEnv.subagentResource
+    } yield {
+      subagent
+    }
+
+  private def subagentEnvResource(
+    subagentItem: SubagentItem,
+    suffix: String = "",
+    suppressSignatureKeys: Boolean = false,
+    extraConfig: Config = ConfigFactory.empty)
+  : Resource[Task, BareSubagentEnv] =
+    Resource
+      .fromAutoCloseable(Task(
+        new BareSubagentEnv(
+          subagentItem = subagentItem,
+          name = subagentName(subagentItem.id, suffix = suffix),
+          rootDirectory = directory,
+          verifier = verifier,
+          mutualHttps = agentHttpsMutual,
+          provideHttpsCertificate = provideAgentHttpsCertificate,
+          provideClientCertificate = provideAgentClientCertificate,
+          suppressSignatureKeys = suppressSignatureKeys,
+          extraConfig = extraConfig.withFallback(agentConfig))))
 
   def bareSubagentToDirectory(subagentId: SubagentId, suffix: String = ""): Path =
     directory / "subagents" / subagentName(subagentId, suffix)

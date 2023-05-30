@@ -27,7 +27,7 @@ final class DuplicateAgentRefTest extends OurTestSuite with ControllerAgentForSc
   override def beforeAll() = {
     (directoryProvider.controllerEnv.configDir / "private" / "private.conf") ++=
       "js7.auth.agents." + quoteString(bAgentPath.string) + " = " +
-        quoteString(directoryProvider.agentToEnv(aAgentPath).password.string) + "\n"
+        quoteString(directoryProvider.agentToEnv(aAgentPath).controllerPassword.string) + "\n"
     super.beforeAll()
   }
 
