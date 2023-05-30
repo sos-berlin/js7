@@ -116,7 +116,9 @@ trait ControllerClusterForScalaTest
         .grouped(2).map(seq => (seq(0), seq(1))).toVector.unzip
 
       val primary = new DirectoryProvider(
-        agentPaths, items = items, testName = Some(s"$testName-Primary"),
+        controllerPort = primaryControllerPort,
+        agentPaths, items = items,
+        testName = Some(s"$testName-Primary"),
         controllerConfig = combine(
           primaryControllerConfig,
           configIf(configureClusterNodes, config"""
@@ -145,7 +147,9 @@ trait ControllerClusterForScalaTest
       ).closeWithCloser
 
       val backup = new DirectoryProvider(
-        agentPaths, Nil, testName = Some(s"$testName-Backup"),
+        controllerPort = backupControllerPort,
+        agentPaths, Nil,
+        testName = Some(s"$testName-Backup"),
         isBackup = true,
         controllerConfig = combine(
           backupControllerConfig,
@@ -202,8 +206,8 @@ trait ControllerClusterForScalaTest
   protected final def runControllers(primary: DirectoryProvider, backup: DirectoryProvider)
     (body: (TestController, TestController) => Unit)
   : Unit =
-    backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
-      primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
+    backup.runController(dontWaitUntilReady = true) { backupController =>
+      primary.runController() { primaryController =>
         primaryController.eventWatch.await[ClusterCoupled]()
         backupController.eventWatch.await[ClusterCoupled]()
         body(primaryController, backupController)

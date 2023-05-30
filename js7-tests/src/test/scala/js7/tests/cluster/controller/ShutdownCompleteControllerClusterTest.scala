@@ -4,8 +4,8 @@ final class ShutdownCompleteControllerClusterTest {
   //"CompleteShutDown" in {
   //  val primaryControllerPort :: backupControllerPort :: Nil = findFreeTcpPorts(2)
   //  withControllerAndBackup() { (primary, backup) =>
-  //    backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
-  //      primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
+  //    backup.runController(dontWaitUntilReady = true) { backupController =>
+  //      primary.runController() { primaryController =>
   //        primaryController.eventWatch.await[ClusterCoupled]()
   //
   //        primaryController.api.executeCommand(ShutDown(clusterAction = Some(ClusterAction.CompleteShutdown)))
@@ -15,8 +15,8 @@ final class ShutdownCompleteControllerClusterTest {
   //      }
   //    }
   //
-  //    backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { _ =>
-  //      primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
+  //    backup.runController(dontWaitUntilReady = true) { _ =>
+  //      primary.runController() { primaryController =>
   //        val clusterCoupled = primaryController.eventWatch.await[ClusterCoupled]().head.value.event
   //        assert(clusterCoupled.activeId == NodeId("PRIMARY))
   //      }

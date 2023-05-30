@@ -22,8 +22,8 @@ final class JobResourceControllerClusterTest extends ControllerClusterTester
   "Cluster handles JobResources properly" in {
     withControllerAndBackupWithoutAgents() { (primary, backup, _) =>
       primary.runAgents() { _ =>
-        backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
-          primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
+        backup.runController(dontWaitUntilReady = true) { backupController =>
+          primary.runController() { primaryController =>
             primaryController.eventWatch.await[ClusterCoupled]()
             primaryController.updateItemsAsSystemUser(Observable(
               AddOrChangeSigned(primary.itemSigner.toSignedString(jobResource)),
@@ -40,8 +40,8 @@ final class JobResourceControllerClusterTest extends ControllerClusterTester
       }
 
       primary.runAgents() { _ =>
-        backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
-          primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
+        backup.runController(dontWaitUntilReady = true) { backupController =>
+          primary.runController() { primaryController =>
             primaryController.eventWatch.await[ClusterCoupled]()
             primaryController.eventWatch.await[ControllerReady]()
             primaryController.waitUntilReady()

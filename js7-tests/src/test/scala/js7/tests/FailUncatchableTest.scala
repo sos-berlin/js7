@@ -187,7 +187,7 @@ final class FailUncatchableTest extends OurTestSuite
   private def runUntil[E <: OrderEvent: ClassTag: Tag](workflowNotation: String): Vector[KeyedEvent[OrderEvent]] = {
     val workflow = WorkflowParser.parse(TestWorkflowId, workflowNotation).orThrow
     val directoryProvider = new DirectoryProvider(
-      Seq(TestAgentPath), items = Seq(workflow), testName = Some("FailUncatchableTest"))
+      agentPaths = Seq(TestAgentPath), items = Seq(workflow), testName = Some("FailUncatchableTest"))
     autoClosing(directoryProvider) { _ =>
       directoryProvider.agentEnvs.head.writeExecutable(RelativePathExecutable("test.cmd"), "exit 3")
       directoryProvider.agentEnvs.head

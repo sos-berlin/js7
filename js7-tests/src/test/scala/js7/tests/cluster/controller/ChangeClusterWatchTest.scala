@@ -19,14 +19,14 @@ final class ChangeClusterWatchTest extends ControllerClusterTester
 {
   "Start and stop some ClusterWatch with same or different ClusterWatchIds" in {
     withControllerAndBackup(suppressClusterWatch = true) { (primary, _, backup, _, _) =>
-      val primaryController = primary.newController(httpPort = Some(primaryControllerPort))
+      val primaryController = primary.newController()
 
       var whenConfirmed = primaryController.testEventBus
         .whenFilterMapFuture[ClusterWatchConfirmed, ClusterWatchConfirmed](confirmed =>
           (confirmed.result != Left(ClusterWatchRequestDoesNotMatchProblem/*irrelevant*/)) ?
             confirmed)
 
-      backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { _ =>
+      backup.runController(dontWaitUntilReady = true) { _ =>
         // ClusterWatch is not required for ClusterCouplingPrepared
         val first = primaryController.eventWatch.await[ClusterCouplingPrepared]().head.eventId
         sleep(3.s)

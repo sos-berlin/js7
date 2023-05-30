@@ -19,11 +19,11 @@ final class ReplicatingControllerClusterTest extends ControllerClusterTester
 
   "Cluster replicates journal files properly" in {
     withControllerAndBackup() { (primary, _, backup, _, _) =>
-      val primaryController = primary.newController(httpPort = Some(primaryControllerPort))
+      val primaryController = primary.newController()
       primaryController.waitUntilReady()
       primaryController.runOrder(FreshOrder(OrderId("🔶"), TestWorkflow.path))
 
-      backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { _ =>
+      backup.runController(dontWaitUntilReady = true) { _ =>
         primaryController.eventWatch.await[ClusterEvent.ClusterCouplingPrepared]()
 
         primaryController.eventWatch.await[ClusterEvent.ClusterCoupled]()
@@ -47,8 +47,8 @@ final class ReplicatingControllerClusterTest extends ControllerClusterTester
 
       // RESTART
 
-      backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
-        primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
+      backup.runController(dontWaitUntilReady = true) { backupController =>
+        primary.runController() { primaryController =>
           // Recoupling may take a short time
           waitForCondition(10.s, 10.ms)(primaryController.journalActorState.isRequiringClusterAcknowledgement)
           assert(primaryController.journalActorState.isRequiringClusterAcknowledgement)

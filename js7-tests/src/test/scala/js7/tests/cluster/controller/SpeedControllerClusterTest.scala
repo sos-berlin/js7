@@ -24,8 +24,8 @@ final class SpeedControllerClusterTest extends OurTestSuite with ControllerClust
   for (n <- sys.props.get("test.speed"/*try 1000*/).map(_.toInt)) {
     "Speed test" in {
       withControllerAndBackup() { (primary, _, backup, _, _) =>
-        backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { _ =>
-          primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
+        backup.runController(dontWaitUntilReady = true) { _ =>
+          primary.runController() { primaryController =>
             primaryController.eventWatch.await[ClusterEvent.ClusterCoupled]()
 
             val orderIdIterator = Iterator.from(1).map(i => OrderId(i.toString))

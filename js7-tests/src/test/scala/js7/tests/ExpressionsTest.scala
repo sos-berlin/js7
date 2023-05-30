@@ -23,7 +23,11 @@ import monix.execution.Scheduler.Implicits.traced
 final class ExpressionsTest extends OurTestSuite
 {
   "test" in {
-    autoClosing(new DirectoryProvider(TestAgentPath :: Nil, items = Seq(TestWorkflow), testName = Some("ExpressionsTest"))) { directoryProvider =>
+    val directoryProvider = new DirectoryProvider(
+      agentPaths = Seq(TestAgentPath),
+      items = Seq(TestWorkflow),
+      testName = Some("ExpressionsTest"))
+    autoClosing(directoryProvider) { _ =>
       for (a <- directoryProvider.agentEnvs) a.writeExecutable(RelativePathExecutable(s"TEST$sh"), ":")
       for (a <- directoryProvider.agentEnvs) a.writeExecutable(RelativePathExecutable(s"TEST-RC$sh", v1Compatible = true), jobScript)
 

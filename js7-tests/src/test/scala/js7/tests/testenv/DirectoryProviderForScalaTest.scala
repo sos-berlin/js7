@@ -42,7 +42,7 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
   protected def bareSubagentItems: Seq[SubagentItem] = Nil
 
   protected final lazy val directoryProvider = new DirectoryProvider(
-    agentPaths,
+    agentPaths = agentPaths,
     bareSubagentItems = bareSubagentItems,
     items = items,
     controllerConfig = controllerConfig,

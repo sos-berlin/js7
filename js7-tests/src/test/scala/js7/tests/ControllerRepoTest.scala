@@ -51,7 +51,7 @@ final class ControllerRepoTest extends OurTestSuite
 
   "test" in {
     val provider = new DirectoryProvider(
-      List(TestAgentPath),
+      agentPaths = List(TestAgentPath),
       agentConfig = config"js7.job.execution.signed-script-injection-allowed = on",
       testName = Some("ControllerRepoTest"))
     autoClosing(provider) { _ =>

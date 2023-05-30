@@ -23,8 +23,8 @@ final class ShutdownFailoverControllerClusterTest extends ControllerClusterTeste
 
   "ShutDown active node with failover (for testing)" in {
     withControllerAndBackup() { (primary, _, backup, _, clusterSetting) =>
-      backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
-        primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
+      backup.runController(dontWaitUntilReady = true) { backupController =>
+        primary.runController() { primaryController =>
           primaryController.eventWatch.await[ClusterCoupled]()
           primaryController.eventWatch.await[ClusterWatchRegistered]()
 
@@ -42,7 +42,7 @@ final class ShutdownFailoverControllerClusterTest extends ControllerClusterTeste
         // the primary Controller wants to start again.
         var restart = true
         while (restart) {
-          primary.runController(httpPort = Some(primaryControllerPort), dontWaitUntilReady = true) { primaryController =>
+          primary.runController(dontWaitUntilReady = true) { primaryController =>
             Task
               .race(
                 Task.fromFuture(primaryController.terminated).uncancelable,

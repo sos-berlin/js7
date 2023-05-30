@@ -16,11 +16,8 @@ final class TwoPrimaryControllerClusterNodesTest extends OurTestSuite with Contr
 
   "ClusterAppointNodes is rejected if backup cluster node is not configured as a backup" in {
     withControllerAndBackup() { (primary, _, backup, _, clusterSetting) =>
-      primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
-        backup.runController(
-          httpPort = Some(backupControllerPort),
-          config = config"js7.journal.cluster.node.is-backup = false"
-        ) { _ =>
+      primary.runController() { primaryController =>
+        backup.runController(config = config"js7.journal.cluster.node.is-backup = false") { _ =>
           val cmd = ClusterAppointNodes(clusterSetting.idToUri, clusterSetting.activeId)
           primaryController.api.executeCommand(cmd).await(99.s).orThrow
           sleep(5.s)
@@ -32,10 +29,9 @@ final class TwoPrimaryControllerClusterNodesTest extends OurTestSuite with Contr
 
   "An active primary may not be configured as a backup node" in {
     withControllerAndBackup() { (primary, _, _, _, _) =>
-      primary.runController(httpPort = Some(primaryControllerPort)) { _ => }
+      primary.runController() { _ => }
       val t = intercept[ProblemException] {
         primary.runController(
-          httpPort = Some(primaryControllerPort),
           config = config"js7.journal.cluster.node.is-backup = true",
           dontWaitUntilReady = true
         ) { _ =>

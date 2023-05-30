@@ -70,7 +70,9 @@ object TestControllerAgent
 
   private def run(conf: Conf): Unit = {
     val directoryProvider = new DirectoryProvider(
-      conf.agentPaths, items = Seq(makeWorkflow(conf)), useDirectory = Some(conf.directory))
+      agentPaths = conf.agentPaths,
+      items = Seq(makeWorkflow(conf)),
+      useDirectory = Some(conf.directory))
     autoClosing(directoryProvider) { directoryProvider =>
       directoryProvider.controllerEnv.configDir / "controller.conf" ++=
         "js7.web.server.auth.loopback-is-public = on\n"

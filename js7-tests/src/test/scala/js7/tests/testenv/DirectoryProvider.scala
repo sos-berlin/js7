@@ -67,6 +67,7 @@ import scala.util.control.NonFatal
   */
 @TestOnly
 final class DirectoryProvider(
+  controllerPort: => Int = findFreeTcpPort(),
   agentPaths: Seq[AgentPath],
   bareSubagentItems: Seq[SubagentItem] = Nil,
   items: Seq[InventoryItem] = Nil,
@@ -91,6 +92,8 @@ final class DirectoryProvider(
 extends HasCloser
 {
   coupleScribeWithSlf4j()
+
+  private lazy val controllerPort_ = controllerPort
 
   val directory = useDirectory.getOrElse(
     createTempDirectory(testName.fold("test-")(_ + "-"))
@@ -173,7 +176,7 @@ extends HasCloser
         body(controller, agents)))
 
   def runController[A](
-    httpPort: Option[Int] = Some(findFreeTcpPort()),
+    httpPort: Option[Int] = Some(controllerPort_),
     dontWaitUntilReady: Boolean = false,
     config: Config = ConfigFactory.empty)
     (body: TestController => A)
@@ -207,7 +210,7 @@ extends HasCloser
   def newController(
     testWiring: TestWiring = controllerTestWiring,
     config: Config = ConfigFactory.empty,
-    httpPort: Option[Int] = Some(findFreeTcpPort()),
+    httpPort: Option[Int] = Some(controllerPort_),
     httpsPort: Option[Int] = None)
   : TestController =
     testControllerResource(testWiring, config, httpPort, httpsPort)
@@ -218,7 +221,7 @@ extends HasCloser
   private def testControllerResource(
     testWiring: TestWiring = controllerTestWiring,
     config: Config = ConfigFactory.empty,
-    httpPort: Option[Int] = Some(findFreeTcpPort()),
+    httpPort: Option[Int] = Some(controllerPort_),
     httpsPort: Option[Int] = None)
   : Resource[Task, TestController] =
     Resource.make(
@@ -233,7 +236,7 @@ extends HasCloser
   private def runningControllerResource(
     testWiring: RunningController.TestWiring = controllerTestWiring,
     config: Config = ConfigFactory.empty,
-    httpPort: Option[Int] = Some(findFreeTcpPort()),
+    httpPort: Option[Int] = Some(controllerPort_),
     httpsPort: Option[Int] = None)
   : Resource[Task, RunningController] = {
     val conf = ControllerConfiguration.forTest(

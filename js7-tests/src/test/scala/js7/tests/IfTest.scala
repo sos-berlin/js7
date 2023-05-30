@@ -24,7 +24,9 @@ import monix.execution.Scheduler.Implicits.traced
 final class IfTest extends OurTestSuite
 {
   "test" in {
-    autoClosing(new DirectoryProvider(agentPath :: Nil, items = Seq(TestWorkflow), testName = Some("IfTest"))) { directoryProvider =>
+    val directoryProvider = new DirectoryProvider(
+      agentPaths = Seq(agentPath), items = Seq(TestWorkflow), testName = Some("IfTest"))
+    autoClosing(directoryProvider) { _ =>
       for (a <- directoryProvider.agentEnvs) a.writeExecutable(RelativePathExecutable(s"TEST$sh"), ":")
       for (a <- directoryProvider.agentEnvs) a.writeExecutable(RelativePathExecutable(s"TEST-RC$sh"), jobScript)
 
@@ -49,8 +51,8 @@ final class IfTest extends OurTestSuite
        |  }
        |}""".stripMargin
     val workflow = WorkflowParser.parse(WorkflowPath("WORKFLOW") ~ "INITIAL", workflowNotation).orThrow
-    val directoryProvider = new DirectoryProvider(agentPath :: Nil, items = Seq(workflow),
-      testName = Some("IfTest"))
+    val directoryProvider = new DirectoryProvider(
+      agentPaths = Seq(agentPath), items = Seq(workflow), testName = Some("IfTest"))
     autoClosing(directoryProvider) { directoryProvider =>
       for (a <- directoryProvider.agentEnvs) a.writeExecutable(RelativePathExecutable(s"TEST$sh"), ":")
       directoryProvider.run { (controller, _) =>

@@ -33,9 +33,9 @@ final class UntaughtClusterWatchFailoverControllerClusterTest extends Controller
 
   "Failover and recouple" in {
     withControllerAndBackup(suppressClusterWatch = true) { (primary, _, backup, _, clusterSetting) =>
-      val primaryController = primary.newController(httpPort = Some(primaryControllerPort))
+      val primaryController = primary.newController()
 
-      backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
+      backup.runController(dontWaitUntilReady = true) { backupController =>
         withClusterWatchService() { clusterWatch =>
           primaryController.eventWatch.await[ClusterCoupled]()
           waitForCondition(10.s, 10.ms)(clusterWatch.clusterState().exists(_.isInstanceOf[Coupled]))

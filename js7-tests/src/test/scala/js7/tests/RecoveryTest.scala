@@ -46,7 +46,7 @@ final class RecoveryTest extends OurTestSuite
       val Seq(order1, order2, order3) = orders
       var lastEventId = EventId.BeforeFirst
       val directoryProvider = new DirectoryProvider(
-        AgentPaths,
+        agentPaths = AgentPaths,
         items = TestWorkflow :: QuickWorkflow :: Nil,
         signer = new SillySigner(SillySignature("MY-SILLY-SIGNATURE")),
         verifier = new SillySignatureVerifier(Seq(SillySignature("MY-SILLY-SIGNATURE")), "RecoveryTest"),

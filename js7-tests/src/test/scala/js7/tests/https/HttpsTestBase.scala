@@ -109,7 +109,7 @@ extends OurTestSuite with BeforeAndAfterAll with ControllerAgentForScalaTest wit
   protected def clientKeyAlias: Option[String] = None
 
   private lazy val backupDirectoryProvider = new DirectoryProvider(
-    Nil,
+    agentPaths = Nil,
     controllerConfig = config"""
       js7.journal.cluster.node.is-backup = yes
       js7.web.server.auth.https-client-authentication = $controllerHttpsMutual

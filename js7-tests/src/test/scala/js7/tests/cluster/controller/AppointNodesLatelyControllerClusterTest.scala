@@ -23,17 +23,17 @@ final class AppointNodesLatelyControllerClusterTest extends OurTestSuite with Co
 
   "ClusterAppointNodes command after first journal file has been deleted, then change Backup's URI" in {
     withControllerAndBackup() { (primary, _, backup, _, clusterSetting) =>
-      primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
+      primary.runController() { primaryController =>
         val orderId = OrderId("🔺")
         primaryController.addOrderBlocking(FreshOrder(orderId, TestWorkflow.id.path))
         primaryController.eventWatch.await[OrderStarted](_.key == orderId)
       }
 
-      primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
+      primary.runController() { primaryController =>
         assert(listJournalFiles(primary.controllerEnv.dataDir / "state" / "controller").head
           .fileEventId > EventId.BeforeFirst)
 
-        var backupController = backup.newController(httpPort = Some(backupControllerPort))
+        var backupController = backup.newController()
 
         assert(backupController.api.clusterState.await(99.s) == Left(BackupClusterNodeNotAppointed))
 
@@ -74,7 +74,7 @@ final class AppointNodesLatelyControllerClusterTest extends OurTestSuite with Co
           primaryController.api.executeCommand(clusterAppointNodes).await(99.s).orThrow
           primaryController.eventWatch.await[ClusterSettingUpdated](after = eventId)
 
-          backupController = backup.newController(httpPort = Some(backupControllerPort))
+          backupController = backup.newController()
 
           primaryController.eventWatch.await[ClusterCoupled](after = eventId)
           backupController.eventWatch.await[ClusterCoupled](after = eventId)

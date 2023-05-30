@@ -20,8 +20,8 @@ final class ShutdownActiveControllerClusterTest extends ControllerClusterTester
 
   "ShutDown active controller node only (no switchover)" in {
     withControllerAndBackup() { (primary, _, backup, _, clusterSetting) =>
-      backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
-        primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
+      backup.runController(dontWaitUntilReady = true) { backupController =>
+        primary.runController() { primaryController =>
           primaryController.eventWatch.await[ClusterWatchRegistered]()
           primaryController.eventWatch.await[ClusterCoupled]()
           assert(primaryController.clusterState.await(99.s) == Coupled(clusterSetting))
@@ -35,7 +35,7 @@ final class ShutdownActiveControllerClusterTest extends ControllerClusterTester
 
         assert(backupController.clusterState.await(99.s) == ClusterState.ActiveShutDown(clusterSetting))
 
-        primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
+        primary.runController() { primaryController =>
           val activeRestarted = primaryController.eventWatch.await[ClusterActiveNodeRestarted](
             after = activeNodeShutDown).head.eventId
           primaryController.eventWatch.await[ClusterCoupled](after = activeRestarted)

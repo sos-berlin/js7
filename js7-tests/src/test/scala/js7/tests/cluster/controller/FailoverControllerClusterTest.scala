@@ -41,8 +41,8 @@ abstract class FailoverControllerClusterTest protected extends ControllerCluster
   protected final def test(addNonReplicatedEvents: Boolean = false): Unit = {
     sys.props(testHeartbeatLossPropertyKey) = "false"
     withControllerAndBackup() { (primary, _, backup, _, clusterSetting) =>
-      var primaryController = primary.newController(httpPort = Some(primaryControllerPort))
-      var backupController = backup.newController(httpPort = Some(backupControllerPort))
+      var primaryController = primary.newController()
+      var backupController = backup.newController()
 
       primaryController.eventWatch.await[ClusterWatchRegistered]()
       primaryController.eventWatch.await[ClusterCoupled]()
@@ -86,7 +86,7 @@ abstract class FailoverControllerClusterTest protected extends ControllerCluster
           .append(line)
       }
 
-      primaryController = primary.newController(httpPort = Some(primaryControllerPort))
+      primaryController = primary.newController()
       if (addNonReplicatedEvents) {
         // Provisional fix lets Controller terminate
         val termination = primaryController.terminated.await(99.s)
@@ -97,7 +97,7 @@ abstract class FailoverControllerClusterTest protected extends ControllerCluster
         } catch { case t: RestartAfterJournalTruncationException =>
           logger.info(t.toString)
         }
-        primaryController = primary.newController(httpPort = Some(primaryControllerPort))
+        primaryController = primary.newController()
       }
       primaryController.eventWatch.await[ClusterCoupled](after = failedOverEventId)
       backupController.eventWatch.await[ClusterCoupled](after = failedOverEventId)
@@ -109,7 +109,7 @@ abstract class FailoverControllerClusterTest protected extends ControllerCluster
       backupController.terminated await 99.s
       backupController.stop.await(99.s)
 
-      backupController = backup.newController(httpPort = Some(backupControllerPort))
+      backupController = backup.newController()
 
       backupController.eventWatch.await[ClusterCoupled](after = recoupledEventId)
       primaryController.eventWatch.await[ClusterCoupled](after = recoupledEventId)

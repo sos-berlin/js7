@@ -30,8 +30,8 @@ final class SwitchOverControllerClusterTest extends ControllerClusterTester
       OrderId(s"ORDER-XXXXXXXXX-XXXXXXXXX-XXXXXXXXX-XXXXXXXXX-XXXXXXXXX-XXXXXXXXX-XXXXXXXXX-XXXXXXXXX-XXXXXXXXX-$i")
     withControllerAndBackup() { (primary, _, backup, _, _) =>
       var lastEventId = EventId.BeforeFirst
-      backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
-        primary.runController(httpPort = Some(primaryControllerPort)) { implicit primaryController =>
+      backup.runController(dontWaitUntilReady = true) { backupController =>
+        primary.runController() { implicit primaryController =>
           primaryController.eventWatch.await[ClusterCoupled]()
           val orderId = OrderId("🟧")
           primaryController.addOrderBlocking(FreshOrder(orderId, TestWorkflow.path))
@@ -54,7 +54,7 @@ final class SwitchOverControllerClusterTest extends ControllerClusterTester
         assert(!backupController.journalActorState.isRequiringClusterAcknowledgement)
 
         // Start again the passive primary node
-        primary.runController(httpPort = Some(primaryControllerPort), dontWaitUntilReady = true) { primaryController =>
+        primary.runController(dontWaitUntilReady = true) { primaryController =>
           backupController.eventWatch.await[ClusterCoupled](after = lastEventId, timeout = timeout)
           primaryController.eventWatch.await[ClusterCoupled](after = lastEventId)
           assert(backupController.journalActorState.isRequiringClusterAcknowledgement)

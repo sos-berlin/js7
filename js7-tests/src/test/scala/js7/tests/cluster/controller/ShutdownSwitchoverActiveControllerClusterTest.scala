@@ -18,8 +18,8 @@ final class ShutdownSwitchoverActiveControllerClusterTest extends ControllerClus
 
   "ShutDown active node with switchover" in {
     withControllerAndBackup() { (primary, _, backup, _, _) =>
-      backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
-        primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
+      backup.runController(dontWaitUntilReady = true) { backupController =>
+        primary.runController() { primaryController =>
           primaryController.eventWatch.await[ClusterWatchRegistered]()
           primaryController.eventWatch.await[ClusterCoupled]()
 

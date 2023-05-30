@@ -19,8 +19,8 @@ final class TruncatedJournalFileControllerClusterTest extends ControllerClusterT
 
   "Backup node replicates truncated journal file" in {
     withControllerAndBackup() { (primary, _, backup, _, _) =>
-      primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
-        val backupController = backup.newController(httpPort = Some(backupControllerPort))
+      primary.runController() { primaryController =>
+        val backupController = backup.newController()
 
         backupController.eventWatch.await[ClusterCoupled]()
         backupController.stop.await(99.s)
@@ -31,8 +31,8 @@ final class TruncatedJournalFileControllerClusterTest extends ControllerClusterT
 
       truncateLastJournalFile(primary.controllerEnv)
 
-      primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
-        backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { _ =>
+      primary.runController() { primaryController =>
+        backup.runController(dontWaitUntilReady = true) { _ =>
           primaryController.eventWatch.await[ClusterCoupled](after = primaryController.eventWatch.lastFileEventId).head.eventId
           //assertEqualJournalFiles(primary.controller, backup.controller, n = 2)
           primaryController.runOrder(FreshOrder(OrderId("🔷"), TestWorkflow.path))

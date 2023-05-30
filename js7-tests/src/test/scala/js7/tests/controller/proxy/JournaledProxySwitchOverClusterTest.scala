@@ -1,6 +1,5 @@
 package js7.tests.controller.proxy
 
-import java.net.URI
 import js7.base.auth.Admission
 import js7.base.problem.Checked.Ops
 import js7.base.test.OurTestSuite
@@ -27,7 +26,7 @@ final class JournaledProxySwitchOverClusterTest extends OurTestSuite with Cluste
 
   "JournaledProxy accesses a switching Cluster" in {
     withControllerAndBackup() { (primary, _, backup, _, _) =>
-      val backupController = backup.newController(httpPort = Some(backupControllerPort))
+      val backupController = backup.newController()
 
       lazy val proxy = controllerApi.startProxy().await(99.s)
       var lastEventId = EventId.BeforeFirst
@@ -45,7 +44,7 @@ final class JournaledProxySwitchOverClusterTest extends OurTestSuite with Cluste
       }
 
       try {
-        primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
+        primary.runController() { primaryController =>
           val admissions = List(
             Admission(primaryController.localUri, Some(primaryUserAndPassword)),
             Admission(backupController.localUri, Some(backupUserAndPassword)))
@@ -65,10 +64,7 @@ final class JournaledProxySwitchOverClusterTest extends OurTestSuite with Cluste
         }
 
         // Try to confuse controllerApi about the active controller and start primary controller again
-        primary.runController(
-          httpPort = Some(primaryControllerPort),
-          dontWaitUntilReady = true
-        ) { primaryController =>
+        primary.runController(dontWaitUntilReady = true) { primaryController =>
           backupController.eventWatch.await[ControllerReady](after = lastEventId)
           primaryController.eventWatch.await[ClusterCoupled](after = lastEventId)
           runOrder(OrderId("ORDER-ON-BACKUP-1"))
@@ -77,9 +73,7 @@ final class JournaledProxySwitchOverClusterTest extends OurTestSuite with Cluste
           lastEventId = backupController.eventWatch.lastAddedEventId
           backupController.terminate().await(99.s)
 
-          backup.runController(
-            httpPort = Some(new URI(backupController.localUri.toString).getPort)
-          ) { backupController2 =>
+          backup.runController() { backupController2 =>
             runOrder(OrderId("ORDER-ON-BACKUP-RESTARTED"))
             backupController2.api.executeCommand(ShutDown(clusterAction = Some(ClusterAction.Failover)))
               .await(99.s).orThrow

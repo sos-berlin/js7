@@ -19,15 +19,15 @@ final class ShutdownFailoverButRestartControllerClusterTest extends ControllerCl
 
   "ShutDown active node with failover requested (for testing), then immediate restart of the shut down node" in {
     withControllerAndBackup() { (primary, _, backup, _, clusterSetting) =>
-      backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
-        primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
+      backup.runController(dontWaitUntilReady = true) { backupController =>
+        primary.runController() { primaryController =>
           primaryController.eventWatch.await[ClusterCoupled]()
 
           primaryController.api.executeCommand(ShutDown(clusterAction = Some(ClusterAction.Failover)))
             .await(99.s).orThrow
           primaryController.terminated.await(99.s)
         }
-        primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
+        primary.runController() { primaryController =>
           assert(primaryController.clusterState.await(99.s) == Coupled(clusterSetting))
           assert(backupController.clusterState.await(99.s) == Coupled(clusterSetting))
 
