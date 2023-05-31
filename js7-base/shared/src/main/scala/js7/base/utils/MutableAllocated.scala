@@ -8,7 +8,8 @@ import js7.base.utils.CatsUtils.syntax.RichResource
 import monix.eval.Task
 
 final class MutableAllocated[A](implicit src: sourcecode.Enclosing, tag: Tag[A]) {
-  private val allocatedVar = AsyncVariable(null.asInstanceOf[Allocated[Task, A]])
+  private val empty: Allocated[Task, A] = Allocated(null.asInstanceOf[A], Task.unit)
+  private val allocatedVar = AsyncVariable(empty)
 
   def value: Task[A] =
     checked.flatMap {
@@ -18,7 +19,7 @@ final class MutableAllocated[A](implicit src: sourcecode.Enclosing, tag: Tag[A])
 
   def checked: Task[Checked[A]] =
     allocatedVar.value.map {
-      case null =>
+      case `empty` =>
         Left(Problem(s"$toString has not been initialized"))
 
       case allocated =>
@@ -28,15 +29,14 @@ final class MutableAllocated[A](implicit src: sourcecode.Enclosing, tag: Tag[A])
   def acquire(resource: Resource[Task, A]): Task[A] =
     allocatedVar
       .update(allocated =>
-        Task.when(allocated != null)(allocated.release) *>
+        allocated.release *>
           resource.toAllocated)
       .map(_.allocatedThing)
 
   def release: Task[Unit] =
-    allocatedVar.value.flatMap {
-      case null => Task.unit
-      case o => o.release
-    }
+    allocatedVar
+      .update(_.release.as(empty))
+      .void
 
   override def toString = s"${src.value}: MutableAllocated[${tag.tag}]"
 }
