@@ -4,6 +4,7 @@ import akka.actor.ActorSystem
 import cats.data.NonEmptyList
 import cats.effect.Resource
 import cats.syntax.foldable.*
+import cats.syntax.option.*
 import cats.syntax.traverse.*
 import com.typesafe.config.ConfigUtil
 import js7.agent.client.AgentClient
@@ -25,7 +26,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{AsyncLock, MutableAllocated, SetOnce}
+import js7.base.utils.{AsyncLock, MutableAllocated}
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatchService
 import js7.cluster.watch.api.ActiveClusterNodeSelector
@@ -53,7 +54,6 @@ import monix.execution.{Cancelable, Scheduler}
 
 final class AgentDriver private(
   initialAgentRef: AgentRef,
-  initialAgentRunId: Option[AgentRunId],
   initialEventId: EventId,
   adoptEvents: (AgentRunId, Seq[Stamped[AnyKeyedEvent]]) => Task[Option[EventId]],
   onOrderMarked: Map[OrderId, OrderMark] => Task[Unit],
@@ -75,7 +75,7 @@ extends Service.StoppableByRequest
       controllerConfiguration.clusterConf.ownId.string + "/" +
       agentPath.string)
 
-  private val agentRunIdOnce = SetOnce.fromOption(initialAgentRunId)
+  private var lastAgentRunId = none[AgentRunId] // Keep AgentRunId after ItemDeleted to allow reset
   private var isTerminating = false
   private val sessionNumber = AtomicInt(0) // Do we still need this ???
   @volatile private var lastCouplingFailed: Option[AgentCouplingFailed] = None
@@ -266,10 +266,11 @@ extends Service.StoppableByRequest
       Task.unless(isTerminating)(Task.defer {
         logger.debug(s"Terminate${noJournal ?? " noJournal"}${reset ?? " reset"}")
         isTerminating = true
-        Task.when(reset)(
-          agentRunIdOnce.toOption.fold(Task.unit)(agentRunId =>
+        Task.when(reset)(Task.defer {
+          lastAgentRunId.fold(Task.unit)(agentRunId =>
             // Required only for ItemDeleted, redundant for ResetAgent
-            resetAgent(Some(agentRunId)).void))
+            resetAgent(Some(agentRunId)).void)
+        })
       })
     } *>
       stop)
@@ -278,11 +279,9 @@ extends Service.StoppableByRequest
     if (force)
       resetAgent(None)
     else
-      Task.defer {
-        agentRunIdOnce.toOption match {
-          case None => Task.left(AgentNotDedicatedProblem /*Nothing to reset*/)
-          case Some(agentRunId) => resetAgent(Some(agentRunId)).map(Right(_))
-        }
+      maybeAgentRunId.flatMap {
+        case None => Task.left(AgentNotDedicatedProblem /*Nothing to reset*/)
+        case Some(agentRunId) => resetAgent(Some(agentRunId)).map(Right(_))
       }
 
   private def resetAgent(agentRunId: Option[AgentRunId]): Task[Checked[Unit]] =
@@ -303,7 +302,11 @@ extends Service.StoppableByRequest
             stampedEvents.view.collect {
               case Stamped(_, _, KeyedEvent(orderId: OrderId, OrderDetached)) => orderId
             }))
-        .*>(adoptEvents(agentRunIdOnce.orThrow, stampedEvents))
+        .*>(maybeAgentRunId.flatMap {
+          case None => Task.raiseError(new IllegalStateException(
+            s"onEventsFetched $agentPath: Missing AgentRef or AgentRunId"))
+          case Some(agentRunId) => adoptEvents(agentRunId, stampedEvents)
+        })
         .flatMap(_.fold(Task.unit)(releaseAdoptedEvents))
         .onErrorHandle(t =>
           logger.error(s"$agentDriver.adoptEvents => " + t.toStringWithCauses, t.nullIfNoStackTrace))
@@ -331,8 +334,7 @@ extends Service.StoppableByRequest
   private def dedicateAgentIfNeeded(directorDriver: DirectorDriver)
   : Task[Checked[(AgentRunId, EventId)]] =
     logger.traceTask(Task.defer {
-      journal.state
-        .map(_.keyTo(AgentRefState).checked(agentPath))
+      checkedAgentRefState
         .flatMapT { agentRefState =>
           import agentRefState.agentRef.directors
           agentRefState.agentRunId match {
@@ -349,7 +351,7 @@ extends Service.StoppableByRequest
                       .persistKeyedEvent(
                         agentPath <-: AgentDedicated(agentRunId, Some(agentEventId)))
                       .flatMapT { _ =>
-                        agentRunIdOnce := agentRunId
+                        lastAgentRunId = Some(agentRunId)
                         reattachSubagents().map(Right(_))
                       }
                   ).rightAs(agentRunId -> agentEventId)
@@ -404,7 +406,7 @@ extends Service.StoppableByRequest
     for {
       client <- activeClientResource
       //adoptedEventId <- Resource.eval(Task(state.adoptedEventId))
-      afterEventId <- Resource.eval(journal.state.map(_.keyTo(AgentRefState)(agentPath).eventId))
+      afterEventId <- Resource.eval(agentRefState.map(_.eventId))
       directorDriver <- DirectorDriver.resource(
         agentPath, afterEventId,
         client,
@@ -468,13 +470,25 @@ extends Service.StoppableByRequest
         controllerConfiguration.httpsConfig)(actorSystem)
     })
 
+  private def maybeAgentRunId: Task[Option[AgentRunId]] =
+    maybeAgentRefState.map(_.flatMap(_.agentRunId))
+
+  private def agentRefState: Task[AgentRefState] =
+    journal.state.map(_.keyTo(AgentRefState)(agentPath))
+
+  private def checkedAgentRefState: Task[Checked[AgentRefState]] =
+    journal.state.map(_.keyTo(AgentRefState).checked(agentPath))
+
+  private def maybeAgentRefState: Task[Option[AgentRefState]] =
+    journal.state.map(_.keyTo(AgentRefState).get(agentPath))
+
   override def toString = s"AgentDriver($agentPath)"
 }
 
 private[controller] object AgentDriver
 {
   def resource(
-    agentRef: AgentRef, agentRunId: Option[AgentRunId], eventId: EventId,
+    agentRef: AgentRef, eventId: EventId,
     adoptEvents: (AgentRunId, Seq[Stamped[AnyKeyedEvent]]) => Task[Option[EventId]],
     onOrderMarked: Map[OrderId, OrderMark] => Task[Unit],
     journal: Journal[ControllerState],
@@ -484,7 +498,7 @@ private[controller] object AgentDriver
   : Resource[Task, AgentDriver] =
     Service.resource(Task(
       new AgentDriver(
-        agentRef, agentRunId, eventId,
+        agentRef, eventId,
         adoptEvents, onOrderMarked,
         journal, agentDriverConf, controllerConf, actorSystem)))
 

@@ -372,7 +372,7 @@ with MainJournalingActor[ControllerState, Event]
       for (agentRef <- _controllerState.pathToUnsignedSimple(AgentRef).values) {
         val agentRefState = _controllerState.keyTo(AgentRefState)
           .getOrElse(agentRef.path, AgentRefState(agentRef))
-        registerAgent(agentRef, agentRefState.agentRunId, eventId = agentRefState.eventId)
+        registerAgent(agentRef, eventId = agentRefState.eventId)
       }
 
       // Any ordering when continuing orders???
@@ -635,8 +635,7 @@ with MainJournalingActor[ControllerState, Event]
         for (agentRefState <- journal.unsafeCurrentState().keyTo(AgentRefState).checked(agentPath)) {
           agentRefState.couplingState match {
             case Resetting(_) | Reset(_) =>
-              agentEntry = registerAgent(agentRefState.agentRef,
-                agentRunId = None, eventId = EventId.BeforeFirst)
+              agentEntry = registerAgent(agentRefState.agentRef, eventId = EventId.BeforeFirst)
             //??? reattachToAgent(agentPath)
 
             case _ =>
@@ -1074,10 +1073,9 @@ with MainJournalingActor[ControllerState, Event]
         }
     }
 
-  private def registerAgent(agent: AgentRef, agentRunId: Option[AgentRunId], eventId: EventId)
-  : AgentEntry = {
+  private def registerAgent(agent: AgentRef, eventId: EventId): AgentEntry = {
     val allocated = AgentDriver
-      .resource(agent, agentRunId, eventId = eventId,
+      .resource(agent, eventId = eventId,
         (agentRunId, events) => Task.defer {
           val promise = Promise[Option[EventId]]()
           self ! Internal.EventsFromAgent(agent.path, agentRunId, events, promise)
@@ -1212,7 +1210,7 @@ with MainJournalingActor[ControllerState, Event]
   private def handleItemEvent(event: InventoryItemEvent): Unit = {
     event match {
       case UnsignedSimpleItemAdded(agentRef: AgentRef) =>
-        registerAgent(agentRef, agentRunId = None, eventId = EventId.BeforeFirst)
+        registerAgent(agentRef, eventId = EventId.BeforeFirst)
 
         // TODO Not required in a future implementation, when Agents must be defined when referenced
         //reattachToAgent(agentRef.path)
