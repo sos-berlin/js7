@@ -11,7 +11,7 @@ import js7.base.log.Logger.syntax.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.syntax.{RichEither, RichEitherF, RichOption}
-import js7.base.utils.{Allocated, SetOnce}
+import js7.base.utils.{Allocated, AsyncLock, SetOnce}
 import js7.base.web.Uri
 import js7.cluster.WorkingClusterNode.*
 import js7.data.Problems.{ClusterNodeIsNotActiveProblem, ClusterNodesAlreadyAppointed}
@@ -52,6 +52,7 @@ final class WorkingClusterNode[
     ClusterNodeIsNotActiveProblem)
   private val activeClusterNodeTask = Task { _activeClusterNode.checked }
   private val currentClusterState = journal.clusterState
+  private val appointNodesLock = AsyncLock()
 
   def start(clusterState: ClusterState, eventId: EventId): Task[Checked[Unit]] =
     clusterState match {
@@ -113,7 +114,7 @@ final class WorkingClusterNode[
     }
 
   private def appointNodes(setting: ClusterSetting): Task[Checked[Unit]] =
-    logger.debugTask(
+    logger.debugTask(appointNodesLock.lock(
       currentClusterState.flatMap {
         case ClusterState.Empty =>
           journal.persistKeyedEvent(NoKey <-: ClusterNodesAppointed(setting))
@@ -130,7 +131,7 @@ final class WorkingClusterNode[
           common.requireValidLicense
             .flatMapT(_ => activeClusterNodeTask)
             .flatMapT(_.appointNodes(setting))
-      })
+      }))
 
   private def startActiveClusterNode(eventId: EventId): Task[Checked[Unit]] =
     Task.defer {
