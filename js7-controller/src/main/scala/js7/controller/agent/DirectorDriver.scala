@@ -14,6 +14,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.service.Service
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.AsyncLock
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.http.RecouplingStreamReader
 import js7.controller.agent.AgentDriver.DecoupledProblem
@@ -31,6 +32,7 @@ import js7.data.orderwatch.OrderWatchEvent
 import js7.data.subagent.SubagentItemStateEvent
 import js7.journal.state.Journal
 import monix.eval.Task
+import monix.execution.atomic.Atomic
 import monix.reactive.Observable
 import scala.util.chaining.scalaUtilChainingOps
 
@@ -49,9 +51,11 @@ extends Service.StoppableByRequest
 {
   directorDriver =>
 
-  private val logger = Logger.withPrefix[this.type](agentPath.toString)
+  private val index = DirectorDriver.index.incrementAndGet()
+  private val logger = Logger.withPrefix[this.type](agentPath.toString + " #" + index)
   private var adoptedEventId = initialEventId
   private val untilFetchingStopped = Deferred.unsafe[Task, Unit]
+  private val onFetchedEventsLock = AsyncLock() // Fence for super.isStopping
 
   logger.trace(s"initialEventId=$initialEventId")
 
@@ -148,7 +152,6 @@ extends Service.StoppableByRequest
           .onErrorHandle(t => logger.error(t.toStringWithCauses, t))
           .*>(Task.defer(Task.unless(isStopping)(
             again(())))))
-      //.raceFold(untilStopRequested)
       .guarantee(untilFetchingStopped.complete(()))
 
   private def observeAndConsumeEvents: Task[Completed] =
@@ -163,6 +166,7 @@ extends Service.StoppableByRequest
               Some(conf.eventBufferDelay max conf.commitDelay),
               maxCount = conf.eventBufferSize) // ticks
             .filter(_.nonEmpty)) // Ignore empty ticks
+        .takeUntilEval(untilStopRequested) // Cancels the stream above
         .flatMap(o => Observable
           // When the other cluster node may have failed-over,
           // wait until we know that it hasn't (or this node is aborted).
@@ -171,26 +175,30 @@ extends Service.StoppableByRequest
             .logWhenItTakesLonger("whenNoFailoverByOtherNode"))
           .map(_ => o))
         .mapEval(onEventsFetched)
-        .takeUntilEval(untilStopRequested)
         .completedL
         .as(Completed)
     })
 
   private def onEventsFetched(stampedEvents: Seq[Stamped[AnyKeyedEvent]]): Task[Unit] =
-    Task.defer {
+    onFetchedEventsLock.lock(logger.traceTask(Task.defer {
       assertThat(stampedEvents.nonEmpty)
-      val reducedStampedEvents = stampedEvents dropWhile { stamped =>
-        val drop = stamped.eventId <= adoptedEventId
-        if (drop) logger.debug(s"Drop duplicate received event: $stamped")
-        drop
+      if (isStopping)
+        Task(logger.debug(
+          s"❌Late onEventsFetched(${stampedEvents.size} events) suppressed due to isStopping"))
+      else {
+        val reducedStampedEvents = stampedEvents dropWhile { stamped =>
+          val drop = stamped.eventId <= adoptedEventId
+          if (drop) logger.debug(s"Drop duplicate received event: $stamped")
+          drop
+        }
+        Task.when(reducedStampedEvents.nonEmpty) {
+          val lastEventId = stampedEvents.last.eventId
+          // The events must be journaled and handled by ControllerOrderKeeper
+          adoptedEventId = lastEventId
+          adoptEvents(reducedStampedEvents)
+        }
       }
-      Task.when(reducedStampedEvents.nonEmpty) {
-        val lastEventId = stampedEvents.last.eventId
-        // The events must be journaled and handled by ControllerOrderKeeper
-        adoptedEventId = lastEventId
-        adoptEvents(reducedStampedEvents)
-      }
-    }
+    }))
 
   def resetAgentAndStop(agentRunId: Option[AgentRunId]): Task[Checked[Unit]] =
     // TODO If stopEventFetcher would not send a Logout, it could run concurrently
@@ -224,10 +232,12 @@ extends Service.StoppableByRequest
         case Right(o) => o
       }
 
-  override def toString = s"DirectorDriver($agentPath)"
+  override def toString = s"DirectorDriver($agentPath #$index)"
 }
 
 private[agent] object DirectorDriver {
+  private val index = Atomic(0)
+
   private val EventClasses = Set[Class[? <: Event]](
     classOf[OrderEvent],
     classOf[AgentEvent.AgentReady],

@@ -473,12 +473,13 @@ with MainJournalingActor[ControllerState, Event]
             case DelegateCouplingState.Reset.byCommand => true
             case _ => false
           }
-          if (isAgentReset) {
-            // Race condition ???
+          committedPromise.completeWith(if (isAgentReset/*Race condition ???*/) {
             for (o <- stampedAgentEvents.map(_.value)) logger.warn(
               s"Ignored event after Agent reset: $o")
+            Future.successful(None)
           } else if (!agentRefState.agentRunId.forall(_ == agentRunId)) {
             logger.debug(s"Internal.EventsFromAgent: Unknown agentRunId=$agentRunId")
+            Future.successful(None)
           } else {
             var timestampedEvents: Seq[Timestamped[Event]] =
               stampedAgentEvents.view.flatMap {
@@ -547,7 +548,7 @@ with MainJournalingActor[ControllerState, Event]
                 // timestampedEvents may be empty if it contains only discarded (Agent-only) events.
                 // Agent's last observed EventId is not persisted then, and we do not write an AgentEventsObserved.
                 // For tests, this makes the journal predictable after OrderFinished (because no AgentEventsObserved may follow).
-                committedPromise.success(None)
+                Future.successful(None)
               } else {
                 val agentEventId = stampedAgentEvents.last.eventId
                 timestampedEvents :+= Timestamped(agentPath <-: AgentEventsObserved(agentEventId))
@@ -562,18 +563,18 @@ with MainJournalingActor[ControllerState, Event]
                     // Ignore the events, because orders are already marked as detached (and Failed)
                     // TODO Avoid race-condition and guard with journal.lock!
                     // (switch from actors to Task required!)
+                    Future.successful(None)
                   case _ =>
-                    committedPromise.completeWith(
-                      persistTransactionTimestamped(timestampedEvents,
-                        CommitOptions(alreadyDelayed = agentDriverConfiguration.eventBufferDelay))
-                      {
-                        (stampedEvents, updatedState) =>
-                          handleEvents(stampedEvents, updatedState)
-                          Some(agentEventId)
-                      })
+                    persistTransactionTimestamped(timestampedEvents,
+                      CommitOptions(alreadyDelayed = agentDriverConfiguration.eventBufferDelay))
+                    {
+                      (stampedEvents, updatedState) =>
+                        handleEvents(stampedEvents, updatedState)
+                        Some(agentEventId)
+                    }
                 }
               }
-          }
+          })
         }
       }
 
