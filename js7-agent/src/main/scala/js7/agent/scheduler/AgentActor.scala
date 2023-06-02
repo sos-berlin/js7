@@ -142,10 +142,10 @@ private[agent] final class AgentActor(
         }
 
       case AgentCommand.Reset(maybeAgentRunId) =>
-        logger.info(s"❗ $command")
         maybeAgentRunId.fold(Checked.unit)(checkAgentRunId(_)) match {
           case Left(problem) => response.success(Left(problem))
           case Right(()) =>
+            logger.info(s"❗ $command")
             isResetting = true
             if (!terminating) {
               journal

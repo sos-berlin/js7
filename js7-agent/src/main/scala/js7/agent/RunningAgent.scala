@@ -304,10 +304,10 @@ object RunningAgent {
       logger.debugTask("executeCommand", cmd.getClass.shortClassName)(cmd
         .match_ {
           case cmd: ShutDown =>
-            logger.info(s"❗ $cmd")
             if (cmd.clusterAction.nonEmpty && !clusterNode.isWorkingNode)
               Task.left(PassiveClusterNodeShutdownNotAllowedProblem)
             else {
+              logger.info(s"❗ $cmd")
               //⚒️if (cmd.dontNotifyActiveNode && clusterNode.isPassive) {
               //⚒️  clusterNode.dontNotifyActiveNodeAboutShutdown()
               //⚒️}
@@ -315,8 +315,9 @@ object RunningAgent {
                 currentMainActor
                   .flatMap(_.traverse(_.whenReady.map(_.api)))
                   .flatMap {
-                    case Left(ClusterNodeIsNotActiveProblem | ShuttingDownProblem
-                              | BackupClusterNodeNotAppointed) =>
+                    case Left(problem @ (ClusterNodeIsNotActiveProblem | ShuttingDownProblem
+                              | BackupClusterNodeNotAppointed)) =>
+                      logger.debug(s"❓$problem")
                       Task.right(AgentCommand.Response.Accepted)
 
                     case Left(problem @ ClusterNodeIsNotReadyProblem /*???*/) =>
@@ -324,7 +325,7 @@ object RunningAgent {
                       Task.right(AgentCommand.Response.Accepted)
 
                     case Left(problem) =>
-                      Task.pure(Left(problem))
+                      Task.left(problem)
 
                     case Right(api) =>
                       api(meta).commandExecute(cmd)
