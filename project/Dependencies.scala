@@ -18,7 +18,7 @@ object Dependencies
   val catsParseVersion = "0.3.9"
   val circeVersion = "0.14.5"
   val circeGenericExtrasVersion = "0.14.3"
-  val scalaTestVersion = "3.2.15"
+  val scalaTestVersion = "3.2.16"
   val scalaTestCheckVersion = "3.2.14.0"
   val scalaCheckVersion= "1.17.0"
   val sourcecodeVersion = "0.3.0"
