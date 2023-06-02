@@ -137,9 +137,11 @@ private[agent] final class AgentActor(
     import externalCommand.{command, response}
     command match {
       case command: AgentCommand.ShutDown =>
-        if (!terminating) {
-          response.completeWith(terminateOrderKeeper(command))
-        }
+        response.completeWith(
+          if (terminating)
+            Future.successful(Right(AgentCommand.Response.Accepted))
+          else
+            terminateOrderKeeper(command))
 
       case AgentCommand.Reset(maybeAgentRunId) =>
         maybeAgentRunId.fold(Checked.unit)(checkAgentRunId(_)) match {
@@ -278,57 +280,70 @@ private[agent] final class AgentActor(
       if (started.isEmpty) {
         // When no AgentOrderKeeper has been started, we need to stop the journal ourselve
         //journal.journalActor ! JournalActor.Input.Terminate
-        journalAllocated.release.runAsyncAndForget
+        context.stop(self)
       }
     }
 
   private def terminateOrderKeeper(shutDown: AgentCommand.ShutDown)
   : Future[Checked[AgentCommand.Response.Accepted]] =
-    if (!shutDownCommand.trySet(shutDown))
-      Future.successful(Left(Problem("Agent Director is already shutting down")))
-    else {
-      val future = started.toOption match {
-        case None =>
-          logger.debug("⚠️ terminateOrderKeeper but AgentOrderKeeper has not been started")
-          Future.successful(AgentCommand.Response.Accepted)
-        case Some(started) =>
-          (started.actor ? shutDown).mapTo[AgentCommand.Response.Accepted]
-      }
-      future.map { ordersTerminated =>
-        terminateCompleted.success(Completed)  // Wait for child Actor termination
+    synchronized {
+      if (!shutDownCommand.trySet(shutDown))
+        Left(AgentDirectorIsShuttingDownProblem)
+      else
+        Right(started.toOption)
+    } match {
+      case Left(problem) =>
+        Future.successful(Left(problem))
+
+      case Right(None) =>
+        continueTermination()
+        Future.successful(Right(AgentCommand.Response.Accepted))
+
+      case Right(Some(started)) =>
+        terminateStartedOrderKeeper(started, shutDown)
+    }
+
+  private def terminateStartedOrderKeeper(started: Started, shutDown: AgentCommand.ShutDown)
+  : Future[Checked[AgentCommand.Response.Accepted]] =
+    (started.actor ? shutDown)
+      .mapTo[AgentCommand.Response.Accepted]
+      .map { ordersTerminated =>
+        terminateCompleted.success(Completed) // Wait for child Actor termination
         continueTermination()
         Right(ordersTerminated)
       }
-    }
 
   private def addOrderKeeper(agentPath: AgentPath, controllerId: ControllerId): Checked[Unit] =
     synchronized {
-      started.toOption match {
-        case Some(started) =>
-          Left(Problem(
-            s"This Agent has already started as '${started.agentPath}' for '${started.controllerId}'"))
+      if (terminating)
+        Left(AgentDirectorIsShuttingDownProblem)
+      else
+        started.toOption match {
+          case Some(started) =>
+            Left(Problem(
+              s"This Agent has already started as '${started.agentPath}' for '${started.controllerId}'"))
 
-        case None =>
-          val recoveredAgentState = this.recoveredAgentState
-          this.recoveredAgentState = null  // release memory
-          val actor = actorOf(
-            Props {
-              new AgentOrderKeeper(
-                subagent,
-                clusterNode.recoveredExtract.totalRunningSince,
-                failedOverSubagentId,
-                requireNonNull(recoveredAgentState),
-                appointClusterNodes,
-                allocatedSignatureVerifier.allocatedThing,
-                journalAllocated,
-                clock,
-                agentConf)
-              },
-            "AgentOrderKeeper")
-          watch(actor)
-          started := Started(agentPath, controllerId, actor)
-          Checked.unit
-      }
+          case None =>
+            val recoveredAgentState = this.recoveredAgentState
+            this.recoveredAgentState = null  // release memory
+            val actor = actorOf(
+              Props {
+                new AgentOrderKeeper(
+                  subagent,
+                  clusterNode.recoveredExtract.totalRunningSince,
+                  failedOverSubagentId,
+                  requireNonNull(recoveredAgentState),
+                  appointClusterNodes,
+                  allocatedSignatureVerifier.allocatedThing,
+                  journalAllocated,
+                  clock,
+                  agentConf)
+                },
+              "AgentOrderKeeper")
+            watch(actor)
+            started := Started(agentPath, controllerId, actor)
+            Checked.unit
+        }
     }
 
   private def appointClusterNodes: Task[Unit] =
@@ -393,4 +408,6 @@ object AgentActor
 
   type ItemSignatureKeysUpdated = ItemSignatureKeysUpdated.type
   case object ItemSignatureKeysUpdated
+
+  private case object AgentDirectorIsShuttingDownProblem extends Problem.ArgumentlessCoded
 }
