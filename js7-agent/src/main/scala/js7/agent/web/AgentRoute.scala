@@ -6,7 +6,6 @@ import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.views.AgentOverview
-import js7.agent.web.common.AgentSession
 import js7.base.auth.SimpleUser
 import js7.base.problem.Checked
 import js7.cluster.ClusterNode
@@ -18,6 +17,7 @@ import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.akkahttp.web.session.SessionRegister
 import js7.core.command.CommandMeta
 import js7.data.event.Stamped
+import js7.subagent.SubagentSession
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.Future
@@ -34,7 +34,7 @@ final class AgentRoute(
   protected val clusterNode: ClusterNode[AgentState],
   protected val agentConfiguration: AgentConfiguration,
   gateKeeperConf: GateKeeper.Configuration[SimpleUser],
-  protected val sessionRegister: SessionRegister[AgentSession])
+  protected val sessionRegister: SessionRegister[SubagentSession])
   (implicit
     protected val actorSystem: ActorSystem,
     protected val scheduler: Scheduler)

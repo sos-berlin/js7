@@ -5,7 +5,7 @@ import akka.http.scaladsl.model.HttpHeader
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import js7.agent.configuration.AgentConfiguration
-import js7.agent.web.common.{AgentRouteProvider, AgentSession}
+import js7.agent.web.common.AgentRouteProvider
 import js7.base.Js7Version
 import js7.base.auth.{HashedPassword, SimpleUser, UserId}
 import js7.base.configutils.Configs.HoconStringInterpolator
@@ -19,6 +19,7 @@ import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.akkahttp.web.session.SessionRegister
 import js7.common.http.AkkaHttpClient.`x-js7-session`
 import js7.common.message.ProblemCodeMessages
+import js7.subagent.SubagentSession
 import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.{BeforeAndAfterAll, Suite}
 
@@ -36,8 +37,8 @@ trait WebServiceTest extends HasCloser with BeforeAndAfterAll with ScalatestRout
     WebServerBinding.Http,
     GateKeeper.Configuration.fromConfig(testConfig, SimpleUser.apply))
 
-  protected final val sessionRegister = SessionRegister.forTest[AgentSession](
-    actorRefFactory, AgentSession.apply, SessionRegister.TestConfig)
+  protected final val sessionRegister = SessionRegister.forTest[SubagentSession](
+    actorRefFactory, SubagentSession.apply, SessionRegister.TestConfig)
 
   override def testConfig =
     config"akka.loglevel = warning"

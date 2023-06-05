@@ -7,7 +7,6 @@ import js7.agent.client.AgentClient
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.commands.AgentCommand.*
 import js7.agent.web.CommandWebServerTest.*
-import js7.agent.web.common.AgentSession
 import js7.base.auth.SimpleUser
 import js7.base.configutils.Configs.*
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
@@ -23,6 +22,7 @@ import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.event.{EventId, JournalId}
 import js7.data.order.OrderId
+import js7.subagent.SubagentSession
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.traced
@@ -71,8 +71,8 @@ final class CommandWebServerTest extends OurAsyncTestSuite
             WebServerBinding.Http,
             GateKeeper.Configuration.fromConfig(config, SimpleUser.apply))
 
-          protected val sessionRegister = SessionRegister.forTest[AgentSession](
-            actorSystem, AgentSession.apply, SessionRegister.TestConfig)
+          protected val sessionRegister = SessionRegister.forTest[SubagentSession](
+            actorSystem, SubagentSession.apply, SessionRegister.TestConfig)
         }.commandRoute
       }
     }

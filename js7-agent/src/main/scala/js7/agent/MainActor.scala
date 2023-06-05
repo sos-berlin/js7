@@ -6,9 +6,7 @@ import js7.agent.command.{CommandActor, CommandHandler}
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.agent.scheduler.{AgentActor, AgentHandle}
-import js7.base.eventbus.StandardEventBus
 import js7.base.log.Logger
-import js7.base.thread.IOExecutor
 import js7.base.time.AlarmClock
 import js7.base.utils.{Allocated, ProgramTermination}
 import js7.cluster.ClusterNode
@@ -26,7 +24,7 @@ import scala.util.control.NoStackTrace
   * @author Joacim Zschimmer
   */
 final class MainActor(
-  subagent: Subagent,
+  forDirector: Subagent.ForDirector,
   failedOverSubagentId: Option[SubagentId],
   clusterNode: ClusterNode[AgentState],
   journalAllocated: Allocated[Task, FileJournal[AgentState]],
@@ -34,9 +32,8 @@ final class MainActor(
   testCommandHandler: Option[CommandHandler],
   readyPromise: Promise[Ready],
   terminationPromise: Promise[ProgramTermination],
-  testEventBus: StandardEventBus[Any],
   clock: AlarmClock)
-  (implicit scheduler: Scheduler, iox: IOExecutor)
+  (implicit scheduler: Scheduler)
 extends Actor {
 
   import context.{actorOf, watch}
@@ -46,11 +43,11 @@ extends Actor {
   private val agentActor = watch(actorOf(
     Props {
       new AgentActor(
-        subagent,
+        forDirector,
         failedOverSubagentId,
         clusterNode,
         terminationPromise, journalAllocated,
-        clock, agentConfiguration, testEventBus)
+        clock, agentConfiguration)
     },
     "agent"))
   private val agentHandle = new AgentHandle(agentActor)

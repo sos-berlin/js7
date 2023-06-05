@@ -16,7 +16,6 @@ import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.{ClusterSwitchOver, ShutDown}
 import js7.agent.data.views.AgentOverview
 import js7.agent.web.AgentRoute
-import js7.agent.web.common.AgentSession
 import js7.base.BuildInfo
 import js7.base.auth.{SessionToken, SimpleUser}
 import js7.base.eventbus.StandardEventBus
@@ -24,12 +23,11 @@ import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.monixutils.MonixBase.syntax.RichMonixTask
+import js7.base.monixutils.MonixBase.syntax.{RichMonixResource, RichMonixTask}
 import js7.base.problem.Checked.*
 import js7.base.problem.Problems.ShuttingDownProblem
 import js7.base.problem.{Checked, Problem}
 import js7.base.service.{MainService, Service}
-import js7.base.thread.IOExecutor
 import js7.base.time.AlarmClock
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.utils.ScalaUtils.syntax.*
@@ -37,11 +35,9 @@ import js7.base.utils.{Allocated, ProgramTermination}
 import js7.base.web.Uri
 import js7.cluster.ClusterNode
 import js7.common.akkahttp.web.auth.GateKeeper
-import js7.common.akkahttp.web.session.SessionRegister
-import js7.common.akkautils.Akkas
 import js7.common.system.JavaInformations.javaInformation
 import js7.common.system.SystemInformations.systemInformation
-import js7.common.system.startup.{ServiceMain, StartUp}
+import js7.common.system.startup.StartUp
 import js7.core.command.CommandMeta
 import js7.core.license.LicenseChecker
 import js7.data.Problems.{BackupClusterNodeNotAppointed, ClusterNodeIsNotActiveProblem, ClusterNodeIsNotReadyProblem, PassiveClusterNodeShutdownNotAllowedProblem}
@@ -66,8 +62,7 @@ final class RunningAgent private(
   untilMainActorTerminated: Task[ProgramTermination],
   val untilReady: Task[MainActor.Ready],
   val executeCommand: (AgentCommand, CommandMeta) => Task[Checked[AgentCommand.Response]],
-  sessionRegister: SessionRegister[AgentSession],
-  val sessionToken: SessionToken,
+  forDirector: Subagent.ForDirector,
   val testEventBus: StandardEventBus[Any],
   val actorSystem: ActorSystem,
   val conf: AgentConfiguration)
@@ -91,7 +86,10 @@ extends MainService with Service.StoppableByRequest
     Task.defer {
       for (_ <- untilMainActorTerminated.attempt) isActorTerminated = true
       startService(
-        untilStopRequested
+        forDirector.subagent.untilTerminated
+          .*>(stop/*TODO Subagent should terminate this Director*/)
+          .startAndForget
+          .*>(untilStopRequested)
           .*>(shutdown))
     }
 
@@ -130,10 +128,13 @@ extends MainService with Service.StoppableByRequest
   private[agent] def executeCommandAsSystemUser(command: AgentCommand)
   : Task[Checked[AgentCommand.Response]] =
     for {
-      checkedSession <- sessionRegister.systemSession
+      checkedSession <- forDirector.sessionRegister.systemSession
       checkedChecked <- checkedSession.traverse(session =>
         executeCommand(command, CommandMeta(session.currentUser)))
     } yield checkedChecked.flatten
+
+  def systemSessionToken: SessionToken =
+    forDirector.systemSessionToken
 
   override def toString =
     "Agent"
@@ -157,14 +158,6 @@ object RunningAgent {
     val eventIdClock = testWiring.eventIdClock getOrElse EventIdClock(clock)
     val testEventBus = new StandardEventBus[Any]
 
-    val recoveringClusterNodeResource =
-      ClusterNode.recoveringResource[AgentState](
-        akkaResource = Akkas.actorSystemResource(conf.name, config),
-        (uri, label, actorSystem) => AgentClient.resource(
-          uri, clusterConf.peersUserAndPassword, label, httpsConfig)(actorSystem),
-        new LicenseChecker(LicenseCheckContext(conf.configDirectory)),
-        journalLocation, clusterConf, eventIdClock, testEventBus)
-
     def initialize(): Unit = {
       if (!StartUp.isMain) logger.debug("JS7 Agent starting ...\n" + "┈" * 80)
       conf.createDirectories()
@@ -173,22 +166,27 @@ object RunningAgent {
 
     for {
       _ <- Resource.eval(Task(initialize()))
-      clusterNode <- recoveringClusterNodeResource
-      iox <- IOExecutor.resource[Task](config, conf.name + "-I/O")
-      subagent <- Subagent.resource(conf.subagentConf, iox, testEventBus)
-      agent <- resource2(subagent, clusterNode, testWiring, conf, testEventBus, clock)(
-        iox, scheduler)
+      subagent <- Subagent.resource(conf.subagentConf, testEventBus)
+      forDirector = subagent.forDirector/*TODO Subagent itself should start Director when requested*/
+      clusterNode <- ClusterNode.recoveringResource[AgentState](
+        akkaResource = Resource.eval(Task.pure(forDirector.actorSystem)),
+        (uri, label, actorSystem) => AgentClient.resource(
+          uri, clusterConf.peersUserAndPassword, label, httpsConfig)(actorSystem),
+        new LicenseChecker(LicenseCheckContext(conf.configDirectory)),
+        journalLocation, clusterConf, eventIdClock, testEventBus)
+      agent <- resource2(forDirector, clusterNode, testWiring, conf, testEventBus, clock)(
+        scheduler)
     } yield agent
   }).executeOn(scheduler)
 
   private def resource2(
-    subagent: Subagent,
+    forDirector: Subagent.ForDirector,
     clusterNode: ClusterNode[AgentState],
     testWiring: TestWiring,
     conf: AgentConfiguration,
     testEventBus: StandardEventBus[Any],
     clock: AlarmClock)
-    (implicit iox: IOExecutor, scheduler: Scheduler)
+    (implicit scheduler: Scheduler)
   : Resource[Task, RunningAgent] = {
     import clusterNode.actorSystem
     import conf.config
@@ -211,13 +209,13 @@ object RunningAgent {
       val actor = actorSystem.actorOf(
         Props {
           new MainActor(
-            subagent,
+            forDirector,
             failedOverSubagentId,
             clusterNode,
             journalAllocated, conf, testWiring.commandHandler,
             mainActorReadyPromise, terminationPromise,
-            testEventBus, clock)(
-            scheduler, iox)
+             clock)(
+            scheduler)
         },
         "main").taggedWith[MainActor]
 
@@ -347,19 +345,17 @@ object RunningAgent {
         .map(_.map((_: AgentCommand.Response).asInstanceOf[cmd.Response])))
 
     for {
-      sessionRegister <- SessionRegister.resource(AgentSession.apply, config)
-      sessionToken <- sessionRegister
-        .placeSessionTokenInDirectory(SimpleUser.System, conf.workDirectory)
       agent <- Service.resource(Task(
         new RunningAgent(
           clusterNode,
           journalDeferred.get,
-          () => subagent.localUri,
+          () => forDirector.subagent.localUri,
           untilMainActorTerminated,
-          untilReady, executeCommand, sessionRegister, sessionToken,
+          untilReady, executeCommand,
+          forDirector,
           testEventBus,
           actorSystem, conf)))
-      _ <- subagent.directorRegisteringResource(
+      _ <- forDirector.subagent.directorRegisteringResource(
         (binding, whenShuttingDown) => Task.pure(
           new AgentRoute(
             agentOverview,
@@ -369,7 +365,7 @@ object RunningAgent {
             clusterNode,
             conf,
             gateKeeperConf,
-            sessionRegister
+            forDirector.sessionRegister
           ).agentRoute))
     } yield agent
   }

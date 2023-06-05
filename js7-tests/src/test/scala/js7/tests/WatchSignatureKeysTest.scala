@@ -2,7 +2,6 @@ package js7.tests
 
 import java.io.FileOutputStream
 import java.nio.file.Files.{createTempDirectory, delete}
-import js7.agent.scheduler.AgentActor
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.crypt.SignerId
 import js7.base.crypt.x509.X509Algorithm.SHA512withRSA
@@ -177,7 +176,7 @@ final class WatchSignatureKeysTest extends OurTestSuite with ControllerAgentForS
 
     val controllerUpdated = controller.testEventBus.when[RunningController.ItemSignatureKeysUpdated]
       .void.runToFuture
-    val agentUpdated = agent.testEventBus.when[AgentActor.ItemSignatureKeysUpdated]
+    val agentUpdated = agent.testEventBus.when[Subagent.ItemSignatureKeysUpdated]
       .void.runToFuture
     val subagentUpdated = idToAllocatedSubagent(bareSubagentId).allocatedThing.testEventBus
       .when[Subagent.ItemSignatureKeysUpdated]
@@ -220,7 +219,7 @@ final class WatchSignatureKeysTest extends OurTestSuite with ControllerAgentForS
     Task.parZip3(
       controller.testEventBus.when[RunningController.ItemSignatureKeysUpdated]
         .logWhenItTakesLonger("RunningController.ItemSignatureKeysUpdated"),
-      agent.testEventBus.when[AgentActor.ItemSignatureKeysUpdated]
+      agent.testEventBus.when[Subagent.ItemSignatureKeysUpdated]
         .logWhenItTakesLonger("AgentActor.ItemSignatureKeysUpdated"),
       idToAllocatedSubagent(bareSubagentId).allocatedThing.testEventBus
         .when[Subagent.ItemSignatureKeysUpdated]

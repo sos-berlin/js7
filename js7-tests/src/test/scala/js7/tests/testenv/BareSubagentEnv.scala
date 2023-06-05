@@ -5,8 +5,6 @@ import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Path
 import js7.base.crypt.SignatureVerifier
 import js7.base.eventbus.StandardEventBus
-import js7.base.monixutils.MonixBase.syntax.RichMonixResource
-import js7.base.thread.IOExecutor
 import js7.common.system.ThreadPools.ownThreadPoolResource
 import js7.data.subagent.SubagentItem
 import js7.subagent.Subagent
@@ -33,12 +31,6 @@ extends SubagentEnv {
     subagentResource
 
   def subagentResource: Resource[Task, Subagent] =
-    ownThreadPoolResource(subagentConf.name, subagentConf.config)(scheduler =>
-      for {
-        iox <- IOExecutor.resource[Task](subagentConf.config, subagentConf.name + "-I/O")
-        testEventBus = new StandardEventBus[Any]
-        subagent <- Subagent
-          .resource(subagentConf, iox, testEventBus)(scheduler)
-          .executeOn(scheduler)
-      } yield subagent)
+    ownThreadPoolResource(subagentConf.name, subagentConf.config)(implicit scheduler =>
+      Subagent.resource(subagentConf, new StandardEventBus[Any]))
 }

@@ -12,13 +12,12 @@ import js7.agent.data.commands.AgentCommand.{AttachItem, AttachOrder, AttachSign
 import js7.agent.data.event.AgentEvent.{AgentReady, AgentShutDown}
 import js7.agent.scheduler.order.AgentOrderKeeper.*
 import js7.base.circeutils.CirceUtils.RichJson
-import js7.base.crypt.{SignatureVerifier, Signed}
+import js7.base.crypt.Signed
 import js7.base.generic.Completed
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.{RichCheckedTask, RichMonixTask}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
-import js7.base.thread.IOExecutor
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.JavaTime.*
 import js7.base.time.ScalaTime.*
@@ -73,21 +72,21 @@ import scala.util.{Failure, Success, Try}
  * @author Joacim Zschimmer
  */
 final class AgentOrderKeeper(
-  localSubagent: Subagent,
+  forDirector: Subagent.ForDirector,
   totalRunningSince: Deadline,
   failedOverSubagentId: Option[SubagentId],
   recoveredAgentState : AgentState,
   tryAppointClusterNodes: Task[Unit],
-  signatureVerifier: SignatureVerifier,
   journalAllocated: Allocated[Task, FileJournal[AgentState]],
   private implicit val clock: AlarmClock,
   conf: AgentConfiguration)
-  (implicit protected val scheduler: Scheduler, iox: IOExecutor)
+  (implicit protected val scheduler: Scheduler)
 extends MainJournalingActor[AgentState, Event]
 with Stash
 {
   import conf.implicitAkkaAskTimeout
   import context.{actorOf, watch}
+  import forDirector.{iox, subagent as localSubagent}
 
   private val journal = journalAllocated.allocatedThing
   private val (ownAgentPath, localSubagentId, controllerId) = {
@@ -488,7 +487,7 @@ with Stash
     }
 
   private def attachSignedItem(signed: Signed[SignableItem]): Future[Checked[Response.Accepted]] =
-    signatureVerifier.verify(signed.signedString) match {
+    forDirector.signatureVerifier.verify(signed.signedString) match {
       case Left(problem) => Future.successful(Left(problem))
       case Right(signerIds) =>
         logger.info(Logger.SignatureVerified, s"Verified ${signed.value.key}, signed by ${signerIds.mkString(", ")}")

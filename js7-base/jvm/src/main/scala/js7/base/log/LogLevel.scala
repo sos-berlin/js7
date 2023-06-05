@@ -19,6 +19,16 @@ object LogLevel
   object Warn extends LogLevel
   object Error extends LogLevel
 
+  implicit val ordering: Ordering[LogLevel] =
+    Ordering.by {
+      case LogNone => 0
+      case Trace => 1
+      case Debug => 2
+      case Info => 3
+      case Warn => 4
+      case Error => 5
+    }
+
   def apply(string: String): LogLevel =
     string.toLowerCase match {
       case "none"  => LogNone

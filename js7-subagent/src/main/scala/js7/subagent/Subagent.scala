@@ -1,11 +1,12 @@
 package js7.subagent
 
+import akka.actor.ActorSystem
 import cats.effect.Resource
 import cats.effect.concurrent.Deferred
 import cats.syntax.traverse.*
 import java.nio.file.Path
 import js7.base.Js7Version
-import js7.base.auth.SimpleUser
+import js7.base.auth.{SessionToken, SimpleUser}
 import js7.base.configutils.Configs.RichConfig
 import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier
 import js7.base.eventbus.StandardEventBus
@@ -14,6 +15,7 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.process.ProcessSignal
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
+import js7.base.monixutils.MonixBase.syntax.RichMonixResource
 import js7.base.problem.Checked
 import js7.base.problem.Checked.*
 import js7.base.service.{MainService, Service}
@@ -24,7 +26,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, ProgramTermination, SetOnce}
 import js7.base.web.Uri
 import js7.common.akkahttp.web.AkkaWebServer
-import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
+import js7.common.akkahttp.web.session.SessionRegister
 import js7.common.akkautils.Akkas
 import js7.common.system.ThreadPools.unlimitedSchedulerResource
 import js7.data.event.EventId
@@ -45,6 +47,7 @@ import monix.execution.Scheduler
 final class Subagent private(
   webServer: AkkaWebServer,
   directorRouteVariable: DirectorRouteVariable,
+  toForDirector: Subagent => ForDirector,
   val journal: MemoryJournal[SubagentState],
   signatureVerifier: DirectoryWatchingSignatureVerifier,
   val conf: SubagentConf,
@@ -66,6 +69,8 @@ extends MainService with Service.StoppableByRequest
   //private val directorRegisterable = AsyncVariable(none[DirectorRegisterable])
 
   private val terminated = Deferred.unsafe[Task, ProgramTermination]
+
+  val forDirector: ForDirector = toForDirector(this)
 
   protected def start =
     startService(Task
@@ -202,7 +207,7 @@ object Subagent
 {
   private val logger = Logger(getClass)
 
-  def resource(conf: SubagentConf, iox: IOExecutor, testEventBus: StandardEventBus[Any])
+  def resource(conf: SubagentConf, testEventBus: StandardEventBus[Any])
     (implicit scheduler: Scheduler)
   : Resource[Task, Subagent] = {
     import conf.config
@@ -214,7 +219,18 @@ object Subagent
       // Stop Subagent _after_ web service to allow Subagent to execute last commands!
       subagentDeferred <- Resource.eval(Deferred[Task, Subagent])
       directorRouteVariable = new DirectorRouteVariable
-      webServer <- webServerResource(directorRouteVariable, subagentDeferred.get, conf)
+      actorSystem <- Akkas.actorSystemResource(conf.name, config)
+      sessionRegister <- {
+        implicit val a = actorSystem
+        SessionRegister.resource(SubagentSession(_), config)
+      }
+      systemSessionToken <- sessionRegister
+        .placeSessionTokenInDirectory(SimpleUser.System, conf.workDirectory)
+      webServer <-
+        SubagentWebServer.resource(
+          subagentDeferred.get, directorRouteVariable.route, sessionRegister, conf)(
+          actorSystem, scheduler)
+      _ <- provideUriFile(conf, webServer.localHttpUri)
       // For BlockingInternalJob (thread-blocking Java jobs)
       blockingInternalJobScheduler <- unlimitedSchedulerResource[Task](
         "JS7 blocking job", conf.config)
@@ -224,46 +240,39 @@ object Subagent
         size = config.getInt("js7.journal.in-memory.event-count"),
         waitingFor = "JS7 Agent Director",
         infoLogEvents = config.seqAs[String]("js7.journal.log.info-events").toSet)
+      iox <- IOExecutor.resource[Task](config, conf.name + "-I/O")
       jobLauncherConf = conf.toJobLauncherConf(iox, blockingInternalJobScheduler, clock).orThrow
       signatureVerifier <- DirectoryWatchingSignatureVerifier.prepare(config)
         .orThrow
         .toResource(onUpdated = () => testEventBus.publish(ItemSignatureKeysUpdated))(iox)
       subagent <- Service.resource(Task(
-        new Subagent(webServer, directorRouteVariable, journal, signatureVerifier,
+        new Subagent(webServer,
+          directorRouteVariable,
+          ForDirector(
+            _, signatureVerifier, sessionRegister, systemSessionToken, iox, testEventBus, actorSystem),
+          journal, signatureVerifier,
           conf, jobLauncherConf, testEventBus)))
       _ <- Resource.eval(subagentDeferred.complete(subagent))
     } yield {
       logger.info("Subagent is ready to be dedicated" + "\n" + "─" * 80)
       subagent
     }
-  }
-
-  private def webServerResource(
-    directorRouteVariable: DirectorRouteVariable,
-    subagent: Task[Subagent],
-    conf: SubagentConf)
-    (implicit scheduler: Scheduler)
-  : Resource[Task, AkkaWebServer] = {
-    import conf.config
-    for {
-      actorSystem <- Akkas.actorSystemResource(conf.name, config)
-      sessionRegister <- {
-        implicit val a = actorSystem
-        SessionRegister.resource(SimpleSession(_), config)
-      }
-      _ <- sessionRegister.placeSessionTokenInDirectory(SimpleUser.System, conf.workDirectory)
-      webServer <-
-        SubagentWebServer.resource(subagent, directorRouteVariable.route, sessionRegister, conf)(
-          actorSystem, scheduler)
-      _ <- provideUriFile(conf, webServer.localHttpUri)
-    } yield webServer
-  }
+  }.executeOn(scheduler)
 
   private def provideUriFile(conf: SubagentConf, uri: Checked[Uri]): Resource[Task, Path] =
     provideFile[Task](conf.workDirectory / "http-uri")
       .evalTap(file => Task {
         for (uri <- uri) file := s"$uri/subagent"
       })
+
+  final case class ForDirector(
+    subagent: Subagent,
+    signatureVerifier: DirectoryWatchingSignatureVerifier,
+    sessionRegister: SessionRegister[SubagentSession],
+    systemSessionToken: SessionToken,
+    implicit val iox: IOExecutor,
+    testEventBus: StandardEventBus[Any],
+    actorSystem: ActorSystem)
 
   type ItemSignatureKeysUpdated = ItemSignatureKeysUpdated.type
   case object ItemSignatureKeysUpdated

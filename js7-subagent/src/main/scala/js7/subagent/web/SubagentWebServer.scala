@@ -6,9 +6,9 @@ import js7.base.auth.{AgentDirectorPermission, SimpleUser}
 import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.data.WebServerBinding
-import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
+import js7.common.akkahttp.web.session.SessionRegister
 import js7.subagent.configuration.SubagentConf
-import js7.subagent.{DirectorRouteVariable, Subagent}
+import js7.subagent.{DirectorRouteVariable, Subagent, SubagentSession}
 import monix.eval.Task
 import monix.execution.Scheduler
 
@@ -17,7 +17,7 @@ object SubagentWebServer
   def resource(
     subagent: Task[Subagent],
     toDirectorRoute: DirectorRouteVariable.ToRoute,
-    sessionRegister: SessionRegister[SimpleSession],
+    sessionRegister: SessionRegister[SubagentSession],
     conf: SubagentConf)
     (implicit actorSystem: ActorSystem, scheduler: Scheduler)
   : Resource[Task, (AkkaWebServer)] =

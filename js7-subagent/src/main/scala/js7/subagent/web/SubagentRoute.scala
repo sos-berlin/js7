@@ -17,13 +17,13 @@ import js7.common.akkahttp.WebLogDirectives
 import js7.common.akkahttp.web.auth.CSRF.forbidCSRF
 import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.data.WebServerBinding
-import js7.common.akkahttp.web.session.{SessionRegister, SessionRoute, SimpleSession}
+import js7.common.akkahttp.web.session.{SessionRegister, SessionRoute}
 import js7.common.system.JavaInformations.javaInformation
 import js7.common.system.SystemInformations.systemInformation
 import js7.common.system.startup.StartUp
 import js7.core.command.CommandMeta
 import js7.data.subagent.{SubagentCommand, SubagentOverview}
-import js7.subagent.Subagent
+import js7.subagent.{Subagent, SubagentSession}
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.Future
@@ -33,7 +33,7 @@ private final class SubagentRoute(
   binding: WebServerBinding,
   protected val whenShuttingDown: Future[Deadline],
   gateKeeperConf: GateKeeper.Configuration[SimpleUser],
-  protected val sessionRegister: SessionRegister[SimpleSession],
+  protected val sessionRegister: SessionRegister[SubagentSession],
   directorRoute: Task[Route],
   protected val subagent: Subagent,
   protected val config: Config)

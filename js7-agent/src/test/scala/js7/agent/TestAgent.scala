@@ -65,7 +65,7 @@ final class TestAgent(allocated: Allocated[Task, RunningAgent]) {
     agent.localUri
 
   def sessionToken: SessionToken =
-    agent.sessionToken
+    agent.systemSessionToken
 
   def untilReady: Task[MainActor.Ready] =
     agent.untilReady

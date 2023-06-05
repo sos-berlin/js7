@@ -16,6 +16,7 @@ import js7.base.configutils.Configs.*
 import js7.base.generic.Completed
 import js7.base.io.file.FileUtils.provideFile
 import js7.base.io.file.FileUtils.syntax.*
+import js7.base.monixutils.MonixBase.syntax.RichMonixTask
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.service.Service
@@ -40,7 +41,10 @@ final class SessionRegister[S <: Session: Tag] private[session](
 extends Service.StoppableByRequest
 {
   private val systemSessionPromise = Promise[Checked[S]]()
-  val systemSession: Task[Checked[S]] = Task.fromFuture(systemSessionPromise.future)
+  val systemSession: Task[Checked[S]] =
+    Task.fromFuture(systemSessionPromise.future)
+      .logWhenItTakesLonger/*in case it will never been created*/
+      .memoize
   val systemUser: Task[Checked[SimpleUser]] =
     systemSession.map(_.map(_.currentUser./*???*/asInstanceOf[SimpleUser]))
 

@@ -12,8 +12,6 @@ import js7.agent.data.event.AgentEvent.AgentDedicated
 import js7.agent.scheduler.AgentActor.*
 import js7.agent.scheduler.order.AgentOrderKeeper
 import js7.base.auth.UserId
-import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier
-import js7.base.eventbus.StandardEventBus
 import js7.base.generic.Completed
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger.syntax.*
@@ -21,10 +19,7 @@ import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.RichCheckedTask
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
-import js7.base.thread.IOExecutor
-import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.AlarmClock
-import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.RightUnit
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, ProgramTermination, SetOnce}
@@ -52,15 +47,14 @@ import scala.concurrent.{Future, Promise}
   * @author Joacim Zschimmer
   */
 private[agent] final class AgentActor(
-  subagent: Subagent,
+  forDirector: Subagent.ForDirector,
   failedOverSubagentId: Option[SubagentId],
   clusterNode: ClusterNode[AgentState],
   terminatePromise: Promise[ProgramTermination],
   journalAllocated: Allocated[Task, FileJournal[AgentState]],
   clock: AlarmClock,
-  agentConf: AgentConfiguration,
-  testEventBus: StandardEventBus[Any])
-  (implicit protected val scheduler: Scheduler, iox: IOExecutor)
+  agentConf: AgentConfiguration)
+  (implicit protected val scheduler: Scheduler)
   extends Actor with Stash with SimpleStateActor
 {
   import agentConf.{implicitAkkaAskTimeout, journalLocation}
@@ -77,15 +71,6 @@ private[agent] final class AgentActor(
   private def terminating = shutDownCommand.isDefined
   private val terminateCompleted = Promise[Completed]()
 
-  // TODO Use Subagent's DirectoryWatchingSignatureVerifier
-  private val allocatedSignatureVerifier = DirectoryWatchingSignatureVerifier
-    .checkedResource(
-      config = agentConf.config,
-      onUpdated = () => testEventBus.publish(ItemSignatureKeysUpdated))
-    .orThrow
-    .toAllocated
-    .awaitInfinite
-
   override def preStart() = {
     watch(journal.journalActor)
     super.preStart()
@@ -96,7 +81,6 @@ private[agent] final class AgentActor(
     if (isResetting) {
       journalLocation.deleteJournal(ignoreFailure = true)
     }
-    allocatedSignatureVerifier.release.awaitInfinite
     terminatePromise.trySuccess(
       ProgramTermination(restart = shutDownCommand.toOption.fold(false)(_.restart)))
     logger.debug("Stopped")
@@ -329,12 +313,11 @@ private[agent] final class AgentActor(
             val actor = actorOf(
               Props {
                 new AgentOrderKeeper(
-                  subagent,
+                  forDirector,
                   clusterNode.recoveredExtract.totalRunningSince,
                   failedOverSubagentId,
                   requireNonNull(recoveredAgentState),
                   appointClusterNodes,
-                  allocatedSignatureVerifier.allocatedThing,
                   journalAllocated,
                   clock,
                   agentConf)
@@ -405,9 +388,6 @@ object AgentActor
     actor: ActorRef)
 
   private case class ContinueReset(response: Promise[Checked[AgentCommand.Response]])
-
-  type ItemSignatureKeysUpdated = ItemSignatureKeysUpdated.type
-  case object ItemSignatureKeysUpdated
 
   private case object AgentDirectorIsShuttingDownProblem extends Problem.ArgumentlessCoded
 }
