@@ -95,13 +95,15 @@ extends UnsignedSimpleItemState
             agentRunId = if (force) None else agentRunId,
             eventId = EventId.BeforeFirst,
             timezone = None,
-            problem = None))
+            problem = None,
+            clusterState = ClusterState.Empty))
 
       case AgentReset =>
         Right(copy(
           couplingState = Reset.byCommand,
           agentRunId = None,
-          problem = None))
+          problem = None,
+          platformInfo = None))
 
       case AgentMirroredEvent(keyedEvent) =>
         keyedEvent match {
