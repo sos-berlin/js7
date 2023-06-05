@@ -52,7 +52,7 @@ abstract class RecouplingStreamReader[
             logged = true
           }
           for (throwable <- problem.throwableOption.map(_.nullIfNoStackTrace)
-               if !api.isIgnorableStackTrace(throwable)) {
+               if api.hasRelevantStackTrace(throwable)) {
             logger.debug(s"💥 $msg", throwable)
             logged = true
           }

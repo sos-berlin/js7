@@ -123,7 +123,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
     case t @ akka.stream.SubscriptionWithCancelException.NoMoreElementsNeeded =>
       // On NoMoreElementsNeeded the Observable ends silently !!! Maybe harmless?
       logger.warn(s"Ignore ${t.toString}")
-      if (t.getStackTrace.nonEmpty) logger.debug(s"Ignore $t", t)
+      if (hasRelevantStackTrace(t)) logger.debug(s"Ignore $t", t)
       Observable.empty
   }
 
@@ -131,7 +131,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
     case t: akka.stream.scaladsl.TcpIdleTimeoutException =>
       // Idle timeout is silently ignored !!! Maybe harmless?
       logger.warn(s"Ignore ${t.toString}")
-      if (t.getStackTrace.nonEmpty) logger.debug(s"Ignore $t", t)
+      if (hasRelevantStackTrace(t)) logger.debug(s"Ignore $t", t)
       Observable.empty
   }
 
@@ -494,10 +494,8 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
     b.toString
   }
 
-  override def isIgnorableStackTrace(throwable: Throwable) = throwable match {
-    case _: akka.stream.StreamTcpException => false
-    case _ => true
-  }
+  override def hasRelevantStackTrace(throwable: Throwable): Boolean =
+    AkkaHttpClient.hasRelevantStackTrace(throwable)
 
   private def makeAkkaExceptionLegible(t: akka.stream.StreamTcpException): RuntimeException =
     akkaExceptionRegex.findFirstMatchIn(t.toString)
@@ -686,6 +684,14 @@ object AkkaHttpClient
       else
         None
   }
+
+  def hasRelevantStackTrace(throwable: Throwable): Boolean =
+    throwable != null && throwable.getStackTrace.nonEmpty &&
+      (throwable match {
+        case _: akka.stream.StreamTcpException => false
+        case _: java.net.SocketException => false
+        case _ => true
+      })
 
   private final class LegibleAkkaHttpException(
     message: String,

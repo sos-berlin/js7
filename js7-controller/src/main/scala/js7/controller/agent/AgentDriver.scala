@@ -30,7 +30,7 @@ import js7.base.utils.{AsyncLock, MutableAllocated}
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatchService
 import js7.cluster.watch.api.ActiveClusterNodeSelector
-import js7.common.http.RecouplingStreamReader
+import js7.common.http.{AkkaHttpClient, RecouplingStreamReader}
 import js7.controller.agent.AgentDriver.*
 import js7.controller.agent.CommandQueue.QueueableResponse
 import js7.controller.agent.DirectorDriver.DirectorDriverStoppedProblem
@@ -107,8 +107,8 @@ extends Service.StoppableByRequest
           Task.unit
         } else {
           logger.warn(s"Coupling failed: $problem")
-          for (t <- problem.throwableOption if t.getStackTrace.nonEmpty) logger.debug(
-            s"Coupling failed: $problem", t)
+          for (t <- problem.throwableOption if AkkaHttpClient.hasRelevantStackTrace(t))
+            logger.debug(s"Coupling failed: $problem", t)
           Task.unless(noJournal)(
             journal.persistKeyedEvent(agentPath <-: agentCouplingFailed)
               .map(_.orThrow))
@@ -260,20 +260,22 @@ extends Service.StoppableByRequest
         startAndForgetDirectorDriver)
 
   def terminate(noJournal: Boolean = false, reset: Boolean = false): Task[Unit] =
-    logger.traceTask(Task.defer {
-      this.noJournal |= noJournal
-      // Wait until all pending Agent commands are responded, and do not accept further commands
-      Task.unless(isTerminating)(Task.defer {
-        logger.debug(s"Terminate${noJournal ?? " noJournal"}${reset ?? " reset"}")
-        isTerminating = true
-        Task.when(reset)(Task.defer {
-          lastAgentRunId.fold(Task.unit)(agentRunId =>
-            // Required only for ItemDeleted, redundant for ResetAgent
-            resetAgent(Some(agentRunId)).void)
-        })
+    logger.traceTask("terminate",
+      (noJournal ? "noJournal") ++ (reset ? "reset").mkString(" "))(
+      Task.defer {
+        this.noJournal |= noJournal
+        // Wait until all pending Agent commands are responded, and do not accept further commands
+        Task
+          .unless(isTerminating)(Task.defer {
+            isTerminating = true
+            Task.when(reset)(Task.defer {
+              lastAgentRunId.fold(Task.unit)(agentRunId =>
+                // Required only for ItemDeleted, redundant for ResetAgent
+                resetAgent(Some(agentRunId)).void)
+            })
+          })
+          .*>(stop)
       })
-    } *>
-      stop)
 
   def reset(force: Boolean): Task[Checked[Unit]] =
     if (force)

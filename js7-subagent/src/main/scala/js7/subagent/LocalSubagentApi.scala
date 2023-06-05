@@ -19,8 +19,8 @@ with SessionApi.Dummy
 {
   def isLocal = true
 
-  override def isIgnorableStackTrace(throwable: Throwable): Boolean =
-    false
+  override def hasRelevantStackTrace(throwable: Throwable): Boolean =
+    true
 
   def eventObservable[E <: Event : ClassTag](
     request: EventRequest[E],
