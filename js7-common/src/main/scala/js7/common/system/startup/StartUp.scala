@@ -10,14 +10,12 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.system.ServerOperatingSystem.operatingSystem.{cpuModel, distributionNameAndVersionOption, hostname}
 import js7.common.system.SystemInformations.totalPhysicalMemory
 import monix.execution.atomic.AtomicBoolean
-import scala.concurrent.duration.Deadline.now
 
 /**
   * @author Joacim Zschimmer
   */
 object StartUp
 {
-  val runningSince = now
   val startedAt = Timestamp.now
   private var _isMain = false
   private val classPathLogged = AtomicBoolean(false)

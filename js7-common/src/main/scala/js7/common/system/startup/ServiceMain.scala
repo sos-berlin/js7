@@ -12,7 +12,6 @@ import js7.base.log.{Log4j, Logger}
 import js7.base.service.{MainService, MainServiceTerminationException, Service}
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
-import js7.base.time.Timestamp
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, ProgramTermination}
@@ -24,17 +23,11 @@ import js7.common.system.startup.StartUp.{logJavaSettings, nowString, printlnWit
 import js7.common.utils.JavaShutdownHook
 import monix.eval.Task
 import monix.execution.Scheduler
-import scala.concurrent.duration.{Deadline, Duration, NANOSECONDS}
+import scala.concurrent.duration.{Deadline, Duration}
 
 object ServiceMain
 {
-  lazy val startedAt = Timestamp.now
   private var _runningSince: Option[Deadline] = None
-
-  def readyMessageWithLine(prefix: String): String =
-    prefix +
-      _runningSince.fold("")(o => s" (after ${o.elapsed.pretty})") +
-      "\n" + "─" * 80
 
   def mainThenExit[Conf <: BasicConfiguration, S <: MainService: Tag](
     args: Array[String],
@@ -58,29 +51,18 @@ object ServiceMain
     (toServiceResource: (Conf, Scheduler) => Resource[Task, S],
       use: S => Task[ProgramTermination] = (_: S).untilTerminated)
   : ReturnCode = {
-    startUp(name)
+    logging.startUp(name)
     handleProgramTermination(name) {
-      def body(commandLineArguments: CommandLineArguments) = {
+      JavaMainLockfileSupport.runMain(args, useLockFile = useLockFile) { commandLineArguments =>
         lazy val conf = {
           val conf = argsToConf(commandLineArguments)
           commandLineArguments.requireNoMoreArguments() // throws
           conf
         }
-        logging.logFirstLines(name, commandLineArguments, conf)
+        logging.logFirstLines(commandLineArguments, conf)
         logging.blockingRun(name, conf.config, toServiceResource(conf, _))(use)
       }
-
-      JavaMainLockfileSupport.runMain(args, useLockFile = useLockFile)(body)
     }
-  }
-
-  private def startUp(name: String): Unit = {
-    // Do not use Logger here !!!  Logger will be initialized later
-    val nanoTime = System.nanoTime() // Before anything else, fetch clock
-    printlnWithClock(s"JS7 $name ${BuildInfo.longVersion}")
-    startedAt
-    _runningSince = Some(Deadline(Duration(nanoTime, NANOSECONDS)))
-    StartUp.initializeMain()
   }
 
   private def handleProgramTermination(name: String)(body: => ProgramTermination): ReturnCode =
@@ -89,9 +71,30 @@ object ServiceMain
       logging.onProgramTermination(name, termination)
     } catch logging.catcher
 
+  def readyMessageWithLine(prefix: String): String =
+    prefix +
+      _runningSince.fold("")(o => s" (after ${o.elapsed.pretty})") +
+      "\n" + "─" * 80
+
   /** For usage after logging system has properly been initialized. */
   private object logging {
-    private lazy val logger = Logger[ServiceMain.type]
+    private lazy val logger = {
+      Logger.initialize()
+      Logger[ServiceMain.type]
+    }
+
+    def startUp(name: String): Unit = {
+      val nanoTime = System.nanoTime() // Before anything else, fetch clock
+
+      printlnWithClock(s"JS7 $name ${BuildInfo.longVersion}")
+      // Log early for early timestamp and proper logger initialization by a
+      // single (non-concurrent) call
+      // Log a bar, in case the previous log file is being appended
+      logger.info(s"JS7 $name ${BuildInfo.longVersion}\n${"━" * 80}")
+
+      _runningSince = Some(Deadline(Duration.fromNanos(nanoTime)))
+      StartUp.initializeMain()
+    }
 
     def onProgramTermination(name: String, termination: ProgramTermination): ReturnCode =
       try {
@@ -112,16 +115,8 @@ object ServiceMain
         ReturnCode.StandardFailure
     }
 
-    def logFirstLines(
-      name: String,
-      commandLineArguments: CommandLineArguments,
-      conf: => BasicConfiguration)
+    def logFirstLines(commandLineArguments: CommandLineArguments, conf: => BasicConfiguration)
     : Unit = {
-      // Log early for early timestamp and proper logger initialization by a
-      // single (non-concurrent) call
-      // Log a bar, in case the previous file is appended
-      logger.info("JS7 " + name + " " + BuildInfo.longVersion +
-        "\n" + "━" * 80)
       logger.info(startUpLine())
       logger.debug(commandLineArguments.toString)
 

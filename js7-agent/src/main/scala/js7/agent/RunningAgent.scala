@@ -292,7 +292,7 @@ object RunningAgent {
     val gateKeeperConf = GateKeeper.Configuration.fromConfig(config, SimpleUser.apply)
 
     val agentOverview = Task(AgentOverview(
-      startedAt = ServiceMain.startedAt,
+      startedAt = StartUp.startedAt,
       version = BuildInfo.prettyVersion,
       buildId = BuildInfo.buildId,
       //isTerminating = isTerminating,
