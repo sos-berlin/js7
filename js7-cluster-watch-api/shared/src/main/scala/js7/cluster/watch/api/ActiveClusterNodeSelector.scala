@@ -87,7 +87,7 @@ object ActiveClusterNodeSelector {
                     apisWithClusterNodeStateFibers
                       .map(_.fiber.cancel)
                       .sequence
-                      .map(_ => ())
+                      .as(())
                 }))
           .onErrorRestartLoop(()) { (throwable, _, tryAgain) =>
             logger.warn(throwable.toStringWithCauses)

@@ -213,7 +213,7 @@ object RunningController
       iox <- IOExecutor.resource[Task](conf.config, conf.name + " I/O")
       runningController <- resource(conf, alarmClock, eventIdClock)(scheduler, iox)
     } yield runningController
-  }
+  }.executeOn(scheduler)
 
   private def resource(
     conf: ControllerConfiguration,

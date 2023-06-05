@@ -12,7 +12,6 @@ import js7.base.configutils.Configs.{HoconStringInterpolator, configIf, configMo
 import js7.base.crypt.SignatureVerifier
 import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax.RichPath
-import js7.base.monixutils.MonixBase.syntax.RichMonixResource
 import js7.common.system.ThreadPools.ownThreadPoolResource
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.tests.testenv.DirectoryProvider.*
@@ -90,8 +89,6 @@ extends SubagentEnv {
     directorResource
 
   def directorResource: Resource[Task, RunningAgent] =
-    ownThreadPoolResource(agentConf.name, agentConf.config)(scheduler =>
-      RunningAgent
-        .resource(agentConf)(scheduler)
-        .executeOn(scheduler))
+    ownThreadPoolResource(agentConf.name, agentConf.config)(implicit scheduler =>
+      RunningAgent.resource(agentConf))
 }

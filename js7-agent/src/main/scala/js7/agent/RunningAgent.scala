@@ -179,7 +179,7 @@ object RunningAgent {
       agent <- resource2(subagent, clusterNode, testWiring, conf, testEventBus, clock)(
         iox, scheduler)
     } yield agent
-  })
+  }).executeOn(scheduler)
 
   private def resource2(
     subagent: Subagent,

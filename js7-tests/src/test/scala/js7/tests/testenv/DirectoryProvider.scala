@@ -17,7 +17,6 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.https.{HttpsConfig, KeyStoreRef, TrustStoreRef}
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.log.{CorrelId, Logger}
-import js7.base.monixutils.MonixBase.syntax.RichMonixResource
 import js7.base.problem.Checked.*
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.MonixBlocking.syntax.*
@@ -280,8 +279,7 @@ extends HasCloser
             .resource(conf, testWiring)(js7Scheduler)
             .evalTap(runningController => Task {
               startForTest(runningController)
-            })
-            .executeOn(js7Scheduler)))
+            })))
   }
 
   def runAgents[A](

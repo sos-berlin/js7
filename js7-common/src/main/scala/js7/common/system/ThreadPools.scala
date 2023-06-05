@@ -87,8 +87,8 @@ object ThreadPools
   : Resource[Task, A] =
     for {
       ownScheduler <- standardSchedulerResource[Task](name, config)
-      agent <- resource(ownScheduler).executeOn(ownScheduler)
-    } yield agent
+      a <- resource(ownScheduler).executeOn(ownScheduler)
+    } yield a
 
   def standardSchedulerResource[F[_]](name: String, config: Config, orCommon: Option[Scheduler])
     (implicit F: Sync[F])
