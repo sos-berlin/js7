@@ -47,6 +47,7 @@ trait SessionApi
     logger.traceTask(s"$toString: tryLogout")(
       tryLogoutLock.lock(
         logout()
+          .timeout(tryLogoutTimeout)
           .onErrorRecover { case t =>
             logger.debug(s"$toString: logout failed: ${t.toStringWithCauses}")
             clearSession()
@@ -235,6 +236,8 @@ object SessionApi
 
     def clearSession() = {}
   }
+
+  private val tryLogoutTimeout = 5.s
 
   private val initialLoginDelays = {
     val seq = Seq(
