@@ -72,7 +72,6 @@ private[subagent] final class SubagentCommandExecutor(
               .rightAs(SubagentCommand.Accepted)
 
           case ShutDown(processSignal, dontWaitForDirector, restart) =>
-            logger.info(s"❗ $command")
             subagent.shutdown(processSignal, dontWaitForDirector, restart)
               .as(Right(SubagentCommand.Accepted))
 
@@ -115,5 +114,5 @@ private[subagent] final class SubagentCommandExecutor(
 }
 
 private object SubagentCommandExecutor {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 }

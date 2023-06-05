@@ -91,7 +91,7 @@ extends Actor {
       val checkedSession = (tokenToSession.get(token), idsOrUser) match {
         case (None, _) =>
           val users = idsOrUser.fold(_.mkString("|"), _.id)
-          logger.debug(s"🔒 InvalidSessionToken: Rejecting unknown session token of $users")
+          logger.debug(s"🔒 InvalidSessionToken: Rejecting unknown $token of $users")
           Left(InvalidSessionTokenProblem)
 
         case (Some(session), Right(user)) if !user.id.isAnonymous && user.id != session.currentUser.id =>

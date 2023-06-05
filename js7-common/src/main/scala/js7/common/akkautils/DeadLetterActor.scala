@@ -7,6 +7,7 @@ import js7.base.log.{LogLevel, Logger}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.akkautils.Akkas.*
 import js7.common.akkautils.DeadLetterActor.*
+import scala.math.Ordering.Implicits.*
 import scala.util.control.NonFatal
 
 /**
@@ -50,7 +51,8 @@ object DeadLetterActor
   private def props(output: (LogLevel, () => String) => Unit) =
     Props { new DeadLetterActor(output) }
 
-  private def logDeadLetter(logLevel: LogLevel, message: () => String): Unit = logger.log(logLevel, message())
+  private def logDeadLetter(logLevel: LogLevel, message: () => String): Unit =
+    logger.log(logLevel, ((logLevel < LogLevel.Info) ?? "❓") + message())
 
   private def messageToLogLevel(message: Any): LogLevel =
     message match {

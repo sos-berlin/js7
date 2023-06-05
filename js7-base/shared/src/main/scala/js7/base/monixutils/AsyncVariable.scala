@@ -9,7 +9,7 @@ import monix.eval.Task
 final class AsyncVariable[V](initial: V, varName: String, typeName: String)
 {
   @volatile private var _value = initial
-  private val lock = AsyncLock(toString)
+  private val lock = AsyncLock(varName)
 
   def get: V =
     _value

@@ -85,11 +85,10 @@ extends MainService with Service.StoppableByRequest
     restart: Boolean = false,
     dontWaitForDirector: Boolean = false)
   : Task[ProgramTermination] =
-    logger.debugTask(
-      "shutdown",
-      Seq(processSignal, restart ? "restart", dontWaitForDirector ? "dontWaitForDirector")
-        .flatten.mkString(" ")
-    )(Task.defer {
+    logger.debugTask(Task.defer {
+      logger.info(s"❗ Shutdown ${
+        Seq(processSignal, restart ? "restart", dontWaitForDirector ? "dontWaitForDirector")
+          .flatten.mkString(" ")}")
       dedicatedAllocated
         .toOption
         .fold(Task.unit)(allocated =>

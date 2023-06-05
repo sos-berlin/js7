@@ -91,7 +91,7 @@ object ActiveClusterNodeSelector {
                 }))
           .onErrorRestartLoop(()) { (throwable, _, tryAgain) =>
             logger.warn(throwable.toStringWithCauses)
-            if (throwable.getStackTrace.nonEmpty) logger.debug(throwable.toString, throwable)
+            if (throwable.getStackTrace.nonEmpty) logger.debug(s"💥 $throwable", throwable)
             tryAgain(()).delayExecution(failureDelay)
       }
       .map { case (api, clusterNodeState) =>
