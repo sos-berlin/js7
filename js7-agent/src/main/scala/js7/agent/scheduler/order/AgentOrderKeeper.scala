@@ -14,6 +14,7 @@ import js7.agent.scheduler.order.AgentOrderKeeper.*
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.crypt.Signed
 import js7.base.generic.Completed
+import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.{RichCheckedTask, RichMonixTask}
 import js7.base.problem.Checked.Ops
@@ -26,6 +27,7 @@ import js7.base.utils.Collections.implicits.InsertableMutableMap
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.base.utils.{Allocated, DuplicateKeyException, SetOnce}
+import js7.cluster.ClusterNode
 import js7.common.akkautils.Akkas.{encodeAsActorName, uniqueActorName}
 import js7.common.akkautils.SupervisorStrategies
 import js7.common.system.PlatformInfos.currentPlatformInfo
@@ -73,7 +75,7 @@ import scala.util.{Failure, Success, Try}
  */
 final class AgentOrderKeeper(
   forDirector: Subagent.ForDirector,
-  totalRunningSince: Deadline,
+  clusterNode: ClusterNode[AgentState],
   failedOverSubagentId: Option[SubagentId],
   recoveredAgentState : AgentState,
   tryAppointClusterNodes: Task[Unit],
@@ -116,6 +118,7 @@ with Stash
   private val workflowRegister = new WorkflowRegister(ownAgentPath)
   private val fileWatchManager = new FileWatchManager(ownAgentPath, journal, conf.config)
   private val orderRegister = new OrderRegister
+  private var switchingOver = false
 
   private object shutdown {
     private var shutDownCommand: Option[AgentCommand.ShutDown] = None
@@ -130,25 +133,21 @@ with Stash
 
     def start(cmd: AgentCommand.ShutDown): Unit =
       if (!shuttingDown) {
-        if (cmd.isFailover) {
-          // Dirty exit
-          subagentKeeper.testFailover()
+        since := now
+        shutDownCommand = Some(cmd)
+        fileWatchManager.stop.runAsyncAndForget
+        if (cmd.isFailOrSwitchover) {
           journalAllocated.release.runAsyncAndForget
           context.stop(self)
+        } else if (cmd.suppressSnapshot) {
+          snapshotFinished = true
         } else {
-          shutDownCommand = Some(cmd)
-          since := now
-          fileWatchManager.stop.runAsyncAndForget
-          if (cmd.suppressSnapshot || cmd.isFailover) {
-            snapshotFinished = true
-          } else {
-            journalActor ! JournalActor.Input.TakeSnapshot  // Take snapshot before OrderActors are stopped
-            stillTerminatingSchedule = Some(scheduler.scheduleAtFixedRate(5.seconds, 10.seconds) {
-              self ! Internal.StillTerminating
-            })
-          }
-          continue()
+          journalActor ! JournalActor.Input.TakeSnapshot // Take snapshot before OrderActors are stopped
+          stillTerminatingSchedule = Some(scheduler.scheduleAtFixedRate(5.seconds, 10.seconds) {
+            self ! Internal.StillTerminating
+          })
         }
+        continue()
       }
 
     def close() = {
@@ -166,7 +165,7 @@ with Stash
         continue()
       }
 
-    def continue() =
+    def continue(): Unit =
       for (shutDown <- shutDownCommand) {
         logger.trace(s"termination.continue: ${orderRegister.size} orders, " +
           jobRegister.size + " jobs" +
@@ -268,7 +267,8 @@ with Stash
         persist(
           AgentReady(
             ZoneId.systemDefault.getId,
-            totalRunningTime = totalRunningSince.elapsed.roundUpToNext(1.ms),
+            totalRunningTime =
+              clusterNode.recoveredExtract.totalRunningSince.elapsed.roundUpToNext(1.ms),
             Some(currentPlatformInfo()))
         ) { (_, _) =>
           self ! Internal.OrdersRecovered(recoveredState)
@@ -439,6 +439,22 @@ with Stash
     case AgentCommand.ResetSubagent(subagentId, force) =>
       subagentKeeper.startResetSubagent(subagentId, force)
         .rightAs(AgentCommand.Response.Accepted)
+        .runToFuture
+
+    case AgentCommand.ClusterSwitchOver =>
+      forDirector.subagent.prepareForSwitchOver
+        .flatMapT { _ =>
+          logger.info(s"❗️ $cmd")
+          switchingOver = true // Asynchronous !!!
+          Task(clusterNode.workingClusterNode)
+            .flatTapT(_ =>
+              // SubagentKeeper stops the local (surrounding) Subagent,
+              // which lets the Director (RunningAgent) stop
+              subagentKeeper.stop.as(Right(())))
+            .flatMapT(_.switchOver)
+            .flatMapT(_ => Task.right(self ! Internal.ContinueSwitchover))
+            .rightAs(AgentCommand.Response.Accepted)
+        }
         .runToFuture
 
     case AgentCommand.TakeSnapshot =>
@@ -835,6 +851,11 @@ with Stash
       case Terminated(`journalActor`) if shuttingDown =>
         context.stop(self)
 
+      case Internal.ContinueSwitchover =>
+        shutdown.start(AgentCommand.ShutDown(
+          Some(SIGKILL),
+          Some(AgentCommand.ShutDown.ClusterAction.Switchover)))
+
       case Internal.StillTerminating =>
         shutdown.onStillTerminating()
 
@@ -866,7 +887,8 @@ object AgentOrderKeeper {
     final case class Due(orderId: OrderId)
     final case class JobDue(jobKey: JobKey)
     case object JobDriverStopped
-    object StillTerminating extends DeadLetterSuppression
+    case object StillTerminating extends DeadLetterSuppression
+    case object ContinueSwitchover
   }
 
   private final class JobEntry(

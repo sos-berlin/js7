@@ -13,6 +13,7 @@ import js7.base.eventbus.StandardEventBus
 import js7.base.io.file.FileUtils.provideFile
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.process.ProcessSignal
+import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.MonixBase.syntax.RichMonixResource
@@ -75,7 +76,10 @@ extends MainService with Service.StoppableByRequest
   protected def start =
     startService(Task
       .race(
-        untilStopRequested *> shutdown(processSignal = None),
+        untilStopRequested *>
+          shutdown(
+            processSignal = Some(SIGKILL),
+            dontWaitForDirector = true),
         untilTerminated)
       .void)
 
@@ -172,6 +176,14 @@ extends MainService with Service.StoppableByRequest
   : Task[Checked[Fiber[OrderProcessed]]] =
     Task(checkedDedicatedSubagent)
       .flatMapT(_.startOrderProcess(order, defaultArguments))
+
+  // Provisional until Subagent continues despite Director's passivation
+  def prepareForSwitchOver: Task[Checked[Unit]] =
+    Task(subagent.checkedDedicatedSubagent).flatMapT(_.prepareForSwitchOver)
+
+  def killAllProcesses(signal: ProcessSignal): Task[Checked[Unit]] =
+    subagent.checkedDedicatedSubagent
+      .traverse(_.killAllProcesses(signal))
 
   def killProcess(orderId: OrderId, signal: ProcessSignal): Task[Checked[Unit]] =
     subagent.checkedDedicatedSubagent

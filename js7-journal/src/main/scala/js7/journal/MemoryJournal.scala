@@ -44,6 +44,8 @@ extends Journal[S]
   private val journalLogger =
     new JournalLogger("memory", infoLogEvents, suppressTiming = true)
 
+  def isHalted = false
+
   val whenNoFailoverByOtherNode = Task.unit
 
   val eventWatch: RealEventWatch = new RealEventWatch {

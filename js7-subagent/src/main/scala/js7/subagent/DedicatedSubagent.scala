@@ -24,7 +24,7 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.job.{JobConf, JobKey}
 import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten}
 import js7.data.order.{Order, OrderId, Outcome}
-import js7.data.subagent.Problems.{SubagentIdMismatchProblem, SubagentIsShuttingDownProblem, SubagentRunIdMismatchProblem, SubagentShutDownBeforeProcessStartProblem}
+import js7.data.subagent.Problems.{DirectorIsSwitchingOverProblem, SubagentHasStillOrdersProblem, SubagentIdMismatchProblem, SubagentIsShuttingDownProblem, SubagentRunIdMismatchProblem, SubagentShutDownBeforeProcessStartProblem}
 import js7.data.subagent.SubagentCommand.CoupleDirector
 import js7.data.subagent.SubagentEvent.SubagentShutdown
 import js7.data.subagent.{SubagentCommand, SubagentId, SubagentRunId, SubagentState}
@@ -231,10 +231,17 @@ extends Service.StoppableByRequest
       .flatMap(_
         .join
         .onErrorHandle(Outcome.Failed.fromThrowable)
-        .flatMap(outcome =>
-          journal
-            .persistKeyedEvent(order.id <-: OrderProcessed(outcome))
-            .map(_.orThrow._1.value.event))
+        .flatMap { outcome =>
+          val orderProcessed = OrderProcessed(outcome)
+          if (journal.isHalted) {
+            // We simulate !!!
+            logger.debug(s"⚠️  $orderProcessed suppressed because journal is halted")
+            Task.pure(orderProcessed)
+          } else
+            journal
+              .persistKeyedEvent(order.id <-: orderProcessed)
+              .map(_.orThrow._1.value.event)
+        }
         .start)
 
   private def startOrderProcess3(order: Order[Order.Processing], defaultArguments: Map[String, Expression])
@@ -365,6 +372,22 @@ extends Service.StoppableByRequest
               }))
             .map(workflowJob -> _))
       .flatMap(_.sequence)
+
+  // Provisional until Subagent continues despite Director's passivation
+  def prepareForSwitchOver: Task[Checked[Unit]] =
+    orderToProcessing
+      .initiateStopWithProblemIfEmpty(DirectorIsSwitchingOverProblem)
+      .flatMap(isEmpty =>
+        if (!isEmpty)
+          Task.left(SubagentHasStillOrdersProblem(subagentId))
+        else
+          Task.right(()))
+
+  def killAllProcesses(signal: ProcessSignal): Task[Unit] =
+    Task.defer(orderIdToJobDriver
+      .toMap.toVector
+      .parTraverse { case (orderId, jobDriver) => jobDriver.killOrder(orderId, signal) })
+      .map(_.combineAll)
 
   def killProcess(orderId: OrderId, signal: ProcessSignal): Task[Unit] =
     for {

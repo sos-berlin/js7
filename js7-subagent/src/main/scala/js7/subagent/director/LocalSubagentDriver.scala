@@ -4,6 +4,7 @@ import cats.effect.Resource
 import cats.effect.concurrent.Deferred
 import cats.syntax.all.*
 import js7.base.io.process.ProcessSignal
+import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.MonixBase.syntax.*
@@ -27,7 +28,6 @@ import js7.journal.state.Journal
 import js7.subagent.configuration.SubagentConf
 import js7.subagent.{LocalSubagentApi, Subagent}
 import monix.eval.{Fiber, Task}
-import scala.annotation.unused
 
 private final class LocalSubagentDriver private(
   val subagentItem: SubagentItem,
@@ -163,27 +163,16 @@ with Service.StoppableByRequest
         Some(processing.complete(orderProcessed))
     }
 
-  def terminate(@unused signal: Option[ProcessSignal]): Task[Unit] =
+  def terminate: Task[Unit] =
     logger.traceTask(
-      tryShutdownLocalSubagent(signal) *> stop)
+      subagent.killAllProcesses(SIGKILL)/*ignore Left(problem)*/ *>
+        stop)
 
   private def tryShutdownLocalSubagent(processSignal: Option[ProcessSignal] = None): Task[Unit] =
-    tryShutdownSubagent(processSignal, dontWaitForDirector = _testFailover)
+    Task.unit
 
   def tryShutdown: Task[Unit] =
-    tryShutdownSubagent()
-
-  private def tryShutdownSubagent(
-    processSignal: Option[ProcessSignal] = None,
-    dontWaitForDirector: Boolean = false)
-  : Task[Unit] =
-    logger.debugTask(Task.defer {
-      shuttingDown = true
-      subagent.shutdown(processSignal, dontWaitForDirector = dontWaitForDirector)
-        .void
-        .onErrorHandle(t =>  // Ignore when Subagent is unreachable
-          logger.error(s"SubagentCommand.ShutDown => ${t.toStringWithCauses}"))
-    })
+    Task.raiseError(new RuntimeException("The local Subagent cannot be shut down"))
 
   /** Continue a recovered processing Order. */
   def recoverOrderProcessing(order: Order[Order.Processing]) =

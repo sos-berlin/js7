@@ -152,8 +152,14 @@ object AgentCommand extends CommonCommand.Companion
   extends ShutdownOrAbort {
     type Response = Response.Accepted
 
-    def isFailover: Boolean =
+    def isFailOrSwitchover: Boolean =
+      isFailover || isSwitchover
+
+    private def isFailover: Boolean =
       clusterAction contains ShutDown.ClusterAction.Failover
+
+    private def isSwitchover: Boolean =
+      clusterAction contains ShutDown.ClusterAction.Switchover
   }
   object ShutDown {
     sealed trait ClusterAction
@@ -232,6 +238,7 @@ object AgentCommand extends CommonCommand.Companion
     type Response = Response.Accepted
   }
 
+  type ClusterSwitchOver = ClusterSwitchOver.type
   case object ClusterSwitchOver
     extends AgentCommand {
     type Response = Response.Accepted

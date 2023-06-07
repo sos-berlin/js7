@@ -14,6 +14,8 @@ extends ReadableStateJournal[S]
 
   def journalId: JournalId
 
+  def isHalted: Boolean
+
   def persistKeyedEvent[E <: Event](
     keyedEvent: KeyedEvent[E],
     options: CommitOptions = CommitOptions.default)

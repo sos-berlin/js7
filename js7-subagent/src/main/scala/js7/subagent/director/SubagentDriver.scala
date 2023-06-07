@@ -19,7 +19,6 @@ import js7.data.workflow.instructions.Execute
 import js7.data.workflow.position.WorkflowPosition
 import js7.journal.state.Journal
 import monix.eval.{Fiber, Task}
-import scala.annotation.unused
 
 trait SubagentDriver {
 
@@ -41,7 +40,7 @@ trait SubagentDriver {
 
   def tryShutdown: Task[Unit]
 
-  def terminate(@unused signal: Option[ProcessSignal]): Task[Unit]
+  def terminate: Task[Unit]
 
   protected def api: SubagentApi
 

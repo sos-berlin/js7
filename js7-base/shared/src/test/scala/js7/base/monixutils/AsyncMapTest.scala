@@ -2,9 +2,9 @@ package js7.base.monixutils
 
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.problem.{Checked, Problem}
+import js7.base.test.OurAsyncTestSuite
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
-import js7.base.test.OurAsyncTestSuite
 import scala.collection.View
 import scala.util.{Failure, Success}
 
@@ -264,6 +264,35 @@ final class AsyncMapTest extends OurAsyncTestSuite
           _ = assert(!asyncMap.isStoppingWith(Problem("OTHER")))
         } yield succeed
         ).runToFuture
+      }
+
+      "initiateStopWithProblemIfEmpty" - {
+        "non empty" in {
+          val asyncMap = AsyncMap.stoppable[Int, String]()
+          val myProblem = Problem("MY PROBLEM")
+          (for {
+            _ <- asyncMap.insert(1, "SOMETHING")
+            ok <- asyncMap.initiateStopWithProblemIfEmpty(myProblem)
+            _ = assert(!ok)
+            checked <- asyncMap.insert(2, "NOT ALLOWED")
+            _ = assert(checked.isRight)
+            _ = assert(!asyncMap.isStoppingWith(myProblem))
+          } yield succeed
+          ).runToFuture
+        }
+
+        "empty" in {
+          val asyncMap = AsyncMap.stoppable[Int, String]()
+          val myProblem = Problem("MY PROBLEM")
+          (for {
+            ok <- asyncMap.initiateStopWithProblemIfEmpty(myProblem)
+            _ = assert(ok)
+            checked <- asyncMap.insert(1, "NOT ALLOWED")
+            _ = assert(checked == Left(myProblem))
+            _ = assert(asyncMap.isStoppingWith(myProblem))
+          } yield succeed
+          ).runToFuture
+        }
       }
     }
 

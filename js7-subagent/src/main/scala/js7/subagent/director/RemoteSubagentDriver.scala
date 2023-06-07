@@ -37,7 +37,6 @@ import js7.journal.state.Journal
 import js7.subagent.configuration.SubagentConf
 import js7.subagent.director.RemoteSubagentDriver.*
 import monix.eval.{Fiber, Task}
-import scala.annotation.unused
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.FiniteDuration
 import scala.util.{Failure, Success}
@@ -101,7 +100,7 @@ with SubagentEventListener
           .*>*/(Task.unit/*dispatcher.start(subagentRunId)*/)
       })
 
-  def terminate(@unused signal: Option[ProcessSignal]): Task[Unit] =
+  def terminate: Task[Unit] =
     logger.traceTask(
       stop)
 

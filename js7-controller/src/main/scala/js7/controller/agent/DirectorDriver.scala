@@ -224,7 +224,7 @@ extends Service.StoppableByRequest
   : Task[Checked[command.Response]] =
     Task
       .race(
-        untilStopRequested,
+        untilStopRequested.delayExecution(10.s/*because AgentDriver stops on SwitchOver*/),
         client.retryIfSessionLost()(
           client.commandExecute(command)))
       .map {

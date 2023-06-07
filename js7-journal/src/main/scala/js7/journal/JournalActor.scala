@@ -90,13 +90,14 @@ extends Actor with Stash with JournalLogging
   private var releaseEventIdsAfterClusterCoupledAck: Option[EventId] = None
   private val waitingForAcknowledgeTimer = SerialCancelable()
   private var waitingForAcknowledgeSince = now
-  private var switchedOver = false
+  private var isHalted = false
   private val statistics = new Statistics
 
   for (o <- conf.simulateSync) logger.warn(s"Disk sync is simulated with a ${o.pretty} pause")
   logger.whenTraceEnabled { logger.debug("Logger isTraceEnabled=true") }
 
   override def postStop() = {
+    isHalted = true // is publicly readable via Journal#isHalted, even after actor stop
     if (snapshotSchedule != null) snapshotSchedule.cancel()
     delayedCommit := Cancelable.empty // Discard commit for fast exit
     stopped.trySuccess(Stopped)
@@ -151,9 +152,9 @@ extends Actor with Stash with JournalLogging
 
   private def ready: Receive = receiveGet orElse {
     case Input.Store(correlId, timestamped, replyTo, options, since, commitLater, callersItem) =>
-      if (switchedOver) {
+      if (isHalted) {
         for (o <- timestamped) {
-          logger.debug(s"Event ignored while active cluster node is switching over: ${o.keyedEvent.toString.truncateWithEllipsis(200)}")
+          logger.debug(s"Event ignored because journal is halted: ${o.keyedEvent.toString.truncateWithEllipsis(200)}")
         }
         // We ignore the event and do not notify the caller,
         // because it would crash and disturb the process of switching-over.
@@ -205,7 +206,7 @@ extends Actor with Stash with JournalLogging
               case Some(Stamped(_, _, KeyedEvent(_, _: ClusterSwitchedOver))) =>
                 commit()
                 logger.debug("SwitchedOver: no more events are accepted")
-                switchedOver = true  // No more events are accepted
+                isHalted = true  // No more events are accepted
 
               case Some(Stamped(_, _, KeyedEvent(_, event: ClusterFailedOver))) =>
                 commitWithoutAcknowledgement(event)
@@ -239,14 +240,14 @@ extends Actor with Stash with JournalLogging
       }
       commit()
 
-    case Input.TakeSnapshot if !switchedOver =>
+    case Input.TakeSnapshot if !isHalted =>
       logger.debug(s"TakeSnapshot ${sender()}")
       snapshotRequesters += sender()
       tryTakeSnapshotIfRequested()
 
     case Input.PassiveNodeAcknowledged(eventId_) =>
       var ack = eventId_
-      if (ack > lastWrittenEventId && switchedOver) {
+      if (ack > lastWrittenEventId && isHalted) {
         // The other cluster node may already have become active (uncoupled),
         // generating new EventIds whose last one we may receive here.
         // So we take the last one we know (must be the EventId of ClusterSwitchedOver)
@@ -275,7 +276,7 @@ extends Actor with Stash with JournalLogging
 
     case Input.Terminate =>
       logger.debug("Terminate")
-      if (!switchedOver) {
+      if (!isHalted) {
         commit(terminating = true)
         closeEventWriter()
       }
@@ -460,7 +461,7 @@ extends Actor with Stash with JournalLogging
     tryTakeSnapshotIfRequested()  // TakeSnapshot has been delayed until last event has been acknowledged
     if (snapshotSchedule == null) {
       snapshotSchedule = scheduler.scheduleOnce(conf.snapshotPeriod) {
-        if (!switchedOver) {
+        if (!isHalted) {
           self ! Input.TakeSnapshot
         }
       }
@@ -490,6 +491,11 @@ extends Actor with Stash with JournalLogging
       // asynchronously at any time.
       // Returned function accesses committedState directly and asynchronously !!!
       sender() ! (() => commitStateSync.synchronized(committedState))
+
+    case Input.GetIsHaltedFunction =>
+      // Allow the caller outside of this JournalActor to read isHalted
+      // asynchronously at any time.
+      sender() ! (() => isHalted)
   }
 
   def tryTakeSnapshotIfRequested(): Unit =
@@ -614,7 +620,7 @@ extends Actor with Stash with JournalLogging
 
   private def closeEventWriter(): Unit =
     if (eventWriter != null) {
-      if (switchedOver) {
+      if (isHalted) {
         eventWriter.flush(sync = conf.syncOnCommit)
         eventWriter.close()
       } else {
@@ -745,6 +751,7 @@ object JournalActor
     case object Terminate
     case object GetJournalActorState
     case object GetJournaledState
+    case object GetIsHaltedFunction
   }
 
   private[journal] trait Timestamped {

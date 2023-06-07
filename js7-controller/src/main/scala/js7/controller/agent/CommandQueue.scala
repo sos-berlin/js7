@@ -219,9 +219,6 @@ private[agent] abstract class CommandQueue(
 
       case Queueable.ResetSubagent(subagentId, force) =>
         AgentCommand.ResetSubagent(subagentId, force = force)
-
-      case Queueable.ClusterSwitchOver =>
-        AgentCommand.ClusterSwitchOver
     }
 
   final def onOrdersDetached(orderIds: View[OrderId]): Task[Unit] =

@@ -2,6 +2,7 @@ package js7.base.monixutils
 
 import cats.effect.concurrent.Deferred
 import cats.syntax.apply.*
+import cats.syntax.flatMap.*
 import izumi.reflect.Tag
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
@@ -201,6 +202,20 @@ object AsyncMap
     final def initiateStop: Task[Unit] =
       initiateStopWithProblem(Problem.pure(s"$name is being stopped"))
 
+    final def initiateStopWithProblemIfEmpty(problem: Problem): Task[Boolean] =
+      Task.defer {
+        logger.trace(s"$name initiateStopWithProblemIfEmpty $problem")
+        shortLock
+          .lock(Task {
+            isEmpty && {
+              stoppingProblem = problem
+              true
+            }
+          })
+          .flatTap(Task.when(_)(
+            whenEmpty.complete(())).attempt.void)
+      }
+
     final def initiateStopWithProblem(problem: Problem): Task[Unit] =
       Task.defer {
         logger.trace(s"$name initiateStopWithProblem $problem")
@@ -210,7 +225,7 @@ object AsyncMap
             isEmpty
           })
           .flatMap(Task.when(_)(
-            whenEmpty.complete(())))
+            whenEmpty.complete(()).attempt.void))
       }
 
     override protected[monixutils] final def onEntryInsert(): Checked[Unit] =
@@ -219,7 +234,6 @@ object AsyncMap
     override protected[monixutils] final def onEntryRemoved() =
       Task.defer(
         Task.when(isStopping && isEmpty)(
-          whenEmpty.complete(())
-            .attempt.void))
+          whenEmpty.complete(()).attempt.void))
   }
 }

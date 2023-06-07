@@ -175,21 +175,13 @@ private[agent] final class AgentActor(
           } yield
             CoupleController.Response(journal.unsafeCurrentState().idToOrder.keySet))
 
-      case AgentCommand.ClusterSwitchOver =>
-        response.completeWith(
-          Task.left(Problem("Agent still not support ClusterSwitchOver command"))
-          // Notify AgentOrderKeeper ???
-          //Task(clusterNode.workingClusterNode)
-          //  .flatMapT(_.switchOver)
-          //  .rightAs(AgentCommand.Response.Accepted)
-            .runToFuture)
-
       case command @ (_: AgentCommand.OrderCommand |
                       _: AgentCommand.TakeSnapshot |
                       _: AgentCommand.AttachItem |
                       _: AgentCommand.AttachSignedItem |
                       _: AgentCommand.DetachItem |
-                      _: AgentCommand.ResetSubagent) =>
+                      _: AgentCommand.ResetSubagent |
+                      _: AgentCommand.ClusterSwitchOver) =>
         // TODO Check AgentRunId ?
         started.toOption match {
           case None =>
@@ -311,7 +303,7 @@ private[agent] final class AgentActor(
               Props {
                 new AgentOrderKeeper(
                   forDirector,
-                  clusterNode.recoveredExtract.totalRunningSince,
+                  clusterNode,
                   failedOverSubagentId,
                   requireNonNull(recoveredAgentState),
                   appointClusterNodes,

@@ -13,7 +13,6 @@ import js7.base.auth.{Admission, UserAndPassword}
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.generic.SecretString
 import js7.base.io.process.ProcessSignal
-import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.*
@@ -80,7 +79,8 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
           state.clear -> state.subagentToEntry.values))
         .flatMap(entries =>
           entries.toVector
-            .parUnorderedTraverse(_.terminate(Some(SIGKILL)))
+            .map(_.driver)
+            .parUnorderedTraverse(_.terminate)
             .map(_.combineAll)))
 
   def orderIsLocal(orderId: OrderId): Boolean =
@@ -307,7 +307,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
             subagentDriver.tryShutdown
               .*>(stateVar.update(state => Task(
                 state.removeSubagent(subagentId))))
-              .*>(subagentDriver.terminate(signal = None)))))
+              .*>(subagentDriver.terminate))))
               .*>(journal
                 .persistKeyedEvent(ItemDetached(subagentId, agentPath))
                 .orThrow
@@ -462,18 +462,6 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
       directorConf.httpsConfig,
       name = subagentItem.id.toString,
       actorSystem)
-
-  private def subagentDriverResource(subagentItem: SubagentItem, api: HttpSubagentApi)
-  : Resource[Task, SubagentDriver] =
-    RemoteSubagentDriver
-      .resource(
-        subagentItem,
-        api,
-        journal,
-        controllerId,
-        driverConf,
-        directorConf.subagentConf,
-        directorConf.recouplingStreamReaderConf)
 
   def addOrReplaceSubagentSelection(selection: SubagentSelection): Task[Checked[Unit]] =
     stateVar

@@ -11,6 +11,7 @@ import cats.syntax.option.*
 import cats.syntax.parallel.*
 import cats.syntax.traverse.*
 import java.time.ZoneId
+import js7.agent.data.commands.AgentCommand
 import js7.agent.data.event.AgentEvent
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.crypt.Signed
@@ -945,22 +946,18 @@ with MainJournalingActor[ControllerState, Event]
         }
 
       case ControllerCommand.ClusterSwitchOver(Some(agentPath)) =>
-        Future.successful {
-          agentRegister.checked(agentPath)
-            .map(_.agentDriver)
-            .map { agentDriver =>
+        agentRegister.checked(agentPath)
+          .map(_.agentDriver)
+          .match_ {
+            case Left(problem) => Future.successful(Left(problem))
+            case Right(agentDriver) =>
               agentDriver
-                .send(AgentDriver.Queueable.ClusterSwitchOver)
-                .onErrorHandle(t => logger.error(
-                  s"$agentDriver.send(ClusterSwitchOver) => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+                .executeCommandDirectly(AgentCommand.ClusterSwitchOver)
                 .logWhenItTakesLonger(s"$agentDriver.send(ClusterSwitchOver)")
-                .awaitInfinite // TODO
-              // - Asynchronous, no response awaited
-              // - No error checking
-              // - Gets lost on Agent restart
-              ControllerCommand.Response.Accepted
-            }
-        }
+                .materializeIntoChecked
+                .rightAs(ControllerCommand.Response.Accepted)
+                .runToFuture
+          }
 
       case _ =>
         // Handled by ControllerCommandExecutor

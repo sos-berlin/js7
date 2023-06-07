@@ -30,6 +30,13 @@ object Problems
   type SubagentIsShuttingDownProblem = SubagentIsShuttingDownProblem.type
   case object SubagentIsShuttingDownProblem extends Problem.ArgumentlessCoded
 
+  type DirectorIsSwitchingOverProblem = DirectorIsSwitchingOverProblem.type
+  case object DirectorIsSwitchingOverProblem extends Problem.ArgumentlessCoded
+
+  final case class SubagentHasStillOrdersProblem(subagentId: SubagentId) extends Problem.Coded {
+    def arguments = Map("subagentId" -> subagentId.string)
+  }
+
   sealed trait ProcessLostProblem extends Problem.Coded
 
   // COMPATIBLE with v2.2

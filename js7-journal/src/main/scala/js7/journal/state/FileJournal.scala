@@ -38,6 +38,7 @@ final class FileJournal[S <: SnapshotableState[S]: Tag] private(
   val journalConf: JournalConf,
   val eventWatch: FileEventWatch,
   getCurrentState: () => S,
+  isHaltedFun: () => Boolean,
   persistTask: Task[PersistFunction[S, Event]],
   persistLaterTask: Task[PersistLaterFunction[Event]],
   val journalActor: ActorRef @@ JournalActor.type)
@@ -46,6 +47,9 @@ final class FileJournal[S <: SnapshotableState[S]: Tag] private(
 extends Journal[S]
 with FileJournal.PossibleFailover
 {
+  def isHalted: Boolean =
+    isHaltedFun()
+
   def persistKeyedEvent[E <: Event](
     keyedEvent: KeyedEvent[E],
     options: CommitOptions = CommitOptions.default)
@@ -170,18 +174,20 @@ object FileJournal
             )(Timeout(1.h /*???*/)
           ).mapTo[JournalActor.Output.Ready].map(_.journalHeader))
 
-        val askJournalStateGetter: Task[() => S] = Task
-          .deferFuture(
-            (journalActor ? JournalActor.Input.GetJournaledState)
-              .mapTo[() => S])
-          .logWhenItTakesLonger("JournalActor.Input.GetJournaledState")
-
         whenJournalActorReady
           .flatMap { journalHeader =>
             logger.debug("JournalActor is ready")
-            askJournalStateGetter.map(journalHeader -> _)
+            for {
+              getState <- Task
+                .deferFuture((journalActor ? JournalActor.Input.GetJournaledState).mapTo[() => S])
+                .logWhenItTakesLonger("JournalActor.Input.GetJournaledState")
+              isHalted <- Task
+                .deferFuture((journalActor ? JournalActor.Input.GetIsHaltedFunction).mapTo[() =>
+                  Boolean])
+                .logWhenItTakesLonger("JournalActor.Input.GetIsHaltedFunction")
+            } yield (journalHeader, getState, isHalted)
           }
-          .flatMap { case (journalHeader, getCurrentState) =>
+          .flatMap { case (journalHeader, getCurrentState, isHalted) =>
             Task {
               val persistPromise = Promise[PersistFunction[S, Event]]()
               val persistTask = Task.fromFuture(persistPromise.future)
@@ -198,7 +204,7 @@ object FileJournal
               val journal = new FileJournal[S](
                 journalId, journalHeader, journalConf,
                 recovered.eventWatch,
-                getCurrentState, persistTask, persistLaterTask,
+                getCurrentState, isHalted, persistTask, persistLaterTask,
                 journalActor)
 
               (journal, journalActor, actor, journalActorStopped)

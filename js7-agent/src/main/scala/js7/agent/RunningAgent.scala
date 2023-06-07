@@ -13,7 +13,7 @@ import js7.agent.command.CommandHandler
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
-import js7.agent.data.commands.AgentCommand.{ClusterSwitchOver, ShutDown}
+import js7.agent.data.commands.AgentCommand.ShutDown
 import js7.agent.data.views.AgentOverview
 import js7.agent.web.AgentRoute
 import js7.base.BuildInfo
@@ -24,9 +24,9 @@ import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.MonixBase.syntax.{RichMonixResource, RichMonixTask}
+import js7.base.problem.Checked
 import js7.base.problem.Checked.*
 import js7.base.problem.Problems.ShuttingDownProblem
-import js7.base.problem.{Checked, Problem}
 import js7.base.service.{MainService, Service}
 import js7.base.time.AlarmClock
 import js7.base.time.JavaTimeConverters.AsScalaDuration
@@ -71,7 +71,6 @@ extends MainService with Service.StoppableByRequest
 {
   lazy val localUri: Uri = getLocalUri()
   val eventWatch: JournalEventWatch = clusterNode.recoveredExtract.eventWatch
-  @volatile private var isActorTerminated = false
   private val isTerminating = Atomic(false)
 
   val untilTerminated: Task[ProgramTermination] =
@@ -83,25 +82,27 @@ extends MainService with Service.StoppableByRequest
     clusterNode.currentState
 
   protected def start: Task[Service.Started] =
-    Task.defer {
-      for (_ <- untilMainActorTerminated.attempt) isActorTerminated = true
-      startService(
-        forDirector.subagent.untilTerminated
-          .*>(stop/*TODO Subagent should terminate this Director*/)
-          .startAndForget
-          .*>(untilStopRequested)
-          .*>(shutdown))
-    }
+    startService(
+      forDirector.subagent.untilTerminated
+        .*>(stop/*TODO Subagent should terminate this Director*/)
+        .startAndForget
+        .*>(Task.race(
+          untilStopRequested *> shutdown,
+          untilTerminated))
+        .void)
 
   private def shutdown: Task[Unit] =
-    logger.debugTask(terminating(Task {
-      executeCommandAsSystemUser(ShutDown(Some(SIGTERM)))
-        .runAsyncUncancelable {
-          case Left(throwable) => logger.warn(throwable.toStringWithCauses)
-          case Right(Left(problem)) => logger.warn(problem.toString)
-          case Right(Right(_)) =>
-        }
-    }).void)
+    logger.debugTask(
+      terminating(
+        executeCommandAsSystemUser(ShutDown(Some(SIGTERM)))
+          .attempt
+          .map {
+            case Left(throwable) => logger.warn(throwable.toStringWithCauses)
+            case Right(Left(problem)) => logger.warn(problem.toString)
+            case Right(Right(_)) =>
+          }
+          .startAndForget
+      ).void)
 
   private[agent] def terminate(
     processSignal: Option[ProcessSignal] = None,
@@ -119,7 +120,7 @@ extends MainService with Service.StoppableByRequest
   private def terminating(body: Task[Unit]): Task[ProgramTermination] =
     Task.defer {
       Task
-        .unless(isTerminating.getAndSet(true) || isActorTerminated)(
+        .unless(isTerminating.getAndSet(true))(
           body)
         .*>(untilTerminated)
         .logWhenItTakesLonger
@@ -274,18 +275,21 @@ object RunningAgent {
             whenReady.tryFailure(t)
           }))
 
-    val untilMainActorTerminated = logger.traceTask(
-      mainActorStarted.flatMap {
-        case Left(termination) => Task.pure(termination)
-        case Right(o) =>
-          Task
-            .fromFuture(o.termination)
-            .tapError(t => Task(
-              logger.error(s"ControllerOrderKeeper failed with ${t.toStringWithCauses}", t)))
-      }
-        .tapError(t => Task(whenReady.tryFailure(t)))
-    ).uncancelable /*a test may use this in `race`, unintentionally canceling this*/
-      .memoize
+    val untilMainActorTerminated =
+      logger
+        .traceTask(
+          mainActorStarted
+            .flatMap {
+              case Left(termination) => Task.pure(termination)
+              case Right(o) =>
+                Task
+                  .fromFuture(o.termination)
+                  .tapError(t => Task(
+                    logger.error(s"MainActor failed with ${t.toStringWithCauses}", t)))
+            }
+            .tapError(t => Task(whenReady.tryFailure(t))))
+        .uncancelable /*a test may use this in `race`, unintentionally canceling this*/
+        .memoize
 
     val gateKeeperConf = GateKeeper.Configuration.fromConfig(config, SimpleUser.apply)
 
@@ -330,19 +334,13 @@ object RunningAgent {
                   }
             }
 
-          case ClusterSwitchOver =>
-            Task.left(Problem("Agent still not support ClusterSwitchOver command"))
-            // Notify AgentOrderKeeper ???
-            //Task(clusterNode.workingClusterNode)
-            //  .flatMapT(_.switchOver)
-            //  .rightAs(AgentCommand.Response.Accepted)
-
           case _ =>
             currentMainActor
               .flatMap(_.traverse(_.whenReady.map(_.api)))
               .flatMapT(api => api(meta).commandExecute(cmd))
         }
-        .map(_.map((_: AgentCommand.Response).asInstanceOf[cmd.Response])))
+        .map(_.map((_: AgentCommand.Response).asInstanceOf[cmd.Response]))
+        .logWhenItTakesLonger(s"${cmd.getClass.simpleScalaName} command"))
 
     for {
       agent <- Service.resource(Task(

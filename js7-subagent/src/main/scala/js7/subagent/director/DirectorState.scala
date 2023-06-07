@@ -1,6 +1,5 @@
 package js7.subagent.director
 
-import js7.base.io.process.ProcessSignal
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Allocated
@@ -123,9 +122,5 @@ private object DirectorState
 
     def isAvailable: Boolean =
       !disabled && driver.isCoupled
-
-    def terminate(signal: Option[ProcessSignal]): Task[Unit] =
-      driver.terminate(signal)
-        .*>(allocatedDriver.release)
   }
 }

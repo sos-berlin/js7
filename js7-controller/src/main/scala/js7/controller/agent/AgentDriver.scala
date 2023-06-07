@@ -166,15 +166,7 @@ extends Service.StoppableByRequest
     protected def commandParallelism = conf.commandParallelism
 
     protected def executeCommand(command: AgentCommand.Batch) =
-      logger.traceTask(Task.defer {
-        val expectedSessionNumber = sessionNumber.get()
-        directorDriverAllocated.checked.flatMapT(directorDriver =>
-          // Fail on recoupling, later read restarted Agent's attached OrderIds before issuing again AttachOrder
-          if (sessionNumber.get() != expectedSessionNumber)
-            Task.left(DecoupledProblem)
-          else
-            directorDriver.executeCommand(command, mustBeCoupled = true))
-      })
+      executeCommandDirectly(command)
 
     protected def asyncOnBatchSucceeded(queueableResponses: Seq[QueueableResponse]) =
       Task.defer {
@@ -247,6 +239,17 @@ extends Service.StoppableByRequest
                 s"send(${input.toShortString}) => ${t.toStringWithCauses}", t))
               .raceFold(untilStopRequested)
               .startAndForget))
+    })
+
+  def executeCommandDirectly(command: AgentCommand): Task[Checked[command.Response]] =
+    logger.traceTask(Task.defer {
+      val expectedSessionNumber = sessionNumber.get()
+      directorDriverAllocated.checked.flatMapT(directorDriver =>
+        // Fail on recoupling, later read restarted Agent's attached OrderIds before issuing again AttachOrder
+        if (sessionNumber.get() != expectedSessionNumber)
+          Task.left(DecoupledProblem)
+        else
+          directorDriver.executeCommand(command, mustBeCoupled = true))
     })
 
   def changeAgentRef(agentRef: AgentRef): Task[Unit] =
@@ -533,8 +536,6 @@ private[controller] object AgentDriver
     private[agent] final case class ReleaseEventsQueueable(agentEventId: EventId) extends Queueable
 
     final case class ResetSubagent(subagentId: SubagentId, force: Boolean) extends Queueable
-
-    case object ClusterSwitchOver extends Queueable
   }
 
   private[agent] val DecoupledProblem = Problem.pure("Agent is not coupled")
