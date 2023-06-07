@@ -71,14 +71,16 @@ with SubagentEventListener
   protected def isShuttingDown = shuttingDown
 
   protected def start =
-    startEventListener *>
-      startService(
-        untilStopRequested *> onStop)
+    startService(
+      untilStopRequested *> onStop)
 
   private def onStop =
     Task.parZip2(dispatcher.shutdown, stopEventListener)
       .*>(api.tryLogout.void)
       .logWhenItTakesLonger(s"RemoteSubagentDriver($subagentId).stop")
+
+  def startObserving =
+    startEventListener
 
   def startMovedSubagent(previous: RemoteSubagentDriver): Task[Unit] =
     logger.debugTask(

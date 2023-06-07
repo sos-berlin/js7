@@ -53,8 +53,7 @@ with Service.StoppableByRequest
   protected def isShuttingDown = shuttingDown
 
   protected def start =
-    observeEvents *>
-      dedicate.map(_.orThrow) *>
+    dedicate.map(_.orThrow) *>
       startService(
         untilStopRequested *>
           tryShutdownLocalSubagent())
@@ -79,39 +78,40 @@ with Service.StoppableByRequest
       .rightAs(())
 
   // TODO Similar to SubagentEventListener
-  private def observeEvents: Task[Unit] =
-    subagent.journal.eventWatch
-      .observe(EventRequest.singleClass[Event](
-        // TODO Bei Failover EventId des Failovers verwenden!
-        after = initialEventId,
-        timeout = None))
-      .mapEval(handleEvent)
-      .mapEval {
-        case (maybeStampedEvent, followUp) =>
-          maybeStampedEvent
-            .fold(Task.unit)(stampedEvent => journal
-               // TODO Save Stamped timestamp
-              .persistKeyedEvent(stampedEvent.value)
-              .map(_.orThrow._1 /*???*/)
-              // After an OrderProcessed event an DetachProcessedOrder must be sent,
-              // to terminate StartOrderProcess command idempotency detection and
-              // allow a new StartOrderProcess command for a next process.
-              .tapEval {
-                case Stamped(_, _, KeyedEvent(orderId: OrderId, _: OrderProcessed)) =>
-                  subagent.commandExecutor
-                    .executeCommand(
-                      Numbered(0, SubagentCommand.DetachProcessedOrder(orderId)),
-                      CommandMeta.System)
-                    .orThrow
-                case _ => Task.unit
-              }
-              // TODO Emit SubagentEventsObserved
-              .*>(releaseEvents(stampedEvent.eventId)))
-            .*>(followUp)
-      }
-      .takeUntilEval(untilStopRequested)
-      .completedL
-      .onErrorHandle(t => logger.error(s"$toString observeEvents => ${t.toStringWithCauses}"))
+  def startObserving: Task[Unit] =
+    logger
+      .debugTask(subagent.journal.eventWatch
+        .observe(EventRequest.singleClass[Event](
+          // TODO Bei Failover EventId des Failovers verwenden!
+          after = initialEventId,
+          timeout = None))
+        .mapEval(handleEvent)
+        .mapEval {
+          case (maybeStampedEvent, followUp) =>
+            maybeStampedEvent
+              .fold(Task.unit)(stampedEvent => journal
+                 // TODO Save Stamped timestamp
+                .persistKeyedEvent(stampedEvent.value)
+                .map(_.orThrow._1 /*???*/)
+                // After an OrderProcessed event an DetachProcessedOrder must be sent,
+                // to terminate StartOrderProcess command idempotency detection and
+                // allow a new StartOrderProcess command for a next process.
+                .tapEval {
+                  case Stamped(_, _, KeyedEvent(orderId: OrderId, _: OrderProcessed)) =>
+                    subagent.commandExecutor
+                      .executeCommand(
+                        Numbered(0, SubagentCommand.DetachProcessedOrder(orderId)),
+                        CommandMeta.System)
+                      .orThrow
+                  case _ => Task.unit
+                }
+                // TODO Emit SubagentEventsObserved
+                .*>(releaseEvents(stampedEvent.eventId)))
+              .*>(followUp)
+        }
+        .takeUntilEval(untilStopRequested)
+        .completedL
+        .onErrorHandle(t => logger.error(s"observeEvents => ${t.toStringWithCauses}")))
       .startAndForget
 
   /** Returns optionally the event and a follow-up task. */

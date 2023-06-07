@@ -225,9 +225,9 @@ with Stash
       become("Recovering")(recovering(recoveredAgentState))
       unstashAll()
 
-      subagentKeeper.start
-        .*>(journal.state.flatMap(state => subagentKeeper.recoverSubagents(
-          state.idToSubagentItemState.values.toVector)))
+      journal.state
+        .flatMap(state =>
+          subagentKeeper.recoverSubagents(state.idToSubagentItemState.values.toVector))
         .flatMapT(_ =>
           subagentKeeper.recoverSubagentSelections(
             recoveredAgentState.pathToUnsignedSimple(SubagentSelection).values.toVector))
@@ -245,8 +245,8 @@ with Stash
 
     def continue() =
       if (remainingOrders == 0) {
-        subagentKeeper.continueDetaching
-          .logWhenItTakesLonger("subagentKeeper.continueDetaching")
+        subagentKeeper.startProcessing
+          .logWhenItTakesLonger("subagentKeeper.startProcessing")
           .awaitInfinite
 
         if (!journalState.userIdToReleasedEventId.contains(controllerId.toUserId)) {

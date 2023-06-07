@@ -68,9 +68,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
   private val orderToWaitForSubagent = AsyncMap.empty[OrderId, Promise[Unit]]
   private val orderToSubagent = AsyncMap.empty[OrderId, SubagentDriver]
   private val subagentItemLockKeeper = new LockKeeper[SubagentId]
-
-  def start: Task[Unit] =
-    logger.debugTask(Task.unit)
+  @volatile private var processingStarted = false // Delays SubagentDriver#startObserving
 
   def stop: Task[Unit] =
     logger.traceTask(
@@ -82,6 +80,13 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
             .map(_.driver)
             .parUnorderedTraverse(_.terminate)
             .map(_.combineAll)))
+
+  // Call this, but not before recovering !!!
+  def startProcessing: Task[Unit] =
+    logger.traceTask(Task.defer {
+      processingStarted = true
+      startObserving *> continueDetaching
+    })
 
   def orderIsLocal(orderId: OrderId): Boolean =
     orderToSubagent.toMap.get(orderId).exists(_.isInstanceOf[LocalSubagentDriver])
@@ -320,7 +325,12 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
       .map(_.combineProblems)
       .map(_.map(_.flatten))
 
-  def continueDetaching: Task[Unit] =
+  private def startObserving: Task[Unit] =
+    stateVar.value
+      .flatMap(_.subagentToEntry.values.toVector.map(_.driver).traverse(_.startObserving))
+      .map(_.combineAll)
+
+  private def continueDetaching: Task[Unit] =
     journal.state.flatMap(_
       .idToSubagentItemState.values
       .view
@@ -376,7 +386,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
                         Task.right(state -> None)
                       else {
                         // Subagent moved
-                        subagentDriverResource(subagentItem)
+                        remoteSubagentDriverResource(subagentItem)
                           .toAllocated
                           .map(allocatedDriver =>
                             state.replaceSubagentDriver(allocatedDriver, subagentItem)
@@ -425,30 +435,39 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
 
   private def allocateSubagentDriver(subagentItem: SubagentItem, eventId: EventId) =
     if (subagentItem.id == localSubagentId)
-      allocateLocalSubagentDriver(subagentItem, eventId)
+      emitLocalSubagentCoupled *>
+        localSubagentDriverResource(subagentItem, eventId).toAllocated
     else
-      subagentDriverResource(subagentItem).toAllocated
-
-  private def allocateLocalSubagentDriver(subagentItem: SubagentItem, eventId: EventId)
-  : Task[Allocated[Task, SubagentDriver]] =
-    emitLocalSubagentCoupled *>
-      localSubagentDriverResource(subagentItem, eventId).toAllocated
+      remoteSubagentDriverResource(subagentItem).toAllocated
 
   private def localSubagentDriverResource(subagentItem: SubagentItem, eventId: EventId)
   : Resource[Task, SubagentDriver] =
-    LocalSubagentDriver.resource(
-      subagentItem,
-      localSubagent,
-      eventId,
-      journal,
-      controllerId,
-      directorConf.subagentConf)
+    LocalSubagentDriver
+      .resource(
+        subagentItem,
+        localSubagent,
+        eventId,
+        journal,
+        controllerId,
+        directorConf.subagentConf)
+      .evalTap(driver => Task.when(processingStarted)(
+        driver.startObserving))
 
-  private def subagentDriverResource(subagentItem: SubagentItem)
-  : Resource[Task, SubagentDriver] =
+  private def remoteSubagentDriverResource(subagentItem: SubagentItem)
+  : Resource[Task, RemoteSubagentDriver] =
     for {
       api <- subagentApiResource(subagentItem)
-      driver <- subagentDriverResource(subagentItem, api)
+      driver <- RemoteSubagentDriver
+        .resource(
+          subagentItem,
+          api,
+          journal,
+          controllerId,
+          driverConf,
+          directorConf.subagentConf,
+          directorConf.recouplingStreamReaderConf)
+        .evalTap(driver => Task.when(processingStarted)(
+          driver.startObserving))
     } yield driver
 
   private def subagentApiResource(subagentItem: SubagentItem): Resource[Task, HttpSubagentApi] =

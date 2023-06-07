@@ -30,6 +30,8 @@ trait SubagentDriver {
 
   protected def isShuttingDown: Boolean
 
+  def startObserving: Task[Unit]
+
   protected val journal: Journal[? <: SubagentDirectorState[?]]
 
   def startOrderProcessing(order: Order[Order.Processing]): Task[Checked[Fiber[OrderProcessed]]]
