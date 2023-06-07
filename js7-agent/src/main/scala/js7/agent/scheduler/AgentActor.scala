@@ -109,11 +109,17 @@ private[agent] final class AgentActor(
 
     case Terminated(a) if started.toOption.exists(_.actor == a) =>
       logger.debug("AgentOrderKeeper terminated")
-      continueTermination()
+      context.stop(self)
 
-    case Terminated(actor) if actor == journal.journalActor && terminating =>
-      for (_ <- terminateCompleted.future) {
+    case Terminated(actor) if actor == journal.journalActor /*&& terminating*/ =>
+      if (!terminating) {
+        // SwitchOver lets AgentOrderKeeper kill the JournalActor
+        logger.error("JournalActor terminated unexpectedly")
         context.stop(self)
+      } else {
+        for (_ <- terminateCompleted.future) {
+          context.stop(self)
+        }
       }
   }
 
