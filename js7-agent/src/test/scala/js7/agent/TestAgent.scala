@@ -11,7 +11,7 @@ import js7.agent.data.commands.AgentCommand.ShutDown
 import js7.base.auth.SessionToken
 import js7.base.eventbus.StandardEventBus
 import js7.base.io.process.ProcessSignal
-import js7.base.io.process.ProcessSignal.SIGKILL
+import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
 import js7.base.problem.Checked
@@ -31,15 +31,19 @@ import monix.execution.Scheduler
 import scala.concurrent.duration.FiniteDuration
 import scala.util.control.NonFatal
 
-final class TestAgent(allocated: Allocated[Task, RunningAgent]) {
+final class TestAgent(
+  allocated: Allocated[Task, RunningAgent],
+  terminateProcessesWith: Option[ProcessSignal] = None)
+{
   val agent = allocated.allocatedThing
 
   def stop: Task[Unit] =
-    allocated.release
+    agent.terminate(terminateProcessesWith).void *>
+      allocated.release
 
   def killForFailOver: Task[ProgramTermination] =
     terminate(
-      processSignal = Some(SIGKILL),
+      processSignal = Some(SIGTERM),
       clusterAction = Some(AgentCommand.ShutDown.ClusterAction.Failover))
 
   def terminate(
@@ -99,20 +103,28 @@ final class TestAgent(allocated: Allocated[Task, RunningAgent]) {
 object TestAgent {
   private val logger = Logger[this.type]
 
-  def apply(allocated: Allocated[Task, RunningAgent]): TestAgent =
-    new TestAgent(allocated)
+  def apply(
+    allocated: Allocated[Task, RunningAgent],
+    terminateProcessesWith: Option[ProcessSignal] = None)
+  : TestAgent =
+    new TestAgent(allocated, terminateProcessesWith)
 
-  def start(conf: AgentConfiguration, testWiring: TestWiring = TestWiring.empty): Task[TestAgent] =
+  def start(
+    conf: AgentConfiguration,
+    testWiring: TestWiring = TestWiring.empty,
+    terminateProcessesWith: Option[ProcessSignal] = None)
+  : Task[TestAgent] =
     CorrelId.bindNew(
       ThreadPools
         .ownThreadPoolResource(conf.name, conf.config)(
           RunningAgent.resource(conf, testWiring)(_))
         .toAllocated
-        .map(new TestAgent(_)))
+        .map(new TestAgent(_, terminateProcessesWith)))
 
   def blockingRun(
     conf: AgentConfiguration,
-    timeout: FiniteDuration = 99.s)
+    timeout: FiniteDuration = 99.s,
+    terminateProcessesWith: Option[ProcessSignal] = None)
     (body: TestAgent => Unit)
   : ProgramTermination =
     MainServices.blockingRun(conf.name, conf.config, timeout = timeout)(
@@ -124,10 +136,10 @@ object TestAgent {
         try body(testAgent)
         catch { case NonFatal(t) =>
           logger.debug(s"💥 ${t.toStringWithCauses}", t.nullIfNoStackTrace)
-          agent.terminate().await(99.s)
+          agent.terminate(terminateProcessesWith).await(99.s)
           throw t
         }
-        agent.terminate().await(99.s)
+        agent.terminate(terminateProcessesWith).await(99.s)
       } catch { case NonFatal(t) =>
         // Silent deadlock in case of failure?
         logger.error(t.toStringWithCauses, t.nullIfNoStackTrace)
