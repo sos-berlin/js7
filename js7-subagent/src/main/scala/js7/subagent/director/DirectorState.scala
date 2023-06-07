@@ -23,12 +23,6 @@ private final case class DirectorState(
 
   def insertSubagentDriver(
     allocatedDriver: Allocated[Task, SubagentDriver],
-    subagentItem: SubagentItem)
-  : Checked[DirectorState] =
-    insertSubagentDriver(allocatedDriver, subagentItem.disabled)
-
-  def insertSubagentDriver(
-    allocatedDriver: Allocated[Task, SubagentDriver],
     disabled: Boolean = false)
   : Checked[DirectorState] = {
     val subagentId = allocatedDriver.allocatedThing.subagentId

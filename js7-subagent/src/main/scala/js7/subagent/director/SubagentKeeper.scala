@@ -362,7 +362,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
                 case None =>
                   allocateSubagentDriver(subagentItem, subagentItemState.eventId)
                     .map(allocatedDriver =>
-                      state.insertSubagentDriver(allocatedDriver, subagentItem)
+                      state.insertSubagentDriver(allocatedDriver, disabled = subagentItem.disabled)
                         .flatMap(_.setDisabled(subagentItem.id, subagentItem.disabled))
                         .map(_ -> Some(None -> allocatedDriver.allocatedThing)))
 

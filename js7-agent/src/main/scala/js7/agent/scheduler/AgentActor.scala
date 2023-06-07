@@ -146,7 +146,7 @@ private[agent] final class AgentActor(
                   case Left(problem) => Task(response.success(Left(problem)))
                   case Right(_) =>
                     Task.right {
-                    self ! ContinueReset(response)
+                      self ! ContinueReset(response)
                     }
                 }
                 .runToFuture
@@ -269,23 +269,20 @@ private[agent] final class AgentActor(
     }
 
   private def terminateOrderKeeper(shutDown: AgentCommand.ShutDown)
-  : Future[Checked[AgentCommand.Response.Accepted]] =
-    synchronized {
-      if (!shutDownCommand.trySet(shutDown))
-        Left(AgentDirectorIsShuttingDownProblem)
-      else
-        Right(started.toOption)
-    } match {
-      case Left(problem) =>
-        Future.successful(Left(problem))
+  : Future[Checked[AgentCommand.Response.Accepted]] = {
+    logger.trace("terminateOrderKeeper")
+    if (!shutDownCommand.trySet(shutDown))
+      Future.successful(Left(AgentDirectorIsShuttingDownProblem))
+    else
+      started.toOption match {
+        case None =>
+          continueTermination()
+          Future.successful(Right(AgentCommand.Response.Accepted))
 
-      case Right(None) =>
-        continueTermination()
-        Future.successful(Right(AgentCommand.Response.Accepted))
-
-      case Right(Some(started)) =>
-        terminateStartedOrderKeeper(started, shutDown)
-    }
+        case (Some(started)) =>
+          terminateStartedOrderKeeper(started, shutDown)
+      }
+  }
 
   private def terminateStartedOrderKeeper(started: Started, shutDown: AgentCommand.ShutDown)
   : Future[Checked[AgentCommand.Response.Accepted]] =

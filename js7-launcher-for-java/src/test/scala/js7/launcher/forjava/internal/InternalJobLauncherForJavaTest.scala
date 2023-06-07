@@ -96,7 +96,7 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite with BeforeAndAf
             .map(_.orThrow)
             .flatMap {
               case (outcome: Outcome.Succeeded, _, _) => Task.pure(outcome.namedValues.checked("RESULT"))
-              case (outcome: Outcome.NotSucceeded, _, _) => Task.pure(Left(Problem(outcome.toString)))
+              case (outcome: Outcome.NotSucceeded, _, _) => Task.left(Problem(outcome.toString))
               case (outcome, _, _) => Task(fail(s"UNEXPECTED: $outcome"))
             }
         }
