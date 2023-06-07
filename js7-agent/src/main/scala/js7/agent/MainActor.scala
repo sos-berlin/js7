@@ -53,7 +53,10 @@ extends Actor {
   private val agentHandle = new AgentHandle(agentActor)
 
   private val commandHandler = testCommandHandler getOrElse {
-    val actor = actorOf(Props {new CommandActor(agentHandle)}, "command")
+    // A global, not a child actor !!!
+    // because a child Actor may stop before Shutdown command has been responded,
+    // leaving the client without response (and tests fail after 99s)
+    val actor = context.system.actorOf(Props {new CommandActor(agentHandle)}, "command")
     new CommandActor.Handle(actor)
   }
 

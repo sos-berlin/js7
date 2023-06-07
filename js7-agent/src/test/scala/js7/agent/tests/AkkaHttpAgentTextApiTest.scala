@@ -82,7 +82,7 @@ extends OurTestSuite with BeforeAndAfterAll with HasCloser with TestAgentProvide
     val output = mutable.Buffer.empty[String]
     autoClosing(newTextAgentClient(Some(TestUserId -> Password))(output += _)) { client =>
       client.login() await 99.s
-      client.executeCommand("""{ "TYPE": "ShutDown", "processSignal": "SIGTERM" }""")
+      client.executeCommand("""{ "TYPE": "NoOperation" }""")
       client.getApi("")
     }
     assert(output.size == 2)
