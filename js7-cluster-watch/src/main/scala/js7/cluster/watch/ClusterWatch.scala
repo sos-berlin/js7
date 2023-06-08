@@ -1,6 +1,7 @@
 package js7.cluster.watch
 
 import cats.syntax.flatMap.*
+import com.typesafe.scalalogging.Logger as ScalaLogger
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.MonixDeadline
@@ -80,6 +81,7 @@ final class ClusterWatch(
         _nodeToLossRejected.clear()
         val changed = !_state.exists(_.clusterState == updatedClusterState)
         _state = Some(State(
+          logger,
           updatedClusterState,
           lastHeartbeat = now(),
           requireManualNodeLossConfirmation = requireManualNodeLossConfirmation))
@@ -144,8 +146,6 @@ final class ClusterWatch(
 
 object ClusterWatch
 {
-  private val logger = Logger[this.type]
-
   // ClusterNodeLossEvent has been rejected, but the user may confirm it later
   private case class LossRejected(
     event: ClusterNodeLostEvent,
@@ -156,6 +156,7 @@ object ClusterWatch
   }
 
   private[ClusterWatch] final case class State(
+    logger: ScalaLogger,
     clusterState: HasNodes,
     lastHeartbeat: MonixDeadline,
     requireManualNodeLossConfirmation: Boolean)

@@ -27,7 +27,7 @@ final class AgentRestartBeforeDedicationTest extends OurTestSuite with Directory
   protected def agentPaths = Seq(agentPath)
   protected def items = Seq(workflow)
 
-  "Restart agent before controller initializes it" in {
+  "Restart Agent before Controller initializes it" in {
     directoryProvider.runAgents() { _ => }
     directoryProvider.runAgents() { _ => }
     directoryProvider.runAgents() { _ =>

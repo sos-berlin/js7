@@ -43,22 +43,31 @@ final class BlockingSymbol {
       increment()
   }
 
-  private def increment(): Unit =
+  def increment(): Unit =
     if (_index < 3) {
       _index += 1
     }
-
-  def debugLogged: Boolean =
-    _debugLogged
-
-  def infoLogged: Boolean =
-    _infoLogged
 
   def warnLogged: Boolean =
     _warnLogged
 
   def called: Boolean =
     _called
+
+  def logLevel: LogLevel =
+    _index match {
+      case 0 => LogLevel.LogNone
+      case 1 => LogLevel.Debug
+      case 2 => LogLevel.Info
+      case 3 => LogLevel.Warn
+    }
+
+  def releasedLogLevel: LogLevel =
+    _index match {
+      case 0 => LogLevel.LogNone
+      case 1 => LogLevel.Debug
+      case 2 | 3 => LogLevel.Info
+    }
 
   override def toString =
     symbols(_index)

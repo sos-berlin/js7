@@ -2,6 +2,7 @@ package js7.base.utils
 
 import cats.effect.{ExitCase, Resource}
 import java.lang.System.nanoTime
+import js7.base.log.Logger.syntax.*
 import js7.base.log.{BlockingSymbol, CorrelId, Logger}
 import js7.base.monixutils.MonixBase.DefaultWorryDurations
 import js7.base.monixutils.MonixBase.syntax.*
@@ -73,9 +74,8 @@ final class AsyncLock private(
                             s" currently acquired by ${lockedBy getOrElse "None"} ...")
                       })
                     .map { _ =>
-                      lazy val msg =
-                        s"↘ 🟢${locked.nr} $name acquired by ${locked.who} after ${waitingSince.elapsed.pretty} ↘"
-                      if (sym.infoLogged) log.info(msg) else log.debug(msg)
+                      log.log(sym.releasedLogLevel,
+                        s"↘ 🟢${locked.nr} $name acquired by ${locked.who} after ${waitingSince.elapsed.pretty} ↘")
                       locked.startMetering()
                       Right(())
                   }

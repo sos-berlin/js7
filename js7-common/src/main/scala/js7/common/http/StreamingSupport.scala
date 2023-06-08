@@ -43,7 +43,7 @@ object StreamingSupport
     source.recoverWithRetries(1, { case throwable =>
       // These are the only messages logged
       val isDebug = throwable.isInstanceOf[akka.stream.AbruptTerminationException]
-      val msg = s"Terminating stream Source[${implicitly[Tag[A]].tag}] due to error: ${throwable.toStringWithCauses}"
+      val msg = s"Terminating Source[${implicitly[Tag[A]].tag}] stream due to error: ${throwable.toStringWithCauses}"
       if (isDebug) webLogger.debug(msg)
       else webLogger.warn(msg)
       if (throwable.getStackTrace.nonEmpty) logger.debug(msg, throwable)

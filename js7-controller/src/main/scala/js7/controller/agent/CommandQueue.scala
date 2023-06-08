@@ -274,7 +274,7 @@ private[agent] abstract class CommandQueue(
       delayCommandExecutionAfterErrorUntil = now + commandErrorDelay
       logger.trace(
         s"delayCommandExecutionAfterErrorUntil=${delayCommandExecutionAfterErrorUntil.toTimestamp}")
-      // Don't remove from queue. Queued queuables will be processed again
+      // Don't remove from queue. Queued queueables will be processed again
       onQueueableResponded(queuables.toSet)
     })
 

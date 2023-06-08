@@ -137,8 +137,7 @@ extends MainService with Service.StoppableByRequest
   def systemSessionToken: SessionToken =
     forDirector.systemSessionToken
 
-  override def toString =
-    "Agent"
+  override def toString = "RunningAgent"
 }
 
 object RunningAgent {

@@ -76,15 +76,15 @@ private[agent] final class AgentActor(
     super.preStart()
   }
 
-  override def postStop() = {
-    super.postStop()
-    if (isResetting) {
-      journalLocation.deleteJournal(ignoreFailure = true)
+  override def postStop() =
+    logger.debugCall {
+      super.postStop()
+      if (isResetting) {
+        journalLocation.deleteJournal(ignoreFailure = true)
+      }
+      terminatePromise.trySuccess(
+        ProgramTermination(restart = shutDownCommand.toOption.fold(false)(_.restart)))
     }
-    terminatePromise.trySuccess(
-      ProgramTermination(restart = shutDownCommand.toOption.fold(false)(_.restart)))
-    logger.debug("Stopped")
-  }
 
   def receive = {
     case Input.Start(recoveredAgentState) =>

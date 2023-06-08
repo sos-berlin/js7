@@ -319,7 +319,7 @@ with Stash
         unstashAll()
 
       case _: AgentCommand.ShutDown =>
-        logger.info("Command 'ShutDown' terminates Agent while recovering")
+        logger.info("ShutDown command terminates Agent while recovering")
         context.stop(self)
         sender() ! AgentCommand.Response.Accepted
 

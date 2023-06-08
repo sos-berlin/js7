@@ -1,8 +1,8 @@
 package js7.base.log
 
+import js7.base.log.LogLevel.ordering
 import org.scalatest.freespec.AnyFreeSpec
 import scala.math.Ordering.Implicits.*
-import LogLevel.ordering
 
 final class LogLevelTest extends AnyFreeSpec {
   "Ordering" in {

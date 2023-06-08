@@ -41,7 +41,7 @@ final class LockKeeper[K]
             val promise = Promise[Token]()
             queue += promise
             val sym = new BlockingSymbol
-            logger.info(s"🟡 Waiting for $key (in ${enclosing.value})")
+            logger.debug(s"🟡 Waiting for $key (in ${enclosing.value})")
             CorrelId.current.bind(
               Task.fromFuture(promise.future)
                 .whenItTakesLonger()(_ => Task {
