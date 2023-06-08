@@ -1,8 +1,8 @@
 package js7.common.akkautils
 
 import akka.actor.{Actor, ActorSystem, DeadLetter, DeadLetterSuppression, Props, ReceiveTimeout, UnhandledMessage}
-import js7.base.log.LogLevel.syntax.*
 import js7.base.log.LogLevel.{Debug, Warn}
+import js7.base.log.Logger.syntax.*
 import js7.base.log.{LogLevel, Logger}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.akkautils.Akkas.*

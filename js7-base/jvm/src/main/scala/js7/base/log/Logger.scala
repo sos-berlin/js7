@@ -6,8 +6,8 @@ import cats.effect.syntax.bracket.*
 import cats.effect.{ExitCase, Resource, Sync, SyncIO}
 import cats.syntax.flatMap.*
 import com.typesafe.scalalogging.Logger as ScalaLogger
-import js7.base.log.LogLevel.syntax.*
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
+import js7.base.log.Slf4jUtils.syntax.*
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime.{DurationRichLong, RichDuration}
 import js7.base.utils.ScalaUtils.implicitClass
@@ -77,6 +77,21 @@ object Logger
   object syntax {
     implicit final class RichScalaLogger(private val logger: ScalaLogger) extends AnyVal
     {
+      def isEnabled(level: LogLevel): Boolean =
+        logger.underlying.isEnabled(level)
+
+      def isEnabled(level: LogLevel, marker: Marker): Boolean =
+        logger.underlying.isEnabled(level, marker)
+
+      def log(level: LogLevel, message: => String): Unit =
+        logger.underlying.log(level, message)
+
+      def log(level: LogLevel, message: => String, throwable: Throwable): Unit =
+        logger.underlying.log(level, message, throwable)
+
+      def log(level: LogLevel, marker: Marker, message: => String): Unit =
+        logger.underlying.log(level, marker, message)
+
       def infoTask[A](functionName: String, args: => Any = "")(task: Task[A]): Task[A] =
         logF[Task, A](logger, LogLevel.Info, functionName, args)(task)
 

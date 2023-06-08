@@ -1,7 +1,7 @@
 package js7.common.akkautils
 
 import js7.base.configutils.Configs.ConvertibleConfig
-import js7.base.log.LogLevel.syntax.*
+import js7.base.log.Logger.syntax.*
 import js7.base.log.{LogLevel, Logger}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.akkautils.Akkas.*
@@ -16,7 +16,7 @@ trait ReceiveLoggingActor extends SimpleStateActor
     context.system.settings.config.as[LogLevel]("js7.akka.actor-message-log-level")
 
   protected[ReceiveLoggingActor] def isLoggingEnabled =
-    logger.underlying.isEnabled(receiveLogLevel, Logger.Actor)
+    logger.isEnabled(receiveLogLevel, Logger.Actor)
 
   override def postStop() = {
     logger.log(receiveLogLevel, Logger.Actor, s"${context.self.path.pretty} stopped")

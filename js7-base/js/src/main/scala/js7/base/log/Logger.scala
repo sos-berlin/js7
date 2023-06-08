@@ -5,6 +5,7 @@ import js7.base.utils.ScalaUtils.implicitClass
 import monix.eval.Task
 import monix.reactive.Observable
 import scala.reflect.ClassTag
+import sourcecode.{FileName, Line, Name, Pkg}
 
 object Logger
 {
@@ -29,6 +30,21 @@ object Logger
   object syntax {
     // Empty implementation to be compatible with the JVM variant
     implicit final class RichLogger(private val logger: scribe.Logger) extends AnyVal {
+      def isEnabled(level: LogLevel): Boolean =
+        level != LogLevel.LogNone && logger.includes(logLevelToScribe(level))
+
+      def log(level: LogLevel, message: => String)
+        (implicit pkg: Pkg, fileName: FileName, name: Name, line: Line)
+      : Unit =
+        if (level != LogLevel.LogNone) {
+          logger.log(logLevelToScribe(level), message, throwable = None)
+        }
+
+      def log(level: LogLevel, message: => String, throwable: Throwable): Unit =
+        if (level != LogLevel.LogNone) {
+          logger.log(logLevelToScribe(level), message, Some(throwable))
+        }
+
       def debugTask[A](task: Task[A])/*(implicit src: sourcecode.Name)*/: Task[A] =
         task
 
@@ -80,4 +96,14 @@ object Logger
         observable
     }
   }
+
+  private def logLevelToScribe(logLevel: LogLevel): scribe.Level =
+    logLevel match {
+      case LogLevel.LogNone => null
+      case LogLevel.Trace => scribe.Level.Trace
+      case LogLevel.Debug => scribe.Level.Debug
+      case LogLevel.Info => scribe.Level.Info
+      case LogLevel.Warn => scribe.Level.Warn
+      case LogLevel.Error => scribe.Level.Error
+    }
 }

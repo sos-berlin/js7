@@ -11,7 +11,7 @@ import io.circe.parser.parse as parseJson
 import java.lang.System.nanoTime
 import js7.base.auth.SessionToken
 import js7.base.configutils.Configs.*
-import js7.base.log.LogLevel.syntax.*
+import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, LogLevel, Logger}
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime.*

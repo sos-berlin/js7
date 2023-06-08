@@ -15,8 +15,8 @@ import java.util.concurrent.atomic.AtomicInteger
 import js7.base.circeutils.CirceUtils.RichCirceEither
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax.*
-import js7.base.log.LogLevel.syntax.*
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.problem.Checked.*
 import js7.base.thread.Futures.implicits.*
