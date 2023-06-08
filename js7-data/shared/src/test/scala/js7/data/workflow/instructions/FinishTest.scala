@@ -30,6 +30,16 @@ final class FinishTest extends OurTestSuite
             "TYPE": "Failed"
           }
         }""")
+
+      testJsonDecoder[Instruction.Labeled](
+        Finish(Some(Outcome.succeeded)),
+        json"""{
+          "TYPE": "Finish",
+          "outcome": {
+            "TYPE": "Succeeded",
+            "namedValues": {}
+          }
+        }""")
     }
 
     "complete" in {
