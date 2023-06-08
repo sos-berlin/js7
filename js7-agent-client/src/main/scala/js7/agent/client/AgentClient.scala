@@ -2,6 +2,7 @@ package js7.agent.client
 
 import akka.actor.ActorSystem
 import cats.effect.Resource
+import js7.agent.client.AgentClient.*
 import js7.agent.data.AgentState.keyedEventJsonCodec
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.*
@@ -9,15 +10,21 @@ import js7.agent.data.views.AgentOverview
 import js7.agent.data.web.AgentUris
 import js7.base.auth.UserAndPassword
 import js7.base.io.https.HttpsConfig
+import js7.base.log.Logger.syntax.*
+import js7.base.log.{BlockingSymbol, Logger}
 import js7.base.problem.Checked
 import js7.base.session.SessionApi
+import js7.base.time.ScalaTime.DurationRichInt
 import js7.base.web.Uri
 import js7.cluster.watch.api.HttpClusterNodeApi
 import js7.common.http.AkkaHttpClient
+import js7.data.Problems.ClusterNodeIsNotReadyProblem
 import js7.data.event.{Event, EventRequest, KeyedEvent, Stamped}
 import js7.data.session.HttpSessionApi
 import monix.eval.Task
 import monix.reactive.Observable
+import scala.concurrent.duration.Deadline.now
+import scala.concurrent.duration.FiniteDuration
 
 /**
  * Client for JS7 Agent.
@@ -38,6 +45,26 @@ with HttpClusterNodeApi
   protected lazy val agentUris = AgentUris(baseUri)
   protected lazy val uriPrefixPath = "/agent"
 
+  final def repeatUntilAvailable[A](timeout: FiniteDuration)(body: Task[Checked[A]])
+  : Task[Checked[A]] =
+    Task.defer {
+      val sym = new BlockingSymbol
+      val delays = Iterator(100.ms, 300.ms, 600.ms) ++ Iterator.continually(1.s)
+      val until = now + timeout
+      Task.tailRecM(()) { _ =>
+        body.flatMap {
+          case Left(problem) if (problem is ClusterNodeIsNotReadyProblem) && now < until =>
+            sym.increment()
+            logger.log(sym.logLevel, s"$sym $problem")
+            Task.sleep(delays.next()).as(Left(()))
+
+          case o =>
+            logger.log(sym.releasedLogLevel, "🟢 Operation succeeeded")
+            Task.right(o)
+        }
+      }
+    }
+
   final def commandExecute(command: AgentCommand): Task[Checked[command.Response]] =
     liftProblem(
       post[AgentCommand, AgentCommand.Response](uri = agentUris.command, command)
@@ -55,6 +82,8 @@ with HttpClusterNodeApi
 
 object AgentClient
 {
+  private val logger = Logger[this.type]
+
   def apply(agentUri: Uri, userAndPassword: Option[UserAndPassword], label: String = "Agent",
     httpsConfig: => HttpsConfig = HttpsConfig.empty)
     (implicit actorSystem: ActorSystem)

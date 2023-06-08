@@ -53,13 +53,17 @@ final class AgentShutDownTest extends OurTestSuite with BeforeAndAfterAll with T
         val client = AgentClient(agentUri = agent.localUri,
           Some(userId -> SecretString("TEST-PASSWORD")))
         client.login() await 99.s
+
         client
-          .commandExecute(DedicateAgentDirector(
-            Seq(SubagentId("SUBAGENT")), controllerId, agentPath))
+          .repeatUntilAvailable(99.s)(
+            client.commandExecute(DedicateAgentDirector(
+              Seq(SubagentId("SUBAGENT")), controllerId, agentPath)))
           .await(99.s)
 
         val subagentId = SubagentId("SUBAGENT")
-        client.commandExecute(AttachItem(SubagentItem(subagentId, agentPath, agent.localUri)))
+        client
+          .repeatUntilAvailable(99.s)(
+            client.commandExecute(AttachItem(SubagentItem(subagentId, agentPath, agent.localUri))))
           .await(99.s).orThrow
         client.commandExecute(AttachSignedItem(itemSigner.sign(SimpleTestWorkflow)))
           .await(99.s).orThrow
