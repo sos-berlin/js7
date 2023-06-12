@@ -13,5 +13,9 @@ charset = latin1
 [*.{css,elm,html,js,json,md,scala,ts,xml}]
 indent_size = 2
 
+[*.scala]
+max_line_length = 100
+
 [*.{java,less}]
 indent_size = 4
+max_line_length = 100
