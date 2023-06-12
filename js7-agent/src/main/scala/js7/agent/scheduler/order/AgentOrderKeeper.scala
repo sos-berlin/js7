@@ -1,7 +1,7 @@
 package js7.agent.scheduler.order
 
 import akka.actor.{ActorRef, DeadLetterSuppression, Stash, Terminated}
-import akka.pattern.ask
+import akka.pattern.{ask, pipe}
 import com.softwaremill.tagging.{@@, Tagger}
 import io.circe.syntax.EncoderOps
 import java.time.ZoneId
@@ -80,6 +80,7 @@ final class AgentOrderKeeper(
   recoveredAgentState : AgentState,
   tryAppointClusterNodes: Task[Unit],
   journalAllocated: Allocated[Task, FileJournal[AgentState]],
+  shutDownOnce: SetOnce[AgentCommand.ShutDown],
   private implicit val clock: AlarmClock,
   conf: AgentConfiguration)
   (implicit protected val scheduler: Scheduler)
@@ -337,8 +338,12 @@ with Stash
         })
 
     case cmd: AgentCommand.ShutDown =>
-      shutdown.start(cmd)
-      sender() ! AgentCommand.Response.Accepted
+      if (cmd.isSwitchover) {
+        switchOver(cmd) pipeTo sender()
+      } else {
+        shutdown.start(cmd)
+        sender() ! AgentCommand.Response.Accepted
+      }
 
     case JournalActor.Output.SnapshotTaken =>
       shutdown.onSnapshotTaken()
@@ -442,20 +447,7 @@ with Stash
         .runToFuture
 
     case AgentCommand.ClusterSwitchOver =>
-      forDirector.subagent.prepareForSwitchOver
-        .flatMapT { _ =>
-          logger.info(s"❗️ $cmd")
-          switchingOver = true // Asynchronous !!!
-          Task(clusterNode.workingClusterNode)
-            .flatTapT(_ =>
-              // SubagentKeeper stops the local (surrounding) Subagent,
-              // which lets the Director (RunningAgent) stop
-              subagentKeeper.stop.as(Right(())))
-            .flatMapT(_.switchOver)
-            .flatMapT(_ => Task.right(self ! Internal.ContinueSwitchover))
-            .rightAs(AgentCommand.Response.Accepted)
-        }
-        .runToFuture
+      switchOver(cmd)
 
     case AgentCommand.TakeSnapshot =>
       (journalActor ? JournalActor.Input.TakeSnapshot)
@@ -832,6 +824,22 @@ with Stash
       orderRegister.remove(orderId)
     }
 
+  private def switchOver(cmd: AgentCommand): Future[Checked[AgentCommand.Response]] =
+    forDirector.subagent.prepareForSwitchOver
+      .flatMapT { _ =>
+        logger.info(s"❗️ $cmd")
+        switchingOver = true // Asynchronous !!!
+        Task(clusterNode.workingClusterNode)
+          .flatTapT(_ =>
+            // SubagentKeeper stops the local (surrounding) Subagent,
+            // which lets the Director (RunningAgent) stop
+            subagentKeeper.stop.as(Right(())))
+          .flatMapT(_.switchOver)
+          .flatMapT(_ => Task.right(self ! Internal.ContinueSwitchover))
+          .rightAs(AgentCommand.Response.Accepted)
+      }
+      .runToFuture
+
   override def unhandled(message: Any) =
     message match {
       case Internal.JobDriverStopped =>
@@ -852,9 +860,12 @@ with Stash
         context.stop(self)
 
       case Internal.ContinueSwitchover =>
-        shutdown.start(AgentCommand.ShutDown(
+        val shutdownCmd = AgentCommand.ShutDown(
           Some(SIGKILL),
-          Some(AgentCommand.ShutDown.ClusterAction.Switchover)))
+          Some(AgentCommand.ShutDown.ClusterAction.Switchover),
+          restart = true)
+        shutDownOnce.trySet(shutdownCmd)
+        shutdown.start(shutdownCmd)
 
       case Internal.StillTerminating =>
         shutdown.onStillTerminating()

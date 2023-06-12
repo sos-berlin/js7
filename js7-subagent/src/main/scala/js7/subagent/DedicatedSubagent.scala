@@ -377,11 +377,8 @@ extends Service.StoppableByRequest
   def prepareForSwitchOver: Task[Checked[Unit]] =
     orderToProcessing
       .initiateStopWithProblemIfEmpty(DirectorIsSwitchingOverProblem)
-      .flatMap(isEmpty =>
-        if (!isEmpty)
-          Task.left(SubagentHasStillOrdersProblem(subagentId))
-        else
-          Task.right(()))
+      .flatMap(isEmpty => Task(
+        isEmpty !! SubagentHasStillOrdersProblem(subagentId)))
 
   def killAllProcesses(signal: ProcessSignal): Task[Unit] =
     Task.defer(orderIdToJobDriver

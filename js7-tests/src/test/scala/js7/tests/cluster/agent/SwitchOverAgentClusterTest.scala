@@ -8,6 +8,7 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.syntax.RichResource
+import js7.base.utils.ProgramTermination
 import js7.base.utils.ScalaUtils.syntax.{RichEither, RichThrowable}
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
@@ -107,7 +108,8 @@ with BlockingItemUpdater
 
           controller.api.executeCommand(ClusterSwitchOver(Some(agentPath))).await(99.s).orThrow
           backupDirector.eventWatch.await[ClusterSwitchedOver]()
-          primaryDirector.untilTerminated.await(99.s)
+          val termination = primaryDirector.untilTerminated.await(99.s)
+          assert(termination == ProgramTermination(restart = true))
           primaryDirector.stop.await(99.s) // Stop Subagent, too
 
           locally {

@@ -66,9 +66,9 @@ private[agent] final class AgentActor(
 
   private var recoveredAgentState: AgentState = null
   private val started = SetOnce[Started]
-  private val shutDownCommand = SetOnce[AgentCommand.ShutDown]
+  private val shutDownOnce = SetOnce[AgentCommand.ShutDown]
   private var isResetting = false
-  private def terminating = shutDownCommand.isDefined
+  private def terminating = shutDownOnce.isDefined
   private val terminateCompleted = Promise[Completed]()
 
   override def preStart() = {
@@ -83,7 +83,7 @@ private[agent] final class AgentActor(
         journalLocation.deleteJournal(ignoreFailure = true)
       }
       terminatePromise.trySuccess(
-        ProgramTermination(restart = shutDownCommand.toOption.fold(false)(_.restart)))
+        ProgramTermination(restart = shutDownOnce.toOption.fold(false)(_.restart)))
     }
 
   def receive = {
@@ -269,7 +269,7 @@ private[agent] final class AgentActor(
   private def terminateOrderKeeper(shutDown: AgentCommand.ShutDown)
   : Future[Checked[AgentCommand.Response.Accepted]] = {
     logger.trace("terminateOrderKeeper")
-    if (!shutDownCommand.trySet(shutDown))
+    if (!shutDownOnce.trySet(shutDown))
       Future.successful(Left(AgentDirectorIsShuttingDownProblem))
     else
       started.toOption match {
@@ -314,6 +314,7 @@ private[agent] final class AgentActor(
                   requireNonNull(recoveredAgentState),
                   appointClusterNodes,
                   journalAllocated,
+                  shutDownOnce,
                   clock,
                   agentConf)
                 },

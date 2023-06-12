@@ -158,7 +158,7 @@ object AgentCommand extends CommonCommand.Companion
     private def isFailover: Boolean =
       clusterAction contains ShutDown.ClusterAction.Failover
 
-    private def isSwitchover: Boolean =
+    def isSwitchover: Boolean =
       clusterAction contains ShutDown.ClusterAction.Switchover
   }
   object ShutDown {
