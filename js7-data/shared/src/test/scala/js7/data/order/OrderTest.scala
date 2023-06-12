@@ -655,6 +655,7 @@ final class OrderTest extends OurTestSuite
           case (OrderCancelled         , _                 , _, IsDetached             ) => _.isInstanceOf[Cancelled]
           case (_: OrderOutcomeAdded   , _                 , _, _                      ) => _.isInstanceOf[BetweenCycles]
           case (_: OrderTransferred    , _                 , _, IsDetached             ) => _.isInstanceOf[BetweenCycles]
+          case (_: OrderFailed         , _                 , _, IsDetached             ) => _.isInstanceOf[Failed]
           case (_: OrderBroken         , _                 , _, _                      ) => _.isInstanceOf[Broken]
         })
     }

@@ -138,7 +138,7 @@ final case class Order[+S <: Order.State](
           historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome)))
 
       case OrderFailed(movedTo, outcome_) =>
-        check(isFailable && isDetached,
+        check((isFailable || isState[BetweenCycles]/*for ResetAgent*/) && isDetached,
           copy(
             state = if (isState[Fresh]) FailedWhileFresh else Failed,
             workflowPosition = workflowPosition.copy(position = movedTo),
