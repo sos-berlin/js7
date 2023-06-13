@@ -105,7 +105,6 @@ final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForSc
 
     controller.eventWatch.await[ItemDeleted](_.event.key == agentPath, after = eventId)
     agent.untilTerminated await 99.s
-    agent.stop.await(99.s)
   }
 
   "Add AgentRef again: Agent's journal should be new due to implicit Reset" in {

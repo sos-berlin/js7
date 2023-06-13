@@ -151,7 +151,6 @@ final class ResetAgentTest extends OurTestSuite with ControllerAgentForScalaTest
 
     controller.api.executeCommand(ResetAgent(agentPath)).await(99.s).orThrow
     myAgent.untilTerminated.await(99.s)
-    myAgent.stop.await(99.s)
 
     eventWatch.await[OrderFailedInFork](_.key == childOrderId)
     assert(eventWatch.eventsByKey[OrderEvent](childOrderId) == Seq(
@@ -203,7 +202,6 @@ final class ResetAgentTest extends OurTestSuite with ControllerAgentForScalaTest
     eventId = eventWatch.lastAddedEventId
     controller.api.executeCommand(ResetAgent(agentPath)).await(99.s).orThrow
     myAgent.untilTerminated.await(99.s)
-    myAgent.stop.await(99.s)
 
     // Create some file to let it look like the Agent could not delete the journal
     val stateDir = directoryProvider.agentToEnv(agentPath).stateDir
@@ -267,7 +265,6 @@ final class ResetAgentTest extends OurTestSuite with ControllerAgentForScalaTest
         secondControllerApi.executeCommand(ResetAgent(agentPath, force = true)).await(99.s)
         secondControllerApi.stop.await(99.s)  // ActorSystem still alive ???
         myAgent.untilTerminated.await(99.s)
-        myAgent.stop.await(99.s)
 
         myAgent = directoryProvider.startAgent(agentPath) await 99.s
 

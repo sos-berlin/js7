@@ -56,8 +56,10 @@ final class TestAgent(
       .guarantee(stop)
 
   def untilTerminated: Task[ProgramTermination] =
-    agent.untilTerminated
+    agent.untilTerminated <*
+      stop/*release outer resources*/
 
+  /** Use TestAgent once, then stop it. */
   def useSync[R](timeout: FiniteDuration)(body: TestAgent => R)(implicit scheduler: Scheduler): R =
     logger.debugCall[R](s"useSync »${agent.conf.name}«")(
       allocated.useSync(timeout)(_ => body(this)))

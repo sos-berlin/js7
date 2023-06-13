@@ -110,7 +110,6 @@ with BlockingItemUpdater
           backupDirector.eventWatch.await[ClusterSwitchedOver]()
           val termination = primaryDirector.untilTerminated.await(99.s)
           assert(termination == ProgramTermination(restart = true))
-          primaryDirector.stop.await(99.s) // Stop Subagent, too
 
           locally {
             val orderId = OrderId("🔶")

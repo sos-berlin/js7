@@ -83,9 +83,7 @@ object TestDockerExample
         print('\n')
         (for (agent <- agents) yield {
           agent.executeCommandAsSystemUser(ShutDown(Some(SIGTERM)))
-          val r = agent.untilTerminated
-          agent.stop.await(99.s)
-          r
+          agent.untilTerminated
         }) await 10.s
         Log4j.shutdown()
       } .closeWithCloser

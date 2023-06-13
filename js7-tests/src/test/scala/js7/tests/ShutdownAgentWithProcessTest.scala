@@ -68,7 +68,6 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite with ControllerAge
         .commandExecute(AgentCommand.ShutDown(processSignal = Some(SIGKILL)))
         .await(99.s)
       agent.untilTerminated.await(99.s)
-      agent.stop.await(99.s)
     }
 
     TestAgent.blockingRun(agentEnv.agentConf) { restartedAgent =>
