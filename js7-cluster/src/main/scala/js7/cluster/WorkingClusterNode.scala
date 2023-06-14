@@ -133,13 +133,13 @@ final class WorkingClusterNode[
       }))
 
   private def startActiveClusterNode(eventId: EventId): Task[Checked[Unit]] =
-    Task.defer {
+    logger.traceTask(Task.defer {
       val activeClusterNode = new ActiveClusterNode(journal, common, clusterConf)
       if (_activeClusterNode.trySet(activeClusterNode))
         activeClusterNode.start(eventId)
       else
         Task.left(Problem.pure("ActiveClusterNode has already been started"))
-    }
+    })
 
   def executeClusterWatchConfirm(cmd: ClusterWatchConfirm): Task[Checked[Unit]] =
     Task.defer {

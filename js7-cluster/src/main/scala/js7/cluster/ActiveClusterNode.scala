@@ -62,28 +62,44 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
 
   import clusterConf.ownId
 
-  def start(eventId: EventId): Task[Checked[Unit]] = {
-    // When ClusterWatchId changes at start, an ClusterWatchRegistered event is emitted,
-    // changing the ClusterState (the ClusterWatchId part).
-    // In this case we continue with the updated ClusterState
-    def currentClusterState = journal.clusterState.map(_.asInstanceOf[HasNodes])
+  def start(eventId: EventId): Task[Checked[Unit]] =
+    logger.debugTask {
+      // When ClusterWatchId changes at start, an ClusterWatchRegistered event is emitted,
+      // changing the ClusterState (the ClusterWatchId part).
+      // In this case we continue with the updated ClusterState
+      def currentClusterState = journal.clusterState.map(_.asInstanceOf[HasNodes])
 
-    currentClusterState
-      .flatMap { initialClusterState =>
-        assertThat(initialClusterState.activeId == ownId)
-        clusterStateLock.lock(
-          Task.parMap2(
-            // .start requires a locked clusterStateLock!
-            Task.defer {
-              clusterWatchSynchronizerOnce :=
-                common.initialClusterWatchSynchronizer(initialClusterState)
-              clusterWatchSynchronizer.start(currentClusterState, registerClusterWatchId)
-            },
-            awaitAcknowledgmentIfCoupled(initialClusterState, eventId)
-          )(_ |+| _)
-          .flatMapT(_ => proceed(initialClusterState).as(Checked.unit)))
-      }
-  }
+      currentClusterState
+        .<*(clusterStateLock.lock(journal.persist { state =>
+          state.clusterState match {
+            case clusterState: Coupled =>
+              // ClusterPassiveLost because then a ClusterWatchRegistered due to ClusterWatch change
+              // does not require a passive node acknowledge which would followed by a deadlock
+              // because this ActiveClusterNode is not ready yet.
+              // Anyway, the PassiveClusterNode would try to send a ClusterRecouple to provoke
+              // a ClusterPassiveLost. But we do it first.
+              assert(clusterState.isNonEmptyActive(ownId))
+              Right(Seq(
+                NoKey <-: ClusterPassiveLost(clusterState.passiveId)))
+            case _ => Right(Nil)
+          }
+        }))
+        .flatMap { initialClusterState =>
+          // ClusterState may have changed to PassiveLost but here we look at initialClusterState
+          assertThat(initialClusterState.activeId == ownId)
+          clusterStateLock.lock(Task
+            .parMap2(
+              // .start requires a locked clusterStateLock!
+              Task.defer {
+                clusterWatchSynchronizerOnce :=
+                  common.initialClusterWatchSynchronizer(initialClusterState)
+                clusterWatchSynchronizer.start(currentClusterState, registerClusterWatchId)
+              },
+              awaitAcknowledgmentIfCoupled(initialClusterState, eventId)
+            )(_ |+| _)
+            .flatMapT(_ => proceed(initialClusterState).as(Checked.unit)))
+        }
+    }
 
   private def awaitAcknowledgmentIfCoupled(initialClusterState: HasNodes, eventId: EventId)
   : Task[Checked[Completed]] =
