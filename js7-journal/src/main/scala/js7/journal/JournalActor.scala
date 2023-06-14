@@ -9,7 +9,7 @@ import java.nio.file.StandardCopyOption.ATOMIC_MOVE
 import js7.base.circeutils.CirceUtils.*
 import js7.base.eventbus.EventPublisher
 import js7.base.generic.Completed
-import js7.base.log.{CorrelId, Logger}
+import js7.base.log.{BlockingSymbol, CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Checked.*
 import js7.base.problem.Problem
@@ -88,8 +88,12 @@ extends Actor with Stash with JournalLogging
   private var lastSnapshotSize = -1L
   private var requireClusterAcknowledgement = false
   private var releaseEventIdsAfterClusterCoupledAck: Option[EventId] = None
+  private val ackWarnMinimumDuration =
+    conf.ackWarnDurations.headOption.getOrElse(FiniteDuration.MaxValue)
+  private var waitingForAcknowledge = false
   private val waitingForAcknowledgeTimer = SerialCancelable()
   private var waitingForAcknowledgeSince = now
+  private val waitingForAckSym = new BlockingSymbol
   private var isHalted = false
   private val statistics = new Statistics
 
@@ -284,16 +288,21 @@ extends Actor with Stash with JournalLogging
 
     case Internal.StillWaitingForAcknowledge =>
       if (requireClusterAcknowledgement && lastAcknowledgedEventId < lastWrittenEventId) {
-        val notAckSeq = persistBuffer.view.collect { case o: StandardPersist => o }
-          .takeWhile(_.since.elapsed >= conf.ackWarnDurations.headOption.getOrElse(FiniteDuration.MaxValue))
         val n = persistBuffer.view.map(_.eventCount).sum
         if (n > 0) {
-          logger.warn(s"Waiting for ${waitingForAcknowledgeSince.elapsed.pretty}" +
+          waitingForAckSym.onInfo()
+          val lastEvent = persistBuffer.view
+            .collect { case o: StandardPersist => o }
+            .takeWhile(_.since.elapsed >= ackWarnMinimumDuration)
+            .flatMap(_.stampedSeq).lastOption.fold("(unknown)")(_
+            .toString.truncateWithEllipsis(200))
+          logger.warn(s"$waitingForAckSym Waiting for ${waitingForAcknowledgeSince.elapsed.pretty}" +
             " for acknowledgement from passive cluster node" +
-            s" for $n events (in ${persistBuffer.size} persists), last is " +
-            notAckSeq.flatMap(_.stampedSeq).lastOption.fold("(unknown)")(_.toString.truncateWithEllipsis(200)) +
+            s" for $n events (in ${persistBuffer.size} persists), last is $lastEvent" +
             s", lastAcknowledgedEventId=${EventId.toString(lastAcknowledgedEventId)}")
-        } else logger.debug(s"StillWaitingForAcknowledge n=0, persistBuffer.size=${persistBuffer.size}")
+        } else {
+          logger.trace(s"StillWaitingForAcknowledge n=0, persistBuffer.size=${persistBuffer.size}")
+        }
       } else {
         waitingForAcknowledgeTimer := Cancelable.empty
       }
@@ -354,22 +363,32 @@ extends Actor with Stash with JournalLogging
 
   private def startWaitingForAcknowledgeTimer(): Unit =
     if (requireClusterAcknowledgement && lastAcknowledgedEventId < lastWrittenEventId) {
-      waitingForAcknowledgeSince = now
-      waitingForAcknowledgeTimer := scheduler.scheduleAtFixedRates(conf.ackWarnDurations) {
-        self ! Internal.StillWaitingForAcknowledge
+      if (!waitingForAcknowledge) {
+        waitingForAcknowledge = true
+        waitingForAcknowledgeSince = now
+        waitingForAcknowledgeTimer := scheduler.scheduleAtFixedRates(conf.ackWarnDurations) {
+          self ! Internal.StillWaitingForAcknowledge
+        }
       }
     }
 
   private def commitWithoutAcknowledgement(event: ClusterEvent): Unit = {
     if (requireClusterAcknowledgement) {
       logger.debug(s"No more acknowledgments required due to $event event")
+      waitingForAckSym.clear()
       requireClusterAcknowledgement = false
+      waitingForAcknowledge = false
       waitingForAcknowledgeTimer := Cancelable.empty
     }
     commit()
   }
 
   private def onCommitAcknowledged(n: Int, ack: Boolean): Unit = {
+    if (waitingForAckSym.called) {
+      logger.info(
+        s"🟢 Events are finally acknowledged after ${waitingForAcknowledgeSince.elapsed.pretty}")
+      waitingForAckSym.clear()
+    }
     finishCommitted(n, ack = ack)
     if (lastAcknowledgedEventId == lastWrittenEventId) {
       onAllCommitsFinished()
@@ -423,6 +442,7 @@ extends Actor with Stash with JournalLogging
       assertEqualSnapshotState("onAllCommitsFinished",
         journaledStateBuilder.result().withEventId(committedState.eventId))
     }
+    waitingForAcknowledge = false
     waitingForAcknowledgeTimer := Cancelable.empty
     maybeDoASnapshot()
   }

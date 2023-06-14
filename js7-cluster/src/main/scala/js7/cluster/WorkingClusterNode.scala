@@ -48,8 +48,7 @@ final class WorkingClusterNode[
 {
   val journal: FileJournal[S] = journalAllocated.allocatedThing
   private val _activeClusterNode = SetOnce.undefined[ActiveClusterNode[S]](
-    "ActiveClusterNode[S]",
-    ClusterNodeIsNotActiveProblem)
+    "ActiveClusterNode", ClusterNodeIsNotActiveProblem)
   private val activeClusterNodeTask = Task { _activeClusterNode.checked }
   private val currentClusterState = journal.clusterState
   private val appointNodesLock = AsyncLock()
