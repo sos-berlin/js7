@@ -5,8 +5,8 @@ import cats.syntax.flatMap.*
 import cats.syntax.monoid.*
 import com.softwaremill.diffx
 import js7.base.generic.Completed
-import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
+import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.MonixBase.InfoWorryDuration
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.monixutils.ObservablePauseDetector.*
@@ -71,7 +71,22 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
     def currentClusterState = persistence.clusterState.map(_.asInstanceOf[HasNodes])
 
     currentClusterState
+      .<*(clusterStateLock.lock(persistence.persist { state =>
+        state.clusterState match {
+          case clusterState: Coupled =>
+            // ClusterPassiveLost because then a ClusterWatchRegistered due to ClusterWatch change
+            // does not require a passive node acknowledge which would followed by a deadlock
+            // because this ActiveClusterNode is not ready yet.
+            // Anyway, the PassiveClusterNode would try to send a ClusterRecouple to provoke
+            // a ClusterPassiveLost. But we do it first.
+            assert(clusterState.isNonEmptyActive(ownId))
+            Right(Seq(
+              NoKey <-: ClusterPassiveLost(clusterState.passiveId)))
+          case _ => Right(Nil)
+        }
+      }))
       .flatMap { initialClusterState =>
+        // ClusterState may have changed to PassiveLost but here we look at initialClusterState
         assertThat(initialClusterState.activeId == ownId)
         clusterStateLock.lock(
           Task.parMap2(

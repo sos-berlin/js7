@@ -128,16 +128,18 @@ class ShutDownClusterTest extends ControllerClusterTester
     "ShutDown active node with failover requested (for testing), then immediate restart of the shut down node" in {
       withControllerAndBackup() { (primary, backup, clusterSetting) =>
         backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
+          var eventId = 0L
           primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
             primaryController.eventWatch.await[ClusterCoupled]()
 
             primaryController.executeCommandAsSystemUser(ShutDown(clusterAction = Some(ClusterAction.Failover)))
               .await(99.s).orThrow
             primaryController.terminated.await(99.s)
+            eventId = primaryController.eventWatch.lastAddedEventId
           }
           primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
-            assert(primaryController.clusterState.await(99.s) == Coupled(clusterSetting))
-            assert(primaryController.clusterState.await(99.s) == backupController.clusterState.await(99.s))
+            primaryController.eventWatch.await[ClusterCoupled](after = eventId)
+            backupController.eventWatch.await[ClusterCoupled](after = eventId)
 
             // FIXME When Primary Controller is shutting down before started (no ControllerOrderKeeper)
             //  while the Backup Controller is shutting down and times out the acknowledgement request,
