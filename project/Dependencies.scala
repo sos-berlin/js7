@@ -55,7 +55,7 @@ object Dependencies
   val diffxScalaTest      = "com.softwaremill.diffx" %% "diffx-scalatest-should" % diffxVersion
 
   val javaxInject         = "javax.inject" % "javax.inject" % "1"
-  val guava               = "com.google.guava" % "guava" % "31.1-jre"
+  val guava               = "com.google.guava" % "guava" % "32.0.1-jre"
   val guice               = ("com.google.inject" % "guice" % "5.1.0") :: javaxInject :: guava :: Nil
 
   val typesafeConfig      = "com.typesafe" % "config" % "1.4.2"
