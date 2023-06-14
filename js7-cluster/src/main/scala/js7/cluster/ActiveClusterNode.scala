@@ -487,7 +487,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
     }
 
   private def awaitAcknowledgement(passiveUri: Uri, eventId: EventId): Task[Checked[EventId]] =
-    common
+    logger.debugTask(common
       .clusterNodeApi(passiveUri, "awaitAcknowledgement")
       .use(api =>
         observeEventIds(api, heartbeat = None)
@@ -498,7 +498,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
             case _ => Left(Problem.pure(
               s"awaitAcknowledgement($eventId): Observable ended unexpectedly"))
           })
-      .logWhenItTakesLonger("passive cluster node acknowledgement")
+      .logWhenItTakesLonger("passive cluster node acknowledgement"))
 
   private def observeEventIds(api: ClusterNodeApi, heartbeat: Option[FiniteDuration]): Observable[EventId] =
     RecouplingStreamReader
