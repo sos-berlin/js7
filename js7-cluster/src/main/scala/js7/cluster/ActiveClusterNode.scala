@@ -256,9 +256,11 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
         throw new NotImplementedError
     }
 
-  private def requireOwnNodeId[A](command: ClusterCommand, nodeId: NodeId)(body: Task[Checked[A]]): Task[Checked[A]] =
+  private def requireOwnNodeId[A](command: ClusterCommand, nodeId: NodeId)(body: Task[Checked[A]])
+  : Task[Checked[A]] =
     if (nodeId != ownId)
-      Task.pure(Left(Problem.pure(s"'${command.getClass.simpleScalaName}' command may only be directed to the active node")))
+      Task.left(Problem.pure(
+        s"'${command.getClass.simpleScalaName}' command may only be directed to the active node"))
     else
       body
 

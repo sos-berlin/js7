@@ -157,7 +157,8 @@ extends Service.StoppableByRequest
 
   def workingClusterNode: Checked[WorkingClusterNode[S]] =
     passiveOrWorkingNode.get()
-      .flatMap(_.toOption.map(_.allocatedThing))
+      .flatMap(_.toOption)
+      .map(_.allocatedThing)
       .toRight(ClusterNodeIsNotActiveProblem)
 
   def executeCommand(command: ClusterCommand): Task[Checked[ClusterCommand.Response]] =
