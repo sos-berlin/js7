@@ -11,6 +11,10 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger
 import js7.base.utils.AutoClosing.closeOnError
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
+import js7.common.configuration.Js7Configuration
+import js7.data.event.SnapshotableState
+import js7.journal.data.JournalLocation
+import js7.journal.recover.StateRecoverer
 import js7.tests.testenv.ProgramEnv.*
 import monix.eval.Task
 
@@ -36,8 +40,6 @@ trait ProgramEnv extends AutoCloseable {
     catch {
       case e: IOException => logger.error(s"Remove $directory => ${e.toStringWithCauses}")
     }
-
-  def journalFileBase: Path
 
   protected def ownConfig: Config =
     ConfigFactory.empty
@@ -83,4 +85,17 @@ trait ProgramEnv extends AutoCloseable {
 
 object ProgramEnv {
   private val logger = Logger[this.type]
+
+  trait WithFileJournal extends ProgramEnv {
+    protected type S <: SnapshotableState[S]
+
+    implicit val S: SnapshotableState.Companion[S]
+
+    def journalLocation: JournalLocation
+
+    def recoverState: S =
+      StateRecoverer
+        .recover[S](journalLocation, Js7Configuration.defaultConfig)
+        .state
+  }
 }

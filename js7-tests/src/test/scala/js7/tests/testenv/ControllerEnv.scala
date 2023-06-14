@@ -10,6 +10,8 @@ import js7.base.io.JavaResource
 import js7.base.io.file.FileUtils.syntax.*
 import js7.controller.RunningController
 import js7.data.agent.AgentPath
+import js7.data.controller.ControllerState
+import js7.journal.data.JournalLocation
 import js7.tests.testenv.DirectoryProvider.{AgentTrustStoreResource, defaultVerifier}
 import monix.eval.Task
 import scala.collection.immutable.Iterable
@@ -21,14 +23,17 @@ final class ControllerEnv(
   keyStore: Option[JavaResource],
   trustStores: Iterable[JavaResource],
   agentHttpsMutual: Boolean)
-extends ProgramEnv {
+extends ProgramEnv.WithFileJournal {
   type Program = RunningController
+
+  protected type S = ControllerState
+  val S = ControllerState
 
   protected def confFilename = "controller.conf"
 
   def programResource: Resource[Task, RunningController] = ???
 
-  val journalFileBase = stateDir / "controller"
+  val journalLocation = JournalLocation(ControllerState, stateDir / "controller")
   val userAndPassword = UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD"))
 
   initialize()

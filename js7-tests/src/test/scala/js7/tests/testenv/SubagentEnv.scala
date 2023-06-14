@@ -3,13 +3,11 @@ package js7.tests.testenv
 import com.typesafe.config.Config
 import java.nio.file.Files.createDirectory
 import java.nio.file.Path
-import js7.agent.data.AgentState
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.problem.Checked.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.job.RelativePathExecutable
 import js7.data.subagent.{SubagentId, SubagentItem}
-import js7.journal.data.JournalLocation
 import js7.subagent.configuration.SubagentConf
 import js7.tests.testenv.DirectoryProvider.*
 
@@ -27,8 +25,6 @@ trait SubagentEnv extends ProgramEnv {
 
   final val agentPath = subagentItem.agentPath
   final val directory = rootDirectory / "subagents" / name
-  final val journalFileBase = stateDir / "agent"
-  final val journalLocation = JournalLocation(AgentState, journalFileBase)
   final val localUri = subagentItem.uri
 
   private lazy val executables = configDir / "executables"

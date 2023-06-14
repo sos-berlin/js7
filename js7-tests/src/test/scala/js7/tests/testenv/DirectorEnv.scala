@@ -7,6 +7,7 @@ import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Path
 import js7.agent.RunningAgent
 import js7.agent.configuration.AgentConfiguration
+import js7.agent.data.AgentState
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.configutils.Configs.{HoconStringInterpolator, configIf, configMonoid}
 import js7.base.crypt.SignatureVerifier
@@ -14,6 +15,7 @@ import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.common.system.ThreadPools.ownThreadPoolResource
 import js7.data.subagent.{SubagentId, SubagentItem}
+import js7.journal.data.JournalLocation
 import js7.tests.testenv.DirectoryProvider.*
 import monix.eval.Task
 
@@ -30,8 +32,12 @@ final class DirectorEnv(
   override protected val suppressSignatureKeys: Boolean = false,
   protected val otherSubagentIds: Seq[SubagentId] = Nil,
   protected val extraConfig: Config = ConfigFactory.empty)
-extends SubagentEnv {
+extends SubagentEnv with ProgramEnv.WithFileJournal {
   type Program = RunningAgent
+  protected type S = AgentState
+  val S = AgentState
+
+  final val journalLocation = JournalLocation(AgentState, stateDir / "agent")
 
   private val clusterUserAndPassword =
     UserAndPassword(UserId("Agent"), SecretString("AGENT-PASSWORD"))

@@ -20,7 +20,7 @@ import js7.data.subagent.SubagentItemStateEvent.SubagentDedicated
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.journal.files.JournalFiles.{JournalMetaOps, listJournalFiles}
+import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.tests.cluster.agent.ResetAgentClusterTest.*
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
@@ -101,10 +101,10 @@ with BlockingItemUpdater
           primaryDirector.untilTerminated.await(99.s)
           backupDirector.untilTerminated.await(99.s)
 
-          assert(listJournalFiles(primaryEnv.journalFileBase).isEmpty)
+          assert(primaryEnv.journalLocation.listJournalFiles.isEmpty)
           logger.info("Primary journal files have been deleted ✔︎")
 
-          assert(listJournalFiles(backupEnv.journalFileBase).isEmpty)
+          assert(backupEnv.journalLocation.listJournalFiles.isEmpty)
           logger.info("Backup journal files have been deleted ✔︎")
         } catch {
           case NonFatal(t) =>

@@ -257,7 +257,10 @@ object ControllerClusterForScalaTest
   val clusterWatchId = ClusterWatchId("CLUSTER-WATCH")
 
   @deprecated
-  def assertEqualJournalFiles(primary: ProgramEnv, backup: ProgramEnv, n: Int)
+  def assertEqualJournalFiles(
+    primary: ProgramEnv.WithFileJournal,
+    backup: ProgramEnv.WithFileJournal,
+    n: Int)
     (implicit pos: source.Position)
   : Unit =
     ProgramEnvTester.assertEqualJournalFiles(primary, backup, n)
