@@ -156,7 +156,9 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
             cutJournalFile(o.file, o.length, o.eventId)
           }
 
-          if (!otherFailed) { // Other node failed-over while this node was active but lost? FailedOver event will be replicated.
+          // Other node failed-over while this node was active but lost?
+          // Then FailedOver event will be replicated.
+          Task.unless(otherFailed) {
             recoveredClusterState
               .match_ {
                 case ClusterState.Empty =>
@@ -176,7 +178,8 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
                   tryEndlesslyToSendCommand(
                     ClusterRecouple(activeId = activeId, passiveId = ownId))
               }
-              .runAsyncUncancelable {
+              .attempt
+              .map {
                 case Left(throwable) => logger.error(
                   "While notifying the active cluster node about restart of this passive node:" +
                   s" ${throwable.toStringWithCauses}", throwable.nullIfNoStackTrace)
@@ -184,18 +187,18 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
                   logger.debug(
                     "Active cluster node has been notified about restart of this passive node")
               }
-          }
-
-          replicateJournalFiles(recoveredClusterState)
-            .guarantee(Task {
-              stopped = true
-            })
-            .guarantee(activeApiCache.clear)
-            .flatTap {
-              case Left(PassiveClusterNodeResetProblem) => Task(
-                journalLocation.deleteJournal(ignoreFailure = true))
-              case _ => Task.unit
-            }
+              .startAndForget
+          } *>
+            replicateJournalFiles(recoveredClusterState)
+              .guarantee(Task {
+                stopped = true
+              })
+              .guarantee(activeApiCache.clear)
+              .flatTap {
+                case Left(PassiveClusterNodeResetProblem) => Task(
+                  journalLocation.deleteJournal(ignoreFailure = true))
+                case _ => Task.unit
+              }
         })))
 
   private def cutJournalFile(file: Path, length: Long, eventId: EventId): Unit =
