@@ -39,7 +39,7 @@ import js7.data.Problems.PassiveClusterNodeResetProblem
 import js7.data.cluster.ClusterCommand.{ClusterCouple, ClusterPassiveDown, ClusterPrepareCoupling, ClusterRecouple}
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterResetStarted, ClusterSwitchedOver}
 import js7.data.cluster.ClusterState.{Coupled, IsDecoupled, PreparedToBeCoupled}
-import js7.data.cluster.{ClusterEvent, ClusterNodeApi, ClusterSetting, ClusterState}
+import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeApi, ClusterSetting, ClusterState}
 import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
 import js7.data.event.JournalSeparators.HeartbeatMarker
 import js7.data.event.KeyedEvent.NoKey
@@ -164,8 +164,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
                 case _: IsDecoupled =>
                   tryEndlesslyToSendClusterPrepareCoupling
                 case _: PreparedToBeCoupled =>
-                  common.tryEndlesslyToSendCommand(
-                    activeApiResource,
+                  tryEndlesslyToSendCommand(
                     ClusterCouple(activeId = activeId, passiveId = ownId))
                 case _: Coupled =>
                   // After a quick restart of this passive node, the active node may not yet have noticed the loss.
@@ -174,8 +173,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
                   // and we are sure to be coupled and up-to-date and may properly fail-over in case of active node loss.
                   // The active node ignores this command if it has emitted a ClusterPassiveLost event.
                   awaitingCoupledEvent = true
-                  common.tryEndlesslyToSendCommand(
-                    activeApiResource,
+                  tryEndlesslyToSendCommand(
                     ClusterRecouple(activeId = activeId, passiveId = ownId))
               }
               .runAsyncUncancelable {
@@ -219,22 +217,23 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
     //  ["HEARTBEAT", { timestamp: 1234.567 }]
     //  {TYPE: "Heartbeat", eventId: 1234567000, timestamp: 1234.567 }    Herzschlag-Event?
     //  Funktioniert nicht, wenn die Uhren verschieden gehen. Differenz feststellen?
+    tryEndlesslyToSendCommand(
+      ClusterPrepareCoupling(activeId = activeId, passiveId = ownId))
+  }
+
+  private def tryEndlesslyToSendCommand(cmd: ClusterCommand): Task[Unit] =
     Task
       .race(
         shutdown.get,
-        common.tryEndlesslyToSendCommand(
-          activeApiResource,
-          ClusterPrepareCoupling(activeId = activeId, passiveId = ownId)))
+        common.tryEndlesslyToSendCommand(activeApiResource, cmd))
       .flatMap {
         case Left(()) => Task(logger.debug(
-          "⚫ tryEndlesslyToSendClusterPrepareCoupling canceled due to shutdown"))
+          s"⚫ tryEndlesslyToSendClusterCommand(${cmd.getClass.simpleScalaName}) canceled due to shutdown"))
         case Right(()) => Task.unit
       }
-  }
 
   private def sendClusterCouple: Task[Unit] =
-    common.tryEndlesslyToSendCommand(
-      activeApiResource,
+    tryEndlesslyToSendCommand(
       ClusterCouple(activeId = activeId, passiveId = ownId))
 
   private def replicateJournalFiles(recoveredClusterState: ClusterState)
