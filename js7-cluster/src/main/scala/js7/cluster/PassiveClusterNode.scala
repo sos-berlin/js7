@@ -159,35 +159,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
           // Other node failed-over while this node was active but lost?
           // Then FailedOver event will be replicated.
           Task.unless(otherFailed) {
-            recoveredClusterState
-              .match_ {
-                case ClusterState.Empty =>
-                  Task.unit
-                case _: IsDecoupled =>
-                  tryEndlesslyToSendClusterPrepareCoupling
-                case _: PreparedToBeCoupled =>
-                  tryEndlesslyToSendCommand(
-                    ClusterCouple(activeId = activeId, passiveId = ownId))
-                case _: Coupled =>
-                  // After a quick restart of this passive node, the active node may not yet have noticed the loss.
-                  // So we send a ClusterRecouple command to force a ClusterPassiveLost event.
-                  // Then the active node couples again with this passive node,
-                  // and we are sure to be coupled and up-to-date and may properly fail-over in case of active node loss.
-                  // The active node ignores this command if it has emitted a ClusterPassiveLost event.
-                  awaitingCoupledEvent = true
-                  tryEndlesslyToSendCommand(
-                    ClusterRecouple(activeId = activeId, passiveId = ownId))
-              }
-              .attempt
-              .map {
-                case Left(throwable) => logger.error(
-                  "While notifying the active cluster node about restart of this passive node:" +
-                  s" ${throwable.toStringWithCauses}", throwable.nullIfNoStackTrace)
-                case Right(()) =>
-                  logger.debug(
-                    "Active cluster node has been notified about restart of this passive node")
-              }
-              .startAndForget
+            backgroundNotifyActiveNodeAboutRestart(recoveredClusterState)
           } *>
             replicateJournalFiles(recoveredClusterState)
               .guarantee(Task {
@@ -200,6 +172,30 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
                 case _ => Task.unit
               }
         })))
+
+  private def backgroundNotifyActiveNodeAboutRestart(recoveredClusterState: ClusterState): Task[Unit] =
+    recoveredClusterState
+      .match_ {
+        case ClusterState.Empty =>
+          Task.unit
+        case _: IsDecoupled =>
+          tryEndlesslyToSendCommandInBackground(
+            ClusterPrepareCoupling(activeId = activeId, passiveId = ownId))
+        case _: PreparedToBeCoupled =>
+          tryEndlesslyToSendCommandInBackground(
+            ClusterCouple(activeId = activeId, passiveId = ownId))
+        case _: Coupled =>
+          // After a quick restart of this passive node, the active node may not yet have noticed the loss.
+          // So we send a ClusterRecouple command to force a ClusterPassiveLost event.
+          // Then the active node couples again with this passive node,
+          // and we are sure to be coupled and up-to-date and may properly fail-over in case of active node loss.
+          // The active node ignores this command if it has emitted a ClusterPassiveLost event.
+          Task.defer {
+            awaitingCoupledEvent = true
+            tryEndlesslyToSendCommandInBackground(
+              ClusterRecouple(activeId = activeId, passiveId = ownId))
+          }
+      }
 
   private def cutJournalFile(file: Path, length: Long, eventId: EventId): Unit =
     if (exists(file)) {
@@ -223,6 +219,19 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
     tryEndlesslyToSendCommand(
       ClusterPrepareCoupling(activeId = activeId, passiveId = ownId))
   }
+
+  private def tryEndlesslyToSendCommandInBackground(cmd: ClusterCommand): Task[Unit] =
+    tryEndlesslyToSendCommand(cmd)
+      .attempt
+      .map {
+        case Left(throwable) => logger.error(
+          "While notifying the active cluster node about restart of this passive node:" +
+            s" ${throwable.toStringWithCauses}", throwable.nullIfNoStackTrace)
+        case Right(()) =>
+          logger.debug(
+            "Active cluster node has been notified about restart of this passive node")
+      }
+      .startAndForget
 
   private def tryEndlesslyToSendCommand(cmd: ClusterCommand): Task[Unit] =
     Task
