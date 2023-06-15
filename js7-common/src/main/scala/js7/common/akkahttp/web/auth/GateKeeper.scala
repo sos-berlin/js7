@@ -4,7 +4,7 @@ import akka.http.scaladsl.marshalling.ToResponseMarshallable
 import akka.http.scaladsl.model.HttpMethods.{GET, HEAD}
 import akka.http.scaladsl.model.StatusCodes.{Forbidden, Unauthorized}
 import akka.http.scaladsl.model.headers.{HttpChallenges, `Tls-Session-Info`, `WWW-Authenticate`}
-import akka.http.scaladsl.model.{HttpMethod, HttpRequest}
+import akka.http.scaladsl.model.{HttpMethod, HttpRequest, StatusCodes}
 import akka.http.scaladsl.server.AuthenticationFailedRejection.CredentialsMissing
 import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.Route.seal
@@ -59,7 +59,7 @@ final class GateKeeper[U <: User](
           invalidAuthenticationDelay.pretty}")
         respondWithHeader(`WWW-Authenticate`(challenge)) {
           completeDelayed(
-            Unauthorized)
+            unauthorized)
         }
 
       case AuthenticationFailedRejection(CredentialsMissing, challenge) =>
@@ -67,7 +67,7 @@ final class GateKeeper[U <: User](
         // "Substream Source cannot be materialized more than once"
         respondWithHeader(`WWW-Authenticate`(challenge)) {
           complete {
-            Unauthorized
+            unauthorized
           }
         }
     }
@@ -152,7 +152,7 @@ final class GateKeeper[U <: User](
               }
             }
           ).flatMap(certToUsers) match {
-            case Left(problem) => completeDelayed(Unauthorized -> problem)
+            case Left(problem) => completeDelayed(unauthorized -> problem)
             case Right(o) => inner(Tuple1(o))
           }
       })
@@ -314,6 +314,9 @@ object GateKeeper
   private[auth] object GetIsPublic extends AuthorizationReason {
     override def toString = "get-is-public=true"
   }
+
+  def unauthorized: StatusCodes.ClientError = // For breakpoint
+    Unauthorized
 
   def forTest(scheme: WebServerBinding.Scheme = WebServerBinding.Http, isPublic: Boolean = false,
     config: Config = ConfigFactory.empty)(implicit eh: ExceptionHandler, s: Scheduler)

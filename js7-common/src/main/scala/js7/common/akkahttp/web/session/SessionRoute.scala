@@ -1,11 +1,11 @@
 package js7.common.akkahttp.web.session
 
-import akka.http.scaladsl.model.StatusCodes.Unauthorized
 import akka.http.scaladsl.server.Directive1
 import akka.http.scaladsl.server.Directives.*
 import js7.base.Js7Version
 import js7.base.auth.{SessionToken, SimpleUser, UserAndPassword, UserId}
 import js7.base.generic.Completed
+import js7.base.log.Logger
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.session.SessionCommand
@@ -13,6 +13,7 @@ import js7.base.session.SessionCommand.{Login, Logout}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.akkahttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
 import js7.common.akkahttp.StandardMarshallers.*
+import js7.common.akkahttp.web.auth.GateKeeper.unauthorized
 import js7.common.akkahttp.web.session.SessionRoute.*
 import js7.data.problems.InvalidLoginProblem
 import monix.eval.Task
@@ -36,7 +37,7 @@ trait SessionRoute extends RouteProvider
             entity(as[SessionCommand]) { command =>
               onSuccess(execute(command, idsOrUser, tokenOption).runToFuture) {
                 case Left(problem @ (InvalidLoginProblem | AnonymousLoginProblem)) =>
-                  completeUnauthenticatedLogin(Unauthorized, problem)
+                  completeUnauthenticatedLogin(unauthorized, problem)
 
                 case checked =>
                   complete(checked)
@@ -105,5 +106,6 @@ trait SessionRoute extends RouteProvider
 
 object SessionRoute
 {
+  private val logger = Logger[this.type]
   private object AnonymousLoginProblem extends Problem.Eager("Login: user and password required")
 }
