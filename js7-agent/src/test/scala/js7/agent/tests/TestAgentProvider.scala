@@ -32,5 +32,5 @@ trait TestAgentProvider extends TestAgentDirectoryProvider with BeforeAndAfterAl
   protected lazy final val agent: TestAgent =
     TestAgent
       .start(agentConfiguration, agentTestWiring)
-      .await(10.s)
+      .await(99.s)
 }

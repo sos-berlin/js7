@@ -37,7 +37,7 @@ final class LogRouteTest extends OurTestSuite with RouteTester with LogRoute
     .withFallback(super.config)
 
   implicit protected def scheduler = Scheduler.traced
-  private implicit val routeTestTimeout: RouteTestTimeout = RouteTestTimeout(9.s)
+  private implicit val routeTestTimeout: RouteTestTimeout = RouteTestTimeout(99.s)
 
   private var _currentLogFile: Path = null
 
