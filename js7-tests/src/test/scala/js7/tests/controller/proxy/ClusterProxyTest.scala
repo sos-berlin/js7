@@ -35,8 +35,7 @@ trait ClusterProxyTest extends BeforeAndAfterAll with ControllerClusterForScalaT
     admissions.zipWithIndex
       .traverse { case (a, i) =>
         AkkaHttpControllerApi.resource(
-          a.uri,
-          a.userAndPassword,
+          Admission(a.uri, a.userAndPassword),
           name = s"${getClass.simpleScalaName}-Controller-$i")(
           actorSystem)
       },

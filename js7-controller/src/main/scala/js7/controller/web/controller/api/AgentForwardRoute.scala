@@ -9,7 +9,7 @@ import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.{PathMatchers, Route}
 import com.typesafe.config.ConfigUtil
 import js7.agent.client.AgentClient
-import js7.base.auth.{UserAndPassword, ValidUserPermission}
+import js7.base.auth.{Admission, UserAndPassword, ValidUserPermission}
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.generic.SecretString
 import js7.base.problem.Checked
@@ -98,8 +98,7 @@ trait AgentForwardRoute extends ControllerRouteProvider
     : Task[HttpResponse] =
       AgentClient // TODO Reuse AgentClient of AgentDriver
         .resource(
-          uri,
-          userAndPassword,
+          Admission(uri, userAndPassword),
           label = agentRef.path.toString,
           controllerConfiguration.httpsConfig)
         .use { agentClient =>

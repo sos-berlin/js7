@@ -240,7 +240,8 @@ object Provider
       password <- conf.config.optionAs[String]("js7.provider.controller.password")
     } yield UserAndPassword(UserId(userName), SecretString(password))
     for {
-      api <- AkkaHttpControllerApi.resource(conf.controllerUri, userAndPassword, conf.httpsConfig)
+      api <- AkkaHttpControllerApi.resource(
+        Admission(conf.controllerUri, userAndPassword), conf.httpsConfig)
       controllerApi <- ControllerApi.resource(
         AkkaHttpControllerApi.admissionsToApiResource(
           Nel.one(Admission(conf.controllerUri, userAndPassword)),

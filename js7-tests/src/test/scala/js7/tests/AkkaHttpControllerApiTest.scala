@@ -1,7 +1,7 @@
 package js7.tests
 
 import js7.base.BuildInfo
-import js7.base.auth.{UserAndPassword, UserId}
+import js7.base.auth.{Admission, UserAndPassword, UserId}
 import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.test.OurTestSuite
@@ -80,7 +80,8 @@ final class AkkaHttpControllerApiTest extends OurTestSuite with ControllerAgentF
   }
 
   "resource" in {
-    AkkaHttpControllerApi.separateAkkaResource(controller.localUri, userAndPassword = Some(userAndPassword))
+    AkkaHttpControllerApi
+      .separateAkkaResource(Admission(controller.localUri, userAndPassword = Some(userAndPassword)))
       .use(api => Task {
         api.login() await 99.s
         assert(controller.sessionRegister.count.await(99.s) == 2)

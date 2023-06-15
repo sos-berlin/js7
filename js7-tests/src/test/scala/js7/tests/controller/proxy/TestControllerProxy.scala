@@ -6,7 +6,7 @@ import akka.http.scaladsl.server.Directives.{complete, get, pathSingleSlash}
 import com.typesafe.config.ConfigFactory
 import java.time.LocalDateTime
 import js7.base.BuildInfo
-import js7.base.auth.{UserAndPassword, UserId}
+import js7.base.auth.{Admission, UserAndPassword, UserId}
 import js7.base.circeutils.typed.TypedJsonCodec
 import js7.base.eventbus.StandardEventBus
 import js7.base.generic.SecretString
@@ -35,7 +35,7 @@ private final class TestControllerProxy(controllerUri: Uri, httpPort: Int)(impli
   def run(): Task[Unit] =
     Akkas.actorSystemResource("TestControllerProxy")
       .use { implicit actorSystem =>
-        val apiResource = AkkaHttpControllerApi.resource(controllerUri, userAndPassword)
+        val apiResource = AkkaHttpControllerApi.resource(Admission(controllerUri, userAndPassword))
         val proxyEventBus = new StandardEventBus[ProxyEvent]
         val eventBus = new JournaledStateEventBus[ControllerState]
         var currentState: ControllerState = null

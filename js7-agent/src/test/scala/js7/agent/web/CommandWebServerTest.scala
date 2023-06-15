@@ -7,7 +7,7 @@ import js7.agent.client.AgentClient
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.commands.AgentCommand.*
 import js7.agent.web.CommandWebServerTest.*
-import js7.base.auth.SimpleUser
+import js7.base.auth.{Admission, SimpleUser}
 import js7.base.configutils.Configs.*
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.test.OurAsyncTestSuite
@@ -41,7 +41,9 @@ final class CommandWebServerTest extends OurAsyncTestSuite
   private lazy val clientResource = for {
     as <- actorSystemResource("CommandWebServerTest", testConfig)
     webServer <- AkkaWebServer.httpResource(findFreeTcpPort(), testConfig, route(as))(as)
-    client <- Resource.fromAutoCloseable(Task(AgentClient(Uri(s"${webServer.localUri}"), userAndPassword = None)(as)))
+    client <- Resource.fromAutoCloseable(Task(AgentClient(
+      Admission(Uri(s"${webServer.localUri}"), userAndPassword = None))(
+      as)))
   } yield client
 
   "Big response" in {

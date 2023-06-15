@@ -10,7 +10,7 @@ import com.typesafe.config.ConfigUtil
 import js7.agent.client.AgentClient
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.DedicateAgentDirector
-import js7.base.auth.UserAndPassword
+import js7.base.auth.{Admission, UserAndPassword}
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.crypt.Signed
 import js7.base.generic.{Completed, SecretString}
@@ -471,7 +471,9 @@ extends Service.StoppableByRequest
       val agentUserAndPassword = controllerConfiguration.config
         .optionAs[SecretString]("js7.auth.agents." + ConfigUtil.joinPath(agentPath.string))
         .map(password => UserAndPassword(controllerId.toUserId, password))
-      AgentClient(uri, agentUserAndPassword, label = agentPath.toString,
+      AgentClient(
+        Admission(uri, agentUserAndPassword),
+        label = agentPath.toString,
         controllerConfiguration.httpsConfig)(actorSystem)
     })
 

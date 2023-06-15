@@ -5,6 +5,7 @@ import cats.syntax.traverse.*
 import io.circe.Encoder
 import io.circe.syntax.*
 import izumi.reflect.Tag
+import js7.base.auth.Admission
 import js7.base.circeutils.CirceUtils.*
 import js7.base.eventbus.StandardEventBus
 import js7.base.generic.Completed
@@ -55,9 +56,11 @@ final class JournaledProxyClusterTest extends OurTestSuite with ClusterProxyTest
       primaryController.waitUntilReady()
       val controllerApiResources = Nel
         .of(
-          AkkaHttpControllerApi.resource(primaryController.localUri, Some(primaryUserAndPassword),
+          AkkaHttpControllerApi.resource(
+            Admission(primaryController.localUri, Some(primaryUserAndPassword)),
             name = "JournaledProxy-Primary"),
-          AkkaHttpControllerApi.resource(backupController.localUri, Some(backupUserAndPassword),
+          AkkaHttpControllerApi.resource(
+            Admission(backupController.localUri, Some(backupUserAndPassword)),
             name = "JournaledProxy-Backup"))
         .sequence
       val proxy = new ControllerApi(controllerApiResources).startProxy().await(99.s)
@@ -96,7 +99,9 @@ final class JournaledProxyClusterTest extends OurTestSuite with ClusterProxyTest
     logger.info(s"Adding $n Workflows")
     runControllerAndBackup() { (primary, primaryController, _, _, _, _, _) =>
       primaryController.waitUntilReady()
-      val controllerApiResource = AkkaHttpControllerApi.resource(primaryController.localUri, Some(primaryUserAndPassword), name = "JournaledProxy")
+      val controllerApiResource = AkkaHttpControllerApi.resource(
+        Admission(primaryController.localUri, Some(primaryUserAndPassword)),
+        name = "JournaledProxy")
       val api = new ControllerApi(controllerApiResource map Nel.one)
       val workflowPaths = (1 to n).map(i => WorkflowPath(s"WORKFLOW-$i"))
       val sw = new Stopwatch
@@ -140,7 +145,9 @@ final class JournaledProxyClusterTest extends OurTestSuite with ClusterProxyTest
       primaryController.waitUntilReady()
       val api = new ControllerApi(
         AkkaHttpControllerApi
-          .resource(primaryController.localUri, Some(primaryUserAndPassword), name = "JournaledProxy")
+          .resource(
+            Admission(primaryController.localUri, Some(primaryUserAndPassword)),
+            name = "JournaledProxy")
           .map(Nel.one))
       val orderIds = (1 to n).map(i => OrderId(s"ORDER-$i"))
       val logLine = measureTimeOfSingleRun(n, "orders") {
@@ -178,7 +185,9 @@ final class JournaledProxyClusterTest extends OurTestSuite with ClusterProxyTest
       val httpClient = new AkkaHttpClient.Standard(primaryController.localUri, HttpControllerApi.UriPrefixPath, actorSystem,
         name = "JournaledProxy")
       autoClosing(httpClient) { _ =>
-        val api = new HttpControllerApi.Standard(primaryController.localUri, Some(primaryUserAndPassword), httpClient)
+        val api = new HttpControllerApi.Standard(
+          Admission(primaryController.localUri, Some(primaryUserAndPassword)),
+          httpClient)
         api.login().await(99.s)
         locally {
           val response = HttpClient.liftProblem(

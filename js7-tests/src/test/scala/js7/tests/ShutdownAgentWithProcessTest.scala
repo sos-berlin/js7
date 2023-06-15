@@ -4,6 +4,7 @@ import java.lang.System.lineSeparator as nl
 import js7.agent.TestAgent
 import js7.agent.client.AgentClient
 import js7.agent.data.commands.AgentCommand
+import js7.base.auth.Admission
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.system.OperatingSystem.isWindows
@@ -62,7 +63,7 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite with ControllerAge
 
     val agentEnv = directoryProvider.agentEnvs.head
     locally {
-      val agentClient = AgentClient(agentUri = agent.localUri, agentEnv.controllerUserAndPassword)
+      val agentClient = AgentClient(Admission(agent.localUri, agentEnv.controllerUserAndPassword))
       agentClient.login() await 99.s
       agentClient
         .commandExecute(AgentCommand.ShutDown(processSignal = Some(SIGKILL)))

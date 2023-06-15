@@ -8,7 +8,7 @@ import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.*
 import js7.agent.data.views.AgentOverview
 import js7.agent.data.web.AgentUris
-import js7.base.auth.UserAndPassword
+import js7.base.auth.Admission
 import js7.base.io.https.HttpsConfig
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{BlockingSymbol, Logger}
@@ -84,12 +84,12 @@ object AgentClient
 {
   private val logger = Logger[this.type]
 
-  def apply(agentUri: Uri, userAndPassword: Option[UserAndPassword], label: String = "Agent",
+  def apply(admission: Admission, label: String = "Agent",
     httpsConfig: => HttpsConfig = HttpsConfig.empty)
     (implicit actorSystem: ActorSystem)
   : AgentClient = {
     val a = actorSystem
-    val up = userAndPassword
+    val up = admission.userAndPassword
     def h = httpsConfig  // lazy, to avoid reference when not needed (needed only for https)
     new AgentClient with HttpClusterNodeApi  {
       override def close(): Unit = {
@@ -98,22 +98,24 @@ object AgentClient
       }
 
       protected val actorSystem = a
-      val baseUri = agentUri
+      val baseUri = admission.uri
       protected val name = label
       protected def httpsConfig = h
-      protected def userAndPassword = up
+      protected val userAndPassword = up
 
-      protected val prefixedUri = agentUri / "agent"
+      protected val prefixedUri = baseUri / "agent"
 
       override def toString = s"AgentClient($prefixedUri)"
     }
   }
 
-  def resource(agentUri: Uri, userAndPassword: Option[UserAndPassword], label: String = "Agent",
+  def resource(
+    admission: Admission,
+    label: String = "Agent",
     httpsConfig: => HttpsConfig = HttpsConfig.empty)
     (implicit actorSystem: ActorSystem)
   : Resource[Task, AgentClient] =
     Resource.make(
-      acquire = Task(apply(agentUri, userAndPassword, label, httpsConfig)))(
+      acquire = Task(apply(admission, label, httpsConfig)))(
       release = client => client.tryLogout *> Task(client.close()))
 }

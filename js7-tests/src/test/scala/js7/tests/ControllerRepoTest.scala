@@ -22,7 +22,7 @@ import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.common.akkautils.Akkas.actorSystemResource
-import js7.controller.client.AkkaHttpControllerApi.admissionToApiResource
+import js7.controller.client.AkkaHttpControllerApi.resource
 import js7.data.Problems.VersionedItemRemovedProblem
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, TakeSnapshot}
@@ -191,7 +191,7 @@ final class ControllerRepoTest extends OurTestSuite
         logInfo(genStopwatch.itemsPerSecondString(itemCount, "items signed"))
         actorSystemResource(name = "ControllerRepoTest-SPEED")
           .use(actorSystem => Task {
-            val apiResource  = admissionToApiResource(Admission(uri, credentials))(actorSystem)
+            val apiResource  = resource(Admission(uri, credentials))(actorSystem)
             val controllerApi = new ControllerApi(apiResource map Nel.one)
             for (_ <- 1 to n) {
               val t = now

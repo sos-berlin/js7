@@ -7,6 +7,7 @@ import js7.agent.data.event.AgentEvent.AgentReady
 import js7.agent.tests.AgentTester
 import js7.agent.tests.TestAgentDirectoryProvider.*
 import js7.agent.web.EventRouteTest.*
+import js7.base.auth.Admission
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.problem.Checked.*
 import js7.base.test.OurTestSuite
@@ -31,7 +32,8 @@ final class EventRouteTest extends OurTestSuite with AgentTester
   protected val akkaAskTimeout = 99.s
 
   implicit private lazy val actorSystem: ActorSystem = agent.actorSystem
-  private val agentClient = AgentClient(agent.localUri, Some(TestUserAndPassword)).closeWithCloser
+  private val agentClient = AgentClient(Admission(agent.localUri, Some(TestUserAndPassword)))
+    .closeWithCloser
   private var agentRunId: AgentRunId = _
   private var eventId = EventId.BeforeFirst
   private var snapshotEventId = EventId.BeforeFirst

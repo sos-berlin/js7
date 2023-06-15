@@ -8,7 +8,7 @@ import cats.syntax.traverse.*
 import com.softwaremill.diffx.generic.auto.*
 import com.softwaremill.tagging.{@@, Tagger}
 import com.typesafe.config.Config
-import js7.base.auth.SimpleUser
+import js7.base.auth.{Admission, SimpleUser}
 import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier
 import js7.base.eventbus.{EventPublisher, StandardEventBus}
 import js7.base.generic.Completed
@@ -230,7 +230,7 @@ object RunningController
       ClusterNode.recoveringResource[ControllerState](
         actorSystemResource(conf.name, config),
         (uri, name, actorSystem) => AkkaHttpControllerApi.resource(
-          uri, clusterConf.peersUserAndPassword, httpsConfig, name = name)(actorSystem),
+          Admission(uri, clusterConf.peersUserAndPassword), httpsConfig, name = name)(actorSystem),
         new LicenseChecker(LicenseCheckContext(conf.configDirectory)),
         journalLocation, clusterConf, eventIdClock, testEventBus)
 

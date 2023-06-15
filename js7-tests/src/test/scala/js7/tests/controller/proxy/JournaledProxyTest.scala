@@ -2,6 +2,7 @@ package js7.tests.controller.proxy
 
 import akka.actor.ActorSystem
 import js7.base.Js7Version
+import js7.base.auth.Admission
 import js7.base.configutils.Configs.*
 import js7.base.generic.Completed
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
@@ -60,8 +61,7 @@ extends OurTestSuite with BeforeAndAfterAll with ProvideActorSystem with Control
 
   private lazy val api = new ControllerApi(AkkaHttpControllerApi
     .resource(
-      controller.localUri,
-      Some(primaryUserAndPassword),
+      Admission(controller.localUri, Some(primaryUserAndPassword)),
       name = "JournaledProxyTest")
     .map(Nel.one))
 

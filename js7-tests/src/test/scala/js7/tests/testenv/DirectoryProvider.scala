@@ -541,6 +541,6 @@ object DirectoryProvider
       .flatMap(implicit actorSystem =>
         ClusterWatchService.resource(
           clusterWatchId,
-          admissions.traverse(AkkaHttpControllerApi.admissionToApiResource(_, httpsConfig)),
+          admissions.traverse(AkkaHttpControllerApi.resource(_, httpsConfig)),
           config.withFallback(Js7Configuration.defaultConfig)))
 }

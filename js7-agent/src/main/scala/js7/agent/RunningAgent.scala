@@ -17,7 +17,7 @@ import js7.agent.data.commands.AgentCommand.ShutDown
 import js7.agent.data.views.AgentOverview
 import js7.agent.web.AgentRoute
 import js7.base.BuildInfo
-import js7.base.auth.{SessionToken, SimpleUser}
+import js7.base.auth.{Admission, SessionToken, SimpleUser}
 import js7.base.eventbus.StandardEventBus
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.SIGTERM
@@ -171,7 +171,7 @@ object RunningAgent {
       clusterNode <- ClusterNode.recoveringResource[AgentState](
         akkaResource = Resource.eval(Task.pure(forDirector.actorSystem)),
         (uri, label, actorSystem) => AgentClient.resource(
-          uri, clusterConf.peersUserAndPassword, label, httpsConfig)(actorSystem),
+          Admission(uri, clusterConf.peersUserAndPassword), label, httpsConfig)(actorSystem),
         new LicenseChecker(LicenseCheckContext(conf.configDirectory)),
         journalLocation, clusterConf, eventIdClock, testEventBus)
       agent <- resource2(forDirector, clusterNode, testWiring, conf, testEventBus, clock)(

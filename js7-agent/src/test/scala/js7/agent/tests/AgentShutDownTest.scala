@@ -5,7 +5,7 @@ import js7.agent.client.AgentClient
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.commands.AgentCommand.{AttachItem, AttachOrder, AttachSignedItem, DedicateAgentDirector, ShutDown}
 import js7.agent.tests.AgentShutDownTest.*
-import js7.base.auth.UserId
+import js7.base.auth.{Admission, UserId}
 import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.process.ProcessSignal.SIGKILL
@@ -50,8 +50,9 @@ final class AgentShutDownTest extends OurTestSuite with BeforeAndAfterAll with T
         val userId = UserId("TEST-USER")
         closer onClose Akkas.terminateAndWait(actorSystem, 10.s)
 
-        val client = AgentClient(agentUri = agent.localUri,
-          Some(userId -> SecretString("TEST-PASSWORD")))
+        val client = AgentClient(Admission(
+          agent.localUri,
+          Some(userId -> SecretString("TEST-PASSWORD"))))
         client.login() await 99.s
 
         client

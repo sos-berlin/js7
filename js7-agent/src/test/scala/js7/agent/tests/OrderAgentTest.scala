@@ -10,6 +10,7 @@ import js7.agent.data.commands.AgentCommand.{AttachItem, AttachOrder, AttachSign
 import js7.agent.tests.OrderAgentTest.*
 import js7.agent.tests.TestAgentDirectoryProvider.{TestUserAndPassword, provideAgentDirectory}
 import js7.base.Problems.TamperedWithSignedMessageProblem
+import js7.base.auth.Admission
 import js7.base.configutils.Configs.*
 import js7.base.crypt.Signed
 import js7.base.io.file.FileUtils.syntax.*
@@ -62,7 +63,8 @@ final class OrderAgentTest extends OurTestSuite
       TestAgent.blockingRun(agentConf, 99.s) { agent =>
         withCloser { implicit closer =>
           import agent.actorSystem
-          val agentClient = AgentClient(agent.localUri, Some(TestUserAndPassword)).closeWithCloser
+          val agentClient = AgentClient(Admission(agent.localUri, Some(TestUserAndPassword)))
+            .closeWithCloser
 
           assert(agentClient
             .commandExecute(
@@ -144,7 +146,8 @@ final class OrderAgentTest extends OurTestSuite
       TestAgent.blockingRun(agentConf, timeout) { agent =>
         withCloser { implicit closer =>
           implicit val actorSystem: ActorSystem = newActorSystem(getClass.getSimpleName)
-          val agentClient = AgentClient(agent.localUri, Some(TestUserAndPassword)).closeWithCloser
+          val agentClient = AgentClient(Admission(agent.localUri, Some(TestUserAndPassword)))
+            .closeWithCloser
           agentClient.login() await 99.s
           assert(
             agentClient

@@ -3,6 +3,7 @@ package js7.tests.filewatch
 import java.nio.file.Files.{createDirectories, createDirectory, delete, exists}
 import js7.agent.client.AgentClient
 import js7.agent.data.event.AgentEvent.AgentReady
+import js7.base.auth.Admission
 import js7.base.configutils.Configs.*
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.problem.Checked.*
@@ -196,8 +197,11 @@ final class FileWatch2Test extends OurTestSuite with DirectoryProviderForScalaTe
             await[OrderDeleted](_.key == orderId)
             assert(!exists(file))
           }
-          val client = AgentClient(agentUri = aAgent.localUri,
-            directoryProvider.agentEnvs.head.controllerUserAndPassword)(aAgent.actorSystem)
+          val client = AgentClient(
+            Admission(
+              aAgent.localUri,
+              directoryProvider.agentEnvs.head.controllerUserAndPassword))(
+            aAgent.actorSystem)
           checkAgentEvents(client)
         }
       }

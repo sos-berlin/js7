@@ -3,7 +3,7 @@ package js7.controller.client
 import cats.effect.Resource
 import io.circe.{Decoder, Encoder, Json}
 import izumi.reflect.Tag
-import js7.base.auth.UserAndPassword
+import js7.base.auth.Admission
 import js7.base.exceptions.HasIsIgnorableStackTrace
 import js7.base.generic.Completed
 import js7.base.session.SessionApi
@@ -95,18 +95,19 @@ object HttpControllerApi
 
   /** Logs out when the resource is being released. */
   def resource(
-    uri: Uri,
-    userAndPassword: Option[UserAndPassword],
+    admission: Admission,
     httpClient: HttpClient,
     loginDelays: () => Iterator[FiniteDuration] = SessionApi.defaultLoginDelays _)
   : Resource[Task, HttpControllerApi] =
     SessionApi.resource(Task(
-      new HttpControllerApi.Standard(uri, userAndPassword, httpClient, loginDelays)))
+      new HttpControllerApi.Standard(admission, httpClient, loginDelays)))
 
   final class Standard(
-    val baseUri: Uri,
-    protected val userAndPassword: Option[UserAndPassword],
+    admission: Admission,
     val httpClient: HttpClient,
     override protected val loginDelays: () => Iterator[FiniteDuration] = SessionApi.defaultLoginDelays _)
-  extends HttpControllerApi
+  extends HttpControllerApi {
+    val baseUri = admission.uri
+    protected val userAndPassword = admission.userAndPassword
+  }
 }

@@ -40,8 +40,7 @@ object AkkaHttpControllerApi
 
   /** Logs out when the resource is being released. */
   def separateAkkaResource(
-    uri: Uri,
-    userAndPassword: Option[UserAndPassword],
+    admission: Admission,
     httpsConfig: HttpsConfig = HttpsConfig.empty,
     config: Config = ConfigFactory.empty,
     name: String = "")
@@ -49,7 +48,7 @@ object AkkaHttpControllerApi
     val myName = if (name.nonEmpty) name else "AkkaHttpControllerApi"
     for {
       actorSystem <- actorSystemResource(name = myName, config)
-      api <- resource(uri, userAndPassword, httpsConfig, name = myName)(actorSystem)
+      api <- resource(admission, httpsConfig, name = myName)(actorSystem)
     } yield api
   }
 
@@ -60,20 +59,11 @@ object AkkaHttpControllerApi
     (implicit actorSystem: ActorSystem)
   : Resource[Task, Nel[HttpControllerApi]] =
     admissions.zipWithIndex
-      .traverse { case (a, i) => admissionToApiResource(a, httpsConfig, name = s"$name-$i") }
-
-  def admissionToApiResource(
-    admission: Admission,
-    httpsConfig: HttpsConfig = HttpsConfig.empty,
-    name: String = defaultName)
-    (implicit actorSystem: ActorSystem)
-  : Resource[Task, HttpControllerApi] =
-    resource(admission.uri, admission.userAndPassword, httpsConfig, name = name)
+      .traverse { case (a, i) => resource(a, httpsConfig, name = s"$name-$i") }
 
   /** Logs out when the resource is being released. */
   def resource(
-    uri: Uri,
-    userAndPassword: Option[UserAndPassword],
+    admission: Admission,
     httpsConfig: HttpsConfig = HttpsConfig.empty,
     loginDelays: () => Iterator[FiniteDuration] = SessionApi.defaultLoginDelays _,
     name: String = defaultName)
@@ -81,8 +71,8 @@ object AkkaHttpControllerApi
   : Resource[Task, HttpControllerApi] =
     for {
       httpClient <- AkkaHttpClient.resource(
-        uri, uriPrefixPath = HttpControllerApi.UriPrefixPath,
+        admission.uri, uriPrefixPath = HttpControllerApi.UriPrefixPath,
         httpsConfig, name = name)
-      api <- HttpControllerApi.resource(uri, userAndPassword, httpClient, loginDelays)
+      api <- HttpControllerApi.resource(admission, httpClient, loginDelays)
     } yield api
 }

@@ -3,6 +3,7 @@ package js7.agent.tests
 import akka.actor.ActorSystem
 import js7.agent.client.AgentClient
 import js7.base.BuildInfo
+import js7.base.auth.Admission
 import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.*
@@ -20,7 +21,7 @@ final class AgentClientTest extends OurTestSuite with ScalaFutures with AgentTes
 
   override lazy val agentConfiguration = newAgentConfiguration()
   private implicit lazy val actorSystem: ActorSystem = newActorSystem("AgentClientTest")
-  private lazy val client = AgentClient(agentUri = agent.localUri, userAndPassword = None)
+  private lazy val client = AgentClient(Admission(agent.localUri))
 
   override def afterAll(): Unit = {
     actorSystem.terminate().await(99.s)
