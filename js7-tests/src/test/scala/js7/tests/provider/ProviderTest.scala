@@ -91,7 +91,7 @@ final class ProviderTest extends OurTestSuite with ControllerAgentForScalaTest
          |js7.provider.controller.password = "$loginPassword"
          """.stripMargin
 
-    directoryProvider.controllerEnv.configDir / "private" / "private.conf" ++=
+    directoryProvider.controllerEnv.privateConf ++=
      s"""js7.auth.users {
         |  $loginName {
         |    password = "plain:$loginPassword"

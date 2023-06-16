@@ -39,7 +39,7 @@ final class AkkaHttpControllerApiTest extends OurTestSuite with ControllerAgentF
     ).closeWithCloser
 
   override def beforeAll() = {
-    directoryProvider.controllerEnv.configDir / "private" / "private.conf" ++= """
+    directoryProvider.controllerEnv.privateConf ++= """
         |js7.auth.users.TEST-USER = "plain:TEST-PASSWORD"
         |""".stripMargin
     super.beforeAll()

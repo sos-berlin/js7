@@ -32,7 +32,7 @@ final class UpdateRepoAgentTest extends OurTestSuite
       items = workflow :: Nil,
       testName = Some("UpdateRepoAgentTest"))
     autoClosing(directoryProvider) { _ =>
-      (directoryProvider.controllerEnv.configDir / "private" / "private.conf") ++=
+      directoryProvider.controllerEnv.privateConf ++=
         """js7.auth.users {
           |  TEST-USER {
           |    password = "plain:TEST-PASSWORD"

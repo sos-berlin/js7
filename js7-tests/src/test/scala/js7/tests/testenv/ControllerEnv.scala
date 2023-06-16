@@ -74,8 +74,7 @@ extends ProgramEnv.WithFileJournal {
     if (!agentHttpsMutual) {
       val quotedAgentPath = quoteString(agentPath.string)
       val quotedPassword = quoteString(password.string)
-      (configDir / "private" / "private.conf") ++=
-        s"js7.auth.agents.$quotedAgentPath = $quotedPassword\n"
+      privateConf ++= s"js7.auth.agents.$quotedAgentPath = $quotedPassword\n"
     } else {
       // Agent uses the distinguished name of the Controller's HTTPS certificate
     }

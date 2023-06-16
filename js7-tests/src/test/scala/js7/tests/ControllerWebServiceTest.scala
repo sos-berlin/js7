@@ -425,7 +425,7 @@ object ControllerWebServiceTest
     controller.configDir / "controller.conf" ++= """
       |js7.web.server.test = true
       |""".stripMargin
-    (controller.configDir / "private" / "private.conf").append("""
+    (controller.privateConf).append("""
       |js7.auth.users {
       |  TEST-USER {
       |    password = "plain:TEST-PASSWORD",

@@ -41,7 +41,7 @@ final class UpdateRepoX509RootTest extends OurTestSuite with ControllerAgentForS
     copy(root.certificateFile,
       directoryProvider.controllerEnv.configDir / "private" / "trusted-x509-keys" / "Root.crt")
 
-    (directoryProvider.controllerEnv.configDir / "private" / "private.conf") ++=
+    directoryProvider.controllerEnv.privateConf ++=
       s"""js7.configuration.trusted-signature-keys {
          |  X509 = $${js7.config-directory}"/private/trusted-x509-keys"
          |}

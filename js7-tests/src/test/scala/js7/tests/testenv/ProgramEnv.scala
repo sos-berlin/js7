@@ -32,6 +32,8 @@ trait ProgramEnv extends AutoCloseable {
   final lazy val configDir = directory / "config"
   final lazy val dataDir = directory / "data"
   final lazy val stateDir = dataDir / "state"
+  final lazy val privateConf = configDir / "private" / "private.conf"
+
   private lazy val trustedSignatureKeysDir =
     "private/" + verifier.companion.recommendedKeyDirectoryName
 

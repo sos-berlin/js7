@@ -180,8 +180,8 @@ trait ControllerClusterForScalaTest
 
       // Replicate credentials required for agents
       Files.copy(
-        primary.controllerEnv.configDir / "private" / "private.conf",
-        backup.controllerEnv.configDir / "private" / "private.conf",
+        primary.controllerEnv.privateConf,
+        backup.controllerEnv.privateConf,
         REPLACE_EXISTING)
 
       for (a <- primary.agentEnvs ++ backup.agentEnvs) a.writeExecutable(TestPathExecutable, shellScript)
