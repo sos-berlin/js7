@@ -3,9 +3,7 @@ package js7.cluster
 import cats.instances.either.*
 import cats.syntax.traverse.*
 import com.typesafe.config.Config
-import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.configutils.Configs.*
-import js7.base.generic.SecretString
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.web.Uri
@@ -20,7 +18,6 @@ final case class ClusterConf(
   ownId: NodeId,
   isBackup: Boolean,
   maybeClusterSetting: Option[ClusterSetting],
-  peersUserAndPassword: Option[UserAndPassword],
   recouplingStreamReader: RecouplingStreamReaderConf,
   timing: ClusterTiming,
   clusterWatchUniquenessMemorySize: Int,
@@ -35,7 +32,7 @@ object ClusterConf
 {
   val ClusterProductName = "js7.controller.cluster"
 
-  def fromConfig(userId: UserId, config: Config): Checked[ClusterConf] = {
+  def fromConfig(config: Config): Checked[ClusterConf] = {
     val isBackup = config.getBoolean("js7.journal.cluster.node.is-backup")
     for {
       maybeIdToUri <- {
@@ -60,8 +57,6 @@ object ClusterConf
       }
       nodeId = config.optionAs[NodeId]("js7.journal.cluster.node.id") getOrElse
         NodeId(if (isBackup) "Backup" else "Primary")
-      userAndPassword <- config.checkedOptionAs[SecretString]("js7.auth.cluster.password")
-        .map(_.map(UserAndPassword(userId, _)))
       recouplingStreamReaderConf <- RecouplingStreamReaderConfs.fromConfig(config)
       heartbeat = config.getDuration("js7.journal.cluster.heartbeat").toFiniteDuration
       heartbeatTimeout = config.getDuration("js7.journal.cluster.heartbeat-timeout").toFiniteDuration
@@ -77,7 +72,6 @@ object ClusterConf
         nodeId,
         isBackup = isBackup,
         setting,
-        userAndPassword,
         recouplingStreamReaderConf.copy(
           timeout = heartbeat + (heartbeatTimeout - heartbeat) / 2),
         timing,

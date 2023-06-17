@@ -5,8 +5,9 @@ import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Path
 import js7.base.crypt.SignatureVerifier
 import js7.base.eventbus.StandardEventBus
+import js7.base.io.file.FileUtils.syntax.*
 import js7.common.system.ThreadPools.ownThreadPoolResource
-import js7.data.subagent.SubagentItem
+import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.subagent.Subagent
 import js7.tests.testenv.DirectoryProvider.*
 import monix.eval.Task
@@ -14,6 +15,7 @@ import monix.eval.Task
 /** Environment with config and data directories for a bare Subagent. */
 final class BareSubagentEnv(
   val subagentItem: SubagentItem,
+  directorSubagentId: SubagentId,
   protected val name: String,
   protected val rootDirectory: Path,
   protected val verifier: SignatureVerifier = defaultVerifier,
@@ -26,6 +28,17 @@ extends SubagentEnv {
   type Program = Subagent
 
   initialize()
+
+  protected override def createDirectoriesAndFiles(): Unit = {
+    super.createDirectoriesAndFiles()
+
+    privateConf ++= s"""
+     |js7.auth.users.${directorSubagentId.string} {
+     |  permissions: [ AgentDirector ]
+     |  password: "plain:${directorSubagentId.string}'s PASSWORD"
+     |}
+     |""".stripMargin
+  }
 
   def programResource: Resource[Task, Subagent] =
     subagentResource

@@ -20,6 +20,7 @@ import js7.base.monixutils.{AsyncMap, AsyncVariable}
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.{DelayIterator, DelayIterators}
+import js7.base.utils.Assertions.assertThat
 import js7.base.utils.CatsUtils.syntax.{RichF, RichResource}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, LockKeeper}
@@ -470,17 +471,19 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
           driver.startObserving))
     } yield driver
 
-  private def subagentApiResource(subagentItem: SubagentItem): Resource[Task, HttpSubagentApi] =
+  private def subagentApiResource(subagentItem: SubagentItem): Resource[Task, HttpSubagentApi] = {
+    assertThat(subagentItem.id != localSubagentId)
     HttpSubagentApi.resource(
       Admission(
         subagentItem.uri,
         directorConf.config
           .optionAs[SecretString](
             "js7.auth.subagents." + ConfigUtil.joinPath(subagentItem.id.string))
-          .map(UserAndPassword(subagentItem.agentPath.toUserId.orThrow, _))),
+          .map(UserAndPassword(localSubagentId.toUserId.orThrow, _))),
       directorConf.httpsConfig,
       name = subagentItem.id.toString,
       actorSystem)
+  }
 
   def addOrReplaceSubagentSelection(selection: SubagentSelection): Task[Checked[Unit]] =
     stateVar

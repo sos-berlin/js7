@@ -1,8 +1,6 @@
 package js7.data.agent
 
 import js7.base.annotation.javaApi
-import js7.base.auth.UserId
-import js7.base.problem.Checked
 import js7.data.delegate.DelegateId
 import js7.data.item.UnsignedSimpleItemPath
 
@@ -15,9 +13,6 @@ extends UnsignedSimpleItemPath with DelegateId
   protected type Self = AgentPath
 
   val companion: AgentPath.type = AgentPath
-
-  def toUserId: Checked[UserId] =
-    UserId.checked(string)
 
   override def toString = s"Agent:$string"  // instead of AgentRef:
 }

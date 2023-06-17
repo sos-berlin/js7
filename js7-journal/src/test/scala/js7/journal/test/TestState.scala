@@ -1,9 +1,11 @@
 package js7.journal.test
 
+import com.typesafe.config.Config
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import js7.base.problem.Checked
+import js7.base.problem.{Checked, Problem}
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{Event, EventId, JournalEvent, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotableState, SnapshotableStateBuilder}
+import js7.data.node.{NodeId, NodeName}
 import monix.reactive.Observable
 
 /**
@@ -48,6 +50,12 @@ extends SnapshotableState[TestState]
 
   def withStandards(standards: SnapshotableState.Standards) =
     copy(standards = standards)
+
+  def clusterNodeToUserId(nodeId: NodeId) =
+    Left(Problem("clusterNodeToUserId not implemented"))
+
+  def clusterNodeIdToName(nodeId: NodeId) =
+    Left(Problem("clusterNodeIdToName not implemented"))
 }
 
 object TestState extends SnapshotableState.Companion[TestState]
@@ -73,4 +81,7 @@ object TestState extends SnapshotableState.Companion[TestState]
         KeyedSubtype[TestEvent])
 
   protected def inventoryItems = Nil
+
+  def clusterUserToPassword(config: Config, nodeName: NodeName) =
+    Left(Problem("clusterUserToPassword"))
 }

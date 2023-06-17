@@ -2,13 +2,14 @@ package js7.data.cluster
 
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
+import js7.base.auth.UserId
 import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.data.command.CommonCommand
 import js7.data.event.EventId
-import js7.data.node.NodeId
+import js7.data.node.{NodeId, NodeName}
 import scala.concurrent.duration.FiniteDuration
 
 sealed trait ClusterCommand extends CommonCommand {
@@ -17,7 +18,15 @@ sealed trait ClusterCommand extends CommonCommand {
 
 object ClusterCommand
 {
-  final case class ClusterStartBackupNode(setting: ClusterSetting, fileEventId: EventId)
+  /** Initialize the backup node.
+   * @param activeNodeName to look up password for login at the active node
+   * @param passiveNodeUserId UserId to login at the active node
+   */
+  final case class ClusterStartBackupNode(
+    setting: ClusterSetting,
+    fileEventId: EventId,
+    activeNodeName: NodeName,
+    passiveNodeUserId: UserId)
   extends ClusterCommand {
     type Response = Response.Accepted
   }

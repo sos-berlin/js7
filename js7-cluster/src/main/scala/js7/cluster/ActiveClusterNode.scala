@@ -4,6 +4,7 @@ import akka.pattern.ask
 import cats.syntax.flatMap.*
 import cats.syntax.monoid.*
 import com.softwaremill.diffx
+import js7.base.auth.{Admission, UserAndPassword}
 import js7.base.generic.Completed
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
@@ -40,8 +41,9 @@ import scala.concurrent.Promise
 import scala.concurrent.duration.*
 import scala.util.{Failure, Success}
 
-final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
+final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff] private[cluster](
   journal: FileJournal[S],
+  passiveNodeUserAndPassword: Option[UserAndPassword],
   common: ClusterCommon,
   clusterConf: ClusterConf)
   (implicit scheduler: Scheduler)
@@ -133,14 +135,17 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
         case clusterState: Coupled =>
           // Inhibit activation of peer again. If recovery or asking ClusterWatch took a long time,
           // peer may have activated itself.
-          common.inhibitActivationOfPeer(clusterState) map {
-            case Some(otherFailedOver) =>
-              Left(Problem.pure(s"While activating this node, the other node has failed-over: $otherFailedOver"))
-            case None =>
-              Right(Completed)
-          }
+          common
+            .inhibitActivationOfPeer(clusterState, passiveNodeUserAndPassword)
+            .map {
+              case Some(otherFailedOver) =>
+                Left(Problem.pure(
+                  s"While activating this node, the other node has failed-over: $otherFailedOver"))
+              case None =>
+                Right(Completed)
+            }
         case _ =>
-          Task.pure(Right(Completed))
+          Task.right(Completed)
       }
     }
 
@@ -319,10 +324,10 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
   private def proceedNodesAppointed(clusterState: HasNodes): Task[Completed] =
     logger.traceTask(
       clusterState match {
-        case state: NodesAppointed =>
+        case clusterState: NodesAppointed =>
           Task {
             if (!startingBackupNode.getAndSet(true)) {
-              startSendingClusterStartBackupNode(state)
+              startSendingClusterStartBackupNode(clusterState)
             }
             Completed
           }
@@ -334,12 +339,17 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
   private def startSendingClusterStartBackupNode(clusterState: NodesAppointed): Unit = {
     val sending =
       journal.eventWatch.started
-        .flatMap(_ => common
+        .*>(journal.state)
+        .flatMap(state => common
           .tryEndlesslyToSendCommand(
-            clusterState.passiveUri,
+            Admission(clusterState.passiveUri, passiveNodeUserAndPassword),
             ClusterStartBackupNode(
               clusterState.setting,
-              fileEventId = journal.eventWatch.lastFileEventId)))
+              fileEventId = journal.eventWatch.lastFileEventId,
+              activeNodeName =
+                state.clusterNodeIdToName(clusterState.activeId).orThrow,
+              passiveNodeUserId =
+                state.clusterNodeToUserId(clusterState.passiveId).orThrow)))
         .runToFuture
     sending.onComplete {
       case Success(()) =>
@@ -452,7 +462,9 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
       logger.info(s"Fetching acknowledgements from passive cluster $passiveId")
       Observable
         .fromResource(
-          common.clusterNodeApi(passiveUri, "acknowledgements"))
+          common.clusterNodeApi(
+            Admission(passiveUri, passiveNodeUserAndPassword),
+            "acknowledgements"))
         .flatMap(api =>
           observeEventIds(api, Some(timing.heartbeat))
             .whileBusyBuffer(OverflowStrategy.DropOld(bufferSize = 2))
@@ -488,7 +500,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
 
   private def awaitAcknowledgement(passiveUri: Uri, eventId: EventId): Task[Checked[EventId]] =
     logger.debugTask(common
-      .clusterNodeApi(passiveUri, "awaitAcknowledgement")
+      .clusterNodeApi(Admission(passiveUri, passiveNodeUserAndPassword), "awaitAcknowledgement")
       .use(api =>
         observeEventIds(api, heartbeat = None)
           .dropWhile(_ < eventId)

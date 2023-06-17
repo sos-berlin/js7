@@ -66,13 +66,7 @@ trait SubagentEnv extends ProgramEnv {
          |""".stripMargin
       }
     }
-    configDir / "private" / "private.conf" ++= s"""
-     |js7.auth.users {
-     |  ${agentPath.string} {
-     |    permissions: [ AgentDirector ]
-     |    password: "plain:AGENT-PASSWORD"
-     |  }
-     |}
+    privateConf ++= s"""
      |js7.web.server.auth.https-client-authentication = $mutualHttps
      |js7.web.https.keystore {
      |  store-password = "jobscheduler"

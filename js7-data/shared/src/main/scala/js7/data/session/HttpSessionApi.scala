@@ -1,7 +1,9 @@
 package js7.data.session
 
+import cats.effect.ExitCase
 import js7.base.Js7Version
 import js7.base.auth.{SessionToken, UserAndPassword}
+import js7.base.convert.As.StringAsBoolean
 import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.*
@@ -10,8 +12,11 @@ import js7.base.session.SessionCommand.{Login, Logout}
 import js7.base.session.{HasSessionToken, SessionApi, SessionCommand}
 import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}
 import js7.base.utils.AsyncLock
+import js7.base.utils.ScalaUtils.syntax.RichAny
+import js7.base.utils.Tests.isTest
 import js7.base.version.Js7Versions.checkNonMatchingVersion
 import js7.base.version.Version
+import js7.base.web.HttpClient.HttpException
 import js7.base.web.{HttpClient, Uri}
 import js7.data.event.SnapshotableState
 import js7.data.session.HttpSessionApi.*
@@ -48,13 +53,21 @@ trait HttpSessionApi extends SessionApi with HasSessionToken
           else {
             val cmd = Login(userAndPassword, Some(Js7Version))
             logger.debug(s"$toString: $cmd")
-            for (response <- executeSessionCommand(cmd)) yield {
-              logNonMatchingVersion(
-                otherVersion = response.js7Version,
-                otherName = sessionUri.stripPath.toString)
-              setSessionToken(response.sessionToken)
-              Completed
-            }
+            executeSessionCommand(cmd)
+              .pipeIf(isPasswordLoggable)(_.guaranteeCase {
+                case ExitCase.Error(t: HttpException) if t.statusInt == 401/*Unauthorized*/ =>
+                  // Logs the password !!!
+                  Task(logger.debug(
+                    s"⛔️ Login ${userAndPassword.map(o => s"${o.userId} »${o.password.string}«")} => ${t.problem getOrElse t}"))
+                case _ => Task.unit
+              })
+              .map(response => {
+                logNonMatchingVersion(
+                  otherVersion = response.js7Version,
+                  otherName = sessionUri.stripPath.toString)
+                setSessionToken(response.sessionToken)
+                Completed
+              })
           })))
 
   final def logout(): Task[Completed] =
@@ -115,6 +128,8 @@ trait HttpSessionApi extends SessionApi with HasSessionToken
 object HttpSessionApi
 {
   private val logger = Logger[this.type]
+  private val isPasswordLoggable = isTest &&
+    sys.props.get("js7.test.log-password").fold(false)(StringAsBoolean.apply)
 
   private[session] def logNonMatchingVersion(
     otherVersion: Version,

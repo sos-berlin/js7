@@ -53,7 +53,7 @@ final class ControllerConfigurationTest extends OurTestSuite with BeforeAndAfter
         clusterConf = ClusterConf(
           JournalConf.fromConfig(configuration.config)
             .copy(slowCheckState = sys.props.get("js7.test").fold(false)(StringAsBoolean(_))),
-          NodeId("Primary"), isBackup = false, None, None,
+          NodeId("Primary"), isBackup = false, None,
           RecouplingStreamReaderConf(
             timeout = 6500.ms, // Between 3s and 10s
             delay = 1.s,

@@ -98,10 +98,8 @@ extends OurTestSuite with BeforeAndAfterAll with ControllerAgentForScalaTest wit
             }
           }""") ++
         (!controllerHttpsMutual ? config"""
-          js7.auth.cluster {
-            user-id = "backup-controller"
-            password = "BACKUP-CONTROLLER-PASSWORD"
-          }""")
+          js7.auth.cluster.password = "BACKUP-CONTROLLER-PASSWORD"
+          """)
     ).reduce(_ withFallback _)
   }
 

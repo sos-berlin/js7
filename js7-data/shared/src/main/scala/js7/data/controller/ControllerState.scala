@@ -18,7 +18,7 @@ import js7.data.board.{Board, BoardEvent, BoardPath, BoardState, Notice, NoticeP
 import js7.data.calendar.{Calendar, CalendarPath, CalendarState}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.ControllerEvent.ControllerTestEvent
-import js7.data.controller.ControllerState.{WorkflowToOrders, logger}
+import js7.data.controller.ControllerState.{DummyClusterNodeName, WorkflowToOrders, logger}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.SnapshotMeta.SnapshotEventId
@@ -31,6 +31,7 @@ import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedS
 import js7.data.item.{BasicItemEvent, ClientAttachments, InventoryItem, InventoryItemEvent, InventoryItemKey, InventoryItemPath, ItemAttachedState, ItemRevision, Repo, SignableItem, SignableItemKey, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, SimpleItem, SimpleItemPath, UnsignedItemEvent, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItem, UnsignedSimpleItemEvent, UnsignedSimpleItemPath, UnsignedSimpleItemState, VersionedControl, VersionedControlId_, VersionedEvent, VersionedItemId_, VersionedItemPath}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath, LockState}
+import js7.data.node.{NodeId, NodeName}
 import js7.data.order.OrderEvent.{OrderNoticesExpected, OrderTransferred}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState, OrderWatchStateHandler}
@@ -68,6 +69,12 @@ with SnapshotableState[ControllerState]
   def controllerId = controllerMetaState.controllerId
 
   def companion = ControllerState
+
+  def clusterNodeIdToName(nodeId: NodeId) =
+    Right(DummyClusterNodeName)
+
+  def clusterNodeToUserId(nodeId: NodeId) =
+    Right(controllerId.toUserId)
 
   def estimatedSnapshotSize: Int =
     1 +
@@ -773,6 +780,8 @@ with ItemContainer.Companion[ControllerState]
       KeyedSubtype[OrderWatchEvent],
       KeyedSubtype[OrderEvent],
       KeyedSubtype[BoardEvent])
+
+  private val DummyClusterNodeName = NodeName("DummyControllerNodeName")
 
   object implicits {
     implicit val snapshotObjectJsonCodec: TypedJsonCodec[Any] =

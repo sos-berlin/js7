@@ -102,6 +102,12 @@ object Configs
 
   implicit final class RichConfig(private val underlying: Config) extends AnyVal
   {
+    def getBoolean(path: String, default: Boolean): Boolean =
+      if (underlying.hasPath(path))
+        underlying.getBoolean(path)
+      else
+        default
+
     def seqAs[W](path: String, default: => Iterable[W])(implicit convert: As[String, W]): IndexedSeq[W] =
       if (underlying.hasPath(path)) seqAs(path)(convert) else default.toVector
 

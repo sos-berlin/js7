@@ -21,7 +21,7 @@ import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
 import js7.data.cluster.{ClusterCommand, ClusterSetting, ClusterState}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, EventId, SnapshotableState, Stamped}
-import js7.data.node.NodeId
+import js7.data.node.{NodeId, NodeNameToPassword}
 import js7.journal.EventIdGenerator
 import js7.journal.recover.Recovered
 import js7.journal.state.FileJournal
@@ -43,7 +43,9 @@ final class WorkingClusterNode[
   val journalAllocated: Allocated[Task, FileJournal[S]],
   common: ClusterCommon,
   clusterConf: ClusterConf)
-  (implicit scheduler: Scheduler)
+  (implicit
+    nodeNameToPassword: NodeNameToPassword[S],
+    scheduler: Scheduler)
 //TODO extends Service
 {
   val journal: FileJournal[S] = journalAllocated.allocatedThing
@@ -56,10 +58,10 @@ final class WorkingClusterNode[
   def start(clusterState: ClusterState, eventId: EventId): Task[Checked[Unit]] =
     clusterState match {
       case ClusterState.Empty => Task.pure(Right(Completed))
-      case _: HasNodes =>
+      case clusterState: HasNodes =>
         common.requireValidLicense
           .flatMapT(_ =>
-            startActiveClusterNode(eventId))
+            startActiveClusterNode(clusterState, eventId))
     }
 
   def stop: Task[Unit] =
@@ -120,7 +122,7 @@ final class WorkingClusterNode[
             .flatMapT { case (_, state) =>
               state.clusterState match {
                 case clusterState: HasNodes =>
-                  startActiveClusterNode(state.eventId)
+                  startActiveClusterNode(clusterState, state.eventId)
                 case clusterState => Task.left(Problem.pure(
                   s"Unexpected ClusterState $clusterState after ClusterNodesAppointed"))
               }
@@ -132,14 +134,23 @@ final class WorkingClusterNode[
             .flatMapT(_.appointNodes(setting))
       }))
 
-  private def startActiveClusterNode(eventId: EventId): Task[Checked[Unit]] =
-    logger.traceTask(Task.defer {
-      val activeClusterNode = new ActiveClusterNode(journal, common, clusterConf)
-      if (_activeClusterNode.trySet(activeClusterNode))
-        activeClusterNode.start(eventId)
-      else
-        Task.left(Problem.pure("ActiveClusterNode has already been started"))
-    })
+  private def startActiveClusterNode(clusterState: HasNodes, eventId: EventId): Task[Checked[Unit]] =
+    logger.traceTask {
+      val passiveNodeId = clusterState.setting.other(clusterState.activeId)
+      journal.state
+        .map(_.clusterNodeToUserAndPassword(
+          ourNodeId = clusterState.activeId,
+          otherNodeId = passiveNodeId))
+        .flatMapT(passiveNodeUserAndPassword =>
+          Task.defer {
+            val activeClusterNode =
+              new ActiveClusterNode(journal, passiveNodeUserAndPassword, common, clusterConf)
+            if (_activeClusterNode.trySet(activeClusterNode))
+              activeClusterNode.start(eventId)
+            else
+              Task.left(Problem.pure("ActiveClusterNode has already been started"))
+          })
+    }
 
   def executeClusterWatchConfirm(cmd: ClusterWatchConfirm): Task[Checked[Unit]] =
     Task.defer {
@@ -181,7 +192,11 @@ object WorkingClusterNode
     clusterConf: ClusterConf,
     eventIdGenerator: EventIdGenerator = new EventIdGenerator,
     keyedEventBus: EventPublisher[Stamped[AnyKeyedEvent]] = new StandardEventBus)
-    (implicit scheduler: Scheduler, actorRefFactory: ActorRefFactory, timeout: akka.util.Timeout)
+    (implicit
+      nodeNameToPassword: NodeNameToPassword[S],
+      scheduler: Scheduler,
+      actorRefFactory: ActorRefFactory,
+      timeout: akka.util.Timeout)
   : Resource[Task, WorkingClusterNode[S]] =
     for {
       _ <- Resource.eval(Task.unless(recovered.clusterState == ClusterState.Empty)(

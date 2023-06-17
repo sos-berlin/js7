@@ -8,7 +8,6 @@ import js7.agent.TestAgent
 import js7.base.auth.{Admission, UserAndPassword, UserId}
 import js7.base.configutils.Configs.*
 import js7.base.generic.SecretString
-import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.https.HttpsConfig
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.problem.Checked.*
@@ -173,8 +172,6 @@ trait ControllerClusterForScalaTest
           js7.journal.cluster.node.is-backup = yes
           js7.journal.release-events-delay = 0s
           js7.journal.remove-obsolete-files = $removeObsoleteJournalFiles
-          #js7.auth.cluster.password = "BACKUP-AGENT-PASSWORD"
-          #js7.auth.users.Agent.password = "plain:AGENT-PASSWORD"
           js7.auth.users.Controller.password = "plain:AGENT-PASSWORD" """
       ).closeWithCloser
 

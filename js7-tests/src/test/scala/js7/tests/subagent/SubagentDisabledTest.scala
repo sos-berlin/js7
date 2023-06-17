@@ -17,6 +17,7 @@ import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.EmptyJob
 import js7.tests.subagent.SubagentDisabledTest.*
+import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
@@ -24,8 +25,8 @@ import monix.reactive.Observable
 final class SubagentDisabledTest extends OurTestSuite with SubagentTester
 {
   override protected def agentConfig = config"""
-    js7.auth.subagents.A-SUBAGENT = "AGENT-PASSWORD"
-    js7.auth.subagents.B-SUBAGENT = "AGENT-PASSWORD"
+    js7.auth.subagents.A-SUBAGENT = "$localSubagentId's PASSWORD"
+    js7.auth.subagents.B-SUBAGENT = "$localSubagentId's PASSWORD"
     """.withFallback(super.agentConfig)
 
   protected val agentPaths = Seq(agentPath)
@@ -36,14 +37,16 @@ final class SubagentDisabledTest extends OurTestSuite with SubagentTester
 
   protected implicit val scheduler = Scheduler.traced
 
-  private val localSubagentItem = directoryProvider.subagentItems.head
-  private val localSubagentId = localSubagentItem.id
   private val nextOrderId = Iterator.from(1).map(i => OrderId(s"ORDER-$i")).next _
 
-  private lazy val (aSubagent, aSubagentRelease) = subagentResource(aSubagentItem).allocated
-    .await(99.s)
-  private lazy val (bSubagent, bSubagentRelease) = subagentResource(bSubagentItem).allocated
-    .await(99.s)
+  private lazy val (aSubagent, aSubagentRelease) =
+    subagentResource(aSubagentItem, director = toLocalSubagentId(agentPath))
+      .allocated
+      .await(99.s)
+  private lazy val (bSubagent, bSubagentRelease) =
+    subagentResource(bSubagentItem, director = toLocalSubagentId(agentPath))
+      .allocated
+      .await(99.s)
 
   override def beforeAll() = {
     super.beforeAll()
@@ -133,6 +136,7 @@ final class SubagentDisabledTest extends OurTestSuite with SubagentTester
 object SubagentDisabledTest
 {
   private val agentPath = AgentPath("AGENT")
+  private val localSubagentId = toLocalSubagentId(agentPath)
   private val aSubagentId = SubagentId("A-SUBAGENT")
   private val bSubagentId = SubagentId("B-SUBAGENT")
 

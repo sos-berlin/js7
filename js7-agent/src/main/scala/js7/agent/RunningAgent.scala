@@ -7,6 +7,7 @@ import cats.effect.concurrent.Deferred
 import cats.syntax.traverse.*
 import com.softwaremill.diffx.generic.auto.*
 import com.softwaremill.tagging.{@@, Tagger}
+import com.typesafe.config.ConfigUtil
 import js7.agent.RunningAgent.*
 import js7.agent.client.AgentClient
 import js7.agent.command.CommandHandler
@@ -17,8 +18,10 @@ import js7.agent.data.commands.AgentCommand.ShutDown
 import js7.agent.data.views.AgentOverview
 import js7.agent.web.AgentRoute
 import js7.base.BuildInfo
-import js7.base.auth.{Admission, SessionToken, SimpleUser}
+import js7.base.auth.{SessionToken, SimpleUser}
+import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.eventbus.StandardEventBus
+import js7.base.generic.SecretString
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.Logger
@@ -41,8 +44,7 @@ import js7.common.system.startup.StartUp
 import js7.core.command.CommandMeta
 import js7.core.license.LicenseChecker
 import js7.data.Problems.{BackupClusterNodeNotAppointed, ClusterNodeIsNotActiveProblem, ClusterNodeIsNotReadyProblem, PassiveClusterNodeShutdownNotAllowedProblem}
-import js7.data.agent.AgentClusterConf
-import js7.data.node.NodeId
+import js7.data.node.{NodeId, NodeNameToPassword}
 import js7.data.subagent.SubagentId
 import js7.journal.EventIdClock
 import js7.journal.files.JournalFiles.JournalMetaOps
@@ -164,14 +166,19 @@ object RunningAgent {
       conf.journalLocation.deleteJournalIfMarked().orThrow
     }
 
+    implicit val nodeNameToPassword: NodeNameToPassword[AgentState] =
+      nodeName =>
+        Right(config.optionAs[SecretString](
+          "js7.auth.subagents." + ConfigUtil.joinPath(nodeName.string)))
+
     for {
       _ <- Resource.eval(Task(initialize()))
       subagent <- Subagent.resource(conf.subagentConf, testEventBus)
       forDirector = subagent.forDirector/*TODO Subagent itself should start Director when requested*/
       clusterNode <- ClusterNode.recoveringResource[AgentState](
         akkaResource = Resource.eval(Task.pure(forDirector.actorSystem)),
-        (uri, label, actorSystem) => AgentClient.resource(
-          Admission(uri, clusterConf.peersUserAndPassword), label, httpsConfig)(actorSystem),
+        (admission, label, actorSystem) => AgentClient.resource(
+          admission, label, httpsConfig)(actorSystem),
         new LicenseChecker(LicenseCheckContext(conf.configDirectory)),
         journalLocation, clusterConf, eventIdClock, testEventBus)
       agent <- resource2(forDirector, clusterNode, testWiring, conf, testEventBus, clock)(
@@ -195,14 +202,11 @@ object RunningAgent {
       failedNodeId: Option[NodeId],
       journalAllocated: Allocated[Task, FileJournal[AgentState]])
     : MainActorStarted = {
-      val failedOverSubagentId: Option[SubagentId] = {
-        val directors = journalAllocated.allocatedThing.unsafeCurrentState().meta.directors
-        failedNodeId.flatMap {
-          case AgentClusterConf.primaryNodeId => directors.get(0)
-          case AgentClusterConf.backupNodeId => directors.get(1)
-          case nodeId => throw new AssertionError(s"🔥 Unexpected $nodeId")
-        }
-      }
+      val failedOverSubagentId: Option[SubagentId] =
+        for (nodeId <- failedNodeId) yield
+          journalAllocated.allocatedThing.unsafeCurrentState().meta
+            .clusterNodeIdToSubagentId(nodeId)
+            .orThrow
 
       val mainActorReadyPromise = Promise[MainActor.Ready]()
       val terminationPromise = Promise[ProgramTermination]()

@@ -1,9 +1,12 @@
 package js7.data.event
 
 import cats.implicits.toShow
+import cats.syntax.traverse.*
 import io.circe.{Decoder, Json}
+import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.circeutils.CirceUtils.*
 import js7.base.circeutils.typed.TypedJsonCodec
+import js7.base.generic.SecretString
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.RichString
@@ -11,6 +14,7 @@ import js7.data.cluster.{ClusterEvent, ClusterState}
 import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.SnapshotableState.*
+import js7.data.node.{NodeId, NodeName, NodeNameToPassword}
 import monix.eval.Task
 import monix.reactive.Observable
 
@@ -35,6 +39,27 @@ extends JournaledState[S]
 
   final def clusterState: ClusterState =
     standards.clusterState
+
+  def clusterNodeIdToName(nodeId: NodeId): Checked[NodeName]
+
+  def clusterNodeToUserId(nodeId: NodeId): Checked[UserId]
+
+  final def clusterNodeToUserAndPassword(ourNodeId: NodeId, otherNodeId: NodeId)
+    (implicit nodeNameToPassword: NodeNameToPassword[S])
+  : Checked[Option[UserAndPassword]] =
+    clusterNodeToPassword(otherNodeId)
+      .flatMap(maybePassword =>
+        maybePassword.traverse(password =>
+          clusterNodeToUserId(ourNodeId)
+            .map(UserAndPassword(_, password))))
+
+  private def clusterNodeToPassword(nodeId: NodeId)
+    (implicit nodeNameToPassword: NodeNameToPassword[S])
+  : Checked[Option[SecretString]] =
+    for {
+      nodeName <- clusterNodeIdToName(nodeId)
+      maybePassword <- nodeNameToPassword(nodeName)
+    } yield maybePassword
 
   protected final def applyStandardEvent(keyedEvent: KeyedEvent[Event]): Checked[S] =
     keyedEvent match {
@@ -122,7 +147,7 @@ object SnapshotableState
       else
         journalDecoder.decodeJson(json) match {
           case Left(t: io.circe.DecodingFailure) =>
-            val problem = Problem.pure(s"Unexpected JSON: ${ t.show }")
+            val problem = Problem.pure(s"Unexpected JSON: ${t.show}")
             logger.error(s"$problem: ${json.compactPrint.truncateWithEllipsis(100)}")
             Left(problem)
 

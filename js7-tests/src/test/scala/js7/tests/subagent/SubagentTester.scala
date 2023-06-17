@@ -5,6 +5,7 @@ import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.tests.subagent.SubagentMultipleOrdersTest.agentPath
 import js7.tests.testenv.ControllerAgentForScalaTest
+import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler
 import org.scalatest.Suite
 
@@ -21,7 +22,7 @@ trait SubagentTester extends ControllerAgentForScalaTest
 
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = true
-    js7.auth.subagents.BARE-SUBAGENT = "AGENT-PASSWORD"
+    js7.auth.subagents.BARE-SUBAGENT = "${toLocalSubagentId(agentPath)}'s PASSWORD"
     """.withFallback(super.agentConfig)
 
   protected val bareSubagentId = SubagentId("BARE-SUBAGENT")

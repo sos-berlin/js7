@@ -9,6 +9,7 @@ import cats.syntax.traverse.*
 import com.softwaremill.diffx
 import izumi.reflect.Tag
 import java.nio.file.Path
+import js7.base.auth.{Admission, UserId}
 import js7.base.eventbus.EventPublisher
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
@@ -21,7 +22,6 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, ProgramTermination}
-import js7.base.web.Uri
 import js7.cluster.ClusterConf.ClusterProductName
 import js7.cluster.ClusterNode.*
 import js7.cluster.JournalTruncator.truncateJournal
@@ -32,6 +32,7 @@ import js7.data.cluster.ClusterState.{Coupled, Empty, FailedOver, HasNodes}
 import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
 import js7.data.cluster.{ClusterCommand, ClusterNodeApi, ClusterSetting, ClusterWatchRequest, ClusterWatchingCommand}
 import js7.data.event.{AnyKeyedEvent, EventId, JournalPosition, SnapshotableState, Stamped}
+import js7.data.node.{NodeName, NodeNameToPassword}
 import js7.journal.data.JournalLocation
 import js7.journal.recover.{Recovered, StateRecoverer}
 import js7.journal.{EventIdClock, EventIdGenerator}
@@ -53,6 +54,7 @@ final class ClusterNode[S <: SnapshotableState[S]: diffx.Diff: Tag] private(
   val recoveredExtract: Recovered.Extract,
   implicit val actorSystem: ActorSystem)
   (implicit S: SnapshotableState.Companion[S],
+    nodeNameToPassword: NodeNameToPassword[S],
     scheduler: Scheduler,
     timeout: akka.util.Timeout)
 extends Service.StoppableByRequest
@@ -161,72 +163,74 @@ extends Service.StoppableByRequest
       .map(_.allocatedThing)
       .toRight(ClusterNodeIsNotActiveProblem)
 
-  def executeCommand(command: ClusterCommand): Task[Checked[ClusterCommand.Response]] =
-    command match {
-      case command: ClusterCommand.ClusterStartBackupNode =>
-        Task {
-          prepared.expectingStartBackupCommand match {
-            case None =>
-              if (!clusterConf.isBackup)
-                Left(ClusterNodeIsNotBackupProblem)
-              else
-                Left(Problem.pure("Cluster node is not ready to accept a backup node configuration"))
-            case Some(promise) =>
-              if (command.setting.passiveId != ownId)
-                Left(Problem.pure(s"$command sent to wrong $ownId"))
-              else if (command.setting.activeId == ownId)
-                Left(Problem.pure(s"$command must not be sent to the active node"))
-              else {
-                promise.trySuccess(command)
-                Right(ClusterCommand.Response.Accepted)
-              }
-          }
-        }
-
-      case ClusterCommand.ClusterInhibitActivation(duration) =>
-        activationInhibitor.inhibitActivation(duration)
-          .flatMapT(inhibited =>
-            if (inhibited)
-              Task.pure(Right(ClusterInhibitActivation.Response(None)))
-            else {
-              workingNodeStarted.get
-                .dematerialize
-                .flatMap(_.traverse(_.journal.clusterState))
-                .map(Some(_))
-                .timeoutTo(duration/*???*/ - 500.ms, Task.none)
-                .flatMap {
-                  case None =>
-                    Task.left(Problem.pure(
-                      "ClusterInhibitActivation timed out — please try again"))
-
-                  case Some(Left(_: ProgramTermination)) =>
-                    // No journal
-                    Task.left(Problem.pure(
-                      "ClusterInhibitActivation command failed due to cluster is being terminated"))
-
-                  case Some(Right(failedOver: FailedOver)) =>
-                    logger.debug(s"inhibitActivation(${duration.pretty}) => $failedOver")
-                    Task.right(ClusterInhibitActivation.Response(Some(failedOver)))
-
-                  case Some(Right(clusterState)) =>
-                    Task.left(Problem.pure("ClusterInhibitActivation command failed " +
-                      s"because node is already active but not failed-over: $clusterState"))
+  def executeCommand(command: ClusterCommand): Task[Checked[ClusterCommand.Response]] = {
+    logger.infoTask(command.getClass.simpleScalaName)(
+      command match {
+        case command: ClusterCommand.ClusterStartBackupNode =>
+          Task {
+            prepared.expectingStartBackupCommand match {
+              case None =>
+                if (!clusterConf.isBackup)
+                  Left(ClusterNodeIsNotBackupProblem)
+                else
+                  Left(Problem.pure("Cluster node is not ready to accept a backup node configuration"))
+              case Some(promise) =>
+                if (command.setting.passiveId != ownId)
+                  Left(Problem.pure(s"$command sent to wrong $ownId"))
+                else if (command.setting.activeId == ownId)
+                  Left(Problem.pure(s"$command must not be sent to the active node"))
+                else {
+                  promise.trySuccess(command)
+                  Right(ClusterCommand.Response.Accepted)
                 }
-            })
+            }
+          }
 
-      case _: ClusterCommand.ClusterPrepareCoupling |
-           _: ClusterCommand.ClusterCouple |
-           _: ClusterCommand.ClusterRecouple |
-           _: ClusterCommand.ClusterPassiveDown =>
+        case ClusterCommand.ClusterInhibitActivation(duration) =>
+          activationInhibitor.inhibitActivation(duration)
+            .flatMapT(inhibited =>
+              if (inhibited)
+                Task.pure(Right(ClusterInhibitActivation.Response(None)))
+              else {
+                workingNodeStarted.get
+                  .dematerialize
+                  .flatMap(_.traverse(_.journal.clusterState))
+                  .map(Some(_))
+                  .timeoutTo(duration /*???*/ - 500.ms, Task.none)
+                  .flatMap {
+                    case None =>
+                      Task.left(Problem.pure(
+                        "ClusterInhibitActivation timed out — please try again"))
 
-        if (_testDontNotifyActiveNodeAboutShutdown)
+                    case Some(Left(_: ProgramTermination)) =>
+                      // No journal
+                      Task.left(Problem.pure(
+                        "ClusterInhibitActivation command failed due to cluster is being terminated"))
+
+                    case Some(Right(failedOver: FailedOver)) =>
+                      logger.debug(s"inhibitActivation(${duration.pretty}) => $failedOver")
+                      Task.right(ClusterInhibitActivation.Response(Some(failedOver)))
+
+                    case Some(Right(clusterState)) =>
+                      Task.left(Problem.pure("ClusterInhibitActivation command failed " +
+                        s"because node is already active but not failed-over: $clusterState"))
+                  }
+              })
+
+        case _: ClusterCommand.ClusterPrepareCoupling |
+             _: ClusterCommand.ClusterCouple |
+             _: ClusterCommand.ClusterRecouple |
+             _: ClusterCommand.ClusterPassiveDown =>
+
+          if (_testDontNotifyActiveNodeAboutShutdown)
           // Avoid immediate recoupling
-          Task.left(Problem(
-            s"${command.getClass.simpleScalaName} command rejected due to dontNotifyActiveNode"))
-        else
-          Task.pure(workingClusterNode)
-            .flatMapT(_.executeCommand(command))
-    }
+            Task.left(Problem(
+              s"${command.getClass.simpleScalaName} command rejected due to dontNotifyActiveNode"))
+          else
+            Task.pure(workingClusterNode)
+              .flatMapT(_.executeCommand(command))
+      })
+  }
 
   def executeClusterWatchingCommand(command: ClusterWatchingCommand): Task[Checked[Unit]] =
     command match {
@@ -259,13 +263,17 @@ object ClusterNode
 
   def recoveringResource[S <: SnapshotableState[S] : diffx.Diff : Tag](
     akkaResource: Resource[Task, ActorSystem],
-    clusterNodeApi: (Uri, String, ActorSystem) => Resource[Task, ClusterNodeApi],
+    clusterNodeApi: (Admission, String, ActorSystem) => Resource[Task, ClusterNodeApi],
     licenseChecker: LicenseChecker,
     journalLocation: JournalLocation,
     clusterConf: ClusterConf,
     eventIdClock: EventIdClock,
     testEventBus: EventPublisher[Any])
-    (implicit S: SnapshotableState.Companion[S], scheduler: Scheduler, akkaTimeout: Timeout)
+    (implicit
+      S: SnapshotableState.Companion[S],
+      nodeNameToPassword: NodeNameToPassword[S],
+      scheduler: Scheduler,
+      akkaTimeout: Timeout)
   : Resource[Task, ClusterNode[S]] =
     StateRecoverer
       .resource[S](journalLocation, clusterConf.config)
@@ -281,7 +289,7 @@ object ClusterNode
 
   private def resource[S <: SnapshotableState[S] : diffx.Diff : Tag](
     recovered: Recovered[S],
-    clusterNodeApi: (Uri, String) => Resource[Task, ClusterNodeApi],
+    clusterNodeApi: (Admission, String) => Resource[Task, ClusterNodeApi],
     licenseChecker: LicenseChecker,
     journalLocation: JournalLocation,
     clusterConf: ClusterConf,
@@ -289,6 +297,7 @@ object ClusterNode
     testEventBus: EventPublisher[Any])
     (implicit
       S: SnapshotableState.Companion[S],
+      nodeNameToPassword: NodeNameToPassword[S],
       scheduler: Scheduler,
       actorSystem: ActorSystem,
       akkaTimeout: akka.util.Timeout)
@@ -309,7 +318,8 @@ object ClusterNode
       for {
         clusterWatchCounterpart <-
           ClusterWatchCounterpart.resource(clusterConf, clusterConf.timing, testEventBus)
-        common <- ClusterCommon.resource(clusterWatchCounterpart, clusterNodeApi, clusterConf,
+        common <- ClusterCommon.
+          resource(clusterWatchCounterpart, clusterNodeApi, clusterConf,
           licenseChecker, testEventBus)
         clusterNode <- resource(recovered, common, journalLocation, clusterConf,
           new EventIdGenerator(eventIdClock),
@@ -326,6 +336,7 @@ object ClusterNode
     eventBus: EventPublisher[Any])
     (implicit
       S: SnapshotableState.Companion[S],
+      nodeNameToPassword: NodeNameToPassword[S],
       scheduler: Scheduler,
       actorSystem: ActorSystem,
       timeout: akka.util.Timeout)
@@ -346,7 +357,10 @@ object ClusterNode
       val startedPromise = Promise[ClusterStartBackupNode]()
       val passiveClusterNode = Task.fromFuture(startedPromise.future)
         .map(cmd =>
-          newPassiveClusterNode(recovered, cmd.setting, initialFileEventId = Some(cmd.fileEventId)))
+          newPassiveClusterNode(recovered, cmd.setting,
+            initialFileEventId = Some(cmd.fileEventId),
+            injectedPassiveUserId = Some(cmd.passiveNodeUserId),
+            injectedActiveNodeName = Some(cmd.activeNodeName)))
         .memoize
       val currentPassiveState = Task.defer {
         if (startedPromise.future.isCompleted)
@@ -371,15 +385,23 @@ object ClusterNode
           logger.info(s"This cluster $ownId was active and coupled before restart - " +
             s"asking $passiveId about its state")
 
-          val failedOver = common.inhibitActivationOfPeer(recoveredClusterState).map {
-            case None /*Other node has not failed-over*/ =>
-              logger.info(s"The other $passiveId is up and still passive, " +
-                "so this node remains the active cluster node")
-              None
+          val failedOver = common
+            .inhibitActivationOfPeer(
+              recoveredClusterState,
+              recovered.state
+                .clusterNodeToUserAndPassword(
+                  ourNodeId = recoveredClusterState.activeId,
+                  otherNodeId = recoveredClusterState.passiveId)
+                .orThrow)
+            .map {
+              case None /*Other node has not failed-over*/ =>
+                logger.info(s"The other $passiveId is up and still passive, " +
+                  "so this node remains the active cluster node")
+                None
 
-            case Some(otherFailedOver) =>
-              Some(startPassiveAfterFailover(recoveredClusterState, otherFailedOver))
-          }.memoize
+              case Some(otherFailedOver) =>
+                Some(startPassiveAfterFailover(recoveredClusterState, otherFailedOver))
+            }.memoize
 
           Prepared(
             currentPassiveReplicatedState =
@@ -418,7 +440,8 @@ object ClusterNode
           recovered.close() // Should do nothing, because recovered.eventWatch has not been started
           truncatedRecovered
       }
-      ourRecovered -> newPassiveClusterNode(ourRecovered, otherFailedOver.setting, otherFailedOver = true)
+      ourRecovered -> newPassiveClusterNode(ourRecovered, otherFailedOver.setting,
+        otherFailedOver = true)
     }
 
     def truncateJournalAndRecoverAgain(otherFailedOver: FailedOver): Option[Recovered[S]] =
@@ -458,10 +481,16 @@ object ClusterNode
       recovered: Recovered[S],
       setting: ClusterSetting,
       otherFailedOver: Boolean = false,
-      initialFileEventId: Option[EventId] = None)
+      initialFileEventId: Option[EventId] = None,
+      injectedActiveNodeName: Option[NodeName] = None,
+      injectedPassiveUserId: Option[UserId] = None)
     : PassiveClusterNode[S] = {
       assertThat(!passiveOrWorkingNode.get().exists(_.isLeft))
       val node = new PassiveClusterNode(ownId, setting, recovered,
+        activeNodeName = injectedActiveNodeName getOrElse
+          recovered.state.clusterNodeIdToName(setting.activeId).orThrow,
+        passiveUserId = injectedPassiveUserId getOrElse
+          recovered.state.clusterNodeToUserId(setting.passiveId).orThrow,
         eventIdGenerator, initialFileEventId,
         otherFailedOver, clusterConf, common)
       passiveOrWorkingNode := Some(Left(node))

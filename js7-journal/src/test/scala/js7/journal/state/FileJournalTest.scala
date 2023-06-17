@@ -27,6 +27,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.akkautils.ProvideActorSystem
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{Event, EventId, JournalEvent, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotableState, SnapshotableStateBuilder, Stamped}
+import js7.data.node.NodeId
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalLocation
 import js7.journal.recover.StateRecoverer
@@ -280,6 +281,12 @@ private object FileJournalTest
     def estimatedSnapshotSize = numberThingCollection.numberThings.size
 
     def toSnapshotObservable = Observable.fromIterable(numberThingCollection.numberThings.values)
+
+    def clusterNodeToUserId(nodeId: NodeId) =
+      Left(Problem("clusterNodeToUserId is not implemented"))
+
+    def clusterNodeIdToName(nodeId: NodeId) =
+      Left(Problem("clusterNodeIdToName not implemented"))
   }
   object TestState extends SnapshotableState.Companion[TestState]
   {
@@ -306,5 +313,6 @@ private object FileJournalTest
       KeyedEventTypedJsonCodec[Event](
         KeyedSubtype[JournalEvent],
         KeyedSubtype[NumberEvent])
+
   }
 }

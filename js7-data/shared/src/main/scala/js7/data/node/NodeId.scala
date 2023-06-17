@@ -13,6 +13,9 @@ extends GenericString
 
 object NodeId extends GenericString.NonEmpty[NodeId]
 {
+  val primary: NodeId = NodeId("Primary")
+  val backup: NodeId = NodeId("Backup")
+
   protected def unchecked(string: String): NodeId =
     new NodeId(string)
 

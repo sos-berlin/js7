@@ -27,7 +27,7 @@ import js7.base.web.Uri
 import js7.cluster.ClusterNode
 import js7.common.akkautils.{SimpleStateActor, SupervisorStrategies}
 import js7.data.agent.Problems.{AgentAlreadyDedicatedProblem, AgentIsShuttingDown, AgentNotDedicatedProblem, AgentPathMismatchProblem, AgentRunIdMismatchProblem, AgentWrongControllerProblem}
-import js7.data.agent.{AgentClusterConf, AgentPath, AgentRef, AgentRunId}
+import js7.data.agent.{AgentPath, AgentRef, AgentRunId}
 import js7.data.cluster.ClusterEvent.ClusterResetStarted
 import js7.data.cluster.ClusterState
 import js7.data.cluster.ClusterState.HasNodes
@@ -334,7 +334,7 @@ private[agent] final class AgentActor(
               agentState.clusterState
                 .match_ {
                   case ClusterState.Empty =>
-                    Some(AgentClusterConf.primaryNodeId)
+                    Some(NodeId.primary)
                   case clusterState: HasNodes =>
                     (clusterState.setting.idToUri != idToUri) ? clusterState.activeId
                 }
@@ -354,8 +354,8 @@ private[agent] final class AgentActor(
       if subagentItems.length == 2
     } yield
       Map(
-        AgentClusterConf.primaryNodeId -> subagentItems(0).uri,
-        AgentClusterConf.backupNodeId -> subagentItems(1).uri)
+        NodeId.primary -> subagentItems(0).uri,
+        NodeId.backup -> subagentItems(1).uri)
 
 
   override def toString = "AgentActor"

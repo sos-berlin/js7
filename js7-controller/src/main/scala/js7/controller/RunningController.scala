@@ -8,10 +8,11 @@ import cats.syntax.traverse.*
 import com.softwaremill.diffx.generic.auto.*
 import com.softwaremill.tagging.{@@, Tagger}
 import com.typesafe.config.Config
-import js7.base.auth.{Admission, SimpleUser}
+import js7.base.auth.SimpleUser
+import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier
 import js7.base.eventbus.{EventPublisher, StandardEventBus}
-import js7.base.generic.Completed
+import js7.base.generic.{Completed, SecretString}
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
@@ -53,6 +54,7 @@ import js7.data.controller.{ControllerCommand, ControllerState, VerifiedUpdateIt
 import js7.data.crypt.SignedItemVerifier
 import js7.data.event.EventId
 import js7.data.item.{ItemOperation, SignableItem, UnsignedSimpleItem}
+import js7.data.node.NodeNameToPassword
 import js7.data.order.FreshOrder
 import js7.journal.JournalActor.Output
 import js7.journal.state.FileJournal
@@ -225,12 +227,17 @@ object RunningController
 
     val testEventBus = new StandardEventBus[Any]
 
+    implicit val nodeNameToPassword: NodeNameToPassword[ControllerState] = {
+      val result = Right(config.optionAs[SecretString]("js7.auth.cluster.password"))
+      _ => result
+    }
+
     // Recover and initialize other stuff in parallel
     val clusterNodeResource =
       ClusterNode.recoveringResource[ControllerState](
         actorSystemResource(conf.name, config),
-        (uri, name, actorSystem) => AkkaHttpControllerApi.resource(
-          Admission(uri, clusterConf.peersUserAndPassword), httpsConfig, name = name)(actorSystem),
+        (admission, name, actorSystem) => AkkaHttpControllerApi.resource(
+          admission, httpsConfig, name = name)(actorSystem),
         new LicenseChecker(LicenseCheckContext(conf.configDirectory)),
         journalLocation, clusterConf, eventIdClock, testEventBus)
 

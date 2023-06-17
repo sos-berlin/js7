@@ -1,7 +1,6 @@
 package js7.tests.testenv
 
 import cats.effect.Resource
-import cats.syntax.foldable.*
 import com.typesafe.config.ConfigUtil.quoteString
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Path
@@ -9,7 +8,7 @@ import js7.agent.RunningAgent
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.base.auth.{UserAndPassword, UserId}
-import js7.base.configutils.Configs.{HoconStringInterpolator, configIf, configMonoid}
+import js7.base.configutils.Configs.{HoconStringInterpolator, configIf}
 import js7.base.crypt.SignatureVerifier
 import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax.RichPath
@@ -39,13 +38,10 @@ extends SubagentEnv with ProgramEnv.WithFileJournal {
 
   final val journalLocation = JournalLocation(AgentState, stateDir / "agent")
 
-  private val clusterUserAndPassword =
-    UserAndPassword(UserId("Agent"), SecretString("AGENT-PASSWORD"))
-
   override protected def internalSubagentConfig =
     AgentConfiguration.DefaultConfig
 
-  override protected def ownConfig =
+  override protected lazy val ownConfig =
     config"""
       js7.web.server.auth.https-client-authentication = $mutualHttps
       js7.web.https.keystore {
@@ -55,14 +51,9 @@ extends SubagentEnv with ProgramEnv.WithFileJournal {
       .withFallback(
         configIf(isClusterBackup,
           config"""js7.journal.cluster.node.is-backup = yes"""))
-      .withFallback(otherSubagentIds
-        .map(subagentId => config"""
-          js7.auth.subagents.${subagentId.string} = "AGENT-PASSWORD"
-         """)
-        .combineAll)
       .withFallback(super.ownConfig)
 
-  final val controllerPassword = SecretString(s"$agentPath-PASSWORD") // TODO AgentPath — or SubagentId?
+  final val controllerPassword = SecretString(s"$agentPath-PASSWORD")
   final val controllerUserAndPassword =
     Some(UserAndPassword(UserId("Controller"), controllerPassword))
 
@@ -71,9 +62,10 @@ extends SubagentEnv with ProgramEnv.WithFileJournal {
 
   initialize()
 
-  protected override def createDirectoriesAndFiles(): Unit = {
+  protected override def createDirectoriesAndFiles() = {
     super.createDirectoriesAndFiles()
-    configDir / "private" / "private.conf" ++= s"""
+
+    privateConf ++= s"""
      |js7.auth.users {
      |  Controller {
      |    password = ${quoteString("plain:" + controllerPassword.string)}
@@ -82,19 +74,30 @@ extends SubagentEnv with ProgramEnv.WithFileJournal {
      |      "CN=Backup Controller,DC=backup-controller,DC=HttpsTestBase,DC=tests,DC=js7,DC=sh"
      |    ]
      |  }
-     |  # Login for Agent cluster:
-     |  ${clusterUserAndPassword.userId.string} {
-     |    password = "plain:${clusterUserAndPassword.password.string}"
-     |  }
      |}
-     |js7.auth.cluster.password = "${clusterUserAndPassword.password.string}"
+     |js7.web.server.auth.https-client-authentication = $mutualHttps
+     |js7.web.https.keystore {
+     |  store-password = "jobscheduler"
+     |  key-password = "jobscheduler"
+     |}
      |""".stripMargin
+
+    for (otherSubagentId <- otherSubagentIds.toList) {
+      privateConf ++= s"""
+       |js7.auth.subagents.${otherSubagentId.string} = "${subagentItem.id.string}'s PASSWORD"
+       |js7.auth.users.${otherSubagentId.string} {
+       |  permissions = [ AgentDirector ]
+       |  password = "plain:${otherSubagentId.string}'s PASSWORD"
+       |}
+       |""".stripMargin
+    }
   }
 
   def programResource: Resource[Task, RunningAgent] =
     directorResource
 
   def directorResource: Resource[Task, RunningAgent] =
-    ownThreadPoolResource(agentConf.name, agentConf.config)(implicit scheduler =>
-      RunningAgent.resource(agentConf))
+    Resource.suspend/*delay access to agentConf*/(Task(
+      ownThreadPoolResource(agentConf.name, agentConf.config)(implicit scheduler =>
+        RunningAgent.resource(agentConf))))
 }

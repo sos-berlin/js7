@@ -8,7 +8,6 @@ import java.nio.file.Files.{createDirectory, createTempDirectory}
 import java.nio.file.Path
 import js7.agent.{RunningAgent, TestAgent}
 import js7.base.auth.Admission
-import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.crypt.{DocumentSigner, SignatureVerifier, Signed, SignedString}
 import js7.base.generic.SecretString
 import js7.base.io.JavaResource
@@ -30,7 +29,6 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, HasCloser}
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatchService
-import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.akkautils.Akkas
 import js7.common.configuration.Js7Configuration
 import js7.common.utils.Exceptions.repeatUntilNoException
@@ -49,7 +47,6 @@ import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.proxy.ControllerApi
 import js7.service.pgp.PgpSigner
 import js7.subagent.Subagent
-import js7.subagent.configuration.SubagentConf
 import js7.tests.testenv.DirectoryProvider.*
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -320,7 +317,7 @@ extends HasCloser
   def startBareSubagents(): Task[Map[SubagentId, Allocated[Task, Subagent]]] =
     bareSubagentItems
       .parTraverse(subagentItem =>
-        subagentResource(subagentItem, agentConfig)
+        subagentResource(subagentItem, config = agentConfig)
           .toAllocated
           .map(subagentItem.id -> _))
       .map(_.toMap)
@@ -353,20 +350,23 @@ extends HasCloser
     suffix: String = "",
     moreSubagentIds: Seq[SubagentId] = Nil,
     isClusterBackup: Boolean = false,
-    suppressSignatureKeys: Boolean = false)
+    suppressSignatureKeys: Boolean = false,
+    extraConfig: Config = ConfigFactory.empty)
   : Resource[Task, DirectorEnv] =
     Resource
       .fromAutoCloseable(Task(
         newDirectorEnv(subagentItem, suffix, moreSubagentIds,
           isClusterBackup = isClusterBackup,
-          suppressSignatureKeys = suppressSignatureKeys)))
+          suppressSignatureKeys = suppressSignatureKeys,
+          extraConfig = extraConfig)))
 
   private def newDirectorEnv(
     subagentItem: SubagentItem,
     suffix: String = "",
     otherSubagentIds: Seq[SubagentId] = Nil,
     isClusterBackup: Boolean = false,
-    suppressSignatureKeys: Boolean = false)
+    suppressSignatureKeys: Boolean = false,
+    extraConfig: Config = ConfigFactory.empty)
   : DirectorEnv =
     new DirectorEnv(
       subagentItem = subagentItem,
@@ -379,17 +379,20 @@ extends HasCloser
       isClusterBackup = isClusterBackup,
       suppressSignatureKeys = suppressSignatureKeys,
       otherSubagentIds = otherSubagentIds,
-      extraConfig = agentConfig)
+      extraConfig = extraConfig.withFallback(agentConfig))
 
   @deprecated // Duplicate in DirectorEnv ?
   def subagentResource(
     subagentItem: SubagentItem,
+    director: SubagentId = toLocalSubagentId(agentPaths.head),
     config: Config = ConfigFactory.empty,
     suffix: String = "",
     suppressSignatureKeys: Boolean = false)
   : Resource[Task, Subagent] =
     for {
-      directorEnv <- subagentEnvResource(subagentItem, suffix = suffix,
+      directorEnv <- subagentEnvResource(subagentItem,
+        director = director,
+        suffix = suffix,
         suppressSignatureKeys = suppressSignatureKeys,
         extraConfig = config)
       subagent <- directorEnv.subagentResource
@@ -399,6 +402,7 @@ extends HasCloser
 
   private def subagentEnvResource(
     subagentItem: SubagentItem,
+    director: SubagentId,
     suffix: String = "",
     suppressSignatureKeys: Boolean = false,
     extraConfig: Config = ConfigFactory.empty)
@@ -407,6 +411,7 @@ extends HasCloser
       .fromAutoCloseable(Task(
         new BareSubagentEnv(
           subagentItem = subagentItem,
+          directorSubagentId = director,
           name = subagentName(subagentItem.id, suffix = suffix),
           rootDirectory = directory,
           verifier = verifier,
@@ -421,35 +426,6 @@ extends HasCloser
 
   def subagentName(subagentId: SubagentId, suffix: String = ""): String =
     testName.fold("")(_ + "-") + subagentId.string + suffix
-
-  @deprecated // Duplicate in DirectorEnv ?
-  private def toSubagentConf(
-    agentPath: AgentPath,
-    directory: Path,
-    trustedSignatureDir: Path,
-    port: Int,
-    config: Config = ConfigFactory.empty,
-    name: String)
-  : SubagentConf =
-    SubagentConf.of(
-      configDirectory = directory / "config",
-      dataDirectory = directory / "data",
-      logDirectory = directory / "data" / "logs",
-      jobWorkingDirectory = directory / "data" / "work",
-      Seq(WebServerPort.localhost(port)),
-      killScript = None,
-      name = testName.fold("")(_ + "-") + name,
-      extraConfig = config
-        .withFallback(config"""
-          js7.job.execution.signed-script-injection-allowed = yes
-          js7.auth.users.${agentPath.string} {
-            permissions: [ AgentDirector ]
-            password: "plain:AGENT-PASSWORD"
-          }
-          js7.configuration.trusted-signature-keys {
-            ${verifier.companion.typeName} = "$trustedSignatureDir"
-          }
-          """))
 }
 
 object DirectoryProvider

@@ -23,16 +23,17 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.EmptyJob
 import js7.tests.subagent.SubagentSelectionTest.*
 import js7.tests.testenv.BlockingItemUpdater
+import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler
 import monix.reactive.Observable
 
 final class SubagentSelectionTest extends OurTestSuite with SubagentTester with BlockingItemUpdater
 {
   override protected def agentConfig = config"""
-    js7.auth.subagents.A-SUBAGENT = "AGENT-PASSWORD"
-    js7.auth.subagents.B-SUBAGENT = "AGENT-PASSWORD"
-    js7.auth.subagents.C-SUBAGENT = "AGENT-PASSWORD"
-    js7.auth.subagents.D-SUBAGENT = "AGENT-PASSWORD"
+    js7.auth.subagents.A-SUBAGENT = "$localSubagentId's PASSWORD"
+    js7.auth.subagents.B-SUBAGENT = "$localSubagentId's PASSWORD"
+    js7.auth.subagents.C-SUBAGENT = "$localSubagentId's PASSWORD"
+    js7.auth.subagents.D-SUBAGENT = "$localSubagentId's PASSWORD"
     """.withFallback(super.agentConfig)
 
   protected val agentPaths = Seq(agentPath)
@@ -229,6 +230,7 @@ final class SubagentSelectionTest extends OurTestSuite with SubagentTester with 
 object SubagentSelectionTest
 {
   private val agentPath = AgentPath("AGENT")
+  private val localSubagentId = toLocalSubagentId(agentPath)
   private val aSubagentId = SubagentId("A-SUBAGENT")
   private val bSubagentId = SubagentId("B-SUBAGENT")
   private val cSubagentId = SubagentId("C-SUBAGENT")

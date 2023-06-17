@@ -5,7 +5,6 @@ import java.nio.file.Files.createTempDirectory
 import java.nio.file.Path
 import js7.agent.configuration.AgentConfiguration.DefaultConfig
 import js7.agent.configuration.AgentConfigurationTest.*
-import js7.base.auth.UserId
 import js7.base.configutils.Configs.*
 import js7.base.convert.As.StringAsBoolean
 import js7.base.io.file.FileUtils.*
@@ -44,7 +43,7 @@ final class AgentConfigurationTest extends OurTestSuite
           akkaAskTimeout = 1.hour,
           clusterConf = {
             val clusterConf = ClusterConf
-              .fromConfig(UserId("USER"), subagentConf.config)
+              .fromConfig(subagentConf.config)
               .orThrow
             clusterConf.copy(
               journalConf = clusterConf.journalConf.copy(

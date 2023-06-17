@@ -8,13 +8,14 @@ import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.data.item.ItemOperation
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.tests.jobresource.JobResourceTest.agentPath
+import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 
 final class JobResourceAtBareSubagentTest extends JobResourceTest
 {
   override protected val agentConfig = config"""
-    js7.auth.subagents.BARE-SUBAGENT = "AGENT-PASSWORD"
+    js7.auth.subagents.BARE-SUBAGENT = "${toLocalSubagentId(agentPath).string}'s PASSWORD"
     """.withFallback(super.agentConfig)
 
   private lazy val bareSubagentItem = SubagentItem(

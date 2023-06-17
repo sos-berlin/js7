@@ -1,5 +1,6 @@
 package js7.data.cluster
 
+import js7.base.auth.UserId
 import js7.base.circeutils.CirceUtils.*
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
@@ -7,7 +8,7 @@ import js7.base.web.Uri
 import js7.data.cluster.ClusterCommand.*
 import js7.data.cluster.ClusterState.FailedOver
 import js7.data.event.JournalPosition
-import js7.data.node.NodeId
+import js7.data.node.{NodeId, NodeName}
 import js7.tester.CirceJsonTester.testJson
 
 final class ClusterCommandTest extends OurTestSuite
@@ -22,7 +23,9 @@ final class ClusterCommandTest extends OurTestSuite
           NodeId("A"),
           ClusterTiming(10.s, 20.s),
           Some(ClusterWatchId("CLUSTER-WATCH"))),
-        1000L),
+        1000L,
+        NodeName("ActiveNodeName"),
+        UserId("PassiveNodeUserId")),
       json"""{
         "TYPE": "ClusterStartBackupNode",
         "setting": {
@@ -37,7 +40,9 @@ final class ClusterCommandTest extends OurTestSuite
           },
           "clusterWatchId": "CLUSTER-WATCH"
         },
-        "fileEventId": 1000
+        "fileEventId": 1000,
+        "activeNodeName": "ActiveNodeName",
+        "passiveNodeUserId": "PassiveNodeUserId"
       }""")
   }
 

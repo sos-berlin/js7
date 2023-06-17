@@ -6,6 +6,7 @@ import js7.agent.data.AgentState.{AgentMetaState, allowedItemStates}
 import js7.agent.data.event.AgentEvent
 import js7.agent.data.event.AgentEvent.AgentDedicated
 import js7.agent.data.orderwatch.{FileWatchState, FileWatchStateHandler}
+import js7.base.auth.UserId
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.Signed
 import js7.base.problem.{Checked, Problem}
@@ -23,6 +24,7 @@ import js7.data.item.BasicItemEvent.{ItemAttachedToMe, ItemDetached, ItemDetachi
 import js7.data.item.SignedItemEvent.SignedItemAdded
 import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemKey, InventoryItemState, SignableItem, SignableItemKey, UnsignedItem, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItemPath, UnsignedSimpleItemState}
 import js7.data.job.{JobResource, JobResourcePath}
+import js7.data.node.NodeId
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchEvent, OrderWatchPath}
 import js7.data.state.EventDrivenStateView
@@ -317,6 +319,21 @@ with SnapshotableState[AgentState]
     Left(Problem.pure("workflowPathToId is not available at Agent"))
 
   def orders = idToOrder.values
+
+  def clusterNodeIdToName(nodeId: NodeId) =
+    if (!isDedicated)
+      Left(Problem("clusterNodeToUserAndPassword but Agent has not been dedicated"))
+    else
+      meta.clusterNodeIdToSubagentId(nodeId).flatMap(_.toNodeName)
+
+  def clusterNodeToUserId(nodeId: NodeId): Checked[UserId] =
+    if (!isDedicated)
+      Left(Problem("clusterNodeToUserId but Agent has not been dedicated"))
+    else
+      for {
+        subagentId <- meta.clusterNodeIdToSubagentId(nodeId)
+        userId <- subagentId.toUserId
+      } yield userId
 }
 
 object AgentState
@@ -344,6 +361,17 @@ with ItemContainer.Companion[AgentState]
     agentPath: AgentPath,
     agentRunId: AgentRunId,
     controllerId: ControllerId)
+  {
+    def clusterNodeIdToSubagentId(nodeId: NodeId): Checked[SubagentId]=
+      if (directors.sizeIs < 2)
+        Left(Problem("Agent has not enough directors to be a cluster"))
+      else
+        nodeId match {
+          case NodeId.primary => Right(directors(0))
+          case NodeId.backup => Right(directors(1))
+          case nodeId => Left(Problem(s"🔥 Unexpected $nodeId"))
+        }
+  }
   object AgentMetaState
   {
     val empty = AgentMetaState(

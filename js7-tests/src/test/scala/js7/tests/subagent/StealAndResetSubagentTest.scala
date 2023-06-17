@@ -18,6 +18,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.subagent.StealAndResetSubagentTest.*
 import js7.tests.subagent.SubagentMultipleOrdersTest.agentPath
+import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import scala.concurrent.TimeoutException
@@ -44,13 +45,17 @@ final class StealAndResetSubagentTest extends OurTestSuite with SubagentTester
     val thieveOrderId = OrderId("THIEVE-ORDER")
     var firstSubagentRunId: SubagentRunId = null
 
-    val subagentConfig = config"""
-      js7.auth.users.THIEVE-AGENT {
+    val bareSubagentConfig = config"""
+      js7.auth.users.${toLocalSubagentId(agentPath)} {
+        permissions: [ AgentDirector ]
+        password: "plain:${toLocalSubagentId(agentPath)}'s PASSWORD"
+      }
+      js7.auth.users.${toLocalSubagentId(thieveAgentPath)} {
         permissions: [ AgentDirector ]
         password: "plain:THIEVE-AGENT-PASSWORD"  # Subagent must allow to be stolen!?
       }"""
 
-    runSubagent(bareSubagentItem, subagentConfig) { subagent =>
+    runSubagent(bareSubagentItem, config = bareSubagentConfig) { subagent =>
       eventWatch.await[SubagentCoupled](_.key == bareSubagentId)
       firstSubagentRunId = subagent.subagentRunId
 
@@ -101,7 +106,7 @@ final class StealAndResetSubagentTest extends OurTestSuite with SubagentTester
 
     // START SUBAGENT AGAIN AND THIEVE WILL TAKE IT OVER
     val eventId = eventWatch.lastAddedEventId
-    runSubagent(stolenSubagentItem, subagentConfig) { _ =>
+    runSubagent(stolenSubagentItem, config = bareSubagentConfig) { _ =>
       TestSemaphoreJob.continue(2)
       //eventWatch.await[OrderProcessingStarted](_.key == aOrderId, after = eventId)
       eventWatch.await[OrderProcessingStarted](_.key == thieveOrderId, after = eventId)

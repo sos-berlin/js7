@@ -2,6 +2,7 @@ package js7.cluster
 
 import akka.util.Timeout
 import cats.effect.{ExitCase, Resource}
+import js7.base.auth.{Admission, UserAndPassword}
 import js7.base.eventbus.EventPublisher
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
@@ -10,7 +11,6 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.SetOnce
-import js7.base.web.Uri
 import js7.cluster.ClusterCommon.*
 import js7.cluster.ClusterConf.ClusterProductName
 import js7.cluster.watch.api.ClusterWatchProblems.{ClusterNodeLossNotConfirmedProblem, ClusterWatchInactiveNodeProblem}
@@ -24,7 +24,7 @@ import scala.concurrent.duration.Deadline.now
 
 private[cluster] final class ClusterCommon private(
   val clusterWatchCounterpart: ClusterWatchCounterpart,
-  val clusterNodeApi: (Uri, String) => Resource[Task, ClusterNodeApi],
+  val clusterNodeApi: (Admission, String) => Resource[Task, ClusterNodeApi],
   clusterConf: ClusterConf,
   licenseChecker: LicenseChecker,
   val testEventBus: EventPublisher[Any])(
@@ -68,9 +68,9 @@ private[cluster] final class ClusterCommon private(
         result
     }
 
-  def tryEndlesslyToSendCommand(uri: Uri, command: ClusterCommand): Task[Unit] = {
+  def tryEndlesslyToSendCommand(admission: Admission, command: ClusterCommand): Task[Unit] = {
     val name = command.getClass.simpleScalaName
-    tryEndlesslyToSendCommand(clusterNodeApi(uri, name), command)
+    tryEndlesslyToSendCommand(clusterNodeApi(admission, name), command)
   }
 
   def tryEndlesslyToSendCommand(
@@ -104,8 +104,10 @@ private[cluster] final class ClusterCommon private(
           })
   }
 
-  def inhibitActivationOfPeer(clusterState: HasNodes): Task[Option[FailedOver]] =
-    ActivationInhibitor.inhibitActivationOfPassiveNode(clusterState.setting, clusterNodeApi)
+  def inhibitActivationOfPeer(clusterState: HasNodes, peersUserAndPassword: Option[UserAndPassword])
+  : Task[Option[FailedOver]] =
+    ActivationInhibitor.inhibitActivationOfPassiveNode(
+      clusterState.setting, peersUserAndPassword, clusterNodeApi)
 
   def ifClusterWatchAllowsActivation(
     clusterState: ClusterState.HasNodes,
@@ -167,7 +169,7 @@ private[js7] object ClusterCommon
 
   def resource(
     clusterWatchCounterpart: ClusterWatchCounterpart,
-    clusterNodeApi: (Uri, String) => Resource[Task, ClusterNodeApi],
+    clusterNodeApi: (Admission, String) => Resource[Task, ClusterNodeApi],
     clusterConf: ClusterConf,
     licenseChecker: LicenseChecker,
     testEventPublisher: EventPublisher[Any])(

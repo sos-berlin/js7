@@ -119,7 +119,7 @@ object ControllerConfiguration
       webServerPorts = Nil,
       timeZone = ZoneId.systemDefault,
       akkaAskTimeout = config.getDuration("js7.akka.ask-timeout").toFiniteDuration,
-      clusterConf = ClusterConf.fromConfig(controllerId.toUserId, config).orThrow,
+      clusterConf = ClusterConf.fromConfig(config).orThrow,
       name = name,
       config = config)
   }

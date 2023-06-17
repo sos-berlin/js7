@@ -5,9 +5,7 @@ import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Files.{createDirectory, exists}
 import java.nio.file.Path
 import js7.agent.data.AgentState
-import js7.base.auth.UserId
 import js7.base.configutils.Configs
-import js7.base.configutils.Configs.*
 import js7.base.io.JavaResource
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.time.JavaTimeConverters.*
@@ -118,10 +116,7 @@ object AgentConfiguration
     new AgentConfiguration(
       subagentConf,
       akkaAskTimeout = config.getDuration("js7.akka.ask-timeout").toFiniteDuration,
-      clusterConf = {
-        val userId = config.as[UserId]("js7.auth.cluster.user-id")  // FIXME Use AgentPath (or SubagentId?)
-        ClusterConf.fromConfig(userId, config).orThrow
-      },
+      clusterConf = ClusterConf.fromConfig(config).orThrow,
       name = name)
   }
 }

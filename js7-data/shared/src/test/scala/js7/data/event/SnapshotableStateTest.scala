@@ -1,6 +1,7 @@
 package js7.data.event
 import js7.base.auth.UserId
 import js7.base.problem.Checked.Ops
+import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
@@ -65,6 +66,12 @@ private object SnapshotableStateTest
       applyStandardEvent(keyedEvent)
 
     def withEventId(eventId: EventId) = copy(eventId = eventId)
+
+    def clusterNodeIdToName(nodeId: NodeId) =
+      Left(Problem("clusterNodeIdToName not implemented"))
+
+    def clusterNodeToUserId(nodeId: NodeId) =
+      Left(Problem("clusterNodeToUserId not implemented"))
   }
   private object MyState extends SnapshotableState.Companion[MyState] {
     val empty = MyState(EventId.BeforeFirst, SnapshotableState.Standards.empty)

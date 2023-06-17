@@ -44,6 +44,12 @@ with BlockingItemUpdater
     js7.job.execution.signed-script-injection-allowed = on
     js7.journal.cluster.heartbeat = 0.5s
     js7.journal.cluster.heartbeat-timeout = 0.5s
+
+    js7.auth.subagents.${backupSubagentItem.id.string} = "ACTIVE DIRECTOR'S PASSWORD"
+    js7.auth.users.${backupSubagentItem.id.string} {
+      permissions: [ AgentDirector ]
+      password: "plain:BACKUP DIRECTOR'S PASSWORD"
+    }
     """
 
   protected override val agentPaths = Seq(agentPath)
@@ -61,7 +67,13 @@ with BlockingItemUpdater
   "Add a backup Subagent" in {
     val subagentAllocated: Allocated[Task, RunningAgent] =
       directoryProvider
-        .directorEnvResource(backupSubagentItem, isClusterBackup = true)
+        .directorEnvResource(backupSubagentItem, isClusterBackup = true,
+          extraConfig = config"""
+            js7.auth.subagents.${primarySubagentId.string} = "BACKUP DIRECTOR'S PASSWORD"
+            js7.auth.users.${primarySubagentId.string} {
+            permissions: [ AgentDirector ]
+            password: "plain:ACTIVE DIRECTOR'S PASSWORD"
+          }""")
         .flatMap(_.directorResource)
         .toAllocated
         .await(99.s)
@@ -73,7 +85,7 @@ with BlockingItemUpdater
 
         assert(controllerState.itemToAgentToAttachedState == Map(
           agentPath -> Map(agentPath -> Attached(Some(ItemRevision(0)))),
-          toLocalSubagentId(agentPath) -> Map(agentPath -> Attached(Some(ItemRevision(0)))),
+          primarySubagentId -> Map(agentPath -> Attached(Some(ItemRevision(0)))),
           workflow.id -> Map(agentPath -> Attached(None))))
 
         var eventId = eventWatch.lastAddedEventId
@@ -92,7 +104,7 @@ with BlockingItemUpdater
         assert(controllerState.itemToAgentToAttachedState == Map(
           // 👇ItemRevision(1) because AgentRef has been changed
           agentPath -> Map(agentPath -> Attached(Some(ItemRevision(1)))),
-          toLocalSubagentId(agentPath) -> Map(agentPath -> Attached(Some(ItemRevision(0)))),
+          primarySubagentId -> Map(agentPath -> Attached(Some(ItemRevision(0)))),
           // 👇backupSubagentItem is attached to Agent now
           backupSubagentItem.id -> Map(agentPath -> Attached(Some(ItemRevision(0)))),
           workflow.id -> Map(agentPath -> Attached(None))))
@@ -133,6 +145,7 @@ with BlockingItemUpdater
 object BecomeAgentClusterTest {
   private val logger = Logger[this.type]
   private val agentPath = AgentPath("AGENT")
+  private val primarySubagentId = toLocalSubagentId(agentPath)
 
   private val workflow = Workflow(
     WorkflowPath("MY-WORKFLOW") ~ "INITIAL",

@@ -26,7 +26,8 @@ final class SubagentForkListTest
 extends OurTestSuite with SubagentTester with BlockingItemUpdater
 {
   override protected def agentConfig = config"""
-    js7.auth.subagents.B-SUBAGENT = "AGENT-PASSWORD"
+    js7.auth.subagents.BARE-SUBAGENT = "$localSubagentId's PASSWORD"
+    js7.auth.subagents.B-SUBAGENT = "$localSubagentId's PASSWORD"
   """.withFallback(super.agentConfig)
 
   protected val agentPaths = Seq(agentPath)

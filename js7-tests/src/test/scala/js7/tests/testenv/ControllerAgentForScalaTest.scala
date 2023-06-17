@@ -24,6 +24,7 @@ import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentDedica
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.subagent.Subagent
 import js7.tests.testenv.ControllerAgentForScalaTest.*
+import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
@@ -142,11 +143,13 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
   protected final def stopBareSubagent(subagentId: SubagentId): Unit =
     idToAllocatedSubagent(subagentId).release.await(99.s)
 
-  protected final def startBareSubagent(subagentId: SubagentId): (Subagent, Task[Unit]) = {
+  protected final def startBareSubagent(subagentId: SubagentId)
+  : (Subagent, Task[Unit]) = {
     val subagentItem = directoryProvider.subagentItems
       .find(_.id == subagentId)
       .getOrElse(throw new NoSuchElementException(s"Missing $subagentId"))
-    directoryProvider.subagentResource(subagentItem).allocated.await(99.s)
+    directoryProvider.subagentResource(subagentItem, toLocalSubagentId(agentPaths.head))
+      .allocated.await(99.s)
   }
 
   protected final def enableSubagents(subagentIdToEnable: (SubagentId, Boolean)*): Unit = {
@@ -167,6 +170,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
 
   protected final def runSubagent[A](
     subagentItem: SubagentItem,
+    director: SubagentId = toLocalSubagentId(agentPaths.head),
     config: Config = ConfigFactory.empty,
     suffix: String = "",
     awaitDedicated: Boolean = true,
@@ -174,6 +178,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
     (body: Subagent => A)
   : A =
     subagentResource(subagentItem,
+      director = director,
       config = config,
       suffix = suffix,
       awaitDedicated = awaitDedicated,
@@ -190,6 +195,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
 
   protected final def subagentResource(
     subagentItem: SubagentItem,
+    director: SubagentId = toLocalSubagentId(agentPaths.head),
     config: Config = ConfigFactory.empty,
     suffix: String = "",
     awaitDedicated: Boolean = true,
@@ -198,7 +204,8 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
     Resource.suspend(Task {
       val eventId = eventWatch.lastAddedEventId
       directoryProvider
-        .subagentResource(subagentItem, config,
+        .subagentResource(subagentItem, director = director,
+          config,
           suffix = suffix,
           suppressSignatureKeys = suppressSignatureKeys)
         .evalTap(_ => Task {

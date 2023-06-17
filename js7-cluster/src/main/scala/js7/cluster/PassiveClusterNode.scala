@@ -11,6 +11,7 @@ import java.nio.file.Files.{exists, move, size}
 import java.nio.file.StandardCopyOption.ATOMIC_MOVE
 import java.nio.file.StandardOpenOption.{APPEND, CREATE, TRUNCATE_EXISTING, WRITE}
 import java.nio.file.{Path, Paths}
+import js7.base.auth.{Admission, UserAndPassword, UserId}
 import js7.base.circeutils.CirceUtils.*
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.*
@@ -44,7 +45,7 @@ import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
 import js7.data.event.JournalSeparators.HeartbeatMarker
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, JournalId, JournalPosition, JournalSeparators, KeyedEvent, SnapshotableState, SnapshotableStateBuilder, Stamped}
-import js7.data.node.NodeId
+import js7.data.node.{NodeId, NodeName, NodeNameToPassword}
 import js7.journal.EventIdGenerator
 import js7.journal.files.JournalFiles.*
 import js7.journal.recover.{FileSnapshotableStateBuilder, JournalProgress, Recovered, RecoveredJournalFile}
@@ -57,13 +58,17 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
   ownId: NodeId,
   setting: ClusterSetting,
   recovered: Recovered[S]/*TODO The maybe big SnapshotableState at start sticks here*/,
+  activeNodeName: NodeName,
+  passiveUserId: UserId,
   eventIdGenerator: EventIdGenerator,
   /** For backup initialization, only when ClusterState.Empty. */
   initialFileEventId: Option[EventId],
   otherFailed: Boolean,
   clusterConf: ClusterConf,
   common: ClusterCommon)
-  (implicit S: SnapshotableState.Companion[S])
+  (implicit
+    S: SnapshotableState.Companion[S],
+    nodeNameToPassword: NodeNameToPassword[S])
 {
   import clusterConf.{config, journalConf}
   import recovered.{eventWatch, journalLocation}
@@ -75,8 +80,13 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
   assertThat(activeId != ownId && setting.passiveId == ownId)
   assertThat(initialFileEventId.isDefined == (recovered.clusterState == ClusterState.Empty))
 
-  private val activeApiCache = new RefCountedResource(
-    common.clusterNodeApi(idToUri(activeId), "Active node"))
+  private val activeApiCache = new RefCountedResource(common.clusterNodeApi(
+    Admission(
+      idToUri(activeId),
+      nodeNameToPassword(activeNodeName)
+        .orThrow
+        .map(UserAndPassword(passiveUserId, _))),
+    "Active node"))
 
   private def activeApiResource(implicit src: sourcecode.Enclosing) =
     activeApiCache.resource
