@@ -1,5 +1,6 @@
 package js7.data.command
 
+import io.circe.Codec
 import js7.base.circeutils.CirceUtils.{DecodeWithDefaults, deriveConfiguredCodec}
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 
@@ -27,5 +28,6 @@ object SuspensionMode
     }
 
   intelliJuseImport(DecodeWithDefaults)
-  implicit val jsonCodec = deriveConfiguredCodec[SuspensionMode]
+  implicit val jsonCodec: Codec.AsObject[SuspensionMode] =
+    deriveConfiguredCodec[SuspensionMode]
 }

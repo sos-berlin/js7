@@ -25,9 +25,10 @@ import scala.util.control.NonFatal
   */
 final class IOExecutor(executor: Executor, name: String) extends Executor
 {
-  implicit val executionContext = ExecutionContext.fromExecutor(
-    executor,
-    t => logger.error(t.toStringWithCauses, t))
+  implicit val executionContext: ExecutionContextExecutor =
+    ExecutionContext.fromExecutor(
+      executor,
+      t => logger.error(t.toStringWithCauses, t))
 
   lazy val scheduler = CorrelId.enableScheduler(
     Scheduler(executionContext, uncaughtExceptionReporter(executor, name), SynchronousExecution))

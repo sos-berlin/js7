@@ -66,7 +66,7 @@ object VersionedItemPath
 
     object VersionedItemIdCompanion extends VersionedItemId.Companion[P] {
       def apply(idString: String): VersionedItemId[P] =
-        checked(idString).orThrow
+        this.checked(idString).orThrow
 
       def apply(path: P, versionId: VersionId) =
         path ~ versionId

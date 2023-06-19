@@ -131,7 +131,7 @@ final class ScalaXMLEventReaderTest extends OurTestSuite {
   "Ignore all extra attributes" in {
     val testXmlString = """<C x="xx" y="yy" z="zz"/>"""
     assertResult("xx") {
-      parseDocument(testXmlString) { eventReader: ScalaXMLEventReader =>
+      parseDocument(testXmlString) { (eventReader: ScalaXMLEventReader) =>
         import eventReader.*
         parseElement("C") {
           attributeMap.ignoreUnread()
@@ -144,7 +144,7 @@ final class ScalaXMLEventReaderTest extends OurTestSuite {
   "Ignore one extra attributes" in {
     val testXmlString = """<C x="xx" y="yy"/>"""
     assertResult("xx") {
-      parseDocument(testXmlString) { eventReader: ScalaXMLEventReader =>
+      parseDocument(testXmlString) { (eventReader: ScalaXMLEventReader) =>
         import eventReader.*
         parseElement("C") {
           attributeMap.ignore("y")

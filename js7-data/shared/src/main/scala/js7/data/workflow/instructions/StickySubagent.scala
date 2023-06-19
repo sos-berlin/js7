@@ -1,5 +1,6 @@
 package js7.data.workflow.instructions
 
+import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import js7.data.agent.AgentPath
 import js7.data.source.SourcePos
@@ -42,5 +43,6 @@ extends Instruction
 
 object StickySubagent
 {
-  implicit val jsonCodec = deriveCodec[StickySubagent]
+  implicit val jsonCodec: Codec.AsObject[StickySubagent] =
+    deriveCodec[StickySubagent]
 }

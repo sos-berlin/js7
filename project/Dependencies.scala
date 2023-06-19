@@ -1,11 +1,11 @@
+import sbt.*
 import sbt.CrossVersion.for3Use2_13
-import sbt._
 import scala.language.implicitConversions
 
 //noinspection TypeAnnotation
 object Dependencies
 {
-  val scalaVersion = "2.13.10"
+  val scalaVersion = "2.13.11"
 
   val akkaVersion = "2.6.20"      // Do not update to v2.7, due to restrictive Akka licences!
   val akkaHttpVersion = "10.2.10" // Do not update to v10.4, due to restrictive Akka licences!

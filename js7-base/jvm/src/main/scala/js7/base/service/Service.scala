@@ -80,7 +80,7 @@ object Service
     RestartAfterFailureService.defaultRestartDelays
 
   private[service] object Empty extends Service {
-    protected val start = startService(Task.unit)
+    protected val start = this.startService(Task.unit)
     protected def stop = Task.unit
   }
 

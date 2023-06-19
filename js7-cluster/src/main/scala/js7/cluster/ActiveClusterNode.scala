@@ -1,6 +1,7 @@
 package js7.cluster
 
 import akka.pattern.ask
+import akka.util.Timeout
 import cats.syntax.flatMap.*
 import cats.syntax.monoid.*
 import com.softwaremill.diffx
@@ -48,7 +49,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]: diffx.Diff] private[clus
   clusterConf: ClusterConf)
   (implicit scheduler: Scheduler)
 {
-  private implicit val askTimeout = common.journalActorAskTimeout
+  private implicit val askTimeout: Timeout = common.journalActorAskTimeout
   private val clusterStateLock = AsyncLock("ClusterState")
   private val journalActor = journal.journalActor
   private val isFetchingAcks = AtomicBoolean(false)

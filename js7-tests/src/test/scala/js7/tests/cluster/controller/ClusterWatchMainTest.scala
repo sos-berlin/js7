@@ -1,6 +1,6 @@
 package js7.tests.cluster.controller
 
-import cats.effect.IO
+import cats.effect.{ContextShift, IO}
 import cats.effect.concurrent.Deferred
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.syntax.*
@@ -20,7 +20,7 @@ import monix.execution.Scheduler.Implicits.traced as scheduler
 
 final class ClusterWatchMainTest extends OurAsyncTestSuite with ControllerClusterForScalaTest
 {
-  private implicit lazy val cs = IO.contextShift(scheduler)
+  private implicit lazy val cs: ContextShift[IO] = IO.contextShift(scheduler)
   private lazy val serverAdmission = controllerAdmissions.head
 
   private lazy val admissionConfig = config"""

@@ -1,5 +1,6 @@
 package js7.tests
 
+import akka.actor.ActorSystem
 import java.lang.System.lineSeparator as nl
 import js7.agent.TestAgent
 import js7.agent.client.AgentClient
@@ -41,7 +42,8 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite with ControllerAge
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(simpleWorkflow, catchingWorkflow)
 
-  private implicit def actorSystem = controller.actorSystem
+  private implicit def actorSystem: ActorSystem =
+    controller.actorSystem
 
   override def beforeAll() = {
     super.beforeAll()

@@ -99,8 +99,11 @@ object CanBindCorrelId
     (implicit F: Sync[F], canBind: CanBindCorrelId[F[?]])
   : CanBindCorrelId[Resource[F, A]] =
     new CanBindCorrelId[Resource[F, A]] {
-      private implicit val x = canBind.asInstanceOf[CanBindCorrelId[F[(A, F[Unit])]]]
-      private implicit val y = canBind.asInstanceOf[CanBindCorrelId[F[Unit]]]
+      private implicit val x: CanBindCorrelId[F[(A, F[Unit])]] =
+        canBind.asInstanceOf[CanBindCorrelId[F[(A, F[Unit])]]]
+
+      private implicit val y: CanBindCorrelId[F[Unit]] =
+        canBind.asInstanceOf[CanBindCorrelId[F[Unit]]]
 
       def bind(correlId: CorrelId)(resource: => Resource[F, A]): Resource[F, A] =
         if (!CorrelId.isEnabled)

@@ -50,7 +50,7 @@ final class StickySubagentTest extends OurTestSuite with ControllerAgentForScala
     failAtControllerWorkflow, failAtAgentWorkflow,
     aSubagentSelection, a2SubagentSelection)
 
-  protected implicit val scheduler = Scheduler.traced
+  protected implicit val scheduler: Scheduler = Scheduler.traced
 
   "StickySubagent with SubagentSelection" in {
     enableSubagents(a1SubagentId -> false, a2SubagentId -> false)

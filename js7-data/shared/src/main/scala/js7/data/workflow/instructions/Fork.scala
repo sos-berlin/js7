@@ -130,10 +130,11 @@ object Fork
       def unchecked(string: String) = new Id(string)
 
       implicit def fromString(string: String): Id =
-        apply(string)
+        this.apply(string)
     }
 
-    implicit val jsonCodec = deriveConfiguredCodec[Branch]
+    implicit val jsonCodec: Codec.AsObject[Branch] =
+      deriveConfiguredCodec[Branch]
   }
 
   //implicit lazy val jsonCodec: CirceObjectCodec[Fork] = deriveCodec[Fork]

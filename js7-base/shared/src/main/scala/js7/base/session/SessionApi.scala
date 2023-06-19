@@ -96,7 +96,7 @@ object SessionApi
     final def loginUntilReachable_(
       userAndPassword: Option[UserAndPassword],
       delays: Iterator[FiniteDuration] = defaultLoginDelays(),
-      onError: Throwable => Task[Boolean] = onErrorTryAgain,
+      onError: Throwable => Task[Boolean] = this.onErrorTryAgain,
       onlyIfNotLoggedIn: Boolean = false)
     : Task[Completed] =
       Task.defer(
@@ -172,7 +172,8 @@ object SessionApi
           login()
       }
 
-    override final def retryUntilReachable[A](onError: Throwable => Task[Boolean] = onErrorTryAgain)
+    override final def retryUntilReachable[A](
+      onError: Throwable => Task[Boolean] = this.onErrorTryAgain)
       (body: => Task[A])
     : Task[A] =
       Task.defer {
@@ -218,7 +219,7 @@ object SessionApi
 
     final def loginUntilReachable(
       delays: Iterator[FiniteDuration] = defaultLoginDelays(),
-      onError: Throwable => Task[Boolean] = onErrorTryAgain,
+      onError: Throwable => Task[Boolean] = this.onErrorTryAgain,
       onlyIfNotLoggedIn: Boolean = false)
     : Task[Completed] =
       loginUntilReachable_(userAndPassword, delays, onError, onlyIfNotLoggedIn = onlyIfNotLoggedIn)
