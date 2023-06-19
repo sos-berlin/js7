@@ -52,7 +52,7 @@ extends DocumentSigner
     signatureGenerator.init(PGPSignature.BINARY_DOCUMENT, pgpPrivateKey)
     for (u <- maybeUserId) {
       val subpacketGenerator = new PGPSignatureSubpacketGenerator
-      subpacketGenerator.setSignerUserID(false, u)
+      subpacketGenerator.addSignerUserID(false, u)
       signatureGenerator.setHashedSubpackets(subpacketGenerator.generate())
     }
     signatureGenerator

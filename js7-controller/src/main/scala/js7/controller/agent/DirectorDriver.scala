@@ -154,7 +154,7 @@ extends Service.StoppableByRequest
             again(())))))
       .guarantee(untilFetchingStopped.complete(()))
 
-  private def observeAndConsumeEvents: Task[Completed] =
+  private def observeAndConsumeEvents: Task[Unit] =
     logger.traceTask(Task.defer {
       val delay = conf.eventBufferDelay max conf.commitDelay
       eventFetcher.observe(client, after = adoptedEventId)
@@ -176,7 +176,6 @@ extends Service.StoppableByRequest
           .map(_ => o))
         .mapEval(onEventsFetched)
         .completedL
-        .as(Completed)
     })
 
   private def onEventsFetched(stampedEvents: Seq[Stamped[AnyKeyedEvent]]): Task[Unit] =

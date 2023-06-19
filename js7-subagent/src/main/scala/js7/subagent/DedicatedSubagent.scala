@@ -115,8 +115,9 @@ extends Service.StoppableByRequest
             })
             .*>(journal
               // The event may get lost due to immediate shutdown !!!
-              .persistKeyedEvent(NoKey <-: SubagentShutdown))
-            .map(_.onProblemHandle(problem => logger.warn(s"SubagentShutdown: $problem")))
+              .persistKeyedEvent(NoKey <-: SubagentShutdown)
+              .rightAs(())
+              .map(_.onProblemHandle(problem => logger.warn(s"SubagentShutdown: $problem"))))
         })
     })
 
