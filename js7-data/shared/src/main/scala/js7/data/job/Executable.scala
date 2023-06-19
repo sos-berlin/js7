@@ -229,7 +229,13 @@ final case class ShellScriptExecutable(
   login: Option[KeyLogin] = None,
   returnCodeMeaning: ReturnCodeMeaning = ReturnCodeMeaning.Default,
   v1Compatible: Boolean = false)
-extends ProcessExecutable
+extends ProcessExecutable {
+
+  override def toString = "ShellScriptExecutable(" +
+    login.fold("")(o => s"login=$o ") +
+    script.truncateWithEllipsis(200, showLength = true) +
+    ")"
+}
 object ShellScriptExecutable
 {
   implicit val jsonEncoder: Encoder.AsObject[ShellScriptExecutable] =
@@ -248,8 +254,6 @@ object ShellScriptExecutable
       returnCodeMeaning <- cursor.getOrElse[ReturnCodeMeaning]("returnCodeMeaning")(ReturnCodeMeaning.Default)
       v1Compatible <- cursor.getOrElse[Boolean]("v1Compatible")(false)
     } yield ShellScriptExecutable(script, env, login, returnCodeMeaning, v1Compatible)
-
-  //override def toString = "ShellScriptExecutable"
 }
 
 final case class InternalExecutable(

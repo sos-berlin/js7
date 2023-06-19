@@ -193,7 +193,8 @@ final case class StringValue(string: String) extends Value
 
   def convertToString = string
 
-  override def toString = ValuePrinter.quoteString(string)
+  override def toString =
+    ValuePrinter.quoteString(string.truncateWithEllipsis(200, showLength = true))
 }
 
 object StringValue extends ValueType.Simple
