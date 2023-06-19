@@ -22,7 +22,7 @@ import js7.data.controller.ControllerState.{DummyClusterNodeName, WorkflowToOrde
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.SnapshotMeta.SnapshotEventId
-import js7.data.event.{Event, EventId, ItemContainer, JournalEvent, JournalHeader, JournalState, KeyedEvent, KeyedEventTypedJsonCodec, SignedItemContainer, SnapshotMeta, SnapshotableState}
+import js7.data.event.{ClusterableState, Event, EventId, ItemContainer, JournalEvent, JournalHeader, JournalState, KeyedEvent, KeyedEventTypedJsonCodec, SignedItemContainer, SnapshotMeta, SnapshotableState}
 import js7.data.item.BasicItemEvent.{ItemAttachedStateEvent, ItemDeleted, ItemDeletionMarked, ItemDetachable}
 import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable, Detached, NotDetached}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
@@ -62,7 +62,7 @@ final case class ControllerState(
 extends SignedItemContainer
 with EventDrivenStateView[ControllerState, Event]
 with OrderWatchStateHandler[ControllerState]
-with SnapshotableState[ControllerState]
+with ClusterableState[ControllerState]
 {
   def isAgent = false
 
@@ -722,7 +722,7 @@ with SnapshotableState[ControllerState]
 }
 
 object ControllerState
-extends SnapshotableState.Companion[ControllerState]
+extends ClusterableState.Companion[ControllerState]
 with ItemContainer.Companion[ControllerState]
 {
   private val logger = scribe.Logger[this.type]

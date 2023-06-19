@@ -28,7 +28,7 @@ import js7.data.cluster.ClusterState.{ActiveShutDown, Coupled, Empty, HasNodes, 
 import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
 import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeApi, ClusterSetting, ClusterState, ClusterTiming, ClusterWatchId}
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{EventId, KeyedEvent, SnapshotableState, Stamped}
+import js7.data.event.{ClusterableState, EventId, KeyedEvent, Stamped}
 import js7.data.node.NodeId
 import js7.journal.JournalActor
 import js7.journal.state.FileJournal
@@ -41,7 +41,7 @@ import scala.concurrent.Promise
 import scala.concurrent.duration.*
 import scala.util.{Failure, Success}
 
-final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff] private[cluster](
+final class ActiveClusterNode[S <: ClusterableState[S]: diffx.Diff] private[cluster](
   journal: FileJournal[S],
   passiveNodeUserAndPassword: Option[UserAndPassword],
   common: ClusterCommon,

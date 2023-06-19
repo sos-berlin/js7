@@ -20,7 +20,7 @@ import js7.data.cluster.ClusterState.HasNodes
 import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
 import js7.data.cluster.{ClusterCommand, ClusterSetting, ClusterState}
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{AnyKeyedEvent, EventId, SnapshotableState, Stamped}
+import js7.data.event.{AnyKeyedEvent, ClusterableState, EventId, Stamped}
 import js7.data.node.{NodeId, NodeNameToPassword}
 import js7.journal.EventIdGenerator
 import js7.journal.recover.Recovered
@@ -37,7 +37,7 @@ import monix.execution.Scheduler
   * the ClusterNodesAppointed event.
   */
 final class WorkingClusterNode[
-  S <: SnapshotableState[S]: SnapshotableState.Companion: diffx.Diff: Tag
+  S <: ClusterableState[S]: ClusterableState.Companion: diffx.Diff: Tag
 ] private(
   val failedNodeId: Option[NodeId],
   val journalAllocated: Allocated[Task, FileJournal[S]],
@@ -186,7 +186,7 @@ object WorkingClusterNode
   private val logger = Logger(getClass)
 
   private[cluster]
-  def resource[S <: SnapshotableState[S]: SnapshotableState.Companion: diffx.Diff: Tag](
+  def resource[S <: ClusterableState[S]: ClusterableState.Companion: diffx.Diff: Tag](
     recovered: Recovered[S],
     common: ClusterCommon,
     clusterConf: ClusterConf,

@@ -31,7 +31,7 @@ import js7.data.cluster.ClusterCommand.{ClusterInhibitActivation, ClusterStartBa
 import js7.data.cluster.ClusterState.{Coupled, Empty, FailedOver, HasNodes}
 import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
 import js7.data.cluster.{ClusterCommand, ClusterNodeApi, ClusterSetting, ClusterWatchRequest, ClusterWatchingCommand}
-import js7.data.event.{AnyKeyedEvent, EventId, JournalPosition, SnapshotableState, Stamped}
+import js7.data.event.{AnyKeyedEvent, ClusterableState, EventId, JournalPosition, Stamped}
 import js7.data.node.{NodeName, NodeNameToPassword}
 import js7.journal.data.JournalLocation
 import js7.journal.recover.{Recovered, StateRecoverer}
@@ -43,7 +43,7 @@ import scala.concurrent.Promise
 import scala.util.control.NoStackTrace
 import scala.util.{Failure, Success, Try}
 
-final class ClusterNode[S <: SnapshotableState[S]: diffx.Diff: Tag] private(
+final class ClusterNode[S <: ClusterableState[S]: diffx.Diff: Tag] private(
   prepared: Prepared[S],
   passiveOrWorkingNode: AtomicAny[Option[Either[PassiveClusterNode[S], Allocated[Task, WorkingClusterNode[S]]]]],
   currentStateRef: Ref[Task, Task[Either[Problem, S]]],
@@ -53,7 +53,7 @@ final class ClusterNode[S <: SnapshotableState[S]: diffx.Diff: Tag] private(
   common: ClusterCommon,
   val recoveredExtract: Recovered.Extract,
   implicit val actorSystem: ActorSystem)
-  (implicit S: SnapshotableState.Companion[S],
+  (implicit S: ClusterableState.Companion[S],
     nodeNameToPassword: NodeNameToPassword[S],
     scheduler: Scheduler,
     timeout: akka.util.Timeout)
@@ -261,7 +261,7 @@ object ClusterNode
 {
   private val logger = Logger(getClass)
 
-  def recoveringResource[S <: SnapshotableState[S] : diffx.Diff : Tag](
+  def recoveringResource[S <: ClusterableState[S] : diffx.Diff : Tag](
     akkaResource: Resource[Task, ActorSystem],
     clusterNodeApi: (Admission, String, ActorSystem) => Resource[Task, ClusterNodeApi],
     licenseChecker: LicenseChecker,
@@ -270,7 +270,7 @@ object ClusterNode
     eventIdClock: EventIdClock,
     testEventBus: EventPublisher[Any])
     (implicit
-      S: SnapshotableState.Companion[S],
+      S: ClusterableState.Companion[S],
       nodeNameToPassword: NodeNameToPassword[S],
       scheduler: Scheduler,
       akkaTimeout: Timeout)
@@ -287,7 +287,7 @@ object ClusterNode
         ).orThrow
       }
 
-  private def resource[S <: SnapshotableState[S] : diffx.Diff : Tag](
+  private def resource[S <: ClusterableState[S] : diffx.Diff : Tag](
     recovered: Recovered[S],
     clusterNodeApi: (Admission, String) => Resource[Task, ClusterNodeApi],
     licenseChecker: LicenseChecker,
@@ -296,7 +296,7 @@ object ClusterNode
     eventIdClock: EventIdClock,
     testEventBus: EventPublisher[Any])
     (implicit
-      S: SnapshotableState.Companion[S],
+      S: ClusterableState.Companion[S],
       nodeNameToPassword: NodeNameToPassword[S],
       scheduler: Scheduler,
       actorSystem: ActorSystem,
@@ -327,7 +327,7 @@ object ClusterNode
       } yield clusterNode
   }
 
-  private def resource[S <: SnapshotableState[S] : diffx.Diff : Tag](
+  private def resource[S <: ClusterableState[S] : diffx.Diff : Tag](
     recovered: Recovered[S],
     common: ClusterCommon,
     journalLocation: JournalLocation,
@@ -335,7 +335,7 @@ object ClusterNode
     eventIdGenerator: EventIdGenerator,
     eventBus: EventPublisher[Any])
     (implicit
-      S: SnapshotableState.Companion[S],
+      S: ClusterableState.Companion[S],
       nodeNameToPassword: NodeNameToPassword[S],
       scheduler: Scheduler,
       actorSystem: ActorSystem,
@@ -538,7 +538,7 @@ object ClusterNode
     command: ClusterWatchConfirm,
     result: Checked[Unit])
 
-  private final case class Prepared[S <: SnapshotableState[S]](
+  private final case class Prepared[S <: ClusterableState[S]](
     currentPassiveReplicatedState: Task[Option[Checked[S]]],
     untilRecovered: Task[Checked[Recovered[S]]],
     expectingStartBackupCommand: Option[Promise[ClusterStartBackupNode]] = None)

@@ -44,7 +44,7 @@ import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeApi, ClusterSe
 import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
 import js7.data.event.JournalSeparators.HeartbeatMarker
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{EventId, JournalId, JournalPosition, JournalSeparators, KeyedEvent, SnapshotableState, SnapshotableStateBuilder, Stamped}
+import js7.data.event.{ClusterableState, EventId, JournalId, JournalPosition, JournalSeparators, KeyedEvent, SnapshotableStateBuilder, Stamped}
 import js7.data.node.{NodeId, NodeName, NodeNameToPassword}
 import js7.journal.EventIdGenerator
 import js7.journal.files.JournalFiles.*
@@ -54,10 +54,10 @@ import monix.execution.Scheduler
 import monix.reactive.Observable
 import scala.annotation.nowarn
 
-private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
+private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]: diffx.Diff](
   ownId: NodeId,
   setting: ClusterSetting,
-  recovered: Recovered[S]/*TODO The maybe big SnapshotableState at start sticks here*/,
+  recovered: Recovered[S]/*TODO The maybe big ClusterableState at start sticks here*/,
   activeNodeName: NodeName,
   passiveUserId: UserId,
   eventIdGenerator: EventIdGenerator,
@@ -67,7 +67,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
   clusterConf: ClusterConf,
   common: ClusterCommon)
   (implicit
-    S: SnapshotableState.Companion[S],
+    S: ClusterableState.Companion[S],
     nodeNameToPassword: NodeNameToPassword[S])
 {
   import clusterConf.{config, journalConf}

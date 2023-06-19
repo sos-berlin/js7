@@ -1,24 +1,20 @@
 package js7.data.event
 
 import cats.implicits.toShow
-import cats.syntax.traverse.*
 import io.circe.{Decoder, Json}
-import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.circeutils.CirceUtils.*
 import js7.base.circeutils.typed.TypedJsonCodec
-import js7.base.generic.SecretString
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.ScalaUtils.syntax.RichString
+import js7.base.utils.ScalaUtils.syntax.{RichJavaClass, RichString}
 import js7.data.cluster.{ClusterEvent, ClusterState}
 import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.SnapshotableState.*
-import js7.data.node.{NodeId, NodeName, NodeNameToPassword}
 import monix.eval.Task
 import monix.reactive.Observable
 
-/** A JournaledState with snapshot, JournalState and ClusterState.. */
+/** A JournaledState with snapshot, JournalState, but without ClusterState handling. */
 trait SnapshotableState[S <: SnapshotableState[S]]
 extends JournaledState[S]
 {
@@ -40,27 +36,6 @@ extends JournaledState[S]
   final def clusterState: ClusterState =
     standards.clusterState
 
-  def clusterNodeIdToName(nodeId: NodeId): Checked[NodeName]
-
-  def clusterNodeToUserId(nodeId: NodeId): Checked[UserId]
-
-  final def clusterNodeToUserAndPassword(ourNodeId: NodeId, otherNodeId: NodeId)
-    (implicit nodeNameToPassword: NodeNameToPassword[S])
-  : Checked[Option[UserAndPassword]] =
-    clusterNodeToPassword(otherNodeId)
-      .flatMap(maybePassword =>
-        maybePassword.traverse(password =>
-          clusterNodeToUserId(ourNodeId)
-            .map(UserAndPassword(_, password))))
-
-  private def clusterNodeToPassword(nodeId: NodeId)
-    (implicit nodeNameToPassword: NodeNameToPassword[S])
-  : Checked[Option[SecretString]] =
-    for {
-      nodeName <- clusterNodeIdToName(nodeId)
-      maybePassword <- nodeNameToPassword(nodeName)
-    } yield maybePassword
-
   protected final def applyStandardEvent(keyedEvent: KeyedEvent[Event]): Checked[S] =
     keyedEvent match {
       case KeyedEvent(_: NoKey, _: SnapshotTaken) =>
@@ -71,9 +46,12 @@ extends JournaledState[S]
           journalState = journalState.applyEvent(event))))
 
       case KeyedEvent(_: ClusterEvent#Key, _: ClusterEvent) =>
-        for (o <- clusterState.applyEvent(keyedEvent.asInstanceOf[KeyedEvent[ClusterEvent]]))
-          yield withStandards(standards.copy(
-            clusterState = o))
+        if (!isInstanceOf[ClusterableState[?]])
+          Left(Problem(s"ClusterEvent but ${getClass.simpleScalaName} is not a ClusterableState"))
+        else
+          for (o <- clusterState.applyEvent(keyedEvent.asInstanceOf[KeyedEvent[ClusterEvent]]))
+            yield withStandards(standards.copy(
+              clusterState = o))
 
       case _ => eventNotApplicable(keyedEvent)
     }

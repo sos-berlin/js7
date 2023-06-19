@@ -6,15 +6,15 @@ import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
 import js7.data.cluster.{ClusterEvent, ClusterSetting, ClusterState, ClusterTiming, ClusterWatchId}
+import js7.data.event.ClusterableStateTest.*
 import js7.data.event.EventDrivenState.EventNotApplicableProblem
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.SnapshotableStateTest.*
 import js7.data.node.NodeId
 
 /**
   * @author Joacim Zschimmer
   */
-final class SnapshotableStateTest extends OurTestSuite
+final class ClusterableStateTest extends OurTestSuite
 {
   private var s = MyState.empty
 
@@ -39,7 +39,7 @@ final class SnapshotableStateTest extends OurTestSuite
   }
 }
 
-private object SnapshotableStateTest
+private object ClusterableStateTest
 {
   private val primaryNodeId = NodeId("PRIMARY")
   private val setting = ClusterSetting(
@@ -51,7 +51,7 @@ private object SnapshotableStateTest
     Some(ClusterWatchId("CLUSTER-WATCH")))
 
   private case class MyState(eventId: EventId, standards: SnapshotableState.Standards)
-  extends SnapshotableState[MyState]
+  extends ClusterableState[MyState]
   {
     def companion = MyState
 
@@ -73,11 +73,10 @@ private object SnapshotableStateTest
     def clusterNodeToUserId(nodeId: NodeId) =
       Left(Problem("clusterNodeToUserId not implemented"))
   }
-  private object MyState extends SnapshotableState.Companion[MyState] {
+  private object MyState extends ClusterableState.Companion[MyState] {
     val empty = MyState(EventId.BeforeFirst, SnapshotableState.Standards.empty)
 
     // TODO Refactor this into a separate common trait
-    protected def inventoryItems = throw new NotImplementedError
     def snapshotObjectJsonCodec = throw new NotImplementedError
     implicit def keyedEventJsonCodec = throw new NotImplementedError
     def newBuilder() = throw new NotImplementedError
