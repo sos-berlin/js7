@@ -24,7 +24,7 @@ final class JobResourceAtBareSubagentTest extends JobResourceTest
     findFreeLocalUri())
 
   private lazy val (bSubagent, bSubagentRelease) =
-    directoryProvider.subagentResource(bareSubagentItem).allocated.await(99.s)
+    directoryProvider.bareSubagentResource(bareSubagentItem).allocated.await(99.s)
 
   override def beforeAll() = {
     super.beforeAll()

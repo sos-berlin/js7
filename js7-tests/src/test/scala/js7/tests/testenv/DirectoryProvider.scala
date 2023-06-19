@@ -317,7 +317,7 @@ extends HasCloser
   def startBareSubagents(): Task[Map[SubagentId, Allocated[Task, Subagent]]] =
     bareSubagentItems
       .parTraverse(subagentItem =>
-        subagentResource(subagentItem, config = agentConfig)
+        bareSubagentResource(subagentItem, config = agentConfig)
           .toAllocated
           .map(subagentItem.id -> _))
       .map(_.toMap)
@@ -381,8 +381,7 @@ extends HasCloser
       otherSubagentIds = otherSubagentIds,
       extraConfig = extraConfig.withFallback(agentConfig))
 
-  @deprecated // Duplicate in DirectorEnv ?
-  def subagentResource(
+  def bareSubagentResource(
     subagentItem: SubagentItem,
     director: SubagentId = toLocalSubagentId(agentPaths.head),
     config: Config = ConfigFactory.empty,
@@ -390,17 +389,15 @@ extends HasCloser
     suppressSignatureKeys: Boolean = false)
   : Resource[Task, Subagent] =
     for {
-      directorEnv <- subagentEnvResource(subagentItem,
+      env <- bareSubagentEnvResource(subagentItem,
         director = director,
         suffix = suffix,
         suppressSignatureKeys = suppressSignatureKeys,
         extraConfig = config)
-      subagent <- directorEnv.subagentResource
-    } yield {
-      subagent
-    }
+      subagent <- env.subagentResource
+    } yield subagent
 
-  private def subagentEnvResource(
+  private def bareSubagentEnvResource(
     subagentItem: SubagentItem,
     director: SubagentId,
     suffix: String = "",

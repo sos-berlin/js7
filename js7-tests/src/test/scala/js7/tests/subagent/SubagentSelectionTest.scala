@@ -53,7 +53,7 @@ final class SubagentSelectionTest extends OurTestSuite with SubagentTester with 
 
   private lazy val idToRelease = subagentItems
     .traverse(subagentItem =>
-      directoryProvider.subagentResource(subagentItem)
+      directoryProvider.bareSubagentResource(subagentItem)
         .allocated
         .map(subagentItem.id -> _._2.memoize))
     .await(99.s)

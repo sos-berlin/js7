@@ -148,7 +148,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
     val subagentItem = directoryProvider.subagentItems
       .find(_.id == subagentId)
       .getOrElse(throw new NoSuchElementException(s"Missing $subagentId"))
-    directoryProvider.subagentResource(subagentItem, toLocalSubagentId(agentPaths.head))
+    directoryProvider.bareSubagentResource(subagentItem, toLocalSubagentId(agentPaths.head))
       .allocated.await(99.s)
   }
 
@@ -204,7 +204,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
     Resource.suspend(Task {
       val eventId = eventWatch.lastAddedEventId
       directoryProvider
-        .subagentResource(subagentItem, director = director,
+        .bareSubagentResource(subagentItem, director = director,
           config,
           suffix = suffix,
           suppressSignatureKeys = suppressSignatureKeys)

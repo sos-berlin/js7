@@ -13,7 +13,7 @@ import js7.tests.testenv.DirectoryProvider.*
 import monix.eval.Task
 
 /** Environment with config and data directories for a bare Subagent. */
-final class BareSubagentEnv(
+final class BareSubagentEnv private[testenv](
   val subagentItem: SubagentItem,
   directorSubagentId: SubagentId,
   protected val name: String,
