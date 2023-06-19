@@ -35,16 +35,15 @@ final class JobTimeoutTest extends OurTestSuite with ControllerAgentForScalaTest
 
   "timeout" in {
     // Warm-up
-    controller
-      .runOrder(
-        FreshOrder(OrderId("WARM-UP"), workflowPath = workflow.path, deleteWhenTerminated = true))
-      .map(_.value)
+    controller.runOrder(
+      FreshOrder(OrderId("WARM-UP"), workflowPath = workflow.path, deleteWhenTerminated = true))
 
     val t = now
     val events = controller.runOrder(FreshOrder(OrderId("ORDER"), workflowPath = workflow.path))
       .map(_.value)
-    logger.info(t.elapsed.pretty)
-    assert(t.elapsed >= timeout)
+    val elapsed = t.elapsed
+    logger.info(elapsed.pretty)
+    assert(elapsed >= timeout && elapsed < jobDuration / 2)
     assert(events ==
       Vector(
         OrderAdded(workflow.id),
@@ -64,6 +63,7 @@ object JobTimeoutTest
 {
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)
+  private val jobDuration = 10.s
   private val timeout = 200.ms
   private val logger = Logger[this.type]
 
@@ -72,10 +72,13 @@ object JobTimeoutTest
       agentPath,
       ShellScriptExecutable(
         if (isWindows)
-           """@echo off
-             |ping -n 10 127.0.0.1 >nul
+           s"""@echo off
+             |ping -n ${jobDuration.toSeconds + 1} 127.0.0.1 >nul
              |""".stripMargin
-        else
-          "sleep 9"),
+        else s"""
+         |#!/usr/bin/env bash
+         |i=${10 * jobDuration.toSeconds}
+         |while [ $$i -ge 0 ]; do sleep 0.1; done
+         |""".stripMargin),
       timeout = Some(timeout)))))
 }
