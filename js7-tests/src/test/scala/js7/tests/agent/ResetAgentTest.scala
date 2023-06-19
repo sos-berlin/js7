@@ -16,6 +16,7 @@ import js7.base.time.{AdmissionTimeScheme, DailyPeriod, Timestamp, Timezone}
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResource
 import js7.data.Problems.AgentResetProblem
 import js7.data.agent.AgentRefStateEvent.{AgentCoupled, AgentCouplingFailed, AgentDedicated, AgentReset}
@@ -30,7 +31,7 @@ import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath}
 import js7.data.order.OrderEvent.{LockDemand, OrderAdded, OrderAttachable, OrderAttached, OrderCaught, OrderCyclingPrepared, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderLocksAcquired, OrderLocksReleased, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTerminated}
 import js7.data.order.{CycleState, FreshOrder, OrderEvent, OrderId, Outcome}
-import js7.data.subagent.SubagentItem
+import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.workflow.instructions.{Cycle, Fork, LockInstruction, Schedule, TryInstruction}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -59,7 +60,16 @@ final class ResetAgentTest extends OurTestSuite with ControllerAgentForScalaTest
     """ withFallback super.agentConfig
 
   protected val agentPaths = Seq(agentPath)
-  protected val items = Seq(simpleWorkflow, lockWorkflow, cycleWorkflow, forkingWorkflow,
+  protected val bareSubagentId = SubagentId("BARE-SUBAGENT")
+  override def bareSubagentItems: Seq[SubagentItem] = Seq(bareSubagentItem)
+
+  protected lazy val bareSubagentItem = SubagentItem(
+    bareSubagentId, agentPath, findFreeLocalUri(),
+    disabled = true/*don't use for orders for expectable events*/)
+
+  protected val items = Seq(
+    bareSubagentItem,
+    simpleWorkflow, lockWorkflow, cycleWorkflow, forkingWorkflow,
     lock, jobResource, calendar)
 
   private var myAgent: TestAgent = null
@@ -112,6 +122,9 @@ final class ResetAgentTest extends OurTestSuite with ControllerAgentForScalaTest
       OrderDetached,
       OrderOutcomeAdded(Outcome.Disrupted(AgentResetProblem(agentPath))),
       OrderFailed(Position(0) / "try+0" % 1)))
+
+    // The Director has terminated the BareSubagent, too
+    idToAllocatedSubagent(bareSubagentId).allocatedThing.untilTerminated.await(99.s)
 
     barrier.flatMap(_.tryPut(())).runSyncUnsafe()
   }
@@ -218,6 +231,14 @@ final class ResetAgentTest extends OurTestSuite with ControllerAgentForScalaTest
 
     // The restarted Agent has deleted the files (due to markerFile)
     assert(!exists(markerFile) && !exists(garbageFile))
+  }
+
+  "ResetAgent resets Subagents, too" in {
+    //super.runSubagent(bareSubagentItem) { subagent =>
+      // Be sure Agent is running
+      controller.runOrder(FreshOrder(OrderId("BEFORE-SUBAGENTS"), simpleWorkflow.path))
+
+    //}
   }
 
   "One last order" in {

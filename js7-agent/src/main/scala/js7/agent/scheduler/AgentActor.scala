@@ -39,6 +39,7 @@ import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.state.FileJournal
 import js7.subagent.Subagent
+import js7.subagent.director.RemoteSubagentDriver
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.{Future, Promise}
@@ -140,21 +141,27 @@ private[agent] final class AgentActor(
             logger.info(s"❗ $command")
             isResetting = true
             if (!terminating) {
-              journal
-                .persist(_.clusterState match {
-                  case _: ClusterState.Coupled =>
-                    // Is it a good idea to persist something when Agent must be reset ???
-                    Right((NoKey <-: ClusterResetStarted) :: Nil)
-                  case _ => Right(Nil)
-                })
-                .materializeIntoChecked
-                .flatMap {
-                  case Left(problem) => Task(response.success(Left(problem)))
-                  case Right(_) =>
-                    Task.right {
-                      self ! ContinueReset(response)
-                    }
-                }
+              started.toOption
+                .fold(Task.unit)(started => Task
+                  .fromFuture(
+                    (started.actor ? AgentOrderKeeper.Input.ResetAllSubagents)(
+                      RemoteSubagentDriver.subagentResetTimeout))
+                  .void)
+                .*>(journal
+                  .persist(_.clusterState match {
+                    case _: ClusterState.Coupled =>
+                      // Is it a good idea to persist something when Agent must be reset ???
+                      Right((NoKey <-: ClusterResetStarted) :: Nil)
+                    case _ => Right(Nil)
+                  })
+                  .materializeIntoChecked
+                  .flatMap {
+                    case Left(problem) => Task(response.success(Left(problem)))
+                    case Right(_) =>
+                      Task.right {
+                        self ! ContinueReset(response)
+                      }
+                  })
                 .runToFuture
             }
         }

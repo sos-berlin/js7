@@ -108,7 +108,7 @@ with SubagentEventListener
 
   private val resetLock = AsyncLock()
 
-  def reset(force: Boolean): Task[Unit] =
+  def reset(force: Boolean, dontContinue: Boolean = false): Task[Unit] =
     logger.debugTask(
       resetLock.lock(Task.defer {
         val wasHeartbeating = isHeartbeating
@@ -122,7 +122,7 @@ with SubagentEventListener
             // May delay ProcessLost and SubagentReset for connection timeout.
             tryShutdownSubagent(processSignal = Some(SIGKILL), dontWaitForDirector = true)))
           .*>(onSubagentDied(ProcessLostDueToResetProblem, SubagentReset))
-          .*>(startEventListener)
+          .*>(Task.unless(dontContinue)(startEventListener))
       }))
 
   private def suppressResetShutdown =
@@ -150,6 +150,10 @@ with SubagentEventListener
         .executeSubagentCommand(Numbered(0,
           SubagentCommand.ShutDown(processSignal, dontWaitForDirector = dontWaitForDirector,
             restart = true)))
+        .timeoutTo(subagentResetTimeout, Task {
+          logger.error(s"$subagentId did not reponse to Reset command for ${subagentResetTimeout}")
+          Checked.unit
+        })
         .orThrow
         .void
         .onErrorHandle(t =>  // Ignore when Subagent is unreachable
@@ -608,6 +612,7 @@ object RemoteSubagentDriver
 {
   private val reconnectErrorDelay = 5.s/*TODO*/
   private val tryPostErrorDelay = 5.s/*TODO*/
+  val subagentResetTimeout = 2.s/*TODO*/
 
   private[director] def resource[S <: SubagentDirectorState[S]](
     subagentItem: SubagentItem,

@@ -283,7 +283,18 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
           })
     }
 
-  def startResetSubagent(subagentId: SubagentId, force: Boolean): Task[Checked[Unit]] =
+  def shutdownAllSubagents(except: Set[SubagentId]): Task[Unit] =
+    stateVar.value
+      .flatMap(state =>
+        state.subagentToEntry.values
+          .toVector
+          .map(_.driver)
+          .collect { case driver: RemoteSubagentDriver => driver }
+          .filterNot(driver => except(driver.subagentId))
+          .parUnorderedTraverse(_.reset(force = false, dontContinue = true))
+          .map(_.combineAll))
+
+  def startResetSubagent(subagentId: SubagentId, force: Boolean = false): Task[Checked[Unit]] =
     stateVar.value
       .flatMap(s => Task(s.idToDriver.checked(subagentId)))
       .flatMapT {

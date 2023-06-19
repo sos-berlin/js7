@@ -395,6 +395,12 @@ with Stash
       for (jobEntry <- jobRegister.get(jobKey)) {
         tryStartProcessing(jobEntry)
       }
+
+    case Input.ResetAllSubagents =>
+
+      subagentKeeper
+        .shutdownAllSubagents(except = journal.unsafeCurrentState().meta.directors.toSet)
+        .void.runToFuture.pipeTo(sender())
   }
 
   private def processCommand(cmd: AgentCommand): Future[Checked[Response]] = cmd match {
@@ -889,6 +895,7 @@ object AgentOrderKeeper {
       command: AgentCommand,
       correlId: CorrelId,
       response: Promise[Checked[Response]])
+    case object ResetAllSubagents
   }
 
   private object Internal {
