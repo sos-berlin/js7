@@ -148,7 +148,7 @@ extends Service.StoppableByRequest
           .*>(eventFetcher
             .pauseBeforeNextTry(conf.recouplingStreamReader.delay)
             .raceFold(untilStopRequested))
-          .materialize
+          .void
           .onErrorHandle(t => logger.error(t.toStringWithCauses, t))
           .*>(Task.defer(Task.unless(isStopping)(
             again(())))))
