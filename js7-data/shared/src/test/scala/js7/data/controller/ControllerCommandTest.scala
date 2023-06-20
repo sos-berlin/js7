@@ -470,6 +470,16 @@ final class ControllerCommandTest extends OurTestSuite
       }""")
   }
 
+  "ConfirmClusterNodeLoss" in {
+    testJson[ControllerCommand](ConfirmClusterNodeLoss(AgentPath("AGENT"), NodeId.primary, "me"),
+      json"""{
+        "TYPE": "ConfirmClusterNodeLoss",
+        "agentPath": "AGENT",
+        "lostNodeId": "Primary",
+        "confirmer": "me"
+      }""")
+  }
+
   "Response.Accepted" in {
     testJson[ControllerCommand.Response](
       Response.Accepted,

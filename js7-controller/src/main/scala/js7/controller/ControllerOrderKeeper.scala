@@ -959,6 +959,18 @@ with MainJournalingActor[ControllerState, Event]
                 .runToFuture
           }
 
+      case ControllerCommand.ConfirmClusterNodeLoss(agentPath, lostNodeId, confirmer) =>
+        agentRegister.checked(agentPath)
+          .map(_.agentDriver)
+          .match_ {
+            case Left(problem) => Future.successful(Left(problem))
+            case Right(agentDriver) =>
+              agentDriver
+                .confirmClusterNodeLoss(lostNodeId, confirmer)
+                .rightAs(ControllerCommand.Response.Accepted)
+                .runToFuture
+          }
+
       case _ =>
         // Handled by ControllerCommandExecutor
         Future.failed(new NotImplementedError)

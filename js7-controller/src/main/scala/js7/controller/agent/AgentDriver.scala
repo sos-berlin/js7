@@ -44,6 +44,7 @@ import js7.data.controller.ControllerState
 import js7.data.event.{AnyKeyedEvent, EventId, KeyedEvent, Stamped}
 import js7.data.item.ItemAttachedState.{Attachable, Attached}
 import js7.data.item.{InventoryItemKey, ItemAttachedState, SignableItem, UnsignedItem}
+import js7.data.node.NodeId
 import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderDetached}
 import js7.data.order.{Order, OrderId, OrderMark}
 import js7.data.subagent.{SubagentId, SubagentItem}
@@ -393,6 +394,11 @@ extends Service.StoppableByRequest
   private def startNewClusterWatch: Task[Unit] =
     logger.debugTask(
       clusterWatchAllocated.acquire(clusterWatchResource).void)
+
+  def confirmClusterNodeLoss(lostNodeId: NodeId, confirmer: String): Task[Checked[Unit]] =
+    clusterWatchAllocated.checked
+      .flatMapT(clusterWatchService => Task(
+        clusterWatchService.manuallyConfirmNodeLoss(lostNodeId, confirmer)))
 
   private def startAndForgetDirectorDriver(implicit src: sourcecode.Enclosing): Task[Unit] =
     startNewDirectorDriver

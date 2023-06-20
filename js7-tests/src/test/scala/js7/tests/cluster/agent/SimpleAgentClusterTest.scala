@@ -39,7 +39,7 @@ final class SimpleAgentClusterTest extends ControllerClusterTester
     SubagentItem(SubagentId("SUBAGENT-1"), agentPath, findFreeLocalUri()))
 
   override protected def items =
-    Seq(TestWorkflow, workflow, agentRef) ++ subagentItems :+ subagentSelection
+    Seq(TestWorkflow, workflow, agentRef, subagentSelection) ++ subagentItems
 
   "Cluster replicates journal files properly" in {
     withControllerAndBackupWithoutAgents() { (primary, backup, _) =>

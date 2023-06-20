@@ -252,6 +252,14 @@ object ControllerCommand extends CommonCommand.Companion
     type Response = Response.Accepted
   }
 
+  final case class ConfirmClusterNodeLoss(
+    agentPath: AgentPath,
+    lostNodeId: NodeId,
+    confirmer: String)
+  extends ControllerCommand {
+    type Response = Response.Accepted
+  }
+
   final case class ResetAgent(agentPath: AgentPath, force: Boolean = false)
   extends ControllerCommand {
     type Response = Response.Accepted
@@ -297,6 +305,7 @@ object ControllerCommand extends CommonCommand.Companion
     Subtype(deriveConfiguredCodec[ControlWorkflow]),
     Subtype(deriveConfiguredCodec[ClusterAppointNodes]),
     Subtype(deriveConfiguredCodec[ClusterSwitchOver]),
+    Subtype(deriveConfiguredCodec[ConfirmClusterNodeLoss]),
     Subtype(deriveConfiguredCodec[ResetAgent]),
     Subtype(deriveConfiguredCodec[ResetSubagent]),
     Subtype(TakeSnapshot))

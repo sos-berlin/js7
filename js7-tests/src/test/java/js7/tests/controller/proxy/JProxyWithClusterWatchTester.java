@@ -1,8 +1,5 @@
 package js7.tests.controller.proxy;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 import js7.base.problem.Problem;
 import js7.cluster.watch.ClusterWatchService;
 import js7.cluster.watch.api.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem;
@@ -18,6 +15,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scala.compat.java8.OptionConverters;
 import scala.util.Either;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+
 import static java.util.Arrays.asList;
 import static js7.proxy.javaapi.JControllerApi.newClusterWatchEventBus;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -47,8 +49,8 @@ final class JProxyWithClusterWatchTester
             clusterWatchService.clusterWatchRunId();
             clusterWatchService.clusterState();
 
-            NodeId primaryId = NodeId.of("Primary");
-            NodeId backupId = NodeId.of("Backup");
+            NodeId primaryId = NodeId.primary();
+            NodeId backupId = NodeId.backup();
             if (clusterWatchService.clusterNodeLossEventToBeConfirmed(primaryId).isDefined()) {
                 ClusterEvent.ClusterNodeLostEvent clusterNodeLostEvent =
                     clusterWatchService.clusterNodeLossEventToBeConfirmed(primaryId).get();
