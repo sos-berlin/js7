@@ -20,7 +20,6 @@ import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.subagent.ResetSubagentWhileRunning2Test.*
-import js7.tests.subagent.ResetSubagentWhileRunningTest.agentPath
 import monix.execution.Scheduler
 import scala.concurrent.TimeoutException
 
@@ -132,7 +131,7 @@ final class ResetSubagentWhileRunning2Test extends OurTestSuite with SubagentTes
 object ResetSubagentWhileRunning2Test
 {
   private val logger = Logger[this.type]
-  val agentPath = AgentPath("AGENT")
+  private val agentPath = AgentPath("AGENT")
 
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",

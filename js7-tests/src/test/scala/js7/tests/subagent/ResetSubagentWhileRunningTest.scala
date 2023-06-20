@@ -18,6 +18,7 @@ import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.subagent.ResetSubagentWhileRunningTest.*
+import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler
 import scala.concurrent.TimeoutException
 
@@ -28,6 +29,11 @@ final class ResetSubagentWhileRunningTest extends OurTestSuite with SubagentTest
   override protected val primarySubagentsDisabled = true
 
   protected implicit val scheduler = Scheduler.traced
+
+  "ResetSubagent to a Director is prohibited" in {
+    val checked = controller.api.executeCommand(ResetSubagent(localSubagentId)).await(99.s)
+    assert(checked == Left(Problem("Subagent:AGENT-0 as a Agent Director cannot be reset")))
+  }
 
   "ResetSubagent while Subagent is coupled" in {
     enableSubagents(directoryProvider.subagentId -> false)
@@ -122,7 +128,8 @@ final class ResetSubagentWhileRunningTest extends OurTestSuite with SubagentTest
 
 object ResetSubagentWhileRunningTest
 {
-  val agentPath = AgentPath("AGENT")
+  private val agentPath = AgentPath("AGENT")
+  private val localSubagentId = toLocalSubagentId(agentPath)
 
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",

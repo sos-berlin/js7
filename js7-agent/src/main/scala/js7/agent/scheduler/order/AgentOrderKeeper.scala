@@ -448,9 +448,14 @@ with Stash
         }
 
     case AgentCommand.ResetSubagent(subagentId, force) =>
-      subagentKeeper.startResetSubagent(subagentId, force)
-        .rightAs(AgentCommand.Response.Accepted)
-        .runToFuture
+      val task =
+        if (journal.unsafeCurrentState().meta.directors.contains(subagentId))
+          Task.left(Problem(s"$subagentId as an Agent Director cannot be reset"))
+        else
+          subagentKeeper.startResetSubagent(subagentId, force)
+            .rightAs(AgentCommand.Response.Accepted)
+
+      task.runToFuture
 
     case AgentCommand.ClusterSwitchOver =>
       switchOver(cmd)

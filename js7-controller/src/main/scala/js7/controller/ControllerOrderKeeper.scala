@@ -923,7 +923,16 @@ with MainJournalingActor[ControllerState, Event]
         }
 
       case ControllerCommand.ResetSubagent(subagentId, force) =>
-        journal.unsafeCurrentState().keyTo(SubagentItemState).checked(subagentId)
+        val controllerState = journal.unsafeCurrentState()
+        controllerState.keyTo(SubagentItemState).checked(subagentId)
+          .flatTap(subagentItemState =>
+            controllerState.keyToItem(AgentRef).checked(subagentItemState.subagentItem.agentPath)
+              .flatTap(agentRef =>
+                // We double-check this here, then we can immediately return the problem.
+                // When the Director rejects ResetAgent, we have no mean to return the rejection
+                // to the command issuer.
+                !agentRef.directors.contains(subagentId) !!
+                  Problem.pure(s"$subagentId as a Agent Director cannot be reset")))
           .map(subagentItemState =>
             (subagentItemState.couplingState != DelegateCouplingState.Resetting(force))
               .thenList((subagentId <-: SubagentResetStartedByController(force = force))))
