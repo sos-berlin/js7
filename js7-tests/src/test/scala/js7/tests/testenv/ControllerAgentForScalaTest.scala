@@ -48,15 +48,13 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
       .startBareSubagents()
       .await(99.s)
 
-  protected final lazy val controller: TestController = {
-    val controller = directoryProvider
+  protected final lazy val controller: TestController =
+    directoryProvider
       .newController(
         controllerTestWiring,
         config"""js7.web.server.auth.https-client-authentication = $controllerHttpsMutual""",
         httpPort = controllerHttpPort,
         httpsPort = controllerHttpsPort)
-    controller
-  }
 
   protected final lazy val eventWatch = controller.eventWatch
 

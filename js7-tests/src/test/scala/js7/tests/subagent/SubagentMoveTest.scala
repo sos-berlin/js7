@@ -91,7 +91,7 @@ final class SubagentMoveTest extends OurTestSuite with SubagentTester
 
 object SubagentMoveTest
 {
-  val agentPath = AgentPath("AGENT")
+  private val agentPath = AgentPath("AGENT")
 
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",
