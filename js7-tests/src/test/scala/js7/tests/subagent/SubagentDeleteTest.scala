@@ -8,7 +8,6 @@ import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.Problems.ItemIsStillReferencedProblem
-import js7.data.agent.AgentPath
 import js7.data.agent.AgentRefStateEvent.AgentReady
 import js7.data.item.BasicItemEvent.{ItemDeleted, ItemDetachable, ItemDetached}
 import js7.data.item.ItemOperation.{AddOrChangeSimple, DeleteSimple}
@@ -17,7 +16,7 @@ import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.subagent.SubagentDeleteTest.*
-import js7.tests.subagent.SubagentRestartTest.agentPath
+import js7.tests.subagent.SubagentTester.agentPath
 import monix.execution.Scheduler
 import monix.reactive.Observable
 
@@ -190,8 +189,6 @@ final class SubagentDeleteTest extends OurTestSuite with SubagentTester
 
 object SubagentDeleteTest
 {
-  val agentPath = AgentPath("AGENT")
-
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",
     Seq(

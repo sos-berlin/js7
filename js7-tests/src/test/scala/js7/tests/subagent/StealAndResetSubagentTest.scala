@@ -17,7 +17,7 @@ import js7.data.subagent.{SubagentId, SubagentRunId}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.subagent.StealAndResetSubagentTest.*
-import js7.tests.subagent.SubagentMultipleOrdersTest.agentPath
+import js7.tests.subagent.SubagentTester.agentPath
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler
 import monix.reactive.Observable
@@ -117,8 +117,7 @@ final class StealAndResetSubagentTest extends OurTestSuite with SubagentTester
 
 object StealAndResetSubagentTest
 {
-  val agentPath = AgentPath("AGENT")
-  val thieveAgentPath = AgentPath("THIEVE-AGENT")
+  private val thieveAgentPath = AgentPath("THIEVE-AGENT")
 
   private val aWorkflow = Workflow(
     WorkflowPath("A-WORKFLOW") ~ "INITIAL",

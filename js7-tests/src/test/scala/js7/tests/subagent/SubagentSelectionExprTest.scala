@@ -5,7 +5,6 @@ import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
-import js7.data.agent.AgentPath
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderOutcomeAdded, OrderProcessingStarted}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
@@ -16,6 +15,7 @@ import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.EmptyJob
 import js7.tests.subagent.SubagentSelectionExprTest.*
+import js7.tests.subagent.SubagentTester.agentPath
 import js7.tests.testenv.BlockingItemUpdater
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler
@@ -124,7 +124,6 @@ extends OurTestSuite with SubagentTester with BlockingItemUpdater
 
 object SubagentSelectionExprTest
 {
-  private val agentPath = AgentPath("AGENT")
   private val localSubagentId = toLocalSubagentId(agentPath)
   private val workflowPath = WorkflowPath("WORKFLOW")
   private val subagentSelectionId = SubagentSelectionId("SUBAGENT-SELECTION")

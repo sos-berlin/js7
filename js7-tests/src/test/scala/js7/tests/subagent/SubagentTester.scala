@@ -2,8 +2,8 @@ package js7.tests.subagent
 
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
+import js7.data.agent.AgentPath
 import js7.data.subagent.{SubagentId, SubagentItem}
-import js7.tests.subagent.SubagentMultipleOrdersTest.agentPath
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler
@@ -12,6 +12,8 @@ import org.scalatest.Suite
 trait SubagentTester extends ControllerAgentForScalaTest
 {
   this: Suite =>
+
+  protected val agentPath = SubagentTester.agentPath
 
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
@@ -32,4 +34,8 @@ trait SubagentTester extends ControllerAgentForScalaTest
     findFreeLocalUri())
 
   protected val scheduler: Scheduler
+}
+
+object SubagentTester {
+  val agentPath = AgentPath("AGENT")
 }

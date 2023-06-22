@@ -5,7 +5,6 @@ import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
-import js7.data.agent.AgentPath
 import js7.data.item.BasicItemEvent.ItemDeleted
 import js7.data.item.ItemOperation.{AddOrChangeSimple, DeleteSimple}
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted}
@@ -14,6 +13,7 @@ import js7.data.subagent.SubagentItemStateEvent.SubagentCouplingFailed
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.EmptyJob
 import js7.tests.subagent.SubagentDeleteWhileMovedTest.*
+import js7.tests.subagent.SubagentTester.agentPath
 import monix.execution.Scheduler
 import monix.reactive.Observable
 
@@ -61,8 +61,6 @@ final class SubagentDeleteWhileMovedTest extends OurTestSuite with SubagentTeste
 
 object SubagentDeleteWhileMovedTest
 {
-  val agentPath = AgentPath("AGENT")
-
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",
     Seq(

@@ -6,7 +6,6 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
-import js7.data.agent.AgentPath
 import js7.data.event.{EventId, KeyedEvent, Stamped}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
@@ -16,6 +15,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.launcher.OrderProcess
 import js7.launcher.internal.InternalJob
 import js7.tests.subagent.SubagentMultipleOrdersTest.*
+import js7.tests.subagent.SubagentTester.agentPath
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
@@ -118,7 +118,6 @@ final class SubagentMultipleOrdersTest extends OurTestSuite with SubagentTester
 
 object SubagentMultipleOrdersTest
 {
-  val agentPath = AgentPath("AGENT")
   private val logger = Logger[this.type]
 
   private val workflow = Workflow(

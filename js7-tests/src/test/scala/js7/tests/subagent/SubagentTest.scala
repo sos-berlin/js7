@@ -8,7 +8,6 @@ import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.ScalaUtils.syntax.RichEither
-import js7.data.agent.AgentPath
 import js7.data.command.CancellationMode
 import js7.data.controller.ControllerCommand.CancelOrders
 import js7.data.delegate.DelegateCouplingState.Coupled
@@ -20,6 +19,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.subagent.SubagentTest.*
+import js7.tests.subagent.SubagentTester.agentPath
 import monix.execution.Scheduler
 
 final class SubagentTest extends OurTestSuite with SubagentTester
@@ -123,8 +123,6 @@ final class SubagentTest extends OurTestSuite with SubagentTester
 
 object SubagentTest
 {
-  private val agentPath = AgentPath("AGENT")
-
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",
     Seq(

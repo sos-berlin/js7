@@ -5,7 +5,6 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEither}
-import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.ResetSubagent
 import js7.data.event.KeyedEvent
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten}
@@ -18,6 +17,7 @@ import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.subagent.ResetSubagentWhileRunningTest.*
+import js7.tests.subagent.SubagentTester.agentPath
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler
 import scala.concurrent.TimeoutException
@@ -128,7 +128,6 @@ final class ResetSubagentWhileRunningTest extends OurTestSuite with SubagentTest
 
 object ResetSubagentWhileRunningTest
 {
-  private val agentPath = AgentPath("AGENT")
   private val localSubagentId = toLocalSubagentId(agentPath)
 
   private val workflow = Workflow(

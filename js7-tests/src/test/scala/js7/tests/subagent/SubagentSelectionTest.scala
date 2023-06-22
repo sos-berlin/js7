@@ -9,7 +9,6 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.data.Problems.ItemIsStillReferencedProblem
-import js7.data.agent.AgentPath
 import js7.data.agent.AgentRefStateEvent.AgentCouplingFailed
 import js7.data.item.BasicItemEvent.{ItemAttached, ItemDeleted}
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddOrChangeSimple, AddVersion, DeleteSimple, RemoveVersioned}
@@ -22,6 +21,7 @@ import js7.data.value.expression.Expression.StringConstant
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.EmptyJob
 import js7.tests.subagent.SubagentSelectionTest.*
+import js7.tests.subagent.SubagentTester.agentPath
 import js7.tests.testenv.BlockingItemUpdater
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler
@@ -229,7 +229,6 @@ final class SubagentSelectionTest extends OurTestSuite with SubagentTester with 
 
 object SubagentSelectionTest
 {
-  private val agentPath = AgentPath("AGENT")
   private val localSubagentId = toLocalSubagentId(agentPath)
   private val aSubagentId = SubagentId("A-SUBAGENT")
   private val bSubagentId = SubagentId("B-SUBAGENT")
