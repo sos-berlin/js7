@@ -4,8 +4,9 @@ import java.util.UUID
 import js7.agent.data.event.AgentEvent.{AgentDedicated, AgentReady, AgentShutDown}
 import js7.base.circeutils.CirceUtils.*
 import js7.base.test.OurTestSuite
+import js7.base.utils.Base64UUID
 import js7.data.agent.{AgentPath, AgentRunId}
-import js7.data.controller.ControllerId
+import js7.data.controller.{ControllerId, ControllerRunId}
 import js7.data.event.{JournalId, KeyedEvent}
 import js7.data.platform.PlatformInfo
 import js7.data.subagent.SubagentId
@@ -19,13 +20,15 @@ final class AgentEventTest extends OurTestSuite
       List(SubagentId("PRIMARY-SUBAGENT"), SubagentId("BACKUP-SUBAGENT")),
       AgentPath("AGENT"),
       AgentRunId(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))),
-      ControllerId("CONTROLLER")),
+      ControllerId("CONTROLLER"),
+      Some(ControllerRunId(JournalId(Base64UUID.zero)))),
       json"""{
         "TYPE": "AgentDedicated",
         "directors": [ "PRIMARY-SUBAGENT", "BACKUP-SUBAGENT" ],
         "agentPath": "AGENT",
         "agentRunId": "ABEiM0RVZneImaq7zN3u_w",
-        "controllerId": "CONTROLLER"
+        "controllerId": "CONTROLLER",
+        "controllerRunId": "AAAAAAAAAAAAAAAAAAAAAA"
       }""")
 
     // COMPATIBLE WITH v2.5
@@ -33,7 +36,8 @@ final class AgentEventTest extends OurTestSuite
       List(SubagentId("SUBAGENT")),
       AgentPath("AGENT"),
       AgentRunId(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))),
-      ControllerId("CONTROLLER")),
+      ControllerId("CONTROLLER"),
+      None),
       json"""{
         "TYPE": "AgentDedicated",
         "subagentId": "SUBAGENT",
@@ -47,7 +51,8 @@ final class AgentEventTest extends OurTestSuite
       Nil,
       AgentPath("AGENT"),
       AgentRunId(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))),
-      ControllerId("CONTROLLER")),
+      ControllerId("CONTROLLER"),
+      None),
       json"""{
         "TYPE": "AgentDedicated",
         "agentPath": "AGENT",

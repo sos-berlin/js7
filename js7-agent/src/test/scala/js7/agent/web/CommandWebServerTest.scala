@@ -20,6 +20,7 @@ import js7.common.akkahttp.web.session.SessionRegister
 import js7.common.akkautils.Akkas.actorSystemResource
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.data.agent.{AgentPath, AgentRunId}
+import js7.data.controller.ControllerRunId
 import js7.data.event.{EventId, JournalId}
 import js7.data.order.OrderId
 import js7.subagent.SubagentSession
@@ -37,7 +38,11 @@ final class CommandWebServerTest extends OurAsyncTestSuite
 
   private val n = 1_000 //1_000_000
   private lazy val orderIds = (for (i <- 1 to n) yield OrderId(s"A-MEDIUM-LONG-ORDER-$i")).toSet
-  private lazy val coupleController = CoupleController(AgentPath("AGENT"), AgentRunId(JournalId.random()), EventId.BeforeFirst)
+  private lazy val coupleController = CoupleController(
+    AgentPath("AGENT"),
+    AgentRunId(JournalId.random()),
+    EventId.BeforeFirst,
+    ControllerRunId(JournalId.random()))
   private lazy val clientResource = for {
     as <- actorSystemResource("CommandWebServerTest", testConfig)
     webServer <- AkkaWebServer.httpResource(findFreeTcpPort(), testConfig, route(as))(as)

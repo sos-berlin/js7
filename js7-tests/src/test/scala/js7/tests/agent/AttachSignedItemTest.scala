@@ -9,7 +9,8 @@ import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.core.command.CommandMeta
 import js7.data.agent.AgentPath
-import js7.data.controller.ControllerId
+import js7.data.controller.{ControllerId, ControllerRunId}
+import js7.data.event.JournalId
 import js7.data.item.ItemRevision
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.subagent.SubagentId
@@ -30,9 +31,11 @@ final class AttachSignedItemTest extends OurTestSuite with DirectoryProviderForS
       val agent = agents.head
       val agentApi = agent.untilReady.await(99.s).api.apply(
         CommandMeta(SimpleUser(directoryProvider.agentEnvs(0).controllerUserAndPassword.get.userId)))
+      val controllerRunId = ControllerRunId(JournalId.random())
       assert(agentApi
         .commandExecute(
-          DedicateAgentDirector(Seq(SubagentId("SUBAGENT")), controllerId, agentPath))
+          DedicateAgentDirector(
+            Seq(SubagentId("SUBAGENT")), controllerId, controllerRunId, agentPath))
         .await(99.s).toOption.get
         .isInstanceOf[DedicateAgentDirector.Response])
 

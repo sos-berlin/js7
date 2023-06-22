@@ -6,7 +6,7 @@ import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.data.agent.{AgentPath, AgentRunId}
-import js7.data.controller.ControllerId
+import js7.data.controller.{ControllerId, ControllerRunId}
 import js7.data.event.NoKeyEvent
 import js7.data.platform.PlatformInfo
 import js7.data.subagent.SubagentId
@@ -26,7 +26,8 @@ object AgentEvent
     directors: Seq[SubagentId],
     agentPath: AgentPath,
     agentRunId: AgentRunId,
-    controllerId: ControllerId)
+    controllerId: ControllerId,
+    controllerRunId: Option[ControllerRunId]/*COMPATIBLE None until v2.5, Some since v2.6*/)
   extends AgentEvent
   object AgentDedicated {
     implicit val jsonEncoder: Encoder.AsObject[AgentDedicated] = deriveEncoder
@@ -39,7 +40,8 @@ object AgentEvent
         agentPath <- c.get[AgentPath]("agentPath")
         agentRunId <- c.get[AgentRunId]("agentRunId")
         controllerId <- c.get[ControllerId]("controllerId")
-      } yield AgentDedicated(directors, agentPath, agentRunId, controllerId)
+        controllerRunId <- c.get[Option[ControllerRunId]]("controllerRunId")
+      } yield AgentDedicated(directors, agentPath, agentRunId, controllerId, controllerRunId)
   }
 
   /** Agent is up and running. */

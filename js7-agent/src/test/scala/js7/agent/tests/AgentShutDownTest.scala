@@ -19,7 +19,8 @@ import js7.common.akkautils.Akkas
 import js7.common.akkautils.Akkas.actorSystemResource
 import js7.common.system.ServerOperatingSystem.operatingSystem
 import js7.data.agent.AgentPath
-import js7.data.controller.ControllerId
+import js7.data.controller.{ControllerId, ControllerRunId}
+import js7.data.event.JournalId
 import js7.data.order.OrderEvent.OrderProcessingStarted
 import js7.data.order.{Order, OrderId}
 import js7.data.subagent.{SubagentId, SubagentItem}
@@ -55,10 +56,11 @@ final class AgentShutDownTest extends OurTestSuite with BeforeAndAfterAll with T
           Some(userId -> SecretString("TEST-PASSWORD"))))
         client.login() await 99.s
 
+        val controllerRunId = ControllerRunId(JournalId.random())
         client
           .repeatUntilAvailable(99.s)(
             client.commandExecute(DedicateAgentDirector(
-              Seq(SubagentId("SUBAGENT")), controllerId, agentPath)))
+              Seq(SubagentId("SUBAGENT")), controllerId, controllerRunId, agentPath)))
           .await(99.s)
 
         val subagentId = SubagentId("SUBAGENT")

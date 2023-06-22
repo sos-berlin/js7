@@ -23,7 +23,7 @@ import js7.data.agent.AgentRefStateEvent.{AgentCoupled, AgentReset}
 import js7.data.agent.Problems.AgentNotDedicatedProblem
 import js7.data.agent.{AgentPath, AgentRefState, AgentRunId}
 import js7.data.cluster.ClusterEvent
-import js7.data.controller.ControllerState
+import js7.data.controller.{ControllerRunId, ControllerState}
 import js7.data.delegate.DelegateCouplingState.{Coupled, Resetting}
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, Stamped}
 import js7.data.item.InventoryItemEvent
@@ -97,7 +97,9 @@ extends Service.StoppableByRequest
           }))
         .flatMapT(_ => dedicateAgentIfNeeded(directorDriver))
         .flatMapT { case (agentRunId, agentEventId) =>
-          executeCommand(CoupleController(agentPath, agentRunId, eventId = agentEventId))
+          val coupleController = CoupleController(agentPath, agentRunId, eventId = agentEventId,
+            ControllerRunId(journal.journalId))
+          executeCommand(coupleController)
             .flatMapT { case CoupleController.Response(orderIds) =>
               logger.trace(s"CoupleController returned attached OrderIds={${orderIds.toSeq.sorted.mkString(" ")}}")
               attachedOrderIds = orderIds

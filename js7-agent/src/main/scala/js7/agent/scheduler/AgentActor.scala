@@ -31,7 +31,7 @@ import js7.data.agent.{AgentPath, AgentRef, AgentRunId}
 import js7.data.cluster.ClusterEvent.ClusterResetStarted
 import js7.data.cluster.ClusterState
 import js7.data.cluster.ClusterState.HasNodes
-import js7.data.controller.ControllerId
+import js7.data.controller.{ControllerId, ControllerRunId}
 import js7.data.event.EventId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.node.NodeId
@@ -166,10 +166,10 @@ private[agent] final class AgentActor(
             }
         }
 
-      case AgentCommand.DedicateAgentDirector(directors, controllerId, agentPath)
+      case AgentCommand.DedicateAgentDirector(directors, controllerId, controllerRunId, agentPath)
         if !terminating =>
         // Command is idempotent until AgentState has been touched
-        dedicate(directors, controllerId, agentPath)
+        dedicate(directors, controllerId, controllerRunId, agentPath)
           .runToFuture
           .onComplete { tried =>
             response.complete(
@@ -178,10 +178,12 @@ private[agent] final class AgentActor(
               }))
           }
 
-      case AgentCommand.CoupleController(agentPath, agentRunId, eventId) if !terminating =>
+      case AgentCommand.CoupleController(agentPath, agentRunId, eventId, controllerRunId: ControllerRunId)
+        if !terminating =>
         // Command does not change state. It only checks the coupling (for now)
         response.success(
           for {
+            _ <- checkControllerRunId(controllerRunId)
             _ <- checkAgentPath(agentPath)
             _ <- checkAgentRunId(agentRunId)
             _ <- eventWatch.checkEventId(eventId)
@@ -213,7 +215,11 @@ private[agent] final class AgentActor(
     }
   }
 
-  private def dedicate(directors: Seq[SubagentId], controllerId: ControllerId, agentPath: AgentPath)
+  private def dedicate(
+    directors: Seq[SubagentId],
+    controllerId: ControllerId,
+    controllerRunId: ControllerRunId,
+    agentPath: AgentPath)
   : Task[Checked[(AgentRunId, EventId)]] =
     Task.defer {
       // Command is idempotent until AgentState has been touched
@@ -225,12 +231,13 @@ private[agent] final class AgentActor(
             && agentState.meta.directors != directors)
             for (_ <- UserId.checked(agentPath.string) /*used for Subagent login*/ ) yield
               Seq(NoKey <-:
-                AgentDedicated(directors, agentPath, agentRunId, controllerId))
+                AgentDedicated(directors, agentPath, agentRunId, controllerId, Some(controllerRunId)))
           else if (agentPath != agentState.agentPath)
             Left(AgentPathMismatchProblem(agentPath, agentState.agentPath))
           else if (controllerId != agentState.meta.controllerId)
             Left(AgentWrongControllerProblem(controllerId, agentState.meta.controllerId))
-          else if (!agentState.isFreshlyDedicated)
+          else if (!agentState.isFreshlyDedicated
+            && !agentState.meta.controllerRunId.contains(controllerRunId))
             Left(AgentAlreadyDedicatedProblem)
           else
             Right(Nil))
@@ -259,6 +266,19 @@ private[agent] final class AgentActor(
       val problem = AgentRunIdMismatchProblem(agentState.meta.agentPath)
       logger.warn(
         s"$problem, requestedAgentRunId=$requestedAgentRunId, agentRunId=${agentState.meta.agentRunId}")
+      Left(problem)
+    } else
+      Checked.unit
+  }
+
+  private def checkControllerRunId(requestedControllerRunId: ControllerRunId): Checked[Unit] = {
+    val agentState = journal.unsafeCurrentState()
+    if (!agentState.isDedicated)
+      Left(AgentNotDedicatedProblem)
+    else if (agentState.meta.controllerRunId.exists(_ != requestedControllerRunId)) {
+      val problem = Problem("ControllerRunId does not match")
+      logger.warn(
+        s"$problem, requestedControllerRunId=$requestedControllerRunId, controllerRunId=${agentState.meta.controllerRunId}")
       Left(problem)
     } else
       Checked.unit

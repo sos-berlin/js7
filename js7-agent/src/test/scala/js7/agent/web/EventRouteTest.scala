@@ -17,7 +17,7 @@ import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.Closer.syntax.*
 import js7.data.agent.Problems.{AgentPathMismatchProblem, AgentRunIdMismatchProblem}
 import js7.data.agent.{AgentPath, AgentRunId}
-import js7.data.controller.ControllerId
+import js7.data.controller.{ControllerId, ControllerRunId}
 import js7.data.event.{Event, EventId, EventRequest, EventSeqTornProblem, JournalEvent, JournalId}
 import js7.data.problems.UnknownEventIdProblem
 import js7.data.subagent.SubagentId
@@ -34,6 +34,7 @@ final class EventRouteTest extends OurTestSuite with AgentTester
   implicit private lazy val actorSystem: ActorSystem = agent.actorSystem
   private val agentClient = AgentClient(Admission(agent.localUri, Some(TestUserAndPassword)))
     .closeWithCloser
+  private lazy val controllerRunId = ControllerRunId(JournalId.random())
   private var agentRunId: AgentRunId = _
   private var eventId = EventId.BeforeFirst
   private var snapshotEventId = EventId.BeforeFirst
@@ -47,7 +48,8 @@ final class EventRouteTest extends OurTestSuite with AgentTester
       agentClient.repeatUntilAvailable(99.s)(
         agentClient
           .commandExecute(
-            DedicateAgentDirector(Seq(SubagentId("SUBAGENT")), controllerId, agentPath)))
+            DedicateAgentDirector(Seq(SubagentId("SUBAGENT")), controllerId, controllerRunId,
+              agentPath)))
         .await(99.s).orThrow
 
     this.agentRunId = agentRunId
@@ -82,9 +84,16 @@ final class EventRouteTest extends OurTestSuite with AgentTester
   }
 
   "Recoupling with changed AgentRunId or different AgentPath fails" in {
-    assert(agentClient.commandExecute(CoupleController(agentPath, AgentRunId(JournalId.random()), eventId))
+    assert(agentClient
+      .commandExecute(CoupleController(
+        agentPath,
+        AgentRunId(JournalId.random()),
+        eventId,
+        controllerRunId))
       .await(99.s) == Left(AgentRunIdMismatchProblem(agentPath)))
-    assert(agentClient.commandExecute(CoupleController(AgentPath("OTHER"), agentRunId, eventId))
+    assert(agentClient
+      .commandExecute(CoupleController(
+        AgentPath("OTHER"), agentRunId, eventId, controllerRunId))
       .await(99.s) == Left(AgentPathMismatchProblem(AgentPath("OTHER"), agentPath)))
     assert(agentClient
       .eventObservable(
@@ -128,22 +137,30 @@ final class EventRouteTest extends OurTestSuite with AgentTester
     // fail with watch.ClosedException)
     waitForCondition(9.s, 10.ms) { journalFiles.head.fileEventId > EventId.BeforeFirst }
 
-    assert(agentClient.commandExecute(CoupleController(agentPath, agentRunId, EventId.BeforeFirst))
+    assert(agentClient
+      .commandExecute(CoupleController(
+        agentPath, agentRunId, EventId.BeforeFirst, controllerRunId))
       .await(99.s) == Left(UnknownEventIdProblem(EventId.BeforeFirst)))
   }
 
   "Recoupling with Controller's last events deleted fails" in {
     val newerEventId = eventId + 1  // Assuming that no further Event has been emitted
-    assert(agentClient.commandExecute(CoupleController(agentPath, agentRunId, newerEventId))
+    assert(agentClient.commandExecute(CoupleController(agentPath, agentRunId, newerEventId, controllerRunId))
       .await(99.s) == Left(UnknownEventIdProblem(newerEventId)))
 
     val unknownEventId = EventId(1)  // Assuming this is EventId has not been emitted
-    assert(agentClient.commandExecute(CoupleController(agentPath, agentRunId, unknownEventId))
+    assert(agentClient.commandExecute(CoupleController(agentPath, agentRunId, unknownEventId, controllerRunId))
       .await(99.s) == Left(UnknownEventIdProblem(unknownEventId)))
   }
 
+  "Recouple with wrong ControllerRunId" in {
+    assert(agentClient
+      .commandExecute(CoupleController(agentPath, agentRunId, eventId, ControllerRunId.empty))
+      .await(99.s).isLeft)
+  }
+
   "Recouple" in {
-    agentClient.commandExecute(CoupleController(agentPath, agentRunId, eventId)).await(99.s).orThrow
+    agentClient.commandExecute(CoupleController(agentPath, agentRunId, eventId, controllerRunId)).await(99.s).orThrow
   }
 
   "Continue fetching events" in {

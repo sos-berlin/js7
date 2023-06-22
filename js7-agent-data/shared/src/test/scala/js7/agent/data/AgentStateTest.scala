@@ -15,11 +15,11 @@ import js7.base.problem.Problem
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timezone
-import js7.base.utils.SimplePattern
+import js7.base.utils.{Base64UUID, SimplePattern}
 import js7.base.web.Uri
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.calendar.{Calendar, CalendarPath}
-import js7.data.controller.ControllerId
+import js7.data.controller.{ControllerId, ControllerRunId}
 import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, JournalId, SnapshotableState}
@@ -58,12 +58,14 @@ final class AgentStateTest extends OurAsyncTestSuite
         Seq(subagentItem.id, SubagentId("BACKUP")),
         AgentPath("AGENT"),
         AgentRunId(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))),
-        ControllerId("CONTROLLER")),
+        ControllerId("CONTROLLER"),
+        Some(ControllerRunId(JournalId(Base64UUID.zero)))),
       json"""{
       "directors": [ "SUBAGENT", "BACKUP" ],
       "agentPath": "AGENT",
       "agentRunId": "ABEiM0RVZneImaq7zN3u_w",
-      "controllerId": "CONTROLLER"
+      "controllerId": "CONTROLLER",
+      "controllerRunId": "AAAAAAAAAAAAAAAAAAAAAA"
     }""")
 
     testJsonDecoder(
@@ -71,12 +73,14 @@ final class AgentStateTest extends OurAsyncTestSuite
         Seq(subagentItem.id),
         AgentPath("AGENT"),
         AgentRunId(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))),
-        ControllerId("CONTROLLER")),
+        ControllerId("CONTROLLER"),
+        Some(ControllerRunId(JournalId(Base64UUID.zero)))),
       json"""{
       "subagentId": "SUBAGENT",
       "agentPath": "AGENT",
       "agentRunId": "ABEiM0RVZneImaq7zN3u_w",
-      "controllerId": "CONTROLLER"
+      "controllerId": "CONTROLLER",
+      "controllerRunId": "AAAAAAAAAAAAAAAAAAAAAA"
     }""")
 
     testJsonDecoder(
@@ -84,7 +88,8 @@ final class AgentStateTest extends OurAsyncTestSuite
         Nil,
         AgentPath("AGENT"),
         AgentRunId(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))),
-        ControllerId("CONTROLLER")),
+        ControllerId("CONTROLLER"),
+        None),
       json"""{
       "agentPath": "AGENT",
       "agentRunId": "ABEiM0RVZneImaq7zN3u_w",
@@ -129,7 +134,8 @@ final class AgentStateTest extends OurAsyncTestSuite
       Seq(subagentItem.id),
       AgentPath("AGENT"),
       AgentRunId(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))),
-      ControllerId("CONTROLLER"))
+      ControllerId("CONTROLLER"),
+      None)
 
     AgentState(
       EventId(1000),
@@ -147,7 +153,8 @@ final class AgentStateTest extends OurAsyncTestSuite
         Seq(subagentItem.id),
         meta.agentPath,
         meta.agentRunId,
-        meta.controllerId),
+        meta.controllerId,
+        meta.controllerRunId),
       ItemAttachedToMe(subagentItem),
       ItemAttachedToMe(subagentSelection),
       ItemAttachedToMe(fileWatch),
@@ -186,7 +193,8 @@ final class AgentStateTest extends OurAsyncTestSuite
       Seq(SubagentId("PRIMARY-SUBAGENT"), SubagentId("BACKUP-SUBAGENT")),
       AgentPath("A"),
       AgentRunId(JournalId.random()),
-      ControllerId("C"))
+      ControllerId("C"),
+      Some(ControllerRunId(JournalId(Base64UUID.zero))))
     "AgentDedicated" in {
       val dedicatedState = AgentState.empty.applyEvent(dedicated).orThrow
       assert(dedicatedState.isDedicated)
@@ -373,12 +381,14 @@ final class AgentStateTest extends OurAsyncTestSuite
       Seq(subagentItem.id),
       AgentPath("AGENT"),
       AgentRunId(JournalId(UUID.fromString("11111111-2222-3333-4444-555555555555"))),
-      ControllerId("CONTROLLER"))
+      ControllerId("CONTROLLER"),
+      Some(ControllerRunId(JournalId(Base64UUID.zero))))
     agentState = agentState.applyEvent(AgentDedicated(
       Seq(subagentItem.id),
       meta.agentPath,
       meta.agentRunId,
-      meta.controllerId)).orThrow
+      meta.controllerId,
+      meta.controllerRunId)).orThrow
     agentState = agentState.applyEvent(NoKey <-: ItemAttachedToMe(workflow)).orThrow
     agentState = agentState.applyEvent(NoKey <-: ItemAttachedToMe(unsignedJobResource)).orThrow
     agentState = agentState.applyEvent(NoKey <-: SignedItemAttachedToMe(signedWorkflow)).orThrow

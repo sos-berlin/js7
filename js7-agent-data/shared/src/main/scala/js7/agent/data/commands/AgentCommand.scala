@@ -18,7 +18,7 @@ import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.command.CommonCommand
-import js7.data.controller.ControllerId
+import js7.data.controller.{ControllerId, ControllerRunId}
 import js7.data.event.{EventId, ItemContainer}
 import js7.data.item.{InventoryItemKey, SignableItem, UnsignedItem}
 import js7.data.order.{Order, OrderId, OrderMark}
@@ -95,6 +95,7 @@ object AgentCommand extends CommonCommand.Companion
   final case class DedicateAgentDirector(
     directors: Seq[SubagentId],
     controllerId: ControllerId,
+    controllerRunId: ControllerRunId,
     agentPath: AgentPath)
   extends AgentCommand {
     type Response = DedicateAgentDirector.Response
@@ -113,13 +114,18 @@ object AgentCommand extends CommonCommand.Companion
           case Some(subagentId) => Right(Seq(subagentId))
         }
         controllerId <- c.get[ControllerId]("controllerId")
+        controllerRunId <- c.get[ControllerRunId]("controllerRunId")
         agentPath <- c.get[AgentPath]("agentPath")
-      } yield DedicateAgentDirector(directors, controllerId, agentPath)
+      } yield DedicateAgentDirector(directors, controllerId, controllerRunId, agentPath)
   }
 
   /** Couples the registered Controller identified by current User.
     * @param agentRunId Must be the value returned by `DedicateAgentDirector`. */
-  final case class CoupleController(agentPath: AgentPath, agentRunId: AgentRunId, eventId: EventId)
+  final case class CoupleController(
+    agentPath: AgentPath,
+    agentRunId: AgentRunId,
+    eventId: EventId,
+    controllerRunId: ControllerRunId)
   extends AgentCommand {
     type Response = CoupleController.Response
   }

@@ -9,9 +9,10 @@ import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.{CorrelId, CorrelIdWrapped}
 import js7.base.problem.TestCodeProblem
 import js7.base.test.OurTestSuite
+import js7.base.utils.Base64UUID
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.command.CancellationMode
-import js7.data.controller.ControllerId
+import js7.data.controller.{ControllerId, ControllerRunId}
 import js7.data.event.JournalId
 import js7.data.item.{ItemRevision, ItemSigner, VersionId}
 import js7.data.job.{JobResource, JobResourcePath}
@@ -111,23 +112,27 @@ final class AgentCommandTest extends OurTestSuite
     testJson[AgentCommand](AgentCommand.DedicateAgentDirector(
       Seq(SubagentId("SUBAGENT"), SubagentId("BACKUP-SUBAGENT")),
       ControllerId("CONTROLLER"),
+      ControllerRunId.empty,
       AgentPath("AGENT")),
       json"""{
         "TYPE": "DedicateAgentDirector",
         "directors": ["SUBAGENT", "BACKUP-SUBAGENT" ],
         "controllerId": "CONTROLLER",
-        "agentPath": "AGENT"
+        "agentPath": "AGENT",
+        "controllerRunId": "AAAAAAAAAAAAAAAAAAAAAA"
       }""")
 
     testJsonDecoder[AgentCommand](AgentCommand.DedicateAgentDirector(
       Seq(SubagentId("SUBAGENT")),
       ControllerId("CONTROLLER"),
+      ControllerRunId.empty,
       AgentPath("AGENT")),
       json"""{
         "TYPE": "DedicateAgentDirector",
         "subagentId": "SUBAGENT",
         "controllerId": "CONTROLLER",
-        "agentPath": "AGENT"
+        "agentPath": "AGENT",
+        "controllerRunId": "AAAAAAAAAAAAAAAAAAAAAA"
       }""")
   }
 
@@ -148,11 +153,13 @@ final class AgentCommandTest extends OurTestSuite
       AgentCommand.CoupleController(
         AgentPath("AGENT"),
         AgentRunId(JournalId(UUID.fromString("11111111-2222-3333-4444-555555555555"))),
-        1000L),
+        1000L,
+        ControllerRunId(JournalId(Base64UUID.zero))),
       json"""{
         "TYPE": "CoupleController",
         "agentPath": "AGENT",
         "agentRunId": "ERERESIiMzNERFVVVVVVVQ",
+        "controllerRunId": "AAAAAAAAAAAAAAAAAAAAAA",
         "eventId": 1000
       }""")
   }

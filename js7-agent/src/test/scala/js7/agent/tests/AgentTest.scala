@@ -20,7 +20,8 @@ import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.base.web.Uri
 import js7.core.command.CommandMeta
 import js7.data.agent.AgentPath
-import js7.data.controller.ControllerId
+import js7.data.controller.{ControllerId, ControllerRunId}
+import js7.data.event.JournalId
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId, Outcome}
@@ -62,9 +63,10 @@ final class AgentTest extends OurTestSuite with AgentTester
           }
           TestAgent.blockingRun(agentConf, 99.s) { agent =>
             val agentApi = agent.untilReady.await(99.s).api.apply(CommandMeta(TestUser))
+            val controllerRunId = ControllerRunId(JournalId.random())
             agentApi
               .commandExecute(
-                DedicateAgentDirector(Seq(subagentId), controllerId, agentPath))
+                DedicateAgentDirector(Seq(subagentId), controllerId, controllerRunId, agentPath))
               .await(99.s).orThrow
             agentApi
               .commandExecute(

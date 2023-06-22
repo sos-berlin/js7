@@ -40,7 +40,7 @@ import js7.data.agent.Problems.AgentNotDedicatedProblem
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
 import js7.data.cluster.ClusterState.HasNodes
 import js7.data.cluster.ClusterWatchId
-import js7.data.controller.ControllerState
+import js7.data.controller.{ControllerRunId, ControllerState}
 import js7.data.event.{AnyKeyedEvent, EventId, KeyedEvent, Stamped}
 import js7.data.item.ItemAttachedState.{Attachable, Attached}
 import js7.data.item.{InventoryItemKey, ItemAttachedState, SignableItem, UnsignedItem}
@@ -346,9 +346,10 @@ extends Service.StoppableByRequest
           agentRefState.agentRunId match {
             case Some(agentRunId) => Task.right(agentRunId -> state.adoptedEventId)
             case None =>
+              val controllerRunId = ControllerRunId(journal.journalId)
               directorDriver
                 .executeCommand(
-                  DedicateAgentDirector(directors, controllerId, agentPath))
+                  DedicateAgentDirector(directors, controllerId, controllerRunId, agentPath))
                 .flatMapT { case DedicateAgentDirector.Response(agentRunId, agentEventId) =>
                   (if (noJournal)
                     Task.right(())

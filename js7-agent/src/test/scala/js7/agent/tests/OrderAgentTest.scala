@@ -28,8 +28,8 @@ import js7.base.web.Uri
 import js7.common.akkautils.Akkas
 import js7.common.akkautils.Akkas.newActorSystem
 import js7.data.agent.AgentPath
-import js7.data.controller.ControllerId
-import js7.data.event.{Event, EventRequest, KeyedEvent, Stamped}
+import js7.data.controller.{ControllerId, ControllerRunId}
+import js7.data.event.{Event, EventRequest, JournalId, KeyedEvent, Stamped}
 import js7.data.item.{ItemSigner, SignableItem}
 import js7.data.order.OrderEvent.OrderDetachable
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
@@ -48,6 +48,8 @@ import scala.concurrent.duration.*
   */
 final class OrderAgentTest extends OurTestSuite
 {
+  private lazy val controllerRunId = ControllerRunId(JournalId.random())
+
   "AgentCommand AttachOrder" in {
     provideAgentDirectory { directory =>
       directory / "config" / "private" / "trusted-pgp-keys" / "test.asc" := verifier.publicKeys.head
@@ -68,7 +70,7 @@ final class OrderAgentTest extends OurTestSuite
 
           assert(agentClient
             .commandExecute(
-              DedicateAgentDirector(Seq(subagentId), controllerId, agentPath))
+              DedicateAgentDirector(Seq(subagentId), controllerId, controllerRunId, agentPath))
             .await(99.s) ==
             Left(Problem(s"HTTP 401 Unauthorized: POST ${agent.localUri}/agent/api/command => " +
               "The resource requires authentication, which was not supplied with the request")))
@@ -77,7 +79,7 @@ final class OrderAgentTest extends OurTestSuite
           // Without Login, this registers all anonymous clients
           assert(agentClient
             .commandExecute(
-              DedicateAgentDirector(Seq(subagentId), controllerId, agentPath))
+              DedicateAgentDirector(Seq(subagentId), controllerId, controllerRunId, agentPath))
             .await(99.s).orThrow.isInstanceOf[DedicateAgentDirector.Response])
 
           agentClient
@@ -152,7 +154,7 @@ final class OrderAgentTest extends OurTestSuite
           assert(
             agentClient
               .commandExecute(
-                DedicateAgentDirector(Seq(SubagentId("SUBAGENT")), controllerId, agentPath))
+                DedicateAgentDirector(Seq(SubagentId("SUBAGENT")), controllerId, controllerRunId, agentPath))
               .await(99.s).isRight)
 
           val orders = for (i <- 1 to n) yield

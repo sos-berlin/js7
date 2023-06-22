@@ -1,7 +1,8 @@
 package js7.base.problem
 
-import cats.Monoid
+import cats.syntax.functor.*
 import cats.syntax.monoid.*
+import cats.{Functor, Monoid}
 import implicitbox.Not
 import io.circe.{Decoder, Encoder, Json}
 import js7.base.circeutils.typed.TypedJsonCodec
@@ -163,6 +164,25 @@ object Checked
 
     def orThrowWithoutStacktrace: A =
       orThrow //?
+  }
+
+  implicit final class RichCheckedF[F[_], A](private val underlying: F[Checked[A]]) extends AnyVal
+  {
+    def onProblemHandle[B >: A](f: Problem => B)(implicit F: Functor[F]): F[B] =
+      underlying.map {
+        case Left(problem) => f(problem)
+        case Right(a) => a
+      }
+
+    def onProblemRecover[B >: A](f: PartialFunction[Problem, B])(implicit F: Functor[F]): F[Checked[B]] =
+      underlying.map {
+        case Left(problem) =>
+          f.lift(problem) match {
+            case None => Left(problem)
+            case Some(b) => Right(b)
+          }
+        case Right(a) => Right(a)
+      }
   }
 
   implicit final class RichCheckedIterable[A](private val underlying: IterableOnce[Checked[A]]) extends AnyVal {

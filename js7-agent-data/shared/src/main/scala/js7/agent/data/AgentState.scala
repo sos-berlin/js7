@@ -16,7 +16,7 @@ import js7.base.utils.Tests.isTest
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
 import js7.data.calendar.{Calendar, CalendarPath, CalendarState}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
-import js7.data.controller.ControllerId
+import js7.data.controller.{ControllerId, ControllerRunId}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{ClusterableState, Event, EventId, ItemContainer, JournalEvent, JournalState, KeyedEvent, KeyedEventTypedJsonCodec, SignedItemContainer, SnapshotableState}
@@ -244,12 +244,16 @@ with ClusterableState[AgentState]
               keyToUnsignedItemState_ = keyToUnsignedItemState_.updated(subagentId, subagentItemState))
         }
 
-      case KeyedEvent(_: NoKey, AgentDedicated(directors, agentPath, agentRunId, controllerId)) =>
-        Right(copy(meta = meta.copy(
-          agentPath = agentPath,
-          agentRunId = agentRunId,
-          controllerId = controllerId,
-          directors = directors)))
+      case KeyedEvent(_: NoKey, AgentDedicated(directors, agentPath, agentRunId, controllerId, controllerRunId)) =>
+        if (meta.controllerRunId.exists(o => controllerRunId.exists(_ != o)))
+          Left(Problem("Duplicate AgentDedicated event for different ControllerRunId"))
+        else
+          Right(copy(meta = meta.copy(
+            agentPath = agentPath,
+            agentRunId = agentRunId,
+            controllerId = controllerId,
+            controllerRunId = controllerRunId,
+            directors = directors)))
       case _ => applyStandardEvent(keyedEvent)
     }
 
@@ -360,7 +364,8 @@ with ItemContainer.Companion[AgentState]
     directors: Seq[SubagentId],
     agentPath: AgentPath,
     agentRunId: AgentRunId,
-    controllerId: ControllerId)
+    controllerId: ControllerId,
+    controllerRunId: Option[ControllerRunId]/*COMPATIBLE None until v2.5, Some since v2.6*/)
   {
     def clusterNodeIdToSubagentId(nodeId: NodeId): Checked[SubagentId]=
       if (directors.sizeIs < 2)
@@ -378,7 +383,8 @@ with ItemContainer.Companion[AgentState]
       Vector.empty,
       AgentPath.empty,
       AgentRunId.empty,
-      ControllerId("NOT-YET-INITIALIZED"))
+      ControllerId("NOT-YET-INITIALIZED"),
+      None)
 
     implicit val jsonEncoder: Encoder.AsObject[AgentMetaState] = deriveEncoder
     implicit val jsonDecoder: Decoder[AgentMetaState] =
@@ -390,7 +396,8 @@ with ItemContainer.Companion[AgentState]
         agentPath <- c.get[AgentPath]("agentPath")
         agentRunId <- c.get[AgentRunId]("agentRunId")
         controllerId <- c.get[ControllerId]("controllerId")
-      } yield AgentMetaState(directors, agentPath, agentRunId, controllerId)
+        controllerRunId <- c.get[Option[ControllerRunId]]("controllerRunId")
+      } yield AgentMetaState(directors, agentPath, agentRunId, controllerId, controllerRunId)
   }
 
   val snapshotObjectJsonCodec = TypedJsonCodec[Any](
