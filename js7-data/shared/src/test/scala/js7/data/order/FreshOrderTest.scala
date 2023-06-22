@@ -31,6 +31,7 @@ final class FreshOrderTest extends OurTestSuite
           "list" -> ListValue(Seq(BooleanValue.True, NumberValue(123), StringValue("string")))),
         Some(Timestamp.parse("2017-03-07T12:00:00Z")),
         deleteWhenTerminated = true,
+        forceJobAdmission = true,
         startPosition = Some(
           Position(1) / BranchId.Then % 2),
         stopPositions = Set(
@@ -47,6 +48,7 @@ final class FreshOrderTest extends OurTestSuite
           "list": [ true, 123, "string" ]
         },
         "deleteWhenTerminated": true,
+        "forceJobAdmission": true,
         "startPosition": [ 1, "then", 2 ],
         "stopPositions": [ [ 9, "catch", 0 ], "LABEL" ]
       }""")

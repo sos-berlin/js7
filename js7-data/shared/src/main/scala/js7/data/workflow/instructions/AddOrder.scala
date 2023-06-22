@@ -15,6 +15,7 @@ final case class AddOrder(
   startPosition: Option[Position] = None,
   stopPositions: Set[PositionOrLabel] = Set.empty,
   deleteWhenTerminated: Boolean = false,
+  forceJobAdmission: Boolean = false,
   sourcePos: Option[SourcePos] = None)
 extends Instruction
 {

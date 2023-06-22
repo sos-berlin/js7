@@ -171,6 +171,33 @@ final class AdmissionTimeTest extends OurTestSuite with ControllerAgentForScalaT
     assert(controllerState.idToOrder(orderId).isState[Fresh])
     assert(controllerState.idToOrder(orderId).position == Position(0))
   }
+
+  "forceJobAdmission" in {
+    clock := local("2023-06-21T00:00")
+
+    val aOrderId = OrderId("♦️")
+    locally {
+      // Job is closed
+      val eventId = eventWatch.lastAddedEventId
+      controller.api.addOrder(FreshOrder(aOrderId, sundayWorkflow.path)).await(99.s).orThrow
+      eventWatch.await[OrderAttached](_.key == aOrderId, after = eventId)
+      assert(controllerState.idToOrder(aOrderId).isState[Fresh])
+      assert(orderToObstacles(aOrderId) ==
+        Right(Set(waitingForAdmmission(local("2023-06-25T03:00")))))
+    }
+
+    locally {
+      // Engine chooses this order due to forceJobAdmission despite it is not the first one in queue
+      val orderId = OrderId("🥨")
+      val eventId = eventWatch.lastAddedEventId
+      controller.api.addOrder(FreshOrder(orderId, sundayWorkflow.path, forceJobAdmission = true))
+        .await(99.s).orThrow
+      eventWatch.await[OrderFinished](_.key == orderId, after = eventId)
+    }
+
+    assert(orderToObstacles(aOrderId) ==
+      Right(Set(waitingForAdmmission(local("2023-06-25T03:00")))))
+  }
 }
 
 object AdmissionTimeTest

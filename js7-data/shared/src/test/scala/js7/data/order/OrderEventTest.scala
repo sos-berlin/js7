@@ -37,6 +37,7 @@ final class OrderEventTest extends OurTestSuite
         Some(Timestamp("2021-01-01T00:00:00Z")),
         Some(ExternalOrderKey(OrderWatchPath("ORDER-WATCH"), ExternalOrderName("ORDER-NAME"))),
         deleteWhenTerminated = true,
+        forceJobAdmission = true,
         startPosition = Some(Position(1)),
         stopPositions = Set(Position(9), Label("LABEL"))),
       json"""
@@ -55,6 +56,7 @@ final class OrderEventTest extends OurTestSuite
           "name": "ORDER-NAME"
         },
         "deleteWhenTerminated": true,
+        "forceJobAdmission": true,
         "startPosition": [ 1 ],
         "stopPositions": [ [ 9 ], "LABEL" ]
       }""")
@@ -79,7 +81,8 @@ final class OrderEventTest extends OurTestSuite
         Map("VAR" -> StringValue("VALUE")),
         startPosition = Some(Position(1)),
         stopPositions = Set(Position(2), Label("LABEL")),
-        deleteWhenTerminated = true),
+        deleteWhenTerminated = true,
+        forceJobAdmission = true),
       json"""
       {
         "TYPE": "OrderOrderAdded",
@@ -93,7 +96,8 @@ final class OrderEventTest extends OurTestSuite
         },
         "startPosition": [1],
         "stopPositions": [ [2], "LABEL"],
-        "deleteWhenTerminated": true
+        "deleteWhenTerminated": true,
+        "forceJobAdmission": true
       }""")
 
     testJsonDecoder[OrderEvent](
@@ -135,6 +139,7 @@ final class OrderEventTest extends OurTestSuite
         isSuspended = true,
         isResumed = true,
         deleteWhenTerminated = true,
+        forceJobAdmission = true,
         List(Order.StickySubagent(
           AgentPath("AGENT"),
           Some(SubagentSelectionId("SUBAGENT-SELECTION")))),
@@ -176,6 +181,7 @@ final class OrderEventTest extends OurTestSuite
         "isSuspended": true,
         "isResumed": true,
         "deleteWhenTerminated": true,
+        "forceJobAdmission": true,
         "stickySubagents": [{
           "agentPath": "AGENT",
           "subagentSelectionId": "SUBAGENT-SELECTION"

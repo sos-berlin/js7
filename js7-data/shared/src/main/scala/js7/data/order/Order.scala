@@ -43,6 +43,7 @@ final case class Order[+S <: Order.State](
   isSuspended: Boolean = false,
   isResumed: Boolean = false,
   deleteWhenTerminated: Boolean = false,
+  forceJobAdmission: Boolean = false,
   stickySubagents: List[StickySubagent] = Nil,
   stopPositions: Set[PositionOrLabel] = Set.empty)
 {
@@ -780,6 +781,7 @@ final case class Order[+S <: Order.State](
             isSuspended = isSuspended,
             isResumed = isResumed,
             deleteWhenTerminated = deleteWhenTerminated,
+            forceJobAdmission = forceJobAdmission,
             stickySubagents,
             stopPositions))
         case _ =>
@@ -796,6 +798,7 @@ object Order
       event.arguments,
       event.scheduledFor, event.externalOrderKey,
       deleteWhenTerminated = event.deleteWhenTerminated,
+      forceJobAdmission = event.forceJobAdmission,
       stopPositions = event.stopPositions)
 
   def fromOrderAttached(id: OrderId, event: OrderAttachedToAgent): Order[IsFreshOrReady] =
@@ -808,6 +811,7 @@ object Order
       isSuspended = event.isSuspended,
       isResumed = event.isResumed,
       deleteWhenTerminated = event.deleteWhenTerminated,
+      forceJobAdmission = event.forceJobAdmission,
       stickySubagents = event.stickySubagents,
       stopPositions = event.stopPositions)
 
@@ -990,6 +994,7 @@ object Order
       "mark" -> order.mark.asJson,
       "isSuspended" -> order.isSuspended.?.asJson,
       "deleteWhenTerminated" -> order.deleteWhenTerminated.?.asJson,
+      "forceJobAdmission" -> order.forceJobAdmission.?.asJson,
       "isResumed" -> order.isResumed.?.asJson,
       "stickySubagents" -> (order.stickySubagents.nonEmpty ? order.stickySubagents).asJson,
       "stopPositions" -> (order.stopPositions.nonEmpty ? order.stopPositions).asJson,
@@ -1009,6 +1014,7 @@ object Order
       isSuspended <- cursor.getOrElse[Boolean]("isSuspended")(false)
       isResumed <- cursor.getOrElse[Boolean]("isResumed")(false)
       deleteWhenTerminated <- cursor.getOrElse[Boolean]("deleteWhenTerminated")(false)
+      forceJobAdmission <- cursor.getOrElse[Boolean]("forceJobAdmission")(false)
       stopPositions <- cursor.getOrElse[Set[PositionOrLabel]]("stopPositions")(Set.empty)
       stickySubagentId <- cursor.getOrElse[List[StickySubagent]]("stickySubagents")(Nil)
       historicOutcomes <- cursor.getOrElse[Vector[HistoricOutcome]]("historicOutcomes")(Vector.empty)
@@ -1018,6 +1024,7 @@ object Order
         isSuspended = isSuspended,
         isResumed = isResumed,
         deleteWhenTerminated = deleteWhenTerminated,
+        forceJobAdmission = forceJobAdmission,
         stickySubagentId,
         stopPositions)
 

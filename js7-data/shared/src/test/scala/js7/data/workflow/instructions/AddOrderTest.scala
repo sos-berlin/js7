@@ -19,7 +19,8 @@ final class AddOrderTest extends OurTestSuite
           "arg1" -> expr("7")),
         startPosition = Some(Position(1)),
         stopPositions = Set(Position(2), Label("LABEL")),
-        deleteWhenTerminated = true),
+        deleteWhenTerminated = true,
+        forceJobAdmission = true),
       json"""
       {
         "TYPE": "AddOrder",
@@ -30,7 +31,8 @@ final class AddOrderTest extends OurTestSuite
         },
         "startPosition": [1],
         "stopPositions": [ [2], "LABEL"],
-        "deleteWhenTerminated": true
+        "deleteWhenTerminated": true,
+        "forceJobAdmission": true
       }""")
 
     testJsonDecoder[Instruction](
@@ -39,8 +41,7 @@ final class AddOrderTest extends OurTestSuite
       {
         "TYPE": "AddOrder",
         "orderId": "'ORDER-ID'",
-        "workflowPath": "WORKFLOW",
-        "deleteWhenTerminated": false
+        "workflowPath": "WORKFLOW"
       }""")
   }
 }
