@@ -7,10 +7,11 @@ import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
+import js7.data.command.CancellationMode.FreshOrStarted
 import js7.data.controller.ControllerCommand.CancelOrders
 import js7.data.event.KeyedEvent
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten, OrderTerminated}
-import js7.data.order.{FreshOrder, HistoricOutcome, OrderEvent, OrderId, Outcome}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancelled, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten, OrderTerminated}
+import js7.data.order.{FreshOrder, HistoricOutcome, Order, OrderEvent, OrderId, Outcome}
 import js7.data.value.StringValue
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{Fail, Finish, Fork, If}
@@ -146,6 +147,125 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
 
     assert(controllerState.idToOrder(orderId).historicOutcomes == Seq(
       HistoricOutcome(Position(0), Outcome.succeeded)))
+  }
+
+  "JS-2067 is not a bug" - {
+    "Failing Finish in fork, with joinIfFailed" in {
+      val orderId = OrderId("♦️")
+      val events = runUntil[OrderTerminated](
+        Workflow.of(
+          Fork(
+            Vector(
+              "🥕" -> Workflow.of(
+                EmptyJob.execute(agentPath),
+                If(expr("true"),
+                  Workflow.of(
+                    Finish(Some(Outcome.Failed(Some("FINISH WITH FAILURE")))))),
+                EmptyJob.execute(agentPath)),
+              "🍋" -> Workflow.of(
+                Finish(Some(Outcome.Succeeded(Map(
+                  "result" -> StringValue("FINISH"))))))),
+            joinIfFailed = true)),
+        orderId)
+
+      assert(events.filter(_.key == orderId / "🥕").map(_.event) ==
+        Vector(
+          OrderAttachable(agentPath),
+          OrderAttached(agentPath),
+          OrderProcessingStarted(subagentId),
+          OrderProcessed(Outcome.succeeded),
+          OrderMoved(Position(0) / "fork+🥕" % 1 / Then % 0),  // Position of Finish
+          OrderDetachable,
+          OrderDetached,
+          OrderOutcomeAdded(Outcome.Failed(Some("FINISH WITH FAILURE"))),
+          OrderFailedInFork(Position(0) / "fork+🥕" %  1 / "then" % 0)))
+
+      assert(events.filter(_.key == orderId / "🍋").map(_.event) ==
+        Vector(
+          OrderOutcomeAdded(Outcome.Succeeded(Map(
+            "result" -> StringValue("FINISH")))),
+          OrderMoved(Position(0) / "fork+🍋" % 1)))
+
+      assert(events.filter(_.key == orderId).map(_.event) ==
+        Vector(
+          OrderStarted,
+          OrderForked(Vector(
+            "🥕" -> orderId / "🥕",
+            "🍋" -> orderId / "🍋")),
+          OrderJoined(Outcome.Failed(Some("Order:♦️|🥕 Failed(FINISH WITH FAILURE)"))),
+          OrderFailed(Position(0))))
+
+      assert(controllerState.idToOrder(orderId).historicOutcomes == Seq(
+        HistoricOutcome(Position(0), Outcome.Failed(Some("Order:♦️|🥕 Failed(FINISH WITH FAILURE)")))))
+    }
+
+    "Failing Finish in fork, without joinIfFailed" in {
+      val workflow = Workflow.of(
+        Fork(
+          Vector(
+            "🥕" -> Workflow.of(
+              EmptyJob.execute(agentPath),
+              If(expr("true"),
+                Workflow.of(
+                  Finish(Some(Outcome.Failed(Some("FINISH WITH FAILURE")))))),
+              EmptyJob.execute(agentPath)),
+            "🍋" -> Workflow.of(
+              Finish(Some(Outcome.Succeeded(Map(
+                "result" -> StringValue("FINISH")))))))))
+
+      val orderId = OrderId("🔔")
+      withTemporaryItem(workflow.withId(workflowId.path)) { workflow =>
+        controller.addOrderBlocking(FreshOrder(orderId, workflow.path))
+        eventWatch.await[OrderFailed](_.key == orderId / "🥕")
+        sleep(100.ms)
+        assert(controllerState.idToOrder(orderId).isState[Order.Forked])
+
+        controller.api.executeCommand(CancelOrders(Seq(orderId, orderId / "🥕", orderId / "🍋")))
+          .await(99.s).orThrow
+        controller.eventWatch.await[OrderCancelled](_.key == orderId)
+
+        val events = eventWatch
+          .allKeyedEvents[OrderEvent]
+          .view
+          .filterNot(_.event.isInstanceOf[OrderAdded])
+          .filterNot(_.event.isInstanceOf[OrderStdWritten])
+          .toVector
+
+        assert(events.filter(_.key == orderId / "🥕").map(_.event) ==
+          Vector(
+            OrderAttachable(agentPath),
+            OrderAttached(agentPath),
+            OrderProcessingStarted(subagentId),
+            OrderProcessed(Outcome.succeeded),
+            OrderMoved(Position(0) / "fork+🥕" % 1 / Then % 0), // Position of Finish
+            OrderDetachable,
+            OrderDetached,
+            OrderOutcomeAdded(Outcome.Failed(Some("FINISH WITH FAILURE"))),
+            OrderFailed(Position(0) / "fork+🥕" % 1 / "then" % 0),
+            OrderCancelled))
+
+        assert(events.filter(_.key == orderId / "🍋").map(_.event) ==
+          Vector(
+            OrderOutcomeAdded(Outcome.Succeeded(Map(
+              "result" -> StringValue("FINISH")))),
+            OrderMoved(Position(0) / "fork+🍋" % 1),
+            OrderCancellationMarked(FreshOrStarted())))
+
+        assert(events.filter(_.key == orderId).map(_.event) ==
+          Vector(
+            OrderStarted,
+            OrderForked(Vector(
+              "🥕" -> orderId / "🥕",
+              "🍋" -> orderId / "🍋")),
+            OrderCancellationMarked(FreshOrStarted()),
+            OrderJoined(Outcome.Failed(Some("Order:🔔|🥕 has been cancelled"))),
+            OrderFailed(Position(0)),
+            OrderCancelled))
+
+        assert(controllerState.idToOrder(orderId).historicOutcomes == Seq(
+          HistoricOutcome(Position(0), Outcome.Failed(Some("Order:🔔|🥕 has been cancelled")))))
+      }
+    }
   }
 
   "finish in fork, succeed first" in {
