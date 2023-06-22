@@ -57,7 +57,7 @@ final class WorkingClusterNode[
 
   def start(clusterState: ClusterState, eventId: EventId): Task[Checked[Unit]] =
     clusterState match {
-      case ClusterState.Empty => Task.pure(Right(Completed))
+      case ClusterState.Empty => Task.right(Completed)
       case clusterState: HasNodes =>
         common.requireValidLicense
           .flatMapT(_ =>
@@ -77,10 +77,10 @@ final class WorkingClusterNode[
 
   def afterJournalingStarted: Task[Checked[Completed]] =
     automaticallyAppointConfiguredBackupNode.flatMapT(_ =>
-      (_activeClusterNode.toOption match {
+      _activeClusterNode.toOption match {
         case None => Task.right(Completed)
         case Some(o) => o.onRestartActiveNode
-      }))
+      })
 
   def appointNodes(idToUri: Map[NodeId, Uri], activeId: NodeId): Task[Checked[Unit]] =
     Task(ClusterSetting
@@ -92,10 +92,10 @@ final class WorkingClusterNode[
   private def automaticallyAppointConfiguredBackupNode: Task[Checked[Unit]] =
     Task.defer {
       clusterConf.maybeClusterSetting match {
-        case None => Task.pure(Right(Completed))
+        case None => Task.right(Completed)
         case Some(setting) =>
           journal.clusterState.flatMap {
-            case _: ClusterState.HasNodes => Task.pure(Right(Completed))
+            case _: ClusterState.HasNodes => Task.right(Completed)
             case ClusterState.Empty =>
               appointNodes(setting)
                 .onErrorHandle(t => Left(Problem.fromThrowable(t)))  // We want only to log the exception
@@ -173,7 +173,7 @@ final class WorkingClusterNode[
   def shutDownThisNode: Task[Checked[Completed]] =
     Task.defer {
       _activeClusterNode.toOption match {
-        case None => Task.pure(Right(Completed))
+        case None => Task.right(Completed)
         case Some(o) => o.shutDownThisNode
       }
     }
