@@ -291,7 +291,8 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
             ) ? (OrderCancellationMarked(mode) :: Nil))))
     }
 
-  private def tryCancel(order: Order[Order.State], mode: CancellationMode): Option[List[OrderActorEvent]] =
+  private def tryCancel(order: Order[Order.State], mode: CancellationMode)
+  : Option[List[OrderActorEvent]] =
     (weHave(order) && isOrderCancelable(order, mode)) ?
       atController(
         order.state.isOperationCancelable.thenList(OrderOperationCancelled) :::
@@ -305,7 +306,9 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
       order.isCancelable &&
       // If workflow End is reached unsuspended, the order is finished normally
       // TODO Correct? Or should we check only the end of the main/forked workflow?
-      (!instruction(order.workflowPosition).isInstanceOf[End] || state.isSuspendedOrStopped(order) || order.isState[Broken])
+      (!instruction(order.workflowPosition).isInstanceOf[End]
+        || state.isSuspendedOrStopped(order)
+        || order.isState[Broken])
 
   /** Returns a `Right(Some(OrderSuspended | OrderSuspensionMarked))` iff order is not already marked as suspending. */
   def suspend(orderId: OrderId, mode: SuspensionMode): Checked[Option[List[OrderActorEvent]]] =

@@ -286,6 +286,7 @@ final case class Order[+S <: Order.State](
         check(isCancelable && isDetached,
           copy(
             state = Cancelled,
+            isSuspended = false,
             mark = None))
 
       case OrderSuspensionMarked(kill) =>
@@ -738,7 +739,9 @@ final case class Order[+S <: Order.State](
   }
 
   def isSuspendedOrStopped: Boolean =
-    isSuspended | isState[Stopped]
+    isSuspended
+      && !isState[Cancelled]/*COMPATIBLE Before v2.6 OrderCancelled did not reset isSuspended*/
+      || isState[Stopped]
 
   def isResuming =
     mark.exists(_.isInstanceOf[OrderMark.Resuming])

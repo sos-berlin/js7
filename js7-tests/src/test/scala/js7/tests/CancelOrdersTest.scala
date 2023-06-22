@@ -13,12 +13,12 @@ import js7.data.Problems.{CancelStartedOrderProblem, UnknownOrderProblem}
 import js7.data.agent.AgentPath
 import js7.data.command.CancellationMode
 import js7.data.command.CancellationMode.{FreshOrStarted, Kill}
-import js7.data.controller.ControllerCommand.{CancelOrders, Response, ResumeOrder}
+import js7.data.controller.ControllerCommand.{CancelOrders, ControlWorkflow, Response, ResumeOrder}
 import js7.data.event.KeyedEvent
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion}
 import js7.data.item.VersionId
 import js7.data.job.ShellScriptExecutable
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderBroken, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOperationCancelled, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPrompted, OrderStarted, OrderStdWritten, OrderStdoutWritten, OrderTerminated}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderBroken, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOperationCancelled, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPrompted, OrderStarted, OrderStdWritten, OrderStdoutWritten, OrderSuspended, OrderTerminated}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
 import js7.data.problems.CannotResumeOrderProblem
 import js7.data.value.Value.convenience.*
@@ -265,6 +265,33 @@ with BlockingItemUpdater
         OrderId("CANCEL-CHILD") <-: OrderJoined(
           Outcome.Failed(Some("Order:CANCEL-CHILD|🥕 has been cancelled"))),
         OrderId("CANCEL-CHILD") <-: OrderFailed(Position(0))))
+  }
+
+  "FIX JS-2069: Cancel a suspended forked child Order" in {
+    val workflow = Workflow.of(
+      WorkflowPath("FORK-SUSPENDED"),
+      Fork.of(
+        "🥕" -> Workflow.of(
+          EmptyJob.execute(agentPath))),
+      EmptyJob.execute(agentPath))
+    withTemporaryItem(workflow) { workflow =>
+      // Let the child order suspend
+      controller.api
+        .executeCommand(
+          ControlWorkflow(workflow.id, addBreakpoints = Set(Position(0) / "fork+🥕" % 0)))
+        .await(99.s)
+        .orThrow
+
+      val orderId = OrderId("🔔")
+      controller.addOrderBlocking(FreshOrder(orderId, workflow.path))
+      controller.eventWatch.await[OrderSuspended](_.key == orderId / "🥕")
+      controller.api.executeCommand(CancelOrders(Set(orderId / "🥕"))).await(99.s).orThrow
+
+      val events = controller.eventWatch.await[OrderTerminated](_.key == orderId)
+      assert(events.head.value.event.isInstanceOf[OrderFailed])
+      assert(controllerState.idToOrder(orderId).lastOutcome ==
+        Outcome.Failed(Some("Order:🔔|🥕 has been cancelled")))
+    }
   }
 
   "A canceled Order is not resumable" in {
