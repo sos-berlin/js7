@@ -35,20 +35,23 @@ final class UntaughtClusterWatchFailoverControllerClusterTest extends Controller
     withControllerAndBackup(suppressClusterWatch = true) { (primary, _, backup, _, clusterSetting) =>
       val primaryController = primary.newController()
 
+      val orderId = OrderId("💥")
+      var since = now
+      var sleepWhileFailing = 0.s
       backup.runController(dontWaitUntilReady = true) { backupController =>
         withClusterWatchService() { clusterWatch =>
           primaryController.eventWatch.await[ClusterCoupled]()
           waitForCondition(10.s, 10.ms)(clusterWatch.clusterState().exists(_.isInstanceOf[Coupled]))
+          // Let ClusterWatch run because it confirms after ClusterCoupled has been committed
+
+          since = now
+          sleepWhileFailing = clusterTiming.activeLostTimeout + 1.s
+
+          primaryController.addOrderBlocking(FreshOrder(orderId, TestWorkflow.id.path, arguments = Map(
+            "sleep" -> NumberValue(sleepWhileFailing.toSeconds))))
+          primaryController.eventWatch.await[OrderProcessingStarted](_.key == orderId)
+          backupController.eventWatch.await[OrderProcessingStarted](_.key == orderId)
         }
-
-        val since = now
-        val sleepWhileFailing = clusterTiming.activeLostTimeout + 1.s
-
-        val orderId = OrderId("💥")
-        primaryController.addOrderBlocking(FreshOrder(orderId, TestWorkflow.id.path, arguments = Map(
-          "sleep" -> NumberValue(sleepWhileFailing.toSeconds))))
-        primaryController.eventWatch.await[OrderProcessingStarted](_.key == orderId)
-        backupController.eventWatch.await[OrderProcessingStarted](_.key == orderId)
 
         // KILL PRIMARY
         primaryController
@@ -74,8 +77,8 @@ final class UntaughtClusterWatchFailoverControllerClusterTest extends Controller
 
           // primaryId is lost. Wait until passive node has detected it.
           waitForCondition(99.s, 10.ms)(
-          clusterWatchService.manuallyConfirmNodeLoss(primaryId, "CONFIRMER")
-            != Left(ClusterNodeIsNotLostProblem(primaryId)))
+            clusterWatchService.manuallyConfirmNodeLoss(primaryId, "CONFIRMER")
+              != Left(ClusterNodeIsNotLostProblem(primaryId)))
           clusterWatchService.manuallyConfirmNodeLoss(primaryId, "CONFIRMER").orThrow
 
           val Stamped(failedOverEventId, _, NoKey <-: clusterFailedOver) =
@@ -94,13 +97,14 @@ final class UntaughtClusterWatchFailoverControllerClusterTest extends Controller
           assert(clusterWatchService.manuallyConfirmNodeLoss(backupId, "CONFIRMER")
             == Left(ClusterNodeIsNotLostProblem(backupId)))
 
-          sleep(100.ms) // Why ???
-          assert(backupController.clusterState.await(99.s) ==
-            FailedOver(
-              clusterSetting.copy(
-                activeId = backupId,
-                clusterWatchId = Some(clusterWatchService.clusterWatchId)),
-              clusterFailedOver.failedAt))
+          val expectedFailedOver = FailedOver(
+            clusterSetting.copy(
+              activeId = backupId,
+              clusterWatchId = Some(clusterWatchService.clusterWatchId)),
+            clusterFailedOver.failedAt)
+          // Why wait ???
+          waitForCondition(10.s, 10.ms)(backupController.clusterState.await(99.s) == expectedFailedOver)
+          assert(backupController.clusterState.await(99.s) == expectedFailedOver)
 
           backupController.eventWatch.await[OrderFinished](_.key == orderId, after = failedOverEventId)
         }
