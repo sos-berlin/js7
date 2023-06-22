@@ -60,6 +60,7 @@ import js7.launcher.configuration.Problems.SignedInjectionNotAllowed
 import js7.subagent.director.SubagentKeeper
 import monix.eval.Task
 import monix.execution.{Cancelable, Scheduler}
+import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
@@ -757,16 +758,23 @@ final class AgentOrderKeeper(
     }
 
   private def tryStartProcessing(jobEntry: JobEntry): Unit = {
-    val isEnterable = jobEntry.checkAdmissionTimeInterval(clock) {
+    lazy val isEnterable = jobEntry.checkAdmissionTimeInterval(clock) {
       self ! Internal.JobDue(jobEntry.jobKey)
     }
-    if (isEnterable) {
-      while (jobEntry.isBelowParallelismLimit && jobEntry.queue.nonEmpty) {
-        for (orderId <- jobEntry.queue.dequeue()) {
-          startProcessing(orderId, jobEntry)
+    val idToOrder = persistence.currentState.idToOrder
+
+    @tailrec def loop(): Unit =
+      if (jobEntry.isBelowParallelismLimit) {
+        jobEntry.queue.dequeueWhere(orderId =>
+          idToOrder.get(orderId).exists(_.forceJobAdmission) || isEnterable)
+        match {
+          case None =>
+          case Some(orderId) =>
+            startProcessing(orderId, jobEntry)
+            loop()
         }
       }
-    }
+    loop()
   }
 
   private def startProcessing(orderId: OrderId, jobEntry: JobEntry): Unit =
@@ -881,13 +889,17 @@ object AgentOrderKeeper {
     def isKnown(orderId: OrderId) =
       queueSet.contains(orderId) || inProcess.contains(orderId)
 
-    def dequeue(): Option[OrderId] =
-      queue.nonEmpty option {
-        val orderId = queue.remove(0)
-        queueSet -= orderId
-        inProcess += orderId
-        orderId
-      }
+    def dequeueWhere(predicate: OrderId => Boolean): Option[OrderId] =
+      queue.nonEmpty.option {
+        queue.indexWhere(predicate) match {
+          case -1 => None
+          case i =>
+            val orderId = queue.remove(i)
+            queueSet -= orderId
+            inProcess += orderId
+            Some(orderId)
+        }
+      }.flatten
 
     def +=(orderId: OrderId) = {
       if (inProcess(orderId)) throw new DuplicateKeyException(s"Duplicate $orderId")

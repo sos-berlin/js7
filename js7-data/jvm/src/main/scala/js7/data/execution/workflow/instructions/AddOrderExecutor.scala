@@ -35,7 +35,8 @@ extends EventInstructionExecutor
                   OrderOrderAdded(addedOrderId, workflowId, args,
                     startPosition = addOrder.startPosition,
                     stopPositions = addOrder.stopPositions,
-                    deleteWhenTerminated = addOrder.deleteWhenTerminated),
+                    deleteWhenTerminated = addOrder.deleteWhenTerminated,
+                    forceJobAdmission = addOrder.forceJobAdmission),
                   OrderMoved(order.position.increment))
             events.map(_.map(order.id <-: _).toList)
 

@@ -97,7 +97,7 @@ extends EventInstructionExecutor with PositionInstructionExecutor
       job <- workflow.checkedWorkflowJob(order.position)
       jobKey <- workflow.positionToJobKey(order.position)
     } yield
-      if (order.isState[IsFreshOrReady]) {
+      if (order.isState[IsFreshOrReady] && !order.forceJobAdmission) {
         val admissionObstacles = job.admissionTimeScheme
           .filterNot(_ => skippedReason(order, job, calculator.stateView).isDefined)
           .flatMap(_
@@ -129,7 +129,8 @@ extends EventInstructionExecutor with PositionInstructionExecutor
     order: Order[Order.State],
     job: WorkflowJob)
   : Boolean =
-    job.skipIfNoAdmissionStartForOrderDay &&
+    !order.forceJobAdmission &&
+      job.skipIfNoAdmissionStartForOrderDay &&
       job.admissionTimeScheme.fold(false)(admissionTimeScheme =>
         orderIdToDate(order.id)
           .fold(false)(localDate =>

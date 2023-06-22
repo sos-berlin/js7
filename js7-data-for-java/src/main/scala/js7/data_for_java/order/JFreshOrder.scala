@@ -92,6 +92,28 @@ object JFreshOrder extends JJsonable.Companion[JFreshOrder]
       stopPositions = stopPositions.asScala.map(_.asScala).toSet))
 
   @Nonnull
+  @throws[RuntimeException]("on invalid syntax")
+  def of(
+    @Nonnull id: OrderId,
+    @Nonnull workflowPath: WorkflowPath,
+    @Nonnull scheduledFor: java.util.Optional[Instant],
+    @Nonnull arguments: java.util.Map[String, Value],
+    @Nonnull deleteWhenTerminated: Boolean,
+    @Nonnull forceJobAdmission: Boolean,
+    @Nonnull startPosition: Optional[JPositionOrLabel],
+    @Nonnull stopPositions: java.util.Set[JPositionOrLabel])
+  : JFreshOrder =
+    JFreshOrder(FreshOrder(
+      id,
+      workflowPath,
+      arguments.asScala.toMap,
+      scheduledFor.toScala.map(o => Timestamp.ofEpochMilli(o.toEpochMilli)),
+      deleteWhenTerminated = deleteWhenTerminated,
+      forceJobAdmission = forceJobAdmission,
+      startPosition = startPosition.toScala.map(_.asScala),
+      stopPositions = stopPositions.asScala.map(_.asScala).toSet))
+
+  @Nonnull
   override def fromJson(@Nonnull jsonString: String): VEither[Problem, JFreshOrder] =
     super.fromJson(jsonString)
 

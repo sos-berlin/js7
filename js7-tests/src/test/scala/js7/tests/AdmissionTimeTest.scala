@@ -13,21 +13,24 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.{AdmissionTimeScheme, AlarmClock, TestAlarmClock, Timezone, WeekdayPeriod}
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
+import js7.data.controller.ControllerCommand.CancelOrders
 import js7.data.order.Order.Fresh
-import js7.data.order.OrderEvent.{OrderAttached, OrderFinished}
+import js7.data.order.OrderEvent.{OrderAttached, OrderFinished, OrderProcessingStarted}
 import js7.data.order.OrderObstacle.waitingForAdmmission
 import js7.data.order.{FreshOrder, OrderId}
-import js7.data.workflow.instructions.Execute
+import js7.data.value.expression.Expression.StringConstant
 import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.instructions.{AddOrder, Execute}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.AdmissionTimeTest.*
 import js7.tests.jobs.EmptyJob
-import js7.tests.testenv.ControllerAgentForScalaTest
+import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.*
 
 final class AdmissionTimeTest extends OurTestSuite with ControllerAgentForScalaTest
+with BlockingItemUpdater
 {
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
@@ -172,6 +175,63 @@ final class AdmissionTimeTest extends OurTestSuite with ControllerAgentForScalaT
     sleep(100.ms)
     assert(controllerState.idToOrder(orderId).isState[Fresh])
     assert(controllerState.idToOrder(orderId).position == Position(0))
+  }
+
+  "forceJobAdmission in AddOrder command" in {
+    clock := local("2023-06-21T00:00")
+
+    val aOrderId = OrderId("♦️")
+    locally {
+      // Job is closed
+      val eventId = eventWatch.lastAddedEventId
+      controller.addOrder(FreshOrder(aOrderId, sundayWorkflow.path)).await(99.s).orThrow
+      eventWatch.await[OrderAttached](_.key == aOrderId, after = eventId)
+      assert(controllerState.idToOrder(aOrderId).isState[Fresh])
+      assert(orderToObstacles(aOrderId) ==
+        Right(Set(waitingForAdmmission(local("2023-06-25T03:00")))))
+    }
+
+    locally {
+      // Engine chooses this order due to forceJobAdmission despite it is not the first one in queue
+      val orderId = OrderId("🥨")
+      val eventId = eventWatch.lastAddedEventId
+      controller.addOrder(FreshOrder(orderId, sundayWorkflow.path, forceJobAdmission = true))
+        .await(99.s).orThrow
+      eventWatch.await[OrderFinished](_.key == orderId, after = eventId)
+    }
+
+    assert(orderToObstacles(aOrderId) ==
+      Right(Set(waitingForAdmmission(local("2023-06-25T03:00")))))
+  }
+
+  "forceJobAdmission in AddOrder instruction" in {
+    clock := local("2023-06-22T00:00")
+
+    val startingWorkflow1 = Workflow(WorkflowPath("forceJobAdmission-1"), Seq(
+      AddOrder(StringConstant("FORCED-ORDER-1"), sundayWorkflow.path)))
+    withTemporaryItem(startingWorkflow1) { _ =>
+      val eventId = eventWatch.lastAddedEventId
+      controller.addOrder(FreshOrder(OrderId("STARTING-ORDER-1"), startingWorkflow1.path))
+        .await(99.s).orThrow
+
+      val orderId = OrderId("FORCED-ORDER-1")
+      eventWatch.await[OrderAttached](_.key == orderId, after = eventId)
+      assert(orderToObstacles(orderId) ==
+        Right(Set(waitingForAdmmission(local("2023-06-25T03:00")))))
+      controller.executeCommandForTest(CancelOrders(Seq(orderId)))
+    }
+
+    val startingWorkflow2 = Workflow(WorkflowPath("forceJobAdmission-2"), Seq(
+      AddOrder(StringConstant("FORCED-ORDER-2"), sundayWorkflow.path, forceJobAdmission = true)))
+    withTemporaryItem(startingWorkflow2) { _ =>
+      val eventId = eventWatch.lastAddedEventId
+      controller.addOrder(FreshOrder(OrderId("STARTING-ORDER-2"), startingWorkflow2.path))
+        .await(99.s).orThrow
+
+      val orderId = OrderId("FORCED-ORDER-2")
+      eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
+      eventWatch.await[OrderFinished](_.key == orderId, after = eventId)
+    }
   }
 }
 

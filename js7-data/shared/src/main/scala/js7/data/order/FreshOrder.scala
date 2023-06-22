@@ -26,6 +26,7 @@ final case class FreshOrder(
   arguments: NamedValues = Map.empty,
   scheduledFor: Option[Timestamp] = None,
   deleteWhenTerminated: Boolean = false,
+  forceJobAdmission: Boolean = false,
   startPosition: Option[PositionOrLabel] = None,
   stopPositions: Set[PositionOrLabel] = Set.empty)
 {
@@ -39,6 +40,7 @@ final case class FreshOrder(
   : KeyedEvent[OrderAdded] =
     id <-: OrderAdded(workflowPath ~ versionId, preparedArguments, scheduledFor, externalOrderKey,
       deleteWhenTerminated = deleteWhenTerminated,
+      forceJobAdmission = forceJobAdmission,
       startPosition, stopPositions)
 }
 
@@ -50,10 +52,12 @@ object FreshOrder
     arguments: NamedValues = Map.empty,
     scheduledFor: Option[Timestamp] = None,
     deleteWhenTerminated: Boolean = false,
+    forceJobAdmission: Boolean = false,
     startPosition: Option[PositionOrLabel] = None,
     stopPositions: Set[PositionOrLabel] = Set.empty)
   : FreshOrder =
-    checked(id, workflowPath, arguments, scheduledFor, deleteWhenTerminated,
+    checked(id, workflowPath, arguments, scheduledFor,
+      deleteWhenTerminated, forceJobAdmission,
       startPosition, stopPositions)
       .orThrow
 
@@ -64,10 +68,12 @@ object FreshOrder
     arguments: NamedValues = Map.empty,
     scheduledFor: Option[Timestamp] = None,
     deleteWhenTerminated: Boolean = false,
+    forceJobAdmission: Boolean = false,
     startPosition: Option[PositionOrLabel] = None,
     stopPositions: Set[PositionOrLabel] = Set.empty)
   : FreshOrder =
-    new FreshOrder(id, workflowPath, arguments, scheduledFor, deleteWhenTerminated,
+    new FreshOrder(id, workflowPath, arguments, scheduledFor,
+      deleteWhenTerminated, forceJobAdmission,
       startPosition, stopPositions)
 
   def checked(
@@ -76,16 +82,14 @@ object FreshOrder
     arguments: NamedValues = Map.empty,
     scheduledFor: Option[Timestamp] = None,
     deleteWhenTerminated: Boolean = false,
+    forceJobAdmission: Boolean = false,
     startPosition: Option[PositionOrLabel] = None,
     stopPositions: Set[PositionOrLabel] = Set.empty)
   : Checked[FreshOrder] =
     for (checkedId <- id.checkedNameSyntax)
-      yield new FreshOrder(checkedId, workflowPath, arguments, scheduledFor, deleteWhenTerminated,
+      yield new FreshOrder(checkedId, workflowPath, arguments, scheduledFor,
+        deleteWhenTerminated, forceJobAdmission,
         startPosition, stopPositions)
-
-  def fromOrder(order: Order[Order.Fresh]): FreshOrder =
-    new FreshOrder(order.id, order.workflowPath, order.arguments, order.scheduledFor,
-      order.deleteWhenTerminated)
 
   implicit val jsonEncoder: Encoder.AsObject[FreshOrder] =
     o => JsonObject(
@@ -94,6 +98,7 @@ object FreshOrder
       "scheduledFor" -> o.scheduledFor.asJson,
       "arguments" -> o.arguments.??.asJson,
       "deleteWhenTerminated" -> o.deleteWhenTerminated.?.asJson,
+      "forceJobAdmission" -> o.forceJobAdmission.?.asJson,
       "startPosition" -> o.startPosition.asJson,
       "stopPositions" -> (o.stopPositions.nonEmpty ? o.stopPositions).asJson)
 
@@ -104,9 +109,11 @@ object FreshOrder
       scheduledFor <- c.get[Option[Timestamp]]("scheduledFor")
       arguments <- c.getOrElse[NamedValues]("arguments")(NamedValues.empty)
       deleteWhenTerminated <- c.getOrElse[Boolean]("deleteWhenTerminated")(false)
+      forceJobAdmission <- c.getOrElse[Boolean]("forceJobAdmission")(false)
       startPosition <- c.get[Option[PositionOrLabel]]("startPosition")
       stopPositions <- c.getOrElse[Set[PositionOrLabel]]("stopPositions")(Set.empty)
-      order <- checked(id, workflowPath, arguments, scheduledFor, deleteWhenTerminated,
+      order <- checked(id, workflowPath, arguments, scheduledFor,
+        deleteWhenTerminated, forceJobAdmission,
         startPosition, stopPositions)
         .toDecoderResult(c.history)
     } yield order
