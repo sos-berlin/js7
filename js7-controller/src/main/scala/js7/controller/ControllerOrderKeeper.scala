@@ -11,6 +11,8 @@ import cats.syntax.option.*
 import cats.syntax.parallel.*
 import cats.syntax.traverse.*
 import java.time.ZoneId
+import js7.agent.data.commands.AgentCommand
+import js7.agent.data.event.AgentEvent
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.crypt.Signed
 import js7.base.eventbus.EventPublisher

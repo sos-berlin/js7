@@ -2,6 +2,7 @@ package js7.tests
 
 import js7.base.configutils.Configs.*
 import js7.base.test.OurTestSuite
+import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.*
@@ -61,15 +62,16 @@ with BlockingItemUpdater
       val consumeOrderId = OrderId("#2023-06-23#🔶")
       controller.addOrderBlocking(FreshOrder(consumeOrderId, consumeWorkflow.path))
       controller.eventWatch.await[OrderNoticesExpected](_.key == consumeOrderId)
-      controller.executeCommandForTest(CancelOrders(Set(consumeOrderId)))
+      controller.api.executeCommand(CancelOrders(Set(consumeOrderId)))
+        .await(99.s).orThrow
     }
   }
 
   "PostNotice command" - {
     "Until endOfLife, the Notice is consumable" in {
       controller
-        .executeCommandForTest(ControllerCommand.PostNotice(board.path, NoticeId("2023-06-24")))
-        .orThrow
+        .api.executeCommand(ControllerCommand.PostNotice(board.path, NoticeId("2023-06-24")))
+        .await(99.s).orThrow
       val consumeOrderId = OrderId("#2023-06-24#🔔")
       val events = controller.runOrder(FreshOrder(consumeOrderId, consumeWorkflow.path))
       assert(!events.map(_.value).exists(_.isInstanceOf[OrderNoticesExpected]))
@@ -78,26 +80,27 @@ with BlockingItemUpdater
 
     "After endOfLife, the Notice vanishes" in {
       controller
-        .executeCommandForTest(ControllerCommand.PostNotice(board.path, NoticeId("2023-06-24")))
-        .orThrow
+        .api.executeCommand(ControllerCommand.PostNotice(board.path, NoticeId("2023-06-24")))
+        .await(99.s).orThrow
       sleep(600.ms)
       val consumeOrderId = OrderId("#2023-06-24#🔕")
       controller.addOrderBlocking(FreshOrder(consumeOrderId, consumeWorkflow.path))
       controller.eventWatch.await[OrderNoticesExpected](_.key == consumeOrderId)
-      controller.executeCommandForTest(CancelOrders(Set(consumeOrderId))).orThrow
+      controller.api.executeCommand(CancelOrders(Set(consumeOrderId)))
+        .await(99.s).orThrow
     }
   }
 
   "PostNotice command with immediately expired endOfLife" - {
     "The Notice is immediately deleted" in {
       controller
-        .executeCommandForTest(ControllerCommand.PostNotice(board.path, NoticeId("2023-06-25"),
+        .api.executeCommand(ControllerCommand.PostNotice(board.path, NoticeId("2023-06-25"),
           endOfLife = Some(Timestamp.now)))
-        .orThrow
+        .await(99.s).orThrow
       val consumeOrderId = OrderId("#2023-06-25#🟪")
       controller.addOrderBlocking(FreshOrder(consumeOrderId, consumeWorkflow.path))
       controller.eventWatch.await[OrderNoticesExpected](_.key == consumeOrderId)
-      controller.executeCommandForTest(CancelOrders(Set(consumeOrderId))).orThrow
+      controller.api.executeCommand(CancelOrders(Set(consumeOrderId))).await(99.s).orThrow
     }
   }
 }
