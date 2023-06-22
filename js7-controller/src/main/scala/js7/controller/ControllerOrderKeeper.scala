@@ -11,8 +11,6 @@ import cats.syntax.option.*
 import cats.syntax.parallel.*
 import cats.syntax.traverse.*
 import java.time.ZoneId
-import js7.agent.data.commands.AgentCommand
-import js7.agent.data.event.AgentEvent
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.crypt.Signed
 import js7.base.eventbus.EventPublisher
@@ -29,7 +27,7 @@ import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
-import js7.base.time.{AlarmClock, Timezone}
+import js7.base.time.{AlarmClock, Timestamp, Timezone}
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.Collections.implicits.{InsertableMutableMap, RichIterable}
 import js7.base.utils.IntelliJUtils.intelliJuseImport
@@ -132,9 +130,15 @@ with MainJournalingActor[ControllerState, Event]
     private val noticeToSchedule = mutable.Map.empty[(BoardPath, NoticeId), Cancelable]
 
     def schedule(notice: Notice): Unit =
-      noticeToSchedule += notice.boardPath -> notice.id ->
-        alarmClock.scheduleAt(notice.endOfLife) {
-          self ! Internal.NoticeIsDue(notice.boardPath, notice.id)
+      schedule(notice.boardPath, notice.id, notice.endOfLife)
+
+    def schedule(boardPath: BoardPath, notice: NoticePosted.PostedNotice): Unit =
+      schedule(boardPath, notice.id, notice.endOfLife)
+
+    private def schedule(boardPath: BoardPath, noticeId: NoticeId, endOfLife: Timestamp): Unit =
+      noticeToSchedule += boardPath -> noticeId ->
+        alarmClock.scheduleAt(endOfLife) {
+          self ! Internal.NoticeIsDue(boardPath, noticeId)
         }
 
     def deleteSchedule(boardPath: BoardPath, noticeId: NoticeId): Unit =
@@ -770,16 +774,21 @@ with MainJournalingActor[ControllerState, Event]
           boardState <- _controllerState.keyTo(BoardState).checked(boardPath)
           notice <- boardState.board.toNotice(noticeId, maybeEndOfLife)(scope)
           _ <- boardState.addNotice(notice) // Check
-          expectingOrderEvents <- PostNoticesExecutor
-            .postedNoticeToExpectingOrderEvents(boardState, notice, _controllerState)
-        } yield (notice, expectingOrderEvents)
+          subsequentEvents <-
+            if (notice.endOfLife <= alarmClock.now()) {
+              logger.debug(
+                s"Delete $notice immediately because endOfLife is reached")
+              Right((notice.boardPath <-: NoticeDeleted(notice.id)) :: Nil)
+            } else
+              PostNoticesExecutor
+                .postedNoticeToExpectingOrderEvents(boardState, notice, _controllerState)
+        } yield (notice, subsequentEvents)
         checked match {
           case Left(problem) => Future.successful(Left(problem))
           case Right((notice, expectingOrderEvents)) =>
             val events = NoticePosted.toKeyedEvent(notice) +: expectingOrderEvents
-            persistTransactionAndSubsequentEvents(events)(
-              handleEvents
-            ).map(_ => Right(ControllerCommand.Response.Accepted))
+            persistTransactionAndSubsequentEvents(events)(handleEvents)
+              .map(_ => Right(ControllerCommand.Response.Accepted))
         }
 
       case ControllerCommand.DeleteNotice(boardPath, noticeId) =>
@@ -1212,6 +1221,11 @@ with MainJournalingActor[ControllerState, Event]
           _controllerState = _controllerState.applyEvents(keyedEvent :: Nil).orThrow
           itemKeys += event.key
           handleItemEvent(event)
+
+        case KeyedEvent(boardPath: BoardPath, NoticePosted(postedNotice)) =>
+          notices.deleteSchedule(boardPath, postedNotice.id)
+          notices.schedule(boardPath, postedNotice)
+          _controllerState = _controllerState.applyEvents(keyedEvent :: Nil).orThrow
 
         case KeyedEvent(boardPath: BoardPath, NoticeDeleted(noticeId)) =>
           notices.deleteSchedule(boardPath, noticeId)

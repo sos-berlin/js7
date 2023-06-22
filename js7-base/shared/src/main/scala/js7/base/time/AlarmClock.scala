@@ -83,7 +83,7 @@ object AlarmClock
 
     def scheduleAt(at: Timestamp)(callback: => Unit)
       (implicit @unused fullName: sourcecode.FullName): Cancelable =
-      scheduler.scheduleOnce(at - now())(callback)
+      scheduler.scheduleOnce((at - now()) max Duration.Zero)(callback)
 
     override def toString =
       prefix + "(" + now() + ")"
