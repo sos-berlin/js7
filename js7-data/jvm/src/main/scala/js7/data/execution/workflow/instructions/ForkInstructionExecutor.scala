@@ -115,10 +115,7 @@ trait ForkInstructionExecutor extends EventInstructionExecutor
       tryJoinChildOrder(fork, childOrder, state)
         .toList)
 
-  private def tryJoinChildOrder(
-    fork: Instr,
-    childOrder: Order[Order.State],
-    state: StateView)
+  private def tryJoinChildOrder(fork: Instr, childOrder: Order[Order.State], state: StateView)
   : Option[KeyedEvent[OrderActorEvent]] =
     if (childOrder.isAttached)
       Some(childOrder.id <-: OrderDetachable)
@@ -148,7 +145,7 @@ trait ForkInstructionExecutor extends EventInstructionExecutor
           cache.onJoined()
           val failedChildren = order.state.children.view
             .map(child => state.idToOrder(child.orderId))
-            .filterNot(_.lastOutcome.isSucceeded)
+            .filter(order => !order.lastOutcome.isSucceeded || order.isState[Cancelled])
             .toVector
           val now = clock.now()
           order.id <-: OrderJoined(
