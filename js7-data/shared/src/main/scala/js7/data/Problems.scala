@@ -141,5 +141,7 @@ object Problems
   }
   object ClusterSettingNotUpdatable extends Problem.Coded.Companion
 
+  case object PassiveClusterNodeUrlChangeableOnlyWhenNotCoupledProblem extends Problem.ArgumentlessCoded
+
   case object PassiveClusterNodeResetProblem extends Problem.ArgumentlessCoded
 }

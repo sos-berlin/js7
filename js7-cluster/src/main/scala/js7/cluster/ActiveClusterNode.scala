@@ -22,7 +22,7 @@ import js7.cluster.ActiveClusterNode.*
 import js7.cluster.watch.api.ClusterWatchConfirmation
 import js7.cluster.watch.api.ClusterWatchProblems.{ClusterStateEmptyProblem, NoClusterWatchProblem}
 import js7.common.http.RecouplingStreamReader
-import js7.data.Problems.{ClusterCommandInapplicableProblem, ClusterNodeIsNotActiveProblem, ClusterSettingNotUpdatable, MissingPassiveClusterNodeHeartbeatProblem}
+import js7.data.Problems.{ClusterCommandInapplicableProblem, ClusterNodeIsNotActiveProblem, ClusterSettingNotUpdatable, MissingPassiveClusterNodeHeartbeatProblem, PassiveClusterNodeUrlChangeableOnlyWhenNotCoupledProblem}
 import js7.data.cluster.ClusterCommand.ClusterStartBackupNode
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterPassiveLost, ClusterSettingUpdated, ClusterSwitchedOver, ClusterWatchRegistered}
 import js7.data.cluster.ClusterState.{ActiveShutDown, Coupled, Empty, HasNodes, IsCoupledOrDecoupled, IsDecoupled, NodesAppointed, PassiveLost, PreparedToBeCoupled}
@@ -162,9 +162,10 @@ final class ActiveClusterNode[S <: ClusterableState[S]: diffx.Diff] private[clus
                   clusterWatchId = setting.clusterWatchId)
               val changedPassiveUri = (setting.passiveUri != current.passiveUri) ?
                 setting.passiveUri
-              if (changedPassiveUri.isDefined && !clusterState.isInstanceOf[IsDecoupled]
-                || updated != setting /*reject other differences*/ )
+              if (updated != setting /*reject other differences*/)
                 Left(ClusterSettingNotUpdatable(clusterState))
+              else if (changedPassiveUri.isDefined && !clusterState.isInstanceOf[IsDecoupled])
+                Left(PassiveClusterNodeUrlChangeableOnlyWhenNotCoupledProblem)
               else if (updated.copy(clusterWatchId = None) == current.copy(clusterWatchId = None))
                 Right(None)
               else
