@@ -94,7 +94,7 @@ extends Journal[S]
       .rightAs(())
 
   def persistWithOptions[E <: Event](
-    options: CommitOptions = CommitOptions.default,
+    options: CommitOptions = CommitOptions.default)(
     stateToEvents: S => Checked[Seq[KeyedEvent[E]]])
   : Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
     stateLock.lock(Task.defer {

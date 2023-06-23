@@ -63,7 +63,7 @@ with FileJournal.PossibleFailover
     keyedEvents: Seq[KeyedEvent[E]],
     options: CommitOptions = CommitOptions.default)
   : Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
-    persistWithOptions(options, _ => Right(keyedEvents))
+    persistWithOptions(options)(_ => Right(keyedEvents))
 
   def persistKeyedEventsLater[E <: Event](
     keyedEvents: Seq[KeyedEvent[E]],
@@ -93,8 +93,8 @@ with FileJournal.PossibleFailover
       })
 
   def persistWithOptions[E <: Event](
-    options: CommitOptions = CommitOptions.default,
-    stateToEvents: S => Checked[Seq[KeyedEvent[E]]])
+    options: CommitOptions = CommitOptions.default)
+    (stateToEvents: S => Checked[Seq[KeyedEvent[E]]])
   : Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
     Task.defer {
       persistUnlocked(stateToEvents, options)
