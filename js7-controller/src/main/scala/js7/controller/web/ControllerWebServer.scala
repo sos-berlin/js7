@@ -41,6 +41,8 @@ object ControllerWebServer
           GateKeeper.Configuration.fromConfig(config, SimpleUser.apply, Seq(
             UpdateItemPermission, AgentDirectorForwardPermission))
 
+        def serviceName = "Controller"
+
         def startupSecurityHint(scheme: WebServerBinding.Scheme) =
           gateKeeperConf.secureStateString(scheme)
 

@@ -52,16 +52,24 @@ with HttpClusterNodeApi
       val delays = Iterator(100.ms, 300.ms, 600.ms) ++ Iterator.continually(1.s)
       val until = now + timeout
       Task.tailRecM(()) { _ =>
-        body.flatMap {
-          case Left(problem) if (problem is ClusterNodeIsNotReadyProblem) && now < until =>
-            sym.increment()
-            logger.log(sym.logLevel, s"$sym $problem")
-            Task.sleep(delays.next()).as(Left(()))
+        body
+          .flatMap {
+            case Left(problem) if (problem is ClusterNodeIsNotReadyProblem) && now < until =>
+              sym.increment()
+              logger.log(sym.logLevel, s"$sym $toString: $problem")
+              Task.sleep(delays.next()).as(Left(()))
 
-          case o =>
-            logger.log(sym.releasedLogLevel, "🟢 Operation succeeeded")
-            Task.right(o)
-        }
+            case checked  =>
+              logger.log(
+                sym.releasedLogLevel,
+                checked match {
+                  case Left(problem) => s"❓$toString: $problem"
+                  case Right(_) => s"🟢 $toString was available again"
+                })
+              Task.right(checked)
+          }
+          .tapError(throwable => Task(
+            logger.log(sym.releasedLogLevel, s"💥$toString => $throwable")))
       }
     }
 

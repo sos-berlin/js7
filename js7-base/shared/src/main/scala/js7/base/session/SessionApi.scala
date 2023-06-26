@@ -107,15 +107,15 @@ object SessionApi
           login_(userAndPassword)
             .onErrorRestartLoop(()) { (throwable, _, retry) =>
               val isTemporary = isTemporaryUnreachable(throwable)
-              val prefix = isTemporary ?? {
-                sym.onWarn()
-                s"$sym "
-              }
-              warn(s"$prefix$self", throwable)
               onError(throwable).flatMap(continue =>
-                if (continue/*normally true*/ && delays.hasNext && isTemporary)
+                if (continue/*normally true*/ && delays.hasNext && isTemporary) {
+                  val prefix = isTemporary ?? {
+                    sym.onWarn()
+                    s"$sym "
+                  }
+                  warn(s"$prefix$self", throwable)
                   retry(()) delayExecution delays.next()
-                else
+                } else
                   Task.raiseError(throwable))
             }
             .guaranteeCase {
@@ -191,13 +191,13 @@ object SessionApi
                     loginUntilReachable(delays, onError = onError)
 
                   case e: HttpException if isTemporaryUnreachable(e) && delays.hasNext =>
-                    sym.onWarn()
-                    warn(s"$sym $toString", e)
                     onError(e).flatMap(continue =>
-                      if (continue)
+                    if (continue) {
+                      sym.onWarn()
+                      warn(s"$sym $toString", e)
                         loginUntilReachable(delays, onError = onError, onlyIfNotLoggedIn = true)
-                      else
-                        Task.raiseError(e))
+                    } else
+                      Task.raiseError(e))
 
                   case _ =>
                     Task.raiseError(throwable)

@@ -29,6 +29,8 @@ object SubagentWebServer
           GateKeeper.Configuration.fromConfig(conf.config, SimpleUser.apply, Seq(
             AgentDirectorPermission))
 
+        def serviceName = "Subagent"
+
         def startupSecurityHint(scheme: WebServerBinding.Scheme) =
           gateKeeperConf.secureStateString(scheme)
 

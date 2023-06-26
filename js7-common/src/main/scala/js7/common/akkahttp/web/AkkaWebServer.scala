@@ -16,6 +16,7 @@ import js7.base.log.Logger.syntax.*
 import js7.base.problem.Problems.WebServiceStillNotAvailableProblem
 import js7.base.service.Service
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.typeclasses.IsEmpty.syntax.toIsEmptyAllOps
 import js7.base.web.Uri
 import js7.common.akkahttp.StandardMarshallers.*
 import js7.common.akkahttp.web.AkkaWebServer.*
@@ -142,11 +143,11 @@ object AkkaWebServer
           val terminatingPromise = Promise[Deadline]()
           val whenTerminating = terminatingPromise.future
           val boundRoute = toBoundRoute(binding, whenTerminating)
-          val name = s"${binding.scheme}://${binding.address.show}"
+          val bindingString = s"${binding.scheme}://${binding.address.show}"
           Task
             .deferFutureAction { implicit scheduler =>
               val routeDelegator =
-                new DelayedRouteDelegator(binding, boundRoute, name)
+                new DelayedRouteDelegator(binding, boundRoute, bindingString)
               val whenBound = serverBuilder.bind(routeDelegator.webServerRoute)
               terminatingPromise.completeWith(whenBound.flatMap(_.whenTerminationSignalIssued))
               whenBound
@@ -154,7 +155,7 @@ object AkkaWebServer
             .<*(Task {
               // An info line will be logged by DelayedRouteDelegator
               val securityHint = boundRoute.startupSecurityHint(binding.scheme)
-              logger.debug(s"$name is bound to $boundRoute$securityHint")
+              logger.debug(s"$bindingString is bound to $boundRoute$securityHint")
             })
         }
 
@@ -175,6 +176,8 @@ object AkkaWebServer
     complete(WebServiceStillNotAvailableProblem)
 
   trait BoundRoute {
+    def serviceName: String
+
     def stillNotAvailableRoute: Route =
       AkkaWebServer.stillNotAvailableRoute
 
@@ -187,6 +190,8 @@ object AkkaWebServer
       new Simple(route)
 
     final class Simple(route: Route) extends BoundRoute {
+      def serviceName = ""
+
       def webServerRoute = Task.pure(route)
 
       def startupSecurityHint(scheme: WebServerBinding.Scheme) = ""
@@ -206,8 +211,9 @@ object AkkaWebServer
       boundRoute.webServerRoute
         .tapEval(realRoute => Task {
           if (_realRoute.compareAndSet(None, Some(realRoute))) {
+            val serviceName = boundRoute.serviceName.emptyToNone.fold("")(_ + " ")
             val securityHint = boundRoute.startupSecurityHint(binding.scheme)
-            logger.info(s"$name web services are available$securityHint")
+            logger.info(s"$name ${serviceName}web services are available$securityHint")
           }
         })
         .runToFuture
