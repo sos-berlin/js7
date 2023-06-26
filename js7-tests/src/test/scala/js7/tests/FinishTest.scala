@@ -10,11 +10,11 @@ import js7.data.agent.AgentPath
 import js7.data.command.CancellationMode.FreshOrStarted
 import js7.data.controller.ControllerCommand.CancelOrders
 import js7.data.event.KeyedEvent
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancelled, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten, OrderTerminated}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancelled, OrderCaught, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten, OrderTerminated}
 import js7.data.order.{FreshOrder, HistoricOutcome, Order, OrderEvent, OrderId, Outcome}
 import js7.data.value.StringValue
 import js7.data.value.expression.ExpressionParser.expr
-import js7.data.workflow.instructions.{Fail, Finish, Fork, If}
+import js7.data.workflow.instructions.{Fail, Finish, Fork, If, TryInstruction}
 import js7.data.workflow.position.BranchId.Then
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -60,6 +60,36 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
 
     assert(controllerState.idToOrder(orderId).historicOutcomes == Seq(
       HistoricOutcome(Position(0), Outcome.succeeded)))
+  }
+
+  "Successful Finish in catch (JS-2073)" in {
+    val orderId = OrderId("SUCCESSFUL-FINISH")
+    checkEvents[OrderFinished](
+      Workflow.of(
+        TryInstruction(
+          Workflow.of(
+            FailingJob.execute(agentPath)),
+          Workflow.of(
+            Finish(Some(Outcome.Succeeded(Map("result" -> StringValue("SUCCESS"))))))),
+        Fail()),
+      orderId,
+      Vector(
+        OrderMoved(Position(0) / "try+0" % 0),
+        OrderAttachable(agentPath),
+        OrderAttached(agentPath),
+        OrderStarted,
+        OrderProcessingStarted(subagentId),
+        OrderProcessed(FailingJob.outcome),
+        OrderCaught(Position(0) / "catch+0" % 0),
+        OrderDetachable,
+        OrderDetached,
+        OrderFinished(Some(Outcome.Succeeded(Map("result" -> StringValue("SUCCESS")))))))
+
+    assert(controllerState.idToOrder(orderId).historicOutcomes == Seq(
+      HistoricOutcome(Position(0) / "try+0" % 0, FailingJob.outcome),
+      HistoricOutcome(Position(0) / "catch+0" % 0, Outcome.succeeded),
+      HistoricOutcome(Position(0) / "catch+0" % 0, Outcome.Succeeded(Map(
+        "result" -> StringValue("SUCCESS"))))))
   }
 
   "finish with if" in {
@@ -366,4 +396,5 @@ object FinishTest
 {
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)
-  private val workflowId = WorkflowPath("WORKFLOW") ~ "VERSION"}
+  private val workflowId = WorkflowPath("WORKFLOW") ~ "VERSION"
+}
