@@ -4,6 +4,7 @@ import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.http.scaladsl.server.directives.SecurityDirectives.Authenticator
 import cats.effect.Resource
 import cats.effect.concurrent.Deferred
+import cats.syntax.flatMap.*
 import cats.syntax.traverse.*
 import com.softwaremill.diffx.generic.auto.*
 import com.softwaremill.tagging.{@@, Tagger}
@@ -73,10 +74,17 @@ extends MainService with Service.StoppableByRequest
 {
   lazy val localUri: Uri = getLocalUri()
   val eventWatch: JournalEventWatch = clusterNode.recoveredExtract.eventWatch
+  val subagent = forDirector.subagent
   private val isTerminating = Atomic(false)
+
+  // SubagentCommand.ShutDown command shuts down the director, too.
+  // Then the restart flag of the command should be respected
+  @volatile private var subagentTermination = ProgramTermination()
 
   val untilTerminated: Task[ProgramTermination] =
     untilMainActorTerminated
+      .map(termination => termination.copy(
+        restart = termination.restart | subagentTermination.restart))
       .guarantee(Task(isTerminating := true))
       .memoize
 
@@ -86,7 +94,10 @@ extends MainService with Service.StoppableByRequest
   protected def start: Task[Service.Started] =
     startService(
       forDirector.subagent.untilTerminated
-        .*>(stop/*TODO Subagent should terminate this Director*/)
+        .flatTap(termination => Task {
+          subagentTermination = termination
+        })
+        .*>(stop/*TODO Subagent should terminate this Director ?*/)
         .startAndForget
         .*>(Task.race(
           untilStopRequested *> shutdown,
