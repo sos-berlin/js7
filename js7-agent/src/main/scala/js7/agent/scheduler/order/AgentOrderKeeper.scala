@@ -398,9 +398,8 @@ with Stash
       }
 
     case Input.ResetAllSubagents =>
-
       subagentKeeper
-        .shutdownAllSubagents(except = journal.unsafeCurrentState().meta.directors.toSet)
+        .resetAllSubagents(except = journal.unsafeCurrentState().meta.directors.toSet)
         .void.runToFuture.pipeTo(sender())
   }
 

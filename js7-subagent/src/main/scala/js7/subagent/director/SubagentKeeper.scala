@@ -283,7 +283,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
           })
     }
 
-  def shutdownAllSubagents(except: Set[SubagentId]): Task[Unit] =
+  def resetAllSubagents(except: Set[SubagentId]): Task[Unit] =
     stateVar.value
       .flatMap(state =>
         state.subagentToEntry.values

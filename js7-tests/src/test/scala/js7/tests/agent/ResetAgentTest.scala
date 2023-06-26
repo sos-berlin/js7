@@ -233,13 +233,7 @@ final class ResetAgentTest extends OurTestSuite with ControllerAgentForScalaTest
     assert(!exists(markerFile) && !exists(garbageFile))
   }
 
-  "ResetAgent resets Subagents, too" in {
-    //super.runSubagent(bareSubagentItem) { subagent =>
-      // Be sure Agent is running
-      controller.runOrder(FreshOrder(OrderId("BEFORE-SUBAGENTS"), simpleWorkflow.path))
-
-    //}
-  }
+  "ResetAgent resets Subagents, too" is pending
 
   "One last order" in {
     controller.runOrder(FreshOrder(OrderId("🔷"), simpleWorkflow.path))
