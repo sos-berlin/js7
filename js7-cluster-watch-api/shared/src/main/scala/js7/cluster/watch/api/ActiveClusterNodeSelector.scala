@@ -109,8 +109,7 @@ object ActiveClusterNodeSelector {
     api: Api,
     clusterNodeState: Checked[ClusterNodeState])
 
-  private def fetchClusterNodeState(api: HttpClusterNodeApi)
-  : Task[Checked[ClusterNodeState]] =
+  private def fetchClusterNodeState(api: HttpClusterNodeApi): Task[Checked[ClusterNodeState]] =
     HttpClient
       .liftProblem(
         api.retryIfSessionLost()(

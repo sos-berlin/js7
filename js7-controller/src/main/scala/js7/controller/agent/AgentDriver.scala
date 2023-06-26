@@ -449,7 +449,7 @@ extends Service.StoppableByRequest
       }
     }
 
-  private def activeClientResource: Resource[Task, AgentClient] = {
+  private def activeClientResource: Resource[Task, AgentClient] =
     ActiveClusterNodeSelector.selectActiveNodeApi[AgentClient](
       clientsResource,
       failureDelay = conf.recouplingStreamReader.failureDelay,
@@ -458,7 +458,6 @@ extends Service.StoppableByRequest
           case ProblemException(problem) => problem
           case t => Problem.fromThrowable(t)
         }).void)
-  }
 
   private def clientsResource: Resource[Task, Nel[AgentClient]] =
     Resource
