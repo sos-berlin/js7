@@ -47,7 +47,7 @@ extends ControllerApiWithHttp
   private val apiCache = new RefCountedResource(
     ActiveClusterNodeSelector.selectActiveNodeApi[HttpControllerApi](
       apisResource,
-      failureDelay = proxyConf.recouplingStreamReaderConf.failureDelay))
+      failureDelays = proxyConf.recouplingStreamReaderConf.failureDelays))
 
   protected def apiResource(implicit src: sourcecode.Enclosing) =
     apiCache.resource

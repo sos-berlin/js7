@@ -121,6 +121,12 @@ object CatsUtils
     seq.iterator ++ Iterator.continually(last)
   }
 
+  // Scala 2.13 does not allow add a method to an AnyVal class
+  def continueWithLast[A](seq: NonEmptyList[A]): Iterator[A] = {
+    val last = seq.last
+    seq.iterator ++ Iterator.continually(last)
+  }
+
   def continueWithLast[A](head: A, next: A, tail: A*): Iterator[A] =
     continueWithLast(NonEmptySeq.fromSeqUnsafe(Seq(head, next) ++ tail))
 

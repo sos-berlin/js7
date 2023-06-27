@@ -4,12 +4,13 @@ import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.generic.SecretString
 import js7.base.problem.Problem
 import js7.base.session.TestSessionApi
+import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
+import js7.base.utils.CatsUtils.Nel
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
-import js7.base.test.OurAsyncTestSuite
 import scala.concurrent.Await
 
 /**
@@ -21,7 +22,7 @@ final class RecouplingStreamReaderTest extends OurAsyncTestSuite
     val userAndPassword = UserAndPassword(UserId("USER"), SecretString("PASSWORD"))
     val api = new TestSessionApi(Some(userAndPassword))
     val recouplingStreamReaderConf = RecouplingStreamReaderConf(timeout = 5.s, delay = 1.s,
-      failureDelay = 5.s)
+      failureDelays = Nel.one(5.s))
 
     val observable = Observable.defer {
       @volatile var lastErrorAt = -2

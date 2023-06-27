@@ -452,7 +452,7 @@ extends Service.StoppableByRequest
   private def activeClientResource: Resource[Task, AgentClient] =
     ActiveClusterNodeSelector.selectActiveNodeApi[AgentClient](
       clientsResource,
-      failureDelay = conf.recouplingStreamReader.failureDelay,
+      failureDelays = conf.recouplingStreamReader.failureDelays,
       onCouplingError = _ => throwable =>
         onCouplingFailed(throwable match {
           case ProblemException(problem) => problem

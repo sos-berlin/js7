@@ -3,6 +3,7 @@ package js7.cluster
 import js7.base.configutils.Configs.*
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
+import js7.base.utils.CatsUtils.Nel
 import js7.base.web.Uri
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.common.message.ProblemCodeMessages
@@ -26,7 +27,7 @@ final class ClusterConfTest extends OurTestSuite
         js7.journal.cluster.watch.uniqueness-memory-size = 100
         js7.web.client.idle-get-timeout = 50s
         js7.web.client.polling-delay = 1s
-        js7.web.client.failure-delay = 5s
+        js7.web.client.failure-delays = [ 5s ]
         """.withFallback(JournalConfTest.config)
       val clusterConf = ClusterConf.fromConfig(config)
       assert(clusterConf == Right(
@@ -38,7 +39,7 @@ final class ClusterConfTest extends OurTestSuite
           RecouplingStreamReaderConf(
             timeout = 6.s,  // Between 5s and 7s
             delay = 1.s,
-            failureDelay = 5.s),
+            failureDelays = Nel.one(5.s)),
           ClusterTiming(7.s, 5.s),
           clusterWatchUniquenessMemorySize = 100,
           config = config)))
@@ -57,7 +58,7 @@ final class ClusterConfTest extends OurTestSuite
         js7.journal.cluster.heartbeat-timeout = 5s
         js7.web.client.idle-get-timeout = 50s
         js7.web.client.polling-delay = 1s
-        js7.web.client.failure-delay = 5s
+        js7.web.client.failure-delays = [ 5s ]
         """.withFallback(JournalConfTest.config)
       val checkedClusterConf = ClusterConf.fromConfig(config)
       assert(checkedClusterConf == Right(
@@ -75,7 +76,7 @@ final class ClusterConfTest extends OurTestSuite
           RecouplingStreamReaderConf(
             timeout = 6.s,  // Between 5s and 7s
             delay = 1.s,
-            failureDelay = 5.s),
+            failureDelays = Nel.one(5.s)),
           ClusterTiming(7.s, 5.s),
           clusterWatchUniquenessMemorySize = 100,
           config = config)))

@@ -24,7 +24,7 @@ trait ClusterProxyTest extends BeforeAndAfterAll with ControllerClusterForScalaT
 
   protected val items = Seq(workflow)
   protected def config = config"""
-    js7.web.client.failure-delay = 0.1
+    js7.web.client.failure-delays = [ 0.1s ]
     """.withFallback(ProxyConfs.defaultConfig)
 
   protected val admissions = Nel.of(

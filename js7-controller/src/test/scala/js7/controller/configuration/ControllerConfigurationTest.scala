@@ -9,6 +9,7 @@ import js7.base.convert.As.StringAsBoolean
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
+import js7.base.utils.CatsUtils.Nel
 import js7.cluster.ClusterConf
 import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.commandline.CommandLineArguments
@@ -57,7 +58,7 @@ final class ControllerConfigurationTest extends OurTestSuite with BeforeAndAfter
           RecouplingStreamReaderConf(
             timeout = 6500.ms, // Between 3s and 10s
             delay = 1.s,
-            failureDelay = 5.s),
+            failureDelays = Nel.of(1.s, 3.s, 6.s, 10.s)),
           ClusterTiming(3.s, 10.s),
           clusterWatchUniquenessMemorySize = 1000,
           config = ConfigFactory.empty),
