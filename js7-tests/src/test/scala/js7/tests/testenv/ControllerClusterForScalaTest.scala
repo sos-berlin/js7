@@ -7,6 +7,7 @@ import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import js7.agent.TestAgent
 import js7.base.auth.{Admission, UserAndPassword, UserId}
 import js7.base.configutils.Configs.*
+import js7.base.eventbus.StandardEventBus
 import js7.base.generic.SecretString
 import js7.base.io.https.HttpsConfig
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
@@ -20,6 +21,7 @@ import js7.base.utils.ProgramTermination
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatchService
+import js7.cluster.watch.api.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem
 import js7.common.auth.SecretStringGenerator
 import js7.common.configuration.Js7Configuration
 import js7.common.message.ProblemCodeMessages
@@ -215,28 +217,33 @@ trait ControllerClusterForScalaTest
     clusterWatchId: ClusterWatchId = ControllerClusterForScalaTest.clusterWatchId)
     (body: => A)
   : A =
-    withClusterWatchService(clusterWatchId)(_ => body)
+    withClusterWatchService(clusterWatchId)((_, _) => body)
 
   protected final def withClusterWatchService[A](
     clusterWatchId: ClusterWatchId = ControllerClusterForScalaTest.clusterWatchId)
-    (body: ClusterWatchService => A)
+    (body: (ClusterWatchService, StandardEventBus[ClusterNodeLossNotConfirmedProblem]) => A)
   : A =
     ThreadPools
       .standardSchedulerResource[SyncIO](
         s"${getClass.simpleScalaName}-${clusterWatchId.string}",
         Js7Configuration.defaultConfig)
       .use(implicit scheduler => SyncIO(
-        clusterWatchServiceResource(clusterWatchId).blockingUse(99.s)(
-          body)))
+        clusterWatchServiceResource(clusterWatchId)
+          .blockingUse(99.s)(body.tupled)))
       .unsafeRunSync()
 
   protected final def clusterWatchServiceResource(clusterWatchId: ClusterWatchId)
-  : Resource[Task, ClusterWatchService] =
-    DirectoryProvider.clusterWatchServiceResource(
-      clusterWatchId,
-      controllerAdmissions,
-      HttpsConfig.empty,
-      clusterWatchConfig)
+  : Resource[Task, (ClusterWatchService, StandardEventBus[ClusterNodeLossNotConfirmedProblem])] =
+    for {
+      eventbus <- Resource.fromAutoCloseable(Task(
+        new StandardEventBus[ClusterNodeLossNotConfirmedProblem]))
+      clusterWatch <- DirectoryProvider.clusterWatchServiceResource(
+        clusterWatchId,
+        controllerAdmissions,
+        HttpsConfig.empty,
+        clusterWatchConfig,
+        onClusterNodeLossNotConfirmed = o => Task(eventbus.publish(o)))
+    } yield (clusterWatch, eventbus)
 
   /** Simulate a kill via ShutDown(failOver) - still writes new snapshot. */
   protected final def simulateKillActiveNode(controller: TestController): Task[Unit] =

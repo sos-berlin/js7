@@ -24,7 +24,7 @@ final class ClusterWatchChangeWhileNodesRestartsTest extends ControllerClusterTe
     withControllerAndBackup(suppressClusterWatch = true) { (primary, _, backup, _, _) =>
       var eventId = 0L
       backup.runController(dontWaitUntilReady = true) { _ =>
-        withClusterWatchService() { _ =>
+        withClusterWatchService() { (_, _) =>
           primary.runController() { primaryController =>
             primaryController.eventWatch.await[ClusterCoupled]()
             primaryController.runOrder(FreshOrder(OrderId("FIRST"), TestWorkflow.path))
@@ -39,7 +39,7 @@ final class ClusterWatchChangeWhileNodesRestartsTest extends ControllerClusterTe
       logger.info(s"\n\n${"━" * 80}\n")
 
       backup.runController(dontWaitUntilReady = true) { _ =>
-        withClusterWatchService(clusterWatchId = ClusterWatchId("CLUSTER-WATCH-2")) { _ =>
+        withClusterWatchService(clusterWatchId = ClusterWatchId("CLUSTER-WATCH-2")) { (_, _) =>
           primary.runController() { primaryController =>
             primaryController.eventWatch.await[ClusterCoupled](after = eventId)
             primaryController.runOrder(FreshOrder(OrderId("SECOND"), TestWorkflow.path))

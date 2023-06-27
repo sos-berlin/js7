@@ -57,6 +57,10 @@ extends JavaWrapper with AutoCloseable
   def removeAllSubscriptions(): Unit =
     asScala.removeAllSubscriptions()
 
+  @javaApi
+  def publish(@Nonnull event: E): Unit =
+    asScala.publish(event)
+
   sealed/*instead of final in Scala 2: https://github.com/scala/bug/issues/4440*/
   case class EventSubscription private[JStandardEventBus](
     asScala: JStandardEventBus.this.asScala.EventSubscription)

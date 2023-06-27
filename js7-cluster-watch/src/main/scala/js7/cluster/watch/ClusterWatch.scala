@@ -8,6 +8,7 @@ import js7.base.monixutils.MonixDeadline
 import js7.base.problem.Checked
 import js7.base.problem.Checked.*
 import js7.base.time.ScalaTime.*
+import js7.base.utils.AsyncLock
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.cluster.watch.ClusterWatch.*
 import js7.cluster.watch.api.ClusterWatchProblems.{ClusterFailOverWhilePassiveLostProblem, ClusterNodeIsNotLostProblem, ClusterNodeLossNotConfirmedProblem, ClusterWatchEventMismatchProblem, ClusterWatchInactiveNodeProblem, UntaughtClusterWatchProblem}
@@ -16,6 +17,7 @@ import js7.data.cluster.ClusterState.{Coupled, HasNodes, PassiveLost}
 import js7.data.cluster.ClusterWatchRequest
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.node.NodeId
+import monix.eval.Task
 import org.jetbrains.annotations.TestOnly
 import scala.collection.mutable
 import scala.util.chaining.scalaUtilChainingOps
@@ -25,21 +27,22 @@ final class ClusterWatch(
   label: String = "",
   onClusterStateChanged: (HasNodes) => Unit = _ => (),
   requireManualNodeLossConfirmation: Boolean = false,
-  val eventBus: ClusterWatchEventBus = new ClusterWatchEventBus)
+  onClusterNodeLossNotConfirmed: ClusterNodeLossNotConfirmedProblem => Task[Unit] = _ => Task.unit)
 {
   private val logger = Logger.withPrefix[this.type](label)
 
   // Variables are synchronized
+  private val lock = AsyncLock()
   private val _nodeToLossRejected = mutable.Map.empty[NodeId, LossRejected]
   private var _state: Option[State] = None
 
-  def processRequest(request: ClusterWatchRequest): Checked[Confirmed] =
-    logger.debugCall("processRequest", request)(
-      synchronized {
-        request.checked >> processRequest2(request)
-      })
+  def processRequest(request: ClusterWatchRequest): Task[Checked[Confirmed]] =
+    logger.debugTask("processRequest", request)(
+      lock.lock(
+        Task.pure(request.checked)
+          .flatMapT(_ => processRequest2(request))))
 
-  private def processRequest2(request: ClusterWatchRequest): Checked[Confirmed] = {
+  private def processRequest2(request: ClusterWatchRequest): Task[Checked[Confirmed]] = {
     import request.{from, clusterState as reportedClusterState}
 
     lazy val opString = s"${request.maybeEvent.fold("")(o => s"$o --> ")}$reportedClusterState"
@@ -70,12 +73,12 @@ final class ClusterWatch(
         _state = _state.map(state => state.copy(
           lastHeartbeat = // Update lastHeartbeat only when `from` is active
             Some(state).filter(_.clusterState.activeId != from).fold(now())(_.lastHeartbeat)))
-        eventBus.publish(problem)
-        Left(problem)
+        onClusterNodeLossNotConfirmed(problem)
+          .as(Left(problem))
 
       case Left(problem) =>
         _nodeToLossRejected.clear()
-        Left(problem)
+        Task.left(problem)
 
       case Right((maybeManualConfirmer, updatedClusterState)) =>
         _nodeToLossRejected.clear()
@@ -89,7 +92,7 @@ final class ClusterWatch(
         if (changed) {
           onClusterStateChanged(updatedClusterState)
         }
-        Right(Confirmed(manualConfirmer = maybeManualConfirmer))
+        Task.right(Confirmed(manualConfirmer = maybeManualConfirmer))
     }
   }
 
@@ -98,17 +101,16 @@ final class ClusterWatch(
       .flatMap(_.manuallyConfirmed(event))
 
   // User manually confirms a ClusterNodeLostEvent event
-  def manuallyConfirmNodeLoss(lostNodeId: NodeId, confirmer: String): Checked[Unit] =
-    logger.debugCall("manuallyConfirmNodeLoss", lostNodeId)(
-      synchronized {
+  def manuallyConfirmNodeLoss(lostNodeId: NodeId, confirmer: String): Task[Checked[Unit]] =
+    logger.debugTask("manuallyConfirmNodeLoss", lostNodeId)(
+      lock.lock(Task(
         matchRejectedNodeLostEvent(lostNodeId)
           .toRight(ClusterNodeIsNotLostProblem(lostNodeId))
           .map { lossRejected =>
             _nodeToLossRejected.clear()
             _nodeToLossRejected(lostNodeId) = lossRejected.copy(
               manualConfirmer = Some(confirmer))
-          }
-      })
+          })))
 
   private def matchRejectedNodeLostEvent(lostNodeId: NodeId): Option[LossRejected] =
     (_nodeToLossRejected.get(lostNodeId), _state.map(_.clusterState)) match {

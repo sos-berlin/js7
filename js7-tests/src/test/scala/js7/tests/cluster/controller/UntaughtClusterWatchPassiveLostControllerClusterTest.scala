@@ -23,7 +23,7 @@ final class UntaughtClusterWatchPassiveLostControllerClusterTest extends Control
       val primaryController = primary.newController()
       val backupController = backup.newController()
 
-      withClusterWatchService() { clusterWatch =>
+      withClusterWatchService() { (clusterWatch, _) =>
         primaryController.eventWatch.await[ClusterCoupled]()
         waitForCondition(10.s, 10.ms)(clusterWatch.clusterState().exists(_.isInstanceOf[Coupled]))
 
@@ -40,16 +40,16 @@ final class UntaughtClusterWatchPassiveLostControllerClusterTest extends Control
         })
         .await(99.s)
 
-      withClusterWatchService() { clusterWatch =>
+      withClusterWatchService() { (clusterWatch, _) =>
         // ClusterWatch is untaught
-        assert(clusterWatch.manuallyConfirmNodeLoss(primaryId, "CONFIRMER")
+        assert(clusterWatch.manuallyConfirmNodeLoss(primaryId, "CONFIRMER").await(99.s)
           == Left(ClusterNodeIsNotLostProblem(primaryId)))
 
         // backupId is lost. Wait until active node has detected it.
         waitForCondition(99.s, 10.ms)(
-          clusterWatch.manuallyConfirmNodeLoss(backupId, "CONFIRMER")
+          clusterWatch.manuallyConfirmNodeLoss(backupId, "CONFIRMER").await(99.s)
             != Left(ClusterNodeIsNotLostProblem(backupId)))
-        assert(clusterWatch.manuallyConfirmNodeLoss(backupId, "CONFIRMER")
+        assert(clusterWatch.manuallyConfirmNodeLoss(backupId, "CONFIRMER").await(99.s)
           != Left(ClusterNodeIsNotLostProblem(backupId)))
 
         primaryController.eventWatch.await[ClusterPassiveLost]()

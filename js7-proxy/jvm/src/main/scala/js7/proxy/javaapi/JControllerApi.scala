@@ -5,10 +5,10 @@ import io.vavr.control.Either as VEither
 import java.time.Instant
 import java.util.Objects.requireNonNull
 import java.util.concurrent.CompletableFuture
+import java.util.function.Consumer
 import java.util.{Optional, OptionalLong}
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
-import js7.base.eventbus.StandardEventBus
 import js7.base.log.CorrelId
 import js7.base.monixutils.AsyncVariable
 import js7.base.problem.Problem
@@ -34,7 +34,6 @@ import js7.data_for_java.vavr.VavrConverters.*
 import js7.data_for_java.workflow.position.JPosition
 import js7.proxy.ControllerApi
 import js7.proxy.data.event.ProxyEvent
-import js7.proxy.javaapi.JControllerApi.*
 import js7.proxy.javaapi.data.controller.JEventAndControllerState
 import js7.proxy.javaapi.eventbus.{JControllerEventBus, JStandardEventBus}
 import monix.eval.Task
@@ -319,7 +318,7 @@ final class JControllerApi(val asScala: ControllerApi, config: Config)
 
   @Nonnull
   def runClusterWatch(@Nonnull clusterWatchId: ClusterWatchId): CompletableFuture[Void] =
-    startClusterWatch(clusterWatchId)
+    startClusterWatch(clusterWatchId, _ => ())
       .thenCompose(_
         .untilStopped
         .as(Void)
@@ -329,14 +328,15 @@ final class JControllerApi(val asScala: ControllerApi, config: Config)
   @Nonnull
   def startClusterWatch(
     @Nonnull clusterWatchId: ClusterWatchId,
-    @Nonnull eventBus: JClusterWatchEventBus = newClusterWatchEventBus())
+    @Nonnull onClusterNodeLossNotConfirmed: Consumer[ClusterNodeLossNotConfirmedProblem])
   : CompletableFuture[ClusterWatchService] =
     clusterWatchService
       .update {
         case Some(service) => Task.some(service)
         case None =>
           ClusterWatchService
-            .resource(clusterWatchId, asScala.apisResource, config, eventBus = eventBus.asScala)
+            .resource(clusterWatchId, asScala.apisResource, config,
+              onClusterNodeLossNotConfirmed = o => Task(onClusterNodeLossNotConfirmed.accept(o)))
             .toAllocated
             .map(Some(_))
       }
@@ -353,13 +353,19 @@ final class JControllerApi(val asScala: ControllerApi, config: Config)
       .update(_.fold(Task.none)(_.release.as(None)))
       .void
 
+  @javaApi
+  def manuallyConfirmNodeLoss(lostNodeId: NodeId, confirmer: String)
+  : CompletableFuture[VEither[Problem, Void]] =
+    clusterWatchService.value
+      .flatMap {
+        case None => Task.left(Problem("No ClusterWatchService"))
+        case Some(allo) => allo.allocatedThing.manuallyConfirmNodeLoss(lostNodeId, confirmer)
+      }
+      .map(_.toVoidVavr)
+      .runToFuture
+      .asJava
+
+
   private def runTask[A](task: Task[A]): CompletableFuture[A] =
     CorrelId.bindNew(task.runToFuture).asJava
-}
-
-object JControllerApi {
-  type JClusterWatchEventBus = JStandardEventBus[ClusterNodeLossNotConfirmedProblem]
-
-  def newClusterWatchEventBus(): JClusterWatchEventBus =
-    new JStandardEventBus(new StandardEventBus[ClusterNodeLossNotConfirmedProblem])
 }

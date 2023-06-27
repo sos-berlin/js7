@@ -29,6 +29,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, HasCloser}
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatchService
+import js7.cluster.watch.api.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem
 import js7.common.akkautils.Akkas
 import js7.common.configuration.Js7Configuration
 import js7.common.utils.Exceptions.repeatUntilNoException
@@ -507,7 +508,8 @@ object DirectoryProvider
     clusterWatchId: ClusterWatchId,
     admissions: Nel[Admission],
     httpsConfig: HttpsConfig,
-    config: Config = ConfigFactory.empty)
+    config: Config = ConfigFactory.empty,
+    onClusterNodeLossNotConfirmed: ClusterNodeLossNotConfirmedProblem => Task[Unit] = _ => Task.unit)
   : Resource[Task, ClusterWatchService] =
     Akkas
       .actorSystemResource(clusterWatchId.string)
@@ -515,5 +517,6 @@ object DirectoryProvider
         ClusterWatchService.resource(
           clusterWatchId,
           admissions.traverse(AkkaHttpControllerApi.resource(_, httpsConfig)),
-          config.withFallback(Js7Configuration.defaultConfig)))
+          config.withFallback(Js7Configuration.defaultConfig),
+          onClusterNodeLossNotConfirmed = onClusterNodeLossNotConfirmed))
 }

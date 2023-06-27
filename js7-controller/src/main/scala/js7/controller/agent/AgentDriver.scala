@@ -398,8 +398,7 @@ extends Service.StoppableByRequest
 
   def confirmClusterNodeLoss(lostNodeId: NodeId, confirmer: String): Task[Checked[Unit]] =
     clusterWatchAllocated.checked
-      .flatMapT(clusterWatchService => Task(
-        clusterWatchService.manuallyConfirmNodeLoss(lostNodeId, confirmer)))
+      .flatMapT(_.manuallyConfirmNodeLoss(lostNodeId, confirmer))
 
   private def startAndForgetDirectorDriver(implicit src: sourcecode.Enclosing): Task[Unit] =
     startNewDirectorDriver
