@@ -9,8 +9,9 @@ import js7.base.log.Logger.syntax.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.SetOnce
+import js7.base.utils.{OneTimeToken, OneTimeTokenProvider, SetOnce}
 import js7.cluster.ClusterCommon.*
 import js7.cluster.ClusterConf.ClusterProductName
 import js7.cluster.watch.api.ClusterWatchProblems.{ClusterNodeLossNotConfirmedProblem, ClusterWatchInactiveNodeProblem}
@@ -21,6 +22,7 @@ import js7.data.cluster.ClusterState.{FailedOver, HasNodes, SwitchedOver}
 import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeApi, ClusterState}
 import monix.eval.Task
 import scala.concurrent.duration.Deadline.now
+import scala.reflect.ClassTag
 
 private[cluster] final class ClusterCommon private(
   val clusterWatchCounterpart: ClusterWatchCounterpart,
@@ -34,6 +36,7 @@ private[cluster] final class ClusterCommon private(
 
   val activationInhibitor = new ActivationInhibitor
   private val _clusterWatchSynchronizer = SetOnce[ClusterWatchSynchronizer]
+  val couplingTokenProvider = OneTimeTokenProvider.unsafe()
 
   def stop: Task[Unit] =
     Task.defer {
@@ -70,22 +73,23 @@ private[cluster] final class ClusterCommon private(
 
   def tryEndlesslyToSendCommand(admission: Admission, command: ClusterCommand): Task[Unit] = {
     val name = command.getClass.simpleScalaName
-    tryEndlesslyToSendCommand(clusterNodeApi(admission, name), command)
+    tryEndlesslyToSendCommand(clusterNodeApi(admission, name), _ => command)
   }
 
-  def tryEndlesslyToSendCommand(
+  def tryEndlesslyToSendCommand[C <: ClusterCommand: ClassTag](
     apiResource: Resource[Task, ClusterNodeApi],
-    command: ClusterCommand)
+    toCommand: OneTimeToken => C)
   : Task[Unit] =
     Task.defer {
-      val name = command.getClass.simpleScalaName
+      val name = implicitClass[C].simpleScalaName
       var warned = false
       val since = now
       apiResource
         .use(api => api
           .retryIfSessionLost()(
-            api.loginUntilReachable(onlyIfNotLoggedIn = true)
-              .*>(api.executeClusterCommand(command)))
+            api.loginUntilReachable(onlyIfNotLoggedIn = true) *>
+              couplingTokenProvider.resource.use(token =>
+                api.executeClusterCommand(toCommand(token))))
           .map((_: ClusterCommand.Response) => ())
           .onErrorRestartLoop(()) { (throwable, _, retry) =>
             warned = true

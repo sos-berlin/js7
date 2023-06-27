@@ -232,7 +232,7 @@ object FileUtils
       })
 
   def deleteDirectoryRecursively(dir: Path): Unit = {
-    require(isDirectory(dir), s"Not a directory: $dir")
+    if (!isDirectory(dir)) throw new IOException(s"Not a directory: $dir")
     if (!isSymbolicLink(dir)) {
       deleteDirectoryContentRecursively(dir)
     }

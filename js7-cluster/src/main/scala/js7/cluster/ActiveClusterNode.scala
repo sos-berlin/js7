@@ -23,7 +23,7 @@ import js7.cluster.watch.api.ClusterWatchConfirmation
 import js7.cluster.watch.api.ClusterWatchProblems.{ClusterStateEmptyProblem, NoClusterWatchProblem}
 import js7.common.http.RecouplingStreamReader
 import js7.data.Problems.{ClusterCommandInapplicableProblem, ClusterNodeIsNotActiveProblem, ClusterSettingNotUpdatable, MissingPassiveClusterNodeHeartbeatProblem, PassiveClusterNodeUrlChangeableOnlyWhenNotCoupledProblem}
-import js7.data.cluster.ClusterCommand.ClusterStartBackupNode
+import js7.data.cluster.ClusterCommand.{ClusterConfirmCoupling, ClusterStartBackupNode}
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterPassiveLost, ClusterSettingUpdated, ClusterSwitchedOver, ClusterWatchRegistered}
 import js7.data.cluster.ClusterState.{ActiveShutDown, Coupled, Empty, HasNodes, IsDecoupled, NodesAppointed, PassiveLost, PreparedToBeCoupled}
 import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
@@ -198,12 +198,15 @@ final class ActiveClusterNode[S <: ClusterableState[S]: diffx.Diff] private[clus
   def executeCommand(command: ClusterCommand): Task[Checked[ClusterCommand.Response]] =
     command match {
       case _: ClusterCommand.ClusterStartBackupNode =>
-        throw new AssertionError("ClusterStartBackupNode")
+        throw new AssertionError("ClusterStartBackupNode at active node?")
 
-      case command @ ClusterCommand.ClusterPrepareCoupling(activeId, passiveId) =>
+      case _: ClusterCommand.ClusterConfirmCoupling =>
+        throw new AssertionError("ClusterConfirmCoupling at actice node?")
+
+      case command @ ClusterCommand.ClusterPrepareCoupling(activeId, passiveId, _) =>
         requireOwnNodeId(command, activeId)(
           clusterStateLock.lock(command.toShortString)(
-            checkPassiveNodeResponds(command).flatMapT(_ =>
+            checkCouplingToken(command).flatMapT(_ =>
               persist() {
                 case Empty =>
                   Left(ClusterCommandInapplicableProblem(command, Empty))
@@ -226,9 +229,9 @@ final class ActiveClusterNode[S <: ClusterableState[S]: diffx.Diff] private[clus
                   .as(Right(ClusterCommand.Response.Accepted))
               })))
 
-      case command @ ClusterCommand.ClusterCouple(activeId, passiveId) =>
+      case command @ ClusterCommand.ClusterCouple(activeId, passiveId, _) =>
         requireOwnNodeId(command, activeId)(
-          checkPassiveNodeResponds(command).flatMapT(_ =>
+          checkCouplingToken(command).flatMapT(_ =>
             clusterStateLock.lock(command.toShortString)(
               persist() {
                 case clusterState @ ClusterState.Empty =>
@@ -308,7 +311,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]: diffx.Diff] private[clus
   // TODO ClusterCouplingCommand soll zufällige Kennung mitgeben
   //  Neues Kommando vom Aktiven an Passiven, dass den Passiven die Kennung prüft lässt
   //  ClusterCheckCoupling(Base64UUID)
-  private def checkPassiveNodeResponds(command: ClusterCommand.ClusterCouplingCommand)
+  private def checkCouplingToken(command: ClusterCommand.ClusterCouplingCommand)
   : Task[Checked[Unit]] =
     logger.debugTask(
       journal.state.map(_.clusterState)
@@ -319,12 +322,12 @@ final class ActiveClusterNode[S <: ClusterableState[S]: diffx.Diff] private[clus
         .flatMapT(passiveUri => common
           .clusterNodeApi(
             Admission(passiveUri, passiveNodeUserAndPassword),
-            "checkPassiveNodeResponds")
+            "checkCouplingToken")
           .use(api =>
             api.login(onlyIfNotLoggedIn = true) *>
-              api.eventIdObservable(timeout = Some(0.s))
-                .flatMap(_.headL))
-          .as(Right(()))
+              HttpClient.liftProblem(
+                api.executeClusterCommand(ClusterConfirmCoupling(command.token))
+                  .void))
           .timeoutTo(passiveNodeCouplingResponseTimeout, Task.left(Problem(
             s"Passive node did not respond within ${passiveNodeCouplingResponseTimeout.pretty}")))
           .onErrorHandle { throwable =>

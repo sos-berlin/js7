@@ -4,6 +4,7 @@ import js7.base.auth.UserId
 import js7.base.circeutils.CirceUtils.*
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
+import js7.base.utils.OneTimeToken
 import js7.base.web.Uri
 import js7.data.cluster.ClusterCommand.*
 import js7.data.cluster.ClusterState.FailedOver
@@ -48,21 +49,32 @@ final class ClusterCommandTest extends OurTestSuite
 
   "ClusterPrepareCoupling" in {
     testJson[ClusterCommand](
-      ClusterPrepareCoupling(NodeId("A"), NodeId("B")),
+      ClusterPrepareCoupling(NodeId("A"), NodeId("B"), OneTimeToken("TOKEN")),
       json"""{
         "TYPE": "ClusterPrepareCoupling",
         "activeId": "A",
-        "passiveId": "B"
+        "passiveId": "B",
+        "token": "TOKEN"
       }""")
   }
 
   "ClusterCouple" in {
     testJson[ClusterCommand](
-      ClusterCouple(NodeId("A"), NodeId("B")),
+      ClusterCouple(NodeId("A"), NodeId("B"), OneTimeToken("TOKEN")),
       json"""{
         "TYPE": "ClusterCouple",
         "activeId": "A",
-        "passiveId": "B"
+        "passiveId": "B",
+        "token": "TOKEN"
+      }""")
+  }
+
+  "ClusterConfirmCoupling" in {
+    testJson[ClusterCommand](
+      ClusterConfirmCoupling(OneTimeToken("TOKEN")),
+      json"""{
+        "TYPE": "ClusterConfirmCoupling",
+        "token": "TOKEN"
       }""")
   }
 

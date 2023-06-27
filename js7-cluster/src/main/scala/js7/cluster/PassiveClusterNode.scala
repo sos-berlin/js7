@@ -28,8 +28,8 @@ import js7.base.time.Stopwatch.bytesPerSecondString
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.SetOnce
 import js7.base.utils.StackTraces.*
+import js7.base.utils.{OneTimeToken, SetOnce}
 import js7.base.web.HttpClient
 import js7.cluster.ClusterCommon.clusterEventAndStateToString
 import js7.cluster.PassiveClusterNode.*
@@ -188,12 +188,15 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]: diffx.
       .match_ {
         case ClusterState.Empty =>
           Task.unit
+
         case _: IsDecoupled =>
           tryEndlesslyToSendCommandInBackground(
-            ClusterPrepareCoupling(activeId = activeId, passiveId = ownId))
+            ClusterPrepareCoupling(activeId = activeId, passiveId = ownId, _))
+
         case _: PreparedToBeCoupled =>
           tryEndlesslyToSendCommandInBackground(
-            ClusterCouple(activeId = activeId, passiveId = ownId))
+            ClusterCouple(activeId = activeId, passiveId = ownId, _))
+
         case _: Coupled =>
           // After a quick restart of this passive node, the active node may not yet have noticed the loss.
           // So we send a ClusterRecouple command to force a ClusterPassiveLost event.
@@ -203,9 +206,13 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]: diffx.
           Task.defer {
             awaitingCoupledEvent = true
             tryEndlesslyToSendCommandInBackground(
-              ClusterRecouple(activeId = activeId, passiveId = ownId))
+              _ => ClusterRecouple(activeId = activeId, passiveId = ownId))
           }
       }
+
+  def confirmCoupling(token: OneTimeToken): Checked[Unit] =
+    common.couplingTokenProvider.confirms(token) !!
+      Problem("Another passive cluster node wanted to couple")
 
   private def cutJournalFile(file: Path, length: Long, eventId: EventId): Unit =
     if (exists(file)) {
@@ -226,12 +233,13 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]: diffx.
     //  ["HEARTBEAT", { timestamp: 1234.567 }]
     //  {TYPE: "Heartbeat", eventId: 1234567000, timestamp: 1234.567 }    Herzschlag-Event?
     //  Funktioniert nicht, wenn die Uhren verschieden gehen. Differenz feststellen?
-    tryEndlesslyToSendCommand(
-      ClusterPrepareCoupling(activeId = activeId, passiveId = ownId))
+      tryEndlesslyToSendCommand(
+        ClusterPrepareCoupling(activeId = activeId, passiveId = ownId, _))
   }
 
-  private def tryEndlesslyToSendCommandInBackground(cmd: ClusterCommand): Task[Unit] =
-    tryEndlesslyToSendCommand(cmd)
+  private def tryEndlesslyToSendCommandInBackground(toCommand: OneTimeToken => ClusterCommand)
+  : Task[Unit] =
+    tryEndlesslyToSendCommand(toCommand)
       .attempt
       .map {
         case Left(throwable) => logger.error(
@@ -243,20 +251,21 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]: diffx.
       }
       .startAndForget
 
-  private def tryEndlesslyToSendCommand(cmd: ClusterCommand): Task[Unit] =
+  private def tryEndlesslyToSendCommand(toCommand: OneTimeToken => ClusterCommand)
+  : Task[Unit] =
     Task
       .race(
         shutdown.get,
-        common.tryEndlesslyToSendCommand(activeApiResource, cmd))
+        common.tryEndlesslyToSendCommand(activeApiResource, toCommand))
       .flatMap {
         case Left(()) => Task(logger.debug(
-          s"⚫ tryEndlesslyToSendClusterCommand(${cmd.getClass.simpleScalaName}) canceled due to shutdown"))
+          s"⚫ tryEndlesslyToSendClusterCommand(${toCommand.getClass.simpleScalaName}) canceled due to shutdown"))
         case Right(()) => Task.unit
       }
 
   private def sendClusterCouple: Task[Unit] =
     tryEndlesslyToSendCommand(
-      ClusterCouple(activeId = activeId, passiveId = ownId))
+      ClusterCouple(activeId = activeId, passiveId = ownId, _))
 
   private def replicateJournalFiles(recoveredClusterState: ClusterState)
   : Task[Checked[Recovered[S]]] =

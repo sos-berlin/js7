@@ -186,6 +186,14 @@ extends Service.StoppableByRequest
             }
           }
 
+        case ClusterCommand.ClusterConfirmCoupling(token) =>
+          Task(
+            passiveOrWorkingNode.get() match {
+              case Some(Left(passive)) => passive.confirmCoupling(token)
+              case _ => Left(Problem("Not a passive cluster node"))
+            }
+          ).rightAs(ClusterCommand.Response.Accepted)
+
         case ClusterCommand.ClusterInhibitActivation(duration) =>
           activationInhibitor.inhibitActivation(duration)
             .flatMapT(inhibited =>

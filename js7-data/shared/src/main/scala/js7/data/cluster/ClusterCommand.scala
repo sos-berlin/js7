@@ -7,6 +7,7 @@ import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.IntelliJUtils.intelliJuseImport
+import js7.base.utils.OneTimeToken
 import js7.data.command.CommonCommand
 import js7.data.event.EventId
 import js7.data.node.{NodeId, NodeName}
@@ -34,16 +35,19 @@ object ClusterCommand
   sealed trait ClusterCouplingCommand extends ClusterCommand {
     def activeId: NodeId
     def passiveId: NodeId
+    def token: OneTimeToken
   }
 
-  final case class ClusterPrepareCoupling(activeId: NodeId, passiveId: NodeId)
+  final case class ClusterPrepareCoupling(
+    activeId: NodeId, passiveId: NodeId, token: OneTimeToken)
   extends ClusterCouplingCommand {
     type Response = Response.Accepted
     assertThat(activeId != passiveId)
     override def toString = s"ClusterPrepareCoupling(activeId=$activeId passiveId=$passiveId)"
   }
 
-  final case class ClusterCouple(activeId: NodeId, passiveId: NodeId)
+  final case class ClusterCouple(
+    activeId: NodeId, passiveId: NodeId, token: OneTimeToken)
   extends ClusterCouplingCommand {
     type Response = Response.Accepted
     assertThat(activeId != passiveId)
@@ -56,6 +60,14 @@ object ClusterCommand
     assertThat(activeId != passiveId)
     override def toString = s"ClusterRecouple(activeId=$activeId passiveId=$passiveId)"
   }
+
+  final case class ClusterConfirmCoupling(token: OneTimeToken)
+  extends ClusterCommand {
+    type Response = Response.Accepted
+
+    override def toString = "ClusterConfirmCoupling"
+  }
+
 
   final case class ClusterPassiveDown(activeId: NodeId, passiveId: NodeId)
   extends ClusterCommand {
@@ -91,6 +103,7 @@ object ClusterCommand
     Subtype(deriveCodec[ClusterStartBackupNode]),
     Subtype(deriveCodec[ClusterPrepareCoupling]),
     Subtype(deriveCodec[ClusterCouple]),
+    Subtype(deriveCodec[ClusterConfirmCoupling]),
     Subtype(deriveCodec[ClusterRecouple]),
     Subtype(deriveCodec[ClusterPassiveDown]),
     Subtype(deriveCodec[ClusterInhibitActivation]))

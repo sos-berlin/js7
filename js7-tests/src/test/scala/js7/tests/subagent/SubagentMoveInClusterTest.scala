@@ -32,13 +32,13 @@ with BlockingItemUpdater
     js7.auth.agents.AGENT = "${agentPath.toString}-PASSWORD"
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.journal.remove-obsolete-files = false
-    js7.controller.agent-driver.command-batch-delay = 0ms
-    js7.controller.agent-driver.event-buffer-delay = 0ms
-  """//.withFallback(super.controllerConfig)
+  """.withFallback(super.controllerConfig)
 
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = true
-  """//.withFallback(super.agentConfig)
+    js7.journal.cluster.heartbeat = 1s
+    js7.journal.cluster.heartbeat-timeout = 3s
+  """.withFallback(super.agentConfig)
 
   protected val agentPaths = Nil
 
@@ -93,44 +93,46 @@ with BlockingItemUpdater
 
     primaryDirectorResource.toAllocated.await(99.s).useSync(99.s) { case (_, primaryDirector) =>
       val backupDirectorEnvAllocated = backupDirectorEnvResource.toAllocated.await(99.s)
+      val backupEnv = backupDirectorEnvAllocated.allocatedThing
+      val backupDirector = TestAgent(backupEnv.directorResource.toAllocated.await(99.s))
       var eventId = 0L
       var directorEventId = 0L
-      backupDirectorEnvAllocated.useSync(99.s) { backupEnv =>
-        TestAgent(backupEnv.directorResource.toAllocated.await(99.s)).useSync(99.s) { backupDirector =>
-          primaryDirector.eventWatch.await[ClusterCoupled]()
-          TestSemaphoreJob.continue()
-          controller.runOrder(FreshOrder(OrderId("A-ORDER"), workflow.path))
+      primaryDirector.eventWatch.await[ClusterCoupled]()
+      TestSemaphoreJob.continue()
+      controller.runOrder(FreshOrder(OrderId("A-ORDER"), workflow.path))
 
-          eventId = eventWatch.lastAddedEventId
-          locally {
-            controller.api.addOrder(FreshOrder(aOrderId, workflow.path)).await(99.s).orThrow
-            val processingStarted = eventWatch
-              .await[OrderProcessingStarted](_.key == aOrderId, after = eventId).head.value.event
-            assert(processingStarted == OrderProcessingStarted(backupSubagentItem.id))
-            eventWatch.await[OrderStdoutWritten](_.key == aOrderId, after = eventId)
-            // aOrderId is waiting for semaphore
-          }
-
-          eventId = eventWatch.lastAddedEventId
-          directorEventId = primaryDirector.eventWatch.lastAddedEventId
-          controller.api.updateUnsignedSimpleItems(Seq(newBackupSubagentItem)).await(99.s).orThrow
-          primaryDirector.eventWatch.await[ClusterPassiveLost](after = directorEventId)
-          primaryDirector.eventWatch.await[ClusterSettingUpdated](after = directorEventId)
-          //myAgent.eventWatch.await[ItemAttachedToMe](_.event.item.key == newBackupSubagentItem.id,
-          //  after = agentEventId)
-          //myAgent.eventWatch.await[SubagentCouplingFailed](_.key == newBackupSubagentItem.id, after = agentEventId)
-
-          sleep(15.s)
-          //backupDirector
-          //  .terminate(clusterAction = Some(AgentCommand.ShutDown.ClusterAction.Failover))
-          //  .await(99.s)
-        }
-
-        copyDirectoryContent(backupEnv.stateDir, newBackupEnv.stateDir)
+      eventId = eventWatch.lastAddedEventId
+      locally {
+        controller.api.addOrder(FreshOrder(aOrderId, workflow.path)).await(99.s).orThrow
+        val processingStarted = eventWatch
+          .await[OrderProcessingStarted](_.key == aOrderId, after = eventId).head.value.event
+        assert(processingStarted == OrderProcessingStarted(backupSubagentItem.id))
+        eventWatch.await[OrderStdoutWritten](_.key == aOrderId, after = eventId)
+        // aOrderId is waiting for semaphore
       }
 
-      newBackupDirectorEnvAllocated.useSync(99.s) { backupEnv =>
-        backupEnv.directorResource.toAllocated.await(99.s).useSync(99.s) { _ =>
+      eventId = eventWatch.lastAddedEventId
+      directorEventId = primaryDirector.eventWatch.lastAddedEventId
+      controller.api.updateUnsignedSimpleItems(Seq(newBackupSubagentItem)).await(99.s).orThrow
+      primaryDirector.eventWatch.await[ClusterPassiveLost](after = directorEventId)
+      primaryDirector.eventWatch.await[ClusterSettingUpdated](after = directorEventId)
+
+      sleep(5.s)
+      // While sleeping, the following message should logged:
+      // A passive cluster node wanted to couple but http://localhost:... does not respond
+
+      copyDirectoryContent(backupEnv.stateDir, newBackupEnv.stateDir)
+
+      newBackupDirectorEnvAllocated.useSync(99.s) { newBackupEnv =>
+        newBackupEnv.directorResource.toAllocated.await(99.s).useSync(99.s) { _ =>
+          // Now, both old and new back node are running
+
+          sleep(5.s)
+          // While sleeping, the following message should logged:
+          // ClusterPrepareCoupling command failed with ... Another passive cluster node wanted to couple
+          (backupDirector.stop).await(99.s)
+          backupEnv.close()
+
           primaryDirector.eventWatch.await[ClusterCoupled](after = directorEventId)
 
           val aProcessed = eventWatch.await[OrderProcessed](_.key == aOrderId, after = eventId).head
