@@ -31,15 +31,20 @@ object ClusterCommand
     type Response = Response.Accepted
   }
 
+  sealed trait ClusterCouplingCommand extends ClusterCommand {
+    def activeId: NodeId
+    def passiveId: NodeId
+  }
+
   final case class ClusterPrepareCoupling(activeId: NodeId, passiveId: NodeId)
-  extends ClusterCommand {
+  extends ClusterCouplingCommand {
     type Response = Response.Accepted
     assertThat(activeId != passiveId)
     override def toString = s"ClusterPrepareCoupling(activeId=$activeId passiveId=$passiveId)"
   }
 
   final case class ClusterCouple(activeId: NodeId, passiveId: NodeId)
-  extends ClusterCommand {
+  extends ClusterCouplingCommand {
     type Response = Response.Accepted
     assertThat(activeId != passiveId)
     override def toString = s"ClusterCouple(activeId=$activeId passiveId=$passiveId)"

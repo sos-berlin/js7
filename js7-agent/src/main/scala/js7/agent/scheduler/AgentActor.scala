@@ -34,6 +34,7 @@ import js7.data.cluster.ClusterState.HasNodes
 import js7.data.controller.{ControllerId, ControllerRunId}
 import js7.data.event.EventId
 import js7.data.event.KeyedEvent.NoKey
+import js7.data.item.BasicItemEvent.ItemAttachedToMe
 import js7.data.node.NodeId
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.journal.files.JournalFiles.JournalMetaOps
@@ -339,7 +340,7 @@ private[agent] final class AgentActor(
                   clusterNode,
                   failedOverSubagentId,
                   requireNonNull(recoveredAgentState),
-                  appointClusterNodes,
+                  changeSubagentAndClusterNode,
                   journalAllocated,
                   shutDownOnce,
                   clock,
@@ -352,24 +353,30 @@ private[agent] final class AgentActor(
         }
     }
 
-  private def appointClusterNodes: Task[Unit] =
+  /** Emits the event, and ClusterSettingUpdated if needed, in separate transaction. */
+  private def changeSubagentAndClusterNode(event: ItemAttachedToMe): Task[Checked[Unit]] =
     logger.debugTask(journal.state
       .flatMap(agentState =>
-        Task.when(agentState.isDedicated)(
-          demandedClusterNodeUris(agentState)
-            .fold(Task.unit) { idToUri =>
-              agentState.clusterState
-                .match_ {
-                  case ClusterState.Empty =>
-                    Some(NodeId.primary)
-                  case clusterState: HasNodes =>
-                    (clusterState.setting.idToUri != idToUri) ? clusterState.activeId
-                }
-                .fold(Task.unit)(activeNodeId =>
-                  Task(clusterNode.workingClusterNode)
-                    .flatMapT(_.appointNodes(idToUri, activeNodeId))
-                    .map(_.onProblemHandle(problem =>
-                      logger.error(s"appointClusterNodes: $problem"))))
+        if (!agentState.isDedicated)
+          journal.persistKeyedEvent(event).rightAs(())
+        else
+          Task.pure(agentState.applyEvent(event)).flatMapT(nextAgentState =>
+            demandedClusterNodeUris(nextAgentState) match {
+              case None =>
+                journal.persistKeyedEvent(event).rightAs(())
+
+              case Some(idToUri) =>
+                agentState.clusterState
+                  .match_ {
+                    case ClusterState.Empty =>
+                      Some(NodeId.primary)
+                    case clusterState: HasNodes =>
+                      (clusterState.setting.idToUri != idToUri) ? clusterState.activeId
+                  }
+                  .fold(journal.persistKeyedEvent(event).rightAs(()))(activeNodeId =>
+                    Task(clusterNode.workingClusterNode)
+                      .flatMapT(_
+                        .appointNodes(idToUri, activeNodeId, extraEvent = Some(event))))
             })))
 
   /** Returns Some when AgentRef and the Director's SubagentIds are available. */

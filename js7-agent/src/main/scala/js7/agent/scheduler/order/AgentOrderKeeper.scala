@@ -15,7 +15,8 @@ import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.crypt.Signed
 import js7.base.generic.Completed
 import js7.base.io.process.ProcessSignal.SIGKILL
-import js7.base.log.{CorrelId, Logger}
+import js7.base.log.{BlockingSymbol, CorrelId, Logger}
+import js7.base.monixutils.AsyncVariable
 import js7.base.monixutils.MonixBase.syntax.{RichCheckedTask, RichMonixTask}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
@@ -23,6 +24,7 @@ import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.JavaTime.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.{AdmissionTimeScheme, AlarmClock, TimeInterval}
+import js7.base.utils.CatsUtils.continueWithLast
 import js7.base.utils.Collections.implicits.InsertableMutableMap
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StackTraces.StackTraceThrowable
@@ -34,6 +36,7 @@ import js7.common.system.PlatformInfos.currentPlatformInfo
 import js7.common.system.startup.ServiceMain
 import js7.common.utils.Exceptions.wrapException
 import js7.core.problems.ReverseReleaseEventsProblem
+import js7.data.Problems.PassiveClusterNodeUrlChangeableOnlyWhenNotCoupledProblem
 import js7.data.agent.AgentRef
 import js7.data.agent.Problems.{AgentDuplicateOrder, AgentIsShuttingDown}
 import js7.data.calendar.Calendar
@@ -59,7 +62,7 @@ import js7.journal.{JournalActor, MainJournalingActor}
 import js7.launcher.configuration.Problems.SignedInjectionNotAllowed
 import js7.subagent.Subagent
 import js7.subagent.director.SubagentKeeper
-import monix.eval.Task
+import monix.eval.{Fiber, Task}
 import monix.execution.{Cancelable, Scheduler}
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -79,7 +82,7 @@ final class AgentOrderKeeper(
   clusterNode: ClusterNode[AgentState],
   failedOverSubagentId: Option[SubagentId],
   recoveredAgentState : AgentState,
-  tryAppointClusterNodes: Task[Unit],
+  changeSubagentAndClusterNode: ItemAttachedToMe => Task[Checked[Unit]],
   journalAllocated: Allocated[Task, FileJournal[AgentState]],
   shutDownOnce: SetOnce[AgentCommand.ShutDown],
   private implicit val clock: AlarmClock,
@@ -474,12 +477,9 @@ with Stash
         if (agentRef.path != ownAgentPath)
           Future.successful(Left(Problem(s"Alien AgentRef(${agentRef.path})")))
         else
-          persist(ItemAttachedToMe(agentRef)) { (stampedEvent, journaledState) =>
-            proceedWithItem(agentRef)
-              .flatTapT(_ => tryAppointClusterNodes.map(Right(_)))
-              .runToFuture
-          }.flatten
+          changeSubagentAndClusterNodeThenProceed(ItemAttachedToMe(agentRef))
             .rightAs(AgentCommand.Response.Accepted)
+            .runToFuture
 
       case fileWatch: FileWatch =>
         if (!conf.subagentConf.scriptInjectionAllowed)
@@ -489,20 +489,66 @@ with Stash
             .map(_.rightAs(AgentCommand.Response.Accepted))
             .runToFuture
 
-      case item @ (_: Calendar | _: SubagentItem | _: SubagentSelection |
+      case item: SubagentItem =>
+        changeSubagentAndClusterNodeThenProceed(ItemAttachedToMe(item))
+          .rightAs(AgentCommand.Response.Accepted)
+          .runToFuture
+
+      case item @ (_: Calendar | _: SubagentSelection |
                    _: WorkflowPathControl | _: WorkflowControl) =>
         persist(ItemAttachedToMe(item)) { (stampedEvent, journaledState) =>
-          proceedWithItem(item)
-            .flatTapT(_ => Task
-              .when(item.isInstanceOf[SubagentItem])(
-                tryAppointClusterNodes)
-              .map(Right(_)))
-            .runToFuture
+          proceedWithItem(item).runToFuture
         }.flatten
           .rightAs(AgentCommand.Response.Accepted)
 
       case _ =>
         Future.successful(Left(Problem.pure(s"AgentCommand.AttachItem(${item.key}) for unknown InventoryItem")))
+    }
+
+  @volatile private var changeSubagentAndClusterNodeAndProceedFiberStop = false
+  private val changeSubagentAndClusterNodeAndProceedFiber =
+    AsyncVariable(Fiber(Task.pure(Checked.unit), Task.unit))
+
+  private def changeSubagentAndClusterNodeThenProceed(event: ItemAttachedToMe): Task[Checked[Unit]] =
+    changeSubagentAndClusterNodeAndProceedFiber
+      .update { fiber =>
+        changeSubagentAndClusterNodeAndProceedFiberStop = true
+        fiber.join *>
+          Task.defer {
+            changeSubagentAndClusterNodeAndProceedFiberStop = false
+            tryForeverChangeSubagentAndClusterNodeAndProceed(event)
+              .start
+          }
+      }
+      .flatMap(_.join.timeoutTo(10.s /*???*/ , Task.right(()) /*respond the command*/))
+
+  private def tryForeverChangeSubagentAndClusterNodeAndProceed(event: ItemAttachedToMe)
+  : Task[Checked[Unit]] =
+    Task.defer {
+      import event.item
+      val label = s"${event.getClass.simpleScalaName}(${item.key})"
+      val since = now
+      val delays = continueWithLast(1.s, 3.s, 10.s)
+      val sym = new BlockingSymbol
+      Task.tailRecM(())(_ =>
+        changeSubagentAndClusterNode(event)
+          .flatMapT(_ => proceedWithItem(item))
+          .uncancelable // Only the loop should be cancelable, but not the inner operations
+          .flatMap {
+            case Left(problem @ PassiveClusterNodeUrlChangeableOnlyWhenNotCoupledProblem) =>
+              sym.increment()
+              logger.warn(
+                s"$sym $label => $problem — trying since ${since.elapsed.pretty} ...")
+              Task.sleep(delays.next()).as(Left(())/*repeat*/)
+
+            case checked =>
+              if (sym.called) checked match {
+                case Left(problem) => logger.error(s"🔥 $label => $problem")
+                case Right(()) => logger.info(s"🟢 $label => Cluster setting has been changed")
+              }
+              Task.right(checked)
+          }
+      )
     }
 
   private def attachSignedItem(signed: Signed[SignableItem]): Future[Checked[Response.Accepted]] =

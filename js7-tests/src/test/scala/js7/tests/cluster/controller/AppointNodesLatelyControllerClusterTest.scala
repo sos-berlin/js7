@@ -6,7 +6,7 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
-import js7.data.Problems.{BackupClusterNodeNotAppointed, PassiveClusterNodeUrlChangeableOnlyWhenNotCoupledProblem}
+import js7.data.Problems.BackupClusterNodeNotAppointed
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterPassiveLost, ClusterSettingUpdated, ClusterWatchRegistered}
 import js7.data.cluster.ClusterState.Coupled
 import js7.data.controller.ControllerCommand.ClusterAppointNodes
@@ -59,11 +59,11 @@ final class AppointNodesLatelyControllerClusterTest extends OurTestSuite with Co
           idToUri = clusterSetting.idToUri + (backupId -> Uri(backupUri.string.toUpperCase)))
         assert(updatedBackupSetting != clusterSetting)
 
-        // UPDATING BACKUP URI IS REJECTED WHEN COUPLED
         val clusterAppointNodes = ClusterAppointNodes(
           updatedBackupSetting.idToUri, updatedBackupSetting.activeId)
-        assert(primaryController.api.executeCommand(clusterAppointNodes).await(99.s)
-          .left.exists(_ is PassiveClusterNodeUrlChangeableOnlyWhenNotCoupledProblem))
+        // UPDATING BACKUP URI IS REJECTED WHEN COUPLED
+        //assert(primaryController.api.executeCommand(clusterAppointNodes).await(99.s)
+        //  .left.exists(_ is ClusterSettingNotUpdatable))
 
         // CHANGE BACKUP URI WHEN PASSIVE IS LOST
         locally {

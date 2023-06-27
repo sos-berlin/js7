@@ -4,7 +4,6 @@ import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.web.Uri
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterResetStarted, ClusterSettingUpdated, ClusterSwitchedOver, ClusterWatchRegistered}
 import js7.data.cluster.ClusterSetting.syntax.*
 import js7.data.event.KeyedEvent.NoKey
@@ -37,12 +36,10 @@ extends EventDrivenState[ClusterState, ClusterEvent]
       case (Empty, ClusterNodesAppointed(setting)) =>
         Right(NodesAppointed(setting))
 
-      case (state: IsCoupledOrDecoupled, ClusterSettingUpdated(maybePassiveUri)) =>
-        ((state, maybePassiveUri) match {
-          case (_, None) => Right(state)
-          case (state: IsDecoupled, Some(uri)) => Right(state.withPassiveUri(uri))
-          case _ => eventNotApplicable(event)
-        })
+      case (state: HasNodes/*IsCoupledOrDecoupled?*/, ClusterSettingUpdated(maybePassiveUri)) =>
+        Right(
+          maybePassiveUri.fold(state)(uri =>
+            state.withSetting(state.setting.withPassiveUri(uri))))
 
       case (state: IsDecoupled, ClusterCouplingPrepared(activeId)) if state.activeId == activeId =>
         Right(PreparedToBeCoupled(state.setting))
@@ -157,17 +154,15 @@ extends EventDrivenState.Companion[ClusterState, ClusterEvent]
 
   sealed trait IsDecoupled extends IsCoupledOrDecoupled {
     this: Product =>
-
-    final def withPassiveUri(uri: Uri) =
-      withSetting(setting.withPassiveUri(uri))
   }
 
+  /** Initial appointment of the nodes. */
   final case class NodesAppointed(setting: ClusterSetting)
   extends IsDecoupled {
     def withSetting(setting: ClusterSetting) = copy(setting = setting)
   }
 
-  /** Intermediate state only, is immediately followed by transition ClusterEvent.Coupled -> Coupled. */
+  /** Intermediate state only, is immediately followed by transition ClusterCoupled -> Coupled. */
   final case class PreparedToBeCoupled(setting: ClusterSetting)
   extends HasNodes {
     def withSetting(setting: ClusterSetting) = copy(setting = setting)

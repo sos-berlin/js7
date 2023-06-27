@@ -14,13 +14,14 @@ import js7.base.utils.ScalaUtils.syntax.{RichEither, RichEitherF, RichOption}
 import js7.base.utils.{Allocated, AsyncLock, SetOnce}
 import js7.base.web.Uri
 import js7.cluster.WorkingClusterNode.*
-import js7.data.Problems.{ClusterNodeIsNotActiveProblem, ClusterNodesAlreadyAppointed}
+import js7.data.Problems.{ClusterNodeIsNotActiveProblem, ClusterNodesAlreadyAppointed, ClusterSettingNotUpdatable}
 import js7.data.cluster.ClusterEvent.ClusterNodesAppointed
 import js7.data.cluster.ClusterState.HasNodes
 import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
 import js7.data.cluster.{ClusterCommand, ClusterSetting, ClusterState}
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{AnyKeyedEvent, ClusterableState, EventId, Stamped}
+import js7.data.event.{AnyKeyedEvent, ClusterableState, EventId, NoKeyEvent, Stamped}
+import js7.data.item.BasicItemEvent.ItemAttachedToMe
 import js7.data.node.{NodeId, NodeNameToPassword}
 import js7.journal.EventIdGenerator
 import js7.journal.recover.Recovered
@@ -82,12 +83,15 @@ final class WorkingClusterNode[
         case Some(o) => o.onRestartActiveNode
       })
 
-  def appointNodes(idToUri: Map[NodeId, Uri], activeId: NodeId): Task[Checked[Unit]] =
-    Task(ClusterSetting
-      .checked(
+  def appointNodes(idToUri: Map[NodeId, Uri], activeId: NodeId,
+    extraEvent: Option[ItemAttachedToMe] = None)
+  : Task[Checked[Unit]] =
+    Task(
+      ClusterSetting.checked(
         idToUri, activeId, clusterConf.timing,
         clusterWatchId = None)
-    ).flatMapT(appointNodes(_))
+    ).flatMapT(
+      appointNodes2(_, extraEvent))
 
   private def automaticallyAppointConfiguredBackupNode: Task[Checked[Unit]] =
     Task.defer {
@@ -97,7 +101,7 @@ final class WorkingClusterNode[
           journal.clusterState.flatMap {
             case _: ClusterState.HasNodes => Task.right(Completed)
             case ClusterState.Empty =>
-              appointNodes(setting)
+              appointNodes2(setting)
                 .onErrorHandle(t => Left(Problem.fromThrowable(t)))  // We want only to log the exception
                 .map {
                   case Left(ClusterNodesAlreadyAppointed) =>
@@ -114,11 +118,14 @@ final class WorkingClusterNode[
       }
     }
 
-  private def appointNodes(setting: ClusterSetting): Task[Checked[Unit]] =
+  private def appointNodes2(setting: ClusterSetting, extraEvent: Option[ItemAttachedToMe] = None)
+  : Task[Checked[Unit]] =
     logger.debugTask(appointNodesLock.lock(
       currentClusterState.flatMap {
         case ClusterState.Empty =>
-          journal.persistKeyedEvent(NoKey <-: ClusterNodesAppointed(setting))
+          journal
+            .persistTransaction[NoKeyEvent](NoKey)(_ =>
+              Right(extraEvent.toList ::: List(ClusterNodesAppointed(setting))))
             .flatMapT { case (_, state) =>
               state.clusterState match {
                 case clusterState: HasNodes =>
@@ -128,10 +135,15 @@ final class WorkingClusterNode[
               }
             }
 
-        case _: HasNodes =>
-          common.requireValidLicense
-            .flatMapT(_ => activeClusterNodeTask)
-            .flatMapT(_.appointNodes(setting))
+        case clusterState @ HasNodes(current) =>
+          if (setting != current.copy(clusterWatchId = None).withPassiveUri(setting.passiveUri))
+            Task.left(ClusterSettingNotUpdatable(clusterState))
+          else if (setting.passiveUri == current.passiveUri)
+            extraEvent.fold(Task.pure(Checked.unit))(extraEvent =>
+              journal.persistKeyedEvent(extraEvent).rightAs(()))
+          else
+            activeClusterNodeTask
+              .flatMapT(_.changePassiveUri(setting.passiveUri, extraEvent))
       }))
 
   private def startActiveClusterNode(clusterState: HasNodes, eventId: EventId): Task[Checked[Unit]] =
