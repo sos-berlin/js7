@@ -87,7 +87,7 @@ extends MainService with Service.StoppableByRequest
           var failed = false
           observable
             .doAfterSubscribe(Task {
-              if (failed) logger.info(s"🟢 $nodeApi is being watching again")
+              if (failed) logger.info(s"🟢 $nodeApi is being watched again")
               failed = false
             })
             .onErrorHandleWith { t =>
