@@ -18,7 +18,7 @@ import scala.util.control.NonFatal
 /**
   * Provides HTTPS keystore and truststore..
   * <p>
-  * Another way to use an own keystore may be via Java system properties:
+  * An alternative to an own keystore might have been via Java system properties:
   * <ul>
   *   <li>Server: javax.net.ssl.keyStore=keystore javax.net.ssl.keyStorePassword=password
   *   <li>Client: javax.net.ssl.trustStore=truststore javax.net.ssl.trustStorePassword=trustword
@@ -105,13 +105,9 @@ object Https
       try {
         val content = ByteArray.fromInputStreamLimited(in, sizeLimit)
           .getOrElse(throw new RuntimeException(
-            s"Certificate store must have more than $sizeLimit bytes: $sourcePath"))
+            s"Certificate store must not have more than $sizeLimit bytes: $sourcePath"))
         if (content startsWith PemHeader)
-          pemToKeyStore(content.toInputStream,
-            name = sourcePath.replace('\\', '/').indexOf('/') match {
-              case -1 => sourcePath
-              case i => sourcePath.take(i + 1)
-            })
+          pemToKeyStore(content.toInputStream, name = sourcePathToName(sourcePath))
         else
           pkcs12ToKeyStore(content.toInputStream, password)
       } catch { case NonFatal(t) =>
@@ -154,6 +150,12 @@ object Https
         o.getType
     })
 
+  private[https] def sourcePathToName(sourcePath: String): String =
+    sourcePath.replace('\\', '/').lastIndexOf('/') match {
+      case -1 => sourcePath
+      case i => sourcePath.drop(i + 1)
+    }
+
   private def pemToKeyStore(in: InputStream, name: String): KeyStore = {
     val certs = mutable.Buffer.empty[Certificate]
     var eof = false
@@ -166,7 +168,7 @@ object Https
     val keyStore = KeyStore.getInstance(KeyStore.getDefaultType)
     keyStore.load(null, null)
     for ((cert, i) <- certs.zipWithIndex) {
-      keyStore.setCertificateEntry(name + (certs.length > 1) ?? ("#" + (i + 1)), cert)
+      keyStore.setCertificateEntry(name + (certs.length > 1) ?? s"#${i + 1}", cert)
     }
     keyStore
   }

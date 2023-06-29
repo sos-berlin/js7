@@ -43,6 +43,13 @@ final class HttpsTest extends OurTestSuite
     }
   }
 
+  "sourcePathToName" in {
+    assert(Https.sourcePathToName("a") == "a")
+    assert(Https.sourcePathToName("abc.pem") == "abc.pem")
+    assert(Https.sourcePathToName("a/bb/ccc") == "ccc")
+    assert(Https.sourcePathToName("a\\bb\\ccc") == "ccc")
+  }
+
   private def makeCertCommand(principal: String, keyFile: Path): Seq[String] =
     Seq("openssl", "req", "-batch", "-x509", "-newkey", "rsa:1024", "-days", "2", "-nodes",
               "-subj", principal, "-keyout", keyFile.toString)
