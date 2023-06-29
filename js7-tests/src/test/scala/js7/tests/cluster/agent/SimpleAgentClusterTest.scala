@@ -44,25 +44,21 @@ final class SimpleAgentClusterTest extends ControllerClusterTester
   "Cluster replicates journal files properly" in {
     withControllerAndBackupWithoutAgents() { (primary, backup, _) =>
 
+      def allocateDirector(director: SubagentItem, otherDirectorId: SubagentId,
+        isBackup: Boolean = false)
+      : Allocated[Task, (DirectorEnv, RunningAgent)] =
+        primary
+          .directorEnvResource(director, otherSubagentIds = Seq(otherDirectorId),
+            isClusterBackup = isBackup)
+          .flatMap(env => env.directorResource.map(env -> _))
+          .toAllocated
+          .await(99.s)
 
       val primaryDirectorAllocated: Allocated[Task, (DirectorEnv, RunningAgent)] =
-        primary
-          .directorEnvResource(
-            subagentItems(0),
-            otherSubagentIds = Seq(subagentItems(1).id))
-          .flatMap(env => env.directorResource.map(env -> _))
-          .toAllocated
-          .await(99.s)
+        allocateDirector(subagentItems(0), otherDirectorId = subagentItems(1).id)
 
       val backupDirectorAllocated: Allocated[Task, (DirectorEnv, RunningAgent)] =
-        primary
-          .directorEnvResource(
-            subagentItems(1),
-            otherSubagentIds = Seq(subagentItems(0).id),
-            isClusterBackup = true)
-          .flatMap(env => env.directorResource.map(env -> _))
-          .toAllocated
-          .await(99.s)
+        allocateDirector(subagentItems(1), otherDirectorId = subagentItems(0).id, isBackup = true)
 
       TestAgent(primaryDirectorAllocated.map(_._2)).useSync(99.s) { primaryDirector =>
         val primaryDirectorEnv = primaryDirectorAllocated.allocatedThing._1
