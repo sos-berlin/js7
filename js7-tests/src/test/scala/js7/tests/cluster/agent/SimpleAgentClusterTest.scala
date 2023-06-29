@@ -43,11 +43,13 @@ final class SimpleAgentClusterTest extends ControllerClusterTester
 
   "Cluster replicates journal files properly" in {
     withControllerAndBackupWithoutAgents() { (primary, backup, _) =>
+
+
       val primaryDirectorAllocated: Allocated[Task, (DirectorEnv, RunningAgent)] =
         primary
           .directorEnvResource(
             subagentItems(0),
-            moreSubagentIds = Seq(subagentItems(1).id))
+            otherSubagentIds = Seq(subagentItems(1).id))
           .flatMap(env => env.directorResource.map(env -> _))
           .toAllocated
           .await(99.s)
@@ -56,7 +58,7 @@ final class SimpleAgentClusterTest extends ControllerClusterTester
         primary
           .directorEnvResource(
             subagentItems(1),
-            moreSubagentIds = Seq(subagentItems(0).id),
+            otherSubagentIds = Seq(subagentItems(0).id),
             isClusterBackup = true)
           .flatMap(env => env.directorResource.map(env -> _))
           .toAllocated

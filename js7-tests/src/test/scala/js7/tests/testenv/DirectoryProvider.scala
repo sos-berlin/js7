@@ -349,14 +349,14 @@ extends HasCloser
   def directorEnvResource(
     subagentItem: SubagentItem,
     suffix: String = "",
-    moreSubagentIds: Seq[SubagentId] = Nil,
+    otherSubagentIds: Seq[SubagentId] = Nil,
     isClusterBackup: Boolean = false,
     suppressSignatureKeys: Boolean = false,
     extraConfig: Config = ConfigFactory.empty)
   : Resource[Task, DirectorEnv] =
     Resource
       .fromAutoCloseable(Task(
-        newDirectorEnv(subagentItem, suffix, moreSubagentIds,
+        newDirectorEnv(subagentItem, suffix, otherSubagentIds,
           isClusterBackup = isClusterBackup,
           suppressSignatureKeys = suppressSignatureKeys,
           extraConfig = extraConfig)))

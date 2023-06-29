@@ -61,13 +61,13 @@ with BlockingItemUpdater
     val primaryDirectorResource: Resource[Task, RunningAgent] =
       directoryProvider
         .directorEnvResource(
-          primarySubagentItem, moreSubagentIds = Seq(backupSubagentId))
+          primarySubagentItem, otherSubagentIds = Seq(backupSubagentId))
         .flatMap(_.directorResource)
 
     val backupDirectorResource: Resource[Task, RunningAgent] =
       directoryProvider
         .directorEnvResource(
-          backupSubagentItem, moreSubagentIds = Seq(primarySubagentId), isClusterBackup = true)
+          backupSubagentItem, otherSubagentIds = Seq(primarySubagentId), isClusterBackup = true)
         .flatMap(_.directorResource)
 
     TestAgent(primaryDirectorResource.toAllocated.await(99.s)).useSync(99.s) { primaryDirector =>

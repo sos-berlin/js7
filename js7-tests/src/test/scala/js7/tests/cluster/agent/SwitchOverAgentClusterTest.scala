@@ -73,12 +73,12 @@ with BlockingItemUpdater
     val (primaryEnv, primaryDirector) = toTestAgent(
       directoryProvider.directorEnvResource(
         primarySubagentItem,
-        moreSubagentIds = Seq(backupSubagentId)))
+        otherSubagentIds = Seq(backupSubagentId)))
 
     val (backupEnv, backupDirector) = toTestAgent(
       directoryProvider.directorEnvResource(
         backupSubagentItem,
-        moreSubagentIds = Seq(primarySubagentId),
+        otherSubagentIds = Seq(primarySubagentId),
         isClusterBackup = true))
 
     backupDirector.useSync(99.s) { _ =>

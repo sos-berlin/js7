@@ -97,7 +97,7 @@ final class ResetSubagentTest extends OurTestSuite with SubagentTester
     val resource = for {
       env <- directoryProvider.directorEnvResource(
         bareSubagentItem,
-        moreSubagentIds = Seq(toLocalSubagentId(agentPath)))
+        otherSubagentIds = Seq(toLocalSubagentId(agentPath)))
       director <- env.directorResource
     } yield director
 

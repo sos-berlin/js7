@@ -59,21 +59,21 @@ with BlockingItemUpdater
       directoryProvider
         .directorEnvResource(
           primarySubagentItem,
-          moreSubagentIds = Seq(backupSubagentId, newBackupSubagentItem.id))
+          otherSubagentIds = Seq(backupSubagentId, newBackupSubagentItem.id))
         .flatMap(env => env.directorResource.map(env -> _))
 
     lazy val backupDirectorEnvResource: Resource[Task, DirectorEnv] =
       directoryProvider
         .directorEnvResource(
           backupSubagentItem,
-          moreSubagentIds = Seq(primarySubagentId),
+          otherSubagentIds = Seq(primarySubagentId),
           isClusterBackup = true)
 
     lazy val newBackupDirectorEnvResource: Resource[Task, DirectorEnv] =
       directoryProvider
         .directorEnvResource(
           newBackupSubagentItem,
-          moreSubagentIds = Seq(primarySubagentId),
+          otherSubagentIds = Seq(primarySubagentId),
           isClusterBackup = true,
           suffix = "-NEW")
 
