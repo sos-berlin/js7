@@ -119,27 +119,8 @@ object Https
 
   private def pkcs12ToKeyStore(in: InputStream, password: SecretString): KeyStore = {
     val keyStore = KeyStore.getInstance("PKCS12")
-    password.provideCharArray(
-      keyStore.load(in, _))
+    password.provideCharArray(keyStore.load(in, _))
     keyStore
-  }
-
-  private def log(keyStore: KeyStore, sourcePath: String, kind: String): Unit = {
-    val iterator = keyStore.aliases.asScala
-      .flatMap(a => Option(keyStore.getCertificate(a)).map(a -> _))
-    if (iterator.isEmpty) {
-      logger.warn(s"Loaded empty $kind keystore $sourcePath")
-    } else {
-      logger.info(s"Loaded $kind keystore $sourcePath" +
-        iterator.map { case (alias, cert)  =>
-          "\n  " +
-            (keyStore.isKeyEntry(alias) ?? "Private key ") +
-            (keyStore.isCertificateEntry(alias) ?? "Trusted ") +
-            certificateToString(cert) +
-            " alias=" + alias +
-            " (hashCode=" + cert.hashCode + ")"
-        }.mkString(""))
-    }
   }
 
   private def certificateToString(cert: Certificate): String =
@@ -171,5 +152,23 @@ object Https
       keyStore.setCertificateEntry(name + (certs.length > 1) ?? s"#${i + 1}", cert)
     }
     keyStore
+  }
+
+  private def log(keyStore: KeyStore, sourcePath: String, kind: String): Unit = {
+    val iterator = keyStore.aliases.asScala
+      .flatMap(a => Option(keyStore.getCertificate(a)).map(a -> _))
+    if (iterator.isEmpty) {
+      logger.warn(s"Loaded empty $kind keystore $sourcePath")
+    } else {
+      logger.info(s"Loaded $kind keystore $sourcePath" +
+        iterator.map { case (alias, cert) =>
+          "\n  " +
+            (keyStore.isKeyEntry(alias) ?? "Private key ") +
+            (keyStore.isCertificateEntry(alias) ?? "Trusted ") +
+            certificateToString(cert) +
+            " alias=" + alias +
+            " (hashCode=" + cert.hashCode + ")"
+        }.mkString(""))
+    }
   }
 }
