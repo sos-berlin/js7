@@ -137,11 +137,18 @@ private[agent] final class AgentActor(
 
       case AgentCommand.Reset(maybeAgentRunId) =>
         maybeAgentRunId.fold(Checked.unit)(checkAgentRunId(_)) match {
-          case Left(problem) => response.success(Left(problem))
+          case Left(AgentNotDedicatedProblem) =>
+            response.success(Right(AgentCommand.Response.Accepted))
+
+          case Left(problem) =>
+            response.success(Left(problem))
+
           case Right(()) =>
             logger.info(s"❗ $command")
             isResetting = true
-            if (!terminating) {
+            if (terminating) {
+              response.success(Right(AgentCommand.Response.Accepted/*???*/))
+            } else {
               started.toOption
                 .fold(Task.unit)(started => Task
                   .fromFuture(

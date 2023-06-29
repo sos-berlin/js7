@@ -287,7 +287,7 @@ extends Service.StoppableByRequest
     else
       maybeAgentRunId.flatMap {
         case None => Task.left(AgentNotDedicatedProblem /*Nothing to reset*/)
-        case Some(agentRunId) => resetAgent(Some(agentRunId)).map(Right(_))
+        case Some(agentRunId) => resetAgent(Some(agentRunId))
       }
 
   private def resetAgent(agentRunId: Option[AgentRunId]): Task[Checked[Unit]] =
