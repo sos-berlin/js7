@@ -27,7 +27,7 @@ final class ClusterWatch(
   label: String = "",
   onClusterStateChanged: (HasNodes) => Unit = _ => (),
   requireManualNodeLossConfirmation: Boolean = false,
-  onClusterNodeLossNotConfirmed: ClusterNodeLossNotConfirmedProblem => Task[Unit] = _ => Task.unit)
+  onUndecidableClusterNodeLoss: OnUndecidableClusterNodeLoss = _ => Task.unit)
 {
   private val logger = Logger.withPrefix[this.type](label)
 
@@ -52,7 +52,7 @@ final class ClusterWatch(
     val checkedClusterState = (_state, request.maybeEvent) match {
       case (None/*untaught*/, Some(event: ClusterNodeLostEvent)) =>
         manuallyConfirmed(event) match {
-          case None => Left(ClusterNodeLossNotConfirmedProblem(event))
+          case None => Left(ClusterNodeLossNotConfirmedProblem(request.from, event))
           case Some(confirmer) =>
             logger.info(
               s"$from teaches clusterState=$reportedClusterState after ${event.getClass.simpleScalaName} confirmation")
@@ -73,7 +73,7 @@ final class ClusterWatch(
         _state = _state.map(state => state.copy(
           lastHeartbeat = // Update lastHeartbeat only when `from` is active
             Some(state).filter(_.clusterState.activeId != from).fold(now())(_.lastHeartbeat)))
-        onClusterNodeLossNotConfirmed(problem)
+        onUndecidableClusterNodeLoss(Some(problem))
           .as(Left(problem))
 
       case Left(problem) =>
@@ -92,7 +92,11 @@ final class ClusterWatch(
         if (changed) {
           onClusterStateChanged(updatedClusterState)
         }
-        Task.right(Confirmed(manualConfirmer = maybeManualConfirmer))
+
+        maybeManualConfirmer
+          .fold(Task.unit)(_ =>
+            onUndecidableClusterNodeLoss(None))
+          .as(Right(Confirmed(manualConfirmer = maybeManualConfirmer)))
     }
   }
 
@@ -148,7 +152,9 @@ final class ClusterWatch(
 
 object ClusterWatch
 {
-  // ClusterNodeLossEvent has been rejected, but the user may confirm it later
+  type OnUndecidableClusterNodeLoss = Option[ClusterNodeLossNotConfirmedProblem] => Task[Unit]
+
+  /** ClusterNodeLossEvent has been rejected, but the user may confirm it later. */
   private case class LossRejected(
     event: ClusterNodeLostEvent,
     manualConfirmer: Option[String] = None)
@@ -217,7 +223,7 @@ object ClusterWatch
                 maybeEvent match {
                   case Some(event: ClusterNodeLostEvent)
                     if requireManualNodeLossConfirmation && !confirmer.isDefined =>
-                    Left(ClusterNodeLossNotConfirmedProblem(event))
+                    Left(ClusterNodeLossNotConfirmedProblem(from, event))
                   case _ =>
                     if (updatedClusterState == reportedClusterState) {
                       logger.info(s"$from changes ClusterState to $reportedClusterState")

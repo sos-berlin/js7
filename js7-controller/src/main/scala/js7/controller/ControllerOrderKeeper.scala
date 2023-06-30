@@ -472,6 +472,13 @@ with MainJournalingActor[ControllerState, Event]
     case Command.VerifiedUpdateItemsCmd(verifiedUpdateItems: VerifiedUpdateItems) =>
       executeVerifiedUpdateItems(verifiedUpdateItems)
 
+    case Command.GetClusterWatchService(agentPath) =>
+      agentRegister.checked(agentPath)
+        .traverse(_.agentDriver.clusterWatchService)
+        .map(_.flatten)
+        .runToFuture
+        .pipeTo(sender())
+
     case Internal.EventsFromAgent(agentPath, agentRunId, stampedAgentEvents, committedPromise) =>
       for (agentEntry <- agentRegister.get(agentPath)) {
         for (agentRefState <- journal.unsafeCurrentState().keyTo(AgentRefState).get(agentPath)) {
@@ -1685,6 +1692,7 @@ private[controller] object ControllerOrderKeeper
     final case class Execute(command: ControllerCommand, meta: CommandMeta, correlId: CorrelId)
     extends Command
     final case class VerifiedUpdateItemsCmd(verifiedUpdateRepo: VerifiedUpdateItems) extends Command
+    final case class GetClusterWatchService(agentPath: AgentPath) extends Command
   }
 
   private object Internal {

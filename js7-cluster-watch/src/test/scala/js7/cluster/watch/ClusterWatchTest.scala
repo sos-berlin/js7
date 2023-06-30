@@ -57,7 +57,7 @@ final class ClusterWatchTest extends OurTestSuite
       val failedOver = clusterState.applyEvent(event).orThrow.asInstanceOf[FailedOver]
       assert(watch.processRequest(ClusterWatchCheckEvent(RequestId(123), correlId, bId, event, failedOver))
         .await(99.s)
-         == Left(ClusterNodeLossNotConfirmedProblem(event)))
+         == Left(ClusterNodeLossNotConfirmedProblem(bId, event)))
 
       assert(heartbeat(aId, clusterState) == Right(Confirmed()))
 
@@ -307,7 +307,10 @@ final class ClusterWatchTest extends OurTestSuite
   "ClusterPassiveLost when ClusterWatch is still untaught requires manual confirmation" in {
     val eventBus = new ClusterWatchEventBus
     val watch = new ClusterWatch(() => scheduler.now,
-      onClusterNodeLossNotConfirmed = o => Task(eventBus.publish(o)))
+      onUndecidableClusterNodeLoss = {
+        case Some(problem) => Task(eventBus.publish(problem))
+        case None => Task.unit
+      })
     val passiveLost = PassiveLost(setting)
     import passiveLost.{activeId, passiveId}
     val event = ClusterPassiveLost(passiveId)
@@ -324,9 +327,9 @@ final class ClusterWatchTest extends OurTestSuite
     // Cluster node tries and fails
     assert(watch.processRequest(ClusterWatchCheckEvent(
       RequestId(123), correlId, activeId, event, passiveLost)).await(99.s)
-      == Left(ClusterNodeLossNotConfirmedProblem(event)))
+      == Left(ClusterNodeLossNotConfirmedProblem(activeId, event)))
     assert(watch.clusterState() == Left(UntaughtClusterWatchProblem))
-    assert(rejectedConfirmations == Seq(ClusterNodeLossNotConfirmedProblem(event)))
+    assert(rejectedConfirmations == Seq(ClusterNodeLossNotConfirmedProblem(activeId, event)))
 
     // ClusterWatch remembers ClusterPassiveLost
     assert(watch.clusterNodeLossEventToBeConfirmed(passiveId) == Some(event))
@@ -368,7 +371,7 @@ final class ClusterWatchTest extends OurTestSuite
     // Cluster node tries and fails
     assert(watch.processRequest(ClusterWatchCheckEvent(
       RequestId(123), correlId, activatedId, event, failedOver)).await(99.s)
-      == Left(ClusterNodeLossNotConfirmedProblem(event)))
+      == Left(ClusterNodeLossNotConfirmedProblem(activatedId, event)))
     assert(watch.clusterState() == Left(UntaughtClusterWatchProblem))
 
     // ClusterWatch remembers ClusterFailedOver
@@ -416,7 +419,7 @@ final class ClusterWatchTest extends OurTestSuite
       lazy val watch = new ClusterWatch(
         () => scheduler.now,
         requireManualNodeLossConfirmation = true,
-        onClusterNodeLossNotConfirmed = _ => Task.unit)
+        onUndecidableClusterNodeLoss = _ => Task.unit)
 
       // Initialize ClusterWatch
       watch.processRequest(ClusterWatchCheckState(RequestId(123), correlId, activeId, coupled))
@@ -439,7 +442,7 @@ final class ClusterWatchTest extends OurTestSuite
       val response = watch
         .processRequest(ClusterWatchCheckEvent(RequestId(123), correlId, from, event, expectedClusterState))
         .await(99.s)
-      assert(response == Left(ClusterNodeLossNotConfirmedProblem(event)))
+      assert(response == Left(ClusterNodeLossNotConfirmedProblem(from, event)))
       assert(watch.clusterState() == Right(coupled))
 
       // Try to confirm a loss of the not lost Node

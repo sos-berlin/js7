@@ -242,7 +242,10 @@ trait ControllerClusterForScalaTest
         controllerAdmissions,
         HttpsConfig.empty,
         clusterWatchConfig,
-        onClusterNodeLossNotConfirmed = o => Task(eventbus.publish(o)))
+        onUndecidableClusterNodeLoss = {
+          case Some(prblm) => Task(eventbus.publish(prblm))
+          case None => Task.unit
+        })
     } yield (clusterWatch, eventbus)
 
   /** Simulate a kill via ShutDown(failOver) - still writes new snapshot. */

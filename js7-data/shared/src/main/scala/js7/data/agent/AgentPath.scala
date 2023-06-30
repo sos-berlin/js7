@@ -1,6 +1,7 @@
 package js7.data.agent
 
 import js7.base.annotation.javaApi
+import js7.data.cluster.ClusterId
 import js7.data.delegate.DelegateId
 import js7.data.item.UnsignedSimpleItemPath
 
@@ -8,7 +9,7 @@ import js7.data.item.UnsignedSimpleItemPath
   * @author Joacim Zschimmer
   */
 final case class AgentPath private(string: String)
-extends UnsignedSimpleItemPath with DelegateId
+extends UnsignedSimpleItemPath with DelegateId with ClusterId
 {
   protected type Self = AgentPath
 

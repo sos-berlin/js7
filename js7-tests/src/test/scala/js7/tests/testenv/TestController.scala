@@ -15,11 +15,13 @@ import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.ScalaUtils.syntax.{RichEither, RichEitherF}
 import js7.base.utils.{Allocated, Lazy, ProgramTermination}
 import js7.base.web.Uri
+import js7.cluster.watch.ClusterWatch
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResource
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.problems.ControllerIsShuttingDownProblem
 import js7.controller.{OrderApi, RunningController}
+import js7.data.agent.AgentPath
 import js7.data.cluster.ClusterState
 import js7.data.controller.ControllerCommand.ShutDown
 import js7.data.controller.ControllerState
@@ -170,6 +172,13 @@ final class TestController(allocated: Allocated[Task, RunningController], admiss
 
   def journalActorState: JournalActor.Output.JournalActorState =
     runningController.journalActorState
+
+  def clusterWatchFor(agentPath: AgentPath): Checked[ClusterWatch] = {
+    import runningController.scheduler
+    runningController.clusterWatchServiceFor((agentPath))
+      .await(99.s)
+      .map(_.clusterWatch)
+  }
 
   override def toString = s"TestController(${conf.controllerId}/${conf.clusterConf.ownId})"
 }

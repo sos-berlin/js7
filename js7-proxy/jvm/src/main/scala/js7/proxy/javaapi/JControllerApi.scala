@@ -328,7 +328,7 @@ final class JControllerApi(val asScala: ControllerApi, config: Config)
   @Nonnull
   def startClusterWatch(
     @Nonnull clusterWatchId: ClusterWatchId,
-    @Nonnull onClusterNodeLossNotConfirmed: Consumer[ClusterNodeLossNotConfirmedProblem])
+    @Nonnull onUndecidableClusterNodeLoss: Consumer[ClusterNodeLossNotConfirmedProblem])
   : CompletableFuture[ClusterWatchService] =
     clusterWatchService
       .update {
@@ -336,7 +336,10 @@ final class JControllerApi(val asScala: ControllerApi, config: Config)
         case None =>
           ClusterWatchService
             .resource(clusterWatchId, asScala.apisResource, config,
-              onClusterNodeLossNotConfirmed = o => Task(onClusterNodeLossNotConfirmed.accept(o)))
+              onUndecidableClusterNodeLoss = {
+                case Some(prblm) => Task(onUndecidableClusterNodeLoss.accept(prblm))
+                case None => Task.unit
+              })
             .toAllocated
             .map(Some(_))
       }

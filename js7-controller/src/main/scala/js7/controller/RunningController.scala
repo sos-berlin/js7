@@ -34,6 +34,7 @@ import js7.base.utils.SyncResource.syntax.RichSyncResource
 import js7.base.utils.{Allocated, ProgramTermination}
 import js7.base.web.Uri
 import js7.cluster.ClusterNode.RestartAfterJournalTruncationException
+import js7.cluster.watch.ClusterWatchService
 import js7.cluster.{ClusterNode, WorkingClusterNode}
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.akkautils.Akkas.actorSystemResource
@@ -48,6 +49,7 @@ import js7.controller.web.ControllerWebServer
 import js7.core.command.{CommandExecutor, CommandMeta}
 import js7.core.license.LicenseChecker
 import js7.data.Problems.{ClusterNodeIsNotActiveProblem, PassiveClusterNodeShutdownNotAllowedProblem}
+import js7.data.agent.AgentPath
 import js7.data.cluster.ClusterState
 import js7.data.controller.ControllerCommand.{AddOrder, ShutDown}
 import js7.data.controller.{ControllerCommand, ControllerState, VerifiedUpdateItems}
@@ -86,6 +88,7 @@ final class RunningController private(
   itemUpdater: ItemUpdater,
   whenReady: Future[Unit],
   val terminated: Future[ProgramTermination],
+  val clusterWatchServiceFor: AgentPath => Task[Checked[ClusterWatchService]],
   val sessionRegister: SessionRegister[SimpleSession],
   val conf: ControllerConfiguration,
   val testEventBus: StandardEventBus[Any],
@@ -321,6 +324,13 @@ object RunningController
             conf.workDirectory / "http-uri" :=
               webServer.localHttpUri.fold(_ => "", o => s"$o/controller")))
 
+      def clusterWatchServiceFor(agentPath: AgentPath): Task[Checked[ClusterWatchService]] =
+        currentOrderKeeperActor
+          .flatMapT(actor =>
+            Task.deferFuture(
+              (actor ? ControllerOrderKeeper.Command.GetClusterWatchService(agentPath))
+                .mapTo[Checked[ClusterWatchService]]))
+
       def runningControllerResource(
         webServer: ControllerWebServer,
         sessionRegister: SessionRegister[SimpleSession])
@@ -334,6 +344,7 @@ object RunningController
             controllerState.map(_.orThrow),
             commandExecutor, itemUpdater,
             whenReady.future, untilOrderKeeperTerminated.runToFuture,
+            clusterWatchServiceFor,
             sessionRegister, conf, testEventBus,
             actorSystem)))
 

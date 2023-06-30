@@ -39,6 +39,11 @@ object ClusterEvent
   sealed trait ClusterNodeLostEvent extends ClusterEvent {
     def lostNodeId: Id
   }
+  object ClusterNodeLostEvent {
+    implicit val jsonCodec: TypedJsonCodec[ClusterNodeLostEvent] = TypedJsonCodec(
+      Subtype(deriveCodec[ClusterFailedOver]),
+      Subtype(deriveCodec[ClusterPassiveLost]))
+  }
 
   final case class ClusterFailedOver(failedActiveId: Id, activatedId: Id, failedAt: JournalPosition)
   extends ClusterNodeLostEvent

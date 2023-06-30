@@ -11,6 +11,7 @@ import js7.cluster.watch.api.ClusterWatchProblems.{ClusterNodeIsNotLostProblem, 
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterPassiveLost}
 import js7.data.cluster.ClusterState.{Coupled, PassiveLost}
 import js7.data.cluster.ClusterWatchCheckEvent
+import js7.data.node.NodeId
 import js7.tests.cluster.controller.UntaughtClusterWatchBothNodesLostControllerClusterTest.*
 import monix.execution.Scheduler.Implicits.traced
 
@@ -33,9 +34,9 @@ final class UntaughtClusterWatchBothNodesLostControllerClusterTest extends Contr
       }
 
       // Suppress acknowledges heartbeat, simulating a connection loss between the cluster nodes
+      logger.info("💥 Break connection between cluster nodes 💥")
       sys.props(testAckLossPropertyKey) = "true"
       sys.props(testHeartbeatLossPropertyKey) = "true"
-      logger.info("💥 Connection between cluster nodes is broken 💥")
 
       primaryController.testEventBus
         .whenPF[WaitingForConfirmation, Unit](_.request match {
@@ -47,7 +48,7 @@ final class UntaughtClusterWatchBothNodesLostControllerClusterTest extends Contr
         // ClusterWatch is untaught
         val clusterPassiveLost = eventBus
           .whenPF[ClusterNodeLossNotConfirmedProblem, ClusterPassiveLost] {
-            case ClusterNodeLossNotConfirmedProblem(event: ClusterPassiveLost) => event
+            case ClusterNodeLossNotConfirmedProblem(NodeId.primary, event: ClusterPassiveLost) => event
           }
           .await(99.s)
         assert(clusterWatchService.clusterNodeLossEventToBeConfirmed(backupId) == Some(clusterPassiveLost))
@@ -55,7 +56,7 @@ final class UntaughtClusterWatchBothNodesLostControllerClusterTest extends Contr
 
         val clusterFailedOver = eventBus
           .whenPF[ClusterNodeLossNotConfirmedProblem, ClusterFailedOver] {
-            case ClusterNodeLossNotConfirmedProblem(event: ClusterFailedOver) => event
+            case ClusterNodeLossNotConfirmedProblem(NodeId.backup, event: ClusterFailedOver) => event
           }
           .await(99.s)
 

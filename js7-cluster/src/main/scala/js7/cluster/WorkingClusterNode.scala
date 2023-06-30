@@ -4,7 +4,7 @@ import akka.actor.ActorRefFactory
 import cats.effect.Resource
 import com.softwaremill.diffx
 import izumi.reflect.Tag
-import js7.base.eventbus.{EventPublisher, StandardEventBus}
+import js7.base.eventbus.EventPublisher
 import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
@@ -203,7 +203,7 @@ object WorkingClusterNode
     common: ClusterCommon,
     clusterConf: ClusterConf,
     eventIdGenerator: EventIdGenerator = new EventIdGenerator,
-    keyedEventBus: EventPublisher[Stamped[AnyKeyedEvent]] = new StandardEventBus)
+    keyedEventBus: EventPublisher[Stamped[AnyKeyedEvent]])
     (implicit
       nodeNameToPassword: NodeNameToPassword[S],
       scheduler: Scheduler,

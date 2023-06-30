@@ -30,12 +30,13 @@ import js7.base.utils.{AsyncLock, MutableAllocated}
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatchService
 import js7.cluster.watch.api.ActiveClusterNodeSelector
+import js7.cluster.watch.api.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem
 import js7.common.http.{AkkaHttpClient, RecouplingStreamReader}
 import js7.controller.agent.AgentDriver.*
 import js7.controller.agent.CommandQueue.QueueableResponse
 import js7.controller.agent.DirectorDriver.DirectorDriverStoppedProblem
 import js7.controller.configuration.ControllerConfiguration
-import js7.data.agent.AgentRefStateEvent.{AgentCouplingFailed, AgentDedicated}
+import js7.data.agent.AgentRefStateEvent.{AgentClusterWatchConfirmationRequired, AgentClusterWatchManuallyConfirmed, AgentCouplingFailed, AgentDedicated}
 import js7.data.agent.Problems.AgentNotDedicatedProblem
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
 import js7.data.cluster.ClusterState.HasNodes
@@ -396,6 +397,10 @@ extends Service.StoppableByRequest
     logger.debugTask(
       clusterWatchAllocated.acquire(clusterWatchResource).void)
 
+  // Test only
+  def clusterWatchService: Task[Checked[ClusterWatchService]] =
+    clusterWatchAllocated.checked
+
   def confirmClusterNodeLoss(lostNodeId: NodeId, confirmer: String): Task[Checked[Unit]] =
     clusterWatchAllocated.checked
       .flatMapT(_.manuallyConfirmNodeLoss(lostNodeId, confirmer))
@@ -434,19 +439,40 @@ extends Service.StoppableByRequest
         Resource.eval(Task.pure(clients)),
         controllerConfiguration.config,
         label = agentPath.toString,
-        onClusterStateChanged = onClusterStateChanged)
+        onClusterStateChanged = onClusterStateChanged,
+        onUndecidableClusterNodeLoss = onUndecidableClusterNodeLoss)
     } yield clusterWatchService
 
   private def onClusterStateChanged(hasNodes: HasNodes): Unit =
-    if (!this.clusterState.contains(hasNodes)) {
+    if (!clusterState.contains(hasNodes)) {
       logger.info(hasNodes.toShortString)
-      val activeNodeChanged = this.clusterState.forall(_.activeId != hasNodes.activeId)
-      this.clusterState = Some(hasNodes)
+      val activeNodeChanged = clusterState.forall(_.activeId != hasNodes.activeId)
+      clusterState = Some(hasNodes)
       if (activeNodeChanged) {
         startAndForgetDirectorDriver
           .runAsyncAndForget // ???
       }
     }
+
+  private def onUndecidableClusterNodeLoss(maybeProblem: Option[ClusterNodeLossNotConfirmedProblem])
+  : Task[Unit] =
+    journal
+      .persist(_
+        .keyTo(AgentRefState)
+        .checked(agentPath)
+        .map(_.nodeToClusterWatchConfirmationRequired)
+        .flatMap { nodeToClusterWatchConfirmationRequired =>
+          Right(maybeProblem match {
+            case Some(ClusterNodeLossNotConfirmedProblem(fromNodeId, event)) =>
+              (!nodeToClusterWatchConfirmationRequired.get(fromNodeId).contains(event)).thenList(
+                agentPath <-: AgentClusterWatchConfirmationRequired(fromNodeId, event))
+            case None =>
+              nodeToClusterWatchConfirmationRequired.nonEmpty.thenList(
+                agentPath <-: AgentClusterWatchManuallyConfirmed)
+          })
+        })
+      .rightAs(())
+      .onProblemHandle(problem => logger.error(problem.toString))
 
   private def activeClientResource: Resource[Task, AgentClient] =
     ActiveClusterNodeSelector.selectActiveNodeApi[AgentClient](

@@ -8,8 +8,10 @@ import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Problem
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.data.cluster.ClusterEvent
+import js7.data.cluster.ClusterEvent.ClusterNodeLostEvent
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{Event, EventId, KeyedEvent, KeyedEventTypedJsonCodec}
+import js7.data.node.NodeId
 import js7.data.platform.PlatformInfo
 
 /**
@@ -68,6 +70,15 @@ object AgentRefStateEvent
       deriveConfiguredCodec[AgentMirroredEvent]
   }
 
+  /** Untaught ClusterWatch was unable to confirm a ClusterNodeLostEvent. */
+  final case class AgentClusterWatchConfirmationRequired(
+    fromNodeId: NodeId,
+    event: ClusterNodeLostEvent)
+  extends AgentRefStateEvent
+
+  type AgentClusterWatchManuallyConfirmed = AgentClusterWatchManuallyConfirmed.type
+  case object AgentClusterWatchManuallyConfirmed extends AgentRefStateEvent
+
   implicit val jsonCodec: TypedJsonCodec[AgentRefStateEvent] = TypedJsonCodec(
     Subtype(deriveConfiguredCodec[AgentDedicated], aliases = Seq("AgentCreated")),
     Subtype(AgentCoupled),
@@ -77,7 +88,9 @@ object AgentRefStateEvent
     Subtype(AgentShutDown),
     Subtype(deriveConfiguredCodec[AgentResetStarted]),
     Subtype(AgentReset),
-    Subtype[AgentMirroredEvent])
+    Subtype[AgentMirroredEvent],
+    Subtype(deriveConfiguredCodec[AgentClusterWatchConfirmationRequired]),
+    Subtype(AgentClusterWatchManuallyConfirmed))
 
   intelliJuseImport(DecodeWithDefaults)
 }

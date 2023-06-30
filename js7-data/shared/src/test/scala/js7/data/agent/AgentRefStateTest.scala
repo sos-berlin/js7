@@ -6,6 +6,7 @@ import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.DurationRichInt
 import js7.base.web.Uri
+import js7.data.cluster.ClusterEvent.ClusterPassiveLost
 import js7.data.cluster.{ClusterSetting, ClusterState, ClusterTiming}
 import js7.data.delegate.DelegateCouplingState
 import js7.data.event.JournalId
@@ -29,6 +30,7 @@ final class AgentRefStateTest extends OurTestSuite
       123L,
       None,
       ClusterState.Empty,
+      Map.empty,
       None)
 
     testJson(agentRefState,
@@ -44,7 +46,8 @@ final class AgentRefStateTest extends OurTestSuite
         "eventId": 123,
         "clusterState": {
           "TYPE": "Empty"
-        }
+        },
+        "nodeToClusterWatchConfirmationRequired": {}
       }""")
 
     testJsonDecoder(agentRefState,
@@ -82,6 +85,8 @@ final class AgentRefStateTest extends OurTestSuite
           NodeId("Primary"),
           ClusterTiming(3.s, 10.s),
           clusterWatchId = None)),
+        Map(
+          NodeId("Primary") -> ClusterPassiveLost(NodeId("Backup"))),
         Some(PlatformInfo.test)),
       json"""{
         "agentRef": {
@@ -111,6 +116,12 @@ final class AgentRefStateTest extends OurTestSuite
               "heartbeat": 3,
               "heartbeatTimeout": 10
             }
+          }
+        },
+        "nodeToClusterWatchConfirmationRequired": {
+          "Primary": {
+            "TYPE": "ClusterPassiveLost",
+            "id": "Backup"
           }
         },
         "platformInfo": {

@@ -93,7 +93,8 @@ private object JControllerStateTest
     keyToUnsignedItemState_ = Map(AgentPath("AGENT") ->
       AgentRefState(
         AgentRef(AgentPath("AGENT"), Seq(SubagentId("SUBAGENT"))),
-        None, None, DelegateCouplingState.Reset.fresh, EventId(7), None, ClusterState.Empty, None)),
+        None, None, DelegateCouplingState.Reset.fresh, EventId(7), None,
+        ClusterState.Empty, Map.empty, None)),
     repo = Repo.empty
       .applyEvents(List(
         VersionAdded(v1),

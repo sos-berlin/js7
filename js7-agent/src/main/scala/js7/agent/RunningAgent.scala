@@ -229,7 +229,7 @@ object RunningAgent {
             clusterNode,
             journalAllocated, conf, testWiring.commandHandler,
             mainActorReadyPromise, terminationPromise,
-             clock)(
+            clock)(
             scheduler)
         },
         "main").taggedWith[MainActor]

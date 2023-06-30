@@ -1,23 +1,25 @@
 package js7.cluster.watch.api
 
-import js7.base.problem.{Problem, ProblemCode}
+import io.circe.Codec
+import io.circe.generic.semiauto.deriveCodec
+import js7.base.problem.Problem
 import js7.base.time.ScalaTime.*
 import js7.data.cluster.ClusterEvent.ClusterNodeLostEvent
-import js7.data.cluster.{ClusterEvent, ClusterState, ClusterWatchId, ClusterWatchRunId, InvalidClusterWatchHeartbeatProblem}
+import js7.data.cluster.{ClusterEvent, ClusterState, ClusterWatchId, ClusterWatchRunId}
 import js7.data.node.NodeId
 import scala.concurrent.duration.FiniteDuration
 
 object ClusterWatchProblems
 {
-  private lazy val isClusterWatchProblemCode = Set[ProblemCode](
-    UntaughtClusterWatchProblem.code,
-    ClusterWatchEventMismatchProblem.code,
-    ClusterWatchInactiveNodeProblem.code,
-    InvalidClusterWatchHeartbeatProblem.code,  // <-- this is in js7-data/ClusterWatchRequest
-    ClusterFailOverWhilePassiveLostProblem.code)
-
-  def isClusterWatchProblem(problem: Problem): Boolean =
-    problem.maybeCode exists isClusterWatchProblemCode
+  //private lazy val isClusterWatchProblemCode = Set[ProblemCode](
+  //  UntaughtClusterWatchProblem.code,
+  //  ClusterWatchEventMismatchProblem.code,
+  //  ClusterWatchInactiveNodeProblem.code,
+  //  InvalidClusterWatchHeartbeatProblem.code,  // <-- this is in js7-data/ClusterWatchRequest
+  //  ClusterFailOverWhilePassiveLostProblem.code)
+  //
+  //def isClusterWatchProblem(problem: Problem): Boolean =
+  //  problem.maybeCode exists isClusterWatchProblemCode
 
   final case object UntaughtClusterWatchProblem extends Problem.ArgumentlessCoded
 
@@ -51,13 +53,19 @@ object ClusterWatchProblems
 
   final case object ClusterFailOverWhilePassiveLostProblem extends Problem.ArgumentlessCoded
 
-  final case class ClusterNodeLossNotConfirmedProblem(event: ClusterNodeLostEvent)
-  extends Problem.Coded
-  {
+  final case class ClusterNodeLossNotConfirmedProblem(
+    fromNodeId: NodeId,
+    event: ClusterNodeLostEvent)
+    extends Problem.Coded {
     def arguments = Map(
+      "fromNodeId" -> fromNodeId.toString,
       "event" -> event.toString)
   }
-  object ClusterNodeLossNotConfirmedProblem extends Problem.Coded.Companion
+
+  object ClusterNodeLossNotConfirmedProblem extends Problem.Coded.Companion {
+    implicit val jsonCodec: Codec.AsObject[ClusterNodeLossNotConfirmedProblem] =
+      deriveCodec[ClusterNodeLossNotConfirmedProblem]
+  }
 
   final case class ClusterNodeIsNotLostProblem(nodeId: NodeId) extends Problem.Coded {
     def arguments = Map("" +

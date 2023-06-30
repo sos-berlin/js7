@@ -214,7 +214,8 @@ final class ControllerStateTest extends OurAsyncTestSuite
         "clusterState": {
           "TYPE": "Empty"
         },
-        "eventId": 7
+        "eventId": 7,
+        "nodeToClusterWatchConfirmationRequired": {}
       }, {
         "TYPE": "SubagentItemState",
         "subagentItem": {
@@ -529,7 +530,7 @@ object ControllerStateTest
     Map(
       agentRef.path -> AgentRefState(
         agentRef, None, None, DelegateCouplingState.Coupled, EventId(7), None,
-        ClusterState.Empty, None),
+        ClusterState.Empty, Map.empty, None),
       lock.path -> LockState(lock),
       boardState.path -> boardState,
       subagentItem.id -> subagentItemState,

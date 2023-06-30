@@ -4,7 +4,7 @@ import java.util.UUID
 import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
-import js7.data.agent.AgentRefStateEvent.{AgentCoupled, AgentCouplingFailed, AgentDedicated, AgentEventsObserved, AgentMirroredEvent, AgentReady, AgentResetStarted}
+import js7.data.agent.AgentRefStateEvent.{AgentClusterWatchConfirmationRequired, AgentCoupled, AgentCouplingFailed, AgentDedicated, AgentEventsObserved, AgentMirroredEvent, AgentReady, AgentResetStarted}
 import js7.data.cluster.ClusterEvent
 import js7.data.event.{JournalId, KeyedEvent}
 import js7.data.node.NodeId
@@ -136,6 +136,24 @@ final class AgentRefStateEventTest extends OurTestSuite
         {
           "TYPE": "AgentMirroredEvent",
           "Key": "AGENT",
+          "event": {
+            "TYPE": "ClusterPassiveLost",
+            "id": "Backup"
+          }
+        }""")
+    }
+
+    "AgentClusterWatchConfirmationRequired" in {
+      testJson[KeyedEvent[AgentRefStateEvent]](
+        AgentPath("AGENT") <-:
+          AgentClusterWatchConfirmationRequired(
+            NodeId("Primary"),
+            ClusterEvent.ClusterPassiveLost(NodeId("Backup"))),
+        json"""
+        {
+          "TYPE": "AgentClusterWatchConfirmationRequired",
+          "Key": "AGENT",
+          "fromNodeId": "Primary",
           "event": {
             "TYPE": "ClusterPassiveLost",
             "id": "Backup"

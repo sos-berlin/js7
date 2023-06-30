@@ -17,9 +17,9 @@ import js7.base.utils.ScalaUtils.syntax.{RichEither, RichThrowable}
 import js7.base.utils.{DelayConf, Delayer, ProgramTermination}
 import js7.base.web.HttpClient
 import js7.base.web.HttpClient.HttpException
-import js7.cluster.watch.ClusterWatch.Confirmed
+import js7.cluster.watch.ClusterWatch.{Confirmed, OnUndecidableClusterNodeLoss}
 import js7.cluster.watch.ClusterWatchService.*
-import js7.cluster.watch.api.ClusterWatchProblems.{ClusterNodeLossNotConfirmedProblem, ClusterWatchRequestDoesNotMatchProblem}
+import js7.cluster.watch.api.ClusterWatchProblems.ClusterWatchRequestDoesNotMatchProblem
 import js7.cluster.watch.api.HttpClusterNodeApi
 import js7.common.akkautils.Akkas.actorSystemResource
 import js7.common.configuration.Js7Configuration.defaultConfig
@@ -43,14 +43,15 @@ final class ClusterWatchService private[ClusterWatchService](
   keepAlive: FiniteDuration,
   retryDelays: NonEmptySeq[FiniteDuration],
   onClusterStateChanged: (HasNodes) => Unit,
-  onClusterNodeLossNotConfirmed: ClusterNodeLossNotConfirmedProblem => Task[Unit])
+  onUndecidableClusterNodeLoss: OnUndecidableClusterNodeLoss)
 extends MainService with Service.StoppableByRequest
 {
-  private val clusterWatch = new ClusterWatch(
+  // Public for test
+  val clusterWatch = new ClusterWatch(
     now,
     label = label,
     onClusterStateChanged = onClusterStateChanged,
-    onClusterNodeLossNotConfirmed = onClusterNodeLossNotConfirmed)
+    onUndecidableClusterNodeLoss = onUndecidableClusterNodeLoss)
   val clusterWatchRunId = ClusterWatchRunId.random()
   private val delayConf = DelayConf(retryDelays, resetWhen = retryDelays.last)
 
@@ -175,11 +176,11 @@ object ClusterWatchService
     config: Config,
     label: String = "",
     onClusterStateChanged: (HasNodes) => Unit = _ => (),
-    onClusterNodeLossNotConfirmed: ClusterNodeLossNotConfirmedProblem => Task[Unit] = _ => Task.unit)
+    onUndecidableClusterNodeLoss: OnUndecidableClusterNodeLoss = _ => Task.unit)
   : Resource[Task, ClusterWatchService] =
     resource2(
       clusterWatchId, apisResource, config.withFallback(defaultConfig), label = label,
-      onClusterStateChanged, onClusterNodeLossNotConfirmed)
+      onClusterStateChanged, onUndecidableClusterNodeLoss)
 
   private def resource2(
     clusterWatchId: ClusterWatchId,
@@ -187,7 +188,7 @@ object ClusterWatchService
     config: Config,
     label: String,
     onClusterStateChanged: (HasNodes) => Unit,
-    onClusterNodeLossNotConfirmed: ClusterNodeLossNotConfirmedProblem => Task[Unit])
+    onUndecidableClusterNodeLoss: OnUndecidableClusterNodeLoss)
   : Resource[Task, ClusterWatchService] =
     Resource.suspend(Task {
       val keepAlive = config.finiteDuration("js7.web.client.keep-alive").orThrow
@@ -207,7 +208,7 @@ object ClusterWatchService
                 keepAlive = keepAlive,
                 retryDelays = NonEmptySeq.fromSeq(retryDelays) getOrElse NonEmptySeq.of(1.s),
                 onClusterStateChanged,
-                onClusterNodeLossNotConfirmed))))
+                onUndecidableClusterNodeLoss))))
       } yield service
     })
 }

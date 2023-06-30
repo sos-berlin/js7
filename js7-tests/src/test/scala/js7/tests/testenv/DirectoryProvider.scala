@@ -28,8 +28,8 @@ import js7.base.utils.Closer.syntax.{RichClosersAny, RichClosersAutoCloseable}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, HasCloser}
 import js7.base.web.Uri
+import js7.cluster.watch.ClusterWatch.OnUndecidableClusterNodeLoss
 import js7.cluster.watch.ClusterWatchService
-import js7.cluster.watch.api.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem
 import js7.common.akkautils.Akkas
 import js7.common.configuration.Js7Configuration
 import js7.common.utils.Exceptions.repeatUntilNoException
@@ -509,7 +509,7 @@ object DirectoryProvider
     admissions: Nel[Admission],
     httpsConfig: HttpsConfig,
     config: Config = ConfigFactory.empty,
-    onClusterNodeLossNotConfirmed: ClusterNodeLossNotConfirmedProblem => Task[Unit] = _ => Task.unit)
+    onUndecidableClusterNodeLoss: OnUndecidableClusterNodeLoss = _ => Task.unit)
   : Resource[Task, ClusterWatchService] =
     Akkas
       .actorSystemResource(clusterWatchId.string)
@@ -518,5 +518,5 @@ object DirectoryProvider
           clusterWatchId,
           admissions.traverse(AkkaHttpControllerApi.resource(_, httpsConfig)),
           config.withFallback(Js7Configuration.defaultConfig),
-          onClusterNodeLossNotConfirmed = onClusterNodeLossNotConfirmed))
+          onUndecidableClusterNodeLoss = onUndecidableClusterNodeLoss))
 }
