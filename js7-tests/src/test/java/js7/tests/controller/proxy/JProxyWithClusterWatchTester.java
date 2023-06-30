@@ -41,9 +41,11 @@ final class JProxyWithClusterWatchTester
                 asList(ClusterNodeLossNotConfirmedProblem.class),
                 problem -> logger.info("Event received: " + problem));
             ClusterWatchService clusterWatchService =
-                controllerApi.startClusterWatch(
-                    ClusterWatchId.of("JOC-A"),
-                    o -> eventBus.publish(o)).get();
+                controllerApi
+                    .startClusterWatch(
+                        ClusterWatchId.of("JOC-A"),
+                        problem -> eventBus.publish(problem))
+                    .get();
 
             // ClusterWatchService provides some methods
             assertThat(clusterWatchService.clusterWatchId(), equalTo(ClusterWatchId.of("JOC-A")));

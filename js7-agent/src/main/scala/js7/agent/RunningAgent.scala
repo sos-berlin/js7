@@ -192,8 +192,7 @@ object RunningAgent {
           admission, label, httpsConfig)(actorSystem),
         new LicenseChecker(LicenseCheckContext(conf.configDirectory)),
         journalLocation, clusterConf, eventIdClock, testEventBus)
-      agent <- resource2(forDirector, clusterNode, testWiring, conf, testEventBus, clock)(
-        scheduler)
+      agent <- resource2(forDirector, clusterNode, testWiring, conf, testEventBus, clock)
     } yield agent
   }).executeOn(scheduler)
 

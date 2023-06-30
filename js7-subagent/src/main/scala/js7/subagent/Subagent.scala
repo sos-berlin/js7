@@ -228,9 +228,6 @@ object Subagent
       .orThrow
 
     for {
-      // Stop Subagent _after_ web service to allow Subagent to execute last commands!
-      subagentDeferred <- Resource.eval(Deferred[Task, Subagent])
-      directorRouteVariable = new DirectorRouteVariable
       actorSystem <- Akkas.actorSystemResource(conf.name, config)
       sessionRegister <- {
         implicit val a = actorSystem
@@ -238,25 +235,28 @@ object Subagent
       }
       systemSessionToken <- sessionRegister
         .placeSessionTokenInDirectory(SimpleUser.System, conf.workDirectory)
+      // Stop Subagent _after_ web service to allow Subagent to execute last commands!
+      subagentDeferred <- Resource.eval(Deferred[Task, Subagent])
+      directorRouteVariable = new DirectorRouteVariable
       webServer <-
         SubagentWebServer.resource(
           subagentDeferred.get, directorRouteVariable.route, sessionRegister, conf)(
           actorSystem, scheduler)
       _ <- provideUriFile(conf, webServer.localHttpUri)
       // For BlockingInternalJob (thread-blocking Java jobs)
+      iox <- IOExecutor.resource[Task](config, conf.name + "-I/O")
       blockingInternalJobScheduler <- unlimitedSchedulerResource[Task](
         "JS7 blocking job", conf.config)
       clock <- AlarmClock.resource[Task](Some(alarmClockCheckingInterval))
+      jobLauncherConf = conf.toJobLauncherConf(iox, blockingInternalJobScheduler, clock).orThrow
+      signatureVerifier <- DirectoryWatchingSignatureVerifier.prepare(config)
+        .orThrow
+        .toResource(onUpdated = () => testEventBus.publish(ItemSignatureKeysUpdated))(iox)
       journal <- MemoryJournal.resource(
         SubagentState.empty,
         size = config.getInt("js7.journal.in-memory.event-count"),
         waitingFor = "JS7 Agent Director",
         infoLogEvents = config.seqAs[String]("js7.journal.log.info-events").toSet)
-      iox <- IOExecutor.resource[Task](config, conf.name + "-I/O")
-      jobLauncherConf = conf.toJobLauncherConf(iox, blockingInternalJobScheduler, clock).orThrow
-      signatureVerifier <- DirectoryWatchingSignatureVerifier.prepare(config)
-        .orThrow
-        .toResource(onUpdated = () => testEventBus.publish(ItemSignatureKeysUpdated))(iox)
       subagent <- Service.resource(Task(
         new Subagent(webServer,
           directorRouteVariable,
