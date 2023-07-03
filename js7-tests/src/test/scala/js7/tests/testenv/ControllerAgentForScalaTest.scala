@@ -100,7 +100,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
 
   override def afterAll() = {
     Task
-      .parSequenceN(sys.runtime.availableProcessors)(
+      .parSequence(
         Seq(
           Seq(controller.terminate().void),
           clusterWatchServiceOnce.toOption.map(_.release).toList,
