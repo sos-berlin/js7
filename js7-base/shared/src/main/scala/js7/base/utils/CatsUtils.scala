@@ -2,6 +2,7 @@ package js7.base.utils
 
 import cats.Functor
 import cats.data.{NonEmptyList, NonEmptySeq, Validated}
+import cats.effect.concurrent.Deferred
 import cats.effect.{BracketThrow, Resource, Sync, SyncIO, Timer}
 import cats.kernel.Monoid
 import cats.syntax.all.*
@@ -77,6 +78,12 @@ object CatsUtils
             .toAllocated[G, B]
             .map(_.toSingleUseResource))
     }
+  }
+
+  implicit final class RichDeferred[F[_], A](private val deferred: Deferred[F, A]) extends AnyVal {
+    /** For compatibility with Cats Effect 3. */
+    def complete3(a: A)(implicit F: Sync[F]): F[Boolean] =
+      deferred.complete(a).attempt.map(_.isRight)
   }
 
   implicit final class RichThrowableValidated[E <: Throwable, A](private val underlying: Validated[E, A]) extends AnyVal
