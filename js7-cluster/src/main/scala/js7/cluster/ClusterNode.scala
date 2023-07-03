@@ -78,17 +78,12 @@ extends Service.StoppableByRequest
   /** None when stopped before activated. */
   def untilActivated: Task[Either[ProgramTermination, WorkingClusterNode[S]]] =
     logger.traceTaskWithResult("untilActivated", task =
-      workingNodeStarted.get.dematerialize)
+      workingNodeStarted.get.dematerialize
+        .onErrorRecover { case t: RestartAfterJournalTruncationException =>
+          logger.info(t.getMessage)
+          Left(ProgramTermination(restart = true))
+        })
 
-  /**
-   * Returns a pair of `Task`s
-   * - `(Task[None], _)` no replicated state available, because it's an active node or the backup node has not yet been appointed.
-   * - `(Task[Some[Checked[S]]], _)` with the current replicated state if this node has started as a passive node.
-   * - `(_, Task[Checked[ClusterFollowUp]]` when this node should be activated
-   *
-   * @return A pair of `Task`s with maybe the current `S` of this passive node (if so)
-   *         and ClusterFollowUp.
-   */
   protected def start: Task[Started] =
     startService(
       untilWorkingNodeStarted

@@ -33,7 +33,6 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.SyncResource.syntax.RichSyncResource
 import js7.base.utils.{Allocated, ProgramTermination}
 import js7.base.web.Uri
-import js7.cluster.ClusterNode.RestartAfterJournalTruncationException
 import js7.cluster.watch.ClusterWatchService
 import js7.cluster.{ClusterNode, WorkingClusterNode}
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
@@ -263,10 +262,6 @@ object RunningController
                 alarmClock,
                 conf, testEventBus)
             })
-            .onErrorRecover { case t: RestartAfterJournalTruncationException =>
-              logger.info(t.getMessage)
-              Left(ProgramTermination(restart = true))
-            }
         ).memoize
 
       val controllerState = clusterNode.currentState
