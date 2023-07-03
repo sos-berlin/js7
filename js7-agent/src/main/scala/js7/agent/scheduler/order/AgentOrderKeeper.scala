@@ -14,7 +14,6 @@ import js7.agent.scheduler.order.AgentOrderKeeper.*
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.crypt.Signed
 import js7.base.generic.Completed
-import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.{BlockingSymbol, CorrelId, Logger}
 import js7.base.monixutils.AsyncVariable
 import js7.base.monixutils.MonixBase.syntax.{RichCheckedTask, RichMonixTask}
@@ -889,19 +888,18 @@ with Stash
     }
 
   private def switchOver(cmd: AgentCommand): Future[Checked[AgentCommand.Response]] =
-    forDirector.subagent.prepareForSwitchOver
-      .flatMapT { _ =>
-        logger.info(s"❗️ $cmd")
-        switchingOver = true // Asynchronous !!!
-        Task(clusterNode.workingClusterNode)
-          .flatTapT(_ =>
-            // SubagentKeeper stops the local (surrounding) Subagent,
-            // which lets the Director (RunningAgent) stop
-            subagentKeeper.stop.as(Right(())))
-          .flatMapT(_.switchOver)
-          .flatMapT(_ => Task.right(self ! Internal.ContinueSwitchover))
-          .rightAs(AgentCommand.Response.Accepted)
-      }
+    Task.defer {
+      logger.info(s"❗️ $cmd")
+      switchingOver = true // Asynchronous !!!
+      Task(clusterNode.workingClusterNode)
+        .flatTapT(_ =>
+          // SubagentKeeper stops the local (surrounding) Subagent,
+          // which lets the Director (RunningAgent) stop
+          subagentKeeper.stop.as(Right(())))
+        .flatMapT(_.switchOver)
+        .flatMapT(_ => Task.right(self ! Internal.ContinueSwitchover))
+        .rightAs(AgentCommand.Response.Accepted)
+    }
       .runToFuture
 
   override def unhandled(message: Any) =
@@ -925,9 +923,8 @@ with Stash
 
       case Internal.ContinueSwitchover =>
         val shutdownCmd = AgentCommand.ShutDown(
-          Some(SIGKILL),
-          Some(AgentCommand.ShutDown.ClusterAction.Switchover),
-          restart = true)
+          clusterAction = Some(AgentCommand.ShutDown.ClusterAction.Switchover),
+          restartDirector = true)
         shutDownOnce.trySet(shutdownCmd)
         shutdown.start(shutdownCmd)
 

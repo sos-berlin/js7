@@ -154,7 +154,8 @@ object AgentCommand extends CommonCommand.Companion
     processSignal: Option[ProcessSignal] = None,
     clusterAction: Option[ShutDown.ClusterAction] = None,
     suppressSnapshot: Boolean = false,
-    restart: Boolean = false)
+    restart: Boolean = false,
+    restartDirector: Boolean = false)
   extends ShutdownOrAbort {
     type Response = Response.Accepted
 

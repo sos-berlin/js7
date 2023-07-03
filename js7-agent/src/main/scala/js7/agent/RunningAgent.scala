@@ -4,8 +4,7 @@ import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.http.scaladsl.server.directives.SecurityDirectives.Authenticator
 import cats.effect.Resource
 import cats.effect.concurrent.Deferred
-import cats.syntax.flatMap.*
-import cats.syntax.traverse.*
+import cats.syntax.all.*
 import com.softwaremill.diffx.generic.auto.*
 import com.softwaremill.tagging.{@@, Tagger}
 import com.typesafe.config.ConfigUtil
@@ -56,6 +55,7 @@ import js7.subagent.Subagent
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.atomic.Atomic
+import scala.collection.mutable
 import scala.concurrent.{Future, Promise}
 
 final class RunningAgent private(
@@ -240,6 +240,8 @@ object RunningAgent {
     import clusterNode.actorSystem
     import conf.config
 
+    val actors = mutable.Buffer.empty[ActorRef]
+
     def startMainActor(
       failedNodeId: Option[NodeId],
       journalAllocated: Allocated[Task, FileJournal[AgentState]])
@@ -254,7 +256,7 @@ object RunningAgent {
       val terminationPromise = Promise[DirectorTermination]()
       val actor = actorSystem.actorOf(
         Props {
-          new MainActor(
+          val mainActor = new MainActor(
             forDirector,
             failedOverSubagentId,
             clusterNode,
@@ -262,9 +264,13 @@ object RunningAgent {
             mainActorReadyPromise, terminationPromise,
             clock)(
             scheduler)
+          for (o <- mainActor.commandActor) actors += o
+          mainActor
         },
+
         "main").taggedWith[MainActor]
 
+      actors += actor
       actor ! MainActor.Input.Start(journalAllocated.allocatedThing.unsafeCurrentState())
 
       MainActorStarted(
@@ -393,6 +399,8 @@ object RunningAgent {
         .logWhenItTakesLonger(s"${cmd.getClass.simpleScalaName} command"))
 
     for {
+      _ <- Resource.make(Task.unit)(release = _ =>
+        Task(for (actor <- actors) actorSystem.stop(actor)))
       agent <- Service.resource(Task(
         new RunningAgent(
           clusterNode,

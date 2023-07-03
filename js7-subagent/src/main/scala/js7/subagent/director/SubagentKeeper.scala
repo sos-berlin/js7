@@ -27,7 +27,7 @@ import js7.base.utils.{Allocated, LockKeeper}
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.delegate.DelegateCouplingState.Coupled
-import js7.data.event.{EventId, KeyedEvent, Stamped}
+import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.item.BasicItemEvent.ItemDetached
 import js7.data.order.OrderEvent.{OrderCoreEvent, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{Order, OrderId, Outcome}
@@ -382,7 +382,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
             stateVar.updateCheckedWithResult(state =>
               state.idToAllocatedDriver.get(subagentItem.id) match {
                 case None =>
-                  allocateSubagentDriver(subagentItem, subagentItemState.eventId)
+                  allocateSubagentDriver(subagentItem)
                     .map(allocatedDriver =>
                       state.insertSubagentDriver(allocatedDriver, disabled = subagentItem.disabled)
                         .flatMap(_.setDisabled(subagentItem.id, subagentItem.disabled))
@@ -445,20 +445,20 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
       .orThrow
       .void
 
-  private def allocateSubagentDriver(subagentItem: SubagentItem, eventId: EventId) =
+  private def allocateSubagentDriver(subagentItem: SubagentItem) = {
     if (subagentItem.id == localSubagentId)
       emitLocalSubagentCoupled *>
-        localSubagentDriverResource(subagentItem, eventId).toAllocated
+        localSubagentDriverResource(subagentItem).toAllocated
     else
       remoteSubagentDriverResource(subagentItem).toAllocated
+  }
 
-  private def localSubagentDriverResource(subagentItem: SubagentItem, eventId: EventId)
+  private def localSubagentDriverResource(subagentItem: SubagentItem)
   : Resource[Task, SubagentDriver] =
     LocalSubagentDriver
       .resource(
         subagentItem,
         localSubagent,
-        eventId,
         journal,
         controllerId,
         directorConf.subagentConf)

@@ -4,7 +4,6 @@ import cats.effect.Resource
 import cats.effect.concurrent.Deferred
 import cats.syntax.all.*
 import js7.base.io.process.ProcessSignal
-import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.MonixBase.syntax.*
@@ -22,7 +21,7 @@ import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId, Outcome}
 import js7.data.subagent.Problems.{SubagentIsShuttingDownProblem, SubagentShutDownBeforeProcessStartProblem}
 import js7.data.subagent.SubagentCommand.{AttachSignedItem, DedicateSubagent}
-import js7.data.subagent.SubagentItemStateEvent.{SubagentCouplingFailed, SubagentDedicated, SubagentRestarted}
+import js7.data.subagent.SubagentItemStateEvent.{SubagentCouplingFailed, SubagentDedicated, SubagentEventsObserved, SubagentRestarted}
 import js7.data.subagent.{SubagentCommand, SubagentDirectorState, SubagentEvent, SubagentItem, SubagentRunId}
 import js7.journal.state.Journal
 import js7.subagent.configuration.SubagentConf
@@ -32,7 +31,6 @@ import monix.eval.{Fiber, Task}
 private final class LocalSubagentDriver private(
   val subagentItem: SubagentItem,
   subagent: Subagent,
-  initialEventId: EventId,
   protected val journal: Journal[? <: SubagentDirectorState[?]],
   controllerId: ControllerId,
   protected val subagentConf: SubagentConf)
@@ -55,8 +53,7 @@ with Service.StoppableByRequest
   protected def start =
     dedicate.map(_.orThrow) *>
       startService(
-        untilStopRequested *>
-          tryShutdownLocalSubagent())
+        untilStopRequested)
 
   private def dedicate: Task[Checked[Unit]] =
     logger.debugTask(Task.defer(
@@ -77,42 +74,49 @@ with Service.StoppableByRequest
           .appended(subagentId <-: SubagentDedicated(subagentRunId, Some(currentPlatformInfo())))))
       .rightAs(())
 
-  // TODO Similar to SubagentEventListener
   def startObserving: Task[Unit] =
-    logger
-      .debugTask(subagent.journal.eventWatch
-        .observe(EventRequest.singleClass[Event](
-          // TODO Bei Failover EventId des Failovers verwenden!
-          after = initialEventId,
-          timeout = None))
-        .mapEval(handleEvent)
-        .mapEval {
-          case (maybeStampedEvent, followUp) =>
-            maybeStampedEvent
-              .fold(Task.unit)(stampedEvent => journal
-                 // TODO Save Stamped timestamp
-                .persistKeyedEvent(stampedEvent.value)
-                .map(_.orThrow._1 /*???*/)
-                // After an OrderProcessed event an DetachProcessedOrder must be sent,
-                // to terminate StartOrderProcess command idempotency detection and
-                // allow a new StartOrderProcess command for a next process.
-                .tapEval {
-                  case Stamped(_, _, KeyedEvent(orderId: OrderId, _: OrderProcessed)) =>
-                    subagent.commandExecutor
-                      .executeCommand(
-                        Numbered(0, SubagentCommand.DetachProcessedOrder(orderId)),
-                        CommandMeta.System)
-                      .orThrow
-                  case _ => Task.unit
-                }
-                // TODO Emit SubagentEventsObserved
-                .*>(releaseEvents(stampedEvent.eventId)))
-              .*>(followUp)
-        }
-        .takeUntilEval(untilStopRequested)
-        .completedL
-        .onErrorHandle(t => logger.error(s"observeEvents => ${t.toStringWithCauses}")))
-      .startAndForget
+    observe.startAndForget
+
+  // TODO Similar to SubagentEventListener
+  private def observe: Task[Unit] =
+    logger.debugTask(
+      journal.state
+        .map(_.idToSubagentItemState(subagentId).eventId)
+        .flatMap(observeAfter))
+
+  // TODO Similar to SubagentEventListener
+  private def observeAfter(eventId: EventId): Task[Unit] =
+    subagent.journal.eventWatch
+      .observe(EventRequest.singleClass[Event](after = eventId, timeout = None))
+      .mapEval(handleEvent)
+      .mapEval {
+        case (maybeStampedEvent, followUp) =>
+          maybeStampedEvent
+            .fold(Task.unit)(stampedEvent => journal
+              // TODO Save Stamped timestamp
+              .persistKeyedEvent(stampedEvent.value)
+              .map(_.orThrow._1 /*???*/)
+              // After an OrderProcessed event an DetachProcessedOrder must be sent,
+              // to terminate StartOrderProcess command idempotency detection and
+              // allow a new StartOrderProcess command for a next process.
+              .tapEval {
+                case Stamped(_, _, KeyedEvent(orderId: OrderId, _: OrderProcessed)) =>
+                  subagent.commandExecutor
+                    .executeCommand(
+                      Numbered(0, SubagentCommand.DetachProcessedOrder(orderId)),
+                      CommandMeta.System)
+                    .orThrow
+                case _ => Task.unit
+              }
+              // TODO Emit SubagentEventsObserved for a chunk of events (use fs2)
+              .*>(journal.persistKeyedEvent(
+                subagentId <-: SubagentEventsObserved(stampedEvent.eventId)))
+              .*>(releaseEvents(stampedEvent.eventId)))
+            .*>(followUp)
+      }
+      .takeUntilEval(untilStopRequested)
+      .completedL
+      .onErrorHandle(t => logger.error(s"observeEvents => ${t.toStringWithCauses}"))
 
   /** Returns optionally the event and a follow-up task. */
   private def handleEvent(stamped: Stamped[AnyKeyedEvent])
@@ -165,11 +169,7 @@ with Service.StoppableByRequest
 
   def terminate: Task[Unit] =
     logger.traceTask(
-      subagent.killAllProcesses(SIGKILL)/*ignore Left(problem)*/ *>
-        stop)
-
-  private def tryShutdownLocalSubagent(processSignal: Option[ProcessSignal] = None): Task[Unit] =
-    Task.unit
+      stop)
 
   def tryShutdown: Task[Unit] =
     Task.raiseError(new RuntimeException("The local Subagent cannot be shut down"))
@@ -314,13 +314,12 @@ object LocalSubagentDriver
   private[director] def resource[S <: SubagentDirectorState[S]](
     subagentItem: SubagentItem,
     subagent: Subagent,
-    eventId: EventId,
     journal: Journal[S],
     controllerId: ControllerId,
     subagentConf: SubagentConf)
   : Resource[Task, LocalSubagentDriver] = {
     Service.resource(Task {
-      new LocalSubagentDriver(subagentItem, subagent, eventId, journal, controllerId, subagentConf)
+      new LocalSubagentDriver(subagentItem, subagent, journal, controllerId, subagentConf)
     })
   }
 }

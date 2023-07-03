@@ -24,7 +24,7 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.job.{JobConf, JobKey}
 import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten}
 import js7.data.order.{Order, OrderId, Outcome}
-import js7.data.subagent.Problems.{DirectorIsSwitchingOverProblem, SubagentHasStillOrdersProblem, SubagentIdMismatchProblem, SubagentIsShuttingDownProblem, SubagentRunIdMismatchProblem, SubagentShutDownBeforeProcessStartProblem}
+import js7.data.subagent.Problems.{SubagentIdMismatchProblem, SubagentIsShuttingDownProblem, SubagentRunIdMismatchProblem, SubagentShutDownBeforeProcessStartProblem}
 import js7.data.subagent.SubagentCommand.CoupleDirector
 import js7.data.subagent.SubagentEvent.SubagentShutdown
 import js7.data.subagent.{SubagentCommand, SubagentId, SubagentRunId, SubagentState}
@@ -373,19 +373,6 @@ extends Service.StoppableByRequest
               }))
             .map(workflowJob -> _))
       .flatMap(_.sequence)
-
-  // Provisional until Subagent continues despite Director's passivation
-  def prepareForSwitchOver: Task[Checked[Unit]] =
-    orderToProcessing
-      .initiateStopWithProblemIfEmpty(DirectorIsSwitchingOverProblem)
-      .flatMap(isEmpty => Task(
-        isEmpty !! SubagentHasStillOrdersProblem(subagentId)))
-
-  def killAllProcesses(signal: ProcessSignal): Task[Unit] =
-    Task.defer(orderIdToJobDriver
-      .toMap.toVector
-      .parTraverse { case (orderId, jobDriver) => jobDriver.killOrder(orderId, signal) })
-      .map(_.combineAll)
 
   def killProcess(orderId: OrderId, signal: ProcessSignal): Task[Unit] =
     for {

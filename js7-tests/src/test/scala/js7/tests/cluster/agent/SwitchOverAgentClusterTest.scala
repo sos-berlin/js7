@@ -7,8 +7,9 @@ import js7.base.log.Logger
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
+import js7.base.utils.Allocated
+import js7.base.utils.AllocatedForJvm.BlockingAllocated
 import js7.base.utils.CatsUtils.syntax.RichResource
-import js7.base.utils.ProgramTermination
 import js7.base.utils.ScalaUtils.syntax.{RichEither, RichThrowable}
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
@@ -17,7 +18,6 @@ import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterSwitchedOver}
 import js7.data.controller.ControllerCommand.ClusterSwitchOver
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted, OrderStdoutWritten, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderId}
-import js7.data.subagent.Problems.SubagentHasStillOrdersProblem
 import js7.data.subagent.SubagentItemStateEvent.SubagentDedicated
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -67,10 +67,20 @@ with BlockingItemUpdater
           program <- env.programResource
         } yield env -> program
       val allocated = resource.toAllocated.await(99.s)
-      allocated.allocatedThing._1 -> TestAgent(allocated.map(_._2)/*, Some(SIGTERM) ???*/)
+      allocated.allocatedThing._1 -> TestAgent(allocated.map(_._2) /*, Some(SIGTERM) ???*/)
     }
 
-    val (primaryEnv, primaryDirector) = toTestAgent(
+    /** Returned `TestAgent` releases `DirectorEnv`, too. */
+    def allocate(envResource: Resource[Task, DirectorEnv])
+    : Allocated[Task, (DirectorEnv, Task[RunningAgent])] =
+      locally {
+        for {
+          env <- envResource
+          restartable <- env.restartableDirectorResource
+        } yield env -> restartable.currentDirector
+      }.toAllocated.await(99.s)
+
+    val primaryAllocated = allocate(
       directoryProvider.directorEnvResource(
         primarySubagentItem,
         otherSubagentIds = Seq(backupSubagentId)))
@@ -82,10 +92,11 @@ with BlockingItemUpdater
         isClusterBackup = true))
 
     backupDirector.useSync(99.s) { _ =>
-      primaryDirector.useSync(99.s) { _ =>
+      val aOrderId = OrderId("🔶")
+      primaryAllocated.useSync(99.s) { case (primaryEnv, currentPrimaryDirector) =>
         try {
           updateItems(primarySubagentItem, backupSubagentItem, agentRef, workflow)
-
+          val primaryDirector = currentPrimaryDirector.await(1.s)
           primaryDirector.eventWatch.await[SubagentDedicated](_.key == primarySubagentId)
           primaryDirector.eventWatch.await[SubagentDedicated](_.key == backupSubagentId)
 
@@ -93,34 +104,39 @@ with BlockingItemUpdater
           assert(primaryEnv.journalLocation.listJournalFiles.nonEmpty)
           assert(backupEnv.journalLocation.listJournalFiles.nonEmpty)
 
-          val orderId = OrderId("🔹")
-          controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+          controller.api.addOrder(FreshOrder(aOrderId, workflow.path)).await(99.s).orThrow
+
           val processingStarted = controller.eventWatch
-            .await[OrderProcessingStarted](_.key == orderId).last.value.event
+            .await[OrderProcessingStarted](_.key == aOrderId).last.value.event
           assert(processingStarted.subagentId contains primarySubagentId)
-          controller.eventWatch.await[OrderStdoutWritten](_.key == orderId)
 
-          assert(controller.api.executeCommand(ClusterSwitchOver(Some(agentPath))).await(99.s) ==
-            Left(SubagentHasStillOrdersProblem(primarySubagentId)))
+          controller.eventWatch.await[OrderStdoutWritten](_.key == aOrderId)
 
-          ASemaphoreJob.continue()
-          controller.eventWatch.await[OrderTerminated](_.key == orderId)
 
+          val directorEventId = primaryDirector.eventWatch.lastAddedEventId
           controller.api.executeCommand(ClusterSwitchOver(Some(agentPath))).await(99.s).orThrow
           backupDirector.eventWatch.await[ClusterSwitchedOver]()
           val termination = primaryDirector.untilTerminated.await(99.s)
           assert(termination == DirectorTermination(restartDirector = true))
 
+          // Primary director restarts and couples as the passive node
+          backupDirector.eventWatch.await[ClusterCoupled](after = directorEventId)
+
           locally {
-            val orderId = OrderId("🔶")
-            controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+            ASemaphoreJob.continue()
+            controller.eventWatch.await[OrderTerminated](_.key == aOrderId)
+
+            val bOrderId = OrderId("🔹")
+            controller.api.addOrder(FreshOrder(bOrderId, workflow.path)).await(99.s).orThrow
+
             val processingStarted = controller.eventWatch
-              .await[OrderProcessingStarted](_.key == orderId).last.value.event
+              .await[OrderProcessingStarted](_.key == bOrderId).last.value.event
             assert(processingStarted.subagentId contains backupSubagentId)
-            controller.eventWatch.await[OrderStdoutWritten](_.key == orderId)
+
+            controller.eventWatch.await[OrderStdoutWritten](_.key == bOrderId)
 
             ASemaphoreJob.continue()
-            controller.eventWatch.await[OrderFinished](_.key == orderId)
+            controller.eventWatch.await[OrderFinished](_.key == bOrderId)
           }
         } catch {
           case NonFatal(t) =>

@@ -179,14 +179,6 @@ extends MainService with Service.StoppableByRequest
     Task(checkedDedicatedSubagent)
       .flatMapT(_.startOrderProcess(order, defaultArguments))
 
-  // Provisional until Subagent continues despite Director's passivation
-  def prepareForSwitchOver: Task[Checked[Unit]] =
-    Task(subagent.checkedDedicatedSubagent).flatMapT(_.prepareForSwitchOver)
-
-  def killAllProcesses(signal: ProcessSignal): Task[Checked[Unit]] =
-    subagent.checkedDedicatedSubagent
-      .traverse(_.killAllProcesses(signal))
-
   def killProcess(orderId: OrderId, signal: ProcessSignal): Task[Checked[Unit]] =
     subagent.checkedDedicatedSubagent
       .traverse(_

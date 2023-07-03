@@ -1,6 +1,6 @@
 package js7.agent
 
-import akka.actor.{Actor, Props, Terminated}
+import akka.actor.{Actor, ActorRef, Props, Terminated}
 import js7.agent.MainActor.*
 import js7.agent.command.{CommandActor, CommandHandler}
 import js7.agent.configuration.AgentConfiguration
@@ -8,7 +8,7 @@ import js7.agent.data.AgentState
 import js7.agent.scheduler.{AgentActor, AgentHandle}
 import js7.base.log.Logger
 import js7.base.time.AlarmClock
-import js7.base.utils.{Allocated, ProgramTermination}
+import js7.base.utils.{Allocated, SetOnce}
 import js7.cluster.ClusterNode
 import js7.common.akkautils.CatchingSupervisorStrategy
 import js7.core.command.CommandMeta
@@ -52,11 +52,13 @@ extends Actor {
     "agent"))
   private val agentHandle = new AgentHandle(agentActor)
 
+  val commandActor = SetOnce[ActorRef]
   private val commandHandler = testCommandHandler getOrElse {
     // A global, not a child actor !!!
     // because a child Actor may stop before Shutdown command has been responded,
     // leaving the client without response (and tests fail after 99s)
     val actor = context.system.actorOf(Props {new CommandActor(agentHandle)}, "command")
+    commandActor := actor
     new CommandActor.Handle(actor)
   }
 
