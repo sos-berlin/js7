@@ -1,11 +1,10 @@
-package js7.cluster.watch.api
+package js7.data.cluster
 
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime.*
 import js7.data.cluster.ClusterEvent.ClusterNodeLostEvent
-import js7.data.cluster.{ClusterEvent, ClusterState, ClusterWatchId, ClusterWatchRunId}
 import js7.data.node.NodeId
 import scala.concurrent.duration.FiniteDuration
 
@@ -61,14 +60,13 @@ object ClusterWatchProblems
       "fromNodeId" -> fromNodeId.toString,
       "event" -> event.toString)
   }
-
   object ClusterNodeLossNotConfirmedProblem extends Problem.Coded.Companion {
     implicit val jsonCodec: Codec.AsObject[ClusterNodeLossNotConfirmedProblem] =
       deriveCodec[ClusterNodeLossNotConfirmedProblem]
   }
 
   final case class ClusterNodeIsNotLostProblem(nodeId: NodeId) extends Problem.Coded {
-    def arguments = Map("" +
+    def arguments = Map(
       "nodeId" -> nodeId.toString)
   }
 

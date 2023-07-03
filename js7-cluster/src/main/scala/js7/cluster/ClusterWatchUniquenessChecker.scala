@@ -3,7 +3,7 @@ package js7.cluster
 import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.cluster.ClusterWatchUniquenessChecker.*
-import js7.cluster.watch.api.ClusterWatchProblems.ClusterWatchIdNotUniqueProblem
+import js7.data.cluster.ClusterWatchProblems.ClusterWatchIdNotUniqueProblem
 import js7.data.cluster.{ClusterWatchId, ClusterWatchRunId}
 import org.jetbrains.annotations.TestOnly
 import scala.collection.mutable

@@ -7,10 +7,10 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.cluster.ClusterWatchCounterpart.WaitingForConfirmation
-import js7.cluster.watch.api.ClusterWatchProblems.{ClusterNodeIsNotLostProblem, ClusterNodeLossNotConfirmedProblem}
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterPassiveLost}
 import js7.data.cluster.ClusterState.{Coupled, PassiveLost}
 import js7.data.cluster.ClusterWatchCheckEvent
+import js7.data.cluster.ClusterWatchProblems.{ClusterNodeIsNotLostProblem, ClusterNodeLossNotConfirmedProblem}
 import js7.data.node.NodeId
 import js7.tests.cluster.controller.UntaughtClusterWatchBothNodesLostControllerClusterTest.*
 import monix.execution.Scheduler.Implicits.traced

@@ -30,7 +30,6 @@ import js7.base.utils.{AsyncLock, MutableAllocated}
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatchService
 import js7.cluster.watch.api.ActiveClusterNodeSelector
-import js7.cluster.watch.api.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem
 import js7.common.http.{AkkaHttpClient, RecouplingStreamReader}
 import js7.controller.agent.AgentDriver.*
 import js7.controller.agent.CommandQueue.QueueableResponse
@@ -41,6 +40,7 @@ import js7.data.agent.Problems.AgentNotDedicatedProblem
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
 import js7.data.cluster.ClusterState.HasNodes
 import js7.data.cluster.ClusterWatchId
+import js7.data.cluster.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem
 import js7.data.controller.{ControllerRunId, ControllerState}
 import js7.data.event.{AnyKeyedEvent, EventId, KeyedEvent, Stamped}
 import js7.data.item.ItemAttachedState.{Attachable, Attached}

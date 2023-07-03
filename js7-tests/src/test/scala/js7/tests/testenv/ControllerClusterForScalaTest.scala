@@ -20,7 +20,6 @@ import js7.base.utils.ProgramTermination
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatchService
-import js7.cluster.watch.api.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem
 import js7.common.auth.SecretStringGenerator
 import js7.common.configuration.Js7Configuration
 import js7.common.message.ProblemCodeMessages
@@ -28,6 +27,7 @@ import js7.common.system.ThreadPools
 import js7.common.utils.FreeTcpPortFinder.{findFreeTcpPort, findFreeTcpPorts}
 import js7.data.agent.AgentPath
 import js7.data.cluster.ClusterEvent.ClusterCoupled
+import js7.data.cluster.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem
 import js7.data.cluster.{ClusterSetting, ClusterTiming, ClusterWatchId}
 import js7.data.controller.ControllerCommand.ShutDown
 import js7.data.item.InventoryItem

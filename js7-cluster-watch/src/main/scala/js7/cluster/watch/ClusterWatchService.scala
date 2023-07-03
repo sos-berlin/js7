@@ -19,13 +19,13 @@ import js7.base.web.HttpClient
 import js7.base.web.HttpClient.HttpException
 import js7.cluster.watch.ClusterWatch.{Confirmed, OnUndecidableClusterNodeLoss}
 import js7.cluster.watch.ClusterWatchService.*
-import js7.cluster.watch.api.ClusterWatchProblems.ClusterWatchRequestDoesNotMatchProblem
 import js7.cluster.watch.api.HttpClusterNodeApi
 import js7.common.akkautils.Akkas.actorSystemResource
 import js7.common.configuration.Js7Configuration.defaultConfig
 import js7.common.http.AkkaHttpClient
 import js7.data.cluster.ClusterEvent.ClusterNodeLostEvent
 import js7.data.cluster.ClusterState.HasNodes
+import js7.data.cluster.ClusterWatchProblems.ClusterWatchRequestDoesNotMatchProblem
 import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
 import js7.data.cluster.{ClusterState, ClusterWatchId, ClusterWatchRequest, ClusterWatchRunId}
 import js7.data.node.NodeId

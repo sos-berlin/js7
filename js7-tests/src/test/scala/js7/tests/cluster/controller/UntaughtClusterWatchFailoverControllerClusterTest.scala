@@ -8,9 +8,9 @@ import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.cluster.ClusterWatchCounterpart.WaitingForConfirmation
-import js7.cluster.watch.api.ClusterWatchProblems.ClusterNodeIsNotLostProblem
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterWatchRegistered}
 import js7.data.cluster.ClusterState.{Coupled, FailedOver}
+import js7.data.cluster.ClusterWatchProblems.ClusterNodeIsNotLostProblem
 import js7.data.cluster.{ClusterWatchCheckEvent, ClusterWatchId}
 import js7.data.controller.ControllerCommand.ShutDown
 import js7.data.event.*

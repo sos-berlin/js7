@@ -14,11 +14,11 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{OneTimeToken, OneTimeTokenProvider, SetOnce}
 import js7.cluster.ClusterCommon.*
 import js7.cluster.ClusterConf.ClusterProductName
-import js7.cluster.watch.api.ClusterWatchProblems.{ClusterNodeLossNotConfirmedProblem, ClusterWatchInactiveNodeProblem}
 import js7.common.system.startup.Halt.haltJava
 import js7.core.license.LicenseChecker
 import js7.data.cluster.ClusterEvent.{ClusterNodeLostEvent, ClusterPassiveLost}
 import js7.data.cluster.ClusterState.{FailedOver, HasNodes, SwitchedOver}
+import js7.data.cluster.ClusterWatchProblems.{ClusterNodeLossNotConfirmedProblem, ClusterWatchInactiveNodeProblem}
 import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeApi, ClusterState}
 import monix.eval.Task
 import scala.concurrent.duration.Deadline.now

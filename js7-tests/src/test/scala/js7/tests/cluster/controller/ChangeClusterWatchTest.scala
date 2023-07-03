@@ -8,8 +8,8 @@ import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import js7.cluster.ClusterNode.ClusterWatchConfirmed
-import js7.cluster.watch.api.ClusterWatchProblems.{ClusterWatchRequestDoesNotMatchProblem, OtherClusterWatchStillAliveProblem}
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterCouplingPrepared, ClusterWatchRegistered}
+import js7.data.cluster.ClusterWatchProblems.{ClusterWatchRequestDoesNotMatchProblem, OtherClusterWatchStillAliveProblem}
 import js7.data.cluster.{ClusterState, ClusterWatchId}
 import js7.tests.cluster.controller.ChangeClusterWatchTest.*
 import monix.execution.Scheduler.Implicits.traced
