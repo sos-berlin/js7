@@ -17,6 +17,9 @@ final class AsyncVariable[V](initial: V, varName: String, typeName: String)
   def value: Task[V] =
     Task { _value }
 
+  def set(value: V)(implicit src: sourcecode.Enclosing): Task[V] =
+    update(_ => Task.pure(value))
+
   def update(update: V => Task[V])(implicit src: sourcecode.Enclosing): Task[V] =
     shieldValue(
       for (v <- update(_value)) yield {

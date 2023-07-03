@@ -13,6 +13,21 @@ final class AsyncVariableTest extends OurAsyncTestSuite
     assert(asyncVariable.get == 1)
   }
 
+  "value" in {
+    asyncVariable
+      .value
+      .map(v => assert(v == 1))
+      .runToFuture
+  }
+
+  "set" in {
+    asyncVariable.set(7)
+      .map(v => assert(v == 7))
+      .*>(Task(assert(asyncVariable.get == 7)))
+      .*>(asyncVariable.set(1).as(succeed))
+      .runToFuture
+  }
+
   "updated" in {
     asyncVariable.update(i => Task(i + 1))
       .map(v => assert(v == 2))
