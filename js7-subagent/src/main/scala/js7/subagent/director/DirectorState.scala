@@ -37,7 +37,10 @@ private final case class DirectorState(
             selectionToPrioritized
               .updated(
                 None,
-                selectionToPrioritized(None).add(subagentId))))
+                if (allocatedDriver.allocatedThing.isInstanceOf[LocalSubagentDriver])
+                  selectionToPrioritized(None).insertFirst(subagentId)
+                else
+                  selectionToPrioritized(None).add(subagentId))))
   }
 
   def replaceSubagentDriver(

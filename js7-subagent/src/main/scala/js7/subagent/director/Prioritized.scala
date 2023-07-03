@@ -16,10 +16,14 @@ private final class Prioritized[A] private(
       case _ => false
     }
 
+  def insertFirst(a: A): Prioritized[A] =
+    replaceAll(a +: orderedKeys.filter(_ != a))
+
   def add(a: A): Prioritized[A] =
-    copy(prioritySort(
-      orderedKeys.filter(_ != a).view :+ a)(
-      toPriority = k => toPriority(k)))
+    replaceAll(orderedKeys.filter(_ != a) :+ a)
+
+  private def replaceAll(keys: Seq[A]): Prioritized[A] =
+    copy(prioritySort(keys)(toPriority = k => toPriority(k)))
 
   def remove(a: A): Prioritized[A] =
     copy(orderedKeys.filter(_ != a))
