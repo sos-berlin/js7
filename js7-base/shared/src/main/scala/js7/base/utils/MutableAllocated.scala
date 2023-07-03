@@ -28,9 +28,7 @@ final class MutableAllocated[A](implicit src: sourcecode.Enclosing, tag: Tag[A])
 
   def acquire(resource: Resource[Task, A]): Task[A] =
     allocatedVar
-      .update(allocated =>
-        allocated.release *>
-          resource.toAllocated)
+      .update(allocated => allocated.release *> resource.toAllocated)
       .map(_.allocatedThing)
 
   def release: Task[Unit] =

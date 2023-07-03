@@ -67,7 +67,7 @@ private[agent] final class AgentActor(
   override val supervisorStrategy = SupervisorStrategies.escalate
 
   private var recoveredAgentState: AgentState = null
-  private val started = SetOnce[Started]
+  private val dedicated = SetOnce[Dedicated]
   private val shutDownOnce = SetOnce[AgentCommand.ShutDown]
   private var isResetting = false
   private def terminating = shutDownOnce.isDefined
@@ -109,7 +109,7 @@ private[agent] final class AgentActor(
         AgentCommand.ShutDown(processSignal = Some(SIGKILL),
           suppressSnapshot = true, restart = true)))
 
-    case Terminated(a) if started.toOption.exists(_.actor == a) =>
+    case Terminated(a) if dedicated.toOption.exists(_.actor == a) =>
       logger.debug("AgentOrderKeeper terminated")
       context.stop(self)
 
@@ -149,10 +149,10 @@ private[agent] final class AgentActor(
             if (terminating) {
               response.success(Right(AgentCommand.Response.Accepted/*???*/))
             } else {
-              started.toOption
-                .fold(Task.unit)(started => Task
+              dedicated.toOption
+                .fold(Task.unit)(dedicated => Task
                   .fromFuture(
-                    (started.actor ? AgentOrderKeeper.Input.ResetAllSubagents)(
+                    (dedicated.actor ? AgentOrderKeeper.Input.ResetAllSubagents)(
                       RemoteSubagentDriver.subagentResetTimeout))
                   .void)
                 .*>(journal
@@ -206,11 +206,11 @@ private[agent] final class AgentActor(
                       _: AgentCommand.ResetSubagent |
                       _: AgentCommand.ClusterSwitchOver) =>
         // TODO Check AgentRunId ?
-        started.toOption match {
+        dedicated.toOption match {
           case None =>
             response.success(Left(AgentNotDedicatedProblem))
-          case Some(started) =>
-            started.actor.forward(
+          case Some(dedicated) =>
+            dedicated.actor.forward(
               AgentOrderKeeper.Input.ExternalCommand(command, CorrelId.current, response))
         }
 
@@ -294,8 +294,8 @@ private[agent] final class AgentActor(
 
   private def continueTermination(): Unit =
     if (terminating) {
-      if (started.isEmpty) {
-        // When no AgentOrderKeeper has been started, we need to stop the journal ourselve
+      if (dedicated.isEmpty) {
+        // When no AgentOrderKeeper has been dedicated, we need to stop the journal ourselve
         //journal.journalActor ! JournalActor.Input.Terminate
         context.stop(self)
       }
@@ -307,19 +307,19 @@ private[agent] final class AgentActor(
     if (!shutDownOnce.trySet(shutDown))
       Future.successful(Left(AgentDirectorIsShuttingDownProblem))
     else
-      started.toOption match {
+      dedicated.toOption match {
         case None =>
           continueTermination()
           Future.successful(Right(AgentCommand.Response.Accepted))
 
-        case (Some(started)) =>
-          terminateStartedOrderKeeper(started, shutDown)
+        case (Some(dedicated)) =>
+          terminateAgentOrderKeeper(dedicated, shutDown)
       }
   }
 
-  private def terminateStartedOrderKeeper(started: Started, shutDown: AgentCommand.ShutDown)
+  private def terminateAgentOrderKeeper(dedicated: Dedicated, shutDown: AgentCommand.ShutDown)
   : Future[Checked[AgentCommand.Response.Accepted]] =
-    (started.actor ? shutDown)
+    (dedicated.actor ? shutDown)
       .mapTo[AgentCommand.Response.Accepted]
       .map { ordersTerminated =>
         terminateCompleted.success(Completed) // Wait for child Actor termination
@@ -332,10 +332,14 @@ private[agent] final class AgentActor(
       if (terminating)
         Left(AgentDirectorIsShuttingDownProblem)
       else
-        started.toOption match {
-          case Some(started) =>
+        dedicated.toOption match {
+          case Some(Dedicated(`agentPath`, `controllerId`, _)) =>
+            logger.debug("❓ Already dedicated")
+            Checked.unit
+
+          case Some(dedicated) =>
             Left(Problem(
-              s"This Agent has already started as '${started.agentPath}' for '${started.controllerId}'"))
+              s"This Agent has already been dedicated as '${dedicated.agentPath}' for '${dedicated.controllerId}'"))
 
           case None =>
             val recoveredAgentState = this.recoveredAgentState
@@ -355,7 +359,7 @@ private[agent] final class AgentActor(
                 },
               "AgentOrderKeeper")
             watch(actor)
-            started := Started(agentPath, controllerId, actor)
+            dedicated := Dedicated(agentPath, controllerId, actor)
             Checked.unit
         }
     }
@@ -419,7 +423,7 @@ object AgentActor
     case object Ready
   }
 
-  private final case class Started(
+  private final case class Dedicated(
     agentPath: AgentPath,
     controllerId: ControllerId,
     actor: ActorRef)
