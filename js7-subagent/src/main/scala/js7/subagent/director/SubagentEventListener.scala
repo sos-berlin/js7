@@ -75,23 +75,22 @@ private trait SubagentEventListener
         }))))
 
   protected final def startEventListener: Task[Unit] =
-    lock.lock(
-      logger.debugTask(Task.defer {
-        if (isListening.getAndSet(true)) {
-          val msg = "Duplicate startEventListener"
-          logger.error(msg)
-          Task.raiseError(new RuntimeException(s"$toString: $msg"))
-        } else
-          stopObserving.flatMap(_.tryTake)
-            .*>(observeEvents)
-            .start
-            .flatMap(fiber => Task {
-              observing = fiber
-            })
-      }))
+    lock.lock(Task.defer {
+      if (isListening.getAndSet(true)) {
+        val msg = "Duplicate startEventListener"
+        logger.error(msg)
+        Task.raiseError(new RuntimeException(s"$toString: $msg"))
+      } else
+        stopObserving.flatMap(_.tryTake)
+          .*>(observeEvents)
+          .start
+          .flatMap(fiber => Task {
+            observing = fiber
+          })
+    })
 
   private def observeEvents: Task[Unit] =
-    Task.defer {
+    logger.debugTask(Task.defer {
       val recouplingStreamReader = newEventListener()
       val bufferDelay = conf.eventBufferDelay max conf.commitDelay
       logger.debugTask(recouplingStreamReader
@@ -134,7 +133,7 @@ private trait SubagentEventListener
           .terminateAndLogout
           .logWhenItTakesLonger)
         .completedL)
-    }
+    })
 
   /** Returns optionally the event and a follow-up task. */
   private def handleEvent(stamped: Stamped[AnyKeyedEvent])

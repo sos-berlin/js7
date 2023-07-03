@@ -212,7 +212,7 @@ with SubagentEventListener
               .map(response => response.subagentRunId -> response.subagentEventId)
 
           case (throwable, _, retry) =>
-            logger.warn(s"DedicateSubagent failed: ${throwable.toStringWithCauses}")
+            logger.warn(s"CoupleDirector failed: ${throwable.toStringWithCauses}")
             emitSubagentCouplingFailed(Some(HttpClient.throwableToProblem(throwable)))
               .*>(Task.sleep(reconnectErrorDelay))
               .*>(retry(()))

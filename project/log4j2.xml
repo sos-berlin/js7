@@ -5,11 +5,13 @@
     <console name="stderr" target="SYSTEM_ERR">
       <patternLayout pattern="%highlight{%d{DEFAULT} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger - %message}{INFO=blue,WARN=red bold}%n"/>
     </console>
-    <rollingRandomAccessFile name="file"
-                             fileName="logs/build.log"
-                             filePattern="target/build-%d{yyyy-MM-dd}-%i.log.gz"
-                             append="true"
-                             immediateFlush="${sys:js7.log4j.immediateFlush:-true}">
+    <!-- rollingRandomAccessFile swallows text chunks when uses with parallel test execution. -->
+    <rollingFile
+      name="file"
+      fileName="logs/build.log"
+      filePattern="logs/build-%d{yyyy-MM-dd}-%i.log.gz"
+      append="true"
+      immediateFlush="${sys:js7.log4j.immediateFlush:-true}">
       <!--TODO Each subproject (probably due to seperate ClassLoaders) has an own file handle
            and flushes independently, resulting in wrong concatenated buffers.
            Event parts are not written
@@ -20,7 +22,7 @@
       <policies>
         <timeBasedTriggeringPolicy/>
       </policies>
-    </rollingRandomAccessFile>
+    </rollingFile>
   </appenders>
   <loggers>
     <root level="info">

@@ -9,8 +9,8 @@ import js7.data.event.EventId
   */
 package object problems
 {
-  final case class UnknownEventIdProblem(requiredEventId: EventId) extends Problem.Coded {
-    def arguments = Map("requiredEventId" -> EventId.toString(requiredEventId))
+  final case class UnknownEventIdProblem(requestedEventId: EventId) extends Problem.Coded {
+    def arguments = Map("requestedEventId" -> EventId.toString(requestedEventId))
   }
   object UnknownEventIdProblem extends Problem.Coded.Companion
 

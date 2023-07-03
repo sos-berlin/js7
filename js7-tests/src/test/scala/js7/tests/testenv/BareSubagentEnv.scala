@@ -46,4 +46,6 @@ extends SubagentEnv {
   def subagentResource: Resource[Task, Subagent] =
     ownThreadPoolResource(subagentConf.name, subagentConf.config)(implicit scheduler =>
       Subagent.resource(subagentConf, new StandardEventBus[Any]))
+
+  override def toString = s"BareSubagentEnv($name)"
 }

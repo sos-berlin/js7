@@ -287,7 +287,9 @@ trait RealEventWatch extends EventWatch
         iterator.close()
         Checked.unit
       case None =>
-        Left(UnknownEventIdProblem(requiredEventId = eventId))
+        val problem = UnknownEventIdProblem(requestedEventId = eventId)
+        logger.warn(s"$problem (tornEventId=$tornEventId lastAddedEventId=$lastAddedEventId)")
+        Left(problem)
     }
 
   /** TEST ONLY - Blocking. */
