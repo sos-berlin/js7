@@ -31,6 +31,8 @@ object ServiceMainTest {
   private case class TestConf(config: Config) extends BasicConfiguration
 
   private class TestService extends MainService with StoppableByRequest {
+    protected type Termination = ProgramTermination
+
     protected def start =
       startService(untilStopRequested)
 
@@ -44,6 +46,8 @@ object ServiceMainTest {
   private val termination = ProgramTermination(restart = true)
 
   private class TerminatingService extends MainService with StoppableByRequest {
+    protected type Termination = ProgramTermination
+
     protected def start =
       startService(Task.raiseError(new MainServiceTerminationException {
         def termination = ServiceMainTest.termination

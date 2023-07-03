@@ -1,7 +1,7 @@
 package js7.tests.cluster.agent
 
 import cats.effect.Resource
-import js7.agent.{RunningAgent, TestAgent}
+import js7.agent.{DirectorTermination, RunningAgent, TestAgent}
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.log.Logger
 import js7.base.test.OurTestSuite
@@ -109,7 +109,7 @@ with BlockingItemUpdater
           controller.api.executeCommand(ClusterSwitchOver(Some(agentPath))).await(99.s).orThrow
           backupDirector.eventWatch.await[ClusterSwitchedOver]()
           val termination = primaryDirector.untilTerminated.await(99.s)
-          assert(termination == ProgramTermination(restart = true))
+          assert(termination == DirectorTermination(restartDirector = true))
 
           locally {
             val orderId = OrderId("🔶")

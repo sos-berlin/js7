@@ -4,6 +4,7 @@ import akka.actor.{Actor, ActorRef, Props, Stash, Terminated}
 import akka.pattern.ask
 import cats.syntax.traverse.*
 import java.util.Objects.requireNonNull
+import js7.agent.DirectorTermination
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
@@ -22,7 +23,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.time.AlarmClock
 import js7.base.utils.ScalaUtils.RightUnit
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{Allocated, ProgramTermination, SetOnce}
+import js7.base.utils.{Allocated, SetOnce}
 import js7.base.web.Uri
 import js7.cluster.ClusterNode
 import js7.common.akkautils.{SimpleStateActor, SupervisorStrategies}
@@ -52,12 +53,12 @@ private[agent] final class AgentActor(
   forDirector: Subagent.ForDirector,
   failedOverSubagentId: Option[SubagentId],
   clusterNode: ClusterNode[AgentState],
-  terminatePromise: Promise[ProgramTermination],
+  terminatePromise: Promise[DirectorTermination],
   journalAllocated: Allocated[Task, FileJournal[AgentState]],
   clock: AlarmClock,
   agentConf: AgentConfiguration)
   (implicit protected val scheduler: Scheduler)
-  extends Actor with Stash with SimpleStateActor
+extends Actor with Stash with SimpleStateActor
 {
   import agentConf.{implicitAkkaAskTimeout, journalLocation}
   import context.{actorOf, watch}
@@ -85,7 +86,9 @@ private[agent] final class AgentActor(
         journalLocation.deleteJournal(ignoreFailure = true)
       }
       terminatePromise.trySuccess(
-        ProgramTermination(restart = shutDownOnce.toOption.fold(false)(_.restart)))
+        DirectorTermination(
+          restartJvm = shutDownOnce.toOption.fold(false)(_.restart),
+          restartDirector = shutDownOnce.toOption.fold(false)(_.restartDirector)))
     }
 
   def receive = {

@@ -1,12 +1,13 @@
 package js7.tests.testenv
 
 import cats.effect.Resource
+import cats.syntax.flatMap.*
 import com.typesafe.config.ConfigUtil.quoteString
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Path
-import js7.agent.RunningAgent
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
+import js7.agent.{RestartableDirector, RunningAgent}
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.configutils.Configs.{HoconStringInterpolator, configIf}
 import js7.base.crypt.SignatureVerifier
@@ -99,5 +100,14 @@ extends SubagentEnv with ProgramEnv.WithFileJournal {
   def directorResource: Resource[Task, RunningAgent] =
     Resource.suspend/*delay access to agentConf*/(Task(
       ownThreadPoolResource(agentConf.name, agentConf.config)(implicit scheduler =>
-        RunningAgent.resource(agentConf))))
+        RunningAgent
+          .resource(agentConf)
+          .flatTap(programRegistering))))
+
+  def restartableDirectorResource: Resource[Task, RestartableDirector] =
+    Resource.suspend/*delay access to agentConf*/(Task(
+      ownThreadPoolResource(agentConf.name, agentConf.config)(implicit scheduler =>
+        RunningAgent.restartable(agentConf))))
+
+  override def toString = s"DirectorEnv($name)"
 }

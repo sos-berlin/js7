@@ -197,16 +197,18 @@ final class AgentCommandTest extends OurTestSuite
           "TYPE": "ShutDown",
           "processSignal": "SIGTERM",
           "suppressSnapshot": false,
-          "restart": false
+          "restart": false,
+          "restartDirector": false
         }""")
     }
 
     "JSON with restart" in {
-      testJson[AgentCommand](AgentCommand.ShutDown(restart = true),
+      testJson[AgentCommand](AgentCommand.ShutDown(restart = true, restartDirector = true),
         json"""{
           "TYPE": "ShutDown",
+          "suppressSnapshot": false,
           "restart": true,
-          "suppressSnapshot": false
+          "restartDirector": true
         }""")
     }
   }

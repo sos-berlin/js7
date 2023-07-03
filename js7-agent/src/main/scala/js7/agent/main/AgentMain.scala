@@ -11,5 +11,5 @@ object AgentMain
   def main(args: Array[String]): Unit =
     ServiceMain.mainThenExit(
       args, "Agent", AgentConfiguration.fromCommandLine(_), useLockFile = true
-    )((conf, scheduler) => RunningAgent.resource(conf)(scheduler))
+    )((conf, scheduler) => RunningAgent.restartable(conf)(scheduler))
 }

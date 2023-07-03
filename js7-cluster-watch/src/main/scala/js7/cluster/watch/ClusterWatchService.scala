@@ -46,6 +46,8 @@ final class ClusterWatchService private[ClusterWatchService](
   onUndecidableClusterNodeLoss: OnUndecidableClusterNodeLoss)
 extends MainService with Service.StoppableByRequest
 {
+  protected type Termination = ProgramTermination
+
   // Public for test
   val clusterWatch = new ClusterWatch(
     now,

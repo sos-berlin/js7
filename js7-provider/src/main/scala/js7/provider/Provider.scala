@@ -61,6 +61,8 @@ final class Provider(
 extends Observing
 with MainService with Service.StoppableByRequest {
 
+  protected type Termination = ProgramTermination
+
   protected def config = conf.config
 
   private val firstRetryLoginDurations = conf.config

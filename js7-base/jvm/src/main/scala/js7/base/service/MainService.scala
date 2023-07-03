@@ -4,5 +4,7 @@ import js7.base.utils.ProgramTermination
 import monix.eval.Task
 
 trait MainService extends Service {
-  def untilTerminated: Task[ProgramTermination]
+  protected type Termination <: ProgramTermination
+
+  def untilTerminated: Task[Termination]
 }

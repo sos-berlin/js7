@@ -31,7 +31,7 @@ final class MainActor(
   agentConfiguration: AgentConfiguration,
   testCommandHandler: Option[CommandHandler],
   readyPromise: Promise[Ready],
-  terminationPromise: Promise[ProgramTermination],
+  terminationPromise: Promise[DirectorTermination],
   clock: AlarmClock)
   (implicit scheduler: Scheduler)
 extends Actor {
@@ -87,7 +87,7 @@ extends Actor {
 
     case Terminated(`agentActor`) =>
       logger.debug("Stop")
-      terminationPromise.trySuccess(ProgramTermination())
+      terminationPromise.trySuccess(DirectorTermination())
       context.stop(self)
   }
 }

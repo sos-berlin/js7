@@ -45,6 +45,8 @@ final class JournaledProxySwitchOverClusterTest extends OurTestSuite with Cluste
 
       try {
         primary.runController() { primaryController =>
+          primaryController.eventWatch.await[ClusterCoupled]()
+
           val admissions = List(
             Admission(primaryController.localUri, Some(primaryUserAndPassword)),
             Admission(backupController.localUri, Some(backupUserAndPassword)))

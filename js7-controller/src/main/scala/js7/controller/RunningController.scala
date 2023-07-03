@@ -96,6 +96,8 @@ final class RunningController private(
   (implicit val scheduler: Scheduler)
 extends MainService with Service.StoppableByRequest
 {
+  protected type Termination = ProgramTermination
+
   @TestOnly lazy val localUri = localUri_()
 
   val untilTerminated =

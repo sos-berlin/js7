@@ -58,6 +58,8 @@ extends MainService with Service.StoppableByRequest
 {
   subagent =>
 
+  protected type Termination = ProgramTermination
+
   if (conf.scriptInjectionAllowed) logger.info("SIGNED SCRIPT INJECTION IS ALLOWED")
 
   val subagentRunId = SubagentRunId.fromJournalId(journal.journalId)
