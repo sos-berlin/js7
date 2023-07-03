@@ -7,6 +7,7 @@ import js7.base.auth.Admission
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.touchFile
+import js7.base.log.Logger
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
@@ -302,6 +303,8 @@ final class ResetAgentTest extends OurTestSuite with ControllerAgentForScalaTest
 
 object ResetAgentTest
 {
+  private val logger = Logger[this.type]
+
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)
   private val lock = Lock(LockPath("LOCK"))
@@ -358,9 +361,9 @@ object ResetAgentTest
     def toOrderProcess(step: Step) =
       OrderProcess(
         barrier
-          .tapEval(_ => Task(scribe.debug("TestJob start")))
+          .tapEval(_ => Task(logger.debug("TestJob start")))
           .flatMap(_.take)
-          .guaranteeCase(exitCase => Task(scribe.debug(s"TestJob $exitCase")))
+          .guaranteeCase(exitCase => Task(logger.debug(s"TestJob $exitCase")))
           .as(Outcome.succeeded))
   }
   private object TestJob extends InternalJob.Companion[TestJob]

@@ -10,7 +10,7 @@ import js7.base.auth.{Admission, UserAndPassword, UserId}
 import js7.base.circeutils.typed.TypedJsonCodec
 import js7.base.eventbus.StandardEventBus
 import js7.base.generic.SecretString
-import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
+import js7.base.log.Log4j
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.Nel
 import js7.base.web.Uri
@@ -70,7 +70,7 @@ object TestControllerProxy
     implicit val scheduler: Scheduler = Scheduler.traced
     println(s"${LocalDateTime.now.toString.replace('T', ' ')} " +
       s"JS7 TestControllerProxy ${BuildInfo.longVersion}")
-    coupleScribeWithSlf4j()
+    Log4j.initialize()
     CommandLineArguments.parse(args.toSeq) { arguments =>
       val controllerUri = arguments.as[Uri]("--controller-uri=")
       val httpPort = arguments.as[Int]("--http-port=")

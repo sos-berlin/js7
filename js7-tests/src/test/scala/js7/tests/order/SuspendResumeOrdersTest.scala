@@ -4,7 +4,7 @@ import java.nio.file.Files.{createTempFile, deleteIfExists}
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.touchFile
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
-import js7.base.log.{CorrelId, CorrelIdWrapped}
+import js7.base.log.{CorrelId, CorrelIdWrapped, Logger}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.isWindows
@@ -156,7 +156,7 @@ with BlockingItemUpdater
       .map {
         case OrderProcessed(Outcome.Killed(failed: Outcome.Failed)) if failed.namedValues == NamedValues.rc(SIGKILL) =>
           // Sometimes, SIGTERM does not work and SIGKILL be sent. Something wrong with the bash script ????
-          scribe.error("SIGTERM did not work")
+          logger.error("SIGTERM did not work")
           OrderProcessed(Outcome.Killed(failed.copy(namedValues = NamedValues.rc(SIGTERM))))  // Repair, to let test succceed
         case o => o
       }
@@ -656,6 +656,7 @@ with BlockingItemUpdater
 
 object SuspendResumeOrdersTest
 {
+  private val logger = Logger[this.type]
   private val pathExecutable = RelativePathExecutable("executable.cmd")
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)

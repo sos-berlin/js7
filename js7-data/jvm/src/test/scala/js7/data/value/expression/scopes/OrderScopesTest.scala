@@ -1,6 +1,6 @@
 package js7.data.value.expression.scopes
 
-import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
+import js7.base.log.Logger
 import js7.base.problem.Problem
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.system.OperatingSystem.PathEnvName
@@ -27,8 +27,6 @@ import scala.collection.{MapView, View}
 
 final class OrderScopesTest extends OurTestSuite
 {
-  coupleScribeWithSlf4j()
-
   "OrderScopes" - {
     lazy val orderScopes = OrderScopes(order, workflow, controllerId)
 
@@ -311,7 +309,7 @@ final class OrderScopesTest extends OurTestSuite
         "now($dateTimeFormat, $timezone)")
       for (exprString <- expressionsStrings) {
         val expression = expr(exprString)
-        scribe.info(measureTime(n, exprString, warmUp = n) {
+        logger.info(measureTime(n, exprString, warmUp = n) {
           expression.eval.orThrow
         }.toString)
       }
@@ -321,6 +319,8 @@ final class OrderScopesTest extends OurTestSuite
 
 object OrderScopesTest
 {
+  private val logger = Logger[this.type]
+
   private val controllerId = ControllerId("CONTROLLER")
   private val agentPath = AgentPath("AGENT")
   private val jobName = WorkflowJob.Name("JOB")

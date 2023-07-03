@@ -3,6 +3,7 @@ package js7.proxy
 import cats.effect.Resource
 import cats.syntax.option.*
 import js7.base.generic.Completed
+import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.durationOfTask
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Checked.*
@@ -135,7 +136,7 @@ object JournaledProxy
   private type RequiredApi_[S <: JournaledState[S]] =
     EventApi & HttpClusterNodeApi & SessionApi.HasUserAndPassword { type State = S }
 
-  private val logger = scribe.Logger[this.type]
+  private val logger = Logger[this.type]
 
   def observable[S <: JournaledState[S]](
     apisResource: Resource[Task, Nel[RequiredApi_[S]]],

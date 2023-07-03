@@ -5,6 +5,7 @@ import java.nio.file.Path
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.process.ProcessTextFileBusyTest.*
 import js7.base.io.process.Processes.*
+import js7.base.log.Logger
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.RichTask
@@ -52,12 +53,14 @@ final class ProcessTextFileBusyTest extends OurTestSuite {
 
 object ProcessTextFileBusyTest
 {
+  private val logger = Logger[this.type]
+
   private def tryDelete(path: Path): Unit = {
     // Under Windows, the file may be locked for a very short while, resulting in error
     // "The process cannot access the file because it is being used by another process.".
     try delete(path)
     catch {
-      case NonFatal(t) => scribe.warn(s"$path: ${t.toStringWithCauses}")
+      case NonFatal(t) => logger.warn(s"$path: ${t.toStringWithCauses}")
     }
   }
 }

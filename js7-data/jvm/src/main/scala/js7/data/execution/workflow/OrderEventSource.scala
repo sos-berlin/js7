@@ -4,6 +4,7 @@ import cats.instances.either.*
 import cats.instances.list.*
 import cats.syntax.flatMap.*
 import cats.syntax.traverse.*
+import js7.base.log.Logger
 import js7.base.problem.Checked.catchNonFatalFlatten
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
@@ -535,7 +536,7 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
 }
 
 object OrderEventSource {
-  private val logger = scribe.Logger[this.type]
+  private val logger = Logger[this.type]
 
   def leaveBlocks(
     workflow: Workflow, order: Order[Order.State],

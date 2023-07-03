@@ -5,7 +5,7 @@ import io.circe.generic.semiauto.deriveCodec
 import io.circe.syntax.*
 import js7.base.circeutils.CirceUtils.*
 import js7.base.data.ByteArray
-import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
+import js7.base.log.Logger
 import js7.base.monixutils.MonixBase
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Checked.*
@@ -25,8 +25,6 @@ import monix.reactive.Observable
 final class CirceParallelizationSpeedTest extends OurTestSuite
 {
   if (sys.props.contains("test.speed")) {
-    coupleScribeWithSlf4j()
-
     val n = 4 * sys.runtime.availableProcessors * MonixBase.DefaultBatchSize
     lazy val big = {
       val workflowPosition = WorkflowPath("WORKFLOW") ~ "1" /: (Position(1) / Then % 2 / Then % 3)
@@ -38,8 +36,8 @@ final class CirceParallelizationSpeedTest extends OurTestSuite
         Order.Forked(Vector(Order.Forked.Child("A", OrderId("A")), Order.Forked.Child("B", OrderId("B")))),
         namedValues,
         historicOutcomes = (1 to 50).map(_ => historicOutcome).toVector)
-      scribe.info(s"Big has ${fakeOrder.asJson.compactPrint.size} JSON bytes or ${fakeOrder.asJson.toPrettyString.count(_ == '\n')} JSON lines")
-      scribe.debug(fakeOrder.asJson.toPrettyString)
+      logger.info(s"Big has ${fakeOrder.asJson.compactPrint.size} JSON bytes or ${fakeOrder.asJson.toPrettyString.count(_ == '\n')} JSON lines")
+      logger.debug(fakeOrder.asJson.toPrettyString)
       for (i <- 1 to n / 10) yield Big(fakeOrder.copy(id = OrderId(i.toString)))
     }
     lazy val small = for (i <- 1 to n) yield Small(i)
@@ -88,7 +86,7 @@ final class CirceParallelizationSpeedTest extends OurTestSuite
       val timing = measureTimeOfSingleRun(seq.size, plural) {
         body(seq)
       }
-      if (i > m / 2) scribe.info(s"Encode $timing")
+      if (i > m / 2) logger.info(s"Encode $timing")
     }
   }
 
@@ -99,7 +97,7 @@ final class CirceParallelizationSpeedTest extends OurTestSuite
       val timing = measureTimeOfSingleRun(seq.size, plural) {
         body(seq)
       }
-      if (i > m / 2) scribe.info(s"Decode $timing")
+      if (i > m / 2) logger.info(s"Decode $timing")
     }
   }
 
@@ -142,6 +140,8 @@ final class CirceParallelizationSpeedTest extends OurTestSuite
 
 private object CirceParallelizationSpeedTest
 {
+  private val logger = Logger[this.type]
+
   case class Small(int: Int, string: String = "STRING", boolean: Boolean = true)
   object Small {
     implicit val jsonCodec: Codec.AsObject[Small] = deriveCodec[Small]

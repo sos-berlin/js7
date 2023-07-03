@@ -5,6 +5,7 @@ import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.silly.{SillySignatureVerifier, SillySigner}
 import js7.base.crypt.{GenericSignature, Signed, SignedString}
+import js7.base.log.Logger
 import js7.base.problem.Checked.*
 import js7.base.problem.Problem
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
@@ -464,7 +465,7 @@ final class RepoTest extends OurTestSuite
           .itemsToEventBlock(v, sign(AItem(APath(s"A-$i"), "A") withVersion v) :: Nil).orThrow
         repo = repo.applyEvents(eventBlock.events).orThrow
         if (i % 1000 == 0) {
-          scribe.info(sw.itemsPerSecondString(1000, "versions"))
+          logger.info(sw.itemsPerSecondString(1000, "versions"))
           sw = new Stopwatch
         }
       }
@@ -485,6 +486,8 @@ final class RepoTest extends OurTestSuite
 
 object RepoTest
 {
+  private val logger = Logger[this.type]
+
   private val v1 = VersionId("1")
   private val v2 = VersionId("2")
   private val v3 = VersionId("3")

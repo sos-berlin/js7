@@ -14,7 +14,6 @@ import js7.base.io.JavaResource
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.https.{HttpsConfig, KeyStoreRef, TrustStoreRef}
-import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.log.{CorrelId, Logger}
 import js7.base.problem.Checked.*
 import js7.base.system.OperatingSystem.isWindows
@@ -88,8 +87,6 @@ final class DirectoryProvider(
   scheduler: Option[Scheduler] = None)
 extends HasCloser
 {
-  coupleScribeWithSlf4j()
-
   private lazy val controllerPort_ = controllerPort
 
   val directory = useDirectory.getOrElse(

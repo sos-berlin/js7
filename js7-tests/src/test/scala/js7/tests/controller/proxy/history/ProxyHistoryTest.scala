@@ -89,7 +89,7 @@ final class ProxyHistoryTest extends OurTestSuite with ProvideActorSystem with C
           var proxyStartedReceived = false
           try {
             controllerApi.eventAndStateObservable(new StandardEventBus, Some(lastState.eventId))
-              .doOnNext(es => Task(scribe.debug(s"observe ${es.stampedEvent}")))
+              .doOnNext(es => Task(logger.debug(s"observe ${es.stampedEvent}")))
               .takeWhileInclusive {
                 case EventAndState(Stamped(_, _, KeyedEvent(TestOrder.id, _: OrderFinished)), _, _) =>
                   finished = true
@@ -227,7 +227,7 @@ final class ProxyHistoryTest extends OurTestSuite with ProvideActorSystem with C
 
 object ProxyHistoryTest
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
   private val AAgentPath = AgentPath("AGENT-A")
   private val BAgentPath = AgentPath("AGENT-B")
   private val aSubagentId = toLocalSubagentId(AAgentPath)

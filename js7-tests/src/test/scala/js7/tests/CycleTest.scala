@@ -4,6 +4,7 @@ import java.time.{LocalTime, ZoneId}
 import java.util.concurrent.TimeoutException
 import js7.agent.RunningAgent
 import js7.base.configutils.Configs.*
+import js7.base.log.Logger
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.RichTask
@@ -384,7 +385,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
 
       val orderDate = timeInterval.start.toLocalDateTime(zone).toLocalDate
       val orderId = OrderId(s"#$orderDate#CycleTesterTest")
-      scribe.debug(s"addOrder $orderId")
+      logger.debug(s"addOrder $orderId")
       controller.api
         .addOrder(FreshOrder(orderId, cycleTestExampleWorkflow.path, deleteWhenTerminated = true))
         .await(99.s).orThrow
@@ -662,6 +663,8 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
 
 object CycleTest
 {
+  private val logger = Logger[this.type]
+
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)
   private implicit val zone: ZoneId = ZoneId.of("Europe/Mariehamn")

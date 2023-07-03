@@ -3,7 +3,6 @@ package js7.tests.controller.commands
 import js7.agent.TestAgent
 import js7.agent.configuration.AgentConfiguration
 import js7.base.io.file.FileUtils.syntax.*
-import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.problem.Checked.Ops
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.RichTask
@@ -24,8 +23,6 @@ import monix.execution.Scheduler.Implicits.traced
   */
 final class UpdateRepoAgentTest extends OurTestSuite
 {
-  coupleScribeWithSlf4j()
-
   "ControllerCommand.UpdateRepo" in {
     val directoryProvider = new DirectoryProvider(
       agentPaths = agentPath :: Nil,

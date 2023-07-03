@@ -2,7 +2,6 @@ package js7.data.execution.workflow.instructions
 
 import java.time.{LocalTime, ZoneId}
 import js7.base.log.Logger
-import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.problem.Checked.*
 import js7.base.test.OurTestSuite
 import js7.base.time.JavaTimestamp.local
@@ -26,8 +25,6 @@ import scala.concurrent.duration.*
 
 final class CycleExecutorTest extends OurTestSuite with ScheduleTester
 {
-  coupleScribeWithSlf4j()
-
   private implicit val zone: ZoneId = CycleExecutorTest.zone
 
   "Cycle with no Scheme is skipped" in {

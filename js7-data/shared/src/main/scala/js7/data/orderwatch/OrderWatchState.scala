@@ -2,6 +2,7 @@ package js7.data.orderwatch
 
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.RichMap
 import js7.base.utils.IntelliJUtils.intelliJuseImport
@@ -225,7 +226,7 @@ object OrderWatchState extends UnsignedSimpleItemState.Companion[OrderWatchState
 
   type ToOrderAdded = (FreshOrder, Option[ExternalOrderKey]) => Checked[Option[KeyedEvent[OrderAdded]]]
 
-  private val logger = scribe.Logger[this.type]
+  private val logger = Logger[this.type]
 
   def apply(orderWatch: OrderWatch): OrderWatchState =
     OrderWatchState(orderWatch, Map.empty, Set.empty, Set.empty)

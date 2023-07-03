@@ -7,6 +7,7 @@ import implicitbox.Not
 import io.circe.{Decoder, Encoder, Json}
 import js7.base.circeutils.typed.TypedJsonCodec
 import js7.base.generic.Completed
+import js7.base.log.Logger
 import js7.base.problem.Problem.*
 import js7.base.utils.ScalaUtils.syntax.*
 import scala.annotation.unused
@@ -23,7 +24,7 @@ object Checked
 {
   val unit = Checked(())
   val completed = Checked(Completed)
-  private val logger = scribe.Logger[this.type]
+  private val logger = Logger[this.type]
 
   implicit def checkedMonoid[A](implicit A: Monoid[A]): Monoid[Checked[A]] =
     new Monoid[Checked[A]] {

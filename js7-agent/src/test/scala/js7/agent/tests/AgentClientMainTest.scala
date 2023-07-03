@@ -5,7 +5,6 @@ import js7.agent.data.commands.AgentCommand.ShutDown
 import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichCirceString, RichJson}
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.io.process.ReturnCode
-import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.test.OurTestSuite
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import org.scalatest.BeforeAndAfterAll
@@ -16,8 +15,6 @@ import scala.collection.mutable
  */
 final class AgentClientMainTest extends OurTestSuite with BeforeAndAfterAll with TestAgentProvider
 {
-  coupleScribeWithSlf4j()
-
   override def afterAll() = closer closeThen super.afterAll()
 
   //override protected def agentTestWiring = RunningAgent.TestWiring(

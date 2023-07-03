@@ -5,7 +5,6 @@ import js7.base.Js7Version
 import js7.base.auth.{HashedPassword, SessionToken, SimpleUser, UserId}
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.generic.{Completed, SecretString}
-import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.test.OurTestSuite
@@ -25,8 +24,6 @@ import scala.concurrent.duration.*
   */
 final class SessionRegisterTest extends OurTestSuite with ScalatestRouteTest
 {
-  coupleScribeWithSlf4j()
-
   override def testConfig = config"akka.loglevel = warning"
     .withFallback(super.testConfig)
 

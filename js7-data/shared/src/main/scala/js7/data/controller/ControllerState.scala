@@ -4,6 +4,7 @@ import cats.syntax.foldable.*
 import cats.syntax.traverse.*
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.Signed
+import js7.base.log.Logger
 import js7.base.problem.Checked.RichCheckedIterable
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.problem.{Checked, Problem}
@@ -725,7 +726,7 @@ object ControllerState
 extends ClusterableState.Companion[ControllerState]
 with ItemContainer.Companion[ControllerState]
 {
-  private val logger = scribe.Logger[this.type]
+  private val logger = Logger[this.type]
 
   val Undefined = ControllerState(
     EventId.BeforeFirst,

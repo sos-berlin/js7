@@ -5,7 +5,6 @@ import java.util.concurrent.ForkJoinPool
 import javax.annotation.Nonnull
 import js7.base.BuildInfo
 import js7.base.annotation.javaApi
-import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.log.{CorrelId, Logger}
 import js7.base.utils.CatsUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
@@ -32,11 +31,6 @@ extends HasCloser
   // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
   logger.info(s"JS7 Proxy ${BuildInfo.longVersion}")
   logger.debug(StartUp.startUpLine())
-
-  // Do not initialize Log4j and log4j2.threadContextMap.
-  // It's the caller responsibility. It is to late, anyway.
-  // No CorrelIds are logged.
-  coupleScribeWithSlf4j(noLog4jInit = true)
 
   ProblemCodeMessages.initialize()
 

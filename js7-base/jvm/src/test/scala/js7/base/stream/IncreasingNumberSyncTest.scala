@@ -1,6 +1,8 @@
 package js7.base.stream
 
+import js7.base.log.Logger
 import js7.base.monixutils.MonixDeadline.now
+import js7.base.stream.IncreasingNumberSyncTest.*
 import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
@@ -100,8 +102,12 @@ final class IncreasingNumberSyncTest extends OurTestSuite
       eventIds foreach sync.onAdded
       val result = futures await 99.s
       assert(result forall identity)
-      scribe.info(stopwatch.itemsPerSecondString(n, "events"))
+      logger.info(stopwatch.itemsPerSecondString(n, "events"))
       assert(sync.waitingCount == 0)
     }
   }
+}
+
+object IncreasingNumberSyncTest {
+  private val logger = Logger[this.type]
 }

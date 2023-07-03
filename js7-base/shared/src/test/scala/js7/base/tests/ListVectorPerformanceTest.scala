@@ -1,6 +1,8 @@
 package js7.base.tests
 
+import js7.base.log.Logger
 import js7.base.test.OurTestSuite
+import js7.base.tests.ListVectorPerformanceTest.*
 import js7.base.time.ScalaTime.RichDeadline
 import js7.base.time.Stopwatch.itemsPerSecondString
 import scala.collection.mutable.ListBuffer
@@ -42,7 +44,7 @@ final class ListVectorPerformanceTest extends OurTestSuite
       val vector = buffer.result()
       assert(vector.head == "")
     }
-    scribe.info(itemsPerSecondString(t.elapsed, m * n))
+    logger.info(itemsPerSecondString(t.elapsed, m * n))
   }
 
   private def testList(m: Int, n: Int): Unit = {
@@ -53,6 +55,10 @@ final class ListVectorPerformanceTest extends OurTestSuite
       val list = buffer.toList
       assert(list.head == "")
     }
-    scribe.info(itemsPerSecondString(t.elapsed, m * n))
+    logger.info(itemsPerSecondString(t.elapsed, m * n))
   }
+}
+
+object ListVectorPerformanceTest {
+  private val logger = Logger[this.type]
 }

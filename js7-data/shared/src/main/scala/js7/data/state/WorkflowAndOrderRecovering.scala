@@ -1,5 +1,6 @@
 package js7.data.state
 
+import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.problem.Checked.*
 import js7.base.utils.StackTraces.StackTraceThrowable
@@ -13,6 +14,8 @@ import js7.data.workflow.{Workflow, WorkflowId}
   */
 object WorkflowAndOrderRecovering
 {
+  private val logger = Logger[this.type]
+
   // TODO Some events (OrderForked, OrderFinished) handled by OrderActor let AgentOrderKeeper add or delete orders. This should be done in a single transaction.
   /** A snapshot of a freshly forked Order may contain the child orders. This is handled here. **/
   final def followUpRecoveredWorkflowsAndOrders(
@@ -27,7 +30,7 @@ object WorkflowAndOrderRecovering
       event <- snapshotToEvent(order);
       followUps <- eventHandler.handleEvent(order, event)
         .onProblem(p =>
-          scribe.error(p.toString, p.throwableOption.map(_.appendCurrentStackTrace).orNull)))  // TODO Really ignore error ?
+          logger.error(p.toString, p.throwableOption.map(_.appendCurrentStackTrace).orNull)))  // TODO Really ignore error ?
     {
       followUps foreach {
         case FollowUp.AddChild(childOrder) =>  // OrderForked

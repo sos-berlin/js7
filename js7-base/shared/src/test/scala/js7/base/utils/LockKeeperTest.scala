@@ -2,11 +2,12 @@ package js7.base.utils
 
 import cats.syntax.traverse.*
 import java.util.concurrent.ConcurrentHashMap
+import js7.base.log.Logger
+import js7.base.test.OurAsyncTestSuite
 import js7.base.time.Stopwatch
 import js7.base.utils.LockKeeperTest.*
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
-import js7.base.test.OurAsyncTestSuite
 import scala.jdk.CollectionConverters.*
 
 final class LockKeeperTest extends OurAsyncTestSuite
@@ -37,5 +38,5 @@ final class LockKeeperTest extends OurAsyncTestSuite
 
 object LockKeeperTest
 {
-  private val logger = scribe.Logger[this.type]
+  private val logger = Logger[this.type]
 }

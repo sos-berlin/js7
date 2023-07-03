@@ -285,12 +285,14 @@ lazy val `js7-tester` = crossProject(JSPlatform, JVMPlatform)
     libraryDependencies ++=
       diffx ++
       slf4j ++
-      "com.outr" %%% "scribe" % scribeVersion ++
       "io.circe" %%% "circe-core" % circeVersion ++
       "io.circe" %%% "circe-parser" % circeVersion ++
       "io.circe" %%% "circe-generic" % circeVersion ++
       "org.scalatest" %%% "scalatest" % scalaTestVersion /*++
       "org.scalatest" %%% "scalatest-freespec" % scalaTestVersion*/
+  }
+  .jsSettings {
+    libraryDependencies += "com.outr" %%% "scribe" % Dependencies.scribeVersion
   }
 
 lazy val `js7-base` = crossProject(JSPlatform, JVMPlatform)
@@ -316,7 +318,6 @@ lazy val `js7-base` = crossProject(JSPlatform, JVMPlatform)
       "io.monix" %%% "monix-eval" % monixVersion ++
       "io.monix" %%% "monix-reactive" % monixVersion ++
       "com.lihaoyi" %%% "sourcecode" % sourcecodeVersion ++
-      "com.outr" %%% "scribe" % scribeVersion ++
       "org.scalactic" %%% "scalactic" % scalaTestVersion % Test ++
       findbugs ++
       intelliJAnnotations % "compile" ++
@@ -324,6 +325,9 @@ lazy val `js7-base` = crossProject(JSPlatform, JVMPlatform)
     //"org.scalatest" %%% "scalatest-freespec" % scalaTestVersion % "test" ++
       "org.scalatestplus" %%% "scalacheck-1-16" % scalaTestCheckVersion % "test" ++
       "org.scalacheck" %%% "scalacheck" % scalaCheckVersion % "test"
+  }
+  .jsSettings {
+    libraryDependencies += "com.outr" %%% "scribe" % Dependencies.scribeVersion
   }
   .jvmSettings {
     import Dependencies._

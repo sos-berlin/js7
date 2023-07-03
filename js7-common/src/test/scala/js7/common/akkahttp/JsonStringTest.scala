@@ -10,7 +10,6 @@ import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.configutils.Configs.HoconStringInterpolator
-import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.test.OurTestSuite
 import js7.common.akkahttp.JsonStringTest.*
 
@@ -19,8 +18,6 @@ import js7.common.akkahttp.JsonStringTest.*
  */
 final class JsonStringTest extends OurTestSuite with ScalatestRouteTest
 {
-  coupleScribeWithSlf4j()
-
   private val testString = """{"Ä": "a"}"""
   private val jsonString = JsonString(testString)
 

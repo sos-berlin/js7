@@ -6,7 +6,6 @@ import java.nio.file.StandardWatchEventKinds.{ENTRY_CREATE, ENTRY_DELETE, ENTRY_
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileModified}
-import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.test.OurTestSuite
 import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.thread.MonixBlocking.syntax.*
@@ -18,8 +17,6 @@ import scala.collection.mutable
 
 final class BasicDirectoryWatcherTest extends OurTestSuite
 {
-  coupleScribeWithSlf4j()
-
   "step for step" in {
     withTemporaryDirectory("DirectoryWatcherTest-") { dir =>
       dir / "ALIEN-1" := ""

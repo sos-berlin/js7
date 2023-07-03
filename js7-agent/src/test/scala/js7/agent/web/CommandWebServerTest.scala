@@ -9,7 +9,6 @@ import js7.agent.data.commands.AgentCommand.*
 import js7.agent.web.CommandWebServerTest.*
 import js7.base.auth.{Admission, SimpleUser}
 import js7.base.configutils.Configs.*
-import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.test.OurAsyncTestSuite
 import js7.base.web.Uri
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
@@ -34,8 +33,6 @@ import scala.concurrent.Future
  */
 final class CommandWebServerTest extends OurAsyncTestSuite
 {
-  coupleScribeWithSlf4j()
-
   private val n = 1_000 //1_000_000
   private lazy val orderIds = (for (i <- 1 to n) yield OrderId(s"A-MEDIUM-LONG-ORDER-$i")).toSet
   private lazy val coupleController = CoupleController(

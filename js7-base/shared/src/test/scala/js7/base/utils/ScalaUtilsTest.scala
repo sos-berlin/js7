@@ -7,11 +7,13 @@ import cats.instances.option.*
 import cats.syntax.option.*
 import java.util.concurrent.atomic.AtomicBoolean
 import js7.base.exceptions.StandardPublicException
+import js7.base.log.Logger
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurTestSuite
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.ScalaUtilsTest.*
 import monix.eval.Coeval
 import org.scalatest.matchers.should.Matchers.*
 import scala.collection.{MapView, View}
@@ -246,7 +248,7 @@ final class ScalaUtilsTest extends OurTestSuite
       val withoutStackTrace = new Throwable("TEST") with NoStackTrace
       assert(withStackTrace.nullIfNoStackTrace eq withStackTrace)
       assert(withoutStackTrace.nullIfNoStackTrace eq null)
-      scribe.debug(s"nullIfNoStackTrace: ${withoutStackTrace.toStringWithCauses}", withoutStackTrace)
+      logger.debug(s"nullIfNoStackTrace: ${withoutStackTrace.toStringWithCauses}", withoutStackTrace)
     }
 
     "ifStackTrace" in {
@@ -811,5 +813,6 @@ final class ScalaUtilsTest extends OurTestSuite
 
 object ScalaUtilsTest
 {
+  private val logger = Logger[this.type]
   private final class Inner
 }

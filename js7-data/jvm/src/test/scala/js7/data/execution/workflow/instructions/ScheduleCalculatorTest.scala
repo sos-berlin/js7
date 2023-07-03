@@ -2,7 +2,6 @@ package js7.data.execution.workflow.instructions
 
 import java.time.ZoneOffset.UTC
 import java.time.{LocalTime, ZoneId}
-import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.test.OurTestSuite
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.ScalaTime.*
@@ -16,8 +15,6 @@ import scala.concurrent.duration.*
 
 final class ScheduleCalculatorTest extends OurTestSuite with ScheduleTester
 {
-  coupleScribeWithSlf4j()
-
   "Details" - {
     val schedule = Schedule(
       Seq(

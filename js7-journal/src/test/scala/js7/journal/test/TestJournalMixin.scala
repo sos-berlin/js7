@@ -17,7 +17,6 @@ import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.problem.Checked.*
 import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
@@ -41,8 +40,6 @@ import scala.util.control.NonFatal
   * @author Joacim Zschimmer
   */
 private[journal] trait TestJournalMixin extends BeforeAndAfterAll { this: Suite =>
-
-  coupleScribeWithSlf4j()
 
   protected implicit val askTimeout: Timeout = Timeout(99.seconds)
   protected lazy val directory = createTempDirectory("JournalTest-")

@@ -1,6 +1,7 @@
 package js7.data.item
 
 import izumi.reflect.Tag
+import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.cast
 import js7.base.utils.ScalaUtils.syntax.*
@@ -90,5 +91,5 @@ object ClientAttachments
   def empty[D <: DelegateId] =
     Empty.asInstanceOf[ClientAttachments[D]]
 
-  private val logger = scribe.Logger[this.type]
+  private val logger = Logger[this.type]
 }

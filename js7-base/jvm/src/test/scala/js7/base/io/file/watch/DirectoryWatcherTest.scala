@@ -7,7 +7,6 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.{touchFile, withTemporaryDirectory}
 import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted}
 import js7.base.io.file.watch.DirectoryState.Entry
-import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.IOExecutor.Implicits.globalIOX
@@ -23,8 +22,6 @@ import scala.math.Ordering.Int
 
 final class DirectoryWatcherTest extends OurTestSuite
 {
-  coupleScribeWithSlf4j()
-
   "readDirectory, readDirectoryAsEvents" in {
     withTemporaryDirectory("DirectoryWatcherTest-") { dir =>
       touchFile(dir / "TEST-1")

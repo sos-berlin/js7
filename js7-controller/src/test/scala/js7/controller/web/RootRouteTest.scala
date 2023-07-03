@@ -3,7 +3,6 @@ package js7.controller.web
 import akka.http.scaladsl.model.StatusCodes.NotFound
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import js7.base.configutils.Configs.HoconStringInterpolator
-import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
@@ -15,8 +14,6 @@ import monix.execution.Scheduler.Implicits.traced
   */
 final class RootRouteTest extends OurTestSuite with ScalatestRouteTest with RootRoute
 {
-  coupleScribeWithSlf4j()
-
   override def testConfig = config"akka.loglevel = warning"
     .withFallback(super.testConfig)
 

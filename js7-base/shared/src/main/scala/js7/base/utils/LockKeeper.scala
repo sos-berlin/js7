@@ -1,7 +1,7 @@
 package js7.base.utils
 
 import cats.effect.Resource
-import js7.base.log.{BlockingSymbol, CorrelId}
+import js7.base.log.{BlockingSymbol, CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.time.ScalaTime.{RichDeadline, RichDuration}
 import js7.base.utils.LockKeeper.*
@@ -101,5 +101,5 @@ final class LockKeeper[K]
 
 object LockKeeper
 {
-  private val logger = scribe.Logger[this.type]
+  private val logger = Logger[this.type]
 }

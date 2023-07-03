@@ -10,7 +10,6 @@ import js7.base.configutils.Configs.*
 import js7.base.eventbus.StandardEventBus
 import js7.base.generic.SecretString
 import js7.base.io.https.HttpsConfig
-import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.problem.Checked.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsBlocking.BlockingTaskResource
@@ -75,7 +74,6 @@ trait ControllerClusterForScalaTest
   protected def clusterWatchConfig: Config =
     ConfigFactory.empty()
 
-  coupleScribeWithSlf4j()
   ProblemCodeMessages.initialize()
   protected final val testHeartbeatLossPropertyKey = "js7.TEST." + SecretStringGenerator.randomString()
   protected final val testAckLossPropertyKey = "js7.TEST." + SecretStringGenerator.randomString()

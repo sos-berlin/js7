@@ -8,6 +8,7 @@ import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.*
 import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax.*
+import js7.base.log.Logger
 import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
@@ -139,10 +140,10 @@ final class JournalWebServiceTest extends OurTestSuite with BeforeAndAfterAll wi
     val observeWithHeartbeat = httpClient
       .getRawLinesObservable(Uri(u.string + "&heartbeat=0.1")).await(99.s)
       .timeoutOnSlowUpstream(2.s/*sometimes 1s is too short*/)  // Check heartbeat
-      .doOnError(t => Task(scribe.error(t.toString)))
+      .doOnError(t => Task(logger.error(t.toString)))
       .foreach { bytes =>
         observedLines :+= bytes.utf8String
-        scribe.debug(s"observeWithHeartbeat: ${bytes.utf8String.trim}")
+        logger.debug(s"observeWithHeartbeat: ${bytes.utf8String.trim}")
       }
 
     val orderId = OrderId("🔷")
@@ -162,6 +163,7 @@ final class JournalWebServiceTest extends OurTestSuite with BeforeAndAfterAll wi
 
 object JournalWebServiceTest
 {
+  private val logger = Logger[this.type]
   private val agentPath = AgentPath("AGENT-111")
   private val pathExecutable = RelativePathExecutable("TEST.cmd")
 

@@ -7,6 +7,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.configutils.Configs.HoconStringInterpolator
+import js7.base.log.Logger
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.system.OperatingSystem.{PathEnvName, isMac, isWindows}
 import js7.base.test.OurTestSuite
@@ -101,7 +102,7 @@ class JobResourceTest extends OurTestSuite with ControllerAgentForScalaTest
     val orderId = OrderId("ORDER-2")
     val events = controller.runOrder(FreshOrder(orderId, workflow.path, Map(
       "E" -> StringValue("E of ORDER"))))
-    events.map(_.value).collect { case OrderStdWritten(outerr, chunk) => scribe.debug(s"$outerr: $chunk") }
+    events.map(_.value).collect { case OrderStdWritten(outerr, chunk) => logger.debug(s"$outerr: $chunk") }
 
     // JobResource must not use order variables
     val orderProcessed = controller.eventWatch.await[OrderProcessed](_.key == orderId).head.value.event
@@ -131,7 +132,7 @@ class JobResourceTest extends OurTestSuite with ControllerAgentForScalaTest
         Outcome.succeededRC0)
 
       val stdouterr = controller.eventWatch.eventsByKey[OrderStdWritten](orderId).foldMap(_.chunk)
-      scribe.info(stdouterr.trim)
+      logger.info(stdouterr.trim)
       assert(stdouterr contains s"JS7_ORDER_ID=/ORDER-SOS/$nl")
       assert(stdouterr contains s"JS7_WORKFLOW_NAME=/WORKFLOW-SOS/$nl")
       assert(stdouterr contains s"JS7_JOB_NAME=/TEST-JOB/$nl")
@@ -159,7 +160,7 @@ class JobResourceTest extends OurTestSuite with ControllerAgentForScalaTest
         Outcome.succeededRC0)
 
       val stdouterr = controller.eventWatch.eventsByKey[OrderStdWritten](orderId).foldMap(_.chunk)
-      scribe.info(stdouterr.trim)
+      logger.info(stdouterr.trim)
       val dateTime = scheduledFor
         .toOffsetDateTime(ZoneId.systemDefault())
         .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ssZ"))
@@ -333,6 +334,7 @@ class JobResourceTest extends OurTestSuite with ControllerAgentForScalaTest
 
 object JobResourceTest
 {
+  private val logger = Logger[this.type]
   private[jobresource] val agentPath = AgentPath("AGENT")
 
   private val aJobResource = JobResource(
@@ -443,7 +445,7 @@ object JobResourceTest
       "JS7_JOBSTART_HOUR"     -> parseExpression("now(format='HH')").orThrow,
       "JS7_JOBSTART_MINUTE"   -> parseExpression("now(format='mm')").orThrow,
       "JS7_JOBSTART_SECOND"   -> parseExpression("now(format='ss')").orThrow))
-  scribe.debug(sosJobResource.asJson.toPrettyString)
+  logger.debug(sosJobResource.asJson.toPrettyString)
 
   private val sosWorkflow = {
     val jobName = WorkflowJob.Name("TEST-JOB")

@@ -4,7 +4,6 @@ import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.OK
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.server.Route
-import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.test.OurTestSuite
 import js7.cluster.web.ClusterRoute
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegment
@@ -24,8 +23,6 @@ import scala.concurrent.Future
 final class ClusterRouteTest extends OurTestSuite with RouteTester with ClusterRoute
 {
   protected type OurSession = SimpleSession
-
-  coupleScribeWithSlf4j()
 
   protected def scheduler = Scheduler.traced
   protected def actorSystem = system

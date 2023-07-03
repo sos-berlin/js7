@@ -3,7 +3,6 @@ package js7.controller.web.controller.api.test
 import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import js7.base.auth.SimpleUser
 import js7.base.configutils.Configs.*
-import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.time.ScalaTime.*
 import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.data.WebServerBinding
@@ -22,7 +21,6 @@ trait RouteTester extends ScalatestRouteTest with ExceptionHandling
 {
   this: Suite =>
 
-  coupleScribeWithSlf4j()
   ProblemCodeMessages.initialize()
 
   /** For RouteTest responseAs[]. */

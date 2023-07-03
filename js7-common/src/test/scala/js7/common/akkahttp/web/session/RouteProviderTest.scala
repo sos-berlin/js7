@@ -9,7 +9,6 @@ import js7.base.Js7Version
 import js7.base.auth.{HashedPassword, SessionToken, SimpleUser, UserId}
 import js7.base.configutils.Configs.*
 import js7.base.generic.SecretString
-import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.problem.Checked.*
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
@@ -28,8 +27,6 @@ import scala.concurrent.duration.*
   */
 final class RouteProviderTest extends OurTestSuite with RouteProvider with ScalatestRouteTest
 {
-  coupleScribeWithSlf4j()
-
   override def testConfig = config"akka.loglevel = warning"
     .withFallback(super.testConfig)
 

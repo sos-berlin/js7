@@ -12,7 +12,6 @@ import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.configutils.Configs.*
 import js7.base.generic.GenericString
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
-import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurTestSuite
@@ -46,8 +45,6 @@ import scala.concurrent.Future
   */
 final class FileJournalTest extends OurTestSuite with BeforeAndAfterAll
 {
-  coupleScribeWithSlf4j()
-
   private implicit lazy val scheduler: SchedulerService =
     Scheduler(Executors.newCachedThreadPool())  // Scheduler.Implicits.global blocks on 2-processor machine
   protected lazy val directory = createTempDirectory("FileJournalTest-")

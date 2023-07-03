@@ -6,7 +6,6 @@ import js7.agent.RunningAgent
 import js7.base.auth.Admission
 import js7.base.crypt.{DocumentSigner, SignatureVerifier, Signed, SignedString}
 import js7.base.io.JavaResource
-import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.utils.HasCloser
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
@@ -28,7 +27,6 @@ import scala.collection.immutable.Iterable
 trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
   this: org.scalatest.Suite =>
 
-  coupleScribeWithSlf4j()
   ProblemCodeMessages.initialize()
 
   protected def commonScheduler: Option[Scheduler] =

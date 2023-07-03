@@ -9,7 +9,6 @@ import js7.base.io.file.FileUtils.temporaryDirectory
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.io.process.Processes.newTemporaryShellFile
 import js7.base.io.process.{ReturnCode, Stderr, Stdout, StdoutOrStderr}
-import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.system.OperatingSystem.{isMac, isSolaris, isUnix, isWindows}
 import js7.base.test.OurTestSuite
 import js7.base.thread.IOExecutor.Implicits.globalIOX
@@ -35,8 +34,6 @@ import scala.concurrent.Future
  */
 final class ShellScriptProcessTest extends OurTestSuite
 {
-  coupleScribeWithSlf4j()
-
   "ShellScriptProcess" in {
     val envName = "ENVNAME"
     val envValue = "ENVVALUE"

@@ -7,7 +7,6 @@ import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import js7.base.auth.{SessionToken, UserId, ValidUserPermission}
 import js7.base.configutils.Configs.*
-import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Allocated
@@ -28,8 +27,6 @@ import scala.concurrent.Future
 trait SessionRouteTester extends BeforeAndAfterAll with ScalatestRouteTest with SessionRoute
 {
   this: Suite =>
-
-  coupleScribeWithSlf4j()
 
   protected def isPublic = false
 

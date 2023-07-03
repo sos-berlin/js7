@@ -6,7 +6,6 @@ import cats.effect.syntax.bracket.*
 import cats.effect.{ExitCase, Resource, Sync, SyncIO}
 import cats.syntax.flatMap.*
 import com.typesafe.scalalogging.Logger as ScalaLogger
-import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.log.Slf4jUtils.syntax.*
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime.{DurationRichLong, RichDuration}
@@ -25,10 +24,8 @@ object Logger
   lazy val empty: ScalaLogger =
     ScalaLogger(org.slf4j.helpers.NOPLogger.NOP_LOGGER)
 
-  def initialize(): Unit = {
+  def initialize(): Unit =
     Log4j.initialize()
-    coupleScribeWithSlf4j()
-  }
 
   //val Timing: Marker = MarkerFactory.getMarker("Timing")
   //val Event: Marker = MarkerFactory.getMarker("Event")

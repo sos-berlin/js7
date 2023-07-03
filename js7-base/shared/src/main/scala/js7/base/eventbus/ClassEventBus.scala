@@ -2,6 +2,7 @@ package js7.base.eventbus
 
 import java.util.concurrent.ConcurrentHashMap
 import js7.base.eventbus.ClassEventBus.*
+import js7.base.log.Logger
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.SuperclassCache
 import monix.eval.Task
@@ -183,5 +184,5 @@ trait ClassEventBus[E] extends EventPublisher[E] with AutoCloseable
 }
 
 object ClassEventBus {
-  private val logger = scribe.Logger[this.type]
+  private val logger = Logger[this.type]
 }

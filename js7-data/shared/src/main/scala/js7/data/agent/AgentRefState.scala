@@ -2,8 +2,10 @@ package js7.data.agent
 
 import io.circe.generic.semiauto.deriveEncoder
 import io.circe.{Decoder, Encoder}
+import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
+import js7.data.agent.AgentRefState.logger
 import js7.data.agent.AgentRefStateEvent.{AgentClusterWatchConfirmationRequired, AgentClusterWatchManuallyConfirmed, AgentCoupled, AgentCouplingFailed, AgentDedicated, AgentEventsObserved, AgentMirroredEvent, AgentReady, AgentReset, AgentResetStarted, AgentShutDown}
 import js7.data.cluster.ClusterEvent.ClusterNodeLostEvent
 import js7.data.cluster.{ClusterEvent, ClusterState}
@@ -67,7 +69,7 @@ extends UnsignedSimpleItemState
         couplingState match {
           case Resetting(_) =>
             // Required until ControllerOrderKeeper ResetAgent uses journal.lock !!!
-            scribe.debug("(WARN) Ignoring AgentCoupled event due to Resetting state")
+            logger.debug("(WARN) Ignoring AgentCoupled event due to Resetting state")
             Right(this)
 
           case _ =>
@@ -135,6 +137,8 @@ object AgentRefState extends UnsignedSimpleItemState.Companion[AgentRefState]
   type Key = AgentPath
   type Item = AgentRef
   override type ItemState = AgentRefState
+
+  private val logger = Logger[this.type]
 
   def apply(agentRef: AgentRef) =
     new AgentRefState(agentRef, None, None, Reset.fresh, EventId.BeforeFirst, None,

@@ -1,6 +1,7 @@
 package js7.data.controller
 
 import cats.syntax.traverse.*
+import js7.base.log.Logger
 import js7.base.problem.Problems.DuplicateKey
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEither, RichPartialFunction}
@@ -34,6 +35,7 @@ object VerifiedUpdateItemsExecutor
 
      Delete in the reverse order of addition?
    */
+  private val logger = Logger[this.type]
 
   def execute(
     verifiedUpdateItems: VerifiedUpdateItems,
@@ -69,7 +71,7 @@ object VerifiedUpdateItemsExecutor
         .toVector
       ).left.map {
         case prblm @ Problem.Combined(Seq(_, duplicateKey: DuplicateKey)) =>
-          scribe.debug(prblm.toString)
+          logger.debug(prblm.toString)
           duplicateKey
         case o => o
       }

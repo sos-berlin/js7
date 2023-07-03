@@ -31,7 +31,7 @@ import js7.data.workflow.WorkflowControlId.syntax.*
 import js7.data.workflow.position.{Position, PositionOrLabel}
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPathControl, WorkflowPathControlPath}
 import scala.annotation.tailrec
-import scala.collection.compat.immutable.ArraySeq
+import scala.collection.immutable.ArraySeq
 import scala.collection.{View, mutable}
 import scala.language.implicitConversions
 

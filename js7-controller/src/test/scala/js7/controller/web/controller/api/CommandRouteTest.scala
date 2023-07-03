@@ -4,7 +4,6 @@ import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.PayloadTooLarge
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.server.Route
-import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.problem.Checked
 import js7.base.test.OurTestSuite
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
@@ -22,8 +21,6 @@ import scala.concurrent.Future
   */
 final class CommandRouteTest extends OurTestSuite with RouteTester with CommandRoute
 {
-  coupleScribeWithSlf4j()
-
   protected val controllerId = ControllerId("TEST-CONTROLLER")
   protected def whenShuttingDown = Future.never
   protected implicit def scheduler: Scheduler = Scheduler.traced
