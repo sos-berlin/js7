@@ -17,5 +17,5 @@ object ClusterWatchMain
   def run(args: Array[String])(use: ClusterWatchService => Task[ProgramTermination]): ReturnCode =
     ServiceMain.returnCodeMain(args, "ClusterWatch", ClusterWatchConf.fromCommandLine)(
       (conf, _) => ClusterWatchService.completeResource(conf),
-      use = use)
+      use = (_, service: ClusterWatchService, _) => use(service))
 }

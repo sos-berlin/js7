@@ -33,9 +33,10 @@ object ServiceMain
     args: Array[String],
     name: String,
     argsToConf: CommandLineArguments => Conf,
-    useLockFile: Boolean = false)
-    (toResource: (Conf, Scheduler) => Resource[Task, S],
-      use: S => Task[ProgramTermination] = (_: S).untilTerminated)
+    useLockFile: Boolean = false)(
+    toResource: (Conf, Scheduler) => Resource[Task, S],
+    use: (Conf, S, Scheduler) => Task[ProgramTermination] =
+      (_: Conf, state: S, _: Scheduler) => state.untilTerminated)
   : Unit = {
     val returnCode =
       returnCodeMain(args, name, argsToConf, useLockFile = useLockFile)(toResource, use)
@@ -47,9 +48,10 @@ object ServiceMain
     args: Array[String],
     name: String,
     argsToConf: CommandLineArguments => Conf,
-    useLockFile: Boolean = false)
-    (toServiceResource: (Conf, Scheduler) => Resource[Task, S],
-      use: S => Task[ProgramTermination] = (_: S).untilTerminated)
+    useLockFile: Boolean = false)(
+    toServiceResource: (Conf, Scheduler) => Resource[Task, S],
+    use: (Conf, S, Scheduler) => Task[ProgramTermination] =
+    (_: Conf, state: S, _: Scheduler) => state.untilTerminated)
   : ReturnCode = {
     logging.startUp(name)
     handleProgramTermination(name) {
@@ -60,7 +62,7 @@ object ServiceMain
           conf
         }
         logging.logFirstLines(commandLineArguments, conf)
-        logging.blockingRun(name, conf.config, toServiceResource(conf, _))(use)
+        logging.blockingRun(name, conf.config, toServiceResource(conf, _))(use(conf, _, _))
       }
     }
   }
@@ -139,12 +141,12 @@ object ServiceMain
       name: String,
       config: Config,
       resource: Scheduler => Resource[Task, S])(
-      use: S => Task[ProgramTermination])
+      use: (S, Scheduler) => Task[ProgramTermination])
     : ProgramTermination =
       ThreadPools.standardSchedulerResource[SyncIO](name, config)
         .use(implicit scheduler => SyncIO(
           withShutdownHook(resource(scheduler))
-            .use(use)
+            .use(use(_, scheduler))
             .onErrorHandle(catchMainServiceTermination)
             .awaitInfinite))
         .unsafeRunSync()
