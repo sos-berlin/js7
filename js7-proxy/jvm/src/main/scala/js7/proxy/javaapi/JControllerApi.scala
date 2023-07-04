@@ -270,6 +270,8 @@ final class JControllerApi(val asScala: ControllerApi, config: Config)
       .executeCommand(command.asScala)
       .map(_.map(o => (o: ControllerCommand.Response)).toVavr))
 
+  @deprecated("Use executeCommand", "v2.6.1")
+  @Deprecated
   @Nonnull
   def executeCommandJson(@Nonnull command: String): CompletableFuture[VEither[Problem, String]] =
     httpPostJson("/controller/api/command", requireNonNull(command))

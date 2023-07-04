@@ -8,9 +8,11 @@ import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.problem.Problem
 import js7.base.time.JavaTimestamp
+import js7.data.agent.AgentPath
 import js7.data.board.{BoardPath, NoticeId}
 import js7.data.controller.ControllerCommand
-import js7.data.controller.ControllerCommand.{AddOrder, ControlWorkflow, ControlWorkflowPath, PostNotice}
+import js7.data.controller.ControllerCommand.{AddOrder, ClusterSwitchOver, ConfirmClusterNodeLoss, ControlWorkflow, ControlWorkflowPath, PostNotice, TransferOrders}
+import js7.data.node.NodeId
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Label
 import js7.data_for_java.common.JJsonable
@@ -77,6 +79,25 @@ object JControllerCommand extends JJsonable.Companion[JControllerCommand]
           .collect { case (k, java.lang.Boolean.TRUE) => k }
           .map(_.asScala)
           .toSet))
+
+  @Nonnull
+  def confirmClusterNodeLoss(
+    @Nonnull agentPath: AgentPath,
+    @Nonnull lostNodeId: NodeId,
+    @Nonnull confirmer: String)
+  : JControllerCommand =
+    JControllerCommand(
+      ConfirmClusterNodeLoss(agentPath, lostNodeId, confirmer))
+
+  @Nonnull
+  def clusterSwitchover(@Nonnull agentPath: Optional[AgentPath]): JControllerCommand =
+    JControllerCommand(
+      ClusterSwitchOver(agentPath.toScala))
+
+  @Nonnull
+  def transferOrders(@Nonnull workflowId: JWorkflowId): JControllerCommand =
+    JControllerCommand(
+      TransferOrders(workflowId.asScala))
 
   @Nonnull
   override def fromJson(@Nonnull jsonString: String): VEither[Problem, JControllerCommand] =
