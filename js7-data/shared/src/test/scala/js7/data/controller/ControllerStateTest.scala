@@ -214,8 +214,7 @@ final class ControllerStateTest extends OurAsyncTestSuite
         "clusterState": {
           "TYPE": "Empty"
         },
-        "eventId": 7,
-        "nodeToClusterWatchConfirmationRequired": {}
+        "eventId": 7
       }, {
         "TYPE": "SubagentItemState",
         "subagentItem": {

@@ -17,6 +17,7 @@ import js7.data.agent.AgentRefStateEvent.{AgentClusterWatchConfirmationRequired,
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterPassiveLost}
 import js7.data.cluster.ClusterTiming
+import js7.data.cluster.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem
 import js7.data.controller.ControllerCommand.ConfirmClusterNodeLoss
 import js7.data.node.NodeId
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentSelection, SubagentSelectionId}
@@ -84,16 +85,18 @@ final class UntaughtAgentClusterWatchTest extends OurTestSuite with DirectoryPro
         directoryProvider.runController() { controller =>
           // The newly started, untaught AgentDriver's ClusterWatch cannot decide to confirm:
           controller.eventWatch.await[AgentClusterWatchConfirmationRequired](ke =>
-            ke.key == agentPath && ke.event.fromNodeId == NodeId("Primary"))
+            ke.key == agentPath && ke.event.problem.fromNodeId == NodeId("Primary"))
 
           controller.eventWatch.await[AgentClusterWatchConfirmationRequired](ke =>
-            ke.key == agentPath && ke.event.fromNodeId == NodeId("Backup"))
+            ke.key == agentPath && ke.event.problem.fromNodeId == NodeId("Backup"))
 
           val nodeToClusterWatchConfirmationRequired =
-            controller.controllerState().keyTo(AgentRefState)(agentPath).nodeToClusterWatchConfirmationRequired
-          logger.info(s"nodeToClusterWatchConfirmationRequired=$nodeToClusterWatchConfirmationRequired")
+            controller.controllerState().keyTo(AgentRefState)(agentPath).nodeToClusterNodeProblem
+          logger.info(s"nodeToClusterNodeProblem=$nodeToClusterWatchConfirmationRequired")
 
-          assert(nodeToClusterWatchConfirmationRequired(NodeId.primary) == ClusterPassiveLost(NodeId.backup))
+          assert(nodeToClusterWatchConfirmationRequired(NodeId.primary) ==
+            ClusterNodeLossNotConfirmedProblem(
+              NodeId.primary, ClusterPassiveLost(NodeId.backup)))
           assert(nodeToClusterWatchConfirmationRequired(NodeId.backup).event.isInstanceOf[ClusterFailedOver])
 
           // Now, the user (we) kill the primary node and confirm this to the ClusterWatch:
@@ -110,7 +113,7 @@ final class UntaughtAgentClusterWatchTest extends OurTestSuite with DirectoryPro
 
           controller.eventWatch.await[AgentClusterWatchManuallyConfirmed](_.key == agentPath)
           assert(controller.controllerState().keyTo(AgentRefState)(agentPath)
-            .nodeToClusterWatchConfirmationRequired.isEmpty)
+            .nodeToClusterNodeProblem.isEmpty)
 
           backupDirector.eventWatch.await[ClusterFailedOver]()
         }

@@ -1,13 +1,15 @@
 package js7.data.agent
 
-import io.circe.generic.semiauto.deriveEncoder
-import io.circe.{Decoder, Encoder}
+import io.circe.syntax.EncoderOps
+import io.circe.{Decoder, Encoder, JsonObject}
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
+import js7.base.utils.Collections.emptyToNone
+import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import js7.data.agent.AgentRefState.logger
 import js7.data.agent.AgentRefStateEvent.{AgentClusterWatchConfirmationRequired, AgentClusterWatchManuallyConfirmed, AgentCoupled, AgentCouplingFailed, AgentDedicated, AgentEventsObserved, AgentMirroredEvent, AgentReady, AgentReset, AgentResetStarted, AgentShutDown}
-import js7.data.cluster.ClusterEvent.ClusterNodeLostEvent
+import js7.data.cluster.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem
 import js7.data.cluster.{ClusterEvent, ClusterState}
 import js7.data.delegate.DelegateCouplingState
 import js7.data.delegate.DelegateCouplingState.{Coupled, Reset, Resetting, ShutDown}
@@ -25,7 +27,7 @@ final case class AgentRefState(
   eventId: EventId,
   problem: Option[Problem],
   clusterState: ClusterState,
-  nodeToClusterWatchConfirmationRequired: Map[NodeId, ClusterNodeLostEvent] = Map.empty,
+  nodeToClusterNodeProblem: Map[NodeId, ClusterNodeLossNotConfirmedProblem] = Map.empty,
   platformInfo: Option[PlatformInfo])
 extends UnsignedSimpleItemState
 {
@@ -121,14 +123,14 @@ extends UnsignedSimpleItemState
             s"Unknown mirrored Event in AgentMirroredEvent: ${keyedEvent.getClass.shortClassName}"))
         }
 
-      case AgentClusterWatchConfirmationRequired(fromNodeId, event) =>
+      case AgentClusterWatchConfirmationRequired(problem) =>
         Right(copy(
-          nodeToClusterWatchConfirmationRequired =
-            nodeToClusterWatchConfirmationRequired.updated(fromNodeId, event)))
+          nodeToClusterNodeProblem =
+            nodeToClusterNodeProblem.updated(problem.fromNodeId, problem)))
 
       case AgentClusterWatchManuallyConfirmed =>
         Right(copy(
-          nodeToClusterWatchConfirmationRequired = Map.empty))
+          nodeToClusterNodeProblem = Map.empty))
     }
 }
 
@@ -145,7 +147,16 @@ object AgentRefState extends UnsignedSimpleItemState.Companion[AgentRefState]
       ClusterState.Empty, Map.empty, None)
 
   implicit val jsonEncoder: Encoder.AsObject[AgentRefState] =
-    deriveEncoder
+    o => JsonObject(
+      "agentRef" -> o.agentRef.asJson,
+      "agentRunId" -> o.agentRunId.asJson,
+      "timezone" -> o.timezone.asJson,
+      "couplingState" -> o.couplingState.asJson,
+      "eventId" -> o.eventId.asJson,
+      "problem" -> o.problem.asJson,
+      "clusterState" -> o.clusterState.asJson,
+      "clusterNodeProblems" -> emptyToNone(o.nodeToClusterNodeProblem.values).asJson,
+      "platformInfo" -> o.platformInfo.asJson)
 
   implicit val jsonDecoder: Decoder[AgentRefState] =
     c => for {
@@ -156,11 +167,12 @@ object AgentRefState extends UnsignedSimpleItemState.Companion[AgentRefState]
       eventId <- c.get[EventId]("eventId")
       problem <- c.get[Option[Problem]]("problem")
       clusterState <- c.getOrElse[ClusterState]("clusterState")(ClusterState.Empty)
-      nodeToClusterWatchConfirmationRequired <- c.getOrElse[Map[NodeId, ClusterNodeLostEvent]](
-        "nodeToClusterWatchConfirmationRequired")(Map.empty)
+      clusterNodeProblems <-
+        c.getOrElse[Seq[ClusterNodeLossNotConfirmedProblem]]("clusterNodeProblems")(Nil)
+          .map(_.toKeyedMap(_.fromNodeId))
       platformInfo <- c.get[Option[PlatformInfo]]("platformInfo")
     } yield
       AgentRefState(
         agentRef, agentRunId, timezone, couplingState, eventId, problem,
-        clusterState, nodeToClusterWatchConfirmationRequired, platformInfo)
+        clusterState, clusterNodeProblems, platformInfo)
 }

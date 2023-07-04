@@ -6,6 +6,7 @@ import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.data.agent.AgentRefStateEvent.{AgentClusterWatchConfirmationRequired, AgentCoupled, AgentCouplingFailed, AgentDedicated, AgentEventsObserved, AgentMirroredEvent, AgentReady, AgentResetStarted}
 import js7.data.cluster.ClusterEvent
+import js7.data.cluster.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem
 import js7.data.event.{JournalId, KeyedEvent}
 import js7.data.node.NodeId
 import js7.data.platform.PlatformInfo
@@ -147,16 +148,20 @@ final class AgentRefStateEventTest extends OurTestSuite
       testJson[KeyedEvent[AgentRefStateEvent]](
         AgentPath("AGENT") <-:
           AgentClusterWatchConfirmationRequired(
+            ClusterNodeLossNotConfirmedProblem(
             NodeId("Primary"),
-            ClusterEvent.ClusterPassiveLost(NodeId("Backup"))),
+            ClusterEvent.ClusterPassiveLost(NodeId("Backup")))),
         json"""
         {
           "TYPE": "AgentClusterWatchConfirmationRequired",
           "Key": "AGENT",
-          "fromNodeId": "Primary",
-          "event": {
-            "TYPE": "ClusterPassiveLost",
-            "id": "Backup"
+          "problem": {
+            "TYPE": "ClusterNodeLossNotConfirmedProblem",
+            "fromNodeId": "Primary",
+            "event": {
+              "TYPE": "ClusterPassiveLost",
+              "id": "Backup"
+            }
           }
         }""")
     }

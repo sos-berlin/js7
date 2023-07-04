@@ -52,7 +52,11 @@ final class ClusterWatch(
     val checkedClusterState = (_state, request.maybeEvent) match {
       case (None/*untaught*/, Some(event: ClusterNodeLostEvent)) =>
         manuallyConfirmed(event) match {
-          case None => Left(ClusterNodeLossNotConfirmedProblem(request.from, event))
+          case None =>
+            val problem = ClusterNodeLossNotConfirmedProblem(request.from, event)
+            logger.warn(
+              s"ClusterWatch is untaught, therefore unable to confirm a node loss: $problem")
+            Left(problem)
           case Some(confirmer) =>
             logger.info(
               s"$from teaches clusterState=$reportedClusterState after ${event.getClass.simpleScalaName} confirmation")

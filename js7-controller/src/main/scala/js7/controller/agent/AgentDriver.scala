@@ -460,12 +460,13 @@ extends Service.StoppableByRequest
       .persist(_
         .keyTo(AgentRefState)
         .checked(agentPath)
-        .map(_.nodeToClusterWatchConfirmationRequired)
+        .map(_.nodeToClusterNodeProblem)
         .flatMap { nodeToClusterWatchConfirmationRequired =>
           Right(maybeProblem match {
-            case Some(ClusterNodeLossNotConfirmedProblem(fromNodeId, event)) =>
-              (!nodeToClusterWatchConfirmationRequired.get(fromNodeId).contains(event)).thenList(
-                agentPath <-: AgentClusterWatchConfirmationRequired(fromNodeId, event))
+            case Some(problem: ClusterNodeLossNotConfirmedProblem) =>
+              (!nodeToClusterWatchConfirmationRequired.get(problem.fromNodeId).contains(problem))
+                .thenList(
+                  agentPath <-: AgentClusterWatchConfirmationRequired(problem))
             case None =>
               nodeToClusterWatchConfirmationRequired.nonEmpty.thenList(
                 agentPath <-: AgentClusterWatchManuallyConfirmed)

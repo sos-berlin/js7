@@ -2,6 +2,7 @@ package js7.data.cluster
 
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
+import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime.*
 import js7.data.cluster.ClusterEvent.ClusterNodeLostEvent
@@ -55,14 +56,15 @@ object ClusterWatchProblems
   final case class ClusterNodeLossNotConfirmedProblem(
     fromNodeId: NodeId,
     event: ClusterNodeLostEvent)
-    extends Problem.Coded {
+  extends Problem.Coded {
     def arguments = Map(
       "fromNodeId" -> fromNodeId.toString,
       "event" -> event.toString)
   }
   object ClusterNodeLossNotConfirmedProblem extends Problem.Coded.Companion {
     implicit val jsonCodec: Codec.AsObject[ClusterNodeLossNotConfirmedProblem] =
-      deriveCodec[ClusterNodeLossNotConfirmedProblem]
+      TypedJsonCodec[ClusterNodeLossNotConfirmedProblem](
+        Subtype(deriveCodec[ClusterNodeLossNotConfirmedProblem]))
   }
 
   final case class ClusterNodeIsNotLostProblem(nodeId: NodeId) extends Problem.Coded {
