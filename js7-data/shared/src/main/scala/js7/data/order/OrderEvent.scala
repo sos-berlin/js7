@@ -5,7 +5,7 @@ import cats.syntax.traverse.*
 import io.circe.generic.semiauto.{deriveCodec, deriveDecoder, deriveEncoder}
 import io.circe.syntax.EncoderOps
 import io.circe.{Codec, Decoder, Encoder, JsonObject}
-import js7.base.circeutils.CirceUtils.{DecodeWithDefaults, RichCirceCodec, deriveConfiguredCodec}
+import js7.base.circeutils.CirceUtils.{DecodeWithDefaults, RichCirceObjectCodec, deriveConfiguredCodec}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
 import js7.base.problem.{Checked, Problem}

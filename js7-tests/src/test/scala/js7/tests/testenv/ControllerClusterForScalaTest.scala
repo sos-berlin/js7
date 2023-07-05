@@ -38,7 +38,6 @@ import js7.tests.testenv.DirectoryProvider.script
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced as scheduler
 import org.jetbrains.annotations.TestOnly
-import org.scalactic.source
 
 @TestOnly
 trait ControllerClusterForScalaTest
@@ -260,13 +259,4 @@ object ControllerClusterForScalaTest
 {
   val TestPathExecutable = RelativePathExecutable("TEST.cmd")
   val clusterWatchId = ClusterWatchId("CLUSTER-WATCH")
-
-  @deprecated
-  def assertEqualJournalFiles(
-    primary: ProgramEnv.WithFileJournal,
-    backup: ProgramEnv.WithFileJournal,
-    n: Int)
-    (implicit pos: source.Position)
-  : Unit =
-    ProgramEnvTester.assertEqualJournalFiles(primary, backup, n)
 }

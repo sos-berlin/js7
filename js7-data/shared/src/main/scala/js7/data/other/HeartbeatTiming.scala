@@ -2,7 +2,7 @@ package js7.data.other
 
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
-import js7.base.circeutils.CirceUtils.RichCirceCodec
+import js7.base.circeutils.CirceUtils.RichCirceObjectCodec
 import js7.base.circeutils.ScalaJsonCodecs.{FiniteDurationJsonDecoder, FiniteDurationJsonEncoder}
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*

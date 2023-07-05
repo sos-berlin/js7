@@ -1,7 +1,7 @@
 package js7.data.calendar
 
 import io.circe.Codec
-import js7.base.circeutils.CirceUtils.{DecodeWithDefaults, deriveConfiguredCodec}
+import js7.base.circeutils.CirceUtils.*
 import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*

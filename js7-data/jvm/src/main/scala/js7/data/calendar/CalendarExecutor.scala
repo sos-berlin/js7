@@ -53,7 +53,7 @@ object CalendarExecutor
 {
   def checked(calendar: Calendar): Checked[CalendarExecutor] =
     for {
-      period <- toFormatterAndQuery(calendar.periodDatePattern)
+      period <- toPeriod(calendar.periodDatePattern)
       _ <- (calendar.dateOffset >= 0.s && calendar.dateOffset < period.normalDuration) !!
         Problem("Invalid dateOffset")
       zoneId <- calendar.timezone.toZoneId
@@ -61,8 +61,7 @@ object CalendarExecutor
         calendar.orderIdPattern.r)
     } yield new CalendarExecutor(calendar, zoneId, orderIdToDateRegex, period)
 
-  private def toFormatterAndQuery(pattern: String)
-  : Checked[Period] =
+  private def toPeriod(pattern: String): Checked[Period] =
     catchExpected[Exception] {
       if (pattern.startsWith("Y"/*week based year*/)) {
         val formatter = new DateTimeFormatterBuilder()
