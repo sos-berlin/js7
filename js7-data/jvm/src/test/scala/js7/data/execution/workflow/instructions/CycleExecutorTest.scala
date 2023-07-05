@@ -297,7 +297,7 @@ final class CycleExecutorTest extends OurTestSuite with ScheduleTester
       val builder = new VectorBuilder[Timestamp]
 
       var i = 1
-      while (!stepper.order.isState[Finished] && i <= 10000) withClue(s"#i") {
+      while (!stepper.order.isState[Finished] && i <= 10000) withClue(s"#$i") {
         i += 1
         val events = stepper.step()
         assert(events.nonEmpty)
