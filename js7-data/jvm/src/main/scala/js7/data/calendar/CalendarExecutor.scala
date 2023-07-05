@@ -12,7 +12,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.time.JavaTime.JavaTimeZone
 import js7.base.time.JavaTimeConverters.RichZonedDateTime
 import js7.base.time.ScalaTime.*
-import js7.base.time.TimeInterval
+import js7.base.time.{TimeInterval, Timezone}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.order.OrderId
 import scala.concurrent.duration.FiniteDuration
@@ -51,12 +51,12 @@ final class CalendarExecutor private(
 
 object CalendarExecutor
 {
-  def checked(calendar: Calendar): Checked[CalendarExecutor] =
+  def checked(calendar: Calendar, timezone: Timezone): Checked[CalendarExecutor] =
     for {
       period <- toPeriod(calendar.periodDatePattern)
       _ <- (calendar.dateOffset >= 0.s && calendar.dateOffset < period.normalDuration) !!
         Problem("Invalid dateOffset")
-      zoneId <- calendar.timezone.toZoneId
+      zoneId <- timezone.toZoneId
       orderIdToDateRegex <- catchExpected[PatternSyntaxException](
         calendar.orderIdPattern.r)
     } yield new CalendarExecutor(calendar, zoneId, orderIdToDateRegex, period)

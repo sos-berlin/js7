@@ -24,7 +24,7 @@ object Schedule
   extends Repeat
   {
     override def toString = "period=" + period +
-      " offsets=" + offsets.map(_.pretty).mkString("(", ", ", ",")
+      " offsets=" + offsets.map(_.pretty).mkString("(", ", ", ")")
   }
   object Periodic
   {

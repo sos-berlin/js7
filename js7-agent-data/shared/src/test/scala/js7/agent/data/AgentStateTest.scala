@@ -14,7 +14,6 @@ import js7.base.problem.Checked.*
 import js7.base.problem.Problem
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
-import js7.base.time.Timezone
 import js7.base.utils.{Base64UUID, SimplePattern}
 import js7.base.web.Uri
 import js7.data.agent.{AgentPath, AgentRunId}
@@ -113,7 +112,6 @@ final class AgentStateTest extends OurAsyncTestSuite
 
   private val calendar = Calendar(
     CalendarPath("CALENDAR"),
-    Timezone("Europe/Mariehamn"),
     dateOffset = 6.h,
     orderIdToDatePattern = "#([^#]+)#.*",
     periodDatePattern = "yyyy-MM-dd",
@@ -309,7 +307,6 @@ final class AgentStateTest extends OurAsyncTestSuite
           json"""{
             "TYPE": "Calendar",
             "path": "CALENDAR",
-            "timezone": "Europe/Mariehamn",
             "dateOffset": 21600,
             "orderIdPattern": "#([^#]+)#.*",
             "periodDatePattern": "yyyy-MM-dd",

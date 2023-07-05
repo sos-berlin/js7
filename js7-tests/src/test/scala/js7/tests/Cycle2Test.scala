@@ -1,12 +1,12 @@
 package js7.tests
 
-import java.time.{LocalDate, LocalTime, ZoneId}
+import java.time.{LocalDate, LocalTime}
 import js7.base.configutils.Configs.*
 import js7.base.log.Logger
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.{DurationRichInt, sleep}
-import js7.base.time.{AdmissionTimeScheme, DailyPeriod, Timezone}
+import js7.base.time.{AdmissionTimeScheme, DailyPeriod}
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.calendar.{Calendar, CalendarPath}
 import js7.data.execution.workflow.instructions.ScheduleTester
@@ -58,12 +58,8 @@ final class Cycle2Test extends OurTestSuite with ControllerAgentForScalaTest wit
 object Cycle2Test
 {
   private val logger = Logger[this.type]
-  private implicit val zone: ZoneId = ZoneId.systemDefault
 
-  private val calendar = Calendar.jocStandard(
-    CalendarPath("CALENDAR"),
-    Timezone(zone.getId),
-    dateOffset = 0.h)
+  private val calendar = Calendar.jocStandard(CalendarPath("CALENDAR"), dateOffset = 0.h)
 
   private val js2012Workflow = Workflow(
     WorkflowPath("ONCE-AN-HOUR") ~ "INITIAL",

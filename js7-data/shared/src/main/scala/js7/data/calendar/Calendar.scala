@@ -5,7 +5,6 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
-import js7.base.time.Timezone
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.item.{ItemRevision, UnsignedSimpleItem}
@@ -14,7 +13,6 @@ import scala.concurrent.duration.*
 
 final case class Calendar(
   path: CalendarPath,
-  timezone: Timezone,
   dateOffset: FiniteDuration = Duration.Zero,
   orderIdPattern: String,
   periodDatePattern: String,
@@ -24,6 +22,10 @@ extends UnsignedSimpleItem
   protected type Self = Calendar
 
   val companion: Calendar.type = Calendar
+
+  def checked: Checked[this.type] =
+    ((!dateOffset.isNegative) !! Problem.pure("Invalid Calender arguments"))
+      .rightAs(this)
 
   def rename(path: CalendarPath) =
     copy(path = path)
@@ -53,35 +55,32 @@ object Calendar extends UnsignedSimpleItem.Companion[Calendar]
   @TestOnly
   def jocStandard(
     path: CalendarPath,
-    timezone: Timezone,
     dateOffset: FiniteDuration = Duration.Zero,
     itemRevision: Option[ItemRevision] = None)
   : Calendar =
-    apply(path, timezone, dateOffset,
+    apply(path, dateOffset,
       orderIdToDatePattern = orderIdToDatePatternDefault,
       periodDatePattern = "yyyy-MM-dd",
       itemRevision = itemRevision)
 
   def apply(
     path: CalendarPath,
-    timezone: Timezone,
     dateOffset: FiniteDuration = Duration.Zero,
     orderIdToDatePattern: String,
     periodDatePattern: String,
     itemRevision: Option[ItemRevision] = None)
   : Calendar =
-    checked(path, timezone, dateOffset, orderIdToDatePattern, periodDatePattern, itemRevision)
+    checked(path, dateOffset, orderIdToDatePattern, periodDatePattern, itemRevision)
       .orThrow
 
   @TestOnly
   def daily(
     path: CalendarPath,
-    timezone: Timezone,
     dateOffset: FiniteDuration = Duration.Zero,
     itemRevision: Option[ItemRevision] = None)
   : Calendar =
     checked(
-      path, timezone, dateOffset,
+      path, dateOffset,
       orderIdToDatePattern = orderIdToDatePatternDefault,
       periodDatePattern = "yyyy-MM-dd",
       itemRevision
@@ -89,20 +88,16 @@ object Calendar extends UnsignedSimpleItem.Companion[Calendar]
 
   def checked(
     path: CalendarPath,
-    timezone: Timezone,
     dateOffset: FiniteDuration,
     orderIdToDatePattern: String,
     periodDatePattern: String,
     itemRevision: Option[ItemRevision] = None)
   : Checked[Calendar] =
-    if (dateOffset.isNegative)
-      Left(Problem.pure("Invalid Calender arguments"))
-    else
-      Right(
-        new Calendar(path, timezone, dateOffset, orderIdToDatePattern, periodDatePattern,
-          itemRevision))
+    new Calendar(path, dateOffset, orderIdToDatePattern, periodDatePattern, itemRevision)
+      .checked
 
-  implicit val jsonCodec: Codec.AsObject[Calendar] = deriveConfiguredCodec[Calendar]
+  implicit val jsonCodec: Codec.AsObject[Calendar] =
+    deriveConfiguredCodec[Calendar].checked(_.checked)
 
   intelliJuseImport((FiniteDurationJsonEncoder, DecodeWithDefaults))
 }

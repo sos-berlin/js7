@@ -72,7 +72,6 @@ final class CalendarTest extends OurTestSuite with ControllerAgentForScalaTest
   "Change Calendar" in {
     val myCalendar = Calendar(
       CalendarPath("CALENDAR"),
-      Timezone("Europe/Mariehamn"),
       orderIdToDatePattern = "/([^/]+)/.*",
       periodDatePattern = "yyyy-MM-dd")
 
@@ -122,7 +121,6 @@ object CalendarTest
 
   private val calendar = Calendar(
     CalendarPath("CALENDAR"),
-    Timezone("Europe/Mariehamn"),
     orderIdToDatePattern = "#([^#]+)#.*",
     periodDatePattern = "yyyy-MM-dd")
 
@@ -134,6 +132,7 @@ object CalendarTest
           AdmissionTimeScheme(Seq(AlwaysPeriod)),
           Schedule.Continuous(pause = 1.s, limit = Some(1))))),
         Workflow.of(EmptyJob.execute(agentPath)))),
+    timeZone = Timezone("Europe/Mariehamn"),
     calendarPath = Some(calendar.path))
 
   private val expectedOrderEvents = Seq(

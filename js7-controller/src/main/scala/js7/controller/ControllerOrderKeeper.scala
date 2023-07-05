@@ -664,7 +664,8 @@ with MainJournalingActor[ControllerState, Event]
     val t = now
     (for {
       keyedEvents <- VerifiedUpdateItemsExecutor.execute(verifiedUpdateItems, _controllerState, {
-        case calendar: Calendar => CalendarExecutor.checked(calendar).rightAs(())
+        case calendar: Calendar =>
+          CalendarExecutor.checked(calendar, Timezone.utc/*irrelevant*/).rightAs(())
       })
       _ <- checkAgentDriversAreTerminated(
         keyedEvents.view
