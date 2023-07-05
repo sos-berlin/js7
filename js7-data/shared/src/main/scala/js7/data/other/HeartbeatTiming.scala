@@ -30,7 +30,8 @@ object HeartbeatTiming
   : Checked[HeartbeatTiming] =
     new HeartbeatTiming(heartbeat, heartbeatTimeout).checked
 
-  implicit val jsonCodec: Codec.AsObject[HeartbeatTiming] = deriveCodec[HeartbeatTiming].checked(_.checked)
+  implicit val jsonCodec: Codec.AsObject[HeartbeatTiming] =
+    deriveCodec[HeartbeatTiming].checked(_.checked)
 
   intelliJuseImport((FiniteDurationJsonEncoder, FiniteDurationJsonDecoder))
 }

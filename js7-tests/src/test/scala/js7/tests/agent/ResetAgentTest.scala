@@ -13,7 +13,7 @@ import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
-import js7.base.time.{AdmissionTimeScheme, DailyPeriod, Timestamp, Timezone}
+import js7.base.time.{AdmissionTimeScheme, DailyPeriod, Timestamp}
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.ScalaUtils.syntax.*
@@ -289,7 +289,7 @@ object ResetAgentTest
   private val subagentId = toLocalSubagentId(agentPath)
   private val lock = Lock(LockPath("LOCK"))
   private val jobResource = JobResource(JobResourcePath("JOB-RESOURCE"))
-  private val calendar = Calendar.jocStandard(CalendarPath("CALENDAR"), Timezone.utc)
+  private val calendar = Calendar.jocStandard(CalendarPath("CALENDAR"))
 
   private val simpleWorkflow = Workflow(WorkflowPath("SIMPLE-WORKFLOW") ~ "INITIAL",
     Seq(EmptyJob.execute(agentPath)))

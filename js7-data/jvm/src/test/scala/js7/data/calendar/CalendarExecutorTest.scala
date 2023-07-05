@@ -12,14 +12,12 @@ import js7.data.order.OrderId
 final class CalendarExecutorTest extends OurTestSuite
 {
   private implicit val zoneId: ZoneId = ZoneId.of("Europe/Mariehamn")
+  private val timezone = Timezone(zoneId.toString)
 
-  private val calendar = Calendar.daily(
-    CalendarPath("CALENDAR"),
-    Timezone(zoneId.toString),
-    dateOffset = 6.h)
+  private val calendar = Calendar.daily(CalendarPath("CALENDAR"), dateOffset = 6.h)
 
   "Period is a day" - {
-    val calendarExecutor = CalendarExecutor.checked(calendar).orThrow
+    val calendarExecutor = CalendarExecutor.checked(calendar, timezone).orThrow
     import calendarExecutor.orderIdToTimeInterval
 
     "Invalid" in {
@@ -56,7 +54,6 @@ final class CalendarExecutorTest extends OurTestSuite
     val weekCalendar = Calendar
       .checked(
         CalendarPath("CALENDAR"),
-        Timezone(zoneId.toString),
         dateOffset = 6.h,
         orderIdToDatePattern = Calendar.orderIdToDatePatternDefault,
         periodDatePattern = "YYYY-'W'w")
@@ -64,7 +61,7 @@ final class CalendarExecutorTest extends OurTestSuite
 
     def f(orderId: OrderId): Timestamp = {
       val checkedTimeInterval = for {
-        executor <- CalendarExecutor.checked(weekCalendar)
+        executor <- CalendarExecutor.checked(weekCalendar, timezone)
         timeInterval <- executor.orderIdToTimeInterval(orderId)
       } yield timeInterval
       assert(checkedTimeInterval.orThrow.duration == 7 * 24.h)

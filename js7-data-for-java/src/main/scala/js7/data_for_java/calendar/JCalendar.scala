@@ -1,12 +1,11 @@
 package js7.data_for_java.calendar
 
 import io.vavr.control.Either as VEither
-import java.time.{ZoneId, Duration as JDuration}
+import java.time.Duration as JDuration
 import java.util.Optional
 import javax.annotation.Nonnull
 import js7.base.problem.Problem
 import js7.base.time.JavaTimeConverters.AsScalaDuration
-import js7.base.time.Timezone
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.calendar.{Calendar, CalendarPath}
 import js7.data.item.ItemRevision
@@ -24,16 +23,6 @@ extends JJsonable[JCalendar] with JUnsignedSimpleItem
   @Nonnull
   def path: CalendarPath =
     asScala.path
-
-  @throws[java.time.DateTimeException]
-  @throws[java.time.zone.ZoneRulesException]
-  @Nonnull
-  def zoneId: ZoneId =
-    ZoneId.of(asScala.timezone.string)
-
-  @Nonnull
-  def timezone: String =
-    asScala.timezone.string
 
   @Nonnull
   def dateOffset: JDuration =
@@ -57,7 +46,6 @@ object JCalendar extends JJsonable.Companion[JCalendar]
   @Nonnull
   def of(
     @Nonnull path: CalendarPath,
-    @Nonnull zoneId: ZoneId,
     @Nonnull dateOffset: JDuration,
     @Nonnull orderIdToDatePattern: String,
     @Nonnull periodDatePattern: String)
@@ -65,7 +53,6 @@ object JCalendar extends JJsonable.Companion[JCalendar]
     JCalendar(Calendar
       .checked(
         path,
-        Timezone(zoneId.getId),
         dateOffset = dateOffset.toFiniteDuration,
         orderIdToDatePattern = orderIdToDatePattern,
         periodDatePattern = periodDatePattern)

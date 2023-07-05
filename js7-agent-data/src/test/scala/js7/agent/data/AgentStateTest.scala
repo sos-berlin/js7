@@ -12,8 +12,8 @@ import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichCirceEither}
 import js7.base.crypt.silly.SillySigner
 import js7.base.problem.Checked.*
 import js7.base.problem.Problem
+import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
-import js7.base.time.Timezone
 import js7.base.utils.SimplePattern
 import js7.base.web.Uri
 import js7.data.agent.{AgentPath, AgentRunId}
@@ -38,7 +38,6 @@ import js7.data.workflow.{Workflow, WorkflowPath, WorkflowPathControl, WorkflowP
 import js7.tester.CirceJsonTester.removeJNull
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
-import js7.base.test.OurAsyncTestSuite
 
 /**
   * @author Joacim Zschimmer
@@ -68,7 +67,6 @@ final class AgentStateTest extends OurAsyncTestSuite
 
   private val calendar = Calendar(
     CalendarPath("CALENDAR"),
-    Timezone("Europe/Mariehamn"),
     dateOffset = 6.h,
     orderIdToDatePattern = "#([^#]+)#.*",
     periodDatePattern = "yyyy-MM-dd",
@@ -261,7 +259,6 @@ final class AgentStateTest extends OurAsyncTestSuite
           json"""{
             "TYPE": "Calendar",
             "path": "CALENDAR",
-            "timezone": "Europe/Mariehamn",
             "dateOffset": 21600,
             "orderIdPattern": "#([^#]+)#.*",
             "periodDatePattern": "yyyy-MM-dd",

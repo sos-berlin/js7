@@ -3,7 +3,6 @@ package js7.data.calendar
 import js7.base.circeutils.CirceUtils.*
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
-import js7.base.time.Timezone
 import js7.data.item.ItemRevision
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 
@@ -13,7 +12,6 @@ final class CalendarTest extends OurTestSuite
     testJson(
       Calendar(
         CalendarPath("CALENDAR"),
-        Timezone("Europe/Mariehamn"),
         dateOffset = 6.h,
         orderIdToDatePattern = "#([^#]+)#.*",
         periodDatePattern = "yyyy-MM-dd",
@@ -21,7 +19,6 @@ final class CalendarTest extends OurTestSuite
       json"""
         {
           "path": "CALENDAR",
-          "timezone": "Europe/Mariehamn",
           "dateOffset": 21600,
           "orderIdPattern": "#([^#]+)#.*",
           "periodDatePattern": "yyyy-MM-dd",
@@ -31,13 +28,11 @@ final class CalendarTest extends OurTestSuite
     testJsonDecoder(
       Calendar(
         CalendarPath("CALENDAR"),
-        Timezone("Europe/Mariehamn"),
         orderIdToDatePattern = "#([^#]+)#.*",
         periodDatePattern = "yyyy-MM-dd"),
       json"""
         {
           "path": "CALENDAR",
-          "timezone": "Europe/Mariehamn",
           "orderIdPattern": "#([^#]+)#.*",
           "periodDatePattern": "yyyy-MM-dd"
         } """)

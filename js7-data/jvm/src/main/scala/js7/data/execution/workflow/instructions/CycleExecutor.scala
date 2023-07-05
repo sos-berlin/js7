@@ -11,6 +11,7 @@ import js7.data.order.OrderEvent.{OrderActorEvent, OrderCycleFinished, OrderCycl
 import js7.data.order.OrderObstacle.WaitingForOtherTime
 import js7.data.order.{CycleState, Order, OrderObstacleCalculator}
 import js7.data.state.StateView
+import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.Cycle
 
 private[instructions] final class CycleExecutor(protected val service: InstructionExecutorService)
@@ -26,7 +27,8 @@ extends EventInstructionExecutor with PositionInstructionExecutor
         for {
           pair <- toCalendarAndScheduleCalculator(order, cycle, state)
           (calendar, calculator) = pair
-          calendarExecutor <- CalendarExecutor.checked(calendar)
+          workflow <- state.keyToItem(Workflow).checked(order.workflowId)
+          calendarExecutor <- CalendarExecutor.checked(calendar, workflow.timeZone)
           timeInterval <- calendarExecutor.orderIdToTimeInterval(order.id)
         } yield {
           val cycleState = calculator.nextCycleState(now, CycleState(
@@ -98,7 +100,7 @@ extends EventInstructionExecutor with PositionInstructionExecutor
       calendarPath <- workflow.calendarPath
         .toChecked(Problem("Cycle instruction requires Workflow.calendarPath"))
       calendar <- state.keyToItem(Calendar).checked(calendarPath)
-      zone <- calendar.timezone.toZoneId
+      zone <- workflow.timeZone.toZoneId
       calculator <- ScheduleCalculator.checked(cycle.schedule, zone, calendar.dateOffset)
     } yield calendar -> calculator
 

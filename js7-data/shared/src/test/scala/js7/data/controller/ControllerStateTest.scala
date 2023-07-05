@@ -263,7 +263,6 @@ final class ControllerStateTest extends OurAsyncTestSuite
       }, {
         "TYPE": "Calendar",
         "path": "Calendar",
-        "timezone": "Europe/Mariehamn",
         "dateOffset": 21600,
         "orderIdPattern": "#([^#]+)#.*",
         "periodDatePattern": "yyyy-MM-dd",
@@ -489,7 +488,6 @@ object ControllerStateTest
 
   private val calendar = Calendar(
     CalendarPath("Calendar"),
-    Timezone("Europe/Mariehamn"),
     orderIdToDatePattern = "#([^#]+)#.*",
     periodDatePattern = "yyyy-MM-dd",
     dateOffset = 6.h,

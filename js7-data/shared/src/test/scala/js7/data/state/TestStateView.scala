@@ -5,6 +5,7 @@ import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.NotImplementedMap
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.board.BoardPath
+import js7.data.calendar.CalendarPath
 import js7.data.controller.ControllerId
 import js7.data.event.{Event, EventDrivenState, KeyedEvent}
 import js7.data.item.{InventoryItem, InventoryItemKey, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItemPath, UnsignedSimpleItemState}
@@ -38,13 +39,14 @@ extends EventDrivenStateView[TestStateView, Event]
 
   def keyToUnsignedItemState = keyToUnsignedItemState_.view
 
-  lazy val keyToItem: MapView[InventoryItemKey, InventoryItem] =
+  final lazy val keyToItem: MapView[InventoryItemKey, InventoryItem] =
     new MapView[InventoryItemKey, InventoryItem] {
       def get(itemKey: InventoryItemKey): Option[InventoryItem] =
         itemKey match {
           case WorkflowId.as(id) => idToWorkflow.get(id)
           case path: LockPath => keyToUnsignedItemState.get(path).map(_.item)
           case path: BoardPath => keyToUnsignedItemState.get(path).map(_.item)
+          case path: CalendarPath => keyToUnsignedItemState.get(path).map(_.item)
         }
 
       def iterator: Iterator[(InventoryItemKey, InventoryItem)] =

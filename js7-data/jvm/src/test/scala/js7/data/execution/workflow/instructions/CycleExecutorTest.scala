@@ -10,7 +10,7 @@ import js7.base.time.JavaTimestamp.specific.RichJavaTimestamp
 import js7.base.time.ScalaTime.*
 import js7.base.time.{AdmissionTimeScheme, AlwaysPeriod, DailyPeriod, TestWallClock, TimeInterval, Timestamp, Timezone, WallClock}
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
-import js7.data.calendar.{Calendar, CalendarPath}
+import js7.data.calendar.{Calendar, CalendarPath, CalendarState}
 import js7.data.execution.workflow.instructions.CycleExecutorTest.*
 import js7.data.order.Order.{BetweenCycles, Finished, Ready}
 import js7.data.order.OrderEvent.{OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderMoved}
@@ -20,7 +20,6 @@ import js7.data.workflow.instructions.Schedule.{Periodic, Scheme, Ticking}
 import js7.data.workflow.instructions.{Cycle, CycleTest, ImplicitEnd, Schedule}
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Workflow, WorkflowPath}
-import scala.collection.MapView
 import scala.collection.immutable.VectorBuilder
 import scala.concurrent.duration.*
 
@@ -39,6 +38,7 @@ final class CycleExecutorTest extends OurTestSuite with ScheduleTester
           Cycle(
             Schedule(Nil),
             cycleWorkflow = Workflow.empty)),
+        timeZone = Timezone(zone.toString),
         calendarPath = Some(calendar.path)),
       WallClock)
 
@@ -339,11 +339,8 @@ final class CycleExecutorTest extends OurTestSuite with ScheduleTester
 
     lazy val stateView = new TestStateView(
       isAgent = true,
-      idToWorkflow = Map(workflow.id -> workflow)
-    ) {
-      override lazy val keyToItem =
-        MapView(calendar.path -> calendar)
-    }
+      idToWorkflow = Map(workflow.id -> workflow),
+      keyToUnsignedItemState_ = Map(calendar.path -> CalendarState(calendar)))
 
     def executorService(ts: Timestamp) =
       new InstructionExecutorService(WallClock.fixed(ts))
@@ -414,6 +411,7 @@ final class CycleExecutorTest extends OurTestSuite with ScheduleTester
             AdmissionTimeScheme(Seq(AlwaysPeriod)),
             Ticking(1.h)))),
           Workflow.empty)),
+      timeZone = Timezone(zone.toString),
       calendarPath = Some(calendar.path))
     val clock = TestWallClock(local("2022-08-13T08:10"))
     val stepper = new Stepper(OrderId("#2022-08-13#"), workflow, clock)
@@ -450,17 +448,14 @@ object CycleExecutorTest
 
   private val calendar = Calendar.daily(
     CalendarPath("CALENDAR"),
-    Timezone(zone.toString),
     dateOffset = ScheduleTester.dateOffset)
 
   final class Stepper(orderId: OrderId, workflow: Workflow, val clock: WallClock)
   {
     private val stateView = new TestStateView(
       isAgent = true,
-      idToWorkflow = Map(workflow.id -> workflow)
-    ) {
-      override lazy val keyToItem = MapView(calendar.path -> calendar)
-    }
+      idToWorkflow = Map(workflow.id -> workflow),
+      keyToUnsignedItemState_ = Map(calendar.path -> CalendarState(calendar)))
 
     private val executorService = new InstructionExecutorService(clock)
 
