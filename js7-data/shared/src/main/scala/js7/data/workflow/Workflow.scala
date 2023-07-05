@@ -51,12 +51,15 @@ with TrivialItemState[Workflow]
 {
   override def equals(o: Any) = o match {
     case o: Workflow =>
-      id == o.id &&
-      rawLabeledInstructions == o.rawLabeledInstructions &&
-      nameToJob == o.nameToJob &&
-      orderPreparation == o.orderPreparation &&
-      jobResourcePaths == o.jobResourcePaths &&
-      source == o.source
+      id == o.id
+        && rawLabeledInstructions == o.rawLabeledInstructions
+        && nameToJob == o.nameToJob
+        && orderPreparation == o.orderPreparation
+        && timeZone == o.timeZone
+        && jobResourcePaths == o.jobResourcePaths
+        && calendarPath == o.calendarPath
+        && result == o.result
+        && source == o.source
       // Ignore `outer`
     case _ => false
   }
