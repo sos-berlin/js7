@@ -24,7 +24,9 @@ object Checked
 {
   val unit = Checked(())
   val completed = Checked(Completed)
-  private val logger = Logger[this.type]
+
+  // Only used by catchNonFatal — must be lazy to avoid early initialized of logging.
+  private lazy val catchLogger = Logger[this.type]
 
   implicit def checkedMonoid[A](implicit A: Monoid[A]): Monoid[Checked[A]] =
     new Monoid[Checked[A]] {
@@ -67,7 +69,7 @@ object Checked
     try Right(f)
     catch {
       case NonFatal(t) =>
-        for (t <- t.ifStackTrace) logger.debug(s"💥 Checked.catchNonFatal: ${t.toStringWithCauses}", t)
+        for (t <- t.ifStackTrace) catchLogger.debug(s"💥 Checked.catchNonFatal: ${t.toStringWithCauses}", t)
         Left(Problem.fromThrowable(t))
     }
 
