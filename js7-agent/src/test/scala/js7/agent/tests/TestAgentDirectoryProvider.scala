@@ -10,7 +10,7 @@ import js7.base.generic.SecretString
 import js7.base.io.JavaResource
 import js7.base.io.file.FileUtils.*
 import js7.base.io.file.FileUtils.syntax.*
-import js7.base.log.{Log4j, Logger}
+import js7.base.log.Logger
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Closer.syntax.RichClosersAny
@@ -23,7 +23,7 @@ import scala.util.control.NonFatal
 trait TestAgentDirectoryProvider extends HasCloser
 {
   ProblemCodeMessages.initialize()
-  Log4j.initialize()
+  Logger.initialize()
 
   final val itemSigner = TestAgentDirectoryProvider.itemSigner
 

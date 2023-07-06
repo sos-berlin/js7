@@ -12,6 +12,7 @@ import js7.base.time.ScalaTime.{DurationRichLong, RichDuration}
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.base.utils.StackTraces.StackTraceThrowable
+import js7.base.utils.{Once, Tests}
 import monix.eval.Task
 import monix.reactive.Observable
 import org.slf4j.{LoggerFactory, Marker, MarkerFactory}
@@ -19,13 +20,18 @@ import scala.reflect.ClassTag
 
 object Logger
 {
+  private val ifNotInitialized = new Once
+
   Slf4jUtils.initialize()
 
   lazy val empty: ScalaLogger =
     ScalaLogger(org.slf4j.helpers.NOPLogger.NOP_LOGGER)
 
   def initialize(): Unit =
-    Log4j.initialize()
+    ifNotInitialized {
+      Log4j.initialize()
+      Tests.log()
+    }
 
   //val Timing: Marker = MarkerFactory.getMarker("Timing")
   //val Event: Marker = MarkerFactory.getMarker("Event")

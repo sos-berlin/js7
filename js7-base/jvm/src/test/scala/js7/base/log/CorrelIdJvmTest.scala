@@ -21,7 +21,7 @@ import scala.concurrent.duration.Deadline.now
 
 final class CorrelIdJvmTest extends OurTestSuite with BeforeAndAfterAll
 {
-  Log4j.initialize()
+  Logger.initialize()
 
   private val taskBatchSize = 3
 

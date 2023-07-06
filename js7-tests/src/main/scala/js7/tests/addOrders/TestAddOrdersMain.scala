@@ -1,6 +1,6 @@
 package js7.tests.addOrders
 
-import js7.base.log.Log4j
+import js7.base.log.Logger
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.time.Stopwatch.durationAndPerSecondString
 import monix.execution.Scheduler.Implicits.traced
@@ -11,7 +11,7 @@ object TestAddOrdersMain
   private val ClearLine = "\u001B[K"
 
   def main(args: Array[String]): Unit = {
-    Log4j.initialize()
+    Logger.initialize()
 
     if (args.isEmpty || args.sameElements(Array("--help"))) {
       println("Usage: testAddOrders --workflow=WORKFLOWPATH --order-count=1 --user=USER:PASSWORD")

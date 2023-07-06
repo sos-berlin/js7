@@ -4,7 +4,7 @@ import java.lang.reflect.Method
 import java.time.LocalDateTime
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
-import js7.base.utils.{Once, Tests}
+import js7.base.utils.Once
 import monix.execution.atomic.AtomicBoolean
 import scala.concurrent.duration.Deadline
 import scala.util.{Failure, Success, Try}
@@ -30,11 +30,10 @@ object Log4j
           case o => Success(o)
         })
 
-  def initialize() =
+  def initialize(): Unit =
     ifNotInitialized {
       if (CorrelId.couldBeEnabled) CorrelIdLog4JThreadContextMap.initialize()
       for (t <- shutdownMethod.failed) logger.warn(t.toString)
-      Tests.log()
     }
 
   def setDefaultConfiguration(resource: String): Unit =
