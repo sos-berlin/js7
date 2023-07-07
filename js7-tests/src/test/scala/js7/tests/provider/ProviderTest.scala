@@ -348,8 +348,8 @@ object ProviderTest
           "job": {
             "agentPath": "AGENT",
             "executable": {
-              "TYPE": "PathExecutable",
-              "path": "EXECUTABLE"
+              "TYPE": "InternalExecutable",
+              "className": "js7.tests.jobs.EmptyJob"
             }
           }
         }
@@ -364,8 +364,8 @@ object ProviderTest
           "job": {
             "agentPath": "AGENT",
             "executable": {
-              "TYPE": "PathExecutable",
-              "path": "OTHER-EXECUTABLE"
+              "TYPE": "InternalExecutable",
+              "className": "js7.tests.jobs.EmptyJob"
             }
           }
         }
