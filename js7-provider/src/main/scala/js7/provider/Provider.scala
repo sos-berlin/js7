@@ -26,6 +26,7 @@ import js7.controller.client.AkkaHttpControllerApi
 import js7.controller.workflow.WorkflowReader
 import js7.core.item.{ItemPaths, SimpleItemReader, TypedSourceReader}
 import js7.data.agent.AgentRef
+import js7.data.calendar.Calendar
 import js7.data.controller.ControllerState.signableItemJsonCodec
 import js7.data.item.ItemOperation.AddVersion
 import js7.data.item.{InventoryItem, InventoryItemDiff, InventoryItemDiff_, InventoryItemPath, ItemOperation, ItemSigner, SignableItem, UnsignedSimpleItem, VersionId, VersionedItem, VersionedItemPath}
@@ -221,7 +222,8 @@ object Provider
   private val readers = Seq(
     WorkflowReader,
     SimpleItemReader(AgentRef),
-    SimpleItemReader(SubagentItem))
+    SimpleItemReader(SubagentItem),
+    SimpleItemReader(Calendar))
 
   def apply(conf: ProviderConfiguration): Checked[Provider] = {
     val itemSigner = {

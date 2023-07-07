@@ -382,11 +382,6 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
     clock.resetTo(local("2021-10-01T00:00"))
 
     addStandardScheduleTests { (timeInterval, cycleDuration, zone, expected) =>
-      val expectedCycleStartTimes = expected
-        .map { case (cycleWaitTimestamp, cycleState) =>
-          cycleWaitTimestamp max cycleState.next  // Expected time of OrderCycleStart
-        }
-
       var eventId = eventWatch.lastAddedEventId
       clock.resetTo(timeInterval.start - 1.s)  // Start the order early
 
@@ -399,6 +394,11 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
 
       eventWatch.await[OrderCyclingPrepared](_.key == orderId)
       val cycleStartedTimes = new VectorBuilder[Timestamp]
+      val expectedCycleStartTimes = expected
+        .map { case (cycleWaitTimestamp, cycleState) =>
+          cycleWaitTimestamp max cycleState.next // Expected time of OrderCycleStart
+        }
+
       for (t <- expectedCycleStartTimes) {
         clock := t  // Difference may be zero, so OrderCycleStarted may already have been emitted
         val stamped = eventWatch
@@ -703,7 +703,7 @@ object CycleTest
   private val lock = Lock(LockPath("LOCK"))
 
   // Use this Log4j Clock with the properties
-  // -Dlog4j2.Clock=js7.tests.CycleTestt$CycleTestLog4jClock -Duser.timezone=Europe/Mariehamn
+  // -Dlog4j2.Clock=js7.tests.CycleTest$CycleTestLog4jClock -Duser.timezone=Europe/Mariehamn
   final class CycleTestLog4jClock extends org.apache.logging.log4j.core.util.Clock
   {
     def currentTimeMillis() = clock.epochMilli()
