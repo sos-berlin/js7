@@ -32,8 +32,6 @@ trait AlarmClock extends WallClock
   /** TestAlarmClock synchronizes time query and time change. */
   def lock[A](body: => A): A =
     body
-
-  protected def prefix: String
 }
 
 object AlarmClock
@@ -59,7 +57,6 @@ object AlarmClock
   extends AlarmClock with Simple {
     def epochMilli() = scheduler.clockRealTime(MILLISECONDS)
     protected def scheduler = s
-    protected def prefix = "AlarmClock"
   }
 
   private final class ClockCheckingAlarmClock(val clockCheckInterval: FiniteDuration)
@@ -67,7 +64,6 @@ object AlarmClock
   extends AlarmClock with ClockChecking {
     def epochMilli() = scheduler.clockRealTime(MILLISECONDS)
     protected def scheduler = s
-    protected def prefix = "ClockCheckingAlarmClock"
   }
 
   private[time] trait Simple {
@@ -84,9 +80,9 @@ object AlarmClock
     def scheduleAt(at: Timestamp)(callback: => Unit)
       (implicit @unused fullName: sourcecode.FullName): Cancelable =
       scheduler.scheduleOnce((at - now()) max Duration.Zero)(callback)
-
-    override def toString =
-      prefix + "(" + now() + ")"
+    //
+    //override def toString =
+    //  productPrefix + "(" + now() + ")"
   }
 
   /** Checks the clock for change and corrects the schedule. */
@@ -188,7 +184,7 @@ object AlarmClock
       }
 
     override def toString =
-      prefix + "(" + now() + ", " +
+      productPrefix + "(" + now() + ", " +
         epochMilliToAlarms.headOption.fold("no alarm")(o =>
           "alarms=" +
             Timestamp.ofEpochMilli(o._1).toString +

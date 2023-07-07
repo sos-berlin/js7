@@ -19,8 +19,8 @@ extends WallClock
   def -=(duration: FiniteDuration): Unit =
     _now -= duration
 
-  override def toString =
-    s"TestWallClock(${now()})"
+  //override def toString =
+  //  s"TestWallClock(${now()})"
 }
 
 object TestWallClock
