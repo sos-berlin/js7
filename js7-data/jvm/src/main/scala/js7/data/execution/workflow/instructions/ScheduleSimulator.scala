@@ -1,6 +1,5 @@
 package js7.data.execution.workflow.instructions
 
-import java.util.NoSuchElementException
 import js7.base.time.ScalaTime.*
 import js7.base.time.{TimeInterval, Timestamp}
 import js7.data.execution.workflow.instructions.ScheduleSimulator.*
