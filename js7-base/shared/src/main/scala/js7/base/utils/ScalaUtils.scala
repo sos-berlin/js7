@@ -16,6 +16,7 @@ import js7.base.utils.ScalaUtils.syntax.RichString
 import js7.base.utils.StackTraces.StackTraceThrowable
 import scala.annotation.tailrec
 import scala.collection.{Factory, MapView, View, mutable}
+import scala.math.Ordering.Implicits.*
 import scala.math.max
 import scala.reflect.ClassTag
 import scala.util.Try
@@ -297,6 +298,33 @@ object ScalaUtils
         new View.Single(b) ++ view
     }
 
+    implicit final class RichIteratorsView[A](private val iterables: IterableOnce[IterableOnce[A]])
+    extends AnyVal
+    {
+      def mergeOrdered(implicit A: Ordering[A]): Iterator[A] =
+        mergeOrderedBy(identity)
+
+      def mergeOrderedBy[B: Ordering](f: A => B): Iterator[A] =
+        mergeOrderedOptimizedBy(f)
+
+      def mergeOrderedSlowBy[B: Ordering](f: A => B): Iterator[A] = {
+        val bufferedIterators = iterables.iterator.map(_.iterator.buffered).toVector
+        Iterator.unfold(())(_ =>
+          bufferedIterators
+            .filter(_.hasNext)
+            .map(it => it -> it.head)
+            .minByOption(o => f(o._2))
+            .map { case (iterator, a) =>
+              iterator.next()
+              a -> ()
+            })
+      }
+
+      // About twice as fast
+      def mergeOrderedOptimizedBy[B: Ordering](f: A => B): MergeOrderedIterator[A, B] =
+        new MergeOrderedIterator(iterables, f)
+    }
+
     implicit final class RichScalaUtilsMap[K, V](private val underlying: Map[K, V])
     extends AnyVal
     {
@@ -356,6 +384,60 @@ object ScalaUtils
           override def values =
             mapView.values.view.map(toV1)
         }
+    }
+
+    final class MergeOrderedIterator[A, B: Ordering] private[ScalaUtils](
+      iterables: IterableOnce[IterableOnce[A]],
+      f: A => B)
+    extends collection.BufferedIterator[A] {
+      private var minimum = none[A]
+      private val bufferedIterators =
+        iterables.iterator.map(_.iterator.buffered).to(mutable.ArrayBuffer)
+
+      override def buffered: MergeOrderedIterator.this.type = this
+
+      def head = {
+        if (minimum.isEmpty) compute()
+        minimum.getOrElse(throw new NoSuchElementException)
+      }
+
+      override def headOption =
+        minimum match {
+          case None => if (hasNext) minimum else None
+          case o => o
+        }
+
+      def hasNext: Boolean =
+        minimum.isDefined || {
+          compute()
+          minimum.isDefined
+        }
+
+      def next(): A = {
+        val result = head
+        minimum = None
+        result
+      }
+
+      private def compute(): Unit = {
+        minimum = None
+        var selectedIterator: Iterator[A] = null.asInstanceOf[Iterator[A]]
+        var i = 0
+        while (i < bufferedIterators.length) {
+          val iterator = bufferedIterators(i)
+          if (!iterator.hasNext) {
+            bufferedIterators.remove(i)
+          } else {
+            val a = iterator.head
+            if (minimum.forall(x => f(x) > f(a))) {
+              minimum = Some(a)
+              selectedIterator = iterator
+            }
+            i += 1
+          }
+        }
+        if (minimum.isDefined) selectedIterator.next()
+      }
     }
 
     // Like PartialFunction.Lifted:
