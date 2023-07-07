@@ -23,6 +23,10 @@ final class CycleTest extends OurTestSuite
                     "TYPE": "DailyPeriod",
                     "secondOfDay": 32400,
                     "duration": 4800
+                  }, {
+                    "TYPE": "DailyPeriod",
+                    "duration": 960,
+                    "secondOfDay": 43200
                   }
                 ]
               },
@@ -55,20 +59,6 @@ final class CycleTest extends OurTestSuite
                   {
                     "TYPE": "WeekdayPeriod",
                     "duration": 1800,
-                    "secondOfWeek": 583200
-                  }
-                ]
-              },
-              "repeat": {
-                "TYPE": "Continuous",
-                "pause": 300
-              }
-            }, {
-              "admissionTimeScheme": {
-                "periods": [
-                  {
-                    "TYPE": "WeekdayPeriod",
-                    "duration": 1800,
                     "secondOfWeek": 590400
                   }
                 ]
@@ -77,6 +67,20 @@ final class CycleTest extends OurTestSuite
                 "TYPE": "Continuous",
                 "pause": 60,
                 "limit": 3
+              }
+            }, {
+              "admissionTimeScheme": {
+                "periods": [
+                  {
+                    "TYPE": "WeekdayPeriod",
+                    "duration": 1800,
+                    "secondOfWeek": 583200
+                  }
+                ]
+              },
+              "repeat": {
+                "TYPE": "Continuous",
+                "pause": 300
               }
             }
           ]

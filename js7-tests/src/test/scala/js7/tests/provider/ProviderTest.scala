@@ -22,6 +22,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.commandline.CommandLineArguments
 import js7.core.item.{ItemPaths, VersionedItemReader}
 import js7.data.agent.AgentPath
+import js7.data.calendar.CalendarPath
 import js7.data.event.EventId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, VersionedItemChanged, VersionedItemEvent, VersionedItemRemoved}
@@ -170,7 +171,7 @@ final class ProviderTest extends OurTestSuite with ControllerAgentForScalaTest
       (live / "ERROR-2.workflow.json") := json"""{ "instructions": 0 }"""
       assert(provider.updateControllerConfiguration(V2.some).await(99.s) ==
         Left(Problem.Combined(Set(
-          ItemPaths.AlienFileProblem(Paths.get("UNKNOWN.tmp"), Set(WorkflowPath, AgentPath, SubagentId)),
+          ItemPaths.AlienFileProblem(Paths.get("UNKNOWN.tmp"), Set(WorkflowPath, AgentPath, SubagentId, CalendarPath)),
           VersionedItemReader.SourceProblem(WorkflowPath("NO-JSON"), SourceType.Json,
             Problem("JSON ParsingFailure: expected json value got 'INVALI...' (line 1, column 1)")),
           VersionedItemReader.SourceProblem(WorkflowPath("ERROR-1"), SourceType.Json,

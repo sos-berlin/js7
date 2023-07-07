@@ -27,13 +27,19 @@ extends InternalJob
         sema <- companion.semaphore
         acquired <- sema.tryAcquire
         count <- sema.count
-        _ <-
+        outcome <-
           if (acquired)
-            Task(logger.info(s"⚪️ $semaName acquired"))
+            onAcquired(step, semaName)
           else
-            untilAcquired(sema, semaName, count)
-      } yield Outcome.succeeded)
+            untilAcquired(sema, semaName, count).as(Outcome.succeeded)
+      } yield outcome)
   }
+
+  protected def onAcquired(step: Step, semaphoreName: String): Task[Outcome.Completed] =
+    Task {
+      logger.info(s"⚪️ $semaphoreName acquired")
+      Outcome.succeeded
+    }
 
   private def untilAcquired(sema: Semaphore[Task], semaName: String, count: Long): Task[Unit] =
     Task.defer {

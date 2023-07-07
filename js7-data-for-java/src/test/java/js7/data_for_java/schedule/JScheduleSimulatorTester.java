@@ -39,6 +39,8 @@ final class JScheduleSimulatorTester
             Instant.parse("2021-10-04T09:15:00Z"),
             Instant.parse("2021-10-04T09:20:00Z"),
             Instant.parse("2021-10-04T10:10:00Z"),
-            Instant.parse("2021-10-04T10:15:00Z"))));
+            Instant.parse("2021-10-04T10:15:00Z"),
+            Instant.parse("2021-10-04T12:10:00Z"),
+            Instant.parse("2021-10-04T12:15:00Z"))));
     }
 }

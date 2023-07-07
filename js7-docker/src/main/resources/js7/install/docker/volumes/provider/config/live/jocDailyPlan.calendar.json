@@ -1,0 +1,5 @@
+{
+  "path": "jocDailyPlan",
+  "orderIdPattern": "#([^#]+)#.*",
+  "periodDatePattern": "yyyy-MM-dd"
+}

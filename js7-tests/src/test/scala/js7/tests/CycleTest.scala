@@ -1,6 +1,6 @@
 package js7.tests
 
-import java.time.{LocalTime, ZoneId}
+import java.time.{LocalDateTime, LocalTime, ZoneId}
 import java.util.concurrent.TimeoutException
 import js7.agent.RunningAgent
 import js7.base.configutils.Configs.*
@@ -34,6 +34,7 @@ import js7.tests.CycleTest.*
 import js7.tests.jobs.{EmptyJob, SemaphoreJob}
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
+import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import scala.collection.immutable.VectorBuilder
@@ -382,11 +383,6 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
     clock.resetTo(local("2021-10-01T00:00"))
 
     addStandardScheduleTests { (timeInterval, cycleDuration, zone, expected) =>
-      val expectedCycleStartTimes = expected
-        .map { case (cycleWaitTimestamp, cycleState) =>
-          cycleWaitTimestamp max cycleState.next  // Expected time of OrderCycleStart
-        }
-
       var eventId = eventWatch.lastAddedEventId
       clock.resetTo(timeInterval.start - 1.s)  // Start the order early
 
@@ -399,6 +395,11 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
 
       eventWatch.await[OrderCyclingPrepared](_.key == orderId)
       val cycleStartedTimes = new VectorBuilder[Timestamp]
+      val expectedCycleStartTimes = expected
+        .map { case (cycleWaitTimestamp, cycleState) =>
+          cycleWaitTimestamp max cycleState.next // Expected time of OrderCycleStart
+        }
+
       for (t <- expectedCycleStartTimes) {
         clock := t  // Difference may be zero, so OrderCycleStarted may already have been emitted
         val stamped = eventWatch
@@ -699,13 +700,20 @@ object CycleTest
       timeZone = timezone,
       calendarPath = Some(cycleTestExampleCalendar.path))
 
-  private class TestJob extends SemaphoreJob(TestJob)
+  private class TestJob extends SemaphoreJob(TestJob) {
+    override def onAcquired(step: Step, semaphoreName: String) =
+      Task {
+        val now = clock.now()
+        logger.info(s"🔹 $now  ${LocalDateTime.ofInstant(now.toInstant, zone)}")
+        Outcome.succeeded
+      }
+  }
   private object TestJob extends SemaphoreJob.Companion[TestJob]
 
   private val lock = Lock(LockPath("LOCK"))
 
   // Use this Log4j Clock with the properties
-  // -Dlog4j2.Clock=js7.tests.CycleTestt$CycleTestLog4jClock -Duser.timezone=Europe/Mariehamn
+  // -Dlog4j2.Clock=js7.tests.CycleTest$CycleTestLog4jClock -Duser.timezone=Europe/Mariehamn
   final class CycleTestLog4jClock extends org.apache.logging.log4j.core.util.Clock
   {
     def currentTimeMillis() = clock.epochMilli()

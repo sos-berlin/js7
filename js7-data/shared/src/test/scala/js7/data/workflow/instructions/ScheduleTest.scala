@@ -26,6 +26,10 @@ final class ScheduleTest extends OurTestSuite
                   "TYPE": "DailyPeriod",
                   "secondOfDay": 32400,
                   "duration": 4800
+                }, {
+                  "TYPE": "DailyPeriod",
+                  "duration": 960,
+                  "secondOfDay": 43200
                 }
               ]
             },
@@ -58,20 +62,6 @@ final class ScheduleTest extends OurTestSuite
                 {
                   "TYPE": "WeekdayPeriod",
                   "duration": 1800,
-                  "secondOfWeek": 583200
-                }
-              ]
-            },
-            "repeat": {
-              "TYPE": "Continuous",
-              "pause": 300
-            }
-          }, {
-            "admissionTimeScheme": {
-              "periods": [
-                {
-                  "TYPE": "WeekdayPeriod",
-                  "duration": 1800,
                   "secondOfWeek": 590400
                 }
               ]
@@ -80,6 +70,20 @@ final class ScheduleTest extends OurTestSuite
               "TYPE": "Continuous",
               "pause": 60,
               "limit": 3
+            }
+          }, {
+            "admissionTimeScheme": {
+              "periods": [
+                {
+                  "TYPE": "WeekdayPeriod",
+                  "duration": 1800,
+                  "secondOfWeek": 583200
+                }
+              ]
+            },
+            "repeat": {
+              "TYPE": "Continuous",
+              "pause": 300
             }
           }
         ]
@@ -113,7 +117,8 @@ object ScheduleTest
   val exampleSchedule = Schedule(Seq(
     Scheme(
       AdmissionTimeScheme(Seq(
-        DailyPeriod(localTime("09:00"), 1.h + 20.minutes))),
+        DailyPeriod(localTime("09:00"), 1.h + 20.minutes),
+        DailyPeriod(localTime("12:00"), 16.minutes))),
       Periodic(
         period = 1.h,
         offsets = Seq(10.minute, 15.minute, 20.minute))),
@@ -126,16 +131,16 @@ object ScheduleTest
 
     Scheme(
       AdmissionTimeScheme(Seq(
-        WeekdayPeriod(SUNDAY, localTime("18:00"), 30.minutes))),
-      Continuous(
-        pause = 5.minutes)),
-
-    Scheme(
-      AdmissionTimeScheme(Seq(
         WeekdayPeriod(SUNDAY, localTime("20:00"), 30.minutes))),
       Continuous(
         limit = Some(3),
-        pause = 1.minute))))
+        pause = 1.minute)),
+
+    Scheme(
+      AdmissionTimeScheme(Seq(
+        WeekdayPeriod(SUNDAY, localTime("18:00"), 30.minutes))),
+      Continuous(
+        pause = 5.minutes))))
 
   private def localTime(string: String): LocalTime =
     LocalTime.parse(string)
