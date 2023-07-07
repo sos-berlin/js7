@@ -74,14 +74,15 @@ final class BranchIdTest extends OurTestSuite
         "cycle+end=1632960000000,i=7,next=1633348800000")
     }
 
-    "mixed" in {
+    "complete" in {
       checkCycle(
         CycleState(
           end = Timestamp("2021-09-30T00:00:00Z"),
-          schemeIndex = 3,
-          index = 7,
+          schemeIndex = 1,
+          periodIndex = 2,
+          index = 3,
           next = Timestamp("2021-10-04T12:00:00Z")),
-        "cycle+end=1632960000000,scheme=3,i=7,next=1633348800000")
+        "cycle+end=1632960000000,scheme=1,period=2,i=3,next=1633348800000")
     }
 
     def checkCycle(cycleState: CycleState, branchIdString: String): Unit = {

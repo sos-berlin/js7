@@ -240,9 +240,9 @@ extends AdmissionPeriod
 }
 object SpecificDatePeriod {
   @TestOnly
-  def apply(date: String, duration: FiniteDuration): SpecificDatePeriod =
+  def apply(localDateTime: LocalDateTime, duration: FiniteDuration): SpecificDatePeriod =
     new SpecificDatePeriod(
-      LocalDateTime.parse(date).toEpochSecond(ZoneOffset.ofTotalSeconds(0)),
+      localDateTime.toEpochSecond(ZoneOffset.ofTotalSeconds(0)),
       duration)
 }
 

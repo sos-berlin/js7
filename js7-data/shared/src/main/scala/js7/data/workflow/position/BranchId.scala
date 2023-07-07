@@ -69,6 +69,7 @@ object BranchId
       View(
         Some("end="  + cycleState.end.toEpochMilli),
         (cycleState.schemeIndex != 0) ? ("scheme=" + cycleState.schemeIndex),
+        (cycleState.periodIndex != 0) ? ("period=" + cycleState.periodIndex),
         (cycleState.index != 0) ? ("i=" + cycleState.index),
         (cycleState.next != Timestamp.Epoch) ? ("next=" + cycleState.next.toEpochMilli)
       ).flatten.mkString(",")
@@ -82,7 +83,7 @@ object BranchId
       branchId.isIsFailureBoundary ? branchId
   }
 
-  private val emptyCycleState = CycleState(Timestamp.Epoch, 0, 0, Timestamp.Epoch)
+  private val emptyCycleState = CycleState(Timestamp.Epoch, 0, 0, 0, Timestamp.Epoch)
 
   final case class Named(string: String) extends BranchId {
     // TODO Differentiate static and dynamic BranchId (used for static and dynamic call stacks)
@@ -114,6 +115,9 @@ object BranchId
               else if (part startsWith "scheme=")
                 cycleState = cycleState.copy(
                   schemeIndex = part.substring(7).toInt)
+              else if (part startsWith "period=")
+                cycleState = cycleState.copy(
+                  periodIndex = part.substring(7).toInt)
               else if (part startsWith "i=")
                 cycleState = cycleState.copy(
                   index = part.substring(2).toInt)

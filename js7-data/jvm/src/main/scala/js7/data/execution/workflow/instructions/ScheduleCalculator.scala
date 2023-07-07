@@ -6,7 +6,7 @@ import java.time.{LocalDateTime, ZoneId}
 import js7.base.problem.Checked
 import js7.base.time.AdmissionTimeSchemeForJavaTime.*
 import js7.base.time.JavaTimestamp.specific.*
-import js7.base.time.{JavaTimestamp, TimeInterval, Timestamp}
+import js7.base.time.{JavaTimestamp, Timestamp}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.order.CycleState
 import js7.data.workflow.instructions.Schedule
@@ -17,14 +17,15 @@ final class ScheduleCalculator(schedule: Schedule, zone: ZoneId, dateOffset: Fin
 extends ScheduleSimulator
 {
   def nextCycleState(now: Timestamp, cycleState: CycleState): Option[CycleState] =
-    for ((schemeIndex, next) <- nextCycle(now, cycleState)) yield
+    for ((schemeIndex, periodIndex, next) <- nextCycle(now, cycleState)) yield
       cycleState.copy(
         schemeIndex = schemeIndex,
+        periodIndex = periodIndex,
         index =
-          if (schemeIndex != cycleState.schemeIndex)
-            1
+          if (schemeIndex == cycleState.schemeIndex && periodIndex == cycleState.periodIndex)
+            cycleState.index + 1
           else
-            cycleState.index + 1,
+            1,
         next = next)
 
   /**
@@ -39,43 +40,44 @@ extends ScheduleSimulator
         nextCycleState(now, cycleState)
 
   /** Returns schemeIndex and Timestamp. */
-  private def nextCycle(now: Timestamp, cycleState: CycleState): Option[(Int, Timestamp)] =
+  private def nextCycle(now: Timestamp, cycleState: CycleState): Option[(Int, Int, Timestamp)] =
     schedule.schemes.view.zipWithIndex
-      // For each Scheme
       .flatMap { case (scheme, schemeIndex) =>
-        for (interval <- scheme.admissionTimeScheme.findTimeInterval(now, zone, dateOffset))
-          yield (interval, scheme.repeat, schemeIndex)
-      }
-      // For each current or next TimeInterval in Schemes
-      .flatMap { case (interval, repeat, schemeIndex) =>
-        val lastScheduledCycleStart = cycleState.next max interval.start
-        val end = cycleState.end min interval.end
-        val first = schemeIndex != cycleState.schemeIndex
-        repeat
-          .match_ {
-            case periodic: Periodic =>
-              nextPeriod(periodic, lastScheduledCycleStart, now, first = first, end)
+        scheme.admissionTimeScheme
+          .findTimeIntervals(now, until = cycleState.end, zone, dateOffset)
+          // For each current or next (periodIndex, TimeInterval) in Schemes
+          .flatMap { case (periodIndex, interval) =>
+            import scheme.repeat
+            val lastScheduledCycleStart = cycleState.next max interval.start
+            val end = cycleState.end min interval.end
+            val first = schemeIndex != cycleState.schemeIndex
+              || periodIndex != cycleState.periodIndex
+            repeat
+              .match_ {
+                case periodic: Periodic =>
+                  nextPeriod(periodic, lastScheduledCycleStart, now, first = first, end)
 
-            case Ticking(tickDuration) =>
-              val n = (now - lastScheduledCycleStart).toMillis / tickDuration.toMillis
-              Some(
-                if (n > 0) // Late?
-                  lastScheduledCycleStart + n * tickDuration
-                else
-                  lastScheduledCycleStart + tickDuration * (!first).toInt)
+                case Ticking(tickDuration) =>
+                  val n = (now - lastScheduledCycleStart).toMillis / tickDuration.toMillis
+                  Some(
+                    if (n > 0) // Late?
+                      lastScheduledCycleStart + n * tickDuration
+                    else
+                      lastScheduledCycleStart + tickDuration * (!first).toInt)
 
-            case Continuous(pause, limit) =>
-              val index = if (first) 0 else cycleState.index
-              limit.forall(index < _) ? {
-                val next = now.max(interval.start) + pause * (!first).toInt
-                if (next <= now) Timestamp.Epoch else next
+                case Continuous(pause, limit) =>
+                  val index = if (first) 0 else cycleState.index
+                  limit.forall(index < _) ? {
+                    val next = now.max(interval.start) + pause * (!first).toInt
+                    if (next <= now) Timestamp.Epoch else next
+                  }
               }
+              .filter(_ < end)
+              .map((schemeIndex, periodIndex, _))
           }
-          .filter(_ < end)
-          .map(schemeIndex -> _)
       }
       // Select earliest TimeInterval
-      .minByOption { case (_, next) => next }
+      .minByOption { case (_, _, next) => next }
 
   private def nextPeriod(periodic: Periodic,
     last: Timestamp, now: Timestamp, first: Boolean, end: Timestamp)
@@ -111,11 +113,6 @@ extends ScheduleSimulator
     nextTimestamps.view.filter(_ <= now).maxOption
       .orElse(nextTimestamps.minOption)
   }
-
-  def findTimeInterval(schemeIndex: Int, now: Timestamp): Checked[Option[TimeInterval]] =
-    for (scheme <- schedule.schemes.checked(schemeIndex)) yield
-      scheme.admissionTimeScheme
-        .findTimeInterval(now, zone, dateOffset)
 }
 
 object ScheduleCalculator

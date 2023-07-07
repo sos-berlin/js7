@@ -8,6 +8,7 @@ import js7.base.time.JavaTime.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import org.jetbrains.annotations.TestOnly
+import scala.collection.View
 import scala.concurrent.duration.*
 import scala.jdk.DurationConverters.ScalaDurationOps
 
@@ -27,6 +28,28 @@ sealed trait AdmissionPeriodCalculator
   protected def calendarPeriodStartWithoutDateOffset(local: LocalDateTime): LocalDateTime
 
   def nextCalendarPeriodStart(local: LocalDateTime): Option[LocalDateTime]
+
+  @TestOnly
+  final def findLocalIntervals(from: LocalDateTime, until: LocalDateTime)
+  : View[LocalInterval] =
+    findLocalIntervals(from)
+      .takeWhile(_.startsBefore(until))
+      .filterNot(_.endsBefore(from))
+
+  /** Returns an eternal sequence. */
+  final def findLocalIntervals(from: LocalDateTime): View[LocalInterval] = {
+    val first = toLocalInterval(from)
+    View
+      .from(first)
+      .concat(
+        View.unfold(from)(local =>
+          for {
+            next <- nextCalendarPeriodStart(local) if local < next
+            localInterval <- toLocalInterval(next) //if !first.contains(localInterval)
+          } yield localInterval -> next)
+          // first may be duplicate with the first LocalInterval of the tail
+          .dropWhile(first contains _))
+  }
 }
 
 object AdmissionPeriodCalculator

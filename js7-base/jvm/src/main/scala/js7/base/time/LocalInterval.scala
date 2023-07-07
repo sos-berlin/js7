@@ -1,5 +1,6 @@
 package js7.base.time
 
+import cats.Eq
 import java.time.{LocalDateTime, ZoneId, ZonedDateTime}
 import js7.base.time.JavaTime.*
 import js7.base.time.ScalaTime.*
@@ -11,6 +12,10 @@ sealed trait LocalInterval extends Ordered[LocalInterval]
 
   def contains(start: LocalDateTime, end: LocalDateTime): Boolean
 
+  /** x <= start. */
+  def startsBefore(local: LocalDateTime): Boolean
+
+  /** x <= end. */
   def endsBefore(local: LocalDateTime): Boolean
 
   def toTimeInterval(zone: ZoneId): TimeInterval
@@ -18,6 +23,8 @@ sealed trait LocalInterval extends Ordered[LocalInterval]
 
 object LocalInterval
 {
+  implicit val eq: Eq[LocalInterval] = Eq.fromUniversalEquals
+
   def apply(start: LocalDateTime, duration: FiniteDuration): LocalInterval =
     Standard(start, duration)
 
@@ -29,6 +36,9 @@ object LocalInterval
 
     def contains(start: LocalDateTime, end: LocalDateTime) =
       this.start < end && start < this.end
+
+    def startsBefore(local: LocalDateTime) =
+      start <= local
 
     def endsBefore(local: LocalDateTime) =
       end <= local
@@ -58,6 +68,9 @@ object LocalInterval
     def contains(start: LocalDateTime, end: LocalDateTime) =
       false
 
+    def startsBefore(local: LocalDateTime) =
+      false
+
     def endsBefore(local: LocalDateTime) =
       true
 
@@ -78,6 +91,9 @@ object LocalInterval
       true
 
     def contains(start: LocalDateTime, end: LocalDateTime) =
+      true
+
+    def startsBefore(local: LocalDateTime) =
       true
 
     def endsBefore(local: LocalDateTime) =

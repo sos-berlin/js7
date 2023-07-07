@@ -30,8 +30,8 @@ final class ExecuteAdmissionTimeSwitch(
   def updateAndCheck(onPermissionStart: => Unit)(implicit clock: AlarmClock): Boolean =
     clock.lock {
       val now = clock.now()
-      val interval = admissionTimeScheme.findTimeInterval(now, zone,
-        dateOffset = ExecuteExecutor.noDateOffset)
+      val interval =
+        admissionTimeScheme.findTimeInterval(now, zone, dateOffset = ExecuteExecutor.noDateOffset)
       interval match {
         case None =>
           timer.cancel()
