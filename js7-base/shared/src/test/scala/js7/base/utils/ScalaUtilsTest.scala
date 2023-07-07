@@ -11,13 +11,17 @@ import js7.base.log.Logger
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurTestSuite
+import js7.base.time.ScalaTime.RichDeadline
+import js7.base.time.Stopwatch
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.ScalaUtilsTest.*
 import monix.eval.Coeval
 import org.scalatest.matchers.should.Matchers.*
 import scala.collection.{MapView, View}
+import scala.concurrent.duration.Deadline.now
 import scala.reflect.ClassTag
+import scala.util.Random
 import scala.util.control.NoStackTrace
 
 final class ScalaUtilsTest extends OurTestSuite
@@ -386,6 +390,112 @@ final class ScalaUtilsTest extends OurTestSuite
     "+:" in {
       val view: View[Int] = 1 +: View(2, 3, 4)
       assert(view.toSeq == Seq(1, 2, 3, 4))
+    }
+  }
+
+  "mergeOrdered" - {
+    "mergeOrderedSlow" - {
+      "empty" in {
+        assert(!List[List[Int]]().mergeOrderedSlowBy(identity).hasNext)
+      }
+
+      "standard case" in {
+        val seqs = Seq(
+          Seq(1, 2, 4, 9, 10),
+          Seq(3, 5, 6, 8),
+          Seq(7, 8))
+        assert(seqs.mergeOrderedSlowBy(identity).toSeq == Seq(1, 2, 3, 4, 5, 6, 7, 8, 8, 9, 10))
+      }
+
+      "mergeOrderedBy" in {
+        assert(Seq(Seq(1, 2, 4), Seq(3, 5)).mergeOrderedSlowBy(identity).toSeq ==
+          Seq(1, 2, 3, 4, 5))
+        assert(Seq(Seq(4, 2, 1), Seq(5, 3)).mergeOrderedSlowBy(-_).toSeq ==
+          Seq(5, 4, 3, 2, 1))
+      }
+
+      if (sys.props.contains("test.speed")) {
+        "speed, simple algorithm" in {
+          testSpeed(_.mergeOrderedSlowBy(identity))
+        }
+      }
+
+      def testSpeed(mergeOrdered: Vector[Vector[Integer]] => Iterator[Integer]) = {
+        val n = 10_000_000
+        val buffers = Vector.fill(10)(Vector.newBuilder[Integer])
+        for (i <- 0 until n / 2) buffers(Random.nextInt(7)) += i
+        for (i <- n / 2 until n) buffers(7 + Random.nextInt(3)) += i
+        val seqs = buffers.map(_.result())
+        logger.info(seqs.map(_.length).map(n => s"$n×").mkString(" "))
+        for (_ <- 1 to 3) {
+          val t = now
+          val result = mergeOrdered(seqs).toVector
+          val elapsed = t.elapsed
+          assert(result == (0 until n))
+          logger.info(Stopwatch.itemsPerSecondString(elapsed, n, "elements"))
+        }
+      }
+    }
+
+    "mergeOrderedByOptimized" - {
+      "empty" in {
+        assert(!List[List[Int]]().mergeOrderedOptimizedBy(identity).hasNext)
+      }
+
+      "standard case" in {
+        val seqs = Seq(
+          Seq(1, 2, 4, 9, 10),
+          Seq(3, 5, 6, 8),
+          Seq(7, 8))
+        assert(seqs.mergeOrderedOptimizedBy(identity).toSeq == Seq(1, 2, 3, 4, 5, 6, 7, 8, 8, 9, 10))
+      }
+
+      "mergeOrderedBy" in {
+        assert(Seq(Seq(1, 2, 4), Seq(3, 5)).mergeOrderedOptimizedBy(identity).toSeq ==
+          Seq(1, 2, 3, 4, 5))
+        assert(Seq(Seq(4, 2, 1), Seq(5, 3)).mergeOrderedOptimizedBy(-_).toSeq ==
+          Seq(5, 4, 3, 2, 1))
+      }
+
+      "Iterator behavior" in {
+        val seqs = Seq(Seq(1, 2, 3))
+        assert(seqs.mergeOrderedOptimizedBy(identity).toSeq == Seq(1, 2, 3))
+
+        val iterator = seqs.mergeOrderedOptimizedBy(identity).buffered
+        assert(iterator.isInstanceOf[MergeOrderedIterator[Int, Int]])
+        assert(iterator.hasNext)
+        assert(iterator.hasNext)
+        assert(iterator.next() == 1)
+        assert(iterator.head == 2)
+        assert(iterator.headOption == Some(2))
+        assert(iterator.next() == 2)
+        assert(iterator.next() == 3)
+        assert(iterator.headOption.isEmpty)
+        assert(!iterator.hasNext)
+        intercept[NoSuchElementException](iterator.next())
+      }
+
+      if (sys.props.contains("test.speed")) {
+        "speed" in {
+          testSpeed(_.mergeOrderedOptimizedBy(identity))
+        }
+      }
+
+      def testSpeed(mergeOrdered: Vector[Vector[Integer]] => Iterator[Integer]) = {
+        val n = 10_000_000
+        val buffers = Vector.fill(10)(Vector.newBuilder[Integer])
+        for (i <- 0 until n / 2) buffers(Random.nextInt(7)) += i
+        for (i <- n / 2 until n) buffers(7 + Random.nextInt(3)) += i
+        val seqs = buffers.map(_.result())
+        logger.info(seqs.map(_.length).map(n => s"$n×").mkString(" "))
+        for (_ <- 1 to 3) {
+          val t = now
+          val result = mergeOrdered(seqs).toVector
+          val elapsed = t.elapsed
+          assert(result == (0 until n))
+          logger.info(Stopwatch.itemsPerSecondString(elapsed, n, "elements"))
+        }
+      }
     }
   }
 
