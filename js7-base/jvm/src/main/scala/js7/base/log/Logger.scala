@@ -157,6 +157,15 @@ object Logger
       def traceCall[A](functionName: String, args: => Any = "")(body: => A): A =
         logF[SyncIO, A](logger, LogLevel.Trace, functionName, args)(SyncIO(body)).unsafeRunSync()
 
+      def traceCallWithResult[A](
+        function: String,
+        args: => Any = "",
+        result: A => Any = identity[A](_),
+        body: => A)
+      : A =
+        logF[SyncIO, A](logger, LogLevel.Trace, function, args, result)(SyncIO(body))
+          .unsafeRunSync()
+
       def infoResource[A](function: String, args: => Any = "")(resource: Resource[Task, A])
       : Resource[Task, A] =
         logResourceUse[Task, A](logger, LogLevel.Info, function, args)(resource)

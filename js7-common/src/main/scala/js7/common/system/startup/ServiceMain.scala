@@ -171,7 +171,7 @@ object ServiceMain
     private def onJavaShutdown[S <: Service](allocatedService: Allocated[Task, S])
       (implicit s: Scheduler)
     : Unit = {
-      logger.warn(s"Trying to shut down JS7 $allocatedService due to Java shutdown")
+      logger.warn(s"Trying to shut down $allocatedService due to Java shutdown")
       val stop = logger.debugTask("onJavaShutDown stop service")(
         allocatedService.release)
       for (t <- stop.attempt.runSyncUnsafe().left) {
