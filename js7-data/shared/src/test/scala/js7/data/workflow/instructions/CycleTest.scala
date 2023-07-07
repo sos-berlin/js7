@@ -2,6 +2,7 @@ package js7.data.workflow.instructions
 
 import js7.base.circeutils.CirceUtils.*
 import js7.base.test.OurTestSuite
+import js7.data.execution.workflow.instructions.ScheduleTester
 import js7.data.workflow.instructions.CycleTest.*
 import js7.data.workflow.instructions.Instructions.jsonCodec
 import js7.data.workflow.{Instruction, Workflow}
@@ -94,7 +95,5 @@ final class CycleTest extends OurTestSuite
 
 object CycleTest
 {
-  val exampleCycle = Cycle(
-    ScheduleTest.exampleSchedule,
-    Workflow.empty)
+  val exampleCycle = Cycle(ScheduleTester.schedule, Workflow.empty)
 }

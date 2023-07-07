@@ -35,6 +35,7 @@ extends EventInstructionExecutor with PositionInstructionExecutor
             next = timeInterval.start,
             end = timeInterval.end,
             schemeIndex = -1,
+            periodIndex = -1,
             index = 0))
           nextCycleStateToEvent(cycleState, order)
         }))

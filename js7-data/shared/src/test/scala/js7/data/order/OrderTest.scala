@@ -300,14 +300,16 @@ final class OrderTest extends OurTestSuite
           BetweenCycles(Some(CycleState(
             end = Timestamp("2021-10-01T00:00:00Z"),
             schemeIndex = 1,
-            index = 2,
+            periodIndex = 2,
+            index = 3,
             next = Timestamp("2021-10-01T12:00:00Z")))),
           json"""{
             "TYPE": "BetweenCycles",
             "cycleState": {
               "end": 1633046400000,
               "schemeIndex": 1,
-              "index": 2,
+              "periodIndex": 2,
+              "index": 3,
               "next": 1633089600000
             }
           }""")

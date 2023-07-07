@@ -69,10 +69,12 @@ trait Timestamp extends Ordered[Timestamp] {
 
 object Timestamp
 {
-  val implementation: Companion = SystemTimestamp
-  final val Epoch = ofEpochMilli(0)
-  final val Epsilon = 1.ms
+  private[time] val implementation: Companion = SystemTimestamp
+  val Epoch: Timestamp = ofEpochMilli(0)
+  val MaxValue: Timestamp = Epoch + FiniteDuration.MaxValue
+  val Epsilon: FiniteDuration = 1.ms
 
+  // TODO Return Checked
   def ofEpochSecond(second: Long): Timestamp =
     ofEpochMilli(second * 1000)
 

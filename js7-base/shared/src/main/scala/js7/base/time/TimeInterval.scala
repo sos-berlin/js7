@@ -14,6 +14,8 @@ sealed trait TimeInterval
 
   def contains(timestamp: Timestamp): Boolean
 
+  def startsBefore(timestamp: Timestamp): Boolean
+
   def endsBefore(timestamp: Timestamp): Boolean
 }
 
@@ -38,6 +40,9 @@ object TimeInterval
     def contains(timestamp: Timestamp): Boolean =
       start <= timestamp && !endsBefore(timestamp)
 
+    def startsBefore(timestamp: Timestamp) =
+      start <= timestamp
+
     def endsBefore(timestamp: Timestamp) =
       end <= timestamp
 
@@ -46,11 +51,14 @@ object TimeInterval
 
   object Never extends TimeInterval
   {
-    def start = Timestamp.Epoch
-    def end = Timestamp.Epoch
-    def duration = Duration.Zero
+    val start = Timestamp.Epoch
+    val end = Timestamp.Epoch
+    val duration = Duration.Zero
 
     def contains(timestamp: Timestamp) =
+      false
+
+    def startsBefore(timestamp: Timestamp) =
       false
 
     def endsBefore(timestamp: Timestamp) =
@@ -61,12 +69,14 @@ object TimeInterval
 
   object Always extends TimeInterval
   {
-    def start = Timestamp.Epoch
-    def end = start + duration
-
-    def duration = FiniteDuration.MaxValue
+    val start = Timestamp.Epoch
+    val end = Timestamp.MaxValue
+    val duration = end - start
 
     def contains(timestamp: Timestamp) =
+      true
+
+    def startsBefore(timestamp: Timestamp) =
       true
 
     def endsBefore(timestamp: Timestamp) =

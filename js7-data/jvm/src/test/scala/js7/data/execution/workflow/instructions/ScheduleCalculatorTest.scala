@@ -11,7 +11,6 @@ import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.order.CycleState
 import js7.data.workflow.instructions.Schedule
 import js7.data.workflow.instructions.Schedule.{Periodic, Scheme, Ticking}
-import js7.data.workflow.instructions.ScheduleTest.exampleSchedule
 import scala.concurrent.duration.*
 
 final class ScheduleCalculatorTest extends OurTestSuite with ScheduleTester
@@ -25,7 +24,9 @@ final class ScheduleCalculatorTest extends OurTestSuite with ScheduleTester
           AdmissionTimeScheme(Seq(DailyPeriod(LocalTime.parse("09:00"), duration = 2.h))),
           Periodic(1.h, Seq(5.minutes, 10.minutes))),
         Scheme(
-          AdmissionTimeScheme(Seq(DailyPeriod(LocalTime.parse("12:00"), duration = 1.h))),
+          AdmissionTimeScheme(Seq(
+            DailyPeriod(LocalTime.parse("15:07"), duration = 30.minutes),
+            DailyPeriod(LocalTime.parse("12:00"), duration = 1.h))),
           Ticking(15.minutes))))
 
     val calculator = ScheduleCalculator.checked(schedule, UTC, dateOffset = 6.h).orThrow
@@ -118,7 +119,7 @@ final class ScheduleCalculatorTest extends OurTestSuite with ScheduleTester
         "At end of this scheme, change to next 12:00 Ticking scheme" in {
           val last = next.copy(next = Timestamp("2021-10-01T10:10:00Z"))
           assert(calculator.nextCycleState(Timestamp("2021-10-01T10:11:00Z"), last) ==
-            Some(cs.copy(next = Timestamp("2021-10-01T12:00:00Z"), index = 1, schemeIndex = 1)))
+            Some(cs.copy(next = Timestamp("2021-10-01T12:00:00Z"), schemeIndex = 1, periodIndex = 1, index = 1)))
         }
       }
     }
@@ -127,8 +128,9 @@ final class ScheduleCalculatorTest extends OurTestSuite with ScheduleTester
       val cs = CycleState(
         next = Timestamp.Epoch/*not used*/,
         end  = Timestamp("2021-10-02T00:00:00Z"),
-        index = 0,
-        schemeIndex = 1)
+        schemeIndex = 1,
+        periodIndex = 1,
+        index = 0)
 
       "First cycle (OrderCyclingPrepared)" - {
         val initialCycleState = cs.copy(schemeIndex = -1)
@@ -159,7 +161,7 @@ final class ScheduleCalculatorTest extends OurTestSuite with ScheduleTester
         }
       }
 
-      "Next cycle (OrderCycleFinished)" - {
+      "Second cycle (OrderCycleFinished)"/*Warum OrderCycleFinished???*/ - {
         val last = cs.copy(next = Timestamp("2021-10-01T12:00:00Z"), index = 1)
 
         "now < first (only if clock has been manipulated)" in {
@@ -199,6 +201,11 @@ final class ScheduleCalculatorTest extends OurTestSuite with ScheduleTester
             Some(cs.copy(next = Timestamp("2021-10-01T12:45:00Z"), index = 2)))
           assert(calculator.nextCycleState(Timestamp("2021-10-01T12:46:00Z"), last) ==
             Some(cs.copy(next = Timestamp("2021-10-01T12:45:00Z"), index = 2)))
+        }
+
+        "Second AdmissionPeriod (in same second Scheme)" in {
+          assert(calculator.nextCycleState(Timestamp("2021-10-01T13:00:00Z"), last) ==
+            Some(cs.copy(next = Timestamp("2021-10-01T15:07:00Z"), periodIndex = 0, index = 1)))
         }
       }
     }
@@ -250,9 +257,10 @@ final class ScheduleCalculatorTest extends OurTestSuite with ScheduleTester
     }
   }
 
-  "ScheduleTest example" - {
+  "ScheduleTester standard example" - {
     addStandardScheduleTests { (timeInterval, cycleDuration, zone, expected) =>
-      val result = ScheduleCalculator(exampleSchedule, zone, dateOffset = ScheduleTester.dateOffset)
+      import ScheduleTester.{dateOffset, schedule}
+      val result = ScheduleCalculator(schedule, zone, dateOffset = dateOffset)
         .simulate(timeInterval, actionDuration = cycleDuration)
         .map(scheduled => scheduled.arrival -> scheduled.cycleState)
         .toSeq

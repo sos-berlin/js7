@@ -377,7 +377,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
     }
   }
 
-  "TestCycle example" - {
+  "SchedulerTester standard example" - {
     // Test the js7-data CycleTest JSON example.
     clock.resetTo(local("2021-10-01T00:00"))
 
@@ -501,7 +501,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
           OrderStarted,
 
           OrderCyclingPrepared(
-            CycleState(end = local("2023-03-22T00:00"), 0, 1, next = Timestamp.Epoch)),
+            CycleState(end = local("2023-03-22T00:00"), 0, 0, 1, next = Timestamp.Epoch)),
           OrderCycleStarted,
 
           OrderMoved(Position(0) / "cycle+end=1679436000000,i=1" % 0 / "then" % 0),
@@ -558,7 +558,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
           OrderStarted,
 
           OrderCyclingPrepared(
-            CycleState(end = local("2023-03-22T00:00"), 0, 1, next = Timestamp.Epoch)),
+            CycleState(end = local("2023-03-22T00:00"), 0, 0, 1, next = Timestamp.Epoch)),
           OrderCycleStarted,
 
           OrderAttachable(agentPath),

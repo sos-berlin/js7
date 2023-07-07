@@ -1,21 +1,17 @@
 package js7.data.workflow.instructions
 
-import java.time.DayOfWeek.{SATURDAY, SUNDAY, TUESDAY}
-import java.time.LocalTime
 import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
-import js7.base.time.{AdmissionTimeScheme, DailyPeriod, WeekdayPeriod}
-import js7.data.workflow.instructions.Schedule.{Continuous, Periodic, Scheme, Ticking}
-import js7.data.workflow.instructions.ScheduleTest.*
+import js7.data.execution.workflow.instructions.ScheduleTester
+import js7.data.workflow.instructions.Schedule.{Continuous, Periodic, Ticking}
 import js7.tester.CirceJsonTester.testJson
-import scala.concurrent.duration.*
 
 final class ScheduleTest extends OurTestSuite
 {
   "JSON" in {
-    testJson(exampleSchedule,
+    testJson(ScheduleTester.schedule,
       json"""
       {
         "schemes": [
@@ -110,38 +106,4 @@ final class ScheduleTest extends OurTestSuite
     assert(Continuous.checked(pause = -1.s) == Left(Problem("Invalid Continuous arguments")))
     assert(Continuous.checked(pause = 0.s, limit = Some(0)) == Right(Continuous(pause = 0.s, limit = Some(0))))
   }
-}
-
-object ScheduleTest
-{
-  val exampleSchedule = Schedule(Seq(
-    Scheme(
-      AdmissionTimeScheme(Seq(
-        DailyPeriod(localTime("09:00"), 1.h + 20.minutes),
-        DailyPeriod(localTime("12:00"), 16.minutes))),
-      Periodic(
-        period = 1.h,
-        offsets = Seq(10.minute, 15.minute, 20.minute))),
-
-    Scheme(
-      AdmissionTimeScheme(Seq(
-        WeekdayPeriod(TUESDAY, localTime("02:00"), 1.h),     // Business day monday night
-        WeekdayPeriod(SATURDAY, localTime("04:00"), 1.h))),  // Business day friday night
-      Ticking(20.minutes)),
-
-    Scheme(
-      AdmissionTimeScheme(Seq(
-        WeekdayPeriod(SUNDAY, localTime("20:00"), 30.minutes))),
-      Continuous(
-        limit = Some(3),
-        pause = 1.minute)),
-
-    Scheme(
-      AdmissionTimeScheme(Seq(
-        WeekdayPeriod(SUNDAY, localTime("18:00"), 30.minutes))),
-      Continuous(
-        pause = 5.minutes))))
-
-  private def localTime(string: String): LocalTime =
-    LocalTime.parse(string)
 }

@@ -85,15 +85,26 @@ final class AdmissionPeriodCalculatorTest extends OurTestSuite
         assert(admissionPeriodStart(localDT("2022-05-08T00:00")) == localDT("2022-05-03T03:00"))
       }
 
-      "toInterval" in {
+      "toLocalInterval" in {
         assert(calculator.toLocalInterval(localDT("2021-03-01T00:00")) ==
           Some(LocalInterval(localDT("2021-03-02T03:00"), 2.h)))
       }
 
-      "toInterval may return past period" in {
+      "toLocalInterval may return past period" in {
         // Past periods will be deleted by the caller. For easier code.
         assert(calculator.toLocalInterval(localDT("2021-03-07T00:00")) ==
           Some(LocalInterval(localDT("2021-03-02T03:00"), 2.h)))
+      }
+
+      "findIntervals" in {
+        val intervals = calculator
+          .findLocalIntervals(localDT("2023-07-01T00:00"), until = localDT("2023-08-01T00:00"))
+          .toVector
+        assert(intervals == Seq(
+          LocalInterval(localDT("2023-07-04T03:00"), 2.h),
+          LocalInterval(localDT("2023-07-11T03:00"), 2.h),
+          LocalInterval(localDT("2023-07-18T03:00"), 2.h),
+          LocalInterval(localDT("2023-07-25T03:00"), 2.h)))
       }
 
       "hasAdmissionPeriodForDay" - {
@@ -197,16 +208,54 @@ final class AdmissionPeriodCalculatorTest extends OurTestSuite
       assert(admissionPeriodStart(localDT("2021-08-29T00:00")) == localDT("2021-08-29T08:00"))
     }
 
-    "toInterval" in {
+    "toLocalInterval" in {
       assert(calculator.toLocalInterval(localDT("2021-10-01T00:00")) ==
         Some(LocalInterval(localDT("2021-10-01T08:00"), 2.h)))
     }
 
-    //"toInterval may return past period" in {
+    //"toLocalInterval may return past period" in {
     //  // Past periods will be deleted by the caller. For easier code.
-    //  assert(admissionPeriod.toInterval(localDT("2021-10-02T00:00")) ==
+    //  assert(admissionPeriod.toLocalInterval(localDT("2021-10-02T00:00")) ==
     //    Some(LocalInterval(localDT("2021-10-01T08:00"), 2.h)))
     //}
+
+    "findIntervals" in {
+      val intervals = calculator
+        .findLocalIntervals(localDT("2023-07-01T00:00"), until = localDT("2023-08-01T00:00"))
+        .toVector
+      assert(intervals == Seq(
+        LocalInterval(localDT("2023-07-01T08:00"), 2.h),
+        LocalInterval(localDT("2023-07-02T08:00"), 2.h),
+        LocalInterval(localDT("2023-07-03T08:00"), 2.h),
+        LocalInterval(localDT("2023-07-04T08:00"), 2.h),
+        LocalInterval(localDT("2023-07-05T08:00"), 2.h),
+        LocalInterval(localDT("2023-07-06T08:00"), 2.h),
+        LocalInterval(localDT("2023-07-07T08:00"), 2.h),
+        LocalInterval(localDT("2023-07-08T08:00"), 2.h),
+        LocalInterval(localDT("2023-07-09T08:00"), 2.h),
+        LocalInterval(localDT("2023-07-10T08:00"), 2.h),
+        LocalInterval(localDT("2023-07-11T08:00"), 2.h),
+        LocalInterval(localDT("2023-07-12T08:00"), 2.h),
+        LocalInterval(localDT("2023-07-13T08:00"), 2.h),
+        LocalInterval(localDT("2023-07-14T08:00"), 2.h),
+        LocalInterval(localDT("2023-07-15T08:00"), 2.h),
+        LocalInterval(localDT("2023-07-16T08:00"), 2.h),
+        LocalInterval(localDT("2023-07-17T08:00"), 2.h),
+        LocalInterval(localDT("2023-07-18T08:00"), 2.h),
+        LocalInterval(localDT("2023-07-19T08:00"), 2.h),
+        LocalInterval(localDT("2023-07-20T08:00"), 2.h),
+        LocalInterval(localDT("2023-07-21T08:00"), 2.h),
+        LocalInterval(localDT("2023-07-22T08:00"), 2.h),
+        LocalInterval(localDT("2023-07-23T08:00"), 2.h),
+        LocalInterval(localDT("2023-07-24T08:00"), 2.h),
+        LocalInterval(localDT("2023-07-25T08:00"), 2.h),
+        LocalInterval(localDT("2023-07-26T08:00"), 2.h),
+        LocalInterval(localDT("2023-07-27T08:00"), 2.h),
+        LocalInterval(localDT("2023-07-28T08:00"), 2.h),
+        LocalInterval(localDT("2023-07-29T08:00"), 2.h),
+        LocalInterval(localDT("2023-07-30T08:00"), 2.h),
+        LocalInterval(localDT("2023-07-31T08:00"), 2.h)))
+    }
 
     "hasAdmissionPeriodForDay, hasAdmissionPeriodStartForDay" - {
       "period within a day" in {
@@ -245,9 +294,16 @@ final class AdmissionPeriodCalculatorTest extends OurTestSuite
     val admissionPeriod = AdmissionPeriodCalculator(AlwaysPeriod, dateOffset = 0.s)
       .asInstanceOf[AlwaysPeriodCalculator.type]
 
-    "toInterval" in {
+    "toLocalInterval" in {
       assert(AlwaysPeriodCalculator.toLocalInterval(localDT("2021-10-01T00:00")) ==
         Some(LocalInterval.Always))
+    }
+
+    "findIntervals" in {
+      val intervals = AlwaysPeriodCalculator
+        .findLocalIntervals(localDT("2023-07-01T00:00"), until = localDT("2023-08-01T00:00"))
+        .toVector
+      assert(intervals == Seq(LocalInterval.Always))
     }
 
     "nextCalendarPeriodStart (not used)" in {
@@ -319,15 +375,23 @@ final class AdmissionPeriodCalculatorTest extends OurTestSuite
         assert(admissionPeriodStart(localDT("2021-04-01T00:00")) == localDT("2021-04-02T03:00"))
       }
 
-      "toInterval" in {
+      "toLocalInterval" in {
         assert(calculator.toLocalInterval(localDT("2021-03-01T00:00")) ==
           Some(LocalInterval(localDT("2021-03-02T03:00"), 1.h)))
       }
 
-      "toInterval may return past period" in {
+      "toLocalInterval may return past period" in {
         // Past periods will be deleted by the caller. For easier code.
         assert(calculator.toLocalInterval(localDT("2021-03-07T00:00")) ==
           Some(LocalInterval(localDT("2021-03-02T03:00"), 1.h)))
+      }
+
+      "findIntervals" in {
+        val intervals = calculator
+          .findLocalIntervals(localDT("2023-07-01T00:00"), until = localDT("2023-08-01T00:00"))
+          .toVector
+        assert(intervals == Seq(
+          LocalInterval(localDT("2023-07-02T03:00"), 1.h)))
       }
 
       "hasAdmissionPeriodForDay" - {
@@ -472,15 +536,23 @@ final class AdmissionPeriodCalculatorTest extends OurTestSuite
         assert(admissionPeriodStart(localDT("2022-07-01T00:00")) == localDT("2022-07-30T03:00"))
       }
 
-      "toInterval" in {
+      "toLocalInterval" in {
         assert(calculator.toLocalInterval(localDT("2021-03-01T00:00")) ==
           Some(LocalInterval(localDT("2021-03-30T03:00"), 1.h)))
       }
 
-      "toInterval may return past period" in {
+      "toLocalInterval may return past period" in {
         // Past periods will be deleted by the caller. For easier code.
         assert(calculator.toLocalInterval(localDT("2021-03-07T00:00")) ==
           Some(LocalInterval(localDT("2021-03-30T03:00"), 1.h)))
+      }
+
+      "findIntervals" in {
+        val intervals = calculator
+          .findLocalIntervals(localDT("2023-07-01T00:00"), until = localDT("2023-08-01T00:00"))
+          .toList
+        assert(intervals == Seq(
+          LocalInterval(localDT("2023-07-30T03:00"), 1.h)))
       }
 
       "hasAdmissionPeriodForDay" - {
@@ -633,15 +705,23 @@ final class AdmissionPeriodCalculatorTest extends OurTestSuite
         assert(admissionPeriodStart(localDT("2022-10-01T00:00")) == localDT("2022-10-14T03:00"))
       }
 
-      "toInterval" in {
+      "toLocalInterval" in {
         assert(calculator.toLocalInterval(localDT("2022-07-01T00:00")) ==
           Some(LocalInterval(localDT("2022-07-08T03:00"), 1.h)))
       }
 
-      "toInterval may return past period" in {
+      "toLocalInterval may return past period" in {
         // Past periods will be deleted by the caller. For easier code.
         assert(calculator.toLocalInterval(localDT("2022-06-30T00:00")) ==
           Some(LocalInterval(localDT("2022-06-10T03:00"), 1.h)))
+      }
+
+      "findIntervals" in {
+        val intervals = calculator
+          .findLocalIntervals(localDT("2023-07-01T00:00"), until = localDT("2023-08-01T00:00"))
+          .toVector
+        assert(intervals == Seq(
+          LocalInterval(localDT("2023-07-14T03:00"), 1.h)))
       }
 
       "hasAdmissionPeriodForDay" - {
@@ -808,15 +888,23 @@ final class AdmissionPeriodCalculatorTest extends OurTestSuite
         assert(admissionPeriodStart(localDT("2022-09-01T00:00")) == localDT("2022-09-23T03:00")) // thu fri
       }
 
-      "toInterval" in {
+      "toLocalInterval" in {
         assert(calculator.toLocalInterval(localDT("2022-07-01T00:00")) ==
           Some(LocalInterval(localDT("2022-07-22T03:00"), 1.h)))
       }
 
-      "toInterval may return past period" in {
+      "toLocalInterval may return past period" in {
         // Past periods will be deleted by the caller. For easier code.
         assert(calculator.toLocalInterval(localDT("2022-06-30T00:00")) ==
           Some(LocalInterval(localDT("2022-06-17T03:00"), 1.h)))
+      }
+
+      "findIntervals" in {
+        val intervals = calculator
+          .findLocalIntervals(localDT("2023-07-01T00:00"), until = localDT("2023-08-01T00:00"))
+          .toVector
+        assert(intervals == Seq(
+          LocalInterval(localDT("2023-07-21T03:00"), 1.h)))
       }
 
       "hasAdmissionPeriodForDay" - {
@@ -887,7 +975,7 @@ final class AdmissionPeriodCalculatorTest extends OurTestSuite
   }
 
   "SpecificDatePeriod" - {
-    val period = SpecificDatePeriod("2022-09-28T12:00", 1.h)
+    val period = SpecificDatePeriod(localDT("2022-09-28T12:00"), 1.h)
 
     "No dateOffset" - {
       val calculator = new SpecificDatePeriodCalculator(period, dateOffset = 0.s.toJava)
@@ -950,17 +1038,32 @@ final class AdmissionPeriodCalculatorTest extends OurTestSuite
         assert(admissionPeriodStart(localDT("3333-03-03T03:03")) == specificDate)
       }
 
-      "toInterval" in {
+      "toLocalInterval" in {
         assert(calculator.toLocalInterval(localDT("2000-01-01T00:00")) ==
           Some(LocalInterval(specificDate, 1.h)))
         assert(calculator.toLocalInterval(localDT("2022-09-28T00:00")) ==
           Some(LocalInterval(specificDate, 1.h)))
       }
 
-      "toInterval may return past period" in {
+      "toLocalInterval may return past period" in {
         // Past periods will be deleted by the caller. For easier code.
         assert(calculator.toLocalInterval(localDT("2222-02-02T00:00")) ==
           Some(LocalInterval(specificDate, 1.h)))
+      }
+
+      "findIntervals" in {
+        val intervals = calculator
+          .findLocalIntervals(localDT("2022-09-01T00:00"), until = localDT("2022-10-01T00:00"))
+          .toVector
+        assert(intervals == Seq(
+          LocalInterval(localDT("2022-09-28T12:00"), 1.h)))
+      }
+
+      "findIntervals other month" in {
+        val intervals = calculator
+          .findLocalIntervals(localDT("2023-07-01T00:00"), until = localDT("2023-08-01T00:00"))
+          .toVector
+        assert(intervals.isEmpty)
       }
 
       "hasAdmissionPeriodForDay" - {
@@ -972,7 +1075,7 @@ final class AdmissionPeriodCalculatorTest extends OurTestSuite
 
         "period starts at midnight" in {
           val calc = AdmissionPeriodCalculator(
-            SpecificDatePeriod("2022-09-28T00:00", 1.h),
+            SpecificDatePeriod(localDT("2022-09-28T00:00"), 1.h),
             calculator.dateOffset.toScala)
           assert(!calc.hasAdmissionPeriodForDay(LocalDate.parse("2022-09-27")))
           assert(calc.hasAdmissionPeriodForDay(LocalDate.parse("2022-09-28")))
@@ -981,7 +1084,7 @@ final class AdmissionPeriodCalculatorTest extends OurTestSuite
 
         "period ends at midnight" in {
           val calc = AdmissionPeriodCalculator(
-            SpecificDatePeriod("2022-09-28T23:00", 1.h),
+            SpecificDatePeriod(localDT("2022-09-28T23:00"), 1.h),
             calculator.dateOffset.toScala)
           assert(!calc.hasAdmissionPeriodForDay(LocalDate.parse("2022-09-27")))
           assert(calc.hasAdmissionPeriodForDay(LocalDate.parse("2022-09-28")))
@@ -990,7 +1093,7 @@ final class AdmissionPeriodCalculatorTest extends OurTestSuite
 
         "period over two midnights" in {
           val calc = AdmissionPeriodCalculator(
-            SpecificDatePeriod("2022-09-27T23:00", 24.h + 2.h),
+            SpecificDatePeriod(localDT("2022-09-27T23:00"), 24.h + 2.h),
             calculator.dateOffset.toScala)
           assert(!calc.hasAdmissionPeriodForDay(LocalDate.parse("2022-09-26")))
           assert(calc.hasAdmissionPeriodForDay(LocalDate.parse("2022-09-27")))
@@ -1009,7 +1112,7 @@ final class AdmissionPeriodCalculatorTest extends OurTestSuite
 
         "period starts at midnight" in {
           val calc = AdmissionPeriodCalculator(
-            SpecificDatePeriod("2022-09-28T00:00", 1.h),
+            SpecificDatePeriod(localDT("2022-09-28T00:00"), 1.h),
             calculator.dateOffset.toScala)
           assert(!calc.hasAdmissionPeriodStartForDay(LocalDate.parse("2022-09-27")))
           assert(calc.hasAdmissionPeriodStartForDay(LocalDate.parse("2022-09-28")))
@@ -1018,7 +1121,7 @@ final class AdmissionPeriodCalculatorTest extends OurTestSuite
 
         "period over two midnights" in {
           val calc = AdmissionPeriodCalculator(
-            SpecificDatePeriod("2022-09-27T23:00", 24.h + 2.h),
+            SpecificDatePeriod(localDT("2022-09-27T23:00"), 24.h + 2.h),
             calculator.dateOffset.toScala)
           assert(!calc.hasAdmissionPeriodStartForDay(LocalDate.parse("2022-09-26")))
           assert(calc.hasAdmissionPeriodStartForDay(LocalDate.parse("2022-09-27")))
