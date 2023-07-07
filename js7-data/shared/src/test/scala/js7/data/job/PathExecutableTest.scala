@@ -1,9 +1,9 @@
 package js7.data.job
 
+import js7.base.test.OurTestSuite
 import js7.data.job.PathExecutable.isAbsolute
-import org.scalatest.freespec.AnyFreeSpec
 
-final class PathExecutableTest extends AnyFreeSpec
+final class PathExecutableTest extends OurTestSuite
 {
   "isAbsolutePaht" in {
     assert(!isAbsolute(""))

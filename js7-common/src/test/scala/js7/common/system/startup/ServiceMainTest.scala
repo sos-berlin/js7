@@ -4,13 +4,13 @@ import com.typesafe.config.Config
 import js7.base.io.process.ReturnCode
 import js7.base.service.Service.StoppableByRequest
 import js7.base.service.{MainService, MainServiceTerminationException, Service}
+import js7.base.test.OurTestSuite
 import js7.base.utils.ProgramTermination
 import js7.common.configuration.{BasicConfiguration, Js7Configuration}
 import js7.common.system.startup.ServiceMainTest.*
 import monix.eval.Task
-import org.scalatest.freespec.AnyFreeSpec
 
-final class ServiceMainTest extends AnyFreeSpec {
+final class ServiceMainTest extends OurTestSuite {
 
   "Normal run" in {
     val conf = TestConf(Js7Configuration.defaultConfig)

@@ -1,15 +1,15 @@
 package js7.data.workflow.instructions
 
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
+import js7.base.test.OurTestSuite
 import js7.data.agent.AgentPath
 import js7.data.source.SourcePos
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.Instructions.jsonCodec
 import js7.data.workflow.{Instruction, Workflow}
 import js7.tester.CirceJsonTester.testJson
-import org.scalatest.freespec.AnyFreeSpec
 
-final class StickySubagentTest extends AnyFreeSpec
+final class StickySubagentTest extends OurTestSuite
 {
   "JSON" in {
     testJson[Instruction.Labeled](
