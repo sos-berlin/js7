@@ -205,8 +205,7 @@ final class ScheduleCalculatorTest extends OurTestSuite with ScheduleTester
     implicit val zone = ZoneId.of("Europe/Mariehamn")
 
     val schedule = Schedule(Seq(Scheme(
-      AdmissionTimeScheme(Seq(
-        AlwaysPeriod)),
+      AdmissionTimeScheme(Seq(AlwaysPeriod)),
       Periodic(1.h, Seq(0.minute, 30.minute)))))
 
     val calculator = ScheduleCalculator(schedule, zone, dateOffset = 0.s)
@@ -250,13 +249,11 @@ final class ScheduleCalculatorTest extends OurTestSuite with ScheduleTester
 
   "ScheduleTest example" - {
     addStandardScheduleTests { (timeInterval, cycleDuration, zone, expected) =>
-      val result =
-        ScheduleCalculator(exampleSchedule, zone, dateOffset = ScheduleTester.dateOffset)
-          .simulate(timeInterval, actionDuration = cycleDuration)
-      assert(result
+      val result = ScheduleCalculator(exampleSchedule, zone, dateOffset = ScheduleTester.dateOffset)
+        .simulate(timeInterval, actionDuration = cycleDuration)
         .map(scheduled => scheduled.arrival -> scheduled.cycleState)
         .toSeq
-        == expected)
+      assert(result == expected)
     }
   }
 }

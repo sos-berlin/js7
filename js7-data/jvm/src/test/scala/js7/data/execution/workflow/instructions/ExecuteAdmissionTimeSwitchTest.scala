@@ -75,7 +75,7 @@ final class ExecuteAdmissionTimeSwitchTest extends OurTestSuite
 
       // Admission time 03:00 until 04:00, while clock is skipping this hour.
       // So the admission time ends when it starts.
-      // Therfore, the next admission time is selected.
+      // Therefore, the next admission time is selected.
       tester.check(
         local("2021-03-28T04:00"),
         admissionStarted = true,
@@ -155,9 +155,9 @@ object ExecuteAdmissionTimeSwitchTest
         admissionStarts += 1
       }
 
-      assert(_switched == sw)
-      assert(isAdmitted_ == isAdmitted, "(isAdmitted)")
-      assert(admissionStarts == was + admissionStarted.toInt, "(admissionStarts)")
+      assert(_switched == sw &&
+        isAdmitted_ == isAdmitted &&
+        admissionStarts == was + admissionStarted.toInt)
     }
   }
 }

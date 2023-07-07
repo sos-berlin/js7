@@ -53,7 +53,8 @@ object InventoryItemDiff
     val addedOrChanged = changed.view.filter(isAddedOrChanged(_, pathToMaybeItem, ignoreVersion))
     val changedItemPaths = changed.view.map(_.path).toSet
     val removedItems = base.view.map(_.path).filterNot(changedItemPaths)
-    (removedItems.map(ItemChange.Removed(_)) ++ addedOrChanged.map(ItemChange.AddedOrChanged(_)))
+    removedItems.map(ItemChange.Removed(_))
+      .concat(addedOrChanged.map(ItemChange.AddedOrChanged(_)))
       .toVector
       .sortBy(_.path)
   }
