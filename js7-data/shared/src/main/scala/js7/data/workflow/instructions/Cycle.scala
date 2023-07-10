@@ -1,7 +1,8 @@
 package js7.data.workflow.instructions
 
 import io.circe.Codec
-import io.circe.generic.semiauto.deriveCodec
+import io.circe.generic.extras.semiauto.deriveConfiguredCodec
+import js7.base.circeutils.CirceUtils.DecodeWithDefaults
 import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.data.agent.AgentPath
@@ -12,6 +13,7 @@ import js7.data.workflow.{Instruction, Workflow}
 final case class Cycle(
   schedule: Schedule,
   cycleWorkflow: Workflow,
+  onlyOnePeriod: Boolean = false,
   sourcePos: Option[SourcePos] = None)
 extends Instruction
 {
@@ -50,7 +52,7 @@ extends Instruction
 
 object Cycle
 {
-  implicit val jsonCodec: Codec.AsObject[Cycle] = deriveCodec
+  implicit val jsonCodec: Codec.AsObject[Cycle] = deriveConfiguredCodec
 
-  intelliJuseImport(FiniteDurationJsonDecoder)
+  intelliJuseImport((FiniteDurationJsonDecoder, DecodeWithDefaults))
 }

@@ -102,7 +102,8 @@ extends EventInstructionExecutor with PositionInstructionExecutor
         .toChecked(Problem("Cycle instruction requires Workflow.calendarPath"))
       calendar <- state.keyToItem(Calendar).checked(calendarPath)
       zone <- workflow.timeZone.toZoneId
-      calculator <- ScheduleCalculator.checked(cycle.schedule, zone, calendar.dateOffset)
+      calculator <- ScheduleCalculator.checked(cycle.schedule, zone, calendar.dateOffset,
+        onlyOnePeriod = cycle.onlyOnePeriod)
     } yield calendar -> calculator
 
   override def toObstacles(
