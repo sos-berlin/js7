@@ -26,7 +26,8 @@ final class ScheduleCalculatorTest extends OurTestSuite with ScheduleTester
             DailyPeriod(LocalTime.parse("12:00"), duration = 1.h))),
           Ticking(15.minutes))))
 
-    val calculator = ScheduleCalculator.checked(schedule, UTC, dateOffset = 6.h).orThrow
+    val calculator = ScheduleCalculator.checked(schedule, UTC, dateOffset = 6.h, onlyOnePeriod = false)
+      .orThrow
 
     "Periodic" - {
       val cs = CycleState(
@@ -255,9 +256,9 @@ final class ScheduleCalculatorTest extends OurTestSuite with ScheduleTester
   }
 
   "ScheduleTester standard example" - {
-    addStandardScheduleTests { (timeInterval, cycleDuration, zone, expected) =>
+    addStandardScheduleTests { (timeInterval, cycleDuration, zone, expected, onlyOnePeriod) =>
       import ScheduleTester.{dateOffset, schedule}
-      val result = ScheduleCalculator(schedule, zone, dateOffset = dateOffset)
+      val result = ScheduleCalculator(schedule, zone, dateOffset = dateOffset, onlyOnePeriod = onlyOnePeriod)
         .simulate(timeInterval, actionDuration = cycleDuration)
         .map(scheduled => scheduled.arrival -> scheduled.cycleState)
         .toSeq

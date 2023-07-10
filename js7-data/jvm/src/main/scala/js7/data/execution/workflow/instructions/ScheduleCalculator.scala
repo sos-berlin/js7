@@ -3,6 +3,7 @@ package js7.data.execution.workflow.instructions
 import java.time.DayOfWeek.MONDAY
 import java.time.ZoneOffset.UTC
 import java.time.{LocalDateTime, ZoneId}
+import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.time.AdmissionTimeSchemeForJavaTime.*
 import js7.base.time.JavaTimestamp.specific.*
@@ -13,20 +14,23 @@ import js7.data.workflow.instructions.Schedule
 import js7.data.workflow.instructions.Schedule.{Continuous, Periodic, Ticking}
 import scala.concurrent.duration.*
 
-final class ScheduleCalculator(schedule: Schedule, zone: ZoneId, dateOffset: FiniteDuration)
+final class ScheduleCalculator private(
+  schedule: Schedule, zone: ZoneId, dateOffset: FiniteDuration, onlyOnePeriod: Boolean)
 extends ScheduleSimulator
 {
   def nextCycleState(now: Timestamp, cycleState: CycleState): Option[CycleState] =
-    for ((schemeIndex, periodIndex, next) <- nextCycle(now, cycleState)) yield
-      cycleState.copy(
-        schemeIndex = schemeIndex,
-        periodIndex = periodIndex,
-        index =
-          if (schemeIndex == cycleState.schemeIndex && periodIndex == cycleState.periodIndex)
-            cycleState.index + 1
-          else
-            1,
-        next = next)
+    nextCycle(now, cycleState)
+      .flatMap { case (schemeIndex, periodIndex, next) =>
+        Logger[this.type].info(s"### $cycleState")
+        val periodChanges = cycleState.index != 0/*0 is the initial value*/
+          && (schemeIndex != cycleState.schemeIndex || periodIndex != cycleState.periodIndex)
+        !(onlyOnePeriod && periodChanges) ?
+          cycleState.copy(
+            schemeIndex = schemeIndex,
+            periodIndex = periodIndex,
+            index = if (periodChanges) 1 else cycleState.index + 1,
+            next = next)
+      }
 
   /**
    * If it is to late for next in cycleState, then calculate a new CycleState.
@@ -120,13 +124,14 @@ object ScheduleCalculator
   private val monday1 = LocalDateTime.parse("2021-11-01T00:00")
   assert(monday1.getDayOfWeek == MONDAY)
 
-  def apply(schedule: Schedule, zone: ZoneId, dateOffset: FiniteDuration) =
-    checked(schedule, zone, dateOffset).orThrow
+  def apply(schedule: Schedule, zone: ZoneId, dateOffset: FiniteDuration, onlyOnePeriod: Boolean = false) =
+    checked(schedule, zone, dateOffset, onlyOnePeriod).orThrow
 
   private[instructions] def checked(
     schedule: Schedule,
     zone: ZoneId,
-    dateOffset: FiniteDuration)
+    dateOffset: FiniteDuration,
+    onlyOnePeriod: Boolean)
   : Checked[ScheduleCalculator] =
-    Right(new ScheduleCalculator(schedule, zone, dateOffset))
+    Right(new ScheduleCalculator(schedule, zone, dateOffset, onlyOnePeriod))
 }

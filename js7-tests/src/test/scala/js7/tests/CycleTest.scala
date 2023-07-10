@@ -44,7 +44,10 @@ final class CycleTest extends OurTestSuite
 with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
 {
   protected val agentPaths = Seq(agentPath)
-  protected val items = Seq(calendar, cycleTestExampleCalendar, cycleTestExampleWorkflow, lock)
+  protected val items = Seq(
+    calendar,
+    cycleTestExampleCalendar, cycleTestExampleWorkflow, onlyOnePeriodCycleTestExampleWorkflow,
+    lock)
 
   override protected def controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
@@ -379,21 +382,24 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
   }
 
   "SchedulerTester standard example" - {
-    // Test the js7-data CycleTest JSON example.
     clock.resetTo(local("2021-10-01T00:00"))
 
-    addStandardScheduleTests { (timeInterval, cycleDuration, zone, expected) =>
+    addStandardScheduleTests { (timeInterval, cycleDuration, zone, expected, onlyOnePeriod) =>
       var eventId = eventWatch.lastAddedEventId
       clock.resetTo(timeInterval.start - 1.s)  // Start the order early
 
       val orderDate = timeInterval.start.toLocalDateTime(zone).toLocalDate
       val orderId = OrderId(s"#$orderDate#CycleTesterTest")
       logger.debug(s"addOrder $orderId")
+      val workflow =
+        if (onlyOnePeriod) onlyOnePeriodCycleTestExampleWorkflow else cycleTestExampleWorkflow
       controller.api
-        .addOrder(FreshOrder(orderId, cycleTestExampleWorkflow.path, deleteWhenTerminated = true))
+        .addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
         .await(99.s).orThrow
 
-      eventWatch.await[OrderCyclingPrepared](_.key == orderId)
+      if (expected.nonEmpty) {
+        eventWatch.await[OrderCyclingPrepared](_.key == orderId)
+      }
       val cycleStartedTimes = new VectorBuilder[Timestamp]
       val expectedCycleStartTimes = expected
         .map { case (cycleWaitTimestamp, cycleState) =>
@@ -693,10 +699,20 @@ object CycleTest
   private val cycleTestExampleWorkflow =
     Workflow(WorkflowPath("CycleTest-example"),
       Seq(
-        js7.data.workflow.instructions.CycleTest.exampleCycle
-          .copy(
-            cycleWorkflow = Workflow.of(
-              TestJob.execute(agentPath)))),
+        Cycle(
+          ScheduleTester.schedule,
+          Workflow.of(
+            TestJob.execute(agentPath)))),
+      timeZone = timezone,
+      calendarPath = Some(cycleTestExampleCalendar.path))
+
+  private val onlyOnePeriodCycleTestExampleWorkflow =
+    Workflow(WorkflowPath("CycleTest-example-onlyOnePeriod"),
+      Seq(
+        Cycle(ScheduleTester.schedule,
+          onlyOnePeriod = true,
+          cycleWorkflow = Workflow.of(
+            TestJob.execute(agentPath)))),
       timeZone = timezone,
       calendarPath = Some(cycleTestExampleCalendar.path))
 

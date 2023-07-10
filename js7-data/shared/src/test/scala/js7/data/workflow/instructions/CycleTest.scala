@@ -6,15 +6,29 @@ import js7.data.execution.workflow.instructions.ScheduleTester
 import js7.data.workflow.instructions.CycleTest.*
 import js7.data.workflow.instructions.Instructions.jsonCodec
 import js7.data.workflow.{Instruction, Workflow}
-import js7.tester.CirceJsonTester.testJson
+import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 
 final class CycleTest extends OurTestSuite
 {
   "JSON" in {
+    testJsonDecoder[Instruction](
+      Cycle(Schedule(Nil), Workflow.empty),
+      json"""
+      {
+        "TYPE": "Cycle",
+        "schedule": {
+          "schemes": []
+        },
+        "cycleWorkflow": {
+          "instructions": []
+        }
+      }""")
+
     testJson[Instruction](exampleCycle,
       json"""
       {
         "TYPE": "Cycle",
+        "onlyOnePeriod": false,
         "schedule": {
           "schemes": [
             {

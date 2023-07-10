@@ -271,15 +271,17 @@ final class CycleExecutorTest extends OurTestSuite with ScheduleTester
   }
 
   "SchedulerTester standard example" - {
-    addStandardScheduleTests { (timeInterval, cycleDuration, zone, expected) =>
+    addStandardScheduleTests {  (timeInterval, cycleDuration, zone, expected, onlyOnePeriod) =>
       val expectedCycleStartTimes = expected
         .map { case (cycleWaitTimestamp, cycleState) =>
           cycleWaitTimestamp max cycleState.next  // Expected time of OrderCycleStart
         }
-      assert(testCycle(timeInterval, cycleDuration, zone) == expectedCycleStartTimes)
+      assert(testCycle(timeInterval, cycleDuration, zone, onlyOnePeriod) == expectedCycleStartTimes)
     }
 
-    def testCycle(timeInterval: TimeInterval, cycleDuration: FiniteDuration, zone: ZoneId)
+    def testCycle(
+      timeInterval: TimeInterval, cycleDuration: FiniteDuration,
+      zone: ZoneId, onlyOnePeriod: Boolean)
     : Seq[Timestamp] = {
       val clock = TestWallClock(timeInterval.start)
       val stepper = new Stepper(
@@ -287,7 +289,7 @@ final class CycleExecutorTest extends OurTestSuite with ScheduleTester
         Workflow(
           workflowId,
           Seq(
-            Cycle(ScheduleTester.schedule, Workflow.empty)),
+            Cycle(ScheduleTester.schedule, Workflow.empty, onlyOnePeriod = onlyOnePeriod)),
           timeZone = Timezone(zone.getId),
           calendarPath = Some(calendar.path)),
         clock)
