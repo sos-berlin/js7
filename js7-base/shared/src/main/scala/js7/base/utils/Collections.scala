@@ -49,6 +49,32 @@ object Collections
           iterableOnce
         else
           factory.fromSpecific(Nil)
+
+      /** Returns each element as List head with n following elements as List tail. */
+      def lookAhead(n: Int)(implicit factory: Factory[List[A], CC[List[A]]]): CC[List[A]] = {
+        if (n < 0) throw new IllegalArgumentException(s"lookAhead($n)?")
+
+        val buffer = mutable.ListBuffer.empty[A]
+        buffer.sizeHint(n + 1)
+
+        val it = iterableOnce.iterator
+
+        while (buffer.length < n - 1 && it.hasNext) buffer += it.next()
+
+        factory.fromSpecific(new Iterator[List[A]] {
+          def hasNext = it.hasNext || buffer.nonEmpty
+
+          def next() = {
+            if (it.hasNext) {
+              buffer += it.next()
+            }
+            if (buffer.isEmpty) throw new NoSuchElementException("lookAhead: end of sequence")
+            val result = buffer.toList
+            buffer.remove(0)
+            result
+          }
+        })
+      }
     }
 
     implicit final class RichIterable[CC[x] <: Iterable[x], A](private val underlying: CC[A])

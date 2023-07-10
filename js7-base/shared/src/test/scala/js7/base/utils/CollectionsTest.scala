@@ -36,6 +36,23 @@ final class CollectionsTest extends OurTestSuite
     assert(Iterator(1, 2, 3).unless(true).toList == Nil)
   }
 
+  "lookAhead" in {
+    assert(Seq[Int]().lookAhead(0).isEmpty)
+    assert(Seq[Int]().lookAhead(3).isEmpty)
+
+    assert(Seq(1).lookAhead(0) == Seq(List(1)))
+    assert(Seq(1).lookAhead(3) == Seq(List(1)))
+
+    assert(Seq(1, 2).lookAhead(0) == Seq(List(1), List(2)))
+    assert(Seq(1, 2).lookAhead(3) == Seq(List(1, 2), List(2)))
+
+    assert(Seq(1, 2, 3).lookAhead(0) == Seq(List(1), List(2), List(3)))
+    assert(Seq(1, 2, 3).lookAhead(3) == Seq(List(1, 2, 3), List(2, 3), List(3)))
+
+    assert(Seq(1, 2, 3, 4, 5).lookAhead(3) ==
+      Seq(List(1, 2, 3), List(2, 3, 4), List(3, 4, 5), List(4, 5), List(5)))
+  }
+
   "fold_" in {
     assert(Seq[String]().fold_ == "")
     assert(Seq("A", "BB", "CCC").fold_ == "ABBCCC")
