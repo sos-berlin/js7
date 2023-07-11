@@ -612,12 +612,12 @@ final class WorkflowTest extends OurTestSuite
       (Position(4), ImplicitEnd())))
   }
 
-  "checkedPosition" in {
-    assert(TestWorkflow.checkedPosition(Position(0)) == Right(Position(0)))
-    assert(TestWorkflow.checkedPosition(Position(1) / Then % 0) == Right(Position(1) / Then % 0))
-    assert(TestWorkflow.checkedPosition(Position(2) / "fork+🥕" % 2) == Right(Position(2) / "fork+🥕" % 2))
-    assert(TestWorkflow.checkedPosition(Position(2) / "fork+🥕" % 3) == Left(Problem("Unknown position 2/fork+🥕:3 in Workflow:TEST~VERSION")))
-    assert(TestWorkflow.checkedPosition(Position(5)) == Left(Problem("Unknown position 5 in Workflow:TEST~VERSION")))
+  "checkPosition" in {
+    assert(TestWorkflow.checkPosition(Position(0)) == Right(()))
+    assert(TestWorkflow.checkPosition(Position(1) / Then % 0) == Right(()))
+    assert(TestWorkflow.checkPosition(Position(2) / "fork+🥕" % 2) == Right(()))
+    assert(TestWorkflow.checkPosition(Position(2) / "fork+🥕" % 3) == Left(Problem("Unknown position 2/fork+🥕:3 in Workflow:TEST~VERSION")))
+    assert(TestWorkflow.checkPosition(Position(5)) == Left(Problem("Unknown position 5 in Workflow:TEST~VERSION")))
   }
 
   "completelyChecked in {" - {

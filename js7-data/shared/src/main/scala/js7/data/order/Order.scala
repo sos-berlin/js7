@@ -21,7 +21,7 @@ import js7.data.order.OrderEvent.*
 import js7.data.orderwatch.ExternalOrderKey
 import js7.data.subagent.{SubagentId, SubagentSelectionId}
 import js7.data.value.{NamedValues, Value}
-import js7.data.workflow.position.{BranchId, InstructionNr, Position, PositionOrLabel, WorkflowPosition}
+import js7.data.workflow.position.{BranchId, BranchPath, InstructionNr, Position, PositionOrLabel, WorkflowPosition}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import scala.collection.{MapView, View, mutable}
 import scala.reflect.ClassTag
@@ -45,6 +45,7 @@ final case class Order[+S <: Order.State](
   deleteWhenTerminated: Boolean = false,
   forceJobAdmission: Boolean = false,
   stickySubagents: List[StickySubagent] = Nil,
+  innerBlock: BranchPath = BranchPath.empty,
   stopPositions: Set[PositionOrLabel] = Set.empty)
 {
   // Accelerate usage in Set[Order], for example in AgentDriver's CommandQueue
@@ -786,7 +787,7 @@ final case class Order[+S <: Order.State](
             deleteWhenTerminated = deleteWhenTerminated,
             forceJobAdmission = forceJobAdmission,
             stickySubagents,
-            stopPositions))
+            innerBlock, stopPositions))
         case _ =>
           Left(Problem("OrderAttachedToAgent event requires an Attached order"))
     })
@@ -796,12 +797,13 @@ object Order
 {
   def fromOrderAdded(id: OrderId, event: OrderAddedX): Order[Fresh] =
     Order(id,
-      event.workflowId /: event.startPosition.getOrElse(Position.First),
+      event.workflowId /: event.startPosition.getOrElse(event.innerBlock % 0),
       Fresh,
       event.arguments,
       event.scheduledFor, event.externalOrderKey,
       deleteWhenTerminated = event.deleteWhenTerminated,
       forceJobAdmission = event.forceJobAdmission,
+      innerBlock = event.innerBlock,
       stopPositions = event.stopPositions)
 
   def fromOrderAttached(id: OrderId, event: OrderAttachedToAgent): Order[IsFreshOrReady] =
@@ -816,6 +818,7 @@ object Order
       deleteWhenTerminated = event.deleteWhenTerminated,
       forceJobAdmission = event.forceJobAdmission,
       stickySubagents = event.stickySubagents,
+      innerBlock = event.innerBlock,
       stopPositions = event.stopPositions)
 
   sealed trait AttachedState
@@ -1000,6 +1003,7 @@ object Order
       "forceJobAdmission" -> order.forceJobAdmission.?.asJson,
       "isResumed" -> order.isResumed.?.asJson,
       "stickySubagents" -> (order.stickySubagents.nonEmpty ? order.stickySubagents).asJson,
+      "innerBlock" -> (order.innerBlock.nonEmpty ? order.innerBlock).asJson,
       "stopPositions" -> (order.stopPositions.nonEmpty ? order.stopPositions).asJson,
       "historicOutcomes" -> order.historicOutcomes.??.asJson)
 
@@ -1018,6 +1022,7 @@ object Order
       isResumed <- cursor.getOrElse[Boolean]("isResumed")(false)
       deleteWhenTerminated <- cursor.getOrElse[Boolean]("deleteWhenTerminated")(false)
       forceJobAdmission <- cursor.getOrElse[Boolean]("forceJobAdmission")(false)
+      innerBlock <- cursor.getOrElse[BranchPath]("innerBlock")(BranchPath.empty)
       stopPositions <- cursor.getOrElse[Set[PositionOrLabel]]("stopPositions")(Set.empty)
       stickySubagentId <- cursor.getOrElse[List[StickySubagent]]("stickySubagents")(Nil)
       historicOutcomes <- cursor.getOrElse[Vector[HistoricOutcome]]("historicOutcomes")(Vector.empty)
@@ -1029,7 +1034,7 @@ object Order
         deleteWhenTerminated = deleteWhenTerminated,
         forceJobAdmission = forceJobAdmission,
         stickySubagentId,
-        stopPositions)
+        innerBlock, stopPositions)
 
   implicit val FreshOrReadyOrderJsonEncoder: Encoder.AsObject[Order[IsFreshOrReady]] =
     o => jsonEncoder.encodeObject(o)

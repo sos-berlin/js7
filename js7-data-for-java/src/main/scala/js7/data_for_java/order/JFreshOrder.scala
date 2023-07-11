@@ -10,6 +10,7 @@ import js7.base.time.Timestamp
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.value.Value
 import js7.data.workflow.WorkflowPath
+import js7.data.workflow.position.BranchPath
 import js7.data_for_java.common.JJsonable
 import js7.data_for_java.workflow.position.JPositionOrLabel
 import scala.jdk.CollectionConverters.*
@@ -27,9 +28,15 @@ extends JJsonable[JFreshOrder]
   def id: OrderId =
     asScala.id
 
+  @Nonnull
+  def innerBlock: java.util.List[BranchPath.Segment] =
+    asScala.innerBlock.asJava
+
+  @Nonnull
   def startPosition: Optional[JPositionOrLabel] =
     asScala.startPosition.map(JPositionOrLabel(_)).toJava
 
+  @Nonnull
   def stopPositions: java.util.Set[JPositionOrLabel] =
     asScala.stopPositions.map(JPositionOrLabel(_)).asJava
 }
@@ -110,6 +117,30 @@ object JFreshOrder extends JJsonable.Companion[JFreshOrder]
       scheduledFor.toScala.map(o => Timestamp.ofEpochMilli(o.toEpochMilli)),
       deleteWhenTerminated = deleteWhenTerminated,
       forceJobAdmission = forceJobAdmission,
+      startPosition = startPosition.toScala.map(_.asScala),
+      stopPositions = stopPositions.asScala.map(_.asScala).toSet))
+
+  @Nonnull
+  @throws[RuntimeException]("on invalid syntax")
+  def of(
+    @Nonnull id: OrderId,
+    @Nonnull workflowPath: WorkflowPath,
+    @Nonnull scheduledFor: java.util.Optional[Instant],
+    @Nonnull arguments: java.util.Map[String, Value],
+    @Nonnull deleteWhenTerminated: Boolean,
+    @Nonnull forceJobAdmission: Boolean,
+    @Nonnull innerBlock: java.util.List[BranchPath.Segment],
+    @Nonnull startPosition: Optional[JPositionOrLabel],
+    @Nonnull stopPositions: java.util.Set[JPositionOrLabel])
+  : JFreshOrder =
+    JFreshOrder(FreshOrder(
+      id,
+      workflowPath,
+      arguments.asScala.toMap,
+      scheduledFor.toScala.map(o => Timestamp.ofEpochMilli(o.toEpochMilli)),
+      deleteWhenTerminated = deleteWhenTerminated,
+      forceJobAdmission = forceJobAdmission,
+      innerBlock = innerBlock.asScala.toList,
       startPosition = startPosition.toScala.map(_.asScala),
       stopPositions = stopPositions.asScala.map(_.asScala).toSet))
 

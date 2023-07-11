@@ -8,7 +8,6 @@ import js7.data.value.{BooleanValue, ListValue, NumberValue, StringValue}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.{BranchId, Label, Position}
 import js7.tester.CirceJsonTester.testJson
-
 /**
   * @author Joacim Zschimmer
   */
@@ -32,11 +31,9 @@ final class FreshOrderTest extends OurTestSuite
         Some(Timestamp.parse("2017-03-07T12:00:00Z")),
         deleteWhenTerminated = true,
         forceJobAdmission = true,
-        startPosition = Some(
-          Position(1) / BranchId.Then % 2),
-        stopPositions = Set(
-          Position(9) / BranchId.Catch_ % 0,
-          Label("LABEL"))),
+        innerBlock = Position(1) / BranchId.Then,
+        startPosition = Some(Position(1) / BranchId.Then % 2),
+        stopPositions = Set(Position(9) / BranchId.Catch_ % 0, Label("LABEL"))),
       json"""{
         "id": "ORDER-ID",
         "workflowPath": "WORKFLOW",
@@ -49,6 +46,7 @@ final class FreshOrderTest extends OurTestSuite
         },
         "deleteWhenTerminated": true,
         "forceJobAdmission": true,
+        "innerBlock": [ 1, "then" ],
         "startPosition": [ 1, "then", 2 ],
         "stopPositions": [ [ 9, "catch", 0 ], "LABEL" ]
       }""")

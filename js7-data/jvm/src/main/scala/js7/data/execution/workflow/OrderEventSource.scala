@@ -361,7 +361,7 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
           checkedWorkflow.flatMap(workflow =>
             historyOperations
               .flatMap(_.positions)
-              .traverse(workflow.checkedPosition))
+              .traverse(pos => workflow.checkPosition(pos).rightAs(pos)))
 
         checkPosition
           .flatMap(_ => checkHistoricPositions)
@@ -560,52 +560,57 @@ object OrderEventSource {
           .getOrElse(Left(Problem(
             s"Unexpected BranchId '$branchId' while leaving instruction blocks")))
 
+      val reverseInnerBlock = order.innerBlock.reverse
+
       def loop(reverseBranchPath: List[Segment], failPosition: Position)
       : Checked[List[OrderActorEvent]] =
-        reverseBranchPath match {
-          case Nil =>
-            callToEvent(None, failPosition)
+        if (reverseBranchPath == reverseInnerBlock)
+          callToEvent(None, failPosition)
+        else
+          reverseBranchPath match {
+            case Nil =>
+              callToEvent(None, failPosition)
 
-          case Segment(nr, branchId) :: _ if until(branchId) =>
-            for (events <- callToEvent(Some(branchId), failPosition))
-              yield OrderMoved(reverseBranchPath.reverse % nr.increment) :: events
+            case Segment(nr, branchId) :: _ if until(branchId) =>
+              for (events <- callToEvent(Some(branchId), failPosition))
+                yield OrderMoved(reverseBranchPath.reverse % nr.increment) :: events
 
-          case Segment(_, branchId @ BranchId.IsFailureBoundary(_)) :: _ =>
-            callToEvent(Some(branchId), failPosition)
+            case Segment(_, branchId @ BranchId.IsFailureBoundary(_)) :: _ =>
+              callToEvent(Some(branchId), failPosition)
 
-          case Segment(nr, BranchId.Lock) :: prefix =>
-            if (order.isAttached)
-              Right(OrderDetachable :: Nil)
-            else {
-              val pos = prefix.reverse % nr
-              for {
-                lock <- workflow.instruction_[LockInstruction](pos)
-                events <- loop(prefix, pos)
-              } yield
-                OrderLocksReleased(lock.lockPaths) :: events
-            }
+            case Segment(nr, BranchId.Lock) :: prefix =>
+              if (order.isAttached)
+                Right(OrderDetachable :: Nil)
+              else {
+                val pos = prefix.reverse % nr
+                for {
+                  lock <- workflow.instruction_[LockInstruction](pos)
+                  events <- loop(prefix, pos)
+                } yield
+                  OrderLocksReleased(lock.lockPaths) :: events
+              }
 
-          case Segment(nr, BranchId.ConsumeNotices) :: prefix =>
-            if (order.isAttached)
-              Right(OrderDetachable :: Nil)
-            else
+            case Segment(nr, BranchId.ConsumeNotices) :: prefix =>
+              if (order.isAttached)
+                Right(OrderDetachable :: Nil)
+              else
+                for (events <- loop(prefix, prefix.reverse % nr)) yield
+                  OrderNoticesConsumed(failed = true) :: events
+
+            case Segment(nr, BranchId.StickySubagent) :: prefix =>
               for (events <- loop(prefix, prefix.reverse % nr)) yield
-                OrderNoticesConsumed(failed = true) :: events
+                OrderStickySubagentLeaved :: events
 
-          case Segment(nr, BranchId.StickySubagent) :: prefix =>
-            for (events <- loop(prefix, prefix.reverse % nr)) yield
-              OrderStickySubagentLeaved :: events
+            case Segment(nr, branchId @ TryBranchId(retry)) :: prefix if catchable =>
+              val catchPos = prefix.reverse % nr / BranchId.catch_(retry) % 0
+              if (isMaxRetriesReached(workflow, catchPos))
+                loop(prefix, failPosition)
+              else
+                callToEvent(Some(branchId), catchPos)
 
-          case Segment(nr, branchId @ TryBranchId(retry)) :: prefix if catchable =>
-            val catchPos = prefix.reverse % nr / BranchId.catch_(retry) % 0
-            if (isMaxRetriesReached(workflow, catchPos))
+            case Segment(_, _) :: prefix =>
               loop(prefix, failPosition)
-            else
-              callToEvent(Some(branchId), catchPos)
-
-          case Segment(_, _) :: prefix =>
-            loop(prefix, failPosition)
-        }
+          }
 
       order
         .ifState[Order.WaitingForLock]

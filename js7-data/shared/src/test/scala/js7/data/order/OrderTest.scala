@@ -50,12 +50,33 @@ final class OrderTest extends OurTestSuite
 
   "JSON" - {
     "Order" - {
+      "Minimum" in {
+        testJson[Order[Order.State]](
+          Order(OrderId("ID"), (WorkflowPath("WORKFLOW") ~ "v1") /: Position(0),
+            Order.Ready),
+          json"""{
+            "id": "ID",
+            "state": {
+              "TYPE": "Ready"
+            },
+            "workflowPosition": {
+              "position": [ 0 ],
+              "workflowId": {
+                "path": "WORKFLOW",
+                "versionId": "v1"
+              }
+            }
+          }""")
+      }
+
       "Ready" in {
         check(
           testOrder.copy(
             attachedState = Some(Attached(AgentPath("AGENT"))),
             parent = Some(OrderId("PARENT")),
             scheduledFor = Some(Timestamp.parse("2121-04-26T12:33:44.789Z")),
+            workflowPosition = WorkflowPath("WORKFLOW") ~ "VERSION" /: (Position(1) / "then" % 2),
+            innerBlock = Position(1) / "then",
             stickySubagents = List(
               Order.StickySubagent(
                 AgentPath("AGENT"),
@@ -68,8 +89,9 @@ final class OrderTest extends OurTestSuite
                 "path": "WORKFLOW",
                 "versionId": "VERSION"
               },
-              "position": [ 0 ]
+              "position": [ 1, "then", 2 ]
             },
+            "innerBlock": [ 1, "then" ],
             "state": {
               "TYPE": "Ready"
             },

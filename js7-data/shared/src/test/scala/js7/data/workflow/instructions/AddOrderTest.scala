@@ -17,7 +17,8 @@ final class AddOrderTest extends OurTestSuite
         WorkflowPath("WORKFLOW"),
         Map(
           "arg1" -> expr("7")),
-        startPosition = Some(Position(1)),
+        innerBlock = Position(1) / "then",
+        startPosition = Some(Position(1) / "then" % 2),
         stopPositions = Set(Position(2), Label("LABEL")),
         deleteWhenTerminated = true,
         forceJobAdmission = true),
@@ -29,8 +30,9 @@ final class AddOrderTest extends OurTestSuite
         "arguments": {
           "arg1": "7"
         },
-        "startPosition": [1],
-        "stopPositions": [ [2], "LABEL"],
+        "innerBlock": [ 1, "then" ],
+        "startPosition": [ 1, "then", 2] ,
+        "stopPositions": [ [2], "LABEL" ],
         "deleteWhenTerminated": true,
         "forceJobAdmission": true
       }""")

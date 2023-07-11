@@ -33,6 +33,7 @@ extends EventInstructionExecutor
               else
                 View(
                   OrderOrderAdded(addedOrderId, workflowId, args,
+                    innerBlock = addOrder.innerBlock,
                     startPosition = addOrder.startPosition,
                     stopPositions = addOrder.stopPositions,
                     deleteWhenTerminated = addOrder.deleteWhenTerminated,
