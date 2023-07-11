@@ -96,11 +96,13 @@ object InternalJob
   abstract class Companion[I <: InternalJob](implicit classTag: ClassTag[I])
   {
     final def executable(
+      script: String = "",
       jobArguments: Map[String, Expression] = Map.empty,
       arguments: Map[String, Expression] = Map.empty)
     : InternalExecutable =
       InternalExecutable(
         implicitClass[I].scalaName,
+        script = script,
         jobArguments = jobArguments,
         arguments = arguments)
 

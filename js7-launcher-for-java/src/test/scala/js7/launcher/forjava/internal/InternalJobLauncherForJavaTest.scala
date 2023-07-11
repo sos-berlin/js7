@@ -54,6 +54,7 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite with BeforeAndAf
     testClass.getSimpleName - {
       lazy val executable = InternalExecutable(
         testClass.getName,
+        script = "TEST SCRIPT",
         jobArguments = Map("blockingThreadPoolName" -> StringConstant(blockingThreadPoolName)),
         arguments = Map("STEP_ARG" -> NamedValue("ORDER_ARG")))
 

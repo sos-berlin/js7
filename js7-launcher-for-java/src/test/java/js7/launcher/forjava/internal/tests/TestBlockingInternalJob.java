@@ -35,6 +35,7 @@ public final class TestBlockingInternalJob implements BlockingInternalJob
     private boolean startCalled = false;
 
     public TestBlockingInternalJob(JobContext jobContext) {
+        assert jobContext.asScala().executable().script().equals("TEST SCRIPT");
         java.util.Map<String, js7.data.value.Value> a = jobContext.jobArguments();
         Value b = a.get("blockingThreadPoolName");
         expectedBlockingThreadPoolName = b.convertToString();

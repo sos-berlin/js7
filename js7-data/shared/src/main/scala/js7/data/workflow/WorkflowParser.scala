@@ -11,12 +11,12 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.Collections.implicits.*
 import js7.base.utils.RangeSet
 import js7.data.agent.AgentPath
-import js7.data.job.{CommandLineParser, CommandLineExecutable, InternalExecutable, JobResourcePath, PathExecutable, ReturnCodeMeaning, ShellScriptExecutable}
+import js7.data.job.{CommandLineExecutable, CommandLineParser, InternalExecutable, JobResourcePath, PathExecutable, ReturnCodeMeaning, ShellScriptExecutable}
 import js7.data.lock.LockPath
 import js7.data.parser.Js7Parsers.path
 import js7.data.source.SourcePos
-import js7.data.value.expression.ExpressionParser.{booleanConstant, constantExpression, expression}
 import js7.data.value.expression.Expression.{BooleanConstant, ObjectExpression}
+import js7.data.value.expression.ExpressionParser.{booleanConstant, constantExpression, expression}
 import js7.data.value.expression.{Expression, Scope}
 import js7.data.value.{NamedValues, ObjectValue}
 import js7.data.workflow.Instruction.Labeled
@@ -121,7 +121,9 @@ object WorkflowParser
             .map(v => ShellScriptExecutable(v.string, env.nameToExpr, returnCodeMeaning = returnCodeMeaning, v1Compatible = v1Compatible)))
         case ("internalJobClass", className: Expression) =>
           checkedToParser(className.eval(Scope.empty).flatMap(_.asStringValue)
-            .map(v => InternalExecutable(v.string, jobArguments.nameToExpr, arguments.nameToExpr)))
+            .map(v => InternalExecutable(className = v.string,
+              jobArguments = jobArguments.nameToExpr,
+              arguments = arguments.nameToExpr)))
         case _ => failWith("Invalid executable")  // Does not happen
       }
       parallelism <- kv[Int]("parallelism", WorkflowJob.DefaultParallelism)

@@ -137,9 +137,18 @@ final class ExecutableTest extends OurTestSuite
     }
 
     "InternalExecutable" in {
+      testJsonDecoder[Executable](
+        InternalExecutable("js7.tests.jobs.EmptyJob"),
+      json"""
+        {
+          "TYPE": "InternalExecutable",
+          "className": "js7.tests.jobs.EmptyJob"
+        }
+      """)
       testJson[Executable](
         InternalExecutable(
           "js7.tests.jobs.EmptyJob",
+          script = "SCRIPT",
           jobArguments = Map(
             "ARG" -> StringConstant("An Argument for the instantiated class"),
             "NUMBER" -> NumericConstant(3)),
@@ -150,6 +159,7 @@ final class ExecutableTest extends OurTestSuite
         {
           "TYPE": "InternalExecutable",
           "className": "js7.tests.jobs.EmptyJob",
+          "script": "SCRIPT",
           "jobArguments": {
             "ARG": "'An Argument for the instantiated class'",
             "NUMBER": "3"

@@ -16,8 +16,8 @@ import js7.data.agent.AgentPath
 import js7.data.job.{CommandLineExecutable, Executable, InternalExecutable, JobResourcePath, PathExecutable, ShellScriptExecutable}
 import js7.data.subagent.SubagentSelectionId
 import js7.data.value.ValuePrinter
-import js7.data.value.expression.{Expression, Scope}
 import js7.data.value.expression.Expression.StringConstant
+import js7.data.value.expression.{Expression, Scope}
 import scala.concurrent.duration.FiniteDuration
 
 /**
@@ -47,7 +47,7 @@ final case class WorkflowJob(
       case PathExecutable(o, env, login, returnCodeMeansing, v1Compatible) => s"executable=$o"
       case ShellScriptExecutable(o, env, login, returnCodeMeansing, v1Compatible) => s"script=$o"
       case CommandLineExecutable(expr, login, returnCodeMeansing, env) => "command=" + ValuePrinter.quoteString(expr.toString)
-      case InternalExecutable(className, jobArguments, arguments) =>
+      case InternalExecutable(className, script, jobArguments, arguments) =>
         "internalJobClass=" + ValuePrinter.quoteString(className) ++
           (jobArguments.nonEmpty ?? ("jobArguments=" + ValuePrinter.nameToExpressionToString(jobArguments))) ++
           (arguments.nonEmpty ?? ("arguments=" + ValuePrinter.nameToExpressionToString(arguments)))
