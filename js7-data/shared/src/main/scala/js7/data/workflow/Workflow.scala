@@ -304,7 +304,7 @@ with TrivialItemState[Workflow]
       case (nr, labeled) => labeled.instruction.flattenedWorkflows(parents % nr)
     }
 
-  private[workflow] def nestedWorkflow(branchPath: BranchPath): Checked[Workflow] =
+  def nestedWorkflow(branchPath: BranchPath): Checked[Workflow] =
     branchPath match {
       case BranchPath.PositionAndBranchId(position, branchId) => instruction(position).workflow(branchId)
       case _ => Right(this)
@@ -484,8 +484,8 @@ with TrivialItemState[Workflow]
           s"is expected at position ${id /: position}, not: ${Instructions.jsonCodec.typeName(o)}"))
     }
 
-  def checkedPosition(position: Position): Checked[Position] =
-    labeledInstruction(position).rightAs(position)
+  def checkPosition(position: Position): Checked[Unit] =
+    labeledInstruction(position).rightAs(())
 
   def labeledInstruction(position: Position): Checked[Instruction.Labeled] =
     for {

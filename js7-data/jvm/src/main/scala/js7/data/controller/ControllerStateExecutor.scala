@@ -1,6 +1,7 @@
 package js7.data.controller
 
 import cats.syntax.apply.*
+import cats.syntax.show.*
 import cats.syntax.traverse.*
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
@@ -28,7 +29,7 @@ import js7.data.subagent.SubagentItemState
 import js7.data.subagent.SubagentItemStateEvent.SubagentReset
 import js7.data.value.expression.scopes.NowScope
 import js7.data.workflow.WorkflowControlId.syntax.*
-import js7.data.workflow.position.{Position, PositionOrLabel}
+import js7.data.workflow.position.{BranchPath, Position, PositionOrLabel}
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPathControl, WorkflowPathControlPath}
 import scala.annotation.tailrec
 import scala.collection.compat.immutable.ArraySeq
@@ -74,20 +75,27 @@ final case class ControllerStateExecutor private(
         workflow <- controllerState.repo.pathTo(Workflow)(freshOrder.workflowPath)
         preparedArguments <- workflow.orderParameterList.prepareOrderArguments(
           freshOrder, controllerId, controllerState.keyToItem(JobResource), nowScope)
-        startPosition <- freshOrder.startPosition.traverse(checkStartOrStopPosition(_, workflow))
-        _ <- freshOrder.stopPositions.toSeq.traverse(checkStartOrStopPosition(_, workflow))
+        _ <- workflow.nestedWorkflow(freshOrder.innerBlock)
+        startPosition <- freshOrder.startPosition
+          .traverse(
+            checkStartAndStopPositionAndInnerBlock(_, workflow, freshOrder.innerBlock))
+        _ <- freshOrder.stopPositions.toSeq.traverse(
+          checkStartAndStopPositionAndInnerBlock(_, workflow, freshOrder.innerBlock))
       } yield Some(
         freshOrder.toOrderAdded(workflow.id.versionId, preparedArguments, externalOrderKey,
           startPosition))
 
-  private def checkStartOrStopPosition(positionOrLabel: PositionOrLabel, workflow: Workflow)
+  private def checkStartAndStopPositionAndInnerBlock(
+    positionOrLabel: PositionOrLabel, workflow: Workflow, innerBlock: BranchPath)
   : Checked[Position] =
     for {
       position <- workflow.positionOrLabelToPosition(positionOrLabel)
-      pos <- workflow.checkedPosition(position)
+      _ <- position.isNestedIn(innerBlock) !! Problem(
+        s"Position $position must be in innerBlock=${innerBlock.show}")
+      _ <- workflow.checkPosition(position)
       _ <- workflow.isMoveable(Position.First, position) !! Problem(
         s"Order's startPosition or one of its stopPositions is not reachable: $positionOrLabel")
-    } yield pos
+    } yield position
 
   def resetAgent(agentPath: AgentPath, force: Boolean): Checked[Seq[AnyKeyedEvent]] = {
     val agentResetStarted = View(agentPath <-: AgentResetStarted(force = force))

@@ -134,7 +134,9 @@ object FastparseWorkflowParser
               .map(v => ShellScriptExecutable(v.string, env.nameToExpr, returnCodeMeaning = returnCodeMeaning, v1Compatible = v1Compatible)))
           case ("internalJobClass", className: Expression) =>
             checkedToP(className.eval(Scope.empty).flatMap(_.asStringValue)
-              .map(v => InternalExecutable(v.string, jobArguments.nameToExpr, arguments.nameToExpr)))
+              .map(v => InternalExecutable(v.string,
+                jobArguments = jobArguments.nameToExpr,
+                arguments = arguments.nameToExpr)))
           case _ => Fail.opaque("Invalid executable")  // Does not happen
         }
         parallelism <- kv[Int]("parallelism", WorkflowJob.DefaultParallelism)

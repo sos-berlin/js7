@@ -12,6 +12,8 @@ import scala.collection.mutable
   */
 object BranchPath
 {
+  val empty: BranchPath = Nil
+
   def commonBranchPath(a: BranchPath, b: BranchPath): BranchPath =
     (a, b) match {
       case (aHead :: aTail, bHead :: bTail) if aHead == bHead =>

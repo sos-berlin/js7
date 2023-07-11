@@ -1,6 +1,6 @@
 package js7.data.workflow.position
 
-import cats.syntax.show.toShow
+import cats.syntax.show.*
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, DecodingFailure, Encoder, Json}
 import js7.base.generic.GenericString
@@ -78,6 +78,9 @@ extends PositionOrLabel
     }
 
   def isInFork = branchPath.exists(_.branchId.isFork)
+
+  def isNestedIn(branchPath: BranchPath): Boolean =
+    this.branchPath startsWith branchPath
 
   /** BranchPath of fork instruction in reverse order. */
   def forkBranchReversed: BranchPath =

@@ -38,6 +38,6 @@ final class TransferOrderEventSource(controllerState: ControllerState) {
 
   private def transferOrder(order: Order[Order.State], toWorkflow: Workflow)
   : Checked[OrderTransferred] =
-    for (_ <- toWorkflow.checkedPosition(order.position)/*same position exists?*/) yield
+    for (_ <- toWorkflow.checkPosition(order.position)/*same position exists?*/ ) yield
       OrderTransferred(toWorkflow.id /: order.position)
 }

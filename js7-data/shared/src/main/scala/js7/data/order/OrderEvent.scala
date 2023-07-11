@@ -28,7 +28,7 @@ import js7.data.subagent.{SubagentId, SubagentSelectionId}
 import js7.data.value.{NamedValues, Value}
 import js7.data.workflow.WorkflowId
 import js7.data.workflow.instructions.Fork
-import js7.data.workflow.position.{Position, PositionOrLabel, WorkflowPosition}
+import js7.data.workflow.position.{BranchPath, Position, PositionOrLabel, WorkflowPosition}
 import org.jetbrains.annotations.TestOnly
 import scala.annotation.nowarn
 import scala.language.implicitConversions
@@ -53,6 +53,7 @@ object OrderEvent
     def externalOrderKey: Option[ExternalOrderKey]
     def deleteWhenTerminated: Boolean
     def forceJobAdmission: Boolean
+    def innerBlock: BranchPath
     def startPosition: Option[Position]
     def stopPositions: Set[PositionOrLabel]
     def addedOrderId(orderId: OrderId): OrderId
@@ -65,6 +66,7 @@ object OrderEvent
     externalOrderKey: Option[ExternalOrderKey] = None,
     deleteWhenTerminated: Boolean = false,
     forceJobAdmission: Boolean = false,
+    innerBlock: BranchPath = BranchPath.empty,
     startPosition: Option[Position] = None,
     stopPositions: Set[PositionOrLabel] = Set.empty)
   extends OrderAddedX {
@@ -81,6 +83,7 @@ object OrderEvent
         "arguments" -> o.arguments.??.asJson,
         "deleteWhenTerminated" -> o.deleteWhenTerminated.?.asJson,
         "forceJobAdmission" -> o.forceJobAdmission.?.asJson,
+        "innerBlock" -> (o.innerBlock.nonEmpty ? o.innerBlock).asJson,
         "startPosition" -> o.startPosition.asJson,
         "stopPositions" -> (o.stopPositions.nonEmpty ? o.stopPositions).asJson)
 
@@ -92,11 +95,12 @@ object OrderEvent
         arguments <- c.getOrElse[NamedValues]("arguments")(Map.empty)
         deleteWhenTerminated <- c.getOrElse[Boolean]("deleteWhenTerminated")(false)
         forceJobAdmission <- c.getOrElse[Boolean]("forceJobAdmission")(false)
+        innerBlock <- c.getOrElse[BranchPath]("innerBlock")(BranchPath.empty)
         startPosition <- c.get[Option[Position]]("startPosition")
         stopPositions <- c.getOrElse[Set[PositionOrLabel]]("stopPositions")(Set.empty)
       } yield OrderAdded(workflowId, arguments, scheduledFor, externalOrderKey,
         deleteWhenTerminated, forceJobAdmission,
-        startPosition, stopPositions)
+        innerBlock, startPosition, stopPositions)
   }
 
   /** Event for the AddOrder instruction. */
@@ -104,10 +108,11 @@ object OrderEvent
     orderId: OrderId,
     workflowId: WorkflowId,
     arguments: NamedValues = Map.empty,
-    startPosition: Option[Position] = None,
-    stopPositions: Set[PositionOrLabel] = Set.empty,
     deleteWhenTerminated: Boolean = false,
-    forceJobAdmission: Boolean = false)
+    forceJobAdmission: Boolean = false,
+    innerBlock: BranchPath = BranchPath.empty,
+    startPosition: Option[Position] = None,
+    stopPositions: Set[PositionOrLabel] = Set.empty)
   extends OrderAddedX with OrderActorEvent {
     workflowId.requireNonAnonymous()
     def scheduledFor = None
@@ -121,22 +126,25 @@ object OrderEvent
         "orderId" -> o.orderId.asJson,
         "workflowId" -> o.workflowId.asJson,
         "arguments" -> o.arguments.??.asJson,
-        "startPosition" -> o.startPosition.asJson,
-        "stopPositions" -> o.stopPositions.??.asJson,
         "deleteWhenTerminated" -> o.deleteWhenTerminated.?.asJson,
-        "forceJobAdmission" -> o.forceJobAdmission.?.asJson)
+        "forceJobAdmission" -> o.forceJobAdmission.?.asJson,
+        "innerBlock" -> (o.innerBlock.nonEmpty ? o.innerBlock).asJson,
+        "startPosition" -> o.startPosition.asJson,
+        "stopPositions" -> o.stopPositions.??.asJson)
 
     private[OrderEvent] implicit val jsonDecoder: Decoder[OrderOrderAdded] =
       c => for {
         orderId <- c.get[OrderId]("orderId")
         workflowId <- c.get[WorkflowId]("workflowId")
         arguments <- c.getOrElse[NamedValues]("arguments")(Map.empty)
+        innerBlock <- c.getOrElse[BranchPath]("innerBlock")(BranchPath.empty)
         startPosition <- c.get[Option[Position]]("startPosition")
         stopPositions <- c.getOrElse[Set[PositionOrLabel]]("stopPositions")(Set.empty)
         deleteWhenTerminated <- c.getOrElse[Boolean]("deleteWhenTerminated")(false)
         forceJobAdmission <- c.getOrElse[Boolean]("forceJobAdmission")(false)
-      } yield OrderOrderAdded(orderId, workflowId, arguments, startPosition, stopPositions,
-        deleteWhenTerminated, forceJobAdmission)
+      } yield OrderOrderAdded(orderId, workflowId, arguments,
+        deleteWhenTerminated, forceJobAdmission,
+        innerBlock, startPosition, stopPositions)
   }
 
   /** Agent-only event. */
@@ -155,6 +163,7 @@ object OrderEvent
     deleteWhenTerminated: Boolean = false,
     forceJobAdmission: Boolean = false,
     stickySubagents: List[Order.StickySubagent] = Nil,
+    innerBlock: BranchPath = BranchPath.empty,
     stopPositions: Set[PositionOrLabel] = Set.empty)
   extends OrderCoreEvent {
     workflowPosition.workflowId.requireNonAnonymous()

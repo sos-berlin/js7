@@ -38,8 +38,9 @@ final class OrderEventTest extends OurTestSuite
         Some(ExternalOrderKey(OrderWatchPath("ORDER-WATCH"), ExternalOrderName("ORDER-NAME"))),
         deleteWhenTerminated = true,
         forceJobAdmission = true,
-        startPosition = Some(Position(1)),
-        stopPositions = Set(Position(9), Label("LABEL"))),
+        innerBlock = Position(1) / "then",
+        startPosition = Some(Position(1) / "then" % 2),
+        stopPositions = Set(Position(1) / "then" % 9, Label("LABEL"))),
       json"""
       {
         "TYPE": "OrderAdded",
@@ -57,8 +58,9 @@ final class OrderEventTest extends OurTestSuite
         },
         "deleteWhenTerminated": true,
         "forceJobAdmission": true,
-        "startPosition": [ 1 ],
-        "stopPositions": [ [ 9 ], "LABEL" ]
+        "innerBlock": [ 1, "then" ],
+        "startPosition": [ 1, "then", 2 ],
+        "stopPositions": [ [ 1, "then", 9 ], "LABEL" ]
       }""")
 
     testJsonDecoder[OrderEvent](
@@ -79,8 +81,9 @@ final class OrderEventTest extends OurTestSuite
         OrderId("ORDER-ID"),
         WorkflowPath("WORKFLOW") ~ "VERSION",
         Map("VAR" -> StringValue("VALUE")),
-        startPosition = Some(Position(1)),
-        stopPositions = Set(Position(2), Label("LABEL")),
+        innerBlock = Position(1) / "then",
+        startPosition = Some(Position(1) / "then" % 2),
+        stopPositions = Set(Position(1) / "then" % 9, Label("LABEL")),
         deleteWhenTerminated = true,
         forceJobAdmission = true),
       json"""
@@ -94,8 +97,9 @@ final class OrderEventTest extends OurTestSuite
         "arguments": {
           "VAR": "VALUE"
         },
-        "startPosition": [1],
-        "stopPositions": [ [2], "LABEL"],
+        "innerBlock": [ 1, "then" ],
+        "startPosition": [ 1, "then", 2 ],
+        "stopPositions": [ [ 1, "then", 9 ], "LABEL"],
         "deleteWhenTerminated": true,
         "forceJobAdmission": true
       }""")
@@ -143,7 +147,8 @@ final class OrderEventTest extends OurTestSuite
         List(Order.StickySubagent(
           AgentPath("AGENT"),
           Some(SubagentSelectionId("SUBAGENT-SELECTION")))),
-        Set(Position(9), Label("LABEL"))),
+        innerBlock = Position(1) / "then",
+        Set(Position(1) / "then" % 9, Label("LABEL"))),
       json"""{
         "TYPE": "OrderAttachedToAgent",
         "workflowPosition": {
@@ -186,7 +191,8 @@ final class OrderEventTest extends OurTestSuite
           "agentPath": "AGENT",
           "subagentSelectionId": "SUBAGENT-SELECTION"
         }],
-        "stopPositions": [ [ 9 ], "LABEL" ]
+        "innerBlock": [ 1, "then" ],
+        "stopPositions": [ [  1, "then", 9 ], "LABEL" ]
       }""")
 
     testJsonDecoder[OrderEvent](
