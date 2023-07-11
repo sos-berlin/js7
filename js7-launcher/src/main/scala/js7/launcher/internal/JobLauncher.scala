@@ -45,7 +45,7 @@ object JobLauncher
     jobConf: JobConf,
     launcherConf: JobLauncherConf)
     (implicit scheduler: Scheduler)
-  : Checked[JobLauncher] =
+  : Checked[JobLauncher] = {
     jobConf.workflowJob.executable match {
       case executable: AbsolutePathExecutable =>
         if (!launcherConf.scriptInjectionAllowed)
@@ -66,9 +66,10 @@ object JobLauncher
           Right(new CommandLineJobLauncher(executable, jobConf, launcherConf))
 
       case executable: InternalExecutable =>
-        if (!launcherConf.scriptInjectionAllowed)
+        if (!launcherConf.scriptInjectionAllowed) {
+          // If check is relaxed, consider checking permission for executable.script !!!
           Left(SignedInjectionNotAllowed)
-        else {
+        } else {
           import launcherConf.implicitIox
           lazy val scope = NowScope() |+| EnvScope
           for (jobArguments <- evalExpressionMap(executable.jobArguments, scope))
@@ -76,6 +77,7 @@ object JobLauncher
               launcherConf.blockingJobScheduler, launcherConf.clock)
         }
     }
+  }
 
   private[launcher] def warnIfNotExecutable(file: Path): Unit =
     if (!exists(file)) {

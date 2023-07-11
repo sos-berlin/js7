@@ -26,6 +26,12 @@ sealed trait Executable
     arguments.values.view.flatMap(_.referencedJobResourcePaths)
 }
 
+sealed trait ScriptExecutable {
+  this: Executable =>
+
+  def script: String
+}
+
 sealed trait ProcessExecutable extends Executable
 {
   final def arguments = Map.empty
@@ -229,7 +235,13 @@ final case class ShellScriptExecutable(
   login: Option[KeyLogin] = None,
   returnCodeMeaning: ReturnCodeMeaning = ReturnCodeMeaning.Default,
   v1Compatible: Boolean = false)
-extends ProcessExecutable
+extends ProcessExecutable with ScriptExecutable {
+
+  override def toString = "ShellScriptExecutable(" +
+    login.fold("")(o => s"login=$o ") +
+    script.truncateWithEllipsis(200, showLength = true) +
+    ")"
+}
 object ShellScriptExecutable
 {
   implicit val jsonEncoder: Encoder.AsObject[ShellScriptExecutable] =
@@ -254,11 +266,12 @@ object ShellScriptExecutable
 
 final case class InternalExecutable(
   className: String,
+  script: String = "",
   /** Arguments for the job itself. */
   jobArguments: Map[String, Expression] = Map.empty,
   /** Argument expressions evaluated for each `processOrder`. */
   arguments: Map[String, Expression] = Map.empty)
-extends Executable
+extends Executable with ScriptExecutable
 {
   override def toString = s"InternalExecutable($className)"
 }

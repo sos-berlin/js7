@@ -104,7 +104,7 @@ final class WorkflowPrinter(sb: StringBuilder) {
             appendQuoted(command.toString)
         }
 
-      case InternalExecutable(className, jobArguments, arguments) =>
+      case InternalExecutable(className, script, jobArguments, arguments) =>
         sb ++= ", internalJobClass="
         appendQuoted(className)
         if (jobArguments.nonEmpty) {

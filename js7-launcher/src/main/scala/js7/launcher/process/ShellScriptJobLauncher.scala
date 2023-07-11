@@ -6,7 +6,7 @@ import java.nio.file.Files.createTempFile
 import java.nio.file.Path
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.process.Processes.ShellFileAttributes
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.system.OperatingSystem
 import js7.base.system.OperatingSystem.isWindows
