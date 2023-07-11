@@ -56,7 +56,7 @@ final class FileWatchDelayTest extends OurTestSuite with ControllerAgentForScala
     workflow.path,
     agentPath,
     StringConstant(watchedDirectory.toString),
-    delay = writeDuration)
+    delay = writeDuration + 1.s)
 
   private def fileToOrderId(filename: String): OrderId =
     FileWatchManager.relativePathToOrderId(fileWatch, filename).get.orThrow
