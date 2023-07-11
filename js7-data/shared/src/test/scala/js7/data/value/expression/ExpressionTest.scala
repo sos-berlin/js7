@@ -353,6 +353,15 @@ final class ExpressionTest extends OurTestSuite
       result = Right(NumberValue(-1)),
       Right(OrElse(Divide(NumericConstant(1), NumericConstant(0)), NumericConstant(-1))))
 
+    testEval("""(1 / 0) orElse $unknown orElse -2""",
+      result = Right(NumberValue(-2)),
+      Right(
+        OrElse(
+          OrElse(
+            Divide(NumericConstant(1), NumericConstant(0)),
+            NamedValue("unknown")),
+          NumericConstant(-2))))
+
     testEval("""100 + 2 * 3 - 12 / 3""",
       result = Right(NumberValue(100 + 2 * 3 - 12 / 3)),
       Right(
