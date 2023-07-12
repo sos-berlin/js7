@@ -554,21 +554,21 @@ final class ExpressionTest extends OurTestSuite
     implicit val scope = Scope.empty
 
     testEval("missing",
-      result = Left(MissingValueProblem),
-      Right(MissingConstant()))
+      result = Left(MissingValueProblem("missing")),
+      Right(MissingConstant))
 
     testEval("missing?",
       result = Right(NullValue),
-      Right(OrNull(MissingConstant())))
+      Right(OrNull(MissingConstant)))
 
     testEval("missing ?",
       result = Right(NullValue),
-      Right(OrNull(MissingConstant())))
+      Right(OrNull(MissingConstant)))
 
     testEval("missing orElse 7 + 3",
       result = Right(NumberValue(7 + 3)),
       Right(OrElse(
-        MissingConstant(),
+        MissingConstant,
         Add(NumericConstant(7), NumericConstant(3)))))
 
     testEval("1 + 2 orElse 7 + 3",
@@ -587,38 +587,32 @@ final class ExpressionTest extends OurTestSuite
           NumericConstant(3))))
 
     testEval("missing == missing",
-      result = Left(MissingValueProblem),
-      Right(Equal(MissingConstant(), MissingConstant())))
+      result = Left(MissingValueProblem("missing")),
+      Right(Equal(MissingConstant, MissingConstant)))
 
     testEval("missing != missing",
-      result = Left(MissingValueProblem),
-      Right(NotEqual(MissingConstant(), MissingConstant())))
+      result = Left(MissingValueProblem("missing")),
+      Right(NotEqual(MissingConstant, MissingConstant)))
 
     testEval("missing + 1",
-      result = Left(MissingValueProblem),
-      Right(Add(MissingConstant(), NumericConstant(1))))
+      result = Left(MissingValueProblem("missing")),
+      Right(Add(MissingConstant, NumericConstant(1))))
 
-    "MissingValue with Problem" in {
-      assert(MissingConstant(Problem("PROBLEM")).eval == Left(Problem("PROBLEM")))
-    }
-
-    "MissingValue with Problem, OrNull" in {
-      assert(OrNull(MissingConstant(Problem("PROBLEM"))).eval == Right(NullValue))
-      assert((OrNull(MissingConstant())).eval == Right(NullValue))
+    "MissingValue OrNull" in {
+      assert((OrNull(MissingConstant)).eval == Right(NullValue))
     }
 
     "MissingValue is not comparable" in {
-      assert(Equal(MissingConstant(Problem("A")), MissingConstant(Problem("B"))).eval ==
-        Left(Problem("A")))
+      assert(Equal(MissingConstant, MissingConstant).eval == Left(MissingValueProblem("missing")))
     }
 
     testEval("\"-->$(missing)<--\"",
-      result = Left(MissingValueProblem),
-      Right(InterpolatedString(List(StringConstant("-->"), MissingConstant(), StringConstant("<--")))))
+      result = Left(MissingValueProblem("missing")),
+      Right(InterpolatedString(List(StringConstant("-->"), MissingConstant, StringConstant("<--")))))
 
     "orElse" in {
       assert(OrElse(NumericConstant(1), NumericConstant(7)).eval == Right(NumberValue(1)))
-      assert((OrElse(MissingConstant(), NumericConstant(7))).eval == Right(NumberValue(7)))
+      assert((OrElse(MissingConstant, NumericConstant(7))).eval == Right(NumberValue(7)))
       assert(OrElse(NamedValue("UNKNOWN"), NumericConstant(1)).eval == Right(NumberValue(1)))
     }
   }

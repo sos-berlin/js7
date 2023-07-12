@@ -155,7 +155,7 @@ private final class JobDriver(
       .flatMap(_ => jobConf.jobResourcePaths.traverse(pathToJobResource))
       .map(jobResources =>
         ProcessOrder.resource(
-          order, workflow, jobKey, jobResources,
+          order, workflow, jobKey, workflowJob, jobResources,
           workflowJob.defaultArguments ++ defaultArguments,
           jobConf.controllerId, stdObservers,
           fileValueState))

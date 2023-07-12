@@ -57,6 +57,7 @@ final class InternalJobLauncherTest extends OurTestSuite
         Order(OrderId("TEST"), workflow.id /: Position(0), Order.Processing(SubagentId("SUBAGENT"))),
         workflow,
         JobKey.Named(WorkflowBranchPath(WorkflowPath("WORKFLOW"), Nil), WorkflowJob.Name("TEST-JOB")),
+        workflowJob,
         jobResources = Nil,
         Map("ARG" -> NumericConstant(1)),
         ControllerId("CONTROLLER"),

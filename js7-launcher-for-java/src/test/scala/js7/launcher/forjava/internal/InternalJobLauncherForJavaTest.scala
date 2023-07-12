@@ -18,7 +18,7 @@ import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.common.system.ThreadPools.newUnlimitedNonVirtualScheduler
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
-import js7.data.job.{InternalExecutable, JobConf, JobKey}
+import js7.data.job.{InternalExecutable, JobConf, JobKey, ShellScriptExecutable}
 import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.subagent.SubagentId
 import js7.data.value.expression.Expression
@@ -147,6 +147,7 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite with BeforeAndAf
                   Order.Processing(SubagentId("SUBAGENT"))),
                 workflow,
                 executor.jobConf.jobKey,
+                WorkflowJob(AgentPath("AGENT"), ShellScriptExecutable("")),
                 jobResources = Nil,
                 Map("ORDER_ARG" -> arg),
                 ControllerId("CONTROLLER"),

@@ -11,7 +11,8 @@ import js7.data.order.{FreshOrder, Order, OrderId}
 import js7.data.value.expression.Scope.evalLazilyExpressions
 import js7.data.value.expression.scopes.OrderScopes.*
 import js7.data.value.expression.{Expression, Scope}
-import js7.data.value.{NumberValue, StringValue, Value}
+import js7.data.value.{MissingValue, NumberValue, ObjectValue, StringValue, Value}
+import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Label
 import js7.data.workflow.{Workflow, WorkflowPath}
 import scala.collection.MapView
@@ -96,6 +97,7 @@ trait ProcessingOrderScopes extends OrderScopes
 {
   protected val order: Order[Order.Processing]
   protected val jobKey: JobKey
+  protected val workflowJob: WorkflowJob
   protected val jobResources: Seq[JobResource]
   protected val fileValueScope: Scope
 
@@ -113,7 +115,17 @@ trait ProcessingOrderScopes extends OrderScopes
 
   private def js7JobVariablesScope = NamedValueScope(Map(
     "js7JobName" -> StringValue(simpleJobName),
-    "js7JobExecutionCount" -> NumberValue(jobExecutionCount)))
+    "js7JobExecutionCount" -> NumberValue(jobExecutionCount),
+    "js7Job" -> ObjectValue(Map(
+      "name" -> StringValue(simpleJobName),
+      "sigkillDelayMillis" ->
+        workflowJob.sigkillDelay.map(_.toMillis)
+          .fold[Value](MissingValue("js7Job.sigkillDelayMillis"))(NumberValue(_)),
+      "timeoutMillis" ->
+        workflowJob.timeout.map(_.toMillis)
+          .fold[Value](MissingValue("js7Job.timeoutMillis"))(NumberValue(_)))),
+    "parallelism" -> NumberValue(workflowJob.parallelism),
+    "executionCount" -> NumberValue(jobExecutionCount)))
 
   /** To avoid name clash, JobResources are not allowed to access order variables. */
   final lazy val scopeForJobResources =

@@ -16,10 +16,10 @@ import js7.data.controller.ControllerCommand.CancelOrders
 import js7.data.order.Order.Fresh
 import js7.data.order.OrderEvent.{OrderAttached, OrderFinished, OrderProcessingStarted}
 import js7.data.order.OrderObstacle.waitingForAdmmission
-import js7.data.order.{FreshOrder, OrderId}
+import js7.data.order.{FreshOrder, Order, OrderId}
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{AddOrder, Execute}
+import js7.data.workflow.instructions.{AddOrder, Execute, Fork}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.AdmissionTimeTest.*
@@ -176,30 +176,43 @@ with BlockingItemUpdater
   }
 
   "forceJobAdmission in AddOrder command" in {
-    clock := local("2023-06-21T00:00")
+    // Test only inheritance to forked child orders
+    val workflow = Workflow(WorkflowPath("forceJobAdmission"),
+      Seq(
+        Fork.forTest(Seq(
+          "FORKED" -> Workflow.of(
+            Execute(WorkflowJob(agentPath, EmptyJob.executable(),
+              admissionTimeScheme = Some(sundayAdmissionTimeScheme))))))),
+      timeZone = Timezone(timeZone.getId))
 
-    val aOrderId = OrderId("♦️")
-    locally {
-      // Job is closed
-      val eventId = eventWatch.lastAddedEventId
-      controller.api.addOrder(FreshOrder(aOrderId, sundayWorkflow.path)).await(99.s).orThrow
-      eventWatch.await[OrderAttached](_.key == aOrderId, after = eventId)
-      assert(controllerState.idToOrder(aOrderId).isState[Fresh])
-      assert(orderToObstacles(aOrderId) ==
+    withTemporaryItem(workflow) { workflow =>
+      clock := local("2023-06-21T00:00")
+
+      val aOrderId = OrderId("♦️")
+      val forkedaOrderId = aOrderId / "FORKED"
+      locally {
+        // Job is closed
+        val eventId = eventWatch.lastAddedEventId
+        controller.api.addOrder(FreshOrder(aOrderId, workflow.path)).await(99.s).orThrow
+        eventWatch.await[OrderAttached](_.key == forkedaOrderId, after = eventId)
+        assert(controllerState.idToOrder(aOrderId).isState[Order.Forked])
+        assert(controllerState.idToOrder(forkedaOrderId).isState[Order.Ready])
+        assert(orderToObstacles(forkedaOrderId) ==
+          Right(Set(waitingForAdmmission(local("2023-06-25T03:00")))))
+      }
+
+      locally {
+        // Engine chooses this order due to forceJobAdmission despite it is not the first one in queue
+        val orderId = OrderId("🥨")
+        val eventId = eventWatch.lastAddedEventId
+        controller.api.addOrder(FreshOrder(orderId, workflow.path, forceJobAdmission = true))
+          .await(99.s).orThrow
+        eventWatch.await[OrderFinished](_.key == orderId, after = eventId)
+      }
+
+      assert(orderToObstacles(forkedaOrderId) ==
         Right(Set(waitingForAdmmission(local("2023-06-25T03:00")))))
     }
-
-    locally {
-      // Engine chooses this order due to forceJobAdmission despite it is not the first one in queue
-      val orderId = OrderId("🥨")
-      val eventId = eventWatch.lastAddedEventId
-      controller.api.addOrder(FreshOrder(orderId, sundayWorkflow.path, forceJobAdmission = true))
-        .await(99.s).orThrow
-      eventWatch.await[OrderFinished](_.key == orderId, after = eventId)
-    }
-
-    assert(orderToObstacles(aOrderId) ==
-      Right(Set(waitingForAdmmission(local("2023-06-25T03:00")))))
   }
 
   "forceJobAdmission in AddOrder instruction" in {
