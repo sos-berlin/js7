@@ -259,7 +259,7 @@ with BlockingItemUpdater
       ).await(99.s).orThrow
 
       // With explicit endOfLife
-      val notice2 = Notice(NoticeId("2222-08-10"), board0.path, clock.now + 1.h)
+      val notice2 = Notice(NoticeId("2222-08-10"), board0.path, clock.now() + 1.h)
       controllerApi.executeCommand(
         ControllerCommand.PostNotice(board0.path, notice2.id,
           endOfLife = Some(notice2.endOfLife))
