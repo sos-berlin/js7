@@ -7,7 +7,7 @@ import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.base.utils.SimplePattern
 import js7.data.agent.AgentPath
 import js7.data.value.expression.Expression.StringConstant
-import js7.data.value.expression.ExpressionParser.{expr, parseExpression}
+import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.WorkflowPath
 import js7.tester.CirceJsonTester.testJson
 
@@ -46,8 +46,8 @@ final class FileWatchTest extends OurTestSuite
           OrderWatchPath("PATH"), WorkflowPath("WORKFLOW"), AgentPath("AGENT"),
           StringConstant("/DIRECTORY"),
           Some(SimplePattern("[a-z]+.csv")),
-          Some(parseExpression(
-            """'#' ++ now(format='yyyy-MM-dd', timezone='Antarctica/Troll') ++ "#F$js7EpochSecond-$orderWatchPath:$1"""").orThrow),
+          Some(expr(
+            """'#' ++ now(format='yyyy-MM-dd', timezone='Antarctica/Troll') ++ "#F$js7EpochSecond-$orderWatchPath:$1"""")),
           2.s),
         json"""{
           "TYPE": "FileWatch",

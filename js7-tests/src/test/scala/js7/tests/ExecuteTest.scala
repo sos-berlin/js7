@@ -24,7 +24,7 @@ import js7.data.order.OrderEvent.{OrderAttached, OrderCancelled, OrderFailed, Or
 import js7.data.order.OrderObstacle.jobParallelismLimitReached
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.expression.Expression.{NamedValue, NumericConstant, StringConstant}
-import js7.data.value.expression.ExpressionParser.parseExpression
+import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.{NamedValues, NumberValue, StringValue, Value}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -285,19 +285,19 @@ final class ExecuteTest extends OurTestSuite with ControllerAgentForScalaTest
 
   "Special $js7 variables; the operators orElse and ?" - {
     val nameToExpression = Map(
-      "ORDER_ID"            -> parseExpression("$js7OrderId").orThrow,
-      "WORKFLOW_NAME"       -> parseExpression("$js7WorkflowPath").orThrow,
-      "WORKFLOW_POSITION"   -> parseExpression("$js7WorkflowPosition").orThrow,
-      "LABEL"               -> parseExpression("$js7Label").orThrow,
-      "JOB_NAME"            -> parseExpression("$js7JobName").orThrow,
-      "JOB_TIMEOUT"         -> parseExpression("""$js7Job.timeoutMillis orElse "" """).orThrow,
+      "ORDER_ID"            -> expr("$js7OrderId"),
+      "WORKFLOW_NAME"       -> expr("$js7WorkflowPath"),
+      "WORKFLOW_POSITION"   -> expr("$js7WorkflowPosition"),
+      "LABEL"               -> expr("$js7Label"),
+      "JOB_NAME"            -> expr("$js7JobName"),
+      "JOB_TIMEOUT"         -> expr("""$js7Job.timeoutMillis orElse "" """),
       // JOB_SIGKILL_DELAY will be unset due to ? operator which returns NullValue
-      "JOB_SIGKILL_DELAY"   -> parseExpression("""$js7Job.sigkillDelayMillis? """).orThrow,
-      "JOB_EXECUTION_COUNT" -> parseExpression("$js7JobExecutionCount").orThrow,
-      "CONTROLLER_ID"       -> parseExpression("$js7ControllerId").orThrow,
-      "SCHEDULED_DATE"      -> parseExpression("scheduledOrEmpty(format='yyyy-MM-dd HH:mm:ssZ')").orThrow,
-      "JOBSTART_DATE"       -> parseExpression("now(format='yyyy-MM-dd HH:mm:ssZ')").orThrow,
-      "JOB_RESOURCE_VARIABLE" -> parseExpression("JobResource:JOB-RESOURCE:VARIABLE").orThrow)
+      "JOB_SIGKILL_DELAY"   -> expr("""$js7Job.sigkillDelayMillis """),
+      "JOB_EXECUTION_COUNT" -> expr("$js7JobExecutionCount"),
+      "CONTROLLER_ID"       -> expr("$js7ControllerId"),
+      "SCHEDULED_DATE"      -> expr("scheduledOrEmpty(format='yyyy-MM-dd HH:mm:ssZ')"),
+      "JOBSTART_DATE"       -> expr("now(format='yyyy-MM-dd HH:mm:ssZ')"),
+      "JOB_RESOURCE_VARIABLE" -> expr("JobResource:JOB-RESOURCE:VARIABLE"))
 
     "Special variables in InternalExecutable arguments" in {
       testWithSpecialVariables(

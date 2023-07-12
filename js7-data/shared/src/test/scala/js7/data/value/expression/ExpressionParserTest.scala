@@ -2,8 +2,8 @@ package js7.data.value.expression
 
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
-import js7.data.value.expression.ExpressionParser.*
 import js7.data.value.expression.Expression.*
+import js7.data.value.expression.ExpressionParser.*
 import js7.data.workflow.instructions.executable.WorkflowJob
 import org.scalactic.source
 
@@ -125,14 +125,14 @@ final class ExpressionParserTest extends OurTestSuite
       }
 
       "Single quoted string" - {
-        testExpression(s"'ONE\nTWO'".trim, StringConstant("ONE\nTWO"))
-        testExpression(s"'ONE\r\nTWO'".trim, StringConstant("ONE\nTWO"))
+        testExpression("'ONE\nTWO'".trim, StringConstant("ONE\nTWO"))
+        testExpression("'ONE\r\nTWO'".trim, StringConstant("ONE\nTWO"))
 
         // TODO Bad syntax, because ' cannot be used at start or end of the string
-        testExpression(s"''->'<-''".trim, StringConstant("->'<-"))
-        testExpression(s"'''->''<-'''".trim, StringConstant("->''<-"))
-        testExpression(s"''''->'''<-''''".trim, StringConstant("->'''<-"))
-        testExpression(s"'''''->''''<-'''''".trim, StringConstant("->''''<-"))
+        testExpression("''->'<-''".trim, StringConstant("->'<-"))
+        testExpression("'''->''<-'''".trim, StringConstant("->''<-"))
+        testExpression("''''->'''<-''''".trim, StringConstant("->'''<-"))
+        testExpression("'''''->''''<-'''''".trim, StringConstant("->''''<-"))
       }
 
       "Invalid escaped characters" in {

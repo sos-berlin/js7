@@ -30,7 +30,7 @@ import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.value.StringValue
 import js7.data.value.ValueType.MissingValueProblem
 import js7.data.value.expression.Expression.{NamedValue, StringConstant}
-import js7.data.value.expression.ExpressionParser.{expr, parseExpression}
+import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -186,7 +186,7 @@ class JobResourceTest extends OurTestSuite with ControllerAgentForScalaTest
           agentPath,
           ShellScriptExecutable(":",
             env = Map(
-              "aJobResourceVariable" -> parseExpression("JobResource:UNKNOWN:a").orThrow))))))
+              "aJobResourceVariable" -> expr("JobResource:UNKNOWN:a")))))))
     assert(controller.api.updateSignedItems(Seq(sign(workflow)), Some(workflow.id.versionId))
       .await(99.s) == Left(MissingReferencedItemProblem(workflow.id, JobResourcePath("UNKNOWN"))))
   }
@@ -212,7 +212,7 @@ class JobResourceTest extends OurTestSuite with ControllerAgentForScalaTest
       assert(stdout contains s"$existingName=/$existingValue/")
     }
 
-    def addUnknownJobResourceVariableWorkflow(name: String, expr: String) = {
+    def addUnknownJobResourceVariableWorkflow(name: String, exprString: String) = {
       val workflow = Workflow(
         WorkflowPath(name) ~ name,
         Vector(
@@ -222,7 +222,7 @@ class JobResourceTest extends OurTestSuite with ControllerAgentForScalaTest
               if (isWindows) s"@echo off\r\necho $existingName=/%$existingName%/\r\n"
               else s"echo $existingName=/$$$existingName/",
               env = Map(
-                existingName -> parseExpression(expr).orThrow))))))
+                existingName -> expr(exprString)))))))
       controller.api.updateSignedItems(Seq(sign(workflow)), Some(workflow.id.versionId))
         .await(99.s).orThrow
       workflow
@@ -364,7 +364,7 @@ object JobResourceTest
     JobResourcePath("JOB-RESOURCE-B"),
     env = Map(
       "B" -> StringConstant("IGNORED IN FAVOR OF JOB-RESOURCE-A"),
-      "E" -> parseExpression(""""E=$E"""").orThrow))
+      "E" -> expr(""""E=$E"""")))
 
   private val jobName = WorkflowJob.Name("TEST-JOB")
   private val workflow = Workflow(
@@ -395,16 +395,16 @@ object JobResourceTest
               |echo aJobResourceVariable=/$aJobResourceVariable/
               |""".stripMargin,
           env = Map(
-            "D" -> parseExpression("'D of JOB ENV'").orThrow,
-            "E" -> parseExpression("'E of JOB ENV'").orThrow,
-            "aJobResourceVariable" -> parseExpression("JobResource:JOB-RESOURCE-A:a").orThrow)),
+            "D" -> expr("'D of JOB ENV'"),
+            "E" -> expr("'E of JOB ENV'"),
+            "aJobResourceVariable" -> expr("JobResource:JOB-RESOURCE-A:a"))),
         defaultArguments = Map("A" -> StringConstant("A of WorkflowJob")),
         jobResourcePaths = Seq(aJobResource.path, bJobResource.path))))
 
   private val envJobResource = JobResource(
     JobResourcePath("JOB-RESOURCE-ENV"),
     env = Map(
-      "ORIGINAL_PATH" -> parseExpression(s"env('$PathEnvName')").orThrow))
+      "ORIGINAL_PATH" -> expr(s"env('$PathEnvName')")))
 
   private val envWorkflow = Workflow(
     WorkflowPath("WORKFLOW-ENV") ~ "INITIAL",
@@ -426,26 +426,26 @@ object JobResourceTest
   private val sosJobResource = JobResource(
     JobResourcePath("JOB-RESOURCE-SOS"),
     env = Map(
-      "JS7_ORDER_ID"          -> parseExpression("$js7OrderId").orThrow,
-      "JS7_WORKFLOW_NAME"     -> parseExpression("$js7WorkflowPath").orThrow,
-      "JS7_WORKFLOW_POSITION" -> parseExpression("$js7WorkflowPosition").orThrow,
-      "JS7_LABEL"             -> parseExpression("$js7Label").orThrow,
-      "JS7_JOB_NAME"          -> parseExpression("$js7JobName").orThrow,
-      "JS7_CONTROLLER_ID"     -> parseExpression("$js7ControllerId").orThrow,
-      "JS7_SCHEDULED_DATE"    -> parseExpression("scheduledOrEmpty(format='yyyy-MM-dd HH:mm:ssZ')").orThrow,
-      "JS7_SCHEDULED_YEAR"    -> parseExpression("scheduledOrEmpty(format='yyyy')").orThrow,
-      "JS7_SCHEDULED_MONTH"   -> parseExpression("scheduledOrEmpty(format='MM')").orThrow,
-      "JS7_SCHEDULED_DAY"     -> parseExpression("scheduledOrEmpty(format='dd')").orThrow,
-      "JS7_SCHEDULED_HOUR"    -> parseExpression("scheduledOrEmpty(format='HH')").orThrow,
-      "JS7_SCHEDULED_MINUTE"  -> parseExpression("scheduledOrEmpty(format='mm')").orThrow,
-      "JS7_SCHEDULED_SECOND"  -> parseExpression("scheduledOrEmpty(format='ss')").orThrow,
-      "JS7_JOBSTART_DATE"     -> parseExpression("now(format='yyyy-MM-dd HH:mm:ssZ')").orThrow,
-      "JS7_JOBSTART_DAY"      -> parseExpression("now(format='dd')").orThrow,
-      "JS7_JOBSTART_YEAR"     -> parseExpression("now(format='yyyy')").orThrow,
-      "JS7_JOBSTART_MONTH"    -> parseExpression("now(format='MM')").orThrow,
-      "JS7_JOBSTART_HOUR"     -> parseExpression("now(format='HH')").orThrow,
-      "JS7_JOBSTART_MINUTE"   -> parseExpression("now(format='mm')").orThrow,
-      "JS7_JOBSTART_SECOND"   -> parseExpression("now(format='ss')").orThrow))
+      "JS7_ORDER_ID"          -> expr("$js7OrderId"),
+      "JS7_WORKFLOW_NAME"     -> expr("$js7WorkflowPath"),
+      "JS7_WORKFLOW_POSITION" -> expr("$js7WorkflowPosition"),
+      "JS7_LABEL"             -> expr("$js7Label"),
+      "JS7_JOB_NAME"          -> expr("$js7JobName"),
+      "JS7_CONTROLLER_ID"     -> expr("$js7ControllerId"),
+      "JS7_SCHEDULED_DATE"    -> expr("scheduledOrEmpty(format='yyyy-MM-dd HH:mm:ssZ')"),
+      "JS7_SCHEDULED_YEAR"    -> expr("scheduledOrEmpty(format='yyyy')"),
+      "JS7_SCHEDULED_MONTH"   -> expr("scheduledOrEmpty(format='MM')"),
+      "JS7_SCHEDULED_DAY"     -> expr("scheduledOrEmpty(format='dd')"),
+      "JS7_SCHEDULED_HOUR"    -> expr("scheduledOrEmpty(format='HH')"),
+      "JS7_SCHEDULED_MINUTE"  -> expr("scheduledOrEmpty(format='mm')"),
+      "JS7_SCHEDULED_SECOND"  -> expr("scheduledOrEmpty(format='ss')"),
+      "JS7_JOBSTART_DATE"     -> expr("now(format='yyyy-MM-dd HH:mm:ssZ')"),
+      "JS7_JOBSTART_DAY"      -> expr("now(format='dd')"),
+      "JS7_JOBSTART_YEAR"     -> expr("now(format='yyyy')"),
+      "JS7_JOBSTART_MONTH"    -> expr("now(format='MM')"),
+      "JS7_JOBSTART_HOUR"     -> expr("now(format='HH')"),
+      "JS7_JOBSTART_MINUTE"   -> expr("now(format='mm')"),
+      "JS7_JOBSTART_SECOND"   -> expr("now(format='ss')")))
   logger.debug(sosJobResource.asJson.toPrettyString)
 
   private val sosWorkflow = {
