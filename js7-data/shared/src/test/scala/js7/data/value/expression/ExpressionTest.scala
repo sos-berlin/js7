@@ -610,6 +610,10 @@ final class ExpressionTest extends OurTestSuite
       result = Left(MissingValueProblem("missing")),
       Right(InterpolatedString(List(StringConstant("-->"), MissingConstant, StringConstant("<--")))))
 
+    testEval("\"-->$(missing?)<--\"",
+      result = Right(StringValue("--><--")),
+      Right(InterpolatedString(List(StringConstant("-->"), OrNull(MissingConstant), StringConstant("<--")))))
+
     "orElse" in {
       assert(OrElse(NumericConstant(1), NumericConstant(7)).eval == Right(NumberValue(1)))
       assert((OrElse(MissingConstant, NumericConstant(7))).eval == Right(NumberValue(7)))
