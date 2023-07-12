@@ -15,7 +15,6 @@ import js7.base.utils.ScalaUtils.withStringBuilder
 import js7.base.utils.typeclasses.IsEmpty
 import js7.data.job.JobResourcePath
 import js7.data.value.ValuePrinter.appendQuotedContent
-import js7.data.value.ValueType.MissingValueProblem
 import js7.data.value.expression.ExpressionParser.parseExpression
 import js7.data.value.{BooleanValue, FunctionValue, IsErrorValue, ListValue, MissingValue, NullValue, NumberValue, ObjectValue, StringValue, Value, ValuePrinter}
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -714,15 +713,16 @@ object Expression
   }
 
   /** `problem` must be defined only if internally generated. */
-  final case class MissingConstant(problem: Problem = MissingValueProblem)
+  type MissingConstant = MissingConstant.type
+  case object MissingConstant
   extends Pure/*not Constant, because MissingValue is an error*/ {
     def precedence = Precedence.Factor
     def subexpressions = Nil
 
     def evalAllowError(implicit scope: Scope) =
-      Right(MissingValue(problem))
+      Right(MissingValue())
 
-    override def toString = "missing"  // We don't have a parsable syntax for problem !!!
+    override def toString = "missing"
   }
 
   type NullConstant = NullConstant.type

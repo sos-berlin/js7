@@ -229,7 +229,7 @@ object FastparseExpressionParser
     keyValue("default", expression))
 
   private def missing[x: P] = P[MissingConstant](
-    P("missing").map(_ => MissingConstant()))
+    P("missing").map(_ => MissingConstant))
 
   private def nullConstant[x: P] = P[NullConstant](
     P("null").map(_ => NullConstant))

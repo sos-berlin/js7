@@ -205,7 +205,7 @@ object CatsExpressionParser
     }
 
   private val missing: Parser[MissingConstant] =
-    string("missing").as(MissingConstant())
+    string("missing").as(MissingConstant)
 
   private val nullConstant: Parser[NullConstant] =
     string("null").as(NullConstant)
