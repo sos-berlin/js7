@@ -365,7 +365,7 @@ object Expression
     protected def evalAllowError(implicit scope: Scope) =
       a.eval flatMap {
         case a: ObjectValue =>
-          a.nameToValue.get(name) !! Problem(s"Unknown object '$name' field name in: $toString")
+          a.nameToValue.get(name) !! Problem(s"Unknown field name '$name' in: $toString")
 
         case _ => Left(Problem(s"Object expected: $toString"))
       }
