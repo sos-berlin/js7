@@ -57,7 +57,7 @@ object FastparseExpressionParser
     P(functionExpr | expression)
 
   def expression[x: P]: P[Expression] =
-    P(wordOperation)
+    P(questionMarkOperation)
 
   private[expression] def functionOnly[x: P]: P[ExprFunction] =
     P(function ~ End)
@@ -315,16 +315,9 @@ object FastparseExpressionParser
           Precedence.toString(a, "||", Precedence.Or, b))
       }))
 
-  private def word1Operation[x: P] = P[Expression](
-    (or ~~/ w).flatMap(expr =>
-      (P("?").!.?.map {
-        case None => expr
-        case Some(_) => OrNull(expr)
-      })))
-
   private def wordOperation[x: P] = P[Expression](
-    (word1Operation ~~ w).flatMap(initial =>
-      leftRecurse(initial, keyword, word1Operation) {
+    (or ~~ w).flatMap(initial =>
+      leftRecurse(initial, keyword, or) {
         case (a, "in", list: ListExpression) => valid(In(a, list))
         case (_, "in", _) => invalid("List expected after operator 'in'")
         case (a, "matches", b) => valid(Matches(a, b))
@@ -332,4 +325,11 @@ object FastparseExpressionParser
         case (a, op, b) => invalid(s"Operator '$op' with unexpected operand type: " +
           Precedence.toString(a, op, Precedence.Or, b))
       }))
+
+  private def questionMarkOperation[x: P] = P[Expression](
+    (wordOperation ~~/ w).flatMap(expr =>
+      (P("?").!.?.map {
+        case None => expr
+        case Some(_) => OrNull(expr)
+      })))
 }

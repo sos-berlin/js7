@@ -13,7 +13,7 @@ object Precedence {
   // Higher number means higher precedence
   private val next = Iterator.from(1).next _
   val Function = next()
-  val DotOperator = next()  // correct precedence ???
+  val OrNull = next()
   val WordOperator = next()
   val Word1Operator = next()
   val Or = next()

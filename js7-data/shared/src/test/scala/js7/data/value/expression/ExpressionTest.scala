@@ -238,9 +238,11 @@ final class ExpressionTest extends OurTestSuite
       result = Right(ObjectValue(Map("myField" -> ObjectValue(Map("a" -> NumberValue(1)))))),
       Right(NamedValue("myObject")))
 
-    testEval("""$myObject.myField.a""",
-      result = 1,
-      Right(DotExpression(DotExpression(NamedValue("myObject"), "myField"), "a")))
+    testEval("""3 + $myObject.myField.a""",
+      result = 4,
+      Right(Add(
+        NumericConstant(3),
+        DotExpression(DotExpression(NamedValue("myObject"), "myField"), "a"))))
 
     testEval(""""$($myObject.myField.a)"""",
       result = "1",
@@ -337,7 +339,7 @@ final class ExpressionTest extends OurTestSuite
       result = Right(NumberValue(BigDecimal("0.3333333333333333333333333333333333"))),
       Right(Divide(NumericConstant(1), NumericConstant(3))))
 
-    testEval("""(6 / 3)?""",
+    testEval("""6 / 3?""",
       result = Right(NumberValue(2)),
       Right(OrNull(Divide(NumericConstant(6), NumericConstant(3)))))
 
@@ -345,13 +347,31 @@ final class ExpressionTest extends OurTestSuite
       result = Left(Problem("java.lang.ArithmeticException: Division by zero")),
       Right(Divide(NumericConstant(1), NumericConstant(0))))
 
-    testEval("""(1 / 0)?""",
+    // Question mark operator applys to the whole preceeding expression (applies not to 0)
+    testEval("""1 / 0?""",
       result = Right(NullValue),
       Right(OrNull(Divide(NumericConstant(1), NumericConstant(0)))))
 
-    testEval("""(1 / 0) orElse -1""",
+    testEval("""1 / 0 orElse -1""",
       result = Right(NumberValue(-1)),
       Right(OrElse(Divide(NumericConstant(1), NumericConstant(0)), NumericConstant(-1))))
+
+    testEval("""7 in [ 1 / 0 ] orElse -1""",
+      result = Right(NumberValue(-1)),
+      Right(OrElse(
+        In(
+          NumericConstant(7),
+          ListExpression(List(
+            Divide(NumericConstant(1), NumericConstant(0))))),
+        NumericConstant(-1))))
+
+    testEval("""7 in [ 1 / 0 ] ?""",
+      result = Right(NullValue),
+      Right(OrNull(
+        In(
+          NumericConstant(7),
+          ListExpression(List(
+            Divide(NumericConstant(1), NumericConstant(0))))))))
 
     testEval("""100 + 2 * 3 - 12 / 3""",
       result = Right(NumberValue(100 + 2 * 3 - 12 / 3)),
