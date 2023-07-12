@@ -11,7 +11,7 @@ import js7.data.order.{FreshOrder, Order, OrderId}
 import js7.data.value.expression.Scope.evalLazilyExpressions
 import js7.data.value.expression.scopes.OrderScopes.*
 import js7.data.value.expression.{Expression, Scope}
-import js7.data.value.{MissingValue, NumberValue, ObjectValue, StringValue, Value}
+import js7.data.value.{NullValue, NumberValue, ObjectValue, StringValue, Value}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Label
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -119,11 +119,9 @@ trait ProcessingOrderScopes extends OrderScopes
     "js7Job" -> ObjectValue(Map(
       "name" -> StringValue(simpleJobName),
       "sigkillDelayMillis" ->
-        workflowJob.sigkillDelay.map(_.toMillis)
-          .fold[Value](MissingValue("js7Job.sigkillDelayMillis"))(NumberValue(_)),
+        workflowJob.sigkillDelay.map(_.toMillis).fold[Value](NullValue)(NumberValue(_)),
       "timeoutMillis" ->
-        workflowJob.timeout.map(_.toMillis)
-          .fold[Value](MissingValue("js7Job.timeoutMillis"))(NumberValue(_)))),
+        workflowJob.timeout.map(_.toMillis).fold[Value](NullValue)(NumberValue(_)))),
     "parallelism" -> NumberValue(workflowJob.parallelism),
     "executionCount" -> NumberValue(jobExecutionCount)))
 
