@@ -290,15 +290,8 @@ object ExpressionParser
         Precedence.toString(a, "||", Precedence.Or, b))
     }
 
-  private val word1Operation: Parser[Expression] =
-    (or <* w).flatMap(expr =>
-      char('?').?.map {
-        case None => expr
-        case Some(()) => OrNull(expr)
-      })
-
   private val wordOperation: Parser[Expression] =
-    leftRecurseParsers(word1Operation, keyword, word1Operation) {
+    leftRecurseParsers(or, keyword, or) {
       case (a, ("in", list: ListExpression)) => pure(In(a, list))
       case (_, ("in", _)) => failWith("Expected a List after operator 'in'")
       case (a, ("matches", b)) => pure(Matches(a, b))
@@ -307,8 +300,15 @@ object ExpressionParser
         Precedence.toString(a, op, Precedence.Or, b))
     }
 
+  private val questionMarkOperation: Parser[Expression] =
+    (wordOperation <* w).flatMap(expr =>
+      char('?').?.map {
+        case None => expr
+        case Some(()) => OrNull(expr)
+      })
+
   lazy val expression: Parser[Expression] =
-    Parser.defer(wordOperation)
+    Parser.defer(questionMarkOperation)
 
   val constantExpression: Parser[Expression] =
     expression

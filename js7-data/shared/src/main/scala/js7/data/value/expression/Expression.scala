@@ -315,30 +315,30 @@ object Expression
     def subexpressions = a :: default :: Nil
 
     protected def evalAllowError(implicit scope: Scope) =
-      a.evalAllowError match {
-        case Left(problem) =>
-          logger.trace(s"OrElse catched $problem")
-          default.eval
-        case Right(_: IsErrorValue | NullValue) => default.eval
-        case Right(o) => Right(o)
-      }
+      evalOrDefault(a, default)
 
     override def toString = makeString(a, "orElse", default)
   }
 
   final case class OrNull(a: Expression)
   extends BooleanExpression with PurityDependsOnSubexpressions {
-    def precedence = Precedence.Factor
+    def precedence = Precedence.OrNull
     def subexpressions = a :: Nil
 
     protected def evalAllowError(implicit scope: Scope) =
-      a.evalAllowError.map {
-        case _: IsErrorValue => NullValue
-        case o => o
-      }
+      evalOrDefault(a, NullConstant)
 
     override def toString = Precedence.inParentheses(a, precedence) + "?"
   }
+
+  protected def evalOrDefault(expr: Expression, default: Expression)(implicit scope: Scope) =
+    expr.evalAllowError match {
+      case Left(problem) =>
+        logger.trace(s"OrElse or ?-operator catched $problem")
+        default.eval
+      case Right(_: IsErrorValue | NullValue) => default.eval
+      case Right(o) => Right(o)
+    }
 
   final case class ArgumentExpression(obj: Expression, arg: Expression)
   extends PurityDependsOnSubexpressions {
@@ -359,7 +359,7 @@ object Expression
 
   final case class DotExpression(a: Expression, name: String) extends PurityDependsOnSubexpressions {
     def subexpressions = a :: Nil
-    def precedence = Precedence.DotOperator
+    def precedence = Precedence.Dot
 
     protected def evalAllowError(implicit scope: Scope) =
       a.eval flatMap {
