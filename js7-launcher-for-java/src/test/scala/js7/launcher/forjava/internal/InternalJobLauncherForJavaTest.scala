@@ -1,13 +1,13 @@
 package js7.launcher.forjava.internal
 
 import cats.effect.Resource
-import js7.base.test.OurTestSuite
 import java.lang.System.lineSeparator as nl
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Paths
 import js7.base.io.file.FileUtils.temporaryDirectoryResource
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
+import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.thread.MonixBlocking.syntax.*
@@ -18,7 +18,7 @@ import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.common.system.ThreadPools.newUnlimitedScheduler
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
-import js7.data.job.{InternalExecutable, JobConf, JobKey}
+import js7.data.job.{InternalExecutable, JobConf, JobKey, ShellScriptExecutable}
 import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.subagent.SubagentId
 import js7.data.value.expression.Expression
@@ -147,6 +147,7 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite with BeforeAndAf
                   Order.Processing(SubagentId("SUBAGENT"))),
                 workflow,
                 executor.jobConf.jobKey,
+                WorkflowJob(AgentPath("AGENT"), ShellScriptExecutable("")),
                 jobResources = Nil,
                 Map("ORDER_ARG" -> arg),
                 ControllerId("CONTROLLER"),

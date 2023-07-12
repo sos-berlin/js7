@@ -5,6 +5,7 @@ import js7.base.problem.Problem
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.system.OperatingSystem.PathEnvName
 import js7.base.test.OurTestSuite
+import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.measureTime
 import js7.base.time.Timestamp
 import js7.base.utils.Collections.implicits.RichIterable
@@ -14,6 +15,7 @@ import js7.data.controller.ControllerId
 import js7.data.job.{JobKey, JobResource, JobResourcePath, ShellScriptExecutable}
 import js7.data.order.{FreshOrder, HistoricOutcome, Order, OrderId, Outcome}
 import js7.data.subagent.SubagentId
+import js7.data.value.ValueType.MissingValueProblem
 import js7.data.value.expression.Expression.{NamedValue, StringConstant}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.expression.Scope
@@ -24,6 +26,7 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.{Label, Position}
 import js7.data.workflow.{OrderParameter, OrderParameterList, OrderPreparation, Workflow, WorkflowPath}
 import scala.collection.{MapView, View}
+import scala.concurrent.duration.FiniteDuration
 
 final class OrderScopesTest extends OurTestSuite
 {
@@ -57,14 +60,32 @@ final class OrderScopesTest extends OurTestSuite
   }
 
   "ProcessingOrderScopes" - {
-    lazy val orderScopes: ProcessingOrderScopes = new ProcessingOrderScopes {
-      protected val controllerId = OrderScopesTest.controllerId
-      protected val workflow = OrderScopesTest.workflow
-      protected val order = OrderScopesTest.order.copy(state = Order.Processing(SubagentId("SUBAGENT")))
-      protected val jobKey = JobKey.Named(workflow.id, jobName)
-      protected val jobResources = Seq(jobResource)
-      protected val fileValueScope = Scope.empty
-    }
+    lazy val orderScopes: ProcessingOrderScopes = makeProcessingOrderscopes(None, None)
+
+    def makeProcessingOrderscopes(
+      sigkillDelay: Option[FiniteDuration], timeout: Option[FiniteDuration])
+    : ProcessingOrderScopes =
+      new ProcessingOrderScopes {
+        protected val controllerId = OrderScopesTest.controllerId
+        protected val workflow = OrderScopesTest.workflow
+        protected val order = OrderScopesTest.order.copy(state = Order.Processing(SubagentId("SUBAGENT")))
+        protected val jobKey = JobKey.Named(workflow.id, jobName)
+        protected val workflowJob = WorkflowJob(
+          agentPath,
+          ShellScriptExecutable("SCRIPT"),
+          defaultArguments = Map.empty,
+          subagentSelectionId = None,
+          jobResourcePaths = Nil,
+          parallelism = 1,
+          sigkillDelay = sigkillDelay,
+          timeout = timeout,
+          login = None,
+          failOnErrWritten = false,
+          admissionTimeScheme = None,
+          skipIfNoAdmissionStartForOrderDay = false)
+        protected val jobResources = Seq(jobResource)
+        protected val fileValueScope = Scope.empty
+      }
 
     "JobResource.env" in {
       val scope = orderScopes.scopeForJobResources
@@ -116,7 +137,9 @@ final class OrderScopesTest extends OurTestSuite
         "defaultWorkflowPath" -> expr("$js7WorkflowPath"),
         "defaultLabel" -> expr("$js7Label"),
         "defaultControllerId" -> expr("$js7ControllerId"),
-        "defaultScheduled" -> expr("scheduledOrEmpty('yyyy-MM-dd', 'UTC')")))
+        "defaultScheduled" -> expr("scheduledOrEmpty('yyyy-MM-dd', 'UTC')"),
+        "defaultJobTimeout" -> expr("$js7Job.timeoutMillis"),
+        "defaultJobSigkillDelay" -> expr("$js7Job.sigkillDelayMillis")))
       assert(defaultArguments.get("orderArgument") == None)
       assert(defaultArguments("defaultJobName") == Right(StringValue("JOB")))
       assert(defaultArguments("defaultOrderId") == Right(StringValue("ORDER")))
@@ -125,6 +148,19 @@ final class OrderScopesTest extends OurTestSuite
       assert(defaultArguments("defaultLabel") == Right(StringValue("LABEL-2")))
       assert(defaultArguments("defaultControllerId") == Right(StringValue("CONTROLLER")))
       assert(defaultArguments("defaultScheduled") == Right(StringValue("2021-06-17")))
+
+      assert(defaultArguments("defaultJobTimeout") == Left(MissingValueProblem))
+      assert(defaultArguments("defaultJobSigkillDelay") == Left(MissingValueProblem))
+    }
+
+    "$job.timeoutMillis, $job.sigkillDelayMillis" in {
+      val orderScopes: ProcessingOrderScopes = makeProcessingOrderscopes(
+        sigkillDelay = Some(123456.µs), timeout = Some(9.s))
+      val defaultArguments = orderScopes.evalLazilyJobDefaultArguments(MapView(
+        "defaultJobTimeout" -> expr("$js7Job.timeoutMillis"),
+        "defaultJobSigkillDelay" -> expr("$js7Job.sigkillDelayMillis")))
+      assert(defaultArguments("defaultJobTimeout") == Right(NumberValue(9000)))
+      assert(defaultArguments("defaultJobSigkillDelay") == Right(NumberValue(123)))
     }
 
     "Executable.arguments, Executable.env" - {

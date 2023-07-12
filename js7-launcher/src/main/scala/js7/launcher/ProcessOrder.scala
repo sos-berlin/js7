@@ -12,6 +12,7 @@ import js7.data.value.expression.scopes.{FileValueScope, FileValueState, NameToC
 import js7.data.value.expression.{Expression, Scope}
 import js7.data.value.{NullValue, Value}
 import js7.data.workflow.Workflow
+import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.launcher.ProcessOrder.evalEnv
 import monix.eval.Task
 import scala.collection.MapView
@@ -20,6 +21,7 @@ final case class ProcessOrder(
   order: Order[Order.Processing],
   workflow: Workflow,
   jobKey: JobKey,
+  workflowJob: WorkflowJob,
   jobResources: Seq[JobResource],
   defaultArgumentExpressions: Map[String, Expression],
   controllerId: ControllerId,
@@ -61,6 +63,7 @@ object ProcessOrder
     order: Order[Order.Processing],
     workflow: Workflow,
     jobKey: JobKey,
+    workflowJob: WorkflowJob,
     jobResources: Seq[JobResource],
     defaultArgumentExpressions: Map[String, Expression],
     controllerId: ControllerId,
@@ -69,7 +72,7 @@ object ProcessOrder
   : Resource[Task, ProcessOrder] =
     for (fileValueScope <- FileValueScope.resource(fileValueState)) yield
       ProcessOrder(
-        order, workflow, jobKey, jobResources,
+        order, workflow, jobKey, workflowJob, jobResources,
         defaultArgumentExpressions, controllerId, stdObservers,
         fileValueScope)
 

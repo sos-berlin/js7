@@ -283,13 +283,16 @@ final class ExecuteTest extends OurTestSuite with ControllerAgentForScalaTest
     orderArguments = Map("ARG" -> NumberValue(100)),
     expectedOutcome = Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(101))))
 
-  "Special $js7 variables" - {
+  "Special $js7 variables; the operators orElse and ?" - {
     val nameToExpression = Map(
       "ORDER_ID"            -> parseExpression("$js7OrderId").orThrow,
       "WORKFLOW_NAME"       -> parseExpression("$js7WorkflowPath").orThrow,
       "WORKFLOW_POSITION"   -> parseExpression("$js7WorkflowPosition").orThrow,
       "LABEL"               -> parseExpression("$js7Label").orThrow,
       "JOB_NAME"            -> parseExpression("$js7JobName").orThrow,
+      "JOB_TIMEOUT"         -> parseExpression("""$js7Job.timeoutMillis orElse "" """).orThrow,
+      // JOB_SIGKILL_DELAY will be unset due to ? operator which returns NullValue
+      "JOB_SIGKILL_DELAY"   -> parseExpression("""$js7Job.sigkillDelayMillis? """).orThrow,
       "JOB_EXECUTION_COUNT" -> parseExpression("$js7JobExecutionCount").orThrow,
       "CONTROLLER_ID"       -> parseExpression("$js7ControllerId").orThrow,
       "SCHEDULED_DATE"      -> parseExpression("scheduledOrEmpty(format='yyyy-MM-dd HH:mm:ssZ')").orThrow,
@@ -310,6 +313,7 @@ final class ExecuteTest extends OurTestSuite with ControllerAgentForScalaTest
             |echo WORKFLOW_POSITION=%WORKFLOW_POSITION% >>%JS7_RETURN_VALUES%
             |echo LABEL=%LABEL% >>%JS7_RETURN_VALUES%
             |echo JOB_NAME=%JOB_NAME% >>%JS7_RETURN_VALUES%
+            |echo JOB_TIMEOUT=%JOB_TIMEOUT% >>%JS7_RETURN_VALUES%
             |echo JOB_EXECUTION_COUNT=%JOB_EXECUTION_COUNT% >>%JS7_RETURN_VALUES%
             |echo CONTROLLER_ID=%CONTROLLER_ID% >>%JS7_RETURN_VALUES%
             |echo SCHEDULED_DATE=%SCHEDULED_DATE% >>%JS7_RETURN_VALUES%
@@ -319,11 +323,16 @@ final class ExecuteTest extends OurTestSuite with ControllerAgentForScalaTest
         else
           """#!/usr/bin/env bash
             |set -euo pipefail
+            |if [ "${JOB_SIGKILL_DELAY-UNSET}" != "UNSET" ]; then
+            |  echo JOB_SIGKILL_DELAY should be unset
+            |  exit 1
+            |fi
             |( echo "ORDER_ID=$ORDER_ID"
             |  echo "WORKFLOW_NAME=$WORKFLOW_NAME"
             |  echo "WORKFLOW_POSITION=$WORKFLOW_POSITION"
             |  echo "LABEL=$LABEL"
             |  echo "JOB_NAME=$JOB_NAME"
+            |  echo "JOB_TIMEOUT=$JOB_TIMEOUT"
             |  echo "JOB_EXECUTION_COUNT=$JOB_EXECUTION_COUNT"
             |  echo "CONTROLLER_ID=$CONTROLLER_ID"
             |  echo "SCHEDULED_DATE=$SCHEDULED_DATE"
@@ -372,6 +381,7 @@ final class ExecuteTest extends OurTestSuite with ControllerAgentForScalaTest
           "WORKFLOW_POSITION" -> StringValue(s"${workflow.path.string}~${workflow.id.versionId.string}:0"),
           "LABEL" -> StringValue("TEST-LABEL"),
           "JOB_NAME" -> StringValue("TEST-JOB"),
+          "JOB_TIMEOUT" -> StringValue(""),
           "JOB_EXECUTION_COUNT" -> numberValue(1),
           "CONTROLLER_ID" -> StringValue("Controller"),
           "JOB_RESOURCE_VARIABLE" -> StringValue("JOB-RESOURCE-VARIABLE-VALUE")))
