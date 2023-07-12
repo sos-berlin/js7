@@ -50,8 +50,6 @@ final class CalendarTest extends OurTestSuite with ControllerAgentForScalaTest
   override protected def agentTestWiring = RunningAgent.TestWiring(
     alarmClock = Some(clock))
 
-  private implicit val zone: ZoneId = CalendarTest.zone
-
   "Reject invalid Calendar" in {
     // Falsches Datumsformat
     // Falscher dateOffset
@@ -132,7 +130,7 @@ object CalendarTest
           AdmissionTimeScheme(Seq(AlwaysPeriod)),
           Schedule.Continuous(pause = 1.s, limit = Some(1))))),
         Workflow.of(EmptyJob.execute(agentPath)))),
-    timeZone = Timezone("Europe/Mariehamn"),
+    timeZone = Timezone(zone.toString),
     calendarPath = Some(calendar.path))
 
   private val expectedOrderEvents = Seq(
