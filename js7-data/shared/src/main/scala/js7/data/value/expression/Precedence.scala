@@ -15,12 +15,12 @@ object Precedence {
   val Function = next()
   val OrNull = next()
   val WordOperator = next()
-  val Word1Operator = next()
   val Or = next()
   val And = next()
   val Comparison = next()
   val Addition = next()
   val Multiplication = next()
+  val Dot = next()
   val Factor = next()
   val Highest = next()
 
