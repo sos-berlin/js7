@@ -27,6 +27,7 @@ import js7.data.job.{JobResource, JobResourcePath, ShellScriptExecutable}
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessed, OrderStdWritten, OrderStdoutWritten, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.value.StringValue
+import js7.data.value.ValueType.MissingValueProblem
 import js7.data.value.expression.Expression.{NamedValue, StringConstant}
 import js7.data.value.expression.ExpressionParser.{expr, parseExpression}
 import js7.data.workflow.instructions.Execute
@@ -198,7 +199,7 @@ class JobResourceTest extends OurTestSuite with ControllerAgentForScalaTest
       val events = controller.runOrder(FreshOrder(OrderId("UNKNOWN"), workflow.path))
       assert(events.map(_.value).contains(
         OrderProcessed(Outcome.Disrupted(
-          UnknownKeyProblem("JobResource variable", "JobResource:JOB-RESOURCE-A:UNKNOWN")))))
+          MissingValueProblem("JobResource:JOB-RESOURCE-A:UNKNOWN")))))
     }
 
     "Environment variable is left unchanged when the ? operator is used" in {

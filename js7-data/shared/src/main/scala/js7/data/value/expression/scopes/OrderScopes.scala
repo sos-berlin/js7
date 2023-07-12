@@ -119,9 +119,11 @@ trait ProcessingOrderScopes extends OrderScopes
     "js7Job" -> ObjectValue(Map(
       "name" -> StringValue(simpleJobName),
       "sigkillDelayMillis" ->
-        workflowJob.sigkillDelay.map(_.toMillis).fold[Value](MissingValue())(NumberValue(_)),
+        workflowJob.sigkillDelay.map(_.toMillis)
+          .fold[Value](MissingValue("js7Job.sigkillDelayMillis"))(NumberValue(_)),
       "timeoutMillis" ->
-        workflowJob.timeout.map(_.toMillis).fold[Value](MissingValue())(NumberValue(_)))),
+        workflowJob.timeout.map(_.toMillis)
+          .fold[Value](MissingValue("js7Job.timeoutMillis"))(NumberValue(_)))),
     "parallelism" -> NumberValue(workflowJob.parallelism),
     "executionCount" -> NumberValue(jobExecutionCount)))
 

@@ -720,7 +720,7 @@ object Expression
     def subexpressions = Nil
 
     def evalAllowError(implicit scope: Scope) =
-      Right(MissingValue())
+      Right(MissingValue.default)
 
     override def toString = "missing"
   }

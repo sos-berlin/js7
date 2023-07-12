@@ -83,11 +83,8 @@ extends Scope
 
           case Some(variableName) =>
             jobResource.variables.get(variableName) match {
-              case None =>
-                Right(MissingValue(
-                  UnknownKeyProblem("JobResource variable", s"$jrPath:$variableName")))
-              case Some(expr) =>
-                expr.eval
+              case None => Right(MissingValue(s"$jrPath:$variableName"))
+              case Some(expr) => expr.eval
             }
         })
 

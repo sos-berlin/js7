@@ -149,8 +149,10 @@ final class OrderScopesTest extends OurTestSuite
       assert(defaultArguments("defaultControllerId") == Right(StringValue("CONTROLLER")))
       assert(defaultArguments("defaultScheduled") == Right(StringValue("2021-06-17")))
 
-      assert(defaultArguments("defaultJobTimeout") == Left(MissingValueProblem))
-      assert(defaultArguments("defaultJobSigkillDelay") == Left(MissingValueProblem))
+      assert(defaultArguments("defaultJobSigkillDelay") == Left(
+        MissingValueProblem("js7Job.sigkillDelayMillis")))
+      assert(defaultArguments("defaultJobTimeout") == Left(
+        MissingValueProblem("js7Job.timeoutMillis")))
     }
 
     "$job.timeoutMillis, $job.sigkillDelayMillis" in {

@@ -368,7 +368,9 @@ sealed trait IsErrorValue extends Value {
   def problem: Problem
 }
 
-/** A missing value due to a problem. */
+/** A missing value due to a problem.
+ *
+ *  Does not equals itself because it fails if evaluated. */
 final case class ErrorValue(problem: Problem) extends IsErrorValue {
   def valueType = ErrorValue
 
@@ -383,15 +385,19 @@ object ErrorValue extends ValueType {
   val name = "Problem"
 }
 
-/** A missing value due to a problem. */
-final case class MissingValue(problem: Problem = MissingValueProblem) extends IsErrorValue {
+/** A missing value due to a problem.
+ *
+ * Does not equals itself because it fails if evaluated. */
+final case class MissingValue(missing: String) extends IsErrorValue {
   def valueType = MissingValue
+
+  lazy val problem = MissingValueProblem(missing)
 
   @javaApi @Nonnull def toJava: Problem =
     problem
 
   override def convertToString = {
-    if (problem == MissingValueProblem) "[MissingValue]"
+    if (problem == MissingValueProblem.default) "[MissingValue]"
     else s"[MissingValue: $problem]"
   }
 
@@ -399,9 +405,19 @@ final case class MissingValue(problem: Problem = MissingValueProblem) extends Is
 }
 object MissingValue extends ValueType {
   val name = "Missing"
+  val default: MissingValue = new MissingValue("missing")
+
+  def apply(missingName: String): MissingValue =
+    if (missingName == default.missing)
+      default
+    else
+      new MissingValue(missingName)
 }
 
-/** The inapplicable value. */
+/** The inapplicable value.
+ *
+ * Similar to Scala None (but there is no Some).
+ * Unlike SQL null, this NullValue equals itself. */
 case object NullValue extends Value with ValueType.Simple {
   def valueType = NullValue
 
@@ -482,7 +498,18 @@ object ValueType
         Left(DecodingFailure("ValueType expected", c.history))
     }
 
-  case object MissingValueProblem extends Problem.ArgumentlessCoded
+  final case class MissingValueProblem(missingName: String) extends Problem.Coded {
+    def arguments = Map("missing" -> missingName)
+  }
+  object MissingValueProblem {
+    val default: MissingValueProblem = new MissingValueProblem("missing")
+
+    def apply(missingName: String): MissingValueProblem =
+      if (missingName == default.missingName)
+        default
+      else
+        new MissingValueProblem(missingName)
+  }
 
   final case class UnexpectedValueTypeProblem(valueType: ValueType, value: Value)
   extends Problem.Coded {

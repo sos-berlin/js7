@@ -36,7 +36,7 @@ final case class ExprFunction(
 
   def eval(arguments: Iterable[Value])(implicit scope: Scope): Checked[Value] =
     evalAllowMissing(arguments).flatMap {
-      case MissingValue(problem) => Left(problem)
+      case missing: MissingValue => Left(missing.problem)
       case o => Right(o)
     }
 

@@ -545,7 +545,7 @@ final class ExpressionTest extends OurTestSuite
     implicit val scope = Scope.empty
 
     testEval("missing",
-      result = Left(MissingValueProblem),
+      result = Left(MissingValueProblem("missing")),
       Right(MissingConstant))
 
     testEval("missing?",
@@ -578,15 +578,15 @@ final class ExpressionTest extends OurTestSuite
           NumericConstant(3))))
 
     testEval("missing == missing",
-      result = Left(MissingValueProblem),
+      result = Left(MissingValueProblem("missing")),
       Right(Equal(MissingConstant, MissingConstant)))
 
     testEval("missing != missing",
-      result = Left(MissingValueProblem),
+      result = Left(MissingValueProblem("missing")),
       Right(NotEqual(MissingConstant, MissingConstant)))
 
     testEval("missing + 1",
-      result = Left(MissingValueProblem),
+      result = Left(MissingValueProblem("missing")),
       Right(Add(MissingConstant, NumericConstant(1))))
 
     "MissingValue OrNull" in {
@@ -594,11 +594,11 @@ final class ExpressionTest extends OurTestSuite
     }
 
     "MissingValue is not comparable" in {
-      assert(Equal(MissingConstant, MissingConstant).eval == Left(MissingValueProblem))
+      assert(Equal(MissingConstant, MissingConstant).eval == Left(MissingValueProblem("missing")))
     }
 
     testEval("\"-->$(missing)<--\"",
-      result = Left(MissingValueProblem),
+      result = Left(MissingValueProblem("missing")),
       Right(InterpolatedString(List(StringConstant("-->"), MissingConstant, StringConstant("<--")))))
 
     "orElse" in {
