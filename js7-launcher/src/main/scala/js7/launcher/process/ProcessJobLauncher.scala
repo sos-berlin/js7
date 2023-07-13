@@ -53,7 +53,7 @@ trait ProcessJobLauncher extends JobLauncher
     }
   }
 
-  private def v1Env(processOrder: ProcessOrder): Checked[Map[String, String]] =
+  private def v1Env(processOrder: ProcessOrder): Checked[Map[String, Some[String]]] =
     if (!v1Compatible)
       Right(Map.empty)
     else {
@@ -64,7 +64,7 @@ trait ProcessJobLauncher extends JobLauncher
           .collect {
             case (name, Right(v)) => name -> v // ignore toStringValue errors (like ListValue)
           }
-          .map { case (k, StringValue(v)) => (V1EnvPrefix + k.toUpperCase(ROOT)) -> v }
+          .map { case (k, StringValue(v)) => (V1EnvPrefix + k.toUpperCase(ROOT)) -> Some(v) }
           .toMap
     }
 }
@@ -76,7 +76,7 @@ object ProcessJobLauncher
   private[process] final case class StartProcess(
     commandLine: CommandLine,
     name: String,
-    env: Map[String, String])
+    env: Map[String, Option[String]])
   {
     override def toString = name
   }

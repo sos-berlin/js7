@@ -61,7 +61,7 @@ object InternalJob
         .map(jr => jr.path -> processOrder.evalLazilyJobResourceVariables(jr))
         .to(ListMap)
 
-    def env: Checked[Map[String, String]] =
+    def env: Checked[Map[String, Option[String]]] =
       processOrder.checkedJobResourcesEnv
 
     def order = processOrder.order

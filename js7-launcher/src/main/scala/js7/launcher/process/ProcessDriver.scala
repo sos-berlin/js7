@@ -42,7 +42,7 @@ final class ProcessDriver(
   private val startProcessLock = AsyncLock(orderId.toString)
   @volatile private var killedBeforeStart: Option[ProcessSignal] = None
 
-  def startAndRunProcess(env: Map[String, String], stdObservers: StdObservers)
+  def startAndRunProcess(env: Map[String, Option[String]], stdObservers: StdObservers)
   : Task[Fiber[Outcome.Completed]] =
     startProcess(env, stdObservers)
       .flatMap {
@@ -50,7 +50,7 @@ final class ProcessDriver(
         case Right(richProcess) => outcomeOf(richProcess).start
       }
 
-  private def startProcess(env: Map[String, String], stdObservers: StdObservers)
+  private def startProcess(env: Map[String, Option[String]], stdObservers: StdObservers)
   : Task[Checked[RichProcess]] =
     Task.deferAction { implicit scheduler =>
       killedBeforeStart match {
@@ -67,7 +67,9 @@ final class ProcessDriver(
                 ProcessConfiguration(
                   workingDirectory = Some(jobLauncherConf.workingDirectory),
                   encoding = jobLauncherConf.systemEncoding,
-                  additionalEnvironment = env + returnValuesProvider.toEnv,
+                  additionalEnvironment = env.updated(
+                    returnValuesProvider.varName,
+                    Some(returnValuesProvider.file.toString)),
                   maybeTaskId = Some(taskId),
                   killWithSigterm = jobLauncherConf.killWithSigterm,
                   killWithSigkill = jobLauncherConf.killWithSigkill,

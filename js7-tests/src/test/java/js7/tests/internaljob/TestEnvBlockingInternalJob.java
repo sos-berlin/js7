@@ -1,5 +1,6 @@
 package js7.tests.internaljob;
 
+import java.util.Optional;
 import js7.data_for_java.order.JOutcome;
 import js7.launcher.forjava.internal.BlockingInternalJob;
 import static io.vavr.control.Either.right;
@@ -11,7 +12,7 @@ public final class TestEnvBlockingInternalJob implements BlockingInternalJob
 {
     public OrderProcess toOrderProcess(Step step) {
         return () -> {
-            assertThat(step.env(), equalTo(right(singletonMap("ENV", "ENV-VALUE"))));
+            assertThat(step.env(), equalTo(right(singletonMap("ENV", Optional.of("ENV-VALUE")))));
             return JOutcome.succeeded();
         };
     }

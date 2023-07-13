@@ -33,13 +33,13 @@ extends ProcessingOrderScopes
   private lazy val nameToLazyDefaultArgument: MapView[String, Checked[Value]] =
     evalLazilyJobDefaultArguments(defaultArgumentExpressions.view)
 
-  lazy val checkedJobResourcesEnv: Checked[Map[String, String]] =
+  lazy val checkedJobResourcesEnv: Checked[Map[String, Option[String]]] =
     jobResources
       .reverse/*left overrides right*/
       .traverse(evalJobResourceEnv)
       .map(_.fold(Map.empty)(_ ++ _))
 
-  private def evalJobResourceEnv(jobResource: JobResource): Checked[Map[String, String]] =
+  private def evalJobResourceEnv(jobResource: JobResource): Checked[Map[String, Option[String]]] =
     evalEnv(
       jobResource.env,
       scopeForJobResources |+|
@@ -77,11 +77,17 @@ object ProcessOrder
         fileValueScope)
 
   def evalEnv(nameToExpr: Map[String, Expression], scope: => Scope)
-  : Checked[Map[String, String]] =
+  : Checked[Map[String, Option[String]]] =
     evalExpressionMap(nameToExpr, scope)
       .flatMap(_
         .view
-        .filter(_._2 != NullValue)  // TODO Experimental
-        .toVector.traverse { case (k, v) => v.toStringValueString.map(k -> _) })
+        .mapValues {
+          case NullValue => None
+          case v => Some(v)
+        }
+        .toVector
+        .traverse {
+          case (k, v) => v.traverse(_.toStringValueString).map(k -> _)
+        })
       .map(_.toMap)
 }
