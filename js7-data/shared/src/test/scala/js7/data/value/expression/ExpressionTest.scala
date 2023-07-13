@@ -356,7 +356,35 @@ final class ExpressionTest extends OurTestSuite
       result = Right(NumberValue(-1)),
       Right(OrElse(Divide(NumericConstant(1), NumericConstant(0)), NumericConstant(-1))))
 
-    testEval("""7 in [ 1 / 0 ] orElse -1""",
+    testEval("""1 / 0 ? -1""",
+      result = Right(NumberValue(-1)),
+      Right(OrElse(Divide(NumericConstant(1), NumericConstant(0)), NumericConstant(-1))))
+
+    testEval("""7 in [ 1 / 0 ] orElse $unknown orElse -1""",
+      result = Right(NumberValue(-1)),
+      Right(
+        OrElse(
+          OrElse(
+            In(
+              NumericConstant(7),
+              ListExpression(List(
+                Divide(NumericConstant(1), NumericConstant(0))))),
+            NamedValue("unknown")),
+          NumericConstant(-1))))
+
+    testEval("""7 in [ 1 / 0 ] ? $unknown ? -1""",
+      result = Right(NumberValue(-1)),
+      Right(
+        OrElse(
+          OrElse(
+            In(
+              NumericConstant(7),
+              ListExpression(List(
+                Divide(NumericConstant(1), NumericConstant(0))))),
+            NamedValue("unknown")),
+          NumericConstant(-1))))
+
+    testEval("""7 in [ 1 / 0 ] ? -1""",
       result = Right(NumberValue(-1)),
       Right(OrElse(
         In(
@@ -582,6 +610,12 @@ final class ExpressionTest extends OurTestSuite
         MissingConstant,
         Add(NumericConstant(7), NumericConstant(3)))))
 
+    testEval("missing ? 7 + 3",
+      result = Right(NumberValue(7 + 3)),
+      Right(OrElse(
+        MissingConstant,
+        Add(NumericConstant(7), NumericConstant(3)))))
+
     testEval("1 + 2 orElse 7 + 3",
       result = Right(NumberValue(1 + 2)),
       Right(OrElse(
@@ -589,6 +623,21 @@ final class ExpressionTest extends OurTestSuite
         Add(NumericConstant(7), NumericConstant(3)))))
 
     testEval("1 + (2 orElse 7) + 3",
+      result = Right(NumberValue(1 + 2 + 3)),
+      Right(
+        Add(
+          Add(
+            NumericConstant(1),
+            OrElse(NumericConstant(2), NumericConstant(7))),
+          NumericConstant(3))))
+
+    testEval("1 + 2 ? 7 + 3",
+      result = Right(NumberValue(1 + 2)),
+      Right(OrElse(
+        Add(NumericConstant(1), NumericConstant(2)),
+        Add(NumericConstant(7), NumericConstant(3)))))
+
+    testEval("1 + (2 ? 7) + 3",
       result = Right(NumberValue(1 + 2 + 3)),
       Right(
         Add(
@@ -620,6 +669,10 @@ final class ExpressionTest extends OurTestSuite
     testEval("\"-->$(missing)<--\"",
       result = Left(MissingValueProblem("missing")),
       Right(InterpolatedString(List(StringConstant("-->"), MissingConstant, StringConstant("<--")))))
+
+    testEval("\"-->$(missing?)<--\"",
+      result = Right(StringValue("--><--")),
+      Right(InterpolatedString(List(StringConstant("-->"), OrNull(MissingConstant), StringConstant("<--")))))
 
     "orElse" in {
       assert(OrElse(NumericConstant(1), NumericConstant(7)).eval == Right(NumberValue(1)))
