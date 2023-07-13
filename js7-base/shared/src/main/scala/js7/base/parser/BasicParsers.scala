@@ -6,14 +6,14 @@ import cats.parse.Parser.{anyChar, char, charIn, charWhere, charsWhile, charsWhi
 import cats.parse.{Parser, Parser0}
 import java.lang.Character.isUnicodeIdentifierPart
 import js7.base.parser.BasicPrinter.{isIdentifierPart, isIdentifierStart}
-import js7.base.parser.CatsParsers.syntax.*
+import js7.base.parser.Parsers.syntax.*
 import js7.base.problem.Checked
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import scala.reflect.ClassTag
 
-object CatsBasicParsers
+object BasicParsers
 {
   private val inlineComment: Parser[Unit] = {
     val untilStar = charsWhile0(_ != '*').with1 ~ char('*')

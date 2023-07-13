@@ -6,7 +6,7 @@ import cats.syntax.traverse.*
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, DecodingFailure, Encoder, Json}
 import js7.base.circeutils.CirceUtils.*
-import js7.base.parser.CatsBasicParsers
+import js7.base.parser.BasicParsers
 import js7.base.problem.Checked
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Ordinal.syntax.*
@@ -113,7 +113,7 @@ object RangeSet {
     RangeSet(normalize(Vector.from(ranges)))
 
   def parseInt(string: String): Checked[RangeSet[Int]] =
-    parse(CatsBasicParsers.int, string)
+    parse(BasicParsers.int, string)
 
   def parse[A: Ordering: Ordinal](parseValue: Parser[A], string: String)
   : Checked[RangeSet[A]] =
@@ -212,7 +212,7 @@ object RangeSet {
           throw new IllegalArgumentException(s"Encoding as JSON string expected: $a")))
 
   implicit val IntJsonDecoder: Decoder[RangeSet[Int]] =
-    jsonDecoder(CatsBasicParsers.int)
+    jsonDecoder(BasicParsers.int)
 
   implicit def jsonDecoder[A: Ordering : Ordinal: Decoder](implicit parseValue: Parser[A])
   : Decoder[RangeSet[A]] =
