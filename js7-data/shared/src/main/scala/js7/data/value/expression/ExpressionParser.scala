@@ -301,11 +301,13 @@ object ExpressionParser
     }
 
   private val questionMarkOperation: Parser[Expression] =
-    (wordOperation <* w).flatMap(expr =>
-      char('?').?.map {
-        case None => expr
-        case Some(()) => OrNull(expr)
-      })
+    ((wordOperation <* w) ~ (char('?') *> w *> wordOperation.?).rep0).map {
+      case (a, more) =>
+        more.foldLeft(a) {
+          case (a, None) => OrNull(a)
+          case (a, Some(b)) => OrElse(a, b)
+        }
+    }
 
   lazy val expression: Parser[Expression] =
     Parser.defer(questionMarkOperation)
