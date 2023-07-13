@@ -6,7 +6,7 @@ The first (bold) value is the default value.
 
 **js7.parser=cats**|fastparse
 
-JS7 v2.5 uses the new [cat-parse](https://github.com/typelevel/cats-parse) library. The previously used [fastparse](https://github.com/com-lihaoyi/fastparse) library can be re-enabled with this property.
+JS7 v2.5 until v2.5.3 uses the new [cat-parse](https://github.com/typelevel/cats-parse) library. The previously used [fastparse](https://github.com/com-lihaoyi/fastparse) library can be re-enabled with this property.
 
 This setting will no longer be available when the JS7 code has been migrated to Scala 3, presumely with  v2.6.
 

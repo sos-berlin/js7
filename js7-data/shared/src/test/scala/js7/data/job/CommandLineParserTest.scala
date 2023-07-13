@@ -2,7 +2,6 @@ package js7.data.job
 
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
-import js7.data.parser.UseFastparse
 import js7.data.value.expression.Expression.{ListExpression, MkString, NamedValue, StringConstant}
 
 final class CommandLineParserTest extends OurTestSuite
@@ -10,16 +9,10 @@ final class CommandLineParserTest extends OurTestSuite
   "Empty commandline is rejected" in {
     assert(CommandLineParser.parse("") ==
       Left(Problem(
-      if (UseFastparse)
-        """Expected The command line must not be empty:1:1, found """""
-      else
         """Parsing failed at position 1 “❓” · Unexpected “” · The command line must not be empty""")))
     assert(CommandLineParser.parse("  ") ==
       Left(Problem(
-        if (UseFastparse)
-          """Expected The command line must not be empty:1:3, found """""
-        else
-          """Parsing failed at position 3 “  ❓” · Unexpected “” · The command line must not be empty""")))
+        """Parsing failed at position 3 “  ❓” · Unexpected “” · The command line must not be empty""")))
   }
 
   "Constant" in {
