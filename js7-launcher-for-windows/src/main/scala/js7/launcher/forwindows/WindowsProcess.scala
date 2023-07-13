@@ -134,8 +134,8 @@ private[launcher] object WindowsProcess
     args: Seq[String],
     stdinRedirect: Redirect,
     stdoutRedirect: Redirect,
-    stderrRedirect: Redirect,
-    additionalEnv: Map[String, String] = Map.empty)
+  stderrRedirect: Redirect,
+    additionalEnv: Map[String, Option[String]] = Map.empty)
 
   private[launcher] def startWithWindowsLogon(
     startWindowsProcess: StartWindowsProcess,
@@ -171,7 +171,12 @@ private[launcher] object WindowsProcess
       call("CreateProcessAsUser", application, commandLine, s"directory=$workingDirectory") {
         advapi32.CreateProcessAsUser(loggedOn.userToken, application, commandLine,
           null: SECURITY_ATTRIBUTES, null: SECURITY_ATTRIBUTES, /*inheritHandles=*/true, creationFlags,
-          getEnvironmentBlock((env ++ additionalEnv).asJava),
+          getEnvironmentBlock(env
+            .removedAll(
+              additionalEnv.collect { case (k, None) => k })
+            .concat(
+              additionalEnv.collect { case (k, Some(v)) => k -> v })
+            .asJava),
           workingDirectory, startupInfo, processInformation)
       }
       inRedirection.releaseStartupInfoHandle()

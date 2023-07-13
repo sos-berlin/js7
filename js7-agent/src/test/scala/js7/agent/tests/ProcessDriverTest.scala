@@ -1,6 +1,7 @@
 package js7.agent.tests
 
 import com.google.inject.Guice
+import cats.syntax.option.*
 import java.nio.file.Files.createTempDirectory
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.configuration.inject.AgentModule
@@ -65,7 +66,7 @@ final class ProcessDriverTest extends OurTestSuite with BeforeAndAfterAll with T
       val stdObservers = new StdObservers(out, err, charBufferSize = 7, keepLastErrLine = false)
       val whenOut = out.foldL.runToFuture
       val whenErr = err.foldL.runToFuture
-      val ended = taskRunner.startAndRunProcess(Map("VAR1" -> "VALUE1"), stdObservers)
+      val ended = taskRunner.startAndRunProcess(Map("VAR1" -> "VALUE1".some), stdObservers)
         .await(30.s).join.await(30.s)
       assert(ended == Outcome.Succeeded(Map(
         "result" -> StringValue("TEST-RESULT-VALUE1"),

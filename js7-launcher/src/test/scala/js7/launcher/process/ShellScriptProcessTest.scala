@@ -41,7 +41,7 @@ final class ShellScriptProcessTest extends OurTestSuite
     val envName = "ENVNAME"
     val envValue = "ENVVALUE"
     val exitCode = 42
-    val processConfig = ProcessConfiguration.forTest.copy(additionalEnvironment = Map(envName -> envValue))
+    val processConfig = ProcessConfiguration.forTest.copy(additionalEnvironment = Map(envName -> Some(envValue)))
     withScriptFile { scriptFile =>
       scriptFile.writeUtf8Executable((isWindows ?? "@") + s"exit $exitCode")
       val shellProcess = startShellScript(processConfig, scriptFile, Map.empty)

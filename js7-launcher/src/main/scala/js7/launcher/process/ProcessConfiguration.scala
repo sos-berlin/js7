@@ -14,7 +14,7 @@ import js7.launcher.forwindows.WindowsLogon
 final case class ProcessConfiguration(
   workingDirectory: Option[Path] = None,
   encoding: Charset,
-  additionalEnvironment: Map[String, String] = Map(),
+  additionalEnvironment: Map[String, Option[String]] = Map.empty,
   maybeTaskId: Option[TaskId] = None,
   killWithSigterm: Seq[String],
   killWithSigkill: Seq[String],

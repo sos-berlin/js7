@@ -138,7 +138,7 @@ final class WindowsProcessTest extends OurTestSuite
               Redirect.PIPE,
               Redirect.to(stdoutFile.toFile),
               Redirect.PIPE,
-              Map(testVariableName -> testVariableValue)),
+              Map(testVariableName -> Some(testVariableValue))),
             logon
           ).orThrow
           process.waitFor(5.s) shouldBe true

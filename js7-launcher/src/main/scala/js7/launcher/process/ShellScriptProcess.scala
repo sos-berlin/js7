@@ -101,7 +101,9 @@ object ShellScriptProcess {
       case None =>
         val processBuilder = new ProcessBuilder(args.asJava)
         for (o <- conf.workingDirectory) processBuilder.directory(o.toFile)
-        processBuilder.environment.putAll(conf.additionalEnvironment.asJava)
+
+        transferEnv(from = conf.additionalEnvironment, to = processBuilder.environment)
+
         processBuilder.startRobustly()
           .map(o => Right(JavaProcess(o)))
 
@@ -116,4 +118,17 @@ object ShellScriptProcess {
               additionalEnv = conf.additionalEnvironment),
             Some(logon)))
     }
+
+  private def transferEnv(
+    from: Map[String, Option[String]],
+    to: java.util.Map[String, String])
+  : Unit = {
+    from
+      .collect { case (k, None) => k }
+      .foreach(to.remove)
+
+    to.putAll(from
+      .collect { case (k, Some(v)) => k -> v }
+      .asJava)
+  }
 }

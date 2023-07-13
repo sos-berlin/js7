@@ -2,13 +2,14 @@ package js7.launcher.forjava.internal
 
 import io.vavr.control.Either as VEither
 import java.io.{PrintWriter, Writer}
-import java.util.Map as JMap
+import java.util.{Optional, Map as JMap}
 import javax.annotation.Nonnull
 import js7.base.problem.Problem
 import js7.base.utils.Lazy
 import js7.data.job.JobResourcePath
 import js7.data.value.Value
 import js7.data_for_java.common.JavaUtils.Void
+import js7.data_for_java.common.MoreJavaConverters.MapViewHasAsJava
 import js7.data_for_java.order.JOutcome
 import js7.data_for_java.value.JExpression
 import js7.data_for_java.vavr.VavrConverters.*
@@ -17,6 +18,7 @@ import js7.launcher.internal.{InternalJob, InternalJobAdapter}
 import monix.execution.Scheduler
 import scala.collection.immutable.ListMap
 import scala.jdk.CollectionConverters.*
+import scala.jdk.OptionConverters.RichOption
 
 /** For non-asynchronous thread-blocking internal Jobs written in Java.
   * Constructor and methods are executed in (from call to call changing) threads
@@ -85,8 +87,10 @@ object BlockingInternalJob
       asScala.jobResourceVariable(jobResourcePath, name)
         .toVavr
 
-    lazy val env: VEither[Problem, JMap[String, String]] =
-      asScala.env.map(_.asJava).toVavr
+    lazy val env: VEither[Problem, JMap[String, Optional[String]]] =
+      asScala.env
+        .map(_.view.mapValues(_.toJava).asJava)
+        .toVavr
   }
   object Step {
     def apply(asScala: InternalJob.Step)(implicit s: Scheduler): Step =

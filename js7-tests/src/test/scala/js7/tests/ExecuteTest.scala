@@ -24,7 +24,7 @@ import js7.data.order.OrderEvent.{OrderAttached, OrderCancelled, OrderFailed, Or
 import js7.data.order.OrderObstacle.jobParallelismLimitReached
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.expression.Expression.{NamedValue, NumericConstant, StringConstant}
-import js7.data.value.expression.ExpressionParser.parseExpression
+import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.{NamedValues, NumberValue, StringValue, Value}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -283,21 +283,24 @@ final class ExecuteTest extends OurTestSuite with ControllerAgentForScalaTest
     orderArguments = Map("ARG" -> NumberValue(100)),
     expectedOutcome = Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(101))))
 
+  private val deletedEnvName = if (isWindows) "USERNAME" else "USER"
+  assert(sys.env(deletedEnvName).nonEmpty)  // Must exist to check deletion
+
   "Special $js7 variables; the operators orElse and ?" - {
     val nameToExpression = Map(
-      "ORDER_ID"            -> parseExpression("$js7OrderId").orThrow,
-      "WORKFLOW_NAME"       -> parseExpression("$js7WorkflowPath").orThrow,
-      "WORKFLOW_POSITION"   -> parseExpression("$js7WorkflowPosition").orThrow,
-      "LABEL"               -> parseExpression("$js7Label").orThrow,
-      "JOB_NAME"            -> parseExpression("$js7JobName").orThrow,
-      "JOB_TIMEOUT"         -> parseExpression("""$js7Job.timeoutMillis orElse "" """).orThrow,
-      // JOB_SIGKILL_DELAY will be unset due to ? operator which returns NullValue
-      "JOB_SIGKILL_DELAY"   -> parseExpression("""$js7Job.sigkillDelayMillis? """).orThrow,
-      "JOB_EXECUTION_COUNT" -> parseExpression("$js7JobExecutionCount").orThrow,
-      "CONTROLLER_ID"       -> parseExpression("$js7ControllerId").orThrow,
-      "SCHEDULED_DATE"      -> parseExpression("scheduledOrEmpty(format='yyyy-MM-dd HH:mm:ssZ')").orThrow,
-      "JOBSTART_DATE"       -> parseExpression("now(format='yyyy-MM-dd HH:mm:ssZ')").orThrow,
-      "JOB_RESOURCE_VARIABLE" -> parseExpression("JobResource:JOB-RESOURCE:VARIABLE").orThrow)
+      "ORDER_ID"            -> expr("$js7OrderId"),
+      "WORKFLOW_NAME"       -> expr("$js7WorkflowPath"),
+      "WORKFLOW_POSITION"   -> expr("$js7WorkflowPosition"),
+      "LABEL"               -> expr("$js7Label"),
+      "JOB_NAME"            -> expr("$js7JobName"),
+      "JOB_TIMEOUT"         -> expr("""$js7Job.timeoutMillis orElse "" """),
+      // JOB_SIGKILL_DELAY will be unset because sigkillDelayMillis returns NullValue
+      "JOB_SIGKILL_DELAY"   -> expr("""$js7Job.sigkillDelayMillis """),
+      "JOB_EXECUTION_COUNT" -> expr("$js7JobExecutionCount"),
+      "CONTROLLER_ID"       -> expr("$js7ControllerId"),
+      "SCHEDULED_DATE"      -> expr("scheduledOrEmpty(format='yyyy-MM-dd HH:mm:ssZ')"),
+      "JOBSTART_DATE"       -> expr("now(format='yyyy-MM-dd HH:mm:ssZ')"),
+      "JOB_RESOURCE_VARIABLE" -> expr("JobResource:JOB-RESOURCE:VARIABLE"))
 
     "Special variables in InternalExecutable arguments" in {
       testWithSpecialVariables(
@@ -307,7 +310,7 @@ final class ExecuteTest extends OurTestSuite with ControllerAgentForScalaTest
     "Special variables in env expressions" in {
       val script =
         if (isWindows)
-          """@echo off
+          s"""@echo off
             |echo ORDER_ID=%ORDER_ID% >>%JS7_RETURN_VALUES%
             |echo WORKFLOW_NAME=%WORKFLOW_NAME% >>%JS7_RETURN_VALUES%
             |echo WORKFLOW_POSITION=%WORKFLOW_POSITION% >>%JS7_RETURN_VALUES%
@@ -319,32 +322,41 @@ final class ExecuteTest extends OurTestSuite with ControllerAgentForScalaTest
             |echo SCHEDULED_DATE=%SCHEDULED_DATE% >>%JS7_RETURN_VALUES%
             |echo JOBSTART_DATE=%JOBSTART_DATE% >>%JS7_RETURN_VALUES%
             |echo JOB_RESOURCE_VARIABLE=%JOB_RESOURCE_VARIABLE% >>%JS7_RETURN_VALUES%
+            |if defined $deletedEnvName (
+            |  echo $deletedEnvName=%$deletedEnvName% >>%JS7_RETURN_VALUES%
+            |) else (
+            |  echo $deletedEnvName=UNSET >>%JS7_RETURN_VALUES%
+            |)
             |""".stripMargin
         else
-          """#!/usr/bin/env bash
+          s"""#!/usr/bin/env bash
             |set -euo pipefail
-            |if [ "${JOB_SIGKILL_DELAY-UNSET}" != "UNSET" ]; then
+            |if [ "$${JOB_SIGKILL_DELAY-UNSET}" != "UNSET" ]; then
             |  echo JOB_SIGKILL_DELAY should be unset
             |  exit 1
             |fi
-            |( echo "ORDER_ID=$ORDER_ID"
-            |  echo "WORKFLOW_NAME=$WORKFLOW_NAME"
-            |  echo "WORKFLOW_POSITION=$WORKFLOW_POSITION"
-            |  echo "LABEL=$LABEL"
-            |  echo "JOB_NAME=$JOB_NAME"
-            |  echo "JOB_TIMEOUT=$JOB_TIMEOUT"
-            |  echo "JOB_EXECUTION_COUNT=$JOB_EXECUTION_COUNT"
-            |  echo "CONTROLLER_ID=$CONTROLLER_ID"
-            |  echo "SCHEDULED_DATE=$SCHEDULED_DATE"
-            |  echo "JOBSTART_DATE=$JOBSTART_DATE"
-            |  echo "JOB_RESOURCE_VARIABLE=$JOB_RESOURCE_VARIABLE"
-            |)>>"$JS7_RETURN_VALUES"
+            |( echo "ORDER_ID=$$ORDER_ID"
+            |  echo "WORKFLOW_NAME=$$WORKFLOW_NAME"
+            |  echo "WORKFLOW_POSITION=$$WORKFLOW_POSITION"
+            |  echo "LABEL=$$LABEL"
+            |  echo "JOB_NAME=$$JOB_NAME"
+            |  echo "JOB_TIMEOUT=$$JOB_TIMEOUT"
+            |  echo "JOB_EXECUTION_COUNT=$$JOB_EXECUTION_COUNT"
+            |  echo "CONTROLLER_ID=$$CONTROLLER_ID"
+            |  echo "SCHEDULED_DATE=$$SCHEDULED_DATE"
+            |  echo "JOBSTART_DATE=$$JOBSTART_DATE"
+            |  echo "JOB_RESOURCE_VARIABLE=$$JOB_RESOURCE_VARIABLE"
+            |  echo "$deletedEnvName=$${$deletedEnvName-UNSET}"
+            |)>>"$$JS7_RETURN_VALUES"
             |""".stripMargin
 
-      testWithSpecialVariables(ShellScriptExecutable(script, env = nameToExpression))
+      val result = testWithSpecialVariables(ShellScriptExecutable(
+        script,
+        env = nameToExpression.updated(deletedEnvName, expr("null"))))
+      assert(result.get(deletedEnvName) == Some(StringValue("UNSET")))
     }
 
-    def testWithSpecialVariables(executable: Executable): Unit = {
+    def testWithSpecialVariables(executable: Executable): NamedValues = {
       val versionId = versionIdIterator.next()
       val workflowId = workflowPathIterator.next() ~ versionId
       val jobName = WorkflowJob.Name("TEST-JOB")
@@ -374,7 +386,7 @@ final class ExecuteTest extends OurTestSuite with ControllerAgentForScalaTest
         case _: ProcessExecutable => StringValue(number.toString)  // JS7_RETURN_VALUES contains strings
         case _ => NumberValue(number)
       }
-      assert(namedValues - "SCHEDULED_DATE" - "JOBSTART_DATE" - "returnCode" ==
+      assert(namedValues - "SCHEDULED_DATE" - "JOBSTART_DATE" - "returnCode"  - deletedEnvName ==
         NamedValues(
           "ORDER_ID" -> StringValue(order.id.string),
           "WORKFLOW_NAME" -> StringValue(workflow.path.string),
@@ -385,6 +397,7 @@ final class ExecuteTest extends OurTestSuite with ControllerAgentForScalaTest
           "JOB_EXECUTION_COUNT" -> numberValue(1),
           "CONTROLLER_ID" -> StringValue("Controller"),
           "JOB_RESOURCE_VARIABLE" -> StringValue("JOB-RESOURCE-VARIABLE-VALUE")))
+      namedValues
     }
 
     "$js7JobExecutionCount" in {
