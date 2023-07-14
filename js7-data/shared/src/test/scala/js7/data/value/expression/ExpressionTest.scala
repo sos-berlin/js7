@@ -3,8 +3,10 @@ package js7.data.value.expression
 import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurTestSuite
 import js7.data.job.JobResourcePath
+import js7.data.value.Value.convenience.*
 import js7.data.value.ValueType.{MissingValueProblem, UnexpectedValueTypeProblem}
 import js7.data.value.expression.Expression.*
+import js7.data.value.expression.Expression.convenience.*
 import js7.data.value.expression.ExpressionParser.{parseExpression, parseExpressionOrFunction}
 import js7.data.value.expression.scopes.NameToCheckedValueScope
 import js7.data.value.{BooleanValue, ListValue, NullValue, NumberValue, ObjectValue, StringValue, Value}
@@ -24,19 +26,19 @@ final class ExpressionTest extends OurTestSuite
 
         override def symbolToValue(symbol: String) =
           symbol match {
-            case "catchCount" => Some(Right(NumberValue(3)))
+            case "catchCount" => Some(Right(3))
             case _ => None
           }
 
         override lazy val nameToCheckedValue =
           MapView(
             "ASTRING" -> Right(StringValue("AA")),
-            "ANUMBER" -> Right(NumberValue(7)),
+            "ANUMBER" -> Right(7),
             "ABOOLEAN" -> Right(BooleanValue(true)),
-            "returnCode" -> Right(NumberValue(1)),
+            "returnCode" -> Right(1),
             "myObject" -> Right(ObjectValue(Map(
                 "myField" -> ObjectValue(Map(
-                  "a" -> NumberValue(1)))))))
+                  "a" -> 1))))))
 
         override def findValue(search: ValueSearch) =
           search match {
@@ -65,14 +67,14 @@ final class ExpressionTest extends OurTestSuite
                 .get(name)
                 .map(o => Right(StringValue(o)))
 
-            case o =>
+            case _ =>
               None
           }
 
         override def evalFunctionCall(functionCall: FunctionCall)(implicit scope: Scope) =
           functionCall match {
             case FunctionCall("myFunction", Seq(Argument(expr, None))) =>
-             Some(expr.eval.flatMap(_.asNumber).map(n => NumberValue(n * 3)))
+             Some(expr.eval.flatMap(_.asNumber).map(n => n * 3))
 
             case _ => None
           }
@@ -88,213 +90,213 @@ final class ExpressionTest extends OurTestSuite
             case _ => None
           }
       }
-    val booleanError: BooleanExpression = LessThan(ToNumber(StringConstant("X")), NumericConstant(7))
+    val booleanError: BooleanExpression = LessThan(ToNumber("X"), 7)
 
     testEval("7",
-      result = 7,
-      Right(NumericConstant(7)))
+      result = Right(7),
+      7)
 
     testEval(Long.MinValue.toString,
-      result = Long.MinValue,
-      Right(NumericConstant(Long.MinValue)))
+      result = Right(Long.MinValue),
+      Long.MinValue)
 
     testEval("-1.111222333444555666777888999",
-      result = BigDecimal("-1.111222333444555666777888999"),
-      Right(NumericConstant(BigDecimal("-1.111222333444555666777888999"))))
+      result = Right(BigDecimal("-1.111222333444555666777888999")),
+      BigDecimal("-1.111222333444555666777888999"))
 
     testEval(""" "" """,
-      result = "",
-      Right(StringConstant("")))
+      result = Right(""),
+      "")
 
     testEval( """ "\\" """,
-      result = "\\",
-      Right(StringConstant("\\")))
+      result = Right("\\"),
+      "\\")
 
     testEval("{a: 'AAA'}.a",
-      result = "AAA",
-      Right(DotExpression(ObjectExpression(Map("a" -> StringConstant("AAA"))), "a")))
+      result = Right("AAA"),
+      DotExpression(ObjectExpression(Map("a" -> "AAA")), "a"))
 
     testEval(""""-->$ASTRING${ABOOLEAN}$(100 + $ANUMBER)<--"""",
-      result = "-->AAtrue107<--",
-      Right(InterpolatedString(List(
-        StringConstant("-->"),
+      result = Right("-->AAtrue107<--"),
+      InterpolatedString(List(
+        "-->",
         NamedValue("ASTRING"),
         NamedValue("ABOOLEAN"),
-        Add(NumericConstant(100), NamedValue("ANUMBER")),
-        StringConstant("<--")))))
+        Add(100, NamedValue("ANUMBER")),
+        "<--")))
 
     testEval(""" "x" """,
-      result = "x",
-      Right(StringConstant("x")))
+      result = Right("x"),
+      "x")
 
     testEval(""" 'a\x' """,
-      result = "a\\x",
-      Right(StringConstant("a\\x")))
+      result = Right("a\\x"),
+      "a\\x")
 
     testEval("false",
-      result = false,
-      Right(BooleanConstant(false)))
+      result = Right(false),
+      false)
 
     testEval("true",
-      result = true,
-      Right(BooleanConstant(true)))
+      result = Right(true),
+      true)
 
     locally {
       val number = "-111222333444555666777888999000111222333444555666777888999000"
       testEval(number,
-        result = Right(NumberValue(BigDecimal(number))),
-        Right(NumericConstant(BigDecimal(number))))
+        result = Right(BigDecimal(number)),
+        BigDecimal(number))
     }
 
     testEval("$ASTRING",
-      result = "AA",
-      Right(NamedValue("ASTRING")))
+      result = Right("AA"),
+      NamedValue("ASTRING"))
 
     testEval("${ASTRING}",
-      result = "AA",
-      Right(NamedValue("ASTRING")))
+      result = Right("AA"),
+      NamedValue("ASTRING"))
 
     testEval("JobResource:myJobResource:VARIABLE",
-      result = "myJobResource,VARIABLE,value",
-      Right(JobResourceVariable(JobResourcePath("myJobResource"), Some("VARIABLE"))))
+      result = Right("myJobResource,VARIABLE,value"),
+      JobResourceVariable(JobResourcePath("myJobResource"), Some("VARIABLE")))
 
     testEval("JobResource:JOB-RESOURCE:`VARIABLE-NAME`",
-      result = "JOB-RESOURCE,VARIABLE-NAME,value",
-      Right(JobResourceVariable(JobResourcePath("JOB-RESOURCE"), Some("VARIABLE-NAME"))))
+      result = Right("JOB-RESOURCE,VARIABLE-NAME,value"),
+      JobResourceVariable(JobResourcePath("JOB-RESOURCE"), Some("VARIABLE-NAME")))
 
     //testEval("${label::LABEL.KEY}",
-    //  result = "LABEL-VALUE",
-    //  Right(NamedValue(NamedValue.ByLabel(Label("LABEL")), StringConstant("KEY"))))
+    //  result = Right("LABEL-VALUE"),
+    //  Right(NamedValue(NamedValue.ByLabel(Label("LABEL")), ("KEY"))))
     //
     //testEval("${job::JOB.KEY}",
-    //  result = "JOB-VALUE",
-    //  Right(NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name("JOB")), StringConstant("KEY"))))
+    //  result = Right("JOB-VALUE"),
+    //  Right(NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name("JOB")), ("KEY"))))
 
     testEval("$UNKNOWN",
       result = Left(Problem("No such named value: UNKNOWN")),
-      Right(NamedValue("UNKNOWN")))
+      NamedValue("UNKNOWN"))
 
     testEval("""variable("ASTRING")""",
-      result = "AA",
-      Right(NamedValue("ASTRING")))
+      result = Right("AA"),
+      NamedValue("ASTRING"))
 
     testEval("""variable(key="ASTRING")""",
-      result = "AA",
-      Right(NamedValue("ASTRING")))
+      result = Right("AA"),
+      NamedValue("ASTRING"))
 
     testEval("""variable("UNKNOWN")""",
       result = Left(Problem("No such named value: UNKNOWN")),
-      Right(NamedValue("UNKNOWN")))
+      NamedValue("UNKNOWN"))
 
     testEval("""variable("UNKNOWN", default="DEFAULT")""",
-      result = "DEFAULT",
-      Right(NamedValue("UNKNOWN", StringConstant("DEFAULT"))))
+      result = Right("DEFAULT"),
+      NamedValue("UNKNOWN", "DEFAULT"))
 
     testEval("""variable(job=JOB, key="UNKNOWN", default="DEFAULT")""",
-      result = "DEFAULT",
-      Right(NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name("JOB")), StringConstant("UNKNOWN"), Some(StringConstant("DEFAULT")))))
+      result = Right("DEFAULT"),
+      NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name("JOB")), "UNKNOWN", Some("DEFAULT")))
 
     testEval("""variable(label=LABEL, key="UNKNOWN", default="DEFAULT")""",
-      result = "DEFAULT",
-      Right(NamedValue(NamedValue.ByLabel("LABEL"), StringConstant("UNKNOWN"), Some(StringConstant("DEFAULT")))))
+      result = Right("DEFAULT"),
+      NamedValue(NamedValue.ByLabel("LABEL"), "UNKNOWN", Some("DEFAULT")))
 
     testEval("""argument("ARG")""",
-      result = "ARG-VALUE",
-      Right(NamedValue(NamedValue.Argument, StringConstant("ARG"))))
+      result = Right("ARG-VALUE"),
+      NamedValue(NamedValue.Argument, "ARG"))
 
     testEval("""argument(key="ARG")""",
-      result = "ARG-VALUE",
-      Right(NamedValue(NamedValue.Argument, StringConstant("ARG"))))
+      result = Right("ARG-VALUE"),
+      NamedValue(NamedValue.Argument, "ARG"))
 
     testEval("""argument("UNKNOWN", default="DEFAULT")""",
-      result = "DEFAULT",
-      Right(NamedValue(NamedValue.Argument, StringConstant("UNKNOWN"), Some(StringConstant("DEFAULT")))))
+      result = Right("DEFAULT"),
+      NamedValue(NamedValue.Argument, "UNKNOWN", Some("DEFAULT")))
 
     testEval("""variable(key="returnCode", label=LABEL)""",
-      result = 2,
-      Right(NamedValue(NamedValue.ByLabel("LABEL"), StringConstant("returnCode"))))
+      result = Right(2),
+      NamedValue(NamedValue.ByLabel("LABEL"), "returnCode"))
 
     testEval("""variable(key="returnCode", job=JOB)""",
-      result = 3,
-      Right(NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name("JOB")), StringConstant("returnCode"))))
+      result = Right(3),
+      NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name("JOB")), "returnCode"))
 
     testEval("""toNumber($ASTRING)""",
       result = Left(Problem("Not a valid number: AA")),
-      Right(ToNumber(NamedValue("ASTRING"))))
+      ToNumber(NamedValue("ASTRING")))
 
     testEval("""toNumber('123')""",
-      result = 123,
-      Right(ToNumber(StringConstant("123"))))
+      result = Right(123),
+      ToNumber("123"))
 
     testEval("""$ASTRING.toNumber""",
       result = Left(Problem("Not a valid number: AA")),
-      Right(ToNumber(NamedValue("ASTRING"))))
+      ToNumber(NamedValue("ASTRING")))
 
     testEval("""$ANUMBER""",
-      result = 7,
-      Right(NamedValue("ANUMBER")))
+      result = Right(7),
+      NamedValue("ANUMBER"))
 
     testEval("""$myObject""",
-      result = Right(ObjectValue(Map("myField" -> ObjectValue(Map("a" -> NumberValue(1)))))),
-      Right(NamedValue("myObject")))
+      result = Right(ObjectValue(Map("myField" -> ObjectValue(Map("a" -> 1))))),
+      NamedValue("myObject"))
 
     testEval("""3 + $myObject.myField.a""",
-      result = 4,
-      Right(Add(
-        NumericConstant(3),
-        DotExpression(DotExpression(NamedValue("myObject"), "myField"), "a"))))
+      result = Right(4),
+      Add(
+        3,
+        DotExpression(DotExpression(NamedValue("myObject"), "myField"), "a")))
 
     testEval(""""$($myObject.myField.a)"""",
-      result = "1",
-      Right(InterpolatedString(List(
-        DotExpression(DotExpression(NamedValue("myObject"), "myField"), "a")))))
+      result = Right("1"),
+      InterpolatedString(List(
+        DotExpression(DotExpression(NamedValue("myObject"), "myField"), "a"))))
 
     testEval(""""$ANUMBER-$($myObject.myField.a)"""",
-      result = "7-1",
-      Right(InterpolatedString(List(
+      result = Right("7-1"),
+      InterpolatedString(List(
         NamedValue("ANUMBER"),
-        StringConstant("-"),
-        DotExpression(DotExpression(NamedValue("myObject"), "myField"), "a")))))
+        "-",
+        DotExpression(DotExpression(NamedValue("myObject"), "myField"), "a"))))
 
     testEval(""""${myObject.myField.a}"""",
-      result = "1",
-      Right(InterpolatedString(List(
-        DotExpression(DotExpression(NamedValue("myObject"), "myField"), "a")))))
+      result = Right("1"),
+      InterpolatedString(List(
+        DotExpression(DotExpression(NamedValue("myObject"), "myField"), "a"))))
 
     testEval("""toBoolean('true')""",
-      result = true,
-      Right(ToBoolean(StringConstant("true"))))
+      result = Right(true),
+      ToBoolean("true"))
 
     testEval("""toBoolean('false')""",
-      result = false,
-      Right(ToBoolean(StringConstant("false"))))
+      result = Right(false),
+      ToBoolean("false"))
 
     testEval("""mkString(123)""",
-      result = "123",
-      Right(MkString(NumericConstant(123))))
+      result = Right("123"),
+      MkString(123))
 
     testEval("""mkString([$ANUMBER, "-", true])""",
-      result = "7-true",
-      Right(MkString(ListExpression(List(
+      result = Right("7-true"),
+      MkString(ListExpression(List(
         NamedValue("ANUMBER"),
-        StringConstant("-"),
-        BooleanConstant(true))))))
+        "-",
+        true))))
 
     testEval("stripMargin('  |ONE\n  |TWO')",
-      result = "ONE\nTWO",
-      Right(StripMargin(StringConstant("  |ONE\n  |TWO"))))
+      result = Right("ONE\nTWO"),
+      StripMargin("  |ONE\n  |TWO"))
 
     testEval(""""true".toBoolean""",
-      result = true,
-      Right(ToBoolean(StringConstant("true"))))
+      result = Right(true),
+      ToBoolean("true"))
 
     testEval(""""false".toBoolean""",
-      result = false,
-      Right(ToBoolean(StringConstant("false"))))
+      result = Right(false),
+      ToBoolean("false"))
 
     testEval(""" variable("ABOOLEAN")""",
-      result = true,
-      Right(NamedValue("ABOOLEAN")))
+      result = Right(true),
+      NamedValue("ABOOLEAN"))
 
     locally {
       val longString =
@@ -304,278 +306,316 @@ final class ExpressionTest extends OurTestSuite
            |"""
       testEval(
         s"'$longString'.stripMargin",
-        result = longString.stripMargin,
-        Right(StripMargin(StringConstant(longString))))
+        result = Right(longString.stripMargin),
+        StripMargin(longString))
     }
 
     testEval("""$returnCode == 1""",
-      result = true,
-      Right(Equal(LastReturnCode, NumericConstant(1))))
+      result = Right(true),
+      Equal(LastReturnCode, 1))
 
     testEval("""$returnCode == 0""",
-      result = false,
-      Right(Equal(LastReturnCode, NumericConstant(0))))
+      result = Right(false),
+      Equal(LastReturnCode, 0))
 
     testEval("""$returnCode >= 1""",
-      result = true,
-      Right(GreaterOrEqual(LastReturnCode, NumericConstant(1))))
+      result = Right(true),
+      GreaterOrEqual(LastReturnCode, 1))
 
     testEval("""$returnCode <= 1""",
-      result = true,
-      Right(LessOrEqual(LastReturnCode, NumericConstant(1))))
+      result = Right(true),
+      LessOrEqual(LastReturnCode, 1))
 
     testEval("""$returnCode > 1""",
-      result = false,
-      Right(GreaterThan(LastReturnCode, NumericConstant(1))))
+      result = Right(false),
+      GreaterThan(LastReturnCode, 1))
 
-    testEval("""$returnCode < 1""", false,
-      Right(LessThan(LastReturnCode, NumericConstant(1))))
+    testEval("""$returnCode < 1""",
+      result = Right(false),
+      LessThan(LastReturnCode, 1))
 
     testEval("""$returnCode * 3 == 3""",
-      result = true,
-      Right(Equal(Multiply(LastReturnCode, NumericConstant(3)), NumericConstant(3))))
+      result = Right(true),
+      Equal(Multiply(LastReturnCode, 3), 3))
 
     testEval("""1 / 3""",
-      result = Right(NumberValue(BigDecimal("0.3333333333333333333333333333333333"))),
-      Right(Divide(NumericConstant(1), NumericConstant(3))))
-
-    testEval("""6 / 3?""",
-      result = Right(NumberValue(2)),
-      Right(OrNull(Divide(NumericConstant(6), NumericConstant(3)))))
+      result = Right(BigDecimal("0.3333333333333333333333333333333333")),
+      Divide(1, 3))
 
     testEval("""1 / 0""",
       result = Left(Problem("java.lang.ArithmeticException: Division by zero")),
-      Right(Divide(NumericConstant(1), NumericConstant(0))))
-
-    // Question mark operator applys to the whole preceeding expression (applies not to 0)
-    testEval("""1 / 0?""",
-      result = Right(NullValue),
-      Right(OrNull(Divide(NumericConstant(1), NumericConstant(0)))))
-
-    testEval("""1 / 0 orElse -1""",
-      result = Right(NumberValue(-1)),
-      Right(OrElse(Divide(NumericConstant(1), NumericConstant(0)), NumericConstant(-1))))
-
-    testEval("""1 / 0 ? -1""",
-      result = Right(NumberValue(-1)),
-      Right(OrElse(Divide(NumericConstant(1), NumericConstant(0)), NumericConstant(-1))))
-
-    testEval("""7 in [ 1 / 0 ] orElse $unknown orElse -1""",
-      result = Right(NumberValue(-1)),
-      Right(
-        OrElse(
-          OrElse(
-            In(
-              NumericConstant(7),
-              ListExpression(List(
-                Divide(NumericConstant(1), NumericConstant(0))))),
-            NamedValue("unknown")),
-          NumericConstant(-1))))
-
-    testEval("""7 in [ 1 / 0 ] ? $unknown ? -1""",
-      result = Right(NumberValue(-1)),
-      Right(
-        OrElse(
-          OrElse(
-            In(
-              NumericConstant(7),
-              ListExpression(List(
-                Divide(NumericConstant(1), NumericConstant(0))))),
-            NamedValue("unknown")),
-          NumericConstant(-1))))
-
-    testEval("""7 in [ 1 / 0 ] ?""",
-      result = Right(NullValue),
-      Right(OrNull(
-        In(
-          NumericConstant(7),
-          ListExpression(List(
-            Divide(NumericConstant(1), NumericConstant(0))))))))
+      Divide(1, 0))
 
     testEval("""100 + 2 * 3 - 12 / 3""",
-      result = Right(NumberValue(100 + 2 * 3 - 12 / 3)),
-      Right(
-        Substract(
-          Add(
-            NumericConstant(100),
-            Multiply(NumericConstant(2), NumericConstant(3))),
-          Divide(NumericConstant(12), NumericConstant(3)))))
+      result = Right(100 + 2 * 3 - 12 / 3),
+      Substract(
+        Add(100, Multiply(2, 3)),
+        Divide(12, 3)))
 
     testEval("""$returnCode + 0 == 1""",
-      result = true,
-      Right(Equal(Add(LastReturnCode, NumericConstant(0)), NumericConstant(1))))
+      result = Right(true),
+      Equal(Add(LastReturnCode, 0), 1))
 
     testEval("""$returnCode + 1 == 2""",
-      result = true,
-      Right(Equal(Add(LastReturnCode, NumericConstant(1)), NumericConstant(2))))
+      result = Right(true),
+      Equal(Add(LastReturnCode, 1), 2))
 
     testEval("""$returnCode - 3""",
-      result = -2,
-      Right(Substract(LastReturnCode, NumericConstant(3))))
+      result = Right(-2),
+      Substract(LastReturnCode, 3))
 
     testEval("""'->' ++ $returnCode ++ '<-'""",
-      result = "->1<-",
-      Right(Concat(Concat(StringConstant("->"), LastReturnCode), StringConstant("<-"))))
+      result = Right("->1<-"),
+      Concat(Concat("->", LastReturnCode), "<-"))
 
     testEval("""catchCount""",
-      result = 3,
-      Right(OrderCatchCount))
+      result = Right(3),
+      OrderCatchCount)
 
     testEval(""" "" matches "" """,
-      result = true,
-      Right(Matches(StringConstant(""), StringConstant(""))))
+      result = Right(true),
+      Matches("", ""))
 
     testEval(""" "" matches "A.+" """,
-      result = false,
-      Right(Matches(StringConstant(""), StringConstant("A.+"))))
+      result = Right(false),
+      Matches("", "A.+"))
 
     testEval(""" "A" matches "A.+" """,
-      result = false,
-      Right(Matches(StringConstant("A"), StringConstant("A.+"))))
+      result = Right(false),
+      Matches("A", "A.+"))
 
     testEval(""" "-A-" matches "A.+" """,
-      result = false,
-      Right(Matches(StringConstant("-A-"), StringConstant("A.+"))))
+      result = Right(false),
+      Matches("-A-", "A.+"))
 
     testEval(""" "A--" matches "A.+" """,
-      result = true,
-      Right(Matches(StringConstant("A--"), StringConstant("A.+"))))
+      result = Right(true),
+      Matches("A--", "A.+"))
 
     testEval(""" "A-" matches "A.+" """,
-      result = true,
-      Right(Matches(StringConstant("A-"), StringConstant("A.+"))))
+      result = Right(true),
+      Matches("A-", "A.+"))
 
     testEval(""" variable("ASTRING") matches "A+" """,
-      result = true,
-      Right(Matches(NamedValue("ASTRING"), StringConstant("A+"))))
+      result = Right(true),
+      Matches(NamedValue("ASTRING"), "A+"))
 
     testEval("!false",
-      result = true,
-      Right(Not(BooleanConstant(false))))
+      result = Right(true),
+      Not(false))
 
     testEval("! true",
-      result = false,
-      Right(Not(BooleanConstant(true))))
+      result = Right(false),
+      Not(true))
 
     testEval("!!true",
-      result = true,
-      Right(Not(Not(BooleanConstant(true)))))
+      result = Right(true),
+      Not(Not(true)))
 
     testEval("$returnCode >= 1 && !($returnCode <= 9) && $returnCode != 1",
-      result = false,
-      Right(
+      result = Right(false),
+      And(
         And(
-          And(
-            GreaterOrEqual(LastReturnCode, NumericConstant(1)),
-            Not(LessOrEqual(LastReturnCode, NumericConstant(9)))),
-          NotEqual(LastReturnCode, NumericConstant(1)))))
+          GreaterOrEqual(LastReturnCode, 1),
+          Not(LessOrEqual(LastReturnCode, 9))),
+        NotEqual(LastReturnCode, 1)))
 
     testEval("$returnCode in [1, 2, 3]",
-      result = true,
-      Right(
-        In(LastReturnCode, ListExpression(List(NumericConstant(1), NumericConstant(2), NumericConstant(3))))))
+      result = Right(true),
+      In(LastReturnCode, ListExpression(List(1, 2, 3))))
 
     testEval(""" myFunction(7) """,
-      result = 21,
-      Right(FunctionCall("myFunction", Seq(Argument(NumericConstant(7))))))
+      result = Right(21),
+      FunctionCall("myFunction", Seq(Argument(7))))
 
     "objectExpression" in {
-      val expr = Map(
-        "A" -> NumericConstant(1),
-        "B" -> StringConstant("BBB"),
-        "LIST" -> ListExpression(List(NumericConstant(1), NumericConstant(2), NumericConstant(3))))
+      val expr = Map[String, Expression](
+        "A" -> 1,
+        "B" -> "BBB",
+        "LIST" -> ListExpression(List(1, 2, 3)))
       assert(scope.evalExpressionMap(expr) ==
-        Right(Map(
-          "A" -> NumberValue(1),
-          "B" -> StringValue("BBB"),
-          "LIST" -> ListValue(List(NumberValue(1), NumberValue(2), NumberValue(3))))),
-        Right(
-          In(LastReturnCode, ListExpression(List(NumericConstant(1), NumericConstant(2), NumericConstant(3))))))
+        Right(Map[String, Value](
+          "A" -> 1,
+          "B" -> "BBB",
+          "LIST" -> ListValue(List[Value](1, 2, 3)))),
+        In(LastReturnCode, ListExpression(List(1, 2, 3))))
     }
 
     //testEval("""{"A": 1, "B": "BBB", "LIST": [1, 2, 3]}""",
     //  result = Right(ObjectValue(Map(
-    //    "A" -> NumberValue(1),
+    //    "A" -> (1),
     //    "B" -> StringValue("BBB"),
-    //    "LIST" -> ListValue(List(NumberValue(1), NumberValue(2), NumberValue(3)))))),
-    //  Right(
-    //    In(LastReturnCode, ListExpression(List(NumericConstant(1), NumericConstant(2), NumericConstant(3))))))
+    //    "LIST" -> ListValue(List((1), (2), (3)))))),
+    //  In(LastReturnCode, ListExpression(List((1), (2), (3)))))
 
     "Equal" in {
       forAll((a: Int, b: Int) => assert(
-        Equal(NumericConstant(a), NumericConstant(b)).eval == Right(BooleanValue(a == b))))
-      assert((Equal(NumericConstant(1), StringConstant("1"))).eval == Right(BooleanValue(false)))
+        Equal(a, b).eval == Right(BooleanValue(a == b))))
+      assert(Equal(1, "1").eval == Right(BooleanValue(false)))
     }
 
     "NotEqual" in {
       forAll((a: Int, b: Int) => assert(
-        NotEqual(NumericConstant(a), NumericConstant(b)).eval == Right(BooleanValue(a != b))))
-      assert((NotEqual(NumericConstant(1), StringConstant("1"))).eval == Right(BooleanValue(true)))
+        NotEqual(a, b).eval == Right(BooleanValue(a != b))))
+      assert(NotEqual(1, "1").eval == Right(BooleanValue(true)))
     }
 
     "LessOrEqual" in {
       forAll((a: Int, b: Int) => assert(
-        LessOrEqual(NumericConstant(a), NumericConstant(b)).eval == Right(BooleanValue(a <= b))))
+        LessOrEqual(a, b).eval == Right(BooleanValue(a <= b))))
     }
 
     "GreaterOrEqual" in {
       forAll((a: Int, b: Int) => assert(
-        GreaterOrEqual(NumericConstant(a), NumericConstant(b)).eval == Right(BooleanValue(a >= b))))
+        GreaterOrEqual(a, b).eval == Right(BooleanValue(a >= b))))
     }
 
     "LessThan" in {
       forAll((a: Int, b: Int) => assert(
-        LessThan(NumericConstant(a), NumericConstant(b)).eval == Right(BooleanValue(a < b))))
+        LessThan(a, b).eval == Right(BooleanValue(a < b))))
     }
 
     "GreaterThan" in {
       forAll((a: Int, b: Int) => assert(
-        GreaterThan(NumericConstant(a), NumericConstant(b)).eval == Right(BooleanValue(a > b))))
+        GreaterThan(a, b).eval == Right(BooleanValue(a > b))))
     }
 
     "In" in {
       forAll((a: Int, b: Int, c: Int, d: Int) => assert(
-        In(NumericConstant(a), ListExpression(NumericConstant(b) :: NumericConstant(c) :: NumericConstant(d) :: Nil)).eval
+        In(a, ListExpression(List(b, c, d))).eval
           == Right(BooleanValue(Set(b, c, d)(a)))))
     }
 
+    "OrNull, OrElse" - {
+      testEval("missing ?",
+        result = Right(NullValue),
+        OrNull(MissingConstant))
+
+      testEval("missing ? 7 + 3",
+        result = Right(7 + 3),
+        Add(
+          OrElse(MissingConstant, 7),
+          3))
+
+      testEval("$unknown ? 7 + 3",
+        result = Right(7 + 3),
+        Add(
+          OrElse(NamedValue("unknown"), 7),
+          3))
+
+      testEval("1 + 2 ? 7 + 3",
+        result = Right(1 + 2 + 3),
+        Add(
+          Add(
+            1,
+            OrElse(2, 7)),
+          3))
+
+      testEval("1 + (2 ? 7) + 3",
+        result = Right(1 + 2 + 3),
+        Add(
+          Add(1, OrElse(2, 7)),
+          3))
+
+      testEval("""missing? ?""",
+        result = Right(NullValue),
+        OrNull(OrNull(MissingConstant)))
+
+      testEval("""missing? ? 7""",
+        result = Right(7),
+        OrElse(OrNull(MissingConstant), 7))
+
+      // Reserve ?? for future use
+      testSyntaxError("""missing ??""", Problem(
+        "Error in expression: Parsing failed at position 10 “missing ?❓?” · Unexpected “?”"))
+
+      testEval("""(missing?)?""",
+        result = Right(NullValue),
+        OrNull(OrNull(MissingConstant)))
+
+      testEval("null?",
+        result = Right(NullValue),
+        OrNull(NullConstant))
+
+      testEval("null ? 7 + 3",
+        result = Right(7 + 3),
+        Add(
+          OrElse(NullConstant, 7),
+          3))
+
+      testEval("""6 / 3?""",
+        result = Right(2),
+        Divide(6, OrNull(3)))
+
+      testEval("""(1 / 0)?""",
+        result = Right(NullValue),
+        OrNull(Divide(1, 0)))
+
+      testEval("""(1 / 0) ? -1""",
+        result = Right(-1),
+        OrElse(Divide(1, 0), -1))
+
+      testEval("""(7 in [ 1 / 0 ]) ? $unknown ? -1""",
+        result = Right(-1),
+        OrElse(
+          OrElse(
+            In(
+              7,
+              ListExpression(List(Divide(1, 0)))),
+            NamedValue("unknown")),
+          -1))
+
+      testEval("""$aUnknown ? $bUnknown ? """,
+        result = Right(NullValue),
+        OrNull(
+          OrElse(
+            NamedValue("aUnknown"),
+            NamedValue("bUnknown"))))
+    }
+
+
     "Not" in {
       forAll((bool: Boolean) => assert(
-        Not(BooleanConstant(bool)).eval == Right(BooleanValue(!bool))))
+        Not(bool).eval == Right(BooleanValue(!bool))))
     }
 
     "And" in {
       forAll((a: Boolean, b: Boolean) => assert(
-        And(BooleanConstant(a), BooleanConstant(b)).eval == Right(BooleanValue(a && b))))
+        And(a, b).eval == Right(BooleanValue(a && b))))
     }
 
+    testEval("""true || false && 3 == 4 < 5 + 6 * 7 ? 8""",
+      result = Right(BooleanValue(true)),
+      Or(true, And(false, Equal(3, LessThan(4, Add(5, Multiply(6, OrElse(7, 8))))))))
+
+
     "And is lazy" in {
-      assert(And(BooleanConstant(true), booleanError).eval == Left(Problem("Not a valid number: X")))
-      assert(And(BooleanConstant(false), booleanError).eval == Right(BooleanValue(false)))
+      assert(And(true, booleanError).eval == Left(Problem("Not a valid number: X")))
+      assert(And(false, booleanError).eval == Right(BooleanValue(false)))
     }
 
     "Or" in {
       forAll((a: Boolean, b: Boolean) => assert(
-        Or(BooleanConstant(a), BooleanConstant(b)).eval == Right(BooleanValue(a || b))))
+        Or(a, b).eval == Right(BooleanValue(a || b))))
     }
 
     "Or is lazy" in {
-      assert(Or(BooleanConstant(true), booleanError).eval == Right(BooleanValue(true)))
-      assert(Or(BooleanConstant(false), booleanError).eval == Left(Problem("Not a valid number: X")))
+      assert(Or(true, booleanError).eval == Right(BooleanValue(true)))
+      assert(Or(false, booleanError).eval == Left(Problem("Not a valid number: X")))
     }
 
     "And and LessThan" in {
-      assert(And(LessThan(NumericConstant(1), NumericConstant(2)), LessThan(NumericConstant(1), ToNumber(StringConstant("7")))).eval ==
+      assert(And(LessThan(1, 2), LessThan(1, ToNumber("7"))).eval ==
         Right(BooleanValue(true)))
     }
 
     "replaceAll" in {
-      assert(ReplaceAll(StringConstant("abcdef"), StringConstant("([ae])"), StringConstant("($1)")).eval
+      assert(ReplaceAll("abcdef", "([ae])", "($1)").eval
         == Right(StringValue("(a)bcd(e)f")))
     }
 
     "mkString" in {
-      assert(MkString(ListExpression(StringConstant("»") :: NamedValue("ASTRING") :: NumericConstant(7) :: Nil)).eval
+      assert(MkString(ListExpression(List("»", NamedValue("ASTRING"), 7))).eval
         == Right(StringValue("»AA7")))
     }
   }
@@ -585,72 +625,30 @@ final class ExpressionTest extends OurTestSuite
 
     testEval("missing",
       result = Left(MissingValueProblem("missing")),
-      Right(MissingConstant))
+      MissingConstant)
 
     testEval("missing?",
       result = Right(NullValue),
-      Right(OrNull(MissingConstant)))
+      OrNull(MissingConstant))
 
     testEval("missing ?",
       result = Right(NullValue),
-      Right(OrNull(MissingConstant)))
-
-    testEval("missing orElse 7 + 3",
-      result = Right(NumberValue(7 + 3)),
-      Right(OrElse(
-        MissingConstant,
-        Add(NumericConstant(7), NumericConstant(3)))))
-
-    testEval("missing ? 7 + 3",
-      result = Right(NumberValue(7 + 3)),
-      Right(OrElse(
-        MissingConstant,
-        Add(NumericConstant(7), NumericConstant(3)))))
-
-    testEval("1 + 2 orElse 7 + 3",
-      result = Right(NumberValue(1 + 2)),
-      Right(OrElse(
-        Add(NumericConstant(1), NumericConstant(2)),
-        Add(NumericConstant(7), NumericConstant(3)))))
-
-    testEval("1 + (2 orElse 7) + 3",
-      result = Right(NumberValue(1 + 2 + 3)),
-      Right(
-        Add(
-          Add(
-            NumericConstant(1),
-            OrElse(NumericConstant(2), NumericConstant(7))),
-          NumericConstant(3))))
-
-    testEval("1 + 2 ? 7 + 3",
-      result = Right(NumberValue(1 + 2)),
-      Right(OrElse(
-        Add(NumericConstant(1), NumericConstant(2)),
-        Add(NumericConstant(7), NumericConstant(3)))))
-
-    testEval("1 + (2 ? 7) + 3",
-      result = Right(NumberValue(1 + 2 + 3)),
-      Right(
-        Add(
-          Add(
-            NumericConstant(1),
-            OrElse(NumericConstant(2), NumericConstant(7))),
-          NumericConstant(3))))
+      OrNull(MissingConstant))
 
     testEval("missing == missing",
       result = Left(MissingValueProblem("missing")),
-      Right(Equal(MissingConstant, MissingConstant)))
+      Equal(MissingConstant, MissingConstant))
 
     testEval("missing != missing",
       result = Left(MissingValueProblem("missing")),
-      Right(NotEqual(MissingConstant, MissingConstant)))
+      NotEqual(MissingConstant, MissingConstant))
 
     testEval("missing + 1",
       result = Left(MissingValueProblem("missing")),
-      Right(Add(MissingConstant, NumericConstant(1))))
+      Add(MissingConstant, 1))
 
     "MissingValue OrNull" in {
-      assert((OrNull(MissingConstant)).eval == Right(NullValue))
+      assert(OrNull(MissingConstant).eval == Right(NullValue))
     }
 
     "MissingValue is not comparable" in {
@@ -659,17 +657,11 @@ final class ExpressionTest extends OurTestSuite
 
     testEval("\"-->$(missing)<--\"",
       result = Left(MissingValueProblem("missing")),
-      Right(InterpolatedString(List(StringConstant("-->"), MissingConstant, StringConstant("<--")))))
+      InterpolatedString(List("-->", MissingConstant, "<--")))
 
     testEval("\"-->$(missing?)<--\"",
       result = Right(StringValue("--><--")),
-      Right(InterpolatedString(List(StringConstant("-->"), OrNull(MissingConstant), StringConstant("<--")))))
-
-    "orElse" in {
-      assert(OrElse(NumericConstant(1), NumericConstant(7)).eval == Right(NumberValue(1)))
-      assert((OrElse(MissingConstant, NumericConstant(7))).eval == Right(NumberValue(7)))
-      assert(OrElse(NamedValue("UNKNOWN"), NumericConstant(1)).eval == Right(NumberValue(1)))
-    }
+      InterpolatedString(List("-->", OrNull(MissingConstant), "<--")))
   }
 
   "Null value" - {
@@ -677,75 +669,56 @@ final class ExpressionTest extends OurTestSuite
 
     testEval("null",
       result = Right(NullValue),
-      Right(NullConstant))
-
-    testEval("null?",
-      result = Right(NullValue),
-      Right(OrNull(NullConstant)))
-
-    testEval("null ?",
-      result = Right(NullValue),
-      Right(OrNull(NullConstant)))
-
-    testEval("null orElse 7 + 3",
-      result = Right(NumberValue(7 + 3)),
-      Right(OrElse(
-        NullConstant,
-        Add(NumericConstant(7), NumericConstant(3)))))
+      NullConstant)
 
     testEval("null == null",
       result = Right(BooleanValue.True),
-      Right(Equal(NullConstant, NullConstant)))
+      Equal(NullConstant, NullConstant))
 
     testEval("null != null",
       result = Right(BooleanValue.False),
-      Right(NotEqual(NullConstant, NullConstant)))
+      NotEqual(NullConstant, NullConstant))
 
     testEval("null + 1",
       result = Left(UnexpectedValueTypeProblem(NumberValue, NullValue)),
-      Right(Add(NullConstant, NumericConstant(1))))
+      Add(NullConstant, 1))
 
     testEval("\"-->$(null)<--\"",
       result = Right(StringValue("--><--")),
-      Right(InterpolatedString(List(StringConstant("-->"), NullConstant, StringConstant("<--")))))
-
-    "orElse" in {
-      assert((OrElse(NumericConstant(1), NumericConstant(7))).eval == Right(NumberValue(1)))
-      assert((OrElse(NullConstant, NumericConstant(7))).eval == Right(NumberValue(7)))
-    }
+      InterpolatedString(List("-->", NullConstant, "<--")))
   }
 
   "ListValue" - {
     implicit val scope: Scope = NameToCheckedValueScope(MapView(
-      "list" -> Right(ListValue(Seq(NumberValue(-1), NumberValue(111), NumberValue(222))))))
+      "list" -> Right(ListValue(Seq[Value](-1, 111, 222)))))
 
     testEval("$list(0)",
-      result = Right(NumberValue(-1)),
-      Right(ArgumentExpression(NamedValue("list"), NumericConstant(0))))
+      result = Right(-1),
+      ArgumentExpression(NamedValue("list"), 0))
 
     testEval("${list}(0)",
-      result = Right(NumberValue(-1)),
-      Right(ArgumentExpression(NamedValue("list"), NumericConstant(0))))
+      result = Right(-1),
+      ArgumentExpression(NamedValue("list"), 0))
 
     testEval("$list(1)",
-      result = Right(NumberValue(111)),
-      Right(ArgumentExpression(NamedValue("list"), NumericConstant(1))))
+      result = Right(111),
+      ArgumentExpression(NamedValue("list"), 1))
 
     testEval("$list(2)",
-      result = Right(NumberValue(222)),
-      Right(ArgumentExpression(NamedValue("list"), NumericConstant(2))))
+      result = Right(222),
+      ArgumentExpression(NamedValue("list"), 2))
 
     testEval("$list(3)",
       result = Left(Problem.pure("Index 3 out of range 0...2")),
-      Right(ArgumentExpression(NamedValue("list"), NumericConstant(3))))
+      ArgumentExpression(NamedValue("list"), 3))
 
     testEval("$list(-1)",
       result = Left(Problem.pure("Index -1 out of range 0...2")),
-      Right(ArgumentExpression(NamedValue("list"), NumericConstant(-1))))
+      ArgumentExpression(NamedValue("list"), -1))
 
     testEval("$list(1.5)",
       result = Left(Problem.pure("java.lang.ArithmeticException: Rounding necessary")),
-      Right(ArgumentExpression(NamedValue("list"), NumericConstant(BigDecimal("1.5")))))
+      ArgumentExpression(NamedValue("list"), BigDecimal("1.5")))
   }
 
   "Constant expressions" - {
@@ -758,50 +731,32 @@ final class ExpressionTest extends OurTestSuite
 
     testEval(
       s"'$longString'.stripMargin",
-      result = longString.stripMargin,
-      Right(StripMargin(StringConstant(longString))))
+      result = Right(longString.stripMargin),
+      StripMargin(longString))
 
     testEval("1 == 2",
-      result = false,
-      Right(Equal(NumericConstant(1), NumericConstant(2))))
+      result = Right(false),
+      Equal(1, 2))
 
     "Variables cannot be used" in {
-      assert((NamedValue("VARIABLE")).eval == Left(Problem("No such named value: VARIABLE")))
+      assert(NamedValue("VARIABLE").eval == Left(Problem("No such named value: VARIABLE")))
     }
   }
 
-  private def testSyntaxError(exprString: String, problem: String)(implicit pos: source.Position): Unit =
+  private def testSyntaxError(exprString: String, problem: Problem)(implicit pos: source.Position): Unit =
     s"$exprString - should fail" in {
-      assert(parseExpression(exprString) == Left(Problem(problem)))
+      assert(parseExpression(exprString) == Left(problem))
     }
 
-  private def testEval(exprString: String, result: Boolean, expression: Checked[Expression])
-    (implicit scope: Scope, pos: source.Position)
-  : Unit =
-    testEval(exprString, Right(BooleanValue(result)), expression)
-
-  private def testEval(exprString: String, result: BigDecimal, expression: Checked[Expression])
-    (implicit scope: Scope, pos: source.Position)
-  : Unit =
-    testEval(exprString, Right(NumberValue(result)), expression)
-
-  private def testEval(exprString: String, result: String, expression: Checked[Expression])
-    (implicit scope: Scope, pos: source.Position)
-  : Unit =
-    testEval(exprString, Right(StringValue(result)), expression)
-
-  private def testEval(exprString: String, result: Checked[Value], expression: Checked[Expression])
+  private def testEval(exprString: String, result: Checked[Value], expression: Expression)
     (implicit scope: Scope, pos: source.Position)
   : Unit =
     exprString in {
       val checked = parseExpressionOrFunction(exprString.trim)
-      assert(checked == expression)
+      assert(checked == Right(expression))
       //if (checked != expression) {
       //  fail(diffx.Diff.compare(checked, expression).toString)
       //}
-      for (e <- expression) {
-        assert(parseExpression(e.toString) == expression, s" in -->toString=${e.toString}")
-        assert(e.eval == result)
-      }
+      assert(expression.eval == result)
     }
 }

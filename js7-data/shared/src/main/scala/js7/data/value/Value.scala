@@ -163,8 +163,23 @@ object Value
   }
 
   object convenience {
-    implicit def convenientStringValue(string: String): Value = StringValue(string)
-    implicit def convenientNumericValue(number: Int): Value = NumberValue(number)
+    implicit def convenientBooleanValue(b: Boolean): BooleanValue =
+      BooleanValue(b)
+
+    implicit def convenientStringValue(string: String): StringValue =
+      StringValue(string)
+
+    implicit def convenientNumberValue(number: Int): NumberValue =
+      NumberValue(number)
+
+    implicit def convenientNumberValue(number: Long): NumberValue =
+      NumberValue(number)
+
+    implicit def convenientNumberValue(number: BigDecimal): NumberValue =
+      NumberValue(number)
+
+    implicit def convenientListValue(seq: Seq[Value]): ListValue =
+      ListValue(seq)
   }
 }
 

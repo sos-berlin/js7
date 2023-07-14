@@ -137,7 +137,7 @@ object ExecuteOrderInInnerBlockTest
           EmptyJob.execute(agentPath))),
           TryInstruction(
             Workflow.of(
-        If(expr("$FAIL orElse false"), Workflow.of(
+              If(expr("$FAIL ? false"), Workflow.of(
           FailingJob.execute(agentPath))),
               EmptyJob.execute(agentPath)),
             catchWorkflow = Workflow.empty)))))))),

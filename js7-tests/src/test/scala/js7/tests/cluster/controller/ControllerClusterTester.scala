@@ -23,5 +23,5 @@ object ControllerClusterTester
     WorkflowPath("WORKFLOW"),
     Seq(
       SleepJob.execute(AgentPath("AGENT"), parallelism = 2, arguments = Map(
-        "sleep" -> expr("$sleep orElse 1")))))
+        "sleep" -> expr("$sleep ? 1")))))
 }

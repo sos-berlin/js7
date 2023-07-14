@@ -20,7 +20,7 @@ import js7.data.value.{BooleanValue, FunctionValue, IsErrorValue, ListValue, Mis
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Label
 import scala.collection.{View, mutable}
-
+import scala.language.implicitConversions
 /**
   * @author Joacim Zschimmer
   */
@@ -145,7 +145,7 @@ object Expression
 
   final case class Equal(a: Expression, b: Expression)
   extends BooleanExpression with PurityDependsOnSubexpressions {
-    def precedence = Precedence.Comparison
+    def precedence = Precedence.Equal
     def subexpressions = View(a, b)
 
     protected def evalAllowError(implicit scope: Scope) =
@@ -156,7 +156,7 @@ object Expression
 
   final case class NotEqual(a: Expression, b: Expression)
   extends BooleanExpression with PurityDependsOnSubexpressions {
-    def precedence = Precedence.Comparison
+    def precedence = Precedence.Equal
     def subexpressions = View(a, b)
 
     protected def evalAllowError(implicit scope: Scope) =
@@ -311,24 +311,27 @@ object Expression
 
   final case class OrElse(a: Expression, default: Expression)
   extends BooleanExpression with PurityDependsOnSubexpressions {
-    def precedence = Precedence.WordOperator
+    def precedence = Precedence.OrElse
     def subexpressions = a :: default :: Nil
 
     protected def evalAllowError(implicit scope: Scope) =
       evalOrDefault(a, default)
 
-    override def toString = makeString(a, "orElse", default)
+    override def toString = makeString(a, "?", default)
   }
 
   final case class OrNull(a: Expression)
   extends BooleanExpression with PurityDependsOnSubexpressions {
-    def precedence = Precedence.OrNull
+    def precedence = Precedence.OrElse
     def subexpressions = a :: Nil
 
     protected def evalAllowError(implicit scope: Scope) =
       evalOrDefault(a, NullConstant)
 
-    override def toString = Precedence.inParentheses(a, precedence) + "?"
+    override def toString =
+      Precedence.inParentheses(a, precedence) +
+        (a.isInstanceOf[OrNull] ?? " ") +
+        "?"
   }
 
   protected def evalOrDefault(expr: Expression, default: Expression)(implicit scope: Scope) =
@@ -737,5 +740,25 @@ object Expression
     def precedence = Precedence.Highest
     def subexpressions = Nil
     protected def evalAllowError(implicit scope: Scope) = eval()
+  }
+
+  object convenience {
+    implicit def convenientBooleanConstant(b: Boolean): BooleanConstant =
+      BooleanConstant(b)
+
+    implicit def convenientNumericConstant(n: Int): NumericConstant =
+      NumericConstant(n)
+
+    implicit def convenientNumericConstant(n: Long): NumericConstant =
+      NumericConstant(n)
+
+    implicit def convenientNumericConstant(n: BigDecimal): NumericConstant =
+      NumericConstant(n)
+
+    implicit def convenientStringConstant(string: String): StringConstant =
+      StringConstant(string)
+
+    implicit def convenientListConstant(seq: Seq[Expression]): ListExpression =
+      ListExpression(seq.toList)
   }
 }

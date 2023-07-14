@@ -286,14 +286,14 @@ final class ExecuteTest extends OurTestSuite with ControllerAgentForScalaTest
   private val deletedEnvName = if (isWindows) "USERNAME" else "USER"
   assert(sys.env(deletedEnvName).nonEmpty)  // Must exist to check deletion
 
-  "Special $js7 variables; the operators orElse and ?" - {
+  "Special $js7 variables; the ?-operators" - {
     val nameToExpression = Map(
       "ORDER_ID"            -> expr("$js7OrderId"),
       "WORKFLOW_NAME"       -> expr("$js7WorkflowPath"),
       "WORKFLOW_POSITION"   -> expr("$js7WorkflowPosition"),
       "LABEL"               -> expr("$js7Label"),
       "JOB_NAME"            -> expr("$js7JobName"),
-      "JOB_TIMEOUT"         -> expr("""$js7Job.timeoutMillis orElse "" """),
+      "JOB_TIMEOUT"         -> expr("""$js7Job.timeoutMillis ? "" """),
       // JOB_SIGKILL_DELAY will be unset because sigkillDelayMillis returns NullValue
       "JOB_SIGKILL_DELAY"   -> expr("""$js7Job.sigkillDelayMillis """),
       "JOB_EXECUTION_COUNT" -> expr("$js7JobExecutionCount"),
