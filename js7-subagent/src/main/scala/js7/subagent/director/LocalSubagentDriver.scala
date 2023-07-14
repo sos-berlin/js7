@@ -17,6 +17,7 @@ import js7.core.command.CommandMeta
 import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, Stamped}
+import js7.data.job.JobKey
 import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId, Outcome}
 import js7.data.subagent.Problems.{SubagentIsShuttingDownProblem, SubagentShutDownBeforeProcessStartProblem}
@@ -166,6 +167,12 @@ with Service.StoppableByRequest
       case Some(processing) =>
         Some(processing.complete(orderProcessed))
     }
+
+  def stopJobs(jobKeys: Iterable[JobKey], signal: ProcessSignal) =
+    Task(subagent.checkedDedicatedSubagent.toOption)
+      .flatMap(_
+        .fold(Task.unit)(_
+          .stopJobs(jobKeys, signal)))
 
   def terminate: Task[Unit] =
     logger.traceTask(

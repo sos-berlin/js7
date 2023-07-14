@@ -250,10 +250,8 @@ object ExpressionParser
 
   private lazy val notOperator: Parser[Expression] =
     Parser.defer(
-      ((char('!') ~ w) *> notExpr).flatMap {
-        case o: BooleanExpression => pure(Not(o))
-        case _ => failWith("Operator '!' requires a Boolean expression")
-      })
+      ((char('!') ~ w) *> notExpr)
+        .map(Not(_)))
 
   private val multiplication: Parser[Expression] = {
     val slash = (char('/').as('/') <* !charIn('/', '*')).backtrack
@@ -290,18 +288,12 @@ object ExpressionParser
 
   private val and: Parser[Expression] =
     leftRecurseParsers(equal, string("&&"), equal) {
-      case (a: BooleanExpression, ((), b: BooleanExpression)) =>
-        pure(And(a, b))
-      case (a, ((), b)) =>
-        failWith("Operator && requires Boolean operands: " +
-          Precedence.toString(a, "&&", Precedence.And, b))
+      case (a, ((), b)) => pure(And(a, b))
     }
 
   private val or: Parser[Expression] =
     leftRecurseParsers(and, string("||"), and) {
-      case (a: BooleanExpression, ((), b: BooleanExpression)) => pure(Or(a, b))
-      case (a, ((), b)) => failWith("Expected boolean operans for operator ||: " +
-        Precedence.toString(a, "||", Precedence.Or, b))
+      case (a, ((), b)) => pure(Or(a, b))
     }
 
   private val wordOperation: Parser[Expression] =

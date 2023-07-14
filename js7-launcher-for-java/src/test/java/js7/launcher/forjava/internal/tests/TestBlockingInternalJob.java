@@ -41,9 +41,10 @@ public final class TestBlockingInternalJob implements BlockingInternalJob
         expectedBlockingThreadPoolName = b.convertToString();
         //expectedBlockingThreadPoolName = jobContext.jobArguments().get("blockingThreadPoolName").convertToString();
         assertSpecialThread();
-        if (!jobContext.jobKey().name().equals("WORKFLOW~1:JOB") &&
-            !jobContext.jobKey().name().equals("WORKFLOW-9~v9:0"))
-            throw new AssertionError("Unexpected jobKey.name");
+        String name = jobContext.jobKey().name();
+        if (!name.equals("WORKFLOW~1:JOB")
+            && !name.equals("WORKFLOW-9~17:0"))
+            throw new AssertionError("Unexpected jobKey.name = " + name);
     }
 
     // Implement optionally
@@ -72,7 +73,7 @@ public final class TestBlockingInternalJob implements BlockingInternalJob
             assertThat(step.instructionLabel().isPresent(), equalTo(false));
             assertThat(step.jobName(), anyOf(
                 equalTo("JOB"),
-                equalTo("WORKFLOW-9~v9:0")/*inline job*/));
+                equalTo("WORKFLOW-9~17:0")/*inline job*/));
 
             assertThat(
                 getOrThrow(

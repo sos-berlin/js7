@@ -531,6 +531,6 @@ object ValueType
   extends Problem.Coded {
     def arguments = Map(
       "type" -> valueType.name,
-      "value" -> value.toString.truncateWithEllipsis(30))
+      "value" -> (value.valueType.name + ": " + value.toString.truncateWithEllipsis(30)))
   }
 }

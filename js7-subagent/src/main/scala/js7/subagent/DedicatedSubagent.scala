@@ -121,6 +121,17 @@ extends Service.StoppableByRequest
         })
     })
 
+  def stopJobs(jobKeys: Iterable[JobKey], signal: ProcessSignal) = {
+    val jobKeySet = jobKeys.toSet
+    jobKeys.toVector
+      .flatMap(jobKeyToJobDriver.get)
+      .parUnorderedTraverse(_.stop(signal))
+      .*>(jobKeyToJobDriver.removeConditional {
+        case (jobKey, _) => jobKeySet(jobKey)
+      })
+      .void
+  }
+
   def executeCommand(numbered: Numbered[SubagentCommand], meta: CommandMeta)
   : Task[Checked[numbered.value.Response]] =
     commandExecutor.executeCommand(numbered, meta)

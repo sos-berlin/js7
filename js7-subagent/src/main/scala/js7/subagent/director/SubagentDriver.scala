@@ -9,7 +9,7 @@ import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.delegate.DelegateCouplingState.Coupled
 import js7.data.item.SignableItem
-import js7.data.job.{JobConf, JobResource}
+import js7.data.job.{JobConf, JobKey, JobResource}
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId}
 import js7.data.subagent.{SubagentDirectorState, SubagentId, SubagentItem}
@@ -41,6 +41,8 @@ trait SubagentDriver {
   def killProcess(orderId: OrderId, signal: ProcessSignal): Task[Unit]
 
   def tryShutdown: Task[Unit]
+
+  def stopJobs(jobKeys: Iterable[JobKey], signal: ProcessSignal): Task[Unit]
 
   def terminate: Task[Unit]
 

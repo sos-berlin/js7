@@ -15,6 +15,7 @@ import js7.base.utils.ScalaUtils.withStringBuilder
 import js7.base.utils.typeclasses.IsEmpty
 import js7.data.job.JobResourcePath
 import js7.data.value.ValuePrinter.appendQuotedContent
+import js7.data.value.ValueType.UnexpectedValueTypeProblem
 import js7.data.value.expression.ExpressionParser.parseExpression
 import js7.data.value.{BooleanValue, FunctionValue, IsErrorValue, ListValue, MissingValue, NullValue, NumberValue, ObjectValue, StringValue, Value, ValuePrinter}
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -103,7 +104,7 @@ object Expression
 
   sealed trait StringExpression extends SimpleValueExpression
 
-  final case class Not(a: BooleanExpression)
+  final case class Not(a: Expression)
   extends BooleanExpression with PurityDependsOnSubexpressions {
     def precedence = Precedence.Factor
     def subexpressions = a.subexpressions
@@ -115,33 +116,53 @@ object Expression
     override def toString = "!" + Precedence.inParentheses(a, precedence)
   }
 
-  final case class And(a: BooleanExpression, b: BooleanExpression)
+  final case class And(a: Expression, b: Expression)
   extends BooleanExpression with PurityDependsOnSubexpressions {
     def precedence = Precedence.And
     def subexpressions = View(a, b)
 
     protected def evalAllowError(implicit scope: Scope) =
-      a.evalAsBoolean.flatMap {
-        case false => Right(BooleanValue.False)
-        case true => b.evalAsBoolean.map(b => BooleanValue(b.booleanValue))
-      }
+      evalAndOr(a, b, BooleanValue.False)
 
     override def toString = makeString(a, "&&", b)
   }
 
-  final case class Or(a: BooleanExpression, b: BooleanExpression)
+  final case class Or(a: Expression, b: Expression)
   extends BooleanExpression with PurityDependsOnSubexpressions {
     def precedence = Precedence.Or
     def subexpressions = View(a, b)
 
     protected def evalAllowError(implicit scope: Scope) =
-      a.evalAsBoolean.flatMap {
-        case false => b.evalAsBoolean.map(b => BooleanValue(b.booleanValue))
-        case true => Right(BooleanValue.True)
-      }
+      evalAndOr(a, b, BooleanValue.True)
 
     override def toString = makeString(a, "||", b)
   }
+
+  protected def evalAndOr(a: Expression, b: Expression, neutral: BooleanValue)
+    (implicit scope: Scope)
+  : Checked[Value] =
+    a.eval.flatMap {
+      case a: BooleanValue =>
+        if (a == neutral)
+          Right(a)
+        else
+          b.eval.flatMap {
+            case b: BooleanValue => Right(b)
+            case NullValue => Right(NullValue)
+            case v => Left(UnexpectedValueTypeProblem(BooleanValue, v))
+          }
+      case NullValue => b.eval.flatMap {
+        case b: BooleanValue => Right(
+          if (b == neutral)
+            neutral
+          else
+            NullValue)
+        case NullValue => Right(NullValue)
+        case v => Left(UnexpectedValueTypeProblem(BooleanValue, v))
+      }
+      case v => Left(UnexpectedValueTypeProblem(BooleanValue, v))
+    }
+
 
   final case class Equal(a: Expression, b: Expression)
   extends BooleanExpression with PurityDependsOnSubexpressions {

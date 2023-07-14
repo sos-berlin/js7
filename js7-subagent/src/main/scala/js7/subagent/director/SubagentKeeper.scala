@@ -29,6 +29,7 @@ import js7.data.controller.ControllerId
 import js7.data.delegate.DelegateCouplingState.Coupled
 import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.item.BasicItemEvent.ItemDetached
+import js7.data.job.JobKey
 import js7.data.order.OrderEvent.{OrderCoreEvent, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.subagent.Problems.ProcessLostDueSubagentUriChangeProblem
@@ -88,6 +89,12 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
       processingStarted = true
       startObserving *> continueDetaching
     })
+
+  def stopJobs(jobKeys: Iterable[JobKey], signal: ProcessSignal): Task[Unit] =
+    stateVar.value.flatMap(state =>
+      state.subagentToEntry.values.toVector
+        .parUnorderedTraverse(_.driver.stopJobs(jobKeys, signal))
+        .map(_.combineAll))
 
   def orderIsLocal(orderId: OrderId): Boolean =
     orderToSubagent.toMap.get(orderId).exists(_.isInstanceOf[LocalSubagentDriver])
