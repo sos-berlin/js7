@@ -4,7 +4,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurTestSuite
 import js7.data.job.JobResourcePath
 import js7.data.value.ValueType.{MissingValueProblem, UnexpectedValueTypeProblem}
-import js7.data.value.expression.Expression.*
+import js7.data.value.expression.Expression.{Add, *}
 import js7.data.value.expression.ExpressionParser.{parseExpression, parseExpressionOrFunction}
 import js7.data.value.expression.scopes.NameToCheckedValueScope
 import js7.data.value.{BooleanValue, ListValue, NullValue, NumberValue, ObjectValue, StringValue, Value}
@@ -339,67 +339,9 @@ final class ExpressionTest extends OurTestSuite
       result = Right(NumberValue(BigDecimal("0.3333333333333333333333333333333333"))),
       Right(Divide(NumericConstant(1), NumericConstant(3))))
 
-    testEval("""6 / 3?""",
-      result = Right(NumberValue(2)),
-      Right(OrNull(Divide(NumericConstant(6), NumericConstant(3)))))
-
     testEval("""1 / 0""",
       result = Left(Problem("java.lang.ArithmeticException: Division by zero")),
       Right(Divide(NumericConstant(1), NumericConstant(0))))
-
-    // Question mark operator applys to the whole preceeding expression (applies not to 0)
-    testEval("""1 / 0?""",
-      result = Right(NullValue),
-      Right(OrNull(Divide(NumericConstant(1), NumericConstant(0)))))
-
-    testEval("""1 / 0 orElse -1""",
-      result = Right(NumberValue(-1)),
-      Right(OrElse(Divide(NumericConstant(1), NumericConstant(0)), NumericConstant(-1))))
-
-    testEval("""1 / 0 ? -1""",
-      result = Right(NumberValue(-1)),
-      Right(OrElse(Divide(NumericConstant(1), NumericConstant(0)), NumericConstant(-1))))
-
-    testEval("""7 in [ 1 / 0 ] orElse $unknown orElse -1""",
-      result = Right(NumberValue(-1)),
-      Right(
-        OrElse(
-          OrElse(
-            In(
-              NumericConstant(7),
-              ListExpression(List(
-                Divide(NumericConstant(1), NumericConstant(0))))),
-            NamedValue("unknown")),
-          NumericConstant(-1))))
-
-    testEval("""7 in [ 1 / 0 ] ? $unknown ? -1""",
-      result = Right(NumberValue(-1)),
-      Right(
-        OrElse(
-          OrElse(
-            In(
-              NumericConstant(7),
-              ListExpression(List(
-                Divide(NumericConstant(1), NumericConstant(0))))),
-            NamedValue("unknown")),
-          NumericConstant(-1))))
-
-    testEval("""7 in [ 1 / 0 ] ? -1""",
-      result = Right(NumberValue(-1)),
-      Right(OrElse(
-        In(
-          NumericConstant(7),
-          ListExpression(List(
-            Divide(NumericConstant(1), NumericConstant(0))))),
-        NumericConstant(-1))))
-
-    testEval("""7 in [ 1 / 0 ] ?""",
-      result = Right(NullValue),
-      Right(OrNull(
-        In(
-          NumericConstant(7),
-          ListExpression(List(
-            Divide(NumericConstant(1), NumericConstant(0))))))))
 
     testEval("""100 + 2 * 3 - 12 / 3""",
       result = Right(NumberValue(100 + 2 * 3 - 12 / 3)),
@@ -548,6 +490,117 @@ final class ExpressionTest extends OurTestSuite
           == Right(BooleanValue(Set(b, c, d)(a)))))
     }
 
+    "OrNull, OrElse" - {
+      testEval("missing ?",
+        result = Right(NullValue),
+        Right(OrNull(MissingConstant)))
+
+      testEval("missing ? 7 + 3",
+        result = Right(NumberValue(7 + 3)),
+        Right(OrElse(
+          MissingConstant,
+          Add(NumericConstant(7), NumericConstant(3)))))
+
+      testEval("$unknown ? 7 + 3",
+        result = Right(NumberValue(7 + 3)),
+        Right(OrElse(
+          NamedValue("unknown"),
+          Add(NumericConstant(7), NumericConstant(3)))))
+
+      testEval("1 + 2 ? 7 + 3",
+        result = Right(NumberValue(1 + 2)),
+        Right(OrElse(
+          Add(NumericConstant(1), NumericConstant(2)),
+          Add(NumericConstant(7), NumericConstant(3)))))
+
+      testEval("1 + (2 ? 7) + 3",
+        result = Right(NumberValue(1 + 2 + 3)),
+        Right(
+          Add(
+            Add(
+              NumericConstant(1),
+              OrElse(NumericConstant(2), NumericConstant(7))),
+            NumericConstant(3))))
+
+      testEval("""missing? ?""",
+        result = Right(NullValue),
+        Right(OrNull(OrNull(MissingConstant))))
+
+      testEval("""missing? ? 7""",
+        result = Right(NumberValue(7)),
+        Right(OrElse(OrNull(MissingConstant), NumericConstant(7))))
+
+      // Reserve ?? for future use
+      testEval("""missing ??""",
+        result = Left(Problem("???")),
+        Left(Problem("Parsing failed at position 10 “missing ?❓?” · Unexpected “?”")))
+
+      testEval("""(missing?)?""",
+        result = Right(NullValue),
+        Right(OrNull(OrNull(MissingConstant))))
+
+      testEval("null?",
+        result = Right(NullValue),
+        Right(OrNull(NullConstant)))
+
+      testEval("null ? 7 + 3",
+        result = Right(NumberValue(7 + 3)),
+        Right(OrElse(
+          NullConstant,
+          Add(NumericConstant(7), NumericConstant(3)))))
+
+      testEval("""6 / 3?""",
+        result = Right(NumberValue(2)),
+        Right(OrNull(Divide(NumericConstant(6), NumericConstant(3)))))
+
+      // Question mark operator appliess to the whole preceding expression (applies not to 0)
+      testEval("""1 / 0?""",
+        result = Right(NullValue),
+        Right(OrNull(Divide(NumericConstant(1), NumericConstant(0)))))
+
+      testEval("""1 / 0 ? -1""",
+        result = Right(NumberValue(-1)),
+        Right(OrElse(Divide(NumericConstant(1), NumericConstant(0)), NumericConstant(-1))))
+
+      testEval("""7 in [ 1 / 0 ] ? $unknown ? -1""",
+        result = Right(NumberValue(-1)),
+        Right(
+          OrElse(
+            OrElse(
+              In(
+                NumericConstant(7),
+                ListExpression(List(
+                  Divide(NumericConstant(1), NumericConstant(0))))),
+              NamedValue("unknown")),
+            NumericConstant(-1))))
+
+      testEval("""$aUnknown ? $bUnknown ? """,
+        result = Right(NullValue),
+        Right(
+          OrNull(
+            OrElse(
+              NamedValue("aUnknown"),
+              NamedValue("bUnknown")))))
+
+      testEval("""7 in [ 1 / 0 ] ? -1""",
+        result = Right(NumberValue(-1)),
+        Right(OrElse(
+          In(
+            NumericConstant(7),
+            ListExpression(List(
+              Divide(NumericConstant(1), NumericConstant(0))))),
+          NumericConstant(-1))))
+
+      testEval("""7 in [ 1 / 0 ] ?""",
+        result = Right(NullValue),
+        Right(OrNull(
+          In(
+            NumericConstant(7),
+            ListExpression(List(
+              Divide(NumericConstant(1), NumericConstant(0))))))))
+    }
+
+
     "Not" in {
       forAll((bool: Boolean) => assert(
         Not(BooleanConstant(bool)).eval == Right(BooleanValue(!bool))))
@@ -604,48 +657,6 @@ final class ExpressionTest extends OurTestSuite
       result = Right(NullValue),
       Right(OrNull(MissingConstant)))
 
-    testEval("missing orElse 7 + 3",
-      result = Right(NumberValue(7 + 3)),
-      Right(OrElse(
-        MissingConstant,
-        Add(NumericConstant(7), NumericConstant(3)))))
-
-    testEval("missing ? 7 + 3",
-      result = Right(NumberValue(7 + 3)),
-      Right(OrElse(
-        MissingConstant,
-        Add(NumericConstant(7), NumericConstant(3)))))
-
-    testEval("1 + 2 orElse 7 + 3",
-      result = Right(NumberValue(1 + 2)),
-      Right(OrElse(
-        Add(NumericConstant(1), NumericConstant(2)),
-        Add(NumericConstant(7), NumericConstant(3)))))
-
-    testEval("1 + (2 orElse 7) + 3",
-      result = Right(NumberValue(1 + 2 + 3)),
-      Right(
-        Add(
-          Add(
-            NumericConstant(1),
-            OrElse(NumericConstant(2), NumericConstant(7))),
-          NumericConstant(3))))
-
-    testEval("1 + 2 ? 7 + 3",
-      result = Right(NumberValue(1 + 2)),
-      Right(OrElse(
-        Add(NumericConstant(1), NumericConstant(2)),
-        Add(NumericConstant(7), NumericConstant(3)))))
-
-    testEval("1 + (2 ? 7) + 3",
-      result = Right(NumberValue(1 + 2 + 3)),
-      Right(
-        Add(
-          Add(
-            NumericConstant(1),
-            OrElse(NumericConstant(2), NumericConstant(7))),
-          NumericConstant(3))))
-
     testEval("missing == missing",
       result = Left(MissingValueProblem("missing")),
       Right(Equal(MissingConstant, MissingConstant)))
@@ -673,12 +684,6 @@ final class ExpressionTest extends OurTestSuite
     testEval("\"-->$(missing?)<--\"",
       result = Right(StringValue("--><--")),
       Right(InterpolatedString(List(StringConstant("-->"), OrNull(MissingConstant), StringConstant("<--")))))
-
-    "orElse" in {
-      assert(OrElse(NumericConstant(1), NumericConstant(7)).eval == Right(NumberValue(1)))
-      assert((OrElse(MissingConstant, NumericConstant(7))).eval == Right(NumberValue(7)))
-      assert(OrElse(NamedValue("UNKNOWN"), NumericConstant(1)).eval == Right(NumberValue(1)))
-    }
   }
 
   "Null value" - {
@@ -687,20 +692,6 @@ final class ExpressionTest extends OurTestSuite
     testEval("null",
       result = Right(NullValue),
       Right(NullConstant))
-
-    testEval("null?",
-      result = Right(NullValue),
-      Right(OrNull(NullConstant)))
-
-    testEval("null ?",
-      result = Right(NullValue),
-      Right(OrNull(NullConstant)))
-
-    testEval("null orElse 7 + 3",
-      result = Right(NumberValue(7 + 3)),
-      Right(OrElse(
-        NullConstant,
-        Add(NumericConstant(7), NumericConstant(3)))))
 
     testEval("null == null",
       result = Right(BooleanValue.True),
@@ -717,11 +708,6 @@ final class ExpressionTest extends OurTestSuite
     testEval("\"-->$(null)<--\"",
       result = Right(StringValue("--><--")),
       Right(InterpolatedString(List(StringConstant("-->"), NullConstant, StringConstant("<--")))))
-
-    "orElse" in {
-      assert((OrElse(NumericConstant(1), NumericConstant(7))).eval == Right(NumberValue(1)))
-      assert((OrElse(NullConstant, NumericConstant(7))).eval == Right(NumberValue(7)))
-    }
   }
 
   "ListValue" - {

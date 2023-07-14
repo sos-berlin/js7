@@ -1,7 +1,7 @@
 package js7.data.value.expression
 
 import cats.parse.Numbers.digits
-import cats.parse.Parser.{char, charIn, charWhere, charsWhile, charsWhile0, end, failWith, pure, string, stringIn}
+import cats.parse.Parser.{not, char, charIn, charWhere, charsWhile, charsWhile0, end, failWith, pure, string, stringIn, peek}
 import cats.parse.{Parser, Parser0}
 import js7.base.parser.BasicParsers.*
 import js7.base.parser.Parsers.checkedParse
@@ -237,9 +237,9 @@ object ExpressionParser
       }
 
   private val bFactor =
-    not | argumentExpression
+    notOperator | argumentExpression
 
-  private lazy val not: Parser[Expression] =
+  private lazy val notOperator: Parser[Expression] =
     Parser.defer(
       ((char('!') ~ w) *> bFactor).flatMap {
         case o: BooleanExpression => pure(Not(o))
@@ -264,9 +264,7 @@ object ExpressionParser
     }
 
   private val comparison: Parser[Expression] =
-    leftRecurse(addition, stringIn(List("==", "!=", "<=", ">=", "<", ">")).string, addition) {
-      case (a, ("==", b)) => Equal(a, b)
-      case (a, ("!=", b)) => NotEqual(a, b)
+    leftRecurse(addition, stringIn(List("<=", ">=", "<", ">")).string, addition) {
       case (a, ("<=", b)) => LessOrEqual(a, b)
       case (a, (">=", b)) => GreaterOrEqual(a, b)
       case (a, ("<" , b)) => LessThan(a, b)
@@ -274,8 +272,15 @@ object ExpressionParser
       case (_, (x, _)) => throw new MatchError(x)
     }
 
+  private val equal: Parser[Expression] =
+    leftRecurse(comparison, stringIn(List("==", "!=")).string, comparison) {
+      case (a, ("==", b)) => Equal(a, b)
+      case (a, ("!=", b)) => NotEqual(a, b)
+      case (_, (x, _)) => throw new MatchError(x)
+    }
+
   private val and: Parser[Expression] =
-    leftRecurseParsers(comparison, string("&&"), comparison) {
+    leftRecurseParsers(equal, string("&&"), equal) {
       case (a: BooleanExpression, ((), b: BooleanExpression)) =>
         pure(And(a, b))
       case (a, ((), b)) =>
@@ -295,14 +300,13 @@ object ExpressionParser
       case (a, ("in", list: ListExpression)) => pure(In(a, list))
       case (_, ("in", _)) => failWith("Expected a List after operator 'in'")
       case (a, ("matches", b)) => pure(Matches(a, b))
-      case (a, ("orElse", b)) => pure(OrElse(a, b))
       case (a, (op, b)) => failWith(s"Operator '$op' with unexpected operand type: " +
         Precedence.toString(a, op, Precedence.Or, b))
     }
 
   private val questionMarkOperation: Parser[Expression] =
-    ((wordOperation <* w) ~ (char('?') *> w *> wordOperation.?).rep0).map {
-      case (a, more) =>
+    ((wordOperation <* w) ~ (char('?') *> not(char('?')) *> w *> wordOperation.?).rep0)
+      .map { case (a, more) =>
         more.foldLeft(a) {
           case (a, None) => OrNull(a)
           case (a, Some(b)) => OrElse(a, b)

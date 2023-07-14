@@ -40,6 +40,11 @@ object BasicParsers
   val h: Parser0[Unit] =
     (charIn(" \t").rep.void | comment).rep0.void
 
+  //val specialChar: Parser[Char] = {
+  //  val set = BitSet.fromSpecific("!\"#$%&'()*+,-./:;<=>?[\\]^_`{|}~".map(_.toInt))
+  //  charWhere(c => set(c.toInt))
+  //}
+
   val int: Parser[Int] =
     (char('-').string.?.with1 ~ digits).string
       .flatMap(o => catchingParser { o.toInt })

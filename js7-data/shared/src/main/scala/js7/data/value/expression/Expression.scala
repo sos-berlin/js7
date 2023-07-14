@@ -317,7 +317,7 @@ object Expression
     protected def evalAllowError(implicit scope: Scope) =
       evalOrDefault(a, default)
 
-    override def toString = makeString(a, "orElse", default)
+    override def toString = makeString(a, "?", default)
   }
 
   final case class OrNull(a: Expression)
@@ -328,7 +328,10 @@ object Expression
     protected def evalAllowError(implicit scope: Scope) =
       evalOrDefault(a, NullConstant)
 
-    override def toString = Precedence.inParentheses(a, precedence) + "?"
+    override def toString =
+      Precedence.inParentheses(a, precedence) +
+        (a.isInstanceOf[OrNull] ?? " ") +
+        "?"
   }
 
   protected def evalOrDefault(expr: Expression, default: Expression)(implicit scope: Scope) =
