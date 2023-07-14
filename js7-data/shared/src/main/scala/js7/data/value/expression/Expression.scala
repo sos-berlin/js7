@@ -145,7 +145,7 @@ object Expression
 
   final case class Equal(a: Expression, b: Expression)
   extends BooleanExpression with PurityDependsOnSubexpressions {
-    def precedence = Precedence.Comparison
+    def precedence = Precedence.Equal
     def subexpressions = View(a, b)
 
     protected def evalAllowError(implicit scope: Scope) =
@@ -156,7 +156,7 @@ object Expression
 
   final case class NotEqual(a: Expression, b: Expression)
   extends BooleanExpression with PurityDependsOnSubexpressions {
-    def precedence = Precedence.Comparison
+    def precedence = Precedence.Equal
     def subexpressions = View(a, b)
 
     protected def evalAllowError(implicit scope: Scope) =
@@ -311,7 +311,7 @@ object Expression
 
   final case class OrElse(a: Expression, default: Expression)
   extends BooleanExpression with PurityDependsOnSubexpressions {
-    def precedence = Precedence.WordOperator
+    def precedence = Precedence.OrElse
     def subexpressions = a :: default :: Nil
 
     protected def evalAllowError(implicit scope: Scope) =
@@ -322,7 +322,7 @@ object Expression
 
   final case class OrNull(a: Expression)
   extends BooleanExpression with PurityDependsOnSubexpressions {
-    def precedence = Precedence.OrNull
+    def precedence = Precedence.OrElse
     def subexpressions = a :: Nil
 
     protected def evalAllowError(implicit scope: Scope) =
@@ -740,5 +740,13 @@ object Expression
     def precedence = Precedence.Highest
     def subexpressions = Nil
     protected def evalAllowError(implicit scope: Scope) = eval()
+  }
+
+  object convenience {
+    implicit def convenientNumericConstant(n: Int): NumericConstant =
+      NumericConstant(n)
+
+    implicit def convenientBooleanConstant(b: Boolean): BooleanConstant =
+      BooleanConstant(b)
   }
 }

@@ -1,7 +1,7 @@
 package js7.data.value.expression
 
 import cats.parse.Numbers.digits
-import cats.parse.Parser.{not, char, charIn, charWhere, charsWhile, charsWhile0, end, failWith, pure, string, stringIn, peek}
+import cats.parse.Parser.{char, charIn, charWhere, charsWhile, charsWhile0, end, failWith, not, pure, string, stringIn}
 import cats.parse.{Parser, Parser0}
 import js7.base.parser.BasicParsers.*
 import js7.base.parser.Parsers.checkedParse
@@ -236,19 +236,28 @@ object ExpressionParser
         case (o, Some(arg)) => ArgumentExpression(o, arg)
       }
 
-  private val bFactor =
-    notOperator | argumentExpression
+  private val questionMarkExpr: Parser[Expression] =
+    ((argumentExpression <* w) ~ (char('?') *> not(char('?')) *> w *> argumentExpression.?).rep0)
+      .map { case (a, more) =>
+        more.foldLeft(a) {
+          case (a, None) => OrNull(a)
+          case (a, Some(b)) => OrElse(a, b)
+        }
+      }
+
+  private val notExpr =
+    notOperator | questionMarkExpr
 
   private lazy val notOperator: Parser[Expression] =
     Parser.defer(
-      ((char('!') ~ w) *> bFactor).flatMap {
+      ((char('!') ~ w) *> notExpr).flatMap {
         case o: BooleanExpression => pure(Not(o))
         case _ => failWith("Operator '!' requires a Boolean expression")
       })
 
   private val multiplication: Parser[Expression] = {
     val slash = (char('/').as('/') <* !charIn('/', '*')).backtrack
-    leftRecurse(bFactor, char('*').as('*') | slash, bFactor) {
+    leftRecurse(notExpr, char('*').as('*') | slash, notExpr) {
       case (a, ('*', b)) => Multiply(a, b)
       case (a, ('/', b)) => Divide(a, b)
       case (_, (x, _)) => throw new MatchError(x)
@@ -304,17 +313,8 @@ object ExpressionParser
         Precedence.toString(a, op, Precedence.Or, b))
     }
 
-  private val questionMarkOperation: Parser[Expression] =
-    ((wordOperation <* w) ~ (char('?') *> not(char('?')) *> w *> wordOperation.?).rep0)
-      .map { case (a, more) =>
-        more.foldLeft(a) {
-          case (a, None) => OrNull(a)
-          case (a, Some(b)) => OrElse(a, b)
-        }
-    }
-
   lazy val expression: Parser[Expression] =
-    Parser.defer(questionMarkOperation)
+    Parser.defer(wordOperation)
 
   val constantExpression: Parser[Expression] =
     expression

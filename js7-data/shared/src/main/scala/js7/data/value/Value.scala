@@ -163,6 +163,7 @@ object Value
   }
 
   object convenience {
+    implicit def convenientBooleanValue(b: Boolean): BooleanValue = BooleanValue(b)
     implicit def convenientStringValue(string: String): Value = StringValue(string)
     implicit def convenientNumericValue(number: Int): Value = NumberValue(number)
   }

@@ -4,7 +4,8 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurTestSuite
 import js7.data.job.JobResourcePath
 import js7.data.value.ValueType.{MissingValueProblem, UnexpectedValueTypeProblem}
-import js7.data.value.expression.Expression.{Add, *}
+import js7.data.value.expression.Expression.*
+import js7.data.value.expression.Expression.convenience.*
 import js7.data.value.expression.ExpressionParser.{parseExpression, parseExpressionOrFunction}
 import js7.data.value.expression.scopes.NameToCheckedValueScope
 import js7.data.value.{BooleanValue, ListValue, NullValue, NumberValue, ObjectValue, StringValue, Value}
@@ -497,21 +498,23 @@ final class ExpressionTest extends OurTestSuite
 
       testEval("missing ? 7 + 3",
         result = Right(NumberValue(7 + 3)),
-        Right(OrElse(
-          MissingConstant,
-          Add(NumericConstant(7), NumericConstant(3)))))
+        Right(Add(
+          OrElse(MissingConstant, NumericConstant(7)),
+          NumericConstant(3))))
 
       testEval("$unknown ? 7 + 3",
         result = Right(NumberValue(7 + 3)),
-        Right(OrElse(
-          NamedValue("unknown"),
-          Add(NumericConstant(7), NumericConstant(3)))))
+        Right(Add(
+          OrElse(NamedValue("unknown"), NumericConstant(7)),
+          NumericConstant(3))))
 
       testEval("1 + 2 ? 7 + 3",
-        result = Right(NumberValue(1 + 2)),
-        Right(OrElse(
-          Add(NumericConstant(1), NumericConstant(2)),
-          Add(NumericConstant(7), NumericConstant(3)))))
+        result = Right(NumberValue(1 + 2 + 3)),
+        Right(Add(
+          Add(
+            NumericConstant(1),
+            OrElse(NumericConstant(2), NumericConstant(7))),
+          NumericConstant(3))))
 
       testEval("1 + (2 ? 7) + 3",
         result = Right(NumberValue(1 + 2 + 3)),
@@ -545,24 +548,23 @@ final class ExpressionTest extends OurTestSuite
 
       testEval("null ? 7 + 3",
         result = Right(NumberValue(7 + 3)),
-        Right(OrElse(
-          NullConstant,
-          Add(NumericConstant(7), NumericConstant(3)))))
+        Right(Add(
+          OrElse(NullConstant, NumericConstant(7)),
+          NumericConstant(3))))
 
       testEval("""6 / 3?""",
         result = Right(NumberValue(2)),
-        Right(OrNull(Divide(NumericConstant(6), NumericConstant(3)))))
+        Right(Divide(NumericConstant(6), OrNull(NumericConstant(3)))))
 
-      // Question mark operator appliess to the whole preceding expression (applies not to 0)
-      testEval("""1 / 0?""",
+      testEval("""(1 / 0)?""",
         result = Right(NullValue),
         Right(OrNull(Divide(NumericConstant(1), NumericConstant(0)))))
 
-      testEval("""1 / 0 ? -1""",
+      testEval("""(1 / 0) ? -1""",
         result = Right(NumberValue(-1)),
         Right(OrElse(Divide(NumericConstant(1), NumericConstant(0)), NumericConstant(-1))))
 
-      testEval("""7 in [ 1 / 0 ] ? $unknown ? -1""",
+      testEval("""(7 in [ 1 / 0 ]) ? $unknown ? -1""",
         result = Right(NumberValue(-1)),
         Right(
           OrElse(
@@ -581,23 +583,6 @@ final class ExpressionTest extends OurTestSuite
             OrElse(
               NamedValue("aUnknown"),
               NamedValue("bUnknown")))))
-
-      testEval("""7 in [ 1 / 0 ] ? -1""",
-        result = Right(NumberValue(-1)),
-        Right(OrElse(
-          In(
-            NumericConstant(7),
-            ListExpression(List(
-              Divide(NumericConstant(1), NumericConstant(0))))),
-          NumericConstant(-1))))
-
-      testEval("""7 in [ 1 / 0 ] ?""",
-        result = Right(NullValue),
-        Right(OrNull(
-          In(
-            NumericConstant(7),
-            ListExpression(List(
-              Divide(NumericConstant(1), NumericConstant(0))))))))
     }
 
 
@@ -610,6 +595,24 @@ final class ExpressionTest extends OurTestSuite
       forAll((a: Boolean, b: Boolean) => assert(
         And(BooleanConstant(a), BooleanConstant(b)).eval == Right(BooleanValue(a && b))))
     }
+
+    testEval("""true || false && 3 == 4 < 5 + 6 * 7 ? 8""",
+      result = Right(BooleanValue(true)),
+      Right(
+        Or(
+          true,
+          And(
+            false,
+            Equal(
+              3,
+              LessThan(
+                4,
+                Add(
+                  5,
+                  Multiply(
+                    6,
+                    OrElse(7, 8)))))))))
+
 
     "And is lazy" in {
       assert(And(BooleanConstant(true), booleanError).eval == Left(Problem("Not a valid number: X")))
