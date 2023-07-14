@@ -20,7 +20,7 @@ import js7.data.value.{BooleanValue, FunctionValue, IsErrorValue, ListValue, Mis
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Label
 import scala.collection.{View, mutable}
-
+import scala.language.implicitConversions
 /**
   * @author Joacim Zschimmer
   */
@@ -743,10 +743,22 @@ object Expression
   }
 
   object convenience {
+    implicit def convenientBooleanConstant(b: Boolean): BooleanConstant =
+      BooleanConstant(b)
+
     implicit def convenientNumericConstant(n: Int): NumericConstant =
       NumericConstant(n)
 
-    implicit def convenientBooleanConstant(b: Boolean): BooleanConstant =
-      BooleanConstant(b)
+    implicit def convenientNumericConstant(n: Long): NumericConstant =
+      NumericConstant(n)
+
+    implicit def convenientNumericConstant(n: BigDecimal): NumericConstant =
+      NumericConstant(n)
+
+    implicit def convenientStringConstant(string: String): StringConstant =
+      StringConstant(string)
+
+    implicit def convenientListConstant(seq: Seq[Expression]): ListExpression =
+      ListExpression(seq.toList)
   }
 }
