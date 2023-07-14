@@ -7,6 +7,7 @@ import js7.agent.RunningAgent.TestWiring
 import js7.agent.configuration.AgentConfiguration
 import js7.base.monixutils.AsyncVariable
 import js7.base.service.{MainService, Service}
+import js7.base.time.ScalaTime.DurationRichInt
 import js7.base.utils.CatsUtils.RichDeferred
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.subagent.Subagent
@@ -56,8 +57,12 @@ extends MainService with Service.StoppableByRequest
           .use(_ =>
             _currentDirector.set(director) *>
               director.untilTerminated)
-          .map(termination =>
-            if (termination.restart) Left(()) else Right(termination))))
+          .flatMap(termination =>
+            if (termination.restart)
+              Task.left(())
+            else
+              Task.sleep(1.s/*some time for Akka Actors to terminate and release their names*/)
+                .as(Right(termination)))))
 
   private def onStopRequested(stop: Task[Unit]): Resource[Task, Unit] =
     Resource
