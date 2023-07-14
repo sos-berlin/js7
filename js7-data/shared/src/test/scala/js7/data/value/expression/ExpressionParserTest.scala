@@ -221,9 +221,11 @@ final class ExpressionParserTest extends OurTestSuite
         LastReturnCode,
         ListExpression(List(NumericConstant(0), NumericConstant(3), NumericConstant(50)))))
 
-    testError("""$returnCode in [0, 3, 50] || $result == "1"""",
-      """Error in expression: Parsing failed at position 44 “…ult == "1"❓”""" +
-       """ · Expected boolean operans for operator ||: [0, 3, 50] || $result == '1'""")
+    // Boolean operand are no longer statically typed checked (via BooleanExpression),
+    // to allow NullValue.
+    //testError("""($returnCode in [0, 3, 50]) || $result == "1"""",
+    //  """Error in expression: Parsing failed at position 44 “…ult == "1"❓”""" +
+    //   """ · Expected boolean operands for operator ||: [0, 3, 50] || $result == '1'""")
 
     testBooleanExpression("""($returnCode in [0, 3, 50]) || $result == "1"""",
       Or(

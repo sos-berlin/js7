@@ -573,7 +573,6 @@ final class ExpressionTest extends OurTestSuite
             NamedValue("bUnknown"))))
     }
 
-
     "Not" in {
       forAll((bool: Boolean) => assert(
         Not(bool).eval == Right(BooleanValue(!bool))))
@@ -587,7 +586,6 @@ final class ExpressionTest extends OurTestSuite
     testEval("""true || false && 3 == 4 < 5 + 6 * 7 ? 8""",
       result = Right(BooleanValue(true)),
       Or(true, And(false, Equal(3, LessThan(4, Add(5, Multiply(6, OrElse(7, 8))))))))
-
 
     "And is lazy" in {
       assert(And(true, booleanError).eval == Left(Problem("Not a valid number: X")))
@@ -662,6 +660,43 @@ final class ExpressionTest extends OurTestSuite
     testEval("\"-->$(missing?)<--\"",
       result = Right(StringValue("--><--")),
       InterpolatedString(List("-->", OrNull(MissingConstant), "<--")))
+
+    "&&" - {
+      testEval("true && missing",
+        result = Left(MissingValueProblem("missing")),
+        And(true, MissingConstant))
+
+      testEval("missing && true",
+        result = Left(MissingValueProblem("missing")),
+        And(MissingConstant, true))
+
+      testEval("false && missing",
+        result = Right(false),
+        And(false, MissingConstant))
+
+      testEval("missing && false",
+        result = Left(MissingValueProblem("missing")),
+        And(MissingConstant, false))
+    }
+
+    "||" - {
+      testEval("true || missing",
+        result = Right(true),
+        Or(true, MissingConstant))
+
+      testEval("missing || true",
+        result = Left(MissingValueProblem("missing")),
+        Or(MissingConstant, true))
+
+      testEval("false || missing",
+        result = Left(MissingValueProblem("missing")),
+        Or(false, MissingConstant))
+
+      testEval("missing || false",
+        result = Left(MissingValueProblem("missing")),
+        Or(MissingConstant, false))
+    }
+
   }
 
   "Null value" - {
@@ -672,13 +707,15 @@ final class ExpressionTest extends OurTestSuite
       NullConstant)
 
     testEval("null == null",
-      result = Right(BooleanValue.True),
+      result = Right(true),
       Equal(NullConstant, NullConstant))
 
     testEval("null != null",
-      result = Right(BooleanValue.False),
+      result = Right(false),
       NotEqual(NullConstant, NullConstant))
 
+    // Should we handle Null like a monad, null + 1 => null ???
+    // Same for all other operations which need the operarand (unlike && and ||).
     testEval("null + 1",
       result = Left(UnexpectedValueTypeProblem(NumberValue, NullValue)),
       Add(NullConstant, 1))
@@ -686,6 +723,42 @@ final class ExpressionTest extends OurTestSuite
     testEval("\"-->$(null)<--\"",
       result = Right(StringValue("--><--")),
       InterpolatedString(List("-->", NullConstant, "<--")))
+
+    "&&" - {
+      testEval("true && null",
+        result = Right(NullValue),
+        And(true, NullConstant))
+
+      testEval("null && true",
+        result = Right(NullValue),
+        And(NullConstant, true))
+
+      testEval("false && null",
+        result = Right(false),
+        And(false, NullConstant))
+
+      testEval("null && false",
+        result = Right(false),
+        And(NullConstant, false))
+    }
+
+    "||" - {
+      testEval("true || null",
+        result = Right(true),
+        Or(true, NullConstant))
+
+      testEval("null || true",
+        result = Right(true),
+        Or(NullConstant, true))
+
+      testEval("false || null",
+        result = Right(NullValue),
+        Or(false, NullConstant))
+
+      testEval("null || false",
+        result = Right(NullValue),
+        Or(NullConstant, false))
+    }
   }
 
   "ListValue" - {
