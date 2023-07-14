@@ -80,6 +80,17 @@ extends SubagentDriver
         })
     }
 
+  def stopJobs(jobKeys: Iterable[JobKey], signal: ProcessSignal) = {
+    val jobKeySet = jobKeys.toSet
+    jobKeys.toVector
+      .flatMap(jobKeyToJobDriver.get)
+      .parUnorderedTraverse(_.stop(signal))
+      .*>(jobKeyToJobDriver.removeConditional {
+        case (jobKey, _) => jobKeySet(jobKey)
+      })
+      .void
+  }
+
   private def killAllAndStop(signal: ProcessSignal): Task[Unit] =
     logger.debugTask("killAllAndStop", signal)(
       Task(jobKeyToJobDriver.toMap.values)
@@ -87,7 +98,7 @@ extends SubagentDriver
           .toVector
           .parUnorderedTraverse(jobDriver => jobDriver
             .stop(signal)
-            .onErrorHandle(t => logger.error(s"Stop $jobDriver: ${t.toStringWithCauses}")))
+            .onErrorHandle(t => logger.error(s"Stop $jobDriver: ${t.toStringWithCauses}", t)))
           .map(_.combineAll)))
 
   def tryShutdown =

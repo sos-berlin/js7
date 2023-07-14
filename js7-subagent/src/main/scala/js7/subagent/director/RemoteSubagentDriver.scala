@@ -29,7 +29,7 @@ import js7.data.controller.ControllerId
 import js7.data.delegate.DelegateCouplingState.Coupled
 import js7.data.event.EventId
 import js7.data.item.{InventoryItemKey, ItemRevision, SignableItem}
-import js7.data.job.{JobConf, JobResource}
+import js7.data.job.{JobConf, JobKey, JobResource}
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.subagent.Problems.{ProcessLostDueToResetProblem, ProcessLostDueToRestartProblem, ProcessLostProblem, SubagentIsShuttingDownProblem, SubagentNotDedicatedProblem, SubagentShutDownBeforeProcessStartProblem}
@@ -68,6 +68,7 @@ extends SubagentDriver with SubagentEventListener[S0]
   protected type S = S0
 
   private val logger = Logger.withPrefix[this.type](subagentItem.pathRev.toString)
+  private val resetLock = AsyncLock()
   private val dispatcher = new SubagentDispatcher(subagentId, postQueuedCommand)
   private val attachedItemKeys = AsyncVariable(Map.empty[InventoryItemKey, Option[ItemRevision]])
   private val initiallyCoupled = SetOnce[SubagentRunId]
@@ -142,7 +143,11 @@ extends SubagentDriver with SubagentEventListener[S0]
           }))
       .memoize
 
-  private val resetLock = AsyncLock()
+  def stopJobs(jobKeys: Iterable[JobKey], signal: ProcessSignal) =
+    Task {
+      // TODO stop RemoteSubagentDriver jobs (and detach Workflows and JobResources!)
+    }
+
 
   def reset(force: Boolean): Task[Unit] =
     logger.debugTask(

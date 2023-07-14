@@ -15,6 +15,7 @@ import js7.agent.scheduler.order.AgentOrderKeeper.*
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.crypt.{SignatureVerifier, Signed}
 import js7.base.generic.Completed
+import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.{RichCheckedTask, RichMonixTask}
 import js7.base.problem.Checked.Ops
@@ -51,7 +52,7 @@ import js7.data.state.OrderEventHandler.FollowUp
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentSelection, SubagentSelectionId}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.{Workflow, WorkflowControl, WorkflowPathControl}
+import js7.data.workflow.{Workflow, WorkflowControl, WorkflowId, WorkflowPathControl}
 import js7.journal.recover.Recovered
 import js7.journal.state.FileStatePersistence
 import js7.journal.{JournalActor, MainJournalingActor}
@@ -422,6 +423,19 @@ final class AgentOrderKeeper(
                 .removeSubagentSelection(selectionId)
                 .as(Right(AgentCommand.Response.Accepted)))
               .runToFuture
+
+          case workflowId: WorkflowId =>
+            val maybeWorkflow = persistence.currentState.idToWorkflow.get(workflowId)
+            persist(ItemDetached(itemKey, ownAgentPath)) { (stampedEvent, journaledState) =>
+              for (workflow <- maybeWorkflow) {
+                subagentKeeper
+                  .stopJobs(workflow.keyToJob.keys, SIGKILL/*just in case*/)
+                  .onErrorHandle(t => logger.error(
+                    s"SubagentKeeper.stopJobs: ${t.toStringWithCauses}", t))
+                  .runAsyncAndForget
+              }
+              Right(AgentCommand.Response.Accepted)
+            }
 
           case _ =>
             persist(ItemDetached(itemKey, ownAgentPath)) { (stampedEvent, journaledState) =>

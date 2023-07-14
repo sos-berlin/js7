@@ -6,6 +6,7 @@ import js7.base.io.process.ProcessSignal
 import js7.base.problem.Checked
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.data.job.JobKey
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId}
 import js7.data.subagent.{SubagentDriverState, SubagentId}
@@ -37,6 +38,8 @@ trait SubagentDriver
   def stop(signal: Option[ProcessSignal]): Task[Unit]
 
   def tryShutdown: Task[Unit]
+
+  def stopJobs(jobKeys: Iterable[JobKey], signal: ProcessSignal): Task[Unit]
 
   def processOrder(order: Order[Order.Processing]): Task[Checked[OrderProcessed]]
 
