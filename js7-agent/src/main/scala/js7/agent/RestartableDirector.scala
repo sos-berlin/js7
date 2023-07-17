@@ -3,11 +3,13 @@ package js7.agent
 import cats.effect.Resource
 import cats.effect.concurrent.Deferred
 import cats.implicits.toFlatMapOps
+import js7.agent.RestartableDirector.*
 import js7.agent.RunningAgent.TestWiring
 import js7.agent.configuration.AgentConfiguration
+import js7.base.log.Logger
 import js7.base.monixutils.AsyncVariable
 import js7.base.service.{MainService, Service}
-import js7.base.time.ScalaTime.DurationRichInt
+import js7.base.time.ScalaTime.{DurationRichInt, RichDuration}
 import js7.base.utils.CatsUtils.RichDeferred
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.subagent.Subagent
@@ -39,30 +41,32 @@ extends MainService with Service.StoppableByRequest
                 allocated.allocatedThing.untilTerminated)
               .guarantee(allocated.release)
               .flatMap(terminated =>
-                if (terminated.restart)
+                if (terminated.restartDirector)
                   restartLoop
                 else
                   Task.pure(terminated))
               .flatTap(termination =>
-                _untilTerminated.complete(Success(termination)).as(Right(())))
+                _untilTerminated.complete3(Success(termination)).as(Right(())))
               .tapError(t => // ???
                 _untilTerminated.complete3(Failure(t)).void)
               .void))
 
   private def restartLoop: Task[DirectorTermination] =
-    Task.tailRecM(())(_ => RunningAgent
-      .director(subagent, conf, testWiring)
-      .use(director =>
-        onStopRequested(director.terminate().void)
-          .use(_ =>
-            _currentDirector.set(director) *>
-              director.untilTerminated)
-          .flatMap(termination =>
-            if (termination.restart)
-              Task.left(())
-            else
-              Task.sleep(1.s/*some time for Akka Actors to terminate and release their names*/)
-                .as(Right(termination)))))
+    Task.tailRecM(())(_ =>
+      Task(logger.info(s"⟲ Restart Agent Director after ${Delay.pretty}...")) *>
+        Task.sleep(Delay) *>
+        RunningAgent
+          .director(subagent, conf, testWiring)
+          .use(director =>
+            onStopRequested(director.terminate().void)
+              .use(_ =>
+                _currentDirector.set(director) *>
+                  director.untilTerminated)
+              .map(termination =>
+                if (termination.restartDirector)
+                  Left(())
+                else
+                  Right(termination))))
 
   private def onStopRequested(stop: Task[Unit]): Resource[Task, Unit] =
     Resource
@@ -81,6 +85,9 @@ extends MainService with Service.StoppableByRequest
 }
 
 private object RestartableDirector {
+  private val logger = Logger[this.type]
+  private val Delay = 1.s // Give Akka Actors time to terminate and release their names
+
   def apply(
     subagent: Subagent,
     conf: AgentConfiguration,
