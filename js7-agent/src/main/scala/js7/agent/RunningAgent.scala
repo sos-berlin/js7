@@ -309,23 +309,22 @@ object RunningAgent {
 
     // The AgentOrderKeeper if started
     val currentMainActor: Task[Checked[MainActorStarted]] =
-      logger.traceTask(
-        clusterNode.currentState
-          .map(_.map(_.clusterState))
-          .flatMapT { clusterState =>
-            import clusterNode.clusterConf.{isBackup, ownId}
-            if (!clusterState.isActive(ownId, isBackup = isBackup))
-              Task.left(ClusterNodeIsNotActiveProblem)
-            else
-              mainActorStarted.map {
-                case Left(_) => Left(ShuttingDownProblem)
-                case Right(o) => Right(o)
-              }
-          }
-          .tapError(t => Task {
-            logger.debug(s"currentOrderKeeperActor => ${t.toStringWithCauses}", t)
-            whenReady.tryFailure(t)
-          }))
+      clusterNode.currentState
+        .map(_.map(_.clusterState))
+        .flatMapT { clusterState =>
+          import clusterNode.clusterConf.{isBackup, ownId}
+          if (!clusterState.isActive(ownId, isBackup = isBackup))
+            Task.left(ClusterNodeIsNotActiveProblem)
+          else
+            mainActorStarted.map {
+              case Left(_) => Left(ShuttingDownProblem)
+              case Right(o) => Right(o)
+            }
+        }
+        .tapError(t => Task {
+          logger.debug(s"currentOrderKeeperActor => ${t.toStringWithCauses}", t)
+          whenReady.tryFailure(t)
+        })
 
     val untilMainActorTerminated =
       logger

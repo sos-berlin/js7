@@ -30,7 +30,7 @@ object MonixBase
   private val TrueTask = Task.pure(true)
   private val CompletedTask = Task.pure(Completed)
   val DefaultBatchSize = 256
-  val DefaultWorryDurations = Seq(3.s, 7.s, 10.s)
+  val DefaultWorryDurations = Seq(3.s, 7.s) ++ Seq.fill(((1.h - 10.s) / 10.s).toInt)(10.s) :+ 60.s
   /** Log worry at info level after this duration. */
   val InfoWorryDuration = DefaultWorryDurations.last
   private val logger = js7.base.log.Logger[this.type]

@@ -151,8 +151,10 @@ extends Actor with Stash with JournalLogging
       stash()
   }
 
-  private def logReady() =
-    logger.info(s"Ready, writing ${if (conf.syncOnCommit) "(with sync)" else "(without sync)"} journal file '${eventWriter.file.getFileName}'")
+  private def logReady() = {
+    val how = if (conf.syncOnCommit) "(with sync)" else "(without sync)"
+    logger.debug(s"Snapshot written to Writing $how journal file ${eventWriter.file.getFileName}")
+  }
 
   private def ready: Receive = receiveGet orElse {
     case Input.Store(correlId, timestamped, replyTo, options, since, commitLater, callersItem) =>
@@ -557,7 +559,9 @@ extends Actor with Stash with JournalLogging
       totalRunningTime = totalRunningSince.elapsed roundUpToNext 1.ms)
     val file = journalLocation.file(after = lastWrittenEventId)
 
-    logger.info(s"Starting new journal file #${journalHeader.generation} '${file.getFileName}' with a snapshot")
+    logger.info(
+      s"Starting new journal file #${journalHeader.generation} ${file.getFileName} with a snapshot "
+      + (if (conf.syncOnCommit) "(using sync)" else "(no sync)"))
     logger.debug(journalHeader.toString)
 
     snapshotWriter = new SnapshotJournalWriter(journalLocation.S, toSnapshotTemporary(file), after = lastWrittenEventId,
