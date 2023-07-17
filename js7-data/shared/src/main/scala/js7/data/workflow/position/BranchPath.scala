@@ -14,6 +14,9 @@ object BranchPath
 {
   val empty: BranchPath = Nil
 
+  def fromSeq(seq: Seq[Any]): Checked[BranchPath] =
+    BranchPath.anySegmentsToCheckedBranchPath(seq grouped 2)
+
   def commonBranchPath(a: BranchPath, b: BranchPath): BranchPath =
     (a, b) match {
       case (aHead :: aTail, bHead :: bTail) if aHead == bHead =>
