@@ -17,7 +17,7 @@ import js7.data.job.JobResourcePath
 import js7.data.value.ValuePrinter.appendQuotedContent
 import js7.data.value.ValueType.{ErrorInExpressionProblem, UnexpectedValueTypeProblem}
 import js7.data.value.expression.ExpressionParser.parseExpression
-import js7.data.value.{BooleanValue, ErrorValue, FunctionValue, ListValue, NullValue, NumberValue, ObjectValue, StringValue, Value, ValuePrinter}
+import js7.data.value.{BooleanValue, ErrorValue, FunctionValue, ListValue, MissingValue, NumberValue, ObjectValue, StringValue, Value, ValuePrinter}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Label
 import scala.collection.{View, mutable}
@@ -148,16 +148,16 @@ object Expression
         else
           b.eval.flatMap {
             case b: BooleanValue => Right(b)
-            case NullValue => Right(NullValue)
+            case MissingValue => Right(MissingValue)
             case v => Left(UnexpectedValueTypeProblem(BooleanValue, v))
           }
-      case NullValue => b.eval.flatMap {
+      case MissingValue => b.eval.flatMap {
         case b: BooleanValue => Right(
           if (b == neutral)
             neutral
           else
-            NullValue)
-        case NullValue => Right(NullValue)
+            MissingValue)
+        case MissingValue => Right(MissingValue)
         case v => Left(UnexpectedValueTypeProblem(BooleanValue, v))
       }
       case v => Left(UnexpectedValueTypeProblem(BooleanValue, v))
@@ -341,17 +341,17 @@ object Expression
     override def toString = makeString(a, "?", default)
   }
 
-  final case class OrNull(a: Expression)
+  final case class OrMissing(a: Expression)
   extends BooleanExpression with PurityDependsOnSubexpressions {
     def precedence = Precedence.OrElse
     def subexpressions = a :: Nil
 
     protected def evalAllowError(implicit scope: Scope) =
-      evalOrDefault(a, NullConstant)
+      evalOrDefault(a, MissingConstant)
 
     override def toString =
       Precedence.inParentheses(a, precedence) +
-        (a.isInstanceOf[OrNull] ?? " ") +
+        (a.isInstanceOf[OrMissing] ?? " ") +
         "?"
   }
 
@@ -360,7 +360,7 @@ object Expression
       case Left(problem) =>
         logger.trace(s"OrElse or ?-operator catched $problem")
         default.eval
-      case Right(_: ErrorValue | NullValue) => default.eval
+      case Right(_: ErrorValue | MissingValue) => default.eval
       case Right(o) => Right(o)
     }
 
@@ -748,11 +748,11 @@ object Expression
     override def toString = s"error($errorMessage)"
   }
 
-  type NullConstant = NullConstant.type
-  case object NullConstant extends Constant {
-    def toValue = NullValue
+  type MissingConstant = MissingConstant.type
+  case object MissingConstant extends Constant {
+    val toValue = MissingValue
 
-    override def toString = "null"
+    override val toString = "missing"
   }
 
   final class ImpureTest(eval: () => Checked[Value]) extends Expression {

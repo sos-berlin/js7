@@ -209,14 +209,14 @@ object ExpressionParser
     keyword("error") *> inParentheses(expression)
       .map(expr => ErrorExpression(expr))
 
-  private val nullConstant: Parser[NullConstant] =
-    string("null").as(NullConstant)
+  private val missingConstant: Parser[MissingConstant] =
+    string("missing").as(MissingConstant)
 
   private val factor =
     parenthesizedExpression | booleanConstant | numericConstant |
       singleQuotedStringConstant | interpolatedString | listExpr | objectExpr | dollarNamedValue |
       catchCount |
-      nullConstant |
+      missingConstant |
       jobResourceVariable |
       errorFunctionCall | argumentFunctionCall | variableFunctionCall | functionCall
 
@@ -242,7 +242,7 @@ object ExpressionParser
     ((argumentExpression <* w) ~ (char('?') *> not(char('?')) *> w *> argumentExpression.?).rep0)
       .map { case (a, more) =>
         more.foldLeft(a) {
-          case (a, None) => OrNull(a)
+          case (a, None) => OrMissing(a)
           case (a, Some(b)) => OrElse(a, b)
         }
       }

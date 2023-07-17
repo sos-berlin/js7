@@ -294,8 +294,8 @@ final class ExecuteTest extends OurTestSuite with ControllerAgentForScalaTest
       "LABEL"               -> expr("$js7Label"),
       "JOB_NAME"            -> expr("$js7JobName"),
       "JOB_TIMEOUT"         -> expr("""$js7Job.timeoutMillis ? "" """),
-      // JOB_SIGKILL_DELAY will be unset because sigkillDelayMillis returns NullValue
-      "JOB_SIGKILL_DELAY"   -> expr("""$js7Job.sigkillDelayMillis """),
+      // JOB_SIGKILL_DELAY will be unset because sigkillDelayMillis returns MissingValue
+      "JOB_SIGKILL_DELAY"   -> expr("""$js7Job.sigkillDelayMillis"""),
       "JOB_EXECUTION_COUNT" -> expr("$js7JobExecutionCount"),
       "CONTROLLER_ID"       -> expr("$js7ControllerId"),
       "SCHEDULED_DATE"      -> expr("scheduledOrEmpty(format='yyyy-MM-dd HH:mm:ssZ')"),
@@ -352,7 +352,7 @@ final class ExecuteTest extends OurTestSuite with ControllerAgentForScalaTest
 
       val result = testWithSpecialVariables(ShellScriptExecutable(
         script,
-        env = nameToExpression.updated(deletedEnvName, expr("null"))))
+        env = nameToExpression.updated(deletedEnvName, expr("missing"))))
       assert(result.get(deletedEnvName) == Some(StringValue("UNSET")))
     }
 

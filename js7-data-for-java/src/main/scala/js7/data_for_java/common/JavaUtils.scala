@@ -4,7 +4,7 @@ import cats.instances.vector.*
 import cats.syntax.traverse.*
 import java.util.Optional
 import js7.base.problem.{Checked, Problem}
-import js7.data.value.{BooleanValue, ErrorValue, FunctionValue, ListValue, NamedValues, NullValue, NumberValue, ObjectValue, StringValue, Value}
+import js7.data.value.{BooleanValue, ErrorValue, FunctionValue, ListValue, MissingValue, NamedValues, NumberValue, ObjectValue, StringValue, Value}
 import scala.jdk.CollectionConverters.*
 
 object JavaUtils
@@ -46,7 +46,7 @@ object JavaUtils
       case NumberValue(o) => o
       case StringValue(o) => o
       case ListValue(values) => values.asJava
-      case NullValue => Optional.empty
+      case MissingValue => Optional.empty
       case _: ObjectValue | _: FunctionValue | _: ErrorValue => throw new NotImplementedError
     }
 }

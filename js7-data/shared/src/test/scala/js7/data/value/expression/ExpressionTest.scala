@@ -9,7 +9,7 @@ import js7.data.value.expression.Expression.*
 import js7.data.value.expression.Expression.convenience.*
 import js7.data.value.expression.ExpressionParser.{parseExpression, parseExpressionOrFunction}
 import js7.data.value.expression.scopes.NameToCheckedValueScope
-import js7.data.value.{BooleanValue, ListValue, NullValue, NumberValue, ObjectValue, StringValue, Value}
+import js7.data.value.{BooleanValue, ListValue, MissingValue, NumberValue, ObjectValue, StringValue, Value}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Label
 import org.scalactic.source
@@ -486,10 +486,10 @@ final class ExpressionTest extends OurTestSuite
           == Right(BooleanValue(Set(b, c, d)(a)))))
     }
 
-    "OrNull, OrElse" - {
+    "?-operator" - {
       testEval("error('ERROR') ?",
-        result = Right(NullValue),
-        OrNull(ErrorExpression("ERROR")))
+        result = Right(MissingValue),
+        OrMissing(ErrorExpression("ERROR")))
 
       testEval("error('ERROR') ? 7 + 3",
         result = Right(7 + 3),
@@ -518,12 +518,12 @@ final class ExpressionTest extends OurTestSuite
           3))
 
       testEval("""error('ERROR')? ?""",
-        result = Right(NullValue),
-        OrNull(OrNull(ErrorExpression("ERROR"))))
+        result = Right(MissingValue),
+        OrMissing(OrMissing(ErrorExpression("ERROR"))))
 
       testEval("""error('ERROR')? ? 7""",
         result = Right(7),
-        OrElse(OrNull(ErrorExpression("ERROR")), 7))
+        OrElse(OrMissing(ErrorExpression("ERROR")), 7))
 
       // Reserve ?? for future use
       testSyntaxError("""(1/0) ??""", Problem(
@@ -533,26 +533,26 @@ final class ExpressionTest extends OurTestSuite
         "Error in expression: Parsing failed at position 8 “(1/0) ?❓? -1” · Unexpected “?”"))
 
       testEval("""(error('ERROR')?)?""",
-        result = Right(NullValue),
-        OrNull(OrNull(ErrorExpression("ERROR"))))
+        result = Right(MissingValue),
+        OrMissing(OrMissing(ErrorExpression("ERROR"))))
 
-      testEval("null?",
-        result = Right(NullValue),
-        OrNull(NullConstant))
+      testEval("missing?",
+        result = Right(MissingValue),
+        OrMissing(MissingConstant))
 
-      testEval("null ? 7 + 3",
+      testEval("missing ? 7 + 3",
         result = Right(7 + 3),
         Add(
-          OrElse(NullConstant, 7),
+          OrElse(MissingConstant, 7),
           3))
 
       testEval("""6 / 3?""",
         result = Right(2),
-        Divide(6, OrNull(3)))
+        Divide(6, OrMissing(3)))
 
       testEval("""(1 / 0)?""",
-        result = Right(NullValue),
-        OrNull(Divide(1, 0)))
+        result = Right(MissingValue),
+        OrMissing(Divide(1, 0)))
 
       testEval("""(1 / 0) ? -1""",
         result = Right(-1),
@@ -569,8 +569,8 @@ final class ExpressionTest extends OurTestSuite
           -1))
 
       testEval("""$aUnknown ? $bUnknown ? """,
-        result = Right(NullValue),
-        OrNull(
+        result = Right(MissingValue),
+        OrMissing(
           OrElse(
             NamedValue("aUnknown"),
             NamedValue("bUnknown"))))
@@ -629,12 +629,12 @@ final class ExpressionTest extends OurTestSuite
       ErrorExpression("ERROR"))
 
     testEval("error('ERROR')?",
-      result = Right(NullValue),
-      OrNull(ErrorExpression("ERROR")))
+      result = Right(MissingValue),
+      OrMissing(ErrorExpression("ERROR")))
 
     testEval("error('ERROR') ?",
-      result = Right(NullValue),
-      OrNull(ErrorExpression("ERROR")))
+      result = Right(MissingValue),
+      OrMissing(ErrorExpression("ERROR")))
 
     testEval("error('ERROR') == error('ERROR')",
       result = Left(ErrorInExpressionProblem("ERROR")),
@@ -648,8 +648,8 @@ final class ExpressionTest extends OurTestSuite
       result = Left(ErrorInExpressionProblem("ERROR")),
       Add(ErrorExpression("ERROR"), 1))
 
-    "MissingValue OrNull" in {
-      assert(OrNull(ErrorExpression("ERROR")).eval == Right(NullValue))
+    "MissingValue OrMissing" in {
+      assert(OrMissing(ErrorExpression("ERROR")).eval == Right(MissingValue))
     }
 
     "MissingValue is not comparable" in {
@@ -663,7 +663,7 @@ final class ExpressionTest extends OurTestSuite
 
     testEval("\"-->$(error('ERROR')?)<--\"",
       result = Right(StringValue("--><--")),
-      InterpolatedString(List("-->", OrNull(ErrorExpression("ERROR")), "<--")))
+      InterpolatedString(List("-->", OrMissing(ErrorExpression("ERROR")), "<--")))
 
     "&&" - {
       testEval("true && error('ERROR')",
@@ -702,65 +702,65 @@ final class ExpressionTest extends OurTestSuite
     }
   }
 
-  "Null value" - {
+  "Missing value" - {
     implicit val scope = Scope.empty
 
-    testEval("null",
-      result = Right(NullValue),
-      NullConstant)
+    testEval("missing",
+      result = Right(MissingValue),
+      MissingConstant)
 
-    testEval("null == null",
+    testEval("missing == missing",
       result = Right(true),
-      Equal(NullConstant, NullConstant))
+      Equal(MissingConstant, MissingConstant))
 
-    testEval("null != null",
+    testEval("missing != missing",
       result = Right(false),
-      NotEqual(NullConstant, NullConstant))
+      NotEqual(MissingConstant, MissingConstant))
 
-    // Should we handle Null like a monad, null + 1 => null ???
-    // Same for all other operations which need the operarand (unlike && and ||).
-    testEval("null + 1",
-      result = Left(UnexpectedValueTypeProblem(NumberValue, NullValue)),
-      Add(NullConstant, 1))
+    // Should we handle Missing like a monad, null + 1 => null ???
+    // Same for all other operations which need the operand (unlike && and ||).
+    testEval("missing + 1",
+      result = Left(UnexpectedValueTypeProblem(NumberValue, MissingValue)),
+      Add(MissingConstant, 1))
 
-    testEval("\"-->$(null)<--\"",
+    testEval("\"-->$(missing)<--\"",
       result = Right(StringValue("--><--")),
-      InterpolatedString(List("-->", NullConstant, "<--")))
+      InterpolatedString(List("-->", MissingConstant, "<--")))
 
     "&&" - {
-      testEval("true && null",
-        result = Right(NullValue),
-        And(true, NullConstant))
+      testEval("true && missing",
+        result = Right(MissingValue),
+        And(true, MissingConstant))
 
-      testEval("null && true",
-        result = Right(NullValue),
-        And(NullConstant, true))
+      testEval("missing && true",
+        result = Right(MissingValue),
+        And(MissingConstant, true))
 
-      testEval("false && null",
+      testEval("false && missing",
         result = Right(false),
-        And(false, NullConstant))
+        And(false, MissingConstant))
 
-      testEval("null && false",
+      testEval("missing && false",
         result = Right(false),
-        And(NullConstant, false))
+        And(MissingConstant, false))
     }
 
     "||" - {
-      testEval("true || null",
+      testEval("true || missing",
         result = Right(true),
-        Or(true, NullConstant))
+        Or(true, MissingConstant))
 
-      testEval("null || true",
+      testEval("missing || true",
         result = Right(true),
-        Or(NullConstant, true))
+        Or(MissingConstant, true))
 
-      testEval("false || null",
-        result = Right(NullValue),
-        Or(false, NullConstant))
+      testEval("false || missing",
+        result = Right(MissingValue),
+        Or(false, MissingConstant))
 
-      testEval("null || false",
-        result = Right(NullValue),
-        Or(NullConstant, false))
+      testEval("missing || false",
+        result = Right(MissingValue),
+        Or(MissingConstant, false))
     }
   }
 

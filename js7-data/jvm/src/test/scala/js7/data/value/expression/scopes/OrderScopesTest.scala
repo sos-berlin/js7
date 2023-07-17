@@ -19,7 +19,7 @@ import js7.data.value.expression.Expression.{NamedValue, StringConstant}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.expression.Scope
 import js7.data.value.expression.scopes.OrderScopesTest.*
-import js7.data.value.{NullValue, NumberValue, ObjectValue, StringValue}
+import js7.data.value.{MissingValue, NumberValue, ObjectValue, StringValue}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.{Label, Position}
@@ -148,8 +148,8 @@ final class OrderScopesTest extends OurTestSuite
       assert(defaultArguments("defaultControllerId") == Right(StringValue("CONTROLLER")))
       assert(defaultArguments("defaultScheduled") == Right(StringValue("2021-06-17")))
 
-      assert(defaultArguments("defaultJobSigkillDelay") == Right(NullValue))
-      assert(defaultArguments("defaultJobTimeout") == Right(NullValue))
+      assert(defaultArguments("defaultJobSigkillDelay") == Right(MissingValue))
+      assert(defaultArguments("defaultJobTimeout") == Right(MissingValue))
     }
 
     "$job.timeoutMillis, $job.sigkillDelayMillis" in {

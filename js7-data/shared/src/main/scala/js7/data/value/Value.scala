@@ -90,7 +90,7 @@ sealed trait Value
   def asObjectValue: Checked[ObjectValue] =
     Left(UnexpectedValueTypeProblem(ObjectValue, this))
 
-  @javaApi @Nullable/*for NullValue ???*/
+  @javaApi @Nullable/*for MissingValue ???*/
   def toJava: java.lang.Object
 
   def convertToString: String
@@ -124,7 +124,7 @@ object Value
     case BooleanValue(o) => Json.fromBoolean(o)
     case ListValue(values) => Json.fromValues(values map jsonEncoder.apply)
     case ObjectValue(values) => Json.fromJsonObject(JsonObject.fromIterable(values.view.mapValues(jsonEncoder.apply)))
-    case NullValue => Json.Null
+    case MissingValue => Json.Null
     case v @ (_: ErrorValue | _: FunctionValue) =>
       sys.error(s"${v.valueType.name} cannot be JSON encoded: $v")
   }
@@ -156,7 +156,7 @@ object Value
           .traverse { case (k, v) => jsonDecoder.decodeJson(v).map(k -> _) }
           .map(o => ObjectValue(o.toMap))
       else if (j.isNull)
-        Right(NullValue)
+        Right(MissingValue)
       else
         Left(DecodingFailure(s"Unknown value JSON type: ${j.getClass.shortClassName}", c.history))
     }
@@ -398,18 +398,18 @@ object ErrorValue extends ValueType {
 /** The inapplicable value.
  *
  * Similar to Scala None (but there is no Some).
- * Unlike SQL null, this NullValue equals itself. */
-case object NullValue extends Value with ValueType.Simple {
-  def valueType = NullValue
+ * Unlike SQL null, this MissingValue equals itself. */
+case object MissingValue extends Value with ValueType.Simple {
+  val valueType = MissingValue
 
-  val name = "Null"
+  val name = "Missing"
 
   @javaApi @Nullable def toJava: Null =
     null
 
-  override def convertToString = ""
+  override val convertToString = ""
 
-  override def toString = convertToString
+  override val toString = convertToString
 }
 
 sealed trait ValueType
