@@ -14,7 +14,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.value.ValuePrinter.quoteString
-import js7.data.value.ValueType.{MissingValueProblem, UnexpectedValueTypeProblem}
+import js7.data.value.ValueType.{UnexpectedValueTypeProblem, UnknownNameInExpressionProblem}
 import js7.data.value.expression.ExprFunction
 import monix.eval.Task
 import scala.collection.View
@@ -90,7 +90,7 @@ sealed trait Value
   def asObjectValue: Checked[ObjectValue] =
     Left(UnexpectedValueTypeProblem(ObjectValue, this))
 
-  @javaApi @Nullable/*for NullValue ???*/
+  @javaApi @Nullable/*for MissingValue ???*/
   def toJava: java.lang.Object
 
   def convertToString: String
@@ -124,8 +124,8 @@ object Value
     case BooleanValue(o) => Json.fromBoolean(o)
     case ListValue(values) => Json.fromValues(values map jsonEncoder.apply)
     case ObjectValue(values) => Json.fromJsonObject(JsonObject.fromIterable(values.view.mapValues(jsonEncoder.apply)))
-    case NullValue => Json.Null
-    case v @ (_: IsErrorValue | _: FunctionValue) =>
+    case MissingValue => Json.Null
+    case v @ (_: ErrorValue | _: FunctionValue) =>
       sys.error(s"${v.valueType.name} cannot be JSON encoded: $v")
   }
 
@@ -156,7 +156,7 @@ object Value
           .traverse { case (k, v) => jsonDecoder.decodeJson(v).map(k -> _) }
           .map(o => ObjectValue(o.toMap))
       else if (j.isNull)
-        Right(NullValue)
+        Right(MissingValue)
       else
         Left(DecodingFailure(s"Unknown value JSON type: ${j.getClass.shortClassName}", c.history))
     }
@@ -378,16 +378,10 @@ object FunctionValue extends ValueType
   val name = "Function"
 }
 
-/** Just a reminder that MissingValue could be an instance of a future IsErrorValue.
-  * For example, division by zero. */
-sealed trait IsErrorValue extends Value {
-  def problem: Problem
-}
-
 /** A missing value due to a problem.
  *
  *  Does not equals itself because it fails if evaluated. */
-final case class ErrorValue(problem: Problem) extends IsErrorValue {
+final case class ErrorValue(problem: Problem) extends Value {
   def valueType = ErrorValue
 
   @javaApi @Nonnull def toJava: Problem =
@@ -399,52 +393,24 @@ final case class ErrorValue(problem: Problem) extends IsErrorValue {
 }
 object ErrorValue extends ValueType {
   val name = "Problem"
-}
-
-/** A missing value due to a problem.
- *
- * Does not equals itself because it fails if evaluated. */
-final case class MissingValue(missing: String) extends IsErrorValue {
-  def valueType = MissingValue
-
-  lazy val problem = MissingValueProblem(missing)
-
-  @javaApi @Nonnull def toJava: Problem =
-    problem
-
-  override def convertToString = {
-    if (problem == MissingValueProblem.default) "[MissingValue]"
-    else s"[MissingValue: $problem]"
-  }
-
-  override def toString = convertToString
-}
-object MissingValue extends ValueType {
-  val name = "Missing"
-  val default: MissingValue = new MissingValue("missing")
-
-  def apply(missingName: String): MissingValue =
-    if (missingName == default.missing)
-      default
-    else
-      new MissingValue(missingName)
+  def unknownName(name: String) = ErrorValue(UnknownNameInExpressionProblem(name))
 }
 
 /** The inapplicable value.
  *
  * Similar to Scala None (but there is no Some).
- * Unlike SQL null, this NullValue equals itself. */
-case object NullValue extends Value with ValueType.Simple {
-  def valueType = NullValue
+ * Unlike SQL null, this MissingValue equals itself. */
+case object MissingValue extends Value with ValueType.Simple {
+  val valueType = MissingValue
 
-  val name = "Null"
+  val name = "Missing"
 
   @javaApi @Nullable def toJava: Null =
     null
 
-  override def convertToString = ""
+  override val convertToString = ""
 
-  override def toString = convertToString
+  override val toString = convertToString
 }
 
 sealed trait ValueType
@@ -514,17 +480,21 @@ object ValueType
         Left(DecodingFailure("ValueType expected", c.history))
     }
 
-  final case class MissingValueProblem(missingName: String) extends Problem.Coded {
-    def arguments = Map("missing" -> missingName)
+  final case class UnknownNameInExpressionProblem(name: String) extends Problem.Coded {
+    def arguments = Map("name" -> name)
   }
-  object MissingValueProblem {
-    val default: MissingValueProblem = new MissingValueProblem("missing")
+  object UnknownNameInExpressionProblem {
+    val default: UnknownNameInExpressionProblem = new UnknownNameInExpressionProblem("missing")
 
-    def apply(missingName: String): MissingValueProblem =
-      if (missingName == default.missingName)
+    def apply(name: String): UnknownNameInExpressionProblem =
+      if (name == default.name)
         default
       else
-        new MissingValueProblem(missingName)
+        new UnknownNameInExpressionProblem(name)
+  }
+
+  final case class ErrorInExpressionProblem(errorMessage: String) extends Problem.Coded {
+    def arguments = Map("errorMessage" -> errorMessage)
   }
 
   final case class UnexpectedValueTypeProblem(valueType: ValueType, value: Value)

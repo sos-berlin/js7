@@ -444,7 +444,7 @@ with Stash
                 .as(Right(AgentCommand.Response.Accepted)))
               .runToFuture
 
-          case workflowId: WorkflowId =>
+          case WorkflowId.as(workflowId) =>
             val maybeWorkflow = journal.unsafeCurrentState().idToWorkflow.get(workflowId)
             persist(ItemDetached(itemKey, ownAgentPath)) { (stampedEvent, journaledState) =>
               for (workflow <- maybeWorkflow) {

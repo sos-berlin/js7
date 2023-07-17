@@ -31,7 +31,7 @@ package object position
     private[workflow] def toJsonSeq: Vector[Json] =
       segments.view.flatMap(p => View(p.nr.asJson, p.branchId.asJson)).toVector
 
-    def toSeq: Vector[Any] =
+    def toFlatSeq: Vector[Any] =
       segments.view.flatMap(p => View(Int.box(p.nr.number), p.branchId.string)).toVector
   }
 

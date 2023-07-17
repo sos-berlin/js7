@@ -8,7 +8,7 @@ import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichString
 import js7.data.value.expression.ExpressionParser.parseFunction
 import js7.data.value.expression.scopes.NamedValueScope
-import js7.data.value.{MissingValue, Value}
+import js7.data.value.{ErrorValue, Value}
 import org.jetbrains.annotations.TestOnly
 import scala.language.implicitConversions
 
@@ -35,12 +35,12 @@ final case class ExprFunction(
         maximumArgumentCount = Some(maximum)))
 
   def eval(arguments: Iterable[Value])(implicit scope: Scope): Checked[Value] =
-    evalAllowMissing(arguments).flatMap {
-      case missing: MissingValue => Left(missing.problem)
+    evalAllowError(arguments).flatMap {
+      case errorValue: ErrorValue => Left(errorValue.problem)
       case o => Right(o)
     }
 
-  private def evalAllowMissing(arguments: Iterable[Value])
+  private def evalAllowError(arguments: Iterable[Value])
     (implicit scope: Scope)
   : Checked[Value] =
     if (arguments.sizeIs < minimumArgumentCount

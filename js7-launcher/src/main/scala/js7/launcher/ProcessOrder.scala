@@ -10,7 +10,7 @@ import js7.data.order.Order
 import js7.data.value.expression.Scope.evalExpressionMap
 import js7.data.value.expression.scopes.{FileValueScope, FileValueState, NameToCheckedValueScope, ProcessingOrderScopes}
 import js7.data.value.expression.{Expression, Scope}
-import js7.data.value.{NullValue, Value}
+import js7.data.value.{MissingValue, Value}
 import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.launcher.ProcessOrder.evalEnv
@@ -82,7 +82,7 @@ object ProcessOrder
       .flatMap(_
         .view
         .mapValues {
-          case NullValue => None
+          case MissingValue => None
           case v => Some(v)
         }
         .toVector
