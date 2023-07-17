@@ -424,7 +424,7 @@ final class AgentOrderKeeper(
                 .as(Right(AgentCommand.Response.Accepted)))
               .runToFuture
 
-          case workflowId: WorkflowId =>
+          case WorkflowId.as(workflowId) =>
             val maybeWorkflow = persistence.currentState.idToWorkflow.get(workflowId)
             persist(ItemDetached(itemKey, ownAgentPath)) { (stampedEvent, journaledState) =>
               for (workflow <- maybeWorkflow) {
