@@ -8,7 +8,7 @@ import js7.data.Problems.InvalidFunctionArgumentsProblem
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.value.expression.Expression.{Argument, FunctionCall, JobResourceVariable}
 import js7.data.value.expression.{Expression, Scope}
-import js7.data.value.{MissingValue, ObjectValue, Value}
+import js7.data.value.{ErrorValue, ObjectValue, Value}
 
 final class JobResourceScope(
   pathToJobResource: PartialFunction[JobResourcePath, JobResource],
@@ -83,7 +83,7 @@ extends Scope
 
           case Some(variableName) =>
             jobResource.variables.get(variableName) match {
-              case None => Right(MissingValue(s"$jrPath:$variableName"))
+              case None => Right(ErrorValue.unknownName(s"$jrPath:$variableName"))
               case Some(expr) => expr.eval
             }
         })

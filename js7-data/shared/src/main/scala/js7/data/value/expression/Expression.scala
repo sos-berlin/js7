@@ -15,9 +15,9 @@ import js7.base.utils.ScalaUtils.withStringBuilder
 import js7.base.utils.typeclasses.IsEmpty
 import js7.data.job.JobResourcePath
 import js7.data.value.ValuePrinter.appendQuotedContent
-import js7.data.value.ValueType.UnexpectedValueTypeProblem
+import js7.data.value.ValueType.{ErrorInExpressionProblem, UnexpectedValueTypeProblem}
 import js7.data.value.expression.ExpressionParser.parseExpression
-import js7.data.value.{BooleanValue, FunctionValue, IsErrorValue, ListValue, MissingValue, NullValue, NumberValue, ObjectValue, StringValue, Value, ValuePrinter}
+import js7.data.value.{BooleanValue, ErrorValue, FunctionValue, ListValue, NullValue, NumberValue, ObjectValue, StringValue, Value, ValuePrinter}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Label
 import scala.collection.{View, mutable}
@@ -41,7 +41,7 @@ sealed trait Expression extends Precedence
 
   final def eval(implicit scope: Scope): Checked[Value] =
     evalAllowError.flatMap {
-      case v: IsErrorValue => Left(v.problem)
+      case v: ErrorValue => Left(v.problem)
       case o => Right(o)
     }
 
@@ -360,7 +360,7 @@ object Expression
       case Left(problem) =>
         logger.trace(s"OrElse or ?-operator catched $problem")
         default.eval
-      case Right(_: IsErrorValue | NullValue) => default.eval
+      case Right(_: ErrorValue | NullValue) => default.eval
       case Right(o) => Right(o)
     }
 
@@ -736,17 +736,16 @@ object Expression
     override def toString = s"replaceAll($string, $pattern, $replacement)"
   }
 
-  /** `problem` must be defined only if internally generated. */
-  type MissingConstant = MissingConstant.type
-  case object MissingConstant
-  extends Pure/*not Constant, because MissingValue is an error*/ {
+  final case class ErrorExpression(errorMessage: Expression)
+  extends PurityDependsOnSubexpressions/*not Constant, because it is an error?*/ {
     def precedence = Precedence.Factor
     def subexpressions = Nil
 
     def evalAllowError(implicit scope: Scope) =
-      Right(MissingValue.default)
+      errorMessage.eval
+        .map(expr => ErrorValue(ErrorInExpressionProblem(expr.convertToString)))
 
-    override def toString = "missing"
+    override def toString = s"error($errorMessage)"
   }
 
   type NullConstant = NullConstant.type

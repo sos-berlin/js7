@@ -204,8 +204,10 @@ object ExpressionParser
           arguments.map { case (maybeName, expr) => Argument(expr, maybeName) }))
     }
 
-  private val missing: Parser[MissingConstant] =
-    string("missing").as(MissingConstant)
+  /** Then special function `error` .*/
+  private val errorFunctionCall: Parser[ErrorExpression] =
+    keyword("error") *> inParentheses(expression)
+      .map(expr => ErrorExpression(expr))
 
   private val nullConstant: Parser[NullConstant] =
     string("null").as(NullConstant)
@@ -213,10 +215,10 @@ object ExpressionParser
   private val factor =
     parenthesizedExpression | booleanConstant | numericConstant |
       singleQuotedStringConstant | interpolatedString | listExpr | objectExpr | dollarNamedValue |
-      catchCount | argumentFunctionCall | variableFunctionCall |
-      missing | nullConstant |
+      catchCount |
+      nullConstant |
       jobResourceVariable |
-      functionCall
+      errorFunctionCall | argumentFunctionCall | variableFunctionCall | functionCall
 
   private val dotExpression =
     (factor ~ (char('.').surroundedBy(w).backtrack.with1 *> identifier).rep0).flatMap {
