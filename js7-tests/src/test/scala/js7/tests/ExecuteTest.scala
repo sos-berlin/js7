@@ -283,7 +283,8 @@ final class ExecuteTest extends OurTestSuite with ControllerAgentForScalaTest
     orderArguments = Map("ARG" -> NumberValue(100)),
     expectedOutcome = Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(101))))
 
-  private val deletedEnvName = if (isWindows) "USERNAME" else "LANG"
+  private val deletedEnvName =
+    if (isWindows) "USERNAME" else if (sys.env contains "USER") "USER" else "LANG"
   assert(sys.env(deletedEnvName).nonEmpty)  // Must exist to check deletion
 
   "Special $js7 variables; the ?-operators" - {
