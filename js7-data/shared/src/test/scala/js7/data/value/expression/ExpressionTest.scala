@@ -26,19 +26,19 @@ final class ExpressionTest extends OurTestSuite
 
         override def symbolToValue(symbol: String) =
           symbol match {
-            case "catchCount" => Some(Right(NumberValue(3)))
+            case "catchCount" => Some(Right(3))
             case _ => None
           }
 
         override lazy val nameToCheckedValue =
           MapView(
             "ASTRING" -> Right(StringValue("AA")),
-            "ANUMBER" -> Right(NumberValue(7)),
+            "ANUMBER" -> Right(7),
             "ABOOLEAN" -> Right(BooleanValue(true)),
-            "returnCode" -> Right(NumberValue(1)),
+            "returnCode" -> Right(1),
             "myObject" -> Right(ObjectValue(Map(
                 "myField" -> ObjectValue(Map(
-                  "a" -> NumberValue(1)))))))
+                  "a" -> 1))))))
 
         override def findValue(search: ValueSearch) =
           search match {
@@ -67,14 +67,14 @@ final class ExpressionTest extends OurTestSuite
                 .get(name)
                 .map(o => Right(StringValue(o)))
 
-            case o =>
+            case _ =>
               None
           }
 
         override def evalFunctionCall(functionCall: FunctionCall)(implicit scope: Scope) =
           functionCall match {
             case FunctionCall("myFunction", Seq(Argument(expr, None))) =>
-             Some(expr.eval.flatMap(_.asNumber).map(n => NumberValue(n * 3)))
+             Some(expr.eval.flatMap(_.asNumber).map(n => n * 3))
 
             case _ => None
           }
@@ -144,7 +144,7 @@ final class ExpressionTest extends OurTestSuite
     locally {
       val number = "-111222333444555666777888999000111222333444555666777888999000"
       testEval(number,
-        result = Right(NumberValue(BigDecimal(number))),
+        result = Right(BigDecimal(number)),
         BigDecimal(number))
     }
 
@@ -237,7 +237,7 @@ final class ExpressionTest extends OurTestSuite
       NamedValue("ANUMBER"))
 
     testEval("""$myObject""",
-      result = Right(ObjectValue(Map("myField" -> ObjectValue(Map("a" -> NumberValue(1)))))),
+      result = Right(ObjectValue(Map("myField" -> ObjectValue(Map("a" -> 1))))),
       NamedValue("myObject"))
 
     testEval("""3 + $myObject.myField.a""",
@@ -339,7 +339,7 @@ final class ExpressionTest extends OurTestSuite
       Equal(Multiply(LastReturnCode, 3), 3))
 
     testEval("""1 / 3""",
-      result = Right(NumberValue(BigDecimal("0.3333333333333333333333333333333333"))),
+      result = Right(BigDecimal("0.3333333333333333333333333333333333")),
       Divide(1, 3))
 
     testEval("""1 / 0""",
@@ -347,7 +347,7 @@ final class ExpressionTest extends OurTestSuite
       Divide(1, 0))
 
     testEval("""100 + 2 * 3 - 12 / 3""",
-      result = Right(NumberValue(100 + 2 * 3 - 12 / 3)),
+      result = Right(100 + 2 * 3 - 12 / 3),
       Substract(
         Add(100, Multiply(2, 3)),
         Divide(12, 3)))
@@ -443,9 +443,9 @@ final class ExpressionTest extends OurTestSuite
 
     //testEval("""{"A": 1, "B": "BBB", "LIST": [1, 2, 3]}""",
     //  result = Right(ObjectValue(Map(
-    //    "A" -> NumberValue(1),
+    //    "A" -> (1),
     //    "B" -> StringValue("BBB"),
-    //    "LIST" -> ListValue(List(NumberValue(1), NumberValue(2), NumberValue(3)))))),
+    //    "LIST" -> ListValue(List((1), (2), (3)))))),
     //  In(LastReturnCode, ListExpression(List((1), (2), (3)))))
 
     "Equal" in {
@@ -492,19 +492,19 @@ final class ExpressionTest extends OurTestSuite
         OrNull(MissingConstant))
 
       testEval("missing ? 7 + 3",
-        result = Right(NumberValue(7 + 3)),
+        result = Right(7 + 3),
         Add(
           OrElse(MissingConstant, 7),
           3))
 
       testEval("$unknown ? 7 + 3",
-        result = Right(NumberValue(7 + 3)),
+        result = Right(7 + 3),
         Add(
           OrElse(NamedValue("unknown"), 7),
           3))
 
       testEval("1 + 2 ? 7 + 3",
-        result = Right(NumberValue(1 + 2 + 3)),
+        result = Right(1 + 2 + 3),
         Add(
           Add(
             1,
@@ -512,7 +512,7 @@ final class ExpressionTest extends OurTestSuite
           3))
 
       testEval("1 + (2 ? 7) + 3",
-        result = Right(NumberValue(1 + 2 + 3)),
+        result = Right(1 + 2 + 3),
         Add(
           Add(1, OrElse(2, 7)),
           3))
@@ -522,7 +522,7 @@ final class ExpressionTest extends OurTestSuite
         OrNull(OrNull(MissingConstant)))
 
       testEval("""missing? ? 7""",
-        result = Right(NumberValue(7)),
+        result = Right(7),
         OrElse(OrNull(MissingConstant), 7))
 
       // Reserve ?? for future use
@@ -538,13 +538,13 @@ final class ExpressionTest extends OurTestSuite
         OrNull(NullConstant))
 
       testEval("null ? 7 + 3",
-        result = Right(NumberValue(7 + 3)),
+        result = Right(7 + 3),
         Add(
           OrElse(NullConstant, 7),
           3))
 
       testEval("""6 / 3?""",
-        result = Right(NumberValue(2)),
+        result = Right(2),
         Divide(6, OrNull(3)))
 
       testEval("""(1 / 0)?""",
@@ -552,11 +552,11 @@ final class ExpressionTest extends OurTestSuite
         OrNull(Divide(1, 0)))
 
       testEval("""(1 / 0) ? -1""",
-        result = Right(NumberValue(-1)),
+        result = Right(-1),
         OrElse(Divide(1, 0), -1))
 
       testEval("""(7 in [ 1 / 0 ]) ? $unknown ? -1""",
-        result = Right(NumberValue(-1)),
+        result = Right(-1),
         OrElse(
           OrElse(
             In(
@@ -766,19 +766,19 @@ final class ExpressionTest extends OurTestSuite
       "list" -> Right(ListValue(Seq[Value](-1, 111, 222)))))
 
     testEval("$list(0)",
-      result = Right(NumberValue(-1)),
+      result = Right(-1),
       ArgumentExpression(NamedValue("list"), 0))
 
     testEval("${list}(0)",
-      result = Right(NumberValue(-1)),
+      result = Right(-1),
       ArgumentExpression(NamedValue("list"), 0))
 
     testEval("$list(1)",
-      result = Right(NumberValue(111)),
+      result = Right(111),
       ArgumentExpression(NamedValue("list"), 1))
 
     testEval("$list(2)",
-      result = Right(NumberValue(222)),
+      result = Right(222),
       ArgumentExpression(NamedValue("list"), 2))
 
     testEval("$list(3)",
