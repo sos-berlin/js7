@@ -12,7 +12,7 @@ import js7.data.value.Value
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.BranchPath
 import js7.data_for_java.common.JJsonable
-import js7.data_for_java.workflow.position.JPositionOrLabel
+import js7.data_for_java.workflow.position.{JBranchPath, JPositionOrLabel}
 import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.*
 
@@ -129,7 +129,7 @@ object JFreshOrder extends JJsonable.Companion[JFreshOrder]
     @Nonnull arguments: java.util.Map[String, Value],
     @Nonnull deleteWhenTerminated: Boolean,
     @Nonnull forceJobAdmission: Boolean,
-    @Nonnull innerBlock: java.util.List[BranchPath.Segment],
+    @Nonnull innerBlock: JBranchPath,
     @Nonnull startPosition: Optional[JPositionOrLabel],
     @Nonnull stopPositions: java.util.Set[JPositionOrLabel])
   : JFreshOrder =
@@ -140,7 +140,7 @@ object JFreshOrder extends JJsonable.Companion[JFreshOrder]
       scheduledFor.toScala.map(o => Timestamp.ofEpochMilli(o.toEpochMilli)),
       deleteWhenTerminated = deleteWhenTerminated,
       forceJobAdmission = forceJobAdmission,
-      innerBlock = innerBlock.asScala.toList,
+      innerBlock = innerBlock.asScala,
       startPosition = startPosition.toScala.map(_.asScala),
       stopPositions = stopPositions.asScala.map(_.asScala).toSet))
 
