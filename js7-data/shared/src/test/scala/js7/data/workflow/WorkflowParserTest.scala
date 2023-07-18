@@ -11,7 +11,7 @@ import js7.data.job.{CommandLineExecutable, PathExecutable, ReturnCodeMeaning, S
 import js7.data.lock.LockPath
 import js7.data.source.SourcePos
 import js7.data.value.NumberValue
-import js7.data.value.expression.Expression.{Equal, In, LastReturnCode, ListExpression, NamedValue, NumericConstant, Or, StringConstant}
+import js7.data.value.expression.Expression.{Equal, In, LastReturnCode, ListExpr, NamedValue, NumericConstant, Or, StringConstant}
 import js7.data.workflow.WorkflowPrinter.WorkflowShow
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, Fail, Finish, Fork, If, ImplicitEnd, LockInstruction, Retry, TryInstruction}
@@ -254,7 +254,7 @@ final class WorkflowParserTest extends OurTestSuite
         Vector(
           If(
             Or(
-              In(LastReturnCode, ListExpression(NumericConstant(1) :: NumericConstant(2) :: Nil)),
+              In(LastReturnCode, ListExpr(NumericConstant(1) :: NumericConstant(2) :: Nil)),
               Equal(NamedValue("KEY"), StringConstant("VALUE"))),
             Workflow.of(
               Execute.Anonymous(

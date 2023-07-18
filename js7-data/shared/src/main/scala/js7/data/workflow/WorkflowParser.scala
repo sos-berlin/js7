@@ -11,12 +11,12 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.Collections.implicits.*
 import js7.base.utils.RangeSet
 import js7.data.agent.AgentPath
-import js7.data.job.{CommandLineParser, CommandLineExecutable, InternalExecutable, JobResourcePath, PathExecutable, ReturnCodeMeaning, ShellScriptExecutable}
+import js7.data.job.{CommandLineExecutable, CommandLineParser, InternalExecutable, JobResourcePath, PathExecutable, ReturnCodeMeaning, ShellScriptExecutable}
 import js7.data.lock.LockPath
 import js7.data.parser.Js7Parsers.path
 import js7.data.source.SourcePos
+import js7.data.value.expression.Expression.{BooleanConstant, ObjectExpr}
 import js7.data.value.expression.ExpressionParser.{booleanConstant, constantExpression, expression}
-import js7.data.value.expression.Expression.{BooleanConstant, ObjectExpression}
 import js7.data.value.expression.{Expression, Scope}
 import js7.data.value.{NamedValues, ObjectValue}
 import js7.data.workflow.Instruction.Labeled
@@ -80,9 +80,9 @@ object WorkflowParser
         nonEmptyCommaSequence((quotedString ~~<* char(':') ~~ expression))
           .map(_.toList.toMap))
 
-    private val objectExpression: Parser[ObjectExpression] =
+    private val objectExpression: Parser[ObjectExpr] =
       expressionMap
-        .map(ObjectExpression.apply)
+        .map(ObjectExpr.apply)
 
     private val anonymousWorkflowJob: Parser0[WorkflowJob] = for {
       kv <- keyValues[Any](
@@ -102,11 +102,11 @@ object WorkflowParser
         keyValue("parallelism", int) |
         keyValue("sigkillDelay", int))
       agentPath <- kv[AgentPath]("agent")
-      defaultArguments <- kv[ObjectExpression]("defaultArguments", ObjectExpression.empty)
-      arguments <- kv[ObjectExpression]("arguments", ObjectExpression.empty)
-      jobArguments <- kv[ObjectExpression]("jobArguments", ObjectExpression.empty)
+      defaultArguments <- kv[ObjectExpr]("defaultArguments", ObjectExpr.empty)
+      arguments <- kv[ObjectExpr]("arguments", ObjectExpr.empty)
+      jobArguments <- kv[ObjectExpr]("jobArguments", ObjectExpr.empty)
       jobResourcePaths <- kv[Seq[JobResourcePath]]("jobResourcePaths", Nil)
-      env <- kv[ObjectExpression]("env", ObjectExpression.empty)
+      env <- kv[ObjectExpr]("env", ObjectExpr.empty)
       v1Compatible <- kv.noneOrOneOf[BooleanConstant]("v1Compatible").map(_.fold(false)(_._2.booleanValue))
       returnCodeMeaning <- kv.oneOfOr(Set("successReturnCodes", "failureReturnCodes"), ReturnCodeMeaning.Default)
       executable <- kv.oneOf[Any]("executable", "command", "script", "internalJobClass").flatMap {

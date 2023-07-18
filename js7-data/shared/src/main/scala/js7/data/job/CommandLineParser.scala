@@ -6,9 +6,9 @@ import js7.base.parser.BasicParsers.singleQuoted
 import js7.base.parser.Parsers
 import js7.base.problem.Checked
 import js7.data.job.CommandLineExpression.optimizeCommandLine
-import js7.data.value.expression.ExpressionParser.dollarNamedValue
 import js7.data.value.expression.Expression
-import js7.data.value.expression.Expression.{ListExpression, MkString, StringConstant, StringExpression}
+import js7.data.value.expression.Expression.{ListExpr, MkString, StringConstant, StringExpr}
+import js7.data.value.expression.ExpressionParser.dollarNamedValue
 
 object CommandLineParser
 {
@@ -37,29 +37,29 @@ object CommandLineParser
     charsWhile0(c => c != '\\' && c != '"' && c != '$')
       .map(StringConstant.apply)
 
-  private val escapedInDoubleQuotedWord: Parser[StringExpression] =
+  private val escapedInDoubleQuotedWord: Parser[StringExpr] =
     stringIn(List("""\\""", """\"""", """\$"""))
       .map(o => StringConstant(o.tail))
 
-  private val doubleQuotedWord: Parser[StringExpression] =
+  private val doubleQuotedWord: Parser[StringExpr] =
     (char('"') ~
       constantInDoubleQuotedWord ~
       ((escapedInDoubleQuotedWord | dollarNamedValue) ~ constantInDoubleQuotedWord).rep0 ~
       char('"')
     ) .map { case ((((), constant), tail), ()) =>
-        MkString(ListExpression(
+        MkString(ListExpr(
           constant :: tail.flatMap { case (a, b) => a :: b :: Nil }))
       }
 
-  private val singleQuotedWord: Parser[StringExpression] =
+  private val singleQuotedWord: Parser[StringExpr] =
     singleQuoted
       .map(StringConstant.apply)
 
-  private val word: Parser[StringExpression] =
+  private val word: Parser[StringExpr] =
     ((stringConstant | doubleQuotedWord | singleQuotedWord | dollarNamedValue).rep(1))
-      .map(exprs => MkString(ListExpression(exprs.toList)))
+      .map(exprs => MkString(ListExpr(exprs.toList)))
 
-  private val firstWord: Parser[StringExpression] =
+  private val firstWord: Parser[StringExpr] =
     (!end).orElse(failWith("The command line must not be empty")).with1 *>
       word
 

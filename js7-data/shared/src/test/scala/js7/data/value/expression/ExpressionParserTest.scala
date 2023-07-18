@@ -2,8 +2,8 @@ package js7.data.value.expression
 
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
-import js7.data.value.expression.ExpressionParser.*
 import js7.data.value.expression.Expression.*
+import js7.data.value.expression.ExpressionParser.*
 import js7.data.workflow.instructions.executable.WorkflowJob
 import org.scalactic.source
 
@@ -219,9 +219,9 @@ final class ExpressionParserTest extends OurTestSuite
     testBooleanExpression("""$returnCode in [0, 3, 50]""",
       In(
         LastReturnCode,
-        ListExpression(List(NumericConstant(0), NumericConstant(3), NumericConstant(50)))))
+        ListExpr(List(NumericConstant(0), NumericConstant(3), NumericConstant(50)))))
 
-    // Boolean operand are no longer statically typed checked (via BooleanExpression),
+    // Boolean operand are no longer statically typed checked (via BooleanExpr),
     // to allow MissingValue.
     //testError("""($returnCode in [0, 3, 50]) || $result == "1"""",
     //  """Error in expression: Parsing failed at position 44 “…ult == "1"❓”""" +
@@ -231,7 +231,7 @@ final class ExpressionParserTest extends OurTestSuite
       Or(
         In(
           LastReturnCode,
-          ListExpression(List(NumericConstant(0), NumericConstant(3), NumericConstant(50)))),
+          ListExpr(List(NumericConstant(0), NumericConstant(3), NumericConstant(50)))),
         Equal(
           NamedValue("result"),
           StringConstant("1"))))
@@ -252,7 +252,7 @@ final class ExpressionParserTest extends OurTestSuite
             NumericConstant(0)))))
 
     testExpression("""["STRING", $NAME, 7].mkString""",
-      MkString(ListExpression(StringConstant("STRING") :: NamedValue("NAME") :: NumericConstant(7) :: Nil)))
+      MkString(ListExpr(StringConstant("STRING") :: NamedValue("NAME") :: NumericConstant(7) :: Nil)))
   }
 
   testExpression("1+2",
@@ -298,7 +298,7 @@ final class ExpressionParserTest extends OurTestSuite
       Right(ToBoolean(StringConstant("true"))))
   }
 
-  private def testBooleanExpression(exprString: String, expr: BooleanExpression)(implicit pos: source.Position) =
+  private def testBooleanExpression(exprString: String, expr: BooleanExpr)(implicit pos: source.Position) =
     exprString in {
         assert(parseExpression(exprString) == Right(expr))
       assert(parseExpression(expr.toString) == Right(expr), " - toString")

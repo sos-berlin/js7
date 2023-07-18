@@ -150,17 +150,17 @@ final class ExpressionTest extends OurTestSuite
     "Objects" - {
       testEval("{a: 'AAA', missing: missing}.a",
         result = Right("AAA"),
-        DotExpression(ObjectExpression(Map("a" -> "AAA", "missing" -> MissingConstant)), "a"))
+        DotExpr(ObjectExpr(Map("a" -> "AAA", "missing" -> MissingConstant)), "a"))
     }
 
     "Lists" - {
       testEval("[ 'AAA', missing, 7 ]",
         result = Right(ListValue(Seq("AAA", MissingValue, 7))),
-        ListExpression(List("AAA", MissingConstant, 7)))
+        ListExpr(List("AAA", MissingConstant, 7)))
 
       testEval("""[ 'AAA', error("ERROR"), 7 ]""",
         result = Left(ErrorInExpressionProblem("ERROR")),
-        ListExpression(List("AAA", ErrorExpression("ERROR"), 7)))
+        ListExpr(List("AAA", ErrorExpr("ERROR"), 7)))
     }
   }
 
@@ -350,7 +350,7 @@ final class ExpressionTest extends OurTestSuite
 
     testEval("""mkString([$ANUMBER, "-", missing, true])""",
       result = Right("7-true"),
-      MkString(ListExpression(List(
+      MkString(ListExpr(List(
         NamedValue("ANUMBER"),
         "-",
         MissingConstant,
@@ -358,9 +358,9 @@ final class ExpressionTest extends OurTestSuite
 
     testEval("""mkString([ "-->", error("ERROR") ])""",
       result = Left(ErrorInExpressionProblem("ERROR"))/*because the list fails*/,
-      MkString(ListExpression(List(
+      MkString(ListExpr(List(
         "-->",
-        ErrorExpression("ERROR")))))
+        ErrorExpr("ERROR")))))
   }
 
   "stripMargin()" - {
@@ -378,24 +378,24 @@ final class ExpressionTest extends OurTestSuite
       result = Right(4),
       Add(
         3,
-        DotExpression(DotExpression(NamedValue("myObject"), "myField"), "a")))
+        DotExpr(DotExpr(NamedValue("myObject"), "myField"), "a")))
 
     testEval(""""$($myObject.myField.a)"""",
       result = Right("1"),
       InterpolatedString(List(
-        DotExpression(DotExpression(NamedValue("myObject"), "myField"), "a"))))
+        DotExpr(DotExpr(NamedValue("myObject"), "myField"), "a"))))
 
     testEval(""""$ANUMBER-$($myObject.myField.a)"""",
       result = Right("7-1"),
       InterpolatedString(List(
         NamedValue("ANUMBER"),
         "-",
-        DotExpression(DotExpression(NamedValue("myObject"), "myField"), "a"))))
+        DotExpr(DotExpr(NamedValue("myObject"), "myField"), "a"))))
 
     testEval(""""${myObject.myField.a}"""",
       result = Right("1"),
       InterpolatedString(List(
-        DotExpression(DotExpression(NamedValue("myObject"), "myField"), "a"))))
+        DotExpr(DotExpr(NamedValue("myObject"), "myField"), "a"))))
   }
 
   "function expression call" in {
@@ -406,12 +406,12 @@ final class ExpressionTest extends OurTestSuite
     "?" - {
       testEval("error('ERROR') ?",
         result = Right(MissingValue),
-        OrMissing(ErrorExpression("ERROR")))
+        OrMissing(ErrorExpr("ERROR")))
 
       testEval("error('ERROR') ? 7 + 3",
         result = Right(7 + 3),
         Add(
-          OrElse(ErrorExpression("ERROR"), 7),
+          OrElse(ErrorExpr("ERROR"), 7),
           3))
 
       testEval("$unknown ? 7 + 3",
@@ -436,19 +436,19 @@ final class ExpressionTest extends OurTestSuite
 
       testEval("""error('ERROR')? ?""",
         result = Right(MissingValue),
-        OrMissing(OrMissing(ErrorExpression("ERROR"))))
+        OrMissing(OrMissing(ErrorExpr("ERROR"))))
 
       testEval("""(error('ERROR')?)?""",
         result = Right(MissingValue),
-        OrMissing(OrMissing(ErrorExpression("ERROR"))))
+        OrMissing(OrMissing(ErrorExpr("ERROR"))))
 
       testEval("""error('ERROR')? ? 7""",
         result = Right(7),
-        OrElse(OrMissing(ErrorExpression("ERROR")), 7))
+        OrElse(OrMissing(ErrorExpr("ERROR")), 7))
 
       testEval("""error('ERROR')? ? ? 7""",
         result = Right(7),
-        OrElse(OrMissing(OrMissing(ErrorExpression("ERROR"))), 7))
+        OrElse(OrMissing(OrMissing(ErrorExpr("ERROR"))), 7))
 
       // Reserve »??« for future use
       testSyntaxError("""(1/0) ??""", Problem(
@@ -485,7 +485,7 @@ final class ExpressionTest extends OurTestSuite
           OrElse(
             In(
               7,
-              ListExpression(List(Divide(1, 0)))),
+              ListExpr(List(Divide(1, 0)))),
             NamedValue("unknown")),
           -1))
 
@@ -520,11 +520,11 @@ final class ExpressionTest extends OurTestSuite
 
       testEval("""error("ERROR") == error("ERROR")""",
         result = Left(ErrorInExpressionProblem("ERROR")),
-        Equal(ErrorExpression("ERROR"), ErrorExpression("ERROR")))
+        Equal(ErrorExpr("ERROR"), ErrorExpr("ERROR")))
 
       testEval("""error("ERROR") == error("X")""",
         result = Left(ErrorInExpressionProblem("ERROR")),
-        Equal(ErrorExpression("ERROR"), ErrorExpression("X")))
+        Equal(ErrorExpr("ERROR"), ErrorExpr("X")))
 
       "Equal" in {
         forAll((a: Int, b: Int) => assert(
@@ -556,11 +556,11 @@ final class ExpressionTest extends OurTestSuite
 
       testEval("""error("ERROR") != error("ERROR")""",
         result = Left(ErrorInExpressionProblem("ERROR")),
-        NotEqual(ErrorExpression("ERROR"), ErrorExpression("ERROR")))
+        NotEqual(ErrorExpr("ERROR"), ErrorExpr("ERROR")))
 
       testEval("""error("ERROR") != error("X")""",
         result = Left(ErrorInExpressionProblem("ERROR")),
-        NotEqual(ErrorExpression("ERROR"), ErrorExpression("X")))
+        NotEqual(ErrorExpr("ERROR"), ErrorExpr("X")))
 
       "NotEqual" in {
         forAll((a: Int, b: Int) => assert(
@@ -655,11 +655,11 @@ final class ExpressionTest extends OurTestSuite
 
       testEval("""error("ERROR") * missing""",
         result = Left(ErrorInExpressionProblem("ERROR")),
-        Multiply(ErrorExpression("ERROR"), MissingConstant))
+        Multiply(ErrorExpr("ERROR"), MissingConstant))
 
       testEval("""missing * error("ERROR")""",
         result = Left(ErrorInExpressionProblem("ERROR")),
-        Multiply(MissingConstant, ErrorExpression("ERROR")))
+        Multiply(MissingConstant, ErrorExpr("ERROR")))
     }
 
     "/" - {
@@ -768,7 +768,7 @@ final class ExpressionTest extends OurTestSuite
       // ErrorValue has priority over MissingValue
       testEval("""missing ++ error("ERROR") ++ missing""",
         result = Left(ErrorInExpressionProblem("ERROR")),
-        Concat(Concat(MissingConstant, ErrorExpression("ERROR")), MissingConstant))
+        Concat(Concat(MissingConstant, ErrorExpr("ERROR")), MissingConstant))
     }
   }
 
@@ -801,13 +801,13 @@ final class ExpressionTest extends OurTestSuite
     val expr = Map[String, Expression](
       "A" -> 1,
       "B" -> "BBB",
-      "LIST" -> ListExpression(List(1, 2, 3)))
+      "LIST" -> ListExpr(List(1, 2, 3)))
     assert(scope.evalExpressionMap(expr) ==
       Right(Map[String, Value](
         "A" -> 1,
         "B" -> "BBB",
         "LIST" -> ListValue(List[Value](1, 2, 3)))),
-      In(LastReturnCode, ListExpression(List(1, 2, 3))))
+      In(LastReturnCode, ListExpr(List(1, 2, 3))))
   }
 
   //testEval("""{"A": 1, "B": "BBB", "LIST": [1, 2, 3]}""",
@@ -815,7 +815,7 @@ final class ExpressionTest extends OurTestSuite
   //    "A" -> (1),
   //    "B" -> StringValue("BBB"),
   //    "LIST" -> ListValue(List((1), (2), (3)))))),
-  //  In(LastReturnCode, ListExpression(List((1), (2), (3)))))
+  //  In(LastReturnCode, ListExpr(List((1), (2), (3)))))
 
   "Operator precedence" - {
     testEval("""true || false && 3 == 4 < 5 + 6 * 7 ? 8""",
@@ -844,12 +844,12 @@ final class ExpressionTest extends OurTestSuite
   "mkString" - {
     testEval(""" mkString(["»", $ASTRING, 7]) """,
       result = Right(StringValue("»AA7")),
-      MkString(ListExpression(List("»", NamedValue("ASTRING"), 7))))
+      MkString(ListExpr(List("»", NamedValue("ASTRING"), 7))))
 
     // Fails because List construction fails
     testEval(""" mkString(["»", missing, error("ERROR"), 7]) """,
       result = Left(ErrorInExpressionProblem("ERROR")),
-      MkString(ListExpression(List("»", MissingConstant, ErrorExpression("ERROR"), 7))))
+      MkString(ListExpr(List("»", MissingConstant, ErrorExpr("ERROR"), 7))))
   }
 
   "error(\"ERROR\")" - {
@@ -857,45 +857,45 @@ final class ExpressionTest extends OurTestSuite
 
     testEval("error('ERROR')",
       result = Left(ErrorInExpressionProblem("ERROR")),
-      ErrorExpression("ERROR"))
+      ErrorExpr("ERROR"))
 
     testEval("error('ERROR')?",
       result = Right(MissingValue),
-      OrMissing(ErrorExpression("ERROR")))
+      OrMissing(ErrorExpr("ERROR")))
 
     testEval("error('ERROR') ?",
       result = Right(MissingValue),
-      OrMissing(ErrorExpression("ERROR")))
+      OrMissing(ErrorExpr("ERROR")))
 
     testEval("error('ERROR') == error('ERROR')",
       result = Left(ErrorInExpressionProblem("ERROR")),
-      Equal(ErrorExpression("ERROR"), ErrorExpression("ERROR")))
+      Equal(ErrorExpr("ERROR"), ErrorExpr("ERROR")))
 
     testEval("error('ERROR') != error('ERROR')",
       result = Left(ErrorInExpressionProblem("ERROR")),
-      NotEqual(ErrorExpression("ERROR"), ErrorExpression("ERROR")))
+      NotEqual(ErrorExpr("ERROR"), ErrorExpr("ERROR")))
 
     testEval("error('ERROR') + 1",
       result = Left(ErrorInExpressionProblem("ERROR")),
-      Add(ErrorExpression("ERROR"), 1))
+      Add(ErrorExpr("ERROR"), 1))
   }
 
   "MissingValue OrMissing" in {
-    assert(OrMissing(ErrorExpression("ERROR")).eval == Right(MissingValue))
+    assert(OrMissing(ErrorExpr("ERROR")).eval == Right(MissingValue))
   }
 
   "MissingValue is not comparable" in {
-    assert(Equal(ErrorExpression("ERROR"), ErrorExpression("ERROR")).eval ==
+    assert(Equal(ErrorExpr("ERROR"), ErrorExpr("ERROR")).eval ==
       Left(ErrorInExpressionProblem("ERROR")))
   }
 
   testEval("\"-->$(error('ERROR'))<--\"",
     result = Left(ErrorInExpressionProblem("ERROR")),
-    InterpolatedString(List("-->", ErrorExpression("ERROR"), "<--")))
+    InterpolatedString(List("-->", ErrorExpr("ERROR"), "<--")))
 
   testEval("\"-->$(error('ERROR')?)<--\"",
     result = Right(StringValue("--><--")),
-    InterpolatedString(List("-->", OrMissing(ErrorExpression("ERROR")), "<--")))
+    InterpolatedString(List("-->", OrMissing(ErrorExpr("ERROR")), "<--")))
 
   "Missing value" - {
     implicit val scope = Scope.empty
@@ -927,31 +927,31 @@ final class ExpressionTest extends OurTestSuite
 
     testEval("$list(0)",
       result = Right(-1),
-      ArgumentExpression(NamedValue("list"), 0))
+      ArgumentExpr(NamedValue("list"), 0))
 
     testEval("${list}(0)",
       result = Right(-1),
-      ArgumentExpression(NamedValue("list"), 0))
+      ArgumentExpr(NamedValue("list"), 0))
 
     testEval("$list(1)",
       result = Right(111),
-      ArgumentExpression(NamedValue("list"), 1))
+      ArgumentExpr(NamedValue("list"), 1))
 
     testEval("$list(2)",
       result = Right(222),
-      ArgumentExpression(NamedValue("list"), 2))
+      ArgumentExpr(NamedValue("list"), 2))
 
     testEval("$list(3)",
       result = Left(Problem.pure("Index 3 out of range 0...2")),
-      ArgumentExpression(NamedValue("list"), 3))
+      ArgumentExpr(NamedValue("list"), 3))
 
     testEval("$list(-1)",
       result = Left(Problem.pure("Index -1 out of range 0...2")),
-      ArgumentExpression(NamedValue("list"), -1))
+      ArgumentExpr(NamedValue("list"), -1))
 
     testEval("$list(1.5)",
       result = Left(Problem.pure("ArithmeticException: Rounding necessary")),
-      ArgumentExpression(NamedValue("list"), BigDecimal("1.5")))
+      ArgumentExpr(NamedValue("list"), BigDecimal("1.5")))
   }
 
   "&&" - {
@@ -973,19 +973,19 @@ final class ExpressionTest extends OurTestSuite
 
     testEval("true && error('ERROR')",
       result = Left(ErrorInExpressionProblem("ERROR")),
-      And(true, ErrorExpression("ERROR")))
+      And(true, ErrorExpr("ERROR")))
 
     testEval("error('ERROR') && true",
       result = Left(ErrorInExpressionProblem("ERROR")),
-      And(ErrorExpression("ERROR"), true))
+      And(ErrorExpr("ERROR"), true))
 
     testEval("false && error('ERROR')",
       result = Right(false),
-      And(false, ErrorExpression("ERROR")))
+      And(false, ErrorExpr("ERROR")))
 
     testEval("error('ERROR') && false",
       result = Left(ErrorInExpressionProblem("ERROR")),
-      And(ErrorExpression("ERROR"), false))
+      And(ErrorExpr("ERROR"), false))
 
     "And" in {
       forAll((a: Boolean, b: Boolean) => assert(
@@ -1012,19 +1012,19 @@ final class ExpressionTest extends OurTestSuite
 
     testEval("true || error('ERROR')",
       result = Right(true),
-      Or(true, ErrorExpression("ERROR")))
+      Or(true, ErrorExpr("ERROR")))
 
     testEval("error('ERROR') || true",
       result = Left(ErrorInExpressionProblem("ERROR")),
-      Or(ErrorExpression("ERROR"), true))
+      Or(ErrorExpr("ERROR"), true))
 
     testEval("false || error('ERROR')",
       result = Left(ErrorInExpressionProblem("ERROR")),
-      Or(false, ErrorExpression("ERROR")))
+      Or(false, ErrorExpr("ERROR")))
 
     testEval("error('ERROR') || false",
       result = Left(ErrorInExpressionProblem("ERROR")),
-      Or(ErrorExpression("ERROR"), false))
+      Or(ErrorExpr("ERROR"), false))
 
     "Or" in {
       forAll((a: Boolean, b: Boolean) => assert(
@@ -1035,11 +1035,11 @@ final class ExpressionTest extends OurTestSuite
   "in" - {
     testEval("$returnCode in [1, 2, 3]",
       result = Right(true),
-      In(LastReturnCode, ListExpression(List(1, 2, 3))))
+      In(LastReturnCode, ListExpr(List(1, 2, 3))))
 
     "In" in {
       forAll((a: Int, b: Int, c: Int, d: Int) => assert(
-        In(a, ListExpression(List(b, c, d))).eval
+        In(a, ListExpr(List(b, c, d))).eval
           == Right(BooleanValue(Set(b, c, d)(a)))))
     }
   }
@@ -1079,7 +1079,7 @@ final class ExpressionTest extends OurTestSuite
 
     testEval(""" [7] matches "" """,
       result = Left(UnexpectedValueTypeProblem(StringValue, ListValue(List(7)))),
-      Matches(ListExpression(List(7)), ""))
+      Matches(ListExpr(List(7)), ""))
 
     testEval(""" missing matches "" """,
       result = Right(true),

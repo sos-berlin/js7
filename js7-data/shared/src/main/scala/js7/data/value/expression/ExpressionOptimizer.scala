@@ -1,6 +1,6 @@
 package js7.data.value.expression
 
-import js7.data.value.expression.Expression.{InterpolatedString, ListExpression, MkString, StringConstant, StringExpression}
+import js7.data.value.expression.Expression.{InterpolatedString, ListExpr, MkString, StringConstant, StringExpr}
 import scala.util.chaining.scalaUtilChainingOps
 
 object ExpressionOptimizer
@@ -12,24 +12,24 @@ object ExpressionOptimizer
       case o => o
     }
 
-  private def optimizeMkString(mkString: MkString): StringExpression =
+  private def optimizeMkString(mkString: MkString): StringExpr =
     optimizeExpression(mkString.expression) match {
-      case ListExpression(list) =>
+      case ListExpr(list) =>
         optimizeConcatList(list).pipe(mergeStringConstants) match {
           case Nil => StringConstant.empty
-          case (string: StringExpression) :: Nil => string
+          case (string: StringExpr) :: Nil => string
           case o :: Nil => MkString(o)
-          case list => MkString(ListExpression(list))
+          case list => MkString(ListExpr(list))
         }
 
-      case o: StringExpression => o
+      case o: StringExpr => o
       case o => MkString(o)
     }
 
-  private def optimizeInterpolated(interpolated: InterpolatedString): StringExpression =
+  private def optimizeInterpolated(interpolated: InterpolatedString): StringExpr =
     optimizeConcatList(interpolated.subexpressions).pipe(mergeStringConstants) match {
       case Nil => StringConstant.empty
-      case (string: StringExpression) :: Nil => string
+      case (string: StringExpr) :: Nil => string
       case list => InterpolatedString(list)
     }
 
@@ -38,7 +38,7 @@ object ExpressionOptimizer
       .map(optimizeExpression)
       .filter(_ != StringConstant.empty)
       .flatMap {
-        case MkString(ListExpression(expressions)) => expressions
+        case MkString(ListExpr(expressions)) => expressions
         case MkString(expr) => expr :: Nil
         case expr => expr :: Nil
       }

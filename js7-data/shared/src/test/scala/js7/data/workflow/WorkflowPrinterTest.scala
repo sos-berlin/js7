@@ -5,7 +5,7 @@ import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.job.{PathExecutable, ReturnCodeMeaning, ShellScriptExecutable}
-import js7.data.value.expression.Expression.{BooleanConstant, Equal, In, LastReturnCode, ListExpression, NamedValue, NumericConstant, Or, StringConstant}
+import js7.data.value.expression.Expression.{BooleanConstant, Equal, In, LastReturnCode, ListExpr, NamedValue, NumericConstant, Or, StringConstant}
 import js7.data.workflow.WorkflowPrinter.WorkflowShow
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, Fork, If}
@@ -146,7 +146,7 @@ final class WorkflowPrinterTest extends OurTestSuite
         Vector(
           If(
             Or(
-              In(LastReturnCode, ListExpression(NumericConstant(1) :: NumericConstant(2) :: Nil)),
+              In(LastReturnCode, ListExpr(NumericConstant(1) :: NumericConstant(2) :: Nil)),
               Equal(NamedValue("KEY"), StringConstant("VALUE"))),
             Workflow.of(
               Execute.Anonymous(WorkflowJob(AgentPath("AGENT"), PathExecutable("EXECUTABLE"))))))),

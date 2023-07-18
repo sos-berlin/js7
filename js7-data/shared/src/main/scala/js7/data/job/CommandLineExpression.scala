@@ -1,7 +1,7 @@
 package js7.data.job
 
 import js7.data.value.expression.Expression
-import js7.data.value.expression.Expression.{ListExpression, MkString}
+import js7.data.value.expression.Expression.{ListExpr, MkString}
 import js7.data.value.expression.ExpressionOptimizer.optimizeExpression
 
 final case class CommandLineExpression(string: String, expressions: List[Expression])
@@ -18,7 +18,7 @@ object CommandLineExpression
         .view
         .map(optimizeExpression)
         .map {
-          case o @ MkString(ListExpression(_ :: _)) => o
+          case o @ MkString(ListExpr(_ :: _)) => o
           case MkString(expr) => expr
           case o => o
         }
