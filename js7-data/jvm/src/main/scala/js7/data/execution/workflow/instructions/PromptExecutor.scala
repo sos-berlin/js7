@@ -5,6 +5,7 @@ import js7.data.order.OrderEvent.OrderPrompted
 import js7.data.order.OrderObstacle.WaitingForCommand
 import js7.data.order.{Order, OrderObstacleCalculator}
 import js7.data.state.StateView
+import js7.data.value.GoodValue
 import js7.data.workflow.instructions.Prompt
 
 private[instructions] final class PromptExecutor(protected val service: InstructionExecutorService)
@@ -20,7 +21,7 @@ extends EventInstructionExecutor
         .ifState[Ready].map(_ =>
           for {
             scope <- state.toImpureOrderExecutingScope(order, clock.now())
-            question <- prompt.question.eval(scope)
+            question <- prompt.question.evalAs(GoodValue.companion, scope)
           } yield (order.id <-: OrderPrompted(question)) :: Nil))
       .getOrElse(Right(Nil))
 

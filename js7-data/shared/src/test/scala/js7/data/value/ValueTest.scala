@@ -4,6 +4,7 @@ import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
+import js7.data.value.ValueType.UnexpectedValueTypeProblem
 import js7.tester.CirceJsonTester.testJson
 
 final class ValueTest extends OurTestSuite
@@ -159,5 +160,13 @@ final class ValueTest extends OurTestSuite
       assert(BooleanValue(true).toBooleanValue == Right(BooleanValue(true)))
       assert(BooleanValue(false).toBooleanValue == Right(BooleanValue(false)))
     }
+  }
+
+  "as[GoodValue]" in {
+    assert((MissingValue: Value).as[GoodValue] == Left(
+      UnexpectedValueTypeProblem(GoodValue.companion, MissingValue)))
+
+    assert((NumberValue(7): Value).as[GoodValue] == Right(NumberValue(7)))
+    assert((BooleanValue(true): Value).as[GoodValue] == Right(BooleanValue(true)))
   }
 }

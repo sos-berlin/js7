@@ -117,11 +117,11 @@ object WorkflowParser
           else checkedToParser(CommandLineParser.parse(command)
             .map(CommandLineExecutable(_, env.nameToExpr, returnCodeMeaning = returnCodeMeaning)))
         case ("script", script: Expression) =>
-          checkedToParser(script.eval(Scope.empty).flatMap(_.asStringValue)
-            .map(v => ShellScriptExecutable(v.string, env.nameToExpr, returnCodeMeaning = returnCodeMeaning, v1Compatible = v1Compatible)))
+          checkedToParser(script.evalAsString(Scope.empty)
+            .map(string => ShellScriptExecutable(string, env.nameToExpr, returnCodeMeaning = returnCodeMeaning, v1Compatible = v1Compatible)))
         case ("internalJobClass", className: Expression) =>
-          checkedToParser(className.eval(Scope.empty).flatMap(_.asStringValue)
-            .map(v => InternalExecutable(v.string,
+          checkedToParser(className.evalAsString(Scope.empty)
+            .map(string => InternalExecutable(className = string,
               jobArguments = jobArguments.nameToExpr,
               arguments = arguments.nameToExpr)))
         case _ => failWith("Invalid executable")  // Does not happen
@@ -165,7 +165,7 @@ object WorkflowParser
         ~ keyword("fail")
         ~ (w *> inParentheses(keyValues(
         keyValueConvert("namedValues", objectExpression)(o =>
-          o.eval(Scope.empty).map(_.asInstanceOf[ObjectValue].nameToValue)) |
+          o.evalAs(ObjectValue, Scope.empty).map(_.nameToValue)) |
         keyValue("message", expression) |
         keyValue("uncatchable", booleanConstant)))).backtrack.?
         ~ hardEnd)

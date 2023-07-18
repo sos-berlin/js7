@@ -52,7 +52,7 @@ extends Scope with AutoCloseable
         Right("*")
 
       case Some(filenameExpr) =>
-        filenameExpr.eval.flatMap(_.asString)
+        filenameExpr.evalAsString
   }
 
   def close() =

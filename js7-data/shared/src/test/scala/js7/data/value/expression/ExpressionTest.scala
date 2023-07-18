@@ -355,6 +355,12 @@ final class ExpressionTest extends OurTestSuite
         "-",
         MissingConstant,
         true))))
+
+    testEval("""mkString([ "-->", error("ERROR") ])""",
+      result = Left(ErrorInExpressionProblem("ERROR"))/*because the list fails*/,
+      MkString(ListExpression(List(
+        "-->",
+        ErrorExpression("ERROR")))))
   }
 
   "stripMargin()" - {
@@ -758,6 +764,11 @@ final class ExpressionTest extends OurTestSuite
       testEval("""'->' ++ missing ++ '<-'""",
         result = Right(MissingValue),
         Concat(Concat("->", MissingConstant), "<-"))
+
+      // ErrorValue has priority over MissingValue
+      testEval("""missing ++ error("ERROR") ++ missing""",
+        result = Left(ErrorInExpressionProblem("ERROR")),
+        Concat(Concat(MissingConstant, ErrorExpression("ERROR")), MissingConstant))
     }
   }
 

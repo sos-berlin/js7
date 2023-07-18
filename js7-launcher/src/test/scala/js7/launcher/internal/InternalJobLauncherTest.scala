@@ -8,7 +8,7 @@ import js7.base.thread.IOExecutor.globalIOX
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.AlarmClock
 import js7.base.time.ScalaTime.*
-import js7.base.utils.ScalaUtils.syntax.{RichAny, RichPartialFunction}
+import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.job.{InternalExecutable, JobConf, JobKey}
@@ -88,7 +88,7 @@ object InternalJobLauncherTest
         Task {
           Outcome.Completed.fromChecked(
           step.arguments.checked("ARG")
-            .flatMap(_.narrow[NumberValue])
+            .flatMap(_.as[NumberValue])
             .map(_.number + 1)
             .map(result => Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(result)))))
         }

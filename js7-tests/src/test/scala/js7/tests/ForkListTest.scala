@@ -540,7 +540,7 @@ object ForkListTest
       OrderProcess(Task {
         assert(step.order.arguments.keySet == Set("element", "myList"))
         assert(step.order.arguments("element").toStringValueString.orThrow.startsWith("ELEMENT-"))
-        step.order.arguments("myList").asListValue.orThrow
+        step.order.arguments("myList").as[ListValue].orThrow
         Outcome.Succeeded(Map("result" -> StringValue("🔹" + step.order.id.string)))
       })
   }

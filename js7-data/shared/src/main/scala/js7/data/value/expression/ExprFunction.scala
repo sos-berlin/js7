@@ -6,10 +6,9 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichString
-import js7.data.value.ValueType.UnexpectedValueTypeProblem
+import js7.data.value.Value
 import js7.data.value.expression.ExpressionParser.parseFunction
 import js7.data.value.expression.scopes.NamedValueScope
-import js7.data.value.{ErrorValue, MissingValue, Value}
 import org.jetbrains.annotations.TestOnly
 import scala.language.implicitConversions
 

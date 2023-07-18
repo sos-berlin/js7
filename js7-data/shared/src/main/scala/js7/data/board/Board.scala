@@ -34,8 +34,7 @@ extends UnsignedSimpleItem
 
   def postingOrderToNotice(scope: Scope): Checked[Notice] =
     for {
-      value <- postOrderToNoticeId.eval(scope)
-      string <- value.asString
+      string <- postOrderToNoticeId.evalAsString(scope)
       notice <- toNotice(NoticeId(string))(scope)
     } yield notice
 
@@ -47,8 +46,7 @@ extends UnsignedSimpleItem
 
   def expectingOrderToNoticeId(scope: Scope): Checked[NoticeId] =
     for {
-      value <- expectOrderToNoticeId.eval(scope)
-      string <- value.asString
+      string <- expectOrderToNoticeId.evalAsString(scope)
       noticeId <- NoticeId.checked(string)
     } yield noticeId
 

@@ -20,6 +20,7 @@ import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.AsyncMap
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Checked
+import js7.base.problem.Checked.catchNonFatal
 import js7.base.thread.IOExecutor
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime.*
@@ -163,10 +164,9 @@ final class FileWatchManager(
     import fileWatchState.fileWatch
 
     fileWatch.directoryExpr
-      .eval(EnvScope)
-      .flatMap(_.asString)
-      .flatMap(o => Checked.catchNonFatal(
-        Paths.get(o)))
+      .evalAsString(EnvScope)
+      .flatMap(string =>
+        catchNonFatal(Paths.get(string)))
       .map { directory =>
         val delayIterator = retryDelays.iterator ++ Iterator.continually(retryDelays.last)
         var directoryState = fileWatchState.directoryState
@@ -276,14 +276,13 @@ object FileWatchManager
       fileWatch.orderIdExpression match {
         case None => default
         case Some(expr) =>
-          eval(fileWatch.path, expr, matcher)
-            .flatMap(_.toStringValueString)
+          evalAsString(fileWatch.path, expr, matcher)
             .flatMap(OrderId.checked)
       }
     }
   }
 
-  private def eval(orderWatchPath: OrderWatchPath, expression: Expression, matchedMatcher: Matcher) =
-    expression.eval(
+  private def evalAsString(orderWatchPath: OrderWatchPath, expression: Expression, matchedMatcher: Matcher) =
+    expression.evalAsString(
       FileWatchScope(orderWatchPath, matchedMatcher) |+| NowScope() |+| EnvScope)
 }
