@@ -25,9 +25,9 @@ extends EventInstructionExecutor with PositionInstructionExecutor
     start(order)
       .orElse(order.ifState[Ready].map(order =>
         for {
-          pair <- toCalendarAndScheduleCalculator(order, cycle, state)
-          (calendar, calculator) = pair
           workflow <- state.keyToItem(Workflow).checked(order.workflowId)
+          pair <- toCalendarAndScheduleCalculator(workflow, cycle, state)
+          (calendar, calculator) = pair
           calendarExecutor <- CalendarExecutor.checked(calendar, workflow.timeZone)
           timeInterval <- calendarExecutor.orderIdToTimeInterval(order.id)
         } yield {
@@ -88,16 +88,18 @@ extends EventInstructionExecutor with PositionInstructionExecutor
   }
 
   private def toScheduleCalculator(order: Order[Order.State], cycle: Cycle, state: StateView) =
-    for (pair <- toCalendarAndScheduleCalculator(order, cycle, state)) yield
+    for {
+      workflow <- state.keyToItem(Workflow).checked(order.workflowId)
+      pair <- toCalendarAndScheduleCalculator(workflow, cycle, state)
+    } yield
       pair._2
 
   private def toCalendarAndScheduleCalculator(
-    order: Order[Order.State],
+    workflow: Workflow,
     cycle: Cycle,
     state: StateView)
   : Checked[(Calendar, ScheduleCalculator)] =
     for {
-      workflow <- state.idToWorkflow.checked(order.workflowId)
       calendarPath <- workflow.calendarPath
         .toChecked(Problem("Cycle instruction requires Workflow.calendarPath"))
       calendar <- state.keyToItem(Calendar).checked(calendarPath)
