@@ -6,9 +6,9 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichString
+import js7.data.value.Value
 import js7.data.value.expression.ExpressionParser.parseFunction
 import js7.data.value.expression.scopes.NamedValueScope
-import js7.data.value.{ErrorValue, Value}
 import org.jetbrains.annotations.TestOnly
 import scala.language.implicitConversions
 
@@ -35,14 +35,6 @@ final case class ExprFunction(
         maximumArgumentCount = Some(maximum)))
 
   def eval(arguments: Iterable[Value])(implicit scope: Scope): Checked[Value] =
-    evalAllowError(arguments).flatMap {
-      case errorValue: ErrorValue => Left(errorValue.problem)
-      case o => Right(o)
-    }
-
-  private def evalAllowError(arguments: Iterable[Value])
-    (implicit scope: Scope)
-  : Checked[Value] =
     if (arguments.sizeIs < minimumArgumentCount
       || maximumArgumentCount.exists(arguments.sizeIs > _))
       Left(Problem(

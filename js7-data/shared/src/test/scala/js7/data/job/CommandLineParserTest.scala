@@ -2,7 +2,7 @@ package js7.data.job
 
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
-import js7.data.value.expression.Expression.{ListExpression, MkString, NamedValue, StringConstant}
+import js7.data.value.expression.Expression.{ListExpr, MkString, NamedValue, StringConstant}
 
 final class CommandLineParserTest extends OurTestSuite
 {
@@ -51,7 +51,7 @@ final class CommandLineParserTest extends OurTestSuite
         """XX "$NAME-\"QUOTED\"\\\$"""",
         List(
           StringConstant("XX"),
-          MkString(ListExpression(List(
+          MkString(ListExpr(List(
             NamedValue("NAME"),
             StringConstant("""-"QUOTED"\$"""))))))))
   }

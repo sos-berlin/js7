@@ -14,7 +14,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.value.ValuePrinter.quoteString
-import js7.data.value.ValueType.{UnexpectedValueTypeProblem, UnknownNameInExpressionProblem}
+import js7.data.value.ValueType.UnexpectedValueTypeProblem
 import js7.data.value.expression.ExprFunction
 import monix.eval.Task
 import scala.collection.View
@@ -30,17 +30,17 @@ sealed trait Value
 
   def release = Task.unit
 
+  def asString: Checked[String] =
+    as[StringValue].map(_.string)
+
   final def toStringValueString: Checked[String] =
     toStringValue.map(_.string)
 
-  def asString: Checked[String] =
-    asStringValue.map(_.string)
-
+  /** Soft conversion to StringValue. */
   def toStringValue: Checked[StringValue] =
-    asStringValue
+    as[StringValue]
 
-  def asStringValue: Checked[StringValue] =
-    Left(UnexpectedValueTypeProblem(StringValue, this))
+  def missingToEmpty: Value = this
 
   final def asInt: Checked[Int] =
     asNumber.flatMap(o => catchExpected[ArithmeticException](
@@ -57,62 +57,51 @@ sealed trait Value
           .setScale(0, RoundingMode.DOWN)
           .toLongExact))
 
+  final def asMaybeNumber: Checked[Option[BigDecimal]] =
+    asNumber.map(Some(_))
+
   final def asNumber: Checked[BigDecimal] =
-    asNumberValue.map(_.number)
+    as[NumberValue].map(_.number)
 
   final def asDuration: Checked[FiniteDuration] =
     asNumber.map(_.setScale(3, RoundingMode.DOWN).s)
 
+  /** Soft conversion to NumberValue. */
   def toNumberValue: Checked[NumberValue] =
-    asNumberValue
-
-  def asNumberValue: Checked[NumberValue] =
-    Left(UnexpectedValueTypeProblem(NumberValue, this))
+    as[NumberValue]
 
   def asBoolean: Checked[Boolean] =
-    asBooleanValue.map(_.booleanValue)
+    as[BooleanValue].map(_.booleanValue)
 
+  /** Soft conversion to BooleanValue. */
   def toBooleanValue: Checked[BooleanValue] =
-    asBooleanValue
-
-  def asBooleanValue: Checked[BooleanValue] =
-    Left(UnexpectedValueTypeProblem(BooleanValue, this))
+    as[BooleanValue]
 
   def asList: Checked[Seq[Value]] =
-    asListValue.map(_.elements)
-
-  def asListValue: Checked[ListValue] =
-    Left(UnexpectedValueTypeProblem(ListValue, this))
+    as[ListValue].map(_.elements)
 
   final def asObject: Checked[Map[String, Value]] =
-    asObjectValue.map(_.nameToValue)
-
-  def asObjectValue: Checked[ObjectValue] =
-    Left(UnexpectedValueTypeProblem(ObjectValue, this))
+    as[ObjectValue].map(_.nameToValue)
 
   @javaApi @Nullable/*for MissingValue ???*/
   def toJava: java.lang.Object
 
   def convertToString: String
+
+  def as[V <: Value](implicit V: Value.Companion[V]): Checked[V] =
+    if (valueType is V)
+      Right(this.asInstanceOf[V])
+    else
+      Left(UnexpectedValueTypeProblem(V, this))
 }
 
 object Value
 {
-  //def apply(value: String) = StringValue(value)
-  //def apply(value: BigDecimal) = NumberValue(value)
-  //def apply(value: Long) = NumberValue(BigDecimal(value))
-  //def apply(value: Int) = NumberValue(BigDecimal(value))
-  //def apply(value: Boolean) = BooleanValue(value)
-
   @javaApi def of(value: String) = StringValue(value)
   @javaApi def of(value: java.math.BigDecimal) = NumberValue(value)
   @javaApi def of(value: Long) = NumberValue(BigDecimal(value))
   @javaApi def of(value: Int) = NumberValue(BigDecimal(value))
   @javaApi def of(value: Boolean) = BooleanValue(value)
-
-  def catchNonFatal[V <: Value](body: => V): Value =
-    try body
-    catch { case NonFatal(t) => ErrorValue(Problem.fromThrowable(t)) }
 
   implicit val jsonEncoder: Encoder[Value] = {
     case StringValue(o) => Json.fromString(o)
@@ -125,8 +114,7 @@ object Value
     case ListValue(values) => Json.fromValues(values map jsonEncoder.apply)
     case ObjectValue(values) => Json.fromJsonObject(JsonObject.fromIterable(values.view.mapValues(jsonEncoder.apply)))
     case MissingValue => Json.Null
-    case v @ (_: ErrorValue | _: FunctionValue) =>
-      sys.error(s"${v.valueType.name} cannot be JSON encoded: $v")
+    case v: FunctionValue => sys.error(s"${v.valueType.name} cannot be JSON encoded: $v")
   }
 
   implicit val jsonDecoder: Decoder[Value] = {
@@ -162,6 +150,10 @@ object Value
     }
   }
 
+  trait Companion[V <: Value] extends ValueType {
+    implicit val implicitCompanion: Companion[V] = this
+  }
+
   object convenience {
     implicit def convenientBooleanValue(b: Boolean): BooleanValue =
       BooleanValue(b)
@@ -183,13 +175,24 @@ object Value
   }
 }
 
-final case class StringValue(string: String) extends Value
+sealed trait GoodValue extends Value
+object GoodValue {
+  trait Companion[V <: GoodValue] extends Value.Companion[V] {
+    override def is(t: ValueType) =
+      (companion eq t) || super.is(t)
+  }
+
+  implicit val companion: Companion[GoodValue] =
+    new Companion[GoodValue] {
+      val name = "GoodValue"
+    }
+}
+
+final case class StringValue(string: String) extends GoodValue
 {
   requireNonNull(string)
 
   def valueType = StringValue
-
-  override def asStringValue = Right(this)
 
   override def toNumberValue =
     try Right(NumberValue(BigDecimal(string)))
@@ -212,20 +215,19 @@ final case class StringValue(string: String) extends Value
     ValuePrinter.quoteString(string.truncateWithEllipsis(200, showLength = true))
 }
 
-object StringValue extends ValueType.Simple
+object StringValue extends GoodValue.Companion[StringValue] with ValueType.Simple
 {
   val name = "String"
+  val empty = StringValue("")
 
   @javaApi def of(value: String) = StringValue(value)
 }
 
-final case class NumberValue(number: BigDecimal) extends Value
+final case class NumberValue(number: BigDecimal) extends GoodValue
 {
   def valueType = NumberValue
 
   override def toStringValue = Right(StringValue(number.toString))
-
-  override def asNumberValue = Right(this)
 
   override def toBooleanValue =
     if (number == NumberValue.One.number) Right(BooleanValue.True)
@@ -247,7 +249,7 @@ final case class NumberValue(number: BigDecimal) extends Value
   override def toString = convertToString
 }
 
-object NumberValue extends ValueType.Simple
+object NumberValue extends GoodValue.Companion[NumberValue] with ValueType.Simple
 {
   val name = "Number"
   val Zero = NumberValue(0)
@@ -267,14 +269,12 @@ object NumberValue extends ValueType.Simple
   @javaApi def of(value: Integer) = NumberValue(BigDecimal(value))
 }
 
-final case class BooleanValue(booleanValue: Boolean) extends Value
+final case class BooleanValue(booleanValue: Boolean) extends GoodValue
 {
   def valueType = BooleanValue
 
   override def toNumberValue =
     Right(if (booleanValue) NumberValue.One else NumberValue.Zero)
-
-  override def asBooleanValue = Right(this)
 
   @javaApi @Nonnull def toJava: java.lang.Boolean =
     java.lang.Boolean.valueOf(booleanValue)
@@ -286,7 +286,7 @@ final case class BooleanValue(booleanValue: Boolean) extends Value
   override def toString = convertToString
 }
 
-object BooleanValue extends ValueType.Simple
+object BooleanValue extends GoodValue.Companion[BooleanValue] with ValueType.Simple
 {
   val name = "Boolean"
   val True = BooleanValue(true)
@@ -295,11 +295,9 @@ object BooleanValue extends ValueType.Simple
   @javaApi def of(value: Boolean) = BooleanValue(value)
 }
 
-final case class ListValue(elements: Vector[Value]) extends Value
+final case class ListValue private(elements: Vector[Value]) extends GoodValue
 {
   def valueType = ListValue
-
-  override def asListValue = Right(this)
 
   @javaApi @Nonnull def toJava: java.util.List[Value] =
     elements.asJava
@@ -310,8 +308,7 @@ final case class ListValue(elements: Vector[Value]) extends Value
 }
 
 /** A list of values of undeclared type. */
-object ListValue extends ValueType.Compound
-{
+object ListValue extends GoodValue.Companion[ListValue] with ValueType.Compound {
   val name = "List"
   val empty = ListValue(Vector.empty)
 
@@ -332,11 +329,9 @@ extends ValueType.Compound
 }
 
 /** An object with fields of undeclared type. */
-final case class ObjectValue(nameToValue: Map[String, Value]) extends Value
+final case class ObjectValue(nameToValue: Map[String, Value]) extends GoodValue
 {
   def valueType = ObjectValue
-
-  override def asObjectValue = Right(this)
 
   @javaApi @Nonnull def toJava: java.util.Map[String, Value] =
     nameToValue.asJava
@@ -348,7 +343,7 @@ final case class ObjectValue(nameToValue: Map[String, Value]) extends Value
   override def toString = convertToString
 }
 
-object ObjectValue extends ValueType.Compound
+object ObjectValue extends GoodValue.Companion[ObjectValue] with ValueType.Compound
 {
   val name = "Object"
   val empty = ObjectValue(Map.empty)
@@ -363,7 +358,7 @@ extends ValueType.Compound
   def name = "Object"
 }
 
-final case class FunctionValue(function: ExprFunction) extends Value
+final case class FunctionValue(function: ExprFunction) extends GoodValue
 {
   def valueType = FunctionValue
 
@@ -373,28 +368,11 @@ final case class FunctionValue(function: ExprFunction) extends Value
 
   override def toString = function.toString
 }
-object FunctionValue extends ValueType
+object FunctionValue extends GoodValue.Companion[FunctionValue] with ValueType
 {
   val name = "Function"
 }
 
-/** A missing value due to a problem.
- *
- *  Does not equals itself because it fails if evaluated. */
-final case class ErrorValue(problem: Problem) extends Value {
-  def valueType = ErrorValue
-
-  @javaApi @Nonnull def toJava: Problem =
-    problem
-
-  override def convertToString = s"[Problem: $problem]"
-
-  override def toString = convertToString
-}
-object ErrorValue extends ValueType {
-  val name = "Problem"
-  def unknownName(name: String) = ErrorValue(UnknownNameInExpressionProblem(name))
-}
 
 /** The inapplicable value.
  *
@@ -405,17 +383,23 @@ case object MissingValue extends Value with ValueType.Simple {
 
   val name = "Missing"
 
+  override def missingToEmpty: Value =
+    StringValue.empty
+
   @javaApi @Nullable def toJava: Null =
     null
 
   override val convertToString = ""
 
-  override val toString = convertToString
+  override val toString = "missing"
 }
 
 sealed trait ValueType
 {
   def name: String
+
+  def is(t: ValueType): Boolean =
+    this eq t
 
   override def toString = name
 }
@@ -497,10 +481,10 @@ object ValueType
     def arguments = Map("errorMessage" -> errorMessage)
   }
 
-  final case class UnexpectedValueTypeProblem(valueType: ValueType, value: Value)
+  final case class UnexpectedValueTypeProblem(expectedType: ValueType, value: Value)
   extends Problem.Coded {
     def arguments = Map(
-      "type" -> valueType.name,
+      "expectedType" -> expectedType.name,
       "value" -> (value.valueType.name + ": " + value.toString.truncateWithEllipsis(30)))
   }
 }

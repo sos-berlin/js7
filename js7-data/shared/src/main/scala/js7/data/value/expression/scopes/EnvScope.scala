@@ -5,9 +5,9 @@ import js7.base.problem.Checked
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.Problems.InvalidFunctionArgumentsProblem
+import js7.data.value.StringValue
 import js7.data.value.expression.Expression.{Argument, FunctionCall}
 import js7.data.value.expression.{Expression, Scope}
-import js7.data.value.{StringValue, Value}
 import org.jetbrains.annotations.TestOnly
 
 /** Accesses environment variables. */
@@ -30,7 +30,7 @@ trait EnvScope extends Scope
           Argument(defaultExpr, None | Some("default"))) =>
             for {
               name <- nameExpr.evalAsString
-              result <- get(name).fold(defaultExpr.eval)(v => Checked(StringValue(v): Value))
+              result <- get(name).fold(defaultExpr.eval)(v => Checked(StringValue(v)))
             } yield result
 
           case _ =>

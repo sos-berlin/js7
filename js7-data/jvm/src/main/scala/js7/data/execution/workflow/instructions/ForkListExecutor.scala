@@ -10,7 +10,7 @@ import js7.base.utils.Collections.implicits.*
 import js7.data.order.OrderEvent.OrderForked
 import js7.data.order.{Order, Outcome}
 import js7.data.state.{AgentsSubagentIdsScope, StateView}
-import js7.data.value.{ListValue, NumberValue}
+import js7.data.value.{ListValue, NumberValue, ObjectValue}
 import js7.data.workflow.instructions.ForkList
 import scala.collection.View
 
@@ -38,7 +38,7 @@ extends ForkInstructionExecutor
         .traverseWithIndexM { case (element, i) =>
           fork.childToArguments
             .eval(View(element, NumberValue(i)))(scope)
-            .flatMap(_.asObjectValue)
+            .flatMap(_.as[ObjectValue])
         }
       children <- childIds.zip(argsOfChildren)
         .traverse { case (childId, args) =>
@@ -58,5 +58,5 @@ extends ForkInstructionExecutor
       } yield Outcome.Succeeded(results.view
         .flatten
         .groupMap(_._1)(_._2).view
-        .mapValues(ListValue(_)).toMap))
+        .mapValues(values => ListValue(values.toVector)).toMap))
 }

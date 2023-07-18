@@ -4,6 +4,7 @@ import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
+import js7.data.value.ValueType.UnexpectedValueTypeProblem
 import js7.tester.CirceJsonTester.testJson
 
 final class ValueTest extends OurTestSuite
@@ -124,18 +125,18 @@ final class ValueTest extends OurTestSuite
       assert(NumberValue(Int.MaxValue).asInt == Right(Int.MaxValue))
       assert(NumberValue(Int.MinValue).asInt == Right(Int.MinValue))
       assert(NumberValue(Int.MaxValue.toLong + 1).asInt ==
-        Left(Problem("java.lang.ArithmeticException: Overflow")))
+        Left(Problem("ArithmeticException: Overflow")))
       assert(NumberValue(BigDecimal("1.2")).asInt ==
-        Left(Problem("java.lang.ArithmeticException: Rounding necessary")))
+        Left(Problem("ArithmeticException: Rounding necessary")))
     }
 
     "asLong" in {
       assert(NumberValue(Long.MaxValue).asLong == Right(Long.MaxValue))
       assert(NumberValue(Long.MinValue).asLong == Right(Long.MinValue))
       assert(NumberValue(BigDecimal(Long.MaxValue) + 1).asLong ==
-        Left(Problem("java.lang.ArithmeticException: Overflow")))
+        Left(Problem("ArithmeticException: Overflow")))
       assert(NumberValue(BigDecimal("1.2")).asLong ==
-        Left(Problem("java.lang.ArithmeticException: Rounding necessary")))
+        Left(Problem("ArithmeticException: Rounding necessary")))
     }
 
     "asLongIgnoreFraction" in {
@@ -159,5 +160,13 @@ final class ValueTest extends OurTestSuite
       assert(BooleanValue(true).toBooleanValue == Right(BooleanValue(true)))
       assert(BooleanValue(false).toBooleanValue == Right(BooleanValue(false)))
     }
+  }
+
+  "as[GoodValue]" in {
+    assert((MissingValue: Value).as[GoodValue] == Left(
+      UnexpectedValueTypeProblem(GoodValue.companion, MissingValue)))
+
+    assert((NumberValue(7): Value).as[GoodValue] == Right(NumberValue(7)))
+    assert((BooleanValue(true): Value).as[GoodValue] == Right(BooleanValue(true)))
   }
 }

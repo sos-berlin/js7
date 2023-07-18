@@ -4,6 +4,8 @@ import js7.base.io.process.{ProcessSignal, ReturnCode}
 
 package object value
 {
+  val missingValue: Value = MissingValue
+
   type NamedValues = Map[String, Value]
 
   object NamedValues

@@ -87,9 +87,9 @@ object IfExecutorTest {
   private val ThenJob = Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("THEN")))
   private val ElseJob = Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("ELSE")))
 
-  private def ifThenElse(booleanExpr: BooleanExpression) =
+  private def ifThenElse(booleanExpr: BooleanExpr) =
     If(booleanExpr, Workflow.of(ThenJob), Some(Workflow.of(ElseJob)))
 
-  private def ifThen(booleanExpr: BooleanExpression) =
+  private def ifThen(booleanExpr: BooleanExpr) =
     If(booleanExpr, Workflow.of(ThenJob))
 }

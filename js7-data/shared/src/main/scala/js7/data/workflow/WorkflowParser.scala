@@ -15,7 +15,7 @@ import js7.data.job.{CommandLineExecutable, CommandLineParser, InternalExecutabl
 import js7.data.lock.LockPath
 import js7.data.parser.Js7Parsers.path
 import js7.data.source.SourcePos
-import js7.data.value.expression.Expression.{BooleanConstant, ObjectExpression}
+import js7.data.value.expression.Expression.{BooleanConstant, ObjectExpr}
 import js7.data.value.expression.ExpressionParser.{booleanConstant, constantExpression, expression}
 import js7.data.value.expression.{Expression, Scope}
 import js7.data.value.{NamedValues, ObjectValue}
@@ -80,9 +80,9 @@ object WorkflowParser
         nonEmptyCommaSequence((quotedString ~~<* char(':') ~~ expression))
           .map(_.toList.toMap))
 
-    private val objectExpression: Parser[ObjectExpression] =
+    private val objectExpression: Parser[ObjectExpr] =
       expressionMap
-        .map(ObjectExpression.apply)
+        .map(ObjectExpr.apply)
 
     private val anonymousWorkflowJob: Parser0[WorkflowJob] = for {
       kv <- keyValues[Any](
@@ -102,11 +102,11 @@ object WorkflowParser
         keyValue("parallelism", int) |
         keyValue("sigkillDelay", int))
       agentPath <- kv[AgentPath]("agent")
-      defaultArguments <- kv[ObjectExpression]("defaultArguments", ObjectExpression.empty)
-      arguments <- kv[ObjectExpression]("arguments", ObjectExpression.empty)
-      jobArguments <- kv[ObjectExpression]("jobArguments", ObjectExpression.empty)
+      defaultArguments <- kv[ObjectExpr]("defaultArguments", ObjectExpr.empty)
+      arguments <- kv[ObjectExpr]("arguments", ObjectExpr.empty)
+      jobArguments <- kv[ObjectExpr]("jobArguments", ObjectExpr.empty)
       jobResourcePaths <- kv[Seq[JobResourcePath]]("jobResourcePaths", Nil)
-      env <- kv[ObjectExpression]("env", ObjectExpression.empty)
+      env <- kv[ObjectExpr]("env", ObjectExpr.empty)
       v1Compatible <- kv.noneOrOneOf[BooleanConstant]("v1Compatible").map(_.fold(false)(_._2.booleanValue))
       returnCodeMeaning <- kv.oneOfOr(Set("successReturnCodes", "failureReturnCodes"), ReturnCodeMeaning.Default)
       executable <- kv.oneOf[Any]("executable", "command", "script", "internalJobClass").flatMap {
@@ -117,11 +117,11 @@ object WorkflowParser
           else checkedToParser(CommandLineParser.parse(command)
             .map(CommandLineExecutable(_, env.nameToExpr, returnCodeMeaning = returnCodeMeaning)))
         case ("script", script: Expression) =>
-          checkedToParser(script.eval(Scope.empty).flatMap(_.asStringValue)
-            .map(v => ShellScriptExecutable(v.string, env.nameToExpr, returnCodeMeaning = returnCodeMeaning, v1Compatible = v1Compatible)))
+          checkedToParser(script.evalAsString(Scope.empty)
+            .map(string => ShellScriptExecutable(string, env.nameToExpr, returnCodeMeaning = returnCodeMeaning, v1Compatible = v1Compatible)))
         case ("internalJobClass", className: Expression) =>
-          checkedToParser(className.eval(Scope.empty).flatMap(_.asStringValue)
-            .map(v => InternalExecutable(className = v.string,
+          checkedToParser(className.evalAsString(Scope.empty)
+            .map(string => InternalExecutable(className = string,
               jobArguments = jobArguments.nameToExpr,
               arguments = arguments.nameToExpr)))
         case _ => failWith("Invalid executable")  // Does not happen
@@ -165,7 +165,7 @@ object WorkflowParser
         ~ keyword("fail")
         ~ (w *> inParentheses(keyValues(
         keyValueConvert("namedValues", objectExpression)(o =>
-          o.eval(Scope.empty).map(_.asInstanceOf[ObjectValue].nameToValue)) |
+          o.evalAs(ObjectValue, Scope.empty).map(_.nameToValue)) |
         keyValue("message", expression) |
         keyValue("uncatchable", booleanConstant)))).backtrack.?
         ~ hardEnd)

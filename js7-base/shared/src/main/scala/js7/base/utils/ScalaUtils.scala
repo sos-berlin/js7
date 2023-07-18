@@ -230,26 +230,29 @@ object ScalaUtils
 
       def toSimplifiedString: String = {
         val msg = throwable.getMessage
-        if (msg != null && msg != "" && (
-            throwable.isInstanceOf[ProblemException] ||
-            throwable.getClass == classOf[IllegalArgumentException] ||
-            throwable.getClass == classOf[RuntimeException] ||
-            throwable.getClass == classOf[Exception] ||
-            throwable.isInstanceOf[PublicException] ||
-            throwable.getClass.getName == "scala.scalajs.js.JavaScriptException" ||
-            throwable.getClass.getName == "java.util.concurrent.CompletionException"))
-          msg
-        else
-          throwable match {
-            case _: java.util.NoSuchElementException =>
-              throwable.toString stripPrefix "java.util."
+        throwable match {
+          case _: java.util.NoSuchElementException =>
+            throwable.toString stripPrefix "java.util."
 
-            case _: IllegalStateException | _: NumberFormatException =>
-              throwable.toString stripPrefix "java.lang."
+          case _: IllegalStateException | _: NumberFormatException =>
+            throwable.toString stripPrefix "java.lang."
 
-            case _ =>
+          case t: ArithmeticException if msg != null =>
+            s"ArithmeticException: $msg"
+
+          case _ =>
+            if (msg != null && msg != "" && (
+              throwable.isInstanceOf[ProblemException] ||
+                throwable.getClass == classOf[IllegalArgumentException] ||
+                throwable.getClass == classOf[RuntimeException] ||
+                throwable.getClass == classOf[Exception] ||
+                throwable.isInstanceOf[PublicException] ||
+                throwable.getClass.getName == "scala.scalajs.js.JavaScriptException" ||
+                throwable.getClass.getName == "java.util.concurrent.CompletionException"))
+              msg
+            else
               throwable.toString
-          }
+        }
       }.trim
 
       def stackTraceAsString: String = {

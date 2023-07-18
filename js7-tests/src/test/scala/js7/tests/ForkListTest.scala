@@ -22,7 +22,7 @@ import js7.data.job.ShellScriptExecutable
 import js7.data.order.OrderEvent.*
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
 import js7.data.subagent.{SubagentSelection, SubagentSelectionId}
-import js7.data.value.expression.Expression.{ListExpression, NumericConstant}
+import js7.data.value.expression.Expression.{ListExpr, NumericConstant}
 import js7.data.value.expression.ExpressionParser.{expr, exprFunction}
 import js7.data.value.{ListValue, NumberValue, ObjectValue, StringValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -275,7 +275,7 @@ with BlockingItemUpdater
       Map(subagentId -> 1))
     updateItem(subagentSelection)
     val list = (1 to ForkInstructionExecutor.MinimumChildCountForParentAttachment).toList
-    val listExpr = ListExpression(list.map(NumericConstant(_)))
+    val listExpr = ListExpr(list.map(NumericConstant(_)))
 
     val workflow = updateItem(Workflow.of(
       WorkflowPath("FORK-IN-FORKLIST"),
@@ -540,7 +540,7 @@ object ForkListTest
       OrderProcess(Task {
         assert(step.order.arguments.keySet == Set("element", "myList"))
         assert(step.order.arguments("element").toStringValueString.orThrow.startsWith("ELEMENT-"))
-        step.order.arguments("myList").asListValue.orThrow
+        step.order.arguments("myList").as[ListValue].orThrow
         Outcome.Succeeded(Map("result" -> StringValue("🔹" + step.order.id.string)))
       })
   }
