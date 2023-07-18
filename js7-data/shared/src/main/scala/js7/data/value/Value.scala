@@ -42,6 +42,8 @@ sealed trait Value
   def asStringValue: Checked[StringValue] =
     Left(UnexpectedValueTypeProblem(StringValue, this))
 
+  def missingToEmpty: Value = this
+
   final def asInt: Checked[Int] =
     asNumber.flatMap(o => catchExpected[ArithmeticException](
       o.toIntExact))
@@ -56,6 +58,9 @@ sealed trait Value
         catchExpected[Exception](o
           .setScale(0, RoundingMode.DOWN)
           .toLongExact))
+
+  final def asMaybeNumber: Checked[Option[BigDecimal]] =
+    asNumber.map(Some(_))
 
   final def asNumber: Checked[BigDecimal] =
     asNumberValue.map(_.number)
@@ -94,6 +99,12 @@ sealed trait Value
   def toJava: java.lang.Object
 
   def convertToString: String
+
+  def flatMap(f: Value => Value): Value =
+    this match {
+      case bad: BadValue => bad
+      case v => f(v)
+    }
 }
 
 object Value
@@ -110,7 +121,7 @@ object Value
   @javaApi def of(value: Int) = NumberValue(BigDecimal(value))
   @javaApi def of(value: Boolean) = BooleanValue(value)
 
-  def catchNonFatal[V <: Value](body: => V): Value =
+  def catchAsErrorValue[V <: Value](body: => V): Value =
     try body
     catch { case NonFatal(t) => ErrorValue(Problem.fromThrowable(t)) }
 
@@ -183,7 +194,10 @@ object Value
   }
 }
 
-final case class StringValue(string: String) extends Value
+sealed trait BadValue extends Value
+sealed trait GoodValue extends Value
+
+final case class StringValue(string: String) extends GoodValue
 {
   requireNonNull(string)
 
@@ -214,11 +228,12 @@ final case class StringValue(string: String) extends Value
 object StringValue extends ValueType.Simple
 {
   val name = "String"
+  val empty = StringValue("")
 
   @javaApi def of(value: String) = StringValue(value)
 }
 
-final case class NumberValue(number: BigDecimal) extends Value
+final case class NumberValue(number: BigDecimal) extends GoodValue
 {
   def valueType = NumberValue
 
@@ -266,7 +281,7 @@ object NumberValue extends ValueType.Simple
   @javaApi def of(value: Integer) = NumberValue(BigDecimal(value))
 }
 
-final case class BooleanValue(booleanValue: Boolean) extends Value
+final case class BooleanValue(booleanValue: Boolean) extends GoodValue
 {
   def valueType = BooleanValue
 
@@ -294,7 +309,7 @@ object BooleanValue extends ValueType.Simple
   @javaApi def of(value: Boolean) = BooleanValue(value)
 }
 
-final case class ListValue(elements: Vector[Value]) extends Value
+final case class ListValue private(elements: Vector[Value]) extends GoodValue
 {
   def valueType = ListValue
 
@@ -331,7 +346,7 @@ extends ValueType.Compound
 }
 
 /** An object with fields of undeclared type. */
-final case class ObjectValue(nameToValue: Map[String, Value]) extends Value
+final case class ObjectValue(nameToValue: Map[String, Value]) extends GoodValue
 {
   def valueType = ObjectValue
 
@@ -362,7 +377,7 @@ extends ValueType.Compound
   def name = "Object"
 }
 
-final case class FunctionValue(function: ExprFunction) extends Value
+final case class FunctionValue(function: ExprFunction) extends GoodValue
 {
   def valueType = FunctionValue
 
@@ -377,10 +392,11 @@ object FunctionValue extends ValueType
   val name = "Function"
 }
 
+
 /** A missing value due to a problem.
  *
  *  Does not equals itself because it fails if evaluated. */
-final case class ErrorValue(problem: Problem) extends Value {
+final case class ErrorValue(problem: Problem) extends BadValue {
   def valueType = ErrorValue
 
   @javaApi @Nonnull def toJava: Problem =
@@ -399,17 +415,20 @@ object ErrorValue extends ValueType {
  *
  * Similar to Scala None (but there is no Some).
  * Unlike SQL null, this MissingValue equals itself. */
-case object MissingValue extends Value with ValueType.Simple {
+case object MissingValue extends BadValue with ValueType.Simple {
   val valueType = MissingValue
 
   val name = "Missing"
+
+  override def missingToEmpty: Value =
+    StringValue.empty
 
   @javaApi @Nullable def toJava: Null =
     null
 
   override val convertToString = ""
 
-  override val toString = convertToString
+  override val toString = "missing"
 }
 
 sealed trait ValueType
@@ -496,10 +515,10 @@ object ValueType
     def arguments = Map("errorMessage" -> errorMessage)
   }
 
-  final case class UnexpectedValueTypeProblem(valueType: ValueType, value: Value)
+  final case class UnexpectedValueTypeProblem(expectedType: ValueType, value: Value)
   extends Problem.Coded {
     def arguments = Map(
-      "type" -> valueType.name,
+      "expectedType" -> expectedType.name,
       "value" -> (value.valueType.name + ": " + value.toString.truncateWithEllipsis(30)))
   }
 }

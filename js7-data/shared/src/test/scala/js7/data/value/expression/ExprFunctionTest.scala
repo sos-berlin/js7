@@ -4,11 +4,12 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurTestSuite
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.value.ValueType.UnexpectedValueTypeProblem
-import js7.data.value.expression.Expression.{Add, FunctionExpr, Multiply, NamedValue, NumericConstant}
+import js7.data.value.expression.Expression.{Add, Divide, FunctionExpr, MissingConstant, Multiply, NamedValue, NumericConstant}
 import js7.data.value.expression.ExpressionParser.{parseExpressionOrFunction, parseFunction}
 import js7.data.value.expression.scopes.NamedValueScope
-import js7.data.value.{FunctionValue, NumberValue, StringValue, Value}
+import js7.data.value.{FunctionValue, MissingValue, NumberValue, StringValue, Value}
 import org.scalactic.source
+import Expression.convenience.*
 
 final class ExprFunctionTest extends OurTestSuite
 {
@@ -34,6 +35,16 @@ final class ExprFunctionTest extends OurTestSuite
         Multiply(
           NumericConstant(2),
           NamedValue("b"))))))
+
+  testEval("(a) => $a + missing", Scope.empty,
+    args = Seq(NumberValue(2)),
+    result = Right(MissingValue),
+    Right(ExprFunction(Seq(VariableDeclaration("a")), Add(NamedValue("a"), MissingConstant))))
+
+  testEval("() => 1/0", Scope.empty,
+    args = Nil,
+    result = Left(Problem("ArithmeticException: Division by zero")),
+    Right(ExprFunction(Nil, Divide(1, 0))))
 
   testEval("() => $nameFromContext",
     scope = NamedValueScope("nameFromContext" -> NumberValue(7)),

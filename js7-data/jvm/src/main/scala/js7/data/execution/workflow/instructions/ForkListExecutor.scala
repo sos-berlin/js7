@@ -58,5 +58,5 @@ extends ForkInstructionExecutor
       } yield Outcome.Succeeded(results.view
         .flatten
         .groupMap(_._1)(_._2).view
-        .mapValues(ListValue(_)).toMap))
+        .mapValues(values => ListValue(values.toVector)).toMap))
 }

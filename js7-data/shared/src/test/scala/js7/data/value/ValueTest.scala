@@ -124,18 +124,18 @@ final class ValueTest extends OurTestSuite
       assert(NumberValue(Int.MaxValue).asInt == Right(Int.MaxValue))
       assert(NumberValue(Int.MinValue).asInt == Right(Int.MinValue))
       assert(NumberValue(Int.MaxValue.toLong + 1).asInt ==
-        Left(Problem("java.lang.ArithmeticException: Overflow")))
+        Left(Problem("ArithmeticException: Overflow")))
       assert(NumberValue(BigDecimal("1.2")).asInt ==
-        Left(Problem("java.lang.ArithmeticException: Rounding necessary")))
+        Left(Problem("ArithmeticException: Rounding necessary")))
     }
 
     "asLong" in {
       assert(NumberValue(Long.MaxValue).asLong == Right(Long.MaxValue))
       assert(NumberValue(Long.MinValue).asLong == Right(Long.MinValue))
       assert(NumberValue(BigDecimal(Long.MaxValue) + 1).asLong ==
-        Left(Problem("java.lang.ArithmeticException: Overflow")))
+        Left(Problem("ArithmeticException: Overflow")))
       assert(NumberValue(BigDecimal("1.2")).asLong ==
-        Left(Problem("java.lang.ArithmeticException: Rounding necessary")))
+        Left(Problem("ArithmeticException: Rounding necessary")))
     }
 
     "asLongIgnoreFraction" in {

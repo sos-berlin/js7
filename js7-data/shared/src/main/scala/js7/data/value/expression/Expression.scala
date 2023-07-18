@@ -1,6 +1,6 @@
 package js7.data.value.expression
 
-import cats.syntax.traverse.*
+import cats.syntax.all.*
 import io.circe.syntax.*
 import io.circe.{Decoder, Encoder, Json, JsonObject}
 import java.lang.Character.{isUnicodeIdentifierPart, isUnicodeIdentifierStart}
@@ -15,13 +15,14 @@ import js7.base.utils.ScalaUtils.withStringBuilder
 import js7.base.utils.typeclasses.IsEmpty
 import js7.data.job.JobResourcePath
 import js7.data.value.ValuePrinter.appendQuotedContent
-import js7.data.value.ValueType.{ErrorInExpressionProblem, UnexpectedValueTypeProblem}
+import js7.data.value.ValueType.{ErrorInExpressionProblem, UnexpectedValueTypeProblem, UnknownNameInExpressionProblem}
 import js7.data.value.expression.ExpressionParser.parseExpression
-import js7.data.value.{BooleanValue, ErrorValue, FunctionValue, ListValue, MissingValue, NumberValue, ObjectValue, StringValue, Value, ValuePrinter}
+import js7.data.value.{BadValue, BooleanValue, ErrorValue, FunctionValue, ListValue, MissingValue, NumberValue, ObjectValue, StringValue, Value, ValuePrinter, ValueType}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Label
 import scala.collection.{View, mutable}
 import scala.language.implicitConversions
+
 /**
   * @author Joacim Zschimmer
   */
@@ -40,9 +41,21 @@ sealed trait Expression extends Precedence
       .toSet
 
   final def eval(implicit scope: Scope): Checked[Value] =
-    evalAllowError.flatMap {
-      case v: ErrorValue => Left(v.problem)
-      case o => Right(o)
+    evalAllowError match {
+      case Left(UnexpectedValueTypeProblem(_, MissingValue)) =>
+        Right(MissingValue)
+
+      case Right(ErrorValue(problem)) =>
+        Left(problem)
+
+      case o => o
+    }
+
+  private final def evalValue(implicit scope: Scope): Value =
+    evalAllowError match {
+      case Left(UnexpectedValueTypeProblem(_, MissingValue)) => MissingValue
+      case Left(problem) => ErrorValue(problem)
+      case Right(v) => v
     }
 
   protected def evalAllowError(implicit scope: Scope): Checked[Value]
@@ -55,11 +68,10 @@ sealed trait Expression extends Precedence
 
   final def evalAsInt(implicit scope: Scope): Checked[Int] =
     evalAsNumber
-      .flatMap(o => catchExpected[ArithmeticException](
-        o.toIntExact))
+      .flatMap(o => catchExpected[ArithmeticException](o.toIntExact))
 
   final def evalToString(implicit scope: Scope): Checked[String] =
-    eval.flatMap(_.toStringValue).map(_.string)
+    eval.flatMap(_.toStringValueString)
 
   final def evalAsString(implicit scope: Scope): Checked[String] =
     eval.flatMap(_.asStringValue).map(_.string)
@@ -122,7 +134,10 @@ object Expression
     def subexpressions = View(a, b)
 
     protected def evalAllowError(implicit scope: Scope) =
-      evalAndOr(a, b, BooleanValue.False)
+      a.evalAsBoolean.flatMap {
+        case false => Right(BooleanValue.False)
+        case true => b.eval.flatMap(_.asBooleanValue)
+      }
 
     override def toString = makeString(a, "&&", b)
   }
@@ -133,36 +148,13 @@ object Expression
     def subexpressions = View(a, b)
 
     protected def evalAllowError(implicit scope: Scope) =
-      evalAndOr(a, b, BooleanValue.True)
+      a.evalAsBoolean.flatMap {
+        case false => b.eval.flatMap(_.asBooleanValue)
+        case true => Right(BooleanValue.True)
+      }
 
     override def toString = makeString(a, "||", b)
   }
-
-  protected def evalAndOr(a: Expression, b: Expression, neutral: BooleanValue)
-    (implicit scope: Scope)
-  : Checked[Value] =
-    a.eval.flatMap {
-      case a: BooleanValue =>
-        if (a == neutral)
-          Right(a)
-        else
-          b.eval.flatMap {
-            case b: BooleanValue => Right(b)
-            case MissingValue => Right(MissingValue)
-            case v => Left(UnexpectedValueTypeProblem(BooleanValue, v))
-          }
-      case MissingValue => b.eval.flatMap {
-        case b: BooleanValue => Right(
-          if (b == neutral)
-            neutral
-          else
-            MissingValue)
-        case MissingValue => Right(MissingValue)
-        case v => Left(UnexpectedValueTypeProblem(BooleanValue, v))
-      }
-      case v => Left(UnexpectedValueTypeProblem(BooleanValue, v))
-    }
-
 
   final case class Equal(a: Expression, b: Expression)
   extends BooleanExpression with PurityDependsOnSubexpressions {
@@ -244,7 +236,8 @@ object Expression
           case (a: ListValue, b: ListValue) =>
             Right(ListValue(a.elements ++ b.elements))
           case (a, b) =>
-            for (a <- a.toStringValue; b <- b.toStringValue) yield StringValue(a.string + b.string)
+            for (a <- a.toStringValue; b <- b.toStringValue) yield
+              StringValue(a.string + b.string)
         }
       } yield result
 
@@ -256,10 +249,14 @@ object Expression
     final def subexpressions = View(a, b)
 
     protected final def evalAllowError(implicit scope: Scope) =
-      for {
-        a <- a.evalAsNumber
-        b <- b.evalAsNumber
-      } yield Value.catchNonFatal(NumberValue(op(a, b)))
+      (a.eval, b.eval) match {
+        case (Left(problem), _) => Left(problem)
+        case (_, Left(problem)) => Left(problem)
+        case (Right(NumberValue(a)), Right(NumberValue(b))) =>
+          Right(Value.catchAsErrorValue(NumberValue(op(a, b))))
+        case (Right(_: NumberValue), Right(b)) => unexpectedType(NumberValue, b)
+        case (Right(a), Right(_)) => unexpectedType(NumberValue, a)
+      }
 
     protected val a: Expression
     protected val b: Expression
@@ -321,7 +318,7 @@ object Expression
 
     protected def evalAllowError(implicit scope: Scope) =
       for {
-        a <- a.evalToString
+        a <- a.eval.map(_.missingToEmpty).flatMap(_.toStringValueString)
         b <- b.evalToString
         result <- catchExpected[PatternSyntaxException](
           BooleanValue(a matches b))
@@ -356,11 +353,11 @@ object Expression
   }
 
   protected def evalOrDefault(expr: Expression, default: Expression)(implicit scope: Scope) =
-    expr.evalAllowError match {
+    expr.eval match {
       case Left(problem) =>
         logger.trace(s"OrElse or ?-operator catched $problem")
         default.eval
-      case Right(_: ErrorValue | MissingValue) => default.eval
+      case Right(_: BadValue) => default.eval
       case Right(o) => Right(o)
     }
 
@@ -388,9 +385,9 @@ object Expression
     protected def evalAllowError(implicit scope: Scope) =
       a.eval flatMap {
         case a: ObjectValue =>
-          a.nameToValue.get(name) !! Problem(s"Unknown field name '$name' in: $toString")
+          a.nameToValue.get(name) !! UnknownNameInExpressionProblem(s"$toString.$name")
 
-        case _ => Left(Problem(s"Object expected: $toString"))
+        case a => unexpectedType(ObjectValue, a)
       }
 
     override def toString =
@@ -454,7 +451,10 @@ object Expression
     def subexpressions = expression :: Nil
 
     protected def evalAllowError(implicit scope: Scope) =
-      expression.eval.flatMap(_.toNumberValue)
+      expression.eval.flatMap {
+        case MissingValue => Right(MissingValue)
+        case a => a.toNumberValue
+      }
 
     override def toString = s"toNumber($expression)"
   }
@@ -465,7 +465,10 @@ object Expression
     def subexpressions = expression :: Nil
 
     protected def evalAllowError(implicit scope: Scope) =
-      expression.eval.flatMap(_.toBooleanValue)
+      expression.eval.flatMap {
+        case MissingValue => Right(MissingValue)
+        case a => a.toBooleanValue
+      }
 
     override def toString = s"toBoolean($expression)"
   }
@@ -497,7 +500,8 @@ object Expression
       ValuePrinter.quoteString(string)
   }
 
-  final case class NamedValue(where: NamedValue.Where, nameExpr: Expression, default: Option[Expression] = None)
+  final case class NamedValue(
+    where: NamedValue.Where, nameExpr: Expression, default: Option[Expression] = None)
   extends Expression {
     import NamedValue.*
     def precedence = Precedence.Factor
@@ -511,27 +515,33 @@ object Expression
         case NamedValue.ByLabel(label) => ValueSearch.LastExecuted(PositionSearch.ByLabel(label))
         case NamedValue.LastExecutedJob(jobName) => ValueSearch.LastExecuted(PositionSearch.ByWorkflowJob(jobName))
       }
-      for {
-        name <- nameExpr.evalToString
-        maybeValue <- scope.findValue(ValueSearch(w, ValueSearch.Name(name))).sequence
-        value <- maybeValue
-          .map(Right(_))
-          .getOrElse(
-            default.map(_.eval.flatMap(_.toStringValue))
-              .toChecked(
-                where match {
-                  case NamedValue.Argument =>
-                    Problem(s"No such order argument: $name")
-                  case NamedValue.LastOccurred =>
-                    Problem(s"No such named value: $name")
-                  case NamedValue.ByLabel(Label(label)) =>
-                    Problem(s"Workflow instruction at label $label did not return a named value '$name'")
-                  case NamedValue.LastExecutedJob(WorkflowJob.Name(jobName)) =>
-                    Problem(s"Last execution of job '$jobName' did not return a named value '$name'")
-                })
-              .flatten)
-      } yield value
+      nameExpr.eval.flatMap {
+        case StringValue(name) =>
+          for {
+            maybeValue <- scope.findValue(ValueSearch(w, ValueSearch.Name(name))).sequence
+            value <- maybeValue
+              .map(Right(_))
+              .getOrElse(
+                default.map(_.eval.flatMap(_.toStringValue))
+                  .toChecked(
+                    where match {
+                      case NamedValue.Argument =>
+                        Problem(s"No such order argument: $name")
+                      case NamedValue.LastOccurred =>
+                        Problem(s"No such named value: $name")
+                      case NamedValue.ByLabel(Label(label)) =>
+                        Problem(s"Workflow instruction at label $label did not return a named value '$name'")
+                      case NamedValue.LastExecutedJob(WorkflowJob.Name(jobName)) =>
+                        Problem(s"Last execution of job '$jobName' did not return a named value '$name'")
+                    })
+                  .flatten)
+          } yield value
+
+        case MissingValue => Right(MissingValue)
+        case a => Right(unexpectedTypeValue(StringValue, a))
+      }
     }
+
 
     override def toString = (where, nameExpr, default) match {
       case (LastOccurred, StringConstant(key), None) if !key.contains('`') =>
@@ -660,7 +670,11 @@ object Expression
     def subexpressions = a :: Nil
 
     def evalAllowError(implicit scope: Scope) =
-      a.evalAsString.map(string => StringValue(string.stripMargin))
+      a.eval.map {
+        case StringValue(string) => StringValue(string.stripMargin)
+        case MissingValue => MissingValue
+        case a => unexpectedTypeValue(StringValue, a)
+      }
 
     override def toString = s"stripMargin($a)"
   }
@@ -671,10 +685,9 @@ object Expression
     def subexpressions = expression :: Nil
 
     def evalAllowError(implicit scope: Scope) =
-      expression.eval flatMap  {
-        case ListValue(list) =>
-          list.traverse(_.toStringValue).map(o => StringValue(o.map(_.string).mkString))
-        case value => value.toStringValue
+      expression.eval.map  {
+        case ListValue(list) => StringValue(list.map(_.convertToString).mkString)
+        case value => StringValue(value.convertToString)
       }
 
     override def toString = s"mkString($expression)"
@@ -722,7 +735,7 @@ object Expression
     def precedence = Precedence.Factor
     def subexpressions = View(string, pattern, replacement)
 
-    def evalAllowError(implicit scope: Scope) =
+    def evalAllowError(implicit scope: Scope) = {
       for {
         string <- string.eval.flatMap(_.asString)
         pattern <- pattern.eval.flatMap(_.asString)
@@ -732,6 +745,7 @@ object Expression
         result <- catchExpected[RuntimeException](
           StringValue(pattern.matcher(string).replaceAll(replacement)))
       } yield result
+    }
 
     override def toString = s"replaceAll($string, $pattern, $replacement)"
   }
@@ -742,8 +756,8 @@ object Expression
     def subexpressions = Nil
 
     def evalAllowError(implicit scope: Scope) =
-      errorMessage.eval
-        .map(expr => ErrorValue(ErrorInExpressionProblem(expr.convertToString)))
+      errorMessage.evalAllowError
+        .flatMap(expr => Left(ErrorInExpressionProblem(expr.convertToString)))
 
     override def toString = s"error($errorMessage)"
   }
@@ -762,6 +776,16 @@ object Expression
     protected def evalAllowError(implicit scope: Scope) = eval()
   }
 
+  private def unexpectedType(t: ValueType, v: Value): Checked[Value] = {
+    v match {
+      case MissingValue => Right(MissingValue)
+      case v => Left(UnexpectedValueTypeProblem(t, v))
+    }
+  }
+
+  private def unexpectedTypeValue(t: ValueType, v: Value): ErrorValue =
+    ErrorValue(UnexpectedValueTypeProblem(t, v))
+
   object convenience {
     implicit def convenientBooleanConstant(b: Boolean): BooleanConstant =
       BooleanConstant(b)
@@ -778,7 +802,7 @@ object Expression
     implicit def convenientStringConstant(string: String): StringConstant =
       StringConstant(string)
 
-    implicit def convenientListConstant(seq: Seq[Expression]): ListExpression =
-      ListExpression(seq.toList)
+    implicit def convenientListConstant(list: List[Expression]): ListExpression =
+      ListExpression(list)
   }
 }
