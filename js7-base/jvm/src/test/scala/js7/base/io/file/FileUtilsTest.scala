@@ -1,8 +1,9 @@
 package js7.base.io.file
 
+import cats.effect.SyncIO
 import io.circe.Json
 import java.io.File.separator
-import java.io.{File, IOException}
+import java.io.{BufferedReader, File, IOException, InputStreamReader}
 import java.nio.charset.StandardCharsets.{UTF_16BE, UTF_8}
 import java.nio.file.Files.{createDirectories, createDirectory, createTempDirectory, createTempFile, delete, exists}
 import java.nio.file.StandardOpenOption.{CREATE_NEW, WRITE}
@@ -143,6 +144,19 @@ final class FileUtilsTest extends OurTestSuite with BeforeAndAfterAll
       assert(dir.directoryContentsAs(Set) == files)
       files foreach delete
       delete(dir)
+    }
+  }
+
+  "inputStreamResource" in {
+    withTemporaryFile { file =>
+      val io = file.inputStreamResource[SyncIO].use(in =>
+        SyncIO {
+          new BufferedReader(new InputStreamReader(in)).readLine()
+        })
+      file := "CONTENT"
+      assert(io.unsafeRunSync() == "CONTENT")
+      file := "OTHER"
+      assert(io.unsafeRunSync() == "OTHER")
     }
   }
 

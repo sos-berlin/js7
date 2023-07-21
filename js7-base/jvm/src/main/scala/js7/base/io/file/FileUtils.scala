@@ -1,7 +1,7 @@
 package js7.base.io.file
 
 import cats.effect.{Resource, Sync}
-import java.io.{BufferedOutputStream, File, FileOutputStream, IOException, OutputStreamWriter}
+import java.io.{BufferedInputStream, BufferedOutputStream, File, FileInputStream, FileOutputStream, IOException, InputStream, OutputStreamWriter}
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.{copy, createDirectory, delete, deleteIfExists, exists, isDirectory, isSymbolicLink, newOutputStream, setPosixFilePermissions}
@@ -155,6 +155,14 @@ object FileUtils
         write(string, UTF_8)
         makeExecutable()
       }
+
+      def useInputStream[A](body: InputStream => A): A =
+        autoClosing(new BufferedInputStream(new FileInputStream(delegate.toFile)))(body)
+
+      def inputStreamResource[F[_]](implicit F: Sync[F]): Resource[F, InputStream] =
+        Resource.fromAutoCloseable(F.delay {
+          new BufferedInputStream(new FileInputStream(delegate.toFile))
+        })
 
       def makeExecutable(): Unit =
         if (isUnix) {
