@@ -14,7 +14,7 @@ import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier.{State, logger}
 import js7.base.crypt.{GenericSignature, SignatureVerifier, SignerId}
 import js7.base.data.ByteArray
 import js7.base.io.file.FileUtils.syntax.RichPath
-import js7.base.io.file.watch.{DirectoryState, DirectoryStateJvm, DirectoryWatchSettings, DirectoryWatcher}
+import js7.base.io.file.watch.{DirectoryState, DirectoryStateJvm, DirectoryWatch, DirectoryWatchSettings}
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
@@ -80,7 +80,7 @@ extends SignatureVerifier with Service.StoppableByRequest
     directory: Path,
     directoryState: DirectoryState)
   : Task[Unit] =
-    DirectoryWatcher
+    DirectoryWatch
       .observable(directory, directoryState, settings, isRelevantFile)
       .takeUntilEval(untilStopRequested)
       .flatMap(Observable.fromIterable)

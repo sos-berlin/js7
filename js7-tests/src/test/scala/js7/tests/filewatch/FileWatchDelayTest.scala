@@ -6,7 +6,7 @@ import java.nio.file.Files.{createDirectories, exists}
 import js7.agent.scheduler.order.FileWatchManager
 import js7.base.configutils.Configs.*
 import js7.base.io.file.FileUtils.syntax.*
-import js7.base.io.file.watch.BasicDirectoryWatcher.systemWatchDelay
+import js7.base.io.file.watch.BasicDirectoryWatch.systemWatchDelay
 import js7.base.log.Logger
 import js7.base.problem.Checked.*
 import js7.base.test.OurTestSuite

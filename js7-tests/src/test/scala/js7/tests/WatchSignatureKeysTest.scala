@@ -9,7 +9,7 @@ import js7.base.crypt.x509.{Openssl, X509Cert, X509SignatureVerifier, X509Signer
 import js7.base.data.ByteArray
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax.*
-import js7.base.io.file.watch.BasicDirectoryWatcher.systemWatchDelay
+import js7.base.io.file.watch.BasicDirectoryWatch.systemWatchDelay
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.RichMonixTask
 import js7.base.problem.Checked.Ops

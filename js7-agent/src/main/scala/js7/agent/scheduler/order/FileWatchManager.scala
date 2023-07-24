@@ -13,7 +13,7 @@ import js7.agent.data.orderwatch.FileWatchState
 import js7.agent.scheduler.order.FileWatchManager.*
 import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted}
 import js7.base.io.file.watch.DirectoryEventDelayer.syntax.RichDelayLineObservable
-import js7.base.io.file.watch.{DirectoryEvent, DirectoryWatchSettings, DirectoryWatcher}
+import js7.base.io.file.watch.{DirectoryEvent, DirectoryWatch, DirectoryWatchSettings}
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.AsyncMap
@@ -161,7 +161,7 @@ final class FileWatchManager(
           Iterator.continually(settings.retryDelays.last)
         var directoryState = fileWatchState.directoryState
 
-        DirectoryWatcher
+        DirectoryWatch
           .observable(
             directory, directoryState,
             settings,
@@ -210,7 +210,7 @@ final class FileWatchManager(
               dirEventSeqs
                 .view
                 .flatten
-                // In case of DirectoryWatcher error recovery, duplicate DirectoryEvent may occur.
+                // In case of DirectoryWatch error recovery, duplicate DirectoryEvent may occur.
                 // We check this here.
                 .flatMap(dirEvent =>
                   agentState.keyTo(FileWatchState)

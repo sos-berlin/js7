@@ -16,10 +16,10 @@ import scala.concurrent.duration.*
 /**
   * @author Joacim Zschimmer
   */
-final class DirectoryWatcherTest extends OurTestSuite with BeforeAndAfterAll
+final class DirectoryWatchTest extends OurTestSuite with BeforeAndAfterAll
 {
   private val timeout = if (isMac) 100.ms else 5.minutes
-  private lazy val dir = createTempDirectory("DirectoryWatcherTest-")
+  private lazy val dir = createTempDirectory("DirectoryWatchTest-")
   private lazy val directoryWatcher = new DirectoryWatcher(dir, timeout)
   private lazy val observable = directoryWatcher.singleUseObservable
   private lazy val observableFuture = observable.map(_ => counter += 1) foreach { _ => }

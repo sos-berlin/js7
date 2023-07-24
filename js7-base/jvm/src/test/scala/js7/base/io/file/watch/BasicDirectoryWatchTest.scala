@@ -16,13 +16,13 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import scala.collection.mutable
 
-final class BasicDirectoryWatcherTest extends OurTestSuite
+final class BasicDirectoryWatchTest extends OurTestSuite
 {
   "step for step" in {
-    withTemporaryDirectory("DirectoryWatcherTest-") { dir =>
+    withTemporaryDirectory("DirectoryWatchTest-") { dir =>
       dir / "ALIEN-1" := ""
       dir / "TEST-1" := ""
-      BasicDirectoryWatcher
+      BasicDirectoryWatch
         .resource(
           WatchOptions.forTest(dir, Set(ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY),
             isRelevantFile = _.toString startsWith "TEST-"))
@@ -48,11 +48,11 @@ final class BasicDirectoryWatcherTest extends OurTestSuite
     }
   }
 
-  "BasicDirectoryWatcher waits for missing directory" in {
-    withTemporaryDirectory("DirectoryWatcherTest-") { mainDir =>
+  "BasicDirectoryWatch waits for missing directory" in {
+    withTemporaryDirectory("DirectoryWatchTest-") { mainDir =>
       val dir = mainDir / "DIRECTORY"
       // Create directory after start of watching!
-      BasicDirectoryWatcher
+      BasicDirectoryWatch
         .resource(
           WatchOptions.forTest(dir, Set(ENTRY_CREATE),
           pollTimeout = 50.ms, retryDurations = NonEmptySeq.one(50.ms)))

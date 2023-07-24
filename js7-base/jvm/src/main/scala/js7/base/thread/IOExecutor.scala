@@ -38,7 +38,7 @@ final class IOExecutor(executor: Executor, name: String) extends Executor
   def apply[F[_], A](body: F[A])(implicit F: TaskLike[F], src: sourcecode.FullName): Task[A] = {
     // logger.traceF lets Monix check for cancellation, too (but why?)
     // Without it, the body seems be executed after a cancellation,
-    // despite executor has already been terminated (observed with DirectoryWatcher).
+    // despite executor has already been terminated (observed with DirectoryWatch).
     logger.traceF(s"${src.value} --> IOExecutor($name).apply")(
       F(body) executeOn scheduler)
   }

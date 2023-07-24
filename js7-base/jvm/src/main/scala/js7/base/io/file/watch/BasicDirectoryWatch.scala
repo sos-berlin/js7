@@ -4,7 +4,7 @@ import cats.effect.Resource
 import java.io.IOException
 import java.nio.file.{ClosedWatchServiceException, NotDirectoryException, Path, WatchEvent, WatchKey}
 import java.util.concurrent.TimeUnit.MILLISECONDS
-import js7.base.io.file.watch.BasicDirectoryWatcher.*
+import js7.base.io.file.watch.BasicDirectoryWatch.*
 import js7.base.io.file.watch.DirectoryWatchEvent.Overflow
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.RichMonixTask
@@ -20,7 +20,7 @@ import scala.concurrent.duration.Deadline.now
 import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
 
-final class BasicDirectoryWatcher private(options: WatchOptions)(implicit iox: IOExecutor)
+final class BasicDirectoryWatch private(options: WatchOptions)(implicit iox: IOExecutor)
 extends Service.StoppableByRequest
 {
   import options.{directory, kinds, pollTimeout}
@@ -97,10 +97,10 @@ extends Service.StoppableByRequest
     }
 
   override def toString =
-    s"BasicDirectoryWatcher($directory)"
+    s"BasicDirectoryWatch($directory)"
 }
 
-object BasicDirectoryWatcher
+object BasicDirectoryWatch
 {
   private val logger = Logger(getClass)
 
@@ -117,8 +117,8 @@ object BasicDirectoryWatcher
       Array.empty
 
   def resource(options: WatchOptions)(implicit iox: IOExecutor)
-  : Resource[Task, BasicDirectoryWatcher] =
-    Service.resource(Task(new BasicDirectoryWatcher(options)))
+  : Resource[Task, BasicDirectoryWatch] =
+    Service.resource(Task(new BasicDirectoryWatch(options)))
 
   //private implicit val watchEventShow: Show[WatchEvent[?]] = e =>
   //  s"${e.kind.name} ${e.count}× ${e.context}"

@@ -1,8 +1,8 @@
 package js7.base.io.file.watch
 
 import java.nio.file.Path
-import js7.base.io.file.watch.BasicDirectoryWatcher.repeatWhileIOException
-import js7.base.io.file.watch.DirectoryWatcher.*
+import js7.base.io.file.watch.BasicDirectoryWatch.repeatWhileIOException
+import js7.base.io.file.watch.DirectoryWatch.*
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.MonixBase.syntax.*
@@ -13,7 +13,7 @@ import monix.reactive.Observable
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.FiniteDuration
 
-private final class DirectoryWatcher(
+private final class DirectoryWatch(
   readDirectory: Task[DirectoryState],
   directoryEventObservable: Observable[Seq[DirectoryEvent]],
   hotLoopBrake: FiniteDuration)
@@ -50,7 +50,7 @@ private final class DirectoryWatcher(
         .filter(_._1.nonEmpty))
 }
 
-object DirectoryWatcher
+object DirectoryWatch
 {
   private val logger = Logger[this.type]
 
@@ -61,7 +61,7 @@ object DirectoryWatcher
     isRelevantFile: Path => Boolean = WatchOptions.everyFileIsRelevant)
     (implicit iox: IOExecutor)
   : Observable[Seq[DirectoryEvent]] =
-    DirectoryWatcher
+    DirectoryWatch
       .observable2(
         directoryState,
         settings.toWatchOptions(directory, isRelevantFile))
@@ -71,18 +71,18 @@ object DirectoryWatcher
   : Observable[Seq[DirectoryEvent]] =
     logger.traceObservable(
       Observable
-        .fromResource(BasicDirectoryWatcher.resource(options))
-        .flatMap { basicWatcher =>
+        .fromResource(BasicDirectoryWatch.resource(options))
+        .flatMap { basicWatch =>
           import options.directory
-          // BasicDirectoryWatcher has been started before reading directory,
+          // BasicDirectoryWatch has been started before reading directory,
           // so that no directory change will be overlooked.
           val readDirectory = repeatWhileIOException(
             options,
             iox(Task(DirectoryStateJvm.readDirectory(directory, options.isRelevantFile))))
           Observable
-            .fromResource(basicWatcher.observableResource)
+            .fromResource(basicWatch.observableResource)
             .flatMap(observable =>
-              new DirectoryWatcher(readDirectory, observable, hotLoopBrake = options.retryDelays.head)
+              new DirectoryWatch(readDirectory, observable, hotLoopBrake = options.retryDelays.head)
                 .readDirectoryAndObserveForever(state)
                 .map(_._1))
         })

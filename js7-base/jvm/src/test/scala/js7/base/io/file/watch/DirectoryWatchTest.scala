@@ -19,10 +19,10 @@ import monix.reactive.subjects.PublishSubject
 import scala.concurrent.Promise
 import scala.math.Ordering.Int
 
-final class DirectoryWatcherTest extends OurTestSuite
+final class DirectoryWatchTest extends OurTestSuite
 {
   "readDirectory, readDirectoryAsEvents" in {
-    withTemporaryDirectory("DirectoryWatcherTest-") { dir =>
+    withTemporaryDirectory("DirectoryWatchTest-") { dir =>
       touchFile(dir / "TEST-1")
       touchFile(dir / "IGNORED")
       touchFile(dir / "TEST-2")
@@ -54,7 +54,7 @@ final class DirectoryWatcherTest extends OurTestSuite
     def readDirectory() =
       toDirectoryState(files*)
 
-    val watcher = new DirectoryWatcher(Task(readDirectory()), directoryEvents, 1.s)
+    val watcher = new DirectoryWatch(Task(readDirectory()), directoryEvents, 1.s)
 
     def observe(state: DirectoryState, n: Int) =
       watcher.readDirectoryAndObserve(state)
@@ -75,11 +75,11 @@ final class DirectoryWatcherTest extends OurTestSuite
   }
 
   "observe" in {
-    withTemporaryDirectory("DirectoryWatcherTest-") { dir =>
+    withTemporaryDirectory("DirectoryWatchTest-") { dir =>
       var buffer = Vector.empty[Set[DirectoryEvent]]
       val subscribed = Promise[Unit]()
       val stop = PublishSubject[Unit]()
-      val whenObserved = DirectoryWatcher
+      val whenObserved = DirectoryWatch
         .observable(dir, DirectoryState.empty, DirectoryWatchSettings.forTest())
         .doOnSubscribe(Task(subscribed.success(())))
         .takeUntil(stop)
@@ -95,12 +95,12 @@ final class DirectoryWatcherTest extends OurTestSuite
   }
 
   "Observing a deleted and recreated directory" in {
-    withTemporaryDirectory("DirectoryWatcherTest-") { mainDir =>
+    withTemporaryDirectory("DirectoryWatchTest-") { mainDir =>
       val dir = mainDir / "DIRECTORY"
       var buffer = Vector.empty[DirectoryEvent]
       val subscribed = Promise[Unit]()
       val stop = PublishSubject[Unit]()
-      val whenObserved = DirectoryWatcher
+      val whenObserved = DirectoryWatch
         .observable(dir, DirectoryState.empty, DirectoryWatchSettings.forTest(pollTimeout = 100.ms))
         .doOnSubscribe(Task(subscribed.success(())))
         .takeUntil(stop)
@@ -126,9 +126,9 @@ final class DirectoryWatcherTest extends OurTestSuite
   }
 
   "Starting observation under load" in {
-    withTemporaryDirectory("DirectoryWatcherTest-") { dir =>
+    withTemporaryDirectory("DirectoryWatchTest-") { dir =>
       var buffer = Vector.empty[Seq[DirectoryEvent]]
-      val whenObserved = DirectoryWatcher
+      val whenObserved = DirectoryWatch
         .observable(dir, DirectoryState.empty, DirectoryWatchSettings.forTest())
         .foreach(buffer :+= _)
       var first = 0
