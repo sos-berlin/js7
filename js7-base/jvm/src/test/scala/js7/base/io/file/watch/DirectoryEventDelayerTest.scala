@@ -1,5 +1,6 @@
 package js7.base.io.file.watch
 
+import cats.data.NonEmptySeq
 import java.nio.file.Paths
 import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted, FileModified}
 import js7.base.io.file.watch.DirectoryEventDelayer.syntax.*
@@ -38,7 +39,7 @@ final class DirectoryEventDelayerTest extends OurTestSuite with BeforeAndAfterAl
   override def beforeAll() = {
     super.beforeAll()
     cancelable := publishSubject
-      .delayFileAdded(Paths.get("/tmp"), delay = 2.s, logDelays = Nil)
+      .delayFileAdded(Paths.get("/tmp"), delay = 2.s, logDelays = NonEmptySeq.one(0.s))
       .foreach {
         buffer ++= _
       }
@@ -109,7 +110,7 @@ final class DirectoryEventDelayerTest extends OurTestSuite with BeforeAndAfterAl
     val buffer = mutable.Buffer[DirectoryEvent]()
     val publishSubject = PublishSubject[DirectoryEvent]()
     val future = publishSubject
-      .delayFileAdded(Paths.get("/tmp"), 100.ms, logDelays = Nil)
+      .delayFileAdded(Paths.get("/tmp"), 100.ms, logDelays = NonEmptySeq.one(0.s))
       .bufferIntrospective(2)  // Let onNext complete synchronously sometimes
       .map(_.flatten)
       .delayOnNext(1.ms)

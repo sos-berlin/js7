@@ -2,7 +2,6 @@ package js7.base.io.file.watch
 
 import java.nio.file.Files.{createDirectory, delete}
 import java.nio.file.Paths
-import java.nio.file.StandardWatchEventKinds.{ENTRY_CREATE, ENTRY_DELETE}
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.{touchFile, withTemporaryDirectory}
 import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted}
@@ -77,11 +76,11 @@ final class DirectoryWatcherTest extends OurTestSuite
 
   "observe" in {
     withTemporaryDirectory("DirectoryWatcherTest-") { dir =>
-      val options = WatchOptions.forTest(dir, Set(ENTRY_CREATE, ENTRY_DELETE))
       var buffer = Vector.empty[Set[DirectoryEvent]]
       val subscribed = Promise[Unit]()
       val stop = PublishSubject[Unit]()
-      val whenObserved = DirectoryWatcher.observable(DirectoryState.empty, options)
+      val whenObserved = DirectoryWatcher
+        .observable(dir, DirectoryState.empty, DirectoryWatchSettings.forTest())
         .doOnSubscribe(Task(subscribed.success(())))
         .takeUntil(stop)
         .foreach(buffer :+= _.toSet)
@@ -98,11 +97,11 @@ final class DirectoryWatcherTest extends OurTestSuite
   "Observing a deleted and recreated directory" in {
     withTemporaryDirectory("DirectoryWatcherTest-") { mainDir =>
       val dir = mainDir / "DIRECTORY"
-      val options = WatchOptions.forTest(dir, Set(ENTRY_CREATE, ENTRY_DELETE), pollTimeout = 100.ms)
       var buffer = Vector.empty[DirectoryEvent]
       val subscribed = Promise[Unit]()
       val stop = PublishSubject[Unit]()
-      val whenObserved = DirectoryWatcher.observable(DirectoryState.empty, options)
+      val whenObserved = DirectoryWatcher
+        .observable(dir, DirectoryState.empty, DirectoryWatchSettings.forTest(pollTimeout = 100.ms))
         .doOnSubscribe(Task(subscribed.success(())))
         .takeUntil(stop)
         .foreach(buffer ++= _)
@@ -128,9 +127,9 @@ final class DirectoryWatcherTest extends OurTestSuite
 
   "Starting observation under load" in {
     withTemporaryDirectory("DirectoryWatcherTest-") { dir =>
-      val options = WatchOptions.forTest(dir, Set(ENTRY_CREATE, ENTRY_DELETE))
       var buffer = Vector.empty[Seq[DirectoryEvent]]
-      val whenObserved = DirectoryWatcher.observable(DirectoryState.empty, options)
+      val whenObserved = DirectoryWatcher
+        .observable(dir, DirectoryState.empty, DirectoryWatchSettings.forTest())
         .foreach(buffer :+= _)
       var first = 0
 

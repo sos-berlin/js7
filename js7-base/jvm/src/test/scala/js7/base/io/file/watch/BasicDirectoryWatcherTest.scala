@@ -1,5 +1,6 @@
 package js7.base.io.file.watch
 
+import cats.data.NonEmptySeq
 import java.nio.file.Files.createDirectory
 import java.nio.file.Paths
 import java.nio.file.StandardWatchEventKinds.{ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY}
@@ -24,7 +25,7 @@ final class BasicDirectoryWatcherTest extends OurTestSuite
       BasicDirectoryWatcher
         .resource(
           WatchOptions.forTest(dir, Set(ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY),
-            fileMatches = _.toString startsWith "TEST-"))
+            isRelevantFile = _.toString startsWith "TEST-"))
         .use(watcher => Task {
           for (i <- 2 to 4) {
             watcher.observableResource.use(observable => Task {
@@ -54,7 +55,7 @@ final class BasicDirectoryWatcherTest extends OurTestSuite
       BasicDirectoryWatcher
         .resource(
           WatchOptions.forTest(dir, Set(ENTRY_CREATE),
-          pollTimeout = 50.ms, retryDurations = Seq(50.ms)))
+          pollTimeout = 50.ms, retryDurations = NonEmptySeq.one(50.ms)))
         .use(watcher => Task {
           val events = mutable.Buffer.empty[DirectoryEvent]
           val future = watcher.observableResource

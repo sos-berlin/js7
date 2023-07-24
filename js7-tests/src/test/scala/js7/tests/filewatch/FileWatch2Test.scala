@@ -53,8 +53,8 @@ final class FileWatch2Test extends OurTestSuite with DirectoryProviderForScalaTe
   private val pollTimeout = if (isMac && isIntelliJIdea/*because it's slow*/) "2.5s" else "1s"
 
   override protected def agentConfig = config"""
-    js7.filewatch.poll-timeout = $pollTimeout
-    js7.filewatch.watch-delay = 1ms
+    js7.directory-watch.poll-timeout = $pollTimeout
+    js7.directory-watch.watch-delay = 1ms
     js7.journal.remove-obsolete-files = false
     js7.job.execution.signed-script-injection-allowed = on
     """

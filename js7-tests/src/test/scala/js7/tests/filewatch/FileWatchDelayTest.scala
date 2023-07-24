@@ -37,8 +37,8 @@ final class FileWatchDelayTest extends OurTestSuite with ControllerAgentForScala
     js7.controller.agent-driver.event-buffer-delay = 0ms"""
 
   override protected def agentConfig = config"""
-    js7.filewatch.watch-delay = 0ms
-    js7.filewatch.log-delays = [ 0s, 1s, 2s ]
+    js7.directory-watch.watch-delay = 0ms
+    js7.directory-watch.log-delays = [ 0s, 1s, 2s ]
     js7.journal.remove-obsolete-files = false
     js7.job.execution.signed-script-injection-allowed = on
     """

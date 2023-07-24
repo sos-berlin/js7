@@ -8,15 +8,13 @@ import cats.syntax.parallel.*
 import cats.syntax.traverse.*
 import com.typesafe.config.Config
 import java.nio.file.Files.exists
-import java.nio.file.StandardWatchEventKinds.{ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY}
 import java.nio.file.{Path, Paths}
 import js7.base.Problems.UnknownSignatureTypeProblem
-import js7.base.configutils.Configs.RichConfig
-import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier.{Settings, State, logger}
+import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier.{State, logger}
 import js7.base.crypt.{GenericSignature, SignatureVerifier, SignerId}
 import js7.base.data.ByteArray
 import js7.base.io.file.FileUtils.syntax.RichPath
-import js7.base.io.file.watch.{DirectoryState, DirectoryStateJvm, DirectoryWatcher, WatchOptions}
+import js7.base.io.file.watch.{DirectoryState, DirectoryStateJvm, DirectoryWatchSettings, DirectoryWatcher}
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
@@ -24,19 +22,17 @@ import js7.base.problem.Checked.{catchNonFatal, catchNonFatalFlatten}
 import js7.base.problem.{Checked, Problem}
 import js7.base.service.Service
 import js7.base.thread.IOExecutor
-import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime.DurationRichInt
 import js7.base.utils.ScalaUtils.checkedCast
-import js7.base.utils.ScalaUtils.syntax.{RichThrowable, *}
+import js7.base.utils.ScalaUtils.syntax.*
 import monix.eval.Task
 import monix.reactive.Observable
-import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
 
 final class DirectoryWatchingSignatureVerifier private(
   companionToDirectory: Map[SignatureVerifier.Companion, Path],
-  settings: Settings,
+  settings: DirectoryWatchSettings,
   onUpdated: () => Unit)
   (implicit iox: IOExecutor)
 extends SignatureVerifier with Service.StoppableByRequest
@@ -85,7 +81,7 @@ extends SignatureVerifier with Service.StoppableByRequest
     directoryState: DirectoryState)
   : Task[Unit] =
     DirectoryWatcher
-      .observable(directoryState, toWatchOptions(directory))
+      .observable(directory, directoryState, settings, isRelevantFile)
       .takeUntilEval(untilStopRequested)
       .flatMap(Observable.fromIterable)
       .debounce(settings.directorySilence)
@@ -96,15 +92,6 @@ extends SignatureVerifier with Service.StoppableByRequest
       .mapEval(_ =>
         rereadDirectory(directory))
       .completedL
-
-  private def toWatchOptions(directory: Path): WatchOptions =
-    WatchOptions(
-      directory,
-      Set(ENTRY_CREATE, ENTRY_MODIFY, ENTRY_DELETE),
-      matches = isRelevantFile,
-      retryDelays = settings.retryDelays,
-      pollTimeout = settings.pollTimeout,
-      delay = settings.watchDelay)
 
   private def rereadDirectory(directory: Path): Task[Unit] =
     logger.debugTask(Task.defer {
@@ -211,17 +198,16 @@ object DirectoryWatchingSignatureVerifier extends SignatureVerifier.Companion
       .toVector
       .sequence
       .map(_.toMap)
-      .flatMap { companionToDirectory =>
+      .flatMap(companionToDirectory =>
         if (companionToDirectory.isEmpty)
           Left(Problem.pure(s"No trusted signature keys - Configure one with $configPath!"))
         else
-          for (settings <- Settings.fromConfig(config)) yield
-            new Prepared(companionToDirectory, settings)
-      }
+          for (settings <- DirectoryWatchSettings.fromConfig(config)) yield
+            new Prepared(companionToDirectory, settings))
 
   final class Prepared(
     companionToDirectory: Map[SignatureVerifier.Companion, Path],
-    settings: Settings)
+    settings: DirectoryWatchSettings)
   {
     def toResource(onUpdated: () => Unit)(implicit iox: IOExecutor)
     : Resource[Task, DirectoryWatchingSignatureVerifier] =
@@ -245,31 +231,6 @@ object DirectoryWatchingSignatureVerifier extends SignatureVerifier.Companion
       companionToVerifier.values
         .collect { case Right(o) => o }
         .toVector)
-  }
-
-  final case class Settings(
-    watchDelay: FiniteDuration,
-    pollTimeout: FiniteDuration,
-    retryDelays: Seq[FiniteDuration],
-    directorySilence: FiniteDuration,
-    logDelays: Seq[FiniteDuration])
-  object Settings {
-    def fromConfig(config: Config): Checked[Settings] =
-      for {
-        watchDelay <- config.finiteDuration(
-          "js7.configuration.trusted-signature-key-settings.watch-delay")
-        pollTimeout <- config.finiteDuration(
-          "js7.configuration.trusted-signature-key-settings.poll-timeout")
-        retryDelays <- catchNonFatal(config.getDurationList(
-          "js7.configuration.trusted-signature-key-settings.retry-delays")
-          .asScala.map(_.toFiniteDuration).toVector)
-        directorySilence <- config.finiteDuration(
-          "js7.configuration.trusted-signature-key-settings.directory-silence")
-        logDelays <- catchNonFatal(config.getDurationList(
-          "js7.configuration.trusted-signature-key-settings.log-delays")
-          .asScala.map(_.toFiniteDuration).toVector)
-      } yield
-        Settings(watchDelay, pollTimeout, retryDelays, directorySilence, logDelays)
   }
 
   private case class ConfigStringExpectedProblem(configKey: String) extends Problem.Lazy(

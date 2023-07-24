@@ -1,5 +1,6 @@
 package js7.base.io.file.watch
 
+import cats.data.NonEmptySeq
 import java.io.IOException
 import java.nio.file.Files.size
 import java.nio.file.Path
@@ -11,6 +12,7 @@ import js7.base.monixutils.MonixDeadline
 import js7.base.monixutils.MonixDeadline.now
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ByteUnits.toKBGB
+import js7.base.utils.CatsUtils.continueWithLast
 import monix.execution.Ack.{Continue, Stop}
 import monix.execution.atomic.Atomic
 import monix.execution.{Ack, Cancelable, Scheduler}
@@ -37,7 +39,7 @@ private final class DirectoryEventDelayer(
   source: Observable[DirectoryEvent],
   directory: Path,
   delay: FiniteDuration,
-  logDelays: Seq[FiniteDuration])
+  logDelays: NonEmptySeq[FiniteDuration])
 extends Observable[Seq[DirectoryEvent]]
 {
   def unsafeSubscribeFn(out: Subscriber[Seq[DirectoryEvent]]): Cancelable =
@@ -236,12 +238,11 @@ extends Observable[Seq[DirectoryEvent]]
         val since: MonixDeadline)
       {
         var delayUntil = since + delay
-        val logDelayIterator = logDelays.iterator
+        val logDelayIterator = continueWithLast(logDelays)
         var lastLoggedAt = since
         var lastLoggedSize: Long =
           Try(size(directory.resolve(path))) getOrElse 0
-        var logDelay = delay +
-          (if (logDelayIterator.hasNext) logDelayIterator.next() else 0.s)
+        var logDelay = delay + logDelayIterator.next()
 
         def path = event.relativePath
 
@@ -279,7 +280,8 @@ object DirectoryEventDelayer
   object syntax {
     implicit final class RichDelayLineObservable(private val self: Observable[DirectoryEvent])
     extends AnyVal {
-      def delayFileAdded(directory: Path, delay: FiniteDuration, logDelays: Seq[FiniteDuration])
+      def delayFileAdded(
+        directory: Path, delay: FiniteDuration, logDelays: NonEmptySeq[FiniteDuration])
       : Observable[Seq[DirectoryEvent]] =
         if (delay.isPositive)
           new DirectoryEventDelayer(self, directory, delay, logDelays)

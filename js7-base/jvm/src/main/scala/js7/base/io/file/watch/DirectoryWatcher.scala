@@ -1,5 +1,6 @@
 package js7.base.io.file.watch
 
+import java.nio.file.Path
 import js7.base.io.file.watch.BasicDirectoryWatcher.repeatWhileIOException
 import js7.base.io.file.watch.DirectoryWatcher.*
 import js7.base.log.Logger
@@ -53,7 +54,20 @@ object DirectoryWatcher
 {
   private val logger = Logger[this.type]
 
-  def observable(state: DirectoryState, options: WatchOptions)(implicit iox: IOExecutor)
+  def observable(
+    directory: Path,
+    directoryState: DirectoryState,
+    settings: DirectoryWatchSettings,
+    isRelevantFile: Path => Boolean = WatchOptions.everyFileIsRelevant)
+    (implicit iox: IOExecutor)
+  : Observable[Seq[DirectoryEvent]] =
+    DirectoryWatcher
+      .observable2(
+        directoryState,
+        settings.toWatchOptions(directory, isRelevantFile))
+
+  private def observable2(state: DirectoryState, options: WatchOptions)
+    (implicit iox: IOExecutor)
   : Observable[Seq[DirectoryEvent]] =
     logger.traceObservable(
       Observable
@@ -64,7 +78,7 @@ object DirectoryWatcher
           // so that no directory change will be overlooked.
           val readDirectory = repeatWhileIOException(
             options,
-            iox(Task(DirectoryStateJvm.readDirectory(directory, options.matches))))
+            iox(Task(DirectoryStateJvm.readDirectory(directory, options.isRelevantFile))))
           Observable
             .fromResource(basicWatcher.observableResource)
             .flatMap(observable =>

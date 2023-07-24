@@ -12,6 +12,7 @@ import js7.base.service.Service
 import js7.base.system.OperatingSystem.isMac
 import js7.base.thread.IOExecutor
 import js7.base.time.ScalaTime.*
+import js7.base.utils.CatsUtils.continueWithLast
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import monix.eval.Task
 import monix.reactive.Observable
@@ -40,7 +41,7 @@ extends Service.StoppableByRequest
     for (_ <- directoryWatchResource) yield
       (true +: Observable.repeat(false))
         .mapEval(isFirst => Task
-          .unless(isFirst)(Task.sleep(options.delay)/*collect more events per context switch*/)
+          .unless(isFirst)(Task.sleep(options.watchDelay)/*collect more events per context switch*/)
           .*>(poll)
           .raceFold(untilStopRequested.as(Nil)))
         .takeWhile(events => !events.contains(Overflow))
@@ -87,7 +88,7 @@ extends Service.StoppableByRequest
         try watchKey.pollEvents().asScala.view
           .collect {
             case o: WatchEvent[Path @unchecked]
-              if o.context.isInstanceOf[Path] && options.matches(o.context) => o
+              if o.context.isInstanceOf[Path] && options.isRelevantFile(o.context) => o
           }
           .map(DirectoryWatchEvent.fromJava)
           .toVector
@@ -124,7 +125,7 @@ object BasicDirectoryWatcher
 
   def repeatWhileIOException[A](options: WatchOptions, task: Task[A]): Task[A] =
     Task.defer {
-      val delayIterator = options.retryDelays.iterator ++ Iterator.continually(options.retryDelays.last)
+      val delayIterator = continueWithLast(options.retryDelays)
       task
         .onErrorRestartLoop(now) {
           case (t @ (_: IOException | _: NotDirectoryException), since, restart) =>

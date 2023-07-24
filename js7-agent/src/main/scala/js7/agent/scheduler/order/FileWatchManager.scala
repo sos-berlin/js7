@@ -6,7 +6,6 @@ import cats.syntax.monoid.*
 import cats.syntax.parallel.*
 import cats.syntax.traverse.*
 import com.typesafe.config.Config
-import java.nio.file.StandardWatchEventKinds.{ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY}
 import java.nio.file.{Path, Paths}
 import java.util.regex.Matcher
 import js7.agent.data.AgentState
@@ -14,7 +13,7 @@ import js7.agent.data.orderwatch.FileWatchState
 import js7.agent.scheduler.order.FileWatchManager.*
 import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted}
 import js7.base.io.file.watch.DirectoryEventDelayer.syntax.RichDelayLineObservable
-import js7.base.io.file.watch.{DirectoryEvent, DirectoryWatcher, WatchOptions}
+import js7.base.io.file.watch.{DirectoryEvent, DirectoryWatchSettings, DirectoryWatcher}
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.AsyncMap
@@ -22,7 +21,6 @@ import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Checked
 import js7.base.problem.Checked.catchNonFatal
 import js7.base.thread.IOExecutor
-import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime.*
 import js7.base.utils.LockKeeper
 import js7.base.utils.ScalaUtils.syntax.*
@@ -42,7 +40,6 @@ import monix.eval.Task
 import monix.reactive.Observable
 import monix.reactive.subjects.PublishSubject
 import scala.concurrent.duration.Deadline.now
-import scala.jdk.CollectionConverters.*
 
 /** Persists, recovers and runs FileWatches. */
 final class FileWatchManager(
@@ -51,15 +48,7 @@ final class FileWatchManager(
   config: Config)
   (implicit iox: IOExecutor)
 {
-  private val retryDelays = config.getDurationList("js7.filewatch.retry-delays")
-    .asScala.map(_.toFiniteDuration).toVector match {
-    case Vector() => 1.s :: Nil
-    case o => o
-  }
-  private val logDelays = config.getDurationList("js7.filewatch.log-delays")
-    .asScala.toVector.map(_.toFiniteDuration)
-  private val pollTimeout = config.getDuration("js7.filewatch.poll-timeout").toFiniteDuration max 0.s
-  private val watchDelay = config.getDuration("js7.filewatch.watch-delay").toFiniteDuration max 0.s
+  private val settings = DirectoryWatchSettings.fromConfig(config).orThrow
   private val lockKeeper = new LockKeeper[OrderWatchPath]
   private val idToStopper = AsyncMap(Map.empty[OrderWatchPath, Task[Unit]])
 
@@ -168,27 +157,23 @@ final class FileWatchManager(
       .flatMap(string =>
         catchNonFatal(Paths.get(string)))
       .map { directory =>
-        val delayIterator = retryDelays.iterator ++ Iterator.continually(retryDelays.last)
+        val delayIterator = settings.retryDelays.iterator ++
+          Iterator.continually(settings.retryDelays.last)
         var directoryState = fileWatchState.directoryState
 
         DirectoryWatcher
           .observable(
-            directoryState,
-            WatchOptions(
-              directory,
-              Set(ENTRY_CREATE, ENTRY_MODIFY, ENTRY_DELETE),
-              // Regular expression is evaluated twice: here and when deriving OrderId
-              matches = relativePath => fileWatch.resolvedPattern.matcher(relativePath.toString).matches,
-              retryDelays = retryDelays,
-              pollTimeout = pollTimeout,
-              delay = watchDelay))
+            directory, directoryState,
+            settings,
+            isRelevantFile = relativePath =>
+              fileWatch.resolvedPattern.matcher(relativePath.toString).matches)
           .doOnSubscribe(Task {
             logger.debug(s"${fileWatch.path} watching started - $directory")
           })
           .takeUntil(stop)
           .flatMap(Observable.fromIterable)
           // Buffers without limit all incoming events
-          .delayFileAdded(directory, fileWatch.delay, logDelays)
+          .delayFileAdded(directory, fileWatch.delay, settings.logDelays)
           .bufferIntrospective(1024)
           .mapEval(dirEventSeqs =>
             lockKeeper.lock(fileWatch.path)(

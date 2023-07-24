@@ -35,8 +35,8 @@ final class FileWatchLongTest extends OurTestSuite with ControllerAgentForScalaT
 
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on
-    js7.filewatch.poll-timeout = 10ms  # >0 too let Controller breath
-    js7.filewatch.retry-delays = [0ms]
+    js7.directory-watch.poll-timeout = 10ms  # >0 too let Controller breath
+    js7.directory-watch.retry-delays = [0ms]
     """
 
   private val sourceDirectory = directoryProvider.agentEnvs(0).dataDir / "work/files"
