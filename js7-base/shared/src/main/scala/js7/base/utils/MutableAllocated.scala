@@ -10,6 +10,7 @@ import monix.eval.Task
 final class MutableAllocated[A](implicit src: sourcecode.Enclosing, tag: Tag[A]) {
   private val empty: Allocated[Task, A] = Allocated(null.asInstanceOf[A], Task.unit)
   private val allocatedVar = AsyncVariable(empty)
+  private var finallyReleased = false
 
   def value: Task[A] =
     checked.flatMap {
@@ -20,7 +21,7 @@ final class MutableAllocated[A](implicit src: sourcecode.Enclosing, tag: Tag[A])
   def checked: Task[Checked[A]] =
     allocatedVar.value.map {
       case `empty` =>
-        Left(Problem(s"$toString has not been initialized"))
+        Left(Problem(s"$toString has not been allocated"))
 
       case allocated =>
         Right(allocated.allocatedThing)
@@ -28,12 +29,28 @@ final class MutableAllocated[A](implicit src: sourcecode.Enclosing, tag: Tag[A])
 
   def acquire(resource: Resource[Task, A]): Task[A] =
     allocatedVar
-      .update(allocated => allocated.release *> resource.toAllocated)
+      .update(allocated =>
+        if (finallyReleased)
+          Task.raiseError(new IllegalStateException(
+            s"$toString: has been finally released — new aqcuisition rejected"))
+        else
+          allocated.release *>
+            resource.toAllocated)
       .map(_.allocatedThing)
 
   def release: Task[Unit] =
     allocatedVar
       .update(_.release.as(empty))
+      .void
+
+  def finallyRelease: Task[Unit] =
+    allocatedVar
+      .update(_
+        .release
+        .*>(Task {
+          finallyReleased = true
+        })
+        .as(empty))
       .void
 
   override def toString = s"${src.value}: MutableAllocated[${tag.tag}]"

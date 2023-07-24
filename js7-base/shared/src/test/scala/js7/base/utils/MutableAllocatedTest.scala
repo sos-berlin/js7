@@ -18,7 +18,7 @@ final class MutableAllocatedTest extends OurAsyncTestSuite {
     val test = for {
       checked <- a.checked
       _ <- Task(assert(checked == Left(Problem(
-        "js7.base.utils.MutableAllocatedTest#a: MutableAllocated[Int] has not been initialized"))))
+        "js7.base.utils.MutableAllocatedTest#a: MutableAllocated[Int] has not been allocated"))))
 
       i <- a.acquire(resource)
       _ <- Task(assert(i == 0 && count == 0))
@@ -34,7 +34,14 @@ final class MutableAllocatedTest extends OurAsyncTestSuite {
 
       checked <- a.checked
       _ <- Task(assert(checked == Left(Problem(
-        "js7.base.utils.MutableAllocatedTest#a: MutableAllocated[Int] has not been initialized"))))
+        "js7.base.utils.MutableAllocatedTest#a: MutableAllocated[Int] has not been allocated"))))
+      _ <- a.finallyRelease
+      _ <- Task(assert(checked == Left(Problem(
+        "js7.base.utils.MutableAllocatedTest#a: MutableAllocated[Int] has not been allocated"))))
+      either <- a.acquire(resource).attempt
+      _ <- Task(assert(either.left.toOption.map(_.getMessage).contains(
+        "js7.base.utils.MutableAllocatedTest#a: " +
+          "MutableAllocated[Int]: has been finally released — new aqcuisition rejected")))
     } yield succeed
 
     test.runToFuture
