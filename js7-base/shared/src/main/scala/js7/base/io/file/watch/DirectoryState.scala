@@ -3,7 +3,6 @@ package js7.base.io.file.watch
 import java.nio.file.Path
 import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted, FileModified}
 import js7.base.io.file.watch.DirectoryState.*
-import js7.base.log.Logger
 import js7.base.utils.Collections.implicits.*
 import js7.base.utils.MapDiff
 import scala.collection.{View, mutable}
@@ -50,7 +49,6 @@ final case class DirectoryState(fileToEntry: Map[Path, Entry])
 object DirectoryState
 {
   val empty = new DirectoryState(Map.empty)
-  private val logger = Logger[this.type]
 
   def fromIterable(entries: Iterable[Entry]): DirectoryState =
     new DirectoryState(entries.toKeyedMap(_.path))

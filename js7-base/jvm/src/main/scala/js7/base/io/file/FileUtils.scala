@@ -107,7 +107,6 @@ object FileUtils
       def write(bytes: Array[Byte]): Unit =
         Files.write(delegate, bytes)
 
-
       def :=[W: Writable](w: W) = write(w)
 
       def write[W: Writable](writable: W): Unit =

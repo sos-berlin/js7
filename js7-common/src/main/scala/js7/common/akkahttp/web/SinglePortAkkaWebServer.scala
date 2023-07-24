@@ -44,7 +44,6 @@ extends Service.StoppableByRequest
       //  logger.error(s"$toString $binding.terminate => ${t.toStringWithCauses}",
       //    t.nullIfNoStackTrace))
 
-
   override def toString = s"SinglePortAkkaWebServer($binding)"
 }
 
