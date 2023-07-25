@@ -229,7 +229,7 @@ object RunningController
   : Resource[Task, RunningController] = {
     import conf.{clusterConf, config, httpsConfig, implicitAkkaAskTimeout, journalLocation}
 
-    val testEventBus = new StandardEventBus[Any]
+    implicit val testEventBus = new StandardEventBus[Any]
 
     implicit val nodeNameToPassword: NodeNameToPassword[ControllerState] = {
       val result = Right(config.optionAs[SecretString]("js7.auth.cluster.password"))
@@ -310,16 +310,19 @@ object RunningController
       val itemUpdater = new MyItemUpdater(itemVerifier, currentOrderKeeperActor)
       import clusterNode.recoveredExtract
 
-      def webServerResource(sessionRegister: SessionRegister[SimpleSession]): Resource[Task, ControllerWebServer] =
-        ControllerWebServer
-          .resource(
+      def webServerResource(sessionRegister: SessionRegister[SimpleSession])
+      : Resource[Task, ControllerWebServer] =
+        for {
+          webServer <- ControllerWebServer.resource(
             orderApi, commandExecutor, itemUpdater, clusterNode,
             recoveredExtract.totalRunningSince, // Maybe different from JournalHeader
             recoveredExtract.eventWatch,
             conf, sessionRegister)
-          .evalTap(webServer => Task(
+          _ <- webServer.restartWhenHttpsChanges
+          _ <- Resource.eval(Task(
             conf.workDirectory / "http-uri" :=
               webServer.localHttpUri.fold(_ => "", o => s"$o/controller")))
+        } yield webServer
 
       def clusterWatchServiceFor(agentPath: AgentPath): Task[Checked[ClusterWatchService]] =
         currentOrderKeeperActor

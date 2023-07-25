@@ -4,7 +4,8 @@ import akka.http.scaladsl.model.Uri as AkkaUri
 import cats.syntax.either.*
 import cats.syntax.show.*
 import java.net.{InetAddress, InetSocketAddress}
-import js7.base.io.https.{KeyStoreRef, TrustStoreRef}
+import java.nio.file.Path
+import js7.base.io.https.{KeyStoreRef, StoreRef, TrustStoreRef}
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
@@ -20,6 +21,9 @@ sealed trait WebServerBinding
 {
   def address: InetSocketAddress
   def scheme: WebServerBinding.Scheme
+
+  /** Files containing key and trust certificates (for HTTPS). */
+  def requiredFiles: Seq[Path]
 
   def toWebServerPort: WebServerPort
 
@@ -40,7 +44,10 @@ object WebServerBinding
   final case class Http(address: InetSocketAddress)
   extends WebServerBinding {
     def scheme = Http
+
     def toWebServerPort = WebServerPort.Http(address)
+
+    def requiredFiles = Nil
   }
   object Http extends Scheme {
     val name = "http"
@@ -53,7 +60,13 @@ object WebServerBinding
     trustStoreRefs: Seq[TrustStoreRef] = Nil)
   extends WebServerBinding {
     def scheme = Https
+
     def toWebServerPort = WebServerPort.Https(address)
+
+    def requiredFiles = storeRefs.flatMap(_.toFile)
+
+    def storeRefs: Seq[StoreRef] =
+      keyStoreRef +: trustStoreRefs
 
     override def toString = super.toString +
       s" ($keyStoreRef, " + (trustStoreRefs.map(_.toString).mkString(", ")) + ")"

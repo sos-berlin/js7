@@ -46,7 +46,7 @@ import monix.eval.{Fiber, Task}
 import monix.execution.Scheduler
 
 final class Subagent private(
-  webServer: AkkaWebServer,
+  val webServer: AkkaWebServer,
   directorRouteVariable: DirectorRouteVariable,
   toForDirector: Subagent => ForDirector,
   val journal: MemoryJournal[SubagentState],

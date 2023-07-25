@@ -12,6 +12,7 @@ import js7.base.service.{MainService, Service}
 import js7.base.time.ScalaTime.{DurationRichInt, RichDuration}
 import js7.base.utils.CatsUtils.RichDeferred
 import js7.base.utils.CatsUtils.syntax.RichResource
+import js7.common.akkahttp.web.AkkaWebServer
 import js7.subagent.Subagent
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -80,6 +81,9 @@ extends MainService with Service.StoppableByRequest
 
   def currentDirector: Task[RunningAgent] =
     _currentDirector.value
+
+  def webServer: AkkaWebServer =
+    subagent.webServer
 
   override def toString = "RestartableDirector"
 }

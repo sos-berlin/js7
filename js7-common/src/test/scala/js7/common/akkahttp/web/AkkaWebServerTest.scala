@@ -27,6 +27,7 @@ import js7.common.akkahttp.web.AkkaWebServerTest.*
 import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.akkautils.Akkas
 import js7.common.akkautils.Akkas.newActorSystem
+import js7.common.configuration.Js7Configuration
 import js7.common.http.AkkaHttpUtils.*
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
 import monix.eval.Task
@@ -46,7 +47,7 @@ final class AkkaWebServerTest extends OurTestSuite with BeforeAndAfterAll
 
   private lazy val keyStoreRef: KeyStoreRef = {
     createDirectory(directory / "private")
-    KeyStoreResource copyToFile directory / "private" / "https-keystore.p12"
+    KeyStoreResource.copyToFile(directory / "private" / "https-keystore.p12")
     KeyStoreRef.fromSubconfig(
       config"""
           key-password = "jobscheduler"
@@ -64,7 +65,8 @@ final class AkkaWebServerTest extends OurTestSuite with BeforeAndAfterAll
       config"""
         # TODO Add test with client certificate
         js7.web.server.auth.https-client-authentication = off
-        js7.web.server.shutdown-timeout = 10s""",
+        js7.web.server.shutdown-timeout = 10s"""
+        .withFallback(Js7Configuration.defaultConfig),
       toBoundRoute = (_, _) =>
         AkkaWebServer.BoundRoute.simple(
           path("TEST") {
@@ -101,7 +103,7 @@ final class AkkaWebServerTest extends OurTestSuite with BeforeAndAfterAll
     }
 
     lazy val httpsConnectionContext =
-      ConnectionContext.httpsClient(loadSSLContext(trustStoreRefs = ClientTrustStoreRef :: Nil))
+      ConnectionContext.httpsClient(loadSSLContext(trustStoreRefs = Seq(ClientTrustStoreRef)))
 
     "Hostname verification rejects 127.0.0.1" in {
       val e = intercept[javax.net.ssl.SSLHandshakeException] {
@@ -115,10 +117,12 @@ final class AkkaWebServerTest extends OurTestSuite with BeforeAndAfterAll
              e.getMessage == "General SSLEngine problem")
     }
 
-    "Hostname verification accepts localhost" in {
+    "For this test, localhost must point to 127.0.0.1" in {
       // localhost must point to web servers's 127.0.0.1 (usually defined in /etc/host file).
       assert(InetAddress.getByName("localhost").getHostAddress == "127.0.0.1")
+    }
 
+    "Hostname verification accepts localhost" in {
       val response = http
         .singleRequest(
           HttpRequest(GET, s"https://localhost:$httpsPort/TEST"),
@@ -139,12 +143,12 @@ object AkkaWebServerTest
         --host=localhost \
         --config-directory=js7-common/src/test/resources/js7/common/akkahttp/https/test-resources
    */
-  private val KeyStoreResource = JavaResource(getClass.getClassLoader,
+  private[web] val KeyStoreResource = JavaResource(getClass.getClassLoader,
     "js7/common/akkahttp/https/test-resources/private/https-keystore.p12")
-  private val TrustStoreResource = JavaResource(getClass.getClassLoader,
+  private[web] val TrustStoreResource = JavaResource(getClass.getClassLoader,
     "js7/common/akkahttp/https/test-resources/export/https-truststore.p12")
 
-  private val ClientTrustStoreRef = TrustStoreRef(
+  private[web] val ClientTrustStoreRef = TrustStoreRef(
     TrustStoreResource.url,
     storePassword = SecretString("jobscheduler"))
 }
