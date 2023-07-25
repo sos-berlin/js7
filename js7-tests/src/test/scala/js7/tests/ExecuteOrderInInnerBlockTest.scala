@@ -84,10 +84,11 @@ final class ExecuteOrderInInnerBlockTest extends OurTestSuite with ControllerAge
     val innerBlock = forkBranchPath % 0 / "then" % 0 / "then"
 
     val stampedEventsevents = controller.runOrder(
-      FreshOrder(OrderId("FORK-THEN"), workflow.path, innerBlock = innerBlock))
+      FreshOrder(OrderId("FORK-THEN"), workflow.path,
+        innerBlock = innerBlock, startPosition = Some(innerBlock % 0)))
 
     assert(stampedEventsevents.map(_.value) == Seq(
-      OrderAdded(workflow.id, innerBlock = innerBlock),
+      OrderAdded(workflow.id, innerBlock = innerBlock, startPosition = Some(innerBlock % 0)),
 
       OrderAttachable(agentPath),
       OrderAttached(agentPath),

@@ -93,7 +93,7 @@ final case class ControllerStateExecutor private(
       _ <- position.isNestedIn(innerBlock) !! Problem(
         s"Position $position must be in innerBlock=${innerBlock.show}")
       _ <- workflow.checkPosition(position)
-      _ <- workflow.isMoveable(Position.First, position) !! Problem(
+      _ <- workflow.isMoveable(innerBlock % 0, position) !! Problem(
         s"Order's startPosition or one of its stopPositions is not reachable: $positionOrLabel")
     } yield position
 
