@@ -3,7 +3,6 @@ package js7.data.execution.workflow.instructions
 import java.time.DayOfWeek.MONDAY
 import java.time.ZoneOffset.UTC
 import java.time.{LocalDateTime, ZoneId}
-import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.time.AdmissionTimeSchemeForJavaTime.*
 import js7.base.time.JavaTimestamp.specific.*
@@ -21,7 +20,6 @@ extends ScheduleSimulator
   def nextCycleState(now: Timestamp, cycleState: CycleState): Option[CycleState] =
     nextCycle(now, cycleState)
       .flatMap { case (schemeIndex, periodIndex, next) =>
-        Logger[this.type].info(s"### $cycleState")
         val periodChanges = cycleState.index != 0/*0 is the initial value*/
           && (schemeIndex != cycleState.schemeIndex || periodIndex != cycleState.periodIndex)
         !(onlyOnePeriod && periodChanges) ?
