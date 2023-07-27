@@ -48,7 +48,7 @@ private object JournalTruncator
     if (fileSize != failedAt.position) {
       if (fileSize < failedAt.position)
         sys.error(s"Journal file '${journalFile.file.getFileName} is shorter than the failed-over position ${failedAt.position}")
-      logger.info(s"Truncating journal file at failover position ${failedAt.position} " +
+      logger.info(s"❗️Truncating journal file at failover position ${failedAt.position} " +
         s"(${fileSize - failedAt.position} bytes): ${journalFile.file.getFileName}")
       truncated = true
       truncateFile(file, failedAt.position, keep = keepTruncatedRest)
@@ -104,9 +104,9 @@ private object JournalTruncator
       f.readLine() match {
         case null =>
         case line =>
-          if (!logged) logger.info(s"Records truncated off ${file.getFileName}:")
+          if (!logged) logger.info(s"❗️Records truncated off ${file.getFileName}:")
           logged = true
-          logger.info(line)
+          logger.info(s"❗️$line")
           loop()
       }
     }

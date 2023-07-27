@@ -99,7 +99,7 @@ with Service.StoppableByRequest
           if (fileToTime.nonEmpty) logger.debug(s"onHttpsKeyOrCertChanged but no change detected")
           Task.pure(previouslyAllocated)
         } else {
-          logger.info(s"Restart HTTPS web server due to changed HTTPS keys or certificates: ${
+          logger.info(s"Restart HTTPS web server due to changed keys or certificates: ${
             diff.view.mapValues(_.fold(_.toString, _.toString)).mkString(", ")}")
           previouslyAllocated.fold(Task.unit)(_.release) *>
             startPortWebServer(bindingAndResource) <*
@@ -114,14 +114,17 @@ with Service.StoppableByRequest
     import bindingAndResource.{resource, webServerBinding as binding}
 
     Delayer.start[Task](delayConf)
-      .flatMap(delayer =>
+      .flatMap { delayer =>
+        var errorLogged = false
         readFileTimes(binding)
           .flatMap(fileTimes =>
             resource.toAllocated
               .map(allo => (fileTimes -> allo).some))
           .onErrorRestartLoop(()) {
             case ((throwable, _, retry)) =>
-              logger.error(s"$bindingAndResource => ${throwable.toStringWithCauses}")
+              errorLogged = true
+              logger.error(
+                s"🔴 Web server for $bindingAndResource: ${throwable.toStringWithCauses}")
               for (t <- throwable.ifStackTrace) logger.debug(s"💥 ${t.toStringWithCauses}", t)
               Task
                 .race(
@@ -131,8 +134,10 @@ with Service.StoppableByRequest
           }
           .map(_.map { case (fileTimes, allocated) =>
             _addrToHttpsFileToTime(binding.address) = fileTimes
+            if (errorLogged) logger.info(s"🟢 Web server for $bindingAndResource restarted")
             allocated
-          }))
+          })
+      }
   }
 
   private def readFileTimes(binding: WebServerBinding)(implicit iox: IOExecutor)
@@ -144,7 +149,7 @@ with Service.StoppableByRequest
     ).executeOn(iox.scheduler)
 
   private def logDelay(duration: FiniteDuration, name: String) =
-    Task(logger.info(
+    Task(logger.debug(
       s"Restart $name ${if (duration.isZero) "now" else "in " + duration.pretty} due to failure"))
 
   override def toString =

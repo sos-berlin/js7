@@ -268,7 +268,7 @@ extends Actor with Stash with JournalLogging
       // We take only complete Persist bundles as acknowledged.
       onCommitAcknowledged(
         n = persistBuffer.iterator.takeWhile(_.lastStamped.forall(_.eventId <= ack)).length,
-        ack = true)
+        ack = Some(ack))
       if (releaseEventIdsAfterClusterCoupledAck.isDefined) {
         releaseObsoleteEvents()
       }
@@ -352,12 +352,12 @@ extends Actor with Stash with JournalLogging
 
   private def onReadyForAcknowledgement(): Unit = {
     if (!requireClusterAcknowledgement) {
-      onCommitAcknowledged(persistBuffer.size, ack = false)
+      onCommitAcknowledged(persistBuffer.size)
     } else {
       val nonEventWrittenCount = persistBuffer.iterator.takeWhile(_.isEmpty).size
       if (nonEventWrittenCount > 0) {
         // `Persist` without events (Nil) are not being acknowledged, so we finish them now
-        onCommitAcknowledged(nonEventWrittenCount, ack = true)
+        onCommitAcknowledged(nonEventWrittenCount)
       }
       startWaitingForAcknowledgeTimer()
     }
@@ -385,13 +385,13 @@ extends Actor with Stash with JournalLogging
     commit()
   }
 
-  private def onCommitAcknowledged(n: Int, ack: Boolean): Unit = {
-    if (waitingForAckSym.called) {
-      logger.info(
-        s"🟢 Events are finally acknowledged after ${waitingForAcknowledgeSince.elapsed.pretty}")
+  private def onCommitAcknowledged(n: Int, ack: Option[EventId] = None): Unit = {
+    for (ackEventId <- ack if n > 0 && waitingForAckSym.called) {
+      logger.info(s"🟢 $n events until $ackEventId have finally been acknowledged after ${
+        waitingForAcknowledgeSince.elapsed.pretty}")
       waitingForAckSym.clear()
     }
-    finishCommitted(n, ack = ack)
+    finishCommitted(n, ack = ack.isDefined)
     if (lastAcknowledgedEventId == lastWrittenEventId) {
       onAllCommitsFinished()
     }

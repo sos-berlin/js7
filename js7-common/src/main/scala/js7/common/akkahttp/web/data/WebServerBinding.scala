@@ -68,8 +68,8 @@ object WebServerBinding
     def storeRefs: Seq[StoreRef] =
       keyStoreRef +: trustStoreRefs
 
-    override def toString = super.toString +
-      s" ($keyStoreRef, " + (trustStoreRefs.map(_.toString).mkString(", ")) + ")"
+    //override def toString = super.toString +
+    //  s" ($keyStoreRef, " + (trustStoreRefs.map(_.toString).mkString(", ")) + ")"
   }
   object Https extends Scheme {
     val name = "https"

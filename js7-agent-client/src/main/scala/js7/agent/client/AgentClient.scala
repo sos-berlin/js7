@@ -107,11 +107,10 @@ object AgentClient
 
       protected val actorSystem = a
       val baseUri = admission.uri
-      protected val name = label
       protected def httpsConfig = h
-      protected val userAndPassword = up
-
-      protected val prefixedUri = baseUri / "agent"
+      protected lazy val userAndPassword = up
+      protected lazy val name = label
+      protected lazy val prefixedUri = baseUri / "agent"
 
       override def toString = s"AgentClient($prefixedUri)"
     }

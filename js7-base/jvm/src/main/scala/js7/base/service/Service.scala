@@ -88,16 +88,19 @@ object Service
 
   def resource[S <: Service](newService: Task[S]): Resource[Task, S] =
     Resource.make(
-      acquire = startService(newService))(
-      release = service => service.stop.logWhenItTakesLonger(s"stopping $service"))
-
-  private def startService[S <: Service](newService: Task[S]): Task[S] =
-    newService.flatTap(service =>
-      if (service.started.getAndSet(true))
-        Task.raiseError(Problem.pure(s"$toString started twice").throwable)
-      else
-        logger.traceTask(s"$service start")(
-          service.start))
+      acquire =
+        newService.flatTap(service =>
+          if (service.started.getAndSet(true))
+            Task.raiseError(new IllegalStateException(s"$toString started twice"))
+          else
+            logger.traceTask(s"$service start")(
+              service.start
+                .tapError(t =>
+                  // Maybe duplicate, but some tests don't propagate this error and silently deadlock
+                  Task(logger.error(s"$service start => ${t.toStringWithCauses}"))))))(
+      release =
+        service => service.stop
+          .logWhenItTakesLonger(s"stopping $service"))
 
   private def logInfoStartAndStop[A](
     logger: ScalaLogger,
@@ -109,7 +112,7 @@ object Service
       val a = args.nonEmpty ?? s"($args)"
       logger.info(s"$serviceName$a started")
       task.guaranteeCase {
-        case ExitCase.Error(_) => Task.unit // startService logs the error
+        case ExitCase.Error(_) => Task.unit // start logs the error
         case ExitCase.Canceled => Task(logger.info(s"⚫ $serviceName canceled"))
         case ExitCase.Completed => Task(logger.info(s"$serviceName stopped"))
       }

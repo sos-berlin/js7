@@ -48,7 +48,9 @@ extends Journal[S]
 
   val whenNoFailoverByOtherNode = Task.unit
 
-  val eventWatch: RealEventWatch = new RealEventWatch {
+  val eventWatch: RealEventWatch = new MemoryJournalEventWatch
+
+  private class MemoryJournalEventWatch extends RealEventWatch {
     protected def eventsAfter(after: EventId) =
       eventsAfter_(after)
         .map(iterator => CloseableIterator.fromIterator(iterator))

@@ -113,7 +113,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
       .map(_.entity.withoutSizeLimit.dataBytes.toObservable)
       .pipeIf(logger.underlying.isDebugEnabled)(_.logTiming(_.size, (d, s, _) =>
         if (d >= 1.s && s > 10_000_000)
-          logger.debug(s"$toString: get $uri: ${bytesPerSecondString(d, s)}")))
+          logger.debug(s"get $uri: ${bytesPerSecondString(d, s)}")))
       .map(_
         .flatMap(new ByteSequenceToLinesObservable))
       .map(_.onErrorRecoverWith(ignoreIdleTimeout orElse endStreamOnNoMoreElementNeeded))
@@ -271,7 +271,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
         @volatile var canceled = false
         var responseFuture: Future[HttpResponse] = null
         val since = now
-        lazy val logPrefix = s"#$number $toString${sessionToken.fold("")(o => " " + o.short)}"
+        lazy val logPrefix = s"#$number$nameString${sessionToken.fold("")(o => " " + o.short)}"
         lazy val responseLog0 = s"$logPrefix ${requestToString(req, logData, isResponse = true)} "
         def responseLogPrefix = responseLog0 + since.elapsed.pretty
         logger.trace(s">-->  $logPrefix ${requestToString(req, logData)}")
@@ -442,7 +442,8 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
             .recover { case t =>
               if (!materializer.isShutdown) {
                 logger.debug(
-                  s"💥 $toString: Error when unmarshalling response of ${method.name} $uri: ${t.toStringWithCauses}", t)
+                  s"💥 $toString: Error when unmarshalling response of ${method.name} $uri: ${
+                    t.toStringWithCauses}", t)
               }
               throw t
             }
@@ -506,7 +507,9 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
         case _ => t
       }
 
-  override def toString = s"$baseUri${name.nonEmpty ?? s" »$name«"}"
+  override def toString = s"$baseUri$nameString"
+
+  private lazy val nameString = name.nonEmpty ?? s" »$name«"
 }
 
 object AkkaHttpClient
@@ -586,7 +589,7 @@ object AkkaHttpClient
       CorrelId.checked(asciiString).map(`x-js7-correlation-id`(_)).asTry
   }
 
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
   private val LF = ByteString("\n")
   private val AcceptJson = Accept(MediaTypes.`application/json`) :: Nil
   private val requestCounter = AtomicLong(0)
