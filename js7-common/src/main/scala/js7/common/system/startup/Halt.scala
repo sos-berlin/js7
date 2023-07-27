@@ -13,9 +13,9 @@ object Halt
   def initialize() = {}
 
   def haltJava(msg: String, restart: Boolean, warnOnly: Boolean = false): Nothing =
-    haltJava2(msg, exitCode =
-      if (restart) Js7ReturnCodes.HaltAndRestart
-      else Js7ReturnCodes.Halt,
+    haltJava2(
+      msg,
+      exitCode = if (restart) Js7ReturnCodes.HaltAndRestart else Js7ReturnCodes.Halt,
       warnOnly = warnOnly)
 
   private def haltJava2(msg: String, exitCode: Int = Js7ReturnCodes.Halt, warnOnly: Boolean)

@@ -139,7 +139,7 @@ abstract class RecouplingStreamReader[
       Observable.tailRecM(initialAfter)(after =>
         if (eof(after) || isStopped)
           Observable.pure(Right(Observable.empty))
-        else {
+        else
           Observable
             .pure(Right(
               observe(after)
@@ -155,7 +155,6 @@ abstract class RecouplingStreamReader[
                 })) ++
               (Observable.fromTask(pauseBeforeNextTry(conf.delay)) *>
                 Observable.eval(Left(lastIndex)))
-        }
       ).flatten
 
     private def observe(after: I): Observable[V] =

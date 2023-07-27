@@ -13,7 +13,7 @@ import scala.util.Try
 /**
   * A register for `Future` completion which allows removal of handlers.
   *
-  * This avoids the memory leak in `Future.onCompete` which does not allow removal.
+  * This avoids the memory leak in `Future.onComplete` which does not allow removal.
   *
   * @author Joacim Zschimmer
   */
