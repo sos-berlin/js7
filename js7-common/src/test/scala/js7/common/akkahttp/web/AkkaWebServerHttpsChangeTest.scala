@@ -76,10 +76,10 @@ final class AkkaWebServerHttpsChangeTest extends OurTestSuite with BeforeAndAfte
         js7.directory-watcher.watch-delay = 10ms
         js7.directory-watcher.directory-silence = 10ms
         """.withFallback(Js7Configuration.defaultConfig),
-      toBoundRoute = (_, _) =>
+      toBoundRoute = routeBinding =>
         AkkaWebServer.BoundRoute.simple(
           path("TEST") {
-            complete("OKAY")
+            complete(s"OKAY-${routeBinding.revision}")
           }))
     .flatTap(_.restartWhenHttpsChanges)
     .toAllocated
@@ -101,7 +101,7 @@ final class AkkaWebServerHttpsChangeTest extends OurTestSuite with BeforeAndAfte
     val response = http.singleRequest(HttpRequest(GET, s"http://127.0.0.1:$httpPort/TEST"))
       .await(99.s)
     assert(response.status == OK)
-    assert(response.utf8String.await(99.s) == "OKAY")
+    assert(response.utf8String.await(99.s) == "OKAY-1")
   }
 
   "For this test, localhost must point to 127.0.0.1" in {
@@ -119,7 +119,7 @@ final class AkkaWebServerHttpsChangeTest extends OurTestSuite with BeforeAndAfte
         httpsConnectionContext1)
       .await(99.s)
     assert(response.status == OK)
-    assert(response.utf8String.await(99.s) == "OKAY")
+    assert(response.utf8String.await(99.s) == "OKAY-1")
   }
 
   "HTTPS, change client's trust certificate, then change server's key" - {
@@ -179,7 +179,7 @@ final class AkkaWebServerHttpsChangeTest extends OurTestSuite with BeforeAndAfte
       }
       val response = tried.get
       assert(response.status == OK)
-      assert(response.utf8String.await(99.s) == "OKAY")
+      assert(response.utf8String.await(99.s) == "OKAY-2")
     }
   }
 }

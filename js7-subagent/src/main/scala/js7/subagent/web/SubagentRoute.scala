@@ -9,29 +9,28 @@ import akka.http.scaladsl.server.directives.CodingDirectives.{decodeRequest, enc
 import com.typesafe.config.Config
 import js7.base.BuildInfo
 import js7.base.auth.SimpleUser
+import js7.base.log.Logger
 import js7.base.stream.Numbered
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegment
 import js7.common.akkahttp.CirceJsonSupport.jsonMarshaller
 import js7.common.akkahttp.StandardDirectives.taskRoute
 import js7.common.akkahttp.WebLogDirectives
+import js7.common.akkahttp.web.AkkaWebServer.RouteBinding
 import js7.common.akkahttp.web.auth.CSRF.forbidCSRF
 import js7.common.akkahttp.web.auth.GateKeeper
-import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.akkahttp.web.session.{SessionRegister, SessionRoute}
 import js7.common.system.JavaInformations.javaInformation
 import js7.common.system.SystemInformations.systemInformation
 import js7.common.system.startup.StartUp
 import js7.core.command.CommandMeta
 import js7.data.subagent.{SubagentCommand, SubagentOverview}
+import js7.subagent.web.SubagentRoute.*
 import js7.subagent.{Subagent, SubagentSession}
 import monix.eval.Task
 import monix.execution.Scheduler
-import scala.concurrent.Future
-import scala.concurrent.duration.Deadline
 
 private final class SubagentRoute(
-  binding: WebServerBinding,
-  protected val whenShuttingDown: Future[Deadline],
+  routeBinding: RouteBinding,
   gateKeeperConf: GateKeeper.Configuration[SimpleUser],
   protected val sessionRegister: SessionRegister[SubagentSession],
   directorRoute: Task[Route],
@@ -45,21 +44,17 @@ with CommandRoute
 with SessionRoute
 with EventRoute
 {
+  import routeBinding.webServerBinding
+
+  protected def whenShuttingDown = routeBinding.whenStopRequested
   protected val eventWatch = subagent.journal.eventWatch
   protected val actorRefFactory = actorSystem
-  protected val gateKeeper = GateKeeper(binding, gateKeeperConf)
+  protected val gateKeeper = GateKeeper(webServerBinding, gateKeeperConf)
 
   protected def executeCommand(command: Numbered[SubagentCommand], meta: CommandMeta) =
     subagent.commandExecutor.executeCommand(command, meta)
 
-  protected def overviewRoute: Route =
-    complete(SubagentOverview(
-      version = BuildInfo.prettyVersion,
-      buildId = BuildInfo.buildId,
-      startedAt = StartUp.startedAt,
-      isTerminating = subagent.isShuttingDown,
-      system = systemInformation(),
-      java = javaInformation()))
+  logger.debug(s"new SubagentRoute($webServerBinding #${routeBinding.revision})")
 
   def webServerRoute: Route =
     (decodeRequest & encodeResponse)( // Before handleErrorAndLog to allow simple access to HttpEntity.Strict
@@ -81,4 +76,17 @@ with EventRoute
           case "session" => sessionRoute
           case _ => complete(NotFound)
         })
+
+  private def overviewRoute: Route =
+    complete(SubagentOverview(
+      version = BuildInfo.prettyVersion,
+      buildId = BuildInfo.buildId,
+      startedAt = StartUp.startedAt,
+      isTerminating = subagent.isShuttingDown,
+      system = systemInformation(),
+      java = javaInformation()))
+}
+
+object SubagentRoute {
+  private val logger = Logger[this.type]
 }

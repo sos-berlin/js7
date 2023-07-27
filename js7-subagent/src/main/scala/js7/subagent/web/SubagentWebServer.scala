@@ -24,7 +24,7 @@ object SubagentWebServer
     AkkaWebServer.resource(
       conf.webServerBindings,
       conf.config,
-      (binding, whenShuttingDown) => new AkkaWebServer.BoundRoute {
+      routeBinding => new AkkaWebServer.BoundRoute {
         private val gateKeeperConf =
           GateKeeper.Configuration.fromConfig(conf.config, SimpleUser.apply, Seq(
             AgentDirectorPermission))
@@ -34,12 +34,15 @@ object SubagentWebServer
         def startupSecurityHint(scheme: WebServerBinding.Scheme) =
           gateKeeperConf.secureStateString(scheme)
 
-        def webServerRoute =
-          for (subagent <- subagent) yield
-            new SubagentRoute(binding, whenShuttingDown, gateKeeperConf, sessionRegister,
-              toDirectorRoute(binding, whenShuttingDown),
-              subagent, conf.config
-            ).webServerRoute
+        lazy val webServerRoute =
+          subagent
+            .map(subagent =>
+              new SubagentRoute(
+                routeBinding, gateKeeperConf, sessionRegister,
+                toDirectorRoute(routeBinding),
+                subagent, conf.config
+              ).webServerRoute)
+            .memoize
 
         override def toString = "Subagent web services"
       })

@@ -34,7 +34,7 @@ object ControllerWebServer
     AkkaWebServer.resource(
       controllerConfiguration.webServerBindings,
       controllerConfiguration.config,
-      (binding, whenShuttingDown) => new AkkaWebServer.BoundRoute {
+      routeBinding => new AkkaWebServer.BoundRoute {
         import controllerConfiguration.config
 
         private val gateKeeperConf =
@@ -49,8 +49,7 @@ object ControllerWebServer
         def webServerRoute =
           Task.pure(
             new ControllerRoute(
-              binding,
-              whenShuttingDown,
+              routeBinding,
               controllerConfiguration,
               orderApi,
               commandExecutor,

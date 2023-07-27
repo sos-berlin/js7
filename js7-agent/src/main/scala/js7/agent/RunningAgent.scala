@@ -411,11 +411,10 @@ object RunningAgent {
           testEventBus,
           actorSystem, conf)))
       _ <- forDirector.subagent.directorRegisteringResource(
-        (binding, whenShuttingDown) => Task.pure(
+        routeBinding => Task.pure(
           new AgentRoute(
             agentOverview,
-            binding,
-            whenShuttingDown,
+            routeBinding,
             agent.executeCommand,
             clusterNode,
             conf,

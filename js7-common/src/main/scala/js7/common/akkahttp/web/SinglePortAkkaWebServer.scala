@@ -14,7 +14,7 @@ import js7.base.log.Logger.syntax.*
 import js7.base.service.Service
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.toIsEmptyAllOps
-import js7.common.akkahttp.web.AkkaWebServer.BoundRoute
+import js7.common.akkahttp.web.AkkaWebServer.{BoundRoute, RouteBinding}
 import js7.common.akkahttp.web.SinglePortAkkaWebServer.*
 import js7.common.akkahttp.web.data.{WebServerBinding, WebServerPort}
 import js7.common.http.JsonStreamingSupport
@@ -53,7 +53,28 @@ private object SinglePortAkkaWebServer
 
   def resource(
     webServerBinding: WebServerBinding,
-    toBoundRoute: Future[Deadline] => BoundRoute,
+    toBoundRoute: RouteBinding => BoundRoute,
+    shutdownTimeout: FiniteDuration,
+    httpsClientAuthRequired: Boolean)
+    (implicit actorSystem: ActorSystem)
+  : Resource[Task, SinglePortAkkaWebServer] =
+    Resource.suspend(Task {
+      // The revision counter is saved in this memoized Task, see end of this task.
+      val revision = Atomic(1)
+
+      def makeBoundRoute(): (BoundRoute, Promise[Deadline]) = {
+        val rev = revision.getAndIncrement()
+        val terminatingPromise = Promise[Deadline]()
+        toBoundRoute(RouteBinding(webServerBinding, rev, terminatingPromise.future)) ->
+          terminatingPromise
+      }
+
+      resource2(webServerBinding, makeBoundRoute _, shutdownTimeout, httpsClientAuthRequired)
+    }.memoize/*saves the `revision` counter for multiple allocations*/)
+
+  private def resource2(
+    webServerBinding: WebServerBinding,
+    makeBoundRoute: () => (BoundRoute, Promise[Deadline]),
     shutdownTimeout: FiniteDuration,
     httpsClientAuthRequired: Boolean)
     (implicit actorSystem: ActorSystem)
@@ -88,9 +109,7 @@ private object SinglePortAkkaWebServer
                     .withCustomMediaTypes(JsonStreamingSupport.CustomMediaTypes *)
                     .withMaxContentLength(JsonStreamingSupport.JsonObjectMaxSize /*js7.conf ???*/)))
 
-          val terminatingPromise = Promise[Deadline]()
-          val whenTerminating = terminatingPromise.future
-          val boundRoute = toBoundRoute(whenTerminating)
+          val (boundRoute, terminatingPromise) = makeBoundRoute()
           val bindingString = s"${binding.scheme}://${binding.address.show}"
           Task
             .deferFutureAction { implicit scheduler =>

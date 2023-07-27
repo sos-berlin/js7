@@ -1,5 +1,6 @@
 package js7.tests.core
 
+import akka.actor.ActorSystem
 import io.circe.Decoder
 import izumi.reflect.Tag
 import java.net.{InetAddress, InetSocketAddress}
@@ -48,7 +49,9 @@ extends OurTestSuite with BeforeAndAfterAll with ProvideActorSystem with Generic
   protected type OurSession = SimpleSession
 
   protected def actorRefFactory = actorSystem
+  private implicit def implicitActorSystem: ActorSystem = actorSystem
   protected implicit def scheduler: Scheduler = Scheduler.traced
+
   protected val config = config"""
     js7 {
       auth.users {}
@@ -93,19 +96,17 @@ extends OurTestSuite with BeforeAndAfterAll with ProvideActorSystem with Generic
   private lazy val eventCollector = SimpleEventCollector[OrderEvent]().closeWithCloser
   protected val eventWatch = eventCollector.eventWatch
 
-  private lazy val route = pathSegments("event")(
-    new GenericEventRouteProvider {
-      def keyedEventTypedJsonCodec = ControllerState.keyedEventJsonCodec/*Example for test*/
-    }.route)
-
   private lazy val allocatedServer = AkkaWebServer
     .resource(
       Seq(
         WebServerBinding.Http(
           new InetSocketAddress(InetAddress.getLoopbackAddress, findFreeTcpPort()))),
       config,
-      (_, _) => AkkaWebServer.BoundRoute.simple(route))(
-      actorSystem)
+      _ => AkkaWebServer.BoundRoute.simple(
+        pathSegments("event")(
+          new GenericEventRouteProvider {
+            def keyedEventTypedJsonCodec = ControllerState.keyedEventJsonCodec /*Example for test*/
+          }.route)))
     .toAllocated
     .await(99.s)
 

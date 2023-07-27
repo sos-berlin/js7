@@ -7,19 +7,21 @@ import java.nio.file.Path
 import js7.base.auth.SimpleUser
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.convert.AsJava.StringAsPath
+import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.cluster.ClusterNode
 import js7.cluster.web.ClusterNodeRouteBindings
 import js7.common.akkahttp.AkkaHttpServerUtils.{passIf, pathSegment}
 import js7.common.akkahttp.WebLogDirectives
+import js7.common.akkahttp.web.AkkaWebServer.RouteBinding
 import js7.common.akkahttp.web.auth.CSRF.forbidCSRF
 import js7.common.akkahttp.web.auth.GateKeeper
-import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.controller.OrderApi
 import js7.controller.command.ControllerCommandExecutor
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.item.ItemUpdater
+import js7.controller.web.ControllerRoute.*
 import js7.controller.web.controller.TestRoute
 import js7.controller.web.controller.api.ApiRoute
 import js7.controller.web.serviceprovider.{RouteServiceContext, ServiceProviderRoute}
@@ -30,15 +32,13 @@ import js7.data.event.Stamped
 import js7.journal.watch.FileEventWatch
 import monix.eval.Task
 import monix.execution.Scheduler
-import scala.concurrent.Future
 import scala.concurrent.duration.Deadline
 
 /**
   * @author Joacim Zschimmer
   */
 final class ControllerRoute(
-  binding: WebServerBinding,
-  protected val whenShuttingDown: Future[Deadline],
+  routeBinding: RouteBinding,
   protected val controllerConfiguration: ControllerConfiguration,
   protected val orderApi: OrderApi,
   commandExecutor: ControllerCommandExecutor,
@@ -57,6 +57,9 @@ with ClusterNodeRouteBindings[ControllerState]
 with ApiRoute
 with TestRoute
 {
+  import routeBinding.webServerBinding
+
+  protected def whenShuttingDown    = routeBinding.whenStopRequested
   protected val controllerState     = clusterNode.currentState
   protected val controllerId        = controllerConfiguration.controllerId
   protected val config              = controllerConfiguration.config
@@ -69,11 +72,13 @@ with TestRoute
   protected val routeServiceContext = RouteServiceContext(
     filteredSnapshotRoute, filteredEventRoute, config)
   protected val actorRefFactory     = actorSystem
-  protected val gateKeeper = GateKeeper(binding, gateKeeperConf)
+  protected val gateKeeper = GateKeeper(webServerBinding, gateKeeperConf)
 
   protected def executeCommand(command: ControllerCommand, meta: CommandMeta)
   : Task[Checked[command.Response]] =
     commandExecutor.executeCommand(command, meta)
+
+  logger.debug(s"new ControllerRoute($webServerBinding #${routeBinding.revision})")
 
   val webServerRoute: Route =
     (decodeRequest & encodeResponse) {  // Before handleErrorAndLog to allow simple access to HttpEntity.Strict
@@ -101,4 +106,8 @@ with TestRoute
           testRoute
         }
       }
+}
+
+object ControllerRoute {
+  private val logger = Logger[this.type]
 }

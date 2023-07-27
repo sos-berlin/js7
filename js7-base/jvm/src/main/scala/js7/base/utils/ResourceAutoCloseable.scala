@@ -8,7 +8,7 @@ import monix.execution.atomic.Atomic
 import scala.concurrent.duration.*
 
 final case class ResourceAutoCloseable[A](resource: Resource[Task, A], timeout: Duration)
-  (implicit s: Scheduler, src: sourcecode.Enclosing)
+  (implicit aTag: Tag[A], s: Scheduler, src: sourcecode.Enclosing)
   extends AutoCloseable
 {
   private lazy val (value_, release) = resource.allocated.await(timeout)

@@ -34,7 +34,7 @@ import org.jetbrains.annotations.TestOnly
 import scala.collection.mutable
 import scala.concurrent.Future
 import scala.concurrent.duration.{Deadline, FiniteDuration}
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 /**
  * @author Joacim Zschimmer
@@ -78,7 +78,7 @@ with Service.StoppableByRequest
         .update(sequence =>
           sequence
             .zip(bindingAndResources)
-            .traverse((checkFilesThenRestart _).tupled))
+            .parTraverse((checkFilesThenRestart _).tupled))
         .void
     })
 
@@ -89,22 +89,24 @@ with Service.StoppableByRequest
   : Task[Option[Allocated[Task, SinglePortAkkaWebServer]]] =
     Task.defer {
       val binding = bindingAndResource.webServerBinding
-      readFileTimes(binding).flatMap(fileToTime =>
-        if (fileToTime == _addrToHttpsFileToTime.getOrElse(binding.address, Map.empty)) {
-          if (fileToTime.nonEmpty) {
-            logger.debug(s"onHttpsKeyOrCertChanged but no change detected: $binding ${
-              fileToTime.mkString(", ")}")
-          }
+      readFileTimes(binding).flatMap { fileToTime =>
+        val prevFileToTime = _addrToHttpsFileToTime.getOrElse(binding.address, Map.empty)
+        val diff = fileToTime.filterNot {
+          case (file, Failure(_)) => prevFileToTime.get(file).exists(_.isFailure)
+          case (file, t @ Success(_)) => prevFileToTime.get(file).contains(t)
+        }
+        (if (diff.isEmpty) {
+          if (fileToTime.nonEmpty) logger.debug(s"onHttpsKeyOrCertChanged but no change detected")
           Task.pure(previouslyAllocated)
         } else {
-          logger.info(
-            s"Restart HTTPS web server due to changed HTTPs keys or certificates: ${
-              fileToTime.view.mapValues(_.fold(_.toString, _.toString)).mkString(", ")
-            }")
+          logger.info(s"Restart HTTPS web server due to changed HTTPS keys or certificates: ${
+            diff.view.mapValues(_.fold(_.toString, _.toString)).mkString(", ")}")
           previouslyAllocated.fold(Task.unit)(_.release) *>
             startPortWebServer(bindingAndResource) <*
             Task(testEventBus.publish(RestartedEvent))
-        })
+        }).<*(Task(
+          _addrToHttpsFileToTime(binding.address) = prevFileToTime))
+      }
     }
 
   private def startPortWebServer(bindingAndResource: BindingAndResource)(implicit iox: IOExecutor)
@@ -114,7 +116,9 @@ with Service.StoppableByRequest
     Delayer.start[Task](delayConf)
       .flatMap(delayer =>
         readFileTimes(binding)
-          .flatMap(fileTimes => resource.toAllocated.map(allo => (fileTimes -> allo).some))
+          .flatMap(fileTimes =>
+            resource.toAllocated
+              .map(allo => (fileTimes -> allo).some))
           .onErrorRestartLoop(()) {
             case ((throwable, _, retry)) =>
               logger.error(s"$bindingAndResource => ${throwable.toStringWithCauses}")
@@ -141,8 +145,7 @@ with Service.StoppableByRequest
 
   private def logDelay(duration: FiniteDuration, name: String) =
     Task(logger.info(
-      s"Due to failure, $name restarts ${
-        if (duration.isZero) "now" else "in " + duration.pretty}"))
+      s"Restart $name ${if (duration.isZero) "now" else "in " + duration.pretty} due to failure"))
 
   override def toString =
     s"AkkaWebServer(${webServerPorts mkString " "})"
@@ -183,12 +186,12 @@ object AkkaWebServer
     resource(
       Seq(WebServerBinding.http(port)),
       config,
-      (_, _) => BoundRoute.simple(route))
+      _ => BoundRoute.simple(route))
 
   def resource(
     webServerBindings: Seq[WebServerBinding],
     config: Config,
-    toBoundRoute: (WebServerBinding, Future[Deadline]) => BoundRoute)
+    toBoundRoute: RouteBinding => BoundRoute)
     (implicit actorSystem: ActorSystem,
       testEventBus: StandardEventBus[Any] = new StandardEventBus)
   : Resource[Task, AkkaWebServer] =
@@ -197,19 +200,17 @@ object AkkaWebServer
       val httpsClientAuthRequired = config.getBoolean(
         "js7.web.server.auth.https-client-authentication")
 
-      Service
-        .resource(Task(
-          new AkkaWebServer(
-            for (webServerBinding <- webServerBindings.toVector) yield
-              BindingAndResource(
+      Service.resource(Task(
+        new AkkaWebServer(
+          for (webServerBinding <- webServerBindings.toVector) yield
+            BindingAndResource(
+              webServerBinding,
+              SinglePortAkkaWebServer.resource(
                 webServerBinding,
-                SinglePortAkkaWebServer
-                  .resource(
-                    webServerBinding,
-                    toBoundRoute(webServerBinding, _),
-                    shutdownTimeout = shutdownTimeout,
-                    httpsClientAuthRequired = httpsClientAuthRequired)),
-            config)))
+                toBoundRoute(_),
+                shutdownTimeout = shutdownTimeout,
+                httpsClientAuthRequired = httpsClientAuthRequired)),
+          config)))
     })
 
   private lazy val stillNotAvailableRoute: Route =
@@ -221,6 +222,13 @@ object AkkaWebServer
   {
     override def toString = webServerBinding.toString
   }
+
+  final case class RouteBinding private[web](
+    webServerBinding: WebServerBinding,
+    /** revision distinguishes a second RouteBinding from the first one, when the Route is
+     * established anew due to changed HTTPS key or certificate. */
+    revision: Int,
+    whenStopRequested: Future[Deadline])
 
   trait BoundRoute {
     def serviceName: String
@@ -237,9 +245,9 @@ object AkkaWebServer
       new Simple(route)
 
     final class Simple(route: Route) extends BoundRoute {
-      def serviceName = ""
+      val serviceName = ""
 
-      def webServerRoute = Task.pure(route)
+      val webServerRoute = Task.pure(route)
 
       def startupSecurityHint(scheme: WebServerBinding.Scheme) = ""
     }

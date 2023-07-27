@@ -67,7 +67,7 @@ final class AkkaWebServerTest extends OurTestSuite with BeforeAndAfterAll
         js7.web.server.auth.https-client-authentication = off
         js7.web.server.shutdown-timeout = 10s"""
         .withFallback(Js7Configuration.defaultConfig),
-      toBoundRoute = (_, _) =>
+      toBoundRoute = routeBinding =>
         AkkaWebServer.BoundRoute.simple(
           path("TEST") {
             complete("OKAY")
