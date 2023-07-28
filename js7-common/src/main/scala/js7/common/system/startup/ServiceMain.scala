@@ -147,7 +147,7 @@ object ServiceMain
         .use(implicit scheduler => SyncIO(
           withShutdownHook(resource(scheduler))
             .use(use(_, scheduler))
-            .onErrorHandle(catchMainServiceTermination)
+            .onErrorRecover(catchMainServiceTermination)
             .awaitInfinite))
         .unsafeRunSync()
 
