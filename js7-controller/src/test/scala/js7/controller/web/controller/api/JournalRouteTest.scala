@@ -7,7 +7,6 @@ import js7.base.auth.SessionToken
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax.*
-import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
@@ -22,6 +21,7 @@ import js7.common.akkahttp.web.session.SimpleSession
 import js7.common.http.AkkaHttpClient
 import js7.common.jsonseq.PositionAnd
 import js7.controller.web.controller.api.test.RouteTester
+import js7.data.Problems.AckFromActiveClusterNodeProblem
 import js7.data.controller.ControllerState
 import js7.data.event.JournalEvent.SnapshotTaken
 import js7.data.event.JournalSeparators.EndOfJournalFileMarker
@@ -184,8 +184,7 @@ final class JournalRouteTest extends OurTestSuite with RouteTester with JournalR
       eventWatch.onJournalingStarted(file4, journalId, PositionAnd(file4size, 4000L), PositionAnd(file4size, 4000L), isActiveNode = true)
       val bad = HttpClient.liftProblem(client.getRawLinesObservable(Uri(
         s"$uri/journal?timeout=0&markEOF=true&file=4000&position=$file4size&return=ack")))
-      assert(bad.await(99.s) == Left(Problem(
-        "Acknowledgements cannot be requested from an active cluster node (two active cluster nodes?)")))
+      assert(bad.await(99.s) == Left(AckFromActiveClusterNodeProblem))
 
       eventWatch.close()
     }

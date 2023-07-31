@@ -144,4 +144,6 @@ object Problems
   case object PassiveClusterNodeUrlChangeableOnlyWhenNotCoupledProblem extends Problem.ArgumentlessCoded
 
   case object PassiveClusterNodeResetProblem extends Problem.ArgumentlessCoded
+
+  case object AckFromActiveClusterNodeProblem extends Problem.ArgumentlessCoded
 }

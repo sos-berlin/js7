@@ -6,10 +6,10 @@ import java.util.concurrent.TimeoutException
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.MonixBase.closeableIteratorToObservable
-import js7.base.monixutils.MonixBase.syntax.RichMonixTask
+import js7.base.monixutils.MonixBase.syntax.{RichMonixObservable, RichMonixTask}
 import js7.base.monixutils.MonixDeadline
 import js7.base.monixutils.MonixDeadline.now
-import js7.base.problem.{Checked, Problem}
+import js7.base.problem.Checked
 import js7.base.stream.IncreasingNumberSync
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -17,6 +17,7 @@ import js7.base.time.Timestamp
 import js7.base.utils.CloseableIterator
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.data.Problems.AckFromActiveClusterNodeProblem
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import js7.data.problems.UnknownEventIdProblem
 import js7.journal.watch.RealEventWatch.*
@@ -63,7 +64,8 @@ trait RealEventWatch extends EventWatch
         else
           when[E](request, predicate) map {
             case TearableEventSeq.Torn(tornAfter) =>
-              throw new TornException(after = request.after, tornEventId = tornAfter)
+              throw if (onlyAcks && isActiveNode) AckFromActiveClusterNodeProblem.throwable
+              else new TornException(after = request.after, tornEventId = tornAfter)
 
             case EventSeq.Empty(lastEventId) =>
               val remaining = deadline.map(_.timeLeft)
@@ -93,8 +95,16 @@ trait RealEventWatch extends EventWatch
       .map(_.get).flatten
   }
 
-  final def observeEventIds(maybeTimeout: Option[FiniteDuration]): Observable[EventId] =
-  {
+  final def observeEventIds(maybeTimeout: Option[FiniteDuration])
+  : Task[Checked[Observable[EventId]]] =
+    Task {
+      if (isActiveNode)
+        Left(AckFromActiveClusterNodeProblem)
+      else
+        Right(observeEventIds2(maybeTimeout))
+    }
+
+  private def observeEventIds2(maybeTimeout: Option[FiniteDuration]): Observable[EventId] = {
     val originalTimeout = maybeTimeout
     var deadline = none[MonixDeadline]
 
@@ -118,27 +128,25 @@ trait RealEventWatch extends EventWatch
               (Some(Observable.pure(lastEventId)),
                 () => lastEventId -> originalTimeout)
           }
-          .flatMap { x =>
-            if (isActiveNode)
-              Task.raiseError(Problem
-                .pure("This active cluster node does not provide event acknowledgements" +
-                  " (two active cluster nodes?)")
-                .throwable)
-            else
-              Task.pure(x)
-          }
       }
 
     val lastEventId = lastAddedEventId
-    lastEventId +:
-      Observable.fromAsyncStateAction(next)(() => lastEventId -> maybeTimeout)
-        .takeWhile(_.nonEmpty)  // Take until timeout elapsed
-        .map(_.get).flatten
+
+    mustNotBeActive(
+      lastEventId +:
+        Observable.fromAsyncStateAction(next)(() => lastEventId -> maybeTimeout)
+          .takeWhile(_.nonEmpty)  // Take until timeout elapsed
+          .flatMap(_.get))
   }
+
+  private def mustNotBeActive(observable: Observable[EventId]): Observable[EventId] =
+    observable
+      .tapEval(_ => Task.when(isActiveNode)(
+        Task.raiseError(AckFromActiveClusterNodeProblem.throwable)))
 
   final def when[E <: Event](request: EventRequest[E], predicate: KeyedEvent[E] => Boolean)
   : Task[TearableEventSeq[CloseableIterator, KeyedEvent[E]]] =
-      whenAny[E](request, request.eventClasses, predicate)
+    whenAny[E](request, request.eventClasses, predicate)
 
   final def whenAny[E <: Event](
     request: EventRequest[E],
@@ -181,7 +189,7 @@ trait RealEventWatch extends EventWatch
     collect: PartialFunction[AnyKeyedEvent, A])
   : Task[TearableEventSeq[CloseableIterator, A]] =
     Task.deferAction { implicit s =>
-      // Protected agains Timestamp overflow
+      // Protected against Timestamp overflow
       val deadline = request.timeout.map(t => now + t.min(EventRequest.LongTimeout))
       whenAnyKeyedEvents2(request.after, deadline, request.delay, collect, request.limit,
         maybeTornOlder = request.tornOlder)

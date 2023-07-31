@@ -1,12 +1,16 @@
 package js7.controller.web.controller.api
 
 import akka.http.scaladsl.model.ContentType
+import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.{BadRequest, OK}
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.testkit.RouteTestTimeout
 import akka.util.ByteString
+import js7.base.circeutils.CirceUtils.RichCirceString
 import js7.base.configutils.Configs.HoconStringInterpolator
+import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurTestSuite
+import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
@@ -14,17 +18,18 @@ import js7.base.utils.ByteSequenceToLinesObservable
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.akkautils.ByteStrings.syntax.*
-import js7.common.http.AkkaHttpUtils.RichHttpResponse
+import js7.common.http.AkkaHttpUtils.{RichHttpResponse, RichResponseEntity}
 import js7.common.http.JsonStreamingSupport
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.StreamingSupport.ObservableAkkaSource
 import js7.controller.web.controller.api.EventRouteTest.*
 import js7.controller.web.controller.api.test.RouteTester
+import js7.data.Problems.AckFromActiveClusterNodeProblem
 import js7.data.event.{EventId, KeyedEvent, Stamped}
 import js7.data.order.OrderEvent.{OrderAdded, OrderFinished}
 import js7.data.order.{OrderEvent, OrderId}
 import js7.data.workflow.WorkflowPath
-import js7.journal.watch.SimpleEventCollector
+import js7.journal.watch.{JournalEventWatch, SimpleEventCollector}
 import js7.journal.web.EventDirectives
 import monix.execution.Scheduler
 import scala.concurrent.Future
@@ -42,7 +47,8 @@ final class EventRouteTest extends OurTestSuite with RouteTester with EventRoute
   protected def actorRefFactory = system
   protected implicit def scheduler: Scheduler = Scheduler.traced
   private lazy val eventCollector = SimpleEventCollector[OrderEvent]()
-  protected def eventWatch = eventCollector.eventWatch
+
+  protected def eventWatch: JournalEventWatch = eventCollector.eventWatch
 
   override protected def config = config"""
     js7.web.chunk-size = 1MiB
@@ -98,18 +104,33 @@ final class EventRouteTest extends OurTestSuite with RouteTester with EventRoute
   }
 
   "Fetch EventIds only" - {
-    "/event?onlyAcks=true&timeout=0" in {
+    "/event?onlyAcks=true&timeout=0 while isActiveNode" in {
       val stampedSeq = getEventIds("/event?onlyAcks=true&timeout=0")
-      assert(stampedSeq == Seq(180L))
+      assert(stampedSeq == Left(AckFromActiveClusterNodeProblem))
     }
 
-    def getEventIds(uri: String): Seq[EventId] =
-      Get(uri) ~> Accept(`application/x-ndjson`) ~> route ~> check {
-        if (status != OK) fail(s"$status - ${responseEntity.toStrict(timeout).value}")
-        responseAs[ByteString].utf8String match {
-          case "" => Vector.empty
-          case string => string.split('\n').map(java.lang.Long.parseLong).toVector
-        }
+    "/event?onlyAcks=true&timeout=0" in {
+      val wasActive = eventWatch.isActiveNode
+      eventWatch.isActiveNode = false
+
+      val stampedSeq = getEventIds("/event?onlyAcks=true&timeout=0")
+      assert(stampedSeq == Right(Seq("180")))
+
+      eventWatch.isActiveNode = wasActive
+    }
+
+    def getEventIds(uri: String): Checked[Seq[String]] =
+      Get(uri) ~> Accept(`application/x-ndjson`, `application/json`) ~> route ~> check {
+        if (status != OK)
+          responseEntity.toStrict(timeout).await(99.s)
+            .asUtf8String.await(99.s)
+            .parseJsonAs[Problem]
+            .flatMap(Left(_))
+        else
+          Right(responseAs[ByteString].utf8String match {
+            case "" => Vector.empty
+            case string => string.split('\n').toVector
+          })
       }
   }
 

@@ -22,7 +22,7 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.FutureCompletion
 import js7.base.utils.FutureCompletion.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.common.akkahttp.AkkaHttpServerUtils.{accept, observableToResponseMarshallable}
+import js7.common.akkahttp.AkkaHttpServerUtils.{accept, completeTask, observableToResponseMarshallable}
 import js7.common.akkahttp.StandardMarshallers.*
 import js7.common.akkahttp.web.session.RouteProvider
 import js7.common.http.JsonStreamingSupport.*
@@ -124,11 +124,15 @@ trait GenericEventRoute extends RouteProvider
           case o: FiniteDuration => Some(o)
           case _/*Duration.Inf only*/ => None
         }
-        complete {
-          implicit val x: ToEntityMarshaller[EventId] = jsonSeqMarshaller
-          observableToMarshallable(
-            eventWatch.observeEventIds(maybeTimeout).pipe(o => maybeHeartbeat.fold(o)(o.echoRepeated)))
-        }
+        implicit val x: ToEntityMarshaller[EventId] = jsonSeqMarshaller
+
+        completeTask[ToResponseMarshallable](
+          eventWatch
+            .observeEventIds(maybeTimeout)
+            .map(_.map(observable =>
+              observableToMarshallable(
+                observable
+                  .pipe(o => maybeHeartbeat.fold(o)(o.echoRepeated))))))
       }
 
     private def eventRoute(

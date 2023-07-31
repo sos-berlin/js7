@@ -23,6 +23,7 @@ import js7.base.utils.Collections.implicits.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{CloseableIterator, SetOnce}
 import js7.common.jsonseq.PositionAnd
+import js7.data.Problems.AckFromActiveClusterNodeProblem
 import js7.data.event.{Event, EventId, JournalHeader, JournalId, JournalInfo, JournalPosition, KeyedEvent, Stamped}
 import js7.journal.data.JournalLocation
 import js7.journal.files.JournalFiles.JournalMetaOps
@@ -31,6 +32,7 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.atomic.AtomicAny
 import monix.reactive.Observable
+import org.jetbrains.annotations.TestOnly
 import scala.annotation.tailrec
 import scala.collection.immutable.SortedMap
 import scala.concurrent.Promise
@@ -90,8 +92,7 @@ with JournalingObserver
   private var announcedEventReaderPromise: Option[(EventId, Promise[Option[CurrentEventReader]])] =
     announceNextFileEventId.map(_ -> Promise())
 
-  @volatile
-  private var _isActiveNode = false
+  @volatile private var _isActiveNode = false
 
   def close() = {
     fileEventIdToHistoric.values.foreach(_.close())
@@ -102,7 +103,15 @@ with JournalingObserver
 
   override def whenStarted = startedPromise.future
 
-  def isActiveNode = _isActiveNode
+  def onFailover(): Unit =
+    _isActiveNode = true
+
+  def isActiveNode: Boolean =
+    _isActiveNode
+
+  @TestOnly
+  def isActiveNode_=(value: Boolean): Unit =
+    _isActiveNode = value
 
   def onJournalingStarted(
     file: Path,
@@ -325,8 +334,7 @@ with JournalingObserver
       import journalPosition.{fileEventId, position}
 
       if (onlyAcks && _isActiveNode)
-        Task.pure(Left(Problem.pure(
-          "Acknowledgements cannot be requested from an active cluster node (two active cluster nodes?)")))
+        Task.left(AckFromActiveClusterNodeProblem)
       else
         announcedEventReaderPromise match {
           case Some((`fileEventId`, promise)) =>
@@ -350,8 +358,18 @@ with JournalingObserver
                   s"maybeCurrentEventReader=$maybeCurrentEventReader " +
                   s"fileEventIdToHistoric=${fileEventIdToHistoric.keys.toVector.sorted.mkString(",")}")
                 Task.pure(Left(Problem(s"Unknown journal file=$fileEventId")))
+
               case Some(eventReader) =>
-                Task(Right(eventReader.observeFile(position, timeout, markEOF = markEOF, onlyAcks = onlyAcks)))
+                Task(Right(eventReader
+                  .observeFile(position, timeout, markEOF = markEOF, onlyAcks = onlyAcks)
+                  .pipeIf(onlyAcks)(_
+                    // Never acknowledge events written by this active cluster node
+                    // to other wanna-be active nodes!
+                    // We would acknowledge events until failover, but it's not worth it,
+                    // because the wanne-be active node should shut down immediately.
+                    //.takeWhile(_ => !_isActiveNode)
+                    .tapEval(_ => Task.when(isActiveNode)(
+                      Task.raiseError(AckFromActiveClusterNodeProblem.throwable))))))
             }
         }
     }

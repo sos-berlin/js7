@@ -25,13 +25,15 @@ import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.akkautils.{Akkas, ProvideActorSystem}
 import js7.common.http.AkkaHttpClient
+import js7.common.http.AkkaHttpClient.HttpException
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
+import js7.data.Problems.AckFromActiveClusterNodeProblem
 import js7.data.controller.ControllerState
 import js7.data.event.{Event, EventId, EventRequest, KeyedEvent, Stamped}
 import js7.data.order.OrderEvent.OrderAdded
 import js7.data.order.{OrderEvent, OrderId}
 import js7.data.workflow.WorkflowPath
-import js7.journal.watch.SimpleEventCollector
+import js7.journal.watch.{JournalEventWatch, SimpleEventCollector}
 import js7.journal.web.GenericEventRoute
 import js7.tests.core.GenericEventRouteTest.*
 import monix.eval.Task
@@ -94,7 +96,7 @@ extends OurTestSuite with BeforeAndAfterAll with ProvideActorSystem with Generic
   protected val whenShuttingDown = shuttingDown.future
 
   private lazy val eventCollector = SimpleEventCollector[OrderEvent]().closeWithCloser
-  protected val eventWatch = eventCollector.eventWatch
+  protected val eventWatch: JournalEventWatch = eventCollector.eventWatch
 
   private lazy val allocatedServer = AkkaWebServer
     .resource(
@@ -230,11 +232,26 @@ extends OurTestSuite with BeforeAndAfterAll with ProvideActorSystem with Generic
       }
     }
 
-    "Fetch EventIds" in {
+    "Fetch EventIds while active is rejected" in {
+      assert(eventWatch.isActiveNode)
+      val response = intercept[HttpException](
+        getDecodedLinesObservable[EventId](Uri("/event?onlyAcks=true&timeout=0")))
+      assert(response.problem == Some(AckFromActiveClusterNodeProblem))
+    }
+
+    "Fetch EventIds while passive" in {
+      val wasActive = eventWatch.isActiveNode
+      eventWatch.isActiveNode = false
+
       assert(getDecodedLinesObservable[EventId](Uri("/event?onlyAcks=true&timeout=0")) == Seq(180L))
+
+      eventWatch.isActiveNode = wasActive
     }
 
     "Fetch EventIds with heartbeat" in {
+      val wasActive = eventWatch.isActiveNode
+      eventWatch.isActiveNode = false
+
       val uri = Uri("/event?onlyAcks=true&heartbeat=0.1&timeout=3")
       val events = Observable.fromTask(api.getDecodedLinesObservable[EventId](uri))
         .flatten
@@ -242,6 +259,8 @@ extends OurTestSuite with BeforeAndAfterAll with ProvideActorSystem with Generic
         .toListL
         .await(99.s)
       assert(events == Seq(180, 180/*heartbeat*/, 180/*heartbeat*/))
+
+      eventWatch.isActiveNode = wasActive
     }
 
     //"cancel AkkaHttpClient request" in {

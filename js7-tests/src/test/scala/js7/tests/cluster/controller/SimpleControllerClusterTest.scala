@@ -3,11 +3,11 @@ package js7.tests.cluster.controller
 import cats.instances.vector.*
 import cats.syntax.traverse.*
 import js7.base.problem.Checked.Ops
-import js7.base.problem.{Problem, ProblemException}
+import js7.base.problem.ProblemException
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.data.Problems.ClusterNodeIsNotActiveProblem
+import js7.data.Problems.{AckFromActiveClusterNodeProblem, ClusterNodeIsNotActiveProblem}
 import js7.data.controller.ControllerCommand
 import js7.data.event.EventRequest
 import js7.data.order.OrderEvent.OrderFinished
@@ -32,10 +32,12 @@ final class SimpleControllerClusterTest extends ControllerClusterTester
 
       assert(
         intercept[ProblemException] {
-          primaryController.eventWatch.underlying.observeEventIds(timeout = Some(0.s)).completedL await 99.s
-        }.problem == Problem("This active cluster node does not provide event acknowledgements (two active cluster nodes?)"))
+          primaryController.eventWatch.underlying.observeEventIds(timeout = Some(0.s))
+            .await(99.s).orThrow.completedL await 99.s
+        }.problem == AckFromActiveClusterNodeProblem)
 
-      backupController.eventWatch.underlying.observeEventIds(timeout = Some(0.s)).completedL await 99.s
+      backupController.eventWatch.underlying.observeEventIds(timeout = Some(0.s))
+        .await(99.s).orThrow.completedL await 99.s
 
       val n = sys.props.get("test.speed").fold(1)(_.toInt)
       val orderIds = (1 to n).map(i => OrderId(s"🔶 $i"))

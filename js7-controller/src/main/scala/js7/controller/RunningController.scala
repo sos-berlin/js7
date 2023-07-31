@@ -35,6 +35,7 @@ import js7.base.utils.{Allocated, ProgramTermination}
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatchService
 import js7.cluster.{ClusterNode, WorkingClusterNode}
+import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.akkautils.Akkas.actorSystemResource
 import js7.common.system.ThreadPools
@@ -79,7 +80,7 @@ import scala.util.{Failure, Try}
  */
 final class RunningController private(
   val eventWatch: StrictEventWatch,
-  localUri_ : () => Uri,
+  val webServer: AkkaWebServer,
   val recoveredEventId: EventId,
   val orderApi: OrderApi,
   val controllerState: Task[ControllerState],
@@ -97,7 +98,8 @@ extends MainService with Service.StoppableByRequest
 {
   protected type Termination = ProgramTermination
 
-  @TestOnly lazy val localUri = localUri_()
+  @TestOnly lazy val localUri: Uri =
+    webServer.localUri
 
   val untilTerminated =
     Task.fromFuture(terminated)
@@ -338,7 +340,7 @@ object RunningController
         Service.resource(Task(
           new RunningController(
             recoveredExtract.eventWatch.strict,
-            () => webServer.localUri,
+            webServer,
             recoveredEventId = recoveredExtract.eventId,
             orderApi,
             controllerState.map(_.orThrow),

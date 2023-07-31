@@ -62,6 +62,13 @@ with Service.StoppableByRequest
       .*>(startService(
         untilStopRequested))
 
+
+  @TestOnly def stopSingleWebServers: Task[Unit] =
+    portWebServerAllocated.value
+      .map(_.flatMap(_.map(_.release)))
+      .flatMap(_.sequence)
+      .map(_.combineAll)
+
   def restartWhenHttpsChanges(implicit iox: IOExecutor): Resource[Task,Unit] =
     HttpsDirectoryWatch
       .resource(

@@ -14,6 +14,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.HttpClient.HttpException
 import js7.common.http.RecouplingStreamReader.*
 import js7.common.http.configuration.RecouplingStreamReaderConf
+import js7.data.Problems.AckFromActiveClusterNodeProblem
 import js7.data.event.EventSeqTornProblem
 import monix.catnap.MVar
 import monix.eval.Task
@@ -144,7 +145,7 @@ abstract class RecouplingStreamReader[
             .pure(Right(
               observe(after)
                 .onErrorHandleWith {
-                  case t: ProblemException if t.problem is EventSeqTornProblem =>
+                  case t: ProblemException if isSevereProblem(t.problem) =>
                     Observable.raiseError(t)
                   case t =>
                     Observable.fromTask(
@@ -184,7 +185,7 @@ abstract class RecouplingStreamReader[
                   case Left(problem) =>
                     if (isStopped)
                       Task.left(())  // Fail in next iteration
-                    else if (problem is EventSeqTornProblem)
+                    else if (isSevereProblem(problem))
                       Task.raiseError(problem.throwable)
                     else
                       (problem match {
@@ -307,6 +308,9 @@ object RecouplingStreamReader
       def stopRequested = stopRequested_()
     }.observe(api, after)
   }
+
+  private def isSevereProblem(problem: Problem) =
+    problem.is(EventSeqTornProblem) || problem.is(AckFromActiveClusterNodeProblem)
 
   private class RecouplingPause {
     // This class may be used asynchronously but not concurrently

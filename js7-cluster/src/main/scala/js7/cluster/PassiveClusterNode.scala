@@ -428,7 +428,6 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]: diffx.
                       val failedOver = failedOverStamped.value.event
                       common.ifClusterWatchAllowsActivation(clusterState, failedOver)(
                         Task {
-                          logger.warn("❗️Failover")
                           val file = recoveredJournalFile.file
                           val fileSize =
                             autoClosing(FileChannel.open(file, APPEND)) { out =>
@@ -459,7 +458,6 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]: diffx.
                       val failedOver = failedOverStamped.value.event
                       common.ifClusterWatchAllowsActivation(clusterState, failedOver)(
                         Task {
-                          logger.warn("❗️Failover")
                           writeFailedOverEvent(out, file, failedOverStamped, lastProperEventPosition)
                           builder.rollbackToEventSection()
                           builder.put(failedOverStamped)
@@ -666,6 +664,8 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]: diffx.
     failedOverStamped: Stamped[KeyedEvent[ClusterFailedOver]],
     lastProperEventPosition: Long)
   : Unit = {
+    eventWatch.onFailover()
+    logger.warn("❗️Failover")
     if (out.size > lastProperEventPosition) {
       logger.info(s"Truncating open transaction in ${
         file.getFileName}' file at position $lastProperEventPosition")

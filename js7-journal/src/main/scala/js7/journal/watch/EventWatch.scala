@@ -31,7 +31,7 @@ trait EventWatch
     onlyAcks: Boolean = false)
   : Observable[Stamped[KeyedEvent[E]]]
 
-  def observeEventIds(timeout: Option[FiniteDuration]): Observable[EventId]
+  def observeEventIds(timeout: Option[FiniteDuration]): Task[Checked[Observable[EventId]]]
 
   def when[E <: Event](request: EventRequest[E], predicate: KeyedEvent[E] => Boolean = Every)
   : Task[TearableEventSeq[CloseableIterator, KeyedEvent[E]]]

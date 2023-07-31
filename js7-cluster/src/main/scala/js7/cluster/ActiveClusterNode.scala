@@ -12,16 +12,18 @@ import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.monixutils.ObservablePauseDetector.*
 import js7.base.problem.Checked.*
-import js7.base.problem.{Checked, Problem}
+import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.Tests.isTest
 import js7.base.utils.{AsyncLock, SetOnce}
 import js7.base.web.{HttpClient, Uri}
 import js7.cluster.ActiveClusterNode.*
 import js7.cluster.watch.api.ClusterWatchConfirmation
 import js7.common.http.RecouplingStreamReader
-import js7.data.Problems.{ClusterCommandInapplicableProblem, ClusterNodeIsNotActiveProblem, ClusterSettingNotUpdatable, MissingPassiveClusterNodeHeartbeatProblem, PassiveClusterNodeUrlChangeableOnlyWhenNotCoupledProblem}
+import js7.common.system.startup.Halt
+import js7.data.Problems.{AckFromActiveClusterNodeProblem, ClusterCommandInapplicableProblem, ClusterNodeIsNotActiveProblem, ClusterSettingNotUpdatable, MissingPassiveClusterNodeHeartbeatProblem, PassiveClusterNodeUrlChangeableOnlyWhenNotCoupledProblem}
 import js7.data.cluster.ClusterCommand.{ClusterConfirmCoupling, ClusterStartBackupNode}
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterPassiveLost, ClusterSettingUpdated, ClusterSwitchedOver, ClusterWatchRegistered}
 import js7.data.cluster.ClusterState.{ActiveShutDown, Coupled, Empty, HasNodes, IsDecoupled, NodesAppointed, PassiveLost, PreparedToBeCoupled}
@@ -439,7 +441,6 @@ final class ActiveClusterNode[S <: ClusterableState[S]: diffx.Diff] private[clus
     passiveUri: Uri,
     timing: ClusterTiming)
   : Task[Checked[Completed]] = {
-    def msg = s"observeEventIds($passiveUri)"
     fetchAndHandleAcknowledgedEventIds2(passiveId, passiveUri, timing)
       .flatMap {
         case Left(missingHeartbeatProblem @ MissingPassiveClusterNodeHeartbeatProblem(passiveId, duration)) =>
@@ -487,7 +488,8 @@ final class ActiveClusterNode[S <: ClusterableState[S]: diffx.Diff] private[clus
                 Task.pure(Left(missingHeartbeatProblem))
             })
 
-        case o => Task.pure(o)
+        case o =>
+          Task.pure(o)
       }
       .materialize.flatTap(tried => Task { tried match {
         case Success(Right(Completed)) =>
@@ -495,9 +497,19 @@ final class ActiveClusterNode[S <: ClusterableState[S]: diffx.Diff] private[clus
         case Success(Left(_: MissingPassiveClusterNodeHeartbeatProblem)) =>
           logger.warn("❗ Continue as single active cluster node, without passive node")
         case Success(Left(problem)) =>
-          logger.error(s"$msg failed with $problem")
+          logger.error(s"fetchAndHandleAcknowledgedEventIds($passiveUri) failed with $problem")
+
+        case Failure(t: ProblemException) if t.problem is AckFromActiveClusterNodeProblem =>
+          if (isTest)
+            throw new RuntimeException(s"🟥 Halt suppressed for resting: ${t.problem}")
+          else
+            Halt.haltJava("🟥 HALT because other cluster node has become active",
+              restart = true)
+
         case Failure(t) =>
-          logger.error(s"$msg failed with ${t.toStringWithCauses}", t)
+          logger.error(
+            s"fetchAndHandleAcknowledgedEventIds($passiveUri) failed with ${t.toStringWithCauses}",
+            t)
       }})
       .dematerialize
       .guarantee(Task {
@@ -508,9 +520,8 @@ final class ActiveClusterNode[S <: ClusterableState[S]: diffx.Diff] private[clus
 
   private def fetchAndHandleAcknowledgedEventIds2(passiveId: NodeId, passiveUri: Uri, timing: ClusterTiming)
   : Task[Checked[Completed]] =
-    Task.defer {
-      logger.info(s"Fetching acknowledgements from passive cluster $passiveId")
-      Observable
+    logger.debugTask(HttpClient
+      .liftProblem(Observable
         .fromResource(
           common.clusterNodeApi(
             Admission(passiveUri, passiveNodeUserAndPassword),
@@ -523,7 +534,8 @@ final class ActiveClusterNode[S <: ClusterableState[S]: diffx.Diff] private[clus
             .takeWhile(_ => !noMoreJournaling)  // Race condition: may be set too late
             .mapEval {
               case Left(noHeartbeatSince) =>
-                val problem = MissingPassiveClusterNodeHeartbeatProblem(passiveId, noHeartbeatSince.elapsed)
+                val problem: Problem =
+                  MissingPassiveClusterNodeHeartbeatProblem(passiveId, noHeartbeatSince.elapsed)
                 logger.trace(problem.toString)
                 Task.left(problem)
 
@@ -535,34 +547,26 @@ final class ActiveClusterNode[S <: ClusterableState[S]: diffx.Diff] private[clus
                     .mapTo[Completed]
                 }.map(_ => Right(Completed))
             }
-            .collect {
-              case Left(problem) => problem
-              //case Right(Completed) => (ignore)
-            })
+            .collect { case Left(problem) => problem })
         .headOptionL
-        .map {
-          case Some(problem) => Left(problem)
-          case None => Right(Completed)
-        }
-        .guaranteeCase(exitCase => Task(
-          logger.debug(s"fetchAndHandleAcknowledgedEventIds ended => $exitCase")))
-    }
+        .map(_.toLeft(Completed)))
+      .map(_.flatten))
 
   private def awaitAcknowledgement(passiveUri: Uri, eventId: EventId): Task[Checked[EventId]] =
     logger.debugTask(common
       .clusterNodeApi(Admission(passiveUri, passiveNodeUserAndPassword), "awaitAcknowledgement")
-      .use(api =>
-        observeEventIds(api, heartbeat = None)
-          .dropWhile(_ < eventId)
-          .headOptionL
-          .map {
-            case Some(eId) => Right(eId)
-            case _ => Left(Problem.pure(
-              s"awaitAcknowledgement($eventId): Observable ended unexpectedly"))
-          })
+      .use(api => HttpClient
+        .liftProblem(
+          observeEventIds(api, heartbeat = None)
+            .dropWhile(_ < eventId)
+            .headOptionL
+            .map(_.toRight(Problem.pure(
+              s"awaitAcknowledgement($eventId): Observable ended unexpectedly"))))
+        .map(_.flatten))
       .logWhenItTakesLonger("passive cluster node acknowledgement"))
 
-  private def observeEventIds(api: ClusterNodeApi, heartbeat: Option[FiniteDuration]): Observable[EventId] =
+  private def observeEventIds(api: ClusterNodeApi, heartbeat: Option[FiniteDuration])
+  : Observable[EventId] =
     RecouplingStreamReader
       .observe[EventId, EventId, ClusterNodeApi](
         toIndex = identity,

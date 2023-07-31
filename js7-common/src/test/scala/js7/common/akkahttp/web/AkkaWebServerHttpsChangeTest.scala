@@ -160,8 +160,11 @@ final class AkkaWebServerHttpsChangeTest extends OurTestSuite with BeforeAndAfte
     }
 
     "Write remaining of server certificate" in {
-      if (writtenLength == 0) certFile := ""
-      certFile ++= changedCert.drop(writtenLength)
+      if (writtenLength == 0) {
+        certFile := changedCert
+      } else {
+        certFile ++= changedCert.drop(writtenLength)
+      }
       restarted.future.await(99.s)
 
       // Due to the second changed, the SinglePortAkkaWebServer is being restarted twice:
@@ -179,7 +182,7 @@ final class AkkaWebServerHttpsChangeTest extends OurTestSuite with BeforeAndAfte
       }
       val response = tried.get
       assert(response.status == OK)
-      assert(response.utf8String.await(99.s) == "OKAY-2")
+      assert(Set("OKAY-2", "OKAY-3")(response.utf8String.await(99.s)))
     }
   }
 }
