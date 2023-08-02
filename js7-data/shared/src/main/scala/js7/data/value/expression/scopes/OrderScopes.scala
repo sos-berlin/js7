@@ -114,16 +114,16 @@ trait ProcessingOrderScopes extends OrderScopes
     1 + order.historicJobExecutionCount(jobKey, workflow)
 
   private def js7JobVariablesScope = NamedValueScope(Map(
-    "js7JobName" -> StringValue(simpleJobName),
+    "js7JobName" -> StringValue(simpleJobName), // Legacy
     "js7JobExecutionCount" -> NumberValue(jobExecutionCount),
     "js7Job" -> ObjectValue(Map(
       "name" -> StringValue(simpleJobName),
       "sigkillDelayMillis" ->
         workflowJob.sigkillDelay.map(_.toMillis).fold[Value](MissingValue)(NumberValue(_)),
       "timeoutMillis" ->
-        workflowJob.timeout.map(_.toMillis).fold[Value](MissingValue)(NumberValue(_)))),
-    "parallelism" -> NumberValue(workflowJob.parallelism),
-    "executionCount" -> NumberValue(jobExecutionCount)))
+        workflowJob.timeout.map(_.toMillis).fold[Value](MissingValue)(NumberValue(_)),
+      "parallelism" -> NumberValue(workflowJob.parallelism),
+      "executionCount" -> NumberValue(jobExecutionCount)))))
 
   /** To avoid name clash, JobResources are not allowed to access order variables. */
   final lazy val scopeForJobResources =
@@ -138,7 +138,11 @@ trait ProcessingOrderScopes extends OrderScopes
 
   /** For defaultArguments (Execute and WorkflowJob). */
   private lazy val scopeForOrderDefaultArguments =
-    js7JobVariablesScope |+| variablelessOrderScope |+| jobResourceScope
+    js7JobVariablesScope |+|
+      pureOrderScope |+|
+      // Joacim thinks, without Order variable, it was more predictable for the user:
+      // variablelessOrderScope |+|
+      jobResourceScope
 
   final def evalLazilyJobResourceVariables(jobResource: JobResource)
   : MapView[String, Checked[Value]] =
