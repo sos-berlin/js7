@@ -138,7 +138,11 @@ trait ProcessingOrderScopes extends OrderScopes
 
   /** For defaultArguments (Execute and WorkflowJob). */
   private lazy val scopeForOrderDefaultArguments =
-    js7JobVariablesScope |+| variablelessOrderScope |+| jobResourceScope
+    js7JobVariablesScope |+|
+      pureOrderScope |+|
+      // Joacim thinks, without Order variable, it was more predictable for the user:
+      // variablelessOrderScope |+|
+      jobResourceScope
 
   final def evalLazilyJobResourceVariables(jobResource: JobResource)
   : MapView[String, Checked[Value]] =
