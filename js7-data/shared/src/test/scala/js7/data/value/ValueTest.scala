@@ -5,7 +5,7 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.data.value.ValueType.UnexpectedValueTypeProblem
-import js7.tester.CirceJsonTester.testJson
+import js7.tester.CirceJsonTester.{testJson, testJsonEncoder}
 
 final class ValueTest extends OurTestSuite
 {
@@ -41,6 +41,10 @@ final class ValueTest extends OurTestSuite
 
       "Boolean" in {
         testJson[ValueType](BooleanValue, json""" "Boolean" """)
+      }
+
+      "Any" in {
+        testJsonEncoder[ValueType](AnyValue, json""" null """)
       }
 
       "List" in {

@@ -13,7 +13,7 @@ import js7.data.value.expression.Expression.{NamedValue, StringConstant}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.expression.Scope
 import js7.data.value.expression.scopes.NowScope
-import js7.data.value.{BooleanValue, ListType, ListValue, NamedValues, NumberValue, ObjectType, ObjectValue, StringValue}
+import js7.data.value.{AnyValue, BooleanValue, ListType, ListValue, NamedValues, NumberValue, ObjectType, ObjectValue, StringValue}
 import js7.data.workflow.OrderParameterList.{MissingObjectFieldsProblem, MissingOrderArgumentProblem, UndeclaredObjectFieldsProblem, UndeclaredOrderArgumentProblem, WrongValueTypeProblem}
 import js7.data.workflow.OrderParameterListTest.*
 import js7.tester.CirceJsonTester.testJson
@@ -27,12 +27,12 @@ final class OrderParameterListTest extends OurTestSuite
         "myRequired": {
           "type": "Number"
         },
+        "myRequiredAny": {},
         "myOptional": {
           "type": "String",
           "default": "'DEFAULT VALUE'"
         },
-        "myOptional2": {
-          "type": "String",
+        "myOptionalAny": {
           "default": "$$myOptional"
         },
         "myFinal": {
@@ -85,6 +85,7 @@ final class OrderParameterListTest extends OurTestSuite
       assert(prepareOrderArguments(NamedValues.empty) == Left(
         Problem.Combined(Set(
           MissingOrderArgumentProblem(myRequiredParameter).toSerialized,
+          MissingOrderArgumentProblem(myRequiredAnyParameter).toSerialized,
           MissingOrderArgumentProblem(myObjectParameter).toSerialized,
           MissingOrderArgumentProblem(myListParameter).toSerialized,
           EvaluationFailedProblem("myFinal2", expr("$myRequired"),
@@ -97,6 +98,7 @@ final class OrderParameterListTest extends OurTestSuite
     "Undeclared argument" in {
       assert(prepareOrderArguments(NamedValues(
         "myRequired" -> myRequired,
+        "myRequiredAny" -> myRequired,
         "myObject" -> myObject,
         "myList" -> myList,
         "UNEXPECTED" -> BooleanValue.True)) ==
@@ -106,6 +108,7 @@ final class OrderParameterListTest extends OurTestSuite
     "Wrong type" in {
       assert(prepareOrderArguments(NamedValues(
         "myRequired" -> BooleanValue.True,
+        "myRequiredAny" -> BooleanValue.True,
         "myObject" -> ObjectValue(Map(
           "a" -> NumberValue(0),
           "b" -> ObjectValue(Map(
@@ -120,6 +123,7 @@ final class OrderParameterListTest extends OurTestSuite
     "Missing object field" in {
       assert(prepareOrderArguments(NamedValues(
         "myRequired" -> myRequired,
+        "myRequiredAny" -> myRequired,
         "myObject" -> ObjectValue(Map(
           "a" -> NumberValue(0),
           "b" -> ObjectValue(Map.empty))),
@@ -130,6 +134,7 @@ final class OrderParameterListTest extends OurTestSuite
     "Undeclared object fields" in {
       assert(prepareOrderArguments(NamedValues(
         "myRequired" -> myRequired,
+        "myRequiredAny" -> myRequired,
         "myObject" -> myObject,
         "myList" -> ListValue(Seq(
           ObjectValue(Map(
@@ -143,6 +148,7 @@ final class OrderParameterListTest extends OurTestSuite
     "Mixed problems" in {
       assert(prepareOrderArguments(NamedValues(
         "myRequired" -> BooleanValue.True,
+        "myRequiredAny" -> myRequired,
         "myList" -> ListValue(Seq(
           ObjectValue(Map(
             "a" -> NumberValue(0),
@@ -159,16 +165,17 @@ final class OrderParameterListTest extends OurTestSuite
     "Minimal arguments — defaults are recalculated with each access" - {
       lazy val minimalArgs = NamedValues(
         "myRequired" -> myRequired,
+        "myRequiredAny" -> myRequired,
         "myObject" -> myObject,
         "myList" -> myList)
 
       "prepareOrderArguments (arguments copied to the order)"  in {
-        // myOptional2 and myFinal2 are copied to the order
+        // myOptionalAny and myFinal2 are copied to the order
         // because they are non-constant expressions.
         // TODO This may be detected, because both are actually pure
         assert(prepareOrderArguments(minimalArgs) == Right(
           minimalArgs ++ Map(
-            "myOptional2" -> StringValue("DEFAULT VALUE"),
+            "myOptionalAny" -> StringValue("DEFAULT VALUE"),
             "myFinal2" -> myRequired,
             "myControllerId" -> StringValue("CONTROLLER"),
             "myScheduledFor" -> StringValue("2021-12-12"),
@@ -186,6 +193,7 @@ final class OrderParameterListTest extends OurTestSuite
     "Overriding arguments — only final variables are calculated with each access" - {
       lazy val overridingArgs = NamedValues(
         "myRequired" -> myRequired,
+        "myRequiredAny" -> myRequired,
         "myOptional" -> StringValue("OVERRIDDEN OPTIONAL"),
         "myObject" -> myObject,
         "myList" -> myList)
@@ -193,7 +201,7 @@ final class OrderParameterListTest extends OurTestSuite
       "prepareOrderArguments (arguments copied to the order)" in {
         assert(prepareOrderArguments(overridingArgs) == Right(
           overridingArgs ++ Map(
-            "myOptional2" -> StringValue("OVERRIDDEN OPTIONAL"),
+            "myOptionalAny" -> StringValue("OVERRIDDEN OPTIONAL"),
             "myFinal2" -> myRequired,
             "myControllerId" -> StringValue("CONTROLLER"),
             "myScheduledFor" -> StringValue("2021-12-12"),
@@ -222,7 +230,7 @@ final class OrderParameterListTest extends OurTestSuite
   "nameToExpression" in {
     assert(orderParameterList.nameToExpression.toMap == Map(
       "myOptional" -> StringConstant("DEFAULT VALUE"),
-      "myOptional2" -> NamedValue("myOptional"),
+      "myOptionalAny" -> NamedValue("myOptional"),
       "myFinal" -> StringConstant("FINAL VALUE"),
       "myFinal2" -> expr("$myRequired"),
       "myControllerId" -> expr("$js7ControllerId"),
@@ -240,6 +248,7 @@ final class OrderParameterListTest extends OurTestSuite
 private object OrderParameterListTest
 {
   private val myRequiredParameter = OrderParameter.Required("myRequired", NumberValue)
+  private val myRequiredAnyParameter = OrderParameter.Required("myRequiredAny", AnyValue)
   private val objectType = ObjectType(Map(
     "a" -> NumberValue,
     "b" -> ObjectType(Map(
@@ -251,8 +260,9 @@ private object OrderParameterListTest
 
   val orderParameterList = OrderParameterList(Seq(
     myRequiredParameter,
+    myRequiredAnyParameter,
     OrderParameter.Optional("myOptional", StringValue, expr("'DEFAULT VALUE'")),
-    OrderParameter.Optional("myOptional2", StringValue, expr("$myOptional")),
+    OrderParameter.Optional("myOptionalAny", AnyValue, expr("$myOptional")),
     OrderParameter.Final("myFinal", expr("'FINAL VALUE'")),
     OrderParameter.Final("myFinal2", expr("$myRequired")),
     OrderParameter.Final("myControllerId", expr("$js7ControllerId")),
