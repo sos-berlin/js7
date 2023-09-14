@@ -154,7 +154,7 @@ final class WorkflowPrinter(sb: StringBuilder) {
       case ExplicitEnd(_) =>
         sb ++= "end;\n"
 
-      case Execute.Anonymous(workflowExecutable, _) =>
+      case Execute.Anonymous(workflowExecutable, _, _) =>
         sb ++= "execute "
         appendWorkflowExecutable(workflowExecutable)
         sb ++= ";\n"

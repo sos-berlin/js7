@@ -3,7 +3,6 @@ package js7.data.workflow.instructions
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import js7.base.utils.typeclasses.IsEmpty.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.data.agent.AgentPath
 import js7.data.source.SourcePos
@@ -16,6 +15,8 @@ import js7.data.workflow.{Instruction, Workflow}
   */
 sealed trait Execute extends Instruction
 {
+  def defaultArguments: Map[String, Expression]
+
   override def reduceForAgent(agentPath: AgentPath, workflow: Workflow) =
     if (isVisibleForAgent(agentPath, workflow))
       this
@@ -28,8 +29,8 @@ object Execute
   def apply(name: WorkflowJob.Name) =
     Named(name)
 
-  def apply(name: WorkflowJob.Name, defaultArguments: Map[String, Expression]) =
-    Named(name, defaultArguments)
+  def apply(name: WorkflowJob.Name, arguments: Map[String, Expression]) =
+    Named(name, arguments)
 
   def apply(workflowJob: WorkflowJob) =
     Anonymous(workflowJob)
@@ -48,14 +49,15 @@ object Execute
       workflow.findJob(name) // Should always find!
         .fold(_ => true, _ isExecutableOnAgent agentPath)
 
+    override def productPrefix = "Execute.Named"
     //override def toString = s"execute $name, defaultArguments=$defaultArguments"
   }
   object Named {
-    implicit val jsonEncoder: Encoder.AsObject[Named] = named =>
+    implicit val jsonEncoder: Encoder.AsObject[Named] = o =>
       JsonObject(
-        "jobName" -> named.name.asJson,
-        "defaultArguments" -> named.defaultArguments.??.asJson,
-        "sourcePos" -> named.sourcePos.asJson)
+        "jobName" -> o.name.asJson,
+        "defaultArguments" -> o.defaultArguments.??.asJson,
+        "sourcePos" -> o.sourcePos.asJson)
     implicit val jsonDecoder: Decoder[Named] = cursor =>
       for {
         name <- cursor.get[WorkflowJob.Name]("jobName")
@@ -66,6 +68,7 @@ object Execute
 
   final case class Anonymous(
     job: WorkflowJob,
+    defaultArguments: Map[String, Expression] = Map.empty,
     sourcePos: Option[SourcePos] = None)
   extends Execute
   {
@@ -76,6 +79,7 @@ object Execute
     override def isVisibleForAgent(agentPath: AgentPath, workflow: Workflow) =
       job isExecutableOnAgent agentPath
 
+    override def productPrefix = "Execute.Anonymous"
     override def toString = s"execute($job)$sourcePosToString"
   }
   object Anonymous {
@@ -83,12 +87,14 @@ object Execute
     implicit val jsonEncoder: Encoder.AsObject[Anonymous] = o =>
       JsonObject(
         "job" -> o.job.asJson,
+        "defaultArguments" -> o.defaultArguments.??.asJson,
         "sourcePos" -> o.sourcePos.asJson)
     implicit val jsonDecoder: Decoder[Anonymous] = cursor =>
       for {
         job <- cursor.get[WorkflowJob]("job")
+        args <- cursor.getOrElse[Map[String, Expression]]("defaultArguments")(Map.empty)
         sourcePos <- cursor.get[Option[SourcePos]]("sourcePos")
-      } yield Anonymous(job, sourcePos)
+      } yield Anonymous(job, args, sourcePos)
   }
 
   implicit val jsonCodec: TypedJsonCodec[Execute] = TypedJsonCodec(

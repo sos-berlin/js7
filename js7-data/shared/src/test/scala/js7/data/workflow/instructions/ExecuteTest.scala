@@ -6,6 +6,7 @@ import js7.data.agent.AgentPath
 import js7.data.job.{PathExecutable, ShellScriptExecutable}
 import js7.data.source.SourcePos
 import js7.data.value.expression.Expression.{NamedValue, NumericConstant, StringConstant}
+import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.Instruction
 import js7.data.workflow.instructions.Instructions.jsonCodec
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -68,9 +69,13 @@ final class ExecuteTest extends OurTestSuite
                 "ENV-VAR" -> NamedValue("VAR"),
                 "NUMBER" -> NumericConstant(7))),
             Map("ARG" -> StringConstant("VALUE"))),
+          Map("myArgument" -> expr("44")),
           Some(SourcePos(1, 2))),
         json"""{
           "TYPE": "Execute.Anonymous",
+          "defaultArguments": {
+            "myArgument": "44"
+          },
           "job": {
             "agentPath": "AGENT",
             "executable": {
