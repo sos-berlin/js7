@@ -58,7 +58,7 @@ trait ProcessJobLauncher extends JobLauncher
       Right(Map.empty)
     else {
       import processOrder.{order, workflow}
-      for (defaultArguments <- processOrder.checkedDefaultArguments) yield
+      for (defaultArguments <- processOrder.checkedJs1DefaultArguments) yield
         (defaultArguments.view ++ order.v1CompatibleNamedValues(workflow))
           .map { case (k, v) => k -> v.toStringValue }
           .collect {

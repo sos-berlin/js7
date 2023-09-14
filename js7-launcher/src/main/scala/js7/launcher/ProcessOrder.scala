@@ -46,7 +46,7 @@ extends ProcessingOrderScopes
         NameToCheckedValueScope(evalLazilyJobResourceVariables(jobResource)))
 
   /** Eagerly evaluated defaultArguments, used for JS1 compatibility. */
-  lazy val checkedDefaultArguments: Checked[Map[String, Value]] =
+  lazy val checkedJs1DefaultArguments: Checked[Map[String, Value]] =
     nameToLazyDefaultArgument
       .toVector
       .traverse { case (k, checked) => checked.map(k -> _) }
