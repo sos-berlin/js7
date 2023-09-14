@@ -151,7 +151,7 @@ final class StdoutTest extends OurTestSuite with ControllerAgentForScalaTest
 
 object StdoutTest
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
   private val agentPath = AgentPath("AGENT")
   private val chunkSize = 50
   private val delay = 200.ms

@@ -8,7 +8,7 @@ import js7.common.scalautil.ScalaThreadLocal.*
 import scala.jdk.CollectionConverters.*
 
 object ScalaStax {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   implicit final class RichStartElement(private val delegate: StartElement) extends AnyVal {
     def attributes: Iterator[Attribute] =

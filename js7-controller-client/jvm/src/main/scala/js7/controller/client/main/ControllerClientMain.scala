@@ -19,7 +19,7 @@ import scala.util.control.NonFatal
  */
 object ControllerClientMain {
 
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   def main(args: Array[String]): Unit =
     try {

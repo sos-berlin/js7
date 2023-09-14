@@ -240,5 +240,5 @@ final class JournaledProxyClusterTest extends OurTestSuite with ClusterProxyTest
 
 object JournaledProxyClusterTest
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 }

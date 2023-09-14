@@ -12,7 +12,7 @@ import scala.util.{Failure, Try}
   * @author Joacim Zschimmer
   */
 object Exceptions {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   def repeatUntilNoException[A](timeout: FiniteDuration, delayNext: FiniteDuration)(body: => A): A =
     repeatUntilNoException(deadline = now + timeout, delayNext)(body)

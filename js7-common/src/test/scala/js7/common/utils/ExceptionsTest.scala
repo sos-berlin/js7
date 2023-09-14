@@ -84,5 +84,5 @@ final class ExceptionsTest extends OurTestSuite {
 }
 
 object ExceptionsTest {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 }

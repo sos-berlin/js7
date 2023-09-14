@@ -131,7 +131,7 @@ private[watch] final class JournalIndex(torn: PositionAnd[EventId], size: Int)
 object JournalIndex
 {
   private val MinimumLength = 100
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   private def shrinkArray(array: Array[Long], length: Int): Array[Long] =
     if (length == array.length)

@@ -155,7 +155,7 @@ final class ProcessDriver(
 
 object ProcessDriver
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   /** Linux may return a "busy" error when starting many processes at once. */
   private val globalStartProcessLock = AsyncLock("Process start")

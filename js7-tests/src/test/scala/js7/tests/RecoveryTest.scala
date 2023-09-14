@@ -149,7 +149,7 @@ final class RecoveryTest extends OurTestSuite
 }
 
 private object RecoveryTest {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   private val TestConfig = config"js7.journal.remove-obsolete-files = false"
   private val AgentPaths = AgentPath("agent-111") :: AgentPath("agent-222") :: Nil

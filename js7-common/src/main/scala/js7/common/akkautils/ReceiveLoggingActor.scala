@@ -52,7 +52,7 @@ trait ReceiveLoggingActor extends SimpleStateActor
 }
 
 object ReceiveLoggingActor {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   trait WithStash extends akka.actor.Stash with ReceiveLoggingActor
   {

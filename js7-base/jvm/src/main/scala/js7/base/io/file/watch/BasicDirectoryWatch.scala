@@ -102,7 +102,7 @@ extends Service.StoppableByRequest
 
 object BasicDirectoryWatch
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   val systemWatchDelay = if (isMac/*polling*/) 2.s else 0.s
 

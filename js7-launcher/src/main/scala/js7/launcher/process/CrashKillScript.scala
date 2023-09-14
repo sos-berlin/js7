@@ -98,7 +98,7 @@ extends AutoCloseable {
 }
 
 object CrashKillScript {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
   private val LineSeparator = sys.props("line.separator")
   private val CleanArgument = "([A-Za-z0-9=,;:.+_/#-]*)".r      // No shell meta characters
 

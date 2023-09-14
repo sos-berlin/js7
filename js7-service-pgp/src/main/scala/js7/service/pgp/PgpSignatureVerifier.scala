@@ -84,7 +84,7 @@ object PgpSignatureVerifier extends SignatureVerifier.Companion
   val filenameExtension = ".asc"
   val recommendedKeyDirectoryName = "trusted-pgp-keys"
 
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   def checked(publicKeys: Seq[ByteArray], origin: String) =
     Checked.catchNonFatal(

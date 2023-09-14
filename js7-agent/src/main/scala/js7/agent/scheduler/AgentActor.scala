@@ -411,7 +411,7 @@ extends Actor with Stash with SimpleStateActor
 
 object AgentActor
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   object Input {
     final case class Start(agentState: AgentState)

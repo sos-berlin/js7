@@ -18,7 +18,7 @@ import org.bouncycastle.openpgp.{PGPKeyRingGenerator, PGPSecretKey, PGPSignature
   */
 object PgpKeyGenerator
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   def generateSecretKey(id: SignerId, password: SecretString, keySize: Int = 4096): PGPSecretKey = {
     // See https://stackoverflow.com/questions/3087049/bouncy-castle-rsa-keypair-generation-using-lightweight-api

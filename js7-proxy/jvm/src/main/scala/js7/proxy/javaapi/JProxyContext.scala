@@ -74,5 +74,5 @@ extends HasCloser
 
 object JProxyContext
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 }

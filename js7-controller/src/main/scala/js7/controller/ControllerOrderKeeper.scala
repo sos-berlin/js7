@@ -1682,7 +1682,7 @@ with MainJournalingActor[ControllerState, Event]
 
 private[controller] object ControllerOrderKeeper
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   object Input {
     final case object Start

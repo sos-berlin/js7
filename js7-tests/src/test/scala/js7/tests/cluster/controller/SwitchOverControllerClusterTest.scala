@@ -97,5 +97,5 @@ final class SwitchOverControllerClusterTest extends ControllerClusterTester
 
 object SwitchOverControllerClusterTest
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 }

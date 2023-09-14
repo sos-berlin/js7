@@ -192,7 +192,7 @@ extends MainService with Service.StoppableByRequest
 
 object RunningController
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   @TestOnly
   def blockingRun(conf: ControllerConfiguration, timeout: FiniteDuration)

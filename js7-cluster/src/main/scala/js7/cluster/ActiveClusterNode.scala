@@ -691,6 +691,6 @@ final class ActiveClusterNode[S <: ClusterableState[S]: diffx.Diff] private[clus
 
 object ActiveClusterNode
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
   private val passiveNodeCouplingResponseTimeout = 3.s
 }

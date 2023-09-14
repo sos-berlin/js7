@@ -8,7 +8,7 @@ import js7.common.system.startup.StartUp.printlnWithClockIgnoringException
   */
 object Halt
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   def initialize() = {}
 

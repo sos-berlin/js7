@@ -44,7 +44,7 @@ final class JavaShutdownHook private(onShutdown: () => Unit, name: String) exten
 }
 
 object JavaShutdownHook {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
   private var shutdown = false
 
   def add(onShutdown: () => Unit, name: String) = new JavaShutdownHook(onShutdown, name)

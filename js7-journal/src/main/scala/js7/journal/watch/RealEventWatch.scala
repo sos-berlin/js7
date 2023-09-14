@@ -343,7 +343,7 @@ trait RealEventWatch extends EventWatch
 object RealEventWatch
 {
   private val NoMoreObservable = Task.pure((None, () => throw new NoSuchElementException/*dead code*/))
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   private def lastOfIterator[A <: AnyRef](iterator: CloseableIterator[A]): CloseableIterator[A] = {
     var last = null.asInstanceOf[A]

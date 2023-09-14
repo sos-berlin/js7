@@ -164,5 +164,5 @@ final class FileSnapshotableStateBuilder[S <: SnapshotableState[S]](
 
 object FileSnapshotableStateBuilder
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 }

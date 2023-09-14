@@ -73,7 +73,7 @@ extends (UserId => Option[U])
 
 object IdToUser
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
   private val UsersConfigPath = "js7.auth.users"
   private val PasswordRegex = "([^:]+):(.*)".r
 

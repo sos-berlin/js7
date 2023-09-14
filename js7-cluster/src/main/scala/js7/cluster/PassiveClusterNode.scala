@@ -768,7 +768,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]: diffx.
 object PassiveClusterNode
 {
   private val TmpSuffix = ".tmp"  // Duplicate in JournalActor
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   private val EndOfJournalFileMarker = Problem.pure("End of journal file (internal use only)")
 }

@@ -167,7 +167,7 @@ private[journal] trait TestJournalMixin extends BeforeAndAfterAll { this: Suite 
 
 private[journal] object TestJournalMixin
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   private def normalizeValues(json: Json): Json = json.asObject match {
     case Some(jsonObject) =>

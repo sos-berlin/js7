@@ -437,7 +437,7 @@ final class SessionRouteIsNotPublicTest extends SessionRouteTest(isPublic = fals
 final class SessionRouteIsPublicTest extends SessionRouteTest(isPublic = true)
 
 object SessionRouteTest {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
   private val AUserAndPassword = UserAndPassword(UserId("A-USER"), SecretString("A-PASSWORD"))
   private val BUserAndPassword = UserAndPassword(UserId("B-USER"), SecretString("B-PASSWORD"))
 }

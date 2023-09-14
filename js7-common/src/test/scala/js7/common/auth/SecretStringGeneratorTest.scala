@@ -41,7 +41,7 @@ final class SecretStringGeneratorTest extends OurTestSuite {
 }
 
 private object SecretStringGeneratorTest {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
   private val ExpectedCharacters = Set('-', '_') ++ ('A' to 'Z') ++ ('a' to 'z') ++ ('0' to '9')
   private val SecretSize = 24   // = 28/3*4
 }

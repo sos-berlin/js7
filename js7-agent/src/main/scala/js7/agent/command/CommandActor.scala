@@ -117,7 +117,7 @@ extends Actor {
 object CommandActor {
   intelliJuseImport(StringInstantJsonCodec)
 
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   object Input {
     final case class Execute(

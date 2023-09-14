@@ -262,7 +262,7 @@ extends Service.StoppableByRequest
 
 object ClusterNode
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   def recoveringResource[S <: ClusterableState[S] : diffx.Diff : Tag](
     akkaResource: Resource[Task, ActorSystem],

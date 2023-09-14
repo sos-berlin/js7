@@ -28,7 +28,7 @@ trait CatchingSupervisorStrategy[A] extends SupervisorStrategy {
 }
 
 object CatchingSupervisorStrategy {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
   val StoppingDecider: Decider = {
     case _ => Stop
   }

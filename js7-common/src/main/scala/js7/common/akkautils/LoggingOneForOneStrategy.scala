@@ -42,7 +42,7 @@ extends OneForOneStrategy(maxNrOfRetries = 0, loggingEnabled = loggingEnabled)(d
 }
 
 object LoggingOneForOneStrategy {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   final val defaultStrategy: SupervisorStrategy = {
     new LoggingOneForOneStrategy()(defaultDecider)

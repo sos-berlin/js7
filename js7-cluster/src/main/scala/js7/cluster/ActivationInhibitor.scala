@@ -127,7 +127,7 @@ private[cluster] final class ActivationInhibitor
 
 private[cluster] object ActivationInhibitor
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   def inhibitActivationOfPassiveNode(
     setting: ClusterSetting,

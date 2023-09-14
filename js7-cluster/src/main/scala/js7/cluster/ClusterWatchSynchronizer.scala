@@ -330,7 +330,7 @@ private final class ClusterWatchSynchronizer(
 
 object ClusterWatchSynchronizer
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
   private val heartbeatSessionNr = Iterator.from(1)
 
   private type RegisterClusterWatchId = (ClusterWatchConfirmation, Boolean) => Task[Checked[Unit]]

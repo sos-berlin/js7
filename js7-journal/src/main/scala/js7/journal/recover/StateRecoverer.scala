@@ -65,7 +65,7 @@ private final class StateRecoverer[S <: SnapshotableState[S]](
 
 object StateRecoverer
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   def resource[S <: SnapshotableState[S]](journalLocation: JournalLocation, config: Config)
     (implicit S: SnapshotableState.Companion[S])

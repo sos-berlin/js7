@@ -27,7 +27,7 @@ final case class JournalConf(
 
 object JournalConf
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
   private val checkStateKey = "js7.journal.slow-check-state"
 
   def fromConfig(config: Config) = {

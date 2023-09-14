@@ -36,5 +36,5 @@ final class Synchronizer(what: String)
 
 object Synchronizer {
   private val LogAfter = 100.ms
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 }

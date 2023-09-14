@@ -251,7 +251,7 @@ final class FileWatchManager(
 
 object FileWatchManager
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
   private val CanceledException = new Exception
 
   def relativePathToOrderId(fileWatch: FileWatch, relativePath: String): Option[Checked[OrderId]] = {

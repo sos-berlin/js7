@@ -399,7 +399,7 @@ extends Service.StoppableByRequest
 
 object DedicatedSubagent
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   def resource(
     subagentId: SubagentId,

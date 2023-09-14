@@ -24,7 +24,7 @@ import scala.util.control.NonFatal
  */
 object Akkas
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   def newActorSystem(
     name: String,

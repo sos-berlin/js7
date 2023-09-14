@@ -69,5 +69,5 @@ private object HttpsDirectoryWatch {
   : Resource[Task, HttpsDirectoryWatch] =
     Service.resource(Task(new HttpsDirectoryWatch(settings, files, onHttpsKeyOrCertChanged)))
 
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 }

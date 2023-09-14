@@ -234,7 +234,7 @@ final class GateKeeper[U <: User](
 
 object GateKeeper
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   def apply[U <: User: User.Companion](
     binding: WebServerBinding,

@@ -268,7 +268,7 @@ final class ControllerRepoTest extends OurTestSuite
 
 object ControllerRepoTest
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   private val userAndPassword = UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD"))
   private val AWorkflowPath = WorkflowPath("A")

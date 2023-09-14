@@ -82,5 +82,5 @@ private[provider] trait Observing extends OrderProvider {
 
 object Observing
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 }

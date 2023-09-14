@@ -592,7 +592,7 @@ final class ExecuteTest extends OurTestSuite with ControllerAgentForScalaTest
 
 object ExecuteTest
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
   private val agentPath = AgentPath("AGENT")
 
   private def returnCodeScript(returnCode: Int) =

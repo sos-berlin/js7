@@ -275,7 +275,7 @@ extends Observable[Seq[DirectoryEvent]]
 
 object DirectoryEventDelayer
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   object syntax {
     implicit final class RichDelayLineObservable(private val self: Observable[DirectoryEvent])

@@ -120,5 +120,5 @@ trait RouteProvider extends ExceptionHandling
 }
 
 object RouteProvider {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 }

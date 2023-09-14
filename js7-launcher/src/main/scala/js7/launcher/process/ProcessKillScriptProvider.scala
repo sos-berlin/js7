@@ -56,7 +56,7 @@ final class ProcessKillScriptProvider extends HasCloser
 }
 
 object ProcessKillScriptProvider {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
   private val WindowsScriptResource = JavaResource("js7/launcher/process/scripts/windows/kill_task.cmd")
   private val UnixScriptResource = JavaResource("js7/launcher/process/scripts/unix/kill_task.sh")
 

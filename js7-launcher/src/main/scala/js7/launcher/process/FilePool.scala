@@ -51,7 +51,7 @@ extends AutoCloseable
 
 private[process] object FilePool
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   final case class FileSet(shellReturnValuesProvider: ShellReturnValuesProvider)
   {

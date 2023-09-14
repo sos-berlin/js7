@@ -194,7 +194,7 @@ class RichProcess protected[process](
 
 object RichProcess
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   def createStdFiles(directory: Path, id: String): Map[StdoutOrStderr, Path] =
     (StdoutOrStderr.values map { o => o -> newLogFile(directory, id, o) }).toMap

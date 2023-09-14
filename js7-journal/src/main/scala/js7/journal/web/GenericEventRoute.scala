@@ -259,7 +259,7 @@ object GenericEventRoute
     Observable[Stamped[KeyedEvent[Event]]] =>
       Observable[Stamped[KeyedEvent[Event]]]
 
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
   private val LF = ByteString("\n")
 
   private object CanceledException extends Exception with NoStackTrace

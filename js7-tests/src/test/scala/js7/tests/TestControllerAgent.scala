@@ -49,7 +49,7 @@ object TestControllerAgent
   private val TestWorkflowPath = WorkflowPath("test")
   private val TestPathExecutable = RelativePathExecutable("test")
   private val StdoutRowSize = 1000
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   def main(args: Array[String]): Unit = {
     lazy val directory =

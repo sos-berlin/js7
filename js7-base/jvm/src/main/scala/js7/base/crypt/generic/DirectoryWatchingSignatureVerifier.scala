@@ -162,7 +162,7 @@ extends SignatureVerifier with Service.StoppableByRequest
 object DirectoryWatchingSignatureVerifier extends SignatureVerifier.Companion
 {
   private val configPath = "js7.configuration.trusted-signature-keys"
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   protected type MySignature = GenericSignature
   protected type MySignatureVerifier = DirectoryWatchingSignatureVerifier

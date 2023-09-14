@@ -167,7 +167,7 @@ extends Actor {
 
 object SessionActor
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   private[session] def props[S <: Session]
     (newSession: SessionInit => S, config: Config)

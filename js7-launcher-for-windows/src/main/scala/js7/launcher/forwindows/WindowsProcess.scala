@@ -128,7 +128,7 @@ extends Js7Process
 private[launcher] object WindowsProcess
 {
   private[forwindows] val TerminateProcessReturnCode = ReturnCode(999_999_999)
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   final case class StartWindowsProcess(
     args: Seq[String],

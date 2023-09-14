@@ -65,7 +65,7 @@ trait CommonConfiguration extends WebServerBinding.HasLocalUris with BasicConfig
 
 object CommonConfiguration
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   final case class Common(
     configDirectory: Path,

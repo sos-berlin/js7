@@ -101,7 +101,7 @@ extends AutoCloseable
 
 object DirectoryWatcher
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   private implicit val watchEventShow: Show[WatchEvent[?]] = e =>
     s"${e.kind.name} ${e.count}× ${e.context}"

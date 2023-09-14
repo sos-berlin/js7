@@ -167,7 +167,7 @@ extends AutoCloseable
 object InputStreamJsonSeqReader
 {
   private[jsonseq] val BlockSize = 8192
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   def resource(file: Path): Resource[Task, InputStreamJsonSeqReader] =
     Resource.fromAutoCloseable(Task(InputStreamJsonSeqReader.open(file)))

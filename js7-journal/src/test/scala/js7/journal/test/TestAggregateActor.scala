@@ -146,7 +146,7 @@ extends KeyedJournalingActor[TestState, TestEvent] {
 
 private[journal] object TestAggregateActor
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   object Input {
     final case class RecoverFromSnapshot(snapshot: TestAggregate)

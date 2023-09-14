@@ -79,7 +79,7 @@ final class PlayTest extends OurTestSuite with ControllerAgentForScalaTest
 
 object PlayTest
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   private final class TestInternalJob extends InternalJob
   {

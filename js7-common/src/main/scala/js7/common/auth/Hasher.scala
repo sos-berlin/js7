@@ -34,5 +34,5 @@ final class Hasher(algorithm: String) extends (String => String)
 object Hasher
 {
   lazy val sha512 = new Hasher("SHA-512")
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 }

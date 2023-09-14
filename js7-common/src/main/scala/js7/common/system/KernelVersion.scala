@@ -15,7 +15,7 @@ final case class KernelVersion(kernelName: String, version: Seq[Int]) {
 }
 
 private object KernelVersion {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
   val Unknown = KernelVersion("UNKNOWN-KERNEL", Nil)
 
   private val Singleton = ignoreError { KernelVersion(sys.props("os.name"), parseVersion(sys.props("os.version"))) } sideEffect { o => logger.info(s"$o") }

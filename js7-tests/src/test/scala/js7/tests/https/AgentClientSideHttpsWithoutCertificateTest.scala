@@ -39,5 +39,5 @@ final class AgentClientSideHttpsWithoutCertificateTest extends HttpsTestBase
 
 private object AgentClientSideHttpsWithoutCertificateTest
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 }

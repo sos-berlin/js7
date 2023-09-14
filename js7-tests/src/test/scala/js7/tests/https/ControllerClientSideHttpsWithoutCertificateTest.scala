@@ -39,5 +39,5 @@ final class ControllerClientSideHttpsWithoutCertificateTest extends HttpsTestBas
 
 private object ControllerClientSideHttpsWithoutCertificateTest
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 }

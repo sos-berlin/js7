@@ -115,5 +115,5 @@ private[watch] final class FileEventIteratorPool(
 }
 
 object FileEventIteratorPool {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 }

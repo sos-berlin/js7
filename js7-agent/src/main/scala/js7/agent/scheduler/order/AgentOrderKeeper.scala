@@ -956,7 +956,7 @@ with Stash
 }
 
 object AgentOrderKeeper {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   sealed trait Input
   object Input {

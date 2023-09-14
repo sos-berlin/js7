@@ -160,7 +160,7 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
 object OrderRoute
 {
   private val emptyJsonObject = Json.obj()
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   private val matchOrderId = new Directive[Tuple1[OrderId]] {
     def tapply(inner: Tuple1[OrderId] => Route) =

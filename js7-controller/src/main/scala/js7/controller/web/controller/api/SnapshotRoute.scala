@@ -102,6 +102,6 @@ object SnapshotRoute
 {
   type SnapshotFilter = Observable[Any] => Observable[Any]
 
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
   private val LF = ByteString("\n")
 }

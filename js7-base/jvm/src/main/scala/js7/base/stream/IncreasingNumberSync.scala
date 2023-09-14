@@ -78,6 +78,6 @@ final class IncreasingNumberSync(initial: Long, valueToString: Long => String)
 }
 
 object IncreasingNumberSync {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
   private val RightTrue = Task.right(true)
 }

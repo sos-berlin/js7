@@ -304,7 +304,7 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
 object JournalingActor
 {
   private val Inhibited = -1
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
   private val TraceLog = false
   private val BigStoreThreshold = 1.s
 

@@ -264,5 +264,5 @@ object RetryTest
 {
   private val TestAgentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(TestAgentPath)
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 }

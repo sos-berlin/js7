@@ -156,7 +156,7 @@ final class CoupleControllerTest extends OurTestSuite with DirectoryProviderForS
 
 private object CoupleControllerTest
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
   private val agentPath = AgentPath("AGENT")
   private val TestPathExecutable = RelativePathExecutable("TEST.cmd")
 

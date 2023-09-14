@@ -96,7 +96,7 @@ extends Actor {
 
 object MainActor
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   final case class Ready(api: CommandMeta => DirectAgentApi)
 

@@ -221,7 +221,7 @@ with MainService with Service.StoppableByRequest {
 object Provider
 {
   private val versionedItemPathCompanions = Set[VersionedItemPath.AnyCompanion](WorkflowPath)
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
   private val readers = Seq(
     WorkflowReader,
     SimpleItemReader(AgentRef),

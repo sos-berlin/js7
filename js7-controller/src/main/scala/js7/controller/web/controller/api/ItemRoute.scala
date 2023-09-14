@@ -100,7 +100,7 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
 
 object ItemRoute
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
   private val emptyJsonObject = Json.obj()
 
   private case class ExitStreamException(problem: Problem) extends Exception

@@ -40,7 +40,7 @@ private class DeadLetterActor(output: (LogLevel, () => String) => Unit) extends 
 
 object DeadLetterActor
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   def subscribe(actorSystem: ActorSystem, output: (LogLevel, () => String) => Unit = logDeadLetter): Unit = {
     val actor = actorSystem.actorOf(props(output), "DeadLetter")

@@ -454,7 +454,7 @@ with JournalingObserver
 
 object JournalEventWatch
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   private case class JournalFileIsNotReadyProblem(file: Path) extends Problem.Coded {
     def arguments = Map("file" -> file.getFileName.toString)

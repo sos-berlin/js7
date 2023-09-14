@@ -99,7 +99,7 @@ trait JournalRoute extends RouteProvider
 
 object JournalRoute
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
   private val JournalContentType = `application/x-ndjson`
 
   private def parseReturnAckParameter(returnType: String): Checked[Boolean] =

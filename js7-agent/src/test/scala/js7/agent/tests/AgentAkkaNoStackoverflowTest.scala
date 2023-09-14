@@ -28,5 +28,5 @@ final class AgentAkkaNoStackoverflowTest extends OurTestSuite with AgentTester
 }
 
 object AgentAkkaNoStackoverflowTest {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 }

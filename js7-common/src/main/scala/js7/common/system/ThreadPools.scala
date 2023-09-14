@@ -32,7 +32,7 @@ import scala.util.control.NonFatal
   */
 object ThreadPools
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   private[system] val ThreadCount = As[String, Int] {
     case s if s.last == 'x' => (sys.runtime.availableProcessors * s.dropRight(1).toDouble).ceil.toInt

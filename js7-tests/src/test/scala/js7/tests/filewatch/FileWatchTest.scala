@@ -371,7 +371,7 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
 
 object FileWatchTest
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
   private val aAgentPath = AgentPath("AGENT-A")
   private val bAgentPath = AgentPath("AGENT-B")
 

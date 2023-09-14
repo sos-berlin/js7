@@ -115,7 +115,7 @@ extends Service
 
 object RestartAfterFailureService
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
   private[service] val defaultRestartDelays: Seq[FiniteDuration] =
     Vector(0.s, 1.s, 3.s, 6.s, 10.s)
 }

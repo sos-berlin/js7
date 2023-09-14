@@ -87,7 +87,7 @@ final class ProcessKillScriptTest extends OurTestSuite {
 }
 
 private object ProcessKillScriptTest {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
   private val TestTaskId = TaskId("1-TEST")
   private def Script =
     (if (isWindows) JavaResource("js7/launcher/process/scripts/windows/test.cmd")

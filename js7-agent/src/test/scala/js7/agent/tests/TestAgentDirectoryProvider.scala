@@ -90,7 +90,7 @@ object TestAgentDirectoryProvider
   private val PrivateHttpJksResource = JavaResource("js7/agent/tests/config/private/https-keystore.p12")
   private val PrivateConfResource = JavaResource("js7/agent/tests/config/private/private.conf")
   val TestUserAndPassword = UserAndPassword(UserId("SHA512-USER"), SecretString("SHA512-PASSWORD"))
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   def provideAgentDirectory[A](body: Path => A): A =
     autoClosing(TestAgentDirectoryProvider()) { provider =>

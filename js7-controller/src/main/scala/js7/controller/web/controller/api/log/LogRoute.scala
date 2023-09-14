@@ -57,6 +57,6 @@ trait LogRoute extends ControllerRouteProvider
 
 object LogRoute
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
   private val contentType = `text/plain(UTF-8)`
 }

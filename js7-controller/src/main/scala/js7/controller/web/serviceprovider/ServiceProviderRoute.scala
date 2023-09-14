@@ -53,7 +53,7 @@ private[web] trait ServiceProviderRoute
 
 private[web] object ServiceProviderRoute
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   private def logAndCheck(namedRouteToService: Seq[(RouteService, String, Route)]): Unit = {
     if (namedRouteToService.isEmpty) logger.trace("No routes")

@@ -195,7 +195,7 @@ final class WorkingClusterNode[
 
 object WorkingClusterNode
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   private[cluster]
   def resource[S <: ClusterableState[S]: ClusterableState.Companion: diffx.Diff: Tag](

@@ -211,7 +211,7 @@ extends MainService with Service.StoppableByRequest
 
 object Subagent
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   def resource(conf: SubagentConf, testEventBus: StandardEventBus[Any])
     (implicit scheduler: Scheduler)

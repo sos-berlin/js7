@@ -140,7 +140,7 @@ final class CommandQueueTest extends OurTestSuite
 }
 
 object CommandQueueTest {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
   private val TestAgentPath = AgentPath("AGENT")
   private val TestWorkflow = Workflow.of(WorkflowPath("A") ~ "VERSION",
     Execute(WorkflowJob(TestAgentPath, PathExecutable("EXECUTABLE"))))

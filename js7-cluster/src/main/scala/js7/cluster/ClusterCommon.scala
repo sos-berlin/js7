@@ -169,7 +169,7 @@ private[cluster] final class ClusterCommon private(
 
 private[js7] object ClusterCommon
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   def resource(
     clusterWatchCounterpart: ClusterWatchCounterpart,

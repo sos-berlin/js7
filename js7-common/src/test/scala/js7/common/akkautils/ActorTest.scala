@@ -60,5 +60,5 @@ final class ActorTest extends OurTestSuite with BeforeAndAfterAll with ProvideAc
 
 object ActorTest
 {
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 }
