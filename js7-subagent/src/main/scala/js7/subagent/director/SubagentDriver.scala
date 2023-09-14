@@ -71,8 +71,8 @@ trait SubagentDriver {
         .checked(order.workflowId)
         .map(_.instruction(order.position))
         .map {
-          case o: Execute.Named => o.defaultArguments
-          case _ => Map.empty[String, Expression]
+          case o: Execute => o.defaultArguments
+          case _ => Map.empty
         })
 
   // TODO Emit one batch for all recovered orders!
