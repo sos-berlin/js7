@@ -1,14 +1,11 @@
 package js7.base.utils
 
 import js7.base.log.Logger
-import scala.jdk.CollectionConverters.*
 
 object Tests
 {
   val (isIntelliJIdea, isScalaTest, isSbt, isTest, isStrict) = {
-    val classNames = Thread.getAllStackTraces.asScala.view
-      .flatMap(_._2.view)
-      .map(_.getClassName)
+    val classNames = TestsPlatform.allActiveClasses
 
     def hasPackagePrefix(packagePrefixes: Set[String]): Boolean =
       classNames.exists(name => packagePrefixes.exists(name.startsWith))

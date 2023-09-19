@@ -33,7 +33,7 @@ extends EventApi with HttpClusterNodeApi with HttpSessionApi with HasIsIgnorable
 
   //protected final def sessionUri = uris.session
 
-  private final lazy val uris = ControllerUris(
+  protected final lazy val uris = ControllerUris(
     controllerUri =
       if (baseUri.isEmpty) baseUri
       else Uri(baseUri.string.stripSuffix("/") + "/controller"))

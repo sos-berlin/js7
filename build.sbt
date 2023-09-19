@@ -226,6 +226,7 @@ lazy val js7JS = (project in file("target/project-js7JS"))
     `js7-data`.js,
     `js7-cluster-watch-api`.js,
     `js7-controller-client`.js,
+    `js7-agent-data`.js,
     `js7-proxy`.js)
   .settings(publish / skip := true)
 
