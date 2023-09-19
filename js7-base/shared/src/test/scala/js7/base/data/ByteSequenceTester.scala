@@ -123,6 +123,11 @@ extends OurTestSuite
         "61626364 65666768 696a6b6c 6d6e6f70 71727374 75767778 797a4142 43444546 4748494a 4b4c4d4e 4f505152 53545556 5758595a")
   }
 
+  "toHex" in {
+    assert(ByteSeq("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ").toHex ==
+      "6162636465666768696a6b6c6d6e6f707172737475767778797a4142434445464748494a4b4c4d4e4f505152535455565758595a")
+  }
+
   "headOption" in {
     val byteSeq = ByteSeq("ab")
     assert(byteSeq.headOption == Some('a'.toByte))
