@@ -136,19 +136,28 @@ trait ProcessingOrderScopes extends OrderScopes
   final lazy val processingOrderScope =
     js7JobVariablesScope |+| pureOrderScope |+| nowScope |+| jobResourceScope |+| fileValueScope
 
-  /** For defaultArguments (Execute and WorkflowJob). */
-  private lazy val scopeForOrderDefaultArguments =
-    js7JobVariablesScope |+|
-      pureOrderScope |+|
-      // Joacim thinks, without Order variable, it was more predictable for the user:
-      // variablelessOrderScope |+|
-      jobResourceScope
+  /** For Execute defaultArguments. */
+  private lazy val scopeForExecuteDefaultArguments =
+    js7JobVariablesScope |+| pureOrderScope |+| jobResourceScope
+
+  protected[scopes] final def evalLazilyExecuteDefaultArguments(
+    expressionMap: MapView[String, Expression])
+  : MapView[String, Checked[Value]] =
+    evalLazilyExpressions(expressionMap.view)(scopeForExecuteDefaultArguments)
+
+  /** For WorkflowJob defaultArguments. */
+  private lazy val scopeJobDefaultArguments = {
+    scopeForExecuteDefaultArguments
+    // Joacim thinks, without Order variable, it was more predictable for the user:
+    // js7JobVariablesScope |+| variablelessOrderScope |+| jobResourceScope
+  }
+
+  protected[scopes] final def evalLazilyJobDefaultArguments(
+    expressionMap: MapView[String, Expression])
+  : MapView[String, Checked[Value]] =
+    evalLazilyExpressions(expressionMap.view)(scopeJobDefaultArguments)
 
   final def evalLazilyJobResourceVariables(jobResource: JobResource)
   : MapView[String, Checked[Value]] =
     evalLazilyExpressions(jobResource.variables.view)(scopeForJobResources)
-
-  protected[scopes] final def evalLazilyJobDefaultArguments(expressionMap: MapView[String, Expression])
-  : MapView[String, Checked[Value]] =
-    evalLazilyExpressions(expressionMap.view)(scopeForOrderDefaultArguments)
 }

@@ -78,7 +78,7 @@ private final class JobDriver(
 
   def startOrderProcess(
     order: Order[Order.Processing],
-    defaultArguments: Map[String, Expression],
+    executeArguments: Map[String, Expression],
     stdObservers: StdObservers)
   : Task[Fiber[Outcome]] = {
     val entry = new Entry(order.id)
@@ -90,7 +90,7 @@ private final class JobDriver(
           Task.pure(completedFiber(Outcome.Disrupted(problem)))
 
         case Right(jobLauncher: JobLauncher) =>
-          processOrder(order, defaultArguments, stdObservers, jobLauncher, entry)
+          processOrder(order, executeArguments, stdObservers, jobLauncher, entry)
             .guarantee(removeEntry(entry))
             .start
       }
@@ -98,12 +98,12 @@ private final class JobDriver(
 
   private def processOrder(
     order: Order[Order.Processing],
-    defaultArguments: Map[String, Expression],
+    executeArguments: Map[String, Expression],
     stdObservers: StdObservers,
     jobLauncher: JobLauncher,
     entry: Entry)
   : Task[Outcome] =
-    Task(processOrderResource(order, defaultArguments, stdObservers))
+    Task(processOrderResource(order, executeArguments, stdObservers))
       .flatMapT(_.use(processOrder_ =>
         processOrder2(jobLauncher, processOrder_, entry)))
       .materializeIntoChecked
@@ -147,7 +147,7 @@ private final class JobDriver(
 
   private def processOrderResource(
     order: Order[Order.Processing],
-    defaultArguments: Map[String, Expression],
+    executeArguments: Map[String, Expression],
     stdObservers: StdObservers)
   : Checked[Resource[Task, ProcessOrder]] =
     checkedJobLauncher
@@ -156,7 +156,8 @@ private final class JobDriver(
       .map(jobResources =>
         ProcessOrder.resource(
           order, workflow, jobKey, workflowJob, jobResources,
-          workflowJob.defaultArguments ++ defaultArguments,
+          executeArguments,
+          workflowJob.defaultArguments,
           jobConf.controllerId, stdObservers,
           fileValueState))
 

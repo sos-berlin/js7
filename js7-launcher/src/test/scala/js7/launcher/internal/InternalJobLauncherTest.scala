@@ -59,7 +59,8 @@ final class InternalJobLauncherTest extends OurTestSuite
         JobKey.Named(WorkflowBranchPath(WorkflowPath("WORKFLOW"), Nil), WorkflowJob.Name("TEST-JOB")),
         workflowJob,
         jobResources = Nil,
-        Map("ARG" -> NumericConstant(1)),
+        executeArguments = Map.empty,
+        jobArguments = Map("ARG" -> NumericConstant(1)),
         ControllerId("CONTROLLER"),
         stdObservers,
         fileValueScope = Scope.empty)

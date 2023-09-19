@@ -174,10 +174,10 @@ extends MainService with Service.StoppableByRequest
 
   def startOrderProcess(
     order: Order[Order.Processing],
-    defaultArguments: Map[String, Expression])
+    executeDefaultArguments: Map[String, Expression])
   : Task[Checked[Fiber[OrderProcessed]]] =
     Task(checkedDedicatedSubagent)
-      .flatMapT(_.startOrderProcess(order, defaultArguments))
+      .flatMapT(_.startOrderProcess(order, executeDefaultArguments))
 
   def killProcess(orderId: OrderId, signal: ProcessSignal): Task[Checked[Unit]] =
     subagent.checkedDedicatedSubagent

@@ -149,7 +149,8 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite with BeforeAndAf
                 executor.jobConf.jobKey,
                 WorkflowJob(AgentPath("AGENT"), ShellScriptExecutable("")),
                 jobResources = Nil,
-                Map("ORDER_ARG" -> arg),
+                executeArguments = Map.empty,
+                jobArguments = Map("ORDER_ARG" -> arg),
                 ControllerId("CONTROLLER"),
                 stdObservers,
                 fileValueScope))

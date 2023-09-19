@@ -127,7 +127,7 @@ final class OrderScopesTest extends OurTestSuite
     }
 
     "scopeForJobDefaultArguments, for (WorkflowJob + Execute).defaultArguments" in {
-      val defaultArguments = orderScopes.evalLazilyJobDefaultArguments(MapView(
+      val defaultArguments = orderScopes.evalLazilyExecuteDefaultArguments(MapView(
         "defaultJobName" -> NamedValue("js7JobName"),
         "defaultOrderId" -> NamedValue("js7OrderId"),
         "defaultWorkflowPosition" -> expr("$js7WorkflowPosition"),
@@ -153,7 +153,7 @@ final class OrderScopesTest extends OurTestSuite
     "$job.timeoutMillis, $job.sigkillDelayMillis" in {
       val orderScopes: ProcessingOrderScopes = makeProcessingOrderscopes(
         sigkillDelay = Some(123456.µs), timeout = Some(9.s))
-      val defaultArguments = orderScopes.evalLazilyJobDefaultArguments(MapView(
+      val defaultArguments = orderScopes.evalLazilyExecuteDefaultArguments(MapView(
         "defaultJobTimeout" -> expr("$js7Job.timeoutMillis"),
         "defaultJobSigkillDelay" -> expr("$js7Job.sigkillDelayMillis")))
       assert(defaultArguments("defaultJobTimeout") == Right(NumberValue(9000)))

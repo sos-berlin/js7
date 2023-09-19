@@ -201,7 +201,9 @@ extends Service.StoppableByRequest
             .onErrorHandle(t => logger.error(s"Stop $jobDriver: ${t.toStringWithCauses}")))
           .map(_.combineAll)))
 
-  def startOrderProcess(order: Order[Order.Processing], defaultArguments: Map[String, Expression])
+  def startOrderProcess(
+    order: Order[Order.Processing],
+    executeDefaultArguments: Map[String, Expression])
   : Task[Checked[Fiber[OrderProcessed]]] =
     Task.defer {
       orderToProcessing
@@ -219,7 +221,7 @@ extends Service.StoppableByRequest
                 Right(existing)) // Idempotency: Order process has already been started
 
           case None =>
-            startOrderProcess2(order, defaultArguments)
+            startOrderProcess2(order, executeDefaultArguments)
               .guaranteeCase {
                 case ExitCase.Completed =>
                   Task.unless(!_dontWaitForDirector) {
@@ -237,9 +239,9 @@ extends Service.StoppableByRequest
 
   private def startOrderProcess2(
     order: Order[Order.Processing],
-    defaultArguments: Map[String, Expression])
+    executeDefaultArguments: Map[String, Expression])
   : Task[Fiber[OrderProcessed]] =
-    startOrderProcess3(order, defaultArguments)
+    startOrderProcess3(order, executeDefaultArguments)
       .flatMap(_
         .join
         .onErrorHandle(Outcome.Failed.fromThrowable)
@@ -256,7 +258,9 @@ extends Service.StoppableByRequest
         }
         .start)
 
-  private def startOrderProcess3(order: Order[Order.Processing], defaultArguments: Map[String, Expression])
+  private def startOrderProcess3(
+    order: Order[Order.Processing],
+    executeDefaultArguments: Map[String, Expression])
   : Task[Fiber[Outcome]] =
     jobDriver(order.workflowPosition).flatMap {
       case Left(problem) =>
@@ -270,7 +274,7 @@ extends Service.StoppableByRequest
             stdObserversResource(order.id, keepLastErrLine = workflowJob.failOnErrWritten)
               .allocated)
           .flatMap { case (stdObservers, releaseStdObservers) =>
-            jobDriver.startOrderProcess(order, defaultArguments, stdObservers)
+            jobDriver.startOrderProcess(order, executeDefaultArguments, stdObservers)
               .flatMap(_
                 .join
                 .guarantee(releaseStdObservers)
