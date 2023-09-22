@@ -85,6 +85,7 @@ final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForSc
   }
 
   private lazy val outdatedState = agentEnv.stateDir.resolveSibling(Paths.get("state~"))
+  private lazy val eventWatch = controller.eventWatch
 
   "Delete AgentRef" in {
     copyDirectoryContent(agentEnv.stateDir, outdatedState)
@@ -94,7 +95,7 @@ final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForSc
         ItemIsStillReferencedProblem(agentPath, subagentId),
         ItemIsStillReferencedProblem(agentPath, workflow.path ~ v1))))
 
-    val eventId = controller.eventWatch.lastAddedEventId
+    val eventId = eventWatch.lastAddedEventId
 
     controllerApi.updateItems(Observable(
       DeleteSimple(agentPath),
@@ -103,14 +104,14 @@ final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForSc
       RemoveVersioned(workflow.path))
     ).await(99.s).orThrow
 
-    controller.eventWatch.await[ItemDeleted](_.event.key == agentPath, after = eventId)
+    eventWatch.await[ItemDeleted](_.event.key == agentPath, after = eventId)
     agent.untilTerminated await 99.s
   }
 
   "Add AgentRef again: Agent's journal should be new due to implicit Reset" in {
     agent = TestAgent.start(agentEnv.agentConf) await 99.s
 
-    val eventId = controller.eventWatch.lastFileEventId
+    val eventId = eventWatch.lastFileEventId
     val versionId = VersionId("AGAIN")
     val subagentItem = SubagentItem(subagentId, agentPath, Uri(s"http://127.0.0.1:$agentPort1"))
 
@@ -132,8 +133,8 @@ final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForSc
     }
     loop(2)
 
-    controller.eventWatch.await[AgentDedicated](after = eventId)
-    controller.eventWatch.await[AgentReady](after = eventId)
+    eventWatch.await[AgentDedicated](after = eventId)
+    eventWatch.await[AgentReady](after = eventId)
     controller.runOrder(FreshOrder(OrderId("AGAIN"), workflow.path))
     agent.terminate() await 99.s
   }
@@ -153,7 +154,7 @@ final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForSc
   "Coupling fails with outdated Director" in {
     deleteDirectoryRecursively(agentEnv.stateDir)
     move(outdatedState, agentEnv.stateDir)
-    val eventId = controller.eventWatch.lastFileEventId
+    val eventId = eventWatch.lastFileEventId
 
     agent = TestAgent.start(
       agentEnv.agentConf.copy(
@@ -163,7 +164,7 @@ final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForSc
 
     // TODO May timeout due to repeated
     //  "Coupling failed: UnknownEventId: An unknown EventId has been requested"
-    controller.eventWatch.await[AgentCouplingFailed](
+    eventWatch.await[AgentCouplingFailed](
       _.event.problem == AgentRunIdMismatchProblem(agentPath),
       after = eventId)
 
@@ -180,9 +181,9 @@ final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForSc
           webServerPorts = List(WebServerPort.localhost(agentPort3))))
     ) await 99.s
 
-    val eventId = controller.eventWatch.lastFileEventId
+    val eventId = eventWatch.lastFileEventId
     controllerApi.updateUnsignedSimpleItems(Seq(subagentItem)).await(99.s).orThrow
-    controller.eventWatch.await[AgentCouplingFailed](
+    eventWatch.await[AgentCouplingFailed](
       _.event.problem == AgentNotDedicatedProblem,
       after = eventId)
 
