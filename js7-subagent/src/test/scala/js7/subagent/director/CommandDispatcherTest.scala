@@ -31,7 +31,7 @@ final class CommandDispatcherTest extends OurTestSuite
       }
     }
     dispatcher.start(subagentRunId).await(99.s)
-    assert(dispatcher.executeCommand(Command("A")).await(99.s) == Right(()))
+    assert(dispatcher.executeCommand(Command("A")).await(99.s) == Right(Response("a")))
     assert(dispatcher.executeCommand(Command("B")).await(99.s) == Left(Problem("FAILED")))
   }
 

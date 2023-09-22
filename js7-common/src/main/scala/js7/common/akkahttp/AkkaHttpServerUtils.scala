@@ -318,19 +318,18 @@ object AkkaHttpServerUtils
       .chunk(chunkSize)
       .map(Chunk(_))
 
-    val obs = keepAlive match {
+    val obs: Observable[Chunk] = keepAlive match {
       case None => chunks
       case Some(h) =>
         for {
           terminated <- Observable.from(Deferred[Task, Unit])
-          obs <- Observable(
-            chunks.guarantee(terminated.complete(())),
-            Observable
-              .repeat(heartbeatChunk)
-              .delayOnNext(h)
-              .takeUntil(Observable.from(terminated.get))
-          ).merge
-        } yield obs
+          chunk <- {
+            Observable(
+              chunks.guarantee(terminated.complete(())),
+              Observable.repeat(heartbeatChunk).delayOnNext(h).takeUntilEval(terminated.get)
+            ).merge(/*Scala 3:*/implicitly[Observable[Chunk] <:< Observable[Chunk]])
+          }
+        } yield chunk
     }
 
     ToResponseMarshallable(

@@ -211,7 +211,7 @@ final class BasicParsersTest extends OurTestSuite
       def p: Parser0[(Int, String)] =
         kvP.flatMap(keyToValue =>
           for {
-            number <- keyToValue[java.lang.Integer]("number")
+            number <- keyToValue[Int]("number")
             string <- keyToValue[String]("string")
           } yield (number, string))
       assert(checkedParse("""string="STRING", number=7""", p) == Right((7, "STRING")))
@@ -238,9 +238,9 @@ final class BasicParsersTest extends OurTestSuite
       assert(checkedParse("", p) == Right("STRING"))
     }
 
-    "apply with default" in {
-      assert(checkedParse("", keyToValue("string", "DEFAULT")) == Right("STRING"))
-      assert(checkedParse("", keyToValue("MISSING", "DEFAULT")) == Right("DEFAULT"))
+    "getOrElse" in {
+      assert(checkedParse("", keyToValue.getOrElse("string", "DEFAULT")) == Right("STRING"))
+      assert(checkedParse("", keyToValue.getOrElse("MISSING", "DEFAULT")) == Right("DEFAULT"))
     }
 
     "oneOf" in {

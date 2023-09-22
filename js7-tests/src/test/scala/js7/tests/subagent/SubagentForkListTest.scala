@@ -72,8 +72,8 @@ extends OurTestSuite with SubagentTester with BlockingItemUpdater
           expr("subagentIds($arg)"),
           exprFunction("(listElement) => $listElement"),
           exprFunction("(listElement) => { subagentId: $listElement }"),
-          Workflow.empty))))
-    { workflow =>
+          Workflow.empty)))
+    ) { workflow =>
       val orderId = OrderId("CONTROLLER")
       val freshOrder = FreshOrder(orderId, workflow.path, Map(
         "arg" -> StringValue("CONTROLLER")))

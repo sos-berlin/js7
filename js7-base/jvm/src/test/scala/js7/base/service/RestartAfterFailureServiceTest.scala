@@ -106,7 +106,7 @@ final class RestartAfterFailureServiceTest extends OurTestSuite
       // not terminate, and the caller has no opportunity to stop the not yet started service.
       // But start is cancelable !!!
 
-      private val unique = uniqueCounter.getAndIncrement(1)
+      private lazy val unique = uniqueCounter.getAndIncrement(1)
 
       protected def start =
         Task.defer {

@@ -480,7 +480,7 @@ extends Service.StoppableByRequest
           })
         })
       .rightAs(())
-      .onProblemHandle(problem => logger.error(problem.toString))
+      .onProblemHandleInF(problem => logger.error(problem.toString))
 
   private def activeClientResource: Resource[Task, AgentClient] =
     ActiveClusterNodeSelector.selectActiveNodeApi[AgentClient](

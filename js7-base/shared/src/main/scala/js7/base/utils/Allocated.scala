@@ -8,8 +8,11 @@ import js7.base.catsutils.UnsafeMemoizable.syntax.*
 import js7.base.utils.AutoClosing.autoClosing
 import scala.annotation.unused
 
-final class Allocated[F[_]: UnsafeMemoizable, +A: Tag](val allocatedThing: A, release_ : F[Unit])
+final class Allocated[F[_]: UnsafeMemoizable, +A](val allocatedThing: A, release_ : F[Unit], label: String)
 {
+  def this(allocatedThing: A, release: F[Unit])(implicit A: Tag[A]) =
+    this(allocatedThing, release, label = A.tag.shortName)
+
   val release: F[Unit] =
     release_.unsafeMemoize
 
@@ -28,7 +31,7 @@ final class Allocated[F[_]: UnsafeMemoizable, +A: Tag](val allocatedThing: A, re
   }
 
   def toAllocatedString =
-    s"Allocated[,${implicitly[Tag[A]].tag.shortName}]($allocatedThing)"
+    s"Allocated[,$label]($allocatedThing)"
 
   override def toString = allocatedThing.toString
 }

@@ -1,8 +1,7 @@
 package js7.data.job
 
 import io.circe.Codec
-import js7.base.circeutils.CirceUtils.{DecodeWithDefaults, deriveConfiguredCodec}
-import js7.base.utils.IntelliJUtils.intelliJuseImport
+import js7.base.circeutils.CirceUtils.deriveConfiguredCodec
 import js7.data.item.{ItemRevision, SignableSimpleItem, TrivialItemState}
 import js7.data.value.expression.Expression
 
@@ -43,6 +42,4 @@ with TrivialItemState.Companion[JobResource]
 
   implicit val jsonCodec: Codec.AsObject[JobResource] =
     deriveConfiguredCodec[JobResource]
-
-  intelliJuseImport(DecodeWithDefaults)
 }

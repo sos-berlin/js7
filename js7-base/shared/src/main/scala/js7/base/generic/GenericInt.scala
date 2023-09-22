@@ -39,7 +39,7 @@ object GenericInt {
       As(o => apply(o.toInt))
 
     // Required for RangeSet[ReturnCode].jsonDecoder
-    implicit val parser: Parser[A] =
+    implicit lazy val parser: Parser[A] =
       BasicParsers.int.map(apply(_))
 
     implicit val JsonEncoder: Encoder[A] = o => Json.fromInt(o.number)

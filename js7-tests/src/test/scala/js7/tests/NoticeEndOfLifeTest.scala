@@ -16,7 +16,7 @@ import js7.data.workflow.instructions.{ConsumeNotices, ExpectNotices, PostNotice
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.NoticeEndOfLifeTest.*
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
-import monix.execution.Scheduler.Implicits.traced as scheduler
+import monix.execution.Scheduler.Implicits.traced
 
 final class NoticeEndOfLifeTest extends OurTestSuite with ControllerAgentForScalaTest
 with BlockingItemUpdater

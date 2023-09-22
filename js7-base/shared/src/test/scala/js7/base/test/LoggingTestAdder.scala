@@ -2,7 +2,7 @@ package js7.base.test
 
 import js7.base.log.LoggingEscapeCodes.{blue, bold, green, orange, resetColor}
 import js7.base.log.{CorrelId, Logger}
-import js7.base.test.LoggingFreeSpecStringWrapper.{StringWrapper, TaggedAs}
+import js7.base.test.LoggingFreeSpecStringWrapper.UnifiedStringWrapper
 import js7.base.test.LoggingTestAdder.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.{RichString, RichThrowable}
@@ -24,12 +24,12 @@ private final class LoggingTestAdder(suiteName: String) {
   private var pendingCount = 0
   private var failedCount = 0
 
-  def toStringWrapper[R](
+  def toStringWrapper[R, T](
     name: String,
-    wrapper: StringWrapper[R, TaggedAs[R]],
+    wrapper: UnifiedStringWrapper[R, T],
     executeTest: (LoggingTestAdder.TestContext, => R) => R,
     suppressCorrelId: Boolean)
-  : LoggingFreeSpecStringWrapper[R] =
+  : LoggingFreeSpecStringWrapper[R, T] =
     new LoggingFreeSpecStringWrapper(name, wrapper, this,
       (ctx, test) => {
         if (!firstTestCalled) {

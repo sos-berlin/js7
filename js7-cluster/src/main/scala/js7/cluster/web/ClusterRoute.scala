@@ -3,6 +3,7 @@ package js7.cluster.web
 import akka.actor.ActorSystem
 import akka.http.scaladsl.marshalling.ToResponseMarshallable
 import akka.http.scaladsl.server.Directives.*
+import io.circe.syntax.EncoderOps
 import io.circe.{Json, JsonObject}
 import js7.base.auth.ValidUserPermission
 import js7.base.circeutils.CirceUtils.RichCirceEither
@@ -48,7 +49,7 @@ trait ClusterRoute extends ClusterWatchRequestRoute
                     stamped.copy(value =
                       ClusterNodeState(nodeId, isBackup = clusterNodeIsBackup, clusterState))
                   else
-                    stamped
+                    stamped.asJson
                 }))
           }
         } ~

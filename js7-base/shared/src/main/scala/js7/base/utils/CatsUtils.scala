@@ -66,10 +66,14 @@ object CatsUtils
 
     implicit final class RichResource[F[_], A](private val resource: Resource[F, A])
     extends AnyVal {
-      def toAllocated[G[x] >: F[x], B >: A](
-        implicit F: BracketThrow[G], G: UnsafeMemoizable[G], bTag: Tag[B])
+      def toAllocated[G[x] >: F[x], B >: A](using BracketThrow[G], UnsafeMemoizable[G], Tag[B])
       : G[Allocated[G, B]] =
         resource.allocated[G, B].map(Allocated.fromPair(_))
+
+      def toLabeledAllocated[G[x] >: F[x], B >: A](label: String)(using BracketThrow[G], UnsafeMemoizable[G])
+      : G[Allocated[G, B]] =
+        resource.allocated[G, B]
+          .map { case (b, release) => new Allocated(b, release, label = label) }
 
       def toAllocatedResource[G[x] >: F[x], B >: A: Tag](implicit G: Sync[G], g: UnsafeMemoizable[G])
       : Resource[G, Allocated[G, B]] =

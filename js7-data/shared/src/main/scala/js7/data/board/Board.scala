@@ -1,12 +1,11 @@
 package js7.data.board
 
 import io.circe.Codec
-import js7.base.circeutils.CirceUtils.{DecodeWithDefaults, deriveConfiguredCodec}
+import io.circe.derivation.ConfiguredCodec
 import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime.DurationRichInt
 import js7.base.time.Timestamp
-import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.data.item.{ItemRevision, UnsignedSimpleItem}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.expression.{Expression, Scope}
@@ -91,7 +90,5 @@ object Board extends UnsignedSimpleItem.Companion[Board]
       expectOrderToNoticeId = sosOrderToNotice,
       endOfLife = expr("$js7EpochMilli + " + lifetime.toMillis))
 
-  implicit val jsonCodec: Codec.AsObject[Board] = deriveConfiguredCodec[Board]
-
-  intelliJuseImport((FiniteDurationJsonEncoder, DecodeWithDefaults))
+  implicit val jsonCodec: Codec.AsObject[Board] = ConfiguredCodec.derive(useDefaults = true)
 }

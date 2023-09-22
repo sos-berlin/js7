@@ -231,7 +231,7 @@ object RunningController
   : Resource[Task, RunningController] = {
     import conf.{clusterConf, config, httpsConfig, implicitAkkaAskTimeout, journalLocation}
 
-    implicit val testEventBus = new StandardEventBus[Any]
+    implicit val testEventBus: StandardEventBus[Any] = new StandardEventBus[Any]
 
     implicit val nodeNameToPassword: NodeNameToPassword[ControllerState] = {
       val result = Right(config.optionAs[SecretString]("js7.auth.cluster.password"))

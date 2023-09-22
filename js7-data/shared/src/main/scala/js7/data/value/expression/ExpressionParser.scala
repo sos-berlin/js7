@@ -307,9 +307,9 @@ object ExpressionParser
         Precedence.toString(a, op, Precedence.Or, b))
     }
 
-  lazy val expression: Parser[Expression] =
-    Parser.defer(wordOperation)
-
   val constantExpression: Parser[Expression] =
     expression
+
+  lazy val expression: Parser[Expression] =
+    Parser.defer(wordOperation)
 }

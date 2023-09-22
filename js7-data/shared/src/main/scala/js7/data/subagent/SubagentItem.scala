@@ -1,9 +1,8 @@
 package js7.data.subagent
 
 import io.circe.Codec
-import js7.base.circeutils.CirceUtils.{DecodeWithDefaults, deriveConfiguredCodec}
+import js7.base.circeutils.CirceUtils.deriveConfiguredCodec
 import js7.base.circeutils.typed.Subtype
-import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.web.Uri
 import js7.data.agent.AgentPath
 import js7.data.item.{ItemRevision, UnsignedSimpleItem}
@@ -62,6 +61,4 @@ extends UnsignedSimpleItem.Companion[SubagentItem]
 
   override val subtype: Subtype[SubagentItem] =
     Subtype[SubagentItem](aliases = Seq("SubagentRef"))
-
-  intelliJuseImport(DecodeWithDefaults)
 }

@@ -21,7 +21,7 @@ object ClusterWatchProblems
   //def isClusterWatchProblem(problem: Problem): Boolean =
   //  problem.maybeCode exists isClusterWatchProblemCode
 
-  final case object UntaughtClusterWatchProblem extends Problem.ArgumentlessCoded
+  case object UntaughtClusterWatchProblem extends Problem.ArgumentlessCoded
 
   final case class ClusterWatchEventMismatchProblem(
     event: Option[ClusterEvent],
@@ -51,7 +51,7 @@ object ClusterWatchProblems
 
   object ClusterWatchInactiveNodeProblem extends Problem.Coded.Companion
 
-  final case object ClusterFailOverWhilePassiveLostProblem extends Problem.ArgumentlessCoded
+  case object ClusterFailOverWhilePassiveLostProblem extends Problem.ArgumentlessCoded
 
   final case class ClusterNodeLossNotConfirmedProblem(
     fromNodeId: NodeId,

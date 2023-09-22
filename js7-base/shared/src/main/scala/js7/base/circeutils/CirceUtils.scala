@@ -2,11 +2,8 @@ package js7.base.circeutils
 
 import cats.syntax.show.*
 import io.circe
-import io.circe.generic.decoding.DerivedDecoder
-import io.circe.generic.encoding.DerivedAsObjectEncoder
-import io.circe.generic.extras.Configuration
-import io.circe.generic.extras.codec.ConfiguredAsObjectCodec
-import io.circe.generic.extras.decoding.ConfiguredDecoder
+import io.circe.derivation.{ConfiguredCodec, ConfiguredDecoder, Configuration as CirceConfiguration}
+import io.circe.generic.semiauto.deriveCodec
 import io.circe.syntax.EncoderOps
 import io.circe.{Codec, CursorOp, Decoder, DecodingFailure, Encoder, HCursor, Json, JsonNumber, JsonObject, ParsingFailure, Printer}
 import java.io.{File, OutputStream, OutputStreamWriter}
@@ -21,18 +18,18 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StringInterpolators
 import scala.collection.immutable.SeqMap
 import scala.collection.mutable
+import scala.deriving.Mirror
 import scala.util.control.NonFatal
-import shapeless.Lazy
 
 /**
   * @author Joacim Zschimmer
   */
 object CirceUtils
 {
-  val UnitDecoderResult: Decoder.Result[Unit] = Right(())
+  private val UnitDecoderResult: Decoder.Result[Unit] = Right(())
 
-  implicit val DecodeWithDefaults: Configuration =
-    Configuration.default.withDefaults
+  private implicit val circeConfiguration: CirceConfiguration =
+    CirceConfiguration.default.withDefaults
 
   def requireJson(requirement: Boolean, failure: => DecodingFailure): Decoder.Result[Unit] =
     if (!requirement)
@@ -52,7 +49,7 @@ object CirceUtils
   def stringJsonCodec[A](to: A => String, from: String => A): Codec[A] =
     Codec.from(stringDecoder(from), stringEncoder(to))
 
-  def stringEncoder[A](to: A => String): Encoder[A] =
+  private def stringEncoder[A](to: A => String): Encoder[A] =
     o => Json.fromString(to(o))
 
   def stringDecoder[A](from: String => A): Decoder[A] =
@@ -62,41 +59,49 @@ object CirceUtils
         Left(DecodingFailure(t.toStringWithCauses, c.history))
       })
 
-  final def deriveConfiguredDecoder[A](implicit decode: Lazy[ConfiguredDecoder[A]])
-  : Decoder[A] =
-    decode.value
+  inline final def deriveConfiguredCodec[A: Mirror.Of]: ConfiguredCodec[A] =
+    deriveCodecWithDefaults[A]
 
-  final def deriveConfiguredCodec[A](implicit codec: Lazy[ConfiguredAsObjectCodec[A]])
+  inline final def deriveCodecWithDefaults[A: Mirror.Of]: ConfiguredCodec[A] =
+    ConfiguredCodec.derive[A](useDefaults = true)
+
+  inline final def deriveConfiguredDecoder[A: Mirror.Of]: ConfiguredDecoder[A] =
+    ConfiguredDecoder.derive[A](useDefaults = true)
+
+  inline final def deriveRenamingCodec[A: Mirror.Of](rename: Map[String, String])
   : Codec.AsObject[A] =
-    codec.value
+    Codec.AsObject.from(deriveRenamingDecoder[A](rename), deriveCodec[A])
+    //ConfiguredCodec.derive[A](
+    //  transformMemberNames = name => rename.getOrElse(name, name),
+    //  useDefaults = true)
 
-  def deriveRenamingCodec[A](rename: Map[String, String])
-    (implicit encoder: Lazy[DerivedAsObjectEncoder[A]], decoder: Lazy[DerivedDecoder[A]])
-  : Codec.AsObject[A] =
-    Codec.AsObject.from(deriveRenamingDecoder[A](rename), encoder.value)
-
-  def deriveRenamingDecoder[A](rename: Map[String, String])
-    (implicit decode: Lazy[DerivedDecoder[A]])
+  inline def deriveRenamingDecoder[A](rename: Map[String, String])(using inline A: Mirror.Of[A])
   : Decoder[A] = {
-    // Precalculate efficient keySet
-    val keySet: Set[String] = Set.empty ++ rename.keys
-    c => c.as[JsonObject]
+    val decode = Decoder.derived[A]
+    // Precalculate keySet
+    val keySet: Set[String] = rename.keySet
+    c => c
+      .as[JsonObject]
       .flatMap(jsonObject =>
         if (!jsonObject.keys.exists(keySet))
-          decode.value(c)
+          decode(c)
         else
-          decode.value.decodeJson(
+          decode.decodeJson(
             Json.fromJsonObject(
               JsonObject.fromMap(jsonObject
                 .toMap
                 .map { case (k, v) => rename.getOrElse(k, k) -> v }))))
   }
 
-  val CompactPrinter = Printer.noSpaces.copy(
+  val CompactPrinter: Printer = Printer.noSpaces.copy(
     dropNullValues = true/*Suppress None*/,
     //reuseWriters = true,  // Remember StringBuilder in thread local
     predictSize = true)
-  val PrettyPrinter = Printer.spaces2.copy(dropNullValues = true/*Suppress None*/, colonLeft = "", lrbracketsEmpty = "")
+
+  val PrettyPrinter: Printer = Printer.spaces2.copy(
+    dropNullValues = true/*Suppress None*/,
+    colonLeft = "",
+    lrbracketsEmpty = "")
 
   object implicits {
     implicit val CompactPrinter: Printer =
@@ -316,7 +321,7 @@ object CirceUtils
       builder.toString
     }
 
-    def toJsonString(arg: Any): String =
+    private def toJsonString(arg: Any): String =
       arg match {
         case arg @ (_: String | _: GenericString | _: Path | _: File) =>
           val str = arg match {

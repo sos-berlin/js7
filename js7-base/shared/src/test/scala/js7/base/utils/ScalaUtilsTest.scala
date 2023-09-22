@@ -639,7 +639,7 @@ final class ScalaUtilsTest extends OurTestSuite
       val t = intercept[Exception] {
         (Left(throwable): Either[Throwable, Nothing]).orThrow
       }
-      assert(t.getStackTrace.head.getMethodName startsWith "$anonfun$new$")
+      assert(t.getStackTrace.head.getMethodName startsWith "f$proxy")
     }
 
     "tapEach" in {

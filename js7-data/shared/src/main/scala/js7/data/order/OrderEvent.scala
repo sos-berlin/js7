@@ -5,14 +5,13 @@ import cats.syntax.traverse.*
 import io.circe.generic.semiauto.{deriveCodec, deriveDecoder, deriveEncoder}
 import io.circe.syntax.EncoderOps
 import io.circe.{Codec, Decoder, Encoder, JsonObject}
-import js7.base.circeutils.CirceUtils.{DecodeWithDefaults, RichCirceObjectCodec, deriveConfiguredCodec}
+import js7.base.circeutils.CirceUtils.{RichCirceObjectCodec, deriveConfiguredCodec}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
 import js7.base.utils.Big
 import js7.base.utils.Collections.implicits.RichIterable
-import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.data.agent.AgentPath
@@ -758,6 +757,4 @@ object OrderEvent
     Subtype(OrderCycleStarted),
     Subtype(deriveCodec[OrderCycleFinished]),
     Subtype(deriveCodec[OrderTransferred]))
-
-  intelliJuseImport(DecodeWithDefaults)
 }

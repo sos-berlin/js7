@@ -276,9 +276,12 @@ object Subagent
     signatureVerifier: DirectoryWatchingSignatureVerifier,
     sessionRegister: SessionRegister[SubagentSession],
     systemSessionToken: SessionToken,
-    implicit val iox: IOExecutor,
+    ioExecutor: IOExecutor,
     testEventBus: StandardEventBus[Any],
     actorSystem: ActorSystem)
+  {
+    implicit def iox: IOExecutor = ioExecutor
+  }
 
   type ItemSignatureKeysUpdated = ItemSignatureKeysUpdated.type
   case object ItemSignatureKeysUpdated

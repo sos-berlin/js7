@@ -31,7 +31,7 @@ extends immutable.Set[A]
 
   override def concat(that: IterableOnce[A]): RangeSet[A] =
     that match {
-      case that: RangeSet[A] => fromRanges(ranges ++ that.ranges)
+      case that: RangeSet[A] @unchecked => fromRanges(ranges ++ that.ranges)
       case _ => fromRanges(ranges ++ RangeSet.fromIterable(that).ranges)
     }
 
@@ -92,25 +92,24 @@ extends immutable.Set[A]
 
 object RangeSet {
 
-  def empty[A: Ordering: Ordinal]: RangeSet[A] =
-    RangeSet[A](Vector.empty)
-
   def apply[A: Ordering: Ordinal](values: A*): RangeSet[A] =
-    fromRanges(values.map(Single(_)))
+    fromIterable(values)
+
+  def empty[A: Ordering: Ordinal]: RangeSet[A] =
+    new RangeSet(Vector.empty[Range[A]])
+
+  def one[A: Ordering: Ordinal](value: A): RangeSet[A] =
+    apply(value :: Nil*)
 
   def fromIterable[A: Ordering: Ordinal](values: IterableOnce[A]): RangeSet[A] =
     fromRanges(values.iterator.map(Single(_)))
 
   @TestOnly
-  private[utils] def raw[A: Ordering: Ordinal](ranges: Vector[Range[A]]): RangeSet[A] =
-    RangeSet(ranges)
-
-  @TestOnly
   private[utils] def raw[A: Ordering: Ordinal](ranges: Range[A]*): RangeSet[A] =
-    RangeSet(ranges.toVector)
+    new RangeSet(ranges.toVector)
 
   def fromRanges[A: Ordering: Ordinal](ranges: IterableOnce[Range[A]]): RangeSet[A] =
-    RangeSet(normalize(Vector.from(ranges)))
+    new RangeSet(normalize(Vector.from(ranges)))
 
   def parseInt(string: String): Checked[RangeSet[Int]] =
     parse(BasicParsers.int, string)

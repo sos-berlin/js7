@@ -10,6 +10,7 @@ import com.softwaremill.diffx
 import izumi.reflect.Tag
 import java.nio.file.Path
 import js7.base.auth.{Admission, UserId}
+import js7.base.catsutils.UnsafeMemoizable
 import js7.base.eventbus.EventPublisher
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
@@ -143,14 +144,16 @@ extends Service.StoppableByRequest
 
   private def startWorkingNode(recovered: Recovered[S]): Task[WorkingClusterNode[S]] =
     logger.traceTask(
-      WorkingClusterNode
-        .resource(
-          recovered, common, clusterConf, eventIdGenerator, eventBus)
-        .toAllocated
-        .flatTap(allocated => Task {
-          passiveOrWorkingNode := Some(Right(allocated))
-        })
-        .map(_.allocatedThing))
+      {
+        WorkingClusterNode
+          .resource(recovered, common, clusterConf, eventIdGenerator, eventBus)
+          // Not compilable with Scala 3.3.1: .toAllocated
+          .toLabeledAllocated(label = s"WorkingClusterNode[${implicitly[Tag[S]].tag.shortName}]")
+          .flatTap(allocated => Task {
+            passiveOrWorkingNode := Some(Right(allocated))
+          })
+          .map(_.allocatedThing)
+      })
 
   def workingClusterNode: Checked[WorkingClusterNode[S]] =
     passiveOrWorkingNode.get()

@@ -1,5 +1,6 @@
 package js7.data.controller
 
+import io.circe.derivation.ConfiguredCodec
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.CirceUtils.deriveRenamingCodec
 import js7.base.circeutils.ScalaJsonCodecs.*

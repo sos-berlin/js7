@@ -1,9 +1,10 @@
 package js7.data.controller
 
+import io.circe.derivation.ConfiguredCodec
 import io.circe.generic.semiauto.deriveCodec
 import io.circe.syntax.EncoderOps
 import io.circe.{Codec, Decoder, Encoder, Json, JsonObject}
-import js7.base.circeutils.CirceUtils.{DecodeWithDefaults, deriveConfiguredCodec}
+import js7.base.circeutils.CirceUtils.deriveConfiguredCodec
 import js7.base.circeutils.ScalaJsonCodecs.{FiniteDurationJsonDecoder, FiniteDurationJsonEncoder}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.log.CorrelIdWrapped
@@ -310,7 +311,6 @@ object ControllerCommand extends CommonCommand.Companion
     Subtype(deriveConfiguredCodec[ResetSubagent]),
     Subtype(TakeSnapshot))
 
-  intelliJuseImport(DecodeWithDefaults)
   intelliJuseImport((FiniteDurationJsonEncoder, FiniteDurationJsonDecoder,
     checkedJsonEncoder[Int], checkedJsonDecoder[Int],
     versionedItemPathJsonCodec))

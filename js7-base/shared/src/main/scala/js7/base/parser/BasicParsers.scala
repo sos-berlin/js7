@@ -167,16 +167,20 @@ object BasicParsers
       .map(name -> _)
 
   final case class KeyToValue[A](nameToValue: Map[String, A]) {
-    def apply[A1 <: A](key: String, default: => A1): Parser0[A1] =
+    def getOrElse[A1 <: A](key: String, default: => A1): Parser0[A1] =
       pure(nameToValue.get(key).fold(default)(_.asInstanceOf[A1]))
 
     def apply[A1 <: A: ClassTag](key: String): Parser0[A1] =
       nameToValue.get(key) match {
         case None => failWith(s"Expected keyword $key=")
         case Some(o) =>
-          if (!implicitClass[A1].isAssignableFrom(o.getClass))
-            failWith(s"Expected keyword $key=<${implicitClass[A1].simpleScalaName}>, " +
-              s"not $key=<${o.getClass.simpleScalaName}>")
+          val A1 = implicitClass[A1]
+          if (!A1.isAssignableFrom(o.getClass))
+            if (A1.eq(classOf[Int]) && o.getClass.eq(classOf[Integer]))
+              pure(o.asInstanceOf[Integer].toInt.asInstanceOf[A1])
+            else
+              failWith(s"Expected keyword $key=<${implicitClass[A1].simpleScalaName}>, " +
+                s"not $key=<${o.getClass.simpleScalaName}>")
           else
             pure(o.asInstanceOf[A1])
       }

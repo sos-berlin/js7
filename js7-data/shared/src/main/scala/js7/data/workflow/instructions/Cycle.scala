@@ -1,8 +1,7 @@
 package js7.data.workflow.instructions
 
 import io.circe.Codec
-import io.circe.generic.extras.semiauto.deriveConfiguredCodec
-import js7.base.circeutils.CirceUtils.DecodeWithDefaults
+import io.circe.derivation.ConfiguredCodec
 import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.data.agent.AgentPath
@@ -52,7 +51,7 @@ extends Instruction
 
 object Cycle
 {
-  implicit val jsonCodec: Codec.AsObject[Cycle] = deriveConfiguredCodec
+  implicit val jsonCodec: Codec.AsObject[Cycle] = ConfiguredCodec.derive(useDefaults = true)
 
-  intelliJuseImport((FiniteDurationJsonDecoder, DecodeWithDefaults))
+  intelliJuseImport(FiniteDurationJsonDecoder)
 }

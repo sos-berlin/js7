@@ -26,8 +26,8 @@ final class ControllerClientSideHttpsTest extends ControllerHttpsStandardTests
     autoClosing(new AkkaHttpControllerApi(controller.localUri, None, actorSystem = actorSystem,
       httpsConfig = HttpsConfig(
         keyStoreRef = None,
-        trustStoreRefs = ExportedControllerTrustStoreRef :: Nil)))
-    { api =>
+        trustStoreRefs = ExportedControllerTrustStoreRef :: Nil))
+    ) { api =>
       intercept[SSLException] {
         api.overview.await(99.s)
       }

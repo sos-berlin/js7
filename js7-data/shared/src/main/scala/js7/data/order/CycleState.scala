@@ -1,8 +1,7 @@
 package js7.data.order
 
 import io.circe.Codec
-import io.circe.generic.extras.semiauto.deriveConfiguredCodec
-import js7.base.circeutils.CirceUtils.DecodeWithDefaults
+import js7.base.circeutils.CirceUtils.deriveConfiguredCodec
 import js7.base.circeutils.ScalaJsonCodecs.FiniteDurationJsonDecoder
 import js7.base.time.{TimeInterval, Timestamp}
 import js7.base.utils.IntelliJUtils.intelliJuseImport
@@ -36,5 +35,5 @@ object CycleState
 
   implicit val jsonCodec: Codec.AsObject[CycleState] = deriveConfiguredCodec
 
-  intelliJuseImport((FiniteDurationJsonDecoder, DecodeWithDefaults))
+  intelliJuseImport(FiniteDurationJsonDecoder)
 }

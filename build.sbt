@@ -27,7 +27,7 @@
   *
   * sbt allows to preset these command line options in the environment variable SBT_OPTS.
   */
-import BuildUtils._
+import BuildUtils.*
 import java.nio.file.Paths
 import sbt.Keys.testOptions
 import sbt.file
@@ -35,6 +35,8 @@ import sbtrelease.ReleasePlugin.autoImport.releaseNextVersion
 import sbtrelease.{Version, versionFormatError}
 // shadow sbt-scalajs' crossProject and CrossType from Scala.js 0.6.x
 import sbtcrossproject.CrossPlugin.autoImport.crossProject
+
+ThisBuild / scalaVersion := "3.3.1"
 
 val rootDirectory = Paths.get(".").toAbsolutePath
 
@@ -71,53 +73,18 @@ addCommandAlias("quickPublishLocal", "; compile; publishLocal; project js7JS; co
 //scalafixDependencies in ThisBuild += "org.scalatest" %% "autofix" % "3.1.0.0"
 //addCompilerPlugin(scalafixSemanticdb) // enable SemanticDB
 
-ThisBuild / scalacOptions ++= (if (isForDevelopment) Nil else
-  Seq("-Wconf:cat=unused-imports:error"))
+//Scala 3? ThisBuild / scalacOptions ++= (if (isForDevelopment) Nil else
+//Scala 3?   Seq("-Wconf:cat=unused-imports:error"))
 
 ThisBuild / scalacOptions ++= Seq(
-  "-Xsource:3",
-  "-Ymacro-annotations",
-  "-explaintypes",
+  "-source:3.0-migration",
+  "-explain",
   "-feature",
-  "-Ypatmat-exhaust-depth", "80",
   "-deprecation",
-  "-Wconf:cat=other-match-analysis:error",
-  "-Wconf:cat=lint-adapted-args:error",
-  "-Wconf:cat=unchecked&src=src/main/*:error",
+  "-Yretain-trees", // Required for Circe derived default values
+  //"-Ysafe-init",
   "-Wunused:imports",
-  "-Wunused:implicits",
-  //"-Wunused:locals",
-  //"-Wunused:params",
-  //"-Wunused:patvars",
-  //"-Wunused:privates",
-  "-Wconf:cat=unused-nowarn:error",
-  "-Xlint:infer-any",
-  "-Xlint:doc-detached",
-  "-Xlint:private-shadow",
-  "-Xlint:type-parameter-shadow",
-  "-Xlint:implicit-not-found",
-  "-Xlint:eta-zero",
-  "-Xcheckinit",
-  "-Xlint:adapted-args",
-  "-Xlint:constant",
-  "-Xlint:delayedinit-select",
-  "-Xlint:deprecation",
-  "-Xlint:doc-detached",
-  "-Xlint:inaccessible",
-  "-Xlint:infer-any",
-  //"-Xlint:missing-interpolator",
-  //"-Xlint:nullary-override",
-  "-Xlint:nullary-unit",
-  "-Xlint:option-implicit",
-  //"-Xlint:package-object-classes",
-  "-Xlint:poly-implicit-overload",
-  //"-Xlint:private-shadow",
-  "-Xlint:stars-align",
-  "-Xlint:type-parameter-shadow",
-  "-Wdead-code",
-  "-Wextra-implicit")
-  //"-Wnumeric-widen",
-  //"-Wvalue-discard",
+  "-Wunused:implicits")
 
 Global / concurrentRestrictions := Seq(
   Tags.limit(Tags.Test, max = testParallelization),
@@ -153,15 +120,14 @@ val commonSettings = Seq(
           <organizationUrl>{organizationHomepage.value.get}</organizationUrl>
       </developer>
     </developers>,
-  scalaVersion := Dependencies.scalaVersion,
   Compile / javacOptions ++= Seq("-encoding", "UTF-8"),  // This is for javadoc, too
   Compile / compile / javacOptions ++= Seq(
-    "-deprecation", "-Xlint:all", "-Xlint:-serial", "-Xdiags:verbose"),
+    "-deprecation", /*"-Xlint:all", "-Xlint:-serial",*/ "-Xdiags:verbose"),
   dependencyOverrides ++= {
     if (sys.props.contains("evictionWarnings"))
       Nil
     else {
-      import Dependencies._
+      import Dependencies.*
       cats ++
         ("org.typelevel" %% "cats-core" % catsVersion) ++
         ("org.typelevel" %% "cats-effect" % catsEffectVersion) ++
@@ -245,7 +211,7 @@ lazy val `js7-install` = project
   .settings(commonSettings)
   .enablePlugins(JavaAppPackaging, UniversalDeployPlugin)
   .settings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++= log4j ++ lmaxDisruptor
   }
   .settings(
@@ -267,7 +233,7 @@ lazy val `js7-install` = project
 lazy val `js7-docker` = project
   .settings(commonSettings)
   .settings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++= log4j ++ lmaxDisruptor
   }
   .enablePlugins(JavaAppPackaging, UniversalDeployPlugin)
@@ -282,7 +248,7 @@ lazy val `js7-tester` = crossProject(JSPlatform, JVMPlatform)
   .withoutSuffixFor(JVMPlatform)
   .settings(commonSettings)
   .settings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++=
       diffx ++
       slf4j ++
@@ -301,7 +267,7 @@ lazy val `js7-base` = crossProject(JSPlatform, JVMPlatform)
   .dependsOn(`js7-tester` % "test")
   .settings(commonSettings)
   .settings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++=
       "dev.zio" %%% "izumi-reflect" % izumiReflectVersion ++
       "org.typelevel" %%% "cats-core" % catsVersion ++
@@ -313,7 +279,6 @@ lazy val `js7-base` = crossProject(JSPlatform, JVMPlatform)
       "io.circe" %%% "circe-core" % circeVersion ++
       "io.circe" %%% "circe-parser" % circeVersion ++
       "io.circe" %%% "circe-generic" % circeVersion ++
-      "io.circe" %%% "circe-generic-extras" % circeGenericExtrasVersion ++
       "co.fs2" %% "fs2-core" % fs2Version ++
       "co.fs2" %% "fs2-reactive-streams" % fs2Version ++
       "io.monix" %%% "monix-eval" % monixVersion ++
@@ -331,7 +296,7 @@ lazy val `js7-base` = crossProject(JSPlatform, JVMPlatform)
     libraryDependencies += "com.outr" %%% "scribe" % Dependencies.scribeVersion
   }
   .jvmSettings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++=
       scalaLogging ++ log4j % "test" ++ lmaxDisruptor % "test" ++
       typesafeConfig ++
@@ -375,7 +340,7 @@ lazy val `js7-data` = crossProject(JSPlatform, JVMPlatform)
   .dependsOn(`js7-base`, `js7-base` % "test->test", `js7-tester` % "test")
   .settings(commonSettings)
   .settings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++=
       "org.scalatest" %%% "scalatest" % scalaTestVersion % "test" ++
     //"org.scalatest" %%% "scalatest-freespec" % scalaTestVersion % "test" ++
@@ -391,7 +356,7 @@ lazy val `js7-data-for-java` = project
     `js7-tester`.jvm % "test")
   .settings(commonSettings)
   .settings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++=
       typesafeConfig ++
       "io.vavr" % "vavr" % vavrVersion ++
@@ -409,7 +374,7 @@ lazy val `js7-common` = project
     `js7-tester`.jvm % "test")
   .settings(commonSettings)
   .settings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++=
       typesafeConfig ++
       akkaHttp ++
@@ -433,12 +398,12 @@ lazy val `js7-common-http` = crossProject(JSPlatform, JVMPlatform)
   .jvmConfigure(_.dependsOn(`js7-common`))
   .settings(commonSettings)
   .settings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++= scalaTest % "test"
     libraryDependencies += "io.monix" %%% "monix-eval" % monixVersion
   }
   .jvmSettings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++=
       akkaHttp ++
       scalaLogging ++
@@ -462,7 +427,7 @@ lazy val `js7-controller` = project
   .settings(
     Compile / packageDoc / mappings := Seq.empty)
   .settings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++=
       scalaTest % "test" ++
       akkaHttpTestkit % "test" ++
@@ -478,7 +443,7 @@ lazy val `js7-provider` = project
   .settings(
     Compile / packageDoc / mappings := Seq.empty)
   .settings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++=
       scalaTest % "test" ++
       log4j % "test" ++
@@ -498,14 +463,14 @@ lazy val `js7-proxy` = crossProject(JSPlatform, JVMPlatform)
   .settings(commonSettings)
   .settings(
     libraryDependencies ++= {
-      import Dependencies._
+      import Dependencies.*
       "org.scalatest" %%% "scalatest" % scalaTestVersion % "test" ++
       Nil/*++
       "org.scalatest" %%% "scalatest-freespec" % scalaTestVersion % "test"*/
     })
   .jvmSettings(
     libraryDependencies ++= {
-      import Dependencies._
+      import Dependencies.*
       akkaHttp ++
       hamcrest % "test" ++
       log4j % "test" ++
@@ -524,13 +489,13 @@ lazy val `js7-controller-client` = crossProject(JSPlatform, JVMPlatform)
   .settings(commonSettings)
   .settings(
     libraryDependencies += {
-      import Dependencies._
+      import Dependencies.*
       "org.scalatest" %%% "scalatest" % scalaTestVersion % "test" /*++
       "org.scalatest" %%% "scalatest-freespec" % scalaTestVersion % "test"*/
     })
   .jvmSettings(
     libraryDependencies ++= {
-      import Dependencies._
+      import Dependencies.*
       akkaHttp ++
       log4j % "test" ++
       lmaxDisruptor % "test"
@@ -542,7 +507,7 @@ lazy val `js7-core` = project
     `js7-service-pgp` % "test")
   .settings(commonSettings)
   .settings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++=
       tagging ++
       diffx ++
@@ -556,7 +521,7 @@ lazy val `js7-launcher` = project
   .dependsOn(`js7-launcher-for-windows`, `js7-core`, `js7-base`.jvm % "test->test", `js7-tester`.jvm % "test")
   .settings(commonSettings)
   .settings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++=
       scalaTest % "test" ++
       scalaCheck % "test" ++
@@ -568,7 +533,7 @@ lazy val `js7-launcher-for-java` = project
   .dependsOn(`js7-launcher`, `js7-data-for-java`, `js7-base`.jvm % "test->test", `js7-tester`.jvm % "test")
   .settings(commonSettings)
   .settings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++=
       "io.vavr" % "vavr" % vavrVersion ++
       hamcrest % "test" ++
@@ -582,7 +547,7 @@ lazy val `js7-launcher-for-windows` = project
   .dependsOn(`js7-base`.jvm, `js7-base`.jvm % "test->test", `js7-tester`.jvm % "test")
   .settings(commonSettings)
   .settings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++=
       jna ++
       scalaTest % "test" ++
@@ -594,7 +559,7 @@ lazy val `js7-journal` = project
   .dependsOn(`js7-common-http`.jvm, `js7-common`, `js7-base`.jvm % "test->test", `js7-tester`.jvm % "test")
   .settings(commonSettings)
   .settings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++=
       akkaHttp ++
       akkaHttpTestkit % "test" ++
@@ -618,7 +583,7 @@ lazy val `js7-cluster` = project
     `js7-journal` % "test->test")
   .settings(commonSettings)
   .settings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++=
       diffx ++
       akkaHttpTestkit % "test" ++
@@ -637,7 +602,7 @@ lazy val `js7-cluster-watch-api` = crossProject(JSPlatform, JVMPlatform)
     `js7-tester` % "test")
   .settings(commonSettings)
   .settings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++=
       diffx ++
       scalaTest % "test" ++
@@ -654,7 +619,7 @@ lazy val `js7-cluster-watch` = project
     `js7-tester`.jvm % "test")
   .settings(commonSettings)
   .settings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++=
       diffx ++
       scalaTest % "test" ++
@@ -677,7 +642,7 @@ lazy val `js7-agent` = project
     `js7-service-pgp` % "test")
   .settings(commonSettings)
   .settings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++=
       findbugs ++
       akkaActor ++
@@ -700,7 +665,7 @@ lazy val `js7-subagent` = project
     `js7-tester`.jvm % "test")
   .settings(commonSettings)
   .settings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++=
       intelliJAnnotations % "compile" ++
       scalaTest % "test" ++
@@ -716,7 +681,7 @@ lazy val `js7-agent-client` = project
   .settings(commonSettings)
   .settings(description := "JS7 Agent - Client")
   .settings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++=
       "io.monix" %% "monix-reactive" % monixVersion ++
       akkaActor ++
@@ -734,7 +699,7 @@ lazy val `js7-agent-data` = crossProject(JSPlatform, JVMPlatform)
   .settings(commonSettings)
   .settings(description := "JS7 Agent - Value Classes")
   .settings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++=
       findbugs ++
       intelliJAnnotations % "compile" ++
@@ -757,7 +722,7 @@ lazy val `js7-service-pgp` = project
     `js7-tester`.jvm % "test")
   .settings(commonSettings)
   .settings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies += bouncyCastle
   }
 
@@ -785,7 +750,7 @@ lazy val `js7-tests` = project
     publish / skip := true,
     description := "JS7 Tests")
   .settings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++=
       akkaHttpTestkit % "test" ++  // For IntelliJ IDEA 2018.2
       scalaTest ++

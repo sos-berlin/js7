@@ -67,7 +67,7 @@ object Subtype {
     * <p>
     * Usage: Subtype(A)
     */
-  def apply[A: ClassTag](singleton: A) =
+  def apply[A: ClassTag](singleton: A): Subtype[A] =
     this.singleton(singleton)
 
   /**
@@ -75,7 +75,7 @@ object Subtype {
     * <p>
     * Usage: Subtype(A)
     */
-  def singleton[A: ClassTag](singleton: A, aliases: Seq[String] = Nil) = {
+  def singleton[A: ClassTag](singleton: A, aliases: Seq[String] = Nil): Subtype[A] = {
     val codec = singletonCodec(singleton)
     make[A](implicitClass[A] :: Nil, Some(implicitClass[A]), typeName[A], codec, codec, aliases = aliases)
   }

@@ -102,11 +102,11 @@ object WorkflowParser
         keyValue("parallelism", int) |
         keyValue("sigkillDelay", int))
       agentPath <- kv[AgentPath]("agent")
-      defaultArguments <- kv[ObjectExpr]("defaultArguments", ObjectExpr.empty)
-      arguments <- kv[ObjectExpr]("arguments", ObjectExpr.empty)
-      jobArguments <- kv[ObjectExpr]("jobArguments", ObjectExpr.empty)
-      jobResourcePaths <- kv[Seq[JobResourcePath]]("jobResourcePaths", Nil)
-      env <- kv[ObjectExpr]("env", ObjectExpr.empty)
+      defaultArguments <- kv.getOrElse[ObjectExpr]("defaultArguments", ObjectExpr.empty)
+      arguments <- kv.getOrElse[ObjectExpr]("arguments", ObjectExpr.empty)
+      jobArguments <- kv.getOrElse[ObjectExpr]("jobArguments", ObjectExpr.empty)
+      jobResourcePaths <- kv.getOrElse[Seq[JobResourcePath]]("jobResourcePaths", Nil)
+      env <- kv.getOrElse[ObjectExpr]("env", ObjectExpr.empty)
       v1Compatible <- kv.noneOrOneOf[BooleanConstant]("v1Compatible").map(_.fold(false)(_._2.booleanValue))
       returnCodeMeaning <- kv.oneOfOr(Set("successReturnCodes", "failureReturnCodes"), ReturnCodeMeaning.Default)
       executable <- kv.oneOf[Any]("executable", "command", "script", "internalJobClass").flatMap {
@@ -126,7 +126,7 @@ object WorkflowParser
               arguments = arguments.nameToExpr)))
         case _ => failWith("Invalid executable")  // Does not happen
       }
-      parallelism <- kv[Int]("parallelism", WorkflowJob.DefaultParallelism)
+      parallelism <- kv.getOrElse[Int]("parallelism", WorkflowJob.DefaultParallelism)
       sigkillDelay <- kv.get[Int]("sigkillDelay").map(_.map(_.s))
     } yield
       WorkflowJob(agentPath, executable, defaultArguments.nameToExpr,
@@ -205,7 +205,7 @@ object WorkflowParser
       ) .flatMap { case (((start, maybeKeyToValue), end), branches) =>
           val keyToValue = maybeKeyToValue getOrElse KeyToValue.empty
           for {
-            joinIfFailed <- keyToValue("joinIfFailed", BooleanConstant(false))
+            joinIfFailed <- keyToValue.getOrElse("joinIfFailed", BooleanConstant(false))
             fork <- checkedToParser(Fork.checked(
               branches,
               agentPath = None,
@@ -246,7 +246,7 @@ object WorkflowParser
         ~~<* instructionTerminator.?
       ) .flatMap { case ((((start, keyToValue), end), try_), catch_) =>
           for {
-            delays <- keyToValue.get[Seq[Int]]("retryDelays")
+            delays <- keyToValue.get[List[Int]]("retryDelays")
             maxTries <- keyToValue.get[Int]("maxTries")
             try_ <- checkedToParser(TryInstruction.checked(try_, catch_,
               delays.map(_.toVector.map(FiniteDuration(_, SECONDS))),

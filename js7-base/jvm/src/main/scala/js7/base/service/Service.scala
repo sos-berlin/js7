@@ -68,7 +68,7 @@ trait Service {
       .start
       .flatMap(fiber =>
         service match {
-          case service: StoppableByRequest => service.onFiberStarted(fiber)
+          case service: js7.base.service.StoppableByRequest => service.onFiberStarted(fiber)
           case _ => Task.unit
         })
       .as(Started)
@@ -80,7 +80,7 @@ object Service
     RestartAfterFailureService.defaultRestartDelays
 
   private[service] object Empty extends Service {
-    protected val start = this.startService(Task.unit)
+    protected lazy val start = startService(Task.unit)
     protected def stop = Task.unit
   }
 

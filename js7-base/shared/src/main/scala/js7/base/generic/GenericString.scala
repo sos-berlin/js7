@@ -60,7 +60,7 @@ object GenericString
     implicit val keyEncoder: KeyEncoder[A] = _.string
     implicit val keyDecoder: KeyDecoder[A] = o => Some(apply(o))  // throws?
 
-    implicit val GenericStringAsString: As[String, A] = As(apply)
+    implicit lazy val GenericStringAsString: As[String, A] = As(apply)
 
     override implicit def self: Checked_[A] = this
   }

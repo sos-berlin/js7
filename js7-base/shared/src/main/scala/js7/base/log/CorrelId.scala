@@ -53,7 +53,7 @@ object CorrelId extends GenericString.Checked_[CorrelId]
   val empty: CorrelId = EmptyCorrelId
   private[log] val local = Local(CorrelId.empty)
 
-  private val nextCorrelId: NextCorrelId =
+  private lazy val nextCorrelId: NextCorrelId =
     if (isTest && isIntelliJIdea)
       new NextCorrelId {
         private val next = Atomic(LongCorrelId.checked("Cor_____").orThrow.long)

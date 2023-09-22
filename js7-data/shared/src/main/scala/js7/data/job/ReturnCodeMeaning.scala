@@ -15,7 +15,7 @@ sealed trait ReturnCodeMeaning {
 }
 
 object ReturnCodeMeaning {
-  val Default: ReturnCodeMeaning = Success(RangeSet(ReturnCode(0)))
+  val Default: ReturnCodeMeaning = Success(RangeSet.one(ReturnCode(0)))
   val NoFailure: ReturnCodeMeaning = Failure(RangeSet.empty)
 
   implicit val ReturnCodeMeaningIsEmpty: IsEmpty[ReturnCodeMeaning] =
@@ -40,12 +40,13 @@ object ReturnCodeMeaning {
   }
 
   implicit val jsonEncoder: Encoder.AsObject[ReturnCodeMeaning] = {
-    implicit val jsonEncoder_ = RangeSet.jsonEncoder[ReturnCode];
+    implicit val jsonEncoder_ : Encoder[RangeSet[ReturnCode]] = RangeSet.jsonEncoder[ReturnCode];
     {
       case Success(o) => JsonObject.singleton("success", o.asJson)
       case Failure(o) => JsonObject.singleton("failure", o.asJson)
     }
   }
+
   implicit val jsonDecoder: Decoder[ReturnCodeMeaning] =
     c => {
       val c1 = c.downField("failure")

@@ -1,6 +1,7 @@
 package js7.cluster.web
 
-import akka.http.scaladsl.marshalling.ToResponseMarshallable
+import akka.http.scaladsl.common.JsonEntityStreamingSupport
+import akka.http.scaladsl.marshalling.{ToEntityMarshaller, ToResponseMarshallable}
 import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.Route
 import fs2.Stream
@@ -78,8 +79,8 @@ trait ClusterWatchRequestRoute extends RouteProvider
 
   private def observableToMarshallable(observable: Observable[ClusterWatchRequest])
   : ToResponseMarshallable = {
-    implicit val x = NdJsonStreamingSupport
-    implicit val y = jsonSeqMarshaller[ClusterWatchRequest]
+    implicit val x: JsonEntityStreamingSupport = NdJsonStreamingSupport
+    implicit val y: ToEntityMarshaller[ClusterWatchRequest] = jsonSeqMarshaller[ClusterWatchRequest]
     monixObservableToMarshallable(
       observable
         .takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ => Task {

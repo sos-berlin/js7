@@ -1,8 +1,7 @@
 package js7.data.workflow.instructions
 
 import io.circe.Codec
-import js7.base.circeutils.CirceUtils.{DecodeWithDefaults, deriveConfiguredCodec}
-import js7.base.utils.IntelliJUtils.intelliJuseImport
+import io.circe.derivation.ConfiguredCodec
 import js7.data.source.SourcePos
 import js7.data.value.expression.Expression
 import js7.data.workflow.position.{BranchPath, Position, PositionOrLabel}
@@ -25,6 +24,5 @@ extends Instruction
 
 object AddOrder
 {
-  implicit val jsonCodec: Codec.AsObject[AddOrder] = deriveConfiguredCodec
-  intelliJuseImport(DecodeWithDefaults)
+  implicit val jsonCodec: Codec.AsObject[AddOrder] = ConfiguredCodec.derive(useDefaults = true)
 }

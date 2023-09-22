@@ -4,13 +4,13 @@ import cats.effect.{ContextShift, IO, Resource}
 import js7.base.catsutils.UnsafeMemoizable.concurrentMemoizable
 import js7.base.test.OurAsyncTestSuite
 import js7.base.utils.CatsUtils.syntax.RichResource
-import monix.execution.Scheduler.Implicits.traced as scheduler
+import monix.execution.Scheduler
 
 final class AllocatedTest extends OurAsyncTestSuite {
 
   private var nr = 0
   private implicit val contextShift: ContextShift[IO] =
-    IO.contextShift(scheduler)
+    IO.contextShift(Scheduler.traced)
 
   private val resource = Resource.make(
     acquire = IO {

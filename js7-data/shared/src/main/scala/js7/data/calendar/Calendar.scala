@@ -1,6 +1,7 @@
 package js7.data.calendar
 
 import io.circe.Codec
+import io.circe.derivation.ConfiguredCodec
 import js7.base.circeutils.CirceUtils.*
 import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.problem.{Checked, Problem}
@@ -99,5 +100,5 @@ object Calendar extends UnsignedSimpleItem.Companion[Calendar]
   implicit val jsonCodec: Codec.AsObject[Calendar] =
     deriveConfiguredCodec[Calendar].checked(_.checked)
 
-  intelliJuseImport((FiniteDurationJsonEncoder, DecodeWithDefaults))
+  intelliJuseImport((FiniteDurationJsonEncoder))
 }

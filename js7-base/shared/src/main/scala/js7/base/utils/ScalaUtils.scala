@@ -407,20 +407,20 @@ object ScalaUtils
             mapView.values.view.map(toV1)
         }
 
-        /** Concat to MapViews and return a MapView wit Map behaviour. */
-        def +++[V1 >: V](right: MapView[K, V1]): MapView[K, V1] =
-          new AbstractMapView[K, V1] {
-            def get(key: K): Option[V1] =
-              right.get(key) match {
-                case o @ Some(_) => o
-                case _ => mapView.get(key)
-              }
+      /** Concat to MapViews and return a MapView wit Map behaviour. */
+      def +++[V1 >: V](right: MapView[K, V1]): MapView[K, V1] =
+        new AbstractMapView[K, V1] {
+          def get(key: K): Option[V1] =
+            right.get(key) match {
+              case o @ Some(_) => o
+              case _ => mapView.get(key)
+            }
 
-            def iterator: Iterator[(K, V1)] =
-              mapView.iterator
-                .filter { case (k, _) => !right.contains(k) }
-                .concat(right.iterator)
-          }
+          def iterator: Iterator[(K, V1)] =
+            mapView.iterator
+              .filter { case (k, _) => !right.contains(k) }
+              .concat(right.iterator)
+        }
     }
 
     final class MergeOrderedIterator[A, B: Ordering] private[ScalaUtils](

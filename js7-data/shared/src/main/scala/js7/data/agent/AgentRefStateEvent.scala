@@ -1,12 +1,10 @@
 package js7.data.agent
 
 import io.circe.Codec
-import io.circe.generic.extras.JsonKey
-import io.circe.generic.extras.semiauto.deriveConfiguredCodec
-import js7.base.circeutils.CirceUtils.DecodeWithDefaults
+import io.circe.derivation.ConfiguredCodec
+import js7.base.circeutils.CirceUtils.deriveConfiguredCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Problem
-import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.data.cluster.ClusterEvent
 import js7.data.cluster.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
@@ -58,7 +56,7 @@ object AgentRefStateEvent
   type AgentReset = AgentReset.type
   case object AgentReset extends AgentRefStateEvent
 
-  final case class AgentMirroredEvent(@JsonKey("event") keyedEvent: KeyedEvent[Event])
+  final case class AgentMirroredEvent(keyedEvent: KeyedEvent[Event])
   extends AgentRefStateEvent
   object AgentMirroredEvent {
     private implicit val innerEventCodec: Codec.AsObject[KeyedEvent[Event]] =
@@ -66,7 +64,9 @@ object AgentRefStateEvent
         KeyedSubtype[ClusterEvent])
 
     private[AgentRefStateEvent] implicit def jsonCodec: Codec.AsObject[AgentMirroredEvent] =
-      deriveConfiguredCodec[AgentMirroredEvent]
+      ConfiguredCodec.derive[AgentMirroredEvent](
+        transformMemberNames = Map("keyedEvent" -> "event"),
+        useDefaults = true)
   }
 
   /** Untaught ClusterWatch was unable to confirm a ClusterNodeLostEvent. */
@@ -89,6 +89,4 @@ object AgentRefStateEvent
     Subtype[AgentMirroredEvent],
     Subtype(deriveConfiguredCodec[AgentClusterWatchConfirmationRequired]),
     Subtype(AgentClusterWatchManuallyConfirmed))
-
-  intelliJuseImport(DecodeWithDefaults)
 }

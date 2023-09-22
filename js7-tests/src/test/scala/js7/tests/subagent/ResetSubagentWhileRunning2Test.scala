@@ -39,8 +39,8 @@ final class ResetSubagentWhileRunning2Test extends OurTestSuite with SubagentTes
     var firstSubagentRunId: SubagentRunId = null
 
     runSubagent(bareSubagentItem,
-      config = config"""js7.tests.SubagentDriver.suppressResetShutdown = true""")
-    { subagent =>
+      config = config"""js7.tests.SubagentDriver.suppressResetShutdown = true"""
+    ) { subagent =>
       eventWatch.await[SubagentCoupled](_.key == bareSubagentId)
       firstSubagentRunId = subagent.subagentRunId
 

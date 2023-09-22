@@ -36,7 +36,7 @@ import js7.data.node.NodeId
 import js7.tests.testenv.ControllerClusterForScalaTest.*
 import js7.tests.testenv.DirectoryProvider.script
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.traced as scheduler
+import monix.execution.Scheduler.Implicits.traced 
 import org.jetbrains.annotations.TestOnly
 
 @TestOnly
@@ -224,7 +224,7 @@ trait ControllerClusterForScalaTest
       .standardSchedulerResource[SyncIO](
         s"${getClass.simpleScalaName}-${clusterWatchId.string}",
         Js7Configuration.defaultConfig)
-      .use(implicit scheduler => SyncIO(
+      .use(_ => SyncIO(
         clusterWatchServiceResource(clusterWatchId)
           .blockingUse(99.s)(body.tupled)))
       .unsafeRunSync()

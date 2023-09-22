@@ -92,7 +92,7 @@ final class ExecuteTest extends OurTestSuite with ControllerAgentForScalaTest
         agentPath,
         ShellScriptExecutable(
           returnCodeScript(2),
-          returnCodeMeaning = ReturnCodeMeaning.Success(RangeSet(ReturnCode(2)))))),
+          returnCodeMeaning = ReturnCodeMeaning.Success(RangeSet.one(ReturnCode(2)))))),
     expectedOutcome = Outcome.Succeeded(NamedValues.rc(2)))
 
   addExecuteTest(
@@ -201,7 +201,7 @@ final class ExecuteTest extends OurTestSuite with ControllerAgentForScalaTest
         ShellScriptExecutable(
           returnCodeScript("myExitCode"),
           env = Map("myExitCode" -> NamedValue("myExitCode")),
-          returnCodeMeaning = ReturnCodeMeaning.Success(RangeSet(ReturnCode(1)))))),
+          returnCodeMeaning = ReturnCodeMeaning.Success(RangeSet.one(ReturnCode(1)))))),
     orderArguments = Map("myExitCode" -> NumberValue(1)),
     expectedOutcome = Outcome.Succeeded.rc(1))
 
@@ -218,7 +218,7 @@ final class ExecuteTest extends OurTestSuite with ControllerAgentForScalaTest
           Execute.Anonymous(WorkflowJob(
             agentPath,
             executable.copy(
-              returnCodeMeaning = ReturnCodeMeaning.Success(RangeSet(ReturnCode(33)))),
+              returnCodeMeaning = ReturnCodeMeaning.Success(RangeSet.one(ReturnCode(33)))),
             Map("myExitCode" -> NumericConstant(33))))),
         Map(WorkflowJob.Name("JOB") ->
           WorkflowJob(
@@ -247,14 +247,14 @@ final class ExecuteTest extends OurTestSuite with ControllerAgentForScalaTest
             WorkflowJob(
               agentPath,
               executable.copy(
-                returnCodeMeaning = ReturnCodeMeaning.Success(RangeSet(ReturnCode(44))))),
+                returnCodeMeaning = ReturnCodeMeaning.Success(RangeSet.one(ReturnCode(44))))),
             Map(
               "myExitCode" -> expr("$orderExitCode"/*from Order*/)))),
         Map(WorkflowJob.Name("JOB") ->
           WorkflowJob(
             agentPath,
             executable.copy(
-              returnCodeMeaning = ReturnCodeMeaning.Success(RangeSet(ReturnCode(44)))),
+              returnCodeMeaning = ReturnCodeMeaning.Success(RangeSet.one(ReturnCode(44)))),
             Map("myExitCode" -> NumericConstant(11))))),
       orderArguments = Map(
         "orderExitCode" -> NumberValue(44)),

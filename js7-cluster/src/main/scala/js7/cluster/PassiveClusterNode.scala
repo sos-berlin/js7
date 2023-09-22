@@ -52,7 +52,6 @@ import js7.journal.recover.{FileSnapshotableStateBuilder, JournalProgress, Recov
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
-import scala.annotation.nowarn
 
 private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]: diffx.Diff](
   ownId: NodeId,
@@ -308,7 +307,6 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]: diffx.
 
       val maybeTmpFile = locally {
         // Suppress wrong "unreachable code" error for FirstPartialFile case
-        @nowarn("cat=other-match-analysis")
         def toTmpFile = continuation match {
           case _: NoLocalJournal | _: NextFile =>
             val tmp = Paths.get(file.toString + TmpSuffix)

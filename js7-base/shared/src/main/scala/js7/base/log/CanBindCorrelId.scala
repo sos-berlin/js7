@@ -95,8 +95,7 @@ object CanBindCorrelId
 
   private object CancelableFutureCan extends FutureCan[CancelableFuture, Any]
 
-  implicit def resourceCan[F[_], A]
-    (implicit F: Sync[F], canBind: CanBindCorrelId[F[?]])
+  implicit def resourceCan[F[_], x, A](implicit F: Sync[F], canBind: CanBindCorrelId[F[x]])
   : CanBindCorrelId[Resource[F, A]] =
     new CanBindCorrelId[Resource[F, A]] {
       private implicit val x: CanBindCorrelId[F[(A, F[Unit])]] =

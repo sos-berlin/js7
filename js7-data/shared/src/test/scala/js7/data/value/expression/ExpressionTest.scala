@@ -155,7 +155,7 @@ final class ExpressionTest extends OurTestSuite
 
     "Lists" - {
       testEval("[ 'AAA', missing, 7 ]",
-        result = Right(ListValue(Seq("AAA", MissingValue, 7))),
+        result = Right(ListValue(Seq[Value]("AAA", MissingValue, 7))),
         ListExpr(List("AAA", MissingConstant, 7)))
 
       testEval("""[ 'AAA', error("ERROR"), 7 ]""",
@@ -1078,7 +1078,7 @@ final class ExpressionTest extends OurTestSuite
       Matches(7, ""))
 
     testEval(""" [7] matches "" """,
-      result = Left(UnexpectedValueTypeProblem(StringValue, ListValue(List(7)))),
+      result = Left(UnexpectedValueTypeProblem(StringValue, ListValue(List(NumberValue(7))))),
       Matches(ListExpr(List(7)), ""))
 
     testEval(""" missing matches "" """,

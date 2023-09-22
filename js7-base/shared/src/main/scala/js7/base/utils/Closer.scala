@@ -8,7 +8,6 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Closer.*
 import monix.eval.Task
 import monix.execution.atomic.AtomicAny
-import scala.annotation.tailrec
 import scala.util.control.NonFatal
 
 final class Closer extends AutoCloseable
@@ -47,7 +46,7 @@ final class Closer extends AutoCloseable
   def register(closeable: AutoCloseable): Unit =
     stack.add(requireNonNull(closeable))
 
-  @tailrec
+  //@tailrec
   def close(): Unit =
     stack.pollLast() match {
       case null =>  // finish

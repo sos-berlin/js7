@@ -7,13 +7,13 @@ import cats.syntax.parallel.*
 import fs2.Stream
 import js7.base.test.OurAsyncTestSuite
 import js7.base.utils.Tests.isIntelliJIdea
-import monix.execution.Scheduler.Implicits.traced as scheduler
+import monix.execution.Scheduler
 import org.scalatest.{Assertion, Succeeded}
 
 final class Fs2PubSubTest extends OurAsyncTestSuite
 {
   private implicit val contextShift: ContextShift[IO] =
-    IO.contextShift(scheduler)
+    IO.contextShift(Scheduler.traced)
 
   "FsPubSub" in {
     val n = 10000

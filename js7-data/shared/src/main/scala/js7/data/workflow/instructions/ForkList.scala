@@ -1,10 +1,9 @@
 package js7.data.workflow.instructions
 
 import io.circe.*
+import io.circe.derivation.ConfiguredDecoder
 import io.circe.generic.semiauto.deriveEncoder
-import js7.base.circeutils.CirceUtils.{DecodeWithDefaults, deriveConfiguredDecoder}
 import js7.base.problem.Checked
-import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.reuseIfEqual
 import js7.data.agent.AgentPath
 import js7.data.source.SourcePos
@@ -80,8 +79,7 @@ object ForkList
     ).checked
 
   implicit val jsonEncoder: Encoder.AsObject[ForkList] = deriveEncoder[ForkList]
-  implicit val jsonDecoder: Decoder[ForkList] = deriveConfiguredDecoder[ForkList]
+  implicit val jsonDecoder: Decoder[ForkList] = ConfiguredDecoder
+    .derive[ForkList](useDefaults = true)
     .emap(_.checked.left.map(_.toString))
-
-  intelliJuseImport(DecodeWithDefaults)
 }

@@ -43,7 +43,8 @@ final class WorkflowJobTest extends OurTestSuite
           AgentPath("AGENT"),
           RelativePathExecutable(
             "EXECUTABLE",
-            returnCodeMeaning = ReturnCodeMeaning.Success(RangeSet(ReturnCode(0), ReturnCode(1)))),
+            returnCodeMeaning = ReturnCodeMeaning.Success(RangeSet(
+              ReturnCode(0), ReturnCode(1)))),
           Map(
             "NAME" -> StringConstant("VALUE"),
             "NUMBER" -> NumericConstant(7)),

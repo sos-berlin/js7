@@ -11,7 +11,6 @@ import js7.base.problem.Checked
 import js7.base.problem.Checked.*
 import js7.base.problem.Problems.InvalidNameProblem
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.data.order.Outcome
@@ -285,6 +284,4 @@ object Executable
     Subtype[ShellScriptExecutable](Nil, aliases = Seq("ExecutableScript", "ScriptExecutable")),
     Subtype[CommandLineExecutable],
     Subtype(deriveConfiguredCodec[InternalExecutable]))
-
-  intelliJuseImport(DecodeWithDefaults)
 }

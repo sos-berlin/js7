@@ -215,7 +215,9 @@ object WorkingClusterNode
         common.requireValidLicense.map(_.orThrow)))
       journalAllocated <- Resource.eval(FileJournal
         .resource(recovered, clusterConf.journalConf, eventIdGenerator, keyedEventBus)
-        .toAllocated/* ControllerOrderKeeper and AgentOrderKeeper both require Allocated*/)
+        // Not compilable with Scala 3.3.1: .toAllocated
+        .toLabeledAllocated(label = s"FileJournal[${implicitly[Tag[S]].tag.shortName}]")
+        /* ControllerOrderKeeper and AgentOrderKeeper both require Allocated*/)
       workingClusterNode <- Resource.make(
         acquire = Task.defer {
           val w = new WorkingClusterNode(recovered.failedNodeId, journalAllocated, common, clusterConf)

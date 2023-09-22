@@ -1,6 +1,7 @@
 package js7.data.controller
 
 import io.circe.Codec
+import io.circe.derivation.ConfiguredCodec
 import js7.base.circeutils.CirceUtils.deriveRenamingCodec
 import js7.base.circeutils.ScalaJsonCodecs.FiniteDurationJsonEncoder
 import js7.base.time.{Timestamp, Timezone}
@@ -22,8 +23,7 @@ object ControllerMetaState
     Timezone("UTC"))
 
   implicit val jsonEncoder: Codec.AsObject[ControllerMetaState] =
-    deriveRenamingCodec[ControllerMetaState](Map(
-      "startedAt" -> "initiallyStartedAt"))
+    deriveRenamingCodec[ControllerMetaState](Map("startedAt" -> "initiallyStartedAt"))
 
   intelliJuseImport(FiniteDurationJsonEncoder)
 }

@@ -3,7 +3,6 @@ package js7.base.io.file.watch
 import cats.data.NonEmptySeq
 import java.nio.file.StandardWatchEventKinds.{ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY}
 import java.nio.file.{Path, WatchEvent}
-import js7.base.io.file.watch.WatchOptions.*
 import js7.base.time.ScalaTime.*
 import scala.concurrent.duration.FiniteDuration
 

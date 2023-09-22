@@ -171,7 +171,7 @@ object Checked
 
   implicit final class RichCheckedF[F[_], A](private val underlying: F[Checked[A]]) extends AnyVal
   {
-    def onProblemHandle[B >: A](f: Problem => B)(implicit F: Functor[F]): F[B] =
+    def onProblemHandleInF[B >: A](f: Problem => B)(implicit F: Functor[F]): F[B] =
       underlying.map {
         case Left(problem) => f(problem)
         case Right(a) => a

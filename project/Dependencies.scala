@@ -5,8 +5,6 @@ import scala.language.implicitConversions
 //noinspection TypeAnnotation
 object Dependencies
 {
-  val scalaVersion = "2.13.11"
-
   val akkaVersion = "2.6.21"      // Do not update to v2.7, due to restrictive Akka licences!
   val akkaHttpVersion = "10.2.10" // Do not update to v10.4, due to restrictive Akka licences!
   val slf4jVersion = "2.0.5"  // See also plugins.sbt
@@ -21,7 +19,7 @@ object Dependencies
   val scalaTestVersion = "3.2.16"
   val scalaTestCheckVersion = "3.2.14.0"
   val scalaCheckVersion= "1.17.0"
-  val sourcecodeVersion = "0.3.0"
+  val sourcecodeVersion = "0.3.1"
   val disciplineVersion = "1.5.1"
   val disciplineScalaTestVersion = "2.2.0"
   val fs2Version = "2.5.11"

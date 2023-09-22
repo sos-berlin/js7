@@ -27,7 +27,7 @@ import js7.controller.configuration.ControllerConfiguration
 import js7.controller.tests.TestDockerEnvironment
 import js7.data.agent.AgentPath
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.traced as scheduler
+import monix.execution.Scheduler.Implicits.traced 
 
 /**
   * @author Joacim Zschimmer
@@ -88,7 +88,7 @@ object TestDockerExample
         Log4j.shutdown()
       } .closeWithCloser
 
-      RunningController.threadPoolResource[SyncIO](conf).useSync { implicit scheduler =>
+      RunningController.threadPoolResource[SyncIO](conf).useSync { _ =>
         RunningController.resource(conf)
           .blockingUse(99.s) { controller =>
             //??? controller.api.executeCommand(ControllerCommand.ScheduleOrdersEvery(1.minute)).runToFuture.await(99.s).orThrow

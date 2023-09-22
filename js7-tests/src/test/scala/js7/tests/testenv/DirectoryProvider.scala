@@ -296,7 +296,8 @@ extends HasCloser
         catch { case t2: Throwable if t2 ne t => t.addSuppressed(t2) }
         throw t
       }
-      agents.traverse(_.terminate()) await 99.s
+
+    agents.traverse(_.terminate()) await 99.s
     result
   }
 

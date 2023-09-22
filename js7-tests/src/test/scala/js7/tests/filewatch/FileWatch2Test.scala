@@ -34,7 +34,7 @@ import js7.tests.jobs.{DeleteFileJob, SemaphoreJob}
 import js7.tests.testenv.DirectoryProviderForScalaTest
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
-import scala.reflect.io.File.separator
+import java.io.File.separator
 
 final class FileWatch2Test extends OurTestSuite with DirectoryProviderForScalaTest
 {

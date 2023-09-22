@@ -1,5 +1,6 @@
 package js7.base.utils
 
+import io.circe.{Decoder, Encoder}
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.generic.GenericInt
 import js7.base.test.OurTestSuite
@@ -15,16 +16,16 @@ final class RangeSetTest extends OurTestSuite {
     import RangeSet.jsonEncoder
 
     testJson[RangeSet[Int]](
-      RangeSet.raw(Vector(Interval(-5, -3), Single(0xffffffff), Single(7), Single(9), Single(10))),
+      RangeSet.raw(Interval(-5, -3), Single(0xffffffff), Single(7), Single(9), Single(10)),
       json""" "-5..-3,-1,7,9,10" """)
   }
 
   "JSON as Array (not used)" in {
-    implicit val jsonEncoder = RangeSet.asArrayJsonEncoder[Int]
-    implicit val jsonDecoder = RangeSet.asArrayJsonDecoder[Int]
+    implicit val jsonEncoder: Encoder.AsArray[RangeSet[Int]] = RangeSet.asArrayJsonEncoder[Int]
+    implicit val jsonDecoder: Decoder[RangeSet[Int]] = RangeSet.asArrayJsonDecoder[Int]
 
     testJson[RangeSet[Int]](
-      RangeSet.raw(Vector(Single(1), Interval(3, 5), Single(7), Single(9), Single(10))),
+      RangeSet.raw(Single(1), Interval(3, 5), Single(7), Single(9), Single(10)),
       json"""[ 1, [3, 5], 7, 9, 10]""")
   }
 
@@ -36,44 +37,44 @@ final class RangeSetTest extends OurTestSuite {
   }
 
   "fromRanges" in {
-    assert(RangeSet.fromRanges[Int](Nil) == RangeSet.raw[Int](Vector.empty))
+    assert(RangeSet.fromRanges[Int](Nil) == RangeSet.raw[Int]())
 
     assert(RangeSet.fromRanges(Seq(Single(3), Single(1), Single(3), Single(1))) ==
-      RangeSet.raw(Vector(Single(1), Single(3))))
+      RangeSet.raw(Single(1), Single(3)))
 
     assert(RangeSet.fromRanges(Seq(Interval(1, 3), Interval(1, 2))) ==
-      RangeSet.raw(Vector(Interval(1, 3))))
+      RangeSet.raw(Interval(1, 3)))
 
     assert(RangeSet.fromRanges(Seq(Interval(1, 3), Interval(1, 2), Interval(2, 3))) ==
-      RangeSet.raw(Vector(Interval(1, 3))))
+      RangeSet.raw(Interval(1, 3)))
 
     // Separate simple Interval 1-2 into 1, 2
     assert(RangeSet.fromRanges(Seq(Interval(1, 2))) ==
-      RangeSet.raw(Vector(Single(1), Single(2))))
+      RangeSet.raw(Single(1), Single(2)))
 
     assert(RangeSet.fromRanges(Seq(Single(1), Single(2))) ==
-      RangeSet.raw(Vector(Single(1), Single(2))))
+      RangeSet.raw(Single(1), Single(2)))
 
     assert(RangeSet.fromRanges(Seq(Interval(1, 2), Single(3))) ==
-      RangeSet.raw(Vector(Interval(1, 3))))
+      RangeSet.raw(Interval(1, 3)))
   }
 
   "fromRanges coalesces succeeding ranges" in {
     assert(RangeSet.fromRanges(Seq(Interval(1, 2), Interval(3, 4), Single(5), Single(6))) ==
-      RangeSet.raw(Vector(Interval(1, 6))))
+      RangeSet.raw(Interval(1, 6)))
   }
 
   "RangeSet[GenericInt]" in {
     assert(RangeSet.fromRanges(Seq(Single(Test(1)), Single(Test(2)))) ==
-      RangeSet.raw(Vector(Single(Test(1)), Single(Test(2)))))
+      RangeSet.raw(Single(Test(1)), Single(Test(2))))
 
     assert(RangeSet.fromRanges(Seq(Single(Test(1)), Single(Test(2)), Interval(Test(3), Test(5)))) ==
-      RangeSet.raw(Vector(Interval(Test(1), Test(5)))))
+      RangeSet.raw(Interval(Test(1), Test(5))))
   }
 
   "RangeSet[Char]" in {
-    assert(RangeSet.fromRanges(Seq(Single('a'), Single('b'), Single('c'), Single('x'))) ==
-      RangeSet.raw(Vector(Interval('a', 'c'), Single('x'))))
+    assert(RangeSet.fromRanges[Char](Seq(Single('a'), Single('b'), Single('c'), Single('x'))) ==
+      RangeSet.raw(Interval('a', 'c'), Single('x')))
   }
 
   if (false) "RangeSet[String]" in {
@@ -98,7 +99,7 @@ final class RangeSetTest extends OurTestSuite {
     }
 
     "empty" in {
-      assert(RangeSet.empty[Int] == RangeSet.raw[Int](Vector.empty))
+      assert(RangeSet.empty[Int] == RangeSet.raw[Int]())
     }
 
     "contains" in {

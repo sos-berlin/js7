@@ -23,7 +23,7 @@ import js7.tests.jobs.SemaphoreJob
 import js7.tests.subagent.SubagentMoveInClusterTest.*
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest, DirectorEnv}
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.traced as scheduler
+import monix.execution.Scheduler.Implicits.traced 
 
 final class SubagentMoveInClusterTest extends OurTestSuite with ControllerAgentForScalaTest /*with SubagentTester*/
 with BlockingItemUpdater

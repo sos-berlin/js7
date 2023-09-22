@@ -1,16 +1,14 @@
 package js7.data.workflow.instructions
 
 import io.circe.Codec
-import io.circe.generic.semiauto.deriveCodec
-import js7.base.circeutils.CirceUtils.DecodeWithDefaults
+import io.circe.derivation.ConfiguredCodec
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.data.board.BoardPathExpression
 import js7.data.order.Order
 import js7.data.order.OrderEvent.OrderNoticesConsumptionStarted
 import js7.data.source.SourcePos
-import js7.data.workflow.{Instruction, Workflow}
 import js7.data.workflow.position.{BranchId, Position}
+import js7.data.workflow.{Instruction, Workflow}
 
 final case class ConsumeNotices(
   boardPaths: BoardPathExpression,
@@ -52,7 +50,6 @@ extends ExpectOrConsumeNoticesInstruction
 
 object ConsumeNotices
 {
-  implicit val jsonCodec: Codec.AsObject[ConsumeNotices] = deriveCodec
-
-  intelliJuseImport(DecodeWithDefaults)
+  implicit val jsonCodec: Codec.AsObject[ConsumeNotices] =
+    ConfiguredCodec.derive(useDefaults = true)
 }

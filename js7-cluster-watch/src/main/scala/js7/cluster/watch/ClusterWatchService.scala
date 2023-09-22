@@ -71,7 +71,7 @@ extends MainService with Service.StoppableByRequest
           val nodeWatch = new NodeServer(nodeApi)
           nodeWatch.observable.map(nodeWatch -> _)
         })
-      .merge
+      .merge(/*Scala 3*/implicitly[Observable[(NodeServer, ClusterWatchRequest)] <:< Observable[(NodeServer, ClusterWatchRequest)]])
       .mapEval { case (nodeWatch, request) =>
         // Synchronize requests from both nodes
         request.correlId.bind(

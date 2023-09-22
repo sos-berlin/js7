@@ -1,9 +1,8 @@
 package js7.base.test
 
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
-import org.scalactic.source
 import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.{Args, Status}
+import org.scalatest.{Args, PendingStatement, Status, Tag}
 import scala.language.implicitConversions
 import scala.util.Try
 
@@ -18,12 +17,11 @@ trait LoggingAnyFreeSpec extends AnyFreeSpec {
 
   protected def suppressTestCorrelId = false
 
-  protected implicit def implicitToFreeSpecStringWrapper(name: String)
-    (implicit pos: source.Position)
-  : LoggingFreeSpecStringWrapper[Any] =
+  protected implicit inline final def implicitToFreeSpecStringWrapper(name: String)
+  : LoggingFreeSpecStringWrapper[Any, ResultOfTaggedAsInvocationOnString] =
     testAdder.toStringWrapper(
       name,
-      super.convertToFreeSpecStringWrapper(name)(pos),
+      toUnified(/*convertToFreeSpecStringWrapper*/(name)),
       (ctx, testBody) => {
         ctx.beforeTest()
         val tried = Try(testBody)
@@ -37,4 +35,25 @@ trait LoggingAnyFreeSpec extends AnyFreeSpec {
     testAdder.afterAll()
     tried.get
   }
+
+  private def toUnified(stringWrapper: FreeSpecStringWrapper) =
+    new LoggingFreeSpecStringWrapper.UnifiedStringWrapper[Any, ResultOfTaggedAsInvocationOnString] {
+      def -(addTests: => Unit) =
+        stringWrapper - addTests
+
+      def in(testBody: => Any) =
+        stringWrapper in testBody
+
+      def taggedAs(tag: Tag, more: Tag*) =
+        new LoggingFreeSpecStringWrapper.TaggedAs[Any] {
+          def in(testBody: => Any) =
+            testBody
+
+          def ignore(testBody: => Any) =
+            testBody
+
+          def is(pending: => PendingStatement) =
+            pending
+        }
+    }
 }

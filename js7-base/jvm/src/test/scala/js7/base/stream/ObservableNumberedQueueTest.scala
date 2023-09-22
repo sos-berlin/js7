@@ -35,12 +35,12 @@ final class ObservableNumberedQueueTest extends OurTestSuite
     locally {
       val t = intercept[ProblemException](observe(3, take = 1))
       assert(t.problem == Problem(
-        "Unknown number: Numbered[ObservableNumberedQueueTest::X]: #3 (must be >=0 and <=2)"))
+        "Unknown number: Numbered[ObservableNumberedQueueTest$::X]: #3 (must be >=0 and <=2)"))
     }
     locally {
       val t = intercept[ProblemException](observe(-1, take = 1))
       assert(t.problem == Problem(
-        "Unknown number: Numbered[ObservableNumberedQueueTest::X]: #-1 (must be >=0 and <=2)"))
+        "Unknown number: Numbered[ObservableNumberedQueueTest$::X]: #-1 (must be >=0 and <=2)"))
     }
 
     queue.enqueue(Seq(X("c"))).await(99.s)
@@ -93,7 +93,7 @@ final class ObservableNumberedQueueTest extends OurTestSuite
       queue.release(1).await(99.s).orThrow
       val t = intercept[ProblemException](observe(0, take = 1))
       assert(t.problem == Problem(
-        "Unknown number: Numbered[ObservableNumberedQueueTest::X]: #0 (must be >=1 and <=6)"))
+        "Unknown number: Numbered[ObservableNumberedQueueTest$::X]: #0 (must be >=1 and <=6)"))
     }
 
     assert(observe(1, take = 1) == List(Numbered(2, X("b"))))
@@ -102,11 +102,11 @@ final class ObservableNumberedQueueTest extends OurTestSuite
       queue.release(3).await(99.s).orThrow
       val t = intercept[ProblemException](observe(0, take = 1))
       assert(t.problem == Problem(
-        "Unknown number: Numbered[ObservableNumberedQueueTest::X]: #0 (must be >=3 and <=6)"))
+        "Unknown number: Numbered[ObservableNumberedQueueTest$::X]: #0 (must be >=3 and <=6)"))
     }
 
     assert(queue.release(7).await(99.s) == Left(Problem(
-      "Unknown number: Numbered[ObservableNumberedQueueTest::X]: #7 (must be >=3 and <=6)")))
+      "Unknown number: Numbered[ObservableNumberedQueueTest$::X]: #7 (must be >=3 and <=6)")))
   }
 }
 

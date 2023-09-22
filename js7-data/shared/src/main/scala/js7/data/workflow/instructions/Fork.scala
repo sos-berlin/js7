@@ -1,13 +1,13 @@
 package js7.data.workflow.instructions
 
 import io.circe.*
+import io.circe.derivation.{ConfiguredCodec, ConfiguredDecoder}
 import io.circe.syntax.*
 import js7.base.circeutils.CirceUtils.*
 import js7.base.generic.GenericString
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits.*
-import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.reuseIfEqual
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEitherIterable}
 import js7.data.agent.AgentPath
@@ -134,7 +134,7 @@ object Fork
     }
 
     implicit val jsonCodec: Codec.AsObject[Branch] =
-      deriveConfiguredCodec[Branch]
+      ConfiguredCodec.derive[Branch](useDefaults = true)
   }
 
   //implicit lazy val jsonCodec: CirceObjectCodec[Fork] = deriveCodec[Fork]
@@ -160,6 +160,4 @@ object Fork
       "branchIds" -> branchIds.mkString(", ")
     )
   }
-
-  intelliJuseImport(DecodeWithDefaults)
 }
