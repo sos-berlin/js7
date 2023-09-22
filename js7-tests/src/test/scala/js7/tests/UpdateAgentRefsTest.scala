@@ -111,7 +111,7 @@ final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForSc
   "Add AgentRef again: Agent's journal should be new due to implicit Reset" in {
     agent = TestAgent.start(agentEnv.agentConf) await 99.s
 
-    val eventId = eventWatch.lastFileEventId
+    val eventId = eventWatch.lastAddedEventId
     val versionId = VersionId("AGAIN")
     val subagentItem = SubagentItem(subagentId, agentPath, Uri(s"http://127.0.0.1:$agentPort1"))
 
@@ -154,7 +154,7 @@ final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForSc
   "Coupling fails with outdated Director" in {
     deleteDirectoryRecursively(agentEnv.stateDir)
     move(outdatedState, agentEnv.stateDir)
-    val eventId = eventWatch.lastFileEventId
+    val eventId = eventWatch.lastAddedEventId
 
     agent = TestAgent.start(
       agentEnv.agentConf.copy(
@@ -181,7 +181,7 @@ final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForSc
           webServerPorts = List(WebServerPort.localhost(agentPort3))))
     ) await 99.s
 
-    val eventId = eventWatch.lastFileEventId
+    val eventId = eventWatch.lastAddedEventId
     controllerApi.updateUnsignedSimpleItems(Seq(subagentItem)).await(99.s).orThrow
     eventWatch.await[AgentCouplingFailed](
       _.event.problem == AgentNotDedicatedProblem,
