@@ -113,7 +113,7 @@ trait ProcessingOrderScopes extends OrderScopes
   final lazy val jobExecutionCount: Int =
     1 + order.historicJobExecutionCount(jobKey, workflow)
 
-  private def js7JobVariablesScope = NamedValueScope(Map(
+  private lazy val js7JobVariablesScope = NamedValueScope(Map(
     "js7JobName" -> StringValue(simpleJobName), // Legacy
     "js7JobExecutionCount" -> NumberValue(jobExecutionCount),
     "js7Job" -> ObjectValue(Map(

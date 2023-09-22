@@ -4,7 +4,7 @@ import cats.instances.vector.*
 import cats.syntax.semigroup.*
 import cats.syntax.traverse.*
 import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, DecodingFailure, Encoder, Json, JsonObject}
+import io.circe.{Decoder, Encoder, Json, JsonObject}
 import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
@@ -19,17 +19,25 @@ import js7.data.value.expression.Scope.evalLazilyExpressions
 import js7.data.value.expression.scopes.OrderScopes.{minimalJs7VariablesScope, scheduledScope}
 import js7.data.value.expression.scopes.{EnvScope, JobResourceScope, NameToCheckedValueScope, NamedValueScope}
 import js7.data.value.expression.{Expression, Scope}
-import js7.data.value.{ListType, ListValue, NamedValues, ObjectType, ObjectValue, Value, ValueType}
+import js7.data.value.{AnyValue, ListType, ListValue, NamedValues, ObjectType, ObjectValue, Value, ValueType}
 import js7.data.workflow.OrderParameter.{Final, Optional, Required}
 import js7.data.workflow.OrderParameterList.*
 import scala.collection.{MapView, View}
 
-final case class OrderParameterList private[workflow](
+final case class OrderParameterList(
   nameToParameter: Map[String, OrderParameter],
   allowUndeclared: Boolean)
 {
   def referencedJobResourcePaths: View[JobResourcePath] =
     nameToParameter.values.view.flatMap(_.referencedJobResourcePaths)
+
+  def ++(other: OrderParameterList): OrderParameterList =
+    concat(other)
+
+  def concat(other: OrderParameterList): OrderParameterList =
+    OrderParameterList(
+      nameToParameter ++ other.nameToParameter,
+      allowUndeclared = allowUndeclared && other.allowUndeclared)
 
   //def workflowOrderVariablesScope(
   //  freshOrder: FreshOrder,
@@ -114,6 +122,8 @@ final case class OrderParameterList private[workflow](
 
   private def checkType(v: Value, typ: ValueType, prefix: => String): Checked[Unit] =
     (v, typ) match {
+      case (_, AnyValue) => Checked.unit
+
       case (v: ListValue, typ: ListType) =>
         v.elements
           .view
@@ -177,6 +187,11 @@ object OrderParameterList
     parameters.toCheckedKeyedMap(_.name)
       .map(new OrderParameterList(_, allowUndeclared))
 
+  def fromDefaultExpressions(defaultValues: Map[String, Expression]): OrderParameterList =
+    new OrderParameterList(
+      defaultValues.map { case (k, v) => k -> OrderParameter.Optional(k, AnyValue, v) },
+      allowUndeclared = default.allowUndeclared)
+
   // allowUndeclared serialized or deserialized separately (for compatibility)
   implicit val jsonEncoder: Encoder.AsObject[OrderParameterList] =
     o => JsonObject.fromIterable(
@@ -186,6 +201,10 @@ object OrderParameterList
             case Required(_, valueType) =>
               JsonObject(
                 "type" -> valueType.asJson)
+
+            case Optional(_, AnyValue, expression) =>
+              JsonObject(
+                "default" -> expression.asJson)
 
             case Optional(_, valueType, expression) =>
               JsonObject(
@@ -211,18 +230,16 @@ object OrderParameterList
                 if (json.contains("default"))
                   for {
                     default <- c.get[Expression]("default")
-                    typ <- c.get[ValueType]("type")
+                    typ <- c.getOrElse[ValueType]("type")(AnyValue)
                   } yield Optional(name, typ, default)
                 else if (json.contains("final"))
-                  for {
-                    expression <- c.get[Expression]("final")
-                  } yield Final(name, expression)
+                  for (expression <- c.get[Expression]("final")) yield
+                    Final(name, expression)
                 else if (json.contains("type"))
-                  for {
-                    typ <- c.get[ValueType]("type")
-                  } yield Required(name, typ)
+                  for (typ <- c.get[ValueType]("type")) yield
+                    Required(name, typ)
                 else
-                  Left(DecodingFailure("""Missing "type", "default" or "final" field""", c.history))
+                  Right(Required(name, AnyValue))
               }
             } yield p
           }

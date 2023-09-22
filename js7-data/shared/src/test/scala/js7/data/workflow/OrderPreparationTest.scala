@@ -23,12 +23,12 @@ final class OrderPreparationTest extends OurTestSuite
           "myRequired": {
             "type": "Number"
           },
+          "myRequiredAny": {},
           "myOptional": {
             "type": "String",
             "default": "'DEFAULT VALUE'"
           },
-          "myOptional2": {
-            "type": "String",
+          "myOptionalAny": {
             "default": "$$myOptional"
           },
           "myFinal": {

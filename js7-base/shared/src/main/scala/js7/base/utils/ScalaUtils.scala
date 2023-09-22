@@ -16,7 +16,7 @@ import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.utils.ScalaUtils.syntax.RichString
 import js7.base.utils.StackTraces.StackTraceThrowable
 import scala.annotation.tailrec
-import scala.collection.{Factory, MapView, View, mutable}
+import scala.collection.{AbstractMapView, Factory, MapView, View, mutable}
 import scala.math.Ordering.Implicits.*
 import scala.math.max
 import scala.reflect.ClassTag
@@ -406,6 +406,21 @@ object ScalaUtils
           override def values =
             mapView.values.view.map(toV1)
         }
+
+        /** Concat to MapViews and return a MapView wit Map behaviour. */
+        def +++[V1 >: V](right: MapView[K, V1]): MapView[K, V1] =
+          new AbstractMapView[K, V1] {
+            def get(key: K): Option[V1] =
+              right.get(key) match {
+                case o @ Some(_) => o
+                case _ => mapView.get(key)
+              }
+
+            def iterator: Iterator[(K, V1)] =
+              mapView.iterator
+                .filter { case (k, _) => !right.contains(k) }
+                .concat(right.iterator)
+          }
     }
 
     final class MergeOrderedIterator[A, B: Ordering] private[ScalaUtils](

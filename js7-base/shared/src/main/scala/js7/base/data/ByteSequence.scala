@@ -119,6 +119,9 @@ with Monoid[ByteSeq] with Eq[ByteSeq] with Show[ByteSeq]
     iterator(byteSeq).take(n).grouped(4).map(_.map(o => f"$o%02x").mkString).mkString(" ") +
       ((withEllipsis || lengthIs(byteSeq) > n) ?? "...")
 
+  def toHex(byteSeq: ByteSeq): String =
+    iterator(byteSeq).map(o => f"$o%02x").mkString
+
   def nonEmpty(byteSeq: ByteSeq): Boolean =
     !isEmpty(byteSeq)
 
@@ -269,6 +272,9 @@ object ByteSequence
 
     def toHexRaw(n: Int = Int.MaxValue, withEllipsis: Boolean = false) =
       typeClassInstance.toHexRaw(self, n, withEllipsis)
+
+    def toHex: String =
+      typeClassInstance.toHex(self)
 
     def nonEmpty: Boolean =
       typeClassInstance.nonEmpty(self)

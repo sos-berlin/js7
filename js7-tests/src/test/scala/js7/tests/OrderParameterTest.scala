@@ -40,7 +40,7 @@ final class OrderParameterTest extends OurTestSuite with ControllerAgentForScala
         Outcome.Succeeded(NamedValues(
           "myRequired" -> NumberValue(123),
           "myOptional" -> StringValue("DEFAULT VALUE"),
-          "myOptional2" -> StringValue("DEFAULT VALUE"),
+          "myOptionalAny" -> StringValue("DEFAULT VALUE"),
           "myFinal" -> StringValue("FINAL VALUE"),
           "myFinal2" -> NumberValue(123)))))
   }
@@ -55,7 +55,7 @@ final class OrderParameterTest extends OurTestSuite with ControllerAgentForScala
         Outcome.Succeeded(NamedValues(
           "myRequired" -> NumberValue(123),
           "myOptional" -> StringValue("myOptional from order"),
-          "myOptional2" -> StringValue("myOptional from order"),
+          "myOptionalAny" -> StringValue("myOptional from order"),
           "myFinal" -> StringValue("FINAL VALUE"),
           "myFinal2" -> NumberValue(123)))))
   }
@@ -89,14 +89,14 @@ object OrderParameterTest
       ReturnArgumentsInternalJob.execute(agentPath, arguments = Map(
         "myRequired" -> expr("$myRequired"),
         "myOptional" -> expr("$myOptional"),
-        "myOptional2" -> expr("$myOptional2"),
+        "myOptionalAny" -> expr("$myOptionalAny"),
         "myFinal" -> expr("$myFinal"),
         "myFinal2" -> expr("$myFinal2")))),
     orderPreparation = OrderPreparation(
       OrderParameterList(Seq(
         myRequiredParameter,
         OrderParameter.Optional("myOptional", StringValue, expr("'DEFAULT VALUE'")),
-        OrderParameter.Optional("myOptional2", StringValue, expr("$myOptional")),
+        OrderParameter.Optional("myOptionalAny", StringValue, expr("$myOptional")),
         OrderParameter.Final("myFinal", expr("'FINAL VALUE'")),
         OrderParameter.Final("myFinal2", expr("$myRequired"))))))
 

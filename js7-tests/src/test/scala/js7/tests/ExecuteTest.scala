@@ -213,7 +213,8 @@ final class ExecuteTest extends OurTestSuite with ControllerAgentForScalaTest
       Workflow(WorkflowPath.Anonymous,
         Vector(
           Execute.Named(WorkflowJob.Name("JOB")), // ReturnCode 1 of JOB
-          Execute.Named(WorkflowJob.Name("JOB"), Map("myExitCode" -> NumericConstant(22))),
+          Execute.Named(WorkflowJob.Name("JOB"),
+            Map("myExitCode" -> NumericConstant(22))),
           Execute.Anonymous(WorkflowJob(
             agentPath,
             executable.copy(
@@ -229,7 +230,37 @@ final class ExecuteTest extends OurTestSuite with ControllerAgentForScalaTest
       expectedOutcomes = Seq(
         Outcome.Succeeded.rc(11),
         Outcome.Succeeded.rc(22),
-        Outcome.Succeeded.rc(33)))
+        Outcome.Succeeded.rc(33)),
+      orderArguments = Map("orderExitCode" -> NumberValue(44)))
+  }
+
+  "Execute instruction arguments refer order named values" in {
+    val executable = ShellScriptExecutable(
+      returnCodeScript("myExitCode"),
+      env = Map("myExitCode" -> NamedValue("myExitCode")))
+    testWithWorkflow(
+      Workflow(WorkflowPath.Anonymous,
+        Vector(
+          Execute.Named(WorkflowJob.Name("JOB"),
+            Map("myExitCode" -> expr("$orderExitCode"/*from Order*/))),
+          Execute.Anonymous(
+            WorkflowJob(
+              agentPath,
+              executable.copy(
+                returnCodeMeaning = ReturnCodeMeaning.Success(RangeSet(ReturnCode(44))))),
+            Map(
+              "myExitCode" -> expr("$orderExitCode"/*from Order*/)))),
+        Map(WorkflowJob.Name("JOB") ->
+          WorkflowJob(
+            agentPath,
+            executable.copy(
+              returnCodeMeaning = ReturnCodeMeaning.Success(RangeSet(ReturnCode(44)))),
+            Map("myExitCode" -> NumericConstant(11))))),
+      orderArguments = Map(
+        "orderExitCode" -> NumberValue(44)),
+      expectedOutcomes = Seq(
+        Outcome.Succeeded.rc(44),
+        Outcome.Succeeded.rc(44)))
   }
 
   "Arguments when v1Compatible include workflow defaults" in {

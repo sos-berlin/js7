@@ -175,6 +175,14 @@ object Value
   }
 }
 
+/** ValueType for any Value. */
+object AnyValue extends ValueType {
+  val name = "Any"
+
+  override def is(t: ValueType): Boolean =
+    true
+}
+
 sealed trait GoodValue extends Value
 object GoodValue {
   trait Companion[V <: GoodValue] extends Value.Companion[V] {
@@ -409,7 +417,7 @@ object ValueType
   sealed trait Simple extends ValueType
   sealed trait Compound extends ValueType
 
-  private val nameToSimpleType = View(StringValue, BooleanValue, NumberValue)
+  private val nameToSimpleType = View(AnyValue, StringValue, BooleanValue, NumberValue)
     .toKeyedMap(_.name)
 
   private val listTypeField = "TYPE" -> Json.fromString("List")
@@ -425,6 +433,9 @@ object ValueType
       Json.fromFields(
         new View.Single(objectTypeField) ++
           fields.view.map { case (k, v) => k -> jsonEncoder(v) })
+
+    case AnyValue =>
+      Json.Null
 
     case o: ValueType =>
       Json.fromString(o.name)

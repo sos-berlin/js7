@@ -379,6 +379,18 @@ final class ScalaUtilsTest extends OurTestSuite
 
       assert(morphed.values.toSeq == Seq(true, false))
     }
+
+    "+++" in {
+      val a = MapView(1 -> "ONE", 2 -> "TWO")
+      val b = MapView(2 -> "dwa", 3 -> "tri")
+      assert((a ++ b).toSeq == Seq(1 -> "ONE", 2 -> "TWO", 2 -> "dwa", 3 -> "tri"))
+      assert((a +++ b).toSeq == Seq(1 -> "ONE", 2 -> "dwa", 3 -> "tri"))
+      assert((a +++ b)(1) == "ONE")
+      assert((a +++ b)(2) == "dwa")
+      assert((a +++ b)(3) == "tri")
+      assert((a +++ b).keys.toSeq == Seq(1, 2, 3))
+      assert((a +++ b).size == 3)
+    }
   }
 
   "View" - {
