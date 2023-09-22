@@ -16,6 +16,7 @@ import js7.base.crypt.Signed
 import js7.base.generic.{Completed, SecretString}
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
+import js7.base.monixutils.AsyncVariable
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Checked.*
 import js7.base.problem.Problems.InvalidSessionTokenProblem
@@ -50,7 +51,7 @@ import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderDetached}
 import js7.data.order.{Order, OrderId, OrderMark}
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.journal.state.Journal
-import monix.eval.Task
+import monix.eval.{Fiber, Task}
 import monix.execution.atomic.AtomicInt
 import monix.execution.{Cancelable, Scheduler}
 
@@ -85,6 +86,7 @@ extends Service.StoppableByRequest
   private val clusterWatchAllocated = new MutableAllocated[ClusterWatchService]
   private val directorDriverAllocated = new MutableAllocated[DirectorDriver]
   private var clusterState: Option[HasNodes] = None
+  private val startDirectorDriverFiber = AsyncVariable(Fiber(Task.unit, Task.unit))
 
   private object state {
     val lock = AsyncLock()
@@ -406,11 +408,16 @@ extends Service.StoppableByRequest
       .flatMapT(_.manuallyConfirmNodeLoss(lostNodeId, confirmer))
 
   private def startAndForgetDirectorDriver(implicit src: sourcecode.Enclosing): Task[Unit] =
-    startNewDirectorDriver
-      .onErrorHandle(t => logger.error(
-        s"${src.value} startDirectorDriver => ${t.toStringWithCauses}", t))
-      .raceFold(untilStopRequested)
-      .startAndForget
+    startDirectorDriverFiber
+      .update { fiber =>
+        fiber.cancel *>
+          startNewDirectorDriver
+            .onErrorHandle(t => logger.error(
+              s"${src.value} startDirectorDriver => ${t.toStringWithCauses}", t))
+            .raceFold(untilStopRequested)
+            .start
+      }
+      .void
 
   private def startNewDirectorDriver: Task[Unit] =
     logger.debugTask(

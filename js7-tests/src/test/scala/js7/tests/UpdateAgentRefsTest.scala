@@ -139,6 +139,14 @@ final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForSc
     agent.terminate() await 99.s
   }
 
+  "Change Directors's URI to an unreachable address" in {
+    val eventId = eventWatch.lastAddedEventId
+    val subagentItem = SubagentItem(subagentId, agentPath, Uri("http://127.0.0.0:0"))
+    controllerApi.updateUnsignedSimpleItems(Seq(subagentItem)).await(99.s).orThrow
+    controller.addOrderBlocking(FreshOrder(OrderId("🔺"), workflow.path))
+    eventWatch.await[AgentCouplingFailed](after = eventId)
+  }
+
   "Change Directors's URI and keep Agent's state (move the Agent)" in {
     val subagentItem = SubagentItem(subagentId, agentPath, Uri(s"http://127.0.0.1:$agentPort2"))
     agent = TestAgent.start(
