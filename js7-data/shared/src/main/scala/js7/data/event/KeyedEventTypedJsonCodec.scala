@@ -111,18 +111,7 @@ object KeyedEventTypedJsonCodec
   final class KeyedSubtype[E <: Event](
     val classToEncoder: Map[Class[?], Encoder.AsObject[KeyedEvent[? <: E]]],
     val nameToDecoder: Map[String, Decoder[KeyedEvent[? <: E]]],
-    val nameToClass: Map[String, Class[? <: E]])(
-    implicit private val classTag: ClassTag[E],
-    val encoder: Encoder.AsObject[KeyedEvent[E]],
-    val decoder: Decoder[KeyedEvent[E]],
-    val keyEncoder: Encoder[E#Key],
-    val keyDecoder: Decoder[E#Key],
-    val eventCodec: TypedJsonCodec[E])
-  {
-    type Event = E
-    val eventClass: Class[E] = implicitClass[E]
-    val typeName: String = eventClass.simpleScalaName
-  }
+    val nameToClass: Map[String, Class[? <: E]])
 
   object KeyedSubtype {
     def apply[E <: Event: ClassTag](
