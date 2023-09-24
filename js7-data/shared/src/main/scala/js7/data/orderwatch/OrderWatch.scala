@@ -28,7 +28,7 @@ object OrderWatch
   trait Companion[A <: OrderWatch] extends UnsignedSimpleItem.Companion[A]
   {
     type Key = OrderWatchPath
-    val Key = OrderWatchPath
+    def Key = OrderWatchPath
 
     type ItemState = OrderWatchState
   }

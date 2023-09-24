@@ -52,7 +52,7 @@ object InventoryItem
     val typeName = getClass.simpleScalaName
 
     type Key <: InventoryItemKey
-    val Key: InventoryItemKey.Companion[Key]
+    def Key: InventoryItemKey.Companion[Key]
 
     type Path <: InventoryItemPath
     val Path: InventoryItemPath.Companion[Path]

@@ -48,7 +48,7 @@ object SubagentItem
 extends UnsignedSimpleItem.Companion[SubagentItem]
 {
   type Key = SubagentId
-  val Key = SubagentId
+  def Key = SubagentId
 
   override type Path = SubagentId
   val Path = SubagentId

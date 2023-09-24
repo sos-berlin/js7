@@ -191,7 +191,7 @@ with BlockingItemUpdater
     execute: Execute,
     orderArguments: Map[String, Value] = Map.empty,
     expectedOutcome: Outcome)
-    (implicit pos: source.Position)
+    (using source.Position)
   : Unit = {
     val orderId = orderIdIterator.next()
     addInternalJobTestWithMultipleOrders(execute,
@@ -203,7 +203,7 @@ with BlockingItemUpdater
     execute: Execute,
     orderArguments: Map[OrderId, Map[String, Value]],
     expectedOutcomes: Map[OrderId, Seq[Outcome]])
-    (implicit pos: source.Position)
+    (using source.Position)
   : Unit = {
     val testName = testCounter.incrementAndGet().toString + ") " + instructionToString(execute)
     testName in {
@@ -215,6 +215,7 @@ with BlockingItemUpdater
     anonymousWorkflow: Workflow,
     ordersArguments: Map[OrderId, Map[String, Value]],
     expectedOutcomes: Map[OrderId, Seq[Outcome]])
+    (using source.Position)
   : Unit = {
     val orderToEvents = runMultipleOrdersWithWorkflow(anonymousWorkflow, ordersArguments)
     val outcomes = orderToEvents.view

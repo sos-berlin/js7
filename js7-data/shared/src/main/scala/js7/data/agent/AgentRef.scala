@@ -75,7 +75,7 @@ object AgentRef extends UnsignedSimpleItem.Companion[AgentRef]
   val cls = classOf[AgentRef]
 
   type Key = AgentPath
-  val Key = AgentPath
+  def Key = AgentPath
 
   override type Path = AgentPath
   override val Path = AgentPath

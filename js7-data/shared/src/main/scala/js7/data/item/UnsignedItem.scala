@@ -21,7 +21,7 @@ object UnsignedItem
     def cls: Class[A]
 
     type Key <: UnsignedItemKey
-    val Key: UnsignedItemKey.Companion[Key]
+    def Key: UnsignedItemKey.Companion[Key]
 
     type Path <: UnsignedItemPath
     val Path: UnsignedItemPath.Companion[Path]

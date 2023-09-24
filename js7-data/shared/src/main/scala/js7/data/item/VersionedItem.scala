@@ -45,7 +45,7 @@ object VersionedItem
 
     type ItemId = VersionedItemId[Path]
     type Key = ItemId
-    final lazy val Key: SignableItemKey.Companion[Key] = Path.VersionedItemIdCompanion
+    final def Key: SignableItemKey.Companion[Key] = Path.VersionedItemIdCompanion
 
     implicit def self: Companion[A] = this
   }

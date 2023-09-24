@@ -30,7 +30,7 @@ object SimpleItem
     type Item = A
 
     type Key <: SimpleItemPath
-    val Key: SimpleItemPath.Companion[Key]
+    def Key: SimpleItemPath.Companion[Key]
 
     type Path = Key
   }

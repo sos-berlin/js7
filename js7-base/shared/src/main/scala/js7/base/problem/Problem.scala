@@ -263,8 +263,8 @@ object Problem extends Semigroup[Problem]
           case (_, o: Set[Problem @unchecked]) => problems.toSet == o // Ignore ordering (used in tests)
           case _ => problems == o.problems
         }
-        case _ => super.equals(o)
-      }
+      case _ => super.equals(o)
+    }
 
     override def hashCode = problems.map(_.hashCode).sum  // Ignore ordering (used in tests)
   }

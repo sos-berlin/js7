@@ -25,7 +25,7 @@ object VersionedControl
     type ItemId = UnsignedVersionedItemId[Path]
 
     type Key = ItemId
-    final lazy val Key: UnsignedItemKey.Companion[Key] =
+    final def Key: UnsignedItemKey.Companion[Key] =
       Path.VersionedControlIdCompanion
 
     implicit def self: Companion[A] = this

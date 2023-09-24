@@ -16,7 +16,7 @@ object UnsignedSimpleItem
   with UnsignedItem.Companion[A]
   {
     type Key <: UnsignedSimpleItemPath
-    val Key: UnsignedSimpleItemPath.Companion[Key]
+    def Key: UnsignedSimpleItemPath.Companion[Key]
 
     type ItemState <: UnsignedSimpleItemState
   }

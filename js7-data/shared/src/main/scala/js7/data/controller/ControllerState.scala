@@ -500,7 +500,7 @@ with ClusterableState[ControllerState]
             .referencedItemPaths
             .map(path => referencedItemExists(path) !!
               MissingReferencedItemProblem(itemKey, referencedItemKey = path))
-            .toVector: Vector[Checked[Unit]]))
+            .toVector))
       .combineProblems
       .map(_.combineAll)
 

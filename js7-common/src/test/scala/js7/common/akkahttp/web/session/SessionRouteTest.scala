@@ -154,8 +154,8 @@ extends OurTestSuite with SessionRouteTester
     "Login password does not match" in {
       withSessionApi(
         Some(AUserAndPassword.copy(password = SecretString("WRONG"))),
-        Right(Authorization(BasicHttpCredentials("A-USER", "A-PASSWORD")) :: Nil))
-      { api =>
+        Right(Authorization(BasicHttpCredentials("A-USER", "A-PASSWORD")) :: Nil)
+      ) { api =>
         import api.implicitSessionToken
         requireAuthorizedAccess(api)
         val exception = intercept[AkkaHttpClient.HttpException] {
@@ -170,8 +170,8 @@ extends OurTestSuite with SessionRouteTester
     "Login with credentials and different Authorization header is rejected" in {
       withSessionApi(
         Some(UserAndPassword(UserId("B-USER"), SecretString("B-PASSWORD"))),
-        Right(Authorization(BasicHttpCredentials("A-USER", "A-PASSWORD")) :: Nil))
-      { api =>
+        Right(Authorization(BasicHttpCredentials("A-USER", "A-PASSWORD")) :: Nil)
+      ) { api =>
         import api.implicitSessionToken
         requireAuthorizedAccess(api)
         val exception = intercept[AkkaHttpClient.HttpException] {
@@ -185,8 +185,8 @@ extends OurTestSuite with SessionRouteTester
     "Login with credentials and equivalent Authorization header but wrong password is rejected" in {
       withSessionApi(
         Some(UserAndPassword(UserId("A-USER"), SecretString("WRONG-PASSWORD"))),
-        Right(Authorization(BasicHttpCredentials("A-USER", "A-PASSWORD")) :: Nil))
-      { api =>
+        Right(Authorization(BasicHttpCredentials("A-USER", "A-PASSWORD")) :: Nil)
+      ) { api =>
         import api.implicitSessionToken
         requireAuthorizedAccess(api)
         val exception = intercept[AkkaHttpClient.HttpException] {
@@ -199,8 +199,8 @@ extends OurTestSuite with SessionRouteTester
     "Login with credentials and equivalent Authorization header is accepted" in {
       withSessionApi(
         Some(UserAndPassword(UserId("A-USER"), SecretString("A-PASSWORD"))),
-        Right(Authorization(BasicHttpCredentials("A-USER", "A-PASSWORD")) :: Nil))
-      { api =>
+        Right(Authorization(BasicHttpCredentials("A-USER", "A-PASSWORD")) :: Nil)
+      ) { api =>
         import api.implicitSessionToken
         requireAuthorizedAccess(api)
         api.login() await 99.s
@@ -222,8 +222,8 @@ extends OurTestSuite with SessionRouteTester
     "Login UserId does not match" in {
       withSessionApi(
         Some(AUserAndPassword),
-        Left(Left(Set(UserId("X-USER"), UserId("B-USER")))))
-      { api =>
+        Left(Left(Set(UserId("X-USER"), UserId("B-USER"))))
+      ) { api =>
         import api.implicitSessionToken
         requireAccessIsUnauthorizedOrPublic(api)
         val exception = intercept[AkkaHttpClient.HttpException] {
@@ -237,8 +237,8 @@ extends OurTestSuite with SessionRouteTester
     "Login password does not match" in {
       withSessionApi(
         Some(AUserAndPassword.copy(password = SecretString("WRONG"))),
-        Left(Left(Set(UserId("A-USER"), UserId("B-USER")))))
-      { api =>
+        Left(Left(Set(UserId("A-USER"), UserId("B-USER"))))
+      ) { api =>
         import api.implicitSessionToken
         requireAccessIsUnauthorizedOrPublic(api)
         val exception = intercept[AkkaHttpClient.HttpException] {
@@ -252,8 +252,8 @@ extends OurTestSuite with SessionRouteTester
     "Login with credentials but wrong password is rejected" in {
       withSessionApi(
         Some(UserAndPassword(UserId("A-USER"), SecretString("WRONG-PASSWORD"))),
-        Left(Left(Set(UserId("A-USER"), UserId("B-USER")))))
-      { api =>
+        Left(Left(Set(UserId("A-USER"), UserId("B-USER"))))
+      ) { api =>
         import api.implicitSessionToken
         requireAccessIsUnauthorizedOrPublic(api)
         val exception = intercept[AkkaHttpClient.HttpException] {

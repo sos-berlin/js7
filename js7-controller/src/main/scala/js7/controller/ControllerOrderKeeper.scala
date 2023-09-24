@@ -558,36 +558,36 @@ with MainJournalingActor[ControllerState, Event]
                   }
               }.toVector
 
-              if (timestampedEvents.isEmpty) {
-                // timestampedEvents may be empty if it contains only discarded (Agent-only) events.
-                // Agent's last observed EventId is not persisted then, and we do not write an AgentEventsObserved.
-                // For tests, this makes the journal predictable after OrderFinished (because no AgentEventsObserved may follow).
-                Future.successful(None)
-              } else {
-                val agentEventId = stampedAgentEvents.last.eventId
-                timestampedEvents :+= Timestamped(agentPath <-: AgentEventsObserved(agentEventId))
+            if (timestampedEvents.isEmpty) {
+              // timestampedEvents may be empty if it contains only discarded (Agent-only) events.
+              // Agent's last observed EventId is not persisted then, and we do not write an AgentEventsObserved.
+              // For tests, this makes the journal predictable after OrderFinished (because no AgentEventsObserved may follow).
+              Future.successful(None)
+            } else {
+              val agentEventId = stampedAgentEvents.last.eventId
+              timestampedEvents :+= Timestamped(agentPath <-: AgentEventsObserved(agentEventId))
 
-                val subseqEvents = subsequentEvents(timestampedEvents.map(_.keyedEvent))
-                orderQueue.enqueue(
-                  subseqEvents.view.collect { case KeyedEvent(orderId: OrderId, _) => orderId })  // For OrderSourceEvents
-                timestampedEvents ++= subseqEvents.map(Timestamped(_))
+              val subseqEvents = subsequentEvents(timestampedEvents.map(_.keyedEvent))
+              orderQueue.enqueue(
+                subseqEvents.view.collect { case KeyedEvent(orderId: OrderId, _) => orderId })  // For OrderSourceEvents
+              timestampedEvents ++= subseqEvents.map(Timestamped(_))
 
-                journal.unsafeCurrentState().keyTo(AgentRefState).get(agentPath).map(_.couplingState) match {
-                  case Some(DelegateCouplingState.Resetting(_) | DelegateCouplingState.Reset(_)) =>
-                    // Ignore the events, because orders are already marked as detached (and Failed)
-                    // TODO Avoid race-condition and guard with journal.lock!
-                    // (switch from actors to Task required!)
-                    Future.successful(None)
-                  case _ =>
-                    persistTransactionTimestamped(timestampedEvents,
-                      CommitOptions(alreadyDelayed = agentDriverConfiguration.eventBufferDelay))
-                    {
-                      (stampedEvents, updatedState) =>
-                        handleEvents(stampedEvents, updatedState)
-                        Some(agentEventId)
-                    }
-                }
+              journal.unsafeCurrentState().keyTo(AgentRefState).get(agentPath).map(_.couplingState) match {
+                case Some(DelegateCouplingState.Resetting(_) | DelegateCouplingState.Reset(_)) =>
+                  // Ignore the events, because orders are already marked as detached (and Failed)
+                  // TODO Avoid race-condition and guard with journal.lock!
+                  // (switch from actors to Task required!)
+                  Future.successful(None)
+                case _ =>
+                  persistTransactionTimestamped(timestampedEvents,
+                    CommitOptions(alreadyDelayed = agentDriverConfiguration.eventBufferDelay))
+                  {
+                    (stampedEvents, updatedState) =>
+                      handleEvents(stampedEvents, updatedState)
+                      Some(agentEventId)
+                  }
               }
+            }
           })
         }
       }
@@ -1305,7 +1305,7 @@ with MainJournalingActor[ControllerState, Event]
       case agentPath: AgentPath =>
         // TODO Handle AgentRef here: agentEntry .actor ! AgentDriver.Queueable.StartFetchingEvents ...
 
-      case itemKey: InventoryItemKey =>
+      case _ =>
         for (agentToAttachedState <- _controllerState.itemToAgentToAttachedState.get(itemKey)) {
           for ((agentPath, attachedState) <- agentToAttachedState) {
             // TODO Does nothing if Agent is added later! (should be impossible, anyway)
@@ -1354,8 +1354,6 @@ with MainJournalingActor[ControllerState, Event]
             }
           }
         }
-
-      case _ =>
     }
 
     // ResetSubagent
@@ -1685,7 +1683,7 @@ private[controller] object ControllerOrderKeeper
   private val logger = Logger[this.type]
 
   object Input {
-    final case object Start
+    case object Start
   }
 
   sealed trait Command

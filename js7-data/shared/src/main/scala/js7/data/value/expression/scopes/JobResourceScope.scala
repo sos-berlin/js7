@@ -27,13 +27,7 @@ extends Scope
   }
 
   private def evalJobResourceVariable2(v: Expression.JobResourceVariable)(implicit s: Scope) =
-    v match {
-      case JobResourceVariable(path: JobResourcePath, variableName) =>
-        Some(jobResourceVariable(path, variableName))
-
-      case _ =>
-        super.evalJobResourceVariable(v)
-    }
+    Some(jobResourceVariable(v.jobResourcePath, v.name))
 
   override def evalFunctionCall(functionCall: Expression.FunctionCall)(implicit s: Scope) =
     functionCall match {

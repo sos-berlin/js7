@@ -46,7 +46,7 @@ object Calendar extends UnsignedSimpleItem.Companion[Calendar]
   private[calendar] val orderIdToDatePatternDefault = "#([^#]+)#.*"
 
   type Key = CalendarPath
-  val Key = CalendarPath
+  def Key = CalendarPath
 
   override type Path = CalendarPath
   override val Path = CalendarPath

@@ -543,7 +543,7 @@ final class ExecuteTest extends OurTestSuite with ControllerAgentForScalaTest
     execute: Execute,
     orderArguments: Map[String, Value] = Map.empty,
     expectedOutcome: Outcome)
-    (implicit pos: source.Position)
+    (using source.Position)
   : Unit =
     WorkflowPrinter.instructionToString(execute) in {
       testWithWorkflow(Workflow.of(execute), orderArguments, Seq(expectedOutcome))
@@ -553,6 +553,7 @@ final class ExecuteTest extends OurTestSuite with ControllerAgentForScalaTest
     anonymousWorkflow: Workflow,
     orderArguments: Map[String, Value] = Map.empty,
     expectedOutcomes: Seq[Outcome])
+    (using source.Position)
   : Unit = {
     val events = runWithWorkflow(anonymousWorkflow, orderArguments)
     val outcomes = events.collect { case OrderProcessed(outcome) => outcome }

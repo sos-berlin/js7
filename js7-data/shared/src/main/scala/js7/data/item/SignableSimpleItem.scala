@@ -18,6 +18,6 @@ object SignableSimpleItem
   with SignableItem.Companion[A]
   {
     type Key <: SignableSimpleItemPath
-    val Key: js7.data.item.SignableSimpleItemPath.Companion[Key]
+    def Key: js7.data.item.SignableSimpleItemPath.Companion[Key]
   }
 }

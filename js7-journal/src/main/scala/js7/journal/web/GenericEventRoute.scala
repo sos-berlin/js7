@@ -120,15 +120,11 @@ trait GenericEventRoute extends RouteProvider
       (implicit s: JsonEntityStreamingSupport)
     : Route =
       parameter("timeout" ? defaultJsonSeqChunkTimeout) { timeout =>
-        val maybeTimeout = timeout match {
-          case o: FiniteDuration => Some(o)
-          case _/*Duration.Inf only*/ => None
-        }
         implicit val x: ToEntityMarshaller[EventId] = jsonSeqMarshaller
 
         completeTask[ToResponseMarshallable](
           eventWatch
-            .observeEventIds(maybeTimeout)
+            .observeEventIds(Some(timeout))
             .map(_.map(observable =>
               observableToMarshallable(
                 observable

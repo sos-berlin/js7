@@ -258,8 +258,6 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
           case OrderMark.Resuming(position, historyOperations, asSucceeded) =>
             tryResume(order, position, historyOperations, asSucceeded)
               .map(_ :: Nil)
-
-          case _ => None
         })
 
   def markOrder(orderId: OrderId, mark: OrderMark): Checked[Option[List[OrderActorEvent]]] =

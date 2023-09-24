@@ -33,7 +33,7 @@ extends SignableSimpleItem.Companion[JobResource]
 with TrivialItemState.Companion[JobResource]
 {
   type Key = JobResourcePath
-  val Key = JobResourcePath
+  def Key = JobResourcePath
 
   override type Path = JobResourcePath
   val Path = JobResourcePath

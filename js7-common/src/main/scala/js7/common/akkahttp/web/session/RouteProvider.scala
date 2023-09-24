@@ -26,7 +26,7 @@ import monix.execution.Scheduler
 trait RouteProvider extends ExceptionHandling
 {
   protected type OurSession <: Session
-  protected val sessionRegister: SessionRegister[OurSession]
+  protected def sessionRegister: SessionRegister[OurSession]
 
   protected def gateKeeper: GateKeeper[SimpleUser]
 

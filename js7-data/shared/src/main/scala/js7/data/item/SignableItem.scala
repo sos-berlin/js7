@@ -19,7 +19,7 @@ object SignableItem
   trait Companion[A <: SignableItem] extends InventoryItem.Companion[A]
   {
     type Key <: SignableItemKey
-    val Key: SignableItemKey.Companion[Key]
+    def Key: SignableItemKey.Companion[Key]
   }
 
   // Common JSON serialization for AgentCommand.AttachSignableItem and SignedItemAdded

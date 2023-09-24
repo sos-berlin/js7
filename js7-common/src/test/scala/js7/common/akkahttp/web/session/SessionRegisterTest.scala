@@ -15,7 +15,7 @@ import js7.common.akkahttp.web.session.RouteProviderTest.MySession
 import js7.common.akkahttp.web.session.SessionRegisterTest.*
 import js7.common.akkautils.Akkas
 import js7.common.akkautils.Akkas.newActorSystem
-import monix.execution.Scheduler.Implicits.traced as scheduler
+import monix.execution.Scheduler.Implicits.traced 
 import monix.execution.schedulers.TestScheduler
 import scala.concurrent.duration.*
 

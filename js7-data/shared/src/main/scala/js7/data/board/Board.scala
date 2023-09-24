@@ -60,7 +60,7 @@ object Board extends UnsignedSimpleItem.Companion[Board]
   val cls = classOf[Board]
 
   type Key = BoardPath
-  val Key = BoardPath
+  def Key = BoardPath
 
   override type Path = BoardPath
   override val Path = BoardPath

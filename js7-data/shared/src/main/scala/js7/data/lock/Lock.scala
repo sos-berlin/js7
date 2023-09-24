@@ -31,7 +31,7 @@ object Lock extends UnsignedSimpleItem.Companion[Lock]
   val cls = classOf[Lock]
 
   type Key = LockPath
-  val Key = LockPath
+  def Key = LockPath
 
   override type Path = LockPath
   override val Path = LockPath

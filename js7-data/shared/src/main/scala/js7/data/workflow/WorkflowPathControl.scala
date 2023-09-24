@@ -34,7 +34,7 @@ with UnsignedSimpleItemState.Companion[WorkflowPathControl]
 with TrivialItemState.Companion[WorkflowPathControl]
 {
   override type Key = WorkflowPathControlPath
-  val Key = WorkflowPathControlPath
+  def Key = WorkflowPathControlPath
 
   override type Path = WorkflowPathControlPath
   val Path: WorkflowPathControlPath.type = WorkflowPathControlPath
