@@ -21,23 +21,25 @@ private[watch] object TestData
 {
   val journalId = JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))
 
-  sealed trait TestEvent extends Event {
-    type Key = String
+  sealed trait TestEvent extends Event.IsKeyBase[TestEvent] {
+    val keyCompanion: TestEvent.type = TestEvent
   }
-
+  object TestEvent extends Event.CompanionForKey[String, TestEvent] {
+    implicit val implicitSelf: TestEvent.type = this
+  }
   case object AEvent extends TestEvent
   case object BEvent extends TestEvent
 
   object TestState extends SnapshotableState.HasCodec {
     val name = "TestState"
 
-    implicit val snapshotObjectJsonCodec = TypedJsonCodec(
+    implicit val snapshotObjectJsonCodec: TypedJsonCodec[Any] = TypedJsonCodec(
       Subtype(AEvent),
       Subtype(BEvent))
 
-    implicit val keyedEventJsonCodec = KeyedEventTypedJsonCodec(
-      KeyedSubtype(AEvent),
-      KeyedSubtype(BEvent))
+    implicit val keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event] = KeyedEventTypedJsonCodec(
+      KeyedSubtype.singleton(using TestEvent)(AEvent),
+      KeyedSubtype.singleton(using TestEvent)(BEvent))
   }
 
   def writeJournalSnapshot[E <: Event](journalLocation: JournalLocation, after: EventId, snapshotObjects: Seq[Any]): Path =
@@ -54,8 +56,8 @@ private[watch] object TestData
     }
 
   def writeJournal(journalLocation: JournalLocation, after: EventId, stampedEvents: Seq[Stamped[KeyedEvent[Event]]],
-    journalId: JournalId = this.journalId): Path
-  =
+    journalId: JournalId = this.journalId)
+  : Path =
     autoClosing(EventJournalWriter.forTest(journalLocation, after = after, journalId)) { writer =>
       writer.writeHeader(JournalHeaders.forTest(TestState.name, journalId, eventId = after))
       writer.beginEventSection(sync = false)

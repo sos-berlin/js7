@@ -2,6 +2,7 @@ package js7.agent.data.event
 
 import io.circe.generic.semiauto.{deriveCodec, deriveEncoder}
 import io.circe.{Decoder, Encoder}
+import js7.agent.data.event
 import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.utils.IntelliJUtils.intelliJuseImport
@@ -17,10 +18,8 @@ import scala.concurrent.duration.FiniteDuration
   */
 trait AgentEvent extends NoKeyEvent
 
-object AgentEvent
+object AgentEvent extends NoKeyEvent
 {
-  intelliJuseImport(FiniteDurationJsonEncoder)
-
   /** Agent has been dedicated to a Controller. */
   final case class AgentDedicated(
     directors: Seq[SubagentId],
@@ -58,4 +57,6 @@ object AgentEvent
     Subtype[AgentDedicated](aliases = Seq("AgentCreated")),
     Subtype(deriveCodec[AgentReady]),
     Subtype(AgentShutDown))
+
+  intelliJuseImport(FiniteDurationJsonEncoder)
 }

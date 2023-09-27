@@ -982,9 +982,12 @@ final class OrderEventTest extends OurTestSuite
 
   if (sys.props contains "test.speed") "Speed" in {
     val n = 10000
-    val event = Stamped(12345678L, Timestamp.ofEpochMilli(1),
-      KeyedEvent[OrderEvent](OrderId("ORDER"), OrderAdded(WorkflowPath("WORKFLOW") ~ "VERSION",
-        arguments = Map("KEY" -> StringValue("VALUE")))))
+    val event: Stamped[KeyedEvent[OrderEvent]] = 
+      Stamped(12345678L, Timestamp.ofEpochMilli(1),
+        OrderId("ORDER") <-:
+          OrderAdded(
+            WorkflowPath("WORKFLOW") ~ "VERSION",
+            arguments = Map("KEY" -> StringValue("VALUE"))))
     val jsonString = event.asJson.compactPrint
     println(f"${"Serialize"}%-20s Deserialize")
     for (_ <- 1 to 10) {

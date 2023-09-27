@@ -3,7 +3,7 @@ package js7.data.subagent
 import js7.data.event.JournalEvent.Heartbeat
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import js7.data.event.{Event, EventId, ItemContainer, JournaledState, KeyedEvent, KeyedEventTypedJsonCodec}
+import js7.data.event.{Event, EventId, ItemContainer, JournalEvent, JournaledState, KeyedEvent, KeyedEventTypedJsonCodec, NoKeyEvent}
 import js7.data.item.{InventoryItem, InventoryItemKey}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten, OrderStderrWritten, OrderStdoutWritten}
@@ -72,5 +72,5 @@ with ItemContainer.Companion[SubagentState]
       KeyedSubtype.singleEvent[OrderStdoutWritten],
       KeyedSubtype.singleEvent[OrderStderrWritten],
       KeyedSubtype.singleEvent[OrderProcessed],
-      KeyedSubtype.singleEvent(Heartbeat))
+      KeyedSubtype.singleton(using NoKeyEvent)(Heartbeat))
 }

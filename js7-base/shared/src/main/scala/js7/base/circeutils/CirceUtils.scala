@@ -26,7 +26,7 @@ import scala.util.control.NonFatal
   */
 object CirceUtils
 {
-  private val UnitDecoderResult: Decoder.Result[Unit] = Right(())
+  val DecoderOK: Decoder.Result[Unit] = Right(())
 
   private implicit val circeConfiguration: CirceConfiguration =
     CirceConfiguration.default.withDefaults
@@ -35,7 +35,7 @@ object CirceUtils
     if (!requirement)
       Left(failure)
     else
-      UnitDecoderResult
+      DecoderOK
 
   def parseJsonByteArray(bytes: Array[Byte]): Either[ParsingFailure, Json] =
     CirceUtilsForPlatform.parseJsonByteArray(bytes)

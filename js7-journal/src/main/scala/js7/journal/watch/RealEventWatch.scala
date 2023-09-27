@@ -161,9 +161,9 @@ trait RealEventWatch extends EventWatch
           e.asInstanceOf[KeyedEvent[E]]
       })
 
-  final def whenKeyedEvent[E <: Event](
+  final def whenKeyedEvent[E <: Event](using E: Event.KeyCompanion[? >: E])(
     request: EventRequest[E],
-    key: E#Key,
+    key: E.Key,
     predicate: E => Boolean)
   : Task[E] =
     whenKey[E](request.copy[E](limit = 1), key, predicate) map {
@@ -174,7 +174,8 @@ trait RealEventWatch extends EventWatch
       case _: TearableEventSeq.Torn => throw new IllegalStateException("EventSeq is torn")
     }
 
-  final def whenKey[E <: Event](request: EventRequest[E], key: E#Key, predicate: E => Boolean)
+  final def whenKey[E <: Event](using E: Event.KeyCompanion[? >: E])
+    (request: EventRequest[E], key: E.Key, predicate: E => Boolean)
   : Task[TearableEventSeq[CloseableIterator, E]] =
     whenAnyKeyedEvents(
       request,

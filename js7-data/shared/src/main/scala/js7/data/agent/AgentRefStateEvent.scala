@@ -14,12 +14,14 @@ import js7.data.platform.PlatformInfo
 /**
   * @author Joacim Zschimmer
   */
-sealed trait AgentRefStateEvent extends Event {
-  type Key = AgentPath
+sealed trait AgentRefStateEvent extends Event.IsKeyBase[AgentRefStateEvent] {
+  val keyCompanion: AgentRefStateEvent.type = AgentRefStateEvent
 }
 
-object AgentRefStateEvent
+object AgentRefStateEvent extends Event.CompanionForKey[AgentPath, AgentRefStateEvent]
 {
+  implicit def implicitSelf: AgentRefStateEvent.type = this
+
   /** A new Agent has been dedicated to this Controller. */
   final case class AgentDedicated(
     agentRunId: AgentRunId,

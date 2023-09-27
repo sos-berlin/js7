@@ -3,6 +3,7 @@ package js7.data.cluster
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Checked
+import js7.base.utils.ScalaUtils.compilable
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterResetStarted, ClusterSettingUpdated, ClusterSwitchedOver, ClusterWatchRegistered}
 import js7.data.cluster.ClusterSetting.syntax.*
@@ -25,11 +26,10 @@ extends EventDrivenState[ClusterState, ClusterEvent]
 
   def isEmptyOrActive(id: NodeId): Boolean
 
-  final def applyEvent(keyedEvent: KeyedEvent[ClusterEvent]): Checked[ClusterState] =
-    keyedEvent match {
-      case KeyedEvent(_: NoKey, event) => applyEvent2(event)
-      case _ => eventNotApplicable(keyedEvent)
-    }
+  final def applyEvent(keyedEvent: KeyedEvent[ClusterEvent]): Checked[ClusterState] = {
+    compilable(keyedEvent.key: NoKey)
+    applyEvent2(keyedEvent.event)
+  }
 
   private def applyEvent2(event: ClusterEvent): Checked[ClusterState] =
     (this, event) match {

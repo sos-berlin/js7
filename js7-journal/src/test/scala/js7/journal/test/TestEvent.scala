@@ -7,12 +7,12 @@ import js7.data.event.Event
 /**
   * @author Joacim Zschimmer
   */
-private[journal] sealed trait TestEvent extends Event.ForScala3[TestEvent] {
-  val companion: TestEvent.type = TestEvent
+private[journal] sealed trait TestEvent extends Event.IsKeyBase[TestEvent] {
+  val keyCompanion: TestEvent.type = TestEvent
 }
 
-private[journal] object TestEvent extends Event.Companion[TestEvent] {
-  type Key = String
+private[journal] object TestEvent extends Event.CompanionForKey[String, TestEvent] {
+  implicit val implicitSelf: TestEvent.type = this
 
   final case class Added(
     string: String,

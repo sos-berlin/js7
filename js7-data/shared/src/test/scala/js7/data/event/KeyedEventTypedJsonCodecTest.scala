@@ -30,7 +30,7 @@ final class KeyedEventTypedJsonCodecTest extends OurTestSuite
       (KeyedEvent(NotRegistered(1)): KeyedEvent[TestEvent]).asJson
     }.getMessage should include (
       "Class 'KeyedEventTypedJsonCodecTest.NotRegistered' is not registered in " +
-        "js7.data.event.KeyedEventTypedJsonCodecTest.TestEventKeyedEventTypedJsonCodec: " +
+        "js7.data.event.KeyedEventTypedJsonCodecTest.TestEvent.jsonCodec: " +
         "KeyedEventTypedJsonCodec[KeyedEventTypedJsonCodecTest.TestEvent]")
   }
 
@@ -38,14 +38,15 @@ final class KeyedEventTypedJsonCodecTest extends OurTestSuite
     assert("""{ "TYPE": "UNKNOWN" }""".parseJsonOrThrow.as[KeyedEvent[TestEvent]]
       == Left(DecodingFailure(
       """Unexpected JSON {"TYPE": "UNKNOWN", ...} for """ +
-        "js7.data.event.KeyedEventTypedJsonCodecTest.TestEventKeyedEventTypedJsonCodec: " +
-        "KeyedEventTypedJsonCodec[KeyedEventTypedJsonCodecTest.TestEvent]",
+      """js7.data.event.KeyedEventTypedJsonCodecTest.TestEvent.jsonCodec: """ +
+      """KeyedEventTypedJsonCodec[KeyedEventTypedJsonCodecTest.TestEvent]"""
+,
       Nil)))
   }
 
   "Union" in {
     implicit val ab: KeyedEventTypedJsonCodec[Event] =
-      KeyedEventTypedJsonCodec[E0.type](KeyedSubtype(E0)) |
+      KeyedEventTypedJsonCodec[E0.type](KeyedSubtype.singleton(using NoKeyEvent)(E0)) |
       KeyedEventTypedJsonCodec[StringEvent](KeyedSubtype[StringEvent]) |
       KeyedEventTypedJsonCodec[IntEvent](KeyedSubtype[IntEvent])
 
@@ -58,7 +59,7 @@ final class KeyedEventTypedJsonCodecTest extends OurTestSuite
   "Unknown TYPE" in {
     implicit val e0KeyedEventTypedJsonCodec: KeyedEventTypedJsonCodec[E0.type] =
       KeyedEventTypedJsonCodec(
-        KeyedSubtype(E0))
+        KeyedSubtype.singleton(using NoKeyEvent)(E0))
 
     testJson[KeyedEvent[E0.type]](NoKey <-: E0, json"""{ "TYPE": "E0" }""")
     assert(json"""{ "TYPE": "E0" }""".as[KeyedEvent[E0.type]].isRight)
@@ -70,31 +71,49 @@ final class KeyedEventTypedJsonCodecTest extends OurTestSuite
   }
 
   "typenameToClassOption" in {
-    assert(TestEventKeyedEventTypedJsonCodec.typenameToClassOption("UNKNOWN") == None)
-    assert(TestEventKeyedEventTypedJsonCodec.typenameToClassOption("TestEvent") == Some(classOf[TestEvent]))
-    assert(TestEventKeyedEventTypedJsonCodec.typenameToClassOption("E0") == Some(E0.getClass))
-    assert(TestEventKeyedEventTypedJsonCodec.typenameToClassOption("E1") == Some(classOf[E1]))
+    assert(TestEvent.jsonCodec.typenameToClassOption("UNKNOWN") == None)
+    assert(TestEvent.jsonCodec.typenameToClassOption("TestEvent") == Some(classOf[TestEvent]))
+    assert(TestEvent.jsonCodec.typenameToClassOption("E0") == Some(E0.getClass))
+    assert(TestEvent.jsonCodec.typenameToClassOption("E1") == Some(classOf[E1]))
   }
 
   "isOfType" in {
     val a1Json = json"""{ "TYPE": "E1", "Key": "A", "int": 7 }"""
     val xJson = json"""{ "TYPE":  "X"}"""
-    assert(StringEventJsonCodec.isOfType[E1](a1Json))
-    assert(!StringEventJsonCodec.isOfType[E1](xJson))
+    assert(StringEvent.jsonCodec.isOfType[E1](a1Json))
+    assert(!StringEvent.jsonCodec.isOfType[E1](xJson))
   }
 }
 
 object KeyedEventTypedJsonCodecTest
 {
   sealed trait TestEvent extends Event
+  object TestEvent {
+    implicit val jsonCodec: KeyedEventTypedJsonCodec[TestEvent] =
+      KeyedEventTypedJsonCodec(
+        KeyedSubtype.singleton(using NoKeyEvent)(E0),
+        KeyedSubtype[StringEvent],
+        KeyedSubtype[IntEvent])
+  }
 
   case object E0 extends TestEvent with NoKeyEvent
 
-  sealed trait StringEvent extends TestEvent {
-    type Key = String
+  sealed trait StringEvent extends TestEvent with Event.IsKeyBase[StringEvent] {
+    val keyCompanion: StringEvent.type = StringEvent
   }
-  sealed trait IntEvent extends TestEvent  {
-    type Key = Int
+  object StringEvent extends Event.CompanionForKey[String, StringEvent] {
+    override implicit def implicitSelf: StringEvent.type = this
+    implicit val jsonCodec: TypedJsonCodec[StringEvent] =
+      TypedJsonCodec(
+        Subtype[E1],
+        Subtype[E2])
+  }
+
+  sealed trait IntEvent extends TestEvent with Event.IsKeyBase[IntEvent] {
+    override val keyCompanion: IntEvent.type = IntEvent
+  }
+  object IntEvent extends Event.CompanionForKey[Int, IntEvent] {
+    override implicit def implicitSelf: IntEvent.type = this
   }
 
   final case class E1(int: Int) extends StringEvent
@@ -117,18 +136,7 @@ object KeyedEventTypedJsonCodecTest
     implicit val jsonCodec: Codec.AsObject[E3] = deriveCodec
   }
 
-  private implicit val StringEventJsonCodec: TypedJsonCodec[StringEvent] =
-    TypedJsonCodec(
-      Subtype[E1],
-      Subtype[E2])
-
   private implicit val IntEventJsonCodec: TypedJsonCodec[IntEvent] =
     TypedJsonCodec(
       Subtype[E3])
-
-  private implicit val TestEventKeyedEventTypedJsonCodec: KeyedEventTypedJsonCodec[TestEvent] =
-    KeyedEventTypedJsonCodec(
-      KeyedSubtype(E0),
-      KeyedSubtype[StringEvent],
-      KeyedSubtype[IntEvent])
 }

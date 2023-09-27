@@ -931,6 +931,10 @@ final class ScalaUtilsTest extends OurTestSuite
       List("a", "bc", "def", "ghij", "klmnopqr", "1234567890ABCDEFHIJ")) ==
       List("abcdefg", "hijklmn", "opqr123", "4567890", "ABCDEFH", "IJ"))
   }
+
+  "compilable" in {
+    compilable(1 / 0)
+  }
 }
 
 object ScalaUtilsTest

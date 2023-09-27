@@ -1,12 +1,13 @@
 package js7.data.event
 
-import io.circe.Json
 import io.circe.generic.semiauto.deriveCodec
+import io.circe.{Codec, Json}
 import js7.base.circeutils.CirceUtils.*
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.test.OurTestSuite
 import js7.data.event.KeyedEventTest.*
 import js7.tester.CirceJsonTester.testJson
+import org.scalactic.source
 
 /**
   * @author Joacim Zschimmer
@@ -14,19 +15,19 @@ import js7.tester.CirceJsonTester.testJson
 final class KeyedEventTest extends OurTestSuite {
 
   "KeyedEvent apply 1" in {
-    val e = KeyedEvent[StringEvent](100, StringEvent("HUNDRED"))
+    val e = 100 <-: StringEvent("HUNDRED")
     assert(e.key == 100)
     assert(e.event.string == "HUNDRED")
   }
 
   "KeyedEvent apply 2 without type parameter" in {
-    val e = KeyedEvent(StringEvent("HUNDRED"))(100)
+    val e = 100 <-: StringEvent("HUNDRED")
     assert(e.key == 100)
     assert(e.event.string == "HUNDRED")
   }
 
   "StringEvent" in {
-    check(KeyedEvent(StringEvent("HUNDRED"))(100),
+    check(100 <-: StringEvent("HUNDRED"),
       json"""{
         "TYPE": "StringEvent",
         "Key": 100,
@@ -35,7 +36,7 @@ final class KeyedEventTest extends OurTestSuite {
   }
 
   "IntEvent" in {
-    check(KeyedEvent(IntEvent(100))(100),
+    check(100 <-: IntEvent(100),
       json"""{
         "TYPE": "IntEvent",
         "Key": 100,
@@ -44,7 +45,7 @@ final class KeyedEventTest extends OurTestSuite {
   }
 
   "SimpleEvent" in {
-    check(KeyedEvent(SimpleEvent)(100),
+    check(100 <-: SimpleEvent,
       json"""{
         "TYPE": "SimpleEvent",
         "Key": 100
@@ -66,17 +67,22 @@ final class KeyedEventTest extends OurTestSuite {
       }""")
   }
 
-  private def checkSingletonKey(event: KeyedEvent[AEvent.type], json: Json): Unit = {
-    implicit val testEventJsonFormat: TypedJsonCodec[KeyedEventTest.AEvent.type] =
+  private def checkSingletonKey(event: KeyedEvent[AEvent.type], json: Json)
+    (using pos: source.Position)
+  : Unit = {
+    implicit val testEventJsonFormat: TypedJsonCodec[AEvent.type] =
       TypedJsonCodec[AEvent.type](
-        Subtype(AEvent))
+        Subtype.singleton(AEvent))
     testJson(event, json)
   }
 }
 
 private object KeyedEventTest {
-  private sealed trait TestEvent extends Event {
-    type Key = Int
+  sealed trait TestEvent extends Event.IsKeyBase[TestEvent] {
+    val keyCompanion: TestEvent.type = TestEvent
+  }
+  object TestEvent extends Event.CompanionForKey[Int, TestEvent] {
+    implicit def implicitSelf: TestEvent.type = this
   }
 
   private case class StringEvent(string: String) extends TestEvent
@@ -85,5 +91,5 @@ private object KeyedEventTest {
 
   private case object SimpleEvent extends TestEvent
 
-  private case object AEvent extends NoKeyEvent
+  private object AEvent extends NoKeyEvent
 }

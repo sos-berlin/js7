@@ -45,7 +45,8 @@ final class EventDrivenStateTest extends OurTestSuite
 
 object EventDrivenStateTest
 {
-  sealed trait TestEvent extends NoKeyEvent
+  sealed trait TestEvent extends NoKeyEvent 
+
   private case class Added(string: String) extends TestEvent
   private case object InvalidEvent extends TestEvent
 

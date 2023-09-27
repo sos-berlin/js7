@@ -35,12 +35,14 @@ import scala.language.implicitConversions
 /**
   * @author Joacim Zschimmer
   */
-sealed trait OrderEvent extends Event {
-  type Key = OrderId
+sealed trait OrderEvent extends Event.IsKeyBase[OrderEvent] {
+  val keyCompanion: OrderEvent.type = OrderEvent
 }
 
-object OrderEvent
+object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]
 {
+  implicit def implicitSelf: OrderEvent.type = this
+
   sealed trait OrderCoreEvent extends OrderEvent
   sealed trait OrderActorEvent extends OrderCoreEvent
   sealed trait OrderTerminated extends OrderEvent

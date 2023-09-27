@@ -1,4 +1,5 @@
 package js7.data.event
+
 import js7.base.auth.UserId
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
@@ -34,7 +35,7 @@ final class ClusterableStateTest extends OurTestSuite
   }
 
   "EventNotApplicableProblem" in {
-    val invalidEvent = NoKey <-: new NoKeyEvent {}
+    val invalidEvent = NoKey <-: MyEvent
     assert(s.applyEvent(invalidEvent) == Left(EventNotApplicableProblem(invalidEvent, s)))
   }
 }
@@ -81,4 +82,6 @@ private object ClusterableStateTest
     implicit def keyedEventJsonCodec = throw new NotImplementedError
     def newBuilder() = throw new NotImplementedError
   }
+
+  private case object MyEvent extends NoKeyEvent
 }

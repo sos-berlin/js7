@@ -38,9 +38,9 @@ final class StrictEventWatch(val underlying: FileEventWatch)
   : Task[TearableEventSeq[Seq, KeyedEvent[E]]] =
     delegate(_.when(request, predicate))
 
-  def whenKeyedEvent[E <: Event](
+  def whenKeyedEvent[E <: Event](using E: Event.KeyCompanion[? >: E])(
     request: EventRequest[E],
-    key: E#Key,
+    key: E.Key,
     predicate: E => Boolean = Every)
   : Task[E] =
     underlying.whenKeyedEvent(request, key, predicate)
@@ -65,8 +65,8 @@ final class StrictEventWatch(val underlying: FileEventWatch)
     underlying.awaitAsync(predicate, after, timeout)
 
   @TestOnly
-  def awaitKeys[E <: Event : ClassTag](
-    keys: IterableOnce[E#Key],
+  def awaitKeys[E <: Event : ClassTag](using E: Event.KeyCompanion[? >: E])(
+    keys: IterableOnce[E.Key],
     predicate: KeyedEvent[E] => Boolean = Every,
     after: EventId = EventId.BeforeFirst,
     timeout: FiniteDuration = 99.s)
@@ -92,8 +92,8 @@ final class StrictEventWatch(val underlying: FileEventWatch)
 
   /** TEST ONLY - Blocking. */
   @TestOnly
-  def eventsByKey[E <: Event: ClassTag: Tag](key: E#Key, after: EventId = tornEventId)
-    (implicit s: Scheduler)
+  def eventsByKey[E <: Event: ClassTag: Tag](using E: Event.KeyCompanion[? >: E], s: Scheduler)(
+    key: E.Key, after: EventId = tornEventId)
   : Seq[E] =
     keyedEvents[E](after = after)
       .collect {

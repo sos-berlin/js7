@@ -114,38 +114,42 @@ object KeyedEventTypedJsonCodec
     val nameToClass: Map[String, Class[? <: E]])
 
   object KeyedSubtype {
-    def apply[E <: Event: ClassTag](
-      implicit ke: Encoder[E#Key], kd: Decoder[E#Key], codec: TypedJsonCodec[E])
+    def apply[E <: Event: ClassTag : TypedJsonCodec]
+    (using E: Event.KeyCompanion[? >: E])(using Encoder[E.Key], Decoder[E.Key])
     : KeyedSubtype[E] =
       make[E](typeName[E])
 
-    def apply[E <: Event: ClassTag](singleton: E)
-      (implicit ke: Encoder[E#Key], kd: Decoder[E#Key])
+    def apply[E <: Event: ClassTag](using E: Event.KeyCompanion[? >: E])
+      (using Encoder[E.Key], Decoder[E.Key])
+      (singleton: E)
     : KeyedSubtype[E] = {
       implicit val typedJsonCodec: TypedJsonCodec[E] = TypedJsonCodec[E](Subtype(singleton))
+      //import E.keyJsonCodec
       make[E](typeName[E])
     }
 
-    def singleEvent[E <: Event: ClassTag](
-      implicit ke: Encoder[E#Key], kd: Decoder[E#Key],
-      eventEncoder: Encoder.AsObject[E], eventDecoder: Decoder[E])
+    def singleEvent[E <: Event : ClassTag : Encoder.AsObject : Decoder]
+    (using E: Event.KeyCompanion[? >: E])(using Encoder[E.Key], Decoder[E.Key])
     : KeyedSubtype[E] = {
       val subtype = Subtype[E]
       locally {
-        implicit val typedJsonCodec: TypedJsonCodec[E] = TypedJsonCodec(subtype)
+        implicit val jsonCodec: TypedJsonCodec[E] = TypedJsonCodec(subtype)
         make[E](typeName[E])
       }
     }
 
-    def singleEvent[E <: Event: ClassTag](singleton: E)
-      (implicit ke: Encoder[E#Key], kd: Decoder[E#Key])
+    def singleton[E <: Event: ClassTag](using E: Event.KeyCompanion[? >: E])
+      (using Encoder[E.Key], Decoder[E.Key])
+      (value: E)
     : KeyedSubtype[E] = {
-      implicit val typedJsonCodec: TypedJsonCodec[E] = TypedJsonCodec(Subtype(singleton))
+      //import E.keyJsonCodec
+      implicit val jsonCodec: TypedJsonCodec[E] = TypedJsonCodec(Subtype(value))
       make[E](typeName[E])
     }
 
     private def make[E <: Event: ClassTag](name: String)
-      (implicit ke: Encoder[E#Key], kd: Decoder[E#Key], codec: TypedJsonCodec[E])
+      (using E: Event.KeyCompanion[? >: E])
+      (using ke: Encoder[E.Key], kd: Decoder[E.Key], codec: TypedJsonCodec[E])
     : KeyedSubtype[E] = {
       val encoder = KeyedEvent.jsonEncoder[E].asInstanceOf[Encoder.AsObject[KeyedEvent[? <: E]]]
       val decoder = KeyedEvent.jsonDecoder[E].asInstanceOf[Decoder[KeyedEvent[? <: E]]]

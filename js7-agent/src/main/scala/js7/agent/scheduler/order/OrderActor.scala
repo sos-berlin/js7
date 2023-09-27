@@ -42,7 +42,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
   private var order: Order[Order.State] = null
   private var terminating = false
 
-  protected def key = orderId
+  protected def key = orderId.asInstanceOf[E.Key]/*???*/
 
   def receive = {
     case Input.Recover(o) =>

@@ -45,7 +45,7 @@ extends JournaledState[S]
         Right(withStandards(standards.copy(
           journalState = journalState.applyEvent(event))))
 
-      case KeyedEvent(_: ClusterEvent#Key, _: ClusterEvent) =>
+      case KeyedEvent(NoKey, _: ClusterEvent) =>
         if (!isInstanceOf[ClusterableState[?]])
           Left(Problem(s"ClusterEvent but ${getClass.simpleScalaName} is not a ClusterableState"))
         else

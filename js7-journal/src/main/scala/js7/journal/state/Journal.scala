@@ -19,7 +19,7 @@ extends ReadableStateJournal[S]
   def persistKeyedEvent[E <: Event](
     keyedEvent: KeyedEvent[E],
     options: CommitOptions = CommitOptions.default)
-    (implicit enclosing: sourcecode.Enclosing)
+    (using enclosing: sourcecode.Enclosing)
   : Task[Checked[(Stamped[KeyedEvent[E]], S)]]
 
   final def persistKeyedEvent[E <: Event](

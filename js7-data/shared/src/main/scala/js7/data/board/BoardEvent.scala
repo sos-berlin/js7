@@ -6,12 +6,14 @@ import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.time.Timestamp
 import js7.data.event.{Event, KeyedEvent}
 
-sealed trait BoardEvent extends Event {
-  type Key = BoardPath
+sealed trait BoardEvent extends Event.IsKeyBase[BoardEvent] {
+  val keyCompanion: BoardEvent.type = BoardEvent
 }
 
-object BoardEvent
+object BoardEvent extends Event.CompanionForKey[BoardPath, BoardEvent]
 {
+  implicit def implicitSelf: BoardEvent.type = this
+
   /** Notice posts via a PostNotice command (not workflow instruction). */
   final case class NoticePosted(notice: NoticePosted.PostedNotice)
   extends BoardEvent

@@ -36,22 +36,22 @@ trait EventWatch
   def when[E <: Event](request: EventRequest[E], predicate: KeyedEvent[E] => Boolean = Every)
   : Task[TearableEventSeq[CloseableIterator, KeyedEvent[E]]]
 
-  def whenKeyedEvent[E <: Event](
+  def whenKeyedEvent[E <: Event](using E: Event.KeyCompanion[? >: E])(
     request: EventRequest[E],
-    key: E#Key,
+    key: E.Key,
     predicate: E => Boolean = Every)
   : Task[E]
 
-  def whenKey[E <: Event](
-    request: EventRequest[E],
-    key: E#Key,
+  def whenKey[E <: Event](using E: Event.KeyCompanion[? >: E])
+    (request: EventRequest[E],
+    key: E.Key,
     predicate: E => Boolean = Every)
   : Task[TearableEventSeq[CloseableIterator, E]]
 
   def journalInfo: JournalInfo
 
-  def untilAllKeys[E <: Event : ClassTag](
-    keys: IterableOnce[E#Key],
+  def untilAllKeys[E <: Event : ClassTag](using E: Event.KeyCompanion[? >: E])(
+    keys: IterableOnce[E.Key],
     predicate: KeyedEvent[E] => Boolean = Every,
     after: EventId,
     timeout: Option[FiniteDuration])
@@ -59,7 +59,7 @@ trait EventWatch
     observe(EventRequest.singleClass[E](after = after, timeout = timeout))
       .filter(stamped => predicate(stamped.value))
       .mapAccumulate(Set.from(keys)) { (keys, stamped) =>
-        val minishedKeys = keys - stamped.value.key
+        val minishedKeys = keys - stamped.value.key.asInstanceOf[E.Key]
         (minishedKeys, (stamped, minishedKeys.nonEmpty))
       }
       .takeWhile(_._2)

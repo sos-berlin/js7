@@ -6,6 +6,7 @@ import io.circe.{Codec, Json}
 import java.io.FileOutputStream
 import java.nio.file.Files
 import js7.base.circeutils.CirceUtils.RichJson
+import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.io.file.FileUtils.implicits.*
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.{touchFile, withTemporaryFile}
@@ -62,22 +63,16 @@ final class FileJsonSeqTest extends OurTestSuite {
   if (sys.props contains "test.speed") {
     val m = 3
     val n = 10000
-    case class X(a: Int, b: Long, c: Boolean, d: String, e: String, f: String) extends Event {
-      type Key = String
-    }
-    implicit val XJsonCodec: Codec.AsObject[X] = deriveCodec
 
-    implicit val keyedEventJsonCodec: KeyedEventTypedJsonCodec[X] =
-      KeyedEvent.typedJsonCodec(KeyedEventTypedJsonCodec.KeyedSubtype.singleEvent[X])
-
-    val x = X(1, 1112223334445556667L, true, "ddddddddddddddddddddd", "eeeeeeeeeeeeeeeeeee", "ffffffffffffffffffffffffff")
+    val event = X(1, 1112223334445556667L, true, "ddddddddddddddddddddd", "eeeeeeeeeeeeeeeeeee", "ffffffffffffffffffffffffff")
 
     "Speed test" - {
       "toJson" in {
         val stopwatch = new Stopwatch
         for (_ <- 1 to 2) {
           for (i <- 1 to n) {
-            Stamped(i, Timestamp.Epoch, KeyedEvent(x)(i.toString)).asJson
+            val a: KeyedEvent[event.type] = i.toString <-: event
+            Stamped(i, Timestamp.Epoch, i.toString <-: event: KeyedEvent[MyEvent]).asJson
           }
           info("toJson: " + stopwatch.itemsPerSecondString(n, "documents"))
         }
@@ -99,7 +94,7 @@ final class FileJsonSeqTest extends OurTestSuite {
             val stopwatch = new Stopwatch
             for (_ <- 1 to m) {
               for (i <- 1 to n) {
-                w.writeJson(Stamped(i, Timestamp.Epoch, KeyedEvent(x)(i.toString)).asJson)
+                w.writeJson(Stamped(i, Timestamp.Epoch, i.toString <-: event: KeyedEvent[MyEvent]).asJson)
               }
               w.flush()
               info("OutputStreamJsonSeqWriter: " + stopwatch.itemsPerSecondString(n, "events"))
@@ -115,7 +110,7 @@ final class FileJsonSeqTest extends OurTestSuite {
             val stopwatch = new Stopwatch
             for (_ <- 1 to m) {
               for (i <- 1 to n) {
-                w.writeJson(Stamped(i, Timestamp.Epoch, KeyedEvent(x)(i.toString)).asJson)
+                w.writeJson(Stamped(i, Timestamp.Epoch, i.toString <-: event: KeyedEvent[MyEvent]).asJson)
                 w.flush()
               }
               info("flush: " + stopwatch.itemsPerSecondString(n, "events"))
@@ -149,7 +144,7 @@ final class FileJsonSeqTest extends OurTestSuite {
             for (_ <- 1 to 2) {
               val n = 100
               for (i <- 1 to n) {
-                w.writeJson(Stamped(i, Timestamp.Epoch, KeyedEvent(x)(i.toString)).asJson)
+                w.writeJson(Stamped(i, Timestamp.Epoch, i.toString <-: event: KeyedEvent[MyEvent]).asJson)
                 w.flush()
                 fileOut.getFD.sync()
               }
@@ -163,8 +158,26 @@ final class FileJsonSeqTest extends OurTestSuite {
 }
 
 object FileJsonSeqTest {
-  final case class A(number: Int, string: String)
-  object A {
+  private trait MyEvent extends Event.IsKeyBase[MyEvent] {
+    val keyCompanion: MyEvent.type = MyEvent
+  }
+
+  private object MyEvent extends Event.CompanionForKey[String, MyEvent] {
+    implicit val implicitSelf: MyEvent.type = this
+    implicit val jsonCodec: TypedJsonCodec[MyEvent] = TypedJsonCodec(
+      Subtype[X])
+  }
+
+  private case class X(a: Int, b: Long, c: Boolean, d: String, e: String, f: String) extends MyEvent
+  private object X {
+    implicit val jsonCodec: Codec.AsObject[X] = deriveCodec
+  }
+
+  private implicit val keyedEventJsonCodec: KeyedEventTypedJsonCodec[MyEvent] =
+    KeyedEvent.typedJsonCodec(KeyedEventTypedJsonCodec.KeyedSubtype.singleEvent[X])
+
+  private final case class A(number: Int, string: String)
+  private object A {
     implicit val jsonCodec: Codec.AsObject[A] = deriveCodec
   }
 }

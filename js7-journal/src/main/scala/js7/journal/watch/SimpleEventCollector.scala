@@ -60,8 +60,8 @@ extends AutoCloseable
 object SimpleEventCollector
 {
   @TestOnly
-  def apply[E <: Event: ClassTag](config: Config = ConfigFactory.empty)
-  (implicit ke: Encoder[E#Key], kd: Decoder[E#Key], codec: TypedJsonCodec[E], scheduler: Scheduler)
+  def apply[E <: Event: ClassTag](using E: Event.KeyCompanion[? >: E])(config: Config = ConfigFactory.empty)
+  (implicit ke: Encoder[E.Key], kd: Decoder[E.Key], codec: TypedJsonCodec[E], scheduler: Scheduler)
   : SimpleEventCollector = {
     val keyedEventTypedJsonCodec = KeyedEventTypedJsonCodec[Event](KeyedSubtype[E])
     new SimpleEventCollector(keyedEventTypedJsonCodec, config)

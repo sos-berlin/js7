@@ -26,6 +26,7 @@ import js7.journal.{CommitOptions, EventIdGenerator, JournalActor}
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.Promise
+import sourcecode.Enclosing
 
 // TODO Lock for NoKey is to wide. Restrict to a set of Event superclasses, like ClusterEvent, ControllerEvent?
 //  Der Aufrufer kann sich um die Sperren uns dessen Granularität kümmern.
@@ -50,13 +51,18 @@ with FileJournal.PossibleFailover
   def isHalted: Boolean =
     isHaltedFun()
 
-  def persistKeyedEvent[E <: Event](
-    keyedEvent: KeyedEvent[E],
-    options: CommitOptions = CommitOptions.default)
-    (implicit enclosing: sourcecode.Enclosing)
+  def persistKeyedEvent[E <: Event](keyedEvent: KeyedEvent[E])
+    (using enclosing: sourcecode.Enclosing)
+  : Task[Checked[(Stamped[KeyedEvent[E]], S)]] =
+    persistKeyedEvent(keyedEvent, CommitOptions.default)
+
+  def persistKeyedEvent[E <: Event](keyedEvent: KeyedEvent[E], options: CommitOptions)
+    (using enclosing: sourcecode.Enclosing)
   : Task[Checked[(Stamped[KeyedEvent[E]], S)]] =
     Task.defer {
-      persistEvent(key = keyedEvent.key, options)(enclosing)(_ => Right(keyedEvent.event))
+      val E = keyedEvent.event.keyCompanion.asInstanceOf[Event.KeyCompanion[E]]
+      persistEvent(using E)(key = keyedEvent.key.asInstanceOf[E.Key], options)(_ =>
+        Right(keyedEvent.event))
     }
 
   def persistKeyedEvents[E <: Event](
@@ -71,13 +77,14 @@ with FileJournal.PossibleFailover
   : Task[Checked[Unit]] =
     persistLaterTask.flatMap(_(keyedEvents, options))
 
-  def persistEvent[E <: Event](key: E#Key, options: CommitOptions = CommitOptions.default)
-    (implicit enclosing: sourcecode.Enclosing)
+  def persistEvent[E <: Event](using E: Event.KeyCompanion[? >: E])
+    (key: E.Key, options: CommitOptions = CommitOptions.default)
+    (using enclosing: sourcecode.Enclosing)
   : (S => Checked[E]) => Task[Checked[(Stamped[KeyedEvent[E]], S)]] =
     stateToEvent =>
       lock(key)(
         persistEventUnlocked(
-          stateToEvent.andThen(_.map(KeyedEvent(key, _))),
+          stateToEvent.andThen(_.map(event => key.asInstanceOf[event.keyCompanion.Key] <-: event)),
           options))
 
   private def persistEventUnlocked[E <: Event](
@@ -101,13 +108,13 @@ with FileJournal.PossibleFailover
     }
 
   /** Persist multiple events in a transaction. */
-  def persistTransaction[E <: Event](key: E#Key)
+  def persistTransaction[E <: Event](using E: Event.KeyCompanion[? >: E])(key: E.Key)
   : (S => Checked[Seq[E]]) => Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
     stateToEvents => Task.defer {
       lock(key)(
         persistUnlocked(
           state => stateToEvents(state)
-            .map(_.map(KeyedEvent[E](key, _))),
+            .map(_.map(event => key.asInstanceOf[event.keyCompanion.Key] <-: event)),
           CommitOptions(transaction = true)))
     }
 

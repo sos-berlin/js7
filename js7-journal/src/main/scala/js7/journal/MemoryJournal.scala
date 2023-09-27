@@ -77,7 +77,7 @@ extends Journal[S]
   def persistKeyedEvent[E <: Event](
     keyedEvent: KeyedEvent[E],
     options: CommitOptions = CommitOptions.default)
-    (implicit enclosing: sourcecode.Enclosing)
+    (using enclosing: sourcecode.Enclosing)
   : Task[Checked[(Stamped[KeyedEvent[E]], S)]] =
     persistKeyedEvents(keyedEvent :: Nil)
       .map(_.map { case (events, s) => events.head -> s })

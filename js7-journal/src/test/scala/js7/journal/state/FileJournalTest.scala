@@ -85,7 +85,7 @@ final class FileJournalTest extends OurTestSuite with BeforeAndAfterAll
 
     "persistEvent" in {
       assert(journal
-        .persistEvent[NumberEvent](NumberKey("TWO"))(implicitly[sourcecode.Enclosing])(
+        .persistEvent[NumberEvent](NumberKey("TWO"))(
           _ => Right(NumberAdded)).runSyncUnsafe().isRight)
     }
 
@@ -226,10 +226,11 @@ private object FileJournalTest
 
   sealed trait TestEvent extends Event
 
-  sealed trait NumberEvent extends TestEvent {
-    type Key = NumberKey
+  sealed trait NumberEvent extends TestEvent with Event.IsKeyBase[NumberEvent] {
+    val keyCompanion: NumberEvent.type = NumberEvent
   }
-  object NumberEvent {
+  object NumberEvent extends Event.CompanionForKey[NumberKey, NumberEvent] {
+    implicit val implicitSelf: NumberEvent.type = this
     implicit val jsonCodec: TypedJsonCodec[NumberEvent] = TypedJsonCodec(
       Subtype(NumberAdded),
       Subtype(NumberRemoved),
@@ -237,6 +238,7 @@ private object FileJournalTest
       Subtype(deriveCodec[NumberSlowlyIncremented]),
       Subtype(NumberUnhandled))
   }
+
   case object NumberAdded extends NumberEvent
 
   case object NumberRemoved extends NumberEvent

@@ -20,6 +20,7 @@ import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.TakeSnapshot
 import js7.data.controller.ControllerEvent.ControllerReady
 import js7.data.controller.ControllerState
+import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, KeyedEvent, Stamped}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten}
 import js7.data.order.Outcome.{Succeeded, succeeded}
@@ -110,7 +111,7 @@ final class ProxyHistoryTest extends OurTestSuite with ProvideActorSystem with C
                 lastState = es.state
                 var keyedEvent = es.stampedEvent.value
                 for (controllerReady <- ifCast[ControllerReady](keyedEvent.event)) {
-                  keyedEvent = keyedEvent.copy(event = controllerReady.copy(totalRunningTime = 333.s))
+                  keyedEvent = NoKey <-: controllerReady.copy(totalRunningTime = 333.s)
                 }
                 es.stampedEvent.value match {
                   case KeyedEvent(orderId: OrderId, event: OrderEvent) => keyedEvents += orderId <-: event

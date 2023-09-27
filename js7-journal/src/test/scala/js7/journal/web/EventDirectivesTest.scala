@@ -65,8 +65,11 @@ final class EventDirectivesTest extends OurTestSuite with ScalatestRouteTest
 }
 
 object EventDirectivesTest {
-  sealed trait MyEvent extends Event {
-    type Key = String
+  sealed trait MyEvent extends Event.IsKeyBase[MyEvent] {
+    val keyCompanion: MyEvent.type = MyEvent
+  }
+  object MyEvent extends Event.CompanionForKey[String, MyEvent] {
+    implicit val implicitSelf: MyEvent.type = MyEvent
   }
 
   final case class AEvent() extends MyEvent

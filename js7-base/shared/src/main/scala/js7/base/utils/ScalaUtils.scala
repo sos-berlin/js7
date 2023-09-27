@@ -1008,4 +1008,7 @@ object ScalaUtils
       case 3 => "3rd"
       case n => s"${n}th"
     }
+
+  /** Only to let the compiler check the body, nothing is executed. */
+  inline def compilable(inline body: Any): Unit = {}
 }

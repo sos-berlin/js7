@@ -197,7 +197,8 @@ final class JournalEventWatchTest extends OurTestSuite with BeforeAndAfterAll
         writer.flush(sync = false)
         writer.onCommitted(writer.fileLengthAndEventId, stampedSeq.length)
 
-        def eventsForKey[E <: MyEvent: ClassTag: Tag](key: E#Key) = {
+        def eventsForKey[E <: MyEvent: ClassTag: Tag](using E: Event.KeyCompanion[? >: E])(
+          key: E.Key) = {
           val EventSeq.NonEmpty(eventIterator) = eventWatch
             .whenKey[E](EventRequest.singleClass(timeout = Some(99.s)), key)
             .await(10.s).strict
@@ -207,7 +208,7 @@ final class JournalEventWatchTest extends OurTestSuite with BeforeAndAfterAll
         assert(eventsForKey[AEvent]("2") == Vector(A2))
         assert(eventsForKey[BEvent]("1") == Vector(B1, B2))
 
-        def keyedEvent[E <: MyEvent: ClassTag: Tag](key: E#Key) =
+        def keyedEvent[E <: MyEvent: ClassTag: Tag](using E: Event.KeyCompanion[? >: E])(key: E.Key) =
           eventWatch.whenKeyedEvent[E](EventRequest.singleClass(timeout = Some(99.s)), key) await 10.s
         assert(keyedEvent[AEvent]("1") == A1)
         assert(keyedEvent[AEvent]("2") == A2)
@@ -446,19 +447,18 @@ private object JournalEventWatchTest
     Stamped(220L, "B2" <-: B2) ::
     Nil
 
-  private sealed trait MyEvent extends Event
-
-  private trait AEvent extends MyEvent {
-    type Key = String
+  private sealed trait MyEvent extends Event.IsKeyBase[MyEvent] {
+    val keyCompanion: MyEvent.type = MyEvent
+  }
+  private object MyEvent extends Event.CompanionForKey[String, MyEvent] {
+    implicit val implicitSelf: MyEvent.type = this
   }
 
+  private trait AEvent extends MyEvent
   private case object A1 extends AEvent
   private case object A2 extends AEvent
 
-  private trait BEvent extends MyEvent {
-    type Key = String
-  }
-
+  private trait BEvent extends MyEvent
   private case object B1 extends BEvent
   private case object B2 extends BEvent
 

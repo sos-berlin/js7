@@ -1,5 +1,8 @@
 package js7.data.event
 
+import js7.base.utils.ScalaUtils.syntax.RichJavaClass
+import scala.annotation.targetName
+
 /**
   * An object's event.
   * <p>
@@ -8,30 +11,42 @@ package js7.data.event
   * @author Joacim Zschimmer
   */
 trait Event {
-  /**
-    * The type of the key in [[KeyedEvent]] or [[KeyedEvent.NoKey]].
-    */
-  type Key
+  type KeyBase <: Event
+
+  val keyCompanion: Event.KeyCompanion[KeyBase]
 
   def isSucceeded: Boolean = true
 
   def toShortString = toString
 
-  final def <-:(key: Key) =
-    new KeyedEvent[this.type](key, this)
+  @targetName("toKeyedEvent")
+  final def <-:(key: keyCompanion.Key): KeyedEvent[this.type] =
+    new KeyedEvent(this)(key)
+
+  /** Ignores the key's type and returns an AnyKeyedEvent. */
+  @targetName("toAnyKeyedEvent")
+  final def <~:(key: Any): AnyKeyedEvent =
+    KeyedEvent.any(key, this)
 
   def isMinor = false
 }
 
 object Event
 {
-  trait ForScala3[E <: Event] extends Event {
-    implicit val companion: Companion[E]
-    type Key = companion.Key
+  /** This trait (but not it's derived traits) is the common trait of Events with a common key. */
+  transparent trait IsKeyBase[E <: IsKeyBase[E]] extends Event {
+    final type KeyBase = E
   }
 
-  trait Companion[E <: Event]
-  {
+  trait KeyCompanion[E <: Event] {
     type Key
+
+    implicit def implicitSelf: KeyCompanion[E]
+
+    override def toString = getClass.shortClassName
+  }
+
+  transparent trait CompanionForKey[K, E <: Event] extends KeyCompanion[E] {
+    type Key = K
   }
 }

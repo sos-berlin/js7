@@ -19,9 +19,4 @@ package object event
     *
     */
   type EventId = Long
-
-  type AnyKeyedEvent = KeyedEvent[Event]
-  type AnyEvent = Event { type Key = Any }
-
-  val <-: = KeyedEvent
 }

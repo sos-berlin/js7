@@ -15,11 +15,12 @@ import scala.util.{Failure, Success}
 /**
   * @author Joacim Zschimmer
   */
-private[test] final class TestAggregateActor(protected val key: String, val journalActor: ActorRef @@ JournalActor.type,
+private[test] final class TestAggregateActor(key_ : String, val journalActor: ActorRef @@ JournalActor.type,
   protected val journalConf: JournalConf)
   (implicit protected val scheduler: Scheduler)
 extends KeyedJournalingActor[TestState, TestEvent] {
 
+  protected def key = key_.asInstanceOf[E.Key]
   private var aggregate: TestAggregate = null
   private var disturbance = 0
 
@@ -132,7 +133,7 @@ extends KeyedJournalingActor[TestState, TestEvent] {
       case event: TestEvent.Added =>
         assert(aggregate == null)
         import event.*
-        aggregate = TestAggregate(key, string, a, b, c, d, e, f, g, h, i, k, l, m, n, o, p, q, r)
+        aggregate = TestAggregate(key_, string, a, b, c, d, e, f, g, h, i, k, l, m, n, o, p, q, r)
 
       case TestEvent.Removed =>
         logger.debug("Removed, stopping now")

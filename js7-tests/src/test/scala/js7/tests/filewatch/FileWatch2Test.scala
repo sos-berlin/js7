@@ -15,7 +15,7 @@ import js7.base.utils.Tests.isIntelliJIdea
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerEvent.ControllerShutDown
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest}
+import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent}
 import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttached, ItemAttachedStateEvent, ItemAttachedToMe}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
 import js7.data.item.{BasicItemEvent, InventoryItemEvent, ItemRevision, UnsignedSimpleItemEvent}
@@ -326,8 +326,10 @@ final class FileWatch2Test extends OurTestSuite with DirectoryProviderForScalaTe
 
   private def checkAgentEvents(client: AgentClient): Unit = {
     client.login().await(99.s)
-    val keyedEvents = client.eventObservable(EventRequest.singleClass[Event](after = EventId.BeforeFirst))
-      .await(99.s).orThrow.map(_.value)
+    val keyedEvents = client
+      .eventObservable(EventRequest.singleClass[Event](after = EventId.BeforeFirst))
+      .await(99.s).orThrow
+      .map(_.value)
       .flatMap(ke => Observable.fromIterable(Some(ke.event)
         .collect {
           case e: AgentReady => e.copy(
@@ -337,7 +339,7 @@ final class FileWatch2Test extends OurTestSuite with DirectoryProviderForScalaTe
           case e: InventoryItemEvent if e.key.isInstanceOf[OrderWatchPath] => e
           case e: OrderWatchEvent => e
         }
-        .map(e => ke.copy(event = e))))
+        .map(e => ke.key <~: e)))
       .toListL.await(99.s)
     assert(keyedEvents == Seq[AnyKeyedEvent](
       NoKey <-: AgentReady("Europe/Berlin", 1.s, Some(PlatformInfo.test)),

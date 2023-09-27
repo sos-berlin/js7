@@ -17,8 +17,6 @@ sealed trait ControllerEvent extends NoKeyEvent
 
 object ControllerEvent
 {
-  intelliJuseImport(FiniteDurationJsonEncoder)
-
   final case class ControllerInitialized(
     controllerId: ControllerId,
     initiallyStartedAt: Timestamp)
@@ -38,4 +36,6 @@ object ControllerEvent
     Subtype(deriveCodec[ControllerReady]),
     Subtype(ControllerShutDown),
     Subtype(ControllerTestEvent))
+
+  intelliJuseImport(FiniteDurationJsonEncoder)
 }

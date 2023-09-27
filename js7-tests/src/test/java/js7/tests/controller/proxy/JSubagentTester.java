@@ -104,23 +104,21 @@ final class JSubagentTester
             subscription.dispose();
         }
         assertThat(keyedEvents, equalTo(new HashSet<KeyedEvent<Event>>(asList(
-            KeyedEvent.of(new UnsignedSimpleItemAdded(subagentItem
+            KeyedEvent.any(new UnsignedSimpleItemAdded(subagentItem
                 .withRevision(Optional.of(new ItemRevision(0))).asScala())),
-            KeyedEvent.of(new UnsignedSimpleItemAdded(subagentSelection
+            KeyedEvent.any(new UnsignedSimpleItemAdded(subagentSelection
                 .withRevision(Optional.of(new ItemRevision(0))).asScala())),
-            KeyedEvent.of(new ItemAttachable(subagentItem.id(), agentPath)),
-            KeyedEvent.of(new ItemAttached(subagentItem.id(), new Some<>(new ItemRevision(0)), agentPath)),
-            KeyedEvent.of(new ItemDetachable(subagentItem.id(), agentPath)),
-            KeyedEvent.of(new ItemDetached(subagentItem.id(), agentPath)),
-            KeyedEvent.of(new ItemDeletionMarked(subagentItem.id())),
-            KeyedEvent.of(new ItemDeleted(subagentItem.id())),
-            KeyedEvent.of(new ItemDeleted(subagentSelection.id()))
+            KeyedEvent.any(new ItemAttachable(subagentItem.id(), agentPath)),
+            KeyedEvent.any(new ItemAttached(subagentItem.id(), new Some<>(new ItemRevision(0)), agentPath)),
+            KeyedEvent.any(new ItemDetachable(subagentItem.id(), agentPath)),
+            KeyedEvent.any(new ItemDetached(subagentItem.id(), agentPath)),
+            KeyedEvent.any(new ItemDeletionMarked(subagentItem.id())),
+            KeyedEvent.any(new ItemDeleted(subagentItem.id())),
+            KeyedEvent.any(new ItemDeleted(subagentSelection.id()))
         ))));
     }
 
-    static void run(List<JAdmission> admissions, JHttpsConfig httpsConfig)
-        throws Exception
-    {
+    static void run(List<JAdmission> admissions, JHttpsConfig httpsConfig) throws Exception {
         try (JStandardEventBus<ProxyEvent> proxyEventBus = new JStandardEventBus<>(ProxyEvent.class)) {
             try (CouplingState couplingState = new CouplingState(proxyEventBus)) {
                 try (JProxyContext context = new JProxyContext()) {

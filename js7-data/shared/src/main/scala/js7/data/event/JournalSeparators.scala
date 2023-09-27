@@ -1,11 +1,12 @@
 package js7.data.event
 
-import io.circe.Json
 import io.circe.syntax.EncoderOps
+import io.circe.Json
 import js7.base.circeutils.CirceUtils.{RichCirceString, RichJson}
 import js7.base.data.ByteArray
 import js7.base.problem.Checked.*
 import js7.data.event.JournalEvent.StampedHeartbeat
+import js7.data.event.KeyedEvent.NoKey
 
 /**
   * @author Joacim Zschimmer

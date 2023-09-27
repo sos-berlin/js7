@@ -1,6 +1,6 @@
 package js7.base.generic
 
-import io.circe.{Decoder, Encoder, Json, KeyDecoder, KeyEncoder}
+import io.circe.{Codec, Decoder, Encoder, Json, KeyDecoder, KeyEncoder}
 import java.util.Objects.requireNonNull
 import javax.annotation.Nullable
 import js7.base.circeutils.CirceUtils.CirceUtilsChecked
@@ -57,6 +57,8 @@ object GenericString
 
     implicit val jsonEncoder: Encoder[A] = o => Json.fromString(o.string)
     implicit val jsonDecoder: Decoder[A] = c => c.as[String].flatMap(o => checked(o).toDecoderResult(c.history))
+    val jsonCodec: Codec[A] = Codec.from(jsonDecoder, jsonEncoder)
+
     implicit val keyEncoder: KeyEncoder[A] = _.string
     implicit val keyDecoder: KeyDecoder[A] = o => Some(apply(o))  // throws?
 

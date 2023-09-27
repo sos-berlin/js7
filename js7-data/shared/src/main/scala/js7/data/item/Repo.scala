@@ -109,8 +109,8 @@ final case class Repo(
       case _ => false
     }
 
-  def currentTyped[A <: VersionedItem](implicit A: VersionedItem.Companion[A]): Map[A#Path, A] =
-    typeToPathToCurrentItem(A).view.mapValues(_.value).toMap.asInstanceOf[Map[A#Path, A]]
+  def currentTyped[A <: VersionedItem](implicit A: VersionedItem.Companion[A]): Map[A.Path, A] =
+    typeToPathToCurrentItem(A).view.mapValues(_.value).toMap.asInstanceOf[Map[A.Path, A]]
 
   def currentItems: View[VersionedItem] =
     currentSignedItems.view.map(_.value)
