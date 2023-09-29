@@ -46,7 +46,7 @@ object Outcome
 
   @TestOnly
   def failedWithSignal(signal: ProcessSignal) =
-    Failed(Map("returnCode" -> NumberValue(if (isWindows) 0 else 128 + signal.number)))
+    Failed(Map("returnCode" -> NumberValue(if isWindows then 0 else 128 + signal.number)))
 
   /** The job has terminated. */
   sealed trait Completed extends Outcome {
@@ -57,7 +57,7 @@ object Outcome
       apply(success, Map.empty)
 
     def apply(success: Boolean, namedValues: NamedValues): Completed =
-      if (success)
+      if success then
         Succeeded(namedValues)
       else
         Failed(namedValues)
@@ -93,7 +93,7 @@ object Outcome
   }
 
   final case class Succeeded(namedValues: NamedValues) extends Completed {
-    def show = if (namedValues.isEmpty) "Succeeded" else s"Succeeded($namedValues)"
+    def show = if namedValues.isEmpty then "Succeeded" else s"Succeeded($namedValues)"
     override def toString = show
   }
   object Succeeded extends Completed.Companion[Succeeded]
@@ -102,9 +102,9 @@ object Outcome
     val returnCode0 = new Succeeded(NamedValues.rc(0))
 
     protected def make(namedValues: NamedValues): Succeeded =
-      if (namedValues.isEmpty)
+      if namedValues.isEmpty then
         empty
-      else if (namedValues == returnCode0.namedValues)
+      else if namedValues == returnCode0.namedValues then
         returnCode0
       else
         new Succeeded(namedValues)
@@ -114,7 +114,7 @@ object Outcome
         o.namedValues.nonEmpty.thenList("namedValues" -> o.namedValues.asJson))
 
     implicit val jsonDecoder: Decoder[Succeeded] = c =>
-      for (namedValues <- c.getOrElse[NamedValues]("namedValues")(Map.empty)) yield
+      for namedValues <- c.getOrElse[NamedValues]("namedValues")(Map.empty) yield
         make(namedValues)
   }
 
@@ -138,7 +138,7 @@ object Outcome
       Failed(Some(throwable.toStringWithCauses))
 
     protected def make(namedValues: NamedValues): Failed = {
-      if (namedValues.isEmpty)
+      if namedValues.isEmpty then
         failed
       else
         Failed(errorMessage = None, namedValues)
@@ -150,10 +150,10 @@ object Outcome
         o.namedValues.nonEmpty.thenList("namedValues" -> o.namedValues.asJson))
 
     implicit val jsonDecoder: Decoder[Failed] =
-      c => for {
+      c => for
         errorMessage <- c.get[Option[String]]("message")
         namedValues <- c.getOrElse[NamedValues]("namedValues")(Map.empty)
-      } yield Failed(errorMessage, namedValues)
+      yield Failed(errorMessage, namedValues)
   }
 
   final case class TimedOut(outcome: Outcome.Completed)
@@ -195,7 +195,7 @@ object Outcome
         o => JsonObject("problem" -> ((o.problem != ProcessLostDueToUnknownReasonProblem) ? o.problem).asJson)
 
       private val jsonDecoder: Decoder[ProcessLost] =
-        c => for (problem <- c.getOrElse[Problem]("problem")(ProcessLostDueToUnknownReasonProblem)) yield
+        c => for problem <- c.getOrElse[Problem]("problem")(ProcessLostDueToUnknownReasonProblem) yield
           ProcessLost(problem)
 
       implicit val jsonCodec: Codec.AsObject[ProcessLost] =
@@ -232,7 +232,7 @@ object Outcome
     TypedJsonCodec.typeField[Succeeded] +: Succeeded.returnCode0.asJsonObject
 
   implicit val jsonEncoder: Encoder.AsObject[Outcome] = outcome =>
-    if (outcome eq Succeeded.returnCode0)
+    if outcome eq Succeeded.returnCode0 then
       predefinedRC0SucceededJson
     else
       typedJsonCodec.encodeObject(outcome)

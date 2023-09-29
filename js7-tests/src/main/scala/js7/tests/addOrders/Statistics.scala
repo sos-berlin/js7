@@ -39,8 +39,8 @@ private final case class Statistics(
       numberAndPerSecondString(duration, processedCount, "jobs"),
       numberAndPerSecondString(duration, eventCount, "events"),
       numberAndPerSecondString(duration, stdWritten / 1_000_000, "MB stdout+stderr"),
-      s"∅ ${if (completedOrderCount == 0) "∞" else (totalOrderDuration / completedOrderCount).pretty} order duration",
-      s"∅ ${if (processedCount == 0) "∞" else (totalProcessDuration / processedCount).pretty} job duration" +
+      s"∅ ${if completedOrderCount == 0 then "∞" else (totalOrderDuration / completedOrderCount).pretty} order duration",
+      s"∅ ${if processedCount == 0 then "∞" else (totalProcessDuration / processedCount).pretty} job duration" +
         s", longest is ${maximumProcessDuration.pretty}",
       duration.pretty)
 }

@@ -31,7 +31,7 @@ private[journal] final class JournalLogger(
   //    f"  ${" " * syncOrFlushWidth}      * ${header.eventId}%16d $header")
 
   def logCommitted(persists: IndexedSeqView[Loggable], ack: Boolean = false): Unit =
-    if (!suppressed) logger.whenInfoEnabled {
+    if !suppressed then logger.whenInfoEnabled {
       val committedAt = now
       val myPersists = dropEmptyPersists(persists)
 
@@ -45,7 +45,7 @@ private[journal] final class JournalLogger(
       }
 
       val loggablePersists = myPersists.filter(_.stampedSeq.exists(isLoggable))
-      if (loggablePersists.nonEmpty) {
+      if loggablePersists.nonEmpty then {
         logPersists(loggablePersists.toVector.view, committedAt, isLoggable)(infoLogPersist)
       }
     }
@@ -67,13 +67,13 @@ private[journal] final class JournalLogger(
   : Unit =
     CorrelId.isolate { logCorrelId =>
       var index = 0
-      for (persist <- persists) {
+      for persist <- persists do {
         logCorrelId := persist.correlId
         val stampedSeq = persist.stampedSeq.filter(isLoggable)
         val frame = PersistFrame(persist, stampedSeq.length, index, persists.length, committedAt)
         val stampedIterator = stampedSeq.iterator
         var hasNext = stampedIterator.hasNext
-        while (hasNext) {
+        while hasNext do {
           val stamped = stampedIterator.next()
           hasNext = stampedIterator.hasNext
           frame.isLastEvent = !hasNext
@@ -92,15 +92,15 @@ private[journal] final class JournalLogger(
     //? sb.fillRight(5) { sb.append(nr) }
     sb.append(persistMarker)
     sb.fillRight(syncOrFlushWidth) {
-      if (isLastEvent && persist.isLastOfFlushedOrSynced) {
-        sb.append(if (ack) ackSyncOrFlushString else syncOrFlushString)
-      } else if (isFirstEvent && persistIndex == 0 && persistCount >= 2) {
+      if isLastEvent && persist.isLastOfFlushedOrSynced then {
+        sb.append(if ack then ackSyncOrFlushString else syncOrFlushString)
+      } else if isFirstEvent && persistIndex == 0 && persistCount >= 2 then {
         sb.append(persistCount)  // Wrongly counts multiple isLastOfFlushedOrSynced (but only SnapshotTaken)
-      } else if (nr == beforeLastEventNr && persistEventCount >= 10_000) {
+      } else if nr == beforeLastEventNr && persistEventCount >= 10_000 then {
         val micros = duration.toMicros
-        if (micros != 0) {
+        if micros != 0 then {
           val k = (1000.0 * persistEventCount / micros).toInt
-          if (k < 1000) {
+          if k < 1000 then {
             sb.append(k)
             sb.append("k/s")
           } else {
@@ -111,12 +111,12 @@ private[journal] final class JournalLogger(
       }
     }
 
-    if (isLastEvent) {
+    if isLastEvent then {
       sb.append(' ')
       sb.fillRight(6) {
-        if (!suppressTiming && duration >= MinimumDuration) sb.append(duration.msPretty)
+        if !suppressTiming && duration >= MinimumDuration then sb.append(duration.msPretty)
       }
-    } else if (nr == beforeLastEventNr && beforeLastEventNr > persist.eventNumber) {
+    } else if nr == beforeLastEventNr && beforeLastEventNr > persist.eventNumber then {
       sb.fillLeft(7) { sb.append(persistEventCount) }
     } else {
       sb.append("       ")
@@ -124,16 +124,16 @@ private[journal] final class JournalLogger(
 
     sb.append(transactionMarker(true))
     sb.append(stamped.eventId)
-    if (stamped.value.key != NoKey) {
+    if stamped.value.key != NoKey then {
       sb.append(' ')
       sb.append(stamped.value.key)
       sb.append(spaceArrow)
     }
     val event = stamped.value.event
-    if (!event.isMinor) sb.append(bold)
+    if !event.isMinor then sb.append(bold)
     sb.append(' ')
     sb.append(event.toString.truncateWithEllipsis(200, firstLineOnly = true))
-    if (!event.isMinor) sb.append(resetColor)
+    if !event.isMinor then sb.append(resetColor)
     logger.trace(sb.toString)
   }
 
@@ -143,7 +143,7 @@ private[journal] final class JournalLogger(
     sb.clear()
     sb.append("Event ")
     sb.append(transactionMarker(false))
-    if (key != NoKey) {
+    if key != NoKey then {
       sb.append(key)
       sb.append(spaceArrowSpace)
     }
@@ -201,21 +201,21 @@ object JournalLogger
     var isLastEvent = true
 
     def persistMarker: Char =
-      if (persistCount == 1) ' '
-      else if (persistIndex == 0 & isFirstEvent) '┌'
-      else if (persistIndex == persistCount - 1 & isLastEvent) '└'
+      if persistCount == 1 then ' '
+      else if persistIndex == 0 & isFirstEvent then '┌'
+      else if persistIndex == persistCount - 1 & isLastEvent then '└'
       else '│'
 
     def transactionMarker(forTrace: Boolean): Char =
-      if (persistEventCount == 1) ' '
-      else if (persist.isTransaction)
-        if (isFirstEvent) '⎛' // ⎧
-        else if (isLastEvent) '⎝' // ⎩
-        else if (forTrace && nr == beforeLastEventNr) '⎨'
+      if persistEventCount == 1 then ' '
+      else if persist.isTransaction then
+        if isFirstEvent then '⎛' // ⎧
+        else if isLastEvent then '⎝' // ⎩
+        else if forTrace && nr == beforeLastEventNr then '⎨'
         else '⎪'
-      else if (!forTrace) ' '
-      else if (isFirstEvent) '┐'
-      else if (isLastEvent) '┘'
+      else if !forTrace then ' '
+      else if isFirstEvent then '┐'
+      else if isLastEvent then '┘'
       //else if (nr == beforeLastEventNr) '┤'
       else '╷' // ┆╎
   }

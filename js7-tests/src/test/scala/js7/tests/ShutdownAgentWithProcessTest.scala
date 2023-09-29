@@ -87,7 +87,7 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite with ControllerAge
         simpleOrderId <-: OrderProcessingStarted(subagentId),
         simpleOrderId <-: OrderStdoutWritten(s"TestJob$nl"),
         simpleOrderId <-: OrderProcessed(Outcome.Killed(Outcome.Failed(namedValues = Map(
-          "returnCode" -> NumberValue(if (isWindows) 1 else 137))))),
+          "returnCode" -> NumberValue(if isWindows then 1 else 137))))),
         agentPath <-: AgentShutDown,
 
         agentPath <-: AgentReady("UTC", None),
@@ -108,7 +108,7 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite with ControllerAge
         caughtOrderId <-: OrderProcessingStarted(subagentId),
         caughtOrderId <-: OrderStdoutWritten(s"TestJob$nl"),
         caughtOrderId <-: OrderProcessed(Outcome.Killed(Outcome.Failed(namedValues = Map(
-          "returnCode" -> NumberValue(if (isWindows) 1 else 137))))),
+          "returnCode" -> NumberValue(if isWindows then 1 else 137))))),
         agentPath <-: AgentShutDown,
 
         agentPath <-: AgentReady("UTC", None),

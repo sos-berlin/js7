@@ -30,7 +30,7 @@ final class GrowingFileObservableTest extends OurTestSuite
       val queue = new ArrayBlockingQueue[String](1)
       new GrowingFileObservable(file, pollDuration = Some(10.ms))
         .foreach(o => queue.add(o.utf8String))
-      for (_ <- 1 to 5) {
+      for _ <- 1 to 5 do {
         val text = Random.nextString(1 + Random.nextInt(10))
         file ++= text
         assert(queue.poll(9, SECONDS) == text)

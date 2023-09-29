@@ -23,10 +23,10 @@ final class SwitchOverControllerClusterTest extends ControllerClusterTester
 {
   override protected def removeObsoleteJournalFiles = false
   private lazy val manyOrdersCount = sys.props.get("SwitchOverControllerClusterTest").map(_.toInt) getOrElse 1
-  private lazy val timeout = if (manyOrdersCount > 1) 1.h else 99.s
+  private lazy val timeout = if manyOrdersCount > 1 then 1.h else 99.s
 
   "Switchover" in {
-    val orderIds = for (i <- 1 to manyOrdersCount) yield
+    val orderIds = for i <- 1 to manyOrdersCount yield
       OrderId(s"ORDER-XXXXXXXXX-XXXXXXXXX-XXXXXXXXX-XXXXXXXXX-XXXXXXXXX-XXXXXXXXX-XXXXXXXXX-XXXXXXXXX-XXXXXXXXX-$i")
     withControllerAndBackup() { (primary, _, backup, _, _) =>
       var lastEventId = EventId.BeforeFirst
@@ -44,7 +44,7 @@ final class SwitchOverControllerClusterTest extends ControllerClusterTester
           //May already be terminated: primaryController.eventWatch.await[ClusterSwitchedOver]()
           backupController.eventWatch.await[ClusterSwitchedOver]()
           // Controller terminates after switched-over
-          for (t <- Try(primaryController.terminated.await(timeout)).failed)
+          for t <- Try(primaryController.terminated.await(timeout)).failed do
             logger.error(s"Controller terminated. ${t.toStringWithCauses}")
 
           //backupController.eventWatch.await[ClusterSwitchedOver](timeout = timeout)

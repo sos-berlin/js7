@@ -26,7 +26,7 @@ with ConvertibleMultiPartialFunction[String, String] {
   def keylessValue(index: Int): String = {
     unusedKeylessArguments -= index
     val a = arguments("")
-    if (index >= a.size) throw new NoSuchElementException(s"Too few keyless arguments: argument #${index+1} expected")
+    if index >= a.size then throw new NoSuchElementException(s"Too few keyless arguments: argument #${index+1} expected")
     a(index).value
   }
 
@@ -49,7 +49,7 @@ with ConvertibleMultiPartialFunction[String, String] {
   override protected def renderKey(key: String) = s"command line option '$key'"
 
   def requireNoMoreArguments(): Unit = {
-    if (unusedArguments.nonEmpty || unusedKeylessArguments.nonEmpty)
+    if unusedArguments.nonEmpty || unusedKeylessArguments.nonEmpty then
       throw new IllegalArgumentException("Unknown command line arguments: " + unusedKeylessArguments.map(o => s"#${o+1}") .mkString(" ") +
         unusedArguments.values.flatten.mkString(" "))
   }
@@ -66,9 +66,9 @@ object CommandLineArguments
     val m = new mutable.LinkedHashMap[String, Vector[Argument]] {
       override def default(key: String) = Vector.empty//throw new IllegalArgumentException(if (key.nonEmpty) s"Missing option -$key" else s"Missing argument")
     }
-    for (a <- args.lastOption if a endsWith "\r")
+    for a <- args.lastOption if a endsWith "\r" do
       throw new IllegalArgumentException("The last argument must not end with a CR (\\r)")
-    for (a <- parseArgs(args)) {
+    for a <- parseArgs(args) do {
       m.get(a.key) match {
         case None => m += a.key -> Vector(a)
         case Some(seq) => m(a.key) = seq :+ a

@@ -104,9 +104,9 @@ trait RouteProvider extends ExceptionHandling
     }
 
   protected final def completeUnauthenticatedLogin(statusCode: StatusCode, problem: Problem): Route =
-    (if (statusCode == Unauthorized) respondWithHeader(gateKeeper.wwwAuthenticateHeader) else pass) {
+    (if statusCode == Unauthorized then respondWithHeader(gateKeeper.wwwAuthenticateHeader) else pass) {
       val delay =
-        if (problem == InvalidLoginProblem) {
+        if problem == InvalidLoginProblem then {
           logger.debug(s"$problem - delaying response for ${gateKeeper.invalidAuthenticationDelay.pretty}")
           gateKeeper.invalidAuthenticationDelay
         } else

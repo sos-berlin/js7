@@ -76,7 +76,7 @@ object VerifiedUpdateItems
     observable
       .mapParallelBatch() {
         case AddOrChangeSigned(signedString) =>
-          if (problemOccurred.isEmpty)
+          if problemOccurred.isEmpty then
             verify(signedString) match {
               case Left(problem) =>
                 problemOccurred = Some(problem)
@@ -96,7 +96,7 @@ object VerifiedUpdateItems
         case () => assert(problemOccurred.nonEmpty)
         case RemoveVersioned(path) => versionedRemoves_ += path
         case AddVersion(v) =>
-          if (maybeVersionId.isEmpty) maybeVersionId = Some(v)
+          if maybeVersionId.isEmpty then maybeVersionId = Some(v)
           else problemOccurred = Some(Problem("Duplicate AddVersion"))
       }
       .map { _ =>
@@ -130,7 +130,7 @@ object VerifiedUpdateItems
   ): Checked[Option[Versioned]] =
     (maybeVersionId, verifiedVersionedItems, versionedRemoves) match {
       case (Some(v), verifiedVersionedItems, remove) =>
-        for (_ <- (verifiedVersionedItems.view.map(_.item.path) ++ remove).checkUniqueness(identity)) yield
+        for _ <- (verifiedVersionedItems.view.map(_.item.path) ++ remove).checkUniqueness(identity) yield
           Some(VerifiedUpdateItems.Versioned(v, verifiedVersionedItems, remove))
       case (None, Seq(), Seq()) =>
         Right(None)

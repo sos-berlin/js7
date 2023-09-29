@@ -10,7 +10,7 @@ object OldScheduleXmlParser{
 
   private implicit val StringAsDayOfWeek: As[String, DayOfWeek] =
     As(
-      (for (dayOfWeek <- DayOfWeek.values) yield dayOfWeek.toString.toLowerCase -> dayOfWeek).toMap)
+      (for dayOfWeek <- DayOfWeek.values yield dayOfWeek.toString.toLowerCase -> dayOfWeek).toMap)
 
   private implicit val StringAsZoneId: As[String, ZoneId] =
     As(o => ZoneId.of(o))
@@ -49,10 +49,10 @@ object OldScheduleXmlParser{
 
     parseElement("run_time") {
       val timeZone = attributeMap.as[ZoneId]("time_zone", defaultTimeZone)
-      if (peek.isEndElement)
+      if peek.isEndElement then
         OldSchedule.empty(timeZone)
       else
-      if (peek.asStartElement().getName.getLocalPart == "period")
+      if peek.asStartElement().getName.getLocalPart == "period" then
         OldSchedule.daily(timeZone, parsePeriodSeq())
       else
         OldSchedule(

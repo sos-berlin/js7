@@ -36,18 +36,18 @@ extends JournalWriter(S, after = after, append = false)
     val elapsed = runningSince.elapsed
     logger.debug("Snapshot finished - " + itemsPerSecondString(elapsed, snapshotCount, "objects") +
       " · " + bytesPerSecondString(elapsed, fileLength))
-    for (o <- statistics.debugString) logger.info(o)
+    for o <- statistics.debugString do logger.info(o)
   }
 
   def beginSnapshotSection(): Unit = {
-    if (snapshotStarted) throw new IllegalStateException("SnapshotJournalWriter: duplicate beginSnapshotSection()")
+    if snapshotStarted then throw new IllegalStateException("SnapshotJournalWriter: duplicate beginSnapshotSection()")
     jsonWriter.write(SnapshotHeader.toByteArray)
     flush(sync = false)
     snapshotStarted = true
   }
 
   def writeSnapshot(json: ByteArray): Unit = {
-    if (!snapshotStarted) throw new IllegalStateException("SnapshotJournalWriter: writeSnapshots(), but snapshots have not been started")
+    if !snapshotStarted then throw new IllegalStateException("SnapshotJournalWriter: writeSnapshots(), but snapshots have not been started")
     statistics.countSnapshot()
     jsonWriter.write(json)
     snapshotCount += 1

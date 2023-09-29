@@ -59,7 +59,7 @@ trait AgentForwardRoute extends ControllerRouteProvider
   : Route = {
     def route =
       rawPathPrefix(PathMatchers.Remaining)(remaining =>
-        if (request.method == GET && remaining.isEmpty)
+        if request.method == GET && remaining.isEmpty then
           forward1(remainingUrl = "")
         else
           //authorizedUser(AgentDirectorForwardPermission)(_ =>

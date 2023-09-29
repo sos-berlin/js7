@@ -96,7 +96,7 @@ private[journal] trait TestJournalMixin extends BeforeAndAfterAll { this: Suite 
                 case _: TestAggregateActor.Command.IsAsync =>
                   // Async persist may be disturbed or not.
                   // This test does not ensure arrival of message `Command.Disturb` before message `JournalActor.Output.Stored`
-                  if (disturbance != before) {
+                  if disturbance != before then {
                     assert(disturbance == before + 1, s" - Disturbance expected: $command -> $msg")
                   }
 
@@ -172,10 +172,10 @@ private[journal] object TestJournalMixin
   private def normalizeValues(json: Json): Json = json.asObject match {
     case Some(jsonObject) =>
       var o = jsonObject
-      for (_ <- o("journalId")) o = o.add("journalId", JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF")).asJson)
-      for (_ <- o("initiallyStartedAt")) o = o.add("initiallyStartedAt", "STARTED-AT".asJson)
-      for (_ <- o("timestamp")) o = o.add("timestamp", "TIMESTAMP".asJson)
-      for (_ <- o("totalRunningTime")) o = o.add("totalRunningTime", 3600.asJson)
+      for _ <- o("journalId") do o = o.add("journalId", JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF")).asJson)
+      for _ <- o("initiallyStartedAt") do o = o.add("initiallyStartedAt", "STARTED-AT".asJson)
+      for _ <- o("timestamp") do o = o.add("timestamp", "TIMESTAMP".asJson)
+      for _ <- o("totalRunningTime") do o = o.add("totalRunningTime", 3600.asJson)
       o.asJson
     case None => json
   }

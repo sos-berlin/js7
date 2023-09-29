@@ -19,7 +19,7 @@ object HtmlDirectives
     mapInnerRoute { inner =>
       extractRequest { request =>
         val header =
-          if (isHtmlPreferred(request))
+          if isHtmlPreferred(request) then
             `Cache-Control`(`max-age`(0))  // This allows browsers to use the cache when hitting the back button - for good user experience
           else
             `Cache-Control`(`max-age`(0), `no-store`, `no-cache`)
@@ -102,7 +102,7 @@ object HtmlDirectives
     htmlPreferred {
       get {
         extractRequest { request =>
-          if (request.uri.query() == Uri.Query.Empty) {
+          if request.uri.query() == Uri.Query.Empty then {
             redirect(
               request.uri.copy(
                 scheme = "",

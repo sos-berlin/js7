@@ -24,7 +24,7 @@ final class PgpTest extends OurTestSuite
       publicKeyOrigin = "PgpTest")
 
   "Invalid password for secret key" in {
-    for (invalidPassword <- Array("", "INVALID")) {
+    for invalidPassword <- Array("", "INVALID") do {
       assert(PgpSigner.checked(secretKeyResource.readAs[ByteArray], SecretString(invalidPassword)) ==
         Left(Problem(
           // TODO Weird Problem message for an invalid password))

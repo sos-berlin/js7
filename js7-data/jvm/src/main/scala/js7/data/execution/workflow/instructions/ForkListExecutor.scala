@@ -22,7 +22,7 @@ extends ForkInstructionExecutor
 
   protected def toForkedEvent(fork: ForkList, order: Order[Order.IsFreshOrReady], state: StateView)
   : Checked[OrderForked] =
-    for {
+    for
       scope0 <- state.toImpureOrderExecutingScope(order, clock.now())
       scope =  scope0 |+| new AgentsSubagentIdsScope(state)
       elements <- fork.children.evalAsVector(scope)
@@ -45,17 +45,17 @@ extends ForkInstructionExecutor
           order.id.withChild(childId)
             .map(OrderForked.Child(_, args.nameToValue))
         }
-    } yield OrderForked(children)
+    yield OrderForked(children)
 
   protected def forkResult(fork: ForkList, order: Order[Order.Forked], state: StateView,
     now: Timestamp) =
     Outcome.Completed.fromChecked(
-      for {
+      for
         results <- order.state.children
           .map(_.orderId)
           .traverse(childOrderId =>
             calcResult(fork.workflow.result getOrElse Map.empty, childOrderId, state, now))
-      } yield Outcome.Succeeded(results.view
+      yield Outcome.Succeeded(results.view
         .flatten
         .groupMap(_._1)(_._2).view
         .mapValues(values => ListValue(values.toVector)).toMap))

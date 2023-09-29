@@ -28,20 +28,20 @@ extends EventInstructionExecutor
             .toVector
             .traverse(state.keyTo(BoardState).checked)
             .flatMap(boardStates =>
-              for {
+              for
                 scope <- state.toPureOrderScope(order)
                 expected <- boardStates.traverse(boardState =>
                   boardState.board
                     .expectingOrderToNoticeId(scope)
                     .map(OrderNoticesExpected.Expected(boardState.path, _)))
-              } yield
+              yield
                 tryFulfill(expectNotices, order, expected, state)
                   .emptyToNone
                   .getOrElse(OrderNoticesExpected(expected) :: Nil)))
         .orElse(order
           .ifState[Order.ExpectingNotices]
           .map(order =>
-            if (order.state.expected.map(_.boardPath).toSet != expectNotices.referencedBoardPaths)
+            if order.state.expected.map(_.boardPath).toSet != expectNotices.referencedBoardPaths then
               Left(Problem.pure(
                 s"Instruction does not match Order.State: $expectNotices <-> ${order.state}"))
             else

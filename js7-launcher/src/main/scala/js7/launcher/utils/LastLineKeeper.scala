@@ -15,20 +15,20 @@ private[utils] final class LastLineKeeper
   private[utils] def testLastErrLine = _lastErrLine
 
   def put(chunk: String): Unit =
-    if (chunk.nonEmpty) {
+    if chunk.nonEmpty then {
       nonEmpty = true
-      if (hasLineEnd) _lastErrLine = ""
+      if hasLineEnd then _lastErrLine = ""
       val n = chunk.lastIndexOf('\n')
-      if (n == -1) {
+      if n == -1 then {
         hasLineEnd = false
-        set(if (hasLineEnd) chunk else _lastErrLine + chunk)
+        set(if hasLineEnd then chunk else _lastErrLine + chunk)
       } else {
         val startOfLine = chunk.substring(n + 1)
-        if (!startOfLine.forall(_.isSpaceChar)) {
-          set(if (hasLineEnd) _lastErrLine + startOfLine else startOfLine)
+        if !startOfLine.forall(_.isSpaceChar) then {
+          set(if hasLineEnd then _lastErrLine + startOfLine else startOfLine)
         } else {
           val n0 = chunk.lastIndexOf('\n', n - 1)
-          if (n0 == -1) {
+          if n0 == -1 then {
             set(_lastErrLine + chunk.substring(0, n + 1))
           } else {
             set(chunk.substring(n0 + 1, n + 1))

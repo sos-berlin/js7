@@ -48,7 +48,7 @@ final class OrderEventSourceTest extends OurTestSuite
       historicOutcomes = Vector(
         HistoricOutcome(Position(0), Outcome.processLost(ProcessLostDueToRestartProblem))))
 
-    for (isAgent <- Seq(false, true)) s"isAgent=$isAgent" in {
+    for isAgent <- Seq(false, true) do s"isAgent=$isAgent" in {
       val order = rawOrder.copy(attachedState = isAgent ? Order.Attached(agentPath = TestAgentPath))
       val eventSource = new OrderEventSource(
         TestStateView.of(
@@ -183,7 +183,7 @@ final class OrderEventSourceTest extends OurTestSuite
   }
 
   "applyMoveInstructions" - {
-    for (isAgent <- Seq(false, true)) s"isAgent=$isAgent" - {
+    for isAgent <- Seq(false, true) do s"isAgent=$isAgent" - {
       "Job, Fork" in {
         val eventSource = newWorkflowEventSource(ForkWorkflow, List(succeededOrder, failedOrder), isAgent = isAgent)
         assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(0)) == Right(Vector.empty))
@@ -1565,7 +1565,7 @@ object OrderEventSourceTest
     def run(orderId: OrderId): List[KeyedEvent[OrderEvent]] =
       step(orderId) match {
         case keyedEvents if keyedEvents.nonEmpty =>
-          keyedEvents.toList ::: (if (idToOrder contains orderId) run(orderId) else Nil)
+          keyedEvents.toList ::: (if idToOrder contains orderId then run(orderId) else Nil)
         case _ => Nil
       }
 
@@ -1577,14 +1577,14 @@ object OrderEventSourceTest
 
     private def nextEvents(orderId: OrderId): Seq[KeyedEvent[OrderEvent]] = {
       val order = idToOrder(orderId)
-      if (order.detaching.isRight)
+      if order.detaching.isRight then
         Seq(order.id <-: OrderDetached)
       else
         (order.state, workflow.instruction(order.position)) match {
           case (_: Order.Ready, _: Execute) =>
-            if (order.isDetached)
+            if order.isDetached then
               Seq(order.id <-: OrderAttachable(TestAgentPath))
-            else if (order.isAttaching)
+            else if order.isAttaching then
               Seq(order.id <-: OrderAttached(TestAgentPath))
             else
               Seq(order.id <-: OrderProcessingStarted(subagentId))
@@ -1605,7 +1605,7 @@ object OrderEventSourceTest
 
         case event: OrderCoreEvent =>
           processEvent(keyedEvent)
-          if (!event.isInstanceOf[OrderFinished]) {
+          if !event.isInstanceOf[OrderFinished] then {
             idToOrder(orderId) = idToOrder(orderId).applyEvent(event).orThrow
           }
 

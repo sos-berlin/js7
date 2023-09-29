@@ -38,11 +38,11 @@ object Stamped
     var last = lastEventId
     val iterator = stampedSeq.iterator
 
-    while (iterator.hasNext && checked.isRight) {
+    while iterator.hasNext && checked.isRight do {
       val eventId = iterator.next().eventId
-      if (eventId <= last) {
+      if eventId <= last then {
         checked = Left(Problem.pure(
-          if (eventId == last)
+          if eventId == last then
             s"Duplicate EventId ${EventId.toString(eventId)}"
           else
             s"EventId ${EventId.toString(eventId)} <= ${EventId.toString(last)}"))
@@ -65,7 +65,7 @@ object Stamped
       val fields = mutable.Buffer.empty[(String, Json)]
       fields += "eventId" -> Json.fromLong(stamped.eventId)
       val epochMilli = stamped.timestampMillis
-      if (epochMilli != EventId.toEpochMilli(stamped.eventId)) {
+      if epochMilli != EventId.toEpochMilli(stamped.eventId) then {
         fields += "timestamp" -> Json.fromLong(epochMilli)
       }
       val json = stamped.value.asJson
@@ -73,7 +73,7 @@ object Stamped
         case Some(o) =>
           fields ++= o.toIterable
         case None =>
-          if (!json.isArray) sys.error(
+          if !json.isArray then sys.error(
             "Stamped[A]: The A type must serialize to a JSON object or array, " +
             s"but not: ${json.getClass.shortClassName}")
           fields += "array" -> json
@@ -83,16 +83,16 @@ object Stamped
 
   implicit def jsonDecoder[A: Decoder]: Decoder[Stamped[A]] =
     cursor =>
-      for {
+      for
         eventId <- cursor.get[EventId]("eventId")
         timestampMillis <- cursor.getOrElse[Long]("timestamp")(EventId.toEpochMilli(eventId))
         a <- {
           val arr = cursor.downField("array")
           // stamped.value must not contain a field named "array" !!!
-          if (arr.succeeded)
+          if arr.succeeded then
             arr.as[A]
           else
             cursor.as[A]
         }
-      } yield Stamped(eventId, timestampMillis, a)
+      yield Stamped(eventId, timestampMillis, a)
 }

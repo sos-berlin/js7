@@ -71,8 +71,8 @@ object BlockingInternalJob
     lazy val err: PrintWriter = errLazy()
 
     private[internal] def close(): Unit =
-      try for (o <- outLazy) o.close()
-      finally for (o <- errLazy) o.close()
+      try for o <- outLazy do o.close()
+      finally for o <- errLazy do o.close()
 
     def evalExpression(expression: JExpression): VEither[Problem, Value] =
       expression.asScala.eval(asScala.processOrder.scope)

@@ -31,7 +31,7 @@ extends CommandExecutor[ControllerCommand]
       logCommand(run)
       executeCommand2(command, meta, correlId, batchId)
         .map { checkedResponse =>
-          if (run.batchInternalId.isEmpty) {
+          if run.batchInternalId.isEmpty then {
             checkedResponse match {
               //case Right(ControllerCommand.Response.Accepted) =>
               case Right(_) =>
@@ -41,11 +41,11 @@ extends CommandExecutor[ControllerCommand]
               case Left(problem) =>
             }
           }
-          for (problem <- checkedResponse.left) logger.warn(s"$run rejected: $problem")
+          for problem <- checkedResponse.left do logger.warn(s"$run rejected: $problem")
           checkedResponse.map(_.asInstanceOf[command.Response])
         }
         .doOnFinish(maybeThrowable => Task {
-          for (t <- maybeThrowable if run.batchInternalId.isEmpty) {
+          for t <- maybeThrowable if run.batchInternalId.isEmpty do {
             logger.warn(s"$run failed: ${t.toStringWithCauses}")
           }
           register.remove(run.correlId)
@@ -57,7 +57,7 @@ extends CommandExecutor[ControllerCommand]
     Task.defer {
       command match {
         case Batch(correlIdWrappedCommands) =>
-          val tasks = for (CorrelIdWrapped(correlId, command) <- correlIdWrappedCommands) yield
+          val tasks = for CorrelIdWrapped(correlId, command) <- correlIdWrappedCommands yield
             correlId.bind {
               executeCommand(command, meta, batchId orElse Some(id))
             }

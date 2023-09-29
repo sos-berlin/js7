@@ -57,10 +57,10 @@ final class InstructionExecutorService(val clock: WallClock)
 
   def toEvents(orderId: OrderId, stateView: StateView)
   : Checked[List[KeyedEvent[OrderActorEvent]]] =
-    for {
+    for
       order <- stateView.idToOrder.checked(orderId)
       events <- toEvents(stateView.instruction(order.workflowPosition), order, stateView)
-    } yield events
+    yield events
 
   def toEvents(order: Order[Order.State], stateView: StateView)
   : Checked[List[KeyedEvent[OrderActorEvent]]] =

@@ -60,7 +60,7 @@ private final class ClusterWatchSynchronizer(
     Task.defer {
       assertThat(clusterState.activeId == ownId)
       val logAsInfo = clusterState.isInstanceOf[HasNodes]
-      if (logAsInfo) logger.info("Asking ClusterWatch")
+      if logAsInfo then logger.info("Asking ClusterWatch")
 
       doACheckedHeartbeat(
         clusterState,
@@ -70,7 +70,7 @@ private final class ClusterWatchSynchronizer(
       ).map(_.map {
         case None => Completed
         case Some(confirm) =>
-          if (logAsInfo) logger.info(
+          if logAsInfo then logger.info(
             s"${confirm.confirmer} agreed that this node is the active cluster node")
           Completed
       })
@@ -133,7 +133,7 @@ private final class ClusterWatchSynchronizer(
 
   private def startNestedSuspension(implicit enclosing: sourcecode.Enclosing): Task[Unit] =
     suspendNestingLock.lock(Task.defer {
-      if (suspendNesting.getAndIncrement() == 0)
+      if suspendNesting.getAndIncrement() == 0 then
         stopHeartbeating
       else {
         assertThat(!isHeartbeating)
@@ -150,7 +150,7 @@ private final class ClusterWatchSynchronizer(
 
   private def restartHeartbeat() =
     suspendNestingLock.lock(Task.defer {
-      if (suspendNesting.getAndIncrement() == 0)
+      if suspendNesting.getAndIncrement() == 0 then
         stopHeartbeating
       else {
         assertThat(!isHeartbeating)
@@ -201,7 +201,7 @@ private final class ClusterWatchSynchronizer(
         case Some(h) =>
           h.changeClusterState(clusterState)
           val h2 = heartbeat.get()
-          if (h2 ne maybeHeartbeat) loop(h2)
+          if h2 ne maybeHeartbeat then loop(h2)
       }
 
     loop(heartbeat.get())
@@ -234,7 +234,7 @@ private final class ClusterWatchSynchronizer(
 
             case ExitCase.Completed =>
               stopping.flatMap(_.tryRead).map { maybe =>
-                if (maybe.isEmpty) logger.error("Heartbeat stopped by itself")
+                if maybe.isEmpty then logger.error("Heartbeat stopped by itself")
               }
           })
         .start
@@ -270,7 +270,7 @@ private final class ClusterWatchSynchronizer(
           doAHeartbeat
             .onErrorHandleWith { t =>
               logger.warn(s"sendHeartbeats: ${t.toStringWithCauses}",
-                if (t.isInstanceOf[AskTimeoutException]) null else t.nullIfNoStackTrace)
+                if t.isInstanceOf[AskTimeoutException] then null else t.nullIfNoStackTrace)
               Task.raiseError(t)
             }))
         // Again takeUntilEval to cancel a sticking doAHeartbeat
@@ -317,9 +317,9 @@ private final class ClusterWatchSynchronizer(
           Task.right(None)
 
         case Some(confirmation: ClusterWatchConfirmation) =>
-          if (clusterState.setting.clusterWatchId contains confirmation.clusterWatchId)
+          if clusterState.setting.clusterWatchId contains confirmation.clusterWatchId then
             Task.right(Some(confirmation))
-          else if (clusterWatchIdChangeAllowed)
+          else if clusterWatchIdChangeAllowed then
             registerClusterWatchId(confirmation, alreadyLocked)
               .rightAs(Some(confirmation))
           else

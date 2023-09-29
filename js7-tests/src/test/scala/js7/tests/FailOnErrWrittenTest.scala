@@ -56,7 +56,7 @@ object FailOnErrWrittenTest
       Execute.Anonymous(WorkflowJob(
         agentPath,
         ShellScriptExecutable(
-          if (isWindows)
+          if isWindows then
             """@echo off
               |echo ERROR>&2
               |""".stripMargin
@@ -68,7 +68,7 @@ object FailOnErrWrittenTest
       Execute.Anonymous(WorkflowJob(
         agentPath,
         ShellScriptExecutable(
-          if (isWindows)
+          if isWindows then
             """@echo off
               |echo SUCCESS
               |""".stripMargin
@@ -81,7 +81,7 @@ object FailOnErrWrittenTest
       Execute.Anonymous(WorkflowJob(
         agentPath,
         ShellScriptExecutable(
-          if (isWindows)
+          if isWindows then
             """@echo off
               |echo IGNORED>&2
               |echo ERROR>&2

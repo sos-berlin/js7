@@ -62,7 +62,7 @@ final class ExprFunctionTest extends OurTestSuite
     exprString in {
       val checked = parseFunction(exprString)
       assert(checked == checkedFunction)
-      for (function <- checkedFunction) {
+      for function <- checkedFunction do {
         assert(parseFunction(function.toString) == checkedFunction, " in toString❗")
         assert(function.eval(args)(scope) == result)
         assert(parseExpressionOrFunction(exprString) == Right(FunctionExpr(function)))
@@ -94,10 +94,10 @@ final class ExprFunctionTest extends OurTestSuite
 
   "restrict" in {
     def restrict(min: Int, max: Int): Checked[ExprFunction] =
-      for {
+      for
         function <- parseFunction("""(a, b) => "$a,$b"""")
         function <- function.restrict("myFunction", minimum = min, maximum = max)
-      } yield function
+      yield function
 
     assert(restrict(1, 1) == Left(Problem(
       "The 'myFunction' function is expected to accept exactly 1 parameters")))
@@ -106,10 +106,10 @@ final class ExprFunctionTest extends OurTestSuite
       "The 'myFunction' function is expected to accept between 3 and 4 parameters")))
 
     def eval(min: Int, max: Int, args: Iterable[String]): Checked[Value] =
-      for {
+      for
         function <- restrict(min, max)
         result <- function.eval(args.map(StringValue(_)))(Scope.empty)
-      } yield result
+      yield result
 
     assert(eval(1, 2, Nil) == Left(Problem(
       "Number of arguments=0 does not match required number of function parameters=1...2 in 'myFunction' function")))

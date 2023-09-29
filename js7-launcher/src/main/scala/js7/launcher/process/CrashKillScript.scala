@@ -27,7 +27,7 @@ extends AutoCloseable {
     private var w: Writer = null
 
     def write(id: TaskId, entry: Entry): Unit = {
-      if (w == null) {
+      if w == null then {
         w = open(file, append = true)
       }
       w.write(idToKillCommand(id, entry))
@@ -35,7 +35,7 @@ extends AutoCloseable {
     }
 
     def close(): Unit =
-      if (w != null) {
+      if w != null then {
         w.close()
         w = null
       }
@@ -46,12 +46,12 @@ extends AutoCloseable {
 
   def close(): Unit = {
     writer.close()
-    if (tasks.isEmpty) {
+    if tasks.isEmpty then {
       ignoreException(logger.asLazy.warn) {
         deleteIfExists(file)
       }
     } else {
-      for ((taskId, e) <- tasks) logger.warn(s"CrashKillScript left with task $taskId $e")
+      for (taskId, e) <- tasks do logger.warn(s"CrashKillScript left with task $taskId $e")
     }
   }
 
@@ -68,7 +68,7 @@ extends AutoCloseable {
 
   def remove(id: TaskId): Unit =
     synchronized {
-      for (_ <- tasks.remove(id)) {
+      for _ <- tasks.remove(id) do {
         ignoreException(logger.asLazy.warn) {
           rewriteFile()
         }
@@ -77,12 +77,12 @@ extends AutoCloseable {
 
   private def rewriteFile(): Unit = {
     writer.close()
-    if (tasks.isEmpty) {
+    if tasks.isEmpty then {
       deleteIfExists(file)
     } else {
       val tmp = file.getParent resolve s"~${file.getFileName}.tmp"
       autoClosing(open(tmp)) { writer =>
-        for ((id, entry) <- tasks) {
+        for (id, entry) <- tasks do {
           writer.write(idToKillCommand(id, entry))
         }
       }

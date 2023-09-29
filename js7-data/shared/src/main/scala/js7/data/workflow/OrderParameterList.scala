@@ -84,7 +84,7 @@ final case class OrderParameterList(
         recursiveScope)))
 
     val checkedAllDeclared =
-      if (allowUndeclared)
+      if allowUndeclared then
         Checked.unit
       else
         (arguments.keySet -- nameToParameter.keySet)
@@ -108,7 +108,7 @@ final case class OrderParameterList(
               Left(FinalOrderArgumentProblem(param.name))
 
             case (Some(v), p: OrderParameter.HasType) =>
-              for (_ <- checkType(v, p.valueType, p.name)) yield
+              for _ <- checkType(v, p.valueType, p.name) yield
                 Some(param.name -> v)
           })
         .reduceLeftEither
@@ -134,11 +134,11 @@ final case class OrderParameterList(
 
       case (v: ObjectValue, typ: ObjectType) =>
         val missingNames = typ.nameToType.keySet -- v.nameToValue.keySet
-        if (missingNames.nonEmpty)
+        if missingNames.nonEmpty then
           Left(MissingObjectFieldsProblem(prefix, missingNames))
         else {
           val undeclaredNames = v.nameToValue.keySet -- typ.nameToType.keySet
-          if (undeclaredNames.nonEmpty)
+          if undeclaredNames.nonEmpty then
             Left(UndeclaredObjectFieldsProblem(prefix, undeclaredNames))
           else
             v.nameToValue
@@ -148,7 +148,7 @@ final case class OrderParameterList(
         }
 
       case _ =>
-        if (v.valueType != typ)
+        if v.valueType != typ then
           Left(WrongValueTypeProblem(prefix, v.valueType, typ))
         else
           Checked.unit
@@ -195,7 +195,7 @@ object OrderParameterList
   // allowUndeclared serialized or deserialized separately (for compatibility)
   implicit val jsonEncoder: Encoder.AsObject[OrderParameterList] =
     o => JsonObject.fromIterable(
-      for (param <- o.nameToParameter.values) yield
+      for param <- o.nameToParameter.values yield
         param.name -> Json.fromJsonObject(
           param match {
             case Required(_, valueType) =>
@@ -224,24 +224,24 @@ object OrderParameterList
           .toVector
           .traverse { case (name, json) =>
             val c = json.hcursor
-            for {
+            for
               p <- {
                 val json = c.value.asObject.get
-                if (json.contains("default"))
-                  for {
+                if json.contains("default") then
+                  for
                     default <- c.get[Expression]("default")
                     typ <- c.getOrElse[ValueType]("type")(AnyValue)
-                  } yield Optional(name, typ, default)
-                else if (json.contains("final"))
-                  for (expression <- c.get[Expression]("final")) yield
+                  yield Optional(name, typ, default)
+                else if json.contains("final") then
+                  for expression <- c.get[Expression]("final") yield
                     Final(name, expression)
-                else if (json.contains("type"))
-                  for (typ <- c.get[ValueType]("type")) yield
+                else if json.contains("type") then
+                  for typ <- c.get[ValueType]("type") yield
                     Required(name, typ)
                 else
                   Right(Required(name, AnyValue))
               }
-            } yield p
+            yield p
           }
           .flatMap(p => OrderParameterList.checked(p).toDecoderResult(cursor.history))
       })

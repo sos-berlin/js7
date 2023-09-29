@@ -14,7 +14,7 @@ object IP
 {
   implicit object StringToInetAddress extends As[String, InetAddress] {
     def apply(o: String) = {
-      if (o.isEmpty) throw new IllegalArgumentException("Missing IP address")
+      if o.isEmpty then throw new IllegalArgumentException("Missing IP address")
       InetAddress.getByName(o)
     }
   }
@@ -58,8 +58,8 @@ object IP
       }
 
     private def makeInetSocketAddress(host: String, port: String) = {
-      if (host.trim.isEmpty) throw new IllegalArgumentException("Missing IP address")
-      if (port.trim.isEmpty) throw new IllegalArgumentException("Missing port number")
+      if host.trim.isEmpty then throw new IllegalArgumentException("Missing IP address")
+      if port.trim.isEmpty then throw new IllegalArgumentException("Missing port number")
       new InetSocketAddress(host, port.toInt)
     }
   }

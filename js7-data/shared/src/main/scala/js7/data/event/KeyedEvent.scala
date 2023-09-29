@@ -91,7 +91,7 @@ object KeyedEvent {
   implicit def jsonDecoder[E <: Event: Decoder](using E: Event.KeyCompanion[? >: E])
     (using Decoder[E.Key])
   : Decoder[KeyedEvent[E]] =
-    cursor => for {
+    cursor => for
       key <- cursor.getOrElse[E.Key](KeyFieldName)(NoKey.asInstanceOf[E.Key])
       event <- cursor.as[E]
       _ <-
@@ -99,7 +99,7 @@ object KeyedEvent {
           Left(DecodingFailure(s"${event.keyCompanion}, but $E expected", cursor.history))
         else
           DecoderOK
-    } yield
+    yield
       any(key, event).asInstanceOf[KeyedEvent[E]]
 
   def typedJsonCodec[E <: Event: ClassTag](subtypes: KeyedEventTypedJsonCodec.KeyedSubtype[? <: E]*)

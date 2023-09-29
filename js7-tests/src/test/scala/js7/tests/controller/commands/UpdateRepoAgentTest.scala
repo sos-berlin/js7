@@ -47,8 +47,8 @@ final class UpdateRepoAgentTest extends OurTestSuite
         runOrder(controller, OrderId("🔺"))
         agent1.terminate() await 99.s
 
-        for (i <- 1 to 3) {
-          if (agent2 != null) agent2.terminate() await 99.s
+        for i <- 1 to 3 do {
+          if agent2 != null then agent2.terminate() await 99.s
           // Start a new Agent with same state but a (hopefully) different HTTP port
           val port = findFreeTcpPort()
           agent2 = TestAgent.start(AgentConfiguration.forTest(

@@ -16,7 +16,7 @@ object VariablesXmlParser {
       var name = ""
       var value = ""
       val iterator = peek.asStartElement.getAttributes.asInstanceOf[java.util.Iterator[Attribute]]
-      while (iterator.hasNext) {
+      while iterator.hasNext do {
         val a = iterator.next()
         a.getName.toString match {
           case "name" => name = a.getValue
@@ -31,7 +31,7 @@ object VariablesXmlParser {
     def parseVariables(elementName: String): Map[String, String] = {
       parseElement() {
         val builder = Map.newBuilder[String, String]
-        while (peek.isStartElement) {
+        while peek.isStartElement do {
           requireStartElement(elementName)
           builder += parseVariable()
           nextEvent()

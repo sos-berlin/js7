@@ -139,7 +139,7 @@ with ClusterableState[AgentState]
 
           case ItemAttachedToMe(workflow: Workflow) =>
             // COMPATIBLE with v2.2.0. Since v2.2.2, workflow is transferred via SignedItemAttachedToMe
-            for (o <- idToWorkflow.insert(workflow.id -> workflow.reduceForAgent(agentPath))) yield
+            for o <- idToWorkflow.insert(workflow.id -> workflow.reduceForAgent(agentPath)) yield
               copy(
                 idToWorkflow = o)
 
@@ -190,7 +190,7 @@ with ClusterableState[AgentState]
           case ItemDetached(itemKey, meta.agentPath) =>
             itemKey match {
               case WorkflowId.as(workflowId) =>
-                for (_ <- idToWorkflow.checked(workflowId)) yield {
+                for _ <- idToWorkflow.checked(workflowId) yield {
                   val updatedIdToWorkflow = idToWorkflow - workflowId
                   copy(
                     keyToSignedItem = keyToSignedItem - workflowId,
@@ -201,7 +201,7 @@ with ClusterableState[AgentState]
                 fw.detach(path)
 
               case path: JobResourcePath =>
-                for (_ <- pathToJobResource.checked(path)) yield
+                for _ <- pathToJobResource.checked(path) yield
                   copy(
                     keyToSignedItem = keyToSignedItem - path,
                     pathToJobResource = pathToJobResource - path)
@@ -211,7 +211,7 @@ with ClusterableState[AgentState]
                   case _: WorkflowPathControlPath | WorkflowControlId.as(_) |
                        _: CalendarPath |
                        _: SubagentId | _: SubagentSelectionId =>
-                    for (_ <- keyToUnsignedItemState_.checked(itemKey)) yield
+                    for _ <- keyToUnsignedItemState_.checked(itemKey) yield
                       copy(
                         keyToUnsignedItemState_ = keyToUnsignedItemState_ - itemKey)
                   case _ =>
@@ -222,7 +222,7 @@ with ClusterableState[AgentState]
             }
 
           case ItemDetachingFromMe(id: SubagentId) =>
-            for (subagentItemState <- keyTo(SubagentItemState).checked(id)) yield
+            for subagentItemState <- keyTo(SubagentItemState).checked(id) yield
               copy(
                 keyToUnsignedItemState_ = keyToUnsignedItemState_.updated(id,
                   subagentItemState.copy(isDetaching = true)))
@@ -237,15 +237,15 @@ with ClusterableState[AgentState]
             Right(this)
 
           case _ =>
-            for {
+            for
               subagentItemState <- keyTo(SubagentItemState).checked(subagentId)
               subagentItemState <- subagentItemState.applyEvent(event)
-            } yield copy(
+            yield copy(
               keyToUnsignedItemState_ = keyToUnsignedItemState_.updated(subagentId, subagentItemState))
         }
 
       case KeyedEvent(_: NoKey, AgentDedicated(directors, agentPath, agentRunId, controllerId, controllerRunId)) =>
-        if (meta.controllerRunId.exists(o => controllerRunId.exists(_ != o)))
+        if meta.controllerRunId.exists(o => controllerRunId.exists(_ != o)) then
           Left(Problem("Duplicate AgentDedicated event for different ControllerRunId"))
         else
           Right(copy(meta = meta.copy(
@@ -275,7 +275,7 @@ with ClusterableState[AgentState]
     addItemStates: Iterable[UnsignedSimpleItemState],
     removeItemStates: Iterable[UnsignedSimpleItemPath])
   : Checked[AgentState] =
-    if (isTest && !addItemStates.forall(o => allowedItemStates(o.companion)))
+    if isTest && !addItemStates.forall(o => allowedItemStates(o.companion)) then
       Left(Problem.pure("Unsupported InventoryItemState"))
     else
       Right(copy(
@@ -325,19 +325,19 @@ with ClusterableState[AgentState]
   def orders = idToOrder.values
 
   def clusterNodeIdToName(nodeId: NodeId) =
-    if (!isDedicated)
+    if !isDedicated then
       Left(Problem("clusterNodeToUserAndPassword but Agent has not been dedicated"))
     else
       meta.clusterNodeIdToSubagentId(nodeId).flatMap(_.toNodeName)
 
   def clusterNodeToUserId(nodeId: NodeId): Checked[UserId] =
-    if (!isDedicated)
+    if !isDedicated then
       Left(Problem("clusterNodeToUserId but Agent has not been dedicated"))
     else
-      for {
+      for
         subagentId <- meta.clusterNodeIdToSubagentId(nodeId)
         userId <- subagentId.toUserId
-      } yield userId
+      yield userId
 }
 
 object AgentState
@@ -368,7 +368,7 @@ with ItemContainer.Companion[AgentState]
     controllerRunId: Option[ControllerRunId]/*COMPATIBLE None until v2.5, Some since v2.6*/)
   {
     def clusterNodeIdToSubagentId(nodeId: NodeId): Checked[SubagentId]=
-      if (directors.sizeIs < 2)
+      if directors.sizeIs < 2 then
         Left(Problem("Agent has not enough directors to be a cluster"))
       else
         nodeId match {
@@ -388,7 +388,7 @@ with ItemContainer.Companion[AgentState]
 
     implicit val jsonEncoder: Encoder.AsObject[AgentMetaState] = deriveEncoder
     implicit val jsonDecoder: Decoder[AgentMetaState] =
-      c => for {
+      c => for
         directors <- c.get[Option[SubagentId]]("subagentId").flatMap {
           case None => c.get[Option[Seq[SubagentId]]]("directors").map(_.toVector.flatten)
           case Some(subagentId) => Right(Seq(subagentId))
@@ -397,7 +397,7 @@ with ItemContainer.Companion[AgentState]
         agentRunId <- c.get[AgentRunId]("agentRunId")
         controllerId <- c.get[ControllerId]("controllerId")
         controllerRunId <- c.get[Option[ControllerRunId]]("controllerRunId")
-      } yield AgentMetaState(directors, agentPath, agentRunId, controllerId, controllerRunId)
+      yield AgentMetaState(directors, agentPath, agentRunId, controllerId, controllerRunId)
   }
 
   val snapshotObjectJsonCodec = TypedJsonCodec[Any](

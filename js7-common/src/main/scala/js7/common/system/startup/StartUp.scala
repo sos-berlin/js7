@@ -29,14 +29,14 @@ object StartUp
     // Do not initialize logging framework to early
     val logger = Logger[this.type]
 
-    if (!classPathLogged.getAndSet(true)) {  // Log only once (for tests running controller and agents in same JVM)
+    if !classPathLogged.getAndSet(true) then {  // Log only once (for tests running controller and agents in same JVM)
       val paths = sys.props("java.class.path").split(File.pathSeparator).filter(_.nonEmpty)
       logger.debug(Logger.Java, s"Classpath contains ${paths.length} entries:")
-      for (o <- paths) {
+      for o <- paths do {
         logger.debug(Logger.Java, s"Classpath $o")
       }
     }
-    if (CorrelId.isEnabled) {
+    if CorrelId.isEnabled then {
       // Check isEnabled after some debug line has been logged,
       // because CorrelIds may be enabled automatically on the first use by Log4j.
       CorrelId("CorrelId").bind {

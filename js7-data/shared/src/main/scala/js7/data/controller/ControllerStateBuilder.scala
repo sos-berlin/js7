@@ -122,7 +122,7 @@ with OrderWatchStateHandler[ControllerStateBuilder]
       val (agentRef, maybeSubagentItem) = agentRefState.agentRef.convertFromV2_1.orThrow
 
       _keyToUnsignedItemState.insert(agentRef.path, agentRefState.copy(agentRef = agentRef))
-      for (subagentItem <- maybeSubagentItem) {
+      for subagentItem <- maybeSubagentItem do {
         _keyToUnsignedItemState.insert(subagentItem.id, SubagentItemState.initial(subagentItem))
       }
 
@@ -203,7 +203,7 @@ with OrderWatchStateHandler[ControllerStateBuilder]
                     val (agentRef, maybeSubagentItem) = addedAgentRef.convertFromV2_1.orThrow
 
                     _keyToUnsignedItemState.insert(agentRef.path, agentRef.toInitialItemState)
-                    for (subagentItem <- maybeSubagentItem) {
+                    for subagentItem <- maybeSubagentItem do {
                       _keyToUnsignedItemState.insert(subagentItem.id, SubagentItemState.initial(subagentItem))
                     }
 
@@ -226,7 +226,7 @@ with OrderWatchStateHandler[ControllerStateBuilder]
                     _keyToUnsignedItemState(agentRef.path) = keyTo(AgentRefState)(agentRef.path).copy(
                       agentRef = agentRef)
 
-                    for (subagentItem <- maybeSubagentItem) {
+                    for subagentItem <- maybeSubagentItem do {
                       _keyToUnsignedItemState.updateWith(subagentItem.id) {
                         case None =>
                           Some(SubagentItemState.initial(subagentItem))
@@ -337,13 +337,13 @@ with OrderWatchStateHandler[ControllerStateBuilder]
         ow.onOrderWatchEvent(orderWatchPath <-: event).orThrow
 
       case KeyedEvent(boardPath: BoardPath, NoticePosted(notice)) =>
-        for (boardState <- keyTo(BoardState).get(boardPath)) {
+        for boardState <- keyTo(BoardState).get(boardPath) do {
           _keyToUnsignedItemState(boardState.path) =
             boardState.addNotice(notice.toNotice(boardState.path)).orThrow
         }
 
       case KeyedEvent(boardPath: BoardPath, NoticeDeleted(noticeId)) =>
-        for (boardState <- keyTo(BoardState).get(boardPath)) {
+        for boardState <- keyTo(BoardState).get(boardPath) do {
           _keyToUnsignedItemState(boardState.path) = boardState.removeNotice(noticeId).orThrow
         }
 
@@ -368,8 +368,8 @@ with OrderWatchStateHandler[ControllerStateBuilder]
   }
 
   override protected def deleteOrder(order: Order[Order.State]) = {
-    for (order <- _idToOrder.remove(order.id)) {
-      for (externalOrderKey <- order.externalOrderKey)
+    for order <- _idToOrder.remove(order.id) do {
+      for externalOrderKey <- order.externalOrderKey do
         ow.onOrderDeleted(externalOrderKey, order.id).orThrow
     }
     Right(this)

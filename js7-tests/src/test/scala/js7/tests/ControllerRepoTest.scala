@@ -57,7 +57,7 @@ final class ControllerRepoTest extends OurTestSuite
     autoClosing(provider) { _ =>
       import provider.itemSigner
 
-      for (v <- 1 to 4)  // For each version, we use a dedicated job which echos the VersionId
+      for v <- 1 to 4 do  // For each version, we use a dedicated job which echos the VersionId
         provider.agentEnvs.head.writeExecutable(RelativePathExecutable(s"EXECUTABLE-V$v$sh"), (isWindows ?? "@") + s"echo /VERSION-$v/")
       provider.controllerEnv.configDir / "controller.conf" ++=
         """js7.auth.users.TEST-USER {
@@ -193,7 +193,7 @@ final class ControllerRepoTest extends OurTestSuite
           .use(actorSystem => Task {
             val apiResource  = resource(Admission(uri, credentials))(actorSystem)
             val controllerApi = new ControllerApi(apiResource map Nel.one)
-            for (_ <- 1 to n) {
+            for _ <- 1 to n do {
               val t = now
               controllerApi.updateItems(Observable.fromIterable(operations))
                 .runToFuture

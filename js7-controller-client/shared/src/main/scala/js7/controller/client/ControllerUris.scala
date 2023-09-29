@@ -49,7 +49,7 @@ final class ControllerUris private(controllerUri: Uri)
     api("", query*)
 
   def api(path: String, query: (String, String)*): Uri = {
-    if (path.nonEmpty && !path.startsWith("/")) throw new IllegalArgumentException("Controller URI path must start with a slash")
+    if path.nonEmpty && !path.startsWith("/") then throw new IllegalArgumentException("Controller URI path must start with a slash")
     Uri(
       controller("api" + path).string + encodeQuery(query*))
   }

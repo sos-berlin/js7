@@ -34,7 +34,7 @@ object WorkflowAndOrderRecovering
     {
       followUps foreach {
         case FollowUp.AddChild(childOrder) =>  // OrderForked
-          if (!idToOrder.contains(childOrder.id)) {  // Snapshot of child order is missing? Add the child now!
+          if !idToOrder.contains(childOrder.id) then {  // Snapshot of child order is missing? Add the child now!
             added += childOrder.id -> childOrder
           }
 

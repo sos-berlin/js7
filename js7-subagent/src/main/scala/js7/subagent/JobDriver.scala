@@ -40,23 +40,23 @@ private final class JobDriver(
   private val orderToProcess = AsyncMap.empty[OrderId, Entry]
   @volatile private var lastProcessTerminated: Promise[Unit] = null
 
-  for (launcher <- checkedJobLauncher) {
+  for launcher <- checkedJobLauncher do {
     // TODO JobDriver.start(): Task[Checked[JobDriver]]
     launcher.precheckAndWarn.runAsyncAndForget
   }
 
-  for (problem <- checkedJobLauncher.left) logger.error(problem.toString)
+  for problem <- checkedJobLauncher.left do logger.error(problem.toString)
 
   def stop(signal: ProcessSignal): Task[Unit] =
     Task.defer {
       logger.debug("Stop")
       lastProcessTerminated = Promise()
-      (if (orderToProcess.isEmpty)
+      (if orderToProcess.isEmpty then
         Task.unit
       else
         killAll(signal)
           .map(_ =>
-            if (signal != SIGKILL) {
+            if signal != SIGKILL then {
               scheduler.scheduleOnce(sigkillDelay) {
                 killAll(SIGKILL).runAsyncAndForget
               }
@@ -163,7 +163,7 @@ private final class JobDriver(
 
   private def scheduleTimeout(entry: Entry): Unit = {
     requireNonNull(entry.runningSince)
-    for (t <- workflowJob.timeout) {
+    for t <- workflowJob.timeout do {
       entry.timeoutSchedule := scheduler.scheduleOnce(t) {
         entry.timedOut = true
         logger.warn("OrderProcess for " + entry.orderProcess + " has been timed out after " +
@@ -187,7 +187,7 @@ private final class JobDriver(
       orderToProcess
         .remove(orderId)
         .map(_ =>
-          if (orderToProcess.isEmpty && lastProcessTerminated != null) {
+          if orderToProcess.isEmpty && lastProcessTerminated != null then {
             lastProcessTerminated.trySuccess(())
           })
     }
@@ -206,11 +206,11 @@ private final class JobDriver(
           killOrder(_, signal)))
 
   private def killOrder(entry: Entry, signal_ : ProcessSignal): Task[Unit] = {
-    val signal = if (sigkillDelay.isZeroOrBelow) SIGKILL else signal_
+    val signal = if sigkillDelay.isZeroOrBelow then SIGKILL else signal_
     entry.killSignal = Some(signal)
     killProcess(entry, signal)
       .map(_ =>
-        if (signal != SIGKILL) {
+        if signal != SIGKILL then {
           scheduler.scheduleOnce(sigkillDelay) {
             killProcess(entry, SIGKILL)
               .runAsyncAndForget
@@ -221,7 +221,7 @@ private final class JobDriver(
   private def killAll(signal: ProcessSignal): Task[Unit] =
     Task.defer {
       val entries = orderToProcess.toMap.values
-      if (entries.nonEmpty) logger.warn(
+      if entries.nonEmpty then logger.warn(
         s"Terminating, sending $signal to $orderProcessCount processes")
       entries
         .toVector
@@ -233,7 +233,7 @@ private final class JobDriver(
 
   private def killProcess(entry: Entry, signal: ProcessSignal): Task[Unit] =
     Task.defer {
-      if (signal == SIGKILL && entry.sigkilled)
+      if signal == SIGKILL && entry.sigkilled then
         Task.unit
       else
         entry.orderProcess match {
@@ -273,9 +273,9 @@ private object JobDriver
     def modifyOutcome(outcome: Outcome) =
       outcome match {
         case outcome: Outcome.Completed =>
-          if (timedOut)
+          if timedOut then
              Outcome.TimedOut(outcome)
-          else if (isKilled)
+          else if isKilled then
             Outcome.Killed(outcome)
           else
             outcome

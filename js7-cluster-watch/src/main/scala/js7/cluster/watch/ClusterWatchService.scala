@@ -67,7 +67,7 @@ extends MainService with Service.StoppableByRequest
   private def run: Task[Unit] =
     Observable
       .fromIterable(
-        for (nodeApi <- nodeApis.toList) yield {
+        for nodeApi <- nodeApis.toList yield {
           val nodeWatch = new NodeServer(nodeApi)
           nodeWatch.observable.map(nodeWatch -> _)
         })
@@ -90,7 +90,7 @@ extends MainService with Service.StoppableByRequest
           var failed = false
           observable
             .doAfterSubscribe(Task {
-              if (failed) logger.info(s"🟢 $nodeApi is being watched again")
+              if failed then logger.info(s"🟢 $nodeApi is being watched again")
               failed = false
             })
             .onErrorHandleWith { t =>
@@ -160,7 +160,7 @@ object ClusterWatchService
 
   def completeResource(conf: ClusterWatchConf): Resource[Task, ClusterWatchService] = {
     import conf.{clusterNodeAdmissions, config, httpsConfig}
-    for {
+    for
       akka <- actorSystemResource(name = "ClusterWatch", config)
       service <- resource(
         conf.clusterWatchId,
@@ -169,7 +169,7 @@ object ClusterWatchService
             .resource(admission.uri, uriPrefixPath = "", httpsConfig, name = "ClusterNode")(akka)
             .flatMap(HttpClusterNodeApi.resource(admission, _, uriPrefix = "controller"))),
         config)
-    } yield service
+    yield service
   }
 
   def resource(
@@ -197,7 +197,7 @@ object ClusterWatchService
       val retryDelays = config.getDurationList("js7.journal.cluster.watch.retry-delays")
         .asScala.map(_.toFiniteDuration).toVector
 
-      for {
+      for
         nodeApis <- apisResource
         service <-
           Service.resource(
@@ -211,6 +211,6 @@ object ClusterWatchService
                 retryDelays = NonEmptySeq.fromSeq(retryDelays) getOrElse NonEmptySeq.of(1.s),
                 onClusterStateChanged,
                 onUndecidableClusterNodeLoss))))
-      } yield service
+      yield service
     })
 }

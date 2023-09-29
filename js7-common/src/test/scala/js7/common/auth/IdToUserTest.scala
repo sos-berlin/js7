@@ -109,10 +109,10 @@ final class IdToUserTest extends OurTestSuite
     "thread-safe" in {
       val n = 10000
       val a = Future.sequence(
-        for (i <- 1 to n) yield
+        for i <- 1 to n yield
           Future { assert(idToUser(UserId("A")).get.hashedPassword equalsClearText PlainPassword, s"#$i identity") })
       val b = Future.sequence(
-        for (i <- 1 to n) yield
+        for i <- 1 to n yield
           Future { assert(idToUser(UserId("B")).get.hashedPassword equalsClearText Sha512Password, s"#$i SHA-512") })
       List(a, b) await 99.s
     }

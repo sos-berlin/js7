@@ -81,7 +81,7 @@ trait JournalRoute extends RouteProvider
                               .takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ => Task {
                                 logger.debug("whenShuttingDown completed")
                               })
-                              .map(if (returnAck) toLength else toContent)
+                              .map(if returnAck then toLength else toContent)
                               .pipeIf(heartbeat.isDefined)(_
                                 .insertHeartbeatsOnSlowUpstream(heartbeat.get, HeartbeatMarker))
                               .map(_.toByteString)
@@ -113,7 +113,7 @@ object JournalRoute
     o.value
 
   private def toLength(o: PositionAnd[ByteArray]): ByteArray =
-    if (o.value != EndOfJournalFileMarker)
+    if o.value != EndOfJournalFileMarker then
       ByteArray(o.position.toString + '\n')
     else
       o.value

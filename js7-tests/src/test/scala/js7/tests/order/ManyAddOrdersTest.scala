@@ -39,7 +39,7 @@ final class ManyAddOrdersTest extends OurTestSuite with ControllerAgentForScalaT
   override def agentConfig = config"""js7.job.execution.signed-script-injection-allowed = yes"""
 
   override def beforeAll() = {
-    for (a <- directoryProvider.agentEnvs) {
+    for a <- directoryProvider.agentEnvs do {
       a.writeExecutable(pathExecutable, script(0.s))
     }
     super.beforeAll()

@@ -92,7 +92,7 @@ extends Service.StoppableByRequest
       Task
         .when(first)(Task.defer {
           val orderCount = orderIdToJobDriver.toMap.size
-          if (orderCount > 0) {
+          if orderCount > 0 then {
             logger.info(s"Stopping, waiting for $orderCount processes")
           }
           Task
@@ -104,8 +104,8 @@ extends Service.StoppableByRequest
             })
             .*>(orderToProcessing.initiateStopWithProblem(SubagentIsShuttingDownProblem))
             .*>(Task.defer {
-              if (dontWaitForDirector) Task {
-                for (orderId <- orderToProcessing.toMap.keys.toVector.sorted) logger.warn(
+              if dontWaitForDirector then Task {
+                for orderId <- orderToProcessing.toMap.keys.toVector.sorted do logger.warn(
                   s"Shutdown: Agent Director has not yet acknowledged processing of $orderId")
               } else
                 awaitOrderAcknowledgements *>
@@ -156,11 +156,11 @@ extends Service.StoppableByRequest
 
   private[subagent] def executeCoupleDirector(cmd: CoupleDirector): Task[Checked[Unit]] =
     Task {
-      for {
+      for
         _ <- checkSubagentId(cmd.subagentId)
         _ <- checkSubagentRunId(cmd.subagentRunId)
         _ <- journal.eventWatch.checkEventId(cmd.eventId)
-      } yield ()
+      yield ()
     }
 
   private def checkSubagentId(requestedSubagentId: SubagentId): Checked[Unit] =
@@ -168,7 +168,7 @@ extends Service.StoppableByRequest
       SubagentIdMismatchProblem(requestedSubagentId, subagentId)
 
   private[subagent] def checkSubagentRunId(requestedSubagentRunId: SubagentRunId): Checked[Unit] =
-    if (requestedSubagentRunId != subagentRunId) {
+    if requestedSubagentRunId != subagentRunId then {
       val problem = SubagentRunIdMismatchProblem(subagentId)
       logger.warn(
         s"$problem, requestedSubagentRunId=$requestedSubagentRunId, " +
@@ -180,7 +180,7 @@ extends Service.StoppableByRequest
   private def awaitOrderAcknowledgements: Task[Unit] =
     Task.defer {
       val oToP = orderToProcessing.toMap.toVector
-      for (orderId <- oToP.map(_._1).sorted) logger.info(
+      for orderId <- oToP.map(_._1).sorted do logger.info(
         s"🟡 Delaying shutdown until Agent Director has acknowledged processing of $orderId")
       oToP
         .parTraverse { case (orderId, processing) =>
@@ -210,7 +210,7 @@ extends Service.StoppableByRequest
         .updateChecked(order.id, {
           case Some(existing) =>
             Task.pure(
-              if (existing.workflowPosition != order.workflowPosition) {
+              if existing.workflowPosition != order.workflowPosition then {
                 val problem = Problem.pure(
                   "Duplicate SubagentCommand.StartOrder with different Order position")
                 logger.warn(s"$problem:")
@@ -247,7 +247,7 @@ extends Service.StoppableByRequest
         .onErrorHandle(Outcome.Failed.fromThrowable)
         .flatMap { outcome =>
           val orderProcessed = OrderProcessed(outcome)
-          if (journal.isHalted) {
+          if journal.isHalted then {
             // We simulate !!!
             logger.debug(s"⚠️  $orderProcessed suppressed because journal is halted")
             Task.pure(orderProcessed)
@@ -329,18 +329,18 @@ extends Service.StoppableByRequest
               writeObservableAsEvents(Stderr, err))
             .void
 
-          for {
+          for
             observingOutErr <- observeOutErr.start
             _ <- observingStarted.values.toSeq.traverse(promise => Task.fromFuture(promise.future))
-          } yield (outErrStatistics, stdObservers, observingOutErr)
+          yield (outErrStatistics, stdObservers, observingOutErr)
         })(
         release = {
           case (outErrStatistics, stdObservers, observingOutErr) =>
-            for {
+            for
               _ <- stdObservers.stop /*may already have been stopped by OrderProcess/JobDriver*/
               _ <- observingOutErr.join
-            } yield {
-              if (outErrStatistics(Stdout).isRelevant || outErrStatistics(Stderr).isRelevant) {
+            yield {
+              if outErrStatistics(Stdout).isRelevant || outErrStatistics(Stderr).isRelevant then {
                 logger.debug(s"stdout: ${outErrStatistics(Stdout)}, stderr: ${outErrStatistics(Stderr)}")
               }
             }
@@ -367,11 +367,11 @@ extends Service.StoppableByRequest
   : Task[Checked[(WorkflowJob, JobDriver)]] =
     journal.state
       .map(state =>
-        for {
+        for
           workflow <- state.idToWorkflow.checked(workflowPosition.workflowId)
           jobKey <- workflow.positionToJobKey(workflowPosition.position)
           workflowJob <- workflow.keyToJob.checked(jobKey)
-        } yield
+        yield
           jobKeyToJobDriver
             .getOrElseUpdate(jobKey,
               Task.deferAction(implicit scheduler => Task {
@@ -390,12 +390,12 @@ extends Service.StoppableByRequest
       .flatMap(_.sequence)
 
   def killProcess(orderId: OrderId, signal: ProcessSignal): Task[Unit] =
-    for {
+    for
       maybeJobDriver <- Task(orderIdToJobDriver.get(orderId))
       _ <- maybeJobDriver
         .fold(Task(logger.debug(s"⚠️ killOrder $orderId => no JobDriver for Order")))(_
           .killOrder(orderId, signal))
-    } yield ()
+    yield ()
 
   override def toString =
     s"DedicatedSubagent($subagentId $agentPath $controllerId)"

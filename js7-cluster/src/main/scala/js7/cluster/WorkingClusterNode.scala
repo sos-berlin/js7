@@ -136,9 +136,9 @@ final class WorkingClusterNode[
             }
 
         case clusterState @ HasNodes(current) =>
-          if (setting != current.copy(clusterWatchId = None).withPassiveUri(setting.passiveUri))
+          if setting != current.copy(clusterWatchId = None).withPassiveUri(setting.passiveUri) then
             Task.left(ClusterSettingNotUpdatable(clusterState))
-          else if (setting.passiveUri == current.passiveUri)
+          else if setting.passiveUri == current.passiveUri then
             extraEvent.fold(Task.pure(Checked.unit))(extraEvent =>
               journal.persistKeyedEvent(extraEvent).rightAs(()))
           else
@@ -157,7 +157,7 @@ final class WorkingClusterNode[
           Task.defer {
             val activeClusterNode =
               new ActiveClusterNode(journal, passiveNodeUserAndPassword, common, clusterConf)
-            if (_activeClusterNode.trySet(activeClusterNode))
+            if _activeClusterNode.trySet(activeClusterNode) then
               activeClusterNode.start(eventId)
             else
               Task.left(Problem.pure("ActiveClusterNode has already been started"))
@@ -210,7 +210,7 @@ object WorkingClusterNode
       actorRefFactory: ActorRefFactory,
       timeout: akka.util.Timeout)
   : Resource[Task, WorkingClusterNode[S]] =
-    for {
+    for
       _ <- Resource.eval(Task.unless(recovered.clusterState == ClusterState.Empty)(
         common.requireValidLicense.map(_.orThrow)))
       journalAllocated <- Resource.eval(FileJournal
@@ -224,5 +224,5 @@ object WorkingClusterNode
           w.start(recovered.clusterState, recovered.eventId).as(w)
         })(
         release = _.stop)
-    } yield workingClusterNode
+    yield workingClusterNode
 }

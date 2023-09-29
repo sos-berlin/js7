@@ -29,7 +29,7 @@ private object WindowsApi
   lazy val myAdvapi32 = Native.load("advapi32", classOf[MyAdvapi32], UNICODE_OPTIONS)
 
   def waitForSingleObject(handle: HANDLE, timeout: Int): Boolean =
-    if (timeout == 0)
+    if timeout == 0 then
       waitForSingleObject_(handle, 0)
     else
       blocking {
@@ -61,7 +61,7 @@ private object WindowsApi
     requireWindows("GetTempPath")
     val a = new Array[Char](MAX_PATH + 1)
     val length = kernel32.GetTempPath(new DWORD(a.length), a).intValue
-    if (length <= 0 || length > a.length) throw new WindowsException("GetTempPath failed")
+    if length <= 0 || length > a.length then throw new WindowsException("GetTempPath failed")
     Paths.get(new String(a, 0, length))
   }
 
@@ -71,7 +71,7 @@ private object WindowsApi
   def windowsDirectory: Path = {
     val a = new Array[Char](MAX_PATH + 1)
     val length = myKernel32.GetSystemWindowsDirectory(a, a.length)
-    if (length <= 0 || length > a.length) throw new WindowsException("GetSystemWindowsDirectory failed")
+    if length <= 0 || length > a.length then throw new WindowsException("GetSystemWindowsDirectory failed")
     Paths.get(new String(a, 0, length))
   }
 
@@ -135,7 +135,7 @@ private object WindowsApi
     requireWindows(functionName)
     logger.trace(s"Calling Windows API: $functionName ${args.mkString(", ")}")
     val ok = apiFunction
-    if (!ok)
+    if !ok then
       throwLastError(functionName)
   }
 
@@ -149,10 +149,10 @@ private object WindowsApi
   }
 
   def messageIdToString(id: Int) =
-    if (id <= 0xc0ffffff /*negative*/ ) f"0x$id%08x" else id.toString
+    if id <= 0xc0ffffff /*negative*/  then f"0x$id%08x" else id.toString
 
   private def requireWindows(functionName: String) = {
-    if (!isWindows) sys.error(s"Windows API '$functionName' is only available under Microsoft Windows")
+    if !isWindows then sys.error(s"Windows API '$functionName' is only available under Microsoft Windows")
   }
 
   final class WindowsException(message: String) extends RuntimeException(message)

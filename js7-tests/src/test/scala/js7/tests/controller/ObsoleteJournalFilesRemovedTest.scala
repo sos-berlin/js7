@@ -33,7 +33,7 @@ final class ObsoleteJournalFilesRemovedTest extends OurTestSuite with DirectoryP
 
 
   "Obsolete journal files are removed if nothing has been configured" in {
-    for ((_, env) <- directoryProvider.agentToEnv) {
+    for (_, env) <- directoryProvider.agentToEnv do {
       env.writeExecutable(pathExecutable, script(0.s))
     }
 

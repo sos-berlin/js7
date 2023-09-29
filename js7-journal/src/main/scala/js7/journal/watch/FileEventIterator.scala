@@ -29,13 +29,13 @@ extends CloseableIterator[Stamped[KeyedEvent[Event]]]
   private var closed = false
 
   closeOnError(journalReader) {
-    if (journalReader.fileEventId != fileEventId) sys.error(
+    if journalReader.fileEventId != fileEventId then sys.error(
       s"Journal file '$journalFile': found fileEventId=${journalReader.fileEventId}, " +
         s"expected was: $fileEventId")
   }
 
   def close(): Unit =
-    if (!closed) {
+    if !closed then {
       closed = true
       journalReader.close()
     }
@@ -58,7 +58,7 @@ extends CloseableIterator[Stamped[KeyedEvent[Event]]]
         journalIndex.synchronizeBuilding {
           // May take a long time !!!
           val watch = new TimeWatch(after)
-          while (eventId < after && hasNext) {
+          while eventId < after && hasNext do {
             next()
             val PositionAnd(position, eventId) = positionAndEventId
             journalIndex.tryAddAfter(eventId, position)
@@ -77,7 +77,7 @@ extends CloseableIterator[Stamped[KeyedEvent[Event]]]
   final def next(): Stamped[KeyedEvent[Event]] = {
     hasNext
     val r = nextEvent
-    if (r == null) throw new NoSuchElementException(
+    if r == null then throw new NoSuchElementException(
       s"End of committed part of journal file '${journalFile.getFileName}' reached")
     nextEvent = null
     r
@@ -101,7 +101,7 @@ extends CloseableIterator[Stamped[KeyedEvent[Event]]]
     def onSkipped(): Unit = {
       skipped += 1
       val duration = runningSince.elapsed
-      if (!debugIssued && (position - startPosition >= InfoSkippedSize || duration >= 1.s)) {
+      if !debugIssued && (position - startPosition >= InfoSkippedSize || duration >= 1.s) then {
         logger.debug(s"⏳ $skipped events (${toKBGB(position - startPosition)}) skipped" +
           s" since ${duration.pretty} while searching " +
           s"${EventId.toDateTimeString(startEventId)}..${EventId.toDateTimeString(after)}" +
@@ -113,10 +113,10 @@ extends CloseableIterator[Stamped[KeyedEvent[Event]]]
     def end(): Unit = {
       val skippedSize = position - startPosition
       val duration = runningSince.elapsed
-      if (skipped > 0)
+      if skipped > 0 then
         logger.trace(s"⏳ $skipped events (${toKBGB(skippedSize)}) skipped in ${duration.pretty} " +
           s"for searching ${EventId.toString(startEventId)}..${EventId.toString(after)}")
-      if (skippedSize >= InfoSkippedSize || duration >= InfoDuration)
+      if skippedSize >= InfoSkippedSize || duration >= InfoDuration then
         logger.info(s"⏳ $skipped events (${toKBGB(skippedSize)}) read in ${duration.pretty}, " +
           s"in search of event '${EventId.toString(startEventId)}'")
     }

@@ -17,8 +17,8 @@ private final class Redirection(
   private val pipeClosed = Atomic(false)
 
   def releaseStartupInfoHandle(): Unit =
-    if (!released.getAndSet(true)) {
-      if (closeStartupInfoHandle) {
+    if !released.getAndSet(true) then {
+      if closeStartupInfoHandle then {
         closeHandle(startupInfoHandle)
       }
     }
@@ -32,7 +32,7 @@ private final class Redirection(
   //  }
 
   def closePipe(): Unit =
-    if (!pipeClosed.getAndSet(true) && pipeHandle != INVALID_HANDLE_VALUE) {
+    if !pipeClosed.getAndSet(true) && pipeHandle != INVALID_HANDLE_VALUE then {
       closeHandle(pipeHandle)
     }
 }
@@ -78,7 +78,7 @@ private object Redirection
       CREATE_ALWAYS,
       FILE_ATTRIBUTE_TEMPORARY,
       null)
-    if (handle == INVALID_HANDLE_VALUE) throwLastError(s"CreateFile '$file'")
+    if handle == INVALID_HANDLE_VALUE then throwLastError(s"CreateFile '$file'")
     new Redirection(handle, true, INVALID_HANDLE_VALUE)
   }
 }

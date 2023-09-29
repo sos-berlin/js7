@@ -25,7 +25,7 @@ final class TaskIdTest extends OurTestSuite
 
   "TaskIdGenerator" in {
     val generator = TaskId.newGenerator()
-    for (i <- 1 to 10000) {
+    for i <- 1 to 10000 do {
       val id = generator.next()
       assert(id.index == i)
     }

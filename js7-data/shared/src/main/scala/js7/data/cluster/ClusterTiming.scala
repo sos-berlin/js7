@@ -56,7 +56,7 @@ final case class ClusterTiming(heartbeat: FiniteDuration, heartbeatTimeout: Fini
 object ClusterTiming
 {
   def checked(heartbeat: FiniteDuration, heartbeatTimeout: FiniteDuration): Checked[ClusterTiming] =
-    for (_ <- checkedUnit(heartbeat, heartbeatTimeout)) yield
+    for _ <- checkedUnit(heartbeat, heartbeatTimeout) yield
       new ClusterTiming(heartbeat, heartbeatTimeout)
 
   private def checkedUnit(heartbeat: FiniteDuration, heartbeatTimeout: FiniteDuration) =

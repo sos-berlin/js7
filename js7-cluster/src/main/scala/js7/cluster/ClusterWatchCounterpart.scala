@@ -39,7 +39,7 @@ extends Service.StoppableByRequest
 {
   import clusterConf.ownId
 
-  private val nextRequestId = Atomic(if (isTest) 1 else
+  private val nextRequestId = Atomic(if isTest then 1 else
     Random.nextLong((Long.MaxValue - (3 * 32_000_000/*a year*/) / timing.heartbeat.toSeconds))
       / 1000_000 * 1000_000)
   private val lock = AsyncLock()
@@ -56,11 +56,11 @@ extends Service.StoppableByRequest
 
   def checkClusterState(clusterState: HasNodes, clusterWatchIdChangeAllowed: Boolean)
   : Task[Checked[Option[ClusterWatchConfirmation]]] =
-    if (!clusterState.setting.clusterWatchId.isDefined
+    if !clusterState.setting.clusterWatchId.isDefined
       && !clusterWatchIdChangeAllowed
       && !clusterState.isInstanceOf[Coupled]
       && !clusterState.isInstanceOf[PassiveLost]
-      && !clusterState.isInstanceOf[FailedOver])
+      && !clusterState.isInstanceOf[FailedOver] then
       Task.right(None)
     else
       initializeCurrentClusterWatchId(clusterState) *>
@@ -73,8 +73,8 @@ extends Service.StoppableByRequest
 
   private def initializeCurrentClusterWatchId(clusterState: HasNodes): Task[Unit] =
     Task {
-      if (currentClusterWatchId.isEmpty) {
-        for (clusterWatchId <- clusterState.setting.clusterWatchId) {
+      if currentClusterWatchId.isEmpty then {
+        for clusterWatchId <- clusterState.setting.clusterWatchId do {
           // Set expiration time on start to inhibit change of registered ClusterWatchId when
           // another ClusterWatch tries to confirm, too.
           currentClusterWatchId = Some(CurrentClusterWatchId(clusterWatchId))
@@ -104,7 +104,7 @@ extends Service.StoppableByRequest
     toRequest: RequestId => ClusterWatchRequest,
     clusterWatchIdChangeAllowed: Boolean)
   : Task[Checked[ClusterWatchConfirmation]] =
-    if (!clusterWatchIdChangeAllowed && !clusterWatchId.isDefined)
+    if !clusterWatchIdChangeAllowed && !clusterWatchId.isDefined then
       Task.left(NoClusterWatchProblem)
     else
       Task.defer {
@@ -156,7 +156,7 @@ extends Service.StoppableByRequest
 
           case Right(confirmation) =>
             Task {
-              if (sym.warnLogged) logger.info(
+              if sym.warnLogged then logger.info(
                 s"🟢 ${confirmation.clusterWatchId} finally confirmed ${
                   request.toShortString} after ${since.elapsed.pretty}")
             }
@@ -196,7 +196,7 @@ extends Service.StoppableByRequest
             Task.right(())
 
           case _ =>
-            for (confirmer <- confirm.manualConfirmer) {
+            for confirmer <- confirm.manualConfirmer do {
               logger.info(s"‼️ ${requested.request.maybeEvent.fold("?")(_.getClass.simpleScalaName)
                 } has MANUALLY BEEN CONFIRMED by '$confirmer' ‼️")
             }
@@ -204,7 +204,7 @@ extends Service.StoppableByRequest
         }
       }
       .flatMapT(_ => Task {
-        for (o <- currentClusterWatchId) o.touch(confirm.clusterWatchId)
+        for o <- currentClusterWatchId do o.touch(confirm.clusterWatchId)
         Checked.unit
       })
 
@@ -249,12 +249,12 @@ extends Service.StoppableByRequest
               requestedClusterWatchId = o))
 
           case _ =>
-            if (confirm.requestId != requested.id) {
+            if confirm.requestId != requested.id then {
               logger.debug(s"⛔ confirm.requestId=${confirm.requestId}, but requested=${requested.id}")
               val problem = ClusterWatchRequestDoesNotMatchProblem
               logger.debug(s"$problem id=${confirm.requestId} but _requested=${requested.id}")
               Left(problem)
-            } else if (!_requested.compareAndSet(value, None))
+            } else if !_requested.compareAndSet(value, None) then
               takeRequest(confirm)
             else {
               // Log when ActiveClusterNode will detect and register a changed ClusterWatchId.
@@ -288,7 +288,7 @@ extends Service.StoppableByRequest
       now + timing.clusterWatchIdTimeout
 
     def touch(clusterWatchId: ClusterWatchId): Unit =
-      if (clusterWatchId == this.clusterWatchId) {
+      if clusterWatchId == this.clusterWatchId then {
         expires = now + timing.clusterWatchIdTimeout
       }
 

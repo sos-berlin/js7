@@ -100,7 +100,7 @@ trait SessionRouteTester extends BeforeAndAfterAll with ScalatestRouteTest with 
 
   protected final def requireAccessIsUnauthorizedOrPublic(client: AkkaHttpClient)(implicit s: Task[Option[SessionToken]]): Unit = {
     requireAccessToUnprotected(client)
-    if (isPublic) {
+    if isPublic then {
       requireAccessIsPublic(client)
     } else {
       requireAccessIsUnauthorized(client)

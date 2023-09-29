@@ -21,7 +21,7 @@ final class SpeedControllerClusterTest extends OurTestSuite with ControllerClust
 {
   val items = Seq(workflow)
 
-  for (n <- sys.props.get("test.speed"/*try 1000*/).map(_.toInt)) {
+  for n <- sys.props.get("test.speed"/*try 1000*/).map(_.toInt) do {
     "Speed test" in {
       withControllerAndBackup() { (primary, _, backup, _, _) =>
         backup.runController(dontWaitUntilReady = true) { _ =>
@@ -34,13 +34,13 @@ final class SpeedControllerClusterTest extends OurTestSuite with ControllerClust
               val orderId = orderIdIterator.synchronized(orderIdIterator.next())
               val order = FreshOrder(orderId, workflow.path)
               // 3 acks:
-              for {
+              for
                 _ <- primaryController.api.addOrder(order).map(_.orThrow)
                 _ <- primaryController.api.executeCommand(CancelOrders(Seq(order.id)))
                   .map(_.orThrow)
                 _ <- primaryController.api.executeCommand(DeleteOrdersWhenTerminated(Seq(order.id)))
                   .map(_.orThrow)
-              } yield ()
+              yield ()
             }
             // Warm up
             Task.parSequence((1 to 1000).map(_ => cycle)).await(99.s)

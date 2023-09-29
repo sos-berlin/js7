@@ -30,11 +30,11 @@ extends UnsignedSimpleItemState with Big/*acquired and queue get big with many o
   def agentPathToAttachedState = Map.empty
 
   def enqueue(orderId: OrderId, count: Option[Int]): Checked[LockState] =
-    if (!count.forall(_ <= limit))
+    if !count.forall(_ <= limit) then
       Left(Problem(s"Cannot fulfill lock count=${count getOrElse ""} with $lockPath limit=$limit"))
-    else if (acquired.isAcquiredBy(orderId))
+    else if acquired.isAcquiredBy(orderId) then
       Left(LockRefusal.AlreadyAcquiredByThisOrder.toProblem(lock.path))
-    else if (queue contains orderId)
+    else if queue contains orderId then
       Left(Problem(s"$orderId already queues for $lockPath"))
     else orderId.allParents.find(acquired.isAcquiredBy) match {
       case Some(parentOrderId) =>
@@ -61,14 +61,14 @@ extends UnsignedSimpleItemState with Big/*acquired and queue get big with many o
       .map(_ => ())
 
   private def tryAcquire(orderId: OrderId, count: Option[Int]): Either[LockRefusal, Acquired] =
-    for {
+    for
       a <- acquired.acquireFor(orderId, count)
       _ <- checkLimit(count)
-    } yield a
+    yield a
 
   def acquire(orderId: OrderId, count: Option[Int]): Checked[LockState] =
-    for (lockState <- toLockState(tryAcquire(orderId, count))) yield
-      if (queue contains orderId)
+    for lockState <- toLockState(tryAcquire(orderId, count)) yield
+      if queue contains orderId then
         lockState.copy(
           queue = queue.filterNot(_ == orderId)) /*TODO Slow with long order queue*/
       else
@@ -86,19 +86,19 @@ extends UnsignedSimpleItemState with Big/*acquired and queue get big with many o
   private def checkLimit(count: Option[Int]): Either[LockRefusal, Unit] =
     count match {
       case None =>
-        if (acquired == Available)
+        if acquired == Available then
           Right(())
         else
           Left(IsInUse)
 
       case Some(n) =>
-        if (n < 1)
+        if n < 1 then
           Left(InvalidCount(n))
         else {
           val ok =
             try math.addExact(acquired.lockCount, n) <= limit
             catch { case _: ArithmeticException => false }
-          if (ok)
+          if ok then
             Right(())
           else
             Left(LimitReached(limit = limit, count = n, alreadyRequiredCount = acquired.lockCount))

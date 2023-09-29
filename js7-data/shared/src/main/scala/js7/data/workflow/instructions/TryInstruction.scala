@@ -28,9 +28,9 @@ final case class TryInstruction(
 extends Instruction
 {
   def checked: Checked[TryInstruction] =
-    if (maxTries exists (_ < 1))
+    if maxTries exists (_ < 1) then
       Left(InvalidMaxTriesProblem)
-    else if ((retryDelays.isDefined || maxTries.isDefined) && !containsRetry(catchWorkflow))
+    else if (retryDelays.isDefined || maxTries.isDefined) && !containsRetry(catchWorkflow) then
       Left(MissingRetryProblem)
     else
       Right(this)
@@ -74,9 +74,9 @@ extends Instruction
     retryDelays match {
       case None => NoRetryDelay
       case Some(delays) =>
-        if (delays.isEmpty)
+        if delays.isEmpty then
           NoRetryDelay
-        else if (index >= retryDelays.getOrElse(Vector.empty).length)
+        else if index >= retryDelays.getOrElse(Vector.empty).length then
           delays.last  // The last given delay is valid for all further iterations
         else
           delays(index - 1)
@@ -128,12 +128,12 @@ object TryInstruction
       "sourcePos" -> o.sourcePos.asJson)
 
   implicit val jsonDecoder: Decoder[TryInstruction] =
-    c => for {
+    c => for
       try_ <- c.get[Workflow]("try")
       catch_ <- c.get[Workflow]("catch")
       delays <- c.get[Option[Seq[FiniteDuration]]]("retryDelays")
       maxTries <- c.get[Option[Int]]("maxTries")
       sourcePos <- c.get[Option[SourcePos]]("sourcePos")
       tryInstr <- TryInstruction.checked(try_, catch_, delays, maxTries = maxTries, sourcePos).toDecoderResult(c.history)
-    } yield tryInstr
+    yield tryInstr
 }

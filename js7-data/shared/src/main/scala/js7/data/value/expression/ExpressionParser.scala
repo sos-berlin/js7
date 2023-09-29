@@ -142,14 +142,14 @@ object ExpressionParser
   private val argumentFunctionCall: Parser[NamedValue] =
     (keyword("argument") ~ w) *>
       inParentheses(
-        for {
+        for
           kv <- keyValues(
             keyValue("default", expression) |
               keyValue("key", expression) |
               keyValue("", expression))
           key <- kv.oneOf[Expression]("key", "").map(_._2)
           default <- kv.get[Expression]("default")
-        } yield NamedValue(NamedValue.Argument, key, default))
+        yield NamedValue(NamedValue.Argument, key, default))
 
   private val namedValueKeyValue: Parser[(String, Any)] =
     keyValueConvert("label", identifier)(o => Right(NamedValue.ByLabel(o))) |
@@ -159,14 +159,14 @@ object ExpressionParser
   private val variableFunctionCall: Parser[NamedValue] =
     (keyword("variable") ~ w) *>
       inParentheses(
-        for {
+        for
           kv <- keyValues(namedValueKeyValue
             | keyValue("key", expression)
             | keyValue("", expression))
           where <- kv.oneOfOr[NamedValue.Where](Set("label", "job"), NamedValue.LastOccurred)
           key <- kv.oneOf[Expression]("key", "").map(_._2)
           default <- kv.get[Expression]("default")
-        } yield NamedValue(where, key, default))
+        yield NamedValue(where, key, default))
 
   private val functionCall: Parser[Expression] =
     (identifier ~~ inParentheses(commaSequence(

@@ -68,7 +68,7 @@ trait GenericEventRoute extends RouteProvider
     implicit private val exceptionHandler: ExceptionHandler =
       ExceptionHandler {
         case t: ClosedException if t.getMessage != null =>
-          if (whenShuttingDown.isCompleted)
+          if whenShuttingDown.isCompleted then
             complete(ServiceUnavailable -> ShuttingDownProblem)
           else
             complete(ServiceUnavailable -> Problem.pure(t.getMessage))
@@ -85,9 +85,9 @@ trait GenericEventRoute extends RouteProvider
               authorizedUser(ValidUserPermission) { user =>
                 implicit val userId = user.id
                 val waitingSince = !eventWatch.whenStarted.isCompleted ? now
-                if (waitingSince.isDefined) logger.debug("Waiting for journal to become ready ...")
+                if waitingSince.isDefined then logger.debug("Waiting for journal to become ready ...")
                 onSuccess(eventWatch.whenStarted) { eventWatch =>
-                  for (o <- waitingSince) logger.debug("Journal has become ready after " +
+                  for o <- waitingSince do logger.debug("Journal has become ready after " +
                     o.elapsed.pretty + ", continuing event web service")
                   implicit val s = NdJsonStreamingSupport
                   Route.seal(
@@ -103,7 +103,7 @@ trait GenericEventRoute extends RouteProvider
       (implicit userId: UserId, s: JsonEntityStreamingSupport): Route =
       parameter("onlyAcks" ? false) { onlyAcks =>
         parameter("heartbeat".as[FiniteDuration].?) { maybeHeartbeat =>  // Echo last EventId as a heartbeat
-          if (onlyAcks)
+          if onlyAcks then
             eventIdRoute(maybeHeartbeat, eventWatch)
           else
             eventDirective(
@@ -223,7 +223,7 @@ trait GenericEventRoute extends RouteProvider
           .observe(request, predicate)
       ) .onErrorRecoverWith { case NonFatal(e) =>
           logger.warn(e.toStringWithCauses)
-          if (e.getStackTrace.nonEmpty) logger.debug(e.toStringWithCauses, e)
+          if e.getStackTrace.nonEmpty then logger.debug(e.toStringWithCauses, e)
           Observable.empty  // The streaming event web service doesn't have an error channel, so we simply end the tail
         }
 

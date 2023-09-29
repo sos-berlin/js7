@@ -36,7 +36,7 @@ trait ApiRootRoute extends ControllerRouteProvider
     }
 
   private def overview: Task[ControllerOverview] =
-    for (checkedControllerState <- controllerState) yield
+    for checkedControllerState <- controllerState yield
       js7.data.controller.ControllerOverview(
         id = controllerId,
         version = BuildInfo.prettyVersion,

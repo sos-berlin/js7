@@ -67,14 +67,14 @@ object JournalHeader
     expectedType: String,
     expectedJournalId: JournalId)
   : Checked[JournalHeader] =
-    for {
+    for
       header <-
         json.as[JournalHeader].toChecked.mapProblem(problem =>
           Problem.pure(
             s"Not a valid JS7 journal file: $journalFileForInfo. Expected a JournalHeader instead of ${json.compactPrint}:"
           ) |+| problem)
       _ <- checkedHeader(header, journalFileForInfo, expectedType, Some(expectedJournalId))
-    } yield header
+    yield header
 
   def checkedHeader[S <: BasicState[S]](
     header: JournalHeader, journalFileForInfo: Path, expectedJournalId: Option[JournalId])
@@ -88,18 +88,18 @@ object JournalHeader
     expectedType: String,
     expectedJournalId: Option[JournalId])
   : Checked[Unit] =
-    for {
+    for
       _ <- header.typeName.fold(Checked.unit)(typeName => header.typeName.forall(_ == expectedType) !!
         JournalTypeMismatchProblem(journalFileForInfo, expectedType, typeName))
       _ <- expectedJournalId.fold(Checked.unit)(expected => (expected == header.journalId) !!
         JournalIdMismatchProblem(
           journalFileForInfo, expectedJournalId = expected, foundJournalId = header.journalId))
-    } yield
-      if (compatibility.getOrElse(header.version, header.version) != Version)
+    yield
+      if compatibility.getOrElse(header.version, header.version) != Version then
         Left(Problem(
           s"Journal file has version ${header.version} but $Version is expected. Incompatible journal file: $journalFileForInfo"))
       else {
-        for (o <- expectedJournalId) logger.debug(
+        for o <- expectedJournalId do logger.debug(
           s"JournalHeader of file '${journalFileForInfo.getFileName}' is as expected, journalId=$o")
         Right(())
       }

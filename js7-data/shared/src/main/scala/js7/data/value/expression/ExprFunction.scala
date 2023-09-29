@@ -22,9 +22,9 @@ final case class ExprFunction(
   private def name = maybeName getOrElse toString.truncateWithEllipsis(50)
 
   def restrict(name: String, minimum: Int, maximum: Int): Checked[ExprFunction] =
-    if (parameters.size < minimum || parameters.size > maximum)
+    if parameters.size < minimum || parameters.size > maximum then
       Left(Problem(
-        if (minimum == maximum)
+        if minimum == maximum then
           s"The '$name' function is expected to accept exactly $minimum parameters"
         else
           s"The '$name' function is expected to accept between $minimum and $maximum parameters"))
@@ -35,8 +35,8 @@ final case class ExprFunction(
         maximumArgumentCount = Some(maximum)))
 
   def eval(arguments: Iterable[Value])(implicit scope: Scope): Checked[Value] =
-    if (arguments.sizeIs < minimumArgumentCount
-      || maximumArgumentCount.exists(arguments.sizeIs > _))
+    if arguments.sizeIs < minimumArgumentCount
+      || maximumArgumentCount.exists(arguments.sizeIs > _) then
       Left(Problem(
         s"Number of arguments=${arguments.size} does not match " +
           "required number of function parameters=" +
@@ -66,7 +66,7 @@ object ExprFunction
 
   def checked(parameters: Seq[VariableDeclaration], expression: Expression)
   : Checked[ExprFunction] =
-    for (_ <- parameters.checkUniqueness) yield
+    for _ <- parameters.checkUniqueness yield
       new ExprFunction(parameters, expression)()
 
   @TestOnly

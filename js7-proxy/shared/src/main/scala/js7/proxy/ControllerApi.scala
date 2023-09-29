@@ -167,7 +167,7 @@ extends ControllerApiWithHttp
 
   private def untilReachable[A](body: HttpControllerApi => Task[A]): Task[Checked[A]] =
     CorrelId.bindIfEmpty(
-      if (!failWhenUnreachable)
+      if !failWhenUnreachable then
         untilReachable1(body)
       else
         liftProblem(
@@ -193,7 +193,7 @@ extends ControllerApiWithHttp
         .onErrorRestartLoop(()) {
           case (t, _, retry)
             if isTemporaryUnreachable(t) && delays.hasNext =>
-            if (warned.elapsed >= 60.s) {
+            if warned.elapsed >= 60.s then {
               logger.warn(t.toStringWithCauses)
               warned = now
             } else {

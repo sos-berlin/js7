@@ -118,7 +118,7 @@ extends OurTestSuite with BeforeAndAfterAll with ControllerAgentForScalaTest wit
         }
       }
     """.withFallback(
-      if (controllerHttpsMutual)
+      if controllerHttpsMutual then
         ConfigFactory.empty
       else config"""
         js7.auth.users.TEST.password = "plain:TEST-PASSWORD"
@@ -187,7 +187,7 @@ extends OurTestSuite with BeforeAndAfterAll with ControllerAgentForScalaTest wit
     close()
     delete(clientKeyStore)
     super.afterAll()
-    if (useCluster) {
+    if useCluster then {
       backupController.stop.await(99.s)
       backupDirectoryProvider.close()
     }

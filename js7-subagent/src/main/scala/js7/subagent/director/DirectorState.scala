@@ -30,14 +30,14 @@ private final case class DirectorState(
       .map(idToE => copy(
         subagentToEntry = idToE,
         selectionToPrioritized =
-          if (disabled)
+          if disabled then
             selectionToPrioritized
           else
             // Add SubagentId to default SubagentSelection
             selectionToPrioritized
               .updated(
                 None,
-                if (allocatedDriver.allocatedThing.isInstanceOf[LocalSubagentDriver])
+                if allocatedDriver.allocatedThing.isInstanceOf[LocalSubagentDriver] then
                   selectionToPrioritized(None).insertFirst(subagentId)
                 else
                   selectionToPrioritized(None).add(subagentId))))
@@ -48,7 +48,7 @@ private final case class DirectorState(
     subagentItem: SubagentItem)
   : Checked[DirectorState] = {
     val subagentId = allocatedDriver.allocatedThing.subagentId
-    if (!subagentToEntry.contains(subagentId))
+    if !subagentToEntry.contains(subagentId) then
       Left(Problem(s"Replacing unknown $subagentId SubagentDriver"))
     else
       Right(copy(

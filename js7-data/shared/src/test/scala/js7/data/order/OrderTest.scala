@@ -871,10 +871,10 @@ final class OrderTest extends OurTestSuite
         case OrderCancellationMarkedOnAgent =>
         case OrderSuspensionMarkedOnAgent =>
         case event =>
-          for (m <- View[Option[OrderMark]](NoMark, Cancelling, Suspending, SuspendingWithKill, Resuming)) {
-            for (isSuspended <- View(false, true)) {
-              for (isChild <- View(false, true)) {
-                for (a <- View(IsDetached, IsAttaching, IsAttached, IsDetaching)) /*SLOW (too many tests): s"${a getOrElse "Controller"}" -*/ {
+          for m <- View[Option[OrderMark]](NoMark, Cancelling, Suspending, SuspendingWithKill, Resuming) do {
+            for isSuspended <- View(false, true) do {
+              for isChild <- View(false, true) do {
+                for a <- View(IsDetached, IsAttaching, IsAttached, IsDetaching) do /*SLOW (too many tests): s"${a getOrElse "Controller"}" -*/ {
                   val mString = m.fold("no mark")(_.getClass.simpleScalaName)
                   val aString = a.fold("detached")(_.getClass.simpleScalaName)
                   val order = templateOrder.copy(attachedState = a, mark = m,
@@ -957,7 +957,7 @@ final class OrderTest extends OurTestSuite
         isSuspended = true)
 
       "Truncate history at position" in {
-        for (i <- 0 to 2) withClue(s"Position $i: ") {
+        for i <- 0 to 2 do withClue(s"Position $i: ") {
           assert(order.applyEvent(OrderResumed(Some(Position(i)), Nil)).toOption.get.historicOutcomes
             == order.historicOutcomes.take(i))
         }
@@ -1054,14 +1054,14 @@ final class OrderTest extends OurTestSuite
     assert(order.historicJobExecutionCount(JobKey(workflow.id, jobName), workflow) == 2)
   }
 
-  if (sys.props contains "test.speed") "Speed" in {
+  if sys.props contains "test.speed" then "Speed" in {
     val order = Order(OrderId("ORDER-1"), (WorkflowPath("WORKFLOW") ~ "VERSION") /: Position(1), Ready,
       attachedState = Some(Attached(AgentPath("AGENT"))))
     val json = (order: Order[State]).asJson
     testSpeed(100000, "asOrder")(json.as[Order[State]])
     def testSpeed(n: Int, ops: String)(what: => Unit): Unit = {
       val start = Timestamp.currentTimeMillis
-      for (_ <- 1 to n) what
+      for _ <- 1 to n do what
       val duration = Timestamp.currentTimeMillis - start
       println(s"${duration}ms/$n $ops ${(n * 1000L / duration).toString} $ops/s")
     }

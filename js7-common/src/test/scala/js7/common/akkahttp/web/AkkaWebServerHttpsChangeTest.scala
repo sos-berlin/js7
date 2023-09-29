@@ -160,7 +160,7 @@ final class AkkaWebServerHttpsChangeTest extends OurTestSuite with BeforeAndAfte
     }
 
     "Write remaining of server certificate" in {
-      if (writtenLength == 0) {
+      if writtenLength == 0 then {
         certFile := changedCert
       } else {
         certFile ++= changedCert.drop(writtenLength)
@@ -173,7 +173,7 @@ final class AkkaWebServerHttpsChangeTest extends OurTestSuite with BeforeAndAfte
       // Not easy to detect that the second restart is not needed. But it's an unusual case.
       val until = now + 99.s
       var tried: Try[HttpResponse] = Failure(new RuntimeException("??"))
-      while (now < until && tried.isFailure) {
+      while now < until && tried.isFailure do {
         tried = Try(http
           .singleRequest(
             HttpRequest(GET, s"https://localhost:$httpsPort/TEST"),

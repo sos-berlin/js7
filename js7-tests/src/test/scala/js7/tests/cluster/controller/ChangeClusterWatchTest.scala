@@ -93,9 +93,9 @@ final class ChangeClusterWatchTest extends ControllerClusterTester
           val subscription = primaryController.testEventBus
             .subscribe[ClusterWatchConfirmed] { executed =>
               // Await ClusterWatchConfirmed of second bClusterWatchId
-              if (executed.command.clusterWatchId == b.clusterWatchId
+              if executed.command.clusterWatchId == b.clusterWatchId
                 && executed.command.clusterWatchRunId != b.clusterWatchRunId
-                && executed.result == Right(())) {
+                && executed.result == Right(()) then {
                 executedPromise.trySuccess(executed)
               }
             }

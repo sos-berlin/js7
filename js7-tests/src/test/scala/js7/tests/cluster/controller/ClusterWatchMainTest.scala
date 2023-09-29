@@ -74,13 +74,13 @@ final class ClusterWatchMainTest extends OurAsyncTestSuite with ControllerCluste
         }
       }
 
-      for {
+      for
         runAnOrder <- runAnOrder.start
         clusterWatch <- clusterWatch.start
         _ <- runAnOrder.join
         _ <- stopClusterWatch.complete(())
         _ <- clusterWatch.join
-      } yield succeed
+      yield succeed
     }.unsafeToFuture()
   }
 }

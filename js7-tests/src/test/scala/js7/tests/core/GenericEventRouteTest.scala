@@ -181,7 +181,7 @@ extends OurTestSuite with BeforeAndAfterAll with ProvideActorSystem with Generic
       }
 
       "Repeatedly" in {
-        for (_ <- 1 to 1000) {
+        for _ <- 1 to 1000 do {
           locally {
             val stampedSeq = getEventsByUri(Uri("/event?limit=3&after=30"))
             assert(stampedSeq.head.eventId == 40)
@@ -322,7 +322,7 @@ extends OurTestSuite with BeforeAndAfterAll with ProvideActorSystem with Generic
 
 object GenericEventRouteTest
 {
-  private val TestEvents = for (i <- 1 to 18) yield
+  private val TestEvents = for i <- 1 to 18 yield
     Stamped(EventId(10 * i), Timestamp.ofEpochMilli(999),
       OrderId(i.toString) <-: OrderAdded(WorkflowPath("test") ~ "VERSION"))
   private val ExtraEvent =

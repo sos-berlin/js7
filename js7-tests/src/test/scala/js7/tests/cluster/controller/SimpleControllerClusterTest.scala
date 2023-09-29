@@ -19,7 +19,7 @@ import monix.execution.Scheduler.Implicits.traced
 final class SimpleControllerClusterTest extends ControllerClusterTester
 {
   override protected def shellScript = s"echo '${"-" * 100}'\n" *
-    (if (sys.props.contains("test.speed")) 10000 else 1)
+    (if sys.props.contains("test.speed") then 10000 else 1)
 
   "Cluster replicates journal files properly" in {
     runControllerAndBackup() { (primary, primaryController, _, backup, backupController, _, _) =>

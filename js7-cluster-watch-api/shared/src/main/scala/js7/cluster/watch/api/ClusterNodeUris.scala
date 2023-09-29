@@ -62,7 +62,7 @@ final class ClusterNodeUris private(prefixedUri: Uri)
       ("position" -> journalPosition.position.toString) :: Nil))
 
   def api(path: String, query: (String, String)*): Uri = {
-    if (path.nonEmpty && !path.startsWith("/"))
+    if path.nonEmpty && !path.startsWith("/") then
       throw new IllegalArgumentException("Controller URI path must start with a slash")
     Uri(
       Uri(s"${prefixedUri}api$path").string + encodeQuery(query*))

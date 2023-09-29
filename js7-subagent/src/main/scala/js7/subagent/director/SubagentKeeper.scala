@@ -169,7 +169,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
 
           case Some(subagentDriver) =>
             forProcessingOrder(order.id, subagentDriver, onEvents)(
-              if (failedOverSubagentId contains subagentDriver.subagentId)
+              if failedOverSubagentId contains subagentDriver.subagentId then
                 subagentDriver.emitOrderProcessLost(order)
                   .flatMap(_.traverse(orderProcessed => Task.pure(orderProcessed).start))
               else
@@ -238,14 +238,14 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
 
   private def orderToSubagentSelectionId(order: Order[Order.IsFreshOrReady])
   : Task[Checked[DeterminedSubagentSelection]] =
-    for (agentState <- journal.state) yield
-      for {
+    for agentState <- journal.state yield
+      for
         job <- agentState.workflowJob(order.workflowPosition)
         scope <- agentState.toPureOrderScope(order)
         maybeJobsSelectionId <- job.subagentSelectionId
           .traverse(_.evalAsString(scope)
           .flatMap(SubagentSelectionId.checked))
-      } yield
+      yield
         determineSubagentSelection(order, agentPath, maybeJobsSelectionId)
 
   /** While waiting for a Subagent, the Order is cancelable. */
@@ -401,7 +401,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
                   val existingDriver = existingAllocated.allocatedThing
                   Task
                     .defer(
-                      if (subagentItem.uri == existingDriver.subagentItem.uri)
+                      if subagentItem.uri == existingDriver.subagentItem.uri then
                         Task.right(state -> None)
                       else {
                         // Subagent moved
@@ -453,7 +453,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
       .void
 
   private def allocateSubagentDriver(subagentItem: SubagentItem) = {
-    if (subagentItem.id == localSubagentId)
+    if subagentItem.id == localSubagentId then
       emitLocalSubagentCoupled *>
         localSubagentDriverResource(subagentItem).toAllocated
     else
@@ -474,7 +474,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
 
   private def remoteSubagentDriverResource(subagentItem: SubagentItem)
   : Resource[Task, RemoteSubagentDriver] =
-    for {
+    for
       api <- subagentApiResource(subagentItem)
       driver <- RemoteSubagentDriver
         .resource(
@@ -487,7 +487,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
           directorConf.recouplingStreamReaderConf)
         .evalTap(driver => Task.when(processingStarted)(
           driver.startObserving))
-    } yield driver
+    yield driver
 
   private def subagentApiResource(subagentItem: SubagentItem): Resource[Task, HttpSubagentApi] = {
     assertThat(subagentItem.id != localSubagentId)

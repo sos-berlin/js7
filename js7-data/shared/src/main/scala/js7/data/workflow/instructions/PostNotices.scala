@@ -17,7 +17,7 @@ extends BoardInstruction
   val referencedBoardPaths = boardPaths.toSet
 
   protected def checked: Checked[this.type] =
-    for (_ <- boardPaths.checkUniqueness) yield this
+    for _ <- boardPaths.checkUniqueness yield this
 
   def withoutSourcePos = copy(sourcePos = None)
 }
@@ -34,7 +34,7 @@ object PostNotices
     boardPaths: Vector[BoardPath],
     sourcePos: Option[SourcePos] = None)
   : Checked[PostNotices] =
-    for (_ <- boardPaths.checkUniqueness) yield
+    for _ <- boardPaths.checkUniqueness yield
       new PostNotices(boardPaths, sourcePos)
 
   implicit val jsonCodec: Codec.AsObject[PostNotices] =

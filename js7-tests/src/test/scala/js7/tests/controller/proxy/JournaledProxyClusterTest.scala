@@ -209,7 +209,7 @@ final class JournaledProxyClusterTest extends OurTestSuite with ClusterProxyTest
   }
 
   private def calculateNumberOf[A: Encoder: Tag](n: Int, sample: A): Int =
-    if (sys.props.contains("test.speed") && sys.runtime.maxMemory >= 16_000_000_000L) {
+    if sys.props.contains("test.speed") && sys.runtime.maxMemory >= 16_000_000_000L then {
       val sampleSize = sample.asJson.toByteArray.length
       logger.info(s"$n× ${implicitly[Tag[A]].tag} à $sampleSize bytes = ${n * sampleSize} bytes")
       logger.info(sample.asJson.compactPrint)

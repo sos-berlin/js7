@@ -24,14 +24,14 @@ private[web] trait ServiceProviderRoute
 
   private val lazyServiceProviderRoute = Lazy[Route] {
     val servicePathRoutes: Seq[(RouteService, String, Route)] =
-      for {
+      for
         service <- services
         routeMapper = service.newRouteMapper(config)
         (p, r) <- routeMapper.pathToRoute(routeServiceContext)
-      } yield (service, p, r)
+      yield (service, p, r)
     logAndCheck(servicePathRoutes)
     combineRoutes(
-      for ((_, p, r) <- servicePathRoutes) yield pathSegments(p)(r))
+      for (_, p, r) <- servicePathRoutes yield pathSegments(p)(r))
   }
 
   protected final def serviceProviderRoute: Route = {
@@ -43,7 +43,7 @@ private[web] trait ServiceProviderRoute
     //}
     //Route.seal(
       requestContext => {
-        if (lazyServiceProviderRoute.isEmpty) {
+        if lazyServiceProviderRoute.isEmpty then {
           logger.debug(s"Looking up RouteService for unhandled URI ${requestContext.request.uri.path}")
         }
         lazyServiceProviderRoute()(requestContext)
@@ -56,9 +56,9 @@ private[web] object ServiceProviderRoute
   private val logger = Logger[this.type]
 
   private def logAndCheck(namedRouteToService: Seq[(RouteService, String, Route)]): Unit = {
-    if (namedRouteToService.isEmpty) logger.trace("No routes")
-    else for ((s, p, _) <- namedRouteToService) logger.debug(s"${s.getClass.scalaName} provides route '/$p'")
-    for (pathToTriples <- namedRouteToService.duplicateKeys(_._2)) {
+    if namedRouteToService.isEmpty then logger.trace("No routes")
+    else for (s, p, _) <- namedRouteToService do logger.debug(s"${s.getClass.scalaName} provides route '/$p'")
+    for pathToTriples <- namedRouteToService.duplicateKeys(_._2) do {
       sys.error("Duplicate route paths: " + pathToTriples.values.flatten.map(o => s"'${o._2}'->${o._1.getClass.scalaName}" ).mkString(", "))
     }
   }

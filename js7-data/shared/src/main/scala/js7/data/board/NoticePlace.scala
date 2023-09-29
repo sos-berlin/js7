@@ -57,7 +57,7 @@ extends Big
     val isLast = consumptionCount == 1
     copy(
       notice =
-        if (succeeded && isInConsumption && isLast)
+        if succeeded && isInConsumption && isLast then
           None
         else
           notice,

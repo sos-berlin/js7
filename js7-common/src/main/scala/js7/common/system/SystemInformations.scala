@@ -40,10 +40,10 @@ object SystemInformations
       "totalPhysicalMemorySize" ::
       "committedVirtualMemorySize" ::
       "freePhysicalMemorySize" :: Nil
-    filteredMap(for {
+    filteredMap(for
       key <- keys
       value <- Try { bean.getAttribute(OperatingSystemObjectName, key.capitalize) }.toOption
-    } yield key -> value)
+    yield key -> value)
   }
 
   def systemInformation(): SystemInformation =

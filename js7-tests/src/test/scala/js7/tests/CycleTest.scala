@@ -315,8 +315,8 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
       assert(orderToObstacles(orderId) ==
         Right(Set[OrderObstacle](WaitingForOtherTime(local("2021-03-28T03:30")))))
 
-      for (i <- 1 to 4) {
-        if (i > 1) {
+      for i <- 1 to 4 do {
+        if i > 1 then {
           eventId = eventWatch.lastAddedEventId
           clock += 30.minutes
         }
@@ -393,12 +393,12 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
       val orderId = OrderId(s"#$orderDate#CycleTesterTest")
       logger.debug(s"addOrder $orderId")
       val workflow =
-        if (onlyOnePeriod) onlyOnePeriodCycleTestExampleWorkflow else cycleTestExampleWorkflow
+        if onlyOnePeriod then onlyOnePeriodCycleTestExampleWorkflow else cycleTestExampleWorkflow
       controller.api
         .addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
         .await(99.s).orThrow
 
-      if (expected.nonEmpty) {
+      if expected.nonEmpty then {
         eventWatch.await[OrderCyclingPrepared](_.key == orderId)
       }
       val cycleStartedTimes = new VectorBuilder[Timestamp]
@@ -407,7 +407,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
           cycleWaitTimestamp max cycleState.next // Expected time of OrderCycleStart
         }
 
-      for (t <- expectedCycleStartTimes) {
+      for t <- expectedCycleStartTimes do {
         clock := t  // Difference may be zero, so OrderCycleStarted may already have been emitted
         val stamped = eventWatch
           .await[OrderCycleStarted](_.key == orderId, after = eventId)
@@ -422,7 +422,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
       }
       assert(cycleStartedTimes.result() == expectedCycleStartTimes)
 
-      for (ts <- cycleStartedTimes.result().lastOption) {
+      for ts <- cycleStartedTimes.result().lastOption do {
         clock := ts + cycleDuration
       }
       eventWatch.await[OrderFinished](_.key == orderId, after = eventId)

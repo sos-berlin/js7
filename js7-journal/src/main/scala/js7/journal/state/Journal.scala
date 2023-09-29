@@ -39,7 +39,7 @@ extends ReadableStateJournal[S]
     options: CommitOptions,
     commitLater: Boolean)
   : Task[Checked[Unit]] =
-    if (commitLater)
+    if commitLater then
       persistKeyedEventsLater(keyedEvents, options)
     else
       persistKeyedEvents(keyedEvents, options).rightAs(())

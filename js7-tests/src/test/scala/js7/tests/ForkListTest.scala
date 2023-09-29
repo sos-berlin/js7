@@ -172,7 +172,7 @@ with BlockingItemUpdater
     val childToProblem = Seq(
       "|" -> Problem("OrderId must not contain reserved characters: |"),
       "" -> EmptyStringProblem("OrderId.withChild"))
-    for (((childId, problem), i) <- childToProblem.zipWithIndex) {
+    for ((childId, problem), i) <- childToProblem.zipWithIndex do {
       val workflowId = atControllerWorkflow.id
       val orderId = OrderId(s"INVALID-TEST-$i")
 
@@ -201,7 +201,7 @@ with BlockingItemUpdater
     val workflowId = indexWorkflow.id
     val orderId = OrderId(s"INDEX")
 
-    val myList = ListValue(for (i <- Seq("A", "B", "C")) yield StringValue(i))
+    val myList = ListValue(for i <- Seq("A", "B", "C") yield StringValue(i))
     val freshOrder = FreshOrder(orderId, workflowId.path, Map("myList" -> myList),
       deleteWhenTerminated = true)
 
@@ -211,7 +211,7 @@ with BlockingItemUpdater
     assert(eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
       .head.value.event == OrderFinished())
     eventWatch.await[OrderDeleted](_.key == orderId, after = eventId)
-    for (i <- myList.elements.indices) {
+    for i <- myList.elements.indices do {
       assert(eventWatch.eventsByKey[OrderEvent](orderId / i.toString) == Seq(
         OrderMoved(Position(0) / "fork" % 1),
         OrderProcessingStarted(subagentId),
@@ -317,7 +317,7 @@ with BlockingItemUpdater
 
         OrderFinished(None)))
 
-      for (i <- list) withClue(s"i=$i ") {
+      for i <- list do withClue(s"i=$i ") {
         assert(eventWatch
           .keyedEvents[OrderEvent](_.key == orderId / s"$i", after = eventId)
           .map(_.event) ==
@@ -357,7 +357,7 @@ with BlockingItemUpdater
     controller.api.addOrders(Observable(order)).await(99.s).orThrow
 
     childOrdersProcessed.await(9.s)
-    if (cancelChildOrders) {
+    if cancelChildOrders then {
       controller.api.executeCommand(
         CancelOrders(childOrderIds)
       ).await(99.s).orThrow
@@ -373,7 +373,7 @@ with BlockingItemUpdater
   "Mixed agents" in {
     val workflowId = mixedAgentsWorkflow.id
     val orderId = OrderId("MIXED")
-    val myList = for (i <- 1 to 3) yield s"ELEMENT-$i"
+    val myList = for i <- 1 to 3 yield s"ELEMENT-$i"
 
     val eventId = eventWatch.lastAddedEventId
     val freshOrder = FreshOrder(
@@ -496,7 +496,7 @@ with BlockingItemUpdater
 
     assert(eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
       .head.value.event == OrderFinished())
-    for (elementId <- View("1", "2", "3")) {
+    for elementId <- View("1", "2", "3") do {
       assert(eventWatch.eventsByKey[OrderEvent](orderId / elementId) == Seq(
         OrderProcessingStarted(subagentId),
         OrderStdoutWritten(s"ELEMENT_ID=$elementId$nl"),
@@ -654,7 +654,7 @@ object ForkListTest
             Execute(WorkflowJob(
               agentPath,
               ShellScriptExecutable(
-                if (isWindows)
+                if isWindows then
                   """@echo off
                     |echo ELEMENT_ID=%ELEMENT_ID%
                     |""".stripMargin
@@ -671,6 +671,6 @@ object ForkListTest
     FreshOrder(
       orderId,
       workflowPath,
-      Map("myList" -> ListValue(for (i <- 1 to n) yield StringValue(s"ELEMENT-$i"))),
+      Map("myList" -> ListValue(for i <- 1 to n yield StringValue(s"ELEMENT-$i"))),
       deleteWhenTerminated = deleteWhenTerminated)
 }

@@ -94,7 +94,7 @@ trait SimpleIterator[T] extends Iterator[T] {
   }
 
   private def ensureNext(): Unit =
-    if (!hasNext) throw new NoSuchElementException
+    if !hasNext then throw new NoSuchElementException
 }
 
 object SimpleIterator {

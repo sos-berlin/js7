@@ -70,7 +70,7 @@ final class OrderParameterTest extends OurTestSuite with ControllerAgentForScala
     val outcomes = events.collect { case OrderProcessed(outcome) => outcome }
     assert(outcomes == expectedOutcomes)
 
-    if (expectedOutcomes.last.isSucceeded) assert(events.last.isInstanceOf[OrderFinished])
+    if expectedOutcomes.last.isSucceeded then assert(events.last.isInstanceOf[OrderFinished])
     else assert(events.last.isInstanceOf[OrderFailed])
   }
 }
@@ -104,7 +104,7 @@ object OrderParameterTest
   {
     def toOrderProcess(step: Step) =
       OrderProcess.fromCheckedOutcome(
-        for (number <- step.arguments.checked("ARG").flatMap(_.asNumber)) yield
+        for number <- step.arguments.checked("ARG").flatMap(_.asNumber) yield
           Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(number + 1))))
   }
 

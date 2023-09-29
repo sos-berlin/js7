@@ -118,7 +118,7 @@ final class SubagentConfTest extends OurTestSuite
       configDirectory = Paths.get("/tmp/CONFIG"),
       dataDirectory = Paths.get("/tmp/DATA"),
       logDirectory = Paths.get("/tmp/LOGS"),
-      jobWorkingDirectory = Paths.get(if (isWindows) """c:\tmp\WORKING""" else "/tmp/WORKING"),
+      jobWorkingDirectory = Paths.get(if isWindows then """c:\tmp\WORKING""" else "/tmp/WORKING"),
       webServerPorts = Nil,
       killScript = None,
       config"""js7.windows.codepages.88888 = "UNKNOWN" """)
@@ -141,7 +141,7 @@ final class SubagentConfTest extends OurTestSuite
         .map { case (cp, v) => cp.toInt -> v.unwrapped.asInstanceOf[String] }
         .toVector
         .sortBy(_._1)
-      for ((cp, name) <- cpToEncoding) {
+      for (cp, name) <- cpToEncoding do {
         try {
           val encoding = Charset.forName(name)
           val hasCpName = encoding.name == s"cp$cp" || encoding.aliases.contains(s"cp$cp")
@@ -162,7 +162,7 @@ final class SubagentConfTest extends OurTestSuite
           val name = nameObj.unwrapped.asInstanceOf[String]
           val encoding = Charset.forName(name)
           val cpName = s"cp$cp"
-          if (encoding.name == cpName || encoding.aliases.asScala(cpName))  {
+          if encoding.name == cpName || encoding.aliases.asScala(cpName) then  {
             logger.info(s"Superfluous configured Windows code page $cp -> $encoding " +
               encoding.aliases.asScala.mkString(", "))
           }
@@ -185,7 +185,7 @@ final class SubagentConfTest extends OurTestSuite
         .collect { case (codepage, Right(encoding)) => codepage -> encoding }
         .toListL
         .await(99.s)
-      for ((codepage, encoding) <- cpToEnc) {
+      for (codepage, encoding) <- cpToEnc do {
         logger.info(s"Known Windows code page $codepage -> $encoding " +
           encoding.aliases.asScala.toVector.sorted.mkString(", ") +
           ((configuredCodepages(codepage.toString) ?? " (configured)")))
@@ -199,7 +199,7 @@ final class SubagentConfTest extends OurTestSuite
       val unsupported = javaEncodings
         .filterNot(o => supportedEncodings(o.name))
         .filterNot(o => (o.aliases.asScala.toSet + o.name).exists(o => o.matches("""(cp|CP)\d+""")))
-      for (encoding <- unsupported.toVector.sorted) {
+      for encoding <- unsupported.toVector.sorted do {
         logger.info(s"Java encoding without Windows codepage: ${encoding.name} " +
           s"${encoding.aliases.asScala.toVector.mkString(", ")}")
       }
@@ -208,7 +208,7 @@ final class SubagentConfTest extends OurTestSuite
 }
 
 object SubagentConfTest {
-  private val shellExt = if (isWindows) "cmd" else "sh"
+  private val shellExt = if isWindows then "cmd" else "sh"
 
   private def provideConfigAndData(body: (Path, Path) => Unit): Unit = {
     val config = createTempDirectory("SubagentConfTest-config")

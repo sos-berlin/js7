@@ -13,7 +13,7 @@ final case class TaskId private(string: String) extends GenericString
 {
   import js7.data.job.TaskId.*
 
-  if (!pattern.matcher(string).matches)
+  if !pattern.matcher(string).matches then
     throw new IllegalArgumentException(s"Invalid TaskId($string)")
 
   /**

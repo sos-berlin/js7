@@ -49,7 +49,7 @@ private[internal] final class InternalJobAdapterHelper[J: ClassTag: Tag]
 
   private def instantiate(jJobContext: JavaJobContext): Checked[J] = {
     val cls = jJobContext.asScala.implementationClass
-    if (!implicitClass[J].isAssignableFrom(cls))
+    if !implicitClass[J].isAssignableFrom(cls) then
       Left(Problem.pure(s"Class '${cls.getName}' must be a ${implicitClass[J].getName}"))
     else
       getConstructor(cls.asInstanceOf[Class[? <: J]], jJobContext.getClass)

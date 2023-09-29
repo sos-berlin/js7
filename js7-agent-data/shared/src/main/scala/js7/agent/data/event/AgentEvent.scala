@@ -31,7 +31,7 @@ object AgentEvent extends NoKeyEvent
   object AgentDedicated {
     implicit val jsonEncoder: Encoder.AsObject[AgentDedicated] = deriveEncoder
     implicit val jsonDecoder: Decoder[AgentDedicated] =
-      c => for {
+      c => for
         directors <- c.get[Option[SubagentId]]("subagentId").flatMap {
           case None => c.get[Option[Seq[SubagentId]]]("directors").map(_.toVector.flatten)
           case Some(subagentId) => Right(Seq(subagentId))
@@ -40,7 +40,7 @@ object AgentEvent extends NoKeyEvent
         agentRunId <- c.get[AgentRunId]("agentRunId")
         controllerId <- c.get[ControllerId]("controllerId")
         controllerRunId <- c.get[Option[ControllerRunId]]("controllerRunId")
-      } yield AgentDedicated(directors, agentPath, agentRunId, controllerId, controllerRunId)
+      yield AgentDedicated(directors, agentPath, agentRunId, controllerId, controllerRunId)
   }
 
   /** Agent is up and running. */

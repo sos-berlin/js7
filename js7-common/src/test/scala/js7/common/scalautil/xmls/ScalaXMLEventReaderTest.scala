@@ -209,8 +209,8 @@ final class ScalaXMLEventReaderTest extends OurTestSuite {
     parseDocument("<A/>") { eventReader => eventReader.parseElement("A") {} }
   }
 
-  if (sys.props contains "test.speed") "Speed for minimal XML document" in {
-    for (_ <- 1 to 10) info(
+  if sys.props contains "test.speed" then "Speed for minimal XML document" in {
+    for _ <- 1 to 10 do info(
       measureTime(10000, "document") {
         parseDocument("<A/>") { eventReader =>
           eventReader.parseElement("A") {}

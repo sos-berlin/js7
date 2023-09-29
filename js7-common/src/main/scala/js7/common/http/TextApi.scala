@@ -34,7 +34,7 @@ trait TextApi
   }
 
   def getApi(uri: String): Unit = {
-    val u = if (uri == "?") "" else uri
+    val u = if uri == "?" then "" else uri
     val whenResponded = httpClient.get[Json](apiUri(u))
     val response = awaitResult(whenResponded)
     printer.doPrint(response)

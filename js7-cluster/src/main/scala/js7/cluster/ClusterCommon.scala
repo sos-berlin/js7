@@ -101,9 +101,9 @@ private[cluster] final class ClusterCommon private(
           }
           .guaranteeCase {
             case ExitCase.Completed => Task(
-              if (warned) logger.info(s"🟢 $name command succeeded after ${since.elapsed.pretty}"))
+              if warned then logger.info(s"🟢 $name command succeeded after ${since.elapsed.pretty}"))
             case ExitCase.Canceled => Task(
-              if (warned) logger.info(s"⚫️ $name Canceled after ${since.elapsed.pretty}"))
+              if warned then logger.info(s"⚫️ $name Canceled after ${since.elapsed.pretty}"))
             case _ => Task.unit
           })
   }
@@ -128,12 +128,12 @@ private[cluster] final class ClusterCommon private(
                 .flatMap(_.applyEvent(event, updatedClusterState))
                 .flatMap {
                   case Left(problem) =>
-                    if (problem.is(ClusterNodeLossNotConfirmedProblem)
-                      || problem.is(ClusterWatchInactiveNodeProblem)) {
+                    if problem.is(ClusterNodeLossNotConfirmedProblem)
+                      || problem.is(ClusterWatchInactiveNodeProblem) then {
                       logger.warn(
                         s"⛔ ClusterWatch did not agree to '${event.getClass.simpleScalaName}' event: $problem")
                       testEventBus.publish(ClusterWatchDisagreedToActivation)
-                      if (event.isInstanceOf[ClusterPassiveLost]) {
+                      if event.isInstanceOf[ClusterPassiveLost] then {
                         haltJava(
                           "🟥 While this node has lost the passive node" +
                             " and is waiting for ClusterWatch's agreement, " +

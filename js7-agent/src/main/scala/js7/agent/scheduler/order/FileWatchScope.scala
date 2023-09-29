@@ -20,11 +20,11 @@ extends Scope
             Some(Right(StringValue(orderWatchPath.string)))
 
           case _ =>
-            if (key.nonEmpty && key.forall(c => c >= '0' && c <= '9'))
+            if key.nonEmpty && key.forall(c => c >= '0' && c <= '9') then
               Try(key.toInt)
                 .toOption
                 .flatMap(i =>
-                  if (i < 0 || i > matchedMatcher.groupCount)
+                  if i < 0 || i > matchedMatcher.groupCount then
                     None
                   else
                     Option(matchedMatcher.group(i))

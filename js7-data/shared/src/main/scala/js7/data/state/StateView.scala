@@ -81,10 +81,10 @@ trait StateView extends ItemContainer
 
   // COMPATIBLE with v2.3
   final def workflowPositionToBoardState(workflowPosition: WorkflowPosition): Checked[BoardState] =
-    for {
+    for
       boardPath <- workflowPositionToBoardPath(workflowPosition)
       boardState <- keyTo(BoardState).checked(boardPath)
-    } yield boardState
+    yield boardState
 
   // COMPATIBLE with v2.3
   final def workflowPositionToBoardPath(workflowPosition: WorkflowPosition): Checked[BoardPath] =
@@ -112,10 +112,10 @@ trait StateView extends ItemContainer
         .exists(_.breakpoints contains order.position.normalized)
 
   final def workflowJob(workflowPosition: WorkflowPosition): Checked[WorkflowJob] =
-    for {
+    for
       workflow <- idToWorkflow.checked(workflowPosition.workflowId)
       job <- workflow.checkedWorkflowJob(workflowPosition.position)
-    } yield job
+    yield job
 
   private def keyToJob(jobKey: JobKey): Checked[WorkflowJob] =
     idToWorkflow.checked(jobKey.workflowId)
@@ -123,7 +123,7 @@ trait StateView extends ItemContainer
 
   // COMPATIBLE with v2.3
   protected def orderIdToBoardState(orderId: OrderId): Checked[BoardState] =
-    for {
+    for
       order <- idToOrder.checked(orderId)
       instr <- instruction_[BoardInstruction](order.workflowPosition)
       boardPath <- instr.referencedBoardPaths.toVector match {
@@ -131,7 +131,7 @@ trait StateView extends ItemContainer
         case _ => Left(Problem.pure("Legacy orderIdToBoardState, but instruction has multiple BoardPaths"))
       }
       boardState <- keyTo(BoardState).checked(boardPath)
-    } yield boardState
+    yield boardState
 
   def instruction(workflowPosition: WorkflowPosition): Instruction =
     idToWorkflow
@@ -147,10 +147,10 @@ trait StateView extends ItemContainer
       .instruction_[A](workflowPosition.position)
 
   final def workflowPositionToLabel(workflowPosition: WorkflowPosition): Checked[Option[Label]] =
-    for {
+    for
       workflow <- idToWorkflow.checked(workflowPosition.workflowId)
       labeled <- workflow.labeledInstruction(workflowPosition.position)
-    } yield labeled.maybeLabel
+    yield labeled.maybeLabel
 
   def childOrderEnded(order: Order[Order.State], parent: Order[Order.Forked]): Boolean = {
     lazy val endReached = order.state == Order.Ready &&
@@ -171,12 +171,12 @@ trait StateView extends ItemContainer
 
   /** A pure (stable, repeatable) Scope. */
   final def toPureOrderScope(order: Order[Order.State]): Checked[Scope] =
-    for (orderScopes <- toOrderScopes(order)) yield
+    for orderScopes <- toOrderScopes(order) yield
       orderScopes.pureOrderScope
 
   /** An impure (unstable, non-repeatable) Scope. */
   final def toImpureOrderExecutingScope(order: Order[Order.State], now: Timestamp): Checked[Scope] =
-    for (orderScopes <- toOrderScopes(order)) yield {
+    for orderScopes <- toOrderScopes(order) yield {
       val nowScope = NowScope(now)
       orderScopes.pureOrderScope |+| nowScope |+|
         JobResourceScope(keyTo(JobResource),
@@ -184,7 +184,7 @@ trait StateView extends ItemContainer
     }
 
   final def toOrderScopes(order: Order[Order.State]): Checked[OrderScopes] =
-    for (w <- idToWorkflow.checked(order.workflowId)) yield
+    for w <- idToWorkflow.checked(order.workflowId) yield
       OrderScopes(order, w, controllerId)
 
   final def foreachLockDemand[A](demands: Seq[LockDemand])(op: (LockState, Option[Int]) => Checked[A])

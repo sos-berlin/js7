@@ -44,7 +44,7 @@ final class AgentShutDownTest extends OurTestSuite with BeforeAndAfterAll with T
 
   "ShutDown" in {
     val agentConfiguration = AgentConfiguration.forTest(agentDirectory, "AgentShutDownTest")
-    val orderIds = for (i <- 0 until 3) yield OrderId(s"TEST-ORDER-$i")
+    val orderIds = for i <- 0 until 3 yield OrderId(s"TEST-ORDER-$i")
 
     TestAgent.blockingRun(agentConfiguration,  99.s) { agent =>
       actorSystemResource("AgentShutDownTest").blockingUse(99.s) { implicit actorSystem =>
@@ -71,7 +71,7 @@ final class AgentShutDownTest extends OurTestSuite with BeforeAndAfterAll with T
         client.commandExecute(AttachSignedItem(itemSigner.sign(SimpleTestWorkflow)))
           .await(99.s).orThrow
 
-        (for (orderId <- orderIds) yield
+        (for orderId <- orderIds yield
           client.commandExecute(AttachOrder(
             Order(
               orderId,
@@ -81,7 +81,7 @@ final class AgentShutDownTest extends OurTestSuite with BeforeAndAfterAll with T
             TestAgentPath))
         ) await 99.s
 
-        for (orderId <- orderIds) {
+        for orderId <- orderIds do {
           agent.eventWatch.await[OrderProcessingStarted](_.key == orderId)
         }
         sleep(2.s)

@@ -81,8 +81,8 @@ final class ResetSubagentWhileRunning2Test extends OurTestSuite with SubagentTes
           Some(event)
 
         case ke @ KeyedEvent(`bareSubagentId`, event @ SubagentCouplingFailed(problem)) =>
-          if (problem.toString.contains("Connection refused")
-            || problem.toString.contains("504 Service Unavailable")) {
+          if problem.toString.contains("Connection refused")
+            || problem.toString.contains("504 Service Unavailable") then {
               logger.warn(ke.toString)
               None
             } else
@@ -120,7 +120,7 @@ final class ResetSubagentWhileRunning2Test extends OurTestSuite with SubagentTes
     val eventId = eventWatch.lastAddedEventId
     runSubagent(bareSubagentItem) { _ =>
       TestSemaphoreJob.continue(2)
-      for (orderId <- Seq(aOrderId, bOrderId)) {
+      for orderId <- Seq(aOrderId, bOrderId) do {
         eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
         eventWatch.await[OrderFinished](_.key == orderId, after = eventId)
       }

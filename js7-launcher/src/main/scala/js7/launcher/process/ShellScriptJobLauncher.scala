@@ -65,7 +65,7 @@ object ShellScriptJobLauncher
     jobConf: JobConf,
     launcherConf: JobLauncherConf)
   : Checked[ShellScriptJobLauncher] =
-    if (!launcherConf.scriptInjectionAllowed)
+    if !launcherConf.scriptInjectionAllowed then
       Left(SignedInjectionNotAllowed)
     else
       Right(new ShellScriptJobLauncher(executable, jobConf, launcherConf))
@@ -76,11 +76,11 @@ object ShellScriptJobLauncher
     userName: Option[WindowsUserName], isWindows: Boolean = OperatingSystem.isWindows)
   : Checked[Path] =
     catchNonFatal {
-      val ext = if (isWindows) ".cmd" else ".sh"
+      val ext = if isWindows then ".cmd" else ".sh"
       createTempFile(tmpDir, "script-", ext, ShellFileAttributes*)
     }.flatMap { file =>
       catchNonFatal {
-        val scrpt = if (isWindows) crRegex.replaceAllIn(script, "\r\n") else script
+        val scrpt = if isWindows then crRegex.replaceAllIn(script, "\r\n") else script
         file.write(scrpt, encoding)
       }
       .flatMap(_ => makeFileUserAccessible(userName, file))

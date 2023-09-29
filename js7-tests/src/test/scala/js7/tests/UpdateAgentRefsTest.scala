@@ -124,8 +124,8 @@ final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForSc
             AddVersion(versionId),
             AddOrChangeSigned(toSignedString(workflow withVersion versionId))))
         .await(99.s)
-        if (n > 0 && checked.left.exists(_.toString contains
-          "AgentDrivers for the following Agents are still running — please retry after some seconds:")) {
+        if n > 0 && checked.left.exists(_.toString contains
+          "AgentDrivers for the following Agents are still running — please retry after some seconds:") then {
           sleep(1.s)
           loop(n - 1)
         } else

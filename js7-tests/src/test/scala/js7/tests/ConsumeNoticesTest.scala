@@ -45,7 +45,7 @@ with BlockingItemUpdater
   protected def agentPaths = Seq(agentPath)
   protected def items = Seq(aBoard, bBoard)
 
-  private val qualifiers = for (i <- Iterator.from(0)) yield
+  private val qualifiers = for i <- Iterator.from(0) yield
     LocalDate.of(3333, 1, 1).plusDays(i).toString
 
   "A single Order" in {
@@ -322,7 +322,7 @@ with BlockingItemUpdater
       PostNotice(aBoard.path, noticeId)
     ).await(99.s).orThrow
 
-    for (orderId <- View(aOrderId, bOrderId)) {
+    for orderId <- View(aOrderId, bOrderId) do {
       controller.api
         .addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
         .await(99.s).orThrow

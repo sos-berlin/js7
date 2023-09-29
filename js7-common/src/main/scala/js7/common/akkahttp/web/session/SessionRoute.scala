@@ -76,7 +76,7 @@ trait SessionRoute extends RouteProvider
         }
 
       case Some(userAndPassword) =>
-        val result = if (userAndPassword.userId.isAnonymous)
+        val result = if userAndPassword.userId.isAnonymous then
           Left(InvalidLoginProblem)
         else
           gateKeeper.authenticateUser(userAndPassword)
@@ -84,7 +84,7 @@ trait SessionRoute extends RouteProvider
             .flatMap(authenticatedUser =>
               idsOrUser match {
                 case Left(allowedUserIds) =>
-                  if (!allowedUserIds.contains(userAndPassword.userId))
+                  if !allowedUserIds.contains(userAndPassword.userId) then
                     Left(specificLoginRequiredProblem)
                   else
                     Right(authenticatedUser)
@@ -93,7 +93,7 @@ trait SessionRoute extends RouteProvider
                   gateKeeper.authenticateUser(userAndPassword)
                     .toChecked(InvalidLoginProblem)
                     .flatMap(authenticatedUser =>
-                      if (!httpUser.id.isAnonymous && httpUser.id != userAndPassword.userId)
+                      if !httpUser.id.isAnonymous && httpUser.id != userAndPassword.userId then
                         Left(Problem("Login user does not match HTTP(S) user"))
                       else
                         Right(authenticatedUser))

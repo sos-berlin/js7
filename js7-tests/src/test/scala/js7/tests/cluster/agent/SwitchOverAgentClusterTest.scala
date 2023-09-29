@@ -62,10 +62,10 @@ with BlockingItemUpdater
     /** Returned `TestAgent` releases `DirectorEnv`, too. */
     def toTestAgent(envResource: Resource[Task, DirectorEnv]): (DirectorEnv, TestAgent) = {
       val resource: Resource[Task, (DirectorEnv, RunningAgent)] =
-        for {
+        for
           env <- envResource
           program <- env.programResource
-        } yield env -> program
+        yield env -> program
       val allocated = resource.toAllocated.await(99.s)
       allocated.allocatedThing._1 -> TestAgent(allocated.map(_._2) /*, Some(SIGTERM) ???*/)
     }
@@ -74,10 +74,10 @@ with BlockingItemUpdater
     def allocate(envResource: Resource[Task, DirectorEnv])
     : Allocated[Task, (DirectorEnv, Task[RunningAgent])] =
       locally {
-        for {
+        for
           env <- envResource
           restartable <- env.restartableDirectorResource
-        } yield env -> restartable.currentDirector
+        yield env -> restartable.currentDirector
       }.toAllocated.await(99.s)
 
     val primaryAllocated = allocate(

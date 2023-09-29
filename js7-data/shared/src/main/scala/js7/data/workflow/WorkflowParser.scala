@@ -84,7 +84,7 @@ object WorkflowParser
       expressionMap
         .map(ObjectExpr.apply)
 
-    private val anonymousWorkflowJob: Parser0[WorkflowJob] = for {
+    private val anonymousWorkflowJob: Parser0[WorkflowJob] = for
       kv <- keyValues[Any](
         keyValue("env", objectExpression) |
         keyValue("v1Compatible", booleanConstant) |
@@ -113,7 +113,7 @@ object WorkflowParser
         case ("executable", path: String) =>
           pure(PathExecutable(path, env.nameToExpr, returnCodeMeaning = returnCodeMeaning, v1Compatible = v1Compatible))
         case ("command", command: String) =>
-          if (v1Compatible) failWith(s"v1Compatible=true is inappropriate for a command")
+          if v1Compatible then failWith(s"v1Compatible=true is inappropriate for a command")
           else checkedToParser(CommandLineParser.parse(command)
             .map(CommandLineExecutable(_, env.nameToExpr, returnCodeMeaning = returnCodeMeaning)))
         case ("script", script: Expression) =>
@@ -128,7 +128,7 @@ object WorkflowParser
       }
       parallelism <- kv.getOrElse[Int]("parallelism", WorkflowJob.DefaultParallelism)
       sigkillDelay <- kv.get[Int]("sigkillDelay").map(_.map(_.s))
-    } yield
+    yield
       WorkflowJob(agentPath, executable, defaultArguments.nameToExpr,
         subagentSelectionId = None/*TODO*/,
         jobResourcePaths,
@@ -171,11 +171,11 @@ object WorkflowParser
         ~ hardEnd)
       .flatMap { case (((start, ()), maybeKeyToValue), end) =>
         val keyToValue = maybeKeyToValue getOrElse KeyToValue.empty
-        for {
+        for
           namedValues <- keyToValue.get[NamedValues]("namedValues")
           errorMessage <- keyToValue.get[Expression]("message")
           uncatchable <- keyToValue.get[BooleanConstant]("uncatchable").map(_.fold(false)(_.booleanValue))
-        } yield FailInstr(errorMessage, namedValues getOrElse Map.empty, uncatchable = uncatchable, sourcePos(start, end))
+        yield FailInstr(errorMessage, namedValues getOrElse Map.empty, uncatchable = uncatchable, sourcePos(start, end))
       }
 
     private val promptInstruction: Parser[Prompt] =
@@ -204,14 +204,14 @@ object WorkflowParser
         ~~<* instructionTerminator.?
       ) .flatMap { case (((start, maybeKeyToValue), end), branches) =>
           val keyToValue = maybeKeyToValue getOrElse KeyToValue.empty
-          for {
+          for
             joinIfFailed <- keyToValue.getOrElse("joinIfFailed", BooleanConstant(false))
             fork <- checkedToParser(Fork.checked(
               branches,
               agentPath = None,
               joinIfFailed = joinIfFailed.booleanValue,
               sourcePos = sourcePos(start, end)))
-          } yield fork
+          yield fork
         }
     }
 
@@ -245,14 +245,14 @@ object WorkflowParser
         ~~ curlyWorkflowOrInstruction
         ~~<* instructionTerminator.?
       ) .flatMap { case ((((start, keyToValue), end), try_), catch_) =>
-          for {
+          for
             delays <- keyToValue.get[List[Int]]("retryDelays")
             maxTries <- keyToValue.get[Int]("maxTries")
             try_ <- checkedToParser(TryInstruction.checked(try_, catch_,
               delays.map(_.toVector.map(FiniteDuration(_, SECONDS))),
               maxTries = maxTries,
               sourcePos(start, end)))
-          } yield try_
+          yield try_
         }
 
     private val lockInstruction: Parser[LockInstruction] =
@@ -265,11 +265,11 @@ object WorkflowParser
         index ~~
         curlyWorkflowOrInstruction
       ).flatMap { case (((start, keyToValue), end), subworkflow) =>
-        for {
+        for
           lockPath <- keyToValue[LockPath]("lock")
           count <- keyToValue.get[Int]("count")
           lock <- checkedToParser(LockInstruction.checked(lockPath, count, subworkflow, sourcePos(start, end)))
-        } yield lock
+        yield lock
       } <* instructionTerminator.?
 
     private val instruction: Parser[Instruction] =
@@ -319,7 +319,7 @@ object WorkflowParser
               checkedToParser(
                 Workflow.checkedSub(
                   WorkflowPath.NoId,
-                  if (Workflow.isCorrectlyEnded(instructions)) instructions
+                  if Workflow.isCorrectlyEnded(instructions) then instructions
                   else instructions :+ (() @: ImplicitEnd(Some(SourcePos(start, end)))),
                   jobs.toMap))
           }

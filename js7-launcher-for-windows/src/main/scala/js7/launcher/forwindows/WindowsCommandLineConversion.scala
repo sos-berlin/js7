@@ -17,11 +17,11 @@ private object WindowsCommandLineConversion
       .map(_.mkString(" "))
 
   private def quote(arg: String) = {
-    if (arg.contains('"'))
+    if arg.contains('"') then
       Left(Problem.pure("Windows command line argument must not contain a quote (\")"))
     else
       Right(
-        if (arg exists ToBeQuoted)
+        if arg exists ToBeQuoted then
           "\"" + arg + '"'
         else
           arg)

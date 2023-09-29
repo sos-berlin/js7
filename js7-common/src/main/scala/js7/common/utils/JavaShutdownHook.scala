@@ -27,7 +27,7 @@ final class JavaShutdownHook private(onShutdown: () => Unit, name: String) exten
     remove()
 
   def remove(): Unit =
-    if (!shutdown) {
+    if !shutdown then {
       try {
         sys.runtime.removeShutdownHook(hook)
         logger.trace(s"$toString ShutdownHook removed")

@@ -58,7 +58,7 @@ with Service.StoppableByRequest
 
   private def dedicate: Task[Checked[Unit]] =
     logger.debugTask(Task.defer(
-      if (wasRemote)
+      if wasRemote then
         Task.right(())
       else
         subagent
@@ -184,7 +184,7 @@ with Service.StoppableByRequest
   /** Continue a recovered processing Order. */
   def recoverOrderProcessing(order: Order[Order.Processing]) =
     logger.traceTask("recoverOrderProcessing", order.id)(
-      if (wasRemote)
+      if wasRemote then
         requireNotStopping.flatMapT(_ =>
           startOrderProcessing(order)) // TODO startOrderProcessing again ?
       else
@@ -227,7 +227,7 @@ with Service.StoppableByRequest
                   .flatMap {
                     case None =>
                       // Deferred has been removed
-                      if (problem != CommandDispatcher.StoppedProblem) {
+                      if problem != CommandDispatcher.StoppedProblem then {
                         // onSubagentDied has stopped all queued StartOrderProcess commands
                         logger.warn(s"${order.id} got OrderProcessed, so we ignore $problem")
                       }
@@ -243,7 +243,7 @@ with Service.StoppableByRequest
                           case _ => Outcome.Disrupted(problem)
                         })
 
-                      if (_testFailover && orderProcessed.outcome.isInstanceOf[Outcome.Killed])
+                      if _testFailover && orderProcessed.outcome.isInstanceOf[Outcome.Killed] then
                         Task(logger.warn(
                           s"Suppressed due to failover by command: ${order.id} <-: $orderProcessed")
                         ).start

@@ -47,7 +47,7 @@ final class UntaughtAgentClusterWatchTest extends OurTestSuite with DirectoryPro
   protected override val agentPaths = Nil
 
   private lazy val subagentItems =
-    for (subagentId <- subagentIds) yield SubagentItem(subagentId, agentPath, findFreeLocalUri())
+    for subagentId <- subagentIds yield SubagentItem(subagentId, agentPath, findFreeLocalUri())
 
   override protected def items =
     Seq(TestWorkflow, workflow, agentRef, subagentSelection) ++ subagentItems

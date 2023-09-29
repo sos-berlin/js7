@@ -22,7 +22,7 @@ object VavrConverters
   implicit final class RichVavrEitherProblem[L, R](private val underlying: VEither[L, R]) extends AnyVal
   {
     def toScala: Either[L, R] =
-      if (underlying.isLeft) Left(underlying.getLeft) else Right(underlying.get)
+      if underlying.isLeft then Left(underlying.getLeft) else Right(underlying.get)
   }
 
   implicit final class RichRawVList[A](private val underlying: Iterable[A]) extends AnyVal

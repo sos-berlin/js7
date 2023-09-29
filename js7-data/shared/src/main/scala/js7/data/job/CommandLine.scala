@@ -12,7 +12,7 @@ final case class CommandLine(arguments: Seq[String])
 
   override def toString = arguments
     .map { arg =>
-      if (arg.contains(' ') || arg.contains('\''))
+      if arg.contains(' ') || arg.contains('\'') then
         "'" + arg.replace("'", "\''") + "'"
       else
         arg
@@ -25,6 +25,6 @@ object CommandLine
   def fromFile(file: Path) = new CommandLine(Seq(file.toString))
 
   def checked(arguments: Seq[String]): Checked[CommandLine] =
-    if (arguments.isEmpty) Left(Problem.pure("Command line must not be empty"))
+    if arguments.isEmpty then Left(Problem.pure("Command line must not be empty"))
     else Right(new CommandLine(arguments))
 }

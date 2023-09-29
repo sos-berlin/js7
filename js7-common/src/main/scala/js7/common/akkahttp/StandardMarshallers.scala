@@ -83,7 +83,7 @@ object StandardMarshallers
   def stringMarshaller[A](mediaType: MediaType.WithOpenCharset, toString: A => String): ToEntityMarshaller[A] =
     Marshaller.withOpenCharset(mediaType) { (a, charset) =>
       var byteString = ByteString(toString(a), charset.nioCharset)
-      if (!byteString.endsWith(Nl)) byteString ++= Nl   // Append \n to terminate curl output properly
+      if !byteString.endsWith(Nl) then byteString ++= Nl   // Append \n to terminate curl output properly
       HttpEntity.Strict(ContentType(mediaType, charset), byteString)
     }
 

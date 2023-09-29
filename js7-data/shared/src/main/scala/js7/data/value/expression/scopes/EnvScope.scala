@@ -20,18 +20,18 @@ trait EnvScope extends Scope
       case FunctionCall("env", arguments) =>
         Some(arguments match {
           case Seq(Argument(nameExpr, None | Some("name"))) =>
-            for {
+            for
               name <- nameExpr.evalAsString
               string <- get(name) !! UnknownKeyProblem("environment variable", name)
-            } yield StringValue(string)
+            yield StringValue(string)
 
           case Seq(
           Argument(nameExpr, None | Some("name")),
           Argument(defaultExpr, None | Some("default"))) =>
-            for {
+            for
               name <- nameExpr.evalAsString
               result <- get(name).fold(defaultExpr.eval)(v => Checked(StringValue(v)))
-            } yield result
+            yield result
 
           case _ =>
             Left(InvalidFunctionArgumentsProblem(functionCall))

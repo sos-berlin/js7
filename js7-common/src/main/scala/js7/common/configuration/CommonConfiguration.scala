@@ -29,7 +29,7 @@ trait CommonConfiguration extends WebServerBinding.HasLocalUris with BasicConfig
   lazy val httpsConfig =
     HttpsConfig(
       keyStoreRef =
-        (if (config.hasPath("js7.web.https.client-keystore"))
+        (if config.hasPath("js7.web.https.client-keystore") then
           KeyStoreRef.fromSubconfig(config.getConfig("js7.web.https.client-keystore"),
             defaultFile = configDirectory.resolve("private/https-client-keystore.p12"))
         else

@@ -60,7 +60,7 @@ final class FileJsonSeqTest extends OurTestSuite {
     }
   }
 
-  if (sys.props contains "test.speed") {
+  if sys.props contains "test.speed" then {
     val m = 3
     val n = 10000
 
@@ -69,8 +69,8 @@ final class FileJsonSeqTest extends OurTestSuite {
     "Speed test" - {
       "toJson" in {
         val stopwatch = new Stopwatch
-        for (_ <- 1 to 2) {
-          for (i <- 1 to n) {
+        for _ <- 1 to 2 do {
+          for i <- 1 to n do {
             val a: KeyedEvent[event.type] = i.toString <-: event
             Stamped(i, Timestamp.Epoch, i.toString <-: event: KeyedEvent[MyEvent]).asJson
           }
@@ -92,8 +92,8 @@ final class FileJsonSeqTest extends OurTestSuite {
         withTemporaryFile { file =>
           autoClosing(new OutputStreamJsonSeqWriter(new FileOutputStream(file.toFile))) { w =>
             val stopwatch = new Stopwatch
-            for (_ <- 1 to m) {
-              for (i <- 1 to n) {
+            for _ <- 1 to m do {
+              for i <- 1 to n do {
                 w.writeJson(Stamped(i, Timestamp.Epoch, i.toString <-: event: KeyedEvent[MyEvent]).asJson)
               }
               w.flush()
@@ -108,8 +108,8 @@ final class FileJsonSeqTest extends OurTestSuite {
         withTemporaryFile { file =>
           autoClosing(new OutputStreamJsonSeqWriter(new FileOutputStream(file.toFile))) { w =>
             val stopwatch = new Stopwatch
-            for (_ <- 1 to m) {
-              for (i <- 1 to n) {
+            for _ <- 1 to m do {
+              for i <- 1 to n do {
                 w.writeJson(Stamped(i, Timestamp.Epoch, i.toString <-: event: KeyedEvent[MyEvent]).asJson)
                 w.flush()
               }
@@ -118,13 +118,13 @@ final class FileJsonSeqTest extends OurTestSuite {
             info(s"${Files.size(file)} bytes,  ${Files.size(file) / (m * n)}/document")
           }
 
-          for (_ <- 1 to 5)
+          for _ <- 1 to 5 do
           autoClosing(InputStreamJsonSeqReader.open(file)) { reader =>
             val iterator: Iterator[Json] = reader.iterator.map(_.value)
-            for (_ <- 1 to m) {
+            for _ <- 1 to m do {
               val stopwatch = new Stopwatch
               var dummy = 0
-              for (_ <- 1 to n) {
+              for _ <- 1 to n do {
                 dummy += iterator.next().jsonObjectOrThrow.toMap.size
               }
               info("read: " + stopwatch.itemsPerSecondString(n, "events"))
@@ -141,9 +141,9 @@ final class FileJsonSeqTest extends OurTestSuite {
             val out = fileOut
             val w = new OutputStreamJsonSeqWriter(out)
             val stopwatch = new Stopwatch
-            for (_ <- 1 to 2) {
+            for _ <- 1 to 2 do {
               val n = 100
-              for (i <- 1 to n) {
+              for i <- 1 to n do {
                 w.writeJson(Stamped(i, Timestamp.Epoch, i.toString <-: event: KeyedEvent[MyEvent]).asJson)
                 w.flush()
                 fileOut.getFD.sync()

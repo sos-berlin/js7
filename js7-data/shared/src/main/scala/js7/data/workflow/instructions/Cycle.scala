@@ -29,7 +29,7 @@ extends Instruction
       outer = Some(outer)))
 
   override def reduceForAgent(agentPath: AgentPath, workflow: Workflow) =
-    if (isVisibleForAgent(agentPath, cycleWorkflow))
+    if isVisibleForAgent(agentPath, cycleWorkflow) then
       copy(
         cycleWorkflow = cycleWorkflow.reduceForAgent(agentPath))
     else

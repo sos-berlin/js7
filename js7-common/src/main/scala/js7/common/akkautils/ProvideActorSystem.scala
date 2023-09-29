@@ -20,7 +20,7 @@ trait ProvideActorSystem extends HasCloser
   protected final lazy val actorSystem =
     newActorSystem(actorSystemName, config.withFallback(defaultConfig))
       .withCloser { o =>
-        if (!o.whenTerminated.isCompleted) {
+        if !o.whenTerminated.isCompleted then {
           Akkas.terminateAndWait(o, TerminationTimeout)
         }
       }

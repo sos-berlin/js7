@@ -75,14 +75,14 @@ object ShellScriptProcess {
               fiber.join.onErrorHandle(t => logger.warn(outerr.toString + ": " + t.toStringWithCauses))
 
             override val terminated =
-              (for {
+              (for
                 outFiber <- copyToObservable(Stdout, process.stdout, out).start
                 errFiber <- copyToObservable(Stderr, process.stderr, err).start
                 _ <- Task.race(
                   sigkilled.delayExecution(stdoutAndStderrDetachDelay).map { _ =>
-                    if (false) Try(process.stdout.close()) // FIXME
-                    if (false) Try(process.stderr.close()) // FIXME
-                    if (process.isAlive) {
+                    if false then Try(process.stdout.close()) // FIXME
+                    if false then Try(process.stderr.close()) // FIXME
+                    if process.isAlive then {
                       logger.debug("destroyForcibly")
                       process.destroyForcibly()
                     }
@@ -90,7 +90,7 @@ object ShellScriptProcess {
                   await(Stdout, outFiber) *> await(Stderr, errFiber))
                 returnCode <- super.terminated
                 _ <- whenTerminated
-              } yield returnCode).memoize
+              yield returnCode).memoize
           }
         })
     }
@@ -100,7 +100,7 @@ object ShellScriptProcess {
     conf.windowsLogon match {
       case None =>
         val processBuilder = new ProcessBuilder(args.asJava)
-        for (o <- conf.workingDirectory) processBuilder.directory(o.toFile)
+        for o <- conf.workingDirectory do processBuilder.directory(o.toFile)
 
         transferEnv(from = conf.additionalEnvironment, to = processBuilder.environment)
 

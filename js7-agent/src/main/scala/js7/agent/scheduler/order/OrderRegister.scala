@@ -25,7 +25,7 @@ private[order] final class OrderRegister extends ActorRegister[OrderId, OrderEnt
     remove(actorToKey(actor))
 
   override def remove(orderId: OrderId): Option[OrderEntry] =
-    for (orderEntry <- super.remove(orderId)) yield {
+    for orderEntry <- super.remove(orderId) yield {
       orderEntry.timer.cancel()
       orderEntry
     }

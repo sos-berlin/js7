@@ -45,7 +45,7 @@ final class AddOrderTest extends OurTestSuite with ControllerAgentForScalaTest
   }
 
   "An unknown argument detected at Agent lets the order fail" in {
-    for (i <- 1 to 2) {
+    for i <- 1 to 2 do {
       val orderId = OrderId(s"UNKNOWN-ARG-$i")
       assert(controller.runOrder(FreshOrder(orderId, unknownArgWorkflow.path)).map(_.value) == Seq(
         OrderAdded(unknownArgWorkflow.path ~ "INITIAL"),

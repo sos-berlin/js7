@@ -61,7 +61,7 @@ final class ProcessDriver(
           Task(checkedWindowsLogon
             .flatMap { maybeWindowsLogon =>
               catchNonFatal {
-                for (o <- maybeWindowsLogon)
+                for o <- maybeWindowsLogon do
                   WindowsProcess.makeFileAppendableForUser(returnValuesProvider.file, o.userName)
               }.map(_ =>
                 ProcessConfiguration(

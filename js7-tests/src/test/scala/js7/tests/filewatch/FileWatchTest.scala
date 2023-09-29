@@ -149,8 +149,8 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
       .dropWhile(_.nonEmpty)
       .headL
       .runToFuture
-    for (files <- filenames.grouped(100)) {
-      for (f <- files) watchDirectory / f := ""
+    for files <- filenames.grouped(100) do {
+      for f <- files do watchDirectory / f := ""
       sleep(10.ms)
     }
     whenAllRemoved.await(99.s)
@@ -212,7 +212,7 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
     longFile := ""
     TestJob.continue()
 
-    for (i <- 1 to 2) withClue(s"#$i") {
+    for i <- 1 to 2 do withClue(s"#$i") {
       itemRevision = itemRevision.next
       val eventId = eventWatch.lastAddedEventId
       val changedFileWatch = waitingFileWatch.copy(delay = i.ms/*little change*/)
@@ -306,7 +306,7 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
           newFile.toString))
 
       // Java for MacOS needs 2s to detect a file (maybe oldFile)
-      if (isMac) sleep(2500.ms)
+      if isMac then sleep(2500.ms)
 
       assert(eventWatch
         .keyedEvents[ExternalOrderVanished](after = eventId)

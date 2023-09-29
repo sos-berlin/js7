@@ -63,7 +63,7 @@ extends EventReader
     }
 
   private[journal] def onFileWritten(flushedPosition: Long): Unit =
-    if (flushedPosition > flushedLengthSync.last) {
+    if flushedPosition > flushedLengthSync.last then {
       flushedLengthSync.onAdded(flushedPosition)
     }
 

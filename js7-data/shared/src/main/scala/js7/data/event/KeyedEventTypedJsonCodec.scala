@@ -47,15 +47,15 @@ extends Codec.AsObject[KeyedEvent[E]]
   /** Union. */
   def |[B <: Event](other: KeyedEventTypedJsonCodec[B]): KeyedEventTypedJsonCodec[Event] = {
     val sameClasses = classToEncoder.keySet & other.classToEncoder.keySet
-    if (sameClasses.nonEmpty) throw new IllegalArgumentException(
+    if sameClasses.nonEmpty then throw new IllegalArgumentException(
       s"Union of KeyedEventTypedJsonCodec has non-unique classes: $sameClasses")
 
     val sameClassNames = nameToClass.keySet & other.nameToClass.keySet
-    if (sameClassNames.nonEmpty) throw new IllegalArgumentException(
+    if sameClassNames.nonEmpty then throw new IllegalArgumentException(
       s"Union of KeyedEventTypedJsonCodec has non-unique decoder names: $sameClassNames")
 
     val sameDecoderNames = nameToDecoder.keySet & other.nameToDecoder.keySet
-    if (sameDecoderNames.nonEmpty) throw new IllegalArgumentException(
+    if sameDecoderNames.nonEmpty then throw new IllegalArgumentException(
       s"Union of KeyedEventTypedJsonCodec has non-unique class names: $sameDecoderNames")
 
     new KeyedEventTypedJsonCodec[Event](
@@ -68,11 +68,11 @@ extends Codec.AsObject[KeyedEvent[E]]
     keyedEvent.asJsonObject(encoder = classToEncoder(keyedEvent.event.getClass))
 
   def apply(c: HCursor): Decoder.Result[KeyedEvent[E]] =
-    for {
+    for
       typeName <- c.get[String](TypeFieldName)
       decoder <- nameToDecoder(typeName)
       keyedEvent <- decoder.apply(c)
-    } yield keyedEvent
+    yield keyedEvent
 
   implicit def keyedEventJsonCodec[EE <: E]: KeyedEventTypedJsonCodec[EE] =
     this.asInstanceOf[KeyedEventTypedJsonCodec[EE]]
@@ -87,7 +87,7 @@ extends Codec.AsObject[KeyedEvent[E]]
     json.asObject.flatMap(_(TypeFieldName)) contains classToNameJson(implicitClass[E1])
 
   def typenameToClassOption(name: String): Option[Class[? <: E]] =
-    if (name == this.superclassName)
+    if name == this.superclassName then
       Some(implicitClass[E])
     else
       nameToClass.get(name)

@@ -41,9 +41,9 @@ extends ForkInstruction
     branches = branches.map(o => o.copy(workflow = o.workflow.copy(outer = Some(outer)))))
 
   override def reduceForAgent(agentPath: AgentPath, workflow: Workflow) =
-    if (this.agentPath.contains(agentPath) || isVisibleForAgent(agentPath, workflow))
+    if this.agentPath.contains(agentPath) || isVisibleForAgent(agentPath, workflow) then
       copy(
-        branches = for (b <- branches) yield
+        branches = for b <- branches yield
           reuseIfEqual(b, b.copy(
             workflow = b.workflow.reduceForAgent(agentPath))))
     else
@@ -146,14 +146,14 @@ object Fork
       "joinIfFailed" -> o.joinIfFailed.?.asJson)
 
   implicit val jsonDecoder: Decoder[Fork] =
-    c => for {
+    c => for
       branches <- c.get[Vector[Fork.Branch]]("branches")
       sourcePos <- c.get[Option[SourcePos]]("sourcePos")
       agentPath <- c.get[Option[AgentPath]]("agentPath")
       joinIfFailed <- c.getOrElse[Boolean]("joinIfFailed")(false)
       fork <- checked(branches, agentPath, joinIfFailed, sourcePos)
         .toDecoderResult(c.history)
-    } yield fork
+    yield fork
 
   final case class DuplicatedBranchIdsInForkProblem(branchIds: Seq[Fork.Branch.Id]) extends Problem.Coded {
     def arguments = Map(

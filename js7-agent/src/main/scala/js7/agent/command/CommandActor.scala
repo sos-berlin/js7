@@ -43,8 +43,8 @@ extends Actor {
         def msg = s"Response to ${run.idString} " +
           s"${AgentCommand.jsonCodec.classToName(run.command.getClass)} " +
           s"(${run.runningSince.elapsed.pretty}): $response"
-        if (run.batchInternalId.isEmpty) {
-          if (response == Success(Right(AgentCommand.Response.Accepted)))
+        if run.batchInternalId.isEmpty then {
+          if response == Success(Right(AgentCommand.Response.Accepted)) then
             logger.trace(msg)
           else
             logger.debug(msg)
@@ -85,7 +85,7 @@ extends Actor {
     command match {
       case Batch(commands) =>
         val promises = Vector.fill(commands.size) { Promise[Checked[Response]]() }
-        for ((CorrelIdWrapped(subcorrelId, cmd), promise) <- commands zip promises) {
+        for (CorrelIdWrapped(subcorrelId, cmd), promise) <- commands zip promises do {
           subcorrelId.orNew.bind {
             executeCommand(cmd, meta, promise, batchId = batchId orElse Some(correlId))
           }

@@ -25,9 +25,9 @@ final case class EventRequest[E <: Event](
     val builder = Vector.newBuilder[(String, String)]
     builder += "return" -> eventClasses.map(_.getSimpleName stripSuffix "$").mkString(",")
     builder += "delay" -> durationToString(delay)
-    for (o <- timeout) builder += "timeout" -> durationToString(o)
-    if (limit != DefaultLimit) builder += "limit" -> limit.toString
-    for (o <- tornOlder) builder += "tornOlder" -> durationToString(o)
+    for o <- timeout do builder += "timeout" -> durationToString(o)
+    if limit != DefaultLimit then builder += "limit" -> limit.toString
+    for o <- tornOlder do builder += "tornOlder" -> durationToString(o)
     builder += "after" -> after.toString
     builder.result()
   }
@@ -57,7 +57,7 @@ object EventRequest
     /** Return Torn if the first event is older than `tornOlder`. */
     tornOlder: Option[FiniteDuration] = None)
   : EventRequest[E] = {
-    if (implicitClass[E] eq classOf[Nothing])
+    if implicitClass[E] eq classOf[Nothing] then
       throw new IllegalArgumentException("EventRequest.singleClass[Nothing]: Missing type parameter?")
     new EventRequest[E](Set(implicitClass[E]), after, timeout, delay, limit, tornOlder)
   }

@@ -20,10 +20,10 @@ extends AbstractIterator[EventId]
   def lastUsedEventId: EventId = lastResult.get
 
   def updateLastEventId(newEventId: EventId): Unit =
-    while (true) {
+    while true do {
       val last = lastResult.get
-      if (newEventId < last) return
-      if (lastResult.compareAndSet(last, newEventId)) return
+      if newEventId < last then return
+      if lastResult.compareAndSet(last, newEventId) then return
     }
 
   def hasNext = true
@@ -32,8 +32,8 @@ extends AbstractIterator[EventId]
   def next(): EventId = {
     val nowId = eventIdClock.currentTimeMillis * EventId.IdsPerMillisecond
     val last = lastResult.get
-    val nextId = if (last < nowId) nowId else last + 1
-    if (lastResult.compareAndSet(last, nextId))
+    val nextId = if last < nowId then nowId else last + 1
+    if lastResult.compareAndSet(last, nextId) then
       nextId
     else
       next()

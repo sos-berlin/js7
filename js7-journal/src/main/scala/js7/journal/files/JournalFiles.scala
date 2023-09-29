@@ -48,9 +48,9 @@ object JournalFiles
 
   private def listFiles[A](journalFileBase: Path)(body: Iterator[Path] => Vector[A]): Vector[A] = {
     val directory = journalFileBase.getParent
-    if (!exists(directory))
+    if !exists(directory) then
       Vector.empty
-    else if (journalFileBase.getFileName == null)
+    else if journalFileBase.getFileName == null then
       Vector.empty
     else
       autoClosing(Files.list(directory)) { stream =>
@@ -61,7 +61,7 @@ object JournalFiles
   private[files] def deleteJournalIfMarked(fileBase: Path): Checked[Unit] =
     try {
       val markerFile = deletionMarkerFile(fileBase)
-      if (exists(markerFile)) {
+      if exists(markerFile) then {
         logger.debug(s"Marker file found: $markerFile")
         logger.warn("DELETE JOURNAL DUE TO JOURNAL RESET IN PREVIOUS RUN")
         deleteJournal(fileBase)
@@ -75,9 +75,9 @@ object JournalFiles
     val matches: String => Boolean = string =>
       JournalFile.anyJournalFilePattern(fileBase.getFileName).matcher(string).matches
     val markerFile = deletionMarkerFile(fileBase)
-    if (!exists(markerFile)/*required for test*/) touchFile(markerFile)
+    if !exists(markerFile)/*required for test*/ then touchFile(markerFile)
     var failed = false
-    for (file <- listFiles(fileBase)(_.filter(file => matches(file.getFileName.toString)).toVector)) {
+    for file <- listFiles(fileBase)(_.filter(file => matches(file.getFileName.toString)).toVector) do {
       try {
         logger.info(s"DELETE JOURNAL FILE $file")
         delete(file)
@@ -86,7 +86,7 @@ object JournalFiles
         failed = true
       }
     }
-    if (failed) {
+    if failed then {
       logger.warn("Journal files will be deleted at next start")
     } else {
       delete(markerFile)
@@ -112,7 +112,7 @@ object JournalFiles
 
     def updateSymbolicLink(toFile: Path): Unit = {
       val symLink = Paths.get(s"${journalLocation.fileBase}-journal")  // We preserve the suffix ".journal" for the real journal files
-      Try { if (exists(symLink, NOFOLLOW_LINKS)) delete(symLink) }
+      Try { if exists(symLink, NOFOLLOW_LINKS) then delete(symLink) }
       Try { createSymbolicLink(symLink, toFile.getFileName) }
     }
 
@@ -128,7 +128,7 @@ object JournalFiles
   def updateSymbolicLink(fileBase: Path, toFile: Path): Unit = {
     assertThat(toFile.toString startsWith fileBase.toString)
     val symLink = Paths.get(s"$fileBase-journal")  // We preserve the suffix ".journal" for the real journal files
-    Try { if (exists(symLink, NOFOLLOW_LINKS)) delete(symLink) }
+    Try { if exists(symLink, NOFOLLOW_LINKS) then delete(symLink) }
     Try { createSymbolicLink(symLink, toFile.getFileName) }
   }
 }

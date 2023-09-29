@@ -162,7 +162,7 @@ with MainJournalingActor[ControllerState, Event]
     def restart = shutDown.toOption.fold(false)(_.restart)
 
     def start(shutDown: ControllerCommand.ShutDown): Unit =
-      if (!shuttingDown) {
+      if !shuttingDown then {
         since := now
         this.shutDown := shutDown
         stillShuttingDownCancelable := scheduler
@@ -180,16 +180,16 @@ with MainJournalingActor[ControllerState, Event]
         (!snapshotTaken ?? " and the snapshot"))
 
     def onSnapshotTaken(): Unit =
-      if (shuttingDown) {
+      if shuttingDown then {
         snapshotTaken = true
         continue()
       }
 
     def continue() =
-      for (shutDown <- shutDown) {
+      for shutDown <- shutDown do {
         logger.trace(s"shutdown.continue: $runningAgentDriverCount AgentDrivers${
           !snapshotTaken ?? ", snapshot required"}")
-        if (!terminatingAgentDrivers) {
+        if !terminatingAgentDrivers then {
           terminatingAgentDrivers = true
           agentRegister.values.map(_.agentDriver)
             .toVector
@@ -200,16 +200,16 @@ with MainJournalingActor[ControllerState, Event]
                 .logWhenItTakesLonger(s"$agentDriver.terminate"))
             .runAsyncAndForget // TODO
         }
-        if (runningAgentDriverCount == 0) {
-          if (!takingSnapshot) {
+        if runningAgentDriverCount == 0 then {
+          if !takingSnapshot then {
             takingSnapshot = true
-            if (shutDown.suppressSnapshot) {
+            if shutDown.suppressSnapshot then {
               snapshotTaken = true
             } else {
               journalActor ! JournalActor.Input.TakeSnapshot
             }
           }
-          if (snapshotTaken && !terminatingJournal) {
+          if snapshotTaken && !terminatingJournal then {
             // The event forces the cluster to acknowledge this event and the snapshot taken
             terminatingJournal = true
             persistKeyedEventTask(NoKey <-: ControllerShutDown)((_, _) => Completed)
@@ -232,13 +232,13 @@ with MainJournalingActor[ControllerState, Event]
     private var notified = false
 
     def enqueue(orderIds: Iterable[OrderId]): Unit =
-      if (!shuttingDown && switchover.isEmpty && orderIds.nonEmpty) {
-        for (orderId <- orderIds.iterator) {
-          if (known.add(orderId)) {
+      if !shuttingDown && switchover.isEmpty && orderIds.nonEmpty then {
+        for orderId <- orderIds.iterator do {
+          if known.add(orderId) then {
             queue += orderId
           }
         }
-        if (!notified) {
+        if !notified then {
           self ! Internal.ContinueWithNextOrderEvents
           notified = true
         }
@@ -293,7 +293,7 @@ with MainJournalingActor[ControllerState, Event]
   def receive = {
     case Input.Start =>
       val controllerState = journal.unsafeCurrentState()
-      if (controllerState.controllerMetaState.isDefined) {
+      if controllerState.controllerMetaState.isDefined then {
         recover(controllerState)
       }
 
@@ -310,19 +310,18 @@ with MainJournalingActor[ControllerState, Event]
   }
 
   private def recover(controllerState: ControllerState): Unit = {
-    if (controllerState.controllerId != controllerConfiguration.controllerId)
+    if controllerState.controllerId != controllerConfiguration.controllerId then
       throw Problem(s"Recovered '${controllerState.controllerId}' " +
         s"differs from configured '${controllerConfiguration.controllerId}'"
       ).throwable
     this._controllerState = controllerState
     //controllerMetaState = controllerState.controllerMetaState.copy(totalRunningTime = recovered.totalRunningTime)
 
-    for (
+    for
       boardState <- controllerState.keyTo(BoardState).values;
-      notice <- boardState.notices)
-    {
+      notice <- boardState.notices
+    do
       notices.schedule(notice)
-    }
 
     persistedEventId = controllerState.eventId
 }
@@ -330,7 +329,7 @@ with MainJournalingActor[ControllerState, Event]
   private def activating: Receive = {
     case Internal.Activated(Failure(t)) =>
       logger.error(s"Activation of this cluster node failed because: ${t.toStringWithCauses}")
-      if (t.getStackTrace.nonEmpty) logger.debug(t.toStringWithCauses, t)
+      if t.getStackTrace.nonEmpty then logger.debug(t.toStringWithCauses, t)
       throw t.appendCurrentStackTrace
 
     case Internal.Activated(Success(())) =>
@@ -358,10 +357,10 @@ with MainJournalingActor[ControllerState, Event]
             .runToFuture
             .pipeTo(self)
 
-          for (path <- _controllerState.keyTo(WorkflowPathControl).keys) {
+          for path <- _controllerState.keyTo(WorkflowPathControl).keys do {
             proceedWithItem(path)
           }
-          for (itemKey <- _controllerState.keyTo(WorkflowControl).keys) {
+          for itemKey <- _controllerState.keyTo(WorkflowControl).keys do {
             proceedWithItem(itemKey)
           }
         }
@@ -376,7 +375,7 @@ with MainJournalingActor[ControllerState, Event]
       // This is to handle race-condition: An Agent may have already completed an order.
       // So send AttachOrder before DetachOrder.
       // The Agent will ignore the duplicate AttachOrder if it arrives before DetachOrder.
-      for (agentRef <- _controllerState.pathToUnsignedSimple(AgentRef).values) {
+      for agentRef <- _controllerState.pathToUnsignedSimple(AgentRef).values do {
         val agentRefState = _controllerState.keyTo(AgentRefState)
           .getOrElse(agentRef.path, AgentRefState(agentRef))
         registerAgent(agentRef, eventId = agentRefState.eventId)
@@ -386,7 +385,7 @@ with MainJournalingActor[ControllerState, Event]
       proceedWithOrders(_controllerState.idToOrder.keys)
       orderQueue.enqueue(_controllerState.idToOrder.keys)
 
-      if (persistedEventId > EventId.BeforeFirst) { // Recovered?
+      if persistedEventId > EventId.BeforeFirst then { // Recovered?
         logger.info(s"${_controllerState.idToOrder.size} Orders, " +
           s"${_controllerState.repo.typedCount[Workflow]} Workflows and " +
           s"${_controllerState.keyTo(AgentRefState).size} AgentRefs recovered")
@@ -451,15 +450,15 @@ with MainJournalingActor[ControllerState, Event]
     case Internal.ContinueWithNextOrderEvents =>
       val orderIds = orderQueue.readAll()
       val keyedEvents = nextOrderEvents(orderIds)
-      if (keyedEvents.nonEmpty) {
+      if keyedEvents.nonEmpty then {
         persistTransaction(keyedEvents)(handleEvents)
       }
 
     case Command.Execute(command, meta, correlId) =>
       val sender = this.sender()
-      if (shuttingDown)
+      if shuttingDown then
         sender ! Status.Success(Left(ControllerIsShuttingDownProblem))
-      else if (switchover.isDefined)
+      else if switchover.isDefined then
         sender ! Status.Success(Left(ControllerIsSwitchingOverProblem))
       else
         correlId.bind(
@@ -480,18 +479,18 @@ with MainJournalingActor[ControllerState, Event]
         .pipeTo(sender())
 
     case Internal.EventsFromAgent(agentPath, agentRunId, stampedAgentEvents, committedPromise) =>
-      for (agentEntry <- agentRegister.get(agentPath)) {
-        for (agentRefState <- journal.unsafeCurrentState().keyTo(AgentRefState).get(agentPath)) {
+      for agentEntry <- agentRegister.get(agentPath) do {
+        for agentRefState <- journal.unsafeCurrentState().keyTo(AgentRefState).get(agentPath) do {
           val isAgentReset = agentRefState.couplingState match {
             case _: DelegateCouplingState.Resetting => true
             case DelegateCouplingState.Reset.byCommand => true
             case _ => false
           }
-          committedPromise.completeWith(if (isAgentReset/*Race condition ???*/) {
-            for (o <- stampedAgentEvents.map(_.value)) logger.warn(
+          committedPromise.completeWith(if isAgentReset/*Race condition ???*/ then {
+            for o <- stampedAgentEvents.map(_.value) do logger.warn(
               s"Ignored event after Agent reset: $o")
             Future.successful(None)
-          } else if (!agentRefState.agentRunId.forall(_ == agentRunId)) {
+          } else if !agentRefState.agentRunId.forall(_ == agentRunId) then {
             logger.debug(s"Internal.EventsFromAgent: Unknown agentRunId=$agentRunId")
             Future.successful(None)
           } else {
@@ -558,7 +557,7 @@ with MainJournalingActor[ControllerState, Event]
                   }
               }.toVector
 
-            if (timestampedEvents.isEmpty) {
+            if timestampedEvents.isEmpty then {
               // timestampedEvents may be empty if it contains only discarded (Agent-only) events.
               // Agent's last observed EventId is not persisted then, and we do not write an AgentEventsObserved.
               // For tests, this makes the journal predictable after OrderFinished (because no AgentEventsObserved may follow).
@@ -594,11 +593,11 @@ with MainJournalingActor[ControllerState, Event]
 
     case Internal.OrdersMarked(orderToMark) =>
       val unknown = orderToMark -- _controllerState.idToOrder.keySet
-      if (unknown.nonEmpty) {
+      if unknown.nonEmpty then {
         logger.error("Response to AgentCommand.MarkOrder from Agent for unknown orders: " +
           unknown.mkString(", "))
       }
-      for ((orderId, mark) <- orderToMark) {
+      for (orderId, mark) <- orderToMark do {
         orderRegister(orderId).agentOrderMark = Some(mark)
       }
 
@@ -611,18 +610,17 @@ with MainJournalingActor[ControllerState, Event]
 
     case Internal.NoticeIsDue(boardPath, noticeId) =>
       notices.deleteSchedule(boardPath, noticeId)
-      for (
+      for
         boardState <- _controllerState.keyTo(BoardState).checked(boardPath);
         notice <- boardState.notice(noticeId);
-        keyedEvent <- boardState.deleteNoticeEvent(noticeId))
-      {
-        if (alarmClock.now() < notice.endOfLife) {
+        keyedEvent <- boardState.deleteNoticeEvent(noticeId)
+      do
+        if alarmClock.now() < notice.endOfLife then {
           notices.schedule(notice)
         } else {
           logger.debug(s"Notice lifetime expired: $boardPath $noticeId")
           persistMultiple(keyedEvent :: Nil)(handleEvents)
         }
-      }
 
     case Internal.ShutDown(shutDown) =>
       shutdown.delayUntil = now + config.getDuration("js7.web.server.delay-shutdown")
@@ -636,18 +634,18 @@ with MainJournalingActor[ControllerState, Event]
       var agentEntry = agentRegister(agentPath)
       agentEntry.actorTerminated = true
       agentEntry.release.runAsyncAndForget/*???*/ // Release in case there are surrounding Resources
-      if (switchover.isDefined && journalTerminated && runningAgentDriverCount == 0) {
+      if switchover.isDefined && journalTerminated && runningAgentDriverCount == 0 then {
         val delay = shutdown.delayUntil.timeLeft
-        if (delay.isPositive) {
+        if delay.isPositive then {
           logger.debug(s"Sleep ${delay.pretty} after ShutDown command")
           sleep(delay)
         }
         context.stop(self)
-      } else if (shuttingDown) {
+      } else if shuttingDown then {
         shutdown.continue()
       } else {
         agentRegister -= agentPath
-        for (agentRefState <- journal.unsafeCurrentState().keyTo(AgentRefState).checked(agentPath)) {
+        for agentRefState <- journal.unsafeCurrentState().keyTo(AgentRefState).checked(agentPath) do {
           agentRefState.couplingState match {
             case Resetting(_) | Reset(_) =>
               agentEntry = registerAgent(agentRefState.agentRef, eventId = EventId.BeforeFirst)
@@ -662,7 +660,7 @@ with MainJournalingActor[ControllerState, Event]
 
   private def executeVerifiedUpdateItems(verifiedUpdateItems: VerifiedUpdateItems): Unit = {
     val t = now
-    (for {
+    (for
       keyedEvents <- VerifiedUpdateItemsExecutor.execute(verifiedUpdateItems, _controllerState, {
         case calendar: Calendar =>
           CalendarExecutor.checked(calendar, Timezone.utc/*irrelevant*/).rightAs(())
@@ -670,7 +668,7 @@ with MainJournalingActor[ControllerState, Event]
       _ <- checkAgentDriversAreTerminated(
         keyedEvents.view
           .collect { case KeyedEvent(_, UnsignedSimpleItemAdded(a: AgentRef)) => a.path })
-    } yield keyedEvents)
+    yield keyedEvents)
     match {
       case Left(problem) =>
         sender() ! Left(problem)
@@ -680,7 +678,7 @@ with MainJournalingActor[ControllerState, Event]
         persistTransactionAndSubsequentEvents(keyedEvents)(handleEvents)
           .map(_ => Right(Completed))
           .map(_.map { o =>
-            if (t.elapsed > 1.s) logger.debug("VerifiedUpdateItemsCmd - " +
+            if t.elapsed > 1.s then logger.debug("VerifiedUpdateItemsCmd - " +
               itemsPerSecondString(t.elapsed, verifiedUpdateItems.itemCount, "items"))
             o
           })
@@ -694,7 +692,7 @@ with MainJournalingActor[ControllerState, Event]
   private def checkAgentDriversAreTerminated(addedAgentPaths: Iterable[AgentPath])
   : Checked[Unit] = {
     val runningAgentDrivers = addedAgentPaths.filter(agentRegister.contains)
-    if (runningAgentDrivers.nonEmpty)
+    if runningAgentDrivers.nonEmpty then
       Left(Problem("AgentDrivers for the following Agents are still running — " +
         s"please retry after some seconds: ${runningAgentDrivers.map(_.string).mkString(", ")}"))
     else
@@ -708,8 +706,8 @@ with MainJournalingActor[ControllerState, Event]
   private def handleExceptionalMessage: Receive = {
     case Terminated(actor) if actor == journalActor =>
       journalTerminated = true
-      if (!shuttingDown && switchover.isEmpty) logger.error("JournalActor terminated")
-      if (switchover.isDefined && runningAgentDriverCount > 0) {
+      if !shuttingDown && switchover.isEmpty then logger.error("JournalActor terminated")
+      if switchover.isDefined && runningAgentDriverCount > 0 then {
         agentRegister.values.map(_.agentDriver) foreach { agentDriver =>
           agentDriver
             .terminate(noJournal = true)
@@ -738,18 +736,18 @@ with MainJournalingActor[ControllerState, Event]
   : Future[Checked[ControllerCommand.Response]] =
     command match {
       case ControllerCommand.AddOrder(order) =>
-        if (shuttingDown)
+        if shuttingDown then
           Future.successful(Left(ControllerIsShuttingDownProblem))
-        else if (switchover.isDefined)
+        else if switchover.isDefined then
           Future.successful(Left(ControllerIsSwitchingOverProblem))
         else
           addOrder(order)
             .map(_.map(added => ControllerCommand.AddOrder.Response(ignoredBecauseDuplicate = !added)))
 
       case ControllerCommand.AddOrders(orders) =>
-        if (shuttingDown)
+        if shuttingDown then
           Future.successful(Left(ControllerIsShuttingDownProblem))
-        else if (switchover.isDefined)
+        else if switchover.isDefined then
           Future.successful(Left(ControllerIsSwitchingOverProblem))
         else
           addOrders(orders).map(_.map(eventId =>
@@ -780,19 +778,19 @@ with MainJournalingActor[ControllerState, Event]
 
       case ControllerCommand.PostNotice(boardPath, noticeId, maybeEndOfLife) =>
         val scope = NowScope(alarmClock.now())
-        val checked = for {
+        val checked = for
           boardState <- _controllerState.keyTo(BoardState).checked(boardPath)
           notice <- boardState.board.toNotice(noticeId, maybeEndOfLife)(scope)
           _ <- boardState.addNotice(notice) // Check
           subsequentEvents <-
-            if (notice.endOfLife <= alarmClock.now()) {
+            if notice.endOfLife <= alarmClock.now() then {
               logger.debug(
                 s"Delete $notice immediately because endOfLife is reached")
               Right((notice.boardPath <-: NoticeDeleted(notice.id)) :: Nil)
             } else
               PostNoticesExecutor
                 .postedNoticeToExpectingOrderEvents(boardState, notice, _controllerState)
-        } yield (notice, subsequentEvents)
+        yield (notice, subsequentEvents)
         checked match {
           case Left(problem) => Future.successful(Left(problem))
           case Right((notice, expectingOrderEvents)) =>
@@ -802,10 +800,10 @@ with MainJournalingActor[ControllerState, Event]
         }
 
       case ControllerCommand.DeleteNotice(boardPath, noticeId) =>
-        (for {
+        (for
           boardState <- _controllerState.keyTo(BoardState).checked(boardPath)
           keyedEvent <- boardState.deleteNoticeEvent(noticeId)
-        } yield keyedEvent)
+        yield keyedEvent)
         match {
           case Left(problem) => Future.successful(Left(problem))
           case Right(keyedEvent) =>
@@ -818,9 +816,9 @@ with MainJournalingActor[ControllerState, Event]
           .traverse(_controllerState.idToOrder.checked)
           .traverse(orders =>
             orders.traverse(order =>
-              if (order.parent.isDefined)
+              if order.parent.isDefined then
                 Left(CannotDeleteChildOrderProblem(order.id): Problem)
-              else if (order.externalOrderKey.isDefined)
+              else if order.externalOrderKey.isDefined then
                 Left(CannotDeleteWatchingOrderProblem(order.id): Problem)
               else
                 Right(order)))
@@ -834,11 +832,11 @@ with MainJournalingActor[ControllerState, Event]
 
       case ControllerCommand.ReleaseEvents(untilEventId) =>
         val userId = commandMeta.user.id
-        if (!controllerConfiguration.journalConf.releaseEventsUserIds.contains(userId))
+        if !controllerConfiguration.journalConf.releaseEventsUserIds.contains(userId) then
           Future(Left(UserIsNotEnabledToReleaseEventsProblem))
         else {
           val current = _controllerState.journalState.userIdToReleasedEventId.getOrElse(userId, EventId.BeforeFirst)
-          if (untilEventId < current)
+          if untilEventId < current then
             Future(Left(ReverseReleaseEventsProblem(requestedUntilEventId = untilEventId, currentUntilEventId = current)))
           else
             persist(JournalEventsReleased(userId, untilEventId)) { (_, updatedState) =>
@@ -1006,7 +1004,7 @@ with MainJournalingActor[ControllerState, Event]
 
   private def orderDeletedEvent(order: Order[Order.State]): KeyedEvent[OrderCoreEvent] =
     order.id <-: (
-      if (order.isState[Order.IsTerminated])
+      if order.isState[Order.IsTerminated] then
         OrderDeleted
       else
         OrderDeletionMarked)
@@ -1014,7 +1012,7 @@ with MainJournalingActor[ControllerState, Event]
   private def executeOrderMarkCommands(orderIds: Vector[OrderId])
     (toEvents: OrderId => Checked[Option[List[OrderActorEvent]]])
   : Future[Checked[ControllerCommand.Response]] =
-    if (!orderIds.areUnique)
+    if !orderIds.areUnique then
       Future.successful(Left(Problem.pure("OrderIds must be unique")))
     else
       orderIds.traverse(_controllerState.idToOrder.checked) match {
@@ -1063,7 +1061,7 @@ with MainJournalingActor[ControllerState, Event]
             -- cmd.skip.filterNot(_._2).keys
             ++ cmd.skip.filter(_._2).keys,
           itemRevision = Some(item.itemRevision.fold(ItemRevision.Initial)(_.next)))
-        val event = if (isNew) UnsignedSimpleItemAdded(item) else UnsignedSimpleItemChanged(item)
+        val event = if isNew then UnsignedSimpleItemAdded(item) else UnsignedSimpleItemChanged(item)
 
         val keyedEvents = Vector(event)
           .concat(_controllerState.updatedWorkflowPathControlAttachedEvents(item))
@@ -1075,7 +1073,7 @@ with MainJournalingActor[ControllerState, Event]
           handleEvents(stamped, updated)
           proceedWithItem(path)
           val workflowPathControl = updated.keyTo(WorkflowPathControl)(path)
-          if (!workflowPathControl.item.suspended) {
+          if !workflowPathControl.item.suspended then {
             orderQueue.enqueue(
               updated.orders.filter(_.workflowPath == workflowPathControl.workflowPath).map(_.id))
           }
@@ -1099,7 +1097,7 @@ with MainJournalingActor[ControllerState, Event]
           breakpoints = item0.breakpoints -- cmd.removeBreakpoints ++ cmd.addBreakpoints,
           itemRevision = Some(item0.itemRevision.fold(ItemRevision.Initial)(_.next)))
 
-        val event = if (isNew) UnsignedItemAdded(item) else UnsignedItemChanged(item)
+        val event = if isNew then UnsignedItemAdded(item) else UnsignedItemChanged(item)
         val keyedEvents = Vector(event)
           .concat(_controllerState.updatedWorkflowControlAttachedEvents(item))
           .map(NoKey <-: _)
@@ -1219,7 +1217,7 @@ with MainJournalingActor[ControllerState, Event]
   : Unit = {
     val itemKeys = mutable.Set.empty[InventoryItemKey]
     val orderIds = mutable.Set.empty[OrderId]
-    for (stamped <- stampedEvents) {
+    for stamped <- stampedEvents do {
       val keyedEvent = stamped.value
       keyedEvent match {
         case KeyedEvent(orderId: OrderId, _: OrderEvent) =>
@@ -1269,7 +1267,7 @@ with MainJournalingActor[ControllerState, Event]
           .awaitInfinite // TODO
 
       case UnsignedSimpleItemChanged(subagentItem: SubagentItem) =>
-        for (agentRef <- journal.unsafeCurrentState().keyToItem(AgentRef).get(subagentItem.agentPath)) {
+        for agentRef <- journal.unsafeCurrentState().keyToItem(AgentRef).get(subagentItem.agentPath) do {
           val agentDriver = agentRegister(agentRef.path).agentDriver
           agentDriver
             .changeAgentRef(agentRef)
@@ -1280,12 +1278,12 @@ with MainJournalingActor[ControllerState, Event]
         }
 
       case ItemDetached(itemKey, agentPath: AgentPath) =>
-        for (agentEntry <- agentRegister.get(agentPath)) {
+        for agentEntry <- agentRegister.get(agentPath) do {
           agentEntry.detachingItems -= itemKey
         }
 
       case ItemDeleted(agentPath: AgentPath) =>
-        for (entry <- agentRegister.get(agentPath)) {
+        for entry <- agentRegister.get(agentPath) do {
           entry.isDeleted = true
           val agentDriver = entry.agentDriver
           agentDriver.terminate(reset = true)
@@ -1306,17 +1304,17 @@ with MainJournalingActor[ControllerState, Event]
         // TODO Handle AgentRef here: agentEntry .actor ! AgentDriver.Queueable.StartFetchingEvents ...
 
       case _ =>
-        for (agentToAttachedState <- _controllerState.itemToAgentToAttachedState.get(itemKey)) {
-          for ((agentPath, attachedState) <- agentToAttachedState) {
+        for agentToAttachedState <- _controllerState.itemToAgentToAttachedState.get(itemKey) do {
+          for (agentPath, attachedState) <- agentToAttachedState do {
             // TODO Does nothing if Agent is added later! (should be impossible, anyway)
-            for (agentEntry <- agentRegister.get(agentPath)) {
+            for agentEntry <- agentRegister.get(agentPath) do {
               val agentDriver = agentEntry.agentDriver
-              if (!agentEntry.isResetting) {
+              if !agentEntry.isResetting then {
                 attachedState match {
                   case Attachable =>
                     itemKey match {
                       case itemKey: SignableItemKey =>
-                        for (signedItem <- _controllerState.keyToSignedItem.get(itemKey)) {
+                        for signedItem <- _controllerState.keyToSignedItem.get(itemKey) do {
                           agentDriver
                             .send(AgentDriver.Queueable.AttachSignedItem(signedItem))
                             .onErrorHandle(t => logger.error(
@@ -1326,7 +1324,7 @@ with MainJournalingActor[ControllerState, Event]
                         }
 
                       case itemKey: UnsignedItemKey =>
-                        for (item <- _controllerState.keyToItem.get(itemKey)) {
+                        for item <- _controllerState.keyToItem.get(itemKey) do {
                           val unsignedItem = item.asInstanceOf[UnsignedItem]
                           agentDriver
                             .send(AgentDriver.Queueable.AttachUnsignedItem(unsignedItem))
@@ -1338,7 +1336,7 @@ with MainJournalingActor[ControllerState, Event]
                     }
 
                   case Detachable =>
-                    if (/*!agentEntry.isDeleted && */!agentEntry.detachingItems.contains(itemKey)) {
+                    if /*!agentEntry.isDeleted && */!agentEntry.detachingItems.contains(itemKey) then {
                       agentEntry.detachingItems += itemKey
                       agentDriver
                         .send(AgentDriver.Queueable.DetachItem(itemKey))
@@ -1359,10 +1357,10 @@ with MainJournalingActor[ControllerState, Event]
     // ResetSubagent
     itemKey match {
       case subagentId: SubagentId =>
-        for (subagentItemState <- _controllerState.keyTo(SubagentItemState).get(subagentId)) {
+        for subagentItemState <- _controllerState.keyTo(SubagentItemState).get(subagentId) do {
           subagentItemState.isResettingForcibly match {
             case Some(force) =>
-              for (agentDriver <- agentRegister.get(subagentItemState.item.agentPath).map(_.agentDriver)) {
+              for agentDriver <- agentRegister.get(subagentItemState.item.agentPath).map(_.agentDriver) do {
                 agentDriver
                   .send(AgentDriver.Queueable.ResetSubagent(subagentId, force))
                   .onErrorHandle(t => logger.error(
@@ -1396,13 +1394,13 @@ with MainJournalingActor[ControllerState, Event]
             val orderEventHandler = new OrderEventHandler(_controllerState.repo.idTo(Workflow))
             val checkedFollowUps = orderEventHandler.handleEvent(order, keyedEvent.event)
             val dependentOrderIds = mutable.Set.empty[OrderId]
-            for (followUps <- checkedFollowUps.onProblem(p => logger.error(p))) {  // TODO OrderBroken on error?
+            for followUps <- checkedFollowUps.onProblem(p => logger.error(p)) do {  // TODO OrderBroken on error?
               followUps foreach {
                 case FollowUp.AddChild(childOrder) =>
                   dependentOrderIds += childOrder.id
 
                 case FollowUp.Delete(deleteOrderId) =>
-                  for (entry <- orderRegister.remove(deleteOrderId)) {
+                  for entry <- orderRegister.remove(deleteOrderId) do {
                     entry.timer.cancel()
                   }
 
@@ -1412,7 +1410,7 @@ with MainJournalingActor[ControllerState, Event]
 
             event match {
               case OrderNoticePostedV2_3(notice) =>
-                for (boardPath <- _controllerState.workflowPositionToBoardPath(order.workflowPosition)) {
+                for boardPath <- _controllerState.workflowPositionToBoardPath(order.workflowPosition) do {
                   notices.deleteSchedule(boardPath, notice.id)
                   notices.schedule(notice.toNotice(boardPath))
                 }
@@ -1447,19 +1445,19 @@ with MainJournalingActor[ControllerState, Event]
   }
 
   private def proceedWithOrders(orderIds: Iterable[OrderId]): Unit =
-    if (!shuttingDown && switchover.isEmpty) {
+    if !shuttingDown && switchover.isEmpty then {
       orderIds foreach proceedWithOrder
     }
 
   private def proceedWithOrder(orderId: OrderId): Unit =
-    for (order <- _controllerState.idToOrder.get(orderId)) {
-      if (order.isDetached) {
-        for (until <- order.maybeDelayedUntil) {
+    for order <- _controllerState.idToOrder.get(orderId) do {
+      if order.isDetached then {
+        for until <- order.maybeDelayedUntil do {
           alarmClock.lock {
-            if (until <= alarmClock.now()) {
+            if until <= alarmClock.now() then {
               orderQueue.enqueue(orderId :: Nil)
             } else {
-              for (entry <- orderRegister.get(orderId)) {
+              for entry <- orderRegister.get(orderId) do {
                 // TODO Cancel timer when unused
                 entry.timer := alarmClock.scheduleAt(until) {
                   self ! Internal.OrderIsDue(orderId)
@@ -1470,11 +1468,11 @@ with MainJournalingActor[ControllerState, Event]
         }
       }
 
-      for (mark <- order.mark) {
-        if (order.isAttached
-          && !orderRegister.get(orderId).flatMap(_.agentOrderMark).contains(mark)) {
+      for mark <- order.mark do {
+        if order.isAttached
+          && !orderRegister.get(orderId).flatMap(_.agentOrderMark).contains(mark) then {
           // On Recovery, MarkOrder is sent again, because orderEntry.agentOrderMark is lost
-          for ((_, agentEntry) <- checkedWorkflowAndAgentEntry(order)) {
+          for (_, agentEntry) <- checkedWorkflowAndAgentEntry(order) do {
             // CommandQueue filters multiple equal MarkOrder
             // because we may send multiple ones due to asynchronous execution
             val agentDriver = agentEntry.agentDriver
@@ -1490,7 +1488,7 @@ with MainJournalingActor[ControllerState, Event]
 
       order.attachedState match {
         case Some(_: Order.Attaching) =>
-          for (order <- order.ifState[Order.IsFreshOrReady]) {
+          for order <- order.ifState[Order.IsFreshOrReady] do {
             tryAttachOrderToAgent(order)
           }
 
@@ -1502,7 +1500,7 @@ with MainJournalingActor[ControllerState, Event]
     }
 
   private def delayOrderDeletion[E <: Event](keyedEvents: Seq[KeyedEvent[E]]): Seq[KeyedEvent[E]] =
-    if (deleteOrderDelay.isZeroOrBelow)
+    if deleteOrderDelay.isZeroOrBelow then
       keyedEvents
     else
       keyedEvents.filter {
@@ -1523,10 +1521,10 @@ with MainJournalingActor[ControllerState, Event]
       }
 
   private def tryAttachOrderToAgent(order: Order[Order.IsFreshOrReady]): Unit =
-    for ((signedWorkflow, agentEntry) <- checkedWorkflowAndAgentEntry(order)) {
-      if (order.isAttaching && !agentEntry.isResetting) {
+    for (signedWorkflow, agentEntry) <- checkedWorkflowAndAgentEntry(order) do {
+      if order.isAttaching && !agentEntry.isResetting then {
         val orderEntry = orderRegister(order.id)
-        if (!orderEntry.triedToAttached) {
+        if !orderEntry.triedToAttached then {
           val workflow = signedWorkflow.value
           import agentEntry.{agentDriver, agentPath}
 
@@ -1589,7 +1587,7 @@ with MainJournalingActor[ControllerState, Event]
         .flatMap(_controllerState.keyToItem(SubagentItem).get)
         .exists(_.agentPath == agentPath))
 
-    if (_controllerState.workflowToOrders.workflowIdToOrders contains workflow.id) {
+    if _controllerState.workflowToOrders.workflowIdToOrders contains workflow.id then {
       result ++= _controllerState.keyToItem(WorkflowPathControl)
         .get(WorkflowPathControlPath(workflow.path))
         .map(o => o.key -> o)
@@ -1606,10 +1604,10 @@ with MainJournalingActor[ControllerState, Event]
   : Option[(Signed[Workflow], AgentEntry)] =
     order.attachedState match {
       case Some(Order.AttachedState.HasAgentPath(agentPath)) =>
-        ( for {
+        ( for
             signedWorkflow <- _controllerState.repo.idToSigned(Workflow)(order.workflowId)
             agentEntry <- agentRegister.checked(agentPath)
-          } yield (signedWorkflow, agentEntry)
+          yield (signedWorkflow, agentEntry)
         ).onProblem(p => logger.error(p.withPrefix("checkedWorkflowAndAgentEntry:")))
 
       case _ => None
@@ -1621,8 +1619,8 @@ with MainJournalingActor[ControllerState, Event]
   }
 
   private def detachOrderFromAgent(orderId: OrderId): Unit =
-    for (orderEntry <- orderRegister.get(orderId)) {
-      if (!orderEntry.isDetaching) {
+    for orderEntry <- orderRegister.get(orderId) do {
+      if !orderEntry.isDetaching then {
         _controllerState.idToOrder.checked(orderId)
           .flatMap(_.detaching)
           .onProblem(p => logger.error(s"detachOrderFromAgent '$orderId': not Detaching: $p"))
@@ -1648,7 +1646,7 @@ with MainJournalingActor[ControllerState, Event]
 
   private def clusterSwitchOver(restart: Boolean)
   : Future[Checked[ControllerCommand.Response.Accepted.type]] =
-    if (switchover.isDefined)
+    if switchover.isDefined then
       Future.successful(Left(Problem("Already switching over")))
     else
       Task {

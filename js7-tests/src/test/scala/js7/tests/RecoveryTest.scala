@@ -41,8 +41,8 @@ final class RecoveryTest extends OurTestSuite
   // TODO Starte Controller und Agenten in eigenen Prozessen, die wir abbrechen können.
 
   "test" in {
-    for (_ <- if (sys.props contains "test.infinite") Iterator.from(1) else Iterator(1)) {
-      val orders = for (i <- 1 to 3) yield FreshOrder(OrderId(i.toString), TestWorkflow.path)
+    for _ <- if sys.props contains "test.infinite" then Iterator.from(1) else Iterator(1) do {
+      val orders = for i <- 1 to 3 yield FreshOrder(OrderId(i.toString), TestWorkflow.path)
       val Seq(order1, order2, order3) = orders
       var lastEventId = EventId.BeforeFirst
       val directoryProvider = new DirectoryProvider(
@@ -53,11 +53,11 @@ final class RecoveryTest extends OurTestSuite
         testName = Some("RecoveryTest"),
         controllerConfig = TestConfig)
       autoClosing(directoryProvider) { _ =>
-        for (agent <- directoryProvider.agentToEnv.values)
+        for agent <- directoryProvider.agentToEnv.values do
           agent.writeExecutable(TestPathExecutable, script(1.s, resultVariable = Some("var1")))
 
         runController(directoryProvider) { controller =>
-          if (lastEventId == EventId.BeforeFirst) {
+          if lastEventId == EventId.BeforeFirst then {
             lastEventId = controller.eventWatch.tornEventId
           }
           controller.eventWatch.await[ControllerEvent.ControllerReady](after = lastEventId)
@@ -89,7 +89,7 @@ final class RecoveryTest extends OurTestSuite
           }
         }
 
-        for (i <- 1 to 2) withClue(s"Run #$i:") {
+        for i <- 1 to 2 do withClue(s"Run #$i:") {
           val myLastEventId = lastEventId
           logger.info(s"*** RESTARTING CONTROLLER AND AGENTS #$i ***\n")
           runAgents(directoryProvider) { _ =>
@@ -206,10 +206,10 @@ private object RecoveryTest {
   /** Deletes restart sequences to make event sequence comparable with ExpectedOrderEvents. */
   private def deleteRestartedJobEvents(events: Iterator[Event]): Seq[Event] = {
     val result = mutable.Buffer[Event]()
-    while (events.hasNext) {
+    while events.hasNext do {
       events.next() match {
         case OrderProcessed.processLostDueToRestart =>
-          while (!result.last.isInstanceOf[OrderProcessingStarted]) {
+          while !result.last.isInstanceOf[OrderProcessingStarted] do {
             result.remove(result.size - 1)
           }
           result.remove(result.size - 1)

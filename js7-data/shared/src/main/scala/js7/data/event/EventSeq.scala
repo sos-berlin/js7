@@ -53,7 +53,7 @@ object EventSeq {
     assertThat(stamped.knownSize != 0)
 
     override def toString = "EventSeq.NonEmpty(" +
-      (if (stamped.knownSize >= 0) s"${stamped.knownSize} events" else "lazy") +
+      (if stamped.knownSize >= 0 then s"${stamped.knownSize} events" else "lazy") +
       ")"
   }
 

@@ -28,7 +28,7 @@ object CSRF
   val forbidCSRF: Directive0 =
     mapInnerRoute { inner =>
       extractRequest { request =>
-        if (looksLikeHtmlFormPost(request)) {
+        if looksLikeHtmlFormPost(request) then {
           logger.warn(
             "⛔ Forbidden: HTTP request looks like a HTML form POST, abusable for CSRF: " +
               s"${request.method} content-type: ${request.entity.contentType}")

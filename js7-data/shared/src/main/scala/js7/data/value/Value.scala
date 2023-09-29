@@ -89,7 +89,7 @@ sealed trait Value
   def convertToString: String
 
   def as[V <: Value](implicit V: Value.Companion[V]): Checked[V] =
-    if (valueType is V)
+    if valueType is V then
       Right(this.asInstanceOf[V])
     else
       Left(UnexpectedValueTypeProblem(V, this))
@@ -124,9 +124,9 @@ object Value
     val True = Right(BooleanValue.True)
     c => {
       val j = c.value
-      if (j.isString)
+      if j.isString then
         Right(StringValue(j.asString.get))
-      else if (j.isNumber)
+      else if j.isNumber then
         j.asNumber.get match {
           case NumberValue.ZeroJsonNumber => Zero
           case NumberValue.OneJsonNumber => One
@@ -135,15 +135,15 @@ object Value
             case None => Left(DecodingFailure(s"JSON number is not representable as a Java BigDecimal: $j", c.history))
           }
         }
-      else if (j.isBoolean)
-        if (j.asBoolean.get) True else False
-      else if (j.isArray)
+      else if j.isBoolean then
+        if j.asBoolean.get then True else False
+      else if j.isArray then
         j.asArray.get.traverse(jsonDecoder.decodeJson) map ListValue.apply
-      else if (j.isObject)
+      else if j.isObject then
         j.asObject.get.toVector
           .traverse { case (k, v) => jsonDecoder.decodeJson(v).map(k -> _) }
           .map(o => ObjectValue(o.toMap))
-      else if (j.isNull)
+      else if j.isNull then
         Right(MissingValue)
       else
         Left(DecodingFailure(s"Unknown value JSON type: ${j.getClass.shortClassName}", c.history))
@@ -238,9 +238,9 @@ final case class NumberValue(number: BigDecimal) extends GoodValue
   override def toStringValue = Right(StringValue(number.toString))
 
   override def toBooleanValue =
-    if (number == NumberValue.One.number) Right(BooleanValue.True)
+    if number == NumberValue.One.number then Right(BooleanValue.True)
     else
-    if (number == NumberValue.Zero.number) Right(BooleanValue.False)
+    if number == NumberValue.Zero.number then Right(BooleanValue.False)
     else
       super.toBooleanValue
 
@@ -282,7 +282,7 @@ final case class BooleanValue(booleanValue: Boolean) extends GoodValue
   def valueType = BooleanValue
 
   override def toNumberValue =
-    Right(if (booleanValue) NumberValue.One else NumberValue.Zero)
+    Right(if booleanValue then NumberValue.One else NumberValue.Zero)
 
   @javaApi @Nonnull def toJava: java.lang.Boolean =
     java.lang.Boolean.valueOf(booleanValue)
@@ -444,11 +444,11 @@ object ValueType
   implicit val jsonDecoder: Decoder[ValueType] =
     c => {
       val json = c.value
-      if (json.isString)
+      if json.isString then
         nameToSimpleType.checked(c.value.asString.get)
           .toDecoderResult(c.history)
-      else if (json.isObject)
-        for {
+      else if json.isObject then
+        for
           typ <- c.get[String]("TYPE")
           valueType <- typ match {
             case "List" =>
@@ -470,7 +470,7 @@ object ValueType
             case typeName =>
               Left(DecodingFailure(s"Unknown ValueType: $typeName", c.history))
           }
-        } yield valueType
+        yield valueType
       else
         Left(DecodingFailure("ValueType expected", c.history))
     }
@@ -482,7 +482,7 @@ object ValueType
     val default: UnknownNameInExpressionProblem = new UnknownNameInExpressionProblem("missing")
 
     def apply(name: String): UnknownNameInExpressionProblem =
-      if (name == default.name)
+      if name == default.name then
         default
       else
         new UnknownNameInExpressionProblem(name)

@@ -75,7 +75,7 @@ abstract class FailoverControllerClusterTest protected extends ControllerCluster
 
       backupController.eventWatch.await[OrderFinished](_.key == orderId, after = failedOverEventId)
 
-      if (addNonReplicatedEvents) {
+      if addNonReplicatedEvents then {
         // Add a dummy event to simulate an Event written by the primary
         // but not replicated and acknowledged when failing over.
         // The primary truncates the journal file according to the position of FailedOver.
@@ -87,7 +87,7 @@ abstract class FailoverControllerClusterTest protected extends ControllerCluster
       }
 
       primaryController = primary.newController()
-      if (addNonReplicatedEvents) {
+      if addNonReplicatedEvents then {
         // Provisional fix lets Controller terminate
         val termination = primaryController.terminated.await(99.s)
         assert(termination.restart)

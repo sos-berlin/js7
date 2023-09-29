@@ -18,6 +18,6 @@ object JsonString {
   }
 
   implicit val unmarshaller: FromEntityUnmarshaller[JsonString] =
-    for (byteString <- Unmarshaller.byteStringUnmarshaller.forContentTypes(`application/json`))
+    for byteString <- Unmarshaller.byteStringUnmarshaller.forContentTypes(`application/json`)
       yield JsonString(byteString.utf8String)
 }

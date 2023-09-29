@@ -124,10 +124,10 @@ final class ProviderTest extends OurTestSuite with ControllerAgentForScalaTest
     }
 
     "Start with two workflows" in {
-      for (agentRef <- directoryProvider.agentRefs) {
+      for agentRef <- directoryProvider.agentRefs do {
         live / (agentRef.path.string + ".agent.json") := agentRef
       }
-      for (subagentItem <- directoryProvider.subagentItems) {
+      for subagentItem <- directoryProvider.subagentItems do {
         live / (subagentItem.path.string + ".subagent.json") := subagentItem
       }
 
@@ -330,7 +330,7 @@ object ProviderTest
   private val loginPassword = "ProviderTest-PASSWORD"
   private val testConfig = config"""
     js7.provider.directory-watch.minimum-silence = 50ms
-    js7.provider.directory-watch.poll-interval = "${if (isMac) "100ms" else "300s"}"
+    js7.provider.directory-watch.poll-interval = "${if isMac then "100ms" else "300s"}"
     """
 
   private val agentPath = AgentPath("AGENT")

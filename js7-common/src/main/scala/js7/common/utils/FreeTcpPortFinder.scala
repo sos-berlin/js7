@@ -17,7 +17,7 @@ object FreeTcpPortFinder
   // IANA recommends for ephemeral ports the range 49152 to 65535.
   // Linux may use 32767 to 60999, see  /proc/sys/net/ipv4/ip_local_port_range
   private val firstEphemeralPort: Int =
-    if (isMac)
+    if isMac then
       try {
         val output = new StringBuilder
         val processLogger = new ProcessLogger {
@@ -53,7 +53,7 @@ object FreeTcpPortFinder
   def findFreeTcpPorts(n: Int): List[Int] =
     freePortNumberIterator.synchronized {
       val result = freePortNumberIterator.take(n).toList
-      if (result.length != n) sys.error("Not enough free tcp ports available")
+      if result.length != n then sys.error("Not enough free tcp ports available")
       logger.debug("findFreeTcpPort => " + result.mkString(", "))
       result
     }

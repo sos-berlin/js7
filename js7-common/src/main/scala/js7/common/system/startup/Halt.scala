@@ -15,14 +15,14 @@ object Halt
   def haltJava(msg: String, restart: Boolean, warnOnly: Boolean = false): Nothing =
     haltJava2(
       msg,
-      exitCode = if (restart) Js7ReturnCodes.HaltAndRestart else Js7ReturnCodes.Halt,
+      exitCode = if restart then Js7ReturnCodes.HaltAndRestart else Js7ReturnCodes.Halt,
       warnOnly = warnOnly)
 
   private def haltJava2(msg: String, exitCode: Int = Js7ReturnCodes.Halt, warnOnly: Boolean)
   : Nothing = {
     System.err.println()
     printlnWithClockIgnoringException(msg)
-    if (warnOnly) logger.warn(msg) else logger.error(msg)
+    if warnOnly then logger.warn(msg) else logger.error(msg)
     Log4j.shutdown(fast = true)
     sys.runtime.halt(exitCode)
     throw new Error("sys.runtime.halt failed")

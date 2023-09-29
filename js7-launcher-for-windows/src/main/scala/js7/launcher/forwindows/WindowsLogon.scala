@@ -13,6 +13,6 @@ private[launcher] final case class WindowsLogon(
 private[launcher] object WindowsLogon
 {
   def fromKeyLogin(keyLogin: KeyLogin): Checked[WindowsLogon] =
-    for (cred <- WindowsProcessCredential.byKey(keyLogin.credentialKey)) yield
+    for cred <- WindowsProcessCredential.byKey(keyLogin.credentialKey) yield
       WindowsLogon(cred, keyLogin.withUserProfile)
 }

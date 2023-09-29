@@ -47,17 +47,17 @@ abstract class RecouplingStreamReader[
         Task {
           var logged = false
           lazy val msg = s"$api: coupling failed: $problem"
-          if (inUse && !stopRequested && !coupledApiVar.isStopped) {
+          if inUse && !stopRequested && !coupledApiVar.isStopped then {
             sym.onWarn()
             logger.warn(s"$sym $msg")
             logged = true
           }
-          for (throwable <- problem.throwableOption.map(_.nullIfNoStackTrace)
-               if api.hasRelevantStackTrace(throwable)) {
+          for throwable <- problem.throwableOption.map(_.nullIfNoStackTrace)
+               if api.hasRelevantStackTrace(throwable) do {
             logger.debug(s"💥 $msg", throwable)
             logged = true
           }
-          if (!logged) {
+          if !logged then {
             logger.debug(s"💥 $api: $msg")
           }
           true  // Recouple and continue
@@ -110,7 +110,7 @@ abstract class RecouplingStreamReader[
 
   final def decouple: Task[Completed] =
     coupledApiVar.isTerminated.flatMap(
-      if (_)
+      if _ then
         Task.completed
       else
         coupledApiVar.tryTake
@@ -138,7 +138,7 @@ abstract class RecouplingStreamReader[
 
     def observeAgainAndAgain: Observable[V] =
       Observable.tailRecM(initialAfter)(after =>
-        if (eof(after) || isStopped)
+        if eof(after) || isStopped then
           Observable.pure(Right(Observable.empty))
         else
           Observable
@@ -162,7 +162,7 @@ abstract class RecouplingStreamReader[
       Observable.fromTask(
         tryEndlesslyToGetObservable(after)
           .<*(Task {
-            if (sym.called) logger.info(s"🟢 Observing $api ...")
+            if sym.called then logger.info(s"🟢 Observing $api ...")
           }))
         .flatten
         .map { v =>
@@ -173,7 +173,7 @@ abstract class RecouplingStreamReader[
     /** Retries until web request returns an Observable. */
     private def tryEndlesslyToGetObservable(after: I): Task[Observable[V]] =
       Task.tailRecM(())(_ =>
-        if (isStopped)
+        if isStopped then
           Task.right(Observable.raiseError(
             new IllegalStateException(s"RecouplingStreamReader($api) has been stopped")))
         else
@@ -183,9 +183,9 @@ abstract class RecouplingStreamReader[
                 .materialize.map(Checked.flattenTryChecked)
                 .flatMap {
                   case Left(problem) =>
-                    if (isStopped)
+                    if isStopped then
                       Task.left(())  // Fail in next iteration
-                    else if (isSevereProblem(problem))
+                    else if isSevereProblem(problem) then
                       Task.raiseError(problem.throwable)
                     else
                       (problem match {
@@ -198,7 +198,7 @@ abstract class RecouplingStreamReader[
                           onCouplingFailed(api, problem)
                       }).flatMap(continue =>
                         decouple *>
-                          (if (continue)
+                          (if continue then
                             pauseBeforeRecoupling.as(Left(()))
                           else
                             Task.right(Observable.empty)))
@@ -238,43 +238,43 @@ abstract class RecouplingStreamReader[
 
     private def tryEndlesslyToCouple(after: I): Task[I] =
       logger.debugTask(Task.tailRecM(())(_ => Task.defer(
-        if (isStopped)
+        if isStopped then
           Task.raiseError(new IllegalStateException(s"RecouplingStreamReader($api) has been stopped")
             with NoStackTrace)
         else
-          ( for {
+          ( for
               otherCoupledClient <- coupledApiVar.tryRead
               _ <- otherCoupledClient.fold(Task.unit)(_ =>
                 Task.raiseError(new IllegalStateException("Coupling while already coupled")))
               _ <- Task { recouplingPause.onCouple() }
               _ <- api.login(onlyIfNotLoggedIn = true)//.timeout(idleTimeout)
               updatedIndex <- couple(index = after) /*AgentDedicated may return a different EventId*/
-            } yield updatedIndex
+            yield updatedIndex
           ) .materializeIntoChecked
             .flatMap {
               case Left(problem) =>
-                if (isStopped) {
+                if isStopped then {
                   Task.left((()))
                 } // Fail in next iteration
                 else
-                  for {
+                  for
                     _ <- Task.when(problem == InvalidSessionTokenProblem)(
                       api.tryLogout.void)
                     // TODO akka.stream.scaladsl.TcpIdleTimeoutException sollte still ignoriert werden, ist aber abhängig von Akka
                     continue <- onCouplingFailed(api, problem)
                     either <-
-                      if (continue)
+                      if continue then
                         pauseBeforeRecoupling.map(_ => Left(()))
                       else
                         Task.raiseError(problem.throwable)
-                  } yield either
+                  yield either
 
               case Right(updatedIndex) =>
-                for {
+                for
                   _ <- coupledApiVar.put(api)
                   _ <- Task { recouplingPause.onCouplingSucceeded() }
                   _ <- onCoupled(api, after)
-                } yield Right(updatedIndex)
+                yield Right(updatedIndex)
             })))
   }
 

@@ -27,10 +27,10 @@ private final class OutErrStatistics
 
   override def toString =
     s"$messageCount chunks" +
-      (if (size == 0) "" else {
+      (if size == 0 then "" else {
         val blocked = blockedNanos.nanoseconds
         val duration = runningSince.elapsed.toNanos
-        val percentage = if (duration == 0) 1 else 100 * blocked.toNanos / duration
+        val percentage = if duration == 0 then 1 else 100 * blocked.toNanos / duration
         s" (${toKBGB(size)}), blocked ${blocked.pretty} " +
           s"${(blocked / messageCount).pretty}/chunk ($percentage%)"
       })  // This is the time an unbuffered stdout/stderr pipe is blocked

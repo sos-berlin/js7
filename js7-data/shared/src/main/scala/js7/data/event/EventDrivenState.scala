@@ -15,7 +15,7 @@ trait EventDrivenState[Self <: EventDrivenState[Self, E], E <: Event] extends Ba
   def applyStampedEvents(stampedEvents: Iterable[Stamped[KeyedEvent[E]]]): Checked[Self] = {
     var state = this
     var problem: Problem = null
-    for (stamped <- stampedEvents.iterator if problem == null) {
+    for stamped <- stampedEvents.iterator if problem == null do {
       state.applyEvent(stamped.value) match {
         case Left(o) =>
           problem = o withPrefix s"Event '$stamped' cannot be applied to '${companion.name}':"
@@ -23,13 +23,13 @@ trait EventDrivenState[Self <: EventDrivenState[Self, E], E <: Event] extends Ba
           state = s
       }
     }
-    if (problem != null) Left(problem) else Right(state)
+    if problem != null then Left(problem) else Right(state)
   }
 
   def applyEvents(keyedEvents: IterableOnce[KeyedEvent[E]]): Checked[Self] = {
     var state = this
     var problem: Problem = null
-    for (keyedEvent <- keyedEvents.iterator if problem == null) {
+    for keyedEvent <- keyedEvents.iterator if problem == null do {
       state.applyEvent(keyedEvent) match {
         case Left(o) =>
           problem = o withPrefix s"Event '$keyedEvent' cannot be applied to '${companion.name}':"
@@ -37,7 +37,7 @@ trait EventDrivenState[Self <: EventDrivenState[Self, E], E <: Event] extends Ba
           state = s
       }
     }
-    if (problem != null) Left(problem) else Right(state)
+    if problem != null then Left(problem) else Right(state)
   }
 
   protected final def eventNotApplicable(keyedEvent: KeyedEvent[Event]) =

@@ -60,7 +60,7 @@ extends MainService with Service.StoppableByRequest
 
   protected type Termination = ProgramTermination
 
-  if (conf.scriptInjectionAllowed) logger.info("SIGNED SCRIPT INJECTION IS ALLOWED")
+  if conf.scriptInjectionAllowed then logger.info("SIGNED SCRIPT INJECTION IS ALLOWED")
 
   val subagentRunId = SubagentRunId.fromJournalId(journal.journalId)
   private[subagent] val commandExecutor =
@@ -115,12 +115,12 @@ extends MainService with Service.StoppableByRequest
 
   def directorRegisteringResource(toRoute: DirectorRouteVariable.ToRoute): Resource[Task, Unit] =
     logger.debugResource(
-      for {
+      for
         _ <- directorRouteVariable.registeringRouteResource(toRoute)
         //_ <- Resource.make(
         //  acquire = registerDirector(registerable))(
         //  release = unregisterDirector)
-      } yield ())
+      yield ())
 
   //def directorRegisteringResource(registerable: DirectorRegisterable): Resource[Task, Unit] =
   //  for {
@@ -157,7 +157,7 @@ extends MainService with Service.StoppableByRequest
       .toAllocated
       .flatMap(allocatedDedicatedSubagent => Task.defer {
         val isFirst = dedicatedAllocated.trySet(allocatedDedicatedSubagent)
-        if (!isFirst) {
+        if !isFirst then {
           // TODO Idempotent: Frisch gewidmeter Subagent ist okay. Kein Kommando darf eingekommen sein.
           //if (cmd.subagentId == dedicatedAllocated.orThrow.subagentId)
           //  Task.pure(Right(DedicateSubagent.Response(subagentRunId, EventId.BeforeFirst)))
@@ -221,7 +221,7 @@ object Subagent
     val alarmClockCheckingInterval = config.finiteDuration("js7.time.clock-setting-check-interval")
       .orThrow
 
-    for {
+    for
       actorSystem <- Akkas.actorSystemResource(conf.name, config)
       sessionRegister <- {
         implicit val a = actorSystem
@@ -259,7 +259,7 @@ object Subagent
           journal, signatureVerifier,
           conf, jobLauncherConf, testEventBus)))
       _ <- Resource.eval(subagentDeferred.complete(subagent))
-    } yield {
+    yield {
       logger.info("Subagent is ready to be dedicated" + "\n" + "─" * 80)
       subagent
     }
@@ -268,7 +268,7 @@ object Subagent
   private def provideUriFile(conf: SubagentConf, uri: Checked[Uri]): Resource[Task, Path] =
     provideFile[Task](conf.workDirectory / "http-uri")
       .evalTap(file => Task {
-        for (uri <- uri) file := s"$uri/subagent"
+        for uri <- uri do file := s"$uri/subagent"
       })
 
   final case class ForDirector(

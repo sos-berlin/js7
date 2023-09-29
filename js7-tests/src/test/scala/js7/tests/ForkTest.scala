@@ -45,7 +45,7 @@ final class ForkTest extends OurTestSuite with ControllerAgentForScalaTest
     controller.addOrderBlocking(TestOrder)
     eventWatch.await[OrderFinished](_.key == TestOrder.id)
     val keyedEvents = eventWatch.allKeyedEvents[OrderEvent]
-    for (orderId <- Array(TestOrder.id, XOrderId, YOrderId)) {  // But ordering if each order is determined
+    for orderId <- Array(TestOrder.id, XOrderId, YOrderId) do {  // But ordering if each order is determined
       assert(keyedEvents.filter(_.key == orderId) == ExpectedEvents.filter(_.key == orderId))
     }
     assert(keyedEvents.toSet == ExpectedEvents.toSet)  // XOrderId and YOrderId run in parallel and ordering is not determined
@@ -163,7 +163,7 @@ object ForkTest
   {
     def toOrderProcess(step: Step) =
       OrderProcess.fromCheckedOutcome(
-        for (arg <- step.arguments("ARG").asNumber) yield
+        for arg <- step.arguments("ARG").asNumber yield
           Outcome.Succeeded(Map(
             "jobResult" -> NumberValue(arg + 1))))
   }

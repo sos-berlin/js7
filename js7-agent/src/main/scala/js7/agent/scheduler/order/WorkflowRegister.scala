@@ -52,7 +52,7 @@ private[order] final class WorkflowRegister(agentPath: AgentPath) {
     // A more general place for object identification may be the JSON deserializer: it needs access to an reusable object pool
     val reusedId = _idToWorkflow(order.workflowId).id
     val wp = reusedId /: order.position
-    if (order.workflowPosition eq wp)
+    if order.workflowPosition eq wp then
       order
     else {
       assertThat(order.workflowPosition == wp)

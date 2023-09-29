@@ -74,7 +74,7 @@ object ProcessOrder
     stdObservers: StdObservers,
     fileValueState: FileValueState)
   : Resource[Task, ProcessOrder] =
-    for (fileValueScope <- FileValueScope.resource(fileValueState)) yield
+    for fileValueScope <- FileValueScope.resource(fileValueState) yield
       ProcessOrder(
         order, workflow, jobKey, workflowJob, jobResources,
         executeArguments, jobArguments, controllerId, stdObservers,

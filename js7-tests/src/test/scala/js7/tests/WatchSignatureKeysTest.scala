@@ -187,8 +187,8 @@ final class WatchSignatureKeysTest extends OurTestSuite with ControllerAgentForS
       autoClosing(new FileOutputStream((agentsKeyDirectory / "key-1.pem").toFile)) { agentFile =>
         autoClosing(new FileOutputStream((subagentsKeyDirectory / "key-1.pem").toFile)) { subagentFile =>
           val n = 40
-          for (i <- 0 until n) withClue(s"${(i.s / 10).pretty} -> ") {
-            for (file <- View(controllerFile, agentFile, subagentFile)) {
+          for i <- 0 until n do withClue(s"${(i.s / 10).pretty} -> ") {
+            for file <- View(controllerFile, agentFile, subagentFile) do {
               logger.debug(f"$file write ${pem(i)}%02x")
               file.write(pem(i))
               file.flush()

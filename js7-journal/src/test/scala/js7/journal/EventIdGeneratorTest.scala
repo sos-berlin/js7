@@ -19,7 +19,7 @@ final class EventIdGeneratorTest extends OurTestSuite
     val eventIds: mutable.Map[EventId, Unit] = new ConcurrentHashMap[EventId, Unit].asScala
     val eventIdGenerator = new EventIdGenerator
     val n = 10000 * sys.runtime.availableProcessors
-    (for (_ <- 1 to n) yield
+    (for _ <- 1 to n yield
       Future {
         eventIds += ((eventIdGenerator.next(), ()))
       }) await 99.s

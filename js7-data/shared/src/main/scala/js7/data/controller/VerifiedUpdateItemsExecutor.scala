@@ -44,7 +44,7 @@ object VerifiedUpdateItemsExecutor
   : Checked[Seq[KeyedEvent[NoKeyEvent]]] =
   {
     def result: Checked[Seq[KeyedEvent[NoKeyEvent]]] =
-      (for {
+      (for
         versionedEvents <- versionedEvents(controllerState)
         updatedState <- controllerState.applyEvents(versionedEvents)
         simpleItemEvents <- simpleItemEvents(updatedState)
@@ -64,7 +64,7 @@ object VerifiedUpdateItemsExecutor
         derivedWorkflowControlEvents = toDerivedWorkflowControlEvents(updatedState)
         updatedState <- updatedState.applyEvents(derivedWorkflowControlEvents)
         _ <- checkVerifiedUpdateConsistency(verifiedUpdateItems, updatedState)
-      } yield simpleItemEvents
+      yield simpleItemEvents
         .concat(versionedEvents)
         .concat(derivedWorkflowPathControlEvents)
         .concat(derivedWorkflowControlEvents)
@@ -145,7 +145,7 @@ object VerifiedUpdateItemsExecutor
       controllerState: ControllerState)
     : Checked[SignedItemAddedOrChanged] = {
       val item = verified.item
-      if (item.itemRevision.isDefined)
+      if item.itemRevision.isDefined then
         Left(Problem.pure("ItemRevision is not accepted here"))
       else
         Right(
@@ -165,7 +165,7 @@ object VerifiedUpdateItemsExecutor
       item: UnsignedSimpleItem,
       controllerState: ControllerState)
     : Checked[UnsignedSimpleItemAddedOrChanged] =
-      if (item.itemRevision.isDefined)
+      if item.itemRevision.isDefined then
         Left(Problem.pure("ItemRevision is not accepted here"))
       else
         checkItem.getOrElse(item, Checked.unit)
@@ -173,7 +173,7 @@ object VerifiedUpdateItemsExecutor
             case None =>
               Right(UnsignedSimpleItemAdded(item.withRevision(Some(ItemRevision.Initial))))
             case Some(existing) =>
-              if (controllerState.deletionMarkedItems.contains(item.key))
+              if controllerState.deletionMarkedItems.contains(item.key) then
                 Left(Problem.pure(s"${item.key} is marked as deleted and cannot be changed"))
               else
                 Right(UnsignedSimpleItemChanged(item

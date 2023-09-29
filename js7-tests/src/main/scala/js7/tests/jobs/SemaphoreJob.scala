@@ -22,17 +22,17 @@ extends InternalJob
     val orderId = step.order.id
     val semaName = s"${getClass.shortClassName}($orderId) semaphore"
     OrderProcess(
-      for {
+      for
         _ <- step.outTaskObserver.send(companion.stdoutLine)
         sema <- companion.semaphore
         acquired <- sema.tryAcquire
         count <- sema.count
         outcome <-
-          if (acquired)
+          if acquired then
             onAcquired(step, semaName)
           else
             untilAcquired(sema, semaName, count).as(Outcome.succeeded)
-      } yield outcome)
+      yield outcome)
   }
 
   protected def onAcquired(step: Step, semaphoreName: String): Task[Outcome.Completed] =
@@ -81,14 +81,14 @@ object SemaphoreJob
 
     def reset()(implicit s: Scheduler): Unit = {
       logger.debug(s"$name.reset")
-      (for {
+      (for
         sema <- semaphore
         count <- sema.count
         _ <-
-          if (count > 0) sema.acquireN(count)
-          else if (count < 0) sema.releaseN(-count)
+          if count > 0 then sema.acquireN(count)
+          else if count < 0 then sema.releaseN(-count)
           else Task.pure(sema)
-      } yield ())
+      yield ())
         .runSyncUnsafe()
     }
 

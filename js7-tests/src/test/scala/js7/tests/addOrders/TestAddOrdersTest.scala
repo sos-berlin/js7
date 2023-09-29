@@ -39,7 +39,7 @@ final class TestAddOrdersTest extends OurTestSuite with ControllerAgentForScalaT
     val orderCount = sys.props.get("test.speed").map(_.toInt) getOrElse 3
 
     def logOrderCountChanged(statistics: Statistics) =
-      if (statistics.totalOrderCount > 0) {
+      if statistics.totalOrderCount > 0 then {
         logger.info(s"${statistics.lastOrderCount} orders")
       }
 
@@ -54,7 +54,7 @@ final class TestAddOrdersTest extends OurTestSuite with ControllerAgentForScalaT
     val statistics = TestAddOrders.run(settings, logOrderCountChanged, logAddOrdersDuration)
       .await(99.s).orThrow
     controller.eventWatch.await[OrderDeleted](_.key.string startsWith "TestAddOrders-")
-    for (line <- statistics.logLines) info(line)
+    for line <- statistics.logLines do info(line)
     CorrelId.logStatisticsIfEnabled()
     CorrelIdLog4JThreadContextMap.logStatistics()
   }

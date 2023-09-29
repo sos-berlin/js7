@@ -27,12 +27,12 @@ private[watch] final class FileEventIteratorPool(
 
   def close(): Unit =
     synchronized {
-      if (!closed.getAndSet(true)) {
+      if !closed.getAndSet(true) then {
         val (availables, lent): (Set[FileEventIterator], Set[FileEventIterator]) =
           synchronized {
             (freeIterators.toSet, lentIterators.toSet)
           }
-        if (lent.nonEmpty) {
+        if lent.nonEmpty then {
           logger.info(s"Close '$toString' while ${lent.size}× opened")  // May abort open web requests
         }
         (availables ++ lent) foreach (_.close())  // Force close iterators, for Windows to unlock the file - required for testing
@@ -50,7 +50,7 @@ private[watch] final class FileEventIteratorPool(
   }
 
   def borrowIterator(): FileEventIterator = {
-    if (closed.get()) throw new ClosedException(journalFile)
+    if closed.get() then throw new ClosedException(journalFile)
     tryBorrowIterator() getOrElse newIterator()
   }
 
@@ -66,7 +66,7 @@ private[watch] final class FileEventIteratorPool(
 
   private def newIterator(): FileEventIterator =
     synchronized {
-      if (closed.get()) throw new ClosedException(journalFile)
+      if closed.get() then throw new ClosedException(journalFile)
       // Exception when file has been deleted
       val result = new FileEventIterator(
         journalLocation.S, journalFile,
@@ -96,7 +96,7 @@ private[watch] final class FileEventIteratorPool(
     lazy val PositionAnd(position, eventId) = iterator.positionAndEventId
     logger.trace(s"returnIterator $iterator eventId=$eventId position=$position")
     synchronized {
-      if (!iterator.isClosed) {
+      if !iterator.isClosed then {
         freeIterators += iterator
       }
       lentIterators -= iterator

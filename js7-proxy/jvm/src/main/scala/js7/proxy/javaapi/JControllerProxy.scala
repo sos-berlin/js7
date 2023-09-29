@@ -98,7 +98,7 @@ final class JControllerProxy private[proxy](
       .logWhenItTakesLonger
       .await(99.s)
       .orThrow
-    if (!isAdded) throw new IllegalStateException(s"Order has already been added: ${order.id}")
+    if !isAdded then throw new IllegalStateException(s"Order has already been added: ${order.id}")
     whenOrderTerminated.asJava
   }
 }

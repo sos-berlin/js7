@@ -17,7 +17,7 @@ extends EventInstructionExecutor with PositionInstructionExecutor
   val instructionClass = classOf[If]
 
   def toEvents(instruction: If, order: Order[Order.State], state: StateView) =
-    if (order.isState[Broken] || order.isState[FailedWhileFresh] || order.isState[Failed])
+    if order.isState[Broken] || order.isState[FailedWhileFresh] || order.isState[Failed] then
       Right(Nil)
     else
       nextMove(instruction, order, state)
@@ -26,10 +26,10 @@ extends EventInstructionExecutor with PositionInstructionExecutor
 
   def nextMove(instruction: If, order: Order[Order.State], state: StateView) =
     // order may be predicted and different from actual idToOrder(order.id)
-    for {
+    for
       scope <- state.toPureOrderScope(order)
       condition <- instruction.predicate.evalAsBoolean(scope)
-    } yield
+    yield
       Some(OrderMoved(
         condition ? Then orElse instruction.elseWorkflow.isDefined ? Else match {
           case Some(thenOrElse) => order.position / thenOrElse % 0

@@ -65,14 +65,14 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
                   .flatMapT { verifiedUpdateItems =>
                     val itemCount = verifiedUpdateItems.itemCount
                     val d = startedAt.elapsed
-                    if (d > 1.s) logger.debug("POST controller/api/item received and verified - " +
+                    if d > 1.s then logger.debug("POST controller/api/item received and verified - " +
                       itemsPerSecondString(d, itemCount, "items") + " · " +
                       bytesPerSecondString(d, byteCount))
 
                     itemUpdater
                       .updateItems(verifiedUpdateItems)
                       .map { o =>
-                        if (startedAt.elapsed > 1.s) logger.debug("POST controller/api/item totally: " +
+                        if startedAt.elapsed > 1.s then logger.debug("POST controller/api/item totally: " +
                           itemsPerSecondString(startedAt.elapsed, itemCount, "items"))
                         o
                       }
@@ -93,7 +93,7 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
 
   private def verify(signedString: SignedString): Checked[Verified[SignableItem]] = {
     val verified = itemUpdater.signedItemVerifier.verify(signedString)
-    for (verified <- verified) logger.info(Logger.SignatureVerified, verified.toString)
+    for verified <- verified do logger.info(Logger.SignatureVerified, verified.toString)
     verified
   }
 }

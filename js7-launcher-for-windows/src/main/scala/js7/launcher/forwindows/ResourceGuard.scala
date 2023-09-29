@@ -12,20 +12,20 @@ private final class ResourceGuard[A] private(resource: A, release: A => Unit)
   private val _releaseAfterUse = AtomicBoolean(false)
 
   def use[B](body: Option[A] => B): B =
-    if (increment() > 0)
+    if increment() > 0 then
       try body(Some(resource))
       finally decrement()
     else
       body(None)
 
   def releaseAfterUse(): Unit =
-    if (!_releaseAfterUse.getAndSet(true)) {
+    if !_releaseAfterUse.getAndSet(true) then {
       decrement()
     }
 
   private def increment(): Int =
     synchronized {
-      if (usage > 0) {  // We don't increment 0. 0 means released.
+      if usage > 0 then {  // We don't increment 0. 0 means released.
         usage += 1
       }
       usage

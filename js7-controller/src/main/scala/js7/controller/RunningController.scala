@@ -111,7 +111,7 @@ extends MainService with Service.StoppableByRequest
 
   def shutdown(cmd: ShutDown): Task[ProgramTermination] =
     Task.defer {
-      if (terminated.isCompleted)  // Works only if previous termination has been completed
+      if terminated.isCompleted then  // Works only if previous termination has been completed
         untilTerminated
       else
         logger.debugTask(
@@ -126,11 +126,11 @@ extends MainService with Service.StoppableByRequest
     }
 
   private def executeCommandAsSystemUser(command: ControllerCommand): Task[Checked[command.Response]] =
-    for {
+    for
       checkedSession <- sessionRegister.systemSession
       checkedChecked <- checkedSession.traverse(session =>
         executeCommand(command, CommandMeta(session.currentUser)))
-    } yield checkedChecked.flatten
+    yield checkedChecked.flatten
 
   private def executeCommand(command: ControllerCommand, meta: CommandMeta): Task[Checked[command.Response]] =
     logger.debugTask("executeCommand", command.toShortString)(
@@ -217,10 +217,10 @@ object RunningController
     val eventIdClock: EventIdClock =
       testWiring.eventIdClock getOrElse new EventIdClock(alarmClock)
 
-    for {
+    for
       iox <- IOExecutor.resource[Task](conf.config, conf.name + " I/O")
       runningController <- resource(conf, alarmClock, eventIdClock)(scheduler, iox)
-    } yield runningController
+    yield runningController
   }.executeOn(scheduler)
 
   private def resource(
@@ -279,7 +279,7 @@ object RunningController
             .map(_.map(_.clusterState))
             .flatMapT { clusterState =>
               import conf.clusterConf.{isBackup, ownId}
-              if (!clusterState.isActive(ownId, isBackup = isBackup))
+              if !clusterState.isActive(ownId, isBackup = isBackup) then
                 Task.left(ClusterNodeIsNotActiveProblem)
               else
                 orderKeeperStarted.map {
@@ -314,7 +314,7 @@ object RunningController
 
       def webServerResource(sessionRegister: SessionRegister[SimpleSession])
       : Resource[Task, ControllerWebServer] =
-        for {
+        for
           webServer <- ControllerWebServer.resource(
             orderApi, commandExecutor, itemUpdater, clusterNode,
             recoveredExtract.totalRunningSince, // Maybe different from JournalHeader
@@ -324,7 +324,7 @@ object RunningController
           _ <- Resource.eval(Task(
             conf.workDirectory / "http-uri" :=
               webServer.localHttpUri.fold(_ => "", o => s"$o/controller")))
-        } yield webServer
+        yield webServer
 
       def clusterWatchServiceFor(agentPath: AgentPath): Task[Checked[ClusterWatchService]] =
         currentOrderKeeperActor
@@ -350,12 +350,12 @@ object RunningController
             sessionRegister, conf, testEventBus,
             actorSystem)))
 
-      for {
+      for
         sessionRegister <- SessionRegister.resource(SimpleSession.apply, config)
         _ <- sessionRegister.placeSessionTokenInDirectory(SimpleUser.System, conf.workDirectory)
         webServer <- webServerResource(sessionRegister)
         runningController <- runningControllerResource(webServer, sessionRegister)
-      } yield runningController
+      yield runningController
     }
   }
 
@@ -411,10 +411,10 @@ object RunningController
       (command match {
         case command: ControllerCommand.ShutDown =>
           logger.info(s"❗ $command")
-          if (command.clusterAction.nonEmpty && !clusterNode.isWorkingNode)
+          if command.clusterAction.nonEmpty && !clusterNode.isWorkingNode then
             Task.pure(Left(PassiveClusterNodeShutdownNotAllowedProblem))
           else {
-            if (command.dontNotifyActiveNode && clusterNode.isPassive) {
+            if command.dontNotifyActiveNode && clusterNode.isPassive then {
               clusterNode.dontNotifyActiveNodeAboutShutdown()
             }
             clusterNode.stopRecovery(ProgramTermination(restart = command.restart)) >>

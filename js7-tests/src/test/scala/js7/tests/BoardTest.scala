@@ -63,7 +63,7 @@ with BlockingItemUpdater
   "ExpectNotices" - {
     "expect(0, 1), post(1, 2), expect(0, 2), post(0)" in {
       val qualifier = nextQualifier()
-      val notices = for ((boardPath, endOfLife) <- boards.map(_.path) zip endOfLifes) yield
+      val notices = for (boardPath, endOfLife) <- boards.map(_.path) zip endOfLifes yield
         Notice(NoticeId(qualifier), boardPath, endOfLife)
       val Seq(notice0, notice1, notice2) = notices
 
@@ -73,7 +73,7 @@ with BlockingItemUpdater
       controller.api.addOrders(
         Observable.fromIterable(expecting01OrderIds).map(FreshOrder(_, expecting01Workflow.path))
       ).await(99.s).orThrow
-      for (orderId <- expecting01OrderIds) eventWatch.await[OrderNoticesExpected](_.key == orderId)
+      for orderId <- expecting01OrderIds do eventWatch.await[OrderNoticesExpected](_.key == orderId)
 
       assert(controllerState.orderToAvailableNotices(expecting01OrderIds(0)).isEmpty)
       assert(controllerState.orderToStillExpectedNotices(expecting01OrderIds(0)).toSet ==
@@ -100,7 +100,7 @@ with BlockingItemUpdater
 
       controller.runOrder(FreshOrder(OrderId(s"#$qualifier#POSTING-0"), posting0Workflow.path))
 
-      for (orderId <- expecting01OrderIds) {
+      for orderId <- expecting01OrderIds do {
         eventWatch.await[OrderFinished](_.key == orderId)
         val expectingEvents = eventWatch.eventsByKey[OrderCoreEvent](orderId)
         assert(expectingEvents == Seq(
@@ -142,7 +142,7 @@ with BlockingItemUpdater
       controller.api.addOrders(
         Observable.fromIterable(expectingOrderIds).map(FreshOrder(_, expecting0Workflow.path))
       ).await(99.s).orThrow
-      for (orderId <- expectingOrderIds) eventWatch.await[OrderNoticesExpected](_.key == orderId)
+      for orderId <- expectingOrderIds do eventWatch.await[OrderNoticesExpected](_.key == orderId)
 
       val posterEvents = controller.runOrder(
         FreshOrder(OrderId(s"#$qualifier#POSTING"), posting0Workflow.path))
@@ -164,7 +164,7 @@ with BlockingItemUpdater
               notice.id,
               Some(notice)))))
 
-      for (orderId <- expectingOrderIds) {
+      for orderId <- expectingOrderIds do {
         eventWatch.await[OrderFinished](_.key == orderId)
         val expectingEvents = eventWatch.eventsByKey[OrderCoreEvent](orderId)
         assert(expectingEvents == Seq(
@@ -236,11 +236,11 @@ with BlockingItemUpdater
       controller.api.addOrders(
         Observable.fromIterable(orderIds).map(FreshOrder(_, expectingAgentWorkflow.path))
       ).await(99.s).orThrow
-      for (orderId <- orderIds) eventWatch.await[OrderNoticesExpected](_.key == orderId)
+      for orderId <- orderIds do eventWatch.await[OrderNoticesExpected](_.key == orderId)
       controller.api.executeCommand(
         ControllerCommand.PostNotice(board0.path, noticeId)
       ).await(99.s).orThrow
-      for (orderId <- orderIds) eventWatch.await[OrderNoticesRead](_.key == orderId)
+      for orderId <- orderIds do eventWatch.await[OrderNoticesRead](_.key == orderId)
 
       val notice2 = Notice(NoticeId("2222-08-09"), board0.path, endOfLife0)
       controller.api.executeCommand(
@@ -302,7 +302,7 @@ with BlockingItemUpdater
       // NoticeDeleted do not occur before endOfLife
       clock := endOfLife0
       // Spare noticeIds.head for DeleteNotice test
-      for (noticeId <- noticeIds) {
+      for noticeId <- noticeIds do {
         eventWatch.await[NoticeDeleted](_.event.noticeId == noticeId, after = eventId)
       }
     }
@@ -465,7 +465,7 @@ object BoardTest
   private val endOfLifes = lifeTimes.map(BoardTest.startTimestamp + _)
   private val Seq(endOfLife0, endOfLife1, endOfLife2) = endOfLifes
 
-  private val boards = for ((lifetime, i) <- lifeTimes.zipWithIndex) yield
+  private val boards = for (lifetime, i) <- lifeTimes.zipWithIndex yield
     Board.joc(BoardPath(s"BOARD-$i"), lifetime)
 
   private val Seq(board0, board1, board2) = boards

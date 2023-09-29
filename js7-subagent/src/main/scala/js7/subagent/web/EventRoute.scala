@@ -16,11 +16,11 @@ private trait EventRoute extends SubagentRouteProvider with GenericEventRoute
     }.route
 
     parameter("subagentRunId")(subagentRunIdString =>
-      (for {
+      (for
         dedicatedSubagent <- subagent.checkedDedicatedSubagent
         subagentRunId <- SubagentRunId.checked(subagentRunIdString)
         _ <- dedicatedSubagent.checkSubagentRunId(subagentRunId)
-      } yield ())
+      yield ())
         .fold(complete(_), _ => route))
   }
 }

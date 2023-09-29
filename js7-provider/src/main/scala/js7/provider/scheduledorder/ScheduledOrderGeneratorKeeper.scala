@@ -16,10 +16,10 @@ final class ScheduledOrderGeneratorKeeper(scheduledOrderGenerators: Iterable[Sch
     scheduledOrderGenerators toKeyedMap (_.path)
 
   def generateOrders(instantInterval: InstantInterval): Seq[FreshOrder] =
-    (for {
+    (for
       orderGenerator <- pathToOrderGenerator.values
       instant <- orderGenerator.schedule.instants(instantInterval)
-    } yield
+    yield
       FreshOrder(
         toOrderId(orderGenerator.path, instant.toTimestamp),
         orderGenerator.workflowPath,

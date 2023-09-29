@@ -24,7 +24,7 @@ object PositionOrLabel
   }
 
   implicit val jsonDecoder: Decoder[PositionOrLabel] = c =>
-    if (c.value.isString)
+    if c.value.isString then
       c.as[Label]
     else
       c.as[Position]
@@ -42,11 +42,11 @@ extends PositionOrLabel
     parent.toRight(Problem.pure(s"Position $toString has no parent position"))
 
   def parent: Option[Position] =
-    for (last <- branchPath.lastOption) yield
+    for last <- branchPath.lastOption yield
       Position(branchPath.init, last.nr)
 
   def splitBranchAndNr: Option[(Position, BranchId, InstructionNr)] =
-    for (last <- branchPath.lastOption) yield
+    for last <- branchPath.lastOption yield
       (Position(branchPath.init, last.nr), branchPath.last.branchId, nr)
 
   def increment: Position =
@@ -113,17 +113,17 @@ object Position
     Position(Nil, nr)
 
   def fromSeq(seq: Seq[Any]): Checked[Position] =
-    if (seq.isEmpty)
+    if seq.isEmpty then
       Left(Problem.pure("Not a valid BranchPath"))
     else
-      for {
+      for
         branchPath <- BranchPath.anySegmentsToCheckedBranchPath(seq dropRight 1 grouped 2)
         nr <- seq.last match {
           case i: Int => Right(InstructionNr(i))
           case i: java.lang.Integer => Right(InstructionNr(i))
           case o => Left(Problem(s"Instruction number (integer) expected in Position array instead of: $o"))
         }
-      } yield Position(branchPath, nr)
+      yield Position(branchPath, nr)
 
   implicit val jsonEncoder: Encoder.AsArray[Position] = _.toJsonSeq
 
@@ -132,20 +132,20 @@ object Position
       cursor.value.asArray match {
         case None => Left(DecodingFailure("Position must be a JSON array", cursor.history))
         case Some(parts) =>
-          if (parts.size % 2 == 0)
+          if parts.size % 2 == 0 then
             Left(DecodingFailure("Not a valid Position, JSON array size must be 2*n + 1", cursor.history))
           else {
             var error: Option[String] = None
             val branchPath = ListBuffer.empty[Segment]
             var lastInstructionNr = -1
             val iterator = parts.iterator
-            while (error.isEmpty && lastInstructionNr == -1) {
+            while error.isEmpty && lastInstructionNr == -1 do {
               iterator.next().asNumber.flatMap(_.toInt) match {
                 case None => error = Some("InstructionNr (a small integer) expected")
                 case Some(nr) =>
-                  if (nr < 0) {
+                  if nr < 0 then {
                     error = Some("InstructionNr (a small integer) expected")
-                  } else if (!iterator.hasNext) {
+                  } else if !iterator.hasNext then {
                     lastInstructionNr = nr
                   } else
                     iterator.next().asString match {

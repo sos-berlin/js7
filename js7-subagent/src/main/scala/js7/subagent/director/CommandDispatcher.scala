@@ -57,7 +57,7 @@ private trait CommandDispatcher
         queue.stop
           .flatMap { numberedExecutes =>
             queue = new ObservableNumberedQueue[Execute]
-            for (numberedExecute <- numberedExecutes) {
+            for numberedExecute <- numberedExecutes do {
               commandToProblem.lift(numberedExecute.value.command) match {
                 case None =>
                   logger.debug(s"⚠️ $numberedExecute => discarded")
@@ -134,7 +134,7 @@ private trait CommandDispatcher
     val responded = Task.fromFuture(promise.future)
 
     def respond(response: Try[Checked[Response]]): Unit =
-      if (!promise.tryComplete(response)) {
+      if !promise.tryComplete(response) then {
         logger.warn/*debug?*/(
           s"response($response): command already responded: ${command.toShortString} => ${promise.future.value.get}")
       }

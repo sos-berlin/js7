@@ -40,7 +40,7 @@ extends AutoCloseable
   }
 
   def close() = {
-    if (used.nonEmpty) {
+    if used.nonEmpty then {
       logger.debug(s"Job '${jobKey.name}': Closing while files are in use: $used")
     }
     tryDeleteFiles((free ++ used).flatMap(_.files))

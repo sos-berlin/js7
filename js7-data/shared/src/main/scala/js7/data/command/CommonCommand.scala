@@ -38,14 +38,14 @@ object CommonCommand
         val b = mutable.Buffer.empty[String]
         var last = ""
         var n = 0
-        def flush() = if (!last.isEmpty) {
-          b += (if (n == 1) last else s"$n×$last")
+        def flush() = if !last.isEmpty then {
+          b += (if n == 1 then last else s"$n×$last")
           last = ""
           n = 0
         }
-        for (CorrelIdWrapped(_, command) <- commands) {
+        for CorrelIdWrapped(_, command) <- commands do {
           val name = jsonCodec.typeName(command)
-          if (last != name) {
+          if last != name then {
             flush()
             last = name
           }

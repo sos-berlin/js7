@@ -74,7 +74,7 @@ final class GateKeeper[U <: User](
     .result()
 
   def authenticateUser(userAndPassword: UserAndPassword): Option[U] = {
-    if (!userAndPassword.userId.isAnonymous) ifPublic foreach { reason =>
+    if !userAndPassword.userId.isAnonymous then ifPublic foreach { reason =>
       logger.warn(s"User '${userAndPassword.userId.string}' logs in with credentials despite $reason")
     }
     authenticator.authenticate(userAndPassword)
@@ -94,7 +94,7 @@ final class GateKeeper[U <: User](
     Directive(inner =>
       seal {
         httpAuthenticate { httpUser =>
-          if (!httpsClientAuthRequired)
+          if !httpsClientAuthRequired then
             inner(Tuple1(Right(httpUser)))
           else
             clientHttpsAuthenticate {
@@ -144,7 +144,7 @@ final class GateKeeper[U <: User](
                   logger.debug("HTTPS client has sent the client certificate and some CA certificate. We ignore the latter")
                   Right(cert)
                 case _ =>
-                  if (certs.nonEmpty) logger.debug(s"HTTPS client certificates rejected: ${certs.mkString(", ")}")
+                  if certs.nonEmpty then logger.debug(s"HTTPS client certificates rejected: ${certs.mkString(", ")}")
                   Left(certs.length match {
                     case n if n > 1 => Problem.pure(s"One and only one peer certificate is required (not $n)")
                     case _ => Problem.pure("A client X.509 certificate is required")
@@ -170,7 +170,7 @@ final class GateKeeper[U <: User](
             case Right(authorizedUser) =>
               inner(Tuple1(authorizedUser))
             case Left(problem) =>
-              if (user.isAnonymous)
+              if user.isAnonymous then
                 reject(credentialsMissing)  // Let a browser show its authentication dialog
               else
                 complete(Forbidden -> problem)
@@ -191,7 +191,7 @@ final class GateKeeper[U <: User](
           case IsPublic | LoopbackIsPublic => configuration.publicPermissions
           case GetIsPublic                 => configuration.publicGetPermissions
         })
-        if (empoweredUser.grantedPermissions != user.grantedPermissions) {
+        if empoweredUser.grantedPermissions != user.grantedPermissions then {
           logger.debug(s"Due to $reason, user '${empoweredUser.id.string}' has all permissions for " +
             s"${request.method.value} ${request.uri.path}")
         }
@@ -206,9 +206,9 @@ final class GateKeeper[U <: User](
       (getIsPublic && isGet(method)) ? GetIsPublic)
 
   private[auth] def ifPublic: Option[AuthorizationReason] =
-    if (isPublic)
+    if isPublic then
       Some(IsPublic)
-    else if (isLoopback && loopbackIsPublic)
+    else if isLoopback && loopbackIsPublic then
       Some(LoopbackIsPublic)
     else
       None
@@ -216,9 +216,9 @@ final class GateKeeper[U <: User](
   private def ifPermitted(user: U, requiredPermissions: Set[Permission], method: HttpMethod): Checked[U] =
     user.checkPermissions(requiredPermissions)
       .flatMap(_ =>
-        if (requiredPermissions.contains(ValidUserPermission) ||  // If ValidUserPermission is not required (Anonymous is allowed)...
+        if requiredPermissions.contains(ValidUserPermission) ||  // If ValidUserPermission is not required (Anonymous is allowed)...
             user.hasPermission(ValidUserPermission) ||            // ... then allow Anonymous ... (only unempowered Anonymous does not have ValidUserPermission)
-            isGet(method))                                        // ... only to read
+            isGet(method) then                                        // ... only to read
           Right(user)
         else
           Left(Problem.pure("Anonymous is permitted HTTP GET only")))
@@ -271,15 +271,15 @@ object GateKeeper
       .getOrElse(sys.error("Anonymous user has not been defined"))  // Should not happen
 
     def secureStateString(scheme: WebServerBinding.Scheme): String =
-      if (isPublic)
+      if isPublic then
         " - ACCESS IS PUBLIC - EVERYONE HAS ACCESS (public = true)"
-      else if (loopbackIsPublic && getIsPublic)
+      else if loopbackIsPublic && getIsPublic then
         " - ACCESS VIA LOOPBACK (127.*.*.*) INTERFACE OR VIA HTTP METHODS GET OR HEAD IS PUBLIC (loopback-is-public = true, get-is-public = true) "
-      else if (loopbackIsPublic)
+      else if loopbackIsPublic then
         " - ACCESS VIA LOOPBACK (127.*.*.*) INTERFACE IS PUBLIC (loopback-is-public = true)"
-      else if (getIsPublic)
+      else if getIsPublic then
         " - ACCESS VIA HTTP METHODS GET OR HEAD IS PUBLIC (get-is-public = true)"
-      else if (scheme == WebServerBinding.Https && httpsClientAuthRequired)
+      else if scheme == WebServerBinding.Https && httpsClientAuthRequired then
         " - HTTPS client authentication (mutual TLS) required"
       else
         ""

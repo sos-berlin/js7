@@ -117,7 +117,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
         awaitAcknowledgement(clusterState.passiveUri, eventId)
           .flatMapT(ackEventId =>
             // In case of ClusterWatchRegistered, check journal.currentState.eventId too
-            if (ackEventId == eventId || ackEventId == journal.unsafeCurrentState().eventId) {
+            if ackEventId == eventId || ackEventId == journal.unsafeCurrentState().eventId then {
               logger.info("Passive node acknowledged the recovered state")
               Task.right(Completed)
             } else
@@ -171,9 +171,9 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
             }.flatMapT(_ =>
               persistWithoutTouchingHeartbeat(extraEvent) {
                 case clusterState: HasNodes =>
-                  if (passiveUri == clusterState.setting.passiveUri)
+                  if passiveUri == clusterState.setting.passiveUri then
                     Right(None)
-                  else if (clusterState.isInstanceOf[Coupled])
+                  else if clusterState.isInstanceOf[Coupled] then
                     // ClusterPassiveLost above should have avoid this
                     Left(PassiveClusterNodeUrlChangeableOnlyWhenNotCoupledProblem)
                   else
@@ -214,7 +214,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
                   Left(ClusterCommandInapplicableProblem(command, Empty))
 
                 case clusterState: HasNodes =>
-                  if (clusterState.activeId != activeId || clusterState.passiveId != passiveId)
+                  if clusterState.activeId != activeId || clusterState.passiveId != passiveId then
                     Left(ClusterCommandInapplicableProblem(command, clusterState))
                   else
                     clusterState match {
@@ -240,7 +240,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
                   Left(ClusterCommandInapplicableProblem(command, clusterState))
 
                 case clusterState: HasNodes =>
-                  if (clusterState.activeId != activeId || clusterState.passiveId != passiveId)
+                  if clusterState.activeId != activeId || clusterState.passiveId != passiveId then
                     Left(ClusterCommandInapplicableProblem(command, clusterState))
                   else
                     clusterState match {
@@ -253,7 +253,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
 
                       case s: PreparedToBeCoupled =>
                         // This is the normally expected ClusterState
-                        if (!s.setting.clusterWatchId.isDefined)
+                        if !s.setting.clusterWatchId.isDefined then
                         // Passive cluster tries again until
                         // ClusterWatch has been registered via background ClusterWatch heartbeat
                           Left(NoClusterWatchProblem)
@@ -304,7 +304,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
 
   private def requireOwnNodeId[A](command: ClusterCommand, nodeId: NodeId)(body: Task[Checked[A]])
   : Task[Checked[A]] =
-    if (nodeId != ownId)
+    if nodeId != ownId then
       Task.left(Problem.pure(
         s"'${command.getClass.simpleScalaName}' command may only be directed to the active node"))
     else
@@ -379,7 +379,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
       clusterState match {
         case clusterState: NodesAppointed =>
           Task {
-            if (!startingBackupNode.getAndSet(true)) {
+            if !startingBackupNode.getAndSet(true) then {
               startSendingClusterStartBackupNode(clusterState)
             }
             Completed
@@ -417,7 +417,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
 
   private def startFetchAndHandleAcknowledgedEventIds(initialState: Coupled): Task[Completed] =
     Task {
-      if (isFetchingAcks.getAndSet(true)) {
+      if isFetchingAcks.getAndSet(true) then {
         logger.debug("fetchAndHandleAcknowledgedEventIds: already isFetchingAcks")
       } else {
         import initialState.{passiveId, passiveUri, timing}
@@ -480,7 +480,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
                         case _ => Right(None)  // Ignore when ClusterState has changed (no longer Coupled)
                       } .map(_.toCompleted.map(_ => true)))
                 ).map(_.flatMap(allowed =>
-                  if (!allowed)
+                  if !allowed then
                     Right(Completed)
                   else
                     Left(missingHeartbeatProblem)))
@@ -493,14 +493,14 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
       }
       .materialize.flatTap(tried => Task { tried match {
         case Success(Right(Completed)) =>
-          if (!stopRequested) logger.error("fetchAndHandleAcknowledgedEventIds terminated unexpectedly")
+          if !stopRequested then logger.error("fetchAndHandleAcknowledgedEventIds terminated unexpectedly")
         case Success(Left(_: MissingPassiveClusterNodeHeartbeatProblem)) =>
           logger.warn("❗ Continue as single active cluster node, without passive node")
         case Success(Left(problem)) =>
           logger.error(s"fetchAndHandleAcknowledgedEventIds($passiveUri) failed with $problem")
 
         case Failure(t: ProblemException) if t.problem is AckFromActiveClusterNodeProblem =>
-          if (isTest)
+          if isTest then
             throw new RuntimeException(s"🟥 Halt suppressed for resting: ${t.problem}")
           else
             Halt.haltJava("🟥 HALT because other cluster node has become active",
@@ -585,7 +585,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
   private def registerClusterWatchId(confirmation: ClusterWatchConfirmation, alreadyLocked: Boolean)
   : Task[Checked[Unit]] =
     logger.traceTask(Task.defer {
-      if (alreadyLocked)
+      if alreadyLocked then
         nonLockingRegisterClusterWatchId(confirmation)
       else
         clusterStateLock.lock(
@@ -598,7 +598,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
       .flatMap(clusterState =>
         Task(ifClusterWatchRegistered(clusterState, confirmation.clusterWatchId))
           .flatMapT(
-            if (_) // Short cut
+            if _ then // Short cut
               Task.right(Nil -> clusterState)
             else
               journal
@@ -629,7 +629,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
     clusterState match {
       case ClusterState.Empty => Left(ClusterStateEmptyProblem)
       case hasNodes: HasNodes =>
-        if (hasNodes.activeId != ownId)
+        if hasNodes.activeId != ownId then
           Left(ClusterNodeIsNotActiveProblem)
         else
           Right(hasNodes.setting.clusterWatchId contains clusterWatchId)

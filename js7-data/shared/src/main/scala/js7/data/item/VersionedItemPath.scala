@@ -21,7 +21,7 @@ trait VersionedItemPath extends InventoryItemPath
   final def withTrailingSlash = s"$string/"
 
   final def asTyped[P <: VersionedItemPath](implicit P: VersionedItemPath.Companion[P]): P =
-    if (P == companion)
+    if P == companion then
       this.asInstanceOf[P]
     else
       P.apply(string)
@@ -59,7 +59,7 @@ object VersionedItemPath
     private def P = this
 
     override def checked(string: String): Checked[P] =
-      if (string == Anonymous.string)
+      if string == Anonymous.string then
         Left(Problem(s"Anonymous $name not allowed here"))
       else
         super.checked(string)
@@ -80,7 +80,7 @@ object VersionedItemPath
     override def toString = name
 
     implicit override final val jsonEncoder: Encoder[P] = o => {
-      if (o == Anonymous) throw new IllegalArgumentException(s"JSON serialize $name.Anonymous?")
+      if o == Anonymous then throw new IllegalArgumentException(s"JSON serialize $name.Anonymous?")
       Json.fromString(o.string)
     }
 
@@ -95,7 +95,7 @@ object VersionedItemPath
       def apply(a: VersionedItemPath) = Json.fromString(a.toTypedString)
 
       def apply(c: HCursor) =
-        for {
+        for
           string <- c.as[String]
           prefixAndPath <- string indexOf ':' match {
             case i if i > 0 => Right((string take i, string.substring(i + 1)))
@@ -107,6 +107,6 @@ object VersionedItemPath
             .toRight(Problem.pure(s"Unrecognized type prefix in VersionedItemPath: $prefix"))
             .flatMap(_.checked(path))
             .toDecoderResult(c.history)
-        } yield itemPath.asInstanceOf[VersionedItemPath]/*???*/
+        yield itemPath.asInstanceOf[VersionedItemPath]/*???*/
     }
 }

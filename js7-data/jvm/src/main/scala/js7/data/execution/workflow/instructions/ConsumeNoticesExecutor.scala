@@ -29,20 +29,20 @@ extends EventInstructionExecutor
             .toVector
             .traverse(state.keyTo(BoardState).checked)
             .flatMap(boardStates =>
-              for {
+              for
                 scope <- state.toPureOrderScope(order)
                 expected <- boardStates.traverse(boardState =>
                   boardState.board
                     .expectingOrderToNoticeId(scope)
                     .map(OrderNoticesExpected.Expected(boardState.path, _)))
-              } yield
+              yield
                 tryFulfill(instr, expected, state)
                   .emptyToNone
                   .getOrElse(OrderNoticesExpected(expected) :: Nil)))
         .orElse(order
           .ifState[Order.ExpectingNotices]
           .map(order =>
-            if (order.state.expected.map(_.boardPath).toSet != instr.referencedBoardPaths)
+            if order.state.expected.map(_.boardPath).toSet != instr.referencedBoardPaths then
               Left(Problem.pure(
                 s"Instruction does not match Order.State: $instr <-> ${order.state}"))
             else
@@ -56,7 +56,7 @@ extends EventInstructionExecutor
     state: StateView) =
     Right(List(
       order.id <-: (
-        if (order.isAttached)
+        if order.isAttached then
           OrderDetachable
         else
           OrderNoticesConsumed())))
@@ -78,7 +78,7 @@ private object ConsumeNoticesExecutor
     state: StateView,
     postedBoards: Set[BoardPath] = Set.empty)
   : List[OrderEvent.OrderActorEvent] =
-    if (instr.isFulfilled(postedBoards ++ state.availableNotices(expected)))
+    if instr.isFulfilled(postedBoards ++ state.availableNotices(expected)) then
       OrderNoticesConsumptionStarted(expected) :: Nil
     else
       Nil

@@ -18,9 +18,9 @@ final class Synchronizer(what: String)
   def synchronize[A](body: => A): A =
     try {
       logger.trace(s"Start synchronize '$what': wait for lock (${synchronizeLock.getQueueLength} in queue)")
-      if (!synchronizeLock.tryLock()) {
+      if !synchronizeLock.tryLock() then {
         blocking {
-          if (!synchronizeLock.tryLock(LogAfter.toMillis, MILLISECONDS)) {
+          if !synchronizeLock.tryLock(LogAfter.toMillis, MILLISECONDS) then {
             logger.debug(s"🟠 Start synchronize '$what': waiting for lock since ${LogAfter.pretty} (#${synchronizeLock.getQueueLength} in queue)")
             synchronizeLock.lock()
             logger.debug(s"🟢 synchronize '$what': continuing")

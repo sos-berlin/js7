@@ -18,7 +18,7 @@ object ScalaStax {
   private val xmlInputFactoryLogged = new AtomicBoolean
   private val xmlInputFactoryTL = threadLocal {
     val result = XMLInputFactory.newInstance()
-    if (!xmlInputFactoryLogged.getAndSet(true)) {
+    if !xmlInputFactoryLogged.getAndSet(true) then {
       logger.debug(s"Using XMLInputFactory ${result.getClass}")
     }
     result

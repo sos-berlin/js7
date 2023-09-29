@@ -16,7 +16,7 @@ object ByteSequenceChunkerObservable
       : Observable[ByteSeq] =
         observable.asInstanceOf[Observable[ByteSeq]]
           .flatMap { byteSeq =>
-            if (byteSeq.length <= chunkSize)
+            if byteSeq.length <= chunkSize then
               Observable.pure(byteSeq)
             else {
               def chunk(i: Int): (ByteSeq, Int) =

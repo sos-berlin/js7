@@ -13,7 +13,7 @@ object FeedMain
   def main(args: Array[String]): Unit = {
     Logger.initialize()
 
-    if (args.isEmpty || args.sameElements(Array("--help"))) {
+    if args.isEmpty || args.sameElements(Array("--help")) then {
       println("Usage: testAddOrders --workflow=WORKFLOWPATH --order-count=1 --user=USER:PASSWORD")
     } else {
       run(args, Resource.eval(Task.pure(System.in)))

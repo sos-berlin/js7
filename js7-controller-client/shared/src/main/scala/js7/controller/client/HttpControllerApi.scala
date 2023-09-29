@@ -35,7 +35,7 @@ extends EventApi with HttpClusterNodeApi with HttpSessionApi with HasIsIgnorable
 
   protected final lazy val uris = ControllerUris(
     controllerUri =
-      if (baseUri.isEmpty) baseUri
+      if baseUri.isEmpty then baseUri
       else Uri(baseUri.string.stripSuffix("/") + "/controller"))
 
   final def post[A: Encoder, B: Decoder](uriTail: String, data: A): Task[B] =

@@ -18,12 +18,12 @@ private final class StateBuilderAndAccessor[S <: SnapshotableState[S]](
 
   def newStateBuilder()(implicit s: Scheduler): SnapshotableStateBuilder[S] = {
     val builder = S.newBuilder()
-    (for {
+    (for
         mVar <- getStateMVarTask
         s <- Task.fromFuture(builder.synchronizedStateFuture)  // May wait, but getStateMVarTask has a value anyway
         _ <- mVar.take
         _ <- mVar.put(s)
-      } yield ()
+      yield ()
     ).runToFuture/*asynchronous ???*/
       .onFailure { case t =>
         logger.error(s"PassiveClusterNode StateBuilderAndAccessor failed: ${t.toStringWithCauses}")

@@ -50,7 +50,7 @@ object ReturnCodeMeaning {
   implicit val jsonDecoder: Decoder[ReturnCodeMeaning] =
     c => {
       val c1 = c.downField("failure")
-      if (c1.succeeded)
+      if c1.succeeded then
         c1.as[RangeSet[ReturnCode]].map(Failure.apply)
       else
         c.get[RangeSet[ReturnCode]]("success").map(Success.apply)

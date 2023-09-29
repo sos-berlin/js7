@@ -46,12 +46,12 @@ extends Ordered[ExtendedLocalTime]
     val sb = new StringBuilder
     sb.append(h)
     sb.append(':')
-    if (m < 10) sb.append('0')
+    if m < 10 then sb.append('0')
     sb.append(m)
     sb.append(':')
-    if (s < 10) sb.append('0')
+    if s < 10 then sb.append('0')
     sb.append(s)
-    if (n != 0) {
+    if n != 0 then {
       sb.append('.')
       sb.append(n)
     }

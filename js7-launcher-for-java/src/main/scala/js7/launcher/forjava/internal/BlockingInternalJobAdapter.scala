@@ -31,13 +31,13 @@ extends InternalJob
 
       new OrderProcess {
         protected def run =
-          for {
+          for
             orderProcess <- orderProcessTask
             fiber <- Task(orderProcess.run())
               .executeOn(jobContext.blockingJobScheduler)
               .map(_.asScala)
               .start
-          } yield
+          yield
             fiber
 
         def cancel(immediately: Boolean) =

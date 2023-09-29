@@ -85,7 +85,7 @@ final class JournalFilesTest extends OurTestSuite
         dir / "test--1000.journal.gz",
         dir / "other--0.journal")
 
-      val openedFiles = for (file <- files) yield
+      val openedFiles = for file <- files yield
         new FileOutputStream(file.toPath)  // Make file undeletable under Windows
 
       // Create the marker file before the directory is no longer writable
@@ -95,7 +95,7 @@ final class JournalFilesTest extends OurTestSuite
       assert(dir.directoryContentsAs(Set) == files + deletionMarkerFile(fileBase))
 
       dir.toFile.setWritable(true)
-      for (file <- openedFiles) file.close()
+      for file <- openedFiles do file.close()
       deleteJournalIfMarked(fileBase)
       assert(dir.directoryContentsAs(Set) == Set(dir / "other--0.journal", dir / "test--1000.journal.gz"))
     }

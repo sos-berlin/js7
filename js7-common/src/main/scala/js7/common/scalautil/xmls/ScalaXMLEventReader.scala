@@ -30,19 +30,19 @@ extends AutoCloseable {
   }
 
   def ignoreElements(): Unit =
-    while(peek.isStartElement) {
+    while peek.isStartElement do {
       ignoreElement()
     }
 
   def ignoreElement(): Unit = {
     require(delegate.peek.isStartElement)
     delegate.nextEvent()
-    while (!delegate.peek.isEndElement) {
-      if (delegate.peek.isCharacters)
-        while (delegate.peek.isCharacters) delegate.nextEvent()
-      else if (delegate.peek.isStartElement)
+    while !delegate.peek.isEndElement do {
+      if delegate.peek.isCharacters then
+        while delegate.peek.isCharacters do delegate.nextEvent()
+      else if delegate.peek.isStartElement then
         ignoreElement()
-      else if (delegate.peek.isInstanceOf[Comment])
+      else if delegate.peek.isInstanceOf[Comment] then
         delegate.nextEvent()
       else
         throw new IllegalArgumentException(s"Unknown XML event: ${delegate.peek}")
@@ -60,15 +60,15 @@ extends AutoCloseable {
 
   def parseElement[A](withAttributeMap: Boolean)(body: => A): A =
     wrapException {
-      if (peek.isStartElement) {  // should be
+      if peek.isStartElement then {  // should be
         updateAttributeMap(withAttributeMap = withAttributeMap)
       }
-      if (withAttributeMap) {  // Otherwise, let the caller eat the StartElement to give it access to attributes
+      if withAttributeMap then {  // Otherwise, let the caller eat the StartElement to give it access to attributes
         eat[StartElement]
       }
       parseStartElement() {
         val result = body
-        if (config.ignoreUnknown) {
+        if config.ignoreUnknown then {
           ignoreElements()
         }
         result
@@ -96,7 +96,7 @@ extends AutoCloseable {
     val liftedBody = body.lift
     @tailrec def g(): Unit = peek match {
       case e: StartElement =>
-        for (o <- parseStartElementAlternative(liftedBody))
+        for o <- parseStartElementAlternative(liftedBody) do
           results += e.getName.toString -> o
         g()
       case _: EndElement =>
@@ -110,8 +110,8 @@ extends AutoCloseable {
     wrapException {
       val name = peek.asStartElement.getName.toString
       val result = body(name)
-      if (result.isEmpty) {
-        if (!config.ignoreUnknown) sys.error(s"Unexpected XML element <$name>")
+      if result.isEmpty then {
+        if !config.ignoreUnknown then sys.error(s"Unexpected XML element <$name>")
         ignoreElement()
       }
       result
@@ -146,19 +146,19 @@ extends AutoCloseable {
 
   def eatText(): String = {
     val result = new StringBuilder
-    while (peek.isCharacters)
+    while peek.isCharacters do
       result append eat[Characters].getData
     result.toString()
   }
 
   def eat[E <: XMLEvent: ClassTag]: E = {
     val e = implicitClass[E]
-    if (e != classOf[StartElement]) {
+    if e != classOf[StartElement] then {
       releaseAttributeMap()
     }
     val event = peek  // Skips ignorables
     delegate.nextEvent()
-    if (!e.isAssignableFrom(event.getClass))
+    if !e.isAssignableFrom(event.getClass) then
       throw new IllegalArgumentException(s"'${e.getSimpleName}' expected but '${event.getClass.getSimpleName}' encountered")
     event.asInstanceOf[E]
   }
@@ -170,7 +170,7 @@ extends AutoCloseable {
   private def updateAttributeMap(withAttributeMap: Boolean): Unit = {
     releaseAttributeMap()
     _simpleAttributeMap =
-      if (withAttributeMap && peek.isStartElement)
+      if withAttributeMap && peek.isStartElement then
         new SimpleAttributeMap(peek.asStartElement.attributes filter { a =>
           !IgnoredAttributeNamespaces(a.getName.getNamespaceURI)
         } map { a =>
@@ -181,14 +181,14 @@ extends AutoCloseable {
   }
 
   private def releaseAttributeMap(): Unit = {
-    if (!config.ignoreUnknown && _simpleAttributeMap != null) {
+    if !config.ignoreUnknown && _simpleAttributeMap != null then {
       _simpleAttributeMap.requireAllAttributesRead()
     }
     _simpleAttributeMap = null
   }
 
   def attributeMap: SimpleAttributeMap = {
-    if (_simpleAttributeMap eq null) throw new IllegalStateException(s"No attributes possible here, at $locationString")
+    if _simpleAttributeMap eq null then throw new IllegalStateException(s"No attributes possible here, at $locationString")
     _simpleAttributeMap
   }
 
@@ -265,9 +265,9 @@ object ScalaXMLEventReader {
     def ignoreUnread(): Unit = readAttributes ++= keys
 
     def requireAllAttributesRead(): Unit = {
-      if (keySet != readAttributes) {
+      if keySet != readAttributes then {
         val names = keySet.toSet -- readAttributes
-        if (names.nonEmpty) throw new UnparsedAttributesException(names.toSeq)
+        if names.nonEmpty then throw new UnparsedAttributesException(names.toSeq)
       }
     }
   }

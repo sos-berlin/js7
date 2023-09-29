@@ -27,7 +27,7 @@ object ItemAttachedState
     implicit val jsonCodec: Codec.AsObject[Attached] = deriveCodec[Attached]
 
     def apply(itemRevision: Option[ItemRevision]): Attached =
-      if (itemRevision.isEmpty)
+      if itemRevision.isEmpty then
         none
       else
         new Attached(itemRevision)

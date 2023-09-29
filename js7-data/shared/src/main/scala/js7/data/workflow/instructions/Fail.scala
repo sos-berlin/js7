@@ -32,10 +32,10 @@ object Fail
       "sourcePos" -> o.sourcePos.asJson)
 
   implicit val jsonDecoder: Decoder[Fail] =
-    c => for {
+    c => for
       errorMessage <- c.get[Option[Expression]]("message")
       namedValues <- c.getOrElse[NamedValues]("namedValues")(Map.empty)
       uncatchable <- c.getOrElse[Boolean]("uncatchable")(false)
       sourcePos <- c.get[Option[SourcePos]]("sourcePos")
-    } yield Fail(errorMessage, namedValues, uncatchable = uncatchable, sourcePos)
+    yield Fail(errorMessage, namedValues, uncatchable = uncatchable, sourcePos)
 }

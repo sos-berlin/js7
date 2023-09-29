@@ -82,7 +82,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
   protected def httpsConfig: HttpsConfig
 
   private lazy val httpsConnectionContext =
-    if (httpsConfig.keyStoreRef.isEmpty && httpsConfig.trustStoreRefs.isEmpty)
+    if httpsConfig.keyStoreRef.isEmpty && httpsConfig.trustStoreRefs.isEmpty then
       http.defaultClientHttpsContext
     else
       ConnectionContext.httpsClient(
@@ -112,7 +112,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
     get_[HttpResponse](uri, StreamingJsonHeaders)
       .map(_.entity.withoutSizeLimit.dataBytes.toObservable)
       .pipeIf(logger.underlying.isDebugEnabled)(_.logTiming(_.size, (d, s, _) =>
-        if (d >= 1.s && s > 10_000_000)
+        if d >= 1.s && s > 10_000_000 then
           logger.debug(s"get $uri: ${bytesPerSecondString(d, s)}")))
       .map(_
         .flatMap(new ByteSequenceToLinesObservable))
@@ -123,7 +123,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
     case t @ akka.stream.SubscriptionWithCancelException.NoMoreElementsNeeded =>
       // On NoMoreElementsNeeded the Observable ends silently !!! Maybe harmless?
       logger.warn(s"Ignore ${t.toString}")
-      if (hasRelevantStackTrace(t)) logger.debug(s"Ignore $t", t)
+      if hasRelevantStackTrace(t) then logger.debug(s"Ignore $t", t)
       Observable.empty
   }
 
@@ -131,7 +131,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
     case t: akka.stream.scaladsl.TcpIdleTimeoutException =>
       // Idle timeout is silently ignored !!! Maybe harmless?
       logger.warn(s"Ignore ${t.toString}")
-      if (hasRelevantStackTrace(t)) logger.debug(s"Ignore $t", t)
+      if hasRelevantStackTrace(t) then logger.debug(s"Ignore $t", t)
       Observable.empty
   }
 
@@ -164,8 +164,8 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
     def toNdJson(a: A) = a.asJson.toByteSequence[ByteString] ++ LF
 
     val chunks: Observable[ByteString] =
-      if (responsive)
-        for (a <- data) yield toNdJson(a)
+      if responsive then
+        for a <- data yield toNdJson(a)
       else
         data
           .mapParallelBatch(responsive = responsive)(a =>
@@ -226,7 +226,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
     post_[A](uri, data, AcceptJson)
       .flatMap { httpResponse =>
         Task.defer {
-          if (!httpResponse.status.isSuccess && !allowedStatusCodes(httpResponse.status.intValue))
+          if !httpResponse.status.isSuccess && !allowedStatusCodes(httpResponse.status.intValue) then
             failWithResponse(uri, httpResponse)
           else
             Task.pure(httpResponse.status.intValue)
@@ -238,7 +238,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
   final def post_[A: Encoder](uri: Uri, data: A, headers: List[HttpHeader])
     (implicit s: Task[Option[SessionToken]])
   : Task[HttpResponse] =
-    for {
+    for
       // Maybe executeOn avoid blocking with a single thread Scheduler,
       // but sometimes throws RejectedExecutionException in test build
       //entity <- Task.deferFuture(executeOn(materializer.executionContext)(implicit ec => Marshal(data).to[RequestEntity]))
@@ -246,7 +246,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
       response <- sendReceive(
         HttpRequest(POST, uri.asAkka, headers, entity),
         logData = Some(data.toString))
-    } yield response
+    yield response
 
   final def postRaw(uri: Uri, headers: List[HttpHeader], entity: RequestEntity)
     (implicit s: Task[Option[SessionToken]])
@@ -258,7 +258,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
   : Task[HttpResponse] =
     withCheckedAgentUri(request)(request =>
       sessionTokenTask.flatMap { sessionToken =>
-        if (closed) {
+        if closed then {
           logger.debug(s"(WARN) AkkaHttpClient has actually been closed: ${requestToString(request, logData)}")
         }
         val number = requestCounter.incrementAndGet()
@@ -278,7 +278,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
         Task
           .deferFutureAction { scheduler =>
             responseFuture = http.singleRequest(req,
-              if (req.uri.scheme == "https") httpsConnectionContext else http.defaultClientHttpsContext)
+              if req.uri.scheme == "https" then httpsConnectionContext else http.defaultClientHttpsContext)
             responseFuture
               .recover { case t if canceled =>
                 logger.trace(s"$logPrefix Ignored after cancel: ${t.toStringWithCauses}")
@@ -296,7 +296,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
             logResponding(request, _, responseLogPrefix)
               .map { response =>
                 lazy val prefix = "#" + number
-                if (!logger.underlying.isTraceEnabled)
+                if !logger.underlying.isTraceEnabled then
                   response
                 else
                   logResponseStream(response, prefix)
@@ -305,7 +305,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
             case ExitCase.Canceled => Task {
               canceled = true
               logger.debug(s"<~~ ⚫️$responseLogPrefix => canceled")
-              if (responseFuture != null) {
+              if responseFuture != null then {
                 // TODO Akka's max-open-requests may be exceeded when new requests are opened
                 //  while many canceled requests are still not completed by Akka
                 //  until the server has reponded or some Akka (idle connection) timeout.
@@ -348,7 +348,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
     untilResponded: Task[HttpResponse],
     responseLogPrefix: => String)
   : Task[HttpResponse] =
-    if (request.headers.contains(StreamingJsonHeader)) {
+    if request.headers.contains(StreamingJsonHeader) then {
       untilResponded.map { response =>
         logResponse(response, responseLogPrefix, " ✔")
         response
@@ -357,19 +357,19 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
       var waitingLogged = false
       untilResponded
         .whenItTakesLonger()(_ => Task {
-          val sym = if (!waitingLogged) "🟡" else "🟠"
+          val sym = if !waitingLogged then "🟡" else "🟠"
           waitingLogged = true
           logger.debug(
             s"... $sym$responseLogPrefix => Still waiting for response${closed ?? " (closed)"}")
         })
         .flatTap(response => Task(
-          logResponse(response, responseLogPrefix, if (waitingLogged) "🔵" else " ✔")
+          logResponse(response, responseLogPrefix, if waitingLogged then "🔵" else " ✔")
         ))
     }
 
   private def logResponse(response: HttpResponse, responseLogPrefix: String, good: String): Unit = {
     val sym =
-      if (!response.status.isFailure)
+      if !response.status.isFailure then
         good
       else response.status match {
         case Unauthorized => "⛔"
@@ -397,7 +397,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
       } catch {
         case NonFatal(_) => ""
       })
-    val arrow = if (response.entity.isChunked) "<-<-" else "<--<"
+    val arrow = if response.entity.isChunked then "<-<-" else "<--<"
     logger.debug(s"$arrow$sym$responseLogPrefix => ${response.status}$suffix")
   }
 
@@ -417,10 +417,10 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
           .withEntity(chunked.copy(
             chunks = chunked.chunks
               .map { chunk =>
-                if (chunk.isLastChunk) {
-                  val arrow = if (chunk.isLastChunk) "<--|  " else "<-<-  "
+                if chunk.isLastChunk then {
+                  val arrow = if chunk.isLastChunk then "<--|  " else "<-<-  "
                   val data =
-                    if (isUtf8)
+                    if isUtf8 then
                       chunk.data.utf8String.truncateWithEllipsis(
                         200, showLength = true, firstLineOnly = true, quote = true)
                     else
@@ -433,14 +433,14 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
     }
 
   private def unmarshal[A: FromResponseUnmarshaller](method: HttpMethod, uri: Uri)(httpResponse: HttpResponse) =
-    if (!httpResponse.status.isSuccess)
+    if !httpResponse.status.isSuccess then
       failWithResponse(uri, httpResponse)
     else
       Task.deferFuture[A](
         executeOn(materializer.executionContext) { implicit ec =>
           Unmarshal(httpResponse).to[A]
             .recover { case t =>
-              if (!materializer.isShutdown) {
+              if !materializer.isShutdown then {
                 logger.debug(
                   s"💥 $toString: Error when unmarshalling response of ${method.name} $uri: ${
                     t.toStringWithCauses}", t)
@@ -464,7 +464,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
 
   private[http] final def normalizeAgentUri(uri: Uri): Uri = {
     val AkkaUri(scheme, authority, path, query, fragment) = uri.asAkka
-    if (scheme.isEmpty && authority.isEmpty)
+    if scheme.isEmpty && authority.isEmpty then
       AkkaUri(baseAkkaUri.scheme, baseAkkaUri.authority, path, query, fragment).asUri
     else
       uri
@@ -473,9 +473,9 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
   /** Checks `uri` againts `baseUri` - scheme and authority must be equal. */
   private[http] final def checkAgentUri(uri: Uri): Checked[Uri] = {
     val akkaUri = uri.asAkka
-    if (akkaUri.scheme == baseAkkaUri.scheme &&
+    if akkaUri.scheme == baseAkkaUri.scheme &&
       akkaUri.authority == baseAkkaUri.authority &&
-      akkaUri.path.toString.startsWith(uriPrefixPath))
+      akkaUri.path.toString.startsWith(uriPrefixPath) then
       Right(uri)
     else
       Left(Problem(s"URI '$uri' does not match $baseUri$uriPrefixPath"))
@@ -486,8 +486,8 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
     b.append(request.method.value.pipeIf(isResponse)(_.toLowerCase(Locale.ROOT)))
     b.append(' ')
     b.append(request.uri)
-    if (!request.entity.isKnownEmpty) {
-      for (o <- logData) {
+    if !request.entity.isKnownEmpty then {
+      for o <- logData do {
         b.append(' ')
         b.append(o.truncateWithEllipsis(200, showLength = true, firstLineOnly = true))
       }
@@ -566,7 +566,7 @@ object AkkaHttpClient
         .toTry
 
     def parseNumber(value: String): Checked[Long] =
-      if (!value.startsWith("#"))
+      if !value.startsWith("#") then
         Left(Problem.pure("x-js7-request-id HTTP header must start with a #"))
       else
         try Right(value.substring(1).toLong)
@@ -625,7 +625,7 @@ object AkkaHttpClient
     def default = Problem.fromThrowable(throwable)
     throwable match {
       case akka.http.scaladsl.model.EntityStreamException(ErrorInfo(summary, _)) =>
-        if (summary contains "connection was closed unexpectedly")
+        if summary contains "connection was closed unexpectedly" then
           connectionWasClosedUnexpectedly
         else Problem.pure(summary)
 
@@ -677,7 +677,7 @@ object AkkaHttpClient
     private def shortDataString = dataAsString.truncateWithEllipsis(10000)
 
     lazy val problem: Option[Problem] =
-      if (httpResponse.entity.contentType == `application/json`)
+      if httpResponse.entity.contentType == `application/json` then
         io.circe.parser.decode[Problem](dataAsString) match {
           case Left(error) =>
             logger.debug(s"$uri: $prefixString, Problem cannot be parsed: $error - $dataAsString")

@@ -56,7 +56,7 @@ final class JControllerProxyTest extends OurTestSuite with DirectoryProviderForS
 
   override def beforeAll() = {
     super.beforeAll()
-    for (configDir <- List(directoryProvider.controllerEnv.configDir, directoryProvider.agentEnvs(0).configDir)) {
+    for configDir <- List(directoryProvider.controllerEnv.configDir, directoryProvider.agentEnvs(0).configDir) do {
       createDirectory(configDir / "private/trusted-silly-signature-keys")
       configDir / "private/trusted-silly-signature-keys/key.silly" := "MY-SILLY-SIGNATURE"
     }
@@ -80,7 +80,7 @@ final class JControllerProxyTest extends OurTestSuite with DirectoryProviderForS
             .map(_.asJson.compactPrint).asJava,
           () => controller())
       } finally
-        for (controller <- controller) {
+        for controller <- controller do {
           controller.stop.await(99.s)
         }
     }

@@ -52,7 +52,7 @@ extends AutoCloseable
   /** Closes underlying `SeekableInputStream`. May be called asynchronously. */
   def close() =
     synchronized {
-      for (in <- Option(inAtomic.getAndSet(null))) {
+      for in <- Option(inAtomic.getAndSet(null)) do {
         in.close()
       }
     }
@@ -68,7 +68,7 @@ extends AutoCloseable
       case Left(problem) =>
         val lineNr = lineNumber - 1
         val extra =
-          if (problem.toString startsWith "JSON ParsingFailure: ")
+          if problem.toString startsWith "JSON ParsingFailure: " then
             problem.toString.stripPrefix("JSON ParsingFailure: ").replace(" (line 1, ", " (")
           else
             problem.toString
@@ -89,36 +89,36 @@ extends AutoCloseable
       var rsReached = false
       var lfReached = false
       var eof = false
-      while (!lfReached && (!eof || blockRead < blockLength)) {
-        if (blockRead == blockLength) {
+      while !lfReached && (!eof || blockRead < blockLength) do {
+        if blockRead == blockLength then {
           eof = !fillByteBuffer()
         }
-        if (!rsReached && blockRead < blockLength) {
+        if !rsReached && blockRead < blockLength then {
           val byte = block(blockRead)
-          if (withRS) {
-            if (byte != RS)
+          if withRS then {
+            if byte != RS then
               throwCorrupt(f"Missing ASCII RS at start of JSON sequence record (instead read: $byte%02x)")
             blockRead += 1
             rsReached = true
           }
         }
         val start = blockRead
-        while (blockRead < blockLength && (block(blockRead) != LF || { lfReached = true; false })) { blockRead += 1 }
-        val chunk = ByteArray.unsafeWrap(java.util.Arrays.copyOfRange(block, start, blockRead + (if (lfReached) 1 else 0)))
-        if (chunk.nonEmpty) {
+        while blockRead < blockLength && (block(blockRead) != LF || { lfReached = true; false }) do { blockRead += 1 }
+        val chunk = ByteArray.unsafeWrap(java.util.Arrays.copyOfRange(block, start, blockRead + (if lfReached then 1 else 0)))
+        if chunk.nonEmpty then {
           byteArrays += chunk
         }
-        if (lfReached) {
+        if lfReached then {
           blockRead += 1
         }
       }
-      if ((!withRS && byteArrays.nonEmpty || rsReached) && !lfReached) {
+      if (!withRS && byteArrays.nonEmpty || rsReached) && !lfReached then {
         logger.warn(s"Discarding truncated last record in '$name': ${byteArrays.toVector.combineAll.utf8String} (terminating LF is missing)")
         byteArrays.clear()
         seek(startPosition)  // Keep a proper file position at start of record
       }
       lfReached ? {
-        if (lineNumber != -1) lineNumber += 1
+        if lineNumber != -1 then lineNumber += 1
         val result = ByteArray.combineAll(byteArrays)
         byteArrays.clear()
         PositionAnd(startPosition, result)
@@ -129,7 +129,7 @@ extends AutoCloseable
     blockPos = position
     blockRead = 0
     val length = check { in.read(block) }
-    if (length == -1) {
+    if length == -1 then {
       blockLength = 0
       false  // EOF
     } else {
@@ -140,8 +140,8 @@ extends AutoCloseable
 
   def seek(pos: Long): Unit =
     synchronized {
-      if (pos != position) {
-        if (pos >= blockPos && pos <= blockPos + blockLength) {
+      if pos != position then {
+        if pos >= blockPos && pos <= blockPos + blockLength then {
           blockRead = (pos - blockPos).toInt  // May be == blockLength
         } else {
           check { in.seek(pos) }
@@ -176,7 +176,7 @@ object InputStreamJsonSeqReader
     new InputStreamJsonSeqReader(SeekableInputStream.openFile(file), name = file.getFileName.toString, blockSize)
 
   private def throwCorrupt2(lineNumber: Long, position: Long, extra: String) = {
-    val where = if (lineNumber >= 0) s"line $lineNumber" else s"file position $position"
+    val where = if lineNumber >= 0 then s"line $lineNumber" else s"file position $position"
     sys.error(s"JSON sequence is corrupt at $where: $extra")
   }
 

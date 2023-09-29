@@ -51,7 +51,7 @@ object InventoryItemKey
       def apply(key: InventoryItemKey) = Json.fromString(key.toTypedString)
 
       def apply(cursor: HCursor) =
-        for {
+        for
           string <- cursor.as[String]
           prefixAndId <- string indexOf ':' match {
             case i if i > 0 => Right((string take i, string.substring(i + 1)))
@@ -62,7 +62,7 @@ object InventoryItemKey
           itemKey <- typeToCompanion.get(prefix)
             .toRight(DecodingFailure(s"Unrecognized type prefix in InventoryItemKey: $prefix ", cursor.history))
             .flatMap(_.checked(idString).toDecoderResult(cursor.history))
-        } yield itemKey
+        yield itemKey
     }
   }
 

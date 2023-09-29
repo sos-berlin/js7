@@ -26,21 +26,21 @@ extends Schedule {
       private var _next: Instant = null
 
       def hasNext = {
-        if (_next == null) {
+        if _next == null then {
           _next = find()
         }
         _next != null
       }
 
       def next() = {
-        if (!hasNext) throw new NoSuchElementException
+        if !hasNext then throw new NoSuchElementException
         val result = _next
         _next = null
         result
       }
 
       @tailrec private def find(): Instant = {
-        if (remaining > 0 && from < instantInterval.until) {
+        if remaining > 0 && from < instantInterval.until then {
           val local = LocalDateTime.ofInstant(from, timeZone)
           periodSeq(local.toLocalDate).flatMap(_.nextLocalTime(local.toLocalTime))
             .map(_.atDate(local.toLocalDate).toInstant(timeZone))

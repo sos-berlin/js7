@@ -40,7 +40,7 @@ final class OrderScheduleGenerator(addOrders: Seq[FreshOrder] => Task[Completed]
     scheduledOrderGeneratorKeeper = new ScheduledOrderGeneratorKeeper(generators)
 
   def start()(implicit scheduler: Scheduler): Unit = {
-    if (started.getAndSet(true)) throw new IllegalStateException(
+    if started.getAndSet(true) then throw new IllegalStateException(
       "OrderScheduleGenerator has already been started")
     generate()
   }
@@ -49,8 +49,8 @@ final class OrderScheduleGenerator(addOrders: Seq[FreshOrder] => Task[Completed]
     val interval = InstantInterval(generatedUntil.toInstant, addEvery.asJava)
     logger.debug(s"Generating orders for time interval $interval")
     val orders = scheduledOrderGeneratorKeeper.generateOrders(interval)
-    if (!closed) {
-      if (orders.isEmpty) logger.debug("No orders generated in this time interval")
+    if !closed then {
+      if orders.isEmpty then logger.debug("No orders generated in this time interval")
       val future = addOrders(orders).runToFuture
       addOrdersCancelable := future
       future onComplete {

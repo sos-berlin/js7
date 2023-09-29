@@ -83,7 +83,7 @@ final class JournalIndexTest extends OurTestSuite {
   }
 
   "Adding more #2" in {
-    for (i <- 13 to 23) index.addAfter(i, i * 100)
+    for i <- 13 to 23 do index.addAfter(i, i * 100)
     assert(index.positionAndEventIds == Vector(
       PositionAnd( 100,  1),
       PositionAnd( 500,  5),
@@ -94,7 +94,7 @@ final class JournalIndexTest extends OurTestSuite {
   }
 
   "Overflow #3 with n=2" in {
-    for (i <- 24 to 47 by 2) index.addAfter(i, i * 100, n = 2)
+    for i <- 24 to 47 by 2 do index.addAfter(i, i * 100, n = 2)
     assert(index.positionAndEventIds == Vector(
       PositionAnd( 100,  1),
       PositionAnd( 800,  8),
@@ -105,7 +105,7 @@ final class JournalIndexTest extends OurTestSuite {
   }
 
   "Positions are evenly distributed after many more positions have been added" in {
-    for (i <- 48 to 6000) index.addAfter(i, i * 100)
+    for i <- 48 to 6000 do index.addAfter(i, i * 100)
     assert(index.positionAndEventIds == Vector(
       PositionAnd(   100,  1),
       PositionAnd(102400, 1024),
@@ -117,7 +117,7 @@ final class JournalIndexTest extends OurTestSuite {
   }
 
   "A million positions added" in {
-    for (i <- 6001 to 1000000) index.addAfter(i, i * 100)
+    for i <- 6001 to 1000000 do index.addAfter(i, i * 100)
     assert(index.positionAndEventIds == Vector(
       PositionAnd(     100,  1),
       PositionAnd(26214400, 262144),
@@ -148,7 +148,7 @@ final class JournalIndexTest extends OurTestSuite {
 
   "freeze 2" in {
     val index = new JournalIndex(PositionAnd(100, 1), size = 1000)
-    for (i <- 2 to 10000) index.addAfter(i, i * 100)
+    for i <- 2 to 10000 do index.addAfter(i, i * 100)
     assert(index.spreadForTest == 16 && index.lengthForTest == 626)
     index.freeze(toFactor = 50)
     assert(index.spreadForTest == 48 && index.lengthForTest == 208/*about 3.2KB*/)
@@ -156,7 +156,7 @@ final class JournalIndexTest extends OurTestSuite {
 
   "freeze to high factor keeps length >= 100" in {
     val index = new JournalIndex(PositionAnd(100, 1), size = 1000)
-    for (i <- 2 to 10000) index.addAfter(i, i * 100)
+    for i <- 2 to 10000 do index.addAfter(i, i * 100)
     assert(index.spreadForTest == 16 && index.lengthForTest == 626)
     index.freeze(toFactor = 1000)
     assert(index.spreadForTest == 96 && index.lengthForTest == 104/*about 1.6KB*/)

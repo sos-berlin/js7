@@ -8,7 +8,7 @@ import scala.reflect.ClassTag
  */
 private class AssignableFrom[A : ClassTag] extends PartialFunction[Any, A] {
   def apply(o: Any) = {
-    if (!isDefinedAt(o)) throw new ClassCastException(s"Not a ${implicitClass[A].getName}: '$o' (${o.getClass})")
+    if !isDefinedAt(o) then throw new ClassCastException(s"Not a ${implicitClass[A].getName}: '$o' (${o.getClass})")
     o.asInstanceOf[A]
   }
 

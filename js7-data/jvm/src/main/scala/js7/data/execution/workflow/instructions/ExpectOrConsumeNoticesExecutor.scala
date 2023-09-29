@@ -23,7 +23,7 @@ object ExpectOrConsumeNoticesExecutor
     state: StateView,
     postedBoards: Set[BoardPath] = Set.empty)
   : List[OrderEvent.OrderActorEvent] =
-    if (expectNotices.isFulfilled(postedBoards ++ state.availableNotices(expected))) {
+    if expectNotices.isFulfilled(postedBoards ++ state.availableNotices(expected)) then {
       expectNotices.fulfilledEvents(order, expected)
     } else
       Nil

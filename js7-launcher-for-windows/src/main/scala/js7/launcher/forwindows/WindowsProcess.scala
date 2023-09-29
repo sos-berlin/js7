@@ -57,7 +57,7 @@ extends Js7Process
     returnCodeOnce.isEmpty && !waitForProcess(timeout = 0)
 
   lazy val stdin: OutputStream = {
-     if (inRedirection.pipeHandle == INVALID_HANDLE_VALUE)
+     if inRedirection.pipeHandle == INVALID_HANDLE_VALUE then
        throw new IllegalStateException("WindowsProcess has no handle for stdin attached")
      new PipeOutputStream(inRedirection.pipeHandle) {
        override def close() = inRedirection.closePipe()
@@ -68,7 +68,7 @@ extends Js7Process
   lazy val stderr: InputStream = newOutErrInputStream(Stderr, errRedirection)
 
   def newOutErrInputStream(outerr: StdoutOrStderr, redirection: Redirection) = {
-    if (redirection.pipeHandle == INVALID_HANDLE_VALUE)
+    if redirection.pipeHandle == INVALID_HANDLE_VALUE then
       throw new IllegalStateException(s"WindowsProcess has no handle for $outerr attached")
     new PipeInputStream(redirection.pipeHandle) {
       override def close() = redirection.closePipe()
@@ -109,13 +109,13 @@ extends Js7Process
   private def waitForProcess(timeout: Int): Boolean =
     hProcessGuard.use {
       case None =>
-        if (returnCodeOnce.isEmpty)
+        if returnCodeOnce.isEmpty then
           throw new IllegalStateException("WindowsProcess has been closed before started")
         true
 
       case Some(hProcess) =>
         val terminated = waitForSingleObject(hProcess, timeout)
-        if (terminated) {
+        if terminated then {
           returnCodeOnce.trySet(ReturnCode(getExitCodeProcess(hProcess)))
           hProcessGuard.releaseAfterUse()
         }
@@ -143,7 +143,7 @@ private[launcher] object WindowsProcess
   : Checked[Js7Process] = {
     import startWindowsProcess.{additionalEnv, args, stderrRedirect, stdinRedirect, stdoutRedirect}
 
-    for (commandLine <- argsToCommandLine(args.toIndexedSeq)) yield {
+    for commandLine <- argsToCommandLine(args.toIndexedSeq) yield {
       val inRedirection = redirectToHandle(STD_INPUT_HANDLE, stdinRedirect)
       val outRedirection = redirectToHandle(STD_OUTPUT_HANDLE, stdoutRedirect)
       val errRedirection = redirectToHandle(STD_ERROR_HANDLE, stderrRedirect)
@@ -158,7 +158,7 @@ private[launcher] object WindowsProcess
 
       val loggedOn = LoggedOn.logon(maybeLogon)
       val env = maybeLogon.fold(sys.env)(logon =>
-        if (logon.withUserProfile)
+        if logon.withUserProfile then
           WindowsApi.usersEnvironment(loggedOn.userToken)  // Only reliable if user profile has been loaded (see JS-1725)
         else
           WindowsApi.usersEnvironment(null) ++  // Default system environment
@@ -193,8 +193,8 @@ private[launcher] object WindowsProcess
     private val closed = new AtomicBoolean
 
     def close() = {
-      if (!closed.getAndSet(true)) {
-        if (profileHandle != INVALID_HANDLE_VALUE) {
+      if !closed.getAndSet(true) then {
+        if profileHandle != INVALID_HANDLE_VALUE then {
           call("UnloadUserProfile") {
             myUserenv.UnloadUserProfile(userToken, profileHandle)
           }
@@ -219,7 +219,7 @@ private[launcher] object WindowsProcess
       new LoggedOn(
         userToken,
         profileHandle =
-          if (withUserProfile)
+          if withUserProfile then
             loadUserProfile(userToken, userName)
           else
             INVALID_HANDLE_VALUE)
@@ -308,7 +308,7 @@ private[launcher] object WindowsProcess
       }
     }
     val returnCode = process.waitFor()
-    if (returnCode != 0) throw new RuntimeException(s"Windows command failed: $executable => ${lines mkString " / "}")
+    if returnCode != 0 then throw new RuntimeException(s"Windows command failed: $executable => ${lines mkString " / "}")
     lines
   }
 

@@ -20,14 +20,14 @@ extends SnapshotableState[S]
   final def clusterNodeToUserAndPassword(ourNodeId: NodeId, otherNodeId: NodeId)
     (implicit nodeNameToPassword: NodeNameToPassword[S])
   : Checked[Option[UserAndPassword]] =
-    for {
+    for
       nodeName <- clusterNodeIdToName(otherNodeId)
       maybePassword <- nodeNameToPassword(nodeName)
       maybeUserAndPassword <-
         maybePassword.traverse(password =>
-          for (userId <- clusterNodeToUserId(ourNodeId)) yield
+          for userId <- clusterNodeToUserId(ourNodeId) yield
             UserAndPassword(userId, password))
-    } yield maybeUserAndPassword
+    yield maybeUserAndPassword
 }
 
 object ClusterableState

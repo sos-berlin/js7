@@ -16,15 +16,15 @@ extends Observable[ByteArray]
     val reader = new ByteArrayReader(file, fromEnd = pollDuration.isDefined)
 
     def continue(): Unit =
-      if (cancelled) {
+      if cancelled then {
         reader.close()
       } else {
         val chunk = reader.read()
-        if (chunk.isEmpty) {
+        if chunk.isEmpty then {
           // End of file reached
           pollDuration match {
             case Some(delay) if chunk.isEmpty =>
-              if (Files.exists(file)) {
+              if Files.exists(file) then {
                 scheduler.scheduleOnce(delay) {
                   continue()
                 }

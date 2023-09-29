@@ -35,7 +35,7 @@ extends Instruction {
       outer = Some(outer)))
 
   override def reduceForAgent(agentPath: AgentPath, workflow: Workflow) =
-    if (isVisibleForAgent(agentPath, workflow))
+    if isVisibleForAgent(agentPath, workflow) then
       copy(
         lockedWorkflow = lockedWorkflow.reduceForAgent(agentPath))
     else
@@ -92,12 +92,12 @@ object LockInstruction {
   implicit val jsonEncoder: Encoder.AsObject[LockInstruction] = deriveEncoder
 
   implicit val jsonDecoder: Decoder[LockInstruction] =
-    c => for {
+    c => for
       locks <- c.get[List[LockDemand]]("demands")
         /*COMPATIBLE with v2.4*/.orElse(c.value.as[LockDemand].map(_ :: Nil))
       w <- c.get[Workflow]("lockedWorkflow")
       sourcePos <- c.get[Option[SourcePos]]("sourcePos")
       lock <- LockInstruction(locks, w, sourcePos)
         .checked.toDecoderResult(c.history)
-    } yield lock
+    yield lock
 }

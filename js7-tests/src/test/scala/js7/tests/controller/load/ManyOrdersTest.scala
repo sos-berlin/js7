@@ -50,11 +50,11 @@ final class ManyOrdersTest extends OurTestSuite with ControllerAgentForScalaTest
   s"Add $n orders à ${toKBGB(orderSize)} and make a snapshot" in {
     val t = new Stopwatch
     addOrders()
-    if (n > defaultN) println(t.itemsPerSecondString(n, "orders added"))
+    if n > defaultN then println(t.itemsPerSecondString(n, "orders added"))
     controller.api.executeCommand(TakeSnapshot) await longTimeout
-    if (n > defaultN) println(t.itemsPerSecondString(n, "orders written to snapshot"))
+    if n > defaultN then println(t.itemsPerSecondString(n, "orders written to snapshot"))
     waitUntilAllOrdersFinished(t)
-    if (n > defaultN) println(t.itemsPerSecondString(n, "orders processed"))
+    if n > defaultN then println(t.itemsPerSecondString(n, "orders processed"))
   }
 
   private def addOrders(): Unit = {
@@ -73,7 +73,7 @@ final class ManyOrdersTest extends OurTestSuite with ControllerAgentForScalaTest
       .observe(EventRequest.singleClass[OrderFinished](after = EventId.BeforeFirst, timeout = None))
       .scan(0)((i, _) => i + 1)
       .map { i =>
-        if (n > 100 && i % 100 == 0) println(stopwatch.itemsPerSecondString(i, s"orders finished"))
+        if n > 100 && i % 100 == 0 then println(stopwatch.itemsPerSecondString(i, s"orders finished"))
         i
       }
       .dropWhile(_ < n)

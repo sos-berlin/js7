@@ -12,11 +12,11 @@ import js7.common.system.ServerOperatingSystem.*
 final class ServerOperatingSystemTest extends OurTestSuite {
 
   "makeModuleFilename" in {
-    assert(makeModuleFilename("xx") == (if (isWindows) "xx.dll" else if (isMac) "libxx.dylib" else "libxx.so"))
+    assert(makeModuleFilename("xx") == (if isWindows then "xx.dll" else if isMac then "libxx.dylib" else "libxx.so"))
   }
 
   "makeExecutableFilename" in {
-    assert(makeExecutableFilename("xx") == (if (isWindows) "xx.exe" else "xx"))
+    assert(makeExecutableFilename("xx") == (if isWindows then "xx.exe" else "xx"))
   }
 
   "concatFileAndPathChain" in {

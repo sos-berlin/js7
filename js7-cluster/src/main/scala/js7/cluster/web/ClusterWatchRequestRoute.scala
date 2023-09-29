@@ -53,7 +53,7 @@ trait ClusterWatchRequestRoute extends RouteProvider
                     // The streaming event web service doesn't have an error channel,
                     // so we simply end the stream
                     logger.warn(throwable.toStringWithCauses)
-                    if (throwable.getStackTrace.nonEmpty) logger.debug(throwable.toStringWithCauses, throwable)
+                    if throwable.getStackTrace.nonEmpty then logger.debug(throwable.toStringWithCauses, throwable)
                     Stream.empty
                   })
                 .flatMap { stream =>

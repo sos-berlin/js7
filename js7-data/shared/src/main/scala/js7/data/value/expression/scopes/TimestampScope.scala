@@ -35,17 +35,17 @@ extends Scope
     }
 
   private def func(formatExpr: Expression, timezoneExpr: Expression)(implicit scope: Scope) =
-    for {
+    for
       timezoneName <- timezoneExpr.evalAsString
       timezone = timezoneName.nonEmpty ? timezoneName
       result <- func2(formatExpr, timezone)
-    } yield result
+    yield result
 
   private def func2(formatExpr: Expression, timezone: Option[String])(implicit scope: Scope) = {
-    for {
+    for
       format <- formatExpr.evalAsString
       result <- maybeTimestamp.fold(Checked(""))(_.format(format, timezone))
-    } yield StringValue(result)
+    yield StringValue(result)
   }
 
   override def toString = s"TimestampScope('$name')"

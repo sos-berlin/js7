@@ -92,7 +92,7 @@ final class FileWatchDelayTest extends OurTestSuite with ControllerAgentForScala
         file ++= "A"
         assert(!whenArised.isCompleted)
         val divisor = 4
-        for (j <- 1 to i * divisor) withClue(s"#$i") {
+        for j <- 1 to i * divisor do withClue(s"#$i") {
           sleepUntil(since + systemWatchDelay + j * writeDuration / divisor)
           logger.info(s"""file-$i ++= "${"+" * j}" +${since.elapsed.pretty}""")
           file ++= "+"

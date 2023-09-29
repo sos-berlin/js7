@@ -342,7 +342,7 @@ final class OrderScopesTest extends OurTestSuite
       val expressionsStrings = View("$orderArgument", "$js7Label", "$js7WorkflowPosition",
         "JobResource:JOB-RESOURCE:`ORDER-ID`", "JobResource:JOB-RESOURCE:NOW",
         "now($dateTimeFormat, $timezone)")
-      for (exprString <- expressionsStrings) {
+      for exprString <- expressionsStrings do {
         val expression = expr(exprString)
         logger.info(measureTime(n, exprString, warmUp = n) {
           expression.eval.orThrow

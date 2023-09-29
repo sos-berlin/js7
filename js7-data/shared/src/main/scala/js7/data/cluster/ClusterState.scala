@@ -80,7 +80,7 @@ extends EventDrivenState[ClusterState, ClusterEvent]
     }
 
   def estimatedSnapshotSize =
-    if (this != Empty) 1 else 0
+    if this != Empty then 1 else 0
 
   def toSnapshotObservable =
     Observable.fromIterable((this != Empty) ? ClusterStateSnapshot(this))
@@ -126,7 +126,7 @@ extends EventDrivenState.Companion[ClusterState, ClusterEvent]
     protected final def nodesString =
       idToUri
         .map { case (id, uri) =>
-          s"${if (activeId == id) "active" else "passive"} ${id.string} $uri"
+          s"${if activeId == id then "active" else "passive"} ${id.string} $uri"
         }
         .mkString(", ")
 

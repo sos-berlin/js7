@@ -42,7 +42,7 @@ final class WindowsLogonTest extends OurTestSuite with ControllerAgentForScalaTe
             "ORIGINAL_PATH" -> FunctionCall("env", Seq(Argument(StringConstant(PathEnvName))))),
           login = targetKey.map(KeyLogin(_, withUserProfile = false)))))))
 
-  if (isWindows) {
+  if isWindows then {
     "Windows Logon" in {
       val events = controller.runOrder(FreshOrder(OrderId("WindowsLogonTest"), workflow.path))
         .map(_.value)

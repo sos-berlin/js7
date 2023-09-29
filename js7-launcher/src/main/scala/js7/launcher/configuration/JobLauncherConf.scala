@@ -51,11 +51,11 @@ object JobLauncherConf
     val killWithSigterm = config.seqAs[String](sigtermName)
     val killWithSigkill = config.seqAs[String](sigkillName)
     val killForWindows = config.seqAs[String](sigkillWindowsName)
-    if (killWithSigterm.nonEmpty && !killWithSigterm.contains("$pid"))
+    if killWithSigterm.nonEmpty && !killWithSigterm.contains("$pid") then
       Left(Problem(s"Setting $sigtermName must contain \"$$pid\""))
-    else if (killWithSigkill.nonEmpty && !killWithSigkill.contains("$pid"))
+    else if killWithSigkill.nonEmpty && !killWithSigkill.contains("$pid") then
       Left(Problem(s"Setting $sigkillName must contain \"$$pid\""))
-    else if (killForWindows.nonEmpty && !killForWindows.contains("$pid"))
+    else if killForWindows.nonEmpty && !killForWindows.contains("$pid") then
       Left(Problem(s"Setting $sigkillWindowsName must contain \"$$pid\""))
     else Right(
       JobLauncherConf(

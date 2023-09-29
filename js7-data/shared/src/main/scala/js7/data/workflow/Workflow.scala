@@ -97,7 +97,7 @@ with TrivialItemState[Workflow]
       checkCalendar ++
       checkBreak()
     val problems = chk.collect { case Left(problem) => problem }.toVector
-    if (problems.nonEmpty)
+    if problems.nonEmpty then
       Left(Problem.Combined(problems))
     else
       Right(this)
@@ -158,8 +158,8 @@ with TrivialItemState[Workflow]
 
   private def checkBreak(branchPath: BranchPath = Nil, inCycle: Boolean = false)
   : View[Checked[Unit]] =
-    for ((nr, Labeled(_, instr, _)) <- numberedInstructions) yield
-      for {
+    for (nr, Labeled(_, instr, _)) <- numberedInstructions yield
+      for
         isInCycle <- instr
           .match_ {
             case _: Cycle => Right(true)
@@ -175,7 +175,7 @@ with TrivialItemState[Workflow]
           }
           .sequence
           .map(_.combineAll)
-      } yield ()
+      yield ()
 
   lazy val referencedAttachableUnsignedPaths
   : Vector[InventoryItemPath.AttachableToAgent & UnsignedSimpleItemPath] =
@@ -271,10 +271,10 @@ with TrivialItemState[Workflow]
   //  }
 
   def labelToPosition(branchPath: BranchPath, label: Label): Checked[Position] =
-    for {
+    for
       workflow <- nestedWorkflow(branchPath)
       nr <- workflow.labelToNumber.get(label).toChecked(UnknownKeyProblem("Label", label.string))
-    } yield branchPath % nr
+    yield branchPath % nr
 
   def labelToPosition(label: Label): Checked[Position] =
     flattenedInstructions
@@ -404,7 +404,7 @@ with TrivialItemState[Workflow]
 
   private def jobKey(workflowBranchPath: WorkflowBranchPath, name: WorkflowJob.Name): Checked[JobKey] =
     nestedWorkflow(workflowBranchPath.branchPath).flatMap(w =>
-      if (w.nameToJob contains name)
+      if w.nameToJob contains name then
         Right(JobKey(workflowBranchPath, name))
       else
         workflowBranchPath.branchPath match {
@@ -438,7 +438,7 @@ with TrivialItemState[Workflow]
     }
 
   def reachablePositions(from: Position): Iterable[Position] =
-    if (!isDefinedAt(from))
+    if !isDefinedAt(from) then
       Nil
     else
       flattenedInstructions.view
@@ -473,7 +473,7 @@ with TrivialItemState[Workflow]
     }
 
   def instruction(nr: InstructionNr): Instruction =
-    if (instructions.indices contains nr.number)
+    if instructions.indices contains nr.number then
       instructions(nr.number)
     else
       Gap.empty
@@ -492,11 +492,11 @@ with TrivialItemState[Workflow]
     labeledInstruction(position).rightAs(())
 
   def labeledInstruction(position: Position): Checked[Instruction.Labeled] =
-    for {
+    for
       workflow <- nestedWorkflow(position.branchPath)
       instr <- workflow.labeledInstructions.get(position.nr.number)
         .toRight(Problem(s"Unknown position $position in $id"))
-    } yield instr
+    yield instr
 
   def orderParameterList: OrderParameterList =
     orderPreparation.parameterList
@@ -577,7 +577,7 @@ with TrivialItemState.Companion[Workflow]
       outer))
 
   def of(instructions: Instruction.Labeled*): Workflow =
-    if (instructions.isEmpty)
+    if instructions.isEmpty then
       empty
     else
       of(WorkflowPath.NoId, instructions*)
@@ -627,7 +627,7 @@ with TrivialItemState.Companion[Workflow]
     // TODO Differentiate between CompleteWorkflow.completelyChecked and Subworkflow. completeChecked should not be left to the caller.
     cursor => {
       implicit val x: Decoder[Instruction] = Instructions.jsonCodec
-      for {
+      for
         id <- cursor.value.as[WorkflowId]
         orderPreparation <- cursor.getOrElse[OrderPreparation]("orderPreparation")(OrderPreparation.default)
         tz <- cursor.getOrElse[Timezone]("timeZone")(Timezone.utc)
@@ -640,7 +640,7 @@ with TrivialItemState.Companion[Workflow]
         workflow <- Workflow.checkedSub(id, instructions, namedJobs, orderPreparation, tz,
           jobResourcePaths, calendarPath, result, source)
           .toDecoderResult(cursor.history)
-      } yield workflow
+      yield workflow
     }
 
   // TODO Separate plain RawWorkflow, TopWorkflow and Subworkflow

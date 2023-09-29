@@ -68,7 +68,7 @@ extends Service.StoppableByRequest
       .flatMap(file => Resource.eval(createSystemSession(user, file)))
 
   private def createSystemSession(user: SimpleUser, file: Path): Task[SessionToken] =
-    for (checked <- login(user, Some(Js7Version), isEternalSession = true)) yield {
+    for checked <- login(user, Some(Js7Version), isEternalSession = true) yield {
       val sessionToken = checked.orThrow
       deleteIfExists(file)
       createFile(file, operatingSystem.secretFileAttributes*)
@@ -130,7 +130,7 @@ object SessionRegister
     config: Config)
     (implicit arf: ActorRefFactory, scheduler: Scheduler)
   : Resource[Task, SessionRegister[S]] =
-    for {
+    for
       actor <- Akkas.actorResource[Task](
         SessionActor.props(newSession, config),
         implicitly[Tag[S]].tag.longName)
@@ -138,7 +138,7 @@ object SessionRegister
         actor,
         akkaAskTimeout = config.getDuration("js7.akka.ask-timeout").toFiniteDuration,
         componentName = config.getString("js7.component.name"))))
-    } yield sessionRegister
+    yield sessionRegister
 
   // Does not stop the Actor !!!
   @TestOnly

@@ -34,7 +34,7 @@ final class SubagentMultipleOrdersTest extends OurTestSuite with SubagentTester
     runSubagent(bareSubagentItem) { _ =>
       val n = 100
       val runOrders = runMultipleOrders(
-        orderIds = for (i <- 1 to n) yield OrderId(s"ORDER-$i"),
+        orderIds = for i <- 1 to n yield OrderId(s"ORDER-$i"),
         assertEvents = (orderId, events) =>
           Task {
             val result = withClue(s"$orderId: ") {
@@ -91,14 +91,14 @@ final class SubagentMultipleOrdersTest extends OurTestSuite with SubagentTester
         case (idToEvents, eventAndState) =>
           eventAndState.stampedEvent match {
             case Stamped(_, _, KeyedEvent(orderId: OrderId, event: OrderEvent)) =>
-              if (!orderIds.contains(orderId))
+              if !orderIds.contains(orderId) then
                 idToEvents -> (None -> true)
               else {
                 val iToE = idToEvents + (orderId -> (idToEvents(orderId) :+ event))
                 event match {
                   case _: OrderFinished =>
                     val iToE2 = iToE.removed(orderId)
-                    if (iToE2.isEmpty)
+                    if iToE2.isEmpty then
                       iToE2 -> (Some(orderId -> iToE(orderId)) -> false/*do not continue!*/)
                     else
                       iToE2 -> (Some(orderId -> iToE(orderId)) -> true)

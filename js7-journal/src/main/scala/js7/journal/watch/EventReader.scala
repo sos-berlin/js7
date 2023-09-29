@@ -62,7 +62,7 @@ extends AutoCloseable
   final def closeAfterUse(): Unit = {
     logger.debug("closeAfterUse")
     _closeAfterUse = true
-    if (!isInUse) close()
+    if !isInUse then close()
   }
 
   final def close(): Unit =
@@ -77,15 +77,15 @@ extends AutoCloseable
     val iterator = iteratorPool.borrowIterator()
     closeOnError(iterator) {
       val pos = iterator.position
-      if (pos != position &&
-        (pos < position || iterator.eventId > after/*No seek if skipToEventAfter works without seek*/))
+      if pos != position &&
+        (pos < position || iterator.eventId > after/*No seek if skipToEventAfter works without seek*/) then
       {
         logger.trace(s"seek $position (eventId=${indexPositionAndEventId.value}, for $after) ≠ " +
           s"iterator $pos (eventId=${iterator.eventId})")
         iterator.seek(indexPositionAndEventId)
       }
       val exists = iterator.skipToEventAfter(journalIndex, after) // May run very long (minutes for gigabyte journals) !!!
-      if (!exists) {
+      if !exists then {
         iteratorPool.returnIterator(iterator)
         None
       } else
@@ -103,10 +103,10 @@ extends AutoCloseable
     def close() =
       synchronized {
         // May be called asynchronously (parallel to hasNext or next), as by Monix guarantee or bracket
-        for (it <- Option(iteratorAtomic.getAndSet(null))) {
+        for it <- Option(iteratorAtomic.getAndSet(null)) do {
           logger.trace(s"EventIterator(after=$after) closed")
           iteratorPool.returnIterator(it)
-          if (_closeAfterUse && !isInUse || iteratorPool.isClosed) {
+          if _closeAfterUse && !isInUse || iteratorPool.isClosed then {
             logger.debug(s"CloseableIterator.close _closeAfterUse: '${EventReader.this}'")
             EventReader.this.close()
           }
@@ -125,19 +125,19 @@ extends AutoCloseable
               _next != null || {
                 val has = iterator.hasNext
                 eof |= !has
-                if (has) {
+                if has then {
                   // Read ahead next event to be sure to let the following `next()` succeed.
                   // So `close` may be executed asynchronously between `hasNext` and `next`.
                   // This may happen when the (HTTP) client stops reading.
                   _lastUsed = Timestamp.currentTimeMillis
                   val stamped = iterator.next()
                   assertThat(stamped.eventId >= after, s"${stamped.eventId} ≥ $after")
-                  if (isHistoric) {
+                  if isHistoric then {
                     journalIndex.tryAddAfter(stamped.eventId, iterator.position)
                   }
                   _next = stamped
                 } else {
-                  if (isHistoric) {
+                  if isHistoric then {
                     journalIndex.freeze(journalIndexFactor)
                   }
                   close()
@@ -153,7 +153,7 @@ extends AutoCloseable
         hasNext
         _next match {
           case null =>
-            if (iteratorAtomic.get() == null) throw new ClosedException(iterator_.journalFile)
+            if iteratorAtomic.get() == null then throw new ClosedException(iterator_.journalFile)
             throw new NoSuchElementException("EventReader read past end of file")
           case result =>
             _next = null
@@ -193,7 +193,7 @@ extends AutoCloseable
                     lastPosition = jsonSeqReader.position
                     maybeLine.map(PositionAnd(lastPosition, _))
                   }.takeWhileInclusive(_ => isFlushedAfterPosition(lastPosition))
-                  if (onlyAcks) {
+                  if onlyAcks then {
                     // TODO Optimierung: Bei onlyAcks interessiert nur die geschriebene Dateilänge.
                     //  Dann brauchen wir die Datei nicht zu lesen, sondern nur die geschriebene Dateilänge zurückzugeben.
                     var last = null.asInstanceOf[PositionAnd[ByteArray]]
@@ -202,7 +202,7 @@ extends AutoCloseable
                   }
                   iterator = iterator
                     .tapEach { o =>
-                      if (o.value == EndOfJournalFileMarker) sys.error(s"Journal file must not contain a line like $o")
+                      if o.value == EndOfJournalFileMarker then sys.error(s"Journal file must not contain a line like $o")
                     } ++
                       (eof && markEOF).thenIterator(PositionAnd(lastPosition, EndOfJournalFileMarker))
                   Observable.fromIteratorUnsafe(iterator map Right.apply) ++

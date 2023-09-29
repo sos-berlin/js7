@@ -544,7 +544,7 @@ final class WorkflowParserTest extends OurTestSuite
     check2(source, workflow, withSourcePos = false)
 
   private def check2(source: String, workflow: Workflow, withSourcePos: Boolean): Unit = {
-    val parsedWorkflow = WorkflowParser.parse(source).map(o => if (withSourcePos) o else o.withoutSourcePos)
+    val parsedWorkflow = WorkflowParser.parse(source).map(o => if withSourcePos then o else o.withoutSourcePos)
     assertEqual(parsedWorkflow.orThrow, workflow.copy(source = Some(source)))
     val generatedSource = workflow.show
     assert(WorkflowParser.parse(generatedSource).map(_.withoutSourcePos)

@@ -97,20 +97,20 @@ extends Actor with Stash with JournalLogging
   private var isHalted = false
   private val statistics = new Statistics
 
-  for (o <- conf.simulateSync) logger.warn(s"Disk sync is simulated with a ${o.pretty} pause")
+  for o <- conf.simulateSync do logger.warn(s"Disk sync is simulated with a ${o.pretty} pause")
   logger.whenTraceEnabled { logger.debug("Logger isTraceEnabled=true") }
 
   override def postStop() = {
     isHalted = true // is publicly readable via Journal#isHalted, even after actor stop
-    if (snapshotSchedule != null) snapshotSchedule.cancel()
+    if snapshotSchedule != null then snapshotSchedule.cancel()
     delayedCommit := Cancelable.empty // Discard commit for fast exit
     stopped.trySuccess(Stopped)
-    if (snapshotWriter != null) {
+    if snapshotWriter != null then {
       logger.debug(s"Deleting temporary journal files due to termination: ${snapshotWriter.file}")
       snapshotWriter.close()
       delete(snapshotWriter.file)
     }
-    if (eventWriter != null) {
+    if eventWriter != null then {
       eventWriter.close()
     }
     waitingForAcknowledgeTimer.cancel()
@@ -122,7 +122,7 @@ extends Actor with Stash with JournalLogging
     case Input.Start(journaledState_, observer_, header, totalRunningSince_) =>
       committedState = journaledState_.asInstanceOf[S]
       uncommittedState = committedState
-      if (conf.slowCheckState) {
+      if conf.slowCheckState then {
         journaledStateBuilder.initializeState(None, journaledState_.eventId, totalEventCount = 0, committedState)
         assertEqualSnapshotState("Start", journaledStateBuilder.result().withEventId(uncommittedState.eventId))
       }
@@ -136,7 +136,7 @@ extends Actor with Stash with JournalLogging
       val sender = this.sender()
       locally {
         val file = toSnapshotTemporary(journalLocation.file(after = lastWrittenEventId))
-        if (exists(file)) {
+        if exists(file) then {
           logger.warn(s"JournalWriter: Deleting existent file '$file'")
           delete(file)
         }
@@ -152,14 +152,14 @@ extends Actor with Stash with JournalLogging
   }
 
   private def logReady() = {
-    val how = if (conf.syncOnCommit) "(with sync)" else "(without sync)"
+    val how = if conf.syncOnCommit then "(with sync)" else "(without sync)"
     logger.debug(s"Snapshot written to Writing $how journal file ${eventWriter.file.getFileName}")
   }
 
   private def ready: Receive = receiveGet orElse {
     case Input.Store(correlId, timestamped, replyTo, options, since, commitLater, callersItem) =>
-      if (isHalted) {
-        for (o <- timestamped) {
+      if isHalted then {
+        for o <- timestamped do {
           logger.debug(s"Event ignored because journal is halted: ${o.keyedEvent.toString.truncateWithEllipsis(200)}")
         }
         // We ignore the event and do not notify the caller,
@@ -172,7 +172,7 @@ extends Actor with Stash with JournalLogging
         uncommittedState.applyStampedEvents(stampedEvents) match {
           case Left(problem) =>
             logger.error(problem.toString)
-            for (stamped <- stampedEvents) logger.error(stamped.toString)
+            for stamped <- stampedEvents do logger.error(stamped.toString)
             reply(sender(), replyTo, Output.StoreFailure(problem, callersItem))
 
           case Right(updatedState) =>
@@ -180,11 +180,11 @@ extends Actor with Stash with JournalLogging
             checkUncommittedState(stampedEvents)
             eventWriter.writeEvents(stampedEvents, transaction = options.transaction)
             val lastFileLengthAndEventId = stampedEvents.lastOption.map(o => PositionAnd(eventWriter.fileLength, o.eventId))
-            for (o <- lastFileLengthAndEventId) {
+            for o <- lastFileLengthAndEventId do {
               lastWrittenEventId = o.value
             }
             // TODO Handle serialization (but not I/O) error? writeEvents is not atomic.
-            if (commitLater) {
+            if commitLater then {
               // TODO Set a timer for a later commit here?
               reply(sender(), replyTo, Output.Accepted(callersItem))
               persistBuffer.add(
@@ -229,7 +229,7 @@ extends Actor with Stash with JournalLogging
                 requireClusterAcknowledgement = false
 
               case _ =>
-                if (persistBuffer.eventCount >= conf.coalesceEventLimit) {
+                if persistBuffer.eventCount >= conf.coalesceEventLimit then {
                   // Shrink persistBuffer
                   // TODO coalesce-event-limit has no effect in cluster mode, persistBuffer does not shrink
                   commit()
@@ -241,7 +241,7 @@ extends Actor with Stash with JournalLogging
       }
 
     case Internal.Commit =>
-      if (persistBuffer.isEmpty) {
+      if persistBuffer.isEmpty then {
         logger.trace("Commit but persistBuffer.isEmpty")
       }
       commit()
@@ -253,14 +253,14 @@ extends Actor with Stash with JournalLogging
 
     case Input.PassiveNodeAcknowledged(eventId_) =>
       var ack = eventId_
-      if (ack > lastWrittenEventId && isHalted) {
+      if ack > lastWrittenEventId && isHalted then {
         // The other cluster node may already have become active (uncoupled),
         // generating new EventIds whose last one we may receive here.
         // So we take the last one we know (must be the EventId of ClusterSwitchedOver)
         // TODO Can web service /api/journal suppress EventIds on passive node side after becoming active?
         lazy val msg = s"Passive cluster node acknowledged future event ${EventId.toString(ack)}" +
                   s" while lastWrittenEventId=${EventId.toString(lastWrittenEventId)} (okay when switching over)"
-        if (lastAcknowledgedEventId < lastWrittenEventId) logger.warn(msg) else logger.debug(msg)
+        if lastAcknowledgedEventId < lastWrittenEventId then logger.warn(msg) else logger.debug(msg)
         ack = lastWrittenEventId
       }
       sender() ! Completed
@@ -269,7 +269,7 @@ extends Actor with Stash with JournalLogging
       onCommitAcknowledged(
         n = persistBuffer.iterator.takeWhile(_.lastStamped.forall(_.eventId <= ack)).length,
         ack = Some(ack))
-      if (releaseEventIdsAfterClusterCoupledAck.isDefined) {
+      if releaseEventIdsAfterClusterCoupledAck.isDefined then {
         releaseObsoleteEvents()
       }
 
@@ -282,16 +282,16 @@ extends Actor with Stash with JournalLogging
 
     case Input.Terminate =>
       logger.debug("Terminate")
-      if (!isHalted) {
+      if !isHalted then {
         commit(terminating = true)
         closeEventWriter()
       }
       stop(self)
 
     case Internal.StillWaitingForAcknowledge =>
-      if (requireClusterAcknowledgement && lastAcknowledgedEventId < lastWrittenEventId) {
+      if requireClusterAcknowledgement && lastAcknowledgedEventId < lastWrittenEventId then {
         val n = persistBuffer.view.map(_.eventCount).sum
-        if (n > 0) {
+        if n > 0 then {
           waitingForAckSym.onInfo()
           val lastEvent = persistBuffer.view
             .collect { case o: StandardPersist => o }
@@ -312,9 +312,9 @@ extends Actor with Stash with JournalLogging
 
   private def forwardCommit(delay: FiniteDuration): Unit = {
     val deadline = now + delay
-    if (commitDeadline == null || deadline < commitDeadline) {
+    if commitDeadline == null || deadline < commitDeadline then {
       commitDeadline = deadline
-      if (delay.isZeroOrBelow) {
+      if delay.isZeroOrBelow then {
         self.forward(Internal.Commit)
       } else {
         val sender = context.sender()
@@ -329,7 +329,7 @@ extends Actor with Stash with JournalLogging
   private def commit(terminating: Boolean = false): Unit = {
     commitDeadline = null
     delayedCommit := Cancelable.empty
-    if (persistBuffer.nonEmpty) {
+    if persistBuffer.nonEmpty then {
       try eventWriter.flush(sync = conf.syncOnCommit)
       catch { case NonFatal(t) if !terminating =>
         val tt = t.appendCurrentStackTrace
@@ -344,18 +344,18 @@ extends Actor with Stash with JournalLogging
         .collectFirst { case o: StandardPersist if !o.isEmpty => o }
         .foreach { _.isLastOfFlushedOrSynced = true }
 
-      if (!terminating) {
+      if !terminating then {
         onReadyForAcknowledgement()
       }
     }
   }
 
   private def onReadyForAcknowledgement(): Unit = {
-    if (!requireClusterAcknowledgement) {
+    if !requireClusterAcknowledgement then {
       onCommitAcknowledged(persistBuffer.size)
     } else {
       val nonEventWrittenCount = persistBuffer.iterator.takeWhile(_.isEmpty).size
-      if (nonEventWrittenCount > 0) {
+      if nonEventWrittenCount > 0 then {
         // `Persist` without events (Nil) are not being acknowledged, so we finish them now
         onCommitAcknowledged(nonEventWrittenCount)
       }
@@ -364,8 +364,8 @@ extends Actor with Stash with JournalLogging
   }
 
   private def startWaitingForAcknowledgeTimer(): Unit =
-    if (requireClusterAcknowledgement && lastAcknowledgedEventId < lastWrittenEventId) {
-      if (!waitingForAcknowledge) {
+    if requireClusterAcknowledgement && lastAcknowledgedEventId < lastWrittenEventId then {
+      if !waitingForAcknowledge then {
         waitingForAcknowledge = true
         waitingForAcknowledgeSince = now
         waitingForAcknowledgeTimer := scheduler.scheduleAtFixedRates(conf.ackWarnDurations) {
@@ -375,7 +375,7 @@ extends Actor with Stash with JournalLogging
     }
 
   private def commitWithoutAcknowledgement(event: ClusterEvent): Unit = {
-    if (requireClusterAcknowledgement) {
+    if requireClusterAcknowledgement then {
       logger.debug(s"No more acknowledgments required due to $event event")
       waitingForAckSym.clear()
       requireClusterAcknowledgement = false
@@ -386,13 +386,13 @@ extends Actor with Stash with JournalLogging
   }
 
   private def onCommitAcknowledged(n: Int, ack: Option[EventId] = None): Unit = {
-    for (ackEventId <- ack if n > 0 && waitingForAckSym.called) {
+    for ackEventId <- ack if n > 0 && waitingForAckSym.called do {
       logger.info(s"🟢 $n events until $ackEventId have finally been acknowledged after ${
         waitingForAcknowledgeSince.elapsed.pretty}")
       waitingForAckSym.clear()
     }
     finishCommitted(n, ack = ack.isDefined)
-    if (lastAcknowledgedEventId == lastWrittenEventId) {
+    if lastAcknowledgedEventId == lastWrittenEventId then {
       onAllCommitsFinished()
     }
   }
@@ -402,12 +402,12 @@ extends Actor with Stash with JournalLogging
     journalLogger.logCommitted(ackWritten, ack = ack)
 
     commitStateSync.synchronized {
-      for (lastFileLengthAndEventId <- ackWritten.flatMap(_.lastFileLengthAndEventId).lastOption) {
+      for lastFileLengthAndEventId <- ackWritten.flatMap(_.lastFileLengthAndEventId).lastOption do {
         lastAcknowledgedEventId = lastFileLengthAndEventId.value
         eventWriter.onCommitted(lastFileLengthAndEventId, n = ackWritten.map(_.eventCount).sum)
       }
 
-      for (persist <- ackWritten.collect { case o: StandardPersist => o }) {
+      for persist <- ackWritten.collect { case o: StandardPersist => o } do {
         committedState = committedState.applyStampedEvents(persist.stampedSeq)
           .orThrow /*may crash JournalActor !!!*/
         continueCallers(persist)
@@ -422,7 +422,7 @@ extends Actor with Stash with JournalLogging
         }
     }
 
-    for (p <- persistBuffer.iterator.take(n)) statistics.onPersisted(p.eventCount, p.since)
+    for p <- persistBuffer.iterator.take(n) do statistics.onPersisted(p.eventCount, p.since)
     persistBuffer.removeFirst(n)
     assertThat((lastAcknowledgedEventId == lastWrittenEventId) == persistBuffer.isEmpty)
   }
@@ -430,7 +430,7 @@ extends Actor with Stash with JournalLogging
   private def onAllCommitsFinished(): Unit = {
     assertThat(lastAcknowledgedEventId == lastWrittenEventId)
     assertThat(persistBuffer.isEmpty)
-    if (conf.slowCheckState && committedState != uncommittedState) {
+    if conf.slowCheckState && committedState != uncommittedState then {
       val msg = "SnapshotableState update mismatch: committedState != uncommittedState"
       logger.error(msg)
       //diffx implicit val showConfig = diffx.ShowConfig.default.copy(
@@ -440,7 +440,7 @@ extends Actor with Stash with JournalLogging
       sys.error(msg)
     }
     uncommittedState = committedState    // Reduce duplicate allocated objects
-    if (conf.slowCheckState) {
+    if conf.slowCheckState then {
       assertEqualSnapshotState("onAllCommitsFinished",
         journaledStateBuilder.result().withEventId(committedState.eventId))
     }
@@ -450,11 +450,11 @@ extends Actor with Stash with JournalLogging
   }
 
   private def continueCallers(persist: StandardPersist): Unit = {
-    if (persist.replyTo != Actor.noSender) {
+    if persist.replyTo != Actor.noSender then {
       // Continue caller
       reply(persist.sender, persist.replyTo, Output.Stored(persist.stampedSeq, committedState, persist.callersItem))
     }
-    for (stamped <- persist.stampedSeq) {
+    for stamped <- persist.stampedSeq do {
       keyedEventBus.publish(stamped)
       handleJournalEvents(stamped)
     }
@@ -473,17 +473,17 @@ extends Actor with Stash with JournalLogging
     }
 
   private def maybeDoASnapshot(): Unit = {
-    if (snapshotRequesters.isEmpty &&
+    if snapshotRequesters.isEmpty &&
       eventWriter.bytesWritten >= conf.snapshotSizeLimit &&
-      fileEventCount >= 2 * estimatedSnapshotSize)
+      fileEventCount >= 2 * estimatedSnapshotSize then
     {
       logger.debug(s"Take snapshot because written size ${toKBGB(eventWriter.bytesWritten)} is above the limit ${toKBGB(conf.snapshotSizeLimit)}")
       snapshotRequesters += self
     }
     tryTakeSnapshotIfRequested()  // TakeSnapshot has been delayed until last event has been acknowledged
-    if (snapshotSchedule == null) {
+    if snapshotSchedule == null then {
       snapshotSchedule = scheduler.scheduleOnce(conf.snapshotPeriod) {
-        if (!isHalted) {
+        if !isHalted then {
           self ! Input.TakeSnapshot
         }
       }
@@ -491,7 +491,7 @@ extends Actor with Stash with JournalLogging
   }
 
   private def estimatedSnapshotSize = {
-    if (fileEventCount > lastSnapshotSizeEventCount + conf.snapshotSizeEstimateEventThreshold) {
+    if fileEventCount > lastSnapshotSizeEventCount + conf.snapshotSizeEstimateEventThreshold then {
       lastSnapshotSizeEventCount = fileEventCount
       lastSnapshotSize = committedState.estimatedSnapshotSize
     }
@@ -521,10 +521,10 @@ extends Actor with Stash with JournalLogging
   }
 
   def tryTakeSnapshotIfRequested(): Unit =
-    if (snapshotRequesters.nonEmpty) {
-      if (lastWrittenEventId == lastSnapshotTakenEventId) {
+    if snapshotRequesters.nonEmpty then {
+      if lastWrittenEventId == lastSnapshotTakenEventId then {
         responseAfterSnapshotTaken()
-      } else if (lastAcknowledgedEventId < lastWrittenEventId) {
+      } else if lastAcknowledgedEventId < lastWrittenEventId then {
         logger.debug(s"Delaying snapshot until last event has been committed and acknowledged (lastAcknowledgedEventId=$lastAcknowledgedEventId lastWrittenEventId=$lastWrittenEventId)")
       } else {
         takeSnapshot()
@@ -533,7 +533,7 @@ extends Actor with Stash with JournalLogging
     }
 
   private def responseAfterSnapshotTaken(): Unit = {
-    for (sender <- snapshotRequesters if sender != self) sender ! Output.SnapshotTaken
+    for sender <- snapshotRequesters if sender != self do sender ! Output.SnapshotTaken
     snapshotRequesters.clear()
   }
 
@@ -541,12 +541,12 @@ extends Actor with Stash with JournalLogging
     val since = now
     val snapshotTaken = eventIdGenerator.stamp(KeyedEvent(JournalEvent.SnapshotTaken))
 
-    if (snapshotSchedule != null) {
+    if snapshotSchedule != null then {
       snapshotSchedule.cancel()
       snapshotSchedule = null
     }
-    if (eventWriter != null) {
-      if (persistBuffer.nonEmpty) {  // Unfortunately we must avoid a recursion, because commit() may try a snapshot again
+    if eventWriter != null then {
+      if persistBuffer.nonEmpty then {  // Unfortunately we must avoid a recursion, because commit() may try a snapshot again
         commit()
       }
       closeEventWriter()
@@ -561,7 +561,7 @@ extends Actor with Stash with JournalLogging
 
     logger.info(
       s"Starting new journal file #${journalHeader.generation} ${file.getFileName} with a snapshot "
-      + (if (conf.syncOnCommit) "(using sync)" else "(no sync)"))
+      + (if conf.syncOnCommit then "(using sync)" else "(no sync)"))
     logger.debug(journalHeader.toString)
 
     snapshotWriter = new SnapshotJournalWriter(journalLocation.S, toSnapshotTemporary(file), after = lastWrittenEventId,
@@ -583,13 +583,13 @@ extends Actor with Stash with JournalLogging
           snapshotObject -> snapshotObject.asJson(S.snapshotObjectJsonCodec).toByteArray
         }
         .foreach { case (snapshotObject, byteArray) =>
-          if (conf.slowCheckState) checkingBuilder.addSnapshotObject(snapshotObject)
+          if conf.slowCheckState then checkingBuilder.addSnapshotObject(snapshotObject)
           snapshotWriter.writeSnapshot(byteArray)
         }(scheduler)
       // TODO Do not block the thread
       Await.result(future, 999.s)
 
-      if (conf.slowCheckState) {
+      if conf.slowCheckState then {
         // Simulate recovery
         checkingBuilder.onAllSnapshotsAdded()
         assertEqualSnapshotState("Written snapshot",
@@ -614,7 +614,7 @@ extends Actor with Stash with JournalLogging
     }
     lastWrittenEventId = snapshotTaken.eventId
     uncommittedState = uncommittedState.applyStampedEvents(snapshotTaken :: Nil).orThrow
-    if (!requireClusterAcknowledgement) {
+    if !requireClusterAcknowledgement then {
       lastAcknowledgedEventId = lastWrittenEventId
     }
     totalEventCount += 1
@@ -643,8 +643,8 @@ extends Actor with Stash with JournalLogging
   }
 
   private def closeEventWriter(): Unit =
-    if (eventWriter != null) {
-      if (isHalted) {
+    if eventWriter != null then {
+      if isHalted then {
         eventWriter.flush(sync = conf.syncOnCommit)
         eventWriter.close()
       } else {
@@ -654,17 +654,17 @@ extends Actor with Stash with JournalLogging
     }
 
   private def releaseObsoleteEvents(): Unit =
-    if (conf.deleteObsoleteFiles) {
-      if (committedState.clusterState == ClusterState.Empty ||
+    if conf.deleteObsoleteFiles then {
+      if committedState.clusterState == ClusterState.Empty ||
           requireClusterAcknowledgement
             // ClusterPassiveLost after SnapshotTaken in the same commit chunk has reset
             // requireClusterAcknowledgement. We must not delete the file when cluster is being decoupled.
           && (committedState.clusterState.isInstanceOf[ClusterState.Coupled] ||
               committedState.clusterState.isInstanceOf[ClusterState.ActiveShutDown])
-          && releaseEventIdsAfterClusterCoupledAck.forall(_ <= lastAcknowledgedEventId))
+          && releaseEventIdsAfterClusterCoupledAck.forall(_ <= lastAcknowledgedEventId) then
       {
         val eventId =
-          if (committedState.clusterState == ClusterState.Empty)
+          if committedState.clusterState == ClusterState.Empty then
             lastWrittenEventId
           else {
             // Do not release the just acknowledged last Event of a journal file
@@ -686,7 +686,7 @@ extends Actor with Stash with JournalLogging
       case None =>
         // Without a JournalingObserver, we can delete all previous journal files (for Agent)
         val until = untilEventId min journalHeader.eventId
-        for (j <- journalLocation.listJournalFiles if j.fileEventId < until) {
+        for j <- journalLocation.listJournalFiles if j.fileEventId < until do {
           val file = j.file
           assertThat(file != eventWriter.file)
           try delete(file)
@@ -698,7 +698,7 @@ extends Actor with Stash with JournalLogging
   }
 
   private def checkUncommittedState(stampedEvents: Seq[Stamped[AnyKeyedEvent]]): Unit =
-    if (conf.slowCheckState) {
+    if conf.slowCheckState then {
       stampedEvents.foreach(journaledStateBuilder.addEvent)
       assertEqualSnapshotState("SnapshotableStateBuilder.result()",
         journaledStateBuilder.result().withEventId(uncommittedState.eventId),
@@ -719,10 +719,10 @@ extends Actor with Stash with JournalLogging
   private def assertEqualSnapshotState(what: String, couldBeRecoveredState: S,
     stampedSeq: Seq[Stamped[AnyKeyedEvent]] = Nil)
   : Unit =
-    if (couldBeRecoveredState != uncommittedState) {
+    if couldBeRecoveredState != uncommittedState then {
       var msg = s"$what does not match actual '$S'"
       logger.error(msg)
-      for (stamped <- stampedSeq) logger.error(stamped.toString.truncateWithEllipsis(200))
+      for stamped <- stampedSeq do logger.error(stamped.toString.truncateWithEllipsis(200))
       // msg may get very big
       //diffx msg ++= ":\n" ++ diffx.compare(couldBeRecoveredState, uncommittedState).show()
       logger.info(msg)  // Without colors because msg is already colored
@@ -905,12 +905,12 @@ object JournalActor
       persistCount += 1
       val duration = since.elapsed.toNanos
       persistDurationSum += duration
-      if (persistDurationMin > duration) persistDurationMin = duration
-      if (persistDurationMax < duration) persistDurationMax = duration
+      if persistDurationMin > duration then persistDurationMin = duration
+      if persistDurationMax < duration then persistDurationMax = duration
     }
 
     def logLine: String =
-      if (persistCount == 0)
+      if persistCount == 0 then
         ""
       else
         s"$persistCount persists" +

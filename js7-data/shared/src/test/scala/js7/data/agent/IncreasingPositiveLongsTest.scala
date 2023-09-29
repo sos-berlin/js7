@@ -10,13 +10,13 @@ final class IncreasingPositiveLongsTest extends OurTestSuite
 {
   "Only positives" in {
     val iterator = new IncreasingPositiveLongs()
-    for (_ <- 1 to 10000) assert(iterator.next() >= 1)
+    for _ <- 1 to 10000 do assert(iterator.next() >= 1)
   }
 
   "overflow" in {
     val start = Long.MaxValue - 100
     val iterator = new IncreasingPositiveLongs(start = start)
-    for (_ <- 0 to 10000) assert(iterator.next() >= 1)
+    for _ <- 0 to 10000 do assert(iterator.next() >= 1)
   }
 
   "overflow 2" in {

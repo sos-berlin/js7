@@ -42,7 +42,7 @@ extends MainService with Service.StoppableByRequest
                 allocated.allocatedThing.untilTerminated)
               .guarantee(allocated.release)
               .flatMap(terminated =>
-                if (terminated.restartDirector)
+                if terminated.restartDirector then
                   restartLoop
                 else
                   Task.pure(terminated))
@@ -64,7 +64,7 @@ extends MainService with Service.StoppableByRequest
                 _currentDirector.set(director) *>
                   director.untilTerminated)
               .map(termination =>
-                if (termination.restartDirector)
+                if termination.restartDirector then
                   Left(())
                 else
                   Right(termination))))

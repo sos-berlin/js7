@@ -54,7 +54,7 @@ trait WebLogDirectives extends ExceptionHandling
     }
 
   private def getCorrelId(request: HttpRequest): CorrelId =
-    if (!CorrelId.isEnabled)
+    if !CorrelId.isEnabled then
       CorrelId.empty
     else
       //request.header[`x-js7-correlation-id`].fold(CorrelId.generate())(_.correlId)
@@ -64,19 +64,19 @@ trait WebLogDirectives extends ExceptionHandling
         .getOrElse(CorrelId.generate())
 
   private def setCorrelIdAttribute(correlId: CorrelId)(route: Route): Route =
-    if (!CorrelId.isEnabled)
+    if !CorrelId.isEnabled then
       route
     else
       mapRequest(_.addAttribute(CorrelIdAttributeKey, correlId))(route)
 
   private def webLogOnly(request: HttpRequest, correlId: CorrelId): Directive0 =
-    if (!logRequest && !logResponse)
+    if !logRequest && !logResponse then
       pass
     else {
-      if (logRequest || webLogger.underlying.isTraceEnabled) {
-        log(request, None, correlId, if (logRequest) logLevel else LogLevel.Trace, nanos = 0)
+      if logRequest || webLogger.underlying.isTraceEnabled then {
+        log(request, None, correlId, if logRequest then logLevel else LogLevel.Trace, nanos = 0)
       }
-      if (logResponse) {
+      if logResponse then {
         val start = nanoTime
         mapResponse { response =>
           log(request, Some(response), correlId, statusToLogLevel(response.status), nanoTime - start)
@@ -170,11 +170,11 @@ trait WebLogDirectives extends ExceptionHandling
         appendHeader[`User-Agent`]()
 
       case Some(response) =>
-        if (response.status.isFailure)
+        if response.status.isFailure then
           response.entity match {  // Try to extract error message
             case entity @ HttpEntity.Strict(`text/plain(UTF-8)`, _) =>
               val string = entity.data.utf8String
-              val truncated = string.take(1001).dropLastWhile(_ == '\n').map(c => if (c.isControl) '·' else c)
+              val truncated = string.take(1001).dropLastWhile(_ == '\n').map(c => if c.isControl then '·' else c)
               appendQuotedString(sb, truncated + ((truncated.length < string.length) ?? "..."))
 
             case entity @ HttpEntity.Strict(`application/json`, _) =>
@@ -193,7 +193,7 @@ trait WebLogDirectives extends ExceptionHandling
             sb.append(' ')
             sb.append(nanos.nanoseconds.pretty)
           case _ =>
-            if (streamSuffix.isEmpty) {
+            if streamSuffix.isEmpty then {
               sb.append(" STREAM... ")
               sb.append(nanos.nanoseconds.pretty)
             } else {
@@ -223,7 +223,7 @@ object WebLogDirectives
   private def appendQuotedString(sb: StringBuilder, string: String) = {
     sb.ensureCapacity(3 + string.length)
     sb.append(" \"")
-    if (!string.contains('"')) {
+    if !string.contains('"') then {
       sb.append(string)
     } else {
       string foreach {

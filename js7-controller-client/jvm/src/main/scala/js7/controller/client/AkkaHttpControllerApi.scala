@@ -45,11 +45,11 @@ object AkkaHttpControllerApi
     config: Config = ConfigFactory.empty,
     name: String = "")
   : Resource[Task, HttpControllerApi] = {
-    val myName = if (name.nonEmpty) name else "AkkaHttpControllerApi"
-    for {
+    val myName = if name.nonEmpty then name else "AkkaHttpControllerApi"
+    for
       actorSystem <- actorSystemResource(name = myName, config)
       api <- resource(admission, httpsConfig, name = myName)(actorSystem)
-    } yield api
+    yield api
   }
 
   def admissionsToApiResource(
@@ -69,10 +69,10 @@ object AkkaHttpControllerApi
     name: String = defaultName)
     (implicit actorSystem: ActorSystem)
   : Resource[Task, HttpControllerApi] =
-    for {
+    for
       httpClient <- AkkaHttpClient.resource(
         admission.uri, uriPrefixPath = HttpControllerApi.UriPrefixPath,
         httpsConfig, name = name)
       api <- HttpControllerApi.resource(admission, httpClient, loginDelays)
-    } yield api
+    yield api
 }

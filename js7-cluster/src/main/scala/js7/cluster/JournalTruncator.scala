@@ -26,11 +26,11 @@ private object JournalTruncator
     var truncated = false
     val lastTwoJournalFiles = JournalFiles.listJournalFiles(journalFileBase) takeRight 2
     val journalFile =
-      if (lastTwoJournalFiles.last.fileEventId == failedAt.fileEventId)
+      if lastTwoJournalFiles.last.fileEventId == failedAt.fileEventId then
         lastTwoJournalFiles.last
-      else if (lastTwoJournalFiles.lengthIs == 2 &&
+      else if lastTwoJournalFiles.lengthIs == 2 &&
         lastTwoJournalFiles.head.fileEventId == failedAt.fileEventId &&
-        lastTwoJournalFiles.last.fileEventId > failedAt.fileEventId) {
+        lastTwoJournalFiles.last.fileEventId > failedAt.fileEventId then {
         truncated = true
         val deleteFile = lastTwoJournalFiles.last.file
         logger.info(s"Removing journal file written after failover: ${deleteFile.getFileName}")
@@ -45,8 +45,8 @@ private object JournalTruncator
 
     val file = journalFile.file
     val fileSize = Files.size(file)
-    if (fileSize != failedAt.position) {
-      if (fileSize < failedAt.position)
+    if fileSize != failedAt.position then {
+      if fileSize < failedAt.position then
         sys.error(s"Journal file '${journalFile.file.getFileName} is shorter than the failed-over position ${failedAt.position}")
       logger.info(s"❗️Truncating journal file at failover position ${failedAt.position} " +
         s"(${fileSize - failedAt.position} bytes): ${journalFile.file.getFileName}")
@@ -60,7 +60,7 @@ private object JournalTruncator
     autoClosing(new RandomAccessFile(file.toFile, "rw")) { f =>
       val channel = f.getChannel
       assertCutLineEnd(file, position, channel)
-      if (keep) {
+      if keep then {
         copyTruncatedRest(file, position, channel)
       } else {
         logTruncatedRest(file, position, f)
@@ -73,7 +73,7 @@ private object JournalTruncator
     in.position(position - 1)
     in.read(buffer)
     buffer.flip()
-    if (!buffer.hasRemaining || buffer.get() != '\n')
+    if !buffer.hasRemaining || buffer.get() != '\n' then
       sys.error(s"Invalid failed-over position=$position in '${file.getFileName} journal file")
   }
 
@@ -85,8 +85,8 @@ private object JournalTruncator
       buffer.clear()
       buffer.flip()
       var eof = false
-      while (!eof) {
-        if (buffer.hasRemaining) out.write(buffer)
+      while !eof do {
+        if buffer.hasRemaining then out.write(buffer)
         buffer.clear()
         eof = channel.read(buffer) <= 0
         buffer.flip()
@@ -104,7 +104,7 @@ private object JournalTruncator
       f.readLine() match {
         case null =>
         case line =>
-          if (!logged) logger.info(s"❗️Records truncated off ${file.getFileName}:")
+          if !logged then logger.info(s"❗️Records truncated off ${file.getFileName}:")
           logged = true
           logger.info(s"❗️$line")
           loop()

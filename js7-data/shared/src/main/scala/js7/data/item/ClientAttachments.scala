@@ -42,13 +42,13 @@ final case class ClientAttachments[D <: DelegateId: ClassTag: Tag](
                 (delegateId -> attachedState)))))
 
       case Detached =>
-        for {
+        for
           agentToAttachedState <- itemToDelegateToAttachedState.checked(itemKey)
           _ <- agentToAttachedState.checked(delegateId)
-        } yield
+        yield
           copy(itemToDelegateToAttachedState = {
             val updated = agentToAttachedState - delegateId
-            if (updated.isEmpty)
+            if updated.isEmpty then
               itemToDelegateToAttachedState - itemKey
             else
               itemToDelegateToAttachedState + (itemKey -> updated)

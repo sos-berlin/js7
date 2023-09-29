@@ -43,11 +43,11 @@ with BlockingItemUpdater
   protected val items = Nil
 
   "(prepare)" in {
-    for (a <- directoryProvider.agentEnvs) {
+    for a <- directoryProvider.agentEnvs do {
       a.writeExecutable(RelativePathExecutable(s"OKAY$sh"), ":")
-      a.writeExecutable(RelativePathExecutable(s"FAIL-1$sh"), if (isWindows) "@exit 1" else "exit 1")
-      a.writeExecutable(RelativePathExecutable(s"FAIL-2$sh"), if (isWindows) "@exit 2" else "exit 2")
-      a.writeExecutable(RelativePathExecutable(s"NEVER$sh"), if (isWindows) "@exit 3" else "exit 3")
+      a.writeExecutable(RelativePathExecutable(s"FAIL-1$sh"), if isWindows then "@exit 1" else "exit 1")
+      a.writeExecutable(RelativePathExecutable(s"FAIL-2$sh"), if isWindows then "@exit 2" else "exit 2")
+      a.writeExecutable(RelativePathExecutable(s"NEVER$sh"), if isWindows then "@exit 3" else "exit 3")
     }
   }
 

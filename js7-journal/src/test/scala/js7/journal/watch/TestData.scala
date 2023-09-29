@@ -46,7 +46,7 @@ private[watch] object TestData
     autoClosing(SnapshotJournalWriter.forTest(journalLocation, after = after)) { writer =>
       writer.writeHeader(JournalHeaders.forTest(TestState.name, journalId, eventId = after))
       writer.beginSnapshotSection()
-      for (o <- snapshotObjects) {
+      for o <- snapshotObjects do {
         writer.writeSnapshot(ByteArray(journalLocation.snapshotObjectJsonCodec.encodeObject(o).compactPrint))
       }
       writer.endSnapshotSection()

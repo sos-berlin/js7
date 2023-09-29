@@ -182,7 +182,7 @@ object PostNoticesExecutorTest
   private def expectingOrderToNoticeId(i: Int) = expr(
     s"""replaceAll($$js7OrderId, '^%([0-9]{4}-[0-9]{2}-[0-9]{2})%.*$$', '$$1-$i')""")
 
-  private val boards = for (i <- 0 to 3) yield
+  private val boards = for i <- 0 to 3 yield
     Board(
       BoardPath(s"BOARD-$i"),
       postOrderToNoticeId = postingOrderToNoticeId(i),

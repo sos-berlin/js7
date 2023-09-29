@@ -100,11 +100,11 @@ extends Journal[S]
     stateToEvents: S => Checked[Seq[KeyedEvent[E]]])
   : Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
     stateLock.lock(Task.defer {
-      (for {
+      (for
         keyedEvents <- stateToEvents(_state)
         updated <- _state.applyEvents(keyedEvents)
         stampedEvents = keyedEvents.map(eventIdGenerator.stamp(_))
-      } yield
+      yield
         semaphore.flatMap(_
           .acquireN(stampedEvents.length min semaMininum)
           .logWhenItTakesLonger(waitingFor)
@@ -114,7 +114,7 @@ extends Journal[S]
               val qLen = q.events.length
               q = q.copy(events = q.events ++ stampedEvents)
               val n = q.events.length - qLen
-              if (n > 0) {
+              if n > 0 then {
                 _eventCount += n
                 val eventId = q.events.last.eventId
                 q = q.copy(lastEventId = eventId)
@@ -142,7 +142,7 @@ extends Journal[S]
       val q = queue
       val (index, found) =
         binarySearch(0, q.events.length, i => q.events(i).eventId.compare(untilEventId))
-      if (!found)
+      if !found then
         Task.pure(Left(Problem.pure(s"Unknown EventId: ${EventId.toString(untilEventId)}")))
       else {
         val n = index + 1
@@ -158,14 +158,14 @@ extends Journal[S]
 
   private def eventsAfter_(after: EventId): Option[Iterator[Stamped[KeyedEvent[Event]]]] = {
     val q = queue
-    if (after < q.tornEventId)
+    if after < q.tornEventId then
       None
     else {
       val (index, found) = binarySearch(0, q.events.length, i => q.events(i).eventId.compare(after))
-      if (!found && after != q.tornEventId) {
+      if !found && after != q.tornEventId then {
         //Left(Problem.pure(s"Unknown ${EventId.toString(after)}"))
         None
-      } else if (eventWatchStopped)
+      } else if eventWatchStopped then
         Some(Iterator.empty)
       else
         Some(q.events.drop(index + found.toInt).iterator)

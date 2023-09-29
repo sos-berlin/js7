@@ -32,7 +32,7 @@ final class InputStreamJsonSeqReaderTest extends OurTestSuite
     val in = new InputStream with SeekableInputStream {
       var pos = 0
       def read(): Int =
-        if (pos == ChunkBytes.length)
+        if pos == ChunkBytes.length then
           -1
         else {
           pos += 1
@@ -139,10 +139,10 @@ final class InputStreamJsonSeqReaderTest extends OurTestSuite
   }
 
   "InputStreamJsonSeqReader" in {
-    for (blockSize <- 1 to 2 * FourByteUtf8.length) {
-      for (n <- 0 to 3) {
+    for blockSize <- 1 to 2 * FourByteUtf8.length do {
+      for n <- 0 to 3 do {
         withClue(s"blockSize=$blockSize n=$n:\n") {
-          val expected = for (i <- 0 until n; (_, PositionAnd(pos, json)) <- Chunk) yield PositionAnd(i * ChunkBytes.size + pos, json)
+          val expected = for i <- 0 until n; (_, PositionAnd(pos, json)) <- Chunk yield PositionAnd(i * ChunkBytes.size + pos, json)
           val bytes = Array.fill(n)(ChunkBytes).flatten
           val posAndJsons = newInputStreamJsonSeqReader(simplifiedSeekableInputStream(bytes), blockSize = blockSize)
             .iterator.toVector

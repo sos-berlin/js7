@@ -27,7 +27,7 @@ extends AutoCloseable {
 
   def close() =
     wrapException {
-      if (!closed.getAndSet(true)) {
+      if !closed.getAndSet(true) then {
         flush()
         writer.close()
         bufferedOut.close()
@@ -44,7 +44,7 @@ extends AutoCloseable {
 
   def sync(): Unit =
     wrapException {
-      if (!synced) {
+      if !synced then {
         flush()
         simulateSync match {
           case Some(duration) => Thread.sleep(duration.toMillis)
@@ -56,7 +56,7 @@ extends AutoCloseable {
 
   def flush(): Unit =
     wrapException {
-      if (!flushed) {
+      if !flushed then {
         writer.flush()
         bufferedOut.flush()
         flushed = true

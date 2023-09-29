@@ -47,7 +47,7 @@ extends UnsignedSimpleItemState
   def applyEvent(event: AgentRefStateEvent): Checked[AgentRefState] =
     event match {
       case AgentDedicated(agentRunId_, eventId_) =>
-        if (agentRunId.isDefined || eventId != EventId.BeforeFirst)
+        if agentRunId.isDefined || eventId != EventId.BeforeFirst then
           Left(Problem("Duplicate AgentDedicated event: " + event))
         else
           Right(copy(
@@ -85,7 +85,7 @@ extends UnsignedSimpleItemState
           problem = Some(problem)))
 
       case AgentEventsObserved(eventId_) =>
-        if (eventId_ < eventId)
+        if eventId_ < eventId then
           Left(Problem(
             s"Invalid AgentEventsObserved(${EventId.toString(eventId_)}) event;" +
               s" expected eventId >= ${EventId.toString(eventId)}"))
@@ -94,12 +94,12 @@ extends UnsignedSimpleItemState
             eventId = eventId_))
 
       case AgentResetStarted(force) =>
-        if (agentRunId.isEmpty && !force)
+        if agentRunId.isEmpty && !force then
           Left(Problem.pure("Agent is already marked as 'Reset' in Controller's AgentRef"))
         else
           Right(copy(
             couplingState = Resetting(force),
-            agentRunId = if (force) None else agentRunId,
+            agentRunId = if force then None else agentRunId,
             eventId = EventId.BeforeFirst,
             timezone = None,
             problem = None,
@@ -159,7 +159,7 @@ object AgentRefState extends UnsignedSimpleItemState.Companion[AgentRefState]
       "platformInfo" -> o.platformInfo.asJson)
 
   implicit val jsonDecoder: Decoder[AgentRefState] =
-    c => for {
+    c => for
       agentRef <- c.get[AgentRef]("agentRef")
       agentRunId <- c.get[Option[AgentRunId]]("agentRunId")
       timezone <- c.get[Option[String]]("timezone")
@@ -171,7 +171,7 @@ object AgentRefState extends UnsignedSimpleItemState.Companion[AgentRefState]
         c.getOrElse[Seq[ClusterNodeLossNotConfirmedProblem]]("clusterNodeProblems")(Nil)
           .map(_.toKeyedMap(_.fromNodeId))
       platformInfo <- c.get[Option[PlatformInfo]]("platformInfo")
-    } yield
+    yield
       AgentRefState(
         agentRef, agentRunId, timezone, couplingState, eventId, problem,
         clusterState, clusterNodeProblems, platformInfo)

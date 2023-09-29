@@ -72,13 +72,13 @@ final class FileWatchManager(
           Right(
             agentState.keyTo(FileWatchState).get(fileWatch.path) match {
               case Some(watchState) =>
-                if (watchState.fileWatch == fileWatch)
+                if watchState.fileWatch == fileWatch then
                   Nil
                 else {
                   // If the directory changes, all arisen files vanish now.
                   // Beware that directory is an (EnvScope-only) Expression.
                   val vanished =
-                    if (watchState.fileWatch.directoryExpr == fileWatch.directoryExpr)
+                    if watchState.fileWatch.directoryExpr == fileWatch.directoryExpr then
                       Nil
                     else
                       watchState.allFilesVanished
@@ -186,7 +186,7 @@ final class FileWatchManager(
           .onErrorRestartLoop(now) { (throwable, since, restart) =>
             val delay = (since + delayIterator.next()).timeLeftOrZero
             logger.error(s"Delay ${delay.pretty} after error: ${throwable.toStringWithCauses}")
-            for (t <- throwable.ifStackTrace) logger.debug(t.toString, t)
+            for t <- throwable.ifStackTrace do logger.debug(t.toString, t)
             Task.sleep(delay) *> restart(now)
           }
           .guaranteeCase(exitCase => Task {
@@ -202,7 +202,7 @@ final class FileWatchManager(
   : Task[Checked[(Seq[Stamped[KeyedEvent[OrderWatchEvent]]], AgentState)]] =
     journal.state
       .flatMap(agentState =>
-        if (!agentState.keyTo(FileWatchState).contains(fileWatch.path))
+        if !agentState.keyTo(FileWatchState).contains(fileWatch.path) then
           Task.right(Nil -> agentState)
         else
           journal.persist { agentState =>
@@ -220,8 +220,8 @@ final class FileWatchManager(
                       dirEvent match {
                         case fileAdded @ FileAdded(path) if !fileWatchState.containsPath(path) =>
                           val maybeOrderId = pathToOrderId(fileWatch, path)
-                          if (maybeOrderId.isEmpty) logger.debug(s"Ignore $fileAdded (no OrderId)")
-                          for (orderId <- maybeOrderId) yield
+                          if maybeOrderId.isEmpty then logger.debug(s"Ignore $fileAdded (no OrderId)")
+                          for orderId <- maybeOrderId yield
                             ExternalOrderArised(
                               ExternalOrderName(path.toString),
                               orderId,
@@ -241,7 +241,7 @@ final class FileWatchManager(
   private def pathToOrderId(fileWatch: FileWatch, relativePath: Path): Option[OrderId] =
     relativePathToOrderId(fileWatch, relativePath.toString)
       .flatMap { checkedOrderId =>
-        for (problem <- checkedOrderId.left) logger.error(s"${fileWatch.path} $relativePath: $problem")
+        for problem <- checkedOrderId.left do logger.error(s"${fileWatch.path} $relativePath: $problem")
         checkedOrderId.toOption
       }
 

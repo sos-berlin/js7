@@ -45,7 +45,7 @@ trait ClusterRoute extends ClusterWatchRequestRoute
             completeTask(
               checkedClusterState
                 .map(_.map[ToResponseMarshallable] { case stamped @ Stamped(_, _, clusterState) =>
-                  if (maybeReturn contains "ClusterNodeState")
+                  if maybeReturn contains "ClusterNodeState" then
                     stamped.copy(value =
                       ClusterNodeState(nodeId, isBackup = clusterNodeIsBackup, clusterState))
                   else

@@ -31,7 +31,7 @@ with StateView
         addOrder(Order.fromOrderAdded(orderId, orderAdded))
 
       case event: OrderEvent.OrderAttachedToAgent =>
-        if (idToOrder isDefinedAt orderId)
+        if idToOrder isDefinedAt orderId then
           Left(Problem.pure(s"Duplicate order attached: $orderId"))
         else
           update(addOrders = Order.fromOrderAttached(orderId, event) :: Nil)
@@ -45,12 +45,12 @@ with StateView
     }
 
   private def applyOrderCoreEvent(orderId: OrderId, event: OrderCoreEvent): Either[Problem, Self] =
-    for {
+    for
       previousOrder <- idToOrder.checked(orderId)
       updatedOrder <- previousOrder.applyEvent(event)
       result <- event match {
         case OrderDetached =>
-          if (isAgent)
+          if isAgent then
             update(removeOrders = orderId :: Nil)
           else
             update(addOrders = updatedOrder :: Nil)
@@ -60,7 +60,7 @@ with StateView
             addOrders = updatedOrder +: previousOrder.newForkedOrders(event))
 
         case event: OrderJoined =>
-          if (isAgent)
+          if isAgent then
             eventNotApplicable(orderId <-: event)
           else
             previousOrder.state match {
@@ -119,7 +119,7 @@ with StateView
           update(addOrders = updatedOrder :: Nil)
 
         case OrderDeleted =>
-          if (isAgent)
+          if isAgent then
             eventNotApplicable(orderId <-: event)
           else
             deleteOrder(previousOrder)
@@ -128,13 +128,13 @@ with StateView
         case _ =>
           update(addOrders = updatedOrder :: Nil)
       }
-    } yield result
+    yield result
 
   protected def addOrder(order: Order[Order.State]): Checked[Self] =
-    for {
+    for
       _ <- idToOrder.checkNoDuplicate(order.id)
       self <- update(addOrders = order :: Nil)
-    } yield self
+    yield self
 
   protected def deleteOrder(order: Order[Order.State]): Checked[Self] =
     update(removeOrders = order.id :: Nil)

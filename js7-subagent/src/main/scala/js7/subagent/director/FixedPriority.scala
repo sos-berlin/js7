@@ -9,15 +9,15 @@ private final class FixedPriority
 
   @tailrec
   def next[P](n: Int, isEquivalent: (Int, Int) => Boolean): Int =
-    if (n == 0)
+    if n == 0 then
       0
     else {
       val i = nextIndex.get()
-      val result = if (i < n) i else 0
+      val result = if i < n then i else 0
       var nxt = result + 1
-      if (nxt == n) nxt = 0
-      if (nxt != result && !isEquivalent(i, nxt)) nxt = 0
-      if (!nextIndex.compareAndSet(i, nxt))
+      if nxt == n then nxt = 0
+      if nxt != result && !isEquivalent(i, nxt) then nxt = 0
+      if !nextIndex.compareAndSet(i, nxt) then
         next(n, isEquivalent)
       else
         result

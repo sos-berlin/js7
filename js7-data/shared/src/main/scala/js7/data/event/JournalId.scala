@@ -19,5 +19,5 @@ object JournalId extends GenericString.Checked_[JournalId]
   protected def unchecked(string: String) = throw new NotImplementedError
 
   override def checked(string: String) =
-    for (o <- Base64UUID.checked(string)) yield new JournalId(o)
+    for o <- Base64UUID.checked(string) yield new JournalId(o)
 }

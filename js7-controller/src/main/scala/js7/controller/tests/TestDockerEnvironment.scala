@@ -16,14 +16,14 @@ import js7.data.item.{SourceType, VersionedItemPath}
 final class TestDockerEnvironment(agentPaths: Seq[AgentPath], temporaryDirectory: Path)
 extends AutoCloseable {
 
-  if (exists(temporaryDirectory)) {
+  if exists(temporaryDirectory) then {
     logger.warn(s"Deleting $temporaryDirectory")
     deleteDirectoryContentRecursively(temporaryDirectory)
   }
 
   createDirectories(controllerDir / "config/private")
   createDirectories(controllerDir / "data")
-  for (agentPath <- agentPaths) {
+  for agentPath <- agentPaths do {
     createDirectories(agentDir(agentPath) / "config/private")
     createDirectories(agentDir(agentPath) / "config/executables")
     createDirectory(agentDir(agentPath) / "data")

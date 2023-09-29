@@ -80,7 +80,7 @@ with MainService with Service.StoppableByRequest {
     startService(run)
 
   private def run: Task[Unit] =
-    if (conf.testSuppressStart) untilStopRequested else observe.completedL
+    if conf.testSuppressStart then untilStopRequested else observe.completedL
 
   override protected def stop =
     Task(close()) *> super.stop
@@ -88,14 +88,14 @@ with MainService with Service.StoppableByRequest {
   /** Compares the directory with the Controller's repo and sends the difference.
    * Parses each file, so it may take some time for a big configuration directory. */
   def initiallyUpdateControllerConfiguration(versionId: Option[VersionId] = None): Task[Checked[Completed]] =
-    for {
+    for
       localEntries <- readDirectory
       checkedDiff <- controllerDiff(localEntries)
       checkedCompleted <- checkedDiff
         .traverse(execute(versionId, _))
         .map(_.flatten)
-    } yield {
-      for (_ <- checkedCompleted) {
+    yield {
+      for _ <- checkedCompleted do {
         lastEntries := localEntries
       }
       checkedCompleted
@@ -103,19 +103,19 @@ with MainService with Service.StoppableByRequest {
 
   @TestOnly
   def testControllerDiff: Task[Checked[InventoryItemDiff_]] =
-    for {
+    for
       localEntries <- readDirectory
       diff <- controllerDiff(localEntries)
-    } yield diff
+    yield diff
 
   /** Compares the directory with the Controller's repo and sends the difference.
    * Parses each file, so it may take some time for a big configuration directory. */
   private def controllerDiff(localEntries: Seq[DirectoryReader.Entry])
   : Task[Checked[InventoryItemDiff_]] =
-    for {
+    for
       pair <- Task.parZip2(readLocalItems(localEntries.map(_.file)), fetchControllerItems)
       (checkedLocalItemSeq, controllerItems) = pair
-    } yield
+    yield
       checkedLocalItemSeq.map(
         InventoryItemDiff.diff(_, controllerItems, ignoreVersion = true))
 
@@ -123,7 +123,7 @@ with MainService with Service.StoppableByRequest {
     Task(typedSourceReader.readItems(files))
 
   def updateControllerConfiguration(versionId: Option[VersionId] = None): Task[Checked[Completed]] =
-    for {
+    for
       _ <- loginUntilReachable
       last = lastEntries.get()
       currentEntries <- readDirectory
@@ -131,9 +131,9 @@ with MainService with Service.StoppableByRequest {
         .traverse(
           execute(versionId, _))
         .map(_.flatten)
-    } yield
+    yield
       checkedCompleted.flatMap(completed =>
-        if (!lastEntries.compareAndSet(last, currentEntries)) {
+        if !lastEntries.compareAndSet(last, currentEntries) then {
           val problem = Problem.pure("Provider has been concurrently used")
           logger.debug(problem.toString)
           Left(problem)
@@ -142,7 +142,7 @@ with MainService with Service.StoppableByRequest {
 
   protected lazy val loginUntilReachable: Task[Completed] =
     Task.defer {
-      if (httpControllerApi.hasSession)
+      if httpControllerApi.hasSession then
         Task.completed
       else
         httpControllerApi.loginUntilReachable(retryLoginDurations)
@@ -154,7 +154,7 @@ with MainService with Service.StoppableByRequest {
 
   private def execute(versionId: Option[VersionId], diff: InventoryItemDiff_)
   : Task[Checked[Completed]] =
-    if (diff.isEmpty && versionId.isEmpty)
+    if diff.isEmpty && versionId.isEmpty then
       Task(Checked.completed)
     else {
       val v = versionId getOrElse newVersionId()
@@ -188,8 +188,8 @@ with MainService with Service.StoppableByRequest {
 
   private def logUpdate(versionId: VersionId, diff: InventoryItemDiff_): Unit = {
     logger.info(s"Version ${versionId.string}")
-    for (o <- diff.removed.sorted) logger.info(s"Delete $o")
-    for (o <- diff.addedOrChanged.map(_.path: InventoryItemPath).sorted)
+    for o <- diff.removed.sorted do logger.info(s"Delete $o")
+    for o <- diff.addedOrChanged.map(_.path: InventoryItemPath).sorted do
       logger.info(s"AddOrChange $o")
   }
 
@@ -230,20 +230,20 @@ object Provider
 
   def resource(conf: ProviderConfiguration)(implicit scheduler: Scheduler)
   : Resource[Task, Provider] =
-    for {
+    for
       actorSystem <- Akkas.actorSystemResource("Providor", conf.config)
       iox <- IOExecutor.resource[Task](conf.config, "Provider")
       provider <- resource2(conf)(scheduler, iox, actorSystem)
-    } yield provider
+    yield provider
 
   private def resource2(conf: ProviderConfiguration)
     (implicit scheduler: Scheduler, iox: IOExecutor, actorSystem: ActorSystem)
   : Resource[Task, Provider] = {
-    val userAndPassword: Option[UserAndPassword] = for {
+    val userAndPassword: Option[UserAndPassword] = for
       userName <- conf.config.optionAs[String]("js7.provider.controller.user")
       password <- conf.config.optionAs[String]("js7.provider.controller.password")
-    } yield UserAndPassword(UserId(userName), SecretString(password))
-    for {
+    yield UserAndPassword(UserId(userName), SecretString(password))
+    for
       api <- AkkaHttpControllerApi.resource(
         Admission(conf.controllerUri, userAndPassword), conf.httpsConfig)
       controllerApi <- ControllerApi.resource(
@@ -253,7 +253,7 @@ object Provider
 
       itemSigner = toItemSigner(conf).orThrow
       provider <- Service.resource(Task(new Provider(itemSigner, api, controllerApi, conf)))
-    } yield provider
+    yield provider
   }
 
   private def toItemSigner(conf: ProviderConfiguration): Checked[ItemSigner[SignableItem]] = {

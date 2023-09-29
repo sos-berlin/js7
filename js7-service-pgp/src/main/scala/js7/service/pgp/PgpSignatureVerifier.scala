@@ -39,11 +39,11 @@ extends SignatureVerifier
 
   /** Returns `Right(message)` iff signature matches the message. */
   def verify(document: ByteArray, signature: PgpSignature): Checked[Seq[SignerId]] =
-    for {
+    for
       pgpSignature <- toMutablePGPSignature(signature)
       publicKey <- findPublicKeyInKeyRing(pgpSignature)
       signerIds <- verifyWithPublicKey(document, pgpSignature, publicKey)
-    } yield signerIds
+    yield signerIds
 
   private def findPublicKeyInKeyRing(signature: PGPSignature): Checked[PGPPublicKey] =
     publicKeyRingCollection.getPublicKey(signature.getKeyID) match {
@@ -61,7 +61,7 @@ extends SignatureVerifier
     logger.trace("Verifying document with " + pgpSignature.show + ", using " + pgpPublicKeyToShortString(publicKey))
     pgpSignature.init(contentVerifierBuilderProvider, publicKey)
     pgpSignature.update(document.unsafeArray)
-    if (!pgpSignature.verify())
+    if !pgpSignature.verify() then
       Left(TamperedWithSignedMessageProblem)
     else
       Right(publicKey.getUserIDs.asScala.map(SignerId.apply).toVector)
@@ -93,15 +93,15 @@ object PgpSignatureVerifier extends SignatureVerifier.Companion
 
   def genericSignatureToSignature(signature: GenericSignature): Checked[PgpSignature] = {
     assertThat(signature.typeName == typeName)
-    if (signature.signerId.isDefined)
+    if signature.signerId.isDefined then
       Left(Problem("PGP signature does not accept a signerId"))
-    else if (signature.algorithm.isDefined)
+    else if signature.algorithm.isDefined then
       Left(Problem("PGP signature does not accept a signature algorithm"))
-    else if (signature.signerCertificate.isDefined)
+    else if signature.signerCertificate.isDefined then
       Left(Problem("PGP signature does not accept a signed certificate"))
     else {
       val pgpSignature = PgpSignature(signature.signatureString)
-      for (_ <- toMutablePGPSignature(pgpSignature)/*check early*/)
+      for _ <- toMutablePGPSignature(pgpSignature)/*check early*/
         yield pgpSignature
     }
   }
@@ -113,7 +113,7 @@ object PgpSignatureVerifier extends SignatureVerifier.Companion
     ) .leftMap(_.withPrefix("Invalid PGP signature: "))
       .flatMap {
         case o: PGPSignatureList =>
-          if (o.size != 1)
+          if o.size != 1 then
             Left(Problem(s"Unsupported PGP signature type: exactly one PGPSignature expected, not ${o.size}"))
           else
             Right(o.get(0))

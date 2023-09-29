@@ -58,8 +58,8 @@ trait SnapshotRoute extends ControllerRouteProvider
 
   private def currentSnapshot(filter: SnapshotFilter): Route =
     completeTask(
-      for (checkedState <- controllerState) yield
-        for (state <- checkedState) yield
+      for checkedState <- controllerState yield
+        for state <- checkedState yield
           snapshotToHttpEntity(state, filter))
 
   private def historicSnapshot(eventId: EventId): Route =

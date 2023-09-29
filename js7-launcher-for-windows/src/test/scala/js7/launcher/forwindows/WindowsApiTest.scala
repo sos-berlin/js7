@@ -9,7 +9,7 @@ import js7.launcher.forwindows.WindowsApi.{kernel32, messageIdToString, openProc
 
 final class WindowsApiTest extends OurTestSuite
 {
-  if (isWindows) {
+  if isWindows then {
     "processHandleCount" in {
       assert(WindowsApi.processHandleCount > 0)
     }

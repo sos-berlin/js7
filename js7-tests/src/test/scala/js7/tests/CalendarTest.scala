@@ -88,7 +88,7 @@ final class CalendarTest extends OurTestSuite with ControllerAgentForScalaTest
 
   "Delete Workflow and Calendar" in {
     val eventId = eventWatch.lastAddedEventId
-    if (false) { // TODO Allow and test simultaneous deletion of Calendar and Workflow (?)
+    if false then { // TODO Allow and test simultaneous deletion of Calendar and Workflow (?)
       controller.api.updateItems(Observable(
         DeleteSimple(calendar.path),
         AddVersion(VersionId("DELETE")),

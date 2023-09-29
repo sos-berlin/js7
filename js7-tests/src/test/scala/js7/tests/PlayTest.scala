@@ -58,7 +58,7 @@ final class PlayTest extends OurTestSuite with ControllerAgentForScalaTest
     val output = events.collect { case OrderStdoutWritten(chunk) => chunk }.fold("")(_ + _)
     val outcomes = events.collect { case OrderProcessed(outcome) => outcome }
     assert(output == expectedOutput && outcomes == expectedOutcomes)
-    if (expectedOutcomes.lastOption.forall(_.isSucceeded))
+    if expectedOutcomes.lastOption.forall(_.isSucceeded) then
       assert(events.last.isInstanceOf[OrderFinished])
     else
       assert(events.last.isInstanceOf[OrderFailed])
@@ -85,7 +85,7 @@ object PlayTest
   {
     def toOrderProcess(step: Step) =
       OrderProcess.fromCheckedOutcome(
-        for (number <- step.arguments.checked("ARG").flatMap(_.toNumberValue).map(_.number)) yield
+        for number <- step.arguments.checked("ARG").flatMap(_.toNumberValue).map(_.number) yield
           Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(number + 1))))
   }
 }

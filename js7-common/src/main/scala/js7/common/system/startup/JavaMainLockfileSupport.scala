@@ -23,7 +23,7 @@ object JavaMainLockfileSupport
   def runMain[R](args: Array[String], useLockFile: Boolean = false)
     (body: CommandLineArguments => R)
   : R =
-    if (useLockFile) {
+    if useLockFile then {
       lockAndRunMain(args)(body)
     } else {
       val arguments = CommandLineArguments(args.toIndexedSeq)
@@ -38,7 +38,7 @@ object JavaMainLockfileSupport
     val arguments = CommandLineArguments(args.toIndexedSeq)
     val data = Paths.get(arguments.as[String]("--data-directory="))
     val state = data.resolve("state")
-    if (!exists(state)) createDirectory(state)
+    if !exists(state) then createDirectory(state)
     // The lockFile secures the state directory against double use.
     val lockFile = state.resolve("lock")
     lock(lockFile) {
@@ -50,7 +50,7 @@ object JavaMainLockfileSupport
   }
 
   private def cleanWorkDirectory(workDirectory: Path): Unit =
-    if (exists(workDirectory)) {
+    if exists(workDirectory) then {
       tryDeleteDirectoryContentRecursively(workDirectory)
     } else {
       createDirectory(workDirectory)
@@ -71,7 +71,7 @@ object JavaMainLockfileSupport
 
       case Success(_) =>
         try {
-          for (pid <- ProcessPidRetriever.maybeOwnPid) {
+          for pid <- ProcessPidRetriever.maybeOwnPid do {
             lockFileChannel.write(ByteBuffer.wrap(pid.string.getBytes(UTF_8)))
           }
           body

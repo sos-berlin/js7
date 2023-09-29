@@ -25,7 +25,7 @@ private final class TransactionReader
   def onCommit(): Unit = {
     assertThat(isInTransaction)
     next = 0
-    if (buffer.isEmpty) buffer = null
+    if buffer.isEmpty then buffer = null
   }
 
   def clear(): Unit =
@@ -34,9 +34,9 @@ private final class TransactionReader
   def readNext(): Option[Stamped[KeyedEvent[Event]]] =
     isInTransaction ? {
       val stamped = buffer(next).value
-      if (next > 1) buffer(next - 1) = null  // Keep last event for positionAndEventId, free older entry
+      if next > 1 then buffer(next - 1) = null  // Keep last event for positionAndEventId, free older entry
       next += 1
-      if (next == buffer.length) {
+      if next == buffer.length then {
         buffer = null
       }
       stamped

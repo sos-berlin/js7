@@ -87,13 +87,13 @@ object PathExecutable
     returnCodeMeaning: ReturnCodeMeaning = ReturnCodeMeaning.Default,
     v1Compatible: Boolean = false)
   =
-    if (isAbsolute(path))
+    if isAbsolute(path) then
       AbsolutePathExecutable.checked(path, env, login, returnCodeMeaning, v1Compatible).orThrow
     else
       RelativePathExecutable.checked(path, env, login, returnCodeMeaning, v1Compatible).orThrow
 
   def sh(path: String, env: Map[String, Expression] = Map.empty) =
-    apply(if (isWindows) s"$path.cmd" else path, env)
+    apply(if isWindows then s"$path.cmd" else path, env)
 
   def checked(
     path: String,
@@ -102,7 +102,7 @@ object PathExecutable
     returnCodeMeaning: ReturnCodeMeaning = ReturnCodeMeaning.Default,
     v1Compatible: Boolean = false)
   : Checked[PathExecutable] =
-    if (isAbsolute(path))
+    if isAbsolute(path) then
       AbsolutePathExecutable.checked(path, env, login, returnCodeMeaning, v1Compatible)
     else
       RelativePathExecutable.checked(path, env, login, returnCodeMeaning, v1Compatible)
@@ -123,14 +123,14 @@ object PathExecutable
       "v1Compatible" -> o.v1Compatible.?.asJson)
 
   implicit val jsonDecoder: Decoder[PathExecutable] =
-    cursor => for {
+    cursor => for
       path <-cursor.get[String]("path")
       env <- cursor.getOrElse[Map[String, Expression]]("env")(Map.empty)
       login <- cursor.get[Option[KeyLogin]]("login")
       returnCodeMeaning <- cursor.getOrElse[ReturnCodeMeaning]("returnCodeMeaning")(ReturnCodeMeaning.Default)
       v1Compatible <- cursor.getOrElse[Boolean]("v1Compatible")(false)
       pathExecutable <- PathExecutable.checked(path, env, login, returnCodeMeaning, v1Compatible).toDecoderResult(cursor.history)
-    } yield pathExecutable
+    yield pathExecutable
 }
 
 final case class AbsolutePathExecutable(
@@ -154,9 +154,9 @@ object AbsolutePathExecutable {
     login: Option[KeyLogin] = None,
     returnCodeMeaning: ReturnCodeMeaning = ReturnCodeMeaning.Default,
     v1Compatible: Boolean) =
-    if (path.isEmpty)
+    if path.isEmpty then
       Left(EmptyStringProblem(path))
-    else if (!PathExecutable.isAbsolute(path))
+    else if !PathExecutable.isAbsolute(path) then
       Left(InvalidNameProblem("AbsolutePathExecutable", path))
     else
       Right(new AbsolutePathExecutable(path, env, login, returnCodeMeaning, v1Compatible))
@@ -187,10 +187,10 @@ object RelativePathExecutable {
     returnCodeMeaning: ReturnCodeMeaning = ReturnCodeMeaning.Default,
     v1Compatible: Boolean = false)
   : Checked[RelativePathExecutable] =
-    if (path.isEmpty)
+    if path.isEmpty then
       Left(EmptyStringProblem("RelativePathExecutable"))
-    else if (PathExecutable.isAbsolute(path) || path.contains('\\') || path.startsWith(".")
-      || path.contains("/.") || path.head.isWhitespace || path.last.isWhitespace)
+    else if PathExecutable.isAbsolute(path) || path.contains('\\') || path.startsWith(".")
+      || path.contains("/.") || path.head.isWhitespace || path.last.isWhitespace then
       Left(InvalidNameProblem("RelativePathExecutable", path))
     else
       Right(new RelativePathExecutable(path, env, login, returnCodeMeaning, v1Compatible))
@@ -219,13 +219,13 @@ object CommandLineExecutable
       "returnCodeMeaning" -> o.returnCodeMeaning.??.asJson)
 
   implicit val jsonDecoder: Decoder[CommandLineExecutable] =
-    cursor => for {
+    cursor => for
       commandLine <- cursor.get[String]("command")
       commandExpr <- CommandLineParser.parse(commandLine).toDecoderResult(cursor.history)
       env <- cursor.getOrElse[Map[String, Expression]]("env")(Map.empty)
       login <- cursor.get[Option[KeyLogin]]("login")
       returnCodeMeaning <- cursor.getOrElse[ReturnCodeMeaning]("returnCodeMeaning")(ReturnCodeMeaning.Default)
-    } yield CommandLineExecutable(commandExpr, env, login, returnCodeMeaning)
+    yield CommandLineExecutable(commandExpr, env, login, returnCodeMeaning)
 }
 
 final case class ShellScriptExecutable(
@@ -252,13 +252,13 @@ object ShellScriptExecutable
       "v1Compatible" -> o.v1Compatible.?.asJson)
 
   implicit val jsonDecoder: Decoder[ShellScriptExecutable] =
-    cursor => for {
+    cursor => for
       script <- cursor.get[String]("script")
       env <- cursor.getOrElse[Map[String, Expression]]("env")(Map.empty)
       login <- cursor.get[Option[KeyLogin]]("login")
       returnCodeMeaning <- cursor.getOrElse[ReturnCodeMeaning]("returnCodeMeaning")(ReturnCodeMeaning.Default)
       v1Compatible <- cursor.getOrElse[Boolean]("v1Compatible")(false)
-    } yield ShellScriptExecutable(script, env, login, returnCodeMeaning, v1Compatible)
+    yield ShellScriptExecutable(script, env, login, returnCodeMeaning, v1Compatible)
 }
 
 final case class InternalExecutable(

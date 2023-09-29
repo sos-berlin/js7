@@ -101,17 +101,17 @@ extends Service.StoppableByRequest
       // TODO Differentiate between the two Directors
       //  Lesser problem when the active one is reachable.
       val agentCouplingFailed = AgentCouplingFailed(problem)
-      if (lastCouplingFailed contains agentCouplingFailed) {
+      if lastCouplingFailed contains agentCouplingFailed then {
         logger.debug(s"Coupling failed: $problem")
         Task.unit
       } else {
         lastCouplingFailed = Some(agentCouplingFailed)
-        if (agentCouplingFailed.problem is InvalidSessionTokenProblem) {
+        if agentCouplingFailed.problem is InvalidSessionTokenProblem then {
           logger.debug(s"Coupling failed: $problem")
           Task.unit
         } else {
           logger.warn(s"Coupling failed: $problem")
-          for (t <- problem.throwableOption if AkkaHttpClient.hasRelevantStackTrace(t))
+          for t <- problem.throwableOption if AkkaHttpClient.hasRelevantStackTrace(t) do
             logger.debug(s"Coupling failed: $problem", t)
           Task.unless(noJournal)(
             journal.persistKeyedEvent(agentPath <-: agentCouplingFailed)
@@ -187,7 +187,7 @@ extends Service.StoppableByRequest
                 val releaseEvents = succeededInputs.collect {
                   case o: Queueable.ReleaseEventsQueueable => o
                 }
-                if (releaseEvents.nonEmpty) {
+                if releaseEvents.nonEmpty then {
                   state.releaseEventsCancelable.foreach(_.cancel())
                   state.releaseEventsCancelable = None
                 }
@@ -226,7 +226,7 @@ extends Service.StoppableByRequest
 
   def send(input: Queueable): Task[Unit] =
     /*logger.traceTask("send", input.toShortString)*/(Task.defer {
-      if (isTerminating)
+      if isTerminating then
         Task.raiseError(new IllegalStateException(s"$agentDriver is terminating"))
       else
         commandQueue.enqueue(input)
@@ -250,7 +250,7 @@ extends Service.StoppableByRequest
       val expectedSessionNumber = sessionNumber.get()
       directorDriverAllocated.checked.flatMapT(directorDriver =>
         // Fail on recoupling, later read restarted Agent's attached OrderIds before issuing again AttachOrder
-        if (sessionNumber.get() != expectedSessionNumber)
+        if sessionNumber.get() != expectedSessionNumber then
           Task.left(DecoupledProblem)
         else
           directorDriver.executeCommand(command, mustBeCoupled = true))
@@ -285,7 +285,7 @@ extends Service.StoppableByRequest
       })
 
   def reset(force: Boolean): Task[Checked[Unit]] =
-    if (force)
+    if force then
       resetAgent(None)
     else
       maybeAgentRunId.flatMap {
@@ -326,8 +326,8 @@ extends Service.StoppableByRequest
   private def releaseAdoptedEvents(adoptedEventId: EventId): Task[Unit] =
     state.lock.lock(Task {
       state.adoptedEventId = adoptedEventId
-      if (state.releaseEventsCancelable.isEmpty) {
-        val delay = if (state.delayNextReleaseEvents) conf.releaseEventsPeriod else ZeroDuration
+      if state.releaseEventsCancelable.isEmpty then {
+        val delay = if state.delayNextReleaseEvents then conf.releaseEventsPeriod else ZeroDuration
         state.delayNextReleaseEvents = true
         state.releaseEventsCancelable = Some(scheduler.scheduleOnce(delay) {
           Task
@@ -354,7 +354,7 @@ extends Service.StoppableByRequest
                 .executeCommand(
                   DedicateAgentDirector(directors, controllerId, controllerRunId, agentPath))
                 .flatMapT { case DedicateAgentDirector.Response(agentRunId, agentEventId) =>
-                  (if (noJournal)
+                  (if noJournal then
                     Task.right(())
                   else
                     journal
@@ -426,7 +426,7 @@ extends Service.StoppableByRequest
         .void)
 
   private def directorDriverResource: Resource[Task, DirectorDriver] =
-    for {
+    for
       client <- activeClientResource
       //adoptedEventId <- Resource.eval(Task(state.adoptedEventId))
       afterEventId <- Resource.eval(agentRefState.map(_.eventId))
@@ -436,10 +436,10 @@ extends Service.StoppableByRequest
         dedicateAgentIfNeeded, onCouplingFailed, onCoupled, onDecoupled,
         onEventsFetched,
         journal, conf)
-    } yield directorDriver
+    yield directorDriver
 
   private def clusterWatchResource: Resource[Task, ClusterWatchService] =
-    for {
+    for
       clients <- clientsResource
       clusterWatchService <- ClusterWatchService.resource(
         clusterWatchId,
@@ -448,14 +448,14 @@ extends Service.StoppableByRequest
         label = agentPath.toString,
         onClusterStateChanged = onClusterStateChanged,
         onUndecidableClusterNodeLoss = onUndecidableClusterNodeLoss)
-    } yield clusterWatchService
+    yield clusterWatchService
 
   private def onClusterStateChanged(hasNodes: HasNodes): Unit =
-    if (!clusterState.contains(hasNodes)) {
+    if !clusterState.contains(hasNodes) then {
       logger.info(hasNodes.toShortString)
       val activeNodeChanged = clusterState.forall(_.activeId != hasNodes.activeId)
       clusterState = Some(hasNodes)
-      if (activeNodeChanged) {
+      if activeNodeChanged then {
         startAndForgetDirectorDriver
           .runAsyncAndForget // ???
       }
@@ -498,7 +498,7 @@ extends Service.StoppableByRequest
       .flatMap(_.traverse(clientResource))
 
   private def agentToUris(agentPath: AgentPath): Task[Checked[Nel[Uri]]] =
-    for (state <- journal.state) yield
+    for state <- journal.state yield
       state.keyToItem(AgentRef).checked(agentPath)
         .flatMap(_.directors
           .traverse(subagentId => state.keyToItem(SubagentItem).checked(subagentId))

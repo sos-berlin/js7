@@ -49,7 +49,7 @@ final class ReleaseEventsTest extends OurTestSuite with DirectoryProviderForScal
     """
 
   "ReleaseEvents" in {
-    for ((_, env) <- directoryProvider.agentToEnv) {
+    for (_, env) <- directoryProvider.agentToEnv do {
       env.writeExecutable(TestPathExecutable, script(0.s))
     }
 

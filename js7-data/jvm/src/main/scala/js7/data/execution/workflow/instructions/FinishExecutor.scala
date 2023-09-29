@@ -40,7 +40,7 @@ extends EventInstructionExecutor
           case BranchPath.Segment(nr, branchId) :: reverseInit =>
             // In a fork
             val forkPosition = reverseInit.reverse % nr
-            for {
+            for
               fork <- state.instruction_[ForkInstruction](order.workflowId /: forkPosition)
               branchWorkflow <- fork.workflow(branchId)
               gotoEnd <- branchWorkflow.instructions.iterator.zipWithIndex
@@ -50,7 +50,7 @@ extends EventInstructionExecutor
               events <- leaveBlocks(order, workflow,
                 instr.outcome.map(OrderOutcomeAdded(_)) ++:
                   instr.outcome.forall(_.isSucceeded).thenList(OrderMoved(gotoEnd)))
-            } yield events
+            yield events
         }
 
       case _ => Right(Nil)

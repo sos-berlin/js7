@@ -33,12 +33,12 @@ trait ScheduleSimulator {
           }
 
         def calculateNext() =
-          for (scheduled <- _next) yield {
+          for scheduled <- _next yield {
             val maybeScheduled = nextCycleState(timestamp, scheduled.cycleState)
               .map(Scheduled(timestamp, _))
             _next = maybeScheduled
-            for (scheduled <- maybeScheduled) {
-              if (timestamp < scheduled.next) {
+            for scheduled <- maybeScheduled do {
+              if timestamp < scheduled.next then {
                 timestamp = scheduled.next
               }
               timestamp += actionDuration

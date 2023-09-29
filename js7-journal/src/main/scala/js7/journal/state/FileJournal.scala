@@ -158,7 +158,7 @@ object FileJournal
         val S = implicitly[SnapshotableState.Companion[S]]
         val journalId = recovered.journalId getOrElse JournalId.random()
 
-        if (recovered.recoveredJournalFile.isEmpty) {
+        if recovered.recoveredJournalFile.isEmpty then {
           logger.info("Starting a new empty journal")
         }
 
@@ -184,7 +184,7 @@ object FileJournal
         whenJournalActorReady
           .flatMap { journalHeader =>
             logger.debug("JournalActor is ready")
-            for {
+            for
               getState <- Task
                 .deferFuture((journalActor ? JournalActor.Input.GetJournaledState).mapTo[() => S])
                 .logWhenItTakesLonger("JournalActor.Input.GetJournaledState")
@@ -192,7 +192,7 @@ object FileJournal
                 .deferFuture((journalActor ? JournalActor.Input.GetIsHaltedFunction).mapTo[() =>
                   Boolean])
                 .logWhenItTakesLonger("JournalActor.Input.GetIsHaltedFunction")
-            } yield (journalHeader, getState, isHalted)
+            yield (journalHeader, getState, isHalted)
           }
           .flatMap { case (journalHeader, getCurrentState, isHalted) =>
             Task {

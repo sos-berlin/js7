@@ -93,7 +93,7 @@ final class ClusterWatch(
           lastHeartbeat = now(),
           requireManualNodeLossConfirmation = requireManualNodeLossConfirmation))
 
-        if (changed) {
+        if changed then {
           onClusterStateChanged(updatedClusterState)
         }
 
@@ -184,8 +184,8 @@ object ClusterWatch
       def clusterWatchInactiveNodeProblem = ClusterWatchInactiveNodeProblem(
         from, clusterState, lastHeartbeat.elapsed, opString)
 
-      if (reportedClusterState == clusterState) {
-        if (maybeEvent.nonEmpty) {
+      if reportedClusterState == clusterState then {
+        if maybeEvent.nonEmpty then {
           logger.debug(
             s"$from: Ignore probably duplicate event for already reached clusterState=$clusterState")
         }
@@ -219,7 +219,7 @@ object ClusterWatch
                   maybeEvent, clusterState, reportedClusterState = reportedClusterState))
 
               case Right(updatedClusterState) =>
-                for (event <- maybeEvent) logger.info(s"$from: $event")
+                for event <- maybeEvent do logger.info(s"$from: $event")
                 val confirmer = maybeEvent match {
                   case Some(event: ClusterNodeLostEvent) => manualConfirmed(event)
                   case _ => None
@@ -229,7 +229,7 @@ object ClusterWatch
                     if requireManualNodeLossConfirmation && !confirmer.isDefined =>
                     Left(ClusterNodeLossNotConfirmedProblem(from, event))
                   case _ =>
-                    if (updatedClusterState == reportedClusterState) {
+                    if updatedClusterState == reportedClusterState then {
                       logger.info(s"$from changes ClusterState to $reportedClusterState")
                       Right(confirmer -> reportedClusterState)
                     } else {

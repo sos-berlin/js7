@@ -34,7 +34,7 @@ extends AutoCloseable
     directory.register(watchService, ENTRY_CREATE, ENTRY_MODIFY, ENTRY_DELETE)
   }
 
-  def close() = if (!closed.getAndSet(true)) {
+  def close() = if !closed.getAndSet(true) then {
     logger.trace(s"$directory: watchService.close")
     watchService.close()
   }
@@ -44,7 +44,7 @@ extends AutoCloseable
   /** Observable may only be subscribed to once, because it uses the outer WatchService. */
   def singleUseObservable: Observable[Unit] =
     subscriber => {
-      if (subscribed.getAndSet(true)) sys.error("DirectoryWatcher singleUseObservable is subscribable only once")
+      if subscribed.getAndSet(true) then sys.error("DirectoryWatcher singleUseObservable is subscribable only once")
       new Cancelable {
         def cancel() = {
           logger.trace(s"$directory: cancel")
@@ -82,14 +82,14 @@ extends AutoCloseable
     remainingMillis <= 0 || {
       logger.trace(s"$directory: poll ${timeout.pretty} ...")
       val watchKey = watchService.poll(remainingMillis, MILLISECONDS)
-      if (watchKey == null) {
+      if watchKey == null then {
         logger.trace(s"$directory: poll timed out")
         false
       } else {
         try {
           val events = watchKey.pollEvents()
           logger.whenTraceEnabled {
-            if (events.isEmpty) logger.trace(s"$directory: poll returned no events")
+            if events.isEmpty then logger.trace(s"$directory: poll returned no events")
             else events.asScala foreach { o => logger.trace(s"$directory: ${watchEventShow.show(o)}") }
           }
         } finally watchKey.reset()

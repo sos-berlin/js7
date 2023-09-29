@@ -17,9 +17,9 @@ extends EventInstructionExecutor
   val instructionClass = classOf[StickySubagent]
 
   def toEvents(instr: StickySubagent, order: Order[Order.State], state: StateView) =
-    if (!order.isState[IsFreshOrReady])
+    if !order.isState[IsFreshOrReady] then
       Right(Nil)
-    else if (order.stickySubagents.nonEmpty)
+    else if order.stickySubagents.nonEmpty then
       Left(Problem.pure("StickySubagent instruction must not be nested"))
     else
       instr.subagentSelectionIdExpr

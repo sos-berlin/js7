@@ -44,7 +44,7 @@ final class ClusterWatchTest extends OurTestSuite
   "ClusterWatch" - {
     def newClusterWatch(initialState: Option[HasNodes] = None): ClusterWatch = {
       implicit val watch: ClusterWatch = new ClusterWatch(() => scheduler.now)
-      for (clusterState <- initialState) {
+      for clusterState <- initialState do {
         heartbeat(clusterState.activeId, clusterState).orThrow
       }
       watch

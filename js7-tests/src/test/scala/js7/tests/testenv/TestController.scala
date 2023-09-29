@@ -113,7 +113,7 @@ final class TestController(allocated: Allocated[Task, RunningController], admiss
 
   private def shutdown(cmd: ShutDown): Task[ProgramTermination] =
     logger.debugTask(Task.defer {
-      if (terminated.isCompleted) // Works only if previous termination has been completed
+      if terminated.isCompleted then // Works only if previous termination has been completed
         untilTerminated
       else
         actorSystem.whenTerminated.value match {
@@ -153,7 +153,7 @@ final class TestController(allocated: Allocated[Task, RunningController], admiss
         .filter(_.value.key == order.id)
         .map(o => o.copy(value = o.value.event))
         .takeWhileInclusive { case Stamped(_, _, event) =>
-          if (order.deleteWhenTerminated)
+          if order.deleteWhenTerminated then
             event != OrderDeleted && !event.isInstanceOf[OrderFailed]
           else
             !event.isInstanceOf[OrderTerminated]

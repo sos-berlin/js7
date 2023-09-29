@@ -33,7 +33,7 @@ import scala.jdk.CollectionConverters.*
 final class ProcessKillScriptTest extends OurTestSuite {
 
   "Kill script kills descendants" in {
-    if (isMac) {
+    if isMac then {
       info("Disabled on MacOS because it kills our builder process")
       pending
     } else {
@@ -47,7 +47,7 @@ final class ProcessKillScriptTest extends OurTestSuite {
       sleep(1.s) // Time to let kill take effect
       val beforeKill = out.contentString
       logger.info(s"\n" + beforeKill)
-      if (isUnix) {
+      if isUnix then {
         assert(beforeKill contains "TEST-1=")
         assert(beforeKill contains "TEST-2=")
         assert(beforeKill contains "TEST-3=")
@@ -90,13 +90,13 @@ private object ProcessKillScriptTest {
   private val logger = Logger[this.type]
   private val TestTaskId = TaskId("1-TEST")
   private def Script =
-    (if (isWindows) JavaResource("js7/launcher/process/scripts/windows/test.cmd")
+    (if isWindows then JavaResource("js7/launcher/process/scripts/windows/test.cmd")
                else JavaResource("js7/launcher/process/scripts/unix/test.sh"))
     .asUTF8String
-  private val SIGKILLexitValue = if (isWindows) 1 else if (isSolaris) SIGKILL.number else 128 + SIGKILL.number
+  private val SIGKILLexitValue = if isWindows then 1 else if isSolaris then SIGKILL.number else 128 + SIGKILL.number
 
   private def logProcessTree(): Unit = {
-    if (isUnix && !isMac) {
+    if isUnix && !isMac then {
       val ps = new ProcessBuilder("ps", "fux").startRobustly().await(99.s)
       startLogStreams(ps, "ps (for information only, please ignore errors)") await 15.s
       ps.waitFor()
@@ -113,5 +113,5 @@ private object ProcessKillScriptTest {
     logger.info("\n" + readLines(in, prefix).mkString("\n"))
 
   private def readLines(in: InputStream, prefix: String): Iterator[String] =
-    for (line <- scala.io.Source.fromInputStream(in).getLines()) yield s"$prefix: $line"
+    for line <- scala.io.Source.fromInputStream(in).getLines() yield s"$prefix: $line"
 }

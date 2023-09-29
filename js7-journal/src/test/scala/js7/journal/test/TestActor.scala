@@ -52,7 +52,7 @@ extends Actor with Stash
       .await(99.s)
 
     val state = recovered.state
-    for (aggregate <- state.keyToAggregate.values) {
+    for aggregate <- state.keyToAggregate.values do {
       val actor = newAggregateActor(aggregate.key)
       actor ! TestAggregateActor.Input.RecoverFromSnapshot(aggregate)
       keyToAggregate += aggregate.key -> actor
@@ -114,7 +114,7 @@ extends Actor with Stash
     case Input.Terminate =>
       terminator = sender()
       keyToAggregate.values foreach context.stop
-      if (keyToAggregate.isEmpty) {
+      if keyToAggregate.isEmpty then {
         context.stop(self)
         terminator ! Done
       }
@@ -122,7 +122,7 @@ extends Actor with Stash
     case Terminated(actorRef) =>
       val key = keyToAggregate collectFirst { case (k, `actorRef`) => k }
       keyToAggregate --= key
-      if (terminator != null && keyToAggregate.isEmpty) {
+      if terminator != null && keyToAggregate.isEmpty then {
         context.stop(self)
         terminator ! Done
       }

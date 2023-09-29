@@ -46,7 +46,7 @@ final class CommandWebServiceTest extends OurTestSuite with WebServiceTest with 
   "ShutDown" in {
     val json = json"""{ "TYPE": "ShutDown" }"""
     postJsonCommand(json) ~> check {
-      if (status != OK) fail(s"$status - ${responseEntity.toStrict(99.s).value}")
+      if status != OK then fail(s"$status - ${responseEntity.toStrict(99.s).value}")
       assert(responseAs[AgentCommand.Response.Accepted] == AgentCommand.Response.Accepted)
       assert(responseEntity.toStrict(99.s).value.get.get.data.utf8String.parseJsonOrThrow ==
         json"""{ "TYPE": "Accepted" }""")
@@ -57,7 +57,7 @@ final class CommandWebServiceTest extends OurTestSuite with WebServiceTest with 
     // When Agent is shutting down, the command may be okay and the Controller should repeat the command later
     // Not valid for commands packaged in AgentCommand.Batch
     postJsonCommand((TestCommandWhileShuttingDown: AgentCommand).asJson) ~> check {
-      if (status != ServiceUnavailable) fail(s"$status - ${responseEntity.toStrict(99.s).value}")
+      if status != ServiceUnavailable then fail(s"$status - ${responseEntity.toStrict(99.s).value}")
       assert(responseAs[AgentCommand.Response.Accepted] == AgentCommand.Response.Accepted)
       assert(responseEntity.toStrict(99.s).value.get.get.data.utf8String.parseJsonOrThrow ==
         json"""{

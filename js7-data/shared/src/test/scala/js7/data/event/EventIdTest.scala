@@ -18,7 +18,7 @@ final class EventIdTest extends OurTestSuite
   }
 
   "Compatible with floating-point" in {
-    for (i <- 0 to 2000) {
+    for i <- 0 to 2000 do {
       val eventId = EventId.JavascriptMaxValue - i
       assert(eventId.toDouble.toLong == eventId)
     }

@@ -17,10 +17,10 @@ object JavaInformations
     "os.name",
     "os.version")
   private val systemProperties: Map[String, String] =
-    (for {
+    (for
       k <- JavaSystemPropertyKeys
       v <- sys.props.get(k)
-    } yield k -> v).toMap
+    yield k -> v).toMap
 
   def javaInformation() = JavaInformation(
     version = implementationVersion,

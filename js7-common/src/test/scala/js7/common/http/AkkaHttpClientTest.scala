@@ -70,7 +70,7 @@ final class AkkaHttpClientTest extends OurTestSuite with BeforeAndAfterAll with 
     }.closeWithCloser
 
     "toCheckedAgentUri, checkAgentUri and apply, failing" - {
-      for (case (uri, None) <- Setting) s"$uri" in {
+      for case (uri, None) <- Setting do s"$uri" in {
         assert(httpClient.checkAgentUri(uri).isLeft)
         assert(httpClient.toCheckedAgentUri(uri).isLeft)
         implicit val s = Task.pure(none[SessionToken])
@@ -80,7 +80,7 @@ final class AkkaHttpClientTest extends OurTestSuite with BeforeAndAfterAll with 
     }
 
     "normalizeAgentUri" - {
-      for (case (uri, Some(converted)) <- Setting) s"$uri" in {
+      for case (uri, Some(converted)) <- Setting do s"$uri" in {
         assert(httpClient.normalizeAgentUri(uri) == converted)
         assert(httpClient.toCheckedAgentUri(uri) == Right(converted))
       }

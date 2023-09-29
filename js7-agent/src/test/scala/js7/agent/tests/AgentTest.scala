@@ -56,7 +56,7 @@ final class AgentTest extends OurTestSuite with AgentTester
           val workingDirectory = toWorkingDirectory(directory).toRealPath()
           TestPathExecutable.toFile(directory / "config" / "executables").writeUtf8Executable(TestScript)
           var agentConf = AgentConfiguration.forTest(directory, name = "AgentTest")
-          if (directory != WorkingDirectory) {
+          if directory != WorkingDirectory then {
             agentConf = agentConf.copy(
               subagentConf = agentConf.subagentConf.copy(
                 jobWorkingDirectory = workingDirectory))
@@ -95,7 +95,7 @@ object AgentTest
   private val subagentId = SubagentId("SUBAGENT")
 
   private val TestScript =
-    if (isWindows) """
+    if isWindows then """
       |@echo off
       |set /p dummy=WORKDIR= <nul >%JS7_RETURN_VALUES%
       |cd >>%JS7_RETURN_VALUES%

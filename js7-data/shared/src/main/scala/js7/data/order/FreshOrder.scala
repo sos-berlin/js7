@@ -91,7 +91,7 @@ object FreshOrder
     startPosition: Option[PositionOrLabel] = None,
     stopPositions: Set[PositionOrLabel] = Set.empty)
   : Checked[FreshOrder] =
-    for (checkedId <- id.checkedNameSyntax)
+    for checkedId <- id.checkedNameSyntax
       yield new FreshOrder(checkedId, workflowPath, arguments, scheduledFor,
         deleteWhenTerminated, forceJobAdmission,
         innerBlock, startPosition, stopPositions)
@@ -109,7 +109,7 @@ object FreshOrder
       "stopPositions" -> (o.stopPositions.nonEmpty ? o.stopPositions).asJson)
 
   implicit val jsonDecoder: Decoder[FreshOrder] =
-    c => for {
+    c => for
       id <- c.get[OrderId]("id")
       workflowPath <- c.get[WorkflowPath]("workflowPath")
       scheduledFor <- c.get[Option[Timestamp]]("scheduledFor")
@@ -124,5 +124,5 @@ object FreshOrder
           deleteWhenTerminated, forceJobAdmission,
           innerBlock, startPosition, stopPositions
         ).toDecoderResult(c.history)
-    } yield order
+    yield order
 }

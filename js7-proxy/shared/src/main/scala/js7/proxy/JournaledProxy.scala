@@ -77,7 +77,7 @@ trait JournaledProxy[S <: SnapshotableState[S]]
       observingStopped.completeWith(whenCompleted)
       whenCompleted.onComplete {
         case Success(()) =>
-          if (!stopRequested.isCompleted) {
+          if !stopRequested.isCompleted then {
             logger.error("Observable has terminated")
           }
           // ???
@@ -97,7 +97,7 @@ trait JournaledProxy[S <: SnapshotableState[S]]
 
   def sync(eventId: EventId): Task[Unit] =
     Task.defer {
-      if (currentState.eventId >= eventId)
+      if currentState.eventId >= eventId then
         Task.unit
       else
         Observable(
@@ -175,13 +175,13 @@ object JournaledProxy
                   .onErrorRecoverWith {
                     case t if fromEventId.isEmpty || !isTorn(t) =>
                       val continueWithState =
-                        if (isTorn(t)) {
+                        if isTorn(t) then {
                           logger.error(t.toStringWithCauses)
                           logger.warn("Restarting observation from a new snapshot, loosing some events")
                           None
                         } else {
                           logger.warn(t.toStringWithCauses)
-                          if (t.getStackTrace.nonEmpty) logger.debug(t.toStringWithCauses, t)
+                          if t.getStackTrace.nonEmpty then logger.debug(t.toStringWithCauses, t)
                           logger.debug("Restarting observation and try to continue seamlessly after=" +
                             EventId.toString(state.eventId))
                           Some(lastState)

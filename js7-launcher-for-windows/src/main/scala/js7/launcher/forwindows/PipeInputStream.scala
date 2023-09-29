@@ -13,27 +13,27 @@ private abstract class PipeInputStream(pipeHandle: HANDLE) extends InputStream
   def read() = {
     val array = Array[Byte](1)
     val len = read(array)
-    if (len == 1)
+    if len == 1 then
       array(0).toInt & 0xff
     else
       -1
   }
 
   override def read(buffer: Array[Byte], offset: Int, length: Int) = {
-    val (a, len) = if (offset == 0) (buffer, length) else (myBuffer, myBuffer.size min length)
+    val (a, len) = if offset == 0 then (buffer, length) else (myBuffer, myBuffer.size min length)
     val bytesRead = new IntByReference
     var brokenPipe = false
     call("ReadFile", "PipeInputStream") {
       val ok = kernel32.ReadFile(pipeHandle, a, len, bytesRead, null)
-      if (!ok && kernel32.GetLastError == ERROR_BROKEN_PIPE) {
+      if !ok && kernel32.GetLastError == ERROR_BROKEN_PIPE then {
         brokenPipe = true
         true // no error
       } else ok
     }
-    if (brokenPipe)
+    if brokenPipe then
       -1
     else {
-      if (a ne buffer) {
+      if a ne buffer then {
         a.copyToArray(buffer, offset, bytesRead.getValue)
       }
       bytesRead.getValue

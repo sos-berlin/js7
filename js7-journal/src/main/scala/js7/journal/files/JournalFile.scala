@@ -24,9 +24,9 @@ private[journal] final case class JournalFile private[journal](fileEventId: Even
     boundary[Long] {
       autoClosing(new RandomAccessFile(file.toFile, "r")) { f =>
         var truncated = f.length
-        while (truncated > 0) {
+        while truncated > 0 do {
           f.seek(truncated - 1)
-          if (f.read() == '\n') boundary.break(truncated)
+          if f.read() == '\n' then boundary.break(truncated)
           truncated -= 1
         }
         0

@@ -85,10 +85,10 @@ object ThreadPools
   def ownThreadPoolResource[A](name: String, config: Config)
     (resource: Scheduler => Resource[Task, A])
   : Resource[Task, A] =
-    for {
+    for
       ownScheduler <- standardSchedulerResource[Task](name, config)
       a <- resource(ownScheduler).executeOn(ownScheduler)
-    } yield a
+    yield a
 
   def standardSchedulerResource[F[_]](name: String, config: Config, orCommon: Option[Scheduler])
     (implicit F: Sync[F])
@@ -119,7 +119,7 @@ object ThreadPools
 
   def newStandardScheduler(name: String, config: Config, closer: Closer): Scheduler = {
     val nr = nextNumber.incrementAndGet()
-    val myName = if (isTest && nr > 1) s"$name-#$nr" else name
+    val myName = if isTest && nr > 1 then s"$name-#$nr" else name
     val shutdownTimeout = config.getDuration("js7.thread-pools.standard.shutdown-timeout").toFiniteDuration
     val parallelism = config.as("js7.thread-pools.standard.parallelism")(ThreadCount)
     val maxThreads = config.getInt("js7.thread-pools.standard.maximum")
@@ -147,9 +147,9 @@ object ThreadPools
     val prefix = s"Scheduler($name)"
     logger.debugCall(s"$prefix.shutdown", "") {
       scheduler.shutdown()
-      if (shutdownTimeout.isPositive) {
+      if shutdownTimeout.isPositive then {
         logger.debug(s"$prefix.awaitTermination(${shutdownTimeout.pretty}) ...")
-        if (!scheduler.awaitTermination(shutdownTimeout)) {
+        if !scheduler.awaitTermination(shutdownTimeout) then {
           logger.whenDebugEnabled {
             logger.debug(s"$prefix.awaitTermination(${shutdownTimeout.pretty}) timed out")
             Thread.getAllStackTraces.asScala

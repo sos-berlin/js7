@@ -88,9 +88,9 @@ object BranchId
   final case class Named(string: String) extends BranchId {
     // TODO Differentiate static and dynamic BranchId (used for static and dynamic call stacks)
     def normalized =
-      if (string startsWith "try+") "try"
-      else if (string startsWith "catch+") "catch"
-      else if (string startsWith "cycle+") "cycle"
+      if string startsWith "try+" then "try"
+      else if string startsWith "catch+" then "catch"
+      else if string startsWith "cycle+" then "cycle"
       else this
 
     def isFork = string.startsWith(ForkPrefix) || string == "fork"
@@ -98,9 +98,9 @@ object BranchId
     def toCycleState: Checked[CycleState] =
       try {
         var cycleState = emptyCycleState
-        if (string == "cycle")
+        if string == "cycle" then
           Right(cycleState)
-        else if (!string.startsWith("cycle+"))
+        else if !string.startsWith("cycle+") then
           Left(Problem.pure(cycleFailed))
         else {
           var checked: Checked[Unit] = Checked.unit
@@ -109,24 +109,24 @@ object BranchId
             .toVector
             .takeWhile(_ => checked.isRight)
             .foreach(part =>
-              if (part startsWith "end=")
+              if part startsWith "end=" then
                 cycleState = cycleState.copy(
                   end = Timestamp.ofEpochMilli(part.substring(4).toLong))
-              else if (part startsWith "scheme=")
+              else if part startsWith "scheme=" then
                 cycleState = cycleState.copy(
                   schemeIndex = part.substring(7).toInt)
-              else if (part startsWith "period=")
+              else if part startsWith "period=" then
                 cycleState = cycleState.copy(
                   periodIndex = part.substring(7).toInt)
-              else if (part startsWith "i=")
+              else if part startsWith "i=" then
                 cycleState = cycleState.copy(
                   index = part.substring(2).toInt)
-              else if (part startsWith "next=")
+              else if part startsWith "next=" then
                 cycleState = cycleState.copy(
                   next = Timestamp.ofEpochMilli(part.substring(5).toLong))
               else
                 checked = Left(Problem.pure(cycleFailed)))
-          for (_ <- checked) yield cycleState
+          for _ <- checked yield cycleState
         }
       } catch { case NonFatal(t) =>
         Left(Problem.pure(cycleFailed + " - " + t.toStringWithCauses))

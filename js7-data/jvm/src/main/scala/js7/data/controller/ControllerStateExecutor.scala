@@ -60,7 +60,7 @@ final case class ControllerStateExecutor private(
     externalOrderKey: Option[ExternalOrderKey] = None,
     suppressOrderIdCheckFor: Option[String] = None)
   : Checked[Option[KeyedEvent[OrderAdded]]] =
-    ( if (suppressOrderIdCheckFor.contains(order.id.string)) Checked.unit
+    ( if suppressOrderIdCheckFor.contains(order.id.string) then Checked.unit
       else order.id.checkedNameSyntax
     ) *>
       addOrderWithPrecheckedId(order, externalOrderKey)
@@ -69,10 +69,10 @@ final case class ControllerStateExecutor private(
     freshOrder: FreshOrder,
     externalOrderKey: Option[ExternalOrderKey])
   : Checked[Option[KeyedEvent[OrderAdded]]] =
-    if (controllerState.idToOrder.contains(freshOrder.id))
+    if controllerState.idToOrder.contains(freshOrder.id) then
       Right(None) // Ignore known orders  — TODO Fail as duplicate if deleteWhenTerminated ?
     else
-      for {
+      for
         workflow <- controllerState.repo.pathTo(Workflow)(freshOrder.workflowPath)
         preparedArguments <- workflow.orderParameterList.prepareOrderArguments(
           freshOrder, controllerId, controllerState.keyToItem(JobResource), nowScope)
@@ -82,21 +82,21 @@ final case class ControllerStateExecutor private(
             checkStartAndStopPositionAndInnerBlock(_, workflow, freshOrder.innerBlock))
         _ <- freshOrder.stopPositions.toSeq.traverse(
           checkStartAndStopPositionAndInnerBlock(_, workflow, freshOrder.innerBlock))
-      } yield Some(
+      yield Some(
         freshOrder.toOrderAdded(workflow.id.versionId, preparedArguments, externalOrderKey,
           startPosition))
 
   private def checkStartAndStopPositionAndInnerBlock(
     positionOrLabel: PositionOrLabel, workflow: Workflow, innerBlock: BranchPath)
   : Checked[Position] =
-    for {
+    for
       position <- workflow.positionOrLabelToPosition(positionOrLabel)
       _ <- position.isNestedIn(innerBlock) !! Problem(
         s"Position $position must be in innerBlock=${innerBlock.show}")
       _ <- workflow.checkPosition(position)
       _ <- workflow.isMoveable(innerBlock % 0, position) !! Problem(
         s"Order's startPosition or one of its stopPositions is not reachable: $positionOrLabel")
-    } yield position
+    yield position
 
   def resetAgent(agentPath: AgentPath, force: Boolean): Checked[Seq[AnyKeyedEvent]] = {
     val agentResetStarted = View(agentPath <-: AgentResetStarted(force = force))
@@ -136,19 +136,19 @@ final case class ControllerStateExecutor private(
       case _ => Vector.empty
     }
     val detached = stateEvents :+ (order.id <-: OrderDetached)
-    for {
+    for
       detachedState <- controllerState.applyEvents(detached)
       fail <- new OrderEventSource(detachedState)
         .fail(detachedState.idToOrder(order.id), Some(outcome), uncatchable = true)
-    } yield detached ++ fail.view.map(order.id <-: _)
+    yield detached ++ fail.view.map(order.id <-: _)
   }
 
   def applyEventsAndReturnSubsequentEvents(keyedEvents: Iterable[AnyKeyedEvent])
   : Checked[ControllerStateExecutor] =
-    for {
+    for
       tuple <- applyEvents(keyedEvents)
       result <- (subsequentEvents _).tupled(tuple)
-    } yield result
+    yield result
 
   private def applyEvents(keyedEvents: Iterable[AnyKeyedEvent])
   : Checked[(
@@ -171,7 +171,7 @@ final case class ControllerStateExecutor private(
     var checked: Checked[Unit] = Checked.unit
     val iterator = keyedEvents.iterator
 
-    while (iterator.hasNext && checked.isRight) {
+    while iterator.hasNext && checked.isRight do {
       val keyedEvent = iterator.next()
       val previous = controllerState
 
@@ -183,7 +183,7 @@ final case class ControllerStateExecutor private(
           controllerState = updated
           keyedEvent match {
             case KeyedEvent(_, event: VersionedItemEvent) =>
-              for (previousItem <- previous.repo.pathToVersionedItem(event.path)) {
+              for previousItem <- previous.repo.pathToVersionedItem(event.path) do {
                 touchedItemKeys += previousItem.id
                 previousItem match {
                   case previousItem: Workflow =>
@@ -223,7 +223,7 @@ final case class ControllerStateExecutor private(
       }
     }
 
-    for (_ <- checked) yield
+    for _ <- checked yield
       (touchedItemKeys, touchedOrderIds, detachWorkflowCandidates, detachedItems, detachedWorkflows,
         deletedWorkflows, controllerState)
   }
@@ -374,7 +374,7 @@ final case class ControllerStateExecutor private(
           orderWatchEvents)
 
         // Loop to derive further events from the just derived events
-        if (subsequentKeyedEvents.nonEmpty)
+        if subsequentKeyedEvents.nonEmpty then
           controllerStateBeforeSubsequentEvents
             .applyEventsAndReturnSubsequentEvents(subsequentKeyedEvents)
             .map(o => ControllerStateExecutor(subsequentKeyedEvents ++ o.keyedEvents, o.controllerState))
@@ -401,7 +401,7 @@ final case class ControllerStateExecutor private(
 
             item.key match {
               case WorkflowId.as(workflowId) =>
-                if (controllerState.isObsoleteItem(workflowId))
+                if controllerState.isObsoleteItem(workflowId) then
                   derivedWorkflowPathControlEvent(workflowId, agentPath).toList ++
                     derivedWorkflowControlEvent(workflowId, agentPath) :+
                     detachEvent
@@ -409,7 +409,7 @@ final case class ControllerStateExecutor private(
                   Nil
 
               case itemKey =>
-                if (controllerState.deletionMarkedItems contains itemKey)
+                if controllerState.deletionMarkedItems contains itemKey then
                   detachEvent :: Nil
                 else
                   (item.itemRevision != revision).thenList(
@@ -429,7 +429,7 @@ final case class ControllerStateExecutor private(
         }
 
       case None =>
-        if (controllerState.deletionMarkedItems.contains(item.key))
+        if controllerState.deletionMarkedItems.contains(item.key) then
           Nil
         else
           item.dedicatedAgentPath.map(ItemAttachable(item.key, _))
@@ -447,7 +447,7 @@ final case class ControllerStateExecutor private(
         .itemToAgentToAttachedState.get(workflowId)
         .exists(_ contains agentPath))
 
-      if (otherWorkflowWillStillBeAttached)
+      if otherWorkflowWillStillBeAttached then
         None
       else {
         val controlPath = WorkflowPathControlPath(workflowId.path)
@@ -464,7 +464,7 @@ final case class ControllerStateExecutor private(
   private def derivedWorkflowControlEvent(workflowId: WorkflowId, agentPath: AgentPath)
   : Option[ItemAttachedStateEvent] =
     // Implicitly detach WorkflowControl from agentPath when Workflow has been detached
-    if (controllerState.itemToAgentToAttachedState.contains(workflowId))
+    if controllerState.itemToAgentToAttachedState.contains(workflowId) then
       None
     else {
       val controlId = WorkflowControlId(workflowId)
@@ -478,7 +478,7 @@ final case class ControllerStateExecutor private(
     }
 
   private def detach(itemKey: InventoryItemKey, agentPath: AgentPath): ItemAttachedStateEvent =
-    if (controllerState.keyToUnsignedItemState_.contains(agentPath))
+    if controllerState.keyToUnsignedItemState_.contains(agentPath) then
       ItemDetachable(itemKey, agentPath)
     else // shortcut in case, the Agent has been deleted (reset)
       ItemDetached(itemKey, agentPath)
@@ -526,9 +526,9 @@ final case class ControllerStateExecutor private(
     @tailrec def loop(): Unit =
       queue.removeHeadOption() match {
         case Some(orderId) =>
-          if (controllerState.idToOrder contains orderId) {
+          if controllerState.idToOrder contains orderId then {
             val keyedEvents = new OrderEventSource(controllerState).nextEvents(orderId)
-            for (case KeyedEvent(orderId, OrderBroken(maybeProblem)) <- keyedEvents) {
+            for case KeyedEvent(orderId, OrderBroken(maybeProblem)) <- keyedEvents do {
               logger.error(s"$orderId is broken${maybeProblem.fold("")(": " + _)}") // ???
             }
             controllerState.applyEvents(keyedEvents) match {

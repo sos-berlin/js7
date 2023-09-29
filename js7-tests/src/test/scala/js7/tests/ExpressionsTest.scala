@@ -29,11 +29,11 @@ final class ExpressionsTest extends OurTestSuite
       items = Seq(TestWorkflow),
       testName = Some("ExpressionsTest"))
     autoClosing(directoryProvider) { _ =>
-      for (a <- directoryProvider.agentEnvs) a.writeExecutable(RelativePathExecutable(s"TEST$sh"), ":")
-      for (a <- directoryProvider.agentEnvs) a.writeExecutable(RelativePathExecutable(s"TEST-RC$sh", v1Compatible = true), jobScript)
+      for a <- directoryProvider.agentEnvs do a.writeExecutable(RelativePathExecutable(s"TEST$sh"), ":")
+      for a <- directoryProvider.agentEnvs do a.writeExecutable(RelativePathExecutable(s"TEST-RC$sh", v1Compatible = true), jobScript)
 
       directoryProvider.run { (controller, _) =>
-        for (order <- orders) withClue(s"Order ${order.id.string}: ") {
+        for order <- orders do withClue(s"Order ${order.id.string}: ") {
           controller.addOrderBlocking(order)
           val expectedLast = ExpectedEvents(order.id).last
           controller.eventWatch.await[OrderEvent](ke => ke.key == order.id && expectedLast.getClass == ke.event.getClass)
@@ -55,7 +55,7 @@ object ExpressionsTest {
   private val subagentId = toLocalSubagentId(TestAgentPath)
 
   private val jobScript =
-    if (isWindows)
+    if isWindows then
       """@echo off
         |echo JOB-KEY=JOB-RESULT >>%SCHEDULER_RETURN_VALUES%
         |exit %SCHEDULER_PARAM_RETURN_CODE%

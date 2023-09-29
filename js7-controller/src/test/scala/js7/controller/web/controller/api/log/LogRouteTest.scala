@@ -55,7 +55,7 @@ final class LogRouteTest extends OurTestSuite with RouteTester with LogRoute
         assert(status == OK && entityAs[String] == "LOG TEXT")
       }
 
-      if (false) {
+      if false then {
         // Endless streaming response
         // Akka testkit seems only support synchronous, blocking calls. So this blocks and fails:
         Get("/log") ~> Accept(`text/plain`) ~> route ~> check {
@@ -67,7 +67,7 @@ final class LogRouteTest extends OurTestSuite with RouteTester with LogRoute
             .foreach(queue.add)
           assert(queue.poll(9, SECONDS) == "LOG TEXT")
           autoClosing(new OutputStreamWriter(new FileOutputStream(file, true))) { out =>
-            for (text <- Array("/ZWEI", "/DREI")) {
+            for text <- Array("/ZWEI", "/DREI") do {
               out.write(text)
               out.flush()
               assert(queue.poll(9, SECONDS) == text)

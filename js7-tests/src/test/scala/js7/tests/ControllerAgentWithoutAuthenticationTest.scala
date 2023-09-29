@@ -66,14 +66,14 @@ final class ControllerAgentWithoutAuthenticationTest extends OurTestSuite
       createDirectories(dir / "agent/data/state")
       createDirectories(dir / "agent/data/work")
 
-      if (isPublic) {
+      if isPublic then {
         dir / "agent/config/agent.conf" := "js7.web.server.auth.public = true\n"
       }
       (dir / "agent/config/executables/EXECUTABLE.cmd").writeUtf8Executable(":")
 
       val itemSigner = {
         val signature = SillySignature("✘✘✘")
-        for (x <- Array("controller", "agent")) {
+        for x <- Array("controller", "agent") do {
           val keyDirectory = dir / x / "config/private/silly-signatures"
           createDirectory(keyDirectory)
           val keyFile =keyDirectory / "silly-signature.txt"

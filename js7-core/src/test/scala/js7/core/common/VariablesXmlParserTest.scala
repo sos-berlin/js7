@@ -28,13 +28,13 @@ final class VariablesXmlParserTest extends OurTestSuite {
     }
   }
 
-  if (sys.props contains "test.speed") "Speed" in {
+  if sys.props contains "test.speed" then "Speed" in {
     val n = 10000
     val xmlString =
      "<variables>" +
        (1 to 10).map(i => s"""<variable name="NAME-$i" value="${"*" * 100}"/>""").mkString +
        "</variables>"
-    for (_ <- 1 to 10) info(
+    for _ <- 1 to 10 do info(
       measureTime(n) {
         ScalaXMLEventReader.parseDocument(xmlString)(VariablesXmlParser.parse)
       }.toString)

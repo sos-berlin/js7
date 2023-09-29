@@ -107,7 +107,7 @@ extends UnsignedSimpleItemState
               noticePlace.finishConsumption(succeeded))
               .copy(
                 orderToConsumptionStack =
-                  if (remainingConsumptions.isEmpty)
+                  if remainingConsumptions.isEmpty then
                     orderToConsumptionStack - orderId
                   else
                     orderToConsumptionStack.updated(orderId, remainingConsumptions)))
@@ -126,11 +126,11 @@ extends UnsignedSimpleItemState
     idToNotice.values.count(_.notice.isDefined)
 
   def deleteNoticeEvent(noticeId: NoticeId): Checked[KeyedEvent[NoticeDeleted]] =
-    for (_ <- checkDelete(noticeId)) yield
+    for _ <- checkDelete(noticeId) yield
       board.path <-: NoticeDeleted(noticeId)
 
   def removeNotice(noticeId: NoticeId): Checked[BoardState] =
-    for (_ <- checkDelete(noticeId)) yield {
+    for _ <- checkDelete(noticeId) yield {
       idToNotice.get(noticeId) match {
         case None =>
           this
@@ -143,22 +143,22 @@ extends UnsignedSimpleItemState
   private def updateNoticePlace(noticePlace: NoticePlace): BoardState =
     copy(
       idToNotice =
-        if (noticePlace.isEmpty)
+        if noticePlace.isEmpty then
           idToNotice - noticePlace.noticeId
         else
           idToNotice.updated(noticePlace.noticeId, noticePlace))
 
   private def checkDelete(noticeId: NoticeId): Checked[Unit] =
-    for (_ <- notice(noticeId)) yield ()
+    for _ <- notice(noticeId) yield ()
 
   def notice(noticeId: NoticeId): Checked[Notice] =
-    for {
+    for
       noticePlace <- idToNotice.checked(noticeId)
       notice <- noticePlace.notice match {
         case None => Left(Problem(s"$noticeId does not denote a Notice (but a Notice expectation)"))
         case Some(notice) => Right(notice)
       }
-    } yield notice
+    yield notice
 }
 
 object BoardState extends UnsignedSimpleItemState.Companion[BoardState] {

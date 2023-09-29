@@ -124,7 +124,7 @@ object ServiceMain
 
       val paths = conf.maybeConfigDirectory.map(o => s"config=$o") ++
         conf.maybeDataDirectory.map(o => s"data=$o")
-      if (paths.nonEmpty) logger.info(paths.mkString(" "))
+      if paths.nonEmpty then logger.info(paths.mkString(" "))
 
       logConfig(conf.config)
       logJavaSettings()
@@ -174,7 +174,7 @@ object ServiceMain
       logger.warn(s"Trying to shut down $allocatedService due to Java shutdown")
       val stop = logger.debugTask("onJavaShutDown stop service")(
         allocatedService.release)
-      for (t <- stop.attempt.runSyncUnsafe().left) {
+      for t <- stop.attempt.runSyncUnsafe().left do {
         logger.error(s"onJavaShutdown: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
       }
     }

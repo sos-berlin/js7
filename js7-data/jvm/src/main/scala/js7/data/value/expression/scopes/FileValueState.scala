@@ -29,10 +29,10 @@ extends AutoCloseable
   private val statistics = new Statistics
 
   def close(): Unit = {
-    if (commonDirectoryCreated.get()) {
+    if commonDirectoryCreated.get() then {
       tryDelete(directory.resolve(commonDirectory))
     }
-    if (statistics.fileCount.get() > 0) {
+    if statistics.fileCount.get() > 0 then {
       logger.info(s"toFile function statistics: $statistics")
     }
   }
@@ -43,8 +43,8 @@ extends AutoCloseable
     scopeRegister.add(scope)
 
   def releaseScope(scope: FileValueScope): Unit =
-    for (scopeFiles <- scopeRegister.get(scope)) {
-      for (file <- scopeFiles.release) {
+    for scopeFiles <- scopeRegister.get(scope) do {
+      for file <- scopeFiles.release do {
         tryDelete(file)
         usedFilenames.synchronized {
           usedFilenames := usedFilenames.get() - directory.relativize(file)
@@ -56,12 +56,12 @@ extends AutoCloseable
   def toFile(fileValueScope: FileValueScope, filenamePattern: String, content: String)
   : Checked[Path] =
     Checked.catchNonFatal {
-      for (relativePath <- toRelativePath(filenamePattern)) yield {
+      for relativePath <- toRelativePath(filenamePattern) yield {
         val scopeFiles = scopeRegister(fileValueScope)
         val relativeDir = relativePath.getParent
-        if (relativeDir == commonDirectory) {
+        if relativeDir == commonDirectory then {
           commonDirectoryCreated.synchronized {
-            if (!commonDirectoryCreated.get()) {
+            if !commonDirectoryCreated.get() then {
               createDirectory(directory.resolve(commonDirectory))
               commonDirectoryCreated := true
             }
@@ -89,11 +89,11 @@ extends AutoCloseable
   private def toRelativePath(filenamePattern: String): Checked[Path] = {
     val filename = resolveStar(filenamePattern)
     var f = commonDirectory.resolve(filename)
-    if (f.getNameCount != 2)
+    if f.getNameCount != 2 then
       Left(Problem.pure("No directory is allowed in toFile function filenamePattern argument"))
     else Right(
       usedFilenames.synchronized {
-        if (usedFilenames.get().contains(f)) {
+        if usedFilenames.get().contains(f) then {
           // Place duplicate filename in its own directory
           val dedicatedDirectory = Paths.get(directoryNumber.incrementAndGet().toString)
           usedFilenames := usedFilenames.get() + dedicatedDirectory
@@ -105,7 +105,7 @@ extends AutoCloseable
   }
 
   private def resolveStar(filenamePattern: String): String =
-    if (filenamePattern contains '*') {
+    if filenamePattern contains '*' then {
       val unique = uniqueNumber.incrementAndGet().toString/*Base64UUID.randomString()*/
       filenamePattern.replace("*", unique)
     } else
@@ -120,7 +120,7 @@ object FileValueState
 
   private def tryDelete(file: Path): Unit = {
     logger.debug(s"Delete $file")
-    if (isWindows) {
+    if isWindows then {
       file.toFile.setWritable(true)
     }
     try Files.delete(file)

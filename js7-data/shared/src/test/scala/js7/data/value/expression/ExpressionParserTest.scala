@@ -70,12 +70,12 @@ final class ExpressionParserTest extends OurTestSuite
   }
 
   "ConstantString.quote" - {
-    for (string <- Seq("", " ", "'", "''", "\"", "\n", "A\nB", "\t", "\r")) {
+    for string <- Seq("", " ", "'", "''", "\"", "\n", "A\nB", "\t", "\r") do {
       testExpression(StringConstant.quote(string), StringConstant(string))
     }
 
     "More characters" in {
-      for (i <- 0 to 0x200) {
+      for i <- 0 to 0x200 do {
         val string = i.toChar.toString
         testExpressionRaw(StringConstant.quote(string), StringConstant(string))
       }
@@ -93,7 +93,7 @@ final class ExpressionParserTest extends OurTestSuite
 
     "Escaping special characters" - {
       "Raw control characters are not escaped" in {
-        for (char <- ((0 until 0x20) ++ (0x7f until 0xa0)).map(_.toChar)) {
+        for char <- ((0 until 0x20) ++ (0x7f until 0xa0)).map(_.toChar) do {
           val doubleQuoted = s""" "$char" """.trim
           testExpressionRaw(doubleQuoted, StringConstant(s"$char"))
 
@@ -103,7 +103,7 @@ final class ExpressionParserTest extends OurTestSuite
       }
 
       "U+0080...U+7FFF" in {
-        for (char <- (0x80 to 0x7fff).view.map(_.toChar)) {
+        for char <- (0x80 to 0x7fff).view.map(_.toChar) do {
           val doubleQuoted = s""" "$char" """.trim
           testExpressionRaw(doubleQuoted, StringConstant(s"$char"))
           val singleQuoted = s""" "'$char" """.trim
@@ -119,7 +119,7 @@ final class ExpressionParserTest extends OurTestSuite
         '$' -> '$',
         '\\' -> '\\')
 
-      for ((escaped, expected) <- escapedChars) {
+      for (escaped, expected) <- escapedChars do {
         testExpression(s""" "'\\$escaped" """.trim, StringConstant(s"'$expected"))
         testExpression(s""" "\\$escaped" """.trim, StringConstant(s"$expected"))
       }
@@ -139,7 +139,7 @@ final class ExpressionParserTest extends OurTestSuite
         val invalidEscaped = (0x20 to 0xff).map(_.toChar)
           .filter(c => c != '\r' && c != '\n')
           .filterNot(escapedChars.map(_._1).toSet)
-        for (escaped <- invalidEscaped) {
+        for escaped <- invalidEscaped do {
           // With ' to render as "-string
           assert(parseExpression(s""" "'\\$escaped" """.trim) == Left(Problem(
             s"""Error in expression: Parsing failed at position 4 “"'\\❓$escaped"”""" +

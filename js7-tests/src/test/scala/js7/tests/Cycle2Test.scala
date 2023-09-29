@@ -38,9 +38,9 @@ final class Cycle2Test extends OurTestSuite with ControllerAgentForScalaTest wit
   "One first cycle in mid of period (bug JS-2012)" in {
     val now = LocalTime.now()
     val now0 = now.withHour(0)
-    if (now.isBefore(LocalTime.of(1, 0))
+    if now.isBefore(LocalTime.of(1, 0))
      || now0.isAfter(LocalTime.of(0, 59)) && now0.isBefore(LocalTime.of(0, 0, 1))
-     || now0.isAfter(LocalTime.of(0, 59)) && now0.isBefore(LocalTime.of(0, 0, 1))) {
+     || now0.isAfter(LocalTime.of(0, 59)) && now0.isBefore(LocalTime.of(0, 0, 1)) then {
       logger.warn("Test does not work around a full hour")
       pending
     } else {

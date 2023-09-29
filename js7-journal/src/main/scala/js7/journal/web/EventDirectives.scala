@@ -38,14 +38,14 @@ object EventDirectives
           case None => reject(ValidationRejection("Missing parameter return="))
           case Some(returnType) =>
             val eventSuperclass = implicitClass[E]
-            val returnTypeNames = if (returnType.isEmpty) Set.empty else returnType.split(',').toSet
+            val returnTypeNames = if returnType.isEmpty then Set.empty else returnType.split(',').toSet
             val eventClasses = returnTypeNames flatMap { t =>
               keyedEventTypedJsonCodec.typenameToClassOption(t)
             } collect {
               case eventClass_ if eventSuperclass isAssignableFrom eventClass_ => eventClass_
               case eventClass_ if eventClass_ isAssignableFrom eventSuperclass => eventSuperclass
             }
-            if (eventClasses.size != returnTypeNames.size)
+            if eventClasses.size != returnTypeNames.size then
               reject(ValidationRejection(s"Unrecognized event type: return=$returnType"))
             else
               eventRequestRoute[E](eventClasses, defaultAfter, defaultTimeout, defaultDelay, inner)
@@ -60,7 +60,7 @@ object EventDirectives
     inner: Tuple1[EventRequest[E]] => Route)
   : Route =
     parameter("limit" ? Int.MaxValue) { limit =>
-      if (limit <= 0)
+      if limit <= 0 then
         reject(ValidationRejection(s"Invalid limit=$limit"))
       else
         parameter("after".as[EventId].?) {
@@ -80,7 +80,7 @@ object EventDirectives
                         timeout = timeoutAccess.map(_.timeoutAccess.timeout) match {
                           case Some(akkaTimeout: FiniteDuration) =>
                             maybeTimeout.map(t =>
-                              if (akkaTimeout > AkkaTimeoutTolerance && t > akkaTimeout - AkkaTimeoutTolerance)
+                              if akkaTimeout > AkkaTimeoutTolerance && t > akkaTimeout - AkkaTimeoutTolerance then
                                 t - AkkaTimeoutTolerance  // Requester's timeout before Akkas akka.http.server.request-timeout
                               else t)
                           case _ => maybeTimeout

@@ -55,7 +55,7 @@ object TestControllerAgent
     lazy val directory =
       temporaryDirectory / "TestControllerAgent" sideEffect { directory =>
         println(s"Using --directory=$directory")
-        if (!Files.exists(directory))
+        if !Files.exists(directory) then
           createDirectory(directory)
         else {
           println(s"Deleting $directory")
@@ -79,11 +79,11 @@ object TestControllerAgent
       directoryProvider.agentEnvs foreach { _.configDir / "agent.conf" ++=
         "js7.web.server.auth.loopback-is-public = on\n" }
       withCloser { implicit closer =>
-        for (agentPath <- conf.agentPaths) {
+        for agentPath <- conf.agentPaths do {
           TestPathExecutable
             .toFile(directoryProvider.agentToEnv(agentPath).configDir / "executables")
             .writeUtf8Executable(
-              if (isWindows) s"""
+              if isWindows then s"""
                  |@echo off
                  |echo Hello
                  |${(conf.jobDuration.toSeconds > 0) ?? s"ping -n ${conf.jobDuration.toSeconds + 1} 127.0.0.1 >nul"}
@@ -114,7 +114,7 @@ object TestControllerAgent
 
             val startTime = Timestamp.now
             Scheduler.traced.scheduleWithFixedDelay(0.s, conf.period) {
-              for (i <- 1 to conf.orderGeneratorCount) {
+              for i <- 1 to conf.orderGeneratorCount do {
                 val at = Timestamp.now
                 controller
                   .api.addOrder(
@@ -144,7 +144,7 @@ object TestControllerAgent
                     lastDuration = Some(Timestamp.now - Timestamp.parse(orderId.string.substring(orderId.string.indexOf('@') + 1)))
                     finished += 1
                   case "PRINT" =>
-                    if (finished > printedFinished) {
+                    if finished > printedFinished then {
                       val duration = lastDuration.fold("-")(_.pretty)
                       val delta = finished - printedFinished
                       val diff = s"(diff ${finished - (Timestamp.now - startTime).toSeconds * conf.orderGeneratorCount})"
@@ -167,7 +167,7 @@ object TestControllerAgent
             })
             controller.terminated await 365 * 24.h
             controller.stop.await(99.s)
-            for (agent <- agents) agent.executeCommandAsSystemUser(AgentCommand.ShutDown())
+            for agent <- agents do agent.executeCommandAsSystemUser(AgentCommand.ShutDown())
           }
         }
       }
@@ -184,7 +184,7 @@ object TestControllerAgent
     Workflow.of(TestWorkflowPath,
       Execute(testJob(conf, conf.agentPaths.head)),
       Fork.checked(
-        for ((agentPath, pathName) <- conf.agentPaths.toVector zip PathNames) yield
+        for (agentPath, pathName) <- conf.agentPaths.toVector zip PathNames yield
           Fork.Branch(
             pathName,
             Workflow(
@@ -211,7 +211,7 @@ object TestControllerAgent
     require(period.isPositive)
     require(orderGeneratorCount >= 1)
 
-    val agentPaths: Seq[AgentPath] = for (i <- 1 to agentCount) yield AgentPath(s"AGENT-$i")
+    val agentPaths: Seq[AgentPath] = for i <- 1 to agentCount yield AgentPath(s"AGENT-$i")
   }
 
   private object Conf {
@@ -228,7 +228,7 @@ object TestControllerAgent
           stdoutSize = a.as("--stdout-size=", StdoutRowSize)(o => DecimalPrefixes.toInt(o).orThrowWithoutStacktrace),
           period = a.as[FiniteDuration]("--period=", 1.s),
           orderGeneratorCount = a.as[Int]("--orders=", 1))
-        if (a.boolean("-?") || a.boolean("--help")) {
+        if a.boolean("-?") || a.boolean("--help") then {
           print(usage(conf))
         }
         conf

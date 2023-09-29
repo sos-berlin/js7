@@ -81,7 +81,7 @@ final class EventRouteTest extends OurTestSuite with RouteTester with EventRoute
 
   "/event application/x-ndjson" in {
     Get("/event?after=0&limit=2") ~> Accept(`application/x-ndjson`) ~> route ~> check {
-      if (status != OK) fail(s"$status - ${responseEntity.toStrict(timeout).value}")
+      if status != OK then fail(s"$status - ${responseEntity.toStrict(timeout).value}")
       assert(response.entity.contentType == ContentType(`application/x-ndjson`))
       assert(response.utf8String.await(99.s) ==
         """{"eventId":10,"timestamp":999,"Key":"1","TYPE":"OrderAdded","workflowId":{"path":"test","versionId":"VERSION"}}""" + '\n' +
@@ -121,7 +121,7 @@ final class EventRouteTest extends OurTestSuite with RouteTester with EventRoute
 
     def getEventIds(uri: String): Checked[Seq[String]] =
       Get(uri) ~> Accept(`application/x-ndjson`, `application/json`) ~> route ~> check {
-        if (status != OK)
+        if status != OK then
           responseEntity.toStrict(timeout).await(99.s)
             .asUtf8String.await(99.s)
             .parseJsonAs[Problem]
@@ -221,7 +221,7 @@ final class EventRouteTest extends OurTestSuite with RouteTester with EventRoute
 
   private def getEvents(uri: String): Seq[Stamped[KeyedEvent[OrderEvent]]] =
     Get(uri) ~> Accept(`application/x-ndjson`) ~> route ~> check {
-      if (status != OK) fail(s"$status - ${responseEntity.toStrict(timeout).value}")
+      if status != OK then fail(s"$status - ${responseEntity.toStrict(timeout).value}")
       implicit val x = JsonStreamingSupport.NdJsonStreamingSupport
       response.entity.withoutSizeLimit.dataBytes
         .toObservable
@@ -234,7 +234,7 @@ final class EventRouteTest extends OurTestSuite with RouteTester with EventRoute
 
 object EventRouteTest
 {
-  private val TestEvents = for (i <- 1 to 18) yield
+  private val TestEvents = for i <- 1 to 18 yield
     Stamped(EventId(10 * i), Timestamp.ofEpochMilli(999),
       OrderId(i.toString) <-: OrderAdded(WorkflowPath("test") ~ "VERSION"))
 }

@@ -12,7 +12,7 @@ import scala.concurrent.duration.FiniteDuration
 final case class HeartbeatTiming(heartbeat: FiniteDuration, heartbeatTimeout: FiniteDuration)
 {
   def checked =
-    if (heartbeat.isZeroOrBelow || heartbeatTimeout.isZeroOrBelow)
+    if heartbeat.isZeroOrBelow || heartbeatTimeout.isZeroOrBelow then
       Left(Problem.pure("Invalid heartbeat timing values"))
     else
       Right(this)

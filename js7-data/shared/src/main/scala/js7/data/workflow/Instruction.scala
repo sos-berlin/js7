@@ -26,7 +26,7 @@ trait Instruction
   def withoutSourcePos: Instruction
 
   def withPositions(position: Position): Instruction = {
-    if (branchWorkflows.nonEmpty) throw new AssertionError(
+    if branchWorkflows.nonEmpty then throw new AssertionError(
       s"$instructionName.withPositions is not implemented")
     this
   }
@@ -107,16 +107,16 @@ object Instruction
     private val rightNode = Right(None)
 
     implicit def jsonDecoder(implicit instrDecoder: Decoder[Instruction]): Decoder[Labeled] =
-      cursor => for {
+      cursor => for
         instruction <- cursor.as[Instruction]
         labels <- {
           val c1 = cursor.downField("label")
-          if (c1.succeeded)
+          if c1.succeeded then
             c1.as[Option[Label]]
           else
             rightNode
         }
-      } yield Labeled(labels, instruction)
+      yield Labeled(labels, instruction)
   }
 
   trait IsOrderBoundary extends Instruction

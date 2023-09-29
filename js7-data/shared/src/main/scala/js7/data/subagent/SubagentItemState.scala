@@ -51,7 +51,7 @@ extends UnsignedSimpleItemState
           problem = Some(problem)))
 
       case SubagentDedicated(runId, platformInfo) =>
-        if (subagentRunId.exists(_ != runId)) {
+        if subagentRunId.exists(_ != runId) then {
           val problem = Problem.pure(
             s"$subagentId has already been dedicated with a different SubagentRunId")
           logger.warn(
@@ -117,7 +117,7 @@ object SubagentItemState extends UnsignedSimpleItemState.Companion[SubagentItemS
       eventId = EventId.BeforeFirst, platformInfo = None)
 
   implicit val jsonDecoder: Decoder[SubagentItemState] =
-   c => for {
+   c => for
      subagentItem <- c.get[SubagentItem]("subagentItem") orElse c.get[SubagentItem]("subagentRef")
      subagentRunId <- c.get[Option[SubagentRunId]]("subagentRunId")
      version <- c.get[Option[Version]]("version")
@@ -127,7 +127,7 @@ object SubagentItemState extends UnsignedSimpleItemState.Companion[SubagentItemS
      eventId <- c.get[EventId]("eventId")
      problem <- c.get[Option[Problem]]("problem")
      platformInfo <- c.get[Option[PlatformInfo]]("platformInfo")
-   } yield SubagentItemState(
+   yield SubagentItemState(
      subagentItem, subagentRunId, couplingState,
      isDetaching = isDetaching, isResettingForcibly = isResettingForcibly,
      eventId = eventId,

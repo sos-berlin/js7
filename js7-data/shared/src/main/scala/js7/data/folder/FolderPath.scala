@@ -12,7 +12,7 @@ final case class FolderPath private(string: String) extends VersionedItemPath {
   def subfolder(name: String): FolderPath = {
     require(!name.contains('/'), "Name must not contain a slash '/'")
     FolderPath(
-      if (isRoot)
+      if isRoot then
         string
       else
         s"$string/$name")
@@ -54,7 +54,7 @@ object FolderPath extends VersionedItemPath.Companion[FolderPath]
   protected def unchecked(string: String) = new FolderPath(string)
 
   override def checked(string: String): Checked[FolderPath] =
-    if (string == Root.string)
+    if string == Root.string then
       Right(Root)
     else
       super.checked(string)
@@ -62,7 +62,7 @@ object FolderPath extends VersionedItemPath.Companion[FolderPath]
   def parentOf(path: VersionedItemPath): FolderPath =
     path.string lastIndexOf '/' match {
       case -1 =>
-        if (path == FolderPath.Root) throw new IllegalStateException("Root path has no parent folder")
+        if path == FolderPath.Root then throw new IllegalStateException("Root path has no parent folder")
         FolderPath.Root
       case n => FolderPath(path.string.substring(0, n))
     }
@@ -72,7 +72,7 @@ object FolderPath extends VersionedItemPath.Companion[FolderPath]
    * A relative `path` not starting with "/" is used relative to `defaultFolder`.
    */
   private def absoluteString(folder: FolderPath, path: String): String = {
-    val glue = if (folder.string.isEmpty) "" else "/"
+    val glue = if folder.string.isEmpty then "" else "/"
     s"${folder.string}$glue$path"
   }
 }

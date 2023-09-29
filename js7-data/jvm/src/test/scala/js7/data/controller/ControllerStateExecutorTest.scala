@@ -490,10 +490,10 @@ final class ControllerStateExecutorTest extends OurTestSuite
       }
     }
     val controllerState = ControllerState.empty
-    for {
+    for
       x <- X(controllerState).doSomething
       x <- x.doSomething
-    } yield x
+    yield x
   }
 }
 
@@ -566,15 +566,15 @@ object ControllerStateExecutorTest
 
     def execute(body: ControllerState => Checked[Seq[KeyedEvent[Event]]])
     : Checked[Seq[KeyedEvent[Event]]] =
-      for {
+      for
         events <- body(controllerState)
         events <- applyEventsAndReturnSubsequentEvents(events)
-      } yield events
+      yield events
 
     def applyEventsAndReturnSubsequentEvents(keyedEvents: Seq[KeyedEvent[Event]])
     : Checked[Seq[KeyedEvent[Event]]] = {
       val result =
-        for (eventsAndState <- controllerState.applyEventsAndReturnSubsequentEvents(keyedEvents)) yield {
+        for eventsAndState <- controllerState.applyEventsAndReturnSubsequentEvents(keyedEvents) yield {
           controllerState = eventsAndState.controllerState
           eventsAndState.keyedEvents.toVector
         }

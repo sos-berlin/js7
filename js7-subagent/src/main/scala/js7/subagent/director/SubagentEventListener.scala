@@ -76,7 +76,7 @@ private trait SubagentEventListener
 
   protected final def startEventListener: Task[Unit] =
     lock.lock(Task.defer {
-      if (isListening.getAndSet(true)) {
+      if isListening.getAndSet(true) then {
         val msg = "Duplicate startEventListener"
         logger.error(msg)
         Task.raiseError(new RuntimeException(s"$toString: $msg"))
@@ -99,7 +99,7 @@ private trait SubagentEventListener
           after = journal.unsafeCurrentState().idToSubagentItemState(subagentId).eventId)
         .takeUntilEval(stopObserving.flatMap(_.read))
         .pipe(obs =>
-          if (!bufferDelay.isPositive)
+          if !bufferDelay.isPositive then
             obs.map(_ :: Nil)
           else
             obs
@@ -207,7 +207,7 @@ private trait SubagentEventListener
             .map(_
               .detectPauses2(heartbeatTiming.longHeartbeatTimeout, PauseDetected)
               .flatTap(stamped =>
-                if (stamped ne PauseDetected)
+                if stamped ne PauseDetected then
                   onHeartbeatStarted
                 else {
                   val problem = Problem.pure(s"Missing heartbeat from $subagentId")
@@ -240,12 +240,12 @@ private trait SubagentEventListener
       override protected def onCouplingFailed(api: SubagentApi, problem: Problem) =
         stopObserving.flatMap(_.tryRead).map(_.isDefined)
           .flatMap(stopped =>
-            if (stopped)
+            if stopped then
               Task.pure(false)
             else
               onSubagentDecoupled(Some(problem)) *>
                 Task {
-                  if (lastProblem contains problem) {
+                  if lastProblem contains problem then {
                     logger.debug(s"⚠️ Coupling failed again: $problem")
                   } else {
                     lastProblem = Some(problem)

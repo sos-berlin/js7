@@ -71,7 +71,7 @@ final class CycleExecutorTest extends OurTestSuite with ScheduleTester
     assert(stepper.order == stepper.initialOrder.copy(
       state = BetweenCycles(Some(initialCycleState))))
 
-    for (i <- 1 to 3) withClue(s"#$i ") {
+    for i <- 1 to 3 do withClue(s"#$i ") {
       // Endless empty loop. Caller must detect this (see test below)!
       assert(stepper.step() == Seq(OrderCycleStarted))
       assert(stepper.order == stepper.initialOrder.withPosition(
@@ -121,7 +121,7 @@ final class CycleExecutorTest extends OurTestSuite with ScheduleTester
       .copy(state = BetweenCycles(Some(initialCycleState))))
 
     var nextString = ""
-    for (i <- 1 to 3) withClue(s"#$i ") {
+    for i <- 1 to 3 do withClue(s"#$i ") {
       assert(stepper.step() == Seq(OrderCycleStarted))
       assert(stepper.order == stepper.initialOrder
         .withPosition(Position(0) /
@@ -182,7 +182,7 @@ final class CycleExecutorTest extends OurTestSuite with ScheduleTester
 
     val n = 3
     var i = 1
-    while (i <= n) withClue(s"#$i ") {
+    while i <= n do withClue(s"#$i ") {
       assert(stepper.step() == Seq(OrderCycleStarted))
       assert(stepper.order == stepper.initialOrder.withPosition(Position(0) /
         s"cycle+end=1633143600000,i=$i,next=${clock.now().toEpochMilli}" % 0))
@@ -190,7 +190,7 @@ final class CycleExecutorTest extends OurTestSuite with ScheduleTester
       i += 1
       val next = (i <= n) ? (clock.now() + 1.h)
       assert(stepper.step() == Seq(OrderCycleFinished(
-        for (next <- next) yield cycleState.copy(
+        for next <- next yield cycleState.copy(
           next = next,
           index = i))))
       assert(stepper.order == stepper.initialOrder
@@ -200,7 +200,7 @@ final class CycleExecutorTest extends OurTestSuite with ScheduleTester
               next = next,
               index = i)))))
 
-      if (next.isDefined) {
+      if next.isDefined then {
         assert(stepper.step() == Nil)
         clock += 1.h
       }
@@ -255,7 +255,7 @@ final class CycleExecutorTest extends OurTestSuite with ScheduleTester
       .withPosition(Position(0))
       .copy(state = BetweenCycles(Some(initialCycleState))))
 
-    for (i <- 1 to 3) withClue(s"#$i ") {
+    for i <- 1 to 3 do withClue(s"#$i ") {
       assert(stepper.step() == Seq(OrderCycleStarted))
 
       assert(stepper.step() == Seq(OrderCycleFinished(Some(initialCycleState.copy(
@@ -297,25 +297,24 @@ final class CycleExecutorTest extends OurTestSuite with ScheduleTester
       val builder = new VectorBuilder[Timestamp]
 
       var i = 1
-      while (!stepper.order.isState[Finished] && i <= 10000) withClue(s"#$i") {
+      while !stepper.order.isState[Finished] && i <= 10000 do withClue(s"#$i") {
         i += 1
         val events = stepper.step()
         assert(events.nonEmpty)
-        if (events.contains(OrderCycleStarted)) {
+        if events.contains(OrderCycleStarted) then {
           builder += clock.now()
 
           // Time to execute the instruction block
           clock += cycleDuration
         } else
-          for (
+          for
             order <- stepper.order.ifState[BetweenCycles];
-            cycleState <- order.state.cycleState)
-          {
-            if (cycleState.next > clock.now()) {
+            cycleState <- order.state.cycleState
+          do
+            if cycleState.next > clock.now() then {
               // Cycle is delayed, so we adjust the clock
               clock := cycleState.next
             }
-          }
       }
       builder.result()
     }
@@ -474,7 +473,7 @@ object CycleExecutorTest
 
     def step(): Seq[OrderEvent.OrderActorEvent] = {
       val keyedEvents = executorService.toEvents(nextInstruction, order, stateView).orThrow
-      for (ke <- keyedEvents) logger.debug(s"${clock.now()} $ke")
+      for ke <- keyedEvents do logger.debug(s"${clock.now()} $ke")
       assert(keyedEvents.forall(_.key == order.id))
       val events = keyedEvents.map(_.event)
       order = order.applyEvents(events).orThrow

@@ -71,9 +71,9 @@ object AgentCommand extends CommonCommand.Companion
         o.restart.thenList("restart" -> Json.True))
 
     implicit val jsonDecoder: Decoder[EmergencyStop] = c =>
-      for {
+      for
         restart <- c.getOrElse[Boolean]("restart")(false)
-      } yield EmergencyStop(restart)
+      yield EmergencyStop(restart)
   }
 
   /** Some outer component no longer needs the events until (including) the given `untilEventId`.
@@ -108,7 +108,7 @@ object AgentCommand extends CommonCommand.Companion
 
     implicit val jsonEncoder: Encoder.AsObject[DedicateAgentDirector] = deriveEncoder
     implicit val jsonDecoder: Decoder[DedicateAgentDirector] =
-      c => for {
+      c => for
         directors <- c.get[Option[SubagentId]]("subagentId").flatMap {
           case None => c.get[Option[Seq[SubagentId]]]("directors").map(_.toVector.flatten)
           case Some(subagentId) => Right(Seq(subagentId))
@@ -116,7 +116,7 @@ object AgentCommand extends CommonCommand.Companion
         controllerId <- c.get[ControllerId]("controllerId")
         controllerRunId <- c.get[ControllerRunId]("controllerRunId")
         agentPath <- c.get[AgentPath]("agentPath")
-      } yield DedicateAgentDirector(directors, controllerId, controllerRunId, agentPath)
+      yield DedicateAgentDirector(directors, controllerId, controllerRunId, agentPath)
   }
 
   /** Couples the registered Controller identified by current User.

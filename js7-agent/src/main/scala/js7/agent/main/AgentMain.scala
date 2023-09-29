@@ -14,9 +14,9 @@ object AgentMain
     ServiceMain.mainThenExit(
       args, "Agent", AgentConfiguration.fromCommandLine(_), useLockFile = true
     )((conf, scheduler) =>
-      for {
+      for
         agent <- RunningAgent.restartable(conf)(scheduler)
         iox <- IOExecutor.resource[Task](conf.config, conf.name)
         _ <- agent.webServer.restartWhenHttpsChanges(iox)
-      } yield agent)
+      yield agent)
 }

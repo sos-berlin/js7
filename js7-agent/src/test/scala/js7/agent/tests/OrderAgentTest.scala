@@ -93,10 +93,10 @@ final class OrderAgentTest extends OurTestSuite
 
           def attachOrder(signedWorkflow: Signed[SignableItem])
           : Checked[AgentCommand.Response.Accepted] =
-            for {
+            for
               _ <- agentClient.commandExecute(AttachSignedItem(signedWorkflow)).await(99.s)
               x <- agentClient.commandExecute(AttachOrder(order, TestAgentPath)).await(99.s)
-            } yield x
+            yield x
 
           val tamperedWorkflow = signedSimpleWorkflow.copy(
             signedString = signedSimpleWorkflow.signedString.copy(
@@ -127,7 +127,7 @@ final class OrderAgentTest extends OurTestSuite
     }
   }
 
-  for (testSpeed <- sys.props.get("test.speed")) s"Speed test $testSpeed orders × ${/*SimpleTestWorkflow.jobNodeCount*/"·"} jobs" in {
+  for testSpeed <- sys.props.get("test.speed") do s"Speed test $testSpeed orders × ${/*SimpleTestWorkflow.jobNodeCount*/"·"} jobs" in {
     // TODO Speed test does not work
     val n = testSpeed.toInt
     provideAgentDirectory { directory =>
@@ -157,7 +157,7 @@ final class OrderAgentTest extends OurTestSuite
                 DedicateAgentDirector(Seq(SubagentId("SUBAGENT")), controllerId, controllerRunId, agentPath))
               .await(99.s).isRight)
 
-          val orders = for (i <- 1 to n) yield
+          val orders = for i <- 1 to n yield
             Order(OrderId(s"TEST-ORDER-$i"), SimpleTestWorkflow.id /: Position(0), Order.Ready,
               Map("x" -> StringValue("X")),
               attachedState = Some(Order.Attached(AgentPath("AGENT"))))
@@ -171,7 +171,7 @@ final class OrderAgentTest extends OurTestSuite
 
           val awaitedOrderIds = orders.map(_.id).toSet
           val ready = mutable.Set.empty[OrderId]
-          while (ready != awaitedOrderIds) {
+          while ready != awaitedOrderIds do {
             ready ++= agentClient
               .eventObservable(EventRequest.singleClass[Event](timeout = Some(timeout)))
               .map(_.orThrow)
@@ -201,7 +201,7 @@ private object OrderAgentTest
   private val subagentId = SubagentId("SUBAGENT")
   private val controllerId = ControllerId("CONTROLLER")
   private val TestScript =
-    if (isWindows) """
+    if isWindows then """
       |@echo off
       |echo result=TEST-RESULT-%SCHEDULER_PARAM_JOB_B% >>"%SCHEDULER_RETURN_VALUES%"
       |""".stripMargin

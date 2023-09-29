@@ -111,7 +111,7 @@ object AkkaHttpServerUtils
     * Passes x iff argument is true.
     */
   def passIf(condition: Boolean): Directive0 =
-    if (condition)
+    if condition then
       pass
     else
       reject
@@ -166,7 +166,7 @@ object AkkaHttpServerUtils
 */
 
   def emptyParameterMap(parameterMap: Map[String, String]) =
-    if (parameterMap.isEmpty)
+    if parameterMap.isEmpty then
       pass
     else
       reject(ValidationRejection(s"Invalid parameters: ${parameterMap.keys mkString ", "}"))
@@ -207,7 +207,7 @@ object AkkaHttpServerUtils
 
     @tailrec
     def drop(n: Int): Uri.Path =
-      if (n == 0)
+      if n == 0 then
         delegate
       else {
         require(n > 0)
@@ -236,7 +236,7 @@ object AkkaHttpServerUtils
     * Like `pathPrefix`, but `prefix` denotes a path of complete path segments.
     */
   def pathSegments(prefix: String): Directive0 =
-    if (prefix.isEmpty)
+    if prefix.isEmpty then
       pass
     else
       pathSegments(Uri.Path(prefix))
@@ -252,12 +252,12 @@ object AkkaHttpServerUtils
     */
   private def matchSegments(prefix: Uri.Path): PathMatcher0 = {
     import akka.http.scaladsl.server.PathMatcher.*
-    if (prefix.isEmpty)
+    if prefix.isEmpty then
       provide(HNil)
     else
       new PathMatcher[Unit] {
         def apply(path: Uri.Path) =
-          if (path startsWithPath prefix)
+          if path startsWithPath prefix then
             Matched(path drop prefix.length, HNil)
           else
             Unmatched
@@ -321,7 +321,7 @@ object AkkaHttpServerUtils
     val obs: Observable[Chunk] = keepAlive match {
       case None => chunks
       case Some(h) =>
-        for {
+        for
           terminated <- Observable.from(Deferred[Task, Unit])
           chunk <- {
             Observable(
@@ -329,7 +329,7 @@ object AkkaHttpServerUtils
               Observable.repeat(heartbeatChunk).delayOnNext(h).takeUntilEval(terminated.get)
             ).merge(/*Scala 3:*/implicitly[Observable[Chunk] <:< Observable[Chunk]])
           }
-        } yield chunk
+        yield chunk
     }
 
     ToResponseMarshallable(

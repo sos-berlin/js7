@@ -40,7 +40,7 @@ extends ProgramEnv.WithFileJournal {
 
   protected override def createDirectoriesAndFiles(): Unit = {
     super.createDirectoriesAndFiles()
-    for (keyStore <- keyStore) {
+    for keyStore <- keyStore do {
       configDir / "private/private.conf" ++= """
        |js7.web.https.keystore {
        |  store-password = "jobscheduler"
@@ -49,7 +49,7 @@ extends ProgramEnv.WithFileJournal {
        |""".stripMargin
       configDir / "private/https-keystore.p12" := keyStore.contentBytes
       provideTrustStore(AgentTrustStoreResource, "agent-https-truststore.p12")
-      for ((o, i) <- trustStores.zipWithIndex) {
+      for (o, i) <- trustStores.zipWithIndex do {
         provideTrustStore(o, s"extra-${i + 1}-https-truststore.p12")
       }
     }
@@ -71,7 +71,7 @@ extends ProgramEnv.WithFileJournal {
     writeAgentAuthentication(env.agentPath, env.controllerPassword)
 
   def writeAgentAuthentication(agentPath: AgentPath, password: SecretString): Unit =
-    if (!agentHttpsMutual) {
+    if !agentHttpsMutual then {
       val quotedAgentPath = quoteString(agentPath.string)
       val quotedPassword = quoteString(password.string)
       privateConf ++= s"js7.auth.agents.$quotedAgentPath = $quotedPassword\n"

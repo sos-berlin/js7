@@ -35,7 +35,7 @@ final class SubagentRestartTest extends OurTestSuite with SubagentTester
 
   override def afterAll() = {
     controller.terminate().await(99.s)
-    for (a <- Option(myAgent)) a.terminate().await(99.s)
+    for a <- Option(myAgent) do a.terminate().await(99.s)
     super.afterAll()
   }
 
@@ -127,7 +127,7 @@ final class SubagentRestartTest extends OurTestSuite with SubagentTester
         sleep(4.s)
         TestSemaphoreJob.continue(2)
         eventWatch.await[OrderProcessingStarted](_.key == aOrderId, after = eventId)
-        for (orderId <- View(aOrderId, bOrderId)) {
+        for orderId <- View(aOrderId, bOrderId) do {
           val events = eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
           assert(events.head.value.event.isInstanceOf[OrderFinished])
         }
@@ -181,7 +181,7 @@ final class SubagentRestartTest extends OurTestSuite with SubagentTester
       locally {
         TestSemaphoreJob.continue(2)
         eventWatch.await[OrderProcessingStarted](_.key == aOrderId, after = eventId)
-        for (orderId <- View(aOrderId, bOrderId)) {
+        for orderId <- View(aOrderId, bOrderId) do {
           val events = eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
           assert(events.head.value.event.isInstanceOf[OrderFinished])
         }

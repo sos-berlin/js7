@@ -24,8 +24,8 @@ final class ProcessKillScriptProvider extends HasCloser
   def provideTo(directory: Path): ProcessKillScript = {
     val file = toKillScriptFile(directory)
     val content = javaResource.contentBytes
-    if (!isUnchanged(file, content)) {
-      if (isUnix) {
+    if !isUnchanged(file, content) then {
+      if isUnix then {
         try setPosixFilePermissions(file, PosixFilePermissions.fromString("rw-------"))
         catch { case _: IOException => }
       }
@@ -48,7 +48,7 @@ final class ProcessKillScriptProvider extends HasCloser
   private def isUnchanged(file: Path, content: Array[Byte]): Boolean = {
     waitForCondition(1.s, 100.ms) {
       val okay = !exists(file) || file.contentBytes.sameElements(content)
-      if (!okay) logger.debug("Kill script has been written concurrently")
+      if !okay then logger.debug("Kill script has been written concurrently")
       okay
     }
     exists(file) && file.contentBytes.sameElements(content)
@@ -60,7 +60,7 @@ object ProcessKillScriptProvider {
   private val WindowsScriptResource = JavaResource("js7/launcher/process/scripts/windows/kill_task.cmd")
   private val UnixScriptResource = JavaResource("js7/launcher/process/scripts/unix/kill_task.sh")
 
-  private val javaResource = if (isWindows) WindowsScriptResource else UnixScriptResource
+  private val javaResource = if isWindows then WindowsScriptResource else UnixScriptResource
 
   def directoryToProcessKillScript(directory: Path): ProcessKillScript =
     ProcessKillScript(toKillScriptFile(directory))

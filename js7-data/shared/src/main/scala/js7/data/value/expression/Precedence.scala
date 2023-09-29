@@ -29,7 +29,7 @@ object Precedence {
     inParentheses(a, opPrecedence) + " " + op + " " + inParentheses(b, opPrecedence + 1)
 
   def inParentheses(o: Precedence, opPrecedence: Int): String =
-    if (o.precedence >= opPrecedence)
+    if o.precedence >= opPrecedence then
       o.toString
     else
       s"($o)"

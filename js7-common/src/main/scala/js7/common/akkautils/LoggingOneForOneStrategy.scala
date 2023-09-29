@@ -28,7 +28,7 @@ extends OneForOneStrategy(maxNrOfRetries = 0, loggingEnabled = loggingEnabled)(d
       case e => e.toStringWithCauses
     }
     val logLevel =
-      if (!loggingEnabled)
+      if !loggingEnabled then
         Debug
       else
         decision match {

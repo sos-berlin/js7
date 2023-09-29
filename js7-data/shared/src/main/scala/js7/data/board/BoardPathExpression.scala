@@ -55,8 +55,8 @@ object BoardPathExpression
     o => Json.fromString(o.toString)
 
   implicit val jsonDecoder: Decoder[BoardPathExpression] =
-    c => for {
+    c => for
       expr <- c.as[String]
       expr <- BoardPathExpressionParser.parse(expr).toDecoderResult(c.history)
-    } yield expr
+    yield expr
 }

@@ -43,7 +43,7 @@ final class AkkasTest extends OurTestSuite
     assert(encodeAsActorName("()") == "%28%29")
 
     check(((32 to 127) ++ (160 to 1000)).map(_.toChar).toString)
-    for (_ <- 1 to 10000) {
+    for _ <- 1 to 10000 do {
       check(Vector.fill(100) { 32 + Random.nextInt(95) } .toString)
     }
     def check(string: String): Unit = {

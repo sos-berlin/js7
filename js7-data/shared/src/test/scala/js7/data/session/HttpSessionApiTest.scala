@@ -15,13 +15,13 @@ final class HttpSessionApiTest extends OurTestSuite
     "valid" - {
       val validVersions = Seq("2.2.1", "2.2.2", "2.2.3", "2.2.3-SNAPSHOT+BUILD")
         .map(Version(_))
-      for (v <- validVersions) log(v)
+      for v <- validVersions do log(v)
     }
 
     "invalid" in {
       val invalidVersions = Seq("2.1.0", "2.3.0")
         .map(Version(_))
-      for (v <- invalidVersions) log(v)
+      for v <- invalidVersions do log(v)
     }
   }
 }

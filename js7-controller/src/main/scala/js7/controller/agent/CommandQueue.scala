@@ -77,7 +77,7 @@ private[agent] abstract class CommandQueue(
       def isAlreadyAttached(log: Boolean = false)(queueable: Queueable): Boolean =
         queueable match {
           case o: Queueable.AttachOrder if attachedOrderIds.contains(o.order.id) =>
-            if (log) logger.trace(s"removeAlreadyAttachedOrders: ${o.order.id}")
+            if log then logger.trace(s"removeAlreadyAttachedOrders: ${o.order.id}")
             true
           case _ =>
             false
@@ -120,7 +120,7 @@ private[agent] abstract class CommandQueue(
           logger.debug(s"AttachOrder(${order.id} ignored because Order is already attached to Agent")
           Task.pure(false)
         case _ =>
-          if (queue contains queueable) {
+          if queue contains queueable then {
             logger.trace(s"Ignore duplicate $queueable")
             Task.pure(false)
           } else {
@@ -144,7 +144,7 @@ private[agent] abstract class CommandQueue(
     /*logger.traceTask*/(Task.defer(Task.when(isCoupled && !isTerminating) {
       lazy val queueables = queue.view
         .filterNot(isExecuting)
-        .take(if (freshlyCoupled) 1 else batchSize)  // if freshlyCoupled, send only command to try connection
+        .take(if freshlyCoupled then 1 else batchSize)  // if freshlyCoupled, send only command to try connection
         .toVector
 
       val canSend = openRequestCount < commandParallelism
@@ -175,7 +175,7 @@ private[agent] abstract class CommandQueue(
       val subcmds = queuable.map(o => CorrelIdWrapped(CorrelId.current, queuableToAgentCommand(o)))
       executeCommand(Batch(subcmds))
         .map(_.map(response =>
-          for ((i, r) <- queuable zip response.responses) yield QueueableResponse(i, r)))
+          for (i, r) <- queuable zip response.responses yield QueueableResponse(i, r)))
         .materialize
         .flatMap {
           case Success(Right(queueableResponses)) =>
@@ -282,7 +282,7 @@ private[agent] abstract class CommandQueue(
     Task.defer {
       isExecuting --= queueables
       openRequestCount -= 1
-      if (isTerminating && isExecuting.isEmpty)
+      if isTerminating && isExecuting.isEmpty then
         terminated.complete(())
       else
         maybeStartSendingLocked

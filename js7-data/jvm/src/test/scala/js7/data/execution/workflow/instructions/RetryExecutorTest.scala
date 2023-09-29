@@ -59,7 +59,7 @@ object RetryExecutorTest
       idToOrder = Map(order.id -> order)
     ) {
       override def instruction(position: WorkflowPosition) =
-        if (position == workflowId /: tryPosition) tryInstruction.copy(retryDelays = Some(delays.toVector))
+        if position == workflowId /: tryPosition then tryInstruction.copy(retryDelays = Some(delays.toVector))
         else Gap.empty
     }
     retryExecutor.toEvents(Retry(), order, stateView)

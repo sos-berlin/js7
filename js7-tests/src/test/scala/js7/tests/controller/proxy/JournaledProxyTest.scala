@@ -135,7 +135,7 @@ extends OurTestSuite with BeforeAndAfterAll with ProvideActorSystem with Control
             OrderAttached(agentPath),
             OrderStarted,
             OrderProcessingStarted(subagentId),
-            OrderStdoutWritten(if (isWindows) "TEST\r\n" else "TEST ☘\n"),
+            OrderStdoutWritten(if isWindows then "TEST\r\n" else "TEST ☘\n"),
             OrderProcessed(Succeeded(NamedValues.rc(0))),
             OrderMoved(Position(1)),
             OrderDetachable,

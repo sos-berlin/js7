@@ -117,7 +117,7 @@ object Expression
     def subexpressions = a.subexpressions
 
     protected def evalRaw(implicit scope: Scope) =
-      for (a <- a.evalAsBoolean) yield
+      for a <- a.evalAsBoolean yield
         BooleanValue(!a.booleanValue)
 
     override def toString = "!" + Precedence.inParentheses(a, precedence)
@@ -157,7 +157,7 @@ object Expression
     def subexpressions = View(a, b)
 
     protected def evalRaw(implicit scope: Scope) =
-      for (a <- a.eval; b <- b.eval) yield BooleanValue(a == b)
+      for a <- a.eval; b <- b.eval yield BooleanValue(a == b)
 
     override def toString = makeString(a, "==", b)
   }
@@ -168,7 +168,7 @@ object Expression
     def subexpressions = View(a, b)
 
     protected def evalRaw(implicit scope: Scope) =
-      for (a <- a.eval; b <- b.eval) yield BooleanValue(a != b)
+      for a <- a.eval; b <- b.eval yield BooleanValue(a != b)
 
     override def toString = makeString(a, "!=", b)
   }
@@ -179,7 +179,7 @@ object Expression
     def subexpressions = View(a, b)
 
     protected def evalRaw(implicit scope: Scope) =
-      for (a <- a.evalAsNumber; b <- b.evalAsNumber) yield
+      for a <- a.evalAsNumber; b <- b.evalAsNumber yield
         BooleanValue(a <= b)
 
     override def toString = makeString(a, "<=", b)
@@ -191,7 +191,7 @@ object Expression
     def subexpressions = View(a, b)
 
     protected def evalRaw(implicit scope: Scope) =
-      for (a <- a.evalAsNumber; b <- b.evalAsNumber) yield BooleanValue(a >= b)
+      for a <- a.evalAsNumber; b <- b.evalAsNumber yield BooleanValue(a >= b)
 
     override def toString = makeString(a, ">=", b)
   }
@@ -202,7 +202,7 @@ object Expression
     def subexpressions = View(a, b)
 
     protected def evalRaw(implicit scope: Scope) =
-      for (a <- a.evalAsNumber; b <- b.evalAsNumber) yield BooleanValue(a < b)
+      for a <- a.evalAsNumber; b <- b.evalAsNumber yield BooleanValue(a < b)
 
     override def toString = makeString(a, "<", b)
   }
@@ -213,7 +213,7 @@ object Expression
     def subexpressions = View(a, b)
 
     protected def evalRaw(implicit scope: Scope) =
-      for (a <- a.evalAsNumber; b <- b.evalAsNumber) yield BooleanValue(a > b)
+      for a <- a.evalAsNumber; b <- b.evalAsNumber yield BooleanValue(a > b)
 
     override def toString = makeString(a, ">", b)
   }
@@ -224,17 +224,17 @@ object Expression
     def subexpressions = View(a, b)
 
     protected def evalRaw(implicit scope: Scope) =
-      for  {
+      for 
         a <- a.eval
         b <- b.eval
         result <- (a, b) match {
           case (a: ListValue, b: ListValue) =>
             Right(ListValue(a.elements ++ b.elements))
           case (a, b) =>
-            for (a <- a.toStringValue; b <- b.toStringValue) yield
+            for a <- a.toStringValue; b <- b.toStringValue yield
               StringValue(a.string + b.string)
         }
-      } yield result
+      yield result
 
     override def toString = makeString(a, "++", b)
   }
@@ -300,7 +300,7 @@ object Expression
     def subexpressions = View(a, b)
 
     protected def evalRaw(implicit scope: Scope) =
-      for (a <- a.eval; b <- b.evalAsVector) yield BooleanValue(b contains a)
+      for a <- a.eval; b <- b.evalAsVector yield BooleanValue(b contains a)
 
     override def toString = makeString(a, "in", b)
   }
@@ -311,12 +311,12 @@ object Expression
     def subexpressions = View(a, b)
 
     protected def evalRaw(implicit scope: Scope) =
-      for {
+      for
         a <- a.eval.map(_.missingToEmpty).flatMap(_.toStringValueString)
         b <- b.evalToString
         result <- catchExpected[PatternSyntaxException](
           BooleanValue(a matches b))
-      } yield result
+      yield result
 
     override def toString = makeString(a, "matches", b)
   }
@@ -362,12 +362,12 @@ object Expression
     def subexpressions = obj :: arg :: Nil
 
     protected def evalRaw(implicit scope: Scope) =
-      for {
+      for
         list <- obj.evalAsVector
         index <- arg.evalAsInt
         _ <- (index >= 0 && index < list.length) !!
           Problem(s"Index $index out of range 0...${list.length - 1}")
-      } yield list(index)
+      yield list(index)
 
     override def toString =
       Precedence.inParentheses(obj, precedence) + "(" + arg + ")"
@@ -378,10 +378,10 @@ object Expression
     def precedence = Precedence.Dot
 
     protected def evalRaw(implicit scope: Scope) =
-      for {
+      for
         a <- a.evalAs[ObjectValue]
         a <- a.nameToValue.get(name) !! UnknownNameInExpressionProblem(s"$toString.$name")
-      } yield a
+      yield a
 
     override def toString =
       Precedence.inParentheses(a, precedence) + "." + identifierToString(name)
@@ -502,7 +502,7 @@ object Expression
         case NamedValue.ByLabel(label) => ValueSearch.LastExecuted(PositionSearch.ByLabel(label))
         case NamedValue.LastExecutedJob(jobName) => ValueSearch.LastExecuted(PositionSearch.ByWorkflowJob(jobName))
       }
-      for {
+      for
         name <- nameExpr.evalAsString
         maybeValue <- scope.findValue(ValueSearch(w, ValueSearch.Name(name))).sequence
         value <- maybeValue
@@ -521,13 +521,13 @@ object Expression
                     Problem(s"Last execution of job '$jobName' did not return a named value '$name'")
                 })
               .flatten)
-      } yield value
+      yield value
     }
 
 
     override def toString = (where, nameExpr, default) match {
       case (LastOccurred, StringConstant(key), None) if !key.contains('`') =>
-        if (isSimpleName(key) || key.forall(c => c >= '0' && c <= '9'))
+        if isSimpleName(key) || key.forall(c => c >= '0' && c <= '9') then
           s"$$$key"
         else
           s"$$`$key`"
@@ -558,7 +558,7 @@ object Expression
             appendIdentifier(sb, label.string)
             args += sb.toString
         }
-        for (d <- default) args += "default=" + d.toString
+        for d <- default do args += "default=" + d.toString
         (where, nameExpr) match {
           case (NamedValue.Argument, _) =>
             s"argument(${args mkString ", "})"
@@ -624,7 +624,7 @@ object Expression
       sb.append("JobResource")
       sb.append(':')
       sb.append(jobResourcePath.string)
-      for (nam <- name) {
+      for nam <- name do {
         sb.append(':')
         appendIdentifier(sb, nam)
       }
@@ -652,7 +652,7 @@ object Expression
     def subexpressions = a :: Nil
 
     def evalRaw(implicit scope: Scope) =
-      for (a <- a.evalAsString) yield
+      for a <- a.evalAsString yield
         StringValue(a.stripMargin)
 
     override def toString = s"stripMargin($a)"
@@ -715,7 +715,7 @@ object Expression
     def subexpressions = View(string, pattern, replacement)
 
     def evalRaw(implicit scope: Scope) = {
-      for {
+      for
         string <- string.eval.flatMap(_.asString)
         pattern <- pattern.eval.flatMap(_.asString)
         pattern <- catchExpected[PatternSyntaxException](
@@ -723,7 +723,7 @@ object Expression
         replacement <- replacement.eval.flatMap(_.asString)
         result <- catchExpected[RuntimeException](
           StringValue(pattern.matcher(string).replaceAll(replacement)))
-      } yield result
+      yield result
     }
 
     override def toString = s"replaceAll($string, $pattern, $replacement)"

@@ -31,7 +31,7 @@ private final class ShellReturnValuesProvider(
     file := ""
 
   def tryDeleteFile(): Unit =
-    if (fileExists) {
+    if fileExists then {
       try deleteIfExists(file)
       catch { case NonFatal(t) =>
         logger.error(s"Cannot delete file '$file': ${t.toStringWithCauses}")
@@ -56,7 +56,7 @@ private final class ShellReturnValuesProvider(
           s"$varName: $line")
     }
 
-  def varName = if (v1Compatible) V1VarName else VarName
+  def varName = if v1Compatible then V1VarName else VarName
 
   override def toString = file.toString
 }

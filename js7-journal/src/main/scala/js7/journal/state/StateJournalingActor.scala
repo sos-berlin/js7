@@ -54,10 +54,10 @@ extends MainJournalingActor[S, E]
       correlId.bind[Unit] {
         val state = currentState()
         Try(
-          for {
+          for
             keyedEvent <- stateToEvents(state)
             _ <- state.applyEvents(keyedEvent)
-          } yield keyedEvent
+          yield keyedEvent
         ) match {
           case Failure(t) => promise.failure(t)
           case Success(Left(problem)) => promise.success(Left(problem))

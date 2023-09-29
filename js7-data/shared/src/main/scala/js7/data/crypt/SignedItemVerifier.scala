@@ -16,11 +16,11 @@ import scala.reflect.ClassTag
 final class SignedItemVerifier[A <: SignableItem](signatureVerifier: SignatureVerifier, jsonDecoder: Decoder[A])
 {
   def verify(signedString: SignedString): Checked[Verified[A]] =
-    for {
+    for
       signers <- signatureVerifier.verify(signedString)
       json <- signedString.string.parseJson
       item <- jsonDecoder.decodeJson(json).toChecked
-    } yield Verified(Signed(item, signedString), signers)
+    yield Verified(Signed(item, signedString), signers)
 }
 
 object SignedItemVerifier

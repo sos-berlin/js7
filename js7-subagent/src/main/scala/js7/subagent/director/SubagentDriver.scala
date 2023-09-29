@@ -84,13 +84,13 @@ trait SubagentDriver {
 
   protected final def signableItemsForOrderProcessing(workflowPosition: WorkflowPosition)
   : Task[Checked[Seq[Signed[SignableItem]]]] =
-    for (s <- journal.state) yield
-      for {
+    for s <- journal.state yield
+      for
         signedWorkflow <- s.keyToSigned(Workflow).checked(workflowPosition.workflowId)
         workflow = signedWorkflow.value
         jobKey <- workflow.positionToJobKey(workflowPosition.position)
         job <- workflow.keyToJob.checked(jobKey)
         jobResourcePaths = JobConf.jobResourcePathsFor(job, workflow)
         signedJobResources <- jobResourcePaths.traverse(s.keyToSigned(JobResource).checked)
-      } yield signedJobResources :+ signedWorkflow
+      yield signedJobResources :+ signedWorkflow
 }

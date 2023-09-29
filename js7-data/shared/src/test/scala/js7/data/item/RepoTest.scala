@@ -459,12 +459,12 @@ final class RepoTest extends OurTestSuite
       var repo = emptyRepo
       val stopwatch = new Stopwatch
       var sw = new Stopwatch
-      for (i <- 1 to n) {
+      for i <- 1 to n do {
         val v = VersionId(i.toString)
         val eventBlock = repo
           .itemsToEventBlock(v, sign(AItem(APath(s"A-$i"), "A") withVersion v) :: Nil).orThrow
         repo = repo.applyEvents(eventBlock.events).orThrow
-        if (i % 1000 == 0) {
+        if i % 1000 == 0 then {
           logger.info(sw.itemsPerSecondString(1000, "versions"))
           sw = new Stopwatch
         }

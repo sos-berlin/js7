@@ -175,10 +175,10 @@ with SubagentEventListener
   private def dedicateOrCouple2(subagentItemState: SubagentItemState): Task[(SubagentRunId, EventId)] =
     subagentItemState.subagentRunId match {
       case None =>
-        for {
+        for
           response <- dedicate
           eventId <- couple(response.subagentRunId, response.subagentEventId)
-        } yield (response.subagentRunId, eventId)
+        yield (response.subagentRunId, eventId)
 
       case Some(subagentRunId) =>
         couple(subagentRunId, subagentItemState.eventId)
@@ -257,7 +257,7 @@ with SubagentEventListener
         val deferred = oToP.values
         Task
           .when(subagentDiedEvent.isDefined)(
-            if (isLocal) dispatcher.shutdown else dispatcher.stopAndFailCommands)
+            if isLocal then dispatcher.shutdown else dispatcher.stopAndFailCommands)
           .*>(attachedItemKeys.update(_ => Task.pure(Map.empty)))
           .*>(journal
             .persist(state => Right(orderIds.view
@@ -293,7 +293,7 @@ with SubagentEventListener
   /** Continue a recovered processing Order. */
   def recoverOrderProcessing(order: Order[Order.Processing]) =
     logger.traceTask("recoverOrderProcessing", order.id)(
-      if (isLocal)
+      if isLocal then
         emitOrderProcessLost(order)
           .map(_.orThrow)
           .start
@@ -327,7 +327,7 @@ with SubagentEventListener
                   .flatMap {
                     case None =>
                       // Deferred has been removed
-                      if (problem != CommandDispatcher.StoppedProblem) {
+                      if problem != CommandDispatcher.StoppedProblem then {
                         // onSubagentDied has stopped all queued StartOrderProcess commands
                         logger.warn(s"${order.id} got OrderProcessed, so we ignore $problem")
                       }
@@ -473,7 +473,7 @@ with SubagentEventListener
             .flatMapT(subagentItemState => processingAllowed.isOff
               .flatMap(isStopped =>
                 // Double-check subagentRunId to be sure.
-                if (isStopped || !subagentItemState.subagentRunId.contains(subagentRunId)) {
+                if isStopped || !subagentItemState.subagentRunId.contains(subagentRunId) then {
                   logger.debug(s"postQueuedCommand($commandString) stopped")
                   Task.right(())
                 } else
@@ -488,7 +488,7 @@ with SubagentEventListener
               //  Task.right(checked)
 
               case Success(checked @ Left(problem)) =>
-                if (HttpClient.isTemporaryUnreachableStatus(problem.httpStatusCode))
+                if HttpClient.isTemporaryUnreachableStatus(problem.httpStatusCode) then
                   // We don't check the error type,
                   // because it's seems impossible to properly detect recoverable errors.
                   // Instead we repeat the command until we are being stopped due
@@ -529,7 +529,7 @@ with SubagentEventListener
             }
 
           case Left(problem) =>
-            processingAllowed.isOff.flatMap(if (_) {
+            processingAllowed.isOff.flatMap(if _ then {
               logger.debug(s"⚠️ postQueuedCommand($commandString) error after stop ignored: $problem")
               Task.right(())
             } else
@@ -558,7 +558,7 @@ with SubagentEventListener
           case None => problem.toString
           case Some(t) => t.toStringWithCauses
         }
-        if (lastWarning.contains(warning)) {
+        if lastWarning.contains(warning) then {
           logger.debug(s"⚠️ Retry warning #$warningCount (${startedAt.elapsed.pretty}): $warning")
         } else {
           lastWarning = Some(warning)

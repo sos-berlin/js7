@@ -82,7 +82,7 @@ extends Actor with Stash with SimpleStateActor
   override def postStop() =
     logger.debugCall {
       super.postStop()
-      if (isResetting) {
+      if isResetting then {
         journalLocation.deleteJournal(ignoreFailure = true)
       }
       terminatePromise.trySuccess(
@@ -94,7 +94,7 @@ extends Actor with Stash with SimpleStateActor
   def receive = {
     case Input.Start(recoveredAgentState) =>
       this.recoveredAgentState = recoveredAgentState
-      if (recoveredAgentState.isDedicated) {
+      if recoveredAgentState.isDedicated then {
         addOrderKeeper(recoveredAgentState.agentPath, recoveredAgentState.controllerId).orThrow
       }
       become("ready")(ready)
@@ -117,12 +117,12 @@ extends Actor with Stash with SimpleStateActor
       context.stop(self)
 
     case Terminated(actor) if actor == journal.journalActor /*&& terminating*/ =>
-      if (!terminating) {
+      if !terminating then {
         // SwitchOver lets AgentOrderKeeper kill the JournalActor
         logger.error("JournalActor terminated unexpectedly")
         context.stop(self)
       } else {
-        for (_ <- terminateCompleted.future) {
+        for _ <- terminateCompleted.future do {
           context.stop(self)
         }
       }
@@ -133,7 +133,7 @@ extends Actor with Stash with SimpleStateActor
     command match {
       case command: AgentCommand.ShutDown =>
         response.completeWith(
-          if (terminating)
+          if terminating then
             Future.successful(Right(AgentCommand.Response.Accepted))
           else
             terminateOrderKeeper(command))
@@ -149,7 +149,7 @@ extends Actor with Stash with SimpleStateActor
           case Right(()) =>
             logger.info(s"❗ $command")
             isResetting = true
-            if (terminating) {
+            if terminating then {
               response.success(Right(AgentCommand.Response.Accepted/*???*/))
             } else {
               dedicated.toOption
@@ -193,12 +193,12 @@ extends Actor with Stash with SimpleStateActor
         if !terminating =>
         // Command does not change state. It only checks the coupling (for now)
         response.success(
-          for {
+          for
             _ <- checkControllerRunId(controllerRunId)
             _ <- checkAgentPath(agentPath)
             _ <- checkAgentRunId(agentRunId)
             _ <- eventWatch.checkEventId(eventId)
-          } yield
+          yield
             CoupleController.Response(journal.unsafeCurrentState().idToOrder.keySet))
 
       case command @ (_: AgentCommand.OrderCommand |
@@ -219,7 +219,7 @@ extends Actor with Stash with SimpleStateActor
 
       case command =>
         response.failure(
-          if (terminating)
+          if terminating then
             AgentIsShuttingDown.throwable
           else
             new RuntimeException(s"Unexpected command for AgentActor: $command"))
@@ -237,18 +237,18 @@ extends Actor with Stash with SimpleStateActor
       val agentRunId = AgentRunId(journal.journalId)
       journal
         .persist(agentState =>
-          if (!agentState.isDedicated
+          if !agentState.isDedicated
             || agentPath == agentState.agentPath
-            && agentState.meta.directors != directors)
-            for (_ <- UserId.checked(agentPath.string) /*used for Subagent login*/ ) yield
+            && agentState.meta.directors != directors then
+            for _ <- UserId.checked(agentPath.string) /*used for Subagent login*/  yield
               Seq(NoKey <-:
                 AgentDedicated(directors, agentPath, agentRunId, controllerId, Some(controllerRunId)))
-          else if (agentPath != agentState.agentPath)
+          else if agentPath != agentState.agentPath then
             Left(AgentPathMismatchProblem(agentPath, agentState.agentPath))
-          else if (controllerId != agentState.meta.controllerId)
+          else if controllerId != agentState.meta.controllerId then
             Left(AgentWrongControllerProblem(controllerId, agentState.meta.controllerId))
-          else if (!agentState.isFreshlyDedicated
-            && !agentState.meta.controllerRunId.contains(controllerRunId))
+          else if !agentState.isFreshlyDedicated
+            && !agentState.meta.controllerRunId.contains(controllerRunId) then
             Left(AgentAlreadyDedicatedProblem)
           else
             Right(Nil))
@@ -261,9 +261,9 @@ extends Actor with Stash with SimpleStateActor
 
   private def checkAgentPath(requestedAgentPath: AgentPath): Checked[Unit] = {
     val agentState = journal.unsafeCurrentState()
-    if (!agentState.isDedicated)
+    if !agentState.isDedicated then
       Left(AgentNotDedicatedProblem)
-    else if (requestedAgentPath != agentState.agentPath)
+    else if requestedAgentPath != agentState.agentPath then
       Left(AgentPathMismatchProblem(requestedAgentPath, agentState.agentPath))
     else
       RightUnit
@@ -271,9 +271,9 @@ extends Actor with Stash with SimpleStateActor
 
   private def checkAgentRunId(requestedAgentRunId: AgentRunId): Checked[Unit] = {
     val agentState = journal.unsafeCurrentState()
-    if (!agentState.isDedicated)
+    if !agentState.isDedicated then
       Left(AgentNotDedicatedProblem)
-    else if (requestedAgentRunId != agentState.meta.agentRunId) {
+    else if requestedAgentRunId != agentState.meta.agentRunId then {
       val problem = AgentRunIdMismatchProblem(agentState.meta.agentPath)
       logger.warn(
         s"$problem, requestedAgentRunId=$requestedAgentRunId, agentRunId=${agentState.meta.agentRunId}")
@@ -284,9 +284,9 @@ extends Actor with Stash with SimpleStateActor
 
   private def checkControllerRunId(requestedControllerRunId: ControllerRunId): Checked[Unit] = {
     val agentState = journal.unsafeCurrentState()
-    if (!agentState.isDedicated)
+    if !agentState.isDedicated then
       Left(AgentNotDedicatedProblem)
-    else if (agentState.meta.controllerRunId.exists(_ != requestedControllerRunId)) {
+    else if agentState.meta.controllerRunId.exists(_ != requestedControllerRunId) then {
       val problem = Problem("ControllerRunId does not match")
       logger.warn(
         s"$problem, requestedControllerRunId=$requestedControllerRunId, controllerRunId=${agentState.meta.controllerRunId}")
@@ -296,8 +296,8 @@ extends Actor with Stash with SimpleStateActor
   }
 
   private def continueTermination(): Unit =
-    if (terminating) {
-      if (dedicated.isEmpty) {
+    if terminating then {
+      if dedicated.isEmpty then {
         // When no AgentOrderKeeper has been dedicated, we need to stop the journal ourselve
         //journal.journalActor ! JournalActor.Input.Terminate
         context.stop(self)
@@ -307,7 +307,7 @@ extends Actor with Stash with SimpleStateActor
   private def terminateOrderKeeper(shutDown: AgentCommand.ShutDown)
   : Future[Checked[AgentCommand.Response.Accepted]] = {
     logger.trace("terminateOrderKeeper")
-    if (!shutDownOnce.trySet(shutDown))
+    if !shutDownOnce.trySet(shutDown) then
       Future.successful(Left(AgentDirectorIsShuttingDownProblem))
     else
       dedicated.toOption match {
@@ -332,7 +332,7 @@ extends Actor with Stash with SimpleStateActor
 
   private def addOrderKeeper(agentPath: AgentPath, controllerId: ControllerId): Checked[Unit] =
     synchronized {
-      if (terminating)
+      if terminating then
         Left(AgentDirectorIsShuttingDownProblem)
       else
         dedicated.toOption match {
@@ -371,7 +371,7 @@ extends Actor with Stash with SimpleStateActor
   private def changeSubagentAndClusterNode(event: ItemAttachedToMe): Task[Checked[Unit]] =
     logger.debugTask(journal.state
       .flatMap(agentState =>
-        if (!agentState.isDedicated)
+        if !agentState.isDedicated then
           journal.persistKeyedEvent(event).rightAs(())
         else
           Task.pure(agentState.applyEvent(event)).flatMapT(nextAgentState =>
@@ -395,12 +395,12 @@ extends Actor with Stash with SimpleStateActor
 
   /** Returns Some when AgentRef and the Director's SubagentIds are available. */
   private def demandedClusterNodeUris(state: AgentState): Option[Map[NodeId, Uri]] =
-    for {
+    for
       agentRef <- state.keyToItem(AgentRef).get(state.meta.agentPath)
       if agentRef.directors.length == 2
       subagentItems <- agentRef.directors.traverse(state.keyToItem(SubagentItem).get)
       if subagentItems.length == 2
-    } yield
+    yield
       Map(
         NodeId.primary -> subagentItems(0).uri,
         NodeId.backup -> subagentItems(1).uri)

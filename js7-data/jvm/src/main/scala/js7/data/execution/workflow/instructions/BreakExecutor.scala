@@ -16,12 +16,12 @@ extends EventInstructionExecutor
   val instructionClass = classOf[Break]
 
   def toEvents(instr: Break, order: Order[Order.State], state: StateView) =
-    for {
+    for
       workflow <- state.idToWorkflow.checked(order.workflowId)
       events <- leaveBlocks(
         workflow, order,
         until = _.string startsWith BranchId.CyclePrefix,
         events = OrderCycleFinished(None) :: Nil)
-    } yield
+    yield
       events.map(order.id <-: _)
 }

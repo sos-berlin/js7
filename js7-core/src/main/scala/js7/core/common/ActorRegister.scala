@@ -19,7 +19,7 @@ class ActorRegister[K, V](valueToActorRef: V => ActorRef)
   protected def noSuchKeyProblem(k: K): Problem = Problem(s"No such key: $k")
 
   protected def insert(kv: (K, V)): Unit = {
-    if (keyToValue contains kv._1) throw new DuplicateKeyException(s"Duplicate ${kv._1}, existing: ${keyToValue(kv._1)}")
+    if keyToValue contains kv._1 then throw new DuplicateKeyException(s"Duplicate ${kv._1}, existing: ${keyToValue(kv._1)}")
     this += kv
   }
 
@@ -35,19 +35,19 @@ class ActorRegister[K, V](valueToActorRef: V => ActorRef)
   }
 
   protected def -=(key: K): Unit = {
-    for (v <- keyToValue.remove(key)) {
+    for v <- keyToValue.remove(key) do {
       _actorToKey -= valueToActorRef(v)
     }
   }
 
   protected def -=(a: ActorRef): Unit = {
-    for (id <- _actorToKey.remove(a)) {
+    for id <- _actorToKey.remove(a) do {
       keyToValue -= id
     }
   }
 
   protected def remove(key: K): Option[V] = {
-    for (v <- keyToValue.remove(key)) yield {
+    for v <- keyToValue.remove(key) yield {
       _actorToKey -= valueToActorRef(v)
       v
     }
@@ -66,8 +66,8 @@ class ActorRegister[K, V](valueToActorRef: V => ActorRef)
     keyToValue.get(key)
 
   final def get(actorRef: ActorRef): Option[V] =
-    for (k <- _actorToKey.get(actorRef);
-         v <- keyToValue.get(k))
+    for k <- _actorToKey.get(actorRef);
+         v <- keyToValue.get(k)
       yield v
 
   final def actorRefOf(key: K): ActorRef =

@@ -29,8 +29,8 @@ object OrderPreparation
       "allowUndeclared" -> (o.parameterList.allowUndeclared ? true).asJson)
 
   implicit val jsonDecoder: Decoder[OrderPreparation] =
-    c => for {
+    c => for
       parameters <- c.getOrElse[OrderParameterList]("parameters")(OrderParameterList.default)
       allowUndeclared <- c.getOrElse[Boolean]("allowUndeclared")(false)
-    } yield OrderPreparation(parameters.copy(allowUndeclared = allowUndeclared))
+    yield OrderPreparation(parameters.copy(allowUndeclared = allowUndeclared))
 }

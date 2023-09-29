@@ -37,8 +37,8 @@ object AgentClientMain
     val sessionToken = SessionToken(SecretString(Files.readAllLines(dataDir resolve "work/session-token").asScala mkString ""))
     autoClosing(new AkkaHttpAgentTextApi(agentUri, None, print, configDirectory)) { textApi =>
       textApi.setSessionToken(sessionToken)
-      if (operations.isEmpty)
-        ReturnCode(if (textApi.checkIsResponding()) 0 else 1)
+      if operations.isEmpty then
+        ReturnCode(if textApi.checkIsResponding() then 0 else 1)
       else {
         operations foreach {
           case StringCommand(command) => textApi.executeCommand(command)
@@ -60,7 +60,7 @@ object AgentClientMain
         case "-" => StdinCommand
         case command => StringCommand(command)
       }
-      if (operations.count(_ == StdinCommand) > 1) throw new IllegalArgumentException("Stdin ('-') can only be read once")
+      if operations.count(_ == StdinCommand) > 1 then throw new IllegalArgumentException("Stdin ('-') can only be read once")
       (agentUri, configDirectory, dataDirectory, operations)
     }
 

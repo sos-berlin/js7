@@ -55,7 +55,7 @@ final case class WorkflowJob(
 
   def checked: Checked[Unit] =
     subagentSelectionId.fold(Checked.unit)(expr =>
-      if (expr.isConstant)
+      if expr.isConstant then
         expr.evalAsString(Scope.empty).flatMap(SubagentSelectionId.checked).rightAs(())
       else
         Checked.unit)
@@ -97,7 +97,7 @@ object WorkflowJob
     admissionTimeScheme: Option[AdmissionTimeScheme] = None,
     skipIfNoAdmissionStartForOrderDay: Boolean = false)
   : Checked[WorkflowJob] =
-    for (_ <- jobResourcePaths.checkUniqueness) yield
+    for _ <- jobResourcePaths.checkUniqueness yield
       new WorkflowJob(
         agentPath, executable, defaultArguments, subagentSelectionId, jobResourcePaths,
         parallelism, sigkillDelay, timeout, failOnErrWritten,
@@ -127,7 +127,7 @@ object WorkflowJob
       "skipIfNoAdmissionStartForOrderDay" -> workflowJob.skipIfNoAdmissionStartForOrderDay.?.asJson)
 
   implicit val jsonDecoder: Decoder[WorkflowJob] = c =>
-    for {
+    for
       executable <- c.get[Executable]("executable")
       subagentSelectionId <-
         c.get[Option[SubagentSelectionId]]("subagentSelectionId")
@@ -153,5 +153,5 @@ object WorkflowJob
         parallelism, sigkillDelay, timeout, failOnErrWritten, admissionTimeScheme,
         skipIfNoAdmissionStartForOrderDay
       ).toDecoderResult(c.history)
-    } yield job
+    yield job
 }

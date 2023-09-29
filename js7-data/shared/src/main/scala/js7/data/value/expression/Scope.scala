@@ -74,7 +74,7 @@ object Scope extends Monoid[Scope]
   /** Optimized for empty nameToExpr. */
   def evalExpressionMap(nameToExpr: Map[String, Expression], scope: => Scope)
   : Checked[Map[String, Value]] =
-    if (nameToExpr.isEmpty)
+    if nameToExpr.isEmpty then
       Right(Map.empty)
     else
       scope.evalExpressionMap(nameToExpr)

@@ -143,11 +143,11 @@ extends MainService with Service.StoppableByRequest
 
   private[agent] def executeCommandAsSystemUser(command: AgentCommand)
   : Task[Checked[AgentCommand.Response]] =
-    for {
+    for
       checkedSession <- forDirector.sessionRegister.systemSession
       checkedChecked <- checkedSession.traverse(session =>
         executeCommand(command, CommandMeta(session.currentUser)))
-    } yield checkedChecked.flatten
+    yield checkedChecked.flatten
 
   def systemSessionToken: SessionToken =
     forDirector.systemSessionToken
@@ -164,10 +164,10 @@ object RunningAgent {
     (implicit scheduler: Scheduler)
   : Resource[Task, RunningAgent] =
     locally {
-      for {
+      for
         subagent <- subagentResource(conf)
         director <- director(subagent, conf, testWiring)
-      } yield director
+      yield director
     }.executeOn(scheduler)
 
   def restartable(
@@ -176,24 +176,24 @@ object RunningAgent {
     (implicit scheduler: Scheduler)
   : Resource[Task, RestartableDirector] =
     locally {
-      for {
+      for
         subagent <- subagentResource(conf)
         director <- RestartableDirector(subagent, conf, testWiring)
-      } yield director
+      yield director
     }.executeOn(scheduler)
 
   def subagentResource(conf: AgentConfiguration)(implicit scheduler: Scheduler)
   : Resource[Task, Subagent] =
     Resource.suspend(Task {
       val testEventBus = new StandardEventBus[Any]
-      for {
+      for
         _ <- Resource.eval(Task {
-          if (!StartUp.isMain) logger.debug("JS7 Agent starting ...\n" + "┈" * 80)
+          if !StartUp.isMain then logger.debug("JS7 Agent starting ...\n" + "┈" * 80)
           conf.createDirectories()
           conf.journalLocation.deleteJournalIfMarked().orThrow
         })
         subagent <- Subagent.resource(conf.subagentConf, testEventBus)
-      } yield subagent
+      yield subagent
     }).executeOn(scheduler)
 
   def director(
@@ -216,7 +216,7 @@ object RunningAgent {
           Right(config.optionAs[SecretString](
             "js7.auth.subagents." + ConfigUtil.joinPath(nodeName.string)))
 
-      for {
+      for
         clusterNode <- ClusterNode.recoveringResource[AgentState](
           akkaResource = Resource.eval(Task.pure(forDirector.actorSystem)),
           (admission, label, actorSystem) => AgentClient.resource(
@@ -225,7 +225,7 @@ object RunningAgent {
           journalLocation, clusterConf, eventIdClock, subagent.testEventBus)
         director <-
           resource2(forDirector, clusterNode, testWiring, conf, subagent.testEventBus, clock)
-      } yield director
+      yield director
   })
 
   private def resource2(
@@ -247,7 +247,7 @@ object RunningAgent {
       journalAllocated: Allocated[Task, FileJournal[AgentState]])
     : MainActorStarted = {
       val failedOverSubagentId: Option[SubagentId] =
-        for (nodeId <- failedNodeId) yield
+        for nodeId <- failedNodeId yield
           journalAllocated.allocatedThing.unsafeCurrentState().meta
             .clusterNodeIdToSubagentId(nodeId)
             .orThrow
@@ -264,7 +264,7 @@ object RunningAgent {
             mainActorReadyPromise, terminationPromise,
             clock)(
             scheduler)
-          for (o <- mainActor.commandActor) actors += o
+          for o <- mainActor.commandActor do actors += o
           mainActor
         },
 
@@ -313,7 +313,7 @@ object RunningAgent {
         .map(_.map(_.clusterState))
         .flatMapT { clusterState =>
           import clusterNode.clusterConf.{isBackup, ownId}
-          if (!clusterState.isActive(ownId, isBackup = isBackup))
+          if !clusterState.isActive(ownId, isBackup = isBackup) then
             Task.left(ClusterNodeIsNotActiveProblem)
           else
             mainActorStarted.map {
@@ -357,7 +357,7 @@ object RunningAgent {
       logger.debugTask("executeCommand", cmd.getClass.shortClassName)(cmd
         .match_ {
           case cmd: ShutDown =>
-            if (cmd.clusterAction.nonEmpty && !clusterNode.isWorkingNode)
+            if cmd.clusterAction.nonEmpty && !clusterNode.isWorkingNode then
               Task.left(PassiveClusterNodeShutdownNotAllowedProblem)
             else {
               logger.info(s"❗ $cmd")
@@ -397,9 +397,9 @@ object RunningAgent {
         .map(_.map((_: AgentCommand.Response).asInstanceOf[cmd.Response]))
         .logWhenItTakesLonger(s"${cmd.getClass.simpleScalaName} command"))
 
-    for {
+    for
       _ <- Resource.make(Task.unit)(release = _ =>
-        Task(for (actor <- actors) actorSystem.stop(actor)))
+        Task(for actor <- actors do actorSystem.stop(actor)))
       agent <- Service.resource(Task(
         new RunningAgent(
           clusterNode,
@@ -421,7 +421,7 @@ object RunningAgent {
             gateKeeperConf,
             forDirector.sessionRegister
           ).agentRoute))
-    } yield agent
+    yield agent
   }
 
   final case class TestWiring(

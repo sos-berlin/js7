@@ -34,12 +34,12 @@ object ClusterConf
 
   def fromConfig(config: Config): Checked[ClusterConf] = {
     val isBackup = config.getBoolean("js7.journal.cluster.node.is-backup")
-    for {
+    for
       maybeIdToUri <- {
         val key = "js7.journal.cluster.nodes"
-        if (!config.hasPath(key))
+        if !config.hasPath(key) then
           Right(None)
-        else if (isBackup)
+        else if isBackup then
           Left(Problem(s"Backup cluster node must node have a '$key' configuration"))
         else
           config.getObject(key)
@@ -56,7 +56,7 @@ object ClusterConf
             .map(o => Some(o.toMap))
       }
       nodeId = config.optionAs[NodeId]("js7.journal.cluster.node.id") getOrElse
-        NodeId(if (isBackup) "Backup" else "Primary")
+        NodeId(if isBackup then "Backup" else "Primary")
       recouplingStreamReaderConf <- RecouplingStreamReaderConfs.fromConfig(config)
       heartbeat = config.getDuration("js7.journal.cluster.heartbeat").toFiniteDuration
       heartbeatTimeout = config.getDuration("js7.journal.cluster.heartbeat-timeout").toFiniteDuration
@@ -66,7 +66,7 @@ object ClusterConf
       testHeartbeatLoss = config.optionAs[String]("js7.journal.cluster.TEST-HEARTBEAT-LOSS")
       testAckLoss = config.optionAs[String]("js7.journal.cluster.TEST-ACK-LOSS")
       setting <- maybeIdToUri.traverse(ClusterSetting.checked(_, nodeId, timing, clusterWatchId))
-    } yield
+    yield
       new ClusterConf(
         JournalConf.fromConfig(config),
         nodeId,

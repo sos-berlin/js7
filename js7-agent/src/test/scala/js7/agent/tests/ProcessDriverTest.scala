@@ -98,7 +98,7 @@ final class ProcessDriverTest extends OurTestSuite with BeforeAndAfterAll with T
 
 object ProcessDriverTest {
   private val TestScript =
-    if (isWindows) """
+    if isWindows then """
       |@echo off
       |echo Hej!
       |echo THIS IS STDERR>&2

@@ -9,7 +9,7 @@ import scala.util.Random
 
 final class EnvScopeTest extends OurTestSuite
 {
-  if (isJVM) {
+  if isJVM then {
     "Env" - {
       "Known name" in {
         assert(EnvScope.parseAndEval(s"env('$PathEnvName')") ==

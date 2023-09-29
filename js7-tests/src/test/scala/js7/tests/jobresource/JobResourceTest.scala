@@ -192,7 +192,7 @@ class JobResourceTest extends OurTestSuite with ControllerAgentForScalaTest
   }
 
   "Accessing an missing JobResource variable" - {
-    val existingName = if (isWindows) "TEMP" else if (isMac) "TMPDIR" else "HOSTNAME"
+    val existingName = if isWindows then "TEMP" else if isMac then "TMPDIR" else "HOSTNAME"
     val existingValue = sys.env(existingName)
 
     "Order fails" in {
@@ -220,7 +220,7 @@ class JobResourceTest extends OurTestSuite with ControllerAgentForScalaTest
           Execute.Anonymous(WorkflowJob(
             agentPath,
             ShellScriptExecutable(
-              if (isWindows) s"@echo off\r\necho $existingName=/%$existingName%/\r\n"
+              if isWindows then s"@echo off\r\necho $existingName=/%$existingName%/\r\n"
               else s"echo $existingName=/$$$existingName/",
               env = Map(
                 existingName -> expr(exprString)))))))
@@ -301,7 +301,7 @@ class JobResourceTest extends OurTestSuite with ControllerAgentForScalaTest
         WorkflowJob(
           agentPath,
           ShellScriptExecutable(
-            if (isWindows)
+            if isWindows then
               """@echo off
                 |echo FROMRESOURCE=/%FROMRESOURCE%/
                 |type %FROMRESOURCE%
@@ -376,7 +376,7 @@ object JobResourceTest
       jobName -> WorkflowJob(
         agentPath,
         ShellScriptExecutable(
-          if (isWindows)
+          if isWindows then
             """@echo off
                |echo A=/%A%/
                |echo B=/%B%/
@@ -413,7 +413,7 @@ object JobResourceTest
       WorkflowJob(
         agentPath,
         ShellScriptExecutable(
-          if (isWindows)
+          if isWindows then
             """@echo off
               |echo ORIGINAL_PATH=/%ORIGINAL_PATH%/
               |""".stripMargin
@@ -457,7 +457,7 @@ object JobResourceTest
       nameToJob = Map(jobName -> WorkflowJob(
         agentPath,
         ShellScriptExecutable(
-          if (isWindows)
+          if isWindows then
             """@echo off
               |echo JS7_ORDER_ID=/%JS7_ORDER_ID%/
               |echo JS7_WORKFLOW_NAME=/%JS7_WORKFLOW_NAME%/

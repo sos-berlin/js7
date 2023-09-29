@@ -46,7 +46,7 @@ final class BasicParsersTest extends OurTestSuite
     def assertIdentifier(expr: String, expected: Checked[String]) = {
       val result = checkedParse(expr, identifier)
       assert(result == expected)
-      for (r <- result) {
+      for r <- result do {
         assert(withStringBuilder(appendIdentifier(_, r)) == expr)
       }
     }
@@ -210,10 +210,10 @@ final class BasicParsersTest extends OurTestSuite
     "apply" in {
       def p: Parser0[(Int, String)] =
         kvP.flatMap(keyToValue =>
-          for {
+          for
             number <- keyToValue[Int]("number")
             string <- keyToValue[String]("string")
-          } yield (number, string))
+          yield (number, string))
       assert(checkedParse("""string="STRING", number=7""", p) == Right((7, "STRING")))
       assert(checkedParse("""string="STRING", number="7"""", p).isLeft)
     }

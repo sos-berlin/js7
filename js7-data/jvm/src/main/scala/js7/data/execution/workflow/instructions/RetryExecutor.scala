@@ -24,7 +24,7 @@ extends EventInstructionExecutor
   val instructionClass = classOf[Retry]
 
   def toEvents(retry: Retry, order: Order[Order.State], state: StateView) =
-    if (!order.isState[Order.Ready])
+    if !order.isState[Order.Ready] then
       Right(Nil)
     else
       order.workflowPosition.position.nextRetryBranchPath

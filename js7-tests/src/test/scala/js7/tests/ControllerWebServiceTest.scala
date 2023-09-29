@@ -112,7 +112,7 @@ extends OurTestSuite with BeforeAndAfterAll with ControllerAgentForScalaTest
 
   "Await AgentReady" in {
     // Proceed first after all AgentReady have been received, to get an event sequence as expected
-    for (agentPath <- agentPaths) {
+    for agentPath <- agentPaths do {
       controller.eventWatch.await[AgentRefStateEvent.AgentReady](predicate = _.key == agentPath)
     }
   }
@@ -401,7 +401,7 @@ extends OurTestSuite with BeforeAndAfterAll with ControllerAgentForScalaTest
   }
 
   private def testGets(suburis: Iterable[String], headers: => List[HttpHeader], expected: => Json, manipulateResponse: Json => Json = identity): Unit =
-    for (suburi <- suburis) testGet(suburi, headers, expected, manipulateResponse)
+    for suburi <- suburis do testGet(suburi, headers, expected, manipulateResponse)
 
   private def testGet(
     suburi: String,

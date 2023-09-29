@@ -50,7 +50,7 @@ extends DocumentSigner
       new JcaPGPContentSignerBuilder(pgpSecretKey.getPublicKey.getAlgorithm, OurHashAlgorithm)
         .setProvider("BC"))
     signatureGenerator.init(PGPSignature.BINARY_DOCUMENT, pgpPrivateKey)
-    for (u <- maybeUserId) {
+    for u <- maybeUserId do {
       val subpacketGenerator = new PGPSignatureSubpacketGenerator
       subpacketGenerator.addSignerUserID(false, u)
       signatureGenerator.setHashedSubpackets(subpacketGenerator.generate())
@@ -95,8 +95,8 @@ object PgpSigner extends DocumentSigner.Companion
       .getKeyRings.asScala
       .map(o => o.getSecretKey(o.getPublicKey/*the controller key*/.getFingerprint))
       .toVector
-    if (keys.isEmpty) throw new NoSuchElementException("No controller key in secret key ring")
-    if (keys.sizeIs > 1) throw new IllegalArgumentException(
+    if keys.isEmpty then throw new NoSuchElementException("No controller key in secret key ring")
+    if keys.sizeIs > 1 then throw new IllegalArgumentException(
       "More than one controller key in secret key ring: " +
         keys.mkString_("", ", ", ""))
     keys.head

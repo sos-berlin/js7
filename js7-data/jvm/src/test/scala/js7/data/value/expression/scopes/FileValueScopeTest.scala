@@ -44,7 +44,7 @@ final class FileValueScopeTest extends OurTestSuite
     check { fileValueScope =>
       val n = 3
 
-      for (i <- 1 to n) {
+      for i <- 1 to n do {
         val content = s"CONTENT-$i"
         val file = toFile(fileValueScope, Seq(content)).orThrow
         assert(file.startsWith(fileValueScope.fileValueState.directory))
@@ -53,7 +53,7 @@ final class FileValueScopeTest extends OurTestSuite
 
       val files = (fileValueScope.fileValueState.directory / "0").directoryContents
       assert(files.size == n)
-      for (f <- files) assert(isRegularFile(f))
+      for f <- files do assert(isRegularFile(f))
     }
   }
 
@@ -65,7 +65,7 @@ final class FileValueScopeTest extends OurTestSuite
 
       val files = (fileValueScope.fileValueState.directory / "0").directoryContents
       assert(files.size == 1)
-      for (f <- files) assert(isRegularFile(f))
+      for f <- files do assert(isRegularFile(f))
     }
   }
 

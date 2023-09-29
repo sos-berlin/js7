@@ -11,7 +11,7 @@ extends EventDrivenState[S, Event]
   def companion: JournaledState.Companion[S]
 
   override def applyStampedEvents(stampedEvents: Iterable[Stamped[KeyedEvent[Event]]]): Checked[S] =
-    if (stampedEvents.isEmpty)
+    if stampedEvents.isEmpty then
       Right(this)
     else
       super.applyStampedEvents(stampedEvents)

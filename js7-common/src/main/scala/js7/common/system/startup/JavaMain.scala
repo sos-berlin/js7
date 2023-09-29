@@ -29,6 +29,6 @@ object JavaMain
 
   def exitIfNonZero(returnCode: ReturnCode): Unit = {
     Log4j.shutdown()
-    if (returnCode.number != 0) System.exit(returnCode.number)
+    if returnCode.number != 0 then System.exit(returnCode.number)
   }
 }

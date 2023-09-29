@@ -10,7 +10,7 @@ final class FakeLicenseCheck extends LicenseCheck {
     this.context = context
 
   def hasLicense(productName: String) = {
-    if (!isDirectory(context.configDirectory)) throw new AssertionError // will never happen
+    if !isDirectory(context.configDirectory) then throw new AssertionError // will never happen
     true
   }
 

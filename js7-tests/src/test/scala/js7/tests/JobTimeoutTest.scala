@@ -52,7 +52,7 @@ final class JobTimeoutTest extends OurTestSuite with ControllerAgentForScalaTest
         OrderStarted,
         OrderProcessingStarted(subagentId),
         OrderProcessed(Outcome.TimedOut(Outcome.Failed(Map(
-          "returnCode" -> NumberValue(if (isWindows) 1 else 128 + SIGTERM.number))))),
+          "returnCode" -> NumberValue(if isWindows then 1 else 128 + SIGTERM.number))))),
         OrderDetachable,
         OrderDetached,
         OrderFailed(Position(0))))
@@ -71,7 +71,7 @@ object JobTimeoutTest
     Execute(WorkflowJob(
       agentPath,
       ShellScriptExecutable(
-        if (isWindows)
+        if isWindows then
            s"""@echo off
              |ping -n ${jobDuration.toSeconds + 1} 127.0.0.1 >nul
              |""".stripMargin

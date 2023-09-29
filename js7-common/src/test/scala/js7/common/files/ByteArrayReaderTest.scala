@@ -19,9 +19,9 @@ final class ByteArrayReaderTest extends OurTestSuite
       var read = ByteArray.empty
       autoClosing(new ByteArrayReader(file)) { reader =>
         var eof = false
-        while (!eof) {
+        while !eof do {
           val chunk = reader.read()
-          if (chunk.isEmpty)
+          if chunk.isEmpty then
             eof = true
           else
             read ++= chunk

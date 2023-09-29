@@ -799,7 +799,7 @@ final class WorkflowTest extends OurTestSuite
       Position(3) -> lastExecute,
       Position(4) -> ImplicitEnd())
 
-    for ((address, instruction) <- addressToInstruction) {
+    for (address, instruction) <- addressToInstruction do {
       assert(TestWorkflow isDefinedAt address)
       assert(TestWorkflow.instruction(address) == instruction, s" - $address")
     }
@@ -810,7 +810,7 @@ final class WorkflowTest extends OurTestSuite
 
   "isMoveable, reachablePositions" - {
     "Same BranchPath is okay" in {
-      for (i <- TestWorkflow.instructions.indices; j <- TestWorkflow.instructions.indices) {
+      for i <- TestWorkflow.instructions.indices; j <- TestWorkflow.instructions.indices do {
         assert(TestWorkflow.isMoveable(Position(i), Position(j)))
       }
     }
@@ -877,7 +877,7 @@ final class WorkflowTest extends OurTestSuite
           Position(1) / BranchId.Lock % 0 / Then % 1,
           Position(1) / BranchId.Lock % 1)
 
-        for (from <- reachable) {
+        for from <- reachable do {
           assert(lockWorkflow.reachablePositions(from).toSeq == reachable)
         }
       }
@@ -911,7 +911,7 @@ final class WorkflowTest extends OurTestSuite
           Position(2),
           Position(3))
 
-        for (from <- reachable) {
+        for from <- reachable do {
           assert(tryWorkflow.reachablePositions(from).toSeq == reachable)
         }
       }
@@ -930,7 +930,7 @@ final class WorkflowTest extends OurTestSuite
         Position(3),
         Position(4))
 
-      for (from <- reachable) {
+      for from <- reachable do {
         assert(TestWorkflow.reachablePositions(from).toSeq == reachable)
       }
     }
@@ -941,7 +941,7 @@ final class WorkflowTest extends OurTestSuite
         Position(2) / fork("🥕") % 1,
         Position(2) / fork("🥕") % 2)
 
-      for (from <- reachable) {
+      for from <- reachable do {
         assert(TestWorkflow.reachablePositions(from).toSeq == reachable)
       }
     }
@@ -1106,8 +1106,8 @@ final class WorkflowTest extends OurTestSuite
         Position(4) / "fork+🍋" % 1 -> Nil,
         Position(5) -> Nil)
 
-      for ((position, agentPaths) <- isStartableSetting) {
-        for ((agentPath, expected) <- agentPaths.map(_ -> true) ++ (AgentPaths filterNot agentPaths.toSet).map(_ -> false)) {
+      for (position, agentPaths) <- isStartableSetting do {
+        for (agentPath, expected) <- agentPaths.map(_ -> true) ++ (AgentPaths filterNot agentPaths.toSet).map(_ -> false) do {
           s"isStartableOnAgent($position $agentPath) = $expected" in {
             assert(TestWorkflow.isStartableOnAgent(position, agentPath) == expected)
           }

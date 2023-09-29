@@ -15,15 +15,15 @@ final class OrderEventHandler(idToWorkflow: WorkflowId => Checked[Workflow])
   def handleEvent(previousOrder: Order[Order.State], event: OrderEvent): Checked[Seq[FollowUp]] =
     event match {
       case _: OrderProcessed =>
-        for {
+        for
           workflow <- idToWorkflow(previousOrder.workflowId)
           jobKey <- workflow.positionToJobKey(previousOrder.position)
-        } yield
+        yield
           FollowUp.LeaveJob(jobKey) :: Nil
 
       case OrderCancelled | OrderDetachable =>
         // Order may be enqueued in Job's queue, still waiting for start allowance
-        for (workflow <- idToWorkflow(previousOrder.workflowId)) yield
+        for workflow <- idToWorkflow(previousOrder.workflowId) yield
           workflow
             .positionToJobKey(previousOrder.position)
             .toOption

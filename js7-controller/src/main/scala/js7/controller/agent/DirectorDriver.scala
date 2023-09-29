@@ -106,7 +106,7 @@ extends Service.StoppableByRequest
               journal
                 .lock(agentPath)(
                   journal.persist(controllerState =>
-                    for (a <- controllerState.keyTo(AgentRefState).checked(agentPath)) yield
+                    for a <- controllerState.keyTo(AgentRefState).checked(agentPath) yield
                       (a.couplingState != Coupled || a.problem.nonEmpty)
                         .thenList(agentPath <-: AgentCoupled)))
                 .rightAs(agentEventId)
@@ -161,7 +161,7 @@ extends Service.StoppableByRequest
       val delay = conf.eventBufferDelay max conf.commitDelay
       eventFetcher.observe(client, after = adoptedEventId)
         .pipe(obs =>
-          if (delay.isZeroOrBelow)
+          if delay.isZeroOrBelow then
             obs.bufferIntrospective(conf.eventBufferSize)
           else obs
             .buffer(
@@ -183,13 +183,13 @@ extends Service.StoppableByRequest
   private def onEventsFetched(stampedEvents: Seq[Stamped[AnyKeyedEvent]]): Task[Unit] =
     onFetchedEventsLock.lock(logger.traceTask(Task.defer {
       assertThat(stampedEvents.nonEmpty)
-      if (isStopping)
+      if isStopping then
         Task(logger.debug(
           s"❌Late onEventsFetched(${stampedEvents.size} events) suppressed due to isStopping"))
       else {
         val reducedStampedEvents = stampedEvents dropWhile { stamped =>
           val drop = stamped.eventId <= adoptedEventId
-          if (drop) logger.debug(s"Drop duplicate received event: $stamped")
+          if drop then logger.debug(s"Drop duplicate received event: $stamped")
           drop
         }
         Task.when(reducedStampedEvents.nonEmpty) {
@@ -214,7 +214,7 @@ extends Service.StoppableByRequest
 
   def executeCommand(command: AgentCommand, mustBeCoupled: Boolean = false)
   : Task[Checked[command.Response]] =
-    if (mustBeCoupled)
+    if mustBeCoupled then
       eventFetcher.coupledApi
         .map(_.toRight(DecoupledProblem))
         .flatMapT(executeCommand(_, command))

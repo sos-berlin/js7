@@ -59,7 +59,7 @@ trait EventInstructionExecutor extends InstructionExecutor
 
   protected final def start(order: Order[Order.State])
   : Option[Checked[List[KeyedEvent[OrderStarted]]]] =
-    for (maybeStartable <- maybeStart(order)) yield
+    for maybeStartable <- maybeStart(order) yield
       Right(maybeStartable.map(order.id <-: _).toList)
 
   private def maybeStart(order: Order[Order.State]): Option[Option[OrderStarted]] =

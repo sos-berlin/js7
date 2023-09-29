@@ -84,14 +84,14 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
 
     idToAllocatedSubagent
     agents
-    for (service <- clusterWatchServiceResource)
+    for service <- clusterWatchServiceResource do
       clusterWatchServiceOnce := service.toAllocated.await(99.s)
     controller
 
-    if (waitUntilReady) {
+    if waitUntilReady then {
       controller.waitUntilReady()
-      if (!doNotAddItems) {
-        for (subagentItem <- directoryProvider.subagentItems) {
+      if !doNotAddItems then {
+        for subagentItem <- directoryProvider.subagentItems do {
           eventWatch.await[SubagentCoupled](_.key == subagentItem.id)
         }
       }
@@ -161,7 +161,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
             AddOrChangeSimple(subagentItem.withRevision(None).copy(disabled = !enable))
         })
       .await(99.s).orThrow
-    for (subagentId <- subagentIdToEnable.map(_._1)) {
+    for subagentId <- subagentIdToEnable.map(_._1) do {
       eventWatch.await[ItemAttached](_.event.key == subagentId, after = eventId)
     }
   }
@@ -207,7 +207,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
           suffix = suffix,
           suppressSignatureKeys = suppressSignatureKeys)
         .evalTap(_ => Task {
-          if (awaitDedicated) {
+          if awaitDedicated then {
             val e = eventWatch.await[SubagentDedicated](after = eventId).head.eventId
             eventWatch.await[SubagentCoupled](after = e)
           }

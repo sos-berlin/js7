@@ -18,7 +18,7 @@ import scala.concurrent.duration.*
   */
 final class DirectoryWatchTest extends OurTestSuite with BeforeAndAfterAll
 {
-  private val timeout = if (isMac) 100.ms else 5.minutes
+  private val timeout = if isMac then 100.ms else 5.minutes
   private lazy val dir = createTempDirectory("DirectoryWatchTest-")
   private lazy val directoryWatcher = new DirectoryWatcher(dir, timeout)
   private lazy val observable = directoryWatcher.singleUseObservable
@@ -36,7 +36,7 @@ final class DirectoryWatchTest extends OurTestSuite with BeforeAndAfterAll
     super.afterAll()
   }
 
-  if (isMac) {
+  if isMac then {
     "Java's WatchService does not work properly under MacOS" in {
       // https://bugs.openjdk.java.net/browse/JDK-7133447
       waitForCondition(99.s, 10.ms)(counter > 0)
@@ -44,7 +44,7 @@ final class DirectoryWatchTest extends OurTestSuite with BeforeAndAfterAll
     }
   } else {
     "Add some files" - {
-      for (i <- 1 to 2) s"file #$i" in {
+      for i <- 1 to 2 do s"file #$i" in {
         testUpdate {
           touchFile(dir / i.toString)
         }

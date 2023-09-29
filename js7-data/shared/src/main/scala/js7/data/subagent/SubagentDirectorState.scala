@@ -27,8 +27,8 @@ extends JournaledState[S]
   def toPureOrderScope(order: Order[Order.State]): Checked[Scope]
 
   final def jobKey(workflowPosition: WorkflowPosition): Checked[JobKey] =
-    for {
+    for
       workflow <- idToWorkflow.checked(workflowPosition.workflowId)
       jobKey <- workflow.positionToJobKey(workflowPosition.position)
-    } yield jobKey
+    yield jobKey
 }

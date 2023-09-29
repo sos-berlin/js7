@@ -28,8 +28,8 @@ private[watch] final class JournalIndex(torn: PositionAnd[EventId], size: Int)
   logger.debug(s"Building JournalIndex(${EventId.toString(torn.value)})")
 
   def addAfter(eventId: EventId, position: Long, n: Int = 1): Unit =
-    if (!tryAddAfter(eventId, position, n))
-      if (eventId == _highestEventId)
+    if !tryAddAfter(eventId, position, n) then
+      if eventId == _highestEventId then
         throw new IllegalArgumentException(s"JournalIndex: Duplicate EventId added: ${EventId.toString(eventId)}")
       else
         throw new IllegalArgumentException(s"JournalIndex: EventIds are in wrong order: ${EventId.toString(eventId)} ≥ ${EventId.toString(_highestEventId)}")
@@ -39,12 +39,12 @@ private[watch] final class JournalIndex(torn: PositionAnd[EventId], size: Int)
     eventId > _highestEventId && {
       synchronized {
         eventId > _highestEventId && {
-          if (freezed) throw new IllegalStateException(s"JournalIndex: tryAddAfter($eventId) after freeze ${_highestEventId} ?")  // Self-check
+          if freezed then throw new IllegalStateException(s"JournalIndex: tryAddAfter($eventId) after freeze ${_highestEventId} ?")  // Self-check
           _highestEventId = eventId
           val a = addedCount
           addedCount += n
-          if (addedCount / spread > a / spread) {
-            if (length == positions.length) {
+          if addedCount / spread > a / spread then {
+            if length == positions.length then {
               compress(factor = 2)
             }
             positions(length) = position
@@ -59,11 +59,11 @@ private[watch] final class JournalIndex(torn: PositionAnd[EventId], size: Int)
 
   /** toFactor > 1 to keep multiple JournalIndex small. */
   def freeze(toFactor: Int) =
-    if (!freezed) synchronized {
-      if (!freezed) {
+    if !freezed then synchronized {
+      if !freezed then {
         val a = toFactor / spread min length / MinimumLength
-        if (a > 1) compress(a)
-        if (length < positions.length) {
+        if a > 1 then compress(a)
+        if length < positions.length then {
           positions = shrinkArray(positions, length)
           eventIds = shrinkArray(eventIds, length)
         }
@@ -76,7 +76,7 @@ private[watch] final class JournalIndex(torn: PositionAnd[EventId], size: Int)
   def highestEventId = _highestEventId
 
   private def compress(factor: Int): Unit = {
-    for (i <- 1 until length / factor) {
+    for i <- 1 until length / factor do {
       positions(i) = positions(factor * i)
       eventIds(i) = eventIds(factor * i)
     }
@@ -97,13 +97,13 @@ private[watch] final class JournalIndex(torn: PositionAnd[EventId], size: Int)
 
   def positionAndEventIdAfter(after: EventId): PositionAnd[EventId] =
     synchronized {
-      if (length == 0) throw new IllegalStateException("JournalIndex.positionAfter but length=0")
+      if length == 0 then throw new IllegalStateException("JournalIndex.positionAfter but length=0")
       val index = binarySearch(eventIds, 0, length, after) match {
         case i if i >= 0 =>
           i
 
         case i =>
-          if (after < eventIds.head) throw new IllegalArgumentException(s"JournalIndex.positionAfter($after) but oldest EventId is ${eventIds.head}")
+          if after < eventIds.head then throw new IllegalArgumentException(s"JournalIndex.positionAfter($after) but oldest EventId is ${eventIds.head}")
           -i - 2
       }
       PositionAnd(positions(index), eventIds(index))
@@ -112,11 +112,11 @@ private[watch] final class JournalIndex(torn: PositionAnd[EventId], size: Int)
   @TestOnly
   def positionAndEventIds: Seq[PositionAnd[EventId]] =
     synchronized {
-      for (i <- 0 until length) yield PositionAnd(positions(i), eventIds(i))
+      for i <- 0 until length yield PositionAnd(positions(i), eventIds(i))
     }
 
   override def toString = {
-    val addedFileSize = synchronized(if (length == 0) 0 else positions(length - 1) - torn.position)
+    val addedFileSize = synchronized(if length == 0 then 0 else positions(length - 1) - torn.position)
     "JournalIndex(" +
       EventId.toString(torn.value) + ".." + EventId.toString(_highestEventId) +
       s" eventIds=$addedCount ${toKBGB(addedFileSize)}" +
@@ -134,7 +134,7 @@ object JournalIndex
   private val logger = Logger[this.type]
 
   private def shrinkArray(array: Array[Long], length: Int): Array[Long] =
-    if (length == array.length)
+    if length == array.length then
       array
     else {
       val result = new Array[Long](length)

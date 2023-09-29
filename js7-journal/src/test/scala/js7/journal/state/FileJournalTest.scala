@@ -57,7 +57,7 @@ final class FileJournalTest extends OurTestSuite with BeforeAndAfterAll
   }
 
   private val n = 100
-  private val keys = for (o <- 'A' to 'D') yield NumberKey(o.toString)
+  private val keys = for o <- 'A' to 'D' yield NumberKey(o.toString)
   private val expectedThingCollection = NumberThingCollection(
     Vector(
       NumberThing(NumberKey("ONE"), 0),
@@ -97,9 +97,9 @@ final class FileJournalTest extends OurTestSuite with BeforeAndAfterAll
         .await(99.s)
       assert(updated.collectFirst { case Left(problem) => problem }.isEmpty)
 
-      val keyFutures = for (key <- keys) yield
+      val keyFutures = for key <- keys yield
         Future {
-          for (i <- 0 until n) yield
+          for i <- 0 until n yield
             journal.persistKeyedEvent(key <-: NumberSlowlyIncremented(i * 1000))
               .runToFuture.await(99.s)
         }
@@ -153,7 +153,7 @@ final class FileJournalTest extends OurTestSuite with BeforeAndAfterAll
 
     def stop() = {
       (journal.journalActor ? JournalActor.Input.TakeSnapshot)(99.s) await 99.s
-      if (journal != null) {
+      if journal != null then {
         journalAllocated.release.await(99.s)
       }
       journalAllocated.release.await(99.s)
@@ -183,7 +183,7 @@ private object FileJournalTest
           Right(copy(number = number + 1))
 
         case e @ NumberSlowlyIncremented(expected) =>
-          if (number != expected)
+          if number != expected then
             Left(Problem(s"$e, but number is $toString"))
           else {
             Thread.sleep(1)
@@ -200,7 +200,7 @@ private object FileJournalTest
       case KeyedEvent(key: NumberKey, event: NumberEvent) =>
         event match {
           case NumberAdded =>
-            if (numberThings.contains(key))
+            if numberThings.contains(key) then
               Left(Problem(s"Duplicate NumberThing: $key"))
             else
               Right(copy(numberThings = numberThings + (key -> NumberThing(key, 0))))
@@ -270,7 +270,7 @@ private object FileJournalTest
     def applyEvent(keyedEvent: KeyedEvent[Event]) =
       keyedEvent match {
         case KeyedEvent(key: NumberKey, event: NumberEvent) =>
-          for (o <- numberThingCollection.applyEvent(key <-: event)) yield
+          for o <- numberThingCollection.applyEvent(key <-: event) yield
             copy(numberThingCollection = o)
 
         case keyedEvent => applyStandardEvent(keyedEvent)

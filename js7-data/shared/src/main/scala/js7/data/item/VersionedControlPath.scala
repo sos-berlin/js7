@@ -75,7 +75,7 @@ object VersionedControlPath
       def apply(a: VersionedControlPath) = Json.fromString(a.toTypedString)
 
       def apply(c: HCursor) =
-        for {
+        for
           string <- c.as[String]
           prefixAndPath <- string indexOf ':' match {
             case i if i > 0 => Right((string take i, string.substring(i + 1)))
@@ -87,6 +87,6 @@ object VersionedControlPath
             .toRight(Problem.pure(s"Unrecognized type prefix in VersionedControlPath: $prefix"))
             .flatMap(_.checked(path))
             .toDecoderResult(c.history)
-        } yield itemPath.asInstanceOf[VersionedControlPath]/*???*/
+        yield itemPath.asInstanceOf[VersionedControlPath]/*???*/
     }
 }

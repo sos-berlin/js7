@@ -180,7 +180,7 @@ trait ControllerClusterForScalaTest
         backup.controllerEnv.privateConf,
         REPLACE_EXISTING)
 
-      for (a <- primary.agentEnvs ++ backup.agentEnvs) a.writeExecutable(TestPathExecutable, shellScript)
+      for a <- primary.agentEnvs ++ backup.agentEnvs do a.writeExecutable(TestPathExecutable, shellScript)
 
       val setting = ClusterSetting(
         Map(
@@ -190,7 +190,7 @@ trait ControllerClusterForScalaTest
         clusterTiming,
         clusterWatchId = None)
 
-      if (suppressClusterWatch)
+      if suppressClusterWatch then
         body(primary, backup, setting)
       else
         withOptionalClusterWatchService() {
@@ -231,7 +231,7 @@ trait ControllerClusterForScalaTest
 
   protected final def clusterWatchServiceResource(clusterWatchId: ClusterWatchId)
   : Resource[Task, (ClusterWatchService, StandardEventBus[ClusterNodeLossNotConfirmedProblem])] =
-    for {
+    for
       eventbus <- Resource.fromAutoCloseable(Task(
         new StandardEventBus[ClusterNodeLossNotConfirmedProblem]))
       clusterWatch <- DirectoryProvider.clusterWatchServiceResource(
@@ -243,7 +243,7 @@ trait ControllerClusterForScalaTest
           case Some(prblm) => Task(eventbus.publish(prblm))
           case None => Task.unit
         })
-    } yield (clusterWatch, eventbus)
+    yield (clusterWatch, eventbus)
 
   /** Simulate a kill via ShutDown(failOver) - still writes new snapshot. */
   protected final def simulateKillActiveNode(controller: TestController): Task[Unit] =

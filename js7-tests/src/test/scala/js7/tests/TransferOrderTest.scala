@@ -100,7 +100,7 @@ with BlockingItemUpdater
       // TransferOrders will succeed, all orders are transferable
       controller.api.executeCommand(TransferOrders(v1Workflow.id)).await(99.s).orThrow
 
-      for (orderId <- Seq(aOrderId, bOrderId, cOrderId, cChildOrderId, dOrderId))
+      for orderId <- Seq(aOrderId, bOrderId, cOrderId, cChildOrderId, dOrderId) do
         withClue(s"$orderId: ") {
           assert(controllerState.idToOrder(orderId).workflowId == v2Workflow.id)
         }

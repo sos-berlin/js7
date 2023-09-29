@@ -145,9 +145,9 @@ object PgpCommons
     message.useSync { in =>
       val buffer = new Array[Byte](BufferSize)
       var length = 1
-      while (length > 0) {
+      while length > 0 do {
         length = in.read(buffer)
-        if (length > 0) {
+        if length > 0 then {
           update(buffer, length)
         }
       }

@@ -29,7 +29,7 @@ extends SignableItemKey
   def isAnonymous = path.isAnonymous && versionId.isAnonymous
 
   def toSimpleString =
-    if (versionId.isAnonymous)
+    if versionId.isAnonymous then
       path.string
     else
       s"${path.string}$VersionSeparator${versionId.string}"
@@ -38,13 +38,13 @@ extends SignableItemKey
     path.isAssignableToAgent
 
   override def toString =
-    if (versionId.isAnonymous)
+    if versionId.isAnonymous then
       path.toString
     else
       s"${path.toTypedString}$VersionSeparator${versionId.string}"
 
   def pretty =
-    if (versionId.isAnonymous)
+    if versionId.isAnonymous then
       path.string
     else
       s"${path.toTypedString}$VersionSeparator${versionId.string}"
@@ -71,10 +71,10 @@ object VersionedItemId
 
   implicit def jsonDecoder[P <: VersionedItemPath: VersionedItemPath.Companion: Decoder]: Decoder[VersionedItemId[P]] =
     cursor =>
-      for {
+      for
         path <- cursor.getOrElse[P]("path")(implicitly[VersionedItemPath.Companion[P]].Anonymous)
         version <- cursor.getOrElse[VersionId]("versionId")(VersionId.Anonymous)
-      } yield VersionedItemId(path, version)
+      yield VersionedItemId(path, version)
 
   trait Companion[P <: VersionedItemPath] extends SignableItemKey.Companion[VersionedItemId[P]]
   {
@@ -109,10 +109,10 @@ object VersionedItemId
     implicit final lazy val jsonDecoder: Decoder[VersionedItemId[P]] = {
       implicit val x: Decoder[P] = P.jsonDecoder
       cursor =>
-        for {
+        for
           path <- cursor.getOrElse[P]("path")(implicitly[VersionedItemPath.Companion[P]].Anonymous)
           version <- cursor.getOrElse[VersionId]("versionId")(VersionId.Anonymous)
-        } yield path ~ version
+        yield path ~ version
     }
   }
 }

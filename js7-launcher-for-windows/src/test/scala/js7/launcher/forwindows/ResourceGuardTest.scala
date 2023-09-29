@@ -43,10 +43,10 @@ final class ResourceGuardTest extends OurTestSuite
     val released = Atomic(0)
     val g = ResourceGuard("RESOURCE") { _ => released += 1 }
     val notReleased = Atomic(0)
-    val futures = for (_ <- 1 to (sys.runtime.availableProcessors / 2).min(1)) yield
+    val futures = for _ <- 1 to (sys.runtime.availableProcessors / 2).min(1) yield
       Future {
         var stop = false
-        while (!stop) {
+        while !stop do {
           g.use {
             case Some("RESOURCE") =>
               assert(released() == 0)

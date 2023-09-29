@@ -19,10 +19,10 @@ object WorkflowControlPath extends VersionedControlPath.Companion[WorkflowContro
   protected def unchecked(string: String) = new WorkflowControlPath(WorkflowPath(string))
 
   override def checked(string: String): Checked[WorkflowControlPath] =
-    for {
+    for
       workflowPath <- WorkflowPath.checked(string)
       path <- super.checked(workflowPath.string)
-    } yield path
+    yield path
 
   @javaApi @throws[RuntimeException]("on invalid syntax")
   def of(validWorkflowControlPath: String): WorkflowControlPath =

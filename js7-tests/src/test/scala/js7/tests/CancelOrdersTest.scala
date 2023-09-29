@@ -152,7 +152,7 @@ with BlockingItemUpdater
       immediately = true)
   }
 
-  if (isUnix) {
+  if isUnix then {
     "Cancel with sigkillDelay" in {
       val order = FreshOrder(OrderId("🟩"), sigkillDelayWorkflow.path)
       val t = now
@@ -189,10 +189,10 @@ with BlockingItemUpdater
         OrderCancellationMarked(mode),
         OrderCancellationMarkedOnAgent,
         OrderProcessed(
-          if (isWindows)
+          if isWindows then
             Outcome.Killed(Outcome.Failed.rc(1))
           else
-            Outcome.killed(if (immediately) SIGKILL else SIGTERM)),
+            Outcome.killed(if immediately then SIGKILL else SIGTERM)),
         OrderProcessingKilled,
         OrderCancelled))
 
@@ -254,7 +254,7 @@ with BlockingItemUpdater
         OrderId("CANCEL-CHILD|🥕") <-: OrderCancellationMarked(mode),
         OrderId("CANCEL-CHILD|🥕") <-: OrderCancellationMarkedOnAgent,
         OrderId("CANCEL-CHILD|🥕") <-: OrderProcessed(
-          if (isWindows)
+          if isWindows then
             Outcome.Killed(Outcome.Failed.rc(1))
           else
             Outcome.killed(SIGTERM)),
@@ -349,20 +349,20 @@ with BlockingItemUpdater
   }
 
   "Cancel multiple orders with Batch" in {
-    val orders = for (i <- 1 to 3) yield
+    val orders = for i <- 1 to 3 yield
       FreshOrder(
         OrderId(i.toString),
         singleJobWorkflow.path, scheduledFor = Some(Timestamp.now + 99.seconds))
-    for (o <- orders) controller.addOrderBlocking(o)
-    for (o <- orders) eventWatch.await[OrderAttached](_.key == o.id)
+    for o <- orders do controller.addOrderBlocking(o)
+    for o <- orders do eventWatch.await[OrderAttached](_.key == o.id)
     val response = controller.api.executeCommand(
       CancelOrders(orders.map(_.id), CancellationMode.FreshOnly)
     ).await(99.seconds).orThrow
     assert(response == Response.Accepted)
-    for (o <- orders) eventWatch.await[OrderCancelled](_.key == o.id)
+    for o <- orders do eventWatch.await[OrderCancelled](_.key == o.id)
   }
 
-  if (isUnix) "Cancel a script having a SIGTERM trap writing to stdout" in {
+  if isUnix then "Cancel a script having a SIGTERM trap writing to stdout" in {
     val name = "TRAP-STDOUT"
     val orderId = OrderId(name)
     val v = VersionId(name)
@@ -417,7 +417,7 @@ with BlockingItemUpdater
       OrderCancelled))
   }
 
-  if (isUnix) "Cancel a script waiting properly for its child process, forwarding SIGTERM" in {
+  if isUnix then "Cancel a script waiting properly for its child process, forwarding SIGTERM" in {
     val name = "TRAP-CHILD"
     val orderId = OrderId(name)
     val v = VersionId(name)
@@ -472,7 +472,7 @@ with BlockingItemUpdater
       OrderCancelled))
   }
 
-  if (isUnix) "Cancel a script waiting for its child process" in {
+  if isUnix then "Cancel a script waiting for its child process" in {
     // The child processes are not killed, but cut off from stdout and stderr.
     val name = "EXIT-TRAP"
     val orderId = OrderId(name)
@@ -515,7 +515,7 @@ with BlockingItemUpdater
       OrderCancelled))
   }
 
-  if (isUnix) "Cancel a SIGTERMed script with a still running child process" - {
+  if isUnix then "Cancel a SIGTERMed script with a still running child process" - {
     "Without traps" in {
       run("TERMINATED-SCRIPT", "", SIGTERM)
     }
@@ -573,7 +573,7 @@ with BlockingItemUpdater
     }
   }
 
-  if (isUnix) "Sleep in another script" - {
+  if isUnix then "Sleep in another script" - {
     "Without traps" in {
       run("FOREGROUND", "", SIGTERM)
     }
@@ -632,7 +632,7 @@ with BlockingItemUpdater
     }
   }
 
-  if (isUnix) "Sleep in a background script and do not wait for it" in {
+  if isUnix then "Sleep in a background script and do not wait for it" in {
     // The child processes are not killed, but cut off from stdout and stderr.
     val name = "BACKGROUND"
     val orderId = OrderId(name)
@@ -724,7 +724,7 @@ with BlockingItemUpdater
 object CancelOrdersTest
 {
   private val sleepingExecutable = ShellScriptExecutable(
-    if (isWindows)
+    if isWindows then
        """@echo off
          |echo READY
          |ping -n %SLEEP% 127.0.0.1

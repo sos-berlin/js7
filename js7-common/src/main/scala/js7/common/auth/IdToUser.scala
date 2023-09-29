@@ -37,7 +37,7 @@ extends (UserId => Option[U])
 {
   private lazy val someAnonymous = Some(toUser(UserId.Anonymous, HashedPassword.newEmpty(), Set.empty, Nil))
   private val memoizedToUser = Memoizer.strict1((userId: UserId) =>
-    if (userId.isAnonymous)
+    if userId.isAnonymous then
       someAnonymous
     else
       userIdToRaw(userId).flatMap(rawToUser))
@@ -47,9 +47,9 @@ extends (UserId => Option[U])
   def distinguishedNameToIdsOrUser(distinguishedName: DistinguishedName): Checked[Either[Set[UserId], U]] = {
     val userIds = distinguishedNameToUserIds(distinguishedName)
     def unknownDN = Problem(s"Unknown distinguished name '$distinguishedName'")
-    if (userIds.isEmpty)
+    if userIds.isEmpty then
       Left(unknownDN)
-    else if (userIds.sizeIs == 1)
+    else if userIds.sizeIs == 1 then
       apply(userIds.head) match {
         case None => Left(unknownDN)  // should not happen
         case Some(user) => Right(Right(user))   // the authenticated user
@@ -86,7 +86,7 @@ object IdToUser
     val cfgObject = config.getValue(UsersConfigPath).asInstanceOf[ConfigObject]
 
     def userIdToRaw(userId: UserId): Option[RawUserAccount] =
-      if (cfg.hasPath(userId.string))
+      if cfg.hasPath(userId.string) then
         existentUserIdToRaw(userId)
       else {
         logger.debug(

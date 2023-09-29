@@ -53,7 +53,7 @@ final case class Order[+S <: Order.State](
   override def hashCode = id.hashCode
 
   def newForkedOrders(event: OrderForked): View[Order[Ready]] =
-    for (child <- event.children.view) yield
+    for child <- event.children.view yield
       Order(
         child.orderId,
         workflowPosition.copy(position = workflowPosition.position /
@@ -78,7 +78,7 @@ final case class Order[+S <: Order.State](
 
   def forkPosition: Checked[Position] = {
     val reversed = position.forkBranchReversed
-    if (reversed.isEmpty)
+    if reversed.isEmpty then
       Left(Problem.pure(s"$id is in state FailedInFork but not below a Fork instruction"))
     else
       Right(reversed.tail.reverse % reversed.head.nr)
@@ -89,14 +89,14 @@ final case class Order[+S <: Order.State](
     var problem: Problem = null
     var order: Order[Order.State] = this
     val it = events.iterator
-    while (it.hasNext && problem == null) {
+    while it.hasNext && problem == null do {
       val event = it.next()
       order.applyEvent(event) match {
         case Right(o) => order = o
         case Left(prblm) => problem = prblm
       }
     }
-    if (problem != null) Left(problem) else Right(order)
+    if problem != null then Left(problem) else Right(order)
   }
 
   def applyEvent(event: OrderEvent.OrderCoreEvent): Checked[Order[State]] = {
@@ -105,7 +105,7 @@ final case class Order[+S <: Order.State](
     def inapplicable = Left(inapplicableProblem)
 
     def check[A](okay: => Boolean, updated: A) =
-      if (force || okay) Right(updated) else inapplicable
+      if force || okay then Right(updated) else inapplicable
 
     event match {
       case _: OrderAdded | _: OrderAttachedToAgent =>
@@ -121,7 +121,7 @@ final case class Order[+S <: Order.State](
           copy(
             state = Processing(subagentId),
             stickySubagents =
-              if (stuckSubagentId)
+              if stuckSubagentId then
                 stickySubagents.head.copy(stuckSubagentId = subagentId) :: stickySubagents.tail
               else
                 stickySubagents,
@@ -144,7 +144,7 @@ final case class Order[+S <: Order.State](
       case OrderFailed(movedTo, outcome_) =>
         check((isFailable || isState[BetweenCycles]/*for ResetAgent*/) && isDetached,
           copy(
-            state = if (isState[Fresh]) FailedWhileFresh else Failed,
+            state = if isState[Fresh] then FailedWhileFresh else Failed,
             workflowPosition = workflowPosition.copy(position = movedTo),
             historicOutcomes = outcome_.fold(historicOutcomes)(o => historicOutcomes :+ HistoricOutcome(position, o))))
 
@@ -178,7 +178,7 @@ final case class Order[+S <: Order.State](
           !isSuspendedOrStopped &&
           (isAttached | isDetached), {
           var h = outcome.fold(historicOutcomes)(o => historicOutcomes :+ HistoricOutcome(position, o))
-          if (!h.lastOption.exists(_.outcome.isSucceeded))
+          if !h.lastOption.exists(_.outcome.isSucceeded) then
             h :+= HistoricOutcome(movedTo, Outcome.succeeded)
           copy(
             state = Ready,
@@ -215,7 +215,7 @@ final case class Order[+S <: Order.State](
           && (isDetached || isAttached),
           withPosition(to).copy(
             isResumed = false,
-            state = if (isState[Fresh]) state else Ready))
+            state = if isState[Fresh] then state else Ready))
 
       case OrderFinished(maybeOutcome) =>
         check(isState[Ready] && isDetached && !isSuspendedOrStopped,
@@ -251,7 +251,7 @@ final case class Order[+S <: Order.State](
             check(isState[IsFreshOrReady] || isState[Forked],
               copy(attachedState = Some(Attached(agentPath))))
           case _ =>
-            if (force)
+            if force then
               Right(copy(
                 attachedState = Some(Attached(agentPath))))
             else
@@ -304,24 +304,24 @@ final case class Order[+S <: Order.State](
           copy(
             isSuspended = true,
             mark = None,
-            state = if (isSuspendingWithKill && isState[ProcessingKilled]) Ready else state))
+            state = if isSuspendingWithKill && isState[ProcessingKilled] then Ready else state))
 
       case OrderStopped =>
         check(isFailable && isDetached,
           copy(
-            state = if (isState[Fresh]) StoppedWhileFresh else Stopped))
+            state = if isState[Fresh] then StoppedWhileFresh else Stopped))
 
       case OrderResumptionMarked(position, historyOperations, asSucceeded) =>
-        if (!force && !isMarkable)
+        if !force && !isMarkable then
           inapplicable
-        else if (isSuspended)
+        else if isSuspended then
           Right(copy(
             mark = Some(OrderMark.Resuming(position, historyOperations, asSucceeded)),
             isResumed = true))
-        else if (!force && (position.isDefined || historyOperations.nonEmpty))
+        else if !force && (position.isDefined || historyOperations.nonEmpty) then
             // Inhibited because we cannot be sure whether order will pass a fork barrier
           inapplicable
-        else if (!isSuspended && isSuspending)
+        else if !isSuspended && isSuspending then
           Right(copy(
             mark = None/*revert OrderSuspensionMarked*/,
             isResumed = true))
@@ -333,7 +333,7 @@ final case class Order[+S <: Order.State](
       case OrderResumed(maybePosition, historyOps, asSucceeded) =>
         import OrderResumed.{AppendHistoricOutcome, DeleteHistoricOutcome, InsertHistoricOutcome, ReplaceHistoricOutcome}
         val updatedHistoryOutcomes =
-          if (maybePosition.isEmpty && historyOps.isEmpty)
+          if maybePosition.isEmpty && historyOps.isEmpty then
             Right(historicOutcomes)
           else {
             // historyOutcomes positions should be unique, but is this sure?
@@ -345,8 +345,8 @@ final case class Order[+S <: Order.State](
             var positionFound = false
             val array = historicOutcomes.view
               .map { h =>
-                for (pos <- maybePosition) {
-                  if (!positionFound && (h.position == pos || h.position.normalized == pos)) {
+                for pos <- maybePosition do {
+                  if !positionFound && (h.position == pos || h.position.normalized == pos) then {
                     positionFound = true
                   }
                 }
@@ -372,12 +372,12 @@ final case class Order[+S <: Order.State](
 
             historyOps foreach {
               case ReplaceHistoricOutcome(pos, o) =>
-                for (i <- get(pos)) {
+                for i <- get(pos) do {
                   array(i).current = Some(HistoricOutcome(pos, o))
                 }
 
               case InsertHistoricOutcome(pos, newPos, o) =>
-                for (i <- get(pos)) {
+                for i <- get(pos) do {
                   array(i).inserted += HistoricOutcome(newPos, o)
                 }
 
@@ -385,7 +385,7 @@ final case class Order[+S <: Order.State](
                 append += HistoricOutcome(pos, o)
 
               case DeleteHistoricOutcome(pos) =>
-                for (i <- get(pos)) {
+                for i <- get(pos) do {
                   array(i).current = None
                 }
             }
@@ -407,9 +407,9 @@ final case class Order[+S <: Order.State](
                 isResumed = true,
                 mark = None,
                 state =
-                  if (/*isState[FailedWhileFresh] ||*/ isState[StoppedWhileFresh]) // ???
+                  if /*isState[FailedWhileFresh] ||*/ isState[StoppedWhileFresh] then // ???
                     Fresh
-                  else if (isState[Failed] || isState[Stopped] || isState[Broken])
+                  else if isState[Failed] || isState[Stopped] || isState[Broken] then
                     Ready
                   else
                     state,
@@ -425,7 +425,7 @@ final case class Order[+S <: Order.State](
 
       case _: OrderLocksReleased =>
         // LockState handles this event, too
-        if (force || isDetached /*&& isOrderFailedApplicable/*because it may come with OrderFailed*/*/)
+        if force || isDetached /*&& isOrderFailedApplicable/*because it may come with OrderFailed*/*/ then
           position
             .checkedParent
             .map(pos => withPosition(pos.increment))
@@ -491,7 +491,7 @@ final case class Order[+S <: Order.State](
               stickySubagents = StickySubagent(agentPath, subagentSelectionId) :: stickySubagents))
 
       case OrderStickySubagentLeaved =>
-        if ((isAttached || isDetached) && stickySubagents.nonEmpty)
+        if (isAttached || isDetached) && stickySubagents.nonEmpty then
           position.parent
             .toChecked(inapplicableProblem)
             .map(stickySubagentPosition =>
@@ -546,7 +546,7 @@ final case class Order[+S <: Order.State](
                 state = BetweenCycles(cycleState)))
 
       case OrderTransferred(workflowPosition) =>
-        if (isDetached)
+        if isDetached then
           Right(copy(workflowPosition = workflowPosition))
         else
           inapplicable
@@ -585,7 +585,7 @@ final case class Order[+S <: Order.State](
     workflowPosition = workflowPosition.copy(position = to))
 
   def maybeDelayedUntil: Option[Timestamp] =
-    if (isState[Fresh])
+    if isState[Fresh] then
       scheduledFor
     else
       state.maybeDelayedUntil
@@ -1010,7 +1010,7 @@ object Order
       "historicOutcomes" -> order.historicOutcomes.??.asJson)
 
   implicit val jsonDecoder: Decoder[Order[State]] = cursor =>
-    for {
+    for
       id <- cursor.get[OrderId]("id")
       workflowPosition <- cursor.get[WorkflowPosition]("workflowPosition")
       state <- cursor.get[State]("state")
@@ -1028,7 +1028,7 @@ object Order
       stopPositions <- cursor.getOrElse[Set[PositionOrLabel]]("stopPositions")(Set.empty)
       stickySubagentId <- cursor.getOrElse[List[StickySubagent]]("stickySubagents")(Nil)
       historicOutcomes <- cursor.getOrElse[Vector[HistoricOutcome]]("historicOutcomes")(Vector.empty)
-    } yield
+    yield
       Order(id, workflowPosition, state, arguments, scheduledFor, externalOrderKey, historicOutcomes,
         attachedState, parent, mark,
         isSuspended = isSuspended,

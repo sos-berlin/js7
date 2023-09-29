@@ -32,10 +32,10 @@ extends UnsignedSimpleItem
     BoardState(this)
 
   def postingOrderToNotice(scope: Scope): Checked[Notice] =
-    for {
+    for
       string <- postOrderToNoticeId.evalAsString(scope)
       notice <- toNotice(NoticeId(string))(scope)
-    } yield notice
+    yield notice
 
   private def evalEndOfLife(scope: Scope): Checked[Timestamp] =
     endOfLife
@@ -44,14 +44,14 @@ extends UnsignedSimpleItem
       .map(Timestamp.ofEpochMilli)
 
   def expectingOrderToNoticeId(scope: Scope): Checked[NoticeId] =
-    for {
+    for
       string <- expectOrderToNoticeId.evalAsString(scope)
       noticeId <- NoticeId.checked(string)
-    } yield noticeId
+    yield noticeId
 
   def toNotice(noticeId: NoticeId, endOfLife: Option[Timestamp] = None)(scope: Scope)
   : Checked[Notice] =
-    for (endOfLife <- endOfLife.fold(evalEndOfLife(scope))(Checked(_)))
+    for endOfLife <- endOfLife.fold(evalEndOfLife(scope))(Checked(_))
       yield Notice(noticeId, path, endOfLife)
 }
 

@@ -62,7 +62,7 @@ private[history] final class InMemoryHistory
 
       case event: JOrderForked =>
         val order = eventAndState.state.idToOrder.get(orderId)
-        for (child <- event.children.asScala) {
+        for child <- event.children.asScala do {
           _idToOrderEntry.get(child.orderId) match {
             case None =>
               _idToOrderEntry(child.orderId) = OrderEntry(child.orderId, Optional.of(orderId), order.arguments,
@@ -81,7 +81,7 @@ private[history] final class InMemoryHistory
       case _: JOrderJoined =>
         val order = eventAndState.previousState.idToOrder.get(orderId)
         val orderState = getOrThrow(order.checkedState(JOrder.forked))
-        for (id <- orderState.childOrderIds.asScala) {
+        for id <- orderState.childOrderIds.asScala do {
           _idToOrderEntry(id) = _idToOrderEntry(id).copy(terminatedAt = Optional.of(terminatedAt/*timestamp*/))
         }
 
@@ -106,7 +106,7 @@ private[history] final class InMemoryHistory
       case _: JOrderProcessingStarted =>
         val order = eventAndState.state.idToOrder.get(orderId)
         var entry = _idToOrderEntry(orderId)
-        if (!entry.startedAt.isPresent) {
+        if !entry.startedAt.isPresent then {
           entry = entry.copy(
             startWorkflowPosition = Optional.of(order.workflowPosition),
             startedAt = Optional.of(startedAt/*timestamp*/))

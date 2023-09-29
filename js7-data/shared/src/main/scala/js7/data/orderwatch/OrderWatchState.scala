@@ -211,7 +211,7 @@ extends UnsignedSimpleItemState
       .map(o => copy(externalToState = o))
 
   private def unexpected(msg: String): Checked[this.type] =
-    if (isStrict)
+    if isStrict then
       Left(Problem(msg))
     else {
       logger.error(msg)

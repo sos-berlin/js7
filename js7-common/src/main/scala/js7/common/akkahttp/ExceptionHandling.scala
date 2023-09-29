@@ -29,7 +29,7 @@ trait ExceptionHandling
         complete(e.statusCode -> e.problem)
 
       case e: akka.pattern.AskTimeoutException =>
-        if (whenShuttingDown.isCompleted) {
+        if whenShuttingDown.isCompleted then {
           extractRequest { request =>
             webLogger.debug(toLogMessage(request, e), e.nullIfNoStackTrace)
             complete(ServiceUnavailable -> Problem.pure("Shutting down"))
@@ -40,7 +40,7 @@ trait ExceptionHandling
       case e: ProblemException =>
         // TODO Better use Checked instead of ProblemException
         extractRequest { request =>
-          for (t <- e.ifStackTrace) webLogger.debug(toLogMessage(request, e), t)
+          for t <- e.ifStackTrace do webLogger.debug(toLogMessage(request, e), t)
           complete(e.problem.httpStatusCode -> e.problem)
         }
 
@@ -56,7 +56,7 @@ trait ExceptionHandling
       //} else {
       //  webLogger.warn(msg, e.nullIfNoStackTrace)
       //}
-      if (respondWithException)
+      if respondWithException then
         complete(status -> Problem.fromThrowable(e))
       else
         complete(status)

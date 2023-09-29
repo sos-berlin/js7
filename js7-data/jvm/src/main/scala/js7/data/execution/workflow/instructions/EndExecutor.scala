@@ -37,12 +37,12 @@ extends EventInstructionExecutor with PositionInstructionExecutor
 
   def nextMove(instruction: End, order: Order[Order.State], state: StateView) =
     Right(
-      if (order.position.branchPath == order.innerBlock)
+      if order.position.branchPath == order.innerBlock then
         None
       else
-        for {
+        for
           parentPos <- order.position.parent
           exec = instructionToExecutor(state.instruction(order.workflowId /: parentPos))
           next <- exec.subworkflowEndToPosition(parentPos)
-        } yield OrderMoved(next))
+        yield OrderMoved(next))
 }

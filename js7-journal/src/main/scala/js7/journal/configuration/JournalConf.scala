@@ -35,11 +35,11 @@ object JournalConf
     val delay = config.getDuration("js7.journal.delay").toFiniteDuration
     lazy val syncDelay = config.getDuration("js7.journal.sync-delay").toFiniteDuration
     val slowCheckState = config.getBoolean(checkStateKey)
-    if (slowCheckState) logger.info(s"Slowing down due to $checkStateKey = true")
+    if slowCheckState then logger.info(s"Slowing down due to $checkStateKey = true")
     new JournalConf(
       syncOnCommit = syncOnCommit,
       simulateSync = config.durationOption("js7.journal.simulate-sync").map(_.toFiniteDuration),
-      delay = (if (syncOnCommit) syncDelay max delay else delay) min 1.s,
+      delay = (if syncOnCommit then syncDelay max delay else delay) min 1.s,
       coalesceEventLimit = config.as[Int]("js7.journal.coalesce-event-limit"),  // TODO Limit byte count to avoid OutOfMemoryError?
       snapshotPeriod = config.getDuration("js7.journal.snapshot.period").toFiniteDuration,
       snapshotSizeLimit = config.as("js7.journal.snapshot.when-bigger-than")(StringAsByteCountWithDecimalPrefix),

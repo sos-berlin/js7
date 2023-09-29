@@ -102,7 +102,7 @@ trait SnapshotableStateBuilder[S <: SnapshotableState[S]]
     synchronized {  // synchronize with asynchronous execution of synchronizedStateFuture
       try {
         recordCount += 1
-        if (stamped.eventId <= _eventId) {
+        if stamped.eventId <= _eventId then {
           throw new IllegalArgumentException(s"EventId is not ascending: ${EventId.toString(_eventId)} >= ${stamped.toString.truncateWithEllipsis(100)}")
         }
         try onAddEvent(stamped)
@@ -110,7 +110,7 @@ trait SnapshotableStateBuilder[S <: SnapshotableState[S]]
           throw new RuntimeException(s"Event failed: $stamped", t)
         }
         _eventCount += 1
-        if (_firstEventId == EventId.BeforeFirst) {
+        if _firstEventId == EventId.BeforeFirst then {
           _firstEventId = stamped.eventId
         }
         _eventId = stamped.eventId
@@ -121,7 +121,7 @@ trait SnapshotableStateBuilder[S <: SnapshotableState[S]]
 
   def logStatistics(byteCount: Option[Long]): Unit = {
     val elapsed = since.elapsed
-    if (elapsed >= 1.s) {
+    if elapsed >= 1.s then {
       logger.debug(
         itemsPerSecondString(elapsed, _snapshotCount + eventCount, "snapshots+events") +
         byteCount.fold("")(byteCount =>
@@ -129,7 +129,7 @@ trait SnapshotableStateBuilder[S <: SnapshotableState[S]]
           " " + toKBGB(byteCount)
         ) + " read")
     }
-    if (snapshotCount + eventCount > 0) {
+    if snapshotCount + eventCount > 0 then {
       val age = (Timestamp.now - EventId.toTimestamp(eventId)).withMillis(0).pretty
       logger.info(s"Recovered last EventId is ${EventId.toString(eventId)}, emitted $age ago " +
         s"($snapshotCount snapshot objects and $eventCount events" +
@@ -171,7 +171,7 @@ trait SnapshotableStateBuilder[S <: SnapshotableState[S]]
   final def totalEventCount = _journalHeader.toOption.fold(0L)(_.totalEventCount) + _eventCount
 
   private def lastEventIdTimestamp: Timestamp =
-    if (eventId == EventId.BeforeFirst) Timestamp.now
+    if eventId == EventId.BeforeFirst then Timestamp.now
     else EventId.toTimestamp(eventId)
 }
 

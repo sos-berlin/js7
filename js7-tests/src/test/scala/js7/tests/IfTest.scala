@@ -28,11 +28,11 @@ final class IfTest extends OurTestSuite
     val directoryProvider = new DirectoryProvider(
       agentPaths = Seq(agentPath), items = Seq(TestWorkflow), testName = Some("IfTest"))
     autoClosing(directoryProvider) { _ =>
-      for (a <- directoryProvider.agentEnvs) a.writeExecutable(RelativePathExecutable(s"TEST$sh"), ":")
-      for (a <- directoryProvider.agentEnvs) a.writeExecutable(RelativePathExecutable(s"TEST-RC$sh"), jobScript)
+      for a <- directoryProvider.agentEnvs do a.writeExecutable(RelativePathExecutable(s"TEST$sh"), ":")
+      for a <- directoryProvider.agentEnvs do a.writeExecutable(RelativePathExecutable(s"TEST-RC$sh"), jobScript)
 
       directoryProvider.run { (controller, _) =>
-        for (returnCode <- ExpectedEvents.keys) withClue(s"$returnCode: ") {
+        for returnCode <- ExpectedEvents.keys do withClue(s"$returnCode: ") {
           val orderId = OrderId("🔺" + returnCode.number)
           controller.addOrderBlocking(newOrder(orderId, returnCode))
           controller.eventWatch.await[OrderTerminated](_.key == orderId)
@@ -56,7 +56,7 @@ final class IfTest extends OurTestSuite
     val directoryProvider = new DirectoryProvider(
       agentPaths = Seq(agentPath), items = Seq(workflow), testName = Some("IfTest")): @unchecked
     autoClosing(directoryProvider) { directoryProvider =>
-      for (a <- directoryProvider.agentEnvs) a.writeExecutable(RelativePathExecutable(s"TEST$sh"), ":")
+      for a <- directoryProvider.agentEnvs do a.writeExecutable(RelativePathExecutable(s"TEST$sh"), ":")
       directoryProvider.run { (controller, _) =>
         val orderId = OrderId("❌")
         controller.addOrderBlocking(FreshOrder(orderId, TestWorkflow.id.path))
@@ -91,7 +91,7 @@ object IfTest {
   private val subagentId = toLocalSubagentId(agentPath)
 
   private val jobScript =
-    if (isWindows)
+    if isWindows then
       """@echo off
         |echo JOB-KEY=JOB-RESULT >>%SCHEDULER_RETURN_VALUES%
         |exit %SCHEDULER_PARAM_RETURN_CODE%

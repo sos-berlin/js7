@@ -59,12 +59,12 @@ trait RealEventWatch extends EventWatch
         val request = lazyRequest()  // Access now in previous iteration computed values lastEventId and limit (see below)
         // Timeout is renewed after every fetched event
         deadline = request.timeout.map(t => now + (t min EventRequest.LongTimeout))
-        if (request.limit <= 0)
+        if request.limit <= 0 then
           NoMoreObservable
         else
           when[E](request, predicate) map {
             case TearableEventSeq.Torn(tornAfter) =>
-              throw if (onlyAcks && isActiveNode) AckFromActiveClusterNodeProblem.throwable
+              throw if onlyAcks && isActiveNode then AckFromActiveClusterNodeProblem.throwable
               else new TornException(after = request.after, tornEventId = tornAfter)
 
             case EventSeq.Empty(lastEventId) =>
@@ -73,8 +73,8 @@ trait RealEventWatch extends EventWatch
                 () => request.copy[E](after = lastEventId, timeout = deadline.map(_.timeLeftOrZero)))
 
             case EventSeq.NonEmpty(events) =>
-              if (events.isEmpty) throw new IllegalStateException("EventSeq.NonEmpty(EMPTY)")  // Do not loop
-              val iterator = if (onlyAcks) lastOfIterator(events) else events
+              if events.isEmpty then throw new IllegalStateException("EventSeq.NonEmpty(EMPTY)")  // Do not loop
+              val iterator = if onlyAcks then lastOfIterator(events) else events
               var lastEventId = request.after
               var limit = request.limit
               val observable = closeableIteratorToObservable(iterator)
@@ -98,7 +98,7 @@ trait RealEventWatch extends EventWatch
   final def observeEventIds(maybeTimeout: Option[FiniteDuration])
   : Task[Checked[Observable[EventId]]] =
     Task {
-      if (isActiveNode)
+      if isActiveNode then
         Left(AckFromActiveClusterNodeProblem)
       else
         Right(observeEventIds2(maybeTimeout))
@@ -223,7 +223,7 @@ trait RealEventWatch extends EventWatch
                   Task.defer {
                     val head = iterator.next()
                     // Don't compare head.timestamp, timestamp may be much older)
-                    if (EventId.toTimestamp(head.eventId) + tornOlder < Timestamp.now) {
+                    if EventId.toTimestamp(head.eventId) + tornOlder < Timestamp.now then {
                       iterator.close()
                       // Simulate a torn EventSeq
                       Task.pure(TearableEventSeq.Torn(committedEventIdSync.last))
@@ -234,9 +234,9 @@ trait RealEventWatch extends EventWatch
 
             case empty @ EventSeq.Empty(lastEventId) =>
               Task.defer {
-                if (deadline.forall(_.hasTimeLeft)) {
+                if deadline.forall(_.hasTimeLeft) then {
                   val preventOverheating =
-                    if (lastEventId < committedEventIdSync.last) {
+                    if lastEventId < committedEventIdSync.last then {
                       // May happen due to race condition ???
                       val delay = overheatingDurations.next()
                       logger.debug(s"committedEventIdSync.whenAvailable(after=$after," +
@@ -265,7 +265,7 @@ trait RealEventWatch extends EventWatch
     limit: Int)
   : TearableEventSeq[CloseableIterator, A] = {
     val last = lastAddedEventId
-    if (after > last) {
+    if after > last then {
       logger.debug(s"The future event requested is not yet available, " +
         s"lastAddedEventId=${EventId.toString(last)} after=${EventId.toString(after)}")
       EventSeq.Empty(last)  // Future event requested is not yet available
@@ -277,7 +277,7 @@ trait RealEventWatch extends EventWatch
             .tapEach { o => lastEventId = o.eventId }
             .collect { case stamped if collect isDefinedAt stamped.value => stamped map collect }
             .take(limit)
-          if (eventIterator.isEmpty) {
+          if eventIterator.isEmpty then {
             eventIterator.close()
             EventSeq.Empty(lastEventId)
           } else
@@ -348,7 +348,7 @@ object RealEventWatch
 
   private def lastOfIterator[A <: AnyRef](iterator: CloseableIterator[A]): CloseableIterator[A] = {
     var last = null.asInstanceOf[A]
-    while (iterator.hasNext) last = iterator.next()
+    while iterator.hasNext do last = iterator.next()
     iterator.close()
     CloseableIterator.fromIterator(Option(last).iterator)
   }

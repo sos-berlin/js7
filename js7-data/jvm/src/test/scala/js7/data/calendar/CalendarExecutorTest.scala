@@ -61,10 +61,10 @@ final class CalendarExecutorTest extends OurTestSuite
       .orThrow
 
     def f(orderId: OrderId): Timestamp = {
-      val checkedTimeInterval = for {
+      val checkedTimeInterval = for
         executor <- CalendarExecutor.checked(weekCalendar, timezone)
         timeInterval <- executor.orderIdToTimeInterval(orderId)
-      } yield timeInterval
+      yield timeInterval
       assert(checkedTimeInterval.orThrow.duration == 7 * 24.h)
       checkedTimeInterval.orThrow.start
     }

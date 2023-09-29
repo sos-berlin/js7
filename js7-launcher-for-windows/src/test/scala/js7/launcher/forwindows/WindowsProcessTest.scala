@@ -21,10 +21,10 @@ import scala.util.{Failure, Try}
 
 final class WindowsProcessTest extends OurTestSuite
 {
-  if (isWindows) {
+  if isWindows then {
     // TODO Test fails
     val commandCharset = Charset forName "cp850"
-    for (withUserProfile <- Seq(false, true))
+    for withUserProfile <- Seq(false, true) do
       s"withUserProfile=$withUserProfile" - {
         lazy val logon = sys.props.get(TargetSystemProperty)
           .filter(_.nonEmpty)
@@ -178,7 +178,7 @@ final class WindowsProcessTest extends OurTestSuite
           delete(scriptFile)
         }
 
-        for (user <- logon.map(_.userName)) {
+        for user <- logon.map(_.userName) do {
           "makeFileExecutableForUser" in {
             check("(RX)")(WindowsProcess.makeFileExecutableForUser(_, user))
           }
@@ -220,7 +220,7 @@ final class WindowsProcessTest extends OurTestSuite
           }
         }
 
-        if (false) {  // Own user: stdout is empty. Other user: DLL initialization error, user32.dll
+        if false then {  // Own user: stdout is empty. Other user: DLL initialization error, user32.dll
           "Java via script" in {
             val scriptFile = createTempFile("test-", ".cmd")
             scriptFile.contentString = """

@@ -33,13 +33,13 @@ object SignableItem
   def signedJsonDecoder[S](implicit S: ItemContainer.Companion[S])
   : Decoder[Signed[SignableItem]] = {
       import S.signableItemJsonCodec
-      c => for {
+      c => for
         signedString <- c.get[SignedString]("signed")
         parsed <- io.circe.parser.parse(signedString.string)
           .left.map(error => DecodingFailure(error.toString, c.history))
         item <- parsed.as[SignableItem]
         itemRevision <- c.get[Option[ItemRevision]]("itemRevision")
-      } yield {
+      yield {
         // Add itemRevision because it was not included in the SignedString
         val revItem = (item, itemRevision) match {
           case (item: SignableSimpleItem, Some(rev)) => item.withRevision(Some(rev))

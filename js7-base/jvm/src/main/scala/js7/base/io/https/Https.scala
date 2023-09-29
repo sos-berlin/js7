@@ -66,8 +66,7 @@ object Https
           new OneAliasX509ExtendedX509KeyManager(km, a)
 
         case km: X509KeyManager =>
-          new OneAliasX509KeyManager
-          {
+          new OneAliasX509KeyManager {
             val keyManager = km
             val alias = a
           }

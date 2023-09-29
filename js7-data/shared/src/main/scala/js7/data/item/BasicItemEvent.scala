@@ -51,10 +51,10 @@ object BasicItemEvent
     // COMPATIBLE with version 2.1
     implicit def jsonDecoder[S](implicit S: ItemContainer.Companion[S]): Decoder[ItemAttachable] = {
       import S.inventoryItemKeyJsonCodec
-      c => for {
+      c => for
         key <- c.get[InventoryItemKey]("key")
         delegateId <- S.decodeDelegateIdOrAgentPath(c)
-      } yield ItemAttachable(key, delegateId)
+      yield ItemAttachable(key, delegateId)
     }
   }
 
@@ -69,11 +69,11 @@ object BasicItemEvent
     // COMPATIBLE with version 2.1
     implicit def jsonDecoder[S](implicit S: ItemContainer.Companion[S]): Decoder[ItemAttached] = {
       import S.inventoryItemKeyJsonCodec
-      c => for {
+      c => for
         key <- c.get[InventoryItemKey]("key")
         rev <- c.get[Option[ItemRevision]]("itemRevision")
         delegateId <- S.decodeDelegateIdOrAgentPath(c)
-      } yield ItemAttached(key, rev, delegateId)
+      yield ItemAttached(key, rev, delegateId)
     }
   }
 
@@ -108,10 +108,10 @@ object BasicItemEvent
     // COMPATIBLE with version 2.1
     implicit def jsonDecoder[S](implicit S: ItemContainer.Companion[S]): Decoder[ItemDetachable] = {
       import S.inventoryItemKeyJsonCodec
-      c => for {
+      c => for
         key <- c.get[InventoryItemKey]("key")
         delegateId <- S.decodeDelegateIdOrAgentPath(c)
-      } yield ItemDetachable(key, delegateId)
+      yield ItemDetachable(key, delegateId)
     }
   }
 
@@ -136,10 +136,10 @@ object BasicItemEvent
     // COMPATIBLE with version 2.1
     implicit def jsonDecoder[S](implicit S: ItemContainer.Companion[S]): Decoder[ItemDetached] = {
       import S.inventoryItemKeyJsonCodec
-      c => for {
+      c => for
         key <- c.get[InventoryItemKey]("key")
         delegateId <- S.decodeDelegateIdOrAgentPath(c)
-      } yield ItemDetached(key, delegateId)
+      yield ItemDetached(key, delegateId)
     }
   }
 

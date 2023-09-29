@@ -34,19 +34,19 @@ import scala.concurrent.Future
 final class CommandWebServerTest extends OurAsyncTestSuite
 {
   private val n = 1_000 //1_000_000
-  private lazy val orderIds = (for (i <- 1 to n) yield OrderId(s"A-MEDIUM-LONG-ORDER-$i")).toSet
+  private lazy val orderIds = (for i <- 1 to n yield OrderId(s"A-MEDIUM-LONG-ORDER-$i")).toSet
   private lazy val coupleController = CoupleController(
     AgentPath("AGENT"),
     AgentRunId(JournalId.random()),
     EventId.BeforeFirst,
     ControllerRunId(JournalId.random()))
-  private lazy val clientResource = for {
+  private lazy val clientResource = for
     as <- actorSystemResource("CommandWebServerTest", testConfig)
     webServer <- AkkaWebServer.httpResource(findFreeTcpPort(), testConfig, route(as))(as)
     client <- Resource.fromAutoCloseable(Task(AgentClient(
       Admission(Uri(s"${webServer.localUri}"), userAndPassword = None))(
       as)))
-  } yield client
+  yield client
 
   "Big response" in {
     clientResource.use(_.commandExecute(coupleController))

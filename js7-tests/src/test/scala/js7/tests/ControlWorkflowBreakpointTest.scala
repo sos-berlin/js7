@@ -242,7 +242,7 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
       controller.api.addOrder(FreshOrder(orderId, workflow.id.path, deleteWhenTerminated = true))
         .await(99.s).orThrow
 
-      for (position <- positions) {
+      for position <- positions do {
         eventId = eventWatch.await[OrderSuspended](_.key == orderId, after = eventId).last.eventId
         assert(controllerState.idToOrder(orderId).position == position)
         controller.api.executeCommand(ResumeOrder(orderId)).await(99.s).orThrow

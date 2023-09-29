@@ -102,8 +102,8 @@ with Service.StoppableByRequest
           case (file, Failure(_)) => prevFileToTime.get(file).exists(_.isFailure)
           case (file, t @ Success(_)) => prevFileToTime.get(file).contains(t)
         }
-        (if (diff.isEmpty) {
-          if (fileToTime.nonEmpty) logger.debug(s"onHttpsKeyOrCertChanged but no change detected")
+        (if diff.isEmpty then {
+          if fileToTime.nonEmpty then logger.debug(s"onHttpsKeyOrCertChanged but no change detected")
           Task.pure(previouslyAllocated)
         } else {
           logger.info(s"Restart HTTPS web server due to changed keys or certificates: ${
@@ -132,7 +132,7 @@ with Service.StoppableByRequest
               errorLogged = true
               logger.error(
                 s"🔴 Web server for $bindingAndResource: ${throwable.toStringWithCauses}")
-              for (t <- throwable.ifStackTrace) logger.debug(s"💥 ${t.toStringWithCauses}", t)
+              for t <- throwable.ifStackTrace do logger.debug(s"💥 ${t.toStringWithCauses}", t)
               Task
                 .race(
                   untilStopRequested,
@@ -141,7 +141,7 @@ with Service.StoppableByRequest
           }
           .map(_.map { case (fileTimes, allocated) =>
             _addrToHttpsFileToTime(binding.address) = fileTimes
-            if (errorLogged) logger.info(s"🟢 Web server for $bindingAndResource restarted")
+            if errorLogged then logger.info(s"🟢 Web server for $bindingAndResource restarted")
             allocated
           })
       }
@@ -157,7 +157,7 @@ with Service.StoppableByRequest
 
   private def logDelay(duration: FiniteDuration, name: String) =
     Task(logger.debug(
-      s"Restart $name ${if (duration.isZero) "now" else "in " + duration.pretty} due to failure"))
+      s"Restart $name ${if duration.isZero then "now" else "in " + duration.pretty} due to failure"))
 
   override def toString =
     s"AkkaWebServer(${webServerPorts mkString " "})"
@@ -214,7 +214,7 @@ object AkkaWebServer
 
       Service.resource(Task(
         new AkkaWebServer(
-          for (webServerBinding <- webServerBindings.toVector) yield
+          for webServerBinding <- webServerBindings.toVector yield
             BindingAndResource(
               webServerBinding,
               SinglePortAkkaWebServer.resource(

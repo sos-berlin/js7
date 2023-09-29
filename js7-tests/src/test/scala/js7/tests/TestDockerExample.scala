@@ -41,7 +41,7 @@ object TestDockerExample
     val directory =
       temporaryDirectory / "TestDockerExample" sideEffect { directory =>
         println(s"Using directory $directory")
-        if (!Files.exists(directory))
+        if !Files.exists(directory) then
           createDirectory(directory)
         else {
           println(s"Deleting $directory")
@@ -55,10 +55,10 @@ object TestDockerExample
   private def run(directory: Path): Unit = {
     val env = new TestDockerEnvironment(TestAgentPaths, directory)
     def provide(path: String) = {
-      val dir = if (path.startsWith("controller")) directory else env.agentsDir
+      val dir = if path.startsWith("controller") then directory else env.agentsDir
       createDirectories((dir / path).getParent)
       JavaResource(s"js7/install/docker/volumes/$path").copyToFile(dir / path)
-      if (path contains "/executables/") setPosixFilePermissions(dir / path, PosixFilePermissions.fromString("rwx------"))
+      if path contains "/executables/" then setPosixFilePermissions(dir / path, PosixFilePermissions.fromString("rwx------"))
     }
     provide("controller/config/private/private.conf")
     provide("provider/config/live/მაგალითად.workflow.json")
@@ -70,7 +70,7 @@ object TestDockerExample
     env.controllerDir / "config" / "controller.conf" := """js7.web.server.auth.loopback-is-public = on"""
     withCloser { implicit closer =>
       val conf = ControllerConfiguration.forTest(configAndData = env.controllerDir, httpPort = Some(4444))
-      val agents = for (agentPath <- TestAgentPaths) yield {
+      val agents = for agentPath <- TestAgentPaths yield {
         val agent = TestAgent
           .start(AgentConfiguration.forTest(
             configAndData = env.agentDir(agentPath),
@@ -82,7 +82,7 @@ object TestDockerExample
       }
       JavaShutdownHook.add("TestDockerExample") {
         print('\n')
-        (for (agent <- agents) yield {
+        (for agent <- agents yield {
           agent.executeCommandAsSystemUser(ShutDown(Some(SIGTERM)))
           agent.untilTerminated
         }) await 10.s

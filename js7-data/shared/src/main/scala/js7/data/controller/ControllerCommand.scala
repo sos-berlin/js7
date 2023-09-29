@@ -89,10 +89,10 @@ object ControllerCommand extends CommonCommand.Companion
           (o.mode != CancellationMode.Default).thenList("mode" -> o.mode.asJson))
 
     implicit val jsonDecoder: Decoder[CancelOrders] = c =>
-      for {
+      for
         orderIds <- c.get[Vector[OrderId]]("orderIds")
         mode <- c.getOrElse[CancellationMode]("mode")(CancellationMode.Default)
-      } yield CancelOrders(orderIds, mode)
+      yield CancelOrders(orderIds, mode)
   }
 
   final case class PostNotice(
@@ -142,9 +142,9 @@ object ControllerCommand extends CommonCommand.Companion
         o.restart.thenList("restart" -> Json.True))
 
     implicit val jsonDecoder: Decoder[EmergencyStop] = c =>
-      for {
+      for
         restart <- c.getOrElse[Boolean]("restart")(false)
-      } yield EmergencyStop(restart)
+      yield EmergencyStop(restart)
   }
 
   /** Some outer component no longer needs the events until (including) the given `untilEventId`.
@@ -182,12 +182,12 @@ object ControllerCommand extends CommonCommand.Companion
         "dontNotifyActiveNode" -> o.dontNotifyActiveNode.?.asJson)
 
     implicit val jsonDecoder: Decoder[ShutDown] = c =>
-      for {
+      for
         restart <- c.getOrElse[Boolean]("restart")(false)
         clusterAction <- c.get[Option[ClusterAction]]("clusterAction")
         suppressSnapshot <- c.getOrElse[Boolean]("suppressSnapshot")(false)
         dontNotifyActiveNode <- c.getOrElse[Boolean]("dontNotifyActiveNode")(false)
-      } yield ShutDown(restart, clusterAction, suppressSnapshot, dontNotifyActiveNode)
+      yield ShutDown(restart, clusterAction, suppressSnapshot, dontNotifyActiveNode)
   }
 
   final case class ResumeOrder(

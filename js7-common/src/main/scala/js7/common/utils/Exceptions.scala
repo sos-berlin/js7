@@ -19,7 +19,7 @@ object Exceptions {
 
   def repeatUntilNoException[A](deadline: Deadline, delayNext: FiniteDuration)(body: => A): A = {
     var tried = Try { body }
-    while (tried.isFailure && deadline.hasTimeLeft()) {
+    while tried.isFailure && deadline.hasTimeLeft() do {
       sleep(delayNext min deadline.timeLeftOrZero)
       tried = Try { body }
     }
@@ -61,7 +61,7 @@ object Exceptions {
       case suppressed: Throwable if suppressed ne t =>
         t.addSuppressed(suppressed)
         val suppresseds = t.getSuppressed
-        if (suppresseds.isEmpty || (suppresseds.last ne suppressed)) // Suppression disabled?
+        if suppresseds.isEmpty || (suppresseds.last ne suppressed) then // Suppression disabled?
           logger.warn(s"While handling an exception, this second exception is ignored: $suppressed\n" + s"Original exception is: $t", suppressed)
     }
 

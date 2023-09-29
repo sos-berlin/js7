@@ -30,7 +30,7 @@ object WindowsProcessCredential
     WindowsUserName(cred.userName.toString)
 
   private def readCredential[A](key: String)(read: CREDENTIAL => A): Checked[A] =
-    if (!isWindows)
+    if !isWindows then
       Left(Problem.pure("Windows credential can only be read under Microsoft Windows"))
     else
       try {

@@ -36,10 +36,10 @@ extends EventInstructionExecutor with PositionInstructionExecutor
               // If order should start, change nextMove function, too!
               //? order.ifState[Fresh].map(_ => OrderStarted).toList :::
               Right((order.id <-: OrderMoved(order.position.increment, Some(reason))) :: Nil))
-            .orElse(if (order.isProcessable && order.isDetached)
+            .orElse(if order.isProcessable && order.isDetached then
               attach(order, job.agentPath)
             else {
-              val checked = for {
+              val checked = for
                 job <- state.workflowJob(order.workflowPosition)
                 scope <- state.toPureOrderScope(order)
                 maybeSubagentSelectionId <- job.subagentSelectionId.traverse(_
@@ -52,7 +52,7 @@ extends EventInstructionExecutor with PositionInstructionExecutor
                     .orElse(state
                       .keyToItem(SubagentItem)
                       .checked(o.toSubagentId)))
-              } yield Nil
+              yield Nil
               Some(
                 checked.left.flatMap(problem => Right(
                   (order.id <-: OrderFailedIntermediate_(Some(Outcome.Disrupted(problem)))) :: Nil)))
@@ -83,21 +83,21 @@ extends EventInstructionExecutor with PositionInstructionExecutor
         .getOrElse(Right(Nil)))
 
   def nextMove(instruction: Execute, order: Order[Order.State], state: StateView) =
-    for (job <- state.workflowJob(order.workflowPosition)) yield
-      for (reason <- skippedReason(order, job, state)) yield
+    for job <- state.workflowJob(order.workflowPosition) yield
+      for reason <- skippedReason(order, job, state) yield
         OrderMoved(order.position.increment, Some(reason))
 
   override def toObstacles(
     order: Order[Order.State],
     calculator: OrderObstacleCalculator)
   : Checked[Set[OrderObstacle]] =
-    for {
+    for
       workflow <- calculator.stateView.idToWorkflow.checked(order.workflowId)
       zone <- workflow.timeZone.toZoneId
       job <- workflow.checkedWorkflowJob(order.position)
       jobKey <- workflow.positionToJobKey(order.position)
-    } yield
-      if (order.isState[IsFreshOrReady] && !order.forceJobAdmission) {
+    yield
+      if order.isState[IsFreshOrReady] && !order.forceJobAdmission then {
         val admissionObstacles = job.admissionTimeScheme
           .filterNot(_ => skippedReason(order, job, calculator.stateView).isDefined)
           .flatMap(_

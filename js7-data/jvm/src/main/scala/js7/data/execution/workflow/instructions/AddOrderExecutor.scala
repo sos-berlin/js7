@@ -20,13 +20,13 @@ extends EventInstructionExecutor
       .getOrElse(
         order.state match {
           case Order.Ready =>
-            val events = for {
+            val events = for
               workflowId <- state.workflowPathToId(addOrder.workflowPath)
               scope <- state.toImpureOrderExecutingScope(order, clock.now())
               addedOrderId <- addOrder.orderId.evalAsString(scope).flatMap(OrderId.checked)
               args <- evalExpressionMap(addOrder.arguments, scope)
-            } yield
-              if (state.idToOrder.isDefinedAt(addedOrderId))
+            yield
+              if state.idToOrder.isDefinedAt(addedOrderId) then
                 View(OrderFailedIntermediate_(
                   Some(Outcome.Failed.fromProblem(
                     DuplicateKey("OrderId", addedOrderId.string)))))

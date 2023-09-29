@@ -63,7 +63,7 @@ final class CommandQueueTest extends OurTestSuite
     assert(commandQueueSucceeded == expected)
 
     val twoOrders = toOrder("B") :: toOrder("C") :: Nil
-    for (o <- twoOrders) commandQueue.enqueue(AgentDriver.Queueable.AttachOrder(o, TestAgentPath))
+    for o <- twoOrders do commandQueue.enqueue(AgentDriver.Queueable.AttachOrder(o, TestAgentPath))
       .runSyncUnsafe(99.s)
     waitForCondition(99.s, 10.ms) { commandQueueSucceeded == expected }
     assert(commandQueueSucceeded == expected)
@@ -75,7 +75,7 @@ final class CommandQueueTest extends OurTestSuite
     assert(commandQueueSucceeded == expected)
 
     val fiveOrders = toOrder("D") :: toOrder("E") :: toOrder("F") :: toOrder("G") :: toOrder("H") :: Nil
-    for (o <- fiveOrders) commandQueue.enqueue(AgentDriver.Queueable.AttachOrder(o, TestAgentPath))
+    for o <- fiveOrders do commandQueue.enqueue(AgentDriver.Queueable.AttachOrder(o, TestAgentPath))
       .runSyncUnsafe(99.s)
     expected += fiveOrders take 1 map toQueuedInputResponse
     waitForCondition(99.s, 10.ms) { commandQueueSucceeded == expected }

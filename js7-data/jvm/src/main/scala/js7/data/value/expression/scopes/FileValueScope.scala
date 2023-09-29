@@ -39,11 +39,11 @@ extends Scope with AutoCloseable
   private def toFile(contentExpr: Expression, filenameExpr: Option[Expression])
     (implicit scope: Scope)
   : Checked[StringValue] =
-    for {
+    for
       content <- contentExpr.evalAsString
       filenamePattern <- toFilenamePattern(filenameExpr)
       file <- fileValueState.toFile(this, filenamePattern, content)
-    } yield StringValue(file.toString)
+    yield StringValue(file.toString)
 
   private def toFilenamePattern(filenameExpr: Option[Expression])(implicit scope: Scope)
   : Checked[String] =

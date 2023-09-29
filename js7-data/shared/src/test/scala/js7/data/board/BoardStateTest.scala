@@ -291,7 +291,7 @@ final class BoardStateTest extends OurAsyncTestSuite
   }
 
   "BoardState snapshot" in {
-    (for (snapshot <- boardState.toSnapshotObservable.toListL) yield {
+    (for snapshot <- boardState.toSnapshotObservable.toListL yield {
       assert(snapshot == List(board, notice))
 
       // Order of addExpectation is irrelevant

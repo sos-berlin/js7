@@ -59,12 +59,12 @@ extends Scope
     variableNameExpr: Option[Expression])
     (implicit s: Scope)
   : Checked[Value] =
-    for {
+    for
       jobResourcePathString <- jobResourcePathExpr.evalAsString
       jobResourcePath <- JobResourcePath.checked(jobResourcePathString)
       variableName <- variableNameExpr.traverse(_.evalAsString)
       value <- jobResourceVariable(jobResourcePath, variableName)
-    } yield value
+    yield value
 
   private def jobResourceVariable(jrPath: JobResourcePath, variableName: Option[String])
     (implicit s: Scope)

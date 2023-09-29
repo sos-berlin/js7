@@ -55,7 +55,7 @@ final class CrashKillScriptTest extends OurTestSuite with HasCloser with BeforeA
 
   "add" in {
     crashKillScript.add(TaskId("1-111"), pid = None)
-    assert(file.contentString == """"test-kill.sh" --kill-agent-task-id=1-111""" + (if (isWindows) "\r\n" else "\n"))
+    assert(file.contentString == """"test-kill.sh" --kill-agent-task-id=1-111""" + (if isWindows then "\r\n" else "\n"))
   }
 
   "add more" in {
@@ -100,11 +100,11 @@ final class CrashKillScriptTest extends OurTestSuite with HasCloser with BeforeA
 
   "Tries to suppress code injection" in {
     val evilJobPaths = Vector("/x$(evil)", "/x|evil ", "/x'|evil")
-    for ((evilJobPath, i) <- evilJobPaths.zipWithIndex) {
+    for (evilJobPath, i) <- evilJobPaths.zipWithIndex do {
       crashKillScript.add(TaskId(s"$i"), pid = None)
     }
     assert(lines.toSet == (evilJobPaths.indices map { i => s""""test-kill.sh" --kill-agent-task-id=$i""" }).toSet)
-    for (i <- evilJobPaths.indices) {
+    for i <- evilJobPaths.indices do {
       crashKillScript.remove(TaskId(s"$i"))
     }
   }

@@ -19,10 +19,10 @@ extends EventInstructionExecutor
       .orElse(start(order))
       .orElse(order
         .ifState[Ready].map(_ =>
-          for {
+          for
             scope <- state.toImpureOrderExecutingScope(order, clock.now())
             question <- prompt.question.evalAs(GoodValue.companion, scope)
-          } yield (order.id <-: OrderPrompted(question)) :: Nil))
+          yield (order.id <-: OrderPrompted(question)) :: Nil))
       .getOrElse(Right(Nil))
 
   override def toObstacles(order: Order[Order.State], calculator: OrderObstacleCalculator) =

@@ -30,11 +30,11 @@ object VersionId extends GenericString.NonEmpty[VersionId]
   def generate(isKnown: VersionId => Boolean = _ => false): VersionId = {
     val ts = Timestamp.now.toIsoString
     val short = VersionId("#" + ts.take(19) + ts.drop(19+4)/*tz*/)  // Without milliseconds ".123"
-    if (!isKnown(short))
+    if !isKnown(short) then
       short
     else {
       val v = VersionId("#" + ts)  // With milliseconds
-      if (!isKnown(v))
+      if !isKnown(v) then
         v
       else
         Iterator.from(1).map(i => VersionId(s"${v.string}-$i")).collectFirst { case w if !isKnown(w) => w } .get
@@ -42,7 +42,7 @@ object VersionId extends GenericString.NonEmpty[VersionId]
   }
 
   override implicit val jsonEncoder: Encoder[VersionId] = o => {
-    if (o.isAnonymous) throw new IllegalArgumentException("JSON-serialize VersionId.Anonymous?")
+    if o.isAnonymous then throw new IllegalArgumentException("JSON-serialize VersionId.Anonymous?")
     Json.fromString(o.string)
   }
 
@@ -52,12 +52,12 @@ object VersionId extends GenericString.NonEmpty[VersionId]
   protected[item] def unchecked(string: String) = new VersionId(string)
 
   override def checked(string: String): Checked[VersionId] =
-    for {
+    for
       versionId <- super.checked(string) match {
         case Right(VersionId.Anonymous) => Left(Problem.pure("VersionId.Anonymous?"))
         case o => o
       }
-    } yield versionId
+    yield versionId
 
   @javaApi @throws[RuntimeException]("on invalid syntax")
   def of(validVersionId: String): VersionId =

@@ -93,11 +93,11 @@ object ActiveClusterNodeSelector {
                   }))
             .onErrorRestartLoop(()) { (throwable, _, tryAgain) =>
               logger.warn(throwable.toStringWithCauses)
-              if (throwable.getStackTrace.nonEmpty) logger.debug(s"💥 $throwable", throwable)
+              if throwable.getStackTrace.nonEmpty then logger.debug(s"💥 $throwable", throwable)
               tryAgain(()).delayExecution(failureDelayIterator.next())
             }
             .map { case (api, clusterNodeState) =>
-              val x = if (clusterNodeState.isActive) "active" else "maybe passive"
+              val x = if clusterNodeState.isActive then "active" else "maybe passive"
               logger.info(s"Selected $x ${clusterNodeState.nodeId} ${api.baseUri}")
               api
             }
@@ -137,7 +137,7 @@ object ActiveClusterNodeSelector {
           s"${api.baseUri} => ${clusterNodeState.clusterState.getClass.simpleScalaName}"
       }
       .mkString(" · ")
-    if (maybeActive.isEmpty) logger.warn(
+    if maybeActive.isEmpty then logger.warn(
       s"No cluster node (out of $n) seems to be active${clusterStates.nonEmpty ?? s": $clusterStates"}")
   }
 }

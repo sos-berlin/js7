@@ -35,7 +35,7 @@ extends Actor {
   private var nextCleanup: Cancelable = null
 
   override def postStop() = {
-    if (nextCleanup != null) nextCleanup.cancel()
+    if nextCleanup != null then nextCleanup.cancel()
     tokenToSession.values
       .groupMap(_.currentUser.id)(_.sessionToken)
       .view.mapValues(_.toVector.sortBy(_.number))
@@ -50,11 +50,11 @@ extends Actor {
   def receive = {
     case Command.Login(_user: User, clientVersion, tokenOption, isEternalSession) =>
       val user = _user.asInstanceOf[SimpleUser]
-      for (t <- tokenOption) delete(t, reason = "second login")
+      for t <- tokenOption do delete(t, reason = "second login")
       val token = SessionToken.generateFromSecretString(SecretStringGenerator.newSecretString())
       assertThat(!tokenToSession.contains(token), "Duplicate generated SessionToken")  // Must not happen
       val session = newSession(SessionInit(token, user))
-      if (!isEternalSession) {
+      if !isEternalSession then {
         session.touch(sessionTimeout)
       }
       tokenToSession.insert(session.sessionToken, session)
@@ -62,7 +62,7 @@ extends Actor {
       logger.info(s"${session.sessionToken} for ${user.id}: Login" +
         clientVersion.fold("")(v =>
           " (" + v + (
-            if (v == Js7Version)
+            if v == Js7Version then
               " ✔)"
             else
               s" ⚠️ version differs from this server's version $Js7Version!)")) +
@@ -82,7 +82,7 @@ extends Actor {
       scheduleNextCleanup()
 
     case Command.Logout(token) =>
-      for (session <- tokenToSession.remove(token)) {
+      for session <- tokenToSession.remove(token) do {
         logger.info(s"$token for ${session.currentUser.id}: Logout")
       }
       sender() ! Completed
@@ -103,10 +103,10 @@ extends Actor {
           Left(InvalidSessionTokenProblem)
 
         case (Some(session), _) =>
-          if (handleTimeout(session)) {
+          if handleTimeout(session) then {
             Left(InvalidSessionTokenProblem)
           } else {
-            if (!session.isEternal) {
+            if !session.isEternal then {
               session.touch(sessionTimeout)
             }
             Right(session)
@@ -133,8 +133,8 @@ extends Actor {
     * This may happen only once and the original user must be Anonymous.
     */
   private def tryUpdateLatelyAuthenticatedUser(newUser: SimpleUser, session: Session): Checked[Session] = {
-    if (session.sessionInit.loginUser.isAnonymous &&
-        session.tryUpdateUser(newUser))  // Mutate session!
+    if session.sessionInit.loginUser.isAnonymous &&
+        session.tryUpdateUser(newUser) then  // Mutate session!
     {
       logger.info(s"${session.sessionToken} for ${session.sessionInit.loginUser.id} switched to ${newUser.id}")
       Right(session)
@@ -146,14 +146,14 @@ extends Actor {
   }
 
   private def scheduleNextCleanup(): Unit =
-    if (nextCleanup == null && tokenToSession.values.exists(o => !o.isEternal)) {
+    if nextCleanup == null && tokenToSession.values.exists(o => !o.isEternal) then {
       nextCleanup = scheduler.scheduleOnce(cleanupInterval) {
         self ! CleanUp
       }
     }
 
   private def handleTimeout(session: S): Boolean =
-    if (!session.isAlive) {
+    if !session.isAlive then {
       delete(session.sessionToken, reason = s"timeout (last used at ${session.touchedAt})")
       true
     } else

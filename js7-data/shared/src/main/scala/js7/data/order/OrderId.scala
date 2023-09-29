@@ -11,7 +11,7 @@ final case class OrderId private(string: String) extends GenericString
 {
   import OrderId.*
 
-  if (string.isEmpty) throw new IllegalArgumentException("OrderId must not be empty")
+  if string.isEmpty then throw new IllegalArgumentException("OrderId must not be empty")
 
   // Faster than generic hashCode of the case class:
   override def hashCode = string.hashCode
@@ -24,9 +24,9 @@ final case class OrderId private(string: String) extends GenericString
     withChild(childId).orThrow
 
   def withChild(childId: String): Checked[OrderId] =
-    if (childId.isEmpty)
+    if childId.isEmpty then
       Left(EmptyStringProblem("OrderId.withChild"))
-    else if (childId.exists(ReservedCharacters))
+    else if childId.exists(ReservedCharacters) then
       Left(Problem("OrderId must not contain reserved characters: " +
         ReservedCharacters.mkString(", ")))
     else
@@ -52,9 +52,9 @@ final case class OrderId private(string: String) extends GenericString
     string.indexOf(ChildSeparator) == -1
 
   def checkedNameSyntax: Checked[this.type] =
-    if (string.isEmpty)
+    if string.isEmpty then
       Left(EmptyStringProblem("OrderId"))
-    else if (string.exists(ReservedCharacters))
+    else if string.exists(ReservedCharacters) then
       Left(Problem("OrderId must not contain reserved characters: " +
         ReservedCharacters.mkString(", ")))
     else
@@ -82,7 +82,7 @@ object OrderId extends GenericString.NonEmpty[OrderId]
       new ChildId(string)
 
     override def checked(string: String) =
-      if (string contains ChildSeparator)
+      if string contains ChildSeparator then
         Left(Problem.pure(s"Order ChildId must not contain '$ChildSeparator'"))
       else
         super.checked(string)

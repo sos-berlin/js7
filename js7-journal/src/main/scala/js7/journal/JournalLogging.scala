@@ -9,9 +9,9 @@ trait JournalLogging
 
   protected final val journalLogger = new JournalLogger(
     syncOrFlushString =
-      if (!conf.syncOnCommit)
+      if !conf.syncOnCommit then
         "flush"
-      else if (conf.simulateSync.isDefined)
+      else if conf.simulateSync.isDefined then
         "~sync"
       else
         "sync ",

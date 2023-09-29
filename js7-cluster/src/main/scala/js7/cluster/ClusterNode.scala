@@ -168,14 +168,14 @@ extends Service.StoppableByRequest
           Task {
             prepared.expectingStartBackupCommand match {
               case None =>
-                if (!clusterConf.isBackup)
+                if !clusterConf.isBackup then
                   Left(ClusterNodeIsNotBackupProblem)
                 else
                   Left(Problem.pure("Cluster node is not ready to accept a backup node configuration"))
               case Some(promise) =>
-                if (command.setting.passiveId != ownId)
+                if command.setting.passiveId != ownId then
                   Left(Problem.pure(s"$command sent to wrong $ownId"))
-                else if (command.setting.activeId == ownId)
+                else if command.setting.activeId == ownId then
                   Left(Problem.pure(s"$command must not be sent to the active node"))
                 else {
                   promise.trySuccess(command)
@@ -195,7 +195,7 @@ extends Service.StoppableByRequest
         case ClusterCommand.ClusterInhibitActivation(duration) =>
           activationInhibitor.inhibitActivation(duration)
             .flatMapT(inhibited =>
-              if (inhibited)
+              if inhibited then
                 Task.pure(Right(ClusterInhibitActivation.Response(None)))
               else {
                 workingNodeStarted.get
@@ -228,7 +228,7 @@ extends Service.StoppableByRequest
              _: ClusterCommand.ClusterRecouple |
              _: ClusterCommand.ClusterPassiveDown =>
 
-          if (_testDontNotifyActiveNodeAboutShutdown)
+          if _testDontNotifyActiveNodeAboutShutdown then
           // Avoid immediate recoupling
             Task.left(Problem(
               s"${command.getClass.simpleScalaName} command rejected due to dontNotifyActiveNode"))
@@ -320,8 +320,8 @@ object ClusterNode
             s"Own cluster $ownId does not match clusterState=${recovered.clusterState}"))
     }
 
-    for (_ <- checked) yield
-      for {
+    for _ <- checked yield
+      for
         clusterWatchCounterpart <-
           ClusterWatchCounterpart.resource(clusterConf, clusterConf.timing, testEventBus)
         common <- ClusterCommon.
@@ -330,7 +330,7 @@ object ClusterNode
         clusterNode <- resource(recovered, common, journalLocation, clusterConf,
           new EventIdGenerator(eventIdClock),
           testEventBus)
-      } yield clusterNode
+      yield clusterNode
   }
 
   private def resource[S <: ClusterableState[S] /*: diffx.Diff*/ : Tag](
@@ -349,7 +349,7 @@ object ClusterNode
   : Resource[Task, ClusterNode[S]] = {
     import clusterConf.{config, ownId}
 
-    if (recovered.clusterState != Empty) logger.info(
+    if recovered.clusterState != Empty then logger.info(
       s"This is cluster $ownId, recovered ClusterState is ${recovered.clusterState}")
 
     val keepTruncatedRest = config.getBoolean("js7.journal.cluster.keep-truncated-rest")
@@ -369,7 +369,7 @@ object ClusterNode
             injectedActiveNodeName = Some(cmd.activeNodeName)))
         .memoize
       val currentPassiveState = Task.defer {
-        if (startedPromise.future.isCompleted)
+        if startedPromise.future.isCompleted then
           passiveClusterNode.flatMap(_.state.map(s => Some(Right(s))))
         else
           Task.some(Left(BackupClusterNodeNotAppointed))
@@ -451,7 +451,7 @@ object ClusterNode
     }
 
     def truncateJournalAndRecoverAgain(otherFailedOver: FailedOver): Option[Recovered[S]] =
-      for (file <- truncateJournal(journalLocation.fileBase, otherFailedOver.failedAt, keepTruncatedRest))
+      for file <- truncateJournal(journalLocation.fileBase, otherFailedOver.failedAt, keepTruncatedRest)
         yield recoverFromTruncated(file, otherFailedOver.failedAt)
 
     def recoverFromTruncated(file: Path, failedAt: JournalPosition): Recovered[S] = {
@@ -473,7 +473,7 @@ object ClusterNode
 
     def preparePassiveNode(recovered: Recovered[S], clusterState: HasNodes): Prepared[S] = {
       logger.info(
-        if (clusterState.isInstanceOf[Coupled])
+        if clusterState.isInstanceOf[Coupled] then
           s"Remaining a passive cluster node following the active ${clusterState.activeId}"
         else
           s"Remaining a passive cluster node trying to follow the active ${clusterState.activeId}")
@@ -505,7 +505,7 @@ object ClusterNode
 
     val prepared = recovered.clusterState match {
       case Empty =>
-        if (clusterConf.isPrimary) {
+        if clusterConf.isPrimary then {
           logger.debug(s"Active primary cluster $ownId, no backup node appointed")
           Prepared(
             currentPassiveReplicatedState = Task.none,
@@ -514,18 +514,18 @@ object ClusterNode
           prepareBackupNodeWithEmptyClusterState()
 
       case clusterState: HasNodes =>
-        if (ownId == clusterState.activeId)
+        if ownId == clusterState.activeId then
           startAsActiveNodeWithBackup()
         else
           preparePassiveNode(recovered, clusterState)
     }
 
     Service.resource(
-      for {
+      for
         currentStateRef <- Ref[Task].of(
           prepared.currentPassiveReplicatedState
             .map(_.toChecked(ClusterNodeIsNotReadyProblem).flatten))
-      } yield new ClusterNode(
+      yield new ClusterNode(
         prepared, passiveOrWorkingNode, currentStateRef,
         clusterConf,
         eventIdGenerator, eventBus.narrowPublisher, common, recovered.extract, actorSystem))

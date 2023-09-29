@@ -47,9 +47,9 @@ object ParallelismCounter {
   def expect[A](parallelismMaximum: Option[Int], total: Option[Int])(body: ParallelismCounter => A):A = {
     val counter = new ParallelismCounter
     val result = body(counter)
-    for (o <- total; if counter.total != o)
+    for o <- total; if counter.total != o do
       throw new RuntimeException(s"Total number of executions ${counter.total} != expected $o")
-    for (o <- parallelismMaximum; if counter.maximum != o)
+    for o <- parallelismMaximum; if counter.maximum != o do
       throw new RuntimeException(s"Parallelism maximum ${counter.maximum} != expected $o")
     result
   }

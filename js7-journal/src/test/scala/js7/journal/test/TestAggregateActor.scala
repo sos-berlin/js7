@@ -84,7 +84,7 @@ extends KeyedJournalingActor[TestState, TestEvent] {
           }
 
         case Command.AppendAsync(string) =>
-          for (c <- string) {
+          for c <- string do {
             val before = persistedEventId
             persist(TestEvent.Appended(c), async = true) { (e, s) =>
               assert(before < persistedEventId)

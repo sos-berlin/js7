@@ -88,7 +88,7 @@ final class SubagentSelectionTest extends OurTestSuite with SubagentTester with 
       .await(99.s)
       .orThrow
 
-    for (id <- subagentItems.map(_.id)) {
+    for id <- subagentItems.map(_.id) do {
       eventWatch.await[ItemAttached](_.event.key == id)
       eventWatch.await[SubagentCoupled](_.key == id)
     }
@@ -141,11 +141,11 @@ final class SubagentSelectionTest extends OurTestSuite with SubagentTester with 
     val orderIds = Vector.fill(n) { nextOrderId() }
     controller.api.addOrders(Observable.fromIterable(orderIds).map(toOrder))
       .await(99.s).orThrow
-    val started = for (orderId <- orderIds) yield
+    val started = for orderId <- orderIds yield
       eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
         .head.value.event
     assert(started.flatMap(_.subagentId).groupMapReduce(identity)(_ => 1)(_ + _) == expected)
-    for (orderId <- orderIds) eventWatch.await[OrderDeleted](_.key == orderId, after = eventId)
+    for orderId <- orderIds do eventWatch.await[OrderDeleted](_.key == orderId, after = eventId)
   }
 
   "Change SubagentSelection" in {

@@ -41,9 +41,9 @@ final class ExecuteExecutorTest extends OurTestSuite
   }
 
   "No or non-skipped AdmissionTimeScheme" in {
-    for (position <- View(Position(0)/*no scheme*/, Position(1)/*not skipped*/)) {
+    for position <- View(Position(0)/*no scheme*/, Position(1)/*not skipped*/) do {
       val execute = workflow.instruction_[Execute](position).orThrow
-      for (order <- orders.filter(_.position == position)) {
+      for order <- orders.filter(_.position == position) do {
         assert(executorService.toEvents(execute, order, stateView) ==
           Right((order.id <-: OrderAttachable(agentPath)) :: Nil))
         assert(executorService.nextMove(execute, order, stateView) ==
@@ -57,7 +57,7 @@ final class ExecuteExecutorTest extends OurTestSuite
     val execute = workflow.instruction_[Execute](position).orThrow
 
     "OrderId date has admission time" in {
-      for (orderId <- View(OrderId("#2021-09-03#2-Fresh"), OrderId("#2021-09-03#2-Ready"))) {
+      for orderId <- View(OrderId("#2021-09-03#2-Fresh"), OrderId("#2021-09-03#2-Ready")) do {
         val order = stateView.idToOrder(orderId)
         assert(executorService.toEvents(execute, order, stateView) ==
           Right((order.id <-: OrderAttachable(agentPath)) :: Nil))

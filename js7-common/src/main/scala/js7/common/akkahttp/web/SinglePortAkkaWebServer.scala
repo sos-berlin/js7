@@ -147,7 +147,7 @@ private object SinglePortAkkaWebServer
     private val whenRealRoute: Future[Route] =
       boundRoute.webServerRoute
         .tapEval(realRoute => Task {
-          if (_realRoute.compareAndSet(None, Some(realRoute))) {
+          if _realRoute.compareAndSet(None, Some(realRoute)) then {
             val serviceName = boundRoute.serviceName.emptyToNone.fold("")(_ + " ")
             val securityHint = boundRoute.startupSecurityHint(binding.scheme)
             logger.info(s"$name ${serviceName}web services are available$securityHint")

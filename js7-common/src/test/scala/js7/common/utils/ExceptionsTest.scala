@@ -19,13 +19,13 @@ final class ExceptionsTest extends OurTestSuite {
   "repeatUntilNoException" in {
     // Warm-up
     var _i = 0
-    repeatUntilNoException(10.s, 10.ms) { _i += 1;if (_i < 2) sys.error("TEST") }
+    repeatUntilNoException(10.s, 10.ms) { _i += 1;if _i < 2 then sys.error("TEST") }
 
     val runningSince = now
     var i = 0
     repeatUntilNoException(10.s, 100.ms) {
       i += 1
-      if (i < 5) sys.error("TEST")
+      if i < 5 then sys.error("TEST")
     }
     assert(i == 5)
     val duration = runningSince.elapsed

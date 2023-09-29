@@ -24,7 +24,7 @@ final class AgentUris private(agentUri: Uri)
   def apply(relativeUri: String) = toUri(stripLeadingSlash(relativeUri))
 
   def api(relativeUri: String) =
-    if (relativeUri.isEmpty)
+    if relativeUri.isEmpty then
       toUri("api")
     else
       toUri(s"api/${stripLeadingSlash(relativeUri)}")

@@ -24,7 +24,7 @@ trait ReceiveLoggingActor extends SimpleStateActor
   }
 
   abstract override protected def become(state: String)(recv: Receive): Unit =
-    if (isLoggingEnabled) {
+    if isLoggingEnabled then {
       logBecome(state)
       super.become(state)(debugReceive(recv))
     } else
@@ -44,7 +44,7 @@ trait ReceiveLoggingActor extends SimpleStateActor
       }
 
       override def applyOrElse[A1, B1 >: Unit](x: A1, default: A1 => B1): B1 =
-        if (isLoggingEnabled) {
+        if isLoggingEnabled then {
           super.applyOrElse(x, default)
         } else
           recv.applyOrElse(x, default)
@@ -57,14 +57,14 @@ object ReceiveLoggingActor {
   trait WithStash extends akka.actor.Stash with ReceiveLoggingActor
   {
     override def stash() = {
-      if (isLoggingEnabled) {
+      if isLoggingEnabled then {
         logger.log(receiveLogLevel, Logger.Actor, s"${context.self.path.pretty} stash")
       }
       super.stash()
     }
 
     override def unstashAll() = {
-      if (isLoggingEnabled) {
+      if isLoggingEnabled then {
         logger.log(receiveLogLevel, Logger.Actor, s"${context.self.path.pretty} unstashAll")
       }
       super.unstashAll()

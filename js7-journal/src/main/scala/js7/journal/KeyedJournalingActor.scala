@@ -45,7 +45,7 @@ trait KeyedJournalingActor[S <: JournaledState[S], E <: Event]
     }
 
   private def toKeyedEvent(event: E): KeyedEvent[E] = {
-    if (isTest) assert(event.keyCompanion eq E)
+    if isTest then assert(event.keyCompanion eq E)
     key.asInstanceOf[event.keyCompanion.Key] <-: event
   }
 

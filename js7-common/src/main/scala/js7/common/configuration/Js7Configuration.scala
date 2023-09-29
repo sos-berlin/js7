@@ -13,7 +13,7 @@ object Js7Configuration
       "js7.version" -> BuildInfo.version,
       "js7.longVersion" -> BuildInfo.longVersion,
       "js7.test" -> (
-        if (sys.props.contains("test.speed"))
+        if sys.props.contains("test.speed") then
           "off"
         else
           sys.props.getOrElse("js7.test", "off")))

@@ -36,7 +36,7 @@ class RichProcess protected[process](
   protected final def isKilling = _isKilling
 
   protected def onSigkill(): Unit =
-    if (process.isAlive) {
+    if process.isAlive then {
       logger.debug("destroyForcibly")
       process.destroyForcibly()
     }
@@ -56,7 +56,7 @@ class RichProcess protected[process](
 
   final def sendProcessSignal(signal: ProcessSignal): Task[Unit] =
     Task.defer {
-      if (signal != SIGKILL && !isWindows)
+      if signal != SIGKILL && !isWindows then
         destroy(force = false)
       else
         ifAlive("sendProcessSignal SIGKILL")(
@@ -82,7 +82,7 @@ class RichProcess protected[process](
 
   private def executeKillScript(args: Seq[String]): Task[Unit] =
     ifAlive("executeKillScript")(
-      if (isMac)
+      if isMac then
         Task {
           // TODO On MacOS, the kill script may kill a foreign process like the developers IDE
           logger.warn("Execution of kill script is suppressed on MacOS")
@@ -101,7 +101,7 @@ class RichProcess protected[process](
                 waitForProcessTermination(JavaProcess(onKillProcess))
               }) >> Task {
                 val exitCode = onKillProcess.exitValue
-                val logLevel = if (exitCode == 0) LogLevel.Debug else LogLevel.Warn
+                val logLevel = if exitCode == 0 then LogLevel.Debug else LogLevel.Warn
                 logger.log(logLevel, s"Kill script '${args(0)}' has returned exit code $exitCode")
               })
         })
@@ -123,12 +123,12 @@ class RichProcess protected[process](
   private def destroyWithUnixCommand(pid: Pid, force: Boolean): Task[Unit] =
     ifAlive("destroyWithUnixCommand") {
       val argsPattern =
-        if (isWindows) processConfiguration.killForWindows
-        else if (force) processConfiguration.killWithSigkill
+        if isWindows then processConfiguration.killForWindows
+        else if force then processConfiguration.killWithSigkill
         else processConfiguration.killWithSigterm
-      if (argsPattern.isEmpty)
+      if argsPattern.isEmpty then
         Task(destroyWithJava(force))
-      else if (!argsPattern.contains("$pid")) {
+      else if !argsPattern.contains("$pid") then {
         logger.error("Missing '$pid' in configured kill command")
         Task(destroyWithJava(force))
       } else {
@@ -138,7 +138,7 @@ class RichProcess protected[process](
         }
         executeKillCommand(args)
           .flatMap { rc =>
-            if (rc.isSuccess)
+            if rc.isSuccess then
               Task.unit
             else Task {
               logger.warn(s"Could not kill with system command: ${args.mkString(" ")} => $rc")
@@ -150,7 +150,7 @@ class RichProcess protected[process](
 
   private def ifAlive(label: String)(body: Task[Unit]): Task[Unit] =
     Task.defer(
-      if (!process.isAlive)
+      if !process.isAlive then
         Task(logger.debug(s"$label: Process has already terminated"))
       else
         body)
@@ -174,7 +174,7 @@ class RichProcess protected[process](
     }
 
   private def destroyWithJava(force: Boolean): Unit =
-    if (force) {
+    if force then {
       logger.debug("destroyForcibly")
       process.destroyForcibly()
     } else {
@@ -210,7 +210,7 @@ object RichProcess
 
   def tryDeleteFiles(files: Iterable[Path]): Boolean = {
     var allFilesDeleted = true
-    for (file <- files) {
+    for file <- files do {
       try {
         logger.debug(s"Delete file '$file'")
         delete(file)

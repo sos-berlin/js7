@@ -12,8 +12,8 @@ object ValuePrinter
 
   def appendNameToExpression(sb: StringBuilder, nameToExpr: Map[String, Expression]): Unit = {
     sb.append('{')
-    for ((name, expr) <- nameToExpr) {
-      if (sb.last != '{') sb.append(", ")
+    for (name, expr) <- nameToExpr do {
+      if sb.last != '{' then sb.append(", ")
       appendQuoted(sb, name)
       sb.append(": ")
       sb.append(expr.toString)
@@ -29,9 +29,9 @@ object ValuePrinter
       case ListValue(values) =>
         sb.append('[')
         val it = values.iterator
-        if (it.hasNext) {
+        if it.hasNext then {
           appendValue(sb, it.next())
-          while (it.hasNext) {
+          while it.hasNext do {
             sb.append(", ")
             appendValue(sb, it.next())
           }
@@ -52,11 +52,11 @@ object ValuePrinter
   private val quotedChars = Set[Char]('\"', '$', '\n')
 
   def appendQuoted(sb: StringBuilder, string: String): Unit = {
-    if (string.isEmpty) {
+    if string.isEmpty then {
       sb.append("\"\"")
-    } else if (!string.contains('\'')
+    } else if !string.contains('\'')
       && (preferSingleOverDoubleQuotes || string.exists(quotedChars))
-      && !string.contains('\r')/*because '-parsing removes \r*/)
+      && !string.contains('\r')/*because '-parsing removes \r*/ then
     {
       sb.append('\'')
       sb.append(string)
@@ -69,7 +69,7 @@ object ValuePrinter
   }
 
   def appendQuotedContent(sb: StringBuilder, string: String): Unit =
-    if (string.nonEmpty) {
+    if string.nonEmpty then {
       string foreach {
         case '\\' => sb.append("\\\\")
         case '"' => sb.append("\\\"")

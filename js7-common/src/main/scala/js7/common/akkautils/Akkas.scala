@@ -65,7 +65,7 @@ object Akkas
     * Only once callable.
     */
   private def terminateFuture(actorSystem: ActorSystem): Future[Terminated] = {
-    if (actorSystem.whenTerminated.isCompleted)
+    if actorSystem.whenTerminated.isCompleted then
       actorSystem.whenTerminated
     else {
       import actorSystem.dispatcher  // The ExecutionContext will be shut down here !!!
@@ -81,7 +81,7 @@ object Akkas
         shutDownHttpConnectionPools(actorSystem),  // May block a long time (>99s)
         timeoutPromise.future)
       ).flatMap { _ =>
-        if (timeoutPromise.isCompleted) {
+        if timeoutPromise.isCompleted then {
           logger.debug(s"ActorSystem('${actorSystem.name}') shutdownAllConnectionPools() timed out after ${poolShutdownTimeout.pretty}")
         }
         timer.cancel()
@@ -91,7 +91,7 @@ object Akkas
   }
 
   def shutDownHttpConnectionPools(actorSystem: ActorSystem): Future[Unit] =
-    if (actorSystem.hasExtension(Http)) {
+    if actorSystem.hasExtension(Http) then {
       logger.debug(s"ActorSystem('${actorSystem.name}') shutdownAllConnectionPools()")
       Http(actorSystem).shutdownAllConnectionPools()
     } else
@@ -103,7 +103,7 @@ object Akkas
   def encodeAsActorName(o: String): String = {
     val a = Uri.Path.Segment(o, Uri.Path.Empty).toString
     encodeAsActorName2(
-      if (a startsWith "$") "%24" + a.tail
+      if a startsWith "$" then "%24" + a.tail
       else a)
   }
 
@@ -115,11 +115,11 @@ object Akkas
 
   private def encodeAsActorName2(string: String): String = {
     val sb = new StringBuilder(string.length + 10*3)
-    for (c <- string) {
-      if (isValidChar(c)) {
+    for c <- string do {
+      if isValidChar(c) then {
         sb += c
       } else {
-        if (c >= 0x80) {
+        if c >= 0x80 then {
           sb += '%'
           sb += toHex(c.toInt >> 12)
           sb += toHex((c.toInt >> 8) & 0x0f)
@@ -135,7 +135,7 @@ object Akkas
   /** When an actor name to be re-used, the previous actor may still terminate, occupying the name. */
   def uniqueActorName(name: String)(implicit context: ActorContext): String = {
     var _name = name
-    if (context.child(name).isDefined) {
+    if context.child(name).isDefined then {
       _name = Iterator.from(2).map(i => s"$name~$i").find { nam => context.child(nam).isEmpty }.get
       logger.debug(s"Duplicate actor name. Replacement actor name is ${context.self.path.pretty}/$name")
     }

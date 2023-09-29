@@ -16,7 +16,7 @@ extends EventInstructionExecutor
   val instructionClass = classOf[Options]
 
   def toEvents(instr: Options, order: Order[Order.State], state: StateView) =
-    if (!order.isState[IsFreshOrReady])
+    if !order.isState[IsFreshOrReady] then
       Right(Nil)
     else
       Right((order.id <-: OrderMoved(order.position / BranchId.Options % 0)) :: Nil)

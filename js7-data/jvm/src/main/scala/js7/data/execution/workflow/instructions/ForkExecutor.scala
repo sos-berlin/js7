@@ -16,12 +16,12 @@ extends EventInstructionExecutor with ForkInstructionExecutor
 
   protected def toForkedEvent(fork: Instr, order: Order[Order.IsFreshOrReady], state: StateView)
   : Checked[OrderForked] =
-    for {
+    for
       children <- fork.branches
         .traverse(branch =>
           order.id.withChild(branch.id.string)
             .map(childOrderId => OrderForked.Child(branch.id, childOrderId)))
-    } yield OrderForked(children)
+    yield OrderForked(children)
 
   protected def forkResult(fork: Fork, order: Order[Order.Forked], state: StateView, now: Timestamp)
   : Outcome.Completed =

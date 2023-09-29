@@ -25,5 +25,5 @@ object ClusterWatchRunId extends GenericString.Checked_[ClusterWatchRunId]
     throw new NotImplementedError
 
   override def checked(string: String) =
-    for (o <- Base64UUID.checked(string)) yield new ClusterWatchRunId(o)
+    for o <- Base64UUID.checked(string) yield new ClusterWatchRunId(o)
 }

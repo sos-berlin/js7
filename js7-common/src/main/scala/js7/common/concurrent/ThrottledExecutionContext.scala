@@ -20,7 +20,7 @@ extends ExecutionContext {
   def reportFailure(throwable: Throwable) = delegate.reportFailure(throwable)
 
   def execute(runnable: Runnable) = {
-    if (!enqueueIfThrottled(runnable)) {
+    if !enqueueIfThrottled(runnable) then {
       delegate.execute(new Runnable {
         def run() = executeThisAndQueued(runnable)
       })
@@ -49,7 +49,7 @@ extends ExecutionContext {
   private def tryDequeue(): Runnable =
     synchronized {
       val next = queue.poll()
-      if (next == null) {
+      if next == null then {
         semaphore.release()
       }
       next

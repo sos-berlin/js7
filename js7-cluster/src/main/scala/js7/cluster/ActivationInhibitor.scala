@@ -150,7 +150,7 @@ private[cluster] object ActivationInhibitor
           val msg = "While trying to reach the other cluster node due to restart: " +
             throwable.toStringWithCauses
           logger.warn(msg)
-          for (t <- throwable.ifStackTrace) logger.debug(msg, t)
+          for t <- throwable.ifStackTrace do logger.debug(msg, t)
           retry(()).delayExecution(retryDelay)
         }
     }.map { maybeFailedOver =>

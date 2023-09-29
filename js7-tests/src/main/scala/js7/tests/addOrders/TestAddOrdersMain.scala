@@ -13,14 +13,14 @@ object TestAddOrdersMain
   def main(args: Array[String]): Unit = {
     Logger.initialize()
 
-    if (args.isEmpty || args.sameElements(Array("--help"))) {
+    if args.isEmpty || args.sameElements(Array("--help")) then {
       println("Usage: testAddOrders --workflow=WORKFLOWPATH --order-count=1 --user=USER:PASSWORD")
     } else {
       val settings = Settings.parseArguments(args.toSeq)
 
       def logCurrentStatistics(statistics: Statistics) =
         // TODO Crash is not reported
-        if (statistics.totalOrderCount > 0) {
+        if statistics.totalOrderCount > 0 then {
           print(s"\r${statistics.toLine}  $ClearLine")
         }
 
@@ -41,7 +41,7 @@ object TestAddOrdersMain
           case Right(statistics) =>
             //print(s"$ClearLine\n$ClearLine\n$ClearLine")  // Left "main orders completed" lines
             println(s"\r$ClearLine")
-            for (line <- statistics.logLines) println(line + ClearLine)
+            for line <- statistics.logLines do println(line + ClearLine)
       }
     }
   }

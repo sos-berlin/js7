@@ -72,7 +72,7 @@ final class SimpleAgentClusterTest extends ControllerClusterTester
               primaryDirector.eventWatch.await[ClusterWatchRegistered]()
               primaryDirector.eventWatch.await[ClusterCoupled]()
 
-              for (delegateId <- agentPath +: subagentIds) {
+              for delegateId <- agentPath +: subagentIds do {
                 primaryController.eventWatch.await[ItemAttached](ke => ke.event.delegateId == agentPath
                   && ke.event.key == delegateId)
               }

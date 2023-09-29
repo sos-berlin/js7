@@ -41,7 +41,7 @@ final class ShutdownFailoverControllerClusterTest extends ControllerClusterTeste
         // When journal file must be truncated due to non-replicated data after failover,
         // the primary Controller wants to start again.
         var restart = true
-        while (restart) {
+        while restart do {
           primary.runController(dontWaitUntilReady = true) { primaryController =>
             Task
               .race(

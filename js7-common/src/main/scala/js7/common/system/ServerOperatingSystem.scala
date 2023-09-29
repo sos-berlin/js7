@@ -41,8 +41,8 @@ trait ServerOperatingSystem {
 object ServerOperatingSystem {
   lazy val unix = new Unix
   lazy val windows = new Windows
-  val LineEnd = if (isWindows) "\r\n" else "\n"
-  val operatingSystem: ServerOperatingSystem = if (isWindows) windows else unix
+  val LineEnd = if isWindows then "\r\n" else "\n"
+  val operatingSystem: ServerOperatingSystem = if isWindows then windows else unix
   val javaLibraryPathPropertyName = "java.library.path"
   lazy val KernelSupportsNestedShebang = KernelVersion() >= KernelVersion("Linux", List(2, 6, 28))  // Exactly 2.6.27.9 - but what means the fourth number? http://www.in-ulm.de/~mascheck/various/shebang/#interpreter-script
 
@@ -103,13 +103,13 @@ object ServerOperatingSystem {
       def readFileAnyRelease() = {
         val anyFile = autoClosing(newDirectoryStream(Paths.get("/etc"), "*-release")) { stream =>
           val iterator = stream.iterator
-          if (!iterator.hasNext) sys.error("No file matches /etc/*-release")
+          if !iterator.hasNext then sys.error("No file matches /etc/*-release")
           iterator.next
         }
         readFirstLine(anyFile)
       }
 
-      if (isMac)
+      if isMac then
         Try {
           val RegEx = "([a-zA-Z]+):\t+(.+)$".r
           val lines = ("/usr/bin/sw_vers").!!.trim.split('\n').toVector
@@ -123,7 +123,7 @@ object ServerOperatingSystem {
             read("BuildVersion").map("build " + _)
           ).flatten.mkString(" ").??
         }.toOption.flatten
-      else if (isSolaris)
+      else if isSolaris then
         None
       else
         Try { readFirstLine(Paths.get("/etc/system-release")) }  // Best result under CentOS 7.2 (more version details than in /etc/os-release)
@@ -135,9 +135,9 @@ object ServerOperatingSystem {
 
     lazy val cpuModel: Option[String] = {
       val fromOS =
-        if (isMac)
+        if isMac then
           Try(("/usr/sbin/sysctl -n machdep.cpu.brand_string").!!.trim).toOption
-        else if (isSolaris)
+        else if isSolaris then
           None
         else
           Try {

@@ -14,13 +14,13 @@ private[journal] final class EventStatisticsCounter(initialEventCount: Int) exte
   private var commits = 0
 
   def countEventsToBeCommitted(eventCount: Int): Unit =
-    if (eventCount > 0) {  // Count only commits with events
+    if eventCount > 0 then {  // Count only commits with events
       events += eventCount
       commits += 1
     }
 
   override def toString =
-    if (events == 0) "no events"
+    if events == 0 then "no events"
     else s"$events events" //+ (if (syncs > 0) s", $syncs syncs" else "")
 
   def debugString: Option[String] =

@@ -64,8 +64,8 @@ trait ProgramEnv extends AutoCloseable {
   private def writeTrustedSignatureKeys() = {
     createDirectory(configDir / trustedSignatureKeysDir)
 
-    if (!suppressSignatureKeys) {
-      for ((key, i) <- verifier.publicKeys.zipWithIndex) {
+    if !suppressSignatureKeys then {
+      for (key, i) <- verifier.publicKeys.zipWithIndex do {
         val file = configDir / trustedSignatureKeysDir /
           s"key-${i + 1}${verifier.companion.filenameExtension}"
         logger.trace(s"$file := key")
@@ -89,7 +89,7 @@ trait ProgramEnv extends AutoCloseable {
   protected final def programRegistering(program: Program): Resource[Task, Program] =
     Resource.make(
       acquire = Task {
-        if (_currentProgram.isDefined) throw new IllegalStateException(
+        if _currentProgram.isDefined then throw new IllegalStateException(
           s"$toString: Second program start")
         _currentProgram = Some(program)
         program

@@ -18,7 +18,7 @@ sealed trait Execute extends Instruction
   def defaultArguments: Map[String, Expression]
 
   override def reduceForAgent(agentPath: AgentPath, workflow: Workflow) =
-    if (isVisibleForAgent(agentPath, workflow))
+    if isVisibleForAgent(agentPath, workflow) then
       this
     else
       Gap(sourcePos)
@@ -59,11 +59,11 @@ object Execute
         "defaultArguments" -> o.defaultArguments.??.asJson,
         "sourcePos" -> o.sourcePos.asJson)
     implicit val jsonDecoder: Decoder[Named] = cursor =>
-      for {
+      for
         name <- cursor.get[WorkflowJob.Name]("jobName")
         arguments <- cursor.getOrElse[Map[String, Expression]]("defaultArguments")(Map.empty)
         sourcePos <- cursor.get[Option[SourcePos]]("sourcePos")
-      } yield Named(name, arguments, sourcePos)
+      yield Named(name, arguments, sourcePos)
   }
 
   final case class Anonymous(
@@ -90,11 +90,11 @@ object Execute
         "defaultArguments" -> o.defaultArguments.??.asJson,
         "sourcePos" -> o.sourcePos.asJson)
     implicit val jsonDecoder: Decoder[Anonymous] = cursor =>
-      for {
+      for
         job <- cursor.get[WorkflowJob]("job")
         args <- cursor.getOrElse[Map[String, Expression]]("defaultArguments")(Map.empty)
         sourcePos <- cursor.get[Option[SourcePos]]("sourcePos")
-      } yield Anonymous(job, args, sourcePos)
+      yield Anonymous(job, args, sourcePos)
   }
 
   implicit val jsonCodec: TypedJsonCodec[Execute] = TypedJsonCodec(

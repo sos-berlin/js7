@@ -981,7 +981,7 @@ final class OrderEventTest extends OurTestSuite
       }""")
   }
 
-  if (sys.props contains "test.speed") "Speed" in {
+  if sys.props contains "test.speed" then "Speed" in {
     val n = 10000
     val event: Stamped[KeyedEvent[OrderEvent]] = 
       Stamped(12345678L, Timestamp.ofEpochMilli(1),
@@ -991,14 +991,14 @@ final class OrderEventTest extends OurTestSuite
             arguments = Map("KEY" -> StringValue("VALUE"))))
     val jsonString = event.asJson.compactPrint
     println(f"${"Serialize"}%-20s Deserialize")
-    for (_ <- 1 to 10) {
+    for _ <- 1 to 10 do {
       val circeSerialize =  measure(event.asJson.compactPrint)
       val circeDeserialize = measure(jsonString.parseJsonOrThrow.as[OrderEvent].orThrow: OrderEvent)
       println(f"$circeSerialize%-20s $circeDeserialize%-20s")
     }
     def measure[A](serialize: => Unit) = {
       val t = System.nanoTime
-      for (_ <- 1 to n) serialize
+      for _ <- 1 to n do serialize
       val d = (System.nanoTime - t).nanoseconds
       s"${d.pretty} ${n*1000/d.toMillis}/s"
     }

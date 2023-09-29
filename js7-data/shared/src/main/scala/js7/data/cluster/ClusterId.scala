@@ -23,7 +23,7 @@ object ClusterId {
         Left(DecodingFailure("String expected", c.history))
 
       case Some(string) =>
-        if (string.startsWith("Agent:"))
+        if string.startsWith("Agent:") then
           AgentPath.checked(string.drop(6)).toDecoderResult(c.history)
         else
           Left(DecodingFailure(s"Unknown ClusterId: ${string.truncateWithEllipsis(20)}", c.history))

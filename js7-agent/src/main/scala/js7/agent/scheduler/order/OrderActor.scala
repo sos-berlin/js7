@@ -114,7 +114,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
     receiveEvent orElse {
       case Input.StartProcessing =>
         orderCorrelId.bind[Unit] {
-          if (order.isProcessable) {
+          if order.isProcessable then {
             // Separate CorrelId for each order process
             CorrelId.bindNew {
               become("processing")(processing)
@@ -153,8 +153,8 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
 
       case Input.Terminate(signal) =>
         terminating = true
-        if (subagentKeeper.orderIsLocal(orderId)) {
-          for (signal <- signal) {
+        if subagentKeeper.orderIsLocal(orderId) then {
+          for signal <- signal do {
             subagentKeeper
               .killProcess(orderId, signal)
               .runAsyncAndForget
@@ -185,12 +185,12 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
 
       case Right(updated) =>
         becomeAsStateOf(updated)
-        if (events.size == 1 && events.head.isInstanceOf[OrderCancellationMarked] && updated == order)  // Duplicate, already cancelling with same CancellationMode?
+        if events.size == 1 && events.head.isInstanceOf[OrderCancellationMarked] && updated == order then  // Duplicate, already cancelling with same CancellationMode?
           Future.successful(Completed)
         else
           persistTransaction(events) { (event, updatedState) =>
             update(events)
-            if (terminating) {
+            if terminating then {
               context.stop(self)
             } else
               event foreach {
@@ -202,7 +202,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
     }
 
   private def maybeKillOrder(): Unit =
-    if (order.state.isInstanceOf[Order.Processing]) {
+    if order.state.isInstanceOf[Order.Processing] then {
       order.mark match {
         case Some(OrderMark.Cancelling(CancellationMode.FreshOrStarted(Some(kill)))) =>
           maybeKillOrder(kill)
@@ -215,19 +215,19 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
     }
 
   private def maybeKillOrder(kill: CancellationMode.Kill): Unit =
-    if (kill.workflowPosition.forall(_ == order.workflowPosition)) {
+    if kill.workflowPosition.forall(_ == order.workflowPosition) then {
       subagentKeeper
         .killProcess(
           order.id,
-          if (kill.immediately) SIGKILL else SIGTERM)
+          if kill.immediately then SIGKILL else SIGTERM)
         .runAsyncAndForget
     }
 
   private def becomeAsStateOf(anOrder: Order[Order.State], force: Boolean = false): Unit = {
-    if (anOrder.isDetaching)
+    if anOrder.isDetaching then
       become("detaching")(detaching)
     else
-    if (force || anOrder.state.getClass != order.state.getClass) {
+    if force || anOrder.state.getClass != order.state.getClass then {
       anOrder.state match {
         case _: Order.Fresh             => become("fresh")(wrap(fresh))
         case _: Order.Ready             => become("ready")(wrap(ready))
@@ -289,7 +289,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
         maybeKillOrder()
 
       case _: OrderProcessed =>
-        if (terminating) {
+        if terminating then {
           context.stop(self)
         } else {
           become("processed")(processed)

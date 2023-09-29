@@ -26,7 +26,7 @@ final class JournalTest extends OurTestSuite with BeforeAndAfterAll with TestJou
 {
   "First run" in {
     withTestActor() { (actorSystem, actor) =>
-      for ((key, cmd) <- testCommands("TEST")) execute(actorSystem, actor, key, cmd) await 99.s
+      for (key, cmd) <- testCommands("TEST") do execute(actorSystem, actor, key, cmd) await 99.s
       assert(journalAggregates.isEmpty)
       assert(journalKeyedTestEvents == testEvents("TEST"))
       ((actor ? TestActor.Input.GetAll).mapTo[Vector[TestAggregate]] await 99.s).toSet shouldEqual Set(
@@ -119,24 +119,24 @@ final class JournalTest extends OurTestSuite with BeforeAndAfterAll with TestJou
        js7.journal.coalesce-event-limit = $coalesceEventLimit
        js7.journal.slow-check-state = false"""
       withTestActor(config) { (_, actor) =>
-        val prefixes = for (i <- 1 to n) yield i.toString
+        val prefixes = for i <- 1 to n yield i.toString
         val stopwatch = new Stopwatch
         // Add "$p-A"
-        (for (p <- prefixes) yield {
+        (for p <- prefixes yield {
           val (key, cmd) = testCommands(p).head
           simpleExecute(actor, key, cmd)
         }) await 99.s
         // Start executing remaining commands ...
-        val executed = for (p <- prefixes) yield blockingThreadFuture { for ((key, cmd) <- testCommands(p).tail) simpleExecute(actor, key, cmd) await 99.s }
+        val executed = for p <- prefixes yield blockingThreadFuture { for (key, cmd) <- testCommands(p).tail do simpleExecute(actor, key, cmd) await 99.s }
         // ... while disturbing form a different Actor to test persistAsync()
         // DisturbAndRespond responds with String, not Done. See TestActor
-        val disturbed = for (p <- prefixes) yield simpleExecute(actor, s"$p-A", TestAggregateActor.Command.DisturbAndRespond)
+        val disturbed = for p <- prefixes yield simpleExecute(actor, s"$p-A", TestAggregateActor.Command.DisturbAndRespond)
         (executed ++ disturbed) await 99.s
         info(s"$n actors, coalesce-event-limit=$coalesceEventLimit " + stopwatch.itemsPerSecondString(n, "commands"))
         assert(journalAggregates.isEmpty)
         val prefixToKeyedEvents = journalKeyedTestEvents.groupBy(_.key.split("-").head)
         assert(prefixToKeyedEvents.keySet == prefixes.toSet)
-        for (p <- prefixes) assert(prefixToKeyedEvents(p) == testEvents(p))
+        for p <- prefixes do assert(prefixToKeyedEvents(p) == testEvents(p))
         ((actor ? TestActor.Input.GetAll).mapTo[Vector[TestAggregate]] await 99.s).toSet shouldEqual
           prefixes.flatMap(p => Set(
             TestAggregate(s"$p-A", "(A.Add)(A.Append)(A.AppendAsync)(A.AppendNested)(A.AppendNestedAsync)"),
@@ -146,29 +146,29 @@ final class JournalTest extends OurTestSuite with BeforeAndAfterAll with TestJou
       assert(journalFileNames.length == 1)
     }
 
-    for ((n, coalesceEventLimit) <- Vector(1000 -> 1000) ++ (if (sys.props.contains("test.speed")) Array(1000 -> 300, 100 -> 100, 100 -> 30, 100 -> 10) else Nil)) {
+    for (n, coalesceEventLimit) <- Vector(1000 -> 1000) ++ (if sys.props.contains("test.speed") then Array(1000 -> 300, 100 -> 100, 100 -> 30, 100 -> 10) else Nil) do {
       s"$n actors, coalesce-event-limit=$coalesceEventLimit" in {
         run(n = n, coalesceEventLimit = coalesceEventLimit)
       }
     }
   }
 
-  if (sys.props contains "test.speed")
+  if sys.props contains "test.speed" then
   "Speed test" in {
     deleteIfExists(journalLocation.fileBase)
-    val keys = for (i <- 1 to 100000) yield s"TEST-$i"
+    val keys = for i <- 1 to 100000 yield s"TEST-$i"
     withTestActor() { (_, actor) =>
       val stopwatch = new Stopwatch
-      (for (key <- keys) yield actor ? TestActor.Input.Forward(key, TestAggregateActor.Command.Add(s"CONTENT-FOR-$key"))) ++
-        (for (key <- keys) yield actor ? TestActor.Input.Forward(key, TestAggregateActor.Command.Append(s"-a"))) ++
-        (for (key <- keys) yield actor ? TestActor.Input.Forward(key, TestAggregateActor.Command.Append(s"-b"))) await 999.s
+      (for key <- keys yield actor ? TestActor.Input.Forward(key, TestAggregateActor.Command.Add(s"CONTENT-FOR-$key"))) ++
+        (for key <- keys yield actor ? TestActor.Input.Forward(key, TestAggregateActor.Command.Append(s"-a"))) ++
+        (for key <- keys yield actor ? TestActor.Input.Forward(key, TestAggregateActor.Command.Append(s"-b"))) await 999.s
       info("Stored    " + stopwatch.itemsPerSecondString(3 * keys.size, "events"))
     }
     val stopwatch = new Stopwatch
     withTestActor() { (_, actor) =>
       (actor ? TestActor.Input.WaitUntilReady) await 999.s
       info("Recovered " + stopwatch.itemsPerSecondString(keys.size, "objects"))  // Including initial snapshots
-      assertResult((for (key <- keys) yield TestAggregate(key, s"CONTENT-FOR-$key-a-b")).toSet) {
+      assertResult((for key <- keys yield TestAggregate(key, s"CONTENT-FOR-$key-a-b")).toSet) {
         ((actor ? TestActor.Input.GetAll).mapTo[Vector[TestAggregate]] await 99.s).toSet
       }
     }

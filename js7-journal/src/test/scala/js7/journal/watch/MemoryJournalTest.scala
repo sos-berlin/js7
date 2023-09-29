@@ -137,7 +137,7 @@ final class MemoryJournalTest extends OurTestSuite
     waitForCondition(10.s, 10.ms)(lastObserved.contains(1002L) && journal.queueLength == 3)
     assert(observed.last.eventId == 1002 && journal.queueLength == 3)
 
-    for (i <- 0 until n - size) withClue(s"#$i") {
+    for i <- 0 until n - size do withClue(s"#$i") {
       journal.releaseEvents(untilEventId = 1000 + i).await(99.s).orThrow
       waitForCondition(10.s, 10.ms)(lastObserved.contains(1000L + size + i) && journal.queueLength == 3)
       assert(lastObserved.contains(1000L + size + i) && journal.queueLength == 3)

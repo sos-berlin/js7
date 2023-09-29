@@ -67,13 +67,13 @@ final class GateKeeperTest extends OurTestSuite with ScalatestRouteTest
     val anyMethod = HttpMethods.GET :: HttpMethods.POST :: Nil
 
     "defaultConf doesn't allow public access" in {
-      for (isLoopback <- any; method <- anyMethod) {
+      for isLoopback <- any; method <- anyMethod do {
         assert(newGateKeeper(defaultConf, isLoopback = isLoopback).ifPublic(method) == None)
       }
     }
 
     "public=true allows public access in all cases" in {
-      for (loopbackIsPublic <- any; isLoopback <- any; getIsPublic <- any; method <- anyMethod) {
+      for loopbackIsPublic <- any; isLoopback <- any; getIsPublic <- any; method <- anyMethod do {
         val conf = defaultConf.copy(isPublic = true, loopbackIsPublic = loopbackIsPublic, getIsPublic = getIsPublic)
         assert(newGateKeeper(conf, isLoopback = isLoopback).ifPublic(method) == Some(IsPublic))
       }

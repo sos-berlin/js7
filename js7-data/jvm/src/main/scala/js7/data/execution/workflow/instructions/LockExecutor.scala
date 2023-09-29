@@ -18,18 +18,18 @@ extends EventInstructionExecutor
     detach(order)
       .orElse(start(order))
       .getOrElse(
-        if (order.isState[Order.Ready] || order.isState[Order.WaitingForLock])
+        if order.isState[Order.Ready] || order.isState[Order.WaitingForLock] then
           state
             .foreachLockDemand(instruction.demands)(_
               .isAvailable(order.id, _))
             .flatMap(availability =>
-              if (availability.forall(identity))
+              if availability.forall(identity) then
                 state
                   .foreachLockDemand(instruction.demands)(_
                     .acquire(order.id, _)/*check only*/)
                   .rightAs(
                     OrderLocksAcquired(instruction.demands) :: Nil)
-              else if (order.isState[Order.WaitingForLock]) {
+              else if order.isState[Order.WaitingForLock] then {
                 // Caller trys too often ???
                 logger.trace(s"🟡 ${order.id} is still WaitingForLock: ${
                   instruction.demands.zip(availability)
@@ -51,7 +51,7 @@ extends EventInstructionExecutor
     state: StateView) =
     Right(List(
       order.id <-: (
-        if (order.isAttached)
+        if order.isAttached then
           OrderDetachable
         else
           OrderLocksReleased(instr.lockPaths))))

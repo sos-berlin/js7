@@ -402,7 +402,7 @@ final class JournalEventWatchTest extends OurTestSuite with BeforeAndAfterAll
       assert(jsons(4).as[Stamped[KeyedEvent[Event]]] == Right(Stamped(3L, "3" <-: A1)))
 
       observing.cancel()
-      if (isWindows) sleep(100.ms)  // Let observing close the read file to allow deletion
+      if isWindows then sleep(100.ms)  // Let observing close the read file to allow deletion
     }
   }
 

@@ -111,7 +111,7 @@ extends HasCloser
       .zip(agentPorts ++ Seq.fill(agentPaths.length - agentPorts.length)(findFreeTcpPort()))
       .map { case (agentPath, port) =>
         val localSubagentId = toLocalSubagentId(agentPath, isBackup = isBackup)
-        val localhost = if (agentHttps) "https://localhost" else "http://127.0.0.1"
+        val localhost = if agentHttps then "https://localhost" else "http://127.0.0.1"
 
         val localSubagentItem = SubagentItem(
           localSubagentId, agentPath, disabled = primarySubagentsDisabled,
@@ -126,7 +126,7 @@ extends HasCloser
 
   val agentEnvs: Vector[DirectorEnv] = agentToEnv.values.toVector
   lazy val agentRefs: Vector[AgentRef] =
-    for (a <- agentEnvs) yield AgentRef(a.agentPath, Seq(a.localSubagentId))
+    for a <- agentEnvs yield AgentRef(a.agentPath, Seq(a.localSubagentId))
   lazy val subagentItems: Vector[SubagentItem] = agentEnvs.map(_.subagentItem) ++ bareSubagentItems
   lazy val subagentId: SubagentId = agentEnvs.head.localSubagentId
 
@@ -179,7 +179,7 @@ extends HasCloser
       .blockingUse(99.s) { testController =>
         val result =
           try {
-            if (!dontWaitUntilReady) {
+            if !dontWaitUntilReady then {
               testController.waitUntilReady()
             }
             body(testController)
@@ -241,13 +241,13 @@ extends HasCloser
       name = controllerName)
 
     def startForTest(runningController: RunningController): Unit = {
-      if (!doNotAddItems && !isBackup && (agentRefs.nonEmpty || items.nonEmpty)) {
-        if (!itemsHaveBeenAdded.getAndSet(true)) {
+      if !doNotAddItems && !isBackup && (agentRefs.nonEmpty || items.nonEmpty) then {
+        if !itemsHaveBeenAdded.getAndSet(true) then {
           runningController.waitUntilReady()
           runningController.updateUnsignedSimpleItemsAsSystemUser(agentRefs ++ subagentItems)
             .await(99.s).orThrow
 
-          if (items.nonEmpty) {
+          if items.nonEmpty then {
             val versionedItems = items.collect { case o: VersionedItem => o }.map(_ withVersion Vinitial)
             val signableItems = versionedItems ++ items.collect { case o: SignableSimpleItem => o }
             runningController
@@ -261,7 +261,7 @@ extends HasCloser
           }
         }
       }
-      for (t <- runningController.terminated.failed) {
+      for t <- runningController.terminated.failed do {
         logger.error(s"💥💥💥 ${t.toStringWithCauses}", t.nullIfNoStackTrace)
         logger.debug(t.toStringWithCauses, t)
       }
@@ -387,14 +387,14 @@ extends HasCloser
     suffix: String = "",
     suppressSignatureKeys: Boolean = false)
   : Resource[Task, Subagent] =
-    for {
+    for
       env <- bareSubagentEnvResource(subagentItem,
         director = director,
         suffix = suffix,
         suppressSignatureKeys = suppressSignatureKeys,
         extraConfig = config)
       subagent <- env.subagentResource
-    } yield subagent
+    yield subagent
 
   private def bareSubagentEnvResource(
     subagentItem: SubagentItem,
@@ -430,12 +430,12 @@ object DirectoryProvider
   private val logger = Logger[this.type]
 
   def toLocalSubagentId(agentPath: AgentPath, isBackup: Boolean = false): SubagentId =
-    SubagentId(agentPath.string + (if (!isBackup) "-0" else "-1"))
+    SubagentId(agentPath.string + (if !isBackup then "-0" else "-1"))
 
-  final val StdoutOutput = if (isWindows) "TEST\r\n" else "TEST ☘\n"
+  final val StdoutOutput = if isWindows then "TEST\r\n" else "TEST ☘\n"
 
   final def script(duration: FiniteDuration, resultVariable: Option[String] = None): String =
-    if (isWindows)
+    if isWindows then
       (s"""@echo off
           |echo ${StdoutOutput.trim}
           |ping -n ${1 + (duration + 999999.µs).toMillis / 1000} 127.0.0.1 >nul""" +
@@ -448,7 +448,7 @@ object DirectoryProvider
       ).stripMargin
 
   final def waitingForFileScript(file: Path, delete: Boolean = false): String =
-    if (isWindows)
+    if isWindows then
        s"""@echo off
           |:LOOP
           |  if exist "$file" goto FOUND

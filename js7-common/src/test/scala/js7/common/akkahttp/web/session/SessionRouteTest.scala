@@ -310,7 +310,7 @@ extends OurTestSuite with SessionRouteTester
       import api.implicitSessionToken
       assert(!api.hasSession)
 
-      if (isPublic) {
+      if isPublic then {
           // Access without Login (Session) is allowed
         api.get_[String](Uri(s"$localUri/authorizedUser")) await 99.s
       } else {

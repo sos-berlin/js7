@@ -50,6 +50,6 @@ private[journal] trait StatisticsCounter
 object StatisticsCounter
 {
   private def t(nanos: Long, n: Int, name: String): Option[String] =
-    if (n == 0) None
+    if n == 0 then None
     else Some((nanos / n).nanoseconds.pretty + s"/$name")
 }

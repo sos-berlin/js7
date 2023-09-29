@@ -50,21 +50,21 @@ extends JobLauncher
 
   def toOrderProcess(processOrder: ProcessOrder) =
     Task {
-      for {
+      for
         internalJob <- internalJobLazy()
         step <- toStep(processOrder)
-      } yield internalJob.toOrderProcess(step)
+      yield internalJob.toOrderProcess(step)
     }
 
   private def toStep(processOrder: ProcessOrder): Checked[InternalJob.Step] =
-    for (args <- evalExpressionMap(executable.arguments, processOrder.scope)) yield
+    for args <- evalExpressionMap(executable.arguments, processOrder.scope) yield
       Step(processOrder, args)
 
   private def toInstantiator(className: String): Checked[() => Checked[InternalJob]] =
     Checked.catchNonFatal(
       loadClass(className)
         .flatMap(cls =>
-          if (classOf[InternalJob] isAssignableFrom cls)
+          if classOf[InternalJob] isAssignableFrom cls then
             getConstructor(cls.asInstanceOf[Class[InternalJob]])
               .map(con => () => construct(con, toJobContext(cls)))
           else
@@ -76,7 +76,7 @@ extends JobLauncher
       .flatMap(cls =>
         Option(cls.getAnnotation(classOf[InternalJobAdapter])))
       .map(_.value)
-    if (internalJobs.sizeIs > 1)
+    if internalJobs.sizeIs > 1 then
       Left(Problem(s"Class ${cls.getName} has multiple @InternalJobAdapter annotations"))
     else
       internalJobs
@@ -127,7 +127,7 @@ object InternalJobLauncher
   : Checked[InternalJob] = {
     val args = constructor.getParameterTypes
       .map(cls =>
-        if (cls isAssignableFrom classOf[InternalJob.JobContext])
+        if cls isAssignableFrom classOf[InternalJob.JobContext] then
           jobContext
         else
           sys.error(s"Unsupported constructor parameter: ${cls.getName}"))  // Should not happen

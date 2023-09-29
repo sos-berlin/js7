@@ -83,7 +83,7 @@ extends SubagentEnv with ProgramEnv.WithFileJournal {
      |}
      |""".stripMargin
 
-    for (otherSubagentId <- otherSubagentIds.toList) {
+    for otherSubagentId <- otherSubagentIds.toList do {
       privateConf ++= s"""
        |js7.auth.subagents.${otherSubagentId.string} = "${subagentItem.id.string}'s PASSWORD"
        |js7.auth.users.${otherSubagentId.string} {

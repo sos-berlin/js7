@@ -150,7 +150,7 @@ final class JournalWebServiceTest extends OurTestSuite with BeforeAndAfterAll wi
     httpControllerApi.addOrder(FreshOrder(orderId, workflow.path)) await 99.s
     controller.eventWatch.await[OrderFinished](_.key == orderId)
     awaitAndAssert(lines.exists(_ contains "OrderFinished"))
-    for (o <- observeWithHeartbeat.value; t <- o.failed) throw t.appendCurrentStackTrace
+    for o <- observeWithHeartbeat.value; t <- o.failed do throw t.appendCurrentStackTrace
     assert(lines.exists(_ contains "OrderFinished"))
 
     awaitAndAssert(observedLines.exists(_ contains "OrderFinished"))

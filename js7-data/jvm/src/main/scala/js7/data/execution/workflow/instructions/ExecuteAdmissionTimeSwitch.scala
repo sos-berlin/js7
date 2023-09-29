@@ -38,10 +38,10 @@ final class ExecuteAdmissionTimeSwitch(
           false // Not enterable now
 
         case Some(interval) =>
-          if (!_nextTime.contains(interval.start)) {
+          if !_nextTime.contains(interval.start) then {
             onSwitch((interval != TimeInterval.never) ? interval)
             // Also set timer if clock has been adjusted
-            if (now < interval.start) {
+            if now < interval.start then {
               _nextTime = Some(interval.start)
               timer := clock.scheduleAt(interval.start) {
                 _nextTime = None

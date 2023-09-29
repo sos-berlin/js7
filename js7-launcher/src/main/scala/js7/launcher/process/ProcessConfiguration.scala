@@ -24,15 +24,15 @@ final case class ProcessConfiguration(
 {
   require(killScriptOption.isEmpty || maybeTaskId.nonEmpty, "killScriptFile requires idString")
 
-  for (id <- maybeTaskId) require(id.nonEmpty)
+  for id <- maybeTaskId do require(id.nonEmpty)
 
   def idArgumentOption = maybeTaskId.map(o => s"--agent-task-id=${o.string}")
 
   def toKillScriptCommandArgumentsOption(pid: Option[Pid]) =
-    for {
+    for
       id <- maybeTaskId
       killScript <- killScriptOption
-    } yield killScript.toCommandArguments(id, pid)
+    yield killScript.toCommandArguments(id, pid)
 }
 
 object ProcessConfiguration

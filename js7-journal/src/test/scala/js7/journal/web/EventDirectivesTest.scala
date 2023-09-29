@@ -31,16 +31,16 @@ final class EventDirectivesTest extends OurTestSuite with ScalatestRouteTest
     path("test") {
       val x: Directive1[EventRequest[MyEvent]] = eventRequest[MyEvent]
       x.apply((eventReq: EventRequest[MyEvent]) =>
-        if (eventReq == EventRequest[MyEvent](Set(classOf[AEvent]), after = EventId(1), delay = EventDirectives.DefaultDelay, timeout = Some(0.s)))
+        if eventReq == EventRequest[MyEvent](Set(classOf[AEvent]), after = EventId(1), delay = EventDirectives.DefaultDelay, timeout = Some(0.s)) then
           complete("DEFAULT")
         else
-        if (eventReq == EventRequest[MyEvent](Set(classOf[AEvent]), after = EventId(66), delay = 770.millis, timeout = Some(88.s), limit = 99, tornOlder = Some(10.s)))
+        if eventReq == EventRequest[MyEvent](Set(classOf[AEvent]), after = EventId(66), delay = 770.millis, timeout = Some(88.s), limit = 99, tornOlder = Some(10.s)) then
           complete("A")
         else
-        if (eventReq == EventRequest[MyEvent](Set(classOf[AEvent], classOf[BEvent]), after = EventId(666), delay = 777.millis, timeout = Some(888.s), limit = 999))
+        if eventReq == EventRequest[MyEvent](Set(classOf[AEvent], classOf[BEvent]), after = EventId(666), delay = 777.millis, timeout = Some(888.s), limit = 999) then
           complete("B")
         else
-        if (eventReq == EventRequest[MyEvent](Set(classOf[AEvent], classOf[BEvent]), after = EventId(3), delay = EventDirectives.DefaultDelay, timeout = None))
+        if eventReq == EventRequest[MyEvent](Set(classOf[AEvent], classOf[BEvent]), after = EventId(3), delay = EventDirectives.DefaultDelay, timeout = None) then
           complete("C")
         else {
           println(eventReq)

@@ -37,20 +37,20 @@ with AutoCloseable
   private var _eventWritten = false
 
   def closeProperly(sync: Boolean): Unit =
-    try if (eventsStarted) endEventSection(sync = sync)
+    try if eventsStarted then endEventSection(sync = sync)
     finally close()
 
   override def close() = {
     super.close()
-    for (o <- observer) {
+    for o <- observer do {
       o.onJournalingEnded(jsonWriter.fileLength)
     }
-    for (o <- statistics.debugString) logger.debug(o)
+    for o <- statistics.debugString do logger.debug(o)
   }
 
   def onJournalingStarted(fileLengthBeforeEvents: Long = jsonWriter.fileLength): Unit = {
     assertThat(fileLengthBeforeEvents <= jsonWriter.fileLength)
-    for (o <- observer) {
+    for o <- observer do {
       val firstEventPositionAndFileEventId = PositionAnd(fileLengthBeforeEvents, lastWrittenEventId)
       o.onJournalingStarted(file, journalId,
         firstEventPositionAndFileEventId,
@@ -70,18 +70,18 @@ with AutoCloseable
 
   def writeEvents(stampedEvents: Seq[Stamped[KeyedEvent[Event]]], transaction: Boolean = false): Unit = {
     // TODO Rollback writes in case of error (with seek?)
-    if (!eventsStarted) throw new IllegalStateException
+    if !eventsStarted then throw new IllegalStateException
     _eventWritten = true
     statistics.countEventsToBeCommitted(stampedEvents.size)
     val ta = transaction && stampedEvents.lengthIs > 1
-    if (ta) jsonWriter.write(TransactionByteArray)
+    if ta then jsonWriter.write(TransactionByteArray)
     writeEvents_(stampedEvents)
-    if (ta) jsonWriter.write(CommitByteArray)
+    if ta then jsonWriter.write(CommitByteArray)
   }
 
   // Event section begin has been written by SnapshotJournalWriter
   def endEventSection(sync: Boolean): Unit = {
-    if (!eventsStarted) throw new IllegalStateException
+    if !eventsStarted then throw new IllegalStateException
     flush(sync = sync)
     notifyObserver()
     logger.debug(s"Journal finished, $fileSizeString written ($statistics)")
@@ -90,20 +90,20 @@ with AutoCloseable
   override def flush(sync: Boolean): Unit = {
     super.flush(sync)
     // TODO Notify observer first after sync! OrderStdWritten braucht dann und wann ein sync (1s), um observer nicht lange warten zu lassen.
-    for (r <- observer) {
+    for r <- observer do {
       r.onFileWritten(jsonWriter.fileLength)
     }
   }
 
   def notifyObserver(): Unit = {
     assertThat(isFlushed)
-    for (r <- observer) {
+    for r <- observer do {
       r.onFileWritten(jsonWriter.fileLength)
     }
   }
 
   def onCommitted(lengthAndEventId: PositionAnd[EventId], n: Int): Unit = {
-    for (r <- observer) {
+    for r <- observer do {
       r.onEventsCommitted(lengthAndEventId, n)
     }
   }

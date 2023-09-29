@@ -57,7 +57,7 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
         pathEnd {
           withSizeLimit(entitySizeLimit)(
             entity(as[HttpEntity])(httpEntity =>
-              if (httpEntity.contentType == `application/x-ndjson`.toContentType)
+              if httpEntity.contentType == `application/x-ndjson`.toContentType then
                 completeTask {
                   val startedAt = now
                   var byteCount = 0L
@@ -71,9 +71,9 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
                     .toL(Vector)
                     .map(_.sequence)
                     .flatTap(checkedOrders => Task(
-                      for (orders <- checkedOrders) {
+                      for orders <- checkedOrders do {
                         val d = startedAt.elapsed
-                        if (d > 1.s) logger.debug("post controller/api/order received - " +
+                        if d > 1.s then logger.debug("post controller/api/order received - " +
                           itemsPerSecondString(d, orders.size, "orders") + " · " +
                           bytesPerSecondString(d, byteCount))
                        }))
@@ -82,7 +82,7 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
                 }
               else
                 entity(as[Json]) { json =>
-                  if (json.isArray)
+                  if json.isArray then
                     json.as[Vector[FreshOrder]] match {
                       case Left(failure) => complete(failure.toProblem)
                       case Right(orders) =>
@@ -100,7 +100,7 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
                             case Right(response) =>
                               respondWithHeader(Location(uri.withPath(uri.path / order.id.string))) {
                                 complete(
-                                  if (response.ignoredBecauseDuplicate)
+                                  if response.ignoredBecauseDuplicate then
                                     Conflict -> Problem.pure(s"${order.id} has already been added")
                                   else
                                     Created -> emptyJsonObject)
@@ -132,7 +132,7 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
   private def deleteOrdersWhenTerminated(user: SimpleUser): Route =
     withSizeLimit(entitySizeLimit)(
       entity(as[HttpEntity])(httpEntity =>
-        if (httpEntity.contentType != `application/x-ndjson`.toContentType)
+        if httpEntity.contentType != `application/x-ndjson`.toContentType then
           complete(UnsupportedMediaType)
         else
           completeTask(

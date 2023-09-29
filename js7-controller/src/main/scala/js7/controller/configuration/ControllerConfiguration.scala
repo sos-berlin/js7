@@ -60,7 +60,7 @@ extends BasicConfiguration with CommonConfiguration
 
 object ControllerConfiguration
 {
-  val DefaultName = if (isTest) "Controller" else "JS7"
+  val DefaultName = if isTest then "Controller" else "JS7"
 
   def forTest(configAndData: Path,
     config: Config = ConfigFactory.empty,
@@ -69,11 +69,11 @@ object ControllerConfiguration
     name: String = DefaultName
   ) = {
     val data = configAndData / "data"
-    if (!Files.exists(data)) createDirectory(data)
+    if !Files.exists(data) then createDirectory(data)
     val state = data / "state"
-    if (!Files.exists(state)) createDirectory(state)
+    if !Files.exists(state) then createDirectory(state)
     val work = data / "work"
-    if (!Files.exists(work)) createDirectory(work)
+    if !Files.exists(work) then createDirectory(work)
     fromDirectories(
       configDirectory = configAndData / "config",
       dataDirectory = data,

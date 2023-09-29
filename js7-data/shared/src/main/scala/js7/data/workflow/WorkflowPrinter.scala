@@ -27,15 +27,15 @@ final class WorkflowPrinter(sb: StringBuilder) {
   def appendQuoted(string: String) = ValuePrinter.appendQuoted(sb, string)
 
   def appendQuotedExpression(string: String) =
-    if (string.contains('\n')) {
+    if string.contains('\n') then {
       @tailrec def q(quote: String): Unit =
-        if (string contains quote) q(quote + "'")
+        if string contains quote then q(quote + "'")
         else sb.append('\n')
           .append(quote)
           .append(string.split('\n').map(o => o + "\n" + " "*(quote.length - 1) + "|").mkString)
           .append(quote)
           .append(".stripMargin")
-      if (!string.contains('\'')) sb.append('\'').append(string).append('\'')
+      if !string.contains('\'') then sb.append('\'').append(string).append('\'')
       else q("''")
     } else appendQuoted(string)
 
@@ -45,20 +45,20 @@ final class WorkflowPrinter(sb: StringBuilder) {
   def appendNameToExpression(nameToExpression: Map[String, Expression]): Unit =
     ValuePrinter.appendNameToExpression(sb, nameToExpression)
 
-  def indent(nesting: Int) = for (_ <- 0 until nesting) sb ++= "  "
+  def indent(nesting: Int) = for _ <- 0 until nesting do sb ++= "  "
 
   def appendWorkflowExecutable(job: WorkflowJob): Unit = {
     sb ++= "agent="
     appendQuoted(job.agentPath.string)
-    if (job.parallelism != WorkflowJob.DefaultParallelism) {
+    if job.parallelism != WorkflowJob.DefaultParallelism then {
       sb ++= ", parallelism="
       sb.append(job.parallelism)
     }
-    if (job.defaultArguments.nonEmpty) {
+    if job.defaultArguments.nonEmpty then {
       sb ++= ", defaultArguments="
       appendNameToExpression(job.defaultArguments)
     }
-    for (o <- job.sigkillDelay) {
+    for o <- job.sigkillDelay do {
       sb.append(", sigkillDelay=")
       sb.append(o.toBigDecimalSeconds)  // TODO Use floating point
     }
@@ -87,13 +87,13 @@ final class WorkflowPrinter(sb: StringBuilder) {
         }
         executable match {
           case PathExecutable(path, envExpr, _, login, v1Compatible) =>
-            if (v1Compatible) sb ++= ", v1Compatible=true"
+            if v1Compatible then sb ++= ", v1Compatible=true"
             appendEnv(envExpr)
             sb ++= ", executable="
             appendQuoted(path)
 
           case ShellScriptExecutable(script, envExpr, _, login, v1Compatible) =>
-            if (v1Compatible) sb ++= ", v1Compatible=true"
+            if v1Compatible then sb ++= ", v1Compatible=true"
             appendEnv(envExpr)
             sb ++= ", script="
             appendQuotedExpression(script)  // Last argument, because the script may have multiple lines
@@ -107,11 +107,11 @@ final class WorkflowPrinter(sb: StringBuilder) {
       case InternalExecutable(className, script, jobArguments, arguments) =>
         sb ++= ", internalJobClass="
         appendQuoted(className)
-        if (jobArguments.nonEmpty) {
+        if jobArguments.nonEmpty then {
           sb ++= ", jobArguments="
           appendNameToExpression(jobArguments)
         }
-        if (arguments.nonEmpty) {
+        if arguments.nonEmpty then {
           sb ++= ", arguments="
           appendNameToExpression(arguments)
         }
@@ -119,18 +119,18 @@ final class WorkflowPrinter(sb: StringBuilder) {
   }
 
   def appendEnv(env: Map[String, Expression]): Unit =
-    if (env.nonEmpty) {
+    if env.nonEmpty then {
       sb.append(", env=")
       appendNameToExpression(env)
     }
 
   def appendWorkflowContent(nesting: Int, workflow: Workflow): Unit = {
-    for (labeled <- workflow.labeledInstructions if !labeled.instruction.isInstanceOf[ImplicitEnd]) {
+    for labeled <- workflow.labeledInstructions if !labeled.instruction.isInstanceOf[ImplicitEnd] do {
       appendLabeledInstruction(nesting, labeled)
     }
 
-    if (workflow.nameToJob.nonEmpty) sb ++= "\n"
-    for ((name, job) <- workflow.nameToJob) {
+    if workflow.nameToJob.nonEmpty then sb ++= "\n"
+    for (name, job) <- workflow.nameToJob do {
       indent(nesting)
       sb ++= "define job "
       appendIdentifier(name.string)
@@ -146,7 +146,7 @@ final class WorkflowPrinter(sb: StringBuilder) {
 
   def appendLabeledInstruction(nesting: Int, labeled: Instruction.Labeled): Unit = {
     indent(nesting)
-    for (label <- labeled.maybeLabel) {
+    for label <- labeled.maybeLabel do {
       appendIdentifier(label.string)
       sb ++= ": "
     }
@@ -162,7 +162,7 @@ final class WorkflowPrinter(sb: StringBuilder) {
       case Execute.Named(name, defaultArguments, _) =>
         sb ++= "job "
         appendIdentifier(name.string)
-        if (defaultArguments.nonEmpty) {
+        if defaultArguments.nonEmpty then {
           sb ++= ", defaultArguments="
           appendNameToExpression(defaultArguments)
         }
@@ -170,7 +170,7 @@ final class WorkflowPrinter(sb: StringBuilder) {
 
       case Fail(maybeErrorMessage, namedValues, uncatchable, _) =>
         sb ++= "fail"
-        if (maybeErrorMessage.isDefined || namedValues.nonEmpty) {
+        if maybeErrorMessage.isDefined || namedValues.nonEmpty then {
           sb ++= (
             (uncatchable ? "uncatchable=true") ++
             maybeErrorMessage.map(o => "message=" + o.toString) ++
@@ -182,7 +182,7 @@ final class WorkflowPrinter(sb: StringBuilder) {
       case LockInstruction(Seq(LockDemand(LockPath(lockPath), maybeCount)), lockedWorkflow, _) =>
         sb ++= "lock (lock="
         appendQuoted(lockPath)
-        for (n <- maybeCount) {
+        for n <- maybeCount do {
           sb ++= ", count="
           sb.append(n)
         }
@@ -206,14 +206,14 @@ final class WorkflowPrinter(sb: StringBuilder) {
         }
 
         sb ++= "fork"
-        if (joinIfFailed) {
+        if joinIfFailed then {
           sb.append(" (")
           sb.append("joinIfFailed=")
           sb.append(joinIfFailed)
           sb.append(')')
         }
         sb ++= " {\n"
-        for (b <- branches.take(branches.length - 1)) {
+        for b <- branches.take(branches.length - 1) do {
           appendBranch(b)
           sb.append(",\n")
         }
@@ -231,7 +231,7 @@ final class WorkflowPrinter(sb: StringBuilder) {
       case If(predicate, thenWorkflow, elseWorkflowOption, _) =>
         sb ++= "if (" ++= predicate.toString ++= ") {\n"
         appendWorkflowContent(nesting + 1, thenWorkflow)
-        for (els <- elseWorkflowOption) {
+        for els <- elseWorkflowOption do {
           indent(nesting)
           sb ++= "} else {\n"
           appendWorkflowContent(nesting + 1, els)
@@ -241,11 +241,11 @@ final class WorkflowPrinter(sb: StringBuilder) {
 
       case TryInstruction(tryWorkflow, catchWorkflow, retryDelays, maxTries, _) =>
         sb ++= "try "
-        if (retryDelays.isDefined || maxTries.isDefined) {
+        if retryDelays.isDefined || maxTries.isDefined then {
           sb ++= (
-            (for (delays <- retryDelays) yield
+            (for delays <- retryDelays yield
               "retryDelays=" + delays.map(_.toBigDecimalSeconds.toString).mkString("[", ", ", "]")) ++
-            (for (n <- maxTries) yield "maxTries=" + n.toString)
+            (for n <- maxTries yield "maxTries=" + n.toString)
           ).mkString("(", ", ", ")")
         }
         sb ++= "{\n"
@@ -296,8 +296,8 @@ object WorkflowPrinter
   private def appendNamedValues(sb: StringBuilder, namedValues: NamedValues): Unit = {
     sb ++= "{"
     var needComma = false
-    for ((k, v) <- namedValues) {
-      if (needComma) sb ++= ", "
+    for (k, v) <- namedValues do {
+      if needComma then sb ++= ", "
       needComma = true
       appendQuoted(sb, k)
       sb ++= ": "

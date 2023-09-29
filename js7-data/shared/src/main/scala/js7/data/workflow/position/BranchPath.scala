@@ -69,19 +69,19 @@ object BranchPath
   }
 
   private def decodeJsonSegment(pair: Seq[Json], cursor: HCursor): Decoder.Result[Segment] =
-    if (pair.sizeIs != 2)
+    if pair.sizeIs != 2 then
       Left(DecodingFailure("Not a valid BranchPath", cursor.history))
     else
-      for {
+      for
         nr <- pair.head.as[InstructionNr]
         branchId <- pair(1).as[BranchId]
-      } yield Segment(nr, branchId)
+      yield Segment(nr, branchId)
 
   private def anySeqToSegment(pair: Seq[Any]): Checked[Segment] =
-    if (pair.sizeIs != 2)
+    if pair.sizeIs != 2 then
       Left(Problem.pure("Not a valid BranchPath"))
     else
-      for {
+      for
         nr <- pair(0) match {
           case i: Int => Right(InstructionNr(i))
           case i: java.lang.Integer => Right(InstructionNr(i))
@@ -91,7 +91,7 @@ object BranchPath
           case string: String => Right(BranchId(string))
           case o => Left(Problem(s"BranchId (string) expected in Position array instead of: $o"))
         }
-      } yield Segment(nr, branchId)
+      yield Segment(nr, branchId)
 
   object PositionAndBranchId {
     import BranchPath.syntax.*
@@ -113,7 +113,7 @@ object BranchPath
         segments.nonEmpty ? (segments.init % segments.last.nr)
 
       def dropChild: BranchPath = {
-        if (segments.isEmpty) throw new IllegalStateException("dropChild on empty BranchPath ?")
+        if segments.isEmpty then throw new IllegalStateException("dropChild on empty BranchPath ?")
         segments.init
       }
 

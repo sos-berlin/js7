@@ -40,18 +40,18 @@ object ClusterWatchConf
 
     val uris = args.seqAs[Uri]("--cluster-node-uri=")
     val admissions =
-      if (uris.nonEmpty)
+      if uris.nonEmpty then
         Nel.fromListUnsafe(uris.map(Admission(_)).toList)
       else
         Nel
           .fromList {
-            for (cnf <- config.getConfigList("js7.journal.cluster.watch.cluster-nodes").asScala.toList) yield
+            for cnf <- config.getConfigList("js7.journal.cluster.watch.cluster-nodes").asScala.toList yield
               Admission(
                 cnf.as[Uri]("uri"),
-                for {
+                for
                   userId <- cnf.optionAs[UserId]("user")
                   password <- cnf.optionAs[SecretString]("password")
-                } yield UserAndPassword(userId, password))
+                yield UserAndPassword(userId, password))
           }
           .getOrElse(throw new IllegalArgumentException(
             "Missing Cluster node admissions: js7.cluster.watch.nodes[]"))

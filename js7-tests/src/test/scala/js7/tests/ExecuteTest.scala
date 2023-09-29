@@ -59,11 +59,11 @@ final class ExecuteTest extends OurTestSuite with ControllerAgentForScalaTest
   private lazy val myReturnCodeScriptFile = createTempFile("ExecuteTest-myExitCode-", ".cmd")
 
   override def beforeAll() = {
-    for (a <- directoryProvider.agentEnvs) {
+    for a <- directoryProvider.agentEnvs do {
      a.writeExecutable(RelativePathExecutable("TEST-SCRIPT.cmd"), returnCodeScript("myExitCode"))
     }
     argScriptFile.writeUtf8Executable(
-      if (isWindows)
+      if isWindows then
         """@echo off
           |echo ARGUMENTS=/%*/
           |exit %2""".stripMargin
@@ -275,7 +275,7 @@ final class ExecuteTest extends OurTestSuite with ControllerAgentForScalaTest
               """echo "C=FROM SECOND JOB" >>"$JS7_RETURN_VALUES" """))),
           Execute.Anonymous(WorkflowJob(agentPath,
             ShellScriptExecutable(
-              if (isWindows)
+              if isWindows then
                 """@echo off
                   |echo A=%SCHEDULER_PARAM_A%>>%SCHEDULER_RETURN_VALUES%
                   |echo B=%SCHEDULER_PARAM_B%>>%SCHEDULER_RETURN_VALUES%
@@ -315,7 +315,7 @@ final class ExecuteTest extends OurTestSuite with ControllerAgentForScalaTest
     expectedOutcome = Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(101))))
 
   private val deletedEnvName =
-    if (isWindows) "USERNAME" else if (sys.env contains "USER") "USER" else "LANG"
+    if isWindows then "USERNAME" else if sys.env contains "USER" then "USER" else "LANG"
   assert(sys.env(deletedEnvName).nonEmpty)  // Must exist to check deletion
 
   "Special $js7 variables; the ?-operators" - {
@@ -341,7 +341,7 @@ final class ExecuteTest extends OurTestSuite with ControllerAgentForScalaTest
 
     "Special variables in env expressions" in {
       val script =
-        if (isWindows)
+        if isWindows then
           s"""@echo off
             |echo ORDER_ID=%ORDER_ID% >>%JS7_RETURN_VALUES%
             |echo WORKFLOW_NAME=%WORKFLOW_NAME% >>%JS7_RETURN_VALUES%
@@ -443,7 +443,7 @@ final class ExecuteTest extends OurTestSuite with ControllerAgentForScalaTest
           jobName -> WorkflowJob(
             agentPath,
             ShellScriptExecutable(
-              if (isWindows)
+              if isWindows then
                 """@echo off
                   |echo jobExecutionCount=%jobExecutionCount% >>%JS7_RETURN_VALUES%""".stripMargin
               else
@@ -513,13 +513,13 @@ final class ExecuteTest extends OurTestSuite with ControllerAgentForScalaTest
     val parallelism = 2
     val workflow = addWorkflow(Workflow.of(
       ParallelInternalJob.execute(agentPath, parallelism = parallelism)))
-    val orderIds = for (i <- 1 to parallelism) yield OrderId(s"PARALLEL-$i")
+    val orderIds = for i <- 1 to parallelism yield OrderId(s"PARALLEL-$i")
     val eventId = eventWatch.lastAddedEventId
     controller.api.addOrders(Observable
       .fromIterable(orderIds)
       .map(FreshOrder(_, workflow.path)))
       .await(99.s).orThrow
-    for (orderId <- orderIds) {
+    for orderId <- orderIds do {
       eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
     }
     val extraOrderId = OrderId("PARALLEL-EXTRA")
@@ -534,7 +534,7 @@ final class ExecuteTest extends OurTestSuite with ControllerAgentForScalaTest
       .executeCommand(
         CancelOrders(orderIds, CancellationMode.kill(immediately = true)))
       .await(99.s).orThrow
-    for (orderId <- orderIds) {
+    for orderId <- orderIds do {
       eventWatch.await[OrderCancelled](_.key == orderId, after = eventId)
     }
   }
@@ -559,7 +559,7 @@ final class ExecuteTest extends OurTestSuite with ControllerAgentForScalaTest
     val outcomes = events.collect { case OrderProcessed(outcome) => outcome }
     assert(outcomes == expectedOutcomes)
 
-    if (expectedOutcomes.last.isSucceeded) assert(events.last.isInstanceOf[OrderFinished])
+    if expectedOutcomes.last.isSucceeded then assert(events.last.isInstanceOf[OrderFinished])
     else assert(events.last.isInstanceOf[OrderFailed])
   }
 
@@ -597,11 +597,11 @@ object ExecuteTest
   private val agentPath = AgentPath("AGENT")
 
   private def returnCodeScript(returnCode: Int) =
-    if (isWindows) s"@exit $returnCode"
+    if isWindows then s"@exit $returnCode"
     else s"exit $returnCode"
 
   private def returnCodeScript(envName: String) =
-    if (isWindows) s"@exit %$envName%"
+    if isWindows then s"@exit %$envName%"
     else s"""exit "$$$envName""""
 
   private val jobResource = JobResource(JobResourcePath("JOB-RESOURCE"),
@@ -614,7 +614,7 @@ object ExecuteTest
       OrderProcess(
         Task {
           Outcome.Completed.fromChecked(
-            for (number <- step.arguments.checked("ARG").flatMap(_.asNumber)) yield
+            for number <- step.arguments.checked("ARG").flatMap(_.asNumber) yield
               Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(number + 1))))
         })
   }

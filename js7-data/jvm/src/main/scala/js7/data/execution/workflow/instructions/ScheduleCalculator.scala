@@ -26,7 +26,7 @@ extends ScheduleSimulator
           cycleState.copy(
             schemeIndex = schemeIndex,
             periodIndex = periodIndex,
-            index = if (periodChanges) 1 else cycleState.index + 1,
+            index = if periodChanges then 1 else cycleState.index + 1,
             next = next)
       }
 
@@ -37,7 +37,7 @@ extends ScheduleSimulator
    */
   def maybeRecalcCycleState(now: Timestamp, cycleState: CycleState)
   : Checked[Option[Option[CycleState]]] =
-    for (scheme <- schedule.schemes.checked(cycleState.schemeIndex)) yield
+    for scheme <- schedule.schemes.checked(cycleState.schemeIndex) yield
       !scheme.admissionTimeScheme.isPermitted(now max cycleState.next, zone, dateOffset) ?
         nextCycleState(now, cycleState)
 
@@ -62,16 +62,16 @@ extends ScheduleSimulator
                 case Ticking(tickDuration) =>
                   val n = (now - lastScheduledCycleStart).toMillis / tickDuration.toMillis
                   Some(
-                    if (n > 0) // Late?
+                    if n > 0 then // Late?
                       lastScheduledCycleStart + n * tickDuration
                     else
                       lastScheduledCycleStart + tickDuration * (!first).toInt)
 
                 case Continuous(pause, limit) =>
-                  val index = if (first) 0 else cycleState.index
+                  val index = if first then 0 else cycleState.index
                   limit.forall(index < _) ? {
                     val next = now.max(interval.start) + pause * (!first).toInt
-                    if (next <= now) Timestamp.Epoch else next
+                    if next <= now then Timestamp.Epoch else next
                   }
               }
               .filter(_ < end)
@@ -95,7 +95,7 @@ extends ScheduleSimulator
     val nextTimestamps = Iterator.from(0)
       .flatMap(i => scheduleMillis.map(_ + i * p))
       .filter(t =>
-        if (first)
+        if first then
           t >= localMilliOfPeriod
         else
           t > localMilliOfPeriod)

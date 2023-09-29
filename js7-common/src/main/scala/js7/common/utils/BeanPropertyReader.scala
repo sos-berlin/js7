@@ -10,15 +10,15 @@ import scala.reflect.ClassTag
  */
 final class BeanPropertyReader[A](clas: Class[? <: A], nameToConverter: NameToConverter) {
   private val methods = (
-      for (d <- java.beans.Introspector.getBeanInfo(clas).getPropertyDescriptors if nameToConverter isDefinedAt d.getName;
-           m <- Option(d.getReadMethod) if m.getParameterCount == 0)
+      for d <- java.beans.Introspector.getBeanInfo(clas).getPropertyDescriptors if nameToConverter isDefinedAt d.getName;
+           m <- Option(d.getReadMethod) if m.getParameterCount == 0
       yield d.getName -> m
     ).toMap
 
   def toMap[B <: A](bean: B): Map[String, Any] =
-    for ((name, method) <- methods;
+    for (name, method) <- methods;
          converter <- nameToConverter.lift(name);
-         value <- converter.lift(method.invoke(bean)))
+         value <- converter.lift(method.invoke(bean))
     yield name -> value
 }
 

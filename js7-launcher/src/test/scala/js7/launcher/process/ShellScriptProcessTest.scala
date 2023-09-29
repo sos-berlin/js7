@@ -49,8 +49,8 @@ final class ShellScriptProcessTest extends OurTestSuite
     }
   }
 
-  if (isUnix) {
-    if (!KernelSupportsNestedShebang)
+  if isUnix then {
+    if !KernelSupportsNestedShebang then
       "#! (shebang) not testable because the kernel likely does not support nested interpreters" in {
         pending
       }
@@ -84,14 +84,14 @@ final class ShellScriptProcessTest extends OurTestSuite
   }
 
   "sendProcessSignal SIGKILL" in {
-    if (isMac) {
+    if isMac then {
       info("Disabled on MacOS because it kills our builder process")
       pending
     } else {
       val taskId = TaskId("TEST-PROCESS-ID")
       withScriptFile { scriptFile =>
         scriptFile.writeUtf8Executable(
-          if (isWindows)
+          if isWindows then
             """echo SCRIPT-ARGUMENTS=%*
               |ping -n 7 127.0.0.1
               |""".stripMargin
@@ -102,7 +102,7 @@ final class ShellScriptProcessTest extends OurTestSuite
           val killScriptOutputFile = createTempFile("test-", ".tmp")
           val killScriptFile = newTemporaryShellFile("TEST-KILL-SCRIPT")
           killScriptFile := (
-            if (isWindows)
+            if isWindows then
               s"@echo KILL-ARGUMENTS=%* >$killScriptOutputFile\n"
             else
               s"echo KILL-ARGUMENTS=$$* >$killScriptOutputFile\n")
@@ -124,8 +124,8 @@ final class ShellScriptProcessTest extends OurTestSuite
           assert(!shellProcess.isAlive)
           val rc = shellProcess.terminated await 99.s
           assert(rc == (
-            if (isWindows) ReturnCode(1/* This is Java destroy()*/)
-            else if (isSolaris) ReturnCode(SIGKILL.number)  // Solaris: No difference between exit 9 and kill !!!
+            if isWindows then ReturnCode(1/* This is Java destroy()*/)
+            else if isSolaris then ReturnCode(SIGKILL.number)  // Solaris: No difference between exit 9 and kill !!!
             else ReturnCode(SIGKILL)))
 
           assert(stdFileMap(Stdout).contentString contains "SCRIPT-ARGUMENTS=")
@@ -136,9 +136,9 @@ final class ShellScriptProcessTest extends OurTestSuite
     }
   }
 
-  if (!isWindows) {
+  if !isWindows then {
     "sendProcessSignal SIGTERM (Unix only)" in {
-      if (isMac) {
+      if isMac then {
         info("Disabled on MacOS because it kills our builder process")
         pending
       } else {

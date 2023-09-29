@@ -66,7 +66,7 @@ extends CommonConfiguration
 
   def finishAndProvideFiles(): SubagentConf = {
     provideDataSubdirectories()
-    if (killScript.contains(ProcessKillScriptProvider.directoryToProcessKillScript(workDirectory))) {
+    if killScript.contains(ProcessKillScriptProvider.directoryToProcessKillScript(workDirectory)) then {
       // After Subagent termination, leave behind the kill script,
       // in case of regular termination after error.
       new ProcessKillScriptProvider() //.closeWithCloser
@@ -76,7 +76,7 @@ extends CommonConfiguration
   }
 
   private def provideDataSubdirectories(): this.type = {
-    if (logDirectory == defaultLogDirectory(dataDirectory) && !exists(logDirectory)) {
+    if logDirectory == defaultLogDirectory(dataDirectory) && !exists(logDirectory) then {
       createDirectory(logDirectory)
     }
     autoCreateDirectory(workDirectory)
@@ -104,7 +104,7 @@ extends CommonConfiguration
       config)
 
   private val systemEncoding: Checked[Charset] =
-    if (isWindows)
+    if isWindows then
       WindowsConf.codepage.flatMap(windowsCodepageToEncoding)
     else
       Right(UTF_8)
@@ -253,7 +253,7 @@ object SubagentConf
       .resolve
 
   private def autoCreateDirectory(directory: Path): Path = {
-    if (!exists(directory)) createDirectory(directory)
+    if !exists(directory) then createDirectory(directory)
     directory
   }
 }

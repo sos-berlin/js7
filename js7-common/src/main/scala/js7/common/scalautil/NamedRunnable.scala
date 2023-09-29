@@ -41,7 +41,7 @@ private object NamedRunnable
     override def afterExecute(runnable: Runnable, throwable: Throwable) = {
       runnable match {
         case _: NamedRunnable =>
-          if (restoreName != null) {
+          if restoreName != null then {
             restoreName()
             restoreName = null
           }

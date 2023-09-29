@@ -19,18 +19,18 @@ extends UnsignedSimpleItem
   val companion: AgentRef.type = AgentRef
 
   private def checked: Checked[this.type] =
-    for {
+    for
       _ <- AgentPath.checked(path.string)
       _ <-
-        if (directors.isEmpty && uri.isEmpty)
+        if directors.isEmpty && uri.isEmpty then
           Left(Problem.pure(s"Missing Director in $path"))
-        else if (directors.nonEmpty && uri.nonEmpty)
+        else if directors.nonEmpty && uri.nonEmpty then
           Left(Problem.pure("AgentRef.directors cannot be used with .uri"))
-        else if (directors.sizeIs > 2)
+        else if directors.sizeIs > 2 then
           Left(Problem.pure(s"Not more than two Agent Directors are allowed in $path"))
         else
           Checked.unit
-    } yield this
+    yield this
 
   def rename(path: AgentPath) =
     copy(path = path)
@@ -50,7 +50,7 @@ extends UnsignedSimpleItem
   def convertFromV2_1: Checked[(AgentRef, Option[SubagentItem])] =
     this match {
       case AgentRef(agentPath, directors, Some(uri), itemRevision) =>
-        if (directors.nonEmpty)
+        if directors.nonEmpty then
           Left(Problem.pure("Invalid AgentRef: both directors and uri?"))
         else {
           val subagentItem = SubagentItem(
@@ -84,14 +84,14 @@ object AgentRef extends UnsignedSimpleItem.Companion[AgentRef]
 
   implicit val jsonCodec: Codec.AsObject[AgentRef] = {
     val jsonDecoder: Decoder[AgentRef] =
-      c => for {
+      c => for
         path <- c.get[AgentPath]("path")
         directors <- c.getOrElse[Vector[SubagentId]]("directors")(Vector.empty)
         uri <- c.get[Option[Uri]]("uri")
         rev <- c.get[Option[ItemRevision]]("itemRevision")
         agentRef <- AgentRef(path, directors, uri, rev)
           .checked.toDecoderResult(c.history)
-      } yield agentRef
+      yield agentRef
 
     Codec.AsObject.from(jsonDecoder, deriveEncoder[AgentRef])
   }

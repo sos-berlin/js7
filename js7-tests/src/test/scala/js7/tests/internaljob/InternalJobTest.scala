@@ -68,7 +68,7 @@ with BlockingItemUpdater
     withTemporaryItem(workflow) { workflow =>
       directoryProvider.updateVersionedItems(controller, versionId, Seq(workflow))
 
-      for (processNumber <- 1 to 3) withClue(s"#$processNumber ") {
+      for processNumber <- 1 to 3 do withClue(s"#$processNumber ") {
         val order = FreshOrder(orderIdIterator.next(), workflow.path, Map("ORDER_ARG" -> NumberValue(300)))
         val events = controller.runOrder(order).map(_.value)
 
@@ -121,7 +121,7 @@ with BlockingItemUpdater
 
   private val blockingThreadPoolName = "JS7 blocking job"
 
-  for (jobClass <- Seq(classOf[TestJInternalJob], classOf[TestBlockingInternalJob]))
+  for jobClass <- Seq(classOf[TestJInternalJob], classOf[TestBlockingInternalJob]) do
     jobClass.getName - {
       val n = 10
       lazy val indexedOrderIds = (1 to n).map(_ -> orderIdIterator.next())
@@ -223,8 +223,8 @@ with BlockingItemUpdater
       .toMap
     assert(outcomes == expectedOutcomes)
 
-    for ((orderId, events) <- orderToEvents) {
-      if (expectedOutcomes(orderId).last.isSucceeded)
+    for (orderId, events) <- orderToEvents do {
+      if expectedOutcomes(orderId).last.isSucceeded then
         assert(events.exists(_.isInstanceOf[OrderFinished]))
       else
         assert(events.exists(_.isInstanceOf[OrderFailed]))
@@ -355,7 +355,7 @@ object InternalJobTest
              .start
 
          override def cancel(immediately: Boolean) =
-           if (immediately)
+           if immediately then
              super.cancel(immediately)
            else
              sys.error("TEST EXCEPTION FOR KILL")

@@ -41,7 +41,7 @@ final class HasUserAndPasswordTest extends OurTestSuite with SessionRouteTester
         progress.flatMap(mvar =>
           Task.defer {
             loopCounter += 1
-            if (loopCounter > 2)
+            if loopCounter > 2 then
               mvar.put("FINISHED")
                 .map(_ => "FINISHED")
             else

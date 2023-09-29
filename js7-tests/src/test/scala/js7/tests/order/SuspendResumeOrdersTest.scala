@@ -57,7 +57,7 @@ with BlockingItemUpdater
   import controller.api.{addOrder, executeCommand}
 
   override def beforeAll() = {
-    for (a <- directoryProvider.agentEnvs) {
+    for a <- directoryProvider.agentEnvs do {
       a.writeExecutable(pathExecutable, waitingForFileScript(triggerFile, delete = true))
     }
     super.beforeAll()
@@ -171,7 +171,7 @@ with BlockingItemUpdater
       OrderSuspensionMarked(SuspensionMode(Some(CancellationMode.Kill()))),
       OrderSuspensionMarkedOnAgent,
       OrderProcessed(Outcome.Killed(
-        if (isWindows)
+        if isWindows then
           Outcome.Failed.rc(1)
         else
           Outcome.Failed(NamedValues.rc(SIGTERM)))),
@@ -298,15 +298,15 @@ with BlockingItemUpdater
 
   "Suspend multiple orders with Batch" in {
     deleteIfExists(triggerFile)
-    val orders = for (i <- 1 to 3) yield
+    val orders = for i <- 1 to 3 yield
       FreshOrder(OrderId(i.toString), singleJobWorkflow.path, scheduledFor = Some(Timestamp.now + 99.s))
-    for (o <- orders) addOrder(o).await(99.s).orThrow
-    for (o <- orders) eventWatch.await[OrderAttached](_.key == o.id)
+    for o <- orders do addOrder(o).await(99.s).orThrow
+    for o <- orders do eventWatch.await[OrderAttached](_.key == o.id)
     val response = executeCommand(Batch(
-      for (o <- orders) yield CorrelIdWrapped(CorrelId.empty, SuspendOrders(Set(o.id))))
+      for o <- orders yield CorrelIdWrapped(CorrelId.empty, SuspendOrders(Set(o.id))))
     ).await(99.s).orThrow
     assert(response == Batch.Response(Vector.fill(orders.length)(Right(Response.Accepted))))
-    for (o <- orders) eventWatch.await[OrderSuspended](_.key == o.id)
+    for o <- orders do eventWatch.await[OrderSuspended](_.key == o.id)
   }
 
   "Resume a still suspending order" in {
@@ -461,7 +461,7 @@ with BlockingItemUpdater
       InsertHistoricOutcome(Position(0), Position(99), Outcome.succeeded),
       DeleteHistoricOutcome(Position(99)),
       AppendHistoricOutcome(Position(99), Outcome.succeeded))
-    for (op <- invalidOps) assert(
+    for op <- invalidOps do assert(
       executeCommand(ResumeOrder(order.id, historyOperations = Seq(op))).await(99.s) ==
         Left(Problem("Unknown position 99 in Workflow:TRY~INITIAL")))
 

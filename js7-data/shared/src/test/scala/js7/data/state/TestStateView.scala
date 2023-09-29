@@ -61,10 +61,10 @@ extends EventDrivenStateView[TestStateView, Event]
   : Checked[TestStateView] = {
     // Do not touch unused entries, they may be a NotImplementedMap
     var x = this
-    if (removeOrders.nonEmpty) x = x.copy(idToOrder = idToOrder -- removeOrders)
-    if (orders.nonEmpty) x = x.copy(idToOrder = idToOrder ++ orders.map(o => o.id -> o))
-    if (removeItemStates.nonEmpty) x = x.copy(keyToUnsignedItemState_ = keyToUnsignedItemState_ -- removeItemStates)
-    if (addItemStates.nonEmpty) x = x.copy(
+    if removeOrders.nonEmpty then x = x.copy(idToOrder = idToOrder -- removeOrders)
+    if orders.nonEmpty then x = x.copy(idToOrder = idToOrder ++ orders.map(o => o.id -> o))
+    if removeItemStates.nonEmpty then x = x.copy(keyToUnsignedItemState_ = keyToUnsignedItemState_ -- removeItemStates)
+    if addItemStates.nonEmpty then x = x.copy(
       keyToUnsignedItemState_ = keyToUnsignedItemState_ ++ addItemStates.map(o => o.path -> o))
     Right(x)
   }

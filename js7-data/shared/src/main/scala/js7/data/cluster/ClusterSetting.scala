@@ -35,7 +35,7 @@ final case class ClusterSetting(
     copy(idToUri =
       idToUri
         .toVector
-        .sortBy(o => if (o._1 == activeId) 0 else 1)
+        .sortBy(o => if o._1 == activeId then 0 else 1)
         .toMap)
 
   def withPassiveUri(uri: Uri): ClusterSetting =
@@ -43,8 +43,8 @@ final case class ClusterSetting(
 
   @TestOnly
   def other(nodeId: NodeId): NodeId = {
-    if (nodeId == activeId) passiveId
-    else if (nodeId == passiveId) activeId
+    if nodeId == activeId then passiveId
+    else if nodeId == passiveId then activeId
     else throw new IllegalArgumentException(s"Unknown $nodeId")
   }
 }
@@ -57,21 +57,21 @@ object ClusterSetting
     timing: ClusterTiming,
     clusterWatchId: Option[ClusterWatchId])
   : Checked[ClusterSetting] =
-    for (_ <- checkedUnit(idToUri, activeId)) yield
+    for _ <- checkedUnit(idToUri, activeId) yield
       new ClusterSetting(idToUri, activeId, timing, clusterWatchId)
 
   private def checkedUnit(idToUri: Map[NodeId, Uri], activeId: NodeId) =
     checkUris(idToUri) >>
-      (if (!idToUri.contains(activeId))
+      (if !idToUri.contains(activeId) then
         Left(Problem(
           s"Unknown $activeId, expected one of ${idToUri.keys.mkString("'", "', '", "'")}"))
       else
         Right(()))
 
   private[cluster] def checkUris(idToUri: Map[NodeId, Uri]): Checked[idToUri.type] =
-    if (idToUri.size != 2)
+    if idToUri.size != 2 then
       Left(Problem("Exactly two URIs are expected"))
-    else if (idToUri.values.toVector.distinct.size != idToUri.size)
+    else if idToUri.values.toVector.distinct.size != idToUri.size then
       Left(Problem("URIs must be different"))
     else
       Right(idToUri)

@@ -37,18 +37,18 @@ trait HttpSessionApi extends SessionApi with HasSessionToken
   private val sessionTokenRef = AtomicAny[Option[SessionToken]](None)
 
   protected final def logOpenSession(): Unit =
-    for (token <- sessionTokenRef.get()) {
+    for token <- sessionTokenRef.get() do {
       logger.debug(s"close(), but $token not logged-out: $toString")
     }
 
   final def login_(userAndPassword: Option[UserAndPassword], onlyIfNotLoggedIn: Boolean = false)
   : Task[Completed] =
     Task.defer(
-      if (onlyIfNotLoggedIn && hasSession)
+      if onlyIfNotLoggedIn && hasSession then
         Task.completed // avoid lock logging
       else
         lock.lock(Task.defer(
-          if (onlyIfNotLoggedIn && hasSession)
+          if onlyIfNotLoggedIn && hasSession then
             Task.completed
           else {
             val cmd = Login(userAndPassword, Some(Js7Version))
@@ -72,7 +72,7 @@ trait HttpSessionApi extends SessionApi with HasSessionToken
 
   final def logout(): Task[Completed] =
     Task.defer(
-      if (sessionTokenRef.get().isEmpty)
+      if sessionTokenRef.get().isEmpty then
         Task.completed // avoid lock logging
       else
         lock.lock(Task.defer(
@@ -93,7 +93,7 @@ trait HttpSessionApi extends SessionApi with HasSessionToken
   private def executeSessionCommand(command: SessionCommand, suppressSessionToken: Boolean = false)
   : Task[command.Response] = {
     implicit val implicitSessionToken =
-      if (suppressSessionToken) Task.pure(None)
+      if suppressSessionToken then Task.pure(None)
       else Task { sessionToken }
     httpClient.post[SessionCommand, SessionCommand.Response](sessionUri, command)
       .map(_.asInstanceOf[command.Response])
@@ -138,7 +138,7 @@ object HttpSessionApi
     checkNonMatchingVersion(otherVersion, otherName = otherName, ourVersion = ourVersion) match {
       case Left(problem) => logger.error(problem.toString)
       case Right(()) =>
-        if (otherVersion != ourVersion) {
+        if otherVersion != ourVersion then {
           logger.info(s"$otherName server version $otherVersion differs from own version $ourVersion")
         }
     }

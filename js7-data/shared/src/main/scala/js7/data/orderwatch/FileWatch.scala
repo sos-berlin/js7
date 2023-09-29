@@ -53,7 +53,7 @@ object FileWatch extends OrderWatch.Companion[FileWatch]
 
   implicit val jsonCodec: Codec.AsObject[FileWatch] = {
     val decoder: Decoder[FileWatch] =
-      c => for {
+      c => for
         path <- c.get[OrderWatchPath]("path")
         workflowPath <- c.get[WorkflowPath]("workflowPath")
         agentPath <- c.get[AgentPath]("agentPath")
@@ -64,7 +64,7 @@ object FileWatch extends OrderWatch.Companion[FileWatch]
         orderIdExpression <- c.get[Option[Expression]]("orderIdExpression")
         delay <- c.getOrElse[FiniteDuration]("delay")(ZeroDuration)
         itemRevision <- c.get[Option[ItemRevision]]("itemRevision")
-      } yield FileWatch(path, workflowPath, agentPath,
+      yield FileWatch(path, workflowPath, agentPath,
         directoryExpr, pattern, orderIdExpression, delay, itemRevision)
 
     Codec.AsObject.from(

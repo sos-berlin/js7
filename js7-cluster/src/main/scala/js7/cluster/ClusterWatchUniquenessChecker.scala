@@ -18,9 +18,9 @@ final class ClusterWatchUniquenessChecker(memorySize: Int)
 
   def check(clusterWatchId: ClusterWatchId, clusterWatchRunId: ClusterWatchRunId): Checked[Unit] =
     synchronized {
-      if (idToRunId.get(clusterWatchId) contains clusterWatchRunId)
+      if idToRunId.get(clusterWatchId) contains clusterWatchRunId then
         Checked.unit
-      else if (idToRunId.values.exists(_ == clusterWatchRunId) || isUsedRunId(clusterWatchRunId)) {
+      else if idToRunId.values.exists(_ == clusterWatchRunId) || isUsedRunId(clusterWatchRunId) then {
         // Only in the weird case, that the same clusterWatchRunId has another clusterWatchId
         val problem = ClusterWatchIdNotUniqueProblem(clusterWatchId, clusterWatchRunId)
         logger.warn(problem.toString)
@@ -28,7 +28,7 @@ final class ClusterWatchUniquenessChecker(memorySize: Int)
       } else {
         logger.debug(s"Remember $clusterWatchId $clusterWatchRunId")
         idToRunId = idToRunId.updated(clusterWatchId, clusterWatchRunId)
-        if (usedRunIds.length >= memorySize) {
+        if usedRunIds.length >= memorySize then {
           isUsedRunId -= usedRunIds.dequeue()
         }
         usedRunIds += clusterWatchRunId

@@ -86,7 +86,7 @@ final class ProxyHistoryTest extends OurTestSuite with ProvideActorSystem with C
         @volatile var lastState = ControllerState.empty
         @volatile var finished = false
         var rounds = 0
-        while (!finished && rounds <= maxRounds) {
+        while !finished && rounds <= maxRounds do {
           logger.info(s"Round $rounds")
           var proxyStartedReceived = false
           try {
@@ -112,7 +112,7 @@ final class ProxyHistoryTest extends OurTestSuite with ProvideActorSystem with C
                 }
                 lastState = es.state
                 var keyedEvent = es.stampedEvent.value
-                for (controllerReady <- ifCast[ControllerReady](keyedEvent.event)) {
+                for controllerReady <- ifCast[ControllerReady](keyedEvent.event) do {
                   keyedEvent = NoKey <-: controllerReady.copy(totalRunningTime = 333.s)
                 }
                 es.stampedEvent.value match {

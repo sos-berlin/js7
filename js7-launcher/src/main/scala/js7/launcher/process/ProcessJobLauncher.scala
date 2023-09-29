@@ -34,10 +34,10 @@ trait ProcessJobLauncher extends JobLauncher
 
     new OrderProcess {
       def run: Task[Fiber[Outcome.Completed]] = {
-        val checkedEnv = for {
+        val checkedEnv = for
           jobResourcesEnv <- processOrder.checkedJobResourcesEnv
           v1 <- v1Env(processOrder)
-        } yield (v1.view ++ startProcess.env ++ jobResourcesEnv).toMap
+        yield (v1.view ++ startProcess.env ++ jobResourcesEnv).toMap
         checkedEnv match {
           case Left(problem) =>
             Task.pure(Outcome.Failed.fromProblem(problem): Outcome.Completed).start
@@ -47,18 +47,18 @@ trait ProcessJobLauncher extends JobLauncher
       }
 
       def cancel(immediately: Boolean) =
-        processDriver.kill(if (immediately) SIGKILL else SIGTERM)
+        processDriver.kill(if immediately then SIGKILL else SIGTERM)
 
       override def toString = "ProcessJobLauncher.OrderProcess"
     }
   }
 
   private def v1Env(processOrder: ProcessOrder): Checked[Map[String, Some[String]]] =
-    if (!v1Compatible)
+    if !v1Compatible then
       Right(Map.empty)
     else {
       import processOrder.{order, workflow}
-      for (defaultArguments <- processOrder.checkedJs1DefaultArguments) yield
+      for defaultArguments <- processOrder.checkedJs1DefaultArguments yield
         (defaultArguments.view ++ order.v1CompatibleNamedValues(workflow))
           .map { case (k, v) => k -> v.toStringValue }
           .collect {

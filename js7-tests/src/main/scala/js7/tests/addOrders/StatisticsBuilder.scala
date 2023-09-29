@@ -42,8 +42,8 @@ private final class StatisticsBuilder(
     private var observerAck: Future[Ack] = Future.successful(Ack.Continue)
 
     def tryPublish() = {
-      if (now >= next) {
-        if (observerAck.value contains Success(Ack.Continue)) {
+      if now >= next then {
+        if observerAck.value contains Success(Ack.Continue) then {
           observerAck = observer.onNext(toStatistics)
           next = now + pause
         }
@@ -75,7 +75,7 @@ private final class StatisticsBuilder(
             orderIdToStarted(orderId) = timestamp
 
           case _: OrderTerminated =>
-            for (start <- orderIdToStarted.remove(orderId)) {
+            for start <- orderIdToStarted.remove(orderId) do {
               val duration = timestamp - start
               totalOrderDuration += duration
               maximumOrderDuration = maximumOrderDuration max duration
@@ -85,7 +85,7 @@ private final class StatisticsBuilder(
             orderIdToProcessingStarted(orderId) = timestamp
 
           case _: OrderProcessed =>
-            for (start <- orderIdToProcessingStarted.remove(orderId)) {
+            for start <- orderIdToProcessingStarted.remove(orderId) do {
               processedCount += 1
               val duration = timestamp - start
               totalProcessDuration += duration
@@ -96,7 +96,7 @@ private final class StatisticsBuilder(
             orderToChildren(orderId) = children.map(_.orderId)
 
           case _: OrderJoined =>
-            for (children <- orderToChildren.remove(orderId)) {
+            for children <- orderToChildren.remove(orderId) do {
               completedForkedOrderCount += children.size
             }
             obs.tryPublish()

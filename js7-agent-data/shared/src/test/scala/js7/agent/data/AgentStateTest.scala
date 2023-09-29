@@ -203,7 +203,7 @@ final class AgentStateTest extends OurAsyncTestSuite
 
   "estimatedSnapshotSize" in {
     assert(agentState.estimatedSnapshotSize == 14)
-    for (n <- agentState.toSnapshotObservable.countL.runToFuture)
+    for n <- agentState.toSnapshotObservable.countL.runToFuture
       yield assert(n == agentState.estimatedSnapshotSize)
   }
 
@@ -346,7 +346,7 @@ final class AgentStateTest extends OurAsyncTestSuite
           .runToFuture
           .flatMap { fromSnapshot =>
             val a = agentState.copy(eventId = 0)
-            if (fromSnapshot != a) {  // Diff.compare do not uses our equals implementation
+            if fromSnapshot != a then {  // Diff.compare do not uses our equals implementation
               fail("Eevent-build state differs from snapshot")
               //diffx val diffResult = diffx.Diff.compare(fromSnapshot, a)
               //diffx fail(diffResult.show())

@@ -26,7 +26,7 @@ final class DeleteOrderWhenTerminatedTest extends OurTestSuite with ControllerAg
   protected val items = Seq(quickWorkflow)
 
   override def beforeAll() = {
-    for (a <- directoryProvider.agentEnvs) {
+    for a <- directoryProvider.agentEnvs do {
       a.writeExecutable(quickPathExecutable, script(1.s))
       a.writeExecutable(slowPathExecutable, script(1.s))
     }

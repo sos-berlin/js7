@@ -15,13 +15,13 @@ trait ControllerApiWithHttp
   : Resource[Task, HttpControllerApi]
 
   def httpPostJson(uriTail: String, jsonString: String): Task[Checked[String]] =
-    (for {
+    (for
       requestJson <- EitherT(Task(io.circe.parser.parse(jsonString).toChecked))
       responseJson <- EitherT(
         apiResource.use(api =>
           HttpClient.liftProblem(
             api.post[Json, Json](uriTail, requestJson))))
-    } yield responseJson).value
+    yield responseJson).value
       .map(_.map(_.compactPrint))
 
   /** HTTP GET

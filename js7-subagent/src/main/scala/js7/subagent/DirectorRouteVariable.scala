@@ -21,7 +21,7 @@ private final class DirectorRouteVariable {
   def registeringRouteResource(toRoute: ToRoute): Resource[Task, Unit] =
     Resource.make(
       acquire = lock.lock(Task {
-        if (_toRoute ne noDirector) throw new IllegalStateException(
+        if _toRoute ne noDirector then throw new IllegalStateException(
           "registeringRouteResource called twice")
         _toRoute = toRoute
         cache.clear()

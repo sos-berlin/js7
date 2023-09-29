@@ -23,10 +23,10 @@ final case class ForkList(
 extends ForkInstruction
 {
   def checked: Checked[ForkList] =
-    for {
+    for
       childToId <- childToId.restrict("childToId", minimum = 1, maximum = 2)
       childToArguments <- childToArguments.restrict("childToArguments", minimum = 0, maximum = 2)
-    } yield copy(
+    yield copy(
       childToId = childToId,
       childToArguments = childToArguments)
 
@@ -42,7 +42,7 @@ extends ForkInstruction
     workflow = workflow.copy(outer = Some(outer)))
 
   override def reduceForAgent(agentPath: AgentPath, outer: Workflow) =
-    if (this.agentPath.contains(agentPath) || isVisibleForAgent(agentPath, outer))
+    if this.agentPath.contains(agentPath) || isVisibleForAgent(agentPath, outer) then
       copy(
         workflow = reuseIfEqual(workflow, workflow.reduceForAgent(agentPath)))
     else

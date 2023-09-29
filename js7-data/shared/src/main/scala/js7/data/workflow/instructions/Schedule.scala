@@ -29,20 +29,20 @@ object Schedule
   object Periodic
   {
     def checked(period: FiniteDuration, offsets: Seq[FiniteDuration]): Checked[Periodic] =
-      if (period.isPositive
+      if period.isPositive
         && offsets.exists(o => !o.isNegative & o < period)
-        && offsets.areUnique)
+        && offsets.areUnique then
         Right(Periodic(period, offsets))
       else
         Left(Problem.pure("Invalid Periodic arguments"))
 
     implicit val jsonEncoder: Encoder.AsObject[Periodic] = deriveEncoder
     implicit val jsonDecoder: Decoder[Periodic] =
-      c => for {
+      c => for
         period <- c.get[FiniteDuration]("period")
         offsets <- c.get[Vector[FiniteDuration]]("offsets")
         _ <- checked(period, offsets).toDecoderResult(c.history)
-      } yield Periodic(period, offsets.sorted)
+      yield Periodic(period, offsets.sorted)
   }
 
   final case class Ticking(interval: FiniteDuration)
@@ -53,17 +53,17 @@ object Schedule
   object Ticking
   {
     def checked(interval: FiniteDuration): Checked[Ticking] =
-      if (!interval.isPositive)
+      if !interval.isPositive then
         Left(Problem.pure("Invalid Ticking arguments"))
       else
         Right(Ticking(interval))
 
     implicit val jsonEncoder: Encoder.AsObject[Ticking] = deriveEncoder
     implicit val jsonDecoder: Decoder[Ticking] =
-      c => for {
+      c => for
         interval <- c.get[FiniteDuration]("interval")
         ticking <- checked(interval).toDecoderResult(c.history)
-      } yield ticking
+      yield ticking
   }
 
   final case class Continuous(
@@ -83,20 +83,20 @@ object Schedule
       pause: FiniteDuration = Duration.Zero,
       limit: Option[Int] = None)
     : Checked[Continuous] =
-      if (pause.isNegative || !limit.forall(_ >= 0))
+      if pause.isNegative || !limit.forall(_ >= 0) then
         Left(Problem.pure("Invalid Continuous arguments"))
-      else if (!pause.isPositive & limit.isEmpty)
+      else if !pause.isPositive & limit.isEmpty then
         Left(Problem.pure("Continuous: limit or pause must be set"))
       else
         Right(Continuous(pause, limit))
 
     implicit val jsonEncoder: Encoder.AsObject[Continuous] = deriveEncoder
     implicit val jsonDecoder: Decoder[Continuous] =
-      c => for {
+      c => for
         pause <- c.get[FiniteDuration]("pause")
         limit <- c.get[Option[Int]]("limit")
         continuous <- checked(pause, limit).toDecoderResult(c.history)
-      } yield continuous
+      yield continuous
   }
 
   object Repeat {

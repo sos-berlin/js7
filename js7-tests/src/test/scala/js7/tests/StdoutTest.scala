@@ -159,7 +159,7 @@ object StdoutTest
   private val longDelay = delay + 400.ms
 
   private def sleepCommand(delay: FiniteDuration) =
-    if (isWindows) s"SLEEP ${delay.toDecimalString}\n"  // TODO Windows
+    if isWindows then s"SLEEP ${delay.toDecimalString}\n"  // TODO Windows
     else s"sleep ${delay.toDecimalString}\n"
 
   private final class TestInternalJob extends InternalJob

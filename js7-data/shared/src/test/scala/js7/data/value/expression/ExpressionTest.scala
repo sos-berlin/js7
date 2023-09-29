@@ -77,10 +77,10 @@ final class ExpressionTest extends OurTestSuite
         functionCall match {
           case FunctionCall("myFunction", Seq(Argument(expr, None))) =>
             Some(
-              for {
+              for
                 value <- expr.eval
                 maybeNumber <- value.asMaybeNumber
-              } yield maybeNumber.map(_ * 3).fold(missingValue)(NumberValue(_)))
+              yield maybeNumber.map(_ * 3).fold(missingValue)(NumberValue(_)))
 
           case _ => None
         }

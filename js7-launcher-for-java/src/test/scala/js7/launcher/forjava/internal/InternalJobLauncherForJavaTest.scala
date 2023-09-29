@@ -50,7 +50,7 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite with BeforeAndAf
     super.afterAll()
   }
 
-  for (testClass <- Seq(classOf[TestJInternalJob], classOf[TestBlockingInternalJob]))
+  for testClass <- Seq(classOf[TestJInternalJob], classOf[TestBlockingInternalJob]) do
     testClass.getSimpleName - {
       lazy val executable = InternalExecutable(
         testClass.getName,
@@ -92,7 +92,7 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite with BeforeAndAf
 
       "parallel" in {
         val indices = 1 to 1000
-        val processes = for (i <- indices) yield {
+        val processes = for i <- indices yield {
           processOrder(NumericConstant(i))
             .map(_.orThrow)
             .flatMap {
@@ -114,9 +114,9 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite with BeforeAndAf
 
       "stop" in {
         executor.stop.await(99.s)
-        if (testClass == classOf[TestJInternalJob]) {
+        if testClass == classOf[TestJInternalJob] then {
           assert(TestJInternalJob.stoppedCalled.containsKey(blockingThreadPoolName))
-        } else if (testClass == classOf[TestBlockingInternalJob]) {
+        } else if testClass == classOf[TestBlockingInternalJob] then {
           assert(TestBlockingInternalJob.stoppedCalled.containsKey(blockingThreadPoolName))
         }
       }

@@ -38,7 +38,7 @@ final class Feed(controllerApi: ControllerApi, settings: Settings)
       })
 
   private def updateItems(ops: Seq[ItemOperation]): Task[Checked[Unit]] =
-    if (ops.isEmpty)
+    if ops.isEmpty then
       Task.right(())
     else
       controllerApi
@@ -46,7 +46,7 @@ final class Feed(controllerApi: ControllerApi, settings: Settings)
         .rightAs(())
 
   private def addOrders(orders: Seq[FreshOrder]): Task[Checked[Unit]] =
-    if (orders.isEmpty)
+    if orders.isEmpty then
       Task.right(())
     else
       controllerApi

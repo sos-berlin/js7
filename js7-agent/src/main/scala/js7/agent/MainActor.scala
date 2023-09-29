@@ -66,14 +66,14 @@ extends Actor {
 
   override def preStart() = {
     super.preStart()
-    for (t <- terminationPromise.future.failed) readyPromise.tryFailure(t)
+    for t <- terminationPromise.future.failed do readyPromise.tryFailure(t)
   }
 
   override def postStop() = {
-    if (!readyPromise.isCompleted) {
+    if !readyPromise.isCompleted then {
       readyPromise.tryFailure(new RuntimeException("MainActor has stopped before AgentActor has become ready") with NoStackTrace)
     }
-    if (!terminationPromise.isCompleted) {
+    if !terminationPromise.isCompleted then {
       terminationPromise.tryFailure(new RuntimeException("MainActor has stopped unexpectedly") with NoStackTrace)
     }
     logger.debug("Stopped")

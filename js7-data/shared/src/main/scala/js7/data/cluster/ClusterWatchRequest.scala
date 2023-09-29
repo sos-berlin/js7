@@ -32,7 +32,7 @@ final case class ClusterWatchCheckEvent(
 extends ClusterWatchRequest
 {
   def checked: Checked[this.type] =
-    if (from != clusterState.activeId && !event.isInstanceOf[ClusterSwitchedOver])
+    if from != clusterState.activeId && !event.isInstanceOf[ClusterSwitchedOver] then
       Left(InvalidClusterWatchHeartbeatProblem(from, clusterState))
     else
       Right(this)
@@ -57,7 +57,7 @@ final case class ClusterWatchCheckState(
 extends ClusterWatchRequest
 {
   def checked: Checked[this.type] =
-    if (from != clusterState.activeId)
+    if from != clusterState.activeId then
       Left(InvalidClusterWatchHeartbeatProblem(from, clusterState))
     else
       Right(this)

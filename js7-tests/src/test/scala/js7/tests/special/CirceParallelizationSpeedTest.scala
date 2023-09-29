@@ -25,7 +25,7 @@ import monix.reactive.Observable
 
 final class CirceParallelizationSpeedTest extends OurTestSuite
 {
-  if (sys.props.contains("test.speed")) {
+  if sys.props.contains("test.speed") then {
     val n = 4 * sys.runtime.availableProcessors * MonixBase.DefaultBatchSize
     lazy val big = {
       val workflowPosition = WorkflowPath("WORKFLOW") ~ "1" /: (Position(1) / Then % 2 / Then % 3)
@@ -39,9 +39,9 @@ final class CirceParallelizationSpeedTest extends OurTestSuite
         historicOutcomes = (1 to 50).map(_ => historicOutcome).toVector)
       logger.info(s"Big has ${fakeOrder.asJson.compactPrint.size} JSON bytes or ${fakeOrder.asJson.toPrettyString.count(_ == '\n')} JSON lines")
       logger.debug(fakeOrder.asJson.toPrettyString)
-      for (i <- 1 to n / 10) yield Big(fakeOrder.copy(id = OrderId(i.toString)))
+      for i <- 1 to n / 10 yield Big(fakeOrder.copy(id = OrderId(i.toString)))
     }
-    lazy val small = for (i <- 1 to n) yield Small(i)
+    lazy val small = for i <- 1 to n yield Small(i)
     lazy val bigJson = encodeParallelBatch(big)
     lazy val smallJson = encodeParallelBatch(small)
 
@@ -55,7 +55,7 @@ final class CirceParallelizationSpeedTest extends OurTestSuite
       testDecode[Small](smallJson, "Small")(decodeParallelBatch[Small])
     }
 
-    if (false) { // too slow
+    if false then { // too slow
       "encode parallel" in {
         testEncode(big, "Big")(encodeParallel)
         testEncode(small, "Small")(encodeParallel)
@@ -67,7 +67,7 @@ final class CirceParallelizationSpeedTest extends OurTestSuite
       }
     }
 
-    if (true) { // slow
+    if true then { // slow
       "encode sequential" in {
         testEncode(big, "Big")(seq => encodeSerial(seq))
         testEncode(small, "Small")(seq => encodeSerial(seq))
@@ -82,23 +82,23 @@ final class CirceParallelizationSpeedTest extends OurTestSuite
 
   private def testEncode[A: Encoder](seq: Seq[A], plural: String)(body: Seq[A] => Seq[ByteArray]): Unit = {
     val m = 20
-    for (i <- 1 to m) {
+    for i <- 1 to m do {
       //System.gc()
       val timing = measureTimeOfSingleRun(seq.size, plural) {
         body(seq)
       }
-      if (i > m / 2) logger.info(s"Encode $timing")
+      if i > m / 2 then logger.info(s"Encode $timing")
     }
   }
 
   private def testDecode[A: Decoder](seq: Seq[ByteArray], plural: String)(body: Seq[ByteArray] => Seq[A]): Unit = {
     val m = 20
-    for (i <- 1 to m) {
+    for i <- 1 to m do {
       //System.gc()
       val timing = measureTimeOfSingleRun(seq.size, plural) {
         body(seq)
       }
-      if (i > m / 2) logger.info(s"Decode $timing")
+      if i > m / 2 then logger.info(s"Decode $timing")
     }
   }
 

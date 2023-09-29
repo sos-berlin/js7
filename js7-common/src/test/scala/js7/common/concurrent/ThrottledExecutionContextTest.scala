@@ -28,10 +28,10 @@ final class ThrottledExecutionContextTest extends OurTestSuite with BeforeAndAft
     implicit val throttledExecutionContext = new ThrottledExecutionContext(throttle)(executionContext)
     ParallelismCounter.expect(throttle, range.size) { count =>
       val futures =
-        for (i <- range) yield {
+        for i <- range yield {
           Future {
             count {
-              if (i % 3 == 0) sleep(Random.nextInt(10).ms)
+              if i % 3 == 0 then sleep(Random.nextInt(10).ms)
               i
             }
           }
@@ -41,25 +41,25 @@ final class ThrottledExecutionContextTest extends OurTestSuite with BeforeAndAft
   }
 
   "With quick operation" in {
-    for (n <- Array(1/*warm-up*/, 1, 2)) {
-      for (throttle <- 1 to 3) {
+    for n <- Array(1/*warm-up*/, 1, 2) do {
+      for throttle <- 1 to 3 do {
         info(s"n=$n throttle=$throttle: " +
           measureTime(10000, "FutureThrottle") {
             implicit val throttledExecutionContext = new ThrottledExecutionContext(throttle)(executionContext)
-            val futures = for (i <- 1 to n) yield Future { i }
+            val futures = for i <- 1 to n yield Future { i }
             assert((futures await 60.s).sum == (1 to n).sum)
           }.toString)
       }
     }
   }
 
-  if (false)
+  if false then
   "Ordinary Future" in {
     import ExecutionContext.Implicits.global
-    for (n <- 1 to 2) {
+    for n <- 1 to 2 do {
       info(s"n=$n: " +
         measureTime(10000, "Future") {
-          val futures = for (i <- 1 to n) yield Future { i }
+          val futures = for i <- 1 to n yield Future { i }
           assert((futures await 60.s).sum == (1 to n).sum)
         }.toString)
     }

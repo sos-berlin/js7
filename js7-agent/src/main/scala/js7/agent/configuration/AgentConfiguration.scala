@@ -53,7 +53,7 @@ extends CommonConfiguration
 
   def createDirectories(): Unit = {
     subagentConf.finishAndProvideFiles()
-    if (!exists(stateDirectory)) {
+    if !exists(stateDirectory) then {
       createDirectory(stateDirectory)
     }
   }
@@ -78,7 +78,7 @@ extends CommonConfiguration
 
 object AgentConfiguration
 {
-  val DefaultName = if (isTest) "Agent" else "JS7"
+  val DefaultName = if isTest then "Agent" else "JS7"
 
   val DefaultConfig: Config = Configs
     .loadResource(JavaResource("js7/agent/configuration/agent.conf"))

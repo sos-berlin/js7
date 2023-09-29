@@ -78,7 +78,7 @@ final class FileSnapshotableStateBuilder[S <: SnapshotableState[S]](
         }
 
       case AfterHeader =>
-        if (journalRecord != SnapshotHeader) throw new IllegalArgumentException(
+        if journalRecord != SnapshotHeader then throw new IllegalArgumentException(
           "Missing SnapshotHeader in journal file")
         _progress = InSnapshotSection
 
@@ -92,7 +92,7 @@ final class FileSnapshotableStateBuilder[S <: SnapshotableState[S]](
         }
 
       case AfterSnapshotSection =>
-        if (journalRecord != EventHeader) throw new IllegalArgumentException(
+        if journalRecord != EventHeader then throw new IllegalArgumentException(
           "Missing EventHeader in journal file")
         _progress = InCommittedEventsSection
 
@@ -109,7 +109,7 @@ final class FileSnapshotableStateBuilder[S <: SnapshotableState[S]](
         journalRecord match {
           case Commit =>
             _progress = InCommittedEventsSection
-            for (stamped <- transaction.buffer) {
+            for stamped <- transaction.buffer do {
               builder.addEvent(stamped)
             }
             transaction.clear()

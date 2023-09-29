@@ -31,7 +31,7 @@ final class FileEventIteratorTest extends OurTestSuite
       val firstPos = PositionAnd(iterator.firstEventPosition, After)
       val secondPos = PositionAnd(iterator.position, TestEvents(0).eventId)
 
-      for (_ <- 1 to 3) {
+      for _ <- 1 to 3 do {
         iterator.seek(firstPos)
         assert(iterator.next() == TestEvents(0))
         assert(iterator.next() == TestEvents(1))

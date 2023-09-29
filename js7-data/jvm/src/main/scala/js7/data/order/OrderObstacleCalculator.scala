@@ -39,13 +39,13 @@ final class OrderObstacleCalculator(val stateView: StateView)
   def orderToObstacles(orderId: OrderId)
     (implicit instructionExecutorService: InstructionExecutorService)
   : Checked[Set[OrderObstacle]] =
-    for {
+    for
       order <- stateView.idToOrder.checked(orderId)
       a <- instructionExecutorService.toObstacles(order, this)
       b = orderStateToObstacles(order)
       c = order.isSuspendedOrStopped.thenSet[OrderObstacle](WaitingForCommand)
 
-    } yield a ++ b ++ c ++ workflowSuspendedObstacle(order)
+    yield a ++ b ++ c ++ workflowSuspendedObstacle(order)
 
   private def workflowSuspendedObstacle(order: Order[Order.State]) =
     stateView.isWorkflowSuspended(order.workflowPath) ? OrderObstacle.WorkflowSuspended

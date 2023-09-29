@@ -13,5 +13,5 @@ object Js7ReturnCodes {
 
   def terminationToReturnCode(termination: ProgramTermination) =
     ReturnCode(
-      if (termination.restart) Restart else 0)
+      if termination.restart then Restart else 0)
 }

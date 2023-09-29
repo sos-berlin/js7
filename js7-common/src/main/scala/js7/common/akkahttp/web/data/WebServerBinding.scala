@@ -91,7 +91,7 @@ object WebServerBinding
     private def toLocallyUsableUri(scheme: WebServerBinding.Scheme, address: InetSocketAddress): Uri = {
       val localhost = scheme match {
         case WebServerBinding.Http =>
-          if (Set("0.0.0.0", "127.0.0.1") contains address.getAddress.getHostAddress)
+          if Set("0.0.0.0", "127.0.0.1") contains address.getAddress.getHostAddress then
             "127.0.0.1"
           else
             address.getAddress.getHostAddress

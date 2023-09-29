@@ -48,7 +48,7 @@ final class JobDriverStarvationTest extends OurTestSuite with ControllerAgentFor
     // but sends only one to the JobActor,
     // letting the other starve until the JobActor requests the next order.
 
-    val orderIds = for (i <- 1 to n) yield OrderId(s"ORDER-$i")
+    val orderIds = for i <- 1 to n yield OrderId(s"ORDER-$i")
     val proxy = controller.api.startProxy().await(99.s)
 
     val firstOrdersProcessing = proxy.observable

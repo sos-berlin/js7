@@ -21,9 +21,9 @@ final class GenericSignatureVerifierTest extends OurTestSuite
       val signers = List(
         PgpSigner.checked(PgpTest.secretKeyResource.readAs[ByteArray], PgpTest.secretKeyPassword).orThrow,
         PgpSigner.checked(PgpTest.secretKeyResource2.readAs[ByteArray], PgpTest.secretKeyPassword2).orThrow)
-      val signatures = for ((message, signer) <- messages zip signers)
+      val signatures = for (message, signer) <- messages zip signers
         yield signer.signString(message).toGenericSignature
-      for (signature <- signatures) assert(signature.typeName == "PGP")
+      for signature <- signatures do assert(signature.typeName == "PGP")
 
       directory / "test.asc" := PgpTest.publicKeyResource.contentBytes
       directory / "test-2.asc" := PgpTest.publicKeyResource2.contentBytes

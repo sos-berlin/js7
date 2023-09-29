@@ -22,7 +22,7 @@ extends Period
   override def absoluteRepeatOption = Some(absoluteRepeat)
 
   def nextLocalTime(t: LocalTime): Option[LocalTime] =
-    if (t < begin)
+    if t < begin then
       Some(begin)
     else {
       val last = (t.toNanoOfDay + absoluteRepeat.toNanos - begin.toNanoOfDay) / absoluteRepeat.toNanos

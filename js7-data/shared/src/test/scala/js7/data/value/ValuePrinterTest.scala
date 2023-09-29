@@ -20,13 +20,13 @@ final class ValuePrinterTest extends OurTestSuite
 
   "quoteString - random values" in {
     forAll { (string: String) =>
-      val cleansedString = string.map(c => if ((c & 0xffff) >= 0x20 || c == '\t' || c == '\r'|| c == '\n') c else '¿')
+      val cleansedString = string.map(c => if (c & 0xffff) >= 0x20 || c == '\t' || c == '\r'|| c == '\n' then c else '¿')
       assert(parseQuotedString(quoteString(cleansedString)) == Right(cleansedString))
     }
   }
 
   "Enumerated characters" in {
-    for (i <- (0x20 to 0xFFFF) ++ Seq('\t'.toInt, '\r'.toInt, '\n'.toInt)) {
+    for i <- (0x20 to 0xFFFF) ++ Seq('\t'.toInt, '\r'.toInt, '\n'.toInt) do {
       val string = "" + i.toChar
       assert(parseQuotedString(quoteString(string)) == Right(string), "0x" + i.toHexString)
     }

@@ -51,7 +51,7 @@ final class CoupleControllerTest extends OurTestSuite with DirectoryProviderForS
 
   // Test does not work reliable.
   // But EventRouteTest has an equivalent test.
-  if (false) "CoupleController command fails with UnknownEventIdProblem when Agent misses old events" in {
+  if false then "CoupleController command fails with UnknownEventIdProblem when Agent misses old events" in {
     directoryProvider.runController() { controller =>
       val firstJournalFile = agentStateDir / "agent--0.journal"
       var lastEventId = EventId.BeforeFirst
@@ -106,8 +106,8 @@ final class CoupleControllerTest extends OurTestSuite with DirectoryProviderForS
     // AGENT HAS AN OLDER EVENTID AS CONTROLLER HAS OBSERVED => UnknownEventIdProblem
     val lastAgentJournalFiles = agentJournalFiles() filterNot firstAgentJournalFiles.toSet
     assert(lastAgentJournalFiles.size == 2)
-    for (o <- firstAgentJournalFiles) logger.info(s"KEEP ${o.getFileName}")
-    for (o <- lastAgentJournalFiles) {
+    for o <- firstAgentJournalFiles do logger.info(s"KEEP ${o.getFileName}")
+    for o <- lastAgentJournalFiles do {
       logger.info(s"💥 DELETE ${o.getFileName} 💥")
       move(o, Paths.get(s"$o-MOVED"))
     }
@@ -121,10 +121,10 @@ final class CoupleControllerTest extends OurTestSuite with DirectoryProviderForS
     }
 
     // Delete newly written journal files (written after tail has been removed)
-    for (o <- agentJournalFiles().filterNot(firstAgentJournalFiles.toSet)) delete(o)
+    for o <- agentJournalFiles().filterNot(firstAgentJournalFiles.toSet) do delete(o)
 
     // Restore original journal files
-    for (o <- lastAgentJournalFiles) move(Paths.get(s"$o-MOVED"), o)
+    for o <- lastAgentJournalFiles do move(Paths.get(s"$o-MOVED"), o)
   }
 
   "CoupleController succeeds again if Agent's journal files are restored" in {

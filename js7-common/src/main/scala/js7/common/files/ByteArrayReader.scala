@@ -14,7 +14,7 @@ extends AutoCloseable
   val channel = FileChannel.open(file, READ)
   val buffer = ByteBuffer.allocate(ChunkSize)
 
-  if (fromEnd) {
+  if fromEnd then {
     channel.position(channel.size)
   }
 

@@ -94,12 +94,12 @@ final class ResetSubagentTest extends OurTestSuite with SubagentTester
   }
 
   "ResetSubagent with reset for a Subagent started as inactive Director" in {
-    val resource = for {
+    val resource = for
       env <- directoryProvider.directorEnvResource(
         bareSubagentItem,
         otherSubagentIds = Seq(toLocalSubagentId(agentPath)))
       director <- env.directorResource
-    } yield director
+    yield director
 
     resource.toAllocated.await(99.s).useSync(99.s) { director =>
       import director.subagent

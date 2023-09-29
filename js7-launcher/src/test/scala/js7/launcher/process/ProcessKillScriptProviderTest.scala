@@ -37,7 +37,7 @@ final class ProcessKillScriptProviderTest extends OurTestSuite with BeforeAndAft
     val killScript = provider.provideTo(tmp)
     assert(killScript.file == expectedFile)
     assert(size(expectedFile) > 0)
-    if (isUnix) {
+    if isUnix then {
       assert(Files.readAttributes(expectedFile, classOf[PosixFileAttributes]).permissions contains OWNER_EXECUTE)
     }
     provider.close()

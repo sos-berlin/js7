@@ -143,7 +143,7 @@ with ClusterableState[ControllerState]
                   addedAgentRef
                     .convertFromV2_1
                     .flatMap { case (agentRef, maybeSubagentItem) =>
-                      for {
+                      for
                         pathToItemState <-
                           keyToUnsignedItemState_.insert(agentRef.path, AgentRefState(agentRef))
                         pathToItemState <-
@@ -152,7 +152,7 @@ with ClusterableState[ControllerState]
                             case Some(subagentItem) => pathToItemState
                               .insert(subagentItem.id, SubagentItemState.initial(subagentItem))
                           }
-                      } yield copy(
+                      yield copy(
                         keyToUnsignedItemState_ = pathToItemState)
                     }
 
@@ -160,7 +160,7 @@ with ClusterableState[ControllerState]
                   ow.addOrderWatch(orderWatch.toInitialItemState)
 
                 case item: UnsignedSimpleItem =>
-                  for (o <- keyToUnsignedItemState_.insert(item.path, item.toInitialItemState)) yield
+                  for o <- keyToUnsignedItemState_.insert(item.path, item.toInitialItemState) yield
                     copy(keyToUnsignedItemState_ = o)
               }
 
@@ -176,11 +176,11 @@ with ClusterableState[ControllerState]
                           && a.directors(0) == b.directors(0)
                         ) !! Problem.pure("Agent Directors cannot not be changed")
 
-                      for {
+                      for
                         agentRefState <- keyTo(AgentRefState).checked(agentRef.path)
                         _ <- checkIsExtending(agentRefState.agentRef, agentRef)
                         updatedAgentRef <- agentRefState.updateItem(agentRef)
-                      } yield
+                      yield
                         copy(
                           keyToUnsignedItemState_ = keyToUnsignedItemState_
                             .updated(agentRef.path, updatedAgentRef)
@@ -199,10 +199,10 @@ with ClusterableState[ControllerState]
                   ow.changeOrderWatch(orderWatch)
 
                 case item: UnsignedSimpleItem =>
-                  for {
+                  for
                     itemState <- keyToUnsignedItemState_.checked(item.path)
                     updated <- itemState.updateItem(item.asInstanceOf[itemState.companion.Item])
-                  } yield
+                  yield
                     copy(
                       keyToUnsignedItemState_ =
                         keyToUnsignedItemState_.updated(item.path, updated))
@@ -214,7 +214,7 @@ with ClusterableState[ControllerState]
             case SignedItemAdded(Signed(item, signedString)) =>
               item match {
                 case jobResource: JobResource =>
-                  for (o <- pathToSignedSimpleItem.insert(jobResource.path -> Signed(jobResource, signedString))) yield
+                  for o <- pathToSignedSimpleItem.insert(jobResource.path -> Signed(jobResource, signedString)) yield
                     copy(pathToSignedSimpleItem = o)
               }
 
@@ -241,7 +241,7 @@ with ClusterableState[ControllerState]
         case event: BasicItemEvent.ForClient =>
           event match {
             case event: ItemAttachedStateEvent =>
-              for (o <- agentAttachments.applyEvent(event)) yield
+              for o <- agentAttachments.applyEvent(event) yield
                 copy(agentAttachments = o)
 
             case ItemDeletionMarked(itemKey) =>
@@ -255,7 +255,7 @@ with ClusterableState[ControllerState]
 
               itemKey match {
                 case WorkflowId.as(workflowId) =>
-                  for (repo <- repo.deleteItem(workflowId)) yield
+                  for repo <- repo.deleteItem(workflowId) yield
                     updated.copy(
                       repo = repo)
 
@@ -284,20 +284,20 @@ with ClusterableState[ControllerState]
       }
 
     case KeyedEvent(_: NoKey, event: VersionedEvent) =>
-      for (o <- repo.applyEvent(event)) yield
+      for o <- repo.applyEvent(event) yield
         copy(repo = o)
 
     case KeyedEvent(agentPath: AgentPath, event: AgentRefStateEvent) =>
-      for {
+      for
         agentRefState <- keyTo(AgentRefState).checked(agentPath)
         agentRefState <- agentRefState.applyEvent(event)
-      } yield copy(
+      yield copy(
         keyToUnsignedItemState_ = keyToUnsignedItemState_ + (agentPath -> agentRefState))
 
     case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
       event match {
         case event: OrderTransferred =>
-          for (updated <- applyOrderEvent(orderId, event)) yield
+          for updated <- applyOrderEvent(orderId, event) yield
             updated
               .copy(workflowToOrders = workflowToOrders
                 .moveOrder(idToOrder(orderId), updated.idToOrder(orderId).workflowId))
@@ -307,17 +307,17 @@ with ClusterableState[ControllerState]
       }
 
     case KeyedEvent(boardPath: BoardPath, NoticePosted(notice)) =>
-      for {
+      for
         boardState <- keyTo(BoardState).checked(boardPath)
         o <- boardState.addNotice(notice.toNotice(boardPath))
-      } yield copy(
+      yield copy(
         keyToUnsignedItemState_ = keyToUnsignedItemState_.updated(o.path, o))
 
     case KeyedEvent(boardPath: BoardPath, NoticeDeleted(noticeId)) =>
-      for {
+      for
         boardState <- keyTo(BoardState).checked(boardPath)
         o <- boardState.removeNotice(noticeId)
-      } yield copy(
+      yield copy(
         keyToUnsignedItemState_ = keyToUnsignedItemState_.updated(o.path, o))
 
     case KeyedEvent(orderWatchPath: OrderWatchPath, event: OrderWatchEvent) =>
@@ -330,10 +330,10 @@ with ClusterableState[ControllerState]
           Right(this)
 
         case _ =>
-          for {
+          for
             o <- keyTo(SubagentItemState).checked(subagentId)
             o <- o.applyEvent(event)
-          } yield copy(
+          yield copy(
             keyToUnsignedItemState_ = keyToUnsignedItemState_.updated(subagentId, o))
       }
 
@@ -445,13 +445,13 @@ with ClusterableState[ControllerState]
     removeItemStates: Iterable[UnsignedSimpleItemPath])
   : Checked[ControllerState] = {
     var result: Checked[ControllerState] = Right(this)
-    for (order <- orders; controllerState <- result) {
+    for order <- orders; controllerState <- result do {
       result = controllerState.addOrUpdateOrder(order)
     }
-    for (orderId <- removeOrders; order <- idToOrder.get(orderId); controllerState <- result) {
+    for orderId <- removeOrders; order <- idToOrder.get(orderId); controllerState <- result do {
       result = controllerState.deleteOrder(order)
     }
-    for (controllerState <- result) {
+    for controllerState <- result do {
       result = Right(controllerState.copy(
         keyToUnsignedItemState_ = keyToUnsignedItemState_
           -- removeItemStates
@@ -461,36 +461,36 @@ with ClusterableState[ControllerState]
   }
 
   private def addOrUpdateOrder(order: Order[Order.State]): Checked[ControllerState] =
-    if (idToOrder contains order.id)
+    if idToOrder contains order.id then
       Right(copy(
         idToOrder = idToOrder.updated(order.id, order)))
     else
       continueAddOrder(order)
 
   override protected def addOrder(order: Order[Order.State]): Checked[ControllerState] =
-    for {
+    for
       _ <- idToOrder.checkNoDuplicate(order.id)
       updated <- continueAddOrder(order)
-    } yield updated
+    yield updated
 
   private def continueAddOrder(order: Order[Order.State]): Checked[ControllerState] =
-    for (updated <- ow.onOrderAdded(order)) yield
+    for updated <- ow.onOrderAdded(order) yield
       updated.copy(
         idToOrder = idToOrder.updated(order.id, order),
         workflowToOrders = workflowToOrders.addOrder(order))
 
   override protected def deleteOrder(order: Order[Order.State]): Checked[ControllerState] =
-    for (updated <- order.externalOrderKey.fold_(Right(this), ow.onOrderDeleted(_, order.id))) yield
+    for updated <- order.externalOrderKey.fold_(Right(this), ow.onOrderDeleted(_, order.id)) yield
       updated.copy(
         idToOrder = idToOrder - order.id,
         workflowToOrders = workflowToOrders.removeOrder(order))
 
   /** The named values as seen at the current workflow position. */
   def orderNamedValues(orderId: OrderId): Checked[MapView[String, Value]] =
-    for {
+    for
       order <- idToOrder.checked(orderId)
       workflow <- repo.idTo(Workflow)(order.workflowId)
-    } yield order.namedValues(workflow)
+    yield order.namedValues(workflow)
 
   private[controller] def checkAddedOrChangedItems(itemKeys: Iterable[InventoryItemKey]): Checked[Unit] =
     itemKeys
@@ -600,11 +600,11 @@ with ClusterableState[ControllerState]
 
   def agentToUris(agentPath: AgentPath): Nel[Uri] =
     Nel.fromListUnsafe(
-      for {
+      for
         agentRef <- keyToItem(AgentRef).get(agentPath).toList
         director <- agentRef.directors
         subagent <- keyToItem(SubagentItem).get(director).toList
-      } yield subagent.uri)
+      yield subagent.uri)
 
   def itemToAttachedState(itemKey: InventoryItemKey, itemRevision: Option[ItemRevision], agentPath: AgentPath)
   : ItemAttachedState =
@@ -804,7 +804,7 @@ with ItemContainer.Companion[ControllerState]
 
     def removeOrder(order: Order[Order.State]): WorkflowToOrders = {
       val orderIds = workflowIdToOrders(order.workflowId) - order.id
-      if (orderIds.isEmpty)
+      if orderIds.isEmpty then
         copy(workflowIdToOrders - order.workflowId)
       else
         copy(workflowIdToOrders.updated(order.workflowId, orderIds))

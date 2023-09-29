@@ -28,7 +28,7 @@ object InstructionNr extends GenericInt.Companion[InstructionNr]
   val Prefix = ":"
 
   def apply(number: Int): InstructionNr =
-    if (number >= 0 && number < predefined.size)
+    if number >= 0 && number < predefined.size then
       predefined(number)
     else
       new InstructionNr(number)

@@ -30,7 +30,7 @@ trait ScheduleTester extends OurTestSuite
       (true, onlyOnePeriodSetting, onlyOnePeriodTimeOfDay)))
     {
       s"onlyOnePeriod=$onlyOnePeriod" - {
-        for (day <- days) day.testName in {
+        for day <- days do day.testName in {
           assert(day.dayOfWeek == day.date.getDayOfWeek, "Weekday does not match start date")
           val startOfDay = LocalDateTime.of(day.date, MIDNIGHT)
           val localStart = startOfDay.plusSeconds(timeOfDay.toSecondOfDay)

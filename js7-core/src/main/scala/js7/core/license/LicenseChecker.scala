@@ -14,7 +14,7 @@ final class LicenseChecker(licenseCheckContext: LicenseCheckContext)
   private lazy val licenseChecks: Seq[LicenseCheck] =
     findServices[LicenseCheck] { (logLine, maybeService) =>
       logger.debug(logLine)
-      for (service <- maybeService) service.initialize(licenseCheckContext)
+      for service <- maybeService do service.initialize(licenseCheckContext)
     }
 
   def checkLicense(productName: String): Checked[Unit] =

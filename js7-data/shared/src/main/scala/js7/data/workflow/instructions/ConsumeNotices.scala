@@ -42,7 +42,7 @@ extends ExpectOrConsumeNoticesInstruction
     (BranchId.ConsumeNotices -> subworkflow) :: Nil
 
   override def workflow(branchId: BranchId): Checked[Workflow] =
-    if (branchId != BranchId.ConsumeNotices)
+    if branchId != BranchId.ConsumeNotices then
       Left(Problem.pure(s"'${BranchId.ConsumeNotices}' BranchId expected"))
     else
       Right(subworkflow)

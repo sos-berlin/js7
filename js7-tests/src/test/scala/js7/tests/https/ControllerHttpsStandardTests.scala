@@ -23,7 +23,7 @@ private[https] trait ControllerHttpsStandardTests extends HttpsTestBase
     assert(agents.forall(_.localUri.string startsWith "https://"))
   }
 
-  if (useCluster)
+  if useCluster then
     "ClusterCoupled" in {
       backupController
       controller.waitUntilReady()

@@ -17,10 +17,10 @@ object WorkflowPathControlPath extends UnsignedSimpleItemPath.Companion[Workflow
   protected def unchecked(string: String) = new WorkflowPathControlPath(WorkflowPath(string))
 
   override def checked(string: String): Checked[WorkflowPathControlPath] =
-    for {
+    for
       workflowPath <- WorkflowPath.checked(string)
       path <- super.checked(workflowPath.string)
-    } yield path
+    yield path
 
   @javaApi @throws[RuntimeException]("on invalid syntax")
   def of(validWorkflowControlPath: String): WorkflowPathControlPath =

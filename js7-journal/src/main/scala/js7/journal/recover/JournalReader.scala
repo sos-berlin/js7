@@ -56,10 +56,10 @@ extends AutoCloseable
   /** For FileEventIterator, skips snapshot section */
   lazy val firstEventPosition: Long =
     synchronized {
-      if (snapshotHeaderRead || eventHeaderRead) throw new IllegalStateException(
+      if snapshotHeaderRead || eventHeaderRead then throw new IllegalStateException(
         "JournalReader.firstEventPosition has been called after nextEvent")
-      while (nextSnapshotJson().isDefined) {}
-      if (!eventHeaderRead) { // No snapshot section
+      while nextSnapshotJson().isDefined do {}
+      if !eventHeaderRead then { // No snapshot section
         jsonReader.read() match {
           case Some(PositionAnd(_, EventHeader)) =>
             eventHeaderRead = true
@@ -90,10 +90,10 @@ extends AutoCloseable
 
   @tailrec
   private def nextSnapshotRaw(): Option[PositionAnd[ByteArray]] = {
-    if (eventHeaderRead) throw new IllegalStateException("nextSnapshotJson has been called after nextEvent")
+    if eventHeaderRead then throw new IllegalStateException("nextSnapshotJson has been called after nextEvent")
     val positionAndRaw = jsonReader.readRaw() getOrElse sys.error(s"Journal file '$journalFile' is truncated in snapshot section")
     val record = positionAndRaw.value
-    if (!snapshotHeaderRead)
+    if !snapshotHeaderRead then
       record match {
         case EventHeaderLine =>  // Journal file does not have a snapshot section?
           eventHeaderRead = true
@@ -104,9 +104,9 @@ extends AutoCloseable
         case _ =>
           throw new CorruptJournalException("Snapshot header is missing", journalFile, positionAndRaw)
       }
-    else if (record.headOption contains '{'.toByte/*JSON object?*/)
+    else if record.headOption contains '{'.toByte/*JSON object?*/ then
       Some(positionAndRaw)
-    else if (record == SnapshotFooterLine)
+    else if record == SnapshotFooterLine then
       None
     else
       throw new CorruptJournalException("Snapshot footer is missing", journalFile, positionAndRaw)
@@ -129,14 +129,14 @@ extends AutoCloseable
   def nextEvent(): Option[Stamped[KeyedEvent[Event]]] =
     synchronized {
       val result = transaction.readNext() orElse nextEvent2()
-      for (stamped <- result) {
+      for stamped <- result do {
         _eventId = stamped.eventId
       }
       result
     }
 
   private def nextEvent2(): Option[Stamped[KeyedEvent[Event]]] =
-    if (!eventHeaderRead)
+    if !eventHeaderRead then
       jsonReader.read() match {
         case Some(PositionAnd(_, EventHeader)) =>
           eventHeaderRead = true
@@ -159,15 +159,15 @@ extends AutoCloseable
         positionAndJson.value match {
           case json if json.isObject =>
             val stampedEvent = deserialize(positionAndJson.value)
-            if (stampedEvent.eventId <= _eventId)
+            if stampedEvent.eventId <= _eventId then
               throw new CorruptJournalException(s"Journal is corrupt, EventIds are in wrong order: ${EventId.toString(stampedEvent.eventId)} follows ${EventId.toString(_eventId)}",
                 journalFile, positionAndJson.copy(value = positionAndJson.value.toByteArray))
 
-            if (_totalEventCount != -1) _totalEventCount += 1
+            if _totalEventCount != -1 then _totalEventCount += 1
             Some(stampedEvent)
 
           case Transaction =>
-            if (transaction.isInTransaction) throw new CorruptJournalException("Duplicate/nested transaction", journalFile,
+            if transaction.isInTransaction then throw new CorruptJournalException("Duplicate/nested transaction", journalFile,
               positionAndJson.copy(value = positionAndJson.value.toByteArray))
             transaction.begin()
             def read() =
@@ -188,14 +188,14 @@ extends AutoCloseable
                   transaction.onCommit()
 
                 case Some(o) =>
-                  if (!o.value.isObject) sys.error(s"Unexpected JSON value in transaction: $o")
+                  if !o.value.isObject then sys.error(s"Unexpected JSON value in transaction: $o")
                   transaction.add(o.copy(value = deserialize(o.value)))
                   loop()
               }
             loop()
             transaction.readNext() match {
               case Some(stamped) =>
-                if (_totalEventCount != -1) _totalEventCount += transaction.length
+                if _totalEventCount != -1 then _totalEventCount += transaction.length
                 Some(stamped)
               case None =>
                 nextEvent3()

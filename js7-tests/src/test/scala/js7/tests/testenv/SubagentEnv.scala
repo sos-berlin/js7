@@ -51,9 +51,9 @@ trait SubagentEnv extends ProgramEnv {
   protected override def createDirectoriesAndFiles(): Unit = {
     super.createDirectoriesAndFiles()
     createDirectory(executables)
-    if (provideHttpsCertificate) {
+    if provideHttpsCertificate then {
       (configDir / "private/https-keystore.p12") := AgentKeyStoreResource.contentBytes
-      if (provideClientCertificate) {
+      if provideClientCertificate then {
         configDir / "private/controller-https-truststore.p12" :=
           ExportedControllerTrustStoreResource.contentBytes
         configDir / "private/private.conf" ++= s"""

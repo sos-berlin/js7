@@ -33,7 +33,7 @@ private final class Prioritized[A] private(
 
   def selectNext(filter: A => Boolean): Option[A] = {
     val orderedValues = orderedKeys.view.filter(filter).toVector
-    if (orderedValues.isEmpty)
+    if orderedValues.isEmpty then
       None
     else {
       val highestPrio = toPriority(orderedValues.head)
@@ -46,7 +46,7 @@ private final class Prioritized[A] private(
   }
 
   private def copy(orderedKeys: IndexedSeq[A]) =
-    if (orderedKeys == this.orderedKeys) {
+    if orderedKeys == this.orderedKeys then {
       // Keep fixedPriority.index
       this
     } else

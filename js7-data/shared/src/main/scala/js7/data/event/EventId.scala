@@ -31,13 +31,13 @@ object EventId
         val millis = eventId / 1000
         val micros = eventId % 1000
         val iso = Timestamp.ofEpochMilli(millis).toIsoString  // Timestamp has millisecond presision
-        if (true || micros == 0)
+        if true || micros == 0 then
           iso
         else {
           val sb = new StringBuilder(iso.length + 10)
           sb ++= iso
           sb.deleteCharAt(sb.length - 1)  // 'Z'
-          if (!sb.contains('.')) sb ++= ".000"
+          if !sb.contains('.') then sb ++= ".000"
           sb ++= "Z-"
           sb += ('0' + micros / 100).toChar
           sb += ('0' + micros / 10 % 10).toChar

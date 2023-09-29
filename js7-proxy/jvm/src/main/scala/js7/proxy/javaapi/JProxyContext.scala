@@ -54,7 +54,7 @@ extends HasCloser
 
   onClose {
     logger.debug("close JS7 JProxyContext")
-    for (a <- actorSystemLazy) Akkas.terminateAndWait(a)
+    for a <- actorSystemLazy do Akkas.terminateAndWait(a)
   }
 
   @javaApi @Nonnull

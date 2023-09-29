@@ -15,7 +15,7 @@ final class Hasher(algorithm: String) extends (String => String)
     bytesToHex(cloneMessageDigest().digest(string.getBytes(UTF_8)))
 
   private def cloneMessageDigest() =
-    if (isCloneable) {
+    if isCloneable then {
       try prototype.clone().asInstanceOf[MessageDigest]
       catch { case _: CloneNotSupportedException =>
         isCloneable = false

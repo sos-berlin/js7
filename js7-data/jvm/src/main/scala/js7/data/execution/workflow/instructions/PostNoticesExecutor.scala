@@ -22,8 +22,8 @@ extends EventInstructionExecutor
     detach(order)
       .orElse(start(order))
       .getOrElse(
-        if (order.isState[Order.Ready])
-          for {
+        if order.isState[Order.Ready] then
+          for
             boardStates <- postNotices.boardPaths.traverse(state.keyTo(BoardState).checked)
             orderScope <- state.toImpureOrderExecutingScope(order, clock.now())
             fatNotices <- boardStates.traverse(bs => bs.board
@@ -31,7 +31,7 @@ extends EventInstructionExecutor
               .map(FatNotice(_, bs)))
             postingOrderEvents = toPostingOrderEvents(fatNotices.map(_.notice), order)
             expectingOrderEvents <- toExpectingOrderEvents(fatNotices, state)
-          } yield
+          yield
             postingOrderEvents ++: expectingOrderEvents.toList
         else
           Right(Nil))
@@ -55,7 +55,7 @@ object PostNoticesExecutor {
     postedNotices: Vector[FatNotice],
     state: StateView)
   : Checked[Vector[KeyedEvent[OrderEvent.OrderActorEvent]]] =
-    for {
+    for
       expectingOrders <- postedNotices
         .flatMap(post => post.boardState.expectingOrders(post.notice.id))
         .distinct
@@ -76,5 +76,5 @@ object PostNoticesExecutor {
               }
           }
           .map(_.flatten))
-    } yield events
+    yield events
 }

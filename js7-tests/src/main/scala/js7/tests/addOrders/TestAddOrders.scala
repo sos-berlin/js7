@@ -48,7 +48,7 @@ final class TestAddOrders private(controllerApi: ControllerApi, settings: Settin
         .lastL
         .map(_.toStatistics)
         .map { statistics =>
-          if (statistics.completedOrderCount != orderCount)
+          if statistics.completedOrderCount != orderCount then
             Left(Problem.pure("eventAndStateObservable terminated unexpectedly, " +
               s"${statistics.completedOrderCount} orders run"))
           else

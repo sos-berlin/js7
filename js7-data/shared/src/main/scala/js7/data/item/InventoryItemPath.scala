@@ -72,7 +72,7 @@ object InventoryItemPath
       def apply(a: P) = Json.fromString(a.toTypedString)
 
       def apply(c: HCursor) =
-        for {
+        for
           string <- c.as[String]
           prefixAndPath <- string indexOf ':' match {
             case i if i > 0 => Right((string.take(i), string.substring(i + 1)))
@@ -86,6 +86,6 @@ object InventoryItemPath
             .flatMap(_.checked(path))
             .flatMap(checkedCast[P](_))
             .toDecoderResult(c.history)
-        } yield itemPath
+        yield itemPath
     }
 }

@@ -90,7 +90,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]
         "stopPositions" -> (o.stopPositions.nonEmpty ? o.stopPositions).asJson)
 
     private[OrderEvent] implicit val jsonDecoder: Decoder[OrderAdded] =
-      c => for {
+      c => for
         workflowId <- c.get[WorkflowId]("workflowId")
         scheduledFor <- c.get[Option[Timestamp]]("scheduledFor")
         externalOrderKey <- c.get[Option[ExternalOrderKey]]("externalOrderKey")
@@ -100,7 +100,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]
         innerBlock <- c.getOrElse[BranchPath]("innerBlock")(BranchPath.empty)
         startPosition <- c.get[Option[Position]]("startPosition")
         stopPositions <- c.getOrElse[Set[PositionOrLabel]]("stopPositions")(Set.empty)
-      } yield OrderAdded(workflowId, arguments, scheduledFor, externalOrderKey,
+      yield OrderAdded(workflowId, arguments, scheduledFor, externalOrderKey,
         deleteWhenTerminated, forceJobAdmission,
         innerBlock, startPosition, stopPositions)
   }
@@ -135,7 +135,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]
         "stopPositions" -> o.stopPositions.??.asJson)
 
     private[OrderEvent] implicit val jsonDecoder: Decoder[OrderOrderAdded] =
-      c => for {
+      c => for
         orderId <- c.get[OrderId]("orderId")
         workflowId <- c.get[WorkflowId]("workflowId")
         arguments <- c.getOrElse[NamedValues]("arguments")(Map.empty)
@@ -144,7 +144,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]
         stopPositions <- c.getOrElse[Set[PositionOrLabel]]("stopPositions")(Set.empty)
         deleteWhenTerminated <- c.getOrElse[Boolean]("deleteWhenTerminated")(false)
         forceJobAdmission <- c.getOrElse[Boolean]("forceJobAdmission")(false)
-      } yield OrderOrderAdded(orderId, workflowId, arguments,
+      yield OrderOrderAdded(orderId, workflowId, arguments,
         deleteWhenTerminated, forceJobAdmission,
         innerBlock, startPosition, stopPositions)
   }
@@ -274,11 +274,11 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]
           "branchId" -> o.branchId.asJson)
 
       implicit val jsonDecoder: Decoder[Child] =
-        c => for {
+        c => for
           orderId <- c.get[OrderId]("orderId")
           arguments <- c.getOrElse[Map[String, Value]]("arguments")(Map.empty)
           branchId <- c.get[Option[Fork.Branch.Id]]("branchId")
-        } yield Child(orderId, arguments, branchId)
+        yield Child(orderId, arguments, branchId)
     }
   }
 
@@ -298,7 +298,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]
     }
 
     private val jsonDecoder: Decoder[OrderNoticePosted_] = c =>
-      if (c.value.asObject.flatMap(_("notice")).flatMap(_.asObject).exists(_.contains("boardPath")))
+      if c.value.asObject.flatMap(_("notice")).flatMap(_.asObject).exists(_.contains("boardPath")) then
         c.get[Notice]("notice").map(OrderNoticePosted(_))
       else
         c.get[NoticeV2_3]("notice").map(OrderNoticePostedV2_3(_))
@@ -343,7 +343,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]
   {
     def checked: Checked[this.type] =
       consumptions.checkUniqueness(_.boardPath).>>(
-        if (consumptions.isEmpty)
+        if consumptions.isEmpty then
           Problem.pure("Invalid arguments for OrderNoticesConsumptionStarted")
         else
           Right(this))
@@ -658,7 +658,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]
 
   final case class LockDemand(lockPath: LockPath, count: Option[Int] = None) {
     def checked: Checked[this.type] =
-      if (count.exists(_ < 1))
+      if count.exists(_ < 1) then
         Left(Problem(s"LockDemand.count must not be below 1 for $lockPath"))
       else
         Right(this)

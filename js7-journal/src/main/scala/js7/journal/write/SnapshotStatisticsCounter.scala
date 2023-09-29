@@ -19,7 +19,7 @@ private[journal] final class SnapshotStatisticsCounter extends StatisticsCounter
     _fileLength = fileLength
 
   override def toString =
-    if (snapshots == 0) "(no snapshot objects)"
+    if snapshots == 0 then "(no snapshot objects)"
     else s"$snapshots snapshot objects" //+ (if (syncs > 0) s", $syncs syncs" else "")
 
   def debugString: Option[String] =

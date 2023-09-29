@@ -165,7 +165,7 @@ final class FailTest extends OurTestSuite with ControllerAgentForScalaTest
     controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
     eventWatch.await[E](_.key == orderId)
     checkEventSeq(orderId, eventWatch.allKeyedEvents[OrderEvent], expectedEvents)
-    for ((oId, expected) <- moreExpectedEvents) {
+    for (oId, expected) <- moreExpectedEvents do {
       checkEventSeq(oId, eventWatch.allKeyedEvents[OrderEvent], expected)
     }
   }

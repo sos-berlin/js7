@@ -49,9 +49,9 @@ object ByteStringSplittingObservable
 
     @tailrec
     private def tailRecursiveForward(elem: ByteString): Future[Ack] =
-      if (elem.isEmpty)
+      if elem.isEmpty then
         Continue
-      else if (canceled)
+      else if canceled then
         Stop
       else {
         val (head, tail) = elem.splitAt(maxSize)
@@ -67,16 +67,16 @@ object ByteStringSplittingObservable
       }
 
     def onError(t: Throwable) =
-      if (!isDone) synchronized {
+      if !isDone then synchronized {
         isDone = true
         ack = Stop
         out.onError(t)
       }
 
     def onComplete() =
-      if (!isDone) synchronized {
+      if !isDone then synchronized {
         isDone = true
-        ack = for (_ <- ack) yield {
+        ack = for _ <- ack yield {
           out.onComplete()
           Stop
         }

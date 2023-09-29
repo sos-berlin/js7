@@ -50,7 +50,7 @@ final class FilePoolTest extends OurTestSuite
 
   "close" in {
     filePool.close()
-    for (o <- Array(a, b, c)) {
+    for o <- Array(a, b, c) do {
       assert(!exists(o.shellReturnValuesProvider.file))
     }
   }

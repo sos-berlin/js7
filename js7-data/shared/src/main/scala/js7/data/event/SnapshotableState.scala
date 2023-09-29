@@ -46,10 +46,10 @@ extends JournaledState[S]
           journalState = journalState.applyEvent(event))))
 
       case KeyedEvent(NoKey, _: ClusterEvent) =>
-        if (!isInstanceOf[ClusterableState[?]])
+        if !isInstanceOf[ClusterableState[?]] then
           Left(Problem(s"ClusterEvent but ${getClass.simpleScalaName} is not a ClusterableState"))
         else
-          for (o <- clusterState.applyEvent(keyedEvent.asInstanceOf[KeyedEvent[ClusterEvent]]))
+          for o <- clusterState.applyEvent(keyedEvent.asInstanceOf[KeyedEvent[ClusterEvent]])
             yield withStandards(standards.copy(
               clusterState = o))
 
@@ -120,7 +120,7 @@ object SnapshotableState
     }
 
     def decodeJournalJson(json: Json): Checked[Any] =
-      if (!json.isObject)
+      if !json.isObject then
         Right(json) // JournalSeparator
       else
         journalDecoder.decodeJson(json) match {

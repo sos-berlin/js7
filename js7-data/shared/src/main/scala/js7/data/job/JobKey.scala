@@ -60,17 +60,17 @@ object JobKey
   }
 
   implicit val jsonDecoder: Decoder[JobKey] =
-    c => for {
+    c => for
       workflowId <- c.get[WorkflowId]("workflowId")
       jobKey <- {
         val c1 = c.downField("position")
-        if (c1.succeeded)
+        if c1.succeeded then
           c1.as[Position].map(o => Anonymous(workflowId /: o))
         else
-          for {
+          for
             branchPath <- c.getOrElse[BranchPath]("branchPath")(Nil)
             name <- c.get[WorkflowJob.Name]("jobName")
-          } yield Named(WorkflowBranchPath(workflowId, branchPath), name)
+          yield Named(WorkflowBranchPath(workflowId, branchPath), name)
       }
-    } yield jobKey
+    yield jobKey
 }

@@ -24,7 +24,7 @@ trait BlockingItemUpdater {
     val versionIdSet = controllerState.repo.versionIdSet
     @tailrec def loop(): VersionId = {
       val v = VersionId(nextVersionId_.getAndIncrement().toString)
-      if (versionIdSet contains v)
+      if versionIdSet contains v then
         loop()
       else
         v

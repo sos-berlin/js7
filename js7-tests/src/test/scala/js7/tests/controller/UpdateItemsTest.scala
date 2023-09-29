@@ -81,7 +81,7 @@ with BlockingItemUpdater
     controller.api.addOrders(Observable(FreshOrder(orderIds(1), workflowPath))).await(99.s).orThrow
 
     val promises = Vector.fill(2)(Promise[Deadline]())
-    for (i <- orderIds.indices) {
+    for i <- orderIds.indices do {
       controller.eventWatch
         .when[OrderFinished](EventRequest.singleClass[OrderFinished](timeout = Some(99.s)), _.key == orderIds(i))
         .foreach {

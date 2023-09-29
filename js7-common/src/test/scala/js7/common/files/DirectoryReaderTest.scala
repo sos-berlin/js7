@@ -48,12 +48,12 @@ final class DirectoryReaderTest extends OurTestSuite
     }
   }
 
-  if (sys.props contains "test.speed") "Sort speed" - {
+  if sys.props contains "test.speed" then "Sort speed" - {
     val n = 200000
     val entries = (1 to n).map(_ => Entry(Paths.get(Random.nextString(100)), null))
 
     "single thread" in {
-      for (_ <- 1 to 10) {
+      for _ <- 1 to 10 do {
         logger.info(
           measureTime(1, "directories", warmUp = 0) {
             entries.sortBy(_.file)
@@ -62,7 +62,7 @@ final class DirectoryReaderTest extends OurTestSuite
     }
 
     "parallel" in {
-      for (_ <- 1 to 10) {
+      for _ <- 1 to 10 do {
         val comparator: Comparator[Entry] = (a, b) => a.file compareTo b.file
         logger.info(
           measureTime(1, "directories", warmUp = 0) {

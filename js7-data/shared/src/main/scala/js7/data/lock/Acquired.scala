@@ -28,7 +28,7 @@ object Acquired {
       count match {
         case None => Right(Exclusive(orderId))
         case Some(n) =>
-          if (n >= 1) Right(NonExclusive(Map(orderId -> n)))
+          if n >= 1 then Right(NonExclusive(Map(orderId -> n)))
           else Left(InvalidCount(n))
       }
 
@@ -46,13 +46,13 @@ object Acquired {
       this.orderId == orderId
 
     def acquireFor(orderId: OrderId, count: Option[Int]) =
-      if (this.orderId == orderId)
+      if this.orderId == orderId then
         Left(AlreadyAcquiredByThisOrder)
       else
         Left(IsInUse)
 
     def release(orderId: OrderId) =
-      if (this.orderId != orderId)
+      if this.orderId != orderId then
         Left(UnknownReleasingOrderError)
       else
         Right(Available)
@@ -71,22 +71,22 @@ object Acquired {
       orderToCount contains orderId
 
     def acquireFor(orderId: OrderId, count: Option[Int]) =
-      if (orderToCount contains orderId)
+      if orderToCount contains orderId then
         Left(AlreadyAcquiredByThisOrder)
       else
         count match {
           case None => Left(IsInUse)
           case Some(n) =>
-            if (n >= 1) Right(NonExclusive(orderToCount + (orderId -> n)))
+            if n >= 1 then Right(NonExclusive(orderToCount + (orderId -> n)))
             else Left(InvalidCount(n))
         }
 
     def release(orderId: OrderId) =
-      if (!orderToCount.contains(orderId))
+      if !orderToCount.contains(orderId) then
         Left(UnknownReleasingOrderError)
       else
         Right(
-          if (orderToCount.size == 1)
+          if orderToCount.size == 1 then
             Available
           else
             copy(orderToCount = orderToCount - orderId))
