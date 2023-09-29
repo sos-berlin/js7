@@ -4,7 +4,6 @@ import cats.syntax.foldable.*
 import cats.syntax.traverse.*
 import io.circe.syntax.EncoderOps
 import io.circe.{Codec, Decoder, Encoder, JsonObject}
-import js7.data.workflow.position.BranchPath.syntax.*
 import js7.base.circeutils.CirceUtils.*
 import js7.base.circeutils.typed.Subtype
 import js7.base.problem.Checked.*
@@ -27,13 +26,12 @@ import js7.data.workflow.Instruction.{@:, Labeled}
 import js7.data.workflow.Workflow.isCorrectlyEnded
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{BoardInstruction, Break, Cycle, End, Execute, Fork, ForkInstruction, Gap, If, ImplicitEnd, Instructions, LockInstruction, Retry, TryInstruction}
+import js7.data.workflow.position.*
 import js7.data.workflow.position.BranchPath.Segment
-import js7.data.workflow.position.{BranchId, BranchPath, InstructionNr, Label, Position, PositionOrLabel, WorkflowBranchPath, WorkflowPosition}
+import js7.data.workflow.position.BranchPath.syntax.*
 import scala.annotation.tailrec
 import scala.collection.View
 import scala.reflect.ClassTag
-import js7.data.workflow.position.syntax.*
-import js7.data.workflow.position.*
 
 /**
   * @author Joacim Zschimmer

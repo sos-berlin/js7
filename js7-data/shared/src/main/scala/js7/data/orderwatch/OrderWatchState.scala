@@ -167,7 +167,7 @@ extends UnsignedSimpleItemState
       .flatMap(externalOrderName => externalToState
         .get(externalOrderName)
         .flatMap { arised =>
-          val Arised(orderId, arguments) = arised
+          val Arised(orderId, arguments) = arised: @unchecked
           val freshOrder = FreshOrder(orderId, orderWatch.workflowPath, arguments)
           val externalOrderKey = ExternalOrderKey(id, externalOrderName)
           toOrderAdded(freshOrder, Some(externalOrderKey)) match {

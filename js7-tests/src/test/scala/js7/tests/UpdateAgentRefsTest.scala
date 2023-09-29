@@ -45,7 +45,7 @@ final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForSc
   protected val agentPaths = Nil
   protected val items = Nil
 
-  private lazy val agentPort1 :: agentPort2 :: agentPort3 :: Nil = findFreeTcpPorts(3)
+  private lazy val agentPort1 :: agentPort2 :: agentPort3 :: Nil = findFreeTcpPorts(3): @unchecked
   private lazy val agentEnv = new DirectorEnv(
     SubagentItem(
       SubagentId(agentPath.string + "-0"), agentPath, disabled = primarySubagentsDisabled,

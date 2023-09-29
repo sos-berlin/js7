@@ -32,17 +32,17 @@ final class HistoricEventReaderTest extends OurTestSuite
         assert(reader.eventsAfter(After + 15) == None)
         assert(reader.eventsAfter(After + 25) == None)
         locally {
-          val Some(closeableIterator) = reader.eventsAfter(After)
+          val Some(closeableIterator) = reader.eventsAfter(After): @unchecked
           assert(closeableIterator.toList == TestEvents)
           closeableIterator.close()
         }
         locally {
-          val Some(closeableIterator) = reader.eventsAfter(After + 10)
+          val Some(closeableIterator) = reader.eventsAfter(After + 10): @unchecked
           assert(closeableIterator.toList == TestEvents.tail)
           closeableIterator.close()
         }
         locally {
-          val Some(closeableIterator) = reader.eventsAfter(After + 20)
+          val Some(closeableIterator) = reader.eventsAfter(After + 20): @unchecked
           assert(closeableIterator.toList == Nil)
           closeableIterator.close()
         }

@@ -14,7 +14,6 @@ import js7.base.time.Stopwatch
 import js7.data.Problems.{EventVersionDoesNotMatchProblem, ItemVersionDoesNotMatchProblem, VersionedItemRemovedProblem}
 import js7.data.item.RepoTest.*
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, VersionedItemChanged, VersionedItemRemoved}
-import js7.data.workflow.position.BranchPath.syntax.*
 
 /**
   * @author Joacim Zschimmer

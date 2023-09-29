@@ -938,7 +938,7 @@ final class OrderTest extends OurTestSuite
       for (o <- Array(
             order.copy(attachedState = Some(Attached(AgentPath("AGENT")))),
             order.copy(attachedState = None))) {
-        val Left(problem) = o.detaching
+        val Left(problem) = o.detaching: @unchecked
         assert(problem.toString contains "ORDER-ID")
       }
     }

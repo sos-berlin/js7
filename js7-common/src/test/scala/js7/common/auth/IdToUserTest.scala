@@ -24,13 +24,13 @@ final class IdToUserTest extends OurTestSuite
   }
 
   "Plain password" in {
-    val Some(u) = idToUser(PlainUserId)
+    val Some(u) = idToUser(PlainUserId): @unchecked
     assert(u.id == PlainUserId)
     assert(u.hashedPassword equalsClearText PlainPassword)
   }
 
   "SHA512 hashed password" in {
-    val Some(u) = idToUser(Sha512UserId)
+    val Some(u) = idToUser(Sha512UserId): @unchecked
     assert(u.id == Sha512UserId)
     assert(u.hashedPassword equalsClearText Sha512Password)
   }
@@ -69,13 +69,13 @@ final class IdToUserTest extends OurTestSuite
       SimpleUser.apply)
 
     "fromConfig" in {
-      val Some(a) = idToUser(UserId("A"))
-      val Some(b) = idToUser(UserId("B"))
-      val Some(b1) = idToUser(UserId("B1"))
-      val Some(c) = idToUser(UserId("C"))
-      val Some(d) = idToUser(UserId("D"))
-      val Some(e1) = idToUser(UserId("E1"))
-      val Some(e2) = idToUser(UserId("E2"))
+      val Some(a) = idToUser(UserId("A")): @unchecked
+      val Some(b) = idToUser(UserId("B")): @unchecked
+      val Some(b1) = idToUser(UserId("B1")): @unchecked
+      val Some(c) = idToUser(UserId("C")): @unchecked
+      val Some(d) = idToUser(UserId("D")): @unchecked
+      val Some(e1) = idToUser(UserId("E1")): @unchecked
+      val Some(e2) = idToUser(UserId("E2")): @unchecked
       assert(a.id == UserId("A"))
       assert(b.id == UserId("B"))
       assert(b1.id == UserId("B1"))
@@ -102,7 +102,7 @@ final class IdToUserTest extends OurTestSuite
       assert(idToUser.distinguishedNameToIdsOrUser(DistinguishedName("CN=E")) == Right(Left(Set(e1.id, e2.id))))
       assert(idToUser.distinguishedNameToIdsOrUser(DistinguishedName("CN=UNKNOWN")) == Left(Problem("Unknown distinguished name 'CN=UNKNOWN'")))
 
-      val Some(emptyPasswordUser) = idToUser(UserId("EMPTY-PASSWORD"))
+      val Some(emptyPasswordUser) = idToUser(UserId("EMPTY-PASSWORD")): @unchecked
       assert(emptyPasswordUser.hashedPassword equalsClearText SecretString(""))
     }
 

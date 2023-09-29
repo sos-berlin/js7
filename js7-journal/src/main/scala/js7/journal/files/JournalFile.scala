@@ -10,6 +10,7 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.event.EventId
 import org.jetbrains.annotations.TestOnly
+import scala.util.boundary
 
 /**
   * @param fileEventId EventId of the last Event before this journal file
@@ -20,14 +21,16 @@ private[journal] final case class JournalFile private[journal](fileEventId: Even
 
   @TestOnly // Not used
   private[files] def properLength: Long =
-    autoClosing(new RandomAccessFile(file.toFile, "r")) { f =>
-      var truncated = f.length
-      while (truncated > 0) {
-        f.seek(truncated - 1)
-        if (f.read() == '\n') return truncated
-        truncated -= 1
+    boundary[Long] {
+      autoClosing(new RandomAccessFile(file.toFile, "r")) { f =>
+        var truncated = f.length
+        while (truncated > 0) {
+          f.seek(truncated - 1)
+          if (f.read() == '\n') boundary.break(truncated)
+          truncated -= 1
+        }
+        0
       }
-      0
     }
 }
 

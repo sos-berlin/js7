@@ -67,7 +67,7 @@ with BlockingItemUpdater
           |  execute executable="OKAY$sh", agent="AGENT";         // :1
           |}""".stripMargin
     val workflow = WorkflowParser.parse(WorkflowPath("FINISHING"), finishingScript).orThrow
-    val Some(v) = updateItems(workflow)
+    val Some(v) = updateItems(workflow): @unchecked
 
     val orderId = OrderId("🔺")
     controller.addOrderBlocking(FreshOrder(orderId, workflow.path))
@@ -105,7 +105,7 @@ with BlockingItemUpdater
       Seq(
         TryInstruction(
           tryWorkflow = Workflow.of(Fail()),
-          catchWorkflow = Workflow.of(Fail())))))
+          catchWorkflow = Workflow.of(Fail()))))): @unchecked
 
     val orderId = OrderId("🔻")
     controller.addOrderBlocking(FreshOrder(orderId, workflowPath))
@@ -131,7 +131,7 @@ with BlockingItemUpdater
       Seq(
         TryInstruction(
           tryWorkflow = Workflow.of(Fail()),
-          catchWorkflow = Workflow.empty))))
+          catchWorkflow = Workflow.empty)))): @unchecked
 
     val orderId = OrderId("♣️")
     controller.addOrderBlocking(FreshOrder(orderId, workflowPath))
@@ -160,7 +160,7 @@ with BlockingItemUpdater
           catchWorkflow = Workflow.of(
             EmptyJob.execute(agentPath))),
         EmptyJob.execute(agentPath)))
-    val Some(v) = updateItems(workflow)
+    val Some(v) = updateItems(workflow): @unchecked
 
     val orderId = OrderId("♦️")
     controller.addOrderBlocking(FreshOrder(orderId, workflow.path))
@@ -203,7 +203,7 @@ with BlockingItemUpdater
          |    execute executable="OKAY$sh", agent="AGENT";
          |  }
          |}""".stripMargin).orThrow
-    val Some(v) = updateItems(workflow)
+    val Some(v) = updateItems(workflow): @unchecked
 
     val orderId = OrderId("♠️")
     controller.addOrderBlocking(FreshOrder(orderId, workflow.path))

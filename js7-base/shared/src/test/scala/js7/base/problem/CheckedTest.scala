@@ -231,13 +231,13 @@ final class CheckedTest extends OurTestSuite
 
   "toEitherThrowable" in {
     assert(Checked(1).toEitherThrowable == Right(1))
-    val Left(throwable: Throwable) = Left(Problem("PROBLEM")).toEitherThrowable
+    val Left(throwable: Throwable) = Left(Problem("PROBLEM")).toEitherThrowable: @unchecked
     assert(throwable.getMessage == "PROBLEM")
   }
 
   "asTry" in {
     assert(Checked(1).asTry == Success(1))
-    val Failure(throwable: Throwable) = Left(Problem("PROBLEM")).asTry
+    val Failure(throwable: Throwable) = Left(Problem("PROBLEM")).asTry: @unchecked
     assert(throwable.getMessage == "PROBLEM")
   }
 

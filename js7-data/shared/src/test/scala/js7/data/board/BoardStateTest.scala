@@ -11,7 +11,6 @@ import js7.data.board.BoardStateTest.*
 import js7.data.controller.ControllerState
 import js7.data.order.OrderId
 import js7.data.value.expression.ExpressionParser.expr
-import js7.data.workflow.position.BranchPath.syntax.*
 import monix.execution.Scheduler.Implicits.traced
 import scala.collection.View
 
@@ -60,30 +59,30 @@ final class BoardStateTest extends OurAsyncTestSuite
         .runToFuture
     }
 
-  lazy val boardState = BoardState(
-    Board(
-      boardPath,
-      postOrderToNoticeId =
-        expr("""replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')"""),
-      expectOrderToNoticeId =
-        expr("""replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')"""),
-      endOfLife = expr("$js7EpochMilli + 24 * 3600 * 1000")),
-    idToNotice = Map(
-      NoticeId("NOTICE-1") -> NoticePlace(
-        NoticeId("NOTICE-1"),
-        isInConsumption = true),
-      NoticeId("NOTICE-2") -> NoticePlace(
-        NoticeId("NOTICE-2"),
-        Some(Notice(NoticeId("NOTICE-2"), boardPath, endOfLife = Timestamp.ofEpochSecond(123))),
-        expectingOrderIds = Set.empty /*Recovered by Order.ExpectingNotices*/ ,
-        consumptionCount = 7)),
-    orderToConsumptionStack = Map(
-      OrderId("A-ORDER") -> List(
-        NoticeId("NOTICE-3"),
-        NoticeId("NOTICE-2"),
-        NoticeId("NOTICE-1"))))
+    lazy val boardState = BoardState(
+      Board(
+        boardPath,
+        postOrderToNoticeId =
+          expr("""replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')"""),
+        expectOrderToNoticeId =
+          expr("""replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')"""),
+        endOfLife = expr("$js7EpochMilli + 24 * 3600 * 1000")),
+      idToNotice = Map(
+        NoticeId("NOTICE-1") -> NoticePlace(
+          NoticeId("NOTICE-1"),
+          isInConsumption = true),
+        NoticeId("NOTICE-2") -> NoticePlace(
+          NoticeId("NOTICE-2"),
+          Some(Notice(NoticeId("NOTICE-2"), boardPath, endOfLife = Timestamp.ofEpochSecond(123))),
+          expectingOrderIds = Set.empty /*Recovered by Order.ExpectingNotices*/ ,
+          consumptionCount = 7)),
+      orderToConsumptionStack = Map(
+        OrderId("A-ORDER") -> List(
+          NoticeId("NOTICE-3"),
+          NoticeId("NOTICE-2"),
+          NoticeId("NOTICE-1"))))
 
-  "toSnapshotObservable JSON" in {
+    "toSnapshotObservable JSON" in {
       boardState.toSnapshotObservable
         .map(_
           .asJson(ControllerState.snapshotObjectJsonCodec)

@@ -59,7 +59,7 @@ final class EventRouteTest extends OurTestSuite with AgentTester
     val Right(observable) = agentClient
       .eventObservable(
         EventRequest.singleClass[Event](after = EventId.BeforeFirst, timeout = Some(0.s)))
-      .await(99.s)
+      .await(99.s): @unchecked
     assert(observable.headL.await(99.s).eventId > EventId.BeforeFirst)
   }
 
@@ -67,7 +67,7 @@ final class EventRouteTest extends OurTestSuite with AgentTester
     val Right(observable) = agentClient
       .eventObservable(
         EventRequest[Event](Set(classOf[AgentReady]), after = EventId.BeforeFirst, timeout = Some(0.s)))
-      .await(99.s)
+      .await(99.s): @unchecked
     eventId = observable.lastL.await(99.s).eventId
   }
 

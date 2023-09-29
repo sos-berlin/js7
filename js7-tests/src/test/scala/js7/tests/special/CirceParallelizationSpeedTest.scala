@@ -55,29 +55,29 @@ final class CirceParallelizationSpeedTest extends OurTestSuite
       testDecode[Small](smallJson, "Small")(decodeParallelBatch[Small])
     }
 
-  if (false) { // too slow
-    "encode parallel" in {
-      testEncode(big, "Big")(encodeParallel)
-      testEncode(small, "Small")(encodeParallel)
+    if (false) { // too slow
+      "encode parallel" in {
+        testEncode(big, "Big")(encodeParallel)
+        testEncode(small, "Small")(encodeParallel)
+      }
+
+      "decode parallel" in {
+        testDecode[Big](bigJson, "Big")(decodeParallel[Big])
+        testDecode[Small](smallJson, "Small")(decodeParallel[Small])
+      }
     }
 
-    "decode parallel" in {
-      testDecode[Big](bigJson, "Big")(decodeParallel[Big])
-      testDecode[Small](smallJson, "Small")(decodeParallel[Small])
-    }
-  }
+    if (true) { // slow
+      "encode sequential" in {
+        testEncode(big, "Big")(seq => encodeSerial(seq))
+        testEncode(small, "Small")(seq => encodeSerial(seq))
+      }
 
-  if (true) { // slow
-    "encode sequential" in {
-      testEncode(big, "Big")(seq => encodeSerial(seq))
-      testEncode(small, "Small")(seq => encodeSerial(seq))
+      "decode sequential" in {
+        testDecode[Big](bigJson, "Big")(decodeSerial[Big](_))
+        testDecode[Small](smallJson, "Small")(decodeSerial[Small](_))
+      }
     }
-
-    "decode sequential" in {
-      testDecode[Big](bigJson, "Big")(decodeSerial[Big](_))
-      testDecode[Small](smallJson, "Small")(decodeSerial[Small](_))
-    }
-  }
   }
 
   private def testEncode[A: Encoder](seq: Seq[A], plural: String)(body: Seq[A] => Seq[ByteArray]): Unit = {

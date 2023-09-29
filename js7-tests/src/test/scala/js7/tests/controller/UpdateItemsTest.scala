@@ -24,7 +24,6 @@ import js7.data.lock.{Lock, LockPath}
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.instructions.{Finish, PostNotices}
-import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowParser, WorkflowPath}
 import js7.tests.controller.UpdateItemsTest.*
@@ -162,7 +161,7 @@ with BlockingItemUpdater
     val workflow = Workflow(WorkflowPath("WORKFLOW-WITH-CONTROL"), Nil)
     val workflowControl = WorkflowControl(WorkflowControlId(workflow.id))
 
-    val Some(v1) = updateItems(workflow)
+    val Some(v1) = updateItems(workflow): @unchecked
     assert(controllerState.idToWorkflow.isDefinedAt(workflow.path ~ v1))
 
     controller.api
@@ -171,7 +170,7 @@ with BlockingItemUpdater
     assert(controllerState.keyToItem(WorkflowControl).contains(workflowControl.path ~ v1))
 
     val workflow2 = Workflow(workflow.path, Seq(Finish()))
-    val Some(v2) = updateItems(workflow2)
+    val Some(v2) = updateItems(workflow2): @unchecked
 
     assert(!controllerState.keyToItem(Workflow).contains(workflow.path ~ v1))
     assert(controllerState.keyToItem(Workflow).contains(workflow.path ~ v2))

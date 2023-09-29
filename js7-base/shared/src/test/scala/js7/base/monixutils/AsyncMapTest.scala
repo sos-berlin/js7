@@ -99,7 +99,7 @@ final class AsyncMapTest extends OurAsyncTestSuite
   }
 
   "updateChecked" - {
-     def updateChecked(maybe: Option[String]): Task[Checked[String]] =
+    def updateChecked(maybe: Option[String]): Task[Checked[String]] =
       maybe match {
         case None => Task(Right("FIRST"))
         case Some(_) => Task(Left(Problem("EXISTING")))

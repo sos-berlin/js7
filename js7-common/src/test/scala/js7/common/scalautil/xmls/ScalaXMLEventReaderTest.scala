@@ -1,7 +1,6 @@
 package js7.common.scalautil.xmls
 
 import javax.xml.transform.Source
-import js7.base.convert.ConvertiblePartialFunctions.*
 import js7.base.test.OurTestSuite
 import js7.base.time.Stopwatch.measureTime
 import js7.base.utils.ScalaUtils.syntax.*

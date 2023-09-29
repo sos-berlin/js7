@@ -100,7 +100,7 @@ extends UnsignedSimpleItemState
   def removeConsumption(orderId: OrderId, succeeded: Boolean): Checked[BoardState] =
     orderToConsumptionStack.checked(orderId)
       .flatMap { consumptions =>
-        val noticeId :: remainingConsumptions = consumptions
+        val noticeId :: remainingConsumptions = consumptions: @unchecked
         idToNotice.checked(noticeId)
           .map(noticePlace =>
             updateNoticePlace(

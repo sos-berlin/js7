@@ -323,7 +323,7 @@ extends OurTestSuite with SessionRouteTester
 
       // Login and Logout
       api.login() await 99.s
-      val Some(sessionToken) = api.sessionToken
+      val Some(sessionToken) = api.sessionToken: @unchecked
       assert(api.hasSession)
       requireAuthorizedAccess(api)
       assert(api.hasSession)
@@ -375,7 +375,7 @@ extends OurTestSuite with SessionRouteTester
     "Known SessionToken is invalidated" in {
       withSessionApi(None) { api =>
         api.login_(Some(AUserAndPassword)) await 99.s
-        val Some(firstSessionToken) = api.sessionToken
+        val Some(firstSessionToken) = api.sessionToken: @unchecked
         assert(api.hasSession)
         api.login_(Some(BUserAndPassword)) await 99.s
         assert(api.hasSession)

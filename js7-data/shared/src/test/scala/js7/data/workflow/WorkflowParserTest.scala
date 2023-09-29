@@ -284,7 +284,7 @@ final class WorkflowParserTest extends OurTestSuite
           ImplicitEnd(sourcePos(138, 139)))))
   }
 
- "if (...) instruction" in {
+  "if (...) instruction" in {
     checkWithSourcePos("""define workflow { if ($returnCode == -1) fail }""",
       Workflow.anonymous(
         Vector(
@@ -294,7 +294,7 @@ final class WorkflowParserTest extends OurTestSuite
           ImplicitEnd(sourcePos(46, 47)))))
   }
 
- "if (...) instruction else instruction" in {
+  "if (...) instruction else instruction" in {
     checkWithSourcePos("""define workflow { if ($returnCode == -1) fail else execute executable="/ELSE", agent="AGENT" }""",
       Workflow.anonymous(
         Vector(

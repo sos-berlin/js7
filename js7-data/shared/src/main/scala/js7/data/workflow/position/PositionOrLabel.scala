@@ -11,7 +11,6 @@ import js7.data.workflow.position.BranchId.nextTryBranchId
 import js7.data.workflow.position.BranchPath.Segment
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.Position.*
-import js7.data.workflow.position.syntax.*
 import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
 

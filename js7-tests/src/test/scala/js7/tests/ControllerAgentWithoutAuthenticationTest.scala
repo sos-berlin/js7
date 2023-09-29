@@ -85,7 +85,7 @@ final class ControllerAgentWithoutAuthenticationTest extends OurTestSuite
         new ItemSigner(new SillySigner(signature), versionedItemJsonCodec)
       }
 
-      val controllerPort :: agentPort :: Nil = FreeTcpPortFinder.findFreeTcpPorts(2)
+      val controllerPort :: agentPort :: Nil = FreeTcpPortFinder.findFreeTcpPorts(2): @unchecked
       val agentConfiguration = AgentConfiguration.fromCommandLine(CommandLineArguments(
         "--config-directory=" + dir / "agent/config" ::
         "--data-directory=" + dir / "agent/data" ::

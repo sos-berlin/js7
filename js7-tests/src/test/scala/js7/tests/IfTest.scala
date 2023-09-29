@@ -43,7 +43,7 @@ final class IfTest extends OurTestSuite
   }
 
   "OrderFailed on Agent is delayed until Order has been moved back to Controller" in {
-     val workflowNotation = s"""
+    val workflowNotation = s"""
        |define workflow {
        |  // Move order to agent
        |  execute executable="TEST$sh", agent="AGENT";
@@ -51,9 +51,10 @@ final class IfTest extends OurTestSuite
        |    execute executable="TEST$sh", agent="AGENT";
        |  }
        |}""".stripMargin
-    val workflow = WorkflowParser.parse(WorkflowPath("WORKFLOW") ~ "INITIAL", workflowNotation).orThrow
+    val workflow =
+      WorkflowParser.parse(WorkflowPath("WORKFLOW") ~ "INITIAL", workflowNotation).orThrow: @unchecked
     val directoryProvider = new DirectoryProvider(
-      agentPaths = Seq(agentPath), items = Seq(workflow), testName = Some("IfTest"))
+      agentPaths = Seq(agentPath), items = Seq(workflow), testName = Some("IfTest")): @unchecked
     autoClosing(directoryProvider) { directoryProvider =>
       for (a <- directoryProvider.agentEnvs) a.writeExecutable(RelativePathExecutable(s"TEST$sh"), ":")
       directoryProvider.run { (controller, _) =>

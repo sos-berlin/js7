@@ -58,7 +58,7 @@ final class UntaughtClusterWatchPassiveLostControllerClusterTest extends Control
           primaryController.clusterState.await(99.s).isInstanceOf[PassiveLost])
 
         val ClusterPassiveLost(`backupId`) = primaryController.eventWatch.await[ClusterPassiveLost]()
-          .head.value.event
+          .head.value.event: @unchecked
 
         primaryController.stop.await(99.s)
       }

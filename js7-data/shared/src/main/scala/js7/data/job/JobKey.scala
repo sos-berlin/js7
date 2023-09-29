@@ -4,9 +4,8 @@ import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
 import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.position.BranchPath.syntax.*
-import js7.data.workflow.position.syntax.*
 import js7.data.workflow.position.*
+import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.{WorkflowId, WorkflowPath}
 
 /**

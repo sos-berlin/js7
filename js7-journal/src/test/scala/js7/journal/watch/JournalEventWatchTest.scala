@@ -152,7 +152,7 @@ final class JournalEventWatchTest extends OurTestSuite with BeforeAndAfterAll
         writer.writeEvents(Stamped(1001L, "1" <-: A1) :: Nil)
         writer.flush(sync = false)
         writer.onCommitted(writer.fileLengthAndEventId, 1)
-        val EventSeq.NonEmpty(anyEvents) = anyFuture.await(99.s).strict
+        val EventSeq.NonEmpty(anyEvents) = anyFuture.await(99.s).strict: @unchecked
         assert(anyEvents == Stamped(1001L, "1" <-: A1) :: Nil)
       }
     }
@@ -169,13 +169,13 @@ final class JournalEventWatchTest extends OurTestSuite with BeforeAndAfterAll
         writer.writeEvents(Stamped(1001L, "1" <-: A1) :: Nil)
         writer.flush(sync = false)
         writer.onCommitted(writer.fileLengthAndEventId, 1)
-        val EventSeq.NonEmpty(anyEvents) = anyFuture.await(99.s).strict
+        val EventSeq.NonEmpty(anyEvents) = anyFuture.await(99.s).strict: @unchecked
         assert(anyEvents == Stamped(1001L, "1" <-: A1) :: Nil)
 
         writer.writeEvents(Stamped(1002L, "2" <-: B1) :: Nil)
         writer.flush(sync = false)
         writer.onCommitted(writer.fileLengthAndEventId, 1)
-        val EventSeq.NonEmpty(bEventsIterator) = bFuture.await(99.s).strict
+        val EventSeq.NonEmpty(bEventsIterator) = bFuture.await(99.s).strict: @unchecked
         assert(bEventsIterator == Stamped(1002L, "2" <-: B1) :: Nil)
 
         assert(eventWatch
@@ -201,7 +201,7 @@ final class JournalEventWatchTest extends OurTestSuite with BeforeAndAfterAll
           key: E.Key) = {
           val EventSeq.NonEmpty(eventIterator) = eventWatch
             .whenKey[E](EventRequest.singleClass(timeout = Some(99.s)), key)
-            .await(10.s).strict
+            .await(10.s).strict: @unchecked
           eventIterator.toVector.map(_.value)
         }
         assert(eventsForKey[AEvent]("1") == Vector(A1, A2))
@@ -320,7 +320,7 @@ final class JournalEventWatchTest extends OurTestSuite with BeforeAndAfterAll
         autoClosing(EventJournalWriter.forTest(journalLocation, after = EventId.BeforeFirst, journalId, Some(eventWatch), withoutSnapshots = false)) { writer =>
           writer.onJournalingStarted()  // Notifies eventWatch about this journal file
 
-          val Some(observable) = eventWatch.snapshotAfter(EventId.BeforeFirst)
+          val Some(observable) = eventWatch.snapshotAfter(EventId.BeforeFirst): @unchecked
           // Contains only JournalHeader
           assert(observable.toListL.await(99.s).map(_.asInstanceOf[JournalHeader].eventId) == List(EventId.BeforeFirst))
         }
@@ -335,28 +335,28 @@ final class JournalEventWatchTest extends OurTestSuite with BeforeAndAfterAll
         eventWatch.onJournalingStarted(journalLocation.file(after), journalId,
           lengthAndEventId, lengthAndEventId, isActiveNode = true)
         locally {
-          val Some(observable) = eventWatch.snapshotAfter(EventId.BeforeFirst)
+          val Some(observable) = eventWatch.snapshotAfter(EventId.BeforeFirst): @unchecked
           // Contains only JournalHeader
           assert(observable.toListL.await(99.s)
             .map(_.asInstanceOf[JournalHeader].eventId)
             == List(EventId.BeforeFirst))
         }
         locally {
-          val Some(observable) = eventWatch.snapshotAfter(99L)
+          val Some(observable) = eventWatch.snapshotAfter(99L): @unchecked
           // Contains only JournalHeader
           assert(observable.toListL.await(99.s)
             .map(_.asInstanceOf[JournalHeader].eventId)
             == List(EventId.BeforeFirst))
         }
         locally {
-          val Some(observable) = eventWatch.snapshotAfter(100L)
+          val Some(observable) = eventWatch.snapshotAfter(100L): @unchecked
           assert(observable.map {
             case o: JournalHeader => o.eventId
             case o => o
           }.toListL.await(99.s) == 100L :: snapshotObjects)
         }
         locally {
-          val Some(observable) = eventWatch.snapshotAfter(101L)
+          val Some(observable) = eventWatch.snapshotAfter(101L): @unchecked
           assert(observable.map {
             case o: JournalHeader => o.eventId
             case o => o

@@ -5,7 +5,6 @@ import js7.base.test.OurTestSuite
 import js7.data.value.expression.Expression.*
 import js7.data.value.expression.ExpressionParser.*
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.position.BranchPath.syntax.*
 import org.scalactic.source
 
 final class ExpressionParserTest extends OurTestSuite
@@ -301,7 +300,7 @@ final class ExpressionParserTest extends OurTestSuite
 
   private def testBooleanExpression(exprString: String, expr: BooleanExpr)(implicit pos: source.Position) =
     exprString in {
-        assert(parseExpression(exprString) == Right(expr))
+      assert(parseExpression(exprString) == Right(expr))
       assert(parseExpression(expr.toString) == Right(expr), " - toString")
     }
 

@@ -1,10 +1,10 @@
 package js7.base.web
 
 import js7.base.problem.Problem
+import js7.base.test.OurAsyncTestSuite
 import js7.base.web.HttpClient.liftProblem
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
-import js7.base.test.OurAsyncTestSuite
 import scala.util.{Failure, Success}
 
 /**
@@ -58,7 +58,7 @@ final class HttpClientTest extends OurAsyncTestSuite
   }
 
   "liftProblem and failureToChecked save HTTP status code of the withoutProblem Exception" in {
-    val Success(Left(problem)) = HttpClient.failureToChecked(Failure(withoutProblem))
+    val Success(Left(problem)) = HttpClient.failureToChecked(Failure(withoutProblem)): @unchecked
     assert(problem.httpStatusCode == 503)
     assert(problem.toString == "WITHOUT PROBLEM")
 

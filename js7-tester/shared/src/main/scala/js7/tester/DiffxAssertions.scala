@@ -2,8 +2,7 @@ package js7.tester
 
 //diffx import com.softwaremill.diffx
 import org.scalatest.Assertion
-import org.scalatest.Assertions.{assert, succeed}
-import org.scalatest.exceptions.TestFailedException
+import org.scalatest.Assertions.assert
 
 object DiffxAssertions
 {

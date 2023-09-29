@@ -23,13 +23,11 @@ import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, U
 import js7.data.state.StateView
 import js7.data.workflow.instructions.{End, Finish, ForkInstruction, Gap, LockInstruction, Options, Retry, TryInstruction}
 import js7.data.workflow.position.BranchPath.Segment
-import js7.data.workflow.position.{BranchId, Position, TryBranchId, WorkflowPosition}
+import js7.data.workflow.position.BranchPath.syntax.*
+import js7.data.workflow.position.*
 import js7.data.workflow.{Instruction, Workflow}
 import scala.annotation.tailrec
 import scala.reflect.ClassTag
-import js7.data.workflow.position.syntax.*
-import js7.data.workflow.position.*
-import js7.data.workflow.position.BranchPath.syntax.*
 
 /**
   * @author Joacim Zschimmer

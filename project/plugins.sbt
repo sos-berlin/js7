@@ -1,4 +1,3 @@
-addSbtPlugin("ch.epfl.scala" % "sbt-scala3-migrate" % "0.6.1")
 addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.11.1")
 addSbtPlugin("com.github.sbt" % "sbt-git" % "1.0.3-M1")
 addSbtPlugin("com.github.sbt" % "sbt-native-packager" % "1.9.7")

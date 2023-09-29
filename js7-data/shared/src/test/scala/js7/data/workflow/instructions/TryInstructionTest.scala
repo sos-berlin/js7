@@ -10,6 +10,7 @@ import js7.data.value.expression.Expression.BooleanConstant
 import js7.data.workflow.instructions.Instructions.jsonCodec
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.BranchId.{Catch_, Try_}
+import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Instruction, Workflow}
 import js7.tester.CirceJsonTester.testJson
@@ -110,7 +111,7 @@ final class TryInstructionTest extends OurTestSuite
                   TryInstruction(
                     Workflow.of(Retry()),  // This retry belongs to the outer catch-block
                     Workflow.empty)))))),
-        Some(1.s :: Nil))
+        Some(1.s :: Nil)): @unchecked
       assert(try_.isRetry)
     }
 
@@ -124,7 +125,7 @@ final class TryInstructionTest extends OurTestSuite
               If(BooleanConstant(true),
                 Workflow.empty,
                 Some(Workflow.of(Retry()))))))),
-        Some(1.s :: Nil))
+        Some(1.s :: Nil)): @unchecked
       assert(try_.isRetry)
     }
 
@@ -138,7 +139,7 @@ final class TryInstructionTest extends OurTestSuite
               If(BooleanConstant(true),
                 Workflow.empty,
                 Some(Workflow.of(Retry()))))))),
-        Some(1.s :: Nil))
+        Some(1.s :: Nil)): @unchecked
       assert(try_.isRetry)
     }
   }

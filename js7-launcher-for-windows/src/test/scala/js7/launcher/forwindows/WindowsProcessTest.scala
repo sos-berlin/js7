@@ -282,7 +282,7 @@ final class WindowsProcessTest extends OurTestSuite
         val user = "NON-EXISTENT-ÜSËR"
         val Failure(t) = Try {
           WindowsProcess.execute(windowsDirectory / "System32\\icacls.exe", file, "/q", "/grant", s"$user:R")
-        }
+        }: @unchecked
         val Array(a, b) = t.getMessage split "=>"
         println(t.getMessage)
         assert(a contains "icacls.exe")
