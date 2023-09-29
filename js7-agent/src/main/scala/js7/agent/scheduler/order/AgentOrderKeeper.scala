@@ -503,11 +503,11 @@ with Stash:
       val since = now
       val delays = continueWithLast(1.s, 3.s, 10.s)
       val sym = new BlockingSymbol
-      Task.tailRecM(())(_ =>
+      Task.tailRecM(()) { _ =>
         changeSubagentAndClusterNode(event)
           .flatMapT(_ => proceedWithItem(item))
           .uncancelable // Only the loop should be cancelable, but not the inner operations
-          .flatMap {
+          .flatMap:
             case Left(problem @ PassiveClusterNodeUrlChangeableOnlyWhenNotCoupledProblem) =>
               sym.increment()
               logger.warn(
@@ -520,14 +520,14 @@ with Stash:
                 case Right(()) => logger.info(s"🟢 $label => Cluster setting has been changed")
               }
               Task.right(checked)
-          }
-      )
+      }
 
   private def attachSignedItem(signed: Signed[SignableItem]): Future[Checked[Response.Accepted]] =
     forDirector.signatureVerifier.verify(signed.signedString) match
       case Left(problem) => Future.successful(Left(problem))
       case Right(signerIds) =>
-        logger.info(Logger.SignatureVerified, s"Verified ${signed.value.key}, signed by ${signerIds.mkString(", ")}")
+        logger.info(Logger.SignatureVerified,
+          s"Verified ${signed.value.key}, signed by ${signerIds.mkString(", ")}")
 
         signed.value match
           case workflow: Workflow =>
@@ -630,6 +630,7 @@ with Stash:
                       // Otherwise in case of a quick Controller restart, CoupleController would response with this OrderId
                       // and the Controller will try again to DetachOrder, while the original DetachOrder is still in progress.
                 promise.future.map(_ => Right(AgentCommand.Response.Accepted))
+
           case None =>
             // May occur after Controller restart when Controller is not sure about order has been detached previously.
             logger.debug(s"Ignoring duplicate $cmd")
@@ -725,7 +726,7 @@ with Stash:
       case Right(order) => proceedWithOrder(order)
 
   private def proceedWithOrder(order: Order[Order.State]): Unit =
-    if order.isAttached then
+    if order.isAttached then {
       val delayed = clock.lock:
         order.maybeDelayedUntil match
           case Some(until) if clock.now() < until =>
@@ -737,7 +738,8 @@ with Stash:
 
           case _ =>
             false
-      if !delayed then
+
+      if !delayed then {
         val agentState = journal.unsafeCurrentState()
         val oes = new OrderEventSource(agentState)
         if order != agentState.idToOrder(order.id) then
@@ -760,8 +762,11 @@ with Stash:
         if keyedEvents.isEmpty
           && journal.unsafeCurrentState().isOrderProcessable(order)
           && order.isAttached
-          && !shuttingDown then
+          && !shuttingDown
+        then
           onOrderIsProcessable(order)
+      }
+    }
 
   private def onOrderIsProcessable(order: Order[Order.State]): Unit =
     journal.unsafeCurrentState()
@@ -786,7 +791,7 @@ with Stash:
         case Right(_) =>
 
   private def onOrderAvailableForJob(orderId: OrderId, jobEntry: JobEntry): Unit =
-  // TODO Make this more functional!
+    // TODO Make this more functional!
     if !jobEntry.queue.isKnown(orderId) then
       jobEntry.queue += orderId
       tryStartProcessing(jobEntry)
@@ -794,6 +799,7 @@ with Stash:
   private def tryStartProcessing(jobEntry: JobEntry): Unit =
     lazy val isEnterable = jobEntry.checkAdmissionTimeInterval(clock):
       self ! Internal.JobDue(jobEntry.jobKey)
+
     val idToOrder = journal.unsafeCurrentState().idToOrder
 
     @tailrec def loop(): Unit =

@@ -113,11 +113,10 @@ final class ObservableNumberedQueue[V: Tag]:
       if s.stopped then
         Checked.unit
       else
-        for _ <- s.checkAfter(after) yield {
+        for _ <- s.checkAfter(after) yield
           val q = s.queue
           val (index, found) = binarySearch(0, q.length, q(_).number.compare(after))
           _state = s.copy(torn = after, queue = q.drop(index + found.toInt))
-        }
     })
 
   def stop: Task[Vector[Numbered[V]]] =

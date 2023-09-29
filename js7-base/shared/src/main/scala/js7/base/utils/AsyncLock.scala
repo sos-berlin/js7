@@ -64,14 +64,14 @@ final class AsyncLock private(
                   log.debug(/*spaces are for column alignment*/
                     s"⟲ $sym${locked.nr} $name enqueues    ${locked.who} (currently acquired by ${lockedBy.withCorrelId}) ...")
                   mvar.put(locked)
-                    .whenItTakesLonger(warnTimeouts)(_ =>
-                      for lockedBy <- mvar.tryRead yield {
+                    .whenItTakesLonger(warnTimeouts) { _ =>
+                      for lockedBy <- mvar.tryRead yield 
                         sym.onInfo()
                         logger.info(
                           s"⟲ $sym${locked.nr} $name: ${locked.who} is still waiting" +
                             s" for ${waitingSince.elapsed.pretty}," +
                             s" currently acquired by ${lockedBy getOrElse "None"} ...")
-                      })
+                    }
                     .map { _ =>
                       log.log(sym.releasedLogLevel,
                         s"↘ 🟢${locked.nr} $name acquired by ${locked.who} after ${waitingSince.elapsed.pretty} ↘")

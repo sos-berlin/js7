@@ -405,7 +405,7 @@ with SubagentEventListener:
           Task.pure(a)
 
   protected def emitSubagentCouplingFailed(maybeProblem: Option[Problem]): Task[Unit] =
-    logger.debugTask("emitSubagentCouplingFailed", maybeProblem)(
+    logger.debugTask("emitSubagentCouplingFailed", maybeProblem):
       // TODO Suppress duplicate errors
       journal
         .lock(subagentId)(
@@ -424,7 +424,7 @@ with SubagentEventListener:
           // Error isn't logged until stopEventListener is called
           logger.error("emitSubagentCouplingFailed => " + t.toStringWithCauses)
           Task.raiseError(t)
-        }))
+        })
 
   protected def detachProcessedOrder(orderId: OrderId): Task[Unit] =
     enqueueCommandAndForget(
@@ -592,6 +592,7 @@ with SubagentEventListener:
 
   override def toString =
     s"RemoteSubagentDriver(${subagentItem.pathRev})"
+
 
 object RemoteSubagentDriver:
   private val reconnectErrorDelay = 5.s/*TODO*/

@@ -152,7 +152,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
     passiveUri: Uri,
     extraEvent: Option[ItemAttachedToMe] = None)
   : Task[Checked[Unit]] =
-    logger.debugTask(
+    logger.debugTask:
       common.requireValidLicense.flatMapT(_ =>
         clusterStateLock.lock(
           suspendHeartbeat(forEvent = true)(
@@ -180,7 +180,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
                   proceedNodesAppointed(state).as(Right(()))
                 case _ =>
                   Task.right(())
-              })))))
+              }))))
 
   private[cluster] def onRestartActiveNode: Task[Checked[Completed]] =
     clusterStateLock.lock(

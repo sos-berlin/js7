@@ -11,8 +11,8 @@ trait ScheduleSimulator:
   this: ScheduleCalculator =>
 
   def simulate(timeInterval: TimeInterval, actionDuration: FiniteDuration = 0.s): View[Scheduled] =
-    View.fromIteratorProvider(() =>
-      new AbstractIterator[Scheduled] {
+    View.fromIteratorProvider { () =>
+      new AbstractIterator[Scheduled]:
         var timestamp = timeInterval.start
 
         private var _next: Option[Scheduled] = Some(Scheduled(
@@ -33,18 +33,17 @@ trait ScheduleSimulator:
           }
 
         def calculateNext() =
-          for scheduled <- _next yield {
+          for scheduled <- _next yield
             val maybeScheduled = nextCycleState(timestamp, scheduled.cycleState)
               .map(Scheduled(timestamp, _))
             _next = maybeScheduled
-            for scheduled <- maybeScheduled do {
+
+            for scheduled <- maybeScheduled do
               if timestamp < scheduled.next then {
                 timestamp = scheduled.next
               }
               timestamp += actionDuration
-            }
-          }
-      })
+    }
 
 object ScheduleSimulator:
   final case class Result(scheduledView: View[Scheduled]/*, exitAt: Timestamp*/)

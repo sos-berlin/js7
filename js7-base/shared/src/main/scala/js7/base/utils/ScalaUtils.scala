@@ -844,6 +844,7 @@ object ScalaUtils:
     else
       val result = mutable.Buffer.empty[String]
       val sb = new StringBuilder(maxSize)
+
       for str <- strings do
         if sb.isEmpty && str.length == maxSize then
           result.append(str)
@@ -860,6 +861,7 @@ object ScalaUtils:
                 result.append(sb.toString)
                 sb.clear()
             start += a.length
+
       if sb.nonEmpty then result.append(sb.toString)
       result
 

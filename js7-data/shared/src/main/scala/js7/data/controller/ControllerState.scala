@@ -209,14 +209,16 @@ with ClusterableState[ControllerState]:
             case SignedItemAdded(Signed(item, signedString)) =>
               item match
                 case jobResource: JobResource =>
-                  for o <- pathToSignedSimpleItem.insert(jobResource.path -> Signed(jobResource, signedString)) yield
-                    copy(pathToSignedSimpleItem = o)
+                  pathToSignedSimpleItem
+                    .insert(jobResource.path -> Signed(jobResource, signedString))
+                    .map(o => copy(pathToSignedSimpleItem = o))
 
             case SignedItemChanged(Signed(item, signedString)) =>
               item match
                 case jobResource: JobResource =>
                   Right(copy(
-                    pathToSignedSimpleItem = pathToSignedSimpleItem + (jobResource.path -> Signed(jobResource, signedString))))
+                    pathToSignedSimpleItem = pathToSignedSimpleItem +
+                      (jobResource.path -> Signed(jobResource, signedString))))
 
         case event: UnsignedItemEvent =>
           event match

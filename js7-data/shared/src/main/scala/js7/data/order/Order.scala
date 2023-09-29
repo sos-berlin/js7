@@ -680,18 +680,18 @@ final case class Order[+S <: Order.State](
       isState[FailedInFork]/*when asynchronously marked on Agent*/
 
   def isCancelable =
-    (isState[IsFreshOrReady] ||
-     isState[ProcessingKilled] ||
-     isState[WaitingForLock] ||
-     isState[Prompting] ||
-     isState[ExpectingNotices] ||
-     isState[BetweenCycles] ||
-     isState[FailedWhileFresh] ||
-     isState[DelayedAfterError] ||
-     isState[Stopped] ||
-     isState[Failed] ||
-     isState[Broken]) &&
-    (isDetached || isAttached)
+    (isState[IsFreshOrReady]
+      || isState[ProcessingKilled]
+      || isState[WaitingForLock]
+      || isState[Prompting]
+      || isState[ExpectingNotices]
+      || isState[BetweenCycles]
+      || isState[FailedWhileFresh]
+      || isState[DelayedAfterError]
+      || isState[Stopped]
+      || isState[Failed]
+      || isState[Broken]
+    ) && (isDetached || isAttached)
 
   private def cleanMark: Option[OrderMark] =
     mark match
@@ -721,13 +721,12 @@ final case class Order[+S <: Order.State](
     mark.exists(_.isInstanceOf[OrderMark.Resuming])
 
   def isResumable =
-    (isState[IsFreshOrReady] && isSuspendedOrStopped ||
-      isState[Stopped] ||
-      isState[StoppedWhileFresh] ||
-      isState[Failed] && !isSuspendedOrStopped/*strict for test*/ && isDetached ||
-      isState[Broken]
-    ) &&
-      (isDetached || isAttached)
+    (isState[IsFreshOrReady] && isSuspendedOrStopped
+      || isState[Stopped]
+      || isState[StoppedWhileFresh]
+      || isState[Failed] && !isSuspendedOrStopped/*strict for test*/ && isDetached
+      || isState[Broken]
+    ) && (isDetached || isAttached)
 
   def isProcessable =
     isState[IsFreshOrReady] && !isSuspendedOrStopped && !isMarked

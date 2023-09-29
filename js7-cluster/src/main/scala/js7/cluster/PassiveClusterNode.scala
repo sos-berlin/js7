@@ -102,24 +102,23 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
   private def notifyActiveNodeAboutShutdown: Task[Unit] =
     logger.debugTask:
       // Active and passive node may be shut down at the same time. We try to handle this here.
-      val untilDecoupled = logger.traceTask(Task
-        .tailRecM(())(_ =>
+      val untilDecoupled = logger.traceTask:
+        Task.tailRecM(())(_ =>
           stateBuilderAndAccessor.state
             .map(_.clusterState)
-            .flatMap {
+            .flatMap:
               case _: Coupled => Task.left(()).delayResult(1.s)
-              case clusterState => Task.right(clusterState)
-            }))
+              case clusterState => Task.right(clusterState))
 
-      val notifyActive = logger.traceTask(
-        activeApiResource.use(api =>
-          api.login(onlyIfNotLoggedIn = true)
-            .*>(api.executeClusterCommand(ClusterPassiveDown(activeId = activeId, passiveId = ownId)))
-            .void
-            .onErrorHandle(throwable => logger.debug(
-              s"ClusterCommand.ClusterPassiveDown failed: ${throwable.toStringWithCauses}",
-              throwable.nullIfNoStackTrace))))
-            .timeoutTo(clusterConf.timing.heartbeat/*some short time*/, Task.unit)
+      val notifyActive = activeApiResource
+        .use(api => api
+          .login(onlyIfNotLoggedIn = true)
+          .*>(api.executeClusterCommand(ClusterPassiveDown(activeId = activeId, passiveId = ownId)))
+          .void
+          .onErrorHandle(throwable => logger.debug(
+            s"ClusterCommand.ClusterPassiveDown failed: ${throwable.toStringWithCauses}",
+            throwable.nullIfNoStackTrace)))
+        .timeoutTo(clusterConf.timing.heartbeat /*some short time*/ , Task.unit)
         .logWhenItTakesLonger
 
       Task.race(untilDecoupled, notifyActive.delayExecution(50.ms))
