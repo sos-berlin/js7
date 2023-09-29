@@ -35,7 +35,7 @@ extends AutoCloseable {
     catch { case t: IOException => logger.debug(s"Delete $temporaryDirectory: $t", t)}
   }
 
-   def controllerDir: Path =
+  def controllerDir: Path =
     temporaryDirectory / "controller"
 
   def agentFile(agentPath: AgentPath, path: VersionedItemPath, t: SourceType): Path =

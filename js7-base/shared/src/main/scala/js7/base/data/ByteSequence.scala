@@ -97,7 +97,7 @@ with Monoid[ByteSeq] with Eq[ByteSeq] with Show[ByteSeq]
     if iterator(prefix).forall(o => o >= ' ' && o < '\u007f' || o == '\n' || o == '\r') then
       "»" + unsafeArray(byteSeq).map(byteToPrintable).mkString + "«" +
         (len > maxShowLength) ?? (s" ($len bytes)")
-     else
+    else
       typeName + "(" +
         toStringAndHexRaw(prefix, maxShowLength, withEllipsis = len > maxShowLength) +
         (len > maxShowLength) ?? (s", $len bytes") +

@@ -54,19 +54,16 @@ final class Closer extends AutoCloseable
 
       case closeable =>
         //Not in JavaScript: logger.traceCall[Unit](s"close $closeable") {
-          try closeable.close()
-          catch {
-            case NonFatal(t) =>
-              if !throwable.compareAndSet(null, t) then {
-                val tt = throwable.get()
-                if tt ne t then {
-                  logger.debug(s"Throwable.addSuppressed($t)")
-                  tt.addSuppressed(t)
-                }
-              }
-            case fatal: Throwable =>
-              throw fatal
-          }
+        try closeable.close()
+        catch
+          case NonFatal(t) =>
+            if !throwable.compareAndSet(null, t) then
+              val tt = throwable.get()
+              if tt ne t then
+                logger.debug(s"Throwable.addSuppressed($t)")
+                tt.addSuppressed(t)
+          case fatal: Throwable =>
+            throw fatal
         //}
         close()
     }

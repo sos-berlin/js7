@@ -246,11 +246,11 @@ object MonixBase
            case ((state, _), a) => f(state, a) -> a
          }
 
-       def updateStateWhileInclusive[S](seed: S)(predicate: S => Boolean)(f: (S, A) => S): Observable[A] = {
-         updateState(seed)(f)
-         .takeWhileInclusive(o => predicate(o._1))
-         .map(_._2)
-       }
+      def updateStateWhileInclusive[S](seed: S)(predicate: S => Boolean)(f: (S, A) => S)
+      : Observable[A] =
+        updateState(seed)(f)
+          .takeWhileInclusive(o => predicate(o._1))
+          .map(_._2)
 
       def logTiming(
         toCount: A => Long = simpleCount,
