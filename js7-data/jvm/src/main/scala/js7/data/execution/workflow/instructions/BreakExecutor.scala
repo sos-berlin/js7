@@ -10,8 +10,7 @@ import js7.data.workflow.position.BranchId
 
 private[instructions] final class BreakExecutor(
   protected val service: InstructionExecutorService)
-extends EventInstructionExecutor
-{
+extends EventInstructionExecutor:
   type Instr = Break
   val instructionClass = classOf[Break]
 
@@ -24,4 +23,3 @@ extends EventInstructionExecutor
         events = OrderCycleFinished(None) :: Nil)
     yield
       events.map(order.id <-: _)
-}

@@ -3,15 +3,14 @@ package js7.subagent.director
 import monix.execution.atomic.Atomic
 import scala.annotation.tailrec
 
-private final class FixedPriority
-{
+private final class FixedPriority:
   private val nextIndex = Atomic(0)
 
   @tailrec
   def next[P](n: Int, isEquivalent: (Int, Int) => Boolean): Int =
     if n == 0 then
       0
-    else {
+    else
       val i = nextIndex.get()
       val result = if i < n then i else 0
       var nxt = result + 1
@@ -21,7 +20,5 @@ private final class FixedPriority
         next(n, isEquivalent)
       else
         result
-    }
 
   override def toString = s"FixedPriority(nextIndex=${nextIndex.get()})"
-}

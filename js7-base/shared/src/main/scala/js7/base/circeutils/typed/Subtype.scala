@@ -17,7 +17,7 @@ final class Subtype[A](
   val nameToDecoder: Map[String, Decoder[A]],
   val nameToClass: Map[String, Class[A]])
 
-object Subtype {
+object Subtype:
   /**
     * Use implicit Encoder.AsObject and Decoder (CirceCodec); Simple class name is type name.
     * <p>
@@ -75,10 +75,9 @@ object Subtype {
     * <p>
     * Usage: Subtype(A)
     */
-  def singleton[A: ClassTag](singleton: A, aliases: Seq[String] = Nil): Subtype[A] = {
+  def singleton[A: ClassTag](singleton: A, aliases: Seq[String] = Nil): Subtype[A] =
     val codec = singletonCodec(singleton)
     make[A](implicitClass[A] :: Nil, Some(implicitClass[A]), typeName[A], codec, codec, aliases = aliases)
-  }
 
   /**
     * Use implicit Encoder.AsObject and Decoder (CirceCodec); Simple class name is type name.
@@ -120,7 +119,7 @@ object Subtype {
     encoder: Encoder.AsObject[A],
     decoder: Decoder[A],
     aliases: Seq[String] = Nil)
-  = {
+  =
     val typeField = TypeFieldName -> Json.fromString(typeName)
     val names = typeName +: aliases
     val myNamesToDecoder = names.map(_ -> decoder).uniqueToMap
@@ -140,5 +139,3 @@ object Subtype {
         case decoder: TypedJsonCodec[A] => decoder.nameToClass ++ myNamesToClass
         case _ => myNamesToClass
       })
-  }
-}

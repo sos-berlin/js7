@@ -7,23 +7,18 @@ import js7.base.problem.Problem
 import js7.data.event.{Event, EventId}
 import js7.data.platform.PlatformInfo
 
-trait SubagentItemStateEvent extends Event.IsKeyBase[SubagentItemStateEvent]
-{
+trait SubagentItemStateEvent extends Event.IsKeyBase[SubagentItemStateEvent]:
   val keyCompanion: SubagentItemStateEvent.type = SubagentItemStateEvent
-}
 
-object SubagentItemStateEvent extends Event.CompanionForKey[SubagentId, SubagentItemStateEvent]
-{
+object SubagentItemStateEvent extends Event.CompanionForKey[SubagentId, SubagentItemStateEvent]:
   implicit def implicitSelf: SubagentItemStateEvent.type  = this
 
   /** Subagent has been named. */
   final case class SubagentDedicated(
     subagentRunId: SubagentRunId,
     platformInfo: Option[PlatformInfo])
-  extends SubagentItemStateEvent
-  {
+  extends SubagentItemStateEvent:
     override def toShortString = s"SubagentDedicated($subagentRunId)"
-  }
 
   type SubagentCoupled = SubagentCoupled.type
   /** Subagent is coupled and alive. */
@@ -36,11 +31,9 @@ object SubagentItemStateEvent extends Event.CompanionForKey[SubagentId, Subagent
 
   /** Subagent may delete events until `untilEventId`. */
   final case class SubagentEventsObserved(untilEventId: EventId)
-  extends SubagentItemStateEvent
-  {
+  extends SubagentItemStateEvent:
     override def isMinor = true
     override def toString = s"SubagentEventsObserved(${EventId.toString(untilEventId)})"
-  }
 
   // TODO Brauchen wir SubagentCouplingFailed und SubagentReset ?
 
@@ -75,4 +68,3 @@ object SubagentItemStateEvent extends Event.CompanionForKey[SubagentId, Subagent
     Subtype(SubagentReset),
     Subtype(SubagentRestarted),
     Subtype(SubagentShutdown))
-}

@@ -13,8 +13,7 @@ private[launcher] final case class WindowsProcessCredential(
   userName: WindowsUserName,
   password: SecretString)
 
-object WindowsProcessCredential
-{
+object WindowsProcessCredential:
   private[launcher] def byKey(key: String): Checked[WindowsProcessCredential] =
     readCredential(key) { cred =>
       val passwordBytes = cred.credentialBlob.getByteArray(0, cred.credentialBlobSize)
@@ -33,19 +32,18 @@ object WindowsProcessCredential
     if !isWindows then
       Left(Problem.pure("Windows credential can only be read under Microsoft Windows"))
     else
-      try {
+      try
         val ref = new PointerByReference
         call("CredRead")(
           myAdvapi32.CredRead(key, MyAdvapi32.CRED_TYPE_GENERIC, 0, ref))
-        try {
+        try
           val credential = Structure.newInstance(classOf[CREDENTIAL], ref.getValue)
           credential.read()
           val result = read(credential)
           credential.clear()
           Right(result)
-        } finally myAdvapi32.CredFree(ref.getValue)
-      } catch { case NonFatal(e: Exception) =>
+        finally myAdvapi32.CredFree(ref.getValue)
+      catch { case NonFatal(e: Exception) =>
         Left(Problem.pure(
           s"Windows Credential Manager does not return an entry named '$key': ${e.getMessage}"))
       }
-}

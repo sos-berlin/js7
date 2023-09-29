@@ -19,8 +19,7 @@ import scala.util.Try
 /**
   * @author Joacim Zschimmer
   */
-object JournalFiles
-{
+object JournalFiles:
   private val logger = Logger[this.type]
 
   def currentFile(journalFileBase: Path): Checked[Path] =
@@ -34,7 +33,7 @@ object JournalFiles
         .toVector.sortBy(_.fileEventId)
     }
 
-  def listGarbageFiles(journalFileBase: Path, untilFileEventId: EventId): Vector[Path] = {
+  def listGarbageFiles(journalFileBase: Path, untilFileEventId: EventId): Vector[Path] =
     val pattern = JournalFile.garbagePattern(journalFileBase.getFileName)
     listFiles(journalFileBase)(_
       .filter { file =>
@@ -44,9 +43,8 @@ object JournalFiles
       }
       .toVector
       .sorted)
-  }
 
-  private def listFiles[A](journalFileBase: Path)(body: Iterator[Path] => Vector[A]): Vector[A] = {
+  private def listFiles[A](journalFileBase: Path)(body: Iterator[Path] => Vector[A]): Vector[A] =
     val directory = journalFileBase.getParent
     if !exists(directory) then
       Vector.empty
@@ -56,48 +54,42 @@ object JournalFiles
       autoClosing(Files.list(directory)) { stream =>
         body(stream.iterator.asScala)
       }
-  }
 
   private[files] def deleteJournalIfMarked(fileBase: Path): Checked[Unit] =
-    try {
+    try
       val markerFile = deletionMarkerFile(fileBase)
-      if exists(markerFile) then {
+      if exists(markerFile) then
         logger.debug(s"Marker file found: $markerFile")
         logger.warn("DELETE JOURNAL DUE TO JOURNAL RESET IN PREVIOUS RUN")
         deleteJournal(fileBase)
-      }
       Checked.unit
-    } catch { case e: IOException =>
+    catch { case e: IOException =>
       Left(Problem.pure(e.toStringWithCauses))
     }
 
-  private[files] def deleteJournal(fileBase: Path, ignoreFailure: Boolean = false): Unit = {
+  private[files] def deleteJournal(fileBase: Path, ignoreFailure: Boolean = false): Unit =
     val matches: String => Boolean = string =>
       JournalFile.anyJournalFilePattern(fileBase.getFileName).matcher(string).matches
     val markerFile = deletionMarkerFile(fileBase)
     if !exists(markerFile)/*required for test*/ then touchFile(markerFile)
     var failed = false
-    for file <- listFiles(fileBase)(_.filter(file => matches(file.getFileName.toString)).toVector) do {
-      try {
+    for file <- listFiles(fileBase)(_.filter(file => matches(file.getFileName.toString)).toVector) do
+      try
         logger.info(s"DELETE JOURNAL FILE $file")
         delete(file)
-      } catch { case e: IOException if ignoreFailure =>
+      catch { case e: IOException if ignoreFailure =>
         logger.warn(s"Delete journal file: $file => ${e.toStringWithCauses}")
         failed = true
       }
-    }
-    if failed then {
+    if failed then
       logger.warn("Journal files will be deleted at next start")
-    } else {
+    else
       delete(markerFile)
-    }
-  }
 
   private[files] def deletionMarkerFile(fileBase: Path): Path =
     Paths.get(s"$fileBase-DELETE!")
 
-  implicit final class JournalMetaOps(private val journalLocation: JournalLocation) extends AnyVal
-  {
+  implicit final class JournalMetaOps(private val journalLocation: JournalLocation) extends AnyVal:
     def file(after: EventId): Path =
       JournalFile.toFile(journalLocation.fileBase, after)
 
@@ -110,25 +102,20 @@ object JournalFiles
     def listGarbageFiles(untilFileEventId: EventId): Vector[Path] =
       JournalFiles.listGarbageFiles(journalLocation.fileBase, untilFileEventId)
 
-    def updateSymbolicLink(toFile: Path): Unit = {
+    def updateSymbolicLink(toFile: Path): Unit =
       val symLink = Paths.get(s"${journalLocation.fileBase}-journal")  // We preserve the suffix ".journal" for the real journal files
       Try { if exists(symLink, NOFOLLOW_LINKS) then delete(symLink) }
       Try { createSymbolicLink(symLink, toFile.getFileName) }
-    }
 
     def deleteJournalIfMarked(): Checked[Unit] =
       JournalFiles.deleteJournalIfMarked(journalLocation.fileBase)
 
-    def deleteJournal(ignoreFailure: Boolean = false): Unit = {
+    def deleteJournal(ignoreFailure: Boolean = false): Unit =
       logger.warn("DELETE JOURNAL FILES DUE TO AGENT RESET")
       JournalFiles.deleteJournal(journalLocation.fileBase, ignoreFailure)
-    }
-  }
 
-  def updateSymbolicLink(fileBase: Path, toFile: Path): Unit = {
+  def updateSymbolicLink(fileBase: Path, toFile: Path): Unit =
     assertThat(toFile.toString startsWith fileBase.toString)
     val symLink = Paths.get(s"$fileBase-journal")  // We preserve the suffix ".journal" for the real journal files
     Try { if exists(symLink, NOFOLLOW_LINKS) then delete(symLink) }
     Try { createSymbolicLink(symLink, toFile.getFileName) }
-  }
-}

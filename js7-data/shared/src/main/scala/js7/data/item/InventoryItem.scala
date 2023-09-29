@@ -8,8 +8,7 @@ import js7.data.item.InventoryItem.Companion
 import scala.collection.View
 import scala.reflect.ClassTag
 
-trait InventoryItem
-{
+trait InventoryItem:
   protected type Self <: InventoryItem
 
   val companion: Companion[Self]
@@ -39,14 +38,11 @@ trait InventoryItem
 
   // Accelerate usage in Set[InventoryItem], for example in AgentDriver's CommandQueue
   override def hashCode = 31 * key.hashCode + itemRevision.hashCode
-}
 
-object InventoryItem
-{
+object InventoryItem:
   type Companion_ = Companion[? <: InventoryItem]
 
-  trait Companion[A <: InventoryItem]
-  {
+  trait Companion[A <: InventoryItem]:
     type Item <: A
     def cls: Class[A]
     val typeName = getClass.simpleScalaName
@@ -71,8 +67,6 @@ object InventoryItem
       jsonCodec
 
     override def toString = typeName
-  }
 
   def jsonCodec(companions: Seq[Companion_]): TypedJsonCodec[InventoryItem] =
     TypedJsonCodec(companions.map(_.subtype)*)
-}

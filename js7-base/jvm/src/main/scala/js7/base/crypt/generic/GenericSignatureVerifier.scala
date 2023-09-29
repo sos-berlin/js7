@@ -25,8 +25,7 @@ import scala.jdk.CollectionConverters.*
   */
 final class GenericSignatureVerifier private[generic](
   verifiers: immutable.Iterable[SignatureVerifier])
-extends SignatureVerifier
-{
+extends SignatureVerifier:
   private val typeToVerifier = verifiers.toKeyedMap(_.companion.typeName)
 
   protected type MySignature = GenericSignature
@@ -49,10 +48,8 @@ extends SignatureVerifier
 
   override def publicKeysToStrings =
     "GenericSignatureVerifier#publicKeysToStrings" :: Nil
-}
 
-object GenericSignatureVerifier extends SignatureVerifier.Companion
-{
+object GenericSignatureVerifier extends SignatureVerifier.Companion:
   private val configPath = "js7.configuration.trusted-signature-keys"
   private val logger = Logger[this.type]
 
@@ -91,18 +88,16 @@ object GenericSignatureVerifier extends SignatureVerifier.Companion
                 }))
       }
       .toVector
-      .traverse {
+      .traverse:
         case (_, Left(p)) => Left(p)
         case (k, Right(v)) => Right(v)
-      }
       .flatMap { verifiers =>
         if verifiers.isEmpty then
           Left(Problem.pure(s"No trusted signature keys - Configure one with $configPath!"))
-        else {
+        else
           logVerifiers(verifiers)
           Right(
             new GenericSignatureVerifier(verifiers))
-        }
       }
 
   @deprecated("Not implemented", "")
@@ -115,15 +110,13 @@ object GenericSignatureVerifier extends SignatureVerifier.Companion
   private def logVerifiers(verifiers: Seq[SignatureVerifier]): Unit =
     if verifiers.isEmpty then
       logger.info("Trusting NO public signature keys")
-    else {
+    else
       logger.info(
         Seq("Trusting public signature keys:")
           .concat(verifiers
             .sortBy(_.companion.typeName)
             .flatMap(_.publicKeysToStrings))
           .mkString("\n  "))
-    }
 
   private case class ConfigStringExpectedProblem(configKey: String) extends Problem.Lazy(
     s"String expected as value of configuration key $configKey")
-}

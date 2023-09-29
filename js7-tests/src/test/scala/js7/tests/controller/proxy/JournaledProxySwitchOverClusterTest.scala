@@ -20,30 +20,27 @@ import js7.tests.controller.proxy.ClusterProxyTest.{backupUserAndPassword, prima
 import monix.execution.Scheduler.Implicits.traced
 import scala.jdk.CollectionConverters.*
 
-final class JournaledProxySwitchOverClusterTest extends OurTestSuite with ClusterProxyTest
-{
+final class JournaledProxySwitchOverClusterTest extends OurTestSuite with ClusterProxyTest:
   override protected val removeObsoleteJournalFiles = false
 
-  "JournaledProxy accesses a switching Cluster" in {
+  "JournaledProxy accesses a switching Cluster" in:
     withControllerAndBackup() { (primary, _, backup, _, _) =>
       val backupController = backup.newController()
 
       lazy val proxy = controllerApi.startProxy().await(99.s)
       var lastEventId = EventId.BeforeFirst
 
-      def runOrder(orderId: OrderId): Unit = {
+      def runOrder(orderId: OrderId): Unit =
         val whenFinished = proxy.observable
-          .find {
+          .find:
             case EventAndState(Stamped(_, _, KeyedEvent(`orderId`, _: OrderFinished)), _, _) => true
             case _ => false
-          }
           .timeoutOnSlowUpstream(99.s)
           .headL.runToFuture
         controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
         whenFinished await 99.s
-      }
 
-      try {
+      try
         primary.runController() { primaryController =>
           primaryController.eventWatch.await[ClusterCoupled]()
 
@@ -85,8 +82,6 @@ final class JournaledProxySwitchOverClusterTest extends OurTestSuite with Cluste
           primaryController.eventWatch.await[ClusterFailedOver](after = lastEventId)
           runOrder(OrderId("ORDER-AFTER-FAILOVER"))
         }
-      } finally
+      finally
         proxy.stop.runToFuture await 99.s
     }
-  }
-}

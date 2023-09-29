@@ -16,25 +16,24 @@ import scala.concurrent.duration.Deadline
 /**
   * @author Joacim Zschimmer
   */
-trait ExceptionHandling
-{
+trait ExceptionHandling:
   protected def whenShuttingDown: Future[Deadline]
   protected def config: Config
 
   private lazy val respondWithException = config.getBoolean("js7.web.server.verbose-error-messages")
 
   implicit protected final lazy val exceptionHandler: ExceptionHandler =
-    ExceptionHandler {
+    ExceptionHandler:
       case e: HttpStatusCodeException =>
         complete(e.statusCode -> e.problem)
 
       case e: akka.pattern.AskTimeoutException =>
-        if whenShuttingDown.isCompleted then {
+        if whenShuttingDown.isCompleted then
           extractRequest { request =>
             webLogger.debug(toLogMessage(request, e), e.nullIfNoStackTrace)
             complete(ServiceUnavailable -> Problem.pure("Shutting down"))
           }
-        } else
+        else
           completeWithError(InternalServerError, e)
 
       case e: ProblemException =>
@@ -46,7 +45,6 @@ trait ExceptionHandling
 
       case e =>
         completeWithError(InternalServerError, e)
-    }
 
   private def completeWithError(status: StatusCode, e: Throwable): Route =
     extractRequest { request =>
@@ -64,12 +62,9 @@ trait ExceptionHandling
 
   protected final def seal(route: Route): Route =
     Route.seal(route)(exceptionHandler = exceptionHandler)
-}
 
-object ExceptionHandling
-{
+object ExceptionHandling:
   val webLogger = Logger("js7.web.exception")
 
   private def toLogMessage(request: HttpRequest, throwable: Throwable) =
     s"Error while handling ${request.method.value} ${request.uri}: ${throwable.toStringWithCauses}"
-}

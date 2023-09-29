@@ -10,12 +10,11 @@ import js7.base.utils.ScalaUtils.syntax.*
 /**
   * @author Joacim Zschimmer
   */
-trait GenericInt {
+trait GenericInt:
   def number: Int
-}
 
-object GenericInt {
-  trait Companion[A <: GenericInt] {
+object GenericInt:
+  trait Companion[A <: GenericInt]:
     val name = getClass.shortClassName
 
     def apply(number: Int): A
@@ -26,7 +25,7 @@ object GenericInt {
       Ordering.by(_.number)
 
     implicit val ordinal: Ordinal[A] =
-      new Ordinal[A] {
+      new Ordinal[A]:
         def succ(a: A) = apply(a.number + 1)
 
         def pred(a: A) = apply(a.number - 1)
@@ -34,7 +33,6 @@ object GenericInt {
         /** a isSuccessorOf b. */
         def isSuccessorOf(a: A, b: A): Boolean =
           a.number == b.number + 1
-      }
     implicit def stringAsGenericInt: As[String, A] =
       As(o => apply(o.toInt))
 
@@ -44,5 +42,3 @@ object GenericInt {
 
     implicit val JsonEncoder: Encoder[A] = o => Json.fromInt(o.number)
     implicit val JsonDecoder: Decoder[A] = _.as[Int] map apply
-  }
-}

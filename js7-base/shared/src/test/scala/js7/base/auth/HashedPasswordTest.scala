@@ -6,16 +6,15 @@ import js7.base.test.OurTestSuite
 /**
   * @author Joacim Zschimmer
   */
-final class HashedPasswordTest extends OurTestSuite {
+final class HashedPasswordTest extends OurTestSuite:
 
-  "equalsClearText" in {
+  "equalsClearText" in:
     val a = HashedPassword(SecretString("321"), _.reverse)
     assert(a.hasher("123") == a.hashed.string)
     assert(a.equalsClearText(SecretString("123")))
     assert(!a.equalsClearText(SecretString("321")))
-  }
 
-  "hashAgainRandom" in {
+  "hashAgainRandom" in:
     val a = HashedPassword(SecretString("321"), _.reverse)
     val b = a.hashAgainRandom
     val c = a.hashAgainRandom
@@ -24,9 +23,8 @@ final class HashedPasswordTest extends OurTestSuite {
     assert(a equalsClearText SecretString("123"))
     assert(b equalsClearText SecretString("123"))
     assert(c equalsClearText SecretString("123"))
-  }
 
-  "empty" in {
+  "empty" in:
     val a = HashedPassword.newEmpty()
     val b = HashedPassword.newEmpty()
     assert(a != b)
@@ -36,11 +34,8 @@ final class HashedPasswordTest extends OurTestSuite {
     assert(b equalsClearText SecretString(""))
     assert(a.hasher("") == a.hashed.string)
     assert(b.hasher("") == b.hashed.string)
-  }
 
-  "MatchesNothing" in {
+  "MatchesNothing" in:
     assert(!HashedPassword.MatchesNothing.equalsClearText(SecretString("")))
     assert(!HashedPassword.MatchesNothing.equalsClearText(SecretString(HashedPassword.MatchesNothingString)))
     assert(HashedPassword.MatchesNothing.toString == "HashedPassword(MatchesNothing)")
-  }
-}

@@ -3,15 +3,12 @@ package js7.data.item
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 
-final case class TestSimplePath(string: String) extends UnsignedSimpleItemPath {
+final case class TestSimplePath(string: String) extends UnsignedSimpleItemPath:
   def companion = TestSimplePath
-}
 
-object TestSimplePath extends UnsignedSimpleItemPath.Companion[TestSimplePath]
-{
+object TestSimplePath extends UnsignedSimpleItemPath.Companion[TestSimplePath]:
   protected def unchecked(string: String) =
     new TestSimplePath(string)
-}
 
 
 final case class TestSimpleItem(
@@ -20,8 +17,7 @@ final case class TestSimpleItem(
   itemRevision: Option[ItemRevision] = None)
 extends UnsignedSimpleItem
 with UnsignedSimpleItemState
-with TrivialItemState[TestSimpleItem]
-{
+with TrivialItemState[TestSimpleItem]:
   protected type Self = TestSimpleItem
   val item: TestSimpleItem = this
   val companion: TestSimpleItem.type = TestSimpleItem
@@ -33,13 +29,11 @@ with TrivialItemState[TestSimpleItem]
 
   def withRevision(revision: Option[ItemRevision]) =
     copy(itemRevision = revision)
-}
 
 object TestSimpleItem
 extends UnsignedSimpleItem.Companion[TestSimpleItem]
 with UnsignedSimpleItemState.Companion[TestSimpleItem]
-with TrivialItemState.Companion[TestSimpleItem]
-{
+with TrivialItemState.Companion[TestSimpleItem]:
   val cls = classOf[TestSimpleItem]
 
   override type Path = TestSimplePath
@@ -49,4 +43,3 @@ with TrivialItemState.Companion[TestSimpleItem]
   def Key = TestSimplePath
 
   implicit val jsonCodec: Codec.AsObject[TestSimpleItem] = deriveCodec[TestSimpleItem]
-}

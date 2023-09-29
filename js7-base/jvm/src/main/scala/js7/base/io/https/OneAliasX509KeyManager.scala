@@ -5,8 +5,7 @@ import java.security.Principal
 import javax.net.ssl.X509KeyManager
 
 trait OneAliasX509KeyManager
-extends X509KeyManager
-{
+extends X509KeyManager:
   protected val keyManager: X509KeyManager
   protected val alias: String
 
@@ -33,4 +32,3 @@ extends X509KeyManager
 
   def chooseServerAlias(keyType: String, issuers: Array[Principal], socket: Socket) =
     alias
-}

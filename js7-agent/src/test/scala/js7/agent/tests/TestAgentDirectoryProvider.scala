@@ -20,39 +20,35 @@ import js7.common.utils.Exceptions.repeatUntilNoException
 import js7.data.item.ItemSigner
 import scala.util.control.NonFatal
 
-trait TestAgentDirectoryProvider extends HasCloser
-{
+trait TestAgentDirectoryProvider extends HasCloser:
   ProblemCodeMessages.initialize()
   Logger.initialize()
 
   final val itemSigner = TestAgentDirectoryProvider.itemSigner
 
-  final lazy val agentDirectory = {
+  final lazy val agentDirectory =
     val agentDirectory = createTempDirectory("TestAgentDirectoryProvider-") withCloser { dir =>
       logger.debug(s"Deleting $dir")
-      repeatUntilNoException(9.s, 10.ms) {  // For Windows
+      repeatUntilNoException(9.s, 10.ms):  // For Windows
         deleteDirectoryRecursively(dir)
-      }
     }
-    try {
+    try
       createDirectories(agentDirectory / "config/private")
       PrivateConfResource.copyToFile(agentDirectory / "config/private/private.conf") withCloser delete
       provideSignature(agentDirectory / "config")
-    } catch { case NonFatal(t) =>
-      repeatUntilNoException(9.s, 10.ms) {  // For Windows
+    catch { case NonFatal(t) =>
+      repeatUntilNoException(9.s, 10.ms):  // For Windows
         deleteDirectoryRecursively(agentDirectory)
-      }
       throw t
     }
     createDirectory(agentDirectory / "config" / "private" / "trusted-pgp-keys")
     createDirectory(agentDirectory / "config" / "executables")
     createDirectory(agentDirectory / "data")
     agentDirectory
-  }
   final lazy val configDirectory = agentDirectory / "config"
   final lazy val dataDirectory = agentDirectory / "data"
 
-  protected[agent] def provideHttpsFiles(): Unit = {
+  protected[agent] def provideHttpsFiles(): Unit =
     // Certificate files are under src/test/resources and only available for module "agent".
     PrivateHttpJksResource.copyToFile(agentDirectory / "config/private/https-keystore.p12") withCloser delete
     (agentDirectory / "config/private/private.conf").append(
@@ -61,20 +57,16 @@ trait TestAgentDirectoryProvider extends HasCloser
          |  key-password = "jobscheduler"
          |}
          |""".stripMargin)
-  }
 
-  private def provideSignature(configDirectory: Path): Unit = {
+  private def provideSignature(configDirectory: Path): Unit =
     val directory = configDirectory / "private" / "trusted-silly-signature-keys"
     createDirectory(directory)
     directory / "trusted-silly-signature-key.txt" := signature.string
     configDirectory / "private" / "private.conf" ++=
       s"""|js7.configuration.trusted-signature-keys.Silly = $${js7.config-directory}"/private/trusted-silly-signature-keys"
           |""".stripMargin
-  }
-}
 
-object TestAgentDirectoryProvider
-{
+object TestAgentDirectoryProvider:
   private val signature = SillySignature("MY-SILLY-SIGNATURE")
   final val itemSigner = new ItemSigner(new SillySigner(signature), AgentState.signableItemJsonCodec)
 
@@ -96,4 +88,3 @@ object TestAgentDirectoryProvider
     autoClosing(TestAgentDirectoryProvider()) { provider =>
       body(provider.agentDirectory)
     }
-}

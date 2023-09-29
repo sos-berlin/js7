@@ -10,9 +10,8 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import scala.jdk.CollectionConverters.*
 
-final class LockKeeperTest extends OurAsyncTestSuite
-{
-  "LockKeeper.lockResource" in {
+final class LockKeeperTest extends OurAsyncTestSuite:
+  "LockKeeper.lockResource" in:
     val keys = 0 until 8
     val lockKeeper = new LockKeeper[Int]
 
@@ -33,10 +32,6 @@ final class LockKeeperTest extends OurAsyncTestSuite
       }
     }).map(_.head/*Only the Assertion type is relevant, not the value*/)
       .runToFuture
-  }
-}
 
-object LockKeeperTest
-{
+object LockKeeperTest:
   private val logger = Logger[this.type]
-}

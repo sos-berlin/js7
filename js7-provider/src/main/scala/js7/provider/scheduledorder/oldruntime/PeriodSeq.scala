@@ -4,7 +4,7 @@ import java.time.LocalTime
 import js7.provider.scheduledorder.oldruntime.PeriodSeq.*
 import scala.language.implicitConversions
 
-abstract sealed case class PeriodSeq(orderedSeq: Seq[Period]) {
+abstract sealed case class PeriodSeq(orderedSeq: Seq[Period]):
 
   requireOrderedAndNotOverlapping(orderedSeq)
 
@@ -19,9 +19,8 @@ abstract sealed case class PeriodSeq(orderedSeq: Seq[Period]) {
 
   //def nextPeriod(from: LocalTime): Option[RepeatPeriod] =
   //  orderedSeq find { _ contains from }
-}
 
-object PeriodSeq {
+object PeriodSeq:
   val Empty = PeriodSeq(Nil)
 
   def apply(o: Seq[Period]) =
@@ -30,11 +29,7 @@ object PeriodSeq {
   implicit def fromPeriod(period: Period): PeriodSeq =
     PeriodSeq(List(period))
 
-  private def requireOrderedAndNotOverlapping(orderedPeriods: Seq[Period]): Unit = {
-    if orderedPeriods.sizeIs > 2 then {
-      for case Seq(a, b) <- orderedPeriods sliding 2 do {
+  private def requireOrderedAndNotOverlapping(orderedPeriods: Seq[Period]): Unit =
+    if orderedPeriods.sizeIs > 2 then
+      for case Seq(a, b) <- orderedPeriods sliding 2 do
         require(a.end <= b.begin, s"Periods overlap: $a and $b")
-      }
-    }
-  }
-}

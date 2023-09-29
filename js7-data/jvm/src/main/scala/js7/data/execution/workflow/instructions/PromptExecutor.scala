@@ -9,8 +9,7 @@ import js7.data.value.GoodValue
 import js7.data.workflow.instructions.Prompt
 
 private[instructions] final class PromptExecutor(protected val service: InstructionExecutorService)
-extends EventInstructionExecutor
-{
+extends EventInstructionExecutor:
   type Instr = Prompt
   val instructionClass = classOf[Prompt]
 
@@ -26,11 +25,9 @@ extends EventInstructionExecutor
       .getOrElse(Right(Nil))
 
   override def toObstacles(order: Order[Order.State], calculator: OrderObstacleCalculator) =
-    order.state match {
+    order.state match
       case Order.Prompting(_) =>
         Right(Set(WaitingForCommand))
 
       case _ =>
         super.toObstacles(order, calculator)
-    }
-}

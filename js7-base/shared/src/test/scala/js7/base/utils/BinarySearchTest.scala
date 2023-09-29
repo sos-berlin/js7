@@ -3,9 +3,8 @@ package js7.base.utils
 import js7.base.test.OurTestSuite
 import js7.base.utils.BinarySearch.binarySearch
 
-final class BinarySearchTest extends OurTestSuite
-{
-  "binarySearch" in {
+final class BinarySearchTest extends OurTestSuite:
+  "binarySearch" in:
     assert(binarySearch(Vector.empty, 7) == (0, false))
 
     assert(binarySearch(Vector(30), 20) == (0, false))
@@ -19,5 +18,3 @@ final class BinarySearchTest extends OurTestSuite
     assert(binarySearch(Vector(20, 30, 40), 35) == (2, false))
     assert(binarySearch(Vector(20, 30, 40), 40) == (2, true))
     assert(binarySearch(Vector(20, 30, 40), 56) == (3, false))
-  }
-}

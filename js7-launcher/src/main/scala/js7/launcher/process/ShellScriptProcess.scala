@@ -24,8 +24,7 @@ class ShellScriptProcess private(
   processConfiguration: ProcessConfiguration,
   process: Js7Process)
   (implicit iox: IOExecutor)
-  extends RichProcess(processConfiguration, process)
-{
+  extends RichProcess(processConfiguration, process):
   stdin.close() // Process gets an empty stdin
 
   private val _sigkilled = Promise[Unit]()
@@ -33,14 +32,12 @@ class ShellScriptProcess private(
   final val sigkilled: Task[Unit] =
     Task.fromFuture(_sigkilled.future).memoize
 
-  override protected def onSigkill(): Unit = {
+  override protected def onSigkill(): Unit =
     // We do not super.onSigkill(), because Process.destroyForcibly closes stdout and stderr
     // leading to blocked child processes trying to write to stdout (as observed by a customer).
     _sigkilled.trySuccess(())
-  }
-}
 
-object ShellScriptProcess {
+object ShellScriptProcess:
   private val logger = Logger[this.type]
   private val stdoutAndStderrDetachDelay = 1.s  // TODO
 
@@ -51,7 +48,7 @@ object ShellScriptProcess {
     whenTerminated: Task[Unit] = Task.unit)
     (implicit iox: IOExecutor)
   : Task[Checked[ShellScriptProcess]] =
-    Task.defer {
+    Task.defer:
       val commandArgs = toShellCommandArguments(
         commandLine.file,
         commandLine.arguments.tail ++ conf.idArgumentOption /*TODO Should not be an argument*/)
@@ -93,11 +90,10 @@ object ShellScriptProcess {
               yield returnCode).memoize
           }
         })
-    }
 
   private def startProcess(args: Seq[String], conf: ProcessConfiguration)
   : Task[Checked[Js7Process]] =
-    conf.windowsLogon match {
+    conf.windowsLogon match
       case None =>
         val processBuilder = new ProcessBuilder(args.asJava)
         for o <- conf.workingDirectory do processBuilder.directory(o.toFile)
@@ -117,12 +113,11 @@ object ShellScriptProcess {
               stderrRedirect = PIPE,
               additionalEnv = conf.additionalEnvironment),
             Some(logon)))
-    }
 
   private def transferEnv(
     from: Map[String, Option[String]],
     to: java.util.Map[String, String])
-  : Unit = {
+  : Unit =
     from
       .collect { case (k, None) => k }
       .foreach(to.remove)
@@ -130,5 +125,3 @@ object ShellScriptProcess {
     to.putAll(from
       .collect { case (k, Some(v)) => k -> v }
       .asJava)
-  }
-}

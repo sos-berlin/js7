@@ -16,7 +16,7 @@ final case class DirectoryWatchSettings(
   pollTimeout: FiniteDuration,
   retryDelays: NonEmptySeq[FiniteDuration],
   directorySilence: FiniteDuration,
-  logDelays: NonEmptySeq[FiniteDuration]) {
+  logDelays: NonEmptySeq[FiniteDuration]):
 
   def toWatchOptions(directory: Path, isRelevantFile: Path => Boolean): WatchOptions =
     WatchOptions(
@@ -25,9 +25,8 @@ final case class DirectoryWatchSettings(
       watchDelay = watchDelay,
       pollTimeout = pollTimeout,
       retryDelays = retryDelays)
-}
 
-object DirectoryWatchSettings {
+object DirectoryWatchSettings:
   def fromConfig(config: Config): Checked[DirectoryWatchSettings] =
     for
       watchDelay <- config.finiteDuration("js7.directory-watch.watch-delay")
@@ -53,4 +52,3 @@ object DirectoryWatchSettings {
       retryDelays = NonEmptySeq.one(100.ms),
       directorySilence = 100.ms,
       logDelays = NonEmptySeq.of(0.s, 10.s))
-}

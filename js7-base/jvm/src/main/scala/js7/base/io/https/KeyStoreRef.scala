@@ -18,13 +18,10 @@ final case class KeyStoreRef(
   storePassword: SecretString,
   /** PKCS#12 key password */
   keyPassword: SecretString)
-extends StoreRef
-{
+extends StoreRef:
   override def toString = s"KeyStore $url"
-}
 
-object KeyStoreRef
-{
+object KeyStoreRef:
   def apply(
     file: Path,
     alias: Option[String] = None,
@@ -51,4 +48,3 @@ object KeyStoreRef
           subconfig.optionAs[String]("alias"),
           storePassword = subconfig.as[SecretString](path),
           keyPassword = subconfig.as[SecretString]("key-password"))))
-}

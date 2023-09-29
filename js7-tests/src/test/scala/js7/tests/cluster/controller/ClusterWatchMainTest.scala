@@ -18,8 +18,7 @@ import js7.tests.testenv.ControllerClusterForScalaTest
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced as scheduler
 
-final class ClusterWatchMainTest extends OurAsyncTestSuite with ControllerClusterForScalaTest
-{
+final class ClusterWatchMainTest extends OurAsyncTestSuite with ControllerClusterForScalaTest:
   private implicit lazy val cs: ContextShift[IO] = IO.contextShift(scheduler)
   private lazy val serverAdmission = controllerAdmissions.head
 
@@ -37,7 +36,7 @@ final class ClusterWatchMainTest extends OurAsyncTestSuite with ControllerCluste
 
   protected val items = Seq(workflow)
 
-  "test" in {
+  "test" in:
     IO.defer {
       val stopClusterWatch = Deferred.unsafe[IO, Unit]
 
@@ -66,13 +65,12 @@ final class ClusterWatchMainTest extends OurAsyncTestSuite with ControllerCluste
           logger.error(t.toStringWithCauses, t)
         })
 
-      val runAnOrder = IO {
+      val runAnOrder = IO:
         runControllerAndBackup(suppressClusterWatch = true) { (_, controller, _, _, _, _, _) =>
           controller.eventWatch.await[ClusterCoupled]()
           controller.runOrder(FreshOrder(OrderId("ORDER"), workflow.path))
           ()
         }
-      }
 
       for
         runAnOrder <- runAnOrder.start
@@ -82,11 +80,7 @@ final class ClusterWatchMainTest extends OurAsyncTestSuite with ControllerCluste
         _ <- clusterWatch.join
       yield succeed
     }.unsafeToFuture()
-  }
-}
 
-object ClusterWatchMainTest
-{
+object ClusterWatchMainTest:
   private val logger = Logger[this.type]
   private val workflow = Workflow(WorkflowPath("WORKFLOW"), Nil)
-}

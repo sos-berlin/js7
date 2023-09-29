@@ -28,38 +28,34 @@ import js7.controller.tests.TestDockerEnvironment
 import js7.data.agent.AgentPath
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
-import scala.concurrent.duration.* 
+import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer
   */
-object TestDockerExample
-{
+object TestDockerExample:
   private val TestAgentPaths = AgentPath("agent-1") :: AgentPath("agent-2") :: Nil
 
-  def main(args: Array[String]) = {
+  def main(args: Array[String]) =
     val directory =
       temporaryDirectory / "TestDockerExample" sideEffect { directory =>
         println(s"Using directory $directory")
         if !Files.exists(directory) then
           createDirectory(directory)
-        else {
+        else
           println(s"Deleting $directory")
           deleteDirectoryContentRecursively(directory)
-        }
       }
     try run(directory)
     finally Log4j.shutdown()
-  }
 
-  private def run(directory: Path): Unit = {
+  private def run(directory: Path): Unit =
     val env = new TestDockerEnvironment(TestAgentPaths, directory)
-    def provide(path: String) = {
+    def provide(path: String) =
       val dir = if path.startsWith("controller") then directory else env.agentsDir
       createDirectories((dir / path).getParent)
       JavaResource(s"js7/install/docker/volumes/$path").copyToFile(dir / path)
       if path contains "/executables/" then setPosixFilePermissions(dir / path, PosixFilePermissions.fromString("rwx------"))
-    }
     provide("controller/config/private/private.conf")
     provide("provider/config/live/მაგალითად.workflow.json")
     provide("provider/config/order-generators/test.order.xml")
@@ -70,7 +66,7 @@ object TestDockerExample
     env.controllerDir / "config" / "controller.conf" := """js7.web.server.auth.loopback-is-public = on"""
     withCloser { implicit closer =>
       val conf = ControllerConfiguration.forTest(configAndData = env.controllerDir, httpPort = Some(4444))
-      val agents = for agentPath <- TestAgentPaths yield {
+      val agents = for agentPath <- TestAgentPaths yield
         val agent = TestAgent
           .start(AgentConfiguration.forTest(
             configAndData = env.agentDir(agentPath),
@@ -79,7 +75,6 @@ object TestDockerExample
           .await(99.s)
         //env.file(agentPath, SourceType.Json) := AgentRef(AgentPath.NoId, uri = agent.localUri.toString)
         agent
-      }
       JavaShutdownHook.add("TestDockerExample") {
         print('\n')
         (for agent <- agents yield {
@@ -98,5 +93,3 @@ object TestDockerExample
         agents.parTraverse(_.stop) await 60.s
       }
     }
-  }
-}

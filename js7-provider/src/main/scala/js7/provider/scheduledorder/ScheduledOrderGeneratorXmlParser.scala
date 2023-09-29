@@ -16,25 +16,21 @@ import js7.provider.scheduledorder.oldruntime.{OldSchedule, OldScheduleXmlParser
 /**
   * @author Joacim Zschimmer
   */
-object ScheduledOrderGeneratorXmlParser {
+object ScheduledOrderGeneratorXmlParser:
 
   def parseXml(id: VersionedItemId[ScheduledOrderGeneratorPath], source: Source, timeZone: ZoneId): Checked[ScheduledOrderGenerator] =
-    Checked.catchNonFatal {
+    Checked.catchNonFatal:
       ScalaXMLEventReader.parseDocument(source) { eventReader =>
         import eventReader.*
         val folderPath = FolderPath parentOf id.path
-        parseElement("order") {
+        parseElement("order"):
           val workflowPath = attributeMap.as("job_chain")(As(o => folderPath.resolve[WorkflowPath](o)))
-          val elements = forEachStartElement {
+          val elements = forEachStartElement:
             case "params" => VariablesXmlParser.parse(eventReader).mapValuesStrict(StringValue.apply)
             case "run_time" => OldScheduleXmlParser.parse(eventReader, timeZone)
-          }
           ScheduledOrderGenerator(
             id,
             workflowPath,
             elements.option[NamedValues]("params") getOrElse Map.empty,
             elements.one[OldSchedule])
-        }
       }
-    }
-}

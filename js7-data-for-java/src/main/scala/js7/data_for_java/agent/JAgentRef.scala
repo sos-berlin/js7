@@ -13,8 +13,7 @@ import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.*
 
 final case class JAgentRef(asScala: AgentRef)
-extends JJsonable[JAgentRef] with JUnsignedSimpleItem
-{
+extends JJsonable[JAgentRef] with JUnsignedSimpleItem:
   type AsScala = AgentRef
   protected def companion = JAgentRef
 
@@ -29,10 +28,8 @@ extends JJsonable[JAgentRef] with JUnsignedSimpleItem
   @Nonnull
   def withRevision(revision: Optional[ItemRevision]) =
     copy(asScala.withRevision(revision.toScala))
-}
 
-object JAgentRef extends JJsonable.Companion[JAgentRef]
-{
+object JAgentRef extends JJsonable.Companion[JAgentRef]:
   type AsScala = AgentRef
 
   @Nonnull
@@ -55,4 +52,3 @@ object JAgentRef extends JJsonable.Companion[JAgentRef]
 
   protected def jsonEncoder = AgentRef.jsonCodec
   protected def jsonDecoder = AgentRef.jsonCodec
-}

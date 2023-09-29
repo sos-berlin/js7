@@ -7,9 +7,8 @@ import js7.base.test.OurTestSuite
 /**
   * @author Joacim Zschimmer
   */
-final class UserTest extends OurTestSuite
-{
-  "checkPermissions" in {
+final class UserTest extends OurTestSuite:
+  "checkPermissions" in:
     assert(testUser(Set.empty).checkPermissions() == Right(()))
     assert(testUser(Set(A)).checkPermissions() == Right(()))
     assert(testUser(Set(A)).checkPermissions(A) == Right(()))
@@ -25,9 +24,8 @@ final class UserTest extends OurTestSuite
     val bUser = testUser(Set(B))
     assert(bUser.checkPermissions(A) == Left(UserDoesNotHavePermissionProblem(bUser.id, A)))
     assert(bUser.checkPermissions(A, B) == Left(UserDoesNotHavePermissionProblem(bUser.id, A)))
-  }
 
-  "hasPermissions" in {
+  "hasPermissions" in:
     assert(testUser(Set.empty) hasPermissions Set.empty)
     assert(testUser(Set(A)) hasPermissions Set.empty)
     assert(testUser(Set(A)) hasPermissions Set(A))
@@ -36,19 +34,15 @@ final class UserTest extends OurTestSuite
     assert(!testUser(Set.empty).hasPermissions(Set(A)))
     assert(!testUser(Set(B)).hasPermissions(Set(A)))
     assert(!testUser(Set(B)).hasPermissions(Set(A, B)))
-  }
 
-  "SuperPermission" in {
+  "SuperPermission" in:
     assert(testUser(Set(SuperPermission)) hasPermissions Set.empty)
     assert(testUser(Set(SuperPermission)) hasPermissions Set(A))
     assert(testUser(Set(SuperPermission, A)) hasPermissions Set.empty)
     assert(testUser(Set(SuperPermission, A)) hasPermissions Set(A))
     assert(testUser(Set(SuperPermission, A)) hasPermissions Set(B))
-  }
-}
 
-private object UserTest
-{
+private object UserTest:
   private case object A extends Permission
   private case object B extends Permission
 
@@ -56,4 +50,3 @@ private object UserTest
 
   private def testUser(grantedPermissions: Set[Permission]) =
     TestUser(UserId("someone"), HashedPassword.newEmpty(), grantedPermissions)
-}

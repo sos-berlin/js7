@@ -9,13 +9,10 @@ import js7.data.workflow.Instruction
   * @author Joacim Zschimmer
   */
 final case class Retry(sourcePos: Option[SourcePos] = None)
-extends Instruction
-{
+extends Instruction:
   def withoutSourcePos = copy(sourcePos = None)
 
   override def toString = "retry" + sourcePosToString
-}
 
-object Retry {
+object Retry:
   implicit val jsonCodec: Codec.AsObject[Retry] = deriveCodec[Retry]
-}

@@ -16,8 +16,7 @@ import monix.eval.Task
   */
 private[controller] final class ControllerCommandExecutor(
   otherCommandExecutor: CommandExecutor[ControllerCommand])
-extends CommandExecutor[ControllerCommand]
-{
+extends CommandExecutor[ControllerCommand]:
   private val register = new CommandRegister[ControllerCommand]
 
   def executeCommand(command: ControllerCommand, meta: CommandMeta): Task[Checked[command.Response]] =
@@ -25,22 +24,20 @@ extends CommandExecutor[ControllerCommand]
 
   private def executeCommand(command: ControllerCommand, meta: CommandMeta, batchId: Option[CorrelId])
   : Task[Checked[command.Response]] =
-    Task.defer {
+    Task.defer:
       val correlId = CorrelId.current
       val run = register.add(command, meta, correlId, batchId)
       logCommand(run)
       executeCommand2(command, meta, correlId, batchId)
         .map { checkedResponse =>
-          if run.batchInternalId.isEmpty then {
-            checkedResponse match {
+          if run.batchInternalId.isEmpty then
+            checkedResponse match
               //case Right(ControllerCommand.Response.Accepted) =>
               case Right(_) =>
                 logger.debug(s"↙ ${run.idString} " +
                   ControllerCommand.jsonCodec.classToName(run.command.getClass) +
                   s" (${run.runningSince.elapsed.pretty}): $checkedResponse")
               case Left(problem) =>
-            }
-          }
           for problem <- checkedResponse.left do logger.warn(s"$run rejected: $problem")
           checkedResponse.map(_.asInstanceOf[command.Response])
         }
@@ -50,17 +47,15 @@ extends CommandExecutor[ControllerCommand]
           }
           register.remove(run.correlId)
         })
-    }
 
   private def executeCommand2(command: ControllerCommand, meta: CommandMeta, id: CorrelId, batchId: Option[CorrelId])
   : Task[Checked[ControllerCommand.Response]] =
-    Task.defer {
-      command match {
+    Task.defer:
+      command match
         case Batch(correlIdWrappedCommands) =>
           val tasks = for CorrelIdWrapped(correlId, command) <- correlIdWrappedCommands yield
-            correlId.bind {
+            correlId.bind:
               executeCommand(command, meta, batchId orElse Some(id))
-            }
           Task.sequence(tasks).map(checkedResponses => Right(Batch.Response(checkedResponses)))
 
         case EmergencyStop(restart) =>
@@ -68,16 +63,11 @@ extends CommandExecutor[ControllerCommand]
 
         case _ =>
           otherCommandExecutor.executeCommand(command, meta)
-      }
-    }
 
   private def logCommand(run: CommandRun[ControllerCommand]): Unit =
-    run.command match {
+    run.command match
       case Batch(_) =>   // Log only individual commands
       case _ => logger.debug(s"↘ $run")
-    }
-}
 
-object ControllerCommandExecutor {
+object ControllerCommandExecutor:
   private val logger = Logger[this.type]
-}

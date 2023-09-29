@@ -16,16 +16,14 @@ import js7.journal.{EventIdClock, EventIdGenerator, MemoryJournal}
 import monix.execution.Scheduler.Implicits.traced
 import scala.collection.mutable
 
-final class MemoryJournalTest extends OurTestSuite
-{
-  "Initial values" in {
+final class MemoryJournalTest extends OurTestSuite:
+  "Initial values" in:
     val journal = newJournal()
     import journal.eventWatch
     assert(eventWatch.tornEventId == EventId.BeforeFirst)
     assert(eventWatch.lastAddedEventId == EventId.BeforeFirst)
-  }
 
-  "persist" in {
+  "persist" in:
     val journal = newJournal()
     import journal.eventWatch
 
@@ -49,9 +47,8 @@ final class MemoryJournalTest extends OurTestSuite
     assert(eventWatch.observe(EventRequest.singleClass[TestEvent](1000)).toListL.await(99.s) == List(
       Stamped(1001, "A" <-: TestEvent.Appended('1'))))
     assert(eventWatch.observe(EventRequest.singleClass[TestEvent](1001)).toListL.await(99.s).isEmpty)
-  }
 
-  "test" in {
+  "test" in:
     val journal = newJournal()
     import journal.eventWatch
 
@@ -63,12 +60,11 @@ final class MemoryJournalTest extends OurTestSuite
       .foreach(o => synchronized(observed += o))
 
     def firstUpdate(state: TestState) =
-      state match {
+      state match
         case TestState.empty => Right(Seq(
           "A" <-: TestEvent.Added("A"),
           "B" <-: TestEvent.Added("B")))
         case _ => Left(Problem("FAILED"))
-      }
 
     journal.persist(firstUpdate).await(99.s).orThrow
     assert(journal.persist(firstUpdate).await(99.s) == Left(Problem("FAILED")))
@@ -111,9 +107,8 @@ final class MemoryJournalTest extends OurTestSuite
         after = 1001))
       .toListL
       .await(99.s) == Seq(Stamped(1002, "C" <-: TestEvent.Added("C"))))
-  }
 
-  "size" in {
+  "size" in:
     val size = 3
     val journal = newJournal(size = size)
     import journal.eventWatch
@@ -137,17 +132,15 @@ final class MemoryJournalTest extends OurTestSuite
     waitForCondition(10.s, 10.ms)(lastObserved.contains(1002L) && journal.queueLength == 3)
     assert(observed.last.eventId == 1002 && journal.queueLength == 3)
 
-    for i <- 0 until n - size do withClue(s"#$i") {
+    for i <- 0 until n - size do withClue(s"#$i"):
       journal.releaseEvents(untilEventId = 1000 + i).await(99.s).orThrow
       waitForCondition(10.s, 10.ms)(lastObserved.contains(1000L + size + i) && journal.queueLength == 3)
       assert(lastObserved.contains(1000L + size + i) && journal.queueLength == 3)
-    }
 
     persisting.await(9.s)
     observing.cancel()
-  }
 
-  "persist more than size events at once" in {
+  "persist more than size events at once" in:
     val size = 3
     val journal = newJournal(size = size)
     import journal.eventWatch
@@ -162,15 +155,11 @@ final class MemoryJournalTest extends OurTestSuite
       .map(_.value)
       .toListL
       .await(99.s) == events)
-  }
-}
 
-object MemoryJournalTest
-{
+object MemoryJournalTest:
   private def newJournal(size: Int = Int.MaxValue) =
     new MemoryJournal(
       TestState.empty,
       size = size,
       infoLogEvents = Set.empty,
       eventIdGenerator = new EventIdGenerator(EventIdClock.fixed(1)))
-}

@@ -18,8 +18,7 @@ import scala.reflect.ClassTag
 /**
   * @author Joacim Zschimmer
   */
-trait EventWatch
-{
+trait EventWatch:
   def started: Task[this.type] =
     Task.fromFuture(whenStarted).memoize.asInstanceOf[Task[this.type]]
 
@@ -88,9 +87,6 @@ trait EventWatch
   def tornEventId: EventId
 
   def checkEventId(eventId: EventId): Checked[Unit]
-}
 
-object EventWatch
-{
+object EventWatch:
   private[watch] val Every: Any => Boolean = function1WithToString("Every")(_ => true)
-}

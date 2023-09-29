@@ -9,9 +9,8 @@ import js7.data.workflow.instructions.Instructions.jsonCodec
 import js7.data.workflow.{Instruction, Workflow}
 import js7.tester.CirceJsonTester.testJson
 
-final class StickySubagentTest extends OurTestSuite
-{
-  "JSON" in {
+final class StickySubagentTest extends OurTestSuite:
+  "JSON" in:
     testJson[Instruction.Labeled](
       StickySubagent(
         AgentPath("AGENT"),
@@ -40,5 +39,3 @@ final class StickySubagentTest extends OurTestSuite
         },
         "sourcePos": [ 1, 2 ]
       }""")
-  }
-}

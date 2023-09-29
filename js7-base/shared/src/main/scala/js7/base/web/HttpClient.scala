@@ -13,8 +13,7 @@ import scala.util.{Failure, Success, Try}
 /**
   * @author Joacim Zschimmer
   */
-trait HttpClient
-{
+trait HttpClient:
   def getDecodedLinesObservable[A: Decoder](uri: Uri, responsive: Boolean = false)
     (implicit s: Task[Option[SessionToken]])
   : Task[Observable[A]]
@@ -47,15 +46,12 @@ trait HttpClient
 
   def liftProblem[A](task: Task[A]): Task[Checked[A]] =
     HttpClient.liftProblem(task)
-}
 
-object HttpClient
-{
+object HttpClient:
   def sessionMayBeLost(t: Throwable): Boolean =
-    t match {
+    t match
       case t: HttpException if t.statusInt == 401/*Unauthorized*/ || t.statusInt == 403/*Forbidden*/ => true
       case _ => false
-    }
 
   /** Lifts a Failure(HttpException#problem) to Success(Left(problem)). */
   def liftProblem[A](task: Task[A]): Task[Checked[A]] =
@@ -64,19 +60,17 @@ object HttpClient
       .dematerialize
 
   def failureToChecked[A](tried: Try[A]): Try[Checked[A]] =
-    tried match {
+    tried match
       case Failure(throwable) => throwableToTry(throwable).map(Left(_))
       case Success(a) => Success(Right(a))
-    }
 
   def throwableToProblem(throwable: Throwable): Problem =
-    throwableToTry(throwable) match {
+    throwableToTry(throwable) match
       case Failure(throwable) => Problem.fromThrowable(throwable)
       case Success(problem) => problem
-    }
 
   private def throwableToTry(throwable: Throwable): Try[Problem] =
-    throwable match {
+    throwable match
       case HttpException.HasProblem(problem) =>
         Success(problem)
       case t: HttpException if t.getMessage != null =>
@@ -84,25 +78,20 @@ object HttpClient
         Success(Problem.withHttpStatus(msg, t, httpStatusCode = t.statusInt))
       case t =>
         Failure(t.appendCurrentStackTrace)
-    }
 
-  abstract class HttpException(message: String = null) extends RuntimeException(message) {
+  abstract class HttpException(message: String = null) extends RuntimeException(message):
     def statusInt: Int
     def problem: Option[Problem]
     def isTemporaryUnreachable = isTemporaryUnreachableStatus(statusInt)
-  }
-  object HttpException {
-    object HasProblem {
+  object HttpException:
+    object HasProblem:
       def unapply(e: HttpException): Option[Problem] =
         e.problem
-    }
-  }
 
   def isTemporaryUnreachable(throwable: Throwable) =
-    throwable match {
+    throwable match
       case e: HttpClient.HttpException => e.isTemporaryUnreachable
       case _ => true  // Maybe a TCP exception
-    }
 
   val isTemporaryUnreachableStatus = Set[Int](
     408, // Request Timeout
@@ -112,4 +101,3 @@ object HttpClient
     503, // Service Unavailable
     504  // Gateway Timeout
   )
-}

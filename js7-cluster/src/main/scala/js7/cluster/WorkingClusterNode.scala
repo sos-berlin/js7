@@ -46,9 +46,9 @@ final class WorkingClusterNode[
   clusterConf: ClusterConf)
   (implicit
     nodeNameToPassword: NodeNameToPassword[S],
-    scheduler: Scheduler)
+    scheduler: Scheduler):
 //TODO extends Service
-{
+
   val journal: FileJournal[S] = journalAllocated.allocatedThing
   private val _activeClusterNode = SetOnce.undefined[ActiveClusterNode[S]](
     "ActiveClusterNode", ClusterNodeIsNotActiveProblem)
@@ -57,24 +57,21 @@ final class WorkingClusterNode[
   private val appointNodesLock = AsyncLock()
 
   def start(clusterState: ClusterState, eventId: EventId): Task[Checked[Unit]] =
-    clusterState match {
+    clusterState match
       case ClusterState.Empty => Task.right(Completed)
       case clusterState: HasNodes =>
         common.requireValidLicense
           .flatMapT(_ =>
             startActiveClusterNode(clusterState, eventId))
-    }
 
   def stop: Task[Unit] =
-    Task.defer {
+    Task.defer:
       _activeClusterNode.toOption.fold(Task.unit)(_.stop)
-    }
 
   def beforeJournalingStarts: Task[Checked[Unit]] =
-    _activeClusterNode.toOption match {
+    _activeClusterNode.toOption match
       case None => Task.right(Completed)
       case Some(o) => o.beforeJournalingStarts
-    }
 
   def afterJournalingStarted: Task[Checked[Completed]] =
     automaticallyAppointConfiguredBackupNode.flatMapT(_ =>
@@ -94,16 +91,16 @@ final class WorkingClusterNode[
       appointNodes2(_, extraEvent))
 
   private def automaticallyAppointConfiguredBackupNode: Task[Checked[Unit]] =
-    Task.defer {
-      clusterConf.maybeClusterSetting match {
+    Task.defer:
+      clusterConf.maybeClusterSetting match
         case None => Task.right(Completed)
         case Some(setting) =>
-          journal.clusterState.flatMap {
+          journal.clusterState.flatMap:
             case _: ClusterState.HasNodes => Task.right(Completed)
             case ClusterState.Empty =>
               appointNodes2(setting)
                 .onErrorHandle(t => Left(Problem.fromThrowable(t)))  // We want only to log the exception
-                .map {
+                .map:
                   case Left(ClusterNodesAlreadyAppointed) =>
                     Right(Completed)
 
@@ -113,10 +110,6 @@ final class WorkingClusterNode[
 
                   case Right(completed) =>
                     Right(completed)
-                }
-          }
-      }
-    }
 
   private def appointNodes2(setting: ClusterSetting, extraEvent: Option[ItemAttachedToMe] = None)
   : Task[Checked[Unit]] =
@@ -147,7 +140,7 @@ final class WorkingClusterNode[
       }))
 
   private def startActiveClusterNode(clusterState: HasNodes, eventId: EventId): Task[Checked[Unit]] =
-    logger.traceTask {
+    logger.traceTask:
       val passiveNodeId = clusterState.setting.other(clusterState.activeId)
       journal.state
         .map(_.clusterNodeToUserAndPassword(
@@ -162,13 +155,11 @@ final class WorkingClusterNode[
             else
               Task.left(Problem.pure("ActiveClusterNode has already been started"))
           })
-    }
 
   def executeClusterWatchConfirm(cmd: ClusterWatchConfirm): Task[Checked[Unit]] =
-    Task.defer {
+    Task.defer:
       _activeClusterNode.toOption.fold_(Task.left(ClusterNodeIsNotActiveProblem),
         _.executeClusterWatchConfirm(cmd))
-    }
 
   def onTerminatedUnexpectedly: Task[Checked[Completed]] =
     _activeClusterNode.task
@@ -183,18 +174,14 @@ final class WorkingClusterNode[
       .flatMapT(_.executeCommand(command))
 
   def shutDownThisNode: Task[Checked[Completed]] =
-    Task.defer {
-      _activeClusterNode.toOption match {
+    Task.defer:
+      _activeClusterNode.toOption match
         case None => Task.right(Completed)
         case Some(o) => o.shutDownThisNode
-      }
-    }
 
   def isActive = _activeClusterNode.isDefined
-}
 
-object WorkingClusterNode
-{
+object WorkingClusterNode:
   private val logger = Logger[this.type]
 
   private[cluster]
@@ -225,4 +212,3 @@ object WorkingClusterNode
         })(
         release = _.stop)
     yield workingClusterNode
-}

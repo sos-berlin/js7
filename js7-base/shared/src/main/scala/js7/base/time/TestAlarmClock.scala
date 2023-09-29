@@ -9,8 +9,7 @@ import monix.execution.atomic.AtomicLong
 import monix.execution.schedulers.TestScheduler
 import scala.concurrent.duration.FiniteDuration
 
-trait TestAlarmClock extends AlarmClock
-{
+trait TestAlarmClock extends AlarmClock:
   /** Manipulate the clock. */
   def resetTo(timestamp: Timestamp): Unit
 
@@ -21,43 +20,35 @@ trait TestAlarmClock extends AlarmClock
   def +=(duration: FiniteDuration): Unit
 
   def tick(duration: FiniteDuration = ZeroDuration): Unit
-}
 
-object TestAlarmClock
-{
+object TestAlarmClock:
   private val logger = Logger[this.type]
 
   def apply(start: Timestamp): TestAlarmClock =
     new SimpleTestAlarmClock(start)
 
   private final class SimpleTestAlarmClock(protected val start: Timestamp)
-  extends Simple with Impl {
+  extends Simple with Impl:
     override def productPrefix = "TestAlarmClock"
 
     override def scheduleOnce(delay: FiniteDuration)(callback: => Unit)
       (implicit fullName: sourcecode.FullName)
-    : Cancelable = {
+    : Cancelable =
       logger.trace(s"scheduleOnce ${delay.pretty} for ${fullName.value}")
-      super.scheduleOnce(delay) {
+      super.scheduleOnce(delay):
         logger.trace("🔔 scheduled " + delay.pretty)
         callback
-      }
-    }
 
     override def scheduleAt(at: Timestamp)(callback: => Unit)
       (implicit fullName: sourcecode.FullName)
-    : Cancelable = {
+    : Cancelable =
       logger.trace(s"scheduleAt $at for ${fullName.value}")
-      super.scheduleAt(at){
+      super.scheduleAt(at):
         logger.trace(s"🔔 scheduled $at for ${fullName.value}")
         callback
-      }
-    }
-  }
 
   private trait Impl
-  extends TestAlarmClock
-  {
+  extends TestAlarmClock:
     protected def start: Timestamp
     protected final val scheduler = TestScheduler()
 
@@ -69,33 +60,27 @@ object TestAlarmClock
       synchronized(body)
 
     final def resetTo(timestamp: Timestamp): Unit =
-      synchronized {
+      synchronized:
         logger.info(s"⏰ resetTo $timestamp")
         clock := timestamp.toEpochMilli
-      }
 
     final def +=(duration: FiniteDuration): Unit =
-      synchronized {
+      synchronized:
         this := now() + duration
-      }
 
     final def :=(timestamp: Timestamp): Unit =
-      synchronized {
+      synchronized:
         logger.info(s"⏰ := $timestamp")
         tick1(timestamp - now())
-      }
 
     final def tick(duration: FiniteDuration = ZeroDuration) =
-      synchronized {
+      synchronized:
         tick1(duration)
-      }
 
-    private final def tick1(duration: FiniteDuration) = {
+    private final def tick1(duration: FiniteDuration) =
       assertThat(!duration.isNegative)
       clock += duration.toMillis
       scheduler.tick(duration)
-    }
-  }
 
   /** Only to test the ClockChecking feature. */
   private[time] def forTest(start: Timestamp, clockCheckInterval: FiniteDuration)
@@ -106,4 +91,3 @@ object TestAlarmClock
     protected val start: Timestamp,
     protected val clockCheckInterval: FiniteDuration)
   extends Impl with ClockChecking
-}

@@ -17,8 +17,7 @@ import monix.reactive.Observable
 import scala.concurrent.duration.*
 
 trait HttpClusterNodeApi
-extends ClusterNodeApi with HttpSessionApi with HasIsIgnorableStackTrace
-{
+extends ClusterNodeApi with HttpSessionApi with HasIsIgnorableStackTrace:
   def httpClient: HttpClient
 
   def baseUri: Uri
@@ -94,10 +93,8 @@ extends ClusterNodeApi with HttpSessionApi with HasIsIgnorableStackTrace
     httpClient.post[ClusterWatchingCommand, Unit](uris.command, cmd)
 
   override def toString = s"HttpClusterNodeApi($prefixedUri)"
-}
 
-object HttpClusterNodeApi
-{
+object HttpClusterNodeApi:
   val UriPrefixPath = "/controller"
 
   /** Logs out when the resource is being released. */
@@ -116,10 +113,7 @@ object HttpClusterNodeApi
     uriPrefix: String,
     override protected val loginDelays: () => Iterator[FiniteDuration] =
       SessionApi.defaultLoginDelays _)
-  extends HttpClusterNodeApi
-  {
+  extends HttpClusterNodeApi:
     val baseUri = admission.uri
     protected val prefixedUri = admission.uri / uriPrefix
     protected val userAndPassword = admission.userAndPassword
-  }
-}

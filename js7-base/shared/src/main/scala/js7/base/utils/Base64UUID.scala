@@ -8,8 +8,7 @@ import js7.base.problem.{Checked, Problem}
 
 final case class Base64UUID private(uuid: UUID, string: String) extends GenericString
 
-object Base64UUID extends GenericString.Checked_[Base64UUID]
-{
+object Base64UUID extends GenericString.Checked_[Base64UUID]:
   val zero = apply(new UUID(0, 0))
   val ffff = apply(new UUID(-1, -1))
 
@@ -26,12 +25,11 @@ object Base64UUID extends GenericString.Checked_[Base64UUID]
 
   private lazy val toUrlBase64 = Base64.getUrlEncoder.withoutPadding.encodeToString _
 
-  def uuidToBase64(uuid: UUID): String = {
+  def uuidToBase64(uuid: UUID): String =
     val buffer = ByteBuffer.wrap(new Array[Byte](16))
     buffer.putLong(uuid.getMostSignificantBits)
     buffer.putLong(uuid.getLeastSignificantBits)
     toUrlBase64(buffer.array)
-  }
 
   def base64ToUUID(base64String: String): Checked[UUID] =
     for
@@ -40,9 +38,7 @@ object Base64UUID extends GenericString.Checked_[Base64UUID]
       uuid <-
         if bytes.size != 16 then
           Left(Problem(s"Not a Base64-encoded UUID: $base64String"))
-        else {
+        else
           val buffer = ByteBuffer.wrap(bytes)
           Right(new UUID(buffer.getLong(0), buffer.getLong(8)))
-        }
     yield uuid
-}

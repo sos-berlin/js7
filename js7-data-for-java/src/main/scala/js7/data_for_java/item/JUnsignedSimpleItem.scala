@@ -4,8 +4,7 @@ import java.util.Optional
 import javax.annotation.Nonnull
 import js7.data.item.{ItemRevision, SimpleItemPath, UnsignedSimpleItem}
 
-trait JUnsignedSimpleItem
-{
+trait JUnsignedSimpleItem:
   @Nonnull
   def asScala: UnsignedSimpleItem
 
@@ -14,4 +13,3 @@ trait JUnsignedSimpleItem
 
   @Nonnull
   def withRevision(revision: Optional[ItemRevision]): JUnsignedSimpleItem
-}

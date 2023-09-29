@@ -7,9 +7,8 @@ import js7.data.item.{ItemRevision, SignableSimpleItem}
 import js7.data.value.expression.Expression.{Argument, Concat, FunctionCall, StringConstant}
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 
-final class JobResourceTest extends OurTestSuite
-{
-  "JSON" in {
+final class JobResourceTest extends OurTestSuite:
+  "JSON" in:
     testJsonDecoder[SignableSimpleItem](
       JobResource(JobResourcePath("JOB-RESOURCE")),
       json"""{
@@ -40,9 +39,6 @@ final class JobResourceTest extends OurTestSuite
         },
         "itemRevision": 1
       }""")
-  }
 
-  "JobResourcePath.itemTypeName" in {
+  "JobResourcePath.itemTypeName" in:
     assert(JobResourcePath.itemTypeName == JobResource.typeName)
-  }
-}

@@ -27,20 +27,17 @@ final class JournalReader(
   S: SnapshotableState.HasCodec,
   journalFile: Path,
   expectedJournalId: JournalId)
-extends AutoCloseable
-{
+extends AutoCloseable:
   private val jsonReader = InputStreamJsonSeqReader.open(journalFile)
 
   private val rawJournalHeader: PositionAnd[ByteArray] =
-    closeOnError(jsonReader) {
+    closeOnError(jsonReader):
       jsonReader.readRaw() getOrElse sys.error(s"Journal file '$journalFile' is empty")
-    }
 
-  val journalHeader = {
+  val journalHeader =
     val json = jsonReader.toJson(rawJournalHeader).value
     JournalHeader.checkedHeader(json, journalFile, expectedType = S.name, expectedJournalId)
       .orThrow
-  }
 
   val fileEventId = journalHeader.eventId
   private var _totalEventCount = journalHeader.totalEventCount
@@ -55,46 +52,41 @@ extends AutoCloseable
 
   /** For FileEventIterator, skips snapshot section */
   lazy val firstEventPosition: Long =
-    synchronized {
+    synchronized:
       if snapshotHeaderRead || eventHeaderRead then throw new IllegalStateException(
         "JournalReader.firstEventPosition has been called after nextEvent")
       while nextSnapshotJson().isDefined do {}
-      if !eventHeaderRead then { // No snapshot section
-        jsonReader.read() match {
+      if !eventHeaderRead then // No snapshot section
+        jsonReader.read() match
           case Some(PositionAnd(_, EventHeader)) =>
             eventHeaderRead = true
           case None =>
           case Some(positionAndJson) =>
             throw new CorruptJournalException("Event header is missing", journalFile,
               positionAndJson.copy(value = positionAndJson.value.toByteArray))
-        }
-      }
       jsonReader.position
-    }
 
   private[recover] def readSnapshot: Observable[Any] =
-    synchronized {
+    synchronized:
       journalHeader +:
         Observable.fromIteratorUnsafe(untilNoneIterator(nextSnapshotJson()))
           .mapParallelBatch()(json => S.snapshotObjectJsonCodec.decodeJson(json).toChecked.orThrow)
-    }
 
   private[recover] def readSnapshotRaw: Observable[ByteArray] =
-    synchronized {
+    synchronized:
       rawJournalHeader.value +:
         Observable.fromIteratorUnsafe(untilNoneIterator(nextSnapshotRaw().map(_.value)))
-    }
 
   private def nextSnapshotJson(): Option[Json] =
     nextSnapshotRaw().map(jsonReader.toJson).map(_.value)
 
   @tailrec
-  private def nextSnapshotRaw(): Option[PositionAnd[ByteArray]] = {
+  private def nextSnapshotRaw(): Option[PositionAnd[ByteArray]] =
     if eventHeaderRead then throw new IllegalStateException("nextSnapshotJson has been called after nextEvent")
     val positionAndRaw = jsonReader.readRaw() getOrElse sys.error(s"Journal file '$journalFile' is truncated in snapshot section")
     val record = positionAndRaw.value
     if !snapshotHeaderRead then
-      record match {
+      record match
         case EventHeaderLine =>  // Journal file does not have a snapshot section?
           eventHeaderRead = true
           None
@@ -103,41 +95,36 @@ extends AutoCloseable
           nextSnapshotRaw()
         case _ =>
           throw new CorruptJournalException("Snapshot header is missing", journalFile, positionAndRaw)
-      }
     else if record.headOption contains '{'.toByte/*JSON object?*/ then
       Some(positionAndRaw)
     else if record == SnapshotFooterLine then
       None
     else
       throw new CorruptJournalException("Snapshot footer is missing", journalFile, positionAndRaw)
-  }
 
   /** For FileEventIterator */
   def seekEvent(positionAndEventId: PositionAnd[EventId]): Unit =
-    synchronized {
+    synchronized:
       require(positionAndEventId.value >= fileEventId, s"seek($positionAndEventId) but fileEventId=$fileEventId")
       jsonReader.seek(positionAndEventId.position)
       _eventId = positionAndEventId.value
       eventHeaderRead = true
       _totalEventCount = -1
       transaction.clear()
-    }
 
   private[recover] def readEvents(): Iterator[Stamped[KeyedEvent[Event]]] =
     untilNoneIterator(nextEvent())
 
   def nextEvent(): Option[Stamped[KeyedEvent[Event]]] =
-    synchronized {
+    synchronized:
       val result = transaction.readNext() orElse nextEvent2()
-      for stamped <- result do {
+      for stamped <- result do
         _eventId = stamped.eventId
-      }
       result
-    }
 
   private def nextEvent2(): Option[Stamped[KeyedEvent[Event]]] =
     if !eventHeaderRead then
-      jsonReader.read() match {
+      jsonReader.read() match
         case Some(PositionAnd(_, EventHeader)) =>
           eventHeaderRead = true
           nextEvent3()
@@ -147,16 +134,15 @@ extends AutoCloseable
 
         case None =>
           None
-      }
     else
       nextEvent3()
 
   @tailrec
   private def nextEvent3(): Option[Stamped[KeyedEvent[Event]]] =
-    jsonReader.read() match {
+    jsonReader.read() match
       case None => None
       case Some(positionAndJson) =>
-        positionAndJson.value match {
+        positionAndJson.value match
           case json if json.isObject =>
             val stampedEvent = deserialize(positionAndJson.value)
             if stampedEvent.eventId <= _eventId then
@@ -177,7 +163,7 @@ extends AutoCloseable
                 throw t
               }
             @tailrec def loop(): Unit =
-              read() match {
+              read() match
                 case None =>
                   // TODO In case a passive cluster node continues reading replicated data after a truncated transaction,
                   //  the transaction buffer should not be cleared.
@@ -191,44 +177,36 @@ extends AutoCloseable
                   if !o.value.isObject then sys.error(s"Unexpected JSON value in transaction: $o")
                   transaction.add(o.copy(value = deserialize(o.value)))
                   loop()
-              }
             loop()
-            transaction.readNext() match {
+            transaction.readNext() match
               case Some(stamped) =>
                 if _totalEventCount != -1 then _totalEventCount += transaction.length
                 Some(stamped)
               case None =>
                 nextEvent3()
-            }
 
           case Commit =>  // Only after seek into a transaction
             nextEvent3()
 
           case _ => throw new CorruptJournalException("Unexpected JSON record", journalFile,
             positionAndJson.copy(value = positionAndJson.value.toByteArray))
-        }
-    }
 
-  private def deserialize(json: Json) = {
+  private def deserialize(json: Json) =
     import S.keyedEventJsonCodec
     json.as[Stamped[KeyedEvent[Event]]].toChecked.orThrow
-  }
 
   def eventId = positionAndEventId.value
 
   def position = positionAndEventId.position
 
   def positionAndEventId: PositionAnd[EventId] =
-    synchronized {
+    synchronized:
       transaction.positionAndEventId
         .getOrElse(PositionAnd(jsonReader.position, _eventId))
-    }
 
   def totalEventCount = _totalEventCount
-}
 
-object JournalReader
-{
+object JournalReader:
   def snapshot(S: SnapshotableState.HasCodec, journalFile: Path, expectedJournalId: JournalId)
   : Observable[Any] =
     snapshot_(_.readSnapshot)(S, journalFile, expectedJournalId)
@@ -252,4 +230,3 @@ object JournalReader
   extends RuntimeException(
     s"Journal file '$journalFile' has an error at byte position ${positionAndJson.position}:" +
       s" $message - JSON=${positionAndJson.value.utf8String.truncateWithEllipsis(50)}")
-}

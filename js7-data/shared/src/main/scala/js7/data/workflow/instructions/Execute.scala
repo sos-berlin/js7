@@ -13,8 +13,7 @@ import js7.data.workflow.{Instruction, Workflow}
 /**
   * @author Joacim Zschimmer
   */
-sealed trait Execute extends Instruction
-{
+sealed trait Execute extends Instruction:
   def defaultArguments: Map[String, Expression]
 
   override def reduceForAgent(agentPath: AgentPath, workflow: Workflow) =
@@ -22,10 +21,8 @@ sealed trait Execute extends Instruction
       this
     else
       Gap(sourcePos)
-}
 
-object Execute
-{
+object Execute:
   def apply(name: WorkflowJob.Name) =
     Named(name)
 
@@ -39,8 +36,7 @@ object Execute
     name: WorkflowJob.Name,
     defaultArguments: Map[String, Expression] = Map.empty,
     sourcePos: Option[SourcePos] = None)
-  extends Execute
-  {
+  extends Execute:
     override def instructionName = "Execute.Named"
 
     def withoutSourcePos = copy(sourcePos = None)
@@ -51,8 +47,7 @@ object Execute
 
     override def productPrefix = "Execute.Named"
     //override def toString = s"execute $name, defaultArguments=$defaultArguments"
-  }
-  object Named {
+  object Named:
     implicit val jsonEncoder: Encoder.AsObject[Named] = o =>
       JsonObject(
         "jobName" -> o.name.asJson,
@@ -64,14 +59,12 @@ object Execute
         arguments <- cursor.getOrElse[Map[String, Expression]]("defaultArguments")(Map.empty)
         sourcePos <- cursor.get[Option[SourcePos]]("sourcePos")
       yield Named(name, arguments, sourcePos)
-  }
 
   final case class Anonymous(
     job: WorkflowJob,
     defaultArguments: Map[String, Expression] = Map.empty,
     sourcePos: Option[SourcePos] = None)
-  extends Execute
-  {
+  extends Execute:
     override def instructionName = "Execute.Anonymous"
 
     def withoutSourcePos = copy(sourcePos = None)
@@ -81,8 +74,7 @@ object Execute
 
     override def productPrefix = "Execute.Anonymous"
     override def toString = s"execute($job)$sourcePosToString"
-  }
-  object Anonymous {
+  object Anonymous:
     // TODO Implement automatic removal of empty collections in JSON serialization/deserialization
     implicit val jsonEncoder: Encoder.AsObject[Anonymous] = o =>
       JsonObject(
@@ -95,9 +87,7 @@ object Execute
         args <- cursor.getOrElse[Map[String, Expression]]("defaultArguments")(Map.empty)
         sourcePos <- cursor.get[Option[SourcePos]]("sourcePos")
       yield Anonymous(job, args, sourcePos)
-  }
 
   implicit val jsonCodec: TypedJsonCodec[Execute] = TypedJsonCodec(
     Subtype.named1[Named]("Execute.Named"),
     Subtype.named1[Anonymous]("Execute.Anonymous"))
-}

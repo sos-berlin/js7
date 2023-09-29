@@ -12,8 +12,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{AsyncLock, LockKeeper}
 import monix.eval.Task
 
-class AsyncMap[K: Tag, V: Tag](initial: Map[K, V] = Map.empty[K, V])
-{
+class AsyncMap[K: Tag, V: Tag](initial: Map[K, V] = Map.empty[K, V]):
   private val lockKeeper = new LockKeeper[K]
   protected val name =
     s"AsyncMap[${implicitly[Tag[K]].tag}, ${implicitly[Tag[V]].tag}]"
@@ -151,20 +150,16 @@ class AsyncMap[K: Tag, V: Tag](initial: Map[K, V] = Map.empty[K, V])
           }
       })
 
-  private def updateMap(key: K, value: V): Checked[Unit] = {
+  private def updateMap(key: K, value: V): Checked[Unit] =
     val checked = if _map.contains(key) then Checked.unit else onEntryInsert()
-    for _ <- checked do {
+    for _ <- checked do
       _map = _map.updated(key, value)
-    }
     checked
-  }
 
   override def toString =
     s"$name(n=${_map.size})"
-}
 
-object AsyncMap
-{
+object AsyncMap:
   private val logger = Logger[this.type]
 
   def apply[K: Tag, V: Tag](initial: Map[K, V] = Map.empty[K, V]) =
@@ -176,7 +171,7 @@ object AsyncMap
   def empty[K: Tag, V: Tag] =
     new AsyncMap(Map.empty[K, V])
 
-  trait Stoppable {
+  trait Stoppable:
     this: AsyncMap[?, ?] =>
 
     private val whenEmpty = Deferred.unsafe[Task, Unit]
@@ -203,7 +198,7 @@ object AsyncMap
       initiateStopWithProblem(Problem.pure(s"$name is being stopped"))
 
     final def initiateStopWithProblemIfEmpty(problem: Problem): Task[Boolean] =
-      Task.defer {
+      Task.defer:
         logger.trace(s"$name initiateStopWithProblemIfEmpty $problem")
         shortLock
           .lock(Task {
@@ -214,10 +209,9 @@ object AsyncMap
           })
           .flatTap(Task.when(_)(
             whenEmpty.complete(())).attempt.void)
-      }
 
     final def initiateStopWithProblem(problem: Problem): Task[Unit] =
-      Task.defer {
+      Task.defer:
         logger.trace(s"$name initiateStopWithProblem $problem")
         shortLock
           .lock(Task {
@@ -226,7 +220,6 @@ object AsyncMap
           })
           .flatMap(Task.when(_)(
             whenEmpty.complete(()).attempt.void))
-      }
 
     override protected[monixutils] final def onEntryInsert(): Checked[Unit] =
       Option(stoppingProblem).toLeft(())
@@ -235,5 +228,3 @@ object AsyncMap
       Task.defer(
         Task.when(isStopping && isEmpty)(
           whenEmpty.complete(()).attempt.void))
-  }
-}

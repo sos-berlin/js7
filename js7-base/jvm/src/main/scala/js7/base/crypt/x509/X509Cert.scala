@@ -11,18 +11,16 @@ import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.*
 import scala.jdk.CollectionConverters.*
 
-private[x509] final case class X509Cert(x509Certificate: X509Certificate)
-{
+private[x509] final case class X509Cert(x509Certificate: X509Certificate):
   import x509Certificate.*
 
   lazy val signersDistinguishedName = new DistinguishedName(getSubjectX500Principal)
   lazy val signerId = SignerId(signersDistinguishedName.toString)
 
-  lazy val fingerprint: ByteArray = {
+  lazy val fingerprint: ByteArray =
     val md = MessageDigest.getInstance("SHA-1")
     md.update(getEncoded)
     ByteArray(md.digest)
-  }
 
   lazy val isCA =
     containsCA(getCriticalExtensionOIDs) ||
@@ -46,10 +44,8 @@ private[x509] final case class X509Cert(x509Certificate: X509Certificate)
 
   override def toString =
     s"X.509Certificate($getSubjectX500Principal)"
-}
 
-object X509Cert
-{
+object X509Cert:
   private val MayActAsCA = "2.5.29.19"
   val CertificatePem = Pem("CERTIFICATE")
   val PrivateKeyPem = Pem("PRIVATE KEY")
@@ -58,13 +54,12 @@ object X509Cert
     CertificatePem.fromPem(pem) flatMap fromByteArray
 
   def fromByteArray(byteArray: ByteArray): Checked[X509Cert] =
-    Checked.catchNonFatal {
+    Checked.catchNonFatal:
       val certificate = CertificateFactory.getInstance("X.509")
         .generateCertificate(byteArray.toInputStream)
         .asInstanceOf[X509Certificate]
       certificate.checkValidity()  // throws
       X509Cert(certificate)
-    }
 
   private val keyUsages = Vector(
     "digitalSignature",
@@ -107,4 +102,3 @@ object X509Cert
     6 -> "uniformResourceIdentifier",
     7 -> "IP",
     8 -> "registeredID")
-}

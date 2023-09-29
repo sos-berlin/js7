@@ -15,12 +15,11 @@ import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.Cycle
 
 private[instructions] final class CycleExecutor(protected val service: InstructionExecutorService)
-extends EventInstructionExecutor with PositionInstructionExecutor
-{
+extends EventInstructionExecutor with PositionInstructionExecutor:
   type Instr = Cycle
   val instructionClass = classOf[Cycle]
 
-  def toEvents(cycle: Cycle, order: Order[Order.State], state: StateView) = {
+  def toEvents(cycle: Cycle, order: Order[Order.State], state: StateView) =
     val now = clock.now()
     start(order)
       .orElse(order.ifState[Ready].map(order =>
@@ -59,22 +58,19 @@ extends EventInstructionExecutor with PositionInstructionExecutor
               }
         }))
       .getOrElse(Right(Nil))
-  }
 
   private def nextCycleStateToEvent(cycleState: Option[CycleState], order: Order[Order.State])
-  : List[KeyedEvent[OrderActorEvent]] = {
-    val event = cycleState match {
+  : List[KeyedEvent[OrderActorEvent]] =
+    val event = cycleState match
       case Some(cycleState) => OrderCyclingPrepared(cycleState)
       case None => OrderMoved(order.position.increment)
-    }
     (order.id <-: event) :: Nil
-  }
 
   def nextMove(instruction: Cycle, order: Order[Order.State], stateView: StateView) =
     Right(None)
 
   override def onReturnFromSubworkflow(instr: Instr, order: Order[Order.State], state: StateView)
-  : Checked[List[KeyedEvent[OrderActorEvent]]] = {
+  : Checked[List[KeyedEvent[OrderActorEvent]]] =
     val checkedKeyedEvent = for
       calculator <- toScheduleCalculator(order, instr, state)
       branchId <- order.position.branchPath.lastOption.map(_.branchId)
@@ -85,7 +81,6 @@ extends EventInstructionExecutor with PositionInstructionExecutor
         calculator.nextCycleState(clock.now(), cycleState))
 
     checkedKeyedEvent.map(_ :: Nil)
-  }
 
   private def toScheduleCalculator(order: Order[Order.State], cycle: Cycle, state: StateView) =
     for
@@ -111,10 +106,8 @@ extends EventInstructionExecutor with PositionInstructionExecutor
   override def toObstacles(
     order: Order[Order.State],
     calculator: OrderObstacleCalculator) =
-    order.state match {
+    order.state match
       case Order.BetweenCycles(Some(cycleState: CycleState)) if clock.now() < cycleState.next =>
         Right(Set(WaitingForOtherTime(cycleState.next)))
 
       case _ => super.toObstacles(order, calculator)
-    }
-}

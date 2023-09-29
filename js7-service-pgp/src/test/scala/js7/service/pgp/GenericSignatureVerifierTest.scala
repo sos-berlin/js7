@@ -13,9 +13,8 @@ import js7.base.test.OurTestSuite
 /**
   * @author Joacim Zschimmer
   */
-final class GenericSignatureVerifierTest extends OurTestSuite
-{
-  "Directory of public keys (recommended usage)" in {
+final class GenericSignatureVerifierTest extends OurTestSuite:
+  "Directory of public keys (recommended usage)" in:
     withTemporaryDirectory("GenericSignatureVerifierTest-") { directory =>
       val messages = List("MESSAGE-1", "Message-2")
       val signers = List(
@@ -36,5 +35,3 @@ final class GenericSignatureVerifierTest extends OurTestSuite
       assert(verifier.verify(SignedString("TAMPERED", signatures(0))) == Left(TamperedWithSignedMessageProblem))
       assert(verifier.verify(SignedString(messages(1), signatures(1))) == Right(PgpTest.signerIds2))
     }
-  }
-}

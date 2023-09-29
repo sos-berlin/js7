@@ -9,8 +9,7 @@ import js7.data.workflow.WorkflowId
 /**
   * @author Joacim Zschimmer
   */
-final case class WorkflowPosition(workflowId: WorkflowId, position: Position)
-{
+final case class WorkflowPosition(workflowId: WorkflowId, position: Position):
   lazy val normalized = reuseIfEqual(this, workflowId /: position.normalized)
 
   def checkedParent: Checked[WorkflowPosition] =
@@ -19,9 +18,6 @@ final case class WorkflowPosition(workflowId: WorkflowId, position: Position)
         position = parentPos))
 
   override def toString = s"${workflowId.toSimpleString}:$position"
-}
 
-object WorkflowPosition
-{
+object WorkflowPosition:
   implicit val jsonCodec: Codec.AsObject[WorkflowPosition] = deriveCodec
-}

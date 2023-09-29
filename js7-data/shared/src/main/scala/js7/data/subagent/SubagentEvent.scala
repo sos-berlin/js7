@@ -7,10 +7,9 @@ import js7.data.event.NoKeyEvent
 import js7.data.item.InventoryItem
 import js7.data.subagent.SubagentState.inventoryItemJsonCodec
 
-trait SubagentEvent extends NoKeyEvent 
+trait SubagentEvent extends NoKeyEvent
 
-object SubagentEvent 
-{
+object SubagentEvent :
   final case class SubagentItemAttached(item: InventoryItem)
   extends SubagentEvent
 
@@ -23,4 +22,3 @@ object SubagentEvent
     Subtype(SubagentShutdown))
 
   intelliJuseImport(inventoryItemJsonCodec)
-}

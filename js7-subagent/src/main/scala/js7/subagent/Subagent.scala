@@ -54,8 +54,7 @@ final class Subagent private(
   val conf: SubagentConf,
   jobLauncherConf: JobLauncherConf,
   val testEventBus: StandardEventBus[Any])
-extends MainService with Service.StoppableByRequest
-{
+extends MainService with Service.StoppableByRequest:
   subagent =>
 
   protected type Termination = ProgramTermination
@@ -207,10 +206,8 @@ extends MainService with Service.StoppableByRequest
 
   def localUri: Uri =
     webServer.localUri
-}
 
-object Subagent
-{
+object Subagent:
   private val logger = Logger[this.type]
 
   def resource(conf: SubagentConf, testEventBus: StandardEventBus[Any])
@@ -223,10 +220,9 @@ object Subagent
 
     for
       actorSystem <- Akkas.actorSystemResource(conf.name, config)
-      sessionRegister <- {
+      sessionRegister <-
         implicit val a = actorSystem
         SessionRegister.resource(SubagentSession(_), config)
-      }
       systemSessionToken <- sessionRegister
         .placeSessionTokenInDirectory(SimpleUser.System, conf.workDirectory)
       // Stop Subagent _after_ web service to allow Subagent to execute last commands!
@@ -259,10 +255,9 @@ object Subagent
           journal, signatureVerifier,
           conf, jobLauncherConf, testEventBus)))
       _ <- Resource.eval(subagentDeferred.complete(subagent))
-    yield {
+    yield
       logger.info("Subagent is ready to be dedicated" + "\n" + "─" * 80)
       subagent
-    }
   }.executeOn(scheduler)
 
   private def provideUriFile(conf: SubagentConf, uri: Checked[Uri]): Resource[Task, Path] =
@@ -278,11 +273,8 @@ object Subagent
     systemSessionToken: SessionToken,
     ioExecutor: IOExecutor,
     testEventBus: StandardEventBus[Any],
-    actorSystem: ActorSystem)
-  {
+    actorSystem: ActorSystem):
     implicit def iox: IOExecutor = ioExecutor
-  }
 
   type ItemSignatureKeysUpdated = ItemSignatureKeysUpdated.type
   case object ItemSignatureKeysUpdated
-}

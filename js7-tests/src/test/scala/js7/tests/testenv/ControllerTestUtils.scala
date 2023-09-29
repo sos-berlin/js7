@@ -7,21 +7,15 @@ import js7.proxy.ControllerApi
 import org.jetbrains.annotations.TestOnly
 
 @TestOnly
-object ControllerTestUtils
-{
+object ControllerTestUtils:
   def newControllerApi(controller: TestController, userAndPassword: Option[UserAndPassword] = None) =
     new ControllerApi(
       admissionsToApiResource(Nel.one(Admission(controller.localUri, userAndPassword)))(
         controller.actorSystem))
 
-  object syntax
-  {
+  object syntax:
     @TestOnly
-    implicit final class RichRunningController(private val controller: TestController) extends AnyVal
-    {
+    implicit final class RichRunningController(private val controller: TestController) extends AnyVal:
       @TestOnly
       def newControllerApi(userAndPassword: Option[UserAndPassword] = None) =
         ControllerTestUtils.newControllerApi(controller, userAndPassword)
-    }
-  }
-}

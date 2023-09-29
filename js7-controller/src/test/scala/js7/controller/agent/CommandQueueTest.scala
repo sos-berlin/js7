@@ -30,18 +30,16 @@ import scala.collection.mutable
 /**
   * @author Joacim Zschimmer
   */
-final class CommandQueueTest extends OurTestSuite
-{
-  "test" in {
+final class CommandQueueTest extends OurTestSuite:
+  "test" in:
     val commandQueueSucceeded = mutable.Buffer[Seq[QueueableResponse]]()
     val commandQueueFailed = mutable.Buffer[(Vector[Queueable], Problem)]()
-    val commandQueue = new MyCommandQueue(logger, batchSize = 3) {
+    val commandQueue = new MyCommandQueue(logger, batchSize = 3):
       protected def asyncOnBatchSucceeded(queueableResponses: Seq[QueueableResponse]) =
         Task(commandQueueSucceeded += queueableResponses)
 
       protected def asyncOnBatchFailed(queueables: Vector[Queueable], problem: Problem) =
         Task(commandQueueFailed += ((queueables, problem)))
-    }
 
     val expected = mutable.Buffer[Seq[QueueableResponse]]()
 
@@ -93,39 +91,34 @@ final class CommandQueueTest extends OurTestSuite
     waitForCondition(99.s, 10.ms) { commandQueueSucceeded == expected }
     assert(commandQueueSucceeded == expected)
     assert(commandQueueFailed.isEmpty)
-  }
 
-  "Duplicate MarkOrder" in {
+  "Duplicate MarkOrder" in:
     // ControllerOrderQueue may send MarkOrder for each OrderEvent received from Agent
     // because MarkOrder is executeted asynchronously and effect occurs later.
-    val queue = new MyCommandQueue(logger, batchSize = 3) {
+    val queue = new MyCommandQueue(logger, batchSize = 3):
       protected def asyncOnBatchSucceeded(queueableResponses: Seq[QueueableResponse]) =
         Task.unit
 
       protected def asyncOnBatchFailed(queueables: Vector[Queueable], problem: Problem) =
         Task.unit
-    }
     var ok = queue.enqueue(Queueable.MarkOrder(OrderId("ORDER"), OrderMark.Suspending())).await(99.s)
     assert(ok)
     ok = queue.enqueue(Queueable.MarkOrder(OrderId("ORDER"), OrderMark.Suspending())).await(99.s)
     assert(!ok)
     ok = queue.enqueue(Queueable.MarkOrder(OrderId("ORDER"), OrderMark.Resuming())).await(99.s)
     assert(ok)
-  }
 
-  "Performance with any orders" in {
+  "Performance with any orders" in:
     // Run with -DCommandQueueTest=10000000 (10 million) -Xmx3g
     val n = sys.props.get("CommandQueueTest").map(_.toInt) getOrElse 10000
     val commandQueueSucceeded = AtomicInt(0)
 
-    val commandQueue = new MyCommandQueue(logger, batchSize = 100) {
-      protected def asyncOnBatchSucceeded(queueableResponses: Seq[QueueableResponse]) = {
+    val commandQueue = new MyCommandQueue(logger, batchSize = 100):
+      protected def asyncOnBatchSucceeded(queueableResponses: Seq[QueueableResponse]) =
         commandQueueSucceeded += queueableResponses.size
         handleBatchSucceeded(queueableResponses).void
-      }
       protected def asyncOnBatchFailed(queueables: Vector[Queueable], problem: Problem) =
         fail(problem.toString)
-    }
 
     commandQueue.onCoupled(Set.empty).await(99.s)
     (1 to n).view
@@ -136,10 +129,8 @@ final class CommandQueueTest extends OurTestSuite
     commandQueue.maybeStartSending.await(99.s)
     waitForCondition(9.s, 10.ms) { commandQueueSucceeded.get() == n }
     assert(commandQueueSucceeded.get() == n)
-  }
-}
 
-object CommandQueueTest {
+object CommandQueueTest:
   private val logger = Logger[this.type]
   private val TestAgentPath = AgentPath("AGENT")
   private val TestWorkflow = Workflow.of(WorkflowPath("A") ~ "VERSION",
@@ -151,11 +142,8 @@ object CommandQueueTest {
   private def toOrder(name: String) = Order(OrderId(name), TestWorkflow.id /: Position(0), Order.Fresh)
 
   private abstract class MyCommandQueue(logger: ScalaLogger, batchSize: Int)
-  extends CommandQueue(TestAgentPath, batchSize = batchSize, commandErrorDelay = 1.s)
-  {
+  extends CommandQueue(TestAgentPath, batchSize = batchSize, commandErrorDelay = 1.s):
     protected def commandParallelism = 2
 
     protected def executeCommand(command: AgentCommand.Batch) =
       Task(Right(Batch.Response(Vector.fill(command.commands.size)(Right(AgentCommand.Response.Accepted)))))
-  }
-}

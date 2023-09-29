@@ -15,8 +15,7 @@ import scala.jdk.CollectionConverters.*
 
 @javaApi
 final case class JWorkflow(asScala: Workflow)
-extends JVersionedItem[JWorkflow, WorkflowPath]
-{
+extends JVersionedItem[JWorkflow, WorkflowPath]:
   type AsScala = Workflow
 
   def companion = JWorkflow
@@ -28,10 +27,9 @@ extends JVersionedItem[JWorkflow, WorkflowPath]
   @Nonnull
   def checkedJobName(position: JPosition): VEither[Problem, WorkflowJob.Name] =
     asScala.checkedExecute(position.asScala)
-      .flatMap {
+      .flatMap:
         case named: Execute.Named => Right(named.name)
         case _ => Left(Problem(s"Job at position $position does not have a name"))
-      }
       .toVavr
 
   @Nonnull
@@ -44,11 +42,9 @@ extends JVersionedItem[JWorkflow, WorkflowPath]
     asScala.reachablePositions(from.asScala)
       .view.map(JPosition(_))
       .toVector.asJava
-}
 
 @javaApi
-object JWorkflow extends JJsonable.Companion[JWorkflow]
-{
+object JWorkflow extends JJsonable.Companion[JWorkflow]:
   type AsScala = Workflow
 
   @Nonnull
@@ -57,4 +53,3 @@ object JWorkflow extends JJsonable.Companion[JWorkflow]
 
   protected def jsonEncoder = Workflow.jsonEncoder
   protected def jsonDecoder = Workflow.jsonDecoder
-}

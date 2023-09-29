@@ -11,8 +11,7 @@ import scala.annotation.unused
 import scala.collection.mutable
 import scala.concurrent.duration.*
 
-trait AlarmClock extends WallClock
-{
+trait AlarmClock extends WallClock:
   def stop(): Unit
 
   def scheduleOnce(delay: FiniteDuration)(callback: => Unit)
@@ -32,18 +31,15 @@ trait AlarmClock extends WallClock
   /** TestAlarmClock synchronizes time query and time change. */
   def lock[A](body: => A): A =
     body
-}
 
-object AlarmClock
-{
+object AlarmClock:
   def apply(clockCheckInterval: Option[FiniteDuration] = None)(implicit s: Scheduler): AlarmClock =
-    clockCheckInterval match {
+    clockCheckInterval match
       case None =>
         new SimpleAlarmClock
 
       case Some(clockCheckInterval) =>
         new ClockCheckingAlarmClock(clockCheckInterval)
-    }
 
   def resource[F[_]](clockCheckInterval: Option[FiniteDuration] = None)
     (implicit F: Sync[F], s: Scheduler)
@@ -54,19 +50,17 @@ object AlarmClock
 
   private final class SimpleAlarmClock
     (implicit val s: Scheduler)
-  extends AlarmClock with Simple {
+  extends AlarmClock with Simple:
     def epochMilli() = scheduler.clockRealTime(MILLISECONDS)
     protected def scheduler = s
-  }
 
   private final class ClockCheckingAlarmClock(val clockCheckInterval: FiniteDuration)
     (implicit val s: Scheduler)
-  extends AlarmClock with ClockChecking {
+  extends AlarmClock with ClockChecking:
     def epochMilli() = scheduler.clockRealTime(MILLISECONDS)
     protected def scheduler = s
-  }
 
-  private[time] trait Simple {
+  private[time] trait Simple:
     self: AlarmClock =>
 
     protected def scheduler: Scheduler
@@ -83,10 +77,9 @@ object AlarmClock
     //
     //override def toString =
     //  productPrefix + "(" + now() + ")"
-  }
 
   /** Checks the clock for change and corrects the schedule. */
-  private[time] trait ClockChecking extends Runnable {
+  private[time] trait ClockChecking extends Runnable:
     self: AlarmClock =>
 
     protected def clockCheckInterval: FiniteDuration
@@ -104,13 +97,11 @@ object AlarmClock
     @volatile private var ticking = false
     @volatile private var stopped = false
 
-    def stop() = {
+    def stop() =
       stopped = true
-      self.synchronized {
+      self.synchronized:
         epochMilliToAlarms.values.view.flatten.foreach(_.cancel())
         epochMilliToAlarms.clear()
-      }
-    }
 
     final def scheduleOnce(delay: FiniteDuration)(callback: => Unit)
       (implicit fullName: sourcecode.FullName)
@@ -119,18 +110,16 @@ object AlarmClock
 
     final def scheduleAt(at: Timestamp)(callback: => Unit)
       (implicit @unused fullName: sourcecode.FullName)
-    : Cancelable = {
+    : Cancelable =
       val milli = at.toEpochMilli
       val alarm = new Alarm(milli, callback)
-      self.synchronized {
+      self.synchronized:
         epochMilliToAlarms.update(milli, epochMilliToAlarms.getOrElse(milli, Vector.empty) :+ alarm)
         scheduleNext()
-      }
       alarm
-    }
 
     private def scheduleNext(): Unit =
-      epochMilliToAlarms.headOption match {
+      epochMilliToAlarms.headOption match
         case None =>
           stopTicking()
           nextMilli = Long.MaxValue
@@ -139,49 +128,41 @@ object AlarmClock
           // Reschedule at each tick, in case the clock has been adjusted
           val now = epochMilli()
           val delay = (firstMilli - now) max 0
-          if delay > tickInterval then {
+          if delay > tickInterval then
             startTicking(tickInterval)
-          } else {
+          else
             stopTicking()
-          }
           //logger.trace(s"scheduleOnce ${delay.ms.pretty} (${Timestamp.ofEpochMilli(now)})")
           timer := scheduler.scheduleOnce(delay, MILLISECONDS, this)
           nextMilli = firstMilli
-      }
 
     private def startTicking(tickInterval: Long) =
-      if !ticking then {
+      if !ticking then
         ticking = true
         ticker := scheduler.scheduleAtFixedRate(tickInterval, tickInterval, MILLISECONDS, this)
         //logger.trace(s"Ticking ${tickInterval.ms.pretty}")
-      }
 
     private def stopTicking() =
-      if ticking then {
+      if ticking then
         ticking = false
         ticker := Cancelable.empty
         //logger.trace(s"Ticking stopped")
-      }
 
     final def run(): Unit =
-      if !stopped then {
-        if nextMilli <= epochMilli() then {
+      if !stopped then
+        if nextMilli <= epochMilli() then
           var alarms = Vector.empty[Alarm]
-          self.synchronized {
-            while epochMilliToAlarms.nonEmpty && epochMilliToAlarms.firstKey <= epochMilli() do {
+          self.synchronized:
+            while epochMilliToAlarms.nonEmpty && epochMilliToAlarms.firstKey <= epochMilli() do
               alarms ++= epochMilliToAlarms.remove(epochMilliToAlarms.firstKey).get
-            }
-          }
           //logger.trace(s"Tick: ${alarms.size} alarms!")
           for a <- alarms do a.call()
-        } else {
+        else {
           //logger.trace("Tick")
         }
 
-        self.synchronized {
+        self.synchronized:
           scheduleNext()
-        }
-      }
 
     override def toString =
       productPrefix + "(" + now() + ", " +
@@ -193,26 +174,19 @@ object AlarmClock
         ")"
 
     private final class Alarm(epochMilli: Long, callback: => Unit)
-    extends Cancelable {
+    extends Cancelable:
       private val called = Atomic(false)
 
       def call(): Unit =
-        if !called.getAndSet(true) then {
+        if !called.getAndSet(true) then
           callback
-        }
 
       def cancel() =
-        self.synchronized {
-          for alarms <- epochMilliToAlarms.get(epochMilli) do {
+        self.synchronized:
+          for alarms <- epochMilliToAlarms.get(epochMilli) do
             val remaining = alarms.filterNot(_ eq this)
-            if remaining.nonEmpty then {
+            if remaining.nonEmpty then
               epochMilliToAlarms.update(epochMilli, remaining)
-            } else {
+            else
               epochMilliToAlarms -= epochMilli
               scheduleNext()
-            }
-          }
-        }
-    }
-  }
-}

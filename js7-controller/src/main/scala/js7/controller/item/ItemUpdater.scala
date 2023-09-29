@@ -7,9 +7,7 @@ import js7.data.crypt.SignedItemVerifier
 import js7.data.item.SignableItem
 import monix.eval.Task
 
-trait ItemUpdater
-{
+trait ItemUpdater:
   def signedItemVerifier: SignedItemVerifier[SignableItem]
 
   def updateItems(verifiedUpdateItems: VerifiedUpdateItems): Task[Checked[Completed]]
-}

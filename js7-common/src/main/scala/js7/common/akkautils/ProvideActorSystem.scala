@@ -12,22 +12,18 @@ import js7.common.akkautils.ProvideActorSystem.*
 /**
   * @author Joacim Zschimmer
   */
-trait ProvideActorSystem extends HasCloser
-{
+trait ProvideActorSystem extends HasCloser:
   protected def actorSystemName: String = getClass.simpleScalaName
   protected def config: Config
 
   protected final lazy val actorSystem =
     newActorSystem(actorSystemName, config.withFallback(defaultConfig))
       .withCloser { o =>
-        if !o.whenTerminated.isCompleted then {
+        if !o.whenTerminated.isCompleted then
           Akkas.terminateAndWait(o, TerminationTimeout)
-        }
       }
-}
 
-object ProvideActorSystem
-{
+object ProvideActorSystem:
   private val TerminationTimeout = 60.s
 
   private val defaultConfig = config"""
@@ -37,4 +33,3 @@ object ProvideActorSystem
     #akka.logging-filter = "akka.event.slf4j.Slf4jLoggingFilter"
     akka.logger-startup-timeout = 30s
     """
-}

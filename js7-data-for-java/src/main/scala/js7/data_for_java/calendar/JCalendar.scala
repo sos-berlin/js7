@@ -15,8 +15,7 @@ import scala.jdk.DurationConverters.ScalaDurationOps
 import scala.jdk.OptionConverters.*
 
 final case class JCalendar(asScala: Calendar)
-extends JJsonable[JCalendar] with JUnsignedSimpleItem
-{
+extends JJsonable[JCalendar] with JUnsignedSimpleItem:
   type AsScala = Calendar
   protected def companion = JCalendar
 
@@ -39,10 +38,8 @@ extends JJsonable[JCalendar] with JUnsignedSimpleItem
   @Nonnull
   def withRevision(revision: Optional[ItemRevision]) =
     copy(asScala.withRevision(revision.toScala))
-}
 
-object JCalendar extends JJsonable.Companion[JCalendar]
-{
+object JCalendar extends JJsonable.Companion[JCalendar]:
   type AsScala = Calendar
 
   @Nonnull
@@ -66,4 +63,3 @@ object JCalendar extends JJsonable.Companion[JCalendar]
 
   protected def jsonEncoder = Calendar.jsonCodec
   protected def jsonDecoder = Calendar.jsonCodec
-}

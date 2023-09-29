@@ -13,16 +13,14 @@ import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import scala.reflect.ClassTag
 
-object BasicParsers
-{
-  private val inlineComment: Parser[Unit] = {
+object BasicParsers:
+  private val inlineComment: Parser[Unit] =
     val untilStar = charsWhile0(_ != '*').with1 ~ char('*')
     (string("/*") ~
       untilStar ~
       ((!char('/')).with1 ~ untilStar).rep0 ~
       char('/')
     ).void
-  }
 
   private val lineEndComment: Parser[Unit] =
     string("//") <* charsWhile0(_ != '\n')
@@ -65,10 +63,9 @@ object BasicParsers
   private val backtickIdentifier: Parser[String] =
     rawBacktickIdentifierPart.rep
       .map(_.toList.mkString("`")/* `` -> ` */)
-      .flatMap {
+      .flatMap:
         case "" => failWith("Identifier in backticks (`) must not be empty")
         case o => pure(o)
-      }
 
   val identifier: Parser[String] =
     backtickIdentifier | simpleIdentifier
@@ -166,12 +163,12 @@ object BasicParsers
       .flatMap(o => checkedToParser(toValue(o)))
       .map(name -> _)
 
-  final case class KeyToValue[A](nameToValue: Map[String, A]) {
+  final case class KeyToValue[A](nameToValue: Map[String, A]):
     def getOrElse[A1 <: A](key: String, default: => A1): Parser0[A1] =
       pure(nameToValue.get(key).fold(default)(_.asInstanceOf[A1]))
 
     def apply[A1 <: A: ClassTag](key: String): Parser0[A1] =
-      nameToValue.get(key) match {
+      nameToValue.get(key) match
         case None => failWith(s"Expected keyword $key=")
         case Some(o) =>
           val A1 = implicitClass[A1]
@@ -183,7 +180,6 @@ object BasicParsers
                 s"not $key=<${o.getClass.simpleScalaName}>")
           else
             pure(o.asInstanceOf[A1])
-      }
 
     def get[A1 <: A](key: String): Parser0[Option[A1]] =
       pure(nameToValue.get(key).map(_.asInstanceOf[A1]))
@@ -191,49 +187,40 @@ object BasicParsers
     def noneOrOneOf[A1 <: A](keys: String*): Parser0[Option[(String, A1)]] =
       noneOrOneOf[A1](keys.toSet)
 
-    def noneOrOneOf[A1 <: A](keys: Set[String]): Parser0[Option[(String, A1)]] = {
+    def noneOrOneOf[A1 <: A](keys: Set[String]): Parser0[Option[(String, A1)]] =
       val intersection = nameToValue.keySet & keys
-      intersection.size match {
+      intersection.size match
         case 0 => pure(None)
         case 1 => pure(Some(intersection.head -> nameToValue(intersection.head).asInstanceOf[A1]))
         case _ => failWith(s"Expected non-contradicting keywords: ${intersection.mkString("; ")}")
-      }
-    }
 
     def oneOf[A1 <: A](keys: String*): Parser0[(String, A1)] =
       oneOfSet[A1](keys.toSet)
 
-    def oneOfSet[A1 <: A](keys: Set[String]): Parser0[(String, A1)] = {
+    def oneOfSet[A1 <: A](keys: Set[String]): Parser0[(String, A1)] =
       val intersection = nameToValue.keySet & keys
-      intersection.size match {
+      intersection.size match
         // TODO Better messages for empty key (no keyword, positional argument)
         case 0 => failWith("Expected one of keywords " + keys.map(_ + "=").mkString(", "))
         case 1 => pure(intersection.head -> nameToValue(intersection.head).asInstanceOf[A1])
         case _ => failWith(s"Expected non-contradicting keywords: ${intersection.mkString("; ")}")
-      }
-    }
 
-    def oneOfOr[A1 <: A](keys: Set[String], default: A1): Parser0[A1] = {
+    def oneOfOr[A1 <: A](keys: Set[String], default: A1): Parser0[A1] =
       val intersection = nameToValue.keySet & keys
-      intersection.size match {
+      intersection.size match
         case 0 => pure(default)
         case 1 => pure(nameToValue(intersection.head).asInstanceOf[A1])
         case _ => failWith(s"Expected non-contradicting keywords: ${intersection.mkString("; ")}")
-      }
-    }
-  }
-  object KeyToValue {
+  object KeyToValue:
     val empty = KeyToValue[Any](Map.empty)
-  }
 
-  def specificKeyValue[V](name: String, valueParser: Parser[V]): Parser[V] = {
+  def specificKeyValue[V](name: String, valueParser: Parser[V]): Parser[V] =
     val keywordPart: Parser0[Unit] =
       if name.isEmpty then
         pure(())
       else
         keyword(name) <* (w ~ char('=') ~ w)
     keywordPart.with1 *> valueParser
-  }
 
   def curly[A](parser: Parser0[A]): Parser[A] =
     between(char('{'), char('}'))(parser)
@@ -285,8 +272,6 @@ object BasicParsers
     checkedToParser(Checked.catchNonFatal(f))
 
   def checkedToParser[A](checked: Checked[A]): Parser0[A] =
-    checked match {
+    checked match
       case Right(a) => Parser.pure(a)
       case Left(problem) => failWith(problem.toString)
-    }
-}

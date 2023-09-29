@@ -35,8 +35,7 @@ import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 
 final class ControlWorkflowPathSuspendWorkflowTest
-extends OurTestSuite with DirectoryProviderForScalaTest
-{
+extends OurTestSuite with DirectoryProviderForScalaTest:
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.controller.agent-driver.command-batch-delay = 0ms
@@ -57,14 +56,13 @@ extends OurTestSuite with DirectoryProviderForScalaTest
 
   private def eventWatch = controller.eventWatch
 
-  override def afterAll() = {
+  override def afterAll() =
     Seq(aAgent, bAgent)
       .flatMap(Option(_)).parTraverse(_.terminate()).await(99.s)
     controller.terminate(suppressSnapshot = true).await(99.s)
     super.afterAll()
-  }
 
-  "ControlWorkflowPath suspend=true" in {
+  "ControlWorkflowPath suspend=true" in:
     controller = directoryProvider.newController()
     def controllerState = controller.controllerState()
     implicit val controllerApi = controller.api
@@ -107,9 +105,8 @@ extends OurTestSuite with DirectoryProviderForScalaTest
       aOrderId -> Set[OrderObstacle](OrderObstacle.WorkflowSuspended))))
 
     aAgent = directoryProvider.startAgent(aAgentPath).await(99.s)
-    intercept[TimeoutException] {
+    intercept[TimeoutException]:
       eventWatch.await[OrderAttached](_.key == aOrderId, after = eventId, timeout = 500.ms)
-    }
 
     eventId = suspendWorkflow(aWorkflow.path, false, ItemRevision(4),
       UnsignedSimpleItemChanged.apply)
@@ -125,9 +122,8 @@ extends OurTestSuite with DirectoryProviderForScalaTest
         ItemAttached(WorkflowPathControlPath(aWorkflow.path), Some(ItemRevision(5)), aAgentPath)))
 
     ASemaphoreJob.continue()
-    intercept[TimeoutException] {
+    intercept[TimeoutException]:
       eventWatch.await[OrderProcessingStarted](_.key == aOrderId, after = eventId, timeout = 500.ms)
-    }
 
     eventId = suspendWorkflow(aWorkflow.path, false, ItemRevision(6),
       UnsignedSimpleItemChanged.apply)
@@ -157,9 +153,8 @@ extends OurTestSuite with DirectoryProviderForScalaTest
     assert(controllerState
       .itemToIgnorantAgents(WorkflowPathControl)(WorkflowPathControlPath(aWorkflow.path)) ==
       Set(aAgentPath))
-  }
 
-  "After Agent recouples, the attachable WorkflowPathControl is attached" in {
+  "After Agent recouples, the attachable WorkflowPathControl is attached" in:
     def controllerState = controller.controllerState()
     val eventId = eventWatch.lastAddedEventId
     aAgent = directoryProvider.startAgent(aAgentPath).await(99.s)
@@ -171,15 +166,14 @@ extends OurTestSuite with DirectoryProviderForScalaTest
     assert(controllerState.workflowPathControlToIgnorantAgents.toMap.isEmpty)
     assert(controllerState
       .itemToIgnorantAgents(WorkflowPathControl).get(WorkflowPathControlPath(aWorkflow.path)) == None)
-  }
 
-  "After Controller recovery, the WorkflowPathControl is attached to the remaining Agents" in {
+  "After Controller recovery, the WorkflowPathControl is attached to the remaining Agents" in:
     bAgent = directoryProvider.startAgent(bAgentPath).await(99.s)
     var agentEventId = bAgent.eventWatch.await[AgentReady]().last.eventId
     var eventId = eventWatch.lastAddedEventId
     val bOrderId = OrderId("B")
 
-    locally {
+    locally:
       implicit val controllerApi = controller.api
       controller.api.addOrder(FreshOrder(bOrderId, bWorkflow.path, deleteWhenTerminated = true))
         .await(99.s)
@@ -197,7 +191,6 @@ extends OurTestSuite with DirectoryProviderForScalaTest
       eventWatch.await[ItemAttachable](
         _.event.key == WorkflowPathControlPath(bWorkflow.path),
         after = eventId)
-    }
 
     controller.terminate().await(99.s)
 
@@ -233,9 +226,8 @@ extends OurTestSuite with DirectoryProviderForScalaTest
     controller.controllerState()
       .itemToAgentToAttachedState(WorkflowPathControlPath(bWorkflow.path)) ==
       Map(bAgentPath -> Attached(Some(ItemRevision(1))))
-  }
 
-  "WorkflowPathControl disappears with the last Workflow version" in {
+  "WorkflowPathControl disappears with the last Workflow version" in:
     val eventId = eventWatch.lastAddedEventId
 
     controller.api
@@ -263,12 +255,11 @@ extends OurTestSuite with DirectoryProviderForScalaTest
     assert(bAgent.currentAgentState().keyTo(WorkflowPathControl).isEmpty)
     // Controller has implicitly deleted WorkflowPathControl
     assert(controller.controllerState().keyTo(WorkflowPathControl).isEmpty)
-  }
 
   private def suspendWorkflow(workflowPath: WorkflowPath, suspend: Boolean, revision: ItemRevision,
     workflowPathControlToEvent: WorkflowPathControl => UnsignedSimpleItemAddedOrChanged)
     (implicit controllerApi: ControllerApi)
-  : EventId = {
+  : EventId =
     val eventId = eventWatch.lastAddedEventId
     controllerApi
       .executeCommand(ControlWorkflowPath(workflowPath, suspend = Some(suspend)))
@@ -280,11 +271,8 @@ extends OurTestSuite with DirectoryProviderForScalaTest
           suspended = suspend,
           itemRevision = Some(revision)))))
     keyedEvents.last.eventId
-  }
-}
 
-object ControlWorkflowPathSuspendWorkflowTest
-{
+object ControlWorkflowPathSuspendWorkflowTest:
   private val aAgentPath = AgentPath("A-AGENT")
   private val bAgentPath = AgentPath("B-AGENT")
 
@@ -304,4 +292,3 @@ object ControlWorkflowPathSuspendWorkflowTest
 
   final class B2SemaphoreJob extends SemaphoreJob(B2SemaphoreJob)
   object B2SemaphoreJob extends SemaphoreJob.Companion[B2SemaphoreJob]
-}

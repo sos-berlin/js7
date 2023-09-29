@@ -23,7 +23,7 @@ final class ControllerEnv(
   keyStore: Option[JavaResource],
   trustStores: Iterable[JavaResource],
   agentHttpsMutual: Boolean)
-extends ProgramEnv.WithFileJournal {
+extends ProgramEnv.WithFileJournal:
   type Program = RunningController
 
   protected type S = ControllerState
@@ -38,9 +38,9 @@ extends ProgramEnv.WithFileJournal {
 
   initialize()
 
-  protected override def createDirectoriesAndFiles(): Unit = {
+  protected override def createDirectoriesAndFiles(): Unit =
     super.createDirectoriesAndFiles()
-    for keyStore <- keyStore do {
+    for keyStore <- keyStore do
       configDir / "private/private.conf" ++= """
        |js7.web.https.keystore {
        |  store-password = "jobscheduler"
@@ -49,13 +49,10 @@ extends ProgramEnv.WithFileJournal {
        |""".stripMargin
       configDir / "private/https-keystore.p12" := keyStore.contentBytes
       provideTrustStore(AgentTrustStoreResource, "agent-https-truststore.p12")
-      for (o, i) <- trustStores.zipWithIndex do {
+      for (o, i) <- trustStores.zipWithIndex do
         provideTrustStore(o, s"extra-${i + 1}-https-truststore.p12")
-      }
-    }
-  }
 
-  private def provideTrustStore(resource: JavaResource, filename: String): Unit = {
+  private def provideTrustStore(resource: JavaResource, filename: String): Unit =
     val trustStore = configDir / "private" / filename
     trustStore := resource.contentBytes
     configDir / "private/private.conf" ++= s"""
@@ -65,17 +62,15 @@ extends ProgramEnv.WithFileJournal {
      |  store-password = "jobscheduler"
      |}
      |""".stripMargin
-  }
 
   def writeAgentAuthentication(env: DirectorEnv): Unit =
     writeAgentAuthentication(env.agentPath, env.controllerPassword)
 
   def writeAgentAuthentication(agentPath: AgentPath, password: SecretString): Unit =
-    if !agentHttpsMutual then {
+    if !agentHttpsMutual then
       val quotedAgentPath = quoteString(agentPath.string)
       val quotedPassword = quoteString(password.string)
       privateConf ++= s"js7.auth.agents.$quotedAgentPath = $quotedPassword\n"
-    } else {
+    else {
       // Agent uses the distinguished name of the Controller's HTTPS certificate
     }
-}

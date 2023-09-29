@@ -12,8 +12,7 @@ import js7.launcher.process.ProcessJobLauncher.*
 import js7.launcher.{OrderProcess, ProcessOrder}
 import monix.eval.{Fiber, Task}
 
-trait ProcessJobLauncher extends JobLauncher
-{
+trait ProcessJobLauncher extends JobLauncher:
   protected val executable: ProcessExecutable
   protected def jobLauncherConf: JobLauncherConf
 
@@ -23,7 +22,7 @@ trait ProcessJobLauncher extends JobLauncher
   final val start = Task.pure(Checked.unit)
 
   protected final def makeOrderProcess(processOrder: ProcessOrder, startProcess: StartProcess)
-  : OrderProcess = {
+  : OrderProcess =
     import processOrder.order
 
     val processDriver = new ProcessDriver(
@@ -32,52 +31,41 @@ trait ProcessJobLauncher extends JobLauncher
         v1Compatible = v1Compatible),
       jobLauncherConf)
 
-    new OrderProcess {
-      def run: Task[Fiber[Outcome.Completed]] = {
+    new OrderProcess:
+      def run: Task[Fiber[Outcome.Completed]] =
         val checkedEnv = for
           jobResourcesEnv <- processOrder.checkedJobResourcesEnv
           v1 <- v1Env(processOrder)
         yield (v1.view ++ startProcess.env ++ jobResourcesEnv).toMap
-        checkedEnv match {
+        checkedEnv match
           case Left(problem) =>
             Task.pure(Outcome.Failed.fromProblem(problem): Outcome.Completed).start
           case Right(env) =>
             processDriver.startAndRunProcess(env, processOrder.stdObservers)
-        }
-      }
 
       def cancel(immediately: Boolean) =
         processDriver.kill(if immediately then SIGKILL else SIGTERM)
 
       override def toString = "ProcessJobLauncher.OrderProcess"
-    }
-  }
 
   private def v1Env(processOrder: ProcessOrder): Checked[Map[String, Some[String]]] =
     if !v1Compatible then
       Right(Map.empty)
-    else {
+    else
       import processOrder.{order, workflow}
       for defaultArguments <- processOrder.checkedJs1DefaultArguments yield
         (defaultArguments.view ++ order.v1CompatibleNamedValues(workflow))
           .map { case (k, v) => k -> v.toStringValue }
-          .collect {
+          .collect:
             case (name, Right(v)) => name -> v // ignore toStringValue errors (like ListValue)
-          }
           .map { case (k, StringValue(v)) => (V1EnvPrefix + k.toUpperCase(ROOT)) -> Some(v) }
           .toMap
-    }
-}
 
-object ProcessJobLauncher
-{
+object ProcessJobLauncher:
   private val V1EnvPrefix = "SCHEDULER_PARAM_"
 
   private[process] final case class StartProcess(
     commandLine: CommandLine,
     name: String,
-    env: Map[String, Option[String]])
-  {
+    env: Map[String, Option[String]]):
     override def toString = name
-  }
-}

@@ -19,8 +19,7 @@ import js7.tests.controller.commands.AddOrderTimeoutTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.traced
 
-final class AddOrderTimeoutTest extends OurTestSuite with ControllerAgentForScalaTest
-{
+final class AddOrderTimeoutTest extends OurTestSuite with ControllerAgentForScalaTest:
   protected val agentPaths = Nil
   protected val items = Seq(agentRef, subagentItem, workflow)
   override protected val controllerConfig = config"""
@@ -28,13 +27,12 @@ final class AddOrderTimeoutTest extends OurTestSuite with ControllerAgentForScal
     js7.TEST-ONLY.add-order-delay = 10s
     """
 
-  "AddOrder timeout is returned as 403 Service Unavailable" in {
-    val httpApi: HttpControllerApi = {
+  "AddOrder timeout is returned as 403 Service Unavailable" in:
+    val httpApi: HttpControllerApi =
       new AkkaHttpControllerApi(
         controller.localUri,
         Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD"))),
           actorSystem = controller.actorSystem, config = controller.config, name = controller.conf.name)
-      }
 
     httpApi.login().await(99.s)
     val status = intercept[HttpException] {
@@ -43,11 +41,8 @@ final class AddOrderTimeoutTest extends OurTestSuite with ControllerAgentForScal
     // Despite error, addOrder may be successfully completed, so ServiceUnavailable is inappropriate:
     // assert(status == ServiceUnavailable)
     assert(status == InternalServerError)
-  }
-}
 
-object AddOrderTimeoutTest
-{
+object AddOrderTimeoutTest:
   private val agentRef = AgentRef(AgentPath("AGENT"), Seq(SubagentId("SUBAGENT")))
   private val subagentItem = SubagentItem(SubagentId("SUBAGENT"), AgentPath("AGENT"),
     Uri("https://localhost:0"))
@@ -58,4 +53,3 @@ object AddOrderTimeoutTest
         execute executable="SCRIPT1.cmd", agent="AGENT";
       }"""
   ).orThrow
-}

@@ -24,8 +24,7 @@ private[journal] abstract class JournalWriter(
   S: JournaledState.HasEventCodec,
   after: EventId,
   append: Boolean)
-extends AutoCloseable
-{
+extends AutoCloseable:
   def file: Path
   protected def simulateSync: Option[FiniteDuration]
   protected val statistics: StatisticsCounter
@@ -41,39 +40,35 @@ extends AutoCloseable
 
   def close() = jsonWriter.close()
 
-  final def writeHeader(header: JournalHeader): Unit = {
+  final def writeHeader(header: JournalHeader): Unit =
     jsonWriter.write(header.asJson.toByteArray)
     flush(sync = false)
-  }
 
-  def beginEventSection(sync: Boolean): Unit = {
+  def beginEventSection(sync: Boolean): Unit =
     if _eventsStarted then throw new IllegalStateException("EventJournalWriter: duplicate beginEventSection()")
     jsonWriter.write(EventHeader.toByteArray)
     flush(sync = sync)
     _eventsStarted = true
-  }
 
   def writeEvent(stamped: Stamped[KeyedEvent[Event]]): Unit =
     writeEvents_(stamped :: Nil)
 
-  protected def writeEvents_(stampedEvents: Seq[Stamped[KeyedEvent[Event]]]): Unit = {
-    for stamped <- stampedEvents do {
+  protected def writeEvents_(stampedEvents: Seq[Stamped[KeyedEvent[Event]]]): Unit =
+    for stamped <- stampedEvents do
       if stamped.eventId <= _lastEventId then throw new IllegalArgumentException(
         s"EventJournalWriter.writeEvent with EventId ${EventId.toString(stamped.eventId)}" +
           s" <= lastEventId ${EventId.toString(_lastEventId)}")
       _lastEventId = stamped.eventId
-    }
     import S.keyedEventJsonCodec
     if sys.runtime.availableProcessors > 1 && stampedEvents.sizeIs >= JsonParallelizationThreshold then
       writeJsonInParallel(stampedEvents)
     else
       writeJsonSerially(stampedEvents)
-  }
 
   private def writeJsonSerially[A: Encoder](seq: Seq[A]): Unit =
     for a <- seq do jsonWriter.write(serialize(a))
 
-  private def writeJsonInParallel[A: Encoder](seq: Seq[A]): Unit = {
+  private def writeJsonInParallel[A: Encoder](seq: Seq[A]): Unit =
     // TODO Try to call it asynchronously (in JournalActor)
     implicit val s = scheduler
     Observable.fromIterable(seq)
@@ -81,7 +76,6 @@ extends AutoCloseable
         serialize[A])
       .foreachL(jsonWriter.write)
       .runSyncUnsafe() /*Blocking !!!*/
-  }
 
   private def serialize[A: Encoder](a: A): ByteArray =
     try a.asJson.toByteArray
@@ -94,18 +88,15 @@ extends AutoCloseable
   protected final def fileSizeString: String =
     try toMB(Files.size(file)) catch { case NonFatal(t) => t.toString }
 
-  def flush(sync: Boolean): Unit = {
-    if !jsonWriter.isFlushed then {
+  def flush(sync: Boolean): Unit =
+    if !jsonWriter.isFlushed then
       statistics.beforeFlush()
       jsonWriter.flush()
       statistics.afterFlush()
-    }
-    if sync && !isSynced then {
+    if sync && !isSynced then
       statistics.beforeSync()
       jsonWriter.sync()
       statistics.afterSync()
-    }
-  }
 
   final def isFlushed = jsonWriter.isFlushed
 
@@ -114,9 +105,7 @@ extends AutoCloseable
   final def fileLength = jsonWriter.fileLength
 
   final def bytesWritten = jsonWriter.bytesWritten
-}
 
-object JournalWriter {
+object JournalWriter:
   private val JsonBatchSize = DefaultBatchSize
   private val JsonParallelizationThreshold = 3 * JsonBatchSize
-}

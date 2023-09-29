@@ -16,8 +16,7 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.TimeoutException
 
-final class FileWatchInjectionTest extends OurTestSuite with ControllerAgentForScalaTest
-{
+final class FileWatchInjectionTest extends OurTestSuite with ControllerAgentForScalaTest:
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(workflow)
   override protected val controllerConfig = config"""
@@ -31,16 +30,12 @@ final class FileWatchInjectionTest extends OurTestSuite with ControllerAgentForS
     agentPath,
     StringConstant(sourceDirectory.toString))
 
-  "Start with existing file" in {
+  "Start with existing file" in:
     controller.api.updateUnsignedSimpleItems(Seq(fileWatch)).await(99.s).orThrow
     // TODO SimpleItemAttachmentFailed
-    intercept[TimeoutException] {
+    intercept[TimeoutException]:
       eventWatch.await[ItemAttached](_.event.key == fileWatch.path, timeout = 1.s)
-    }
-  }
-}
 
-object FileWatchInjectionTest {
+object FileWatchInjectionTest:
   private val agentPath = AgentPath("AGENT-A")
   private val workflow = Workflow(WorkflowPath("WORKFLOW"), Nil)
-}

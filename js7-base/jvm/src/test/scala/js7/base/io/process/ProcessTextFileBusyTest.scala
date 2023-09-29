@@ -22,12 +22,12 @@ import scala.util.control.NonFatal
   * @author Joacim Zschimmer
   * @see https://bugs.openjdk.java.net/browse/JDK-8068370
   */
-final class ProcessTextFileBusyTest extends OurTestSuite {
+final class ProcessTextFileBusyTest extends OurTestSuite:
 
   private val n = 1000
   private val threadCount = 10 * sys.runtime.availableProcessors
 
-  s"$n concurrent process starts with freshly written executables on $threadCount threads" in {
+  s"$n concurrent process starts with freshly written executables on $threadCount threads" in:
     implicit val scheduler = Scheduler.forkJoin(parallelism = n, maxThreads = n)
     val stopwatch = new Stopwatch
     val (files, processes) = Task
@@ -40,27 +40,20 @@ final class ProcessTextFileBusyTest extends OurTestSuite {
         })
       .await(99.s)
       .unzip
-    for p <- processes do {
+    for p <- processes do
       val rc = p.waitFor()
       assert(rc == 0)
-    }
     info(stopwatch.itemsPerSecondString(n, "processes"))
     if isWindows then sleep(500.ms)  // Windows may lock the files for a short while after process termination
     files foreach tryDelete
     scheduler.shutdown()
-  }
-}
 
-object ProcessTextFileBusyTest
-{
+object ProcessTextFileBusyTest:
   private val logger = Logger[this.type]
 
-  private def tryDelete(path: Path): Unit = {
+  private def tryDelete(path: Path): Unit =
     // Under Windows, the file may be locked for a very short while, resulting in error
     // "The process cannot access the file because it is being used by another process.".
     try delete(path)
-    catch {
+    catch
       case NonFatal(t) => logger.warn(s"$path: ${t.toStringWithCauses}")
-    }
-  }
-}

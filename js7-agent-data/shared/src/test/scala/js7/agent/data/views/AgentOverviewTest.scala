@@ -10,9 +10,9 @@ import js7.tester.CirceJsonTester.testJson
 /**
  * @author Joacim Zschimmer
  */
-final class AgentOverviewTest extends OurTestSuite {
+final class AgentOverviewTest extends OurTestSuite:
 
-  "JSON" in {
+  "JSON" in:
     testJson(
       AgentOverview(
         startedAt = Timestamp.parse("2015-06-01T12:00:00Z"),
@@ -46,5 +46,3 @@ final class AgentOverviewTest extends OurTestSuite {
           "mxBeans": {}
          }
       }""")
-  }
-}

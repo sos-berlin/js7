@@ -23,8 +23,7 @@ import scala.concurrent.duration.Deadline.now
 /**
   * @author Joacim Zschimmer
   */
-final class ApiRootRouteTest extends OurTestSuite with RouteTester with ApiRootRoute
-{
+final class ApiRootRouteTest extends OurTestSuite with RouteTester with ApiRootRoute:
   protected val controllerId = ControllerId("TEST-CONTROLLER")
   protected def whenShuttingDown = Future.never
   protected implicit def scheduler: Scheduler = Scheduler.traced
@@ -40,12 +39,11 @@ final class ApiRootRouteTest extends OurTestSuite with RouteTester with ApiRootR
   protected def totalRunningSince = now - 1.hour
 
   private def route: Route =
-    pathSegment("api") {
+    pathSegment("api"):
       apiRootRoute
-    }
 
-  "/api" in {
-    Get("/api") ~> Accept(`application/json`) ~> route ~> check {
+  "/api" in:
+    Get("/api") ~> Accept(`application/json`) ~> route ~> check:
       val overview = responseAs[ControllerOverview]
       assert(overview.id == controllerId)
       assert(overview.version == BuildInfo.prettyVersion)
@@ -55,6 +53,3 @@ final class ApiRootRouteTest extends OurTestSuite with RouteTester with ApiRootR
       assert(overview.startedAt == StartUp.startedAt)
       assert(overview.totalRunningTime >= 1.hour && overview.totalRunningTime <= 1.hour + 1.minute)
       assert(overview.orderCount == Some(0))
-    }
-  }
-}

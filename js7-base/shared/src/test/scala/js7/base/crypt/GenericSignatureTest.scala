@@ -7,9 +7,8 @@ import js7.tester.CirceJsonTester.testJson
 /**
   * @author Joacim Zschimmer
   */
-final class GenericSignatureTest extends OurTestSuite
-{
-  "JSON" in {
+final class GenericSignatureTest extends OurTestSuite:
+  "JSON" in:
     testJson(GenericSignature("SIGNATURE-TYPE", "SIGNATURE"), json"""
       {
         "TYPE": "SIGNATURE-TYPE",
@@ -26,5 +25,3 @@ final class GenericSignatureTest extends OurTestSuite
         "signerId": "SIGNER",
         "signerCertificate": "SIGNER CERTIFICATE"
       }""")
-  }
-}

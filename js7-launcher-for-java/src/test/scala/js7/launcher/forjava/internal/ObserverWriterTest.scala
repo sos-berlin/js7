@@ -6,9 +6,8 @@ import js7.base.time.ScalaTime.*
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.subjects.PublishSubject
 
-final class ObserverWriterTest extends OurTestSuite
-{
-  "ObserverWriter" in {
+final class ObserverWriterTest extends OurTestSuite:
+  "ObserverWriter" in:
     val subject = PublishSubject[String]()
     val result = subject.toListL.runToFuture
     val w = new ObserverWriter(subject)
@@ -17,5 +16,3 @@ final class ObserverWriterTest extends OurTestSuite
     w.write("ZWEI")
     w.close()
     assert(result.await(99.s) == List("EINS", "-", "ZWEI") )
-  }
-}

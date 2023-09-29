@@ -14,8 +14,7 @@ import js7.data.workflow.{Workflow, WorkflowId}
 import scala.collection.MapView
 
 trait SubagentDirectorState[S <: SubagentDirectorState[S]]
-extends JournaledState[S]
-{
+extends JournaledState[S]:
   this: S =>
 
   def idToOrder: Map[OrderId, Order[Order.State]]
@@ -31,4 +30,3 @@ extends JournaledState[S]
       workflow <- idToWorkflow.checked(workflowPosition.workflowId)
       jobKey <- workflow.positionToJobKey(workflowPosition.position)
     yield jobKey
-}

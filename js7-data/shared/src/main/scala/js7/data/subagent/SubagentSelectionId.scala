@@ -9,20 +9,17 @@ import js7.data.item.{InventoryItemPath, UnsignedSimpleItemPath}
 final case class SubagentSelectionId(string: String)
 extends UnsignedSimpleItemPath
 with DelegateId
-with InventoryItemPath.AttachableToAgent
-{
+with InventoryItemPath.AttachableToAgent:
   def companion = SubagentSelectionId
 
   def toUserId = UserId(string)
 
   // A SubagentId may be used as a SubagentSelectionId
   def toSubagentId = SubagentId(string)
-}
 
 object SubagentSelectionId
 extends DelegateId.Companion[SubagentSelectionId]
-with UnsignedSimpleItemPath.Companion[SubagentSelectionId]
-{
+with UnsignedSimpleItemPath.Companion[SubagentSelectionId]:
   def fromSubagentId(subagentId: SubagentId): SubagentSelectionId =
     SubagentSelectionId(subagentId.string)
 
@@ -37,4 +34,3 @@ with UnsignedSimpleItemPath.Companion[SubagentSelectionId]
   @javaApi
   def of(string: String): SubagentSelectionId =
     checked(string).orThrow
-}

@@ -30,13 +30,13 @@ import scala.jdk.CollectionConverters.*
   *
   * @author Joacim Zschimmer
   */
-final class ProcessKillScriptTest extends OurTestSuite {
+final class ProcessKillScriptTest extends OurTestSuite:
 
-  "Kill script kills descendants" in {
-    if isMac then {
+  "Kill script kills descendants" in:
+    if isMac then
       info("Disabled on MacOS because it kills our builder process")
       pending
-    } else {
+    else
       val out = createTempFile("test-", ".log")
       val (scriptFile, process) = startNestedProcess(TestTaskId, out)
       sleep(2.s)
@@ -47,11 +47,10 @@ final class ProcessKillScriptTest extends OurTestSuite {
       sleep(1.s) // Time to let kill take effect
       val beforeKill = out.contentString
       logger.info(s"\n" + beforeKill)
-      if isUnix then {
+      if isUnix then
         assert(beforeKill contains "TEST-1=")
         assert(beforeKill contains "TEST-2=")
         assert(beforeKill contains "TEST-3=")
-      }
       sleep(2.s)
       logger.info("All processes should be killed now")
       logProcessTree()
@@ -59,10 +58,8 @@ final class ProcessKillScriptTest extends OurTestSuite {
       assert(grown == "", "Stdout file must not grow after kill script execution")
       delete(scriptFile)
       delete(out)
-    }
-  }
 
-  private def startNestedProcess(taskId: TaskId, out: Path): (Path, Process) = {
+  private def startNestedProcess(taskId: TaskId, out: Path): (Path, Process) =
     val file = Processes.newTemporaryShellFile("test")
     file := Script
     val args = List(file.toString, s"--agent-task-id=${taskId.string}")
@@ -70,9 +67,8 @@ final class ProcessKillScriptTest extends OurTestSuite {
       .startRobustly().await(99.s)
     logger.info(s"Started process ${processToPidOption(process)}")
     (file, process)
-  }
 
-  private def runKillScript(taskId: TaskId, pidOption: Option[Pid]): Unit = {
+  private def runKillScript(taskId: TaskId, pidOption: Option[Pid]): Unit =
     autoClosing(new ProcessKillScriptProvider) { provider =>
       val tmp = createTempDirectory("test-")
       val killScript = provider.provideTo(temporaryDirectory)
@@ -83,10 +79,8 @@ final class ProcessKillScriptTest extends OurTestSuite {
       assert(killProcess.exitValue == 0)
       deleteDirectoryRecursively(tmp)
     }
-  }
-}
 
-private object ProcessKillScriptTest {
+private object ProcessKillScriptTest:
   private val logger = Logger[this.type]
   private val TestTaskId = TaskId("1-TEST")
   private def Script =
@@ -95,13 +89,11 @@ private object ProcessKillScriptTest {
     .asUTF8String
   private val SIGKILLexitValue = if isWindows then 1 else if isSolaris then SIGKILL.number else 128 + SIGKILL.number
 
-  private def logProcessTree(): Unit = {
-    if isUnix && !isMac then {
+  private def logProcessTree(): Unit =
+    if isUnix && !isMac then
       val ps = new ProcessBuilder("ps", "fux").startRobustly().await(99.s)
       startLogStreams(ps, "ps (for information only, please ignore errors)") await 15.s
       ps.waitFor()
-    }
-  }
 
   private def startLogStreams(process: Process, prefix: String): Future[Any] =
     Future.sequence(List(
@@ -114,4 +106,3 @@ private object ProcessKillScriptTest {
 
   private def readLines(in: InputStream, prefix: String): Iterator[String] =
     for line <- scala.io.Source.fromInputStream(in).getLines() yield s"$prefix: $line"
-}

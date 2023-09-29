@@ -6,10 +6,9 @@ import akka.actor.SupervisorStrategy.Escalate
 /**
   * @author Joacim Zschimmer
   */
-object SupervisorStrategies {
+object SupervisorStrategies:
 
   def escalate: SupervisorStrategy =
     new LoggingOneForOneStrategy()({
       case _: Throwable => Escalate
     })
-}

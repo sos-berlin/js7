@@ -5,7 +5,5 @@ import io.circe.generic.semiauto.deriveCodec
 
 final case class KeyLogin(credentialKey: String, withUserProfile: Boolean)
 
-object KeyLogin
-{
+object KeyLogin:
   implicit val jsonCodec: Codec.AsObject[KeyLogin] = deriveCodec[KeyLogin]
-}

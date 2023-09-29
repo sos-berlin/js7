@@ -24,16 +24,14 @@ private[state] final class StateJournalingActor[S <: JournaledState[S], E <: Eve
   persistPromise: Promise[PersistFunction[S, E]],
   persistLaterPromise: Promise[PersistLaterFunction[E]])
   (implicit S: Tag[S], protected val scheduler: Scheduler)
-extends MainJournalingActor[S, E]
-{
+extends MainJournalingActor[S, E]:
   override def supervisorStrategy = SupervisorStrategies.escalate
 
-  override def preStart() = {
+  override def preStart() =
     super.preStart()
     persistPromise.success((stateToEvent, options, correlId) =>
       persistStateToEvents(stateToEvent, options, correlId))
     persistLaterPromise.success(persistLater)
-  }
 
   private def persistStateToEvents(
     stateToEvents: StateToEvents[S, E],
@@ -49,16 +47,16 @@ extends MainJournalingActor[S, E]
       self ! PersistLater(keyedEvents, options, promise)
     }
 
-  def receive = {
+  def receive =
     case Persist(stateToEvents, options, correlId, promise) =>
-      correlId.bind[Unit] {
+      correlId.bind[Unit]:
         val state = currentState()
         Try(
           for
             keyedEvent <- stateToEvents(state)
             _ <- state.applyEvents(keyedEvent)
           yield keyedEvent
-        ) match {
+        ) match
           case Failure(t) => promise.failure(t)
           case Success(Left(problem)) => promise.success(Left(problem))
           case Success(Right(keyedEvents)) =>
@@ -66,15 +64,12 @@ extends MainJournalingActor[S, E]
               persistKeyedEvents(toTimestamped(keyedEvents), options, async = true) { (stampedKeyedEvents, journaledState) =>
                 Right(stampedKeyedEvents -> journaledState)
               })
-        }
-      }
 
     case PersistLater(keyedEvents, options, promise) =>
       promise.completeWith(
         persistKeyedEventAcceptEarlyTask(keyedEvents, options = options)
           .rightAs(())
           .runToFuture)
-  }
 
   override lazy val toString = s"StateJournalingActor[${S.tag.toString.replaceAll("""^.*\.""", "")}]"
 
@@ -88,10 +83,8 @@ extends MainJournalingActor[S, E]
     keyedEvents: Seq[KeyedEvent[E]],
     options: CommitOptions,
     promise: Promise[Checked[Unit]])
-}
 
-private[state] object StateJournalingActor
-{
+private[state] object StateJournalingActor:
   type StateToEvents[S <: JournaledState[S], E <: Event] = S =>
     Checked[Seq[KeyedEvent[E]]]
 
@@ -110,11 +103,9 @@ private[state] object StateJournalingActor
     persistLaterPromise: Promise[PersistLaterFunction[E]])
     (implicit S: Tag[S], s: Scheduler)
   =
-    Props {
+    Props:
       new StateJournalingActor(currentState, journalActor, journalConf,
       persistPromise, persistLaterPromise)
-    }
 
   //private final class IllegalStateChangeWhilePersistingException(stamped: Stamped[KeyedEvent[?]], problem: Problem)
   //extends RuntimeException(s"Application of event failed after persisted: $stamped: $problem")
-}

@@ -10,8 +10,7 @@ import js7.data.value.expression.Expression
 import js7.data.value.expression.Expression.{ListExpr, MkString, StringConstant, StringExpr}
 import js7.data.value.expression.ExpressionParser.dollarNamedValue
 
-object CommandLineParser
-{
+object CommandLineParser:
   def parse(source: String): Checked[CommandLineExpression] =
     Parsers.checkedParse(
       source,
@@ -69,4 +68,3 @@ object CommandLineParser
 
   private def isWhite(c: Char) =
     c.toInt >= 0 && c <= ' '
-}

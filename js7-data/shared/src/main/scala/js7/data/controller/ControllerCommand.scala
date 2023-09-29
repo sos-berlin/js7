@@ -32,57 +32,45 @@ import scala.concurrent.duration.FiniteDuration
 /**
   * @author Joacim Zschimmer
   */
-sealed trait ControllerCommand extends CommonCommand
-{
+sealed trait ControllerCommand extends CommonCommand:
   type Response <: ControllerCommand.Response
-}
 
-object ControllerCommand extends CommonCommand.Companion
-{
+object ControllerCommand extends CommonCommand.Companion:
   protected type Command = ControllerCommand
 
   final case class Batch(commands: Seq[CorrelIdWrapped[ControllerCommand]])
-  extends ControllerCommand with CommonBatch with Big {
+  extends ControllerCommand with CommonBatch with Big:
     type Response = Batch.Response
-  }
-  object Batch {
+  object Batch:
     final case class Response(responses: Seq[Checked[ControllerCommand.Response]])
-    extends ControllerCommand.Response with CommonBatch.Response with Big {
+    extends ControllerCommand.Response with CommonBatch.Response with Big:
       override def productPrefix = "BatchResponse"
-    }
-  }
 
-  final case class AddOrder(order: FreshOrder) extends ControllerCommand {
+  final case class AddOrder(order: FreshOrder) extends ControllerCommand:
     type Response = AddOrder.Response
     override def toShortString = s"AddOrder(${order.id}, ${order.workflowPath})"
-  }
-  object AddOrder {
+  object AddOrder:
     final case class Response(ignoredBecauseDuplicate: Boolean)
     extends ControllerCommand.Response
-  }
 
-  final case class AddOrders(orders: Seq[FreshOrder]) extends ControllerCommand {
+  final case class AddOrders(orders: Seq[FreshOrder]) extends ControllerCommand:
     type Response = AddOrders.Response
     override def toShortString = s"AddOrders(${orders.size} orders, ${orders.take(1).map(o => o.toString.truncateWithEllipsis(200) + ", ").mkString} ...)"
-  }
-  object AddOrders {
+  object AddOrders:
     // AddOrderResponse is unnested to be accessible for Java code
     type Response = AddOrdersResponse
     val Response = AddOrdersResponse
-  }
   final case class AddOrdersResponse(eventId: EventId) extends ControllerCommand.Response
-  object AddOrdersResponse {
+  object AddOrdersResponse:
     implicit val jsonCodec: Codec.AsObject[AddOrdersResponse] = deriveCodec
-  }
 
   final case class CancelOrders(
     orderIds: immutable.Iterable[OrderId],
     mode: CancellationMode = CancellationMode.FreshOrStarted())
-  extends ControllerCommand with Big {
+  extends ControllerCommand with Big:
     type Response = Response.Accepted
     override def toShortString = s"CancelOrders(${orderIds.size} orders, ${orderIds.take(3).map(o => o.toString + ", ").mkString} ...)"
-  }
-  object CancelOrders {
+  object CancelOrders:
     implicit val jsonEncoder: Encoder.AsObject[CancelOrders] = o =>
       JsonObject.fromIterable(
         ("orderIds" -> o.orderIds.asJson) ::
@@ -93,50 +81,42 @@ object ControllerCommand extends CommonCommand.Companion
         orderIds <- c.get[Vector[OrderId]]("orderIds")
         mode <- c.getOrElse[CancellationMode]("mode")(CancellationMode.Default)
       yield CancelOrders(orderIds, mode)
-  }
 
   final case class PostNotice(
     boardPath: BoardPath,
     noticeId: NoticeId,
     endOfLife: Option[Timestamp] = None)
-  extends ControllerCommand {
+  extends ControllerCommand:
     type Response = Response.Accepted
     override def toShortString = s"PostNotice($boardPath, $noticeId})"
-  }
 
   final case class DeleteNotice(boardPath: BoardPath, noticeId: NoticeId)
-  extends ControllerCommand {
+  extends ControllerCommand:
     type Response = Response.Accepted
     override def toShortString = s"DeleteNotice($boardPath, $noticeId)"
-  }
 
   final case class DeleteOrdersWhenTerminated(orderIds: immutable.Iterable[OrderId])
-  extends ControllerCommand with Big {
+  extends ControllerCommand with Big:
     type Response = Response.Accepted
     override def toShortString = s"DeleteOrdersWhenTerminated(${orderIds.size} orders, ${orderIds.take(3).map(o => o.toString + ", ").mkString} ...)"
-  }
 
   final case class AnswerOrderPrompt(orderId: OrderId)
-  extends ControllerCommand {
+  extends ControllerCommand:
     type response = Response.Accepted
-  }
 
   final case class NoOperation(duration: Option[FiniteDuration] = None)
-  extends ControllerCommand {
+  extends ControllerCommand:
     type Response = Response.Accepted
-  }
 
   type EmitTestEvent = EmitTestEvent.type
   /** For tests only. */
-  case object EmitTestEvent extends ControllerCommand {
+  case object EmitTestEvent extends ControllerCommand:
     type Response = Response.Accepted
-  }
 
   /** Controller stops immediately with exit(). */
-  final case class EmergencyStop(restart: Boolean = false) extends ControllerCommand {
+  final case class EmergencyStop(restart: Boolean = false) extends ControllerCommand:
     type Response = Response.Accepted
-  }
-  object EmergencyStop {
+  object EmergencyStop:
     implicit val jsonEncoder: Encoder.AsObject[EmergencyStop] = o =>
       JsonObject.fromIterable(
         o.restart.thenList("restart" -> Json.True))
@@ -145,15 +125,13 @@ object ControllerCommand extends CommonCommand.Companion
       for
         restart <- c.getOrElse[Boolean]("restart")(false)
       yield EmergencyStop(restart)
-  }
 
   /** Some outer component no longer needs the events until (including) the given `untilEventId`.
     * JS7 may delete these events to reduce the journal,
     * keeping all events after `untilEventId`.
     */
-  final case class ReleaseEvents(untilEventId: EventId) extends ControllerCommand {
+  final case class ReleaseEvents(untilEventId: EventId) extends ControllerCommand:
     type Response = Response.Accepted
-  }
 
   /** Shut down the Controller properly. */
   final case class ShutDown(
@@ -161,18 +139,16 @@ object ControllerCommand extends CommonCommand.Companion
     clusterAction: Option[ShutDown.ClusterAction] = None,
     suppressSnapshot: Boolean = false,
     /*for test only*/dontNotifyActiveNode: Boolean = false)
-  extends ControllerCommand {
+  extends ControllerCommand:
     type Response = Response.Accepted
-  }
-  object ShutDown {
+  object ShutDown:
     sealed trait ClusterAction
-    object ClusterAction {
+    object ClusterAction:
       case object Switchover extends ClusterAction
       case object Failover extends ClusterAction
       implicit val jsonCodec: TypedJsonCodec[ClusterAction] = TypedJsonCodec[ClusterAction](
         Subtype(Switchover),
         Subtype(Failover))
-    }
 
     implicit val jsonEncoder: Encoder.AsObject[ShutDown] = o =>
       JsonObject(
@@ -188,92 +164,79 @@ object ControllerCommand extends CommonCommand.Companion
         suppressSnapshot <- c.getOrElse[Boolean]("suppressSnapshot")(false)
         dontNotifyActiveNode <- c.getOrElse[Boolean]("dontNotifyActiveNode")(false)
       yield ShutDown(restart, clusterAction, suppressSnapshot, dontNotifyActiveNode)
-  }
 
   final case class ResumeOrder(
     orderId: OrderId,
     position: Option[Position] = None,
     historyOperations: Seq[OrderResumed.HistoryOperation] = Nil,
     asSucceeded: Boolean = false)
-  extends ControllerCommand with Big {
+  extends ControllerCommand with Big:
     type Response = Response.Accepted
-  }
 
   final case class ResumeOrders(orderIds: immutable.Iterable[OrderId], asSucceeded: Boolean = false)
-  extends ControllerCommand with Big {
+  extends ControllerCommand with Big:
     type Response = Response.Accepted
-  }
 
   final case class SuspendOrders(
     orderIds: immutable.Iterable[OrderId],
     mode: SuspensionMode = SuspensionMode.standard)
-  extends ControllerCommand with Big {
+  extends ControllerCommand with Big:
     type Response = Response.Accepted
-  }
 
   final case class TransferOrders(
     workflowId: WorkflowId
     /*orderIds: Option[immutable.Iterable[OrderId]],
     position: Option[Position] = None*/)
-  extends ControllerCommand {
+  extends ControllerCommand:
     type Response = Response.Accepted
-  }
 
   /** Command to control all Workflows (all versions) of a WorkflowPath. */
   final case class ControlWorkflowPath(
     workflowPath: WorkflowPath,
     suspend: Option[Boolean] = None,
     skip: Map[Label, Boolean] = Map.empty)
-  extends ControllerCommand {
+  extends ControllerCommand:
     type Response = Response.Accepted
-  }
 
   /** Command to control a Workflow (a specific version). */
   final case class ControlWorkflow(
     workflowId: WorkflowId,
     addBreakpoints: Set[Position] = Set.empty,
     removeBreakpoints: Set[Position] = Set.empty)
-  extends ControllerCommand {
+  extends ControllerCommand:
     type Response = Response.Accepted
-  }
 
-  case object TakeSnapshot extends ControllerCommand {
+  case object TakeSnapshot extends ControllerCommand:
     type Response = Response.Accepted
-  }
 
   final case class ClusterAppointNodes(
     idToUri: Map[NodeId, Uri],
     activeId: NodeId)
-  extends ControllerCommand {
+  extends ControllerCommand:
     type Response = Response.Accepted
-  }
 
   final case class ClusterSwitchOver(agentPath: Option[AgentPath] = None)
-  extends ControllerCommand {
+  extends ControllerCommand:
     type Response = Response.Accepted
-  }
 
   final case class ConfirmClusterNodeLoss(
     agentPath: AgentPath,
     lostNodeId: NodeId,
     confirmer: String)
-  extends ControllerCommand {
+  extends ControllerCommand:
     type Response = Response.Accepted
-  }
 
   final case class ResetAgent(agentPath: AgentPath, force: Boolean = false)
-  extends ControllerCommand {
+  extends ControllerCommand:
     type Response = Response.Accepted
-  }
 
   final case class ResetSubagent(subagentId: SubagentId, force: Boolean = false)
-  extends ControllerCommand {
+  extends ControllerCommand:
     type Response = Response.Accepted
-  }
 
   sealed trait Response
 
-  object Response {
+  object Response:
     type Accepted = Accepted.type
     case object Accepted extends Response
 
@@ -282,7 +245,6 @@ object ControllerCommand extends CommonCommand.Companion
       Subtype.named(deriveCodec[AddOrder.Response], "AddOrder.Response"),
       Subtype.named1[AddOrders.Response]("AddOrders.Response"),
       Subtype.named(deriveCodec[Batch.Response], "BatchResponse"))
-  }
 
   implicit val jsonCodec: TypedJsonCodec[ControllerCommand] = TypedJsonCodec[ControllerCommand](
     Subtype(deriveConfiguredCodec[Batch]),
@@ -314,4 +276,3 @@ object ControllerCommand extends CommonCommand.Companion
   intelliJuseImport((FiniteDurationJsonEncoder, FiniteDurationJsonDecoder,
     checkedJsonEncoder[Int], checkedJsonDecoder[Int],
     versionedItemPathJsonCodec))
-}

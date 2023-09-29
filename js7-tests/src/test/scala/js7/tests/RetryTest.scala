@@ -26,23 +26,20 @@ import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.*
 import scala.reflect.ClassTag
 
-final class RetryTest extends OurTestSuite with ControllerAgentForScalaTest
-{
+final class RetryTest extends OurTestSuite with ControllerAgentForScalaTest:
   override protected val controllerConfig = config"js7.journal.simulate-sync = 10ms"  // Avoid excessive syncs in case of test failure
   override protected val agentConfig = config"js7.journal.simulate-sync = 10ms"  // Avoid excessive syncs in case of test failure
   protected val agentPaths = TestAgentPath :: Nil
   protected val items = Nil
 
-  override def beforeAll() = {
-    for a <- directoryProvider.agentEnvs do {
+  override def beforeAll() =
+    for a <- directoryProvider.agentEnvs do
       a.writeExecutable(RelativePathExecutable(s"OKAY$sh"), ":")
       a.writeExecutable(RelativePathExecutable(s"FAIL-1$sh"), if isWindows then "@exit 1" else "exit 1")
       a.writeExecutable(RelativePathExecutable(s"FAIL-2$sh"), if isWindows then "@exit 2" else "exit 2")
-    }
     super.beforeAll()
-  }
 
-  "Nested try catch" in {
+  "Nested try catch" in:
     val workflowNotation = s"""
        |define workflow {
        |  try execute executable="FAIL-1$sh", agent="AGENT";   // :0/try:0
@@ -81,9 +78,8 @@ final class RetryTest extends OurTestSuite with ControllerAgentForScalaTest
     val afterEventId = eventWatch.lastAddedEventId
     controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
     awaitAndCheckEventSeq[OrderFinished](afterEventId, orderId, expectedEvents)
-  }
 
-  "Nested try catch with outer non-failing catch" in {
+  "Nested try catch with outer non-failing catch" in:
     val workflowNotation = s"""
        |define workflow {
        |  try {                                                   // :0
@@ -176,11 +172,10 @@ final class RetryTest extends OurTestSuite with ControllerAgentForScalaTest
     val afterEventId = eventWatch.lastAddedEventId
     controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
     awaitAndCheckEventSeq[OrderFinished](afterEventId, orderId, expectedEvents)
-  }
 
   // For test of retryDelays see RetryDelayTest
 
-  "maxTries=3, special handling of 'catch retry'" in {
+  "maxTries=3, special handling of 'catch retry'" in:
     val workflowNotation = s"""
        |define workflow {
        |  try (maxTries=3) fail;
@@ -210,9 +205,8 @@ final class RetryTest extends OurTestSuite with ControllerAgentForScalaTest
     val afterEventId = eventWatch.lastAddedEventId
     controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
     awaitAndCheckEventSeq[OrderFailed](afterEventId, orderId, expectedEvents)
-  }
 
-  "maxTries=3, standard handling, stopping at retry instruction" in {
+  "maxTries=3, standard handling, stopping at retry instruction" in:
     val workflowNotation = s"""
        |define workflow {
        |  try (maxTries=3) fail;
@@ -245,25 +239,18 @@ final class RetryTest extends OurTestSuite with ControllerAgentForScalaTest
     val afterEventId = eventWatch.lastAddedEventId
     controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
     awaitAndCheckEventSeq[OrderFailed](afterEventId, orderId, expectedEvents)
-  }
 
   private def awaitAndCheckEventSeq[E <: OrderEvent: ClassTag: Tag](after: EventId, orderId: OrderId, expected: Vector[OrderEvent]): Unit =
-  {
     eventWatch.await[E](_.key == orderId, after = after)
     sleep(50.millis)  // No more events should arrive
-    eventWatch.when[OrderEvent](EventRequest.singleClass(after = after)) await 99.seconds match {
+    eventWatch.when[OrderEvent](EventRequest.singleClass(after = after)) await 99.seconds match
       case EventSeq.NonEmpty(stampeds) =>
         val events = stampeds.filter(_.value.key == orderId).map(_.value.event).toVector
         assert(events == expected)
       case o =>
         fail(s"Unexpected EventSeq received: $o")
-    }
-  }
-}
 
-object RetryTest
-{
+object RetryTest:
   private val TestAgentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(TestAgentPath)
   private val logger = Logger[this.type]
-}

@@ -18,8 +18,7 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.duration.Deadline
 
-object ControllerWebServer
-{
+object ControllerWebServer:
   def resource(
     orderApi: OrderApi,
     commandExecutor: ControllerCommandExecutor,
@@ -63,4 +62,3 @@ object ControllerWebServer
 
         override def toString = "Controller web services"
       })
-}

@@ -23,8 +23,7 @@ final case class SubagentItemState(
   eventId: EventId,
   problem: Option[Problem] = None,
   platformInfo: Option[PlatformInfo])
-extends UnsignedSimpleItemState
-{
+extends UnsignedSimpleItemState:
   protected type Self = SubagentItemState
   val companion: SubagentItemState.type = SubagentItemState
 
@@ -41,7 +40,7 @@ extends UnsignedSimpleItemState
   def pathRev = item.pathRev
 
   def applyEvent(event: SubagentItemStateEvent): Checked[SubagentItemState] =
-    event match {
+    event match
       case SubagentEventsObserved(untilEventId) =>
         Right(copy(
           eventId = untilEventId))
@@ -51,13 +50,13 @@ extends UnsignedSimpleItemState
           problem = Some(problem)))
 
       case SubagentDedicated(runId, platformInfo) =>
-        if subagentRunId.exists(_ != runId) then {
+        if subagentRunId.exists(_ != runId) then
           val problem = Problem.pure(
             s"$subagentId has already been dedicated with a different SubagentRunId")
           logger.warn(
             s" $problem · ${item.id} <-: SubagentDedicated($runId) but subagentRunId=$subagentRunId")
           Left(problem)
-        } else
+        else
           Right(copy(
             couplingState = Coupled,
             subagentRunId = Some(runId),
@@ -101,11 +100,8 @@ extends UnsignedSimpleItemState
           subagentRunId = None,
           eventId = EventId.BeforeFirst,
           problem = None))
-    }
-}
 
-object SubagentItemState extends UnsignedSimpleItemState.Companion[SubagentItemState]
-{
+object SubagentItemState extends UnsignedSimpleItemState.Companion[SubagentItemState]:
   type Key = SubagentId
   type Item = SubagentItem
   override type ItemState = SubagentItemState
@@ -144,4 +140,3 @@ object SubagentItemState extends UnsignedSimpleItemState.Companion[SubagentItemS
       "eventId" -> o.eventId.asJson,
       "problem" -> o.problem.asJson,
       "platformInfo" -> o.platformInfo.asJson)
-}

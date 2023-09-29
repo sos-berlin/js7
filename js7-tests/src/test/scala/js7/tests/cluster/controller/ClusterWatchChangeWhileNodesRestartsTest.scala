@@ -13,14 +13,13 @@ import js7.tests.cluster.controller.ControllerClusterTester.TestWorkflow
 import monix.execution.Scheduler.Implicits.traced
 
 // Both cluster nodes restart after hard stop while ClusterWatch changes
-final class ClusterWatchChangeWhileNodesRestartsTest extends ControllerClusterTester
-{
+final class ClusterWatchChangeWhileNodesRestartsTest extends ControllerClusterTester:
   override protected def primaryControllerConfig =
     // Short timeout because something blocks web server shutdown occasionally
     config"""js7.web.server.shutdown-timeout = 0.5s"""
       .withFallback(super.primaryControllerConfig)
 
-  "Start ClusterWatch first" in {
+  "Start ClusterWatch first" in:
     withControllerAndBackup(suppressClusterWatch = true) { (primary, _, backup, _, _) =>
       var eventId = 0L
       backup.runController(dontWaitUntilReady = true) { _ =>
@@ -47,9 +46,6 @@ final class ClusterWatchChangeWhileNodesRestartsTest extends ControllerClusterTe
         }
       }
     }
-  }
-}
 
-object ClusterWatchChangeWhileNodesRestartsTest {
+object ClusterWatchChangeWhileNodesRestartsTest:
   private val logger = Logger[this.type]
-}

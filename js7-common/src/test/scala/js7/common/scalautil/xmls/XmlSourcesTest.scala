@@ -14,21 +14,18 @@ import org.scalatest.matchers.should.Matchers.*
 /**
  * @author Joacim Zschimmer
  */
-final class XmlSourcesTest extends OurTestSuite {
+final class XmlSourcesTest extends OurTestSuite:
 
-  "stringToSource" in {
+  "stringToSource" in:
     check("<A B='1'/>")
-  }
 
-  "inputStreamToSource" in {
+  "inputStreamToSource" in:
     check(new ByteArrayInputStream("<A B='1'/>".getBytes(UTF_8)))
-  }
 
-  "xmlElemToSource" in {
+  "xmlElemToSource" in:
     check("""<A B='1'/>""")
-  }
 
-  private def check(source: Source): Unit = {
+  private def check(source: Source): Unit =
     val r = XMLInputFactory.newInstance().createXMLEventReader(source)
     r.nextEvent().asInstanceOf[StartDocument]
     val e = r.nextEvent().asStartElement
@@ -37,5 +34,3 @@ final class XmlSourcesTest extends OurTestSuite {
     r.nextEvent().asEndElement
     r.nextEvent().asInstanceOf[EndDocument]
     intercept[NoSuchElementException] { r.nextEvent() }
-  }
-}

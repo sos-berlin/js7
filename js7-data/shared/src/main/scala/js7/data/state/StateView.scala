@@ -26,8 +26,7 @@ import scala.collection.MapView
 import scala.reflect.ClassTag
 
 /** Common interface for ControllerState and AgentState (but not SubagentState). */
-trait StateView extends ItemContainer
-{
+trait StateView extends ItemContainer:
   def isAgent: Boolean
 
   def maybeAgentPath: Option[AgentPath] = None
@@ -73,10 +72,9 @@ trait StateView extends ItemContainer
 
   def availableNotices(expectedSeq: Iterable[OrderNoticesExpected.Expected]): Set[BoardPath] =
     expectedSeq
-      .collect {
+      .collect:
         case x if keyTo(BoardState).get(x.boardPath).exists(_ containsNotice x.noticeId) =>
           x.boardPath
-      }
       .toSet
 
   // COMPATIBLE with v2.3
@@ -126,10 +124,9 @@ trait StateView extends ItemContainer
     for
       order <- idToOrder.checked(orderId)
       instr <- instruction_[BoardInstruction](order.workflowPosition)
-      boardPath <- instr.referencedBoardPaths.toVector match {
+      boardPath <- instr.referencedBoardPaths.toVector match
         case Vector(o) => Right(o)
         case _ => Left(Problem.pure("Legacy orderIdToBoardState, but instruction has multiple BoardPaths"))
-      }
       boardState <- keyTo(BoardState).checked(boardPath)
     yield boardState
 
@@ -152,14 +149,13 @@ trait StateView extends ItemContainer
       labeled <- workflow.labeledInstruction(workflowPosition.position)
     yield labeled.maybeLabel
 
-  def childOrderEnded(order: Order[Order.State], parent: Order[Order.Forked]): Boolean = {
+  def childOrderEnded(order: Order[Order.State], parent: Order[Order.Forked]): Boolean =
     lazy val endReached = order.state == Order.Ready &&
       order.position.parent.contains(parent.position) &&
       instruction(order.workflowPosition).isInstanceOf[End]
     (order.isAttached || order.isDetached) &&
       order.attachedState == parent.attachedState &&
       (order.state.eq(FailedInFork) || endReached)
-  }
 
   final def isSuspendedOrStopped(order: Order[Order.State]): Boolean =
     order.isSuspendedOrStopped || isWorkflowSuspended(order.workflowPath)
@@ -176,12 +172,11 @@ trait StateView extends ItemContainer
 
   /** An impure (unstable, non-repeatable) Scope. */
   final def toImpureOrderExecutingScope(order: Order[Order.State], now: Timestamp): Checked[Scope] =
-    for orderScopes <- toOrderScopes(order) yield {
+    for orderScopes <- toOrderScopes(order) yield
       val nowScope = NowScope(now)
       orderScopes.pureOrderScope |+| nowScope |+|
         JobResourceScope(keyTo(JobResource),
           useScope = orderScopes.variablelessOrderScope |+| nowScope)
-    }
 
   final def toOrderScopes(order: Order[Order.State]): Checked[OrderScopes] =
     for w <- idToWorkflow.checked(order.workflowId) yield
@@ -200,4 +195,3 @@ trait StateView extends ItemContainer
       .traverse(lockPath => keyTo(LockState)
         .checked(lockPath)
         .flatMap(op))
-}

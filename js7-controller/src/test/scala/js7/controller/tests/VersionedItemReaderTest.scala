@@ -17,11 +17,10 @@ import org.scalatest.BeforeAndAfterAll
 /**
   * @author Joacim Zschimmer
   */
-final class VersionedItemReaderTest extends OurTestSuite with BeforeAndAfterAll
-{
+final class VersionedItemReaderTest extends OurTestSuite with BeforeAndAfterAll:
   private lazy val directory = createTempDirectory("test-")
 
-  override def beforeAll() = {
+  override def beforeAll() =
     super.beforeAll()
     createDirectory(directory / "folder")
     createDirectories(directory / "ignored.agent.xml")  // Empty directory named like an agent is ignored
@@ -33,16 +32,14 @@ final class VersionedItemReaderTest extends OurTestSuite with BeforeAndAfterAll
     (directory / "A.test.json") := json"""{ "content": "A" }"""
     (directory / "folder" / "B.test.json") := json"""{ "content": "B" }"""
     (directory / "folder" / "test.alien.json") := ""
-  }
 
-  override def afterAll() = {
+  override def afterAll() =
     deleteDirectoryRecursively(directory)
     super.afterAll()
-  }
 
   private lazy val typedSourceReader = new TypedSourceReader(directory, Set(WorkflowReader, TestItemReader))
 
-  "readVersionedItem with syntax errors and an alien file" in {
+  "readVersionedItem with syntax errors and an alien file" in:
       assert(typedSourceReader.readItems(DirectoryReader.files(directory)) ==
         Left(Problem.Combined(Set(
           Problem(
@@ -51,9 +48,8 @@ final class VersionedItemReaderTest extends OurTestSuite with BeforeAndAfterAll
           Problem(s"File '...${separator}folder${separator}test.alien.json'" +
             " is not recognized as a configuration file" +
             " (like *.workflow.json, *.workflow.txt, *.test.json)")))))
-  }
 
-  "Duplicate VersionedItem, Workflows are not checked" in {
+  "Duplicate VersionedItem, Workflows are not checked" in:
     directory / "A.workflow.txt" := "DUPLICATE"
     assert(typedSourceReader.readItems(DirectoryReader.files(directory)) ==
       Left(Problem.Combined(Set(
@@ -61,14 +57,11 @@ final class VersionedItemReaderTest extends OurTestSuite with BeforeAndAfterAll
         Problem(s"File '...${separator}folder${separator}test.alien.json'" +
           " is not recognized as a configuration file" +
           " (like *.workflow.json, *.workflow.txt, *.test.json)")))))
-  }
 
-  "Only valid VersionedItem" in {
+  "Only valid VersionedItem" in:
     delete(directory / "A.workflow.txt")
     delete(directory / "D.workflow.txt")
     delete(directory / "E.workflow.json")
     delete(directory / "folder/test.alien.json")
     assert(typedSourceReader.readItems(DirectoryReader.files(directory)).map(_.toSet)
       == Right(Set(AWorkflow, BWorkflow, CWorkflow, ATestItem, BTestItem)))
-  }
-}

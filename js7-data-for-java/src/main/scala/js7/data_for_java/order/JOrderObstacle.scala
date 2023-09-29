@@ -6,32 +6,28 @@ import js7.data.order.OrderObstacle
 
 sealed trait JOrderObstacle
 
-object JOrderObstacle
-{
+object JOrderObstacle:
   val toScalaClass = Map[Class[? <: JOrderObstacle], Class[? <: OrderObstacle]](
     WaitingForCommand.getClass -> classOf[OrderObstacle.WaitingForTime],
     classOf[WaitingForTime] -> classOf[OrderObstacle.WaitingForTime])
 
   def apply(orderObstacle: OrderObstacle): JOrderObstacle =
-    orderObstacle match {
+    orderObstacle match
       case o: OrderObstacle.WaitingForAdmission => WaitingForAdmission(o)
       case o: OrderObstacle.WaitingForOtherTime => WaitingForOtherTime(o)
       case OrderObstacle.WaitingForCommand => WaitingForCommand
       case OrderObstacle.JobParallelismLimitReached => jobParallelismLimitReached
       case OrderObstacle.WorkflowSuspended => workflowSuspended
-    }
 
   type WaitingForCommand = WaitingForCommand.type
   case object WaitingForCommand
   extends JOrderObstacle
 
-  sealed trait WaitingForTime extends JOrderObstacle
-  {
+  sealed trait WaitingForTime extends JOrderObstacle:
     def asScala: OrderObstacle.WaitingForTime
 
     final def until: Instant =
       asScala.until.toInstant
-  }
 
   final case class WaitingForOtherTime(asScala: OrderObstacle.WaitingForOtherTime)
   extends WaitingForTime
@@ -49,4 +45,3 @@ object JOrderObstacle
 
   final case class WorkflowSuspended(asScala: OrderObstacle.WorkflowSuspended)
   extends JOrderObstacle
-}

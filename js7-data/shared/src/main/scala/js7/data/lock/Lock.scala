@@ -9,8 +9,7 @@ final case class Lock(
   path: LockPath,
   limit: Int = 1,
   itemRevision: Option[ItemRevision] = None)
-extends UnsignedSimpleItem
-{
+extends UnsignedSimpleItem:
   protected type Self = Lock
   val companion: Lock.type = Lock
 
@@ -24,10 +23,8 @@ extends UnsignedSimpleItem
 
   def toInitialItemState: LockState =
     LockState(this)
-}
 
-object Lock extends UnsignedSimpleItem.Companion[Lock]
-{
+object Lock extends UnsignedSimpleItem.Companion[Lock]:
   val cls = classOf[Lock]
 
   type Key = LockPath
@@ -39,4 +36,3 @@ object Lock extends UnsignedSimpleItem.Companion[Lock]
   type ItemState = LockState
 
   val jsonCodec: Codec.AsObject[Lock] = deriveConfiguredCodec[Lock]
-}

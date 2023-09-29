@@ -8,13 +8,12 @@ import monix.execution.schedulers.TestScheduler
 import monix.reactive.Observable
 import scala.util.Success
 
-final class ObservablePauseDetectorTest extends OurTestSuite
-{
+final class ObservablePauseDetectorTest extends OurTestSuite:
   private val pausingObservable = Observable.fromIterable(1 to 5)
     .doOnNext(i =>
       Task.sleep(if i == 3 then 2.s else if i == 4 then 3.s else 100.ms)) // Long pause before the third element
 
-  "detectPauses" in {
+  "detectPauses" in:
     implicit val scheduler = TestScheduler()
     val future = pausingObservable.detectPauses2(1.s).toListL.runToFuture
     scheduler.tick(100.s)
@@ -27,9 +26,8 @@ final class ObservablePauseDetectorTest extends OurTestSuite
       Left(MonixDeadline.fromNanos(3_000_000_000L)),
       Right(4),
       Right(5)))))
-  }
 
-  "detectPauses detects initial pause" in {
+  "detectPauses detects initial pause" in:
     implicit val scheduler = TestScheduler()
     val future = (Observable.fromTask(Task(0).delayExecution(2.s)) ++ pausingObservable)
       .detectPauses2(1001.ms).toListL.runToFuture
@@ -45,9 +43,8 @@ final class ObservablePauseDetectorTest extends OurTestSuite
       Left(MonixDeadline.fromNanos(5_005_000_000L)),
       Right(4),
       Right(5)))))
-  }
 
-  "echoRepeated"  in {
+  "echoRepeated"  in:
     implicit val scheduler = TestScheduler()
     val future = pausingObservable.echoRepeated(800.ms).toListL.runToFuture
     scheduler.tick(100.s)
@@ -57,5 +54,3 @@ final class ObservablePauseDetectorTest extends OurTestSuite
       3, 3, 3, 3,
       4,
       5))))
-  }
-}

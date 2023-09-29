@@ -11,7 +11,7 @@ import scala.util.control.NonFatal
 /**
  * @author Joacim Zschimmer
  */
-final class Stopwatch {
+final class Stopwatch:
   private val start = nanoTime
 
   def result(n: Long, ops: String = "ops"): Result =
@@ -28,27 +28,24 @@ final class Stopwatch {
 
   override def toString =
     duration.pretty
-}
 
-object Stopwatch
-{
+object Stopwatch:
   def measureTimeOfSingleRun(n: Int, ops: String = "ops")(body: => Unit): Result =
     Result(durationOf(body), n, ops)
 
-  def durationOf(body: => Unit): FiniteDuration = {
+  def durationOf(body: => Unit): FiniteDuration =
     val start = nanoTime
     body
     (nanoTime - start).nanoseconds
-  }
 
   def measureTime(n: Int, ops: String = "ops", warmUp: Int = 1)(body: => Unit): Result =
-    try {
+    try
       for _ <- 1 to warmUp do body
       val start = nanoTime
       for _ <- 1 to n do body
       val duration = (nanoTime - start).nanoseconds
       Result(duration, n, ops)
-    } catch { case NonFatal(t) =>
+    catch { case NonFatal(t) =>
       t.addSuppressed(new RuntimeException(s"In measureTime($n, $ops)"))
       throw t
     }
@@ -82,7 +79,7 @@ object Stopwatch
   def perSecondStringOnly(duration: FiniteDuration, n: Long, ops: String = "ops", gap: Boolean = true): String =
     Result(duration, n, ops, gap).toPerSecondsString
 
-  final case class Result(duration: FiniteDuration, n: Long, ops: String = "ops", private val gap: Boolean = true) {
+  final case class Result(duration: FiniteDuration, n: Long, ops: String = "ops", private val gap: Boolean = true):
     def singleDuration = duration / n
     def perSecondString = if duration.toNanos == 0 then "∞" else (n * 1000L*1000*1000 / duration.toNanos).toString
     val gapOps = (gap ?? " ") + ops
@@ -110,9 +107,6 @@ object Stopwatch
         s"0$gapOps"
       else
         s"$perSecondString$gapOps/s"
-  }
-  object Result {
+  object Result:
     implicit def resultToString(result: Result): String =
       result.toString
-  }
-}

@@ -1,5 +1,4 @@
 package js7.base.configutils
 
-trait ToHoconString {
+trait ToHoconString:
   def toHoconString: String
-}

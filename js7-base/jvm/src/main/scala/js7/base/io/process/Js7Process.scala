@@ -3,8 +3,7 @@ package js7.base.io.process
 import java.io.{InputStream, OutputStream}
 import scala.concurrent.duration.FiniteDuration
 
-trait Js7Process
-{
+trait Js7Process:
   def pid: Option[Pid]
 
   def isAlive: Boolean
@@ -24,4 +23,3 @@ trait Js7Process
   def waitFor(): ReturnCode
 
   def waitFor(duration: FiniteDuration): Boolean
-}

@@ -8,9 +8,8 @@ import scala.collection.mutable
 /**
   * @author Joacim Zschimmer
   */
-final class StandardEventBusTest extends OurAsyncTestSuite
-{
-  "subscribe" in {
+final class StandardEventBusTest extends OurAsyncTestSuite:
+  "subscribe" in:
     val events = mutable.Buffer.empty[AnyRef]
     val eventBus = new StandardEventBus[Any]
     eventBus.publish("ignored")
@@ -32,9 +31,8 @@ final class StandardEventBusTest extends OurAsyncTestSuite
     stringSubscription.close()
     aSubscription.close()
     assert(eventBus.isEmpty)
-  }
 
-  "oneShot" in {
+  "oneShot" in:
     type Event = String
     val events = mutable.Buffer.empty[Event]
     val eventBus = new StandardEventBus[Event]
@@ -44,23 +42,17 @@ final class StandardEventBusTest extends OurAsyncTestSuite
     assert(eventBus.isEmpty)
     eventBus.publish("TWO")
     assert(events.toList == List("ONE"))
-  }
 
-  "when" in {
+  "when" in:
     val eventBus = new StandardEventBus[Any]
     val future = eventBus.when[String].runToFuture
     assert(!future.isCompleted)
     assert(!eventBus.isEmpty)
     eventBus.publish("ONE")
     eventBus.publish("ONE")
-    for string <- future yield {
+    for string <- future yield
       assert(string == "ONE")
       assert(eventBus.isEmpty)
-    }
-  }
-}
 
-private object StandardEventBusTest
-{
+private object StandardEventBusTest:
   private case class A(string: String)
-}

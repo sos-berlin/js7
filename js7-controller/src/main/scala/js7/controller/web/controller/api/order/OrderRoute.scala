@@ -42,8 +42,7 @@ import scala.concurrent.duration.Deadline.now
   * @author Joacim Zschimmer
   */
 trait OrderRoute
-extends ControllerRouteProvider with EntitySizeLimitProvider
-{
+extends ControllerRouteProvider with EntitySizeLimitProvider:
   protected def executeCommand(command: ControllerCommand, meta: CommandMeta): Task[Checked[command.Response]]
   protected def orderApi: OrderApi
   protected def actorSystem: ActorSystem
@@ -114,19 +113,17 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
             pathEnd(
               deleteOrdersWhenTerminated(user)))
       } ~
-      get {
+      get:
         pathEnd {
-          parameter("return".?) {
+          parameter("return".?):
             case None =>
               complete(orderApi.ordersOverview.runToFuture)  // TODO Should be streamed
             case _ =>
               complete(Problem.pure("Parameter return is not supported here"))
-          }
         } ~
         matchOrderId { orderId =>
           singleOrder(orderId)
         }
-      }
     }
 
   private def deleteOrdersWhenTerminated(user: SimpleUser): Route =
@@ -155,23 +152,18 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
         case None =>
           Problem.pure(s"Does not exist: $orderId"): ToResponseMarshallable
       }))
-}
 
-object OrderRoute
-{
+object OrderRoute:
   private val emptyJsonObject = Json.obj()
   private val logger = Logger[this.type]
 
-  private val matchOrderId = new Directive[Tuple1[OrderId]] {
+  private val matchOrderId = new Directive[Tuple1[OrderId]]:
     def tapply(inner: Tuple1[OrderId] => Route) =
       path(Segment) { orderIdString =>
         inner(Tuple1(OrderId(orderIdString)))
       } ~
-      extractUnmatchedPath {
+      extractUnmatchedPath:
         case Uri.Path.Slash(tail) if !tail.isEmpty =>
           inner(Tuple1(OrderId(tail.toString)))  // Slashes not escaped
         case _ =>
           complete(NotFound)  // Invalid OrderId syntax
-      }
-  }
-}

@@ -14,8 +14,7 @@ final case class ConsumeNotices(
   boardPaths: BoardPathExpression,
   subworkflow: Workflow,
   sourcePos: Option[SourcePos] = None)
-extends ExpectOrConsumeNoticesInstruction
-{
+extends ExpectOrConsumeNoticesInstruction:
   def withoutSourcePos =
     copy(sourcePos = None)
 
@@ -46,10 +45,7 @@ extends ExpectOrConsumeNoticesInstruction
       Left(Problem.pure(s"'${BranchId.ConsumeNotices}' BranchId expected"))
     else
       Right(subworkflow)
-}
 
-object ConsumeNotices
-{
+object ConsumeNotices:
   implicit val jsonCodec: Codec.AsObject[ConsumeNotices] =
     ConfiguredCodec.derive(useDefaults = true)
-}

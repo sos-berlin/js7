@@ -10,8 +10,7 @@ import js7.data.order.OrderId
 import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.*
 
-final case class JNoticePlace(asScala: NoticePlace)
-{
+final case class JNoticePlace(asScala: NoticePlace):
   @Nonnull
   def noticeId: NoticeId =
     asScala.noticeId
@@ -22,17 +21,13 @@ final case class JNoticePlace(asScala: NoticePlace)
 
   def expectingOrderIds: java.util.Set[OrderId] =
     asScala.expectingOrderIds.asJava
-}
 
-final case class JNotice(asScala: Notice)
-{
+final case class JNotice(asScala: Notice):
   @Nonnull
   def endOfLife: Instant =
     asScala.endOfLife.toInstant
-}
 
-object JNotice
-{
+object JNotice:
   @Nonnull
   def of(
     @Nonnull id: NoticeId,
@@ -40,7 +35,6 @@ object JNotice
     @Nonnull endOfLife: Instant)
   : JNotice =
     JNotice(Notice(id, boardPath, endOfLife.toTimestamp))
-}
 
 @Deprecated
 final case class JNoticeExpectation(orderIds: java.util.Set[OrderId])

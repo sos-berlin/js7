@@ -11,13 +11,10 @@ import js7.data.item.{SourceType, VersionedItemId}
 /**
   * @author Joacim Zschimmer
   */
-final class ScheduledOrderGeneratorReader(timeZone: ZoneId) extends VersionedItemReader
-{
+final class ScheduledOrderGeneratorReader(timeZone: ZoneId) extends VersionedItemReader:
   val companion: ScheduledOrderGenerator.type = ScheduledOrderGenerator
 
-  def read(id: VersionedItemId[ScheduledOrderGeneratorPath], source: ByteArray) = {
+  def read(id: VersionedItemId[ScheduledOrderGeneratorPath], source: ByteArray) =
     case SourceType.Xml => ScheduledOrderGeneratorXmlParser.parseXml(id, source.utf8String, timeZone)
-  }
 
   def convertFromJson(json: Json) = Left(Problem("ScheduledOrderGenerator does not yet support JSON (it is for development only, anyway)"))
-}

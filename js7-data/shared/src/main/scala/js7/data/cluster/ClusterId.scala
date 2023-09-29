@@ -10,15 +10,14 @@ import js7.data.agent.AgentPath
  *
  * Only used where the Cluster must be named.
  */
-trait ClusterId {
+trait ClusterId:
   def toTypedString: String
-}
 
-object ClusterId {
+object ClusterId:
   implicit val jsonEncoder: Encoder[ClusterId] = _.toTypedString.asJson
 
   implicit val jsonDecoder: Decoder[ClusterId] = c =>
-    c.value.asString match {
+    c.value.asString match
       case None =>
         Left(DecodingFailure("String expected", c.history))
 
@@ -27,5 +26,3 @@ object ClusterId {
           AgentPath.checked(string.drop(6)).toDecoderResult(c.history)
         else
           Left(DecodingFailure(s"Unknown ClusterId: ${string.truncateWithEllipsis(20)}", c.history))
-    }
-}

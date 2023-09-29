@@ -17,8 +17,7 @@ import monix.execution.Scheduler
 /**
   * @author Joacim Zschimmer
   */
-trait CommandRoute extends ControllerRouteProvider
-{
+trait CommandRoute extends ControllerRouteProvider:
   protected def config: Config
 
   private lazy val entitySizeLimit =
@@ -29,18 +28,13 @@ trait CommandRoute extends ControllerRouteProvider
   private implicit def implicitScheduler: Scheduler = scheduler
 
   final val commandRoute: Route =
-    pathEnd {
-      post {
+    pathEnd:
+      post:
         authorizedUser(ValidUserPermission) { user =>
-          withSizeLimit(entitySizeLimit) {
+          withSizeLimit(entitySizeLimit):
             entity(as[ControllerCommand]) { command =>
-              completeTask {
+              completeTask:
                 executeCommand(command, CommandMeta(user))
                   .map(_.map(o => o: ControllerCommand.Response))
-              }
             }
-          }
         }
-      }
-    }
-}

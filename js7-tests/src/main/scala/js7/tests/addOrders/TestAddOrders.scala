@@ -21,8 +21,7 @@ import monix.reactive.subjects.PublishSubject
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Deadline, FiniteDuration}
 
-final class TestAddOrders private(controllerApi: ControllerApi, settings: Settings)
-{
+final class TestAddOrders private(controllerApi: ControllerApi, settings: Settings):
   import settings.{orderCount, workflowPath}
 
   /**
@@ -31,10 +30,10 @@ final class TestAddOrders private(controllerApi: ControllerApi, settings: Settin
     *         - Public Observable returning the changed number of main orders.
     *         - The complete Task returning `Statistics`.
     */
-  private def run(): (Observable[FiniteDuration], Observable[Statistics], Task[Checked[Statistics]]) = {
+  private def run(): (Observable[FiniteDuration], Observable[Statistics], Task[Checked[Statistics]]) =
     val allOrdersAddedSubject = PublishSubject[FiniteDuration]()
     val statisticsSubject = PublishSubject[Statistics]()
-    val task = Task.defer {
+    val task = Task.defer:
       val orderIds = 1 to orderCount map toOrderId
       val isOurOrder = orderIds.toSet
       val observationStarted = MVar.empty[Task, Deadline]().memoize
@@ -67,9 +66,7 @@ final class TestAddOrders private(controllerApi: ControllerApi, settings: Settin
         add.map(_.orThrow)
       )((statistics, _) => statistics)
         .materialize.map(Checked.fromTry)
-    }
     (allOrdersAddedSubject, statisticsSubject, task)
-  }
 
   private def addOrders(orderIds: Observable[OrderId]): Task[Checked[Unit]] =
     controllerApi
@@ -78,15 +75,13 @@ final class TestAddOrders private(controllerApi: ControllerApi, settings: Settin
       .flatMapT(_ =>
         controllerApi.deleteOrdersWhenTerminated(orderIds))
       .rightAs(())
-}
 
-object TestAddOrders
-{
+object TestAddOrders:
   private[addOrders] def run(
     settings: Settings,
     onStatisticsUpdate: Statistics => Unit,
     onOrdersAdded: FiniteDuration => Unit)
-  : Task[Checked[Statistics]] = {
+  : Task[Checked[Statistics]] =
     val config = ConfigFactory.systemProperties.withFallback(ProxyConfs.defaultConfig)
     Akkas.actorSystemResource("TestAddOrders", config)
       .flatMap(actorSystem =>
@@ -100,7 +95,5 @@ object TestAddOrders
         statisticsObservable foreach onStatisticsUpdate
         runOrdersTask
       }
-  }
 
   private def toOrderId(i: Int) = OrderId(s"TestAddOrders-$i")
-}

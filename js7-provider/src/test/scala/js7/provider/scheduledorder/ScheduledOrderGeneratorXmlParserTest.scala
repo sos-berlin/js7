@@ -12,9 +12,9 @@ import js7.provider.scheduledorder.oldruntime.{OldSchedule, PeriodSeq, RepeatPer
 /**
   * @author Joacim Zschimmer
   */
-final class ScheduledOrderGeneratorXmlParserTest extends OurTestSuite {
+final class ScheduledOrderGeneratorXmlParserTest extends OurTestSuite:
 
-  "parse" in {
+  "parse" in:
     val id = ScheduledOrderGeneratorPath("TEST") ~ "VERSION"
     val timeZone = ZoneId.of("Europe/Berlin")
     val orderGenerator = ScheduledOrderGeneratorXmlParser.parseXml(id,
@@ -32,5 +32,3 @@ final class ScheduledOrderGeneratorXmlParserTest extends OurTestSuite {
       WorkflowPath("JOBCHAIN"),
       Map("a" -> StringValue("AAA")),
       OldSchedule(timeZone, EveryDay(PeriodSeq(List(RepeatPeriod.wholeDay(Duration.ofSeconds(10))))))))
-  }
-}

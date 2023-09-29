@@ -23,8 +23,7 @@ import monix.eval.Task
 import scala.concurrent.duration.FiniteDuration
 import scala.util.Try
 
-final class StdoutTest extends OurTestSuite with ControllerAgentForScalaTest
-{
+final class StdoutTest extends OurTestSuite with ControllerAgentForScalaTest:
   protected val agentPaths = Seq(agentPath)
   protected val items = Nil
   override protected val controllerConfig = config"""
@@ -41,7 +40,7 @@ final class StdoutTest extends OurTestSuite with ControllerAgentForScalaTest
   private val workflowPathIterator = Iterator.from(1).map(i => WorkflowPath(s"WORKFLOW-$i"))
   private val orderIdIterator = Iterator.from(1).map(i => OrderId(s"🔷-$i"))
 
-  "ShellScriptExecutable OrderStdoutWritten event compacting" in {
+  "ShellScriptExecutable OrderStdoutWritten event compacting" in:
     // Shell stdout timing seems not to be reliable !!!
     // The other test with InternalExecutable should be adequate.
     pending
@@ -87,9 +86,8 @@ final class StdoutTest extends OurTestSuite with ControllerAgentForScalaTest
           "........15.......16\n"))
     Try(runTest())  // Warm-up
     runTest()
-  }
 
-  "InternalJob OrderStdoutWritten event compacting" in {
+  "InternalJob OrderStdoutWritten event compacting" in:
     def runTest() =
       testExecutable(
         TestInternalJob.executable(),
@@ -111,7 +109,6 @@ final class StdoutTest extends OurTestSuite with ControllerAgentForScalaTest
           ".......16\n"))
     Try(runTest())  // Warm-up
     runTest()
-  }
 
   private def testExecutable(executable: Executable, expectedChunks: Seq[String]): Unit =
     testWithWorkflow(
@@ -121,16 +118,15 @@ final class StdoutTest extends OurTestSuite with ControllerAgentForScalaTest
   private def testWithWorkflow(
     anonymousWorkflow: Workflow,
     expectedChunks: Seq[String])
-  : Unit = {
+  : Unit =
     val events = runWithWorkflow(anonymousWorkflow)
     val chunks = events.collect { case OrderStdoutWritten(chunk) => chunk }
     assert(chunks == expectedChunks)
-  }
 
   private def runWithWorkflow(
     anonymousWorkflow: Workflow,
     orderArguments: Map[String, Value] = Map.empty)
-  : Seq[OrderEvent] = {
+  : Seq[OrderEvent] =
     testPrintAndParse(anonymousWorkflow)
 
     val versionId = versionIdIterator.next()
@@ -139,18 +135,14 @@ final class StdoutTest extends OurTestSuite with ControllerAgentForScalaTest
     directoryProvider.updateVersionedItems(controller, versionId, Seq(workflow))
 
     controller.runOrder(order).map(_.value)
-  }
 
-  private def testPrintAndParse(anonymousWorkflow: Workflow): Unit = {
+  private def testPrintAndParse(anonymousWorkflow: Workflow): Unit =
     val workflowNotation = WorkflowPrinter.print(anonymousWorkflow.withoutSource)
     val reparsedWorkflow = WorkflowParser.parse(workflowNotation).map(_.withoutSource)
     logger.debug(workflowNotation)
     assert(reparsedWorkflow == Right(anonymousWorkflow.withoutSource))
-  }
-}
 
-object StdoutTest
-{
+object StdoutTest:
   private val logger = Logger[this.type]
   private val agentPath = AgentPath("AGENT")
   private val chunkSize = 50
@@ -162,9 +154,8 @@ object StdoutTest
     if isWindows then s"SLEEP ${delay.toDecimalString}\n"  // TODO Windows
     else s"sleep ${delay.toDecimalString}\n"
 
-  private final class TestInternalJob extends InternalJob
-  {
-    def toOrderProcess(step: Step) = {
+  private final class TestInternalJob extends InternalJob:
+    def toOrderProcess(step: Step) =
       import Task.sleep
       OrderProcess(
         step.send(Stdout, "A\n") >>
@@ -190,7 +181,4 @@ object StdoutTest
           step.send(Stdout, ".........9.......10\n") >>
           step.send(Stdout, "........11........12........13........14........15.......16\n") >>
           Task.pure(Outcome.succeeded))
-    }
-  }
   private object TestInternalJob extends InternalJob.Companion[TestInternalJob]
-}

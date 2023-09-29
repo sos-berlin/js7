@@ -16,8 +16,7 @@ import scala.util.control.NoStackTrace
 /**
   * @author Joacim Zschimmer
   */
-final class ExceptionHandlingTest extends OurTestSuite with ScalatestRouteTest with ExceptionHandling
-{
+final class ExceptionHandlingTest extends OurTestSuite with ScalatestRouteTest with ExceptionHandling:
   protected val config = config"js7.web.server.verbose-error-messages = true"
   protected def whenShuttingDown = Future.never
 
@@ -26,62 +25,47 @@ final class ExceptionHandlingTest extends OurTestSuite with ScalatestRouteTest w
 
   protected def actorSystem = system
 
-  "RuntimeException" in {
+  "RuntimeException" in:
     post("/") ~>
       seal {
-        complete {
+        complete:
           throw new RuntimeException("MESSAGE")
-        }
       } ~>
-        check {
+        check:
           assert(status == InternalServerError)
           assert(entityAs[Problem] == Problem("MESSAGE"))
-        }
-  }
 
-  "Any exception" in {
+  "Any exception" in:
     post("/") ~>
       seal {
-        complete {
+        complete:
           throw new TestException("MESSAGE")
-        }
       } ~>
-        check {
+        check:
           assert(status == InternalServerError)
           assert(entityAs[Problem] == Problem("js7.common.akkahttp.ExceptionHandlingTest$TestException: MESSAGE"))
-        }
-  }
 
-  "getMessage == null" in {
+  "getMessage == null" in:
     post("/") ~>
       seal {
-        complete {
+        complete:
           throw new RuntimeException
-        }
       } ~>
-        check {
+        check:
           assert(status == InternalServerError)
           assert(entityAs[Problem] == Problem("java.lang.RuntimeException"))
-        }
-  }
 
-  "HttpStatusCodeException" in {
+  "HttpStatusCodeException" in:
     post("/") ~>
       seal {
-        complete {
+        complete:
           throw new HttpStatusCodeException(Forbidden, Problem("PROBLEM"))
-        }
       } ~>
-        check {
+        check:
           assert(status == Forbidden)
           assert(entityAs[Problem] == Problem("PROBLEM"))
-        }
-  }
 
   private def post(path: String) = Post("/") ~> Accept(`application/json`)
-}
 
-object ExceptionHandlingTest
-{
+object ExceptionHandlingTest:
   private class TestException(message: String) extends RuntimeException(message) with NoStackTrace
-}

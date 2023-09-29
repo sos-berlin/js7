@@ -16,8 +16,7 @@ import scala.concurrent.duration.FiniteDuration
 private final class DirectoryWatch(
   readDirectory: Task[DirectoryState],
   directoryEventObservable: Observable[Seq[DirectoryEvent]],
-  hotLoopBrake: FiniteDuration)
-{
+  hotLoopBrake: FiniteDuration):
   private def readDirectoryAndObserveForever(state: DirectoryState)
   : Observable[(Seq[DirectoryEvent], DirectoryState)] =
     logger.traceObservable(
@@ -48,10 +47,8 @@ private final class DirectoryWatch(
           pair._1.applyAndReduceEvents(events).swap)
         .map(_.swap)
         .filter(_._1.nonEmpty))
-}
 
-object DirectoryWatch
-{
+object DirectoryWatch:
   private val logger = Logger[this.type]
 
   def observable(
@@ -86,4 +83,3 @@ object DirectoryWatch
                 .readDirectoryAndObserveForever(state)
                 .map(_._1))
         })
-}

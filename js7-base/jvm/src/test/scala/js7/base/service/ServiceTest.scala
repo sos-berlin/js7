@@ -15,8 +15,7 @@ import scala.concurrent.Future
 import scala.util.Failure
 import scala.util.control.NoStackTrace
 
-final class ServiceTest extends OurAsyncTestSuite
-{
+final class ServiceTest extends OurAsyncTestSuite:
   private val delay = 200.ms
   private val iterations = if isIntelliJIdea then 100 else 10
 
@@ -33,19 +32,17 @@ final class ServiceTest extends OurAsyncTestSuite
           Right(result)))
       .runToFuture
 
-  "Resource.release does not suppresses exceptions" in {
+  "Resource.release does not suppresses exceptions" in:
     Resource
       .make(Task.unit)(_ => Task.raiseError(new IllegalStateException))
       .use(_ => Task(succeed))
       .materialize
-      .flatMap {
+      .flatMap:
         case Failure(_: IllegalStateException) => Task(succeed)
         case other => fail(s"UNEXPECTED: $other")
-      }
       .runToFuture
-  }
 
-  "Service terminates while still in use" in repeat(iterations) {
+  "Service terminates while still in use" in repeat(iterations):
     var isRunning = false
     MyService.resource(isRunning = _)
       .use(service =>
@@ -55,38 +52,33 @@ final class ServiceTest extends OurAsyncTestSuite
           Task(assert(!isRunning))
             .as(succeed))
       .runToFuture
-  }
 
-  "Service fails while still in use" in repeat(iterations) {
+  "Service fails while still in use" in repeat(iterations):
     val serviceFailed = Deferred.unsafe[Task, Unit]
     FailingService
       .resource(onFailed = serviceFailed.complete(()))
       .use(_ => serviceFailed.get.delayExecution(delay))
       .materialize
-      .map {
+      .map:
         case Failure(FailingService.exception) =>
           succeed
         case o => fail(s"Unexpected $o")
-      }
       .runToFuture
-  }
 
-  "Use ends when service has stopped" in repeat(iterations) {
+  "Use ends when service has stopped" in repeat(iterations):
     // General use case. Similar to the test above.
     val serviceFailed = Deferred.unsafe[Task, Unit]
     FailingService
       .resource(onFailed = serviceFailed.complete(()))
       .use(_.untilStopped)
       .materialize
-      .map {
+      .map:
         case Failure(FailingService.exception) =>
           succeed
         case o => fail(s"Unexpected $o")
-      }
       .runToFuture
-  }
 
-  "Service usage terminates before service would die" in repeat(iterations) {
+  "Service usage terminates before service would die" in repeat(iterations):
     val serviceFailed = Deferred.unsafe[Task, Unit]
     FailingService
       .resource(
@@ -94,22 +86,19 @@ final class ServiceTest extends OurAsyncTestSuite
         onFailed = serviceFailed.complete(()))
       .use(_ => Task.pure(succeed))
       .runToFuture
-  }
 
-  "Service fails while usage is terminating (race)" in repeat(iterations) {
+  "Service fails while usage is terminating (race)" in repeat(iterations):
     val failService = Deferred.unsafe[Task, Unit]
     FailingService
       .resource(whenFail = failService.get)
       .use(_ =>
         // service fails while in use!
         failService.complete(()).as(succeed))
-      .onErrorRecover {
+      .onErrorRecover:
         case FailingService.exception => succeed
-      }
       .runToFuture
-  }
 
-  "No failure " in repeat(iterations) {
+  "No failure " in repeat(iterations):
     var isRunning = false
     MyService.resource(isRunning = _)
       .use(service =>
@@ -121,11 +110,9 @@ final class ServiceTest extends OurAsyncTestSuite
         assert(!isRunning)
       })
       .runToFuture
-  }
 
   private class MyService(setRunning: Boolean => Unit)
-  extends Service.StoppableByRequest
-  {
+  extends Service.StoppableByRequest:
     val running = Deferred.unsafe[Task, Unit]
 
     override def stop = super.stop
@@ -143,22 +130,17 @@ final class ServiceTest extends OurAsyncTestSuite
       })
 
     override def toString = "MyService"
-  }
-  private object MyService {
+  private object MyService:
     def resource(setRunning: Boolean => Unit): Resource[Task, MyService] =
       Service.resource(Task(new MyService(setRunning)))
-  }
-}
 
-object ServiceTest
-{
+object ServiceTest:
   private val logger = Logger[this.type]
 
   private class FailingService(
     whenFail: Task[Unit],
     onFailed: Task[Unit])
-  extends Service.StoppableByRequest
-  {
+  extends Service.StoppableByRequest:
     protected def start =
       startService(
         Task.race(run2, untilStopRequested).void)
@@ -167,13 +149,10 @@ object ServiceTest
       whenFail *> Task.raiseError(FailingService.exception).guarantee(onFailed)
 
     override def toString = "FailingService"
-  }
-  private object FailingService {
+  private object FailingService:
     val exception = new Exception("SERVICE FAILED") with NoStackTrace
 
     def resource(
       whenFail: Task[Unit] = Task.unit,
       onFailed: Task[Unit] = Task.unit)
     = Service.resource(Task(new FailingService(whenFail, onFailed)))
-  }
-}

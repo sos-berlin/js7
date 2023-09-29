@@ -17,11 +17,10 @@ import js7.journal.files.JournalFiles.listJournalFiles
 import js7.tests.cluster.controller.ControllerClusterTester.*
 import monix.execution.Scheduler.Implicits.traced
 
-final class AppointNodesLatelyControllerClusterTest extends OurTestSuite with ControllerClusterTester
-{
+final class AppointNodesLatelyControllerClusterTest extends OurTestSuite with ControllerClusterTester:
   override protected def configureClusterNodes = false
 
-  "ClusterAppointNodes command after first journal file has been deleted, then change Backup's URI" in {
+  "ClusterAppointNodes command after first journal file has been deleted, then change Backup's URI" in:
     withControllerAndBackup() { (primary, _, backup, _, clusterSetting) =>
       primary.runController() { primaryController =>
         val orderId = OrderId("🔺")
@@ -43,12 +42,11 @@ final class AppointNodesLatelyControllerClusterTest extends OurTestSuite with Co
         primaryController.eventWatch.await[ClusterCoupled]()
         primaryController.eventWatch.await[ClusterWatchRegistered]()
 
-        locally {
+        locally:
           val orderId = OrderId("🔸")
           primaryController.addOrderBlocking(FreshOrder(orderId, TestWorkflow.id.path))
           primaryController.eventWatch.await[OrderFinished](_.key == orderId)
           backupController.eventWatch.await[OrderFinished](_.key == orderId)
-        }
 
         // PREPARE CHANGING BACKUP NODE
         val primaryUri = clusterSetting.idToUri(primaryId)
@@ -66,7 +64,7 @@ final class AppointNodesLatelyControllerClusterTest extends OurTestSuite with Co
         //  .left.exists(_ is ClusterSettingNotUpdatable))
 
         // CHANGE BACKUP URI WHEN PASSIVE IS LOST
-        locally {
+        locally:
           val eventId = primaryController.eventWatch.lastAddedEventId
           backupController.terminate(dontNotifyActiveNode = true).await(99.s)
 
@@ -81,12 +79,9 @@ final class AppointNodesLatelyControllerClusterTest extends OurTestSuite with Co
 
           assert(primaryController.clusterState.await(99.s).asInstanceOf[Coupled].setting == updatedBackupSetting)
           assert(backupController.clusterState.await(99.s).asInstanceOf[Coupled].setting == updatedBackupSetting)
-        }
 
         primaryController.terminate() await 99.s
         sleep(200.ms) // TODO Early ShutDown seems to be ignored
         backupController.terminate() await 99.s
       }
     }
-  }
-}

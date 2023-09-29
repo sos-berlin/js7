@@ -23,17 +23,14 @@ import scala.reflect.ClassTag
 import scala.util.Try
 import scala.util.chaining.*
 
-object ScalaUtils
-{
+object ScalaUtils:
   private val Ellipsis = "..."
   val RightUnit: Either[Nothing, Unit] = Right(())
   private val spaceArray = (" " * 64).toCharArray
   private lazy val logger = Logger[this.type]
 
-  object syntax
-  {
-    implicit final class RichF_[F[_], A](private val underlying: F[A]) extends AnyVal
-    {
+  object syntax:
+    implicit final class RichF_[F[_], A](private val underlying: F[A]) extends AnyVal:
       def unless(condition: Boolean)(implicit F: Monoid[F[A]]): F[A] =
         when(!condition)
 
@@ -42,34 +39,29 @@ object ScalaUtils
           underlying
         else
           F.empty
-    }
 
-    implicit final class RichEitherF[F[_], L, R](private val underlying: F[Either[L, R]]) extends AnyVal
-    {
+    implicit final class RichEitherF[F[_], L, R](private val underlying: F[Either[L, R]]) extends AnyVal:
       def rightAs[R1](newRight: => R1)(implicit F: Functor[F]): F[Either[L, R1]] =
         F.map(underlying)(_.map(_ => newRight))
 
       def rightAs(unit: Unit)(implicit F: Functor[F]): F[Either[L, Unit]] =
-        F.map(underlying) {
+        F.map(underlying):
           case Right(_) => RightUnit
           case o => o.asInstanceOf[Either[L, Unit]]
-        }
 
       def mapt[R1](f: R => R1)(implicit F: Functor[F]): F[Either[L, R1]] =
         F.map(underlying)(_.map(f))
 
       def mapT[L1 >: L, R1](f: R => Either[L1, R1])(implicit F: Functor[F]): F[Either[L1, R1]] =
-        F.map(underlying) {
+        F.map(underlying):
           case Left(o) => Left(o)
           case Right(o) => f(o)
-        }
 
       /** Simple alternative to `EitherT` `flatMap` if for-comprehension is not needed. */
       def flatMapT[R1](f: R => F[Either[L, R1]])(implicit F: Monad[F]): F[Either[L, R1]] =
-        F.flatMap(underlying) {
+        F.flatMap(underlying):
           case Left(left) => F.pure(Left(left))
           case Right(right) => f(right)
-        }
 
       // TODO A better name ?
       /** Simple alternative to `EitherT` `flatMap` if for-comprehension is not needed. */
@@ -78,23 +70,19 @@ object ScalaUtils
 
       /** Simple alternative to `EitherT` `flatMap` if for-comprehension is not needed. */
       def flatTapT[R1](f: R => F[Either[L, R1]])(implicit F: Monad[F]): F[Either[L, R]] =
-        F.flatMap(underlying) {
+        F.flatMap(underlying):
           case Left(left) => F.pure(Left(left))
           case Right(right) => f(right).map(_.as(right))
-        }
 
       def flatMapLeft[L1](f: L => F[Either[L1, R]])(implicit F: Monad[F]): F[Either[L1, R]] =
-        F.flatMap(underlying) {
+        F.flatMap(underlying):
           case Left(left) => f(left)
           case Right(right) => F.pure(Right(right))
-        }
 
       def flatMapLeftCase[R1 >: R](f: PartialFunction[L, F[Either[L, R1]]])(implicit F: Monad[F]): F[Either[L, R1]] =
-        F.flatMap(underlying) {
+        F.flatMap(underlying):
           case Left(left) => f.applyOrElse(left, (left: L) => F.pure(Left(left)))
           case Right(right) => F.pure(Right(right))
-        }
-    }
 
     // Does not work because rightAs() accepts any type as Unit. But we want accept Unit only.
     //implicit final class RichUnitEitherF[F[_], L](private val underlying: F[Either[L, Unit]])
@@ -105,64 +93,48 @@ object ScalaUtils
     //}
 
     implicit final class RichEitherIterable[F[x] <: Iterable[x], L, R](private val iterable: F[Either[L, R]])
-    extends AnyVal
-    {
+    extends AnyVal:
       /** Combines left sides of any, otherwise return right sides.*/
-      def reduceLeftEither(implicit F: Factory[R, F[R]], L: Semigroup[L]): Either[L, F[R]] = {
+      def reduceLeftEither(implicit F: Factory[R, F[R]], L: Semigroup[L]): Either[L, F[R]] =
         L.combineAllOption(iterable.view.collect { case Left(l) => l })
-          .match {
+          .match
             case Some(problem) => Left(problem)
             case None => Right(iterable.view.collect { case Right(r) => r }.to(F))
-          }
-      }
-    }
 
     implicit final class RichLeftProjection[L, R](private val leftProjection: Either.LeftProjection[L, R])
-    extends AnyVal
-    {
+    extends AnyVal:
       @throws[NoSuchElementException]
       def orThrow: L =
-        leftProjection.e match {
+        leftProjection.e match
           case Left(a) => a
           case _       => throw new NoSuchElementException(s"Either.left.get on: ${leftProjection.e}")
-        }
-    }
 
-    implicit final class RichOption[A](private val option: Option[A]) extends AnyVal
-    {
+    implicit final class RichOption[A](private val option: Option[A]) extends AnyVal:
       /** Like Scala's `fold`, but with proper result type derivation. */
       def fold_[B](ifNone: => B, ifSome: A => B): B =
-        option match {
+        option match
           case None => ifNone
           case Some(a) => ifSome(a)
-        }
 
       def !!(problem: => Problem): Checked[A] =
-        option match {
+        option match
           case None => Left(problem)
           case Some(a) => Right(a)
-        }
-    }
 
     /** orElse inside a F[Option]. */
-    implicit final class RichOptionF[F[_], A](private val underlying: F[Option[A]]) extends AnyVal
-    {
+    implicit final class RichOptionF[F[_], A](private val underlying: F[Option[A]]) extends AnyVal:
       def orElseT(alternative: => F[Option[A]])(implicit F: Monad[F]): F[Option[A]] =
-        F.flatMap(underlying) {
+        F.flatMap(underlying):
           case None => alternative
           case Some(a) => F.pure(a.some)
-        }
 
       /** Simple alternative to `EitherT` `flatMap` if for-comprehension is not needed. */
       def flatMapT(f: A => F[Option[A]])(implicit F: Monad[F]): F[Option[A]] =
-        F.flatMap(underlying) {
+        F.flatMap(underlying):
           case None => F.pure(None)
           case Some(a) => f(a)
-        }
-    }
 
-    implicit final class RichJavaClass[A](private val underlying: Class[A])
-    {
+    implicit final class RichJavaClass[A](private val underlying: Class[A]):
       def scalaName: String = underlying.getName stripSuffix "$"
 
       def simpleScalaName: String = simpleName stripSuffix "$"
@@ -179,58 +151,47 @@ object ScalaUtils
       def shortClassName: String =
         if underlying.isPrimitive then
           underlying.getName.capitalize
-        else {
+        else
           // Change '$' inner class concatenation character to '.'
           val simpleName = simpleScalaName
           val prefix = scalaName stripSuffix simpleName
           val name = (if prefix endsWith "$" then prefix.init + '.' else prefix) + simpleName
           removePackageRegex.replaceFirstIn(name, "")
-        }
-    }
 
-    implicit final class ToStringFunction1[A, R](private val delegate: A => R) {
+    implicit final class ToStringFunction1[A, R](private val delegate: A => R):
       def withToString(string: String): A => R =
-        new (A => R) {
+        new (A => R):
           def apply(a: A) = delegate(a)
           override def toString() = string
-        }
-    }
 
-    implicit final class RichThrowable[A <: Throwable](private val throwable: A) extends AnyVal
-    {
-      def rootCause: Throwable = {
+    implicit final class RichThrowable[A <: Throwable](private val throwable: A) extends AnyVal:
+      def rootCause: Throwable =
         @tailrec def cause(t: Throwable): Throwable =
-          t.getCause match {
+          t.getCause match
             case null => t
             case o if o == t => t
             case o => cause(o)
-          }
         cause(throwable)
-      }
 
       def toStringWithCausesAndStackTrace: String =
         throwable.toStringWithCauses +
           (throwable.getStackTrace.nonEmpty ?? ("\n" + throwable.stackTraceAsString))
 
-      def toStringWithCauses: String = {
+      def toStringWithCauses: String =
         var result = throwable.toSimplifiedString
-        throwable.getCause match {
+        throwable.getCause match
           case null =>
           case cause =>
             val c = cause.toStringWithCauses
-            if !result.contains(c) then {
+            if !result.contains(c) then
               result = result.stripSuffix(":") + ", caused by: " + c
-            }
-        }
-        if throwable.getSuppressed.nonEmpty then {
+        if throwable.getSuppressed.nonEmpty then
           result += throwable.getSuppressed.map(t => " [suppressed: " + t.toStringWithCauses + "]").mkString
-        }
         result
-      }
 
       def toSimplifiedString: String = {
         val msg = throwable.getMessage
-        throwable match {
+        throwable match
           case _: java.util.NoSuchElementException =>
             throwable.toString stripPrefix "java.util."
 
@@ -252,14 +213,12 @@ object ScalaUtils
               msg
             else
               throwable.toString
-        }
       }.trim
 
-      def stackTraceAsString: String = {
+      def stackTraceAsString: String =
         val w = new StringWriter
         throwable.printStackTrace(new PrintWriter(w))
         w.toString
-      }
 
       /** Useable for logging.
         * `logger.info(throwable.toStringWithCauses, throwable.nullIfNoStackTrace)` */
@@ -269,17 +228,14 @@ object ScalaUtils
       def ifStackTrace: Option[Throwable] =
         Option(nullIfNoStackTrace)
 
-      def dropTopMethodsFromStackTrace(methodName: String): A = {
+      def dropTopMethodsFromStackTrace(methodName: String): A =
         val stackTrace = throwable.getStackTrace
         var i = 0
         while i < stackTrace.length && stackTrace(i).getMethodName == methodName do i += 1
         if i > 0 then throwable.setStackTrace(stackTrace.drop(i))
         throwable
-      }
-    }
 
-    implicit final class RichAny[A](private val delegate: A) extends AnyVal
-    {
+    implicit final class RichAny[A](private val delegate: A) extends AnyVal:
       /** Apply the function. */
       @inline def |>[B](f: A => B): B =
         delegate.pipe(f)
@@ -290,42 +246,36 @@ object ScalaUtils
 
       /** Apply the function conditionally. */
       def pipeMaybe[O, B >: A](maybe: => Option[O])(f: (A, O) => B): B =
-        maybe match {
+        maybe match
           case Some(o) => f(delegate, o)
           case None => delegate
-        }
 
       def narrow[B <: A: ClassTag]: Checked[B] =
         checkedCast[B](delegate)
 
       @inline def substitute(when: A, _then: => A): A =
         if delegate == when then _then else delegate
-    }
 
-    implicit final class SwitchOnAtomicBoolean(private val delegate: AtomicBoolean) extends AnyVal {
+    implicit final class SwitchOnAtomicBoolean(private val delegate: AtomicBoolean) extends AnyVal:
       def switchOn(body: => Unit) = if delegate.compareAndSet(false, true) then body
       def switchOff(body: => Unit) = if delegate.compareAndSet(true, false) then body
-    }
 
-    implicit final class RichView[A](private val view: View[A]) extends AnyVal
-    {
+    implicit final class RichView[A](private val view: View[A]) extends AnyVal:
       def :+[B >: A](b: B): View[B] =
         view.concat(b :: Nil)
 
       def +:[B >: A](b: B): View[B] =
         new View.Single(b) ++ view
-    }
 
     implicit final class RichIteratorsView[A](private val iterables: IterableOnce[IterableOnce[A]])
-    extends AnyVal
-    {
+    extends AnyVal:
       def mergeOrdered(implicit A: Ordering[A]): Iterator[A] =
         mergeOrderedBy(identity)
 
       def mergeOrderedBy[B: Ordering](f: A => B): Iterator[A] =
         mergeOrderedOptimizedBy(f)
 
-      def mergeOrderedSlowBy[B: Ordering](f: A => B): Iterator[A] = {
+      def mergeOrderedSlowBy[B: Ordering](f: A => B): Iterator[A] =
         val bufferedIterators = iterables.iterator.map(_.iterator.buffered).toVector
         Iterator.unfold(())(_ =>
           bufferedIterators
@@ -336,29 +286,23 @@ object ScalaUtils
               iterator.next()
               a -> ()
             })
-      }
 
       // About twice as fast
       def mergeOrderedOptimizedBy[B: Ordering](f: A => B): MergeOrderedIterator[A, B] =
         new MergeOrderedIterator(iterables, f)
-    }
 
     implicit final class RichScalaUtilsMap[K, V](private val underlying: Map[K, V])
-    extends AnyVal
-    {
+    extends AnyVal:
       def checked(key: K)(implicit K: Tag[K]): Checked[V] =
         rightOr(key, UnknownKeyProblem(K.tag.shortName, key))
 
       def rightOr(key: K, notFound: => Problem): Checked[V] =
-        underlying.get(key) match {
+        underlying.get(key) match
           case None => Left(notFound)
           case Some(a) => Right(a)
-        }
-    }
 
     implicit final class RichMapView[K, V](private val mapView: MapView[K, V])
-    extends AnyVal
-    {
+    extends AnyVal:
       def collectValues[V1](pf: PartialFunction[V, V1]): MapView[K, V1] =
         mapView
           .mapValues(pf.lift)
@@ -367,19 +311,18 @@ object ScalaUtils
 
       /** concat reversly, left side has overrides right side. */
       def orElseMapView[V1 >: V](other: MapView[K, V1]): MapView[K, V1] =
-        new MapView[K, V1] {
+        new MapView[K, V1]:
           def get(key: K) =
             mapView.get(key) orElse other.get(key)
 
           def iterator =
             mapView.iterator ++ other.filterKeys(k => !mapView.contains(k))
-        }
 
       /** K1 and K must be isomorphic, fromK1(toK1(k)) == k), maybe keeping the ordering.
        * @param fromK1 A NonFatal exception will be ignored
        */
       def mapIsomorphic[K1, V1](toK1: K => K1, toV1: V => V1)(fromK1: K1 => K): MapView[K1, V1] =
-        new MapView[K1, V1] {
+        new MapView[K1, V1]:
           def get(k1: K1) =
             tryFromK1(k1)
               .flatMap(mapView.get)
@@ -401,44 +344,38 @@ object ScalaUtils
 
           override def values =
             mapView.values.view.map(toV1)
-        }
 
       /** Concat to MapViews and return a MapView wit Map behaviour. */
       def +++[V1 >: V](right: MapView[K, V1]): MapView[K, V1] =
-        new AbstractMapView[K, V1] {
+        new AbstractMapView[K, V1]:
           def get(key: K): Option[V1] =
-            right.get(key) match {
+            right.get(key) match
               case o @ Some(_) => o
               case _ => mapView.get(key)
-            }
 
           def iterator: Iterator[(K, V1)] =
             mapView.iterator
               .filter { case (k, _) => !right.contains(k) }
               .concat(right.iterator)
-        }
-    }
 
     final class MergeOrderedIterator[A, B: Ordering] private[ScalaUtils](
       iterables: IterableOnce[IterableOnce[A]],
       f: A => B)
-    extends collection.BufferedIterator[A] {
+    extends collection.BufferedIterator[A]:
       private var minimum = none[A]
       private val bufferedIterators =
         iterables.iterator.map(_.iterator.buffered).to(mutable.ArrayBuffer)
 
       override def buffered: MergeOrderedIterator.this.type = this
 
-      def head = {
+      def head =
         if minimum.isEmpty then compute()
         minimum.getOrElse(throw new NoSuchElementException)
-      }
 
       override def headOption =
-        minimum match {
+        minimum match
           case None => if hasNext then minimum else None
           case o => o
-        }
 
       def hasNext: Boolean =
         minimum.isDefined || {
@@ -446,32 +383,26 @@ object ScalaUtils
           minimum.isDefined
         }
 
-      def next(): A = {
+      def next(): A =
         val result = head
         minimum = None
         result
-      }
 
-      private def compute(): Unit = {
+      private def compute(): Unit =
         minimum = None
         var selectedIterator: Iterator[A] = null.asInstanceOf[Iterator[A]]
         var i = 0
-        while i < bufferedIterators.length do {
+        while i < bufferedIterators.length do
           val iterator = bufferedIterators(i)
-          if !iterator.hasNext then {
+          if !iterator.hasNext then
             bufferedIterators.remove(i)
-          } else {
+          else
             val a = iterator.head
-            if minimum.forall(x => f(x) > f(a)) then {
+            if minimum.forall(x => f(x) > f(a)) then
               minimum = Some(a)
               selectedIterator = iterator
-            }
             i += 1
-          }
-        }
         if minimum.isDefined then selectedIterator.next()
-      }
-    }
 
     // Like PartialFunction.Lifted:
     private val fallback_fn: Any => Any = _ => fallback_fn
@@ -479,29 +410,24 @@ object ScalaUtils
     private def fallbackOccurred[B](x: B) = fallback_fn eq x.asInstanceOf[AnyRef]
 
     implicit final class RichPartialFunction[A, B](private val underlying: PartialFunction[A, B])
-    extends AnyVal
-    {
-      def get(key: A): Option[B] = {
+    extends AnyVal:
+      def get(key: A): Option[B] =
         val b = underlying.applyOrElse(key, checkFallback[B])
         if fallbackOccurred(b) then None else Some(b)
-      }
 
       def checked(key: A)(implicit A: Tag[A]): Checked[B] =
-        underlying.lift(key) match {
+        underlying.lift(key) match
           case None => Left(UnknownKeyProblem(A.tag.shortName, key))
           case Some(a) => Right(a)
-        }
 
       def rightOr(key: A, notFound: => Problem): Checked[B] =
         toChecked(_ => notFound)(key)
 
-      private def toChecked(notFound: A => Problem): A => Checked[B] = {
+      private def toChecked(notFound: A => Problem): A => Checked[B] =
         val lifted = underlying.lift
-        key => lifted(key) match {
+        key => lifted(key) match
           case Some(b) => Right(b)
           case None => Left(notFound(key))
-        }
-      }
 
       def checkNoDuplicate(key: A)(implicit A: ClassTag[A]): Checked[Unit] =
         if underlying isDefinedAt key then
@@ -516,25 +442,21 @@ object ScalaUtils
         mapPartialFunction(f)
 
       def mapPartialFunction[C](bToC: B => C): PartialFunction[A, C] =
-        new PartialFunction[A, C] {
+        new PartialFunction[A, C]:
           def isDefinedAt(a: A) = underlying.isDefinedAt(a)
 
           def apply(a: A) = bToC(underlying.apply(a))
 
-          override def applyOrElse[A1 <: A, C1 >: C](a: A1, default: A1 => C1): C1 = {
+          override def applyOrElse[A1 <: A, C1 >: C](a: A1, default: A1 => C1): C1 =
             val b = underlying.applyOrElse(a, checkFallback[B])
             if fallbackOccurred(b) then
               default(a)
             else
               bToC(b)
-          }
-        }
-    }
 
     private val SomeTrue = Some(true)
 
-    implicit final class RichBoolean(private val underlying: Boolean) extends AnyVal
-    {
+    implicit final class RichBoolean(private val underlying: Boolean) extends AnyVal:
       /**
         * Conditional `Option`.
         * <p>`(true ? a) == Some(a)`
@@ -614,18 +536,15 @@ object ScalaUtils
 
       def toInt: Int =
         if underlying then 1 else 0
-    }
 
-    implicit final class RichEither[L, R](val either: Either[L, R]) extends AnyVal
-    {
+    implicit final class RichEither[L, R](val either: Either[L, R]) extends AnyVal:
       def rightAs[R1](newRight: => R1): Either[L, R1] =
         either.map(_ => newRight)
 
       def rightAs(right: Unit): Either[L, Unit] =
-        either match {
+        either match
           case Right(_) => RightUnit
           case _ => either.asInstanceOf[Either[L, Unit]]
-        }
 
       //def flatMapLeft[L1](f: L => Either[L1, R]): Either[L1, R] =
       //  either match {
@@ -635,24 +554,22 @@ object ScalaUtils
 
       /** Useful for `Checked` to combine both `Problem`s. */
       def combineLeft[R1](other: Either[L, R1])(implicit L: Semigroup[L]): Either[L, (R, R1)] =
-        (either, other) match {
+        (either, other) match
           case (Left(a), Left(b)) => Left(L.combine(a, b))
           case (Left(a), Right(_)) => Left(a)
           case (Right(_), Left(b)) => Left(b)
           case (Right(r), Right(r1)) => Right((r, r1))
-        }
 
       /** Useful for `Checked` to combine both `Problem`s. */
       def combineLeftOrRight[R1](other: Either[L, R])(implicit L: Semigroup[L], R: Semigroup[R]): Either[L, R] =
-        (either, other) match {
+        (either, other) match
           case (Left(a), Left(b)) => Left(L.combine(a, b))
           case (Left(a), Right(_)) => Left(a)
           case (Right(_), Left(b)) => Left(b)
           case (Right(r), Right(r1)) => Right(R.combine(r, r1))
-        }
 
       def orThrow: R =
-        either match {
+        either match
           case Left(problem: Problem) =>
             var t = problem.throwable
             if t.getStackTrace.isEmpty then t = t.appendCurrentStackTrace
@@ -663,10 +580,9 @@ object ScalaUtils
               .dropTopMethodsFromStackTrace("orThrow$extension")
 
           case Right(r) => r
-        }
 
       def orThrowWithoutOurStackTrace: R =
-        either match {
+        either match
           case Left(problem: Problem) =>
             logger.debug(s"💥 $problem", problem.throwable)
             throw problem.throwable.dropTopMethodsFromStackTrace("orThrow$extension")
@@ -676,59 +592,48 @@ object ScalaUtils
               .dropTopMethodsFromStackTrace("orThrow$extension")
 
           case Right(r) => r
-        }
 
       def leftOrThrow: L =
-        either match {
+        either match
           case Left(l) => l
           case Right(_) => throw new NoSuchElementException(s"Either.orThrow on $either")
             .dropTopMethodsFromStackTrace("orThrow$extension")
-        }
 
-      def tapEach(tapRight: R => Unit): either.type = {
-        either match {
+      def tapEach(tapRight: R => Unit): either.type =
+        either match
           case Left(_) =>
           case Right(right) => tapRight(right)
-        }
         either
-      }
 
-      def tapLeft(tapLeft: L => Unit): either.type = {
-        either match {
+      def tapLeft(tapLeft: L => Unit): either.type =
+        either match
           case Left(left) => tapLeft(left)
           case Right(_) =>
-        }
         either
-      }
-    }
 
-    implicit final class RichThrowableEither[L <: Throwable, R](private val underlying: Either[L, R]) extends AnyVal
-    {
+    implicit final class RichThrowableEither[L <: Throwable, R](private val underlying: Either[L, R]) extends AnyVal:
       def orThrow: R =
         orThrow(_.dropTopMethodsFromStackTrace("orThrow$extension"))
 
       def orThrow(toThrowable: L => Throwable): R =
-        underlying match {
+        underlying match
           case Left(t) => throw toThrowable(t.appendCurrentStackTrace)
           case Right(o) => o
-        }
 
       /** Converts an `Either[Throwable, A]` to a Checked[A] with complete Throwable. */
       def toThrowableChecked: Checked[R] =
-        underlying match {
+        underlying match
           case Left(t) => Left(Problem.fromThrowable(t.appendCurrentStackTrace))
           case Right(o) => Right(o)
-        }
 
       /** Converts an `Either[Throwable, A]` to a Checked[A] with the `Throwable`'s message only (toStringWithCauses). */
       def toMessageOnlyChecked: Checked[R] =
-        underlying match {
+        underlying match
           case Left(t) => Left(Problem.pure(Option(t.getMessage) getOrElse t.toStringWithCauses))
           case Right(o) => Right(o)
-        }
 
       def withStackTrace: Either[Throwable, R] =
-        underlying match {
+        underlying match
           case o: Right[L, R] =>
             o
 
@@ -738,11 +643,8 @@ object ScalaUtils
           case Left(t) =>
             t.fillInStackTrace()
             Left(if t.getStackTrace.nonEmpty then t else new IllegalStateException(s"$t", t))
-        }
-    }
 
-    implicit final class RichString(private val underlying: String) extends AnyVal
-    {
+    implicit final class RichString(private val underlying: String) extends AnyVal:
       /** Truncate to `n`, replacing the tail with ellipsis and, if the string is long, the total character count. */
       def truncateWithEllipsis(
         n: Int,
@@ -752,7 +654,7 @@ object ScalaUtils
       : String =
         if underlying.length <= n && !quote && !underlying.exists(_.isControl) then
           underlying
-        else {
+        else
           val sb = new StringBuilder(n + 2 * quote.toInt)
           if quote then sb.append('»')
           val suffix = if showLength then s"$Ellipsis(length ${underlying.length})" else Ellipsis
@@ -763,89 +665,70 @@ object ScalaUtils
             if truncate then nn - suffix.length min firstLineLength else underlying.length
 
           var i = 0
-          while i < truncateAt do {
+          while i < truncateAt do
             var c = underlying(i)
             if c.isControl then c = '·'
             sb.append(c)
             i += 1
-          }
 
           if quote then sb.append('«')
           if truncate then sb.append(suffix)
           sb.toString
-        }
 
       def replaceChar(from: Char, to: Char): String =
-        if underlying contains from then {
+        if underlying contains from then
           val chars = new Array[Char](underlying.length)
           underlying.getChars(0, underlying.length, chars, 0)
           for i <- chars.indices do if chars(i) == from then chars(i) = to
           new String(chars)
-        } else
+        else
           underlying
 
-      def dropLastWhile(predicate: Char => Boolean): String = {
+      def dropLastWhile(predicate: Char => Boolean): String =
         var i = underlying.length
         while i > 0 && predicate(underlying(i - 1)) do i = i -1
         underlying.substring(0, i)
-      }
 
       def firstLineLength = firstLineLengthN(Int.MaxValue)
 
-      def firstLineLengthN(until: Int): Int = {
+      def firstLineLengthN(until: Int): Int =
         val n = until min underlying.length
         var i = 0
-        while i < n do {
-          if underlying.charAt(i) == '\n' then {
+        while i < n do
+          if underlying.charAt(i) == '\n' then
             return if i > 0 && underlying.charAt(i - 1) == '\r' then i - 1 else i
-          }
           i += 1
-        }
         n
-      }
-    }
 
-    implicit final class RichStringuilder(private val sb: StringBuilder) extends AnyVal
-    {
+    implicit final class RichStringuilder(private val sb: StringBuilder) extends AnyVal:
       /** Right-adjust (moves) the text written by body and fill the left-side up with spaces. */
-      def fillLeft(width: Int)(body: => Unit): Unit = {
+      def fillLeft(width: Int)(body: => Unit): Unit =
         val insert = sb.length()
         body
         val shift = insert + width - sb.length()
-        if shift > 0 then {
-          if shift <= spaceArray.length then {
+        if shift > 0 then
+          if shift <= spaceArray.length then
             sb.insertAll(insert, spaceArray, 0, shift)
-          } else {
+          else
             sb.insertAll(insert, Iterator.fill(shift)(' '))
-          }
-        }
-      }
 
       /** Fill the right-side up with spaces after something has been written by body. */
-      def fillRight(width: Int)(body: => Unit): Unit = {
+      def fillRight(width: Int)(body: => Unit): Unit =
         val right = sb.length() + width
         body
         val fill = right - sb.length()
-        if fill > 0 then {
-          if fill <= spaceArray.length then {
+        if fill > 0 then
+          if fill <= spaceArray.length then
             sb.appendAll(spaceArray, 0, fill)
-          } else {
+          else
             sb.appendAll(Iterator.fill(fill)(' '))
-          }
-        }
-      }
-    }
 
-    implicit final class RichByteArray(private val underlying: Array[Byte]) extends AnyVal
-    {
-      def indexOfByte(byte: Byte) = {
+    implicit final class RichByteArray(private val underlying: Array[Byte]) extends AnyVal:
+      def indexOfByte(byte: Byte) =
         val len = underlying.length
         var i = 0
         while i < len && underlying(i) != byte do i = i + 1
         if i == len then -1 else i
-      }
-    }
-  }
 
   @inline
   def reuseIfEqual[A <: AnyRef](a: A)(f: A => A): A =
@@ -874,46 +757,40 @@ object ScalaUtils
 
   private val removePackageRegex = """^([a-z0-9]*\.)*""".r
 
-  private[utils] def simpleClassName[A](name: String): String = {
+  private[utils] def simpleClassName[A](name: String): String =
     name.substring(max(name.lastIndexOf('.', name.length - 2), name.lastIndexOf('$', name.length - 2)) + 1)
-  }
 
   /**
     * Replaces toString of the body (argumentless function), for logging and debugging.
     */
   def function0WithToString[R](lazyString: => String)(body: => R): () => R =
-    new (() => R) {
+    new (() => R):
       def apply() = body
       override def toString() = lazyString
-    }
 
   /**
    * Replaces toString of the function, for logging and debugging.
    */
   def function1WithToString[A, R](string: String)(function: A => R): A => R =
-    new (A => R) {
+    new (A => R):
       def apply(a: A) = function(a)
       override def toString() = string
-    }
 
-  def namedIdentity[A] = new (A => A) {
+  def namedIdentity[A] = new (A => A):
     def apply(a: A) = a
     override def toString = "identity"
-  }
 
-  def cast[A: ClassTag](o: Any): A = {
-    checkedCast[A](o) match {
+  def cast[A: ClassTag](o: Any): A =
+    checkedCast[A](o) match
       case Left(problem) =>
         throw problem.throwableOption getOrElse new ClassCastException(problem.toString)
       case Right(a) => a
-    }
-  }
 
   def checkedCast[A: ClassTag](o: Any): Checked[A] =
     checkedCast[A](o,
       Problem(s"Expected ${implicitClass[A].getName} but got ${o.getClass.getName}: ${o.toString.truncateWithEllipsis(30)}"))
 
-  def checkedCast[A: ClassTag](o: Any, problem: => Problem): Checked[A] = {
+  def checkedCast[A: ClassTag](o: Any, problem: => Problem): Checked[A] =
     val A = implicitClass[A]
     if o == null then
       Left(Problem.fromThrowable(new NullPointerException(s"Expected ${A.getName}, found: null")))
@@ -921,7 +798,6 @@ object ScalaUtils
       Right(o.asInstanceOf[A])
     else
       Left(problem)
-  }
 
   def ifCast[A: ClassTag](o: Any): Option[A] =
     if o == null then
@@ -944,67 +820,55 @@ object ScalaUtils
 
   private val lowerCaseHex: Array[Char] = "0123456789abcdef".toArray
 
-  def bytesToHex(bytes: collection.Seq[Byte]): String = {
+  def bytesToHex(bytes: collection.Seq[Byte]): String =
     val sb = new StringBuilder(2 * bytes.length)
-    for b <- bytes.iterator do {
+    for b <- bytes.iterator do
       sb.append(lowerCaseHex((b >> 4) & 0xf))
       sb.append(lowerCaseHex(b & 0xf))
-    }
     sb.toString
-  }
 
   def withStringBuilder(body: StringBuilder => Unit): String =
     withStringBuilder(16)(body)
 
-  def withStringBuilder(size: Int = 16)(body: StringBuilder => Unit): String = {
+  def withStringBuilder(size: Int = 16)(body: StringBuilder => Unit): String =
     val sb = new StringBuilder(size)
     body(sb)
     sb.toString
-  }
 
-  def chunkStrings(strings: Seq[String], maxSize: Int): Iterable[String] = {
+  def chunkStrings(strings: Seq[String], maxSize: Int): Iterable[String] =
     val total = strings.view.map(_.length).sum
     if total == 0 then
       Nil
     else if total <= maxSize then
       strings.combineAll :: Nil
-    else {
+    else
       val result = mutable.Buffer.empty[String]
       val sb = new StringBuilder(maxSize)
-      for str <- strings do {
-        if sb.isEmpty && str.length == maxSize then {
+      for str <- strings do
+        if sb.isEmpty && str.length == maxSize then
           result.append(str)
-        } else {
+        else
           var start = 0
-          while start < str.length do {
+          while start < str.length do
             val end = (start + maxSize - sb.length) min str.length
             val a = str.substring(start, end)
-            if sb.isEmpty && a.length == maxSize then {
+            if sb.isEmpty && a.length == maxSize then
               result.append(a)
-            } else {
+            else
               sb.append(a)
-              if sb.length == maxSize then {
+              if sb.length == maxSize then
                 result.append(sb.toString)
                 sb.clear()
-              }
-            }
             start += a.length
-          }
-        }
-      }
       if sb.nonEmpty then result.append(sb.toString)
       result
-    }
-  }
 
   def ordinalToString(n: Int) =
-    n match {
+    n match
       case 1 => "1st"
       case 2 => "2nd"
       case 3 => "3rd"
       case n => s"${n}th"
-    }
 
   /** Only to let the compiler check the body, nothing is executed. */
   inline def compilable(inline body: Any): Unit = {}
-}

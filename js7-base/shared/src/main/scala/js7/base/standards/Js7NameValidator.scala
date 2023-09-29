@@ -5,8 +5,7 @@ import js7.base.problem.Problems.InvalidNameProblem
 import js7.base.standards.Js7NameValidator.*
 
 final class Js7NameValidator(val typeName: String)
-extends NameValidator
-{
+extends NameValidator:
   private val javaNameValidator = new JavaNameValidator(
     typeName,
     isExtraNameStart = _.isDigit,
@@ -23,9 +22,6 @@ extends NameValidator
 
   def isNamePart(c: Char) =
     javaNameValidator.isNamePart(c) || isExtraNamePart0(c)
-}
 
-object Js7NameValidator
-{
+object Js7NameValidator:
   private val isExtraNamePart0 = Set('-', '.')
-}

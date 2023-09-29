@@ -11,13 +11,11 @@ import js7.data.event.NoKeyEvent
   */
 sealed trait OrderScheduleEvent extends NoKeyEvent
 
-object OrderScheduleEvent {
+object OrderScheduleEvent:
   final case class GeneratedUntil(until: Timestamp)
   extends OrderScheduleEvent
-  object GeneratedUntil {
+  object GeneratedUntil:
     implicit val jsonCodec: Codec.AsObject[GeneratedUntil] = deriveCodec
-  }
 
   implicit val jsonCodec: TypedJsonCodec[OrderScheduleEvent] = TypedJsonCodec(
     Subtype.named1[GeneratedUntil]("OrderScheduleEvent.GeneratedUntil"))
-}

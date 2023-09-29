@@ -17,9 +17,9 @@ import scala.collection.mutable
 /**
   * @author Joacim Zschimmer
   */
-final class WorkflowReaderTest extends OurTestSuite {
+final class WorkflowReaderTest extends OurTestSuite:
 
-  "Different Workflow file formats" in {
+  "Different Workflow file formats" in:
     withTemporaryDirectory("WorkflowReaderTest-") { dir =>
       val expected = mutable.Buffer[Workflow]()
 
@@ -36,5 +36,3 @@ final class WorkflowReaderTest extends OurTestSuite {
       val typedSourceReader = new TypedSourceReader(dir, WorkflowReader :: Nil)
       assert(typedSourceReader.readCompleteDirectory().map(_.toSet) == Right(expected.toSet))
     }
-  }
-}

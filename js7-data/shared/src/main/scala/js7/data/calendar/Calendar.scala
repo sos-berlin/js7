@@ -18,8 +18,7 @@ final case class Calendar(
   orderIdPattern: String,
   periodDatePattern: String,
   itemRevision: Option[ItemRevision] = None)
-extends UnsignedSimpleItem
-{
+extends UnsignedSimpleItem:
   protected type Self = Calendar
 
   val companion: Calendar.type = Calendar
@@ -36,10 +35,8 @@ extends UnsignedSimpleItem
 
   def withRevision(revision: Option[ItemRevision]) =
     copy(itemRevision = revision)
-}
 
-object Calendar extends UnsignedSimpleItem.Companion[Calendar]
-{
+object Calendar extends UnsignedSimpleItem.Companion[Calendar]:
   val cls = classOf[Calendar]
 
   @TestOnly
@@ -101,4 +98,3 @@ object Calendar extends UnsignedSimpleItem.Companion[Calendar]
     deriveConfiguredCodec[Calendar].checked(_.checked)
 
   intelliJuseImport((FiniteDurationJsonEncoder))
-}

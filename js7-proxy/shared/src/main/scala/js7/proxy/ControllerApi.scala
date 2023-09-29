@@ -42,8 +42,7 @@ final class ControllerApi(
   val apisResource: Resource[Task, Nel[HttpControllerApi]],
   proxyConf: ProxyConf = ProxyConf.default,
   failWhenUnreachable: Boolean = false)
-extends ControllerApiWithHttp
-{
+extends ControllerApiWithHttp:
   private val apiCache = new RefCountedResource(
     ActiveClusterNodeSelector.selectActiveNodeApi[HttpControllerApi](
       apisResource,
@@ -206,10 +205,8 @@ extends ControllerApiWithHttp
           case (t, _, _) => Task.raiseError(t)
         }
     })
-}
 
-object ControllerApi
-{
+object ControllerApi:
   private val logger = Logger[this.type]
 
   def resource(
@@ -217,4 +214,3 @@ object ControllerApi
     proxyConf: ProxyConf = ProxyConf.default)
   : Resource[Task, ControllerApi] =
     Resource.make(Task { new ControllerApi(apisResource, proxyConf) })(_.stop)
-}

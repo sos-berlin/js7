@@ -19,8 +19,7 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import scala.util.Try
 
-trait JobLauncher
-{
+trait JobLauncher:
   protected val jobConf: JobConf
 
   def precheckAndWarn = Task.unit
@@ -35,18 +34,16 @@ trait JobLauncher
     start.memoize
 
   override def toString = s"${getClass.simpleScalaName}(${jobConf.jobKey})"
-}
 
-object JobLauncher
-{
+object JobLauncher:
   private val logger = Logger[this.type]
 
   def checked(
     jobConf: JobConf,
     launcherConf: JobLauncherConf)
     (implicit scheduler: Scheduler)
-  : Checked[JobLauncher] = {
-    jobConf.workflowJob.executable match {
+  : Checked[JobLauncher] =
+    jobConf.workflowJob.executable match
       case executable: AbsolutePathExecutable =>
         if !launcherConf.scriptInjectionAllowed then
           Left(SignedInjectionNotAllowed)
@@ -66,23 +63,18 @@ object JobLauncher
           Right(new CommandLineJobLauncher(executable, jobConf, launcherConf))
 
       case executable: InternalExecutable =>
-        if !launcherConf.scriptInjectionAllowed then {
+        if !launcherConf.scriptInjectionAllowed then
           // If check is relaxed, consider checking permission for executable.script !!!
           Left(SignedInjectionNotAllowed)
-        } else {
+        else
           import launcherConf.implicitIox
           lazy val scope = NowScope() |+| EnvScope
           for jobArguments <- evalExpressionMap(executable.jobArguments, scope)
             yield new InternalJobLauncher(executable, jobConf, jobArguments,
               launcherConf.blockingJobScheduler, launcherConf.clock)
-        }
-    }
-  }
 
   private[launcher] def warnIfNotExecutable(file: Path): Unit =
-    if !exists(file) then {
+    if !exists(file) then
       logger.warn(s"Executable '$file' not found")
-    } else if isUnix && !Try(getPosixFilePermissions(file) contains OWNER_EXECUTE).getOrElse(true) then {
+    else if isUnix && !Try(getPosixFilePermissions(file) contains OWNER_EXECUTE).getOrElse(true) then
       logger.warn(s"Executable '$file' is not user executable")
-    }
-}

@@ -5,9 +5,8 @@ import js7.base.test.OurTestSuite
 import js7.base.time.Timestamp
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 
-final class CycleStateTest extends OurTestSuite
-{
-  "JSON" in {
+final class CycleStateTest extends OurTestSuite:
+  "JSON" in:
     testJson(
       CycleState(
         end = Timestamp("2021-10-01T00:00:00Z"),
@@ -33,5 +32,3 @@ final class CycleStateTest extends OurTestSuite
         "index": 0,
         "next": 1633089600000
       }""")
-  }
-}

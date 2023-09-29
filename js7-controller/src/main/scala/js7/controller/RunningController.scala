@@ -94,8 +94,7 @@ final class RunningController private(
   val testEventBus: StandardEventBus[Any],
   val actorSystem: ActorSystem)
   (implicit val scheduler: Scheduler)
-extends MainService with Service.StoppableByRequest
-{
+extends MainService with Service.StoppableByRequest:
   protected type Termination = ProgramTermination
 
   @TestOnly lazy val localUri: Uri =
@@ -110,7 +109,7 @@ extends MainService with Service.StoppableByRequest
         shutdown(ShutDown()).void)
 
   def shutdown(cmd: ShutDown): Task[ProgramTermination] =
-    Task.defer {
+    Task.defer:
       if terminated.isCompleted then  // Works only if previous termination has been completed
         untilTerminated
       else
@@ -123,7 +122,6 @@ extends MainService with Service.StoppableByRequest
             }
             .map(_.orThrow)
             .*>(untilTerminated))
-    }
 
   private def executeCommandAsSystemUser(command: ControllerCommand): Task[Checked[command.Response]] =
     for
@@ -179,7 +177,7 @@ extends MainService with Service.StoppableByRequest
     controllerState.map(_.clusterState)
 
   @TestOnly
-  def journalActorState: Output.JournalActorState = {
+  def journalActorState: Output.JournalActorState =
     val actorSel = actorSystem.actorSelection("user/Journal")
     // Wait for JournalActor start
     waitForCondition(10.s, 10.ms)(Try(actorSel.resolveOne(99.s).await(99.s)).isSuccess)
@@ -187,11 +185,8 @@ extends MainService with Service.StoppableByRequest
     (actor ? JournalActor.Input.GetJournalActorState)(Timeout(99.s))
     .mapTo[JournalActor.Output.JournalActorState]
     .await(99.s)
-  }
-}
 
-object RunningController
-{
+object RunningController:
   private val logger = Logger[this.type]
 
   @TestOnly
@@ -228,15 +223,14 @@ object RunningController
     alarmClock: AlarmClock,
     eventIdClock: EventIdClock)
     (implicit scheduler: Scheduler, iox: IOExecutor)
-  : Resource[Task, RunningController] = {
+  : Resource[Task, RunningController] =
     import conf.{clusterConf, config, httpsConfig, implicitAkkaAskTimeout, journalLocation}
 
     implicit val testEventBus: StandardEventBus[Any] = new StandardEventBus[Any]
 
-    implicit val nodeNameToPassword: NodeNameToPassword[ControllerState] = {
+    implicit val nodeNameToPassword: NodeNameToPassword[ControllerState] =
       val result = Right(config.optionAs[SecretString]("js7.auth.cluster.password"))
       _ => result
-    }
 
     // Recover and initialize other stuff in parallel
     val clusterNodeResource =
@@ -357,7 +351,6 @@ object RunningController
         runningController <- runningControllerResource(webServer, sessionRegister)
       yield runningController
     }
-  }
 
   def threadPoolResource[F[_]](conf: ControllerConfiguration, orCommon: Option[Scheduler] = None)
     (implicit F: Sync[F])
@@ -387,7 +380,7 @@ object RunningController
     testEventPublisher: EventPublisher[Any])(
     implicit scheduler: Scheduler, actorSystem: ActorSystem)
   : Either[ProgramTermination, OrderKeeperStarted] =
-    logger.traceCall {
+    logger.traceCall:
       val terminationPromise = Promise[ProgramTermination]()
       val actor = actorSystem.actorOf(
         Props {
@@ -399,14 +392,12 @@ object RunningController
       val termination = terminationPromise.future
         .andThen { case Failure(t) => logger.error(t.toStringWithCauses, t) }
       Right(OrderKeeperStarted(actor.taggedWith[ControllerOrderKeeper], termination))
-    }
 
   private class MyCommandExecutor(
     clusterNode: ClusterNode[ControllerState],
     orderKeeperActor: Task[Checked[ActorRef @@ ControllerOrderKeeper]])
     (implicit timeout: Timeout)
-  extends CommandExecutor[ControllerCommand]
-  {
+  extends CommandExecutor[ControllerCommand]:
     def executeCommand(command: ControllerCommand, meta: CommandMeta): Task[Checked[command.Response]] =
       (command match {
         case command: ControllerCommand.ShutDown =>
@@ -440,21 +431,18 @@ object RunningController
               (actor ? ControllerOrderKeeper.Command.Execute(command, meta, CorrelId.current))
                 .mapTo[Checked[ControllerCommand.Response]]))
       }).map(_.map((_: ControllerCommand.Response).asInstanceOf[command.Response]))
-  }
 
   private class MyItemUpdater(
     val signedItemVerifier: SignedItemVerifier[SignableItem],
     orderKeeperActor: Task[Checked[ActorRef @@ ControllerOrderKeeper]])
     (implicit timeout: Timeout)
-  extends ItemUpdater
-  {
+  extends ItemUpdater:
     def updateItems(verifiedUpdateItems: VerifiedUpdateItems) =
       orderKeeperActor
         .flatMapT(actor =>
           Task.deferFuture(
             (actor ? ControllerOrderKeeper.Command.VerifiedUpdateItemsCmd(verifiedUpdateItems))
               .mapTo[Checked[Completed]]))
-  }
 
   private case class OrderKeeperStarted(
     actor: ActorRef @@ ControllerOrderKeeper,
@@ -466,7 +454,5 @@ object RunningController
   final case class TestWiring(
     alarmClock: Option[AlarmClock] = None,
     eventIdClock: Option[EventIdClock] = None)
-  object TestWiring {
+  object TestWiring:
     val empty = TestWiring()
-  }
-}

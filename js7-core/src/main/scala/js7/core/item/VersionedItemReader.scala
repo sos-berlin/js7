@@ -9,8 +9,7 @@ import js7.data.item.{SourceType, VersionedItem, VersionedItemId, VersionedItemP
 /**
   * @author Joacim Zschimmer
   */
-trait VersionedItemReader extends ItemReader
-{
+trait VersionedItemReader extends ItemReader:
   val companion: VersionedItem.Companion_
 
   import companion.{Item, Path as ThisItemPath}
@@ -30,16 +29,12 @@ trait VersionedItemReader extends ItemReader
     source.parseJson flatMap convertFromJson
 
   final def readAnonymousJsonLike(sourceType: SourceType.JsonLike, source: ByteArray): Checked[Item] =
-    sourceType match {
+    sourceType match
       case SourceType.Json =>
         readJsonString(source.utf8String)
-    }
 
   //private[item] def itemPathCompanion: VersionedItemPath.Companion[ThisItemPath] = companion.Path
-}
 
-object VersionedItemReader
-{
+object VersionedItemReader:
   final case class SourceProblem(path: VersionedItemPath, sourceType: SourceType, underlying: Problem)
     extends Problem.Lazy(s"Problem with '$path' ($sourceType)", Some(underlying))
-}

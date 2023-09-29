@@ -21,8 +21,7 @@ import monix.execution.Scheduler.Implicits.traced
 import org.scalactic.source
 import scala.reflect.ClassTag
 
-final class FailTest extends OurTestSuite with ControllerAgentForScalaTest
-{
+final class FailTest extends OurTestSuite with ControllerAgentForScalaTest:
   protected val agentPaths = Seq(agentPath)
   protected val items = Nil
   override protected def agentConfig = config"""
@@ -31,13 +30,12 @@ final class FailTest extends OurTestSuite with ControllerAgentForScalaTest
   private val workflowIdIterator = Iterator.from(1).map(i => WorkflowPath(s"WORKFLOW-$i") ~ i.toString)
   private val orderIdIterator = Iterator.from(1).map(i => OrderId(s"♦️-$i"))
 
-  override def beforeAll() = {
+  override def beforeAll() =
     directoryProvider.agentEnvs.head
       .writeExecutable(RelativePathExecutable("test.cmd"), (isWindows ?? "@echo off\n") + "exit 3")
     super.beforeAll()
-  }
 
-  "Fail" in {
+  "Fail" in:
     val workflowId = workflowIdIterator.next()
     val orderId = orderIdIterator.next()
     runUntil[OrderFailed](orderId, workflowId, """
@@ -57,9 +55,8 @@ final class FailTest extends OurTestSuite with ControllerAgentForScalaTest
         OrderDetachable,
         OrderDetached,
         OrderFailed(Position(1))))
-  }
 
-  "Fail (returnCode=7)" in {
+  "Fail (returnCode=7)" in:
     val workflowId = workflowIdIterator.next()
     val orderId = orderIdIterator.next()
     runUntil[OrderFailed](orderId, workflowId, """
@@ -79,9 +76,8 @@ final class FailTest extends OurTestSuite with ControllerAgentForScalaTest
         OrderDetachable,
         OrderDetached,
         OrderFailed(Position(1))))
-  }
 
-  "Fail (returnCode=7, message='ERROR')" in {
+  "Fail (returnCode=7, message='ERROR')" in:
     val workflowId = workflowIdIterator.next()
     val orderId = orderIdIterator.next()
     runUntil[OrderFailed](orderId, workflowId, """
@@ -93,9 +89,8 @@ final class FailTest extends OurTestSuite with ControllerAgentForScalaTest
         OrderStarted,
         OrderOutcomeAdded(Outcome.Failed(Some("ERROR"), NamedValues.rc(7))),
         OrderFailed(Position(0))))
-  }
 
-  "Fail in fork" in {
+  "Fail in fork" in:
     val workflowId = workflowIdIterator.next()
     val orderId = OrderId("🔺")
     runUntil[OrderFailed](orderId, workflowId, """
@@ -116,9 +111,8 @@ final class FailTest extends OurTestSuite with ControllerAgentForScalaTest
       OrderId("🔺|🍋") -> Vector(
         OrderOutcomeAdded(Outcome.failed),
         OrderFailedInFork(Position(0) / BranchId.fork("🍋") % 0)))
-  }
 
-  "Uncatchable fail in fork" in {
+  "Uncatchable fail in fork" in:
     val workflowId = workflowIdIterator.next()
     val orderId = OrderId("🟥")
     runUntil[OrderFailed](orderId, workflowId, """
@@ -140,7 +134,6 @@ final class FailTest extends OurTestSuite with ControllerAgentForScalaTest
         OrderMoved(Position(0) / "fork+🍋" % 0 / "try+0" % 0),
         OrderOutcomeAdded(Outcome.failed),
         OrderFailedInFork(Position(0) / BranchId.fork("🍋") % 0 / BranchId.try_(0) % 0)))
-  }
 
   private def runUntil[E <: OrderEvent: ClassTag: Tag](
     orderId: OrderId,
@@ -160,29 +153,23 @@ final class FailTest extends OurTestSuite with ControllerAgentForScalaTest
     workflow: Workflow,
     expectedEvents: Vector[OrderEvent],
     moreExpectedEvents: (OrderId, Vector[OrderEvent])*)
-  : Unit = {
+  : Unit =
     directoryProvider.updateVersionedItems(controller, workflow.id.versionId, Seq(workflow))
     controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
     eventWatch.await[E](_.key == orderId)
     checkEventSeq(orderId, eventWatch.allKeyedEvents[OrderEvent], expectedEvents)
-    for (oId, expected) <- moreExpectedEvents do {
+    for (oId, expected) <- moreExpectedEvents do
       checkEventSeq(oId, eventWatch.allKeyedEvents[OrderEvent], expected)
-    }
-  }
 
   private def checkEventSeq(
     orderId: OrderId,
     keyedEvents: Seq[KeyedEvent[OrderEvent]],
     expected: Vector[OrderEvent])
     (implicit pos: source.Position)
-  : Unit = {
+  : Unit =
     val events = keyedEvents.view.filter(_.key == orderId).map(_.event).to(Vector)
     assert(events == expected)
-  }
-}
 
-object FailTest
-{
+object FailTest:
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)
-}

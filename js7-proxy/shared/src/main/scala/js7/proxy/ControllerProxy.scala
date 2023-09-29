@@ -23,8 +23,7 @@ final class ControllerProxy private(
   val eventBus: JournaledStateEventBus[ControllerState],
   protected val proxyConf: ProxyConf)
   (protected implicit val scheduler: Scheduler)
-extends JournaledProxy[ControllerState]
-{
+extends JournaledProxy[ControllerState]:
   protected def S = ControllerState
   protected val onEvent = eventBus.publish
 
@@ -33,10 +32,8 @@ extends JournaledProxy[ControllerState]
       .flatMapT(response =>
         sync(response.eventId)
           .map(_ => Right(response)))
-}
 
-object ControllerProxy
-{
+object ControllerProxy:
   private[proxy] def start(
     api: ControllerApi,
     apisResource: Resource[Task, Nel[HttpControllerApi]],
@@ -53,4 +50,3 @@ object ControllerProxy
         proxyConf)
       proxy.startObserving.map(_ => proxy)
     }
-}

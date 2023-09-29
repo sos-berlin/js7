@@ -36,8 +36,7 @@ private final class LocalSubagentDriver private(
   controllerId: ControllerId,
   protected val subagentConf: SubagentConf)
 extends SubagentDriver
-with Service.StoppableByRequest
-{
+with Service.StoppableByRequest:
   private val logger = Logger.withPrefix[this.type](subagentItem.pathRev.toString)
   // isDedicated when this Director gets activated after fail-over.
   private val wasRemote = subagent.isDedicated
@@ -90,7 +89,7 @@ with Service.StoppableByRequest
     subagent.journal.eventWatch
       .observe(EventRequest.singleClass[Event](after = eventId, timeout = None))
       .mapEval(handleEvent)
-      .mapEval {
+      .mapEval:
         case (maybeStampedEvent, followUp) =>
           maybeStampedEvent
             .fold(Task.unit)(stampedEvent => journal
@@ -114,7 +113,6 @@ with Service.StoppableByRequest
                 subagentId <-: SubagentEventsObserved(stampedEvent.eventId)))
               .*>(releaseEvents(stampedEvent.eventId)))
             .*>(followUp)
-      }
       .takeUntilEval(untilStopRequested)
       .completedL
       .onErrorHandle(t => logger.error(s"observeEvents => ${t.toStringWithCauses}"))
@@ -122,9 +120,9 @@ with Service.StoppableByRequest
   /** Returns optionally the event and a follow-up task. */
   private def handleEvent(stamped: Stamped[AnyKeyedEvent])
   : Task[(Option[Stamped[AnyKeyedEvent]], Task[Unit])] =
-    stamped.value match {
+    stamped.value match
       case keyedEvent @ KeyedEvent(orderId: OrderId, event: OrderEvent) =>
-        event match {
+        event match
           case _: OrderStdWritten =>
             // TODO Save Timestamp
             // FIXME Persist asynchronous!
@@ -132,17 +130,15 @@ with Service.StoppableByRequest
 
           case orderProcessed: OrderProcessed =>
             // TODO Save Timestamp
-            onOrderProcessed(orderId, orderProcessed).map {
+            onOrderProcessed(orderId, orderProcessed).map:
               case None => None -> Task.unit // OrderProcessed already handled
               case Some(followUp) =>
                 // The followUp Task notifies OrderActor about OrderProcessed by calling `onEvents`
                 Some(stamped) -> followUp
-            }
 
           case _ =>
             logger.error(s"Unexpected event: $keyedEvent")
             Task.pure(None -> Task.unit)
-        }
 
       case KeyedEvent(_: NoKey, SubagentEvent.SubagentShutdown) =>
         // Ignore this, should not happen
@@ -155,18 +151,16 @@ with Service.StoppableByRequest
       case keyedEvent =>
         logger.error(s"Unexpected event: $keyedEvent")
         Task.pure(None -> Task.unit)
-    }
 
   private def onOrderProcessed(orderId: OrderId, orderProcessed: OrderProcessed)
   : Task[Option[Task[Unit]]] =
-    orderToDeferred.remove(orderId).map {
+    orderToDeferred.remove(orderId).map:
       case None =>
         logger.error(s"Unknown Order for event: ${orderId <-: orderProcessed}")
         None
 
       case Some(processing) =>
         Some(processing.complete(orderProcessed))
-    }
 
   def stopJobs(jobKeys: Iterable[JobKey], signal: ProcessSignal) =
     Task(subagent.checkedDedicatedSubagent.toOption)
@@ -214,23 +208,22 @@ with Service.StoppableByRequest
   : Task[Checked[Fiber[OrderProcessed]]] =
     orderToDeferred
       .insert(order.id, Deferred.unsafe)
-      .flatMap {
+      .flatMap:
         case Left(problem) => Task.left(problem)
         case Right(deferred) =>
           orderToExecuteDefaultArguments(order)
             .flatMapT(subagent.startOrderProcess(order, _))
             .materializeIntoChecked
-            .flatMap {
+            .flatMap:
               case Left(problem) =>
                 orderToDeferred
                   .remove(order.id)
-                  .flatMap {
+                  .flatMap:
                     case None =>
                       // Deferred has been removed
-                      if problem != CommandDispatcher.StoppedProblem then {
+                      if problem != CommandDispatcher.StoppedProblem then
                         // onSubagentDied has stopped all queued StartOrderProcess commands
                         logger.warn(s"${order.id} got OrderProcessed, so we ignore $problem")
-                      }
                       Task.right(())
 
                     case Some(deferred) =>
@@ -251,16 +244,13 @@ with Service.StoppableByRequest
                         journal
                           .persistKeyedEvent(order.id <-: orderProcessed)
                           .orThrow.start
-                  }
 
               case Right(_: Fiber[OrderProcessed]) =>
                 Task.unit
-            }
             // Now wait for OrderProcessed event fulfilling Deferred
             .*>(deferred.get)
             .start
             .map(Right(_))
-      }
 
   def killProcess(orderId: OrderId, signal: ProcessSignal): Task[Unit] =
     subagent.killProcess(orderId, signal)
@@ -314,19 +304,15 @@ with Service.StoppableByRequest
 
   override def toString =
     s"LocalSubagentDriver(${subagentItem.pathRev})"
-}
 
-object LocalSubagentDriver
-{
+object LocalSubagentDriver:
   private[director] def resource[S <: SubagentDirectorState[S]](
     subagentItem: SubagentItem,
     subagent: Subagent,
     journal: Journal[S],
     controllerId: ControllerId,
     subagentConf: SubagentConf)
-  : Resource[Task, LocalSubagentDriver] = {
+  : Resource[Task, LocalSubagentDriver] =
     Service.resource(Task {
       new LocalSubagentDriver(subagentItem, subagent, journal, controllerId, subagentConf)
     })
-  }
-}

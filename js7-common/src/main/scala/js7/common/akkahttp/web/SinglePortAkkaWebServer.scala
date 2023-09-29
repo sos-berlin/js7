@@ -32,8 +32,7 @@ import scala.util.{Failure, Success}
  */
 private final class SinglePortAkkaWebServer private(binding: Binding)
   (implicit protected val actorSystem: ActorSystem)
-extends Service.StoppableByRequest
-{
+extends Service.StoppableByRequest:
   protected def start =
     startService(
       untilStopRequested *> onStop)
@@ -45,10 +44,8 @@ extends Service.StoppableByRequest
       //    t.nullIfNoStackTrace))
 
   override def toString = s"SinglePortAkkaWebServer($binding)"
-}
 
-private object SinglePortAkkaWebServer
-{
+private object SinglePortAkkaWebServer:
   private val logger = Logger[this.type]
 
   def resource(
@@ -140,8 +137,7 @@ private object SinglePortAkkaWebServer
     binding: WebServerBinding,
     boundRoute: BoundRoute,
     name: String)
-    (implicit scheduler: Scheduler)
-  {
+    (implicit scheduler: Scheduler):
     private val _realRoute = Atomic(none[Route])
 
     private val whenRealRoute: Future[Route] =
@@ -166,13 +162,11 @@ private object SinglePortAkkaWebServer
           case Some(Failure(t)) => throw t
           case Some(Success(realRoute)) => realRoute
         })
-  }
 
   private final case class Binding(
     webServerBinding: WebServerBinding,
     akkaBinding: Http.ServerBinding,
-    shutdownTimeout: FiniteDuration)
-  {
+    shutdownTimeout: FiniteDuration):
     val webServerPort: WebServerPort =
       webServerBinding.toWebServerPort
 
@@ -184,5 +178,3 @@ private object SinglePortAkkaWebServer
         .void
 
     override def toString = webServerPort.toString
-  }
-}

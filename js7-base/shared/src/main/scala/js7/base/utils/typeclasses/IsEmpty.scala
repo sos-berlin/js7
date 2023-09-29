@@ -3,8 +3,7 @@ package js7.base.utils.typeclasses
 import cats.{Eq, Monoid}
 import scala.language.implicitConversions
 
-trait IsEmpty[A]
-{
+trait IsEmpty[A]:
   def isEmpty(a: A): Boolean
 
   final def isNonEmpty(a: A) = !isEmpty(a)
@@ -12,16 +11,14 @@ trait IsEmpty[A]
   /** None if a isEmpty, otherwise Some(a). */
   def emptyToNone(a: A): Option[A] =
     if isEmpty(a) then None else Some(a)
-}
 
-object IsEmpty
-{
+object IsEmpty:
   def apply[A](implicit o: IsEmpty[A]): IsEmpty[A] = o
 
   def fromIsEmpty[A](empty: A => Boolean): IsEmpty[A] =
     empty(_)
 
-  trait Ops[A] {
+  trait Ops[A]:
     def typeClassInstance: IsEmpty[A]
     def self: A
     def isEmpty: Boolean = typeClassInstance.isEmpty(self)
@@ -30,15 +27,12 @@ object IsEmpty
     /** None if `this` isEmpty. */
     def ?? : Option[A] = typeClassInstance.emptyToNone(self)
     def emptyToNone : Option[A] = typeClassInstance.emptyToNone(self)
-  }
 
-  object syntax {
+  object syntax:
     implicit def toIsEmptyAllOps[A](target: A)(implicit tc: IsEmpty[A]): Ops[A] =
-      new Ops[A] {
+      new Ops[A]:
         val self = target
         val typeClassInstance = tc
-      }
-  }
 
   implicit val stringIsEmpty: IsEmpty[String] = _.isEmpty
   implicit val intIsEmpty: IsEmpty[Int] = _ == 0
@@ -54,4 +48,3 @@ object IsEmpty
 
   @inline implicit def iterableIsEmpty[A <: Iterable[?]]: IsEmpty[A] =
     erasedIterableIsEmpty.asInstanceOf[IsEmpty[A]]
-}

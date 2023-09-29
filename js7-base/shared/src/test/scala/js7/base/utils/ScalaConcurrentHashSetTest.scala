@@ -5,48 +5,39 @@ import js7.base.test.OurTestSuite
 /**
  * @author Joacim Zschimmer
  */
-final class ScalaConcurrentHashSetTest extends OurTestSuite
-{
+final class ScalaConcurrentHashSetTest extends OurTestSuite:
   private val m = new ScalaConcurrentHashSet[Int]
 
-  "insert" in {
+  "insert" in:
     m.insert(1)
     intercept[DuplicateKeyException] { m.insert(1) }
-  }
 
-  "+=" in {
+  "+=" in:
     m += 1
     m += 2
     m += 1
     m += 3
     assert(m == Set(1, 2, 3))
-  }
 
-  "-=" in {
+  "-=" in:
     m -= 1
     assert(m == Set(2, 3))
     m -= 1
     assert(m == Set(2, 3))
-  }
 
-  "iterator" in {
+  "iterator" in:
     assert(m.iterator.toSet == Set(2, 3))
-  }
 
-  "apply" in {
+  "apply" in:
     assert(!m(1))
     assert(m(2))
     assert(m(3))
-  }
 
-  "contains" in {
+  "contains" in:
     assert(!(m contains 1))
     assert(m contains 2)
     assert(m contains 3)
-  }
 
-  "isEmpty" in {
+  "isEmpty" in:
     assert(!m.isEmpty)
     assert(new ScalaConcurrentHashMap[Int, Int].isEmpty)
-  }
-}

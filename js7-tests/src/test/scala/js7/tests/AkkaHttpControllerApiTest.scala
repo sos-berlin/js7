@@ -28,8 +28,7 @@ import monix.execution.Scheduler.Implicits.traced
 /**
   * @author Joacim Zschimmer
   */
-final class AkkaHttpControllerApiTest extends OurTestSuite with ControllerAgentForScalaTest
-{
+final class AkkaHttpControllerApiTest extends OurTestSuite with ControllerAgentForScalaTest:
   protected val agentPaths = Nil
   protected val items = Seq(agentRef, subagentItem, workflow)
 
@@ -38,48 +37,41 @@ final class AkkaHttpControllerApiTest extends OurTestSuite with ControllerAgentF
       actorSystem = controller.actorSystem
     ).closeWithCloser
 
-  override def beforeAll() = {
+  override def beforeAll() =
     directoryProvider.controllerEnv.privateConf ++= """
         |js7.auth.users.TEST-USER = "plain:TEST-PASSWORD"
         |""".stripMargin
     super.beforeAll()
-  }
 
-  "login" in {
+  "login" in:
     assert(controller.sessionRegister.count.await(99.s) == 1)
     api.login() await 99.s
     assert(controller.sessionRegister.count.await(99.s) == 2)
     api.login() await 99.s
     assert(controller.sessionRegister.count.await(99.s) == 2)
-  }
 
-  "POST order" in {
+  "POST order" in:
     assert(api.addOrder(FreshOrder(TestOrder.id, workflow.path)).await(99.s) == true)
     assert(api.addOrder(FreshOrder(TestOrder.id, workflow.path)).await(99.s) == false)  // Duplicate
-  }
 
-  "ControllerCommand.AddOrder" in {
+  "ControllerCommand.AddOrder" in:
     assert(api.executeCommand(AddOrder(FreshOrder(TestOrder.id, workflow.path))).await(99.s) ==
       AddOrder.Response(ignoredBecauseDuplicate = true))
     assert(api.executeCommand(AddOrder(FreshOrder(SecondOrder.id, workflow.path))).await(99.s) ==
       AddOrder.Response(ignoredBecauseDuplicate = false))
-  }
 
-  "overview" in {
+  "overview" in:
     assert(api.overview.await(99.s).version == BuildInfo.prettyVersion)
-  }
 
-  "ordersOverview" in {
+  "ordersOverview" in:
     assert(api.ordersOverview.await(99.s).count == 2)
-  }
 
-  "logout" in {
+  "logout" in:
     assert(controller.sessionRegister.count.await(99.s) == 2)
     api.logout() await 99.s
     assert(controller.sessionRegister.count.await(99.s) == 1)
-  }
 
-  "resource" in {
+  "resource" in:
     AkkaHttpControllerApi
       .separateAkkaResource(Admission(controller.localUri, userAndPassword = Some(userAndPassword)))
       .use(api => Task {
@@ -89,11 +81,8 @@ final class AkkaHttpControllerApiTest extends OurTestSuite with ControllerAgentF
       })
       .map(_ => controller.sessionRegister.count.await(99.s) == 1)
       .await(99.s)
-  }
-}
 
-private object AkkaHttpControllerApiTest
-{
+private object AkkaHttpControllerApiTest:
   private val userAndPassword = UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD"))
   private val agentRef = AgentRef(AgentPath("AGENT"), directors = Seq(SubagentId("SUBAGENT")))
   private val subagentItem = SubagentItem(SubagentId("SUBAGENT"), agentRef.path, Uri("http://0.0.0.0:0"))
@@ -104,4 +93,3 @@ private object AkkaHttpControllerApiTest
 
   private val attachedOrders = Set(TestOrder, SecondOrder)
     .map(_.copy(attachedState = Some(Order.Attaching(agentRef.path))))
-}

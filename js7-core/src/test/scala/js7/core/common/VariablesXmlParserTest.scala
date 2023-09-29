@@ -8,9 +8,9 @@ import js7.common.scalautil.xmls.XmlSources.*
 /**
   * @author Joacim Zschimmer
   */
-final class VariablesXmlParserTest extends OurTestSuite {
+final class VariablesXmlParserTest extends OurTestSuite:
 
-  "variables" in {
+  "variables" in:
     for (variablesXml <- Array(
      """<variables>
           <variable name="NAME" value="VALUE"/>
@@ -20,15 +20,12 @@ final class VariablesXmlParserTest extends OurTestSuite {
           <param name="NAME" value="VALUE"/>
           <param name="a" value="aa"/>
         </params>"""))
-    {
       assert(ScalaXMLEventReader.parseDocument(variablesXml)(VariablesXmlParser.parse) ==
         Map(
           "NAME" -> "VALUE",
           "a" -> "aa"))
-    }
-  }
 
-  if sys.props contains "test.speed" then "Speed" in {
+  if sys.props contains "test.speed" then "Speed" in:
     val n = 10000
     val xmlString =
      "<variables>" +
@@ -38,5 +35,3 @@ final class VariablesXmlParserTest extends OurTestSuite {
       measureTime(n) {
         ScalaXMLEventReader.parseDocument(xmlString)(VariablesXmlParser.parse)
       }.toString)
-  }
-}

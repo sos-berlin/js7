@@ -23,15 +23,14 @@ import js7.tests.subagent.SubagentTester.agentPath
 import monix.execution.Scheduler
 import scala.concurrent.TimeoutException
 
-final class ResetSubagentWhileRunning2Test extends OurTestSuite with SubagentTester
-{
+final class ResetSubagentWhileRunning2Test extends OurTestSuite with SubagentTester:
   protected val agentPaths = Seq(agentPath)
   override protected val primarySubagentsDisabled = true
   protected lazy val items = Seq(workflow, bareSubagentItem)
 
   protected implicit val scheduler = Scheduler.traced
 
-  "ResetSubagent while Subagent is coupled and Subagent does not shut down" in {
+  "ResetSubagent while Subagent is coupled and Subagent does not shut down" in:
     enableSubagents(directoryProvider.subagentId -> false)
 
     val aOrderId = OrderId("A-ORDER")
@@ -61,10 +60,9 @@ final class ResetSubagentWhileRunning2Test extends OurTestSuite with SubagentTes
       // Add bOrderId which should wait until Subagent has been reset and restarted
       controller.api.addOrder(FreshOrder(bOrderId, workflow.path)).await(99.s).orThrow
       eventWatch.await[OrderAttached](_.key == bOrderId)
-      intercept[TimeoutException] {
+      intercept[TimeoutException]:
         // Times out because Subagent is being reset
         eventWatch.await[OrderProcessingStarted](_.key == bOrderId, timeout = 1.s)
-      }
 
       val eventId = eventWatch.await[SubagentReset](_.key == bareSubagentId).head.eventId
       val failed1 = eventWatch.await[SubagentCouplingFailed](_.key == bareSubagentId,
@@ -120,16 +118,12 @@ final class ResetSubagentWhileRunning2Test extends OurTestSuite with SubagentTes
     val eventId = eventWatch.lastAddedEventId
     runSubagent(bareSubagentItem) { _ =>
       TestSemaphoreJob.continue(2)
-      for orderId <- Seq(aOrderId, bOrderId) do {
+      for orderId <- Seq(aOrderId, bOrderId) do
         eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
         eventWatch.await[OrderFinished](_.key == orderId, after = eventId)
-      }
     }
-  }
-}
 
-object ResetSubagentWhileRunning2Test
-{
+object ResetSubagentWhileRunning2Test:
   private val logger = Logger[this.type]
 
   private val workflow = Workflow(
@@ -139,4 +133,3 @@ object ResetSubagentWhileRunning2Test
 
   final class TestSemaphoreJob extends SemaphoreJob(TestSemaphoreJob)
   object TestSemaphoreJob extends SemaphoreJob.Companion[TestSemaphoreJob]
-}

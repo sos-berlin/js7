@@ -9,9 +9,9 @@ import scala.reflect.ClassTag
 /**
  * @author Joacim Zschimmer
  */
-final class AssignableFromTest extends OurTestSuite {
+final class AssignableFromTest extends OurTestSuite:
 
-  "AssignableFrom" in {
+  "AssignableFrom" in:
     trait I
     case class X(x: Int) extends I
     val list = List("x", X(2), "y")
@@ -22,5 +22,3 @@ final class AssignableFromTest extends OurTestSuite {
     def select[A: ClassTag](o: List[Any]): List[A] = o collect assignableFrom[A]
     select[String](list) shouldEqual List("x", "y")
     select[I](list) shouldEqual List(X(2))
-  }
-}

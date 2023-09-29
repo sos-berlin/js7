@@ -8,10 +8,7 @@ import js7.tester.CirceJsonTester.testJson
 /**
   * @author Joacim Zschimmer
   */
-final class ProcessSignalTest extends OurTestSuite
-{
-  "JSON" in {
+final class ProcessSignalTest extends OurTestSuite:
+  "JSON" in:
     testJson[ProcessSignal](SIGTERM, json""" "SIGTERM" """)
     testJson[ProcessSignal](SIGKILL, json""" "SIGKILL" """)
-  }
-}

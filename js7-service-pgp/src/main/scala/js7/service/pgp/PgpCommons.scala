@@ -24,8 +24,7 @@ import scala.util.control.NonFatal
 /**
   * @author Joacim Zschimmer
   */
-object PgpCommons
-{
+object PgpCommons:
   Security.addProvider(new BouncyCastleProvider)
 
   private val BufferSize = 4096
@@ -90,7 +89,7 @@ object PgpCommons
         ")"
     }
 
-  private def signatureTypeToString(t: Int) = t match {
+  private def signatureTypeToString(t: Int) = t match
     case PGPSignature.BINARY_DOCUMENT          => "binary document"
     case PGPSignature.CANONICAL_TEXT_DOCUMENT  => "canonical text document"
     case PGPSignature.STAND_ALONE              => "stand alone"
@@ -106,10 +105,9 @@ object PgpCommons
     case PGPSignature.CERTIFICATION_REVOCATION => "certification revocation"
     case PGPSignature.TIMESTAMP                => "timestamp"
     case _ => t.toString
-  }
 
   private def hashAlgorithmToString(hashAlgorithm: Int) =
-    hashAlgorithm match {
+    hashAlgorithm match
       case HashAlgorithmTags.SHA1 => "SHA-1"
       case HashAlgorithmTags.MD2 => "MD2"
       case HashAlgorithmTags.MD5 => "MD5"
@@ -120,10 +118,9 @@ object PgpCommons
       case HashAlgorithmTags.SHA224 => "SHA-224"
       case HashAlgorithmTags.TIGER_192 => "TIGER"
       case _ => hashAlgorithm.toString
-    }
 
   private def publicKeyAlgorithmToString(n: Int) =
-    n match {
+    n match
       case PublicKeyAlgorithmTags.RSA_GENERAL => "'RSA general'"
       case PublicKeyAlgorithmTags.RSA_ENCRYPT => "'RSA encrypt'"
       case PublicKeyAlgorithmTags.RSA_SIGN => "'RSA sign'"
@@ -133,7 +130,6 @@ object PgpCommons
       case _ =>
         try PubringDump.getAlgorithm(n)
         catch { case NonFatal(_) => n.toString }
-      }
 
   private def cipherToString(n: Int) =
     try PGPUtil.getSymmetricCipherName(n)
@@ -145,32 +141,27 @@ object PgpCommons
     message.useSync { in =>
       val buffer = new Array[Byte](BufferSize)
       var length = 1
-      while length > 0 do {
+      while length > 0 do
         length = in.read(buffer)
-        if length > 0 then {
+        if length > 0 then
           update(buffer, length)
-        }
-      }
     }
 
-  def writeSecretKeyAsAscii(secretKey: PGPSecretKey, out: OutputStream): Unit = {
+  def writeSecretKeyAsAscii(secretKey: PGPSecretKey, out: OutputStream): Unit =
     val armored = new ArmoredOutputStream(out)
     new PGPSecretKeyRing(List(secretKey).asJava).encode(armored)
     armored.close()
-  }
 
-  def writePublicKeyAsAscii(publicKey: PGPPublicKey, out: OutputStream): Unit = {
+  def writePublicKeyAsAscii(publicKey: PGPPublicKey, out: OutputStream): Unit =
     val armored = new ArmoredOutputStream(out)
     publicKey.encode(armored)
     armored.close()
-  }
 
   def writePublicKeyRingCollectionAsAscii(publicKey: PGPPublicKeyRingCollection, out: OutputStream)
-  : Unit = {
+  : Unit =
     val armored = new ArmoredOutputStream(out)
     publicKey.encode(armored)
     armored.close()
-  }
 
   def readPublicKeyRingCollection(keys: Seq[ByteArray]): PGPPublicKeyRingCollection =
     new PGPPublicKeyRingCollection(
@@ -181,26 +172,20 @@ object PgpCommons
   def newFingerPrintCalculator: KeyFingerPrintCalculator =
     new JcaKeyFingerprintCalculator  // or BcKeyFingerprintCalculator
 
-  def toPublicKeyRingCollection(publicKey: PGPPublicKey): PGPPublicKeyRingCollection = {
+  def toPublicKeyRingCollection(publicKey: PGPPublicKey): PGPPublicKeyRingCollection =
     val ring = new PGPPublicKeyRing((publicKey :: Nil).asJava)
     new PGPPublicKeyRingCollection((ring :: Nil).asJava)
-  }
 
-  implicit final class RichPGPPublicKey(private val underlying: PGPPublicKey) extends AnyVal {
-    def toArmoredAsciiBytes: ByteArray = {
+  implicit final class RichPGPPublicKey(private val underlying: PGPPublicKey) extends AnyVal:
+    def toArmoredAsciiBytes: ByteArray =
       val out = new ByteArrayOutputStream()
       writePublicKeyAsAscii(underlying, out)
       ByteArray.unsafeWrap(out.toByteArray)
-    }
-  }
 
   implicit final class RichPGPPublicKeyRingCollection(
     private val underlying: PGPPublicKeyRingCollection)
-  extends AnyVal {
-    def toArmoredString: String = {
+  extends AnyVal:
+    def toArmoredString: String =
       val out = new ByteArrayOutputStream()
       writePublicKeyRingCollectionAsAscii(underlying, out)
       new String(out.toByteArray, US_ASCII)
-    }
-  }
-}

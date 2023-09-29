@@ -17,8 +17,7 @@ final case class ExprFunction(
   expression: Expression)
   ( maybeName: Option[String] = None,
     minimumArgumentCount: Int = 0,
-    maximumArgumentCount: Option[Int] = None)
-{
+    maximumArgumentCount: Option[Int] = None):
   private def name = maybeName getOrElse toString.truncateWithEllipsis(50)
 
   def restrict(name: String, minimum: Int, maximum: Int): Checked[ExprFunction] =
@@ -43,7 +42,7 @@ final case class ExprFunction(
           minimumArgumentCount +
           maximumArgumentCount.filter(_ != minimumArgumentCount).fold("")("..." + _) +
           s" in '$name' function"))
-    else {
+    else
       val argScope = NamedValueScope(
         parameters
           .view
@@ -51,13 +50,10 @@ final case class ExprFunction(
           .map { case (p, a) => p.name -> a }
           .toMap)
       expression.eval(argScope |+| scope)
-    }
 
   override def toString = parameters.mkString("(", ",", ")") + "=>" + expression
-}
 
-object ExprFunction
-{
+object ExprFunction:
   def apply(
     parameters: Seq[VariableDeclaration],
     expression: Expression)
@@ -70,23 +66,18 @@ object ExprFunction
       new ExprFunction(parameters, expression)()
 
   @TestOnly
-  object testing {
+  object testing:
     implicit def fromPair(pair: (String, Expression)): ExprFunction =
       ExprFunction(Seq(VariableDeclaration(pair._1)), pair._2)
 
-    implicit final class FunctionExprSyntax(private val name: String) extends AnyVal {
+    implicit final class FunctionExprSyntax(private val name: String) extends AnyVal:
       def |=>(expr: Expression): ExprFunction =
         ExprFunction(Seq(VariableDeclaration(name)), expr)
-    }
-  }
 
   implicit val jsonEncoder: Encoder[ExprFunction] = o => Json.fromString(o.toString)
   implicit val jsonDecoder: Decoder[ExprFunction] =
     c => c.as[String]
       .flatMap(o => parseFunction(o).toDecoderResult(c.history))
-}
 
-final case class VariableDeclaration(name: String/*, valueType: Option[ValueType] = None*/)
-{
+final case class VariableDeclaration(name: String/*, valueType: Option[ValueType] = None*/):
   override def toString = name //+ (valueType.fold("")(o => s": $o"))
-}

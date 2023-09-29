@@ -19,8 +19,7 @@ import scala.concurrent.duration.Deadline
 /**
   * @author Joacim Zschimmer
   */
-trait ApiRootRoute extends ControllerRouteProvider
-{
+trait ApiRootRoute extends ControllerRouteProvider:
   protected def controllerId: ControllerId
   protected def controllerState: Task[Checked[ControllerState]]
   protected def totalRunningSince: Deadline
@@ -28,12 +27,10 @@ trait ApiRootRoute extends ControllerRouteProvider
   private implicit def implicitScheduler: Scheduler = scheduler
 
   final val apiRootRoute: Route =
-    pathEndOrSingleSlash {
-      get {
+    pathEndOrSingleSlash:
+      get:
         completeTask(
           overview)
-      }
-    }
 
   private def overview: Task[ControllerOverview] =
     for checkedControllerState <- controllerState yield
@@ -48,4 +45,3 @@ trait ApiRootRoute extends ControllerRouteProvider
         orderCount = checkedControllerState.toOption.map(_.idToOrder.size),
         system = systemInformation(),
         java = javaInformation())
-}

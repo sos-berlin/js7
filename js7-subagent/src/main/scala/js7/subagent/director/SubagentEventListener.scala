@@ -36,8 +36,7 @@ import monix.execution.atomic.Atomic
 import monix.reactive.Observable
 import scala.util.chaining.scalaUtilChainingOps
 
-private trait SubagentEventListener
-{
+private trait SubagentEventListener:
   protected def subagentId: SubagentId
   protected def subagentConf: SubagentConf
   protected def conf: RemoteSubagentDriver.Conf
@@ -138,26 +137,24 @@ private trait SubagentEventListener
   /** Returns optionally the event and a follow-up task. */
   private def handleEvent(stamped: Stamped[AnyKeyedEvent])
   : Task[(Option[Stamped[AnyKeyedEvent]], Task[Unit])] =
-    stamped.value match {
+    stamped.value match
       case keyedEvent @ KeyedEvent(orderId: OrderId, event: OrderEvent) =>
-        event match {
+        event match
           case _: OrderStdWritten =>
             // TODO Save Timestamp
             Task.pure(Some(stamped) -> Task.unit)
 
           case orderProcessed: OrderProcessed =>
             // TODO Save Timestamp
-            onOrderProcessed(orderId, orderProcessed).map {
+            onOrderProcessed(orderId, orderProcessed).map:
               case None => None -> Task.unit  // OrderProcessed already handled
               case Some(followUp) =>
                 // The followUp Task notifies OrderActor about OrderProcessed by calling `onEvents`
                 Some(stamped) -> followUp
-            }
 
           case _ =>
             logger.error(s"Unexpected event: $keyedEvent")
             Task.pure(None -> Task.unit)
-        }
 
       case KeyedEvent(_: NoKey, SubagentEvent.SubagentShutdown) =>
         Task.pure(None -> onSubagentDied(ProcessLostDueToShutdownProblem, SubagentShutdown))
@@ -169,12 +166,10 @@ private trait SubagentEventListener
       case keyedEvent =>
         logger.error(s"Unexpected event: $keyedEvent")
         Task.pure(None -> Task.unit)
-    }
 
   private def newEventListener() =
     new RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], SubagentApi](
-      _.eventId, recouplingStreamReaderConf)
-    {
+      _.eventId, recouplingStreamReaderConf):
       private var lastProblem: Option[Problem] = None
       override protected def idleTimeout = None  // SubagentEventListener itself detects heartbeat loss
 
@@ -260,7 +255,6 @@ private trait SubagentEventListener
             coupled.switchOff.as(Completed))
 
       protected def stopRequested = false
-    }
 
   private val onHeartbeatStarted: Observable[Unit] =
     Observable.fromTask(
@@ -273,15 +267,11 @@ private trait SubagentEventListener
   protected final def isHeartbeating = isLocal || _isHeartbeating.get()
 
   private def onSubagentDecoupled(problem: Option[Problem]): Task[Unit] =
-    Task.defer {
+    Task.defer:
       _isHeartbeating := false
       Task.when(true || isCoupled)(
         emitSubagentCouplingFailed(problem))
-    }
-}
 
-private object SubagentEventListener
-{
+private object SubagentEventListener:
   private val PauseDetected: Stamped[KeyedEvent[Event]] = Stamped(0L, null)
   private[subagent] val heartbeatTiming = HeartbeatTiming(3.s, 10.s)  // TODO
-}

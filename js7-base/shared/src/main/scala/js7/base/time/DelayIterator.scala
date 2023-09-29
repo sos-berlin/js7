@@ -7,8 +7,7 @@ import scala.concurrent.duration.{Duration, FiniteDuration}
 
 /** Returns an endless sequence of durations usable to delay operation. */
 final class DelayIterator(durations: Seq[FiniteDuration])(implicit scheduler: Scheduler)
-extends AbstractIterator[FiniteDuration]
-{
+extends AbstractIterator[FiniteDuration]:
   assert(durations.nonEmpty, "DelayIterator must not be empty")
 
   private val last = durations.last
@@ -20,7 +19,7 @@ extends AbstractIterator[FiniteDuration]
   def next(): FiniteDuration =
     it.next()
 
-  def reset(): Iterator[FiniteDuration] = {
+  def reset(): Iterator[FiniteDuration] =
     val start = scheduler.now
     val result = durations.iterator
       .concat(Iterator.continually(last))
@@ -29,5 +28,3 @@ extends AbstractIterator[FiniteDuration]
       .map(d => start + d - scheduler.now max Duration.Zero)
     it = result
     result
-  }
-}

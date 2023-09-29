@@ -19,8 +19,7 @@ import scala.collection.MapView
   * The methods get a `fullScope`
   * which can be a different `Scope` or a greater CombinedScope
   * (while `this` is the own specicialized `Scope`). */
-trait Scope
-{
+trait Scope:
   def symbolToValue(symbol: String): Option[Checked[Value]] =
     None
 
@@ -28,12 +27,11 @@ trait Scope
     MapView.empty
 
   def findValue(valueSearch: ValueSearch): Option[Checked[Value]] =
-    valueSearch match {
+    valueSearch match
       case ValueSearch(ValueSearch.LastOccurred, ValueSearch.Name(name)) =>
         nameToCheckedValue.get(name)
       case _ =>
         None
-    }
 
   def evalFunctionCall(functionCall: FunctionCall)(implicit @unused fullScope: Scope)
   : Option[Checked[Value]] =
@@ -56,20 +54,17 @@ trait Scope
       .map { case (k, checked) => checked.map(k -> _) }
       .combineProblems
       .map(_.toMap)
-}
 
-object Scope extends Monoid[Scope]
-{
+object Scope extends Monoid[Scope]:
   implicit val monoid: Monoid[Scope] = this
 
   val empty: Scope = Empty
 
   def combine(a: Scope, b: Scope) =
-    (a, b) match {
+    (a, b) match
       case (a, Empty) => a
       case (Empty, b) => b
       case _ => new CombinedScope(a, b)
-    }
 
   /** Optimized for empty nameToExpr. */
   def evalExpressionMap(nameToExpr: Map[String, Expression], scope: => Scope)
@@ -97,7 +92,5 @@ object Scope extends Monoid[Scope]
         .toChecked(RecursiveEvaluationProblem)
         .flatten)
 
-  private object Empty extends Scope {
+  private object Empty extends Scope:
     override def toString = "EmptyScope"
-  }
-}

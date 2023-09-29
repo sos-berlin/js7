@@ -19,8 +19,7 @@ import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.FiniteDuration
 
 /** Inhibits activation of cluster node for the specified duration. */
-private[cluster] final class ActivationInhibitor
-{
+private[cluster] final class ActivationInhibitor:
   private val stateMvarTask = MVar[Task].of[State](Initial).memoize
 
   def startActive: Task[Unit] =
@@ -123,10 +122,8 @@ private[cluster] final class ActivationInhibitor
   @TestOnly
   private[cluster] def state: Task[Option[State]] =
     stateMvarTask.flatMap(_.tryRead)
-}
 
-private[cluster] object ActivationInhibitor
-{
+private[cluster] object ActivationInhibitor:
   private val logger = Logger[this.type]
 
   def inhibitActivationOfPassiveNode(
@@ -161,8 +158,6 @@ private[cluster] object ActivationInhibitor
   private[cluster] sealed trait State
   private[cluster] case object Initial extends State
   private[cluster] case object Passive extends State
-  private[cluster] case class Inhibited(depth: Int) extends State {
+  private[cluster] case class Inhibited(depth: Int) extends State:
     assertThat(depth >= 1)
-  }
   private[cluster] case object Active extends State
-}

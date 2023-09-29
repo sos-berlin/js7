@@ -27,8 +27,7 @@ final class ClusterWatch(
   label: String = "",
   onClusterStateChanged: (HasNodes) => Unit = _ => (),
   requireManualNodeLossConfirmation: Boolean = false,
-  onUndecidableClusterNodeLoss: OnUndecidableClusterNodeLoss = _ => Task.unit)
-{
+  onUndecidableClusterNodeLoss: OnUndecidableClusterNodeLoss = _ => Task.unit):
   private val logger = Logger.withPrefix[this.type](label)
 
   // Variables are synchronized
@@ -42,16 +41,16 @@ final class ClusterWatch(
         Task.pure(request.checked)
           .flatMapT(_ => processRequest2(request))))
 
-  private def processRequest2(request: ClusterWatchRequest): Task[Checked[Confirmed]] = {
+  private def processRequest2(request: ClusterWatchRequest): Task[Checked[Confirmed]] =
     import request.{from, clusterState as reportedClusterState}
 
     lazy val opString = s"${request.maybeEvent.fold("")(o => s"$o --> ")}$reportedClusterState"
     logger.trace(s"$from: $opString${
       _state.fold("")(o => ", after " + o.lastHeartbeat.elapsed.pretty)}")
 
-    val checkedClusterState = (_state, request.maybeEvent) match {
+    val checkedClusterState = (_state, request.maybeEvent) match
       case (None/*untaught*/, Some(event: ClusterNodeLostEvent)) =>
-        manuallyConfirmed(event) match {
+        manuallyConfirmed(event) match
           case None =>
             val problem = ClusterNodeLossNotConfirmedProblem(request.from, event)
             logger.warn(
@@ -61,7 +60,6 @@ final class ClusterWatch(
             logger.info(
               s"$from teaches clusterState=$reportedClusterState after ${event.getClass.simpleScalaName} confirmation")
             Right(Some(confirmer) -> reportedClusterState)
-        }
 
       case (None, _) =>
         logger.info(s"$from teaches clusterState=$reportedClusterState")
@@ -69,9 +67,8 @@ final class ClusterWatch(
 
       case (Some(state), _) =>
         state.processRequest(request, manuallyConfirmed, opString)
-    }
 
-    checkedClusterState match {
+    checkedClusterState match
       case Left(problem: ClusterNodeLossNotConfirmedProblem) =>
         _nodeToLossRejected(problem.event.lostNodeId) = LossRejected(problem.event)
         _state = _state.map(state => state.copy(
@@ -93,16 +90,13 @@ final class ClusterWatch(
           lastHeartbeat = now(),
           requireManualNodeLossConfirmation = requireManualNodeLossConfirmation))
 
-        if changed then {
+        if changed then
           onClusterStateChanged(updatedClusterState)
-        }
 
         maybeManualConfirmer
           .fold(Task.unit)(_ =>
             onUndecidableClusterNodeLoss(None))
           .as(Right(Confirmed(manualConfirmer = maybeManualConfirmer)))
-    }
-  }
 
   private def manuallyConfirmed(event: ClusterNodeLostEvent): Option[String] =
     _nodeToLossRejected.get(event.lostNodeId)
@@ -121,7 +115,7 @@ final class ClusterWatch(
           })))
 
   private def matchRejectedNodeLostEvent(lostNodeId: NodeId): Option[LossRejected] =
-    (_nodeToLossRejected.get(lostNodeId), _state.map(_.clusterState)) match {
+    (_nodeToLossRejected.get(lostNodeId), _state.map(_.clusterState)) match
       case (Some(lossRejected), None)
         if lossRejected.event.lostNodeId == lostNodeId =>
         Some(lossRejected)
@@ -131,7 +125,6 @@ final class ClusterWatch(
         Some(lossRejected)
 
       case _ => None
-    }
 
   def clusterNodeLossEventToBeConfirmed(lostNodeId: NodeId): Option[ClusterNodeLostEvent] =
     _nodeToLossRejected.get(lostNodeId)
@@ -152,64 +145,56 @@ final class ClusterWatch(
         state.clusterState.toShortString + ", " +
           state.lastHeartbeat.elapsed.pretty + " ago") +
       ")"
-}
 
-object ClusterWatch
-{
+object ClusterWatch:
   type OnUndecidableClusterNodeLoss = Option[ClusterNodeLossNotConfirmedProblem] => Task[Unit]
 
   /** ClusterNodeLossEvent has been rejected, but the user may confirm it later. */
   private case class LossRejected(
     event: ClusterNodeLostEvent,
-    manualConfirmer: Option[String] = None)
-  {
+    manualConfirmer: Option[String] = None):
     def manuallyConfirmed(event: ClusterNodeLostEvent): Option[String] =
       manualConfirmer.filter(_ => event == this.event)
-  }
 
   private[ClusterWatch] final case class State(
     logger: ScalaLogger,
     clusterState: HasNodes,
     lastHeartbeat: MonixDeadline,
-    requireManualNodeLossConfirmation: Boolean)
-  {
+    requireManualNodeLossConfirmation: Boolean):
     def processRequest(
       request: ClusterWatchRequest,
       manualConfirmed: ClusterNodeLostEvent => Option[String],
       opString: => String)
-    : Checked[(/*manualConfirmer*/Option[String], HasNodes)] = {
+    : Checked[(/*manualConfirmer*/Option[String], HasNodes)] =
       import request.{from, clusterState as reportedClusterState}
       val maybeEvent = request.maybeEvent
 
       def clusterWatchInactiveNodeProblem = ClusterWatchInactiveNodeProblem(
         from, clusterState, lastHeartbeat.elapsed, opString)
 
-      if reportedClusterState == clusterState then {
-        if maybeEvent.nonEmpty then {
+      if reportedClusterState == clusterState then
+        if maybeEvent.nonEmpty then
           logger.debug(
             s"$from: Ignore probably duplicate event for already reached clusterState=$clusterState")
-        }
         Right(None -> reportedClusterState)
-      } else
+      else
         maybeEvent
-          .match {
+          .match
             case Some(_: ClusterSwitchedOver) =>
               // ClusterSwitchedOver is applied by each node and is considered reliable
               Checked.unit
 
             case Some(ClusterFailedOver(failedActiveId, _, _)) =>
-              clusterState match {
+              clusterState match
                 case PassiveLost(setting) if setting.activeId == failedActiveId =>
                   Left(ClusterFailOverWhilePassiveLostProblem)
 
                 case clusterState =>
                   (from == clusterState.passiveId && !isLastHeartbeatStillValid) !!
                     clusterWatchInactiveNodeProblem
-              }
 
             case _ =>
               (from == clusterState.activeId) !! clusterWatchInactiveNodeProblem
-          }
           .>>(clusterState
             .applyEvents(maybeEvent.map(NoKey <-: _))
             .match {
@@ -243,15 +228,11 @@ object ClusterWatch
                     }
                 }
             })
-          .tap {
+          .tap:
             case Left(problem) => logger.warn(s"$from: $problem")
             case Right(_) =>
-          }
-    }
 
     private def isLastHeartbeatStillValid =
       (lastHeartbeat + clusterState.timing.clusterWatchHeartbeatValidDuration).hasTimeLeft
-  }
 
   private[watch] final case class Confirmed(manualConfirmer: Option[String] = None)
-}

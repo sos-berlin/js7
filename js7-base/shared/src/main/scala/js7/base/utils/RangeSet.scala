@@ -18,8 +18,7 @@ import scala.math.Ordering.Implicits.*
 
 /** A Set which allows ranges. */
 final case class RangeSet[A: Ordering: Ordinal] private(ranges: Vector[Range[A]])
-extends immutable.Set[A]
-{
+extends immutable.Set[A]:
   //override protected def fromSpecific(coll: IterableOnce[A]): Set[A] =
   //  RangeSet.fromIterable(coll)
   //
@@ -30,16 +29,14 @@ extends immutable.Set[A]
     ranges.exists(_.contains(a))
 
   override def concat(that: IterableOnce[A]): RangeSet[A] =
-    that match {
+    that match
       case that: RangeSet[A] @unchecked => fromRanges(ranges ++ that.ranges)
       case _ => fromRanges(ranges ++ RangeSet.fromIterable(that).ranges)
-    }
 
   override def subsetOf(that: collection.Set[A]): Boolean =
-    that match {
+    that match
       case that: RangeSet[A] => equals(that) || ranges.forall(that.containsRange)
       case _ => forall(that)
-    }
 
   private def containsRange(range: Range[A]): Boolean =
     ranges.exists(range.subsetOf)
@@ -48,7 +45,7 @@ extends immutable.Set[A]
     fromRanges(ranges :+ Single(elem))
 
   def excl(elem: A): RangeSet[A] =
-    ranges.indexWhere(_ contains elem) match {
+    ranges.indexWhere(_ contains elem) match
       case -1 => this
       case i =>
         fromRanges(
@@ -67,30 +64,26 @@ extends immutable.Set[A]
                 range(start, elem.pred) :: range(elem.succ, end) :: Nil
             })
             .concat(ranges.view.drop(i + 1)))
-    }
 
   def iterator: Iterator[A] =
     ranges.iterator.flatMap(_.iterator)
 
   override def equals(that: Any): Boolean =
-    that match {
+    that match
       case that: RangeSet[A] @unchecked => ranges == that.ranges
       case _ => super.equals(that)
-    }
 
   override def toString =
     ranges.mkString("RangeSet(", delimiter, ")")
 
   def asString(implicit encoder: Encoder[A]): String =
     ranges
-      .map {
+      .map:
         case Single(a) => valueToString(a)
         case Interval(a, b) => s"${valueToString(a)}$rangeSymbol${valueToString(b)}"
-      }
       .mkString(delimiter)
-}
 
-object RangeSet {
+object RangeSet:
 
   def apply[A: Ordering: Ordinal](values: A*): RangeSet[A] =
     fromIterable(values)
@@ -118,45 +111,40 @@ object RangeSet {
   : Checked[RangeSet[A]] =
     new RangeSetParser[A](parseValue).parse(string)
 
-  private def normalize[A: Ordering: Ordinal](ranges: Vector[Range[A]]): Vector[Range[A]] = {
+  private def normalize[A: Ordering: Ordinal](ranges: Vector[Range[A]]): Vector[Range[A]] =
     val buffer = mutable.Buffer[Range[A]]()
     val it = ranges.sortBy(_.start).iterator
     if it.hasNext then buffer += it.next()
 
-    while it.hasNext do {
+    while it.hasNext do
       val next = it.next()
       val last = buffer.last
-      if last.end >= next.start then {
+      if last.end >= next.start then
         // Merge overlapping ranges
         buffer(buffer.length - 1) = range(last.start, last.end max next.end)
-      } else if next.start isSuccessorOf last.end then {
+      else if next.start isSuccessorOf last.end then
         // Merge successive ranges
         buffer(buffer.length - 1) = range(last.start, next.end)
-      } else {
+      else
         buffer += next
-      }
-    }
 
     buffer
       .view
       // Normalize two-element ranges to two Singles: 1-2 => 1, 2
-      .flatMap {
+      .flatMap:
         case Interval(a, b) if b isSuccessorOf a =>
           Single(a) :: Single(b) :: Nil
         case o =>
           o :: Nil
-      }
       .toVector
-  }
 
   // Do not mix with scala.collection.immutable.Range
-  sealed trait Range[A] {
+  sealed trait Range[A]:
     def start: A
     def end: A
     def contains(a: A): Boolean
     def subsetOf(other: Range[A]): Boolean
     def iterator: Iterator[A]
-  }
 
   // `range` function because Range collides with scala.collection.immutable.Range
   def range[A: Ordering: Ordinal](start: A, end: A): Range[A] =
@@ -165,7 +153,7 @@ object RangeSet {
     else
       Interval(start, end)
 
-  final case class Single[A](value: A) extends Range[A] {
+  final case class Single[A](value: A) extends Range[A]:
     def start = value
     def end = value
     def contains(a: A) = a == value
@@ -175,12 +163,10 @@ object RangeSet {
 
     def iterator = Iterator.single(value)
     override def toString = value.toString
-  }
 
   /** A closed (inclusive) interval. */
   final case class Interval[A: Ordering: Ordinal] private[RangeSet](start: A, end: A)
-  extends Range[A]
-  {
+  extends Range[A]:
     def contains(a: A) = a >= start && a <= end
 
     def subsetOf(other: Range[A]): Boolean =
@@ -188,14 +174,11 @@ object RangeSet {
 
     def iterator = Iterator.iterate(start)(_.succ).takeWhile(_ <= end)
     override def toString = start.toString + rangeSymbol + end
-  }
-  object Interval {
-    def apply[A: Ordering: Ordinal](start: A, end: A): Interval[A] = {
+  object Interval:
+    def apply[A: Ordering: Ordinal](start: A, end: A): Interval[A] =
       // start.succ == end is allowed, but `normalize` will separate it into two `Single`s
       assertThat(start < end)
       new Interval(start, end)
-    }
-  }
 
   // Must be explicitly and locally imported, !!!
   // otherwise it collides with Circe's Decoder[Iterable[A]].
@@ -219,7 +202,7 @@ object RangeSet {
 
   def jsonDecoder[A: Ordering : Ordinal: Decoder](parseValue: Parser[A]): Decoder[RangeSet[A]] =
     c =>
-      c.value.asArray match {
+      c.value.asArray match
         case None =>
           for
             string <- c.as[String]
@@ -230,33 +213,30 @@ object RangeSet {
           array
             .traverse(_.as(asArrayRangeDecoder[A]))
             .map(fromRanges(_))
-      }
 
   @TestOnly
   private[utils] def asArrayJsonEncoder[A: Ordering: Encoder]: Encoder.AsArray[RangeSet[A]] =
     rangeSet =>
-      rangeSet.ranges.map {
+      rangeSet.ranges.map:
         case Single(a) => a.asJson
         case Interval(a, b) => Json.arr(a.asJson, b.asJson)
-      }
 
   @TestOnly
   private[utils] def asArrayJsonDecoder[A: Ordering: Ordinal: Decoder]: Decoder[RangeSet[A]] =
     c =>
-      c.value.asArray match {
+      c.value.asArray match
         case None => Left(DecodingFailure("RangeSet must be an array", c.history))
         case Some(array) =>
           array
             .traverse(_.as(asArrayRangeDecoder[A]))
             .map(fromRanges(_))
-      }
 
   @TestOnly
   private def asArrayRangeDecoder[A: Ordering : Ordinal : Decoder]: Decoder[Range[A]] =
     c => {
       val json = c.value
       if json.isArray then
-        json.asArray.get match {
+        json.asArray.get match
           case Vector(a, b) =>
             a.as[A]
               .product(b.as[A])
@@ -265,7 +245,6 @@ object RangeSet {
               }
           case _ =>
             Left(DecodingFailure(s"Invalid range: $json", c.history))
-        }
       else
         json.as[A].map(Single(_))
     }
@@ -273,8 +252,7 @@ object RangeSet {
   //<editor-fold desc="// Unused class Builder">
 
   private final class Builder[A: Ordering: Ordinal]
-  extends mutable.Builder[A, RangeSet[A]]
-  {
+  extends mutable.Builder[A, RangeSet[A]]:
     private val buffer = mutable.Buffer[Range[A]]()
 
     def clear(): Unit =
@@ -283,21 +261,18 @@ object RangeSet {
     // Optimize for RangeSet?
     //override def addAll(xs: IterableOnce[A]): this.type = ...
 
-    def addOne(a: A): this.type = {
+    def addOne(a: A): this.type =
       buffer += Single(a)
       this
-    }
 
-    def addRange(start: A, end: A): this.type = {
-      if start <= end then {
+    def addRange(start: A, end: A): this.type =
+      if start <= end then
         buffer += (
           if start == end then
             Single(start)
           else
             Interval(start, end))
-      }
       this
-    }
 
     def isEmpty: Boolean =
       buffer.isEmpty
@@ -307,6 +282,4 @@ object RangeSet {
 
     def result(): RangeSet[A] =
       fromRanges(buffer)
-  }
   //</editor-fold>
-}

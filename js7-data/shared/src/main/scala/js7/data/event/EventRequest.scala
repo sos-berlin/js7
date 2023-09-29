@@ -16,12 +16,11 @@ final case class EventRequest[E <: Event](
   timeout: Option[FiniteDuration],
   delay: FiniteDuration = DefaultDelay,
   limit: Int = DefaultLimit,
-  tornOlder: Option[FiniteDuration] = None)
-{
+  tornOlder: Option[FiniteDuration] = None):
   require(eventClasses.nonEmpty, "Missing Event class")
   require(limit >= 0, s"EventRequest limit=$limit must not be below zero")
 
-  def toQueryParameters: Vector[(String, String)] = {
+  def toQueryParameters: Vector[(String, String)] =
     val builder = Vector.newBuilder[(String, String)]
     builder += "return" -> eventClasses.map(_.getSimpleName stripSuffix "$").mkString(",")
     builder += "delay" -> durationToString(delay)
@@ -30,14 +29,11 @@ final case class EventRequest[E <: Event](
     for o <- tornOlder do builder += "tornOlder" -> durationToString(o)
     builder += "after" -> after.toString
     builder.result()
-  }
 
   def matchesClass(clazz: Class[? <: Event]): Boolean =
     eventClasses.exists(_ isAssignableFrom clazz)
-}
 
-object EventRequest
-{
+object EventRequest:
   private val DefaultDelay = ZeroDuration
   private val DefaultLimit = Int.MaxValue
   val LongTimeout = 365.days
@@ -56,12 +52,10 @@ object EventRequest
     limit: Int = DefaultLimit,
     /** Return Torn if the first event is older than `tornOlder`. */
     tornOlder: Option[FiniteDuration] = None)
-  : EventRequest[E] = {
+  : EventRequest[E] =
     if implicitClass[E] eq classOf[Nothing] then
       throw new IllegalArgumentException("EventRequest.singleClass[Nothing]: Missing type parameter?")
     new EventRequest[E](Set(implicitClass[E]), after, timeout, delay, limit, tornOlder)
-  }
 
   def durationToString(duration: FiniteDuration): String =
     BigDecimal(duration.toNanos, scale = 9).bigDecimal.toPlainString.dropLastWhile(_ == '0').stripSuffix(".")  // TODO Use ScalaTime.formatNumber
-}

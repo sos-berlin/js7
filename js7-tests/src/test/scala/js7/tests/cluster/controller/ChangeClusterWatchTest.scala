@@ -15,9 +15,8 @@ import js7.tests.cluster.controller.ChangeClusterWatchTest.*
 import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.Promise
 
-final class ChangeClusterWatchTest extends ControllerClusterTester
-{
-  "Start and stop some ClusterWatch with same or different ClusterWatchIds" in {
+final class ChangeClusterWatchTest extends ControllerClusterTester:
+  "Start and stop some ClusterWatch with same or different ClusterWatchIds" in:
     withControllerAndBackup(suppressClusterWatch = true) { (primary, _, backup, _, _) =>
       val primaryController = primary.newController()
 
@@ -95,9 +94,8 @@ final class ChangeClusterWatchTest extends ControllerClusterTester
               // Await ClusterWatchConfirmed of second bClusterWatchId
               if executed.command.clusterWatchId == b.clusterWatchId
                 && executed.command.clusterWatchRunId != b.clusterWatchRunId
-                && executed.result == Right(()) then {
+                && executed.result == Right(()) then
                 executedPromise.trySuccess(executed)
-              }
             }
 
           // Start a duplicate bClusterWatchId. It's ClusterWatchRunId replaces the first one.
@@ -139,12 +137,8 @@ final class ChangeClusterWatchTest extends ControllerClusterTester
         }
       }
     }
-  }
-}
 
-object ChangeClusterWatchTest
-{
+object ChangeClusterWatchTest:
   private val logger = Logger[this.type]
   private val aClusterWatchId = ClusterWatchId("A-CLUSTER-WATCH")
   private val bClusterWatchId = ClusterWatchId("B-CLUSTER-WATCH")
-}

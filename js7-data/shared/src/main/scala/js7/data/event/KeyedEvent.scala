@@ -13,35 +13,33 @@ import scala.reflect.ClassTag
 /**
   * An [[Event]] enriched with a `key` designating the respective object.
   */
-final class KeyedEvent[+E <: Event](val event: E)(val key: event.keyCompanion.Key) {
+final class KeyedEvent[+E <: Event](val event: E)(val key: event.keyCompanion.Key):
 
   override def hashCode =
     31 * key.hashCode + event.hashCode
 
   override def equals(o: Any) =
-    o match {
+    o match
       case o: KeyedEvent[E] @unchecked =>
         key == o.key && event == o.event
       case _ => false
-    }
 
   override def toString = s"$keyPrefix$event"
 
   def toShortString = s"$keyPrefix${TypedJsonCodec.typeName(event.getClass)}"
 
   private def keyPrefix = (key != NoKey) ?? s"$key $Arrow "
-}
 
 type AnyKeyedEvent = KeyedEvent[Event]
 
 val <-: = KeyedEvent
 
-object KeyedEvent {
+object KeyedEvent:
   private[event] val KeyFieldName = "Key"
   val Arrow = "<-:"
 
   type NoKey = NoKey.type
-  case object NoKey {
+  case object NoKey:
     // Used as implicit argument, but not executed
     implicit val jsonCodec: Codec[NoKey] = Codec.from(
       _ => sys.error("NoKey.jsonCodec"),
@@ -51,7 +49,6 @@ object KeyedEvent {
 
     @javaApi
     def singleton(): NoKey.type = this
-  }
 
   @deprecated
   def apply[E <: Event](event: E)(key: event.keyCompanion.Key): KeyedEvent[E] =
@@ -78,14 +75,13 @@ object KeyedEvent {
   : Encoder.AsObject[KeyedEvent[E]] =
     keyedEvent => {
       val jsonObject = keyedEvent.event.asJsonObject
-      keyedEvent.key match {
+      keyedEvent.key match
         case NoKey => jsonObject
         case key =>
           //import E.keyJsonCodec
           require(!jsonObject.contains(KeyFieldName),
             s"Serialized ${keyedEvent.getClass} must not contain a field '$KeyFieldName'")
           (KeyFieldName -> key.asInstanceOf[E.Key].asJson) +: jsonObject
-      }
     }
 
   implicit def jsonDecoder[E <: Event: Decoder](using E: Event.KeyCompanion[? >: E])
@@ -105,4 +101,3 @@ object KeyedEvent {
   def typedJsonCodec[E <: Event: ClassTag](subtypes: KeyedEventTypedJsonCodec.KeyedSubtype[? <: E]*)
   : KeyedEventTypedJsonCodec[E] =
     KeyedEventTypedJsonCodec[E](subtypes*)
-}

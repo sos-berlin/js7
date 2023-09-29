@@ -17,8 +17,7 @@ final case class Board(
   expectOrderToNoticeId: Expression,
   endOfLife: Expression,
   itemRevision: Option[ItemRevision] = None)
-extends UnsignedSimpleItem
-{
+extends UnsignedSimpleItem:
   protected type Self = Board
   val companion: Board.type = Board
 
@@ -53,10 +52,8 @@ extends UnsignedSimpleItem
   : Checked[Notice] =
     for endOfLife <- endOfLife.fold(evalEndOfLife(scope))(Checked(_))
       yield Notice(noticeId, path, endOfLife)
-}
 
-object Board extends UnsignedSimpleItem.Companion[Board]
-{
+object Board extends UnsignedSimpleItem.Companion[Board]:
   val cls = classOf[Board]
 
   type Key = BoardPath
@@ -91,4 +88,3 @@ object Board extends UnsignedSimpleItem.Companion[Board]
       endOfLife = expr("$js7EpochMilli + " + lifetime.toMillis))
 
   implicit val jsonCodec: Codec.AsObject[Board] = ConfiguredCodec.derive(useDefaults = true)
-}

@@ -6,13 +6,10 @@ import js7.base.generic.GenericString
 import js7.base.problem.Checked
 
 final case class NodeId private(string: String)
-extends GenericString
-{
+extends GenericString:
   override def toString = s"Node:$string"
-}
 
-object NodeId extends GenericString.NonEmpty[NodeId]
-{
+object NodeId extends GenericString.NonEmpty[NodeId]:
   val primary: NodeId = NodeId("Primary")
   val backup: NodeId = NodeId("Backup")
 
@@ -26,4 +23,3 @@ object NodeId extends GenericString.NonEmpty[NodeId]
   @javaApi
   def of(nodeId: String): NodeId =
     apply(nodeId)
-}

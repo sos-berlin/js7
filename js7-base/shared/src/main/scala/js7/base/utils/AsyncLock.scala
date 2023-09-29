@@ -19,8 +19,7 @@ final class AsyncLock private(
   name: String,
   warnTimeouts: IterableOnce[FiniteDuration],
   noLog: Boolean,
-  logMinor: Boolean)
-{
+  logMinor: Boolean):
   asyncLock =>
 
   private val lockM = MVar[Task].empty[Locked]().memoize
@@ -95,13 +94,12 @@ final class AsyncLock private(
     })
 
   private def release(locked: Locked, exitCase: ExitCase[Throwable]): Task[Unit] =
-    Task.defer {
+    Task.defer:
       logRelease(locked, exitCase)
       lockM.flatMap(_.take).void
-    }
 
   private def logRelease(locked: Locked, exitCase: ExitCase[Throwable]): Unit =
-    if logMinor then exitCase match {
+    if logMinor then exitCase match
       case ExitCase.Completed =>
         log.trace(s"↙ ⚪️${locked.nr} $name released by ${locked.acquirer} ↙")
 
@@ -110,15 +108,13 @@ final class AsyncLock private(
 
       case ExitCase.Error(t) =>
         log.trace(s"↙ 💥${locked.nr} $name released by ${locked.acquirer} · ${t.toStringWithCauses} ↙")
-    }
 
   override def toString = s"AsyncLock:$name"
 
   final class Locked private[AsyncLock](
     correlId: CorrelId,
     private[AsyncLock] val nr: Int,
-    acquirerToString: => String)
-  {
+    acquirerToString: => String):
     private[AsyncLock] lazy val acquirer = acquirerToString
     private var lockedSince: Long = 0
 
@@ -134,18 +130,14 @@ final class AsyncLock private(
     private[AsyncLock] def who: String =
       if lockedSince == 0 then
         acquirer
-      else {
+      else
         val duration = (nanoTime() - lockedSince).ns.pretty
         s"$acquirer $duration ago"
-      }
 
     override def toString =
       s"$asyncLock acquired by $who"
-  }
-}
 
-object AsyncLock
-{
+object AsyncLock:
   private val logger = Logger[this.type]
   private val waitCounter = Atomic(0)
 
@@ -162,4 +154,3 @@ object AsyncLock
     logMinor: Boolean = false)
   : AsyncLock =
     new AsyncLock(name, logWorryDurations, suppressLog, logMinor = logMinor)
-}

@@ -18,8 +18,7 @@ final class KeyedEventTypedJsonCodec[E <: Event: ClassTag](
   private val superclassName: String,
   private val printName: String,
   private val subtypes: Seq[KeyedSubtype[? <: E]])
-extends Codec.AsObject[KeyedEvent[E]]
-{
+extends Codec.AsObject[KeyedEvent[E]]:
   private val classToEncoder: Map[Class[?], Encoder.AsObject[KeyedEvent[E]]] =
     subtypes
       .flatMap(_.classToEncoder.view
@@ -45,7 +44,7 @@ extends Codec.AsObject[KeyedEvent[E]]
     _classToName.view.mapValues(Json.fromString).toMap
 
   /** Union. */
-  def |[B <: Event](other: KeyedEventTypedJsonCodec[B]): KeyedEventTypedJsonCodec[Event] = {
+  def |[B <: Event](other: KeyedEventTypedJsonCodec[B]): KeyedEventTypedJsonCodec[Event] =
     val sameClasses = classToEncoder.keySet & other.classToEncoder.keySet
     if sameClasses.nonEmpty then throw new IllegalArgumentException(
       s"Union of KeyedEventTypedJsonCodec has non-unique classes: $sameClasses")
@@ -62,7 +61,6 @@ extends Codec.AsObject[KeyedEvent[E]]
       superclassName = "Event",
       printName = s"$printName|${other.printName}",
       (subtypes ++ other.subtypes))
-  }
 
   def encodeObject(keyedEvent: KeyedEvent[E]) =
     keyedEvent.asJsonObject(encoder = classToEncoder(keyedEvent.event.getClass))
@@ -78,10 +76,9 @@ extends Codec.AsObject[KeyedEvent[E]]
     this.asInstanceOf[KeyedEventTypedJsonCodec[EE]]
 
   def canDeserialize(json: Json): Boolean =
-    json.asObject match {
+    json.asObject match
       case Some(o) => o.toMap.get(TypeFieldName).flatMap(_.asString) exists nameToDecoder.contains
       case _ => false
-    }
 
   def isOfType[E1 <: E: ClassTag](json: Json): Boolean =
     json.asObject.flatMap(_(TypeFieldName)) contains classToNameJson(implicitClass[E1])
@@ -93,10 +90,8 @@ extends Codec.AsObject[KeyedEvent[E]]
       nameToClass.get(name)
 
   override def toString = printName
-}
 
-object KeyedEventTypedJsonCodec
-{
+object KeyedEventTypedJsonCodec:
   def apply[E <: Event: ClassTag](subtypes: KeyedSubtype[? <: E]*)
     (implicit enclosing: sourcecode.Enclosing)
   : KeyedEventTypedJsonCodec[E] =
@@ -113,7 +108,7 @@ object KeyedEventTypedJsonCodec
     val nameToDecoder: Map[String, Decoder[KeyedEvent[? <: E]]],
     val nameToClass: Map[String, Class[? <: E]])
 
-  object KeyedSubtype {
+  object KeyedSubtype:
     def apply[E <: Event: ClassTag : TypedJsonCodec]
     (using E: Event.KeyCompanion[? >: E])(using Encoder[E.Key], Decoder[E.Key])
     : KeyedSubtype[E] =
@@ -122,41 +117,34 @@ object KeyedEventTypedJsonCodec
     def apply[E <: Event: ClassTag](using E: Event.KeyCompanion[? >: E])
       (using Encoder[E.Key], Decoder[E.Key])
       (singleton: E)
-    : KeyedSubtype[E] = {
+    : KeyedSubtype[E] =
       implicit val typedJsonCodec: TypedJsonCodec[E] = TypedJsonCodec[E](Subtype(singleton))
       //import E.keyJsonCodec
       make[E](typeName[E])
-    }
 
     def singleEvent[E <: Event : ClassTag : Encoder.AsObject : Decoder]
     (using E: Event.KeyCompanion[? >: E])(using Encoder[E.Key], Decoder[E.Key])
-    : KeyedSubtype[E] = {
+    : KeyedSubtype[E] =
       val subtype = Subtype[E]
-      locally {
+      locally:
         implicit val jsonCodec: TypedJsonCodec[E] = TypedJsonCodec(subtype)
         make[E](typeName[E])
-      }
-    }
 
     def singleton[E <: Event: ClassTag](using E: Event.KeyCompanion[? >: E])
       (using Encoder[E.Key], Decoder[E.Key])
       (value: E)
-    : KeyedSubtype[E] = {
+    : KeyedSubtype[E] =
       //import E.keyJsonCodec
       implicit val jsonCodec: TypedJsonCodec[E] = TypedJsonCodec(Subtype(value))
       make[E](typeName[E])
-    }
 
     private def make[E <: Event: ClassTag](name: String)
       (using E: Event.KeyCompanion[? >: E])
       (using ke: Encoder[E.Key], kd: Decoder[E.Key], codec: TypedJsonCodec[E])
-    : KeyedSubtype[E] = {
+    : KeyedSubtype[E] =
       val encoder = KeyedEvent.jsonEncoder[E].asInstanceOf[Encoder.AsObject[KeyedEvent[? <: E]]]
       val decoder = KeyedEvent.jsonDecoder[E].asInstanceOf[Decoder[KeyedEvent[? <: E]]]
       new KeyedSubtype[E](
         classToEncoder = codec.classToEncoder.mapValuesStrict(_ => encoder),
         nameToDecoder = codec.nameToDecoder.mapValuesStrict(_ => decoder),
         nameToClass = codec.nameToClass + (name -> implicitClass[E]))
-    }
-  }
-}

@@ -13,8 +13,7 @@ import js7.data.workflow.instructions.ExpectNotices
 
 private[instructions] final class ExpectNoticesExecutor(
   protected val service: InstructionExecutorService)
-extends EventInstructionExecutor
-{
+extends EventInstructionExecutor:
   type Instr = ExpectNotices
   val instructionClass = classOf[ExpectNotices]
 
@@ -48,4 +47,3 @@ extends EventInstructionExecutor
               Right(tryFulfillExpectingOrder(expectNotices, order, state))))
         .getOrElse(Right(Nil))
         .map(_.map(order.id <-: _)))
-}

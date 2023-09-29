@@ -12,11 +12,8 @@ import js7.data.workflow.Instruction
 final case class Finish(
   outcome: Option[Outcome.Completed] = None,
   sourcePos: Option[SourcePos] = None)
-extends Instruction
-{
+extends Instruction:
   def withoutSourcePos = copy(sourcePos = None)
-}
 
-object Finish {
+object Finish:
   implicit val jsonCodec: Codec.AsObject[Finish] = deriveCodec
-}

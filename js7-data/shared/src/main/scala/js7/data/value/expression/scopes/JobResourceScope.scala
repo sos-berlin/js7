@@ -14,23 +14,21 @@ import js7.data.value.{ObjectValue, Value}
 final class JobResourceScope(
   pathToJobResource: PartialFunction[JobResourcePath, JobResource],
   useScope: Scope)
-extends Scope
-{
+extends Scope:
   override def evalJobResourceVariable(v: Expression.JobResourceVariable)
     (implicit fullScope: Scope)
-  = {
+  =
     // fullScope is the complete scope, maybe containing order variables,
     // which should not be accessible for a JobResource, to avoid name clash and
     // unexpected depedency to the order.
     // Maybe prefer useScope (via constructor) over fullscope (via function call) in all cases ???
     evalJobResourceVariable2(v)(useScope)  // escape implicit fullScope
-  }
 
   private def evalJobResourceVariable2(v: Expression.JobResourceVariable)(implicit s: Scope) =
     Some(jobResourceVariable(v.jobResourcePath, v.name))
 
   override def evalFunctionCall(functionCall: Expression.FunctionCall)(implicit s: Scope) =
-    functionCall match {
+    functionCall match
       case FunctionCall("jobResourceVariable", arguments) =>
         Some(arguments match {
           case Seq(
@@ -52,7 +50,6 @@ extends Scope
         })
 
       case _ => None
-    }
 
   private def evalFunctionCall2(
     jobResourcePathExpr: Expression,
@@ -84,10 +81,7 @@ extends Scope
         })
 
   override def toString = "JobResourceScope"
-}
 
-object JobResourceScope
-{
+object JobResourceScope:
   def apply(pathToJobResource: PartialFunction[JobResourcePath, JobResource], useScope: Scope): Scope =
     new JobResourceScope(pathToJobResource, useScope)
-}

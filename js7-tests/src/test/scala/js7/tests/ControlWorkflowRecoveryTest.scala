@@ -30,8 +30,7 @@ import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 
 final class ControlWorkflowRecoveryTest
-extends OurTestSuite with DirectoryProviderForScalaTest
-{
+extends OurTestSuite with DirectoryProviderForScalaTest:
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.controller.agent-driver.command-batch-delay = 0ms
@@ -53,16 +52,15 @@ extends OurTestSuite with DirectoryProviderForScalaTest
   private implicit def eventWatch: StrictEventWatch =
     controller.eventWatch
 
-  override def afterAll() = {
+  override def afterAll() =
     Seq(aAgent, bAgent)
       .flatMap(Option(_))
       .parTraverse(_.terminate())
       .await(99.s)
     controller.terminate(suppressSnapshot = true).await(99.s)
     super.afterAll()
-  }
 
-  "ControlWorkflow sets some breakpoints" in {
+  "ControlWorkflow sets some breakpoints" in:
     controller = directoryProvider.newController()
     implicit val controllerApi = controller.api
 
@@ -97,9 +95,8 @@ extends OurTestSuite with DirectoryProviderForScalaTest
       Set(Position(1), Position(3)),
       ItemRevision(1),
       UnsignedItemChanged.apply)
-  }
 
-  "After Agent recouples, the attachable WorkflowControl is attached" in {
+  "After Agent recouples, the attachable WorkflowControl is attached" in:
     def controllerState = controller.controllerState()
     val eventId = eventWatch.lastAddedEventId
     aAgent = directoryProvider.startAgent(aAgentPath).await(99.s)
@@ -109,15 +106,14 @@ extends OurTestSuite with DirectoryProviderForScalaTest
       after = eventId)
 
     assert(controllerState.itemToIgnorantAgents(WorkflowControl).toMap.isEmpty)
-  }
 
-  "After Controller recovery, the WorkflowControl is attached to the remaining Agents" in {
+  "After Controller recovery, the WorkflowControl is attached to the remaining Agents" in:
     bAgent = directoryProvider.startAgent(bAgentPath).await(99.s)
     var agentEventId = bAgent.eventWatch.await[AgentReady]().last.eventId
     var eventId = eventWatch.lastAddedEventId
     val bOrderId = OrderId("B")
 
-    locally {
+    locally:
       implicit val controllerApi = controller.api
       controller.api.addOrder(FreshOrder(bOrderId, bWorkflow.path, deleteWhenTerminated = true))
         .await(99.s)
@@ -139,7 +135,6 @@ extends OurTestSuite with DirectoryProviderForScalaTest
       eventWatch.await[ItemAttachable](
         _.event.key == bWorkflowControlId,
         after = eventId)
-    }
 
     controller.terminate().await(99.s)
 
@@ -180,9 +175,8 @@ extends OurTestSuite with DirectoryProviderForScalaTest
     controller.controllerState()
       .itemToAgentToAttachedState(bWorkflowControlId) ==
       Map(bAgentPath -> Attached(Some(ItemRevision(1))))
-  }
 
-  "WorkflowControl disappears with the Workflow" in {
+  "WorkflowControl disappears with the Workflow" in:
     val eventId = eventWatch.lastAddedEventId
 
     controller.api
@@ -210,11 +204,8 @@ extends OurTestSuite with DirectoryProviderForScalaTest
     assert(bAgent.currentAgentState().keyTo(WorkflowControl).isEmpty)
     // Controller has implicitly deleted WorkflowControl
     assert(controller.controllerState().keyTo(WorkflowControl).isEmpty)
-  }
-}
 
-object ControlWorkflowRecoveryTest
-{
+object ControlWorkflowRecoveryTest:
   private val aAgentPath = AgentPath("A-AGENT")
   private val bAgentPath = AgentPath("B-AGENT")
 
@@ -239,4 +230,3 @@ object ControlWorkflowRecoveryTest
 
   final class B2SemaphoreJob extends SemaphoreJob(B2SemaphoreJob)
   object B2SemaphoreJob extends SemaphoreJob.Companion[B2SemaphoreJob]
-}

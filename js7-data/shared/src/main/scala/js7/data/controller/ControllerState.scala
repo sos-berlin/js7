@@ -63,8 +63,7 @@ final case class ControllerState(
 extends SignedItemContainer
 with EventDrivenStateView[ControllerState, Event]
 with OrderWatchStateHandler[ControllerState]
-with ClusterableState[ControllerState]
-{
+with ClusterableState[ControllerState]:
   def isAgent = false
 
   def controllerId = controllerMetaState.controllerId
@@ -117,7 +116,7 @@ with ClusterableState[ControllerState]
   def withStandards(standards: SnapshotableState.Standards) =
     copy(standards = standards)
 
-  def applyEvent(keyedEvent: KeyedEvent[Event]) = keyedEvent match {
+  def applyEvent(keyedEvent: KeyedEvent[Event]) = keyedEvent match
     case KeyedEvent(_: NoKey, ControllerEvent.ControllerInitialized(controllerId, intiallyStartedAt)) =>
       Right(copy(controllerMetaState = controllerMetaState.copy(
         controllerId = controllerId,
@@ -134,11 +133,11 @@ with ClusterableState[ControllerState]
       Right(this)
 
     case KeyedEvent(_: NoKey, event: InventoryItemEvent) =>
-      event match {
+      event match
         case event: UnsignedSimpleItemEvent =>
-          event match {
+          event match
             case UnsignedSimpleItemAdded(item) =>
-              item match {
+              item match
                 case addedAgentRef: AgentRef =>
                   addedAgentRef
                     .convertFromV2_1
@@ -147,11 +146,10 @@ with ClusterableState[ControllerState]
                         pathToItemState <-
                           keyToUnsignedItemState_.insert(agentRef.path, AgentRefState(agentRef))
                         pathToItemState <-
-                          maybeSubagentItem match {
+                          maybeSubagentItem match
                             case None => Right(pathToItemState)
                             case Some(subagentItem) => pathToItemState
                               .insert(subagentItem.id, SubagentItemState.initial(subagentItem))
-                          }
                       yield copy(
                         keyToUnsignedItemState_ = pathToItemState)
                     }
@@ -162,10 +160,9 @@ with ClusterableState[ControllerState]
                 case item: UnsignedSimpleItem =>
                   for o <- keyToUnsignedItemState_.insert(item.path, item.toInitialItemState) yield
                     copy(keyToUnsignedItemState_ = o)
-              }
 
             case UnsignedSimpleItemChanged(item) =>
-              item match {
+              item match
                 case changedAgentRef: AgentRef =>
                   changedAgentRef
                     .convertFromV2_1
@@ -206,28 +203,23 @@ with ClusterableState[ControllerState]
                     copy(
                       keyToUnsignedItemState_ =
                         keyToUnsignedItemState_.updated(item.path, updated))
-              }
-          }
 
         case event: SignedItemEvent =>
-          event match {
+          event match
             case SignedItemAdded(Signed(item, signedString)) =>
-              item match {
+              item match
                 case jobResource: JobResource =>
                   for o <- pathToSignedSimpleItem.insert(jobResource.path -> Signed(jobResource, signedString)) yield
                     copy(pathToSignedSimpleItem = o)
-              }
 
             case SignedItemChanged(Signed(item, signedString)) =>
-              item match {
+              item match
                 case jobResource: JobResource =>
                   Right(copy(
                     pathToSignedSimpleItem = pathToSignedSimpleItem + (jobResource.path -> Signed(jobResource, signedString))))
-              }
-          }
 
         case event: UnsignedItemEvent =>
-          event match {
+          event match
             case UnsignedItemAdded(item: VersionedControl) =>
               keyToUnsignedItemState_
                 .insert(item.key, item.toInitialItemState)
@@ -236,10 +228,9 @@ with ClusterableState[ControllerState]
             case UnsignedItemChanged(item: VersionedControl) =>
               Right(copy(
                 keyToUnsignedItemState_ = keyToUnsignedItemState_.updated(item.key, item.toInitialItemState)))
-          }
 
         case event: BasicItemEvent.ForClient =>
-          event match {
+          event match
             case event: ItemAttachedStateEvent =>
               for o <- agentAttachments.applyEvent(event) yield
                 copy(agentAttachments = o)
@@ -253,7 +244,7 @@ with ClusterableState[ControllerState]
                 deletionMarkedItems = deletionMarkedItems - itemKey,
                 agentAttachments = agentAttachments.applyItemDeleted(event))
 
-              itemKey match {
+              itemKey match
                 case WorkflowId.as(workflowId) =>
                   for repo <- repo.deleteItem(workflowId) yield
                     updated.copy(
@@ -267,7 +258,7 @@ with ClusterableState[ControllerState]
                     pathToSignedSimpleItem = pathToSignedSimpleItem - jobResourcePath))
 
                 case key: UnsignedItemKey =>
-                  key match {
+                  key match
                     case _: AgentPath | _: SubagentId | _: SubagentSelectionId |
                          _: LockPath | _: BoardPath | _: CalendarPath |
                          _: WorkflowPathControlPath | WorkflowControlId.as(_) =>
@@ -275,13 +266,9 @@ with ClusterableState[ControllerState]
                         keyToUnsignedItemState_ = keyToUnsignedItemState_ - key))
                     case _ =>
                       Left(Problem(s"A '${ itemKey.companion.itemTypeName }' is not deletable"))
-                  }
 
                 case _ =>
                   Left(Problem(s"A '${itemKey.companion.itemTypeName}' is not deletable"))
-              }
-          }
-      }
 
     case KeyedEvent(_: NoKey, event: VersionedEvent) =>
       for o <- repo.applyEvent(event) yield
@@ -295,7 +282,7 @@ with ClusterableState[ControllerState]
         keyToUnsignedItemState_ = keyToUnsignedItemState_ + (agentPath -> agentRefState))
 
     case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
-      event match {
+      event match
         case event: OrderTransferred =>
           for updated <- applyOrderEvent(orderId, event) yield
             updated
@@ -304,7 +291,6 @@ with ClusterableState[ControllerState]
 
         case _ =>
           applyOrderEvent(orderId, event)
-      }
 
     case KeyedEvent(boardPath: BoardPath, NoticePosted(notice)) =>
       for
@@ -324,7 +310,7 @@ with ClusterableState[ControllerState]
       ow.onOrderWatchEvent(orderWatchPath <-: event)
 
     case KeyedEvent(subagentId: SubagentId, event: SubagentItemStateEvent) =>
-      event match {
+      event match
         case SubagentShutdown if !keyToUnsignedItemState_.contains(subagentId) =>
           // May arrive when SubagentItem has been deleted
           Right(this)
@@ -335,17 +321,15 @@ with ClusterableState[ControllerState]
             o <- o.applyEvent(event)
           yield copy(
             keyToUnsignedItemState_ = keyToUnsignedItemState_.updated(subagentId, o))
-      }
 
     case KeyedEvent(_, ControllerTestEvent) =>
       Right(this)
 
     case _ => applyStandardEvent(keyedEvent)
-  }
 
   /** The Agents for each WorkflowPathControl which have not attached the current itemRevision. */
   def workflowPathControlToIgnorantAgents: MapView[WorkflowPathControlPath, Set[AgentPath]] =
-    new MapView[WorkflowPathControlPath, Set[AgentPath]] {
+    new MapView[WorkflowPathControlPath, Set[AgentPath]]:
       private val pathToWorkflowPathControl = keyTo(WorkflowPathControl)
 
       def get(key: WorkflowPathControlPath): Option[Set[AgentPath]] =
@@ -369,7 +353,6 @@ with ClusterableState[ControllerState]
             case (agentPath, Attachable) => agentPath
           })
           .toSet
-    }
 
   /** The Agents for each InventoryItemKey which have not attached the current Item. */
   def itemToIgnorantAgents[I <: InventoryItem](I: InventoryItem.Companion[I])
@@ -382,28 +365,25 @@ with ClusterableState[ControllerState]
   /** The Agents for each InventoryItemKey which have not attached the current Item. */
   private def filteredItemToIgnorantAgents[K <: InventoryItemKey](filter_ : InventoryItemKey => Boolean)
   : MapView[K, Set[AgentPath]] =
-    new MapView[K, Set[AgentPath]] {
+    new MapView[K, Set[AgentPath]]:
       def get(key: K): Option[Set[AgentPath]] =
         itemToAgentToAttachedState.get(key).flatMap(toAgents)
 
       def iterator: Iterator[(K, Set[AgentPath])] =
         itemToAgentToAttachedState.iterator
-          .flatMap {
+          .flatMap:
             case (k: K @unchecked, v) if filter_(k) =>
               toAgents(v).map(k -> _)
             case _ => None
-          }
 
       private def toAgents(agentToAttachedState: Map[AgentPath, ItemAttachedState])
-      : Option[Set[AgentPath]] = {
+      : Option[Set[AgentPath]] =
         val agents = agentToAttachedState
           .collect { case (agentPath, Attachable) => agentPath }
           .toSet
         agents.nonEmpty ? agents
-      }
-    }
 
-  def orderToAvailableNotices(orderId: OrderId): Seq[Notice] = {
+  def orderToAvailableNotices(orderId: OrderId): Seq[Notice] =
     val pathToBoardState = keyTo(BoardState)
     orderToExpectedNotices(orderId)
       .flatMap(expected =>
@@ -412,9 +392,8 @@ with ClusterableState[ControllerState]
           .flatMap(_
             .idToNotice.get(expected.noticeId)
             .flatMap(_.notice)))
-  }
 
-  def orderToStillExpectedNotices(orderId: OrderId): Seq[OrderNoticesExpected.Expected] = {
+  def orderToStillExpectedNotices(orderId: OrderId): Seq[OrderNoticesExpected.Expected] =
     val pathToBoardState = keyTo(BoardState)
     orderToExpectedNotices(orderId)
       .filter(expected =>
@@ -423,7 +402,6 @@ with ClusterableState[ControllerState]
           .forall(boardState => !boardState
             .idToNotice.get(expected.noticeId)
             .exists(_.notice.isDefined)))
-  }
 
   private def orderToExpectedNotices(orderId: OrderId): Seq[OrderNoticesExpected.Expected] =
     idToOrder.get(orderId)
@@ -443,22 +421,18 @@ with ClusterableState[ControllerState]
     removeOrders: Iterable[OrderId],
     addItemStates: Iterable[UnsignedSimpleItemState],
     removeItemStates: Iterable[UnsignedSimpleItemPath])
-  : Checked[ControllerState] = {
+  : Checked[ControllerState] =
     var result: Checked[ControllerState] = Right(this)
-    for order <- orders; controllerState <- result do {
+    for order <- orders; controllerState <- result do
       result = controllerState.addOrUpdateOrder(order)
-    }
-    for orderId <- removeOrders; order <- idToOrder.get(orderId); controllerState <- result do {
+    for orderId <- removeOrders; order <- idToOrder.get(orderId); controllerState <- result do
       result = controllerState.deleteOrder(order)
-    }
-    for controllerState <- result do {
+    for controllerState <- result do
       result = Right(controllerState.copy(
         keyToUnsignedItemState_ = keyToUnsignedItemState_
           -- removeItemStates
           ++ addItemStates.view.map(o => o.path -> o)))
-    }
     result
-  }
 
   private def addOrUpdateOrder(order: Order[Order.State]): Checked[ControllerState] =
     if idToOrder contains order.id then
@@ -540,10 +514,9 @@ with ClusterableState[ControllerState]
   private def checkSimpleItemIsDeletable(path: SimpleItemPath, otherDeleted: Set[SimpleItemPath])
   : Checked[Unit] =
     referencingItemKeys(path)
-      .filter {
+      .filter:
         case path: SimpleItemPath => !otherDeleted.contains(path)
         case _ => true
-      }
       .toVector
       .sortBy(_.path)
       .map(ItemIsStillReferencedProblem(path, _))
@@ -554,16 +527,14 @@ with ClusterableState[ControllerState]
     itemToAgentToAttachedState
       .getOrElse(itemKey, Map.empty)
       .view
-      .flatMap {
+      .flatMap:
         case (agentPath, notDetached) => toDetachEvent(itemKey, agentPath, notDetached)
-      }
 
   private def toDetachEvent(itemKey: InventoryItemKey, agentPath: AgentPath, notDetached: NotDetached)
   : Option[ItemDetachable] =
-    notDetached match {
+    notDetached match
       case Attached(_) => Some(ItemDetachable(itemKey, agentPath))
       case _ => None
-    }
 
   def itemToAgentToAttachedState: Map[InventoryItemKey, Map[AgentPath, NotDetached]] =
     agentAttachments.itemToDelegateToAttachedState
@@ -588,10 +559,9 @@ with ClusterableState[ControllerState]
     !repo.isCurrentItem(itemId) && !isInUse(itemId)
 
   private[controller] def isInUse(itemId: VersionedItemId_) =
-    itemId match {
+    itemId match
       case WorkflowId.as(workflowId) => isWorkflowUsedByOrders(workflowId)
       case _ => true
-    }
 
   // Slow ???
   private[controller] lazy val isWorkflowUsedByOrders: Set[WorkflowId] =
@@ -611,43 +581,37 @@ with ClusterableState[ControllerState]
     itemToAgentToAttachedState
       .get(itemKey)
       .flatMap(_.get(agentPath))
-      .map {
+      .map:
         case a @ (Attachable | Attached(`itemRevision`) | Detachable) => a
         case Attached(_) => Detached
-      }
       .getOrElse(Detached)
 
   lazy val keyToItem: MapView[InventoryItemKey, InventoryItem] =
-    new MapView[InventoryItemKey, InventoryItem] {
+    new MapView[InventoryItemKey, InventoryItem]:
       def get(itemKey: InventoryItemKey) =
-        itemKey match {
+        itemKey match
           case id: VersionedItemId_ => repo.anyIdToItem(id).toOption
           case key: VersionedControlId_ => keyToUnsignedItemState_.get(key).map(_.item)
           case path: SimpleItemPath => pathToItem.get(path)
-        }
 
       def iterator = items.map(o => o.key -> o).iterator
 
       override def values = items
-    }
 
   def keyToUnsignedItemState: MapView[UnsignedItemKey, UnsignedItemState] =
     keyToUnsignedItemState_.view
 
   private lazy val pathToItem: MapView[InventoryItemPath, InventoryItem] =
-    new MapView[InventoryItemPath, InventoryItem] {
-      def get(path: InventoryItemPath): Option[InventoryItem] = {
-        path match {
+    new MapView[InventoryItemPath, InventoryItem]:
+      def get(path: InventoryItemPath): Option[InventoryItem] =
+        path match
           case path: UnsignedSimpleItemPath => keyToUnsignedItemState_.get(path).map(_.item)
           case path: SignableSimpleItemPath => pathToSignedSimpleItem.get(path).map(_.value)
           case path: VersionedItemPath => repo.pathToVersionedItem(path).toOption
-        }
-      }
 
       def iterator: Iterator[(InventoryItemPath, InventoryItem)] =
         simpleItems.view.map(item => item.key -> item).iterator ++
           repo.currentItems.iterator.map(o => o.path -> o)
-    }
 
   def items: View[InventoryItem] =
     keyToUnsignedItemState_.values.view.map(_.item) ++
@@ -662,7 +626,7 @@ with ClusterableState[ControllerState]
       .map(_.item)
 
   lazy val idToWorkflow: PartialFunction[WorkflowId, Workflow] =
-    new PartialFunction[WorkflowId, Workflow] {
+    new PartialFunction[WorkflowId, Workflow]:
       def isDefinedAt(workflowId: WorkflowId) =
         repo.idToSigned(Workflow)(workflowId).isRight
 
@@ -672,7 +636,6 @@ with ClusterableState[ControllerState]
       override def applyOrElse[K <: WorkflowId, V >: Workflow](workflowId: K, default: K => V): V =
         repo.idToSigned(Workflow)(workflowId)
           .fold(_ => default(workflowId), _.value)
-    }
 
   def workflowPathToId(workflowPath: WorkflowPath) =
     repo.pathToId(workflowPath)
@@ -681,16 +644,14 @@ with ClusterableState[ControllerState]
   def pathToJobResource = keyTo(JobResource)
 
   lazy val keyToSignedItem: MapView[SignableItemKey, Signed[SignableItem]] =
-    new MapView[SignableItemKey, Signed[SignableItem]] {
+    new MapView[SignableItemKey, Signed[SignableItem]]:
       def get(itemKey: SignableItemKey): Option[Signed[SignableItem]] =
-        itemKey match {
+        itemKey match
           case id: VersionedItemId_ => repo.anyIdToSigned(id).toOption
           case path: SignableSimpleItemPath => pathToSignedSimpleItem.get(path)
-        }
 
       def iterator: Iterator[(SignableItemKey, Signed[SignableItem])] =
         signedItems.iterator.map(o => o.value.key -> o)
-    }
 
   def signableSimpleItems: View[SignableSimpleItem] =
     pathToSignedSimpleItem.values.view.map(_.value)
@@ -720,12 +681,10 @@ with ClusterableState[ControllerState]
 
   override def toString = s"ControllerState(${EventId.toString(eventId)} ${idToOrder.size} orders, " +
     s"Repo(${repo.currentVersionSize} objects, ...))"
-}
 
 object ControllerState
 extends ClusterableState.Companion[ControllerState]
-with ItemContainer.Companion[ControllerState]
-{
+with ItemContainer.Companion[ControllerState]:
   private val logger = Logger[this.type]
 
   val Undefined = ControllerState(
@@ -784,13 +743,11 @@ with ItemContainer.Companion[ControllerState]
 
   private val DummyClusterNodeName = NodeName("DummyControllerNodeName")
 
-  object implicits {
+  object implicits:
     implicit val snapshotObjectJsonCodec: TypedJsonCodec[Any] =
       ControllerState.snapshotObjectJsonCodec
-  }
 
-  final case class WorkflowToOrders(workflowIdToOrders: Map[WorkflowId, Set[OrderId]])
-  {
+  final case class WorkflowToOrders(workflowIdToOrders: Map[WorkflowId, Set[OrderId]]):
     def moveOrder(order: Order[Order.State], to: WorkflowId): WorkflowToOrders =
       removeOrder(order).addOrder(order.id, to)
 
@@ -802,12 +759,9 @@ with ItemContainer.Companion[ControllerState]
         workflowId,
         workflowIdToOrders.getOrElse(workflowId, Set.empty) + orderId))
 
-    def removeOrder(order: Order[Order.State]): WorkflowToOrders = {
+    def removeOrder(order: Order[Order.State]): WorkflowToOrders =
       val orderIds = workflowIdToOrders(order.workflowId) - order.id
       if orderIds.isEmpty then
         copy(workflowIdToOrders - order.workflowId)
       else
         copy(workflowIdToOrders.updated(order.workflowId, orderIds))
-    }
-  }
-}

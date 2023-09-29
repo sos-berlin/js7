@@ -29,20 +29,17 @@ final case class JournalHeader(
   initiallyStartedAt: Timestamp,
   version: String,
   js7Version: String,
-  buildId: String)
-{
+  buildId: String):
   override def toString = s"JournalHeader($journalId, $eventId, #$generation, total=$totalEventCount, " +
     s"$timestamp, ${totalRunningTime.pretty} (${totalRunningTime.toSeconds}s), $initiallyStartedAt, " +
     s"$version, $js7Version, $buildId)"
-}
 
-object JournalHeader
-{
+object JournalHeader:
   val Version = "1"
   private val logger = Logger[this.type]
   private val compatibility = Map("0.42" -> "1")
 
-  implicit val jsonCodec: TypedJsonCodec[JournalHeader] = {
+  implicit val jsonCodec: TypedJsonCodec[JournalHeader] =
     intelliJuseImport(FiniteDurationJsonEncoder)
     implicit val x = Timestamp.StringTimestampJsonEncoder
 
@@ -51,7 +48,6 @@ object JournalHeader
         deriveRenamingCodec[JournalHeader](Map(
           "startedAt" -> "initiallyStartedAt"/*COMPATIBLE with 2.0*/)),
         "JS7.Journal"))
-  }
 
   def checkedHeader[S <: BasicState[S]](
     json: Json,
@@ -98,29 +94,25 @@ object JournalHeader
       if compatibility.getOrElse(header.version, header.version) != Version then
         Left(Problem(
           s"Journal file has version ${header.version} but $Version is expected. Incompatible journal file: $journalFileForInfo"))
-      else {
+      else
         for o <- expectedJournalId do logger.debug(
           s"JournalHeader of file '${journalFileForInfo.getFileName}' is as expected, journalId=$o")
         Right(())
-      }
 
-  final case class JournalTypeMismatchProblem(file: Path, expected: String, typeName: String) extends Problem.Coded {
+  final case class JournalTypeMismatchProblem(file: Path, expected: String, typeName: String) extends Problem.Coded:
     def arguments = Map(
       "file" -> file.getFileName.toString,
       "typeName" -> typeName,
       "expected" -> expected)
-  }
   object JournalTypeMismatchProblem extends Problem.Coded.Companion
 
   final case class JournalIdMismatchProblem(
     file: Path,
     expectedJournalId: JournalId,
     foundJournalId: JournalId)
-  extends Problem.Coded {
+  extends Problem.Coded:
     def arguments = Map(
       "file" -> file.getFileName.toString,
       "expectedJournalId" -> expectedJournalId.string,
       "foundJournalId" -> foundJournalId.string)
-  }
   object JournalIdMismatchProblem extends Problem.Coded.Companion
-}

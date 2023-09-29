@@ -10,8 +10,7 @@ import js7.base.problem.{Checked, Problem}
   *
   * @author Joacim Zschimmer
   */
-trait ConvertiblePartialFunction[K, V] extends PartialFunction[K, V]
-{
+trait ConvertiblePartialFunction[K, V] extends PartialFunction[K, V]:
   def as[W](key: K)(implicit convert: As[V, W]): W =
     wrappedConvert(convert.apply, renderKey(key))(apply(key))
 
@@ -34,13 +33,9 @@ trait ConvertiblePartialFunction[K, V] extends PartialFunction[K, V]
     lift(key) map wrappedConvert(convert.apply, renderKey(key))
 
   protected def renderKey(key: K) = s"key '$key'"
-}
 
-object ConvertiblePartialFunction
-{
-  final case class MissingConfigurationKeyProblem(key: String) extends Problem.Coded {
+object ConvertiblePartialFunction:
+  final case class MissingConfigurationKeyProblem(key: String) extends Problem.Coded:
     def arguments = Map(
       "key" -> key
     )
-  }
-}

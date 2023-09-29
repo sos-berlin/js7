@@ -9,8 +9,7 @@ import js7.tests.jobs.EmptyJob.logger
 import monix.eval.Task
 
 class EmptyJob(outcome: Outcome.Completed)
-extends InternalJob
-{
+extends InternalJob:
   // We need an empty constructor for reflection
   def this() = this(Outcome.succeeded)
 
@@ -19,9 +18,6 @@ extends InternalJob
       logger.debug(s"${getClass.simpleScalaName} ${step.order.id}")
       outcome
     })
-}
 
-object EmptyJob extends InternalJob.Companion[EmptyJob]
-{
+object EmptyJob extends InternalJob.Companion[EmptyJob]:
   private val logger = Logger[this.type]
-}

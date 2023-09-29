@@ -14,8 +14,7 @@ import scala.reflect.ClassTag
 /**
   * @author Joacim Zschimmer
   */
-object EventDirectives
-{
+object EventDirectives:
   val DefaultTimeout = 0.s
   val DefaultDelay = 500.ms
   val MinimumDelay = 100.ms
@@ -63,15 +62,14 @@ object EventDirectives
       if limit <= 0 then
         reject(ValidationRejection(s"Invalid limit=$limit"))
       else
-        parameter("after".as[EventId].?) {
-          _ orElse defaultAfter match {
+        parameter("after".as[EventId].?):
+          _ orElse defaultAfter match
             case None => reject(ValidationRejection("Missing parameter after="))
             case Some(after) =>
               parameter("timeout" ? (defaultTimeout: Duration)) { timeout =>
-                val maybeTimeout = timeout match {
+                val maybeTimeout = timeout match
                   case o: FiniteDuration => Some(o)
                   case _/*Duration.Inf only*/ => None
-                }
                 parameter("delay" ? defaultDelay) { delay =>
                   parameter("tornOlder" ? none[FiniteDuration]) { tornOlder =>
                     optionalHeaderValueByType(`Timeout-Access`) { timeoutAccess =>  // Setting akka.http.server.request-timeout
@@ -92,7 +90,4 @@ object EventDirectives
                   }
                 }
               }
-          }
-        }
     }
-}

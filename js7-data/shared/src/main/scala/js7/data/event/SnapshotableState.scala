@@ -16,8 +16,7 @@ import monix.reactive.Observable
 
 /** A JournaledState with snapshot, JournalState, but without ClusterState handling. */
 trait SnapshotableState[S <: SnapshotableState[S]]
-extends JournaledState[S]
-{
+extends JournaledState[S]:
   this: S =>
 
   def companion: SnapshotableState.Companion[S]
@@ -37,7 +36,7 @@ extends JournaledState[S]
     standards.clusterState
 
   protected final def applyStandardEvent(keyedEvent: KeyedEvent[Event]): Checked[S] =
-    keyedEvent match {
+    keyedEvent match
       case KeyedEvent(_: NoKey, _: SnapshotTaken) =>
         Right(this)
 
@@ -54,7 +53,6 @@ extends JournaledState[S]
               clusterState = o))
 
       case _ => eventNotApplicable(keyedEvent)
-    }
 
   def eventId: EventId
 
@@ -63,67 +61,56 @@ extends JournaledState[S]
     companion
       .fromObservable(toSnapshotObservable)
       .map(_.withEventId(eventId))
-}
 
-object SnapshotableState
-{
+object SnapshotableState:
   private val logger = Logger[this.type]
 
-  final case class Standards(journalState: JournalState, clusterState: ClusterState)
-  {
+  final case class Standards(journalState: JournalState, clusterState: ClusterState):
     def snapshotSize =
       journalState.estimatedSnapshotSize + clusterState.estimatedSnapshotSize
 
     def toSnapshotObservable: Observable[Any] =
       journalState.toSnapshotObservable ++
         clusterState.toSnapshotObservable
-  }
-  object Standards
-  {
+  object Standards:
     def empty = Standards(JournalState.empty, ClusterState.Empty)
-  }
 
-  trait HasSnapshotCodec  {
+  trait HasSnapshotCodec :
     def snapshotObjectJsonCodec: TypedJsonCodec[Any]
-  }
 
   trait HasCodec
-  extends HasSnapshotCodec with JournaledState.HasEventCodec {
+  extends HasSnapshotCodec with JournaledState.HasEventCodec:
     def name: String // Defined in BasicState.Companion
-  }
 
   trait Companion[S <: SnapshotableState[S]]
   extends JournaledState.Companion[S]
-  with HasCodec
-  {
+  with HasCodec:
     implicit final val implicitSnapshotableStateCompanion: Companion[S] = this
 
     def empty: S
 
     def fromObservable(snapshotObjects: Observable[Any]): Task[S] =
-      Task.defer {
+      Task.defer:
         val builder = newBuilder()
         snapshotObjects.foreachL(builder.addSnapshotObject)
           .map { _ =>
             builder.onAllSnapshotsAdded()
             builder.result()
           }
-      }
 
     def newBuilder(): SnapshotableStateBuilder[S]
 
-    private lazy val journalDecoder: Decoder[Any] = {
+    private lazy val journalDecoder: Decoder[Any] =
       val stampedEventDecoder = implicitly[Decoder[Stamped[KeyedEvent[Event]]]]
       stampedEventDecoder or
         snapshotObjectJsonCodec or
         JournalHeader.jsonCodec.asInstanceOf[Decoder[Any]]
-    }
 
     def decodeJournalJson(json: Json): Checked[Any] =
       if !json.isObject then
         Right(json) // JournalSeparator
       else
-        journalDecoder.decodeJson(json) match {
+        journalDecoder.decodeJson(json) match
           case Left(t: io.circe.DecodingFailure) =>
             val problem = Problem.pure(s"Unexpected JSON: ${t.show}")
             logger.error(s"$problem: ${json.compactPrint.truncateWithEllipsis(100)}")
@@ -131,6 +118,3 @@ object SnapshotableState
 
           case Right(o) =>
             Right(o)
-        }
-  }
-}

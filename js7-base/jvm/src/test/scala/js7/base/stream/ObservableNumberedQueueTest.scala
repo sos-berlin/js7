@@ -12,8 +12,7 @@ import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import scala.collection.mutable
 
-final class ObservableNumberedQueueTest extends OurTestSuite
-{
+final class ObservableNumberedQueueTest extends OurTestSuite:
   private val queue = new ObservableNumberedQueue[X]
 
   private def observe(after: Long, take: Int): List[Numbered[X]] =
@@ -24,7 +23,7 @@ final class ObservableNumberedQueueTest extends OurTestSuite
       .toListL
       .await(99.s)
 
-  "Enqueue some values" in {
+  "Enqueue some values" in:
     queue.enqueue(Seq(X("a"), X("b"))).await(99.s)
     assert(observe(0, take = 2) == List(Numbered(1, X("a")), Numbered(2, X("b"))))
     assert(observe(1, take = 1) == List(Numbered(2, X("b"))))
@@ -32,16 +31,14 @@ final class ObservableNumberedQueueTest extends OurTestSuite
 
     // Too high after argument
     assert(observe(3, take = 0) == Nil)  // Invalid `after` is not detected due to take=0
-    locally {
+    locally:
       val t = intercept[ProblemException](observe(3, take = 1))
       assert(t.problem == Problem(
         "Unknown number: Numbered[ObservableNumberedQueueTest$::X]: #3 (must be >=0 and <=2)"))
-    }
-    locally {
+    locally:
       val t = intercept[ProblemException](observe(-1, take = 1))
       assert(t.problem == Problem(
         "Unknown number: Numbered[ObservableNumberedQueueTest$::X]: #-1 (must be >=0 and <=2)"))
-    }
 
     queue.enqueue(Seq(X("c"))).await(99.s)
     assert(observe(0, take = 3) ==
@@ -49,18 +46,16 @@ final class ObservableNumberedQueueTest extends OurTestSuite
         Numbered(1, X("a")),
         Numbered(2, X("b")),
         Numbered(3, X("c"))))
-  }
 
-  "Enqueue more values after observation" in {
+  "Enqueue more values after observation" in:
     val buffer = mutable.Buffer.empty[Numbered[X]]
     var isCompleted = false
     val future = queue
       .observable(0)
       .flatMap(Observable.fromIterable)
       .guarantee(Task { isCompleted = true })
-      .foreach {
+      .foreach:
         buffer += _
-      }
 
     waitForCondition(10.s, 10.ms)(buffer.length == 3)
     assert(buffer == Seq(
@@ -83,34 +78,27 @@ final class ObservableNumberedQueueTest extends OurTestSuite
     future.cancel()
     waitForCondition(10.s, 10.ms)(isCompleted)
     assert(isCompleted)
-  }
 
-  "release" in {
+  "release" in:
     queue.release(0).await(99.s).orThrow
     assert(observe(0, take = 1) == List(Numbered(1, X("a"))))
 
-    locally {
+    locally:
       queue.release(1).await(99.s).orThrow
       val t = intercept[ProblemException](observe(0, take = 1))
       assert(t.problem == Problem(
         "Unknown number: Numbered[ObservableNumberedQueueTest$::X]: #0 (must be >=1 and <=6)"))
-    }
 
     assert(observe(1, take = 1) == List(Numbered(2, X("b"))))
 
-    locally {
+    locally:
       queue.release(3).await(99.s).orThrow
       val t = intercept[ProblemException](observe(0, take = 1))
       assert(t.problem == Problem(
         "Unknown number: Numbered[ObservableNumberedQueueTest$::X]: #0 (must be >=3 and <=6)"))
-    }
 
     assert(queue.release(7).await(99.s) == Left(Problem(
       "Unknown number: Numbered[ObservableNumberedQueueTest$::X]: #7 (must be >=3 and <=6)")))
-  }
-}
 
-object ObservableNumberedQueueTest
-{
+object ObservableNumberedQueueTest:
   private case class X(string: String)
-}

@@ -9,12 +9,12 @@ import monix.execution.Scheduler
 import scala.annotation.unused
 import scala.concurrent.duration.Duration
 
-object AllocatedForJvm {
+object AllocatedForJvm:
   implicit final class BlockingAllocated[F[_], A](private val allocated: Allocated[F, A])
-  extends AnyVal {
+  extends AnyVal:
     def useSync[R](stopTimeout: Duration)(body: A => R)
       (implicit s: Scheduler, @unused evidence: F :<: Task, src: sourcecode.Enclosing)
-    : R = {
+    : R =
       val stop = allocated.release.asInstanceOf[Task[Unit]]
       val ac: AutoCloseable = () =>
         stop
@@ -22,6 +22,3 @@ object AllocatedForJvm {
           .await(stopTimeout)
 
       autoClosing(ac)(_ => body(allocated.allocatedThing))
-    }
-  }
-}

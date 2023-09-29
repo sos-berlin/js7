@@ -13,11 +13,10 @@ import js7.tests.cluster.controller.ControllerClusterTester.*
 import js7.tests.testenv.ControllerEnv
 import monix.execution.Scheduler.Implicits.traced
 
-final class TruncatedJournalFileControllerClusterTest extends ControllerClusterTester
-{
+final class TruncatedJournalFileControllerClusterTest extends ControllerClusterTester:
   override protected def removeObsoleteJournalFiles = false
 
-  "Backup node replicates truncated journal file" in {
+  "Backup node replicates truncated journal file" in:
     withControllerAndBackup() { (primary, _, backup, _, _) =>
       primary.runController() { primaryController =>
         val backupController = backup.newController()
@@ -41,14 +40,11 @@ final class TruncatedJournalFileControllerClusterTest extends ControllerClusterT
         }
       }
     }
-  }
 
-  private def truncateLastJournalFile(env: ControllerEnv): Unit = {
+  private def truncateLastJournalFile(env: ControllerEnv): Unit =
     val lastFile = listJournalFiles(env.stateDir / "controller").last.file
     assert(lastFile.contentString.last == '\n')
     autoClosing(new RandomAccessFile(lastFile.toFile, "rw")) { f =>
       f.setLength(f.length - 2)
     }
     assert(lastFile.contentString.last != '\n')
-  }
-}

@@ -1,7 +1,6 @@
 package js7.tests.https
 
-final class SelectAliasHttpsTest extends ControllerHttpsStandardTests
-{
+final class SelectAliasHttpsTest extends ControllerHttpsStandardTests:
   override protected def useCluster = false
   override protected def agentHttpsMutual = true
   override protected def provideAgentClientCertificate = true
@@ -11,4 +10,3 @@ final class SelectAliasHttpsTest extends ControllerHttpsStandardTests
   override protected def clientKeyAlias = Some("client")
 
   addTestsForCredentials()
-}

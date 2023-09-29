@@ -26,8 +26,7 @@ final class ShellScriptJobLauncher(
   protected val executable: ShellScriptExecutable,
   protected val jobConf: JobConf,
   protected val jobLauncherConf: JobLauncherConf)
-extends PathProcessJobLauncher
-{
+extends PathProcessJobLauncher:
   private val userToFileLock = AsyncLock("ShellScriptJobLauncher.userToFile")
   private val userToFile = mutable.Map.empty[Option[WindowsUserName], Path]
 
@@ -56,10 +55,8 @@ extends PathProcessJobLauncher
     userToFile.synchronized {
       tryDeleteFiles(userToFile.values)
     })
-}
 
-object ShellScriptJobLauncher
-{
+object ShellScriptJobLauncher:
   def checked(
     executable: ShellScriptExecutable,
     jobConf: JobConf,
@@ -79,10 +76,9 @@ object ShellScriptJobLauncher
       val ext = if isWindows then ".cmd" else ".sh"
       createTempFile(tmpDir, "script-", ext, ShellFileAttributes*)
     }.flatMap { file =>
-      catchNonFatal {
+      catchNonFatal:
         val scrpt = if isWindows then crRegex.replaceAllIn(script, "\r\n") else script
         file.write(scrpt, encoding)
-      }
       .flatMap(_ => makeFileUserAccessible(userName, file))
       .left.map { problem =>
         tryDeleteFile(file)
@@ -92,12 +88,9 @@ object ShellScriptJobLauncher
     }
 
   private def makeFileUserAccessible(userName: Option[WindowsUserName], file: Path): Either[Problem, Unit] =
-    userName match {
+    userName match
       case Some(userName) if isWindows =>
-        catchNonFatal {
+        catchNonFatal:
           WindowsProcess.makeFileExecutableForUser(file, userName)
-        }
       case _ =>
         RightUnit
-    }
-}

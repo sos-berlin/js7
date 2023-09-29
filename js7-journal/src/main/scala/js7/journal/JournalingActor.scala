@@ -30,8 +30,7 @@ import scala.util.control.NonFatal
   * @author Joacim Zschimmer
   */
 trait JournalingActor[S <: JournaledState[S], E <: Event]
-extends Actor with Stash with ActorLogging with ReceiveLoggingActor
-{
+extends Actor with Stash with ActorLogging with ReceiveLoggingActor:
   protected def journalActor: ActorRef @@ JournalActor.type
   protected def journalConf: JournalConf
   protected def scheduler: Scheduler
@@ -50,16 +49,14 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
   override protected def become(stateName: String)(receive: Receive) =
     super.become(stateName)(journaling orElse receive)
 
-  override def postStop(): Unit = {
+  override def postStop(): Unit =
     journalingTimer.cancel()
     super.postStop()
-  }
 
   // TODO Inhibit bedeutet gehemmt, beeintrichtigt. Besser etwas wie 'stop'
-  protected def inhibitJournaling(): Unit = {
+  protected def inhibitJournaling(): Unit =
     if stashingCount > 0 then throw new IllegalStateException("inhibitJournaling called while a persist operation is active?")
     stashingCount = Inhibited
-  }
 
   protected final def persistKeyedEventTask[A](keyedEvent: KeyedEvent[E], async: Boolean = false)
     (callback: (Stamped[KeyedEvent[E]], S) => A)
@@ -120,7 +117,7 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
   protected final def deferAsync(callback: => Unit): Unit =
     defer_(async = true, callback)
 
-  private def defer_(async: Boolean, callback: => Unit): Unit = {
+  private def defer_(async: Boolean, callback: => Unit): Unit =
     start(async = async, "defer")
     journalActor.forward(
       JournalActor.Input.Store(CorrelId.current, Nil, self, CommitOptions.default, since = now,
@@ -128,18 +125,15 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
           case Left(problem) => throw problem.throwable.appendCurrentStackTrace
           case Right(Accepted) => callback
         })))
-  }
 
-  private def start(async: Boolean, firstName: => String): Unit = {
+  private def start(async: Boolean, firstName: => String): Unit =
     if stashingCount == Inhibited then throw new IllegalStateException("Journaling is inhibited")  // Avoid deadlock when waiting for response of dead JournalActor
-    if !async then {
+    if !async then
       // async = false (default) lets Actor stash all messages but JournalActor.Output.Stored.
       // async = true means, message Store is intermixed with other messages.
       beginStashing(firstName)
-    }
-  }
 
-  protected[journal] def journaling: Receive = {
+  protected[journal] def journaling: Receive =
     case Persist(keyedEvent, async, callback, promise) =>
       promise.completeWith(
         persistKeyedEvent(keyedEvent, async = async)((stampedEvents, state) =>
@@ -162,39 +156,32 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
       stampedSeq.lastOption foreach { last =>
         _persistedEventId = last.eventId
       }
-      if !item.async then {
+      if !item.async then
         endStashing(stampedSeq)
-      }
-      (stampedSeq, item) match {
+      (stampedSeq, item) match
         case (_, eventsCallback: EventsCallback) =>
-          eventsCallback.correlId.bind {
+          eventsCallback.correlId.bind:
             if TraceLog && logger.underlying.isTraceEnabled then for st <- stampedSeq do
               logger.trace(s"»$toString« Stored ${EventId.toString(st.eventId)} ${st.value.key} <-: ${typeName(st.value.event.getClass)}$stashingCountRemaining")
             eventsCallback.callback(stampedSeq.asInstanceOf[Seq[Stamped[KeyedEvent[E]]]], journaledState.asInstanceOf[S])
-        }
 
         case (Nil, Deferred(correlId, _, callback)) =>
-          correlId.bind {
+          correlId.bind:
             if TraceLog then logger.trace(s"»$toString« Stored (no event)$stashingCountRemaining")
             callback(Right(Accepted))
-          }
         case _ => sys.error(s"JournalActor.Output.Stored(${stampedSeq.length}×) message does not match item '$item'")
-      }
 
     case JournalActor.Output.Accepted(item: Item) =>
       // sender() is from persistKeyedEvent or deferAsync
-      if !item.async then {
+      if !item.async then
         endStashing(Nil)
-      }
-      item match {
+      item match
         case Deferred(correlId, _, callback) =>
-          correlId.bind {
+          correlId.bind:
             if TraceLog then logger.trace(s"»$toString« Stored (events are written, not flushed)$stashingCountRemaining")
             callback(Right(Accepted))
-          }
 
         case _ => sys.error(s"JournalActor.Output.Accepted message does not match item '$item'")
-      }
 
     case JournalActor.Output.StoreFailure(problem, item) =>
       // Let the calling Actor crash ???
@@ -204,39 +191,31 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
     case msg if stashingCount > 0 =>
       if TraceLog then logger.trace(s"»$toString« 🟠 Still waiting for event commit: stash $msg")
       super.stash()
-  }
 
-  private def beginStashing(firstName: => String): Unit = {
+  private def beginStashing(firstName: => String): Unit =
     stashingCount += 1
-    if stashingCount == 1 then {
+    if stashingCount == 1 then
       persistStatistics.beginStashing(firstName)
       logBecome("journaling")
       context.become(journaling, discardOld = false)
-      logger.whenWarnEnabled {
+      logger.whenWarnEnabled:
         val since = now
-        journalingTimer := scheduler.scheduleAtFixedRates(journalConf.persistWarnDurations) {
+        journalingTimer := scheduler.scheduleAtFixedRates(journalConf.persistWarnDurations):
           // Under load it may be normal to be busy for some time ???
           logger.warn(s"»$toString« 🟠 Still persisting for ${since.elapsed.pretty} ($stashingCount persist operations in progress)")
-        }
-      }
-    }
-  }
 
-  private def endStashing(stamped: Seq[Stamped[AnyKeyedEvent]]): Unit = {
-    if stashingCount == 0 then {
+  private def endStashing(stamped: Seq[Stamped[AnyKeyedEvent]]): Unit =
+    if stashingCount == 0 then
       val msg = s"Journal Stored message received (duplicate? stash in callback?) but stashingCount=$stashingCount: $stamped"
       logger.error(s"»$toString« $msg")
       throw new RuntimeException(msg)
-    }
     stashingCount -= 1
-    if stashingCount == 0 then {
+    if stashingCount == 0 then
       journalingTimer := Cancelable.empty
       unstashAll()
       persistStatistics.endStashing()
       if TraceLog then logger.trace(s"»$toString« unbecome")
       context.unbecome()
-    }
-  }
 
   private def stashingCountRemaining = (stashingCount > 0) ?? s", $stashingCount remaining"
 
@@ -252,14 +231,12 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
     correlId: CorrelId,
     async: Boolean,
     callback: (Seq[Stamped[KeyedEvent[E]]], S) => Unit)
-  extends Item {
+  extends Item:
     override def toString = s"EventsCallback(${async ?? "async"})"
-  }
 
   private case class Deferred(correlId: CorrelId, async: Boolean, callback: Checked[Accepted] => Unit)
-  extends Item {
+  extends Item:
     override def toString = s"Deferred(${async ?? "async"})"
-  }
 
   private case class Persist[A](
     keyedEvent: KeyedEvent[E],
@@ -273,36 +250,29 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
     options: CommitOptions,
     promise: Promise[Checked[Accepted]])
 
-  private class PersistStatistics {
+  private class PersistStatistics:
     private var persistStartedAt = now/*dummy*/
     private var persistCount = 0
     private var eventCount = 0
     private var firstName = ""
 
-    def beginStashing(firstName: String): Unit = {
+    def beginStashing(firstName: String): Unit =
       this.firstName = firstName
       persistStartedAt = now
       eventCount = 0
       persistCount = 0
-    }
 
-    def onStored(eventCount: Int): Unit = {
+    def onStored(eventCount: Int): Unit =
       persistCount += 1
       this.eventCount += eventCount
-    }
 
-    def endStashing(): Unit = {
+    def endStashing(): Unit =
       val duration = persistStartedAt.elapsed
-      if duration >= BigStoreThreshold then {
+      if duration >= BigStoreThreshold then
         logger.debug(s"»${JournalingActor.this.toString}« Long persist completed ($persistCount×, $firstName ...) - " +
           itemsPerSecondString(duration, eventCount, "events"))
-      }
-    }
-  }
-}
 
-object JournalingActor
-{
+object JournalingActor:
   private val Inhibited = -1
   private val logger = Logger[this.type]
   private val TraceLog = false
@@ -311,7 +281,5 @@ object JournalingActor
   final case class Timestamped[+E <: Event](keyedEvent: KeyedEvent[E], timestampMillis: Option[Long] = None)
   extends JournalActor.Timestamped
 
-  private sealed trait Item extends JournalActor.CallersItem {
+  private sealed trait Item extends JournalActor.CallersItem:
     def async: Boolean
-  }
-}

@@ -10,7 +10,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 /**
   * @author Joacim Zschimmer
   */
-object ForkTestSetting {
+object ForkTestSetting:
 
   val AAgentPath = AgentPath("AGENT-A")
   val BAgentPath = AgentPath("AGENT-B")
@@ -84,4 +84,3 @@ object ForkTestSetting {
   //  Ix   Iy   ⟵ Iy runs on BAgentPath
   //     J
   //    END
-}

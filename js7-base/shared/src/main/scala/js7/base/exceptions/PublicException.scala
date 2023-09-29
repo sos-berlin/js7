@@ -5,8 +5,7 @@ package js7.base.exceptions
  *
  * @author Joacim Zschimmer
  */
-trait PublicException {
+trait PublicException:
   this: Throwable =>
 
   def publicMessage: String = Option(getMessage) getOrElse getClass.getName
-}

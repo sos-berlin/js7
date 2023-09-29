@@ -8,8 +8,7 @@ import monix.execution.Scheduler
 /**
   * @author Joacim Zschimmer
   */
-private[journal] trait JournalingObserver
-{
+private[journal] trait JournalingObserver:
   protected[journal] def onJournalingStarted(
     file: Path,
     expectedJournalId: JournalId,
@@ -26,8 +25,6 @@ private[journal] trait JournalingObserver
   protected[journal] def releaseEvents(untilEventId: EventId)(implicit s: Scheduler): Unit
 
   final def onFileWrittenAndEventsCommitted(positionAndEventId: PositionAnd[EventId], n: Int)
-  : Unit = {
+  : Unit =
     onFileWritten(positionAndEventId.position)
     onEventsCommitted(positionAndEventId, n)
-  }
-}

@@ -5,20 +5,14 @@ import js7.data.workflow.position.Label
 
 sealed trait PositionSearch
 
-object PositionSearch
-{
+object PositionSearch:
   final case class ByPrefix(name: String)
   extends PositionSearch
 
   final case class ByWorkflowJob(jobName: WorkflowJob.Name)
-  extends PositionSearch
-  {
+  extends PositionSearch:
     override def toString = s"LastExecutedJob(${jobName.string})"
-  }
 
   final case class ByLabel(label: Label)
-  extends PositionSearch
-  {
+  extends PositionSearch:
     override def toString = s"ByLabel(${label.string})"
-  }
-}

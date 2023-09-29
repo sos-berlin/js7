@@ -22,9 +22,8 @@ import js7.tests.testenv.DirectoryProvider
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.traced
 
-final class IfTest extends OurTestSuite
-{
-  "test" in {
+final class IfTest extends OurTestSuite:
+  "test" in:
     val directoryProvider = new DirectoryProvider(
       agentPaths = Seq(agentPath), items = Seq(TestWorkflow), testName = Some("IfTest"))
     autoClosing(directoryProvider) { _ =>
@@ -32,17 +31,15 @@ final class IfTest extends OurTestSuite
       for a <- directoryProvider.agentEnvs do a.writeExecutable(RelativePathExecutable(s"TEST-RC$sh"), jobScript)
 
       directoryProvider.run { (controller, _) =>
-        for returnCode <- ExpectedEvents.keys do withClue(s"$returnCode: ") {
+        for returnCode <- ExpectedEvents.keys do withClue(s"$returnCode: "):
           val orderId = OrderId("🔺" + returnCode.number)
           controller.addOrderBlocking(newOrder(orderId, returnCode))
           controller.eventWatch.await[OrderTerminated](_.key == orderId)
           checkEventSeq(orderId, controller.eventWatch.allKeyedEvents[OrderEvent], returnCode)
-        }
       }
     }
-  }
 
-  "OrderFailed on Agent is delayed until Order has been moved back to Controller" in {
+  "OrderFailed on Agent is delayed until Order has been moved back to Controller" in:
     val workflowNotation = s"""
        |define workflow {
        |  // Move order to agent
@@ -74,19 +71,16 @@ final class IfTest extends OurTestSuite
           OrderFailed(Position(0))))
       }
     }
-  }
 
   private def checkEventSeq(
     orderId: OrderId,
     keyedEvents: IterableOnce[KeyedEvent[OrderEvent]],
     returnCode: ReturnCode)
-  : Unit = {
+  : Unit =
     val events = keyedEvents.iterator.filter(_.key == orderId).map(_.event).to(Vector)
     assert(events == ExpectedEvents(returnCode))
-  }
-}
 
-object IfTest {
+object IfTest:
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)
 
@@ -176,4 +170,3 @@ object IfTest {
     FreshOrder(orderId, TestWorkflow.id.path, arguments = Map(
       "ARG" -> StringValue("ARG-VALUE"),
       "RETURN_CODE" -> StringValue(returnCode.number.toString)))
-}

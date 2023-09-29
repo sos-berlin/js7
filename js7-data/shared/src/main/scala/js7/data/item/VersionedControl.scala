@@ -1,7 +1,6 @@
 package js7.data.item
 
-trait VersionedControl extends UnsignedItem
-{
+trait VersionedControl extends UnsignedItem:
   protected type Self <: VersionedControl
 
   val companion: VersionedControl.Companion[Self]
@@ -9,14 +8,11 @@ trait VersionedControl extends UnsignedItem
   def id: UnsignedVersionedItemId[companion.Path]
 
   final def path: companion.Path = key.path
-}
 
-object VersionedControl
-{
+object VersionedControl:
   type Companion_ = Companion[? <: VersionedControl]
 
-  trait Companion[A <: VersionedControl] extends UnsignedItem.Companion[A]
-  {
+  trait Companion[A <: VersionedControl] extends UnsignedItem.Companion[A]:
     type Item <: A
 
     type Path <: VersionedControlPath
@@ -29,5 +25,3 @@ object VersionedControl
       Path.VersionedControlIdCompanion
 
     implicit def self: Companion[A] = this
-  }
-}

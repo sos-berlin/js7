@@ -10,48 +10,38 @@ import scala.collection.mutable
 /**
   * @author Joacim Zschimmer
   */
-class ActorRegister[K, V](valueToActorRef: V => ActorRef)
-{
+class ActorRegister[K, V](valueToActorRef: V => ActorRef):
   private val keyToValue = mutable.Map.empty[K, V]
     .withDefault(k => throw noSuchKeyProblem(k).throwable.appendCurrentStackTrace)
   private val _actorToKey = mutable.Map.empty[ActorRef, K]
 
   protected def noSuchKeyProblem(k: K): Problem = Problem(s"No such key: $k")
 
-  protected def insert(kv: (K, V)): Unit = {
+  protected def insert(kv: (K, V)): Unit =
     if keyToValue contains kv._1 then throw new DuplicateKeyException(s"Duplicate ${kv._1}, existing: ${keyToValue(kv._1)}")
     this += kv
-  }
 
-  protected def update(kv: (K, V)): Unit = {
+  protected def update(kv: (K, V)): Unit =
     require(valueToActorRef(keyToValue(kv._1)) == valueToActorRef(kv._2), "ActorRef must not change")
     keyToValue(kv._1) = kv._2
-  }
 
-  protected def +=(kv: (K, V)): Unit = {
+  protected def +=(kv: (K, V)): Unit =
     keyToValue += kv
     val (k, v) = kv
     _actorToKey += valueToActorRef(v) -> k
-  }
 
-  protected def -=(key: K): Unit = {
-    for v <- keyToValue.remove(key) do {
+  protected def -=(key: K): Unit =
+    for v <- keyToValue.remove(key) do
       _actorToKey -= valueToActorRef(v)
-    }
-  }
 
-  protected def -=(a: ActorRef): Unit = {
-    for id <- _actorToKey.remove(a) do {
+  protected def -=(a: ActorRef): Unit =
+    for id <- _actorToKey.remove(a) do
       keyToValue -= id
-    }
-  }
 
-  protected def remove(key: K): Option[V] = {
-    for v <- keyToValue.remove(key) yield {
+  protected def remove(key: K): Option[V] =
+    for v <- keyToValue.remove(key) yield
       _actorToKey -= valueToActorRef(v)
       v
-    }
-  }
 
   final def apply(key: K): V =
     keyToValue(key)
@@ -93,8 +83,6 @@ class ActorRegister[K, V](valueToActorRef: V => ActorRef)
   final def nonEmpty = keyToValue.nonEmpty
 
   final def size = keyToValue.size
-}
 
-object ActorRegister {
+object ActorRegister:
   def simple[K] = new ActorRegister[K, ActorRef](identity)
-}

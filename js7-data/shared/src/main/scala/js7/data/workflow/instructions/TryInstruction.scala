@@ -25,8 +25,7 @@ final case class TryInstruction(
   retryDelays: Option[IndexedSeq[FiniteDuration]] = None,
   maxTries: Option[Int] = None,
   sourcePos: Option[SourcePos] = None)
-extends Instruction
-{
+extends Instruction:
   def checked: Checked[TryInstruction] =
     if maxTries exists (_ < 1) then
       Left(InvalidMaxTriesProblem)
@@ -55,23 +54,21 @@ extends Instruction
       catchWorkflow = catchWorkflow.reduceForAgent(agentPath))
 
   override def workflow(branchId: BranchId) =
-    branchId match {
+    branchId match
       case TryBranchId(_) => Right(tryWorkflow)
       case CatchBranchId(_) => Right(catchWorkflow)
       case _ => super.workflow(branchId)
-    }
 
   override def branchWorkflows =
     (BranchId.Try_ -> tryWorkflow) :: (BranchId.Catch_ -> catchWorkflow) :: Nil
 
   override def toCatchBranchId(branchId: BranchId) =
-    branchId match {
+    branchId match
       case TryBranchId(i) => Some(BranchId.catch_(i))
       case _ => super.toCatchBranchId(branchId)
-    }
 
   def retryDelay(index: Int): FiniteDuration =
-    retryDelays match {
+    retryDelays match
       case None => NoRetryDelay
       case Some(delays) =>
         if delays.isEmpty then
@@ -80,21 +77,17 @@ extends Instruction
           delays.last  // The last given delay is valid for all further iterations
         else
           delays(index - 1)
-    }
 
   def isRetry: Boolean =
-    catchWorkflow.instructions exists {
+    catchWorkflow.instructions exists:
       case instr: TryInstruction => containsRetry(instr.tryWorkflow)
       case _: Retry => true
       case instr: If => instr.workflows exists containsRetry
       case _ => false
-    }
 
   override def toString = s"try $tryWorkflow catch $catchWorkflow$sourcePosToString"
-}
 
-object TryInstruction
-{
+object TryInstruction:
   private val NoRetryDelay = ZeroDuration  // No retryDelays, no delay
   val InvalidMaxTriesProblem = Problem.pure("maxTries argument must be a positive number")
   val MissingRetryProblem = Problem.pure("Missing a retry instruction in the catch block to make sense of retryDelays or maxTries")
@@ -106,18 +99,16 @@ object TryInstruction
       .checked
 
   def toRetryIndex(branchId: BranchId): Checked[Int] =
-    branchId match {
+    branchId match
       case TryCatchBranchId(i) => Right(i)
       case _ => Left(Problem(s"Invalid BranchId for Try instruction: $branchId"))
-    }
 
   private def containsRetry(workflow: Workflow): Boolean =
-    workflow.instructions exists {
+    workflow.instructions exists:
       case _: Retry => true
       case o: If => o.workflows exists containsRetry
       case o: TryInstruction => containsRetry(o.tryWorkflow)
       case _ => false
-    }
 
   implicit val jsonEncoder: Encoder.AsObject[TryInstruction] =
     o => JsonObject(
@@ -136,4 +127,3 @@ object TryInstruction
       sourcePos <- c.get[Option[SourcePos]]("sourcePos")
       tryInstr <- TryInstruction.checked(try_, catch_, delays, maxTries = maxTries, sourcePos).toDecoderResult(c.history)
     yield tryInstr
-}

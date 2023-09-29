@@ -7,18 +7,16 @@ import scala.concurrent.duration.*
 
 // NOT USED
 private final class AlarmClockScheduler(underlying: SchedulerService, val alarmClock: AlarmClock)
-extends SchedulerService
-{
+extends SchedulerService:
   def isShutdown =
     underlying.isShutdown
 
   def isTerminated =
     underlying.isTerminated
 
-  def shutdown() = {
+  def shutdown() =
     alarmClock.stop()
     underlying.shutdown()
-  }
 
   def awaitTermination(timeout: Long, unit: TimeUnit, awaitOn: ExecutionContext) =
     underlying.awaitTermination(timeout, unit, awaitOn)
@@ -45,10 +43,9 @@ extends SchedulerService
   def scheduleAtFixedRate(initialDelay: Long, period: Long, unit: TimeUnit, r: Runnable) =
     underlying.scheduleAtFixedRate(initialDelay, period, unit, r)
 
-  def clockRealTime(unit: TimeUnit) = {
+  def clockRealTime(unit: TimeUnit) =
     val ms = alarmClock.epochMilli()
     unit.convert(ms, MILLISECONDS)
-  }
 
   def clockMonotonic(unit: TimeUnit) =
     underlying.clockMonotonic(unit)
@@ -62,4 +59,3 @@ extends SchedulerService
 
   def scheduleAt(timestamp: Timestamp)(callback: => Unit): Cancelable =
     alarmClock.scheduleAt(timestamp)(callback)
-}

@@ -15,8 +15,7 @@ import js7.launcher.internal.InternalJob.Step
 import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.*
 
-trait JavaJobStep extends JavaWrapper
-{
+trait JavaJobStep extends JavaWrapper:
   type AsScala = Step
 
   @Nonnull
@@ -66,4 +65,3 @@ trait JavaJobStep extends JavaWrapper
   def namedValue(name: String): Optional[VEither[Problem, Value]] =
     asScala.processOrder.scope.namedValue(name)
       .map(_.toVavr).toJava
-}

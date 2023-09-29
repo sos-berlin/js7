@@ -9,7 +9,7 @@ import scala.language.implicitConversions
 /**
   * @author Joacim Zschimmer
   */
-object XmlSources {
+object XmlSources:
 
   implicit def stringToSource(o: String): Source =
     new StreamSource(new StringReader(o))
@@ -19,4 +19,3 @@ object XmlSources {
 
   def simpleByteArraySource(o: ByteArray): StreamSource =
     o.toInputStream
-}

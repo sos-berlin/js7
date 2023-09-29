@@ -7,9 +7,9 @@ import js7.base.version.Version
 import js7.data.system.JavaInformation
 import js7.tester.CirceJsonTester.testJson
 
-final class PlatformInfoTest extends OurTestSuite {
+final class PlatformInfoTest extends OurTestSuite:
 
-  "PlatformInfo" in {
+  "PlatformInfo" in:
     testJson(
       PlatformInfo(
         Timestamp("2022-07-08T12:00:00Z"),
@@ -44,5 +44,3 @@ final class PlatformInfoTest extends OurTestSuite {
         }
       }
     }""")
-  }
-}

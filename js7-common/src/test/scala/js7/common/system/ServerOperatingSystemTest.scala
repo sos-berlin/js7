@@ -9,21 +9,16 @@ import js7.common.system.ServerOperatingSystem.*
 /**
  * @author Joacim Zschimmer
  */
-final class ServerOperatingSystemTest extends OurTestSuite {
+final class ServerOperatingSystemTest extends OurTestSuite:
 
-  "makeModuleFilename" in {
+  "makeModuleFilename" in:
     assert(makeModuleFilename("xx") == (if isWindows then "xx.dll" else if isMac then "libxx.dylib" else "libxx.so"))
-  }
 
-  "makeExecutableFilename" in {
+  "makeExecutableFilename" in:
     assert(makeExecutableFilename("xx") == (if isWindows then "xx.exe" else "xx"))
-  }
 
-  "concatFileAndPathChain" in {
+  "concatFileAndPathChain" in:
     val f = new File("/a/b")
-    assertResult(List(f.getAbsolutePath, "x", "y", "z") mkString pathSeparator) {
+    assertResult(List(f.getAbsolutePath, "x", "y", "z") mkString pathSeparator):
       val path = List("x", "", "y", f.getAbsolutePath, "z") mkString pathSeparator
       concatFileAndPathChain(f, path)
-    }
-  }
-}

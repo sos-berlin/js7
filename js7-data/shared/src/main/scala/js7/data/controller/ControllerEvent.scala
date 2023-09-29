@@ -15,8 +15,7 @@ import scala.concurrent.duration.FiniteDuration
   */
 sealed trait ControllerEvent extends NoKeyEvent
 
-object ControllerEvent
-{
+object ControllerEvent:
   final case class ControllerInitialized(
     controllerId: ControllerId,
     initiallyStartedAt: Timestamp)
@@ -38,4 +37,3 @@ object ControllerEvent
     Subtype(ControllerTestEvent))
 
   intelliJuseImport(FiniteDurationJsonEncoder)
-}

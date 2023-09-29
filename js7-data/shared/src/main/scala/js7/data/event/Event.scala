@@ -10,7 +10,7 @@ import scala.annotation.targetName
   *
   * @author Joacim Zschimmer
   */
-trait Event {
+trait Event:
   type KeyBase <: Event
 
   val keyCompanion: Event.KeyCompanion[KeyBase]
@@ -29,24 +29,18 @@ trait Event {
     KeyedEvent.any(key, this)
 
   def isMinor = false
-}
 
-object Event
-{
+object Event:
   /** This trait (but not it's derived traits) is the common trait of Events with a common key. */
-  transparent trait IsKeyBase[E <: IsKeyBase[E]] extends Event {
+  transparent trait IsKeyBase[E <: IsKeyBase[E]] extends Event:
     final type KeyBase = E
-  }
 
-  trait KeyCompanion[E <: Event] {
+  trait KeyCompanion[E <: Event]:
     type Key
 
     implicit def implicitSelf: KeyCompanion[E]
 
     override def toString = getClass.shortClassName
-  }
 
-  transparent trait CompanionForKey[K, E <: Event] extends KeyCompanion[E] {
+  transparent trait CompanionForKey[K, E <: Event] extends KeyCompanion[E]:
     type Key = K
-  }
-}

@@ -23,48 +23,40 @@ private final class StateRecoverer[S <: SnapshotableState[S]](
   protected val file: Path,
   journalLocation: JournalLocation,
   newFileJournaledStateBuilder: () => FileSnapshotableStateBuilder[S])
-  (implicit S: SnapshotableState.Companion[S])
-{
+  (implicit S: SnapshotableState.Companion[S]):
   private val fileJournaledStateBuilder = newFileJournaledStateBuilder()
 
   private var _position = 0L
   private var _lastProperEventPosition = 0L
   private val _firstEventPosition = SetOnce[Long]
 
-  def recoverAll(): Unit = {
+  def recoverAll(): Unit =
     logger.info(s"Recovering from file ${file.getFileName} (${toKBGB(Files.size(file))})")
     // TODO Use HistoricEventReader (and build JournalIndex only once, and reuse it for event reading)
     autoClosing(InputStreamJsonSeqReader.open(file)) { jsonReader =>
-      for json <- UntilNoneIterator(jsonReader.read()).map(_.value) do {
+      for json <- UntilNoneIterator(jsonReader.read()).map(_.value) do
         fileJournaledStateBuilder.put(S.decodeJournalJson(json).orThrow)
-        fileJournaledStateBuilder.journalProgress match {
+        fileJournaledStateBuilder.journalProgress match
           case AfterSnapshotSection =>
             _position = jsonReader.position
           case InCommittedEventsSection =>
             _position = jsonReader.position
             _lastProperEventPosition = jsonReader.position
           case _ =>
-        }
-        if _firstEventPosition.isEmpty && fileJournaledStateBuilder.journalProgress == InCommittedEventsSection then {
+        if _firstEventPosition.isEmpty && fileJournaledStateBuilder.journalProgress == InCommittedEventsSection then
           _firstEventPosition := jsonReader.position
-        }
-      }
-      for h <- fileJournaledStateBuilder.fileJournalHeader if journalLocation.file(h.eventId) != file do {
+      for h <- fileJournaledStateBuilder.fileJournalHeader if journalLocation.file(h.eventId) != file do
         sys.error(s"JournalHeaders eventId=${h.eventId} does not match the filename '${file.getFileName}'")
-      }
       fileJournaledStateBuilder.logStatistics()
     }
-  }
 
   def firstEventPosition = _firstEventPosition.toOption
 
   def position: Long = _position
 
   def lastProperEventPosition: Long = _lastProperEventPosition
-}
 
-object StateRecoverer
-{
+object StateRecoverer:
   private val logger = Logger[this.type]
 
   def resource[S <: SnapshotableState[S]](journalLocation: JournalLocation, config: Config)
@@ -78,13 +70,13 @@ object StateRecoverer
     config: Config,
     runningSince: Deadline = now)
     (implicit S: SnapshotableState.Companion[S])
-  : Recovered[S] = {
+  : Recovered[S] =
     val file = journalLocation.currentFile.toOption
     val fileJournaledStateBuilder = new FileSnapshotableStateBuilder(
       journalFileForInfo = file getOrElse journalLocation.file(EventId.BeforeFirst)/*the expected new filename*/,
       expectedJournalId = None)
 
-    file match {
+    file match
       case Some(file) =>
         val recoverer = new StateRecoverer(file, journalLocation, () => fileJournaledStateBuilder)
         recoverer.recoverAll()
@@ -109,6 +101,3 @@ object StateRecoverer
         // An active cluster node will start a new journal
         // A passive cluster node will provide the JournalId later
         Recovered.noJournalFile(journalLocation, runningSince, config)
-    }
-  }
-}

@@ -16,8 +16,7 @@ import scala.collection.View
 
 final case class VerifiedUpdateItems private[controller](
   simple: VerifiedUpdateItems.Simple,
-  maybeVersioned: Option[VerifiedUpdateItems.Versioned] = None)
-{
+  maybeVersioned: Option[VerifiedUpdateItems.Versioned] = None):
   def itemCount =
     simple.itemCount + maybeVersioned.fold(0)(_.verifiedItems.size)
 
@@ -31,27 +30,21 @@ final case class VerifiedUpdateItems private[controller](
 
   def addedOrChangedAgentPaths: View[AgentPath] =
     simple.unsignedSimpleItems.view.collect { case o: AgentRef => o.path }
-}
 
-object VerifiedUpdateItems
-{
+object VerifiedUpdateItems:
   final case class Simple(
     unsignedSimpleItems: Seq[UnsignedSimpleItem] = Nil,
     verifiedSimpleItems: Seq[Verified[SignableSimpleItem]] = Nil,
-    delete: Seq[SimpleItemPath] = Nil)
-  {
+    delete: Seq[SimpleItemPath] = Nil):
     def itemCount =
       unsignedSimpleItems.size + verifiedSimpleItems.size
-  }
 
   final case class Versioned(
     versionId: VersionId,
     verifiedItems: Seq[Verified[VersionedItem]] = Nil,
-    remove: Seq[VersionedItemPath] = Nil)
-  {
+    remove: Seq[VersionedItemPath] = Nil):
     private[VerifiedUpdateItems] def paths: View[VersionedItemPath] =
       verifiedItems.view.map(_.item.path) ++ remove
-  }
 
   def fromOperations(
     observable: Observable[ItemOperation],
@@ -65,7 +58,6 @@ object VerifiedUpdateItems
     observable: Observable[ItemOperation],
     verify: SignedString => Checked[Verified[SignableItem]])
   : Task[Checked[VerifiedUpdateItems]] =
-  {
     val unsignedSimpleItems_ = Vector.newBuilder[UnsignedSimpleItem]
     val signedItems_ = Vector.newBuilder[Verified[SignableItem]]
     val simpleDeletes_ = Vector.newBuilder[SimpleItemPath]
@@ -74,22 +66,20 @@ object VerifiedUpdateItems
     @volatile var problemOccurred: Option[Problem] = None
 
     observable
-      .mapParallelBatch() {
+      .mapParallelBatch():
         case AddOrChangeSigned(signedString) =>
           if problemOccurred.isEmpty then
-            verify(signedString) match {
+            verify(signedString) match
               case Left(problem) =>
                 problemOccurred = Some(problem)
                 ()  // Delay error until input stream is completely eaten
               case Right(verified) =>
                 verified
-            }
           else
             ()
 
         case o => o
-      }
-      .foreachL {
+      .foreachL:
         case AddOrChangeSimple(item) => unsignedSimpleItems_ += item
         case DeleteSimple(path) => simpleDeletes_ += path
         case verifiedItem: Verified[SignableItem] @unchecked => signedItems_ += verifiedItem
@@ -98,9 +88,8 @@ object VerifiedUpdateItems
         case AddVersion(v) =>
           if maybeVersionId.isEmpty then maybeVersionId = Some(v)
           else problemOccurred = Some(Problem("Duplicate AddVersion"))
-      }
       .map { _ =>
-        problemOccurred.map(Left.apply).getOrElse {
+        problemOccurred.map(Left.apply).getOrElse:
           val unsignedSimpleItems = unsignedSimpleItems_.result()
           val signedItems = signedItems_.result()
           val versionedItems = signedItems.flatMap(_.ifCast[VersionedItem])
@@ -118,17 +107,15 @@ object VerifiedUpdateItems
               VerifiedUpdateItems(
                 VerifiedUpdateItems.Simple(unsignedSimpleItems, signedSimpleItems, simpleDeletes),
                 maybeVersioned))
-        }
       }
       .onErrorRecover { case ExitStreamException(problem) => Left(problem) }
-  }
 
   private def checkVersioned(
     maybeVersionId: Option[VersionId],
     verifiedVersionedItems: Seq[Verified[VersionedItem]],
     versionedRemoves: Seq[VersionedItemPath]
   ): Checked[Option[Versioned]] =
-    (maybeVersionId, verifiedVersionedItems, versionedRemoves) match {
+    (maybeVersionId, verifiedVersionedItems, versionedRemoves) match
       case (Some(v), verifiedVersionedItems, remove) =>
         for _ <- (verifiedVersionedItems.view.map(_.item.path) ++ remove).checkUniqueness(identity) yield
           Some(VerifiedUpdateItems.Versioned(v, verifiedVersionedItems, remove))
@@ -136,7 +123,5 @@ object VerifiedUpdateItems
         Right(None)
       case (None, _, _) =>
         Left(Problem.pure("VersionedItem but AddVersionId operation is missing"))
-    }
 
   private case class ExitStreamException(problem: Problem) extends Exception
-}

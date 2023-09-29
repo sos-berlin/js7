@@ -5,9 +5,8 @@ import js7.base.test.OurTestSuite
 /**
   * @author Joacim Zschimmer
   */
-final class UriTest extends OurTestSuite
-{
-  "/" in {
+final class UriTest extends OurTestSuite:
+  "/" in:
     assert(Uri("/") / "" == Uri("/"))
     assert(Uri("/") / "/" == Uri("/"))
     assert(Uri("/") / "B" == Uri("/B"))
@@ -16,9 +15,8 @@ final class UriTest extends OurTestSuite
     assert(Uri("https://example.com/") / "/B" == Uri("https://example.com/B"))
     assert(Uri("https://example.com/") / "/B/" == Uri("https://example.com/B/"))
     assert(Uri("https://example.com") / "B" == Uri("https://example.com/B"))
-  }
 
-  "/?" in {
+  "/?" in:
     assert(Uri("/") /? "" == Uri("/"))
     assert(Uri("/") /? "B" == Uri("/B"))
     assert(Uri("/") /? "B/" == Uri("/B/"))
@@ -26,9 +24,8 @@ final class UriTest extends OurTestSuite
     assert(Uri("https://example.com/") /? "/B" == Uri("https://example.com/B"))
     assert(Uri("https://example.com/") /? "/B/" == Uri("https://example.com/B/"))
     assert(Uri("https://example.com") /? "B" == Uri("https://example.com/B"))
-  }
 
-  "stripPath" in {
+  "stripPath" in:
     assert(Uri("/").stripPath == Uri("/"))
 
     assert(Uri("https://host/").stripPath == Uri("https://host/"))
@@ -40,5 +37,3 @@ final class UriTest extends OurTestSuite
     assert(Uri("//host/PATH").stripPath == Uri("//host/"))
     assert(Uri("//host/PATH/MORE").stripPath == Uri("//host/"))
     assert(Uri("//host/?QUERY").stripPath == Uri("//host/"))
-  }
-}

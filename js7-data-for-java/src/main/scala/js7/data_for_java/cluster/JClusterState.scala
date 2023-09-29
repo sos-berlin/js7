@@ -7,19 +7,16 @@ import js7.data_for_java.common.JJsonable
 import scala.jdk.CollectionConverters.*
 
 sealed trait JClusterState
-extends JJsonable[JClusterState]
-{
+extends JJsonable[JClusterState]:
   type AsScala = ClusterState
 
   def companion = JClusterState
-}
 
-object JClusterState extends JJsonable.Companion[JClusterState]
-{
+object JClusterState extends JJsonable.Companion[JClusterState]:
   type AsScala = ClusterState
 
   def apply(clusterState: ClusterState): JClusterState =
-    clusterState match {
+    clusterState match
       case ClusterState.Empty => Empty
       case o: ClusterState.NodesAppointed => NodesAppointed(o)
       case o: ClusterState.PreparedToBeCoupled => PreparedToBeCoupled(o)
@@ -28,18 +25,15 @@ object JClusterState extends JJsonable.Companion[JClusterState]
       case o: ClusterState.PassiveLost => PassiveLost(o)
       case o: ClusterState.SwitchedOver => SwitchedOver(o)
       case o: ClusterState.FailedOver => FailedOver(o)
-    }
 
   sealed trait Empty extends JClusterState
 
-  case object Empty extends Empty {
+  case object Empty extends Empty:
     val asScala = ClusterState.Empty
-  }
 
   val empty = Empty
 
-  sealed trait HasNodes extends JClusterState
-  {
+  sealed trait HasNodes extends JClusterState:
     this: Product =>
 
     def asScala: ClusterState.HasNodes
@@ -61,15 +55,12 @@ object JClusterState extends JJsonable.Companion[JClusterState]
 
     final def passiveUri: Uri =
       asScala.passiveUri
-  }
 
-  sealed trait CoupledOrDecoupled extends HasNodes {
+  sealed trait CoupledOrDecoupled extends HasNodes:
     this: Product =>
-  }
 
-  sealed trait Decoupled extends CoupledOrDecoupled {
+  sealed trait Decoupled extends CoupledOrDecoupled:
     this: Product =>
-  }
 
   final case class NodesAppointed(asScala: ClusterState.NodesAppointed)
   extends Decoupled
@@ -94,4 +85,3 @@ object JClusterState extends JJsonable.Companion[JClusterState]
 
   protected def jsonEncoder = ClusterState.jsonCodec
   protected def jsonDecoder = ClusterState.jsonCodec
-}

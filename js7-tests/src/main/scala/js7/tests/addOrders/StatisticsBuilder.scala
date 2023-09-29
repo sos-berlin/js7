@@ -15,8 +15,7 @@ import scala.util.Success
 
 private final class StatisticsBuilder(
   isOurOrder: Set[OrderId],
-  observer: Observer[Statistics])
-{
+  observer: Observer[Statistics]):
   private val since = now
   private val orderIdToStarted = mutable.Map.empty[OrderId, Timestamp]
   private val orderIdToProcessingStarted = mutable.Map.empty[OrderId, Timestamp]
@@ -36,30 +35,26 @@ private final class StatisticsBuilder(
   def deletedOrderCount = _deletedOrderCount
   def lastOrderCount = orderAddedCount - _deletedOrderCount
 
-  object obs {
+  object obs:
     private val pause = 100.ms
     private var next = now
     private var observerAck: Future[Ack] = Future.successful(Ack.Continue)
 
-    def tryPublish() = {
-      if now >= next then {
-        if observerAck.value contains Success(Ack.Continue) then {
+    def tryPublish() =
+      if now >= next then
+        if observerAck.value contains Success(Ack.Continue) then
           observerAck = observer.onNext(toStatistics)
           next = now + pause
-        }
-      }
-    }
-  }
 
   obs.tryPublish()  // Initial empty Statistics
 
-  def count(stampedEvent: Stamped[KeyedEvent[Event]]): this.type = {
+  def count(stampedEvent: Stamped[KeyedEvent[Event]]): this.type =
     import stampedEvent.timestamp
 
     eventCount += 1
-    stampedEvent.value match {
+    stampedEvent.value match
       case KeyedEvent(orderId: OrderId, event) if isOurOrder(orderId.root) =>
-        event match {
+        event match
           case event: OrderStdWritten =>
             stdWritten += event.chunk.getBytes(UTF_8).size
 
@@ -75,41 +70,35 @@ private final class StatisticsBuilder(
             orderIdToStarted(orderId) = timestamp
 
           case _: OrderTerminated =>
-            for start <- orderIdToStarted.remove(orderId) do {
+            for start <- orderIdToStarted.remove(orderId) do
               val duration = timestamp - start
               totalOrderDuration += duration
               maximumOrderDuration = maximumOrderDuration max duration
-            }
 
           case _: OrderProcessingStarted =>
             orderIdToProcessingStarted(orderId) = timestamp
 
           case _: OrderProcessed =>
-            for start <- orderIdToProcessingStarted.remove(orderId) do {
+            for start <- orderIdToProcessingStarted.remove(orderId) do
               processedCount += 1
               val duration = timestamp - start
               totalProcessDuration += duration
               maximumProcessDuration = maximumProcessDuration max duration
-            }
 
           case OrderForked(children) =>
             orderToChildren(orderId) = children.map(_.orderId)
 
           case _: OrderJoined =>
-            for children <- orderToChildren.remove(orderId) do {
+            for children <- orderToChildren.remove(orderId) do
               completedForkedOrderCount += children.size
-            }
             obs.tryPublish()
 
           case _: OrderCancelled | _: OrderFailed | _: OrderFailedInFork =>
             failedOrderCount += 1
 
           case _ =>
-        }
       case _ =>
-    }
     this
-  }
 
   def toStatistics = Statistics(
     since.elapsed,
@@ -124,4 +113,3 @@ private final class StatisticsBuilder(
     totalProcessDuration = totalProcessDuration,
     maximumProcessDuration = maximumProcessDuration,
     stdWritten = stdWritten)
-}

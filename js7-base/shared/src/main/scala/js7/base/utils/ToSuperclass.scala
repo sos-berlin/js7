@@ -7,8 +7,7 @@ import scala.jdk.CollectionConverters.*
 import scala.reflect.ClassTag
 
 /** Map for subclasses to any of the given superclasses. */
-final class ToSuperclass[C](superclasses: Set[Class[? <: C]])(implicit C: ClassTag[C])
-{
+final class ToSuperclass[C](superclasses: Set[Class[? <: C]])(implicit C: ClassTag[C]):
   private val map = new ConcurrentHashMap[Class[? <: C], Option[Class[? <: C]]]
   map.putAll(superclasses.view.map(o => o -> Some(o)).toMap.asJava)
 
@@ -20,10 +19,10 @@ final class ToSuperclass[C](superclasses: Set[Class[? <: C]])(implicit C: ClassT
     get(cls).nonEmpty
 
   def get[C1 <: C](cls: Class[C1]): Option[Class[? <: C]] =
-    map.get(cls) match {
+    map.get(cls) match
       case null =>
-        synchronized {
-          map.get(cls) match {
+        synchronized:
+          map.get(cls) match
             case null =>
               val maybeSuperclass = superclassesOf(cls)
                 .view
@@ -33,10 +32,6 @@ final class ToSuperclass[C](superclasses: Set[Class[? <: C]])(implicit C: ClassT
               map.put(cls, maybeSuperclass)
               maybeSuperclass
             case maybeSuperclass => maybeSuperclass
-          }
-        }
       case maybeSuperclass => maybeSuperclass
-    }
 
   private[utils] def inspect = map.asScala
-}

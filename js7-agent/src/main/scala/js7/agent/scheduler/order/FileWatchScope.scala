@@ -10,12 +10,11 @@ import scala.util.Try
 private final class FileWatchScope private(
   orderWatchPath: OrderWatchPath,
   matchedMatcher: Matcher)
-extends Scope
-{
+extends Scope:
   override lazy val nameToCheckedValue =
-    new MapView[String, Right[Nothing, Value]] {
+    new MapView[String, Right[Nothing, Value]]:
       def get(key: String): Option[Right[Nothing, Value]] =
-        key match {
+        key match
           case "orderWatchPath" =>
             Some(Right(StringValue(orderWatchPath.string)))
 
@@ -31,7 +30,6 @@ extends Scope
                       .map(group => Right(StringValue(group))))
             else
               None
-      }
 
       def iterator: Iterator[(String, Right[Nothing, Value])] =
         get("orderWatchPath").iterator.map("orderWatchPath" -> _) ++
@@ -39,14 +37,9 @@ extends Scope
             .flatMap(i =>
               Option(matchedMatcher.group(i))
                 .map(group => i.toString -> Right(StringValue(group))))
-    }
 
   override def toString = s"FileWatchScope($orderWatchPath, ${matchedMatcher.pattern})"
-}
 
-object FileWatchScope
-{
-  def apply(orderWatchPath: OrderWatchPath, matchedMatcher: Matcher): Scope = {
+object FileWatchScope:
+  def apply(orderWatchPath: OrderWatchPath, matchedMatcher: Matcher): Scope =
     new FileWatchScope(orderWatchPath, matchedMatcher)
-  }
-}

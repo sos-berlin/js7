@@ -6,10 +6,8 @@ import js7.base.time.Timestamp
 import js7.data.event.JournalHeader.Version
 import scala.concurrent.duration.FiniteDuration
 
-object JournalHeaders
-{
-  implicit final class RichJournalHeader(private val self: JournalHeader) extends AnyVal
-  {
+object JournalHeaders:
+  implicit final class RichJournalHeader(private val self: JournalHeader) extends AnyVal:
     def nextGeneration[S <: BasicState[S]](
       eventId: EventId,
       totalEventCount: Long,
@@ -27,7 +25,6 @@ object JournalHeaders
         version = Version,
         js7Version = BuildInfo.longVersion,
         buildId = BuildInfo.buildId)
-  }
 
   def forTest(typeName: String, journalId: JournalId, eventId: EventId = EventId.BeforeFirst): JournalHeader =
     new JournalHeader(
@@ -57,4 +54,3 @@ object JournalHeaders
       version = Version,
       js7Version = BuildInfo.longVersion,
       buildId = BuildInfo.buildId)
-}

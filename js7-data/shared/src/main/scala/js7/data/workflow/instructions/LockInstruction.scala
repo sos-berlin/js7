@@ -17,7 +17,7 @@ final case class LockInstruction private(
   demands: List[LockDemand],
   lockedWorkflow: Workflow,
   sourcePos: Option[SourcePos])
-extends Instruction {
+extends Instruction:
 
   private def checked: Checked[this.type] =
     LockDemand.checked(demands).rightAs(this)
@@ -47,16 +47,14 @@ extends Instruction {
     (BranchId.Lock -> lockedWorkflow) :: Nil
 
   override def workflow(branchId: BranchId) =
-    branchId match {
+    branchId match
       case BranchId.Lock => Right(lockedWorkflow)
       case _ => super.workflow(branchId)
-    }
 
   def lockPaths: List[LockPath] =
     demands.map(_.lockPath)
-}
 
-object LockInstruction {
+object LockInstruction:
   @TestOnly
   def apply(
     demands: Seq[LockDemand],
@@ -100,4 +98,3 @@ object LockInstruction {
       lock <- LockInstruction(locks, w, sourcePos)
         .checked.toDecoderResult(c.history)
     yield lock
-}

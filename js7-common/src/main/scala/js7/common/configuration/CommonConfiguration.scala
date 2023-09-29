@@ -18,8 +18,7 @@ import js7.common.internet.IP.StringToServerInetSocketAddress
 /**
   * @author Joacim Zschimmer
   */
-trait CommonConfiguration extends WebServerBinding.HasLocalUris with BasicConfiguration
-{
+trait CommonConfiguration extends WebServerBinding.HasLocalUris with BasicConfiguration:
   def config: Config
 
   def configDirectory: Path
@@ -52,7 +51,7 @@ trait CommonConfiguration extends WebServerBinding.HasLocalUris with BasicConfig
     webServerBindings collect { case o: WebServerBinding.Https => o }
 
   final def webServerBindings: Seq[WebServerBinding] =
-    webServerPorts map {
+    webServerPorts map:
       case WebServerPort.Http(port) =>
         WebServerBinding.Http(port)
 
@@ -60,24 +59,19 @@ trait CommonConfiguration extends WebServerBinding.HasLocalUris with BasicConfig
         WebServerBinding.Https(port,
           keyStoreRef.mapProblem(Problem("HTTPS requires a key store:") |+| _).orThrow,
           trustStoreRefs)
-    }
-}
 
-object CommonConfiguration
-{
+object CommonConfiguration:
   private val logger = Logger[this.type]
 
   final case class Common(
     configDirectory: Path,
     dataDirectory: Path,
-    webServerPorts: Seq[WebServerPort])
-  {
+    webServerPorts: Seq[WebServerPort]):
     val workDirectory = dataDirectory / "work"
     val logDirectory = dataDirectory / "logs"
-  }
 
-  object Common {
-    def fromCommandLineArguments(a: CommandLineArguments): Common = {
+  object Common:
+    def fromCommandLineArguments(a: CommandLineArguments): Common =
       Common(
         // Startup code parses --data-directory= too, to allow placing a lock file !!!
         configDirectory = a.as[Path]("--config-directory=").toAbsolutePath,
@@ -85,6 +79,3 @@ object CommonConfiguration
         webServerPorts =
           a.seqAs("--http-port=")(StringToServerInetSocketAddress).map(WebServerPort.Http(_)) ++
           a.seqAs("--https-port=")(StringToServerInetSocketAddress).map(WebServerPort.Https(_)))
-    }
-  }
-}

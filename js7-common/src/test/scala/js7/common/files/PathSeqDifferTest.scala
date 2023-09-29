@@ -8,9 +8,8 @@ import js7.base.test.OurTestSuite
 /**
   * @author Joacim Zschimmer
   */
-final class PathSeqDifferTest extends OurTestSuite
-{
-  "diff" in {
+final class PathSeqDifferTest extends OurTestSuite:
+  "diff" in:
     withTemporaryDirectory("Z-") { dir =>
       touchFile(dir / "A")
       val entries1 = DirectoryReader.entries(dir)
@@ -28,5 +27,3 @@ final class PathSeqDifferTest extends OurTestSuite
       val entries4 = DirectoryReader.entries(dir)
       assert(PathSeqDiffer.diff(entries4, entries2) == PathSeqDiff(changed = dir / "B" :: Nil, deleted = dir / "A" :: Nil))
     }
-  }
-}

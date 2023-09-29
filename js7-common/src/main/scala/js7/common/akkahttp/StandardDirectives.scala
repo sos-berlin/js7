@@ -18,15 +18,12 @@ import scala.concurrent.Future
 /**
   * @author Joacim Zschimmer
   */
-object StandardDirectives
-{
+object StandardDirectives:
   def remainingPath[A](implicit A: CheckedString[A]): PathMatcher1[A] =
-    new PathMatcher1[A] {
-      def apply(path: Path) = A.checked(path.toString) match {
+    new PathMatcher1[A]:
+      def apply(path: Path) = A.checked(path.toString) match
         case Right(a) => Matched(Path.Empty, Tuple1(a))
         case _ => Unmatched
-      }
-    }
 
   /**
     * A PathMatcher that matches a single segment or the whole remaining path,
@@ -34,21 +31,18 @@ object StandardDirectives
     * "a/b" ~ "a%2Fb"
     */
   def remainingItemPath[P <: VersionedItemPath: VersionedItemPath.Companion: CheckedString]: PathMatcher1[P] =
-    new PathMatcher1[P] {
+    new PathMatcher1[P]:
       def apply(path: Path) =
-        uriPathToCheckedString[P](path) match {
+        uriPathToCheckedString[P](path) match
           case Right(itemPath) => Matched(Path.Empty, Tuple1(itemPath))
           case _ => Unmatched
-        }
-    }
 
   private def uriPathToCheckedString[P](uriPath: Path)(implicit P: CheckedString[P]): Checked[P] =
-    uriPath match {
+    uriPath match
       case Path.Segment(segment, Path.Empty) =>
         P.checked(segment)  // Slashes encoded as %2F in a single path segment
       case _ =>
         P.checked(uriPath.toString)
-    }
 
   def combineRoutes(routes: Iterable[Route]): Route =
     routes.foldFast(reject)(_ ~ _)
@@ -68,15 +62,13 @@ object StandardDirectives
       case _ => true
     }))
 
-  private val resetLastModifiedToBuildTime: Directive0 = {
+  private val resetLastModifiedToBuildTime: Directive0 =
     val immutableLastModified = Some(`Last-Modified`(DateTime(BuildInfo.buildTime)))
     mapResponse(r => r.withHeaders(r.headers flatMap {
       case _: `Last-Modified` => immutableLastModified
       case o => Some(o)
     }))
-  }
 
   val immutableResource: Directive0 =
     respondWithHeader(`Cache-Control`(`public`, `max-age`(365*24*3600), `immutableDirective`)) &
       removeEtag  // Assure client about immutability
-}

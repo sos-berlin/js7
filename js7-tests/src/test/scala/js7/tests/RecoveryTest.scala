@@ -36,12 +36,11 @@ import scala.util.control.NonFatal
 /**
   * @author Joacim Zschimmer
   */
-final class RecoveryTest extends OurTestSuite
-{
+final class RecoveryTest extends OurTestSuite:
   // TODO Starte Controller und Agenten in eigenen Prozessen, die wir abbrechen können.
 
-  "test" in {
-    for _ <- if sys.props contains "test.infinite" then Iterator.from(1) else Iterator(1) do {
+  "test" in:
+    for _ <- if sys.props contains "test.infinite" then Iterator.from(1) else Iterator(1) do
       val orders = for i <- 1 to 3 yield FreshOrder(OrderId(i.toString), TestWorkflow.path)
       val Seq(order1, order2, order3) = orders
       var lastEventId = EventId.BeforeFirst
@@ -57,9 +56,8 @@ final class RecoveryTest extends OurTestSuite
           agent.writeExecutable(TestPathExecutable, script(1.s, resultVariable = Some("var1")))
 
         runController(directoryProvider) { controller =>
-          if lastEventId == EventId.BeforeFirst then {
+          if lastEventId == EventId.BeforeFirst then
             lastEventId = controller.eventWatch.tornEventId
-          }
           controller.eventWatch.await[ControllerEvent.ControllerReady](after = lastEventId)
           import directoryProvider.sign
           assert(controller.eventWatch.await[VersionedEvent]().map(_.value).sortBy(_.toString) ==
@@ -89,7 +87,7 @@ final class RecoveryTest extends OurTestSuite
           }
         }
 
-        for i <- 1 to 2 do withClue(s"Run #$i:") {
+        for i <- 1 to 2 do withClue(s"Run #$i:"):
           val myLastEventId = lastEventId
           logger.info(s"*** RESTARTING CONTROLLER AND AGENTS #$i ***\n")
           runAgents(directoryProvider) { _ =>
@@ -98,7 +96,7 @@ final class RecoveryTest extends OurTestSuite
                 .await[OrderFinished](after = myLastEventId, predicate = _.key == orders(i).id)
                 .last.value.key
               val orderStampedSeq = controller.eventWatch.await[Event](_.key == orderId)
-              withClue(s"$orderId") {
+              withClue(s"$orderId"):
                 try assert(deleteRestartedJobEvents(orderStampedSeq.map(_.value.event).iterator).toVector == ExpectedOrderEvents)
                 catch { case NonFatal(t) =>
                   logger.error("Test failed due to unexpected events:\n" + orderStampedSeq.mkString("\n"))
@@ -106,13 +104,9 @@ final class RecoveryTest extends OurTestSuite
                 }
                 assert(controller.controllerState().idToOrder.keySet ==
                   (orders :+ QuickOrder).map(_.id).toSet)
-              }
             }
           }
-        }
       }
-    }
-  }
 
   private def runController(directoryProvider: DirectoryProvider)(body: TestController => Unit): Unit =
     directoryProvider.runController() { controller =>
@@ -130,7 +124,7 @@ final class RecoveryTest extends OurTestSuite
 
   private def runAgents(directoryProvider: DirectoryProvider)
     (body: IndexedSeq[TestAgent] => Unit)
-  : Unit = {
+  : Unit =
     val agents = directoryProvider.agentEnvs
       .map(_.agentConf)
       .parTraverse(TestAgent.start(_))
@@ -145,10 +139,8 @@ final class RecoveryTest extends OurTestSuite
     }
     //logger.info("🔥🔥🔥 TERMINATE AGENTS 🔥🔥🔥")
     agents.parTraverse(_.terminate(suppressSnapshot = true)).await(99.s)
-  }
-}
 
-private object RecoveryTest {
+private object RecoveryTest:
   private val logger = Logger[this.type]
 
   private val TestConfig = config"js7.journal.remove-obsolete-files = false"
@@ -204,27 +196,21 @@ private object RecoveryTest {
     OrderFinished())
 
   /** Deletes restart sequences to make event sequence comparable with ExpectedOrderEvents. */
-  private def deleteRestartedJobEvents(events: Iterator[Event]): Seq[Event] = {
+  private def deleteRestartedJobEvents(events: Iterator[Event]): Seq[Event] =
     val result = mutable.Buffer[Event]()
-    while events.hasNext do {
-      events.next() match {
+    while events.hasNext do
+      events.next() match
         case OrderProcessed.processLostDueToRestart =>
-          while !result.last.isInstanceOf[OrderProcessingStarted] do {
+          while !result.last.isInstanceOf[OrderProcessingStarted] do
             result.remove(result.size - 1)
-          }
           result.remove(result.size - 1)
           val e = events.next()
           assert(e.isInstanceOf[OrderEvent.OrderMoved])  // Not if Agent restarted immediately after recovery (not expected)
 
         case event => result += event
-      }
-    }
     result.toVector
-  }
 
-  private def lastEventIdOf[E <: Event](stamped: IterableOnce[Stamped[KeyedEvent[E]]]): EventId = {
+  private def lastEventIdOf[E <: Event](stamped: IterableOnce[Stamped[KeyedEvent[E]]]): EventId =
     val last = stamped.iterator.to(Vector).last
     logger.debug(s"lastEventIdOf => $last")
     last.eventId
-  }
-}

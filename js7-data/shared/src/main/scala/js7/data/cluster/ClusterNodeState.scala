@@ -7,16 +7,11 @@ import js7.data.node.NodeId
 final case class ClusterNodeState(
   nodeId: NodeId,
   isBackup: Boolean,
-  clusterState: ClusterState)
-{
+  clusterState: ClusterState):
   def isActive: Boolean =
-    clusterState match {
+    clusterState match
       case ClusterState.Empty => !isBackup
       case o: ClusterState.HasNodes => nodeId == o.activeId
-    }
-}
 
-object ClusterNodeState
-{
+object ClusterNodeState:
   implicit val jsonCodec: Codec.AsObject[ClusterNodeState] = deriveCodec
-}

@@ -27,8 +27,7 @@ final class MemoryJournal[S <: JournaledState[S]] private[journal](
   infoLogEvents: Set[String],
   eventIdGenerator: EventIdGenerator = new EventIdGenerator)
   (implicit protected val S: JournaledState.Companion[S])
-extends Journal[S]
-{
+extends Journal[S]:
   val journalId = JournalId.random()
 
   private val stateLock = AsyncLock("MemoryJournal.state")
@@ -50,26 +49,24 @@ extends Journal[S]
 
   val eventWatch: RealEventWatch = new MemoryJournalEventWatch
 
-  private class MemoryJournalEventWatch extends RealEventWatch {
+  private class MemoryJournalEventWatch extends RealEventWatch:
     protected def eventsAfter(after: EventId) =
       eventsAfter_(after)
         .map(iterator => CloseableIterator.fromIterator(iterator))
 
     protected val isActiveNode = true
 
-    def journalInfo: JournalInfo = {
+    def journalInfo: JournalInfo =
       val q = queue
       JournalInfo(
         lastEventId = q.lastEventId,
         tornEventId = q.tornEventId,
         journalFiles = Nil)
-    }
 
     def tornEventId: EventId =
       queue.tornEventId
 
     override def toString = "MemoryJournal.EventWatch"
-  }
 
   def unsafeCurrentState(): S =
     _state
@@ -156,21 +153,19 @@ extends Journal[S]
       }
     })
 
-  private def eventsAfter_(after: EventId): Option[Iterator[Stamped[KeyedEvent[Event]]]] = {
+  private def eventsAfter_(after: EventId): Option[Iterator[Stamped[KeyedEvent[Event]]]] =
     val q = queue
     if after < q.tornEventId then
       None
-    else {
+    else
       val (index, found) = binarySearch(0, q.events.length, i => q.events(i).eventId.compare(after))
-      if !found && after != q.tornEventId then {
+      if !found && after != q.tornEventId then
         //Left(Problem.pure(s"Unknown ${EventId.toString(after)}"))
         None
-      } else if eventWatchStopped then
+      else if eventWatchStopped then
         Some(Iterator.empty)
       else
         Some(q.events.drop(index + found.toInt).iterator)
-    }
-  }
 
   def suppressLogging(supress: Boolean): Unit =
     journalLogger.suppress(supress)
@@ -187,9 +182,8 @@ extends Journal[S]
     tornEventId: EventId,
     lastEventId: EventId,
     events: Vector[Stamped[KeyedEvent[Event]]])
-}
 
-object MemoryJournal {
+object MemoryJournal:
   def resource[S <: JournaledState[S]](
     initial: S,
     size: Int,
@@ -200,4 +194,3 @@ object MemoryJournal {
   : Resource[Task, MemoryJournal[S]] =
     Resource.eval(Task(
       new MemoryJournal[S](initial, size, waitingFor, infoLogEvents, eventIdGenerator)))
-}

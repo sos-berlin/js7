@@ -16,12 +16,11 @@ import js7.tests.cluster.controller.ControllerClusterTester.*
 import js7.tests.testenv.ProgramEnvTester.assertEqualJournalFiles
 import monix.execution.Scheduler.Implicits.traced
 
-final class SimpleControllerClusterTest extends ControllerClusterTester
-{
+final class SimpleControllerClusterTest extends ControllerClusterTester:
   override protected def shellScript = s"echo '${"-" * 100}'\n" *
     (if sys.props.contains("test.speed") then 10000 else 1)
 
-  "Cluster replicates journal files properly" in {
+  "Cluster replicates journal files properly" in:
     runControllerAndBackup() { (primary, primaryController, _, backup, backupController, _, _) =>
       assert(primaryController.api.executeCommand(ControllerCommand.NoOperation()).await(99.s) ==
         Right(ControllerCommand.Response.Accepted))
@@ -57,5 +56,3 @@ final class SimpleControllerClusterTest extends ControllerClusterTester
 
       assertEqualJournalFiles(primary.controllerEnv, backup.controllerEnv, n = 1)
     }
-  }
-}

@@ -17,8 +17,7 @@ import monix.execution.Scheduler
 /**
   * @author Joacim Zschimmer
   */
-trait OrderProvider extends HasCloser
-{
+trait OrderProvider extends HasCloser:
   protected def conf: ProviderConfiguration
   protected def httpControllerApi: HttpControllerApi
   protected def retryUntilNoError[A](body: => Task[Checked[A]]): Task[A]
@@ -39,13 +38,11 @@ trait OrderProvider extends HasCloser
           .map(Right.apply)
     } unless orders.isEmpty
 
-  onClose {
+  onClose:
     orderScheduleGenerator.close()
-  }
 
   protected final def replaceOrderGenerators: Checked[Unit] =
     typedSourceReader
       .readItems(DirectoryReader.entries(conf.orderGeneratorsDirectory).map(_.file))
       .map(_.map(_.asInstanceOf[ScheduledOrderGenerator]))
       .map(orderScheduleGenerator.replaceGenerators)
-}

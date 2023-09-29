@@ -14,24 +14,20 @@ final class X509Signer private(
   x509PrivateKey: PrivateKey,
   val algorithm: X509Algorithm,
   val signerId: SignerId)
-extends DocumentSigner
-{
+extends DocumentSigner:
   protected type MySignature = X509Signature
 
   def companion = X509Signer
 
-  def sign(message: ByteArray): X509Signature = {
+  def sign(message: ByteArray): X509Signature =
     val signature = Signature.getInstance(algorithm.string);
     signature.initSign(x509PrivateKey)
     signature.update(message.unsafeArray)
     X509Signature(ByteArray.unsafeWrap(signature.sign), algorithm, Left(signerId))
-  }
 
   override def toString = s"X509Signer($x509PrivateKey)"
-}
 
-object X509Signer extends DocumentSigner.Companion
-{
+object X509Signer extends DocumentSigner.Companion:
   protected type MySignature = X509Signature
   protected type MyMessageSigner = X509Signer
 
@@ -65,4 +61,3 @@ object X509Signer extends DocumentSigner.Companion
         verifier <- X509SignatureVerifier.checked(certWithPrivateKey.certificate :: Nil, origin)
       yield signer -> verifier
     }
-}

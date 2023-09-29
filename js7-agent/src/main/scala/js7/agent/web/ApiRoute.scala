@@ -17,8 +17,7 @@ with CommandWebService
 with EventRoute
 with SessionRoute
 with JournalRoute
-with ClusterRoute
-{
+with ClusterRoute:
   protected final val apiRoute: Route =
     pathPrefix(Segment) {
       case "event" => eventRoute
@@ -28,7 +27,5 @@ with ClusterRoute
       case "cluster" => clusterRoute
       case _ => complete(NotFound)
     } ~
-    pathEndOrSingleSlash {
+    pathEndOrSingleSlash:
       apiRootRoute
-    }
-}

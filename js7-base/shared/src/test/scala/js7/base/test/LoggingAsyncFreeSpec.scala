@@ -13,7 +13,7 @@ import org.scalatest.{PendingStatement, Tag}
  * The log lines are colored, so use `less` with `LESS=-R` to let the escape sequences
  * take effect on your terminal.
  **/
-trait LoggingAsyncFreeSpec extends AsyncFreeSpec {
+trait LoggingAsyncFreeSpec extends AsyncFreeSpec:
 
   private val testAdder = new LoggingTestAdder(getClass.shortClassName)
 
@@ -37,7 +37,7 @@ trait LoggingAsyncFreeSpec extends AsyncFreeSpec {
     Future.fromTry(Try(startFuture)).flatten
 
   private def toUnified(stringWrapper: FreeSpecStringWrapper) =
-    new LoggingFreeSpecStringWrapper.UnifiedStringWrapper[Future[Assertion], ResultOfTaggedAsInvocationOnString] {
+    new LoggingFreeSpecStringWrapper.UnifiedStringWrapper[Future[Assertion], ResultOfTaggedAsInvocationOnString]:
       def -(addTests: => Unit) =
         stringWrapper - addTests
 
@@ -45,7 +45,7 @@ trait LoggingAsyncFreeSpec extends AsyncFreeSpec {
         testBody
 
       def taggedAs(tag: Tag, more: Tag*) =
-        new LoggingFreeSpecStringWrapper.TaggedAs[Future[Assertion]] {
+        new LoggingFreeSpecStringWrapper.TaggedAs[Future[Assertion]]:
           def in(testBody: => Future[Assertion]) =
             testBody
 
@@ -54,6 +54,3 @@ trait LoggingAsyncFreeSpec extends AsyncFreeSpec {
 
           def is(pending: => PendingStatement) =
             pending
-        }
-    }
-}

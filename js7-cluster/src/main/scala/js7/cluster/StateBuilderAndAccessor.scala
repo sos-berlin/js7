@@ -11,12 +11,11 @@ import monix.execution.Scheduler
 
 private final class StateBuilderAndAccessor[S <: SnapshotableState[S]](
   initialState: S)
-  (implicit S: SnapshotableState.Companion[S])
-{
+  (implicit S: SnapshotableState.Companion[S]):
   private val getStateMVarTask = MVar.of[Task, Task[S]](Task.pure(initialState)).memoize
   val state: Task[S] = getStateMVarTask.flatMap(_.read.flatten)
 
-  def newStateBuilder()(implicit s: Scheduler): SnapshotableStateBuilder[S] = {
+  def newStateBuilder()(implicit s: Scheduler): SnapshotableStateBuilder[S] =
     val builder = S.newBuilder()
     (for
         mVar <- getStateMVarTask
@@ -29,9 +28,6 @@ private final class StateBuilderAndAccessor[S <: SnapshotableState[S]](
         logger.error(s"PassiveClusterNode StateBuilderAndAccessor failed: ${t.toStringWithCauses}")
       }
     builder
-  }
-}
 
-object StateBuilderAndAccessor {
+object StateBuilderAndAccessor:
   private val logger = Logger[this.type]
-}

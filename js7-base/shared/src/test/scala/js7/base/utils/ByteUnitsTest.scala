@@ -6,12 +6,10 @@ import js7.base.utils.ByteUnits.{formatNumber, toKBGB, toKiBGiB, toMB}
 /**
   * @author Joacim Zschimmer
   */
-final class ByteUnitsTest extends OurTestSuite
-{
-  "formatNumber" in {
-    for i <- 0 to 9 do {
+final class ByteUnitsTest extends OurTestSuite:
+  "formatNumber" in:
+    for i <- 0 to 9 do
       assert(formatNumber(i, 1, "x") == i.toString + "x")
-    }
     assert(formatNumber(10, 1, "x") == "10x")
 
     // Base 1000
@@ -44,9 +42,8 @@ final class ByteUnitsTest extends OurTestSuite
     assert(formatNumber(10*1024, 1024, "x") == "10x")
     assert(formatNumber(11*1024-1, 1024, "x") == "10x")
     assert(formatNumber(11*1024, 1024, "x") == "11x")
-  }
 
-  "toKBGB" in {
+  "toKBGB" in:
     assert(toKBGB(-1) == "-1bytes")
     assert(toKBGB(0) == "0bytes")
     assert(toKBGB(1) == "1bytes")
@@ -64,9 +61,8 @@ final class ByteUnitsTest extends OurTestSuite
     assert(toKBGB(1100000000) == "1.1GB")
     assert(toKBGB(1199999999) == "1.1GB")
     assert(toKBGB(10000000000L) == "10GB")
-  }
 
-  "toMB" in {
+  "toMB" in:
     assert(toMB(-1) == "-1bytes")
     assert(toMB(0) == "0MB")
     assert(toMB(1) == "<1MB")
@@ -74,9 +70,8 @@ final class ByteUnitsTest extends OurTestSuite
     assert(toMB(1000000) == "1MB")
     assert(toMB(999999999) == "999MB")
     assert(toMB(1000000000) == "1GB")
-  }
 
-  "toKiBGiB" in {
+  "toKiBGiB" in:
     val K = 1024L
     val M = 1024*K
     val G = 1024*M
@@ -93,5 +88,3 @@ final class ByteUnitsTest extends OurTestSuite
     assert(toKiBGiB(G+G/2) == "1.5GiB")
     assert(toKiBGiB(10*G+G/2) == "10GiB")
     assert(toKiBGiB(1024*G) == "1024GiB")
-  }
-}

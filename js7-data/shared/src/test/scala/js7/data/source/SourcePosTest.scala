@@ -7,9 +7,6 @@ import js7.tester.CirceJsonTester.*
 /**
   * @author Joacim Zschimmer
   */
-final class SourcePosTest extends OurTestSuite
-{
-  "JSON" in {
+final class SourcePosTest extends OurTestSuite:
+  "JSON" in:
     testJson(SourcePos(1, 2), json"""[1, 2]""")
-  }
-}

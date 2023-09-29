@@ -3,8 +3,7 @@ package js7.base.parser
 import java.lang.Character.{isIdentifierIgnorable, isUnicodeIdentifierPart, isUnicodeIdentifierStart}
 import js7.base.utils.ScalaUtils.withStringBuilder
 
-object BasicPrinter
-{
+object BasicPrinter:
   def identifierToString(identifier: String): String =
     if identifierRequiresBacktick(identifier) then
       withStringBuilder(appendIdentifierWithBackticks(_, identifier))
@@ -12,17 +11,15 @@ object BasicPrinter
       identifier
 
   def appendIdentifier(sb: StringBuilder, identifier: String): Unit =
-    if identifierRequiresBacktick(identifier) then {
+    if identifierRequiresBacktick(identifier) then
       appendIdentifierWithBackticks(sb, identifier)
-    } else {
+    else
       sb.append(identifier)
-    }
 
-  def appendIdentifierWithBackticks(sb: StringBuilder, identifier: String): Unit = {
+  def appendIdentifierWithBackticks(sb: StringBuilder, identifier: String): Unit =
       sb.append('`')
       sb.append(identifier.replace("`", "``"))
       sb.append('`')
-  }
 
   def identifierRequiresBacktick(identifier: String) =
     !isIdentifier(identifier) && !identifier.forall(isDigit)
@@ -41,4 +38,3 @@ object BasicPrinter
 
   private def isDigit(c: Char) =
     c >= '0' && c <= '9'
-}

@@ -5,9 +5,8 @@ import js7.base.test.OurTestSuite
 /**
   * @author Joacim Zschimmer
   */
-final class LazyTest extends OurTestSuite
-{
-  "Lazy" in {
+final class LazyTest extends OurTestSuite:
+  "Lazy" in:
     var counter = 0
     val a = Lazy({ counter += 1; 7 })
     assert(!a.isDefined)
@@ -28,19 +27,14 @@ final class LazyTest extends OurTestSuite
     assert(a() == 7)
     assert(a() == 7)
     assert(counter == 1)
-  }
 
-  "Recursion" in {
+  "Recursion" in:
     lazy val a: Lazy[Nothing] = Lazy(a.value)
-    intercept[a.RecursiveLazyValueException] {
+    intercept[a.RecursiveLazyValueException]:
       a.value
-    }
     assert(a.recursionCheckedValue == None)
 
     val b = Lazy(a.value)
-    intercept[a.RecursiveLazyValueException] {
+    intercept[a.RecursiveLazyValueException]:
       b.value
-    }
     assert(b.recursionCheckedValue == None)
-  }
-}

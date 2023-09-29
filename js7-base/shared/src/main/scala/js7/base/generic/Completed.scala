@@ -8,15 +8,13 @@ import cats.kernel.CommutativeMonoid
   *
   * @author Joacim Zschimmer
   */
-object Completed
-{
+object Completed:
   // type Completed = Completed.type    <-- defined in package.scala
 
   override def toString = "Completed"
 
   implicit val CompletedMonoid: CommutativeMonoid[Completed] =
-    new CommutativeMonoid[Completed]
-    {
+    new CommutativeMonoid[Completed]:
       val empty = Completed
 
       def combine(a: Completed, b: Completed) =
@@ -30,7 +28,5 @@ object Completed
 
       override def reverse: CommutativeMonoid[Completed] =
         this
-    }
 
   val combine = CompletedMonoid.combine _
-}

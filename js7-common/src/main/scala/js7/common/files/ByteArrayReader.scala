@@ -9,33 +9,26 @@ import js7.base.log.Logger
 import js7.common.files.ByteArrayReader.*
 
 final class ByteArrayReader(file: Path, fromEnd: Boolean = false)
-extends AutoCloseable
-{
+extends AutoCloseable:
   val channel = FileChannel.open(file, READ)
   val buffer = ByteBuffer.allocate(ChunkSize)
 
-  if fromEnd then {
+  if fromEnd then
     channel.position(channel.size)
-  }
 
-  def close() = {
+  def close() =
     logger.trace(s"close $file")
     channel.close()
-  }
 
   def read(): ByteArray =
-    channel.read(buffer) match {
+    channel.read(buffer) match
       case -1 => ByteArray.empty
       case _ =>
         buffer.flip()
         val result = ByteArray.fromArray(buffer.array, buffer.position(), buffer.remaining())
         buffer.clear()
         result
-    }
-}
 
-object ByteArrayReader
-{
+object ByteArrayReader:
   private[files] val ChunkSize = 8192
   private val logger = Logger[this.type]
-}

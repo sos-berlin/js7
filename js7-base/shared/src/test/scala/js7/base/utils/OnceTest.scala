@@ -6,9 +6,9 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import monix.execution.atomic.Atomic
 
-final class OnceTest extends OurAsyncTestSuite {
+final class OnceTest extends OurAsyncTestSuite:
 
-  "parallel" in {
+  "parallel" in:
     val number = Atomic(0)
     val once = new Once
 
@@ -20,5 +20,3 @@ final class OnceTest extends OurAsyncTestSuite {
       .void
       .*>(Task(assert(number.get() == 1)))
       .runToFuture
-  }
-}

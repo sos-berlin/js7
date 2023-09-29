@@ -43,8 +43,7 @@ import monix.reactive.Observable
 /**
   * @author Joacim Zschimmer
   */
-final class AgentStateTest extends OurAsyncTestSuite
-{
+final class AgentStateTest extends OurAsyncTestSuite:
   private val subagentItem = SubagentItem(
     SubagentId("SUBAGENT"),
     AgentPath("AGENT"),
@@ -52,7 +51,7 @@ final class AgentStateTest extends OurAsyncTestSuite
     disabled = false,
     itemRevision = Some(ItemRevision(7)))
 
-  "AgentMetaState" in {
+  "AgentMetaState" in:
     testJson(
       AgentMetaState(
         Seq(subagentItem.id, SubagentId("BACKUP")),
@@ -95,7 +94,6 @@ final class AgentStateTest extends OurAsyncTestSuite
       "agentRunId": "ABEiM0RVZneImaq7zN3u_w",
       "controllerId": "CONTROLLER"
     }""")
-  }
 
   private val subagentSelection = SubagentSelection(
     SubagentSelectionId("SELECTION"),
@@ -128,7 +126,7 @@ final class AgentStateTest extends OurAsyncTestSuite
     3.s,
     Some(ItemRevision(7)))
 
-  private val agentState = locally {
+  private val agentState = locally:
     val meta = AgentMetaState(
       Seq(subagentItem.id),
       AgentPath("AGENT"),
@@ -170,23 +168,19 @@ final class AgentStateTest extends OurAsyncTestSuite
       OrderId("ORDER") <-:
         OrderAttachedToAgent(workflow.id /: Position(0), Order.Fresh, agentPath = AgentPath("AGENT")))
     ).orThrow
-  }
 
   "isDedicated, isFreshlyDedicated" - {
-    "empty" in {
+    "empty" in :
       assert(!AgentState.empty.isDedicated)
-    }
 
-    "AgentState example" in {
+    "AgentState example" in :
       assert(agentState.isDedicated)
       assert(!agentState.isFreshlyDedicated)
-    }
 
-    "After snapshot" in {
+    "After snapshot" in :
       val afterSnapshot = AgentState.empty.applyEvent(SnapshotTaken).orThrow
       assert(!afterSnapshot.isDedicated)
       assert(!afterSnapshot.isFreshlyDedicated)
-    }
 
     val dedicated = AgentDedicated(
       Seq(SubagentId("PRIMARY-SUBAGENT"), SubagentId("BACKUP-SUBAGENT")),
@@ -194,20 +188,18 @@ final class AgentStateTest extends OurAsyncTestSuite
       AgentRunId(JournalId.random()),
       ControllerId("C"),
       Some(ControllerRunId(JournalId(Base64UUID.zero))))
-    "AgentDedicated" in {
+    "AgentDedicated" in :
       val dedicatedState = AgentState.empty.applyEvent(dedicated).orThrow
       assert(dedicatedState.isDedicated)
       assert(dedicatedState.isFreshlyDedicated)
-    }
   }
 
-  "estimatedSnapshotSize" in {
+  "estimatedSnapshotSize" in:
     assert(agentState.estimatedSnapshotSize == 14)
     for n <- agentState.toSnapshotObservable.countL.runToFuture
       yield assert(n == agentState.estimatedSnapshotSize)
-  }
 
-  "Snapshot JSON" in {
+  "Snapshot JSON" in:
     implicit val x = AgentState.snapshotObjectJsonCodec
     agentState.toSnapshotObservable.map(_.asJson).map(removeJNull).toListL.runToFuture
       .flatMap { jsons =>
@@ -346,31 +338,28 @@ final class AgentStateTest extends OurAsyncTestSuite
           .runToFuture
           .flatMap { fromSnapshot =>
             val a = agentState.copy(eventId = 0)
-            if fromSnapshot != a then {  // Diff.compare do not uses our equals implementation
+            if fromSnapshot != a then  // Diff.compare do not uses our equals implementation
               fail("Eevent-build state differs from snapshot")
               //diffx val diffResult = diffx.Diff.compare(fromSnapshot, a)
               //diffx fail(diffResult.show())
-            } else
+            else
               succeed
           }
     }
-  }
 
-  "Unknown TYPE for snapshotObjectJsonCodec" in {
+  "Unknown TYPE for snapshotObjectJsonCodec" in:
     assert(AgentState.snapshotObjectJsonCodec
       .decodeJson(json"""{ "TYPE": "UNKNOWN" }""").toChecked == Left(Problem(
       """JSON DecodingFailure at : Unexpected JSON {"TYPE": "UNKNOWN", ...} for """ +
          "js7.agent.data.AgentState.snapshotObjectJsonCodec: TypedJsonCodec[Object]")))
-  }
 
-  "Unknown TYPE for keyedEventJsonCodec" in {
+  "Unknown TYPE for keyedEventJsonCodec" in:
     assert(AgentState.keyedEventJsonCodec
       .decodeJson(json"""{ "TYPE": "UNKNOWN" }""").toChecked == Left(Problem(
       """JSON DecodingFailure at : Unexpected JSON {"TYPE": "UNKNOWN", ...} for """ +
         "js7.agent.data.AgentState.keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event]")))
-  }
 
-  "applyEvent" in {
+  "applyEvent" in:
     val orderId = OrderId("ORDER")
     val childOrderId = OrderId("ORDER") / "BRANCH"
     val workflow = Workflow.of(WorkflowPath("WORKFLOW") ~ "1.0")
@@ -425,9 +414,8 @@ final class AgentStateTest extends OurAsyncTestSuite
       Map(
         signedJobResource.value.path -> signedJobResource,
         workflow.id -> signedWorkflow)))
-  }
 
-  "keyToItem" in {
+  "keyToItem" in:
     assert(!agentState.keyToItem.contains(WorkflowPath("UNKNOWN") ~ "1"))
     assert(agentState.keyToItem.get(workflow.id) == Some(workflow))
     assert(agentState.keyToItem.get(unsignedJobResource.path) == Some(unsignedJobResource))
@@ -438,5 +426,3 @@ final class AgentStateTest extends OurAsyncTestSuite
         calendar.path, fileWatch.path, subagentItem.id, subagentSelection.id,
         WorkflowPathControlPath(workflow.path),
       ).sortBy(_.toString))
-  }
-}

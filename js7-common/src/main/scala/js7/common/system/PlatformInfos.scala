@@ -7,8 +7,7 @@ import js7.common.system.JavaInformations.javaInformation
 import js7.common.system.ServerOperatingSystem.operatingSystem
 import js7.data.platform.PlatformInfo
 
-object PlatformInfos
-{
+object PlatformInfos:
   def currentPlatformInfo() = PlatformInfo(
     Timestamp.now,
     ZoneId.systemDefault.getId,
@@ -17,4 +16,3 @@ object PlatformInfos
     operatingSystem.distributionNameAndVersionOption,
     cpuModel = operatingSystem.cpuModel,
     javaInformation())
-}

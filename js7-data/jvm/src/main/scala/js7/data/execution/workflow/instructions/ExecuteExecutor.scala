@@ -21,8 +21,7 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import scala.util.Try
 
 private[execution] final class ExecuteExecutor(protected val service: InstructionExecutorService)
-extends EventInstructionExecutor with PositionInstructionExecutor
-{
+extends EventInstructionExecutor with PositionInstructionExecutor:
   type Instr = Execute
   val instructionClass = classOf[Execute]
 
@@ -97,7 +96,7 @@ extends EventInstructionExecutor with PositionInstructionExecutor
       job <- workflow.checkedWorkflowJob(order.position)
       jobKey <- workflow.positionToJobKey(order.position)
     yield
-      if order.isState[IsFreshOrReady] && !order.forceJobAdmission then {
+      if order.isState[IsFreshOrReady] && !order.forceJobAdmission then
         val admissionObstacles = job.admissionTimeScheme
           .filterNot(_ => skippedReason(order, job, calculator.stateView).isDefined)
           .flatMap(_
@@ -107,7 +106,7 @@ extends EventInstructionExecutor with PositionInstructionExecutor
         admissionObstacles ++
           (calculator.jobToOrderCount(jobKey) >= job.parallelism)
             .thenSet(jobParallelismLimitReached)
-      } else
+      else
         Set.empty
 
   private def skippedReason(order: Order[Order.State], job: WorkflowJob, state: StateView)
@@ -136,17 +135,13 @@ extends EventInstructionExecutor with PositionInstructionExecutor
           .fold(false)(localDate =>
             !admissionTimeScheme
               .hasAdmissionPeriodStartForDay(localDate, dateOffset = noDateOffset)))
-}
 
-object ExecuteExecutor
-{
+object ExecuteExecutor:
   // TODO Use a Calendar ?
   private val OrderDateRegex = "#([0-9]{4}-[0-9][0-9]-[0-9][0-9])#.*".r
   private[instructions] val noDateOffset = 0.s // ???
 
   def orderIdToDate(orderId: OrderId): Option[LocalDate] =
-    orderId.string match {
+    orderId.string match
       case OrderDateRegex(date) => Try(LocalDate.parse(date)).toOption
       case _ => None
-    }
-}

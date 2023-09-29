@@ -17,8 +17,7 @@ import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Workflow, WorkflowPath}
 
-final class LockExecutorTest extends OurTestSuite
-{
+final class LockExecutorTest extends OurTestSuite:
   private lazy val stateView = TestStateView.of(
     isAgent = false,
     orders = Some(Seq(freeLockOrder, freeLockedOrder, occupiedLockOrder)),
@@ -30,37 +29,30 @@ final class LockExecutorTest extends OurTestSuite
 
   private lazy val service = new InstructionExecutorService(WallClock)
 
-  "Lock acquired" in {
+  "Lock acquired" in:
     check(freeLockOrder, OrderLocksAcquired(List(LockDemand(freeLock.path, count = Some(3)))))
-  }
 
-  "Lock released" in {
+  "Lock released" in:
     check(freeLockedOrder, OrderLocksReleased(List(freeLock.path)))
-  }
 
-  "Acquire too much" in {
+  "Acquire too much" in:
     val order = freeLockOrder.withPosition(Position(1))
     assert(service.toEvents(workflow.instruction(order.position), order, stateView) ==
       Left(Problem("Cannot fulfill lock count=4 with Lock:FREE-LOCK limit=3")))
-  }
 
-  "Lock cannot acquired and is queued" in {
+  "Lock cannot acquired and is queued" in:
     check(occupiedLockOrder, OrderLocksQueued(List(LockDemand(occupiedLock.path, None))))
-  }
 
-  "Lock released and waiting order continues" in {
+  "Lock released and waiting order continues" in:
     check(freeLockedOrder, OrderLocksReleased(List(freeLock.path)))
-  }
 
-  "Exclusive Lock acquired" in {
+  "Exclusive Lock acquired" in:
     check(exclusiveLockOrder, OrderLocksAcquired(List(LockDemand(exclusiveLock.path))))
-  }
 
-  "Exclusive Lock released" in {
+  "Exclusive Lock released" in:
     check(freeExclusiveLockedOrder, OrderLocksReleased(List(exclusiveLock.path)))
-  }
 
-  "Multiple locks, not available" in {
+  "Multiple locks, not available" in:
     val order = Order(
       OrderId("MULTIPLE-NOT-AVAILABLE"),
       workflow.id /: Position(4),
@@ -70,9 +62,8 @@ final class LockExecutorTest extends OurTestSuite
         order.id <-: OrderLocksQueued(List(
           LockDemand(exclusiveLock.path, None),
           LockDemand(occupiedLock.path, None))))))
-  }
 
-  "Multiple locks acquired" in {
+  "Multiple locks acquired" in:
     val order = Order(
       OrderId("MULTIPLE"),
       workflow.id /: Position(5),
@@ -82,9 +73,8 @@ final class LockExecutorTest extends OurTestSuite
         order.id <-: OrderLocksAcquired(List(
           LockDemand(exclusiveLock.path),
           LockDemand(freeLock.path))))))
-  }
 
-  "Multiple locks, releases" in {
+  "Multiple locks, releases" in:
     val order = Order(
       OrderId("MULTIPLE"),
       workflow.id /: (Position(5) / BranchId.Lock % 1),
@@ -94,15 +84,12 @@ final class LockExecutorTest extends OurTestSuite
         order.id <-: OrderLocksReleased(List(
           exclusiveLock.path,
           freeLock.path)))))
-  }
 
   private def check(order: Order[Order.State], event: OrderLockEvent): Unit =
     assert(service.toEvents(workflow.instruction(order.position), order, stateView) ==
       Right(Seq(order.id <-: event)))
-}
 
-object LockExecutorTest
-{
+object LockExecutorTest:
   private val freeLock = Lock(LockPath("FREE-LOCK"), limit = 3)
   private val occupiedLock = Lock(LockPath("OCCUPIED-LOCK"), limit = 3)
   private val exclusiveLock = Lock(LockPath("EXCLUSIVE-LOCK"))
@@ -151,4 +138,3 @@ object LockExecutorTest
     OrderId("ORDER-D"),
     workflow.id /: (Position(3) / BranchId.Lock % 1),
     Order.Ready)
-}

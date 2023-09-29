@@ -23,23 +23,20 @@ import org.scalatest.BeforeAndAfterAll
 /**
   * @author Joacim Zschimmer
   */
-final class ControllerConfigurationTest extends OurTestSuite with BeforeAndAfterAll
-{
+final class ControllerConfigurationTest extends OurTestSuite with BeforeAndAfterAll:
   private lazy val directory = createTempDirectory("ControllerConfigurationTest-")
 
-  override def beforeAll() = {
+  override def beforeAll() =
     createDirectories(directory / "DATA" / "state")
-  }
 
-  override def afterAll() = {
+  override def afterAll() =
     delete(directory / "DATA/state")
     delete(directory / "DATA")
-  }
 
   private lazy val configuration = ControllerConfiguration.fromCommandLine(CommandLineArguments(
     Vector(s"--config-directory=$directory/CONFIG", s"--data-directory=$directory/DATA")))
 
-  "Empty argument list" in {
+  "Empty argument list" in:
     assert(configuration.copy(
       config = ConfigFactory.empty,
       clusterConf = configuration.clusterConf.copy(
@@ -64,30 +61,24 @@ final class ControllerConfigurationTest extends OurTestSuite with BeforeAndAfter
           config = ConfigFactory.empty),
         name = ControllerConfiguration.DefaultName,
         config = ConfigFactory.empty))
-  }
 
-  "--id=" in {
+  "--id=" in:
     assert(conf().controllerId == ControllerId("Controller"))
     assert(conf("--id=CONTROLLER").controllerId == ControllerId("CONTROLLER"))
-  }
 
-  "--http-port=" in {
+  "--http-port=" in:
     // For more tests see CommonConfigurationTest
     intercept[IllegalArgumentException] { conf("--http-port=65536") }
     assert(conf("--http-port=1234").webServerPorts == WebServerPort.Http(new InetSocketAddress("0.0.0.0", 1234)) :: Nil)
-  }
 
-  "--https-port=" in {
+  "--https-port=" in:
     // For more tests see CommonConfigurationTest
     assert(conf("--https-port=1234").webServerPorts == WebServerPort.Https(new InetSocketAddress("0.0.0.0", 1234)) :: Nil)
-  }
 
-  "System property" in {
+  "System property" in:
     assert(conf().config.getString("user.name") == sys.props("user.name"))
-  }
 
   private def conf(args: String*) =
     ControllerConfiguration.fromCommandLine(
       CommandLineArguments(Vector(s"--config-directory=$directory/CONFIG", s"--data-directory=$directory/DATA") ++ args),
       config"user.name = ControllerConfigurationTest"/*Will be overridden*/)
-}

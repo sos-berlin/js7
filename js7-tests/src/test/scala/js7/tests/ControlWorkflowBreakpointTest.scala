@@ -35,8 +35,7 @@ import monix.execution.Scheduler.Implicits.traced
 import scala.jdk.CollectionConverters.*
 
 final class ControlWorkflowBreakpointTest
-extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
-{
+extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater:
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.controller.agent-driver.command-batch-delay = 0ms
@@ -52,7 +51,7 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
   protected implicit def implicitEventWatch: StrictEventWatch = eventWatch
   protected implicit def implicitControllerApi: ControllerApi = controller.api
 
-  "Set some breakpoints" in {
+  "Set some breakpoints" in:
     var eventId = setBreakpoints(
       aWorkflow.id,
       Map(
@@ -67,7 +66,7 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
     assert(controllerState.itemToIgnorantAgents(WorkflowControl).isEmpty)
     assert(!controllerState.itemToIgnorantAgents(WorkflowControl).contains(aWorkflowControlId))
 
-    locally {
+    locally:
       val expectedWorkflowControl = WorkflowControl(
         aWorkflowControlId,
         Set(Position(0), Position(1)),
@@ -81,7 +80,6 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
 
       assert(JControllerState(controllerState).idToWorkflowControl.asScala.toMap == Map(
         JWorkflowControlId(expectedWorkflowControl.id) -> JWorkflowControl(expectedWorkflowControl)))
-    }
 
     val aOrderId = OrderId("A")
 
@@ -170,9 +168,8 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
     //  aWorkflowControlId -> Set(agentPath)))
     //assert(JControllerState(controllerState).workflowControlToIgnorantAgent
     //  .get(JWorkflowId(aWorkflowControlId.workflowId)).asScala == Set(agentPath))
-  }
 
-  "Breakpoint in a Try block" in {
+  "Breakpoint in a Try block" in:
     val workflow = Workflow(WorkflowPath("IN-TRY-WORKFLOW"), Seq(
       EmptyJob.execute(agentPath),
       TryInstruction(
@@ -194,9 +191,8 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
       controller.api.executeCommand(ResumeOrder(orderId)).await(99.s).orThrow
       eventWatch.await[OrderFinished](_.key == orderId)
     }
-  }
 
-  "Breakpoint at a Try block" in {
+  "Breakpoint at a Try block" in:
     val workflow = Workflow(WorkflowPath("AT-TRY-WORKFLOW"), Seq(
       EmptyJob.execute(agentPath),
       TryInstruction(
@@ -218,9 +214,8 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
       controller.api.executeCommand(ResumeOrder(orderId)).await(99.s).orThrow
       eventWatch.await[OrderFinished](_.key == orderId)
     }
-  }
 
-  "Breakpoint at an If instruction" in {
+  "Breakpoint at an If instruction" in:
     val workflow = Workflow.of(WorkflowPath("IF-WORKFLOW"),
       If(expr("true"), Workflow.of(
         If(expr("true"), Workflow.of(
@@ -242,19 +237,15 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
       controller.api.addOrder(FreshOrder(orderId, workflow.id.path, deleteWhenTerminated = true))
         .await(99.s).orThrow
 
-      for position <- positions do {
+      for position <- positions do
         eventId = eventWatch.await[OrderSuspended](_.key == orderId, after = eventId).last.eventId
         assert(controllerState.idToOrder(orderId).position == position)
         controller.api.executeCommand(ResumeOrder(orderId)).await(99.s).orThrow
-      }
 
       eventWatch.await[OrderFinished](_.key == orderId)
     }
-  }
-}
 
-object ControlWorkflowBreakpointTest
-{
+object ControlWorkflowBreakpointTest:
   private val agentPath = AgentPath("A-AGENT")
   private val subagentId = toLocalSubagentId(agentPath)
 
@@ -273,7 +264,7 @@ object ControlWorkflowBreakpointTest
     revision: ItemRevision,
     workflowControlToEvent: WorkflowControl => UnsignedItemEvent)
     (implicit controllerApi: ControllerApi, eventWatch: StrictEventWatch)
-  : EventId = {
+  : EventId =
     val eventId = eventWatch.lastAddedEventId
     val jCmd = JControllerCommand
       .controlWorkflow(
@@ -291,5 +282,3 @@ object ControlWorkflowBreakpointTest
           breakpoints = resultBreakpoints,
           itemRevision = Some(revision)))))
     keyedEvents.last.eventId
-  }
-}

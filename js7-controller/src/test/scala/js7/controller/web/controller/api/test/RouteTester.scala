@@ -17,8 +17,7 @@ import scala.concurrent.duration.*
 /**
   * @author Joacim Zschimmer
   */
-trait RouteTester extends ScalatestRouteTest with ExceptionHandling
-{
+trait RouteTester extends ScalatestRouteTest with ExceptionHandling:
   this: Suite =>
 
   ProblemCodeMessages.initialize()
@@ -51,13 +50,10 @@ trait RouteTester extends ScalatestRouteTest with ExceptionHandling
     js7.web.server.services.command-size-limit = 8m
     """
 
-  override def beforeAll() = {
+  override def beforeAll() =
     AkkaHttpUtils.avoidLazyObjectInitializationDeadlock()
     super.beforeAll()
-  }
 
-  override def afterAll() = {
+  override def afterAll() =
     cleanUp()
     super.afterAll()
-  }
-}

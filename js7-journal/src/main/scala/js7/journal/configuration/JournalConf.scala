@@ -25,12 +25,11 @@ final case class JournalConf(
   slowCheckState: Boolean = false,
   infoLogEvents: Set[String] = Set.empty)
 
-object JournalConf
-{
+object JournalConf:
   private val logger = Logger[this.type]
   private val checkStateKey = "js7.journal.slow-check-state"
 
-  def fromConfig(config: Config) = {
+  def fromConfig(config: Config) =
     val syncOnCommit = config.getBoolean("js7.journal.sync")
     val delay = config.getDuration("js7.journal.delay").toFiniteDuration
     lazy val syncDelay = config.getDuration("js7.journal.sync-delay").toFiniteDuration
@@ -53,5 +52,3 @@ object JournalConf
       releaseEventsUserIds = config.seqAs[UserId]("js7.journal.users-allowed-to-release-events").toSet,
       slowCheckState = slowCheckState,
       infoLogEvents = config.seqAs[String]("js7.journal.log.info-events").toSet)
-  }
-}

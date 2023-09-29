@@ -17,8 +17,7 @@ final case class NoticePlace(
   expectingOrderIds: Set[OrderId] = Set.empty,
   isInConsumption: Boolean = false,
   consumptionCount: Int = 0)
-extends Big
-{
+extends Big:
   def checked: Checked[this.type] =
     (notice.forall(_.id == noticeId) !!
       Problem(s"NoticePlace($noticeId) with different NoticeIds")
@@ -53,7 +52,7 @@ extends Big
       consumptionCount = consumptionCount + 1,
       expectingOrderIds = expectingOrderIds - orderId)
 
-  def finishConsumption(succeeded: Boolean): NoticePlace = {
+  def finishConsumption(succeeded: Boolean): NoticePlace =
     val isLast = consumptionCount == 1
     copy(
       notice =
@@ -63,18 +62,13 @@ extends Big
           notice,
       isInConsumption = !isLast,
       consumptionCount = consumptionCount - 1)
-  }
-}
 
-object NoticePlace
-{
+object NoticePlace:
   final case class Snapshot(
     boardPath: BoardPath,
     noticeId: NoticeId,
     isInConsumption: Boolean,
     consumptionCount: Int)
   extends BoardSnapshot
-  object Snapshot {
+  object Snapshot:
     val subtype = Subtype.named(deriveCodec[Snapshot], "NoticePlace")
-  }
-}

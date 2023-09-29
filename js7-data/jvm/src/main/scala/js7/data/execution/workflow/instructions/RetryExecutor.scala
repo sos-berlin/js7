@@ -18,8 +18,7 @@ import scala.concurrent.duration.*
   * @author Joacim Zschimmer
   */
 private[instructions] final class RetryExecutor(protected val service: InstructionExecutorService)
-extends EventInstructionExecutor
-{
+extends EventInstructionExecutor:
   type Instr = Retry
   val instructionClass = classOf[Retry]
 
@@ -49,23 +48,18 @@ extends EventInstructionExecutor
               })
 
   private def nextTimestamp(delay: FiniteDuration) =
-    clock.now() + delay match {
+    clock.now() + delay match
       case at if delay >= 10.s => at.roundToNextSecond
       case at => at
-    }
 
   override def toObstacles(order: Order[Order.State], calculator: OrderObstacleCalculator) =
-    order.state match {
+    order.state match
       case Order.DelayedAfterError(until) =>
         Right(Set(WaitingForOtherTime(until)))
 
       case _ =>
         super.toObstacles(order, calculator)
-    }
-}
 
-object RetryExecutor
-{
+object RetryExecutor:
   private def missingTryProblem(branchPath: BranchPath) =
     Problem.pure(s"Retry: branchPath does not denotes a 'try' statement: $branchPath")
-}

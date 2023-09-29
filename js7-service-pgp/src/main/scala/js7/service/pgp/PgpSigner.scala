@@ -21,8 +21,7 @@ import scala.util.Random
   * @author Joacim Zschimmer
   */
 final class PgpSigner private(pgpSecretKey: PGPSecretKey, password: SecretString)
-extends DocumentSigner
-{
+extends DocumentSigner:
   protected type MySignature = PgpSignature
 
   def companion = PgpSigner
@@ -38,31 +37,26 @@ extends DocumentSigner
       .build(password.string.toArray))
   private val maybeUserId: Option[String] = pgpSecretKey.getPublicKey.getUserIDs.asScala.buffered.headOption  // Only the first UserID ?
 
-  def sign(message: ByteArray): PgpSignature = {
+  def sign(message: ByteArray): PgpSignature =
     val signatureGenerator = newSignatureGenerator()
     signatureGenerator.update(message.unsafeArray)
     val signatureBytes = signatureGenerator.generate.getEncoded(/*forTransfer=*/true)
     PgpSignature(Base64.getMimeEncoder.encodeToString(signatureBytes))
-  }
 
-  private def newSignatureGenerator(): PGPSignatureGenerator = {
+  private def newSignatureGenerator(): PGPSignatureGenerator =
     val signatureGenerator = new PGPSignatureGenerator(
       new JcaPGPContentSignerBuilder(pgpSecretKey.getPublicKey.getAlgorithm, OurHashAlgorithm)
         .setProvider("BC"))
     signatureGenerator.init(PGPSignature.BINARY_DOCUMENT, pgpPrivateKey)
-    for u <- maybeUserId do {
+    for u <- maybeUserId do
       val subpacketGenerator = new PGPSignatureSubpacketGenerator
       subpacketGenerator.addSignerUserID(false, u)
       signatureGenerator.setHashedSubpackets(subpacketGenerator.generate())
-    }
     signatureGenerator
-  }
 
   override def toString = show"PgpSigner($pgpSecretKey)"
-}
 
-object PgpSigner extends DocumentSigner.Companion
-{
+object PgpSigner extends DocumentSigner.Companion:
   protected type MySignature = PgpSignature
   protected type MyMessageSigner = PgpSigner
 
@@ -78,19 +72,18 @@ object PgpSigner extends DocumentSigner.Companion
     Checked.catchNonFatal(
       new PgpSigner(pgpSecretKey, password))
 
-  def forTest() = {
+  def forTest() =
     val pgpPassword = SecretString(Vector.fill(10)('a' + Random.nextInt('z' - 'a' + 1)).mkString)
     val pgpSecretKey = PgpKeyGenerator.generateSecretKey(SignerId("TEST"), pgpPassword, keySize = 1024/*fast for test*/)
     PgpSigner(pgpSecretKey, pgpPassword).orThrow ->
       PgpSignatureVerifier.checked(pgpSecretKey.getPublicKey.toArmoredAsciiBytes :: Nil, origin = "PgpSigner").orThrow
-  }
 
   private def readSecretKeyRingCollection(byteArray: ByteArray): PGPSecretKeyRingCollection =
     new PGPSecretKeyRingCollection(
       PGPUtil.getDecoderStream(byteArray.toInputStream),
       newFingerPrintCalculator)
 
-  private def selectSecretKey(keyRings: PGPSecretKeyRingCollection): PGPSecretKey = {
+  private def selectSecretKey(keyRings: PGPSecretKeyRingCollection): PGPSecretKey =
     val keys = keyRings
       .getKeyRings.asScala
       .map(o => o.getSecretKey(o.getPublicKey/*the controller key*/.getFingerprint))
@@ -100,5 +93,3 @@ object PgpSigner extends DocumentSigner.Companion
       "More than one controller key in secret key ring: " +
         keys.mkString_("", ", ", ""))
     keys.head
-  }
-}

@@ -10,35 +10,29 @@ import monix.eval.Task
 import monix.execution.atomic.AtomicAny
 import scala.util.control.NonFatal
 
-final class Closer extends AutoCloseable
-{
+final class Closer extends AutoCloseable:
   private val stack = new ConcurrentLinkedDeque[AutoCloseable]
   private val throwable = AtomicAny[Throwable](null)
 
-  def onCloseOrShutdown(body: => Unit): Unit = {
+  def onCloseOrShutdown(body: => Unit): Unit =
     onClose(body)
     whenNotClosedAtShutdown(body)
-  }
 
-  def whenNotClosedAtShutdown(body: => Unit): Unit = {
-    val hook = new Thread(s"ShutdownHook for $toString") {
+  def whenNotClosedAtShutdown(body: => Unit): Unit =
+    val hook = new Thread(s"ShutdownHook for $toString"):
       override def run() = body
-    }
     sys.runtime.addShutdownHook(hook)
-    onClose {
+    onClose:
       sys.runtime.removeShutdownHook(hook)
-    }
-  }
 
   /**
     * Closes the `Closer`, then "finally" (nonwithstanding any NonFatal exception) call `body`.
     */
-  def closeThen(body: => Unit) = {
+  def closeThen(body: => Unit) =
     val c = new Closer
     c onClose body
     c.register(this)
     c.close()
-  }
 
   def onClose(closeable: => Unit): Unit =
     register(() => closeable)
@@ -48,7 +42,7 @@ final class Closer extends AutoCloseable
 
   //@tailrec
   def close(): Unit =
-    stack.pollLast() match {
+    stack.pollLast() match
       case null =>  // finish
         for t <- Option(throwable.get()) do throw t
 
@@ -66,40 +60,30 @@ final class Closer extends AutoCloseable
             throw fatal
         //}
         close()
-    }
-}
 
-object Closer
-{
+object Closer:
   private val logger = Logger[this.type]
 
   def withCloser[A](f: Closer => A): A =
     autoClosing(new Closer)(f)
 
-  def closeOrdered(closeables: AutoCloseable*): Unit = {
+  def closeOrdered(closeables: AutoCloseable*): Unit =
     val closer = new Closer
     closeables.reverseIterator foreach closer.register
     closer.close()
-  }
 
   private val resource: Resource[Task, Closer] =
     Resource.make(
       acquire = Task(new Closer))(
       release = closer => Task(closer.close()))
 
-  object syntax {
-    implicit final class RichClosersAutoCloseable[A <: AutoCloseable](private val underlying: A) extends AnyVal {
-      def closeWithCloser(implicit closer: Closer): A = {
+  object syntax:
+    implicit final class RichClosersAutoCloseable[A <: AutoCloseable](private val underlying: A) extends AnyVal:
+      def closeWithCloser(implicit closer: Closer): A =
         closer.register(underlying)
         underlying
-      }
-    }
 
-    implicit final class RichClosersAny[A <: AnyRef](private val underlying: A) extends AnyVal {
-      def withCloser(onClose: A => Unit)(implicit closer: Closer): A = {
+    implicit final class RichClosersAny[A <: AnyRef](private val underlying: A) extends AnyVal:
+      def withCloser(onClose: A => Unit)(implicit closer: Closer): A =
         closer.onClose { onClose(underlying) }
         underlying
-      }
-    }
-  }
-}

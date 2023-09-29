@@ -11,8 +11,7 @@ import js7.data_for_java.common.JJsonable
 import scala.jdk.OptionConverters.*
 
 final case class JAgentRefState(asScala: AgentRefState)
-extends JJsonable[JAgentRefState]
-{
+extends JJsonable[JAgentRefState]:
   type AsScala = AgentRefState
   protected def companion = JAgentRefState
 
@@ -39,10 +38,8 @@ extends JJsonable[JAgentRefState]
   @Nonnull
   def clusterState: JClusterState =
     JClusterState(asScala.clusterState)
-}
 
-object JAgentRefState extends JJsonable.Companion[JAgentRefState]
-{
+object JAgentRefState extends JJsonable.Companion[JAgentRefState]:
   type AsScala = AgentRefState
 
   @Nonnull
@@ -51,4 +48,3 @@ object JAgentRefState extends JJsonable.Companion[JAgentRefState]
 
   protected def jsonEncoder = AgentRefState.jsonEncoder
   protected def jsonDecoder = AgentRefState.jsonDecoder
-}

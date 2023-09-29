@@ -22,19 +22,16 @@ final class CalendarExecutor private(
   calendar: Calendar,
   zone: ZoneId,
   orderIdToDateRegex: Regex,
-  period: CalendarExecutor.Period)
-{
+  period: CalendarExecutor.Period):
   private val offsetSeconds = calendar.dateOffset.toSeconds
 
   def orderIdToTimeInterval(orderId: OrderId): Checked[TimeInterval] =
-    Checked.catchNonFatalFlatten {
-      for localDateTime <- orderIdToLocalDate(orderId) yield {
+    Checked.catchNonFatalFlatten:
+      for localDateTime <- orderIdToLocalDate(orderId) yield
         val zoned = localDateTime.plusSeconds(offsetSeconds).atZone(zone)
         val begin = zoned.toTimestamp
         val end = period.next(zoned).toTimestamp
         TimeInterval(begin, end - begin)
-      }
-    }
 
   private def orderIdToLocalDate(orderId: OrderId): Checked[LocalDateTime] =
     orderIdToDateRegex.unapplySeq(orderId.string)
@@ -43,14 +40,11 @@ final class CalendarExecutor private(
       .flatMap(toLocalDateTime)
       .toChecked(Problem.pure(s"$orderId does match the pattern defined in ${calendar.path}"))
 
-  private def toLocalDateTime(temporalAccessor: TemporalAccessor): Option[LocalDateTime] = {
+  private def toLocalDateTime(temporalAccessor: TemporalAccessor): Option[LocalDateTime] =
       Option(temporalAccessor.query(period.query))
         .map(localDate => LocalDateTime.of(localDate, MIDNIGHT))
-  }
-}
 
-object CalendarExecutor
-{
+object CalendarExecutor:
   def checked(calendar: Calendar, timezone: Timezone): Checked[CalendarExecutor] =
     for
       period <- toPeriod(calendar.periodDatePattern)
@@ -62,46 +56,41 @@ object CalendarExecutor
     yield new CalendarExecutor(calendar, zoneId, orderIdToDateRegex, period)
 
   private def toPeriod(pattern: String): Checked[Period] =
-    catchExpected[Exception] {
-      if pattern.startsWith("Y"/*week based year*/) then {
+    catchExpected[Exception]:
+      if pattern.startsWith("Y"/*week based year*/) then
         val formatter = new DateTimeFormatterBuilder()
           .appendPattern(pattern)
           .parseDefaulting(WeekFields.ISO.dayOfWeek, 1)
           .toFormatter
         Weekly(formatter)
-      } else
+      else
         Daily(DateTimeFormatter.ofPattern(pattern))
-    }
 
-  private sealed trait Period {
+  private sealed trait Period:
     protected val formatter_ : DateTimeFormatter
     lazy val formatter = formatter_.withLocale(ROOT)
     def normalDuration: FiniteDuration
     def next(zoned: ZonedDateTime): ZonedDateTime
     def query: TemporalQuery[LocalDate]
-  }
 
   private final case class Daily(protected val formatter_ : DateTimeFormatter)
-  extends Period {
+  extends Period:
     val normalDuration = 24.h
     val query = TemporalQueries.localDate
     def next(zoned: ZonedDateTime) = zoned.plusDays(1)
-  }
 
   private final case class Weekly(protected val formatter_ : DateTimeFormatter)
-  extends Period {
+  extends Period:
     val normalDuration = 7 * 24.h
     val query = DateOfWeekBasedYearQuery
     def next(zoned: ZonedDateTime) = zoned.plusDays(7)
-  }
 
-  private object DateOfWeekBasedYearQuery extends TemporalQuery[LocalDate]()
-  {
+  private object DateOfWeekBasedYearQuery extends TemporalQuery[LocalDate]():
     def queryFrom(temporal: TemporalAccessor): LocalDate =
       if !temporal.isSupported(WEEK_OF_WEEK_BASED_YEAR)
         || !temporal.isSupported(WEEK_BASED_YEAR) then
         null
-      else {
+      else
         val week = temporal.get(WEEK_OF_WEEK_BASED_YEAR)
         val year = temporal.get(WEEK_BASED_YEAR)
         // Could this be calculated easier??
@@ -110,8 +99,5 @@ object CalendarExecutor
         DateTimeFormatter.ISO_WEEK_DATE
           .parse(f"$year%04d-W$week%02d-1")
           .query(TemporalQueries.localDate)
-      }
 
     override def toString = "DateOfWeekBasedYear"
-  }
-}

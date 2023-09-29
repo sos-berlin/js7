@@ -27,8 +27,7 @@ import monix.reactive.Observable
 import scala.util.Random
 
 // Try to resemble a failed manual test
-final class ManyAddOrdersTest extends OurTestSuite with ControllerAgentForScalaTest
-{
+final class ManyAddOrdersTest extends OurTestSuite with ControllerAgentForScalaTest:
   protected val agentPaths = Seq(agentPath1, agentPath2)
   protected val items = Seq(workflow, workflow2)
   override def controllerConfig = config"""
@@ -38,20 +37,17 @@ final class ManyAddOrdersTest extends OurTestSuite with ControllerAgentForScalaT
     """ withFallback super.controllerConfig
   override def agentConfig = config"""js7.job.execution.signed-script-injection-allowed = yes"""
 
-  override def beforeAll() = {
-    for a <- directoryProvider.agentEnvs do {
+  override def beforeAll() =
+    for a <- directoryProvider.agentEnvs do
       a.writeExecutable(pathExecutable, script(0.s))
-    }
     super.beforeAll()
     controller.eventWatch.await[AgentReady]()
-  }
 
-  "Multiple AddOrders" in {
+  "Multiple AddOrders" in:
     run(workflow.path, n = 100)
     //run(workflow2.path, n = 100)
-  }
 
-  private def run(workflowPath: WorkflowPath, n: Int): Unit = {
+  private def run(workflowPath: WorkflowPath, n: Int): Unit =
     val orderIds = (1 to n).view.map(i => OrderId(s"ORDER-$i")).toVector
     val addOrders = Observable.fromIterable(orderIds)
       .bufferTumbling(2)
@@ -70,11 +66,8 @@ final class ManyAddOrdersTest extends OurTestSuite with ControllerAgentForScalaT
       .dropWhile(_.nonEmpty)
       .headL
     Task.sequence(Seq(addOrders, awaitRemoved)) await 99.s
-  }
-}
 
-object ManyAddOrdersTest
-{
+object ManyAddOrdersTest:
   private val pathExecutable = RelativePathExecutable("executable.cmd")
   private val agentPath1 = AgentPath("AGENT-1")
   private val agentPath2 = AgentPath("AGENT-2")
@@ -233,4 +226,3 @@ object ManyAddOrdersTest
         }
       }
     }""".as[Workflow].orThrow
-}

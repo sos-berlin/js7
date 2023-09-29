@@ -9,7 +9,7 @@ import akka.util.ByteString
 /**
  * @author Joacim Zschimmer
  */
-object ByteStringMarshallers {
+object ByteStringMarshallers:
   implicit val ByteStringMarshaller: ToEntityMarshaller[ByteString] =
     Marshaller.withFixedContentType(`application/octet-stream`) { byteString =>
       HttpEntity(`application/octet-stream`, byteString)
@@ -17,4 +17,3 @@ object ByteStringMarshallers {
 
   implicit val ByteStringUnmarshaller: FromEntityUnmarshaller[ByteString] =
     Unmarshaller.byteStringUnmarshaller.forContentTypes(`application/octet-stream`)
-}

@@ -40,23 +40,20 @@ import monix.reactive.Observable
 /**
   * @author Joacim Zschimmer
   */
-final class ControllerAgentWithoutAuthenticationTest extends OurTestSuite
-{
-  "js7.web.server.auth.public = true" in {
+final class ControllerAgentWithoutAuthenticationTest extends OurTestSuite:
+  "js7.web.server.auth.public = true" in:
     runMyTest(isPublic = true) { (controller, _) =>
       controller.addOrderBlocking(FreshOrder(orderId, workflow.path))
       controller.eventWatch.await[OrderFinished](_.key == orderId)
     }
-  }
 
-  "js7.web.server.auth.public = false" in {
+  "js7.web.server.auth.public = false" in:
     runMyTest(isPublic = false) { (controller, agentPort) =>
       assert(controller.eventWatch.await[AgentCouplingFailed]().head.value.event.problem
         == Problem(s"HTTP 401 Unauthorized: POST http://127.0.0.1:$agentPort/agent/api/command => The resource requires authentication, which was not supplied with the request"))
     }
-  }
 
-  private def runMyTest(isPublic: Boolean)(body: (TestController, Int) => Unit): Unit = {
+  private def runMyTest(isPublic: Boolean)(body: (TestController, Int) => Unit): Unit =
     withTemporaryDirectory("ControllerAgentWithoutAuthenticationTest-") { dir =>
       createDirectories(dir / "controller/config/private")
       createDirectories(dir / "controller/data/state")
@@ -66,14 +63,13 @@ final class ControllerAgentWithoutAuthenticationTest extends OurTestSuite
       createDirectories(dir / "agent/data/state")
       createDirectories(dir / "agent/data/work")
 
-      if isPublic then {
+      if isPublic then
         dir / "agent/config/agent.conf" := "js7.web.server.auth.public = true\n"
-      }
       (dir / "agent/config/executables/EXECUTABLE.cmd").writeUtf8Executable(":")
 
-      val itemSigner = {
+      val itemSigner =
         val signature = SillySignature("✘✘✘")
-        for x <- Array("controller", "agent") do {
+        for x <- Array("controller", "agent") do
           val keyDirectory = dir / x / "config/private/silly-signatures"
           createDirectory(keyDirectory)
           val keyFile =keyDirectory / "silly-signature.txt"
@@ -81,9 +77,7 @@ final class ControllerAgentWithoutAuthenticationTest extends OurTestSuite
           dir / x / "config/private/private.conf" ++=
             "js7.configuration.trusted-signature-keys.Silly = " +
               "\"" + keyDirectory.toString.replace("""\""", """\\""") + "\"\n"
-        }
         new ItemSigner(new SillySigner(signature), versionedItemJsonCodec)
-      }
 
       val controllerPort :: agentPort :: Nil = FreeTcpPortFinder.findFreeTcpPorts(2): @unchecked
       val agentConfiguration = AgentConfiguration.fromCommandLine(CommandLineArguments(
@@ -123,15 +117,11 @@ final class ControllerAgentWithoutAuthenticationTest extends OurTestSuite
         }
       }
     }
-  }
-}
 
-object ControllerAgentWithoutAuthenticationTest
-{
+object ControllerAgentWithoutAuthenticationTest:
   private val versionId = VersionId("INITIAL")
   private val agentPath = AgentPath("AGENT")
   private val pathExecutable = PathExecutable("EXECUTABLE.cmd")
   private val workflow = Workflow.of(WorkflowPath("WORKFLOW") ~ versionId,
     Execute(WorkflowJob(agentPath, pathExecutable)))
   private val orderId = OrderId("🔷")
-}

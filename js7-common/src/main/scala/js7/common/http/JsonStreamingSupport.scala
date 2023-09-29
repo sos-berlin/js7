@@ -17,8 +17,7 @@ import js7.common.akkautils.ByteStrings.syntax.*
 /**
   * @author Joacim Zschimmer
   */
-object JsonStreamingSupport
-{
+object JsonStreamingSupport:
   val `application/json-seq` = MediaType.customWithFixedCharset("application", "json-seq", `UTF-8`)  // https://tools.ietf.org/html/rfc7464
   val `application/x-ndjson` = MediaType.customWithFixedCharset("application", "x-ndjson", `UTF-8`)  // https://github.com/ndjson/ndjson-spec
   val `application/x-ndjson-ContentType` = `application/x-ndjson`.toContentType
@@ -46,4 +45,3 @@ object JsonStreamingSupport
   def jsonSeqMarshaller[A: Encoder](implicit streamingSupport: JsonEntityStreamingSupport): ToEntityMarshaller[A] =
     Marshaller.withFixedContentType(streamingSupport.contentType)(value =>
       HttpEntity.Strict(streamingSupport.contentType, value.asJson.toByteSequence[ByteString]))
-}

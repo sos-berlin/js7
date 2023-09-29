@@ -19,14 +19,11 @@ final case class CycleState(
   schemeIndex: Int = 0,
   periodIndex: Int = 0,
   index: Int,
-  next: Timestamp)
-{
+  next: Timestamp):
   override def toString =
     s"CycleState(next=${next.pretty} index=$index schemeIndex=$schemeIndex period=$periodIndex end=$end)"
-}
 
-object CycleState
-{
+object CycleState:
   def initial(timeInterval: TimeInterval): CycleState =
     CycleState(
       next = timeInterval.start,
@@ -36,4 +33,3 @@ object CycleState
   implicit val jsonCodec: Codec.AsObject[CycleState] = deriveConfiguredCodec
 
   intelliJuseImport(FiniteDurationJsonDecoder)
-}

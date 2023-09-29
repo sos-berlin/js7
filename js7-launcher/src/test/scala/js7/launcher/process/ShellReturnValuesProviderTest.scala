@@ -7,9 +7,8 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.test.OurTestSuite
 import js7.data.value.{NamedValues, StringValue}
 
-final class ShellReturnValuesProviderTest extends OurTestSuite
-{
-  "ShellReturnValuesProvider" in {
+final class ShellReturnValuesProviderTest extends OurTestSuite:
+  "ShellReturnValuesProvider" in:
     withTemporaryDirectory("ShellReturnValuesProviderTest-") { dir =>
       val provider = new ShellReturnValuesProvider(dir, UTF_8)
       assert(provider.toEnv == "JS7_RETURN_VALUES" -> provider.file.toString)
@@ -25,12 +24,9 @@ final class ShellReturnValuesProviderTest extends OurTestSuite
       provider.tryDeleteFile()
       assert(!exists(provider.file))
     }
-  }
 
-  "v1Compatible=true" in {
+  "v1Compatible=true" in:
     withTemporaryDirectory("ShellReturnValuesProviderTest-") { dir =>
       val provider = new ShellReturnValuesProvider(dir, UTF_8, v1Compatible = true)
       assert(provider.toEnv == "SCHEDULER_RETURN_VALUES" -> provider.file.toString)
     }
-  }
-}

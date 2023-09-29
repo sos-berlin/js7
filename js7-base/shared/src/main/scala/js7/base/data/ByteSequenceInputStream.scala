@@ -3,8 +3,7 @@ package js7.base.data
 import java.io.InputStream
 
 /** Slow if ByteSeq has many Chunks. */
-final class ByteSequenceInputStream[A](byteSeq: A)(implicit A: ByteSequence[A]) extends InputStream
-{
+final class ByteSequenceInputStream[A](byteSeq: A)(implicit A: ByteSequence[A]) extends InputStream:
   private[this] var i = 0
   private[this] var marked = 0
   private val length = A.length(byteSeq)
@@ -12,10 +11,9 @@ final class ByteSequenceInputStream[A](byteSeq: A)(implicit A: ByteSequence[A]) 
   def read() =
     if i == length then
       -1
-    else {
+    else
       i += 1
       A.at(byteSeq, i - 1) & 0xff
-    }
 
   //override def read(array: Array[Byte], offset: Int, len: Int) =
   //  if (i == length)
@@ -35,4 +33,3 @@ final class ByteSequenceInputStream[A](byteSeq: A)(implicit A: ByteSequence[A]) 
 
   override def reset() =
     i = marked
-}

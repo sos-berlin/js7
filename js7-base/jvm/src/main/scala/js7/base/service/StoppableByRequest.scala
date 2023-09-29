@@ -9,7 +9,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import monix.eval.{Fiber, Task}
 
-trait StoppableByRequest {
+trait StoppableByRequest:
   private final val fiber = Deferred.unsafe[Task, Fiber[Unit]]
   private val stopRequested = Deferred.unsafe[Task, Unit]
   @volatile private var _isStopping = false
@@ -41,11 +41,8 @@ trait StoppableByRequest {
         Task.raiseError(new IllegalStateException(s"$toString is being stopped")))
 
   protected final def requireNotStopping: Task[Checked[Unit]] =
-    Task {
+    Task:
       !isStopping !! Problem(s"$toString is stopping")
-    }
-}
 
-object StoppableByRequest {
+object StoppableByRequest:
   private val logger = Logger[this.type]
-}

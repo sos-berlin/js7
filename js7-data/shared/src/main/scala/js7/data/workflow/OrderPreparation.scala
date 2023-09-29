@@ -8,16 +8,13 @@ import js7.data.job.JobResourcePath
 import js7.data.workflow.OrderPreparation.*
 import scala.collection.View
 
-final case class OrderPreparation(parameterList: OrderParameterList)
-{
+final case class OrderPreparation(parameterList: OrderParameterList):
   def isEmpty = this == default
 
   def referencedJobResourcePaths: View[JobResourcePath] =
     parameterList.referencedJobResourcePaths
-}
 
-object OrderPreparation
-{
+object OrderPreparation:
   val default = OrderPreparation(OrderParameterList.default)
 
   implicit val orderPreparationIsEmpty: IsEmpty[OrderPreparation] =
@@ -33,4 +30,3 @@ object OrderPreparation
       parameters <- c.getOrElse[OrderParameterList]("parameters")(OrderParameterList.default)
       allowUndeclared <- c.getOrElse[Boolean]("allowUndeclared")(false)
     yield OrderPreparation(parameters.copy(allowUndeclared = allowUndeclared))
-}

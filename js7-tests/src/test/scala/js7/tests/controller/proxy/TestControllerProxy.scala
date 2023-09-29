@@ -30,8 +30,7 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import scala.util.Try
 
-private final class TestControllerProxy(controllerUri: Uri, httpPort: Int)(implicit scheduler: Scheduler)
-{
+private final class TestControllerProxy(controllerUri: Uri, httpPort: Int)(implicit scheduler: Scheduler):
   def run(): Task[Unit] =
     Akkas.actorSystemResource("TestControllerProxy")
       .use { implicit actorSystem =>
@@ -59,14 +58,12 @@ private final class TestControllerProxy(controllerUri: Uri, httpPort: Int)(impli
           }
           .guarantee(api.stop)
       }
-}
 
-object TestControllerProxy
-{
+object TestControllerProxy:
   // Don't use a Logger here to avoid overwriting a concurrently used logfile
   private val userAndPassword = Some(UserAndPassword(UserId("demo"), SecretString("demo")))
 
-  def main(args: Array[String]): Unit = {
+  def main(args: Array[String]): Unit =
     implicit val scheduler: Scheduler = Scheduler.traced
     println(s"${LocalDateTime.now.toString.replace('T', ' ')} " +
       s"JS7 TestControllerProxy ${BuildInfo.longVersion}")
@@ -78,12 +75,11 @@ object TestControllerProxy
         .run()
         .runSyncUnsafe()
     }
-  }
 
   private def webServiceRoute(snapshot: Task[ControllerState])(implicit s: Scheduler) =
-    pathSegments("proxy/api/snapshot") {
-      pathSingleSlash {
-        get {
+    pathSegments("proxy/api/snapshot"):
+      pathSingleSlash:
+        get:
           complete(
             snapshot.map { controllerState =>
               implicit val x: JsonEntityStreamingSupport = NdJsonStreamingSupport
@@ -91,7 +87,3 @@ object TestControllerProxy
               implicit val z: ToEntityMarshaller[Any] = jsonSeqMarshaller
               monixObservableToMarshallable(controllerState.toSnapshotObservable)
             }.runToFuture)
-        }
-      }
-    }
-}

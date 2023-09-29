@@ -7,8 +7,7 @@ import js7.data.delegate.DelegateId
 import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemKey, InventoryItemPath, SignableItem, SignableItemKey, SignableSimpleItem, SimpleItem, SimpleItemPath, UnsignedItem, UnsignedSimpleItem, UnsignedSimpleItemPath, VersionedControl, VersionedItem, VersionedItemPath}
 import scala.collection.MapView
 
-trait ItemContainer
-{
+trait ItemContainer:
   def keyToItem: MapView[InventoryItemKey, InventoryItem]
 
   final lazy val pathToSimpleItem: MapView[SimpleItemPath, SimpleItem] =
@@ -25,12 +24,9 @@ trait ItemContainer
     keyToItem
       .filter(_._2.companion eq I)
       .asInstanceOf[MapView[I.Key, I]]
-}
 
-object ItemContainer
-{
-  trait Companion[A]
-  {
+object ItemContainer:
+  trait Companion[A]:
     implicit final val implicitItemContainer: Companion[A] = this
 
     protected def inventoryItems: Seq[InventoryItem.Companion_]
@@ -109,10 +105,7 @@ object ItemContainer
 
 
     def decodeDelegateIdOrAgentPath: Decoder[DelegateId] =
-      c => c.get[DelegateId]("delegateId") match {
+      c => c.get[DelegateId]("delegateId") match
         case Left(_) if !c.keys.exists(_.exists(_ == "delegateId")) =>
           c.get[AgentPath]("agentPath")
         case o => o
-      }
-  }
-}

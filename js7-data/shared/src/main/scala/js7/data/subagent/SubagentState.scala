@@ -16,15 +16,14 @@ final case class SubagentState(
   idToWorkflow: Map[WorkflowId, Workflow],
   pathToJobResource: Map[JobResourcePath, JobResource])
 extends JournaledState[SubagentState]
-with ItemContainer
-{
+with ItemContainer:
   val companion: SubagentState.type = SubagentState
 
   def withEventId(eventId: EventId) =
     copy(eventId = eventId)
 
   def applyEvent(keyedEvent: KeyedEvent[Event]) =
-    keyedEvent match {
+    keyedEvent match
       case KeyedEvent(_: NoKey, SubagentItemAttached(workflow: Workflow)) =>
         Right(copy(
           idToWorkflow = idToWorkflow + (workflow.id -> workflow)))
@@ -37,30 +36,25 @@ with ItemContainer
         Right(this)
 
       case _ => eventNotApplicable(keyedEvent)
-    }
 
   def keyToItem: MapView[InventoryItemKey, InventoryItem] =
-    new MapView[InventoryItemKey,InventoryItem] {
+    new MapView[InventoryItemKey,InventoryItem]:
       def get(key: InventoryItemKey) =
-        key match {
+        key match
           case WorkflowId.as(id) => idToWorkflow.get(id)
           case path: JobResourcePath => pathToJobResource.get(path)
           case _ => None
-        }
 
       def iterator =
         items.iterator.map(o => o.key -> o)
-    }
 
   lazy val items: View[InventoryItem] =
     idToWorkflow.values.view ++
       pathToJobResource.values.view
-}
 
 object SubagentState
 extends JournaledState.Companion[SubagentState]
-with ItemContainer.Companion[SubagentState]
-{
+with ItemContainer.Companion[SubagentState]:
   val empty = SubagentState(EventId.BeforeFirst, Map.empty, Map.empty)
 
   protected def inventoryItems =
@@ -73,4 +67,3 @@ with ItemContainer.Companion[SubagentState]
       KeyedSubtype.singleEvent[OrderStderrWritten],
       KeyedSubtype.singleEvent[OrderProcessed],
       KeyedSubtype.singleton(using NoKeyEvent)(Heartbeat))
-}

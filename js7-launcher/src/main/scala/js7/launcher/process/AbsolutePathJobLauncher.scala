@@ -10,8 +10,7 @@ final class AbsolutePathJobLauncher(
   protected val executable: AbsolutePathExecutable,
   protected val jobConf: JobConf,
   protected val jobLauncherConf: JobLauncherConf)
-extends PathProcessJobLauncher
-{
+extends PathProcessJobLauncher:
   protected val checkFile =
     Task {
       catchExpected[InvalidPathException](
@@ -19,4 +18,3 @@ extends PathProcessJobLauncher
     }.memoize
 
   def stop = Task.unit
-}

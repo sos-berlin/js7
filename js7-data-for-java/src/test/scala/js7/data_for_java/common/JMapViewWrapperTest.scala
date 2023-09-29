@@ -5,9 +5,8 @@ import js7.data_for_java.common.MoreJavaConverters.MapViewHasAsJava
 import scala.collection.{MapView, mutable}
 import scala.jdk.CollectionConverters.*
 
-final class JMapViewWrapperTest extends OurTestSuite
-{
-  "test" in {
+final class JMapViewWrapperTest extends OurTestSuite:
+  "test" in:
     assert(MapView.empty.asJava.isEmpty)
 
     val mapView = MapView(1 -> "EINS", 2 -> "ZWEI")
@@ -26,5 +25,3 @@ final class JMapViewWrapperTest extends OurTestSuite
     //assert(jMapView.entrySet.asScala == Set(
     //  java.util.Map.entry(1, "EINS"),
     //  java.util.Map.entry(2, "ZWEI")))
-  }
-}

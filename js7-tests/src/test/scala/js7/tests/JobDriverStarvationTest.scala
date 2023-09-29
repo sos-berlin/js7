@@ -20,8 +20,7 @@ import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import scala.concurrent.duration.Deadline.now
 
-final class JobDriverStarvationTest extends OurTestSuite with ControllerAgentForScalaTest
-{
+final class JobDriverStarvationTest extends OurTestSuite with ControllerAgentForScalaTest:
   override protected def controllerConfig = config"""
     js7.journal.slow-check-state = off
     """
@@ -32,15 +31,14 @@ final class JobDriverStarvationTest extends OurTestSuite with ControllerAgentFor
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(workflow)
 
-  "Add a order to start AgentDriver CommandQueue" in {
+  "Add a order to start AgentDriver CommandQueue" in:
     val zeroOrderId = OrderId("0")
     controller.addOrderBlocking(FreshOrder(zeroOrderId, workflow.path, deleteWhenTerminated = true))
     TestJob.continue()
     eventWatch.await[OrderFinished](_.key == zeroOrderId)
     eventWatch.await[OrderDeleted](_.key == zeroOrderId)
-  }
 
-  "Add two orders simultaneously and hold them in the job" in {
+  "Add two orders simultaneously and hold them in the job" in:
     // TODO ? Problem in protocol between AgentOrderKeeper and JobActor
     // Solution: replace Actors by Tasks!
     // AgentDriver transfers the two orders in one AgentCommand.Batch
@@ -53,18 +51,16 @@ final class JobDriverStarvationTest extends OurTestSuite with ControllerAgentFor
 
     val firstOrdersProcessing = proxy.observable
       .map(_.stampedEvent.value)
-      .collect {
+      .collect:
         case KeyedEvent(orderId: OrderId, _: OrderProcessingStarted) => orderId
-      }
       .take(parallelism)
       .completedL
       .runToFuture
 
     val allOrdersDeleted = proxy.observable
       .map(_.stampedEvent.value)
-      .collect {
+      .collect:
         case KeyedEvent(orderId: OrderId, _: OrderDeleted) => orderId
-      }
       .scan0(orderIds.toSet)(_ - _)
       .takeWhile(_.nonEmpty)
       .completedL
@@ -85,11 +81,8 @@ final class JobDriverStarvationTest extends OurTestSuite with ControllerAgentFor
     logger.info("🔷 " + itemsPerSecondString(t.elapsed, n, "completed"))
 
     proxy.stop.await(99.s)
-  }
-}
 
-object JobDriverStarvationTest
-{
+object JobDriverStarvationTest:
   private val logger = Logger[this.type]
   private val n = 10_000
   private val parallelism = 97 min n
@@ -102,4 +95,3 @@ object JobDriverStarvationTest
 
   private class TestJob extends SemaphoreJob(TestJob)
   private object TestJob extends SemaphoreJob.Companion[TestJob]
-}

@@ -17,8 +17,7 @@ final class Recovered[S <: SnapshotableState[S]] private(
   config: Config,
   val eventWatch: JournalEventWatch)
   (implicit S: SnapshotableState.Companion[S])
-extends AutoCloseable
-{
+extends AutoCloseable:
   def close() =
     eventWatch.close()
 
@@ -36,9 +35,8 @@ extends AutoCloseable
     state.clusterState
 
   def failedNodeId: Option[NodeId] =
-    clusterState.some.collect {
+    clusterState.some.collect:
       case o: FailedOver => o.passiveId
-    }
 
   def state: S =
     recoveredJournalFile.fold(S.empty)(_.state)
@@ -54,10 +52,8 @@ extends AutoCloseable
 
   // Suppresses Config (which may contain secrets)
   override def toString = s"Recovered($journalLocation,$recoveredJournalFile,$eventWatch)"
-}
 
-object Recovered
-{
+object Recovered:
   def fromJournalFile[S <: SnapshotableState[S]](
     journalLocation: JournalLocation,
     recoveredJournalFile: RecoveredJournalFile[S],
@@ -88,8 +84,5 @@ object Recovered
   final case class Extract(
     eventId: EventId,
     eventWatch: JournalEventWatch,
-    totalRunningSince: Deadline)
-  {
+    totalRunningSince: Deadline):
     override def productPrefix = "Recovered.Extract"
-  }
-}

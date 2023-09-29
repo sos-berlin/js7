@@ -12,8 +12,7 @@ import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.RichOptional
 
 final case class JSubagentSelection(asScala: SubagentSelection)
-extends JJsonable[JSubagentSelection] with JUnsignedSimpleItem
-{
+extends JJsonable[JSubagentSelection] with JUnsignedSimpleItem:
   type AsScala = SubagentSelection
   protected def companion = JSubagentSelection
 
@@ -32,10 +31,8 @@ extends JJsonable[JSubagentSelection] with JUnsignedSimpleItem
   @Nonnull
   def withRevision(revision: Optional[ItemRevision]): JSubagentSelection =
     copy(asScala.withRevision(revision.toScala))
-}
 
-object JSubagentSelection extends JJsonable.Companion[JSubagentSelection]
-{
+object JSubagentSelection extends JJsonable.Companion[JSubagentSelection]:
   type AsScala = SubagentSelection
 
   def of(
@@ -53,4 +50,3 @@ object JSubagentSelection extends JJsonable.Companion[JSubagentSelection]
 
   protected def jsonEncoder = SubagentSelection.jsonCodec
   protected def jsonDecoder = SubagentSelection.jsonCodec
-}

@@ -8,15 +8,12 @@ import js7.base.problem.Problems.InvalidNameProblem
 /**
   * @author Joacim Zschimmer
   */
-final case class UserId private(string: String) extends GenericString
-{
+final case class UserId private(string: String) extends GenericString:
   def isAnonymous = this == UserId.Anonymous
 
   override def toString = s"User:$string"
-}
 
-object UserId extends GenericString.Checked_[UserId]
-{
+object UserId extends GenericString.Checked_[UserId]:
   val Anonymous = UserId("Anonymous")
 
   protected def unchecked(string: String) = new UserId(string)
@@ -41,4 +38,3 @@ object UserId extends GenericString.Checked_[UserId]
 
   private def isNamePart(c: Char): Boolean =
     isUnicodeIdentifierPart(c) && !isIdentifierIgnorable(c) || c == '-' || c == '.'
-}

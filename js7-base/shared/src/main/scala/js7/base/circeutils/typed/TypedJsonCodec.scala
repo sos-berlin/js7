@@ -13,8 +13,7 @@ import scala.reflect.ClassTag
 final class TypedJsonCodec[A](
   private val printName: String,
   private val subtypes: Seq[Subtype[A]])
-extends Codec.AsObject[A]
-{
+extends Codec.AsObject[A]:
   val classToEncoder: Map[Class[?], Encoder.AsObject[A]] =
     subtypes
       .flatMap(_.classToEncoder)
@@ -39,7 +38,7 @@ extends Codec.AsObject[A]
     _classToName.view.mapValues(Json.fromString).toMap
 
   /** Union. */
-  def |[B](other: TypedJsonCodec[B]): TypedJsonCodec[Any] = {
+  def |[B](other: TypedJsonCodec[B]): TypedJsonCodec[Any] =
     val sameClasses = classToEncoder.keySet & other.classToEncoder.keySet
     if sameClasses.nonEmpty then throw new IllegalArgumentException(
       s"Union of TypedJsonCodec has non-unique classes: $sameClasses")
@@ -55,7 +54,6 @@ extends Codec.AsObject[A]
     new TypedJsonCodec[Any](
       s"$printName|${other.printName}",
       (subtypes ++ other.subtypes).asInstanceOf[Seq[Subtype[Any]]])
-  }
 
   def apply(c: HCursor) = decode(c)
 
@@ -70,10 +68,9 @@ extends Codec.AsObject[A]
       })
 
   def canDeserialize(json: Json): Boolean =
-    json.asObject match {
+    json.asObject match
       case Some(o) => o.toMap.get(TypeFieldName).flatMap(_.asString) exists nameToDecoder.contains
       case _ => false
-    }
 
   def typeName[A1 <: A](implicit A1: ClassTag[A1]): String =
     _classToName(A1.runtimeClass.asInstanceOf[Class[A]])
@@ -85,9 +82,8 @@ extends Codec.AsObject[A]
     _classToName(getClass.asInstanceOf[Class[A]])
 
   def classes[A2 <: A: ClassTag]: Set[Class[A2]] =
-    classToEncoder.keySet collect {
+    classToEncoder.keySet collect:
       case c if implicitClass[A2] isAssignableFrom c => c.asInstanceOf[Class[A2]]
-    }
 
   def isOfType[A1 <: A: ClassTag](json: Json): Boolean =
     json.asObject
@@ -98,10 +94,8 @@ extends Codec.AsObject[A]
       .flatMap(_(TypeFieldName)).flatMap(_.asString).flatMap(nameToClass.get)
 
   override def toString = printName
-}
 
-object TypedJsonCodec
-{
+object TypedJsonCodec:
   val TypeFieldName = "TYPE"
 
   def typeField[A: ClassTag]: (String, Json) =
@@ -128,13 +122,12 @@ object TypedJsonCodec
   : TypedJsonCodec[A] =
     new TypedJsonCodec[A](name, subtypes.toSeq.asInstanceOf[Seq[Subtype[A]]])
 
-  implicit final class TypedJson(private val underlying: Json) extends AnyVal {
+  implicit final class TypedJson(private val underlying: Json) extends AnyVal:
     def isOfType[A: TypedJsonCodec, A1 <: A: ClassTag]: Boolean =
       implicitly[TypedJsonCodec[A]].isOfType[A1](underlying)
 
     def toClass[A: TypedJsonCodec]: Option[Class[A]] =
       implicitly[TypedJsonCodec[A]].jsonToClass(underlying)
-  }
 
   final class UnknownClassForJsonException(subclassName: String, superclassName: String)
   extends NoSuchElementException("Class '" + subclassName + "' is not registered in " +
@@ -143,4 +136,3 @@ object TypedJsonCodec
 
   final def unknownJsonTypeFailure(typeName: String, superclassName: String, history: List[CursorOp]): DecodingFailure =
     DecodingFailure(s"""Unexpected JSON {"$TypeFieldName": "$typeName", ...} for $superclassName""", history)
-}

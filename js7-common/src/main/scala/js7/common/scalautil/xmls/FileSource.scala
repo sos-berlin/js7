@@ -9,10 +9,9 @@ import javax.xml.transform.stream.StreamSource
   */
 final class FileSource(path: Path)
 extends StreamSource
-with AutoCloseable {
+with AutoCloseable:
 
   private val in = new FileInputStream(path.toFile)
   setInputStream(new BufferedInputStream(in))
 
   def close(): Unit = in.close()
-}

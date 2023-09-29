@@ -12,8 +12,7 @@ import js7.data.order.OrderObstacle.{WaitingForAdmission, WaitingForCommand, Wai
 import js7.data.state.StateView
 import scala.collection.View
 
-final class OrderObstacleCalculator(val stateView: StateView)
-{
+final class OrderObstacleCalculator(val stateView: StateView):
   // TODO Slow !!!
   def waitingForAdmissionOrderCount(now: Timestamp): Int =
     ordersToObstacles(stateView.orders.view.map(_.id), now)
@@ -24,7 +23,7 @@ final class OrderObstacleCalculator(val stateView: StateView)
       })
 
   def ordersToObstacles(orderIds: Iterable[OrderId], now: Timestamp)
-  : Checked[View[(OrderId, Set[OrderObstacle])]] = {
+  : Checked[View[(OrderId, Set[OrderObstacle])]] =
     val instructionService = new InstructionExecutorService(WallClock.fixed(now))
     orderIds
       .toVector
@@ -34,7 +33,6 @@ final class OrderObstacleCalculator(val stateView: StateView)
       .map(_
         .view
         .filter(_._2.nonEmpty))
-  }
 
   def orderToObstacles(orderId: OrderId)
     (implicit instructionExecutorService: InstructionExecutorService)
@@ -51,7 +49,7 @@ final class OrderObstacleCalculator(val stateView: StateView)
     stateView.isWorkflowSuspended(order.workflowPath) ? OrderObstacle.WorkflowSuspended
 
   private def orderStateToObstacles(order: Order[Order.State]): Set[OrderObstacle] =
-    order.state match {
+    order.state match
       case Order.Fresh =>
         order.scheduledFor
           .map(WaitingForOtherTime(_))
@@ -62,7 +60,6 @@ final class OrderObstacleCalculator(val stateView: StateView)
 
       case _ =>
         Set.empty
-    }
 
   private val _jobToOrderCount = new ConcurrentHashMap[JobKey, Int]()
 
@@ -78,4 +75,3 @@ final class OrderObstacleCalculator(val stateView: StateView)
               order.state.isInstanceOf[Processing] &&
                 order.workflowId == jobKey.workflowId &&
                 workflow.positionToJobKey(order.position).contains(jobKey))))
-}

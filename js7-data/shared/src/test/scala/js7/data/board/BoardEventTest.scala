@@ -6,9 +6,8 @@ import js7.base.time.Timestamp
 import js7.data.board.BoardEvent.{NoticeDeleted, NoticePosted}
 import js7.tester.CirceJsonTester.testJson
 
-final class BoardEventTest extends OurTestSuite
-{
-  "NoticePosted" in {
+final class BoardEventTest extends OurTestSuite:
+  "NoticePosted" in:
     testJson[BoardEvent](
       NoticePosted(
         NoticePosted.PostedNotice(NoticeId("NOTICE"), Timestamp("1970-01-01T01:00:00Z"))),
@@ -19,14 +18,11 @@ final class BoardEventTest extends OurTestSuite
            "endOfLife": 3600000
          }
         }""")
-  }
 
-  "NoticeDeleted" in {
+  "NoticeDeleted" in:
     testJson[BoardEvent](
       NoticeDeleted(NoticeId("NOTICE")),
       json"""{
          "TYPE": "NoticeDeleted",
          "noticeId": "NOTICE"
         }""")
-  }
-}

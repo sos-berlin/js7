@@ -11,12 +11,11 @@ import js7.data.value.expression.{Expression, Scope}
 import org.jetbrains.annotations.TestOnly
 
 /** Accesses environment variables. */
-trait EnvScope extends Scope
-{
+trait EnvScope extends Scope:
   protected def get(name: String): Option[String]
 
   override def evalFunctionCall(functionCall: Expression.FunctionCall)(implicit scope: Scope) =
-    functionCall match {
+    functionCall match
       case FunctionCall("env", arguments) =>
         Some(arguments match {
           case Seq(Argument(nameExpr, None | Some("name"))) =>
@@ -39,13 +38,10 @@ trait EnvScope extends Scope
 
       case _ =>
         super.evalFunctionCall(functionCall)
-    }
 
   override def toString = "EnvScope"
-}
 
-object EnvScope extends EnvScope
-{
+object EnvScope extends EnvScope:
   def get(name: String) =
     Option(testEnv.get(name)) orElse sys.env.get(name)
 
@@ -54,4 +50,3 @@ object EnvScope extends EnvScope
   @TestOnly
   private[js7] def putForTest(name: String, value: String): Unit =
     testEnv.put(name, value)
-}

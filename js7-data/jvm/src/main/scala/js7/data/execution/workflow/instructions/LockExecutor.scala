@@ -9,8 +9,7 @@ import js7.data.state.StateView
 import js7.data.workflow.instructions.LockInstruction
 
 private[instructions] final class LockExecutor(protected val service: InstructionExecutorService)
-extends EventInstructionExecutor
-{
+extends EventInstructionExecutor:
   type Instr = LockInstruction
   val instructionClass = classOf[LockInstruction]
 
@@ -55,8 +54,6 @@ extends EventInstructionExecutor
           OrderDetachable
         else
           OrderLocksReleased(instr.lockPaths))))
-}
 
-object LockExecutor {
+object LockExecutor:
   private val logger = Logger[this.type]
-}

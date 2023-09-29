@@ -33,8 +33,7 @@ final class InputStreamJsonSeqReader(
   name: String,
   blockSize: Int = BlockSize,
   withRS: Boolean = false)
-extends AutoCloseable
-{
+extends AutoCloseable:
   private val inAtomic = AtomicAny(inputStream_)
   private val block = new Array[Byte](blockSize)
   private var blockPos = 0L
@@ -44,27 +43,24 @@ extends AutoCloseable
   private var lineNumber: Long = 1  // -1 for unknown line number after seek
   lazy val iterator: Iterator[PositionAnd[Json]] = UntilNoneIterator(read())
 
-  private def in = inAtomic.get() match {
+  private def in = inAtomic.get() match
     case null => throw new ClosedException(name)
     case o => o
-  }
 
   /** Closes underlying `SeekableInputStream`. May be called asynchronously. */
   def close() =
-    synchronized {
-      for in <- Option(inAtomic.getAndSet(null)) do {
+    synchronized:
+      for in <- Option(inAtomic.getAndSet(null)) do
         in.close()
-      }
-    }
 
   private def isClosed = inAtomic.get() == null
 
   def read(): Option[PositionAnd[Json]] =
     readRaw().map(toJson)
 
-  def toJson(positionAndRaw: PositionAnd[ByteArray]): PositionAnd[Json] = {
+  def toJson(positionAndRaw: PositionAnd[ByteArray]): PositionAnd[Json] =
     val PositionAnd(pos, bytes) = positionAndRaw
-    bytes.parseJson match {
+    bytes.parseJson match
       case Left(problem) =>
         val lineNr = lineNumber - 1
         val extra =
@@ -80,79 +76,64 @@ extends AutoCloseable
 
       case Right(json) =>
         PositionAnd(pos, json)
-    }
-  }
 
   def readRaw(): Option[PositionAnd[ByteArray]] =
-    synchronized {
+    synchronized:
       val startPosition = position
       var rsReached = false
       var lfReached = false
       var eof = false
-      while !lfReached && (!eof || blockRead < blockLength) do {
-        if blockRead == blockLength then {
+      while !lfReached && (!eof || blockRead < blockLength) do
+        if blockRead == blockLength then
           eof = !fillByteBuffer()
-        }
-        if !rsReached && blockRead < blockLength then {
+        if !rsReached && blockRead < blockLength then
           val byte = block(blockRead)
-          if withRS then {
+          if withRS then
             if byte != RS then
               throwCorrupt(f"Missing ASCII RS at start of JSON sequence record (instead read: $byte%02x)")
             blockRead += 1
             rsReached = true
-          }
-        }
         val start = blockRead
         while blockRead < blockLength && (block(blockRead) != LF || { lfReached = true; false }) do { blockRead += 1 }
         val chunk = ByteArray.unsafeWrap(java.util.Arrays.copyOfRange(block, start, blockRead + (if lfReached then 1 else 0)))
-        if chunk.nonEmpty then {
+        if chunk.nonEmpty then
           byteArrays += chunk
-        }
-        if lfReached then {
+        if lfReached then
           blockRead += 1
-        }
-      }
-      if (!withRS && byteArrays.nonEmpty || rsReached) && !lfReached then {
+      if (!withRS && byteArrays.nonEmpty || rsReached) && !lfReached then
         logger.warn(s"Discarding truncated last record in '$name': ${byteArrays.toVector.combineAll.utf8String} (terminating LF is missing)")
         byteArrays.clear()
         seek(startPosition)  // Keep a proper file position at start of record
-      }
       lfReached ? {
         if lineNumber != -1 then lineNumber += 1
         val result = ByteArray.combineAll(byteArrays)
         byteArrays.clear()
         PositionAnd(startPosition, result)
       }
-    }
-
-  private def fillByteBuffer(): Boolean = {
+      
+  private def fillByteBuffer(): Boolean =
     blockPos = position
     blockRead = 0
     val length = check { in.read(block) }
-    if length == -1 then {
+    if length == -1 then
       blockLength = 0
       false  // EOF
-    } else {
+    else
       blockLength = length
       true
-    }
-  }
 
   def seek(pos: Long): Unit =
-    synchronized {
-      if pos != position then {
-        if pos >= blockPos && pos <= blockPos + blockLength then {
+    synchronized:
+      if pos != position then
+        if pos >= blockPos && pos <= blockPos + blockLength then
           blockRead = (pos - blockPos).toInt  // May be == blockLength
-        } else {
+        else
           check { in.seek(pos) }
           blockPos = pos
           blockLength = 0
           blockRead = 0
-        }
         lineNumber = -1
         logger.trace(s"seek $pos => blockPos=$pos blockRead=$blockRead blockLength=$blockLength")
-      }
-    }
 
   def position = blockPos + blockRead
 
@@ -162,10 +143,8 @@ extends AutoCloseable
 
   private def throwCorrupt(extra: String) =
     throwCorrupt2(lineNumber, position, extra)
-}
 
-object InputStreamJsonSeqReader
-{
+object InputStreamJsonSeqReader:
   private[jsonseq] val BlockSize = 8192
   private val logger = Logger[this.type]
 
@@ -175,15 +154,12 @@ object InputStreamJsonSeqReader
   def open(file: Path, blockSize: Int = BlockSize): InputStreamJsonSeqReader =
     new InputStreamJsonSeqReader(SeekableInputStream.openFile(file), name = file.getFileName.toString, blockSize)
 
-  private def throwCorrupt2(lineNumber: Long, position: Long, extra: String) = {
+  private def throwCorrupt2(lineNumber: Long, position: Long, extra: String) =
     val where = if lineNumber >= 0 then s"line $lineNumber" else s"file position $position"
     sys.error(s"JSON sequence is corrupt at $where: $extra")
-  }
 
   final class ClosedException private[InputStreamJsonSeqReader](file: String)
   extends ProblemException(JsonSeqFileClosedProblem(file))
 
-  final case class JsonSeqFileClosedProblem(file: String) extends Problem.Coded {
+  final case class JsonSeqFileClosedProblem(file: String) extends Problem.Coded:
     def arguments = Map("file" -> file)
-  }
-}

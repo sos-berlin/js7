@@ -27,8 +27,7 @@ import monix.execution.Scheduler.Implicits.traced
 /**
   * @author Joacim Zschimmer
   */
-final class CoupleControllerTest extends OurTestSuite with DirectoryProviderForScalaTest
-{
+final class CoupleControllerTest extends OurTestSuite with DirectoryProviderForScalaTest:
   protected val agentPaths = agentPath :: Nil
   protected val items = Seq(TestWorkflow)
 
@@ -44,14 +43,13 @@ final class CoupleControllerTest extends OurTestSuite with DirectoryProviderForS
   private lazy val agentStateDir = directoryProvider.agentEnvs.head.dataDir / "state"
   private val orderGenerator = Iterator.from(1).map(i => FreshOrder(OrderId(i.toString), TestWorkflow.path))
 
-  override def beforeAll() = {
+  override def beforeAll() =
     super.beforeAll()
     directoryProvider.agentEnvs(0).writeExecutable(TestPathExecutable, script(0.s))
-  }
 
   // Test does not work reliable.
   // But EventRouteTest has an equivalent test.
-  if false then "CoupleController command fails with UnknownEventIdProblem when Agent misses old events" in {
+  if false then "CoupleController command fails with UnknownEventIdProblem when Agent misses old events" in:
     directoryProvider.runController() { controller =>
       val firstJournalFile = agentStateDir / "agent--0.journal"
       var lastEventId = EventId.BeforeFirst
@@ -85,9 +83,8 @@ final class CoupleControllerTest extends OurTestSuite with DirectoryProviderForS
         // Agent takes a snapshot now, so the events of order2 are next to last journal file
       }
     }
-  }
 
-  "CoupleController command fails with UnknownEventIdProblem if Agent misses last events" in {
+  "CoupleController command fails with UnknownEventIdProblem if Agent misses last events" in:
     directoryProvider.runAgents() { _ =>
       directoryProvider.runController() { controller =>
         controller.eventWatch.await[AgentReady](after = controller.recoveredEventId)
@@ -107,10 +104,9 @@ final class CoupleControllerTest extends OurTestSuite with DirectoryProviderForS
     val lastAgentJournalFiles = agentJournalFiles() filterNot firstAgentJournalFiles.toSet
     assert(lastAgentJournalFiles.size == 2)
     for o <- firstAgentJournalFiles do logger.info(s"KEEP ${o.getFileName}")
-    for o <- lastAgentJournalFiles do {
+    for o <- lastAgentJournalFiles do
       logger.info(s"💥 DELETE ${o.getFileName} 💥")
       move(o, Paths.get(s"$o-MOVED"))
-    }
 
     directoryProvider.runAgents() { _ =>
       directoryProvider.runController() { controller =>
@@ -125,18 +121,16 @@ final class CoupleControllerTest extends OurTestSuite with DirectoryProviderForS
 
     // Restore original journal files
     for o <- lastAgentJournalFiles do move(Paths.get(s"$o-MOVED"), o)
-  }
 
-  "CoupleController succeeds again if Agent's journal files are restored" in {
+  "CoupleController succeeds again if Agent's journal files are restored" in:
     directoryProvider.runAgents() { _ =>
       directoryProvider.runController() { controller =>
         controller.eventWatch.await[AgentShutDown](after = controller.recoveredEventId)
         controller.eventWatch.await[AgentReady](after = controller.recoveredEventId)
       }
     }
-  }
 
-  "CoupleController command fails with UnknownEventIdProblem if the agent journal's tail has been deleted" in {
+  "CoupleController command fails with UnknownEventIdProblem if the agent journal's tail has been deleted" in:
     directoryProvider.runController() { controller =>
       directoryProvider.runAgents() { _ =>
         val order = orderGenerator.next()
@@ -151,11 +145,8 @@ final class CoupleControllerTest extends OurTestSuite with DirectoryProviderForS
             ke.key == agentPath && ke.event.problem.is(UnknownEventIdProblem))
       }
     }
-  }
-}
 
-private object CoupleControllerTest
-{
+private object CoupleControllerTest:
   private val logger = Logger[this.type]
   private val agentPath = AgentPath("AGENT")
   private val TestPathExecutable = RelativePathExecutable("TEST.cmd")
@@ -166,4 +157,3 @@ private object CoupleControllerTest
 
   private def lastEventIdOf[E <: Event](stamped: IterableOnce[Stamped[KeyedEvent[E]]]): EventId =
     stamped.iterator.to(Iterable).last.eventId
-}

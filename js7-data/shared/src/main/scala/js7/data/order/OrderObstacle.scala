@@ -4,8 +4,7 @@ import js7.base.time.Timestamp
 
 sealed trait OrderObstacle
 
-object OrderObstacle
-{
+object OrderObstacle:
   val waitingForCommand: OrderObstacle =
     WaitingForCommand
 
@@ -20,10 +19,8 @@ object OrderObstacle
 
   case object WaitingForCommand extends OrderObstacle
 
-  sealed trait WaitingForTime extends OrderObstacle
-  {
+  sealed trait WaitingForTime extends OrderObstacle:
     def until: Timestamp
-  }
 
   final case class WaitingForAdmission(until: Timestamp)
   extends WaitingForTime
@@ -37,4 +34,3 @@ object OrderObstacle
   type WorkflowSuspended = WorkflowSuspended.type
   case object WorkflowSuspended
   extends OrderObstacle
-}

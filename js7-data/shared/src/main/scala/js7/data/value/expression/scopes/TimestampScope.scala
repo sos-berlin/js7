@@ -9,12 +9,11 @@ import js7.data.value.expression.Expression.{Argument, FunctionCall}
 import js7.data.value.expression.{Expression, Scope}
 
 final class TimestampScope(name: String, lazyTimestamp: => Option[Timestamp])
-extends Scope
-{
+extends Scope:
   private lazy val maybeTimestamp = lazyTimestamp
 
   override def evalFunctionCall(functionCall: Expression.FunctionCall)(implicit scope: Scope) =
-    functionCall match {
+    functionCall match
       case FunctionCall(`name`, arguments) =>
         // now(format='yyyy-MM-dd', timezone='Antarctica/Troll'
         Some(arguments match {
@@ -32,7 +31,6 @@ extends Scope
 
       case _ =>
         super.evalFunctionCall(functionCall)
-    }
 
   private def func(formatExpr: Expression, timezoneExpr: Expression)(implicit scope: Scope) =
     for
@@ -41,18 +39,14 @@ extends Scope
       result <- func2(formatExpr, timezone)
     yield result
 
-  private def func2(formatExpr: Expression, timezone: Option[String])(implicit scope: Scope) = {
+  private def func2(formatExpr: Expression, timezone: Option[String])(implicit scope: Scope) =
     for
       format <- formatExpr.evalAsString
       result <- maybeTimestamp.fold(Checked(""))(_.format(format, timezone))
     yield StringValue(result)
-  }
 
   override def toString = s"TimestampScope('$name')"
-}
 
-object TimestampScope
-{
+object TimestampScope:
   def apply(name: String, lazyTimestamp: => Option[Timestamp]): Scope =
     new TimestampScope(name, lazyTimestamp)
-}

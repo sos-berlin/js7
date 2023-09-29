@@ -9,18 +9,16 @@ import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 
 sealed trait DelegateCouplingState
 
-object DelegateCouplingState
-{
+object DelegateCouplingState:
   final case class Reset(reason: Reset.Reason) extends DelegateCouplingState
-  object Reset {
+  object Reset:
     val fresh = Reset(Fresh)
     val shutdown = Reset(Shutdown)
     val restart = Reset(Restart)
     val byCommand = Reset(ResetCommand)
 
-    sealed trait Reason {
+    sealed trait Reason:
       @javaApi val string = getClass.simpleScalaName
-    }
 
     /** Initially state. */
     case object Fresh extends Reason
@@ -39,7 +37,6 @@ object DelegateCouplingState
       Subtype(Shutdown),
       Subtype(Restart),
       Subtype(ResetCommand))
-  }
 
   case object Coupled extends DelegateCouplingState
 
@@ -60,9 +57,7 @@ object DelegateCouplingState
   // COMPATIBLE with v2.3
   implicit val jsonDecoder: Decoder[DelegateCouplingState] =
     c => c.get[String](TypedJsonCodec.TypeFieldName)
-      .flatMap {
+      .flatMap:
         case "Fresh" => Right(Reset.fresh)
         case "Reset" if c.get[Json]("reason").isLeft => Right(Reset.byCommand)
         case _ => typedJsonCodec.decode(c)
-      }
-}

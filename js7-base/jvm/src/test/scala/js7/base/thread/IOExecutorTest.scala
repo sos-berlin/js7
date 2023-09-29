@@ -23,51 +23,41 @@ import scala.concurrent.duration.Deadline.now
 /**
   * @author Joacim Zschimmer
   */
-final class IOExecutorTest extends OurTestSuite
-{
+final class IOExecutorTest extends OurTestSuite:
   private val logger = Logger[this.type]
 
-  "Success" in {
+  "Success" in:
     assert(ioFuture(7).await(10.seconds) == 7)
-  }
 
-  "Failure" in {
+  "Failure" in:
     assert(Await.ready(ioFuture { sys.error("FAILED") }, 10.seconds).value.get.failed.get.toString ==
       "java.lang.RuntimeException: FAILED")
-  }
 
-  if !VirtualThreads.isEnabled then {
-    "Thread name" in {
+  if !VirtualThreads.isEnabled then
+    "Thread name" in:
       ioFuture {
         assert(Thread.currentThread.getName startsWith "JS7 global I/O-")
       } await 10.seconds
-    }
-  }
 
-  if sys.props.contains("test.speed") then {
-    if VirtualThreads.isEnabled then {
-      "Performance with VirtualThread" in {
-        for executor <- maybeNewVirtualThreadExecutorService() do {
+  if sys.props.contains("test.speed") then
+    if VirtualThreads.isEnabled then
+      "Performance with VirtualThread" in:
+        for executor <- maybeNewVirtualThreadExecutorService() do
           testPerformance(executor, 1000)
           testPerformance(executor, 10000)
           testPerformance(executor, 100000)
           testPerformance(executor, 200000)
           testPerformance(executor, 1000000) // May require big heap
           executor.shutdown()
-        }
-      }
-    }
 
-    "Performance with thread pool" in {
+    "Performance with thread pool" in:
       val executor = newBlockingNonVirtualExecutor("IOExecutorTest")
       testPerformance(executor, 1000)
       testPerformance(executor, 10000)
       testPerformance(executor, 100000)
       executor.shutdown()
-    }
-  }
 
-  private def testPerformance(executor: Executor, n: Int): Unit = {
+  private def testPerformance(executor: Executor, n: Int): Unit =
     val iox = new IOExecutor(executor, "IOExecutorTest")
     val since = now
     val task = (1 to n).toVector
@@ -75,9 +65,6 @@ final class IOExecutorTest extends OurTestSuite
       .map(_.map(_.join))
       .map(_.combineAll)
       .flatten
-    for i <- 1 to 3 do {
+    for i <- 1 to 3 do
       task.await(99.s)
       logger.info(itemsPerSecondString(since.elapsed, n))
-    }
-  }
-}

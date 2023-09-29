@@ -17,13 +17,10 @@ final case class Fail(
   namedValues: NamedValues = NamedValues.empty,
   uncatchable: Boolean = false,
   sourcePos: Option[SourcePos] = None)
-extends Instruction
-{
+extends Instruction:
   def withoutSourcePos = copy(sourcePos = None)
-}
 
-object Fail
-{
+object Fail:
   implicit val jsonEncoder: Encoder.AsObject[Fail] =
     o => JsonObject(
       "message" -> o.message.asJson,
@@ -38,4 +35,3 @@ object Fail
       uncatchable <- c.getOrElse[Boolean]("uncatchable")(false)
       sourcePos <- c.get[Option[SourcePos]]("sourcePos")
     yield Fail(errorMessage, namedValues, uncatchable = uncatchable, sourcePos)
-}

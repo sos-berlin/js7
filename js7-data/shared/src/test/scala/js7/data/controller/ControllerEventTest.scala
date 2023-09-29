@@ -10,18 +10,16 @@ import scala.concurrent.duration.*
 /**
   * @author Joacim Zschimmer
   */
-final class ControllerEventTest extends OurTestSuite
-{
-  "ControllerReady" in {
+final class ControllerEventTest extends OurTestSuite:
+  "ControllerReady" in:
     testJson[ControllerEvent](ControllerReady(Timezone("Europe/Berlin"), 1.hour),
       json"""{
         "TYPE": "ControllerReady",
         "timezone": "Europe/Berlin",
         "totalRunningTime": 3600
       }""")
-  }
 
-  "ControllerInitialized" in {
+  "ControllerInitialized" in:
     testJson[ControllerEvent](ControllerInitialized(
       ControllerId("CONTROLLER"),
       Timestamp("2021-10-27T12:00:00Z")),
@@ -40,19 +38,15 @@ final class ControllerEventTest extends OurTestSuite
         "controllerId": "CONTROLLER",
         "startedAt": 1635336000000
       }""")
-  }
 
-  "ControllerShutDown" in {
+  "ControllerShutDown" in:
     testJson[ControllerEvent](ControllerShutDown,
       json"""{
         "TYPE": "ControllerShutDown"
       }""")
-  }
 
-  "ControllerTestEvent" in {
+  "ControllerTestEvent" in:
     testJson[ControllerEvent](ControllerTestEvent,
       json"""{
         "TYPE": "ControllerTestEvent"
       }""")
-  }
-}

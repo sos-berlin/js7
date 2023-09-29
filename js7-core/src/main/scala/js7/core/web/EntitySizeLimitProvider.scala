@@ -7,22 +7,17 @@ import js7.base.log.Logger
 import js7.base.utils.ByteUnits.toKBGB
 import js7.core.web.EntitySizeLimitProvider.*
 
-trait EntitySizeLimitProvider
-{
+trait EntitySizeLimitProvider:
   protected def config: Config
   protected def maxMemory = sys.runtime.maxMemory
 
   private lazy val streamingEntitySizeLimit =
     config.as("js7.web.server.services.streaming-post-size-limit-factor")(StringAsPercentage)
 
-  protected final lazy val entitySizeLimit = {
+  protected final lazy val entitySizeLimit =
     val limit = ((streamingEntitySizeLimit min 1.0) * maxMemory).toLong
     logger.debug(s"HTTP POST entitySizeLimit=${toKBGB(limit)}")
     limit
-  }
-}
 
-object EntitySizeLimitProvider
-{
+object EntitySizeLimitProvider:
   private val logger = Logger[this.type]
-}

@@ -8,9 +8,8 @@ import js7.tester.CirceJsonTester.testJson
 /**
   * @author Joacim Zschimmer
   */
-final class JournalStateTest extends OurTestSuite
-{
-  "JSON" in {
+final class JournalStateTest extends OurTestSuite:
+  "JSON" in:
     testJson(
       JournalState(Map(UserId("A-USER") -> EventId(1000))),
       json"""{
@@ -18,9 +17,8 @@ final class JournalStateTest extends OurTestSuite
         "A-USER": 1000
       }
     }""")
-  }
 
-  "toReleaseEventId" in {
+  "toReleaseEventId" in:
     val a = UserId("A")
     val b = UserId("B")
     val x = UserId("X")
@@ -45,5 +43,3 @@ final class JournalStateTest extends OurTestSuite
     assert(journalState.toReleaseEventId(5, Seq(x)) == 0)
     assert(journalState.toReleaseEventId(15, Seq(x)) == 0)
     assert(journalState.toReleaseEventId(25, Seq(x)) == 0)
-  }
-}

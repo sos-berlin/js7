@@ -16,28 +16,26 @@ import scala.language.implicitConversions
 import scala.reflect.ClassTag
 
 final class ScalaXMLEventReader(delegate: XMLEventReader, config: Config = Config.Default)
-extends AutoCloseable {
+extends AutoCloseable:
 
   private var _simpleAttributeMap: SimpleAttributeMap = null
 
   def close() = delegate.close()
 
-  def parseDocument[A](body: => A): A = {
+  def parseDocument[A](body: => A): A =
     eat[StartDocument]
     val result = body
     eat[EndDocument]
     result
-  }
 
   def ignoreElements(): Unit =
-    while peek.isStartElement do {
+    while peek.isStartElement do
       ignoreElement()
-    }
 
-  def ignoreElement(): Unit = {
+  def ignoreElement(): Unit =
     require(delegate.peek.isStartElement)
     delegate.nextEvent()
-    while !delegate.peek.isEndElement do {
+    while !delegate.peek.isEndElement do
       if delegate.peek.isCharacters then
         while delegate.peek.isCharacters do delegate.nextEvent()
       else if delegate.peek.isStartElement then
@@ -46,44 +44,35 @@ extends AutoCloseable {
         delegate.nextEvent()
       else
         throw new IllegalArgumentException(s"Unknown XML event: ${delegate.peek}")
-    }
     delegate.nextEvent()
-  }
 
-  def parseElement[A](name: String, withAttributeMap: Boolean = true)(body: => A): A = {
+  def parseElement[A](name: String, withAttributeMap: Boolean = true)(body: => A): A =
     requireStartElement(name)
     parseElement(withAttributeMap = withAttributeMap)(body)
-  }
 
   def parseElement[A]()(body: => A): A =
     parseElement(withAttributeMap = true)(body)
 
   def parseElement[A](withAttributeMap: Boolean)(body: => A): A =
-    wrapException {
-      if peek.isStartElement then {  // should be
+    wrapException:
+      if peek.isStartElement then  // should be
         updateAttributeMap(withAttributeMap = withAttributeMap)
-      }
-      if withAttributeMap then {  // Otherwise, let the caller eat the StartElement to give it access to attributes
+      if withAttributeMap then  // Otherwise, let the caller eat the StartElement to give it access to attributes
         eat[StartElement]
-      }
-      parseStartElement() {
+      parseStartElement():
         val result = body
-        if config.ignoreUnknown then {
+        if config.ignoreUnknown then
           ignoreElements()
-        }
         result
-      }
-    }
 
   def matchElement[A](pf: PartialFunction[String, A]): A =
     pf.applyOrElse(peek.asStartElement.getName.getLocalPart,
       (_: String) => throw new IllegalArgumentException(s"Unexpected XML element: <${peek.asStartElement.getName}>"))
 
-  def parseStartElement[A]()(body: => A): A = {
+  def parseStartElement[A]()(body: => A): A =
     val result = body
     eat[EndElement]
     result
-  }
 
   def parseEachRepeatingElement[A](name: String)(body: => A): IndexedSeq[A] =
     parseElements[A] { case `name` => parseElement() { body } }.map(_._2)
@@ -91,39 +80,33 @@ extends AutoCloseable {
   def forEachStartElement[A](body: PartialFunction[String, A]): ConvertedElementMap[A] =
     new ConvertedElementMap(parseElements[A](body))
 
-  def parseElements[A](body: PartialFunction[String, A]): IndexedSeq[(String, A)] = {
+  def parseElements[A](body: PartialFunction[String, A]): IndexedSeq[(String, A)] =
     val results = Vector.newBuilder[(String, A)]
     val liftedBody = body.lift
-    @tailrec def g(): Unit = peek match {
+    @tailrec def g(): Unit = peek match
       case e: StartElement =>
         for o <- parseStartElementAlternative(liftedBody) do
           results += e.getName.toString -> o
         g()
       case _: EndElement =>
       case _: EndDocument =>
-    }
     g()
     results.result()
-  }
 
   private[xmls] def parseStartElementAlternative[A](body: String => Option[A]): Option[A] =
-    wrapException {
+    wrapException:
       val name = peek.asStartElement.getName.toString
       val result = body(name)
-      if result.isEmpty then {
+      if result.isEmpty then
         if !config.ignoreUnknown then sys.error(s"Unexpected XML element <$name>")
         ignoreElement()
-      }
       result
-    }
 
-  private def wrapException[A](body: => A): A = {
+  private def wrapException[A](body: => A): A =
     val element = peek.asStartElement()
     try body
-    catch {
+    catch
       case x: Exception => throw new XmlException(element.getName.toString, element.getLocation, x)
-    }
-  }
 
 //  import javax.xml.transform.{Result, TransformerFactory}
 //  import js7.common.scalautil.StringWriters.writingString
@@ -138,36 +121,32 @@ extends AutoCloseable {
 //  private def parseElementInto(result: Result): Unit =
 //  Liest bis zum Stream-Ende statt nur bis zum Endetag:  transformerFactory.newTransformer().transform(new StAXSource(xmlEventReader), result)
 
-  def requireStartElement(name: String): StartElement = {
+  def requireStartElement(name: String): StartElement =
     val e = peek.asStartElement
     require(e.getName.getLocalPart == name, s"Not the expected XML element <$name>: <${e.getName}>")
     e
-  }
 
-  def eatText(): String = {
+  def eatText(): String =
     val result = new StringBuilder
     while peek.isCharacters do
       result append eat[Characters].getData
     result.toString()
-  }
 
-  def eat[E <: XMLEvent: ClassTag]: E = {
+  def eat[E <: XMLEvent: ClassTag]: E =
     val e = implicitClass[E]
-    if e != classOf[StartElement] then {
+    if e != classOf[StartElement] then
       releaseAttributeMap()
-    }
     val event = peek  // Skips ignorables
     delegate.nextEvent()
     if !e.isAssignableFrom(event.getClass) then
       throw new IllegalArgumentException(s"'${e.getSimpleName}' expected but '${event.getClass.getSimpleName}' encountered")
     event.asInstanceOf[E]
-  }
 
   def nextEvent() = delegate.nextEvent()
 
   def hasNext: Boolean = delegate.hasNext
 
-  private def updateAttributeMap(withAttributeMap: Boolean): Unit = {
+  private def updateAttributeMap(withAttributeMap: Boolean): Unit =
     releaseAttributeMap()
     _simpleAttributeMap =
       if withAttributeMap && peek.isStartElement then
@@ -178,44 +157,37 @@ extends AutoCloseable {
         )
       else
         null
-  }
 
-  private def releaseAttributeMap(): Unit = {
-    if !config.ignoreUnknown && _simpleAttributeMap != null then {
+  private def releaseAttributeMap(): Unit =
+    if !config.ignoreUnknown && _simpleAttributeMap != null then
       _simpleAttributeMap.requireAllAttributesRead()
-    }
     _simpleAttributeMap = null
-  }
 
-  def attributeMap: SimpleAttributeMap = {
+  def attributeMap: SimpleAttributeMap =
     if _simpleAttributeMap eq null then throw new IllegalStateException(s"No attributes possible here, at $locationString")
     _simpleAttributeMap
-  }
 
   def locationString: String =
     locationToString(peek.getLocation)
 
   @tailrec
   def peek: XMLEvent =
-    delegate.peek match {
+    delegate.peek match
       case e if xmlEventIsIgnorable(e) =>
         delegate.nextEvent()
         peek
       case e => e
-    }
 
   def xmlEventReader: XMLEventReader = delegate
-}
 
-object ScalaXMLEventReader {
+object ScalaXMLEventReader:
 
   private val IgnoredAttributeNamespaces = Set("http://www.w3.org/2001/XMLSchema-instance")
 
   final case class Config(ignoreUnknown: Boolean = false)
 
-  object Config {
+  object Config:
     val Default = Config()
-  }
 
   implicit def scalaXMLEventReaderToXMLEventReader(o: ScalaXMLEventReader): XMLEventReader = o.xmlEventReader
 
@@ -223,9 +195,8 @@ object ScalaXMLEventReader {
     (parse: ScalaXMLEventReader => A)
   : A =
     autoClosing(new ScalaXMLEventReader(newXMLEventReader(inputFactory, source), config = config)) { reader =>
-      reader.parseDocument {
+      reader.parseDocument:
         parse(reader)
-      }
     }
 
   private def newXMLEventReader(inputFactory: XMLInputFactory, source: Source) =
@@ -233,29 +204,25 @@ object ScalaXMLEventReader {
     //inputFactory.createFilteredReader(inputFactory.createXMLEventReader(source), IgnoreWhitespaceFilter)
 
   private def xmlEventIsIgnorable(e: XMLEvent) =
-    e match {
+    e match
       case e: Characters => e.isWhiteSpace
       case _: Comment => true
       case _ => false
-    }
 
   final class SimpleAttributeMap private[ScalaXMLEventReader](pairs: Iterator[(String, String)])
   extends mutable.HashMap[String, String]
-  with ConvertiblePartialFunction[String, String]
-  {
+  with ConvertiblePartialFunction[String, String]:
     this ++= pairs
     private val readAttributes = mutable.HashSet[String]()
     readAttributes.sizeHint(size)
 
-    override def apply(o: String): String = {
+    override def apply(o: String): String =
       readAttributes += o
       super.apply(o)
-    }
 
-    override def get(name: String): Option[String] = {
+    override def get(name: String): Option[String] =
       readAttributes += name
       super.get(name)
-    }
 
     override def default(name: String) = throw new NoSuchElementException(s"XML attribute '$name' is required")
 
@@ -264,15 +231,12 @@ object ScalaXMLEventReader {
     /** Marks all attributes as read, so that requireAllAttributesRead does not fail. */
     def ignoreUnread(): Unit = readAttributes ++= keys
 
-    def requireAllAttributesRead(): Unit = {
-      if keySet != readAttributes then {
+    def requireAllAttributesRead(): Unit =
+      if keySet != readAttributes then
         val names = keySet.toSet -- readAttributes
         if names.nonEmpty then throw new UnparsedAttributesException(names.toSeq)
-      }
-    }
-  }
 
-  final class ConvertedElementMap[A] private[xmls](pairs: IndexedSeq[(String, A)]) {
+  final class ConvertedElementMap[A] private[xmls](pairs: IndexedSeq[(String, A)]):
 
     def one[B <: A : ClassTag]: B =
       option[B] getOrElse { throw new NoSuchElementException(s"No element for type ${implicitClass[B].getSimpleName}") }
@@ -280,17 +244,15 @@ object ScalaXMLEventReader {
     def one[B <: A : ClassTag](elementName: String): B =
       option[B](elementName) getOrElse { throw new NoSuchElementException(s"Element <$elementName> is required") }
 
-    def option[B <: A : ClassTag]: Option[B] = {
+    def option[B <: A : ClassTag]: Option[B] =
       val result = byClass[B]
       require(result.isEmpty || result.tail.isEmpty, s"Element for type ${implicitClass[B].getSimpleName} is allowed only once")
       result.headOption map cast[B]
-    }
 
-    def option[B <: A : ClassTag](elementName: String): Option[B] = {
+    def option[B <: A : ClassTag](elementName: String): Option[B] =
       val result = byName[B](elementName)
       require(result.lengthIs <= 1, s"Element <$elementName> is allowed only once")
       result.headOption map cast[B]
-    }
 
     def byClass[B <: A : ClassTag]: IndexedSeq[B] =
       values collect assignableFrom[B]
@@ -303,13 +265,11 @@ object ScalaXMLEventReader {
 
     def apply(elementName: String): Seq[A] =
       pairs collect { case (k, v) if k == elementName => v }
-  }
 
-  final class UnparsedAttributesException private[xmls](val names: Seq[String]) extends RuntimeException {
+  final class UnparsedAttributesException private[xmls](val names: Seq[String]) extends RuntimeException:
     override def getMessage = "Unknown XML attributes " + names.map("'" + _ + "'").mkString(", ")
-  }
 
-  final class XmlException(elementName: String, location: Location, override val getCause: Exception) extends RuntimeException {
+  final class XmlException(elementName: String, location: Location, override val getCause: Exception) extends RuntimeException:
 
     override def toString = s"XmlException: $getMessage"
     override def getMessage = s"$nonWrappedCauseString - In $text"
@@ -317,10 +277,9 @@ object ScalaXMLEventReader {
     private def nonWrappedCauseString = nonWrappedCause.toString stripPrefix "java.lang.RuntimeException: "
 
     @tailrec
-    def nonWrappedCause: Throwable = getCause match {
+    def nonWrappedCause: Throwable = getCause match
       case cause: XmlException => cause.nonWrappedCause
       case cause => cause
-    }
 
     private def text: String =
       s"<$elementName> (${locationToString(location)})" + (
@@ -328,16 +287,12 @@ object ScalaXMLEventReader {
           case cause: XmlException => " " + cause.text
           case _ => ""
         })
-  }
 
-  object XmlException {
+  object XmlException:
     def unapply(o: XmlException): Some[Throwable] =
-      o.getCause match {
+      o.getCause match
         case cause: XmlException => Some(cause.nonWrappedCause)
         case cause => Some(cause)
-      }
-  }
 
   private def locationToString(o: Location) =
     (Option(o.getSystemId) ++ Option(o.getPublicId)).flatten.mkString(":") + ":" + o.getLineNumber + ":" + o.getColumnNumber
-}

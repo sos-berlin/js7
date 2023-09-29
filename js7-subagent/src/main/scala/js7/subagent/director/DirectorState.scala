@@ -12,8 +12,7 @@ import scala.collection.MapView
 
 private final case class DirectorState(
   subagentToEntry: Map[SubagentId, Entry],
-  selectionToPrioritized: Map[Option[SubagentSelectionId], Prioritized[SubagentId]])
-{
+  selectionToPrioritized: Map[Option[SubagentSelectionId], Prioritized[SubagentId]]):
   val idToDriver: MapView[SubagentId, SubagentDriver] =
     subagentToEntry.view.mapValues(_.driver)
 
@@ -23,7 +22,7 @@ private final case class DirectorState(
   def insertSubagentDriver(
     allocatedDriver: Allocated[Task, SubagentDriver],
     disabled: Boolean = false)
-  : Checked[DirectorState] = {
+  : Checked[DirectorState] =
     val subagentId = allocatedDriver.allocatedThing.subagentId
     subagentToEntry
       .insert(subagentId -> Entry(allocatedDriver, disabled))
@@ -41,12 +40,11 @@ private final case class DirectorState(
                   selectionToPrioritized(None).insertFirst(subagentId)
                 else
                   selectionToPrioritized(None).add(subagentId))))
-  }
 
   def replaceSubagentDriver(
     allocatedDriver: Allocated[Task, SubagentDriver],
     subagentItem: SubagentItem)
-  : Checked[DirectorState] = {
+  : Checked[DirectorState] =
     val subagentId = allocatedDriver.allocatedThing.subagentId
     if !subagentToEntry.contains(subagentId) then
       Left(Problem(s"Replacing unknown $subagentId SubagentDriver"))
@@ -55,7 +53,6 @@ private final case class DirectorState(
         subagentToEntry = subagentToEntry.updated(
           subagentId,
           Entry(allocatedDriver, subagentItem.disabled))))
-  }
 
   def removeSubagent(subagentId: SubagentId): DirectorState =
     copy(
@@ -93,7 +90,7 @@ private final case class DirectorState(
             subagentToEntry = subagentToEntry.updated(id, entry.copy(disabled = disabled)))))
 
   def selectNext(maybeSelectionId: Option[SubagentSelectionId]): Checked[Option[SubagentDriver]] =
-    maybeSelectionId match {
+    maybeSelectionId match
       case Some(selectionId) if !selectionToPrioritized.contains(maybeSelectionId) =>
         // A SubagentSelectionId, if not defined, may denote a Subagent
         subagentToEntry
@@ -108,22 +105,16 @@ private final case class DirectorState(
               subagentToEntry.get(subagentId).fold(false)(_.isAvailable)))
           .flatMap(subagentId =>
             subagentToEntry.get(subagentId).map(_.driver)))
-    }
-}
 
-private object DirectorState
-{
+private object DirectorState:
   private val logger = Logger[this.type]
   private val DefaultPriority = 0
 
   final case class Entry(
     allocatedDriver: Allocated[Task, SubagentDriver],
-    disabled: Boolean = false)
-  {
+    disabled: Boolean = false):
     val driver: SubagentDriver =
       allocatedDriver.allocatedThing
 
     def isAvailable: Boolean =
       !disabled && driver.isCoupled
-  }
-}

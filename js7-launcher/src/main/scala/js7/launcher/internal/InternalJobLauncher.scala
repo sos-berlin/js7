@@ -27,8 +27,7 @@ final class InternalJobLauncher(
   blockingJobScheduler: Scheduler,
   clock: AlarmClock)
   (implicit scheduler: Scheduler, iox: IOExecutor)
-extends JobLauncher
-{
+extends JobLauncher:
   private val internalJobLazy = Lazy[Checked[InternalJob]](
     toInstantiator(executable.className)
       .flatMap(_()))
@@ -36,11 +35,10 @@ extends JobLauncher
   val start: Task[Checked[Unit]] =
     Task { internalJobLazy() }
       .flatMapT(_.start)
-      .tapEval {
+      .tapEval:
         case Left(problem) => Task(
           logger.debug(s"${executable.className} start: $problem", problem.throwableOption.orNull))
         case Right(_) => Task.unit
-      }
       .memoize
 
   val stop: Task[Unit] =
@@ -49,12 +47,11 @@ extends JobLauncher
     }.memoize
 
   def toOrderProcess(processOrder: ProcessOrder) =
-    Task {
+    Task:
       for
         internalJob <- internalJobLazy()
         step <- toStep(processOrder)
       yield internalJob.toOrderProcess(step)
-    }
 
   private def toStep(processOrder: ProcessOrder): Checked[InternalJob.Step] =
     for args <- evalExpressionMap(executable.arguments, processOrder.scope) yield
@@ -71,7 +68,7 @@ extends JobLauncher
             tryAdapter(cls))
     ).flatten
 
-  private def tryAdapter(cls: Class[?]): Checked[() => Checked[InternalJob]] = {
+  private def tryAdapter(cls: Class[?]): Checked[() => Checked[InternalJob]] =
     val internalJobs = superclassesOf(cls)
       .flatMap(cls =>
         Option(cls.getAnnotation(classOf[InternalJobAdapter])))
@@ -85,29 +82,25 @@ extends JobLauncher
         .flatMap(getConstructor)
         .map(con =>
           () => construct(con, toJobContext(cls)))
-  }
 
   private def toJobContext(cls: Class[?]) =
     JobContext(cls, executable, jobArguments, jobConf, scheduler, iox, blockingJobScheduler, clock,
       jobConf.systemEncoding)
 
   override def toString = s"InternalJobLauncher(${jobConf.jobKey} ${executable.className})"
-}
 
-object InternalJobLauncher
-{
+object InternalJobLauncher:
   private val logger = Logger[this.type]
 
   private def loadClass(className: String): Checked[Class[? <: AnyRef]] =
     try Right(Class.forName(className).asInstanceOf[Class[? <: AnyRef]])
-    catch {
+    catch
       case t: ExceptionInInitializerError =>
         Left(Problem.pure(Option(t.getCause).getOrElse(t).toStringWithCauses))
       case t: LinkageError =>
         Left(Problem.pure(t.toStringWithCauses))
       case NonFatal(t) =>
         Left(Problem.pure(t.toStringWithCauses))
-    }
 
   private val isAllowedConstructorParamameterClass = Set[Class[?]](
     classOf[InternalJob.JobContext])
@@ -124,7 +117,7 @@ object InternalJobLauncher
     }.flatten
 
   private def construct(constructor: Constructor[InternalJob], jobContext: JobContext)
-  : Checked[InternalJob] = {
+  : Checked[InternalJob] =
     val args = constructor.getParameterTypes
       .map(cls =>
         if cls isAssignableFrom classOf[InternalJob.JobContext] then
@@ -133,11 +126,8 @@ object InternalJobLauncher
           sys.error(s"Unsupported constructor parameter: ${cls.getName}"))  // Should not happen
     try
       Right(constructor.newInstance(args*))
-    catch {
+    catch
       case t @ (_: InvocationTargetException | _: ExceptionInInitializerError) =>
         Left(Problem.fromThrowable(Option(t.getCause) getOrElse t))
       case NonFatal(t) =>
         Problem.fromThrowable(t)
-    }
-  }
-}

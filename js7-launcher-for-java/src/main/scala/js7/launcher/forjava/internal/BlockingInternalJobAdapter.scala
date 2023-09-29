@@ -8,8 +8,7 @@ import js7.launcher.internal.InternalJob.JobContext
 import monix.eval.Task
 
 private final class BlockingInternalJobAdapter(jobContext: JobContext)
-extends InternalJob
-{
+extends InternalJob:
   private val helper = new InternalJobAdapterHelper[BlockingInternalJob]
 
   override def start: Task[Checked[Unit]] =
@@ -20,7 +19,7 @@ extends InternalJob
     helper.callStop(job => Task(job.stop()))
       .executeOn(jobContext.blockingJobScheduler)
 
-  def toOrderProcess(step: Step) = {
+  def toOrderProcess(step: Step) =
     val jStep = BlockingInternalJob.Step(step)(jobContext.js7Scheduler)
 
     helper.callProcessOrder { jInternalJob =>
@@ -29,7 +28,7 @@ extends InternalJob
           .executeOn(jobContext.blockingJobScheduler)
           .memoize
 
-      new OrderProcess {
+      new OrderProcess:
         protected def run =
           for
             orderProcess <- orderProcessTask
@@ -47,7 +46,4 @@ extends InternalJob
 
         override def toString =
           s"BlockingINternalJob(${jobContext.implementationClass.scalaName}) OrderProcess"
-      }
     }
-  }
-}

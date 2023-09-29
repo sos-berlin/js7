@@ -7,8 +7,7 @@ import js7.data.workflow.instructions.Stop
 
 private[instructions] final class StopExecutor(
   protected val service: InstructionExecutorService)
-extends EventInstructionExecutor
-{
+extends EventInstructionExecutor:
   type Instr = Stop
   val instructionClass = classOf[Stop]
 
@@ -18,4 +17,3 @@ extends EventInstructionExecutor
         start(order))
       .getOrElse(Right(
         (order.id <-: OrderStopped) :: Nil))
-}

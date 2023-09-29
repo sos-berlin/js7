@@ -12,8 +12,7 @@ import js7.base.data.ByteSequence.ops.*
 import js7.base.problem.Checked
 import scala.collection.mutable
 
-final class ByteArray private(val unsafeArray: Array[Byte])
-{
+final class ByteArray private(val unsafeArray: Array[Byte]):
   def length = unsafeArray.length
 
   def apply(i: Int) = unsafeArray(i)
@@ -23,11 +22,10 @@ final class ByteArray private(val unsafeArray: Array[Byte])
   def copyToArray(array: Array[Byte]): Int =
     copyToArray(array, 0, Int.MaxValue)
 
-  def copyToArray(array: Array[Byte], start: Int, len: Int): Int = {
+  def copyToArray(array: Array[Byte], start: Int, len: Int): Int =
     val n = len min unsafeArray.length min array.length - start
     arraycopy(unsafeArray, 0, array, start, n)
     n
-  }
 
   def slice(from: Int, until: Int) =
     if from >= until then
@@ -40,12 +38,11 @@ final class ByteArray private(val unsafeArray: Array[Byte])
   def ++(o: ByteArray) =
     if o.isEmpty then this
     else if isEmpty then o
-    else {
+    else
       val a = new Array[Byte](length + o.length)
       arraycopy(unsafeArray, 0, a, 0, unsafeArray.length)
       arraycopy(o.unsafeArray, 0, a, unsafeArray.length, o.length)
       ByteArray.unsafeWrap(a)
-    }
 
   def iterator: Iterator[Byte] =
     unsafeArray.iterator
@@ -72,18 +69,15 @@ final class ByteArray private(val unsafeArray: Array[Byte])
     out.write(unsafeArray)
 
   override def equals(other: Any) =
-    other match {
+    other match
       case other: ByteArray => java.util.Arrays.equals(unsafeArray, other.unsafeArray)
       case _ => false
-    }
 
   override def hashCode = unsafeArray.hashCode
 
   override def toString = ByteArray.show(this)
-}
 
-object ByteArray extends ByteSequence[ByteArray]
-{
+object ByteArray extends ByteSequence[ByteArray]:
   val clazz = classOf[ByteArray]
 
   val empty = new ByteArray(Array.empty)
@@ -149,47 +143,41 @@ object ByteArray extends ByteSequence[ByteArray]
   def combineByteSequences[ByteSeq](byteSeqsOnce: IterableOnce[ByteSeq])
     (implicit ByteSeq: ByteSequence[ByteSeq])
   : ByteArray =
-    byteSeqsOnce.knownSize match {
+    byteSeqsOnce.knownSize match
       case 0 => ByteArray.empty
       case 1 => byteSeqsOnce.iterator.next().toByteArray
       case _ =>
         val byteArrays = mutable.ArrayBuffer.from(byteSeqsOnce)
         val result = new Array[Byte](byteArrays.view.map(_.length).sum)
         var pos = 0
-        for byteArray <- byteArrays do {
+        for byteArray <- byteArrays do
           byteArray.copyToArray(result, pos, byteArray.length)
           pos += byteArray.length
-        }
         ByteArray.unsafeWrap(result)
-    }
 
   override def writeToStream(byteArray: ByteArray, out: OutputStream) =
     byteArray.writeToStream(out)
 
   private[data] val inputStreamBufferSize = 32*1024
 
-  override def fromInputStreamLimited(in: InputStream, limit: Int): Either[ByteArray, ByteArray] = {
+  override def fromInputStreamLimited(in: InputStream, limit: Int): Either[ByteArray, ByteArray] =
     val buffer = mutable.Buffer.empty[ByteArray]
     var totalLength = 0
     var eof = false
     var overflow = false
     val limit1 = limit min Int.MaxValue - 1 // Avoids overflow when adding 1
-    while !eof && !overflow && totalLength <= limit do {
+    while !eof && !overflow && totalLength <= limit do
       val size1 = inputStreamBufferSize min limit1 - totalLength + 1
       val bytes = new Array[Byte](size1)
       val readLength = in.read(bytes, 0, size1)
       eof = readLength <= 0
-      if !eof then {
+      if !eof then
         overflow = totalLength + readLength > limit
         val length = readLength min limit - totalLength
-        if length == bytes.length then {
+        if length == bytes.length then
           buffer += ByteArray.unsafeWrap(bytes)
-        } else
+        else
           buffer += ByteArray.fromArray(bytes, 0, length)
         totalLength += length
-      }
-    }
     val result = ByteArray.combineAll(buffer)
     if overflow then Left(result) else Right(result)
-  }
-}

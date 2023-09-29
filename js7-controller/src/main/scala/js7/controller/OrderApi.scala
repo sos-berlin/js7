@@ -7,8 +7,7 @@ import monix.eval.Task
 /**
   * @author Joacim Zschimmer
   */
-trait OrderApi
-{
+trait OrderApi:
   def order(orderId: OrderId): Task[Checked[Option[Order[Order.State]]]]
 
   def orders: Task[Checked[Iterable[Order[Order.State]]]]
@@ -20,4 +19,3 @@ trait OrderApi
     orderCount.map(_.map(OrdersOverview.apply))
 
   def orderCount: Task[Checked[Int]]
-}

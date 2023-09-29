@@ -28,8 +28,7 @@ import scala.collection.AbstractIterator
 import scala.language.implicitConversions
 import scala.util.control.NonFatal
 
-object FileUtils
-{
+object FileUtils:
   private val logger = Logger[this.type]
   val EmptyPath = Paths.get("")
   val WorkingDirectory = Paths.get(sys.props("user.dir")).toAbsolutePath
@@ -39,30 +38,26 @@ object FileUtils
    * Touchs the file and deletes it when closer is closed.
    * Used mainly by tests.
    */
-  def touchAndDeleteWithCloser[A <: Path](path: A)(implicit closer: Closer): path.type = {
+  def touchAndDeleteWithCloser[A <: Path](path: A)(implicit closer: Closer): path.type =
     touchFile(path)
     path withCloser delete
     path
-  }
 
-  def touchFile(path: Path): Unit = {
+  def touchFile(path: Path): Unit =
     val file = path.toFile
     if !file.createNewFile() && !file.setLastModified(System.currentTimeMillis) then
       throw new IOException("touchFile file: unable to update modification time of " + file)
-  }
 
-  def copyDirectoryContent(from: Path, to: Path, options: CopyOption*): Unit = {
+  def copyDirectoryContent(from: Path, to: Path, options: CopyOption*): Unit =
     if !exists(to) then createDirectory(to)
     autoClosing(Files.list(from)) { stream =>
-      for file <- stream.asScala do {
+      for file <- stream.asScala do
         val destination = to.resolve(file.getFileName)
         if isDirectory(file) then
           copyDirectoryContent(file, destination)
         else
           copy(file, destination, options*)
-      }
     }
-  }
 
   // COMPATIBLE with Java 11 Files.writeString
   def writeString(path: Path, chars: CharSequence, options: OpenOption*): Path =
@@ -70,28 +65,23 @@ object FileUtils
 
   // COMPATIBLE with Java 11 Files.writeString
   def writeString(path: Path, chars: CharSequence, charset: Charset, options: OpenOption*)
-  : Path = {
+  : Path =
     requireNonNull(chars)
-    autoClosing(new OutputStreamWriter(newOutputStream(path, options*), charset)) {
+    autoClosing(new OutputStreamWriter(newOutputStream(path, options*), charset)):
       _.append(chars)
-    }
     path
-  }
 
-  object implicits {
+  object implicits:
     implicit def pathToFile(path: Path): File =
       path.toFile
 
     implicit def fileToPath(file: File): Path =
       file.toPath
-  }
 
-  object syntax
-  {
+  object syntax:
     implicit val PathOrdering: Ordering[Path] = (a, b) => a compareTo b
 
-    implicit final class RichPath(private val delegate: Path) extends AnyVal
-    {
+    implicit final class RichPath(private val delegate: Path) extends AnyVal:
       /** Must be a relative path without backslashes or single or double dot directories. */
       def /(relative: String): Path =
         delegate resolve checkRelativePath(relative).orThrow
@@ -123,10 +113,9 @@ object FileUtils
       def write(bytes: collection.Seq[Byte]): Unit =
         write(bytes.toArray)
 
-      def write(string: String, encoding: Charset = UTF_8, append: Boolean = false): Unit = {
+      def write(string: String, encoding: Charset = UTF_8, append: Boolean = false): Unit =
         val options = Vector(CREATE, WRITE, if append then APPEND else TRUNCATE_EXISTING)
         writeString(delegate, string, encoding, options*)
-      }
 
       def ++=[W: Writable](writable: W): Unit =
         autoClosing(new BufferedOutputStream(new FileOutputStream(delegate.toFile, true)))(
@@ -150,10 +139,9 @@ object FileUtils
         // Java 11: Files.readString(encoding)
         new String(ByteArray.fromFileUnlimited(delegate).unsafeArray, encoding)
 
-      def writeUtf8Executable(string: String): Unit = {
+      def writeUtf8Executable(string: String): Unit =
         write(string, UTF_8)
         makeExecutable()
-      }
 
       def useInputStream[A](body: InputStream => A): A =
         autoClosing(new BufferedInputStream(new FileInputStream(delegate.toFile)))(body)
@@ -164,9 +152,8 @@ object FileUtils
         })
 
       def makeExecutable(): Unit =
-        if isUnix then {
+        if isUnix then
           setPosixFilePermissions(delegate, PosixFilePermissions.fromString("r-x------"))
-        }
 
       /**
         * Returns the content of the directory denoted by `this`.
@@ -179,18 +166,14 @@ object FileUtils
         */
       def directoryContentsAs[C](factory: collection.Factory[Path, C]): C =
         autoClosing(Files.list(delegate)) { _.asScala.to(factory) }
-    }
-  }
 
   import syntax.*
 
   @tailrec
-  def createShortNamedDirectory(directory: Path, prefix: String): Path = {
+  def createShortNamedDirectory(directory: Path, prefix: String): Path =
     try Files.createDirectory(directory / (prefix + newRandomFilenameString()))
-    catch {
+    catch
       case _: FileAlreadyExistsException => createShortNamedDirectory(directory, prefix)
-    }
-  }
 
   private val FilenameCharacterSet = "abcdefghijklmnopqrstuvwxyz0123456789"
   private[io] val ShortNameSize = 6  // Results in 36**6 == 2176782336 permutations
@@ -206,21 +189,18 @@ object FileUtils
 
   def autoDeleting[A](file: Path)(body: Path => A): A =
     withCloser { closer =>
-      closer.onClose {
+      closer.onClose:
         deleteIfExists(file)
-      }
       body(file)
   }
 
-  def withTemporaryDirectory[A](prefix: String = "")(body: Path => A): A = {
+  def withTemporaryDirectory[A](prefix: String = "")(body: Path => A): A =
     val dir = Files.createTempDirectory(prefix)
     withCloser { closer =>
-      closer.onClose {
+      closer.onClose:
         deleteDirectoryRecursively(dir)
-      }
       body(dir)
     }
-  }
 
   def temporaryDirectoryResource(prefix: String): Resource[Task, Path] =
     Resource.make(
@@ -238,38 +218,33 @@ object FileUtils
         catch { case t: IOException => logger.error(s"Delete $file => $t")}
       })
 
-  def deleteDirectoryRecursively(dir: Path): Unit = {
+  def deleteDirectoryRecursively(dir: Path): Unit =
     if !isDirectory(dir) then throw new IOException(s"Not a directory: $dir")
-    if !isSymbolicLink(dir) then {
+    if !isSymbolicLink(dir) then
       deleteDirectoryContentRecursively(dir)
-    }
     delete(dir)
-  }
 
   def deleteDirectoryContentRecursively(dir: Path): Unit =
-    for f <- dir.directoryContents do {
+    for f <- dir.directoryContents do
       if isDirectory(f) && !isSymbolicLink(f) then deleteDirectoryContentRecursively(f)
       delete(f)
-    }
 
   def tryDeleteDirectoryContentRecursively(dir: Path): Unit =
-    for f <- dir.directoryContents do {
+    for f <- dir.directoryContents do
       if isDirectory(f) && !isSymbolicLink(f) then deleteDirectoryContentRecursively(f)
       try delete(f)
       catch { case NonFatal(t) =>
         logger.warn(s"Delete $f => ${t.toStringWithCauses}")
       }
-    }
 
   def nestedPathsIterator(directory: Path, options: FileVisitOption*): AutoCloseable & Iterator[Path] =
-    new AbstractIterator[Path] with AutoCloseable {
+    new AbstractIterator[Path] with AutoCloseable:
       private val javaStream = Files.walk(directory, options*)
       private val underlyingIterator = javaStream.asScala
 
       def close() = javaStream.close()
       def hasNext = underlyingIterator.hasNext
       def next() = underlyingIterator.next()
-    }
 
   private val RelativePathRegex = """^(/|\\|..?/|..?\\)|([/\\]..?([/\\]|$))""".r.unanchored
 
@@ -280,4 +255,3 @@ object FileUtils
       Left(Problem(s"Not a valid relative file path: $path"))
     else
       Right(path)
-}

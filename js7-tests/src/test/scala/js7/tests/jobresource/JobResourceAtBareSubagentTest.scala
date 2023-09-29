@@ -12,8 +12,7 @@ import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 
-final class JobResourceAtBareSubagentTest extends JobResourceTest
-{
+final class JobResourceAtBareSubagentTest extends JobResourceTest:
   override protected val agentConfig = config"""
     js7.auth.subagents.BARE-SUBAGENT = "${toLocalSubagentId(agentPath).string}'s PASSWORD"
     """.withFallback(super.agentConfig)
@@ -26,7 +25,7 @@ final class JobResourceAtBareSubagentTest extends JobResourceTest
   private lazy val (bSubagent, bSubagentRelease) =
     directoryProvider.bareSubagentResource(bareSubagentItem).allocated.await(99.s)
 
-  override def beforeAll() = {
+  override def beforeAll() =
     super.beforeAll()
     controller.api
       .updateItems(Observable(
@@ -35,10 +34,7 @@ final class JobResourceAtBareSubagentTest extends JobResourceTest
       .await(99.s)
       .orThrow
     bSubagent // Start Subagent
-  }
 
-  override def afterAll() = {
+  override def afterAll() =
     bSubagentRelease.await(99.s)
     super.afterAll()
-  }
-}

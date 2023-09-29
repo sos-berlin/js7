@@ -4,9 +4,8 @@ import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import scala.collection.immutable.HashSet
 
-final class ToSuperclassTest extends OurTestSuite
-{
-  "checked" in {
+final class ToSuperclassTest extends OurTestSuite:
+  "checked" in:
     val superclasses = Set[Class[? <: Iterable[?]]](
       classOf[Seq[?]],
       classOf[Set[?]])
@@ -27,5 +26,3 @@ final class ToSuperclassTest extends OurTestSuite
       classOf[Set[?]]     -> Some(classOf[Set[?]]),
       classOf[HashSet[?]] -> Some(classOf[Set[?]]),
       classOf[Map[?, ?]]  -> None))
-  }
-}

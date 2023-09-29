@@ -6,7 +6,7 @@ import js7.base.convert.As
 import js7.base.time.JavaTime.*
 import js7.common.scalautil.xmls.ScalaXMLEventReader
 
-object OldScheduleXmlParser{
+object OldScheduleXmlParser:
 
   private implicit val StringAsDayOfWeek: As[String, DayOfWeek] =
     As(
@@ -15,16 +15,14 @@ object OldScheduleXmlParser{
   private implicit val StringAsZoneId: As[String, ZoneId] =
     As(o => ZoneId.of(o))
 
-  private implicit val StringAsLocalTime: As[String, LocalTime] = {
+  private implicit val StringAsLocalTime: As[String, LocalTime] =
     val ParseRegex = """([0-9]{1,2}):([0-9]{2})(?::([0-9]{2}))?""".r
-    As {
+    As:
       case ParseRegex(hours, minutes, seconds) =>
         LocalTime.of(hours.toInt, minutes.toInt, (Option(seconds) getOrElse "0").toInt)
       case o => throw new IllegalArgumentException(s"Not a local time: '$o'")
-    }
-  }
 
-  def parse(xmlEventReader: XMLEventReader, defaultTimeZone: ZoneId): OldSchedule = {
+  def parse(xmlEventReader: XMLEventReader, defaultTimeZone: ZoneId): OldSchedule =
     val eventReader = new ScalaXMLEventReader(xmlEventReader)
     import eventReader.*
 
@@ -34,8 +32,8 @@ object OldScheduleXmlParser{
       }.map(_._2))
 
     def parsePeriod(): Period =
-      parseElement("period") {
-        attributeMap.optionAs[LocalTime]("single_start") match {
+      parseElement("period"):
+        attributeMap.optionAs[LocalTime]("single_start") match
           case Some(singleStart) =>
             SingleStartPeriod(singleStart)
           case None =>
@@ -44,10 +42,8 @@ object OldScheduleXmlParser{
               end = attributeMap.as[ExtendedLocalTime]("end", ExtendedLocalTime.EndOfDay),
               absoluteRepeat = bigDecimalToDuration(attributeMap.as[BigDecimal]("absolute_repeat")))
               //startOnce = attributeMap.as[Boolean]("start_once", default.startOnce))
-        }
-      }
 
-    parseElement("run_time") {
+    parseElement("run_time"):
       val timeZone = attributeMap.as[ZoneId]("time_zone", defaultTimeZone)
       if peek.isEndElement then
         OldSchedule.empty(timeZone)
@@ -63,6 +59,3 @@ object OldScheduleXmlParser{
               dayOfWeek -> parsePeriodSeq()
             }
           } .toMap)
-    }
-  }
-}

@@ -16,8 +16,7 @@ import scala.reflect.ClassTag
 
 /** Client side bookkeeping of attachments. */
 final case class ClientAttachments[D <: DelegateId: ClassTag: Tag](
-  itemToDelegateToAttachedState: Map[InventoryItemKey, Map[D, ItemAttachedState.NotDetached]])
-{
+  itemToDelegateToAttachedState: Map[InventoryItemKey, Map[D, ItemAttachedState.NotDetached]]):
   def estimatedSnapshotSize: Int =
     itemToDelegateToAttachedState.values.view.map(_.size).sum
 
@@ -30,10 +29,10 @@ final case class ClientAttachments[D <: DelegateId: ClassTag: Tag](
         }
       })
 
-  def applyEvent(event: ItemAttachedStateEvent): Checked[ClientAttachments[D]] = {
+  def applyEvent(event: ItemAttachedStateEvent): Checked[ClientAttachments[D]] =
     val delegateId = cast[D](event.delegateId)
     import event.{attachedState, key as itemKey}
-    attachedState match {
+    attachedState match
       case attachedState: NotDetached =>
         Right(copy(
           itemToDelegateToAttachedState = itemToDelegateToAttachedState +
@@ -53,11 +52,9 @@ final case class ClientAttachments[D <: DelegateId: ClassTag: Tag](
             else
               itemToDelegateToAttachedState + (itemKey -> updated)
           })
-    }
-  }
 
   def applyItemDeleted(event: ItemDeleted): ClientAttachments[D] =
-    event.key match {
+    event.key match
       case delegateId: DelegateId =>
         copy(
           itemToDelegateToAttachedState = itemToDelegateToAttachedState
@@ -81,15 +78,11 @@ final case class ClientAttachments[D <: DelegateId: ClassTag: Tag](
       case itemKey =>
         copy(
           itemToDelegateToAttachedState = itemToDelegateToAttachedState - itemKey)
-    }
-}
 
-object ClientAttachments
-{
+object ClientAttachments:
   private val Empty = ClientAttachments[DelegateId](Map.empty)
 
   def empty[D <: DelegateId] =
     Empty.asInstanceOf[ClientAttachments[D]]
 
   private val logger = Logger[this.type]
-}

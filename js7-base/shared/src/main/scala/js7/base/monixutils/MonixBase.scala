@@ -24,8 +24,7 @@ import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.{Future, Promise}
 
-object MonixBase
-{
+object MonixBase:
   private val FalseTask = Task.pure(false)
   private val TrueTask = Task.pure(true)
   private val CompletedTask = Task.pure(Completed)
@@ -35,16 +34,13 @@ object MonixBase
   val InfoWorryDuration = DefaultWorryDurations.last
   private val logger = js7.base.log.Logger[this.type]
 
-  object syntax
-  {
-    implicit class RichTaskCompanion(private val underlying: Task.type) extends AnyVal {
+  object syntax:
+    implicit class RichTaskCompanion(private val underlying: Task.type) extends AnyVal:
       def False = FalseTask
       def True = TrueTask
       def completed = CompletedTask
-    }
 
-    implicit class RichMonixTask[A](private val task: Task[A]) extends AnyVal
-    {
+    implicit class RichMonixTask[A](private val task: Task[A]) extends AnyVal:
       def when(condition: Boolean)(implicit A: Monoid[A]): Task[A] =
         if condition then
           task
@@ -55,10 +51,9 @@ object MonixBase
         when(!condition)
 
       def maybeTimeout(duration: Duration): Task[A] =
-        duration match {
+        duration match
           case d: FiniteDuration => task.timeout(d)
           case _ => task
-        }
 
       def raceFold[B >: A](canceler: Task[B]): Task[B] =
         Task
@@ -67,10 +62,9 @@ object MonixBase
 
       def guaranteeExceptWhenCompleted(release: Task[Unit]): Task[A] =
         task
-          .guaranteeCase {
+          .guaranteeCase:
             case ExitCase.Completed => Task.unit
             case _ => release
-          }
 
       def startAndForgetOrLog(what: => String): Task[Unit] =
         task
@@ -95,7 +89,7 @@ object MonixBase
 
       private def logWhenItTakesLonger2(preposition: String, completed: String, what: => String)
       : Task[A] =
-        Task.defer {
+        Task.defer:
           val since = now
           var infoLogged = false
           task
@@ -117,7 +111,6 @@ object MonixBase
               case ExitCase.Error(t) => logger.info(
                 s"💥 $what failed after ${since.elapsed.pretty} with ${t.toStringWithCauses}")
             }))
-        }
 
       /** When `this` takes longer than `duration` then call `thenDo` once. */
       def whenItTakesLonger(duration: FiniteDuration)(thenDo: Task[Unit]): Task[A] =
@@ -133,7 +126,7 @@ object MonixBase
         * @param thenDo A function which gets the elapsed time since start as argument. */
       def whenItTakesLonger(durations: IterableOnce[FiniteDuration] = DefaultWorryDurations)
         (thenDo: FiniteDuration => Task[Unit])
-      : Task[A] = {
+      : Task[A] =
         val durationIterator = durations.iterator
         if durationIterator.isEmpty then
           task
@@ -152,11 +145,8 @@ object MonixBase
               }
               .start
               .bracket(_ => task)(_.cancel))
-      }
-    }
 
-    implicit class RichMonixObservableCompanion(private val underlying: Observable.type) extends AnyVal
-    {
+    implicit class RichMonixObservableCompanion(private val underlying: Observable.type) extends AnyVal:
       /** Provides the Scheduler, similar to Task deferAction. */
       def deferAction[A](toObservable: Scheduler => Observable[A]): Observable[A] =
         Observable
@@ -164,10 +154,8 @@ object MonixBase
             Task.deferAction(implicit scheduler =>
               Task(toObservable(scheduler))))
           .flatten
-    }
 
-    implicit class RichMonixObservable[A](private val underlying: Observable[A]) extends AnyVal
-    {
+    implicit class RichMonixObservable[A](private val underlying: Observable[A]) extends AnyVal:
       /** Like toListL, but for an IterableFactory. */
       def toL[Col[x] <: IterableOps[x, Iterable, Iterable[x]]](factory: IterableFactory[Col])
       : Task[Col[A @uncheckedVariance]] =
@@ -209,7 +197,7 @@ object MonixBase
         responsive: Boolean = false,
         parallelism: Int = sys.runtime.availableProcessors)
         (f: A => B)
-      : Observable[B] = {
+      : Observable[B] =
         val minimumBackPressure = BackPressure(parallelism max 2)
         if batchSize <= 0 || parallelism <= 1 then
           underlying.map(f)
@@ -226,7 +214,6 @@ object MonixBase
             .mapParallelOrdered(parallelism)(seq => Task(seq.map(f)))(
               minimumBackPressure)
             .flatMap(Observable.fromIterable)
-      }
 
       def mapParallelUnorderedBatch[B](
         batchSize: Int = DefaultBatchSize,
@@ -241,10 +228,9 @@ object MonixBase
             .mapParallelUnordered(parallelism)(seq => Task(seq map f))
             .flatMap(Observable.fromIterable)
 
-       def updateState[S](seed: S)(f: (S, A) => S): Observable[(S, A)] =
-         underlying.scan((seed, null.asInstanceOf[A])) {
-           case ((state, _), a) => f(state, a) -> a
-         }
+      def updateState[S](seed: S)(f: (S, A) => S): Observable[(S, A)] =
+        underlying.scan((seed, null.asInstanceOf[A])):
+          case ((state, _), a) => f(state, a) -> a
 
       def updateStateWhileInclusive[S](seed: S)(predicate: S => Boolean)(f: (S, A) => S)
       : Observable[A] =
@@ -265,20 +251,16 @@ object MonixBase
 
       final def buffer(timespan: Option[FiniteDuration], maxCount: Long, toWeight: A => Long = _ => 1): Observable[Seq[A]] =
         new BufferedObservable[A](underlying, timespan, maxCount, toWeight)
-    }
 
-    implicit class RichMonixAckFuture(private val ack: Future[Ack]) extends AnyVal {
+    implicit class RichMonixAckFuture(private val ack: Future[Ack]) extends AnyVal:
       def syncFlatMapOnContinue(body: => Future[Ack])(implicit u: UncaughtExceptionReporter) =
-        ack.syncTryFlatten.syncFlatMap {
+        ack.syncTryFlatten.syncFlatMap:
           case Continue => body
           case Stop =>
             logger.debug("Ack.syncFlatMapOnContinue ignored because Observable returned Stop")
             Stop
-        }
-    }
 
-    implicit class RichMonixObservableTask[A](private val underlying: Task[Observable[A]]) extends AnyVal
-    {
+    implicit class RichMonixObservableTask[A](private val underlying: Task[Observable[A]]) extends AnyVal:
       def logTiming(
         toCount: A => Long = simpleCount,
         onComplete: (FiniteDuration, Long, ExitCase[Throwable]) => Unit,
@@ -288,60 +270,48 @@ object MonixBase
           .map(Right(_))
           .logTiming(toCount, onComplete, startedAt)
           .map(_.orThrow/*never throws*/)
-    }
 
     implicit class RichMonixObservableCheckedTask[A](private val underlying: Task[Checked[Observable[A]]])
-    extends AnyVal
-    {
+    extends AnyVal:
       def logTiming(
         toCount: A => Long = simpleCount,
         onComplete: (FiniteDuration, Long, ExitCase[Throwable]) => Unit,
         startedAt: => Deadline = now)
       : Task[Checked[Observable[A]]] =
-        Task.defer {
+        Task.defer:
           val startedAt_ = startedAt
           var counter = 0L
           underlying.map(_.map(_
             .map { a => counter += toCount(a); a }
             .guaranteeCase(exitCase => Task(onComplete(startedAt_.elapsed, counter, exitCase)))))
-        }
-    }
 
-    implicit class RichObserableIterable[A](private val underlying: Iterable[A]) extends AnyVal
-    {
+    implicit class RichObserableIterable[A](private val underlying: Iterable[A]) extends AnyVal:
       def toObservable: Observable[A] =
         Observable.fromIterable(underlying)
-    }
 
     private def simpleCount[A](a: A) = 1L
 
-    implicit class RichCheckedTask[A](private val task: Task[Checked[A]]) extends AnyVal
-    {
+    implicit class RichCheckedTask[A](private val task: Task[Checked[A]]) extends AnyVal:
       /** Converts a failed Task into a `Task[Left[Throwable]]`. */
       def materializeIntoChecked: Task[Checked[A]] =
         task.materialize.map(Checked.flattenTryChecked)
 
       def orThrow: Task[A] =
-        task.flatMap {
+        task.flatMap:
           case Left(problem) => Task.raiseError(problem.throwable)
           case Right(a) => Task.pure(a)
-        }
 
       def guaranteeExceptWhenRight(release: Task[Unit]): Task[Checked[A]] =
         task
-          .guaranteeCase {
+          .guaranteeCase:
             case ExitCase.Completed => Task.unit
             case _ => release
-          }
-          .flatTap {
+          .flatTap:
             case Left(problem) => release.as(Left(problem))
             case Right(_) => Task.unit
-          }
-    }
 
     implicit final class RichMonixResource[A](private val resource: Resource[Task, A])
-    extends AnyVal
-    {
+    extends AnyVal:
       def executeOn(scheduler: Scheduler): Resource[Task, A] =
         Resource.suspend(
           // Execute acquire and release on the given `scheduler`
@@ -353,17 +323,15 @@ object MonixBase
                 release = _ => release.executeOn(scheduler))
             }
             .executeOn(scheduler))
-    }
 
-    implicit final class RichScheduler(private val scheduler: Scheduler) extends AnyVal
-    {
+    implicit final class RichScheduler(private val scheduler: Scheduler) extends AnyVal:
       def timestamp: Timestamp =
         Timestamp.ofEpochMilli(scheduler.clockRealTime(MILLISECONDS))
 
-      def scheduleAtFixedRates(durations: IterableOnce[FiniteDuration])(body: => Unit): Cancelable = {
+      def scheduleAtFixedRates(durations: IterableOnce[FiniteDuration])(body: => Unit): Cancelable =
         val cancelable = SerialCancelable()
         val iterator = durations.iterator
-        def loop(last: MonixDeadline): Unit = {
+        def loop(last: MonixDeadline): Unit =
           val nextDuration = iterator.next()
           val next = last + nextDuration
           val delay = next - scheduler.now
@@ -375,27 +343,20 @@ object MonixBase
               }
             else
               scheduler.scheduleAtFixedRate(delay, nextDuration)(body))
-        }
-        if iterator.hasNext then {
+        if iterator.hasNext then
           loop(scheduler.now)
-        }
         cancelable
-      }
-    }
-  }
 
   def promiseTask[A](body: Promise[A] => Unit): Task[A] =
-    Task.deferFuture {
+    Task.deferFuture:
       val promise = Promise[A]()
       body(promise)
       promise.future
-    }
 
   def durationOfTask[A](task: Task[A]): Task[(A, FiniteDuration)] =
-    Task.defer {
+    Task.defer:
       val t = now
       task.map(_ -> t.elapsed)
-    }
 
   def closeableIteratorToObservable[A](iterator: CloseableIterator[A]): Observable[A] =
     closingIteratorToObservable(iterator.closeAtEnd)
@@ -403,10 +364,9 @@ object MonixBase
   private def closingIteratorToObservable[A](iterator: CloseableIterator[A]): Observable[A] =
     Observable.fromIterator(Task(iterator))
       .guaranteeCase { exitCase =>
-        Task {
+        Task:
           logger.trace(s"Close $iterator $exitCase")
           iterator.close()
-        }
       }
 
   /** Like Observable tailRecM, but limits the memory leak.
@@ -415,7 +375,7 @@ object MonixBase
     * @see see Monix 3.2.1, https://github.com/monix/monix/issues/791
     */
   def memoryLeakLimitedObservableTailRecM[A, B](a: A, limit: Int)(f: A => Observable[Either[A, B]]): Observable[B] =
-    Observable.defer {
+    Observable.defer:
       var leftCounter = 0
       Observable.tailRecM(a)(a =>
         f(a).flatMap {
@@ -430,5 +390,3 @@ object MonixBase
 
           case o => Observable.pure(o)
         })
-    }
-}

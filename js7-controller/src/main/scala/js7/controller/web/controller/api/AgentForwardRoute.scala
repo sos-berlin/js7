@@ -27,8 +27,7 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import scala.collection.MapView
 
-trait AgentForwardRoute extends ControllerRouteProvider
-{
+trait AgentForwardRoute extends ControllerRouteProvider:
   protected implicit def actorSystem: ActorSystem
   protected def pathToAgentRefState: Task[Checked[MapView[AgentPath, AgentRefState]]]
   protected def controllerConfiguration: ControllerConfiguration
@@ -56,7 +55,7 @@ trait AgentForwardRoute extends ControllerRouteProvider
     agentPath: AgentPath,
     userAndPassword: Option[UserAndPassword],
     request: HttpRequest)
-  : Route = {
+  : Route =
     def route =
       rawPathPrefix(PathMatchers.Remaining)(remaining =>
         if request.method == GET && remaining.isEmpty then
@@ -83,7 +82,7 @@ trait AgentForwardRoute extends ControllerRouteProvider
             rawQueryString = request.uri.rawQueryString)
           uri -> akkaUri
         })
-        .flatMap {
+        .flatMap:
           case Left(problem) =>
             Task.pure(HttpResponse(
               problem.httpStatusCode,
@@ -92,7 +91,6 @@ trait AgentForwardRoute extends ControllerRouteProvider
 
           case Right((uri, akkaUri)) =>
             forwardTo(agentRef, uri, akkaUri, request.headers)
-        }
 
     def forwardTo(agentRef: AgentRef, uri: Uri, akkaUri: AkkaUri, headers: Seq[HttpHeader])
     : Task[HttpResponse] =
@@ -113,10 +111,8 @@ trait AgentForwardRoute extends ControllerRouteProvider
         }
 
     route
-  }
-}
 
-object AgentForwardRoute {
+object AgentForwardRoute:
   private val isForwardableHeaderClass = Set[Class[? <: HttpHeader]](
     classOf[Accept],
     classOf[`Accept-Encoding`],
@@ -139,4 +135,3 @@ object AgentForwardRoute {
     classOf[headers.`Tls-Session-Info`])
     //classOf[headers.`Content-Type`],
     //classOf[headers.`Content-Length`])
-}

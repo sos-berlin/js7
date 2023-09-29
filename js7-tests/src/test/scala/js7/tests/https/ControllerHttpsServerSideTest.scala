@@ -5,6 +5,5 @@ package js7.tests.https
   *
   * @author Joacim Zschimmer
   */
-final class ControllerHttpsServerSideTest extends ControllerHttpsStandardTests {
+final class ControllerHttpsServerSideTest extends ControllerHttpsStandardTests:
   addTestsForCredentials()
-}

@@ -16,9 +16,8 @@ import org.scalatest.matchers.should.Matchers.*
 /**
   * @author Joacim Zschimmer
   */
-final class FileEventIteratorTest extends OurTestSuite
-{
-  "FileEventIterator" in {
+final class FileEventIteratorTest extends OurTestSuite:
+  "FileEventIterator" in:
     FileUtils.withTemporaryDirectory("FileEventIteratorPoolTest-") { dir =>
       val journalLocation = JournalLocation(TestState, dir resolve "test")
       val journalFile = journalLocation.file(after = After)
@@ -31,18 +30,16 @@ final class FileEventIteratorTest extends OurTestSuite
       val firstPos = PositionAnd(iterator.firstEventPosition, After)
       val secondPos = PositionAnd(iterator.position, TestEvents(0).eventId)
 
-      for _ <- 1 to 3 do {
+      for _ <- 1 to 3 do
         iterator.seek(firstPos)
         assert(iterator.next() == TestEvents(0))
         assert(iterator.next() == TestEvents(1))
         assert(iterator.next() == TestEvents(2))
         assert(iterator.next() == TestEvents(3))
         assert(!iterator.hasNext)
-      }
 
-      intercept[IllegalArgumentException] {
+      intercept[IllegalArgumentException]:
         iterator.seek(PositionAnd(iterator.firstEventPosition, After - 1))
-      }
 
       iterator.seek(secondPos)
       iterator.next() shouldEqual TestEvents(1)
@@ -137,10 +134,8 @@ final class FileEventIteratorTest extends OurTestSuite
 
       iterator.close()
     }
-  }
-}
 
-object FileEventIteratorTest {
+object FileEventIteratorTest:
   private val After = EventId(1000)
   private val TestEvents =
     Stamped(After + 10, "A" <-: AEvent) ::
@@ -148,4 +143,3 @@ object FileEventIteratorTest {
     Stamped(After + 30, "C" <-: AEvent) ::  // Transaction
     Stamped(After + 40, "D" <-: AEvent) ::
     Nil
-}

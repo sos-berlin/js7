@@ -23,8 +23,7 @@ import js7.tests.jobs.{DeleteFileJob, SemaphoreJob}
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.traced
 
-final class FileWatchNarrowPatternTest extends OurTestSuite with ControllerAgentForScalaTest
-{
+final class FileWatchNarrowPatternTest extends OurTestSuite with ControllerAgentForScalaTest:
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(workflow)
   override protected val controllerConfig = config"""
@@ -52,7 +51,7 @@ final class FileWatchNarrowPatternTest extends OurTestSuite with ControllerAgent
   private val bFile = sourceDirectory / "NARROW-B"
   private val bOrderId = fileToOrderId("NARROW-B")
 
-  "Add two files" in {
+  "Add two files" in:
     createDirectory(sourceDirectory)
     controller.api.updateUnsignedSimpleItems(Seq(fileWatch)).await(99.s).orThrow
     eventWatch.await[ItemAttached](_.event.key == fileWatch.path)
@@ -65,9 +64,8 @@ final class FileWatchNarrowPatternTest extends OurTestSuite with ControllerAgent
     bFile := ""
     eventWatch.await[ExternalOrderArised](_.event.externalOrderName == ExternalOrderName("NARROW-B"))
     eventWatch.await[OrderStarted](_.key == bOrderId)
-  }
 
-  "Narrow the pattern" in {
+  "Narrow the pattern" in:
     val eventId = eventWatch.lastAddedEventId
     val changedFileWatch = fileWatch.copy(pattern = Some(SimplePattern("NARROW-.+")))
     controller.api.updateUnsignedSimpleItems(Seq(changedFileWatch)).await(99.s).orThrow
@@ -83,11 +81,8 @@ final class FileWatchNarrowPatternTest extends OurTestSuite with ControllerAgent
     TestJob.continue(2)
     eventWatch.await[OrderDeleted](_.key == aOrderId)
     eventWatch.await[OrderDeleted](_.key == bOrderId)
-  }
-}
 
-object FileWatchNarrowPatternTest
-{
+object FileWatchNarrowPatternTest:
   private val agentPath = AgentPath("AGENT")
 
   private val workflow = Workflow(
@@ -98,4 +93,3 @@ object FileWatchNarrowPatternTest
 
   private class TestJob extends SemaphoreJob(TestJob)
   private object TestJob extends SemaphoreJob.Companion[TestJob]
-}

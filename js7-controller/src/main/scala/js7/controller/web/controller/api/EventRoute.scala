@@ -10,8 +10,7 @@ import js7.journal.web.GenericEventRoute.StampedEventFilter
 /**
   * @author Joacim Zschimmer
   */
-trait EventRoute extends ControllerRouteProvider with GenericEventRoute
-{
+trait EventRoute extends ControllerRouteProvider with GenericEventRoute:
   protected def eventWatch: EventWatch
 
   protected lazy val eventRoute = filteredEventRoute(identity)
@@ -21,4 +20,3 @@ trait EventRoute extends ControllerRouteProvider with GenericEventRoute
       def keyedEventTypedJsonCodec = ControllerState.keyedEventJsonCodec
       override def filterObservable = filter
     }.route
-}

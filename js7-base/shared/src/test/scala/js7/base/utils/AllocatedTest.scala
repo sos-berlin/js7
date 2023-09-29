@@ -6,7 +6,7 @@ import js7.base.test.OurAsyncTestSuite
 import js7.base.utils.CatsUtils.syntax.RichResource
 import monix.execution.Scheduler
 
-final class AllocatedTest extends OurAsyncTestSuite {
+final class AllocatedTest extends OurAsyncTestSuite:
 
   private var nr = 0
   private implicit val contextShift: ContextShift[IO] =
@@ -23,23 +23,18 @@ final class AllocatedTest extends OurAsyncTestSuite {
       assert(nr >= 0)
     })
 
-  "Normal usage" in {
+  "Normal usage" in:
     val res = resource.flatMap(a => resource.map(a -> _))
     res.use { case (a, b) =>
-      IO {
+      IO:
         assert(nr == 2 && a == 1 && b == 2)
-      }
     }.unsafeToFuture()
-  }
 
-  "Allocated" in {
+  "Allocated" in:
     assert(nr == 0)
     val res = resource.toAllocatedResource.flatMap(a => resource.toAllocatedResource.map(a -> _))
     res.use { case (a, b) =>
-      IO {
+      IO:
         assert(nr == 2 && a.allocatedThing == 1 && b.allocatedThing == 2)
-      }
     }.map(_ => assert(nr == 0))
       .unsafeToFuture()
-  }
-}

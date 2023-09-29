@@ -27,8 +27,7 @@ import scala.util.{Failure, Success}
 final class ProcessDriver(
   orderId: OrderId,
   conf: TaskConfiguration,
-  jobLauncherConf: JobLauncherConf)
-{
+  jobLauncherConf: JobLauncherConf):
   import jobLauncherConf.implicitIox
 
   private val taskId = taskIdGenerator.next()
@@ -45,15 +44,14 @@ final class ProcessDriver(
   def startAndRunProcess(env: Map[String, Option[String]], stdObservers: StdObservers)
   : Task[Fiber[Outcome.Completed]] =
     startProcess(env, stdObservers)
-      .flatMap {
+      .flatMap:
         case Left(problem) => Task.pure(Outcome.Failed.fromProblem(problem): Outcome.Completed).start
         case Right(richProcess) => outcomeOf(richProcess).start
-      }
 
   private def startProcess(env: Map[String, Option[String]], stdObservers: StdObservers)
   : Task[Checked[RichProcess]] =
     Task.deferAction { implicit scheduler =>
-      killedBeforeStart match {
+      killedBeforeStart match
         case Some(signal) =>
           Task.pure(Left(Problem.pure("Processing killed before start")))
 
@@ -96,7 +94,6 @@ final class ProcessDriver(
                         .as(Right(richProcess))
                   }
                 }))
-      }
     }
 
   private def outcomeOf(richProcess: RichProcess): Task[Outcome.Completed] =
@@ -109,7 +106,7 @@ final class ProcessDriver(
         Task.fromTry(tried)
       }
       .map { returnCode =>
-        fetchReturnValuesThenDeleteFile() match {
+        fetchReturnValuesThenDeleteFile() match
           case Left(problem) =>
             Outcome.Failed.fromProblem(
               problem.withPrefix("Reading return values failed:"),
@@ -117,18 +114,16 @@ final class ProcessDriver(
 
           case Right(namedValues) =>
             conf.toOutcome(namedValues, returnCode)
-        }
       }
       .guarantee(Task {
         returnValuesProvider.tryDeleteFile()
       })
 
   private def fetchReturnValuesThenDeleteFile(): Checked[NamedValues] =
-    catchNonFatal {
+    catchNonFatal:
       val result = returnValuesProvider.read()
       returnValuesProvider.tryDeleteFile()
       result
-    }
 
   def kill(signal: ProcessSignal): Task[Unit] =
     startProcessLock.lock("kill")(Task.defer {
@@ -145,24 +140,19 @@ final class ProcessDriver(
     })
 
   private def sendProcessSignal(richProcess: RichProcess, signal: ProcessSignal): Task[Unit] =
-    Task.defer {
+    Task.defer:
       logger.info(s"$orderId: Process $richProcess: kill \"$signal\"")
       richProcess.sendProcessSignal(signal)
-    }
 
   override def toString = s"ProcessDriver($taskId ${conf.jobKey})"
-}
 
-object ProcessDriver
-{
+object ProcessDriver:
   private val logger = Logger[this.type]
 
   /** Linux may return a "busy" error when starting many processes at once. */
   private val globalStartProcessLock = AsyncLock("Process start")
 
-  private object taskIdGenerator extends AbstractIterator[TaskId] {
+  private object taskIdGenerator extends AbstractIterator[TaskId]:
     private val generator = newGenerator()
     def hasNext = generator.hasNext
     def next() = generator.next()
-  }
-}

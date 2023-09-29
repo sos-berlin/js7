@@ -31,8 +31,7 @@ import scala.concurrent.Future
 /**
  * @author Joacim Zschimmer
  */
-final class CommandWebServerTest extends OurAsyncTestSuite
-{
+final class CommandWebServerTest extends OurAsyncTestSuite:
   private val n = 1_000 //1_000_000
   private lazy val orderIds = (for i <- 1 to n yield OrderId(s"A-MEDIUM-LONG-ORDER-$i")).toSet
   private lazy val coupleController = CoupleController(
@@ -48,15 +47,14 @@ final class CommandWebServerTest extends OurAsyncTestSuite
       as)))
   yield client
 
-  "Big response" in {
+  "Big response" in:
     clientResource.use(_.commandExecute(coupleController))
       .map(response => assert(response == Right(CoupleController.Response(orderIds))))
       .runToFuture
-  }
 
   private def route(implicit actorSystem: ActorSystem) =
-    decodeRequest/*decompress*/ {
-      pathSegments("agent/api/command") {
+    decodeRequest/*decompress*/ :
+      pathSegments("agent/api/command"):
         new CommandWebService {
           protected def scheduler = Scheduler.traced
           protected def whenShuttingDown = Future.never
@@ -78,16 +76,11 @@ final class CommandWebServerTest extends OurAsyncTestSuite
           protected val sessionRegister = SessionRegister.forTest[SubagentSession](
             actorSystem, SubagentSession.apply, SessionRegister.TestConfig)
         }.commandRoute
-      }
-    }
-}
 
-private object CommandWebServerTest
-{
+private object CommandWebServerTest:
   private val testConfig =
     config"""
       js7.web.server.auth.public = on
       js7.web.server.shutdown-timeout = 10s
       akka.http.client.parsing.max-content-length = 100MB
     """.withFallback(AgentConfiguration.DefaultConfig)
-}

@@ -9,21 +9,17 @@ import js7.tester.CirceJsonTester.*
 /**
   * @author Joacim Zschimmer
   */
-final class JournalEventTest extends OurTestSuite
-{
-  "SnapshotTaken" in {
+final class JournalEventTest extends OurTestSuite:
+  "SnapshotTaken" in:
     testJson[JournalEvent](SnapshotTaken,
       json"""{
         "TYPE": "SnapshotTaken"
       }""")
-  }
 
-  "JournalEventsReleased" in {
+  "JournalEventsReleased" in:
     testJson[JournalEvent](JournalEventsReleased(UserId("USER"), EventId(1234)),
       json"""{
         "TYPE": "JournalEventsReleased",
         "userId": "USER",
         "untilEventId": 1234
       }""")
-  }
-}

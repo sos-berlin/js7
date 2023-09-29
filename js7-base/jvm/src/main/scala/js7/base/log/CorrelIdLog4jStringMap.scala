@@ -6,8 +6,7 @@ import js7.base.utils.Tests.isTest
 import org.apache.logging.log4j.util.{BiConsumer, ReadOnlyStringMap, StringMap, TriConsumer}
 
 final class CorrelIdLog4jStringMap(private[log] val correlId: CorrelId)
-extends StringMap
-{
+extends StringMap:
   private def correlIdString =
     if correlId != null then
       correlId.fixedWidthString
@@ -33,20 +32,18 @@ extends StringMap
     key == CorrelIdKey
 
   def getValue[V](key: String): V =
-    key match {
+    key match
       case CorrelIdKey =>
         CorrelId.onCorrelIdLogged()
         correlIdString.asInstanceOf[V]
       case _ => null.asInstanceOf[V]
-    }
 
   def forEach[V](action: BiConsumer[String, ? >: V]): Unit =
     action.accept(CorrelIdKey, correlIdString.asInstanceOf[V])
 
-  def forEach[V, S](action: TriConsumer[String, ? >: V, S], state: S): Unit = {
+  def forEach[V, S](action: TriConsumer[String, ? >: V, S], state: S): Unit =
     _forEachCount += 1
     action.accept(CorrelIdKey, correlIdString.asInstanceOf[V], state)
-  }
 
   def clear() = throwFrozen()
 
@@ -58,12 +55,9 @@ extends StringMap
 
   private def throwFrozen() =
     throw new IllegalStateException("CorrelId StringMap is frozen")
-}
 
-object CorrelIdLog4jStringMap
-{
+object CorrelIdLog4jStringMap:
   private val nullString = "❓null❓"
   private var _forEachCount = 0L
 
   def forEachCount = _forEachCount
-}

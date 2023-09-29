@@ -10,19 +10,16 @@ import scala.annotation.unused
 
 sealed trait ItemOperation
 
-object ItemOperation
-{
+object ItemOperation:
   sealed trait SimpleItemOperation extends ItemOperation
   sealed trait AddOrChangeOperation extends ItemOperation
 
   sealed trait Remove extends ItemOperation
-  object Remove {
+  object Remove:
     def apply(path: InventoryItemPath): Remove =
-      path match {
+      path match
         case path: VersionedItemPath => ItemOperation.RemoveVersioned(path)
         case path: SimpleItemPath => ItemOperation.DeleteSimple(path)
-      }
-  }
 
   final case class AddOrChangeSimple(item: UnsignedSimpleItem)
   extends SimpleItemOperation with AddOrChangeOperation
@@ -31,8 +28,7 @@ object ItemOperation
   extends SimpleItemOperation with Remove
 
   sealed trait VersionedOperation extends ItemOperation
-  object VersionedOperation
-  {
+  object VersionedOperation:
     implicit def jsonCodec(implicit
       @unused/*Scala 2.13.8 macro?*/ itemPathJsonEncoder: Encoder[VersionedItemPath],
       @unused/*Scala 2.13.8 macro?*/ itemPathJsonDecoder: Decoder[VersionedItemPath])
@@ -41,7 +37,6 @@ object ItemOperation
         Subtype(deriveCodec[AddVersion]),
         Subtype(deriveCodec[AddOrChangeSigned]),
         Subtype(deriveCodec[RemoveVersioned]))
-  }
 
   final case class AddVersion(versionId: VersionId)
   extends VersionedOperation
@@ -68,4 +63,3 @@ object ItemOperation
       Subtype[VersionedOperation])
 
   intelliJuseImport(signableItemJsonCodec)
-}

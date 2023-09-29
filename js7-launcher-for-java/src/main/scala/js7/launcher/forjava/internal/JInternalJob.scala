@@ -15,8 +15,7 @@ import scala.compat.java8.FutureConverters.*
 import scala.concurrent.Future
 
 @InternalJobAdapter(classOf[JInternalJobAdapter])
-trait JInternalJob
-{
+trait JInternalJob:
   @Nonnull
   def start: CompletionStage[VEither[Problem, Void]] =
     CompletableFuture.completedFuture(VEither.right(Void))
@@ -28,16 +27,13 @@ trait JInternalJob
 
   @Nonnull
   def toOrderProcess(@Nonnull step: Step): JOrderProcess
-}
 
-object JInternalJob
-{
+object JInternalJob:
   final case class JobContext(asScala: InternalJob.JobContext)
   extends JavaJobContext
 
   final case class Step(asScala: InternalJob.Step)(private implicit val s: Scheduler)
-  extends JavaJobStep
-  {
+  extends JavaJobStep:
     def sendOut(string: String): CompletionStage[Void] =
       send(string, asScala.outObserver)
 
@@ -49,5 +45,3 @@ object JInternalJob
         case Stop => Future.failed(new IOException("Stream closed"))
         case Continue => Future.successful(Void)
       }.toJava
-  }
-}

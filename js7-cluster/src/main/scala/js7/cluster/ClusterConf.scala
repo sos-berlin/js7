@@ -23,19 +23,16 @@ final case class ClusterConf(
   clusterWatchUniquenessMemorySize: Int,
   testHeartbeatLossPropertyKey: Option[String] = None,
   testAckLossPropertyKey: Option[String] = None,
-  config: Config)
-{
+  config: Config):
   def isPrimary = !isBackup
-}
 
-object ClusterConf
-{
+object ClusterConf:
   val ClusterProductName = "js7.controller.cluster"
 
-  def fromConfig(config: Config): Checked[ClusterConf] = {
+  def fromConfig(config: Config): Checked[ClusterConf] =
     val isBackup = config.getBoolean("js7.journal.cluster.node.is-backup")
     for
-      maybeIdToUri <- {
+      maybeIdToUri <-
         val key = "js7.journal.cluster.nodes"
         if !config.hasPath(key) then
           Right(None)
@@ -45,16 +42,14 @@ object ClusterConf
           config.getObject(key)
             .asScala
             .map { case (k, v) =>
-              v.unwrapped match {
+              v.unwrapped match
                 case v: String => NodeId.checked(k).flatMap(id => Uri.checked(v).map(id -> _))
                 case _ => Left(Problem(
                   "A cluster node URI is expected to be configured as a string"))
-              }
             }
             .toVector
             .sequence
             .map(o => Some(o.toMap))
-      }
       nodeId = config.optionAs[NodeId]("js7.journal.cluster.node.id") getOrElse
         NodeId(if isBackup then "Backup" else "Primary")
       recouplingStreamReaderConf <- RecouplingStreamReaderConfs.fromConfig(config)
@@ -79,5 +74,3 @@ object ClusterConf
         testHeartbeatLoss,
         testAckLoss,
         config = config)
-  }
-}

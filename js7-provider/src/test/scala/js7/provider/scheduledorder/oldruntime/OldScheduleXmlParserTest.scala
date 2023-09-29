@@ -9,24 +9,22 @@ import js7.common.scalautil.xmls.XmlSources.*
 /**
   * @author Joacim Zschimmer
   */
-final class OldScheduleXmlParserTest extends OurTestSuite {
+final class OldScheduleXmlParserTest extends OurTestSuite:
 
   private val timeZone = ZoneId.of("Europe/Berlin")
 
-  "Empty" in {
+  "Empty" in:
     val x = "<run_time/>"
     assert(parse(x) == OldSchedule.empty(timeZone))
-  }
 
-  "Simple" in {
+  "Simple" in:
     val x = """<?xml version="1.0"?>
       <run_time>
         <period absolute_repeat="10"/>
       </run_time>"""
     assert(parse(x) == OldSchedule.daily(timeZone, RepeatPeriod.wholeDay(Duration.ofSeconds(10))))
-  }
 
-  "RepeatPeriod" in {
+  "RepeatPeriod" in:
     val x = """<?xml version="1.0"?>
       <run_time>
         <period begin="19:00" end="22:00" absolute_repeat="3"/>
@@ -38,9 +36,8 @@ final class OldScheduleXmlParserTest extends OurTestSuite {
       RepeatPeriod(LocalTime.of( 9, 0), ExtendedLocalTime.of(17, 0), Duration.ofSeconds(2)),
       RepeatPeriod(LocalTime.of(19, 0), ExtendedLocalTime.of(22, 0), Duration.ofSeconds(3))))
     assert(parse(x) == OldSchedule.daily(timeZone, periodSeq))
-  }
 
-  "weekdays" in {
+  "weekdays" in:
     val x = """<?xml version="1.0"?>
       <run_time>
         <weekdays>
@@ -86,10 +83,8 @@ final class OldScheduleXmlParserTest extends OurTestSuite {
         SingleStartPeriod(LocalTime.of(6, 6)))),
       SUNDAY -> PeriodSeq(List(
         SingleStartPeriod(LocalTime.of(7, 7)))))))
-  }
 
   private def parse(x: String) =
     ScalaXMLEventReader.parseDocument(x) { o =>
       OldScheduleXmlParser.parse(o, timeZone)
     }
-}

@@ -6,8 +6,7 @@ import monix.execution.atomic.AtomicAny
 /**
   * @author Joacim Zschimmer
   */
-trait Session extends HasTimeout
-{
+trait Session extends HasTimeout:
   protected[session] def sessionInit: SessionInit
 
   final def sessionNumber = sessionToken.number
@@ -22,4 +21,3 @@ trait Session extends HasTimeout
   /** Succeeds only once. */
   private[session] final def tryUpdateUser(user: SimpleUser): Boolean =
     _user.compareAndSet(sessionInit.loginUser, user)
-}

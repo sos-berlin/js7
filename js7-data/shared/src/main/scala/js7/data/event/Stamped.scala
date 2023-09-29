@@ -14,18 +14,15 @@ import scala.collection.mutable
   *
   * @author Joacim Zschimmer
   */
-final case class Stamped[+A](eventId: EventId, timestampMillis: Long, value: A)
-{
+final case class Stamped[+A](eventId: EventId, timestampMillis: Long, value: A):
   // Delay Timesstamp construction for faster JSON deserialization
   def timestamp = Timestamp.ofEpochMilli(timestampMillis)
 
   def map[B](f: A => B): Stamped[B] = functor.map(this)(f)
 
   override def toString = s"Stamped($eventId $timestamp $value)"
-}
 
-object Stamped
-{
+object Stamped:
   def apply[A](eventId: EventId, value: A): Stamped[A] =
     new Stamped(eventId, EventId.toEpochMilli(eventId), value)
 
@@ -33,43 +30,38 @@ object Stamped
     new Stamped(eventId, timestamp.toEpochMilli, value)
 
   def checkOrdering[A](lastEventId: EventId, stampedSeq: IterableOnce[Stamped[A]])
-  : Checked[Unit] = {
+  : Checked[Unit] =
     var checked = Checked.unit
     var last = lastEventId
     val iterator = stampedSeq.iterator
 
-    while iterator.hasNext && checked.isRight do {
+    while iterator.hasNext && checked.isRight do
       val eventId = iterator.next().eventId
-      if eventId <= last then {
+      if eventId <= last then
         checked = Left(Problem.pure(
           if eventId == last then
             s"Duplicate EventId ${EventId.toString(eventId)}"
           else
             s"EventId ${EventId.toString(eventId)} <= ${EventId.toString(last)}"))
-      }
       last = eventId
-    }
 
     checked
-  }
 
   implicit def stampedEq[A: Eq]: Eq[Stamped[A]] = Eq.fromUniversalEquals
 
-  implicit val functor: Functor[Stamped] = new Functor[Stamped] {
+  implicit val functor: Functor[Stamped] = new Functor[Stamped]:
     def map[A,B](fa: Stamped[A])(f: A => B) =
       fa.copy(value = f(fa.value))
-  }
 
   implicit def jsonEncoder[A: Encoder]: Encoder.AsObject[Stamped[A]] =
     stamped => {
       val fields = mutable.Buffer.empty[(String, Json)]
       fields += "eventId" -> Json.fromLong(stamped.eventId)
       val epochMilli = stamped.timestampMillis
-      if epochMilli != EventId.toEpochMilli(stamped.eventId) then {
+      if epochMilli != EventId.toEpochMilli(stamped.eventId) then
         fields += "timestamp" -> Json.fromLong(epochMilli)
-      }
       val json = stamped.value.asJson
-      json.asObject match {
+      json.asObject match
         case Some(o) =>
           fields ++= o.toIterable
         case None =>
@@ -77,7 +69,6 @@ object Stamped
             "Stamped[A]: The A type must serialize to a JSON object or array, " +
             s"but not: ${json.getClass.shortClassName}")
           fields += "array" -> json
-      }
       JsonObject.fromIterable(fields)
     }
 
@@ -86,13 +77,11 @@ object Stamped
       for
         eventId <- cursor.get[EventId]("eventId")
         timestampMillis <- cursor.getOrElse[Long]("timestamp")(EventId.toEpochMilli(eventId))
-        a <- {
+        a <-
           val arr = cursor.downField("array")
           // stamped.value must not contain a field named "array" !!!
           if arr.succeeded then
             arr.as[A]
           else
             cursor.as[A]
-        }
       yield Stamped(eventId, timestampMillis, a)
-}

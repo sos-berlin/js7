@@ -8,14 +8,10 @@ import js7.journal.web.GenericEventRoute
 /**
   * @author Joacim Zschimmer
   */
-trait EventRoute extends AgentRouteProvider with GenericEventRoute
-{
+trait EventRoute extends AgentRouteProvider with GenericEventRoute:
   implicit protected def akkaAskTimeout: Timeout
 
   protected final lazy val eventRoute = new RouteProvider().route
 
-  private class RouteProvider extends GenericEventRouteProvider
-  {
+  private class RouteProvider extends GenericEventRouteProvider:
     def keyedEventTypedJsonCodec = AgentState.keyedEventJsonCodec
-  }
-}

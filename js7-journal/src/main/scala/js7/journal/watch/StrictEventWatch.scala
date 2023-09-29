@@ -22,8 +22,7 @@ import scala.reflect.ClassTag
   *
   * @author Joacim Zschimmer
   */
-final class StrictEventWatch(val underlying: FileEventWatch)
-{
+final class StrictEventWatch(val underlying: FileEventWatch):
   def fileEventIds: Seq[EventId] =
     underlying.fileEventIds
 
@@ -84,11 +83,10 @@ final class StrictEventWatch(val underlying: FileEventWatch)
     timeout: FiniteDuration = 99.s)
     (body: => A)
     (implicit s: Scheduler, E: Tag[E])
-  : Vector[Stamped[KeyedEvent[E]]] = {
+  : Vector[Stamped[KeyedEvent[E]]] =
     val eventId = lastAddedEventId
     body
     await(predicate, after = eventId, timeout)
-  }
 
   /** TEST ONLY - Blocking. */
   @TestOnly
@@ -96,9 +94,8 @@ final class StrictEventWatch(val underlying: FileEventWatch)
     key: E.Key, after: EventId = tornEventId)
   : Seq[E] =
     keyedEvents[E](after = after)
-      .collect {
+      .collect:
         case o if o.key == key => o.event
-      }
 
   /** TEST ONLY - Blocking. */
   @TestOnly
@@ -127,12 +124,11 @@ final class StrictEventWatch(val underlying: FileEventWatch)
   private def allAfter[E <: Event: ClassTag: Tag](after: EventId = EventId.BeforeFirst)
   : Task[Seq[Stamped[KeyedEvent[E]]]] =
     when[E](EventRequest.singleClass[E](after = after), _ => true)
-      .map {
+      .map:
         case TearableEventSeq.Torn(after) =>
           throw new TornException(after = EventId.BeforeFirst, tornEventId = after)
         case EventSeq.Empty(_) => Nil
         case EventSeq.NonEmpty(seq) => seq
-      }
 
   @inline
   private def delegate[A](body: EventWatch => Task[TearableEventSeq[CloseableIterator, A]])
@@ -144,4 +140,3 @@ final class StrictEventWatch(val underlying: FileEventWatch)
   def lastFileEventId = underlying.lastFileEventId
 
   def lastAddedEventId = underlying.lastAddedEventId
-}

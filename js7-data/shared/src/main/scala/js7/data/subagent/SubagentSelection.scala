@@ -8,8 +8,7 @@ final case class SubagentSelection(
   id: SubagentSelectionId,
   subagentToPriority: Map[SubagentId, Int],
   itemRevision: Option[ItemRevision] = None)
-extends UnsignedSimpleItem
-{
+extends UnsignedSimpleItem:
   protected type Self = SubagentSelection
   val companion: SubagentSelection.type = SubagentSelection
 
@@ -31,10 +30,8 @@ extends UnsignedSimpleItem
 
   def subagentIds =
     subagentToPriority.keySet.view
-}
 
-object SubagentSelection extends UnsignedSimpleItem.Companion[SubagentSelection]
-{
+object SubagentSelection extends UnsignedSimpleItem.Companion[SubagentSelection]:
   type Key = SubagentSelectionId
   def Key = SubagentSelectionId
 
@@ -47,4 +44,3 @@ object SubagentSelection extends UnsignedSimpleItem.Companion[SubagentSelection]
 
   implicit val jsonCodec: Codec.AsObject[SubagentSelection] =
     deriveCodec[SubagentSelection]
-}

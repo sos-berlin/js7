@@ -8,24 +8,19 @@ import js7.base.utils.CatsUtils.syntax.RichResource
 /**
   * @author Joacim Zschimmer
   */
-object SyncResource
-{
+object SyncResource:
   def byteArrayToResource(bytes: Array[Byte]): Resource[SyncIO, InputStream] =
     Resource.fromAutoCloseable(
       SyncIO[InputStream] {
         new ByteArrayInputStream(bytes)
       })
 
-  object syntax {
+  object syntax:
     implicit final class RichSyncResource[A](private val underlying: Resource[SyncIO, A])
-    extends AnyVal {
+    extends AnyVal:
       /** Like `SyncIO`'s `use`, but synchronously. */
       def useSync[B](f: A => B)(implicit F: Bracket[SyncIO, Throwable], A: Tag[A]): B =
         underlying.toAllocated.unsafeRunSync().blockingUse(f)
-    }
 
-    implicit final class ByteArrayAsResource[A](private val underlying: Array[Byte]) extends AnyVal {
+    implicit final class ByteArrayAsResource[A](private val underlying: Array[Byte]) extends AnyVal:
       def asResource: Resource[SyncIO, InputStream] = byteArrayToResource(underlying)
-    }
-  }
-}

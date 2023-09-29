@@ -20,8 +20,7 @@ import monix.reactive.subjects.PublishToOneSubject
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
-final class ObservableNumberedQueue[V: Tag]
-{
+final class ObservableNumberedQueue[V: Tag]:
   private val vName = implicitly[Tag[V]].tag.toString
   private val sync = new IncreasingNumberSync(initial = 0, i => s"#$i")
   private val lock = AsyncLock("ObservableNumberedQueue", suppressLog = true)
@@ -72,14 +71,14 @@ final class ObservableNumberedQueue[V: Tag]
       val subject = PublishToOneSubject[Seq[Numbered[V]]]()
 
       def loop(ack: Future[Ack], after: Long): Unit =
-        ack.syncTryFlatten.syncOnContinue {
+        ack.syncTryFlatten.syncOnContinue:
           Task
             .race(
               stopped.when, // -> Left
               sync.whenAvailable(after = after, until = None) // -> Right
                 .*>(Task(_state.readQueue(after))))
             .runToFuture  // Be sure to leave the `loop` recursion stack
-            .onComplete {
+            .onComplete:
               case Failure(t) =>
                 subject.onError(t)
 
@@ -93,17 +92,14 @@ final class ObservableNumberedQueue[V: Tag]
                 subject.onError(problem.throwable)
 
               case Success(Right(Right(values))) =>
-                if values.isEmpty then {
+                if values.isEmpty then
                   // Race condition ???
                   logger.warn(
                     s"Internal: sync.whenAvailable($after) triggered but no command available - delay 1s")
                   Task(loop(Continue, after)).delayExecution(1.s).runAsyncAndForget
-                } else {
+                else
                   val ack = subject.onNext(values)
                   loop(ack, after = values.lastOption.fold(after)(_.number))
-                }
-            }
-        }
 
       _state.checkAfter(after).orThrow
       // Start only when subscribed
@@ -149,8 +145,7 @@ final class ObservableNumberedQueue[V: Tag]
     torn: Long = 0L,
     nextNumber: Long = 1L,
     queue: Vector[Numbered[V]] = Vector.empty[Numbered[V]],
-    stopped: Boolean = false)
-  {
+    stopped: Boolean = false):
     def stop: State =
       copy(
         stopped = true,
@@ -159,22 +154,20 @@ final class ObservableNumberedQueue[V: Tag]
     def readQueue(after: Long): Checked[Vector[Numbered[V]]] =
       if stopped then
         Left(StoppedProblem)
-      else {
+      else
         val q = queue
         val (index, found) = binarySearch(0, q.length, q(_).number.compare(after))
         if !found && after != torn then
           Left(unknownAfterProblem(after))
         else
           Right(q.drop(index + found.toInt))
-      }
 
-    def requireValidNumber(after: Long): Task[Unit] = {
+    def requireValidNumber(after: Long): Task[Unit] =
       val last = queue.lastOption.map(_.number)
       if after < torn || last.exists(_ < after) then
         Task.raiseError(unknownAfterProblem(after).throwable)
       else
         Task.unit
-    }
 
     def checkAfter(after: Long): Checked[Unit] =
       notStopped *> {
@@ -184,28 +177,22 @@ final class ObservableNumberedQueue[V: Tag]
           Problem.pure(s"Unknown number: Numbered[$vName]: #$after (must be >=$minimum and <=$last)")
       }
 
-    def unknownAfterProblem(after: Long) = {
+    def unknownAfterProblem(after: Long) =
       val beforeFirst = queue.headOption.map(_.number - 1) getOrElse torn
       val last = queue.lastOption.map(_.number) getOrElse torn
       Problem.pure(s"Unknown number: Numbered[$vName]: #$after (must be >=$beforeFirst and <=$last)")
-    }
 
-    def unknownNumberProblem(after: Long) = {
+    def unknownNumberProblem(after: Long) =
       val beforeFirst = queue.headOption.map(_.number - 1) getOrElse torn
       val last = queue.lastOption.map(_.number) getOrElse torn
       Problem.pure(s"Unknown number: Numbered[$vName]: #$after (must be >$beforeFirst and <=$last)")
-    }
 
     def notStopped: Checked[this.type] =
       if stopped then
         Left(StoppedProblem)
       else
         Right(this)
-  }
-}
 
-object ObservableNumberedQueue
-{
+object ObservableNumberedQueue:
   private val logger = Logger[this.type]
   private val StoppedProblem = Problem.pure("ObservableNumberedQueue stopped")
-}

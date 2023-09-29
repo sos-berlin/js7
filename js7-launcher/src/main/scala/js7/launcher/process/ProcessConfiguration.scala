@@ -20,8 +20,7 @@ final case class ProcessConfiguration(
   killWithSigkill: Seq[String],
   killForWindows: Seq[String],
   killScriptOption: Option[ProcessKillScript] = None,
-  windowsLogon: Option[WindowsLogon] = None)
-{
+  windowsLogon: Option[WindowsLogon] = None):
   require(killScriptOption.isEmpty || maybeTaskId.nonEmpty, "killScriptFile requires idString")
 
   for id <- maybeTaskId do require(id.nonEmpty)
@@ -33,13 +32,10 @@ final case class ProcessConfiguration(
       id <- maybeTaskId
       killScript <- killScriptOption
     yield killScript.toCommandArguments(id, pid)
-}
 
-object ProcessConfiguration
-{
+object ProcessConfiguration:
   def forTest = ProcessConfiguration(
     encoding = UTF_8/*Windows ???*/,
     killWithSigterm = Seq("/bin/kill", "$pid"),
     killWithSigkill = Seq("/bin/kill", "-KILL", "$pid"),
     killForWindows = Seq("taskkill", "/pid", "$pid"))
-}

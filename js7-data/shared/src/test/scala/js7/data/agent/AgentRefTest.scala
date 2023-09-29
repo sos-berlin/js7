@@ -10,9 +10,8 @@ import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 /**
   * @author Joacim Zschimmer
   */
-final class AgentRefTest extends OurTestSuite
-{
-  "JSON" in {
+final class AgentRefTest extends OurTestSuite:
+  "JSON" in:
     testJson(AgentRef(
       AgentPath("AGENT"),
       directors = Seq(SubagentId("SUBAGENT-1")),
@@ -45,9 +44,6 @@ final class AgentRefTest extends OurTestSuite
         "path": "AGENT",
         "uri": "http://127.0.0.1"
       }""")
-  }
 
-  "AgentPath.itemTypeName" in {
+  "AgentPath.itemTypeName" in:
     assert(AgentPath.itemTypeName == AgentRef.typeName)
-  }
-}

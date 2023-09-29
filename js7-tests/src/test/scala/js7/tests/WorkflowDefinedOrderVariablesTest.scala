@@ -22,16 +22,15 @@ import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import org.scalatest.Assertions.*
 
-final class WorkflowDefinedOrderVariablesTest extends OurTestSuite with ControllerAgentForScalaTest
-{
+final class WorkflowDefinedOrderVariablesTest extends OurTestSuite with ControllerAgentForScalaTest:
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on"""
 
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(workflow, objectWorkflow, deJobResource, svJobResource)
 
-  "Variables are copied to the order" in {
-    def runOrder(jobResource: String, variableName: String, expected: String) = {
+  "Variables are copied to the order" in:
+    def runOrder(jobResource: String, variableName: String, expected: String) =
       val orderId = OrderId(s"$jobResource-$variableName")
       val events = controller.runOrder(
         FreshOrder(orderId, workflow.path, arguments = Map(
@@ -40,7 +39,6 @@ final class WorkflowDefinedOrderVariablesTest extends OurTestSuite with Controll
           "expected" -> StringValue(expected))
         )).map(_.value)
       orderId -> events
-    }
 
     val (deOrderId, deEvents) = runOrder("de", "Acer", "Ahorn")
     val (_        , svEvents) = runOrder("sv", "Acer", "lönn")
@@ -51,9 +49,8 @@ final class WorkflowDefinedOrderVariablesTest extends OurTestSuite with Controll
       "expected" -> StringValue("Ahorn"),
       "PLANT" -> StringValue("Ahorn")))
     assert(deEvents.contains(OrderFinished()) && svEvents.contains(OrderFinished()))
-  }
 
-  "Argument and variable name sets must be disjoint" in {
+  "Argument and variable name sets must be disjoint" in:
     val checked = controller.api.addOrders(Observable(
       FreshOrder(OrderId("DUPLICATE-NAME"), workflow.path, arguments = Map(
         "jobResource" -> StringValue("de"),
@@ -61,18 +58,14 @@ final class WorkflowDefinedOrderVariablesTest extends OurTestSuite with Controll
         "PLANT" -> StringValue("THE DUPLICATE"))
       ))).await(99.s)
     assert(checked == Left(FinalOrderArgumentProblem("PLANT")))
-  }
 
-  "JobResource.variables as an object" in {
+  "JobResource.variables as an object" in:
     val orderId = OrderId("RESOURCE-VARIABLES-AS-OBJECT")
     val events = controller.runOrder(
       FreshOrder(orderId, objectWorkflow.path, deleteWhenTerminated = true))
     assert(events.map(_.value).contains(OrderFinished()))
-  }
-}
 
-object WorkflowDefinedOrderVariablesTest
-{
+object WorkflowDefinedOrderVariablesTest:
   private val agentPath = AgentPath("AGENT")
 
   // The job resources are named as language codes:
@@ -114,13 +107,11 @@ object WorkflowDefinedOrderVariablesTest
         OrderParameter.Final("de", expr("JobResource:de")),
         OrderParameter.Final("sv", expr("JobResource:sv")))))
 
-  private class TestJob extends InternalJob {
+  private class TestJob extends InternalJob:
     def toOrderProcess(step: Step) =
       OrderProcess(Task {
         assert(step.arguments("myONE") == NumberValue(1))
         assert(step.arguments("myPLANT") == step.arguments("myExpected"))
         Outcome.succeeded
       })
-  }
   private object TestJob extends InternalJob.Companion[TestJob]
-}

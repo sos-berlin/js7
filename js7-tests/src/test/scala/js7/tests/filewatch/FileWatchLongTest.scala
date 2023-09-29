@@ -23,8 +23,7 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 
-final class FileWatchLongTest extends OurTestSuite with ControllerAgentForScalaTest
-{
+final class FileWatchLongTest extends OurTestSuite with ControllerAgentForScalaTest:
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(workflow)
 
@@ -50,7 +49,7 @@ final class FileWatchLongTest extends OurTestSuite with ControllerAgentForScalaT
   private def fileToOrderId(filename: String): OrderId =
     FileWatchManager.relativePathToOrderId(fileWatch, filename).get.orThrow
 
-  "Start with a file" in {
+  "Start with a file" in:
     createDirectory(sourceDirectory)
     controller.api.updateUnsignedSimpleItems(Seq(fileWatch)).await(99.s).orThrow
     val file = sourceDirectory / "1"
@@ -59,26 +58,20 @@ final class FileWatchLongTest extends OurTestSuite with ControllerAgentForScalaT
     eventWatch.await[ItemAttached](_.event.key == fileWatch.path)
     eventWatch.await[OrderDeleted](_.key == orderId)
     assert(!exists(file))
-  }
 
-  "Wait some time with tiny poll interval" in {
+  "Wait some time with tiny poll interval" in:
     // Due to tiny poll interval the polling loop (or recursion) has a lot of iterations
     sleep(5.s)
-  }
 
-  "Delete FileWatch" in {
+  "Delete FileWatch" in:
     assert(controller.api.updateItems(Observable(DeleteSimple(fileWatch.path))).await(99.s) ==
       Right(Completed))
     eventWatch.await[ItemDeleted](_.event.key == fileWatch.path)
     assert(controllerState.keyTo(OrderWatchState).isEmpty)
-  }
-}
 
-object FileWatchLongTest
-{
+object FileWatchLongTest:
   private val agentPath = AgentPath("AGENT")
 
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",
     Vector(DeleteFileJob.execute(agentPath)))
-}

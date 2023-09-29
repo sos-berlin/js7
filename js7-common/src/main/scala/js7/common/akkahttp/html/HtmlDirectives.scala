@@ -13,8 +13,7 @@ import js7.common.akkahttp.AkkaHttpServerUtils.passIf
 /**
   * @author Joacim Zschimmer
   */
-object HtmlDirectives
-{
+object HtmlDirectives:
   def dontCache: Directive0 =
     mapInnerRoute { inner =>
       extractRequest { request =>
@@ -23,9 +22,8 @@ object HtmlDirectives
             `Cache-Control`(`max-age`(0))  // This allows browsers to use the cache when hitting the back button - for good user experience
           else
             `Cache-Control`(`max-age`(0), `no-store`, `no-cache`)
-        respondWithHeader(header) {
+        respondWithHeader(header):
           inner
-        }
       }
     }
 
@@ -33,9 +31,8 @@ object HtmlDirectives
     * If HTML is requested, path ends with slash and request has no query, then redirect to path without slash, in case of typo.
     */
   val pathEndRedirectToSlash: Route =
-    pathEnd {
+    pathEnd:
       redirectEmptyQueryBy(path => Uri.Path(path.toString + "/"))
-    }
 
   /**
     * If HTML is requested, path ends with slash and request has no query, then redirect to path without slash, in case of typo.
@@ -45,21 +42,17 @@ object HtmlDirectives
       pathEnd {
         route
       } ~
-      pathSingleSlash {
-        htmlPreferred {
-          get {
+      pathSingleSlash:
+        htmlPreferred:
+          get:
             extractRequest { request =>
-              passIf(request.uri.query() == Uri.Query.Empty) {
+              passIf(request.uri.query() == Uri.Query.Empty):
                 val withoutSlash = request.uri.copy(
                   scheme = "",
                   authority = Uri.Authority.Empty,
                   path = Uri.Path(request.uri.path.toString stripSuffix "/"))
                 redirect(withoutSlash, TemporaryRedirect)
-              }
             }
-          }
-        }
-      }
     }
 
   /**
@@ -69,10 +62,9 @@ object HtmlDirectives
     mapInnerRoute { route =>
       get {
         redirectToSlash ~
-        extractUnmatchedPath {
+        extractUnmatchedPath:
           case _: Uri.Path.Slash => route
           case _ => reject
-        }
       } ~
         route
     }
@@ -81,48 +73,41 @@ object HtmlDirectives
     * If HTML is requested, trailing slash is missing and request has no query, then redirect to trailing slash, in case of typo.
     */
   val redirectToSlash: Route =
-    pathEnd {
-      htmlPreferred {  // The browser user may type "api/"
+    pathEnd:
+      htmlPreferred:  // The browser user may type "api/"
         extractRequest { request =>
-          passIf(request.uri.query() == Uri.Query.Empty) {
+          passIf(request.uri.query() == Uri.Query.Empty):
             val withSlash = request.uri.copy(
               scheme = "",
               authority = Uri.Authority.Empty,
               path = Uri.Path(request.uri.path.toString + "/"))
             redirect(withSlash, TemporaryRedirect)
-          }
         }
-      }
-    }
 
   /**
     * If HTML is requested and request has no query, then redirect according to `changePath`, in case of user typo.
     */
   def redirectEmptyQueryBy(changePath: Uri.Path => Uri.Path): Route =
-    htmlPreferred {
-      get {
+    htmlPreferred:
+      get:
         extractRequest { request =>
-          if request.uri.query() == Uri.Query.Empty then {
+          if request.uri.query() == Uri.Query.Empty then
             redirect(
               request.uri.copy(
                 scheme = "",
                 authority = Uri.Authority.Empty,
                 path = changePath(request.uri.path)),
               TemporaryRedirect)
-          } else
+          else
             reject
         }
-      }
-    }
 
   def htmlPreferred: Directive0 =
     mapInnerRoute { route =>
       extractRequest { request =>
-        passIf(request.method == GET && isHtmlPreferred(request)) {
-          handleRejections(RejectionHandler.default) {
+        passIf(request.method == GET && isHtmlPreferred(request)):
+          handleRejections(RejectionHandler.default):
             route
-          }
-        }
       }
     }
 
@@ -135,8 +120,6 @@ object HtmlDirectives
     * <a href="https://tools.ietf.org/html/rfc7231#section-5.3.2">https://tools.ietf.org/html/rfc7231#section-5.3.2</a>.
     */
   private def isHtmlPreferred(mediaRanges: Iterable[MediaRange]): Boolean =
-    mediaRanges exists {
+    mediaRanges exists:
       case MediaRange.One(`text/html`, 1.0f) => true  // Highest priority q < 1 is not respected (and should be unusual for a browser)
       case _ => false
-    }
-}

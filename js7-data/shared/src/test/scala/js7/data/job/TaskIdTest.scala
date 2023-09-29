@@ -6,14 +6,12 @@ import org.scalatest.matchers.should.Matchers.*
 /**
  * @author Joacim Zschimmer
  */
-final class TaskIdTest extends OurTestSuite
-{
-  "toString" in {
+final class TaskIdTest extends OurTestSuite:
+  "toString" in:
     assert(TaskId(123, 789).toString == "TaskId(123-789)")
     assert(TaskId(-123, 789).toString == "TaskId(-123-789)")
-  }
 
-  "apply(string)" in {
+  "apply(string)" in:
     assert(TaskId("123-789").string == "123-789")
     assert(TaskId("-123-789").string == "-123-789")
     assert(TaskId("123000000789").string == "123000000789")
@@ -21,18 +19,13 @@ final class TaskIdTest extends OurTestSuite
     intercept[IllegalArgumentException] { TaskId("") }
     intercept[IllegalArgumentException] { TaskId("with space") }
     intercept[IllegalArgumentException] { TaskId("with-$variable") }
-  }
 
-  "TaskIdGenerator" in {
+  "TaskIdGenerator" in:
     val generator = TaskId.newGenerator()
-    for i <- 1 to 10000 do {
+    for i <- 1 to 10000 do
       val id = generator.next()
       assert(id.index == i)
-    }
-  }
 
-  "TaskIdGenerator overflow" in {
+  "TaskIdGenerator overflow" in:
     val ids = (TaskId.newGenerator(start = Int.MaxValue - 2) take 5).toList
     ids.map(_.index) shouldEqual List(Int.MaxValue - 2, Int.MaxValue - 1, Int.MaxValue, 1, 2)
-  }
-}

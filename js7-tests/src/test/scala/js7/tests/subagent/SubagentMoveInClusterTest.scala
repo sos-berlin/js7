@@ -23,11 +23,10 @@ import js7.tests.jobs.SemaphoreJob
 import js7.tests.subagent.SubagentMoveInClusterTest.*
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest, DirectorEnv}
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.traced 
+import monix.execution.Scheduler.Implicits.traced
 
 final class SubagentMoveInClusterTest extends OurTestSuite with ControllerAgentForScalaTest /*with SubagentTester*/
-with BlockingItemUpdater
-{
+with BlockingItemUpdater:
   override protected val controllerConfig = config"""
     js7.auth.agents.AGENT = "${agentPath.toString}-PASSWORD"
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
@@ -54,7 +53,7 @@ with BlockingItemUpdater
 
   protected lazy val items = Nil
 
-  "Restart Subagent at another URI" in {
+  "Restart Subagent at another URI" in:
     lazy val primaryDirectorResource: Resource[Task, (DirectorEnv, RunningAgent)] =
       directoryProvider
         .directorEnvResource(
@@ -102,14 +101,13 @@ with BlockingItemUpdater
       controller.runOrder(FreshOrder(OrderId("A-ORDER"), workflow.path))
 
       eventId = eventWatch.lastAddedEventId
-      locally {
+      locally:
         controller.api.addOrder(FreshOrder(aOrderId, workflow.path)).await(99.s).orThrow
         val processingStarted = eventWatch
           .await[OrderProcessingStarted](_.key == aOrderId, after = eventId).head.value.event
         assert(processingStarted == OrderProcessingStarted(backupSubagentItem.id))
         eventWatch.await[OrderStdoutWritten](_.key == aOrderId, after = eventId)
         // aOrderId is waiting for semaphore
-      }
 
       eventId = eventWatch.lastAddedEventId
       directorEventId = primaryDirector.eventWatch.lastAddedEventId
@@ -149,7 +147,7 @@ with BlockingItemUpdater
 
           eventWatch.await[OrderFinished](_.key == aOrderId, after = eventId)
 
-          locally {
+          locally:
             // Start another order
             val bOrderId = OrderId("B-MOVE-SUBAGENT")
             TestSemaphoreJob.continue(1)
@@ -165,15 +163,11 @@ with BlockingItemUpdater
               .head.value.event
             assert(bProcessed == OrderProcessed(Outcome.succeeded))
             eventWatch.await[OrderFinished](_.key == bOrderId, after = eventId)
-          }
         }
       }
     }
-  }
-}
 
-object SubagentMoveInClusterTest
-{
+object SubagentMoveInClusterTest:
   private val agentPath = AgentPath("AGENT")
 
   private val workflow = Workflow(
@@ -183,4 +177,3 @@ object SubagentMoveInClusterTest
 
   final class TestSemaphoreJob extends SemaphoreJob(TestSemaphoreJob)
   object TestSemaphoreJob extends SemaphoreJob.Companion[TestSemaphoreJob]
-}

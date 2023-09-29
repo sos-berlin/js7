@@ -3,44 +3,38 @@ package js7.launcher.utils
 import js7.base.test.OurTestSuite
 import js7.launcher.configuration.JobLauncherConf.ErrLineLengthMaximum
 
-final class LastLineKeeperTest extends OurTestSuite
-{
-  "Empty" in {
+final class LastLineKeeperTest extends OurTestSuite:
+  "Empty" in:
     val lastLineKeeper = new LastLineKeeper
     assert(lastLineKeeper.lastErrLine == None)
     assert(lastLineKeeper.testLastErrLine == "")
-  }
 
-  "Single line" in {
+  "Single line" in:
     val lastLineKeeper = new LastLineKeeper
     lastLineKeeper.put("LAST\n")
     assert(lastLineKeeper.lastErrLine == Some("LAST"))
     assert(lastLineKeeper.testLastErrLine == "LAST\n")
-  }
 
-  "Two line" in {
+  "Two line" in:
     val lastLineKeeper = new LastLineKeeper
     lastLineKeeper.put("ONE\n")
     lastLineKeeper.put("LAST\n")
     assert(lastLineKeeper.lastErrLine == Some("LAST"))
     assert(lastLineKeeper.testLastErrLine == "LAST\n")
-  }
 
-  "Two line in same chunk" in {
+  "Two line in same chunk" in:
     val lastLineKeeper = new LastLineKeeper
     lastLineKeeper.put("ONE\nLAST\n")
     assert(lastLineKeeper.lastErrLine == Some("LAST"))
     assert(lastLineKeeper.testLastErrLine == "LAST\n")
-  }
 
-  "No line end" in {
+  "No line end" in:
     val lastLineKeeper = new LastLineKeeper
     lastLineKeeper.put("ONE\nLAST")
     assert(lastLineKeeper.lastErrLine == Some("LAST"))
     assert(lastLineKeeper.testLastErrLine == "LAST")
-  }
 
-  "Line split across multiple chunks" in {
+  "Line split across multiple chunks" in:
     val lastLineKeeper = new LastLineKeeper
     lastLineKeeper.put("ONE")
     lastLineKeeper.put("\nL")
@@ -48,31 +42,27 @@ final class LastLineKeeperTest extends OurTestSuite
     lastLineKeeper.put("ST")
     assert(lastLineKeeper.lastErrLine == Some("LAST"))
     assert(lastLineKeeper.testLastErrLine == "LAST")
-  }
 
-  "Carriage return" in {
+  "Carriage return" in:
     val lastLineKeeper = new LastLineKeeper
     lastLineKeeper.put("LAST\r\n")
     assert(lastLineKeeper.lastErrLine == Some("LAST"))
     assert(lastLineKeeper.testLastErrLine == "LAST\r\n")
-  }
 
-  "Split carriage return" in {
+  "Split carriage return" in:
     val lastLineKeeper = new LastLineKeeper
     lastLineKeeper.put("LAST\r")
     lastLineKeeper.put("\n")
     assert(lastLineKeeper.lastErrLine == Some("LAST"))
     assert(lastLineKeeper.testLastErrLine == "LAST\r\n")
-  }
 
-  "Long line" in {
+  "Long line" in:
     val lastLineKeeper = new LastLineKeeper
     lastLineKeeper.put("x" * (ErrLineLengthMaximum + 1) + "\n")
     assert(lastLineKeeper.lastErrLine == Some("x" * (ErrLineLengthMaximum - 3) + "..."))
     assert(lastLineKeeper.testLastErrLine == "x" * (ErrLineLengthMaximum + 1))
-  }
 
-  "Long line split accross chunks" in {
+  "Long line split accross chunks" in:
     val lastLineKeeper = new LastLineKeeper
     val xxx = "x" * (ErrLineLengthMaximum / 2 - 1)
     val yyy = "y" * (ErrLineLengthMaximum / 2 - 1)
@@ -83,5 +73,3 @@ final class LastLineKeeperTest extends OurTestSuite
     lastLineKeeper.put("---")
     assert(lastLineKeeper.lastErrLine == Some((xxx + yyy).take(ErrLineLengthMaximum - 3) + "..."))
     assert(lastLineKeeper.testLastErrLine == xxx + yyy + "zzz")
-  }
-}

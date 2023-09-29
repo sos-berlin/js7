@@ -23,8 +23,7 @@ import scala.util.control.NonFatal
   * For `ioFuture` which starts a blocking (I/O) `Future` in a (normally unlimited) thread pool.
   * @author Joacim Zschimmer
   */
-final class IOExecutor(executor: Executor, name: String) extends Executor
-{
+final class IOExecutor(executor: Executor, name: String) extends Executor:
   implicit val executionContext: ExecutionContextExecutor =
     ExecutionContext.fromExecutor(
       executor,
@@ -35,28 +34,23 @@ final class IOExecutor(executor: Executor, name: String) extends Executor
 
   def execute(runnable: Runnable) = executionContext.execute(runnable)
 
-  def apply[F[_], A](body: F[A])(implicit F: TaskLike[F], src: sourcecode.FullName): Task[A] = {
+  def apply[F[_], A](body: F[A])(implicit F: TaskLike[F], src: sourcecode.FullName): Task[A] =
     // logger.traceF lets Monix check for cancellation, too (but why?)
     // Without it, the body seems be executed after a cancellation,
     // despite executor has already been terminated (observed with DirectoryWatch).
     logger.traceF(s"${src.value} --> IOExecutor($name).apply")(
       F(body) executeOn scheduler)
-  }
-}
 
-object IOExecutor
-{
+object IOExecutor:
   private val logger = Logger[this.type]
-  lazy val globalIOX = {
+  lazy val globalIOX =
     val name = "JS7 global I/O"
     new IOExecutor(
       newBlockingExecutor(name, keepAlive = 10.s),
       name)
-  }
 
-  object Implicits {
+  object Implicits:
     implicit lazy val globalIOX: IOExecutor = IOExecutor.globalIOX
-  }
 
   def resource[F[_]](config: Config, name: String)(implicit F: Sync[F]): Resource[F, IOExecutor] =
     logger.traceResource(
@@ -78,21 +72,19 @@ object IOExecutor
           })
         }
       }
-    catch {
+    catch
       case NonFatal(t) => Future.failed(t)
-    }
 
   private[thread] def uncaughtExceptionReporter(executor: Executor, name: String)
-  : UncaughtExceptionReporter = {
+  : UncaughtExceptionReporter =
     throwable =>
       def msg = "Uncaught exception in thread " +
         s"${currentThread.threadId} '${currentThread.getName}': ${throwable.toStringWithCauses}"
-      throwable match {
+      throwable match
         case throwable: java.util.concurrent.RejectedExecutionException =>
-          val isShuttDown = executor match {
+          val isShuttDown = executor match
             case executor: ExecutorService => executor.isShutdown
             case _ => false
-          }
           if isShuttDown then
             logger.error(s"'$name' ${executor.getClass.simpleScalaName} has been shut down: $msg",
               throwable.nullIfNoStackTrace)
@@ -106,8 +98,5 @@ object IOExecutor
           logger.error(msg, throwable.nullIfNoStackTrace)
           // Writes to stderr:
           UncaughtExceptionReporter.default.reportFailure(throwable)
-      }
-  }
 
   java8Polyfill()
-}

@@ -23,9 +23,8 @@ final case class ClusterWatchConf(
   config: Config)
 extends BasicConfiguration
 
-object ClusterWatchConf
-{
-  def fromCommandLine(args: CommandLineArguments): ClusterWatchConf = {
+object ClusterWatchConf:
+  def fromCommandLine(args: CommandLineArguments): ClusterWatchConf =
     val configDir = args.as[Path]("--config-directory=").toAbsolutePath
     val clusterWatchId = args.as[ClusterWatchId]("--cluster-watch-id=")
 
@@ -44,7 +43,7 @@ object ClusterWatchConf
         Nel.fromListUnsafe(uris.map(Admission(_)).toList)
       else
         Nel
-          .fromList {
+          .fromList:
             for cnf <- config.getConfigList("js7.journal.cluster.watch.cluster-nodes").asScala.toList yield
               Admission(
                 cnf.as[Uri]("uri"),
@@ -52,7 +51,6 @@ object ClusterWatchConf
                   userId <- cnf.optionAs[UserId]("user")
                   password <- cnf.optionAs[SecretString]("password")
                 yield UserAndPassword(userId, password))
-          }
           .getOrElse(throw new IllegalArgumentException(
             "Missing Cluster node admissions: js7.cluster.watch.nodes[]"))
 
@@ -62,5 +60,3 @@ object ClusterWatchConf
       admissions,
       HttpsConfig.fromConfig(config, configDir),
       config = config)
-  }
-}

@@ -5,9 +5,9 @@ import js7.base.test.OurTestSuite
 /**
   * @author Joacim Zschimmer
   */
-final class UserIdTest extends OurTestSuite {
+final class UserIdTest extends OurTestSuite:
 
-  "Invalid UserId" in {
+  "Invalid UserId" in:
     assert(UserId.checked("").isLeft)
     assert(UserId.checked("a?").isLeft)
     assert(UserId.checked("a?b").isLeft)
@@ -17,9 +17,8 @@ final class UserIdTest extends OurTestSuite {
     assert(UserId.checked("..").isLeft)
     assert(UserId.checked(".hidden").isLeft)
     assert(UserId.checked("Controller--100").isLeft)  // "--" is used for history journal files
-  }
 
-  "Valid UserId" in {
+  "Valid UserId" in:
     UserId("a")
     UserId("å")
     UserId("テスト")
@@ -27,5 +26,3 @@ final class UserIdTest extends OurTestSuite {
     UserId("ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÅÜabcdefghijklmnopqrstuvwxyzäöåüß0123456789.-_")
     UserId("a.")
     UserId("A-B")
-  }
-}

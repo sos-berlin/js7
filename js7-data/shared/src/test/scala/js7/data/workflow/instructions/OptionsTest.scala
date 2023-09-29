@@ -7,9 +7,8 @@ import js7.data.workflow.instructions.Instructions.jsonCodec
 import js7.data.workflow.{Instruction, Workflow}
 import js7.tester.CirceJsonTester.testJson
 
-final class OptionsTest extends OurTestSuite
-{
-  "JSON" in {
+final class OptionsTest extends OurTestSuite:
+  "JSON" in:
     testJson[Instruction.Labeled](
       Options(
         block = Workflow.empty,
@@ -45,5 +44,3 @@ final class OptionsTest extends OurTestSuite
           "instructions": []
         }
       }""")
-  }
-}

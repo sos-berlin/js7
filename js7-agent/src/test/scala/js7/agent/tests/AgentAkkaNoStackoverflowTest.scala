@@ -11,10 +11,9 @@ import js7.base.time.ScalaTime.*
 /**
   * @author Joacim Zschimmer
   */
-final class AgentAkkaNoStackoverflowTest extends OurTestSuite with AgentTester
-{
-  "Job working directory" in {
-    val exception = intercept[RuntimeException] {
+final class AgentAkkaNoStackoverflowTest extends OurTestSuite with AgentTester:
+  "Job working directory" in:
+    val exception = intercept[RuntimeException]:
       provideAgentDirectory { directory =>
         val conf = AgentConfiguration.forTest(directory, "AgentAkkaNoStackoverflowTest")
         TestAgent.blockingRun(conf, 99.s) { _ =>
@@ -22,11 +21,7 @@ final class AgentAkkaNoStackoverflowTest extends OurTestSuite with AgentTester
           sys.error("TEST ERROR")
         }
       }
-    }
     assert(exception.getMessage == "TEST ERROR")
-  }
-}
 
-object AgentAkkaNoStackoverflowTest {
+object AgentAkkaNoStackoverflowTest:
   private val logger = Logger[this.type]
-}

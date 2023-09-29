@@ -28,8 +28,7 @@ import scala.concurrent.duration.Deadline.now
 /**
   * @author Joacim Zschimmer
   */
-trait HttpSessionApi extends SessionApi with HasSessionToken
-{
+trait HttpSessionApi extends SessionApi with HasSessionToken:
   protected def httpClient: HttpClient
   protected def sessionUri: Uri
 
@@ -37,9 +36,8 @@ trait HttpSessionApi extends SessionApi with HasSessionToken
   private val sessionTokenRef = AtomicAny[Option[SessionToken]](None)
 
   protected final def logOpenSession(): Unit =
-    for token <- sessionTokenRef.get() do {
+    for token <- sessionTokenRef.get() do
       logger.debug(s"close(), but $token not logged-out: $toString")
-    }
 
   final def login_(userAndPassword: Option[UserAndPassword], onlyIfNotLoggedIn: Boolean = false)
   : Task[Completed] =
@@ -91,13 +89,12 @@ trait HttpSessionApi extends SessionApi with HasSessionToken
           })))
 
   private def executeSessionCommand(command: SessionCommand, suppressSessionToken: Boolean = false)
-  : Task[command.Response] = {
+  : Task[command.Response] =
     implicit val implicitSessionToken =
       if suppressSessionToken then Task.pure(None)
       else Task { sessionToken }
     httpClient.post[SessionCommand, SessionCommand.Response](sessionUri, command)
       .map(_.asInstanceOf[command.Response])
-  }
 
   final def clearSession(): Unit =
     sessionTokenRef := None
@@ -111,7 +108,7 @@ trait HttpSessionApi extends SessionApi with HasSessionToken
   protected final def snapshotAs[S <: SnapshotableState[S]](uri: Uri)
     (implicit S: SnapshotableState.Companion[S])
   : Task[S] =
-    Task.defer {
+    Task.defer:
       val startedAt = now
       httpClient.getRawLinesObservable(uri)
         .logTiming(_.length, startedAt = startedAt, onComplete = (d, n, exitCase) =>
@@ -122,11 +119,8 @@ trait HttpSessionApi extends SessionApi with HasSessionToken
         .logTiming(startedAt = startedAt, onComplete = (d, n, exitCase) =>
           logger.debug(s"$S snapshot receive $exitCase - ${itemsPerSecondString(d, n, "objects")}"))
         .flatMap(S.fromObservable)
-    }
-}
 
-object HttpSessionApi
-{
+object HttpSessionApi:
   private val logger = Logger[this.type]
   private val isPasswordLoggable = isTest &&
     sys.props.get("js7.test.log-password").fold(false)(StringAsBoolean.apply)
@@ -135,11 +129,8 @@ object HttpSessionApi
     otherVersion: Version,
     otherName: => String,
     ourVersion: Version = Js7Version): Unit =
-    checkNonMatchingVersion(otherVersion, otherName = otherName, ourVersion = ourVersion) match {
+    checkNonMatchingVersion(otherVersion, otherName = otherName, ourVersion = ourVersion) match
       case Left(problem) => logger.error(problem.toString)
       case Right(()) =>
-        if otherVersion != ourVersion then {
+        if otherVersion != ourVersion then
           logger.info(s"$otherName server version $otherVersion differs from own version $ourVersion")
-        }
-    }
-}

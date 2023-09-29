@@ -15,17 +15,14 @@ import js7.common.configuration.CommonConfigurationTest.*
 /**
   * @author Joacim Zschimmer
   */
-final class CommonConfigurationTest extends OurTestSuite
-{
-  "--config-directory=" in {
+final class CommonConfigurationTest extends OurTestSuite:
+  "--config-directory=" in:
     assert(conf().configDirectory == Paths.get("CONFIG").toAbsolutePath)
-  }
 
-  "--data-directory=" in {
+  "--data-directory=" in:
     assert(conf().dataDirectory == Paths.get("DATA").toAbsolutePath)
-  }
 
-  "--http-port=" in {
+  "--http-port=" in:
     intercept[IllegalArgumentException] { conf("--http-port=65536") }
     assert(conf("--http-port=1234"              ).webServerBindings == WebServerBinding.Http(new InetSocketAddress("0.0.0.0", 1234)) :: Nil)
     assert(conf("--http-port=11.22.33.44:1234"  ).webServerBindings == WebServerBinding.Http(new InetSocketAddress("11.22.33.44", 1234)) :: Nil)
@@ -34,12 +31,10 @@ final class CommonConfigurationTest extends OurTestSuite
     assert(conf("--http-port=1111", "--http-port=2222").webServerBindings ==
       WebServerBinding.Http(new InetSocketAddress("0.0.0.0", 1111)) ::
       WebServerBinding.Http(new InetSocketAddress("0.0.0.0", 2222)) :: Nil)
-  }
 
-  "--https-port=" in {
-    intercept[IllegalArgumentException] {
+  "--https-port=" in:
+    intercept[IllegalArgumentException]:
       conf("--https-port=65536")
-    }
     val config = Paths.get("CONFIG").toAbsolutePath
     assert(conf("--https-port=1234").webServerBindings == List(WebServerBinding.Https(
       new InetSocketAddress("0.0.0.0", 1234),
@@ -67,14 +62,12 @@ final class CommonConfigurationTest extends OurTestSuite
         TrustStoreRef(
           (config / "private/second-https-truststore.p12"),
           storePassword = SecretString("SECOND-TRUSTSTORE-PASSWORD"))))))
-  }
-}
 
-private object CommonConfigurationTest {
+private object CommonConfigurationTest:
   private case class TestConf(configDirectory: Path, dataDirectory: Path, webServerPorts: Seq[WebServerPort], config: Config)
   extends CommonConfiguration
 
-  private def conf(args: String*): TestConf = {
+  private def conf(args: String*): TestConf =
     val common = CommonConfiguration.Common.fromCommandLineArguments(CommandLineArguments(
       Vector("--config-directory=CONFIG", "--data-directory=DATA") ++ args))
     TestConf(
@@ -96,5 +89,3 @@ private object CommonConfigurationTest {
           }
         ]
         """)
-  }
-}

@@ -29,8 +29,7 @@ final case class AgentConfiguration(
   akkaAskTimeout: Timeout,
   clusterConf: ClusterConf,
   name: String)
-extends CommonConfiguration
-{
+extends CommonConfiguration:
   def configDirectory: Path =
     subagentConf.configDirectory
 
@@ -51,12 +50,10 @@ extends CommonConfiguration
 
   implicit def implicitAkkaAskTimeout: Timeout = akkaAskTimeout
 
-  def createDirectories(): Unit = {
+  def createDirectories(): Unit =
     subagentConf.finishAndProvideFiles()
-    if !exists(stateDirectory) then {
+    if !exists(stateDirectory) then
       createDirectory(stateDirectory)
-    }
-  }
 
   val journalLocation: JournalLocation =
     JournalLocation(AgentState, stateDirectory / "agent" )
@@ -74,22 +71,19 @@ extends CommonConfiguration
   // Suppresses Config (which may contain secrets)
   override def toString =
     s"AgentConfiguration($configDirectory,$dataDirectory,$webServerPorts,$name,Config)"
-}
 
-object AgentConfiguration
-{
+object AgentConfiguration:
   val DefaultName = if isTest then "Agent" else "JS7"
 
   val DefaultConfig: Config = Configs
     .loadResource(JavaResource("js7/agent/configuration/agent.conf"))
     .withFallback(SubagentConf.DefaultConfig)
 
-  def fromCommandLine(args: CommandLineArguments, extraConfig: Config = ConfigFactory.empty) = {
+  def fromCommandLine(args: CommandLineArguments, extraConfig: Config = ConfigFactory.empty) =
     val subagentConf = SubagentConf.fromCommandLine(args,
       extraConfig = extraConfig, internalConfig = DefaultConfig)
     args.requireNoMoreArguments()
     fromDirectories(subagentConf)
-  }
 
   def forTest(
     configAndData: Path,
@@ -111,12 +105,10 @@ object AgentConfiguration
   def fromDirectories(
     subagentConf: SubagentConf,
     name: String = DefaultName)
-  : AgentConfiguration = {
+  : AgentConfiguration =
     import subagentConf.config
     new AgentConfiguration(
       subagentConf,
       akkaAskTimeout = config.getDuration("js7.akka.ask-timeout").toFiniteDuration,
       clusterConf = ClusterConf.fromConfig(config).orThrow,
       name = name)
-  }
-}

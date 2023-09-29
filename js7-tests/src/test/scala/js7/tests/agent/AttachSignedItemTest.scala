@@ -20,12 +20,11 @@ import js7.tests.agent.AttachSignedItemTest.*
 import js7.tests.testenv.DirectoryProviderForScalaTest
 import monix.execution.Scheduler.Implicits.traced
 
-final class AttachSignedItemTest extends OurTestSuite with DirectoryProviderForScalaTest
-{
+final class AttachSignedItemTest extends OurTestSuite with DirectoryProviderForScalaTest:
   protected val agentPaths = Seq(agentPath)
   protected val items = Nil
 
-  "AttachSignedItem command verifies signature" in {
+  "AttachSignedItem command verifies signature" in:
     import directoryProvider.itemSigner
     directoryProvider.runAgents() { agents =>
       val agent = agents.head
@@ -67,13 +66,9 @@ final class AttachSignedItemTest extends OurTestSuite with DirectoryProviderForS
       assert(agentApi.commandExecute(AttachSignedItem(tamperedSimpleItem)).await(99.s)
         == Left(TamperedWithSignedMessageProblem))
     }
-  }
-}
 
-object AttachSignedItemTest
-{
+object AttachSignedItemTest:
   private val agentPath = AgentPath("AGENT")
   private val controllerId = ControllerId("CONTROLLER")
   private val workflow = Workflow.of(WorkflowPath("WORKFLOW") ~ "VERSION")
   private val jobResource = JobResource(JobResourcePath("JOB-RESOURCE"))
-}

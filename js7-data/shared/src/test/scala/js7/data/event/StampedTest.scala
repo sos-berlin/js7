@@ -12,15 +12,14 @@ import js7.tester.CirceJsonTester.testJson
 /**
   * @author Joacim Zschimmer
   */
-final class StampedTest extends OurTestSuite {
+final class StampedTest extends OurTestSuite:
 
-  "map" in {
+  "map" in:
     val eventId = EventId(100)
     assert(Stamped(eventId, Timestamp.ofEpochMilli(123), 3).map(_.toString) ==
       Stamped(eventId, Timestamp.ofEpochMilli(123), "3"))
-  }
 
-  "JSON with object" in {
+  "JSON with object" in:
     case class A(number: Int)
     implicit val codec: Codec.AsObject[A] = deriveCodec
     testJson(Stamped(EventId(777), Timestamp.ofEpochMilli(123), A(111)),
@@ -34,9 +33,8 @@ final class StampedTest extends OurTestSuite {
         "eventId": 123007,
         "number": 111
       }""")
-  }
 
-  "JSON with array" in {
+  "JSON with array" in:
     testJson(Stamped(EventId(777), Timestamp.ofEpochMilli(123), List(111, 222)),
       json"""{
         "eventId": 777,
@@ -48,23 +46,20 @@ final class StampedTest extends OurTestSuite {
         "eventId": 123007,
         "array": [111, 222]
       }""")
-  }
 
-  "Stamped[simple type] is not supported" in {
+  "Stamped[simple type] is not supported" in:
     // Rejected because a field "value" may duplicate an object field "value".
     // Stamped is used only for objects and arrays, not for simple values.
-    intercept[RuntimeException] {
+    intercept[RuntimeException]:
       Stamped(EventId(777), Timestamp.ofEpochMilli(123), "VALUE").asJson.as[Stamped[String]]
-    }
     //testJson(Stamped(EventId(777), Timestamp.ofEpochMilli(123), "VALUE"),
     //  json"""{
     //    "eventId": 777,
     //    "timestamp": 123,
     //    "value": "VALUE"
     //  }""")
-  }
 
-  "checkOrdering" in {
+  "checkOrdering" in:
     assert(Stamped.checkOrdering(0, Nil) == Right(()))
     assert(Stamped.checkOrdering(7, Nil) == Right(()))
     assert(Stamped.checkOrdering(0, Seq(Stamped(1, ""), Stamped(2, "")))
@@ -73,5 +68,3 @@ final class StampedTest extends OurTestSuite {
       == Left(Problem("Duplicate EventId 1/1970-01-01T00:00:00Z")))
     assert(Stamped.checkOrdering(3, Seq(Stamped(4, ""), Stamped(2, "")))
       == Left(Problem("EventId 2/1970-01-01T00:00:00Z <= 4/1970-01-01T00:00:00Z")))
-  }
-}

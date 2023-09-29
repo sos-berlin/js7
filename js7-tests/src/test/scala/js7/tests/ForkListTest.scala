@@ -45,8 +45,7 @@ import scala.collection.View
 import scala.concurrent.duration.Deadline.now
 
 final class ForkListTest extends OurTestSuite with ControllerAgentForScalaTest
-with BlockingItemUpdater
-{
+with BlockingItemUpdater:
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.controller.agent-driver.command-batch-delay = 0ms
@@ -63,13 +62,13 @@ with BlockingItemUpdater
     indexWorkflow, exampleWorkflow)
   private lazy val proxy = controller.api.startProxy().await(99.s)
 
-  "Events and Order.Forked snapshot" in {
+  "Events and Order.Forked snapshot" in:
     val workflowId = atControllerWorkflow.id
     val orderId = OrderId("SNAPSHOT-TEST")
     val n = 3
 
     val asserted = proxy.observable
-      .collect {
+      .collect:
         case EventAndState(Stamped(_, _, KeyedEvent(`orderId`, _: OrderForked)), _, state) =>
           assert(state.idToOrder(orderId) ==
             Order(
@@ -94,7 +93,6 @@ with BlockingItemUpdater
                 StringValue("ELEMENT-3")))),
               attachedState = Some(Order.Attached(agentPath)),
               deleteWhenTerminated = true))
-      }
       .headL
       .runToFuture
 
@@ -141,9 +139,8 @@ with BlockingItemUpdater
       OrderDeleted))
 
     asserted.await(9.s)
-  }
 
-  "ForkList with duplicates" in {
+  "ForkList with duplicates" in:
     val workflowId = atControllerWorkflow.id
     val orderId = OrderId("DUPLICATE-TEST")
 
@@ -166,13 +163,12 @@ with BlockingItemUpdater
       OrderOutcomeAdded(Outcome.Disrupted(Problem(
         "Duplicate child IDs in $myList: Unexpected duplicates: 2×DUPLICATE"))),
       OrderFailed(Position(0))))
-  }
 
-  "ForkList with invalid value" in {
+  "ForkList with invalid value" in:
     val childToProblem = Seq(
       "|" -> Problem("OrderId must not contain reserved characters: |"),
       "" -> EmptyStringProblem("OrderId.withChild"))
-    for ((childId, problem), i) <- childToProblem.zipWithIndex do {
+    for ((childId, problem), i) <- childToProblem.zipWithIndex do
       val workflowId = atControllerWorkflow.id
       val orderId = OrderId(s"INVALID-TEST-$i")
 
@@ -194,10 +190,8 @@ with BlockingItemUpdater
         //OrderStarted,
         OrderOutcomeAdded(Outcome.Disrupted(problem)),
         OrderFailed(Position(0))))
-    }
-  }
 
-  "ForkList with index" in {
+  "ForkList with index" in:
     val workflowId = indexWorkflow.id
     val orderId = OrderId(s"INDEX")
 
@@ -211,7 +205,7 @@ with BlockingItemUpdater
     assert(eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
       .head.value.event == OrderFinished())
     eventWatch.await[OrderDeleted](_.key == orderId, after = eventId)
-    for i <- myList.elements.indices do {
+    for i <- myList.elements.indices do
       assert(eventWatch.eventsByKey[OrderEvent](orderId / i.toString) == Seq(
         OrderMoved(Position(0) / "fork" % 1),
         OrderProcessingStarted(subagentId),
@@ -219,34 +213,28 @@ with BlockingItemUpdater
         OrderMoved(Position(0) / "fork" % 2),
         OrderDetachable,
         OrderDetached))
-    }
-  }
 
-  "ForkList with empty array" in {
+  "ForkList with empty array" in:
     runOrder(atControllerWorkflow.path, OrderId("EMPTY"), n = 0)
     runOrder(atAgentWorkflow.path, OrderId("EMPTY"), n = 0)
-  }
 
-  "ForkList with single element" in {
+  "ForkList with single element" in:
     runOrder(atControllerWorkflow.path, OrderId("EMPTY"), n = 1)
     runOrder(atAgentWorkflow.path, OrderId("EMPTY"), n = 1)
-  }
 
-  "ForkList with a small array" in {
+  "ForkList with a small array" in:
     // Use same OrderId twice to test the ForkInstructionExecutor.Cache.
     val orderId = OrderId("SMALL")
     runOrder(atControllerWorkflow.path, orderId, n = 3)
     runOrder(atAgentWorkflow.path, orderId, n = 3)
-  }
 
-  "ForkList with big array" in {
+  "ForkList with big array" in:
     val n = sys.props.get("test.speed").fold(100)(_.toInt)
     val t = now
     runOrder(atControllerWorkflow.path, OrderId("BIG"), n)
     logger.info(itemsPerSecondString(t.elapsed, n, "orders"))
-  }
 
-  "ForkList with failing child orders, joinIfFailed=true" in {
+  "ForkList with failing child orders, joinIfFailed=true" in:
     val order = runOrder(joinFailingChildOrdersWorkflow.path, OrderId("FAIL-THEN-JOIN"), 2,
       expectedChildOrderEvent = _ => OrderFailedInFork(Position(0) / "fork" % 1),
       expectedTerminationEvent = OrderFailed(Position(0)))
@@ -255,9 +243,8 @@ with BlockingItemUpdater
       """Order:FAIL-THEN-JOIN|ELEMENT-1 Failed(TEST FAILURE);
         |Order:FAIL-THEN-JOIN|ELEMENT-2 Failed(TEST FAILURE)"""
         .stripMargin)))
-  }
 
-  "ForkList with failing child orders" in {
+  "ForkList with failing child orders" in:
     val order = runOrder(failingChildOrdersWorkflow.path, OrderId("FAIL-THEN-STOP"), 2,
       expectedChildOrderEvent = _ => OrderFailed(Position(0) / "fork" % 1),
       cancelChildOrders = true,
@@ -267,9 +254,8 @@ with BlockingItemUpdater
       """Order:FAIL-THEN-STOP|ELEMENT-1 has been cancelled;
         |Order:FAIL-THEN-STOP|ELEMENT-2 has been cancelled"""
         .stripMargin)))
-  }
 
-  "ForkList with nested Fork" in {
+  "ForkList with nested Fork" in:
     // This should not be a special problem
     val subagentSelection = SubagentSelection(
       SubagentSelectionId("active-active-all-agents"),
@@ -289,7 +275,7 @@ with BlockingItemUpdater
         workflow = Workflow.of(
           Fork(Vector.empty)))))
 
-    try {
+    try
       val eventId = eventWatch.lastAddedEventId
       val orderId = OrderId("FORK-IN-FORKLIST")
       val events = controller.runOrder(FreshOrder(orderId, workflow.path, Map(
@@ -317,7 +303,7 @@ with BlockingItemUpdater
 
         OrderFinished(None)))
 
-      for i <- list do withClue(s"i=$i ") {
+      for i <- list do withClue(s"i=$i "):
         assert(eventWatch
           .keyedEvents[OrderEvent](_.key == orderId / s"$i", after = eventId)
           .map(_.event) ==
@@ -327,27 +313,24 @@ with BlockingItemUpdater
             OrderForked(Vector.empty),
             OrderJoined(Outcome.succeeded),
             OrderMoved(Position(1) / "fork" % 1)))
-      }
-    } finally
+    finally
       deleteItems(workflow.path, subagentSelection.path)
-  }
 
   private def runOrder(workflowPath: WorkflowPath, orderId: OrderId, n: Int,
     expectedChildOrderEvent: OrderId => OrderEvent =
       orderId => OrderProcessed(Outcome.Succeeded(Map("result" -> StringValue("🔹" + orderId.string)))),
     expectedTerminationEvent: OrderTerminated = OrderFinished(),
     cancelChildOrders: Boolean = false)
-  : Order[Order.State] = {
+  : Order[Order.State] =
     val childOrderIds = (1 to n).map(i => orderId / s"ELEMENT-$i").toSet
     val eventId = eventWatch.lastAddedEventId
 
     val childOrdersProcessed = proxy.observable
       .map(_.stampedEvent.value)
-      .collect {
+      .collect:
         case KeyedEvent(orderId: OrderId, event: OrderEvent)
         if event == expectedChildOrderEvent(orderId) =>
           orderId
-      }
       .scan0(childOrderIds)(_ - _)
       .takeWhile(_.nonEmpty)
       .completedL
@@ -357,20 +340,18 @@ with BlockingItemUpdater
     controller.api.addOrders(Observable(order)).await(99.s).orThrow
 
     childOrdersProcessed.await(9.s)
-    if cancelChildOrders then {
+    if cancelChildOrders then
       controller.api.executeCommand(
         CancelOrders(childOrderIds)
       ).await(99.s).orThrow
-    }
 
     assert(eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
       .head.value.event == expectedTerminationEvent)
     val terminatedOrder = controllerState.idToOrder(orderId)
     controller.api.deleteOrdersWhenTerminated(Observable(orderId)).await(99.s).orThrow
     terminatedOrder
-  }
 
-  "Mixed agents" in {
+  "Mixed agents" in:
     val workflowId = mixedAgentsWorkflow.id
     val orderId = OrderId("MIXED")
     val myList = for i <- 1 to 3 yield s"ELEMENT-$i"
@@ -443,9 +424,8 @@ with BlockingItemUpdater
       OrderMoved(Position(6)),
       OrderFinished(),
       OrderDeleted))
-  }
 
-  "ForkList containing a first failing If statement failed before forking" in {
+  "ForkList containing a first failing If statement failed before forking" in:
     // This is due to the prediction, at which agent the child orders will starts
     val workflowId = errorWorkflow.id
     val orderId = OrderId(s"ERROR")
@@ -469,9 +449,8 @@ with BlockingItemUpdater
       //Until v2.5.0: OrderOutcomeAdded(Outcome.Failed(Some("No such named value: UNKNOWN"))),
       OrderOutcomeAdded(Outcome.Disrupted(Problem("No such named value: UNKNOWN"))),
       OrderFailed(Position(0))))
-  }
 
-  "Example with a simple script" in {
+  "Example with a simple script" in:
     logger.debug(exampleWorkflow.asJson.compactPrint)
     val workflowId = exampleWorkflow.id
     val orderId = OrderId("EXAMPLE")
@@ -496,7 +475,7 @@ with BlockingItemUpdater
 
     assert(eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
       .head.value.event == OrderFinished())
-    for elementId <- View("1", "2", "3") do {
+    for elementId <- View("1", "2", "3") do
       assert(eventWatch.eventsByKey[OrderEvent](orderId / elementId) == Seq(
         OrderProcessingStarted(subagentId),
         OrderStdoutWritten(s"ELEMENT_ID=$elementId$nl"),
@@ -504,12 +483,8 @@ with BlockingItemUpdater
         OrderMoved(Position(0) / "fork" % 1),
         OrderDetachable,
         OrderDetached))
-    }
-  }
-}
 
-object ForkListTest
-{
+object ForkListTest:
   private val logger = Logger[this.type]
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)
@@ -535,8 +510,7 @@ object ForkListTest
       EmptyJob.execute(agentPath),
       forkList/*Fork at agent*/))
 
-  private class TestJob extends InternalJob
-  {
+  private class TestJob extends InternalJob:
     def toOrderProcess(step: Step) =
       OrderProcess(Task {
         assert(step.order.arguments.keySet == Set("element", "myList"))
@@ -544,7 +518,6 @@ object ForkListTest
         step.order.arguments("myList").as[ListValue].orThrow
         Outcome.Succeeded(Map("result" -> StringValue("🔹" + step.order.id.string)))
       })
-  }
   private object TestJob extends InternalJob.Companion[TestJob]
 
   private val mixedAgentsWorkflow = Workflow(
@@ -673,4 +646,3 @@ object ForkListTest
       workflowPath,
       Map("myList" -> ListValue(for i <- 1 to n yield StringValue(s"ELEMENT-$i"))),
       deleteWhenTerminated = deleteWhenTerminated)
-}

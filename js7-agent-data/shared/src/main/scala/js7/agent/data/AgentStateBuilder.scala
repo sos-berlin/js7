@@ -15,8 +15,7 @@ import js7.data.workflow.{Workflow, WorkflowId}
 import scala.collection.mutable
 
 final class AgentStateBuilder
-extends SnapshotableStateBuilder[AgentState]
-{
+extends SnapshotableStateBuilder[AgentState]:
   protected val S = AgentState
 
   private var agentMetaState = AgentMetaState.empty
@@ -31,7 +30,7 @@ extends SnapshotableStateBuilder[AgentState]
   protected def onInitializeState(state: AgentState) =
     _state = state
 
-  protected def onAddSnapshotObject = {
+  protected def onAddSnapshotObject =
     case order: Order[Order.State] =>
       idToOrder.insert(order.id, order)
 
@@ -67,19 +66,16 @@ extends SnapshotableStateBuilder[AgentState]
       _state = _state.copy(
         standards = _state.standards.copy(
           clusterState = clusterState))
-  }
 
-  private def onSignedItemAdded(added: SignedItemEvent.SignedItemAdded): Unit = {
+  private def onSignedItemAdded(added: SignedItemEvent.SignedItemAdded): Unit =
     val item = added.signed.value
     keyToSignedItem.insert(item.key, added.signed)
-    item match {
+    item match
       case workflow: Workflow =>
         idToWorkflow.insert(workflow.id, workflow.reduceForAgent(agentMetaState.agentPath))
       case jobResource: JobResource =>
         pathToJobResource.insert(jobResource.path, jobResource)
       case _ =>
-    }
-  }
 
   override protected def onOnAllSnapshotsAdded() =
     _state = _state.copy(
@@ -91,11 +87,10 @@ extends SnapshotableStateBuilder[AgentState]
       pathToJobResource = pathToJobResource.toMap,
       keyToSignedItem = keyToSignedItem.toMap)
 
-  protected def onAddEvent = {
+  protected def onAddEvent =
     case Stamped(eventId, _, keyedEvent) =>
       updateEventId(eventId)
       _state = _state.applyEvent(keyedEvent).orThrow
-  }
 
   override def journalState: JournalState =
     _state.journalState
@@ -105,4 +100,3 @@ extends SnapshotableStateBuilder[AgentState]
 
   def result() =
     _state.copy(eventId = eventId)
-}

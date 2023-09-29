@@ -13,8 +13,7 @@ final case class AgentRef(
   directors: Seq[SubagentId]/*TODO NonEmptyList since v2.2*/,
   uri: Option/*COMPATIBLE with v2.1*/[Uri] = None,
   itemRevision: Option[ItemRevision] = None)
-extends UnsignedSimpleItem
-{
+extends UnsignedSimpleItem:
   protected type Self = AgentRef
   val companion: AgentRef.type = AgentRef
 
@@ -48,11 +47,11 @@ extends UnsignedSimpleItem
   // COMPATIBLE with v2.1
   /** Converts a legacy AgentRef to a modern AgentRef and a local SubagentItem. */
   def convertFromV2_1: Checked[(AgentRef, Option[SubagentItem])] =
-    this match {
+    this match
       case AgentRef(agentPath, directors, Some(uri), itemRevision) =>
         if directors.nonEmpty then
           Left(Problem.pure("Invalid AgentRef: both directors and uri?"))
-        else {
+        else
           val subagentItem = SubagentItem(
             SubagentId.legacyLocalFromAgentPath(agentPath),
             agentPath, uri,
@@ -63,15 +62,11 @@ extends UnsignedSimpleItem
             itemRevision = itemRevision)
 
           Right((agentRef, Some(subagentItem)))
-      }
 
       case agentRef @ AgentRef(_, _, None, _) =>
         Right((agentRef, None))
-    }
-}
 
-object AgentRef extends UnsignedSimpleItem.Companion[AgentRef]
-{
+object AgentRef extends UnsignedSimpleItem.Companion[AgentRef]:
   val cls = classOf[AgentRef]
 
   type Key = AgentPath
@@ -82,7 +77,7 @@ object AgentRef extends UnsignedSimpleItem.Companion[AgentRef]
 
   type ItemState = AgentRefState
 
-  implicit val jsonCodec: Codec.AsObject[AgentRef] = {
+  implicit val jsonCodec: Codec.AsObject[AgentRef] =
     val jsonDecoder: Decoder[AgentRef] =
       c => for
         path <- c.get[AgentPath]("path")
@@ -94,5 +89,3 @@ object AgentRef extends UnsignedSimpleItem.Companion[AgentRef]
       yield agentRef
 
     Codec.AsObject.from(jsonDecoder, deriveEncoder[AgentRef])
-  }
-}

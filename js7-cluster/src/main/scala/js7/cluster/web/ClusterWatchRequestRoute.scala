@@ -28,8 +28,7 @@ import org.reactivestreams.Publisher
 import scala.concurrent.duration.FiniteDuration
 import scala.util.control.NoStackTrace
 
-trait ClusterWatchRequestRoute extends RouteProvider
-{
+trait ClusterWatchRequestRoute extends RouteProvider:
   protected def scheduler: Scheduler
 
   private implicit def implicitScheduler: Scheduler = scheduler
@@ -78,7 +77,7 @@ trait ClusterWatchRequestRoute extends RouteProvider
     observableToMarshallable(Observable.empty)
 
   private def observableToMarshallable(observable: Observable[ClusterWatchRequest])
-  : ToResponseMarshallable = {
+  : ToResponseMarshallable =
     implicit val x: JsonEntityStreamingSupport = NdJsonStreamingSupport
     implicit val y: ToEntityMarshaller[ClusterWatchRequest] = jsonSeqMarshaller[ClusterWatchRequest]
     monixObservableToMarshallable(
@@ -86,12 +85,8 @@ trait ClusterWatchRequestRoute extends RouteProvider
         .takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ => Task {
           logger.debug("whenShuttingDown completed")
         }))
-  }
-}
 
-object ClusterWatchRequestRoute
-{
+object ClusterWatchRequestRoute:
   private val logger = Logger[this.type]
 
   private object CanceledException extends Exception with NoStackTrace
-}

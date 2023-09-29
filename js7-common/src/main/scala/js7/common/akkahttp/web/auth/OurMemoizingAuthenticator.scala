@@ -15,35 +15,30 @@ import js7.common.akkahttp.web.auth.OurMemoizingAuthenticator.*
   * @author Joacim Zschimmer
   */
 final class OurMemoizingAuthenticator[U <: User](toUser: UserId => Option[U])
-extends Authenticator[U] {
+extends Authenticator[U]:
 
   private val memoizedToUser = Memoizer.strict1(toUser)  // Only cache for short time if source will be a changing database !!!
 
   def apply(credentials: Credentials) =
-    credentials match {
+    credentials match
       case provided: Credentials.Provided =>
         val userId = UserId(provided.identifier)
-        userId match {
+        userId match
           case UserId.Anonymous =>
             None  // Anonymous is only for internal use, not for explicit authentication
           case _ =>
-            memoizedToUser(userId) match {
+            memoizedToUser(userId) match
               case Some(user) =>
                 provided.verify(user.hashedPassword.hashed.string, user.hashedPassword.hasher) ? user
               case None =>
                 None
-            }
-        }
 
       case Credentials.Missing =>
         authenticate(AnonymousAndPassword)
-    }
 
   def authenticate(userAndPassword: UserAndPassword): Option[U] =
     memoizedToUser(userAndPassword.userId)
       .filter(_.hashedPassword equalsClearText userAndPassword.password)
-}
 
-object OurMemoizingAuthenticator {
+object OurMemoizingAuthenticator:
   private val AnonymousAndPassword = UserAndPassword(UserId.Anonymous -> SecretString.empty)
-}

@@ -7,8 +7,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.data.value.{BooleanValue, FunctionValue, ListValue, MissingValue, NamedValues, NumberValue, ObjectValue, StringValue, Value}
 import scala.jdk.CollectionConverters.*
 
-object JavaUtils
-{
+object JavaUtils:
   val Void: Void = null.asInstanceOf[Void]
 
   // TEST IS MISSING
@@ -21,7 +20,7 @@ object JavaUtils
       .map(_.toMap)
 
   private def javaToValue(any: java.lang.Object): Checked[Value] =
-    (any: @unchecked) match {
+    (any: @unchecked) match
       case o: java.lang.Boolean => Right(BooleanValue(o))
       case o: java.lang.Integer => Right(NumberValue(o.intValue))
       case o: java.lang.Long => Right(NumberValue(o.longValue))
@@ -34,19 +33,16 @@ object JavaUtils
           .traverse(javaToValue)
           .map(ListValue.apply)
       case o => Left(Problem(s"Invalid Value Java type: ${o.getClass.getName}"))
-    }
 
   // TEST IS MISSING
   private def namedValuesToJava(namedValues: NamedValues): java.util.Map[String, java.lang.Object] =
     namedValues.view.mapValues(valueToJava).toMap.asJava
 
   private def valueToJava(value: Value): java.lang.Object =
-    value match {
+    value match
       case BooleanValue(o) => java.lang.Boolean.valueOf(o)
       case NumberValue(o) => o
       case StringValue(o) => o
       case ListValue(values) => values.asJava
       case MissingValue => Optional.empty
       case _: ObjectValue | _: FunctionValue => throw new NotImplementedError
-    }
-}

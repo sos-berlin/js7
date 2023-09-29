@@ -7,15 +7,14 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.event.JournalEvent.{Heartbeat, JournalEventsReleased, SnapshotTaken}
 import monix.reactive.Observable
 
-final case class JournalState(userIdToReleasedEventId: Map[UserId, EventId])
-{
+final case class JournalState(userIdToReleasedEventId: Map[UserId, EventId]):
   def estimatedSnapshotSize = if this != JournalState.empty then 1 else 0
 
   def toSnapshotObservable =
     Observable.fromIterable((this != JournalState.empty) ? this)
 
   def applyEvent(event: JournalEvent): JournalState =
-    event match {
+    event match
       case SnapshotTaken =>
         this
 
@@ -24,17 +23,12 @@ final case class JournalState(userIdToReleasedEventId: Map[UserId, EventId])
 
       case Heartbeat => // for completeness
         this
-    }
 
-  def toReleaseEventId(acknowledegedEventId: EventId, userIds: Iterable[UserId]): EventId = {
+  def toReleaseEventId(acknowledegedEventId: EventId, userIds: Iterable[UserId]): EventId =
     val defaults = userIds.map(_ -> EventId.BeforeFirst).toMap
     val userToEventId = defaults ++ userIdToReleasedEventId
     (userToEventId.values.view :+ acknowledegedEventId).min
-  }
-}
 
-object JournalState
-{
+object JournalState:
   val empty = JournalState(Map.empty)
   implicit val jsonCodec: Codec.AsObject[JournalState] = deriveCodec[JournalState]
-}

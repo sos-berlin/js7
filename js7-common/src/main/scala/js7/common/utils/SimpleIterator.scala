@@ -21,7 +21,7 @@ import js7.common.utils.SimpleIterator.*
  * limitations under the License.
  */
 
-trait SimpleIterator[T] extends Iterator[T] {
+trait SimpleIterator[T] extends Iterator[T]:
 
   private var state: State = NOT_READY
   private var _next: T = null.asInstanceOf[T]
@@ -55,49 +55,42 @@ trait SimpleIterator[T] extends Iterator[T] {
    *
    * @return `null` a convenience so your `computeNext` implementation can return `endOfData`.
    */
-  final protected def endOfData: T = {
+  final protected def endOfData: T =
     state = DONE
     null.asInstanceOf[T]
-  }
 
-  final def hasNext: Boolean = {
+  final def hasNext: Boolean =
     assertThat(state ne FAILED)
-    state match {
+    state match
       case DONE => false
       case READY =>  true
       case _ => tryToComputeNext()
-    }
-  }
 
-  private def tryToComputeNext(): Boolean = {
+  private def tryToComputeNext(): Boolean =
     state = FAILED // temporary pessimism
     _next = computeNext()
     (state ne DONE) && {
       state = READY
       true
     }
-  }
 
-  final def next(): T =  {
+  final def next(): T =
     ensureNext()
     state = NOT_READY
     val result = _next
     _next = null.asInstanceOf[T]
     result
-  }
 
   /** Returns the next element in the iteration without advancing the iteration.
    */
-  final def peek: T = {
+  final def peek: T =
     ensureNext()
     _next
-  }
 
   private def ensureNext(): Unit =
     if !hasNext then throw new NoSuchElementException
-}
 
-object SimpleIterator {
+object SimpleIterator:
 
   private sealed trait State
 
@@ -112,4 +105,3 @@ object SimpleIterator {
 
   /** We've suffered an exception and are kaput. */
   private case object FAILED extends State
-}

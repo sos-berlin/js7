@@ -14,8 +14,7 @@ final case class WatchOptions(
   pollTimeout: FiniteDuration,
   retryDelays: NonEmptySeq[FiniteDuration])
 
-object WatchOptions
-{
+object WatchOptions:
   private val defaultKinds: Set[WatchEvent.Kind[Path]] =
     Set(ENTRY_CREATE, ENTRY_MODIFY, ENTRY_DELETE)
 
@@ -31,4 +30,3 @@ object WatchOptions
     retryDurations: NonEmptySeq[FiniteDuration] = NonEmptySeq.one(100.ms))
   : WatchOptions
   = WatchOptions(directory, kinds, isRelevantFile, watchDelay, pollTimeout, retryDurations)
-}

@@ -21,8 +21,7 @@ final class FileSnapshotableStateBuilder[S <: SnapshotableState[S]](
   journalFileForInfo: Path,
   expectedJournalId: Option[JournalId],
   newBuilder: () => SnapshotableStateBuilder[S])
-  (implicit S: SnapshotableState.Companion[S])
-{
+  (implicit S: SnapshotableState.Companion[S]):
   def this(journalFileForInfo: Path, expectedJournalId: Option[JournalId])
     (implicit S: SnapshotableState.Companion[S])
   = this(journalFileForInfo, expectedJournalId, S.newBuilder _)
@@ -30,25 +29,21 @@ final class FileSnapshotableStateBuilder[S <: SnapshotableState[S]](
   private val builder = newBuilder()
   private var _progress: JournalProgress = JournalProgress.Initial
 
-  private object transaction
-  {
+  private object transaction:
     var buffer: ArrayBuffer[Stamped[KeyedEvent[Event]]] = null
 
-    def begin(): Unit = {
+    def begin(): Unit =
       require(!isInTransaction)
       buffer = new mutable.ArrayBuffer[Stamped[KeyedEvent[Event]]]
-    }
 
-    def add(stamped: Stamped[KeyedEvent[Event]]): Unit = {
+    def add(stamped: Stamped[KeyedEvent[Event]]): Unit =
       require(isInTransaction)
       buffer += stamped
-    }
 
     def clear(): Unit =
       buffer = null
 
     private def isInTransaction = buffer != null
-  }
 
   def startWithState(
     progress: JournalProgress,
@@ -56,15 +51,14 @@ final class FileSnapshotableStateBuilder[S <: SnapshotableState[S]](
     eventId: EventId,
     totalEventCount: Long,
     state: S)
-  : Unit = {
+  : Unit =
     this._progress = progress
     builder.initializeState(journalHeader, eventId, totalEventCount, state)
-  }
 
   def put(journalRecord: Any): Unit =
-    _progress match {
+    _progress match
       case Initial =>
-        journalRecord match {
+        journalRecord match
           case journalHeader: JournalHeader =>
             logger.debug(journalHeader.toString)
             JournalHeader.checkedHeader[S](journalHeader, journalFileForInfo, expectedJournalId)
@@ -75,7 +69,6 @@ final class FileSnapshotableStateBuilder[S <: SnapshotableState[S]](
           case _ => throw new IllegalArgumentException(
             s"Not a valid JS7 journal file: $journalFileForInfo. Expected a JournalHeader" +
               s" instead of ${journalRecord.toString.truncateWithEllipsis(100)}:")
-        }
 
       case AfterHeader =>
         if journalRecord != SnapshotHeader then throw new IllegalArgumentException(
@@ -83,13 +76,12 @@ final class FileSnapshotableStateBuilder[S <: SnapshotableState[S]](
         _progress = InSnapshotSection
 
       case InSnapshotSection =>
-        journalRecord match {
+        journalRecord match
           case SnapshotFooter =>
             builder.onAllSnapshotsAdded()
             _progress = AfterSnapshotSection
           case _ =>
             builder.addSnapshotObject(journalRecord)
-        }
 
       case AfterSnapshotSection =>
         if journalRecord != EventHeader then throw new IllegalArgumentException(
@@ -97,44 +89,38 @@ final class FileSnapshotableStateBuilder[S <: SnapshotableState[S]](
         _progress = InCommittedEventsSection
 
       case InCommittedEventsSection =>
-        journalRecord match {
+        journalRecord match
           case Transaction =>
             transaction.begin()
             _progress = InTransaction
           case _ =>
             builder.addEvent(cast[Stamped[KeyedEvent[Event]]](journalRecord))
-       }
 
       case InTransaction =>
-        journalRecord match {
+        journalRecord match
           case Commit =>
             _progress = InCommittedEventsSection
-            for stamped <- transaction.buffer do {
+            for stamped <- transaction.buffer do
               builder.addEvent(stamped)
-            }
             transaction.clear()
           case _ =>
             transaction.add(cast[Stamped[KeyedEvent[Event]]](journalRecord))
-        }
 
       //case _ =>
       //  throw new IllegalArgumentException(
       //    s"Illegal JSON while journal file reader is in state '$journalProgress': ${journalRecord.toString.truncateWithEllipsis(100)}")
-    }
 
   def rollbackToEventSection(): Unit =
-    _progress match {
+    _progress match
       case InCommittedEventsSection =>
       case InTransaction =>
         rollback()
       case _ =>
         throw new IllegalStateException(s"rollbackToEventSection() but progress=${_progress}")
-    }
 
-  private def rollback(): Unit = {
+  private def rollback(): Unit =
     transaction.clear()
     _progress = InCommittedEventsSection
-  }
 
   def journalProgress: JournalProgress =
     _progress
@@ -160,9 +146,6 @@ final class FileSnapshotableStateBuilder[S <: SnapshotableState[S]](
 
   def logStatistics(): Unit =
     builder.logStatistics(Try(Files.size(journalFileForInfo)).toOption)
-}
 
-object FileSnapshotableStateBuilder
-{
+object FileSnapshotableStateBuilder:
   private val logger = Logger[this.type]
-}

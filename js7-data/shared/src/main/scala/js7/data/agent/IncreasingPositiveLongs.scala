@@ -10,7 +10,7 @@ import scala.collection.AbstractIterator
  * @author Joacim Zschimmer
  */
 final class IncreasingPositiveLongs(start: Long = 1, maximum: Long = Long.MaxValue)
-extends AbstractIterator[Long] {
+extends AbstractIterator[Long]:
 
   private val counter = new AtomicLong(start)
 
@@ -24,4 +24,3 @@ extends AbstractIterator[Long] {
           case _ => n + 1
         }
     })
-}

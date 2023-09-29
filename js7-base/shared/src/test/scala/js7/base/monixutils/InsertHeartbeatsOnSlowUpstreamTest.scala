@@ -11,22 +11,19 @@ import scala.concurrent.Await
 /**
   * @author Joacim Zschimmer
   */
-final class InsertHeartbeatsOnSlowUpstreamTest extends OurTestSuite
-{
+final class InsertHeartbeatsOnSlowUpstreamTest extends OurTestSuite:
   private implicit val scheduler: TestScheduler = TestScheduler()
   private val heartbeat = -1
 
-  "insertHeartbeatsOnSlowUpstream" in {
+  "insertHeartbeatsOnSlowUpstream" in:
     assert(runObservable(List(1, 2, 100, 200, 100)) ==
       List(1, 2, heartbeat, 100, heartbeat, heartbeat, 200, heartbeat, 100))
-  }
 
-  "insertHeartbeatsOnSlowUpstream from start" in {
+  "insertHeartbeatsOnSlowUpstream from start" in:
     assert(runObservable(List(200, 1, 2, 100)) ==
       List(heartbeat, heartbeat, 200, 1, 2, heartbeat, 100))
-  }
 
-  private def runObservable(milliseconds: Seq[Int]): Seq[Int] = {
+  private def runObservable(milliseconds: Seq[Int]): Seq[Int] =
     val future = Observable.fromIterable(milliseconds)
       .mapEval(i => Task(i).delayExecution(i.ms))
       .insertHeartbeatsOnSlowUpstream(80.ms, heartbeat)
@@ -34,5 +31,3 @@ final class InsertHeartbeatsOnSlowUpstreamTest extends OurTestSuite
       .runToFuture
     for  _ <- 1 to 100 do scheduler.tick(80.ms)
     Await.result(future, 0.s)
-  }
-}

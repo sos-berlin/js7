@@ -30,9 +30,8 @@ import js7.data.workflow.test.TestSetting.*
 import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.BeforeAndAfterAll
 
-final class AgentShutDownTest extends OurTestSuite with BeforeAndAfterAll with TestAgentDirectoryProvider
-{
-  override def beforeAll() = {
+final class AgentShutDownTest extends OurTestSuite with BeforeAndAfterAll with TestAgentDirectoryProvider:
+  override def beforeAll() =
     (agentDirectory / "config" / "private" / "private.conf") ++= """
         |js7.auth.users.TEST-USER = "plain:TEST-PASSWORD"
         |js7.web.server.delay-shutdown = 1000ms
@@ -40,9 +39,8 @@ final class AgentShutDownTest extends OurTestSuite with BeforeAndAfterAll with T
     APathExecutable.toFile(agentDirectory / "config" / "executables").writeUtf8Executable(AScript)
     BPathExecutable.toFile(agentDirectory / "config" / "executables").writeUtf8Executable(AScript)
     super.beforeAll()
-  }
 
-  "ShutDown" in {
+  "ShutDown" in:
     val agentConfiguration = AgentConfiguration.forTest(agentDirectory, "AgentShutDownTest")
     val orderIds = for i <- 0 until 3 yield OrderId(s"TEST-ORDER-$i")
 
@@ -81,9 +79,8 @@ final class AgentShutDownTest extends OurTestSuite with BeforeAndAfterAll with T
             TestAgentPath))
         ) await 99.s
 
-        for orderId <- orderIds do {
+        for orderId <- orderIds do
           agent.eventWatch.await[OrderProcessingStarted](_.key == orderId)
-        }
         sleep(2.s)
 
         client.commandExecute(ShutDown(Some(SIGKILL))).await(99.s).orThrow
@@ -99,13 +96,9 @@ final class AgentShutDownTest extends OurTestSuite with BeforeAndAfterAll with T
     //    assert(processed.head.value.event.outcome.isInstanceOf[Outcome.Killed])
     //  }
     //}
-  }
-}
 
-object AgentShutDownTest
-{
+object AgentShutDownTest:
   private val logger = Logger[this.type]
   private val agentPath = AgentPath("AGENT")
   private val controllerId = ControllerId("CONTROLLER")
   private val AScript = operatingSystem.sleepingShellScript(10.s)
-}

@@ -6,9 +6,8 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import js7.base.test.OurAsyncTestSuite
 
-final class AtomicUpdaterTest extends OurAsyncTestSuite
-{
-  "update" in {
+final class AtomicUpdaterTest extends OurAsyncTestSuite:
+  "update" in:
     val n = 1000
     val atomicUpdater = new AtomicUpdater(0: java.lang.Integer)
     Task
@@ -18,10 +17,7 @@ final class AtomicUpdaterTest extends OurAsyncTestSuite
       .map(_.combineAll)
       .map(_ => assert(atomicUpdater.get == n))
       .runToFuture
-  }
-}
 
-object AtomicUpdaterTest {
+object AtomicUpdaterTest:
   private var x = 0
   private def delay() = for _ <- 1 to 1000 do x += 1
-}

@@ -30,8 +30,7 @@ import monix.execution.Scheduler.Implicits.traced
 import scala.util.control.NonFatal
 
 final class ResetAgentClusterTest extends OurTestSuite with ControllerAgentForScalaTest
-with BlockingItemUpdater
-{
+with BlockingItemUpdater:
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.journal.remove-obsolete-files = false
@@ -57,9 +56,9 @@ with BlockingItemUpdater
 
   protected def items = Nil
 
-  "Reset backup Director, too" in {
+  "Reset backup Director, too" in:
     /** Returned `TestAgent` releases `DirectorEnv`, too. */
-    def toTestAgent(envResource: Resource[Task, DirectorEnv]): (DirectorEnv, TestAgent) = {
+    def toTestAgent(envResource: Resource[Task, DirectorEnv]): (DirectorEnv, TestAgent) =
       val resource: Resource[Task, (DirectorEnv, RunningAgent)] =
         for
           env <- envResource
@@ -67,7 +66,6 @@ with BlockingItemUpdater
         yield env -> program
       val allocated = resource.toAllocated.await(99.s)
       allocated.allocatedThing._1 -> TestAgent(allocated.map(_._2))
-    }
 
     val (primaryEnv, primaryDirector) = toTestAgent(
       directoryProvider.directorEnvResource(
@@ -82,7 +80,7 @@ with BlockingItemUpdater
 
     primaryDirector.useSync(99.s) { _ =>
       backupDirector.useSync(99.s) { _ =>
-        try {
+        try
           updateItems(primarySubagentItem, backupSubagentItem, agentRef, workflow)
 
           primaryDirector.eventWatch.await[SubagentDedicated](_.key == primarySubagentId)
@@ -106,17 +104,14 @@ with BlockingItemUpdater
 
           assert(backupEnv.journalLocation.listJournalFiles.isEmpty)
           logger.info("Backup journal files have been deleted ✔︎")
-        } catch {
+        catch
           case NonFatal(t) =>
             logger.error(t.toStringWithCauses, t)
             throw t.appendCurrentStackTrace
-        }
       }
     }
-  }
-}
 
-object ResetAgentClusterTest {
+object ResetAgentClusterTest:
   private val logger = Logger[this.type]
   private val agentPath = AgentPath("AGENT")
   private val primarySubagentId = toLocalSubagentId(agentPath)
@@ -131,4 +126,3 @@ object ResetAgentClusterTest {
 
   final class ASemaphoreJob extends SemaphoreJob(ASemaphoreJob)
   object ASemaphoreJob extends SemaphoreJob.Companion[ASemaphoreJob]
-}

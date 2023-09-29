@@ -27,8 +27,7 @@ import scala.util.control.NonFatal
 /**
   * @author Joacim Zschimmer
   */
-object Configs
-{
+object Configs:
   private val InternalOriginDescription = "JS7"
   private val SecretOriginDescription = "JS7 Secret"
   private val Required = ConfigParseOptions.defaults.setAllowMissing(false)
@@ -39,33 +38,30 @@ object Configs
     else ConfigFactory.empty
 
   def parseConfigIfExists(file: Path, secret: Boolean): Config =
-    if exists(file) then {
+    if exists(file) then
       logger.info(s"Reading configuration file $file")
       var options = Required
       if secret then options = options.setOriginDescription(SecretOriginDescription)
       ConfigFactory.parseFile(file.toFile, options)
-    } else {
+    else
       logger.debug(s"No configuration file $file")
       ConfigFactory.empty
-    }
 
-  def loadResource(resource: JavaResource) = {
+  def loadResource(resource: JavaResource) =
     logger.trace(s"Reading configuration JavaResource $resource")
     var options = Required.setClassLoader(resource.classLoader)
     options = options.setOriginDescription(InternalOriginDescription)
     ConfigFactory.parseResourcesAnySyntax(resource.path, options)
-  }
 
   def logConfig(config: Config): Unit =
-    for entry <- config.entrySet.asScala.view.toVector.sortBy(_.getKey) do {
+    for entry <- config.entrySet.asScala.view.toVector.sortBy(_.getKey) do
       def line = renderValue(entry.getKey, entry.getValue)
       if isInternal(entry.getValue) then
         logger.trace(line)
       else
         logger.debug(line)
-    }
 
-  private[configutils] def renderValue(key: String, value: ConfigValue): String = {
+  private[configutils] def renderValue(key: String, value: ConfigValue): String =
     val sb = new StringBuilder(128)
     sb ++= key
     sb += '='
@@ -75,13 +71,11 @@ object Configs
         "(secret)"
       else
         value.render(concise))
-    if !secret && !isInternal(value) then {
+    if !secret && !isInternal(value) then
       sb ++= " ("
       sb ++= value.origin.description
       sb += ')'
-    }
     sb.toString
-  }
 
   private val descriptionRegEx = ": [0-9]+(-[0-9]+)?".r
 
@@ -91,17 +85,14 @@ object Configs
   private def isSecret(value: ConfigValue) =
     value.origin.description.startsWith(SecretOriginDescription)
 
-  implicit final class ConvertibleConfig(private val underlying: Config) extends ConvertiblePartialFunction[String, String]
-  {
+  implicit final class ConvertibleConfig(private val underlying: Config) extends ConvertiblePartialFunction[String, String]:
     def apply(path: String): String =
       underlying.getString(path)
 
     def isDefinedAt(path: String) =
       underlying.hasPath(path)
-  }
 
-  implicit final class RichConfig(private val underlying: Config) extends AnyVal
-  {
+  implicit final class RichConfig(private val underlying: Config) extends AnyVal:
     def getBoolean(path: String, default: Boolean): Boolean =
       if underlying.hasPath(path) then
         underlying.getBoolean(path)
@@ -136,24 +127,20 @@ object Configs
       catchExpected[ConfigException](
         underlying.getDuration(path).toFiniteDuration)
 
-    def memorySizeAsInt(path: String): Checked[Int] = {
+    def memorySizeAsInt(path: String): Checked[Int] =
       val bigInteger = underlying.getMemorySize(path).toBytesBigInteger
       if bigInteger.bitLength >= 32 then
         Left(Problem(s"Number is to big: $path = $bigInteger"))
       else
         Right(bigInteger.intValue)
-    }
-  }
 
   implicit val configMonoid: Monoid[Config] =
-    new Monoid[Config] {
+    new Monoid[Config]:
       val empty = ConfigFactory.empty
       def combine(a: Config, b: Config) = b withFallback a
-    }
 
-  implicit final class HoconStringInterpolator(private val sc: StringContext) extends AnyVal
-  {
-    def config(args: Any*)(implicit enclosing: sourcecode.Enclosing): Config = {
+  implicit final class HoconStringInterpolator(private val sc: StringContext) extends AnyVal:
+    def config(args: Any*)(implicit enclosing: sourcecode.Enclosing): Config =
       val configString = interpolate(sc, args, toHoconString)
       try ConfigFactory.parseString(
         configString,
@@ -162,32 +149,28 @@ object Configs
         logger.warn(s"${enclosing.value} => ${t.toStringWithCauses}")
         throw t
       }
-    }
 
     def configString(args: Any*): String =
       interpolate(sc, args, toHoconString)
-  }
 
   private def toHoconString(value: Any): String =
-    value match {
+    value match
       case v: ToHoconString => v.toHoconString
 
       case v: FiniteDuration => v.toHoconString
 
       case v @ (_: String | _: GenericString | _: Path | _: File) =>
-        val str = v match {
+        val str = v match
           case o: GenericString => o.string
           case o => o.toString
-        }
         val json = Json.fromString(str).toString
         // Strip quotes. Interpolation is expected to occur already in quotes: "$var"
         json.substring(1, json.length - 1)
 
       case v: Map[?, ?] =>
         v.asInstanceOf[Map[Any, Any]].view
-          .map {
+          .map:
             case (k, v) => toHoconString(k) + ": " + toHoconString(v)
-          }
           .mkString("{ ", ", ", " }")
 
       case v: Iterable[?] =>
@@ -203,5 +186,3 @@ object Configs
         toHoconString(v.asScala)
 
       case v => AnyJsonCodecs.anyToJson(v).toString
-    }
-}

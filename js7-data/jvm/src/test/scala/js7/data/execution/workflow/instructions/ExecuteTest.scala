@@ -20,8 +20,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 /**
   * @author Joacim Zschimmer
   */
-final class ExecuteTest extends OurTestSuite
-{
+final class ExecuteTest extends OurTestSuite:
   private val executable = RelativePathExecutable("EXECUTABLE", returnCodeMeaning = ReturnCodeMeaning.Success.of(0, 3, 9))
   private val executeAnonymous = Execute(WorkflowJob(AgentPath("AGENT"), executable))
   private val orderId = OrderId("ORDER")
@@ -33,23 +32,19 @@ final class ExecuteTest extends OurTestSuite
     isAgent = false,
     workflows = Some(Seq(workflow)))
 
-  "toOutcome" in {
+  "toOutcome" in:
     val namedValues = Map("a" -> StringValue("A"))
     assert(executable.toOutcome(namedValues, ReturnCode(0)) == Outcome.Succeeded(namedValues + ("returnCode" -> NumberValue(0))))
     assert(executable.toOutcome(namedValues, ReturnCode(1)) == Outcome.Failed   (namedValues + ("returnCode" -> NumberValue(1))))
     assert(executable.toOutcome(namedValues, ReturnCode(3)) == Outcome.Succeeded(namedValues + ("returnCode" -> NumberValue(3))))
-  }
 
-  "toEvents" in {
+  "toEvents" in:
     assert(toEvents(Outcome.Succeeded(NamedValues.rc(0))) == Seq(orderId <-: OrderMoved(Position(1))))
     assert(toEvents(Outcome.Succeeded(NamedValues.rc(1))) == Seq(orderId <-: OrderMoved(Position(1))))
     assert(toEvents(Outcome.Failed(NamedValues.rc(1))) == Seq(orderId <-: OrderFailedIntermediate_()))
     assert(toEvents(Outcome.Disrupted(Problem("DISRUPTION"))) == Seq(orderId <-: OrderFailedIntermediate_()))
-  }
 
-  private def toEvents(outcome: Outcome): Seq[KeyedEvent[OrderActorEvent]] = {
+  private def toEvents(outcome: Outcome): Seq[KeyedEvent[OrderActorEvent]] =
     val order = Order(orderId, workflow.id /: (Position(0)), Order.Processed,
       historicOutcomes = Vector(HistoricOutcome(Position(0), outcome)))
     executeExecutor.toEvents(executeAnonymous, order, stateView).orThrow
-  }
-}

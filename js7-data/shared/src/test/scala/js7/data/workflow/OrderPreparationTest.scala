@@ -5,9 +5,8 @@ import js7.base.test.OurTestSuite
 import js7.data.workflow.OrderParameterListTest.orderParameterList
 import js7.tester.CirceJsonTester.testJson
 
-final class OrderPreparationTest extends OurTestSuite
-{
-  "JSON" in {
+final class OrderPreparationTest extends OurTestSuite:
+  "JSON" in:
     testJson(OrderPreparation(OrderParameterList()),
       json"""{}""")
 
@@ -71,5 +70,3 @@ final class OrderPreparationTest extends OurTestSuite
           }
         }
       }""")
-  }
-}

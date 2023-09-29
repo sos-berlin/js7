@@ -11,8 +11,7 @@ import org.scalatest.Assertions.*
 /**
   * @author Joacim Zschimmer
   */
-object CirceJsonTester
-{
+object CirceJsonTester:
   private val printer = Printer.noSpaces.copy(dropNullValues = true/*drops None*/)
   private val prettyPrinter = Printer.spaces2.copy(colonLeft = "", lrbracketsEmpty = "")
 
@@ -21,15 +20,14 @@ object CirceJsonTester
 
   def testJson[A: Encoder: Decoder](a: A, json: => Json, more: Json*)
     (implicit pos: source.Position)
-  : Assertion = {
+  : Assertion =
     testJsonEncoder(a, json)
     testJsonDecoder(a, json)
     for json <- more do testJsonDecoder(a, json)
     succeed
-  }
 
   def testJsonEncoder[A: Encoder](a: A, json: => Json)(implicit pos: source.Position)
-  : Assertion = {
+  : Assertion =
     // Do a.asJson first to get the JSON string, then evaluate lazy json (which may have syntax errors during development).
     val asJson: Json = removeJNull(a.asJson)  // Circe converts None to JNull which we remove here (like Printer dropNullValues = true)
     if asJson != json then fail(
@@ -37,24 +35,21 @@ object CirceJsonTester
     val reparsed = parseJson(printer.print(asJson))
     assert(reparsed == json)
     assert(reparsed == asJson)
-  }
 
-  def testJsonDecoder[A: Decoder](a: A, json: => Json)(implicit pos: source.Position): Assertion = {
+  def testJsonDecoder[A: Decoder](a: A, json: => Json)(implicit pos: source.Position): Assertion =
     // Do a.asJson first to get the JSON string, then evaluate lazy json (which may have syntax errors during development).
     assert(rightOrThrow(json.as[A]) == a)
-  }
 
   private def parseJson(string: String): Json =
     rightOrThrow(parse(string))
 
   private def rightOrThrow[R](either: Either[io.circe.Error, R]): R =
-    either match {
+    either match
       case Left(t: DecodingFailure) =>
         throw new RuntimeException(t.show, t)
       case Left(t: ParsingFailure) =>
         throw new RuntimeException(t.show, t)   // Add stacktrace
       case Right(o) => o
-    }
 
   def normalizeJson(json: Json): Json =
     removeJNull(
@@ -70,14 +65,11 @@ object CirceJsonTester
       })
 
   def removeJNull(json: Json): Json =
-    json.asObject match {
+    json.asObject match
       case Some(o) => Json.fromFields(o.toIterable collect {
         case (k, v) if !v.isNull => k -> removeJNull(v)
       })
       case None =>
-        json.asArray match {
+        json.asArray match
           case Some(elements) => Json.fromValues(elements map removeJNull)
           case None => json
-        }
-    }
-}

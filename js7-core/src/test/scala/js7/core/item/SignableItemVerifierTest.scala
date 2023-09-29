@@ -18,58 +18,48 @@ import js7.service.pgp.{PgpKeyGenerator, PgpSignatureVerifier, PgpSigner}
 /**
   * @author Joacim Zschimmer
   */
-final class SignableItemVerifierTest extends OurTestSuite
-{
-  "ItemSigner.sign" in {
+final class SignableItemVerifierTest extends OurTestSuite:
+  "ItemSigner.sign" in:
     implicit val jsonCodec = SignableItemVerifierTest.jsonCodec
     val workflowString = jsonCodec(workflow: VersionedItem).asJson.compactPrint
 
-    def check() = {
+    def check() =
       val signature = signer.signString(workflowString).toGenericSignature
       assert(itemSigner.sign(workflow) == Signed(workflow, SignedString(workflowString, signature)))
-    }
     try check()
     catch { case _: Throwable =>
       // Generated PGP signature changes every second, so we try again
       check()
     }
-  }
 
-  "Verify valid objects" in {
-    def check() = {
+  "Verify valid objects" in:
+    def check() =
       val signedString = itemSigner.toSignedString(workflow)
       assert(signedString == itemSigner.toSignedString(workflow))
       assert(itemVerifier.verify(signedString) == Right(SignedItemVerifier.Verified(Signed(workflow, signedString), signerIds)))
-    }
     try check()
     catch { case _: Throwable =>
       // Generated PGP signature changes every second, so we try again
       check()
     }
-  }
 
-  "Verify falsified" in {
+  "Verify falsified" in:
     val tampered = itemSigner.toSignedString(workflow).tamper
     assert(itemVerifier.verify(tampered) == Left(TamperedWithSignedMessageProblem))
-  }
-}
 
-object SignableItemVerifierTest
-{
-  private val workflow = {
+object SignableItemVerifierTest:
+  private val workflow =
     val workflowScript = """define workflow { execute executable="SCRIPT.cmd", agent="AGENT"; }"""
     WorkflowParser.parse(WorkflowPath("WORKFLOW") ~ "1.0", workflowScript).orThrow
-  }
 
   private val signerIds = SignerId("SignableItemVerifierTest") :: Nil
 
-  private val (signer, verifier) = {
+  private val (signer, verifier) =
     val password = SecretString("TEST-PASSWORD")
     val secretKey = PgpKeyGenerator.generateSecretKey(signerIds.head, password, keySize = 1024/*fast*/)
     val verifier = PgpSignatureVerifier.checked(secretKey.getPublicKey.toArmoredAsciiBytes :: Nil).orThrow
     val signer = PgpSigner(secretKey, password).orThrow
     (signer, verifier)
-  }
 
   private implicit val jsonCodec: TypedJsonCodec[VersionedItem] =
     TypedJsonCodec(
@@ -77,4 +67,3 @@ object SignableItemVerifierTest
 
   private val itemSigner = new ItemSigner(signer, jsonCodec)
   private val itemVerifier = new SignedItemVerifier(verifier, jsonCodec)
-}

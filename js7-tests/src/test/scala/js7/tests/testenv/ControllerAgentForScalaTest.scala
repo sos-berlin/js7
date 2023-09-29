@@ -36,7 +36,7 @@ import scala.util.control.NonFatal
   * @author Joacim Zschimmer
   */
 @TestOnly
-trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
+trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest:
   this: org.scalatest.Suite =>
 
   protected final lazy val agents: Seq[TestAgent] = directoryProvider.startAgents(agentTestWiring)
@@ -71,15 +71,14 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
     controller.controllerState()
 
   protected final def orderToObstacles(orderId: OrderId)(implicit clock: WallClock)
-  : Checked[Set[OrderObstacle]] = {
+  : Checked[Set[OrderObstacle]] =
     val service = new InstructionExecutorService(clock)
     orderObstacleCalculator.orderToObstacles(orderId)(service)
-  }
 
   protected final def orderObstacleCalculator: OrderObstacleCalculator =
     new OrderObstacleCalculator(controllerState)
 
-  override def beforeAll() = {
+  override def beforeAll() =
     super.beforeAll()
 
     idToAllocatedSubagent
@@ -88,17 +87,13 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
       clusterWatchServiceOnce := service.toAllocated.await(99.s)
     controller
 
-    if waitUntilReady then {
+    if waitUntilReady then
       controller.waitUntilReady()
-      if !doNotAddItems then {
-        for subagentItem <- directoryProvider.subagentItems do {
+      if !doNotAddItems then
+        for subagentItem <- directoryProvider.subagentItems do
           eventWatch.await[SubagentCoupled](_.key == subagentItem.id)
-        }
-      }
-    }
-  }
 
-  override def afterAll() = {
+  override def afterAll() =
     Task
       .parSequence(
         Seq(
@@ -113,7 +108,6 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
       .await(99.s)
 
     super.afterAll()
-  }
 
   private val usedVersionIds = mutable.Set[VersionId]()
 
@@ -123,34 +117,31 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
   final def updateVersionedItems(
     change: Seq[VersionedItem],
     delete: Seq[VersionedItemPath])
-  : VersionId = {
+  : VersionId =
     val versionId = VersionId.generate(usedVersionIds)
     updateVersionedItems(versionId, change, delete)
     versionId
-  }
 
   final def updateVersionedItems(
     versionId: VersionId,
     change: Seq[VersionedItem] = Nil,
     delete: Seq[VersionedItemPath] = Nil)
-  : Unit = {
+  : Unit =
     usedVersionIds += versionId
     directoryProvider.updateVersionedItems(controller, versionId, change, delete)
-  }
 
   protected final def stopBareSubagent(subagentId: SubagentId): Unit =
     idToAllocatedSubagent(subagentId).release.await(99.s)
 
   protected final def startBareSubagent(subagentId: SubagentId)
-  : (Subagent, Task[Unit]) = {
+  : (Subagent, Task[Unit]) =
     val subagentItem = directoryProvider.subagentItems
       .find(_.id == subagentId)
       .getOrElse(throw new NoSuchElementException(s"Missing $subagentId"))
     directoryProvider.bareSubagentResource(subagentItem, toLocalSubagentId(agentPaths.head))
       .allocated.await(99.s)
-  }
 
-  protected final def enableSubagents(subagentIdToEnable: (SubagentId, Boolean)*): Unit = {
+  protected final def enableSubagents(subagentIdToEnable: (SubagentId, Boolean)*): Unit =
     val eventId = eventWatch.lastAddedEventId
     controller.api
       .updateItems(Observable
@@ -161,10 +152,8 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
             AddOrChangeSimple(subagentItem.withRevision(None).copy(disabled = !enable))
         })
       .await(99.s).orThrow
-    for subagentId <- subagentIdToEnable.map(_._1) do {
+    for subagentId <- subagentIdToEnable.map(_._1) do
       eventWatch.await[ItemAttached](_.event.key == subagentId, after = eventId)
-    }
-  }
 
   protected final def runSubagent[A](
     subagentItem: SubagentItem,
@@ -184,11 +173,10 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
     ).blockingUse(99.s) { subagent =>
       // body runs in the callers test thread
       try body(subagent)
-      catch {
+      catch
         case NonFatal(t) =>
           logger.error(t.toStringWithCauses, t.nullIfNoStackTrace)
           throw t
-      }
     }
 
   protected final def subagentResource(
@@ -213,9 +201,6 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
           }
         })
     })
-}
 
-object ControllerAgentForScalaTest
-{
+object ControllerAgentForScalaTest:
   private val logger = Logger[this.type]
-}

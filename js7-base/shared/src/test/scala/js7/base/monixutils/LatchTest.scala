@@ -6,18 +6,16 @@ import monix.execution.Scheduler.Implicits.traced
 import js7.base.test.OurAsyncTestSuite
 import scala.concurrent.Promise
 
-final class LatchTest extends OurAsyncTestSuite
-{
-  "Initially isNot" in {
+final class LatchTest extends OurAsyncTestSuite:
+  "Initially isNot" in:
     val latch = new Latch
     latch.isNot
       .map(o => assert(!o))
       .*>(latch.is)
       .map(assert(_))
       .runToFuture
-  }
 
-  "switch" in {
+  "switch" in:
     val latch = new Latch
     latch
       .switch
@@ -31,9 +29,8 @@ final class LatchTest extends OurAsyncTestSuite
       .*>(latch.isNot)
       .map(assert(_))
       .runToFuture
-  }
 
-  "when" in {
+  "when" in:
     val latch = new Latch
     val promise = Promise[Unit]()
 
@@ -49,9 +46,8 @@ final class LatchTest extends OurAsyncTestSuite
       .*>(Task.fromFuture(promise.future))
       .*>(Task.fromFuture(whenClosed).as(succeed))
     .runToFuture
-  }
 
-  "switchThen" in {
+  "switchThen" in:
     val latch = new Latch
     val promise = Promise[Unit]()
     latch
@@ -60,5 +56,3 @@ final class LatchTest extends OurAsyncTestSuite
       .*>(latch.switchThen(Task { promise.success(()) }))
       .map(maybe => assert(maybe.isEmpty))
       .runToFuture
-  }
-}

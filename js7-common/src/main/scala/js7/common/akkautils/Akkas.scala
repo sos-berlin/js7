@@ -22,8 +22,7 @@ import scala.util.control.NonFatal
 /**
  * @author Joacim Zschimmer
  */
-object Akkas
-{
+object Akkas:
   private val logger = Logger[this.type]
 
   def newActorSystem(
@@ -31,7 +30,7 @@ object Akkas
     config: Config = ConfigFactory.empty,
     executionContext: ExecutionContext = ExecutionContext.global)
   : ActorSystem =
-    logger.debugCall("newActorSystem", name) {
+    logger.debugCall("newActorSystem", name):
       val myConfig = ConfigFactory.systemProperties
         .withFallback(config)
         .withFallback(Js7Configuration.defaultConfig)
@@ -42,7 +41,6 @@ object Akkas
         Some(myConfig),
         Some(getClass.getClassLoader),
         myConfig.getBoolean("js7.akka.use-js7-thread-pool") ? executionContext)
-    }
 
   def terminateAndWait(actorSystem: ActorSystem): Unit =
     terminateAndWait(actorSystem,
@@ -64,48 +62,43 @@ object Akkas
   /** Shut down connection pool and terminate ActorSystem.
     * Only once callable.
     */
-  private def terminateFuture(actorSystem: ActorSystem): Future[Terminated] = {
+  private def terminateFuture(actorSystem: ActorSystem): Future[Terminated] =
     if actorSystem.whenTerminated.isCompleted then
       actorSystem.whenTerminated
-    else {
+    else
       import actorSystem.dispatcher  // The ExecutionContext will be shut down here !!!
       val poolShutdownTimeout =
         try actorSystem.settings.config.getDuration("js7.akka.http.connection-pool-shutdown-timeout").toFiniteDuration
         catch { case _: ConfigException.Missing => 100.ms }
       val timeoutPromise = Promise[Unit]()
 
-      val timer = actorSystem.scheduler.scheduleOnce(poolShutdownTimeout) {
+      val timer = actorSystem.scheduler.scheduleOnce(poolShutdownTimeout):
         timeoutPromise.success(())
-      }
       Future.firstCompletedOf(Seq(
         shutDownHttpConnectionPools(actorSystem),  // May block a long time (>99s)
         timeoutPromise.future)
       ).flatMap { _ =>
-        if timeoutPromise.isCompleted then {
+        if timeoutPromise.isCompleted then
           logger.debug(s"ActorSystem('${actorSystem.name}') shutdownAllConnectionPools() timed out after ${poolShutdownTimeout.pretty}")
-        }
         timer.cancel()
         actorSystem.terminate()
       }
-    }
-  }
 
   def shutDownHttpConnectionPools(actorSystem: ActorSystem): Future[Unit] =
-    if actorSystem.hasExtension(Http) then {
+    if actorSystem.hasExtension(Http) then
       logger.debug(s"ActorSystem('${actorSystem.name}') shutdownAllConnectionPools()")
       Http(actorSystem).shutdownAllConnectionPools()
-    } else
+    else
       Future.successful(())
 
   def byteStringToTruncatedString(byteString: ByteString, size: Int = 100) =
     s"${byteString.size} bytes " + (byteString.take(size).map(c => f"$c%02x") mkString " ") + ((byteString.sizeIs > size) ?? " ...")
 
-  def encodeAsActorName(o: String): String = {
+  def encodeAsActorName(o: String): String =
     val a = Uri.Path.Segment(o, Uri.Path.Empty).toString
     encodeAsActorName2(
       if a startsWith "$" then "%24" + a.tail
       else a)
-  }
 
   private val ValidSymbols = "%" + """-_.*$+:@&=,!~';""" // See ActorPath.ValidSymbols (private)
   private val toHex = "0123456789ABCDEF"
@@ -113,47 +106,38 @@ object Akkas
   private def isValidChar(c: Char): Boolean =
     (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || (ValidSymbols.indexOf(c) != -1)
 
-  private def encodeAsActorName2(string: String): String = {
+  private def encodeAsActorName2(string: String): String =
     val sb = new StringBuilder(string.length + 10*3)
-    for c <- string do {
-      if isValidChar(c) then {
+    for c <- string do
+      if isValidChar(c) then
         sb += c
-      } else {
-        if c >= 0x80 then {
+      else
+        if c >= 0x80 then
           sb += '%'
           sb += toHex(c.toInt >> 12)
           sb += toHex((c.toInt >> 8) & 0x0f)
-        }
         sb += '%'
         sb += toHex((c.toInt >> 4) & 0x0f)
         sb += toHex(c.toInt & 0x0f)
-      }
-    }
     sb.toString
-  }
 
   /** When an actor name to be re-used, the previous actor may still terminate, occupying the name. */
-  def uniqueActorName(name: String)(implicit context: ActorContext): String = {
+  def uniqueActorName(name: String)(implicit context: ActorContext): String =
     var _name = name
-    if context.child(name).isDefined then {
+    if context.child(name).isDefined then
       _name = Iterator.from(2).map(i => s"$name~$i").find { nam => context.child(nam).isEmpty }.get
       logger.debug(s"Duplicate actor name. Replacement actor name is ${context.self.path.pretty}/$name")
-    }
     _name
-  }
 
   def decodeActorName(o: String): String =
     Uri.Path(o).head.toString
 
-  implicit final class RichActorPath(private val underlying: ActorPath) extends AnyVal
-  {
+  implicit final class RichActorPath(private val underlying: ActorPath) extends AnyVal:
     /** Returns a non-unique readable string. "/" and "%2F" are both returns as "/". */
     def pretty: String =
-      underlying match {
+      underlying match
         case RootActorPath(address, name) => address.toString + name
         case child: ChildActorPath => child.parent.pretty.stripSuffix("/") + "/" + decodeActorName(child.name)
-      }
-  }
 
   def actorSystemResource(name: String, config: Config = ConfigFactory.empty)
   : Resource[Task, ActorSystem] =
@@ -172,4 +156,3 @@ object Akkas
     Resource.make(
       acquire = F.delay(arf.actorOf(props, name)))(
       release = a => F.delay(arf.stop(a)))
-}

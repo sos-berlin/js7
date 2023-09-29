@@ -8,7 +8,5 @@ final case class JournalInfo(
   tornEventId: EventId,
   journalFiles: Seq[JournalPosition])
 
-object JournalInfo
-{
+object JournalInfo:
   implicit val jsonCodec: Codec.AsObject[JournalInfo] = deriveCodec[JournalInfo]
-}

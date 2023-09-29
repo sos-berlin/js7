@@ -36,18 +36,16 @@ import org.scalatest.BeforeAndAfterAll
 /**
   * @author Joacim Zschimmer
   */
-final class ProcessDriverTest extends OurTestSuite with BeforeAndAfterAll with TestAgentDirectoryProvider
-{
+final class ProcessDriverTest extends OurTestSuite with BeforeAndAfterAll with TestAgentDirectoryProvider:
   private lazy val ioxAllocated = IOExecutor.resource[Task](SubagentConf.DefaultConfig, "ProcessDriverTest")
     .toAllocated.await(99.s)
 
-  override protected def afterAll() = {
+  override protected def afterAll() =
     closer.close()
     ioxAllocated.release.await(99.s)
     super.afterAll()
-  }
 
-  "ProcessDriver" in {
+  "ProcessDriver" in:
     val executableDirectory = createTempDirectory("ProcessDriverTest-")
 
     val pathExecutable = RelativePathExecutable(s"TEST$sh", v1Compatible = true)
@@ -93,10 +91,8 @@ final class ProcessDriverTest extends OurTestSuite with BeforeAndAfterAll with T
     }.toString)
     RichProcess.tryDeleteFiles(shellFile :: Nil)
     deleteDirectoryRecursively(executableDirectory)
-  }
-}
 
-object ProcessDriverTest {
+object ProcessDriverTest:
   private val TestScript =
     if isWindows then """
       |@echo off
@@ -111,5 +107,3 @@ object ProcessDriverTest {
       |echo "var1=$VAR1"
       |echo "result=TEST-RESULT-$VAR1" >>"$JS7_RETURN_VALUES"
       |""".stripMargin
-
-}

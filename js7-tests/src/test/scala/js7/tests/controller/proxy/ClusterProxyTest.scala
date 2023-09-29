@@ -18,8 +18,7 @@ import js7.tests.testenv.ControllerClusterForScalaTest
 import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.{BeforeAndAfterAll, TestSuite}
 
-trait ClusterProxyTest extends BeforeAndAfterAll with ControllerClusterForScalaTest with ProvideActorSystem
-{
+trait ClusterProxyTest extends BeforeAndAfterAll with ControllerClusterForScalaTest with ProvideActorSystem:
   this: TestSuite =>
 
   protected val items = Seq(workflow)
@@ -41,11 +40,10 @@ trait ClusterProxyTest extends BeforeAndAfterAll with ControllerClusterForScalaT
       },
     ProxyConfs.fromConfig(config))
 
-  override def afterAll() = {
+  override def afterAll() =
     close()
     controllerApi.stop.runAsyncAndForget
     super.afterAll()
-  }
 
   override protected def primaryControllerConfig = config"""
     js7.auth.users {
@@ -64,10 +62,8 @@ trait ClusterProxyTest extends BeforeAndAfterAll with ControllerClusterForScalaT
       }
     }
     """
-}
 
-private[proxy] object ClusterProxyTest
-{
+private[proxy] object ClusterProxyTest:
   private[proxy] val primaryUserAndPassword = UserAndPassword(UserId("Proxy") -> SecretString("PROXYS-PASSWORD-FOR-PRIMARY"))
   private[proxy] val primaryCredentials = JCredentials.JUserAndPassword(primaryUserAndPassword)
   private[proxy] val backupUserAndPassword = UserAndPassword(UserId("Proxy"), SecretString("PROXYS-PASSWORD-FOR-BACKUP"))
@@ -80,4 +76,3 @@ private[proxy] object ClusterProxyTest
         execute executable="TEST.cmd", agent="AGENT", parallelism=10;
       }"""
   ).orThrow
-}

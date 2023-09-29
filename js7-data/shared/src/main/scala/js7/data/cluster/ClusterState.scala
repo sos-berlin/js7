@@ -13,8 +13,7 @@ import js7.data.node.NodeId
 import monix.reactive.Observable
 
 sealed trait ClusterState
-extends EventDrivenState[ClusterState, ClusterEvent]
-{
+extends EventDrivenState[ClusterState, ClusterEvent]:
   import ClusterState.*
 
   def companion = ClusterState
@@ -26,13 +25,12 @@ extends EventDrivenState[ClusterState, ClusterEvent]
 
   def isEmptyOrActive(id: NodeId): Boolean
 
-  final def applyEvent(keyedEvent: KeyedEvent[ClusterEvent]): Checked[ClusterState] = {
+  final def applyEvent(keyedEvent: KeyedEvent[ClusterEvent]): Checked[ClusterState] =
     compilable(keyedEvent.key: NoKey)
     applyEvent2(keyedEvent.event)
-  }
 
   private def applyEvent2(event: ClusterEvent): Checked[ClusterState] =
-    (this, event) match {
+    (this, event) match
       case (Empty, ClusterNodesAppointed(setting)) =>
         Right(NodesAppointed(setting))
 
@@ -77,7 +75,6 @@ extends EventDrivenState[ClusterState, ClusterEvent]
 
       case (_, keyedEvent) =>
         eventNotApplicable(keyedEvent)
-    }
 
   def estimatedSnapshotSize =
     if this != Empty then 1 else 0
@@ -86,28 +83,22 @@ extends EventDrivenState[ClusterState, ClusterEvent]
     Observable.fromIterable((this != Empty) ? ClusterStateSnapshot(this))
 
   def toShortString: String =
-    this match {
+    this match
       case Empty => "ClusterState.Empty"
       case hasNodes: HasNodes =>
         s"${hasNodes.getClass.simpleScalaName}(${hasNodes.activeId} is active)"
-    }
-}
 
 object ClusterState
-extends EventDrivenState.Companion[ClusterState, ClusterEvent]
-{
+extends EventDrivenState.Companion[ClusterState, ClusterEvent]:
   private type Id = NodeId
 
   /** Cluster has not been initialized.
     * Like ClusterSole but own URI is unknown. Non-permanent state, not stored. */
-  case object Empty extends ClusterState
-  {
+  case object Empty extends ClusterState:
     def isNonEmptyActive(id: Id) = false
     def isEmptyOrActive(id: Id) = true
-  }
 
-  sealed trait HasNodes extends ClusterState
-  {
+  sealed trait HasNodes extends ClusterState:
     this: Product =>
 
     val setting: ClusterSetting
@@ -132,8 +123,7 @@ extends EventDrivenState.Companion[ClusterState, ClusterEvent]
 
     override def toString =
       s"$productPrefix($nodesString${setting.clusterWatchId.fold("")(o => ", " + o)})"
-  }
-  object HasNodes {
+  object HasNodes:
     def unapply(clusterState: ClusterState.HasNodes) = Some(clusterState.setting)
 
     implicit val jsonCodec: TypedJsonCodec[HasNodes] = TypedJsonCodec(
@@ -144,64 +134,53 @@ extends EventDrivenState.Companion[ClusterState, ClusterEvent]
       Subtype(deriveCodec[PassiveLost]),
       Subtype(deriveCodec[SwitchedOver]),
       Subtype(deriveCodec[FailedOver]))
-  }
 
-  sealed trait IsCoupledOrDecoupled extends HasNodes {
+  sealed trait IsCoupledOrDecoupled extends HasNodes:
     this: Product =>
 
     def withSetting(setting: ClusterSetting): IsCoupledOrDecoupled
-  }
 
-  sealed trait IsDecoupled extends IsCoupledOrDecoupled {
+  sealed trait IsDecoupled extends IsCoupledOrDecoupled:
     this: Product =>
-  }
 
   /** Initial appointment of the nodes. */
   final case class NodesAppointed(setting: ClusterSetting)
-  extends IsDecoupled {
+  extends IsDecoupled:
     def withSetting(setting: ClusterSetting) = copy(setting = setting)
-  }
 
   /** Intermediate state only, is immediately followed by transition ClusterCoupled -> Coupled. */
   final case class PreparedToBeCoupled(setting: ClusterSetting)
-  extends HasNodes {
+  extends HasNodes:
     def withSetting(setting: ClusterSetting) = copy(setting = setting)
-  }
 
   /** An active node is coupled with a passive node. */
   final case class Coupled(setting: ClusterSetting)
-  extends IsCoupledOrDecoupled
-  {
+  extends IsCoupledOrDecoupled:
     def withSetting(setting: ClusterSetting) = copy(setting = setting)
-  }
 
   /** The active node has shut down while `Coupled` and will continue to be active when restarted.
       The passive node must not fail-over.
       After restart, the active node will be still active.
     */
   final case class ActiveShutDown(setting: ClusterSetting)
-  extends IsDecoupled {
+  extends IsDecoupled:
     def withSetting(setting: ClusterSetting) = copy(setting = setting)
-  }
 
   final case class SwitchedOver(setting: ClusterSetting)
-  extends IsDecoupled {
+  extends IsDecoupled:
     def withSetting(setting: ClusterSetting) = copy(setting = setting)
-  }
 
-  sealed trait IsNodeLost extends IsDecoupled {
+  sealed trait IsNodeLost extends IsDecoupled:
     this: Product =>
-  }
 
   final case class PassiveLost(setting: ClusterSetting)
-  extends IsNodeLost {
+  extends IsNodeLost:
     def withSetting(setting: ClusterSetting) = copy(setting = setting)
-  }
 
   /** Decoupled after failover.
     * @param failedAt the failing node's journal must be truncated at this point. */
   final case class FailedOver(setting: ClusterSetting, failedAt: JournalPosition)
-  extends IsNodeLost {
+  extends IsNodeLost:
     def withSetting(setting: ClusterSetting) = copy(setting = setting)
 
     override def toShortString =
@@ -209,9 +188,7 @@ extends EventDrivenState.Companion[ClusterState, ClusterEvent]
 
     override def toString = "FailedOver(" +
       s"${setting.passiveId.string} --> ${setting.activeId.string} at $failedAt)"
-  }
 
   implicit val jsonCodec: TypedJsonCodec[ClusterState] = TypedJsonCodec(
     Subtype(Empty),
     Subtype[HasNodes])
-}

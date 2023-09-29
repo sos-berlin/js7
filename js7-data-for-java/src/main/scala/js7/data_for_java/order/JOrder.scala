@@ -22,8 +22,7 @@ import scala.reflect.ClassTag
 
 @javaApi
 final case class JOrder(asScala: Order[Order.State])
-extends JJsonable[JOrder]
-{
+extends JJsonable[JOrder]:
   import JOrder.*
 
   type AsScala = Order[Order.State]
@@ -70,11 +69,9 @@ extends JJsonable[JOrder]
           case o => Left(Problem(s"Scala Order.${o.getClass.simpleScalaName} is not available for Java"))
         })
       .toVavr
-}
 
 @javaApi
-object JOrder extends JJsonable.Companion[JOrder]
-{
+object JOrder extends JJsonable.Companion[JOrder]:
   type AsScala = Order[Order.State]
 
   @Nonnull
@@ -97,29 +94,24 @@ object JOrder extends JJsonable.Companion[JOrder]
     clas: Class[S],
     private[JOrder] val scalaClass: Class[? <: Order.State])
 
-  final case class Forked(asScala: Order.Forked) extends State {
+  final case class Forked(asScala: Order.Forked) extends State:
     type AsScala = Order.Forked
 
     @Nonnull
     def childOrderIds: java.util.List[OrderId] =
       asScala.children.map(_.orderId).asJava
-  }
 
-  final case class Processing(asScala: Order.Processing) extends State {
+  final case class Processing(asScala: Order.Processing) extends State:
     type AsScala = Order.Processing
 
     /** @return empty iff written by v2.2 */
     def maybeSubagentId: Optional[SubagentId] =
       asScala.subagentId.toJava
-  }
 
-  case object Finished extends State {
+  case object Finished extends State:
     type AsScala = Order.Finished
     val asScala: Order.Finished = Order.Finished
-  }
 
-  case object Deleted extends State {
+  case object Deleted extends State:
     type AsScala = Order.Deleted
     val asScala: Order.Deleted = Order.Deleted
-  }
-}

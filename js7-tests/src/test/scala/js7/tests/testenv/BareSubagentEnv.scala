@@ -24,12 +24,12 @@ final class BareSubagentEnv private[testenv](
   protected val provideClientCertificate: Boolean = false,
   override protected val suppressSignatureKeys: Boolean = false,
   protected val extraConfig: Config = ConfigFactory.empty)
-extends SubagentEnv {
+extends SubagentEnv:
   type Program = Subagent
 
   initialize()
 
-  protected override def createDirectoriesAndFiles(): Unit = {
+  protected override def createDirectoriesAndFiles(): Unit =
     super.createDirectoriesAndFiles()
 
     privateConf ++= s"""
@@ -38,7 +38,6 @@ extends SubagentEnv {
      |  password: "plain:${directorSubagentId.string}'s PASSWORD"
      |}
      |""".stripMargin
-  }
 
   def programResource: Resource[Task, Subagent] =
     subagentResource
@@ -48,4 +47,3 @@ extends SubagentEnv {
       Subagent.resource(subagentConf, new StandardEventBus[Any]))
 
   override def toString = s"BareSubagentEnv($name)"
-}

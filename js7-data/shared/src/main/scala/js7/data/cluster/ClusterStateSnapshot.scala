@@ -5,6 +5,5 @@ import io.circe.generic.semiauto
 
 final case class ClusterStateSnapshot(clusterState: ClusterState)
 
-object ClusterStateSnapshot {
+object ClusterStateSnapshot:
   implicit val jsonCodec: Codec.AsObject[ClusterStateSnapshot] = semiauto.deriveCodec
-}

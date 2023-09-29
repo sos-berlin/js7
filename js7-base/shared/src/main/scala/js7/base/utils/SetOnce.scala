@@ -12,8 +12,7 @@ import scala.util.Success
  *
  * @author Joacim Zschimmer
  */
-final class SetOnce[A](label: => String, notYetSetProblem: Problem)
-{
+final class SetOnce[A](label: => String, notYetSetProblem: Problem):
   protected[this] val promise = Promise[A]()
 
   lazy val task: Task[A] =
@@ -22,26 +21,22 @@ final class SetOnce[A](label: => String, notYetSetProblem: Problem)
   override def toString = toStringOr(s"SetOnce[$label](not yet set)")
 
   @inline def toStringOr(or: => String): String =
-    promise.future.value match {
+    promise.future.value match
       case None => or
       case Some(Success(o)) => o.toString
       case Some(o) => o.toString  // Never happens
-    }
 
   def getOrUpdate(lazyValue: => A): A =
-    promise.future.value match {
+    promise.future.value match
       case Some(o) => o.get
       case None =>
-        synchronized {
-          promise.future.value match {
+        synchronized:
+          promise.future.value match
             case Some(o) => o.get
             case None =>
               val value = lazyValue
               promise.success(value)
               value
-          }
-        }
-    }
 
   def toOption: Option[A] =
     promise.future.value.map(_.get)
@@ -68,10 +63,9 @@ final class SetOnce[A](label: => String, notYetSetProblem: Problem)
    *
    * @throws IllegalStateException
    */
-  def :=(value: A): A = {
+  def :=(value: A): A =
     if !trySet(value) then throw new IllegalStateException(s"SetOnce[$label] has already been set")
     value
-  }
 
   /** @return true iff the value has not yet been set. */
   def trySet(value: A): Boolean =
@@ -84,18 +78,14 @@ final class SetOnce[A](label: => String, notYetSetProblem: Problem)
     checked getOrElse els
 
   def checked: Checked[A] =
-    promise.future.value match {
+    promise.future.value match
       case None => Left(notYetSetProblem)
       case Some(o) => Right(o.get)
-    }
-}
 
-object SetOnce
-{
-  def apply[A](implicit A: Tag[A]): SetOnce[A] = {
+object SetOnce:
+  def apply[A](implicit A: Tag[A]): SetOnce[A] =
     lazy val label = A.tag.toString
     SetOnce[A](label)
-  }
 
   def apply[A](problem: Problem)(implicit A: Tag[A]): SetOnce[A] =
     undefined[A](problem)
@@ -106,23 +96,19 @@ object SetOnce
   def apply[A](label: String, problem: Problem): SetOnce[A] =
     new SetOnce[A](label, problem)
 
-  def undefined[A](problem: Problem)(implicit A: Tag[A]): SetOnce[A] = {
+  def undefined[A](problem: Problem)(implicit A: Tag[A]): SetOnce[A] =
     lazy val label = A.tag.toString  // Seems to be slow
     new SetOnce[A](label, problem)
-  }
 
   def undefined[A](label: => String, problem: Problem): SetOnce[A] =
     new SetOnce[A](label, problem)
 
-  def fromOption[A](option: Option[A])(implicit A: Tag[A]) = {
+  def fromOption[A](option: Option[A])(implicit A: Tag[A]) =
     val setOnce = SetOnce[A](A.tag.toString)
     option foreach setOnce.:=
     setOnce
-  }
 
-  def fromOption[A](option: Option[A], label: String) = {
+  def fromOption[A](option: Option[A], label: String) =
     val setOnce = SetOnce[A](label)
     option foreach setOnce.:=
     setOnce
-  }
-}

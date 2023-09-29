@@ -3,8 +3,7 @@ package js7.base.time
 import scala.concurrent.duration.FiniteDuration
 
 final class TestWallClock(start: Timestamp)
-extends WallClock
-{
+extends WallClock:
   private var _now = start
 
   def epochMilli() =
@@ -21,10 +20,7 @@ extends WallClock
 
   //override def toString =
   //  s"TestWallClock(${now()})"
-}
 
-object TestWallClock
-{
+object TestWallClock:
   def apply(start: Timestamp) =
     new TestWallClock(start)
-}

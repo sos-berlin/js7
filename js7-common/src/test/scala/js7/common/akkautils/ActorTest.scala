@@ -12,16 +12,14 @@ import org.scalatest.BeforeAndAfterAll
 import scala.concurrent.Promise
 import scala.util.control.NoStackTrace
 
-final class ActorTest extends OurTestSuite with BeforeAndAfterAll with ProvideActorSystem
-{
+final class ActorTest extends OurTestSuite with BeforeAndAfterAll with ProvideActorSystem:
   protected def config = config"akka.actor.guardian-supervisor-strategy = akka.actor.StoppingSupervisorStrategy"
 
-  override def afterAll() = {
+  override def afterAll() =
     Akkas.terminateAndWait(actorSystem, 99.s)
     super.afterAll()
-  }
 
-  "A crashing actor does not automatically restart" in {
+  "A crashing actor does not automatically restart" in:
     val startCounter = AtomicInt(0)
     val restarted = AtomicBoolean(false)
     val stopped = Promise[Unit]()
@@ -55,10 +53,6 @@ final class ActorTest extends OurTestSuite with BeforeAndAfterAll with ProvideAc
     assert(!restarted.get() && startCounter.get() == 1)
     sleep(1.s)
     assert(!restarted.get() && startCounter.get() == 1)
-  }
-}
 
-object ActorTest
-{
+object ActorTest:
   private val logger = Logger[this.type]
-}

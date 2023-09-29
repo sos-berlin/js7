@@ -11,7 +11,7 @@ import java.nio.charset.StandardCharsets.UTF_8
  */
 final case class JsonString(string: String)
 
-object JsonString {
+object JsonString:
   implicit val marshaller: ToEntityMarshaller[JsonString] =
     Marshaller.withFixedContentType(`application/json`) { value =>
       HttpEntity(`application/json`, value.string.getBytes(UTF_8))
@@ -20,4 +20,3 @@ object JsonString {
   implicit val unmarshaller: FromEntityUnmarshaller[JsonString] =
     for byteString <- Unmarshaller.byteStringUnmarshaller.forContentTypes(`application/json`)
       yield JsonString(byteString.utf8String)
-}

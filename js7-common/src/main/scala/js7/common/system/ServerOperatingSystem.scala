@@ -18,7 +18,7 @@ import scala.util.Try
 /**
  * @author Joacim Zschimmer
  */
-trait ServerOperatingSystem {
+trait ServerOperatingSystem:
 
   def secretFileAttributes: Seq[FileAttribute[java.util.Set[?]]]
 
@@ -36,9 +36,8 @@ trait ServerOperatingSystem {
   def cpuModel: Option[String]
 
   def sleepingShellScript(duration: FiniteDuration): String
-}
 
-object ServerOperatingSystem {
+object ServerOperatingSystem:
   lazy val unix = new Unix
   lazy val windows = new Windows
   val LineEnd = if isWindows then "\r\n" else "\n"
@@ -46,16 +45,15 @@ object ServerOperatingSystem {
   val javaLibraryPathPropertyName = "java.library.path"
   lazy val KernelSupportsNestedShebang = KernelVersion() >= KernelVersion("Linux", List(2, 6, 28))  // Exactly 2.6.27.9 - but what means the fourth number? http://www.in-ulm.de/~mascheck/various/shebang/#interpreter-script
 
-  def makeModuleFilename(path: String): String = {
+  def makeModuleFilename(path: String): String =
     val file = new File(path)
     new File(file.getParent, System.mapLibraryName(file.getName)).toString
-  }
 
   def makeExecutableFilename(name: String): String = operatingSystem.makeExecutableFilename(name)
 
   def getDynamicLibraryEnvironmentVariableName: String = operatingSystem.dynamicLibraryEnvironmentVariableName
 
-  final class Windows private[system] extends ServerOperatingSystem {
+  final class Windows private[system] extends ServerOperatingSystem:
     val secretFileAttributes = Nil  // TODO File must not be accessible for other Windows users
 
     def makeExecutableFilename(name: String): String = name + ".exe"
@@ -70,9 +68,8 @@ object ServerOperatingSystem {
 
     def sleepingShellScript(duration: FiniteDuration) =
       s"@ping -n ${(duration + 999.ms).toSeconds + 1} 127.0.0.1 >nul"
-  }
 
-  final class Unix private[system] extends ServerOperatingSystem {
+  final class Unix private[system] extends ServerOperatingSystem:
     val secretFileAttributes = List(asFileAttribute(PosixFilePermissions fromString "rw-------"))
       .asInstanceOf[Seq[FileAttribute[java.util.Set[?]]]]
 
@@ -82,41 +79,37 @@ object ServerOperatingSystem {
 
     protected val hostnameEnvName = "HOSTNAME"
 
-    lazy val distributionNameAndVersionOption: Option[String] = {
+    lazy val distributionNameAndVersionOption: Option[String] =
       def readFirstLine(file: Path): String =
         autoClosing(new FileInputStream(file.toFile)) { in =>
           fromInputStream(in).getLines().next().trim
         }
 
-      def readFileOsRelease() = {
+      def readFileOsRelease() =
         val prettyNamePrefix = "PRETTY_NAME="
         val file = "/etc/os-release"
         autoClosing(new FileInputStream(file)) { in =>    // https://man7.org/linux/man-pages/man5/os-release.5.html
-          fromInputStream(in).getLines() collectFirst {
+          fromInputStream(in).getLines() collectFirst:
             case line if line startsWith prettyNamePrefix =>
               line.stripPrefix(prettyNamePrefix).stripPrefix("\"").stripPrefix("'").stripSuffix("\"").stripSuffix("'").trim
-          }
         }
         .getOrElse(sys.error(s"Key PRETTY_NAME not found in files $file"))
-      }
 
-      def readFileAnyRelease() = {
+      def readFileAnyRelease() =
         val anyFile = autoClosing(newDirectoryStream(Paths.get("/etc"), "*-release")) { stream =>
           val iterator = stream.iterator
           if !iterator.hasNext then sys.error("No file matches /etc/*-release")
           iterator.next
         }
         readFirstLine(anyFile)
-      }
 
       if isMac then
         Try {
           val RegEx = "([a-zA-Z]+):\t+(.+)$".r
           val lines = ("/usr/bin/sw_vers").!!.trim.split('\n').toVector
           def read(key: String): Option[String] =
-            lines.collectFirst {
+            lines.collectFirst:
               case RegEx(`key`, value) => value
-            }
           Vector(
             read("ProductName"),
             read("ProductVersion"),
@@ -131,9 +124,8 @@ object ServerOperatingSystem {
           .recover { case _ => readFileAnyRelease() }  // Vendor-specific
           .recover { case _ => readFirstLine(Paths.get("/etc/release")) } // Solaris ?
           .toOption
-    }
 
-    lazy val cpuModel: Option[String] = {
+    lazy val cpuModel: Option[String] =
       val fromOS =
         if isMac then
           Try(("/usr/sbin/sysctl -n machdep.cpu.brand_string").!!.trim).toOption
@@ -143,20 +135,15 @@ object ServerOperatingSystem {
           Try {
             val CpuModelRegex = """model name[ \t]*:[ \t]*(.+)""".r
             autoClosing(new FileInputStream("/proc/cpuinfo")) { in =>
-              fromInputStream(in).getLines().collectFirst {  // We return the model of the first core
+              fromInputStream(in).getLines().collectFirst:  // We return the model of the first core
                 case CpuModelRegex(model) => model.trim.replaceAll("""[ \t\n]+""", " ")
-              }
             }
           } .toOption.flatten
       fromOS orElse sys.props.get("os.arch")
-    }
 
     def sleepingShellScript(duration: FiniteDuration) =
       s"sleep ${(duration + 999.ms).toSeconds}\n"
-  }
 
-  def concatFileAndPathChain(f: File, pathChain: String): String = {
+  def concatFileAndPathChain(f: File, pathChain: String): String =
     val abs = f.getAbsolutePath
     abs +: (pathChain split File.pathSeparator).filter(o => o.nonEmpty && o != abs) mkString File.pathSeparatorChar.toString
-  }
-}

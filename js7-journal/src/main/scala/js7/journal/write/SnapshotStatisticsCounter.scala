@@ -7,8 +7,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 /**
   * @author Joacim Zschimmer
   */
-private[journal] final class SnapshotStatisticsCounter extends StatisticsCounter
-{
+private[journal] final class SnapshotStatisticsCounter extends StatisticsCounter:
   private var snapshots = 0
   private var _fileLength = 0L
 
@@ -25,9 +24,7 @@ private[journal] final class SnapshotStatisticsCounter extends StatisticsCounter
   def debugString: Option[String] =
     (snapshots > 0 && stopwatch.duration >= 3.s) ? timingString
 
-  protected def timingString = {
+  protected def timingString =
     val duration = stopwatch.duration
     itemsPerSecondString(duration, snapshots, "snapshot objects") + ", " +
       bytesPerSecondString(duration, _fileLength) + " written"
-  }
-}

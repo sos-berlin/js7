@@ -20,8 +20,7 @@ import js7.launcher.forwindows.{WindowsProcessCredential, WindowsProcessTest}
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.windows.WindowsLogonTest.*
 
-final class WindowsLogonTest extends OurTestSuite with ControllerAgentForScalaTest
-{
+final class WindowsLogonTest extends OurTestSuite with ControllerAgentForScalaTest:
   protected def agentPaths = Seq(agentPath)
   protected def items = Seq(workflow)
 
@@ -42,8 +41,8 @@ final class WindowsLogonTest extends OurTestSuite with ControllerAgentForScalaTe
             "ORIGINAL_PATH" -> FunctionCall("env", Seq(Argument(StringConstant(PathEnvName))))),
           login = targetKey.map(KeyLogin(_, withUserProfile = false)))))))
 
-  if isWindows then {
-    "Windows Logon" in {
+  if isWindows then
+    "Windows Logon" in:
       val events = controller.runOrder(FreshOrder(OrderId("WindowsLogonTest"), workflow.path))
         .map(_.value)
       val stdout = events.collect { case OrderStdoutWritten(chunk) => chunk }.fold_
@@ -58,12 +57,7 @@ final class WindowsLogonTest extends OurTestSuite with ControllerAgentForScalaTe
         .toLowerCase(Locale.ROOT)
       assert(stdout.toLowerCase(Locale.ROOT).contains(s"username=$userName\r\n"))
       assert(stdout.contains(s"ORIGINAL_PATH=${sys.env(PathEnvName)}\r\n"))
-    }
-  }
-}
 
-object WindowsLogonTest
-{
+object WindowsLogonTest:
   private val agentPath = AgentPath("AGENT")
   private val logger = Logger[this.type]
-}

@@ -25,8 +25,7 @@ import js7.data.workflow.instructions.{Execute, ExplicitEnd, Finish, Fork, If, I
 import js7.data.workflow.position.Label
 import scala.concurrent.duration.*
 
-object WorkflowParser
-{
+object WorkflowParser:
   // TODO Add OrderPreparation, also in WorkflowPrinter
 
   def parse(string: String): Checked[Workflow] =
@@ -36,8 +35,7 @@ object WorkflowParser
     checkedParse(string, parser.whole)
       .map(_.copy(id = id, source = Some(string)))
 
-  private object parser
-  {
+  private object parser:
     private val label: Parser[Label] =
       identifier map Label.apply
 
@@ -109,7 +107,7 @@ object WorkflowParser
       env <- kv.getOrElse[ObjectExpr]("env", ObjectExpr.empty)
       v1Compatible <- kv.noneOrOneOf[BooleanConstant]("v1Compatible").map(_.fold(false)(_._2.booleanValue))
       returnCodeMeaning <- kv.oneOfOr(Set("successReturnCodes", "failureReturnCodes"), ReturnCodeMeaning.Default)
-      executable <- kv.oneOf[Any]("executable", "command", "script", "internalJobClass").flatMap {
+      executable <- kv.oneOf[Any]("executable", "command", "script", "internalJobClass").flatMap:
         case ("executable", path: String) =>
           pure(PathExecutable(path, env.nameToExpr, returnCodeMeaning = returnCodeMeaning, v1Compatible = v1Compatible))
         case ("command", command: String) =>
@@ -125,7 +123,6 @@ object WorkflowParser
               jobArguments = jobArguments.nameToExpr,
               arguments = arguments.nameToExpr)))
         case _ => failWith("Invalid executable")  // Does not happen
-      }
       parallelism <- kv.getOrElse[Int]("parallelism", WorkflowJob.DefaultParallelism)
       sigkillDelay <- kv.get[Int]("sigkillDelay").map(_.map(_.s))
     yield
@@ -147,7 +144,7 @@ object WorkflowParser
         ~~ identifier
         ~~ (string(",") *> w *> keyValue("defaultArguments", objectExpression)).?
         ~ hardEnd
-      ).flatMap {
+      ).flatMap:
         case (((start, name), None), end) =>
           pure(Execute.Named(
             WorkflowJob.Name(name),
@@ -158,7 +155,6 @@ object WorkflowParser
             WorkflowJob.Name(name),
             defaultArguments = objectExpression.nameToExpr,
             sourcePos(start, end)))
-      }
 
     private val failInstruction: Parser[FailInstr] =
       (index.with1
@@ -190,7 +186,7 @@ object WorkflowParser
           Finish(sourcePos = sourcePos(start, end))
         }
 
-    private val forkInstruction: Parser[Fork] = {
+    private val forkInstruction: Parser[Fork] =
       def forkBranch: Parser[Fork.Branch] =
         (quotedString ~~<* char(':') ~~ curlyWorkflowOrInstruction)
           .map { case (id, workflow) =>
@@ -213,7 +209,6 @@ object WorkflowParser
               sourcePos = sourcePos(start, end)))
           yield fork
         }
-    }
 
     private val ifInstruction: Parser[If] =
       (index.with1
@@ -331,7 +326,5 @@ object WorkflowParser
 
     val whole: Parser[Workflow] =
       w.with1 *> workflowDefinition <* w <* end
-  }
 
   private def sourcePos(start: Int, end: Int) = Some(SourcePos(start, end))
-}

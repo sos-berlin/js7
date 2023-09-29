@@ -46,8 +46,7 @@ final class FileJournal[S <: SnapshotableState[S]: Tag] private(
   (implicit
     protected val S: SnapshotableState.Companion[S])
 extends Journal[S]
-with FileJournal.PossibleFailover
-{
+with FileJournal.PossibleFailover:
   def isHalted: Boolean =
     isHaltedFun()
 
@@ -59,11 +58,10 @@ with FileJournal.PossibleFailover
   def persistKeyedEvent[E <: Event](keyedEvent: KeyedEvent[E], options: CommitOptions)
     (using enclosing: sourcecode.Enclosing)
   : Task[Checked[(Stamped[KeyedEvent[E]], S)]] =
-    Task.defer {
+    Task.defer:
       val E = keyedEvent.event.keyCompanion.asInstanceOf[Event.KeyCompanion[E]]
       persistEvent(using E)(key = keyedEvent.key.asInstanceOf[E.Key], options)(_ =>
         Right(keyedEvent.event))
-    }
 
   def persistKeyedEvents[E <: Event](
     keyedEvents: Seq[KeyedEvent[E]],
@@ -103,31 +101,28 @@ with FileJournal.PossibleFailover
     options: CommitOptions = CommitOptions.default)
     (stateToEvents: S => Checked[Seq[KeyedEvent[E]]])
   : Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
-    Task.defer {
+    Task.defer:
       persistUnlocked(stateToEvents, options)
-    }
 
   /** Persist multiple events in a transaction. */
   def persistTransaction[E <: Event](using E: Event.KeyCompanion[? >: E])(key: E.Key)
   : (S => Checked[Seq[E]]) => Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
-    stateToEvents => Task.defer {
+    stateToEvents => Task.defer:
       lock(key)(
         persistUnlocked(
           state => stateToEvents(state)
             .map(_.map(event => key.asInstanceOf[event.keyCompanion.Key] <-: event)),
           CommitOptions(transaction = true)))
-    }
 
   private def persistUnlocked[E <: Event](
     stateToEvents: StateToEvents[S, E],
     options: CommitOptions)
   : Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
-    Task.defer {
+    Task.defer:
       persistTask.flatMap(
         _(stateToEvents, options, CorrelId.current)
           .map(_.map { case (stampedKeyedEvents, state) =>
             stampedKeyedEvents.asInstanceOf[Seq[Stamped[KeyedEvent[E]]]] -> state }))
-    }
 
   def clusterState: Task[ClusterState] =
     state.map(_.clusterState)
@@ -136,10 +131,8 @@ with FileJournal.PossibleFailover
     getCurrentState()
 
   override def toString = s"FileJournal[$S]"
-}
 
-object FileJournal
-{
+object FileJournal:
   private val logger = Logger[this.type]
 
   def resource[S <: SnapshotableState[S]: SnapshotableState.Companion/*: diffx.Diff*/: Tag](
@@ -151,7 +144,7 @@ object FileJournal
       scheduler: Scheduler,
       actorRefFactory: ActorRefFactory,
       timeout: akka.util.Timeout)
-  : Resource[Task, FileJournal[S]] = {
+  : Resource[Task, FileJournal[S]] =
     Resource.make(
       acquire = Task.defer {
         import recovered.journalLocation
@@ -228,9 +221,8 @@ object FileJournal
           })
       })
       .map(_._1)
-  }
 
-  sealed trait PossibleFailover {
+  sealed trait PossibleFailover:
     private val tryingPassiveLostSwitch = Switch(false)
 
     // Not nestable !!! (or use a readers-writer lock)
@@ -239,5 +231,3 @@ object FileJournal
 
     final val whenNoFailoverByOtherNode: Task[Unit] =
       tryingPassiveLostSwitch.whenOff
-  }
-}

@@ -29,8 +29,7 @@ import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 
 final class ControlWorkflowPathSkipJobTest
-extends OurTestSuite with ControllerAgentForScalaTest
-{
+extends OurTestSuite with ControllerAgentForScalaTest:
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.controller.agent-driver.command-batch-delay = 0ms
@@ -43,7 +42,7 @@ extends OurTestSuite with ControllerAgentForScalaTest
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(aWorkflow, bWorkflow)
 
-  "Skip the only Job" in {
+  "Skip the only Job" in:
     val orderId = OrderId("A")
     skipJob(aWorkflow.path, true, ItemRevision(1))
     val events = controller
@@ -56,9 +55,8 @@ extends OurTestSuite with ControllerAgentForScalaTest
       OrderStarted,
       OrderFinished(),
       OrderDeleted))
-  }
 
-  "Skip the Job in the middle" in {
+  "Skip the Job in the middle" in:
     skipJob(bWorkflow.path, true, ItemRevision(1))
     val orderId = OrderId("B")
     val events = controller
@@ -84,9 +82,8 @@ extends OurTestSuite with ControllerAgentForScalaTest
       OrderDetached,
       OrderFinished(),
       OrderDeleted))
-  }
 
-  "WorkflowPathControl disappears with the last Workflow version" in {
+  "WorkflowPathControl disappears with the last Workflow version" in:
     val eventId = eventWatch.lastAddedEventId
 
     controller.api
@@ -102,10 +99,9 @@ extends OurTestSuite with ControllerAgentForScalaTest
     assert(agent.currentAgentState().keyTo(WorkflowPathControl).isEmpty)
     waitForCondition(10.s, 100.ms)(controllerState.keyTo(WorkflowPathControl).isEmpty)
     assert(controllerState.keyTo(WorkflowPathControl).isEmpty)
-  }
 
   private def skipJob(workflowPath: WorkflowPath, skip: Boolean, revision: ItemRevision)
-  : EventId = {
+  : EventId =
     val eventId = eventWatch.lastAddedEventId
     controller.api
       .executeCommand(ControlWorkflowPath(workflowPath, skip = Map(
@@ -119,11 +115,8 @@ extends OurTestSuite with ControllerAgentForScalaTest
           skip = Set(label).filter(_ => skip),
           itemRevision = Some(revision)))))
     keyedEvents.last.eventId
-  }
-}
 
-object ControlWorkflowPathSkipJobTest
-{
+object ControlWorkflowPathSkipJobTest:
   private val agentPath = AgentPath("A-AGENT")
   private val subagentId = toLocalSubagentId(agentPath)
 
@@ -136,4 +129,3 @@ object ControlWorkflowPathSkipJobTest
     If(expr("true"), Workflow.of(
       label @: EmptyJob.execute(agentPath))),
     EmptyJob.execute(agentPath)))
-}

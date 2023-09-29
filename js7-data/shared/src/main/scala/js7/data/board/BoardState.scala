@@ -17,8 +17,7 @@ final case class BoardState(
   board: Board,
   idToNotice: Map[NoticeId, NoticePlace] = Map.empty,
   orderToConsumptionStack: Map[OrderId, List[NoticeId]] = Map.empty)
-extends UnsignedSimpleItemState
-{
+extends UnsignedSimpleItemState:
   protected type Self = BoardState
   val companion: BoardState.type = BoardState
 
@@ -42,7 +41,7 @@ extends UnsignedSimpleItemState
           })
 
   def recover(snapshot: BoardSnapshot): Checked[BoardState] =
-    snapshot match {
+    snapshot match
       case notice: Notice =>
         addNotice(notice)
 
@@ -56,26 +55,23 @@ extends UnsignedSimpleItemState
           idToNotice = idToNotice.updated(snapshot.noticeId,
             idToNotice.getOrElse(snapshot.noticeId, NoticePlace(snapshot.noticeId))
               .withSnapshot(snapshot))))
-    }
 
   // COMPATIBLE with v2.3
   def addNoticeV2_3(notice: NoticeV2_3): Checked[BoardState] =
     addNotice(notice.toNotice(board.path))
 
   def addNotice(notice: Notice): Checked[BoardState] =
-    idToNotice.get(notice.id) match {
+    idToNotice.get(notice.id) match
       case None =>
         Right(updateNoticePlace(NoticePlace(notice.id, Some(notice))))
 
       case Some(noticePlace) =>
         Right(updateNoticePlace(noticePlace.post(notice)))
-    }
 
-  def addExpectation(noticeId: NoticeId, orderId: OrderId): Checked[BoardState] = {
+  def addExpectation(noticeId: NoticeId, orderId: OrderId): Checked[BoardState] =
     val noticePlace = idToNotice.getOrElse(noticeId, NoticePlace(noticeId))
     Right(updateNoticePlace(noticePlace.copy(
       expectingOrderIds = noticePlace.expectingOrderIds + orderId)))
-  }
 
   def removeExpectation(noticeId: NoticeId, orderId: OrderId): Checked[BoardState] =
     Right(
@@ -87,7 +83,7 @@ extends UnsignedSimpleItemState
     noticeId: NoticeId,
     order: Order[Order.State],
     consumption: OrderNoticesConsumptionStarted.Consumption)
-  : Checked[BoardState] = {
+  : Checked[BoardState] =
     // We can consume a non-existent NoticeId, too, due to BoardExpression's or-operator
     val noticePlace = idToNotice.getOrElse(noticeId, NoticePlace(noticeId))
     val consumptionStack = orderToConsumptionStack.getOrElse(order.id, Nil)
@@ -95,7 +91,6 @@ extends UnsignedSimpleItemState
       idToNotice = idToNotice.updated(noticeId, noticePlace.startConsumption(order.id)),
       orderToConsumptionStack = orderToConsumptionStack.updated(order.id,
         consumption.noticeId :: consumptionStack)))
-  }
 
   def removeConsumption(orderId: OrderId, succeeded: Boolean): Checked[BoardState] =
     orderToConsumptionStack.checked(orderId)
@@ -130,15 +125,13 @@ extends UnsignedSimpleItemState
       board.path <-: NoticeDeleted(noticeId)
 
   def removeNotice(noticeId: NoticeId): Checked[BoardState] =
-    for _ <- checkDelete(noticeId) yield {
-      idToNotice.get(noticeId) match {
+    for _ <- checkDelete(noticeId) yield
+      idToNotice.get(noticeId) match
         case None =>
           this
 
         case Some(noticePlace) =>
           updateNoticePlace(noticePlace.removeNotice)
-      }
-    }
 
   private def updateNoticePlace(noticePlace: NoticePlace): BoardState =
     copy(
@@ -154,14 +147,12 @@ extends UnsignedSimpleItemState
   def notice(noticeId: NoticeId): Checked[Notice] =
     for
       noticePlace <- idToNotice.checked(noticeId)
-      notice <- noticePlace.notice match {
+      notice <- noticePlace.notice match
         case None => Left(Problem(s"$noticeId does not denote a Notice (but a Notice expectation)"))
         case Some(notice) => Right(notice)
-      }
     yield notice
-}
 
-object BoardState extends UnsignedSimpleItemState.Companion[BoardState] {
+object BoardState extends UnsignedSimpleItemState.Companion[BoardState]:
   type Key = BoardPath
   type Item = Board
   override type ItemState = BoardState
@@ -171,7 +162,5 @@ object BoardState extends UnsignedSimpleItemState.Companion[BoardState] {
     orderId: OrderId,
     noticeIdStack: List[NoticeId])
   extends BoardSnapshot
-  object NoticeConsumptionSnapshot {
+  object NoticeConsumptionSnapshot:
     val subtype = Subtype.named(deriveCodec[NoticeConsumptionSnapshot], "NoticeConsumption")
-  }
-}

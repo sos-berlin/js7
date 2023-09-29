@@ -6,8 +6,7 @@ import monix.eval.Task
 /**
   * @author Joacim Zschimmer
   */
-trait HasSessionToken
-{
+trait HasSessionToken:
   protected def sessionToken: Option[SessionToken]
 
   final def hasSession: Boolean =
@@ -15,4 +14,3 @@ trait HasSessionToken
 
   implicit def implicitSessionToken: Task[Option[SessionToken]] =
     Task(sessionToken)
-}

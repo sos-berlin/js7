@@ -58,8 +58,7 @@ final class ClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/: Tag] private(
     nodeNameToPassword: NodeNameToPassword[S],
     scheduler: Scheduler,
     timeout: akka.util.Timeout)
-extends Service.StoppableByRequest
-{
+extends Service.StoppableByRequest:
   clusterNode =>
 
   import clusterConf.ownId
@@ -136,11 +135,10 @@ extends Service.StoppableByRequest
           s"active node in ClusterState: id=$ownId, failedOver=${recovered.clusterState}"))))
 
   def stopRecovery(termination: ProgramTermination): Task[Unit] =
-    Task.defer {
+    Task.defer:
       logger.trace("stopRecovery")
       recoveryStopRequested.complete(()).attempt *>
         workingNodeStarted.complete(Success(Left(termination))).attempt.void
-    }
 
   private def startWorkingNode(recovered: Recovered[S]): Task[WorkingClusterNode[S]] =
     logger.traceTask(
@@ -161,7 +159,7 @@ extends Service.StoppableByRequest
       .map(_.allocatedThing)
       .toRight(ClusterNodeIsNotActiveProblem)
 
-  def executeCommand(command: ClusterCommand): Task[Checked[ClusterCommand.Response]] = {
+  def executeCommand(command: ClusterCommand): Task[Checked[ClusterCommand.Response]] =
     logger.infoTask(command.getClass.simpleScalaName)(
       command match {
         case command: ClusterCommand.ClusterStartBackupNode =>
@@ -236,21 +234,18 @@ extends Service.StoppableByRequest
             Task.pure(workingClusterNode)
               .flatMapT(_.executeCommand(command))
       })
-  }
 
   def executeClusterWatchingCommand(command: ClusterWatchingCommand): Task[Checked[Unit]] =
-    command match {
+    command match
       case cmd: ClusterWatchConfirm =>
         Task(passiveOrWorkingNode.get())
-          .flatMap {
+          .flatMap:
             case Some(Right(workingClusterNodeAllocated)) =>
               workingClusterNodeAllocated.allocatedThing.executeClusterWatchConfirm(cmd)
             case _ =>
               common.clusterWatchCounterpart.executeClusterWatchConfirm(cmd)
-          }
           .tapEval(result => Task(
             common.testEventBus.publish(ClusterWatchConfirmed(cmd, result))))
-    }
 
   def clusterWatchRequestStream: Task[fs2.Stream[Task, ClusterWatchRequest]] =
     common.clusterWatchCounterpart.newStream
@@ -261,10 +256,8 @@ extends Service.StoppableByRequest
   def isPassive = passiveOrWorkingNode.get().exists(_.isLeft)
 
   override def toString = s"ClusterNode(${ownId.string})"
-}
 
-object ClusterNode
-{
+object ClusterNode:
   private val logger = Logger[this.type]
 
   def recoveringResource[S <: ClusterableState[S] /*: diffx.Diff*/ : Tag](
@@ -307,8 +300,8 @@ object ClusterNode
       scheduler: Scheduler,
       actorSystem: ActorSystem,
       akkaTimeout: akka.util.Timeout)
-  : Checked[Resource[Task, ClusterNode[S]]] = {
-    val checked = recovered.clusterState match {
+  : Checked[Resource[Task, ClusterNode[S]]] =
+    val checked = recovered.clusterState match
       case Empty =>
         (clusterConf.isPrimary || recovered.eventId == EventId.BeforeFirst) !!
           PrimaryClusterNodeMayNotBecomeBackupProblem
@@ -318,7 +311,6 @@ object ClusterNode
         licenseChecker.checkLicense(ClusterProductName) >>
           ((ownId == clusterState.activeId || ownId == clusterState.passiveId) !! Problem.pure(
             s"Own cluster $ownId does not match clusterState=${recovered.clusterState}"))
-    }
 
     for _ <- checked yield
       for
@@ -331,7 +323,6 @@ object ClusterNode
           new EventIdGenerator(eventIdClock),
           testEventBus)
       yield clusterNode
-  }
 
   private def resource[S <: ClusterableState[S] /*: diffx.Diff*/ : Tag](
     recovered: Recovered[S],
@@ -346,7 +337,7 @@ object ClusterNode
       scheduler: Scheduler,
       actorSystem: ActorSystem,
       timeout: akka.util.Timeout)
-  : Resource[Task, ClusterNode[S]] = {
+  : Resource[Task, ClusterNode[S]] =
     import clusterConf.{config, ownId}
 
     if recovered.clusterState != Empty then logger.info(
@@ -358,7 +349,7 @@ object ClusterNode
 
     import common.activationInhibitor
 
-    def prepareBackupNodeWithEmptyClusterState(): Prepared[S] = {
+    def prepareBackupNodeWithEmptyClusterState(): Prepared[S] =
       logger.info(s"Backup cluster $ownId, awaiting appointment from a primary node")
       val startedPromise = Promise[ClusterStartBackupNode]()
       val passiveClusterNode = Task.fromFuture(startedPromise.future)
@@ -368,12 +359,11 @@ object ClusterNode
             injectedPassiveUserId = Some(cmd.passiveNodeUserId),
             injectedActiveNodeName = Some(cmd.activeNodeName)))
         .memoize
-      val currentPassiveState = Task.defer {
+      val currentPassiveState = Task.defer:
         if startedPromise.future.isCompleted then
           passiveClusterNode.flatMap(_.state.map(s => Some(Right(s))))
         else
           Task.some(Left(BackupClusterNodeNotAppointed))
-      }
       val untilActiveRecovered = passiveClusterNode.flatMap(passive =>
         activationInhibitor.startPassive *>
           passive.run(recovered.state))
@@ -382,10 +372,9 @@ object ClusterNode
         currentPassiveReplicatedState = currentPassiveState,
         untilRecovered = untilActiveRecovered,
         expectingStartBackupCommand = Some(startedPromise))
-    }
 
     def startAsActiveNodeWithBackup(): Prepared[S] =
-      recovered.clusterState match {
+      recovered.clusterState match
         case recoveredClusterState: Coupled =>
           import recoveredClusterState.passiveId
           logger.info(s"This cluster $ownId was active and coupled before restart - " +
@@ -427,10 +416,9 @@ object ClusterNode
           Prepared(
             currentPassiveReplicatedState = Task.none,
             untilRecovered = activationInhibitor.startActive.as(Right(recovered)))
-      }
 
     def startPassiveAfterFailover(coupled: Coupled, otherFailedOver: FailedOver)
-    : (Recovered[S], PassiveClusterNode[S]) = {
+    : (Recovered[S], PassiveClusterNode[S]) =
       logger.warn(s"The other ${otherFailedOver.activeId} ${otherFailedOver.toShortString}" +
         ", and became active while this node was absent")
       assertThat(otherFailedOver.idToUri == coupled.idToUri &&
@@ -438,23 +426,21 @@ object ClusterNode
       // This restarted, previously failed active cluster node may have written one chunk of events
       // more than the passive node, maybe even an extra snapshot in a new journal file.
       // These extra events are not acknowledged. So we truncate our journal.
-      val ourRecovered = truncateJournalAndRecoverAgain(otherFailedOver) match {
+      val ourRecovered = truncateJournalAndRecoverAgain(otherFailedOver) match
         case None => recovered
         case Some(truncatedRecovered) =>
           assertThat(truncatedRecovered.state.clusterState == coupled)
           assertThat(!recovered.eventWatch.whenStarted.isCompleted)
           recovered.close() // Should do nothing, because recovered.eventWatch has not been started
           truncatedRecovered
-      }
       ourRecovered -> newPassiveClusterNode(ourRecovered, otherFailedOver.setting,
         otherFailedOver = true)
-    }
 
     def truncateJournalAndRecoverAgain(otherFailedOver: FailedOver): Option[Recovered[S]] =
       for file <- truncateJournal(journalLocation.fileBase, otherFailedOver.failedAt, keepTruncatedRest)
         yield recoverFromTruncated(file, otherFailedOver.failedAt)
 
-    def recoverFromTruncated(file: Path, failedAt: JournalPosition): Recovered[S] = {
+    def recoverFromTruncated(file: Path, failedAt: JournalPosition): Recovered[S] =
       logger.info("Recovering again after unacknowledged events have been deleted properly from journal file")
       throw new RestartAfterJournalTruncationException
 
@@ -469,9 +455,8 @@ object ClusterNode
         s"${recoveredJournalFile.journalPosition} != $failedAt")
 
       recovered
-    }
 
-    def preparePassiveNode(recovered: Recovered[S], clusterState: HasNodes): Prepared[S] = {
+    def preparePassiveNode(recovered: Recovered[S], clusterState: HasNodes): Prepared[S] =
       logger.info(
         if clusterState.isInstanceOf[Coupled] then
           s"Remaining a passive cluster node following the active ${clusterState.activeId}"
@@ -481,7 +466,6 @@ object ClusterNode
       Prepared(
         currentPassiveReplicatedState = passive.state.map(s => Some(Right(s))),
         untilRecovered = passive.run(recovered.state))
-    }
 
     def newPassiveClusterNode(
       recovered: Recovered[S],
@@ -490,7 +474,7 @@ object ClusterNode
       initialFileEventId: Option[EventId] = None,
       injectedActiveNodeName: Option[NodeName] = None,
       injectedPassiveUserId: Option[UserId] = None)
-    : PassiveClusterNode[S] = {
+    : PassiveClusterNode[S] =
       assertThat(!passiveOrWorkingNode.get().exists(_.isLeft))
       val node = new PassiveClusterNode(ownId, setting, recovered,
         activeNodeName = injectedActiveNodeName getOrElse
@@ -501,16 +485,15 @@ object ClusterNode
         otherFailedOver, clusterConf, common)
       passiveOrWorkingNode := Some(Left(node))
       node
-    }
 
-    val prepared = recovered.clusterState match {
+    val prepared = recovered.clusterState match
       case Empty =>
-        if clusterConf.isPrimary then {
+        if clusterConf.isPrimary then
           logger.debug(s"Active primary cluster $ownId, no backup node appointed")
           Prepared(
             currentPassiveReplicatedState = Task.none,
             untilRecovered = activationInhibitor.startActive.as(Right(recovered)))
-        } else
+        else
           prepareBackupNodeWithEmptyClusterState()
 
       case clusterState: HasNodes =>
@@ -518,7 +501,6 @@ object ClusterNode
           startAsActiveNodeWithBackup()
         else
           preparePassiveNode(recovered, clusterState)
-    }
 
     Service.resource(
       for
@@ -529,16 +511,14 @@ object ClusterNode
         prepared, passiveOrWorkingNode, currentStateRef,
         clusterConf,
         eventIdGenerator, eventBus.narrowPublisher, common, recovered.extract, actorSystem))
-  }
 
   // TODO Provisional fix because it's not easy to restart the recovery
   // ServiceMain catches this exception by its `MainServiceTerminationException` trait !!!
   final class RestartAfterJournalTruncationException
   extends RuntimeException("Restart after journal truncation")
   with MainServiceTerminationException
-  with NoStackTrace {
+  with NoStackTrace:
     def termination = ProgramTermination(restart = true)
-  }
 
   final case class ClusterWatchConfirmed(
     command: ClusterWatchConfirm,
@@ -548,4 +528,3 @@ object ClusterNode
     currentPassiveReplicatedState: Task[Option[Checked[S]]],
     untilRecovered: Task[Checked[Recovered[S]]],
     expectingStartBackupCommand: Option[Promise[ClusterStartBackupNode]] = None)
-}

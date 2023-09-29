@@ -11,8 +11,7 @@ import js7.data_for_java.item.JUnsignedSimpleItem
 import scala.jdk.OptionConverters.*
 
 final case class JLock(asScala: Lock)
-extends JJsonable[JLock] with JUnsignedSimpleItem
-{
+extends JJsonable[JLock] with JUnsignedSimpleItem:
   type AsScala = Lock
   protected def companion = JLock
 
@@ -26,10 +25,8 @@ extends JJsonable[JLock] with JUnsignedSimpleItem
   @Nonnull
   def withRevision(revision: Optional[ItemRevision]): JLock =
     copy(asScala.withRevision(revision.toScala))
-}
 
-object JLock extends JJsonable.Companion[JLock]
-{
+object JLock extends JJsonable.Companion[JLock]:
   type AsScala = Lock
 
   @Nonnull
@@ -42,4 +39,3 @@ object JLock extends JJsonable.Companion[JLock]
 
   protected def jsonEncoder = Lock.jsonCodec
   protected def jsonDecoder = Lock.jsonCodec
-}

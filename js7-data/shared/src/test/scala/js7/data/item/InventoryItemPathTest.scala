@@ -10,9 +10,8 @@ import js7.data.orderwatch.OrderWatchPath
 import js7.data.workflow.WorkflowPath
 import js7.tester.CirceJsonTester.testJson
 
-final class InventoryItemPathTest extends OurTestSuite
-{
-  "JSON" in {
+final class InventoryItemPathTest extends OurTestSuite:
+  "JSON" in:
     implicit val x: Codec[InventoryItemPath] = InventoryItemPath.jsonCodec(Seq(
       AgentPath, BoardPath, CalendarPath, LockPath, WorkflowPath, OrderWatchPath))
     testJson[InventoryItemPath](AgentPath("AGENT"), Json.fromString("Agent:AGENT"))
@@ -23,5 +22,3 @@ final class InventoryItemPathTest extends OurTestSuite
 
     // Or FileWatch?
     testJson[InventoryItemPath](OrderWatchPath("ORDERWATCH"), Json.fromString("OrderWatch:ORDERWATCH"))
-  }
-}

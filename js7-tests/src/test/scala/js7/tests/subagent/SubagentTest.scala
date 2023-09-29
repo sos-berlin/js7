@@ -22,24 +22,22 @@ import js7.tests.subagent.SubagentTest.*
 import js7.tests.subagent.SubagentTester.agentPath
 import monix.execution.Scheduler
 
-final class SubagentTest extends OurTestSuite with SubagentTester
-{
+final class SubagentTest extends OurTestSuite with SubagentTester:
   protected val agentPaths = Seq(agentPath)
   protected lazy val items = Seq(workflow, bareSubagentItem)
   override protected val primarySubagentsDisabled = true
 
   protected implicit val scheduler = Scheduler.traced
 
-  "Local Subagent couplingState is Coupled" in {
+  "Local Subagent couplingState is Coupled" in:
     val localSubagentId = SubagentId("AGENT-0")
     eventWatch.await[SubagentCoupled](_.key == localSubagentId)
     assert(waitForCondition(10.s, 10.ms)(
       controllerState.keyTo(SubagentItemState)(localSubagentId).couplingState == Coupled))
     awaitAndAssert(controllerState.keyTo(SubagentItemState)(localSubagentId)
       .platformInfo.map(_.js7Version) contains Js7Version)
-  }
 
-  "Reject items if no signature keys are installed" in {
+  "Reject items if no signature keys are installed" in:
     val eventId = eventWatch.lastAddedEventId
 
     runSubagent(bareSubagentItem, suppressSignatureKeys = true) { _ =>
@@ -54,9 +52,8 @@ final class SubagentTest extends OurTestSuite with SubagentTester
         .head.value.event
       assert(processed == OrderProcessed(Outcome.Disrupted(MessageSignedByUnknownProblem)))
     }
-  }
 
-  "CancelOrder" in {
+  "CancelOrder" in:
     // Local Subagent must be disabled (see test above)
 
     val eventId = eventWatch.lastAddedEventId
@@ -89,9 +86,8 @@ final class SubagentTest extends OurTestSuite with SubagentTester
       assert(processed == OrderProcessed(Outcome.killedInternal))
       eventWatch.await[OrderCancelled](_.key == orderId, after = eventId)
     }
-  }
 
-  "Order waits when no Subagent is available" in {
+  "Order waits when no Subagent is available" in:
     var eventId = eventWatch.lastAddedEventId
     enableSubagents(directoryProvider.subagentId -> false)
 
@@ -103,9 +99,8 @@ final class SubagentTest extends OurTestSuite with SubagentTester
     controller.addOrderBlocking(FreshOrder(orderId, workflow.path))
     eventWatch.await[OrderAttached](_.key == orderId, after = eventId)
 
-    intercept[TimeoutException] {
+    intercept[TimeoutException]:
       eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId, timeout = 200.ms)
-    }
 
     eventId = eventWatch.lastAddedEventId
     runSubagent(bareSubagentItem) { _ =>
@@ -115,14 +110,11 @@ final class SubagentTest extends OurTestSuite with SubagentTester
       assert(started.subagentId contains bareSubagentId)
       eventWatch.await[OrderFinished](_.key == orderId, after = eventId)
     }
-  }
 
   //"Change URI of Director" --> See UpdateAgentRefsTest
   //"Change JobResource" in --> See JobResourceAtBareSubagentTest
-}
 
-object SubagentTest
-{
+object SubagentTest:
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",
     Seq(
@@ -130,4 +122,3 @@ object SubagentTest
 
   final class TestSemaphoreJob extends SemaphoreJob(TestSemaphoreJob)
   object TestSemaphoreJob extends SemaphoreJob.Companion[TestSemaphoreJob]
-}

@@ -67,8 +67,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
   common: ClusterCommon)
   (implicit
     S: ClusterableState.Companion[S],
-    nodeNameToPassword: NodeNameToPassword[S])
-{
+    nodeNameToPassword: NodeNameToPassword[S]):
   import clusterConf.{config, journalConf}
   import recovered.{eventWatch, journalLocation}
   import setting.{activeId, idToUri}
@@ -101,7 +100,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
 
   /** Allow the active node to emit ClusterPassiveLost quickly. */
   private def notifyActiveNodeAboutShutdown: Task[Unit] =
-    logger.debugTask {
+    logger.debugTask:
       // Active and passive node may be shut down at the same time. We try to handle this here.
       val untilDecoupled = logger.traceTask(Task
         .tailRecM(())(_ =>
@@ -124,7 +123,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
         .logWhenItTakesLonger
 
       Task.race(untilDecoupled, notifyActive.delayExecution(50.ms))
-        .tapEval {
+        .tapEval:
           case Left(clusterState) =>
             // The connection of the killed notifyActive HTTP request may be still blocked !!!
             // until it is responded (see AkkaHttpClient)
@@ -133,9 +132,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
           case Right(()) =>
             Task(logger.debug(
               "notifyActiveNodeAboutShutdown: Active node has been notified about shutdown"))
-        }
         .as(())
-    }
 
   def state: Task[S] =
     stateBuilderAndAccessor.state
@@ -184,7 +181,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
 
   private def backgroundNotifyActiveNodeAboutRestart(recoveredClusterState: ClusterState): Task[Unit] =
     recoveredClusterState
-      .match {
+      .match
         case ClusterState.Empty =>
           Task.unit
 
@@ -202,30 +199,26 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
           // Then the active node couples again with this passive node,
           // and we are sure to be coupled and up-to-date and may properly fail-over in case of active node loss.
           // The active node ignores this command if it has emitted a ClusterPassiveLost event.
-          Task.defer {
+          Task.defer:
             awaitingCoupledEvent = true
             tryEndlesslyToSendCommandInBackground(
               _ => ClusterRecouple(activeId = activeId, passiveId = ownId))
-          }
-      }
 
   def confirmCoupling(token: OneTimeToken): Checked[Unit] =
     common.couplingTokenProvider.confirms(token) !!
       Problem("Another passive cluster node wanted to couple")
 
   private def cutJournalFile(file: Path, length: Long, eventId: EventId): Unit =
-    if exists(file) then {
+    if exists(file) then
       val garbage = size(file) - length
-      if garbage > 0 then {
+      if garbage > 0 then
         // Partial event or partial transaction
         logger.info(s"Cutting incomplete data ($garbage bytes) at end of ${file.getFileName} at position $length, EventId $eventId ")
         autoClosing(FileChannel.open(file, WRITE)) { f =>
           f.truncate(length)
         }
-      }
-    }
 
-  private def tryEndlesslyToSendClusterPrepareCoupling: Task[Unit] = {
+  private def tryEndlesslyToSendClusterPrepareCoupling: Task[Unit] =
     // TODO Delay until we have replicated nearly all events, to avoid a long PreparedCoupled state
     //  Annähernd gleichlaufende Uhren vorausgesetzt, können wir den Zeitstempel des letzten Events heranziehen.
     //  Wenn kein Event kommt? Herzschlag mit Zeitstempel (nicht EventId) versehen (wäre sowieso nützlich)
@@ -234,20 +227,18 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
     //  Funktioniert nicht, wenn die Uhren verschieden gehen. Differenz feststellen?
       tryEndlesslyToSendCommand(
         ClusterPrepareCoupling(activeId = activeId, passiveId = ownId, _))
-  }
 
   private def tryEndlesslyToSendCommandInBackground(toCommand: OneTimeToken => ClusterCommand)
   : Task[Unit] =
     tryEndlesslyToSendCommand(toCommand)
       .attempt
-      .map {
+      .map:
         case Left(throwable) => logger.error(
           "While notifying the active cluster node about restart of this passive node:" +
             s" ${throwable.toStringWithCauses}", throwable.nullIfNoStackTrace)
         case Right(()) =>
           logger.debug(
             "Active cluster node has been notified about restart of this passive node")
-      }
       .startAndForget
 
   private def tryEndlesslyToSendCommand(toCommand: OneTimeToken => ClusterCommand)
@@ -256,11 +247,10 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
       .race(
         shutdown.get,
         common.tryEndlesslyToSendCommand(activeApiResource, toCommand))
-      .flatMap {
+      .flatMap:
         case Left(()) => Task(logger.debug(
           s"⚫ tryEndlesslyToSendClusterCommand(${toCommand.getClass.simpleScalaName}) canceled due to shutdown"))
         case Right(()) => Task.unit
-      }
 
   private def sendClusterCouple: Task[Unit] =
     tryEndlesslyToSendCommand(
@@ -302,12 +292,12 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
     activeNodeApi: ClusterNodeApi)
     (implicit s: Scheduler)
   : Task[Checked[Continuation.Replicatable]] =
-    Task.defer {
+    Task.defer:
       import continuation.file
 
-      val maybeTmpFile = locally {
+      val maybeTmpFile = locally:
         // Suppress wrong "unreachable code" error for FirstPartialFile case
-        def toTmpFile = continuation match {
+        def toTmpFile = continuation match
           case _: NoLocalJournal | _: NextFile =>
             val tmp = Paths.get(file.toString + TmpSuffix)
             logger.debug(s"Replicating snapshot into temporary journal file ${tmp.getFileName}")
@@ -315,14 +305,11 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
 
           case _: FirstPartialFile =>
             None
-        }
         toTmpFile
-      }
 
-      var out = maybeTmpFile match {
+      var out = maybeTmpFile match
         case None => FileChannel.open(file, APPEND)
         case Some(tmp) => FileChannel.open(tmp, CREATE, WRITE, TRUNCATE_EXISTING)
-      }
       var isReplicatingHeadOfFile = maybeTmpFile.isDefined
       val startedAt = now
       val replicatedFirstEventPosition = SetOnce.fromOption(continuation.firstEventPosition, "replicatedFirstEventPosition")
@@ -333,13 +320,12 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
         continuation.maybeJournalId, newStateBuilder)
 
       def releaseEvents(): Unit =
-        if journalConf.deleteObsoleteFiles then {
+        if journalConf.deleteObsoleteFiles then
           eventWatch.releaseEvents(
             builder.journalState
               .toReleaseEventId(eventWatch.lastFileEventId, journalConf.releaseEventsUserIds))
-        }
 
-      continuation match {
+      continuation match
         case FirstPartialFile(recoveredJournalFile) =>
           logger.info(s"Start replicating '${file.getFileName}' file after " +
             s"${EventId.toString(recoveredJournalFile.eventId)}, position ${recoveredJournalFile.length}")
@@ -356,12 +342,10 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
             isActiveNode = false)
 
         case _ =>
-      }
 
       val recouplingStreamReader = new RecouplingStreamReader[Long/*file position*/, PositionAnd[ByteArray], ClusterNodeApi](
         toIndex = _.position,
-        clusterConf.recouplingStreamReader)
-      {
+        clusterConf.recouplingStreamReader):
         protected def getObservable(api: ClusterNodeApi, position: Long) =
           HttpClient.liftProblem(
             api.journalObservable(
@@ -374,13 +358,11 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
         protected def stopRequested = stopped
 
         override def eof(index: Long) = _eof && index >= replicatedFileLength
-      }
 
-      locally {
+      locally:
         val f = maybeTmpFile getOrElse file
         logger.trace(s"replicateJournalFile($continuation) size(${f.getFileName})=${size(f)} ${builder.clusterState}")
         assertThat(continuation.fileLength == size(f))
-      }
 
       // TODO Eine Zeile davor lesen und sicherstellen, dass sie gleich unserer letzten Zeile ist
       recouplingStreamReader.observe(activeNodeApi, after = continuation.fileLength)
@@ -403,16 +385,16 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
               positionAndLine.value.parseJson.flatMap(S.decodeJournalJson).orThrow))
         .filter(testHeartbeatSuppressor) // for testing
         .detectPauses(setting.timing.activeLostTimeout)
-        .flatMap[Checked[Unit]] {
+        .flatMap[Checked[Unit]]:
           case Left(noHeartbeatSince) =>
-            (if isReplicatingHeadOfFile then continuation.clusterState else builder.clusterState) match {
+            (if isReplicatingHeadOfFile then continuation.clusterState else builder.clusterState) match
               case clusterState: Coupled if clusterState.passiveId == ownId =>
-                if awaitingCoupledEvent then {
+                if awaitingCoupledEvent then
                   logger.trace(
                     s"Ignoring observed pause of ${noHeartbeatSince.elapsed.pretty} without heartbeat " +
                       s"because cluster is coupled but nodes have not yet recoupled: clusterState=$clusterState")
                   Observable.empty  // Ignore
-                } else {
+                else
                   logger.warn(s"❗ No heartbeat from the currently active cluster $activeId " +
                     s"since ${noHeartbeatSince.elapsed.pretty} - trying to fail-over")
                   Observable.fromTask(
@@ -467,26 +449,23 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
                           Right(true)
                         })
                     }
-                  ).flatMap {
+                  ).flatMap:
                     case Left(problem) =>
                       if problem.is(ClusterFailOverWhilePassiveLostProblem)
                         || problem.is(UntaughtClusterWatchProblem)
-                        || problem.is(NoClusterWatchProblem) then {
+                        || problem.is(NoClusterWatchProblem) then
                         logger.info(s"No failover because ClusterWatch responded: $problem")
                         Observable.empty   // Ignore
-                      } else
+                      else
                         Observable.raiseError(problem.throwable.appendCurrentStackTrace)
 
                     case Right(false) => Observable.empty   // Ignore
                     case Right(true) => Observable.pure(Right(()))  // End observation
-                  }
-                }
 
               case clusterState =>
                 logger.trace("Ignoring observed pause without heartbeat because cluster is not coupled: " +
                   "clusterState=" + clusterState)
                 Observable.empty  // Ignore
-            }
 
           case Right((_, HeartbeatMarker, _)) =>
             logger.trace(HeartbeatMarker.utf8String.trim)
@@ -507,12 +486,11 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
               case Stamped(_, _, KeyedEvent(_, _: SnapshotTaken)) => true
               case _ => false
             })
-            if isSnapshotTaken then {
+            if isSnapshotTaken then
               ensureEqualState(continuation, builder.result())
-            }
             builder.put(journalRecord)  // throws on invalid event
-            if isSnapshotTaken then {
-              for tmpFile <- maybeTmpFile do {
+            if isSnapshotTaken then
+              for tmpFile <- maybeTmpFile do
                 val journalId = builder.fileJournalHeader.map(_.journalId) getOrElse
                   sys.error(s"Missing JournalHeader in replicated journal file '$file'")
                 for o <- continuation.maybeJournalId if o != journalId do
@@ -533,31 +511,26 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
                   flushedLengthAndEventId = PositionAnd(fileLength, builder.eventId),
                   isActiveNode = false)
                 releaseEvents()
-              }
-            }
             //assertThat(fileLength == out.size, s"fileLength=$fileLength, out.size=${out.size}")  // Maybe slow
             replicatedFileLength = fileLength
-            if builder.journalProgress == JournalProgress.InCommittedEventsSection then {
+            if builder.journalProgress == JournalProgress.InCommittedEventsSection then
               lastProperEventPosition = fileLength
-            }
             if isReplicatingHeadOfFile then
               Observable.pure(Right(()))
-            else {
-              if builder.journalProgress == JournalProgress.InCommittedEventsSection then {
+            else
+              if builder.journalProgress == JournalProgress.InCommittedEventsSection then
                 // An open transaction may be rolled back, so we do not notify about these
                 eventWatch.onFileWritten(fileLength)
-                journalRecord match {
+                journalRecord match
                   case Stamped(eventId, _, _) => eventWatch.onEventsCommitted(PositionAnd(fileLength, eventId), 1)
                   case _ =>
-                }
-              }
-              journalRecord match {
+              journalRecord match
                 case JournalSeparators.Commit =>
                   eventWatch.onEventsCommitted(PositionAnd(fileLength, builder.eventId), 1)
                   Observable.pure(Right(()))
 
                 case Stamped(_, _, KeyedEvent(_, event)) =>
-                  event match {
+                  event match
                     case _: JournalEventsReleased =>
                       releaseEvents()
                       Observable.pure(Right(()))
@@ -565,7 +538,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
                     case clusterEvent: ClusterEvent =>
                       // TODO Use JournalLogging
                       logger.info(clusterEventAndStateToString(clusterEvent, builder.clusterState))
-                      clusterEvent match {
+                      clusterEvent match
                         case _: ClusterNodesAppointed | _: ClusterPassiveLost | _: ClusterActiveNodeRestarted =>
                           Observable.fromTask(
                             tryEndlesslyToSendClusterPrepareCoupling
@@ -612,36 +585,29 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
 
                         case _ =>
                           Observable.pure(Right(()))
-                      }
                     case _ =>
                       Observable.pure(Right(()))
-                  }
                 case _ =>
                   Observable.pure(Right(()))
-              }
-            }
-        }
         .takeWhile(_.left.forall(_ ne EndOfJournalFileMarker))
         .takeWhileInclusive(_ => !shouldActivate(builder.clusterState))
-        .collect {
+        .collect:
           case Left(problem) => problem
           //case Right(Completed) => -ignore-
-        }
         .headOptionL
-        .map {
+        .map:
           case Some(problem) => Left(problem)
           case None =>
             logger.debug(s"replicateJournalFile(${file.getFileName}) finished, " +
               s"isReplicatingHeadOfFile=$isReplicatingHeadOfFile, " +
               s"replicatedFileLength=$replicatedFileLength, clusterState=${builder.clusterState}")
-            if !isReplicatingHeadOfFile then {
+            if !isReplicatingHeadOfFile then
               // In case of fail-over while the next journal file's snapshot is written,
               // we need to remove the next file and cut this file's open transaction
               // So we cut off open transaction already now.
               out.truncate(lastProperEventPosition)
               eventWatch.onJournalingEnded(lastProperEventPosition)
-            }
-            (builder.fileJournalHeader, builder.nextJournalHeader) match {
+            (builder.fileJournalHeader, builder.nextJournalHeader) match
               case (Some(header), Some(nextHeader)) =>
                 Right(NextFile(
                   RecoveredJournalFile(file, length = replicatedFileLength,
@@ -650,46 +616,40 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
               case _ =>
                 Left(Problem.pure("JournalHeader could not be replicated " +
                   s"fileEventId=${continuation.fileEventId} eventId=${builder.eventId}"))
-            }
-        }
         .guarantee(
           Task { out.close() })
-    }
 
   private def writeFailedOverEvent(
     out: FileChannel,
     file: Path,
     failedOverStamped: Stamped[KeyedEvent[ClusterFailedOver]],
     lastProperEventPosition: Long)
-  : Unit = {
+  : Unit =
     eventWatch.onFailover()
     logger.warn("❗️Failover")
-    if out.size > lastProperEventPosition then {
+    if out.size > lastProperEventPosition then
       logger.info(s"Truncating open transaction in ${
         file.getFileName}' file at position $lastProperEventPosition")
       out.truncate(lastProperEventPosition)
-    }
     // TODO Use JournalLogger
     val event = failedOverStamped: Stamped[KeyedEvent[ClusterEvent]]
     out.write(ByteBuffer.wrap(
       (event.asJson.compactPrint + '\n').getBytes(UTF_8)))
     //out.force(true)  // sync()
-  }
 
   private def testHeartbeatSuppressor(tuple: (Long, ByteArray, Any)): Boolean =
-    tuple match {
+    tuple match
       case (_, HeartbeatMarker, _)
       if clusterConf.testHeartbeatLossPropertyKey.fold(false)(k => sys.props(k).toBoolean) =>
         logger.warn("TEST: Suppressing received heartbeat")
         false
       case _ => true
-    }
 
   private def shouldActivate(clusterState: ClusterState) =
     !dontActivateBecauseOtherFailedOver && clusterState.isNonEmptyActive(ownId)
 
   private def ensureEqualState(continuation: Continuation.Replicatable, snapshot: S): Unit =
-    for recoveredJournalFile <- continuation.maybeRecoveredJournalFile if recoveredJournalFile.state != snapshot do {
+    for recoveredJournalFile <- continuation.maybeRecoveredJournalFile if recoveredJournalFile.state != snapshot do
       var msg = s"Calculated '$S' from recovered or replicated journal file" +
         s" ${recoveredJournalFile.fileEventId} does not match snapshot in next replicated journal file"
       // msg may get very big
@@ -697,21 +657,19 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
       //diffx msg ++= ":\n" ++ diffx.compare(recoveredJournalFile.state, snapshot).show()
       logger.info(msg)  // Without colors because msg is already colored
       sys.error(msg)
-    }
 
   private def toStampedFailedOver(clusterState: Coupled, failedAt: JournalPosition)
-  : Stamped[KeyedEvent[ClusterFailedOver]] = {
+  : Stamped[KeyedEvent[ClusterFailedOver]] =
     val failedOver = ClusterFailedOver(failedActiveId = clusterState.activeId, activatedId = clusterState.passiveId, failedAt)
     val stamped = eventIdGenerator.stamp(NoKey <-: failedOver)
     logger.debug(stamped.toString)
     stamped
-  }
 
   private sealed trait Continuation
 
-  private object Continuation {
+  private object Continuation:
     private[PassiveClusterNode] sealed trait Replicatable
-    extends Continuation {
+    extends Continuation:
       def clusterState: ClusterState
       def fileEventId: EventId
       def fileLength: Long
@@ -720,39 +678,34 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
       def maybeJournalId: Option[JournalId]
       def maybeRecoveredJournalFile: Option[RecoveredJournalFile[S]]
       final lazy val file = journalLocation.file(fileEventId)
-    }
 
     private[PassiveClusterNode] sealed trait HasRecoveredJournalFile
-    extends Continuation.Replicatable {
+    extends Continuation.Replicatable:
       def recoveredJournalFile: RecoveredJournalFile[S]
       def clusterState = recoveredJournalFile.state.clusterState
       final def maybeJournalId = Some(recoveredJournalFile.journalId)
       final def maybeRecoveredJournalFile = Some(recoveredJournalFile)
-    }
-  }
 
   private sealed case class NoLocalJournal(fileEventId: EventId)
-  extends Continuation.Replicatable {
+  extends Continuation.Replicatable:
     def clusterState = ClusterState.Empty
     def fileLength = 0
     def firstEventPosition = None
     def lastProperEventPosition = -1L  // Invalid value
     def maybeJournalId = None
     def maybeRecoveredJournalFile = None
-  }
 
   private sealed case class FirstPartialFile(recoveredJournalFile: RecoveredJournalFile[S])
-  extends Continuation.Replicatable with Continuation.HasRecoveredJournalFile {
+  extends Continuation.Replicatable with Continuation.HasRecoveredJournalFile:
     assertThat(recoveredJournalFile.file == file)
     def fileLength = recoveredJournalFile.length
     def fileEventId = recoveredJournalFile.fileEventId
     def firstEventPosition = Some(recoveredJournalFile.firstEventPosition)
     def lastProperEventPosition = recoveredJournalFile.lastProperEventPosition
     override def toString = s"FirstPartialFile($fileEventId,$fileLength,${recoveredJournalFile.eventId})"
-  }
 
   private sealed case class NextFile(recoveredJournalFile: RecoveredJournalFile[S])
-  extends Continuation.Replicatable with Continuation.HasRecoveredJournalFile {
+  extends Continuation.Replicatable with Continuation.HasRecoveredJournalFile:
     /** The next file is initially empty. */
     def fileLength = 0
     /** The next file's EventId is the recovered file's last EventId. */
@@ -760,13 +713,9 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
     def firstEventPosition = None
     def lastProperEventPosition = recoveredJournalFile.lastProperEventPosition
     override def toString = s"NextFile(${recoveredJournalFile.eventId})"
-  }
-}
 
-object PassiveClusterNode
-{
+object PassiveClusterNode:
   private val TmpSuffix = ".tmp"  // Duplicate in JournalActor
   private val logger = Logger[this.type]
 
   private val EndOfJournalFileMarker = Problem.pure("End of journal file (internal use only)")
-}

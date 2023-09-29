@@ -16,9 +16,8 @@ import js7.data.workflow.WorkflowPath
 /**
   * @author Joacim Zschimmer
   */
-final class InventoryItemFileTest extends OurTestSuite
-{
-  "typedFiles, checkUniqueness" in {
+final class InventoryItemFileTest extends OurTestSuite:
+  "typedFiles, checkUniqueness" in:
     provideDataDirectory { dir =>
       val checkedTypedFiles = DirectoryReader.files(dir)
         .map(InventoryItemFile.checked(dir, _, Set(WorkflowPath)))
@@ -31,14 +30,11 @@ final class InventoryItemFileTest extends OurTestSuite
       assert(checkUniqueness(checkedTypedFiles collect { case Right(o) => o }) == Left(Problem(
         s"Duplicate configuration files: ${dir / "test.workflow.json"}, ${dir / "test.workflow.txt"}")))
     }
-  }
-}
 
-object InventoryItemFileTest
-{
+object InventoryItemFileTest:
   private val AWorkflowPath = WorkflowPath("test")
 
-  private def provideDataDirectory[A](body: Path => A): A = {
+  private def provideDataDirectory[A](body: Path => A): A =
     val dir = createTempDirectory("test-")
     val subdir = dir / "folder"
     createDirectories(subdir)
@@ -48,5 +44,3 @@ object InventoryItemFileTest
     (subdir / "test.alien.json") := "{}"
     try body(dir)
     finally deleteDirectoryRecursively(dir)
-  }
-}

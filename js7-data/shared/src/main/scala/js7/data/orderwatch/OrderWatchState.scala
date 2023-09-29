@@ -39,8 +39,7 @@ final case class OrderWatchState(
   externalToState: Map[ExternalOrderName, ArisedOrHasOrder],
   private[orderwatch] val arisedQueue: Set[ExternalOrderName],
   private[orderwatch] val vanishedQueue: Set[ExternalOrderName])
-extends UnsignedSimpleItemState
-{
+extends UnsignedSimpleItemState:
   protected type Self = OrderWatchState
   val companion: OrderWatchState.type = OrderWatchState
 
@@ -71,17 +70,16 @@ extends UnsignedSimpleItemState
         .toSet)
 
   def applyOrderWatchEvent(event: OrderWatchEvent): Checked[OrderWatchState] =
-    event match {
+    event match
       case ExternalOrderArised(externalOrderName, orderId, arguments) =>
         onExternalOrderArised(externalOrderName, orderId, arguments)
 
       case ExternalOrderVanished(externalOrderName) =>
         onExternalOrderVanished(externalOrderName)
-    }
 
   private def onExternalOrderArised(externalOrderName: ExternalOrderName, orderId: OrderId, arguments: NamedValues)
   : Checked[OrderWatchState] =
-    externalToState.get(externalOrderName) match {
+    externalToState.get(externalOrderName) match
       case None =>
         Right(copy(
           externalToState = externalToState + (externalOrderName -> Arised(orderId, arguments)),
@@ -95,11 +93,10 @@ extends UnsignedSimpleItemState
 
       case Some(state @ (Arised(_, _) | HasOrder(_, None | Some(Arised(_, _))))) =>
         unexpected(s"Duplicate ExternalOrderArised($externalOrderName, $arguments): $state")
-    }
 
   private def onExternalOrderVanished(externalOrderName: ExternalOrderName)
   : Checked[OrderWatchState] =
-    externalToState.get(externalOrderName) match {
+    externalToState.get(externalOrderName) match
       case None =>
         unexpected(s"${orderWatch.path}: Ignored ExternalOrderVanished($externalOrderName) event for unknown name")
 
@@ -122,10 +119,9 @@ extends UnsignedSimpleItemState
 
       case Some(state @ HasOrder(_, Some(Vanished))) =>
         unexpected(s"Duplicate ExternalOrderVanished($externalOrderName), state=$state")
-    }
 
   def onOrderAdded(externalOrderName: ExternalOrderName, orderId: OrderId): Checked[OrderWatchState] =
-    externalToState.checked(externalOrderName) flatMap {
+    externalToState.checked(externalOrderName) flatMap:
       case Arised(`orderId`, _) =>
         Right(copy(
           externalToState = externalToState + (externalOrderName -> HasOrder(orderId)),
@@ -133,11 +129,10 @@ extends UnsignedSimpleItemState
 
       case _ =>
         unexpected(s"$orderId <-: OrderAdded($externalOrderName) but not Arised($orderId)")
-    }
 
   def onOrderDeleted(externalOrderName: ExternalOrderName, orderId: OrderId)
   : Checked[OrderWatchState] =
-    externalToState.get(externalOrderName) match {
+    externalToState.get(externalOrderName) match
       case Some(HasOrder(`orderId`, None/*?*/ | Some(Vanished))) | None =>
 
         Right(copy(
@@ -154,7 +149,6 @@ extends UnsignedSimpleItemState
 
       case Some(x) =>
         unexpected(s"${orderWatch.path}: unexpected onOrderDeleted($externalOrderName, $orderId) for $x")
-    }
 
   def nextEvents(toOrderAdded: ToOrderAdded, isDeletionMarkable: OrderId => Boolean)
   : View[KeyedEvent[OrderCoreEvent]] =
@@ -213,14 +207,11 @@ extends UnsignedSimpleItemState
   private def unexpected(msg: String): Checked[this.type] =
     if isStrict then
       Left(Problem(msg))
-    else {
+    else
       logger.error(msg)
       Right(this)
-    }
-}
 
-object OrderWatchState extends UnsignedSimpleItemState.Companion[OrderWatchState]
-{
+object OrderWatchState extends UnsignedSimpleItemState.Companion[OrderWatchState]:
   type Key = OrderWatchPath
   type Item = OrderWatch
   override type ItemState = OrderWatchState
@@ -244,14 +235,12 @@ object OrderWatchState extends UnsignedSimpleItemState.Companion[OrderWatchState
     OrderWatchState(snapshot.orderWatch, Map.empty, Set.empty, Set.empty)
       .recalculateQueues
 
-  sealed trait Snapshot {
+  sealed trait Snapshot:
     def orderWatchPath: OrderWatchPath
-  }
 
   final case class HeaderSnapshot(orderWatch: OrderWatch)
-  extends Snapshot {
+  extends Snapshot:
     def orderWatchPath = orderWatch.key
-  }
 
   final case class ExternalOrderSnapshot(
     orderWatchPath: OrderWatchPath,
@@ -273,22 +262,18 @@ object OrderWatchState extends UnsignedSimpleItemState.Companion[OrderWatchState
   case object Vanished
   extends VanishedOrArised
 
-  object VanishedOrArised {
+  object VanishedOrArised:
     private[orderwatch] implicit val jsonCodec: TypedJsonCodec[VanishedOrArised] = TypedJsonCodec(
       Subtype.singleton(Vanished, aliases = Seq("VanishedAck")/*COMPATIBLE with v2.2.1*/),
       Subtype(deriveCodec[Arised]))
-  }
 
-  object ArisedOrHasOrder {
+  object ArisedOrHasOrder:
     private[orderwatch] implicit val jsonCodec: TypedJsonCodec[ArisedOrHasOrder] = TypedJsonCodec(
       Subtype(deriveCodec[Arised]),
       Subtype(deriveCodec[HasOrder]))
-  }
 
-  object Snapshot {
+  object Snapshot:
     implicit val jsonCodec: TypedJsonCodec[Snapshot] = TypedJsonCodec(
       Subtype.named(deriveCodec[ExternalOrderSnapshot], "ExternalOrder"))
-  }
 
   intelliJuseImport(OrderAdded)
-}

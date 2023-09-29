@@ -12,9 +12,8 @@ import js7.data.event.JournalPosition
 import js7.data.node.{NodeId, NodeName}
 import js7.tester.CirceJsonTester.testJson
 
-final class ClusterCommandTest extends OurTestSuite
-{
-  "ClusterStartBackupNode" in {
+final class ClusterCommandTest extends OurTestSuite:
+  "ClusterStartBackupNode" in:
     testJson[ClusterCommand](
       ClusterStartBackupNode(
         ClusterSetting(
@@ -45,9 +44,8 @@ final class ClusterCommandTest extends OurTestSuite
         "activeNodeName": "ActiveNodeName",
         "passiveNodeUserId": "PassiveNodeUserId"
       }""")
-  }
 
-  "ClusterPrepareCoupling" in {
+  "ClusterPrepareCoupling" in:
     testJson[ClusterCommand](
       ClusterPrepareCoupling(NodeId("A"), NodeId("B"), OneTimeToken("TOKEN")),
       json"""{
@@ -56,9 +54,8 @@ final class ClusterCommandTest extends OurTestSuite
         "passiveId": "B",
         "token": "TOKEN"
       }""")
-  }
 
-  "ClusterCouple" in {
+  "ClusterCouple" in:
     testJson[ClusterCommand](
       ClusterCouple(NodeId("A"), NodeId("B"), OneTimeToken("TOKEN")),
       json"""{
@@ -67,18 +64,16 @@ final class ClusterCommandTest extends OurTestSuite
         "passiveId": "B",
         "token": "TOKEN"
       }""")
-  }
 
-  "ClusterConfirmCoupling" in {
+  "ClusterConfirmCoupling" in:
     testJson[ClusterCommand](
       ClusterConfirmCoupling(OneTimeToken("TOKEN")),
       json"""{
         "TYPE": "ClusterConfirmCoupling",
         "token": "TOKEN"
       }""")
-  }
 
-  "ClusterRecouple" in {
+  "ClusterRecouple" in:
     testJson[ClusterCommand](
       ClusterRecouple(NodeId("A"), NodeId("B")),
       json"""{
@@ -86,17 +81,15 @@ final class ClusterCommandTest extends OurTestSuite
         "activeId": "A",
         "passiveId": "B"
       }""")
-  }
 
-  "ClusterInhibitActivation" in {
+  "ClusterInhibitActivation" in:
     testJson[ClusterCommand](ClusterInhibitActivation(7.s),
       json"""{
         "TYPE": "ClusterInhibitActivation",
         "duration": 7
       }""")
-  }
 
-  "ClusterInhibitActivation.Response" in {
+  "ClusterInhibitActivation.Response" in:
     testJson[ClusterCommand.Response](ClusterInhibitActivation.Response(Some(FailedOver(
       ClusterSetting(
         Map(
@@ -126,13 +119,10 @@ final class ClusterCommandTest extends OurTestSuite
           }
         }
       }""")
-  }
 
-  "Response.Accepted" in {
+  "Response.Accepted" in:
     testJson[ClusterCommand.Response](
       Response.Accepted,
       json"""{
         "TYPE": "Accepted"
       }""")
-  }
-}

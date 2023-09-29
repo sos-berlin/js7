@@ -11,8 +11,7 @@ import scala.reflect.ClassTag
 
 @javaApi
 final class JStandardEventBus[E](val asScala: StandardEventBus[E])
-extends JavaWrapper with AutoCloseable
-{
+extends JavaWrapper with AutoCloseable:
   type AsScala = StandardEventBus[E]
 
   def this()(implicit e: ClassTag[E]) =
@@ -30,28 +29,25 @@ extends JavaWrapper with AutoCloseable
   def subscribe[E1 <: E](
     @Nonnull eventClasses: java.lang.Iterable[Class[? <: E1]],
     @Nonnull callback: java.util.function.Consumer[E1])
-  : EventSubscription = {
+  : EventSubscription =
     val subscription = newSubscription(eventClasses, callback)
     addSubscription(subscription)
     subscription
-  }
 
   @javaApi @Nonnull
   def newSubscription[E1 <: E](
     @Nonnull eventClasses: java.lang.Iterable[Class[? <: E1]],
     @Nonnull callback: java.util.function.Consumer[E1])
-  : EventSubscription = {
+  : EventSubscription =
     requireNonNull(callback)
     EventSubscription(new asScala.EventSubscription(
       eventClasses.asScala.toSet,
       e => callback.accept(e.asInstanceOf[E1])))
-  }
 
   @javaApi
-  def addSubscription(@Nonnull subscription: EventSubscription): Unit = {
+  def addSubscription(@Nonnull subscription: EventSubscription): Unit =
     assertThat(subscription.eventBus eq asScala)
     subscription.internalAddToEventBus()
-  }
 
   @javaApi
   def removeAllSubscriptions(): Unit =
@@ -66,8 +62,7 @@ extends JavaWrapper with AutoCloseable
     asScala: JStandardEventBus.this.asScala.EventSubscription)
   extends js7.proxy.javaapi.eventbus.EventSubscription
   with JavaWrapper
-  with AutoCloseable
-  {
+  with AutoCloseable:
     type AsScala = JStandardEventBus.this.asScala.EventSubscription
 
     /** For internal use only. */
@@ -79,5 +74,3 @@ extends JavaWrapper with AutoCloseable
     /** For internal use only. */
     private[JStandardEventBus] def internalAddToEventBus(): Unit =
       JStandardEventBus.this.asScala.addSubscription(asScala)
-  }
-}

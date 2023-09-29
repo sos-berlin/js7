@@ -11,9 +11,8 @@ import js7.data.item.ItemRevision
 import js7.data.platform.PlatformInfo
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 
-final class SubagentItemStateTest extends OurTestSuite
-{
-  "JSON" in {
+final class SubagentItemStateTest extends OurTestSuite:
+  "JSON" in:
     testJson[SubagentItemState](
       SubagentItemState(
         SubagentItem(
@@ -125,5 +124,3 @@ final class SubagentItemStateTest extends OurTestSuite
           "message": "PROBLEM"
         }
       }""")
-  }
-}

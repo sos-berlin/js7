@@ -8,10 +8,9 @@ import js7.base.time.ScalaTime.DurationRichInt
 import js7.base.utils.CatsUtils.Nel
 import scala.jdk.CollectionConverters.*
 
-object RecouplingStreamReaderConfs
-{
+object RecouplingStreamReaderConfs:
   def fromConfig(config: Config): Checked[RecouplingStreamReaderConf] =
-    catchExpected[ConfigException] {
+    catchExpected[ConfigException]:
       RecouplingStreamReaderConf(
         timeout = config.getDuration("js7.web.client.idle-get-timeout").toFiniteDuration,
         delay   = config.getDuration("js7.web.client.polling-delay").toFiniteDuration,
@@ -20,5 +19,3 @@ object RecouplingStreamReaderConfs
             .getDurationList("js7.web.client.failure-delays").asScala
             .map(_.toFiniteDuration).toList)
           .getOrElse(Nel.one(10.s)))
-    }
-}

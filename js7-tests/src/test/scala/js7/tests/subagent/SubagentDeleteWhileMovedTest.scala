@@ -17,52 +17,44 @@ import js7.tests.subagent.SubagentTester.agentPath
 import monix.execution.Scheduler
 import monix.reactive.Observable
 
-final class SubagentDeleteWhileMovedTest extends OurTestSuite with SubagentTester
-{
+final class SubagentDeleteWhileMovedTest extends OurTestSuite with SubagentTester:
   protected val agentPaths = Seq(agentPath)
   protected lazy val items = Seq(workflow, bareSubagentItem)
   override protected val primarySubagentsDisabled = true
 
   protected implicit val scheduler = Scheduler.traced
 
-  "Delete SubagentItem while being changed" in {
+  "Delete SubagentItem while being changed" in:
     var eventId = eventWatch.lastAddedEventId
     runSubagent(bareSubagentItem) { _ =>
       val aOrderId = OrderId("A-CHANGE-URI-TWICE")
-      locally {
+      locally:
         controller.api.addOrder(FreshOrder(aOrderId, workflow.path)).await(99.s).orThrow
         val processingStarted = eventWatch
           .await[OrderProcessingStarted](_.key == aOrderId, after = eventId).head.value.event
         assert(processingStarted == OrderProcessingStarted(bareSubagentId))
         eventWatch.await[OrderFinished](_.key == aOrderId, after = eventId)
         // aOrderId is waiting for semaphore
-      }
     }
 
     // Change URI, but do not start a corresponding Subagent
     eventId = eventWatch.lastAddedEventId
-    locally {
+    locally:
       val bare1SubagentItem = bareSubagentItem.copy(uri = findFreeLocalUri())
       val agentEventId = agent.eventWatch.lastAddedEventId
       controller.api.updateItems(Observable(AddOrChangeSimple(bare1SubagentItem)))
         .await(99.s).orThrow
       agent.eventWatch.await[SubagentCouplingFailed](_.key == bareSubagentId, after = agentEventId)
-    }
 
     // Delete SubagentItem
-    locally {
+    locally:
       eventId = eventWatch.lastAddedEventId
       controller.api.updateItems(Observable(DeleteSimple(bareSubagentId)))
         .await(99.s).orThrow
       eventWatch.await[ItemDeleted](_.event.key == bareSubagentId, after = eventId)
-    }
-  }
-}
 
-object SubagentDeleteWhileMovedTest
-{
+object SubagentDeleteWhileMovedTest:
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",
     Seq(
       EmptyJob.execute(agentPath)))
-}

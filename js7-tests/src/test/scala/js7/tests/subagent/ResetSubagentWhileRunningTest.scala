@@ -22,20 +22,18 @@ import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler
 import scala.concurrent.TimeoutException
 
-final class ResetSubagentWhileRunningTest extends OurTestSuite with SubagentTester
-{
+final class ResetSubagentWhileRunningTest extends OurTestSuite with SubagentTester:
   protected val agentPaths = Seq(agentPath)
   protected lazy val items = Seq(workflow, bareSubagentItem)
   override protected val primarySubagentsDisabled = true
 
   protected implicit val scheduler = Scheduler.traced
 
-  "ResetSubagent to a Director is prohibited" in {
+  "ResetSubagent to a Director is prohibited" in:
     val checked = controller.api.executeCommand(ResetSubagent(localSubagentId)).await(99.s)
     assert(checked == Left(Problem("Subagent:AGENT-0 as a Agent Director cannot be reset")))
-  }
 
-  "ResetSubagent while Subagent is coupled" in {
+  "ResetSubagent while Subagent is coupled" in:
     enableSubagents(directoryProvider.subagentId -> false)
 
     val aOrderId = OrderId("A-ORDER")
@@ -61,10 +59,9 @@ final class ResetSubagentWhileRunningTest extends OurTestSuite with SubagentTest
       // Add bOrderId which should wait until Subagent has been reset and restarted
       controller.api.addOrder(FreshOrder(bOrderId, workflow.path)).await(99.s).orThrow
       eventWatch.await[OrderAttached](_.key == bOrderId)
-      intercept[TimeoutException] {
+      intercept[TimeoutException]:
         // Times out because Subagent is being reset
         eventWatch.await[OrderProcessingStarted](_.key == bOrderId, timeout = 1.s)
-      }
 
       eventWatch.await[SubagentReset](_.key == bareSubagentId)
 
@@ -123,11 +120,8 @@ final class ResetSubagentWhileRunningTest extends OurTestSuite with SubagentTest
       eventWatch.await[OrderFinished](_.key == aOrderId, after = eventId)
       eventWatch.await[OrderFinished](_.key == bOrderId, after = eventId)
     }
-  }
-}
 
-object ResetSubagentWhileRunningTest
-{
+object ResetSubagentWhileRunningTest:
   private val localSubagentId = toLocalSubagentId(agentPath)
 
   private val workflow = Workflow(
@@ -137,4 +131,3 @@ object ResetSubagentWhileRunningTest
 
   final class TestSemaphoreJob extends SemaphoreJob(TestSemaphoreJob)
   object TestSemaphoreJob extends SemaphoreJob.Companion[TestSemaphoreJob]
-}

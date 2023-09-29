@@ -29,10 +29,9 @@ with AgentForwardRoute
 with SnapshotRoute
 with SessionRoute
 with ClusterRoute
-with LogRoute
-{
+with LogRoute:
   final val apiRoute: Route =
-    respondWithHeaders(StandardResponseHeaders) {
+    respondWithHeaders(StandardResponseHeaders):
       pathPrefix(Segment) {
         case "journal"     => journalRoute
         case "journalInfo" => journalInfoRoute
@@ -48,14 +47,9 @@ with LogRoute
         case "log"         => logRoute
         case _ => complete(NotFound)
       } ~
-      pathEndOrSingleSlash {
+      pathEndOrSingleSlash:
         apiRootRoute
-      }
-    }
-}
 
-object ApiRoute
-{
+object ApiRoute:
   private val StandardResponseHeaders = Vector(
     `Cache-Control`(`max-age`(0), `no-store`, `no-cache`))
-}

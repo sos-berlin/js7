@@ -18,8 +18,7 @@ import js7.tests.FailOnErrWrittenTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.traced
 
-final class FailOnErrWrittenTest extends OurTestSuite with ControllerAgentForScalaTest
-{
+final class FailOnErrWrittenTest extends OurTestSuite with ControllerAgentForScalaTest:
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.journal.remove-obsolete-files = false
@@ -32,7 +31,7 @@ final class FailOnErrWrittenTest extends OurTestSuite with ControllerAgentForSca
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(workflow)
 
-  "JobResourcePath" in {
+  "JobResourcePath" in:
     val orderId = OrderId("ORDER")
     controller.api.addOrder(FreshOrder(orderId, workflow.path, Map(
       "A" -> StringValue("A OF ORDER")
@@ -43,11 +42,8 @@ final class FailOnErrWrittenTest extends OurTestSuite with ControllerAgentForSca
       OrderProcessed(Outcome.succeededRC0),
       OrderProcessed(Outcome.Failed(Some("The job's error channel: ERROR"))),
     ))
-  }
-}
 
-object FailOnErrWrittenTest
-{
+object FailOnErrWrittenTest:
   private val agentPath = AgentPath("AGENT")
 
   private val workflow = Workflow(
@@ -93,4 +89,3 @@ object FailOnErrWrittenTest
               |echo ERROR >&2
               |""".stripMargin),
         failOnErrWritten = true))))
-}

@@ -7,8 +7,7 @@ import js7.base.convert.As
   */
 sealed trait LogLevel
 
-object LogLevel
-{
+object LogLevel:
   object LogNone extends LogLevel
   object Trace extends LogLevel
   object Debug extends LogLevel
@@ -17,17 +16,16 @@ object LogLevel
   object Error extends LogLevel
 
   implicit val ordering: Ordering[LogLevel] =
-    Ordering.by {
+    Ordering.by:
       case LogNone => 0
       case Trace => 1
       case Debug => 2
       case Info => 3
       case Warn => 4
       case Error => 5
-    }
 
   def apply(string: String): LogLevel =
-    string.toLowerCase match {
+    string.toLowerCase match
       case "none"  => LogNone
       case "trace" => Trace
       case "debug" => Debug
@@ -35,9 +33,6 @@ object LogLevel
       case "warn"  => Warn
       case "error" => Error
       case _ => throw new IllegalArgumentException(s"Invalid LogLevel '$string'")
-    }
 
   implicit val StringAsLogLevel: As[String, LogLevel] =
     As[String, LogLevel](LogLevel.apply)
-
-}

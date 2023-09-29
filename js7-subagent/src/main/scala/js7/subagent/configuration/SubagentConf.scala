@@ -44,8 +44,7 @@ final case class SubagentConf(
   stdoutCommitDelay: FiniteDuration,
   name: String,
   config: Config)
-extends CommonConfiguration
-{
+extends CommonConfiguration:
   require(jobWorkingDirectory.isAbsolute)
 
   lazy val scriptInjectionAllowed =
@@ -64,27 +63,23 @@ extends CommonConfiguration
   lazy val valueDirectory: Path =
     workDirectory / "values"
 
-  def finishAndProvideFiles(): SubagentConf = {
+  def finishAndProvideFiles(): SubagentConf =
     provideDataSubdirectories()
-    if killScript.contains(ProcessKillScriptProvider.directoryToProcessKillScript(workDirectory)) then {
+    if killScript.contains(ProcessKillScriptProvider.directoryToProcessKillScript(workDirectory)) then
       // After Subagent termination, leave behind the kill script,
       // in case of regular termination after error.
       new ProcessKillScriptProvider() //.closeWithCloser
         .provideTo(workDirectory)
-    }
     this
-  }
 
-  private def provideDataSubdirectories(): this.type = {
-    if logDirectory == defaultLogDirectory(dataDirectory) && !exists(logDirectory) then {
+  private def provideDataSubdirectories(): this.type =
+    if logDirectory == defaultLogDirectory(dataDirectory) && !exists(logDirectory) then
       createDirectory(logDirectory)
-    }
     autoCreateDirectory(workDirectory)
     autoCreateDirectory(shellScriptTmpDirectory)
     autoCreateDirectory(workTmpDirectory)
     autoCreateDirectory(valueDirectory)
     this
-  }
 
   def toJobLauncherConf(iox: IOExecutor, blockingJobScheduler: Scheduler, clock: AlarmClock)
   : Checked[JobLauncherConf] =
@@ -109,9 +104,9 @@ extends CommonConfiguration
     else
       Right(UTF_8)
 
-  private[configuration] def windowsCodepageToEncoding(codepage: Int): Checked[Charset] = {
+  private[configuration] def windowsCodepageToEncoding(codepage: Int): Checked[Charset] =
     val key = s"js7.windows.codepages.$codepage"
-    config.optionAs[String](key) match {
+    config.optionAs[String](key) match
       case None =>
         catchExpected[Exception](Charset.forName("cp" + codepage))
           .orElse(catchExpected[Exception](Charset.forName("CP" + codepage)))
@@ -120,12 +115,8 @@ extends CommonConfiguration
       case Some(encodingName) =>
         catchExpected[Exception](Charset.forName(encodingName))
           .left.map(Problem(s"Unknown encoding for Windows code page $codepage:") |+| _)
-    }
-  }
-}
 
-object SubagentConf
-{
+object SubagentConf:
   private def defaultLogDirectory(data: Path) = data / "logs"
 
   val DefaultConfig = Configs
@@ -137,7 +128,7 @@ object SubagentConf
     name: String = "JS7",
     extraConfig: Config = ConfigFactory.empty,
     internalConfig: Config = DefaultConfig)
-  : SubagentConf = {
+  : SubagentConf =
     val common = CommonConfiguration.Common.fromCommandLineArguments(args)
     import common.configDirectory as configDir
 
@@ -170,7 +161,6 @@ object SubagentConf
 
     args.requireNoMoreArguments()
     conf
-  }
 
   def forTest(
     configAndData: Path,
@@ -221,7 +211,7 @@ object SubagentConf
     killScript: Option[ProcessKillScript],
     name: String = "JS7",
     config: Config)
-  : SubagentConf = {
+  : SubagentConf =
     val outErrConf = StdouterrConf.fromConfig(config)
     SubagentConf(
       configDirectory = configDirectory,
@@ -238,7 +228,6 @@ object SubagentConf
       stdoutCommitDelay = config.finiteDuration("js7.order.stdout-stderr.commit-delay").orThrow,
       name = name,
       config)
-  }
 
   private def resolvedConfig(configDir: Path, extra: Config, internal: Config): Config =
     ConfigFactory
@@ -252,8 +241,6 @@ object SubagentConf
       .withFallback(internal)
       .resolve
 
-  private def autoCreateDirectory(directory: Path): Path = {
+  private def autoCreateDirectory(directory: Path): Path =
     if !exists(directory) then createDirectory(directory)
     directory
-  }
-}

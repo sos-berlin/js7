@@ -14,8 +14,7 @@ import monix.execution.misc.Local
 import monix.execution.schedulers.TracingScheduler
 
 /** Correlation ID. */
-sealed trait CorrelId extends GenericString
-{
+sealed trait CorrelId extends GenericString:
   def fixedWidthString: String
 
   def orNew: CorrelId =
@@ -43,10 +42,8 @@ sealed trait CorrelId extends GenericString
   def fold[A](whenEmpty: => A, whenNonEmpty: CorrelId => A): A =
     if isEmpty then whenEmpty
     else whenNonEmpty(this)
-}
 
-object CorrelId extends GenericString.Checked_[CorrelId]
-{
+object CorrelId extends GenericString.Checked_[CorrelId]:
   private[log] val longByteCount = 6
   private[log] val width = (longByteCount + 2) / 3 * 4  // Base64 length
   private[log] val bitMask = (1L << (longByteCount * 8)) - 1
@@ -55,30 +52,26 @@ object CorrelId extends GenericString.Checked_[CorrelId]
 
   private lazy val nextCorrelId: NextCorrelId =
     if isTest && isIntelliJIdea then
-      new NextCorrelId {
+      new NextCorrelId:
         private val next = Atomic(LongCorrelId.checked("Cor_____").orThrow.long)
         def apply() = LongCorrelId(next.incrementAndGet())
-      }
     else
-      new NextCorrelId {
+      new NextCorrelId:
         private val random = new SecureRandom()
         def apply() = LongCorrelId(random.nextLong())
-      }
 
-  private trait NextCorrelId {
+  private trait NextCorrelId:
     def apply(): CorrelId
-  }
 
   private var currentCorrelIdCount = 0L
   private var generateCount = 0L
   private var asStringCount = 0L
 
   private val maybeEnabled0 =
-    sys.props.get("js7.log.correlId") match {
+    sys.props.get("js7.log.correlId") match
       case Some("" | "true") => Some(true)
       case Some("false") => Some(false)
       case _ => isTest ? true
-    }
 
   def couldBeEnabled = maybeEnabled0 getOrElse true
 
@@ -108,10 +101,9 @@ object CorrelId extends GenericString.Checked_[CorrelId]
   def generate(): CorrelId =
     if !isEnabled then
       CorrelId.empty
-    else {
+    else
       generateCount += 1
       nextCorrelId()
-    }
 
   def use[F[_], R](body: CorrelId => F[R])(implicit F: Defer[F]): F[R] =
     F.defer(body(current))
@@ -119,37 +111,30 @@ object CorrelId extends GenericString.Checked_[CorrelId]
   def current: CorrelId =
     if !CorrelId.isEnabled then
       CorrelId.empty
-    else {
+    else
       currentCorrelIdCount += 1
       local()
-    }
 
   def isolate[R](body: LogCorrelId => R): R =
     if !CorrelId.isEnabled then
       body(EmptyLogCorrelId)
-    else {
+    else
       val previous = current
       try body(new ActiveLogCorrelId(previous))
       finally local.update(previous)
-    }
 
-  sealed trait LogCorrelId {
+  sealed trait LogCorrelId:
     def :=(correlId: CorrelId): Unit
-  }
 
   private final class ActiveLogCorrelId(private var currCorrelId: CorrelId)
-  extends LogCorrelId
-  {
+  extends LogCorrelId:
     def :=(correlId: CorrelId): Unit =
-      if correlId != currCorrelId then {
+      if correlId != currCorrelId then
         currCorrelId = correlId
         local.update(correlId)
-      }
-  }
 
-  private object EmptyLogCorrelId extends LogCorrelId {
+  private object EmptyLogCorrelId extends LogCorrelId:
     def :=(correlId: CorrelId) = {}
-  }
 
   /** Generate a CorrelId for the body if `current` isEmpty. */
   def bindIfEmpty[R](body: => R)(implicit R: CanBindCorrelId[R]): R =
@@ -171,22 +156,20 @@ object CorrelId extends GenericString.Checked_[CorrelId]
     else
       TracingScheduler(scheduler)
 
-  private[log] sealed case class LongCorrelId private(long: Long) extends CorrelId {
+  private[log] sealed case class LongCorrelId private(long: Long) extends CorrelId:
     import LongCorrelId.*
 
     override def isEmpty = false
 
     def fixedWidthString = string
 
-    lazy val string = {
+    lazy val string =
       asStringCount += 1
       LongCorrelId.toBase64(long)
-    }
 
     def toAscii: String =
       string.replace(code62Replacement, code62Original)
-  }
-  private[log] object LongCorrelId {
+  private[log] object LongCorrelId:
     /** Replacement for Base64 '-' character.
      * For usage in a HTTP header, Non-ASCII must be replaced by ASCII code .
      */
@@ -211,68 +194,59 @@ object CorrelId extends GenericString.Checked_[CorrelId]
     def apply(long: Long): LongCorrelId =
       new LongCorrelId(long & bitMask)
 
-    private[log] def toBase64(long: Long): String = {
+    private[log] def toBase64(long: Long): String =
       val array = new Array[Char](width)
       var i = width - 1
       var a = long
-      while i >= 0 do {
+      while i >= 0 do
         array(i) = toOurBase64_((a & 0x3f).toInt)
         a >>>= 6
         i -= 1
-      }
       new String(array)
-    }
 
     private[log] def fromBase64(string: String): Checked[Long] =
       checked(string).map(_.long)
 
     private val invalidCorrelId = Left(Problem.pure("Invalid CorrelId"))
 
-    private[CorrelId] def checked(string: String): Checked[LongCorrelId] = {
+    private[CorrelId] def checked(string: String): Checked[LongCorrelId] =
       var long = 0L
       var i = 0
       val n = string.length
       if n > width then
         invalidCorrelId
-      else {
+      else
         // string is interpreted left aligned, filled with zeros '_' to the right
-        while i < width do {
+        while i < width do
           val c: Char = if i < n then string(i) else '_'
           if c < 0 || c >= fromBase64_.length then return invalidCorrelId
           val v = fromBase64_(c)
           if v == -1 then return invalidCorrelId
           long = (long << 6) | v
           i += 1
-        }
         if (long & ~bitMask) != 0 then
           invalidCorrelId
         else
           Right(LongCorrelId(long))
-      }
-    }
-  }
 
   //private sealed case class StringCorrelId(string: String) extends CorrelId {
   //  def fixedWidthString = string
   //  override def isEmpty = false
   //}
 
-  private object EmptyCorrelId extends CorrelId {
+  private object EmptyCorrelId extends CorrelId:
     val string = ""
     val fixedWidthString = " " * width
     val toAscii = ""
-  }
 
   def logStatisticsIfEnabled(): Unit =
     if CorrelId.isEnabled then logStatistics()
 
-  def logStatistics(): Unit = {
+  def logStatistics(): Unit =
     // Logger must not be instantiated early, because it recursively uses this CorrelId object
     Logger[this.type].trace(statistics)
-  }
 
   def statistics: String =
     s"$generateCount CorrelIds generated, $asStringCount× string, " +
     s"${CanBindCorrelId.bindCorrelIdCount}× bindCorrelId, " +
       s"$currentCorrelIdCount× CorrelId.current"
-}

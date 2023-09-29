@@ -13,20 +13,16 @@ import scala.reflect.ClassTag
 /**
   * @author Joacim Zschimmer
   */
-final class SignedItemVerifier[A <: SignableItem](signatureVerifier: SignatureVerifier, jsonDecoder: Decoder[A])
-{
+final class SignedItemVerifier[A <: SignableItem](signatureVerifier: SignatureVerifier, jsonDecoder: Decoder[A]):
   def verify(signedString: SignedString): Checked[Verified[A]] =
     for
       signers <- signatureVerifier.verify(signedString)
       json <- signedString.string.parseJson
       item <- jsonDecoder.decodeJson(json).toChecked
     yield Verified(Signed(item, signedString), signers)
-}
 
-object SignedItemVerifier
-{
-  final case class Verified[A <: SignableItem](signedItem: Signed[A], signerIds: Seq[SignerId])
-  {
+object SignedItemVerifier:
+  final case class Verified[A <: SignableItem](signedItem: Signed[A], signerIds: Seq[SignerId]):
     def ifCast[A1 <: A: ClassTag]: Option[Verified[A1]] =
       implicitClass[A1].isAssignableFrom(signedItem.value.getClass) ?
         this.asInstanceOf[Verified[A1]]
@@ -35,5 +31,3 @@ object SignedItemVerifier
 
     override def toString =
       s"'${item.key}' verified: signed by ${signerIds.mkString("'", "', '", "'")}"
-  }
-}

@@ -9,8 +9,7 @@ import js7.base.problem.Problem
 /**
   * @author Joacim Zschimmer
   */
-final class SillySigner(signature: SillySignature) extends DocumentSigner
-{
+final class SillySigner(signature: SillySignature) extends DocumentSigner:
   protected type MySignature = SillySignature
 
   def companion = SillySigner
@@ -18,10 +17,8 @@ final class SillySigner(signature: SillySignature) extends DocumentSigner
   def sign(document: ByteArray) = signature
 
   def toVerifier = new SillySignatureVerifier(signature :: Nil, publicKeyOrigin = "SillySigner")
-}
 
-object SillySigner extends DocumentSigner.Companion
-{
+object SillySigner extends DocumentSigner.Companion:
   protected type MySignature = SillySignature
   protected type MyMessageSigner = SillySigner
 
@@ -34,4 +31,3 @@ object SillySigner extends DocumentSigner.Companion
       Left(Problem.pure("Password for SillySigner must be empty"))
     else
       Right(new SillySigner(SillySignature(new String(privateKey.toArray, UTF_8))))
-}

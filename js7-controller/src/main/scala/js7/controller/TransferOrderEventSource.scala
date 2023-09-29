@@ -10,7 +10,7 @@ import js7.data.order.Order
 import js7.data.order.OrderEvent.OrderTransferred
 import js7.data.workflow.Workflow
 
-final class TransferOrderEventSource(controllerState: ControllerState) {
+final class TransferOrderEventSource(controllerState: ControllerState):
 
   def transferOrders(cmd: TransferOrders): Checked[Seq[KeyedEvent[OrderTransferred]]] =
     controllerState.repo.pathTo(Workflow)(cmd.workflowId.path)
@@ -31,13 +31,11 @@ final class TransferOrderEventSource(controllerState: ControllerState) {
             .combineProblems)
 
   private def checkTransferable(order: Order[Order.State]): Checked[Unit] =
-    order.attachedState match {
+    order.attachedState match
       case Some(x) => Left(Problem.pure(s"${order.id} to be transferred is $x"))
       case None => Checked.unit
-    }
 
   private def transferOrder(order: Order[Order.State], toWorkflow: Workflow)
   : Checked[OrderTransferred] =
     for _ <- toWorkflow.checkPosition(order.position)/*same position exists?*/  yield
       OrderTransferred(toWorkflow.id /: order.position)
-}

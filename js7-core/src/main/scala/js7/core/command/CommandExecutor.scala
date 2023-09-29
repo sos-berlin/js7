@@ -7,7 +7,5 @@ import monix.eval.Task
 /**
   * @author Joacim Zschimmer
   */
-trait CommandExecutor[C <: CommonCommand]
-{
+trait CommandExecutor[C <: CommonCommand]:
   def executeCommand(command: C, meta: CommandMeta): Task[Checked[command.Response]]
-}

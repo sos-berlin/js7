@@ -7,8 +7,7 @@ import js7.base.utils.Assertions.assertThat
 import js7.core.item.ItemReader.*
 import js7.data.item.{InventoryItem, InventoryItemPath, SourceType}
 
-trait ItemReader
-{
+trait ItemReader:
   val companion: InventoryItem.Companion_
 
   import companion.Path as ThisItemPath
@@ -20,7 +19,7 @@ trait ItemReader
   : PartialFunction[SourceType, Checked[InventoryItem]]
 
   private[item] final def readUntyped(key: companion.Key, byteArray: ByteArray, sourceType: SourceType)
-  : Checked[InventoryItem] = {
+  : Checked[InventoryItem] =
     assertThat(key.path.companion eq itemPathCompanion, "VersionedItemReader readUntyped")
     val result: Checked[InventoryItem] =
       read(key, byteArray)
@@ -28,14 +27,10 @@ trait ItemReader
           sourceType,
           (_: SourceType) => Problem(s"Unrecognized SourceType '$sourceType' for path '$key'"))
     result.mapProblem(p => SourceProblem(key.path, sourceType, p))
-  }
-}
 
-object ItemReader
-{
+object ItemReader:
   final case class SourceProblem(
     path: InventoryItemPath,
     sourceType: SourceType,
     underlying: Problem)
   extends Problem.Lazy(s"Problem with '$path' ($sourceType)", Some(underlying))
-}

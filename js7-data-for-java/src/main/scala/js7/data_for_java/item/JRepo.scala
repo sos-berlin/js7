@@ -10,8 +10,7 @@ import js7.data_for_java.workflow.{JWorkflow, JWorkflowId}
 import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.*
 
-final class JRepo(asScala: Repo)
-{
+final class JRepo(asScala: Repo):
   /** The current `VersionId`.
     * @return `Optional.empty` iff the repo is empty. */
   @Nonnull
@@ -37,4 +36,3 @@ final class JRepo(asScala: Repo)
     asScala.pathTo(Workflow)(workflowPath)
       .map(JWorkflow.apply)
       .toVavr
-}

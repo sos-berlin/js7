@@ -11,8 +11,7 @@ import js7.data.workflow.position.WorkflowPosition
   */
 sealed trait CancellationMode
 
-object CancellationMode
-{
+object CancellationMode:
   val Default = FreshOrStarted(None)
 
   case object FreshOnly extends CancellationMode
@@ -23,12 +22,10 @@ object CancellationMode
     FreshOrStarted(Some(Kill(immediately = immediately, workflowPosition = workflowPosition)))
 
   final case class Kill(immediately: Boolean = false, workflowPosition: Option[WorkflowPosition] = None)
-  object Kill {
-    implicit val jsonCodec: Codec.AsObject[Kill] = 
+  object Kill:
+    implicit val jsonCodec: Codec.AsObject[Kill] =
       ConfiguredCodec.derive(useDefaults = true)
-  }
 
   implicit val jsonCodec: TypedJsonCodec[CancellationMode] = TypedJsonCodec(
     Subtype(FreshOnly),
     Subtype(deriveCodec[FreshOrStarted]))
-}

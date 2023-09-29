@@ -8,9 +8,8 @@ import js7.data.controller.ControllerState.inventoryItemJsonCodec
 import js7.data.item.{InventoryItem, ItemRevision}
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 
-final class SubagentItemTest extends OurTestSuite
-{
-  "JSON" in {
+final class SubagentItemTest extends OurTestSuite:
+  "JSON" in:
     testJson[InventoryItem](
       SubagentItem(
         SubagentId("SUBAGENT"),
@@ -41,5 +40,3 @@ final class SubagentItemTest extends OurTestSuite
         "uri": "https://example.com",
         "itemRevision": 1
       }""")
-  }
-}

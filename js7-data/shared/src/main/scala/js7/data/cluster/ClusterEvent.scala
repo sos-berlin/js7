@@ -10,54 +10,43 @@ import js7.data.node.NodeId
 
 sealed trait ClusterEvent extends NoKeyEvent
 
-object ClusterEvent
-{
+object ClusterEvent:
   private type Id = NodeId
 
   final case class ClusterNodesAppointed(setting: ClusterSetting)
   extends ClusterEvent
-  object ClusterNodesAppointed {
+  object ClusterNodesAppointed:
     def checked(setting: ClusterSetting): Checked[ClusterNodesAppointed] =
       Right(new ClusterNodesAppointed(setting.normalized))
-  }
 
   final case class ClusterCouplingPrepared(activeId: Id)
-  extends ClusterEvent
-  {
+  extends ClusterEvent:
     override def toString = s"ClusterCouplingPrepared(activeId=$activeId)"
-  }
 
   final case class ClusterCoupled(activeId: Id)
-  extends ClusterEvent
-  {
+  extends ClusterEvent:
     override def toString = s"ClusterCoupled(activeId=$activeId)"
-  }
 
   final case class ClusterSwitchedOver(activatedId: Id)
   extends ClusterEvent
 
-  sealed trait ClusterNodeLostEvent extends ClusterEvent {
+  sealed trait ClusterNodeLostEvent extends ClusterEvent:
     def lostNodeId: Id
-  }
-  object ClusterNodeLostEvent {
+  object ClusterNodeLostEvent:
     implicit val jsonCodec: TypedJsonCodec[ClusterNodeLostEvent] = TypedJsonCodec(
       Subtype(deriveCodec[ClusterFailedOver]),
       Subtype(deriveCodec[ClusterPassiveLost]))
-  }
 
   final case class ClusterFailedOver(failedActiveId: Id, activatedId: Id, failedAt: JournalPosition)
-  extends ClusterNodeLostEvent
-  {
+  extends ClusterNodeLostEvent:
     def lostNodeId = failedActiveId
 
     override def toString =
       s"ClusterFailedOver(${failedActiveId.string} --> ${activatedId.string}, $failedAt)"
-  }
 
   final case class ClusterPassiveLost(id: Id)
-  extends ClusterNodeLostEvent {
+  extends ClusterNodeLostEvent:
     def lostNodeId = id
-  }
   type ClusterActiveNodeShutDown = ClusterActiveNodeShutDown.type
   case object ClusterActiveNodeShutDown
   extends ClusterEvent
@@ -67,9 +56,8 @@ object ClusterEvent
   extends ClusterEvent
 
   final case class ClusterSettingUpdated(passiveUri: Option[Uri] = None)
-  extends ClusterEvent {
+  extends ClusterEvent:
     assertThat(passiveUri.nonEmpty)
-  }
 
   final case class ClusterWatchRegistered(clusterWatchId: ClusterWatchId)
   extends ClusterEvent
@@ -88,4 +76,3 @@ object ClusterEvent
     Subtype(deriveCodec[ClusterSettingUpdated]),
     Subtype(deriveCodec[ClusterWatchRegistered]),
     Subtype(ClusterResetStarted))
-}

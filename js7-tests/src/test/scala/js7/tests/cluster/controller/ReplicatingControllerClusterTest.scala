@@ -13,11 +13,10 @@ import js7.tests.testenv.ProgramEnvTester.assertEqualJournalFiles
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 
-final class ReplicatingControllerClusterTest extends ControllerClusterTester
-{
+final class ReplicatingControllerClusterTest extends ControllerClusterTester:
   protected override val clusterTiming = ClusterTiming(heartbeat = 1.s, heartbeatTimeout = 5.s)
 
-  "Cluster replicates journal files properly" in {
+  "Cluster replicates journal files properly" in:
     withControllerAndBackup() { (primary, _, backup, _, _) =>
       val primaryController = primary.newController()
       primaryController.waitUntilReady()
@@ -63,5 +62,3 @@ final class ReplicatingControllerClusterTest extends ControllerClusterTester
         }
       }
     }
-  }
-}

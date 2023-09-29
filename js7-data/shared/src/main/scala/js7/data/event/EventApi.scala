@@ -10,8 +10,7 @@ import monix.reactive.Observable
 
 trait EventApi
 extends SessionApi
-with HasIsIgnorableStackTrace
-{
+with HasIsIgnorableStackTrace:
   type State <: JournaledState[State]
 
   def baseUri: Uri
@@ -24,4 +23,3 @@ with HasIsIgnorableStackTrace
     HttpClient.liftProblem(snapshot(eventId))
 
   def snapshot(eventId: Option[EventId] = None): Task[State]
-}

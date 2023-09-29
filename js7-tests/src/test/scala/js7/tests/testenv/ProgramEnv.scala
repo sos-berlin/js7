@@ -19,7 +19,7 @@ import js7.journal.recover.StateRecoverer
 import js7.tests.testenv.ProgramEnv.*
 import monix.eval.Task
 
-trait ProgramEnv extends AutoCloseable {
+trait ProgramEnv extends AutoCloseable:
   type Program
 
   val directory: Path
@@ -41,50 +41,43 @@ trait ProgramEnv extends AutoCloseable {
 
   def close() =
     try deleteDirectoryRecursively(directory)
-    catch {
+    catch
       case e: IOException => logger.error(s"Remove $directory => ${e.toStringWithCauses}")
-    }
 
   protected def ownConfig: Config =
     ConfigFactory.empty
 
-  protected def createDirectoriesAndFiles(): Unit = {
+  protected def createDirectoriesAndFiles(): Unit =
     createDirectories()
     writeTrustedSignatureKeys()
-  }
 
-  private def createDirectories() = {
+  private def createDirectories() =
     createDirectory(directory)
     createDirectory(configDir)
     createDirectory(configDir / "private")
     createDirectory(dataDir)
     createDirectory(dataDir / "work")
-  }
 
-  private def writeTrustedSignatureKeys() = {
+  private def writeTrustedSignatureKeys() =
     createDirectory(configDir / trustedSignatureKeysDir)
 
-    if !suppressSignatureKeys then {
-      for (key, i) <- verifier.publicKeys.zipWithIndex do {
+    if !suppressSignatureKeys then
+      for (key, i) <- verifier.publicKeys.zipWithIndex do
         val file = configDir / trustedSignatureKeysDir /
           s"key-${i + 1}${verifier.companion.filenameExtension}"
         logger.trace(s"$file := key")
         file := key
-      }
-    }
 
     configDir / confFilename ++= s"""
      |js7.configuration.trusted-signature-keys {
      |  ${verifier.companion.typeName} = $${js7.config-directory}"/$trustedSignatureKeysDir"
      |}
      |""".stripMargin
-  }
 
   protected def initialize(): Unit =
-    closeOnError(this) {
+    closeOnError(this):
       createDirectoriesAndFiles()
       onInitialize()
-    }
 
   protected final def programRegistering(program: Program): Resource[Task, Program] =
     Resource.make(
@@ -100,12 +93,11 @@ trait ProgramEnv extends AutoCloseable {
 
   def program(): Program =
     _currentProgram.getOrElse(throw new IllegalStateException(s"$toString: Program not started"))
-}
 
-object ProgramEnv {
+object ProgramEnv:
   private val logger = Logger[this.type]
 
-  trait WithFileJournal extends ProgramEnv {
+  trait WithFileJournal extends ProgramEnv:
     protected type S <: SnapshotableState[S]
 
     implicit val S: SnapshotableState.Companion[S]
@@ -116,5 +108,3 @@ object ProgramEnv {
       StateRecoverer
         .recover[S](journalLocation, Js7Configuration.defaultConfig)
         .state
-  }
-}

@@ -14,15 +14,14 @@ import js7.controller.web.serviceprovider.ServiceProviderRoute.*
 /**
   * @author Joacim Zschimmer
   */
-private[web] trait ServiceProviderRoute
-{
+private[web] trait ServiceProviderRoute:
   protected def routeServiceContext: RouteServiceContext
   protected def config: Config
 
   private lazy val services: Seq[RouteService] =
     findServices[RouteService]()
 
-  private val lazyServiceProviderRoute = Lazy[Route] {
+  private val lazyServiceProviderRoute = Lazy[Route]:
     val servicePathRoutes: Seq[(RouteService, String, Route)] =
       for
         service <- services
@@ -32,9 +31,8 @@ private[web] trait ServiceProviderRoute
     logAndCheck(servicePathRoutes)
     combineRoutes(
       for (_, p, r) <- servicePathRoutes yield pathSegments(p)(r))
-  }
 
-  protected final def serviceProviderRoute: Route = {
+  protected final def serviceProviderRoute: Route =
     //implicit val exceptionHandler = ExceptionHandler { case throwable =>
     //  // Do not return exception to client
     //  logger.error(throwable.toStringWithCauses)
@@ -43,23 +41,16 @@ private[web] trait ServiceProviderRoute
     //}
     //Route.seal(
       requestContext => {
-        if lazyServiceProviderRoute.isEmpty then {
+        if lazyServiceProviderRoute.isEmpty then
           logger.debug(s"Looking up RouteService for unhandled URI ${requestContext.request.uri.path}")
-        }
         lazyServiceProviderRoute()(requestContext)
       }
-  }
-}
 
-private[web] object ServiceProviderRoute
-{
+private[web] object ServiceProviderRoute:
   private val logger = Logger[this.type]
 
-  private def logAndCheck(namedRouteToService: Seq[(RouteService, String, Route)]): Unit = {
+  private def logAndCheck(namedRouteToService: Seq[(RouteService, String, Route)]): Unit =
     if namedRouteToService.isEmpty then logger.trace("No routes")
     else for (s, p, _) <- namedRouteToService do logger.debug(s"${s.getClass.scalaName} provides route '/$p'")
-    for pathToTriples <- namedRouteToService.duplicateKeys(_._2) do {
+    for pathToTriples <- namedRouteToService.duplicateKeys(_._2) do
       sys.error("Duplicate route paths: " + pathToTriples.values.flatten.map(o => s"'${o._2}'->${o._1.getClass.scalaName}" ).mkString(", "))
-    }
-  }
-}

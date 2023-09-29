@@ -13,8 +13,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.internaljob.SimpleBlockingInternalJobTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 
-final class SimpleBlockingInternalJobTest extends OurTestSuite with ControllerAgentForScalaTest
-{
+final class SimpleBlockingInternalJobTest extends OurTestSuite with ControllerAgentForScalaTest:
   protected val agentPaths = agentPath :: Nil
   protected val items = Seq(workflow, jobResource)
   override protected val controllerConfig = config"""
@@ -26,17 +25,14 @@ final class SimpleBlockingInternalJobTest extends OurTestSuite with ControllerAg
     js7.job.execution.signed-script-injection-allowed = on
     """
 
-  "Step.env" in {
+  "Step.env" in:
     val outcome = controller
       .runOrder(FreshOrder(OrderId("TestEnvBlockingInternalJob"), workflow.path))
       .map(_.value)
       .collectFirst { case OrderProcessed(outcome) => outcome }
     assert(outcome contains Outcome.succeeded)
-  }
-}
 
-object SimpleBlockingInternalJobTest
-{
+object SimpleBlockingInternalJobTest:
   private val agentPath = AgentPath("AGENT")
   private val jobResource = JobResource(
     JobResourcePath("JOB-RESOURCE"),
@@ -49,4 +45,3 @@ object SimpleBlockingInternalJobTest
         InternalExecutable(
           classOf[TestEnvBlockingInternalJob].getName),
         jobResourcePaths = Seq(jobResource.path))))
-}

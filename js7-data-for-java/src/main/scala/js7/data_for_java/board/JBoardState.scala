@@ -5,8 +5,7 @@ import javax.annotation.Nonnull
 import js7.data.board.{BoardPath, BoardState, NoticeId}
 import scala.jdk.OptionConverters.*
 
-final case class JBoardState(asScala: BoardState)
-{
+final case class JBoardState(asScala: BoardState):
   @Nonnull
   def path: BoardPath =
     asScala.path
@@ -20,4 +19,3 @@ final case class JBoardState(asScala: BoardState)
       .get(noticeId)
       .map(JNoticePlace(_))
       .toJava
-}

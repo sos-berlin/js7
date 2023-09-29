@@ -12,8 +12,7 @@ final case class WorkflowControl(
   itemRevision: Option[ItemRevision] = None)
 extends VersionedControl
 with UnsignedItemState
-with TrivialItemState[WorkflowControl]
-{
+with TrivialItemState[WorkflowControl]:
   protected type Self = WorkflowControl
   val companion: WorkflowControl.type = WorkflowControl
   val item: WorkflowControl = this
@@ -25,12 +24,10 @@ with TrivialItemState[WorkflowControl]
     copy(itemRevision = revision)
 
   def workflowPath = id.path.workflowPath
-}
 
 object WorkflowControl
 extends VersionedControl.Companion[WorkflowControl]
-with UnsignedItemState.Companion[WorkflowControl]
-{
+with UnsignedItemState.Companion[WorkflowControl]:
   type Item = WorkflowControl
   val cls = classOf[WorkflowControl]
 
@@ -43,4 +40,3 @@ with UnsignedItemState.Companion[WorkflowControl]
 
   implicit val jsonCodec: Codec.AsObject[WorkflowControl] =
     deriveCodec[WorkflowControl]
-}

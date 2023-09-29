@@ -7,14 +7,13 @@ import js7.base.utils.Collections.implicits.*
 import js7.base.utils.MapDiff
 import scala.collection.{View, mutable}
 
-final case class DirectoryState(fileToEntry: Map[Path, Entry])
-{
-  def applyAndReduceEvents(events: Seq[DirectoryEvent]): (Seq[DirectoryEvent], DirectoryState) = {
+final case class DirectoryState(fileToEntry: Map[Path, Entry]):
+  def applyAndReduceEvents(events: Seq[DirectoryEvent]): (Seq[DirectoryEvent], DirectoryState) =
     val added = mutable.Map.empty[Path, Entry]
     val deleted = mutable.Set.empty[Path]
     val modified = mutable.Set.empty[Path]
 
-    events foreach {
+    events foreach:
       case FileAdded(path) =>
         added.update(path, Entry(path))
         deleted -= path
@@ -27,13 +26,11 @@ final case class DirectoryState(fileToEntry: Map[Path, Entry])
         added -= path
         deleted += path
         modified -= path
-    }
 
     val updatedState = copy(fileToEntry -- deleted ++ added)
     val reducedEvents = diffTo(updatedState) ++
       modified.filter(updatedState.fileToEntry.keySet).map(FileModified(_))
     reducedEvents -> updatedState
-  }
 
   def diffTo(other: DirectoryState): Seq[DirectoryEvent] =
     diffToDirectoryEvents(MapDiff.diff(fileToEntry, other.fileToEntry))
@@ -44,10 +41,8 @@ final case class DirectoryState(fileToEntry: Map[Path, Entry])
 
   def isEmpty =
     fileToEntry.isEmpty
-}
 
-object DirectoryState
-{
+object DirectoryState:
   val empty = new DirectoryState(Map.empty)
 
   def fromIterable(entries: Iterable[Entry]): DirectoryState =
@@ -59,4 +54,3 @@ object DirectoryState
     diff.deleted.view.map(FileDeleted(_)) ++
       diff.updated.keys.view.map(FileModified(_)) ++
       diff.added.keySet.view.map(FileAdded(_))
-}

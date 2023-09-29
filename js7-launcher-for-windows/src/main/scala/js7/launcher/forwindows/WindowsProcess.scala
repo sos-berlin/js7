@@ -40,8 +40,7 @@ private final class WindowsProcess private(
   outRedirection: Redirection,
   errRedirection: Redirection,
   loggedOn: LoggedOn)
-extends Js7Process
-{
+extends Js7Process:
   val pid = Some(Pid(processInformation.dwProcessId.intValue))
   private val returnCodeOnce = SetOnce[ReturnCode]
 
@@ -56,32 +55,28 @@ extends Js7Process
   def isAlive =
     returnCodeOnce.isEmpty && !waitForProcess(timeout = 0)
 
-  lazy val stdin: OutputStream = {
+  lazy val stdin: OutputStream =
      if inRedirection.pipeHandle == INVALID_HANDLE_VALUE then
        throw new IllegalStateException("WindowsProcess has no handle for stdin attached")
-     new PipeOutputStream(inRedirection.pipeHandle) {
+     new PipeOutputStream(inRedirection.pipeHandle):
        override def close() = inRedirection.closePipe()
-     }
-   }
 
   lazy val stdout: InputStream = newOutErrInputStream(Stdout, outRedirection)
   lazy val stderr: InputStream = newOutErrInputStream(Stderr, errRedirection)
 
-  def newOutErrInputStream(outerr: StdoutOrStderr, redirection: Redirection) = {
+  def newOutErrInputStream(outerr: StdoutOrStderr, redirection: Redirection) =
     if redirection.pipeHandle == INVALID_HANDLE_VALUE then
       throw new IllegalStateException(s"WindowsProcess has no handle for $outerr attached")
-    new PipeInputStream(redirection.pipeHandle) {
+    new PipeInputStream(redirection.pipeHandle):
       override def close() = redirection.closePipe()
-    }
-  }
 
   def destroy() = destroyForcibly()
 
   def destroyForcibly() =
-    hProcessGuard.use {
+    hProcessGuard.use:
       case None =>
       case Some(hProcess) =>
-        call("TerminateProcess") {
+        call("TerminateProcess"):
           kernel32.TerminateProcess(hProcess, TerminateProcessReturnCode.number) ||
             kernel32.GetLastError == ERROR_ACCESS_DENIED && {
               Try(waitForProcess(0)).getOrElse(false) || {
@@ -89,25 +84,22 @@ extends Js7Process
                 false
               }
             }
-        }
-    }
 
   def waitFor(timeout: FiniteDuration): Boolean =
     returnCodeOnce.isDefined ||
       waitForProcess(max(0, min(Int.MaxValue, timeout.toMillis)).toInt)
 
   def waitFor(): ReturnCode =
-    returnCodeOnce.getOrElse {
+    returnCodeOnce.getOrElse:
       waitForProcess(INFINITE)
       returnCodeOnce.orThrow
-    }
 
   def returnCode =
     returnCodeOnce.toOption
 
   /** Must be called to release the hProcess handle. */
   private def waitForProcess(timeout: Int): Boolean =
-    hProcessGuard.use {
+    hProcessGuard.use:
       case None =>
         if returnCodeOnce.isEmpty then
           throw new IllegalStateException("WindowsProcess has been closed before started")
@@ -115,18 +107,14 @@ extends Js7Process
 
       case Some(hProcess) =>
         val terminated = waitForSingleObject(hProcess, timeout)
-        if terminated then {
+        if terminated then
           returnCodeOnce.trySet(ReturnCode(getExitCodeProcess(hProcess)))
           hProcessGuard.releaseAfterUse()
-        }
         terminated
-    }
 
   override def toString = s"WindowsProcess($pid)"
-}
 
-private[launcher] object WindowsProcess
-{
+private[launcher] object WindowsProcess:
   private[forwindows] val TerminateProcessReturnCode = ReturnCode(999_999_999)
   private val logger = Logger[this.type]
 
@@ -140,10 +128,10 @@ private[launcher] object WindowsProcess
   private[launcher] def startWithWindowsLogon(
     startWindowsProcess: StartWindowsProcess,
     maybeLogon: Option[WindowsLogon] = None)
-  : Checked[Js7Process] = {
+  : Checked[Js7Process] =
     import startWindowsProcess.{additionalEnv, args, stderrRedirect, stdinRedirect, stdoutRedirect}
 
-    for commandLine <- argsToCommandLine(args.toIndexedSeq) yield {
+    for commandLine <- argsToCommandLine(args.toIndexedSeq) yield
       val inRedirection = redirectToHandle(STD_INPUT_HANDLE, stdinRedirect)
       val outRedirection = redirectToHandle(STD_OUTPUT_HANDLE, stdoutRedirect)
       val errRedirection = redirectToHandle(STD_ERROR_HANDLE, stderrRedirect)
@@ -168,7 +156,7 @@ private[launcher] object WindowsProcess
               .map("USERDOMAIN" -> _))
       val workingDirectory = windowsDirectory.getRoot.toString  // Need a readable directory, ignoring a given working directory
       val processInformation = new PROCESS_INFORMATION
-      call("CreateProcessAsUser", application, commandLine, s"directory=$workingDirectory") {
+      call("CreateProcessAsUser", application, commandLine, s"directory=$workingDirectory"):
         advapi32.CreateProcessAsUser(loggedOn.userToken, application, commandLine,
           null: SECURITY_ATTRIBUTES, null: SECURITY_ATTRIBUTES, /*inheritHandles=*/true, creationFlags,
           getEnvironmentBlock(env
@@ -178,40 +166,31 @@ private[launcher] object WindowsProcess
               additionalEnv.collect { case (k, Some(v)) => k -> v })
             .asJava),
           workingDirectory, startupInfo, processInformation)
-      }
       inRedirection.releaseStartupInfoHandle()
       outRedirection.releaseStartupInfoHandle()
       errRedirection.releaseStartupInfoHandle()
       closeHandle(processInformation.hThread)
       processInformation.hThread = INVALID_HANDLE_VALUE
       new WindowsProcess(processInformation, inRedirection, outRedirection, errRedirection, loggedOn)
-    }
-  }
 
   private class LoggedOn(val userToken: HANDLE, val profileHandle: HANDLE = INVALID_HANDLE_VALUE)
-  extends AutoCloseable {
+  extends AutoCloseable:
     private val closed = new AtomicBoolean
 
-    def close() = {
-      if !closed.getAndSet(true) then {
-        if profileHandle != INVALID_HANDLE_VALUE then {
-          call("UnloadUserProfile") {
+    def close() =
+      if !closed.getAndSet(true) then
+        if profileHandle != INVALID_HANDLE_VALUE then
+          call("UnloadUserProfile"):
             myUserenv.UnloadUserProfile(userToken, profileHandle)
-          }
-        }
         closeHandle(userToken)
-      }
-    }
-  }
 
-  private object LoggedOn {
+  private object LoggedOn:
     def logon(logonOption: Option[WindowsLogon]): LoggedOn =
-      logonOption match {
+      logonOption match
         case Some(o) => logon(o)
         case None => new LoggedOn(openProcessToken(kernel32.GetCurrentProcess, TOKEN_ALL_ACCESS))
-      }
 
-    private def logon(logon: WindowsLogon): LoggedOn = {
+    private def logon(logon: WindowsLogon): LoggedOn =
       import logon.{credential, userName, withUserProfile}
       logger.debug(s"LogonUser '$userName'")
       val userToken = handleCall("LogonUser")(
@@ -223,49 +202,41 @@ private[launcher] object WindowsProcess
             loadUserProfile(userToken, userName)
           else
             INVALID_HANDLE_VALUE)
-    }
-  }
 
-  private def loadUserProfile(userToken: HANDLE, user: WindowsUserName): HANDLE = {
+  private def loadUserProfile(userToken: HANDLE, user: WindowsUserName): HANDLE =
     val profileInfo = Structure.newInstance(classOf[PROFILEINFO])
     profileInfo.dwSize = profileInfo.size
     profileInfo.userName = new WString(user.string)
     profileInfo.write()
-    call("LoadUserProfile") {
+    call("LoadUserProfile"):
       myUserenv.LoadUserProfile(userToken, profileInfo)
-    }
     profileInfo.read()
     profileInfo.hProfile
-  }
 
   private def redirectToHandle(stdFile: Int, redirect: Redirect): Redirection =
-    redirect.`type` match {
+    redirect.`type` match
       case INHERIT =>
         new Redirection(kernel32.GetStdHandle(stdFile), false, INVALID_HANDLE_VALUE)
 
       case PIPE =>
-        stdFile match {
+        stdFile match
           case STD_INPUT_HANDLE =>
             Redirection.newStdinPipeRedirection()
 
           case STD_OUTPUT_HANDLE | STD_ERROR_HANDLE =>
             Redirection.newStdouterrPipeRedirection()
-        }
 
       case WRITE =>
         Redirection.forDirectFile(redirect.file)
 
       case t => throw new IllegalArgumentException(s"Unsupported Redirect $t")
-  }
 
-  private def getExitCodeProcess(hProcess: HANDLE): Int = {
+  private def getExitCodeProcess(hProcess: HANDLE): Int =
     val ref = new IntByReference
-    call("GetExitCodeProcess") {
+    call("GetExitCodeProcess"):
       kernel32.GetExitCodeProcess(hProcess, ref)
-    }
     logger.trace(s"GetExitCodeProcess => ${ref.getValue}")
     ref.getValue
-  }
 
   /**
     * Adds the needed ACL despite any existing ACL.
@@ -281,37 +252,32 @@ private[launcher] object WindowsProcess
 
   private val AllowedUserNameCharacters = Set('_', '.', '-', ',', ' ', '@')  // Only for icacls syntactically irrelevant characters and domain separators
 
-  private[forwindows] def injectableUserName(user: WindowsUserName): String = {
+  private[forwindows] def injectableUserName(user: WindowsUserName): String =
     val name = user.string
     def isValid(c: Char) = c.isLetterOrDigit || AllowedUserNameCharacters(c)
     require(name.nonEmpty && name.forall(isValid), s"Unsupported character in Windows user name: '$name'")  // Avoid code injection
     name
-  }
 
   /**
     * @param grant syntax is weakly checked!
     */
-  private def grantFileAccess(file: Path, grant: String): file.type = {
+  private def grantFileAccess(file: Path, grant: String): file.type =
     execute(windowsDirectory / "System32\\icacls.exe", "\"" + file.toString + '"', "/q", "/grant", grant)
     file
-  }
 
-  def execute(executable: Path, args: String*): Vector[String] = {
+  def execute(executable: Path, args: String*): Vector[String] =
     logger.debug(executable.toString + args.mkString(" [", ", ", "]"))
     val process = new ProcessBuilder((executable.toString +: args)*).redirectErrorStream(true).start()
     process.getOutputStream.close()  // stdin
-    val lines = {
+    val lines =
       val commandCodec = new Codec(Charset.forName("cp850"))  // 850 contains all characters of ISO-8859-1
       try autoClosing(process.getInputStream) { in => scala.io.Source.fromInputStream(in)(commandCodec).getLines().toVector }
       catch { case NonFatal(t) =>
         Vector(s"error message not readable: $t")
       }
-    }
     val returnCode = process.waitFor()
     if returnCode != 0 then throw new RuntimeException(s"Windows command failed: $executable => ${lines mkString " / "}")
     lines
-  }
 
   def argsToCommandLine(args: Seq[String]): Checked[String] =
     WindowsCommandLineConversion.argsToCommandLine(args)
-}

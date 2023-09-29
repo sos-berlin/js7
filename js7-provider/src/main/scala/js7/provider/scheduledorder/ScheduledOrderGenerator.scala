@@ -16,8 +16,7 @@ final case class ScheduledOrderGenerator(
   arguments: NamedValues,
   schedule: OldSchedule)
 extends VersionedItem
-with TrivialItemState[ScheduledOrderGenerator]
-{
+with TrivialItemState[ScheduledOrderGenerator]:
   protected type Self = ScheduledOrderGenerator
   val item: ScheduledOrderGenerator = this
 
@@ -25,12 +24,10 @@ with TrivialItemState[ScheduledOrderGenerator]
 
   def withId(id: VersionedItemId[ScheduledOrderGeneratorPath]) =
     reuseIfEqual(this, copy(id = id))
-}
 
 object ScheduledOrderGenerator
 extends VersionedItem.Companion[ScheduledOrderGenerator]
-with TrivialItemState.Companion[ScheduledOrderGenerator]
-{
+with TrivialItemState.Companion[ScheduledOrderGenerator]:
   type Item = ScheduledOrderGenerator
   type Path = ScheduledOrderGeneratorPath
 
@@ -38,4 +35,3 @@ with TrivialItemState.Companion[ScheduledOrderGenerator]
   val Path = ScheduledOrderGeneratorPath
 
   implicit def jsonCodec = ???
-}

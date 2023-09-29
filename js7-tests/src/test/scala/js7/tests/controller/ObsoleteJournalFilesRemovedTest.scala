@@ -24,18 +24,16 @@ import monix.execution.Scheduler.Implicits.traced
 /**
   * @author Joacim Zschimmer
   */
-final class ObsoleteJournalFilesRemovedTest extends OurTestSuite with DirectoryProviderForScalaTest
-{
+final class ObsoleteJournalFilesRemovedTest extends OurTestSuite with DirectoryProviderForScalaTest:
   protected val agentPaths = agentPath :: Nil
   protected val items = Seq(workflow)
   override protected def controllerConfig = config"js7.journal.release-events-delay = 0s"
     .withFallback(super.controllerConfig)
 
 
-  "Obsolete journal files are removed if nothing has been configured" in {
-    for (_, env) <- directoryProvider.agentToEnv do {
+  "Obsolete journal files are removed if nothing has been configured" in:
+    for (_, env) <- directoryProvider.agentToEnv do
       env.writeExecutable(pathExecutable, script(0.s))
-    }
 
     def controllerJournalFiles = listJournalFiles(directoryProvider.controllerEnv.dataDir / "state" / "controller")
 
@@ -51,14 +49,10 @@ final class ObsoleteJournalFilesRemovedTest extends OurTestSuite with DirectoryP
       controller.api.executeCommand(TakeSnapshot).await(99.s).orThrow
       assert(controllerJournalFiles.size == 1)
     }
-  }
-}
 
-private object ObsoleteJournalFilesRemovedTest
-{
+private object ObsoleteJournalFilesRemovedTest:
   private val agentPath = AgentPath("agent-111")
   private val pathExecutable = RelativePathExecutable(s"TEST$sh")
   private val workflow = Workflow.of(WorkflowPath("test"),
     Execute(WorkflowJob(agentPath, pathExecutable)))
   private val aOrder = FreshOrder(OrderId("🔷"), workflow.id.path)
-}

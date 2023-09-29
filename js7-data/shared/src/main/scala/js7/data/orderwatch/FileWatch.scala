@@ -24,8 +24,7 @@ final case class FileWatch(
   orderIdExpression: Option[Expression] = None,
   delay: FiniteDuration = ZeroDuration,
   itemRevision: Option[ItemRevision] = None)
-extends OrderWatch
-{
+extends OrderWatch:
   protected type Self = FileWatch
   val companion: FileWatch.type = FileWatch
 
@@ -39,10 +38,8 @@ extends OrderWatch
     copy(itemRevision = revision)
 
   override val referencedItemPaths = View(agentPath, workflowPath)
-}
 
-object FileWatch extends OrderWatch.Companion[FileWatch]
-{
+object FileWatch extends OrderWatch.Companion[FileWatch]:
   val cls = classOf[FileWatch]
 
   override type Path = OrderWatchPath
@@ -51,7 +48,7 @@ object FileWatch extends OrderWatch.Companion[FileWatch]
   val FileArgumentName = "file"
   private val defaultPattern = Pattern.compile("[^.].*")
 
-  implicit val jsonCodec: Codec.AsObject[FileWatch] = {
+  implicit val jsonCodec: Codec.AsObject[FileWatch] =
     val decoder: Decoder[FileWatch] =
       c => for
         path <- c.get[OrderWatchPath]("path")
@@ -70,7 +67,5 @@ object FileWatch extends OrderWatch.Companion[FileWatch]
     Codec.AsObject.from(
       decoder,
       deriveEncoder[FileWatch])
-  }
 
   intelliJuseImport(FiniteDurationJsonEncoder)
-}

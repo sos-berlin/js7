@@ -20,8 +20,7 @@ import js7.tests.subagent.SubagentTester.agentPath
 import monix.execution.Scheduler
 import monix.reactive.Observable
 
-final class SubagentDeleteTest extends OurTestSuite with SubagentTester
-{
+final class SubagentDeleteTest extends OurTestSuite with SubagentTester:
   protected val agentPaths = Seq(agentPath)
   protected lazy val items = Seq(workflow, bareSubagentItem)
   override protected val primarySubagentsDisabled = true
@@ -30,17 +29,15 @@ final class SubagentDeleteTest extends OurTestSuite with SubagentTester
 
   private var myAgent: TestAgent = null
 
-  override def beforeAll() = {
+  override def beforeAll() =
     super.beforeAll()
     myAgent = agent
-  }
 
-  override def afterAll() = {
+  override def afterAll() =
     myAgent.terminate().await(99.s)
     super.afterAll()
-  }
 
-  "Delete bare Subagent" in {
+  "Delete bare Subagent" in:
     runSubagent(bareSubagentItem) { _ =>
       val eventId = eventWatch.lastAddedEventId
       controller.api
@@ -50,9 +47,8 @@ final class SubagentDeleteTest extends OurTestSuite with SubagentTester
       eventWatch.await[ItemDetachable](_.event.key == bareSubagentItem.id, after = eventId)
       eventWatch.await[ItemDeleted](_.event.key == bareSubagentItem.id, after = eventId)
     }
-  }
 
-  "Delete Subagent while an Order is processed; Deletion does not allow more starts" in {
+  "Delete Subagent while an Order is processed; Deletion does not allow more starts" in:
     val aOrderId = OrderId("REMOVE-SUBAGENT-A")
     val bOrderId = OrderId("REMOVE-SUBAGENT-B")
     var eventId = eventWatch.lastAddedEventId
@@ -61,14 +57,13 @@ final class SubagentDeleteTest extends OurTestSuite with SubagentTester
       .updateItems(Observable(AddOrChangeSimple(bareSubagentItem)))
       .await(99.s).orThrow
     runSubagent(bareSubagentItem) { _ =>
-      locally {
+      locally:
         controller.addOrderBlocking(FreshOrder(aOrderId, workflow.path))
         val started = eventWatch.await[OrderProcessingStarted](_.key == aOrderId, after = eventId)
           .head.value.event
         assert(started == OrderProcessingStarted(bareSubagentItem.path))
         eventWatch.await[OrderStdoutWritten](_.key == aOrderId, after = eventId)
         // aOrderId waits for semaphore
-      }
 
       controller.api
         .updateItems(Observable(DeleteSimple(bareSubagentItem.path)))
@@ -76,17 +71,15 @@ final class SubagentDeleteTest extends OurTestSuite with SubagentTester
       eventWatch.await[ItemDetachable](_.event.key == bareSubagentItem.id, after = eventId)
 
       // ItemDetached is delayed until no Order is being processed
-      intercept[TimeoutException] {
+      intercept[TimeoutException]:
         eventWatch.await[ItemDetached](_.event.key == bareSubagentItem.id, after = eventId,
           timeout = 1.s)
-      }
 
       // Don't allow orders to start while SubagentItem is deleted
       eventId = eventWatch.lastAddedEventId
       controller.addOrderBlocking(FreshOrder(bOrderId, workflow.path))
-      intercept[TimeoutException] {
+      intercept[TimeoutException]:
         eventWatch.await[OrderProcessingStarted](_.key == bOrderId, timeout = 1.s)
-      }
 
       // Continue aOrderId
       TestSemaphoreJob.continue(1)
@@ -114,21 +107,19 @@ final class SubagentDeleteTest extends OurTestSuite with SubagentTester
       eventWatch.await[OrderProcessed](_.key == bOrderId, after = eventId)
       eventWatch.await[OrderFinished](_.key == bOrderId, after = eventId)
     }
-  }
 
-  "Delete Subagent and continue deletion after Director's restart" in {
+  "Delete Subagent and continue deletion after Director's restart" in:
     runSubagent(bareSubagentItem) { _ =>
       val orderId = OrderId("REMOVE-SUBAGENT-WHILE-RESTARTING-DIRECTOR")
       var eventId = eventWatch.lastAddedEventId
 
-      locally {
+      locally:
         controller.addOrderBlocking(FreshOrder(orderId, workflow.path))
         val started = eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
           .head.value.event
         assert(started == OrderProcessingStarted(bareSubagentItem.path))
         eventWatch.await[OrderStdoutWritten](_.key == orderId, after = eventId)
         // orderId waits for semaphore
-      }
 
       controller.api
         .updateItems(Observable(DeleteSimple(bareSubagentItem.path)))
@@ -136,19 +127,17 @@ final class SubagentDeleteTest extends OurTestSuite with SubagentTester
       eventWatch.await[ItemDetachable](_.event.key == bareSubagentItem.id, after = eventId)
 
       // ItemDetached is delayed until no Order is being processed
-      intercept[TimeoutException] {
+      intercept[TimeoutException]:
         eventWatch.await[ItemDetached](_.event.key == bareSubagentItem.id, after = eventId,
           timeout = 1.s)
-      }
 
       // Changing a Subagent is rejected while it is being deleted
-      locally {
+      locally:
         val checked = controller.api
           .updateItems(Observable(AddOrChangeSimple(bareSubagentItem.copy(disabled = true))))
           .await(99.s)
         assert(checked == Left(Problem(
           "Subagent:BARE-SUBAGENT is marked as deleted and cannot be changed")))
-      }
 
       // Deleting a Subagent is ignored while it is being deleted
       controller.api
@@ -175,20 +164,16 @@ final class SubagentDeleteTest extends OurTestSuite with SubagentTester
       eventWatch.await[ItemDetached](_.event.key == bareSubagentItem.id, after = eventId)
       eventWatch.await[ItemDeleted](_.event.key == bareSubagentItem.id, after = eventId)
     }
-  }
 
-  "The Director Subagent cannot be deleted" in {
+  "The Director Subagent cannot be deleted" in:
     val checked = controller.api
       .updateItems(Observable(
         DeleteSimple(directoryProvider.subagentId)))
       .await(99.s)
     assert(checked == Left(
       ItemIsStillReferencedProblem(directoryProvider.subagentId, agentPath)))
-  }
-}
 
-object SubagentDeleteTest
-{
+object SubagentDeleteTest:
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",
     Seq(
@@ -196,4 +181,3 @@ object SubagentDeleteTest
 
   final class TestSemaphoreJob extends SemaphoreJob(TestSemaphoreJob)
   object TestSemaphoreJob extends SemaphoreJob.Companion[TestSemaphoreJob]
-}

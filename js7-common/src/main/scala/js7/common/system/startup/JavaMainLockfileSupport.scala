@@ -15,51 +15,44 @@ import scala.util.{Failure, Success, Try}
 /**
   * @author Joacim Zschimmer
   */
-object JavaMainLockfileSupport
-{
+object JavaMainLockfileSupport:
   // Do not call any function that may use a Logger before we own the lock file !!!
   // Because this could trigger an unexpected log file rotation.
 
   def runMain[R](args: Array[String], useLockFile: Boolean = false)
     (body: CommandLineArguments => R)
   : R =
-    if useLockFile then {
+    if useLockFile then
       lockAndRunMain(args)(body)
-    } else {
+    else
       val arguments = CommandLineArguments(args.toIndexedSeq)
-      JavaMain.runMain {
+      JavaMain.runMain:
         body(arguments)
-      }
-    }
 
   // Cleans also work directory
   /** Exit if lockFile is already locked. */
-  def lockAndRunMain[R](args: Array[String])(body: CommandLineArguments => R): R = {
+  def lockAndRunMain[R](args: Array[String])(body: CommandLineArguments => R): R =
     val arguments = CommandLineArguments(args.toIndexedSeq)
     val data = Paths.get(arguments.as[String]("--data-directory="))
     val state = data.resolve("state")
     if !exists(state) then createDirectory(state)
     // The lockFile secures the state directory against double use.
     val lockFile = state.resolve("lock")
-    lock(lockFile) {
-      JavaMain.runMain {
+    lock(lockFile):
+      JavaMain.runMain:
         cleanWorkDirectory(data.resolve("work"))
         body(arguments)
-      }
-    }
-  }
 
   private def cleanWorkDirectory(workDirectory: Path): Unit =
-    if exists(workDirectory) then {
+    if exists(workDirectory) then
       tryDeleteDirectoryContentRecursively(workDirectory)
-    } else {
+    else
       createDirectory(workDirectory)
-    }
 
   // Also write PID to lockFile (Java >= 9)
-  private def lock[R](lockFile: Path)(body: => R): R = {
+  private def lock[R](lockFile: Path)(body: => R): R =
     val lockFileChannel = FileChannel.open(lockFile, CREATE, WRITE)
-    Try(lockFileChannel.tryLock()) match {
+    Try(lockFileChannel.tryLock()) match
       case Failure(throwable) =>
         printlnWithClock(s"tryLock: $throwable")
         JavaMain.exit1()
@@ -70,13 +63,9 @@ object JavaMainLockfileSupport
         JavaMain.exit1()
 
       case Success(_) =>
-        try {
-          for pid <- ProcessPidRetriever.maybeOwnPid do {
+        try
+          for pid <- ProcessPidRetriever.maybeOwnPid do
             lockFileChannel.write(ByteBuffer.wrap(pid.string.getBytes(UTF_8)))
-          }
           body
-        } finally lockFileChannel.close()
+        finally lockFileChannel.close()
         // Do not delete the lockFile, to avoid race condition with concurrent start.
-    }
-  }
-}

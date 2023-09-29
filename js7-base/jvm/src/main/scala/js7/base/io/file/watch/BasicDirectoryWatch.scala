@@ -21,8 +21,7 @@ import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
 
 final class BasicDirectoryWatch private(options: WatchOptions)(implicit iox: IOExecutor)
-extends Service.StoppableByRequest
-{
+extends Service.StoppableByRequest:
   import options.{directory, kinds, pollTimeout}
 
   // TODO Use a single WatchService with central polling for all directories, and occupy only one thread!
@@ -66,11 +65,11 @@ extends Service.StoppableByRequest
     Task.defer {
       val since = now
       def prefix = s"pollEvents($directory) ... ${since.elapsed.pretty} => "
-      try {
+      try
         val events = pollWatchKey()
         logger.trace(prefix + (if events.isEmpty then "timed out" else events.mkString(", ")))
         Task.pure(events)
-      } catch {
+      catch
        case NonFatal(t: ClosedWatchServiceException) if isStopping =>
          logger.debug(s"$prefix => ${t.toStringWithCauses}")
          // This may execute after service stopped, and the tread pool may be closed too.
@@ -78,30 +77,25 @@ extends Service.StoppableByRequest
          // May this let block cancellation in cats-effect 3 ???
          // This is not a little memory leak, or ???
          Task.never
-      }
     }.executeOn(iox.scheduler)
 
   private def pollWatchKey(): Seq[DirectoryWatchEvent] =
-    watchService.poll(pollTimeout.toMillis, MILLISECONDS) match {
+    watchService.poll(pollTimeout.toMillis, MILLISECONDS) match
       case null => Nil
       case watchKey =>
         try watchKey.pollEvents().asScala.view
-          .collect {
+          .collect:
             case o: WatchEvent[Path @unchecked]
               if o.context.isInstanceOf[Path] && options.isRelevantFile(o.context) => o
-          }
           .map(DirectoryWatchEvent.fromJava)
           .toVector
         finally
           watchKey.reset()
-    }
 
   override def toString =
     s"BasicDirectoryWatch($directory)"
-}
 
-object BasicDirectoryWatch
-{
+object BasicDirectoryWatch:
   private val logger = Logger[this.type]
 
   val systemWatchDelay = if isMac/*polling*/ then 2.s else 0.s
@@ -124,18 +118,14 @@ object BasicDirectoryWatch
   //  s"${e.kind.name} ${e.count}× ${e.context}"
 
   def repeatWhileIOException[A](options: WatchOptions, task: Task[A]): Task[A] =
-    Task.defer {
+    Task.defer:
       val delayIterator = continueWithLast(options.retryDelays)
       task
-        .onErrorRestartLoop(now) {
+        .onErrorRestartLoop(now):
           case (t @ (_: IOException | _: NotDirectoryException), since, restart) =>
-            Task.defer {
+            Task.defer:
               val delay = (since + delayIterator.next()).timeLeftOrZero
               logger.warn(
                 s"${options.directory}: delay ${delay.pretty} after error: ${t.toStringWithCauses}")
               Task.sleep(delay) >> restart(now)
-            }
           case (t, _, _) => Task.raiseError(t)
-        }
-    }
-}

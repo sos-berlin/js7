@@ -6,23 +6,21 @@ import js7.base.time.Stopwatch.durationAndPerSecondString
 import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.FiniteDuration
 
-object TestAddOrdersMain
-{
+object TestAddOrdersMain:
   private val ClearLine = "\u001B[K"
 
-  def main(args: Array[String]): Unit = {
+  def main(args: Array[String]): Unit =
     Logger.initialize()
 
-    if args.isEmpty || args.sameElements(Array("--help")) then {
+    if args.isEmpty || args.sameElements(Array("--help")) then
       println("Usage: testAddOrders --workflow=WORKFLOWPATH --order-count=1 --user=USER:PASSWORD")
-    } else {
+    else
       val settings = Settings.parseArguments(args.toSeq)
 
       def logCurrentStatistics(statistics: Statistics) =
         // TODO Crash is not reported
-        if statistics.totalOrderCount > 0 then {
+        if statistics.totalOrderCount > 0 then
           print(s"\r${statistics.toLine}  $ClearLine")
-        }
 
       def logAddOrderDuration(duration: FiniteDuration) =
         print("\r" + ClearLine +
@@ -32,7 +30,7 @@ object TestAddOrdersMain
       TestAddOrders.run(settings, logCurrentStatistics, logAddOrderDuration)
         .runToFuture
         .awaitInfinite
-        match {
+        match
           case Left(problem) =>
             println(s"\r$ClearLine")
             println(problem.toString)
@@ -42,7 +40,3 @@ object TestAddOrdersMain
             //print(s"$ClearLine\n$ClearLine\n$ClearLine")  // Left "main orders completed" lines
             println(s"\r$ClearLine")
             for line <- statistics.logLines do println(line + ClearLine)
-      }
-    }
-  }
-}

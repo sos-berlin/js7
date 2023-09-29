@@ -70,7 +70,6 @@ addCommandAlias("quickPublishLocal", "; compile; publishLocal; project js7JS; co
 //Scala 3?   Seq("-Wconf:cat=unused-imports:error"))
 
 ThisBuild / scalacOptions ++= Seq(
-  //"-source:3.0-migration",
   "-explain",
   "-feature",
   "-deprecation",

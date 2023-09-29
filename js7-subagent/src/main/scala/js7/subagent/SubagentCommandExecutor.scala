@@ -20,18 +20,17 @@ import scala.concurrent.duration.Deadline.now
 
 private[subagent] final class SubagentCommandExecutor(
   val subagent: Subagent,
-  signatureVerifier: DirectoryWatchingSignatureVerifier)
-{
+  signatureVerifier: DirectoryWatchingSignatureVerifier):
   private val journal = subagent.journal
 
   def executeCommand(numbered: Numbered[SubagentCommand], meta: CommandMeta)
   : Task[Checked[numbered.value.Response]] =
-    Task.defer {
+    Task.defer:
       val command = numbered.value
       logger.debug(s"#${numbered.number} -> $command")
       val since = now
       command
-        .match {
+        .match
           case StartOrderProcess(order, executeDefaultArguments) =>
             subagent.startOrderProcess(order, executeDefaultArguments)
               .rightAs(SubagentCommand.Accepted)
@@ -47,7 +46,7 @@ private[subagent] final class SubagentCommandExecutor(
           //  }
 
           case AttachSignedItem(signed) =>
-            signatureVerifier.verify(signed.signedString) match {
+            signatureVerifier.verify(signed.signedString) match
               case Left(problem) => Task.pure(Left(problem))
               case Right(signerIds) =>
                 // Duplicate with Agent
@@ -56,7 +55,6 @@ private[subagent] final class SubagentCommandExecutor(
                 journal
                   .persistKeyedEvent(NoKey <-: SubagentItemAttached(signed.value))
                   .rightAs(SubagentCommand.Accepted)
-            }
 
           case KillProcess(orderId, signal) =>
             subagent.checkedDedicatedSubagent
@@ -104,15 +102,11 @@ private[subagent] final class SubagentCommandExecutor(
               .map(_.rightAs(()))
               .foldL
               .rightAs(SubagentCommand.Accepted)
-        }
         .tapEval(checked => Task(logger.debug(
           s"#${numbered.number} <- ${command.getClass.simpleScalaName}" +
             s" ${since.elapsed.pretty} => ${checked.left.map("⚠️ " + _.toString)}")))
         .map(_.map(_.asInstanceOf[numbered.value.Response]))
         .logWhenItTakesLonger(s"executeCommand(${numbered.toString.truncateWithEllipsis(100)})")
-    }
-}
 
-private object SubagentCommandExecutor {
+private object SubagentCommandExecutor:
   private val logger = Logger[this.type]
-}

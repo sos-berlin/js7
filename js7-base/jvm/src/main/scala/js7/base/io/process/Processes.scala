@@ -17,8 +17,7 @@ import org.jetbrains.annotations.TestOnly
 import scala.concurrent.Await
 import scala.concurrent.duration.*
 
-object Processes
-{
+object Processes:
   private val logger = Logger[this.type]
 
   def processToString(process: Process): String = processToString(process, processToPidOption(process))
@@ -51,7 +50,7 @@ object Processes
   def directShellCommandArguments(argument: String): Seq[String] = OS.directShellCommandArguments(argument)
 
   @TestOnly
-  def runProcess(commandLine: String): String = {
+  def runProcess(commandLine: String): String =
     import scala.sys.process.*
     logger.debug(commandLine)
 
@@ -74,9 +73,8 @@ object Processes
     if exitCode != 0 then
       throw new ProcessException(commandLine, ReturnCode(exitCode), ByteArray(stdout.toString), ByteArray(stderr.toString))
     stdout.toString
-  }
 
-  private def runProcess(commandLine: String)(implicit iox: IOExecutor): ByteArray = {
+  private def runProcess(commandLine: String)(implicit iox: IOExecutor): ByteArray =
     // —— Does not interpret commandLine as expected ——
     val out = new ByteArrayOutputStream
     val err = new ByteArrayOutputStream
@@ -87,30 +85,25 @@ object Processes
     val processBuilder = new ProcessBuilder(commandLine)
     val process = processBuilder.start()
     process.getInputStream.close()
-    val stdoutClosed = ioFuture {
+    val stdoutClosed = ioFuture:
       process.getInputStream.transferTo(out)
-    }
-    val stderrClosed = ioFuture {
+    val stderrClosed = ioFuture:
       process.getErrorStream.transferTo(err)
-    }
     Await.result(stdoutClosed, Duration.Inf)
     Await.result(stderrClosed, Duration.Inf)
     val returnCode = process.waitFor()
     if returnCode != 0 then
       throw new ProcessException(commandLine, ReturnCode(returnCode), stdout, stderr)
     stdout
-  }
 
-  final class ProcessException(commandLine: String, returnCode: ReturnCode, stdout: ByteArray, stderr: ByteArray) extends RuntimeException
-  {
+  final class ProcessException(commandLine: String, returnCode: ReturnCode, stdout: ByteArray, stderr: ByteArray) extends RuntimeException:
     override def getMessage =
       s"""Command failed with exit code ${returnCode.number}
          |$commandLine
          |""".stripMargin +
         Seq(stderr.utf8String, stdout.utf8String).mkString("\n")
-  }
 
-  implicit final class RobustlyStartProcess(private val processBuilder: ProcessBuilder) extends AnyVal {
+  implicit final class RobustlyStartProcess(private val processBuilder: ProcessBuilder) extends AnyVal:
     /**
       * Like ProcessBuilder.start, but retries after IOException("error=26, Text file busy").
       *
@@ -118,30 +111,24 @@ object Processes
       * @see https://bugs.openjdk.java.net/browse/JDK-8068370
       */
     def startRobustly(durations: Iterable[FiniteDuration] = RobustlyStartProcess.DefaultDurations)
-    : Task[Process] = {
+    : Task[Process] =
       val durationsIterator = durations.iterator
       Task(processBuilder.start())
-        .onErrorRestartLoop(()) {
+        .onErrorRestartLoop(()):
           case (TextFileBusyIOException(e), _, restart) if durationsIterator.hasNext =>
             logger.warn(s"Retrying process start after error: ${e.toString}")
             restart(()).delayExecution(durationsIterator.next())
 
           case (throwable, _, _) =>
             Task.raiseError(throwable)
-        }
-    }
-  }
 
-  private[process] object RobustlyStartProcess {
+  private[process] object RobustlyStartProcess:
     private val DefaultDurations = List(10.ms, 50.ms, 500.ms, 1440.ms)
     assert(DefaultDurations.map(_.toMillis).sum.ms == 2.s)
 
-    object TextFileBusyIOException {
+    object TextFileBusyIOException:
       private def matchesError26(o: String) = """.*\berror=26\b.*""".r.pattern.matcher(o)
       def unapply(e: IOException): Option[IOException] =
         matchesError26(Option(e.getMessage) getOrElse "").matches option e
-    }
-  }
 
   java8Polyfill()
-}

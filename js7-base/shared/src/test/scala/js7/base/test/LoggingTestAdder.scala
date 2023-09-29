@@ -13,7 +13,7 @@ import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.FiniteDuration
 import scala.util.{Failure, Success, Try}
 
-private final class LoggingTestAdder(suiteName: String) {
+private final class LoggingTestAdder(suiteName: String):
 
   Logger.initialize()
 
@@ -44,16 +44,14 @@ private final class LoggingTestAdder(suiteName: String) {
           }
       })
 
-  def addTests(name: String, addTests: => Unit): Unit = {
+  def addTests(name: String, addTests: => Unit): Unit =
     outerNames.push(name)
     try addTests
     finally outerNames.pop()
-  }
 
-  def freezeContext(testName: String): TestContext = {
+  def freezeContext(testName: String): TestContext =
     since
     new TestContext(this, outerNames.toVector, testName)
-  }
 
   def afterAll(): Unit =
     logger.info(s"$suiteName — " +
@@ -65,9 +63,8 @@ private final class LoggingTestAdder(suiteName: String) {
       (if pendingCount == 0 then "" else s" · $pendingMarkup🚧 $pendingCount pending$resetColor") +
       (if failedCount == 0 && pendingCount == 0 then s" $successMarkup✔︎$resetColor " else " · ") +
       since.elapsed.pretty + "\n")
-}
 
-private object LoggingTestAdder {
+private object LoggingTestAdder:
   private val logger = Logger("TEST")
   private val bar = "⎯" * 72
   private val successMarkup = green + bold
@@ -95,25 +92,23 @@ private object LoggingTestAdder {
     "org.jetbrains.plugins.scala.",
     "js7.base.test.")
 
-  final class TestContext(adder: LoggingTestAdder, val nesting: Seq[String], testName: String) {
+  final class TestContext(adder: LoggingTestAdder, val nesting: Seq[String], testName: String):
     private lazy val since = now
     private val prefix = nesting.view.reverse.mkString("", " — ", " — ")
 
-    def beforeTest(): Unit = {
+    def beforeTest(): Unit =
       logger.info(eager(s"↘ $blue$bold$prefix$testName$resetColor"))
       since
-    }
 
-    def afterTest[A](tried: Try[A]): Unit = {
-      val t = tried match {
+    def afterTest[A](tried: Try[A]): Unit =
+      val t = tried match
         case Failure(t) =>
           clipStackTrace(t)
           Failure(t)
         case Success(_) => Success(())
-      }
       val result = Result(prefix, testName, t, since.elapsed)
       val logLine = result.toLogLine
-      tried match {
+      tried match
         case Success(_) =>
           adder.succeededCount += 1
           logger.info(s"↙ $logLine")
@@ -131,22 +126,18 @@ private object LoggingTestAdder {
           logger.error(logLine, t.nullIfNoStackTrace)
           logger.info(eager(failureMarkup + bar + resetColor))
           clipStackTrace(t)
-      }
 
       collectResult(result)
-    }
-  }
 
   private[test] final case class Result(
     prefix: String,
     testName: String,
     tried: Try[Unit],
-    duration: FiniteDuration)
-  {
+    duration: FiniteDuration):
     val prettyDuration: String = duration.pretty
 
     def toLogLine: String =
-      tried match {
+      tried match
         case Success(_) =>
           s"$successMarkup$prefix$testName$resetColor $prettyDuration"
 
@@ -155,11 +146,10 @@ private object LoggingTestAdder {
 
         case Failure(t) =>
           s"💥 $failureMarkup$prefix$testName 💥$resetColor $prettyDuration"
-      }
 
-    def toSummaryLine: String = {
+    def toSummaryLine: String =
       val shortTestName = testName.truncateWithEllipsis(100) // Replaces \n
-      tried match {
+      tried match
         case Success(_) =>
           f"✔️  $prettyDuration%-7s $successMarkup$prefix$shortTestName$resetColor"
 
@@ -168,11 +158,8 @@ private object LoggingTestAdder {
 
         case Failure(t) =>
           f"💥 $prettyDuration%-7s $failureMarkup$prefix$shortTestName 💥$resetColor"
-      }
-    }
-  }
 
-  private def clipStackTrace(t: Throwable): Unit = {
+  private def clipStackTrace(t: Throwable): Unit =
     val st = t.getStackTrace
     val dropTop = st.indexWhere(o => !o.getClassName.startsWith("org.scalatest."))
     val dropBottom = st.lastIndexWhere { o =>
@@ -180,9 +167,7 @@ private object LoggingTestAdder {
       !droppableStackTracePrefixes.exists(c startsWith _)
     }
     t.setStackTrace(st.slice(dropTop, dropBottom + 1 max dropTop + 1))
-  }
 
   /** Because ScalaLogging String interpolation may let the
    * IntellijJScala plugin intersperse a '\n'. */
   private def eager(s: String) = s
-}

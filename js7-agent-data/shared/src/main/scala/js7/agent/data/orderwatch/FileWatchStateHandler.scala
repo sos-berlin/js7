@@ -7,8 +7,7 @@ import js7.data.event.KeyedEvent
 import js7.data.orderwatch.{FileWatch, OrderWatchEvent, OrderWatchPath}
 import scala.collection.{MapView, mutable}
 
-trait FileWatchStateHandler[Self]
-{
+trait FileWatchStateHandler[Self]:
   self: Self =>
 
   protected def pathToFileWatchState: MapView[OrderWatchPath, FileWatchState]
@@ -22,7 +21,7 @@ trait FileWatchStateHandler[Self]
     updateFileWatchStates(fileWatchState :: Nil)
 
   /** FileWatch handler. */
-  object fw {
+  object fw:
     def estimatedExtraSnapshotSize =
       pathToFileWatchState.values.view.map(_.estimatedExtraSnapshotSize).sum
 
@@ -42,13 +41,9 @@ trait FileWatchStateHandler[Self]
         .checked(keyedEvent.key)
         .flatMap(o => updateFileWatchState(
           o.applyEvent(keyedEvent.event)))
-  }
-}
 
-object FileWatchStateHandler
-{
-  final class Builder
-  {
+object FileWatchStateHandler:
+  final class Builder:
     private val pathToFileWatch = mutable.Map.empty[OrderWatchPath, FileWatchState.Builder]
 
     def addSnapshot(snapshot: FileWatchState.Snapshot): Unit =
@@ -58,5 +53,3 @@ object FileWatchStateHandler
 
     def result =
       pathToFileWatch.view.mapValues(_.result()).toMap
-  }
-}

@@ -34,8 +34,7 @@ final case class WorkflowJob(
   timeout: Option[FiniteDuration],
   failOnErrWritten: Boolean,
   admissionTimeScheme: Option[AdmissionTimeScheme],
-  skipIfNoAdmissionStartForOrderDay: Boolean)
-{
+  skipIfNoAdmissionStartForOrderDay: Boolean):
   def referencedJobResourcePaths =
     jobResourcePaths.view ++ executable.referencedJobResourcePaths
 
@@ -59,10 +58,8 @@ final case class WorkflowJob(
         expr.evalAsString(Scope.empty).flatMap(SubagentSelectionId.checked).rightAs(())
       else
         Checked.unit)
-}
 
-object WorkflowJob
-{
+object WorkflowJob:
   val DefaultParallelism = 1
 
   def apply(
@@ -104,12 +101,11 @@ object WorkflowJob
         admissionTimeScheme, skipIfNoAdmissionStartForOrderDay)
 
   final case class Name private(string: String) extends GenericString
-  object Name extends GenericString.NameValidating[Name] {
+  object Name extends GenericString.NameValidating[Name]:
     val Anonymous: Name = unchecked("")
     override val name = "WorkflowJob.Name"
 
     protected def unchecked(string: String) = new Name(string)
-  }
 
   /** To be used in Workflow with known WorkflowId. */
   implicit val jsonEncoder: Encoder.AsObject[WorkflowJob] = workflowJob =>
@@ -131,10 +127,9 @@ object WorkflowJob
       executable <- c.get[Executable]("executable")
       subagentSelectionId <-
         c.get[Option[SubagentSelectionId]]("subagentSelectionId")
-          .flatMap {
+          .flatMap:
             case Some(id) => Right(Some(StringConstant(id.string)))
             case None => c.get[Option[Expression]]("subagentSelectionIdExpr")
-          }
       agentPath <- c.get[AgentPath]("agentPath")
       arguments <- c.getOrElse[Map[String, Expression]]("defaultArguments")(Map.empty)
       jobResourcePaths <- c.getOrElse[Seq[JobResourcePath]]("jobResourcePaths")(Nil)
@@ -144,14 +139,12 @@ object WorkflowJob
       failOnErrWritten <- c.getOrElse[Boolean]("failOnErrWritten")(false)
       admissionTimeScheme <- c.get[Option[AdmissionTimeScheme]]("admissionTimeScheme")
       skipIfNoAdmissionStartForOrderDay <-
-        c.get[Option[Boolean]]("skipIfNoAdmissionStartForOrderDay").flatMap {
+        c.get[Option[Boolean]]("skipIfNoAdmissionStartForOrderDay").flatMap:
           case Some(o) => Right(o)
           case None => // COMPATIBLE with v2.4
             c.getOrElse[Boolean]("skipIfNoAdmissionForOrderDay")(false)
-        }
       job <- checked(agentPath, executable, arguments, subagentSelectionId, jobResourcePaths,
         parallelism, sigkillDelay, timeout, failOnErrWritten, admissionTimeScheme,
         skipIfNoAdmissionStartForOrderDay
       ).toDecoderResult(c.history)
     yield job
-}

@@ -13,8 +13,7 @@ import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.DirectoryProviderForScalaTest
 import monix.execution.Scheduler.Implicits.traced
 
-final class AgentRestartBeforeDedicationTest extends OurTestSuite with DirectoryProviderForScalaTest
-{
+final class AgentRestartBeforeDedicationTest extends OurTestSuite with DirectoryProviderForScalaTest:
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on"""
 
@@ -27,7 +26,7 @@ final class AgentRestartBeforeDedicationTest extends OurTestSuite with Directory
   protected def agentPaths = Seq(agentPath)
   protected def items = Seq(workflow)
 
-  "Restart Agent before Controller initializes it" in {
+  "Restart Agent before Controller initializes it" in:
     directoryProvider.runAgents() { _ => }
     directoryProvider.runAgents() { _ => }
     directoryProvider.runAgents() { _ =>
@@ -39,12 +38,8 @@ final class AgentRestartBeforeDedicationTest extends OurTestSuite with Directory
         assert(events.last.value == OrderFinished())
       }
     }
-  }
-}
 
-object AgentRestartBeforeDedicationTest
-{
+object AgentRestartBeforeDedicationTest:
   private val agentPath = AgentPath("AGENT")
   private val workflow = Workflow(WorkflowPath("WORKFLOW") ~ "INITIAL", Seq(
     EmptyJob.execute(agentPath)))
-}

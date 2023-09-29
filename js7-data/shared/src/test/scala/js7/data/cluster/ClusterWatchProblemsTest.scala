@@ -7,9 +7,9 @@ import js7.data.cluster.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem
 import js7.data.node.NodeId
 import js7.tester.CirceJsonTester.testJson
 
-final class ClusterWatchProblemsTest extends OurTestSuite {
+final class ClusterWatchProblemsTest extends OurTestSuite:
 
-  "ClusterNodeLossNotConfirmedProblem" in {
+  "ClusterNodeLossNotConfirmedProblem" in:
     testJson(
       ClusterNodeLossNotConfirmedProblem(NodeId("Primary"), ClusterPassiveLost(NodeId("Backup"))),
       json"""{
@@ -20,5 +20,3 @@ final class ClusterWatchProblemsTest extends OurTestSuite {
           },
           "fromNodeId": "Primary"
         }""")
-  }
-}

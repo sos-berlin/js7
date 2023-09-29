@@ -25,8 +25,7 @@ import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import monix.execution.Scheduler.Implicits.traced
 
 final class StopOnFailureTest extends OurTestSuite with ControllerAgentForScalaTest
-with BlockingItemUpdater
-{
+with BlockingItemUpdater:
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.controller.agent-driver.command-batch-delay = 0ms
@@ -40,7 +39,7 @@ with BlockingItemUpdater
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(Lock(aLockPath), Lock(bLockPath))
 
-  "Fail at Controller" in {
+  "Fail at Controller" in:
     val workflow = Workflow.of(WorkflowPath("CONTROLLER-WORKFLOW"),
       Options(
         stopOnFailure = Some(true),
@@ -69,9 +68,8 @@ with BlockingItemUpdater
         OrderMoved(Position(1)),
         OrderFinished()))
     }
-  }
 
-  "Two nested Options instructions" in {
+  "Two nested Options instructions" in:
     val workflow = Workflow.of(WorkflowPath("NESTED-OPTIONS-WORKFLOW"),
       Options(
         stopOnFailure = Some(true),
@@ -92,9 +90,8 @@ with BlockingItemUpdater
         OrderOutcomeAdded(Outcome.Failed(Some("TEST-FAILURE"))),
         OrderFailed(Position(0) / "options" % 0 / "options" % 0)))
     }
-  }
 
-  "Fail in two nested Lock instructions" in {
+  "Fail in two nested Lock instructions" in:
     val workflow = Workflow.of(WorkflowPath("NESTED-LOCK-WORKFLOW"),
       Options(
         stopOnFailure = Some(true),
@@ -150,9 +147,8 @@ with BlockingItemUpdater
         OrderMoved(Position(1)),
         OrderFinished()))
     }
-  }
 
-  "Cancel a stopped locking Order" in {
+  "Cancel a stopped locking Order" in:
     val workflow = Workflow.of(WorkflowPath("LOCK-CANCEL-WORKFLOW"),
       Options(
         stopOnFailure = Some(true),
@@ -193,9 +189,8 @@ with BlockingItemUpdater
         OrderLocksReleased(List(aLockPath)),
         OrderCancelled))
     }
-  }
 
-  "Fail at Agent" in {
+  "Fail at Agent" in:
     val workflow = Workflow.of(WorkflowPath("AGENT-WORKFLOW"),
       Options(
         stopOnFailure = Some(true),
@@ -230,9 +225,8 @@ with BlockingItemUpdater
         OrderMoved(Position(1)),
         OrderFinished()))
     }
-  }
 
-  "Fail while Fresh" in {
+  "Fail while Fresh" in:
     val workflow = Workflow.of(WorkflowPath("FRESH-WORKFLOW"),
       Options(
         stopOnFailure = Some(true),
@@ -268,12 +262,9 @@ with BlockingItemUpdater
         OrderStarted,
         OrderFinished()))
     }
-  }
-}
 
-object StopOnFailureTest {
+object StopOnFailureTest:
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)
   private val aLockPath = LockPath("A-LOCK")
   private val bLockPath = LockPath("B-LOCK")
-}

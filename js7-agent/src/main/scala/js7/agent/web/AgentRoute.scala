@@ -38,8 +38,7 @@ final class AgentRoute(
     protected val scheduler: Scheduler)
 extends WebLogDirectives
 with ApiRoute
-with ClusterNodeRouteBindings[AgentState]
-{
+with ClusterNodeRouteBindings[AgentState]:
   import routeBinding.webServerBinding
   protected def whenShuttingDown = routeBinding.whenStopRequested
   protected val gateKeeper = GateKeeper(webServerBinding, gateKeeperConf)
@@ -63,7 +62,5 @@ with ClusterNodeRouteBindings[AgentState]
   Logger[this.type].debug(s"new AgentRoute($webServerBinding #${routeBinding.revision})")
 
   lazy val agentRoute: Route =
-    pathSegments("api") {
+    pathSegments("api"):
       apiRoute
-    }
-}

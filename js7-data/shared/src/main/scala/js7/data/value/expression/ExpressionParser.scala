@@ -15,8 +15,7 @@ import js7.data.value.expression.ExpressionOptimizer.optimizeExpression
 import js7.data.workflow.instructions.executable.WorkflowJob
 import org.jetbrains.annotations.TestOnly
 
-object ExpressionParser
-{
+object ExpressionParser:
   @TestOnly
   def expr(expressionString: String): Expression =
     parseExpression(expressionString).orThrow
@@ -89,7 +88,7 @@ object ExpressionParser
           .last
       }
 
-  private val interpolatedStringContent: Parser0[StringExpr] = {
+  private val interpolatedStringContent: Parser0[StringExpr] =
     val namedValue = (identifier | digits/*regex group*/).map(NamedValue(_))
     val expr = char('$') *> (namedValue | curlyName | inParentheses(expression))
     val simpleConstant = charsWhile(ch => ch != '"' && ch != '\\' && ch != '$').string
@@ -98,7 +97,7 @@ object ExpressionParser
       .map(StringConstant(_))
 
     (constant.? ~ (expr ~ constant.?).rep0)
-      .map {
+      .map:
         case (None, Nil) => StringConstant.empty
         case (Some(o: StringConstant), Nil) => o
         case (maybeFirst, pairs) =>
@@ -106,8 +105,6 @@ object ExpressionParser
             maybeFirst.toList :::
               pairs.flatMap { case (expr, constant) => expr :: constant.toList })
           ).asInstanceOf[StringExpr]
-      }
-  }
 
   private val interpolatedString: Parser[StringExpr] =
     interpolatedStringContent.with1.surroundedBy(char('"'))
@@ -118,7 +115,7 @@ object ExpressionParser
         checkedToParser(pairs.checkUniqueness(_._1))
           .as(ObjectExpr(pairs.toMap)))
 
-  def dollarNamedValue: Parser[Expression] =  {
+  def dollarNamedValue: Parser[Expression] =
     //def arg: Parser[NamedValue] = (("arg::" ~ identifier)
     //  .map(key => NamedValue(NamedValue.Argument, StringConstant(key))))
     //def byLabel: Parser[NamedValue] = (("label::" ~ identifier ~ "." ~ identifier)
@@ -130,7 +127,6 @@ object ExpressionParser
     //def curlyName: Parser[NamedValue] = ("{" ~ (/*arg | byLabel | byJob | byPrefix |*/ nameOnly(identifier)) ~ "}"./)
     string("$") *>
       ((identifier | digits/*regex group*/).map(NamedValue(_)) | curlyName)
-  }
 
   private val jobResourcePath: Parser[JobResourcePath] = (charWhere(JobResourcePath.isNameStart) ~ charsWhile0(JobResourcePath.isNamePartMaybe)).string
     .flatMap(o => checkedToParser(JobResourcePath.checked(o)))
@@ -171,38 +167,32 @@ object ExpressionParser
   private val functionCall: Parser[Expression] =
     (identifier ~~ inParentheses(commaSequence(
       (identifier <* (w ~ char('=') ~ w)).backtrack.? ~~ expression/*OrFunction*/))
-    ).flatMap {
+    ).flatMap:
       case ("toBoolean", arguments) =>
-        arguments match {
+        arguments match
           case Seq((None, arg)) => pure(ToBoolean(arg))
           case _ => failWith("toBoolean function expects exacly one argument")
-        }
       case ("toNumber", arguments) =>
-        arguments match {
+        arguments match
           case Seq((None, arg)) => pure(ToNumber(arg))
           case _ => failWith("toNumber function expects exacly one argument")
-        }
       case ("stripMargin", arguments) =>
-        arguments match {
+        arguments match
           case Seq((None, arg)) => pure(StripMargin(arg))
           case _ => failWith("stripMargin function expects exacly one argument")
-        }
       case ("mkString", arguments) =>
-        arguments match {
+        arguments match
           case Seq((None, arg)) => pure(MkString(arg))
           case _ => failWith("mkString function expects exacly one argument")
-        }
       case ("replaceAll", arguments) =>
-        arguments match {
+        arguments match
           case Seq((None, string), (None, pattern), (None, replacement)) =>
             pure(ReplaceAll(string, pattern, replacement))
           case _ => failWith("replaceAll function expects exacly three arguments")
-        }
       case (name, arguments) =>
         pure(FunctionCall(
           name,
           arguments.map { case (maybeName, expr) => Argument(expr, maybeName) }))
-    }
 
   /** Then special function `error` .*/
   private val errorFunctionCall: Parser[ErrorExpr] =
@@ -221,7 +211,7 @@ object ExpressionParser
       errorFunctionCall | argumentFunctionCall | variableFunctionCall | functionCall
 
   private val dotExpression =
-    (factor ~ (char('.').surroundedBy(w).backtrack.with1 *> identifier).rep0).flatMap {
+    (factor ~ (char('.').surroundedBy(w).backtrack.with1 *> identifier).rep0).flatMap:
       case (o, Seq()) => pure(o)
       // TODO Don't use these legacy names:
       case (o, Seq("toNumber")) => pure(ToNumber(o))
@@ -229,22 +219,19 @@ object ExpressionParser
       case (o, Seq("stripMargin")) => pure(StripMargin(o))
       case (o, Seq("mkString")) => pure(MkString(o))
       case (o, fields) => pure(fields.scanLeft[Expression](o)(DotExpr(_, _)).last)
-    }
 
   private val argumentExpression =
     (dotExpression ~~ inParentheses(expression).?)
-      .map {
+      .map:
         case (o, None) => o
         case (o, Some(arg)) => ArgumentExpr(o, arg)
-      }
 
   private val questionMarkExpr: Parser[Expression] =
     ((argumentExpression <* w) ~ (char('?') *> not(char('?')) *> w *> argumentExpression.?).rep0)
       .map { case (a, more) =>
-        more.foldLeft(a) {
+        more.foldLeft(a):
           case (a, None) => OrMissing(a)
           case (a, Some(b)) => OrElse(a, b)
-        }
       }
 
   private val notExpr =
@@ -255,61 +242,52 @@ object ExpressionParser
       ((char('!') ~ w) *> notExpr)
         .map(Not(_)))
 
-  private val multiplication: Parser[Expression] = {
+  private val multiplication: Parser[Expression] =
     val slash = (char('/').as('/') <* !charIn('/', '*')).backtrack
-    leftRecurse(notExpr, char('*').as('*') | slash, notExpr) {
+    leftRecurse(notExpr, char('*').as('*') | slash, notExpr):
       case (a, ('*', b)) => Multiply(a, b)
       case (a, ('/', b)) => Divide(a, b)
       case (_, (x, _)) => throw new MatchError(x)
-    }
-  }
 
   private val addition: Parser[Expression] =
-    leftRecurse(multiplication, stringIn(List("++", "+", "-")).string, multiplication) {
+    leftRecurse(multiplication, stringIn(List("++", "+", "-")).string, multiplication):
       case (a, ("++", b)) => Concat(a, b)
       case (a, ("+", b)) => Add(a, b)
       case (a, ("-", b)) => Substract(a, b)
       case (_, (x, _)) => throw new MatchError(x)
-    }
 
   private val comparison: Parser[Expression] =
-    leftRecurse(addition, stringIn(List("<=", ">=", "<", ">")).string, addition) {
+    leftRecurse(addition, stringIn(List("<=", ">=", "<", ">")).string, addition):
       case (a, ("<=", b)) => LessOrEqual(a, b)
       case (a, (">=", b)) => GreaterOrEqual(a, b)
       case (a, ("<" , b)) => LessThan(a, b)
       case (a, (">" , b)) => GreaterThan(a, b)
       case (_, (x, _)) => throw new MatchError(x)
-    }
 
   private val equal: Parser[Expression] =
-    leftRecurse(comparison, stringIn(List("==", "!=")).string, comparison) {
+    leftRecurse(comparison, stringIn(List("==", "!=")).string, comparison):
       case (a, ("==", b)) => Equal(a, b)
       case (a, ("!=", b)) => NotEqual(a, b)
       case (_, (x, _)) => throw new MatchError(x)
-    }
 
   private val and: Parser[Expression] =
-    leftRecurseParsers(equal, string("&&"), equal) {
+    leftRecurseParsers(equal, string("&&"), equal):
       case (a, ((), b)) => pure(And(a, b))
-    }
 
   private val or: Parser[Expression] =
-    leftRecurseParsers(and, string("||"), and) {
+    leftRecurseParsers(and, string("||"), and):
       case (a, ((), b)) => pure(Or(a, b))
-    }
 
   private val wordOperation: Parser[Expression] =
-    leftRecurseParsers(or, keyword, or) {
+    leftRecurseParsers(or, keyword, or):
       case (a, ("in", list: ListExpr)) => pure(In(a, list))
       case (_, ("in", _)) => failWith("Expected a List after operator 'in'")
       case (a, ("matches", b)) => pure(Matches(a, b))
       case (a, (op, b)) => failWith(s"Operator '$op' with unexpected operand type: " +
         Precedence.toString(a, op, Precedence.Or, b))
-    }
 
   val constantExpression: Parser[Expression] =
     expression
 
   lazy val expression: Parser[Expression] =
     Parser.defer(wordOperation)
-}

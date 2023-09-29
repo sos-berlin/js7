@@ -26,7 +26,7 @@ import org.scalatest.{BeforeAndAfterAll, Suite}
 /**
   * @author Joacim Zschimmer
   */
-trait WebServiceTest extends HasCloser with BeforeAndAfterAll with ScalatestRouteTest {
+trait WebServiceTest extends HasCloser with BeforeAndAfterAll with ScalatestRouteTest:
   this: AgentRouteProvider & Suite =>
 
   ProblemCodeMessages.initialize()
@@ -51,19 +51,16 @@ trait WebServiceTest extends HasCloser with BeforeAndAfterAll with ScalatestRout
 
   implicit val routeTestTimeout: RouteTestTimeout = RouteTestTimeout(5.s)
 
-  protected lazy val testSessionHeader: HttpHeader = {
+  protected lazy val testSessionHeader: HttpHeader =
     val token = sessionRegister
       .login(SimpleUser(UserId("SOME-USER"), HashedPassword.MatchesNothing), Some(Js7Version))
       .await(99.s).orThrow
     RawHeader(`x-js7-session`.name, token.secret.string)
-  }
 
   /** Provide ActorRefFactory for some Routes. */
   protected final def actorRefFactory: ActorRefFactory = system
 
-  override protected def afterAll() = {
+  override protected def afterAll() =
     closer.close()
     cleanUp()
     super.afterAll()
-  }
-}

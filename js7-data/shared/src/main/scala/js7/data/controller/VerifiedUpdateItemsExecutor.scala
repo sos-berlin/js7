@@ -17,8 +17,7 @@ import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, Invento
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
 import scala.collection.View
 
-object VerifiedUpdateItemsExecutor
-{
+object VerifiedUpdateItemsExecutor:
   /* TODO Delete (and add?) along the dependency tree
      to allow simultaneous deletion of interdependent items.
     OrderWatch (detached) ->
@@ -42,7 +41,6 @@ object VerifiedUpdateItemsExecutor
     controllerState: ControllerState,
     checkItem: PartialFunction[InventoryItem, Checked[Unit]] = PartialFunction.empty)
   : Checked[Seq[KeyedEvent[NoKeyEvent]]] =
-  {
     def result: Checked[Seq[KeyedEvent[NoKeyEvent]]] =
       (for
         versionedEvents <- versionedEvents(controllerState)
@@ -69,16 +67,15 @@ object VerifiedUpdateItemsExecutor
         .concat(derivedWorkflowPathControlEvents)
         .concat(derivedWorkflowControlEvents)
         .toVector
-      ).left.map {
+      ).left.map:
         case prblm @ Problem.Combined(Seq(_, duplicateKey: DuplicateKey)) =>
           logger.debug(prblm.toString)
           duplicateKey
         case o => o
-      }
 
     def versionedEvents(controllerState: ControllerState)
     : Checked[Seq[KeyedEvent[VersionedEvent]]] =
-      verifiedUpdateItems.maybeVersioned match {
+      verifiedUpdateItems.maybeVersioned match
         case None => Right(Nil)
         case Some(versioned) =>
           controllerState.repo
@@ -87,10 +84,9 @@ object VerifiedUpdateItemsExecutor
               versioned.verifiedItems.map(_.signedItem),
               versioned.remove)
             .map(_.map(NoKey <-: _))
-      }
 
     def simpleItemEvents(controllerState: ControllerState)
-    : Checked[View[KeyedEvent[InventoryItemEvent]]] = {
+    : Checked[View[KeyedEvent[InventoryItemEvent]]] =
       import verifiedUpdateItems.simple
       simple.verifiedSimpleItems
         .traverse(verifiedSimpleItemToEvent(_, controllerState))
@@ -105,7 +101,6 @@ object VerifiedUpdateItemsExecutor
                 .view ++ signedEvents ++ unsignedEvents
             }
           .map(_.map(NoKey <-: _)))
-    }
 
     def toDerivedWorkflowPathControlEvents(controllerState: ControllerState)
     : View[KeyedEvent[InventoryItemEvent]] =
@@ -115,14 +110,13 @@ object VerifiedUpdateItemsExecutor
         .flatMap(toDerivedWorkflowPathControlEvent(controllerState, _))
 
     def toDerivedWorkflowPathControlEvent(controllerState: ControllerState, workflowPath: WorkflowPath)
-    : Option[KeyedEvent[InventoryItemEvent]] = {
+    : Option[KeyedEvent[InventoryItemEvent]] =
       val path = WorkflowPathControlPath(workflowPath)
 
       (controllerState.keyTo(WorkflowPathControl).contains(path)
         && !controllerState.repo.pathToItems(Workflow).contains(workflowPath)
         && !controllerState.itemToAgentToAttachedState.contains(path)
       ).thenSome(NoKey <-: ItemDeleted(path))
-    }
 
     def toDerivedWorkflowControlEvents(controllerState: ControllerState)
     : View[KeyedEvent[InventoryItemEvent]] =
@@ -132,18 +126,17 @@ object VerifiedUpdateItemsExecutor
         .flatMap(toDerivedWorkflowControlEvent(controllerState, _))
 
     def toDerivedWorkflowControlEvent(controllerState: ControllerState, workflowId: WorkflowId)
-    : Option[KeyedEvent[InventoryItemEvent]] = {
+    : Option[KeyedEvent[InventoryItemEvent]] =
       val id = WorkflowControlId(workflowId)
       (controllerState.keyTo(WorkflowControl).contains(id)
         && controllerState.idToWorkflow.isDefinedAt(workflowId)
         && !controllerState.itemToAgentToAttachedState.contains(id)
       ).thenSome(NoKey <-: ItemDeleted(id))
-    }
 
     def verifiedSimpleItemToEvent(
       verified: SignedItemVerifier.Verified[SignableSimpleItem],
       controllerState: ControllerState)
-    : Checked[SignedItemAddedOrChanged] = {
+    : Checked[SignedItemAddedOrChanged] =
       val item = verified.item
       if item.itemRevision.isDefined then
         Left(Problem.pure("ItemRevision is not accepted here"))
@@ -159,7 +152,6 @@ object VerifiedUpdateItemsExecutor
                   .withRevision(Some(
                     existing.itemRevision.fold(ItemRevision.Initial/*not expected*/)(_.next)))))
           })
-    }
 
     def unsignedSimpleItemToEvent(
       item: UnsignedSimpleItem,
@@ -186,7 +178,7 @@ object VerifiedUpdateItemsExecutor
       isDeleted: Set[AgentPath],
       controllerState: ControllerState)
     : View[BasicItemEvent.ForClient] =
-      path match {
+      path match
         case path: InventoryItemPath.AttachableToAgent
           if controllerState.itemToAgentToAttachedState.contains(path)
             && !isAttachedToDeletedAgentsOnly(path, isDeleted, controllerState) =>
@@ -195,7 +187,6 @@ object VerifiedUpdateItemsExecutor
 
         case _ =>
           new View.Single(ItemDeleted(path))
-      }
 
     // If the deleted Item (a SubagentItem) is attached only to deleted Agents,
     // then we delete the Item without detaching.
@@ -209,7 +200,6 @@ object VerifiedUpdateItemsExecutor
         .forall(isDeleted)
 
     result
-  }
 
   private def deleteRemovedVersionedItem(path: VersionedItemPath, controllerState: ControllerState)
   : Option[KeyedEvent[ItemDeleted]] =
@@ -224,7 +214,7 @@ object VerifiedUpdateItemsExecutor
   private def checkVerifiedUpdateConsistency(
     verifiedUpdateItems: VerifiedUpdateItems,
     controllerState: ControllerState)
-  : Checked[Unit] = {
+  : Checked[Unit] =
     val newChecked = controllerState.checkAddedOrChangedItems(verifiedUpdateItems.addOrChangeKeys)
     val delSimpleChecked = controllerState
       .checkDeletedSimpleItems(verifiedUpdateItems.simple.delete.toSet)
@@ -233,5 +223,3 @@ object VerifiedUpdateItemsExecutor
     newChecked
       .combineLeftOrRight(delSimpleChecked)
       .combineLeftOrRight(delVersionedChecked)
-  }
-}

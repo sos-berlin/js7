@@ -6,18 +6,13 @@ import js7.base.test.OurTestSuite
 /**
   * @author Joacim Zschimmer
   */
-final class SimpleUserTest extends OurTestSuite
-{
-  "Anonymous" in {
+final class SimpleUserTest extends OurTestSuite:
+  "Anonymous" in:
     assert(SimpleUser.TestAnonymous.hashedPassword equalsClearText SecretString(""))
     assert(SimpleUser(UserId.Anonymous, HashedPassword.newEmpty()).grantedPermissions.isEmpty)
 
-    intercept[RuntimeException] {
+    intercept[RuntimeException]:
       SimpleUser(UserId.Anonymous, HashedPassword.newEmpty(), Set(ValidUserPermission))
-    }
-  }
 
-  "Not Anonymous" in {
+  "Not Anonymous" in:
     SimpleUser(UserId.Anonymous, HashedPassword.newEmpty()).grantedPermissions == Set(ValidUserPermission)
-  }
-}

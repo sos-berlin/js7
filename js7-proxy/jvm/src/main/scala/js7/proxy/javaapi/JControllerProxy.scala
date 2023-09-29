@@ -35,8 +35,7 @@ final class JControllerProxy private[proxy](
   asScala: ControllerProxy,
   val api: JControllerApi,
   val controllerEventBus: JControllerEventBus)
-  (implicit scheduler: Scheduler)
-{
+  (implicit scheduler: Scheduler):
   /** Listen to the already running event stream. */
   @Nonnull
   def flux(): Flux[JEventAndControllerState[Event]] =
@@ -75,23 +74,21 @@ final class JControllerProxy private[proxy](
       .asJava
 
   @Nonnull
-  def when(@Nonnull predicate: JEventAndControllerState[Event] => Boolean): CompletableFuture[JEventAndControllerState[Event]] = {
+  def when(@Nonnull predicate: JEventAndControllerState[Event] => Boolean): CompletableFuture[JEventAndControllerState[Event]] =
     requireNonNull(predicate)
     asScala.when(es => predicate(JEventAndControllerState(es)))
       .map(JEventAndControllerState.apply)
       .runToFuture
       .asJava
-  }
 
   @Nonnull
-  private def runOrderForTest(@Nonnull order: JFreshOrder): CompletableFuture[Stamped[KeyedEvent[OrderTerminated]]] = {
+  private def runOrderForTest(@Nonnull order: JFreshOrder): CompletableFuture[Stamped[KeyedEvent[OrderTerminated]]] =
     requireNonNull(order)
     val whenOrderTerminated = asScala.observable
-      .collect {
+      .collect:
         case EventAndState(stamped @ Stamped(_, _, KeyedEvent(orderId, _: OrderTerminated)), _, _)
           if orderId == order.id =>
           stamped.asInstanceOf[Stamped[KeyedEvent[OrderTerminated]]]
-      }
       .headL
       .runToFuture
     val isAdded = api.asScala.addOrder(order.asScala)
@@ -100,5 +97,3 @@ final class JControllerProxy private[proxy](
       .orThrow
     if !isAdded then throw new IllegalStateException(s"Order has already been added: ${order.id}")
     whenOrderTerminated.asJava
-  }
-}

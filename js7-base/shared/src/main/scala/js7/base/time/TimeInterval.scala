@@ -5,8 +5,7 @@ import js7.base.utils.Assertions.assertThat
 import scala.concurrent.duration.*
 import scala.language.implicitConversions
 
-sealed trait TimeInterval
-{
+sealed trait TimeInterval:
   def start: Timestamp
   def duration: FiniteDuration
 
@@ -17,10 +16,8 @@ sealed trait TimeInterval
   def startsBefore(timestamp: Timestamp): Boolean
 
   def endsBefore(timestamp: Timestamp): Boolean
-}
 
-object TimeInterval
-{
+object TimeInterval:
   val never = TimeInterval(Timestamp.ofEpochMilli(Long.MinValue), 0.s)
   val alwaysSinceEpoch = TimeInterval(Timestamp.Epoch, FiniteDuration.MaxValue)
 
@@ -31,8 +28,7 @@ object TimeInterval
     TimeInterval(interval._1, interval._2 - interval._1)
 
   final case class Standard(start: Timestamp, duration: FiniteDuration)
-  extends TimeInterval
-  {
+  extends TimeInterval:
     assertThat(!duration.isNegative)
 
     def end = start + duration
@@ -47,10 +43,8 @@ object TimeInterval
       end <= timestamp
 
     override def toString = s"TimeInterval($start, ${duration.pretty})"
-  }
 
-  object Never extends TimeInterval
-  {
+  object Never extends TimeInterval:
     val start = Timestamp.Epoch
     val end = Timestamp.Epoch
     val duration = Duration.Zero
@@ -65,10 +59,8 @@ object TimeInterval
       true
 
     override def toString = "Never"
-  }
 
-  object Always extends TimeInterval
-  {
+  object Always extends TimeInterval:
     val start = Timestamp.Epoch
     val end = Timestamp.MaxValue
     val duration = end - start
@@ -83,5 +75,3 @@ object TimeInterval
       false
 
     override def toString = "Always"
-  }
-}

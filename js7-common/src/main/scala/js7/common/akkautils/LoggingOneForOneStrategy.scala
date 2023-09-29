@@ -14,37 +14,30 @@ import js7.common.akkautils.LoggingOneForOneStrategy.*
   * @author Joacim Zschimmer
   */
 class LoggingOneForOneStrategy(loggingEnabled: Boolean = true)(decider: Decider)
-extends OneForOneStrategy(maxNrOfRetries = 0, loggingEnabled = loggingEnabled)(decider) {
+extends OneForOneStrategy(maxNrOfRetries = 0, loggingEnabled = loggingEnabled)(decider):
 
   /**
     * Like the original method, but using Throwable's toString instead of getMEssage, and using ScalaLogger.
     */
-  override def logFailure(context: ActorContext, child: ActorRef, throwable: Throwable, decision: Directive): Unit = {
-    def logMessage = throwable match {
-      case e: ActorInitializationException if e.getCause ne null => e.getCause match {
+  override def logFailure(context: ActorContext, child: ActorRef, throwable: Throwable, decision: Directive): Unit =
+    def logMessage = throwable match
+      case e: ActorInitializationException if e.getCause ne null => e.getCause match
         case ex: InvocationTargetException if ex.getCause ne null => ex.getCause.toStringWithCauses
         case ex => ex.toStringWithCauses
-      }
       case e => e.toStringWithCauses
-    }
     val logLevel =
       if !loggingEnabled then
         Debug
       else
-        decision match {
+        decision match
           case Resume   => Warn
           case Escalate => Debug
           case Restart | Stop => Error
           case _ => Error
-        }
     logger.log(logLevel, s"$decision ${child.path.pretty}: $logMessage", throwable)
-  }
-}
 
-object LoggingOneForOneStrategy {
+object LoggingOneForOneStrategy:
   private val logger = Logger[this.type]
 
-  final val defaultStrategy: SupervisorStrategy = {
+  final val defaultStrategy: SupervisorStrategy =
     new LoggingOneForOneStrategy()(defaultDecider)
-  }
-}

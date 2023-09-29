@@ -23,11 +23,10 @@ import js7.tests.special.CirceParallelizationSpeedTest.*
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 
-final class CirceParallelizationSpeedTest extends OurTestSuite
-{
-  if sys.props.contains("test.speed") then {
+final class CirceParallelizationSpeedTest extends OurTestSuite:
+  if sys.props.contains("test.speed") then
     val n = 4 * sys.runtime.availableProcessors * MonixBase.DefaultBatchSize
-    lazy val big = {
+    lazy val big =
       val workflowPosition = WorkflowPath("WORKFLOW") ~ "1" /: (Position(1) / Then % 2 / Then % 3)
       val namedValues = Map("A" -> StringValue("a"), "B" -> ListValue((1 to 10).map(_.toString).map(StringValue(_))))
       val historicOutcome = HistoricOutcome(workflowPosition.position, Outcome.Succeeded(namedValues))
@@ -40,67 +39,51 @@ final class CirceParallelizationSpeedTest extends OurTestSuite
       logger.info(s"Big has ${fakeOrder.asJson.compactPrint.size} JSON bytes or ${fakeOrder.asJson.toPrettyString.count(_ == '\n')} JSON lines")
       logger.debug(fakeOrder.asJson.toPrettyString)
       for i <- 1 to n / 10 yield Big(fakeOrder.copy(id = OrderId(i.toString)))
-    }
     lazy val small = for i <- 1 to n yield Small(i)
     lazy val bigJson = encodeParallelBatch(big)
     lazy val smallJson = encodeParallelBatch(small)
 
-    "encode parallel batch" in {
+    "encode parallel batch" in:
       testEncode(big, "Big")(encodeParallelBatch)
       testEncode(small, "Small")(encodeParallelBatch)
-    }
 
-    "decode parallel batch" in {
+    "decode parallel batch" in:
       testDecode[Big](bigJson, "Big")(decodeParallelBatch[Big])
       testDecode[Small](smallJson, "Small")(decodeParallelBatch[Small])
-    }
 
-    if false then { // too slow
-      "encode parallel" in {
+    if false then // too slow
+      "encode parallel" in:
         testEncode(big, "Big")(encodeParallel)
         testEncode(small, "Small")(encodeParallel)
-      }
 
-      "decode parallel" in {
+      "decode parallel" in:
         testDecode[Big](bigJson, "Big")(decodeParallel[Big])
         testDecode[Small](smallJson, "Small")(decodeParallel[Small])
-      }
-    }
 
-    if true then { // slow
-      "encode sequential" in {
+    if true then // slow
+      "encode sequential" in:
         testEncode(big, "Big")(seq => encodeSerial(seq))
         testEncode(small, "Small")(seq => encodeSerial(seq))
-      }
 
-      "decode sequential" in {
+      "decode sequential" in:
         testDecode[Big](bigJson, "Big")(decodeSerial[Big](_))
         testDecode[Small](smallJson, "Small")(decodeSerial[Small](_))
-      }
-    }
-  }
 
-  private def testEncode[A: Encoder](seq: Seq[A], plural: String)(body: Seq[A] => Seq[ByteArray]): Unit = {
+  private def testEncode[A: Encoder](seq: Seq[A], plural: String)(body: Seq[A] => Seq[ByteArray]): Unit =
     val m = 20
-    for i <- 1 to m do {
+    for i <- 1 to m do
       //System.gc()
-      val timing = measureTimeOfSingleRun(seq.size, plural) {
+      val timing = measureTimeOfSingleRun(seq.size, plural):
         body(seq)
-      }
       if i > m / 2 then logger.info(s"Encode $timing")
-    }
-  }
 
-  private def testDecode[A: Decoder](seq: Seq[ByteArray], plural: String)(body: Seq[ByteArray] => Seq[A]): Unit = {
+  private def testDecode[A: Decoder](seq: Seq[ByteArray], plural: String)(body: Seq[ByteArray] => Seq[A]): Unit =
     val m = 20
-    for i <- 1 to m do {
+    for i <- 1 to m do
       //System.gc()
-      val timing = measureTimeOfSingleRun(seq.size, plural) {
+      val timing = measureTimeOfSingleRun(seq.size, plural):
         body(seq)
-      }
       if i > m / 2 then logger.info(s"Decode $timing")
-    }
-  }
 
   private def encodeParallelBatch[A: Encoder](seq: Seq[A]): Seq[ByteArray] =
     Observable.fromIterable(seq)
@@ -137,19 +120,14 @@ final class CirceParallelizationSpeedTest extends OurTestSuite
 
   private def decode[A: Decoder](bytes: ByteArray): A =
     bytes.parseJsonAs[A].orThrow
-}
 
-private object CirceParallelizationSpeedTest
-{
+private object CirceParallelizationSpeedTest:
   private val logger = Logger[this.type]
 
   case class Small(int: Int, string: String = "STRING", boolean: Boolean = true)
-  object Small {
+  object Small:
     implicit val jsonCodec: Codec.AsObject[Small] = deriveCodec[Small]
-  }
 
   case class Big(fakeOrder: Order[Order.State])
-  object Big {
+  object Big:
     implicit val jsonCodec: Codec.AsObject[Big] = deriveCodec[Big]
-  }
-}

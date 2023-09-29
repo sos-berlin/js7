@@ -21,8 +21,7 @@ import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import monix.execution.Scheduler.Implicits.traced
 
 final class ResetAgentWhenCancelingTest extends OurTestSuite with ControllerAgentForScalaTest
-with BlockingItemUpdater
-{
+with BlockingItemUpdater:
   override protected def controllerConfig =
     config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
@@ -38,7 +37,7 @@ with BlockingItemUpdater
   protected def agentPaths = Seq(agentPath)
   protected def items = Nil
 
-  "ResetAgent while an Order is being canceled and the Agent restarts" in {
+  "ResetAgent while an Order is being canceled and the Agent restarts" in:
     val workflow = updateItem(Workflow(WorkflowPath("WORKFLOW"), Seq(
       TestJob.execute(agentPath),
       TestJob.execute(agentPath))))
@@ -85,14 +84,10 @@ with BlockingItemUpdater
         OrderCancelled))
 
     freshAgent.terminate().await(99.s)
-  }
-}
 
-object ResetAgentWhenCancelingTest
-{
+object ResetAgentWhenCancelingTest:
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)
 
   final class TestJob extends SemaphoreJob(TestJob)
   object TestJob extends SemaphoreJob.Companion[TestJob]
-}

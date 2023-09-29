@@ -32,8 +32,7 @@ abstract class RecouplingStreamReader[
   V,
   Api <: SessionApi.HasUserAndPassword & HasIsIgnorableStackTrace
 ](toIndex: V => I,
-  conf: RecouplingStreamReaderConf)
-{
+  conf: RecouplingStreamReaderConf):
   private val sym = new BlockingSymbol
 
   protected def couple(index: I): Task[Checked[I]] =
@@ -129,11 +128,10 @@ abstract class RecouplingStreamReader[
     Task.defer {
       Task.sleep((sinceLastTry + delay).timeLeftOrZero roundUpToNext PauseGranularity)
     } *>
-      Task {
+      Task:
         sinceLastTry = now  // update asynchronously
-      }
 
-  private final class ForApi(api: Api, initialAfter: I) {
+  private final class ForApi(api: Api, initialAfter: I):
     @volatile private var lastIndex = initialAfter
 
     def observeAgainAndAgain: Observable[V] =
@@ -213,14 +211,13 @@ abstract class RecouplingStreamReader[
       } *>
         getObservable(api, after = after)
           //.timeout(idleTimeout)
-          .onErrorRecoverWith {
+          .onErrorRecoverWith:
             case t: TimeoutException =>
               logger.debug(s"💥 $api: ${t.toString}")
               Task.right(Observable.empty)
 
             case HttpException.HasProblem(problem) =>
               Task.left(problem)
-          }
           .map(_.map(obs =>
             idleTimeout.fold(obs)(idleTimeout => obs
               .timeoutOnSlowUpstream(idleTimeout)  // cancels upstream!
@@ -231,10 +228,9 @@ abstract class RecouplingStreamReader[
               })))
 
     private def coupleIfNeeded(after: I): Task[I] =
-      coupledApiVar.tryRead.flatMap {
+      coupledApiVar.tryRead.flatMap:
         case Some(_) => Task.pure(after)
         case None => tryEndlesslyToCouple(after)
-      }
 
     private def tryEndlesslyToCouple(after: I): Task[I] =
       logger.debugTask(Task.tailRecM(())(_ => Task.defer(
@@ -276,14 +272,11 @@ abstract class RecouplingStreamReader[
                   _ <- onCoupled(api, after)
                 yield Right(updatedIndex)
             })))
-  }
 
   private val pauseBeforeRecoupling =
     Task.defer(pauseBeforeNextTry(recouplingPause.nextPause()))
-}
 
-object RecouplingStreamReader
-{
+object RecouplingStreamReader:
   val TerminatedProblem = Problem.pure("RecouplingStreamReader has been stopped")
 
   private val PauseGranularity = 500.ms
@@ -298,7 +291,7 @@ object RecouplingStreamReader
     eof: I => Boolean = (_: I) => false,
     stopRequested: () => Boolean = () => false)
   : Observable[V]
-  = {
+  =
     val eof_ = eof
     val getObservable_ = getObservable
     val stopRequested_ = stopRequested
@@ -307,12 +300,11 @@ object RecouplingStreamReader
       override def eof(index: I) = eof_(index)
       def stopRequested = stopRequested_()
     }.observe(api, after)
-  }
 
   private def isSevereProblem(problem: Problem) =
     problem.is(EventSeqTornProblem) || problem.is(AckFromActiveClusterNodeProblem)
 
-  private class RecouplingPause {
+  private class RecouplingPause:
     // This class may be used asynchronously but not concurrently
     private val Minimum = 1.s
     @volatile private var pauses = initial
@@ -324,5 +316,3 @@ object RecouplingStreamReader
 
     private def initial = Iterator(Minimum, 1.s, 1.s, 1.s, 2.s, 5.s) ++
       Iterator.continually(10.s)
-  }
-}

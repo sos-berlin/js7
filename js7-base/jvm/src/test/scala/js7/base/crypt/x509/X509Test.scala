@@ -25,9 +25,8 @@ import org.scalatest.Assertions.*
 import scala.concurrent.duration.Deadline.now
 import scala.util.Random
 
-final class X509Test extends OurTestSuite
-{
-  "Sign programmatically and verify" in {
+final class X509Test extends OurTestSuite:
+  "Sign programmatically and verify" in:
     val (signer, verifier) = X509Signer.forTest
     val document = "TEXT EXAMPLE"
     val signature = signer.signString(document)
@@ -37,9 +36,8 @@ final class X509Test extends OurTestSuite
 
     assert(verifier.verify(SignedString(document + "X", signature.toGenericSignature)) ==
       Left(TamperedWithSignedMessageProblem))
-  }
 
-  "Sign with certificate and verify" in {
+  "Sign with certificate and verify" in:
     withTemporaryDirectory("X509Test-") { dir =>
       val privateKeyFile = dir / "SIGNER.key"
       val certificateFile = dir / "SIGNER.crt"
@@ -70,9 +68,8 @@ final class X509Test extends OurTestSuite
       assert(verifier.verifyString(documentFile.contentString, signature) == Right(SignerId("CN=SIGNER") :: Nil))
       assert(verifier.verifyString(documentFile.contentString + "X", signature) == Left(TamperedWithSignedMessageProblem))
     }
-  }
 
-  "Sign with certificate and verify signature and certificate against Root" in {
+  "Sign with certificate and verify signature and certificate against Root" in:
     withTemporaryDirectory("X509Test-") { dir =>
       val openssl = new Openssl(dir)
       val ca = new openssl.Root("Root")
@@ -100,9 +97,8 @@ final class X509Test extends OurTestSuite
       assert(verify(root2.certificateFile, documentFile, toSignatureWithTrustedCertificate(signatureFile, signer.certificateFile)) ==
         Left(TamperedWithSignedMessageProblem))
     }
-  }
 
-  "Verification against root certificate requires the critical CA contraint" in {
+  "Verification against root certificate requires the critical CA contraint" in:
     pending // openssl 1.1.1i always generates certificates with CA, so this test will fail !!!
     withTemporaryDirectory("X509Test-") { dir =>
       val openssl = new Openssl(dir)
@@ -119,10 +115,9 @@ final class X509Test extends OurTestSuite
       val cert = toSignatureWithTrustedCertificate(signatureFile, signer.certificateFile)
       assert(verify(ca.certificateFile, documentFile, cert) == Left(MessageSignedByUnknownProblem))
     }
-  }
 
-  if sys.props.contains("test.speed") then {
-    "Speed test" in {
+  if sys.props.contains("test.speed") then
+    "Speed test" in:
       val n = 10_000
       withTemporaryDirectory("X509Test-") { dir =>
         val openssl = new Openssl(dir)
@@ -150,42 +145,33 @@ final class X509Test extends OurTestSuite
 
         val verifier = X509SignatureVerifier.checked(Seq(ca.certificateFile.byteArray), origin = ca.certificateFile.toString)
           .orThrow
-        for _ <- 1 to 10 do {
+        for _ <- 1 to 10 do
           t = now
           Observable.fromIterable(signedStrings)
             .mapParallelUnorderedBatch()(signedString =>
               assert(verifier.verify(signedString) == Right(Seq(SignerId("CN=SIGNER")))))
             .completedL.await(999.s)
           logger.info(itemsPerSecondString(t.elapsed, n, "verifys"))
-        }
       }
-    }
-  }
-}
 
-object X509Test
-{
+object X509Test:
   private val logger = Logger[this.type]
 
-  def verify(certificateFile: Path, documentFile: Path, signature: X509Signature): Checked[Seq[SignerId]] = {
+  def verify(certificateFile: Path, documentFile: Path, signature: X509Signature): Checked[Seq[SignerId]] =
     lazy val verifier = X509SignatureVerifier.checked(Seq(certificateFile.byteArray), origin = certificateFile.toString).orThrow
     val verified = verifier.verifyString(documentFile.contentString, signature)
-    if verified.isRight then {
+    if verified.isRight then
       assert(verifier.verifyString(documentFile.contentString + "X", signature) == Left(TamperedWithSignedMessageProblem))
-    }
     verified
-  }
 
   private def toSignatureWithSignerId(signatureFile: Path, signerId: SignerId): X509Signature =
     X509Signature(toSignatureBytes(signatureFile), SHA512withRSA, Left(signerId))
 
-  private def toSignatureWithTrustedCertificate(signatureFile: Path, signersCertificateFile: Path): X509Signature = {
+  private def toSignatureWithTrustedCertificate(signatureFile: Path, signersCertificateFile: Path): X509Signature =
     val cert = X509Cert.fromPem(signersCertificateFile.contentString).orThrow
     logger.info(cert.toLongString)
     X509Signature(toSignatureBytes(signatureFile), SHA512withRSA, Right(cert))
-  }
 
   /** Reverse Openssl's base64 encoding. */
   private def toSignatureBytes(signatureFile: Path) =
     ByteArray.fromMimeBase64(signatureFile.contentString).orThrow
-}

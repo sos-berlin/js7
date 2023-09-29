@@ -26,13 +26,10 @@ final case class JobLauncherConf(
   recouplingStreamReaderConf: RecouplingStreamReaderConf,
   iox: IOExecutor,
   blockingJobScheduler: Scheduler,
-  clock: AlarmClock)
-{
+  clock: AlarmClock):
   implicit def implicitIox: IOExecutor = iox
-}
 
-object JobLauncherConf
-{
+object JobLauncherConf:
   val ErrLineLengthMaximum = 4096  // Has to fit into the journal
 
   def checked(
@@ -44,7 +41,7 @@ object JobLauncherConf
     killScript: Option[ProcessKillScript],
     scriptInjectionAllowed: Boolean = false,
     iox: IOExecutor, blockingJobScheduler: Scheduler, clock: AlarmClock, config: Config)
-  : Checked[JobLauncherConf] = {
+  : Checked[JobLauncherConf] =
     val sigtermName = "js7.job.execution.kill-with-sigterm-command"
     val sigkillName = "js7.job.execution.kill-with-sigkill-command"
     val sigkillWindowsName = "js7.job.execution.kill-command-for-windows"
@@ -75,5 +72,3 @@ object JobLauncherConf
         iox,
         blockingJobScheduler = blockingJobScheduler,
         clock))
-  }
-}

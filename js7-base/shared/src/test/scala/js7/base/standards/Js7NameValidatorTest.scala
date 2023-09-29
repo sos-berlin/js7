@@ -6,12 +6,11 @@ import scala.jdk.CollectionConverters.*
 /**
   * @author Joacim Zschimmer
   */
-final class Js7NameValidatorTest extends OurTestSuite
-{
+final class Js7NameValidatorTest extends OurTestSuite:
   private val nameValidator = new Js7NameValidator("TEST")
   private def isValid(name: String) = nameValidator.checked(name).isRight
 
-  "isValid" in {
+  "isValid" in:
     assert(isValid("a"))
     assert(isValid("aaa"))
     assert(isValid("a12"))
@@ -60,20 +59,16 @@ final class Js7NameValidatorTest extends OurTestSuite
     assert(!isValid("a\u007f"))
     assert(!isValid("a\u0080"))
     assert(!isValid("a\u009f"))
-  }
 
-  "Surrogates are allowed" in {
+  "Surrogates are allowed" in:
     val allowed = "🍏🍎🍐🍊🍋🍌🍉🍇🍓🍈🍒🍑🍍🥥🥝🍅🍆🥑🥦🥒🌶🌽🥕🥔🍠🥐🍞🥖🥨🧀🥚🍳🥞🥓🥩🍗🍖🌭🍔🍟" +
                   "🍕🥪🥙🌮🌯🥗🥘🥘🥫🍝🍜🍲🍛🍱🥟🍤🍙🍚🍘🍥🍢🍡🍧🍨🍦🥧🍰🎂🍮🍭🍬🍫🍿🍩🍪🌰🥜🍯🥛🍼" +
                   "🐣🐥🦆🦅🦉🦇🐺🐗🐴🦄🐝🐛🦋🐌🐚🐞🐜🦗🕷🕸🦂🐢🐍🦎🦖🦕🐙🦑🦐🦀🐡🐠🐟🐬🐳🐋🐊🐆🦓🦍" +
                   "🐘🐪🐫🦒🐃🐄🐎🐏🐑🦌🐕🐩🐓🕊🐁🐿🐉🎄🌲" +
                   "🇸🇪"
-    for (cp, i) <- allowed.codePoints.iterator.asScala.zipWithIndex do {
+    for (cp, i) <- allowed.codePoints.iterator.asScala.zipWithIndex do
       val identifier = new String(Character.toChars(cp))
       assert(isValid(identifier), f"#$i U+${cp.toInt}%04x $identifier")
-    }
     assert(isValid(allowed))
     assert(!isValid("☺︎"))
     assert(!isValid("->"))
-  }
-}

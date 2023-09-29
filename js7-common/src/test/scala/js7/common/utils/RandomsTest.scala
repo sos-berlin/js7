@@ -3,19 +3,15 @@ package js7.common.utils
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers.*
 
-final class RandomsTest extends AnyFunSuite {
-  test("randomInt") {
+final class RandomsTest extends AnyFunSuite:
+  test("randomInt"):
     val range = 1 to 10
     for i <- 1 to 1000 do
       range should contain (Randoms.randomInt(range))
-  }
 
-  test("randomInts") {
+  test("randomInts"):
     val range = 1 to 10
-    for i <- 1 to 1000 do {
+    for i <- 1 to 1000 do
       val o = Randoms.randomStartInts(range).toSeq
       o should have size range.size
       o.toSet should have size range.size
-    }
-  }
-}

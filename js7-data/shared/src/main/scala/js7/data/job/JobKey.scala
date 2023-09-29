@@ -11,17 +11,14 @@ import js7.data.workflow.{WorkflowId, WorkflowPath}
 /**
   * @author Joacim Zschimmer
   */
-sealed trait JobKey
-{
+sealed trait JobKey:
   def name: String
 
   def workflowId: WorkflowId
 
   override def toString = s"Job:$name"
-}
 
-object JobKey
-{
+object JobKey:
   def apply(workflowPosition: WorkflowPosition) =
     Anonymous(workflowPosition)
 
@@ -33,20 +30,18 @@ object JobKey
   def forTest(name: String) =
     Named(WorkflowBranchPath(WorkflowPath.NoId, Nil), WorkflowJob.Name(name))
 
-  final case class Anonymous(workflowPosition: WorkflowPosition) extends JobKey {
+  final case class Anonymous(workflowPosition: WorkflowPosition) extends JobKey:
     def name = workflowPosition.toString
 
     def workflowId = workflowPosition.workflowId
-  }
 
   final case class Named(workflowBranchPath: WorkflowBranchPath, jobName: WorkflowJob.Name)
-  extends JobKey {
+  extends JobKey:
     def name = s"$workflowBranchPath:${jobName.string}"
 
     def workflowId = workflowBranchPath.workflowId
-  }
 
-  implicit val jsonEncoder: Encoder.AsObject[JobKey] = {
+  implicit val jsonEncoder: Encoder.AsObject[JobKey] =
     case Anonymous(WorkflowPosition(workflowId, position)) =>
       JsonObject(
         "workflowId" -> workflowId.asJson,
@@ -57,12 +52,11 @@ object JobKey
         "workflowId" -> workflowId.asJson,
         "branchPath" -> branchPath.??.asJson,
         "jobName" -> name.asJson)
-  }
 
   implicit val jsonDecoder: Decoder[JobKey] =
     c => for
       workflowId <- c.get[WorkflowId]("workflowId")
-      jobKey <- {
+      jobKey <-
         val c1 = c.downField("position")
         if c1.succeeded then
           c1.as[Position].map(o => Anonymous(workflowId /: o))
@@ -71,6 +65,4 @@ object JobKey
             branchPath <- c.getOrElse[BranchPath]("branchPath")(Nil)
             name <- c.get[WorkflowJob.Name]("jobName")
           yield Named(WorkflowBranchPath(workflowId, branchPath), name)
-      }
     yield jobKey
-}

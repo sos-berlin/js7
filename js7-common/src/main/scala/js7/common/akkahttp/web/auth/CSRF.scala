@@ -16,8 +16,7 @@ import js7.base.log.Logger
   *
   * @author Joacim Zschimmer
   */
-object CSRF
-{
+object CSRF:
   private val logger = Logger[this.type]
 
   /** For a list of cross-site HTML 5 form POST content types, see https://www.w3.org/TR/html5/forms.html#attr-fs-enctype. */
@@ -28,12 +27,12 @@ object CSRF
   val forbidCSRF: Directive0 =
     mapInnerRoute { inner =>
       extractRequest { request =>
-        if looksLikeHtmlFormPost(request) then {
+        if looksLikeHtmlFormPost(request) then
           logger.warn(
             "⛔ Forbidden: HTTP request looks like a HTML form POST, abusable for CSRF: " +
               s"${request.method} content-type: ${request.entity.contentType}")
           complete(Forbidden)   // be quiet: -> "HTML form POST is forbidden")
-        } else
+        else
           inner
       }
     }
@@ -41,4 +40,3 @@ object CSRF
   private def looksLikeHtmlFormPost(request: HttpRequest): Boolean =
     request.method == POST &&
       RejectedContentTypes.contains(request.entity.contentType.mediaType.value)
-}

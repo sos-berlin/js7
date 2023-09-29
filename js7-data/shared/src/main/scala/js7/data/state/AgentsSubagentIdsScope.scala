@@ -9,10 +9,9 @@ import js7.data.value.expression.{Expression, Scope}
 import js7.data.value.{ListValue, StringValue}
 import scala.collection.View
 
-final class AgentsSubagentIdsScope(state: StateView) extends Scope
-{
+final class AgentsSubagentIdsScope(state: StateView) extends Scope:
   override def evalFunctionCall(functionCall: Expression.FunctionCall)(implicit scope: Scope) =
-    functionCall match {
+    functionCall match
       case FunctionCall("subagentIds", Nil) =>
         Some(subagentIds(state, None))
 
@@ -24,10 +23,9 @@ final class AgentsSubagentIdsScope(state: StateView) extends Scope
 
       case _ =>
         super.evalFunctionCall(functionCall)
-    }
 
-  private def subagentIds(state: StateView, arg: Option[String]): Checked[ListValue] = {
-    state.maybeAgentPath match {
+  private def subagentIds(state: StateView, arg: Option[String]): Checked[ListValue] =
+    state.maybeAgentPath match
       case None =>
         Left(Problem(
           "The subagentIds function is available only for ForkList statement " +
@@ -35,7 +33,7 @@ final class AgentsSubagentIdsScope(state: StateView) extends Scope
 
       case Some(thisAgentPath) =>
         arg
-          .match {
+          .match
             case None =>
               Right(subagentIds(thisAgentPath))
             case Some(arg) =>
@@ -43,11 +41,8 @@ final class AgentsSubagentIdsScope(state: StateView) extends Scope
                 .flatMap(subagentSelectionId =>
                   state.keyToItem(SubagentSelection).checked(subagentSelectionId))
                 .map(_.subagentIds.map(_.string))
-          }
           .map(strings =>
             ListValue(strings.toVector.sorted.map(StringValue(_))))
-    }
-  }
 
   private def subagentIds(agentPath: AgentPath): View[String] =
     state
@@ -56,4 +51,3 @@ final class AgentsSubagentIdsScope(state: StateView) extends Scope
       .map(_.id.string)
 
   override def toString = "AgentsSubagentIdsScope"
-}

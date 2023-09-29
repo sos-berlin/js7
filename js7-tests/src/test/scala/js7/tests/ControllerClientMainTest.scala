@@ -13,8 +13,7 @@ import scala.collection.mutable
 /**
  * @author Joacim Zschimmer
  */
-final class ControllerClientMainTest extends OurTestSuite with ControllerAgentForScalaTest
-{
+final class ControllerClientMainTest extends OurTestSuite with ControllerAgentForScalaTest:
   protected val agentPaths = Nil
   protected val items = Nil
   private def configDirectory = directoryProvider.controllerEnv.configDir
@@ -23,62 +22,52 @@ final class ControllerClientMainTest extends OurTestSuite with ControllerAgentFo
   override protected lazy val controllerHttpPort = None
   override protected lazy val controllerHttpsPort = Some(httpsPort)
 
-  "https://" in {
+  "https://" in:
     assert(controller.localUri.string startsWith "https://")
-  }
 
-  "main with Controller URI only checks whether Controller is responding (it is)" in {
+  "main with Controller URI only checks whether Controller is responding (it is)" in:
     val output = mutable.Buffer[String]()
-    assertResult(ReturnCode(0)) {
+    assertResult(ReturnCode(0)):
       ControllerClientMain.run(
         s"--config-directory=$configDirectory" :: s"--data-directory=$dataDirectory" ::
           s"https://localhost:$httpsPort" :: Nil,
         output += _)
-    }
     assert(output == List("JS7 Controller is responding"))
-  }
 
-  "Multiple api calls" in {
+  "Multiple api calls" in:
     val output = mutable.Buffer[String]()
-    assertResult(ReturnCode(0)) {
+    assertResult(ReturnCode(0)):
       ControllerClientMain.run(
         s"--config-directory=$configDirectory" :: s"--data-directory=$dataDirectory" ::
           s"https://localhost:$httpsPort" ::
           "?" :: "/order" :: Nil,
         output += _)
-    }
     assert(output(0) contains "\"version\":")
     assert(output(1) contains "\"count\": 0")
-  }
 
-  "main with Controller URI only checks whether Controller is responding (it is not)" in {
+  "main with Controller URI only checks whether Controller is responding (it is not)" in:
     val unusedPort = 0
     val output = mutable.Buffer[String]()
-    assertResult(ReturnCode(1)) {
+    assertResult(ReturnCode(1)):
       ControllerClientMain.run(
         s"--config-directory=$configDirectory" :: s"--data-directory=$dataDirectory" ::
           s"https://localhost:$unusedPort" ::
           Nil,
         output += _)
-    }
     assert(output.head contains "JS7 Controller is not responding: ")
     //assert(output.head contains "Connection refused")
-  }
 
-  "ShutDown responds with Accepted" in {
+  "ShutDown responds with Accepted" in:
     // May fail on slow computer if web server terminates before responding !!!
     val output = mutable.Buffer[String]()
     val commandJson = json"""{ "TYPE": "ShutDown" }"""
-    try {
+    try
       ControllerClientMain.run(
         s"--config-directory=$configDirectory" :: s"--data-directory=$dataDirectory" ::
           s"https://localhost:$httpsPort" ::
           commandJson.compactPrint :: Nil,
         output += _)
       assert(output.map(_.parseJsonOrThrow) == List(json"""{ "TYPE": "Accepted" }"""))
-    } catch {
+    catch
       case t: akka.stream.StreamTcpException if t.getMessage contains "Connection reset by peer" =>
-    }
     controller.terminated await 99.s
-  }
-}

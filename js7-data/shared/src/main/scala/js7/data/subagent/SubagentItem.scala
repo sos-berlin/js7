@@ -14,8 +14,7 @@ final case class SubagentItem(
   uri: Uri,
   disabled: Boolean = false,
   itemRevision: Option[ItemRevision] = None)
-extends UnsignedSimpleItem
-{
+extends UnsignedSimpleItem:
   protected type Self = SubagentItem
 
   val companion: SubagentItem.type = SubagentItem
@@ -42,11 +41,9 @@ extends UnsignedSimpleItem
       uri = uri,
       itemRevision = Some(
         itemRevision.fold(ItemRevision(1))(_.next)))
-}
 
 object SubagentItem
-extends UnsignedSimpleItem.Companion[SubagentItem]
-{
+extends UnsignedSimpleItem.Companion[SubagentItem]:
   type Key = SubagentId
   def Key = SubagentId
 
@@ -61,4 +58,3 @@ extends UnsignedSimpleItem.Companion[SubagentItem]
 
   override val subtype: Subtype[SubagentItem] =
     Subtype[SubagentItem](aliases = Seq("SubagentRef"))
-}

@@ -7,8 +7,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import scala.util.matching.Regex
 
-final case class OrderId private(string: String) extends GenericString
-{
+final case class OrderId private(string: String) extends GenericString:
   import OrderId.*
 
   if string.isEmpty then throw new IllegalArgumentException("OrderId must not be empty")
@@ -43,10 +42,9 @@ final case class OrderId private(string: String) extends GenericString
       .toVector
 
   def root: OrderId =
-    string indexOf ChildSeparator match {
+    string indexOf ChildSeparator match
       case -1 => this
       case n => OrderId(string take n)
-    }
 
   def isRoot: Boolean =
     string.indexOf(ChildSeparator) == -1
@@ -59,10 +57,8 @@ final case class OrderId private(string: String) extends GenericString
         ReservedCharacters.mkString(", ")))
     else
       Right(this)
-}
 
-object OrderId extends GenericString.NonEmpty[OrderId]
-{
+object OrderId extends GenericString.NonEmpty[OrderId]:
   val ChildSeparatorChar = '|'
   val ChildSeparator = ChildSeparatorChar.toString
   private val ChildSeparatorRegex = Regex.quote(ChildSeparator)
@@ -75,7 +71,7 @@ object OrderId extends GenericString.NonEmpty[OrderId]
     apply(validOrderId)
 
   final case class ChildId private(string: String) extends GenericString
-  object ChildId extends GenericString.NonEmpty[ChildId] {
+  object ChildId extends GenericString.NonEmpty[ChildId]:
     override val name = "OrderId.Child"
 
     protected def unchecked(string: String) =
@@ -86,5 +82,3 @@ object OrderId extends GenericString.NonEmpty[OrderId]
         Left(Problem.pure(s"Order ChildId must not contain '$ChildSeparator'"))
       else
         super.checked(string)
-  }
-}

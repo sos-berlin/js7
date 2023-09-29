@@ -33,8 +33,7 @@ final class IdToUser[U <: User](
   distinguishedNameToUserIds: DistinguishedName => Set[UserId],
   toUser: (UserId, HashedPassword, Set[Permission], Seq[DistinguishedName]) => U,
   toPermission: PartialFunction[String, Permission])
-extends (UserId => Option[U])
-{
+extends (UserId => Option[U]):
   private lazy val someAnonymous = Some(toUser(UserId.Anonymous, HashedPassword.newEmpty(), Set.empty, Nil))
   private val memoizedToUser = Memoizer.strict1((userId: UserId) =>
     if userId.isAnonymous then
@@ -44,21 +43,18 @@ extends (UserId => Option[U])
 
   def apply(userId: UserId): Option[U] = memoizedToUser(userId)
 
-  def distinguishedNameToIdsOrUser(distinguishedName: DistinguishedName): Checked[Either[Set[UserId], U]] = {
+  def distinguishedNameToIdsOrUser(distinguishedName: DistinguishedName): Checked[Either[Set[UserId], U]] =
     val userIds = distinguishedNameToUserIds(distinguishedName)
     def unknownDN = Problem(s"Unknown distinguished name '$distinguishedName'")
     if userIds.isEmpty then
       Left(unknownDN)
     else if userIds.sizeIs == 1 then
-      apply(userIds.head) match {
+      apply(userIds.head) match
         case None => Left(unknownDN)  // should not happen
         case Some(user) => Right(Right(user))   // the authenticated user
-      }
-    else {
+    else
       assert(userIds.sizeIs > 1)
       Right(Left(userIds))  // Only one of these UserIds is allowed to authenticate
-    }
-  }
 
   private def rawToUser(raw: RawUserAccount): Option[U] =
     (raw.encodedPassword match {
@@ -69,10 +65,8 @@ extends (UserId => Option[U])
         hashedPassword,
         raw.permissions.flatMap(toPermission.lift),
         raw.distinguishedNames))
-}
 
-object IdToUser
-{
+object IdToUser:
   private val logger = Logger[this.type]
   private val UsersConfigPath = "js7.auth.users"
   private val PasswordRegex = "([^:]+):(.*)".r
@@ -81,21 +75,20 @@ object IdToUser
     config: Config,
     toUser: (UserId, HashedPassword, Set[Permission], Seq[DistinguishedName]) => U,
     toPermission: PartialFunction[String, Permission] = PartialFunction.empty)
-  : IdToUser[U] = {
+  : IdToUser[U] =
     val cfg = config.getConfig(UsersConfigPath)
     val cfgObject = config.getValue(UsersConfigPath).asInstanceOf[ConfigObject]
 
     def userIdToRaw(userId: UserId): Option[RawUserAccount] =
       if cfg.hasPath(userId.string) then
         existentUserIdToRaw(userId)
-      else {
+      else
         logger.debug(
           s"""Configuration files ("private.conf") does not have an entry '$UsersConfigPath.${userId.string}'""")
         None
-      }
 
     def existentUserIdToRaw(userId: UserId): Option[RawUserAccount] =
-      Try(cfg.getConfig(userId.string)) match {
+      Try(cfg.getConfig(userId.string)) match
         case Failure(_: com.typesafe.config.ConfigException.WrongType) =>  // Entry is not a configuration object {...} but a string (the password)
           cfg.optionAs[SecretString](userId.string).map(o =>
             RawUserAccount(userId, encodedPassword = Some(o)))
@@ -109,7 +102,6 @@ object IdToUser
           val distinguishedNames = c.seqAs[DistinguishedName]("distinguished-names", Nil)
           Some(RawUserAccount(userId, encodedPassword = encodedPassword, permissions = permissions,
             distinguishedNames))
-      }
 
     val distinguishedNameToUserIds: Map[DistinguishedName, Set[UserId]] =
       cfgObject.asScala.view
@@ -146,13 +138,12 @@ object IdToUser
 
     new IdToUser(userIdToRaw, dn => distinguishedNameToUserIds.getOrElse(dn, Set.empty),
       toUser, toPermission)
-  }
 
   private val identityHasher: String => String =
     ((o: String) => identity(o)).withToString("identity")
 
   private def toHashedPassword(userId: UserId, encodedPassword: SecretString) =
-    encodedPassword.string match {
+    encodedPassword.string match
       case PasswordRegex("plain", pw) =>
         Some(HashedPassword(SecretString(pw), identityHasher))
 
@@ -169,11 +160,9 @@ object IdToUser
       case _ =>
         logger.error(s"Missing password encoding scheme for User '$userId'. Try to prefix the configured password with 'plain:' or 'sha512:'")
         None
-    }
 
   private[auth] final case class RawUserAccount(
     userId: UserId,
     encodedPassword: Option[SecretString],
     permissions: Set[String] = Set.empty,
     distinguishedNames: Seq[DistinguishedName] = Nil)
-}

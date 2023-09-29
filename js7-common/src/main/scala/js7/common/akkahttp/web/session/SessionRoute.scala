@@ -22,35 +22,31 @@ import monix.execution.Scheduler
 /**
   * @author Joacim Zschimmer
   */
-trait SessionRoute extends RouteProvider
-{
+trait SessionRoute extends RouteProvider:
   private implicit def implictScheduler: Scheduler = scheduler
   protected[session] val specificLoginRequiredProblem: Problem = InvalidLoginProblem
   protected[session] lazy val preAuthenticate: Directive1[Either[Set[UserId], SimpleUser]] =
     gateKeeper.preAuthenticate
 
   protected final lazy val sessionRoute =
-    pathEnd {
-      post {
+    pathEnd:
+      post:
         sessionTokenOption { tokenOption =>
           preAuthenticate { idsOrUser =>
             entity(as[SessionCommand]) { command =>
-              onSuccess(execute(command, idsOrUser, tokenOption).runToFuture) {
+              onSuccess(execute(command, idsOrUser, tokenOption).runToFuture):
                 case Left(problem @ (InvalidLoginProblem | AnonymousLoginProblem)) =>
                   completeUnauthenticatedLogin(unauthorized, problem)
 
                 case checked =>
                   complete(checked)
-              }
             }
           }
         }
-      }
-    }
 
   private def execute(command: SessionCommand, idsOrUser: Either[Set[UserId], SimpleUser], sessionTokenOption: Option[SessionToken])
   : Task[Checked[SessionCommand.Response]] =
-    command match {
+    command match
       case Login(userAndPasswordOption, version) =>
         Task(authenticateOrUseHttpUser(idsOrUser, userAndPasswordOption))
           .flatMapT(user =>
@@ -60,20 +56,18 @@ trait SessionRoute extends RouteProvider
       case Logout(sessionToken) =>
         sessionRegister.logout(sessionToken)
           .map((_: Completed) => Right(SessionCommand.Response.Accepted))
-    }
 
   private def authenticateOrUseHttpUser(
     idsOrUser: Either[Set[UserId], SimpleUser],
     userAndPasswordOption: Option[UserAndPassword])
-  : Either[Problem, SimpleUser] = {
-    userAndPasswordOption match {
+  : Either[Problem, SimpleUser] =
+    userAndPasswordOption match
       case None =>
-        idsOrUser match {
+        idsOrUser match
           case Left(_) =>
             Left(specificLoginRequiredProblem)
 
           case Right(u) => Right(u)
-        }
 
       case Some(userAndPassword) =>
         val result = if userAndPassword.userId.isAnonymous then
@@ -100,12 +94,7 @@ trait SessionRoute extends RouteProvider
               })
 
         result
-    }
-  }
-}
 
-object SessionRoute
-{
+object SessionRoute:
   private val logger = Logger[this.type]
   private object AnonymousLoginProblem extends Problem.Eager("Login: user and password required")
-}

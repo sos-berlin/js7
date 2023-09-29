@@ -11,8 +11,7 @@ private[x509] final case class X509Signature(
   byteArray: ByteArray,
   algorithm: X509Algorithm,
   signerIdOrCertificate: Either[SignerId, X509Cert])
-extends Signature
-{
+extends Signature:
   def toGenericSignature =
     GenericSignature(
       TypeName,
@@ -27,24 +26,19 @@ extends Signature
       toGenericSignature.toRawString + ", " +
       signerIdOrCertificate.fold(_.string, o => ByteArray(o.x509Certificate.getEncoded)) +
       ")"
-}
 
-object X509Signature
-{
+object X509Signature:
   val TypeName = "X509"
 
   def fromGenericSignature(signature: GenericSignature): Checked[X509Signature] =
     for
       signatureBytes <- ByteArray.fromMimeBase64(signature.signatureString)
-      algorithm <- signature.algorithm match {
+      algorithm <- signature.algorithm match
         case None => Left(Problem.pure("Missing X.509 signature algorithm"))
         case Some(o) => Right(X509Algorithm(o))
-      }
       signerIdOrCertificate <-
-        (signature.signerId, signature.signerCertificate) match {
+        (signature.signerId, signature.signerCertificate) match
           case (Some(signerId), None) => Right(Left(signerId))
           case (None, Some(cert)) => X509Cert.fromPem(cert) map Right.apply
           case _ => Left(Problem.pure("X.509 signature requires either a signerId or a signerCertificate"))
-        }
     yield new X509Signature(signatureBytes, algorithm, signerIdOrCertificate)
-}

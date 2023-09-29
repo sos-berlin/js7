@@ -11,12 +11,11 @@ import monix.eval.Task
 
 private[scopes] final class FileValueScope private(
   private[scopes] val fileValueState: FileValueState)
-extends Scope with AutoCloseable
-{
+extends Scope with AutoCloseable:
   fileValueState.startScope(this)
 
   override def evalFunctionCall(functionCall: Expression.FunctionCall)(implicit scope: Scope) =
-    functionCall match {
+    functionCall match
       case FunctionCall(`functionName`, arguments) =>
         Some(arguments match {
           case Seq(
@@ -34,7 +33,6 @@ extends Scope with AutoCloseable
 
       case _ =>
         super.evalFunctionCall(functionCall)
-    }
 
   private def toFile(contentExpr: Expression, filenameExpr: Option[Expression])
     (implicit scope: Scope)
@@ -47,23 +45,19 @@ extends Scope with AutoCloseable
 
   private def toFilenamePattern(filenameExpr: Option[Expression])(implicit scope: Scope)
   : Checked[String] =
-    filenameExpr match {
+    filenameExpr match
       case None =>
         Right("*")
 
       case Some(filenameExpr) =>
         filenameExpr.evalAsString
-  }
 
   def close() =
     fileValueState.releaseScope(this)
-}
 
-object FileValueScope
-{
+object FileValueScope:
   val functionName = "toFile"
 
   def resource(fileValueState: FileValueState): Resource[Task, FileValueScope] =
     Resource.fromAutoCloseable(Task(
       new FileValueScope(fileValueState)))
-}

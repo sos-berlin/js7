@@ -17,8 +17,7 @@ final case class ClusterSetting(
   idToUri: Map[NodeId, Uri],
   activeId: NodeId,
   timing: ClusterTiming,
-  clusterWatchId: Option[ClusterWatchId] = None)
-{
+  clusterWatchId: Option[ClusterWatchId] = None):
   checkedUnit(idToUri, activeId).orThrow
 
   def activeUri: Uri =
@@ -42,15 +41,12 @@ final case class ClusterSetting(
     copy(idToUri = idToUri + (passiveId -> uri))
 
   @TestOnly
-  def other(nodeId: NodeId): NodeId = {
+  def other(nodeId: NodeId): NodeId =
     if nodeId == activeId then passiveId
     else if nodeId == passiveId then activeId
     else throw new IllegalArgumentException(s"Unknown $nodeId")
-  }
-}
 
-object ClusterSetting
-{
+object ClusterSetting:
   def checked(
     idToUri: Map[NodeId, Uri],
     activeId: NodeId,
@@ -76,14 +72,10 @@ object ClusterSetting
     else
       Right(idToUri)
 
-  object syntax {
-    implicit final class RichIdToUri(private val idToUri: Map[NodeId, Uri]) extends AnyVal {
-      def peerOf(id: NodeId): NodeId = {
+  object syntax:
+    implicit final class RichIdToUri(private val idToUri: Map[NodeId, Uri]) extends AnyVal:
+      def peerOf(id: NodeId): NodeId =
         assertThat(idToUri.keySet contains id)
         idToUri.keys.filter(_ != id).head
-      }
-    }
-  }
 
   implicit val jsonCodec: Codec.AsObject[ClusterSetting] = deriveCodec
-}

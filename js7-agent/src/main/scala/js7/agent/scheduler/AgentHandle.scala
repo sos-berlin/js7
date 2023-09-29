@@ -10,7 +10,7 @@ import scala.concurrent.Promise
 /**
   * @author Joacim Zschimmer
   */
-final class AgentHandle(actor: ActorRef) {
+final class AgentHandle(actor: ActorRef):
 
   def executeCommand(
     command: AgentCommand,
@@ -19,4 +19,3 @@ final class AgentHandle(actor: ActorRef) {
     (implicit sender: ActorRef = ActorRef.noSender)
   : Unit =
     actor ! AgentActor.Input.ExternalCommand(userId, command, CorrelId.current, response)
-}

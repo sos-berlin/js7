@@ -11,13 +11,12 @@ import js7.data.controller.ControllerCommand.ShutDown
 import js7.data.controller.ControllerCommand.ShutDown.ClusterAction
 import monix.execution.Scheduler.Implicits.traced
 
-final class ShutdownFailoverButRestartControllerClusterTest extends ControllerClusterTester
-{
+final class ShutdownFailoverButRestartControllerClusterTest extends ControllerClusterTester:
   protected override val clusterTiming = ClusterTiming(heartbeat = 500.ms, heartbeatTimeout = 5.s)
 
   override protected def removeObsoleteJournalFiles = false
 
-  "ShutDown active node with failover requested (for testing), then immediate restart of the shut down node" in {
+  "ShutDown active node with failover requested (for testing), then immediate restart of the shut down node" in:
     withControllerAndBackup() { (primary, _, backup, _, clusterSetting) =>
       backup.runController(dontWaitUntilReady = true) { backupController =>
         var eventId = 0L
@@ -46,5 +45,3 @@ final class ShutdownFailoverButRestartControllerClusterTest extends ControllerCl
         }
       }
     }
-  }
-}

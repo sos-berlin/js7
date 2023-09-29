@@ -19,9 +19,8 @@ import monix.reactive.subjects.PublishSubject
 import scala.concurrent.Promise
 import scala.math.Ordering.Int
 
-final class DirectoryWatchTest extends OurTestSuite
-{
-  "readDirectory, readDirectoryAsEvents" in {
+final class DirectoryWatchTest extends OurTestSuite:
+  "readDirectory, readDirectoryAsEvents" in:
     withTemporaryDirectory("DirectoryWatchTest-") { dir =>
       touchFile(dir / "TEST-1")
       touchFile(dir / "IGNORED")
@@ -37,16 +36,14 @@ final class DirectoryWatchTest extends OurTestSuite
       assert(state.diffTo(DirectoryStateJvm.readDirectory(dir, _.toString startsWith "TEST-")).toSet ==
         Set(FileAdded(Paths.get("TEST-A"))))
     }
-  }
 
-  "readDirectoryAndObserve" in {
+  "readDirectoryAndObserve" in:
     val directoryEvents = PublishSubject[Seq[DirectoryEvent]]()
     @volatile var files = Seq("0")
 
-    def addFile(name: String) = {
+    def addFile(name: String) =
       files :+= name
       directoryEvents.onNext(Seq(FileAdded(Paths.get(name)))) await 99.s
-    }
 
     def toDirectoryState(names: String*) =
       DirectoryState.fromIterable(names.map(Paths.get(_)).map(Entry(_)))
@@ -72,9 +69,8 @@ final class DirectoryWatchTest extends OurTestSuite
     addFile("TEST-2")
     assert(observe(state, 1) == Seq(
       Seq(FileAdded(Paths.get("TEST-2"))) -> toDirectoryState("0", "TEST-1", "TEST-2")))
-  }
 
-  "observe" in {
+  "observe" in:
     withTemporaryDirectory("DirectoryWatchTest-") { dir =>
       var buffer = Vector.empty[Set[DirectoryEvent]]
       val subscribed = Promise[Unit]()
@@ -92,9 +88,8 @@ final class DirectoryWatchTest extends OurTestSuite
       stop.onComplete()
       whenObserved.await(99.s)
     }
-  }
 
-  "Observing a deleted and recreated directory" in {
+  "Observing a deleted and recreated directory" in:
     withTemporaryDirectory("DirectoryWatchTest-") { mainDir =>
       val dir = mainDir / "DIRECTORY"
       var buffer = Vector.empty[DirectoryEvent]
@@ -123,9 +118,8 @@ final class DirectoryWatchTest extends OurTestSuite
       stop.onComplete()
       whenObserved.await(99.s)
     }
-  }
 
-  "Starting observation under load" in {
+  "Starting observation under load" in:
     withTemporaryDirectory("DirectoryWatchTest-") { dir =>
       var buffer = Vector.empty[Seq[DirectoryEvent]]
       val whenObserved = DirectoryWatch
@@ -133,7 +127,7 @@ final class DirectoryWatchTest extends OurTestSuite
         .foreach(buffer :+= _)
       var first = 0
 
-      for n <- Seq(1000, 1, 10, 500, 3, 50) do {
+      for n <- Seq(1000, 1, 10, 500, 3, 50) do
         buffer = Vector.empty
         val indices = first + 0 until first + n
         val fileCreationFuture = Observable.fromIterable(indices).executeAsync.foreach { i =>
@@ -146,13 +140,9 @@ final class DirectoryWatchTest extends OurTestSuite
           indices.map(i => FileAdded(Paths.get(i.toString))))
         sleep(100.ms)
         first += n
-      }
 
       whenObserved.cancel()
     }
-  }
 
-  "Starting observation under load with some deletions" in {
+  "Starting observation under load with some deletions" in:
     pending
-  }
-}

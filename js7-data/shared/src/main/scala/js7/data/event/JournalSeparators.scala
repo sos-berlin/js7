@@ -11,8 +11,7 @@ import js7.data.event.KeyedEvent.NoKey
 /**
   * @author Joacim Zschimmer
   */
-object JournalSeparators
-{
+object JournalSeparators:
   val SnapshotHeaderLine = ByteArray("\"-------SNAPSHOT-------\"\n")
   val SnapshotFooterLine = ByteArray("\"-------END OF SNAPSHOT-------\"\n")
   val EventHeaderLine    = ByteArray("\"-------EVENTS-------\"\n")
@@ -32,4 +31,3 @@ object JournalSeparators
   // Serialization must equal HeartbeatMarker
   assert(HeartbeatMarker.parseJsonAs[Stamped[KeyedEvent[JournalEvent]]] == Right(StampedHeartbeat))
   assert(StampedHeartbeat.asJson.toByteArray ++ ByteArray("\n") == HeartbeatMarker)
-}

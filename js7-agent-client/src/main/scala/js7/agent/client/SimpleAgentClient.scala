@@ -21,8 +21,7 @@ final class SimpleAgentClient(
   val baseUri: Uri,
   protected val userAndPassword: Option[UserAndPassword],
   protected val httpsConfig: HttpsConfig = HttpsConfig.empty)
-extends HasCloser with AgentClient
-{
+extends HasCloser with AgentClient:
   protected val name = "SimpleAgentClient"
   protected val actorSystem =
     newActorSystem("SimpleAgentClient", config"akka.log-dead-letters = 0")
@@ -30,12 +29,10 @@ extends HasCloser with AgentClient
 
   onClose { super[AgentClient].close() }
 
-  override def close() = {
+  override def close() =
     logOpenSession()
     super[HasCloser].close()
-  }
 
   protected val prefixedUri = baseUri / "agent"
 
   override def toString = s"SimpleAgentClient($prefixedUri)"
-}

@@ -5,13 +5,10 @@ import js7.data.item.{InventoryItemPath, SourceType, VersionedItemPath}
 
 final case class WorkflowPath private(string: String)
 extends VersionedItemPath
-with InventoryItemPath.AttachableToAgent
-{
+with InventoryItemPath.AttachableToAgent:
   def companion = WorkflowPath
-}
 
-object WorkflowPath extends VersionedItemPath.Companion[WorkflowPath]
-{
+object WorkflowPath extends VersionedItemPath.Companion[WorkflowPath]:
   override val sourceTypeToFilenameExtension = Map(
     SourceType.Json -> ".workflow.json",
     SourceType.Txt -> ".workflow.txt")
@@ -21,4 +18,3 @@ object WorkflowPath extends VersionedItemPath.Companion[WorkflowPath]
   @javaApi @throws[RuntimeException]("on invalid syntax")
   def of(validWorkflowPath: String): WorkflowPath =
     apply(validWorkflowPath)
-}

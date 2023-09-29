@@ -16,11 +16,10 @@ import monix.catnap.MVar
 import monix.eval.Task
 import monix.execution.Scheduler
 
-final class HasUserAndPasswordTest extends OurTestSuite with SessionRouteTester
-{
+final class HasUserAndPasswordTest extends OurTestSuite with SessionRouteTester:
   protected implicit def scheduler = Scheduler.traced
 
-  "HasUserAndPassword retryUntilReachable repeats body after server loss" in {
+  "HasUserAndPassword retryUntilReachable repeats body after server loss" in:
     val progress = MVar[Task].empty[String]().memoize
     @volatile var loopCounter = 0
 
@@ -66,5 +65,3 @@ final class HasUserAndPasswordTest extends OurTestSuite with SessionRouteTester
     val apiFuture = Task.parMap2(apiTask, serverTask)((a, s) => (a, s)).runToFuture
 
     assert(apiFuture.await(99.s) == ("FINISHED", "FINISHED"))
-  }
-}

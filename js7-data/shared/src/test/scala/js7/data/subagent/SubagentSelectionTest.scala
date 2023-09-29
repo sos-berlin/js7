@@ -6,9 +6,8 @@ import js7.data.controller.ControllerState.inventoryItemJsonCodec
 import js7.data.item.InventoryItem
 import js7.tester.CirceJsonTester.testJson
 
-final class SubagentSelectionTest extends OurTestSuite
-{
-  "JSON" in {
+final class SubagentSelectionTest extends OurTestSuite:
+  "JSON" in:
     testJson[InventoryItem](
       SubagentSelection(
         SubagentSelectionId("SELECTION"),
@@ -23,5 +22,3 @@ final class SubagentSelectionTest extends OurTestSuite
           "B-SUBAGENT": 2
         }
       }""")
-  }
-}

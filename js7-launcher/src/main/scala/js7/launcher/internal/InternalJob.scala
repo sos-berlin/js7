@@ -24,8 +24,7 @@ import scala.collection.immutable.ListMap
 import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
 
-trait InternalJob
-{
+trait InternalJob:
   protected type Step = InternalJob.Step
 
   def start: Task[Checked[Unit]] =
@@ -35,10 +34,8 @@ trait InternalJob
     Task.unit
 
   def toOrderProcess(step: Step): OrderProcess
-}
 
-object InternalJob
-{
+object InternalJob:
   final case class JobContext(
     implementationClass: Class[?],
     executable: InternalExecutable,
@@ -48,12 +45,10 @@ object InternalJob
     ioExecutor: IOExecutor,
     blockingJobScheduler: Scheduler,
     clock: AlarmClock,
-    systemEncoding: Charset)
-  {
+    systemEncoding: Charset):
     implicit def implicitJs7Scheduler: Scheduler = js7Scheduler
-  }
 
-  final case class Step private[internal](processOrder: ProcessOrder, arguments: NamedValues) {
+  final case class Step private[internal](processOrder: ProcessOrder, arguments: NamedValues):
     self =>
 
     lazy val jobResourceToVariables: ListMap[JobResourcePath, MapView[String, Checked[Value]]] =
@@ -75,26 +70,22 @@ object InternalJob
       outErrTaskObserver(outErr).send(string)
 
     def outErrObserver(stdoutOrStderr: StdoutOrStderr): Observer[String] =
-      stdoutOrStderr match {
+      stdoutOrStderr match
         case Stdout => outObserver
         case Stderr => errObserver
-      }
 
     private def outErrTaskObserver(outErr: StdoutOrStderr): TaskObserver[String] =
-      outErr match {
+      outErr match
         case Stdout => outTaskObserver
         case Stderr => errTaskObserver
-      }
 
     def jobResourceVariable(jobResourcePath: JobResourcePath, variableName: String): Checked[Value] =
       jobResourceToVariables
         .rightOr(jobResourcePath, UnknownKeyProblem("JobResource", jobResourcePath.string))
         .flatMap(_.rightOr(variableName, UnknownKeyProblem("JobResource variable", variableName)))
         .flatten
-  }
 
-  abstract class Companion[I <: InternalJob](implicit classTag: ClassTag[I])
-  {
+  abstract class Companion[I <: InternalJob](implicit classTag: ClassTag[I]):
     final def executable(
       script: String = "",
       jobArguments: Map[String, Expression] = Map.empty,
@@ -135,5 +126,3 @@ object InternalJob
         parallelism = parallelism,
         timeout = timeout,
         jobResourcePaths = jobResourcePaths)
-  }
-}

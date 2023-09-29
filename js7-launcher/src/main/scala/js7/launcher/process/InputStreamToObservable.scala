@@ -13,8 +13,7 @@ import monix.reactive.{Observable, Observer}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
 
-object InputStreamToObservable
-{
+object InputStreamToObservable:
   private val logger = Logger[this.type]
 
   def copyInputStreamToObservable(
@@ -45,12 +44,11 @@ object InputStreamToObservable
     Task.create[Unit] { (scheduler, callback) =>
       try
         readerToObservable(reader, charBufferSize)
-          .guaranteeCase {
+          .guaranteeCase:
             case ExitCase.Canceled =>
               logger.debug("Canceled")
               Task(callback(Success(())))
             case _ => Task.unit
-          }
           .subscribe(
             new Observer[String] {
               def onNext(o: String) =
@@ -82,4 +80,3 @@ object InputStreamToObservable
           .executeOn(iox.scheduler)
       }))
       .flatten
-}

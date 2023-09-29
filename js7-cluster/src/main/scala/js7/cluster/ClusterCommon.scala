@@ -30,8 +30,7 @@ private[cluster] final class ClusterCommon private(
   clusterConf: ClusterConf,
   licenseChecker: LicenseChecker,
   val testEventBus: EventPublisher[Any])(
-  implicit val journalActorAskTimeout: Timeout)
-{
+  implicit val journalActorAskTimeout: Timeout):
   import clusterConf.ownId
 
   val activationInhibitor = new ActivationInhibitor
@@ -39,22 +38,20 @@ private[cluster] final class ClusterCommon private(
   val couplingTokenProvider = OneTimeTokenProvider.unsafe()
 
   def stop: Task[Unit] =
-    Task.defer {
+    Task.defer:
       _clusterWatchSynchronizer.toOption.fold(Task.unit)(_.stop)
-    }
 
   def requireValidLicense: Task[Checked[Unit]] =
     Task(licenseChecker.checkLicense(ClusterProductName))
 
   def clusterWatchSynchronizer(clusterState: ClusterState.HasNodes): Task[ClusterWatchSynchronizer] =
-    Task {
+    Task:
       _clusterWatchSynchronizer
         .toOption
         .getOrElse(initialClusterWatchSynchronizer(clusterState))
-    }
 
   def initialClusterWatchSynchronizer(clusterState: ClusterState.HasNodes): ClusterWatchSynchronizer =
-    _clusterWatchSynchronizer.toOption match {
+    _clusterWatchSynchronizer.toOption match
       case Some(o) =>
         // Only after ClusterFailedOver or ClusterSwitchedOver,
         // because PassiveClusterNode has already started the ClusterWatchSynchronizer
@@ -69,18 +66,16 @@ private[cluster] final class ClusterCommon private(
           setting.timing)
         _clusterWatchSynchronizer := result
         result
-    }
 
-  def tryEndlesslyToSendCommand(admission: Admission, command: ClusterCommand): Task[Unit] = {
+  def tryEndlesslyToSendCommand(admission: Admission, command: ClusterCommand): Task[Unit] =
     val name = command.getClass.simpleScalaName
     tryEndlesslyToSendCommand(clusterNodeApi(admission, name), _ => command)
-  }
 
   def tryEndlesslyToSendCommand[C <: ClusterCommand: ClassTag](
     apiResource: Resource[Task, ClusterNodeApi],
     toCommand: OneTimeToken => C)
   : Task[Unit] =
-    Task.defer {
+    Task.defer:
       val name = implicitClass[C].simpleScalaName
       var warned = false
       val since = now
@@ -106,7 +101,6 @@ private[cluster] final class ClusterCommon private(
               if warned then logger.info(s"⚫️ $name Canceled after ${since.elapsed.pretty}"))
             case _ => Task.unit
           })
-  }
 
   def inhibitActivationOfPeer(clusterState: HasNodes, peersUserAndPassword: Option[UserAndPassword])
   : Task[Option[FailedOver]] =
@@ -165,10 +159,8 @@ private[cluster] final class ClusterCommon private(
             case ClusterState.Empty => Task.left(Problem.pure(
               "ClusterState.Empty in ifClusterWatchAllowsActivation ??"))
           }))
-}
 
-private[js7] object ClusterCommon
-{
+private[js7] object ClusterCommon:
   private val logger = Logger[this.type]
 
   def resource(
@@ -190,4 +182,3 @@ private[js7] object ClusterCommon
 
   case object ClusterWatchAgreedToActivation
   case object ClusterWatchDisagreedToActivation
-}

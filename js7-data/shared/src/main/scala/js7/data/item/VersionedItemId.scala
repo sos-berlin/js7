@@ -11,17 +11,15 @@ import scala.language.implicitConversions
   * @author Joacim Zschimmer
   */
 final case class VersionedItemId[P <: VersionedItemPath](path: P, versionId: VersionId)
-extends SignableItemKey
-{
+extends SignableItemKey:
   def companion: InventoryItemKey.Companion[VersionedItemId[P]] =
     path.companion.VersionedItemIdCompanion
       .asInstanceOf[InventoryItemKey.Companion[VersionedItemId[P]]]
 
-  def requireNonAnonymous(): this.type = {
+  def requireNonAnonymous(): this.type =
     path.requireNonAnonymous()
     versionId.requireNonAnonymous()
     this
-  }
 
   def toTypedString: String =
     path.toTypedString + VersionSeparator + versionId.string
@@ -48,10 +46,8 @@ extends SignableItemKey
       path.string
     else
       s"${path.toTypedString}$VersionSeparator${versionId.string}"
-}
 
-object VersionedItemId
-{
+object VersionedItemId:
   val VersionSeparator = "~"  // Can be used in an Akka actor name
 
   // TODO Use this implicit convertion only for tests
@@ -59,10 +55,9 @@ object VersionedItemId
     VersionedItemId(path, VersionId.Anonymous)
 
   implicit def ordering[P <: VersionedItemPath]: Ordering[VersionedItemId[P]] =
-    (a, b) => a.path.string.compareTo(b.path.string) match {
+    (a, b) => a.path.string.compareTo(b.path.string) match
       case 0 => -VersionId.ordering.compare(a.versionId, b.versionId)
       case o => o
-    }
 
   implicit def jsonEncoder[P <: VersionedItemPath: Encoder]: Encoder.AsObject[VersionedItemId[P]] =
     o => JsonObject(
@@ -76,17 +71,15 @@ object VersionedItemId
         version <- cursor.getOrElse[VersionId]("versionId")(VersionId.Anonymous)
       yield VersionedItemId(path, version)
 
-  trait Companion[P <: VersionedItemPath] extends SignableItemKey.Companion[VersionedItemId[P]]
-  {
+  trait Companion[P <: VersionedItemPath] extends SignableItemKey.Companion[VersionedItemId[P]]:
     implicit val pathCompanion: VersionedItemPath.Companion[P]
     private lazy val P = pathCompanion
 
     def apply(path: P, versionId: VersionId): VersionedItemId[P]
 
-    object as {
+    object as:
       def unapply(id: VersionedItemId_): Option[VersionedItemId[P]] =
         (id.path.companion eq pathCompanion) ? id.asInstanceOf[VersionedItemId[P]]
-    }
 
     final lazy val itemTypeName = P.itemTypeName
 
@@ -94,25 +87,20 @@ object VersionedItemId
       this
 
     final def checked(string: String): Checked[VersionedItemId[P]] =
-      string indexOf VersionSeparator match {
+      string indexOf VersionSeparator match
         case -1 => Problem(s"${P.name} without version (denoted by '$VersionSeparator')?: $string")
         case i => Right(apply(P(string take i), VersionId(string drop i + 1)))
-      }
 
-    implicit final lazy val jsonEncoder: Encoder.AsObject[VersionedItemId[P]] = {
+    implicit final lazy val jsonEncoder: Encoder.AsObject[VersionedItemId[P]] =
       implicit val x: Encoder[P] = P.jsonEncoder
       o => JsonObject(
         "path" -> (!o.path.isAnonymous ? o.path).asJson,
         "versionId" -> (!o.versionId.isAnonymous ? o.versionId).asJson)
-    }
 
-    implicit final lazy val jsonDecoder: Decoder[VersionedItemId[P]] = {
+    implicit final lazy val jsonDecoder: Decoder[VersionedItemId[P]] =
       implicit val x: Decoder[P] = P.jsonDecoder
       cursor =>
         for
           path <- cursor.getOrElse[P]("path")(implicitly[VersionedItemPath.Companion[P]].Anonymous)
           version <- cursor.getOrElse[VersionId]("versionId")(VersionId.Anonymous)
         yield path ~ version
-    }
-  }
-}

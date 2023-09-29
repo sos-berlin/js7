@@ -5,8 +5,7 @@ import akka.http.scaladsl.model.{ContentTypes, HttpEntity}
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
 
-object AkkaHttpUtils
-{
+object AkkaHttpUtils:
   /** Try to avoid lazy object initialization deadlock in `HttpEntity`.
     *
     * On deadlock the stack looks like this:
@@ -17,11 +16,9 @@ object AkkaHttpUtils
     * akka.http.scaladsl.model.HttpEntity$Chunked$$anonfun$fromData$1.applyOrElse(HttpEntity.scala:561)
     * </pre>
     */
-  def avoidLazyObjectInitializationDeadlock(): Unit = {
+  def avoidLazyObjectInitializationDeadlock(): Unit =
     HttpEntity.Chunk("X")
     HttpEntity.Chunked(ContentTypes.`application/json`, Source.single(ChunkStreamPart("X")))
     HttpEntity.Chunked.fromData(ContentTypes.`application/json`, Source.single(ByteString("X")))
     HttpEntity.ChunkStreamPart("X")
     HttpEntity.LastChunk
-  }
-}

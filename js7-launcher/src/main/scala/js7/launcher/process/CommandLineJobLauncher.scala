@@ -12,12 +12,11 @@ final class CommandLineJobLauncher(
   protected val executable: CommandLineExecutable,
   protected val jobConf: JobConf,
   protected val jobLauncherConf: JobLauncherConf)
-extends ProcessJobLauncher
-{
+extends ProcessJobLauncher:
   override def stop = Task.unit
 
   def toOrderProcess(processOrder: ProcessOrder): Task[Checked[OrderProcess]] =
-    Task {
+    Task:
       new CommandLineEvaluator()(processOrder.scope)
         .eval(executable.commandLineExpression)
         .flatMap { commandLine =>
@@ -31,5 +30,3 @@ extends ProcessJobLauncher
                   name = commandLine.file.getFileName.toString,
                   env)))
         }
-    }
-}

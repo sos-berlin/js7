@@ -38,8 +38,7 @@ import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.BeforeAndAfterAll
 import scala.collection.mutable
 
-final class JournalWebServiceTest extends OurTestSuite with BeforeAndAfterAll with ControllerAgentForScalaTest
-{
+final class JournalWebServiceTest extends OurTestSuite with BeforeAndAfterAll with ControllerAgentForScalaTest:
   protected val agentPaths = agentPath :: Nil
   protected val items = Seq(workflow)
   private lazy val uri = controller.localUri
@@ -52,10 +51,9 @@ final class JournalWebServiceTest extends OurTestSuite with BeforeAndAfterAll wi
 
   import httpControllerApi.implicitSessionToken
 
-  override def beforeAll() = {
+  override def beforeAll() =
     super.beforeAll()
     directoryProvider.agentEnvs(0).writeExecutable(pathExecutable, script(3.s))
-  }
 
   override protected val controllerConfig = config"""
     js7.auth.users {
@@ -65,18 +63,15 @@ final class JournalWebServiceTest extends OurTestSuite with BeforeAndAfterAll wi
     }
     js7.journal.remove-obsolete-files = false"""
 
-  "/controller/api/journal requires authentication" in {
-    val e = intercept[HttpException] {
+  "/controller/api/journal requires authentication" in:
+    val e = intercept[HttpException]:
       httpClient.getDecodedLinesObservable[String](Uri(s"$uri/controller/api/journal?file=0&position=0")) await 99.s
-    }
     assert(e.status == Unauthorized)
-  }
 
-  "Login" in {
+  "Login" in:
     httpControllerApi.login() await 99.s
-  }
 
-  "/controller/api/journal" in {
+  "/controller/api/journal" in:
     pending // TODO Duplicate with JournalRouteTest, active node does not provide event acknowledgements
 
     var replicated = ByteArray.empty
@@ -115,9 +110,8 @@ final class JournalWebServiceTest extends OurTestSuite with BeforeAndAfterAll wi
     whenLengthsObserved await 9.s
     assert(observedLengths.last == EndOfJournalFileMarker.utf8String)
     assert(observedLengths.dropRight(1).last.stripSuffix("\n").toLong == Files.size(controller0File))
-  }
 
-  "Timeout" in {
+  "Timeout" in:
     var eventId = controller.eventWatch.await[AgentDedicated](timeout = 9.s).last.eventId
     eventId = controller.eventWatch.await[AgentEventsObserved](timeout = 9.s, after = eventId).last.eventId
     val lines = httpClient.getRawLinesObservable(Uri(s"$uri/controller/api/journal?timeout=0&markEOF=true&after=$eventId"))
@@ -126,17 +120,15 @@ final class JournalWebServiceTest extends OurTestSuite with BeforeAndAfterAll wi
       .toListL
       .await(99.s)
     assert(lines.isEmpty)
-  }
 
-  "Heartbeat" in {
+  "Heartbeat" in:
     var lines = Vector.empty[String]
     var observedLines = Vector.empty[String]
     val fileAfter = controller.eventWatch.lastFileEventId
     val u = Uri(s"$uri/controller/api/journal?markEOF=true&file=$fileAfter&position=0")
     httpClient.getRawLinesObservable(u).await(99.s)
-      .foreach {
+      .foreach:
         lines :+= _.utf8String
-      }
     val observeWithHeartbeat = httpClient
       .getRawLinesObservable(Uri(u.string + "&heartbeat=0.1")).await(99.s)
       .timeoutOnSlowUpstream(2.s/*sometimes 1s is too short*/)  // Check heartbeat
@@ -158,11 +150,8 @@ final class JournalWebServiceTest extends OurTestSuite with BeforeAndAfterAll wi
 
     assert(observedLines.count(_ == JournalSeparators.HeartbeatMarker.utf8String) > 1)
     assert(observedLines.filterNot(_ == JournalSeparators.HeartbeatMarker.utf8String) == lines)
-  }
-}
 
-object JournalWebServiceTest
-{
+object JournalWebServiceTest:
   private val logger = Logger[this.type]
   private val agentPath = AgentPath("AGENT-111")
   private val pathExecutable = RelativePathExecutable("TEST.cmd")
@@ -170,4 +159,3 @@ object JournalWebServiceTest
   private val workflow = Workflow(WorkflowPath("test") ~ "INITIAL",
     Vector(
       Execute(WorkflowJob(agentPath, pathExecutable))))
-}

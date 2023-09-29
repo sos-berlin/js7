@@ -11,8 +11,7 @@ final class StdObservers(
   val out: Observer[String],
   err_ : Observer[String],
   val charBufferSize: Int,
-  keepLastErrLine: Boolean)
-{
+  keepLastErrLine: Boolean):
   private val lastLineErr = keepLastErrLine ? new KeepLastLineObserver(err_)
   val err: Observer[String] = lastLineErr.getOrElse(err_)
 
@@ -23,13 +22,11 @@ final class StdObservers(
   val errTaskObserver = TaskObserver(err)
 
   def taskObserver(outerr: StdoutOrStderr): TaskObserver[String] =
-    outerr match {
+    outerr match
       case Stdout => outTaskObserver
       case Stderr => errTaskObserver
-    }
 
   val stop: Task[Unit] =
     Task.parZip2(outTaskObserver.complete, errTaskObserver.complete)
       .void
       .memoize
-}

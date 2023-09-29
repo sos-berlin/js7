@@ -6,16 +6,13 @@ import js7.data.value.expression.scopes.NamedValueScope.namesToString
 import scala.collection.MapView
 
 final class NamedValueScope(nameToValue: MapView[String, Value])
-extends Scope
-{
+extends Scope:
   override def nameToCheckedValue =
     nameToValue.mapValues(Right(_))
 
   override def toString = s"NamedValueScope(${namesToString(nameToCheckedValue)})"
-}
 
-object NamedValueScope
-{
+object NamedValueScope:
   def apply(namedValue: (String, Value)*): Scope =
     apply(namedValue.toMap)
 
@@ -27,4 +24,3 @@ object NamedValueScope
 
   private[scopes] def namesToString[V](nameToV: MapView[String, V]) =
     nameToV.keys.toVector.sorted.mkString(", ")
-}

@@ -3,7 +3,7 @@ package js7.base.utils
 import cats.effect.Resource
 import monix.eval.Task
 
-final class OneTimeTokenProvider private {
+final class OneTimeTokenProvider private():
 
   @volatile private var current: Option[OneTimeToken] = None
 
@@ -20,10 +20,8 @@ final class OneTimeTokenProvider private {
 
   def confirms(token: OneTimeToken): Boolean =
     current.contains(token)
-}
 
-object OneTimeTokenProvider {
+object OneTimeTokenProvider:
   /** Unsafe because it has a state. */
   def unsafe(): OneTimeTokenProvider =
     new OneTimeTokenProvider
-}

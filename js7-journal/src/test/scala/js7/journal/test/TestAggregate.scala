@@ -26,15 +26,12 @@ private[journal] final case class TestAggregate(key: String, string: String,
   p: String = "X",
   q: String = "X",
   r: String = "X")
-{
+:
 
-  def applyEvent(event: TestEvent) = event match {
+  def applyEvent(event: TestEvent) = event match
     case Appended(char) => copy(string = string + char)
     case NothingDone => this
     case _ => sys.error(s"Not applicable: $event")
-  }
-}
 
-private[journal] object TestAggregate {
+private[journal] object TestAggregate:
   implicit val jsonCodec: Codec.AsObject[TestAggregate] = deriveCodec[TestAggregate]
-}

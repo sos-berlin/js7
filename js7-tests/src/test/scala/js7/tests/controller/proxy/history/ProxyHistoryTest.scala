@@ -44,8 +44,7 @@ import org.scalactic.source
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
 
-final class ProxyHistoryTest extends OurTestSuite with ProvideActorSystem with ClusterProxyTest
-{
+final class ProxyHistoryTest extends OurTestSuite with ProvideActorSystem with ClusterProxyTest:
   private val maxRounds = 100
 
   override protected def config = config"""
@@ -62,15 +61,14 @@ final class ProxyHistoryTest extends OurTestSuite with ProvideActorSystem with C
   override protected val items = Seq(TestWorkflow)
   override protected val agentPaths = AAgentPath :: BAgentPath :: Nil
 
-  "Read event stream in small parts and write history" in {
+  "Read event stream in small parts and write history" in:
     withControllerAndBackup() { (primary, _, backup, _, _) =>
       def listJournalFilenames = listJournalFiles(primary.controllerEnv.dataDir / "state" / "controller")
         .map(_.file.getFileName.toString)
 
-      def assertJournalFileCount(n: Int)(implicit pos: source.Position): Unit = {
+      def assertJournalFileCount(n: Int)(implicit pos: source.Position): Unit =
         waitForCondition(9.s, 10.ms) { listJournalFilenames.size == n }
         assert(listJournalFilenames.size == n)
-      }
 
       val keyedEvents = mutable.Buffer[KeyedEvent[OrderEvent]]()
 
@@ -86,19 +84,18 @@ final class ProxyHistoryTest extends OurTestSuite with ProvideActorSystem with C
         @volatile var lastState = ControllerState.empty
         @volatile var finished = false
         var rounds = 0
-        while !finished && rounds <= maxRounds do {
+        while !finished && rounds <= maxRounds do
           logger.info(s"Round $rounds")
           var proxyStartedReceived = false
-          try {
+          try
             controllerApi.eventAndStateObservable(new StandardEventBus, Some(lastState.eventId))
               .doOnNext(es => Task(logger.debug(s"observe ${es.stampedEvent}")))
-              .takeWhileInclusive {
+              .takeWhileInclusive:
                 case EventAndState(Stamped(_, _, KeyedEvent(TestOrder.id, _: OrderFinished)), _, _) =>
                   finished = true
                   false
                 case _=>
                   true
-              }
               .take(3)  // Process two events (and initial ProxyStarted) each test round
               .doOnNext(es => Task {
                 es.stampedEvent.value.event match {
@@ -123,14 +120,12 @@ final class ProxyHistoryTest extends OurTestSuite with ProvideActorSystem with C
               .completedL
               .await(99.s)
             assert(proxyStartedReceived)
-          }
           catch { case t @ akka.stream.SubscriptionWithCancelException.NoMoreElementsNeeded =>
             // TODO NoMoreElementsNeeded occurs occasionally for unknown reason
             // Anyway, the caller should repeat the call.
             logger.error(s"Ignore ${t.toString}")
           }
           rounds += 1
-        }
         assert(rounds > 2)
 
         assertJournalFileCount(2)
@@ -212,9 +207,8 @@ final class ProxyHistoryTest extends OurTestSuite with ProvideActorSystem with C
         controllerApi.stop.await(99.s)
       }
     }
-  }
 
-  "Java history" in {
+  "Java history" in:
     runControllerAndBackup() { (primary, _, _, _, _, _, _) =>
       autoClosing(new JProxyContext) { context =>
         val api = context.newControllerApi(
@@ -225,11 +219,8 @@ final class ProxyHistoryTest extends OurTestSuite with ProvideActorSystem with C
         javaTester.testTorn()
       }
     }
-  }
-}
 
-object ProxyHistoryTest
-{
+object ProxyHistoryTest:
   private val logger = Logger[this.type]
   private val AAgentPath = AgentPath("AGENT-A")
   private val BAgentPath = AgentPath("AGENT-B")
@@ -253,4 +244,3 @@ object ProxyHistoryTest
      """.stripMargin.trim).orThrow
 
   private val TestOrder = FreshOrder(OrderId("🔺"), TestWorkflowId.path, Map("KEY" -> StringValue("VALUE")))
-}

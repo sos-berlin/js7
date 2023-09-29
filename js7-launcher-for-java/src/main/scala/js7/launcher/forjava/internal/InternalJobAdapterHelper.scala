@@ -17,8 +17,7 @@ import monix.eval.Task
 import scala.reflect.ClassTag
 import scala.util.control.NonFatal
 
-private[internal] final class InternalJobAdapterHelper[J: ClassTag: Tag]
-{
+private[internal] final class InternalJobAdapterHelper[J: ClassTag: Tag]:
   private val checkedJobOnce = SetOnce[Checked[J]]  // SetOnce for late arriving Scheduler
 
   def callStart(jJobContext: JavaJobContext, call: J => Task[VEither[Problem, Void]]): Task[Checked[Unit]] =
@@ -33,28 +32,25 @@ private[internal] final class InternalJobAdapterHelper[J: ClassTag: Tag]
           }))
 
   def callStop(call: J => Task[Unit]): Task[Unit] =
-    Task.defer {
+    Task.defer:
       checkedJobOnce.toOption.fold(Task.unit)(checked =>
         call(checked.orThrow))
-    }
 
   def callProcessOrder(call: J => OrderProcess): OrderProcess =
-    checkedJobOnce.checked.flatten match {
+    checkedJobOnce.checked.flatten match
       case Left(problem) =>
         OrderProcess(Task.pure(Outcome.Failed.fromProblem(problem)))
 
       case Right(jInternalJob) =>
         call(jInternalJob)
-    }
 
-  private def instantiate(jJobContext: JavaJobContext): Checked[J] = {
+  private def instantiate(jJobContext: JavaJobContext): Checked[J] =
     val cls = jJobContext.asScala.implementationClass
     if !implicitClass[J].isAssignableFrom(cls) then
       Left(Problem.pure(s"Class '${cls.getName}' must be a ${implicitClass[J].getName}"))
     else
       getConstructor(cls.asInstanceOf[Class[? <: J]], jJobContext.getClass)
         .flatMap(construct(_, jJobContext))
-  }
 
   private def getConstructor(clas: Class[? <: J], jJobContextClass: Class[? <: JavaJobContext])
   : Checked[Constructor[J]] =
@@ -75,10 +71,8 @@ private[internal] final class InternalJobAdapterHelper[J: ClassTag: Tag]
         case 0 => constructor.newInstance()
         case 1 => constructor.newInstance(jobContext)
       })
-    catch {
+    catch
       case t @ (_: InvocationTargetException | _: ExceptionInInitializerError) =>
         Left(Problem.fromThrowable(Option(t.getCause) getOrElse t))
       case NonFatal(t) =>
         Problem.fromThrowable(t)
-    }
-}

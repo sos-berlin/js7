@@ -11,8 +11,7 @@ import org.jetbrains.annotations.TestOnly
 final class ExecuteAdmissionTimeSwitch(
   admissionTimeScheme: AdmissionTimeScheme,
   zone: ZoneId,
-  onSwitch: Option[TimeInterval] => Unit)
-{
+  onSwitch: Option[TimeInterval] => Unit):
   @volatile private var _nextTime: Option[Timestamp] = None
   private val timer = SerialCancelable()
 
@@ -20,37 +19,30 @@ final class ExecuteAdmissionTimeSwitch(
   private[instructions] def nextTime = _nextTime
 
   /** Cancel the callback timer for admission start. */
-  def cancel(): Unit = {
+  def cancel(): Unit =
     _nextTime = None
     timer.cancel()
-  }
 
   /** Update the state with the current or next admission time and set a timer.
    * @return true iff an AdmissionTimeInterval is effective now. */
   def updateAndCheck(onPermissionStart: => Unit)(implicit clock: AlarmClock): Boolean =
-    clock.lock {
+    clock.lock:
       val now = clock.now()
       val interval =
         admissionTimeScheme.findTimeInterval(now, zone, dateOffset = ExecuteExecutor.noDateOffset)
-      interval match {
+      interval match
         case None =>
           timer.cancel()
           false // Not enterable now
 
         case Some(interval) =>
-          if !_nextTime.contains(interval.start) then {
+          if !_nextTime.contains(interval.start) then
             onSwitch((interval != TimeInterval.never) ? interval)
             // Also set timer if clock has been adjusted
-            if now < interval.start then {
+            if now < interval.start then
               _nextTime = Some(interval.start)
-              timer := clock.scheduleAt(interval.start) {
+              timer := clock.scheduleAt(interval.start):
                 _nextTime = None
                 onPermissionStart
-              }
-            }
-          }
 
           interval.contains(now) // Has admission now?
-      }
-    }
-}

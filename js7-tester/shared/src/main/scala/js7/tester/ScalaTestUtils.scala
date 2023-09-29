@@ -5,8 +5,7 @@ import org.scalatest.Assertion
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Duration, FiniteDuration, SECONDS}
 
-object ScalaTestUtils extends org.scalatest.Assertions
-{
+object ScalaTestUtils extends org.scalatest.Assertions:
   def awaitAndAssert(condition: => Boolean)
     (implicit prettifier: Prettifier, pos: source.Position)
   : Assertion =
@@ -14,9 +13,7 @@ object ScalaTestUtils extends org.scalatest.Assertions
 
   def awaitAndAssert(timeLimit: FiniteDuration)(condition: => Boolean)
     (implicit prettifier: Prettifier, pos: source.Position)
-  : Assertion = {
+  : Assertion =
     val until = now + timeLimit
     while now < until && !condition do Thread.sleep(10)
     assert(condition)
-  }
-}

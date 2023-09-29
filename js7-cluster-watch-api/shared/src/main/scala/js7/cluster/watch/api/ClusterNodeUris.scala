@@ -10,8 +10,7 @@ import js7.data.event.{Event, EventRequest, JournalPosition}
 import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
 
-final class ClusterNodeUris private(prefixedUri: Uri)
-{
+final class ClusterNodeUris private(prefixedUri: Uri):
   val command = api("/cluster/command")
   val session = api("/session")
 
@@ -61,26 +60,21 @@ final class ClusterNodeUris private(prefixedUri: Uri)
       ("file" -> journalPosition.fileEventId.toString) ::
       ("position" -> journalPosition.position.toString) :: Nil))
 
-  def api(path: String, query: (String, String)*): Uri = {
+  def api(path: String, query: (String, String)*): Uri =
     if path.nonEmpty && !path.startsWith("/") then
       throw new IllegalArgumentException("Controller URI path must start with a slash")
     Uri(
       Uri(s"${prefixedUri}api$path").string + encodeQuery(query*))
-  }
 
   override def toString = prefixedUri.string
-}
 
-object ClusterNodeUris
-{
+object ClusterNodeUris:
   def apply(prefixedUri: Uri): ClusterNodeUris =
     new ClusterNodeUris(Uri(prefixedUri.string.stripSuffix("/") + "/"))
 
   private def encodeClass[A: ClassTag]: String =
     encodeClass(implicitClass[A])
 
-  private def encodeClass(cls: Class[?]): String = {
+  private def encodeClass(cls: Class[?]): String =
     require(cls != classOf[Nothing], "Missing return=CLASS")
     cls.simpleScalaName
-  }
-}

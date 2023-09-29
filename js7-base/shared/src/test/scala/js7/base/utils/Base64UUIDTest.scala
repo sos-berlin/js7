@@ -11,23 +11,19 @@ import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks.*
 /**
   * @author Joacim Zschimmer
   */
-final class Base64UUIDTest extends OurTestSuite
-{
-  "JSON" in {
+final class Base64UUIDTest extends OurTestSuite:
+  "JSON" in:
     testJson(Base64UUID(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF")),
     json""" "ABEiM0RVZneImaq7zN3u_w" """)
-  }
 
-  "Base64UUID" in {
+  "Base64UUID" in:
     assert(Base64UUID(UUID.fromString("00000000-0000-0000-0000-000000000000")).string == "AAAAAAAAAAAAAAAAAAAAAA")
     assert(Base64UUID(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF")).string == "ABEiM0RVZneImaq7zN3u_w")
-  }
 
-  "uuidToBase64" in {
+  "uuidToBase64" in:
     forAll(Gen.uuid)((uuid: UUID) => assert(base64ToUUID(uuidToBase64(uuid)) == Right(uuid)))
-  }
 
-  "uuidToBase64 for testing values" in {
+  "uuidToBase64 for testing values" in:
     assert(uuidToBase64(UUID.fromString("00000000-0000-0000-0000-000000000000")) == "AAAAAAAAAAAAAAAAAAAAAA")
     assert(Base64UUID.zero.string == "AAAAAAAAAAAAAAAAAAAAAA")
 
@@ -35,11 +31,8 @@ final class Base64UUIDTest extends OurTestSuite
     assert(Base64UUID.ffff.string == "_____________________w")
 
     assert(uuidToBase64(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF")) == "ABEiM0RVZneImaq7zN3u_w")
-  }
 
-  "random" in {
+  "random" in:
     val n = 10000
     assert(Set.fill(n)(Base64UUID.random()).size == n)
     assert(Set.fill(n)(Base64UUID.randomString()).size == n)
-  }
-}

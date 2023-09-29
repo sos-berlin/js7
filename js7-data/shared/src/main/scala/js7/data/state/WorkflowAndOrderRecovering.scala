@@ -12,8 +12,7 @@ import js7.data.workflow.{Workflow, WorkflowId}
 /**
   * @author Joacim Zschimmer
   */
-object WorkflowAndOrderRecovering
-{
+object WorkflowAndOrderRecovering:
   private val logger = Logger[this.type]
 
   // TODO Some events (OrderForked, OrderFinished) handled by OrderActor let AgentOrderKeeper add or delete orders. This should be done in a single transaction.
@@ -21,7 +20,7 @@ object WorkflowAndOrderRecovering
   final def followUpRecoveredWorkflowsAndOrders(
     idToWorkflow: WorkflowId => Checked[Workflow],
     idToOrder: Map[OrderId, Order[Order.State]])
-  : (Map[OrderId, Order[Order.State]], Set[OrderId]) = {
+  : (Map[OrderId, Order[Order.State]], Set[OrderId]) =
     val added = Map.newBuilder[OrderId, Order[Order.State]]
     val deleted = Set.newBuilder[OrderId]
     val eventHandler = new OrderEventHandler(idToWorkflow)
@@ -31,21 +30,16 @@ object WorkflowAndOrderRecovering
       followUps <- eventHandler.handleEvent(order, event)
         .onProblem(p =>
           logger.error(p.toString, p.throwableOption.map(_.appendCurrentStackTrace).orNull)))  // TODO Really ignore error ?
-    {
-      followUps foreach {
+      followUps foreach:
         case FollowUp.AddChild(childOrder) =>  // OrderForked
-          if !idToOrder.contains(childOrder.id) then {  // Snapshot of child order is missing? Add the child now!
+          if !idToOrder.contains(childOrder.id) then  // Snapshot of child order is missing? Add the child now!
             added += childOrder.id -> childOrder
-          }
 
         case FollowUp.Delete(deleteOrderId) =>  // OrderDeleted, OrderJoined
           deleted += deleteOrderId
 
         case _ =>
-      }
-    }
     (added.result(), deleted.result())
-  }
 
   private def snapshotToEvent(order: Order[Order.State]): Option[OrderEvent] =
     order.ifState[Order.Forked].map(order =>
@@ -53,4 +47,3 @@ object WorkflowAndOrderRecovering
     .orElse(
       order.ifState[Order.Deleted].map(_ =>
         OrderDeleted))
-}

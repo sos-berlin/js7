@@ -13,7 +13,7 @@ import monix.eval.Task
 import scala.collection.mutable
 
 /** Store for the Agent Director's Route while running. */
-private final class DirectorRouteVariable {
+private final class DirectorRouteVariable:
   private val lock = AsyncLock()
   private var _toRoute: ToRoute = noDirector
   private val cache = mutable.Map.empty[WebServerBinding, (Route, Int)]
@@ -43,11 +43,9 @@ private final class DirectorRouteVariable {
               cache(routeBinding.webServerBinding) = route -> routeBinding.revision
             })
       }))
-}
 
-object DirectorRouteVariable {
+object DirectorRouteVariable:
   type ToRoute = RouteBinding => Task[Route]
 
   private val noDirector: ToRoute =
     _ => Task.pure(complete(NoDirectorProblem))
-}

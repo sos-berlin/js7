@@ -5,9 +5,8 @@ import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.subjects.PublishSubject
 import js7.base.test.OurAsyncTestSuite
 
-final class TaskObserverTest extends OurAsyncTestSuite
-{
-  "send" in {
+final class TaskObserverTest extends OurAsyncTestSuite:
+  "send" in:
     val subject = PublishSubject[Int]()
     val observing = subject.toListL.runToFuture
     val n = 10
@@ -21,5 +20,3 @@ final class TaskObserverTest extends OurAsyncTestSuite
       _ <- (send >> taskObserver.complete).runToFuture
       result <- observing
     yield assert(result == (1 to n))
-  }
-}

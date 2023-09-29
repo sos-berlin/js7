@@ -17,15 +17,13 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.FiniteDuration
 
-final class TestAddOrdersTest extends OurTestSuite with ControllerAgentForScalaTest
-{
+final class TestAddOrdersTest extends OurTestSuite with ControllerAgentForScalaTest:
   protected val agentPaths = Seq(AgentPath("agent-1"), AgentPath("agent-2"))
   protected val items = Seq(workflow)
 
-  override def afterAll(): Unit = {
+  override def afterAll(): Unit =
     super.afterAll()
     CorrelId.logStatistics()
-  }
 
   override protected def controllerConfig = config"""
     js7.auth.users.TestAddOrders.password = "plain:TEST-PASSWORD"
@@ -35,13 +33,12 @@ final class TestAddOrdersTest extends OurTestSuite with ControllerAgentForScalaT
     js7.job.execution.signed-script-injection-allowed = on
     """ withFallback super.agentConfig
 
-  "TestAddOrders" in {
+  "TestAddOrders" in:
     val orderCount = sys.props.get("test.speed").map(_.toInt) getOrElse 3
 
     def logOrderCountChanged(statistics: Statistics) =
-      if statistics.totalOrderCount > 0 then {
+      if statistics.totalOrderCount > 0 then
         logger.info(s"${statistics.lastOrderCount} orders")
-      }
 
     def logAddOrdersDuration(duration: FiniteDuration) =
       info(durationAndPerSecondString(duration, orderCount, "orders added"))
@@ -57,11 +54,8 @@ final class TestAddOrdersTest extends OurTestSuite with ControllerAgentForScalaT
     for line <- statistics.logLines do info(line)
     CorrelId.logStatisticsIfEnabled()
     CorrelIdLog4JThreadContextMap.logStatistics()
-  }
-}
 
-private object TestAddOrdersTest
-{
+private object TestAddOrdersTest:
   private val logger = Logger[this.type]
 
   private val workflow =
@@ -69,4 +63,3 @@ private object TestAddOrdersTest
       "js7/install/docker/volumes/provider/config/live/testCase3Empty.workflow.json"
     ).asUTF8String.parseJsonAs[Workflow].orThrow
       .withId(WorkflowPath("testCase3"))
-}

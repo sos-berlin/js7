@@ -26,9 +26,8 @@ import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.Deadline.now
 import scala.util.Random
 
-final class FileValueScopeTest extends OurTestSuite
-{
-  "IOException" in {
+final class FileValueScopeTest extends OurTestSuite:
+  "IOException" in:
     val dir = Paths.get("/tmp/FileValueScopeTest-NonExistant")
     autoClosing(new FileValueState(dir)) { fileValueState =>
       FileValueScope.resource(fileValueState).blockingUse(99.s) { fileValueScope =>
@@ -38,26 +37,23 @@ final class FileValueScopeTest extends OurTestSuite
             .exists(_.throwable.isInstanceOf[IOException]))
       }
     }
-  }
 
-  "Arbitrary filename" in {
+  "Arbitrary filename" in:
     check { fileValueScope =>
       val n = 3
 
-      for i <- 1 to n do {
+      for i <- 1 to n do
         val content = s"CONTENT-$i"
         val file = toFile(fileValueScope, Seq(content)).orThrow
         assert(file.startsWith(fileValueScope.fileValueState.directory))
         assert(file.contentString == content)
-      }
 
       val files = (fileValueScope.fileValueState.directory / "0").directoryContents
       assert(files.size == n)
       for f <- files do assert(isRegularFile(f))
     }
-  }
 
-  "Fixed filename" in {
+  "Fixed filename" in:
     check { fileValueScope =>
       val file = toFile(fileValueScope, Seq("CONTENT", "FIXED-NAME")).orThrow
       assert(file == fileValueScope.fileValueState.directory / "0" / "FIXED-NAME")
@@ -67,9 +63,8 @@ final class FileValueScopeTest extends OurTestSuite
       assert(files.size == 1)
       for f <- files do assert(isRegularFile(f))
     }
-  }
 
-  "Filename pattern" in {
+  "Filename pattern" in:
     check { fileValueScope =>
       val file = toFile(fileValueScope, Seq("CONTENT", "PREFIX-*.tmp")).orThrow
       assert(file.startsWith(fileValueScope.fileValueState.directory))
@@ -78,34 +73,29 @@ final class FileValueScopeTest extends OurTestSuite
       assert(file.contentString == "CONTENT")
       assert(fileValueScope.fileValueState.directory.directoryContents.size == 1)
     }
-  }
 
-  "Slash in filenamePattern is rejected" in {
+  "Slash in filenamePattern is rejected" in:
     check { fileValueScope =>
       assert(toFile(fileValueScope, Seq("CONTENT", "myDir/*")) == Left(Problem(
         "No directory is allowed in toFile function filenamePattern argument")))
     }
-  }
 
-  "Multiple * in filenamePattern" in {
+  "Multiple * in filenamePattern" in:
     check { fileValueScope =>
       val file = toFile(fileValueScope, Seq("", "*;*;*")).orThrow
       val filename = file.getFileName.toString
       val star = filename.substring(0, filename.indexOf(';'))
       assert(filename == s"$star;$star;$star")
     }
-  }
 
-  "File is read-only" in {
+  "File is read-only" in:
     check { fileValueScope =>
       val file = toFile(fileValueScope, Seq("READ-ONLY", "*")).orThrow
-      intercept[AccessDeniedException] {
+      intercept[AccessDeniedException]:
         newOutputStream(file, WRITE, APPEND)
-      }
     }
-  }
 
-  "toFile is concurrently executable" in {
+  "toFile is concurrently executable" in:
     // Some different filenames, used multiple times.
     // May also test a future cache.
     val stringCount = 100
@@ -142,7 +132,6 @@ final class FileValueScopeTest extends OurTestSuite
       }
       assert(dir.directoryContents.isEmpty)
     }
-  }
 
   private def toFile(fileValueScope: FileValueScope, args: Seq[String]): Checked[Path] =
     Expression.FunctionCall(functionName, args.map(a => Argument(StringConstant(a))))
@@ -160,8 +149,6 @@ final class FileValueScopeTest extends OurTestSuite
       }
       assert(dir.directoryContents.isEmpty)
     }
-}
 
-object FileValueScopeTest {
+object FileValueScopeTest:
   private val logger = Logger[this.type]
-}

@@ -17,15 +17,14 @@ import monix.execution.Scheduler.Implicits.traced
 /**
   * @author Joacim Zschimmer
   */
-final class ControllerCommandExecutorTest extends OurTestSuite
-{
+final class ControllerCommandExecutorTest extends OurTestSuite:
   private val cancelOrder = CancelOrders(Set(OrderId("ORDER-ID")), CancellationMode.FreshOnly)
   private val meta = CommandMeta(SimpleUser(UserId("USER")))
 
   private var cancelled = 0
-  private val otherCommandExecutor = new CommandExecutor[ControllerCommand] {
+  private val otherCommandExecutor = new CommandExecutor[ControllerCommand]:
     def executeCommand(command: ControllerCommand, meta: CommandMeta): Task[Either[Problem, command.Response]] =
-      (command, meta) match {
+      (command, meta) match
         case (`cancelOrder`, `meta`) =>
           cancelled += 1
           Task.pure(Right(Response.Accepted.asInstanceOf[command.Response]))
@@ -33,21 +32,17 @@ final class ControllerCommandExecutorTest extends OurTestSuite
           Task.pure(Right(Response.Accepted.asInstanceOf[command.Response]))
         case _ =>
           Task.pure(Left(Problem("COMMAND NOT IMPLEMENTED")))
-      }
-  }
 
   private val commandExecutor = new ControllerCommandExecutor(otherCommandExecutor)
 
-  "NoOperation" in {
+  "NoOperation" in:
     assert(commandExecutor.executeCommand(NoOperation(), meta).await(99.s) == Right(Response.Accepted))
-  }
 
-  "CancelOrders" in {
+  "CancelOrders" in:
     assert(commandExecutor.executeCommand(cancelOrder, meta).await(99.s) == Right(Response.Accepted))
     assert(cancelled == 1)
-  }
 
-  "Batch" in {
+  "Batch" in:
     assert(commandExecutor.executeCommand(Batch(
       Seq(NoOperation(), ReleaseEvents(999L), cancelOrder)
         .map(CorrelIdWrapped(CorrelId.empty, _))), meta)
@@ -57,5 +52,3 @@ final class ControllerCommandExecutorTest extends OurTestSuite
         Left(Problem("COMMAND NOT IMPLEMENTED")),
         Right(Response.Accepted)))))
     assert(cancelled == 2)
-  }
-}

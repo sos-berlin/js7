@@ -22,20 +22,16 @@ class AkkaHttpControllerApi(
   override protected final val loginDelays: () => Iterator[FiniteDuration] = SessionApi
     .defaultLoginDelays _,
   name: String = "")
-extends HttpControllerApi with SessionApi.HasUserAndPassword with AutoCloseable
-{
+extends HttpControllerApi with SessionApi.HasUserAndPassword with AutoCloseable:
   final val httpClient: AkkaHttpClient =
     new AkkaHttpClient.Standard(
       baseUri, HttpControllerApi.UriPrefixPath, actorSystem, httpsConfig, name = name)
 
-  def close() = {
+  def close() =
     logOpenSession()
     httpClient.close()
-  }
-}
 
-object AkkaHttpControllerApi
-{
+object AkkaHttpControllerApi:
   private val defaultName = "ControllerApi"
 
   /** Logs out when the resource is being released. */
@@ -44,13 +40,12 @@ object AkkaHttpControllerApi
     httpsConfig: HttpsConfig = HttpsConfig.empty,
     config: Config = ConfigFactory.empty,
     name: String = "")
-  : Resource[Task, HttpControllerApi] = {
+  : Resource[Task, HttpControllerApi] =
     val myName = if name.nonEmpty then name else "AkkaHttpControllerApi"
     for
       actorSystem <- actorSystemResource(name = myName, config)
       api <- resource(admission, httpsConfig, name = myName)(actorSystem)
     yield api
-  }
 
   def admissionsToApiResource(
     admissions: Nel[Admission],
@@ -75,4 +70,3 @@ object AkkaHttpControllerApi
         httpsConfig, name = name)
       api <- HttpControllerApi.resource(admission, httpClient, loginDelays)
     yield api
-}

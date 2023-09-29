@@ -9,8 +9,7 @@ import scala.util.Try
 /**
   * @author Joacim Zschimmer
   */
-object ProblemCodeMessages
-{
+object ProblemCodeMessages:
   private val resource = JavaResource("js7/common/message/messages-en.conf")
   private val config = Configs.loadResource(resource)
 
@@ -19,7 +18,5 @@ object ProblemCodeMessages
   private val ifNotInitialized = new Once
 
   def initialize(): Unit =
-    ifNotInitialized {
+    ifNotInitialized:
       CodedMessages.codeToPattern = problemCodeToPattern
-    }
-}

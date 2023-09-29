@@ -3,45 +3,39 @@ package js7.data.value.expression
 import js7.data.value.expression.Expression.{InterpolatedString, ListExpr, MkString, StringConstant, StringExpr}
 import scala.util.chaining.scalaUtilChainingOps
 
-object ExpressionOptimizer
-{
+object ExpressionOptimizer:
   def optimizeExpression(expression: Expression): Expression =
-    expression match {
+    expression match
       case o: MkString => optimizeMkString(o)
       case o: InterpolatedString => optimizeInterpolated(o)
       case o => o
-    }
 
   private def optimizeMkString(mkString: MkString): StringExpr =
-    optimizeExpression(mkString.expression) match {
+    optimizeExpression(mkString.expression) match
       case ListExpr(list) =>
-        optimizeConcatList(list).pipe(mergeStringConstants) match {
+        optimizeConcatList(list).pipe(mergeStringConstants) match
           case Nil => StringConstant.empty
           case (string: StringExpr) :: Nil => string
           case o :: Nil => MkString(o)
           case list => MkString(ListExpr(list))
-        }
 
       case o: StringExpr => o
       case o => MkString(o)
-    }
 
   private def optimizeInterpolated(interpolated: InterpolatedString): StringExpr =
-    optimizeConcatList(interpolated.subexpressions).pipe(mergeStringConstants) match {
+    optimizeConcatList(interpolated.subexpressions).pipe(mergeStringConstants) match
       case Nil => StringConstant.empty
       case (string: StringExpr) :: Nil => string
       case list => InterpolatedString(list)
-    }
 
   private def optimizeConcatList(exprs: List[Expression]): List[Expression] =
     exprs
       .map(optimizeExpression)
       .filter(_ != StringConstant.empty)
-      .flatMap {
+      .flatMap:
         case MkString(ListExpr(expressions)) => expressions
         case MkString(expr) => expr :: Nil
         case expr => expr :: Nil
-      }
       .pipe(mergeStringConstants)
 
   private def mergeStringConstants(expressions: List[Expression]): List[Expression] =
@@ -54,4 +48,3 @@ object ExpressionOptimizer
             expr :: reverseList
         })
       .lastOption.toList.flatten.reverse
-}

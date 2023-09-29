@@ -13,15 +13,11 @@ final case class JobConf(
   workflow: Workflow,
   controllerId: ControllerId,
   sigkillDelay: FiniteDuration,
-  systemEncoding: Charset)
-{
+  systemEncoding: Charset):
   val jobResourcePaths: Seq[JobResourcePath] =
     jobResourcePathsFor(workflowJob, workflow)
-}
 
-object JobConf
-{
+object JobConf:
   def jobResourcePathsFor(workflowJob: WorkflowJob, workflow: Workflow): Seq[JobResourcePath] =
     (workflowJob.referencedJobResourcePaths ++ workflow.jobResourcePaths)
       .toVector.distinct
-}

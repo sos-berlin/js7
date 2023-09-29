@@ -12,9 +12,9 @@ import scala.collection.mutable
 /**
   * @author Joacim Zschimmer
   */
-final class DeadLetterActorTest extends OurTestSuite {
+final class DeadLetterActorTest extends OurTestSuite:
 
-  "DeadLetterActor.subscribe" in {
+  "DeadLetterActor.subscribe" in:
     val actorSystem = newActorSystem(classOf[DeadLetterActorTest].getSimpleName, config"akka.log-dead-letters = 0")
     val buffer = mutable.Buffer[String]()
     DeadLetterActor.subscribe(actorSystem, (logLevel, msg) => buffer += msg())
@@ -27,16 +27,11 @@ final class DeadLetterActorTest extends OurTestSuite {
     assert(buffer.size == 1)
     assert(buffer.head startsWith "DeadLetter ")
     assert(buffer.head contains classOf[TestMessage].getName)
-  }
-}
 
-object DeadLetterActorTest {
+object DeadLetterActorTest:
   private class TestMessage
   private class SuppressedMessage extends DeadLetterSuppression
 
-  private class TestActor extends Actor {
-    def receive = {
+  private class TestActor extends Actor:
+    def receive =
       case "stop" => context.stop(self)
-    }
-  }
-}

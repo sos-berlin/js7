@@ -8,8 +8,7 @@ import js7.data.workflow.WorkflowParser
 import js7.data_for_java.vavr.VavrConverters.*
 
 @javaApi
-object JWorkflowParser
-{
+object JWorkflowParser:
   @Nonnull
   def parse(
     @Nonnull jWorkflowId: JWorkflowId,
@@ -18,4 +17,3 @@ object JWorkflowParser
     WorkflowParser.parse(jWorkflowId.asScala, workflowNotation)
       .map(JWorkflow.apply)
       .toVavr
-}

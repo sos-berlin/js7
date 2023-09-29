@@ -4,37 +4,31 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.test.OurTestSuite
 import js7.tester.CirceJsonTester.testJson
 
-final class MapDiffTest extends OurTestSuite
-{
-  "applyTo" in {
+final class MapDiffTest extends OurTestSuite:
+  "applyTo" in:
     assert(MapDiff.empty.applyTo(Map.empty) == Map.empty)
     val a = MapDiff(Map("a" -> "A", "b" -> "B"), Map( "c" -> "C"), Set("d")).applyTo(Map.empty)
     assert(a == Map("a" -> "A", "b" -> "B", "c" -> "C"))
-  }
 
-  "diff" in {
+  "diff" in:
     assert(MapDiff.diff(Map.empty, Map.empty) eq MapDiff.empty)
     assert(MapDiff.diff(
       Map("a" -> "A", "b" -> "B", "x" -> "X"),
       Map("a" -> "A", "b" -> "BBB", "c" -> "C")
     ) == MapDiff(Map("c" -> "C"), Map("b" -> "BBB"), Set("x")))
-  }
 
-  "empty"in {
+  "empty"in:
     val m = Map("a" -> "A")
     assert(MapDiff.empty.applyTo(m) eq m)
-  }
 
-  "empty is singleton" in {
+  "empty is singleton" in:
     assert(MapDiff(Map.empty, Map.empty, Set.empty) eq MapDiff.empty)
-  }
 
-  "empty MapDiff.apply retains same object" in {
+  "empty MapDiff.apply retains same object" in:
     val m = Map("a" -> "A")
     assert(MapDiff.empty.applyTo(m) eq m)
-  }
 
-  "JSON" in {
+  "JSON" in:
     testJson(MapDiff.empty[String, String],
       json"""{
         "added": {},
@@ -53,5 +47,3 @@ final class MapDiffTest extends OurTestSuite
         },
         "deleted": ["d", "D"]
       }""")
-  }
-}

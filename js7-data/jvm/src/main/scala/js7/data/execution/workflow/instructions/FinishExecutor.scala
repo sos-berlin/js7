@@ -14,8 +14,7 @@ import js7.data.workflow.position.*
 import js7.data.workflow.position.BranchPath.syntax.*
 
 private[instructions] final class FinishExecutor(protected val service: InstructionExecutorService)
-extends EventInstructionExecutor
-{
+extends EventInstructionExecutor:
   type Instr = Finish
   val instructionClass = classOf[Finish]
 
@@ -30,9 +29,9 @@ extends EventInstructionExecutor
 
   private def execute(instr: Finish, order: Order[Order.State], workflow: Workflow, state: StateView)
   : Checked[List[KeyedEvent[OrderEvent.OrderActorEvent]]] =
-    order.state match {
+    order.state match
       case _: Order.Ready =>
-        order.position.forkBranchReversed match {
+        order.position.forkBranchReversed match
           case Nil =>
             // Not in a fork
             leaveBlocks(order, workflow, OrderFinished(instr.outcome) :: Nil)
@@ -51,14 +50,11 @@ extends EventInstructionExecutor
                 instr.outcome.map(OrderOutcomeAdded(_)) ++:
                   instr.outcome.forall(_.isSucceeded).thenList(OrderMoved(gotoEnd)))
             yield events
-        }
 
       case _ => Right(Nil)
-    }
 
   private def leaveBlocks(order: Order[Order.State], w: Workflow, events: List[OrderActorEvent])
   : Checked[List[KeyedEvent[OrderActorEvent]]] =
     OrderEventSource
       .leaveBlocks(w, order, events)
       .map(_.map(order.id <-: _))
-}

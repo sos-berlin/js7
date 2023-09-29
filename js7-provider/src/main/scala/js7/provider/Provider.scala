@@ -60,7 +60,7 @@ final class Provider(
     protected val scheduler: Scheduler,
     protected val iox: IOExecutor)
 extends Observing
-with MainService with Service.StoppableByRequest {
+with MainService with Service.StoppableByRequest:
 
   protected type Termination = ProgramTermination
 
@@ -94,12 +94,10 @@ with MainService with Service.StoppableByRequest {
       checkedCompleted <- checkedDiff
         .traverse(execute(versionId, _))
         .map(_.flatten)
-    yield {
-      for _ <- checkedCompleted do {
+    yield
+      for _ <- checkedCompleted do
         lastEntries := localEntries
-      }
       checkedCompleted
-    }
 
   @TestOnly
   def testControllerDiff: Task[Checked[InventoryItemDiff_]] =
@@ -141,7 +139,7 @@ with MainService with Service.StoppableByRequest {
           Right(completed))
 
   protected lazy val loginUntilReachable: Task[Completed] =
-    Task.defer {
+    Task.defer:
       if httpControllerApi.hasSession then
         Task.completed
       else
@@ -150,76 +148,66 @@ with MainService with Service.StoppableByRequest {
             logger.info("Logged-in at Controller")
             completed
           }
-    }
 
   private def execute(versionId: Option[VersionId], diff: InventoryItemDiff_)
   : Task[Checked[Completed]] =
     if diff.isEmpty && versionId.isEmpty then
       Task(Checked.completed)
-    else {
+    else
       val v = versionId getOrElse newVersionId()
       logUpdate(v, diff)
       updateItems(itemSigner, v, diff)
-    }
 
   private def updateItems(
     itemSigner: ItemSigner[SignableItem],
     versionId: VersionId,
     diff: InventoryItemDiff_)
-  : Task[Checked[Completed]] = {
+  : Task[Checked[Completed]] =
     val addVersion = Observable.fromIterable(
       diff.containsVersionedItem ? AddVersion(versionId))
 
     val addOrChange = Observable
       .fromIterable(diff.addedOrChanged)
-      .map {
+      .map:
         case item: VersionedItem => item.withVersion(versionId)
         case o => o
-      }
-      .map {
+      .map:
         case item: UnsignedSimpleItem => ItemOperation.AddOrChangeSimple(item)
         case item: SignableItem => ItemOperation.AddOrChangeSigned(itemSigner.toSignedString(item))
-      }
 
     val remove = Observable.fromIterable(diff.removed).map(ItemOperation.Remove(_))
 
     controllerApi.updateItems(addVersion ++ addOrChange ++ remove)
-  }
 
-  private def logUpdate(versionId: VersionId, diff: InventoryItemDiff_): Unit = {
+  private def logUpdate(versionId: VersionId, diff: InventoryItemDiff_): Unit =
     logger.info(s"Version ${versionId.string}")
     for o <- diff.removed.sorted do logger.info(s"Delete $o")
     for o <- diff.addedOrChanged.map(_.path: InventoryItemPath).sorted do
       logger.info(s"AddOrChange $o")
-  }
 
-  private def fetchControllerItems: Task[Iterable[InventoryItem]] = {
+  private def fetchControllerItems: Task[Iterable[InventoryItem]] =
     httpControllerApi
       .retryUntilReachable()(
         httpControllerApi.snapshot())
       .map(_.items.filter(o =>
         !o.isInstanceOf[WorkflowPathControl] &&
           !o.isInstanceOf[WorkflowControl]))
-  }
 
   private def readDirectory: Task[Vector[DirectoryReader.Entry]] =
     Task(DirectoryReader.entries(conf.liveDirectory).toVector)
 
-  private def toItemDiff(diff: PathSeqDiff): Checked[InventoryItemDiff_] = {
+  private def toItemDiff(diff: PathSeqDiff): Checked[InventoryItemDiff_] =
     val checkedAddedOrChanged = typedSourceReader.readItems(diff.added ++ diff.changed)
     val checkedDeleted: Checked[Vector[VersionedItemPath]] =
       diff.deleted.toVector
         .traverse(path => ItemPaths.fileToVersionedItemPath(versionedItemPathCompanions, conf.liveDirectory, path))
     (checkedAddedOrChanged, checkedDeleted)
       .mapN((add, del) => InventoryItemDiff(add, del))
-  }
 
   private def retryLoginDurations: Iterator[FiniteDuration] =
     firstRetryLoginDurations.iterator ++ Iterator.continually(firstRetryLoginDurations.lastOption getOrElse 10.s)
-}
 
-object Provider
-{
+object Provider:
   private val versionedItemPathCompanions = Set[VersionedItemPath.AnyCompanion](WorkflowPath)
   private val logger = Logger[this.type]
   private val readers = Seq(
@@ -238,7 +226,7 @@ object Provider
 
   private def resource2(conf: ProviderConfiguration)
     (implicit scheduler: Scheduler, iox: IOExecutor, actorSystem: ActorSystem)
-  : Resource[Task, Provider] = {
+  : Resource[Task, Provider] =
     val userAndPassword: Option[UserAndPassword] = for
       userName <- conf.config.optionAs[String]("js7.provider.controller.user")
       password <- conf.config.optionAs[String]("js7.provider.controller.password")
@@ -254,9 +242,8 @@ object Provider
       itemSigner = toItemSigner(conf).orThrow
       provider <- Service.resource(Task(new Provider(itemSigner, api, controllerApi, conf)))
     yield provider
-  }
 
-  private def toItemSigner(conf: ProviderConfiguration): Checked[ItemSigner[SignableItem]] = {
+  private def toItemSigner(conf: ProviderConfiguration): Checked[ItemSigner[SignableItem]] =
     val typeName = conf.config.getString("js7.provider.sign-with")
     val configPath = "js7.provider.private-signature-keys." + ConfigUtil.quoteString(typeName)
     val keyFile = Paths.get(conf.config.getString(s"$configPath.key"))
@@ -265,5 +252,3 @@ object Provider
       .rightOr(typeName, UnknownSignatureTypeProblem(typeName))
       .flatMap(companion => companion.checked(keyFile.byteArray, password))
       .map(messageSigner => new ItemSigner(messageSigner, signableItemJsonCodec))
-  }
-}

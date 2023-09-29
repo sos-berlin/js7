@@ -7,8 +7,7 @@ import io.circe.{Decoder, DecodingFailure, Encoder, Json}
   */
 sealed abstract class ProcessSignal(val number: Int)
 
-object ProcessSignal
-{
+object ProcessSignal:
   case object SIGTERM extends ProcessSignal(15)
   case object SIGKILL extends ProcessSignal(9)
 
@@ -16,9 +15,7 @@ object ProcessSignal
     o => Json.fromString(o.toString)
 
   implicit val jsonDecoder: Decoder[ProcessSignal] =
-    cursor => cursor.as[String].flatMap {
+    cursor => cursor.as[String].flatMap:
       case "SIGTERM" => Right(SIGTERM)
       case "SIGKILL" => Right(SIGKILL)
       case signal => Left(DecodingFailure(s"Invalid process signal: $signal (SIGTERM or SIGKILL expected)", cursor.history))
-    }
-}

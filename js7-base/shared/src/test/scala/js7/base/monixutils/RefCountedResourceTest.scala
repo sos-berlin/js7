@@ -6,9 +6,8 @@ import monix.execution.Scheduler.Implicits.traced
 import monix.execution.atomic.Atomic
 import js7.base.test.OurAsyncTestSuite
 
-final class RefCountedResourceTest extends OurAsyncTestSuite
-{
-  "RefCountedResource" in {
+final class RefCountedResourceTest extends OurAsyncTestSuite:
+  "RefCountedResource" in:
     val count = Atomic(0)
     val baseResource = Resource.make(Task(count.incrementAndGet()))(_ => Task(count -= 1))
     val refCountedResource = new RefCountedResource(baseResource)
@@ -34,5 +33,3 @@ final class RefCountedResourceTest extends OurAsyncTestSuite
 
     check
       .runToFuture
-  }
-}

@@ -8,20 +8,17 @@ import io.circe.generic.semiauto.deriveCodec
   */
 final case class BItem(id: VersionedItemId[BPath], content: String)
 extends VersionedItem
-with TrivialItemState[BItem]
-{
+with TrivialItemState[BItem]:
   protected type Self = BItem
   val item: BItem = this
 
   val companion: BItem.type = BItem
 
   def withId(id: VersionedItemId[BPath]) = copy(id = id)
-}
 
 object BItem
 extends VersionedItem.Companion[BItem]
-with TrivialItemState.Companion[BItem]
- {
+with TrivialItemState.Companion[BItem]:
   type Item = BItem
   type Path = BPath
 
@@ -29,12 +26,9 @@ with TrivialItemState.Companion[BItem]
   val Path = BPath
 
   implicit val jsonCodec: Codec.AsObject[BItem] = deriveCodec[BItem]
-}
 
-case class BPath(string: String) extends VersionedItemPath {
+case class BPath(string: String) extends VersionedItemPath:
   def companion = BPath
-}
 
-object BPath extends VersionedItemPath.Companion[BPath] {
+object BPath extends VersionedItemPath.Companion[BPath]:
   protected def unchecked(string: String) = new BPath(string)
-}

@@ -6,30 +6,24 @@ import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.time.Timestamp
 import js7.data.event.{Event, KeyedEvent}
 
-sealed trait BoardEvent extends Event.IsKeyBase[BoardEvent] {
+sealed trait BoardEvent extends Event.IsKeyBase[BoardEvent]:
   val keyCompanion: BoardEvent.type = BoardEvent
-}
 
-object BoardEvent extends Event.CompanionForKey[BoardPath, BoardEvent]
-{
+object BoardEvent extends Event.CompanionForKey[BoardPath, BoardEvent]:
   implicit def implicitSelf: BoardEvent.type = this
 
   /** Notice posts via a PostNotice command (not workflow instruction). */
   final case class NoticePosted(notice: NoticePosted.PostedNotice)
   extends BoardEvent
-  object NoticePosted {
+  object NoticePosted:
     def toKeyedEvent(notice: Notice): KeyedEvent[NoticePosted] =
       notice.boardPath <-: NoticePosted(NoticePosted.PostedNotice(notice.id, notice.endOfLife))
 
-    final case class PostedNotice(id: NoticeId, endOfLife: Timestamp)
-    {
+    final case class PostedNotice(id: NoticeId, endOfLife: Timestamp):
       def toNotice(boardPath: BoardPath): Notice =
         Notice(id, boardPath, endOfLife)
-    }
-    object PostedNotice {
+    object PostedNotice:
       implicit val jsonCodec: Codec.AsObject[PostedNotice] = deriveCodec
-    }
-  }
 
   final case class NoticeDeleted(noticeId: NoticeId)
   extends BoardEvent
@@ -37,4 +31,3 @@ object BoardEvent extends Event.CompanionForKey[BoardPath, BoardEvent]
   implicit val jsonCodec: TypedJsonCodec[BoardEvent] = TypedJsonCodec(
     Subtype(deriveCodec[NoticePosted]),
     Subtype(deriveCodec[NoticeDeleted]))
-}

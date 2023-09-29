@@ -11,8 +11,7 @@ import js7.data.item.{InventoryItem, InventoryItemKey, InventoryItemPath, Versio
 /**
   * @author Joacim Zschimmer
   */
-final class TypedSourceReader(directory: Path, readers: Iterable[ItemReader])
-{
+final class TypedSourceReader(directory: Path, readers: Iterable[ItemReader]):
   private val companionToReader: Map[InventoryItemPath.AnyCompanion, ItemReader] =
     readers.toKeyedMap(_.itemPathCompanion)
 
@@ -23,15 +22,13 @@ final class TypedSourceReader(directory: Path, readers: Iterable[ItemReader])
   def readCompleteDirectory(): Checked[Seq[InventoryItem]] =
     readItems(DirectoryReader.files(directory))
 
-  def readItems(files: Seq[Path]): Checked[Seq[InventoryItem]] = {
+  def readItems(files: Seq[Path]): Checked[Seq[InventoryItem]] =
     val checkedTypedFiles = files.map(toTypedFile)
-    InventoryItemFile.checkUniqueness(checkedTypedFiles collect { case Right(o) => o }) match {
+    InventoryItemFile.checkUniqueness(checkedTypedFiles collect { case Right(o) => o }) match
       case Left(problem) =>
         Left(Problem.Combined(checkedTypedFiles.collect { case Left(p) => p } :+ problem))
       case Right(_) =>
         checkedTypedFiles.traverseAndCombineProblems(typedFile => toCheckedItem(readTypedSource(typedFile)))
-    }
-  }
 
   private def toTypedFile(file: Path): Checked[InventoryItemFile] =
     InventoryItemFile.checked(directory, file, itemPathCompanions)
@@ -39,12 +36,9 @@ final class TypedSourceReader(directory: Path, readers: Iterable[ItemReader])
   private def readTypedSource(itemFile: InventoryItemFile): ItemSource =
     ItemSource(itemFile.file.byteArray, itemFile.path, itemFile.sourceType)
 
-  private def toCheckedItem(o: ItemSource): Checked[InventoryItem] = {
-    val key: InventoryItemKey = o.path match {
+  private def toCheckedItem(o: ItemSource): Checked[InventoryItem] =
+    val key: InventoryItemKey = o.path match
       case path: VersionedItemPath => path ~ VersionId.Anonymous
       case key: InventoryItemKey => key
-    }
     val itemReader = companionToReader(o.path.companion)
     itemReader.readUntyped(key.asInstanceOf[itemReader.companion.Key], o.byteArray, o.sourceType)
-  }
-}

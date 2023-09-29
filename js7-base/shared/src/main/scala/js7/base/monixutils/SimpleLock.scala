@@ -4,8 +4,7 @@ import cats.effect.Resource
 import monix.catnap.MVar
 import monix.eval.Task
 
-final class SimpleLock
-{
+final class SimpleLock:
   private val lockV = MVar[Task].of(()).memoize
 
   val resource = Resource.make(
@@ -17,4 +16,3 @@ final class SimpleLock
 
   def lock[A](task: Task[A]): Task[A] =
     resource.use(_ => task)
-}

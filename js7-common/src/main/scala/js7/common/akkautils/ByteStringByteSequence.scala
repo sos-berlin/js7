@@ -8,8 +8,7 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.data.{ByteArray, ByteSequence}
 import js7.base.problem.Checked
 
-object ByteStringByteSequence extends ByteSequence[ByteString]
-{
+object ByteStringByteSequence extends ByteSequence[ByteString]:
   val clazz = classOf[ByteString]
   val empty = ByteString.empty
 
@@ -49,11 +48,10 @@ object ByteStringByteSequence extends ByteSequence[ByteString]
   def combine(a: ByteString, b: ByteString) =
     a ++ b
 
-  override def combineAll(as: IterableOnce[ByteString]): ByteString = {
+  override def combineAll(as: IterableOnce[ByteString]): ByteString =
     val b = ByteString.newBuilder
     for a <- as.iterator do b.append(a)
     b.result()
-  }
 
   def toArray(byteString: ByteString): Array[Byte] =
     byteString.toArray
@@ -72,4 +70,3 @@ object ByteStringByteSequence extends ByteSequence[ByteString]
 
   override def parseJson(byteString: ByteString): Checked[Json] =
     byteString.decodeString(UTF_8).parseJson
-}

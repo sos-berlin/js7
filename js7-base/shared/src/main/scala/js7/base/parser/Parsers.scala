@@ -12,11 +12,9 @@ import js7.base.utils.ScalaUtils.syntax.*
 //import js7.base.value.ValuePrinter.quoteString
 import scala.util.control.NonFatal
 
-object Parsers
-{
-  object syntax {
-    implicit final class RichParser0[+A](private val parser0: Parser0[A]) extends AnyVal
-    {
+object Parsers:
+  object syntax:
+    implicit final class RichParser0[+A](private val parser0: Parser0[A]) extends AnyVal:
       //def ignore: IgnoredParser0 =
       //  IgnoredParser0(parser0.void)
 
@@ -61,10 +59,8 @@ object Parsers
 
       def ~~<*[B](skip: Parser[B]): Parser[A] =
         parser0.with1 <* (w.with1 ~ skip)
-    }
 
-    implicit final class RichParser[+A](private val parser: Parser[A]) extends AnyVal
-    {
+    implicit final class RichParser[+A](private val parser: Parser[A]) extends AnyVal:
       //def ignore: IgnoredParser =
       //  IgnoredParser(parser.void)
       //
@@ -97,28 +93,24 @@ object Parsers
 
       def ~~<*[B](skip: Parser0[B]): Parser[A] =
         parser <* (w ~ skip)
-    }
-  }
 
   /** Parses the whole string, return a `Checked`. */
   def checkedParse[A](string: String, parser: Parser0[A]): Checked[A] =
-    (parser <* end).parse(string) match {
+    (parser <* end).parse(string) match
       case Right(("", expr)) => Right(expr)
       case Right((_, _)) => Left(Problem.pure("Incompletely parsed"))
       case Left(error) => Left(ParsingProblem(string, error))
-    }
 
   private val ErrorStart = "Parsing failed at position "
 
   implicit val ErrorShow: Show[Parser.Error] = error =>
     ErrorStart + (error.failedAtOffset + 1) + expectationsToCommaString(error.expected)
 
-  implicit val ExpectationShow: Show[Expectation] = {
+  implicit val ExpectationShow: Show[Expectation] =
     case Expectation.OneOfStr(_, strings) =>
-      strings.distinct.map(o => s"“$o”") match {
+      strings.distinct.map(o => s"“$o”") match
         case o :: Nil => s"Expected $o"
         case list => "Expected one of " + list.mkString("\"", ", ", "\"")
-      }
     case Expectation.InRange(_, lower, upper) =>
       if lower == upper then s"expected '$lower'"
       else s"Expected '$lower'-'$upper'"
@@ -136,10 +128,9 @@ object Parsers
       message
     case Expectation.WithContext(context, _) =>
       s"Expected $context"
-  }
 
-  private def errorToString(source: String, error: Parser.Error): String = {
-    val locationString = try {
+  private def errorToString(source: String, error: Parser.Error): String =
+    val locationString = try
       val locationMap = LocationMap(source)
       val (row0, col0) = locationMap.toLineCol(error.failedAtOffset)
         .getOrElse(
@@ -156,18 +147,16 @@ object Parsers
       ((locationMap.lineCount > 1) ?? s"${row0 + 1}:") +
         (col0 + 1) +
         " “" + context + "”" //" »" + context + "«"
-    } catch { case NonFatal(t) => " " }
+    catch { case NonFatal(t) => " " }
     ErrorStart + locationString + expectationsToCommaString(error.expected)
-  }
 
-  private def expectationsToCommaString(expectations: NonEmptyList[Expectation]): String = {
+  private def expectationsToCommaString(expectations: NonEmptyList[Expectation]): String =
     val s = expectationsToString(expectations)
     (s.nonEmpty ?? " · ") + s
-  }
 
   private val AllChars = Char.MinValue to Char.MaxValue
 
-  private def expectationsToString(expectations: NonEmptyList[Expectation]): String = {
+  private def expectationsToString(expectations: NonEmptyList[Expectation]): String =
     // Reduce the huge amount of Expectation.InRange
     var charSetExpectations: List[String] = Nil
     var expectedChars = expectations
@@ -176,10 +165,10 @@ object Parsers
       .flatten
       .toSet
 
-    if expectedChars.size > AllChars.size - 20 then {
+    if expectedChars.size > AllChars.size - 20 then
       val notIn = AllChars.filterNot(expectedChars).sorted
       val notInAsString = charsToString(notIn)
-      val msg = notIn.size match {
+      val msg = notIn.size match
         case 0 =>
           "Expected any character"
         case 1 =>
@@ -188,23 +177,20 @@ object Parsers
         case _ =>
           val s = notInAsString.replace("]", "\\]")
           s"Expected character not in [$s]"
-      }
       charSetExpectations = msg :: charSetExpectations
       expectedChars = Set.empty
-    }
 
-    if AllChars.filter(isIdentifierStart) forall expectedChars then {
+    if AllChars.filter(isIdentifierStart) forall expectedChars then
       charSetExpectations = "Expected identifer" :: charSetExpectations
       expectedChars = expectedChars filterNot isIdentifierStart
-    }
 
     expectations.toList
       .filterNot(_.isInstanceOf[Expectation.InRange])
       .map(_.show)
       .concat(charSetExpectations)
-      .concat {
+      .concat:
         val expectedCharsAsString = charsToString(expectedChars)
-        expectedChars.size match {
+        expectedChars.size match
           case 0 => None
           case 1 =>
             val s = expectedCharsAsString.replace("'", "\\'")
@@ -212,10 +198,7 @@ object Parsers
           case _ =>
             val s = expectedCharsAsString.replace("]", "\\]")
             Some(s"Expected a character out of [$s]")
-        }
-      }
       .mkString(" · ")
-  }
 
   private def charsToString(chars: Iterable[Char]): String =
     chars.toVector.sortBy(c => (c.toInt & Int.MaxValue)).view.flatMap {
@@ -284,4 +267,3 @@ object Parsers
 
   final case class ParsingProblem(source: String, error: Error)
   extends Problem.Lazy(errorToString(source, error))
-}

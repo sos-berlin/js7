@@ -6,14 +6,10 @@ import js7.data.source.SourcePos
 import js7.data.workflow.Instruction
 
 final case class Break(sourcePos: Option[SourcePos] = None)
-extends Instruction
-{
+extends Instruction:
   def withoutSourcePos = copy(sourcePos = None)
 
   override def toString = "Break"
-}
 
-object Break
-{
+object Break:
   implicit val jsonCodec: Codec.AsObject[Break] = deriveCodec
-}

@@ -6,7 +6,7 @@ import js7.base.test.OurTestSuite
 import js7.base.time.AdmissionTimeSchemeForJavaTime.*
 import js7.base.time.ScalaTime.*
 
-final class AdmissionTimeSchemeForJavaTimeTest extends OurTestSuite {
+final class AdmissionTimeSchemeForJavaTimeTest extends OurTestSuite:
 
   private val zone = ZoneId.of("Europe/Mariehamn")
   private val dateOffset = 3.h
@@ -20,15 +20,14 @@ final class AdmissionTimeSchemeForJavaTimeTest extends OurTestSuite {
     /*5*/MonthlyDatePeriod(3, LocalTime.of(0, 0), 1.h),
     /*6*/SpecificDatePeriod(LocalDateTime.parse("2023-07-06T12:00"), 1.s)))
 
-  "hasAdmissionPeriodStartForDay" in {
+  "hasAdmissionPeriodStartForDay" in:
     val scheme = AdmissionTimeScheme(Seq(
       WeekdayPeriod(TUESDAY, LocalTime.of(18, 0), 2.h)))
     assert(!scheme.hasAdmissionPeriodStartForDay(LocalDate.parse("2023-07-03"), dateOffset))
     assert(scheme.hasAdmissionPeriodStartForDay(LocalDate.parse("2023-07-04"), dateOffset))
     assert(!scheme.hasAdmissionPeriodStartForDay(LocalDate.parse("2023-07-06"), dateOffset))
-  }
 
-  "isPermitted" in {
+  "isPermitted" in:
     // 2023-04-06 is a tuesday
     assert(!scheme.isPermitted(Timestamp("2023-07-04T00:00:00Z"), zone, dateOffset))
     assert(!scheme.isPermitted(Timestamp("2023-07-04T05:59:59Z"), zone, dateOffset))
@@ -36,9 +35,8 @@ final class AdmissionTimeSchemeForJavaTimeTest extends OurTestSuite {
 
     assert(!scheme.isPermitted(Timestamp("2023-07-04T14:59:59Z"), zone, dateOffset))
     assert(scheme.isPermitted(Timestamp("2023-07-04T15:00:00Z"), zone, dateOffset))
-  }
 
-  "findLocalInterval" in {
+  "findLocalInterval" in:
     assert(scheme.findLocalInterval(local("2023-07-04T00:00"), dateOffset) ==
       Some(LocalInterval(local("2023-07-04T09:00"), 2.h)))
     assert(scheme.findLocalInterval(local("2023-07-04T09:00"), dateOffset) ==
@@ -101,9 +99,8 @@ final class AdmissionTimeSchemeForJavaTimeTest extends OurTestSuite {
 
       0 -> LocalInterval(local("2023-07-31T09:00"), 2.h), // monday
       4 -> LocalInterval(local("2023-07-31T21:00"), 3.h)))
-  }
 
-  "findTimeInterval" in {
+  "findTimeInterval" in:
     assert(scheme.findTimeInterval(Timestamp("2023-07-04T00:00:00Z"), zone, dateOffset) ==
       Some(TimeInterval(Timestamp("2023-07-04T06:00:00Z"), 2.h)))
     assert(scheme.findTimeInterval(Timestamp("2023-07-04T06:00:00Z"), zone, dateOffset) ==
@@ -113,9 +110,8 @@ final class AdmissionTimeSchemeForJavaTimeTest extends OurTestSuite {
 
     assert(scheme.findTimeInterval(Timestamp("2023-07-04T08:00:00Z"), zone, dateOffset) ==
       Some(TimeInterval(Timestamp("2023-07-04T15:00:00Z"), 2.h)))
-  }
 
-  "findTimeIntervals" in {
+  "findTimeIntervals" in:
     val timeIntervals = scheme.findTimeIntervals(
       from = Timestamp("2023-07-01T00:00:00Z"),
       until = Timestamp("2023-08-01T00:00:00Z"),
@@ -166,7 +162,5 @@ final class AdmissionTimeSchemeForJavaTimeTest extends OurTestSuite {
 
        0 -> TimeInterval(Timestamp("2023-07-31T06:00:00Z"), 2.h), // monday
        4 -> TimeInterval(Timestamp("2023-07-31T18:00:00Z"), 3.h)))
-  }
 
   private def local(string: String) = LocalDateTime.parse(string)
-}

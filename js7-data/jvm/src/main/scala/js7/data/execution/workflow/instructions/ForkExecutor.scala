@@ -9,8 +9,7 @@ import js7.data.state.StateView
 import js7.data.workflow.instructions.Fork
 
 private[instructions] final class ForkExecutor(protected val service: InstructionExecutorService)
-extends EventInstructionExecutor with ForkInstructionExecutor
-{
+extends EventInstructionExecutor with ForkInstructionExecutor:
   type Instr = Fork
   val instructionClass = classOf[Fork]
 
@@ -31,4 +30,3 @@ extends EventInstructionExecutor with ForkInstructionExecutor
           calcResult(branch.result, order.id / branch.id.string, state, now))
         .map(results =>
           Outcome.Succeeded(results.view.flatten.toMap)))
-}

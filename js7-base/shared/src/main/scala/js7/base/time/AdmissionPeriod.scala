@@ -16,23 +16,18 @@ import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.*
 
 /** Periodical admission time expressed in local time. */
-sealed trait AdmissionPeriod
-{
+sealed trait AdmissionPeriod:
   def pretty: String
 
   override def toString = s"${getClass.simpleScalaName}($pretty)"
-}
 
-case object AlwaysPeriod extends AdmissionPeriod
-{
+case object AlwaysPeriod extends AdmissionPeriod:
   def pretty = "always"
 
   override def toString = "Always"
-}
 
 final case class DailyPeriod(secondOfDay: Int, duration: FiniteDuration)
-extends AdmissionPeriod
-{
+extends AdmissionPeriod:
   assertThat(secondOfDay >= 0 && secondOfDay <= DaySeconds)
   assert(duration <= DayDuration)
 
@@ -46,20 +41,17 @@ extends AdmissionPeriod
 
   def pretty =
     "daily at " + secondsOfDayToString(secondOfDay) + ", " + duration.pretty
-}
-object DailyPeriod {
+object DailyPeriod:
   val always = DailyPeriod(0, 24.h)
 
   @TestOnly
   def apply(localTime: LocalTime, duration: FiniteDuration): DailyPeriod =
     new DailyPeriod((localTime.toSecondOfDay), duration)
       .checked.orThrow
-}
 
 /** Weekly admission time. */
 final case class WeekdayPeriod(secondOfWeek: Int, duration: FiniteDuration)
-extends AdmissionPeriod
-{
+extends AdmissionPeriod:
   def checked: Checked[this.type] =
     if secondOfWeek < 0 || secondOfWeek >= WeekSeconds then
       Left(Problem(s"Invalid weekday time number: $toString"))
@@ -79,18 +71,14 @@ extends AdmissionPeriod
 
   def pretty =
     "weekly at " + dayName + " " + secondsOfDayToString(secondOfDay) + ", " + duration.pretty
-}
-object WeekdayPeriod
-{
+object WeekdayPeriod:
   @TestOnly
   def apply(weekday: DayOfWeek, localTime: LocalTime, duration: FiniteDuration): WeekdayPeriod =
     new WeekdayPeriod(weekdayToSeconds(weekday) + localTime.toSecondOfDay, duration)
       .checked.orThrow
-}
 
 final case class MonthlyDatePeriod(secondOfMonth: Int, duration: FiniteDuration)
-extends AdmissionPeriod
-{
+extends AdmissionPeriod:
   def checked: Checked[this.type] =
     if secondOfMonth < 0 || secondOfMonth >= 31*DaySeconds then
       Left(Problem(s"Invalid time in a month: $toString"))
@@ -107,19 +95,16 @@ extends AdmissionPeriod
     ordinalToString(dayOfMonth) + " of month, " +
       secondsOfDayToString(secondOfDay) + ", " +
       duration.pretty
-}
-object MonthlyDatePeriod {
+object MonthlyDatePeriod:
   @TestOnly
   def apply(dayOfMonth: Int, timeOfDate: LocalTime, duration: FiniteDuration): MonthlyDatePeriod =
     apply((dayOfMonth - 1) * DaySeconds + timeOfDate.toSecondOfDay, duration)
       .checked.orThrow
-}
 
 /** Monthly admission at a specific last day of month.
  * @param lastSecondOfMonth for example, -3600 for the last day at 23:00. */
 final case class MonthlyLastDatePeriod(lastSecondOfMonth: Int, duration: FiniteDuration)
-extends AdmissionPeriod
-{
+extends AdmissionPeriod:
   def checked: Checked[this.type] =
     if lastSecondOfMonth <= -28*DaySeconds || lastSecondOfMonth >= 0 then
       Left(Problem(s"Invalid reverse time in a month (must be negative): $toString"))
@@ -139,20 +124,17 @@ extends AdmissionPeriod
     }) + "last day of month, " +
       secondsOfDayToString(secondOfDay) + ", " +
       duration.pretty
-}
-object MonthlyLastDatePeriod {
+object MonthlyLastDatePeriod:
   @TestOnly
   def apply(lastDayOfMonth: Int, timeOfDate: LocalTime, duration: FiniteDuration)
   : MonthlyLastDatePeriod =
     apply((lastDayOfMonth + 1) * DaySeconds - (DaySeconds - timeOfDate.toSecondOfDay), duration)
       .checked.orThrow
-}
 
 /** Monthly admission at specific weekdays.
  * @param secondOfWeeks may be > 7*24*3600. */
 final case class MonthlyWeekdayPeriod(secondOfWeeks: Int, duration: FiniteDuration)
-extends AdmissionPeriod
-{
+extends AdmissionPeriod:
   def checked: Checked[this.type] =
     if secondOfWeeks < 0 || secondOfWeeks >= 4*WeekSeconds then
       Left(Problem(s"Invalid time in a month: $secondOfWeeks $toString"))
@@ -172,8 +154,7 @@ extends AdmissionPeriod
       WeekdaysNames.checked(dayOfWeek).getOrElse("?") + " " +
       secondsOfDayToString(secondOfDay) + ", " +
       duration.pretty
-}
-object MonthlyWeekdayPeriod {
+object MonthlyWeekdayPeriod:
   @TestOnly
   def apply(number: Int, weekday: DayOfWeek, localTime: LocalTime, duration: FiniteDuration)
   : MonthlyWeekdayPeriod =
@@ -181,15 +162,13 @@ object MonthlyWeekdayPeriod {
       (number - 1) * WeekSeconds + weekdayToSeconds(weekday) + localTime.toSecondOfDay,
       duration
     ).checked.orThrow
-}
 
 /** Monthly admission at specific last weekdays.
  * @param secondOfWeeks may be > 7*24*3600. */
 final case class MonthlyLastWeekdayPeriod(
   secondOfWeeks: Int,
   duration: FiniteDuration)
-extends AdmissionPeriod
-{
+extends AdmissionPeriod:
   def checked: Checked[this.type] =
     if secondOfWeeks <= -4*WeekSeconds || secondOfWeeks >= 0 then
       Left(Problem(s"Invalid time in a month: $toString"))
@@ -215,8 +194,7 @@ extends AdmissionPeriod
       WeekdaysNames.checked(dayOfWeek).getOrElse("?") + " " +
       secondsOfDayToString(secondOfDay) + ", " +
       duration.pretty
-}
-object MonthlyLastWeekdayPeriod {
+object MonthlyLastWeekdayPeriod:
   @TestOnly
   def apply(
     week: Int,
@@ -228,26 +206,20 @@ object MonthlyLastWeekdayPeriod {
       week * WeekSeconds + weekdayToSeconds(weekday) + localTime.toSecondOfDay,
       duration
     ).checked.orThrow
-}
 
 final case class SpecificDatePeriod(secondsSinceLocalEpoch: Long, duration: FiniteDuration)
-extends AdmissionPeriod
-{
-  override def pretty = {
+extends AdmissionPeriod:
+  override def pretty =
     val ts = Timestamp.ofEpochSecond(secondsSinceLocalEpoch).toString.stripSuffix("Z")
     s"$ts, ${duration.pretty}"
-  }
-}
-object SpecificDatePeriod {
+object SpecificDatePeriod:
   @TestOnly
   def apply(localDateTime: LocalDateTime, duration: FiniteDuration): SpecificDatePeriod =
     new SpecificDatePeriod(
       localDateTime.toEpochSecond(ZoneOffset.ofTotalSeconds(0)),
       duration)
-}
 
-object AdmissionPeriod
-{
+object AdmissionPeriod:
   private[time] val DaySeconds = 24 * 3600
   private[time] val DayDuration = Duration(1, DAYS)
   private[time] val WeekSeconds = 7 * DaySeconds
@@ -258,12 +230,11 @@ object AdmissionPeriod
   private[time] def weekdayToSeconds(dayOfWeek: DayOfWeek) =
     (dayOfWeek.getValue - 1) * DaySeconds
 
-  private[time] def secondsOfDayToString(secondOfDay: Int) = {
+  private[time] def secondsOfDayToString(secondOfDay: Int) =
     val hh = secondOfDay / 3600
     val mm = secondOfDay / 60 % 60
     val ss = secondOfDay % 60
     f"$hh%02d:$mm%02d" + ((ss != 0) ?? f":$ss%02d")
-  }
 
   implicit val jsonCodec: TypedJsonCodec[AdmissionPeriod] = TypedJsonCodec(
     Subtype(AlwaysPeriod),
@@ -276,4 +247,3 @@ object AdmissionPeriod
     Subtype(deriveCodec[SpecificDatePeriod]))
 
   intelliJuseImport(FiniteDurationJsonEncoder)
-}

@@ -9,8 +9,7 @@ import js7.data_for_java.common.JJsonable
 import js7.data_for_java.workflow.JWorkflowId
 
 final case class JWorkflowPosition(asScala: WorkflowPosition)
-extends JJsonable [JWorkflowPosition]
-{
+extends JJsonable [JWorkflowPosition]:
   type AsScala = WorkflowPosition
   protected def companion = JWorkflowPosition
 
@@ -21,10 +20,8 @@ extends JJsonable [JWorkflowPosition]
   @Nonnull
   def position: JPosition =
     JPosition(asScala.position)
-}
 
-object JWorkflowPosition extends JJsonable.Companion[JWorkflowPosition]
-{
+object JWorkflowPosition extends JJsonable.Companion[JWorkflowPosition]:
   type AsScala = WorkflowPosition
 
   @Nonnull
@@ -43,4 +40,3 @@ object JWorkflowPosition extends JJsonable.Companion[JWorkflowPosition]
 
   protected def jsonDecoder: Decoder[WorkflowPosition] =
     WorkflowPosition.jsonCodec
-}

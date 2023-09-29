@@ -5,8 +5,7 @@ import scala.concurrent.{ExecutionContext, Future}
 /**
   * @author Joacim Zschimmer
   */
-object MonixAntiBlocking
-{
+object MonixAntiBlocking:
   /** To avoid blocking in the following case.
     * - ExecutionContext is a Monix-3.0.0-RC2 Scheduler (TrampolineExecutionContext)
     * - -Dscala.concurrent.context.numThreads=1
@@ -16,4 +15,3 @@ object MonixAntiBlocking
     */
   def executeOn[A](ec: ExecutionContext)(future: ExecutionContext => Future[A]): Future[A] =
     Future(future(ec))(ec).flatten
-}

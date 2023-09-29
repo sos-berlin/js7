@@ -31,8 +31,7 @@ import monix.execution.Scheduler.Implicits.traced
 import scala.util.control.NonFatal
 
 final class KeepSubagentClusterTest extends OurTestSuite with ControllerAgentForScalaTest
-with BlockingItemUpdater
-{
+with BlockingItemUpdater:
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.journal.remove-obsolete-files = false
@@ -57,7 +56,7 @@ with BlockingItemUpdater
 
   protected def items = Nil
 
-  "Job started at backup Subagent while failing-over" in {
+  "Job started at backup Subagent while failing-over" in:
     val primaryDirectorResource: Resource[Task, RunningAgent] =
       directoryProvider
         .directorEnvResource(
@@ -72,7 +71,7 @@ with BlockingItemUpdater
 
     TestAgent(primaryDirectorResource.toAllocated.await(99.s)).useSync(99.s) { primaryDirector =>
       TestAgent(backupDirectorResource.toAllocated.await(99.s)).useSync(99.s) { backupDirector =>
-        try {
+        try
           var eventId = eventWatch.lastAddedEventId
           updateItems(
             workflow,
@@ -118,17 +117,14 @@ with BlockingItemUpdater
           assert(agentClusterState().isInstanceOf[ClusterState.FailedOver])
 
           controller.eventWatch.await[OrderFinished](_.key == failOverOrderId)
-        } catch {
+        catch
           case NonFatal(t) =>
             logger.error(t.toStringWithCauses, t)
             throw t
-        }
       }
     }
-  }
-}
 
-object KeepSubagentClusterTest {
+object KeepSubagentClusterTest:
   private val logger = Logger[this.type]
   private val agentPath = AgentPath("AGENT")
   private val primarySubagentId = toLocalSubagentId(agentPath)
@@ -143,4 +139,3 @@ object KeepSubagentClusterTest {
 
   final class ASemaphoreJob extends SemaphoreJob(ASemaphoreJob)
   object ASemaphoreJob extends SemaphoreJob.Companion[ASemaphoreJob]
-}

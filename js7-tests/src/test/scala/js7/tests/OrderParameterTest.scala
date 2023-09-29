@@ -16,8 +16,7 @@ import js7.launcher.internal.InternalJob
 import js7.tests.OrderParameterTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 
-final class OrderParameterTest extends OurTestSuite with ControllerAgentForScalaTest
-{
+final class OrderParameterTest extends OurTestSuite with ControllerAgentForScalaTest:
   override protected def controllerConfig = config"""
     js7.journal.remove-obsolete-files = false
     js7.controller.agent-driver.command-batch-delay = 0ms
@@ -31,7 +30,7 @@ final class OrderParameterTest extends OurTestSuite with ControllerAgentForScala
 
   private val orderIdIterator = Iterator.from(1).map(i => OrderId(s"🔷-$i"))
 
-  "a" in {
+  "a" in:
     runWithWorkflowPath(
       workflow.path,
       orderArguments = Map(
@@ -43,9 +42,8 @@ final class OrderParameterTest extends OurTestSuite with ControllerAgentForScala
           "myOptionalAny" -> StringValue("DEFAULT VALUE"),
           "myFinal" -> StringValue("FINAL VALUE"),
           "myFinal2" -> NumberValue(123)))))
-  }
 
-  "b" in {
+  "b" in:
     runWithWorkflowPath(
       workflow.path,
       orderArguments = Map(
@@ -58,13 +56,12 @@ final class OrderParameterTest extends OurTestSuite with ControllerAgentForScala
           "myOptionalAny" -> StringValue("myOptional from order"),
           "myFinal" -> StringValue("FINAL VALUE"),
           "myFinal2" -> NumberValue(123)))))
-  }
 
   private def runWithWorkflowPath(
     workflowPath: WorkflowPath,
     orderArguments: Map[String, Value] = Map.empty,
     expectedOutcomes: Seq[Outcome])
-  : Unit = {
+  : Unit =
     val order = FreshOrder(orderIdIterator.next(), workflowPath, arguments = orderArguments)
     val events = controller.runOrder(order).map(_.value)
     val outcomes = events.collect { case OrderProcessed(outcome) => outcome }
@@ -72,11 +69,8 @@ final class OrderParameterTest extends OurTestSuite with ControllerAgentForScala
 
     if expectedOutcomes.last.isSucceeded then assert(events.last.isInstanceOf[OrderFinished])
     else assert(events.last.isInstanceOf[OrderFailed])
-  }
-}
 
-object OrderParameterTest
-{
+object OrderParameterTest:
   private val agentPath = AgentPath("AGENT")
 
   private val jobResource = JobResource(JobResourcePath("JOB-RESOURCE"),
@@ -100,19 +94,14 @@ object OrderParameterTest
         OrderParameter.Final("myFinal", expr("'FINAL VALUE'")),
         OrderParameter.Final("myFinal2", expr("$myRequired"))))))
 
-  private final class TestInternalJob extends InternalJob
-  {
+  private final class TestInternalJob extends InternalJob:
     def toOrderProcess(step: Step) =
       OrderProcess.fromCheckedOutcome(
         for number <- step.arguments.checked("ARG").flatMap(_.asNumber) yield
           Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(number + 1))))
-  }
 
-  private final class ReturnArgumentsInternalJob extends InternalJob
-  {
+  private final class ReturnArgumentsInternalJob extends InternalJob:
     def toOrderProcess(step: Step) =
       OrderProcess.succeeded(step.arguments)
-  }
   private object ReturnArgumentsInternalJob
   extends InternalJob.Companion[ReturnArgumentsInternalJob]
-}

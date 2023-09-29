@@ -7,8 +7,7 @@ import js7.base.utils.MapDiff.*
 final case class MapDiff[K, V] private(
   added: Map[K, V],
   updated: Map[K, V],
-  deleted: Set[K])
-{
+  deleted: Set[K]):
   if (added.keySet & updated.keySet).nonEmpty ||
       (added.keySet & deleted).nonEmpty ||
       (updated.keySet & deleted).nonEmpty then
@@ -22,10 +21,8 @@ final case class MapDiff[K, V] private(
 
   def isEmpty =
     this == Empty
-}
 
-object MapDiff
-{
+object MapDiff:
   private val Empty = new MapDiff(Map.empty, Map.empty, Set.empty)
 
   def empty[K, V]: MapDiff[K, V] =
@@ -48,4 +45,3 @@ object MapDiff
 
   implicit val StringDiffJsonEncoder: Encoder[MapDiff[String, String]] = deriveEncoder[MapDiff[String, String]]
   implicit val StringDiffJsonDecoder: Decoder[MapDiff[String, String]] = deriveDecoder[MapDiff[String, String]]
-}

@@ -7,9 +7,8 @@ import js7.data.workflow.Instruction
 import js7.data.workflow.instructions.Instructions.jsonCodec
 import js7.tester.CirceJsonTester.testJsonDecoder
 
-final class PostNoticeTest extends OurTestSuite
-{
-  "JSON" in {
+final class PostNoticeTest extends OurTestSuite:
+  "JSON" in:
     // COMPATIBLE with v2.3
     testJsonDecoder[Instruction](
       PostNotices(Seq(BoardPath("BOARD"))),
@@ -18,5 +17,3 @@ final class PostNoticeTest extends OurTestSuite
           "TYPE": "PostNotice",
           "boardPath": "BOARD"
         }""")
-  }
-}

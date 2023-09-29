@@ -47,8 +47,7 @@ private[agent] final class DirectorDriver private(
   adoptEvents: Seq[Stamped[AnyKeyedEvent]] => Task[Unit],
   journal: Journal[ControllerState],
   conf: AgentDriverConfiguration)
-extends Service.StoppableByRequest
-{
+extends Service.StoppableByRequest:
   directorDriver =>
 
   private val index = DirectorDriver.index.incrementAndGet()
@@ -71,8 +70,8 @@ extends Service.StoppableByRequest
       untilFetchingStopped.get
 
   private val eventFetcher = new RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], AgentClient](
-      _.eventId, conf.recouplingStreamReader)
-  {
+      _.eventId, conf.recouplingStreamReader):
+
     private var attachedOrderIds: Set[OrderId] = null
 
     override protected def couple(eventId: EventId) =
@@ -122,7 +121,7 @@ extends Service.StoppableByRequest
       onCouplingFailed_(problem)
 
     override protected def onCoupled(api: AgentClient, after: EventId) =
-      Task.defer {
+      Task.defer:
         logger.info(s"Coupled with $api after=${EventId.toString(after)}")
         assertThat(attachedOrderIds != null)
         onCoupled_(attachedOrderIds)
@@ -130,17 +129,14 @@ extends Service.StoppableByRequest
             attachedOrderIds = null
           })
           .as(Completed)
-      }
 
     override protected def onDecoupled =
-      Task.defer {
+      Task.defer:
         logger.debug("onDecoupled")
         onDecoupled_
           .as(Completed)
-      }
 
     protected def stopRequested = directorDriver.isStopping
-  }
 
   private def continuallyFetchEvents: Task[Unit] =
     observeAndConsumeEvents
@@ -228,15 +224,13 @@ extends Service.StoppableByRequest
         untilStopRequested.delayExecution(10.s/*because AgentDriver stops on SwitchOver*/),
         client.retryIfSessionLost()(
           client.commandExecute(command)))
-      .map {
+      .map:
         case Left(()) => Left(DirectorDriverStoppedProblem(agentPath))
         case Right(o) => o
-      }
 
   override def toString = s"DirectorDriver($agentPath #$index)"
-}
 
-private[agent] object DirectorDriver {
+private[agent] object DirectorDriver:
   private val index = Atomic(0)
 
   private val EventClasses = Set[Class[? <: Event]](
@@ -268,7 +262,5 @@ private[agent] object DirectorDriver {
         journal, conf)))
 
   final case class DirectorDriverStoppedProblem(agentPath: AgentPath)
-  extends Problem.Coded {
+  extends Problem.Coded:
     def arguments = Map("agentPath" -> agentPath.string)
-  }
-}

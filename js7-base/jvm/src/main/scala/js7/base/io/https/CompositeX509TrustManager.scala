@@ -22,8 +22,7 @@ import scala.util.{Failure, Success}
   * @see https://stackoverflow.com/questions/1793979/registering-multiple-keystores-in-jvm
   */
 final class CompositeX509TrustManager private(val trustManagers: Seq[X509TrustManager])
-extends X509TrustManager
-{
+extends X509TrustManager:
   def checkClientTrusted(chain: Array[X509Certificate], authType: String) =
     tryTrustManagers(
       _.checkClientTrusted(chain, authType))
@@ -32,7 +31,7 @@ extends X509TrustManager
     tryTrustManagers(
       _.checkServerTrusted(chain, authType))
 
-  private def tryTrustManagers[A](op: X509TrustManager => A): A = {
+  private def tryTrustManagers[A](op: X509TrustManager => A): A =
     val tries = trustManagers
       .to(LazyList)
       .map(trustManager =>
@@ -42,23 +41,17 @@ extends X509TrustManager
         })
 
     tries.collectFirst { case Success(a) => a }
-      .getOrElse {
+      .getOrElse:
         for t <- tries.map(_.failed.get) do logger.debug(t.toStringWithCauses)
         throw new CertificateException("None of the TrustManagers trust this certificate chain")
-      }
-  }
 
   def getAcceptedIssuers: Array[X509Certificate] =
     trustManagers.view.flatMap(_.getAcceptedIssuers).toArray
-}
 
-object CompositeX509TrustManager
-{
+object CompositeX509TrustManager:
   private val logger = Logger[this.type]
 
   def apply(trustManagers: Seq[X509TrustManager]): X509TrustManager =
-    trustManagers match {
+    trustManagers match
       case Seq(single) => single
       case o => new CompositeX509TrustManager(o)
-    }
-}

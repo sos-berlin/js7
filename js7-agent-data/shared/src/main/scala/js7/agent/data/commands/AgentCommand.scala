@@ -27,45 +27,35 @@ import js7.data.subagent.SubagentId
 /**
  * @author Joacim Zschimmer
  */
-sealed trait AgentCommand extends CommonCommand {
+sealed trait AgentCommand extends CommonCommand:
   type Response <: AgentCommand.Response
-}
 
-object AgentCommand extends CommonCommand.Companion
-{
+object AgentCommand extends CommonCommand.Companion:
   protected type Command = AgentCommand
 
   trait Response
-  object Response {
+  object Response:
     type Accepted = Accepted.type
-    case object Accepted extends Response {
+    case object Accepted extends Response:
       implicit val jsonCodec: Codec[Accepted] = singletonCodec(Accepted)
-    }
-  }
 
   final case class Batch(commands: Seq[CorrelIdWrapped[AgentCommand]])
-  extends AgentCommand with CommonBatch with Big {
+  extends AgentCommand with CommonBatch with Big:
     type Response = Batch.Response
-  }
-  object Batch {
+  object Batch:
     final case class Response(responses: Seq[Checked[AgentCommand.Response]])
-    extends AgentCommand.Response with Big {
-      override def toString = {
+    extends AgentCommand.Response with Big:
+      override def toString =
         val succeeded = responses count (_.isRight)
         s"Batch($succeeded succeeded and ${responses.size - succeeded} failed)"
-      }
-    }
-  }
 
-  final case class MarkOrder(orderId: OrderId, mark: OrderMark) extends OrderCommand {
+  final case class MarkOrder(orderId: OrderId, mark: OrderMark) extends OrderCommand:
     type Response = Response.Accepted
-  }
 
-  final case class EmergencyStop(restart: Boolean = false) extends AgentCommand {
+  final case class EmergencyStop(restart: Boolean = false) extends AgentCommand:
     /** The JVM is halted before responding. */
     type Response = Response.Accepted
-  }
-  object EmergencyStop {
+  object EmergencyStop:
     implicit val jsonEncoder: Encoder.AsObject[EmergencyStop] = o =>
       JsonObject.fromIterable(
         o.restart.thenList("restart" -> Json.True))
@@ -74,19 +64,16 @@ object AgentCommand extends CommonCommand.Companion
       for
         restart <- c.getOrElse[Boolean]("restart")(false)
       yield EmergencyStop(restart)
-  }
 
   /** Some outer component no longer needs the events until (including) the given `untilEventId`.
     * JS7 may delete these events to reduce the journal,
     * keeping all events after `untilEventId`.
     */
-  final case class ReleaseEvents(untilEventId: EventId) extends OrderCommand {
+  final case class ReleaseEvents(untilEventId: EventId) extends OrderCommand:
     type Response = Response.Accepted
-  }
 
-  case object NoOperation extends AgentCommand {
+  case object NoOperation extends AgentCommand:
     type Response = Response.Accepted
-  }
 
   /** Registers the Controller identified by current User as a new Controller and couples it.
     * The Agent starts as a new Agent, dedicated to the Controller.
@@ -97,10 +84,9 @@ object AgentCommand extends CommonCommand.Companion
     controllerId: ControllerId,
     controllerRunId: ControllerRunId,
     agentPath: AgentPath)
-  extends AgentCommand {
+  extends AgentCommand:
     type Response = DedicateAgentDirector.Response
-  }
-  object DedicateAgentDirector {
+  object DedicateAgentDirector:
     /**
       * @param agentRunId Use the value for `CoupleController`. */
     final case class Response(agentRunId: AgentRunId, agentEventId: EventId)
@@ -109,15 +95,13 @@ object AgentCommand extends CommonCommand.Companion
     implicit val jsonEncoder: Encoder.AsObject[DedicateAgentDirector] = deriveEncoder
     implicit val jsonDecoder: Decoder[DedicateAgentDirector] =
       c => for
-        directors <- c.get[Option[SubagentId]]("subagentId").flatMap {
+        directors <- c.get[Option[SubagentId]]("subagentId").flatMap:
           case None => c.get[Option[Seq[SubagentId]]]("directors").map(_.toVector.flatten)
           case Some(subagentId) => Right(Seq(subagentId))
-        }
         controllerId <- c.get[ControllerId]("controllerId")
         controllerRunId <- c.get[ControllerRunId]("controllerRunId")
         agentPath <- c.get[AgentPath]("agentPath")
       yield DedicateAgentDirector(directors, controllerId, controllerRunId, agentPath)
-  }
 
   /** Couples the registered Controller identified by current User.
     * @param agentRunId Must be the value returned by `DedicateAgentDirector`. */
@@ -126,27 +110,21 @@ object AgentCommand extends CommonCommand.Companion
     agentRunId: AgentRunId,
     eventId: EventId,
     controllerRunId: ControllerRunId)
-  extends AgentCommand {
+  extends AgentCommand:
     type Response = CoupleController.Response
-  }
-  object CoupleController {
+  object CoupleController:
     final case class Response(orderIds: Set[OrderId])
-    extends AgentCommand.Response with Big
-    {
+    extends AgentCommand.Response with Big:
       override def toString = s"Response(${orderIds.size} Orders attached)"
-    }
-  }
 
   final case class Reset(agentRunId: Option[AgentRunId])
   extends AgentCommand
-  object Reset {
+  object Reset:
     type Response = AgentCommand.Response
-  }
 
   type TakeSnapshot = TakeSnapshot.type
-  case object TakeSnapshot extends AgentCommand {
+  case object TakeSnapshot extends AgentCommand:
     type Response = Response.Accepted
-  }
 
   sealed trait ShutdownOrAbort extends AgentCommand
 
@@ -156,7 +134,7 @@ object AgentCommand extends CommonCommand.Companion
     suppressSnapshot: Boolean = false,
     restart: Boolean = false,
     restartDirector: Boolean = false)
-  extends ShutdownOrAbort {
+  extends ShutdownOrAbort:
     type Response = Response.Accepted
 
     def isFailOrSwitchover: Boolean =
@@ -167,10 +145,9 @@ object AgentCommand extends CommonCommand.Companion
 
     def isSwitchover: Boolean =
       clusterAction contains ShutDown.ClusterAction.Switchover
-  }
-  object ShutDown {
+  object ShutDown:
     sealed trait ClusterAction
-    object ClusterAction {
+    object ClusterAction:
       case object Switchover extends ClusterAction
 
       case object Failover extends ClusterAction
@@ -178,31 +155,25 @@ object AgentCommand extends CommonCommand.Companion
       implicit val jsonCodec: TypedJsonCodec[ClusterAction] = TypedJsonCodec[ClusterAction](
         Subtype(Switchover),
         Subtype(Failover))
-    }
 
     implicit val jsonCodec: Codec.AsObject[ShutDown] =
       deriveConfiguredCodec[ShutDown]
-  }
 
   sealed trait OrderCommand extends AgentCommand
 
   final case class AttachItem(item: UnsignedItem)
-  extends AgentCommand
-  {
+  extends AgentCommand:
     type Response = Response.Accepted
 
     override def toShortString =
       s"AttachItem(${item.key}${item.itemRevision.fold("")(o => "~" + o.number)})"
-  }
 
   final case class AttachSignedItem(signed: Signed[SignableItem])
-  extends AgentCommand
-  {
+  extends AgentCommand:
     type Response = Response.Accepted
     override def toShortString = s"AttachSignedItem(${signed.value.key})"
     override def toString = toShortString
-  }
-  object AttachSignedItem {
+  object AttachSignedItem:
     // Same serialization as SignedItemAdded event
     implicit val jsonEncoder: Encoder.AsObject[AttachSignedItem] =
       o => SignableItem.signedEncodeJson(o.signed.signedString, o.signed.value.itemRevision)
@@ -210,18 +181,15 @@ object AgentCommand extends CommonCommand.Companion
     implicit def jsonDecoder[S: ItemContainer.Companion]
     : Decoder[AttachSignedItem] =
       c => SignableItem.signedJsonDecoder.decodeJson(c.value).map(AttachSignedItem(_))
-  }
 
   final case class DetachItem(key: InventoryItemKey)
-  extends AgentCommand
-  {
+  extends AgentCommand:
     type Response = Response.Accepted
-  }
 
   sealed trait AttachOrDetachOrder extends OrderCommand
 
   final case class AttachOrder(order: Order[Order.IsFreshOrReady])
-  extends AttachOrDetachOrder with Big {
+  extends AttachOrDetachOrder with Big:
     order.workflowId.requireNonAnonymous()
     order.attached.orThrow
 
@@ -229,29 +197,24 @@ object AgentCommand extends CommonCommand.Companion
 
     override def toShortString = s"AttachOrder(${order.id.string}, ${order.workflowPosition}, " +
       s"${order.state.getClass.simpleScalaName}))"
-  }
-  object AttachOrder {
+  object AttachOrder:
     def apply(order: Order[Order.IsFreshOrReady], agentPath: AgentPath) =
       new AttachOrder(order.copy(attachedState = Some(Order.Attached(agentPath))))
-  }
 
   final case class DetachOrder(orderId: OrderId)
-  extends AttachOrDetachOrder {
+  extends AttachOrDetachOrder:
     type Response = Response.Accepted
-  }
 
   final case class ResetSubagent(subagentId: SubagentId, force: Boolean)
-  extends AgentCommand {
+  extends AgentCommand:
     type Response = Response.Accepted
-  }
 
   type ClusterSwitchOver = ClusterSwitchOver.type
   case object ClusterSwitchOver
-    extends AgentCommand {
+    extends AgentCommand:
     type Response = Response.Accepted
-  }
 
-  implicit val jsonCodec: TypedJsonCodec[AgentCommand] = {
+  implicit val jsonCodec: TypedJsonCodec[AgentCommand] =
     import AgentState.{implicitItemContainer, unsignedItemJsonCodec}
     intelliJuseImport(unsignedItemJsonCodec)
     TypedJsonCodec[AgentCommand](
@@ -272,7 +235,6 @@ object AgentCommand extends CommonCommand.Companion
       Subtype(TakeSnapshot),
       Subtype(deriveCodec[ResetSubagent]),
       Subtype(ClusterSwitchOver))
-  }
 
   implicit val responseJsonCodec: TypedJsonCodec[AgentCommand.Response] =
     TypedJsonCodec[AgentCommand.Response](
@@ -284,4 +246,3 @@ object AgentCommand extends CommonCommand.Companion
   intelliJuseImport((FiniteDurationJsonDecoder,
     checkedJsonEncoder[Int], checkedJsonDecoder[Int],
     signableItemJsonCodec, unsignedSimpleItemJsonCodec, inventoryItemKeyJsonCodec))
-}

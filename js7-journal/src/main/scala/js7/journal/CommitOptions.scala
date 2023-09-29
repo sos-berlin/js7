@@ -7,7 +7,5 @@ final case class CommitOptions(
   delay: FiniteDuration = Duration.Zero,
   alreadyDelayed: FiniteDuration = Duration.Zero)
 
-object CommitOptions
-{
+object CommitOptions:
   val default = new CommitOptions()
-}

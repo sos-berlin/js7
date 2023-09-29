@@ -33,8 +33,7 @@ import scala.util.control.NonFatal
 
 final class TestAgent(
   allocated: Allocated[Task, RunningAgent],
-  terminateProcessesWith: Option[ProcessSignal] = None)
-{
+  terminateProcessesWith: Option[ProcessSignal] = None):
   val agent = allocated.allocatedThing
 
   def stop: Task[Unit] =
@@ -76,10 +75,9 @@ final class TestAgent(
   def untilReady: Task[MainActor.Ready] =
     agent.untilReady
 
-  def currentAgentState(): AgentState = {
+  def currentAgentState(): AgentState =
     import agent.scheduler
     agent.agentState.await(99.s).orThrow
-  }
 
   def eventWatch: EventWatch =
     agent.eventWatch
@@ -100,9 +98,8 @@ final class TestAgent(
     agent.conf
 
   override def toString = s"TestAgent($name)"
-}
 
-object TestAgent {
+object TestAgent:
   private val logger = Logger[this.type]
 
   def apply(
@@ -166,4 +163,3 @@ object TestAgent {
             .tapError(t => Task(
               logger.error(t.toStringWithCauses, t.nullIfNoStackTrace)))
         }))
-}

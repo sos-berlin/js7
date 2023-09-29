@@ -18,20 +18,18 @@ import scala.sys.process.*
 /**
   * @author Joacim Zschimmer
   */
-final class HttpsTest extends OurTestSuite
-{
+final class HttpsTest extends OurTestSuite:
   private val nullLogger = ProcessLogger(_ => ())
 
-  "Read PEM encoded certificate" in {
+  "Read PEM encoded certificate" in:
     withTemporaryFile { keyFile =>
       val keyStore = loadStdout(makeCertCommand("/CN=localhost", keyFile))
       val alias = "TEST"
       assert(keyStore.getCertificate(alias).asInstanceOf[X509Certificate].getIssuerX500Principal.toString == "CN=localhost")
       assert(!keyStore.isKeyEntry(alias))
     }
-  }
 
-  "Read multiple PEM encoded certificate" in {
+  "Read multiple PEM encoded certificate" in:
     withTemporaryFile { keyFile =>
       val content =
         executeCommand(makeCertCommand("/CN=A", keyFile))(ByteArray.fromInputStreamUnlimited) ++
@@ -41,20 +39,18 @@ final class HttpsTest extends OurTestSuite
       assert(keyStore.getCertificate("TEST#2").asInstanceOf[X509Certificate].getIssuerX500Principal.toString == "CN=B")
       assert(!keyStore.isKeyEntry("TEST#1"))
     }
-  }
 
-  "sourcePathToName" in {
+  "sourcePathToName" in:
     assert(Https.sourcePathToName("a") == "a")
     assert(Https.sourcePathToName("abc.pem") == "abc.pem")
     assert(Https.sourcePathToName("a/bb/ccc") == "ccc")
     assert(Https.sourcePathToName("a\\bb\\ccc") == "ccc")
-  }
 
   private def makeCertCommand(principal: String, keyFile: Path): Seq[String] =
     Seq("openssl", "req", "-batch", "-x509", "-newkey", "rsa:1024", "-days", "2", "-nodes",
               "-subj", principal, "-keyout", keyFile.toString)
 
-  "Read PKCS #12" in {
+  "Read PKCS #12" in:
     withTemporaryDirectory("HttpsTest-") { dir =>
       val cmd = s"$openssl req -batch -x509 -newkey rsa:1024 -days 2 -nodes -subj '/CN=localhost' " +
         s"-out '$dir/TEST.crt' -keyout '$dir/TEST.key'"
@@ -67,14 +63,13 @@ final class HttpsTest extends OurTestSuite
       assert(keyStore.getCertificate(alias).asInstanceOf[X509Certificate].getIssuerX500Principal.toString == "CN=localhost")
       assert(keyStore.isKeyEntry(alias))
     }
-  }
 
   private def loadStdout(command: Seq[String]): KeyStore =
     executeCommand(command) { in =>
       Https.loadKeyStoreFromInputStream(in, SecretString("TEST-PASSWORD"), "TEST", "TEST-KIND")
     }
 
-  private def executeCommand[A](command: Seq[String])(body: InputStream => A): A = {
+  private def executeCommand[A](command: Seq[String])(body: InputStream => A): A =
     val p = new JavaProcessBuilder(command*)
     val process = p.start()
     Future { autoClosing(process.getErrorStream) { stderr => while stderr.read() != -1 do {} } }
@@ -83,5 +78,3 @@ final class HttpsTest extends OurTestSuite
         body(in)
       }
     finally process.waitFor()
-  }
-}

@@ -19,8 +19,7 @@ import scala.concurrent.duration.*
 /**
   * @author Joacim Zschimmer
   */
-object CatsUtils
-{
+object CatsUtils:
   type Nel[+A] = NonEmptyList[A]
   val Nel = NonEmptyList
 
@@ -44,28 +43,25 @@ object CatsUtils
       }
     })
 
-  object syntax {
-    implicit final class RichF[F[_], A](private val underlying: F[A]) extends AnyVal {
+  object syntax:
+    implicit final class RichF[F[_], A](private val underlying: F[A]) extends AnyVal:
       /** Compiles iff A == B or A extends B. */
       @inline def containsType[B >: A]: F[A] =
         underlying
-    }
 
-    implicit final class RichTimer[F[_]](private val timer: Timer[F]) extends AnyVal {
+    implicit final class RichTimer[F[_]](private val timer: Timer[F]) extends AnyVal:
       def now(implicit F: Functor[F]): F[Deadline] =
         for nanos <- timer.clock.monotonic(NANOSECONDS) yield
           Deadline(Duration(nanos, NANOSECONDS))
-    }
 
-    implicit final class RichSyncTimer(private val timer: Timer[SyncIO]) extends AnyVal {
+    implicit final class RichSyncTimer(private val timer: Timer[SyncIO]) extends AnyVal:
       def unsafeNow(): FiniteDuration =
         Duration(
           timer.clock.monotonic(NANOSECONDS).unsafeRunSync(),
           NANOSECONDS)
-    }
 
     implicit final class RichResource[F[_], A](private val resource: Resource[F, A])
-    extends AnyVal {
+    extends AnyVal:
       def toAllocated[G[x] >: F[x], B >: A](using BracketThrow[G], UnsafeMemoizable[G], Tag[B])
       : G[Allocated[G, B]] =
         resource.allocated[G, B].map(Allocated.fromPair(_))
@@ -81,29 +77,22 @@ object CatsUtils
           resource
             .toAllocated[G, B]
             .map(_.toSingleUseResource))
-    }
-  }
 
-  implicit final class RichDeferred[F[_], A](private val deferred: Deferred[F, A]) extends AnyVal {
+  implicit final class RichDeferred[F[_], A](private val deferred: Deferred[F, A]) extends AnyVal:
     /** For compatibility with Cats Effect 3. */
     def complete3(a: A)(implicit F: Sync[F]): F[Boolean] =
       deferred.complete(a).attempt.map(_.isRight)
-  }
 
-  implicit final class RichThrowableValidated[E <: Throwable, A](private val underlying: Validated[E, A]) extends AnyVal
-  {
+  implicit final class RichThrowableValidated[E <: Throwable, A](private val underlying: Validated[E, A]) extends AnyVal:
     def orThrow: A =
       underlying.valueOr(t => throw t.appendCurrentStackTrace)
-  }
 
-  implicit final class RichProblemValidated[E <: Problem, A](private val underlying: Validated[E, A]) extends AnyVal
-  {
+  implicit final class RichProblemValidated[E <: Problem, A](private val underlying: Validated[E, A]) extends AnyVal:
     def orThrow: A =
       underlying.valueOr(problem => throw problem.throwable.appendCurrentStackTrace)
-  }
 
   implicit final class RichNonEmptyListCompanion(private val x: NonEmptyList.type)
-  extends AnyVal {
+  extends AnyVal:
     def unsafe[A: Tag](seq: Seq[A]): NonEmptyList[A] =
       checked(seq).orThrow
 
@@ -112,10 +101,9 @@ object CatsUtils
         Left(Problem(s"Cannot create NonEmptyList[${Tag[A].tag.longName}] from empty sequence"))
       else
         Right(NonEmptyList(seq.head, seq.toList.tail))
-  }
 
   implicit final class RichNonEmptySeqCompanion(private val x: NonEmptySeq.type)
-  extends AnyVal {
+  extends AnyVal:
     def unsafe[A: Tag](seq: Seq[A]): NonEmptySeq[A] =
       checked(seq).orThrow
 
@@ -124,19 +112,16 @@ object CatsUtils
         Left(Problem(s"Cannot create NonEmptySeq[${Tag[A].tag.longName}] from empty sequence"))
       else
         Right(NonEmptySeq(seq.head, seq.tail))
-  }
 
   // Scala 2.13 does not allow add a method to an AnyVal class
-  def continueWithLast[A](seq: NonEmptySeq[A]): Iterator[A] = {
+  def continueWithLast[A](seq: NonEmptySeq[A]): Iterator[A] =
     val last = seq.last
     seq.iterator ++ Iterator.continually(last)
-  }
 
   // Scala 2.13 does not allow add a method to an AnyVal class
-  def continueWithLast[A](seq: NonEmptyList[A]): Iterator[A] = {
+  def continueWithLast[A](seq: NonEmptyList[A]): Iterator[A] =
     val last = seq.last
     seq.iterator ++ Iterator.continually(last)
-  }
 
   def continueWithLast[A](head: A, next: A, tail: A*): Iterator[A] =
     continueWithLast(NonEmptySeq.fromSeqUnsafe(Seq(head, next) ++ tail))
@@ -144,13 +129,11 @@ object CatsUtils
   def repeatLast[A](seq: Seq[A]): LazyList[A] =
     if seq.isEmpty then
       LazyList.empty
-    else {
+    else
       val last = seq.last
       seq ++: LazyList.continually(last)
-    }
 
   //def repeatLast[A](seq: NonEmptySeq[A]): LazyList[A] = {
   //  val last = seq.last
   //  seq.toSeq ++: LazyList.continually(last)
   //}
-}

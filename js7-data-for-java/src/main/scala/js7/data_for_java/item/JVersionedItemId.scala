@@ -5,8 +5,7 @@ import js7.base.annotation.javaApi
 import js7.data.item.{VersionId, VersionedItemId, VersionedItemPath}
 
 @javaApi
-trait JVersionedItemId[P <: VersionedItemPath]
-{
+trait JVersionedItemId[P <: VersionedItemPath]:
   final type Path = P
   protected type ScalaPath <: VersionedItemPath
   type AsScala <: VersionedItemId[ScalaPath]
@@ -18,4 +17,3 @@ trait JVersionedItemId[P <: VersionedItemPath]
   @Nonnull
   def versionId: VersionId =
     asScala.versionId
-}

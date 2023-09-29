@@ -25,8 +25,7 @@ final class X509SignatureVerifier private[x509](
   trustedRootCertificates: Seq[X509Cert],
   signerDNToTrustedCertificate: Map[DistinguishedName, X509Cert],
   val publicKeyOrigin: String)
-extends SignatureVerifier
-{
+extends SignatureVerifier:
   protected type MySignature = X509Signature
 
   def companion = X509SignatureVerifier
@@ -41,7 +40,7 @@ extends SignatureVerifier
         .map(o => "  " + o.toLongString)
 
   def verify(document: ByteArray, signature: X509Signature): Checked[Seq[SignerId]] =
-    signature.signerIdOrCertificate match {
+    signature.signerIdOrCertificate match
       case Left(signerId) =>
         DistinguishedName.checked(signerId.string)
           .flatMap(dn =>
@@ -62,14 +61,12 @@ extends SignatureVerifier
               yield signerId)
             .takeWhileInclusive(_.isLeft)
             .toVector
-            .lastOption match {
+            .lastOption match
               case None =>
                 Left(MessageSignedByUnknownProblem)
               case Some(checkedSignerId) =>
                 checkedSignerId.map(_ :: Nil)
-            }
         }.flatten
-    }
 
   private def verifySignature(document: ByteArray, signature: X509Signature, cert: X509Cert): Checked[SignerId] =
     Checked.catchNonFatal {
@@ -82,20 +79,17 @@ extends SignatureVerifier
     }.flatten
 
   private def verifySignersCertificate(signatureCertificate: X509Cert, publicKey: PublicKey): Checked[Unit] =
-    try {
+    try
       signatureCertificate.x509Certificate.verify(publicKey)
       Right(())
-    } catch { case NonFatal(t) =>
-      t match {
+    catch { case NonFatal(t) =>
+      t match
         case _: SignatureException => logger.debug(t.toStringWithCauses)
         case _ => logger.warn(t.toString)
-      }
       Left(MessageSignedByUnknownProblem)
     }
-}
 
-object X509SignatureVerifier extends SignatureVerifier.Companion
-{
+object X509SignatureVerifier extends SignatureVerifier.Companion:
   protected type MySignature = X509Signature
   protected type MySignatureVerifier = X509SignatureVerifier
 
@@ -132,8 +126,6 @@ object X509SignatureVerifier extends SignatureVerifier.Companion
   private def duplicateDNsToProblem(duplicates: Map[DistinguishedName, Iterable[?]]) =
     duplicatesToProblem("Duplicate X.509 certificates", duplicates)
 
-  def genericSignatureToSignature(signature: GenericSignature): Checked[X509Signature] = {
+  def genericSignatureToSignature(signature: GenericSignature): Checked[X509Signature] =
     assertThat(signature.typeName == typeName)
     X509Signature.fromGenericSignature(signature)
-  }
-}

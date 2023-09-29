@@ -18,8 +18,7 @@ import scala.collection.{View, mutable}
 final case class FileWatchState(
   fileWatch: FileWatch,
   directoryState: DirectoryState)
-extends UnsignedSimpleItemState
-{
+extends UnsignedSimpleItemState:
   protected type Self = FileWatchState
   val companion: FileWatchState.type = FileWatchState
 
@@ -32,7 +31,7 @@ extends UnsignedSimpleItemState
   def id = fileWatch.path
 
   def applyEvent(event: OrderWatchEvent): FileWatchState =
-    event match {
+    event match
       case ExternalOrderArised(ExternalOrderName(relativePath_), _, _) =>
         val relativePath = Paths.get(relativePath_)
         copy(
@@ -47,7 +46,6 @@ extends UnsignedSimpleItemState
           directoryState =
             directoryState.copy(
               fileToEntry = directoryState.fileToEntry - relativePath))
-    }
 
   def containsPath(path: Path) =
     directoryState.fileToEntry.contains(path)
@@ -65,51 +63,43 @@ extends UnsignedSimpleItemState
     Observable.pure(HeaderSnapshot(fileWatch)) ++
       Observable.fromIterable(directoryState.fileToEntry.values)
         .map(entry => EntrySnapshot(id, entry.path))
-}
 
-object FileWatchState extends UnsignedSimpleItemState.Companion[FileWatchState]
-{
+object FileWatchState extends UnsignedSimpleItemState.Companion[FileWatchState]:
   type Key = OrderWatchPath
   type Item = FileWatch
   override type ItemState = FileWatchState
 
-  sealed trait Snapshot {
+  sealed trait Snapshot:
     def orderWatchPath: OrderWatchPath
-  }
 
   final case class HeaderSnapshot(fileWatch: FileWatch)
-  extends Snapshot {
+  extends Snapshot:
     def orderWatchPath = fileWatch.path
     override def productPrefix = "FileWatchState"
-  }
 
   final case class EntrySnapshot(
     orderWatchPath: OrderWatchPath,
     path: java.nio.file.Path)
-  extends Snapshot {
+  extends Snapshot:
     override def productPrefix = "FileWatchState.File"
-  }
 
   implicit val jsonCodec: TypedJsonCodec[Snapshot] = TypedJsonCodec(
     Subtype.named(deriveCodec[HeaderSnapshot], "FileWatchState"),
     Subtype.named(deriveCodec[EntrySnapshot], "FileWatchState.File"))
 
-  final class Builder {
+  final class Builder:
     private val header = SetOnce[HeaderSnapshot]
     private val entries = mutable.Buffer.empty[DirectoryState.Entry]
 
     def addSnapshot(snapshot: Snapshot): Unit =
-      snapshot match {
+      snapshot match
         case o: HeaderSnapshot =>
           header := o
         case o: EntrySnapshot =>
           entries += DirectoryState.Entry(o.path)
-      }
 
     def result() = FileWatchState(
       header.orThrow.fileWatch,
       DirectoryState.fromIterable(entries))
-  }
 
   intelliJuseImport(PathJsonCodec)
-}

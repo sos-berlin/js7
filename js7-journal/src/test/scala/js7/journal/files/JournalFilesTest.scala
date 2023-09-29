@@ -12,9 +12,8 @@ import js7.journal.files.JournalFiles.{deleteJournal, deleteJournalIfMarked, del
 /**
   * @author Joacim Zschimmer
   */
-final class JournalFilesTest extends OurTestSuite
-{
-  "listJournalFiles, currentFile" in {
+final class JournalFilesTest extends OurTestSuite:
+  "listJournalFiles, currentFile" in:
     withTemporaryDirectory("JournalHistoryTest-") { dir =>
       dir / "test--0.journal" := "TEST-CONTENT"
       touchFile(dir / "test--2000.journal")
@@ -43,13 +42,11 @@ final class JournalFilesTest extends OurTestSuite
       assert(JournalFiles.currentFile(dir / "test") == Left(Problem(s"No journal under '${dir / "test"}'")))
       assert(JournalFiles.listGarbageFiles(dir / "test", 1001).isEmpty)
     }
-  }
 
-  "deletionMarkerFile" in {
+  "deletionMarkerFile" in:
     assert(deletionMarkerFile(Paths.get("DIR/NAME")) == Paths.get("DIR/NAME-DELETE!"))
-  }
 
-  "deleteJournalIfMarked" in {
+  "deleteJournalIfMarked" in:
     withTemporaryDirectory("JournalHistoryTest-") { dir =>
       val fileBase = dir / "test"
       val files = Set(
@@ -70,9 +67,8 @@ final class JournalFilesTest extends OurTestSuite
       deleteJournalIfMarked(fileBase)
       assert(dir.directoryContentsAs(Set) == Set(dir / "other--0.journal", dir / "test--1000.journal.gz"))
     }
-  }
 
-  "deleteJournal, then deleteJournalIfMarked" in {
+  "deleteJournal, then deleteJournalIfMarked" in:
     withTemporaryDirectory("JournalHistoryTest-") { dir =>
       val fileBase = dir / "test"
       val files = Set(
@@ -99,5 +95,3 @@ final class JournalFilesTest extends OurTestSuite
       deleteJournalIfMarked(fileBase)
       assert(dir.directoryContentsAs(Set) == Set(dir / "other--0.journal", dir / "test--1000.journal.gz"))
     }
-  }
-}

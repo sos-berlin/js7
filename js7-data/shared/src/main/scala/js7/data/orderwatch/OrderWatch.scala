@@ -6,8 +6,7 @@ import js7.data.item.UnsignedSimpleItem
 import js7.data.orderwatch.OrderWatch.*
 import js7.data.workflow.WorkflowPath
 
-trait OrderWatch extends UnsignedSimpleItem
-{
+trait OrderWatch extends UnsignedSimpleItem:
   protected type Self <: OrderWatch
 
   val companion: Companion[Self] { type Key <: OrderWatchPath }
@@ -21,18 +20,13 @@ trait OrderWatch extends UnsignedSimpleItem
 
   override def dedicatedAgentPath =
     Some(agentPath)
-}
 
-object OrderWatch
-{
-  trait Companion[A <: OrderWatch] extends UnsignedSimpleItem.Companion[A]
-  {
+object OrderWatch:
+  trait Companion[A <: OrderWatch] extends UnsignedSimpleItem.Companion[A]:
     type Key = OrderWatchPath
     def Key = OrderWatchPath
 
     type ItemState = OrderWatchState
-  }
 
   implicit val jsonCodec: TypedJsonCodec[OrderWatch] = TypedJsonCodec(
     Subtype[FileWatch])
-}

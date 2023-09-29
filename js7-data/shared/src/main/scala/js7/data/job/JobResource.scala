@@ -12,8 +12,7 @@ final case class JobResource(
   env: Map[String, Expression] = Map.empty,
   itemRevision: Option[ItemRevision] = None)
 extends SignableSimpleItem
-with TrivialItemState[JobResource]
-{
+with TrivialItemState[JobResource]:
   protected type Self = JobResource
   val companion: JobResource.type = JobResource
   val item: JobResource = this
@@ -26,12 +25,10 @@ with TrivialItemState[JobResource]
 
   def withRevision(revision: Option[ItemRevision]) =
     copy(itemRevision = revision)
-}
 
 object JobResource
 extends SignableSimpleItem.Companion[JobResource]
-with TrivialItemState.Companion[JobResource]
-{
+with TrivialItemState.Companion[JobResource]:
   type Key = JobResourcePath
   def Key = JobResourcePath
 
@@ -42,4 +39,3 @@ with TrivialItemState.Companion[JobResource]
 
   implicit val jsonCodec: Codec.AsObject[JobResource] =
     deriveConfiguredCodec[JobResource]
-}

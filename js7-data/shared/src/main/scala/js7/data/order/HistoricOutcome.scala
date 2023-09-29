@@ -6,7 +6,5 @@ import js7.data.workflow.position.Position
 
 final case class HistoricOutcome(position: Position, outcome: Outcome)
 
-object HistoricOutcome
-{
+object HistoricOutcome:
   implicit val jsonCodec: Codec.AsObject[HistoricOutcome] = deriveCodec[HistoricOutcome]
-}

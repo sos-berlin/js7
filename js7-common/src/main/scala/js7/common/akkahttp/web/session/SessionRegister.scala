@@ -38,8 +38,7 @@ final class SessionRegister[S <: Session: Tag] private[session](
   actor: ActorRef,
   implicit private val akkaAskTimeout: Timeout,
   componentName: String)
-extends Service.StoppableByRequest
-{
+extends Service.StoppableByRequest:
   private val systemSessionPromise = Promise[Checked[S]]()
   val systemSession: Task[Checked[S]] =
     Task.fromFuture(systemSessionPromise.future)
@@ -52,7 +51,7 @@ extends Service.StoppableByRequest
     startService(untilStopRequested)
 
   def placeSessionTokenInDirectory(user: SimpleUser, workDirectory: Path)
-  : Resource[Task, SessionToken] = {
+  : Resource[Task, SessionToken] =
     val sessionTokenFile = workDirectory / "session-token"
     val headersFile = workDirectory / "secret-http-headers"
     provideSessionTokenFile(user, sessionTokenFile)
@@ -61,14 +60,13 @@ extends Service.StoppableByRequest
           createFile(headersFile, operatingSystem.secretFileAttributes*)
           headersFile := `x-js7-session`.name + ": " + sessionToken.secret.string + "\n"
         })))
-  }
 
   private def provideSessionTokenFile(user: SimpleUser, file: Path): Resource[Task, SessionToken] =
     provideFile[Task](file)
       .flatMap(file => Resource.eval(createSystemSession(user, file)))
 
   private def createSystemSession(user: SimpleUser, file: Path): Task[SessionToken] =
-    for checked <- login(user, Some(Js7Version), isEternalSession = true) yield {
+    for checked <- login(user, Some(Js7Version), isEternalSession = true) yield
       val sessionToken = checked.orThrow
       deleteIfExists(file)
       createFile(file, operatingSystem.secretFileAttributes*)
@@ -76,7 +74,6 @@ extends Service.StoppableByRequest
       //logger.info(s"Session token for internal user '${user.id.string}' placed in file $file")
       systemSessionPromise.completeWith(sessionFuture(sessionToken, Right(user)))
       sessionToken
-    }
 
   def login(
     user: SimpleUser,
@@ -94,15 +91,13 @@ extends Service.StoppableByRequest
     clientVersion: Option[Version],
     ourVersion: Version = Js7Version)
   : Checked[Unit] =
-    catchNonFatalFlatten {
-      clientVersion match {
+    catchNonFatalFlatten:
+      clientVersion match
         case None => Checked.unit
         case Some(v) =>
           (v.major == ourVersion.major && v.minor == ourVersion.minor) !!
             Problem.pure(
               s"Client's version $v does not match $componentName version $ourVersion")
-      }
-    }
 
   def logout(sessionToken: SessionToken): Task[Completed] =
     Task.deferFuture(
@@ -121,10 +116,8 @@ extends Service.StoppableByRequest
       (actor ? SessionActor.Command.GetCount).mapTo[Int])
 
   override def toString = s"SessionRegister[${implicitly[Tag[S]].tag.shortName}]"
-}
 
-object SessionRegister
-{
+object SessionRegister:
   def resource[S <: Session: Tag](
     newSession: SessionInit => S,
     config: Config)
@@ -145,18 +138,16 @@ object SessionRegister
   def forTest[S <: Session: Tag]
     (actorRefFactory: ActorRefFactory, newSession: SessionInit => S, config: Config)
     (implicit scheduler: Scheduler)
-  : SessionRegister[S] = {
+  : SessionRegister[S] =
     val sessionActor = actorRefFactory.actorOf(
       SessionActor.props(newSession, config),
       implicitly[Tag[S]].tag.longName)
     new SessionRegister[S](sessionActor,
       akkaAskTimeout = config.getDuration("js7.akka.ask-timeout").toFiniteDuration,
       componentName = config.getString("js7.component.name"))
-  }
 
   val TestConfig: Config = config"""
     js7.component.name = "JS7 TEST"
     js7.akka.ask-timeout = 99s
     js7.auth.session.timeout = 1 minute
     """
-}

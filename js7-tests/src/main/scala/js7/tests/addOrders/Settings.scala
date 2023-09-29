@@ -12,18 +12,16 @@ private final case class Settings(
   orderCount: Int,
   admissions: Nel[Admission])
 
-private object Settings
-{
+private object Settings:
   private val defaultUserAndPassword = UserAndPassword(UserId("demo"), SecretString("demo"))
 
   def parseArguments(args: Seq[String]): Settings =
     CommandLineArguments.parse(args) { a =>
       val userAndPassword = a.optionAs[String]("--user=")
         .fold(defaultUserAndPassword) { string =>
-          string.split(":", 2) match {
+          string.split(":", 2) match
             case Array(u, password) => UserAndPassword(UserId(u), SecretString(password))
             case Array(u) => UserAndPassword(UserId(u), SecretString.empty)
-          }
         }
       Settings(
         a.as[WorkflowPath]("--workflow="),
@@ -31,4 +29,3 @@ private object Settings
         Nel.unsafe(
           a.seqAs[Uri]("--controller=").map(Admission(_, Some(userAndPassword)))))
     }
-}

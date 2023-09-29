@@ -10,9 +10,9 @@ import js7.data.workflow.instructions.Instructions.jsonCodec
 import js7.data.workflow.{Instruction, Workflow}
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 
-final class LockInstructionTest extends OurTestSuite {
+final class LockInstructionTest extends OurTestSuite:
 
-  "JSON" in {
+  "JSON" in:
     // COMPATIBLE with v2.4
     testJsonDecoder[Instruction.Labeled](
       LockInstruction.single(LockPath("LOCK"), count = None, lockedWorkflow = Workflow.of()),
@@ -102,5 +102,3 @@ final class LockInstructionTest extends OurTestSuite {
         }
       }""".checkedAs[LockInstruction] == Left(Problem(
         "JSON DecodingFailure at : LockDemand.count must not be below 1 for Lock:LOCK")))
-  }
-}

@@ -36,19 +36,17 @@ import scala.language.implicitConversions
 /**
   * @author Joacim Zschimmer
   */
-sealed trait OrderEvent extends Event.IsKeyBase[OrderEvent] {
+sealed trait OrderEvent extends Event.IsKeyBase[OrderEvent]:
   val keyCompanion: OrderEvent.type = OrderEvent
-}
 
-object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]
-{
+object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   implicit def implicitSelf: OrderEvent.type = this
 
   sealed trait OrderCoreEvent extends OrderEvent
   sealed trait OrderActorEvent extends OrderCoreEvent
   sealed trait OrderTerminated extends OrderEvent
 
-  sealed trait OrderAddedX extends OrderCoreEvent {
+  sealed trait OrderAddedX extends OrderCoreEvent:
     def workflowId: WorkflowId
     def arguments: NamedValues
     def scheduledFor: Option[Timestamp]
@@ -59,7 +57,6 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]
     def startPosition: Option[Position]
     def stopPositions: Set[PositionOrLabel]
     def addedOrderId(orderId: OrderId): OrderId
-  }
 
   final case class OrderAdded(
     workflowId: WorkflowId,
@@ -71,12 +68,11 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]
     innerBlock: BranchPath = BranchPath.empty,
     startPosition: Option[Position] = None,
     stopPositions: Set[PositionOrLabel] = Set.empty)
-  extends OrderAddedX {
+  extends OrderAddedX:
     workflowId.requireNonAnonymous()
     def addedOrderId(orderId: OrderId) = orderId
     override def toShortString = s"OrderAdded(${workflowId.path})"
-  }
-  object OrderAdded {
+  object OrderAdded:
     private[OrderEvent] implicit val jsonCodec: Encoder.AsObject[OrderAdded] =
       o => JsonObject(
         "workflowId" -> o.workflowId.asJson,
@@ -103,7 +99,6 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]
       yield OrderAdded(workflowId, arguments, scheduledFor, externalOrderKey,
         deleteWhenTerminated, forceJobAdmission,
         innerBlock, startPosition, stopPositions)
-  }
 
   /** Event for the AddOrder instruction. */
   final case class OrderOrderAdded(
@@ -115,14 +110,13 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]
     innerBlock: BranchPath = BranchPath.empty,
     startPosition: Option[Position] = None,
     stopPositions: Set[PositionOrLabel] = Set.empty)
-  extends OrderAddedX with OrderActorEvent {
+  extends OrderAddedX with OrderActorEvent:
     workflowId.requireNonAnonymous()
     def scheduledFor = None
     def externalOrderKey = None
     def addedOrderId(o: OrderId) = orderId
     override def toShortString = s"OrderOrderAdded($orderId, ${workflowId.path})"
-  }
-  object OrderOrderAdded {
+  object OrderOrderAdded:
     private[OrderEvent] implicit val jsonCodec: Encoder.AsObject[OrderOrderAdded] =
       o => JsonObject(
         "orderId" -> o.orderId.asJson,
@@ -147,7 +141,6 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]
       yield OrderOrderAdded(orderId, workflowId, arguments,
         deleteWhenTerminated, forceJobAdmission,
         innerBlock, startPosition, stopPositions)
-  }
 
   /** Agent-only event. */
   final case class OrderAttachedToAgent(
@@ -167,11 +160,10 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]
     stickySubagents: List[Order.StickySubagent] = Nil,
     innerBlock: BranchPath = BranchPath.empty,
     stopPositions: Set[PositionOrLabel] = Set.empty)
-  extends OrderCoreEvent {
+  extends OrderCoreEvent:
     workflowPosition.workflowId.requireNonAnonymous()
 
     def workflowId = workflowPosition.workflowId
-  }
 
   final case class OrderAttached(agentPath: AgentPath)
   extends OrderCoreEvent
@@ -181,11 +173,10 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]
 
   // subagentId = None is COMPATIBLE with v2.2
   final case class OrderProcessingStarted(subagentId: Option[SubagentId], stick: Boolean = false)
-  extends OrderCoreEvent {
+  extends OrderCoreEvent:
     override def toString =
       s"OrderProcessingStarted(${subagentId getOrElse "legacy local Subagent"}${stick ?? " stick"})"
-  }
-  object OrderProcessingStarted {
+  object OrderProcessingStarted:
     // Since v2.3
     @TestOnly
     def apply(subagentId: SubagentId): OrderProcessingStarted =
@@ -194,9 +185,8 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]
     // Since v2.3
     def apply(subagentId: SubagentId, stick: Boolean): OrderProcessingStarted =
       OrderProcessingStarted(Some(subagentId), stick)
-  }
 
-  sealed trait OrderStdWritten extends OrderEvent {
+  sealed trait OrderStdWritten extends OrderEvent:
 
     def stdoutStderr: StdoutOrStderr
     def chunk: String
@@ -209,41 +199,31 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]
           firstLineOnly = true)
         .replace("\n", "\\n")
         .replace("\r", "\\r") + ")"
-  }
-  object OrderStdWritten {
+  object OrderStdWritten:
     def apply(t: StdoutOrStderr): String => OrderStdWritten =
-      t match {
+      t match
         case Stdout => OrderStdoutWritten.apply
         case Stderr => OrderStderrWritten.apply
-      }
 
-    def unapply(o: OrderStdWritten) = o match {
+    def unapply(o: OrderStdWritten) = o match
       case OrderStdoutWritten(chunk) => Some((Stdout, chunk))
       case OrderStderrWritten(chunk) => Some((Stderr, chunk))
-    }
-  }
 
-  final case class OrderStdoutWritten(chunk: String) extends OrderStdWritten {
+  final case class OrderStdoutWritten(chunk: String) extends OrderStdWritten:
     def stdoutStderr = Stdout
     override def toString = super.toString
-  }
-  object OrderStdoutWritten {
+  object OrderStdoutWritten:
     implicit val jsonCodec: Codec.AsObject[OrderStdoutWritten] = deriveCodec[OrderStdoutWritten]
-  }
 
-  final case class OrderStderrWritten(chunk: String) extends OrderStdWritten {
+  final case class OrderStderrWritten(chunk: String) extends OrderStdWritten:
     def stdoutStderr = Stderr
     override def toString = super.toString
-  }
-  object OrderStderrWritten {
+  object OrderStderrWritten:
     implicit val jsonCodec: Codec.AsObject[OrderStderrWritten] = deriveCodec[OrderStderrWritten]
-  }
 
-  final case class OrderProcessed(outcome: Outcome) extends OrderCoreEvent
-  {
+  final case class OrderProcessed(outcome: Outcome) extends OrderCoreEvent:
     override def isSucceeded = outcome.isSucceeded
-  }
-  object OrderProcessed {
+  object OrderProcessed:
     val processLostDueToRestart = processLost(ProcessLostDueToRestartProblem)
     val processLostDueToReset = processLost(ProcessLostDueToResetProblem)
 
@@ -251,16 +231,15 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]
       OrderProcessed(Outcome.Disrupted(Outcome.Disrupted.ProcessLost(problem)))
 
     implicit val jsonCodec: Codec.AsObject[OrderProcessed] = deriveCodec[OrderProcessed]
-  }
 
   final case class OrderForked(children: Vector[OrderForked.Child]) extends OrderActorEvent
-  object OrderForked {
+  object OrderForked:
     final case class Child(
       orderId: OrderId,
       arguments: Map[String, Value],
       branchId: Option[Fork.Branch.Id] = None)
 
-    object Child {
+    object Child:
       def apply(branchId: Fork.Branch.Id, orderId: OrderId): Child =
         new Child(orderId, Map.empty, Some(branchId))
 
@@ -279,23 +258,18 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]
           arguments <- c.getOrElse[Map[String, Value]]("arguments")(Map.empty)
           branchId <- c.get[Option[Fork.Branch.Id]]("branchId")
         yield Child(orderId, arguments, branchId)
-    }
-  }
 
   final case class OrderJoined(outcome: Outcome)
-  extends OrderActorEvent
-  {
+  extends OrderActorEvent:
     override def isSucceeded = outcome.isSucceeded
-  }
 
   sealed trait OrderNoticeEvent extends OrderActorEvent
 
   sealed trait OrderNoticePosted_ extends OrderNoticeEvent
-  object OrderNoticePosted_ {
-    private val jsonEncoder: Encoder.AsObject[OrderNoticePosted_] = {
+  object OrderNoticePosted_ :
+    private val jsonEncoder: Encoder.AsObject[OrderNoticePosted_] =
       case o: OrderNoticePostedV2_3 => OrderNoticePostedV2_3.jsonEncoder.encodeObject(o)
       case o: OrderNoticePosted => OrderNoticePosted.jsonEncoder.encodeObject(o)
-    }
 
     private val jsonDecoder: Decoder[OrderNoticePosted_] = c =>
       if c.value.asObject.flatMap(_("notice")).flatMap(_.asObject).exists(_.contains("boardPath")) then
@@ -305,20 +279,17 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]
 
     implicit val jsonCodec: Codec.AsObject[OrderNoticePosted_] =
       Codec.AsObject.from(jsonDecoder, jsonEncoder)
-  }
 
   // COMPATIBLE with v2.3
   final case class OrderNoticePostedV2_3(notice: NoticeV2_3)
   extends OrderNoticePosted_
-  object OrderNoticePostedV2_3 {
+  object OrderNoticePostedV2_3:
     implicit val jsonEncoder: Encoder.AsObject[OrderNoticePostedV2_3] = deriveEncoder
-  }
 
   final case class OrderNoticePosted(notice: Notice)
   extends OrderNoticePosted_
-  object OrderNoticePosted {
+  object OrderNoticePosted:
     implicit val jsonEncoder: Encoder.AsObject[OrderNoticePosted] = deriveEncoder
-  }
 
   // COMPATIBLE with v2.3
   final case class OrderNoticeExpected(noticeId: NoticeId)
@@ -326,12 +297,10 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]
 
   final case class OrderNoticesExpected(expected: Vector[OrderNoticesExpected.Expected])
   extends OrderNoticeEvent
-  object OrderNoticesExpected {
+  object OrderNoticesExpected:
     final case class Expected(boardPath: BoardPath, noticeId: NoticeId)
-    object Expected {
+    object Expected:
       implicit val jsonCodec: Codec.AsObject[Expected] = deriveCodec
-    }
-  }
 
   type OrderNoticesRead = OrderNoticesRead.type
   case object OrderNoticesRead
@@ -339,21 +308,18 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]
 
   final case class OrderNoticesConsumptionStarted(
     consumptions: Vector[OrderNoticesConsumptionStarted.Consumption])
-  extends OrderNoticeEvent
-  {
+  extends OrderNoticeEvent:
     def checked: Checked[this.type] =
       consumptions.checkUniqueness(_.boardPath).>>(
         if consumptions.isEmpty then
           Problem.pure("Invalid arguments for OrderNoticesConsumptionStarted")
         else
           Right(this))
-  }
-  object OrderNoticesConsumptionStarted {
+  object OrderNoticesConsumptionStarted:
     implicit val jsonCodec: Codec.AsObject[OrderNoticesConsumptionStarted] =
       deriveCodec[OrderNoticesConsumptionStarted].checked(_.checked)
     type Consumption = OrderNoticesExpected.Expected
     val Consumption = OrderNoticesExpected.Expected
-  }
 
   final case class OrderNoticesConsumed(failed: Boolean = false)
   extends OrderNoticeEvent
@@ -374,7 +340,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]
 
   final case class OrderMoved(to: Position, reason: Option[Reason] = None)
   extends OrderActorEvent
-  object OrderMoved {
+  object OrderMoved:
     sealed trait Reason
     case object SkippedDueToWorkflowPathControl extends Reason
     case object NoAdmissionPeriodStart extends Reason
@@ -382,13 +348,11 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]
     implicit val jsonCodec: TypedJsonCodec[Reason] = TypedJsonCodec(
       Subtype(SkippedDueToWorkflowPathControl),
       Subtype(NoAdmissionPeriodStart))
-  }
 
-  sealed trait OrderFailedEvent extends OrderActorEvent {
+  sealed trait OrderFailedEvent extends OrderActorEvent:
     def moveTo(movedTo: Position): OrderFailedEvent
 
     def movedTo: Position
-  }
 
   final case class OrderOutcomeAdded(outcome: Outcome)
   extends OrderActorEvent
@@ -397,54 +361,47 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]
     movedTo: Position,
     // COMPATIBLE with v2.4: outcome has been replaced by OrderOutcomeAdded event
     outcome: Option[Outcome.NotSucceeded])
-  extends OrderFailedEvent with OrderTerminated {
+  extends OrderFailedEvent with OrderTerminated:
     def moveTo(movedTo: Position) = copy(movedTo = movedTo)
-  }
-  object OrderFailed {
+  object OrderFailed:
     @deprecated("outcome is deprecated", "v2.5")
     private[order] def apply(movedTo: Position, outcome: Option[Outcome.NotSucceeded]) =
       new OrderFailed(movedTo, outcome)
 
     def apply(movedTo: Position) = new OrderFailed(movedTo, None)
-  }
 
   final case class OrderFailedInFork(
     movedTo: Position,
     // outcome has been replaced by OrderOutcomeAdded event. COMPATIBLE with v2.4
     outcome: Option[Outcome.NotSucceeded] = None)
-  extends OrderFailedEvent {
+  extends OrderFailedEvent:
     def moveTo(movedTo: Position) = copy(movedTo = movedTo)
-  }
-  object OrderFailedInFork {
+  object OrderFailedInFork:
     @deprecated("outcome is deprecated", "v2.5")
     private[order] def apply(movedTo: Position, outcome: Option[Outcome.NotSucceeded]) =
       new OrderFailedInFork(movedTo, outcome)
 
     def apply(movedTo: Position) = new OrderFailedInFork(movedTo, None)
-  }
 
   // COMPATIBLE with v2.4
   final case class OrderCatched(
     movedTo: Position,
     outcome: Option[Outcome.NotSucceeded] = None)
-  extends OrderFailedEvent {
+  extends OrderFailedEvent:
     def moveTo(movedTo: Position) = copy(movedTo = movedTo)
-  }
 
   final case class OrderCaught(
     movedTo: Position,
     // COMPATIBLE with v2.4: outcome has been replaced by OrderOutcomeAdded event
     outcome: Option[Outcome.NotSucceeded] = None)
-  extends OrderFailedEvent {
+  extends OrderFailedEvent:
     def moveTo(movedTo: Position) = copy(movedTo = movedTo)
-  }
-  object OrderCaught {
+  object OrderCaught:
     @deprecated("outcome is deprecated", "v2.5")
     private[order] def apply(movedTo: Position, outcome: Option[Outcome.NotSucceeded]) =
       new OrderCaught(movedTo, outcome)
 
     def apply(movedTo: Position) = new OrderCaught(movedTo, None)
-  }
 
   /** Only intermediate, not persisted. Will be converted to `OrderFailed`, `OrderCaught` or
    * `OrderStopped`,  */
@@ -459,10 +416,9 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]
   type OrderAwoke = OrderAwoke.type
   case object OrderAwoke extends OrderActorEvent
 
-  final case class OrderBroken(problem: Option[Problem]) extends OrderActorEvent {
+  final case class OrderBroken(problem: Option[Problem]) extends OrderActorEvent:
     override def toString = s"💥 OrderBroken($problem)"
-  }
-  object OrderBroken {
+  object OrderBroken:
     // COMPATIBLE with v2.4
     @deprecated("outcome is deprecated", "v2.5")
     private[order] def apply(problem: Problem): OrderBroken =
@@ -470,7 +426,6 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]
 
     def apply(): OrderBroken =
       OrderBroken(None)
-  }
 
   /**
     * Controller may have started to attach Order to Agent..
@@ -499,24 +454,20 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]
   type OrderDeleted = OrderDeleted.type
   case object OrderDeleted extends OrderActorEvent
 
-  sealed trait OrderKillingMarked extends OrderActorEvent {
+  sealed trait OrderKillingMarked extends OrderActorEvent:
     def kill: Option[CancellationMode.Kill]
-  }
-  object OrderKillingMarked {
+  object OrderKillingMarked:
     def unapply(event: OrderKillingMarked) = Some(event.kill)
-  }
 
   /** A OrderCancellationMarked on Agent is different from same Event at the Controller.
     * Controller will ignore the Agent's OrderCancellationMarked.
     * Controller should have emitted the event independendly.
     **/
   final case class OrderCancellationMarked(mode: CancellationMode = CancellationMode.Default)
-  extends OrderKillingMarked {
-    def kill = mode match {
+  extends OrderKillingMarked:
+    def kill = mode match
       case CancellationMode.FreshOrStarted(kill) => kill
       case _ => None
-    }
-  }
 
   type OrderCancellationMarkedOnAgent = OrderCancellationMarkedOnAgent.type
   /** No other use than notifying an external user. */
@@ -529,9 +480,8 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]
   case object OrderCancelled extends OrderActorEvent with OrderTerminated
 
   final case class OrderSuspensionMarked(mode: SuspensionMode = SuspensionMode.standard)
-  extends OrderKillingMarked {
+  extends OrderKillingMarked:
     def kill = mode.kill
-  }
 
   type OrderSuspensionMarkedOnAgent = OrderSuspensionMarkedOnAgent.type
   /** No other use than notifying an external user. */
@@ -554,52 +504,41 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]
     historyOperations: Seq[OrderResumed.HistoryOperation] = Nil,
     asSucceeded: Boolean = false)
   extends OrderActorEvent with Big
-  object OrderResumed
-  {
-    sealed trait HistoryOperation {
+  object OrderResumed:
+    sealed trait HistoryOperation:
       def positions: Iterable[Position]
-    }
 
     final case class ReplaceHistoricOutcome(position: Position, outcome: Outcome)
-    extends HistoryOperation {
+    extends HistoryOperation:
       def positions = position :: Nil
-    }
-    object ReplaceHistoricOutcome {
+    object ReplaceHistoricOutcome:
       def apply(historicOutcome: HistoricOutcome) =
         new ReplaceHistoricOutcome(historicOutcome.position, historicOutcome.outcome)
-    }
 
     final case class InsertHistoricOutcome(before: Position, position: Position, outcome: Outcome)
-    extends HistoryOperation {
+    extends HistoryOperation:
       def positions = before :: position :: Nil
-    }
-    object InsertHistoricOutcome {
+    object InsertHistoricOutcome:
       def apply(at: Position, historicOutcome: HistoricOutcome) =
         new InsertHistoricOutcome(at, historicOutcome.position, historicOutcome.outcome)
-    }
 
     final case class DeleteHistoricOutcome(position: Position)
-    extends HistoryOperation {
+    extends HistoryOperation:
       def positions = position :: Nil
-    }
 
     final case class AppendHistoricOutcome(position: Position, outcome: Outcome)
-    extends HistoryOperation {
+    extends HistoryOperation:
       def positions = position :: Nil
-    }
-    object AppendHistoricOutcome {
+    object AppendHistoricOutcome:
       def apply(historicOutcome: HistoricOutcome) =
         new AppendHistoricOutcome(historicOutcome.position, historicOutcome.outcome)
-    }
 
-    object HistoryOperation {
+    object HistoryOperation:
       implicit val jsonCodec: TypedJsonCodec[HistoryOperation] = TypedJsonCodec(
         Subtype.named(deriveCodec[ReplaceHistoricOutcome], "Replace"),
         Subtype.named(deriveCodec[InsertHistoricOutcome], "Insert"),
         Subtype.named(deriveCodec[DeleteHistoricOutcome], "Delete"),
         Subtype.named(deriveCodec[AppendHistoricOutcome], "Append"))
-    }
-  }
 
   sealed trait LegacyOrderLockEvent extends OrderActorEvent
 
@@ -619,52 +558,40 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]
   private final case class OrderLockReleased(lockPath: LockPath)
   extends LegacyOrderLockEvent
 
-  sealed trait OrderLockEvent extends OrderActorEvent
-  {
+  sealed trait OrderLockEvent extends OrderActorEvent:
     def lockPaths: Seq[LockPath]
-  }
 
-  object OrderLockEvent
-  {
+  object OrderLockEvent:
     def unapply(event: OrderLockEvent) = Some(event.lockPaths)
-  }
 
-  sealed trait OrderLockAcquiredOrQueuedEvent extends OrderLockEvent {
+  sealed trait OrderLockAcquiredOrQueuedEvent extends OrderLockEvent:
     def demands: Seq[LockDemand]
-  }
 
   final case class OrderLocksQueued(demands: List[LockDemand])
-  extends OrderLockAcquiredOrQueuedEvent  {
+  extends OrderLockAcquiredOrQueuedEvent :
     def checked = LockDemand.checked(demands).rightAs(this)
     def lockPaths = demands.map(_.lockPath)
-  }
 
   final case class OrderLocksAcquired(demands: List[LockDemand])
-    extends OrderLockAcquiredOrQueuedEvent
-  {
+    extends OrderLockAcquiredOrQueuedEvent:
     def checked = LockDemand.checked(demands).rightAs(this)
     def lockPaths = demands.map(_.lockPath)
-  }
 
   final case class OrderLocksDequeued(lockPaths: Seq[LockPath])
-  extends OrderLockEvent {
+  extends OrderLockEvent:
     def checked = lockPaths.checkUniqueness.rightAs(this)
-  }
 
   final case class OrderLocksReleased(lockPaths: Seq[LockPath])
-  extends OrderLockEvent {
+  extends OrderLockEvent:
     def checked = lockPaths.checkUniqueness.rightAs(this)
-  }
 
-  final case class LockDemand(lockPath: LockPath, count: Option[Int] = None) {
+  final case class LockDemand(lockPath: LockPath, count: Option[Int] = None):
     def checked: Checked[this.type] =
       if count.exists(_ < 1) then
         Left(Problem(s"LockDemand.count must not be below 1 for $lockPath"))
       else
         Right(this)
-  }
-  object LockDemand
-  {
+  object LockDemand:
     def checked(demands: Seq[LockDemand]) =
       demands
         .checkUniqueness(_.lockPath)
@@ -672,7 +599,6 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]
         .rightAs(())
 
     implicit val jsonCodec: Codec.AsObject[LockDemand] = deriveCodec
-  }
 
   final case class OrderPrompted(question: Value)
   extends OrderActorEvent
@@ -760,4 +686,3 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]
     Subtype(OrderCycleStarted),
     Subtype(deriveCodec[OrderCycleFinished]),
     Subtype(deriveCodec[OrderTransferred]))
-}

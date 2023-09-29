@@ -12,9 +12,8 @@ import js7.tester.CirceJsonTester.testJson
 /**
   * @author Joacim Zschimmer
   */
-final class FreshOrderTest extends OurTestSuite
-{
-  "JSON" in {
+final class FreshOrderTest extends OurTestSuite:
+  "JSON" in:
     testJson(
       FreshOrder(OrderId("ORDER-ID"), WorkflowPath("WORKFLOW")),
       json"""{
@@ -51,10 +50,7 @@ final class FreshOrderTest extends OurTestSuite
         "startPosition": [ 1, "then", 2 ],
         "stopPositions": [ [ 9, "catch", 0 ], "LABEL" ]
       }""")
-  }
 
-  "checked" in {
+  "checked" in:
     assert(FreshOrder.checked(OrderId("INVALID|ID"), WorkflowPath("WORKFLOW")) ==
       Left(Problem("OrderId must not contain reserved characters: |")))
-  }
-}

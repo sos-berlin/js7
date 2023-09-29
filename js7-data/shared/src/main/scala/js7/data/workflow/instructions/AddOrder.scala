@@ -18,13 +18,9 @@ final case class AddOrder(
   deleteWhenTerminated: Boolean = false,
   forceJobAdmission: Boolean = false,
   sourcePos: Option[SourcePos] = None)
-extends Instruction
-{
+extends Instruction:
   def withoutSourcePos = copy(sourcePos = None)
-}
 
-object AddOrder
-{
+object AddOrder:
   import BranchPath.syntax.jsonCodec
   implicit val jsonCodec: Codec.AsObject[AddOrder] = ConfiguredCodec.derive(useDefaults = true)
-}

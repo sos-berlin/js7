@@ -22,8 +22,7 @@ import monix.execution.Scheduler
 import monix.reactive.Observable
 
 final class SubagentSelectionExprTest
-extends OurTestSuite with SubagentTester with BlockingItemUpdater
-{
+extends OurTestSuite with SubagentTester with BlockingItemUpdater:
   protected val agentPaths = Seq(agentPath)
   protected lazy val items = Seq(
     Workflow(
@@ -43,17 +42,15 @@ extends OurTestSuite with SubagentTester with BlockingItemUpdater
   lazy val (bareSubagent, bareSubagentRelease) = subagentResource(bareSubagentItem)
     .allocated.await(99.s)
 
-  override def beforeAll() = {
+  override def beforeAll() =
     super.beforeAll()
     bareSubagent
-  }
 
-  override def afterAll() = {
+  override def afterAll() =
     bareSubagentRelease.await(99.s)
     super.afterAll()
-  }
 
-  "Expression references a non-existing variable" in {
+  "Expression references a non-existing variable" in:
     val orderId = OrderId("MISSING")
     val events = controller.runOrder(FreshOrder(orderId, workflowPath))
     assert(events.map(_.value) == Seq(
@@ -64,9 +61,8 @@ extends OurTestSuite with SubagentTester with BlockingItemUpdater
       OrderDetachable,
       OrderDetached,
       OrderFailed(Position(0))))
-  }
 
-  "Variable expression denotes an unknown SubagentSelection" in {
+  "Variable expression denotes an unknown SubagentSelection" in:
     val orderId = OrderId("UNKNOWN")
     val events = controller.runOrder(FreshOrder(orderId, workflowPath, Map(
       "subagentSelectionId" -> StringValue("UNKNOWN-SUBAGENT-SELECTION"))))
@@ -80,9 +76,8 @@ extends OurTestSuite with SubagentTester with BlockingItemUpdater
       OrderDetachable,
       OrderDetached,
       OrderFailed(Position(0))))
-  }
 
-  "Invalid SubagentId syntax in constant expression is detected early" in {
+  "Invalid SubagentId syntax in constant expression is detected early" in:
     val workflow = Workflow(
       WorkflowPath("INVALID-SYNTAX") ~ "INVALID-SYNTAX",
       Seq(
@@ -97,9 +92,8 @@ extends OurTestSuite with SubagentTester with BlockingItemUpdater
     assert(checked == Left(Problem(
       "JSON DecodingFailure at : InvalidName: Invalid character or character combination in " +
         "name of SubagentSelectionId type: *INVALID*")))
-  }
 
-  "subagentSelection=SUBAGENT-SELECTION" in {
+  "subagentSelection=SUBAGENT-SELECTION" in:
     val orderId = OrderId("SELECTION")
     val freshOrder = FreshOrder(orderId, workflowPath, Map(
       "subagentSelectionId" -> StringValue(subagentSelectionId.string)))
@@ -108,9 +102,8 @@ extends OurTestSuite with SubagentTester with BlockingItemUpdater
       eventWatch.await[OrderProcessingStarted](_.key == orderId).head.value.event.subagentId ==
         Some(bareSubagentId))
     eventWatch.await[OrderFinished](_.key == orderId)
-  }
 
-  "subagentSelection=SUBAGENT" in {
+  "subagentSelection=SUBAGENT" in:
     val orderId = OrderId("SUBAGENT-ID-AS-SELECTION")
     val freshOrder = FreshOrder(orderId, workflowPath, Map(
       "subagentSelectionId" -> StringValue(bareSubagentId.string)))
@@ -119,12 +112,8 @@ extends OurTestSuite with SubagentTester with BlockingItemUpdater
       eventWatch.await[OrderProcessingStarted](_.key == orderId).head.value.event.subagentId ==
         Some(bareSubagentId))
     eventWatch.await[OrderFinished](_.key == orderId)
-  }
-}
 
-object SubagentSelectionExprTest
-{
+object SubagentSelectionExprTest:
   private val localSubagentId = toLocalSubagentId(agentPath)
   private val workflowPath = WorkflowPath("WORKFLOW")
   private val subagentSelectionId = SubagentSelectionId("SUBAGENT-SELECTION")
-}

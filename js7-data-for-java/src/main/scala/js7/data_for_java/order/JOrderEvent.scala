@@ -19,15 +19,12 @@ import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.*
 
 trait JOrderEvent
-extends JJsonable[JOrderEvent]
-{
+extends JJsonable[JOrderEvent]:
   type AsScala <: OrderEvent
 
   protected def companion = JOrderEvent
-}
 
-object JOrderEvent extends JJsonable.Companion[JOrderEvent]
-{
+object JOrderEvent extends JJsonable.Companion[JOrderEvent]:
   type AsScala = OrderEvent
 
   override def fromJson(jsonString: String): VEither[Problem, JOrderEvent] =
@@ -42,7 +39,7 @@ object JOrderEvent extends JJsonable.Companion[JOrderEvent]
 
   @Nonnull
   def apply(@Nonnull underlying: AsScala): JOrderEvent =
-    underlying match {
+    underlying match
       case event: OrderAdded => JOrderAdded(event)
       case event: OrderProcessingStarted => JOrderProcessingStarted(event)
       case event: OrderProcessed => JOrderProcessed(event)
@@ -52,15 +49,13 @@ object JOrderEvent extends JJsonable.Companion[JOrderEvent]
       case event: OrderFailed => JOrderFailed(event)
       case event: OrderFinished => JOrderFinished(event)
       case event => JOrderEventOther(event)
-    }
 
   final case class JOrderEventOther(asScala: OrderEvent)
-  extends JOrderEvent {
+  extends JOrderEvent:
     type AsScala = OrderEvent
-  }
 
   final case class JOrderAdded(asScala: OrderAdded)
-  extends JOrderEvent {
+  extends JOrderEvent:
     type AsScala = OrderAdded
 
     @Nonnull
@@ -70,20 +65,17 @@ object JOrderEvent extends JJsonable.Companion[JOrderEvent]
     @Nonnull
     def scheduledFor: Optional[Instant] =
       asScala.scheduledFor.map(o => o.toInstant).toJava
-  }
 
   final case class JOrderProcessingStarted private[JOrderEvent](asScala: OrderProcessingStarted)
-  extends JOrderEvent
-  {
+  extends JOrderEvent:
     type AsScala = OrderProcessingStarted
 
     /** @return empty iff written by v2.2 */
     def maybeSubagentId: Optional[SubagentId] =
       asScala.subagentId.toJava
-  }
 
   final case class JOrderStdWritten(asScala: OrderStdWritten)
-  extends JOrderEvent {
+  extends JOrderEvent:
     type AsScala = OrderStdWritten
 
     @Nonnull
@@ -93,97 +85,78 @@ object JOrderEvent extends JJsonable.Companion[JOrderEvent]
     @Nonnull
     def chunk: String =
       asScala.chunk
-  }
 
   final case class JOrderProcessed(asScala: OrderProcessed)
-  extends JOrderEvent {
+  extends JOrderEvent:
     type AsScala = OrderProcessed
 
     @Nonnull
     def outcome: Outcome =
       asScala.outcome
-  }
 
   final case class JOrderForked(asScala: OrderForked)
-  extends JOrderEvent {
+  extends JOrderEvent:
     type AsScala = OrderForked
 
     @Nonnull
     def children: java.util.List[JOrderForked.ForkedChild] =
       asScala.children.map(JOrderForked.ForkedChild.fromScala).asJava
-  }
-  object JOrderForked {
+  object JOrderForked:
     final case class ForkedChild(
       orderId: OrderId,
       branchId: Optional[ForkBranchId],
       arguments: java.util.Map[String, Value])
-    object ForkedChild {
+    object ForkedChild:
       def fromScala(child: OrderForked.Child) =
         ForkedChild(
           child.orderId,
           child.branchId.map(o => ForkBranchId(o.string)).toJava,
           child.arguments.asJava)
-    }
-  }
 
   final case class JOrderJoined(asScala: OrderJoined)
-  extends JOrderEvent {
+  extends JOrderEvent:
     type AsScala = OrderJoined
 
     def outcome: Outcome =
       asScala.outcome
-  }
 
   final case class JOrderFailed(asScala: OrderFailed)
-  extends JOrderEvent
-  {
+  extends JOrderEvent:
     type AsScala = OrderFailed
 
     @Nonnull
     def outcome: Option[Outcome.NotSucceeded] =
       asScala.outcome
-  }
 
   final case class JOrderFinished private(asScala: OrderFinished)
-  extends JOrderEvent
-  {
+  extends JOrderEvent:
     type AsScala = OrderFinished
-  }
-  object JOrderFinished {
+  object JOrderFinished:
     val singleton: JOrderFinished = new JOrderFinished(OrderFinished())
     def apply(asScala: OrderFinished): JOrderFinished =
       singleton
-  }
 
   final case class JOrderDeleted private(asScala: OrderDeleted)
-  extends JOrderEvent
-  {
+  extends JOrderEvent:
     type AsScala = OrderDeleted
-  }
-  object JOrderDeleted {
+  object JOrderDeleted:
     val singleton: JOrderDeleted = new JOrderDeleted(OrderDeleted)
 
     def apply(asScala: OrderDeleted): JOrderDeleted =
       singleton
-  }
 
   final case class JOrderCancelled private(asScala: OrderCancelled)
-  extends JOrderEvent
-  {
+  extends JOrderEvent:
     type AsScala = OrderCancelled
-  }
-  object JOrderCancelled {
+  object JOrderCancelled:
     val singleton: JOrderCancelled = JOrderCancelled(OrderCancelled)
-  }
 
   // TODO Move ForkBranchId out of here
   final case class ForkBranchId(string: String) extends GenericString
 
-  final case class JExpectedNotice(asScala: OrderNoticesExpected.Expected) {
+  final case class JExpectedNotice(asScala: OrderNoticesExpected.Expected):
     @Nonnull def boardPath: BoardPath =
       asScala.boardPath
 
     @Nonnull def noticeId: NoticeId =
       asScala.noticeId
-  }
-}

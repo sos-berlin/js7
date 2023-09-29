@@ -7,9 +7,8 @@ import js7.data.workflow.Instruction
 import js7.data.workflow.instructions.Instructions.jsonCodec
 import js7.tester.CirceJsonTester.testJson
 
-final class PostNoticesTest extends OurTestSuite
-{
-  "JSON" in {
+final class PostNoticesTest extends OurTestSuite:
+  "JSON" in:
     testJson[Instruction](
       PostNotices(Seq(BoardPath("BOARD"))),
       json"""
@@ -17,14 +16,11 @@ final class PostNoticesTest extends OurTestSuite
           "TYPE": "PostNotices",
           "boardPaths": [ "BOARD" ]
         }""")
-  }
 
-  "JSON with duplicates is rejected" in {
+  "JSON with duplicates is rejected" in:
     val wrongJson = json"""{
       "TYPE": "PostNotices",
       "boardPaths": [ "BOARD", "BOARD" ]
     }"""
     assert(wrongJson.as[PostNotices].left.map(_.message) ==
       Left("Unexpected duplicates: 2×Board:BOARD"))
-  }
-}

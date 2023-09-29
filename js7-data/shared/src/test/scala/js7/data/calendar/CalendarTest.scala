@@ -6,9 +6,8 @@ import js7.base.time.ScalaTime.*
 import js7.data.item.ItemRevision
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 
-final class CalendarTest extends OurTestSuite
-{
-  "JSON" in {
+final class CalendarTest extends OurTestSuite:
+  "JSON" in:
     testJson(
       Calendar(
         CalendarPath("CALENDAR"),
@@ -36,9 +35,6 @@ final class CalendarTest extends OurTestSuite
           "orderIdPattern": "#([^#]+)#.*",
           "periodDatePattern": "yyyy-MM-dd"
         } """)
-  }
 
-  "CalendarPath.itemTypeName" in {
+  "CalendarPath.itemTypeName" in:
     assert(CalendarPath.itemTypeName == Calendar.typeName)
-  }
-}

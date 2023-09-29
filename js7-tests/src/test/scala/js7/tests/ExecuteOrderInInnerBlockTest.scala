@@ -20,8 +20,7 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.traced
 
-final class ExecuteOrderInInnerBlockTest extends OurTestSuite with ControllerAgentForScalaTest
-{
+final class ExecuteOrderInInnerBlockTest extends OurTestSuite with ControllerAgentForScalaTest:
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.controller.agent-driver.command-batch-delay = 0ms
@@ -34,7 +33,7 @@ final class ExecuteOrderInInnerBlockTest extends OurTestSuite with ControllerAge
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(workflow)
 
-  "Invalid innerBlock, or startPosition or stopPositions not in innerBlock" in {
+  "Invalid innerBlock, or startPosition or stopPositions not in innerBlock" in:
     def addOrder(
       innerBlock: BranchPath,
       startPosition: Option[Position] = None,
@@ -57,9 +56,8 @@ final class ExecuteOrderInInnerBlockTest extends OurTestSuite with ControllerAge
     assert(
       addOrder(forkBranchPath, stopPositions = Set(Position(2), forkBranchPath % 1)) == Left(
         Problem("Position 2 must be in innerBlock=1/then:0/fork+BRANCH")))
-  }
 
-  "Execute in a Fork block" in {
+  "Execute in a Fork block" in:
     val innerBlock = forkBranchPath
 
     val stampedEvents = controller.runOrder(
@@ -79,9 +77,8 @@ final class ExecuteOrderInInnerBlockTest extends OurTestSuite with ControllerAge
       OrderDetachable,
       OrderDetached,
       OrderFinished()))
-  }
 
-  "Execute in a 'then' block of a Fork block" in {
+  "Execute in a 'then' block of a Fork block" in:
     val innerBlock = forkBranchPath % 0 / "then" % 0 / "then"
 
     val stampedEventsevents = controller.runOrder(
@@ -101,9 +98,8 @@ final class ExecuteOrderInInnerBlockTest extends OurTestSuite with ControllerAge
       OrderDetachable,
       OrderDetached,
       OrderFinished()))
-  }
 
-  "Leave innerBlock on failure, ignoring outer catch block" in {
+  "Leave innerBlock on failure, ignoring outer catch block" in:
     val innerBlock = forkBranchPath % 0 / "then" % 1 / "try" % 0 / "then"
 
     val stampedEventsevents = controller.runOrder(
@@ -123,11 +119,8 @@ final class ExecuteOrderInInnerBlockTest extends OurTestSuite with ControllerAge
       OrderDetachable,
       OrderDetached,
       OrderFailed(innerBlock % 0)))
-  }
-}
 
-object ExecuteOrderInInnerBlockTest
-{
+object ExecuteOrderInInnerBlockTest:
   private val agentPath = AgentPath("A-AGENT")
 
   private val workflow = Workflow(WorkflowPath("A-WORKFLOW") ~ "INITIAL", Seq(
@@ -146,4 +139,3 @@ object ExecuteOrderInInnerBlockTest
     EmptyJob.execute(agentPath)))
 
   private val forkBranchPath = Position(1) / "then" % 0 / BranchId.fork("BRANCH")
-}

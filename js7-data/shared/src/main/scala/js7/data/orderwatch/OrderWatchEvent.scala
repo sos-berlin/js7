@@ -7,15 +7,12 @@ import js7.data.event.Event
 import js7.data.order.OrderId
 import js7.data.value.NamedValues
 
-sealed trait OrderWatchEvent extends Event.IsKeyBase[OrderWatchEvent]
-{
+sealed trait OrderWatchEvent extends Event.IsKeyBase[OrderWatchEvent]:
   val keyCompanion: OrderWatchEvent.type  = OrderWatchEvent
 
   def externalOrderName: ExternalOrderName
-}
 
-object OrderWatchEvent extends Event.CompanionForKey[OrderWatchPath, OrderWatchEvent]
-{
+object OrderWatchEvent extends Event.CompanionForKey[OrderWatchPath, OrderWatchEvent]:
   implicit def implicitSelf: OrderWatchEvent.type = this
 
   // TODO Rename as ExternalOrderArose
@@ -33,4 +30,3 @@ object OrderWatchEvent extends Event.CompanionForKey[OrderWatchPath, OrderWatchE
   implicit val jsonCodec: TypedJsonCodec[OrderWatchEvent] = TypedJsonCodec(
     Subtype(deriveCodec[ExternalOrderArised]),
     Subtype(deriveCodec[ExternalOrderVanished]))
-}

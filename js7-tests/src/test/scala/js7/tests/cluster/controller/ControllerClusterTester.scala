@@ -11,17 +11,13 @@ import js7.tests.testenv.ControllerClusterForScalaTest
 
 private[cluster] trait ControllerClusterTester
 extends OurTestSuite
-with ControllerClusterForScalaTest
-{
+with ControllerClusterForScalaTest:
   protected def items: Seq[InventoryItem] =
     Seq(TestWorkflow)
-}
 
-object ControllerClusterTester
-{
+object ControllerClusterTester:
   private[cluster] val TestWorkflow = Workflow(
     WorkflowPath("WORKFLOW"),
     Seq(
       SleepJob.execute(AgentPath("AGENT"), parallelism = 2, arguments = Map(
         "sleep" -> expr("$sleep ? 1")))))
-}

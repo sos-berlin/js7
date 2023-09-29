@@ -8,7 +8,5 @@ final case class DirectorConf(
   journalConf: JournalConf,
   httpsConfig: HttpsConfig,
   recouplingStreamReaderConf: RecouplingStreamReaderConf,
-  subagentConf: SubagentConf)
-{
+  subagentConf: SubagentConf):
   def config = subagentConf.config
-}

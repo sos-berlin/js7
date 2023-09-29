@@ -24,8 +24,7 @@ import scala.jdk.OptionConverters.RichOption
   * Constructor and methods are executed in (from call to call changing) threads
   * out of a thread pool for blocking execution. */
 @InternalJobAdapter(classOf[BlockingInternalJobAdapter])
-trait BlockingInternalJob
-{
+trait BlockingInternalJob:
   /** Called once after construction and before any other call.*/
   @throws[Exception] @Nonnull
   final def start(): VEither[Problem, Void] =
@@ -54,16 +53,13 @@ trait BlockingInternalJob
     */
   @Nonnull
   def toOrderProcess(@Nonnull step: Step): OrderProcess
-}
 
-object BlockingInternalJob
-{
+object BlockingInternalJob:
   final case class JobContext(asScala: InternalJob.JobContext)
   extends JavaJobContext
 
   final case class Step(asScala: InternalJob.Step, outWriter: Writer, errWriter: Writer)
-  extends JavaJobStep
-  {
+  extends JavaJobStep:
     private val outLazy = Lazy(new PrintWriter(outWriter, true))
     private val errLazy = Lazy(new PrintWriter(errWriter, true))
 
@@ -91,14 +87,11 @@ object BlockingInternalJob
       asScala.env
         .map(_.view.mapValues(_.toJava).asJava)
         .toVavr
-  }
-  object Step {
+  object Step:
     def apply(asScala: InternalJob.Step)(implicit s: Scheduler): Step =
       Step(asScala, new ObserverWriter(asScala.outObserver), new ObserverWriter(asScala.errObserver))
-  }
 
-  trait OrderProcess
-  {
+  trait OrderProcess:
     /** Process the order.
       * <p>
       * May be called multiple times in parallel.
@@ -109,5 +102,3 @@ object BlockingInternalJob
 
     @throws[Exception] @Nonnull
     def cancel(immediately: Boolean) = {}
-  }
-}

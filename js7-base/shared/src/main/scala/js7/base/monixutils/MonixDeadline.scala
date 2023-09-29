@@ -8,8 +8,7 @@ import scala.concurrent.duration.{Duration, FiniteDuration, NANOSECONDS}
 
 /** Like Scala's `scala.concurrent.duration.Deadline` but based on Monix' clock. */
 final case class MonixDeadline private(nanos: Long)(implicit scheduler: Scheduler)
-extends Ordered[MonixDeadline]
-{
+extends Ordered[MonixDeadline]:
   /**
    * Return a deadline advanced (i.e., moved into the future) by the given duration.
    */
@@ -81,14 +80,11 @@ extends Ordered[MonixDeadline]
     MonixDeadline(scheduler.clockMonotonic(NANOSECONDS))
 
   /** Not immutable, may return each nanosecond a different string. */
-  override def toString = {
+  override def toString =
     val t = elapsed
     (t.isPositive ?? "+") + t.pretty
-  }
-}
 
-object MonixDeadline
-{
+object MonixDeadline:
   val monotonicClock: Task[MonixDeadline] =
     Task.deferAction { scheduler =>
       Task.pure(MonixDeadline.now(scheduler))
@@ -111,16 +107,10 @@ object MonixDeadline
   /**
    * The natural ordering for deadline is determined by the natural order of the underlying (finite) duration.
    */
-  implicit object MonixDeadlineIsOrdered extends Ordering[MonixDeadline] {
+  implicit object MonixDeadlineIsOrdered extends Ordering[MonixDeadline]:
     def compare(a: MonixDeadline, b: MonixDeadline) = a compare b
-  }
 
-  object syntax
-  {
-    implicit final class DeadlineSchedule(private val scheduler: Scheduler) extends AnyVal
-    {
+  object syntax:
+    implicit final class DeadlineSchedule(private val scheduler: Scheduler) extends AnyVal:
       def now: MonixDeadline =
         MonixDeadline.now(scheduler)
-    }
-  }
-}

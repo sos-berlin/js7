@@ -10,10 +10,9 @@ final case class SystemInformation(
   cpuModel: Option[String] = None,
   mxBeans: Map[String, Any] = Map())
 
-object SystemInformation {
+object SystemInformation:
   (MapJsonDecoder, MapJsonEncoder)  // Force import usage for IntelliJ (hidden usage by @JsonCocec)
 
   val ForTest = SystemInformation(hostname = "HOSTNAME")
 
   implicit val jsonCodec: Codec.AsObject[SystemInformation] = deriveCodec[SystemInformation]
-}

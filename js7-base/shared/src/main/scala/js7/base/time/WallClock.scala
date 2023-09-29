@@ -2,8 +2,7 @@ package js7.base.time
 
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 
-trait WallClock
-{
+trait WallClock:
   def epochMilli(): Long
 
   final def now(): Timestamp =
@@ -13,10 +12,8 @@ trait WallClock
     getClass.simpleScalaName
 
   override def toString = s"$productPrefix(${now()})"
-}
 
-object WallClock extends WallClock
-{
+object WallClock extends WallClock:
   override def epochMilli() =
     System.currentTimeMillis()
 
@@ -24,8 +21,5 @@ object WallClock extends WallClock
     Fixed(timestamp)
 
   private final case class Fixed(now_ : Timestamp)
-  extends WallClock
-  {
+  extends WallClock:
     def epochMilli() = now_.toEpochMilli
-  }
-}

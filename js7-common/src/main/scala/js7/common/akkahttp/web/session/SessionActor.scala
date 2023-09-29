@@ -27,14 +27,14 @@ import scala.collection.mutable
 final class SessionActor[S <: Session] private
   (newSession: SessionInit => S, config: Config)
   (implicit scheduler: Scheduler)
-extends Actor {
+extends Actor:
 
   private val sessionTimeout = config.getDuration("js7.auth.session.timeout").toFiniteDuration
   private val cleanupInterval = sessionTimeout / 4
   private val tokenToSession = mutable.Map.empty[SessionToken, S]
   private var nextCleanup: Cancelable = null
 
-  override def postStop() = {
+  override def postStop() =
     if nextCleanup != null then nextCleanup.cancel()
     tokenToSession.values
       .groupMap(_.currentUser.id)(_.sessionToken)
@@ -45,18 +45,16 @@ extends Actor {
           sessionTokens.view.mkString(" (", " ", ")"))
       }
     super.postStop()
-  }
 
-  def receive = {
+  def receive =
     case Command.Login(_user: User, clientVersion, tokenOption, isEternalSession) =>
       val user = _user.asInstanceOf[SimpleUser]
       for t <- tokenOption do delete(t, reason = "second login")
       val token = SessionToken.generateFromSecretString(SecretStringGenerator.newSecretString())
       assertThat(!tokenToSession.contains(token), "Duplicate generated SessionToken")  // Must not happen
       val session = newSession(SessionInit(token, user))
-      if !isEternalSession then {
+      if !isEternalSession then
         session.touch(sessionTimeout)
-      }
       tokenToSession.insert(session.sessionToken, session)
 
       logger.info(s"${session.sessionToken} for ${user.id}: Login" +
@@ -68,7 +66,7 @@ extends Actor {
               s" ⚠️ version differs from this server's version $Js7Version!)")) +
         (session.isEternal ?? " (eternal)"))
 
-      clientVersion match {
+      clientVersion match
         case None => logger.warn("Client does not provide its version")
         case Some(v) =>
           Js7Versions.checkNonMatchingVersion(v, otherName = user.id.toString)
@@ -76,19 +74,17 @@ extends Actor {
             .foreach { problem =>
               logger.error(problem.toString)
             }
-      }
 
       sender() ! token
       scheduleNextCleanup()
 
     case Command.Logout(token) =>
-      for session <- tokenToSession.remove(token) do {
+      for session <- tokenToSession.remove(token) do
         logger.info(s"$token for ${session.currentUser.id}: Logout")
-      }
       sender() ! Completed
 
     case Command.Get(token, idsOrUser: Either[Set[UserId], SimpleUser] @unchecked) =>
-      val checkedSession = (tokenToSession.get(token), idsOrUser) match {
+      val checkedSession = (tokenToSession.get(token), idsOrUser) match
         case (None, _) =>
           val users = idsOrUser.fold(_.mkString("|"), _.id)
           logger.debug(s"🔒 InvalidSessionToken: Rejecting unknown $token of $users")
@@ -103,15 +99,12 @@ extends Actor {
           Left(InvalidSessionTokenProblem)
 
         case (Some(session), _) =>
-          if handleTimeout(session) then {
+          if handleTimeout(session) then
             Left(InvalidSessionTokenProblem)
-          } else {
-            if !session.isEternal then {
+          else
+            if !session.isEternal then
               session.touch(sessionTimeout)
-            }
             Right(session)
-          }
-      }
       sender() ! (checkedSession: Checked[Session])
 
     case Command.GetCount =>
@@ -122,7 +115,6 @@ extends Actor {
       tokenToSession.values.toVector foreach handleTimeout
       nextCleanup = null
       scheduleNextCleanup()
-  }
 
   /** Handles late authentication for Browser usage.
     * login(None) was accepted without authentication, establishing a Session for Anonymous.
@@ -132,41 +124,34 @@ extends Actor {
     * The session is updated with the authenticated user.
     * This may happen only once and the original user must be Anonymous.
     */
-  private def tryUpdateLatelyAuthenticatedUser(newUser: SimpleUser, session: Session): Checked[Session] = {
+  private def tryUpdateLatelyAuthenticatedUser(newUser: SimpleUser, session: Session): Checked[Session] =
     if session.sessionInit.loginUser.isAnonymous &&
         session.tryUpdateUser(newUser) then  // Mutate session!
-    {
       logger.info(s"${session.sessionToken} for ${session.sessionInit.loginUser.id} switched to ${newUser.id}")
       Right(session)
-    } else {
+    else
       logger.debug(s"🔒 InvalidSessionToken: ${session.sessionToken}: Rejecting session token " +
         s"belonging to ${session.currentUser.id} but sent by ${newUser.id}")
       Left(InvalidSessionTokenProblem)
-    }
-  }
 
   private def scheduleNextCleanup(): Unit =
-    if nextCleanup == null && tokenToSession.values.exists(o => !o.isEternal) then {
-      nextCleanup = scheduler.scheduleOnce(cleanupInterval) {
+    if nextCleanup == null && tokenToSession.values.exists(o => !o.isEternal) then
+      nextCleanup = scheduler.scheduleOnce(cleanupInterval):
         self ! CleanUp
-      }
-    }
 
   private def handleTimeout(session: S): Boolean =
-    if !session.isAlive then {
+    if !session.isAlive then
       delete(session.sessionToken, reason = s"timeout (last used at ${session.touchedAt})")
       true
-    } else
+    else
       false
 
   private def delete(token: SessionToken, reason: String): Unit =
     tokenToSession.remove(token) foreach { session =>
       logger.info(s"$token for ${session.currentUser.id} deleted due to $reason")
     }
-}
 
-object SessionActor
-{
+object SessionActor:
   private val logger = Logger[this.type]
 
   private[session] def props[S <: Session]
@@ -175,7 +160,7 @@ object SessionActor
     Props { new SessionActor(newSession, config) }
 
   private[session] sealed trait Command
-  private[session] object Command {
+  private[session] object Command:
     final case class Login[U <: User](
       user: U,
       js7Version: Option[Version],
@@ -185,7 +170,5 @@ object SessionActor
     final case class Logout(token: SessionToken) extends Command
     final case class Get[U <: User](token: SessionToken, idsOrUser: Either[Set[UserId], U]) extends Command
     case object GetCount extends Command
-  }
 
   private case object CleanUp extends DeadLetterSuppression
-}

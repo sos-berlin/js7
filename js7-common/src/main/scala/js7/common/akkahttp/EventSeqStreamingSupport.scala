@@ -8,8 +8,7 @@ import js7.common.http.JsonStreamingSupport
 /**
   * @author Joacim Zschimmer
   */
-object EventSeqStreamingSupport
-{
+object EventSeqStreamingSupport:
   val NonEmptyEventSeqJsonStreamingSupport: JsonEntityStreamingSupport =
     EntityStreamingSupport
       .json(maxObjectLength = JsonStreamingSupport.JsonObjectMaxSize)
@@ -18,4 +17,3 @@ object EventSeqStreamingSupport
         ByteString("""{"TYPE":"NonEmpty","stamped":["""),
         ByteString(","),
         ByteString("]}")))
-}

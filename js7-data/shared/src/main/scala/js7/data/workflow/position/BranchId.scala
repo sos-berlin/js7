@@ -14,8 +14,7 @@ import scala.util.control.NonFatal
   *
   * @author Joacim Zschimmer
   */
-sealed trait BranchId
-{
+sealed trait BranchId:
   def string: String
 
   def normalized: BranchId
@@ -25,10 +24,8 @@ sealed trait BranchId
   final def isIsFailureBoundary = isFork
 
   def toCycleState: Checked[CycleState]
-}
 
-object BranchId
-{
+object BranchId:
   val Then = BranchId("then")
   val Else = BranchId("else")
   val Try_ = BranchId("try")
@@ -44,27 +41,24 @@ object BranchId
 
   implicit def apply(branchId: String): Named = Named(branchId)
 
-  def try_(retry: Int): BranchId.Named = {
+  def try_(retry: Int): BranchId.Named =
     require(retry >= 0)
     BranchId(Try_.string + "+" + retry)
-  }
 
-  def catch_(retry: Int): BranchId.Named = {
+  def catch_(retry: Int): BranchId.Named =
     require(retry >= 0)
     BranchId(Catch_.string + "+" + retry)
-  }
 
   def nextTryBranchId(branchId: BranchId): Checked[Option[BranchId]] =
-    branchId match {
+    branchId match
       case TryBranchId(_) => Right(None)
       case CatchBranchId(i) => Right(Some(BranchId.try_(i + 1)))
       case _ => Left(Problem(s"Invalid BranchId for nextTryBranchId: $branchId"))
-    }
 
   def fork(branch: String) =
     BranchId(ForkPrefix + branch)
 
-  def cycle(cycleState: CycleState): BranchId = {
+  def cycle(cycleState: CycleState): BranchId =
     val parameters =
       View(
         Some("end="  + cycleState.end.toEpochMilli),
@@ -75,17 +69,14 @@ object BranchId
       ).flatten.mkString(",")
 
     "cycle+" + parameters
-  }
 
-  object IsFailureBoundary
-  {
+  object IsFailureBoundary:
     def unapply(branchId: BranchId): Option[BranchId] =
       branchId.isIsFailureBoundary ? branchId
-  }
 
   private val emptyCycleState = CycleState(Timestamp.Epoch, 0, 0, 0, Timestamp.Epoch)
 
-  final case class Named(string: String) extends BranchId {
+  final case class Named(string: String) extends BranchId:
     // TODO Differentiate static and dynamic BranchId (used for static and dynamic call stacks)
     def normalized =
       if string startsWith "try+" then "try"
@@ -96,13 +87,13 @@ object BranchId
     def isFork = string.startsWith(ForkPrefix) || string == "fork"
 
     def toCycleState: Checked[CycleState] =
-      try {
+      try
         var cycleState = emptyCycleState
         if string == "cycle" then
           Right(cycleState)
         else if !string.startsWith("cycle+") then
           Left(Problem.pure(cycleFailed))
-        else {
+        else
           var checked: Checked[Unit] = Checked.unit
           string.substring(6)
             .split(',')
@@ -127,8 +118,7 @@ object BranchId
               else
                 checked = Left(Problem.pure(cycleFailed)))
           for _ <- checked yield cycleState
-        }
-      } catch { case NonFatal(t) =>
+      catch { case NonFatal(t) =>
         Left(Problem.pure(cycleFailed + " - " + t.toStringWithCauses))
       }
 
@@ -136,15 +126,11 @@ object BranchId
       "Expected a Cycle BranchId but got: " + toString
 
     override def toString = string
-  }
-  object Named {
+  object Named:
     implicit val jsonEncoder: Encoder[Named] = o => Json.fromString(o.string)
     implicit val jsonDecoder: Decoder[Named] = _.as[String] map Named.apply
-  }
 
-  implicit val jsonEncoder: Encoder[BranchId] = {
+  implicit val jsonEncoder: Encoder[BranchId] =
     case o: Named => o.asJson    // String
-  }
   implicit val jsonDecoder: Decoder[BranchId] = cursor =>
     cursor.as[Named]
-}

@@ -7,8 +7,7 @@ import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 /**
  * @author Joacim Zschimmer
  */
-final case class ReturnCode private(number: Int) extends GenericInt
-{
+final case class ReturnCode private(number: Int) extends GenericInt:
   def isSuccess = number == 0
 
   def isProcessSignal: Boolean =
@@ -18,15 +17,12 @@ final case class ReturnCode private(number: Int) extends GenericInt
     if isWindows || !isProcessSignal then
       toString
     else
-      number - 128 match {
+      number - 128 match
         case SIGTERM.number => s"ReturnCode($number/SIGTERM)"
         case SIGKILL.number => s"ReturnCode($number/SIGKILL)"
         case signal => s"ReturnCode($number=128+$signal)"
-      }
-}
 
-object ReturnCode extends GenericInt.Companion[ReturnCode]
-{
+object ReturnCode extends GenericInt.Companion[ReturnCode]:
   private val predefined = (0 to 255).map(new ReturnCode(_)).toArray
 
   val Success = predefined(0)
@@ -47,4 +43,3 @@ object ReturnCode extends GenericInt.Companion[ReturnCode]
   @javaApi
   def fromBoolean(o: Boolean): ReturnCode =
     apply(o)
-}

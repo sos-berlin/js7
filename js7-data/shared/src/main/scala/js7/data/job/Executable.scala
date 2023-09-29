@@ -17,22 +17,18 @@ import js7.data.order.Outcome
 import js7.data.value.expression.Expression
 import js7.data.value.{NamedValues, NumberValue}
 
-sealed trait Executable
-{
+sealed trait Executable:
   def arguments: Map[String, Expression]
 
   def referencedJobResourcePaths: Iterable[JobResourcePath] =
     arguments.values.view.flatMap(_.referencedJobResourcePaths)
-}
 
-sealed trait ScriptExecutable {
+sealed trait ScriptExecutable:
   this: Executable =>
 
   def script: String
-}
 
-sealed trait ProcessExecutable extends Executable
-{
+sealed trait ProcessExecutable extends Executable:
   final def arguments = Map.empty
 
   override def referencedJobResourcePaths =
@@ -51,22 +47,16 @@ sealed trait ProcessExecutable extends Executable
     Outcome.Completed(
       success = returnCodeMeaning.isSuccess(returnCode),
       namedValues + ProcessExecutable.toNamedValue(returnCode))
-}
-object ProcessExecutable
-{
+object ProcessExecutable:
   def toNamedValue(returnCode: ReturnCode): (String, NumberValue) =
     "returnCode" -> NumberValue(returnCode.number)
-}
 
 sealed trait PathExecutable
-extends ProcessExecutable
-{
+extends ProcessExecutable:
   def path: String
 
   def isAbsolute: Boolean
-}
-object PathExecutable
-{
+object PathExecutable:
   def unapply(pathExecutable: PathExecutable) =
     Some((pathExecutable.path, pathExecutable.env, pathExecutable.returnCodeMeaning,
       pathExecutable.login, pathExecutable.v1Compatible))
@@ -131,7 +121,6 @@ object PathExecutable
       v1Compatible <- cursor.getOrElse[Boolean]("v1Compatible")(false)
       pathExecutable <- PathExecutable.checked(path, env, login, returnCodeMeaning, v1Compatible).toDecoderResult(cursor.history)
     yield pathExecutable
-}
 
 final case class AbsolutePathExecutable(
   path: String,
@@ -139,15 +128,13 @@ final case class AbsolutePathExecutable(
   login: Option[KeyLogin] = None,
   returnCodeMeaning: ReturnCodeMeaning = ReturnCodeMeaning.Default,
   v1Compatible: Boolean = false)
-extends PathExecutable
-{
+extends PathExecutable:
   assert(PathExecutable.isAbsolute(path))
 
   def isAbsolute = true
 
   override def toString = s"AbsolutePathExecutable($path)"
-}
-object AbsolutePathExecutable {
+object AbsolutePathExecutable:
   def checked(
     path: String,
     env: Map[String, Expression] = Map.empty,
@@ -160,7 +147,6 @@ object AbsolutePathExecutable {
       Left(InvalidNameProblem("AbsolutePathExecutable", path))
     else
       Right(new AbsolutePathExecutable(path, env, login, returnCodeMeaning, v1Compatible))
-}
 
 final case class RelativePathExecutable(
   path: String,
@@ -168,8 +154,7 @@ final case class RelativePathExecutable(
   login: Option[KeyLogin] = None,
   returnCodeMeaning: ReturnCodeMeaning = ReturnCodeMeaning.Default,
   v1Compatible: Boolean = false)
-extends PathExecutable
-{
+extends PathExecutable:
   assert(!PathExecutable.isAbsolute(path))
 
   def isAbsolute = false
@@ -178,8 +163,7 @@ extends PathExecutable
     directory resolve path.stripPrefix("/")
 
   override def toString = s"RelativePathExecutable($path)"
-}
-object RelativePathExecutable {
+object RelativePathExecutable:
   def checked(
     path: String,
     env: Map[String, Expression] = Map.empty,
@@ -194,20 +178,17 @@ object RelativePathExecutable {
       Left(InvalidNameProblem("RelativePathExecutable", path))
     else
       Right(new RelativePathExecutable(path, env, login, returnCodeMeaning, v1Compatible))
-}
 
 final case class CommandLineExecutable(
   commandLineExpression: CommandLineExpression,
   env: Map[String, Expression] = Map.empty,
   login: Option[KeyLogin] = None,
   returnCodeMeaning: ReturnCodeMeaning = ReturnCodeMeaning.Default)
-extends ProcessExecutable {
+extends ProcessExecutable:
   def v1Compatible = false
 
   override def toString = s"CommandLineExecutable($commandLineExpression)"
-}
-object CommandLineExecutable
-{
+object CommandLineExecutable:
   def fromString(commandLine: String, env: Map[String, Expression] = Map.empty) =
     CommandLineParser.parse(commandLine).map(apply(_, env))
 
@@ -226,7 +207,6 @@ object CommandLineExecutable
       login <- cursor.get[Option[KeyLogin]]("login")
       returnCodeMeaning <- cursor.getOrElse[ReturnCodeMeaning]("returnCodeMeaning")(ReturnCodeMeaning.Default)
     yield CommandLineExecutable(commandExpr, env, login, returnCodeMeaning)
-}
 
 final case class ShellScriptExecutable(
   script: String,
@@ -234,15 +214,13 @@ final case class ShellScriptExecutable(
   login: Option[KeyLogin] = None,
   returnCodeMeaning: ReturnCodeMeaning = ReturnCodeMeaning.Default,
   v1Compatible: Boolean = false)
-extends ProcessExecutable with ScriptExecutable {
+extends ProcessExecutable with ScriptExecutable:
 
   override def toString = "ShellScriptExecutable(" +
     login.fold("")(o => s"login=$o ") +
     script.truncateWithEllipsis(200, showLength = true) +
     ")"
-}
-object ShellScriptExecutable
-{
+object ShellScriptExecutable:
   implicit val jsonEncoder: Encoder.AsObject[ShellScriptExecutable] =
     o => JsonObject(
       "script" -> o.script.asJson,
@@ -259,7 +237,6 @@ object ShellScriptExecutable
       returnCodeMeaning <- cursor.getOrElse[ReturnCodeMeaning]("returnCodeMeaning")(ReturnCodeMeaning.Default)
       v1Compatible <- cursor.getOrElse[Boolean]("v1Compatible")(false)
     yield ShellScriptExecutable(script, env, login, returnCodeMeaning, v1Compatible)
-}
 
 final case class InternalExecutable(
   className: String,
@@ -268,13 +245,10 @@ final case class InternalExecutable(
   jobArguments: Map[String, Expression] = Map.empty,
   /** Argument expressions evaluated for each `processOrder`. */
   arguments: Map[String, Expression] = Map.empty)
-extends Executable with ScriptExecutable
-{
+extends Executable with ScriptExecutable:
   override def toString = s"InternalExecutable($className)"
-}
 
-object Executable
-{
+object Executable:
   implicit val jsonCodec: TypedJsonCodec[Executable] = TypedJsonCodec(
     Subtype[PathExecutable](
       subclasses = Seq(
@@ -284,4 +258,3 @@ object Executable
     Subtype[ShellScriptExecutable](Nil, aliases = Seq("ExecutableScript", "ScriptExecutable")),
     Subtype[CommandLineExecutable],
     Subtype(deriveConfiguredCodec[InternalExecutable]))
-}

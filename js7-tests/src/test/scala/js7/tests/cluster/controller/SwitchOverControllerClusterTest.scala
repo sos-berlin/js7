@@ -19,13 +19,12 @@ import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import scala.util.Try
 
-final class SwitchOverControllerClusterTest extends ControllerClusterTester
-{
+final class SwitchOverControllerClusterTest extends ControllerClusterTester:
   override protected def removeObsoleteJournalFiles = false
   private lazy val manyOrdersCount = sys.props.get("SwitchOverControllerClusterTest").map(_.toInt) getOrElse 1
   private lazy val timeout = if manyOrdersCount > 1 then 1.h else 99.s
 
-  "Switchover" in {
+  "Switchover" in:
     val orderIds = for i <- 1 to manyOrdersCount yield
       OrderId(s"ORDER-XXXXXXXXX-XXXXXXXXX-XXXXXXXXX-XXXXXXXXX-XXXXXXXXX-XXXXXXXXX-XXXXXXXXX-XXXXXXXXX-XXXXXXXXX-$i")
     withControllerAndBackup() { (primary, _, backup, _, _) =>
@@ -74,17 +73,15 @@ final class SwitchOverControllerClusterTest extends ControllerClusterTester
           assert(!primaryController.journalActorState.isRequiringClusterAcknowledgement)
           lastEventId = primaryController.eventWatch.await[OrderFinished](_.key == orderId, timeout = timeout).head.eventId
 
-          locally {
+          locally:
             val orderId = OrderId("🟦")
             primaryController.addOrderBlocking(FreshOrder(orderId, TestWorkflow.id.path))
             primaryController.eventWatch.await[OrderProcessingStarted](_.key == orderId, timeout = timeout)
-          }
         }
       }
     }
-  }
 
-  private def addOrders(orderId: Seq[OrderId])(implicit controller: TestController): Unit = {
+  private def addOrders(orderId: Seq[OrderId])(implicit controller: TestController): Unit =
     orderId.grouped(1000)
       .map(Observable.fromIterable)
       .map(_.map(FreshOrder(_, TestWorkflow.path,
@@ -92,10 +89,6 @@ final class SwitchOverControllerClusterTest extends ControllerClusterTester
       .foreach { orders =>
         controller.api.addOrders(orders).await(timeout).orThrow
       }
-  }
-}
 
-object SwitchOverControllerClusterTest
-{
+object SwitchOverControllerClusterTest:
   private val logger = Logger[this.type]
-}

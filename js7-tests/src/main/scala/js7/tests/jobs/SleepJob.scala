@@ -12,8 +12,7 @@ import js7.launcher.internal.InternalJob
 import js7.launcher.internal.InternalJob.JobContext
 import scala.concurrent.duration.FiniteDuration
 
-final class SleepJob(jobContext: JobContext) extends InternalJob
-{
+final class SleepJob(jobContext: JobContext) extends InternalJob:
   import jobContext.clock
 
   def toOrderProcess(step: Step) =
@@ -25,13 +24,10 @@ final class SleepJob(jobContext: JobContext) extends InternalJob
           clock.sleep(duration).when(duration.isPositive)
             .as(Outcome.succeeded))
         .map(Outcome.Completed.fromChecked))
-}
 
-object SleepJob extends InternalJob.Companion[SleepJob]
-{
+object SleepJob extends InternalJob.Companion[SleepJob]:
   def sleep(agentPath: AgentPath, duration: FiniteDuration): Execute =
     execute(
       agentPath,
       arguments = Map(
         "sleep" -> NumericConstant(duration.toBigDecimalSeconds)))
-}

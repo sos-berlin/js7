@@ -8,9 +8,7 @@ import js7.base.test.OurTestSuite
 /**
   * @author Joacim Zschimmer
   */
-final class AsJavaTest extends OurTestSuite {
+final class AsJavaTest extends OurTestSuite:
 
-  "as[Path]" in {
+  "as[Path]" in:
     assert(Map("path" -> "/PATH").as[Path]("path") == Paths.get("/PATH"))
-  }
-}

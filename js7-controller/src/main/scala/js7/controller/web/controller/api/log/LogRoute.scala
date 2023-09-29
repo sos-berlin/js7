@@ -24,8 +24,7 @@ import js7.controller.web.controller.api.log.LogRoute.*
 import monix.eval.Task
 import monix.execution.Scheduler
 
-trait LogRoute extends ControllerRouteProvider
-{
+trait LogRoute extends ControllerRouteProvider:
   protected def scheduler: Scheduler
   protected def config: Config
   protected def currentLogFile: Path
@@ -53,10 +52,7 @@ trait LogRoute extends ControllerRouteProvider
               Task { logger.debug("whenShuttingDown completed") })
             .map(_.toByteString)
             .toAkkaSourceForHttpResponse)))
-}
 
-object LogRoute
-{
+object LogRoute:
   private val logger = Logger[this.type]
   private val contentType = `text/plain(UTF-8)`
-}

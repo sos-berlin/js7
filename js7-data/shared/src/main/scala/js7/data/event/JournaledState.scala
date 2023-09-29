@@ -4,8 +4,7 @@ import js7.base.problem.Checked
 
 /** An EventDrivenState with EventId. An aggregate. */
 trait JournaledState[S <: JournaledState[S]]
-extends EventDrivenState[S, Event]
-{
+extends EventDrivenState[S, Event]:
   this: S =>
 
   def companion: JournaledState.Companion[S]
@@ -22,19 +21,13 @@ extends EventDrivenState[S, Event]
   def withEventId(eventId: EventId): S
 
   def eventId: EventId
-}
 
-object JournaledState
-{
-  trait HasEventCodec {
+object JournaledState:
+  trait HasEventCodec:
     implicit def keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event]
-  }
 
   trait Companion[S <: JournaledState[S]]
   extends EventDrivenState.Companion[S, Event]
-  with HasEventCodec
-  {
+  with HasEventCodec:
     implicit final val implicitJournalStateCompanion: Companion[S] =
       this
-  }
-}

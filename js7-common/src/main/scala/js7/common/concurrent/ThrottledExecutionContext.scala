@@ -7,7 +7,7 @@ import scala.concurrent.ExecutionContext
   * @author Joacim Zschimmer
   */
 final class ThrottledExecutionContext(throttle: Int)(implicit delegate: ExecutionContext)
-extends ExecutionContext {
+extends ExecutionContext:
 
   require(throttle >= 1)
 
@@ -19,13 +19,11 @@ extends ExecutionContext {
 
   def reportFailure(throwable: Throwable) = delegate.reportFailure(throwable)
 
-  def execute(runnable: Runnable) = {
-    if !enqueueIfThrottled(runnable) then {
+  def execute(runnable: Runnable) =
+    if !enqueueIfThrottled(runnable) then
       delegate.execute(new Runnable {
         def run() = executeThisAndQueued(runnable)
       })
-    }
-  }
 
   private def executeThisAndQueued(runnable: Runnable): Unit =
     delegate.execute(new Runnable {   // Avoid memory-leak with runnable.
@@ -39,19 +37,15 @@ extends ExecutionContext {
     })
 
   private def enqueueIfThrottled[A](runnable: Runnable): Boolean =
-    synchronized {
+    synchronized:
       !semaphore.tryAcquire() && {
         queue.add(runnable)
         true
       }
-    }
 
   private def tryDequeue(): Runnable =
-    synchronized {
+    synchronized:
       val next = queue.poll()
-      if next == null then {
+      if next == null then
         semaphore.release()
-      }
       next
-    }
-}

@@ -5,8 +5,7 @@ import js7.base.circeutils.typed.Subtype
 import js7.data.board.{BoardPath, BoardPathExpression}
 import js7.data.source.SourcePos
 
-private object ExpectNotice
-{
+private object ExpectNotice:
   // COMPATIBLE with v2.3
   private final case class ExpectNotice(
     boardPath: BoardPath,
@@ -17,4 +16,3 @@ private object ExpectNotice
       Right(ExpectNotices(
         BoardPathExpression.ExpectNotice(expectNotice.boardPath),
         expectNotice.sourcePos)))
-}

@@ -8,14 +8,13 @@ import org.jetbrains.annotations.TestOnly
 /**
   * @author Joacim Zschimmer
   */
-trait SignatureVerifier {
+trait SignatureVerifier:
   self =>
 
   protected type MySignature <: Signature
 
-  def companion: SignatureVerifier.Companion {
+  def companion: SignatureVerifier.Companion:
     type MySignature = self.MySignature
-  }
 
   @TestOnly
   def publicKeys: Seq[String]
@@ -32,11 +31,9 @@ trait SignatureVerifier {
 
   final def verifyString(document: String, signature: MySignature): Checked[Seq[SignerId]] =
     verify(ByteArray(document), signature)
-}
 
-object SignatureVerifier
-{
-  trait Companion {
+object SignatureVerifier:
+  trait Companion:
     self =>
 
     protected type MySignature <: Signature   // = MySignatureVerifier#MySignature
@@ -55,5 +52,3 @@ object SignatureVerifier
 
     override def toString =
       s"""${getClass.simpleScalaName}("$typeName")"""
-  }
-}

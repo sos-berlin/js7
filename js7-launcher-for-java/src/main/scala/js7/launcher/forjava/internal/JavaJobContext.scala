@@ -7,8 +7,7 @@ import js7.data_for_java.common.JavaWrapper
 import js7.launcher.internal.InternalJob.JobContext
 import scala.jdk.CollectionConverters.*
 
-trait JavaJobContext extends JavaWrapper
-{
+trait JavaJobContext extends JavaWrapper:
   type AsScala = JobContext
 
   def asScala: JobContext
@@ -31,4 +30,3 @@ trait JavaJobContext extends JavaWrapper
     */
   final val internalJs7Executor: java.util.concurrent.Executor =
     asScala.js7Scheduler
-}

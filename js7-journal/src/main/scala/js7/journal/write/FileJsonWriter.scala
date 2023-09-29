@@ -15,7 +15,7 @@ final class FileJsonWriter(
   val file: Path,
   append: Boolean = false,
   simulateSync: Option[FiniteDuration] = None)
-extends AutoCloseable {
+extends AutoCloseable:
 
   private val out = wrapException { new FileOutputStream(file.toFile, append) }
   private val bufferedOut = new BufferedOutputStream(out)
@@ -26,43 +26,35 @@ extends AutoCloseable {
   private val initialPosition = Files.size(file)
 
   def close() =
-    wrapException {
-      if !closed.getAndSet(true) then {
+    wrapException:
+      if !closed.getAndSet(true) then
         flush()
         writer.close()
         bufferedOut.close()
         out.close()
-      }
-    }
 
   def write(byteArray: ByteArray): Unit =
-    wrapException {
+    wrapException:
       flushed = false
       synced = false
       writer.writeJson(byteArray)
-    }
 
   def sync(): Unit =
-    wrapException {
-      if !synced then {
+    wrapException:
+      if !synced then
         flush()
-        simulateSync match {
+        simulateSync match
           case Some(duration) => Thread.sleep(duration.toMillis)
           case None => out.getFD.sync()
-        }
         synced = true
-      }
-    }
 
   def flush(): Unit =
-    wrapException {
-      if !flushed then {
+    wrapException:
+      if !flushed then
         writer.flush()
         bufferedOut.flush()
         flushed = true
         synced = false
-      }
-    }
 
   def isFlushed = flushed
 
@@ -77,4 +69,3 @@ extends AutoCloseable {
     catch { case NonFatal(t) if t == null || t.getMessage == null || !t.getMessage.contains(file.toAbsolutePath.toString) =>
       throw new RuntimeException(s"Error while writing file '$file': $t", t)
     }
-}

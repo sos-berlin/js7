@@ -32,8 +32,7 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
 
-trait SnapshotRoute extends ControllerRouteProvider
-{
+trait SnapshotRoute extends ControllerRouteProvider:
   protected def controllerState: Task[Checked[ControllerState]]
   protected def eventWatch: FileEventWatch
   protected def controllerConfiguration: ControllerConfiguration
@@ -45,16 +44,13 @@ trait SnapshotRoute extends ControllerRouteProvider
   final lazy val snapshotRoute = filteredSnapshotRoute(identity)
 
   final def filteredSnapshotRoute(filter: SnapshotFilter): Route =
-    get {
+    get:
       authorizedUser(ValidUserPermission) { _ =>
-        pathEndOrSingleSlash {
-          parameter("eventId".as[Long].?) {
+        pathEndOrSingleSlash:
+          parameter("eventId".as[Long].?):
             case None => currentSnapshot(filter)
             case Some(eventId) => historicSnapshot(eventId)
-          }
-        }
       }
-    }
 
   private def currentSnapshot(filter: SnapshotFilter): Route =
     completeTask(
@@ -63,8 +59,8 @@ trait SnapshotRoute extends ControllerRouteProvider
           snapshotToHttpEntity(state, filter))
 
   private def historicSnapshot(eventId: EventId): Route =
-    complete {
-      val checked = eventWatch.rawSnapshotAfter(after = eventId) match {
+    complete:
+      val checked = eventWatch.rawSnapshotAfter(after = eventId) match
         case None =>
           Left(SnapshotForUnknownEventIdProblem(eventId))
 
@@ -78,9 +74,7 @@ trait SnapshotRoute extends ControllerRouteProvider
               .chunk(chunkSize)  // TODO Maybe fill-up chunks
               .map(Chunk(_))
               .toAkkaSourceForHttpResponse))
-      }
       checked
-    }
 
   private def snapshotToHttpEntity(state: ControllerState, filter: SnapshotFilter) =
     HttpEntity.Chunked(
@@ -96,12 +90,9 @@ trait SnapshotRoute extends ControllerRouteProvider
         .flatMap(Observable.fromIterable)
         .map(Chunk(_))
         .toAkkaSourceForHttpResponse)
-}
 
-object SnapshotRoute
-{
+object SnapshotRoute:
   type SnapshotFilter = Observable[Any] => Observable[Any]
 
   private val logger = Logger[this.type]
   private val LF = ByteString("\n")
-}

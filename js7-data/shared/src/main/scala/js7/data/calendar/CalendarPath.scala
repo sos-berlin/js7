@@ -5,15 +5,12 @@ import js7.data.item.{InventoryItemPath, UnsignedSimpleItemPath}
 
 final case class CalendarPath private(string: String)
 extends UnsignedSimpleItemPath
-with InventoryItemPath.AttachableToAgent
-{
+with InventoryItemPath.AttachableToAgent:
   protected type Self = CalendarPath
 
   val companion: CalendarPath.type = CalendarPath
-}
 
-object CalendarPath extends UnsignedSimpleItemPath.Companion[CalendarPath]
-{
+object CalendarPath extends UnsignedSimpleItemPath.Companion[CalendarPath]:
   // May deadlock: override val itemTypeName = Calendar.typeName
   type Item = Calendar
 
@@ -22,4 +19,3 @@ object CalendarPath extends UnsignedSimpleItemPath.Companion[CalendarPath]
   @javaApi
   def of(validName: String): CalendarPath =
     apply(validName)
-}

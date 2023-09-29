@@ -49,8 +49,7 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 
-final class ResetAgentTest extends OurTestSuite with ControllerAgentForScalaTest
-{
+final class ResetAgentTest extends OurTestSuite with ControllerAgentForScalaTest:
   override protected def controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.controller.agent-driver.command-batch-delay = 0ms
@@ -76,7 +75,7 @@ final class ResetAgentTest extends OurTestSuite with ControllerAgentForScalaTest
 
   private var myAgent: TestAgent = null
 
-  "ResetAgent while a locking order is executed" in {
+  "ResetAgent while a locking order is executed" in:
     myAgent = agent
 
     val lockingOrderId = OrderId("LOCKING")
@@ -129,9 +128,8 @@ final class ResetAgentTest extends OurTestSuite with ControllerAgentForScalaTest
     idToAllocatedSubagent(bareSubagentId).allocatedThing.untilTerminated.await(99.s)
 
     barrier.flatMap(_.tryPut(())).runSyncUnsafe()
-  }
 
-  "Run another order" in {
+  "Run another order" in:
     val orderId = OrderId("RESET-AGENT-2")
     controller.api.addOrder(FreshOrder(orderId, lockWorkflow.path)).await(99.s).orThrow
     eventWatch.await[OrderAttachable](_.key == orderId)
@@ -156,9 +154,8 @@ final class ResetAgentTest extends OurTestSuite with ControllerAgentForScalaTest
       OrderLocksReleased(List(lock.path)),
       OrderMoved(Position(1)),
       OrderFinished()))
-  }
 
-  "ResetAgent while a forking order is executed" in {
+  "ResetAgent while a forking order is executed" in:
     val orderId = OrderId("FORKING")
     val childOrderId = orderId / "FORK"
     controller.api.addOrder(FreshOrder(orderId, forkingWorkflow.path)).await(99.s).orThrow
@@ -190,25 +187,22 @@ final class ResetAgentTest extends OurTestSuite with ControllerAgentForScalaTest
       OrderFinished()))
 
     barrier.flatMap(_.tryPut(())).runSyncUnsafe()
-  }
 
-  "ResetAgent when Agent is reset already" in {
+  "ResetAgent when Agent is reset already" in:
     val checked = controller.api.executeCommand(ResetAgent(agentPath)).await(99.s)
     val possibleProblems = Set(
       Problem("AgentRef is already in state 'Resetting'"),
       Problem("AgentRef is already in state 'Reset(ResetCommand)'"))
     assert(checked.left.exists(possibleProblems.contains))
 
-    def isResettingOrReset(s: DelegateCouplingState) = s match {
+    def isResettingOrReset(s: DelegateCouplingState) = s match
       case _: DelegateCouplingState.Resetting | _: DelegateCouplingState.Reset => true
       case _ => false
-    }
     waitForCondition(10.s, 10.ms)(isResettingOrReset(
       controllerState.keyTo(AgentRefState)(agentPath).couplingState))
     assert(isResettingOrReset(controllerState.keyTo(AgentRefState)(agentPath).couplingState))
-  }
 
-  "Simulate journal deletion at restart" in {
+  "Simulate journal deletion at restart" in:
     var eventId = eventWatch.lastAddedEventId
     myAgent = directoryProvider.startAgent(agentPath) await 99.s
     eventWatch.await[AgentDedicated](after = eventId)
@@ -233,15 +227,13 @@ final class ResetAgentTest extends OurTestSuite with ControllerAgentForScalaTest
 
     // The restarted Agent has deleted the files (due to markerFile)
     assert(!exists(markerFile) && !exists(garbageFile))
-  }
 
   "ResetAgent resets Subagents, too" is pending
 
-  "One last order" in {
+  "One last order" in:
     controller.runOrder(FreshOrder(OrderId("🔷"), simpleWorkflow.path))
-  }
 
-  "Let a second Controller steal the Agent with ResetAgent force" in {
+  "Let a second Controller steal the Agent with ResetAgent force" in:
     // The second Controller has the same ControllerId("Controller"), just because this
     // is easy to code. It is expected to work for different ControllerId, too.
 
@@ -299,11 +291,8 @@ final class ResetAgentTest extends OurTestSuite with ControllerAgentForScalaTest
         myAgent.terminate().await(99.s)
       }
     }
-  }
-}
 
-object ResetAgentTest
-{
+object ResetAgentTest:
   private val logger = Logger[this.type]
 
   private val agentPath = AgentPath("AGENT")
@@ -357,8 +346,7 @@ object ResetAgentTest
 
   private val barrier = MVar.empty[Task, Unit]().memoize
 
-  private final class TestJob extends InternalJob
-  {
+  private final class TestJob extends InternalJob:
     def toOrderProcess(step: Step) =
       OrderProcess(
         barrier
@@ -366,6 +354,4 @@ object ResetAgentTest
           .flatMap(_.take)
           .guaranteeCase(exitCase => Task(logger.debug(s"TestJob $exitCase")))
           .as(Outcome.succeeded))
-  }
   private object TestJob extends InternalJob.Companion[TestJob]
-}

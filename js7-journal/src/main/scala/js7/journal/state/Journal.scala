@@ -8,8 +8,7 @@ import js7.journal.CommitOptions
 import monix.eval.Task
 
 trait Journal[S <: JournaledState[S]]
-extends ReadableStateJournal[S]
-{
+extends ReadableStateJournal[S]:
   protected type State = S
 
   def journalId: JournalId
@@ -64,4 +63,3 @@ extends ReadableStateJournal[S]
     keyLockKeeper.lock(key)(body)
 
   val whenNoFailoverByOtherNode: Task[Unit]
-}

@@ -20,8 +20,7 @@ import js7.data.value.expression.Expression
 import js7.data.workflow.instructions.ForkInstruction
 import scala.collection.mutable
 
-trait ForkInstructionExecutor extends EventInstructionExecutor
-{
+trait ForkInstructionExecutor extends EventInstructionExecutor:
   type Instr <: ForkInstruction
 
   protected val service: InstructionExecutorService
@@ -54,7 +53,7 @@ trait ForkInstructionExecutor extends EventInstructionExecutor
       .getOrElse(Right(Nil))
 
   private def forkOrder(fork: Instr, order: Order[Order.IsFreshOrReady], state: StateView)
-  : Checked[OrderActorEvent] = {
+  : Checked[OrderActorEvent] =
     // toForkedEvent may be called three times:
     // 1) to predict the Agent and before OrderAttachable
     // 2) if Order.Fresh then OrderStart
@@ -82,20 +81,19 @@ trait ForkInstructionExecutor extends EventInstructionExecutor
             else
               orderForked)
     yield event
-  }
 
   private def attachOrDetach(
     order: Order[Order.IsFreshOrReady],
     agentPath: Option[AgentPath])
   : Option[OrderActorEvent] =
-    agentPath match {
+    agentPath match
       case None =>
         // Order must be at Controller
         order.isAttached ? OrderDetachable
 
       case Some(agentPath) =>
         // Order must be at agentPath
-        order.attachedState match {
+        order.attachedState match
           case Some(Order.Attached(`agentPath`)) =>
             None
           case Some(Order.Attached(_)) =>
@@ -104,8 +102,6 @@ trait ForkInstructionExecutor extends EventInstructionExecutor
             Some(OrderAttachable(agentPath))
           case x =>
             throw new IllegalStateException(s"${order.id} Fork: Invalid attachedState=$x")
-        }
-    }
 
   override final def onReturnFromSubworkflow(
     fork: Instr,
@@ -153,7 +149,7 @@ trait ForkInstructionExecutor extends EventInstructionExecutor
               Outcome.Failed(Some(toJoinFailedMessage(failedChildren)))
             else
               forkResult(fork, order, state, now))
-        }
+        }      
       }
 
   protected def calcResult(resultExpr: Map[String, Expression], childOrderId: OrderId,
@@ -183,7 +179,7 @@ trait ForkInstructionExecutor extends EventInstructionExecutor
   private def withCacheAccess[A](order: Order[Order.Forked], state: StateView)
     (body: service.forkCache.Access => A)
   : A =
-    service.forkCache.synchronized {
+    service.forkCache.synchronized:
       val entry = service.forkCache.ensureEntry(
         order.id,
         order.state.children
@@ -192,7 +188,6 @@ trait ForkInstructionExecutor extends EventInstructionExecutor
           .filter(state.childOrderEnded(_, parent = order))
           .map(_.id))
       body(entry)
-    }
 
   // Forking many children at Controller and then attached all to their first agent is inefficient.
   // Here we decide where to attach the forking order before generating child orders.
@@ -205,7 +200,7 @@ trait ForkInstructionExecutor extends EventInstructionExecutor
   : Checked[Option[Option[AgentPath]]] =
     if orderForked.children.sizeIs == 0 then
       Right(None) // No children, Order can stay where it is
-    else {
+    else
       val eventSource = new OrderEventSource(state)
       order
         .newForkedOrders(orderForked)
@@ -240,11 +235,8 @@ trait ForkInstructionExecutor extends EventInstructionExecutor
           // Transfer back to Controller
           // Inefficient if only one of many children change the agent !!!
           order.isAttached ? None)
-    }
-}
 
-object ForkInstructionExecutor
-{
+object ForkInstructionExecutor:
   val MinimumChildCountForParentAttachment = 3
   private val logger = Logger[this.type]
 
@@ -252,30 +244,27 @@ object ForkInstructionExecutor
   // The Order child syntax is based on the reserved character '|'.
   // It is not possible to generate a child order but with Fork.
   // So we can safely generate child orders because only Fork can do this.
-  private def checkOrderIdCollisions(orderForked: OrderForked, state: StateView): Checked[Unit] = {
+  private def checkOrderIdCollisions(orderForked: OrderForked, state: StateView): Checked[Unit] =
     val duplicates = orderForked.children.map(_.orderId).flatMap(state.idToOrder.get)
-    if duplicates.nonEmpty then {
+    if duplicates.nonEmpty then
       // Internal error, maybe a lost OrderDetached event
       val problem = Problem.pure(s"Forked OrderIds duplicate existing ${duplicates mkString ", "}")
       logger.error(problem.toString)
       Left(problem)
-    } else
+    else
       Checked.unit
-  }
 
-  final class Cache
-  {
+  final class Cache:
     private val forkedToJoinableChildren = mutable.Map.empty[OrderId, mutable.Set[OrderId]]
 
     private[ForkInstructionExecutor] def ensureEntry(
       parentOrderId: OrderId,
       init: => Iterable[OrderId])
-    : this.Access = {
+    : this.Access =
       forkedToJoinableChildren.getOrElseUpdate(parentOrderId, init.to(mutable.Set))
       new Access(parentOrderId)
-    }
 
-    final class Access(parentOrderId: OrderId) {
+    final class Access(parentOrderId: OrderId):
       private[ForkInstructionExecutor] def onChildBecameJoinable(childOrderId: OrderId): Unit =
         forkedToJoinableChildren(parentOrderId) += childOrderId
 
@@ -284,6 +273,3 @@ object ForkInstructionExecutor
 
       private[ForkInstructionExecutor] def onJoined(): Unit =
         forkedToJoinableChildren -= parentOrderId
-    }
-  }
-}

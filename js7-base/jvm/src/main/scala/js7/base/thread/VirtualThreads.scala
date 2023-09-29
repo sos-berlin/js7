@@ -7,8 +7,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isTest
 import org.jetbrains.annotations.TestOnly
 
-object VirtualThreads
-{
+object VirtualThreads:
   private val logger = Logger[this.type]
   private var enabled = javaVersion >= 19 && (isTest || sys.props.contains("js7.VirtualThread"))
 
@@ -30,7 +29,7 @@ object VirtualThreads
     _newMaybeVirtualThread(name)(() => body)
 
   private lazy val _newMaybeVirtualThread: String => Runnable => Thread =
-    newVirtualThreadFactory match {
+    newVirtualThreadFactory match
       case Some(factory) =>
         _ => runnable => factory.newThread(runnable)
 
@@ -40,25 +39,24 @@ object VirtualThreads
           if name.nonEmpty then thread.setName(name)
           thread
         }
-    }
 
   private lazy val newThreadPerTaskExecutor: Option[ThreadFactory => ExecutorService] =
     if !enabled then
       None
     else
-      try {
+      try
         val method = classOf[Executors]
           .getMethod("newThreadPerTaskExecutor", classOf[ThreadFactory])
         Some(
           threadFactory =>
             method.invoke(null, threadFactory).asInstanceOf[ExecutorService])
-      } catch throwableToNone
+      catch throwableToNone
 
   private lazy val newVirtualThreadFactory: Option[ThreadFactory] =
     if !enabled then
       None
     else
-      try {
+      try
         val builder = classOf[Thread].getMethod("ofVirtual").invoke(null)
 
         //IllegalAccessException:
@@ -77,9 +75,9 @@ object VirtualThreads
         testThreadFactory(factory)
         logger.debug(s"newVirtualThreadFactory => $factory")
         Some(factory)
-      } catch(throwableToNone)
+      catch(throwableToNone)
 
-  private def testThreadFactory(factory: ThreadFactory): Unit = {
+  private def testThreadFactory(factory: ThreadFactory): Unit =
     val newThread: Runnable => Thread = runnable =>
       factory.newThread(runnable)
 
@@ -89,12 +87,9 @@ object VirtualThreads
     }
     testThread.start()
     testThread.join()
-  }
 
-  private def throwableToNone: PartialFunction[Throwable, None.type] = {
+  private def throwableToNone: PartialFunction[Throwable, None.type] =
     throwable =>
       enabled = false
       logger.debug(s"No VirtualThread: ${throwable.toStringWithCauses}")
       None
-  }
-}

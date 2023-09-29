@@ -5,23 +5,18 @@ import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 
-sealed trait ItemAttachedState
-{
+sealed trait ItemAttachedState:
   def isAttachableOrAttached: Boolean
-}
 
-object ItemAttachedState
-{
+object ItemAttachedState:
   case object Attachable
-  extends NotDetached {
+  extends NotDetached:
     def isAttachableOrAttached = true
-  }
 
   final case class Attached(itemRevision: Option[ItemRevision])
-  extends NotDetached {
+  extends NotDetached:
     def isAttachableOrAttached = true
-  }
-  object Attached {
+  object Attached:
     private val none = new Attached(None)
 
     implicit val jsonCodec: Codec.AsObject[Attached] = deriveCodec[Attached]
@@ -31,35 +26,27 @@ object ItemAttachedState
         none
       else
         new Attached(itemRevision)
-  }
 
   case object Detachable
-  extends NotDetached {
+  extends NotDetached:
     def isAttachableOrAttached = false
-  }
 
   case object Detached
-  extends ItemAttachedState {
+  extends ItemAttachedState:
     def isAttachableOrAttached = false
-  }
 
   sealed trait NotDetached
-  extends ItemAttachedState
-  {
+  extends ItemAttachedState:
     def toShortString: String =
       getClass.simpleScalaName
-  }
-  object NotDetached {
+  object NotDetached:
     implicit val jsonCodec: TypedJsonCodec[NotDetached] = TypedJsonCodec(
       Subtype(Attachable),
       Subtype[Attached],
       Subtype(Detachable))
-  }
 
   sealed trait AttachableOrAttached extends NotDetached
-  object AttachableOrAttached {
+  object AttachableOrAttached:
     implicit val jsonCodec: TypedJsonCodec[NotDetached] = TypedJsonCodec(
       Subtype(Attachable),
       Subtype[Attached])
-  }
-}

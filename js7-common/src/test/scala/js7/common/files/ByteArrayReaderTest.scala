@@ -10,24 +10,20 @@ import scala.util.Random
 /**
   * @author Joacim Zschimmer
   */
-final class ByteArrayReaderTest extends OurTestSuite
-{
-  "ByteArrayReader" in {
+final class ByteArrayReaderTest extends OurTestSuite:
+  "ByteArrayReader" in:
     withTemporaryFile("ByteArrayReaderTest", ".tmp") { file =>
       val bytes = ByteArray.fromSeq(Random.alphanumeric.map(_.toByte).take(3 * ByteArrayReader.ChunkSize - 7))
       file := bytes
       var read = ByteArray.empty
       autoClosing(new ByteArrayReader(file)) { reader =>
         var eof = false
-        while !eof do {
+        while !eof do
           val chunk = reader.read()
           if chunk.isEmpty then
             eof = true
           else
             read ++= chunk
-        }
       }
       assert(read == bytes)
     }
-  }
-}

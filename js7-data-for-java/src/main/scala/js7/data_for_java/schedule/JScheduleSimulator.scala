@@ -8,7 +8,7 @@ import js7.data.execution.workflow.instructions.ScheduleSimulator
 import js7.data_for_java.schedule.JScheduleSimulator.*
 import scala.jdk.StreamConverters.IterableHasSeqStream
 
-trait JScheduleSimulator {
+trait JScheduleSimulator:
   this: JScheduleCalculator =>
 
   def simulate(timeInterval: JTimeInterval, actionDuration: Duration): Stream[Scheduled] =
@@ -16,12 +16,9 @@ trait JScheduleSimulator {
       .simulate(timeInterval.asScala, actionDuration.toFiniteDuration)
       .map(Scheduled(_))
       .asJavaSeqStream
-}
 
-object JScheduleSimulator
-{
-  final case class Scheduled(asScala: ScheduleSimulator.Scheduled)
-  {
+object JScheduleSimulator:
+  final case class Scheduled(asScala: ScheduleSimulator.Scheduled):
     /** Instant when Order arrives and starts waiting for the scheduled time. */
     def arrival: Instant =
       asScala.arrival.toInstant
@@ -29,5 +26,3 @@ object JScheduleSimulator
     /** The scheduled time. */
     def start: Instant =
       asScala.cycleState.next.toInstant
-  }
-}

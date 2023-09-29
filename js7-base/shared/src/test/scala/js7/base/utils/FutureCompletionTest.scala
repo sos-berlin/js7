@@ -10,9 +10,8 @@ import scala.util.Success
 /**
   * @author Joacim Zschimmer
   */
-final class FutureCompletionTest extends OurAsyncTestSuite
-{
-  "FutureCompletion" in {
+final class FutureCompletionTest extends OurAsyncTestSuite:
+  "FutureCompletion" in:
     val promise = Promise[Int]()
     val futureCompletion = new FutureCompletion[Int](promise.future)
     val a = futureCompletion.add()
@@ -30,18 +29,16 @@ final class FutureCompletionTest extends OurAsyncTestSuite
     for
       a1 <- a.future
       c1 <- c.future
-    yield {
+    yield
       assert(a1 == 7 && !b.future.isCompleted && c1 == 7)
       assert(futureCompletion.size == 0)
-    }
-  }
 
-  "Task cancelOnCompletionOf, not shut down" in {
+  "Task cancelOnCompletionOf, not shut down" in:
     implicit val scheduler = TestScheduler()
     val shutdownPromise = Promise[Int]()
     val futureCompletion = new FutureCompletion[Int](shutdownPromise.future)
 
-    locally {
+    locally:
       val p = CancelablePromise[String]()
       val fut = p.future.cancelOnCompletionOf(futureCompletion)
       p.success("OK")
@@ -49,9 +46,8 @@ final class FutureCompletionTest extends OurAsyncTestSuite
       assert(fut.isCompleted)
       assert(fut.value == Some(Success("OK")))
       assert(futureCompletion.size == 0)
-    }
 
-    locally {
+    locally:
       val p = CancelablePromise[String]()
       val fut = p.future.cancelOnCompletionOf(futureCompletion)
       shutdownPromise.success(7)
@@ -60,6 +56,3 @@ final class FutureCompletionTest extends OurAsyncTestSuite
       scheduler.tick()
       assert(!fut.isCompleted)
       assert(futureCompletion.size == 0)
-    }
-  }
-}

@@ -29,8 +29,7 @@ import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
 
-final class FileWatchDelayTest extends OurTestSuite with ControllerAgentForScalaTest
-{
+final class FileWatchDelayTest extends OurTestSuite with ControllerAgentForScalaTest:
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.journal.remove-obsolete-files = false
@@ -64,15 +63,15 @@ final class FileWatchDelayTest extends OurTestSuite with ControllerAgentForScala
 
   import eventWatch.await
 
-  "Start with some files" in {
+  "Start with some files" in:
     createDirectories(watchedDirectory)
     controller.api.updateUnsignedSimpleItems(Seq(fileWatch)).await(99.s).orThrow
     await[ItemAttached](_.event.key == orderWatchPath)
 
     // Each test has an increasing sequence of file modifications, delaying FileAdded and OrderAdded.
-    def delayedFileAddedTest(i: Int) = Task {
+    def delayedFileAddedTest(i: Int) = Task:
       val filename = s"file-$i:"
-      withClue(filename) {
+      withClue(filename):
         val file = watchedDirectory / filename
         val externalOrderName = ExternalOrderName(filename)
         val orderId = fileToOrderId(filename)
@@ -92,12 +91,11 @@ final class FileWatchDelayTest extends OurTestSuite with ControllerAgentForScala
         file ++= "A"
         assert(!whenArised.isCompleted)
         val divisor = 4
-        for j <- 1 to i * divisor do withClue(s"#$i") {
+        for j <- 1 to i * divisor do withClue(s"#$i"):
           sleepUntil(since + systemWatchDelay + j * writeDuration / divisor)
           logger.info(s"""file-$i ++= "${"+" * j}" +${since.elapsed.pretty}""")
           file ++= "+"
           assert(!whenArised.isCompleted)
-        }
         whenArised.await(99.s)
         val expectedDuration = fileWatch.delay + i * writeDuration
         val duration = since.elapsed
@@ -108,22 +106,16 @@ final class FileWatchDelayTest extends OurTestSuite with ControllerAgentForScala
         await[OrderFinished](_.key == orderId)
         await[OrderDeleted](_.key == orderId)
         assert(!exists(file))
-      }
-    }
 
     // Run tests in parallel
     (0 to 4).toVector
       .parUnorderedTraverse(delayedFileAddedTest)
       .await(99.s)
-  }
-}
 
-object FileWatchDelayTest
-{
+object FileWatchDelayTest:
   private val logger = Logger[this.type]
   private val agentPath = AgentPath("AGENT")
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",
     Vector(
       DeleteFileJob.execute(agentPath)))
-}

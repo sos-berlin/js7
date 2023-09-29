@@ -9,9 +9,8 @@ import js7.tester.CirceJsonTester.testJson
 /**
   * @author Joacim Zschimmer
   */
-final class ReturnCodeMeaningTest extends OurTestSuite
-{
-  "Success" in {
+final class ReturnCodeMeaningTest extends OurTestSuite:
+  "Success" in:
     val success0 = ReturnCodeMeaning.Success(RangeSet(ReturnCode(0)))
     assert(success0.isSuccess(ReturnCode(0)))
     assert(!success0.isSuccess(ReturnCode(1)))
@@ -24,9 +23,8 @@ final class ReturnCodeMeaningTest extends OurTestSuite
     val noSuccess = ReturnCodeMeaning.Success(RangeSet.empty)
     assert(!noSuccess.isSuccess(ReturnCode(0)))
     assert(!noSuccess.isSuccess(ReturnCode(1)))
-  }
 
-  "Failure" in {
+  "Failure" in:
     val failure0 = ReturnCodeMeaning.Failure(RangeSet(ReturnCode(0)))
     assert(!failure0.isSuccess(ReturnCode(0)))
     assert(failure0.isSuccess(ReturnCode(1)))
@@ -39,9 +37,8 @@ final class ReturnCodeMeaningTest extends OurTestSuite
     val noFailure = ReturnCodeMeaning.Failure(RangeSet.empty)
     assert(noFailure.isSuccess(ReturnCode(0)))
     assert(noFailure.isSuccess(ReturnCode(1)))
-  }
 
-  "JSON" in {
+  "JSON" in:
     testJson[ReturnCodeMeaning](ReturnCodeMeaning.Default,
       json"""{ "success": "0" }""",
       json"""{ "success": [ 0 ] }""")
@@ -64,5 +61,3 @@ final class ReturnCodeMeaningTest extends OurTestSuite
     testJson[ReturnCodeMeaning](ReturnCodeMeaning.Failure(RangeSet.empty),
       json"""{ "failure": "" }""",
       json"""{ "failure": [] }""")
-  }
-}

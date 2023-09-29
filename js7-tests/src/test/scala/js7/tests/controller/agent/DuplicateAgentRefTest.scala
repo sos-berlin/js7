@@ -15,8 +15,7 @@ import js7.tests.controller.agent.DuplicateAgentRefTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.traced
 
-final class DuplicateAgentRefTest extends OurTestSuite with ControllerAgentForScalaTest
-{
+final class DuplicateAgentRefTest extends OurTestSuite with ControllerAgentForScalaTest:
   override protected def controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     """
@@ -24,18 +23,16 @@ final class DuplicateAgentRefTest extends OurTestSuite with ControllerAgentForSc
   protected val agentPaths = aAgentPath :: Nil
   protected val items = Nil
 
-  override def beforeAll() = {
+  override def beforeAll() =
     (directoryProvider.controllerEnv.privateConf) ++=
       "js7.auth.agents." + quoteString(bAgentPath.string) + " = " +
         quoteString(directoryProvider.agentToEnv(aAgentPath).controllerPassword.string) + "\n"
     super.beforeAll()
-  }
 
-  "Add a second Subagent with same URI" in {
+  "Add a second Subagent with same URI" in:
     pending // TODO
-  }
 
-  "Add a second AgentRef/SubagentItem with same URI" in {
+  "Add a second AgentRef/SubagentItem with same URI" in:
     controller.eventWatch.await[AgentReady](_.key == aAgentPath)
     val subagentId = SubagentId(bAgentPath.string + "-0")
     controller.api.updateUnsignedSimpleItems(Seq(
@@ -45,11 +42,7 @@ final class DuplicateAgentRefTest extends OurTestSuite with ControllerAgentForSc
 
     val a = controller.eventWatch.await[AgentCouplingFailed]().head.value.event
     assert(a == AgentCouplingFailed(AgentPathMismatchProblem(bAgentPath, aAgentPath)))
-  }
-}
 
-object DuplicateAgentRefTest
-{
+object DuplicateAgentRefTest:
   private val aAgentPath = AgentPath("A-AGENT")
   private val bAgentPath = AgentPath("B-AGENT")
-}

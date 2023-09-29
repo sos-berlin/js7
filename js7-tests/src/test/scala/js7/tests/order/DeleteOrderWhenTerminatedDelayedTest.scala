@@ -19,19 +19,17 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.script
 import monix.execution.Scheduler.Implicits.traced
 
-final class DeleteOrderWhenTerminatedDelayedTest extends OurTestSuite with ControllerAgentForScalaTest
-{
+final class DeleteOrderWhenTerminatedDelayedTest extends OurTestSuite with ControllerAgentForScalaTest:
   protected val agentPaths = agentPath :: Nil
   protected val items = workflow:: Nil
   override protected def controllerConfig = config"""js7.order.delete-delay = 1s"""
     .withFallback(super.controllerConfig)
 
-  override def beforeAll() = {
+  override def beforeAll() =
     for a <- directoryProvider.agentEnvs do a.writeExecutable(pathExecutable, script(1.s))
     super.beforeAll()
-  }
 
-  "OrderDeleted is delayed" in {
+  "OrderDeleted is delayed" in:
     val order = FreshOrder(OrderId("🔻"), workflow.id.path)
     controller.addOrderBlocking(order)
     eventWatch.await[OrderStarted](_.key == order.id)
@@ -39,11 +37,8 @@ final class DeleteOrderWhenTerminatedDelayedTest extends OurTestSuite with Contr
     val finished = eventWatch.await[OrderFinished](_.key == order.id).head
     val removed = eventWatch.await[OrderDeleted](_.key == order.id).head
     assert(removed.timestamp - finished.timestamp > 500.ms)
-  }
-}
 
-object DeleteOrderWhenTerminatedDelayedTest
-{
+object DeleteOrderWhenTerminatedDelayedTest:
   private val pathExecutable = RelativePathExecutable("quick.cmd")
   private val agentPath = AgentPath("AGENT")
   private val versionId = VersionId("INITIAL")
@@ -51,4 +46,3 @@ object DeleteOrderWhenTerminatedDelayedTest
   private val workflow = Workflow.of(
     WorkflowPath("SINGLE") ~ versionId,
     Execute(WorkflowJob(agentPath, pathExecutable)))
-}

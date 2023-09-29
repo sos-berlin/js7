@@ -12,13 +12,12 @@ import js7.data.controller.ControllerCommand.ShutDown
 import js7.data.event.EventId
 import monix.execution.Scheduler.Implicits.traced
 
-final class ShutdownActiveControllerClusterTest extends ControllerClusterTester
-{
+final class ShutdownActiveControllerClusterTest extends ControllerClusterTester:
   protected override val clusterTiming = ClusterTiming(heartbeat = 500.ms, heartbeatTimeout = 10.s)
 
   override protected def removeObsoleteJournalFiles = false
 
-  "ShutDown active controller node only (no switchover)" in {
+  "ShutDown active controller node only (no switchover)" in:
     withControllerAndBackup() { (primary, _, backup, _, clusterSetting) =>
       backup.runController(dontWaitUntilReady = true) { backupController =>
         primary.runController() { primaryController =>
@@ -45,5 +44,3 @@ final class ShutdownActiveControllerClusterTest extends ControllerClusterTester
         }
       }
     }
-  }
-}

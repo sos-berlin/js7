@@ -7,11 +7,10 @@ import scala.concurrent.duration.*
 /**
   * @author Joacim Zschimmer
   */
-final class HasTimeoutTest extends OurTestSuite
-{
+final class HasTimeoutTest extends OurTestSuite:
   private val t = new HasTimeout {}
 
-  "test" in {
+  "test" in:
     implicit val scheduler = TestScheduler()
     assert(t.isEternal)
     assert(t.isAlive)
@@ -24,5 +23,3 @@ final class HasTimeoutTest extends OurTestSuite
 
     scheduler.tick(1.hour)
     assert(!t.isAlive)
-  }
-}

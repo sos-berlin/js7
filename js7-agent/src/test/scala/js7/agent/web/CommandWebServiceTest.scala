@@ -24,8 +24,7 @@ import scala.concurrent.Future
 /**
  * @author Joacim Zschimmer
  */
-final class CommandWebServiceTest extends OurTestSuite with WebServiceTest with CommandWebService
-{
+final class CommandWebServiceTest extends OurTestSuite with WebServiceTest with CommandWebService:
   protected def whenShuttingDown = Future.never
   protected def scheduler = Scheduler.traced
   override protected val uriPathPrefix = "test"
@@ -39,24 +38,21 @@ final class CommandWebServiceTest extends OurTestSuite with WebServiceTest with 
       })
 
   private val route =
-    pathSegments("agent/api/command") {
+    pathSegments("agent/api/command"):
       commandRoute
-    }
 
-  "ShutDown" in {
+  "ShutDown" in:
     val json = json"""{ "TYPE": "ShutDown" }"""
-    postJsonCommand(json) ~> check {
+    postJsonCommand(json) ~> check:
       if status != OK then fail(s"$status - ${responseEntity.toStrict(99.s).value}")
       assert(responseAs[AgentCommand.Response.Accepted] == AgentCommand.Response.Accepted)
       assert(responseEntity.toStrict(99.s).value.get.get.data.utf8String.parseJsonOrThrow ==
         json"""{ "TYPE": "Accepted" }""")
-    }
-  }
 
-  "Command while shutting down return 503 Service Unavailable" in {
+  "Command while shutting down return 503 Service Unavailable" in:
     // When Agent is shutting down, the command may be okay and the Controller should repeat the command later
     // Not valid for commands packaged in AgentCommand.Batch
-    postJsonCommand((TestCommandWhileShuttingDown: AgentCommand).asJson) ~> check {
+    postJsonCommand((TestCommandWhileShuttingDown: AgentCommand).asJson) ~> check:
       if status != ServiceUnavailable then fail(s"$status - ${responseEntity.toStrict(99.s).value}")
       assert(responseAs[AgentCommand.Response.Accepted] == AgentCommand.Response.Accepted)
       assert(responseEntity.toStrict(99.s).value.get.get.data.utf8String.parseJsonOrThrow ==
@@ -65,17 +61,13 @@ final class CommandWebServiceTest extends OurTestSuite with WebServiceTest with 
           "code": "AgentIsShuttingDown",
           "message": "Agent is shutting down"
          }""")
-    }
-  }
 
   private def postJsonCommand(json: Json): RouteTestResult =
     Post("/agent/api/command", json) ~>
       testSessionHeader ~>
       Accept(`application/json`) ~>
       route
-}
 
-private object CommandWebServiceTest {
+private object CommandWebServiceTest:
   private val TestCommand = ShutDown(None)
   private val TestCommandWhileShuttingDown = ShutDown(Some(SIGTERM))
-}

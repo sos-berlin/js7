@@ -16,8 +16,7 @@ final case class RecoveredJournalFile[S <: SnapshotableState[S]](
   /** File's position before the events. */
   firstEventPosition: Long,
   /** The recovered state */
-  state: S)
-{
+  state: S):
   assertThat(journalHeader.journalId == nextJournalHeader.journalId)
   assertThat(journalHeader.eventId < nextJournalHeader.eventId)
   assertThat(journalHeader.totalEventCount < nextJournalHeader.totalEventCount)
@@ -31,4 +30,3 @@ final case class RecoveredJournalFile[S <: SnapshotableState[S]](
   def journalPosition = JournalPosition(fileEventId, length)
 
   override def toString = s"RecoveredJournalFile($file ($length bytes),$journalHeader,$firstEventPosition,$state,$nextJournalHeader)"
-}

@@ -6,8 +6,7 @@ import js7.data.order.{Order, OrderEvent}
 import js7.data.state.StateView
 import js7.data.workflow.instructions.ExpectOrConsumeNoticesInstruction
 
-object ExpectOrConsumeNoticesExecutor
-{
+object ExpectOrConsumeNoticesExecutor:
   def tryFulfillExpectingOrder(
     expectNotices: ExpectOrConsumeNoticesInstruction,
     order: Order[Order.ExpectingNotices],
@@ -23,8 +22,7 @@ object ExpectOrConsumeNoticesExecutor
     state: StateView,
     postedBoards: Set[BoardPath] = Set.empty)
   : List[OrderEvent.OrderActorEvent] =
-    if expectNotices.isFulfilled(postedBoards ++ state.availableNotices(expected)) then {
+    if expectNotices.isFulfilled(postedBoards ++ state.availableNotices(expected)) then
       expectNotices.fulfilledEvents(order, expected)
-    } else
+    else
       Nil
-}

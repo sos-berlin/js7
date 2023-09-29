@@ -31,8 +31,7 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.traced
 
-final class ShutdownAgentWithProcessTest extends OurTestSuite with ControllerAgentForScalaTest
-{
+final class ShutdownAgentWithProcessTest extends OurTestSuite with ControllerAgentForScalaTest:
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]"""
 
@@ -46,12 +45,11 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite with ControllerAge
   private implicit def actorSystem: ActorSystem =
     controller.actorSystem
 
-  override def beforeAll() = {
+  override def beforeAll() =
     super.beforeAll()
     eventWatch.await[AgentReady]()
-  }
 
-  "JS-2025 AgentCommand.Shutdown with SIGKILL job process, then recovery" in {
+  "JS-2025 AgentCommand.Shutdown with SIGKILL job process, then recovery" in:
     val addOrderEventId = eventWatch.lastAddedEventId
 
     val simpleOrderId = OrderId("🔹")
@@ -65,14 +63,13 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite with ControllerAge
     eventWatch.await[OrderStdoutWritten](_.key == caughtOrderId)
 
     val agentEnv = directoryProvider.agentEnvs.head
-    locally {
+    locally:
       val agentClient = AgentClient(Admission(agent.localUri, agentEnv.controllerUserAndPassword))
       agentClient.login() await 99.s
       agentClient
         .commandExecute(AgentCommand.ShutDown(processSignal = Some(SIGKILL)))
         .await(99.s)
       agent.untilTerminated.await(99.s)
-    }
 
     TestAgent.blockingRun(agentEnv.agentConf) { restartedAgent =>
       eventWatch.await[OrderFailed](_.key == simpleOrderId)
@@ -120,20 +117,16 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite with ControllerAge
         caughtOrderId <-: OrderDetached,
         caughtOrderId <-: OrderFinished()))
     }
-  }
 
   private def manipulateEvent(keyedEvent: AnyKeyedEvent, orderId: OrderId): Option[AnyKeyedEvent] =
-    keyedEvent match {
+    keyedEvent match
       case o @ KeyedEvent(`orderId`, _) => Some(o)
       case o @ KeyedEvent(_, _: AgentShutDown) => Some(o)
       case KeyedEvent(agentPath: AgentPath, _: AgentReady) =>
         Some(agentPath <-: AgentReady("UTC", None))
       case _ => None
-    }
-}
 
-object ShutdownAgentWithProcessTest
-{
+object ShutdownAgentWithProcessTest:
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)
   private val versionId = VersionId("INITIAL")
@@ -158,4 +151,3 @@ object ShutdownAgentWithProcessTest
               "echo TestJob\n" +
               "sleep 99\n")))),
       Workflow.empty))
-}

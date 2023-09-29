@@ -8,14 +8,11 @@ import js7.data.order.OrderId
 import js7.data.state.StateView
 import scala.reflect.ClassTag
 
-object InstructionExecuterTester
-{
-  object syntax
-  {
+object InstructionExecuterTester:
+  object syntax:
     implicit final class EventInstructionExecutorForTest(
       private val instructionExecutor: EventInstructionExecutor)
-    extends AnyVal
-    {
+    extends AnyVal:
       def testToEvents(orderId: OrderId, stateView: StateView)
       : Checked[List[KeyedEvent[OrderActorEvent]]] =
         stateView
@@ -23,6 +20,3 @@ object InstructionExecuterTester
           .flatMap(order => stateView
             .instruction_(order.workflowPosition)(ClassTag(instructionExecutor.instructionClass))
             .flatMap(instructionExecutor.toEvents(_, order, stateView)))
-    }
-  }
-}

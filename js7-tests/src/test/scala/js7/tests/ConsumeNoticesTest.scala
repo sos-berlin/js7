@@ -31,8 +31,7 @@ import scala.collection.View
 import scala.concurrent.duration.*
 
 final class ConsumeNoticesTest extends OurTestSuite with ControllerAgentForScalaTest
-with BlockingItemUpdater
-{
+with BlockingItemUpdater:
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.journal.remove-obsolete-files = false
@@ -48,7 +47,7 @@ with BlockingItemUpdater
   private val qualifiers = for i <- Iterator.from(0) yield
     LocalDate.of(3333, 1, 1).plusDays(i).toString
 
-  "A single Order" in {
+  "A single Order" in:
     // board2 is referenced but not required to have a Notice
     val workflow = updateItem(
       Workflow(WorkflowPath("CONSUMING-SINGLE"), Seq(
@@ -99,9 +98,8 @@ with BlockingItemUpdater
       OrderNoticesConsumed(),
       OrderFinished(),
       OrderDeleted))
-  }
 
-  "Simple test with two boards" in {
+  "Simple test with two boards" in:
     val orderIdToNoticeId = expr(
       """replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#(.*)$', '$1-$2')""")
 
@@ -141,9 +139,8 @@ with BlockingItemUpdater
           OrderDeleted))
       }
     }
-  }
 
-  "ConsumeNotices with interfering DeleteNotice command" in {
+  "ConsumeNotices with interfering DeleteNotice command" in:
     val workflow = Workflow(
       WorkflowPath("SIMPLE-WITH-TWO-BOARDS"), Seq(
         PostNotices(Seq(aBoard.path)),
@@ -182,9 +179,8 @@ with BlockingItemUpdater
         OrderFinished(),
         OrderDeleted))
     }
-  }
 
-  "A single Order waiting for one of two Notices, posting one Notice, then the other" in {
+  "A single Order waiting for one of two Notices, posting one Notice, then the other" in:
     val workflow = updateItem(
       Workflow(WorkflowPath("CONSUMING-SINGLE"), Seq(
         ConsumeNotices(
@@ -252,9 +248,8 @@ with BlockingItemUpdater
       OrderNoticesConsumed(),
       OrderFinished(),
       OrderDeleted))
-  }
 
-  "PostNotice while consuming an earlier notice" in {
+  "PostNotice while consuming an earlier notice" in:
     val workflow = updateItem(
       Workflow(WorkflowPath("POST-WHILE-CONSUMING"), Seq(
         ConsumeNotices(
@@ -302,9 +297,8 @@ with BlockingItemUpdater
       OrderNoticesConsumed(),
       OrderFinished(),
       OrderDeleted))
-  }
 
-  "Two concurrent ConsumeNotices" in {
+  "Two concurrent ConsumeNotices" in:
     val workflow = updateItem(
       Workflow(WorkflowPath("CONSUMING-TWO-ORDERS"), Seq(
         ConsumeNotices(
@@ -322,12 +316,11 @@ with BlockingItemUpdater
       PostNotice(aBoard.path, noticeId)
     ).await(99.s).orThrow
 
-    for orderId <- View(aOrderId, bOrderId) do {
+    for orderId <- View(aOrderId, bOrderId) do
       controller.api
         .addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
         .await(99.s).orThrow
       eventWatch.await[OrderNoticesConsumptionStarted](_.key == orderId)
-    }
 
     assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).isInConsumption)
     assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).consumptionCount == 2)
@@ -374,9 +367,8 @@ with BlockingItemUpdater
       OrderNoticesConsumed(),
       OrderFinished(),
       OrderDeleted))
-  }
 
-  "Nested ConsumeNotcies" in {
+  "Nested ConsumeNotcies" in:
     val workflow = updateItem(
       Workflow(
         WorkflowPath("CONSUMING-NESTED"),
@@ -453,9 +445,8 @@ with BlockingItemUpdater
       OrderNoticesConsumed(),
       OrderFinished(),
       OrderDeleted))
-  }
 
-  "Failing ConsumeNotices block does not consume the Notice" in {
+  "Failing ConsumeNotices block does not consume the Notice" in:
     val workflow = updateItem(
       Workflow(WorkflowPath("CONSUMING-FAILING"), Seq(
         ConsumeNotices(
@@ -497,9 +488,8 @@ with BlockingItemUpdater
       OrderFailed(Position(0)),
       OrderCancelled,
       OrderDeleted))
-  }
 
-  "Cancel while consuming a Notice and sticking in Promting" in {
+  "Cancel while consuming a Notice and sticking in Promting" in:
     val workflow = updateItem(
       Workflow(WorkflowPath("CANCEL-WHILE-PROMPTING"), Seq(
         ConsumeNotices(
@@ -539,9 +529,8 @@ with BlockingItemUpdater
       OrderNoticesConsumed(true),
       OrderCancelled,
       OrderDeleted))
-  }
 
-  "JS-2015 ConsumeOrders in Try/Retry with 0s delay" in {
+  "JS-2015 ConsumeOrders in Try/Retry with 0s delay" in:
     val noticeId = NoticeId("2022-10-25")
     val workflow = Workflow(
       WorkflowPath("CONSUME-NOTICES-IN-RETRY"),
@@ -593,11 +582,8 @@ with BlockingItemUpdater
 
         OrderFailed(Position(1) / "try+1" % 0)))
     }
-  }
-}
 
-object ConsumeNoticesTest
-{
+object ConsumeNoticesTest:
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)
 
@@ -608,4 +594,3 @@ object ConsumeNoticesTest
 
   final class TestJob extends SemaphoreJob(TestJob)
   private object TestJob extends SemaphoreJob.Companion[TestJob]
-}

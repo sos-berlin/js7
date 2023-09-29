@@ -9,35 +9,27 @@ import js7.base.test.OurTestSuite
 /**
   * @author Joacim Zschimmer
   */
-final class CompletedTest extends OurTestSuite
-{
-  "empty" in {
+final class CompletedTest extends OurTestSuite:
+  "empty" in:
     assert(Monoid[Completed].empty eq Completed)
-  }
 
-  "combine" in {
+  "combine" in:
     assert((Completed |+| Completed) eq Completed)
     assert(((Completed: Completed) |+| (Completed: Completed)) eq Completed)
-  }
 
-  "combineAll" in {
+  "combineAll" in:
     assert(List(Completed, Completed, Completed).combineAll eq Completed)
     assert(List.empty[Completed].combineAll eq Completed)
-  }
 
-  "fill" in {
+  "fill" in:
     assert(Monoid[Completed].combineN(Completed, 7) eq Completed)
-  }
 
-  "reverse.combineAll" in {
+  "reverse.combineAll" in:
     assert(Monoid[Completed].reverse.combineAll(List(Completed, Completed)) eq Completed)
-  }
 
   //"fold" in {
   //  assert(List(Completed, Completed).fold == Completed)
   //}
 
-  "unorderedFold" in {
+  "unorderedFold" in:
     assert(List(Completed, Completed).unorderedFold == Completed)
-  }
-}

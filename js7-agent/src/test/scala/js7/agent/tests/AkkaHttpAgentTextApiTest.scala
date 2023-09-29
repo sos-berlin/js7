@@ -29,8 +29,7 @@ import scala.collection.mutable
  * @author Joacim Zschimmer
  */
 final class AkkaHttpAgentTextApiTest
-extends OurTestSuite with BeforeAndAfterAll with HasCloser with TestAgentProvider
-{
+extends OurTestSuite with BeforeAndAfterAll with HasCloser with TestAgentProvider:
   override protected lazy val agentConfiguration = AgentConfiguration.forTest(
     configAndData = agentDirectory,
     name = "AkkaHttpAgentTextApiTest",
@@ -53,32 +52,27 @@ extends OurTestSuite with BeforeAndAfterAll with HasCloser with TestAgentProvide
         case _ => None
       })))
 
-  override def beforeAll() = {
+  override def beforeAll() =
     provideHttpsFiles()
     super.beforeAll()
-  }
 
   override def afterAll() = closer closeThen { super.afterAll() }
 
-  "Unauthorized when credentials are missing" in {
+  "Unauthorized when credentials are missing" in:
     autoClosing(newTextAgentClient(None)(_ => ())) { client =>
-      interceptUnauthorized {
+      interceptUnauthorized:
         client.executeCommand("""{ "TYPE": "ShutDown", "processSignal": "SIGTERM" }""")
-      }
     }
-  }
 
-  "Unauthorized when credentials are wrong" in {
+  "Unauthorized when credentials are wrong" in:
     autoClosing(newTextAgentClient(Some(TestUserId -> SecretString("WRONG-PASSWORD")))(_ => ())) { client =>
-      val e = intercept[AkkaHttpClient.HttpException] {
+      val e = intercept[AkkaHttpClient.HttpException]:
         client.login() await 99.s
-      }
       assert(e.status == Unauthorized)
       assert(e.dataAsString contains "Login: unknown user or invalid password")
     }
-  }
 
-  "AgentCommand" in {
+  "AgentCommand" in:
     val output = mutable.Buffer.empty[String]
     autoClosing(newTextAgentClient(Some(TestUserId -> Password))(output += _)) { client =>
       client.login() await 99.s
@@ -87,9 +81,8 @@ extends OurTestSuite with BeforeAndAfterAll with HasCloser with TestAgentProvide
     }
     assert(output.size == 2)
     assert(output(0).parseJsonOrThrow == json"""{ "TYPE": "Accepted" }""")
-  }
 
-  "requireIsResponding" in {
+  "requireIsResponding" in:
     val output = mutable.Buffer.empty[String]
     autoClosing(newTextAgentClient(Some(TestUserId -> Password))(output += _)) { client =>
       client.login() await 99.s
@@ -98,30 +91,23 @@ extends OurTestSuite with BeforeAndAfterAll with HasCloser with TestAgentProvide
     assert(output == List("JS7 Agent is responding"))
     val agentUri = findFreeLocalUri()
     autoClosing(new AkkaHttpAgentTextApi(agentUri, None, _ => ())) { client =>
-      val t = intercept[Exception] {
+      val t = intercept[Exception]:
         client.requireIsResponding()
-      }
       assert(t.isInstanceOf[akka.stream.StreamTcpException]
         || t.getClass.getName.startsWith("akka.http")
         || t.toString.contains("java.net.ConnectException"))
     }
-  }
 
   private def newTextAgentClient(userAndPassword: Option[UserAndPassword])(output: String => Unit) =
     new AkkaHttpAgentTextApi(agentUri = agent.localUri, userAndPassword, output,
       configDirectory = Some(configDirectory))
-}
 
-private object AkkaHttpAgentTextApiTest
-{
+private object AkkaHttpAgentTextApiTest:
   private val ExpectedTerminate = AgentCommand.ShutDown(Some(SIGTERM))
   private val TestUserId = TestUserAndPassword.userId
   private val Password = TestUserAndPassword.password
 
-  private def interceptUnauthorized(body: => Unit) = {
-    val e = intercept[AkkaHttpClient.HttpException] {
+  private def interceptUnauthorized(body: => Unit) =
+    val e = intercept[AkkaHttpClient.HttpException]:
       body
-    }
     assert(e.status == Unauthorized)
-  }
-}

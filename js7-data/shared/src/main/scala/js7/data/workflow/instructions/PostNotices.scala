@@ -12,18 +12,15 @@ import js7.data.source.SourcePos
 final case class PostNotices private(
   boardPaths: Vector[BoardPath],
   sourcePos: Option[SourcePos])
-extends BoardInstruction
-{
+extends BoardInstruction:
   val referencedBoardPaths = boardPaths.toSet
 
   protected def checked: Checked[this.type] =
     for _ <- boardPaths.checkUniqueness yield this
 
   def withoutSourcePos = copy(sourcePos = None)
-}
 
-object PostNotices
-{
+object PostNotices:
   def apply(
     boardPaths: Iterable[BoardPath],
     sourcePos: Option[SourcePos] = None)
@@ -39,4 +36,3 @@ object PostNotices
 
   implicit val jsonCodec: Codec.AsObject[PostNotices] =
     deriveCodec[PostNotices].checked(_.checked)
-}

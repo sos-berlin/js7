@@ -49,8 +49,7 @@ final class JournalEventWatch(
 extends AutoCloseable
 with RealEventWatch
 with FileEventWatch
-with JournalingObserver
-{
+with JournalingObserver:
   logger.debug(
     s"new JournalEventWatch($journalLocation, announceNextFileEventId=$announceNextFileEventId)")
 
@@ -94,12 +93,11 @@ with JournalingObserver
 
   @volatile private var _isActiveNode = false
 
-  def close() = {
+  def close() =
     fileEventIdToHistoric.values.foreach(_.close())
     maybeCurrentEventReader.foreach(_.close())
     for o <- announcedEventReaderPromise do
       o._2.trySuccess(None)
-  }
 
   override def whenStarted = startedPromise.future
 
@@ -119,40 +117,37 @@ with JournalingObserver
     firstEventPositionAndFileEventId: PositionAnd[EventId],
     flushedLengthAndEventId: PositionAnd[EventId],
     isActiveNode: Boolean)
-  : Unit = {
+  : Unit =
     // firstEventPositionAndFileEventId and flushedLengthAndEventId may differ only when
     // PassiveClusterNode continues replicating an existing journal file.
     logger.debug(s"onJournalingStarted ${file.getFileName}, " +
       s"firstEventPositionAndFileEventId=$firstEventPositionAndFileEventId, " +
       s"flushedLengthAndEventId=$flushedLengthAndEventId")
-    journalIdOnce.toOption match {
+    journalIdOnce.toOption match
       case None => journalIdOnce := expectedJournalId
       case Some(o) => require(expectedJournalId == o, s"JournalId $o does not match expected $expectedJournalId")
         //throw JournalIdMismatchProblem(journalLocation.fileBase, expectedJournalId = expectedJournalId, o).throwable
-    }
-    synchronized {
+    synchronized:
       _isActiveNode = isActiveNode
       val after = flushedLengthAndEventId.value
       if after < lastEventId then throw new IllegalArgumentException(
         s"Invalid onJournalingStarted(after=$after), must be ≥ $lastEventId")
-      for current <- maybeCurrentEventReader do {
+      for current <- maybeCurrentEventReader do
         if file == current.journalFile then sys.error(
           s"onJournalingStarted: file == current.journalFile == ${file.getFileName}")
         if current.lastEventId != firstEventPositionAndFileEventId.value then
           throw new IllegalArgumentException(
             s"onJournalingStarted(${firstEventPositionAndFileEventId.value}) " +
               s"does not match lastEventId=${current.lastEventId}")
-        for o <- fileEventIdToHistoric.get(current.fileEventId) do {
+        for o <- fileEventIdToHistoric.get(current.fileEventId) do
           // In case last journal file had no events (and `after` remains), we exchange it
           o.closeAfterUse()
-        }
         val historic = new HistoricJournalFile(
           fileEventId = current.fileEventId,
           current.journalFile,
           Some(current)/*Reuse built-up JournalIndex*/)
         logger.debug(s"Add $historic")
         fileEventIdToHistoric += current.fileEventId -> historic
-      }
 
       val currentEventReader = new CurrentEventReader(
         journalLocation,
@@ -161,108 +156,90 @@ with JournalingObserver
         isActiveNode = isActiveNode, config)
       maybeCurrentEventReader = Some(currentEventReader)
       logger.debug(s"currentEventReader=$currentEventReader")
-      for (eventId, promise) <- announcedEventReaderPromise do {
+      for (eventId, promise) <- announcedEventReaderPromise do
         if eventId == firstEventPositionAndFileEventId.value then
           promise.success(Some(currentEventReader))
-      }
-    }
     onFileWritten(flushedLengthAndEventId.position)
     onEventsCommitted(flushedLengthAndEventId.value)  // Notify about already written events
     startedPromise.trySuccess(this)
     evictUnusedEventReaders()
-  }
 
   def onJournalingEnded(fileLength: Long) =
     // TODO Delay until no FailedOver event may be written?
     //  This would be after the next journal file has been written with an acknowledged event
     //  - SnapshotTaken is not being acknowledged!
     //  Können wir auf onJournalingEnded verzichten zu Gunsten von onJournalingStarted ?
-    for o <- maybeCurrentEventReader do {
+    for o <- maybeCurrentEventReader do
       logger.debug(s"onJournalingEnded ${o.journalFile.getFileName} fileLength=$fileLength")
       announcedEventReaderPromise = Some(o.lastEventId -> Promise())
       o.onJournalingEnded(fileLength)
-    }
 
-  def releaseEvents(untilEventId: EventId)(implicit scheduler: Scheduler): Unit = {
+  def releaseEvents(untilEventId: EventId)(implicit scheduler: Scheduler): Unit =
     val delay = EventId.toTimestamp(untilEventId) + releaseEventsDelay - Timestamp.now
-    if delay.isZeroOrBelow then {
+    if delay.isZeroOrBelow then
       releaseEventsNow(untilEventId)
-    } else {
+    else
       logger.debug(s"releaseEvents($untilEventId), delay ${delay.pretty}")
-      scheduler.scheduleOnce(delay) {
+      scheduler.scheduleOnce(delay):
         releaseEventsNow(untilEventId)
-      }
-    }
-  }
 
-  private def releaseEventsNow(untilEventId: EventId): Unit = {
+  private def releaseEventsNow(untilEventId: EventId): Unit =
     logger.debug(s"releaseEventsNow($untilEventId)")
     // Delete only journal files before the file containing `untilFileEventId`
     val untilFileEventId = eventIdToFileEventId(untilEventId)
     deleteJournalFiles(untilFileEventId)
     deleteGarbageFiles(untilFileEventId)
-  }
 
   private def eventIdToFileEventId(eventId: EventId): EventId =
-    maybeCurrentEventReader match {
+    maybeCurrentEventReader match
       case Some(current) if current.fileEventId <= eventId =>
         current.fileEventId
       case _ =>
         historicJournalFileAfter(eventId).fold(EventId.BeforeFirst)(_.fileEventId)
-    }
 
-  private def deleteJournalFiles(untilFileEventId: EventId): Unit = {
+  private def deleteJournalFiles(untilFileEventId: EventId): Unit =
     val obsoletes = fileEventIdToHistoric.values.filter(_.fileEventId < untilFileEventId)
-    for historic <- obsoletes do {
+    for historic <- obsoletes do
       val filename = historic.file.getFileName
       logger.info(s"Delete obsolete journal file '$filename' " +
         s"(${Try(toKBGB(size(historic.file))).fold(identity, identity)})")
       historic.close()
-      try {
+      try
         delete(historic.file)
-        synchronized {
+        synchronized:
           fileEventIdToHistoric -= historic.fileEventId
-        }
-      } catch {
+      catch
         case e: IOException =>
           if !exists(historic.file) then
-            synchronized {
+            synchronized:
               fileEventIdToHistoric -= historic.fileEventId
-            }
           else
             logger.warn(
               s"Cannot delete obsolete journal file '$filename': ${e.toStringWithCauses}")
-      }
-    }
-  }
 
   private def deleteGarbageFiles(untilFileEventId: EventId): Unit =
-    for file <- journalLocation.listGarbageFiles(untilFileEventId = untilFileEventId) do {
+    for file <- journalLocation.listGarbageFiles(untilFileEventId = untilFileEventId) do
       logger.info(s"Delete garbage journal file '${file.getFileName}'")
       try delete(file)
       catch { case e: IOException =>
-        if exists(file) then {
+        if exists(file) then
           logger.warn(s"Cannot delete garbage journal file '$file': ${e.toStringWithCauses}")
-        }
       }
-    }
 
   def onFileWritten(flushedPosition: Long): Unit =
-    for o <- maybeCurrentEventReader do {
+    for o <- maybeCurrentEventReader do
       o.onFileWritten(flushedPosition)
-    }
 
-  def onEventsCommitted(positionAndEventId: PositionAnd[EventId], n: Int): Unit = {
+  def onEventsCommitted(positionAndEventId: PositionAnd[EventId], n: Int): Unit =
     checkedCurrentEventReader.orThrow.onEventsCommitted(positionAndEventId, n = n)
     onEventsCommitted(positionAndEventId.value)
-  }
 
   def snapshotAfter(after: EventId) =
     rawSnapshotAfter(after)
       .map(_.mapParallelBatch()(_.parseJsonAs(journalLocation.snapshotObjectJsonCodec).orThrow))
 
   def rawSnapshotAfter(after: EventId) =
-    maybeCurrentEventReader match {
+    maybeCurrentEventReader match
       case Some(current) if current.fileEventId <= after =>
         Some(current.rawSnapshot)
       case _ =>
@@ -271,22 +248,19 @@ with JournalingObserver
             logger.debug(s"Reading snapshot from $historicJournalFile")
             historicJournalFile.eventReader.rawSnapshot
           }
-    }
 
   /**
     * @return `Task(None)` torn, `after` < `tornEventId`
     *         `Task(Some(Iterator.empty))` if no events are available for now
     */
-  def eventsAfter(after: EventId): Option[CloseableIterator[Stamped[KeyedEvent[Event]]]] = {
-    val result = maybeCurrentEventReader match {
+  def eventsAfter(after: EventId): Option[CloseableIterator[Stamped[KeyedEvent[Event]]]] =
+    val result = maybeCurrentEventReader match
       case Some(current) if current.fileEventId <= after =>
         current.eventsAfter(after)
       case _ =>
         historicEventsAfter(after)
-    }
     evictUnusedEventReaders()
     result
-  }
 
   override def toString = s"JournalEventWatch(${journalLocation.name})"
 
@@ -320,9 +294,8 @@ with JournalingObserver
     fileEventIdToHistoric.values.toVector.reverseIterator.find(_.fileEventId <= after)
 
   def fileEventIds: Seq[EventId] =
-    synchronized {
+    synchronized:
       fileEventIdToHistoric.keys.toSeq.sorted ++ maybeCurrentEventReader.map(_.fileEventId)
-    }
 
   def journalPosition =
     checkedCurrentEventReader.map(_.journalPosition)
@@ -330,29 +303,27 @@ with JournalingObserver
   def observeFile(journalPosition: JournalPosition,
     timeout: FiniteDuration, markEOF: Boolean, onlyAcks: Boolean)
   : Task[Checked[Observable[PositionAnd[ByteArray]]]] =
-    Task.defer {
+    Task.defer:
       import journalPosition.{fileEventId, position}
 
       if onlyAcks && _isActiveNode then
         Task.left(AckFromActiveClusterNodeProblem)
       else
-        announcedEventReaderPromise match {
+        announcedEventReaderPromise match
           case Some((`fileEventId`, promise)) =>
-            if !promise.isCompleted then {
+            if !promise.isCompleted then
               logger.debug(s"observeFile($fileEventId): waiting for this new journal file")
-            }
-            Task.fromFuture(promise.future).map {
+            Task.fromFuture(promise.future).map:
               case None =>
                 Right(Observable.empty) // JournalEventWatch has been closed
               case Some(currentEventReader) =>
                 Right(currentEventReader.observeFile(position, timeout, markEOF = markEOF, onlyAcks = onlyAcks))
-            }
 
           case _ =>
             val maybeEventReader = maybeCurrentEventReader
               .filter(_.fileEventId == fileEventId)
               .orElse(fileEventIdToHistoric.get(fileEventId).map(_.eventReader))
-            maybeEventReader match {
+            maybeEventReader match
               case None =>
                 logger.debug(s"observeFile($journalPosition): announcedEventReaderPromise=$announcedEventReaderPromise " +
                   s"maybeCurrentEventReader=$maybeCurrentEventReader " +
@@ -370,20 +341,15 @@ with JournalingObserver
                     //.takeWhile(_ => !_isActiveNode)
                     .tapEval(_ => Task.when(isActiveNode)(
                       Task.raiseError(AckFromActiveClusterNodeProblem.throwable))))))
-            }
-        }
-    }
 
   private def lastEventId =
-    synchronized {
-      maybeCurrentEventReader match {
+    synchronized:
+      maybeCurrentEventReader match
         case Some(o) => o.lastEventId
         case None => fileEventIdToHistoric.keys.maxOption getOrElse EventId.BeforeFirst
-      }
-    }
 
   def journalInfo: JournalInfo =
-    synchronized {
+    synchronized:
       JournalInfo(
         lastEventId = lastEventId,
         tornEventId = tornEventId,
@@ -393,13 +359,11 @@ with JournalingObserver
           ) ++
             maybeCurrentEventReader.map(_.journalPosition)
         ).toVector)
-    }
 
   private final class HistoricJournalFile(
     val fileEventId: EventId,
     val file: Path,
-    initialEventReader: Option[EventReader] = None)
-  {
+    initialEventReader: Option[EventReader] = None):
     private val _eventReader = AtomicAny[EventReader](initialEventReader.orNull)
 
     def closeAfterUse(): Unit =
@@ -410,55 +374,44 @@ with JournalingObserver
 
     @tailrec
     def eventReader: EventReader =
-      _eventReader.get() match {
+      _eventReader.get() match
         case null =>
           val r = new HistoricEventReader(journalLocation, journalIdOnce.orThrow,
             fileEventId = fileEventId, file, config)
-          if _eventReader.compareAndSet(null, r) then {
+          if _eventReader.compareAndSet(null, r) then
             logger.debug(s"Using $r")
             r
-          } else {
+          else
             r.close()
             eventReader
-          }
         case r => r
-      }
 
-    def evictEventReader(): Unit = {
+    def evictEventReader(): Unit =
       val reader = _eventReader.get()
-      if reader != null then {
-        if !reader.isInUse && _eventReader.compareAndSet(reader, null) then {  // Race condition, may be become in-use before compareAndSet
+      if reader != null then
+        if !reader.isInUse && _eventReader.compareAndSet(reader, null) then  // Race condition, may be become in-use before compareAndSet
           logger.debug(s"Evict $reader lastUsedAt=${Timestamp.ofEpochMilli(reader.lastUsedAt)})")
           reader.closeAfterUse()
-        }
-      }
-    }
 
     def lastUsedAt: Long =
-      _eventReader.get() match {
+      _eventReader.get() match
         case null => 0L
         case reader => reader.lastUsedAt
-      }
 
-    def isEvictable: Boolean = {
+    def isEvictable: Boolean =
       val reader = _eventReader.get()
       reader != null && !reader.isInUse
-    }
 
     override def toString = "HistoricJournalFile:" + file.getFileName
-  }
 
   private def checkedCurrentEventReader: Checked[CurrentEventReader] =
     maybeCurrentEventReader.toChecked(JournalFileIsNotReadyProblem(journalLocation.fileBase))
-}
 
-object JournalEventWatch
-{
+object JournalEventWatch:
   private val logger = Logger[this.type]
 
-  private case class JournalFileIsNotReadyProblem(file: Path) extends Problem.Coded {
+  private case class JournalFileIsNotReadyProblem(file: Path) extends Problem.Coded:
     def arguments = Map("file" -> file.getFileName.toString)
-  }
 
   val TestConfig = config"""
     js7.journal.watch.keep-open = 2
@@ -469,4 +422,3 @@ object JournalEventWatch
     js7.journal.remove-obsolete-files = true
     js7.monix.tailrecm-limit = 1000
     """
-}

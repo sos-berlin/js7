@@ -12,6 +12,5 @@ sealed trait Accepted
   * May be used for Task[Accepted].
   * Like Akka's `Done`.
   */
-object Accepted extends Accepted {
+object Accepted extends Accepted:
   override def toString = "Accepted"
-}

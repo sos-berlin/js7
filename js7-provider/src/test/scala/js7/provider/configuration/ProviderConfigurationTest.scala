@@ -11,15 +11,12 @@ import js7.common.commandline.CommandLineArguments
 /**
   * @author Joacim Zschimmer
   */
-final class ProviderConfigurationTest extends OurTestSuite
-{
-  "Empty command line" in {
-    intercept[NoSuchElementException] {
+final class ProviderConfigurationTest extends OurTestSuite:
+  "Empty command line" in:
+    intercept[NoSuchElementException]:
       ProviderConfiguration.fromCommandLine(CommandLineArguments(Nil))
-    }
-  }
 
-  "Command line only" in {
+  "Command line only" in:
     withTemporaryDirectory("ProviderConfigurationTest-") { dir =>
       assert(CommandLineArguments
         .parse(Seq(
@@ -29,9 +26,8 @@ final class ProviderConfigurationTest extends OurTestSuite
         .copy(config = ConfigFactory.empty)
         == ProviderConfiguration(dir, Uri("https://example.com"), HttpsConfig.empty))
     }
-  }
 
-  "Command line with provider.conf" in {
+  "Command line with provider.conf" in:
     withTemporaryDirectory("ProviderConfigurationTest-") { dir =>
       dir / "provider.conf" := """js7.provider.controller.uri = "https://example.com"""" + "\n"
       assert(
@@ -42,5 +38,3 @@ final class ProviderConfigurationTest extends OurTestSuite
           .copy(config = ConfigFactory.empty)
           == ProviderConfiguration(dir, Uri("https://example.com"), HttpsConfig.empty))
     }
-  }
-}

@@ -6,7 +6,7 @@ package js7.base.utils
   *
   * @author Joacim Zschimmer
   */
-final class Memoizer[A, B](f: A => B, show: Memoizer.Show[A, B]) extends (A => B) {
+final class Memoizer[A, B](f: A => B, show: Memoizer.Show[A, B]) extends (A => B):
 
   private val memory = new ScalaConcurrentHashMap[A, B]
 
@@ -17,13 +17,10 @@ final class Memoizer[A, B](f: A => B, show: Memoizer.Show[A, B]) extends (A => B
   def toMap = memory.toMap
 
   override def toString = show.show(this)
-}
 
-object Memoizer
-{
-  trait Show[A, B] {
+object Memoizer:
+  trait Show[A, B]:
     def show(memoizer: Memoizer[A, B]): String
-  }
   private def defaultShow[A, B]: Show[A, B] =
     m => s"Memoizer(${m.memory.size }" + " results memoized)"
 
@@ -51,10 +48,9 @@ object Memoizer
   /**
     * Memoizes all computed results and computes each result strictly once.
     */
-  def strict1[A, B](f: A => B)(implicit show: Show[A, B] = defaultShow[A, B]): A => B = {
+  def strict1[A, B](f: A => B)(implicit show: Show[A, B] = defaultShow[A, B]): A => B =
     val memoizer = new Memoizer[A, B](f, show)
     (a: A) => memoizer.synchronized { memoizer(a) }
-  }
 
   /**
     * Memoizes all computed results and computes each result strictly once.
@@ -67,4 +63,3 @@ object Memoizer
     */
   def strict3[A, B, C, R](f: (A, B, C) => R)(implicit show: Show[(A, B, C), R] = defaultShow[(A, B, C), R]) =
     Function.untupled(strict1[(A, B, C), R](f.tupled))
-}

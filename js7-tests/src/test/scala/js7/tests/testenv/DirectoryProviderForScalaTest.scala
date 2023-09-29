@@ -24,7 +24,7 @@ import scala.collection.immutable.Iterable
   * @author Joacim Zschimmer
   */
 @TestOnly
-trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
+trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser:
   this: org.scalatest.Suite =>
 
   ProblemCodeMessages.initialize()
@@ -86,14 +86,11 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
   protected final def toSignedString[A <: SignableItem](item: A): SignedString =
     directoryProvider.toSignedString(item)
 
-  override def beforeAll() = {
+  override def beforeAll() =
     super.beforeAll()
     directoryProvider
-  }
 
-  override def afterAll() = {
+  override def afterAll() =
     closer.close()
     directoryProvider.close()
     super.afterAll()
-  }
-}

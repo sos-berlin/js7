@@ -13,8 +13,7 @@ import js7.tester.CirceJsonTester.testJson
 /**
   * @author Joacim Zschimmer
   */
-final class ClusterSettingTest extends OurTestSuite
-{
+final class ClusterSettingTest extends OurTestSuite:
   private val idToUri = Map(
     NodeId("A") -> Uri("https://A"),
     NodeId("B") -> Uri("https://B"))
@@ -25,7 +24,7 @@ final class ClusterSettingTest extends OurTestSuite
     timing,
     Some(ClusterWatchId("CLUSTER-WATCH")))
 
-  "JSON" in {
+  "JSON" in:
     testJson(clusterSetting,
       json"""{
         "idToUri": {
@@ -39,9 +38,8 @@ final class ClusterSettingTest extends OurTestSuite
         },
         "clusterWatchId": "CLUSTER-WATCH"
       }""")
-  }
 
-  "checked" in {
+  "checked" in:
     assert(checkUris(Map.empty).isLeft)
     assert(checkUris(Map(NodeId("A") -> Uri("https://A"))).isLeft)
     assert(checkUris(Map(NodeId("A") -> Uri("https://SAME"), NodeId("B") -> Uri("https://SAME"))).isLeft)
@@ -49,38 +47,29 @@ final class ClusterSettingTest extends OurTestSuite
     assert(ClusterSetting.checked(idToUri, NodeId("X"), timing, None).isLeft)
     assert(ClusterSetting.checked(idToUri, NodeId("A"), timing, None).isRight)
     assert(checkUris(idToUri).isRight)
-  }
 
-  "apply" in {
+  "apply" in:
     intercept[ProblemException](ClusterSetting(idToUri, NodeId("X"), timing))
-  }
 
-  "activeId" in {
+  "activeId" in:
     assert(clusterSetting.activeId == NodeId("A"))
-  }
 
-  "activeUri" in {
+  "activeUri" in:
     assert(clusterSetting.activeUri == Uri("https://A"))
-  }
 
-  "passiveId" in {
+  "passiveId" in:
     assert(clusterSetting.passiveId == NodeId("B"))
-  }
 
-  "passiveUri" in {
+  "passiveUri" in:
     assert(clusterSetting.passiveUri == Uri("https://B"))
-  }
 
-  "peerOf" in {
+  "peerOf" in:
     assert(idToUri.peerOf(NodeId("A")) == NodeId("B"))
     assert(idToUri.peerOf(NodeId("B")) == NodeId("A"))
     intercept[AssertionError](idToUri.peerOf(NodeId("X")))
-  }
 
-  "withPassiveUri" in {
+  "withPassiveUri" in:
     assert(clusterSetting.withPassiveUri(Uri("https://UPDATED")) ==
       clusterSetting.copy(idToUri = Map(
         NodeId("A") -> Uri("https://A"),
         NodeId("B") -> Uri("https://UPDATED"))))
-  }
-}

@@ -30,8 +30,7 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import scala.util.control.NonFatal
 
-final class SimpleAgentClusterTest extends ControllerClusterTester
-{
+final class SimpleAgentClusterTest extends ControllerClusterTester:
   protected override val agentPaths = Nil
 
   private lazy val subagentItems = Seq(
@@ -41,7 +40,7 @@ final class SimpleAgentClusterTest extends ControllerClusterTester
   override protected def items =
     Seq(TestWorkflow, workflow, agentRef, subagentSelection) ++ subagentItems
 
-  "Cluster replicates journal files properly" in {
+  "Cluster replicates journal files properly" in:
     withControllerAndBackupWithoutAgents() { (primary, backup, _) =>
 
       def allocateDirector(director: SubagentItem, otherDirectorId: SubagentId,
@@ -64,7 +63,7 @@ final class SimpleAgentClusterTest extends ControllerClusterTester
         val primaryDirectorEnv = primaryDirectorAllocated.allocatedThing._1
         TestAgent(backupDirectorAllocated.map(_._2)).useSync(99.s) { backupDirector =>
           val backupDirectorEnv = backupDirectorAllocated.allocatedThing._1
-          try {
+          try
             runControllers(primary, backup) { (primaryController, _) =>
               import primaryController.eventWatch.await
               val failOverOrderId = OrderId("🔺")
@@ -72,10 +71,9 @@ final class SimpleAgentClusterTest extends ControllerClusterTester
               primaryDirector.eventWatch.await[ClusterWatchRegistered]()
               primaryDirector.eventWatch.await[ClusterCoupled]()
 
-              for delegateId <- agentPath +: subagentIds do {
+              for delegateId <- agentPath +: subagentIds do
                 primaryController.eventWatch.await[ItemAttached](ke => ke.event.delegateId == agentPath
                   && ke.event.key == delegateId)
-              }
 
               assert(primaryController.controllerState().itemToAgentToAttachedState == Map(
                 agentPath      -> Map(agentPath -> Attached(Some(ItemRevision(0)))),
@@ -119,18 +117,15 @@ final class SimpleAgentClusterTest extends ControllerClusterTester
               primaryController.runOrder(FreshOrder(bOrderId, workflow.path))
               assert(agentClusterState().isInstanceOf[ClusterState.FailedOver])
             }
-          } catch {
+          catch
             case NonFatal(t) =>
               logger.error(t.toStringWithCauses, t)
               throw t
-          }
         }
       }
     }
-  }
-}
 
-object SimpleAgentClusterTest {
+object SimpleAgentClusterTest:
   private val logger = Logger[this.type]
 
   private val subagentIds = Seq(
@@ -154,4 +149,3 @@ object SimpleAgentClusterTest {
 
   final class ASemaphoreJob extends SemaphoreJob(ASemaphoreJob)
   object ASemaphoreJob extends SemaphoreJob.Companion[ASemaphoreJob]
-}

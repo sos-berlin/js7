@@ -34,7 +34,7 @@ final class MainActor(
   terminationPromise: Promise[DirectorTermination],
   clock: AlarmClock)
   (implicit scheduler: Scheduler)
-extends Actor {
+extends Actor:
 
   import context.{actorOf, watch}
 
@@ -53,34 +53,29 @@ extends Actor {
   private val agentHandle = new AgentHandle(agentActor)
 
   val commandActor = SetOnce[ActorRef]
-  private val commandHandler = testCommandHandler getOrElse {
+  private val commandHandler = testCommandHandler getOrElse:
     // A global, not a child actor !!!
     // because a child Actor may stop before Shutdown command has been responded,
     // leaving the client without response (and tests fail after 99s)
     val actor = context.system.actorOf(Props {new CommandActor(agentHandle)}, "command")
     commandActor := actor
     new CommandActor.Handle(actor)
-  }
 
   private def api(meta: CommandMeta) = new DirectAgentApi(commandHandler, meta)
 
-  override def preStart() = {
+  override def preStart() =
     super.preStart()
     for t <- terminationPromise.future.failed do readyPromise.tryFailure(t)
-  }
 
-  override def postStop() = {
-    if !readyPromise.isCompleted then {
+  override def postStop() =
+    if !readyPromise.isCompleted then
       readyPromise.tryFailure(new RuntimeException("MainActor has stopped before AgentActor has become ready") with NoStackTrace)
-    }
-    if !terminationPromise.isCompleted then {
+    if !terminationPromise.isCompleted then
       terminationPromise.tryFailure(new RuntimeException("MainActor has stopped unexpectedly") with NoStackTrace)
-    }
     logger.debug("Stopped")
     super.postStop()
-  }
 
-  def receive = {
+  def receive =
     case MainActor.Input.Start(recovered) =>
       agentActor ! AgentActor.Input.Start(recovered)
 
@@ -91,16 +86,11 @@ extends Actor {
       logger.debug("Stop")
       terminationPromise.trySuccess(DirectorTermination())
       context.stop(self)
-  }
-}
 
-object MainActor
-{
+object MainActor:
   private val logger = Logger[this.type]
 
   final case class Ready(api: CommandMeta => DirectAgentApi)
 
-  object Input {
+  object Input:
     final case class Start(agentState: AgentState)
-  }
-}

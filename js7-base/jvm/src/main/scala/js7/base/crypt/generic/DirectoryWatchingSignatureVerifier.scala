@@ -35,8 +35,7 @@ final class DirectoryWatchingSignatureVerifier private(
   settings: DirectoryWatchSettings,
   onUpdated: () => Unit)
   (implicit iox: IOExecutor)
-extends SignatureVerifier with Service.StoppableByRequest
-{
+extends SignatureVerifier with Service.StoppableByRequest:
   @volatile private var state = State(Map.empty)
 
   protected type MySignature = GenericSignature
@@ -48,7 +47,7 @@ extends SignatureVerifier with Service.StoppableByRequest
   def publicKeyOrigin = "(DirectoryWatchingSignatureVerifier)"
 
   protected def start =
-    Task.defer {
+    Task.defer:
       val companionToDir = companionToDirectory
         .map { case (companion, directory) =>
           companion -> (directory -> readDirectory(directory).orThrow)
@@ -73,7 +72,6 @@ extends SignatureVerifier with Service.StoppableByRequest
           }
           .parSequence
           .map(_.combineAll))
-    }
 
   private def observeDirectory(
     companion: SignatureVerifier.Companion,
@@ -119,28 +117,25 @@ extends SignatureVerifier with Service.StoppableByRequest
     companion: SignatureVerifier.Companion,
     directory: Path,
     directoryState: DirectoryState)
-  : Checked[SignatureVerifier] = {
+  : Checked[SignatureVerifier] =
     val files = directoryState.files.toVector
     val checked = catchNonFatalFlatten(
       companion.checked(
         files.map(file => directory.resolve(file).byteArray),
         origin = directory.toString))
 
-    checked match {
+    checked match
       case Left(problem) =>
         logger.error(s"${companion.typeName} signature keys are not readable: $problem")
 
       case Right(verifier) =>
         logger.info("Trusting signature key")
         for o <- verifier.publicKeysToStrings do logger.info(s"  $o")
-        if files.isEmpty then {
+        if files.isEmpty then
           logger.warn(
             s"  No public key files for signature verifier '${companion.typeName}' in directory '$directory'")
-        }
-    }
 
     checked
-  }
 
   private def readDirectory(directory: Path): Checked[DirectoryState] =
     catchNonFatal(
@@ -157,10 +152,8 @@ extends SignatureVerifier with Service.StoppableByRequest
 
   override def toString =
     s"DirectoryWatchingSignatureVerifier(${companionToDirectory.keys.map(_.typeName).mkString(" ")})"
-}
 
-object DirectoryWatchingSignatureVerifier extends SignatureVerifier.Companion
-{
+object DirectoryWatchingSignatureVerifier extends SignatureVerifier.Companion:
   private val configPath = "js7.configuration.trusted-signature-keys"
   private val logger = Logger[this.type]
 
@@ -207,14 +200,12 @@ object DirectoryWatchingSignatureVerifier extends SignatureVerifier.Companion
 
   final class Prepared(
     companionToDirectory: Map[SignatureVerifier.Companion, Path],
-    settings: DirectoryWatchSettings)
-  {
+    settings: DirectoryWatchSettings):
     def toResource(onUpdated: () => Unit)(implicit iox: IOExecutor)
     : Resource[Task, DirectoryWatchingSignatureVerifier] =
       Service.resource(Task(
         new DirectoryWatchingSignatureVerifier(
           companionToDirectory, settings, onUpdated)))
-  }
 
   @deprecated("Not implemented", "")
   def checked(publicKeys: Seq[ByteArray], origin: String) =
@@ -224,15 +215,12 @@ object DirectoryWatchingSignatureVerifier extends SignatureVerifier.Companion
     Right(signature)
 
   private final case class State(
-    companionToVerifier: Map[SignatureVerifier.Companion, Checked[SignatureVerifier]])
-  {
+    companionToVerifier: Map[SignatureVerifier.Companion, Checked[SignatureVerifier]]):
     // Failing verifiers are omitted !!!
     val genericVerifier = new GenericSignatureVerifier(
       companionToVerifier.values
         .collect { case Right(o) => o }
         .toVector)
-  }
 
   private case class ConfigStringExpectedProblem(configKey: String) extends Problem.Lazy(
     s"String expected as value of configuration key $configKey")
-}

@@ -6,8 +6,7 @@ import js7.data.workflow.Instruction
 /**
   * @author Joacim Zschimmer
   */
-object Instructions
-{
+object Instructions:
   implicit val jsonCodec: TypedJsonCodec[Instruction] = TypedJsonCodec[Instruction](
     Subtype[Execute],
     Subtype.named1[ExplicitEnd]("End"),
@@ -35,4 +34,3 @@ object Instructions
     Subtype[BreakOrder],
     Subtype[EmptyInstruction],
     Subtype[Gap])
-}

@@ -4,8 +4,7 @@ import monix.catnap.MVar
 import monix.eval.Task
 
 /** A single-use latch, after being closed it can never opened again. */
-final class Latch extends Latch.ReadOnly
-{
+final class Latch extends Latch.ReadOnly:
   // Initially open
   private val latch = MVar[Task].empty[Unit]().memoize
 
@@ -29,16 +28,11 @@ final class Latch extends Latch.ReadOnly
 
   val when: Task[Unit] =
     latch.flatMap(_.read).void
-}
 
-object Latch
-{
-  trait ReadOnly
-  {
+object Latch:
+  trait ReadOnly:
     def is: Task[Boolean]
 
     def isNot: Task[Boolean]
 
     def when: Task[Unit]
-  }
-}

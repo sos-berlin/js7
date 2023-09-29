@@ -33,21 +33,17 @@ import scala.concurrent.duration.FiniteDuration
 /**
   * @author Joacim Zschimmer
   */
-object AkkaHttpServerUtils
-{
+object AkkaHttpServerUtils:
   private val logger = Logger[this.type]
   private val LF = ByteString("\n")
   private val heartbeatChunk = Chunk(LF)
 
-  object implicits {
-    implicit final class RichOption[A](private val delegate: Option[A]) extends AnyVal {
+  object implicits:
+    implicit final class RichOption[A](private val delegate: Option[A]) extends AnyVal:
       def applyRoute(f: A => Route): Route =
-        delegate match {
+        delegate match
           case Some(a) => f(a)
           case None => reject
-        }
-    }
-  }
 
   // Test via ConcurrentRequestsLimiterTest
   //def whenResponseTerminated(onTerminated: Try[RouteResult] => Unit)(implicit arf: ActorRefFactory): Directive0 = {
@@ -80,7 +76,7 @@ object AkkaHttpServerUtils
 
   def accept(mediaTypes: Set[MediaType]): Directive0 =
     mapInnerRoute { inner =>
-      headerValueByType(Accept) {
+      headerValueByType(Accept):
         case Accept(requestedMediaTypes) if requestedMediaTypes exists { o => mediaTypes exists o.matches } =>
           inner
         case _ =>
@@ -89,23 +85,20 @@ object AkkaHttpServerUtils
               case m: MediaType.WithOpenCharset => ContentNegotiator.Alternative.MediaType(m)
               case m: MediaType.WithFixedCharset => ContentNegotiator.Alternative.ContentType(m)
             }))
-      }
     }
 
   /**
     * Passes x iff argument is Some(x).
     */
   def passSome[A](option: Option[A]): Directive1[A] =
-    option match {
+    option match
       case Some(o) => Directive(inner => inner(Tuple1(o)))
       case None => reject
-    }
 
   def passRight[R](either: Either[String, R]): Directive1[R] =
-    either match {
+    either match
       case Right(r) => Directive(inner =>inner(Tuple1(r)))
       case Left(message) => reject(ValidationRejection(message))
-    }
 
   /**
     * Passes x iff argument is true.
@@ -191,7 +184,7 @@ object AkkaHttpServerUtils
   //      }
   //  }
 
-  implicit final class RichPath(private val delegate: Uri.Path) extends AnyVal {
+  implicit final class RichPath(private val delegate: Uri.Path) extends AnyVal:
     import Uri.Path.*
 
     /**
@@ -199,38 +192,32 @@ object AkkaHttpServerUtils
       */
     @tailrec
     def startsWithPath(prefix: Uri.Path): Boolean =
-      (delegate, prefix) match {
+      (delegate, prefix) match
         case (Slash(a), Slash(b)) => a startsWithPath b
         case (Segment(aHead, aTail), Segment(bHead, bTail)) => aHead == bHead && (aTail startsWithPath bTail)
         case _ => prefix.isEmpty
-      }
 
     @tailrec
     def drop(n: Int): Uri.Path =
       if n == 0 then
         delegate
-      else {
+      else
         require(n > 0)
         delegate.tail drop n - 1
-      }
-  }
 
   /** Like `pathPrefix`, but `prefix` denotes a path segment. */
-  def pathSegment(segment: String): Directive0 = {
+  def pathSegment(segment: String): Directive0 =
     pathPrefix(matchSegment(segment))
-  }
 
   private def matchSegment(segment: String): PathMatcher0 =
     new SegmentPathMatcher(segment)
 
-  private class SegmentPathMatcher(segment: String) extends PathMatcher0 {
-    def apply(path: Uri.Path) = path match {
+  private class SegmentPathMatcher(segment: String) extends PathMatcher0:
+    def apply(path: Uri.Path) = path match
       case Uri.Path.Segment(`segment`, tail) =>
         Matched(tail, HNil)
       case _ =>
         Unmatched
-    }
-  }
 
   /**
     * Like `pathPrefix`, but `prefix` denotes a path of complete path segments.
@@ -250,39 +237,33 @@ object AkkaHttpServerUtils
   /**
     * A `PathMatcher` for Directive `pathPrefix` matching complete segments.
     */
-  private def matchSegments(prefix: Uri.Path): PathMatcher0 = {
+  private def matchSegments(prefix: Uri.Path): PathMatcher0 =
     import akka.http.scaladsl.server.PathMatcher.*
     if prefix.isEmpty then
       provide(HNil)
     else
-      new PathMatcher[Unit] {
+      new PathMatcher[Unit]:
         def apply(path: Uri.Path) =
           if path startsWithPath prefix then
             Matched(path drop prefix.length, HNil)
           else
             Unmatched
-        }
-  }
 
   def completeTask[A: ToResponseMarshaller](task: Task[A])(implicit s: Scheduler): Route =
-    optionalAttribute(WebLogDirectives.CorrelIdAttributeKey) {
+    optionalAttribute(WebLogDirectives.CorrelIdAttributeKey):
       case None =>
-        complete {
+        complete:
           task.runToFuture
-        }
 
       case Some(correlId) =>
-        complete {
+        complete:
           import js7.base.log.CanBindCorrelId.cancelableFuture
           correlId.bind {
             task.runToFuture
           } (cancelableFuture)
-        }
-    }
 
   val extractJs7RequestId: Directive1[Long] =
-    new Directive1[Long]
-    {
+    new Directive1[Long]:
       def tapply(inner: Tuple1[Long] => Route) =
         extractRequest(_
           .headers
@@ -299,7 +280,6 @@ object AkkaHttpServerUtils
                     inner(Tuple1(n))
                 }
           })
-    }
 
   def observableToResponseMarshallable[A: Encoder](
     observable: Observable[A],
@@ -309,7 +289,7 @@ object AkkaHttpServerUtils
     chunkSize: Int,
     keepAlive: Option[FiniteDuration] = None)
     (implicit s: Scheduler)
-  : ToResponseMarshallable = {
+  : ToResponseMarshallable =
     val chunks = observable
       .mapParallelBatch(responsive = true)(_
         .asJson
@@ -318,19 +298,17 @@ object AkkaHttpServerUtils
       .chunk(chunkSize)
       .map(Chunk(_))
 
-    val obs: Observable[Chunk] = keepAlive match {
+    val obs: Observable[Chunk] = keepAlive match
       case None => chunks
       case Some(h) =>
         for
           terminated <- Observable.from(Deferred[Task, Unit])
-          chunk <- {
+          chunk <-
             Observable(
               chunks.guarantee(terminated.complete(())),
               Observable.repeat(heartbeatChunk).delayOnNext(h).takeUntilEval(terminated.get)
             ).merge(/*Scala 3:*/implicitly[Observable[Chunk] <:< Observable[Chunk]])
-          }
         yield chunk
-    }
 
     ToResponseMarshallable(
       HttpEntity.Chunked(
@@ -340,5 +318,3 @@ object AkkaHttpServerUtils
             logger.debug(s"Shutdown observing events for $userId ${httpRequest.uri}")
           })
           .toAkkaSourceForHttpResponse))
-  }
-}

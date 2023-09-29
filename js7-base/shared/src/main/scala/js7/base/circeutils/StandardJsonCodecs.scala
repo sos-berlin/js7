@@ -5,8 +5,7 @@ import java.util.regex.Pattern
 import js7.base.circeutils.CirceUtils.{stringJsonCodec, toStringJsonCodec}
 import scala.util.matching.Regex
 
-object StandardJsonCodecs
-{
+object StandardJsonCodecs:
   implicit val PatternJsonCodec: Codec[Pattern] =
     stringJsonCodec(
       pattern =>
@@ -18,4 +17,3 @@ object StandardJsonCodecs
 
   implicit val RegexJsonCodec: Codec[Regex] =
     toStringJsonCodec(_.r)
-}

@@ -10,16 +10,14 @@ import js7.tester.CirceJsonTester.testJson
 /**
   * @author Joacim Zschimmer
   */
-final class GapTest extends OurTestSuite {
+final class GapTest extends OurTestSuite:
 
   // For internal JS7 use only.
 
-  "JSON" in {
+  "JSON" in:
     testJson[Instruction.Labeled](
       Gap(Some(SourcePos(1, 2))),
       json"""{
         "TYPE": "Gap",
         "sourcePos": [ 1, 2 ]
       }""")
-  }
-}

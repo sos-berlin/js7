@@ -10,8 +10,7 @@ import js7.data_for_java.value.JExpression
 import scala.jdk.CollectionConverters.*
 
 final case class JJobResource(asScala: JobResource)
-extends JJsonable[JJobResource] with JSignableItem
-{
+extends JJsonable[JJobResource] with JSignableItem:
   type AsScala = JobResource
   protected def companion = JJobResource
 
@@ -26,10 +25,8 @@ extends JJsonable[JJobResource] with JSignableItem
       .mapValues(JExpression(_))
       .toMap
       .asJava
-}
 
-object JJobResource extends JJsonable.Companion[JJobResource]
-{
+object JJobResource extends JJsonable.Companion[JJobResource]:
   type AsScala = JobResource
 
   @Nonnull
@@ -50,4 +47,3 @@ object JJobResource extends JJsonable.Companion[JJobResource]
 
   protected def jsonEncoder = JobResource.jsonCodec
   protected def jsonDecoder = JobResource.jsonCodec
-}

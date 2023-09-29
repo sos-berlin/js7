@@ -65,8 +65,7 @@ final class AgentDriver private(
   controllerConfiguration: ControllerConfiguration,
   actorSystem: ActorSystem)
   (implicit protected val scheduler: Scheduler)
-extends Service.StoppableByRequest
-{
+extends Service.StoppableByRequest:
   agentDriver =>
 
   import controllerConfiguration.controllerId
@@ -88,41 +87,38 @@ extends Service.StoppableByRequest
   private var clusterState: Option[HasNodes] = None
   private val startDirectorDriverFiber = AsyncVariable(Fiber(Task.unit, Task.unit))
 
-  private object state {
+  private object state:
     val lock = AsyncLock()
     var directors: Seq[SubagentId] = initialAgentRef.directors
     var adoptedEventId = initialEventId
     var releaseEventsCancelable: Option[Cancelable] = None
     var delayNextReleaseEvents = false
-  }
 
   private def onCouplingFailed(problem: Problem): Task[Boolean] =
     Task.defer {
       // TODO Differentiate between the two Directors
       //  Lesser problem when the active one is reachable.
       val agentCouplingFailed = AgentCouplingFailed(problem)
-      if lastCouplingFailed contains agentCouplingFailed then {
+      if lastCouplingFailed contains agentCouplingFailed then
         logger.debug(s"Coupling failed: $problem")
         Task.unit
-      } else {
+      else
         lastCouplingFailed = Some(agentCouplingFailed)
-        if agentCouplingFailed.problem is InvalidSessionTokenProblem then {
+        if agentCouplingFailed.problem is InvalidSessionTokenProblem then
           logger.debug(s"Coupling failed: $problem")
           Task.unit
-        } else {
+        else
           logger.warn(s"Coupling failed: $problem")
           for t <- problem.throwableOption if AkkaHttpClient.hasRelevantStackTrace(t) do
             logger.debug(s"Coupling failed: $problem", t)
           Task.unless(noJournal)(
             journal.persistKeyedEvent(agentPath <-: agentCouplingFailed)
               .map(_.orThrow))
-        }
-      }
     } *>
       Task(!isTerminating)
 
   private def onCoupled(attachedOrderIds: Set[OrderId]): Task[Unit] =
-    Task.defer {
+    Task.defer:
       assertThat(attachedOrderIds != null)
       onCoupled(attachedOrderIds)
       sessionNumber += 1
@@ -134,7 +130,6 @@ extends Service.StoppableByRequest
         .*>(commandQueue.onCoupled(attachedOrderIds))
         .<*(attachAttachables)
         .as(Completed)
-    }
 
   // TODO For v2.6 inserted, but maybe duplicate
   private def attachAttachables: Task[Unit] =
@@ -157,23 +152,22 @@ extends Service.StoppableByRequest
       .*>(commandQueue.maybeStartSending))
 
   private def onDecoupled =
-    Task.defer {
+    Task.defer:
       sessionNumber += 1
       commandQueue.onDecoupled()
-    }
 
   private val commandQueue: CommandQueue = new CommandQueue(
     agentPath,
     batchSize = conf.commandBatchSize,
     conf.commandErrorDelay
-  ) {
+  ):
     protected def commandParallelism = conf.commandParallelism
 
     protected def executeCommand(command: AgentCommand.Batch) =
       executeCommandDirectly(command)
 
     protected def asyncOnBatchSucceeded(queueableResponses: Seq[QueueableResponse]) =
-      Task.defer {
+      Task.defer:
         lastCouplingFailed = None
         handleBatchSucceeded(queueableResponses)
           .flatMap { succeededInputs =>
@@ -193,7 +187,6 @@ extends Service.StoppableByRequest
                 }
               })
           }
-      }
 
     protected def asyncOnBatchFailed(queueables: Vector[Queueable], problem: Problem) =
       onBatchFailed(queueables, problem) *>
@@ -201,17 +194,14 @@ extends Service.StoppableByRequest
           startAndForgetDirectorDriver)
 
     private def onBatchFailed(queueables: Seq[Queueable], problem: Problem): Task[Unit] =
-      Task.defer {
+      Task.defer:
         val msg = s"Command batch ${queueables.map(_.getClass.simpleScalaName)} failed: $problem"
-        problem match {
+        problem match
           case DecoupledProblem | RecouplingStreamReader.TerminatedProblem =>
             logger.debug(msg)
           case _ =>
             logger.warn(msg)
-        }
         commandQueue.handleBatchFailed(queueables)
-      }
-  }
 
   protected def start =
     startService(
@@ -288,10 +278,9 @@ extends Service.StoppableByRequest
     if force then
       resetAgent(None)
     else
-      maybeAgentRunId.flatMap {
+      maybeAgentRunId.flatMap:
         case None => Task.left(AgentNotDedicatedProblem /*Nothing to reset*/)
         case Some(agentRunId) => resetAgent(Some(agentRunId))
-      }
 
   private def resetAgent(agentRunId: Option[AgentRunId]): Task[Checked[Unit]] =
     logger.traceTask(
@@ -299,9 +288,9 @@ extends Service.StoppableByRequest
         .flatMap(_.resetAgentAndStop(agentRunId)) // Stops the directorDriver, too
         .flatTapT(_ => stop.map(Right(_))))
 
-  private def onEventsFetched(stampedEvents: Seq[Stamped[AnyKeyedEvent]]): Task[Unit] = {
+  private def onEventsFetched(stampedEvents: Seq[Stamped[AnyKeyedEvent]]): Task[Unit] =
     assertThat(stampedEvents.nonEmpty)
-    Task.defer {
+    Task.defer:
       commandQueue.onOrdersAttached(
         stampedEvents.view.collect {
           case Stamped(_, _, KeyedEvent(orderId: OrderId, _: OrderAttachedToAgent)) => orderId
@@ -320,8 +309,6 @@ extends Service.StoppableByRequest
         .onErrorHandle(t =>
           logger.error(s"$agentDriver.adoptEvents => " + t.toStringWithCauses, t.nullIfNoStackTrace))
         .logWhenItTakesLonger(s"$agentDriver.adoptEvents")
-    }
-  }
 
   private def releaseAdoptedEvents(adoptedEventId: EventId): Task[Unit] =
     state.lock.lock(Task {
@@ -451,15 +438,13 @@ extends Service.StoppableByRequest
     yield clusterWatchService
 
   private def onClusterStateChanged(hasNodes: HasNodes): Unit =
-    if !clusterState.contains(hasNodes) then {
+    if !clusterState.contains(hasNodes) then
       logger.info(hasNodes.toShortString)
       val activeNodeChanged = clusterState.forall(_.activeId != hasNodes.activeId)
       clusterState = Some(hasNodes)
-      if activeNodeChanged then {
+      if activeNodeChanged then
         startAndForgetDirectorDriver
           .runAsyncAndForget // ???
-      }
-    }
 
   private def onUndecidableClusterNodeLoss(maybeProblem: Option[ClusterNodeLossNotConfirmedProblem])
   : Task[Unit] =
@@ -529,10 +514,8 @@ extends Service.StoppableByRequest
     journal.state.map(_.keyTo(AgentRefState).get(agentPath))
 
   override def toString = s"AgentDriver($agentPath)"
-}
 
-private[controller] object AgentDriver
-{
+private[controller] object AgentDriver:
   def resource(
     agentRef: AgentRef, eventId: EventId,
     adoptEvents: (AgentRunId, Seq[Stamped[AnyKeyedEvent]]) => Task[Option[EventId]],
@@ -548,10 +531,9 @@ private[controller] object AgentDriver
         adoptEvents, onOrderMarked,
         journal, agentDriverConf, controllerConf, actorSystem)))
 
-  sealed trait Queueable {
+  sealed trait Queueable:
     def toShortString = toString
-  }
-  object Queueable {
+  object Queueable:
     final case class AttachUnsignedItem(item: UnsignedItem)
     extends Queueable
 
@@ -562,13 +544,12 @@ private[controller] object AgentDriver
     extends Queueable
 
     final case class AttachOrder(order: Order[Order.IsFreshOrReady], agentPath: AgentPath)
-    extends Queueable {
+    extends Queueable:
       override lazy val hashCode = order.id.hashCode
 
       def orderId = order.id
       override def toShortString =
         s"AttachOrder($orderId, ${order.workflowPosition}, ${order.state.getClass.simpleScalaName})"
-    }
 
     final case class DetachOrder(orderId: OrderId) extends Queueable
 
@@ -577,7 +558,5 @@ private[controller] object AgentDriver
     private[agent] final case class ReleaseEventsQueueable(agentEventId: EventId) extends Queueable
 
     final case class ResetSubagent(subagentId: SubagentId, force: Boolean) extends Queueable
-  }
 
   private[agent] val DecoupledProblem = Problem.pure("Agent is not coupled")
-}

@@ -35,8 +35,7 @@ final class ControllerStateBuilder
 extends SnapshotableStateBuilder[ControllerState]
 with StandardsBuilder
 with EventDrivenStateView[ControllerStateBuilder, Event]
-with OrderWatchStateHandler[ControllerStateBuilder]
-{
+with OrderWatchStateHandler[ControllerStateBuilder]:
   protected val S = ControllerState
   val companion: ControllerStateBuilder.type = ControllerStateBuilder
 
@@ -52,7 +51,7 @@ with OrderWatchStateHandler[ControllerStateBuilder]
   def idToOrder = _idToOrder
 
   lazy val idToWorkflow: PartialFunction[WorkflowId, Workflow] =
-    new PartialFunction[WorkflowId, Workflow] {
+    new PartialFunction[WorkflowId, Workflow]:
       def isDefinedAt(workflowId: WorkflowId) =
         repo.idToSigned(Workflow)(workflowId).isRight
 
@@ -62,7 +61,6 @@ with OrderWatchStateHandler[ControllerStateBuilder]
       override def applyOrElse[K <: WorkflowId, V >: Workflow](workflowId: K, default: K => V): V =
         repo.idToSigned(Workflow)(workflowId)
           .fold(_ => default(workflowId), _.value)
-    }
 
   def workflowPathToId(workflowPath: WorkflowPath) =
     repo.pathToId(workflowPath)
@@ -79,7 +77,7 @@ with OrderWatchStateHandler[ControllerStateBuilder]
 
   def pathToJobResource = keyToItem(JobResource)
 
-  protected def onInitializeState(state: ControllerState): Unit = {
+  protected def onInitializeState(state: ControllerState): Unit =
     _standards = state.standards
     controllerMetaState = state.controllerMetaState
     repo = state.repo
@@ -88,13 +86,12 @@ with OrderWatchStateHandler[ControllerStateBuilder]
     pathToSignedSimpleItem ++= state.pathToSignedSimpleItem
     agentAttachments = state.agentAttachments
     deletionMarkedItems ++= state.deletionMarkedItems
-  }
 
-  protected def onAddSnapshotObject = {
+  protected def onAddSnapshotObject =
     case order: Order[Order.State] =>
       _idToOrder.insert(order.id, order)
 
-      order.state match {
+      order.state match
         case Order.ExpectingNotice(noticeId) =>
           val boardState = workflowPositionToBoardState(order.workflowPosition).orThrow
           _keyToUnsignedItemState(boardState.path) = boardState.addExpectation(noticeId, order.id).orThrow
@@ -113,7 +110,6 @@ with OrderWatchStateHandler[ControllerStateBuilder]
                 .orThrow)
 
         case _ =>
-      }
 
     case event: VersionedEvent =>
       repo = repo.applyEvent(event).orThrow
@@ -122,9 +118,8 @@ with OrderWatchStateHandler[ControllerStateBuilder]
       val (agentRef, maybeSubagentItem) = agentRefState.agentRef.convertFromV2_1.orThrow
 
       _keyToUnsignedItemState.insert(agentRef.path, agentRefState.copy(agentRef = agentRef))
-      for subagentItem <- maybeSubagentItem do {
+      for subagentItem <- maybeSubagentItem do
         _keyToUnsignedItemState.insert(subagentItem.id, SubagentItemState.initial(subagentItem))
-      }
 
     case snapshot: BoardSnapshot =>
       _keyToUnsignedItemState(snapshot.boardPath) =
@@ -161,26 +156,22 @@ with OrderWatchStateHandler[ControllerStateBuilder]
 
     case o @ (_: JournalState | _: ClusterStateSnapshot) =>
       addStandardObject(o)
-  }
 
-  override protected def onOnAllSnapshotsAdded() = {
+  override protected def onOnAllSnapshotsAdded() =
     val (added, deleted) = followUpRecoveredWorkflowsAndOrders(repo.idTo(Workflow), _idToOrder.toMap)
     _idToOrder ++= added
     _idToOrder --= deleted
     ow.finishRecovery.orThrow
-  }
 
-  protected def onAddEvent = {
+  protected def onAddEvent =
     case Stamped(_, _, keyedEvent) => applyEventMutable(keyedEvent)
-  }
 
-  override def applyEvent(keyedEvent: KeyedEvent[Event]) = {
+  override def applyEvent(keyedEvent: KeyedEvent[Event]) =
     applyEventMutable(keyedEvent)
     Right(this)
-  }
 
   private def applyEventMutable(keyedEvent: KeyedEvent[Event]): Unit =
-    keyedEvent match {
+    keyedEvent match
       case KeyedEvent(_: NoKey, ControllerEvent.ControllerInitialized(controllerId, startedAt)) =>
         controllerMetaState = controllerMetaState.copy(
           controllerId = controllerId,
@@ -194,28 +185,26 @@ with OrderWatchStateHandler[ControllerStateBuilder]
         repo = repo.applyEvent(event).orThrow
 
       case KeyedEvent(_: NoKey, event: InventoryItemEvent) =>
-        event match {
+        event match
           case event: UnsignedSimpleItemEvent =>
-            event match {
+            event match
               case UnsignedSimpleItemAdded(item) =>
-                item match {
+                item match
                   case addedAgentRef: AgentRef =>
                     val (agentRef, maybeSubagentItem) = addedAgentRef.convertFromV2_1.orThrow
 
                     _keyToUnsignedItemState.insert(agentRef.path, agentRef.toInitialItemState)
-                    for subagentItem <- maybeSubagentItem do {
+                    for subagentItem <- maybeSubagentItem do
                       _keyToUnsignedItemState.insert(subagentItem.id, SubagentItemState.initial(subagentItem))
-                    }
 
                   case orderWatch: OrderWatch =>
                     ow.addOrderWatch(orderWatch.toInitialItemState).orThrow
 
                   case item: UnsignedSimpleItem =>
                     _keyToUnsignedItemState.insert(item.path, item.toInitialItemState)
-                }
 
               case UnsignedSimpleItemChanged(item) =>
-                item match {
+                item match
                   case lock: Lock =>
                     _keyToUnsignedItemState(lock.path) = keyTo(LockState)(lock.path).copy(
                       lock = lock)
@@ -226,8 +215,8 @@ with OrderWatchStateHandler[ControllerStateBuilder]
                     _keyToUnsignedItemState(agentRef.path) = keyTo(AgentRefState)(agentRef.path).copy(
                       agentRef = agentRef)
 
-                    for subagentItem <- maybeSubagentItem do {
-                      _keyToUnsignedItemState.updateWith(subagentItem.id) {
+                    for subagentItem <- maybeSubagentItem do
+                      _keyToUnsignedItemState.updateWith(subagentItem.id):
                         case None =>
                           Some(SubagentItemState.initial(subagentItem))
 
@@ -236,8 +225,6 @@ with OrderWatchStateHandler[ControllerStateBuilder]
                             subagentItem = previous.item.updateUri(subagentItem.uri)))
 
                         case _ => sys.error("No SubagentItemState")
-                      }
-                    }
 
                   case selection: SubagentSelection =>
                     _keyToUnsignedItemState(selection.id) = SubagentSelectionState(selection)
@@ -265,33 +252,28 @@ with OrderWatchStateHandler[ControllerStateBuilder]
                   case item: WorkflowPathControl =>
                     _keyToUnsignedItemState(item.path) = keyTo(WorkflowPathControl)(item.path)
                       .updateItem(item).orThrow
-                }
-            }
 
           case UnsignedItemAdded(item: VersionedControl) =>
             _keyToUnsignedItemState.insert(item.key, item.toInitialItemState)
 
           case UnsignedItemChanged(item: VersionedControl) =>
-            item match {
+            item match
               case item: WorkflowControl =>
                 _keyToUnsignedItemState(item.key) = keyTo(WorkflowControl)(item.key)
                   .updateItem(item).orThrow
-            }
 
           case event: SignedItemEvent =>
-            event match {
+            event match
               case event: SignedItemAdded =>
                 onSignedItemAdded(event)
 
               case SignedItemChanged(Signed(item, signedString)) =>
-                item match {
+                item match
                   case jobResource: JobResource =>
                     pathToSignedSimpleItem.update(jobResource.path, Signed(jobResource, signedString))
-                }
-            }
 
           case event: BasicItemEvent.ForClient =>
-            event match {
+            event match
               case event: ItemAttachedStateEvent =>
                 agentAttachments = agentAttachments.applyEvent(event).orThrow
 
@@ -302,7 +284,7 @@ with OrderWatchStateHandler[ControllerStateBuilder]
                 deletionMarkedItems -= event.key
                 agentAttachments = agentAttachments.applyItemDeleted(event)
 
-                event.key match {
+                event.key match
                   case WorkflowId.as(workflowId) =>
                     repo = repo.deleteItem(workflowId).orThrow
 
@@ -314,21 +296,17 @@ with OrderWatchStateHandler[ControllerStateBuilder]
 
                   case itemKey: UnsignedItemKey =>
                     _keyToUnsignedItemState -= itemKey
-                }
-            }
-        }
 
       case KeyedEvent(path: AgentPath, event: AgentRefStateEvent) =>
         _keyToUnsignedItemState.update(path, keyTo(AgentRefState)(path).applyEvent(event).orThrow)
 
       case KeyedEvent(id: SubagentId, event: SubagentItemStateEvent) =>
-        event match {
+        event match
           case SubagentShutdown if !_keyToUnsignedItemState.contains(id) =>
             // May arrive when SubagentItem has been deleted
 
           case _ =>
           _keyToUnsignedItemState.update(id, keyTo(SubagentItemState)(id).applyEvent(event).orThrow)
-        }
 
       case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
         super.applyOrderEvent(orderId, event).orThrow
@@ -337,15 +315,13 @@ with OrderWatchStateHandler[ControllerStateBuilder]
         ow.onOrderWatchEvent(orderWatchPath <-: event).orThrow
 
       case KeyedEvent(boardPath: BoardPath, NoticePosted(notice)) =>
-        for boardState <- keyTo(BoardState).get(boardPath) do {
+        for boardState <- keyTo(BoardState).get(boardPath) do
           _keyToUnsignedItemState(boardState.path) =
             boardState.addNotice(notice.toNotice(boardState.path)).orThrow
-        }
 
       case KeyedEvent(boardPath: BoardPath, NoticeDeleted(noticeId)) =>
-        for boardState <- keyTo(BoardState).get(boardPath) do {
+        for boardState <- keyTo(BoardState).get(boardPath) do
           _keyToUnsignedItemState(boardState.path) = boardState.removeNotice(noticeId).orThrow
-        }
 
       case KeyedEvent(_, _: ControllerShutDown) =>
       case KeyedEvent(_, ControllerTestEvent) =>
@@ -359,27 +335,22 @@ with OrderWatchStateHandler[ControllerStateBuilder]
           clusterState = _standards.clusterState.applyEvent(event).orThrow)
 
       case _ => eventNotApplicable(keyedEvent).orThrow
-    }
 
-  override protected def addOrder(order: Order[Order.State]) = {
+  override protected def addOrder(order: Order[Order.State]) =
     _idToOrder.insert(order.id, order)
     ow.onOrderAdded(order).orThrow
     Right(this)
-  }
 
-  override protected def deleteOrder(order: Order[Order.State]) = {
-    for order <- _idToOrder.remove(order.id) do {
+  override protected def deleteOrder(order: Order[Order.State]) =
+    for order <- _idToOrder.remove(order.id) do
       for externalOrderKey <- order.externalOrderKey do
         ow.onOrderDeleted(externalOrderKey, order.id).orThrow
-    }
     Right(this)
-  }
 
   private def onSignedItemAdded(added: SignedItemEvent.SignedItemAdded): Unit =
-    added.signed.value match {
+    added.signed.value match
       case jobResource: JobResource =>
         pathToSignedSimpleItem.insert(jobResource.path, Signed(jobResource, added.signedString))
-    }
 
   protected def pathToOrderWatchState = keyTo(OrderWatchState)
 
@@ -393,13 +364,12 @@ with OrderWatchStateHandler[ControllerStateBuilder]
     removeOrders: Iterable[OrderId],
     addItemStates: Iterable[UnsignedSimpleItemState],
     removeItemStates: Iterable[UnsignedSimpleItemPath])
-  : Checked[ControllerStateBuilder] = {
+  : Checked[ControllerStateBuilder] =
     _idToOrder --= removeOrders
     _idToOrder ++= addOrders.map(o => o.id -> o)
     _keyToUnsignedItemState --= removeItemStates
     _keyToUnsignedItemState ++= addItemStates.map(o => o.path -> o)
     Right(this)
-  }
 
   def result() =
     ControllerState(
@@ -413,6 +383,5 @@ with OrderWatchStateHandler[ControllerStateBuilder]
       deletionMarkedItems.toSet,
       _idToOrder.toMap
     ).finish
-}
 
 object ControllerStateBuilder extends EventDrivenState.Companion[ControllerStateBuilder, Event]

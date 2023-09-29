@@ -9,9 +9,8 @@ import monix.execution.Scheduler.Implicits.traced
 /** For testing only.
   * @author Joacim Zschimmer
   */
-object EmptyAgentMain
-{
-  def main(args: Array[String]): Unit = {
+object EmptyAgentMain:
+  def main(args: Array[String]): Unit =
     TestAgentDirectoryProvider.provideAgentDirectory { directory =>
       val conf = AgentConfiguration.forTest(
         configAndData = directory,
@@ -21,5 +20,3 @@ object EmptyAgentMain
         agent.untilTerminated.awaitInfinite
       }
     }
-  }
-}

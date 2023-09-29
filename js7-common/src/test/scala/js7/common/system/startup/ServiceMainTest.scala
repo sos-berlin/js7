@@ -10,27 +10,24 @@ import js7.common.configuration.{BasicConfiguration, Js7Configuration}
 import js7.common.system.startup.ServiceMainTest.*
 import monix.eval.Task
 
-final class ServiceMainTest extends OurTestSuite {
+final class ServiceMainTest extends OurTestSuite:
 
-  "Normal run" in {
+  "Normal run" in:
     val conf = TestConf(Js7Configuration.defaultConfig)
     val returnCode = ServiceMain.returnCodeMain(Array.empty, "TEST", _ => conf)(
       (_, _) => TestService.resource)
     assert(returnCode == ReturnCode(0))
-  }
 
-  "MainServiceTerminationException" in {
+  "MainServiceTerminationException" in:
     val conf = TestConf(Js7Configuration.defaultConfig)
     val returnCode = ServiceMain.returnCodeMain(Array.empty, "TEST", _ => conf)(
       (_, _) => TerminatingService.resource)
     assert(returnCode == ReturnCode(Js7ReturnCodes.Restart))
-  }
-}
 
-object ServiceMainTest {
+object ServiceMainTest:
   private case class TestConf(config: Config) extends BasicConfiguration
 
-  private class TestService extends MainService with StoppableByRequest {
+  private class TestService extends MainService with StoppableByRequest:
     protected type Termination = ProgramTermination
 
     protected def start =
@@ -38,14 +35,12 @@ object ServiceMainTest {
 
     def untilTerminated =
       Task.pure(ProgramTermination())
-  }
-  private object TestService {
+  private object TestService:
     val resource = Service.resource(Task(new TestService))
-  }
 
   private val termination = ProgramTermination(restart = true)
 
-  private class TerminatingService extends MainService with StoppableByRequest {
+  private class TerminatingService extends MainService with StoppableByRequest:
     protected type Termination = ProgramTermination
 
     protected def start =
@@ -56,8 +51,5 @@ object ServiceMainTest {
 
     def untilTerminated =
       Task.pure(ProgramTermination())
-  }
-  private object TerminatingService {
+  private object TerminatingService:
     val resource = Service.resource(Task(new TerminatingService))
-  }
-}

@@ -18,8 +18,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import scala.collection.MapView
 
 /** Provide some Scopes for an Order in any state. */
-trait OrderScopes
-{
+trait OrderScopes:
   protected val order: Order[Order.State]
   protected val workflow: Workflow
   protected val controllerId: ControllerId
@@ -47,19 +46,15 @@ trait OrderScopes
   /** For `Order[Order.State]`. */
   final lazy val pureOrderScope =
     OrderVariablesScope(order, workflow) |+| variablelessOrderScope
-}
 
-object OrderScopes
-{
+object OrderScopes:
   def apply(order: Order[Order.State], workflow: Workflow, controllerId: ControllerId)
-  : OrderScopes = {
+  : OrderScopes =
     val (o, w, id) = (order, workflow, controllerId)
-    new OrderScopes {
+    new OrderScopes:
       protected val order = o
       protected val workflow = w
       protected val controllerId = id
-    }
-  }
 
   /** For calculating Workflow.orderVariables. */
   def workflowOrderVariablesScope(
@@ -67,7 +62,7 @@ object OrderScopes
     controllerId: ControllerId,
     pathToJobResource: PartialFunction[JobResourcePath, JobResource],
     nowScope: Scope)
-  : Scope = {
+  : Scope =
     val nestedScope = combine(
       scheduledScope(freshOrder.scheduledFor),
       minimalJs7VariablesScope(freshOrder.id, freshOrder.workflowPath, controllerId),
@@ -77,7 +72,6 @@ object OrderScopes
       nestedScope,
       NamedValueScope(freshOrder.arguments),
       JobResourceScope(pathToJobResource, useScope = nestedScope))
-  }
 
   def minimalJs7VariablesScope(
     orderId: OrderId,
@@ -90,11 +84,9 @@ object OrderScopes
 
   def scheduledScope(scheduledFor: Option[Timestamp]) =
     TimestampScope("scheduledOrEmpty", scheduledFor)
-}
 
 /** Provide more Scopes for an `Order[Order.Processed]`. */
-trait ProcessingOrderScopes extends OrderScopes
-{
+trait ProcessingOrderScopes extends OrderScopes:
   protected val order: Order[Order.Processing]
   protected val jobKey: JobKey
   protected val workflowJob: WorkflowJob
@@ -104,10 +96,9 @@ trait ProcessingOrderScopes extends OrderScopes
   protected[scopes] lazy val nowScope = new NowScope()
 
   final lazy val simpleJobName: String =
-    jobKey match {
+    jobKey match
       case JobKey.Named(_, name) => name.string
       case jobKey => jobKey.name
-    }
 
   /** Number of the execution for this job (starts with 1). */
   final lazy val jobExecutionCount: Int =
@@ -146,11 +137,10 @@ trait ProcessingOrderScopes extends OrderScopes
     evalLazilyExpressions(expressionMap.view)(scopeForExecuteDefaultArguments)
 
   /** For WorkflowJob defaultArguments. */
-  private lazy val scopeJobDefaultArguments = {
+  private lazy val scopeJobDefaultArguments =
     scopeForExecuteDefaultArguments
     // Joacim thinks, without Order variable, it was more predictable for the user:
     // js7JobVariablesScope |+| variablelessOrderScope |+| jobResourceScope
-  }
 
   protected[scopes] final def evalLazilyJobDefaultArguments(
     expressionMap: MapView[String, Expression])
@@ -160,4 +150,3 @@ trait ProcessingOrderScopes extends OrderScopes
   final def evalLazilyJobResourceVariables(jobResource: JobResource)
   : MapView[String, Checked[Value]] =
     evalLazilyExpressions(jobResource.variables.view)(scopeForJobResources)
-}

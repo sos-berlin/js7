@@ -5,18 +5,14 @@ import js7.base.circeutils.CirceUtils.*
 import js7.data.value.ValuePrinter.quoteString
 import js7.data.value.expression.Precedence
 
-sealed trait BoardPathExpression extends Precedence
-{
+sealed trait BoardPathExpression extends Precedence:
   def eval(isNoticeAvailable: BoardPath => Boolean): Boolean
 
   def boardPaths: Set[BoardPath]
-}
 
-object BoardPathExpression
-{
+object BoardPathExpression:
   final case class ExpectNotice(boardPath: BoardPath)
-  extends BoardPathExpression
-  {
+  extends BoardPathExpression:
     def precedence = Precedence.Factor
 
     val boardPaths = Set(boardPath)
@@ -25,10 +21,9 @@ object BoardPathExpression
       isNoticeAvailable(boardPath)
 
     override def toString = quoteString(boardPath.string)
-  }
 
   final case class And(a: BoardPathExpression, b: BoardPathExpression)
-  extends BoardPathExpression {
+  extends BoardPathExpression:
     def precedence = Precedence.And
 
     val boardPaths = a.boardPaths ++ b.boardPaths
@@ -37,10 +32,9 @@ object BoardPathExpression
       a.eval(isNoticeAvailable) && b.eval(isNoticeAvailable)
 
     override def toString = makeString(a, "&&", b)
-  }
 
   final case class Or(a: BoardPathExpression, b: BoardPathExpression)
-  extends BoardPathExpression {
+  extends BoardPathExpression:
     def precedence = Precedence.Or
 
     val boardPaths = a.boardPaths ++ b.boardPaths
@@ -49,7 +43,6 @@ object BoardPathExpression
       a.eval(isNoticeAvailable) || b.eval(isNoticeAvailable)
 
     override def toString = makeString(a, "||", b)
-  }
 
   implicit val jsonEncoder: Encoder[BoardPathExpression] =
     o => Json.fromString(o.toString)
@@ -59,4 +52,3 @@ object BoardPathExpression
       expr <- c.as[String]
       expr <- BoardPathExpressionParser.parse(expr).toDecoderResult(c.history)
     yield expr
-}

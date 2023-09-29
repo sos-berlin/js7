@@ -9,8 +9,7 @@ import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.OrderWatchState.ToOrderAdded
 import scala.collection.{MapView, View}
 
-trait OrderWatchStateHandler[Self]
-{
+trait OrderWatchStateHandler[Self]:
   self: Self =>
 
   protected def pathToOrderWatchState: MapView[OrderWatchPath, OrderWatchState]
@@ -24,7 +23,7 @@ trait OrderWatchStateHandler[Self]
     updateOrderWatchStates(orderWatchState :: Nil)
 
   /** OrderWatchStateHandler. */
-  object ow {
+  object ow:
     def addOrderWatch(orderWatchState: OrderWatchState): Checked[Self] =
       pathToOrderWatchState.checkNoDuplicate(orderWatchState.item.key)
         .flatMap(_ => updateOrderWatchState(orderWatchState))
@@ -48,27 +47,24 @@ trait OrderWatchStateHandler[Self]
           updated))
 
     def onOrderAdded(order: Order[Order.State]): Checked[Self] =
-      order.externalOrderKey match {
+      order.externalOrderKey match
         case None => Right(self)
         case Some(externalOrderKey) => onOrderAdded(externalOrderKey, order.id)
-      }
 
-    private def onOrderAdded(externalOrderKey: ExternalOrderKey, orderId: OrderId): Checked[Self] = {
+    private def onOrderAdded(externalOrderKey: ExternalOrderKey, orderId: OrderId): Checked[Self] =
       import externalOrderKey.orderWatchPath
       pathToOrderWatchState
         .checked(orderWatchPath)
         .flatMap(_.onOrderAdded(externalOrderKey.name, orderId))
         .flatMap(watchState => updateOrderWatchState(
           watchState))
-    }
 
-    def onOrderDeleted(externalOrderKey: ExternalOrderKey, orderId: OrderId): Checked[Self] = {
+    def onOrderDeleted(externalOrderKey: ExternalOrderKey, orderId: OrderId): Checked[Self] =
       import externalOrderKey.{name, orderWatchPath}
       pathToOrderWatchState.checked(orderWatchPath)
         .flatMap(_.onOrderDeleted(name, orderId))
         .flatMap(o => updateOrderWatchState(
           o))
-    }
 
     def nextEvents(toOrderAdded: ToOrderAdded, isDeletionMarkable: OrderId => Boolean)
     : View[KeyedEvent[OrderEvent.OrderCoreEvent]] =
@@ -87,5 +83,3 @@ trait OrderWatchStateHandler[Self]
         .toVector
         .traverse(_.finishRecovery)
         .flatMap(updateOrderWatchStates(_))
-  }
-}

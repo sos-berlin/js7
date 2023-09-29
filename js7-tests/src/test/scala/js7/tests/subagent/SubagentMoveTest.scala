@@ -17,8 +17,7 @@ import js7.tests.subagent.SubagentTester.agentPath
 import monix.execution.Scheduler
 import monix.reactive.Observable
 
-final class SubagentMoveTest extends OurTestSuite with SubagentTester
-{
+final class SubagentMoveTest extends OurTestSuite with SubagentTester:
   protected val agentPaths = Seq(agentPath)
   protected lazy val items = Seq(workflow, bareSubagentItem)
   override protected val primarySubagentsDisabled = true
@@ -28,18 +27,17 @@ final class SubagentMoveTest extends OurTestSuite with SubagentTester
   private lazy val bare1SubagentItem =
     bareSubagentItem.copy(uri = findFreeLocalUri())
 
-  "Restart Subagent at another URI" in {
+  "Restart Subagent at another URI" in:
     runSubagent(bareSubagentItem, awaitDedicated = false) { bareSubagent =>
       val aOrderId = OrderId("A-MOVE-SUBAGENT")
       var eventId = eventWatch.lastAddedEventId
-      locally {
+      locally:
         controller.api.addOrder(FreshOrder(aOrderId, workflow.path)).await(99.s).orThrow
         val processingStarted = eventWatch
           .await[OrderProcessingStarted](_.key == aOrderId, after = eventId).head.value.event
         assert(processingStarted == OrderProcessingStarted(bareSubagentItem.id))
         eventWatch.await[OrderStdoutWritten](_.key == aOrderId, after = eventId)
         // aOrderId is waiting for semaphore
-      }
 
       eventId = eventWatch.lastAddedEventId
       //val agentEventId = myAgent.eventWatch.lastAddedEventId
@@ -65,7 +63,7 @@ final class SubagentMoveTest extends OurTestSuite with SubagentTester
 
         eventWatch.await[OrderFinished](_.key == aOrderId, after = eventId)
 
-        locally {
+        locally:
           // Start another order
           val bOrderId = OrderId("B-MOVE-SUBAGENT")
           TestSemaphoreJob.continue(1)
@@ -81,16 +79,12 @@ final class SubagentMoveTest extends OurTestSuite with SubagentTester
             .head.value.event
           assert(bProcessed == OrderProcessed(Outcome.succeeded))
           eventWatch.await[OrderFinished](_.key == bOrderId, after = eventId)
-        }
       }
 
       bareSubagent.shutdown(Some(SIGKILL), dontWaitForDirector = true).await(99.s)
     }
-  }
-}
 
-object SubagentMoveTest
-{
+object SubagentMoveTest:
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",
     Seq(
@@ -98,4 +92,3 @@ object SubagentMoveTest
 
   final class TestSemaphoreJob extends SemaphoreJob(TestSemaphoreJob)
   object TestSemaphoreJob extends SemaphoreJob.Companion[TestSemaphoreJob]
-}

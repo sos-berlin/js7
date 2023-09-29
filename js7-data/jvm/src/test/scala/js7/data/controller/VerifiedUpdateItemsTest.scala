@@ -21,8 +21,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 
-final class VerifiedUpdateItemsTest extends OurTestSuite
-{
+final class VerifiedUpdateItemsTest extends OurTestSuite:
   private lazy val (signer, signatureVerifier) = X509Signer.forTest
   private lazy val itemVerifier = new SignedItemVerifier(signatureVerifier, signableItemJsonCodec)
   private lazy val itemSigner = new ItemSigner[SignableItem](signer, signableItemJsonCodec)
@@ -34,21 +33,19 @@ final class VerifiedUpdateItemsTest extends OurTestSuite
   private val user = SimpleUser(UserId("PROVIDER")).copy(grantedPermissions = Set(ValidUserPermission, UpdateItemPermission))
   private def noVerifier(signedString: SignedString): Checked[Verified[SignableItem]] = Left(Problem("NO VERIFIER"))
 
-  "UpdateItemPermission is required" in {
+  "UpdateItemPermission is required" in:
     val user = SimpleUser(UserId("TESTER"), grantedPermissions = Set(ValidUserPermission))
     assert(VerifiedUpdateItems.fromOperations(Observable.empty, noVerifier, user).await(99.s) ==
       Left(UserDoesNotHavePermissionProblem(user.id, UpdateItemPermission)))
-  }
 
-  "Simple items only" in {
+  "Simple items only" in:
     // TODO Test SignableSimpleItem
     VerifiedUpdateItems.fromOperations(Observable(AddOrChangeSimple(lock), DeleteSimple(LockPath("DELETE"))), noVerifier, user).await(99.s) ==
       Right(VerifiedUpdateItems(
         VerifiedUpdateItems.Simple(Seq(lock), Nil, delete = Nil),
         maybeVersioned = None))
-  }
 
-  "Verification" in {
+  "Verification" in:
     val operations = Observable(
       AddOrChangeSimple(lock),
       DeleteSimple(LockPath("DELETE")),
@@ -65,27 +62,24 @@ final class VerifiedUpdateItemsTest extends OurTestSuite
               .orThrow
               .asInstanceOf[Verified[VersionedItem]]),
           Seq(WorkflowPath("DELETE")))))))
-  }
 
-  "Verification failed" in {
+  "Verification failed" in:
     val wrongSignature = itemSigner.toSignedString(workflow2).signature
     val operations = Observable(
       AddVersion(v1),
       AddOrChangeSigned(itemSigner.toSignedString(workflow1).copy(signature = wrongSignature)))
     assert(VerifiedUpdateItems.fromOperations(operations, itemVerifier.verify, user).await(99.s) ==
       Left(TamperedWithSignedMessageProblem))
-  }
 
-  "Duplicate SimpleItems are rejected" in {
+  "Duplicate SimpleItems are rejected" in:
     assert(
       VerifiedUpdateItems.fromOperations(Observable(AddOrChangeSimple(lock), AddOrChangeSimple(lock)), noVerifier, user).await(99.s) ==
         Left(Problem("Unexpected duplicates: 2×Lock:LOCK-1")))
     assert(
       VerifiedUpdateItems.fromOperations(Observable(AddOrChangeSimple(lock), DeleteSimple(lock.path)), noVerifier, user).await(99.s) ==
         Left(Problem("Unexpected duplicates: 2×Lock:LOCK-1")))
-  }
 
-  "Duplicate VersionedItems are rejected" in {
+  "Duplicate VersionedItems are rejected" in:
     assert(
       VerifiedUpdateItems.fromOperations(
         Observable(
@@ -107,9 +101,8 @@ final class VerifiedUpdateItemsTest extends OurTestSuite
         user
       ).await(99.s) ==
         Left(Problem("Unexpected duplicates: 2×Workflow:WORKFLOW-A")))
-  }
 
-  "Duplicate AddVersion is rejected" in {
+  "Duplicate AddVersion is rejected" in:
     assert(
       VerifiedUpdateItems.fromOperations(
         Observable(AddVersion(v1), AddVersion(v1)), itemVerifier.verify, user).await(99.s) ==
@@ -119,5 +112,3 @@ final class VerifiedUpdateItemsTest extends OurTestSuite
       VerifiedUpdateItems.fromOperations(
         Observable(AddVersion(v1), AddVersion(v2)), itemVerifier.verify, user).await(99.s) ==
         Left(Problem("Duplicate AddVersion")))
-  }
-}

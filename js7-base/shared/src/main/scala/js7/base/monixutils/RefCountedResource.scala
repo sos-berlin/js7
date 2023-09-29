@@ -6,8 +6,7 @@ import js7.base.utils.AsyncLock
 import monix.eval.Task
 
 final class RefCountedResource[A: Tag](base: Resource[Task, A])
-  (implicit enclosing: sourcecode.Enclosing)
-{
+  (implicit enclosing: sourcecode.Enclosing):
   private val lock = AsyncLock(s"${enclosing.value}:RefCountedResource[${implicitly[Tag[A]].tag}]")
   @volatile private var maybeCached: Option[Cached] = None
 
@@ -69,8 +68,6 @@ final class RefCountedResource[A: Tag](base: Resource[Task, A])
   def cachedValue: Option[A] =
     maybeCached.map(_.a)
 
-  private class Cached(val a: A, val release: Task[Unit]) {
+  private class Cached(val a: A, val release: Task[Unit]):
     @volatile var refCount = 1
     @volatile var releaseOnZero = false
-  }
-}

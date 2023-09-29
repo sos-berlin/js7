@@ -16,14 +16,13 @@ import scala.concurrent.duration.*
 /**
   * @author Joacim Zschimmer
   */
-final class IncreasingNumberSyncTest extends OurTestSuite
-{
-  "test" in {
+final class IncreasingNumberSyncTest extends OurTestSuite:
+  "test" in:
     implicit val scheduler = TestScheduler()
 
     val sync = new IncreasingNumberSync(initial = 0L, _.toString)
     var waitingCount = 0
-    for (aEventId, bEventId, cEventId) <- List((1L, 2L, 3L), (4L, 5L, 6L), (7L, 8L, 9L)) do {
+    for (aEventId, bEventId, cEventId) <- List((1L, 2L, 3L), (4L, 5L, 6L), (7L, 8L, 9L)) do
       val a = sync.whenAvailable(aEventId, until = None).runToFuture
       val b = sync.whenAvailable(bEventId, until = None).runToFuture
       val c = sync.whenAvailable(cEventId, until = None).runToFuture
@@ -49,15 +48,13 @@ final class IncreasingNumberSyncTest extends OurTestSuite
 
       assert(sync.waitingCount == 1)  // The last whenAvailable has not yet completed (in each test loop iteration)
       waitingCount = sync.waitingCount
-    }
-  }
 
-  "timeout" in {
+  "timeout" in:
     implicit val scheduler = TestScheduler()
     val tick = 1.s
     val sync = new IncreasingNumberSync(initial = 0L, _.toString)
-    for eventId <- 1L to 3L do {
-      withClue(s"#$eventId") {
+    for eventId <- 1L to 3L do
+      withClue(s"#$eventId"):
         val a = sync.whenAvailable(eventId - 1, until = Some(now + 2*tick), delay = 2*tick).runToFuture
         val b = sync.whenAvailable(eventId - 1, until = Some(now + 100*tick), delay = 2*tick).runToFuture
         assert(a ne b)
@@ -83,17 +80,14 @@ final class IncreasingNumberSyncTest extends OurTestSuite
         assert(b.successValue)    // true: Event arrived
 
         assert(sync.waitingCount == 0)
-      }
-    }
-  }
 
-  if sys.props.contains("test.speed") then "speed" in {
+  if sys.props.contains("test.speed") then "speed" in:
     import Scheduler.Implicits.global
 
     val sync = new IncreasingNumberSync(initial = 0L, _.toString)
     val n = 10000
     val eventIdGenerator = Iterator.from(1).map(_.toLong)
-    for _ <- 1 to 10 do {
+    for _ <- 1 to 10 do
       val stopwatch = new Stopwatch
       val eventIds = for _ <- 1 to n yield eventIdGenerator.next()
       val futures: Seq[Future[Boolean]] = for eventId <- eventIds yield
@@ -104,10 +98,6 @@ final class IncreasingNumberSyncTest extends OurTestSuite
       assert(result forall identity)
       logger.info(stopwatch.itemsPerSecondString(n, "events"))
       assert(sync.waitingCount == 0)
-    }
-  }
-}
 
-object IncreasingNumberSyncTest {
+object IncreasingNumberSyncTest:
   private val logger = Logger[this.type]
-}

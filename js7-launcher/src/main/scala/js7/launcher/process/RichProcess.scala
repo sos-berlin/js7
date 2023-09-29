@@ -26,8 +26,7 @@ import scala.util.control.NonFatal
 class RichProcess protected[process](
   val processConfiguration: ProcessConfiguration,
   process: Js7Process)
-  (implicit iox: IOExecutor)
-{
+  (implicit iox: IOExecutor):
   private val runningSince = now
   val pidOption: Option[Pid] = process.pid
   @volatile private var _isKilling = false
@@ -36,10 +35,9 @@ class RichProcess protected[process](
   protected final def isKilling = _isKilling
 
   protected def onSigkill(): Unit =
-    if process.isAlive then {
+    if process.isAlive then
       logger.debug("destroyForcibly")
       process.destroyForcibly()
-    }
 
   private val _terminated: Task[ReturnCode] =
     Task.defer {
@@ -55,7 +53,7 @@ class RichProcess protected[process](
     _terminated
 
   final def sendProcessSignal(signal: ProcessSignal): Task[Unit] =
-    Task.defer {
+    Task.defer:
       if signal != SIGKILL && !isWindows then
         destroy(force = false)
       else
@@ -78,7 +76,6 @@ class RichProcess protected[process](
           // Let destroyForcibly try to close the handles (implementation dependent)
           onSigkill()
         })
-    }
 
   private def executeKillScript(args: Seq[String]): Task[Unit] =
     ifAlive("executeKillScript")(
@@ -110,7 +107,7 @@ class RichProcess protected[process](
     destroy(force = true)
 
   private def destroy(force: Boolean): Task[Unit] =
-    (process, pidOption) match {
+    (process, pidOption) match
       case (_: JavaProcess, Some(pid)) =>
         // Do not destroy with Java because Java closes stdout and stdin immediately,
         // not allowing a signal handler to write to stdout
@@ -118,35 +115,30 @@ class RichProcess protected[process](
 
       case _ =>
         Task { destroyWithJava(force) }
-    }
 
   private def destroyWithUnixCommand(pid: Pid, force: Boolean): Task[Unit] =
-    ifAlive("destroyWithUnixCommand") {
+    ifAlive("destroyWithUnixCommand"):
       val argsPattern =
         if isWindows then processConfiguration.killForWindows
         else if force then processConfiguration.killWithSigkill
         else processConfiguration.killWithSigterm
       if argsPattern.isEmpty then
         Task(destroyWithJava(force))
-      else if !argsPattern.contains("$pid") then {
+      else if !argsPattern.contains("$pid") then
         logger.error("Missing '$pid' in configured kill command")
         Task(destroyWithJava(force))
-      } else {
-        val args = argsPattern.map {
+      else
+        val args = argsPattern.map:
           case "$pid" => pid.number.toString
           case o => o
-        }
         executeKillCommand(args)
           .flatMap { rc =>
             if rc.isSuccess then
               Task.unit
-            else Task {
+            else Task:
               logger.warn(s"Could not kill with system command: ${args.mkString(" ")} => $rc")
               destroyWithJava(force)
-            }
           }
-      }
-    }
 
   private def ifAlive(label: String)(body: Task[Unit]): Task[Unit] =
     Task.defer(
@@ -156,7 +148,7 @@ class RichProcess protected[process](
         body)
 
   private def executeKillCommand(args: Seq[String]): Task[ReturnCode] =
-    Task.defer {
+    Task.defer:
       logger.info(args.mkString(" "))
 
       val processBuilder = new ProcessBuilder(args.asJava)
@@ -171,16 +163,14 @@ class RichProcess protected[process](
             waitForProcessTermination(JavaProcess(killProcess))
             ReturnCode(killProcess.exitValue)
           }))
-    }
 
   private def destroyWithJava(force: Boolean): Unit =
-    if force then {
+    if force then
       logger.debug("destroyForcibly")
       process.destroyForcibly()
-    } else {
+    else
       logger.debug("destroy (SIGTERM)")
       process.destroy()
-    }
 
   @TestOnly
   private[process] final def isAlive = process.isAlive
@@ -190,36 +180,29 @@ class RichProcess protected[process](
 
   override def toString =
     process.toString
-}
 
-object RichProcess
-{
+object RichProcess:
   private val logger = Logger[this.type]
 
   def createStdFiles(directory: Path, id: String): Map[StdoutOrStderr, Path] =
     (StdoutOrStderr.values map { o => o -> newLogFile(directory, id, o) }).toMap
 
-  private def waitForProcessTermination(process: Js7Process): ReturnCode = {
+  private def waitForProcessTermination(process: Js7Process): ReturnCode =
     logger.trace(s"waitFor $process ...")
     val rc = process.waitFor()
     logger.trace(s"waitFor $process exitCode=$rc")
     rc
-  }
 
   def tryDeleteFile(file: Path) = tryDeleteFiles(file :: Nil)
 
-  def tryDeleteFiles(files: Iterable[Path]): Boolean = {
+  def tryDeleteFiles(files: Iterable[Path]): Boolean =
     var allFilesDeleted = true
-    for file <- files do {
-      try {
+    for file <- files do
+      try
         logger.debug(s"Delete file '$file'")
         delete(file)
-      }
       catch { case NonFatal(t) =>
         allFilesDeleted = false
         logger.warn(s"Cannot delete file '$file': ${t.toStringWithCauses}")
       }
-    }
     allFilesDeleted
-  }
-}

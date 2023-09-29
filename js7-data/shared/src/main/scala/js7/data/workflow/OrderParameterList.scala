@@ -26,8 +26,7 @@ import scala.collection.{MapView, View}
 
 final case class OrderParameterList(
   nameToParameter: Map[String, OrderParameter],
-  allowUndeclared: Boolean)
-{
+  allowUndeclared: Boolean):
   def referencedJobResourcePaths: View[JobResourcePath] =
     nameToParameter.values.view.flatMap(_.referencedJobResourcePaths)
 
@@ -61,7 +60,7 @@ final case class OrderParameterList(
     controllerId: ControllerId,
     pathToJobResource: PartialFunction[JobResourcePath, JobResource],
     nowScope: Scope)
-  : Checked[NamedValues] = {
+  : Checked[NamedValues] =
     val nestedScope = combine(
       scheduledScope(freshOrder.scheduledFor),
       minimalJs7VariablesScope(freshOrder.id, freshOrder.workflowPath, controllerId),
@@ -74,10 +73,8 @@ final case class OrderParameterList(
         NamedValueScope(freshOrder.arguments),
         JobResourceScope(pathToJobResource, useScope = nestedScope))
     )
-  }
 
   private def prepareOrderArguments2(arguments: NamedValues, scope: Scope): Checked[NamedValues] =
-  {
     lazy val recursiveScope: Scope = combine(
       scope,
       NameToCheckedValueScope(evalLazilyExpressions(nameToExpression)(
@@ -118,10 +115,9 @@ final case class OrderParameterList(
       .map(_._2)
       .pipeIf(allowUndeclared)(_.map(arguments.view ++ _))
       .map(_.toMap)
-  }
 
   private def checkType(v: Value, typ: ValueType, prefix: => String): Checked[Unit] =
-    (v, typ) match {
+    (v, typ) match
       case (_, AnyValue) => Checked.unit
 
       case (v: ListValue, typ: ListType) =>
@@ -136,7 +132,7 @@ final case class OrderParameterList(
         val missingNames = typ.nameToType.keySet -- v.nameToValue.keySet
         if missingNames.nonEmpty then
           Left(MissingObjectFieldsProblem(prefix, missingNames))
-        else {
+        else
           val undeclaredNames = v.nameToValue.keySet -- typ.nameToType.keySet
           if undeclaredNames.nonEmpty then
             Left(UndeclaredObjectFieldsProblem(prefix, undeclaredNames))
@@ -145,14 +141,12 @@ final case class OrderParameterList(
               .toVector
               .traverse { case (k, v) => checkType(v, typ.nameToType(k), s"$prefix.$k") }
               .rightAs(())
-        }
 
       case _ =>
         if v.valueType != typ then
           Left(WrongValueTypeProblem(prefix, v.valueType, typ))
         else
           Checked.unit
-    }
 
   /** Add missing default and final values defined in OrderParameterList. */
   def addDefaults(arguments: Map[String, Value]): MapView[String, Value] =
@@ -166,13 +160,10 @@ final case class OrderParameterList(
 
   private[workflow] lazy val nameToExpression: MapView[String, Expression] =
     nameToParameter.view
-      .collectValues {
+      .collectValues:
         case OrderParameter.HasExpression(expr) => expr
-      }
-}
 
-object OrderParameterList
-{
+object OrderParameterList:
   val default = new OrderParameterList(Map.empty, allowUndeclared = true)
 
   def apply(parameters: OrderParameter*): OrderParameterList =
@@ -247,44 +238,37 @@ object OrderParameterList
       })
 
   final case class MissingOrderArgumentProblem(parameter: OrderParameter.Required)
-  extends Problem.Coded {
+  extends Problem.Coded:
     def arguments = Map(
       "name" -> parameter.name,
       "type" -> parameter.valueType.name)
-  }
 
-  final case class UndeclaredOrderArgumentProblem(name: String) extends Problem.Coded {
+  final case class UndeclaredOrderArgumentProblem(name: String) extends Problem.Coded:
     def arguments = Map(
       "name" -> name)
-  }
 
   final case class WrongValueTypeProblem(
     name: String,
     argumentType: ValueType,
     expectedType: ValueType)
-  extends Problem.Coded {
+  extends Problem.Coded:
     def arguments = Map(
       "name" -> name,
       "type" -> argumentType.name,
       "expectedType" -> expectedType.name)
-  }
 
   final case class FinalOrderArgumentProblem(name: String)
-  extends Problem.Coded {
+  extends Problem.Coded:
     def arguments = Map("name" -> name)
-  }
 
   final case class MissingObjectFieldsProblem(path: String, name: Iterable[String])
-  extends Problem.Coded {
+  extends Problem.Coded:
     def arguments = Map(
       "path" -> path,
       "names" -> name.mkString(", "))
-  }
 
   final case class UndeclaredObjectFieldsProblem(path: String, name: Iterable[String])
-  extends Problem.Coded {
+  extends Problem.Coded:
     def arguments = Map(
       "path" -> path,
       "names" -> name.mkString(", "))
-  }
-}

@@ -21,9 +21,8 @@ import scala.concurrent.duration.*
 /**
  * @author Joacim Zschimmer
  */
-final class AgentConfigurationTest extends OurTestSuite
-{
-  "Shortest argument list" in {
+final class AgentConfigurationTest extends OurTestSuite:
+  "Shortest argument list" in:
     provideConfigAndData { (configDir, dataDir) =>
       val agentConf = AgentConfiguration.fromCommandLine(CommandLineArguments(Seq(
         s"--config-directory=$configDir",
@@ -52,42 +51,32 @@ final class AgentConfigurationTest extends OurTestSuite
           name = AgentConfiguration.DefaultName)
       })
     }
-  }
 
-  "--http-port=" in {
+  "--http-port=" in:
     // For more tests see CommonConfigurationTest
     intercept[IllegalArgumentException] { dummyDirectoriesConf("--http-port=65536") }
     assert(dummyDirectoriesConf("--http-port=1234").webServerPorts == WebServerPort.Http(new InetSocketAddress("0.0.0.0", 1234)) :: Nil)
-  }
 
-  "--https-port=" in {
+  "--https-port=" in:
     // For more tests see CommonConfigurationTest
     assert(dummyDirectoriesConf("--https-port=1234").webServerPorts == WebServerPort.Https(new InetSocketAddress("0.0.0.0", 1234)) :: Nil)
-  }
 
-  "System property" in {
+  "System property" in:
     assert(dummyDirectoriesConf().config.getString("user.name") == sys.props("user.name"))
-  }
 
   private def dummyDirectoriesConf(args: String*) =
     conf((List("--config-directory=CONFIG", "--data-directory=DATA") ++ args)*)
 
-  private def conf(args: String*) = {
+  private def conf(args: String*) =
     AgentConfiguration.fromCommandLine(
       CommandLineArguments(args.toVector),
       config"user.name = AgentConfigurationTest"/*Will be overridden*/)
-  }
-}
 
-object AgentConfigurationTest
-{
-  private def provideConfigAndData(body: (Path, Path) => Unit): Unit = {
+object AgentConfigurationTest:
+  private def provideConfigAndData(body: (Path, Path) => Unit): Unit =
     val config = createTempDirectory("AgentConfigurationTest-config")
     val data = createTempDirectory("AgentConfigurationTest-data")
     try body(config, data)
-    finally {
+    finally
       deleteDirectoryRecursively(config)
       deleteDirectoryRecursively(data)
-    }
-  }
-}

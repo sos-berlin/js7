@@ -85,8 +85,7 @@ final class DirectoryProvider(
   useDirectory: Option[Path] = None,
   doNotAddItems: Boolean = false,
   scheduler: Option[Scheduler] = None)
-extends HasCloser
-{
+extends HasCloser:
   private lazy val controllerPort_ = controllerPort
 
   val directory = useDirectory.getOrElse(
@@ -132,7 +131,7 @@ extends HasCloser
 
   private val itemsHaveBeenAdded = AtomicBoolean(false)
 
-  closeOnError(this) {
+  closeOnError(this):
     agentEnvs foreach prepareAgentFiles
 
     items
@@ -144,7 +143,6 @@ extends HasCloser
           agentPath,
           SecretString(s"$agentPath-PASSWORD")/*FIXME Duplicate in DirectorEnv*/)
       }
-  }
 
   val itemSigner = new ItemSigner(signer, signableItemJsonCodec)
 
@@ -178,12 +176,11 @@ extends HasCloser
     testControllerResource(httpPort = httpPort, config = config)
       .blockingUse(99.s) { testController =>
         val result =
-          try {
-            if !dontWaitUntilReady then {
+          try
+            if !dontWaitUntilReady then
               testController.waitUntilReady()
-            }
             body(testController)
-          } catch { case NonFatal(t) =>
+          catch { case NonFatal(t) =>
             // Akka may crash before the caller gets the error so we log the error here
             logger.error(s"💥💥💥 ${t.toStringWithCauses}", t.nullIfNoStackTrace)
             try testController.terminate() await 99.s
@@ -232,7 +229,7 @@ extends HasCloser
     config: Config = ConfigFactory.empty,
     httpPort: Option[Int] = Some(controllerPort_),
     httpsPort: Option[Int] = None)
-  : Resource[Task, RunningController] = {
+  : Resource[Task, RunningController] =
     val conf = ControllerConfiguration.forTest(
       configAndData = controllerEnv.directory,
       config.withFallback(controllerConfig),
@@ -240,14 +237,14 @@ extends HasCloser
       httpsPort = httpsPort,
       name = controllerName)
 
-    def startForTest(runningController: RunningController): Unit = {
-      if !doNotAddItems && !isBackup && (agentRefs.nonEmpty || items.nonEmpty) then {
-        if !itemsHaveBeenAdded.getAndSet(true) then {
+    def startForTest(runningController: RunningController): Unit =
+      if !doNotAddItems && !isBackup && (agentRefs.nonEmpty || items.nonEmpty) then
+        if !itemsHaveBeenAdded.getAndSet(true) then
           runningController.waitUntilReady()
           runningController.updateUnsignedSimpleItemsAsSystemUser(agentRefs ++ subagentItems)
             .await(99.s).orThrow
 
-          if items.nonEmpty then {
+          if items.nonEmpty then
             val versionedItems = items.collect { case o: VersionedItem => o }.map(_ withVersion Vinitial)
             val signableItems = versionedItems ++ items.collect { case o: SignableSimpleItem => o }
             runningController
@@ -258,14 +255,9 @@ extends HasCloser
                     .map(itemSigner.toSignedString)
                     .map(ItemOperation.AddOrChangeSigned.apply))
               .await(99.s).orThrow
-          }
-        }
-      }
-      for t <- runningController.terminated.failed do {
+      for t <- runningController.terminated.failed do
         logger.error(s"💥💥💥 ${t.toStringWithCauses}", t.nullIfNoStackTrace)
         logger.debug(t.toStringWithCauses, t)
-      }
-    }
 
     CorrelId.bindNew(
       RunningController.threadPoolResource[Task](conf, orCommon = scheduler)
@@ -275,12 +267,11 @@ extends HasCloser
             .evalTap(runningController => Task {
               startForTest(runningController)
             })))
-  }
 
   def runAgents[A](
     agentPaths: Seq[AgentPath] = DirectoryProvider.this.agentPaths)(
     body: Vector[TestAgent] => A)
-  : A = {
+  : A =
     val agents = agentEnvs
       .filter(o => agentPaths.contains(o.agentPath))
       .map(_.agentConf)
@@ -299,7 +290,6 @@ extends HasCloser
 
     agents.traverse(_.terminate()) await 99.s
     result
-  }
 
   def startAgents(testWiring: RunningAgent.TestWiring = RunningAgent.TestWiring.empty)
   : Task[Seq[TestAgent]] =
@@ -339,10 +329,9 @@ extends HasCloser
 
   private def controllerName = testName.fold(ControllerConfiguration.DefaultName)(_ + "-Controller")
 
-  def prepareAgentFiles(env: DirectorEnv): Unit = {
+  def prepareAgentFiles(env: DirectorEnv): Unit =
     //env.createDirectoriesAndFiles()
     controllerEnv.writeAgentAuthentication(env)
-  }
 
   def directorEnvResource(
     subagentItem: SubagentItem,
@@ -422,10 +411,8 @@ extends HasCloser
 
   def subagentName(subagentId: SubagentId, suffix: String = ""): String =
     testName.fold("")(_ + "-") + subagentId.string + suffix
-}
 
-object DirectoryProvider
-{
+object DirectoryProvider:
   private val Vinitial = VersionId("INITIAL")
   private val logger = Logger[this.type]
 
@@ -517,4 +504,3 @@ object DirectoryProvider
           admissions.traverse(AkkaHttpControllerApi.resource(_, httpsConfig)),
           config.withFallback(Js7Configuration.defaultConfig),
           onUndecidableClusterNodeLoss = onUndecidableClusterNodeLoss))
-}

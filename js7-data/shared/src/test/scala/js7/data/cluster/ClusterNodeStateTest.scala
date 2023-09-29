@@ -8,9 +8,8 @@ import js7.tester.CirceJsonTester.testJson
 /**
   * @author Joacim Zschimmer
   */
-final class ClusterNodeStateTest extends OurTestSuite
-{
-  "JSON" in {
+final class ClusterNodeStateTest extends OurTestSuite:
+  "JSON" in:
     testJson[ClusterNodeState](
       ClusterNodeState(NodeId("MY-NODE"), true, ClusterState.Empty),
       json"""{
@@ -20,5 +19,3 @@ final class ClusterNodeStateTest extends OurTestSuite
           "TYPE": "Empty"
         }
       }""")
-  }
-}

@@ -13,9 +13,8 @@ import scala.util.control.NonFatal
 /**
   * @author Joacim Zschimmer
   */
-private class DeadLetterActor(output: (LogLevel, () => String) => Unit) extends Actor
-{
-  def receive = {
+private class DeadLetterActor(output: (LogLevel, () => String) => Unit) extends Actor:
+  def receive =
     case DeadLetter(_: DeadLetterSuppression, _, _) =>
     case UnhandledMessage(_: DeadLetterSuppression, _, _) =>
 
@@ -28,25 +27,20 @@ private class DeadLetterActor(output: (LogLevel, () => String) => Unit) extends 
       callOutput(messageToLogLevel(o.message),
         s"UnhandledMessage from ${o.sender.path.pretty} to ${o.recipient.path.pretty}: " +
           s"${o.message.getClass.scalaName} ${o.message.toString.truncateWithEllipsis(1000, showLength = true)}")
-  }
 
   private def callOutput(logLevel: LogLevel, string: => String) =
     try output(logLevel, () => string)
-    catch {
+    catch
       case NonFatal(t) => logger.warn(t.toString)
       case t: OutOfMemoryError => logger.error(t.toString, t)
-    }
-}
 
-object DeadLetterActor
-{
+object DeadLetterActor:
   private val logger = Logger[this.type]
 
-  def subscribe(actorSystem: ActorSystem, output: (LogLevel, () => String) => Unit = logDeadLetter): Unit = {
+  def subscribe(actorSystem: ActorSystem, output: (LogLevel, () => String) => Unit = logDeadLetter): Unit =
     val actor = actorSystem.actorOf(props(output), "DeadLetter")
     actorSystem.eventStream.subscribe(actor, classOf[DeadLetter])
     actorSystem.eventStream.subscribe(actor, classOf[UnhandledMessage])
-  }
 
   private def props(output: (LogLevel, () => String) => Unit) =
     Props { new DeadLetterActor(output) }
@@ -55,9 +49,7 @@ object DeadLetterActor
     logger.log(logLevel, ((logLevel < LogLevel.Info) ?? "❓") + message())
 
   private def messageToLogLevel(message: Any): LogLevel =
-    message match {
+    message match
       case _: akka.io.Tcp.Write => Debug
       case ReceiveTimeout => Debug
       case _ => Warn
-    }
-}

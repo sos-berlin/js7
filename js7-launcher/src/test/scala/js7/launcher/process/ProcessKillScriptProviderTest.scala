@@ -16,40 +16,34 @@ import org.scalatest.BeforeAndAfterAll
   *
   * @author Joacim Zschimmer
   */
-final class ProcessKillScriptProviderTest extends OurTestSuite with BeforeAndAfterAll {
+final class ProcessKillScriptProviderTest extends OurTestSuite with BeforeAndAfterAll:
 
   private lazy val tmp = createTempDirectory("test-")
   private val expectedFile = tmp / s"kill_task$ShellFileExtension"
 
-  override def afterAll() = {
+  override def afterAll() =
     deleteDirectoryRecursively(tmp)
     super.afterAll()
-  }
 
-  "Do nothing" in {
+  "Do nothing" in:
     val provider = new ProcessKillScriptProvider
     provider.close()
-  }
 
-  "Provide script and delete it later" in {
+  "Provide script and delete it later" in:
     val provider = new ProcessKillScriptProvider
     deleteIfExists(expectedFile)
     val killScript = provider.provideTo(tmp)
     assert(killScript.file == expectedFile)
     assert(size(expectedFile) > 0)
-    if isUnix then {
+    if isUnix then
       assert(Files.readAttributes(expectedFile, classOf[PosixFileAttributes]).permissions contains OWNER_EXECUTE)
-    }
     provider.close()
     assert(!exists(expectedFile))
-  }
 
-  "Existing file is overwritten" in {
+  "Existing file is overwritten" in:
     touchFile(expectedFile)
     val provider = new ProcessKillScriptProvider
     provider.provideTo(tmp)
     assert(exists(expectedFile))
     provider.close()
     assert(!exists(expectedFile))
-  }
-}

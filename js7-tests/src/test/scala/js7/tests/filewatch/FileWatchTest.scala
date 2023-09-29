@@ -44,8 +44,7 @@ import monix.reactive.Observable
 import scala.concurrent.TimeoutException
 
 final class FileWatchTest
-extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
-{
+extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater:
   protected val agentPaths = Seq(aAgentPath, bAgentPath)
   protected val items = Nil // No Workflow, because we add Workflow and FileWatch in same operation
 
@@ -80,27 +79,24 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
     aAgentPath,
     StringConstant(waitingWatchDirectory.toString))
 
-  override def beforeAll(): Unit = {
+  override def beforeAll(): Unit =
     super.beforeAll()
 
-    locally {
+    locally:
       // Create FileWatch and test with an already waiting Order
       createDirectory(watchDirectory)
       createDirectory(waitingWatchDirectory)
       updateItems(workflow, waitingWorkflow, fileWatch, waitingFileWatch)
       eventWatch.await[ItemAttached](_.event.key == fileWatch.path)
       eventWatch.await[ItemAttached](_.event.key == waitingFileWatch.path)
-    }
-  }
 
   private def watchedFileToOrderId(filename: String): OrderId =
     FileWatchManager.relativePathToOrderId(waitingFileWatch, filename).get.orThrow
 
-  "referencedItemPaths" in {
+  "referencedItemPaths" in:
     assert(fileWatch.referencedItemPaths.toSet == Set(aAgentPath, workflow.path))
-  }
 
-  "Start with existing file; check Workflow's Order declarations" in {
+  "Start with existing file; check Workflow's Order declarations" in:
     // Create FileWatch and test with an already waiting Order
     val myDirectory = Paths.get(watchPrefix + "existing")
     val file = myDirectory / "1"
@@ -127,17 +123,15 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
     eventWatch.await[OrderDeleted](_.key == orderId)
 
     controller.api.updateItems(Observable(DeleteSimple(myFileWatch.path))).await(99.s).orThrow
-  }
 
-  "Add a file" in {
+  "Add a file" in:
     val file = watchDirectory / "2"
     val orderId = fileToOrderId("2")
     file := ""
     eventWatch.await[OrderDeleted](_.key == orderId)
     assert(!exists(file))
-  }
 
-  "Add many files, forcing an overflow" in {
+  "Add many files, forcing an overflow" in:
     val since = now
     val filenames = (1 to 1).map(_.toString).toVector
     val orderIds = filenames.map(fileToOrderId).toSet
@@ -149,16 +143,14 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
       .dropWhile(_.nonEmpty)
       .headL
       .runToFuture
-    for files <- filenames.grouped(100) do {
+    for files <- filenames.grouped(100) do
       for f <- files do watchDirectory / f := ""
       sleep(10.ms)
-    }
     whenAllRemoved.await(99.s)
     assert(watchDirectory.directoryContents.isEmpty)
     logger.info(itemsPerSecondString(since.elapsed, filenames.size, "files"))
-  }
 
-  "DeleteOrdersWhenTerminated is rejected" in {
+  "DeleteOrdersWhenTerminated is rejected" in:
     val file = waitingWatchDirectory / "REMOVE"
     val orderId = watchedFileToOrderId("REMOVE")
     file := ""
@@ -169,17 +161,15 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
 
     TestJob.continue()
     eventWatch.await[OrderFinished](_.key == orderId)
-    intercept[TimeoutException] {
+    intercept[TimeoutException]:
       eventWatch.await[OrderDeleted](_.key == orderId, timeout = 100.ms)
-    }
 
     delete(file)
     val vanished = eventWatch.await[ExternalOrderVanished](_.key == waitingFileWatch.path).head
     val removed = eventWatch.await[OrderDeleted](_.key == orderId).head
     assert(vanished.timestamp <= removed.timestamp)
-  }
 
-  "CancelOrder does not delete the order until the file has vanished" in {
+  "CancelOrder does not delete the order until the file has vanished" in:
     val file = waitingWatchDirectory / "CANCEL"
     val orderId = watchedFileToOrderId("CANCEL")
     file := ""
@@ -190,9 +180,8 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
 
     TestJob.continue()
     eventWatch.await[OrderFinished](_.key == orderId)
-    intercept[TimeoutException] {
+    intercept[TimeoutException]:
       eventWatch.await[OrderDeleted](_.key == orderId, timeout = 100.ms)
-    }
 
     assert(controller.api.executeCommand(DeleteOrdersWhenTerminated(orderId :: Nil)).await(99.s) ==
       Left(CannotDeleteWatchingOrderProblem(orderId)))
@@ -201,18 +190,17 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
     val vanished = eventWatch.await[ExternalOrderVanished](_.key == waitingFileWatch.path).head
     val removed = eventWatch.await[OrderDeleted](_.key == orderId).head
     assert(vanished.timestamp <= removed.timestamp)
-  }
 
   private var itemRevision = ItemRevision(0)
 
-  "Change FileWatch while an order is running" in {
+  "Change FileWatch while an order is running" in:
     TestJob.reset()
     val longFile = waitingWatchDirectory / "AGAIN-LONG"
     val longOrderId = watchedFileToOrderId("AGAIN-LONG")
     longFile := ""
     TestJob.continue()
 
-    for i <- 1 to 2 do withClue(s"#$i") {
+    for i <- 1 to 2 do withClue(s"#$i"):
       itemRevision = itemRevision.next
       val eventId = eventWatch.lastAddedEventId
       val changedFileWatch = waitingFileWatch.copy(delay = i.ms/*little change*/)
@@ -234,19 +222,16 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
       val vanished = eventWatch.await[ExternalOrderVanished](_.key == waitingFileWatch.path).head
       val removed = eventWatch.await[OrderDeleted](_.key == iOrderId).head
       assert(vanished.timestamp <= removed.timestamp)
-    }
 
     eventWatch.await[OrderFinished](_.key == longOrderId)
-    intercept[TimeoutException] {
+    intercept[TimeoutException]:
       eventWatch.await[OrderDeleted](_.key == longOrderId, timeout = 100.ms)
-    }
     delete(longFile)
     val vanished = eventWatch.await[ExternalOrderVanished](_.key == waitingFileWatch.path).head
     val removed = eventWatch.await[OrderDeleted](_.key == longOrderId).head
     assert(vanished.timestamp <= removed.timestamp)
-  }
 
-  "Change directory" in {
+  "Change directory" in:
     TestJob.reset()
     TestJob.continue(5)
 
@@ -326,9 +311,8 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
     val eventId = eventWatch.lastAddedEventId
     controller.api.updateUnsignedSimpleItems(Seq(waitingFileWatch)).await(99.s).orThrow
     eventWatch.await[ItemAttached](_.event.key == waitingFileWatch.path, after = eventId)
-  }
 
-  "Change Agent" in {
+  "Change Agent" in:
     val eventId = eventWatch.lastAddedEventId
     val changedFileWatch = fileWatch.copy(agentPath = bAgentPath)
     controller.api.updateUnsignedSimpleItems(Seq(changedFileWatch)).await(99.s).orThrow
@@ -340,17 +324,15 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
         NoKey <-: ItemDetached(fileWatch.path, aAgentPath),
         NoKey <-: ItemAttachable(fileWatch.path, bAgentPath),
         NoKey <-: ItemAttached(fileWatch.path, Some(ItemRevision(1)), bAgentPath)))
-  }
 
-  "Deleting the Workflow referenced by the FileWatch is rejected" in {
+  "Deleting the Workflow referenced by the FileWatch is rejected" in:
     assert(controller.api.updateItems(Observable(
       AddVersion(VersionId("TRY-DELETE")),
       RemoveVersioned(workflow.path)
     )).await(99.s) ==
       Left(ItemIsStillReferencedProblem(workflow.path, fileWatch.path)))
-  }
 
-  "Delete a FileWatch" in {
+  "Delete a FileWatch" in:
     val eventId = eventWatch.lastAddedEventId
     assert(controller.api.updateItems(Observable(
       DeleteSimple(fileWatch.path),
@@ -366,11 +348,8 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
       NoKey <-: ItemDeleted(fileWatch.path)))
     waitForCondition(10.s, 10.ms)(controllerState.keyTo(OrderWatchState).isEmpty)
     assert(controllerState.keyTo(OrderWatchState).isEmpty)
-  }
-}
 
-object FileWatchTest
-{
+object FileWatchTest:
   private val logger = Logger[this.type]
   private val aAgentPath = AgentPath("AGENT-A")
   private val bAgentPath = AgentPath("AGENT-B")
@@ -389,4 +368,3 @@ object FileWatchTest
 
   private class TestJob extends SemaphoreJob(TestJob)
   private object TestJob extends SemaphoreJob.Companion[TestJob]
-}

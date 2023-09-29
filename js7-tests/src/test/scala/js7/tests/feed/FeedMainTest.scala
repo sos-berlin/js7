@@ -15,19 +15,16 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 
-final class FeedMainTest extends OurTestSuite with ControllerAgentForScalaTest
-{
+final class FeedMainTest extends OurTestSuite with ControllerAgentForScalaTest:
   override protected def controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     """
   protected def agentPaths = Nil
   protected def items = Nil
 
-  "test" in {
+  "test" in:
     val ops = Vector[Any](AddOrChangeSimple(Lock(LockPath("TEST"))))
     implicit val opJsonCodec = Feed.opJsonCodec
     val in = Resource.eval(Task.pure(ByteArray(ops.asJson.compactPrint).toInputStream))
     FeedMain.run(Array(s"--controller=${controller.localUri}", "--user=TEST-USER:TEST-PASSWORD"), in)
       .await(99.s).orThrow
-  }
-}

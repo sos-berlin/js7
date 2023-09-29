@@ -6,17 +6,14 @@ import java.nio.file.Path
 /**
   * @author Joacim Zschimmer
   */
-trait SeekableInputStream extends InputStream
-{
+trait SeekableInputStream extends InputStream:
   def seek(position: Long): Unit
-}
 
-object SeekableInputStream {
+object SeekableInputStream:
   def openFile(file: Path): SeekableInputStream =
     new FileSeekableInputStream(new RandomAccessFile(file.toFile, "r"), file)
 
-  private class FileSeekableInputStream(randomAccess: RandomAccessFile, file: Path) extends SeekableInputStream
-  {
+  private class FileSeekableInputStream(randomAccess: RandomAccessFile, file: Path) extends SeekableInputStream:
     override def close() = randomAccess.close()
 
     def read() =
@@ -29,5 +26,3 @@ object SeekableInputStream {
       randomAccess.seek(position)
 
     override def toString = file.toString
-  }
-}

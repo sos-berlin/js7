@@ -10,8 +10,7 @@ import js7.data.event.{Event, EventRequest}
  *
  * @author Joacim Zschimmer
  */
-final class AgentUris private(agentUri: Uri)
-{
+final class AgentUris private(agentUri: Uri):
   private val prefixedUri = Uri(s"$agentUri/agent")
 
   val overview = toUri("api")
@@ -33,11 +32,8 @@ final class AgentUris private(agentUri: Uri)
     prefixedUri / uri
 
   override def toString = agentUri.toString
-}
 
-object AgentUris
-{
+object AgentUris:
   def apply(uri: Uri) = new AgentUris(Uri(uri.string stripSuffix "/"))
 
   private def stripLeadingSlash(o: String) = o stripPrefix "/"
-}

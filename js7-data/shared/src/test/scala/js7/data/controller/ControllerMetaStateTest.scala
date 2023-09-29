@@ -8,9 +8,8 @@ import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 /**
   * @author Joacim Zschimmer
   */
-final class ControllerMetaStateTest extends OurTestSuite
-{
-  "ControllerMetaState" in {
+final class ControllerMetaStateTest extends OurTestSuite:
+  "ControllerMetaState" in:
     implicit val x = ControllerState.snapshotObjectJsonCodec
     testJson[Any](ControllerMetaState(
       ControllerId("CONTROLLER-ID"),
@@ -34,5 +33,3 @@ final class ControllerMetaStateTest extends OurTestSuite
         "startedAt": 1558699200000,
         "timezone": "Europe/Berlin"
       }""")
-  }
-}

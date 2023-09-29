@@ -9,8 +9,7 @@ import js7.data_for_java.common.JJsonable
 import scala.jdk.OptionConverters.*
 
 final case class JSubagentItemState(asScala: SubagentItemState)
-extends JJsonable[JSubagentItemState]
-{
+extends JJsonable[JSubagentItemState]:
   type AsScala = SubagentItemState
   protected def companion = JSubagentItemState
 
@@ -29,10 +28,8 @@ extends JJsonable[JSubagentItemState]
   @Nonnull
   def problem: Optional[Problem] =
     asScala.problem.toJava
-}
 
-object JSubagentItemState extends JJsonable.Companion[JSubagentItemState]
-{
+object JSubagentItemState extends JJsonable.Companion[JSubagentItemState]:
   type AsScala = SubagentItemState
 
   @Nonnull
@@ -41,4 +38,3 @@ object JSubagentItemState extends JJsonable.Companion[JSubagentItemState]
 
   protected def jsonEncoder = SubagentItemState.jsonEncoder
   protected def jsonDecoder = SubagentItemState.jsonDecoder
-}

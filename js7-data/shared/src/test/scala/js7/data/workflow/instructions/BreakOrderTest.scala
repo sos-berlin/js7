@@ -7,14 +7,11 @@ import js7.data.workflow.Instruction
 import js7.data.workflow.instructions.Instructions.jsonCodec
 import js7.tester.CirceJsonTester.testJson
 
-final class BreakOrderTest extends OurTestSuite
-{
-  "JSON" in {
+final class BreakOrderTest extends OurTestSuite:
+  "JSON" in:
     testJson[Instruction.Labeled](
       BreakOrder(sourcePos = Some(SourcePos(1, 2))),
       json"""{
         "TYPE": "BreakOrder",
         "sourcePos": [ 1, 2 ]
       }""")
-  }
-}

@@ -8,8 +8,7 @@ import js7.base.time.JavaTimestamp.dateTimeFormatter
 import org.jetbrains.annotations.TestOnly
 import scala.jdk.CollectionConverters.*
 
-final case class JavaTimestamp private(toEpochMilli: Long) extends Timestamp
-{
+final case class JavaTimestamp private(toEpochMilli: Long) extends Timestamp:
   import JavaTimestamp.specific.*
 
   protected type Self = JavaTimestamp
@@ -22,20 +21,16 @@ final case class JavaTimestamp private(toEpochMilli: Long) extends Timestamp
   def toIsoString = dateTimeFormatter.format(this.toInstant)
 
   def format(format: String, maybeTimezone: Option[String] = None): Checked[String] =
-    catchExpected[Exception] {
+    catchExpected[Exception]:
       val zone = maybeTimezone.fold(ZoneId.systemDefault())(ZoneId.of)
       this.toOffsetDateTime(zone).format(DateTimeFormatter.ofPattern(format))
-    }
 
   def copy(epochMilli: Long) =
     JavaTimestamp.ofEpochMilli(epochMilli)
-}
 
-object JavaTimestamp extends Timestamp.Companion
-{
-  object specific {
-    implicit class RichJavaTimestamp(private val timestamp: Timestamp) extends AnyVal
-    {
+object JavaTimestamp extends Timestamp.Companion:
+  object specific:
+    implicit class RichJavaTimestamp(private val timestamp: Timestamp) extends AnyVal:
       def toInstant: Instant =
         Instant.ofEpochMilli(timestamp.toEpochMilli)
 
@@ -50,8 +45,6 @@ object JavaTimestamp extends Timestamp.Companion
 
       def toJavaUtilDate: java.util.Date =
         new java.util.Date(timestamp.toEpochMilli)
-    }
-  }
 
   val MaxValue = ofEpochMilli(Long.MaxValue)
 
@@ -71,22 +64,18 @@ object JavaTimestamp extends Timestamp.Companion
     ofInstant(Instant.from(dateTimeFormatter parse string))
 
   @TestOnly
-  def local(string: String)(implicit zone: ZoneId): JavaTimestamp = {
+  def local(string: String)(implicit zone: ZoneId): JavaTimestamp =
     val local = LocalDateTime.parse(string)  // throws
     ofZoned(ZonedDateTime.of(local, zone))
-  }
 
   /** Returns None for non-existant local time (due to dayligh saving time). */
-  private def ofLocalExact(zoned: ZonedDateTime): Option[Timestamp] = {
+  private def ofLocalExact(zoned: ZonedDateTime): Option[Timestamp] =
     val local = zoned.toLocalDateTime
     zoned.getZone
-      .match {
+      .match
         case o: ZoneOffset => Some(o)
         case _ => zoned.getZone.getRules.getValidOffsets(local).asScala.headOption
-      }
       .map(offset => Timestamp.ofEpochMilli(local.toInstant(offset).toEpochMilli))
-  }
 
   def ofZoned(zoned: ZonedDateTime): JavaTimestamp =
     ofInstant(zoned.toInstant)
-}

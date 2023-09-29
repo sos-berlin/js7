@@ -6,9 +6,8 @@ import js7.data.item.ItemRevision
 import js7.data.value.expression.ExpressionParser.expr
 import js7.tester.CirceJsonTester.testJson
 
-final class BoardTest extends OurTestSuite
-{
-  "JSON" in {
+final class BoardTest extends OurTestSuite:
+  "JSON" in:
     testJson(
       Board(
         BoardPath("BOARD"),
@@ -27,9 +26,6 @@ final class BoardTest extends OurTestSuite
           "itemRevision": 7
         }"""
     )
-  }
 
-  "BoardPath.itemTypeName" in {
+  "BoardPath.itemTypeName" in:
     assert(BoardPath.itemTypeName == Board.typeName)
-  }
-}

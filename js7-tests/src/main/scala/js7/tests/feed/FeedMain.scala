@@ -8,29 +8,23 @@ import js7.base.thread.Futures.implicits.SuccessFuture
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 
-object FeedMain
-{
-  def main(args: Array[String]): Unit = {
+object FeedMain:
+  def main(args: Array[String]): Unit =
     Logger.initialize()
 
-    if args.isEmpty || args.sameElements(Array("--help")) then {
+    if args.isEmpty || args.sameElements(Array("--help")) then
       println("Usage: testAddOrders --workflow=WORKFLOWPATH --order-count=1 --user=USER:PASSWORD")
-    } else {
+    else
       run(args, Resource.eval(Task.pure(System.in)))
         .runToFuture
         .awaitInfinite
-        match {
+        match
           case Left(problem) =>
             println(problem.toString)
             System.exit(1)
 
           case Right(()) =>
-        }
-    }
-  }
 
-  def run(args: Array[String], in: Resource[Task, InputStream]): Task[Checked[Unit]] = {
+  def run(args: Array[String], in: Resource[Task, InputStream]): Task[Checked[Unit]] =
     val settings = Settings.parseArguments(args.toSeq)
     Feed.run(in, settings)
-  }
-}

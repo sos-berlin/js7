@@ -30,18 +30,16 @@ import scala.util.control.NonFatal
 /**
   * @author Joacim Zschimmer
   */
-object ThreadPools
-{
+object ThreadPools:
   private val logger = Logger[this.type]
 
-  private[system] val ThreadCount = As[String, Int] {
+  private[system] val ThreadCount = As[String, Int]:
     case s if s.last == 'x' => (sys.runtime.availableProcessors * s.dropRight(1).toDouble).ceil.toInt
     case o => o.toInt
-  }
 
   private val uncaughtExceptionReporter: UncaughtExceptionReporter = { throwable =>
     def msg = s"Uncaught exception in thread ${currentThread.threadId} '${currentThread.getName}': ${throwable.toStringWithCauses}"
-    throwable match {
+    throwable match
       case _: akka.stream.StreamTcpException | _: akka.http.scaladsl.model.EntityStreamException =>
         // TODO Not sure how to handle or ignore an unexpectedly closed connection while reading a stream.
         // "Entity stream truncation. The HTTP parser was receiving an entity when the underlying connection was closed unexpectedly."
@@ -62,7 +60,6 @@ object ThreadPools
         logger.error(msg, throwable.nullIfNoStackTrace)
         // Writes to stderr:
         UncaughtExceptionReporter.default.reportFailure(throwable)
-    }
   }
 
   def unlimitedSchedulerResource[F[_]](name: String, config: Config)(implicit F: Sync[F])
@@ -94,12 +91,11 @@ object ThreadPools
     (implicit F: Sync[F])
   : Resource[F, Scheduler] =
     orCommon
-      .match {
+      .match
         case Some(scheduler) =>
           Resource.pure[F, Scheduler](CorrelId.enableScheduler(scheduler))
         case None =>
           standardSchedulerResource(name, config)
-      }
 
   // May require an outer Scheduler (for example, global).
   def standardSchedulerResource[F[_]](name: String, config: Config)
@@ -117,7 +113,7 @@ object ThreadPools
       acquire = scheduler)(
       release = o => F.delay(o.shutdown()))
 
-  def newStandardScheduler(name: String, config: Config, closer: Closer): Scheduler = {
+  def newStandardScheduler(name: String, config: Config, closer: Closer): Scheduler =
     val nr = nextNumber.incrementAndGet()
     val myName = if isTest && nr > 1 then s"$name-#$nr" else name
     val shutdownTimeout = config.getDuration("js7.thread-pools.standard.shutdown-timeout").toFiniteDuration
@@ -132,25 +128,23 @@ object ThreadPools
       reporter = uncaughtExceptionReporter,
       ExecutionModel.Default)
 
-    closer.onClose {
+    closer.onClose:
       shutdownThreadPool(scheduler, myName, shutdownTimeout)
-    }
 
     CorrelId.enableScheduler(scheduler)
-  }
 
   private def shutdownThreadPool(
     scheduler: ExecutorScheduler,
     name: String,
     shutdownTimeout: FiniteDuration)
-  : Unit = {
+  : Unit =
     val prefix = s"Scheduler($name)"
-    logger.debugCall(s"$prefix.shutdown", "") {
+    logger.debugCall(s"$prefix.shutdown", ""):
       scheduler.shutdown()
-      if shutdownTimeout.isPositive then {
+      if shutdownTimeout.isPositive then
         logger.debug(s"$prefix.awaitTermination(${shutdownTimeout.pretty}) ...")
-        if !scheduler.awaitTermination(shutdownTimeout) then {
-          logger.whenDebugEnabled {
+        if !scheduler.awaitTermination(shutdownTimeout) then
+          logger.whenDebugEnabled:
             logger.debug(s"$prefix.awaitTermination(${shutdownTimeout.pretty}) timed out")
             Thread.getAllStackTraces.asScala
               .filter(_._1.getName startsWith name)
@@ -159,13 +153,7 @@ object ThreadPools
                 logger.debug(s"Thread #${thread.threadId} ${thread.getName} ⏎" +
                   stacktrace.map(o => s"\n  $o").mkString)
               }
-          }
-        } else {
+        else
           logger.debug("awaitTermination() finished")
-        }
-      }
-    }
-  }
 
   java8Polyfill()
-}

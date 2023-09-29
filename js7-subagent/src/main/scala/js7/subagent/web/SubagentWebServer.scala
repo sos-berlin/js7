@@ -12,8 +12,7 @@ import js7.subagent.{DirectorRouteVariable, Subagent, SubagentSession}
 import monix.eval.Task
 import monix.execution.Scheduler
 
-object SubagentWebServer
-{
+object SubagentWebServer:
   def resource(
     subagent: Task[Subagent],
     toDirectorRoute: DirectorRouteVariable.ToRoute,
@@ -46,4 +45,3 @@ object SubagentWebServer
 
         override def toString = "Subagent web services"
       })
-}

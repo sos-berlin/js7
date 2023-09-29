@@ -16,9 +16,8 @@ import scala.concurrent.duration.Deadline.now
 import scala.reflect.ClassTag
 
 abstract class SemaphoreJob(companion: SemaphoreJob.Companion[? <: SemaphoreJob])
-extends InternalJob
-{
-  final def toOrderProcess(step: Step) = {
+extends InternalJob:
+  final def toOrderProcess(step: Step) =
     val orderId = step.order.id
     val semaName = s"${getClass.shortClassName}($orderId) semaphore"
     OrderProcess(
@@ -33,16 +32,14 @@ extends InternalJob
           else
             untilAcquired(sema, semaName, count).as(Outcome.succeeded)
       yield outcome)
-  }
 
   protected def onAcquired(step: Step, semaphoreName: String): Task[Outcome.Completed] =
-    Task {
+    Task:
       logger.info(s"⚪️ $semaphoreName acquired")
       Outcome.succeeded
-    }
 
   private def untilAcquired(sema: Semaphore[Task], semaName: String, count: Long): Task[Unit] =
-    Task.defer {
+    Task.defer:
       val since = now
       logger.info(s"🟡 $semaName is locked (count=$count)")
       val durations = Iterator(3.s, 7.s) ++ Iterator.continually(10.s)
@@ -50,7 +47,7 @@ extends InternalJob
         .defer(sema
           .acquire
           .timeoutTo(durations.next(), Task.raiseError(new TimeoutException)))
-        .onErrorRestartLoop(()) {
+        .onErrorRestartLoop(()):
           case (_: TimeoutException, _, retry) =>
             sema.count.flatMap { count =>
               logger.info(
@@ -58,28 +55,23 @@ extends InternalJob
               retry(())
             }
           case (t, _, _) => Task.raiseError(t)
-        }
         .guaranteeCase(exitCase => Task(
           exitCase match {
             case ExitCase.Error(_) => logger.error(s"💥 $semaName $exitCase")
             case ExitCase.Canceled => logger.info(s"⚫️ $semaName $exitCase")
             case ExitCase.Completed => logger.info(s"🟢 $semaName acquired")
           }))
-    }
-}
 
-object SemaphoreJob
-{
+object SemaphoreJob:
   private val logger = Logger[this.type]
 
   abstract class Companion[I <: SemaphoreJob](implicit classTag: ClassTag[I])
-  extends InternalJob.Companion[I]
-  {
+  extends InternalJob.Companion[I]:
     val semaphore = Semaphore[Task](0).memoize
     private val name = classTag.runtimeClass.shortClassName
     val stdoutLine = getClass.simpleScalaName + "\n"
 
-    def reset()(implicit s: Scheduler): Unit = {
+    def reset()(implicit s: Scheduler): Unit =
       logger.debug(s"$name.reset")
       (for
         sema <- semaphore
@@ -90,13 +82,9 @@ object SemaphoreJob
           else Task.pure(sema)
       yield ())
         .runSyncUnsafe()
-    }
 
-    def continue(n: Int = 1)(implicit s: Scheduler): Unit = {
+    def continue(n: Int = 1)(implicit s: Scheduler): Unit =
       logger.debug(s"$name.continue($n)")
       semaphore
         .flatMap(_.releaseN(n))
         .runSyncUnsafe()
-    }
-  }
-}

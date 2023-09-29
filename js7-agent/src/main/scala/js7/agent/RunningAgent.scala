@@ -70,8 +70,7 @@ final class RunningAgent private(
   val actorSystem: ActorSystem,
   val conf: AgentConfiguration)
   (implicit val scheduler: Scheduler)
-extends MainService with Service.StoppableByRequest
-{
+extends MainService with Service.StoppableByRequest:
   protected type Termination = DirectorTermination
 
   lazy val localUri: Uri = getLocalUri()
@@ -133,13 +132,12 @@ extends MainService with Service.StoppableByRequest
       })
 
   private def terminating(body: Task[Unit]): Task[DirectorTermination] =
-    Task.defer {
+    Task.defer:
       Task
         .unless(isTerminating.getAndSet(true))(
           body)
         .*>(untilTerminated)
         .logWhenItTakesLonger
-    }
 
   private[agent] def executeCommandAsSystemUser(command: AgentCommand)
   : Task[Checked[AgentCommand.Response]] =
@@ -153,9 +151,8 @@ extends MainService with Service.StoppableByRequest
     forDirector.systemSessionToken
 
   override def toString = "RunningAgent"
-}
 
-object RunningAgent {
+object RunningAgent:
   private val logger = Logger[this.type]
 
   def resource(
@@ -236,7 +233,7 @@ object RunningAgent {
     testEventBus: StandardEventBus[Any],
     clock: AlarmClock)
     (implicit scheduler: Scheduler)
-  : Resource[Task, RunningAgent] = {
+  : Resource[Task, RunningAgent] =
     import clusterNode.actorSystem
     import conf.config
 
@@ -245,7 +242,7 @@ object RunningAgent {
     def startMainActor(
       failedNodeId: Option[NodeId],
       journalAllocated: Allocated[Task, FileJournal[AgentState]])
-    : MainActorStarted = {
+    : MainActorStarted =
       val failedOverSubagentId: Option[SubagentId] =
         for nodeId <- failedNodeId yield
           journalAllocated.allocatedThing.unsafeCurrentState().meta
@@ -277,7 +274,6 @@ object RunningAgent {
         actor,
         Task.fromFuture(mainActorReadyPromise.future),
         terminationPromise.future)
-    }
 
     val journalDeferred = Deferred.unsafe[Task, FileJournal[AgentState]]
 
@@ -301,11 +297,10 @@ object RunningAgent {
     @deprecated val whenReady = Promise[Unit] // NOT USED ?
 
     val untilReady: Task[MainActor.Ready] =
-      mainActorStarted.flatMap {
+      mainActorStarted.flatMap:
         case Left(_: DirectorTermination) => Task.raiseError(new IllegalStateException(
           "Agent has been terminated"))
         case Right(mainActorStarted) => mainActorStarted.whenReady
-      }
 
     // The AgentOrderKeeper if started
     val currentMainActor: Task[Checked[MainActorStarted]] =
@@ -316,10 +311,9 @@ object RunningAgent {
           if !clusterState.isActive(ownId, isBackup = isBackup) then
             Task.left(ClusterNodeIsNotActiveProblem)
           else
-            mainActorStarted.map {
+            mainActorStarted.map:
               case Left(_) => Left(ShuttingDownProblem)
               case Right(o) => Right(o)
-            }
         }
         .tapError(t => Task {
           logger.debug(s"currentOrderKeeperActor => ${t.toStringWithCauses}", t)
@@ -422,19 +416,16 @@ object RunningAgent {
             forDirector.sessionRegister
           ).agentRoute))
     yield agent
-  }
 
   final case class TestWiring(
     alarmClock: Option[AlarmClock] = None,
     eventIdClock: Option[EventIdClock] = None,
     commandHandler: Option[CommandHandler] = None,
     authenticator: Option[AgentConfiguration => Authenticator[SimpleUser]] = None)
-  object TestWiring {
+  object TestWiring:
     val empty = TestWiring()
-  }
 
   private case class MainActorStarted(
     actor: ActorRef @@ MainActor,
     whenReady: Task[MainActor.Ready],
     termination: Future[DirectorTermination])
-}

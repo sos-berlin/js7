@@ -5,14 +5,13 @@ import js7.base.circeutils.CirceUtils.deriveConfiguredCodec
 
 final case class SuspensionMode(kill: Option[CancellationMode.Kill] = None)
 
-object SuspensionMode
-{
+object SuspensionMode:
   val standard = new SuspensionMode()
   val kill = new SuspensionMode(Some(CancellationMode.Kill()))
   val killImmediately = new SuspensionMode(Some(CancellationMode.Kill(immediately = true)))
 
   def apply(kill: Option[CancellationMode.Kill] = None): SuspensionMode =
-    kill match {
+    kill match
       case None =>
         standard
 
@@ -24,8 +23,6 @@ object SuspensionMode
 
       case Some(_) =>
         new SuspensionMode(kill)
-    }
 
   implicit val jsonCodec: Codec.AsObject[SuspensionMode] =
     deriveConfiguredCodec[SuspensionMode]
-}

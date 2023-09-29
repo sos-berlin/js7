@@ -28,8 +28,7 @@ import scala.language.implicitConversions
 /**
   * @author Joacim Zschimmer
   */
-object StandardMarshallers
-{
+object StandardMarshallers:
   private val Nl = ByteString("\n")
 
   val StringMarshaller: ToEntityMarshaller[String] =
@@ -46,10 +45,9 @@ object StandardMarshallers
     Unmarshaller.strict(A.apply(_))
 
   implicit val durationParamMarshaller: FromStringUnmarshaller[Duration] =
-    Unmarshaller.strict {
+    Unmarshaller.strict:
       case "infinite" => Duration.Inf
       case o => stringToFiniteDuration(o)
-    }
 
   private def stringToFiniteDuration(string: String) =
     (BigDecimal(string) * 1000).toLong.millis
@@ -88,17 +86,14 @@ object StandardMarshallers
     }
 
   implicit def checkedToResponseMarshaller[A: ToResponseMarshaller]: ToResponseMarshaller[Checked[A]] =
-    Marshaller {
+    Marshaller:
       implicit ec => {
         case Right(a) =>
           implicitly[ToResponseMarshaller[A]].apply(a)
         case Left(problem) =>
           problemToResponseMarshaller(problem)
       }
-    }
 
   implicit val unitToResponseMarshaller: ToResponseMarshaller[Unit] =
-    Marshaller {
+    Marshaller:
       _ => _ => Future.successful(List(Marshalling.Opaque(() => HttpResponse(OK))))
-    }
-}

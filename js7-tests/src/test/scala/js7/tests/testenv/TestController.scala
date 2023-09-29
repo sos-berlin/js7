@@ -38,8 +38,7 @@ import monix.reactive.Observable
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
-final class TestController(allocated: Allocated[Task, RunningController], admission: Admission)
-{
+final class TestController(allocated: Allocated[Task, RunningController], admission: Admission):
   val runningController: RunningController =
     allocated.allocatedThing
 
@@ -79,10 +78,9 @@ final class TestController(allocated: Allocated[Task, RunningController], admiss
   def orderApi: OrderApi =
     runningController.orderApi
 
-  def controllerState(): ControllerState = {
+  def controllerState(): ControllerState =
     import runningController.scheduler
     runningController.controllerState.await(99.s)
-  }
 
   def sessionRegister: SessionRegister[SimpleSession] =
     runningController.sessionRegister
@@ -137,12 +135,11 @@ final class TestController(allocated: Allocated[Task, RunningController], admiss
   def updateItemsAsSystemUser(operations: Observable[ItemOperation]): Task[Checked[Completed]] =
     runningController.updateItemsAsSystemUser(operations)
 
-  def addOrderBlocking(order: FreshOrder): Unit = {
+  def addOrderBlocking(order: FreshOrder): Unit =
     import runningController.scheduler
     runningController.addOrder(order).await(99.s).orThrow
-  }
 
-  def runOrder(order: FreshOrder): Seq[Stamped[OrderEvent]] = {
+  def runOrder(order: FreshOrder): Seq[Stamped[OrderEvent]] =
     import runningController.scheduler
     val timeout = 99.s
     logger.debugTask("runOrder", order.id)(Task.defer {
@@ -162,7 +159,6 @@ final class TestController(allocated: Allocated[Task, RunningController], admiss
         .executeOn(scheduler)
         .logWhenItTakesLonger(s"runOrder(${order.id})")
     }).await(timeout)
-  }
 
   def waitUntilReady(): Unit =
     runningController.waitUntilReady()
@@ -173,16 +169,13 @@ final class TestController(allocated: Allocated[Task, RunningController], admiss
   def journalActorState: JournalActor.Output.JournalActorState =
     runningController.journalActorState
 
-  def clusterWatchFor(agentPath: AgentPath): Checked[ClusterWatch] = {
+  def clusterWatchFor(agentPath: AgentPath): Checked[ClusterWatch] =
     import runningController.scheduler
     runningController.clusterWatchServiceFor((agentPath))
       .await(99.s)
       .map(_.clusterWatch)
-  }
 
   override def toString = s"TestController(${conf.controllerId}/${conf.clusterConf.ownId})"
-}
 
-object TestController {
+object TestController:
   private val logger = Logger[this.type]
-}

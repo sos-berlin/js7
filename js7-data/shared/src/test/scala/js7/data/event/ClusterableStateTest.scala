@@ -15,11 +15,10 @@ import js7.data.node.NodeId
 /**
   * @author Joacim Zschimmer
   */
-final class ClusterableStateTest extends OurTestSuite
-{
+final class ClusterableStateTest extends OurTestSuite:
   private var s = MyState.empty
 
-  "applyStandardEvent and applyEvents" in {
+  "applyStandardEvent and applyEvents" in:
     s = s.applyEvent(NoKey <-: ClusterEvent.ClusterNodesAppointed(setting)).orThrow
 
     s = s.applyEvents(
@@ -32,16 +31,12 @@ final class ClusterableStateTest extends OurTestSuite
     assert(s == MyState(0L, SnapshotableState.Standards(
       JournalState(Map(UserId("USER") -> EventId(333))),
       ClusterState.Coupled(setting))))
-  }
 
-  "EventNotApplicableProblem" in {
+  "EventNotApplicableProblem" in:
     val invalidEvent = NoKey <-: MyEvent
     assert(s.applyEvent(invalidEvent) == Left(EventNotApplicableProblem(invalidEvent, s)))
-  }
-}
 
-private object ClusterableStateTest
-{
+private object ClusterableStateTest:
   private val primaryNodeId = NodeId("PRIMARY")
   private val setting = ClusterSetting(
     Map(
@@ -52,8 +47,7 @@ private object ClusterableStateTest
     Some(ClusterWatchId("CLUSTER-WATCH")))
 
   private case class MyState(eventId: EventId, standards: SnapshotableState.Standards)
-  extends ClusterableState[MyState]
-  {
+  extends ClusterableState[MyState]:
     def companion = MyState
 
     def estimatedSnapshotSize = standards.snapshotSize
@@ -73,15 +67,12 @@ private object ClusterableStateTest
 
     def clusterNodeToUserId(nodeId: NodeId) =
       Left(Problem("clusterNodeToUserId not implemented"))
-  }
-  private object MyState extends ClusterableState.Companion[MyState] {
+  private object MyState extends ClusterableState.Companion[MyState]:
     val empty = MyState(EventId.BeforeFirst, SnapshotableState.Standards.empty)
 
     // TODO Refactor this into a separate common trait
     def snapshotObjectJsonCodec = throw new NotImplementedError
     implicit def keyedEventJsonCodec = throw new NotImplementedError
     def newBuilder() = throw new NotImplementedError
-  }
 
   private case object MyEvent extends NoKeyEvent
-}

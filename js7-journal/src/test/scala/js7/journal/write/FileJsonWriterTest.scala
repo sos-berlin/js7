@@ -10,33 +10,26 @@ import org.scalatest.BeforeAndAfterAll
 /**
   * @author Joacim Zschimmer
   */
-final class FileJsonWriterTest extends OurTestSuite with BeforeAndAfterAll
-{
+final class FileJsonWriterTest extends OurTestSuite with BeforeAndAfterAll:
   private lazy val file = createTempFile("FileJsonWriterTest-", ".tmp")
   private lazy val writer = new FileJsonWriter(file)
 
-  override def afterAll() = {
+  override def afterAll() =
     writer.close()
     delete(file)
     super.afterAll()
-  }
 
-  "write" in {
+  "write" in:
     writer.write(ByteArray("FIRST."))
     assert(!writer.isFlushed && !writer.isSynced)
-  }
 
-  "flush" in {
+  "flush" in:
     writer.flush()
     assert(file.contentString == "FIRST.\n")
     assert(writer.isFlushed && !writer.isSynced)
-  }
 
-  "Exception with complete filename is not wrapped" in {
+  "Exception with complete filename is not wrapped" in:
     val dir = createTempDirectory("FileJsonWriterTest")
-    intercept[IOException] {
+    intercept[IOException]:
       new FileJsonWriter(dir / "not-existant" / "file")
-    }
     delete(dir)
-  }
-}

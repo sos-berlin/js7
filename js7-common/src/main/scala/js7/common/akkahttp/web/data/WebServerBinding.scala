@@ -17,8 +17,7 @@ import js7.common.internet.IP.inetSocketAddressShow
 /**
   * @author Joacim Zschimmer
   */
-sealed trait WebServerBinding
-{
+sealed trait WebServerBinding:
   def address: InetSocketAddress
   def scheme: WebServerBinding.Scheme
 
@@ -28,37 +27,32 @@ sealed trait WebServerBinding
   def toWebServerPort: WebServerPort
 
   override def toString = s"$scheme://${address.show}"
-}
 
-object WebServerBinding
-{
+object WebServerBinding:
   def http(port: Int): Http =
     WebServerBinding.Http(new InetSocketAddress("0.0.0.0", port))
 
-  sealed trait Scheme {
+  sealed trait Scheme:
     def name: String
     // Workaround for Scala 3, which does not allow to override toString in subclasses (?)
     override def toString = name
-  }
 
   final case class Http(address: InetSocketAddress)
-  extends WebServerBinding {
+  extends WebServerBinding:
     def scheme = Http
 
     def toWebServerPort = WebServerPort.Http(address)
 
     def requiredFiles = Nil
-  }
-  object Http extends Scheme {
+  object Http extends Scheme:
     val name = "http"
     // Scala 3: "Double definition"??? override def toString = "http"
-  }
 
   final case class Https(
     address: InetSocketAddress,
     keyStoreRef: KeyStoreRef,
     trustStoreRefs: Seq[TrustStoreRef] = Nil)
-  extends WebServerBinding {
+  extends WebServerBinding:
     def scheme = Https
 
     def toWebServerPort = WebServerPort.Https(address)
@@ -70,14 +64,11 @@ object WebServerBinding
 
     //override def toString = super.toString +
     //  s" ($keyStoreRef, " + (trustStoreRefs.map(_.toString).mkString(", ")) + ")"
-  }
-  object Https extends Scheme {
+  object Https extends Scheme:
     val name = "https"
     // Scala 3: "Double definition"??? override def toString = "https"
-  }
 
-  trait HasLocalUris
-  {
+  trait HasLocalUris:
     protected def webServerPorts: Seq[WebServerPort]
 
     final lazy val localHttpUri: Checked[Uri] = locallyUsableUri(WebServerBinding.Http)
@@ -88,8 +79,8 @@ object WebServerBinding
       webServerPorts.collectFirst { case o if o.scheme == scheme => toLocallyUsableUri(scheme, o.address) }
         .toChecked(Problem(s"No locally usable '$scheme' address: $webServerPorts"))
 
-    private def toLocallyUsableUri(scheme: WebServerBinding.Scheme, address: InetSocketAddress): Uri = {
-      val localhost = scheme match {
+    private def toLocallyUsableUri(scheme: WebServerBinding.Scheme, address: InetSocketAddress): Uri =
+      val localhost = scheme match
         case WebServerBinding.Http =>
           if Set("0.0.0.0", "127.0.0.1") contains address.getAddress.getHostAddress then
             "127.0.0.1"
@@ -99,13 +90,8 @@ object WebServerBinding
         case WebServerBinding.Https =>
           assertThat(InetAddress.getByName("localhost").getHostAddress == "127.0.0.1")  // Check file /etc/host
           "localhost"  // To match TLS host name verification
-      }
-      val host = address.getAddress.getHostAddress match {
+      val host = address.getAddress.getHostAddress match
         case "0.0.0.0" | "127.0.0.1" => localhost
         case o => o
-      }
       val port = address.getPort
       AkkaUri(scheme.name, AkkaUri.Authority(AkkaUri.Host(host), port)).asUri
-    }
-  }
-}

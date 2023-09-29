@@ -20,8 +20,7 @@ private[watch] final class CurrentEventReader(
   flushedLengthAndEventId: PositionAnd[EventId],
   val isActiveNode: Boolean,
   protected val config: Config)
-extends EventReader
-{
+extends EventReader:
   protected def isHistoric = false
   protected def firstEventPosition = firstEventPositionAndFileEventId.position
   def fileEventId = firstEventPositionAndFileEventId.value
@@ -38,42 +37,36 @@ extends EventReader
   protected def committedLength = _committedLength
 
   protected[journal] def journalPosition: JournalPosition =
-    synchronized {
+    synchronized:
       JournalPosition(fileEventId, _committedLength)
-    }
 
   protected def isEOF(position: Long) =
-    synchronized {
+    synchronized:
       journalingEnded && position >= _committedLength
-    }
 
   protected def whenDataAvailableAfterPosition(position: Long, until: MonixDeadline) =
     flushedLengthSync.whenAvailable(position, until = Some(until))
 
   protected def isFlushedAfterPosition(position: Long) =
-    synchronized {
+    synchronized:
       journalingEnded || position < flushedLengthSync.last
-    }
 
   private[journal] def onJournalingEnded(fileLength: Long) =
-    synchronized {
+    synchronized:
       flushedLengthSync.onAdded(fileLength + 1)  // Plus one, to allow EOF detection
       _committedLength = fileLength
       journalingEnded = true
-    }
 
   private[journal] def onFileWritten(flushedPosition: Long): Unit =
-    if flushedPosition > flushedLengthSync.last then {
+    if flushedPosition > flushedLengthSync.last then
       flushedLengthSync.onAdded(flushedPosition)
-    }
 
   private[journal] def onEventsCommitted(positionAndEventId: PositionAnd[EventId], n: Int): Unit =
-    synchronized {
+    synchronized:
       val PositionAnd(pos, eventId) = positionAndEventId
       journalIndex.addAfter(eventId = eventId, position = pos, n = n)
       _committedLength = pos
       _lastEventId = eventId
-    }
 
   protected def reverseEventsAfter(after: EventId) =
     CloseableIterator.empty  // Not implemented
@@ -83,4 +76,3 @@ extends EventReader
   def isEnded = journalingEnded
 
   override def toString = s"CurrentEventReader(${journalFile.getFileName})"
-}

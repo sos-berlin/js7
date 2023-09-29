@@ -4,8 +4,7 @@ import monix.reactive.Observable
 
 /** For orthogonality, for Items which are the (empty) ItemState. */
 trait TrivialItemState[A <: TrivialItemState[A] & InventoryItem]
-extends InventoryItemState
-{
+extends InventoryItemState:
   this: A =>
 
   protected type Self <: A
@@ -20,12 +19,9 @@ extends InventoryItemState
 
   override final def toSnapshotObservable =
     Observable.pure(item)
-}
 
-object TrivialItemState
-{
+object TrivialItemState:
   trait Companion[A <: TrivialItemState[A] & InventoryItem]
   extends InventoryItemState.Companion[A] {
     //type Item = A
   }
-}

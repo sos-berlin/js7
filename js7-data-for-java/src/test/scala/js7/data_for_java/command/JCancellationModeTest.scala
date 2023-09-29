@@ -11,9 +11,8 @@ import js7.data_for_java.vavr.VavrUtils.getOrThrow
 import js7.data_for_java.workflow.JWorkflowId
 import js7.data_for_java.workflow.position.{JPosition, JWorkflowPosition}
 
-final class JCancellationModeTest extends OurTestSuite
-{
-  "JCancellationMode" in {
+final class JCancellationModeTest extends OurTestSuite:
+  "JCancellationMode" in:
     assert(JCancellationMode.freshOnly.asScala == CancellationMode.FreshOnly)
     assert(JCancellationMode.kill(immediately = false).asScala ==
       CancellationMode.FreshOrStarted(Some(CancellationMode.Kill(immediately = false))))
@@ -30,9 +29,6 @@ final class JCancellationModeTest extends OurTestSuite
         CancellationMode.FreshOrStarted(Some(CancellationMode.Kill(
           immediately = false,
           Some(WorkflowPath("WORKFLOW") ~ "1.0" /: (Position(0) / "Then" % 1 ))))))
-  }
 
-  "Java" in {
+  "Java" in:
     JCancellationModeTester.test()
-  }
-}

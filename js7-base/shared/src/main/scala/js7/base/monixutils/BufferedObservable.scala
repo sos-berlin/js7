@@ -33,12 +33,11 @@ import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
 
 private final class BufferedObservable[+A](source: Observable[A], timespan: Option[FiniteDuration],
   maxWeight: Long, toWeight: A => Long)
-extends Observable[Seq[A]]
-{
+extends Observable[Seq[A]]:
   for t <- timespan do require(t.isPositive, "timespan must be strictly positive")
   require(maxWeight >= 0, "maxWeight must be positive")
 
-  def unsafeSubscribeFn(out: Subscriber[Seq[A]]): Cancelable = {
+  def unsafeSubscribeFn(out: Subscriber[Seq[A]]): Cancelable =
     val timer = SerialCancelable()
 
     val connection = source.unsafeSubscribeFn(new Subscriber[A] with Runnable { self =>
@@ -150,5 +149,3 @@ extends Observable[Seq[A]]
     })
 
     CompositeCancelable(connection, timer)
-  }
-}

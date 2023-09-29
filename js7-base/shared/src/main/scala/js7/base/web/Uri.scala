@@ -6,8 +6,7 @@ import js7.base.generic.GenericString
 import js7.base.problem.{Checked, Problem}
 import js7.base.web.Uri.StripPathRegex
 
-final case class Uri(string: String) extends GenericString
-{
+final case class Uri(string: String) extends GenericString:
   private lazy val javaUri: Checked[URI] =
     try Right(new URI(string))
     catch { case t: URISyntaxException =>
@@ -35,18 +34,14 @@ final case class Uri(string: String) extends GenericString
     else this / tail
 
   def stripPath: Uri =
-    string match {
+    string match
       case StripPathRegex(result) => if result == string then this else Uri(result)
       case _ => this
-    }
-}
 
-object Uri extends GenericString.NonEmpty[Uri]
-{
+object Uri extends GenericString.NonEmpty[Uri]:
   private val StripPathRegex = "([^/]*//[^/]+/).*".r
 
   protected def unchecked(string: String) = new Uri(string)
 
   @javaApi
   def of(validUri: String) = apply(validUri)
-}

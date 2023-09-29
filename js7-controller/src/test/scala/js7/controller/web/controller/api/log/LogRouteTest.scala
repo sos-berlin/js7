@@ -28,8 +28,7 @@ import scala.concurrent.duration.*
 /**
   * @author Joacim Zschimmer
   */
-final class LogRouteTest extends OurTestSuite with RouteTester with LogRoute
-{
+final class LogRouteTest extends OurTestSuite with RouteTester with LogRoute:
   protected def whenShuttingDown = Future.never
   protected def currentLogFile = requireNonNull/*call lazily!*/(_currentLogFile)
 
@@ -46,19 +45,18 @@ final class LogRouteTest extends OurTestSuite with RouteTester with LogRoute
       logRoute
     })
 
-  "/controller/api/log" in {
+  "/controller/api/log" in:
     withTemporaryFile("LogRouteTest", ".tmp") { file =>
       _currentLogFile = file
 
       file := "LOG TEXT"
-      Get("/log?snapshot=true") ~> Accept(`text/plain`) ~> route ~> check {
+      Get("/log?snapshot=true") ~> Accept(`text/plain`) ~> route ~> check:
         assert(status == OK && entityAs[String] == "LOG TEXT")
-      }
 
-      if false then {
+      if false then
         // Endless streaming response
         // Akka testkit seems only support synchronous, blocking calls. So this blocks and fails:
-        Get("/log") ~> Accept(`text/plain`) ~> route ~> check {
+        Get("/log") ~> Accept(`text/plain`) ~> route ~> check:
           assert(status == OK)
           val queue = new ArrayBlockingQueue[String](100)
           val completed = response.entity.dataBytes
@@ -67,20 +65,14 @@ final class LogRouteTest extends OurTestSuite with RouteTester with LogRoute
             .foreach(queue.add)
           assert(queue.poll(9, SECONDS) == "LOG TEXT")
           autoClosing(new OutputStreamWriter(new FileOutputStream(file, true))) { out =>
-            for text <- Array("/ZWEI", "/DREI") do {
+            for text <- Array("/ZWEI", "/DREI") do
               out.write(text)
               out.flush()
               assert(queue.poll(9, SECONDS) == text)
-            }
           }
           delete(file)
           completed await 99.s
-        }
-      }
 
-      Get("log") ~> Accept(`text/plain`) ~> route ~> check {
+      Get("log") ~> Accept(`text/plain`) ~> route ~> check:
         assert(status == NotFound && entityAs[String] == "The requested resource could not be found.")
-      }
     }
-  }
-}

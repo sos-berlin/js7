@@ -40,8 +40,7 @@ import scala.concurrent.duration.*
   * @author Joacim Zschimmer
   */
 private[https] trait HttpsTestBase
-extends OurTestSuite with BeforeAndAfterAll with ControllerAgentForScalaTest with ProvideActorSystem
-{
+extends OurTestSuite with BeforeAndAfterAll with ControllerAgentForScalaTest with ProvideActorSystem:
   override protected final def provideAgentHttpsCertificate = true
   protected def provideControllerClientCertificate = false
   protected def useCluster = true
@@ -63,7 +62,7 @@ extends OurTestSuite with BeforeAndAfterAll with ControllerAgentForScalaTest wit
 
   protected final val otherUserAndPassword = UserAndPassword(UserId("OTHER") -> SecretString("OTHER-PASSWORD"))
 
-  override protected lazy val controllerConfig = {
+  override protected lazy val controllerConfig =
     val dn = "CN=Test client,DC=test-client,DC=HttpsTestBase,DC=tests,DC=js7,DC=sh"
     ((useCluster ?
       config"""
@@ -101,7 +100,6 @@ extends OurTestSuite with BeforeAndAfterAll with ControllerAgentForScalaTest wit
           js7.auth.cluster.password = "BACKUP-CONTROLLER-PASSWORD"
           """)
     ).reduce(_ withFallback _)
-  }
 
   private lazy val clientKeyStore = createTempFile(getClass.getSimpleName + "-keystore-", ".p12")
   protected def clientKeyAlias: Option[String] = None
@@ -171,31 +169,26 @@ extends OurTestSuite with BeforeAndAfterAll with ControllerAgentForScalaTest wit
   protected final val agentPaths = AgentPath("TEST-AGENT") :: Nil
   protected final val items = Seq(TestWorkflow)
 
-  override def beforeAll() = {
+  override def beforeAll() =
     clientKeyStore := ClientKeyStoreResource.contentBytes
     provideAgentConfiguration(directoryProvider.agentEnvs(0))
     provideControllerConfiguration(directoryProvider.controllerEnv)
     // We have provided our own certificates: backupDirectoryProvider.controller.provideHttpsCertificates()
 
     super.beforeAll()
-  }
 
-  override def afterAll() = {
+  override def afterAll() =
     // Don't use (unavailable) HTTPS to shutdown Controller, use direct call:
     controller.runningController.shutdown(ControllerCommand.ShutDown()).await(99.s)
 
     close()
     delete(clientKeyStore)
     super.afterAll()
-    if useCluster then {
+    if useCluster then
       backupController.stop.await(99.s)
       backupDirectoryProvider.close()
-    }
-  }
-}
 
-private[https] object HttpsTestBase
-{
+private[https] object HttpsTestBase:
   /* Following resources have been generated with the command line:
      js7-common/src/main/resources/js7/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh \
         --alias=client \
@@ -231,4 +224,3 @@ private[https] object HttpsTestBase
       |  TEST-USER: "plain:TEST-PASSWORD"
       |}
       |""".stripMargin
-}

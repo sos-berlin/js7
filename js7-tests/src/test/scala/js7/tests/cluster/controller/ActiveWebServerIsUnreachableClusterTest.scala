@@ -7,9 +7,8 @@ import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, Cluster
 import js7.data.event.KeyedEvent.NoKey
 import monix.execution.Scheduler.Implicits.traced
 
-final class ActiveWebServerIsUnreachableClusterTest extends ControllerClusterTester
-{
-  "Only the active node's web server is unreachable" in {
+final class ActiveWebServerIsUnreachableClusterTest extends ControllerClusterTester:
+  "Only the active node's web server is unreachable" in:
     sys.props(testHeartbeatLossPropertyKey) = "false"
     withControllerAndBackup() { (primary, _, backup, _, _) =>
       val primaryController = primary.newController()
@@ -27,5 +26,3 @@ final class ActiveWebServerIsUnreachableClusterTest extends ControllerClusterTes
       primaryController.terminated.await(99.s)
       backupController.stop.await(99.s)
     }
-  }
-}

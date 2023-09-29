@@ -12,17 +12,15 @@ import scala.collection.mutable
 /**
   * @author Joacim Zschimmer
   */
-final class RealEventWatchTest extends OurTestSuite
-{
-  "tornOlder" in {
+final class RealEventWatchTest extends OurTestSuite:
+  "tornOlder" in:
     val events = Stamped(1L, 1L <-: TestEvent(1)) :: Nil  // Event 1 = 1970-01-01, very old
-    val eventWatch = new RealEventWatch {
+    val eventWatch = new RealEventWatch:
       def isActiveNode = true
       def tornEventId = EventId.BeforeFirst
       protected def eventsAfter(after: EventId) = Some(CloseableIterator.fromIterator(events.iterator dropWhile (_.eventId <= after)))
       onEventsCommitted(events.last.eventId)
       def journalInfo = throw new NotImplementedError
-    }
     val a = eventWatch.observe(EventRequest.singleClass[TestEvent](limit = 1)).toListL.runToFuture await 99.s
     assert(a == events)
 
@@ -33,9 +31,8 @@ final class RealEventWatchTest extends OurTestSuite
 
     assert(eventWatch.observe(EventRequest.singleClass[TestEvent](limit = 7, after = 1L, tornOlder = Some(1.s)))
       .toListL.runToFuture.await(99.s).isEmpty)
-  }
 
-  "observe without stack overflow" in {
+  "observe without stack overflow" in:
     val eventWatch = new EndlessEventWatch()
     var expectedNext = Stamped(1L, 1 <-: TestEvent(1))
     val events = mutable.Buffer[Stamped[KeyedEvent[TestEvent]]]()
@@ -49,22 +46,18 @@ final class RealEventWatchTest extends OurTestSuite
       .await(99.s)
     assert(expectedNext.eventId == n + 1)
     assert(events == (1L to n).map(toStampedEvent))
-  }
-}
 
-object RealEventWatchTest {
+object RealEventWatchTest:
   private val EventsPerIteration = 3
 
-  private case class TestEvent(number: Long) extends Event.IsKeyBase[TestEvent] {
+  private case class TestEvent(number: Long) extends Event.IsKeyBase[TestEvent]:
     val keyCompanion: TestEvent.type = TestEvent
-  }
-  private object TestEvent extends Event.CompanionForKey[Long, TestEvent] {
+  private object TestEvent extends Event.CompanionForKey[Long, TestEvent]:
     implicit val implicitSelf: TestEvent.type = this
-  }
 
   private def toStampedEvent(i: Long) = Stamped(i, i <-: TestEvent(i))
 
-  private class EndlessEventWatch extends RealEventWatch {
+  private class EndlessEventWatch extends RealEventWatch:
     def isActiveNode = true
 
     def tornEventId = EventId.BeforeFirst
@@ -79,5 +72,3 @@ object RealEventWatchTest {
           onEventsCommitted(after + i + 1)  // Announce following event
           toStampedEvent(after + i)
         }))
-  }
-}

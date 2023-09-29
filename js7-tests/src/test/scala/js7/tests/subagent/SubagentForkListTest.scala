@@ -24,8 +24,7 @@ import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler
 
 final class SubagentForkListTest
-extends OurTestSuite with SubagentTester with BlockingItemUpdater
-{
+extends OurTestSuite with SubagentTester with BlockingItemUpdater:
   override protected def agentConfig = config"""
     js7.auth.subagents.BARE-SUBAGENT = "$localSubagentId's PASSWORD"
     js7.auth.subagents.B-SUBAGENT = "$localSubagentId's PASSWORD"
@@ -53,19 +52,17 @@ extends OurTestSuite with SubagentTester with BlockingItemUpdater
   lazy val (bSubagent, bSubagentRelease) = subagentResource(bSubagentItem)
     .allocated.await(99.s)
 
-  override def beforeAll() = {
+  override def beforeAll() =
     super.beforeAll()
     bareSubagent
     bSubagent
-  }
 
-  override def afterAll() = {
+  override def afterAll() =
     bSubagentRelease.await(99.s)
     bareSubagentRelease.await(99.s)
     super.afterAll()
-  }
 
-  "ForkList with subagentIds function at Controller is rejected" in {
+  "ForkList with subagentIds function at Controller is rejected" in:
     withTemporaryItem(Workflow(
       WorkflowPath("FORK-LIST-AT-CONTROLLER"),
       Seq(
@@ -87,9 +84,8 @@ extends OurTestSuite with SubagentTester with BlockingItemUpdater
         OrderFailed(Position(0))
       ))
     }
-  }
 
-  "ForkList fails due to unknown SubagentSelectionId" in {
+  "ForkList fails due to unknown SubagentSelectionId" in:
     val workflow = Workflow(
       WorkflowPath("UNKNOWN-SUBAGENT-SELECTION-ID"),
       Seq(
@@ -118,9 +114,8 @@ extends OurTestSuite with SubagentTester with BlockingItemUpdater
         OrderFailed(Position(0))
       ))
     }
-  }
 
-  "ForkList over the SubagentIds of SubagentSelectionIds" in {
+  "ForkList over the SubagentIds of SubagentSelectionIds" in:
     val workflow = Workflow(
       WorkflowPath("UNKNOWN-SUBAGENT-SELECTION-ID"),
       Seq(
@@ -172,9 +167,8 @@ extends OurTestSuite with SubagentTester with BlockingItemUpdater
         OrderDetachable,
         OrderDetached))
     }
-  }
 
-  "ForkList over the SubagentIds of the Agent" in {
+  "ForkList over the SubagentIds of the Agent" in:
     val workflow = Workflow(
       WorkflowPath("UNKNOWN-SUBAGENT-SELECTION-ID"),
       Seq(
@@ -233,11 +227,7 @@ extends OurTestSuite with SubagentTester with BlockingItemUpdater
         OrderDetachable,
         OrderDetached))
     }
-  }
-}
 
-object SubagentForkListTest
-{
+object SubagentForkListTest:
   private val localSubagentId = toLocalSubagentId(agentPath)
   private val subagentSelectionId = SubagentSelectionId("SUBAGENT-SELECTION")
-}

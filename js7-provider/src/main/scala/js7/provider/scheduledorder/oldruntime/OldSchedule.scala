@@ -11,7 +11,7 @@ final case class OldSchedule(
   timeZone: ZoneId,
   weekdays: PartialFunction[DayOfWeek, PeriodSeq])
   //startOnce: Boolean = false)
-extends Schedule {
+extends Schedule:
 
   def firstInstant(from: Instant): Option[Instant] =
     firstInstant(InstantInterval(from, PredictionLimit))
@@ -20,31 +20,28 @@ extends Schedule {
     instants(instantInterval, limit = 1).buffered.headOption
 
   def instants(instantInterval: InstantInterval, limit: Int = Int.MaxValue): Iterator[Instant] =
-    new AbstractIterator[Instant] {
+    new AbstractIterator[Instant]:
       private var remaining = limit
       private var from = instantInterval.from minusNanos 1
       private var _next: Instant = null
 
-      def hasNext = {
-        if _next == null then {
+      def hasNext =
+        if _next == null then
           _next = find()
-        }
         _next != null
-      }
 
-      def next() = {
+      def next() =
         if !hasNext then throw new NoSuchElementException
         val result = _next
         _next = null
         result
-      }
 
-      @tailrec private def find(): Instant = {
-        if remaining > 0 && from < instantInterval.until then {
+      @tailrec private def find(): Instant =
+        if remaining > 0 && from < instantInterval.until then
           val local = LocalDateTime.ofInstant(from, timeZone)
           periodSeq(local.toLocalDate).flatMap(_.nextLocalTime(local.toLocalTime))
             .map(_.atDate(local.toLocalDate).toInstant(timeZone))
-            match {
+            match
               case Some(o) if o < instantInterval.until =>
                 remaining -= 1
                 from = o plusNanos 1
@@ -54,17 +51,13 @@ extends Schedule {
               case None =>
                 from = local.toLocalDate.plusDays(1).atStartOfDay.toInstant(timeZone)
                 find()
-            }
-        } else
+        else
           null
-      }
-    }
 
   private def periodSeq(date: LocalDate) =
     weekdays.lift(date.getDayOfWeek)
-}
 
-object OldSchedule {
+object OldSchedule:
   private val PredictionLimit = Duration.ofDays(366)
 
   def empty(timeZone: ZoneId): OldSchedule =
@@ -76,11 +69,9 @@ object OldSchedule {
   /**
     * Unlike bare PartialFunction, EveryDay implements toString and equals
     */
-  final case class EveryDay(periodSeq: PeriodSeq) extends PartialFunction[DayOfWeek, PeriodSeq] {
+  final case class EveryDay(periodSeq: PeriodSeq) extends PartialFunction[DayOfWeek, PeriodSeq]:
     def isDefinedAt(dayOfWeek: DayOfWeek) = true
 
     override def apply(dayOfWeek: DayOfWeek) = periodSeq
 
     override def toString = s"EveryDay($periodSeq)"
-  }
-}

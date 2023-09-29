@@ -29,8 +29,7 @@ final case class AgentRefState(
   clusterState: ClusterState,
   nodeToClusterNodeProblem: Map[NodeId, ClusterNodeLossNotConfirmedProblem] = Map.empty,
   platformInfo: Option[PlatformInfo])
-extends UnsignedSimpleItemState
-{
+extends UnsignedSimpleItemState:
   protected type Self = AgentRefState
   val companion: AgentRefState.type = AgentRefState
 
@@ -45,7 +44,7 @@ extends UnsignedSimpleItemState
   def agentPathToAttachedState = Map.empty
 
   def applyEvent(event: AgentRefStateEvent): Checked[AgentRefState] =
-    event match {
+    event match
       case AgentDedicated(agentRunId_, eventId_) =>
         if agentRunId.isDefined || eventId != EventId.BeforeFirst then
           Left(Problem("Duplicate AgentDedicated event: " + event))
@@ -68,7 +67,7 @@ extends UnsignedSimpleItemState
           problem = None))
 
       case AgentCoupled =>
-        couplingState match {
+        couplingState match
           case Resetting(_) =>
             // Required until ControllerOrderKeeper ResetAgent uses journal.lock !!!
             logger.debug("(WARN) Ignoring AgentCoupled event due to Resetting state")
@@ -78,7 +77,6 @@ extends UnsignedSimpleItemState
             Right(copy(
               couplingState = Coupled,
               problem = None))
-        }
 
       case AgentCouplingFailed(problem) =>
         Right(copy(
@@ -113,7 +111,7 @@ extends UnsignedSimpleItemState
           platformInfo = None))
 
       case AgentMirroredEvent(keyedEvent) =>
-        keyedEvent match {
+        keyedEvent match
           case KeyedEvent(_: NoKey, event: ClusterEvent) =>
             clusterState.applyEvent(event)
               .map(clusterState => copy(clusterState = clusterState))
@@ -121,7 +119,6 @@ extends UnsignedSimpleItemState
 
           case _ => Left(Problem(
             s"Unknown mirrored Event in AgentMirroredEvent: ${keyedEvent.getClass.shortClassName}"))
-        }
 
       case AgentClusterWatchConfirmationRequired(problem) =>
         Right(copy(
@@ -131,11 +128,8 @@ extends UnsignedSimpleItemState
       case AgentClusterWatchManuallyConfirmed =>
         Right(copy(
           nodeToClusterNodeProblem = Map.empty))
-    }
-}
 
-object AgentRefState extends UnsignedSimpleItemState.Companion[AgentRefState]
-{
+object AgentRefState extends UnsignedSimpleItemState.Companion[AgentRefState]:
   type Key = AgentPath
   type Item = AgentRef
   override type ItemState = AgentRefState
@@ -175,4 +169,3 @@ object AgentRefState extends UnsignedSimpleItemState.Companion[AgentRefState]
       AgentRefState(
         agentRef, agentRunId, timezone, couplingState, eventId, problem,
         clusterState, clusterNodeProblems, platformInfo)
-}

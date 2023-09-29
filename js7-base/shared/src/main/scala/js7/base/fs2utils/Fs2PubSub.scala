@@ -8,8 +8,7 @@ import fs2.concurrent.Topic
 import js7.base.catsutils.UnsafeMemoizable
 import js7.base.catsutils.UnsafeMemoizable.syntax.*
 
-final class Fs2PubSub[F[_]: Concurrent: UnsafeMemoizable, A <: AnyRef]
-{
+final class Fs2PubSub[F[_]: Concurrent: UnsafeMemoizable, A <: AnyRef]:
   private val Initial = Fs2PubSub.Initial.asInstanceOf[A]
   private val EOF = Fs2PubSub.EOF.asInstanceOf[A]
 
@@ -27,10 +26,7 @@ final class Fs2PubSub[F[_]: Concurrent: UnsafeMemoizable, A <: AnyRef]
       .subscribe(maxQueued = 1)
       .filter(_ != Initial)
       .takeWhile(_ != EOF))
-}
 
-object Fs2PubSub
-{
+object Fs2PubSub:
   private val Initial = new AnyRef{}
   private val EOF = new AnyRef{}
-}

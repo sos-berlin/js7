@@ -5,13 +5,11 @@ import java.util.UUID.randomUUID
 import js7.base.generic.GenericString
 import js7.base.utils.Base64UUID
 
-final case class ClusterWatchRunId(base64UUID: Base64UUID) extends GenericString {
+final case class ClusterWatchRunId(base64UUID: Base64UUID) extends GenericString:
   def string = base64UUID.string
   override def toString = s"ClusterWatchRunId:$string"
-}
 
-object ClusterWatchRunId extends GenericString.Checked_[ClusterWatchRunId]
-{
+object ClusterWatchRunId extends GenericString.Checked_[ClusterWatchRunId]:
   val empty: ClusterWatchRunId =
     ClusterWatchRunId(Base64UUID.zero)
 
@@ -26,4 +24,3 @@ object ClusterWatchRunId extends GenericString.Checked_[ClusterWatchRunId]
 
   override def checked(string: String) =
     for o <- Base64UUID.checked(string) yield new ClusterWatchRunId(o)
-}

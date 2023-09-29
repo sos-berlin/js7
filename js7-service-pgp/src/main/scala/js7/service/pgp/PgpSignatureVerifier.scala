@@ -23,8 +23,7 @@ import scala.jdk.CollectionConverters.*
   * @author Joacim Zschimmer
   */
 final class PgpSignatureVerifier(publicKeyRingCollection: PGPPublicKeyRingCollection, val publicKeyOrigin: String)
-extends SignatureVerifier
-{
+extends SignatureVerifier:
   import PgpSignatureVerifier.*
 
   protected type MySignature = PgpSignature
@@ -46,7 +45,7 @@ extends SignatureVerifier
     yield signerIds
 
   private def findPublicKeyInKeyRing(signature: PGPSignature): Checked[PGPPublicKey] =
-    publicKeyRingCollection.getPublicKey(signature.getKeyID) match {
+    publicKeyRingCollection.getPublicKey(signature.getKeyID) match
       // Public key is matched with the only 64-bit long key ID ???
       case null =>
         logger.debug(
@@ -54,10 +53,9 @@ extends SignatureVerifier
         Left(MessageSignedByUnknownProblem)
       case publicKey =>
         Right(publicKey)
-    }
 
   private def verifyWithPublicKey(document: ByteArray, pgpSignature: PGPSignature, publicKey: PGPPublicKey)
-  : Checked[Seq[SignerId]] = {
+  : Checked[Seq[SignerId]] =
     logger.trace("Verifying document with " + pgpSignature.show + ", using " + pgpPublicKeyToShortString(publicKey))
     pgpSignature.init(contentVerifierBuilderProvider, publicKey)
     pgpSignature.update(document.unsafeArray)
@@ -65,7 +63,6 @@ extends SignatureVerifier
       Left(TamperedWithSignedMessageProblem)
     else
       Right(publicKey.getUserIDs.asScala.map(SignerId.apply).toVector)
-  }
 
   override def toString = s"PgpSignatureVerifier(origin=$publicKeyOrigin, ${publicKeyRingCollection.show})"
 
@@ -73,10 +70,8 @@ extends SignatureVerifier
     Seq(s"PGP origin=$publicKeyOrigin") ++
       publicKeyRingCollection.asScala
         .flatMap(_.asScala.map(k => "  " + pgpPublicKeyToShortString(k)))
-}
 
-object PgpSignatureVerifier extends SignatureVerifier.Companion
-{
+object PgpSignatureVerifier extends SignatureVerifier.Companion:
   protected type MySignature = PgpSignature
   protected type MySignatureVerifier = PgpSignatureVerifier
 
@@ -91,7 +86,7 @@ object PgpSignatureVerifier extends SignatureVerifier.Companion
       new PgpSignatureVerifier(readPublicKeyRingCollection(publicKeys), origin)
     ).left.map(o => Problem(s"Error while reading public key '$origin'", cause = Some(o)))
 
-  def genericSignatureToSignature(signature: GenericSignature): Checked[PgpSignature] = {
+  def genericSignatureToSignature(signature: GenericSignature): Checked[PgpSignature] =
     assertThat(signature.typeName == typeName)
     if signature.signerId.isDefined then
       Left(Problem("PGP signature does not accept a signerId"))
@@ -99,19 +94,17 @@ object PgpSignatureVerifier extends SignatureVerifier.Companion
       Left(Problem("PGP signature does not accept a signature algorithm"))
     else if signature.signerCertificate.isDefined then
       Left(Problem("PGP signature does not accept a signed certificate"))
-    else {
+    else
       val pgpSignature = PgpSignature(signature.signatureString)
       for _ <- toMutablePGPSignature(pgpSignature)/*check early*/
         yield pgpSignature
-    }
-  }
 
   private[pgp] def toMutablePGPSignature(signature: PgpSignature): Checked[PGPSignature] =
     Checked.catchNonFatal(
       new JcaPGPObjectFactory(PGPUtil.getDecoderStream(new ByteArrayInputStream(signature.string.getBytes(UTF_8))))
         .nextObject
     ) .leftMap(_.withPrefix("Invalid PGP signature: "))
-      .flatMap {
+      .flatMap:
         case o: PGPSignatureList =>
           if o.size != 1 then
             Left(Problem(s"Unsupported PGP signature type: exactly one PGPSignature expected, not ${o.size}"))
@@ -124,7 +117,5 @@ object PgpSignatureVerifier extends SignatureVerifier.Companion
         case o =>
           logger.warn(s"Unsupported PGP signature type: ${o.getClass.getName} $o")
           Left(Problem("Unsupported PGP signature type"))
-      }
 
   intelliJuseImport(PGPPublicKeyShow)
-}

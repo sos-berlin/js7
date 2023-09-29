@@ -9,17 +9,13 @@ import monix.eval.Task
 import scala.jdk.FutureConverters.*
 
 final case class JOrderProcess(asScala: OrderProcess)
-extends JavaWrapper
-{
+extends JavaWrapper:
   type AsScala = OrderProcess
-}
 
-object JOrderProcess
-{
+object JOrderProcess:
   def of(outcome: CompletionStage[JOutcome.Completed]): JOrderProcess =
     JOrderProcess(OrderProcess(
       Task.fromFuture(outcome.asScala)
         .map(_.asScala)
         .materialize
         .map(Outcome.Completed.fromTry)))
-}

@@ -7,11 +7,10 @@ import js7.data.event.Event
 /**
   * @author Joacim Zschimmer
   */
-private[journal] sealed trait TestEvent extends Event.IsKeyBase[TestEvent] {
+private[journal] sealed trait TestEvent extends Event.IsKeyBase[TestEvent]:
   val keyCompanion: TestEvent.type = TestEvent
-}
 
-private[journal] object TestEvent extends Event.CompanionForKey[String, TestEvent] {
+private[journal] object TestEvent extends Event.CompanionForKey[String, TestEvent]:
   implicit val implicitSelf: TestEvent.type = this
 
   final case class Added(
@@ -47,4 +46,3 @@ private[journal] object TestEvent extends Event.CompanionForKey[String, TestEven
     Subtype(deriveCodec[Appended]),
     Subtype(NothingDone),
     Subtype(Removed))
-}

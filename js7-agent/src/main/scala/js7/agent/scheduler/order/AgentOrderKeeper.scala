@@ -89,14 +89,13 @@ final class AgentOrderKeeper(
   conf: AgentConfiguration)
   (implicit protected val scheduler: Scheduler)
 extends MainJournalingActor[AgentState, Event]
-with Stash
-{
+with Stash:
   import conf.implicitAkkaAskTimeout
   import context.{actorOf, watch}
   import forDirector.{iox, subagent as localSubagent}
 
   private val journal = journalAllocated.allocatedThing
-  private val (ownAgentPath, localSubagentId, controllerId) = {
+  private val (ownAgentPath, localSubagentId, controllerId) =
     val meta = journal.unsafeCurrentState().meta
     val subagentId: SubagentId =
       if meta.directors.isEmpty then throw new IllegalStateException(
@@ -108,7 +107,6 @@ with Stash
       else
         meta.directors(1)
     (meta.agentPath, subagentId, meta.controllerId)
-  }
   private implicit val instructionExecutorService: InstructionExecutorService =
     new InstructionExecutorService(clock)
 
@@ -125,7 +123,7 @@ with Stash
   private val orderRegister = new OrderRegister
   private var switchingOver = false
 
-  private object shutdown {
+  private object shutdown:
     private var shutDownCommand: Option[AgentCommand.ShutDown] = None
     private var snapshotFinished = false
     private var stillTerminatingSchedule: Option[Cancelable] = None
@@ -137,27 +135,24 @@ with Stash
     def shuttingDown = shutDownCommand.isDefined
 
     def start(cmd: AgentCommand.ShutDown): Unit =
-      if !shuttingDown then {
+      if !shuttingDown then
         since := now
         shutDownCommand = Some(cmd)
         fileWatchManager.stop.runAsyncAndForget
-        if cmd.isFailOrSwitchover then {
+        if cmd.isFailOrSwitchover then
           journalAllocated.release.runAsyncAndForget
           context.stop(self)
-        } else if cmd.suppressSnapshot then {
+        else if cmd.suppressSnapshot then
           snapshotFinished = true
-        } else {
+        else
           journalActor ! JournalActor.Input.TakeSnapshot // Take snapshot before OrderActors are stopped
           stillTerminatingSchedule = Some(scheduler.scheduleAtFixedRate(5.seconds, 10.seconds) {
             self ! Internal.StillTerminating
           })
-        }
         continue()
-      }
 
-    def close() = {
+    def close() =
       stillTerminatingSchedule foreach (_.cancel())
-    }
 
     def onStillTerminating() =
       logger.info(s"🟠 Still terminating, waiting for ${orderRegister.size} orders" +
@@ -165,42 +160,33 @@ with Stash
         (!snapshotFinished ?? ", and the snapshot"))
 
     def onSnapshotTaken(): Unit =
-      if shuttingDown then {
+      if shuttingDown then
         snapshotFinished = true
         continue()
-      }
 
     def continue(): Unit =
-      for shutDown <- shutDownCommand do {
+      for shutDown <- shutDownCommand do
         logger.trace(s"termination.continue: ${orderRegister.size} orders, " +
           jobRegister.size + " jobs" +
           (snapshotFinished ?? ", snapshot taken"))
-        if snapshotFinished then {
-          if !terminatingOrders then {
+        if snapshotFinished then
+          if !terminatingOrders then
             terminatingOrders = true
-            for o <- orderRegister.values if !o.isDetaching do {
+            for o <- orderRegister.values if !o.isDetaching do
               o.actor ! OrderActor.Input.Terminate(shutDown.processSignal/*only local Subagent*/)
-            }
-          }
-          if orderRegister.isEmpty then {
-            if !terminatingJobs then {
+          if orderRegister.isEmpty then
+            if !terminatingJobs then
               terminatingJobs = true
               subagentKeeper.stop
                 .onErrorHandle(t => logger.error(
                   s"subagentKeeper.stop =>${t.toStringWithCauses}", t))
                 .map(_ => self ! Internal.JobDriverStopped)
                 .runAsyncAndForget
-            }
-            if jobRegister.isEmpty && !terminatingJournal then {
+            if jobRegister.isEmpty && !terminatingJournal then
               persist(AgentShutDown) { (_, _) =>
                 terminatingJournal = true
                 journalAllocated.release.runAsyncAndForget
               }
-            }
-          }
-        }
-      }
-  }
   import shutdown.shuttingDown
 
   private val subagentKeeper =
@@ -212,7 +198,7 @@ with Stash
   self ! Internal.Recover(recoveredAgentState)
   // Do not use recovered_ after here to allow release of the big object
 
-  override def postStop() = {
+  override def postStop() =
     // TODO Use Resource (like the Subagent starter)
     // TODO Blocking!
     Try(subagentKeeper.stop.uncancelable.timeout(3.s).logWhenItTakesLonger.await(99.s))
@@ -221,9 +207,8 @@ with Stash
     shutdown.close()
     super.postStop()
     logger.debug("Stopped" + shutdown.since.toOption.fold("")(o => s" (terminated in ${o.elapsed.pretty})"))
-  }
 
-  def receive = {
+  def receive =
     case Internal.Recover(recoveredAgentState) =>
       journalState = recoveredAgentState.journalState
 
@@ -243,26 +228,23 @@ with Stash
         }
 
     case _ => stash()
-  }
 
-  private def recovering(recoveredState: AgentState): Receive = {
+  private def recovering(recoveredState: AgentState): Receive =
     var remainingOrders = recoveredState.idToOrder.size
 
     def continue() =
-      if remainingOrders == 0 then {
+      if remainingOrders == 0 then
         subagentKeeper.startProcessing
           .logWhenItTakesLonger("subagentKeeper.startProcessing")
           .awaitInfinite
 
-        if !journalState.userIdToReleasedEventId.contains(controllerId.toUserId) then {
+        if !journalState.userIdToReleasedEventId.contains(controllerId.toUserId) then
           // Automatically add Controller's UserId to list of users allowed to release events,
           // to avoid deletion of journal files due to an empty list, before controller has read the events.
           // The controller has to send ReleaseEvents commands to release obsolete journal files.
-          persist(JournalEventsReleased(controllerId.toUserId, EventId.BeforeFirst)) {
+          persist(JournalEventsReleased(controllerId.toUserId, EventId.BeforeFirst)):
             case (Stamped(_,_, _ <-: event), journaledState) =>
               journalState = journalState.applyEvent(event)
-          }
-        }
 
         fileWatchManager.start
           .map(_.orThrow)  // How to handle a failure, due to missing environment variable ???
@@ -278,26 +260,23 @@ with Stash
         ) { (_, _) =>
           self ! Internal.OrdersRecovered(recoveredState)
         }
-      }
 
-    val receive: Receive = {
+    val receive: Receive =
       case Internal.SubagentKeeperInitialized(state, tried) =>
         for t <- tried.failed do throw t.appendCurrentStackTrace
 
         for workflow <- state.idToWorkflow.values do
-          wrapException(s"Error while recovering ${workflow.path}") {
+          wrapException(s"Error while recovering ${workflow.path}"):
             workflowRegister.recover(workflow)
             val timeZone = ZoneId.of(workflow.timeZone.string) // throws on unknown time zone !!!
             createJobEntries(workflow, timeZone)
-          }
 
         for order <- state.idToOrder.values do
-          wrapException(s"Error while recovering ${order.id}") {
+          wrapException(s"Error while recovering ${order.id}"):
             //val order = workflowRegister.reuseMemory(recoveredOrder)
             val actor = newOrderActor(order.id)
             orderRegister.recover(order.id, actor)
             actor ! OrderActor.Input.Recover(order)
-          }
 
         continue()
 
@@ -306,18 +285,15 @@ with Stash
         continue()
 
       case Internal.OrdersRecovered(state) =>
-        for order <- state.idToOrder.values.view.flatMap(_.ifState[Order.Processing]) do {
-          for jobKey <- state.jobKey(order.workflowPosition).toOption do {
+        for order <- state.idToOrder.values.view.flatMap(_.ifState[Order.Processing]) do
+          for jobKey <- state.jobKey(order.workflowPosition).toOption do
             jobRegister(jobKey).recoverProcessingOrder(order)
-          }
-        }
 
         // proceedWithOrder before subagentKeeper.start because continued Orders (still
         // processing at remote Subagent) will emit events and change idToOrder asynchronously!
         // But not before SubagentKeeper has been started (when Subagents are coupled).
-        for order <- state.idToOrder.values do {
+        for order <- state.idToOrder.values do
           proceedWithOrder(order)
-        }
 
         logger.info(ServiceMain.readyMessageWithLine(s"$ownAgentPath is ready"))
         become("ready")(ready)
@@ -330,11 +306,9 @@ with Stash
 
       case _ =>
         stash()
-    }
     receive
-  }
 
-  private def ready: Receive = {
+  private def ready: Receive =
     case Input.ExternalCommand(cmd, correlId, response) =>
       response.completeWith(
         correlId.bind {
@@ -342,24 +316,23 @@ with Stash
         })
 
     case cmd: AgentCommand.ShutDown =>
-      if cmd.isSwitchover then {
+      if cmd.isSwitchover then
         switchOver(cmd) pipeTo sender()
-      } else {
+      else
         shutdown.start(cmd)
         sender() ! AgentCommand.Response.Accepted
-      }
 
     case JournalActor.Output.SnapshotTaken =>
       shutdown.onSnapshotTaken()
 
     case OrderActor.Output.OrderChanged(orderId, correlId, previousOrderOrNull, events) =>
-      correlId.bind[Unit] {
-        if !shuttingDown then {
+      correlId.bind[Unit]:
+        if !shuttingDown then
           // previousOrderOrNull is null only for OrderAttachedToAgent event
           var order = previousOrderOrNull
           var myJobEntry: JobEntry = null
-          for event <- events do {
-            event match {
+          for event <- events do
+            event match
               case event: OrderAttachedToAgent =>
                 order = Order.fromOrderAttached(orderId, event)
 
@@ -368,45 +341,37 @@ with Stash
                   jobKey <- journal.unsafeCurrentState().jobKey(previousOrderOrNull.workflowPosition)
                   jobEntry <- jobRegister.checked(jobKey)
                 yield jobEntry)
-                match {
+                match
                   case Left(problem) =>
                     logger.error(s"OrderActor.Output.OrderChanged($orderId) => $problem")
 
                   case Right(jobEntry) =>
                     jobEntry.taskCount -= 1
                     myJobEntry = jobEntry
-                }
                 order = order.applyEvent(event).orThrow
 
               case event: OrderCoreEvent =>
                 order = order.applyEvent(event).orThrow
 
               case _ =>
-            }
             handleOrderEvent(order, event)
-          }
           if myJobEntry != null then tryStartProcessing(myJobEntry)
-          if !events.lastOption.contains(OrderDetached) then {
+          if !events.lastOption.contains(OrderDetached) then
             proceedWithOrder(order)
-          }
-        }
-      }
 
     case Internal.Due(orderId) if orderRegister contains orderId =>
       proceedWithOrder(orderId)
 
     case Internal.JobDue(jobKey) =>
-      for jobEntry <- jobRegister.get(jobKey) do {
+      for jobEntry <- jobRegister.get(jobKey) do
         tryStartProcessing(jobEntry)
-      }
 
     case Input.ResetAllSubagents =>
       subagentKeeper
         .resetAllSubagents(except = journal.unsafeCurrentState().meta.directors.toSet)
         .void.runToFuture.pipeTo(sender())
-  }
 
-  private def processCommand(cmd: AgentCommand): Future[Checked[Response]] = cmd match {
+  private def processCommand(cmd: AgentCommand): Future[Checked[Response]] = cmd match
     case cmd: OrderCommand => processOrderCommand(cmd)
 
     case AttachItem(item) =>
@@ -416,11 +381,11 @@ with Stash
       attachSignedItem(signed)
 
     case DetachItem(itemKey) if itemKey.isAssignableToAgent =>
-      if !journal.unsafeCurrentState().keyToItem.contains(itemKey) then {
+      if !journal.unsafeCurrentState().keyToItem.contains(itemKey) then
         logger.warn(s"DetachItem($itemKey) but item is unknown")
         Future.successful(Right(AgentCommand.Response.Accepted))
-      } else
-        itemKey match {
+      else
+        itemKey match
           case path: OrderWatchPath =>
             fileWatchManager.remove(path)
               .rightAs(AgentCommand.Response.Accepted)
@@ -447,13 +412,12 @@ with Stash
           case WorkflowId.as(workflowId) =>
             val maybeWorkflow = journal.unsafeCurrentState().idToWorkflow.get(workflowId)
             persist(ItemDetached(itemKey, ownAgentPath)) { (stampedEvent, journaledState) =>
-              for workflow <- maybeWorkflow do {
+              for workflow <- maybeWorkflow do
                 subagentKeeper
                   .stopJobs(workflow.keyToJob.keys, SIGKILL/*just in case*/)
                   .onErrorHandle(t => logger.error(
                     s"SubagentKeeper.stopJobs: ${t.toStringWithCauses}", t))
                   .runAsyncAndForget
-              }
               Right(AgentCommand.Response.Accepted)
             }
 
@@ -461,7 +425,6 @@ with Stash
             persist(ItemDetached(itemKey, ownAgentPath)) { (stampedEvent, journaledState) =>
               Right(AgentCommand.Response.Accepted)
             }
-        }
 
     case AgentCommand.ResetSubagent(subagentId, force) =>
       val task =
@@ -482,10 +445,9 @@ with Stash
         .map(_ => Right(AgentCommand.Response.Accepted))
 
     case _ => Future.successful(Left(Problem(s"Unknown command: ${cmd.getClass.simpleScalaName}")))  // Should not happen
-  }
 
   private def attachUnsignedItem(item: UnsignedItem): Future[Checked[Response.Accepted]] =
-    item match {
+    item match
       case agentRef: AgentRef =>
         if agentRef.path != ownAgentPath then
           Future.successful(Left(Problem(s"Alien AgentRef(${agentRef.path})")))
@@ -516,7 +478,6 @@ with Stash
 
       case _ =>
         Future.successful(Left(Problem.pure(s"AgentCommand.AttachItem(${item.key}) for unknown InventoryItem")))
-    }
 
   @volatile private var changeSubagentAndClusterNodeAndProceedFiberStop = false
   private val changeSubagentAndClusterNodeAndProceedFiber =
@@ -527,17 +488,16 @@ with Stash
       .update { fiber =>
         changeSubagentAndClusterNodeAndProceedFiberStop = true
         fiber.join *>
-          Task.defer {
+          Task.defer:
             changeSubagentAndClusterNodeAndProceedFiberStop = false
             tryForeverChangeSubagentAndClusterNodeAndProceed(event)
               .start
-          }
       }
       .flatMap(_.join.timeoutTo(10.s /*???*/ , Task.right(()) /*respond the command*/))
 
   private def tryForeverChangeSubagentAndClusterNodeAndProceed(event: ItemAttachedToMe)
   : Task[Checked[Unit]] =
-    Task.defer {
+    Task.defer:
       import event.item
       val label = s"${event.getClass.simpleScalaName}(${item.key})"
       val since = now
@@ -562,19 +522,18 @@ with Stash
               Task.right(checked)
           }
       )
-    }
 
   private def attachSignedItem(signed: Signed[SignableItem]): Future[Checked[Response.Accepted]] =
-    forDirector.signatureVerifier.verify(signed.signedString) match {
+    forDirector.signatureVerifier.verify(signed.signedString) match
       case Left(problem) => Future.successful(Left(problem))
       case Right(signerIds) =>
         logger.info(Logger.SignatureVerified, s"Verified ${signed.value.key}, signed by ${signerIds.mkString(", ")}")
 
-        signed.value match {
+        signed.value match
           case workflow: Workflow =>
-            workflowRegister.get(workflow.id) match {
+            workflowRegister.get(workflow.id) match
               case None =>
-                workflow.timeZone.toZoneId match {
+                workflow.timeZone.toZoneId match
                   case Left(problem) => Future.successful(Left(problem))
                   case Right(zoneId) =>
                     persist(SignedItemAttachedToMe(signed)) { (stampedEvent, journaledState) =>
@@ -583,7 +542,6 @@ with Stash
                       createJobEntries(reducedWorkflow, zoneId)
                       Right(AgentCommand.Response.Accepted)
                     }
-                }
 
               case Some(registeredWorkflow) =>
                 Future.successful(
@@ -594,7 +552,6 @@ with Stash
                     Left(Problem.pure(s"Different duplicate ${workflow.id}"))
                   } else
                     Right(AgentCommand.Response.Accepted))
-            }
 
           case _: JobResource =>
             persist(SignedItemAttachedToMe(signed)) { (stampedEvent, journaledState) =>
@@ -603,11 +560,9 @@ with Stash
 
           case _ =>
             Future.successful(Left(Problem.pure(s"AgentCommand.AttachSignedItem(${signed.value.key}) for unknown SignableItem")))
-        }
-    }
 
   private def proceedWithItem(item: InventoryItem): Task[Checked[Unit]] =
-    item match {
+    item match
       case subagentItem: SubagentItem =>
         journal.state.flatMap(_
           .idToSubagentItemState.get(subagentItem.id)
@@ -619,30 +574,27 @@ with Stash
         subagentKeeper.addOrReplaceSubagentSelection(subagentSelection)
 
       case workflowPathControl: WorkflowPathControl =>
-        if !workflowPathControl.suspended then {
+        if !workflowPathControl.suspended then
           // Slow !!!
           for order <- journal.unsafeCurrentState().orders
-               if order.workflowPath == workflowPathControl.workflowPath do {
+               if order.workflowPath == workflowPathControl.workflowPath do
             proceedWithOrder(order)
-          }
-        }
         Task.right(())
 
       case _ => Task.right(())
-    }
 
-  private def processOrderCommand(cmd: OrderCommand): Future[Checked[Response]] = cmd match {
+  private def processOrderCommand(cmd: OrderCommand): Future[Checked[Response]] = cmd match
     case AttachOrder(order) =>
       if shuttingDown then
         Future.successful(Left(AgentIsShuttingDown))
       else
-        order.attached match {
+        order.attached match
           case Left(problem) => Future.successful(Left(problem))
           case Right(agentPath) =>
             if agentPath != ownAgentPath then
               Future.successful(Left(Problem(s"Wrong $agentPath")))
             else
-              workflowRegister.get(order.workflowId) match {
+              workflowRegister.get(order.workflowId) match
                 case None =>
                   Future.successful(Left(Problem.pure(s"Unknown ${order.workflowId}")))
                 case Some(workflow) =>
@@ -655,48 +607,43 @@ with Stash
                   else
                     attachOrder(/*workflowRegister.reuseMemory*/(order))
                       .map((_: Completed) => Right(Response.Accepted))
-              }
-        }
 
     case DetachOrder(orderId) =>
       if shuttingDown then
         Future.successful(AgentIsShuttingDown)
       else
-        orderRegister.get(orderId) match {
+        orderRegister.get(orderId) match
           case Some(orderEntry) =>
             // TODO Antwort erst nach OrderDetached _und_ Terminated senden, wenn Actor aus orderRegister entfernt worden ist
             // Bei langsamem Agenten, schnellem Controller-Wiederanlauf kann DetachOrder doppelt kommen, während OrderActor sich noch beendet.
-            journal.unsafeCurrentState().idToOrder.checked(orderId).flatMap(_.detaching) match {
+            journal.unsafeCurrentState().idToOrder.checked(orderId).flatMap(_.detaching) match
               case Left(problem) => Future.successful(Left(problem))
               case Right(_) =>
                 val promise = Promise[Unit]()
                 orderEntry.detachResponses ::= promise
                 (orderEntry.actor ? OrderActor.Command.HandleEvents(OrderDetached :: Nil, CorrelId.current))
                   .mapTo[Completed]
-                  .onComplete {
+                  .onComplete:
                     case Failure(t) => promise.tryFailure(t)
                     case Success(Completed) =>
                       // Ignore this and instead await OrderActor termination and removal from orderRegister.
                       // Otherwise in case of a quick Controller restart, CoupleController would response with this OrderId
                       // and the Controller will try again to DetachOrder, while the original DetachOrder is still in progress.
-                  }
                 promise.future.map(_ => Right(AgentCommand.Response.Accepted))
-            }
           case None =>
             // May occur after Controller restart when Controller is not sure about order has been detached previously.
             logger.debug(s"Ignoring duplicate $cmd")
             Future.successful(Right(AgentCommand.Response.Accepted))
-        }
 
     case MarkOrder(orderId, mark) =>
-      orderRegister.checked(orderId) match {
+      orderRegister.checked(orderId) match
         case Left(problem) =>
           Future.failed(problem.throwable)
         case Right(orderEntry) =>
           if orderEntry.isDetaching then
             Future.successful(Right(AgentCommand.Response.Accepted))
           else
-            orderEventSource.markOrder(orderId, mark) match {
+            orderEventSource.markOrder(orderId, mark) match
               case Left(problem) => Future.failed(problem.throwable)
               case Right(None) => Future.successful(Right(AgentCommand.Response.Accepted))
               case Right(Some(events)) =>
@@ -707,39 +654,31 @@ with Stash
                 (orderEntry.actor ? OrderActor.Command.HandleEvents(events, CorrelId.current))
                   .mapTo[Completed]
                   .map(_ => Right(AgentCommand.Response.Accepted))
-            }
-      }
 
     case ReleaseEvents(after) =>
       if shuttingDown then
         Future.failed(AgentIsShuttingDown.throwable)
-      else {
+      else
         val userId = controllerId.toUserId
         val current = journalState.userIdToReleasedEventId(userId)  // Must contain userId
         if after < current then
           Future(Left(ReverseReleaseEventsProblem(requestedUntilEventId = after, currentUntilEventId = current)))
         else
-          persist(JournalEventsReleased(userId, after)) {
+          persist(JournalEventsReleased(userId, after)):
             case (Stamped(_,_, _ <-: event), journaledState) =>
               journalState = journalState.applyEvent(event)
               Right(AgentCommand.Response.Accepted)
-          }
-      }
-  }
 
   private def createJobEntries(workflow: Workflow, zone: ZoneId): Unit =
-    for (jobKey, job) <- workflow.keyToJob do {
-      if job.agentPath == ownAgentPath then {
+    for (jobKey, job) <- workflow.keyToJob do
+      if job.agentPath == ownAgentPath then
         jobRegister.insert(jobKey, new JobEntry(jobKey, job, zone))
-      }
-    }
 
-  private def attachOrder(order: Order[Order.IsFreshOrReady]): Future[Completed] = {
+  private def attachOrder(order: Order[Order.IsFreshOrReady]): Future[Completed] =
     val actor = newOrderActor(order.id)
     orderRegister.insert(order.id, actor)
     (actor ? OrderActor.Command.Attach(order, CorrelId.current)).mapTo[Completed]  // TODO ask will time-out when Journal blocks
     // Now expecting OrderEvent.OrderAttachedToAgent
-  }
 
   private def newOrderActor(orderId: OrderId) =
     watch(actorOf(
@@ -750,7 +689,7 @@ with Stash
   private def handleOrderEvent(
     previousOrder: Order[Order.State],
     event: OrderEvent)
-  : Unit = {
+  : Unit =
     // updatedOrderId may be outdated, changed by more events in the same batch
     // Nevertheless, updateOrderId is the result of the event.
     val orderId = previousOrder.id
@@ -779,39 +718,33 @@ with Stash
         case FollowUp.Delete(deleteOrderId) =>
           deleteOrder(deleteOrderId)
       })
-  }
 
   private def proceedWithOrder(orderId: OrderId): Unit =
-    journal.unsafeCurrentState().idToOrder.checked(orderId) match {
+    journal.unsafeCurrentState().idToOrder.checked(orderId) match
       case Left(problem) => logger.error(s"Internal: proceedWithOrder($orderId) => $problem")
       case Right(order) => proceedWithOrder(order)
-    }
 
-  private def proceedWithOrder(order: Order[Order.State]): Unit = {
-    if order.isAttached then {
-      val delayed = clock.lock {
-        order.maybeDelayedUntil match {
+  private def proceedWithOrder(order: Order[Order.State]): Unit =
+    if order.isAttached then
+      val delayed = clock.lock:
+        order.maybeDelayedUntil match
           case Some(until) if clock.now() < until =>
             // TODO Schedule only the next order ?
             val orderEntry = orderRegister(order.id)
-            orderEntry.timer := clock.scheduleAt(until) {
+            orderEntry.timer := clock.scheduleAt(until):
               self ! Internal.Due(order.id)
-            }
             true
 
           case _ =>
             false
-        }
-      }
-      if !delayed then {
+      if !delayed then
         val agentState = journal.unsafeCurrentState()
         val oes = new OrderEventSource(agentState)
-        if order != agentState.idToOrder(order.id) then {
+        if order != agentState.idToOrder(order.id) then
           // FIXME order should be equal !
           logger.debug(s"❌ ERROR order    =$order")
           logger.debug(s"❌ ERROR idToOrder=${agentState.idToOrder(order.id)}")
           //assertThat(oes.state.idToOrder(order.id) == order)
-        }
         val keyedEvents = oes.nextEvents(order.id)
         keyedEvents foreach { case KeyedEvent(orderId_, event) =>
           val future = orderRegister(orderId_).actor ?
@@ -827,26 +760,21 @@ with Stash
         if keyedEvents.isEmpty
           && journal.unsafeCurrentState().isOrderProcessable(order)
           && order.isAttached
-          && !shuttingDown then {
+          && !shuttingDown then
           onOrderIsProcessable(order)
-        }
-      }
-    }
-  }
 
   private def onOrderIsProcessable(order: Order[Order.State]): Unit =
     journal.unsafeCurrentState()
       .idToWorkflow.checked(order.workflowId)
       .map(workflow => workflow -> workflow.instruction(order.position))
-      .match {
+      .match
         case Left(problem) =>
           logger.error(s"onOrderIsProcessable => $problem")
 
         case Right((workflow, execute: Execute)) =>
-          val checkedJobKey = execute match {
+          val checkedJobKey = execute match
             case _: Execute.Anonymous => Right(workflow.anonymousJobKey(order.workflowPosition))
             case o: Execute.Named     => workflow.jobKey(order.position.branchPath, o.name)  // defaultArguments are extracted later
-          }
           checkedJobKey
             .flatMap(jobRegister.checked)
             .onProblem(problem =>
@@ -856,68 +784,61 @@ with Stash
             }
 
         case Right(_) =>
-      }
 
   private def onOrderAvailableForJob(orderId: OrderId, jobEntry: JobEntry): Unit =
   // TODO Make this more functional!
-    if !jobEntry.queue.isKnown(orderId) then {
+    if !jobEntry.queue.isKnown(orderId) then
       jobEntry.queue += orderId
       tryStartProcessing(jobEntry)
-    }
 
-  private def tryStartProcessing(jobEntry: JobEntry): Unit = {
-    lazy val isEnterable = jobEntry.checkAdmissionTimeInterval(clock) {
+  private def tryStartProcessing(jobEntry: JobEntry): Unit =
+    lazy val isEnterable = jobEntry.checkAdmissionTimeInterval(clock):
       self ! Internal.JobDue(jobEntry.jobKey)
-    }
     val idToOrder = journal.unsafeCurrentState().idToOrder
 
     @tailrec def loop(): Unit =
-      if jobEntry.isBelowParallelismLimit then {
+      if jobEntry.isBelowParallelismLimit then
         jobEntry.queue.dequeueWhere(orderId =>
           idToOrder.get(orderId).exists(_.forceJobAdmission) || isEnterable)
-        match {
+        match
           case None =>
           case Some(orderId) =>
             startProcessing(orderId, jobEntry)
             loop()
-        }
-      }
     loop()
-  }
 
   private def startProcessing(orderId: OrderId, jobEntry: JobEntry): Unit =
-    orderRegister.checked(orderId) match {
+    orderRegister.checked(orderId) match
       case Left(problem) =>
         logger.error(s"onOrderIsProcessable => $problem")
 
       case Right(orderEntry) =>
         jobEntry.taskCount += 1
         orderEntry.actor ! OrderActor.Input.StartProcessing
-    }
 
   private def deleteOrder(orderId: OrderId): Unit =
-    for orderEntry <- orderRegister.get(orderId) do {
+    for orderEntry <- orderRegister.get(orderId) do
       orderEntry.actor ! OrderActor.Input.Terminate()
       orderRegister.remove(orderId)
-    }
 
   private def switchOver(cmd: AgentCommand): Future[Checked[AgentCommand.Response]] =
-    Task.defer {
-      logger.info(s"❗️ $cmd")
-      switchingOver = true // Asynchronous !!!
-      Task(clusterNode.workingClusterNode)
-        .flatTapT(_ =>
-          // SubagentKeeper stops the local (surrounding) Subagent,
-          // which lets the Director (RunningAgent) stop
-          subagentKeeper.stop.as(Right(())))
-        .flatMapT(_.switchOver)
-        .flatMapT(_ => Task.right(self ! Internal.ContinueSwitchover))
-        .rightAs(AgentCommand.Response.Accepted)
-    }
+    Task
+      .defer {
+        logger.info(s"❗️ $cmd")
+        switchingOver = true // Asynchronous !!!
+        Task(clusterNode.workingClusterNode)
+          .flatTapT(_ =>
+            // SubagentKeeper stops the local (surrounding) Subagent,
+            // which lets the Director (RunningAgent) stop
+            subagentKeeper.stop.as(Right(())))
+          .flatMapT(_.switchOver)
+          .flatMapT(_ => Task.right(self ! Internal.ContinueSwitchover))
+          .rightAs(AgentCommand.Response.Accepted)
+      }
       .runToFuture
 
   override def unhandled(message: Any) =
-    message match {
+    message match
       case Internal.JobDriverStopped =>
         logger.trace("Internal.JobDriverStopped")
         jobRegister.values.foreach(_.close())
@@ -947,27 +868,24 @@ with Stash
 
       case _ =>
         super.unhandled(message)
-    }
 
   private def orderEventSource =
     new OrderEventSource(journal.unsafeCurrentState())
 
   override def toString = "AgentOrderKeeper"
-}
 
-object AgentOrderKeeper {
+object AgentOrderKeeper:
   private val logger = Logger[this.type]
 
   sealed trait Input
-  object Input {
+  object Input:
     final case class ExternalCommand(
       command: AgentCommand,
       correlId: CorrelId,
       response: Promise[Checked[Response]])
     case object ResetAllSubagents
-  }
 
-  private object Internal {
+  private object Internal:
     final case class Recover(agentState: AgentState)
     final case class SubagentKeeperInitialized(agentState: AgentState, tried: Try[Unit])
     final case class OrdersRecovered(agentState: AgentState)
@@ -976,13 +894,11 @@ object AgentOrderKeeper {
     case object JobDriverStopped
     case object StillTerminating extends DeadLetterSuppression
     case object ContinueSwitchover
-  }
 
   private final class JobEntry(
     val jobKey: JobKey,
     val workflowJob: WorkflowJob,
-    zone: ZoneId)
-  {
+    zone: ZoneId):
     val queue = new OrderQueue
     private val admissionTimeIntervalSwitch = new ExecuteAdmissionTimeSwitch(
       workflowJob.admissionTimeScheme.getOrElse(AdmissionTimeScheme.always),
@@ -997,19 +913,17 @@ object AgentOrderKeeper {
     def close(): Unit =
       admissionTimeIntervalSwitch.cancel()
 
-    def recoverProcessingOrder(order: Order[Order.Processing]): Unit = {
+    def recoverProcessingOrder(order: Order[Order.Processing]): Unit =
       taskCount += 1
       queue.recoverProcessingOrder(order)
-    }
 
     def checkAdmissionTimeInterval(clock: AlarmClock)(onPermissionGranted: => Unit): Boolean =
       admissionTimeIntervalSwitch.updateAndCheck(onPermissionGranted)(clock)
 
     def isBelowParallelismLimit =
       taskCount < workflowJob.parallelism
-  }
 
-  final class OrderQueue private[order] {
+  final class OrderQueue private[order]:
     private val queue = mutable.ListBuffer.empty[OrderId]
     private val queueSet = mutable.Set.empty[OrderId]
     private val inProcess = mutable.Set.empty[OrderId]
@@ -1022,36 +936,30 @@ object AgentOrderKeeper {
 
     def dequeueWhere(predicate: OrderId => Boolean): Option[OrderId] =
       queue.nonEmpty.option {
-        queue.indexWhere(predicate) match {
+        queue.indexWhere(predicate) match
           case -1 => None
           case i =>
             val orderId = queue.remove(i)
             queueSet -= orderId
             inProcess += orderId
             Some(orderId)
-        }
       }.flatten
 
-    def +=(orderId: OrderId) = {
+    def +=(orderId: OrderId) =
       if inProcess(orderId) then throw new DuplicateKeyException(s"Duplicate $orderId")
       if queueSet contains orderId then throw new DuplicateKeyException(s"Duplicate $orderId")
       queue += orderId
       queueSet += orderId
-    }
 
     def recoverProcessingOrder(order: Order[Order.Processing]): Unit =
       inProcess += order.id
 
     def remove(orderId: OrderId, dontWarn: Boolean = false): Unit =
-      if !inProcess.remove(orderId) then {
+      if !inProcess.remove(orderId) then
         val s = queue.size
         queue -= orderId
-        if !dontWarn && queue.size == s then {
+        if !dontWarn && queue.size == s then
           logger.warn(s"JobRegister.OrderQueue: unknown $orderId")
-        }
         queueSet -= orderId
-      }
 
     override def toString = s"OrderQueue(${queue.size} orders, ${inProcess.size} in process)"
-  }
-}

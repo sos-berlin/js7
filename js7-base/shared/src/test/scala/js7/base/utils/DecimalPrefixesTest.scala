@@ -7,9 +7,8 @@ import js7.base.utils.DecimalPrefixes.{toInt, toLong}
 /**
   * @author Joacim Zschimmer
   */
-final class DecimalPrefixesTest extends OurTestSuite
-{
-  "toInt" in {
+final class DecimalPrefixesTest extends OurTestSuite:
+  "toInt" in:
     assert(toInt("") == Left(Problem("NumberFormatException: For input string: \"\"")))
     assert(toInt("k") == Left(Problem("NumberFormatException: For input string: \"\"")))
     assert(toInt("xk") == Left(Problem("NumberFormatException: For input string: \"x\"")))
@@ -20,9 +19,6 @@ final class DecimalPrefixesTest extends OurTestSuite
     assert(toInt("12k") == Right(12000))
     assert(toInt("1M") == Right(1000*1000))
     assert(toInt("1G") == Right(1000*1000*1000))
-  }
 
-  "toLong" in {
+  "toLong" in:
     assert(toLong("1000G") == Right(1000L*1000*1000*1000))
-  }
-}

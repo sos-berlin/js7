@@ -9,8 +9,7 @@ import io.circe.generic.semiauto.deriveCodec
 final case class WorkflowOverview(
   path: WorkflowPath)
 
-object WorkflowOverview {
+object WorkflowOverview:
   def fromWorkflow(workflow: Workflow) = WorkflowOverview(path = workflow.path)
 
   implicit val jsonCodec: Codec.AsObject[WorkflowOverview] = deriveCodec[WorkflowOverview]
-}

@@ -5,12 +5,11 @@ import js7.base.time.ScalaTime.*
 import monix.execution.atomic.Atomic
 import scala.concurrent.duration.*
 
-final class AlarmClockTest extends OurTestSuite
-{
+final class AlarmClockTest extends OurTestSuite:
   private val start = Timestamp("2021-01-01T00:00:00Z")
   private val clockCheckInterval = 1.minute
 
-  "scheduleAt, and tick at scheduled time" in {
+  "scheduleAt, and tick at scheduled time" in:
     val clock = TestAlarmClock.forTest(start, clockCheckInterval = clockCheckInterval)
     val x = Atomic(0)
 
@@ -29,9 +28,8 @@ final class AlarmClockTest extends OurTestSuite
     assert(x() == 1)
 
     assert(clock.toString == s"ClockCheckingTestAlarmClock(${clock.now()}, no alarm)")
-  }
 
-  "scheduleAt, not ticking due to short delay" in {
+  "scheduleAt, not ticking due to short delay" in:
     val clock = TestAlarmClock.forTest(start, clockCheckInterval = clockCheckInterval)
     val x = Atomic(0)
 
@@ -44,9 +42,8 @@ final class AlarmClockTest extends OurTestSuite
     assert(x() == 1)
 
     assert(clock.toString == s"ClockCheckingTestAlarmClock(${clock.now()}, no alarm)")
-  }
 
-  "scheduleAt, and tick late" in {
+  "scheduleAt, and tick late" in:
     val clock = TestAlarmClock.forTest(start, clockCheckInterval = clockCheckInterval)
     val x = Atomic(0)
 
@@ -59,9 +56,8 @@ final class AlarmClockTest extends OurTestSuite
     assert(x() == 1)
 
     assert(clock.toString == s"ClockCheckingTestAlarmClock(${clock.now()}, no alarm)")
-  }
 
-  "Put the clock forward, but before the schedule" in {
+  "Put the clock forward, but before the schedule" in:
     val clock = TestAlarmClock.forTest(start, clockCheckInterval = clockCheckInterval)
     val x = Atomic(0)
 
@@ -85,9 +81,8 @@ final class AlarmClockTest extends OurTestSuite
     assert(x() == 1)
 
     assert(clock.toString == s"ClockCheckingTestAlarmClock(${clock.now()}, no alarm)")
-  }
 
-  "Put the clock forward, after the schedule" in {
+  "Put the clock forward, after the schedule" in:
     val clock = TestAlarmClock.forTest(start, clockCheckInterval = clockCheckInterval)
     val x = Atomic(0)
 
@@ -105,9 +100,8 @@ final class AlarmClockTest extends OurTestSuite
     assert(x() == 1)
 
     assert(clock.toString == s"ClockCheckingTestAlarmClock(${clock.now()}, no alarm)")
-  }
 
-  "Put the clock backward" in {
+  "Put the clock backward" in:
     val clock = TestAlarmClock.forTest(start, clockCheckInterval = clockCheckInterval)
     val x = Atomic(0)
 
@@ -131,9 +125,8 @@ final class AlarmClockTest extends OurTestSuite
     assert(x() == 1)
 
     assert(clock.toString == s"ClockCheckingTestAlarmClock(${clock.now()}, no alarm)")
-  }
 
-  "Multiple schedules" in {
+  "Multiple schedules" in:
     val clock = TestAlarmClock.forTest(start, clockCheckInterval = clockCheckInterval)
     val x = Atomic(0)
 
@@ -160,9 +153,8 @@ final class AlarmClockTest extends OurTestSuite
     assert(x() == 777)
 
     assert(clock.toString == s"ClockCheckingTestAlarmClock(${clock.now()}, no alarm)")
-  }
 
-  "cancel" in {
+  "cancel" in:
     val clock = TestAlarmClock.forTest(start, clockCheckInterval = clockCheckInterval)
     val x = Atomic(0)
 
@@ -180,5 +172,3 @@ final class AlarmClockTest extends OurTestSuite
     clock.tick(20.minutes)
     assert(x() == 50)
     assert(clock.toString == s"ClockCheckingTestAlarmClock(${clock.now()}, no alarm)")
-  }
-}

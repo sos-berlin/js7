@@ -18,8 +18,7 @@ import scala.jdk.OptionConverters.*
 
 @javaApi
 final case class JFreshOrder(asScala: FreshOrder)
-extends JJsonable[JFreshOrder]
-{
+extends JJsonable[JFreshOrder]:
   type AsScala = FreshOrder
 
   protected def companion = JFreshOrder
@@ -39,11 +38,9 @@ extends JJsonable[JFreshOrder]
   @Nonnull
   def stopPositions: java.util.Set[JPositionOrLabel] =
     asScala.stopPositions.map(JPositionOrLabel(_)).asJava
-}
 
 @javaApi
-object JFreshOrder extends JJsonable.Companion[JFreshOrder]
-{
+object JFreshOrder extends JJsonable.Companion[JFreshOrder]:
   type AsScala = FreshOrder
 
   @Nonnull
@@ -152,4 +149,3 @@ object JFreshOrder extends JJsonable.Companion[JFreshOrder]
 
   protected def jsonEncoder = FreshOrder.jsonEncoder
   protected def jsonDecoder = FreshOrder.jsonDecoder
-}

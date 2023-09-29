@@ -7,18 +7,14 @@ import js7.base.generic.SecretString
 import js7.data_for_java.auth.JCredentials.*
 
 @javaApi
-sealed trait JCredentials
-{
+sealed trait JCredentials:
   def toScala: Option[UserAndPassword] =
-    this match {
+    this match
       case NoCredentials => None
       case o: JUserAndPassword => Some(o.asScala)
-    }
-}
 
 @javaApi
-object JCredentials
-{
+object JCredentials:
   final val noCredentials = NoCredentials
 
   object NoCredentials extends JCredentials
@@ -29,4 +25,3 @@ object JCredentials
 
   final case class JUserAndPassword(asScala: UserAndPassword)
   extends JCredentials
-}

@@ -12,10 +12,8 @@ final case class PostNotice(
   boardPath: BoardPath,
   sourcePos: Option[SourcePos] = None)
 
-object PostNotice
-{
+object PostNotice:
   @nowarn("msg=deprecated")
   val compatibleSubtype: Subtype[PostNotices] =
     Subtype.decodeCompatible(deriveDecoder[PostNotice])(postNotice =>
       Right(PostNotices(Vector(postNotice.boardPath), postNotice.sourcePos)))
-}

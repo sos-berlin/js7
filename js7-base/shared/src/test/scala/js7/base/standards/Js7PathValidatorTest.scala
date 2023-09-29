@@ -7,16 +7,14 @@ import js7.base.standards.Js7PathValidatorTest.checkInvalid
 import js7.base.test.OurTestSuite
 import org.scalatest.Assertions.*
 
-final class Js7PathValidatorTest extends OurTestSuite
-{
+final class Js7PathValidatorTest extends OurTestSuite:
   private val validator = new Js7PathValidator("TEST")
   import validator.checked
 
-  "Invalid paths" in {
+  "Invalid paths" in:
     checkInvalid("TEST", validator.checked)
-  }
 
-  "Valid paths" in {
+  "Valid paths" in:
     assert(checked("A") == Right("A"))
     assert(checked("🔷") == Right("🔷"))
     assert(checked("A-B").isRight)
@@ -29,12 +27,9 @@ final class Js7PathValidatorTest extends OurTestSuite
     assert(checked("A.1").isRight)
     assert(checked("1").isRight)
     assert(checked("1A").isRight)
-  }
-}
 
-object Js7PathValidatorTest
-{
-  def checkInvalid[A](typeName: String, checked: String => Checked[A]): Unit = {
+object Js7PathValidatorTest:
+  def checkInvalid[A](typeName: String, checked: String => Checked[A]): Unit =
     assert(checked("") == Left(EmptyStringProblem(typeName)))
     assert(checked("/") == Left(InvalidNameProblem(typeName, "/")))
     assert(checked("/A") == Left(InvalidNameProblem(typeName, "/A")))
@@ -49,9 +44,8 @@ object Js7PathValidatorTest
     assert(checked("a@b") == Left(InvalidNameProblem(typeName, "a@b")))
     assert(checked("a,b") == Left(InvalidNameProblem(typeName, "a,b")))
     assert(checked("a~b") == Left(InvalidNameProblem(typeName, "a~b")))  // "~" is used for VersionId
-  }
 
-  def checkValid[A](checked: String => Checked[A]): Unit = {
+  def checkValid[A](checked: String => Checked[A]): Unit =
     assert(checked("A").isRight)
     assert(checked("🔷").isRight)
     assert(checked("A-B").isRight)
@@ -64,5 +58,3 @@ object Js7PathValidatorTest
     assert(checked("A.1").isRight)
     assert(checked("1").isRight)
     assert(checked("1A").isRight)
-  }
-}

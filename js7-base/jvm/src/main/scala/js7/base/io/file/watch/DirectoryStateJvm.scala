@@ -8,11 +8,10 @@ import js7.base.utils.JavaCollections.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
 import scala.concurrent.duration.Deadline.now
 
-object DirectoryStateJvm
-{
+object DirectoryStateJvm:
   private val logger = Logger[this.type]
 
-  def readDirectory(directory: Path, matches: Path => Boolean = _ => true): DirectoryState = {
+  def readDirectory(directory: Path, matches: Path => Boolean = _ => true): DirectoryState =
     val since = now
     val directoryState = DirectoryState(
       autoClosing(Files.list(directory))(_
@@ -29,5 +28,3 @@ object DirectoryStateJvm
     logger.trace(
       s"readDirectory '$directory' => ${directoryState.fileToEntry.size} files in ${since.elapsed.pretty}")
     directoryState
-  }
-}

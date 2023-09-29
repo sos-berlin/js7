@@ -11,8 +11,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.cluster.ClusterTiming.*
 import scala.concurrent.duration.*
 
-final case class ClusterTiming(heartbeat: FiniteDuration, heartbeatTimeout: FiniteDuration)
-{
+final case class ClusterTiming(heartbeat: FiniteDuration, heartbeatTimeout: FiniteDuration):
   checkedUnit(heartbeat, heartbeatTimeout).orThrow
 
   /** Duration the ClusterWatch considers the last heartbeat valid. */
@@ -51,10 +50,8 @@ final case class ClusterTiming(heartbeat: FiniteDuration, heartbeatTimeout: Fini
     heartbeat + 2 * heartbeatTimeout
 
   override def toString = s"ClusterTiming(${heartbeat.pretty}, ${heartbeatTimeout.pretty})"
-}
 
-object ClusterTiming
-{
+object ClusterTiming:
   def checked(heartbeat: FiniteDuration, heartbeatTimeout: FiniteDuration): Checked[ClusterTiming] =
     for _ <- checkedUnit(heartbeat, heartbeatTimeout) yield
       new ClusterTiming(heartbeat, heartbeatTimeout)
@@ -66,4 +63,3 @@ object ClusterTiming
   implicit val jsonCodec: Codec.AsObject[ClusterTiming] = deriveCodec
 
   intelliJuseImport((FiniteDurationJsonEncoder, FiniteDurationJsonDecoder))
-}

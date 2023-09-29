@@ -6,9 +6,8 @@ import js7.base.utils.SuperclassCacheTest.*
 /**
   * @author Joacim Zschimmer
   */
-final class SuperclassCacheTest extends OurTestSuite
-{
-  "test" in {
+final class SuperclassCacheTest extends OurTestSuite:
+  "test" in:
     val cache = new SuperclassCache(classOf[Super])
     assert(cache.assignableClasses(classOf[Super]) == Set(classOf[Super]))
     assert(cache.assignableClasses(classOf[A]) == Set(classOf[Super], classOf[A]))
@@ -40,11 +39,8 @@ final class SuperclassCacheTest extends OurTestSuite
     // |    js7.base.utils.SuperclassCacheTest$Super
     // |  js7.base.utils.SuperclassCacheTest$Super ->
     // |    js7.base.utils.SuperclassCacheTest$Super""".stripMargin)
-  }
-}
 
-object SuperclassCacheTest
-{
+object SuperclassCacheTest:
   private sealed trait X
   private sealed trait SuperSuper
   private sealed trait Super extends SuperSuper
@@ -53,4 +49,3 @@ object SuperclassCacheTest
   private sealed class A1 extends A
   private sealed class A2 extends A1 with A
   private sealed trait B1 extends X with B
-}

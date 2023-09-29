@@ -31,8 +31,7 @@ import monix.execution.Scheduler.Implicits.traced
 import scala.util.control.NonFatal
 
 final class SwitchOverAgentClusterTest extends OurTestSuite with ControllerAgentForScalaTest
-with BlockingItemUpdater
-{
+with BlockingItemUpdater:
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.journal.remove-obsolete-files = false
@@ -58,9 +57,9 @@ with BlockingItemUpdater
 
   protected def items = Nil
 
-  "SwitchOver to backup" in {
+  "SwitchOver to backup" in:
     /** Returned `TestAgent` releases `DirectorEnv`, too. */
-    def toTestAgent(envResource: Resource[Task, DirectorEnv]): (DirectorEnv, TestAgent) = {
+    def toTestAgent(envResource: Resource[Task, DirectorEnv]): (DirectorEnv, TestAgent) =
       val resource: Resource[Task, (DirectorEnv, RunningAgent)] =
         for
           env <- envResource
@@ -68,7 +67,6 @@ with BlockingItemUpdater
         yield env -> program
       val allocated = resource.toAllocated.await(99.s)
       allocated.allocatedThing._1 -> TestAgent(allocated.map(_._2) /*, Some(SIGTERM) ???*/)
-    }
 
     /** Returned `TestAgent` releases `DirectorEnv`, too. */
     def allocate(envResource: Resource[Task, DirectorEnv])
@@ -94,7 +92,7 @@ with BlockingItemUpdater
     backupDirector.useSync(99.s) { _ =>
       val aOrderId = OrderId("🔶")
       primaryAllocated.useSync(99.s) { case (primaryEnv, currentPrimaryDirector) =>
-        try {
+        try
           updateItems(primarySubagentItem, backupSubagentItem, agentRef, workflow)
           val primaryDirector = currentPrimaryDirector.await(1.s)
           primaryDirector.eventWatch.await[SubagentDedicated](_.key == primarySubagentId)
@@ -122,7 +120,7 @@ with BlockingItemUpdater
           // Primary director restarts and couples as the passive node
           backupDirector.eventWatch.await[ClusterCoupled](after = directorEventId)
 
-          locally {
+          locally:
             ASemaphoreJob.continue()
             controller.eventWatch.await[OrderTerminated](_.key == aOrderId)
 
@@ -137,18 +135,14 @@ with BlockingItemUpdater
 
             ASemaphoreJob.continue()
             controller.eventWatch.await[OrderFinished](_.key == bOrderId)
-          }
-        } catch {
+        catch
           case NonFatal(t) =>
             logger.error(t.toStringWithCauses, t)
             throw t.appendCurrentStackTrace
-        }
       }
     }
-  }
-}
 
-object SwitchOverAgentClusterTest {
+object SwitchOverAgentClusterTest:
   private val logger = Logger[this.type]
   private val agentPath = AgentPath("AGENT")
   private val primarySubagentId = toLocalSubagentId(agentPath)
@@ -161,4 +155,3 @@ object SwitchOverAgentClusterTest {
 
   final class ASemaphoreJob extends SemaphoreJob(ASemaphoreJob)
   object ASemaphoreJob extends SemaphoreJob.Companion[ASemaphoreJob]
-}

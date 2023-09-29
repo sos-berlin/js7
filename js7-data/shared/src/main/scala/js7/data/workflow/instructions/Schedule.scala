@@ -16,18 +16,14 @@ import scala.concurrent.duration.*
 
 final case class Schedule(schemes: Seq[Scheme])
 
-object Schedule
-{
+object Schedule:
   sealed trait Repeat
 
   final case class Periodic(period: FiniteDuration, offsets: Seq[FiniteDuration])
-  extends Repeat
-  {
+  extends Repeat:
     override def toString = "period=" + period +
       " offsets=" + offsets.map(_.pretty).mkString("(", ", ", ")")
-  }
-  object Periodic
-  {
+  object Periodic:
     def checked(period: FiniteDuration, offsets: Seq[FiniteDuration]): Checked[Periodic] =
       if period.isPositive
         && offsets.exists(o => !o.isNegative & o < period)
@@ -43,15 +39,11 @@ object Schedule
         offsets <- c.get[Vector[FiniteDuration]]("offsets")
         _ <- checked(period, offsets).toDecoderResult(c.history)
       yield Periodic(period, offsets.sorted)
-  }
 
   final case class Ticking(interval: FiniteDuration)
-  extends Repeat
-  {
+  extends Repeat:
     override def toString = s"Ticking(${interval.pretty})"
-  }
-  object Ticking
-  {
+  object Ticking:
     def checked(interval: FiniteDuration): Checked[Ticking] =
       if !interval.isPositive then
         Left(Problem.pure("Invalid Ticking arguments"))
@@ -64,21 +56,17 @@ object Schedule
         interval <- c.get[FiniteDuration]("interval")
         ticking <- checked(interval).toDecoderResult(c.history)
       yield ticking
-  }
 
   final case class Continuous(
     pause: FiniteDuration,
     limit: Option[Int] = None)
-  extends Repeat
-  {
+  extends Repeat:
     override def toString =
       View(
         Some("pause=" + pause.pretty),
         limit.map("limit=" + _)
       ).mkString("Continuous(", " ", ")")
-  }
-  object Continuous
-  {
+  object Continuous:
     def checked(
       pause: FiniteDuration = Duration.Zero,
       limit: Option[Int] = None)
@@ -97,21 +85,17 @@ object Schedule
         limit <- c.get[Option[Int]]("limit")
         continuous <- checked(pause, limit).toDecoderResult(c.history)
       yield continuous
-  }
 
-  object Repeat {
+  object Repeat:
     implicit val jsonCodec: TypedJsonCodec[Repeat] = TypedJsonCodec(
       Subtype[Periodic],
       Subtype[Ticking],
       Subtype[Continuous])
-  }
 
   final case class Scheme(admissionTimeScheme: AdmissionTimeScheme, repeat: Repeat)
-  object Scheme {
+  object Scheme:
     implicit val jsonCodec: Codec.AsObject[Scheme] = deriveCodec[Scheme]
-  }
 
   implicit val jsonCodec: Codec.AsObject[Schedule] = deriveCodec[Schedule]
 
   intelliJuseImport(FiniteDurationJsonDecoder)
-}

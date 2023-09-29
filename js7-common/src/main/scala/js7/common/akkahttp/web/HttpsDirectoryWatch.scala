@@ -18,7 +18,7 @@ private final class HttpsDirectoryWatch private(
   files: Seq[Path],
   onHttpsKeyOrCertChanged: Task[Unit])
   (implicit iox: IOExecutor)
-extends Service.StoppableByRequest {
+extends Service.StoppableByRequest:
 
   protected def start =
     watchDirectories
@@ -44,7 +44,7 @@ extends Service.StoppableByRequest {
   private def observeDirectory(directory: Path, files: Set[Path])(implicit iox: IOExecutor)
   : Task[Unit] =
     Task
-      .defer {
+      .defer:
         val directoryState = DirectoryStateJvm.readDirectory(directory, files) // throws
         DirectoryWatch
           .observable(
@@ -58,11 +58,9 @@ extends Service.StoppableByRequest {
           .tapEval(_ =>
             onHttpsKeyOrCertChanged)
           .completedL
-      }
       .tapError(t => Task(logger.error(t.toStringWithCauses, t)))
-}
 
-private object HttpsDirectoryWatch {
+private object HttpsDirectoryWatch:
   def resource(
     settings: DirectoryWatchSettings, files: Seq[Path], onHttpsKeyOrCertChanged: Task[Unit])
     (implicit iox: IOExecutor)
@@ -70,4 +68,3 @@ private object HttpsDirectoryWatch {
     Service.resource(Task(new HttpsDirectoryWatch(settings, files, onHttpsKeyOrCertChanged)))
 
   private val logger = Logger[this.type]
-}

@@ -11,8 +11,7 @@ import js7.data_for_java.item.JUnsignedVersionedItemId
 
 @javaApi
 final case class JWorkflowControlId(asScala: WorkflowControlId)
-extends JJsonable[JWorkflowControlId] with JUnsignedVersionedItemId[WorkflowControlPath]
-{
+extends JJsonable[JWorkflowControlId] with JUnsignedVersionedItemId[WorkflowControlPath]:
   type AsScala = WorkflowControlId
   protected type ScalaPath = WorkflowControlPath
   protected def companion = JWorkflowControlId
@@ -20,11 +19,9 @@ extends JJsonable[JWorkflowControlId] with JUnsignedVersionedItemId[WorkflowCont
   @Nonnull
   def path: WorkflowControlPath =
     asScala.path
-}
 
 @javaApi
-object JWorkflowControlId extends JJsonable.Companion[JWorkflowControlId]
-{
+object JWorkflowControlId extends JJsonable.Companion[JWorkflowControlId]:
   type AsScala = WorkflowControlId
 
   @javaApi @Nonnull @throws[RuntimeException]("on invalid syntax")
@@ -45,4 +42,3 @@ object JWorkflowControlId extends JJsonable.Companion[JWorkflowControlId]
 
   protected val jsonEncoder = UnsignedVersionedItemId.jsonEncoder[WorkflowControlPath]
   protected val jsonDecoder = UnsignedVersionedItemId.jsonDecoder[WorkflowControlPath]
-}

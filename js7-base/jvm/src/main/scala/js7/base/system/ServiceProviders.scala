@@ -6,12 +6,11 @@ import js7.base.utils.ScalaUtils.syntax.*
 import scala.jdk.CollectionConverters.*
 import scala.reflect.ClassTag
 
-object ServiceProviders
-{
+object ServiceProviders:
   private val logger = Logger[this.type]
 
   def findServices[A](callback: (=> String, Option[A]) => Unit = defaultCallback[A])
-    (implicit A: ClassTag[A]): Seq[A] = {
+    (implicit A: ClassTag[A]): Seq[A] =
     val interface = A.runtimeClass.asInstanceOf[Class[A]]
     val serviceLoader = ServiceLoader.load(
       interface,
@@ -23,18 +22,15 @@ object ServiceProviders
         s"No ${interface.simpleScalaName}",
         None)
     else
-      for service <- iterator/*loads services lazily*/ do {
+      for service <- iterator/*loads services lazily*/ do
         val cls = service.getClass
         val where = Option(cls.getProtectionDomain.getCodeSource)
           .fold("")(o => s" in ${o.getLocation}")
         callback(
           s"Found service provider $service · ${cls.scalaName}$where",
           Some(service))
-      }
 
     serviceLoader.asScala.toVector
-  }
 
   private def defaultCallback[A](logLine: => String, service: Option[A]): Unit =
     logger.debug(logLine)
-}

@@ -26,8 +26,7 @@ import scala.util.{Failure, Success}
 private[agent] abstract class CommandQueue(
   agentPath: AgentPath,
   batchSize: Int,
-  commandErrorDelay: FiniteDuration)
-{
+  commandErrorDelay: FiniteDuration):
   protected def commandParallelism: Int
   protected def executeCommand(command: AgentCommand.Batch): Task[Checked[command.Response]]
   protected def asyncOnBatchSucceeded(queueableResponses: Seq[QueueableResponse]): Task[Unit]
@@ -44,19 +43,18 @@ private[agent] abstract class CommandQueue(
   private val isTerminating = false
   private val terminated = Deferred.unsafe[Task, Unit]
 
-  private object queue {
+  private object queue:
     private val queue = mutable.Queue.empty[Queueable]
     private val queueSet = mutable.Set.empty[Queueable]
     private val detachQueue = mutable.Queue.empty[Queueable]  // DetachOrder is sent to Agent before any AttachOrder, to relieve the Agent
 
     def enqueue(queueable: Queueable): Unit =
-      queueable match {
+      queueable match
         case o: Queueable.DetachOrder => detachQueue += o
 
         case attach: Queueable.AttachUnsignedItem =>
-          val duplicates = queue.collect {
+          val duplicates = queue.collect:
             case o: Queueable.AttachUnsignedItem if o.item.key == attach.item.key => o
-          }
           queue --= duplicates
           queueSet --= duplicates
           queue += attach
@@ -65,26 +63,22 @@ private[agent] abstract class CommandQueue(
         case o =>
           queue += o
           queueSet += o
-      }
 
-    def dequeueAll(what: Set[Queueable]): Unit = {
+    def dequeueAll(what: Set[Queueable]): Unit =
       queue.dequeueAll(what)
       queueSet --= what
       detachQueue.dequeueAll(what)
-    }
 
-    def removeAlreadyAttachedOrders(): Unit = {
+    def removeAlreadyAttachedOrders(): Unit =
       def isAlreadyAttached(log: Boolean = false)(queueable: Queueable): Boolean =
-        queueable match {
+        queueable match
           case o: Queueable.AttachOrder if attachedOrderIds.contains(o.order.id) =>
             if log then logger.trace(s"removeAlreadyAttachedOrders: ${o.order.id}")
             true
           case _ =>
             false
-        }
       queue.removeAll(isAlreadyAttached(log = true))
       queueSet --= queueSet filter isAlreadyAttached()
-    }
 
     def size = queue.size + detachQueue.size
 
@@ -95,7 +89,6 @@ private[agent] abstract class CommandQueue(
       queueSet contains queueable
 
     override def toString = s"CommandQueue.queue(${queue.map(_.toShortString)})"
-  }
 
   final def onCoupled(attachedOrderIds: Set[OrderId]): Task[Unit] =
     lock.lock(Task.defer {
@@ -162,22 +155,20 @@ private[agent] abstract class CommandQueue(
     }))
 
   private def delayNextCommand: Task[Unit] =
-    Task.defer {
+    Task.defer:
       val delay = delayCommandExecutionAfterErrorUntil.timeLeft
-      Task.when(delay.isPositive) {
+      Task.when(delay.isPositive):
         logger.debug(s"Delay command after error for ${delay.pretty}")
         Task.sleep(delay)
-      }
-    }
 
   private def sendNow(queuable: Vector[Queueable]): Task[Unit] =
-    Task.defer {
+    Task.defer:
       val subcmds = queuable.map(o => CorrelIdWrapped(CorrelId.current, queuableToAgentCommand(o)))
       executeCommand(Batch(subcmds))
         .map(_.map(response =>
           for (i, r) <- queuable zip response.responses yield QueueableResponse(i, r)))
         .materialize
-        .flatMap {
+        .flatMap:
           case Success(Right(queueableResponses)) =>
             logger.debug(s"✔︎ sendNow queueables=${queuable.map(_.toShortString)}")
             asyncOnBatchSucceeded(queueableResponses)
@@ -191,11 +182,9 @@ private[agent] abstract class CommandQueue(
             logger.debug(s"💥 sendNow: $t")
             logger.debug(s"💥 sendNow: queueables=${queuable.map(_.toShortString)}")
             asyncOnBatchFailed(queuable, Problem.fromThrowable(t))
-        }
-    }
 
   private def queuableToAgentCommand(queuable: Queueable): AgentCommand =
-    queuable match {
+    queuable match
       case Queueable.AttachOrder(order, agentPath) =>
         AgentCommand.AttachOrder(order, agentPath)
 
@@ -219,7 +208,6 @@ private[agent] abstract class CommandQueue(
 
       case Queueable.ResetSubagent(subagentId, force) =>
         AgentCommand.ResetSubagent(subagentId, force = force)
-    }
 
   final def onOrdersDetached(orderIds: View[OrderId]): Task[Unit] =
     Task.when(orderIds.nonEmpty)(lock.lock(Task[Unit] {
@@ -279,19 +267,15 @@ private[agent] abstract class CommandQueue(
     })
 
   private def onQueueableResponded(queueables: Set[Queueable]): Task[Unit] =
-    Task.defer {
+    Task.defer:
       isExecuting --= queueables
       openRequestCount -= 1
       if isTerminating && isExecuting.isEmpty then
         terminated.complete(())
       else
         maybeStartSendingLocked
-    }
-}
 
-object CommandQueue
-{
+object CommandQueue:
   private[agent] final case class QueueableResponse(
     queueable: Queueable,
     response: Checked[AgentCommand.Response])
-}

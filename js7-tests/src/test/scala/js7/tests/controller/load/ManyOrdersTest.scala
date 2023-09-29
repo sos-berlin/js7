@@ -19,8 +19,7 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 
-final class ManyOrdersTest extends OurTestSuite with ControllerAgentForScalaTest
-{
+final class ManyOrdersTest extends OurTestSuite with ControllerAgentForScalaTest:
   protected val agentPaths = agentPath :: Nil
   protected val items = Seq(workflow)
 
@@ -31,7 +30,7 @@ final class ManyOrdersTest extends OurTestSuite with ControllerAgentForScalaTest
     js7.job.execution.signed-script-injection-allowed = yes
     """
 
-  private lazy val (n, orderSize) = sys.props.get("test.speed").map(_.split(" +")) match {
+  private lazy val (n, orderSize) = sys.props.get("test.speed").map(_.split(" +")) match
     case None => (defaultN, defaultSize)
 
     case Some(Array(nString)) =>
@@ -39,15 +38,13 @@ final class ManyOrdersTest extends OurTestSuite with ControllerAgentForScalaTest
       (a.toInt, b.drop(1).toInt)
 
     case _ => sys.error("Invalid number of arguments in property test.speed")
-  }
 
-  override def afterAll() = {
+  override def afterAll() =
     controller.api.stop await 99.s
     controller.terminate() await longTimeout
     super.afterAll()
-  }
 
-  s"Add $n orders à ${toKBGB(orderSize)} and make a snapshot" in {
+  s"Add $n orders à ${toKBGB(orderSize)} and make a snapshot" in:
     val t = new Stopwatch
     addOrders()
     if n > defaultN then println(t.itemsPerSecondString(n, "orders added"))
@@ -55,9 +52,8 @@ final class ManyOrdersTest extends OurTestSuite with ControllerAgentForScalaTest
     if n > defaultN then println(t.itemsPerSecondString(n, "orders written to snapshot"))
     waitUntilAllOrdersFinished(t)
     if n > defaultN then println(t.itemsPerSecondString(n, "orders processed"))
-  }
 
-  private def addOrders(): Unit = {
+  private def addOrders(): Unit =
     val payload = "BIG-"
     val order = FreshOrder(OrderId(s"ORDER"), workflow.path,
       arguments = Map("BIG" -> StringValue(payload * (orderSize / payload.length))))
@@ -66,7 +62,6 @@ final class ManyOrdersTest extends OurTestSuite with ControllerAgentForScalaTest
         .fromIterable(1 to n)
         .map(i => order.copy(id = OrderId(s"ORDER-$i"))))
       .await(longTimeout).orThrow
-  }
 
   def waitUntilAllOrdersFinished(stopwatch: Stopwatch): Unit =
     controller.eventWatch
@@ -79,10 +74,8 @@ final class ManyOrdersTest extends OurTestSuite with ControllerAgentForScalaTest
       .dropWhile(_ < n)
       .headOptionL
       .await(longTimeout)
-}
 
-object ManyOrdersTest
-{
+object ManyOrdersTest:
   private val defaultN = 10
   private val defaultSize = 4_000_000
   private val longTimeout = 999.s
@@ -93,4 +86,3 @@ object ManyOrdersTest
         execute agent="AGENT", internalJobClass="js7.tests.jobs.EmptyJob", parallelism=32;
       }"""
   ).orThrow
-}

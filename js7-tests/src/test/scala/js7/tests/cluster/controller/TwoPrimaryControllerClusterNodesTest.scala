@@ -10,11 +10,10 @@ import js7.data.Problems.PrimaryClusterNodeMayNotBecomeBackupProblem
 import js7.data.controller.ControllerCommand.ClusterAppointNodes
 import monix.execution.Scheduler.Implicits.traced
 
-final class TwoPrimaryControllerClusterNodesTest extends OurTestSuite with ControllerClusterTester
-{
+final class TwoPrimaryControllerClusterNodesTest extends OurTestSuite with ControllerClusterTester:
   override protected def configureClusterNodes = false
 
-  "ClusterAppointNodes is rejected if backup cluster node is not configured as a backup" in {
+  "ClusterAppointNodes is rejected if backup cluster node is not configured as a backup" in:
     withControllerAndBackup() { (primary, _, backup, _, clusterSetting) =>
       primary.runController() { primaryController =>
         backup.runController(config = config"js7.journal.cluster.node.is-backup = false") { _ =>
@@ -25,20 +24,16 @@ final class TwoPrimaryControllerClusterNodesTest extends OurTestSuite with Contr
         }
       }
     }
-  }
 
-  "An active primary may not be configured as a backup node" in {
+  "An active primary may not be configured as a backup node" in:
     withControllerAndBackup() { (primary, _, _, _, _) =>
       primary.runController() { _ => }
-      val t = intercept[ProblemException] {
+      val t = intercept[ProblemException]:
         primary.runController(
           config = config"js7.journal.cluster.node.is-backup = true",
           dontWaitUntilReady = true
         ) { _ =>
           // TODO Introduce ClusterFailed event to check the asynchronous failure?
         }
-      }
       assert(t.problem == PrimaryClusterNodeMayNotBecomeBackupProblem)
     }
-  }
-}

@@ -4,8 +4,7 @@ import js7.data.board.{BoardPath, BoardPathExpression}
 import js7.data.order.Order
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderNoticesConsumptionStarted}
 
-trait ExpectOrConsumeNoticesInstruction extends BoardInstruction
-{
+trait ExpectOrConsumeNoticesInstruction extends BoardInstruction:
   def boardPaths: BoardPathExpression
 
   def isFulfilled(isNoticeAvailable: BoardPath => Boolean): Boolean =
@@ -15,4 +14,3 @@ trait ExpectOrConsumeNoticesInstruction extends BoardInstruction
     order: Order[Order.State],
     consumptions: Vector[OrderNoticesConsumptionStarted.Consumption])
   : List[OrderActorEvent]
-}

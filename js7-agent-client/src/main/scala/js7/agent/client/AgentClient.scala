@@ -35,8 +35,7 @@ import scala.concurrent.duration.FiniteDuration
 trait AgentClient
 extends HttpSessionApi with AkkaHttpClient
 with SessionApi.HasUserAndPassword
-with HttpClusterNodeApi
-{
+with HttpClusterNodeApi:
   def httpClient = this
 
   def baseUri: Uri
@@ -47,13 +46,13 @@ with HttpClusterNodeApi
 
   final def repeatUntilAvailable[A](timeout: FiniteDuration)(body: Task[Checked[A]])
   : Task[Checked[A]] =
-    Task.defer {
+    Task.defer:
       val sym = new BlockingSymbol
       val delays = Iterator(100.ms, 300.ms, 600.ms) ++ Iterator.continually(1.s)
       val until = now + timeout
       Task.tailRecM(()) { _ =>
         body
-          .flatMap {
+          .flatMap:
             case Left(problem) if (problem is ClusterNodeIsNotReadyProblem) && now < until =>
               sym.increment()
               logger.log(sym.logLevel, s"$sym $toString: $problem")
@@ -67,11 +66,9 @@ with HttpClusterNodeApi
                   case Right(_) => s"🟢 $toString was available again"
                 })
               Task.right(checked)
-          }
           .tapError(throwable => Task(
             logger.log(sym.releasedLogLevel, s"💥$toString => $throwable")))
       }
-    }
 
   final def commandExecute(command: AgentCommand): Task[Checked[command.Response]] =
     liftProblem(
@@ -86,24 +83,21 @@ with HttpClusterNodeApi
       getDecodedLinesObservable[Stamped[KeyedEvent[Event]]](
         agentUris.controllersEvents(request),
         responsive = true))
-}
 
-object AgentClient
-{
+object AgentClient:
   private val logger = Logger[this.type]
 
   def apply(admission: Admission, label: String = "Agent",
     httpsConfig: => HttpsConfig = HttpsConfig.empty)
     (implicit actorSystem: ActorSystem)
-  : AgentClient = {
+  : AgentClient =
     val a = actorSystem
     val up = admission.userAndPassword
     def h = httpsConfig  // lazy, to avoid reference when not needed (needed only for https)
-    new AgentClient with HttpClusterNodeApi  {
-      override def close(): Unit = {
+    new AgentClient with HttpClusterNodeApi :
+      override def close(): Unit =
         logOpenSession()
         super.close()
-      }
 
       protected val actorSystem = a
       val baseUri = admission.uri
@@ -113,8 +107,6 @@ object AgentClient
       protected lazy val prefixedUri = baseUri / "agent"
 
       override def toString = s"AgentClient($prefixedUri)"
-    }
-  }
 
   def resource(
     admission: Admission,
@@ -125,4 +117,3 @@ object AgentClient
     Resource.make(
       acquire = Task(apply(admission, label, httpsConfig)))(
       release = client => client.tryLogout *> Task(client.close()))
-}

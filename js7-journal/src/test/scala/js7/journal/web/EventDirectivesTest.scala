@@ -17,8 +17,7 @@ import scala.concurrent.duration.*
 /**
   * @author Joacim Zschimmer
   */
-final class EventDirectivesTest extends OurTestSuite with ScalatestRouteTest
-{
+final class EventDirectivesTest extends OurTestSuite with ScalatestRouteTest:
   override def testConfig = config"akka.loglevel = warning"
     .withFallback(super.testConfig)
 
@@ -28,7 +27,7 @@ final class EventDirectivesTest extends OurTestSuite with ScalatestRouteTest
       KeyedSubtype.singleEvent[BEvent])
 
   private def route =
-    path("test") {
+    path("test"):
       val x: Directive1[EventRequest[MyEvent]] = eventRequest[MyEvent]
       x.apply((eventReq: EventRequest[MyEvent]) =>
         if eventReq == EventRequest[MyEvent](Set(classOf[AEvent]), after = EventId(1), delay = EventDirectives.DefaultDelay, timeout = Some(0.s)) then
@@ -46,39 +45,27 @@ final class EventDirectivesTest extends OurTestSuite with ScalatestRouteTest
           println(eventReq)
           reject
         })
-    }
 
-  "eventRequest" in {
-    Get("/test?return=AEvent&after=1") ~> route ~> check {
+  "eventRequest" in:
+    Get("/test?return=AEvent&after=1") ~> route ~> check:
       assert(responseAs[String] == "DEFAULT")
-    }
-    Get("/test?return=AEvent&delay=0.77&timeout=88&limit=99&after=66&tornOlder=10") ~> route ~> check {
+    Get("/test?return=AEvent&delay=0.77&timeout=88&limit=99&after=66&tornOlder=10") ~> route ~> check:
       assert(responseAs[String] == "A")
-    }
-    Get("/test?return=AEvent,BEvent&delay=0.777&timeout=888&limit=999&after=666") ~> route ~> check {
+    Get("/test?return=AEvent,BEvent&delay=0.777&timeout=888&limit=999&after=666") ~> route ~> check:
       assert(responseAs[String] == "B")
-    }
-    Get("/test?return=AEvent,BEvent&timeout=infinite&after=3") ~> route ~> check {
+    Get("/test?return=AEvent,BEvent&timeout=infinite&after=3") ~> route ~> check:
       assert(responseAs[String] == "C")
-    }
-  }
-}
 
-object EventDirectivesTest {
-  sealed trait MyEvent extends Event.IsKeyBase[MyEvent] {
+object EventDirectivesTest:
+  sealed trait MyEvent extends Event.IsKeyBase[MyEvent]:
     val keyCompanion: MyEvent.type = MyEvent
-  }
-  object MyEvent extends Event.CompanionForKey[String, MyEvent] {
+  object MyEvent extends Event.CompanionForKey[String, MyEvent]:
     implicit val implicitSelf: MyEvent.type = MyEvent
-  }
 
   final case class AEvent() extends MyEvent
-  object AEvent {
+  object AEvent:
       implicit val jsonCodec: Codec.AsObject[AEvent] = deriveCodec
-  }
 
   final case class BEvent() extends MyEvent
-  object BEvent {
+  object BEvent:
       implicit val jsonCodec: Codec.AsObject[BEvent] = deriveCodec
-  }
-}

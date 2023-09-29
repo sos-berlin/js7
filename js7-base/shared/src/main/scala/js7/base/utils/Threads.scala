@@ -3,8 +3,7 @@ package js7.base.utils
 import js7.base.utils.ScalaUtils.syntax.*
 import scala.jdk.CollectionConverters.*
 
-object Threads
-{
+object Threads:
   def allThreadStackTraces(): Seq[String] =
     Thread.getAllStackTraces.asScala
       .toVector
@@ -16,4 +15,3 @@ object Threads
           (stacktraceString.nonEmpty ?? " ⏎") +
           stacktraceString
       }
-}

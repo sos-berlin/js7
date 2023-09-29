@@ -36,12 +36,11 @@ import js7.data.node.NodeId
 import js7.tests.testenv.ControllerClusterForScalaTest.*
 import js7.tests.testenv.DirectoryProvider.script
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.traced 
+import monix.execution.Scheduler.Implicits.traced
 import org.jetbrains.annotations.TestOnly
 
 @TestOnly
-trait ControllerClusterForScalaTest
-{
+trait ControllerClusterForScalaTest:
   this: org.scalatest.Suite =>
 
   protected def agentPaths: Seq[AgentPath] = AgentPath("AGENT") :: Nil
@@ -83,7 +82,7 @@ trait ControllerClusterForScalaTest
     (body: (DirectoryProvider, TestController, Vector[TestAgent],
             DirectoryProvider, TestController, Vector[TestAgent], ClusterSetting) => Unit)
   : Unit =
-    withControllerAndBackup(suppressClusterWatch) {
+    withControllerAndBackup(suppressClusterWatch):
       (primary, primaryAgents, backup, backupAgents, clusterSetting) =>
         runControllers(primary, backup) { (primaryController, backupController) =>
           body(
@@ -91,19 +90,17 @@ trait ControllerClusterForScalaTest
             backup, backupController, backupAgents,
             clusterSetting)
         }
-    }
 
   final def withControllerAndBackup(suppressClusterWatch: Boolean = false)
     (body: (DirectoryProvider, Vector[TestAgent], DirectoryProvider, Vector[TestAgent], ClusterSetting) => Unit)
   : Unit =
-    withControllerAndBackupWithoutAgents(suppressClusterWatch) {
+    withControllerAndBackupWithoutAgents(suppressClusterWatch):
       (primary, backup, setting) =>
         backup.runAgents() { backupAgents =>
           primary.runAgents() { primaryAgents =>
             body(primary, primaryAgents, backup, backupAgents, setting)
           }
         }
-    }
 
   final def withControllerAndBackupWithoutAgents(suppressClusterWatch: Boolean = false)
     (body: (DirectoryProvider, DirectoryProvider, ClusterSetting) => Unit)
@@ -193,10 +190,9 @@ trait ControllerClusterForScalaTest
       if suppressClusterWatch then
         body(primary, backup, setting)
       else
-        withOptionalClusterWatchService() {
+        withOptionalClusterWatchService():
           body(primary, backup, setting.copy(
             clusterWatchId = Some(clusterWatchId)))
-        }
     }
 
   protected final def runControllers(primary: DirectoryProvider, backup: DirectoryProvider)
@@ -253,10 +249,7 @@ trait ControllerClusterForScalaTest
       .map(_.orThrow)
       .flatMap(_ => Task.deferFuture(controller.terminated))
       .map((_: ProgramTermination) => ())
-}
 
-object ControllerClusterForScalaTest
-{
+object ControllerClusterForScalaTest:
   val TestPathExecutable = RelativePathExecutable("TEST.cmd")
   val clusterWatchId = ClusterWatchId("CLUSTER-WATCH")
-}

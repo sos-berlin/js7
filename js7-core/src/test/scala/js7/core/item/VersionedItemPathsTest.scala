@@ -14,9 +14,9 @@ import js7.data.workflow.WorkflowPath
 /**
   * @author Joacim Zschimmer
   */
-final class VersionedItemPathsTest extends OurTestSuite {
+final class VersionedItemPathsTest extends OurTestSuite:
 
-  "fileToItemPathAndSourceType" in {
+  "fileToItemPathAndSourceType" in:
     val dir = Paths.get("DIR")
     assert(fileToItemPathAndSourceType(Set(WorkflowPath), dir, dir / "folder/test.workflow.json") ==
       Right(WorkflowPath("folder/test") -> SourceType.Json))
@@ -32,14 +32,11 @@ final class VersionedItemPathsTest extends OurTestSuite {
       Right(WorkflowPath("folder/test") -> SourceType.Json))
     assert(fileToItemPathAndSourceType(Set(WorkflowPath), dir, dir / "a@b.workflow.json") ==
       Left(InvalidNameProblem("WorkflowPath", "a@b")))
-  }
 
-  if sys.props contains "test.speed" then "speed" in {
+  if sys.props contains "test.speed" then "speed" in:
     val dir = Paths.get("/TEST/JS7/PROVIDER/CONFIG/LIVE")
     val path = dir / "folder/test.workflow.json"
     for _ <- 1 to 5 do info(
       measureTime(100000, "fileToItemPathAndSourceType") {
       fileToItemPathAndSourceType(Set(WorkflowPath), dir, path)
     }.toString)
-  }
-}

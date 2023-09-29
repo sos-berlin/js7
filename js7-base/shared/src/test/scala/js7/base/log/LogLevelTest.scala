@@ -4,8 +4,8 @@ import js7.base.log.LogLevel.ordering
 import js7.base.test.OurTestSuite
 import scala.math.Ordering.Implicits.*
 
-final class LogLevelTest extends OurTestSuite {
-  "Ordering" in {
+final class LogLevelTest extends OurTestSuite:
+  "Ordering" in:
     val logNone: LogLevel = LogLevel.LogNone
     val trace: LogLevel = LogLevel.Trace
     val debug: LogLevel = LogLevel.Debug
@@ -18,5 +18,3 @@ final class LogLevelTest extends OurTestSuite {
     assert(debug < info)
     assert(info < warn)
     assert(warn < error)
-  }
-}

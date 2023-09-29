@@ -8,9 +8,8 @@ import monix.execution.atomic.AtomicInt
 /**
  * @author Joacim Zschimmer
  */
-final class SetOnceTest extends OurTestSuite
-{
-  "SetOnce" in {
+final class SetOnceTest extends OurTestSuite:
+  "SetOnce" in:
     val a = SetOnce[Int]
     assert(a.isEmpty)
     assert(!a.nonEmpty)
@@ -30,32 +29,26 @@ final class SetOnceTest extends OurTestSuite
     var r = 7
     for _ <- a do r = a.orThrow
     assert(r == 0)
-  }
 
-  "getOrUpdate" in {
+  "getOrUpdate" in:
     val counter = AtomicInt(0)
     val a = SetOnce[A]
     assert((a getOrUpdate A(counter.incrementAndGet())) == A(1))
     assert((a getOrUpdate A(counter.incrementAndGet())) == A(1))
     assert((a getOrUpdate sys.error("lazy")) == A(1))
     assert(counter.get() == 1)
-  }
 
-  "checked" in {
+  "checked" in:
     val a = SetOnce[Int]
     assert(a.checked == Left(Problem.pure("SetOnce[Int] promise has not been kept so far")))
     a := 7
     assert(a.checked == Right(7))
-  }
 
-  "toString" in {
+  "toString" in:
     val a = SetOnce[Int]
     assert(a.toString == "SetOnce[Int](not yet set)")
     a := 7
     assert(a.toString == "7")
-  }
-}
 
-object SetOnceTest {
+object SetOnceTest:
   private case class A(number: Int)
-}

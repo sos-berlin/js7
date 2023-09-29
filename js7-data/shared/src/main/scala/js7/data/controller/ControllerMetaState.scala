@@ -10,13 +10,10 @@ import js7.base.utils.IntelliJUtils.intelliJuseImport
 final case class ControllerMetaState(
   controllerId: ControllerId,
   initiallyStartedAt: Timestamp,
-  timezone: Timezone)
-{
+  timezone: Timezone):
   def isDefined = this != ControllerMetaState.Undefined
-}
 
-object ControllerMetaState
-{
+object ControllerMetaState:
   val Undefined = ControllerMetaState(
     ControllerId("UNDEFINED-CONTROLLER-ID"),
     Timestamp.ofEpochMilli(0),
@@ -26,4 +23,3 @@ object ControllerMetaState
     deriveRenamingCodec[ControllerMetaState](Map("startedAt" -> "initiallyStartedAt"))
 
   intelliJuseImport(FiniteDurationJsonEncoder)
-}

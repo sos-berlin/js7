@@ -12,7 +12,7 @@ import js7.subagent.configuration.SubagentConf
 import js7.tests.testenv.DirectoryProvider.*
 
 /** Environment with config and data directories for a Subagent with Agent Director. */
-trait SubagentEnv extends ProgramEnv {
+trait SubagentEnv extends ProgramEnv:
   protected def subagentItem: SubagentItem
   protected def name: String
   protected def rootDirectory: Path
@@ -32,7 +32,7 @@ trait SubagentEnv extends ProgramEnv {
   protected def internalSubagentConfig: Config =
     SubagentConf.DefaultConfig
 
-  final lazy val subagentConf: SubagentConf = {
+  final lazy val subagentConf: SubagentConf =
     val isHttps = subagentItem.uri.string.startsWith("https:")
     val port = subagentItem.uri.port.orThrow
 
@@ -43,17 +43,16 @@ trait SubagentEnv extends ProgramEnv {
       internalConfig = internalSubagentConfig,
       httpPort = !isHttps ? port,
       httpsPort = isHttps ? port)
-  }
 
   final def localSubagentId: SubagentId =
     subagentItem.id
 
-  protected override def createDirectoriesAndFiles(): Unit = {
+  protected override def createDirectoriesAndFiles(): Unit =
     super.createDirectoriesAndFiles()
     createDirectory(executables)
-    if provideHttpsCertificate then {
+    if provideHttpsCertificate then
       (configDir / "private/https-keystore.p12") := AgentKeyStoreResource.contentBytes
-      if provideClientCertificate then {
+      if provideClientCertificate then
         configDir / "private/controller-https-truststore.p12" :=
           ExportedControllerTrustStoreResource.contentBytes
         configDir / "private/private.conf" ++= s"""
@@ -64,8 +63,6 @@ trait SubagentEnv extends ProgramEnv {
          |  }
          |]
          |""".stripMargin
-      }
-    }
     privateConf ++= s"""
      |js7.web.server.auth.https-client-authentication = $mutualHttps
      |js7.web.https.keystore {
@@ -73,14 +70,11 @@ trait SubagentEnv extends ProgramEnv {
      |  key-password = "jobscheduler"
      |}
      |""".stripMargin
-  }
 
-  override def onInitialize(): Unit = {
+  override def onInitialize(): Unit =
     super.onInitialize()
     // Call finishAndProvideFiles _after_ *.conf files have been written!
     subagentConf.finishAndProvideFiles()
-  }
 
   final def writeExecutable(path: RelativePathExecutable, string: String): Unit =
     path.toFile(executables).writeUtf8Executable(string)
-}

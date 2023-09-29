@@ -7,34 +7,27 @@ import js7.base.system.OperatingSystem.isWindows
 import js7.base.test.OurTestSuite
 import js7.launcher.forwindows.WindowsApi.{kernel32, messageIdToString, openProcessToken}
 
-final class WindowsApiTest extends OurTestSuite
-{
-  if isWindows then {
-    "processHandleCount" in {
+final class WindowsApiTest extends OurTestSuite:
+  if isWindows then
+    "processHandleCount" in:
       assert(WindowsApi.processHandleCount > 0)
-    }
 
-    "tempPath" in {
+    "tempPath" in:
       assert(WindowsApi.tempPath == Paths.get(sys.env("TMP")))
-    }
 
-    "windowsDirectory" in {
+    "windowsDirectory" in:
       assert(WindowsApi.windowsDirectory == Paths.get("C:\\Windows"))  // Expected for test environment
-    }
 
-    "openProcessToken" in {
+    "openProcessToken" in:
       val handle = WindowsApi.openProcessToken(kernel32.GetCurrentProcess, TOKEN_ALL_ACCESS)
       closeHandle(handle)
-    }
 
-    "usersEnvironment" in {
+    "usersEnvironment" in:
       val userToken = openProcessToken(kernel32.GetCurrentProcess, TOKEN_ALL_ACCESS)
       assert(WindowsApi.usersEnvironment(userToken) contains "Path")
       closeHandle(userToken)
-    }
-  }
 
-  "messageIdToString" in {
+  "messageIdToString" in:
     assert(messageIdToString(0) == "0")
     assert(messageIdToString(1) == "1")
     assert(messageIdToString(1000) == "1000")
@@ -44,5 +37,3 @@ final class WindowsApiTest extends OurTestSuite
     assert(messageIdToString(0x80000000) == "0x80000000")
     assert(messageIdToString(0x80000001) == "0x80000001")
     assert(messageIdToString(0xc0ffffff) == "0xc0ffffff")
-  }
-}

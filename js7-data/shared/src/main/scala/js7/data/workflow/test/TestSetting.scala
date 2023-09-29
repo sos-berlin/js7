@@ -14,8 +14,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 /**
   * For tests only.
   */
-private[js7] object TestSetting
-{
+private[js7] object TestSetting:
   val TestAgentPath = AgentPath("AGENT")
   val AJobName = WorkflowJob.Name("A")
   val BJobName = WorkflowJob.Name("B")
@@ -38,4 +37,3 @@ private[js7] object TestSetting
     SimpleTestWorkflow.id /: Position(0),
     Order.Ready,
     Map("KEY" -> StringValue("VALUE")))
-}

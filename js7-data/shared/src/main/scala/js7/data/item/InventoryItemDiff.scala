@@ -4,15 +4,13 @@ import js7.data.item.InventoryItemDiff.*
 
 final case class InventoryItemDiff[P <: InventoryItemPath, I <: InventoryItem](
   addedOrChanged: Seq[I] = Nil,
-  removed: Seq[P] = Nil)
-{
+  removed: Seq[P] = Nil):
   /** For tests: ordering is irrelevant. */
-  override def equals(other: Any) = other match {
+  override def equals(other: Any) = other match
     case o: InventoryItemDiff[?, ?] =>
       addedOrChanged.toSet == o.addedOrChanged.toSet &&
         removed.toSet == removed.toSet
     case _ => false
-  }
 
   def isEmpty = addedOrChanged.isEmpty && removed.isEmpty
 
@@ -29,9 +27,7 @@ final case class InventoryItemDiff[P <: InventoryItemPath, I <: InventoryItem](
   def containsVersionedItem: Boolean =
     addedOrChanged.exists(_.isInstanceOf[VersionedItem]) ||
       removed.exists(_.isInstanceOf[VersionedItemPath])
-}
-object InventoryItemDiff
-{
+object InventoryItemDiff:
   def diff(as: Iterable[InventoryItem], bs: Iterable[InventoryItem], ignoreVersion: Boolean)
   : InventoryItemDiff_ =
     fromItemChanges(diffItems(as, bs, ignoreVersion = ignoreVersion))
@@ -45,7 +41,7 @@ object InventoryItemDiff
     changed: Iterable[InventoryItem],
     base: Iterable[InventoryItem],
     ignoreVersion: Boolean = false)
-  : Seq[ItemChange] = {
+  : Seq[ItemChange] =
     val pathToMaybeItem = base.view
       .map(o => o.path -> o)
       .toMap[InventoryItemPath, InventoryItem]
@@ -57,14 +53,13 @@ object InventoryItemDiff
       .concat(addedOrChanged.map(ItemChange.AddedOrChanged(_)))
       .toVector
       .sortBy(_.path)
-  }
 
   private def isAddedOrChanged(
     item: InventoryItem,
     previousPathToItem: InventoryItemPath => Option[InventoryItem],
     ignoreVersion: Boolean)
   : Boolean =
-    (item, previousPathToItem(item.path)) match {
+    (item, previousPathToItem(item.path)) match
       case (_, None) =>
         true
       case (item: SimpleItem, Some(previous: SimpleItem)) if ignoreVersion =>
@@ -73,11 +68,8 @@ object InventoryItemDiff
         item.withVersion(previous.key.versionId) != previous
       case (item, Some(previous)) =>
         item != previous
-    }
 
   private def itemWithVersionId[I <: InventoryItem](item: I, v: VersionId): I =
-    item match {
+    item match
       case item: VersionedItem => item.withVersion(v).asInstanceOf[I]
       case o => o
-    }
-}

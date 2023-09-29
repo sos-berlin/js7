@@ -13,7 +13,7 @@ import scala.concurrent.Future
   */
 trait KeyedJournalingActor[S <: JournaledState[S], E <: Event]
 (using protected val E: Event.KeyCompanion[? >: E])
-  extends JournalingActor[S, E] {
+  extends JournalingActor[S, E]:
 
   protected def key: E.Key
 
@@ -40,14 +40,11 @@ trait KeyedJournalingActor[S <: JournaledState[S], E <: Event]
     super.persistKeyedEvents(
       events.map(e => Timestamped(toKeyedEvent(e))),
       CommitOptions(transaction = true),
-      async = async) {
+      async = async):
       (stampedEvents, journaledState) => callback(stampedEvents.map(_.value.event.asInstanceOf[EE]), journaledState)
-    }
 
-  private def toKeyedEvent(event: E): KeyedEvent[E] = {
+  private def toKeyedEvent(event: E): KeyedEvent[E] =
     if isTest then assert(event.keyCompanion eq E)
     key.asInstanceOf[event.keyCompanion.Key] <-: event
-  }
 
   override def toString = s"${ getClass.simpleScalaName }($key)"
-}

@@ -11,7 +11,7 @@ import scala.concurrent.duration.*
 /**
   * @author Joacim Zschimmer
   */
-trait Timestamp extends Ordered[Timestamp] {
+trait Timestamp extends Ordered[Timestamp]:
 
   def companion: Companion
 
@@ -52,10 +52,9 @@ trait Timestamp extends Ordered[Timestamp] {
 
   def roundTo(duration: FiniteDuration): Timestamp = this + duration / 2 roundDownTo duration
 
-  def roundDownTo(duration: FiniteDuration): Timestamp = {
+  def roundDownTo(duration: FiniteDuration): Timestamp =
     val durationMillis = duration.toMillis
     companion.ofEpochMilli(toEpochMilli / durationMillis * durationMillis)
-  }
 
   def copy(epochMilli: Long): Timestamp
 
@@ -65,10 +64,8 @@ trait Timestamp extends Ordered[Timestamp] {
 
   override def toString =
     if toEpochMilli == 0 then "Epoch" else toIsoString
-}
 
-object Timestamp
-{
+object Timestamp:
   private[time] val implementation: Companion = SystemTimestamp
   val Epoch: Timestamp = ofEpochMilli(0)
   val MaxValue: Timestamp = Epoch + FiniteDuration.MaxValue
@@ -99,7 +96,7 @@ object Timestamp
   final val StringTimestampJsonEncoder: Encoder[Timestamp] =
     implementation.StringTimestampJsonEncoder
 
-  trait Companion {
+  trait Companion:
     final val StringTimestampJsonEncoder: Encoder[Timestamp] =
       o => Json.fromString(o.toIsoString)
 
@@ -121,5 +118,3 @@ object Timestamp
       ofEpochMilli(o * 1000)
 
     def parse(string: String): Timestamp
-  }
-}

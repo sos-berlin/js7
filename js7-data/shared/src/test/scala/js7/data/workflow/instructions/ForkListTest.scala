@@ -14,8 +14,7 @@ import js7.data.workflow.position.Position
 import js7.data.workflow.{Instruction, Workflow}
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 
-final class ForkListTest extends OurTestSuite
-{
+final class ForkListTest extends OurTestSuite:
   private val fork = ForkList(
     expr("$children"),
     exprFunction("(listElement) => $listElement.number"),
@@ -26,7 +25,7 @@ final class ForkListTest extends OurTestSuite
     Workflow.of(Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("A"))))
   ).copy(sourcePos = Some(SourcePos(1, 2)))
 
-  "JSON" in {
+  "JSON" in:
     testJson[Instruction.Labeled](
       fork,
       json"""{
@@ -113,21 +112,16 @@ final class ForkListTest extends OurTestSuite
         "agentPath": "AGENT"
       }""".as[ForkList].toChecked == Left(Problem(
         "JSON DecodingFailure at : The 'childToArguments' function is expected to accept between 0 and 2 parameters")))
-  }
 
-  "workflow" in {
+  "workflow" in:
     assert(fork.workflow("fork") == Right(fork.workflow))
     assert(fork.workflow("X").isLeft)
-  }
 
-  "flattenedWorkflows" in {
+  "flattenedWorkflows" in:
     assert(fork.flattenedWorkflows(Position(7)).toSeq == Seq(
       (Position(7) / "fork") -> fork.workflow))
-  }
 
-  "flattenedInstructions" in {
+  "flattenedInstructions" in:
     assert(fork.flattenedInstructions(Position(7)).toSeq == Seq[(Position, Instruction.Labeled)](
       Position(7) / "fork" % 0 -> fork.workflow.instructions(0),
       Position(7) / "fork" % 1 -> ImplicitEnd()))
-  }
-}

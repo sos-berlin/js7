@@ -8,8 +8,7 @@ import js7.data_for_java.common.JJsonable
 import scala.jdk.CollectionConverters.*
 
 final case class JLockState(asScala: LockState)
-extends JJsonable[JLockState]
-{
+extends JJsonable[JLockState]:
   type AsScala = LockState
   protected def companion = JLockState
 
@@ -32,12 +31,9 @@ extends JJsonable[JLockState]
   @Nonnull
   def queuedOrderIds: java.util.List[OrderId] =
     asScala.queue.asJava
-}
 
-object JLockState extends JJsonable.Companion[JLockState]
-{
+object JLockState extends JJsonable.Companion[JLockState]:
   type AsScala = LockState
 
   protected def jsonEncoder = LockState.jsonCodec
   protected def jsonDecoder = LockState.jsonCodec
-}

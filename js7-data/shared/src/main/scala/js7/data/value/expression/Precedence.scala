@@ -1,15 +1,14 @@
 package js7.data.value.expression
 
-trait Precedence {
+trait Precedence:
   protected def precedence: Int
 
   protected def inParentheses(o: Precedence): String = Precedence.inParentheses(o, precedence)
 
   protected def makeString(a: Precedence, op: String, b: Precedence): String =
     Precedence.toString(a, op, precedence, b)
-}
 
-object Precedence {
+object Precedence:
   // Higher number means higher precedence
   private val next = Iterator.from(1).next _
   val Function = next()
@@ -33,4 +32,3 @@ object Precedence {
       o.toString
     else
       s"($o)"
-}

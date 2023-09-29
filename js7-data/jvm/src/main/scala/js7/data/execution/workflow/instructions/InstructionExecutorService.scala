@@ -11,8 +11,7 @@ import js7.data.order.{Order, OrderId, OrderObstacle, OrderObstacleCalculator}
 import js7.data.state.StateView
 import js7.data.workflow.Instruction
 
-final class InstructionExecutorService(val clock: WallClock)
-{
+final class InstructionExecutorService(val clock: WallClock):
   val finishExecutor = new FinishExecutor(this)
 
   private val classToExecutor = new SubclassToX(
@@ -49,11 +48,10 @@ final class InstructionExecutorService(val clock: WallClock)
 
   def nextMove(instruction: Instruction, order: Order[Order.State], stateView: StateView)
   : Checked[Option[OrderMoved]] =
-    instructionToExecutor(instruction) match {
+    instructionToExecutor(instruction) match
       case executor: PositionInstructionExecutor =>
         executor.nextMove(instruction.asInstanceOf[executor.Instr], order, stateView)
       case _ => Right(None)
-    }
 
   def toEvents(orderId: OrderId, stateView: StateView)
   : Checked[List[KeyedEvent[OrderActorEvent]]] =
@@ -68,21 +66,18 @@ final class InstructionExecutorService(val clock: WallClock)
 
   def toEvents(instruction: Instruction, order: Order[Order.State], stateView: StateView)
   : Checked[List[KeyedEvent[OrderActorEvent]]] =
-    instructionToExecutor(instruction) match {
+    instructionToExecutor(instruction) match
       case exec: EventInstructionExecutor =>
         exec.toEvents(instruction.asInstanceOf[exec.Instr], order, stateView)
       case _ =>
         Right(Nil)
-    }
 
   def onReturnFromSubworkflow(instr: Instruction, order: Order[Order.State], state: StateView)
-  : Checked[List[KeyedEvent[OrderActorEvent]]] = {
+  : Checked[List[KeyedEvent[OrderActorEvent]]] =
     val executor = instructionToExecutor(instr)
     executor.onReturnFromSubworkflow(instr.asInstanceOf[executor.Instr], order, state)
-  }
 
   def toObstacles(order: Order[Order.State], calculator: OrderObstacleCalculator)
   : Checked[Set[OrderObstacle]] =
     instructionToExecutor(calculator.stateView.instruction(order.workflowPosition))
       .toObstacles(order, calculator)
-}

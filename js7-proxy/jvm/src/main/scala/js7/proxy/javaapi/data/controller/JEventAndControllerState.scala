@@ -10,8 +10,7 @@ import js7.proxy.data.event.EventAndState
 
 @javaApi
 final case class JEventAndControllerState[E <: Event](asScala: EventAndState[E, ControllerState])
-extends JavaWrapper
-{
+extends JavaWrapper:
   type AsScala = EventAndState[E, ControllerState]
 
   @Nonnull
@@ -25,4 +24,3 @@ extends JavaWrapper
   @Nonnull
   def previousState: JControllerState =
     JControllerState(asScala.previousState)
-}

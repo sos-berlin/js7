@@ -1,6 +1,4 @@
 package js7.base.crypt
 
-trait Signature
-{
+trait Signature:
   def toGenericSignature: GenericSignature
-}

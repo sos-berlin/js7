@@ -21,9 +21,8 @@ import js7.tests.testenv.DirectoryProvider
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.traced
 
-final class ExpressionsTest extends OurTestSuite
-{
-  "test" in {
+final class ExpressionsTest extends OurTestSuite:
+  "test" in:
     val directoryProvider = new DirectoryProvider(
       agentPaths = Seq(TestAgentPath),
       items = Seq(TestWorkflow),
@@ -33,24 +32,20 @@ final class ExpressionsTest extends OurTestSuite
       for a <- directoryProvider.agentEnvs do a.writeExecutable(RelativePathExecutable(s"TEST-RC$sh", v1Compatible = true), jobScript)
 
       directoryProvider.run { (controller, _) =>
-        for order <- orders do withClue(s"Order ${order.id.string}: ") {
+        for order <- orders do withClue(s"Order ${order.id.string}: "):
           controller.addOrderBlocking(order)
           val expectedLast = ExpectedEvents(order.id).last
           controller.eventWatch.await[OrderEvent](ke => ke.key == order.id && expectedLast.getClass == ke.event.getClass)
           checkEventSeq(order.id, controller.eventWatch.allKeyedEvents[OrderEvent])
-        }
       }
     }
-  }
 
   private def checkEventSeq(orderId: OrderId, stampedSeq: Seq[KeyedEvent[OrderEvent]])
-  : Unit = {
+  : Unit =
     val events = stampedSeq.view.filter(_.key == orderId).map(_.event).to(Vector)
     assert(events == ExpectedEvents(orderId))
-  }
-}
 
-object ExpressionsTest {
+object ExpressionsTest:
   private val TestAgentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(TestAgentPath)
 
@@ -131,4 +126,3 @@ object ExpressionsTest {
       OrderDetachable,
       OrderDetached,
       OrderFinished()))
-}

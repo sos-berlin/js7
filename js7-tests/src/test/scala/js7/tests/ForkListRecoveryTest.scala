@@ -23,8 +23,7 @@ import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.DirectoryProviderForScalaTest
 import monix.execution.Scheduler.Implicits.traced
 
-final class ForkListRecoveryTest extends OurTestSuite with DirectoryProviderForScalaTest
-{
+final class ForkListRecoveryTest extends OurTestSuite with DirectoryProviderForScalaTest:
   override protected val agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = yes
     """
@@ -33,14 +32,13 @@ final class ForkListRecoveryTest extends OurTestSuite with DirectoryProviderForS
 
   override protected def items = Seq(workflow)
 
-  "Fork" in {
+  "Fork" in:
     directoryProvider.run { (controller, _) =>
       controller.addOrderBlocking(newOrder(parentOrderId, workflow.path, n))
       controller.eventWatch.await[OrderPrompted](_.key == childOrderIds.head)
     }
-  }
 
-  "Join" in {
+  "Join" in:
     directoryProvider.run { (controller, _) =>
       childOrderIds.toVector
         .traverse(childOrderId =>
@@ -85,7 +83,7 @@ final class ForkListRecoveryTest extends OurTestSuite with DirectoryProviderForS
         OrderFinished(),
         OrderDeleted))
 
-      for orderId <- childOrderIds do {
+      for orderId <- childOrderIds do
         assert(controller.eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
           OrderProcessingStarted(subagentId),
           OrderProcessed(Outcome.succeeded),
@@ -95,13 +93,9 @@ final class ForkListRecoveryTest extends OurTestSuite with DirectoryProviderForS
           OrderPrompted(StringValue("QUESTION")),
           OrderPromptAnswered(),
           OrderMoved(Position(0) / "fork" % 2)))
-      }
     }
-  }
-}
 
-object ForkListRecoveryTest
-{
+object ForkListRecoveryTest:
   private val n = 3
   private val parentOrderId = OrderId("PARENT")
   private val childOrderIds = for i <- 1 to 3 yield parentOrderId / s"CHILD-$i"
@@ -125,4 +119,3 @@ object ForkListRecoveryTest
       workflowPath,
       Map("children" -> ListValue(for i <- 1 to n yield StringValue(s"CHILD-$i"))),
       deleteWhenTerminated = true)
-}

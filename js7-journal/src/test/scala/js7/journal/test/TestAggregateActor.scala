@@ -18,26 +18,25 @@ import scala.util.{Failure, Success}
 private[test] final class TestAggregateActor(key_ : String, val journalActor: ActorRef @@ JournalActor.type,
   protected val journalConf: JournalConf)
   (implicit protected val scheduler: Scheduler)
-extends KeyedJournalingActor[TestState, TestEvent] {
+extends KeyedJournalingActor[TestState, TestEvent]:
 
   protected def key = key_.asInstanceOf[E.Key]
   private var aggregate: TestAggregate = null
   private var disturbance = 0
 
-  def receive = {
+  def receive =
     case Input.RecoverFromSnapshot(aggregate) =>
       this.aggregate = aggregate
 
     case command: Command =>
-      command match {
+      command match
 
         case Command.Disturb(value) =>
           disturbance = value
 
         case Command.DisturbAndRespond =>
-          deferAsync {
+          deferAsync:
             sender() ! "OK"
-          }
 
         case Command.Add(string) =>
           val before = persistedEventId
@@ -59,9 +58,8 @@ extends KeyedJournalingActor[TestState, TestEvent] {
           persistTransaction(string map TestEvent.Appended.apply) { (es, journaledState) =>
             es foreach update
           }
-          defer {
+          defer:
             sender() ! Response.Completed(disturbance)
-          }
 
         case Command.AppendEmpty =>
           persistKeyedEvents(Nil) { (seq, journaledState) =>
@@ -72,7 +70,7 @@ extends KeyedJournalingActor[TestState, TestEvent] {
         case Command.AcceptEarly =>
           val sender = this.sender()
           val event = TestEvent.NothingDone
-          persistAcceptEarlyTask(event).runToFuture onComplete {
+          persistAcceptEarlyTask(event).runToFuture onComplete:
             // persistAcceptEarlyTask does not update persistedEventId
             case Success(Right(_: Accepted)) => sender ! Response.Completed(disturbance)
             case Success(Left(problem)) =>
@@ -81,22 +79,19 @@ extends KeyedJournalingActor[TestState, TestEvent] {
             case Failure(t) =>
               logger.error(t.toStringWithCauses, t)
               sender ! Status.Failure(t)
-          }
 
         case Command.AppendAsync(string) =>
-          for c <- string do {
+          for c <- string do
             val before = persistedEventId
             persist(TestEvent.Appended(c), async = true) { (e, s) =>
               assert(before < persistedEventId)
               update(e)
             }
-          }
-          deferAsync {
+          deferAsync:
             sender() ! Response.Completed(disturbance)
-          }
 
         case Command.AppendNested(string) =>
-          def append(string: List[Char]): Unit = string match {
+          def append(string: List[Char]): Unit = string match
             case char :: tail =>
               persist(TestEvent.Appended(char)) { (e, s) =>
                 update(e)
@@ -104,11 +99,10 @@ extends KeyedJournalingActor[TestState, TestEvent] {
               }
             case Nil =>
               sender() ! Response.Completed(disturbance)
-          }
           append(string.toList)
 
         case Command.AppendNestedAsync(string) =>
-          def append(string: List[Char]): Unit = string match {
+          def append(string: List[Char]): Unit = string match
             case char :: tail =>
               persist(TestEvent.Appended(char), async = true) { (e, s) =>
                 update(e)
@@ -116,20 +110,16 @@ extends KeyedJournalingActor[TestState, TestEvent] {
               }
             case Nil =>
               sender() ! Response.Completed(disturbance)
-          }
           append(string.toList)
-      }
 
     case Input.Get =>
       assert(aggregate != null)
-      deferAsync {  // For testing
+      deferAsync:  // For testing
         sender() ! aggregate
-      }
-  }
 
 
   private def update(event: TestEvent): Unit =
-    event match {
+    event match
       case event: TestEvent.Added =>
         assert(aggregate == null)
         import event.*
@@ -142,24 +132,19 @@ extends KeyedJournalingActor[TestState, TestEvent] {
 
       case event: TestEvent =>
         aggregate = aggregate.applyEvent(event)
-    }
-}
 
-private[journal] object TestAggregateActor
-{
+private[journal] object TestAggregateActor:
   private val logger = Logger[this.type]
 
-  object Input {
+  object Input:
     final case class RecoverFromSnapshot(snapshot: TestAggregate)
     case object Get
-  }
 
-  object Output {
+  object Output:
     case object Ready
-  }
 
   sealed trait Command
-  object Command {
+  object Command:
     sealed trait IsAsync
     final case class Disturb(int: Int) extends Command
     case object DisturbAndRespond extends Command
@@ -171,9 +156,6 @@ private[journal] object TestAggregateActor
     final case class AppendNested(string: String) extends Command
     final case class AppendNestedAsync(string: String) extends Command with IsAsync
     case object Remove extends Command
-  }
 
-  object Response {
+  object Response:
     final case class Completed(disturbance: Int)
-  }
-}

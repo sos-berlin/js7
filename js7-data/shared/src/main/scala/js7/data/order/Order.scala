@@ -47,8 +47,7 @@ final case class Order[+S <: Order.State](
   forceJobAdmission: Boolean = false,
   stickySubagents: List[StickySubagent] = Nil,
   innerBlock: BranchPath = BranchPath.empty,
-  stopPositions: Set[PositionOrLabel] = Set.empty)
-{
+  stopPositions: Set[PositionOrLabel] = Set.empty):
   // Accelerate usage in Set[Order], for example in AgentDriver's CommandQueue
   override def hashCode = id.hashCode
 
@@ -76,30 +75,26 @@ final case class Order[+S <: Order.State](
   def position: Position =
     workflowPosition.position
 
-  def forkPosition: Checked[Position] = {
+  def forkPosition: Checked[Position] =
     val reversed = position.forkBranchReversed
     if reversed.isEmpty then
       Left(Problem.pure(s"$id is in state FailedInFork but not below a Fork instruction"))
     else
       Right(reversed.tail.reverse % reversed.head.nr)
-  }
 
-  def applyEvents(events: Iterable[OrderEvent.OrderCoreEvent]): Checked[Order[State]] = {
+  def applyEvents(events: Iterable[OrderEvent.OrderCoreEvent]): Checked[Order[State]] =
     // TODO Generalize this in ScalaUtils!
     var problem: Problem = null
     var order: Order[Order.State] = this
     val it = events.iterator
-    while it.hasNext && problem == null do {
+    while it.hasNext && problem == null do
       val event = it.next()
-      order.applyEvent(event) match {
+      order.applyEvent(event) match
         case Right(o) => order = o
         case Left(prblm) => problem = prblm
-      }
-    }
     if problem != null then Left(problem) else Right(order)
-  }
 
-  def applyEvent(event: OrderEvent.OrderCoreEvent): Checked[Order[State]] = {
+  def applyEvent(event: OrderEvent.OrderCoreEvent): Checked[Order[State]] =
     val force = false
     def inapplicableProblem = InapplicableOrderEventProblem(event, this)
     def inapplicable = Left(inapplicableProblem)
@@ -107,7 +102,7 @@ final case class Order[+S <: Order.State](
     def check[A](okay: => Boolean, updated: A) =
       if force || okay then Right(updated) else inapplicable
 
-    event match {
+    event match
       case _: OrderAdded | _: OrderAttachedToAgent =>
         Left(Problem("OrderAdded and OrderAttachedToAgent events are not handled by the Order itself"))
 
@@ -246,7 +241,7 @@ final case class Order[+S <: Order.State](
           copy(attachedState = Some(Attaching(agentPath))))
 
       case OrderAttached(agentPath) =>
-        attachedState match {
+        attachedState match
           case Some(Attaching(`agentPath`)) =>
             check(isState[IsFreshOrReady] || isState[Forked],
               copy(attachedState = Some(Attached(agentPath))))
@@ -256,15 +251,13 @@ final case class Order[+S <: Order.State](
                 attachedState = Some(Attached(agentPath))))
             else
               inapplicable
-        }
 
       case OrderDetachable =>
-        attachedState match {
+        attachedState match
           case Some(Attached(agentPath)) if isInDetachableState =>
             Right(copy(attachedState = Some(Detaching(agentPath))))
           case _ =>
             inapplicable
-        }
 
       case OrderDetached =>
         check(!isDetached && isInDetachableState,
@@ -335,21 +328,18 @@ final case class Order[+S <: Order.State](
         val updatedHistoryOutcomes =
           if maybePosition.isEmpty && historyOps.isEmpty then
             Right(historicOutcomes)
-          else {
+          else
             // historyOutcomes positions should be unique, but is this sure?
-            final class Entry(h: Option[HistoricOutcome]) {
+            final class Entry(h: Option[HistoricOutcome]):
               val inserted = mutable.Buffer.empty[HistoricOutcome]
               var current: Option[HistoricOutcome] = h
               def result = inserted.view ++ current
-            }
             var positionFound = false
             val array = historicOutcomes.view
               .map { h =>
-                for pos <- maybePosition do {
-                  if !positionFound && (h.position == pos || h.position.normalized == pos) then {
+                for pos <- maybePosition do
+                  if !positionFound && (h.position == pos || h.position.normalized == pos) then
                     positionFound = true
-                  }
-                }
                 new Entry(!positionFound ? h)
               }
               .concat(new Entry(None) :: Nil)
@@ -362,39 +352,33 @@ final case class Order[+S <: Order.State](
             var checked: Checked[Unit] = Right(())
 
             def get(pos: Position): Option[Int] =
-              pToi.checked(pos) match {
+              pToi.checked(pos) match
                 case Left(problem) =>
                   checked = Left(problem)
                   None
                 case Right(i) =>
                   Some(i)
-              }
 
-            historyOps foreach {
+            historyOps foreach:
               case ReplaceHistoricOutcome(pos, o) =>
-                for i <- get(pos) do {
+                for i <- get(pos) do
                   array(i).current = Some(HistoricOutcome(pos, o))
-                }
 
               case InsertHistoricOutcome(pos, newPos, o) =>
-                for i <- get(pos) do {
+                for i <- get(pos) do
                   array(i).inserted += HistoricOutcome(newPos, o)
-                }
 
               case AppendHistoricOutcome(pos, o) =>
                 append += HistoricOutcome(pos, o)
 
               case DeleteHistoricOutcome(pos) =>
-                for i <- get(pos) do {
+                for i <- get(pos) do
                   array(i).current = None
-                }
-            }
             checked.map(_ =>
               array.view
                 .flatMap(_.result)
                 .concat(append)
                 .toVector)
-          }
 
         updatedHistoryOutcomes.flatMap { updatedHistoricOutcomes =>
           val maybeSucceeded =
@@ -524,7 +508,7 @@ final case class Order[+S <: Order.State](
             state = BetweenCycles(Some(cycleState))))
 
       case OrderCycleStarted =>
-        state match {
+        state match
           case BetweenCycles(Some(cycleState)) =>
             val branchId = BranchId.cycle(
               cycleState.copy(
@@ -535,7 +519,6 @@ final case class Order[+S <: Order.State](
                   state = Ready))
 
           case _ => inapplicable
-        }
 
       case OrderCycleFinished(cycleState) =>
         position.parent
@@ -550,14 +533,12 @@ final case class Order[+S <: Order.State](
           Right(copy(workflowPosition = workflowPosition))
         else
           inapplicable
-    }
-  }
 
   def shouldFail: Boolean =
     isFailed && isFailable
 
   def isFailed: Boolean =
-    lastOutcome match {
+    lastOutcome match
       // Do not fail but let ExecuteExecutor repeat the job:
       case Outcome.Disrupted(Outcome.Disrupted.ProcessLost(_)) => false
 
@@ -565,7 +546,6 @@ final case class Order[+S <: Order.State](
       case Outcome.Killed(_) => !isState[Processed]
 
       case o => !o.isSucceeded
-    }
 
   def lastOutcome: Outcome =
     historicOutcomes.lastOption.fold_(Outcome.succeeded, _.outcome)
@@ -597,26 +577,23 @@ final case class Order[+S <: Order.State](
       .orElseMapView(historicOutcomeView)
 
   private def historicOutcomeView: MapView[String, Value] =
-    new MapView[String, Value] {
+    new MapView[String, Value]:
       def get(key: String) =
         historicOutcomes.view
           .reverse
-          .collect {
+          .collect:
             case HistoricOutcome(_, o: Outcome.Completed) => o.namedValues.get(key)
-          }
           .flatten
           .headOption
 
       private lazy val nameToValue =
         historicOutcomes.view
-          .collect {
+          .collect:
             case HistoricOutcome(_, o: Outcome.Completed) => o.namedValues
-          }
           .flatten
           .toMap
 
       def iterator = nameToValue.iterator
-    }
 
   /** In JobScheduler 1, job results overwrote order arguments. */
   def v1CompatibleNamedValues(workflow: Workflow): NamedValues =
@@ -643,12 +620,11 @@ final case class Order[+S <: Order.State](
     mark.map(o => s"marked as $o")
 
   def attachedStateString: String =
-    attachedState match {
+    attachedState match
       case None => "at Controller"
       case Some(Attaching(agentPath)) => s"attachable to $agentPath"
       case Some(Attached(agentPath)) => s"attached to $agentPath"
       case Some(Detaching(agentPath)) => s"detaching from $agentPath"
-    }
 
   /** `true` iff order is going to be attached to an Agent.. */
   def isAttaching: Boolean =
@@ -667,28 +643,25 @@ final case class Order[+S <: Order.State](
     attachedState.isEmpty
 
   def attached: Checked[AgentPath] =
-    attachedState match {
+    attachedState match
       case Some(Attached(agentPath)) =>
         Right(agentPath)
       case o =>
         Left(Problem(s"'$id' should be 'Attached', but is $o"))
-    }
 
   def detaching: Checked[AgentPath] =
-    attachedState match {
+    attachedState match
       case Some(Detaching(agentPath)) =>
         Right(agentPath)
       case o =>
         Left(Problem(s"'$id' should be Detaching, but is $o"))
-    }
 
   def isAtAgent(agentPath: AgentPath): Boolean =
-    attachedState match {
+    attachedState match
       case Some(Attaching(`agentPath`)) => true
       case Some(Attached(`agentPath`)) => true
       case Some(Detaching(`agentPath`)) => true
       case _ => false
-    }
 
   def isInDetachableState =
     isState[Fresh] ||
@@ -721,10 +694,9 @@ final case class Order[+S <: Order.State](
     (isDetached || isAttached)
 
   private def cleanMark: Option[OrderMark] =
-    mark match {
+    mark match
       case Some(OrderMark.Cancelling(CancellationMode.FreshOnly)) if isStarted => None
       case o => o
-    }
 
   private def isMarked =
     mark.isDefined
@@ -736,10 +708,9 @@ final case class Order[+S <: Order.State](
   private def isSuspending =
     mark.exists(_.isInstanceOf[OrderMark.Suspending])
 
-  private[order] def isSuspendingWithKill = mark match {
+  private[order] def isSuspendingWithKill = mark match
     case Some(OrderMark.Suspending(SuspensionMode(Some(_: CancellationMode.Kill)))) => true
     case _ => false
-  }
 
   def isSuspendedOrStopped: Boolean =
     (isSuspended
@@ -762,12 +733,11 @@ final case class Order[+S <: Order.State](
     isState[IsFreshOrReady] && !isSuspendedOrStopped && !isMarked
 
   /** Number of executions for this job (starting with 1). */
-  def historicJobExecutionCount(jobKey: JobKey, workflow: Workflow): Int = {
+  def historicJobExecutionCount(jobKey: JobKey, workflow: Workflow): Int =
     val x = Right(jobKey)
     historicOutcomes.view
       .map(o => workflow.positionToJobKey(o.position))
       .count(_ == x)
-  }
 
   def agentToStickySubagent(agentPath: AgentPath): Option[StickySubagent] =
     stickySubagents.find(_.agentPath == agentPath)
@@ -793,10 +763,8 @@ final case class Order[+S <: Order.State](
         case _ =>
           Left(Problem("OrderAttachedToAgent event requires an Attached order"))
     })
-}
 
-object Order
-{
+object Order:
   def fromOrderAdded(id: OrderId, event: OrderAddedX): Order[Fresh] =
     Order(id,
       event.workflowId /: event.startPosition.getOrElse(event.innerBlock % 0),
@@ -824,41 +792,34 @@ object Order
       stopPositions = event.stopPositions)
 
   sealed trait AttachedState
-  object AttachedState {
-    sealed trait HasAgentPath extends AttachedState {
+  object AttachedState:
+    sealed trait HasAgentPath extends AttachedState:
       def agentPath: AgentPath
-    }
-    object HasAgentPath {
+    object HasAgentPath:
       def unapply(o: HasAgentPath) = Some(o.agentPath)
-    }
     implicit val jsonCodec: TypedJsonCodec[AttachedState] = TypedJsonCodec(
       Subtype(deriveCodec[Attaching]),
       Subtype(deriveCodec[Attached]),
       Subtype(deriveCodec[Detaching]))
 
     sealed trait AttachingOrAttached extends HasAgentPath
-  }
   /** Order is going to be attached to an Agent. */
-  final case class Attaching(agentPath: AgentPath) extends AttachedState.AttachingOrAttached {
+  final case class Attaching(agentPath: AgentPath) extends AttachedState.AttachingOrAttached:
     override def toString = s"Attaching to $agentPath"
-  }
   /** Order is attached to an Agent. */
-  final case class Attached(agentPath: AgentPath) extends AttachedState.AttachingOrAttached {
+  final case class Attached(agentPath: AgentPath) extends AttachedState.AttachingOrAttached:
     override def toString = s"Attached to $agentPath"
-  }
   /** Order is going to be detached from Agent. */
-  final case class Detaching(agentPath: AgentPath) extends AttachedState.HasAgentPath {
+  final case class Detaching(agentPath: AgentPath) extends AttachedState.HasAgentPath:
     override def toString = s"Detaching from $agentPath"
-  }
 
-  sealed trait State {
+  sealed trait State:
     def maybeDelayedUntil: Option[Timestamp] = None
 
     /** Only if OrderOperationCancellable applies. */
     def isOperationCancelable = false
-  }
 
-  object State {
+  object State:
     implicit val jsonCodec: TypedJsonCodec[State] = TypedJsonCodec(
       Subtype[IsFreshOrReady],
       Subtype(deriveCodec[Processing]),
@@ -880,7 +841,6 @@ object Order
       Subtype(Deleted),
       Subtype(deriveCodec[Prompting]),
       Subtype(deriveCodec[Broken]))
-  }
 
   /** OrderStarted occurred. */
   sealed trait IsStarted extends State
@@ -896,12 +856,11 @@ object Order
   type Ready = Ready.type
   case object Ready extends IsStarted with IsFreshOrReady
 
-  final case class DelayedAfterError(until: Timestamp) extends IsStarted {
+  final case class DelayedAfterError(until: Timestamp) extends IsStarted:
     override def maybeDelayedUntil = Some(until)
-  }
 
   final case class Broken(problem: Option[Problem]) extends IsStarted/*!!!*/
-  object Broken {
+  object Broken:
     // COMPATIBLE with v2.4
     @deprecated("outcome is deprecated", "v2.5")
     def apply(problem: Problem): Broken =
@@ -909,17 +868,14 @@ object Order
 
     def apply(): Broken =
       Broken(None)
-  }
 
-  final case class Processing(subagentId: Option[SubagentId]) extends IsStarted {
+  final case class Processing(subagentId: Option[SubagentId]) extends IsStarted:
     override def toString =
       s"Processing(${subagentId getOrElse "legacy local Subagent"})"
-  }
-  object Processing {
+  object Processing:
     // Since v2.3
     def apply(subagentId: SubagentId): Processing =
       Processing(Some(subagentId))
-  }
 
   type Processed = Processed.type
   case object Processed extends IsStarted
@@ -927,13 +883,11 @@ object Order
   type ProcessingKilled = ProcessingKilled.type
   case object ProcessingKilled extends IsStarted
 
-  final case class Forked(children: Vector[Forked.Child]) extends IsStarted {
+  final case class Forked(children: Vector[Forked.Child]) extends IsStarted:
     def childOrderIds = children.view.map(_.orderId)
-  }
-  object Forked {
+  object Forked:
     type Child = OrderForked.Child
     val Child = OrderForked.Child
-  }
 
   type WaitingForLock = WaitingForLock.type
   case object WaitingForLock
@@ -947,16 +901,13 @@ object Order
   extends IsStarted
 
   final case class Prompting(question: Value)
-  extends IsStarted {
+  extends IsStarted:
     override def isOperationCancelable = true
-  }
 
   final case class BetweenCycles(cycleState: Option[CycleState])
-  extends IsStarted
-  {
+  extends IsStarted:
     override def maybeDelayedUntil =
       cycleState.map(_.next)
-  }
 
   type Failed = Failed.type
   case object Failed extends IsStarted
@@ -1042,42 +993,35 @@ object Order
     o => jsonEncoder.encodeObject(o)
 
   implicit val FreshOrReadyOrderJsonDecoder: Decoder[Order[IsFreshOrReady]] = cursor =>
-    jsonDecoder(cursor) flatMap {
-      o => o.ifState[IsFreshOrReady] match {
+    jsonDecoder(cursor) flatMap:
+      o => o.ifState[IsFreshOrReady] match
         case None => Left(DecodingFailure(
           s"Order is not Fresh or Ready, but: ${o.state.getClass.simpleScalaName}", cursor.history))
         case Some(x) => Right(x)
-      }
-    }
 
   implicit val ProcessingOrderJsonEncoder: Encoder.AsObject[Order[Processing]] =
     o => jsonEncoder.encodeObject(o)
 
   implicit val ProcessingOrderJsonDecoder: Decoder[Order[Processing]] = c =>
-    jsonDecoder(c).flatMap {
-      o => o.ifState[Processing] match {
+    jsonDecoder(c).flatMap:
+      o => o.ifState[Processing] match
         case None => Left(DecodingFailure(
           s"Order is not Fresh or Ready, but: ${o.state.getClass.simpleScalaName}",
           c.history))
         case Some(x) => Right(x)
-      }
-    }
 
   final case class StickySubagent(
     agentPath: AgentPath,
     subagentSelectionId: Option[SubagentSelectionId],
     stuckSubagentId: Option[SubagentId] = None)
-  object StickySubagent {
+  object StickySubagent:
     implicit val jsonCodec: Codec[StickySubagent] = deriveCodec
-  }
 
   final case class InapplicableOrderEventProblem(event: OrderEvent, order: Order[State])
-  extends Problem.Coded {
+  extends Problem.Coded:
     def arguments = Map(
       "orderId" -> order.id.string,
       "event" -> event.toString,
       "workflowPosition" -> order.workflowPosition.toString,
       "state" -> order.state.getClass.simpleScalaName,
       "more" -> (order.markString.fold("")(o => s"$o, ") + order.attachedStateString))
-  }
-}

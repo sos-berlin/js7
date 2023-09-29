@@ -10,8 +10,7 @@ import js7.data.board.BoardPathExpression.{And, ExpectNotice, Or}
 import js7.data.parser.Js7Parsers.path
 import org.jetbrains.annotations.TestOnly
 
-object BoardPathExpressionParser
-{
+object BoardPathExpressionParser:
   @TestOnly
   def boardPathExpr(string: String): BoardPathExpression =
     parse(string).orThrow
@@ -26,15 +25,12 @@ object BoardPathExpressionParser
     inParentheses(noticeExpression) | expectNotice
 
   private val and: Parser[BoardPathExpression] =
-    leftRecurse[BoardPathExpression, Unit](factor, string("&&"), factor) {
+    leftRecurse[BoardPathExpression, Unit](factor, string("&&"), factor):
       case (a, ((), b)) => And(a, b)
-    }
 
   private val or: Parser[BoardPathExpression] =
-    leftRecurse(and, string("||"), and) {
+    leftRecurse(and, string("||"), and):
       case (a, ((), b)) => Or(a, b)
-    }
 
   private lazy val noticeExpression: Parser[BoardPathExpression] =
     Parser.defer(or)
-}

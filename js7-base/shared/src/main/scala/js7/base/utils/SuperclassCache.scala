@@ -2,8 +2,7 @@ package js7.base.utils
 
 import js7.base.utils.Classes.superclassesOf
 
-final class SuperclassCache[U](upperClass: Class[U])
-{
+final class SuperclassCache[U](upperClass: Class[U]):
   val memoizer = Memoizer.nonStrict1[Class[?], Set[Class[?]]](
     cls => superclassesOf[U, U](cls.asInstanceOf[Class[U]], upperClass).asInstanceOf[Set[Class[?]]]
   )(showMemoizer)
@@ -25,4 +24,3 @@ final class SuperclassCache[U](upperClass: Class[U])
           }
           .mkString
     }
-}

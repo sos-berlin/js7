@@ -15,13 +15,12 @@ import js7.data.controller.ControllerCommand.ShutDown.ClusterAction
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 
-final class ShutdownFailoverControllerClusterTest extends ControllerClusterTester
-{
+final class ShutdownFailoverControllerClusterTest extends ControllerClusterTester:
   protected override val clusterTiming = ClusterTiming(heartbeat = 500.ms, heartbeatTimeout = 5.s)
 
   override protected def removeObsoleteJournalFiles = false
 
-  "ShutDown active node with failover (for testing)" in {
+  "ShutDown active node with failover (for testing)" in:
     withControllerAndBackup() { (primary, _, backup, _, clusterSetting) =>
       backup.runController(dontWaitUntilReady = true) { backupController =>
         primary.runController() { primaryController =>
@@ -41,7 +40,7 @@ final class ShutdownFailoverControllerClusterTest extends ControllerClusterTeste
         // When journal file must be truncated due to non-replicated data after failover,
         // the primary Controller wants to start again.
         var restart = true
-        while restart do {
+        while restart do
           primary.runController(dontWaitUntilReady = true) { primaryController =>
             Task
               .race(
@@ -49,7 +48,7 @@ final class ShutdownFailoverControllerClusterTest extends ControllerClusterTeste
                 primaryController.eventWatch.awaitAsync[ClusterCoupled](
                   after = primaryController.eventWatch.lastFileEventId))
               .await(99.s)
-              .match {
+              .match
                 case Left(ProgramTermination(/*restart=*/true)) =>
                 case _ =>
                   restart = false
@@ -63,10 +62,6 @@ final class ShutdownFailoverControllerClusterTest extends ControllerClusterTeste
 
                   backupController.api.executeCommand(ShutDown()).await(99.s).orThrow
                   backupController.terminated await 99.s
-              }
           }
-        }
       }
     }
-  }
-}

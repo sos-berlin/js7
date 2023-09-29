@@ -49,8 +49,7 @@ import scala.jdk.StreamConverters.*
 
 @javaApi
 final case class JControllerState(asScala: ControllerState)
-extends JJournaledState[JControllerState, ControllerState]
-{
+extends JJournaledState[JControllerState, ControllerState]:
   @Nonnull
   def eventId: Long =
     asScala.eventId
@@ -239,14 +238,13 @@ extends JJournaledState[JControllerState, ControllerState]
 
   @Nonnull
   def orderToObstacles(@Nonnull orderId: OrderId, @Nonnull now: Instant)
-  : VEither[Problem, java.util.Set[JOrderObstacle]] = {
+  : VEither[Problem, java.util.Set[JOrderObstacle]] =
     val service = new InstructionExecutorService(
       WallClock.fixed(now.toTimestamp))
     orderObstacleCalculator
       .orderToObstacles(orderId)(service)
       .map(_.map(JOrderObstacle(_)).asJava)
       .toVavr
-  }
 
   @Nonnull
   def ordersToObstacles(@Nonnull orderIds: java.lang.Iterable[OrderId], @Nonnull now: Instant)
@@ -265,10 +263,8 @@ extends JJournaledState[JControllerState, ControllerState]
 
   private lazy val orderObstacleCalculator =
     new OrderObstacleCalculator(asScala)
-}
 
-object JControllerState extends JJournaledState.Companion[JControllerState, ControllerState]
-{
+object JControllerState extends JJournaledState.Companion[JControllerState, ControllerState]:
   implicit val companion: JJournaledState.Companion[JControllerState, ControllerState] =
     this
 
@@ -278,4 +274,3 @@ object JControllerState extends JJournaledState.Companion[JControllerState, Cont
   /** Includes the type. */
   def inventoryItemToJson(item: JInventoryItem): String =
     ControllerState.inventoryItemJsonCodec(item.asScala).compactPrint
-}

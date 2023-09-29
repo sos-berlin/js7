@@ -9,7 +9,7 @@ import js7.provider.scheduledorder.oldruntime.SingleStartPeriod.*
   * @author Joacim Zschimmer
   */
 final case class SingleStartPeriod(at: LocalTime)
-extends Period {
+extends Period:
 
   def begin = at
 
@@ -23,8 +23,6 @@ extends Period {
 
   def nextLocalTime(from: LocalTime) =
     from <= at option at
-}
 
-object SingleStartPeriod {
+object SingleStartPeriod:
   private val Epsilon = Duration.ofNanos(1)
-}

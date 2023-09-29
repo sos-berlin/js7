@@ -37,8 +37,7 @@ import scala.concurrent.duration.FiniteDuration
   * - Snapshots section
   * - Events (including transaction separators)
   */
-trait JournalRoute extends RouteProvider
-{
+trait JournalRoute extends RouteProvider:
   protected def eventWatch: FileEventWatch
 
   private implicit def implicitScheduler: Scheduler = scheduler
@@ -49,9 +48,9 @@ trait JournalRoute extends RouteProvider
     .toFiniteDuration
 
   protected final def journalRoute: Route =
-    get {
-      pathEnd {
-        handleExceptions(exceptionHandler) {
+    get:
+      pathEnd:
+        handleExceptions(exceptionHandler):
           authorizedUser(ValidUserPermission) { _ =>
             parameter(
               "file".as[EventId].?,
@@ -61,7 +60,7 @@ trait JournalRoute extends RouteProvider
               "heartbeat".as[FiniteDuration].?,
               "return" ? ""
             ) { (maybeFileEventId, maybePosition, timeout, markEOF, heartbeat, returnType) =>
-              accept(JournalContentType) {
+              accept(JournalContentType):
                 complete(Task
                   .pure((maybeFileEventId, maybePosition) match {
                     case (None, None) => eventWatch.journalPosition  // Convenient for manual tests
@@ -89,25 +88,18 @@ trait JournalRoute extends RouteProvider
                               .map(HttpEntity.Chunk(_))
                               .toAkkaSourceForHttpResponse)))))
                   .runToFuture)
-              }
             }
           }
-        }
-      }
-    }
-}
 
-object JournalRoute
-{
+object JournalRoute:
   private val logger = Logger[this.type]
   private val JournalContentType = `application/x-ndjson`
 
   private def parseReturnAckParameter(returnType: String): Checked[Boolean] =
-    returnType match {
+    returnType match
       case "" => Right(false)
       case "ack" => Right(true)
       case _ => Left(Problem(s"Invalid parameter: return=$returnType"))
-    }
 
   private def toContent(o: PositionAnd[ByteArray]) =
     o.value
@@ -117,4 +109,3 @@ object JournalRoute
       ByteArray(o.position.toString + '\n')
     else
       o.value
-}

@@ -23,21 +23,18 @@ import scala.util.{Failure, Success}
   * @author Joacim Zschimmer
   */
 final class DirectoryWatcher(directory: Path, timeout: Duration)(implicit iox: IOExecutor, s: Scheduler)
-extends AutoCloseable
-{
+extends AutoCloseable:
   private val watchService = directory.getFileSystem.newWatchService()
   private val closed = AtomicBoolean(false)
   private val subscribed = AtomicBoolean(false)
 
-  closeOnError(watchService) {
+  closeOnError(watchService):
     // Register early to get the events from now
     directory.register(watchService, ENTRY_CREATE, ENTRY_MODIFY, ENTRY_DELETE)
-  }
 
-  def close() = if !closed.getAndSet(true) then {
+  def close() = if !closed.getAndSet(true) then
     logger.trace(s"$directory: watchService.close")
     watchService.close()
-  }
 
   def isClosed = closed.get()
 
@@ -45,11 +42,10 @@ extends AutoCloseable
   def singleUseObservable: Observable[Unit] =
     subscriber => {
       if subscribed.getAndSet(true) then sys.error("DirectoryWatcher singleUseObservable is subscribable only once")
-      new Cancelable {
-        def cancel() = {
+      new Cancelable:
+        def cancel() =
           logger.trace(s"$directory: cancel")
           DirectoryWatcher.this.close()
-        }
 
         def continue(): Future[Completed] =
           ioFuture { waitForNextChange(timeout) }
@@ -59,7 +55,7 @@ extends AutoCloseable
               case Ack.Stop => Future.successful(Completed)
             })
 
-        continue() onComplete {
+        continue() onComplete:
           case Success(Completed) =>
             logger.trace(s"$directory: completed")
           case Failure(e: ClosedWatchServiceException) =>
@@ -68,8 +64,6 @@ extends AutoCloseable
           case Failure(t) =>
             logger.trace(s"$directory: ${t.toStringWithCauses}")
             subscriber.onError(t)
-        }
-      }
     }
 
   /**
@@ -77,32 +71,26 @@ extends AutoCloseable
    *
    * @return true, iff A matches `pathMatches` or the event OVERFLOW has occurred or the time is over.
    */
-  private def waitForNextChange(timeout: Duration): Boolean = {
+  private def waitForNextChange(timeout: Duration): Boolean =
     val remainingMillis = timeout.toMillis
     remainingMillis <= 0 || {
       logger.trace(s"$directory: poll ${timeout.pretty} ...")
       val watchKey = watchService.poll(remainingMillis, MILLISECONDS)
-      if watchKey == null then {
+      if watchKey == null then
         logger.trace(s"$directory: poll timed out")
         false
-      } else {
-        try {
+      else
+        try
           val events = watchKey.pollEvents()
-          logger.whenTraceEnabled {
+          logger.whenTraceEnabled:
             if events.isEmpty then logger.trace(s"$directory: poll returned no events")
             else events.asScala foreach { o => logger.trace(s"$directory: ${watchEventShow.show(o)}") }
-          }
-        } finally watchKey.reset()
+        finally watchKey.reset()
         true
-      }
     }
-  }
-}
 
-object DirectoryWatcher
-{
+object DirectoryWatcher:
   private val logger = Logger[this.type]
 
   private implicit val watchEventShow: Show[WatchEvent[?]] = e =>
     s"${e.kind.name} ${e.count}× ${e.context}"
-}

@@ -7,8 +7,7 @@ import js7.data.node.{NodeId, NodeName, NodeNameToPassword}
 
 /** A JournaledState with snapshot, JournalState and ClusterState. */
 trait ClusterableState[S <: ClusterableState[S]]
-extends SnapshotableState[S]
-{
+extends SnapshotableState[S]:
   this: S =>
 
   override def companion: ClusterableState.Companion[S]
@@ -28,15 +27,10 @@ extends SnapshotableState[S]
           for userId <- clusterNodeToUserId(ourNodeId) yield
             UserAndPassword(userId, password))
     yield maybeUserAndPassword
-}
 
-object ClusterableState
-{
+object ClusterableState:
   trait Companion[S <: ClusterableState[S]]
-  extends SnapshotableState.Companion[S]
-  {
+  extends SnapshotableState.Companion[S]:
     implicit final val implicitClusterableStateCompanion: Companion[S] = this
 
     def empty: S
-  }
-}

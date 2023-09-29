@@ -11,8 +11,7 @@ import js7.data.workflow.instructions.StickySubagent
 
 private[instructions] final class StickySubagentExecutor(
   protected val service: InstructionExecutorService)
-extends EventInstructionExecutor
-{
+extends EventInstructionExecutor:
   type Instr = StickySubagent
   val instructionClass = classOf[StickySubagent]
 
@@ -44,4 +43,3 @@ extends EventInstructionExecutor
     state: StateView) =
     Right(
       (order.id <-: OrderStickySubagentLeaved) :: Nil)
-}

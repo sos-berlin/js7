@@ -10,18 +10,15 @@ import monix.execution.atomic.Atomic
 private final class Redirection(
   val startupInfoHandle: HANDLE,
   closeStartupInfoHandle: Boolean,
-  val pipeHandle: HANDLE)
-{
+  val pipeHandle: HANDLE):
   private val released = Atomic(false)
   //private val finished = Atomic(false)
   private val pipeClosed = Atomic(false)
 
   def releaseStartupInfoHandle(): Unit =
-    if !released.getAndSet(true) then {
-      if closeStartupInfoHandle then {
+    if !released.getAndSet(true) then
+      if closeStartupInfoHandle then
         closeHandle(startupInfoHandle)
-      }
-    }
 
   ///**
   //  * Closes the pipe (if opened) and await the completion of PipeToFileThread (if started).
@@ -32,42 +29,33 @@ private final class Redirection(
   //  }
 
   def closePipe(): Unit =
-    if !pipeClosed.getAndSet(true) && pipeHandle != INVALID_HANDLE_VALUE then {
+    if !pipeClosed.getAndSet(true) && pipeHandle != INVALID_HANDLE_VALUE then
       closeHandle(pipeHandle)
-    }
-}
 
-private object Redirection
-{
+private object Redirection:
   private val BufferSize = 4096
 
-  def newStdinPipeRedirection(): Redirection = {
+  def newStdinPipeRedirection(): Redirection =
     val readRef, writeRef = new HANDLEByReference
     val security = new SECURITY_ATTRIBUTES
     security.bInheritHandle = true
-    call("CreatePipe") {
+    call("CreatePipe"):
       kernel32.CreatePipe(readRef, writeRef, security, BufferSize)
-    }
-    call("SetHandleInformation") {
+    call("SetHandleInformation"):
       kernel32.SetHandleInformation(writeRef.getValue, HANDLE_FLAG_INHERIT, 0)
-    }
     new Redirection(readRef.getValue, true, writeRef.getValue)
-  }
 
-  def newStdouterrPipeRedirection(): Redirection = {
+  def newStdouterrPipeRedirection(): Redirection =
     val readRef, writeRef = new HANDLEByReference
     val security = new SECURITY_ATTRIBUTES
     security.bInheritHandle = true
-    call("CreatePipe") {
+    call("CreatePipe"):
       kernel32.CreatePipe(readRef, writeRef, security, BufferSize)
-    }
-    call("SetHandleInformation") {
+    call("SetHandleInformation"):
       kernel32.SetHandleInformation(readRef.getValue, HANDLE_FLAG_INHERIT, 0)
-    }
     new Redirection(writeRef.getValue, true, readRef.getValue)
-  }
 
-  def forDirectFile(file: File): Redirection = {
+  def forDirectFile(file: File): Redirection =
     val security = new SECURITY_ATTRIBUTES
     security.bInheritHandle = true
     val handle = kernel32.CreateFile(
@@ -80,5 +68,3 @@ private object Redirection
       null)
     if handle == INVALID_HANDLE_VALUE then throwLastError(s"CreateFile '$file'")
     new Redirection(handle, true, INVALID_HANDLE_VALUE)
-  }
-}

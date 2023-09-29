@@ -16,14 +16,13 @@ import js7.tests.cluster.controller.UntaughtClusterWatchBothNodesLostControllerC
 import monix.execution.Scheduler.Implicits.traced
 
 // Connection between cluster nodes is broken, leading to ClusterPassiveLost and ClusterFailedOver.
-final class UntaughtClusterWatchBothNodesLostControllerClusterTest extends ControllerClusterTester
-{
+final class UntaughtClusterWatchBothNodesLostControllerClusterTest extends ControllerClusterTester:
   override protected def primaryControllerConfig =
     // Short timeout because something blocks web server shutdown occasionally
     config"""js7.web.server.shutdown-timeout = 0.5s"""
       .withFallback(super.primaryControllerConfig)
 
-  "Failover and recouple" in {
+  "Failover and recouple" in:
     withControllerAndBackup(suppressClusterWatch = true) { (primary, _, backup, _, _) =>
       val primaryController = primary.newController()
       val backupController = backup.newController()
@@ -47,17 +46,15 @@ final class UntaughtClusterWatchBothNodesLostControllerClusterTest extends Contr
       withClusterWatchService() { (clusterWatchService, eventBus) =>
         // ClusterWatch is untaught
         val clusterPassiveLost = eventBus
-          .whenPF[ClusterNodeLossNotConfirmedProblem, ClusterPassiveLost] {
+          .whenPF[ClusterNodeLossNotConfirmedProblem, ClusterPassiveLost]:
             case ClusterNodeLossNotConfirmedProblem(NodeId.primary, event: ClusterPassiveLost) => event
-          }
           .await(99.s)
         assert(clusterWatchService.clusterNodeLossEventToBeConfirmed(backupId) == Some(clusterPassiveLost))
         assert(clusterWatchService.clusterNodeLossEventToBeConfirmed(primaryId) == None)
 
         val clusterFailedOver = eventBus
-          .whenPF[ClusterNodeLossNotConfirmedProblem, ClusterFailedOver] {
+          .whenPF[ClusterNodeLossNotConfirmedProblem, ClusterFailedOver]:
             case ClusterNodeLossNotConfirmedProblem(NodeId.backup, event: ClusterFailedOver) => event
-          }
           .await(99.s)
 
         assert(clusterWatchService.clusterNodeLossEventToBeConfirmed(primaryId) == Some(clusterFailedOver))
@@ -88,9 +85,6 @@ final class UntaughtClusterWatchBothNodesLostControllerClusterTest extends Contr
         backupController.stop.await(99.s)
       }
     }
-  }
-}
 
-object UntaughtClusterWatchBothNodesLostControllerClusterTest {
+object UntaughtClusterWatchBothNodesLostControllerClusterTest:
   private val logger = Logger[this.type]
-}

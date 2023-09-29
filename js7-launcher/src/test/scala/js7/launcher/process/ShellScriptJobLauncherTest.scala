@@ -6,9 +6,8 @@ import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.test.OurTestSuite
 import js7.base.utils.ScalaUtils.syntax.*
 
-final class ShellScriptJobLauncherTest extends OurTestSuite
-{
-  "writeScriptToFile" in {
+final class ShellScriptJobLauncherTest extends OurTestSuite:
+  "writeScriptToFile" in:
     withTemporaryDirectory("ShellScriptJobLauncherTest-") { dir =>
       val script = "råd 1\nråd 2\r\nråd 3\nråd 4\r..."
       val file = ShellScriptJobLauncher
@@ -23,5 +22,3 @@ final class ShellScriptJobLauncherTest extends OurTestSuite
       assert(windowsFile.contentString(ISO_8859_1) == s"råd 1\r\nråd 2\r\nråd 3\r\nråd 4\r...")
       assert(windowsFile.toString endsWith ".cmd")
     }
-  }
-}

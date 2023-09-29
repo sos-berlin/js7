@@ -10,8 +10,7 @@ import js7.data.workflow.position.Position
 
 sealed trait OrderMark
 
-object OrderMark
-{
+object OrderMark:
   final case class Cancelling(mode: CancellationMode)
   extends OrderMark
 
@@ -28,4 +27,3 @@ object OrderMark
     Subtype(deriveCodec[Cancelling]),
     Subtype(deriveCodec[Suspending]),
     Subtype(deriveConfiguredCodec[Resuming]))
-}

@@ -4,19 +4,18 @@ import js7.base.problem.Checked
 import js7.base.problem.Checked.*
 import js7.data.item.{SourceType, VersionedItemPath}
 
-final case class FolderPath private(string: String) extends VersionedItemPath {
+final case class FolderPath private(string: String) extends VersionedItemPath:
   import FolderPath.*
 
   def companion = FolderPath
 
-  def subfolder(name: String): FolderPath = {
+  def subfolder(name: String): FolderPath =
     require(!name.contains('/'), "Name must not contain a slash '/'")
     FolderPath(
       if isRoot then
         string
       else
         s"$string/$name")
-  }
 
   /**
     * Appends the given path to this FolderPath and returns a `P`.
@@ -36,18 +35,15 @@ final case class FolderPath private(string: String) extends VersionedItemPath {
   def isAncestorOf(path: VersionedItemPath): Boolean =
     isRoot ||
       (path.string startsWith withTrailingSlash) ||
-      PartialFunction.cond(path) {
+      PartialFunction.cond(path):
         case path: FolderPath => this == path
-      }
 
   def isRoot = string.isEmpty
 
   override def toFile(t: SourceType) =
     throw new NotImplementedError("FolderPath.toFile")  // In Scala.js, don't use java.nio.file.Paths
-}
 
-object FolderPath extends VersionedItemPath.Companion[FolderPath]
-{
+object FolderPath extends VersionedItemPath.Companion[FolderPath]:
   val Root = new FolderPath("")
   override val sourceTypeToFilenameExtension = Map.empty
 
@@ -60,19 +56,16 @@ object FolderPath extends VersionedItemPath.Companion[FolderPath]
       super.checked(string)
 
   def parentOf(path: VersionedItemPath): FolderPath =
-    path.string lastIndexOf '/' match {
+    path.string lastIndexOf '/' match
       case -1 =>
         if path == FolderPath.Root then throw new IllegalStateException("Root path has no parent folder")
         FolderPath.Root
       case n => FolderPath(path.string.substring(0, n))
-    }
 
   /**
    * An absolute `path` starting with "/" is used as given.
    * A relative `path` not starting with "/" is used relative to `defaultFolder`.
    */
-  private def absoluteString(folder: FolderPath, path: String): String = {
+  private def absoluteString(folder: FolderPath, path: String): String =
     val glue = if folder.string.isEmpty then "" else "/"
     s"${folder.string}$glue$path"
-  }
-}

@@ -46,11 +46,10 @@ import scala.concurrent.duration.*
 /**
   * @author Joacim Zschimmer
   */
-final class OrderAgentTest extends OurTestSuite
-{
+final class OrderAgentTest extends OurTestSuite:
   private lazy val controllerRunId = ControllerRunId(JournalId.random())
 
-  "AgentCommand AttachOrder" in {
+  "AgentCommand AttachOrder" in:
     provideAgentDirectory { directory =>
       directory / "config" / "private" / "trusted-pgp-keys" / "test.asc" := verifier.publicKeys.head
       directory / "config" / "private" / "private.conf" ++=
@@ -125,9 +124,8 @@ final class OrderAgentTest extends OurTestSuite
         }
       }
     }
-  }
 
-  for testSpeed <- sys.props.get("test.speed") do s"Speed test $testSpeed orders × ${/*SimpleTestWorkflow.jobNodeCount*/"·"} jobs" in {
+  for testSpeed <- sys.props.get("test.speed") do s"Speed test $testSpeed orders × ${/*SimpleTestWorkflow.jobNodeCount*/"·"} jobs" in:
     // TODO Speed test does not work
     val n = testSpeed.toInt
     provideAgentDirectory { directory =>
@@ -171,7 +169,7 @@ final class OrderAgentTest extends OurTestSuite
 
           val awaitedOrderIds = orders.map(_.id).toSet
           val ready = mutable.Set.empty[OrderId]
-          while ready != awaitedOrderIds do {
+          while ready != awaitedOrderIds do
             ready ++= agentClient
               .eventObservable(EventRequest.singleClass[Event](timeout = Some(timeout)))
               .map(_.orThrow)
@@ -180,7 +178,6 @@ final class OrderAgentTest extends OurTestSuite
               .collect { case KeyedEvent(orderId: OrderId, OrderDetachable) => orderId }
               .toListL
               .await(99.s)
-          }
           agentClient.commandExecute(Batch(orders
             .map(o => DetachOrder(o.id))
             .map(CorrelIdWrapped(CorrelId.empty, _))))
@@ -192,11 +189,8 @@ final class OrderAgentTest extends OurTestSuite
         }
       }
     }
-  }
-}
 
-private object OrderAgentTest
-{
+private object OrderAgentTest:
   private val agentPath = AgentPath("AGENT")
   private val subagentId = SubagentId("SUBAGENT")
   private val controllerId = ControllerId("CONTROLLER")
@@ -225,4 +219,3 @@ private object OrderAgentTest
         HistoricOutcome(Position(1), Outcome.Succeeded(Map(
           "returnCode" -> NumberValue(0),
           "result" -> StringValue("TEST-RESULT-B-VALUE"))))))
-}

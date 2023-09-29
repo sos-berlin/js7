@@ -28,8 +28,7 @@ final class HttpSubagentApi private(
 extends SubagentApi
 with SessionApi.HasUserAndPassword
 with HttpSessionApi
-with AkkaHttpClient
-{
+with AkkaHttpClient:
   import admission.uri
 
   def isLocal = false
@@ -71,9 +70,8 @@ with AkkaHttpClient
                 (heartbeat.map("heartbeat" -> _.toDecimalString) ++
                 request.toQueryParameters))),
         responsive = true))
-}
 
-object HttpSubagentApi {
+object HttpSubagentApi:
   def resource(
     admission: Admission,
     httpsConfig: HttpsConfig = HttpsConfig.empty,
@@ -82,4 +80,3 @@ object HttpSubagentApi {
   : Resource[Task, HttpSubagentApi] =
     SessionApi.resource(Task(
       new HttpSubagentApi(admission, httpsConfig, name, actorSystem)))
-}

@@ -10,8 +10,7 @@ import js7.data.item.{InventoryItemPath, SourceType, VersionedItemPath}
 /**
   * @author Joacim Zschimmer
   */
-object ItemPaths
-{
+object ItemPaths:
   def fileToItemPath[P <: InventoryItemPath](
     companions: Iterable[InventoryItemPath.Companion[P]],
     directory: Path,
@@ -28,7 +27,7 @@ object ItemPaths
     fileToItemPathAndSourceType(companions, directory, file)
       .map(_._1.asInstanceOf[VersionedItemPath])
 
-  def fileToItemPathAndSourceType(companions: Iterable[InventoryItemPath.AnyCompanion], directory: Path, file: Path): Checked[(js7.data.item.InventoryItemPath, SourceType)] = {
+  def fileToItemPathAndSourceType(companions: Iterable[InventoryItemPath.AnyCompanion], directory: Path, file: Path): Checked[(js7.data.item.InventoryItemPath, SourceType)] =
     assertThat(file startsWith directory)
     val relativePath = file.subpath(directory.getNameCount, file.getNameCount)
     val string = fileToString(relativePath)
@@ -37,7 +36,6 @@ object ItemPaths
       .collectFirst { case Some(o) => o }
       .toChecked(AlienFileProblem(relativePath, companions.toSet))
       .flatten
-  }
 
   private def fileToString(file: Path): String =
     file.toString.replace(file.getFileSystem.getSeparator.charAt(0), '/')
@@ -49,4 +47,3 @@ object ItemPaths
       " (like " +
       companions.flatMap(_.sourceTypeToFilenameExtension.values).map("*" + _).mkString(", ") +
       ")")
-}

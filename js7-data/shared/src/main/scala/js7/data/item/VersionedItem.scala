@@ -3,8 +3,7 @@ package js7.data.item
 /**
   * @author Joacim Zschimmer
   */
-trait VersionedItem extends SignableItem
-{
+trait VersionedItem extends SignableItem:
   protected type Self <: VersionedItem
   type Path = companion.Path
 
@@ -26,18 +25,14 @@ trait VersionedItem extends SignableItem
   final def withVersion(v: VersionId): Self =
     withId(id = key.copy(versionId = v))
 
-  def cast[A <: VersionedItem](implicit A: VersionedItem.Companion[A]): A = {
+  def cast[A <: VersionedItem](implicit A: VersionedItem.Companion[A]): A =
     if A != companion then throw new ClassCastException(s"Expected ${companion.Path.name}, but is: $path")
     this.asInstanceOf[A]
-  }
-}
 
-object VersionedItem
-{
+object VersionedItem:
   type Companion_ = Companion[? <: VersionedItem]
 
-  trait Companion[A <: VersionedItem] extends SignableItem.Companion[A]
-  {
+  trait Companion[A <: VersionedItem] extends SignableItem.Companion[A]:
     type Item <: A
 
     type Path <: VersionedItemPath
@@ -48,5 +43,3 @@ object VersionedItem
     final def Key: SignableItemKey.Companion[Key] = Path.VersionedItemIdCompanion
 
     implicit def self: Companion[A] = this
-  }
-}

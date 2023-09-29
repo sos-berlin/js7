@@ -7,11 +7,10 @@ import js7.data.workflow.position.Position
 import js7.data.workflow.{WorkflowControl, WorkflowControlPath}
 import js7.tester.CirceJsonTester.testJson
 
-final class UnsignedItemEventTest extends OurTestSuite
-{
+final class UnsignedItemEventTest extends OurTestSuite:
   import js7.data.controller.ControllerState.implicitItemContainer
 
-  "UnsignedItemAdded" in {
+  "UnsignedItemAdded" in:
     testJson[UnsignedItemEvent](
       UnsignedItemAdded(WorkflowControl(
         WorkflowControlPath("WORKFLOW") ~ "1",
@@ -29,9 +28,8 @@ final class UnsignedItemEventTest extends OurTestSuite
           "itemRevision": 1
         }
       }""")
-  }
 
-  "UnsignedItemChanged" in {
+  "UnsignedItemChanged" in:
     testJson[UnsignedItemEvent](
       UnsignedItemChanged(WorkflowControl(
         WorkflowControlPath("WORKFLOW") ~ "1",
@@ -50,5 +48,3 @@ final class UnsignedItemEventTest extends OurTestSuite
         }
       }"""
     )
-  }
-}

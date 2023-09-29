@@ -31,14 +31,13 @@ import js7.tests.testenv.ProgramEnvTester.assertEqualJournalFiles
 import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.Deadline.now
 
-abstract class FailoverControllerClusterTest protected extends ControllerClusterTester
-{
+abstract class FailoverControllerClusterTest protected extends ControllerClusterTester:
   override protected def primaryControllerConfig =
     // Short timeout because something blocks web server shutdown occasionally
     config"""js7.web.server.shutdown-timeout = 0.5s"""
       .withFallback(super.primaryControllerConfig)
 
-  protected final def test(addNonReplicatedEvents: Boolean = false): Unit = {
+  protected final def test(addNonReplicatedEvents: Boolean = false): Unit =
     sys.props(testHeartbeatLossPropertyKey) = "false"
     withControllerAndBackup() { (primary, _, backup, _, clusterSetting) =>
       var primaryController = primary.newController()
@@ -75,7 +74,7 @@ abstract class FailoverControllerClusterTest protected extends ControllerCluster
 
       backupController.eventWatch.await[OrderFinished](_.key == orderId, after = failedOverEventId)
 
-      if addNonReplicatedEvents then {
+      if addNonReplicatedEvents then
         // Add a dummy event to simulate an Event written by the primary
         // but not replicated and acknowledged when failing over.
         // The primary truncates the journal file according to the position of FailedOver.
@@ -84,21 +83,19 @@ abstract class FailoverControllerClusterTest protected extends ControllerCluster
         JournalFiles.listJournalFiles(primary.controllerEnv.stateDir / "controller")
           .last.file
           .append(line)
-      }
 
       primaryController = primary.newController()
-      if addNonReplicatedEvents then {
+      if addNonReplicatedEvents then
         // Provisional fix lets Controller terminate
         val termination = primaryController.terminated.await(99.s)
         assert(termination.restart)
-        try {
+        try
           primaryController.stop.await(99.s)
           fail("RestartAfterJournalTruncationException expected")
-        } catch { case t: RestartAfterJournalTruncationException =>
+        catch { case t: RestartAfterJournalTruncationException =>
           logger.info(t.toString)
         }
         primaryController = primary.newController()
-      }
       primaryController.eventWatch.await[ClusterCoupled](after = failedOverEventId)
       backupController.eventWatch.await[ClusterCoupled](after = failedOverEventId)
       assertEqualJournalFiles(primary.controllerEnv, backup.controllerEnv, n = 1)
@@ -131,21 +128,14 @@ abstract class FailoverControllerClusterTest protected extends ControllerCluster
       primaryController.stop.await(99.s)
       backupController.stop.await(99.s)
     }
-  }
-}
 
-object FailoverControllerClusterTest {
+object FailoverControllerClusterTest:
   private val logger = Logger[this.type]
-}
 
-final class NonTruncatingFailoverControllerClusterTest extends FailoverControllerClusterTest {
-  "Failover and recouple" in {
+final class NonTruncatingFailoverControllerClusterTest extends FailoverControllerClusterTest:
+  "Failover and recouple" in:
     test()
-  }
-}
 
-final class TruncatingFailoverControllerClusterTest extends FailoverControllerClusterTest {
-  "Failover and recouple with non-replicated (truncated) events" in {
+final class TruncatingFailoverControllerClusterTest extends FailoverControllerClusterTest:
+  "Failover and recouple with non-replicated (truncated) events" in:
     test(addNonReplicatedEvents = true)
-  }
-}

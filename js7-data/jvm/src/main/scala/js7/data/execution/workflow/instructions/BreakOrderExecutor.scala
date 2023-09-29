@@ -7,11 +7,9 @@ import js7.data.workflow.instructions.BreakOrder
 
 private[instructions] final class BreakOrderExecutor(
   protected val service: InstructionExecutorService)
-extends EventInstructionExecutor
-{
+extends EventInstructionExecutor:
   type Instr = BreakOrder
   val instructionClass = classOf[BreakOrder]
 
   def toEvents(instr: BreakOrder, order: Order[Order.State], state: StateView) =
     Right((order.id <-: OrderBroken()) :: Nil)
-}

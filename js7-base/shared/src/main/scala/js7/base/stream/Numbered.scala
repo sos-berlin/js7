@@ -4,17 +4,14 @@ import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, DecodingFailure, Encoder, Json}
 import js7.base.circeutils.CirceUtils.requireJson
 
-final case class Numbered[+A](number: Long, value: A)
-{
+final case class Numbered[+A](number: Long, value: A):
   override def toString =
     s"#$number $value"
 
   def map[B](f: A => B): Numbered[B] =
     copy[B](value = f(value))
-}
 
-object Numbered
-{
+object Numbered:
   implicit def jsonEncoder[A: Encoder]: Encoder.AsArray[Numbered[A]] =
     stamped => Vector(
       stamped.number.asJson,
@@ -30,7 +27,7 @@ object Numbered
 //    }
 
   implicit def jsonDecoder[A: Decoder]: Decoder[Numbered[A]] =
-    c => c.values match {
+    c => c.values match
       case Some(fields: IndexedSeq[Json]) =>
         for
           _ <- requireJson(fields.sizeIs == 2, DecodingFailure(
@@ -43,5 +40,3 @@ object Numbered
       case _ =>
         c.as[A].map(Numbered(0, _))
         //Left(DecodingFailure("Numbered (a JSON array) expected", c.history))
-    }
-}

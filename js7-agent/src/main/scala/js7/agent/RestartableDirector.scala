@@ -23,8 +23,7 @@ final class RestartableDirector private(
   conf: AgentConfiguration,
   testWiring: TestWiring = TestWiring.empty)
   (implicit scheduler: Scheduler)
-extends MainService with Service.StoppableByRequest
-{
+extends MainService with Service.StoppableByRequest:
   protected type Termination = DirectorTermination
 
   private val _currentDirector = AsyncVariable[RunningAgent](null: RunningAgent)
@@ -86,9 +85,8 @@ extends MainService with Service.StoppableByRequest
     subagent.webServer
 
   override def toString = "RestartableDirector"
-}
 
-private object RestartableDirector {
+private object RestartableDirector:
   private val logger = Logger[this.type]
   private val Delay = 1.s // Give Akka Actors time to terminate and release their names
 
@@ -100,4 +98,3 @@ private object RestartableDirector {
   : Resource[Task, RestartableDirector] =
     Service.resource(Task(
       new RestartableDirector(subagent, conf, testWiring)))
-}

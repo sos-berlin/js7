@@ -8,40 +8,33 @@ import js7.journal.configuration.JournalConfTest.*
 /**
   * @author Joacim Zschimmer
   */
-final class JournalConfTest extends OurTestSuite
-{
-  "JournalConf" in {
+final class JournalConfTest extends OurTestSuite:
+  "JournalConf" in:
     assert(JournalConf.fromConfig(config) == journalConf)
-  }
 
-  "delay is maximum of delay and sync-delay if sync-delay=on (1)" in {
+  "delay is maximum of delay and sync-delay if sync-delay=on (1)" in:
     val c = config"""
       js7.journal.delay = 1ms
       js7.journal.sync-delay = 222ms"""
     assert(JournalConf.fromConfig(c withFallback config) ==
       journalConf.copy(delay = 222.ms))
-  }
 
-  "delay is maximum of delay and sync-delay if sync-delay=on (2)" in {
+  "delay is maximum of delay and sync-delay if sync-delay=on (2)" in:
     val c = config"""
       js7.journal.delay = 333ms
       js7.journal.sync-delay = 1ms"""
     assert(JournalConf.fromConfig(c withFallback config) ==
       journalConf.copy(delay = 333.ms))
-  }
 
-  "On sync=off sync-delay is not respected" in {
+  "On sync=off sync-delay is not respected" in:
     val c = config"""
       js7.journal.sync = off
       js7.journal.delay = 1ms
       js7.journal.sync-delay = 222ms"""
     assert(JournalConf.fromConfig(c withFallback config) ==
       journalConf.copy(syncOnCommit = false, delay = 1.ms))
-  }
-}
 
-object JournalConfTest
-{
+object JournalConfTest:
   val config = config"""
      js7.journal {
        sync = on
@@ -73,4 +66,3 @@ object JournalConfTest
     deleteObsoleteFiles = true,
     slowCheckState = true/*set by build.sbt*/,
     infoLogEvents = Set("MyEvent"))
-}

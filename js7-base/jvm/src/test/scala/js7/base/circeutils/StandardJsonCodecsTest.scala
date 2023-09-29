@@ -10,27 +10,23 @@ import js7.base.test.OurTestSuite
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import scala.util.matching.Regex
 
-final class StandardJsonCodecsTest extends OurTestSuite
-{
+final class StandardJsonCodecsTest extends OurTestSuite:
   private val regexProblem = Problem(
     if javaVersion >= 19 then
       "JSON DecodingFailure at : java.util.regex.PatternSyntaxException: Unescaped trailing backslash near index 1\\n\\"
     else
       "JSON DecodingFailure at : java.util.regex.PatternSyntaxException: Unexpected internal error near index 1\\n\\")
 
-  "Pattern" in {
+  "Pattern" in:
     // Pattern does not implement `equals`
     val json = json"""".*""""
     assert(".*".r.pattern.asJson == json)
     assert(json.as[Pattern].toChecked.orThrow.pattern == ".*".r.pattern.pattern)
     assert("\\".asJson.as[Pattern].toChecked == Left(regexProblem))
-  }
 
-  "Regex" in {
+  "Regex" in:
     // Regex does not implement `equals`
     val json = json"""".*""""
     assert(".*".r.asJson == json)
     assert(json.as[Regex].toChecked.orThrow.pattern.pattern == ".*".r.pattern.pattern)
     assert("\\".asJson.as[Regex].toChecked == Left(regexProblem))
-  }
-}

@@ -14,7 +14,7 @@ import scala.concurrent.Promise
  *
  * @author Joacim Zschimmer
  */
-trait ClosedFuture {
+trait ClosedFuture:
 
   protected def closer: Closer
 
@@ -23,4 +23,3 @@ trait ClosedFuture {
   closer.onClose { closedPromise.success(()) }
 
   final def closed = closedPromise.future
-}

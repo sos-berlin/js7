@@ -7,7 +7,7 @@ import js7.data.order.CycleState
 import scala.collection.{AbstractIterator, View}
 import scala.concurrent.duration.FiniteDuration
 
-trait ScheduleSimulator {
+trait ScheduleSimulator:
   this: ScheduleCalculator =>
 
   def simulate(timeInterval: TimeInterval, actionDuration: FiniteDuration = 0.s): View[Scheduled] =
@@ -45,14 +45,9 @@ trait ScheduleSimulator {
             }
           }
       })
-}
 
-object ScheduleSimulator
-{
+object ScheduleSimulator:
   final case class Result(scheduledView: View[Scheduled]/*, exitAt: Timestamp*/)
 
-  final case class Scheduled(arrival: Timestamp, cycleState: CycleState)
-  {
+  final case class Scheduled(arrival: Timestamp, cycleState: CycleState):
     def next = cycleState.next
-  }
-}

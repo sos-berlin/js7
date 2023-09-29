@@ -14,12 +14,10 @@ import js7.data.platform.PlatformInfo
 /**
   * @author Joacim Zschimmer
   */
-sealed trait AgentRefStateEvent extends Event.IsKeyBase[AgentRefStateEvent] {
+sealed trait AgentRefStateEvent extends Event.IsKeyBase[AgentRefStateEvent]:
   val keyCompanion: AgentRefStateEvent.type = AgentRefStateEvent
-}
 
-object AgentRefStateEvent extends Event.CompanionForKey[AgentPath, AgentRefStateEvent]
-{
+object AgentRefStateEvent extends Event.CompanionForKey[AgentPath, AgentRefStateEvent]:
   implicit def implicitSelf: AgentRefStateEvent.type = this
 
   /** A new Agent has been dedicated to this Controller. */
@@ -40,17 +38,13 @@ object AgentRefStateEvent extends Event.CompanionForKey[AgentPath, AgentRefState
     platformInfo: Option/*COMPATIBLE with v2.3*/[PlatformInfo])
   extends AgentRefStateEvent
 
-  final case class AgentEventsObserved(untilEventId: EventId) extends AgentRefStateEvent
-  {
+  final case class AgentEventsObserved(untilEventId: EventId) extends AgentRefStateEvent:
     override def isMinor = true
     override def toString = s"AgentEventsObserved(${EventId.toString(untilEventId)})"
-  }
 
   final case class AgentResetStarted(force: Boolean = false)
-  extends AgentRefStateEvent
-  {
+  extends AgentRefStateEvent:
     override def toString = s"AgentResetStarted(force=$force)"
-  }
 
   type AgentShutDown = AgentShutDown.type
   case object AgentShutDown extends AgentRefStateEvent
@@ -60,7 +54,7 @@ object AgentRefStateEvent extends Event.CompanionForKey[AgentPath, AgentRefState
 
   final case class AgentMirroredEvent(keyedEvent: KeyedEvent[Event])
   extends AgentRefStateEvent
-  object AgentMirroredEvent {
+  object AgentMirroredEvent:
     private implicit val innerEventCodec: Codec.AsObject[KeyedEvent[Event]] =
       KeyedEventTypedJsonCodec[Event](
         KeyedSubtype[ClusterEvent])
@@ -69,7 +63,6 @@ object AgentRefStateEvent extends Event.CompanionForKey[AgentPath, AgentRefState
       ConfiguredCodec.derive[AgentMirroredEvent](
         transformMemberNames = Map("keyedEvent" -> "event"),
         useDefaults = true)
-  }
 
   /** Untaught ClusterWatch was unable to confirm a ClusterNodeLostEvent. */
   final case class AgentClusterWatchConfirmationRequired(
@@ -91,4 +84,3 @@ object AgentRefStateEvent extends Event.CompanionForKey[AgentPath, AgentRefState
     Subtype[AgentMirroredEvent],
     Subtype(deriveConfiguredCodec[AgentClusterWatchConfirmationRequired]),
     Subtype(AgentClusterWatchManuallyConfirmed))
-}

@@ -11,8 +11,7 @@ final case class Options(
   stopOnFailure: Option[Boolean] = None,
   block: Workflow,
   sourcePos: Option[SourcePos] = None)
-extends Instruction
-{
+extends Instruction:
   def withoutSourcePos = copy(sourcePos = None)
 
   override def withPositions(position: Position): Instruction =
@@ -27,15 +26,11 @@ extends Instruction
       block = block.reduceForAgent(agentPath))
 
   override def workflow(branchId: BranchId) =
-    branchId match {
+    branchId match
       case BranchId.Options => Right(block)
       case _ => super.workflow(branchId)
-    }
 
   override def branchWorkflows = (BranchId.Options -> block) :: Nil
-}
 
-object Options
-{
+object Options:
   implicit val jsonCodec: Codec.AsObject[Options] = deriveCodec
-}

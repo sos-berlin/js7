@@ -21,8 +21,7 @@ import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.*
 
 trait HttpControllerApi
-extends EventApi with HttpClusterNodeApi with HttpSessionApi with HasIsIgnorableStackTrace
-{
+extends EventApi with HttpClusterNodeApi with HttpSessionApi with HasIsIgnorableStackTrace:
   type State = ControllerState
 
   def httpClient: HttpClient
@@ -63,11 +62,10 @@ extends EventApi with HttpClusterNodeApi with HttpSessionApi with HasIsIgnorable
   final def overview: Task[ControllerOverview] =
     httpClient.get[ControllerOverview](uris.overview)
 
-  final def addOrder(order: FreshOrder): Task[Boolean] = {
+  final def addOrder(order: FreshOrder): Task[Boolean] =
     val uri = uris.order.add
     httpClient.postDiscardResponse(uri, order, allowedStatusCodes = Set(409))
       .map(_ == 201/*Created*/)
-  }
 
   final def addOrders(orders: Seq[FreshOrder]): Task[Completed] =
     httpClient.postDiscardResponse(uris.order.add, orders)
@@ -87,10 +85,8 @@ extends EventApi with HttpClusterNodeApi with HttpSessionApi with HasIsIgnorable
 
   final def snapshot(eventId: Option[EventId] = None): Task[ControllerState] =
     snapshotAs[ControllerState](uris.snapshot.list(eventId))
-}
 
-object HttpControllerApi
-{
+object HttpControllerApi:
   val UriPrefixPath = "/controller"
 
   /** Logs out when the resource is being released. */
@@ -106,8 +102,6 @@ object HttpControllerApi
     admission: Admission,
     val httpClient: HttpClient,
     override protected val loginDelays: () => Iterator[FiniteDuration] = SessionApi.defaultLoginDelays _)
-  extends HttpControllerApi {
+  extends HttpControllerApi:
     val baseUri = admission.uri
     protected val userAndPassword = admission.userAndPassword
-  }
-}

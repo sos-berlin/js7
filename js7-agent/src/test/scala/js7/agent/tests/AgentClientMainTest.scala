@@ -13,8 +13,7 @@ import scala.collection.mutable
 /**
  * @author Joacim Zschimmer
  */
-final class AgentClientMainTest extends OurTestSuite with BeforeAndAfterAll with TestAgentProvider
-{
+final class AgentClientMainTest extends OurTestSuite with BeforeAndAfterAll with TestAgentProvider:
   override def afterAll() = closer closeThen super.afterAll()
 
   //override protected def agentTestWiring = RunningAgent.TestWiring(
@@ -28,7 +27,7 @@ final class AgentClientMainTest extends OurTestSuite with BeforeAndAfterAll with
   //      }
   //  }))
 
-  "main" in {
+  "main" in:
     val output = mutable.Buffer.empty[String]
     val commandJson = json"""{ "TYPE": "ShutDown", "processSignal": "SIGTERM" }"""
     AgentClientMain.run(
@@ -41,28 +40,20 @@ final class AgentClientMainTest extends OurTestSuite with BeforeAndAfterAll with
     assert(output.size == 2)
     assert(output(0).parseJson == Right(json"""{ "TYPE": "Accepted" }"""))
     output(1).parseJsonOrThrow.fieldOrThrow("startedAt")
-  }
 
-  "main with Agent URI only checks whether Agent is responding (it is)" in {
+  "main with Agent URI only checks whether Agent is responding (it is)" in:
     val output = mutable.Buffer.empty[String]
-    assertResult(ReturnCode(0)) {
+    assertResult(ReturnCode(0)):
       AgentClientMain.run(List(s"--data-directory=$dataDirectory", agent.localUri.toString), o => output += o)
-    }
     assert(output == List("JS7 Agent is responding"))
-  }
 
-  "main with Agent URI only checks whether Agent is responding (it is not)" in {
+  "main with Agent URI only checks whether Agent is responding (it is not)" in:
     val port = findFreeTcpPort()
     val output = mutable.Buffer.empty[String]
-    assertResult(ReturnCode(1)) {
+    assertResult(ReturnCode(1)):
       AgentClientMain.run(List(s"--data-directory=$dataDirectory", s"http://127.0.0.1:$port"), output += _)
-    }
     assert(output.head contains "JS7 Agent is not responding: ")
     assert(output.head contains "Connection refused")
-  }
-}
 
-private object AgentClientMainTest
-{
+private object AgentClientMainTest:
   private val ExpectedTerminate = ShutDown(Some(SIGTERM))
-}

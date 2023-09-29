@@ -10,8 +10,7 @@ import js7.data.workflow.Workflow
 import scala.collection.MapView
 
 final class OrderVariablesScope(order: Order[Order.State], workflow: Workflow)
-extends Scope
-{
+extends Scope:
   override lazy val nameToCheckedValue =
     orderArguments.mapValues(Right(_))
       .orElseMapView(order
@@ -25,36 +24,30 @@ extends Scope
         .fold(MapView.empty[String, Checked[Value]])((a, b) => a.orElseMapView(b)))
 
   override def findValue(search: ValueSearch) =
-    search match {
+    search match
       case ValueSearch(ValueSearch.Argument, ValueSearch.Name(name)) =>
         orderArguments.get(name).map(Right(_))
 
       case ValueSearch(ValueSearch.LastExecuted(positionSearch), what) =>
         order.historicOutcomes
           .reverseIterator
-          .collectFirst {
+          .collectFirst:
             case HistoricOutcome(pos, outcome: Outcome.Completed)
               if workflow.positionMatchesSearch(pos, positionSearch) =>
               whatToValue(outcome, what).map(Right(_))
-          }
           .flatten
 
       case _ => super.findValue(search)
-    }
 
   private lazy val orderArguments: MapView[String, Value] =
     workflow.orderParameterList.addDefaults(order.arguments)
 
   override def toString = s"OrderVariablesScope(${order.id})"
-}
 
-object OrderVariablesScope
-{
+object OrderVariablesScope:
   def apply(order: Order[Order.State], workflow: Workflow): Scope =
     new OrderVariablesScope(order, workflow)
 
   private def whatToValue(outcome: Outcome.Completed, what: ValueSearch.What): Option[Value] =
-    what match {
+    what match
       case ValueSearch.Name(key) => outcome.namedValues.get(key)
-    }
-}

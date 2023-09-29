@@ -8,8 +8,7 @@ import js7.base.time.TimeInterval
 import js7.data_for_java.common.JavaWrapper
 import scala.jdk.DurationConverters.ScalaDurationOps
 
-final case class JTimeInterval(asScala: TimeInterval) extends JavaWrapper
-{
+final case class JTimeInterval(asScala: TimeInterval) extends JavaWrapper:
   type AsScala = TimeInterval
 
   def start: Instant =
@@ -17,10 +16,8 @@ final case class JTimeInterval(asScala: TimeInterval) extends JavaWrapper
 
   def duration: Duration =
     asScala.duration.toJava
-}
 
-object JTimeInterval
-{
+object JTimeInterval:
   @Nonnull
   def of(
     @Nonnull start: Instant,
@@ -28,4 +25,3 @@ object JTimeInterval
   : JTimeInterval =
     JTimeInterval(
       TimeInterval(start.toTimestamp, duration.toFiniteDuration))
-}

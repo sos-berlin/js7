@@ -47,15 +47,14 @@ private[journal] trait TestJournalMixin extends BeforeAndAfterAll { this: Suite 
 
   protected val journalLocation = testJournalMeta(directory / "test")
 
-  override def afterAll() = {
+  override def afterAll() =
     deleteDirectoryRecursively(directory)
     super.afterAll()
-  }
 
-  protected def withTestActor(config: Config = ConfigFactory.empty)(body: (ActorSystem, ActorRef) => Unit): Unit = {
+  protected def withTestActor(config: Config = ConfigFactory.empty)(body: (ActorSystem, ActorRef) => Unit): Unit =
     val config_ = config withFallback TestConfig
     val actorSystem = newActorSystem(getClass.simpleScalaName, config_)
-    try {
+    try
       DeadLetterActor.subscribe(actorSystem, (logLevel,  msg) => logger.log(logLevel, msg()))
       val whenJournalStopped = Promise[Unit]()
       val actor = actorSystem.actorOf(Props { new TestActor(config_, journalLocation, whenJournalStopped) }, "TestActor")
@@ -63,14 +62,12 @@ private[journal] trait TestJournalMixin extends BeforeAndAfterAll { this: Suite 
       sleep(100.ms)  // Wait to let Terminated message of aggregate actors arrive at JournalActor (???)
       (actor ? TestActor.Input.Terminate) await 99.s
       whenJournalStopped.future.await(99.s)   // No memory leak
-    }
     finally Akkas.terminateAndWait(actorSystem, 99.s)
-  }
 
   protected final def simpleExecute(actor: ActorRef, key: String, command: TestAggregateActor.Command) =
     actor ? TestActor.Input.Forward(key, command)
 
-  protected final def execute(actorSystem: ActorSystem, actor: ActorRef, key: String, command: TestAggregateActor.Command): Future[Any] = {
+  protected final def execute(actorSystem: ActorSystem, actor: ActorRef, key: String, command: TestAggregateActor.Command): Future[Any] =
     val promise = Promise[Any]()
     actorSystem.actorOf(Props {
       new Actor {
@@ -116,14 +113,12 @@ private[journal] trait TestJournalMixin extends BeforeAndAfterAll { this: Suite 
       }
     })
     promise.future
-  }
 
   protected final def journalKeyedTestEvents: Vector[KeyedEvent[TestEvent]] =
     journalJsons
-      .collect {
+      .collect:
         case o if TestState.keyedEventJsonCodec canDeserialize o =>
           o.as[KeyedEvent[Event]].toChecked.orThrow
-      }
       .collect { case KeyedEvent(k: String, e: TestEvent) => k <-: e }  // Ignore JournalEvent.SnapshotTaken
 
   protected final def journalAggregates =
@@ -139,9 +134,8 @@ private[journal] trait TestJournalMixin extends BeforeAndAfterAll { this: Suite 
     autoClosing(InputStreamJsonSeqReader.open(file)) { reader =>
       val builder = new VectorBuilder[Json]
       try reader.iterator foreach (o => builder += normalizeValues(o.value))
-      catch {
+      catch
         case _: EOFException =>
-      }
       builder.result()
     }
 
@@ -165,11 +159,10 @@ private[journal] trait TestJournalMixin extends BeforeAndAfterAll { this: Suite 
     (s"$prefix-B" <-: TestEvent.Removed)
 }
 
-private[journal] object TestJournalMixin
-{
+private[journal] object TestJournalMixin:
   private val logger = Logger[this.type]
 
-  private def normalizeValues(json: Json): Json = json.asObject match {
+  private def normalizeValues(json: Json): Json = json.asObject match
     case Some(jsonObject) =>
       var o = jsonObject
       for _ <- o("journalId") do o = o.add("journalId", JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF")).asJson)
@@ -178,5 +171,3 @@ private[journal] object TestJournalMixin
       for _ <- o("totalRunningTime") do o = o.add("totalRunningTime", 3600.asJson)
       o.asJson
     case None => json
-  }
-}

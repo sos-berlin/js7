@@ -24,16 +24,13 @@ import scala.jdk.OptionConverters.RichOptional
 
 @javaApi
 final case class JControllerCommand(asScala: ControllerCommand)
-extends JJsonable[JControllerCommand]
-{
+extends JJsonable[JControllerCommand]:
   type AsScala = ControllerCommand
 
   protected def companion = JControllerCommand
-}
 
 @javaApi
-object JControllerCommand extends JJsonable.Companion[JControllerCommand]
-{
+object JControllerCommand extends JJsonable.Companion[JControllerCommand]:
   type AsScala = ControllerCommand
 
   @Nonnull
@@ -107,4 +104,3 @@ object JControllerCommand extends JJsonable.Companion[JControllerCommand]
 
   protected def jsonDecoder = ControllerCommand.jsonCodec
   protected def jsonEncoder = ControllerCommand.jsonCodec
-}

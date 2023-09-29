@@ -6,14 +6,11 @@ import js7.data.workflow.instructions.Schedule
 import js7.data_for_java.common.JJsonable
 import js7.data_for_java.vavr.Standards.VEither
 
-final case class JSchedule(asScala: Schedule) extends JJsonable[JSchedule]
-{
+final case class JSchedule(asScala: Schedule) extends JJsonable[JSchedule]:
   type AsScala = Schedule
   protected val companion = JSchedule
-}
 
-object JSchedule extends JJsonable.Companion[JSchedule]
-{
+object JSchedule extends JJsonable.Companion[JSchedule]:
   type AsScala = Schedule
 
   @Nonnull
@@ -22,4 +19,3 @@ object JSchedule extends JJsonable.Companion[JSchedule]
 
   protected def jsonEncoder = Schedule.jsonCodec
   protected def jsonDecoder = Schedule.jsonCodec
-}

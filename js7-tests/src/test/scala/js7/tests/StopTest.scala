@@ -20,8 +20,7 @@ import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import monix.execution.Scheduler.Implicits.traced
 
 final class StopTest extends OurTestSuite with ControllerAgentForScalaTest
-with BlockingItemUpdater
-{
+with BlockingItemUpdater:
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.controller.agent-driver.command-batch-delay = 0ms
@@ -35,7 +34,7 @@ with BlockingItemUpdater
   protected val agentPaths = Seq(agentPath)
   protected val items = Nil
 
-  "Stop at Controller" in {
+  "Stop at Controller" in:
     val workflow = Workflow.of(WorkflowPath("CONTROLLER-WORKFLOW"),
       Stop())
     withTemporaryItem(workflow) { workflow =>
@@ -59,9 +58,8 @@ with BlockingItemUpdater
         OrderResumed(Some(Position(1))),
         OrderFinished()))
     }
-  }
 
-  "Stop at Agent" in {
+  "Stop at Agent" in:
     val workflow = Workflow.of(WorkflowPath("AGENT-WORKFLOW"),
       EmptyJob.execute(agentPath),
       Stop())
@@ -93,10 +91,7 @@ with BlockingItemUpdater
         OrderResumed(Some(Position(2))),
         OrderFinished()))
     }
-  }
-}
 
-object StopTest {
+object StopTest:
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)
-}

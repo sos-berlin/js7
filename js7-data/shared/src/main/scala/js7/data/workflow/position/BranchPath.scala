@@ -14,40 +14,33 @@ type BranchPath = List[BranchPath.Segment]
   *
   * @author Joacim Zschimmer
   */
-object BranchPath
-{
+object BranchPath:
   val empty: BranchPath = Nil
 
   def fromSeq(seq: Seq[Any]): Checked[BranchPath] =
     BranchPath.anySegmentsToCheckedBranchPath(seq grouped 2)
 
   def commonBranchPath(a: BranchPath, b: BranchPath): BranchPath =
-    (a, b) match {
+    (a, b) match
       case (aHead :: aTail, bHead :: bTail) if aHead == bHead =>
         aHead :: commonBranchPath(aTail, bTail)
       case _ =>
         Nil
-    }
 
-  final case class Segment(nr: InstructionNr, branchId: BranchId)
-  {
+  final case class Segment(nr: InstructionNr, branchId: BranchId):
     def %(position: Position): Position =
       Position(this :: position.branchPath, position.nr)
 
     def %(nr: InstructionNr): Position =
       Position(this :: Nil, nr)
-  }
-  object Segment
-  {
+  object Segment:
     def apply(nr: InstructionNr, branchId: String): Segment =
       Segment(nr, BranchId.Named(branchId))
-  }
 
   def normalize(branchPath: BranchPath): BranchPath =
-    branchPath match {
+    branchPath match
       case Nil => Nil
       case Segment(nr, branchId) :: tail => nr / branchId.normalized :: normalize(tail)
-    }
 
   private[position] def decodeSegments(pairs: Iterator[Seq[Json]], cursor: HCursor): Decoder.Result[BranchPath] =
     genericSeqToBranchPath(decodeJsonSegment(_, cursor))(pairs)
@@ -57,16 +50,14 @@ object BranchPath
     genericSeqToBranchPath(anySeqToSegment)(pairs)
 
   private def genericSeqToBranchPath[L, R](seqToSegment: Seq[R] => Either[L, Segment])(pairs: Iterator[Seq[R]])
-  : Either[L, BranchPath] = {
+  : Either[L, BranchPath] =
     var left: Option[Left[L, Nothing]] = None
     val buffer = mutable.ListBuffer.empty[Segment]
     val parentResults: Iterator[Either[L, Segment]] = pairs map seqToSegment
-    parentResults foreach {
+    parentResults foreach:
       case Left(error) => left = Some(Left(error))
       case Right(parent) => buffer += parent
-    }
     left getOrElse Right(buffer.toList)
-  }
 
   private def decodeJsonSegment(pair: Seq[Json], cursor: HCursor): Decoder.Result[Segment] =
     if pair.sizeIs != 2 then
@@ -82,28 +73,25 @@ object BranchPath
       Left(Problem.pure("Not a valid BranchPath"))
     else
       for
-        nr <- pair(0) match {
+        nr <- pair(0) match
           case i: Int => Right(InstructionNr(i))
           case i: java.lang.Integer => Right(InstructionNr(i))
           case o => Left(Problem(s"Instruction number (integer) expected in Position array instead of: $o"))
-        }
-        branchId <- pair(1) match {
+        branchId <- pair(1) match
           case string: String => Right(BranchId(string))
           case o => Left(Problem(s"BranchId (string) expected in Position array instead of: $o"))
-        }
       yield Segment(nr, branchId)
 
-  object PositionAndBranchId {
+  object PositionAndBranchId:
     import BranchPath.syntax.*
     def unapply(branchPath: BranchPath): Option[(Position, BranchId)] =
       branchPath.nonEmpty ? {
         val last = branchPath.last
         (branchPath.dropChild % last.nr, last.branchId)
       }
-  }
-
-  object syntax {
-    extension (segments: BranchPath) {
+      
+  object syntax:
+    extension (segments: BranchPath)
       def %(nr: InstructionNr) = Position(segments, nr)
 
       def %(parent: BranchPath.Segment): BranchPath =
@@ -112,10 +100,9 @@ object BranchPath
       def parent: Option[Position] =
         segments.nonEmpty ? (segments.init % segments.last.nr)
 
-      def dropChild: BranchPath = {
+      def dropChild: BranchPath =
         if segments.isEmpty then throw new IllegalStateException("dropChild on empty BranchPath ?")
         segments.init
-      }
 
       private[workflow] def toJsonSeq: Vector[Json] =
         segments.view.flatMap(p => View(p.nr.asJson, p.branchId.asJson)).toVector
@@ -133,12 +120,11 @@ object BranchPath
       /** Returns 0 if not in a try/catch-block. */
       def catchCount: Int =
         calculateCatchCount(segments.reverse)
-    }
 
     implicit val branchPathShow: Show[BranchPath] =
       _.map(p => s"${p.nr.number}/${p.branchId}").mkString(InstructionNr.Prefix)
 
-    implicit val jsonCodec: Codec[BranchPath] = {
+    implicit val jsonCodec: Codec[BranchPath] =
       val jsonEncoder: Encoder.AsArray[BranchPath] = _.toJsonSeq
 
       val jsonDecoder: Decoder[BranchPath] =
@@ -146,23 +132,18 @@ object BranchPath
           BranchPath.decodeSegments(parts grouped 2, cursor))
 
       Codec.from(jsonDecoder, jsonEncoder)
-    }
 
     @tailrec
     private def calculateTryCount(reverseBranchPath: List[Segment]): Int =
-      reverseBranchPath match {
+      reverseBranchPath match
         case Segment(_, TryCatchBranchId(retry)) :: _ => retry + 1
         case Segment(_, BranchId.Then | BranchId.Else) :: prefix => calculateTryCount(prefix)
         case _ => 0  // Not in a try/catch
-      }
 
     @tailrec
     private def calculateCatchCount(reverseBranchPath: List[Segment]): Int =
-      reverseBranchPath match {
+      reverseBranchPath match
         case Segment(_, TryBranchId(retry)) :: _ => retry
         case Segment(_, CatchBranchId(retry)) :: _ =>  retry + 1
         case Segment(_, BranchId.Then | BranchId.Else) :: prefix => calculateCatchCount(prefix)
         case _ => 0  // Not in a try/catch
-      }
-  }
-}

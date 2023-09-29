@@ -7,9 +7,9 @@ import js7.base.test.OurTestSuite
 /**
   * @author Joacim Zschimmer
   */
-final class OrderIdTest extends OurTestSuite {
+final class OrderIdTest extends OurTestSuite:
 
-  "checkedNameSyntax" in {
+  "checkedNameSyntax" in:
     assert(OrderId.checked("") == Left(EmptyStringProblem("OrderId")))
     assert(OrderId("a|b").checkedNameSyntax == Left(Problem("OrderId must not contain reserved characters: |")))
 
@@ -18,23 +18,18 @@ final class OrderIdTest extends OurTestSuite {
     assert(OrderId("1").checkedNameSyntax == Right(OrderId("1")))
     assert(OrderId("A").checkedNameSyntax == Right(OrderId("A")))
     assert(OrderId("A-_.B").checkedNameSyntax == Right(OrderId("A-_.B")))
-  }
 
-  "allParents" in {
+  "allParents" in:
     assert(OrderId("A").allParents == Nil)
     assert(OrderId("A|B").allParents == Seq(OrderId("A")))
     assert(OrderId("A|B|C").allParents == Seq(OrderId("A"), OrderId("A|B")))
     assert(OrderId("A|BBB|C|D").allParents == Seq(OrderId("A"), OrderId("A|BBB"), OrderId("A|BBB|C")))
-  }
 
-  "root" in {
+  "root" in:
     assert(OrderId("A").root == OrderId("A"))
     assert(OrderId("A|B").root == OrderId("A"))
     assert(OrderId("A|B|C").root == OrderId("A"))
-  }
 
-  "isRoot" in {
+  "isRoot" in:
     assert(OrderId("A").isRoot)
     assert(!OrderId("A|B").isRoot)
-  }
-}

@@ -27,8 +27,7 @@ import org.scalactic.source
 final class TryTest
 extends OurTestSuite
 with ControllerAgentForScalaTest
-with BlockingItemUpdater
-{
+with BlockingItemUpdater:
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.journal.remove-obsolete-files = false
@@ -42,16 +41,14 @@ with BlockingItemUpdater
   protected val agentPaths = Seq(agentPath)
   protected val items = Nil
 
-  "(prepare)" in {
-    for a <- directoryProvider.agentEnvs do {
+  "(prepare)" in:
+    for a <- directoryProvider.agentEnvs do
       a.writeExecutable(RelativePathExecutable(s"OKAY$sh"), ":")
       a.writeExecutable(RelativePathExecutable(s"FAIL-1$sh"), if isWindows then "@exit 1" else "exit 1")
       a.writeExecutable(RelativePathExecutable(s"FAIL-2$sh"), if isWindows then "@exit 2" else "exit 2")
       a.writeExecutable(RelativePathExecutable(s"NEVER$sh"), if isWindows then "@exit 3" else "exit 3")
-    }
-  }
 
-  "Nested try catch with outer non-failing catch, OrderFinished" in {
+  "Nested try catch with outer non-failing catch, OrderFinished" in:
     val finishingScript =
       s"""
           |define workflow {
@@ -96,9 +93,8 @@ with BlockingItemUpdater
       OrderDetached,
       OrderFinished()))
     assert(controllerState.idToOrder(orderId).lastOutcome == Outcome.succeededRC0)
-  }
 
-  "Nested try catch with failing catch, OrderFailed" in {
+  "Nested try catch with failing catch, OrderFailed" in:
     val workflowPath = WorkflowPath("STOPPING")
     val Some(v) = updateItems(Workflow(
       workflowPath,
@@ -122,9 +118,8 @@ with BlockingItemUpdater
         OrderOutcomeAdded(Outcome.failed),
         OrderFailed(Position(0) / "catch+0" % 0)))
     assert(controllerState.idToOrder(orderId).lastOutcome == Outcome.failed)
-  }
 
-  "Empty catch" in {
+  "Empty catch" in:
     val workflowPath = WorkflowPath("TRY-IF")
     val Some(v) = updateItems(Workflow(
       workflowPath,
@@ -146,9 +141,8 @@ with BlockingItemUpdater
       OrderMoved(Position(1)),
       OrderFinished()))
     assert(controllerState.idToOrder(orderId).lastOutcome == Outcome.succeeded)
-  }
 
-  "try - if - fail" in {
+  "try - if - fail" in:
     val workflow = Workflow(
       WorkflowPath("TRY-IF"),
       Seq(
@@ -187,9 +181,8 @@ with BlockingItemUpdater
       OrderDetached,
       OrderFinished()))
     assert(controllerState.idToOrder(orderId).lastOutcome == Outcome.succeeded)
-  }
 
-  "fork - fail" in {
+  "fork - fail" in:
     val workflow = WorkflowParser.parse(WorkflowPath("FORK-FAIL"),
       s"""define workflow {
          |  try {
@@ -240,21 +233,16 @@ with BlockingItemUpdater
       OrderFailedInFork(Position(0) / BranchId.try_(0) % 0 / BranchId.fork("🍋") % 0)))
 
     assert(controllerState.idToOrder(orderId).lastOutcome == Outcome.succeededRC0)
-  }
 
   private def checkEventSeq(
     orderId: OrderId,
     keyedEvents: IterableOnce[KeyedEvent[OrderEvent]],
     expected: Vector[OrderEvent])
     (implicit pos: source.Position)
-  : Unit = {
+  : Unit =
       val events = keyedEvents.iterator.filter(_.key == orderId).map(_.event).toVector
       assert(events == expected)
-    }
-}
 
-object TryTest
-{
+object TryTest:
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)
-}

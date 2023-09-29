@@ -31,8 +31,7 @@ import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import scala.annotation.tailrec
 
-final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForScalaTest
-{
+final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForScalaTest:
   override protected def controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.controller.agent-driver.command-batch-delay = 0ms
@@ -59,15 +58,14 @@ final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForSc
   private lazy val controllerApi = newControllerApi(controller, Some(directoryProvider.controllerEnv.userAndPassword))
   private var agent: TestAgent = null
 
-  override def afterAll() = {
+  override def afterAll() =
     controllerApi.stop.await(99.s)
     controller.terminate() await 99.s
     super.afterAll()
-  }
 
   private val agentRef = AgentRef(agentPath, directors = Seq(subagentId))
 
-  "Add AgentRef and run an order" in {
+  "Add AgentRef and run an order" in:
     directoryProvider.prepareAgentFiles(agentEnv)
 
     val subagentItem = SubagentItem(subagentId, agentPath, Uri(s"http://127.0.0.1:$agentPort1"))
@@ -82,12 +80,11 @@ final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForSc
           AddOrChangeSigned(toSignedString(workflow withVersion v1))))
       .await(99.s).orThrow
     controller.runOrder(FreshOrder(OrderId("🔷"), workflow.path, deleteWhenTerminated = true))
-  }
 
   private lazy val outdatedState = agentEnv.stateDir.resolveSibling(Paths.get("state~"))
   private lazy val eventWatch = controller.eventWatch
 
-  "Delete AgentRef" in {
+  "Delete AgentRef" in:
     copyDirectoryContent(agentEnv.stateDir, outdatedState)
 
     assert(controllerApi.updateItems(Observable(DeleteSimple(agentPath))).await(99.s) ==
@@ -106,16 +103,15 @@ final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForSc
 
     eventWatch.await[ItemDeleted](_.event.key == agentPath, after = eventId)
     agent.untilTerminated await 99.s
-  }
 
-  "Add AgentRef again: Agent's journal should be new due to implicit Reset" in {
+  "Add AgentRef again: Agent's journal should be new due to implicit Reset" in:
     agent = TestAgent.start(agentEnv.agentConf) await 99.s
 
     val eventId = eventWatch.lastAddedEventId
     val versionId = VersionId("AGAIN")
     val subagentItem = SubagentItem(subagentId, agentPath, Uri(s"http://127.0.0.1:$agentPort1"))
 
-    @tailrec def loop(n: Int): Unit = {
+    @tailrec def loop(n: Int): Unit =
       val checked = controllerApi
         .updateItems(
           Observable(
@@ -125,29 +121,26 @@ final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForSc
             AddOrChangeSigned(toSignedString(workflow withVersion versionId))))
         .await(99.s)
         if n > 0 && checked.left.exists(_.toString contains
-          "AgentDrivers for the following Agents are still running — please retry after some seconds:") then {
+          "AgentDrivers for the following Agents are still running — please retry after some seconds:") then
           sleep(1.s)
           loop(n - 1)
-        } else
+        else
           checked.orThrow
-    }
     loop(2)
 
     eventWatch.await[AgentDedicated](after = eventId)
     eventWatch.await[AgentReady](after = eventId)
     controller.runOrder(FreshOrder(OrderId("AGAIN"), workflow.path))
     agent.terminate() await 99.s
-  }
 
-  "Change Directors's URI to an unreachable address" in {
+  "Change Directors's URI to an unreachable address" in:
     val eventId = eventWatch.lastAddedEventId
     val subagentItem = SubagentItem(subagentId, agentPath, Uri("http://127.0.0.0:0"))
     controllerApi.updateUnsignedSimpleItems(Seq(subagentItem)).await(99.s).orThrow
     controller.addOrderBlocking(FreshOrder(OrderId("🔺"), workflow.path))
     eventWatch.await[AgentCouplingFailed](after = eventId)
-  }
 
-  "Change Directors's URI and keep Agent's state (move the Agent)" in {
+  "Change Directors's URI and keep Agent's state (move the Agent)" in:
     val subagentItem = SubagentItem(subagentId, agentPath, Uri(s"http://127.0.0.1:$agentPort2"))
     agent = TestAgent.start(
       agentEnv.agentConf.copy(
@@ -157,9 +150,8 @@ final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForSc
     controllerApi.updateUnsignedSimpleItems(Seq(subagentItem)).await(99.s).orThrow
     controller.runOrder(FreshOrder(OrderId("🔶"), workflow.path))
     agent.terminate() await 99.s
-  }
 
-  "Coupling fails with outdated Director" in {
+  "Coupling fails with outdated Director" in:
     deleteDirectoryRecursively(agentEnv.stateDir)
     move(outdatedState, agentEnv.stateDir)
     val eventId = eventWatch.lastAddedEventId
@@ -177,9 +169,8 @@ final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForSc
       after = eventId)
 
     agent.terminate() await 99.s
-  }
 
-  "Change Directors's URI and start Agent with clean state: fails" in {
+  "Change Directors's URI and start Agent with clean state: fails" in:
     val subagentItem = SubagentItem(subagentId, agentPath, Uri(s"http://127.0.0.1:$agentPort3"))
     // DELETE AGENT'S STATE DIRECTORY
     deleteDirectoryContentRecursively(agentEnv.stateDir)
@@ -196,14 +187,10 @@ final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForSc
       after = eventId)
 
     agent.terminate() await 99.s
-  }
-}
 
-object UpdateAgentRefsTest
-{
+object UpdateAgentRefsTest:
   private val agentPath = AgentPath("AGENT")
   private val subagentId = SubagentId("SUBAGENT")
   private val v1 = VersionId("1")
   private val workflow = Workflow(WorkflowPath("WORKFLOW"), Vector(
     EmptyJob.execute(agentPath)))
-}

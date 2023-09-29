@@ -7,8 +7,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.license.{LicenseCheck, LicenseCheckContext}
 import scala.util.control.NonFatal
 
-final class LicenseChecker(licenseCheckContext: LicenseCheckContext)
-{
+final class LicenseChecker(licenseCheckContext: LicenseCheckContext):
   private val logger = Logger[this.type]
 
   private lazy val licenseChecks: Seq[LicenseCheck] =
@@ -33,4 +32,3 @@ final class LicenseChecker(licenseCheckContext: LicenseCheckContext)
         !hasLicense
       }
       .nonEmpty
-}

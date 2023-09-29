@@ -13,8 +13,7 @@ import js7.data.workflow.instructions.ConsumeNotices
 
 private[instructions] final class ConsumeNoticesExecutor(
   protected val service: InstructionExecutorService)
-extends EventInstructionExecutor
-{
+extends EventInstructionExecutor:
   type Instr = ConsumeNotices
   val instructionClass = classOf[ConsumeNotices]
 
@@ -60,10 +59,8 @@ extends EventInstructionExecutor
           OrderDetachable
         else
           OrderNoticesConsumed())))
-}
 
-private object ConsumeNoticesExecutor
-{
+private object ConsumeNoticesExecutor:
   def tryFulfillExpectingOrder(
     instr: ConsumeNotices,
     order: Order[Order.ExpectingNotices],
@@ -82,4 +79,3 @@ private object ConsumeNoticesExecutor
       OrderNoticesConsumptionStarted(expected) :: Nil
     else
       Nil
-}

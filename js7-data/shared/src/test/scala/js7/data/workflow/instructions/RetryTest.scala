@@ -10,13 +10,10 @@ import js7.tester.CirceJsonTester.*
 /**
   * @author Joacim Zschimmer
   */
-final class RetryTest extends OurTestSuite
-{
-  "JSON" in {
+final class RetryTest extends OurTestSuite:
+  "JSON" in:
     testJson[Instruction.Labeled](Retry(Some(SourcePos(1, 2))),
       json"""{
         "TYPE": "Retry",
         "sourcePos": [ 1, 2 ]
       }""")
-  }
-}

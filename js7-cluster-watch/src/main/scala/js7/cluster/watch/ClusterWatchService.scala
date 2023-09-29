@@ -44,8 +44,7 @@ final class ClusterWatchService private[ClusterWatchService](
   retryDelays: NonEmptySeq[FiniteDuration],
   onClusterStateChanged: (HasNodes) => Unit,
   onUndecidableClusterNodeLoss: OnUndecidableClusterNodeLoss)
-extends MainService with Service.StoppableByRequest
-{
+extends MainService with Service.StoppableByRequest:
   protected type Termination = ProgramTermination
 
   // Public for test
@@ -80,7 +79,7 @@ extends MainService with Service.StoppableByRequest
       .takeUntilEval(untilStopRequested)
       .completedL
 
-  private final class NodeServer(nodeApi: HttpClusterNodeApi) {
+  private final class NodeServer(nodeApi: HttpClusterNodeApi):
     def observable: Observable[ClusterWatchRequest] =
       observeAgainAndAgain(clusterWatchRequestObservable)
 
@@ -130,17 +129,15 @@ extends MainService with Service.StoppableByRequest
                 manualConfirmer = confirmed.toOption.flatMap(_.manualConfirmer),
                 problem = confirmed.left.toOption))
             .void))
-        .map {
+        .map:
           case Left(problem @ ClusterWatchRequestDoesNotMatchProblem) =>
             // Already confirmed by this or another ClusterWatch
             logger.info(s"❓$nodeApi $problem")
           case Left(problem) =>
             logger.warn(s"❓$nodeApi $problem")
           case Right(()) =>
-        }
         .onErrorHandle(t =>
           logger.error(s"$nodeApi ${t.toStringWithCauses}", t.nullIfNoStackTrace))
-  }
 
   def manuallyConfirmNodeLoss(lostNodeId: NodeId, confirmer: String): Task[Checked[Unit]] =
     clusterWatch.manuallyConfirmNodeLoss(lostNodeId, confirmer)
@@ -152,13 +149,11 @@ extends MainService with Service.StoppableByRequest
 
   def clusterState(): Checked[ClusterState] =
     clusterWatch.clusterState()
-}
 
-object ClusterWatchService
-{
+object ClusterWatchService:
   private val logger = Logger[this.type]
 
-  def completeResource(conf: ClusterWatchConf): Resource[Task, ClusterWatchService] = {
+  def completeResource(conf: ClusterWatchConf): Resource[Task, ClusterWatchService] =
     import conf.{clusterNodeAdmissions, config, httpsConfig}
     for
       akka <- actorSystemResource(name = "ClusterWatch", config)
@@ -170,7 +165,6 @@ object ClusterWatchService
             .flatMap(HttpClusterNodeApi.resource(admission, _, uriPrefix = "controller"))),
         config)
     yield service
-  }
 
   def resource(
     clusterWatchId: ClusterWatchId,
@@ -213,4 +207,3 @@ object ClusterWatchService
                 onUndecidableClusterNodeLoss))))
       yield service
     })
-}

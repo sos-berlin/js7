@@ -30,8 +30,7 @@ final case class FreshOrder(
   forceJobAdmission: Boolean = false,
   innerBlock: BranchPath = BranchPath.empty,
   startPosition: Option[PositionOrLabel] = None,
-  stopPositions: Set[PositionOrLabel] = Set.empty)
-{
+  stopPositions: Set[PositionOrLabel] = Set.empty):
   workflowPath.requireNonAnonymous()
 
   def toOrderAdded(
@@ -44,10 +43,8 @@ final case class FreshOrder(
       deleteWhenTerminated = deleteWhenTerminated,
       forceJobAdmission = forceJobAdmission,
       innerBlock, startPosition, stopPositions)
-}
 
-object FreshOrder
-{
+object FreshOrder:
   def apply(
     id: OrderId,
     workflowPath: WorkflowPath,
@@ -125,4 +122,3 @@ object FreshOrder
           innerBlock, startPosition, stopPositions
         ).toDecoderResult(c.history)
     yield order
-}

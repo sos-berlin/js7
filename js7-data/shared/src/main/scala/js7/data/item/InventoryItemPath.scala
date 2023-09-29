@@ -12,8 +12,7 @@ import js7.base.utils.ScalaUtils.checkedCast
 import js7.data.item.InventoryItemPath.*
 import scala.reflect.ClassTag
 
-trait InventoryItemPath extends GenericString
-{
+trait InventoryItemPath extends GenericString:
   def companion: Companion[? <: InventoryItemPath]
 
   final def isAssignableToAgent =
@@ -27,15 +26,12 @@ trait InventoryItemPath extends GenericString
     Paths.get(string + companion.sourceTypeToFilenameExtension(t))
 
   override def toString = toTypedString
-}
 
-object InventoryItemPath
-{
+object InventoryItemPath:
   implicit val inventoryItemPathOrdering: Ordering[InventoryItemPath] =
     GenericString.ordering[InventoryItemPath]
 
-  abstract class Companion[P <: InventoryItemPath: ClassTag] extends Js7PathValidating[P]
-  {
+  abstract class Companion[P <: InventoryItemPath: ClassTag] extends Js7PathValidating[P]:
     private lazy val itemTypeName_ = name stripSuffix "Path"
     def itemTypeName: String = itemTypeName_
 
@@ -50,23 +46,20 @@ object InventoryItemPath
     /** Converts a relative file path with normalized slahes (/) to a `VersionedItemPath`. */
     final def fromFile(normalized: String): Option[Checked[(P, SourceType)]] =
       sourceTypeToFilenameExtension
-        .collectFirst {
+        .collectFirst:
           case (t, ext) if normalized endsWith ext =>
             checked(normalized.dropRight(ext.length)).map(_ -> t)
-        }
 
     final def toPossibleFilenames(path: P): Iterable[String] =
       sourceTypeToFilenameExtension.values.map(path.toString + _)
-  }
 
   type AnyCompanion = Companion[? <: InventoryItemPath]
 
-  trait AttachableToAgent {
+  trait AttachableToAgent:
     this: InventoryItemPath =>
-  }
 
   def jsonCodec[P <: InventoryItemPath: ClassTag](companions: Iterable[Companion[? <: P]]): Codec[P] =
-    new Codec[P] {
+    new Codec[P]:
       private val typeToCompanion = companions.toKeyedMap(_.pathTypeName)
 
       def apply(a: P) = Json.fromString(a.toTypedString)
@@ -74,10 +67,9 @@ object InventoryItemPath
       def apply(c: HCursor) =
         for
           string <- c.as[String]
-          prefixAndPath <- string indexOf ':' match {
+          prefixAndPath <- string indexOf ':' match
             case i if i > 0 => Right((string.take(i), string.substring(i + 1)))
             case _ => Left(DecodingFailure(s"Missing type prefix in InventoryItemPath: $string", c.history))
-          }
           prefix = prefixAndPath._1
           path = prefixAndPath._2
           itemPath <- typeToCompanion
@@ -87,5 +79,3 @@ object InventoryItemPath
             .flatMap(checkedCast[P](_))
             .toDecoderResult(c.history)
         yield itemPath
-    }
-}

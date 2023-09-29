@@ -8,8 +8,7 @@ import monix.eval.Task
 import monix.reactive.Observable
 import scala.concurrent.duration.FiniteDuration
 
-trait FileEventWatch extends EventWatch
-{
+trait FileEventWatch extends EventWatch:
   def observeFile(journalPosition: JournalPosition,
     timeout: FiniteDuration, markEOF: Boolean = false, onlyAcks: Boolean = false)
   : Task[Checked[Observable[PositionAnd[ByteArray]]]]
@@ -28,4 +27,3 @@ trait FileEventWatch extends EventWatch
 
   def strict: StrictEventWatch =
     new StrictEventWatch(this)
-}

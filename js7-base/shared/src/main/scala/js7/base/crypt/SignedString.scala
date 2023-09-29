@@ -9,17 +9,14 @@ import org.jetbrains.annotations.TestOnly
 /**
   * @author Joacim Zschimmer
   */
-final case class SignedString(string: String, signature: GenericSignature)
-{
+final case class SignedString(string: String, signature: GenericSignature):
   override def toString = s"SignedString(${string.truncateWithEllipsis(100, showLength = true)}, $signature)"
 
   /** Tamper in a JSON-compatible way. */
   @TestOnly
   def tamper = copy(string = string + " ")
-}
 
-object SignedString
-{
+object SignedString:
   @javaApi
   def of(string: String, signatureTypeName: String, signatureString: String): SignedString =
     SignedString(string, GenericSignature(signatureTypeName, signatureString))
@@ -44,4 +41,3 @@ object SignedString
         signerCertificate = Some(signerCertificate)))
 
   implicit val jsonCodec: Codec.AsObject[SignedString] = deriveCodec[SignedString]
-}

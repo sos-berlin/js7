@@ -13,9 +13,8 @@ import js7.data.subagent.SubagentId
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 import scala.concurrent.duration.*
 
-final class AgentEventTest extends OurTestSuite
-{
-  "AgentDedicated" in {
+final class AgentEventTest extends OurTestSuite:
+  "AgentDedicated" in:
     testJson[KeyedEvent[AgentEvent]](AgentDedicated(
       List(SubagentId("PRIMARY-SUBAGENT"), SubagentId("BACKUP-SUBAGENT")),
       AgentPath("AGENT"),
@@ -59,9 +58,8 @@ final class AgentEventTest extends OurTestSuite
         "agentRunId": "ABEiM0RVZneImaq7zN3u_w",
         "controllerId": "CONTROLLER"
       }""")
-  }
 
-  "AgentReady" in {
+  "AgentReady" in:
     testJson[KeyedEvent[AgentEvent]](AgentReady("Europe/Berlin", 1.hour, Some(PlatformInfo.test)),
       json"""{
         "TYPE": "AgentReady",
@@ -88,12 +86,9 @@ final class AgentEventTest extends OurTestSuite
           }
         }
       }""")
-  }
 
-  "AgentShutDown" in {
+  "AgentShutDown" in:
     testJson[KeyedEvent[AgentEvent]](AgentShutDown,
       json"""{
         "TYPE": "AgentShutDown"
       }""")
-  }
-}

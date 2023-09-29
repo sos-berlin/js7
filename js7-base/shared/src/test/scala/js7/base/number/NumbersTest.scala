@@ -3,9 +3,8 @@ package js7.base.number
 import js7.base.number.Numbers.{addSaturating, subtractSaturating}
 import js7.base.test.OurTestSuite
 
-final class NumbersTest extends OurTestSuite
-{
-  "addSaturating" in {
+final class NumbersTest extends OurTestSuite:
+  "addSaturating" in:
     assert(addSaturating(Long.MaxValue, 1) == Long.MaxValue)
     assert(addSaturating(Long.MaxValue, Long.MaxValue) == Long.MaxValue)
     assert(addSaturating(Long.MaxValue - 2, 3) == Long.MaxValue)
@@ -21,9 +20,8 @@ final class NumbersTest extends OurTestSuite
     assert(addSaturating(10, -1) == 9)
     assert(addSaturating(-10, 1) == -9)
     assert(addSaturating(-10, -1) == -11)
-  }
 
-  "subtractSaturating" in {
+  "subtractSaturating" in:
     assert(subtractSaturating(Long.MaxValue, -Long.MaxValue) == Long.MaxValue)
     assert(subtractSaturating(Long.MaxValue - 2, -3) == Long.MaxValue)
     assert(subtractSaturating(Long.MaxValue - 2, -2) == Long.MaxValue)
@@ -38,5 +36,3 @@ final class NumbersTest extends OurTestSuite
     assert(subtractSaturating(10, -1) == 11)
     assert(subtractSaturating(-10, 1) == -11)
     assert(subtractSaturating(-10, -1) == -9)
-  }
-}

@@ -14,8 +14,7 @@ import js7.base.problem.Checked.*
 import js7.base.utils.ScalaUtils.syntax.*
 import scala.util.control.NonFatal
 
-object CirceJsonSupport
-{
+object CirceJsonSupport:
   private val logger = Logger[this.type]
 
   implicit def jsonUnmarshaller[A: Decoder]: FromEntityUnmarshaller[A] =
@@ -23,9 +22,8 @@ object CirceJsonSupport
 
   implicit def jsonMarshaller[A](implicit encoder: Encoder[A], printer: Printer = CompactPrinter): ToEntityMarshaller[A] =
     Marshaller.withFixedContentType(`application/json`) { value =>
-      val string = logException(s"jsonMarhaller(${encoder.getClass.getName})") {
+      val string = logException(s"jsonMarhaller(${encoder.getClass.getName})"):
         printer.print(value.asJson)
-      }
       HttpEntity.Strict(`application/json`, ByteString(string))
     }
 
@@ -54,8 +52,6 @@ object CirceJsonSupport
   implicit final val jsonJsonUnmarshaller: FromEntityUnmarshaller[Json] =
     Unmarshaller.byteStringUnmarshaller
       .forContentTypes(`application/json`)
-      .map {
+      .map:
         case ByteString.empty => throw Unmarshaller.NoContentException
         case byteString => jawn.parseByteBuffer(byteString.asByteBuffer).toChecked.orThrow
-      }
-}

@@ -20,12 +20,11 @@ import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.traced
 
-final class PromptTest extends OurTestSuite with ControllerAgentForScalaTest
-{
+final class PromptTest extends OurTestSuite with ControllerAgentForScalaTest:
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(workflow, failingWorkflow, skippedWorkflow)
 
-  "Prompt" in {
+  "Prompt" in:
     val orderId = OrderId("PROMPT")
     controller.api.addOrder(FreshOrder(orderId, workflow.path))
       .await(99.s).orThrow
@@ -38,9 +37,8 @@ final class PromptTest extends OurTestSuite with ControllerAgentForScalaTest
       AnswerOrderPrompt(orderId/*, Outcome.Succeeded(NamedValues("myAnswer" -> StringValue("MY ANSWER")))*/)
     ).await(99.s).orThrow
     eventWatch.await[OrderFinished](_.key == orderId)
-  }
 
-  "AnswerOrderPrompt does not execute following If statement" in {
+  "AnswerOrderPrompt does not execute following If statement" in:
     val orderId = OrderId("FAILING")
     controller.api.addOrder(FreshOrder(orderId, failingWorkflow.path))
       .await(99.s).orThrow
@@ -54,9 +52,8 @@ final class PromptTest extends OurTestSuite with ControllerAgentForScalaTest
       OrderMoved(Position(1)),
       OrderOutcomeAdded(Outcome.Disrupted(Problem("No such named value: UNKNOWN"))),
       OrderFailed(Position(1))))
-  }
 
-  "Prompt followed by a skipped statement" in {
+  "Prompt followed by a skipped statement" in:
     val workflowId = skippedWorkflow.id
     val orderId = OrderId("SKIPPED")
     val order = FreshOrder(OrderId("SKIPPED"), workflowId.path)
@@ -76,9 +73,8 @@ final class PromptTest extends OurTestSuite with ControllerAgentForScalaTest
       OrderMoved(Position(1)),
       OrderOutcomeAdded(Outcome.Disrupted(Problem("No such named value: UNKNOWN"))),
       OrderFailed(Position(1)/*???*/)))
-  }
 
-  "Order.Prompting is suspendible" in {
+  "Order.Prompting is suspendible" in:
     val orderId = OrderId("PROMPT-SUSPENDIBLE")
     controller.api.addOrder(FreshOrder(orderId, workflow.path))
       .await(99.s).orThrow
@@ -94,9 +90,8 @@ final class PromptTest extends OurTestSuite with ControllerAgentForScalaTest
 
     controller.api.executeCommand(ResumeOrder(orderId)).await(99.s).orThrow
     eventWatch.await[OrderFinished](_.key == orderId)
-  }
 
-  "Order.Prompting is cancelable" in {
+  "Order.Prompting is cancelable" in:
     val orderId = OrderId("PROMPT-CANCELABLE")
     controller.api.addOrder(FreshOrder(orderId, workflow.path))
       .await(99.s).orThrow
@@ -104,11 +99,8 @@ final class PromptTest extends OurTestSuite with ControllerAgentForScalaTest
 
     controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
     eventWatch.await[OrderCancelled](_.key == orderId)
-  }
-}
 
-object PromptTest
-{
+object PromptTest:
   private val agentPath = AgentPath("AGENT")
 
   private val workflow = Workflow(WorkflowPath("WORKFLOW") ~ "INITIAL", Seq(
@@ -122,4 +114,3 @@ object PromptTest
     Prompt(StringConstant("MY QUESTION")),
     "LABEL" @: EmptyJob.execute(agentPath),
     If(expr("$UNKNOWN"), Workflow.empty)))
-}

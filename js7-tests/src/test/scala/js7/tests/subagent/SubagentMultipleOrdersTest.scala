@@ -21,8 +21,7 @@ import monix.execution.Scheduler
 import monix.reactive.Observable
 import org.scalatest.Assertion
 
-final class SubagentMultipleOrdersTest extends OurTestSuite with SubagentTester
-{
+final class SubagentMultipleOrdersTest extends OurTestSuite with SubagentTester:
   protected val agentPaths = Seq(agentPath)
   protected lazy val items = Seq(workflow, bareSubagentItem)
 
@@ -30,7 +29,7 @@ final class SubagentMultipleOrdersTest extends OurTestSuite with SubagentTester
 
   private lazy val localSubagentId = directoryProvider.subagentId
 
-  "Multiple orders" in {
+  "Multiple orders" in:
     runSubagent(bareSubagentItem) { _ =>
       val n = 100
       val runOrders = runMultipleOrders(
@@ -64,7 +63,6 @@ final class SubagentMultipleOrdersTest extends OurTestSuite with SubagentTester
         Some(localSubagentId),
         Some(bareSubagentItem.id)))
     }
-  }
 
   private def runMultipleOrders(
     orderIds: Iterable[OrderId],
@@ -87,15 +85,15 @@ final class SubagentMultipleOrdersTest extends OurTestSuite with SubagentTester
   : Observable[(OrderId, Seq[OrderEvent])] =
     controller.api
       .eventAndStateObservable(fromEventId = Some(EventId.BeforeFirst))
-      .mapAccumulate(orderIds.map(_ -> Vector.empty[OrderEvent]).toMap) {
+      .mapAccumulate(orderIds.map(_ -> Vector.empty[OrderEvent]).toMap):
         case (idToEvents, eventAndState) =>
-          eventAndState.stampedEvent match {
+          eventAndState.stampedEvent match
             case Stamped(_, _, KeyedEvent(orderId: OrderId, event: OrderEvent)) =>
               if !orderIds.contains(orderId) then
                 idToEvents -> (None -> true)
-              else {
+              else
                 val iToE = idToEvents + (orderId -> (idToEvents(orderId) :+ event))
-                event match {
+                event match
                   case _: OrderFinished =>
                     val iToE2 = iToE.removed(orderId)
                     if iToE2.isEmpty then
@@ -104,20 +102,14 @@ final class SubagentMultipleOrdersTest extends OurTestSuite with SubagentTester
                       iToE2 -> (Some(orderId -> iToE(orderId)) -> true)
                   case _ =>
                     iToE -> (None -> true)
-                }
-              }
 
             case _ =>
               idToEvents -> (None -> true)
-          }
-      }
       .takeWhileInclusive(_._2)
       .map(_._1)
       .flatMap(o => Observable.fromIterable(o))
-}
 
-object SubagentMultipleOrdersTest
-{
+object SubagentMultipleOrdersTest:
   private val logger = Logger[this.type]
 
   private val workflow = Workflow(
@@ -125,13 +117,10 @@ object SubagentMultipleOrdersTest
     Seq(
       TestJob.execute(agentPath, parallelism = 1_000_000)))
 
-  final class TestJob extends InternalJob
-  {
+  final class TestJob extends InternalJob:
     def toOrderProcess(step: Step) =
       OrderProcess(
         step.outTaskObserver.send("STDOUT 1\n") *>
         step.outTaskObserver.send("STDOUT 2\n") *>
         Task.pure(Outcome.succeeded))
-  }
   object TestJob extends InternalJob.Companion[TestJob]
-}

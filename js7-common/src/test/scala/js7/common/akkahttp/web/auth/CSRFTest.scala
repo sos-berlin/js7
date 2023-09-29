@@ -13,38 +13,28 @@ import js7.common.akkahttp.web.auth.CSRF.forbidCSRF
 /**
   * @author Joacim Zschimmer
   */
-final class CSRFTest extends OurTestSuite with ScalatestRouteTest {
+final class CSRFTest extends OurTestSuite with ScalatestRouteTest:
 
   override def testConfig = config"akka.loglevel = warning"
     .withFallback(super.testConfig)
 
   private val route: Route =
-    forbidCSRF {
-      path("TEST") {
-        (get | post) {
+    forbidCSRF:
+      path("TEST"):
+        (get | post):
           complete(OK)
-        }
-      }
-    }
 
   private val uri = Uri("/TEST")
 
-  "GET is allowed" in {
-    Get(uri) ~> route ~> check {
+  "GET is allowed" in:
+    Get(uri) ~> route ~> check:
       assert(status == OK)
-    }
-  }
 
-  "POST application/json allowed" in {
-    Post(uri, HttpEntity(`application/json`, "{}")) ~> route ~> check {
+  "POST application/json allowed" in:
+    Post(uri, HttpEntity(`application/json`, "{}")) ~> route ~> check:
       assert(status == OK)
-    }
-  }
 
-  "POST text/plain is forbidden" in {
-    Post(uri, "STRING") ~> route ~> check {
+  "POST text/plain is forbidden" in:
+    Post(uri, "STRING") ~> route ~> check:
       assert(status == Forbidden)
       assert(responseAs[String] == Forbidden.defaultMessage)
-    }
-  }
-}

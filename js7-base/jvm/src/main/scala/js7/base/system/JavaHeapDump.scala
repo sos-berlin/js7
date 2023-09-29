@@ -9,8 +9,7 @@ import js7.base.log.Logger.syntax.*
 import js7.base.time.ScalaTime.*
 import scala.concurrent.duration.Deadline.now
 
-object JavaHeapDump
-{
+object JavaHeapDump:
   private val logger = Logger[this.type]
 
   private lazy val hotspotMBean = newPlatformMXBeanProxy(
@@ -19,14 +18,11 @@ object JavaHeapDump
     classOf[HotSpotDiagnosticMXBean])
 
   def dumpHeapTo(file: Path, overwrite: Boolean = false): Unit =
-    logger.debugCall {
+    logger.debugCall:
       val since = now
-      if overwrite then {
+      if overwrite then
         deleteIfExists(file)
-      }
       hotspotMBean.dumpHeap(file.toString, true)
       val msg = s"Java Heap dump written to ${file.toAbsolutePath} (${since.elapsed.pretty})"
       System.err.println(msg)
       logger.info(msg)
-    }
-}

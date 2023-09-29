@@ -4,15 +4,13 @@ import js7.base.test.OurTestSuite
 import js7.subagent.director.Prioritized.prioritySort
 import js7.subagent.director.PrioritizedTest.*
 
-final class PrioritizedTest extends OurTestSuite
-{
-  "prioritySort" in {
+final class PrioritizedTest extends OurTestSuite:
+  "prioritySort" in:
     assert(prioritySort(Vector.empty[String])(_ => 0).isEmpty)
     assert(prioritySort(Vector("1-1", "10-2", "B-1", "B-2", "A-0"))(_.last.toInt) ==
       Vector("10-2", "B-2", "1-1", "B-1", "A-0"))
-  }
 
-  "Prioritized" in {
+  "Prioritized" in:
     val aToPriority: A => Int = Map(
       A(32) -> 3,
       A(31) -> 3,
@@ -67,10 +65,6 @@ final class PrioritizedTest extends OurTestSuite
 
     assert(prioritized.selectNext(a => Set(31, 12)(a.number)) == Some(
       A(31)))
-  }
-}
 
-private object PrioritizedTest
-{
+private object PrioritizedTest:
   private final case class A(number: Int)
-}

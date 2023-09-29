@@ -6,8 +6,7 @@ import js7.data.system.JavaInformation.Memory
 /**
   * @author Joacim Zschimmer
   */
-object JavaInformations
-{
+object JavaInformations:
   private val JavaSystemPropertyKeys = List(
     "java.vm.name",
     "java.runtime.name",
@@ -35,4 +34,3 @@ object JavaInformations
     try classOf[Runtime].getMethod("version").invoke(null).toString
     catch { case _: Throwable => sys.props("java.version")
     }
-}

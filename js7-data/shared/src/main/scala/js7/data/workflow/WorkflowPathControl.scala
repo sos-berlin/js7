@@ -12,8 +12,7 @@ final case class WorkflowPathControl(
   itemRevision: Option[ItemRevision] = Some(ItemRevision(0)))
 extends UnsignedSimpleItem
 with UnsignedSimpleItemState
-with TrivialItemState[WorkflowPathControl]
-{
+with TrivialItemState[WorkflowPathControl]:
   protected type Self = WorkflowPathControl
   val companion: WorkflowPathControl.type = WorkflowPathControl
   val item: WorkflowPathControl = this
@@ -26,13 +25,11 @@ with TrivialItemState[WorkflowPathControl]
 
   def workflowPath: WorkflowPath =
     path.workflowPath
-}
 
 object WorkflowPathControl
 extends UnsignedSimpleItem.Companion[WorkflowPathControl]
 with UnsignedSimpleItemState.Companion[WorkflowPathControl]
-with TrivialItemState.Companion[WorkflowPathControl]
-{
+with TrivialItemState.Companion[WorkflowPathControl]:
   override type Key = WorkflowPathControlPath
   def Key = WorkflowPathControlPath
 
@@ -44,4 +41,3 @@ with TrivialItemState.Companion[WorkflowPathControl]
 
   implicit val jsonCodec: Codec.AsObject[WorkflowPathControl] =
     deriveCodec[WorkflowPathControl]
-}

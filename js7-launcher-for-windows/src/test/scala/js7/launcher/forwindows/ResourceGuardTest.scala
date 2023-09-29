@@ -8,9 +8,8 @@ import monix.execution.atomic.Atomic
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-final class ResourceGuardTest extends OurTestSuite
-{
-  "ResourceGuard immediately" in {
+final class ResourceGuardTest extends OurTestSuite:
+  "ResourceGuard immediately" in:
     var released = 0
     val g = ResourceGuard("RESOURCE") { _ => released += 1 }
     assert(g.use { o => o } == Some("RESOURCE"))
@@ -24,30 +23,27 @@ final class ResourceGuardTest extends OurTestSuite
 
     g.releaseAfterUse()
     assert(released == 1)
-  }
 
-  "ResourceGuard delayed" in {
+  "ResourceGuard delayed" in:
     var released = 0
     val g = ResourceGuard("RESOURCE") { _ => released += 1 }
-    g.use {
+    g.use:
       case Some("RESOURCE") =>
         g.releaseAfterUse()
         assert(released == 0)
       case _ =>
         fail()
-    }
     assert(released == 1)
-  }
 
-  "ResourceGuard parallel" in {
+  "ResourceGuard parallel" in:
     val released = Atomic(0)
     val g = ResourceGuard("RESOURCE") { _ => released += 1 }
     val notReleased = Atomic(0)
     val futures = for _ <- 1 to (sys.runtime.availableProcessors / 2).min(1) yield
-      Future {
+      Future:
         var stop = false
-        while !stop do {
-          g.use {
+        while !stop do
+          g.use:
             case Some("RESOURCE") =>
               assert(released() == 0)
               notReleased += 1
@@ -55,14 +51,9 @@ final class ResourceGuardTest extends OurTestSuite
               fail()
             case None =>
               stop = true
-          }
-        }
-      }
     sleep(100.ms)
     waitForCondition(10.s, 10.ms)(notReleased() > 1)
     g.releaseAfterUse()
     futures await 99.s
     assert(released() == 1)
     assert(notReleased() > 1)
-  }
-}

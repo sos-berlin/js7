@@ -7,9 +7,8 @@ import js7.data.workflow.{Instruction, Workflow}
 import js7.data.workflow.instructions.Instructions.jsonCodec
 import js7.tester.CirceJsonTester.testJson
 
-final class ConsumeNoticesTest extends OurTestSuite
-{
-  "JSON" in {
+final class ConsumeNoticesTest extends OurTestSuite:
+  "JSON" in:
     testJson[Instruction](
       ConsumeNotices(
         BoardPathExpression.Or(
@@ -26,5 +25,3 @@ final class ConsumeNoticesTest extends OurTestSuite
           "instructions": []
           }
         }""")
-  }
-}

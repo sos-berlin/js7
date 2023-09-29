@@ -9,13 +9,10 @@ import scala.util.{Failure, Success}
   */
 final class UntilNoneIterator[A] private(read: => Option[A])
 extends AbstractIterator[A] with SimpleIterator[A]
-with Iterator[A]
-{
+with Iterator[A]:
   def computeNext() = read getOrElse endOfData
-}
 
-object UntilNoneIterator
-{
+object UntilNoneIterator:
   def apply[A](read: => Option[A]): Iterator[A] =
     new UntilNoneIterator(
       try read map Success.apply
@@ -23,4 +20,3 @@ object UntilNoneIterator
         case NonFatal(t) => Some(Failure(t))
       }
     ).map(_.get/*throws*/)
-}

@@ -6,9 +6,8 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import monix.execution.schedulers.TestScheduler
 
-final class UnbufferedReaderObservableTest extends OurTestSuite
-{
-  "UnbufferedReaderObservable" in {
+final class UnbufferedReaderObservableTest extends OurTestSuite:
+  "UnbufferedReaderObservable" in:
     val scheduler = TestScheduler()
     val w = new PipedWriter
     val r = new PipedReader(w)
@@ -17,15 +16,11 @@ final class UnbufferedReaderObservableTest extends OurTestSuite
       .toListL.runToFuture
 
     val expected = List("EINS", "ZWEI", "DREI")
-    for s <- expected do {
+    for s <- expected do
       w.write(s)
       w.flush()
       scheduler.tick()
-    }
     w.close()
 
-    for list <- whenCompleted yield {
+    for list <- whenCompleted yield
       assert(list == expected)
-    }
-  }
-}

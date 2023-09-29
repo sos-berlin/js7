@@ -9,8 +9,7 @@ import js7.base.web.HttpClient
 import js7.controller.client.HttpControllerApi
 import monix.eval.Task
 
-trait ControllerApiWithHttp
-{
+trait ControllerApiWithHttp:
   protected def apiResource(implicit src: sourcecode.Enclosing)
   : Resource[Task, HttpControllerApi]
 
@@ -33,4 +32,3 @@ trait ControllerApiWithHttp
       HttpClient.liftProblem(
         api.get[Json](uriTail)
       ).map(_.map(_.compactPrint)))
-}

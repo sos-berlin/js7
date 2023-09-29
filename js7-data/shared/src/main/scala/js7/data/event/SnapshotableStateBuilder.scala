@@ -18,8 +18,7 @@ import scala.concurrent.duration.Deadline.now
 import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal
 
-trait SnapshotableStateBuilder[S <: SnapshotableState[S]]
-{
+trait SnapshotableStateBuilder[S <: SnapshotableState[S]]:
   protected val S: SnapshotableState.Companion[S]
 
   private val since = now
@@ -31,13 +30,12 @@ trait SnapshotableStateBuilder[S <: SnapshotableState[S]]
   private val _journalHeader = SetOnce[JournalHeader]
   private val getStatePromise = Promise[Task[S]]()
 
-  def initializeState(journalHeader: Option[JournalHeader], eventId: EventId, totalEventCount: Long, state: S): Unit = {
+  def initializeState(journalHeader: Option[JournalHeader], eventId: EventId, totalEventCount: Long, state: S): Unit =
     journalHeader foreach { _journalHeader := _ }
     _eventId = eventId
     _eventCount = totalEventCount - journalHeader.fold(0L)(_.totalEventCount)
     onInitializeState(state)
     onStateIsAvailable()
-  }
 
   protected def onInitializeState(state: S): Unit
 
@@ -53,17 +51,17 @@ trait SnapshotableStateBuilder[S <: SnapshotableState[S]]
 
   def result(): S
 
-  def addSnapshotObject(obj: Any): Unit = {
+  def addSnapshotObject(obj: Any): Unit =
     recordCount += 1
     _snapshotCount += 1
-    obj match {
+    obj match
       case journalHeader: JournalHeader =>
-        try {
+        try
           require(_firstEventId == EventId.BeforeFirst && _eventId == EventId.BeforeFirst, "EventId mismatch in snapshot")
           _journalHeader := journalHeader
           _firstEventId = journalHeader.eventId
           _eventId = journalHeader.eventId
-        } catch { case NonFatal(t) => throw new RuntimeException(
+        catch { case NonFatal(t) => throw new RuntimeException(
           s"Application of JournalHeader failed in record #$recordCount for $S", t)
         }
 
@@ -80,16 +78,13 @@ trait SnapshotableStateBuilder[S <: SnapshotableState[S]]
           s"Application of snapshot object '${obj.getClass.shortClassName}' failed " +
             s"in record #$recordCount for $S", t)
         }
-    }
-  }
 
   protected def onSnapshotObjectNotApplicable(obj: Any): Unit =
     throw SnapshotObjectNotApplicableProblem(obj).throwable.appendCurrentStackTrace
 
-  def onAllSnapshotsAdded(): Unit = {
+  def onAllSnapshotsAdded(): Unit =
     onOnAllSnapshotsAdded()
     onStateIsAvailable()
-  }
 
   private def onStateIsAvailable(): Unit =
     getStatePromise.success(Task {
@@ -99,37 +94,33 @@ trait SnapshotableStateBuilder[S <: SnapshotableState[S]]
     })
 
   final def addEvent(stamped: Stamped[KeyedEvent[Event]]) =
-    synchronized {  // synchronize with asynchronous execution of synchronizedStateFuture
-      try {
+    synchronized:  // synchronize with asynchronous execution of synchronizedStateFuture
+      try
         recordCount += 1
-        if stamped.eventId <= _eventId then {
+        if stamped.eventId <= _eventId then
           throw new IllegalArgumentException(s"EventId is not ascending: ${EventId.toString(_eventId)} >= ${stamped.toString.truncateWithEllipsis(100)}")
-        }
         try onAddEvent(stamped)
         catch { case NonFatal(t) =>
           throw new RuntimeException(s"Event failed: $stamped", t)
         }
         _eventCount += 1
-        if _firstEventId == EventId.BeforeFirst then {
+        if _firstEventId == EventId.BeforeFirst then
           _firstEventId = stamped.eventId
-        }
         _eventId = stamped.eventId
-      } catch { case NonFatal(t) =>
+      catch { case NonFatal(t) =>
         throw new RuntimeException(s"Decoding event failed in record #$recordCount for $S", t)
       }
-    }
 
-  def logStatistics(byteCount: Option[Long]): Unit = {
+  def logStatistics(byteCount: Option[Long]): Unit =
     val elapsed = since.elapsed
-    if elapsed >= 1.s then {
+    if elapsed >= 1.s then
       logger.debug(
         itemsPerSecondString(elapsed, _snapshotCount + eventCount, "snapshots+events") +
         byteCount.fold("")(byteCount =>
           ", " + perSecondStringOnly(elapsed, byteCount / 1_000_000, "MB", gap = false) +
           " " + toKBGB(byteCount)
         ) + " read")
-    }
-    if snapshotCount + eventCount > 0 then {
+    if snapshotCount + eventCount > 0 then
       val age = (Timestamp.now - EventId.toTimestamp(eventId)).withMillis(0).pretty
       logger.info(s"Recovered last EventId is ${EventId.toString(eventId)}, emitted $age ago " +
         s"($snapshotCount snapshot objects and $eventCount events" +
@@ -137,8 +128,6 @@ trait SnapshotableStateBuilder[S <: SnapshotableState[S]]
         " read" +
         ((elapsed >= 10.s) ?? s" in ${elapsed.pretty}") +
         ")")
-    }
-  }
 
   def synchronizedStateFuture: Future[Task[S]] =
     getStatePromise.future
@@ -159,10 +148,9 @@ trait SnapshotableStateBuilder[S <: SnapshotableState[S]]
 
   final def eventId = _eventId
 
-  protected def updateEventId(o: EventId) = {
+  protected def updateEventId(o: EventId) =
     assert(_eventId < o)
     _eventId = o
-  }
 
   final def snapshotCount = _snapshotCount
 
@@ -173,22 +161,19 @@ trait SnapshotableStateBuilder[S <: SnapshotableState[S]]
   private def lastEventIdTimestamp: Timestamp =
     if eventId == EventId.BeforeFirst then Timestamp.now
     else EventId.toTimestamp(eventId)
-}
 
-object SnapshotableStateBuilder
-{
+object SnapshotableStateBuilder:
   private val logger = Logger[this.type]
 
   abstract class Simple[S <: SnapshotableState[S]](protected val S: SnapshotableState.Companion[S])
   extends SnapshotableStateBuilder[S]
-  with StandardsBuilder
-  {
+  with StandardsBuilder:
     private var _state = S.empty
 
     protected def onInitializeState(state: S) =
       _state = state
 
-    override def addSnapshotObject(obj: Any) = obj match {
+    override def addSnapshotObject(obj: Any) = obj match
       case o: JournalState =>
         _state = _state.withStandards(_state.standards.copy(
           journalState = o))
@@ -198,22 +183,17 @@ object SnapshotableStateBuilder
           clusterState = o))
 
       case o => super.addSnapshotObject(o)
-    }
 
-    protected def onAddEvent = {
+    protected def onAddEvent =
       case stamped =>
         _state = _state.applyEvent(stamped.value).orThrow
         updateEventId(stamped.eventId)
-    }
 
     def result() = _state withEventId eventId
 
     protected final def state = _state
 
     protected final def updateState(state: S) = _state = state
-  }
 
-  private case class SnapshotObjectNotApplicableProblem(obj: Any) extends Problem.Coded {
+  private case class SnapshotObjectNotApplicableProblem(obj: Any) extends Problem.Coded:
     def arguments = Map("object" -> obj.getClass.scalaName)
-  }
-}

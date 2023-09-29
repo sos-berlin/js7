@@ -11,23 +11,18 @@ import scala.annotation.tailrec
 import scala.concurrent.Future
 
 private final class ByteStringSplittingObservable(source: Observable[ByteString], maxSize: Int)
-extends Observable[ByteString]
-{
+extends Observable[ByteString]:
   //<editor-fold desc="NOT USED">
 
-  def unsafeSubscribeFn(out: Subscriber[ByteString]) = {
+  def unsafeSubscribeFn(out: Subscriber[ByteString]) =
     val subscriber = new SplittingSubscriber(maxSize, out)
     val subscription = source.unsafeSubscribeFn(subscriber)
     CompositeCancelable(subscriber, subscription)
-  }
   //</editor-fold>
-}
 
-object ByteStringSplittingObservable
-{
+object ByteStringSplittingObservable:
   private final class SplittingSubscriber(maxSize: Int, out: Subscriber[ByteString])
-  extends Subscriber[ByteString] with Cancelable
-  {
+  extends Subscriber[ByteString] with Cancelable:
     //<editor-fold desc="NOT USED">
 
     @volatile private var canceled = false
@@ -42,10 +37,9 @@ object ByteStringSplittingObservable
       forward(elem)
 
     private def forward(elem: ByteString): Future[Ack] =
-      synchronized {
+      synchronized:
         ack = tailRecursiveForward(elem)
         ack
-      }
 
     @tailrec
     private def tailRecursiveForward(elem: ByteString): Future[Ack] =
@@ -53,34 +47,26 @@ object ByteStringSplittingObservable
         Continue
       else if canceled then
         Stop
-      else {
+      else
         val (head, tail) = elem.splitAt(maxSize)
-        out.onNext(head).syncTryFlatten match {
+        out.onNext(head).syncTryFlatten match
           case Stop => Stop
           case Continue => tailRecursiveForward(tail)
           case ack: Future[Ack] =>
-            ack.flatMap {
+            ack.flatMap:
               case Stop => Stop
               case Continue => forward(tail)
-            }
-        }
-      }
 
     def onError(t: Throwable) =
-      if !isDone then synchronized {
+      if !isDone then synchronized:
         isDone = true
         ack = Stop
         out.onError(t)
-      }
 
     def onComplete() =
-      if !isDone then synchronized {
+      if !isDone then synchronized:
         isDone = true
-        ack = for _ <- ack yield {
+        ack = for _ <- ack yield
           out.onComplete()
           Stop
-        }
-      }
     //</editor-fold>
-  }
-}

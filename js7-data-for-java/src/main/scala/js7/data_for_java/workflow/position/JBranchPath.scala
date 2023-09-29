@@ -11,7 +11,7 @@ import js7.data_for_java.vavr.VavrConverters.RichVavrOption
 import scala.jdk.CollectionConverters.*
 import js7.data.workflow.position.BranchPath.syntax.*
 
-final case class JBranchPath(asScala: BranchPath) extends JavaWrapper {
+final case class JBranchPath(asScala: BranchPath) extends JavaWrapper:
   type AsScala = BranchPath
 
   def normalize: JBranchPath =
@@ -21,14 +21,11 @@ final case class JBranchPath(asScala: BranchPath) extends JavaWrapper {
     asScala.toFlatSeq.asJava
 
   override def toString = asScala.show
-}
 
-object JBranchPath {
+object JBranchPath:
   val empty: JBranchPath = JBranchPath(BranchPath.empty)
 
   @javaApi
   @Nonnull
   def fromList(@Nonnull branchPath: java.util.List[Any]): VEither[Problem, JBranchPath] =
     BranchPath.fromSeq(branchPath.asScala.toSeq).map(apply).toVavr
-
-}

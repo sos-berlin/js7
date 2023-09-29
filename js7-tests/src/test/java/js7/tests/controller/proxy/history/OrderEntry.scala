@@ -20,15 +20,13 @@ final case class OrderEntry(
   startedAt: Optional[Instant] = Optional.empty,
   terminatedAt: Optional[Instant] = Optional.empty,
   endWorkflowPosition: Optional[JWorkflowPosition] = Optional.empty,
-  steps: java.util.List[OrderStepEntry] = Vector.empty.asJava)
-{
-  def updateLastStep(endedAt: Instant, outcome: Outcome, namedValues: java.util.Map[String, Value]): OrderEntry = {
+  steps: java.util.List[OrderStepEntry] = Vector.empty.asJava):
+  def updateLastStep(endedAt: Instant, outcome: Outcome, namedValues: java.util.Map[String, Value]): OrderEntry =
     val lastStep = steps.asScala.last
     copy(steps = (steps.asScala.take(steps.size - 1) :+
       lastStep.copy(
         endedAt = Optional.of(endedAt),
         endVariables = Optional.of(namedValues))).asJava)
-  }
 
   def addToLog(outErr: StdoutOrStderr, chunk: String): OrderEntry =
     updateLog(prefixLines(outErr, chunk))
@@ -36,21 +34,16 @@ final case class OrderEntry(
   private def prefixLines(outErr: StdoutOrStderr, chunk: String) =
     (chunk.split('\n').map(o => s"$outErr: $o") mkString "\n") + "\n"
 
-  def updateLog(chunk: String): OrderEntry = {
+  def updateLog(chunk: String): OrderEntry =
     val lastStep = steps.asScala.last
     copy(steps =
       ( steps.asScala.take(steps.size - 1) :+
         lastStep.copy(
           log = Optional.of(lastStep.log.toScala.getOrElse("") + chunk))
       ).asJava)
-  }
-}
 
-object OrderEntry
-{
+object OrderEntry:
   sealed trait Cause
-  object Cause {
+  object Cause:
     case object Added extends Cause
     case object Forked extends Cause
-  }
-}

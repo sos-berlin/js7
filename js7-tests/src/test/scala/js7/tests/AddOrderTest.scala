@@ -19,8 +19,7 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.traced
 
-final class AddOrderTest extends OurTestSuite with ControllerAgentForScalaTest
-{
+final class AddOrderTest extends OurTestSuite with ControllerAgentForScalaTest:
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.journal.remove-obsolete-files = false
@@ -38,7 +37,7 @@ final class AddOrderTest extends OurTestSuite with ControllerAgentForScalaTest
   protected def agentPaths = Seq(agentPath)
   protected def items = Seq(aWorkflow, bWorkflow, c1Workflow, c2Workflow)
 
-  "AddOrder" in {
+  "AddOrder" in:
     val orderId = OrderId("🔷")
     val events = controller.runOrder(FreshOrder(orderId, aWorkflow.path))
     assert(events.map(_.value) == Seq(
@@ -53,9 +52,8 @@ final class AddOrderTest extends OurTestSuite with ControllerAgentForScalaTest
       OrderMoved(Position(1)),
       OrderFinished()))
     eventWatch.await[OrderPrompted](_.key == OrderId("🟦"))
-  }
 
-  "AddOrder with duplicate OrderId" in {
+  "AddOrder with duplicate OrderId" in:
     val orderId = OrderId("🟧")
     val events = controller.runOrder(FreshOrder(orderId, aWorkflow.path))
     assert(events.map(_.value) == Seq(
@@ -63,9 +61,8 @@ final class AddOrderTest extends OurTestSuite with ControllerAgentForScalaTest
       OrderStarted,
       OrderOutcomeAdded(Outcome.Failed.fromProblem(DuplicateKey("OrderId", "🟦"))),
       OrderFailed(Position(0))))
-  }
 
-  "AddOrder with access to clock" in {
+  "AddOrder with access to clock" in:
     val orderId = OrderId("CLOCK")
     val events = controller.runOrder(FreshOrder(orderId, aWorkflow.path))
     assert(events.map(_.value) == Seq(
@@ -73,10 +70,9 @@ final class AddOrderTest extends OurTestSuite with ControllerAgentForScalaTest
       OrderStarted,
       OrderOutcomeAdded(Outcome.Failed.fromProblem(DuplicateKey("OrderId", "🟦"))),
       OrderFailed(Position(0))))
-  }
 
-  "AddOrder with startPosition and stopPositions (JS-2029)" in {
-    locally {
+  "AddOrder with startPosition and stopPositions (JS-2029)" in:
+    locally:
       val orderId = OrderId("START-AND-STOP")
       val events = controller.runOrder(FreshOrder(orderId, c1Workflow.path)).map(_.value)
       assert(events == Seq(
@@ -90,9 +86,8 @@ final class AddOrderTest extends OurTestSuite with ControllerAgentForScalaTest
           deleteWhenTerminated = true),
         OrderMoved(Position(1)),
         OrderFinished()))
-    }
 
-    locally {
+    locally:
       val orderId = OrderId("ADDED")
       eventWatch.await[OrderDeleted](_.key == orderId)
       val events = eventWatch.eventsByKey[OrderEvent](orderId)
@@ -107,12 +102,8 @@ final class AddOrderTest extends OurTestSuite with ControllerAgentForScalaTest
         OrderDetached,
         OrderFinished(None),
         OrderDeleted))
-    }
-  }
-}
 
-object AddOrderTest
-{
+object AddOrderTest:
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)
 
@@ -143,4 +134,3 @@ object AddOrderTest
       Prompt(expr("'?'")),
       EmptyJob.execute(agentPath),
       Fail(None)))
-}

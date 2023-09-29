@@ -17,23 +17,20 @@ import scala.language.implicitConversions
 /**
  * @author Joacim Zschimmer
  */
-final case class JavaResource(classLoader: ClassLoader, path: String)
-{
+final case class JavaResource(classLoader: ClassLoader, path: String):
   requireNonNull(classLoader)
   require(!(path startsWith "/"), s"JavaResource must not start with a slash: $path")
 
   private lazy val checkedUrl: Checked[URL] =
-    classLoader.getResource(path) match {
+    classLoader.getResource(path) match
       case null => Left(Problem(s"Unknown JavaResource '$path'"))
       case url =>
         logger.trace(s"Using JavaResource $url")
         Right(url)
-    }
 
-  def requireExistence() = {
+  def requireExistence() =
     url
     this
-  }
 
   /**
     * Copies the resource files denoted by `resourceNames` name by name to `directory`.
@@ -46,13 +43,11 @@ final case class JavaResource(classLoader: ClassLoader, path: String)
     * the `REPLACE_EXISTING` option is specified but the file cannot be replaced because
     * it is a non-empty directory <i>(optional specific exception)</i>
     */
-  def copyToFiles(resourceNames: Iterable[String], directory: Path, copyOptions: CopyOption*): Seq[Path] = {
+  def copyToFiles(resourceNames: Iterable[String], directory: Path, copyOptions: CopyOption*): Seq[Path] =
     val resourcePathAndDllFiles = for name <- resourceNames yield (this / name, directory resolve name)
-    for (resourcePath, file) <- resourcePathAndDllFiles do {
+    for (resourcePath, file) <- resourcePathAndDllFiles do
       resourcePath.copyToFile(file, copyOptions*)   // After an exception here, already created files are left !!!
-    }
     resourcePathAndDllFiles.toVector.map(_._2)
-  }
 
   /**
     * Copies the resource to a new file with java.nio.file.Files.copy.
@@ -64,12 +59,11 @@ final case class JavaResource(classLoader: ClassLoader, path: String)
     * the `REPLACE_EXISTING` option is specified but the file cannot be replaced because
     * it is a non-empty directory <i>(optional specific exception)</i>
     */
-  def copyToFile(file: Path, copyOptions: CopyOption*): Path = {
+  def copyToFile(file: Path, copyOptions: CopyOption*): Path =
     autoClosing(openStream()) { in =>
       Files.copy(in, file, copyOptions*)
     }
     file
-  }
 
   def writeToStream(out: OutputStream): Unit =
     autoClosing(openStream())(_.transferTo(out))
@@ -104,9 +98,8 @@ final case class JavaResource(classLoader: ClassLoader, path: String)
   def /(tail: String) = copy(path = s"${path stripSuffix "/"}/$tail")
 
   override def toString = path
-}
 
-object JavaResource {
+object JavaResource:
   private val logger = Logger[this.type]
 
   def apply(classLoader: ClassLoader, path: String): JavaResource =
@@ -128,4 +121,3 @@ object JavaResource {
   implicit val writable: Writable[JavaResource] = _ writeToStream _
 
   java8Polyfill()
-}

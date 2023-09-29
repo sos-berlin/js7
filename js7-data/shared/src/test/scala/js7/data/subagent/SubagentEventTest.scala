@@ -6,9 +6,8 @@ import js7.data.subagent.SubagentEvent.{SubagentItemAttached, SubagentShutdown}
 import js7.data.workflow.Workflow
 import js7.tester.CirceJsonTester.testJson
 
-final class SubagentEventTest extends OurTestSuite
-{
-  "SubagentItemAttached" in {
+final class SubagentEventTest extends OurTestSuite:
+  "SubagentItemAttached" in:
     testJson[SubagentEvent](
       SubagentItemAttached(Workflow.empty),
       json"""{
@@ -18,13 +17,10 @@ final class SubagentEventTest extends OurTestSuite
           "instructions": []
         }
       }""")
-  }
 
-  "SubagentShutdown" in {
+  "SubagentShutdown" in:
     testJson[SubagentEvent](
       SubagentShutdown,
       json"""{
         "TYPE": "SubagentShutdown"
       }""")
-  }
-}

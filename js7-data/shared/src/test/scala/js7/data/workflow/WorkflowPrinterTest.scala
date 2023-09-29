@@ -13,11 +13,10 @@ import js7.data.workflow.instructions.{Execute, Fork, If}
 /**
   * @author Joacim Zschimmer
   */
-final class WorkflowPrinterTest extends OurTestSuite
-{
+final class WorkflowPrinterTest extends OurTestSuite:
   // Also tested by WorkflowParserTest.
 
-  "execute" in {
+  "execute" in:
     check(
       Workflow(
         WorkflowPath.NoId,
@@ -29,9 +28,8 @@ final class WorkflowPrinterTest extends OurTestSuite
         |  execute agent='AGENT', v1Compatible=true, executable='my-script';
         |}
         |""".stripMargin)
-  }
 
-  "execute defaultArguments" in {
+  "execute defaultArguments" in:
     check(
       Workflow(
         WorkflowPath.NoId,
@@ -41,9 +39,8 @@ final class WorkflowPrinterTest extends OurTestSuite
         |  execute agent='AGENT', defaultArguments={'KEY': 'VALUE'}, executable='my-script';
         |}
         |""".stripMargin)
-  }
 
-  "Newline in string (not string expression)" in {
+  "Newline in string (not string expression)" in:
     check(
       Workflow(
         WorkflowPath.NoId,
@@ -54,9 +51,8 @@ final class WorkflowPrinterTest extends OurTestSuite
         |"$': 'VALUE'}, executable='my-script';
         |}
         |""".stripMargin)
-  }
 
-  "execute successReturnCodes=(), script" in {
+  "execute successReturnCodes=(), script" in:
     check(
       Workflow(
         WorkflowPath.NoId,
@@ -78,9 +74,8 @@ final class WorkflowPrinterTest extends OurTestSuite
         |  execute agent='AGENT', v1Compatible=true, script='SCRIPT';
         |}
         |""".stripMargin)
-  }
 
-  "execute failureReturnCodes=()" in {
+  "execute failureReturnCodes=()" in:
     check(
       Workflow(
         WorkflowPath.NoId,
@@ -96,9 +91,8 @@ final class WorkflowPrinterTest extends OurTestSuite
         |  execute agent='AGENT', parallelism=3, defaultArguments={'KEY': 'VALUE'}, sigkillDelay=10, failureReturnCodes=[], executable='my-script';
         |}
         |""".stripMargin)
-  }
 
-  "job JOB" in {
+  "job JOB" in:
     check(
       Workflow(
         WorkflowPath.NoId,
@@ -125,9 +119,8 @@ final class WorkflowPrinterTest extends OurTestSuite
         |  }
         |}
         |""".stripMargin)
-  }
 
-  "Label and single instruction" in {
+  "Label and single instruction" in:
     check(
       Workflow(
         WorkflowPath.NoId,
@@ -137,9 +130,8 @@ final class WorkflowPrinterTest extends OurTestSuite
         |  A: execute agent='AGENT', executable='EXECUTABLE';
         |}
         |""".stripMargin)
-  }
 
-  "if (...)" in {
+  "if (...)" in:
     check(
       Workflow(
         WorkflowPath.NoId,
@@ -156,9 +148,8 @@ final class WorkflowPrinterTest extends OurTestSuite
         |  }
         |}
         |""".stripMargin)
-  }
 
-  "if (...) else" in {
+  "if (...) else" in:
     check(
       Workflow(
         WorkflowPath.NoId,
@@ -182,9 +173,8 @@ final class WorkflowPrinterTest extends OurTestSuite
         |  }
         |}
         |""".stripMargin)
-  }
 
-  "fork" in {
+  "fork" in:
     check(
       Workflow.of(
         Fork.of(
@@ -203,12 +193,9 @@ final class WorkflowPrinterTest extends OurTestSuite
         |  };
         |}
         |""".stripMargin)
-  }
 
-  private def check(workflow: Workflow, source: String): Unit = {
+  private def check(workflow: Workflow, source: String): Unit =
     assert(workflow.show == source)
     val result = WorkflowParser.parse(source).map(_.withoutSourcePos)
     val expected = Right(workflow.copy(source = Some(source)).withoutSourcePos)
     assert(result == expected)
-  }
-}

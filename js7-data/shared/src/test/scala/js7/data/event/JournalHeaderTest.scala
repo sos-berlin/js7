@@ -13,9 +13,8 @@ import scala.concurrent.duration.*
 /**
   * @author Joacim Zschimmer
   */
-final class JournalHeaderTest extends OurTestSuite
-{
-  "JSON" in {
+final class JournalHeaderTest extends OurTestSuite:
+  "JSON" in:
     testJson[JournalHeader](
       JournalHeader(
         typeName = Some("TestState"),
@@ -71,9 +70,8 @@ final class JournalHeaderTest extends OurTestSuite
         "js7Version": "2.0-JS7",
         "buildId": "BUILD"
       }""")
-  }
 
-  "checkedHeader" in {
+  "checkedHeader" in:
     val header = JournalHeader(
       typeName = Some("JournalHeaderTest.TestState"),
       JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF")),
@@ -109,12 +107,8 @@ final class JournalHeaderTest extends OurTestSuite
     assert(
       JournalHeader.checkedHeader[TestState](header, file, Some(header.journalId)) ==
         Right(()))
-  }
-}
 
-object JournalHeaderTest {
-  final case class TestState() extends BasicState[TestState] {
+object JournalHeaderTest:
+  final case class TestState() extends BasicState[TestState]:
     def companion = TestState
-  }
   object TestState extends BasicState.Companion[TestState]
-}

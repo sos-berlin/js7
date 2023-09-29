@@ -50,11 +50,11 @@ final class TaskObserver[A] private(observer: Observer[A])
       .void
 
   def complete: Task[Unit] =
-    Task.defer {
-      self.synchronized {
+    Task.defer:
+      self.synchronized:
         if completed then
           Task.unit
-        else {
+        else
           completed = true
           Task
             .deferFutureAction { implicit s =>
@@ -65,13 +65,8 @@ final class TaskObserver[A] private(observer: Observer[A])
               ack
             }
             .void
-        }
-      }
-   }
 }
 
-object TaskObserver
-{
+object TaskObserver:
   def apply[A](observer: Observer[A]): TaskObserver[A] =
     new TaskObserver(observer)
-}

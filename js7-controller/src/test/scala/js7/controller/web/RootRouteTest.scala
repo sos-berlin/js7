@@ -12,15 +12,11 @@ import monix.execution.Scheduler.Implicits.traced
 /**
   * @author Joacim Zschimmer
   */
-final class RootRouteTest extends OurTestSuite with ScalatestRouteTest with RootRoute
-{
+final class RootRouteTest extends OurTestSuite with ScalatestRouteTest with RootRoute:
   override def testConfig = config"akka.loglevel = warning"
     .withFallback(super.testConfig)
 
-  "/" in {
-    Get("/") ~> root ~> check {
+  "/" in:
+    Get("/") ~> root ~> check:
       assert(status == NotFound)
       assert(response.utf8String.await(99.s) == "Try http://example.com/controller/api\n")  // \n is for shell usage
-    }
-  }
-}

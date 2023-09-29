@@ -10,15 +10,12 @@ import js7.data_for_java.workflow.position.JPosition
 
 /** HistoricOutcome in a Workflow. */
 final case class JHistoricOutcome(asScala: HistoricOutcome)
-extends JJsonable[JHistoricOutcome]
-{
+extends JJsonable[JHistoricOutcome]:
   type AsScala = HistoricOutcome
-  
-  protected def companion = JHistoricOutcome
-}
 
-object JHistoricOutcome extends JJsonable.Companion[JHistoricOutcome]
-{
+  protected def companion = JHistoricOutcome
+
+object JHistoricOutcome extends JJsonable.Companion[JHistoricOutcome]:
   type AsScala = HistoricOutcome
 
   @javaApi @Nonnull
@@ -31,4 +28,3 @@ object JHistoricOutcome extends JJsonable.Companion[JHistoricOutcome]
 
   protected def jsonEncoder = HistoricOutcome.jsonCodec
   protected def jsonDecoder = HistoricOutcome.jsonCodec
-}

@@ -8,18 +8,16 @@ import js7.base.test.OurAsyncTestSuite
 /**
   * @author Joacim Zschimmer
   */
-final class MonixDeadlineTest extends OurAsyncTestSuite
-{
+final class MonixDeadlineTest extends OurAsyncTestSuite:
   private implicit val scheduler: TestScheduler = TestScheduler()
 
-  "now" in {
+  "now" in:
     implicit val scheduler = TestScheduler()
     assert(now.nanos == 0)
     scheduler.tick(1.s)
     assert(now.nanos == 1_000_000_000)
-  }
 
-  "monotonicClock" in {
+  "monotonicClock" in:
     val scheduler = TestScheduler()
     monotonicClock.flatMap { deadline0 =>
       scheduler.tick(1.s)
@@ -28,15 +26,13 @@ final class MonixDeadlineTest extends OurAsyncTestSuite
       }
     }
     .runToFuture(scheduler)
-  }
 
-  "Zero MonixDeadline" in {
+  "Zero MonixDeadline" in:
     implicit val scheduler = TestScheduler()
     assert(!now.hasTimeLeft)
     assert(now.hasElapsed)
-  }
 
-  "Late MonixDeadline" in {
+  "Late MonixDeadline" in:
     implicit val scheduler = TestScheduler()
     val late = now
     assert(late == now)
@@ -49,9 +45,8 @@ final class MonixDeadlineTest extends OurAsyncTestSuite
     assert(late.hasElapsed)
     assert(!late.hasTimeLeft)
     assert(late.isOverdue)
-  }
 
-  "Early MonixDeadline" in {
+  "Early MonixDeadline" in:
     val early = now + 2.s
     scheduler.tick(1.s)
 
@@ -62,14 +57,12 @@ final class MonixDeadlineTest extends OurAsyncTestSuite
     assert(!early.hasElapsed)
     assert(early.hasTimeLeft)
     assert(!early.isOverdue)
-  }
 
-  "Operations" in {
+  "Operations" in:
     assert(now + 1.s - now == 1.s)
     assert(now - 1.s - now == -1.s)
-  }
 
-  "Ordering" in {
+  "Ordering" in:
     assert((now + 1.s).compare(now) > 0)
     assert(now.compare(now) == 0)
     assert((now - 1.s).compare(now) < 0)
@@ -81,5 +74,3 @@ final class MonixDeadlineTest extends OurAsyncTestSuite
     assert(now <= now)
     assert(now <= now + 1.s)
     assert(now < now + 1.s)
-  }
-}

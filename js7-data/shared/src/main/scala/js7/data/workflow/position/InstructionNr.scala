@@ -6,8 +6,7 @@ import scala.language.implicitConversions
 /**
   * @author Joacim Zschimmer
   */
-final case class InstructionNr(number: Int) extends GenericInt
-{
+final case class InstructionNr(number: Int) extends GenericInt:
   import InstructionNr.*
 
   require(number >= InstructionNr.FirstInt, s"Negative Index? $number")
@@ -18,10 +17,8 @@ final case class InstructionNr(number: Int) extends GenericInt
   def /(branchId: BranchId) = BranchPath.Segment(this, branchId)
 
   override def toString = s"$Prefix$number"
-}
 
-object InstructionNr extends GenericInt.Companion[InstructionNr]
-{
+object InstructionNr extends GenericInt.Companion[InstructionNr]:
   private val FirstInt = 0
   private lazy val predefined = (0 to 999).map(i => new InstructionNr(i)).toVector
   lazy val First = InstructionNr(FirstInt)
@@ -35,4 +32,3 @@ object InstructionNr extends GenericInt.Companion[InstructionNr]
 
   implicit def fromInt(nr: Int): InstructionNr =
     apply(nr)
-}

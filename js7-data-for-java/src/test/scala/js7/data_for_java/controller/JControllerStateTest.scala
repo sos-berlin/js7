@@ -27,38 +27,29 @@ import js7.data_for_java.controller.JControllerStateTest.*
 /**
   * @author Joacim Zschimmer
   */
-final class JControllerStateTest extends OurTestSuite
-{
+final class JControllerStateTest extends OurTestSuite:
   private val jControllerState = JControllerState(controllerState)
   private val tester = new JControllerStateTester(jControllerState)
 
-  "clusterState" in {
+  "clusterState" in:
     tester.testClusterState()
-  }
 
-  "workflow" in {
+  "workflow" in:
     tester.testWorkflows()
-  }
 
-  "orderIds" in {
+  "orderIds" in:
     tester.testOrderIds()
-  }
 
-  "IdToOrder" in {
+  "IdToOrder" in:
     tester.testIdToOrder()
-  }
 
-  "testOrderByWorkflowPath" in {
+  "testOrderByWorkflowPath" in:
     tester.testOrdersBy()
-  }
 
-  "testStateToOrder" in {
+  "testStateToOrder" in:
     tester.testOrderStateToCount()
-  }
-}
 
-private object JControllerStateTest
-{
+private object JControllerStateTest:
   private val v1 = VersionId("1.0")
   private val v2 = VersionId("2.0")
   private val aWorkflow = WorkflowParser.parse(WorkflowPath("A-WORKFLOW") ~ v1,
@@ -115,4 +106,3 @@ private object JControllerStateTest
           "key2" -> StringValue("value2")),
         deleteWhenTerminated = true)
     ).toKeyedMap(_.id))
-}

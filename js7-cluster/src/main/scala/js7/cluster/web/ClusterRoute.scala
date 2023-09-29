@@ -21,8 +21,7 @@ import js7.journal.watch.FileEventWatch
 import monix.eval.Task
 import monix.execution.Scheduler
 
-trait ClusterRoute extends ClusterWatchRequestRoute
-{
+trait ClusterRoute extends ClusterWatchRequestRoute:
   protected def scheduler: Scheduler
   protected def actorSystem: ActorSystem
   protected def checkedClusterState: Task[Checked[Stamped[ClusterState]]]
@@ -53,12 +52,11 @@ trait ClusterRoute extends ClusterWatchRequestRoute
                 }))
           }
         } ~
-        path("clusterWatchMessage") {
+        path("clusterWatchMessage"):
           clusterWatchMessageRoute(user.id)
-        }
       } ~
-      post {
-        path("command") {
+      post:
+        path("command"):
           entity(as[Json]) { json =>
             commandJsonCodec
               .decodeJson(json)
@@ -74,14 +72,9 @@ trait ClusterRoute extends ClusterWatchRequestRoute
                       .rightAs(JsonObject.empty))
             })
           }
-        }
-      }
     }
-}
 
-object ClusterRoute
-{
+object ClusterRoute:
   private val commandJsonCodec =
     ClusterCommand.jsonCodec | ClusterWatchingCommand.jsonCodec
   //private val logger = Logger[this.type]
-}

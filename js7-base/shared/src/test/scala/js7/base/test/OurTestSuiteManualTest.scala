@@ -2,26 +2,21 @@ package js7.base.test
 
 import org.slf4j.LoggerFactory
 
-final class OurTestSuiteManualTest extends OurTestSuite {
+final class OurTestSuiteManualTest extends OurTestSuite:
 
   private val logger = LoggerFactory.getLogger(getClass)
 
-  "test" in {
+  "test" in:
     logger.info("test")
-  }
 
   if false then
-  "failing" in {
+  "failing" in:
     fail()
-  }
 
-  "pending" in {
+  "pending" in:
     pending
-  }
 
   "is pending" is pending
 
-  "ignore" ignore {
+  "ignore" ignore:
     sys.error("Not used")
-  }
-}

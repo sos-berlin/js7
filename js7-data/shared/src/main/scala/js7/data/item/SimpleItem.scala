@@ -4,8 +4,7 @@ import io.circe.Codec
 import js7.data.item.SimpleItem.*
 
 /** Unversioned item. */
-trait SimpleItem extends InventoryItem
-{
+trait SimpleItem extends InventoryItem:
   protected type Self <: SimpleItem
 
   val companion: Companion[Self]
@@ -19,23 +18,18 @@ trait SimpleItem extends InventoryItem
   def path: companion.Path
 
   def pathRev = PathRev(path, itemRevision)
-}
 
-object SimpleItem
-{
+object SimpleItem:
   type Companion_ = Companion[? <: SimpleItem]
 
-  trait Companion[A <: SimpleItem] extends InventoryItem.Companion[A]
-  {
+  trait Companion[A <: SimpleItem] extends InventoryItem.Companion[A]:
     type Item = A
 
     type Key <: SimpleItemPath
     def Key: SimpleItemPath.Companion[Key]
 
     type Path = Key
-  }
 
   def jsonCodec(companions: Seq[Companion_]): Codec.AsObject[SimpleItem] =
     InventoryItem.jsonCodec(companions)
       .asInstanceOf[Codec.AsObject[SimpleItem]]
-}

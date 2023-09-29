@@ -13,8 +13,7 @@ final case class StickySubagent(
   subagentSelectionIdExpr: Option[Expression] = None,
   subworkflow: Workflow,
   sourcePos: Option[SourcePos] = None)
-extends Instruction
-{
+extends Instruction:
   def withoutSourcePos = copy(
     sourcePos = None,
     subworkflow = subworkflow.withoutSourcePos)
@@ -31,18 +30,14 @@ extends Instruction
       subworkflow = subworkflow.reduceForAgent(agentPath))
 
   override def workflow(branchId: BranchId) =
-    branchId match {
+    branchId match
       case BranchId.StickySubagent => Right(subworkflow)
       case _ => super.workflow(branchId)
-    }
 
   override def branchWorkflows = (BranchId.StickySubagent -> subworkflow) :: Nil
 
   override def toString = s"stickySubagent $subworkflow$sourcePosToString"
-}
 
-object StickySubagent
-{
+object StickySubagent:
   implicit val jsonCodec: Codec.AsObject[StickySubagent] =
     deriveCodec[StickySubagent]
-}

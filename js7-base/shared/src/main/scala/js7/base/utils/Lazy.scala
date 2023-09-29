@@ -6,8 +6,7 @@ package js7.base.utils
   *
   * @author Joacim Zschimmer
   */
-final class Lazy[A] private(eval: => A)
-{
+final class Lazy[A] private(eval: => A):
   @volatile
   private var state: State = NotEvaluated
 
@@ -15,19 +14,18 @@ final class Lazy[A] private(eval: => A)
     value
 
   def value: A =
-    state match {
+    state match
       case Evaluated(a) => a
       case _ =>
         recursionCheckedValue
           .getOrElse(throw new RecursiveLazyValueException(this))
-    }
 
   def recursionCheckedValue: Option[A] =
-    state match {
+    state match
       case Evaluated(a) => Some(a)
       case _ =>
-        synchronized {
-          state match {
+        synchronized:
+          state match
             case Evaluated(a) => Some(a)
             case Evaluating => None
             case NotEvaluated =>
@@ -35,15 +33,11 @@ final class Lazy[A] private(eval: => A)
               val a = eval
               state = Evaluated(a)
               Some(a)
-          }
-        }
-    }
 
   def toOption: Option[A] =
-    state match {
+    state match
       case Evaluated(a) => Some(a)
       case _ => None
-    }
 
   def isDefined: Boolean =
     state.isInstanceOf[Evaluated]
@@ -52,10 +46,9 @@ final class Lazy[A] private(eval: => A)
     !isDefined
 
   def foreach(f: A => Unit): Unit =
-    state match {
+    state match
       case Evaluated(a) => f(a)
       case _ =>
-    }
 
   override def toString = s"Lazy($state)"
 
@@ -66,10 +59,7 @@ final class Lazy[A] private(eval: => A)
 
   final class RecursiveLazyValueException(val origin: this.type)
   extends Exception("Recursive evaluation of Lazy")
-}
 
-object Lazy
-{
+object Lazy:
   def apply[A](eval: => A): Lazy[A] =
     new Lazy(eval)
-}

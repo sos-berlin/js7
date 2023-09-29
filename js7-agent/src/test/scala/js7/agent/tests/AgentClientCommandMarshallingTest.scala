@@ -19,7 +19,7 @@ import org.scalatest.concurrent.ScalaFutures
  * @author Joacim Zschimmer
  */
 final class AgentClientCommandMarshallingTest
-extends OurTestSuite with ScalaFutures with AgentTester {
+extends OurTestSuite with ScalaFutures with AgentTester:
 
   //override protected val agentTestWiring = RunningAgent.TestWiring(
   //  commandHandler = Some(new CommandHandler {
@@ -42,13 +42,10 @@ extends OurTestSuite with ScalaFutures with AgentTester {
     ExpectedTerminate -> Right(AgentCommand.Response.Accepted),
     EmergencyStop(false) -> Right(AgentCommand.Response.Accepted))
   .foreach { case (command, response) =>
-    command.getClass.simpleScalaName in {
+    command.getClass.simpleScalaName in:
       pending
       assert(client.commandExecute(command).await(99.s) == response)
-    }
   }
-}
 
-private object AgentClientCommandMarshallingTest {
+private object AgentClientCommandMarshallingTest:
   private val ExpectedTerminate = ShutDown(Some(SIGTERM))
-}

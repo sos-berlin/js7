@@ -11,14 +11,13 @@ import js7.data.cluster.ClusterWatchCheckEvent
 import js7.data.cluster.ClusterWatchProblems.ClusterNodeIsNotLostProblem
 import monix.execution.Scheduler.Implicits.traced
 
-final class UntaughtClusterWatchPassiveLostControllerClusterTest extends ControllerClusterTester
-{
+final class UntaughtClusterWatchPassiveLostControllerClusterTest extends ControllerClusterTester:
   override protected def primaryControllerConfig =
     // Short timeout because something blocks web server shutdown occasionally
     config"""js7.web.server.shutdown-timeout = 0.5s"""
       .withFallback(super.primaryControllerConfig)
 
-  "PassiveLost" in {
+  "PassiveLost" in:
     withControllerAndBackup(suppressClusterWatch = true) { (primary, _, backup, _, _) =>
       val primaryController = primary.newController()
       val backupController = backup.newController()
@@ -63,5 +62,3 @@ final class UntaughtClusterWatchPassiveLostControllerClusterTest extends Control
         primaryController.stop.await(99.s)
       }
     }
-  }
-}

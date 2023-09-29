@@ -44,31 +44,28 @@ import scala.concurrent.duration.*
 /**
   * @author Joacim Zschimmer
   */
-object TestControllerAgent
-{
+object TestControllerAgent:
   private val TestWorkflowPath = WorkflowPath("test")
   private val TestPathExecutable = RelativePathExecutable("test")
   private val StdoutRowSize = 1000
   private val logger = Logger[this.type]
 
-  def main(args: Array[String]): Unit = {
+  def main(args: Array[String]): Unit =
     lazy val directory =
       temporaryDirectory / "TestControllerAgent" sideEffect { directory =>
         println(s"Using --directory=$directory")
         if !Files.exists(directory) then
           createDirectory(directory)
-        else {
+        else
           println(s"Deleting $directory")
           deleteDirectoryContentRecursively(directory)
-        }
       }
     val conf = Conf.parse(args.toIndexedSeq, () => directory)
     println(s"${conf.agentCount * conf.workflowLength} jobs/agent, ${conf.jobDuration.pretty} each, ${conf.tasksPerJob} tasks/agent, ${conf.agentCount} agents, ${conf.period.pretty}/order")
     try run(conf)
     finally Log4j.shutdown()
-  }
 
-  private def run(conf: Conf): Unit = {
+  private def run(conf: Conf): Unit =
     val directoryProvider = new DirectoryProvider(
       agentPaths = conf.agentPaths,
       items = Seq(makeWorkflow(conf)),
@@ -79,7 +76,7 @@ object TestControllerAgent
       directoryProvider.agentEnvs foreach { _.configDir / "agent.conf" ++=
         "js7.web.server.auth.loopback-is-public = on\n" }
       withCloser { implicit closer =>
-        for agentPath <- conf.agentPaths do {
+        for agentPath <- conf.agentPaths do
           TestPathExecutable
             .toFile(directoryProvider.agentToEnv(agentPath).configDir / "executables")
             .writeUtf8Executable(
@@ -98,7 +95,6 @@ object TestControllerAgent
                  |sleep ${BigDecimal(conf.jobDuration.toMillis, scale = 3).toString}
                  |echo "result=TEST-RESULT-$$SCHEDULER_PARAM_VAR1" >>"$$SCHEDULER_RETURN_VALUES"
                  |""".stripMargin)
-        }
 
         directoryProvider.runAgents() { agents =>
           directoryProvider.runController() { controller =>
@@ -113,8 +109,8 @@ object TestControllerAgent
             } .closeWithCloser
 
             val startTime = Timestamp.now
-            Scheduler.traced.scheduleWithFixedDelay(0.s, conf.period) {
-              for i <- 1 to conf.orderGeneratorCount do {
+            Scheduler.traced.scheduleWithFixedDelay(0.s, conf.period):
+              for i <- 1 to conf.orderGeneratorCount do
                 val at = Timestamp.now
                 controller
                   .api.addOrder(
@@ -125,8 +121,6 @@ object TestControllerAgent
                     logger.error(s"addOrder failed: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
                   }
                   .runAsyncAndForget
-              }
-            }
             controller.actorSystem.actorOf(Props {
               new Actor {
                 //TODO controller.injector.instance[StampedKeyedEventBus].subscribe(self, classOf[OrderEvent.OrderAdded])
@@ -172,7 +166,6 @@ object TestControllerAgent
         }
       }
     }
-  }
 
   private val PathNames = LazyList("🥕", "🍋", "🍊", "🍐", "🍏", "🍓", "🍒") ++ Iterator.from(8).map("🌶".+)
   private def testJob(conf: Conf, agentPath: AgentPath) =
@@ -203,8 +196,7 @@ object TestControllerAgent
     jobDuration: FiniteDuration,
     stdoutSize: Int,
     period: FiniteDuration,
-    orderGeneratorCount: Int)
-  {
+    orderGeneratorCount: Int):
     require(agentCount >= 1)
     require(workflowLength >= 1)
     require(tasksPerJob >= 1)
@@ -212,9 +204,8 @@ object TestControllerAgent
     require(orderGeneratorCount >= 1)
 
     val agentPaths: Seq[AgentPath] = for i <- 1 to agentCount yield AgentPath(s"AGENT-$i")
-  }
 
-  private object Conf {
+  private object Conf:
     def parse(args: Seq[String], directory: () => Path): Conf =
       CommandLineArguments.parse(args) { (a: CommandLineArguments) =>
         val agentCount = a.as[Int]("--agents=", 1)
@@ -228,9 +219,8 @@ object TestControllerAgent
           stdoutSize = a.as("--stdout-size=", StdoutRowSize)(o => DecimalPrefixes.toInt(o).orThrowWithoutStacktrace),
           period = a.as[FiniteDuration]("--period=", 1.s),
           orderGeneratorCount = a.as[Int]("--orders=", 1))
-        if a.boolean("-?") || a.boolean("--help") then {
+        if a.boolean("-?") || a.boolean("--help") then
           print(usage(conf))
-        }
         conf
       }
 
@@ -242,8 +232,6 @@ object TestControllerAgent
          |       --period=${conf.period}
          |       --orders=${conf.orderGeneratorCount}
          |""".stripMargin
-  }
 
 
   java8Polyfill()
-}

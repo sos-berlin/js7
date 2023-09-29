@@ -17,9 +17,8 @@ import js7.tests.jobs.EmptyJob
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 
-final class JobResourceControllerClusterTest extends ControllerClusterTester
-{
-  "Cluster handles JobResources properly" in {
+final class JobResourceControllerClusterTest extends ControllerClusterTester:
+  "Cluster handles JobResources properly" in:
     withControllerAndBackupWithoutAgents() { (primary, backup, _) =>
       primary.runAgents() { _ =>
         backup.runController(dontWaitUntilReady = true) { backupController =>
@@ -54,11 +53,8 @@ final class JobResourceControllerClusterTest extends ControllerClusterTester
         }
       }
     }
-  }
-}
 
-object JobResourceControllerClusterTest
-{
+object JobResourceControllerClusterTest:
   private val jobResource = JobResource(JobResourcePath("JOB-RESOURCE"))
   private val jobResource0 = jobResource.copy(itemRevision = Some(ItemRevision(0)))
   private val versionId = VersionId("1")
@@ -66,4 +62,3 @@ object JobResourceControllerClusterTest
     Vector(
       EmptyJob.execute(AgentPath("AGENT"),
         jobResourcePaths = Seq(jobResource.path))))
-}

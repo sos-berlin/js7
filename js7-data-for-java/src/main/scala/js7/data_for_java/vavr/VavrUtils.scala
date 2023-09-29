@@ -10,8 +10,7 @@ import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.data_for_java.vavr.VavrConverters.*
 
 @javaApi
-object VavrUtils
-{
+object VavrUtils:
   /** For testing. */
   @javaApi
   //Void is null: @Nonnull
@@ -23,7 +22,7 @@ object VavrUtils
   //Void is null: @Nonnull
   @throws[RuntimeException]("iff Left")
   def getOrThrow[A](@Nonnull either: VEither[Problem, A]): A =
-    either match {
+    either match
       case o: VEither.Left[Problem, A] =>
         val throwable = o.getLeft.throwable
         // Wrapping in own exception to add own stacktrace
@@ -31,7 +30,6 @@ object VavrUtils
 
       case o: VEither.Right[Problem, A] =>
         o.get();
-    }
 
   @javaApi
   //Void is null: @Nonnull
@@ -42,4 +40,3 @@ object VavrUtils
   @javaApi
   def toVavr[L, R](@Nonnull either: Either[L, R]): VEither[L, R] =
     either.toVavr
-}

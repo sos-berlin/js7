@@ -42,8 +42,7 @@ private final class SubagentRoute(
 extends WebLogDirectives
 with CommandRoute
 with SessionRoute
-with EventRoute
-{
+with EventRoute:
   import routeBinding.webServerBinding
 
   protected def whenShuttingDown = routeBinding.whenStopRequested
@@ -61,11 +60,10 @@ with EventRoute
       webLog(seal(forbidCSRF(route))))
 
   private lazy val route =
-    pathPrefix(Segment) {
+    pathPrefix(Segment):
       case "subagent" => subagentRoute
       case "agent" => taskRoute(directorRoute)
       case _ => complete(NotFound)
-    }
 
   lazy val subagentRoute: Route =
     pathSegment("api")(
@@ -85,8 +83,6 @@ with EventRoute
       isTerminating = subagent.isShuttingDown,
       system = systemInformation(),
       java = javaInformation()))
-}
 
-object SubagentRoute {
+object SubagentRoute:
   private val logger = Logger[this.type]
-}

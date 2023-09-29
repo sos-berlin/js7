@@ -5,8 +5,7 @@ import org.slf4j.{Marker, Logger as Slf4jLogger}
 /**
   * @author Joacim Zschimmer
   */
-trait ConvertingLogger extends Slf4jLogger
-{
+trait ConvertingLogger extends Slf4jLogger:
   protected val delegate: Slf4jLogger
 
   def convertMessage(o: String): String
@@ -195,11 +194,9 @@ trait ConvertingLogger extends Slf4jLogger
 
   final def info(marker: Marker, msg: String, t: Throwable) =
     delegate.info(marker, convertMessage(msg), t)
-}
 
-object ConvertingLogger
-{
-  final class Prefixed(prefix: String, protected val delegate: Slf4jLogger) extends ConvertingLogger {
+object ConvertingLogger:
+  final class Prefixed(prefix: String, protected val delegate: Slf4jLogger) extends ConvertingLogger:
     protected val fullPrefix = s"($prefix) "
     //protected val fullPrefix = s"“$prefix” "
     private val escapedPrefix = fullPrefix.replace("{}", "\\{}")
@@ -207,5 +204,3 @@ object ConvertingLogger
     def convertMessage(o: String) = fullPrefix + o
 
     def convertFormat(o: String) = escapedPrefix + o
-  }
-}

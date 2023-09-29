@@ -7,12 +7,8 @@ import akka.http.scaladsl.server.Route
 /**
   * @author Joacim Zschimmer
   */
-trait TestRoute
-{
+trait TestRoute:
   protected final val testRoute: Route =
-    path("post") {
-      post {
+    path("post"):
+      post:
         complete(OK)
-      }
-    }
-}

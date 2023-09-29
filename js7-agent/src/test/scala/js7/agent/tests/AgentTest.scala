@@ -37,30 +37,27 @@ import monix.execution.Scheduler.Implicits.traced
 /**
   * @author Joacim Zschimmer
   */
-final class AgentTest extends OurTestSuite with AgentTester
-{
-  "work/http-uri" in {
+final class AgentTest extends OurTestSuite with AgentTester:
+  "work/http-uri" in:
     assert((agentConfiguration.workDirectory / "http-uri").contentString ==
       s"${agent.localUri}/subagent")
     agent.terminate() await 99.s
-  }
 
   "Job working directory" - {
     for ((testName, toWorkingDirectory) <-
            Array[(String, Path => Path)](
              ("default", _ => WorkingDirectory),
              ("not default", _ / "working")))
-      testName in {
+      testName in :
         provideAgentDirectory { directory =>
           createDirectory(directory / "working")
           val workingDirectory = toWorkingDirectory(directory).toRealPath()
           TestPathExecutable.toFile(directory / "config" / "executables").writeUtf8Executable(TestScript)
           var agentConf = AgentConfiguration.forTest(directory, name = "AgentTest")
-          if directory != WorkingDirectory then {
+          if directory != WorkingDirectory then
             agentConf = agentConf.copy(
               subagentConf = agentConf.subagentConf.copy(
                 jobWorkingDirectory = workingDirectory))
-          }
           TestAgent.blockingRun(agentConf, 99.s) { agent =>
             val agentApi = agent.untilReady.await(99.s).api.apply(CommandMeta(TestUser))
             val controllerRunId = ControllerRunId(JournalId.random())
@@ -83,12 +80,9 @@ final class AgentTest extends OurTestSuite with AgentTester
             agent.terminate() await 99.s
           }
         }
-      }
   }
-}
 
-object AgentTest
-{
+object AgentTest:
   private val controllerId = ControllerId("CONTROLLER")
   private val TestUser = SimpleUser(controllerId.toUserId)
   private val agentPath = AgentPath("AGENT")
@@ -110,4 +104,3 @@ object AgentTest
   private val TestWorkflow = Workflow.of(
     WorkflowPath("WORKFLOW") ~ "VERSION",
     Execute(WorkflowJob(TestAgentPath, TestPathExecutable)))
-}

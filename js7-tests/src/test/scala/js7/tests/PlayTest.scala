@@ -18,8 +18,7 @@ import js7.launcher.internal.InternalJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 
 /* A test to play with. */
-final class PlayTest extends OurTestSuite with ControllerAgentForScalaTest
-{
+final class PlayTest extends OurTestSuite with ControllerAgentForScalaTest:
   protected val agentPaths = Seq(AgentPath("AGENT"))
   protected val items = Nil
   override protected val controllerConfig = config"""
@@ -34,7 +33,7 @@ final class PlayTest extends OurTestSuite with ControllerAgentForScalaTest
   private val workflowPathIterator = Iterator.from(1).map(i => WorkflowPath(s"WORKFLOW-$i"))
   private val orderIdIterator = Iterator.from(1).map(i => OrderId(s"🔷-$i"))
 
-  "Test" in {
+  "Test" in:
     val workflowJson = json"""{
       "instructions": []
     }"""
@@ -43,7 +42,6 @@ final class PlayTest extends OurTestSuite with ControllerAgentForScalaTest
       Map.empty,
       expectedOutput = "",
       expectedOutcomes = Nil)
-  }
 
   private def toWorkflow(json: Json): Workflow =
     json.as(Workflow.topJsonDecoder).toChecked.orThrow
@@ -53,7 +51,7 @@ final class PlayTest extends OurTestSuite with ControllerAgentForScalaTest
     orderArguments: Map[String, Value] = Map.empty,
     expectedOutput: String,
     expectedOutcomes: Seq[Outcome])
-  : Unit = {
+  : Unit =
     val events = runWithWorkflow(anonymousWorkflow, orderArguments)
     val output = events.collect { case OrderStdoutWritten(chunk) => chunk }.fold("")(_ + _)
     val outcomes = events.collect { case OrderProcessed(outcome) => outcome }
@@ -62,30 +60,23 @@ final class PlayTest extends OurTestSuite with ControllerAgentForScalaTest
       assert(events.last.isInstanceOf[OrderFinished])
     else
       assert(events.last.isInstanceOf[OrderFailed])
-  }
 
   private def runWithWorkflow(
     anonymousWorkflow: Workflow,
     orderArguments: Map[String, Value] = Map.empty)
-  : Seq[OrderEvent] = {
+  : Seq[OrderEvent] =
     val versionId = versionIdIterator.next()
     val workflow = anonymousWorkflow.withId(workflowPathIterator.next() ~ versionId)
     val order = FreshOrder(orderIdIterator.next(), workflow.path, arguments = orderArguments)
     directoryProvider.updateVersionedItems(controller, versionId, Seq(workflow))
 
     controller.runOrder(order).map(_.value)
-  }
-}
 
-object PlayTest
-{
+object PlayTest:
   private val logger = Logger[this.type]
 
-  private final class TestInternalJob extends InternalJob
-  {
+  private final class TestInternalJob extends InternalJob:
     def toOrderProcess(step: Step) =
       OrderProcess.fromCheckedOutcome(
         for number <- step.arguments.checked("ARG").flatMap(_.toNumberValue).map(_.number) yield
           Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(number + 1))))
-  }
-}

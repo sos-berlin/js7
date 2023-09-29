@@ -20,8 +20,7 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import scala.concurrent.duration.Deadline.now
 
-final class JobTimeoutTest extends OurTestSuite with ControllerAgentForScalaTest
-{
+final class JobTimeoutTest extends OurTestSuite with ControllerAgentForScalaTest:
   override protected val controllerConfig = config"""
     js7.controller.agent-driver.command-batch-delay = 0ms
     js7.controller.agent-driver.event-buffer-delay = 0ms"""
@@ -33,7 +32,7 @@ final class JobTimeoutTest extends OurTestSuite with ControllerAgentForScalaTest
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(workflow)
 
-  "timeout" in {
+  "timeout" in:
     // Warm-up
     controller.runOrder(
       FreshOrder(OrderId("WARM-UP"), workflowPath = workflow.path, deleteWhenTerminated = true))
@@ -56,11 +55,8 @@ final class JobTimeoutTest extends OurTestSuite with ControllerAgentForScalaTest
         OrderDetachable,
         OrderDetached,
         OrderFailed(Position(0))))
-  }
-}
 
-object JobTimeoutTest
-{
+object JobTimeoutTest:
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)
   private val jobDuration = 10.s
@@ -81,4 +77,3 @@ object JobTimeoutTest
          |while [ $$i -ge 0 ]; do sleep 0.1; done
          |""".stripMargin),
       timeout = Some(timeout)))))
-}

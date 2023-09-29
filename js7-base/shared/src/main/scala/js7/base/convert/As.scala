@@ -6,12 +6,11 @@ import js7.base.utils.DecimalPrefixes
 /**
   * @author Joacim Zschimmer
   */
-trait As[V, W] {
+trait As[V, W]:
   // Objects of this class are implicitly used. So do not extend V => W to avoid implicit use as function.
   def apply(v: V): W
-}
 
-object As {
+object As:
 
   def apply[V, W](asW: V => W): As[V, W] =
     v => asW(v)
@@ -21,14 +20,13 @@ object As {
 
   implicit val StringAsString: As[String, String] = As(identity)
 
-  implicit object StringAsBoolean extends As[String, Boolean] {
+  implicit object StringAsBoolean extends As[String, Boolean]:
     val StringToBooleanMap = Map(
       "true"  -> true , "on"  -> true , "yes" -> true,
       "false" -> false, "off" -> false, "no"  -> false)
 
     def apply(o: String) = StringToBooleanMap.getOrElse(o,
       throw new IllegalArgumentException(s"Boolean value true or false expected, not: $o"))
-  }
 
   //
   // Some default implementations
@@ -38,10 +36,9 @@ object As {
     As(Integer.parseInt)
 
   val StringAsIntOrUnlimited: As[String, Option[Int]] =
-    As {
+    As:
       case "unlimited" => None
       case o => Some(Integer.parseInt(o))
-    }
 
   implicit val StringAsLong: As[String, Long] =
     As(java.lang.Long.parseLong)
@@ -55,8 +52,6 @@ object As {
   val StringAsByteCountWithDecimalPrefix: As[String, Long] =
     As(o => DecimalPrefixes.toLong(o stripSuffix "B"/*optional*/).orThrow)
 
-  val StringAsPercentage: As[String, BigDecimal] = As {
+  val StringAsPercentage: As[String, BigDecimal] = As:
     case o if o endsWith "%" => BigDecimal(o.dropRight(1)) / 100
     case o => BigDecimal(o)
-  }
-}

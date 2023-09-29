@@ -12,8 +12,7 @@ import scala.util.{Failure, Success, Try}
 /**
   * @author Joacim Zschimmer
   */
-object Log4j
-{
+object Log4j:
   private val isShutdown = AtomicBoolean(false)
   private val startedAt = Timestamp.now
   private val runningSince = Deadline.now
@@ -31,28 +30,25 @@ object Log4j
         })
 
   def initialize(): Unit =
-    ifNotInitialized {
+    ifNotInitialized:
       if CorrelId.couldBeEnabled then CorrelIdLog4JThreadContextMap.initialize()
       for t <- shutdownMethod.failed do logger.warn(t.toString)
-    }
 
   def setDefaultConfiguration(resource: String): Unit =
-    if !sys.props.contains("log4j.configurationFile") then {
+    if !sys.props.contains("log4j.configurationFile") then
       val uri = s"classpath:$resource"
       System.setProperty("log4j.configurationFile", uri)
       logger.debug(s"Default log4j.configurationFile=$uri")
-    }
 
   /**
     * Call in case the shutdown hook is disabled in log4j2.xml: &gt;configuration shutdownHook="disable">.
     */
   def shutdown(fast: Boolean = false): Unit =
-    if !isShutdown.getAndSet(true) then {
-      if !fast then {
+    if !isShutdown.getAndSet(true) then
+      if !fast then
         CorrelId.logStatisticsIfEnabled()
         CorrelIdLog4JThreadContextMap.logStatistics()
-      }
-      for shutdown <- shutdownMethod do {
+      for shutdown <- shutdownMethod do
         // Log complete timestamp in case of short log timestamp
         logger.info("shutdown at " +
           LocalDateTime.now.toString.replace('T', ' ') +
@@ -60,6 +56,3 @@ object Log4j
           " (" + runningSince.elapsed.pretty + " ago)" + "\n" +
           "┄" * 80 + "\n")
         shutdown.invoke(null, false, false)
-      }
-    }
-}

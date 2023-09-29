@@ -6,18 +6,16 @@ import js7.base.utils.Assertions.assertThat
 import js7.data.lock.LockRefusal.{AlreadyAcquiredByThisOrder, InvalidCount, IsInUse, UnknownReleasingOrderError}
 import js7.data.order.OrderId
 
-sealed trait Acquired {
+sealed trait Acquired:
   def lockCount: Int
   def orderIds: Iterable[OrderId]
   def isAcquiredBy(orderId: OrderId): Boolean
   def acquireFor(orderId: OrderId, count: Option[Int]): Either[LockRefusal, Acquired]
   def release(orderId: OrderId): Either[LockRefusal, Acquired]
-}
 
-object Acquired {
+object Acquired:
 
-  case object Available extends Acquired
-  {
+  case object Available extends Acquired:
     def lockCount = 0
 
     def orderIds = Nil
@@ -25,19 +23,16 @@ object Acquired {
     def isAcquiredBy(orderId: OrderId) = false
 
     def acquireFor(orderId: OrderId, count: Option[Int]) =
-      count match {
+      count match
         case None => Right(Exclusive(orderId))
         case Some(n) =>
           if n >= 1 then Right(NonExclusive(Map(orderId -> n)))
           else Left(InvalidCount(n))
-      }
 
     def release(orderId: OrderId) =
       Left(UnknownReleasingOrderError)
-  }
 
-  final case class Exclusive(orderId: OrderId) extends Acquired
-  {
+  final case class Exclusive(orderId: OrderId) extends Acquired:
     def lockCount = 1
 
     def orderIds = orderId :: Nil
@@ -56,10 +51,8 @@ object Acquired {
         Left(UnknownReleasingOrderError)
       else
         Right(Available)
-  }
 
-  final case class NonExclusive(orderToCount: Map[OrderId, Int]) extends Acquired
-  {
+  final case class NonExclusive(orderToCount: Map[OrderId, Int]) extends Acquired:
     assertThat(orderToCount.nonEmpty)
     assertThat(orderToCount.values.forall(_ >= 1))
 
@@ -74,12 +67,11 @@ object Acquired {
       if orderToCount contains orderId then
         Left(AlreadyAcquiredByThisOrder)
       else
-        count match {
+        count match
           case None => Left(IsInUse)
           case Some(n) =>
             if n >= 1 then Right(NonExclusive(orderToCount + (orderId -> n)))
             else Left(InvalidCount(n))
-        }
 
     def release(orderId: OrderId) =
       if !orderToCount.contains(orderId) then
@@ -90,10 +82,8 @@ object Acquired {
             Available
           else
             copy(orderToCount = orderToCount - orderId))
-  }
 
   implicit val jsonCodec: TypedJsonCodec[Acquired] = TypedJsonCodec(
     Subtype(deriveCodec[Exclusive]),
     Subtype(deriveCodec[NonExclusive]),
     Subtype(Available))
-}

@@ -24,8 +24,7 @@ private[agent] final class AkkaHttpAgentTextApi(
   protected val print: String => Unit,
   configDirectory: Option[Path] = None)
 extends HasCloser with ProvideActorSystem with TextApi with HttpSessionApi with AkkaHttpClient
-with SessionApi.HasUserAndPassword
-{
+with SessionApi.HasUserAndPassword:
   protected val name = "AkkaHttpAgentTextApi"
   protected val config = config"akka.log-dead-letters = 0"
 
@@ -61,18 +60,14 @@ with SessionApi.HasUserAndPassword
 
   closer.onClose { super.close() }
 
-  override def close() = {
+  override def close() =
     logOpenSession()
     closer.close()
-  }
-}
 
-object AkkaHttpAgentTextApi
-{
+object AkkaHttpAgentTextApi:
   // Like AgentConfiguration.configDirectoryToConfig
   private def configDirectoryToConfig(configDirectory: Path): Config =
     ConfigFactory
       .empty
       .withFallback(parseConfigIfExists(configDirectory / "private/private.conf", secret = true))
       .withFallback(parseConfigIfExists(configDirectory / "controller.conf", secret = false))
-}

@@ -16,11 +16,10 @@ import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import scala.concurrent.duration.*
 
-final class PostNoticesExecutorTest extends OurTestSuite
-{
+final class PostNoticesExecutorTest extends OurTestSuite:
   private lazy val executorService = new InstructionExecutorService(TestWallClock(clockTimestamp))
 
-  "PostNotices and ExpectNotices" in {
+  "PostNotices and ExpectNotices" in:
     var state = TestStateView.of(
       isAgent = false,
       orders = Some(Nil),
@@ -28,7 +27,7 @@ final class PostNoticesExecutorTest extends OurTestSuite
       itemStates = boards.map(BoardState(_)))
 
     // PostNotice board0, board1
-    locally {
+    locally:
       state = state.applyEvent(postingOrderId <-: OrderAdded(postingWorkflow.id)).orThrow
 
       val startedEvents = executorService.toEvents(postingOrderId, state).orThrow
@@ -49,10 +48,9 @@ final class PostNoticesExecutorTest extends OurTestSuite
           notice1.id -> NoticePlace(notice1.id, Some(notice1)))),
         board2.path -> BoardState(board2),
         board3.path -> BoardState(board3)))
-    }
 
     // ExpectNotices
-    locally {
+    locally:
       state = state.applyEvent(expectingOrderId <-: OrderAdded(expecting02or13Workflow.id)).orThrow
 
       val startedEvents = executorService.toEvents(expectingOrderId, state).orThrow
@@ -89,10 +87,9 @@ final class PostNoticesExecutorTest extends OurTestSuite
             notice3.id,
             None,
             Set(expectingOrderId))))))
-    }
 
     // ExpectNotice with a different, never posted NoticeId
-    locally {
+    locally:
       state = state.applyEvent(otherExpectingOrderId <-: OrderAdded(expecting0Workflow.id)).orThrow
 
       val startedEvents = executorService.toEvents(otherExpectingOrderId, state).orThrow
@@ -130,10 +127,9 @@ final class PostNoticesExecutorTest extends OurTestSuite
             notice3.id,
             None,
             Set(expectingOrderId))))))
-    }
 
     // PostNotice board2
-    locally {
+    locally:
       val events = executorService.toEvents(postingOrderId, state).orThrow
       assert(events == Seq(
         postingOrderId <-: OrderNoticePosted(notice2),
@@ -159,12 +155,8 @@ final class PostNoticesExecutorTest extends OurTestSuite
           notice2.id -> NoticePlace(
             notice2.id, Some(notice2)))),
         board3.path -> BoardState(board3)))
-    }
-  }
-}
 
-object PostNoticesExecutorTest
-{
+object PostNoticesExecutorTest:
   private val clockTimestamp = Timestamp("2111-01-01T00:00:00Z")
   private val lifeTime = 24.h
 
@@ -219,4 +211,3 @@ object PostNoticesExecutorTest
   private val expecting0Workflow = Workflow(WorkflowPath("EXPECTING-0") ~ "1", Seq(
     ExpectNotices(boardPathExpr(
       s"'${board0.path.string}'"))))
-}

@@ -8,9 +8,8 @@ import js7.data.workflow.instructions.Instructions.jsonCodec
 import js7.data.workflow.{Instruction, Workflow}
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 
-final class CycleTest extends OurTestSuite
-{
-  "JSON" in {
+final class CycleTest extends OurTestSuite:
+  "JSON" in:
     testJsonDecoder[Instruction](
       Cycle(Schedule(Nil), Workflow.empty),
       json"""
@@ -104,10 +103,6 @@ final class CycleTest extends OurTestSuite
           "instructions": []
         }
       }""")
-  }
-}
 
-object CycleTest
-{
+object CycleTest:
   val exampleCycle = Cycle(ScheduleTester.schedule, Workflow.empty)
-}

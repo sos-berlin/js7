@@ -13,78 +13,64 @@ import org.scalatest.matchers.should.Matchers.*
 /**
   * @author Joacim Zschimmer
   */
-final class TypedJsonCodecTest extends OurTestSuite
-{
-  "encode and decode" in {
+final class TypedJsonCodecTest extends OurTestSuite:
+  "encode and decode" in:
     testJson[A](A0     , json"""{ "TYPE": "A0" }""")
     testJson[A](A1(7)  , json"""{ "TYPE": "A1", "int": 7 }""")
     testJson[A](A2("X"), json"""{ "TYPE": "A2", "string": "X" }""")
-  }
 
-  "encode unknown subclass" in {
+  "encode unknown subclass" in:
     intercept[UnknownClassForJsonException] {
       (NotRegistered(1): A).asJson(AJsonCodec)
     }.getMessage should include (
       "Class 'TypedJsonCodecTest.NotRegistered' is not registered in " +
         "js7.base.circeutils.typed.TypedJsonCodecTest.AJsonCodec: " +
         "TypedJsonCodec[TypedJsonCodecTest.A]")
-  }
 
-  "decode unknown subclass" in {
+  "decode unknown subclass" in:
     assert(json"""{ "TYPE": "UNKNOWN" }""".as[A].toChecked == Left(Problem(
       """JSON DecodingFailure at : Unexpected JSON {"TYPE": "UNKNOWN", ...} for """ +
         "js7.base.circeutils.typed.TypedJsonCodecTest.AJsonCodec: " +
         "TypedJsonCodec[TypedJsonCodecTest.A]")))
-  }
 
-  "Nested TypedJsonCodec" in {
+  "Nested TypedJsonCodec" in:
     testJson[A](AA1(7), json"""{ "TYPE": "AA1", "int": 7 }""")
-  }
 
-  "Union" in {
+  "Union" in:
     implicit val ab: TypedJsonCodec[Any] = AJsonCodec | BJsonCodec
     testJson[Any](A0, json"""{ "TYPE": "A0" }""")
     testJson[Any](B0, json"""{ "TYPE": "B0" }""")
-  }
 
-  "classes" in {
+  "classes" in:
     assert(AJsonCodec.classes[A] == Set(A0.getClass, classOf[A1], classOf[A2], classOf[AA1]))
     assert(AJsonCodec.classes[AA] == Set(classOf[AA1]))
-  }
 
-  "classToName" in {
+  "classToName" in:
     assert(AJsonCodec.classToName(A0.getClass) == "A0")
-    intercept[NoSuchElementException] {
+    intercept[NoSuchElementException]:
       assert(AJsonCodec.classToName(classOf[A]) == "A")
-    }
-  }
 
-  "typeName" in {
+  "typeName" in:
     assert(AJsonCodec.typeName(A0) == "A0")
     assert(AJsonCodec.typeName(A1(1)) == "A1")
-    intercept[NoSuchElementException] {
+    intercept[NoSuchElementException]:
       AJsonCodec.typeName(Other)
-    }
-  }
 
-  "isOfType, isOfType" in {
+  "isOfType, isOfType" in:
     val a1Json = json"""{ "TYPE":  "A1"}"""
     val xJson = json"""{ "TYPE":  "X"}"""
     assert(a1Json.isOfType[A, A1])
     assert(!xJson.isOfType[A, A1])
     assert(AJsonCodec.isOfType[A1](a1Json))
     assert(!AJsonCodec.isOfType[A1](xJson))
-  }
 
-  "jsonToClass" in {
+  "jsonToClass" in:
     val a1Json = json"""{ "TYPE":  "A1"}"""
     val xJson = json"""{ "TYPE":  "X"}"""
     assert(a1Json.toClass[A] == Some(classOf[A1]))
     assert(xJson.toClass[A] == None)
-  }
-}
 
-object TypedJsonCodecTest {
+object TypedJsonCodecTest:
   sealed trait A
   case object A0 extends A
   final case class A1(int: Int) extends A
@@ -110,4 +96,3 @@ object TypedJsonCodecTest {
 
   private implicit val BJsonCodec: TypedJsonCodec[B] = TypedJsonCodec[B](
     Subtype(B0))
-}

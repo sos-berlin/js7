@@ -8,13 +8,11 @@ import scala.util.control.NonFatal
 /**
   * @author Joacim Zschimmer
   */
-object JavaDataJsonCodecs
-{
+object JavaDataJsonCodecs:
   implicit val DurationEncoder: Encoder[Duration] =
-    o => o.getNano match {
+    o => o.getNano match
       case 0 => Json.fromLong(o.getSeconds)
       case nano => Json.fromBigDecimal(BigDecimal(o.getSeconds) + BigDecimal(nano, scale = 9))
-    }
 
   implicit val DurationDecoder: Decoder[Duration] =
     cursor =>
@@ -22,31 +20,27 @@ object JavaDataJsonCodecs
         cursor.as[BigDecimal] map bigDecimalToDuration orElse (
           cursor.as[String] map Duration.parse))
 
-  private def bigDecimalToDuration(bigDecimal: BigDecimal) = {
+  private def bigDecimalToDuration(bigDecimal: BigDecimal) =
     val (seconds, nanos) = bigDecimal /% 1
     Duration.ofSeconds(seconds.toLongExact, (nanos * 1000*1000*1000).toIntExact)
-  }
 
   private val dateTimeFormatter = DateTimeFormatter.ISO_INSTANT
 
-  object StringInstantEncoder extends Encoder[Instant] {
+  object StringInstantEncoder extends Encoder[Instant]:
     def apply(o: Instant) = Json.fromString(dateTimeFormatter.format(o))
-  }
 
-  object NumericInstantEncoder extends Encoder[Instant] {
+  object NumericInstantEncoder extends Encoder[Instant]:
     def apply(o: Instant) = Json.fromLong(o.toEpochMilli)
-  }
 
-  trait InstantDecoder extends Decoder[Instant] {
+  trait InstantDecoder extends Decoder[Instant]:
     def apply(cursor: HCursor) =
       if cursor.value.isNumber then
         cursor.as[Long] map Instant.ofEpochMilli
       else
         cursor.as[String].map(o => Instant.from(dateTimeFormatter parse o))
-  }
   object InstantDecoder extends InstantDecoder
 
-  object instant {
+  object instant:
     implicit val NumericInstantJsonCodec: Codec[Instant] =
       Codec.from(InstantDecoder, NumericInstantEncoder)
 
@@ -55,7 +49,6 @@ object JavaDataJsonCodecs
 
     implicit val InstantJsonCodec: Codec[Instant] =
       NumericInstantJsonCodec
-  }
 
   implicit val zoneIdJsonEncoder: Encoder[ZoneId] =
     o => Json.fromString(o.getId)
@@ -66,4 +59,3 @@ object JavaDataJsonCodecs
       catch {
         case NonFatal(e) => Left(DecodingFailure(e.toString, cursor.history))
       })
-}

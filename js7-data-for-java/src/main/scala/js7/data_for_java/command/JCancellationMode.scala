@@ -9,13 +9,10 @@ import js7.data_for_java.workflow.position.JWorkflowPosition
 import scala.jdk.OptionConverters.*
 
 final case class JCancellationMode(asScala: CancellationMode)
-extends JavaWrapper
-{
+extends JavaWrapper:
   type AsScala = CancellationMode
-}
 
-object JCancellationMode
-{
+object JCancellationMode:
   val freshOnly: JCancellationMode =
     JCancellationMode(CancellationMode.FreshOnly)
 
@@ -43,4 +40,3 @@ object JCancellationMode
   : JCancellationMode =
     JCancellationMode(CancellationMode.FreshOrStarted(Some(
       Kill(immediately = immediately, position.toScala.map(_.asScala)))))
-}

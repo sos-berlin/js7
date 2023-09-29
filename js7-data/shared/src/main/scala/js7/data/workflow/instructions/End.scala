@@ -10,28 +10,21 @@ import js7.data.workflow.Instruction
   */
 sealed trait End extends Instruction
 
-final case class ExplicitEnd(sourcePos: Option[SourcePos] = None) extends End
-{
+final case class ExplicitEnd(sourcePos: Option[SourcePos] = None) extends End:
   def withoutSourcePos = copy(sourcePos = None)
 
   override def toString = "end" + sourcePosToString
-}
 
-object ExplicitEnd {
+object ExplicitEnd:
   implicit val jsonCodec: Codec.AsObject[ExplicitEnd] = deriveCodec
-}
 
-final case class ImplicitEnd(sourcePos: Option[SourcePos] = None) extends End
-{
+final case class ImplicitEnd(sourcePos: Option[SourcePos] = None) extends End:
   def withoutSourcePos = copy(sourcePos = None)
 
   override def toString = "end/*implicit*/" + sourcePosToString
-}
-object ImplicitEnd
-{
+object ImplicitEnd:
   val empty = new ImplicitEnd()
   implicit val jsonCodec: Codec.AsObject[ImplicitEnd] = deriveCodec
 
   def apply(sourcePos: Option[SourcePos] = None) =
     sourcePos.fold(empty)(_ => new ImplicitEnd(sourcePos))
-}

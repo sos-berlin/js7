@@ -26,15 +26,13 @@ import monix.execution.Scheduler.Implicits.traced
 /**
   * @author Joacim Zschimmer
   */
-final class UpdateRepoX509Test extends OurTestSuite with ControllerAgentForScalaTest
-{
+final class UpdateRepoX509Test extends OurTestSuite with ControllerAgentForScalaTest:
   protected val agentPaths = Nil
   protected val items = Nil
-  override protected lazy val verifier = {
+  override protected lazy val verifier =
     runProcess(s"$openssl req -x509 -newkey rsa:1024 -sha512 -days 2 -nodes -subj '/CN=SIGNER'" +
       s" -keyout '$privateKeyFile' -out '$certificateFile'")
     X509SignatureVerifier.checked(Seq(certificateFile.byteArray), "UpdateRepoX509Test").orThrow
-  }
 
   private lazy val workDir = createTempDirectory("UpdateRepoX509Test")
   private lazy val privateKeyFile = workDir / "test.key"
@@ -42,17 +40,16 @@ final class UpdateRepoX509Test extends OurTestSuite with ControllerAgentForScala
 
   override def controllerConfig = config"""js7.auth.users.TEST-USER.permissions = [ UpdateItem ]"""
 
-  override def afterAll() = {
+  override def afterAll() =
     deleteDirectoryRecursively(workDir)
     super.afterAll()
-  }
 
   //"UpdateRepo with internally generated signature" in {
   //  val v1 = VersionId("1")
   //  executeCommand(UpdateRepo(v1, sign(workflow withVersion v1) :: Nil)).orThrow
   //}
 
-  "UpdateRepo with openssl-generated signature" in {
+  "UpdateRepo with openssl-generated signature" in:
     withTemporaryDirectory("UpdateRepoX509Test-") { dir =>
       val itemFile = dir / "workflow.json"
       val signatureFile = dir / "workflow.json.signature"
@@ -77,7 +74,7 @@ final class UpdateRepoX509Test extends OurTestSuite with ControllerAgentForScala
       val signed = Signed(itemFile.contentString.parseJsonAs[SignableItem].orThrow, signedString)
       controller.api.updateRepo(v2, Seq(signed)).await(99.s).orThrow
 
-      locally {
+      locally:
         val v3 = VersionId("3")
         itemFile := (workflow.withVersion(v3): VersionedItem).asJson
         runProcess(s"$openssl dgst -sign ${quote(privateKeyFile)} -sha512 -out ${quote(signatureFile)} ${quote(itemFile)}")
@@ -87,9 +84,8 @@ final class UpdateRepoX509Test extends OurTestSuite with ControllerAgentForScala
           GenericSignature("X509", signatureBase64File.contentString, algorithm = Some("SHA512withRSA"), signerId = Some(SignerId("CN=SIGNER"))))
         val signed = Signed(itemFile.contentString.parseJsonAs[SignableItem].orThrow, signedStringV3)
         assert(controller.api.updateRepo(v3, Seq(signed)).await(99.s) == Left(TamperedWithSignedMessageProblem))
-      }
 
-      locally {
+      locally:
         val v4 = VersionId("4")
         itemFile := (workflow.withVersion(v4): VersionedItem).asJson
         runProcess(s"$openssl dgst -sign ${quote(privateKeyFile)} -sha512 -out ${quote(signatureFile)} ${quote(itemFile)}")
@@ -99,12 +95,7 @@ final class UpdateRepoX509Test extends OurTestSuite with ControllerAgentForScala
           GenericSignature("X509", signatureBase64File.contentString, algorithm = Some("SHA512withRSA"), signerId = Some(SignerId("CN=ALIEN"))))
         val signed = Signed(itemFile.contentString.parseJsonAs[SignableItem].orThrow, signedStringV4)
         assert(controller.api.updateRepo(v4, Seq(signed)).await(99.s) == Left(Problem("The signature's SignerId is unknown: CN=ALIEN")))
-      }
     }
-  }
-}
 
-object UpdateRepoX509Test
-{
+object UpdateRepoX509Test:
   private val workflow = Workflow.of(WorkflowPath("WORKFLOW"))
-}

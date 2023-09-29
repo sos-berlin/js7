@@ -7,8 +7,7 @@ import js7.data.state.StateView
 import js7.data.workflow.instructions.End
 
 private[instructions] final class EndExecutor(protected val service: InstructionExecutorService)
-extends EventInstructionExecutor with PositionInstructionExecutor
-{
+extends EventInstructionExecutor with PositionInstructionExecutor:
   type Instr = End
   val instructionClass = classOf[End]
 
@@ -17,9 +16,9 @@ extends EventInstructionExecutor with PositionInstructionExecutor
   def toEvents(instruction: End, order: Order[Order.State], state: StateView) =
     order.position.parent
       .filter(_ => order.position.branchPath != order.innerBlock)
-      .match {
+      .match
         case None =>
-          order.state match {
+          order.state match
             case _: Order.IsFreshOrReady =>
               detach(order)
                 .orElse(
@@ -28,12 +27,10 @@ extends EventInstructionExecutor with PositionInstructionExecutor
                   (order.id <-: OrderFinished()) :: Nil))
 
             case _ => Right(Nil)
-          }
 
         case Some(parentPos) =>
           val instr = state.instruction(order.workflowId /: parentPos)
           service.onReturnFromSubworkflow(instr, order, state)
-      }
 
   def nextMove(instruction: End, order: Order[Order.State], state: StateView) =
     Right(
@@ -45,4 +42,3 @@ extends EventInstructionExecutor with PositionInstructionExecutor
           exec = instructionToExecutor(state.instruction(order.workflowId /: parentPos))
           next <- exec.subworkflowEndToPosition(parentPos)
         yield OrderMoved(next))
-}

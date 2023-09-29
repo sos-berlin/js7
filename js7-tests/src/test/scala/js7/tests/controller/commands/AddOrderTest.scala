@@ -26,15 +26,14 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.traced
 
-final class AddOrderTest extends OurTestSuite with ControllerAgentForScalaTest
-{
+final class AddOrderTest extends OurTestSuite with ControllerAgentForScalaTest:
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(emptyWorkflow, unknownArgWorkflow, paramWorkflow)
   override protected val agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = yes
     """
 
-  "Order in an empty workflow finishs immediately" in {
+  "Order in an empty workflow finishs immediately" in:
     val orderId = OrderId("EMPTY-WORKFLOW")
     assert(controller.runOrder(FreshOrder(orderId, emptyWorkflow.path)).map(_.value) == Seq(
       OrderAdded(emptyWorkflow.path ~ "INITIAL"),
@@ -42,10 +41,9 @@ final class AddOrderTest extends OurTestSuite with ControllerAgentForScalaTest
       OrderFinished()))
     controller.api.executeCommand(DeleteOrdersWhenTerminated(Seq(orderId))).await(99.s).orThrow
     eventWatch.await[OrderDeleted](_.key == orderId)
-  }
 
-  "An unknown argument detected at Agent lets the order fail" in {
-    for i <- 1 to 2 do {
+  "An unknown argument detected at Agent lets the order fail" in:
+    for i <- 1 to 2 do
       val orderId = OrderId(s"UNKNOWN-ARG-$i")
       assert(controller.runOrder(FreshOrder(orderId, unknownArgWorkflow.path)).map(_.value) == Seq(
         OrderAdded(unknownArgWorkflow.path ~ "INITIAL"),
@@ -57,17 +55,14 @@ final class AddOrderTest extends OurTestSuite with ControllerAgentForScalaTest
         OrderDetachable,
         OrderDetached,
         OrderFailed(Position(0))))
-    }
-  }
 
-  "Add order without arguments to workflow requiring some" in {
+  "Add order without arguments to workflow requiring some" in:
     val orderId = OrderId("NO-PARAMETERS")
     val added = controller.api.executeCommand(AddOrder(FreshOrder(orderId, paramWorkflow.path)))
       .await(99.s)
     assert(added == Left(MissingOrderArgumentProblem(numberParameter)))
-  }
 
-  "Add order with required arguments" in {
+  "Add order with required arguments" in:
     logger.debug("\n" + paramWorkflow.asJson.toPrettyString)
     val orderId = OrderId("PARAMETERS")
     val namedValues = NamedValues("myNumber" -> NumberValue(7))
@@ -84,11 +79,8 @@ final class AddOrderTest extends OurTestSuite with ControllerAgentForScalaTest
         OrderDetachable,
         OrderDetached,
         OrderFinished()))
-  }
-}
 
-object AddOrderTest
-{
+object AddOrderTest:
   private val logger = Logger[this.type]
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)
@@ -101,14 +93,13 @@ object AddOrderTest
       EmptyJob.execute(agentPath,
         arguments = Map("string" -> NamedValue("unknownString")))))
 
-  private class EchoJob extends InternalJob {
+  private class EchoJob extends InternalJob:
     def toOrderProcess(step: Step) =
       OrderProcess(step
         .outTaskObserver.send(
           s"STRING=${step.arguments("STRING").convertToString}\n" +
           s"NUMBER=${step.arguments("NUMBER").convertToString}\n")
         .as(Outcome.succeeded))
-  }
   private object EchoJob extends InternalJob.Companion[EchoJob]
 
   private val paramWorkflow = Workflow(WorkflowPath("PARAMETERIZED-WORKFLOW"),
@@ -119,4 +110,3 @@ object AddOrderTest
     orderPreparation = OrderPreparation(OrderParameterList(
       stringParameter,
       numberParameter)))
-}

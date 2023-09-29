@@ -27,8 +27,7 @@ import scala.reflect.ClassTag
 /**
   * @author Joacim Zschimmer
   */
-trait WebLogDirectives extends ExceptionHandling
-{
+trait WebLogDirectives extends ExceptionHandling:
   protected def config: Config
   protected def actorSystem: ActorSystem
 
@@ -43,13 +42,10 @@ trait WebLogDirectives extends ExceptionHandling
     mapInnerRoute { inner =>
       extractRequest { request =>
         val correlId = getCorrelId(request)
-        setCorrelIdAttribute(correlId) {
-          webLogOnly(request, correlId) {
-            seal {
+        setCorrelIdAttribute(correlId):
+          webLogOnly(request, correlId):
+            seal:
               inner
-            }
-          }
-        }
       }
     }
 
@@ -72,26 +68,24 @@ trait WebLogDirectives extends ExceptionHandling
   private def webLogOnly(request: HttpRequest, correlId: CorrelId): Directive0 =
     if !logRequest && !logResponse then
       pass
-    else {
-      if logRequest || webLogger.underlying.isTraceEnabled then {
+    else
+      if logRequest || webLogger.underlying.isTraceEnabled then
         log(request, None, correlId, if logRequest then logLevel else LogLevel.Trace, nanos = 0)
-      }
-      if logResponse then {
+      if logResponse then
         val start = nanoTime
         mapResponse { response =>
           log(request, Some(response), correlId, statusToLogLevel(response.status), nanoTime - start)
           meterTime(request, response, correlId, start)
         }
-      } else
+      else
         pass
-    }
 
   private def meterTime(request: HttpRequest, response: HttpResponse, correlId: CorrelId, start: Long)
-  : HttpResponse = {
+  : HttpResponse =
     val since = now
     var chunkCount = 0L
     var byteCount = 0L
-    response.entity match {
+    response.entity match
       case entity: HttpEntity.Chunked =>
         response.withEntity(
           entity.copy(chunks =
@@ -110,41 +104,34 @@ trait WebLogDirectives extends ExceptionHandling
               mat
             }))
       case _ => response
-    }
-  }
 
   private def log(request: HttpRequest, response: Option[HttpResponse],
     correlId: CorrelId, logLevel: LogLevel, nanos: Long, streamSuffix: String = ""): Unit
   =
-    correlId.bind {
+    correlId.bind:
       webLogger.log(
         logLevel,
         requestResponseToLine(request, response, nanos, streamSuffix))
-    }
 
   private def statusToLogLevel(statusCode: StatusCode): LogLevel =
-    statusCode match {
+    statusCode match
       case status if status.intValue < 400 => logLevel
       case status if status.intValue == 500 => internalServerErrorLevel
       case _ => errorLogLevel
-    }
 
   private def requestResponseToLine(request: HttpRequest, maybeResponse: Option[HttpResponse],
     nanos: Long, streamSuffix: String)
-  = {
+  =
     val sb = new StringBuilder(256)
 
-    def appendHeader[A >: Null <: HttpHeader: ClassTag](): Unit = {
-      request.header[A] match {
+    def appendHeader[A >: Null <: HttpHeader: ClassTag](): Unit =
+      request.header[A] match
         case None => sb.append(" -")
         case Some(h) => appendQuotedString(sb, h.value)
-      }
-    }
 
-    maybeResponse match {
+    maybeResponse match
       case Some(response) => sb.append(response.status.intValue)
       case _ => sb.append("-->")
-    }
     sb.append(' ')
     // Let SessionToken and request number look like in AkkaHttpClient
     sb.append(request.headers
@@ -164,50 +151,42 @@ trait WebLogDirectives extends ExceptionHandling
     sb.append(request.method.value)
     sb.append(' ')
     sb.append(request.uri)
-    maybeResponse match {
+    maybeResponse match
       case None =>
         appendHeader[Referer]()
         appendHeader[`User-Agent`]()
 
       case Some(response) =>
         if response.status.isFailure then
-          response.entity match {  // Try to extract error message
+          response.entity match  // Try to extract error message
             case entity @ HttpEntity.Strict(`text/plain(UTF-8)`, _) =>
               val string = entity.data.utf8String
               val truncated = string.take(1001).dropLastWhile(_ == '\n').map(c => if c.isControl then '·' else c)
               appendQuotedString(sb, truncated + ((truncated.length < string.length) ?? "..."))
 
             case entity @ HttpEntity.Strict(`application/json`, _) =>
-              parseJson(entity.data.utf8String).flatMap(_.as[Problem]) match {
+              parseJson(entity.data.utf8String).flatMap(_.as[Problem]) match
                 case Left(_) => appendQuotedString(sb, response.status.reason)
                 case Right(problem) => appendQuotedString(sb, problem.toString)
-              }
 
             case _ =>
               appendQuotedString(sb, response.status.reason)
-          }
-        else response.entity match {
+        else response.entity match
           case entity: HttpEntity.Strict =>
             sb.append(' ')
             sb.append(toKBGB(entity.data.length))
             sb.append(' ')
             sb.append(nanos.nanoseconds.pretty)
           case _ =>
-            if streamSuffix.isEmpty then {
+            if streamSuffix.isEmpty then
               sb.append(" STREAM... ")
               sb.append(nanos.nanoseconds.pretty)
-            } else {
+            else
               sb.append(' ')
               sb.append(streamSuffix)
-            }
-        }
-    }
     sb.toString
-  }
-}
 
-object WebLogDirectives
-{
+object WebLogDirectives:
   private val webLogger = Logger("js7.web.log")
 
   val CorrelIdAttributeKey = AttributeKey[CorrelId]("CorrelId")
@@ -220,17 +199,13 @@ object WebLogDirectives
     js7.web.server.verbose-error-messages = true
     js7.web.server.shutdown-timeout = 10s"""
 
-  private def appendQuotedString(sb: StringBuilder, string: String) = {
+  private def appendQuotedString(sb: StringBuilder, string: String) =
     sb.ensureCapacity(3 + string.length)
     sb.append(" \"")
-    if !string.contains('"') then {
+    if !string.contains('"') then
       sb.append(string)
-    } else {
-      string foreach {
+    else
+      string foreach:
         case '"' => sb.append('\\').append('"')
         case ch => sb.append(ch)
-      }
-    }
     sb.append('"')
-  }
-}

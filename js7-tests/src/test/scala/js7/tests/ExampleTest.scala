@@ -17,8 +17,7 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.traced
 
-final class ExampleTest extends OurTestSuite with ControllerAgentForScalaTest
-{
+final class ExampleTest extends OurTestSuite with ControllerAgentForScalaTest:
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(workflow)
   override protected def controllerConfig = config"""
@@ -30,7 +29,7 @@ final class ExampleTest extends OurTestSuite with ControllerAgentForScalaTest
     js7.journal.slow-check-state = on
     """
 
-  "Test" in {
+  "Test" in:
     val eventId = eventWatch.lastAddedEventId
     val orderId = OrderId("🔷")
     controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
@@ -50,11 +49,8 @@ final class ExampleTest extends OurTestSuite with ControllerAgentForScalaTest
       OrderDetached,
       OrderFinished(),
       OrderDeleted))
-  }
-}
 
-object ExampleTest
-{
+object ExampleTest:
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)
 
@@ -74,4 +70,3 @@ object ExampleTest
       }
     ]
   }""".as[Workflow].orThrow
-}

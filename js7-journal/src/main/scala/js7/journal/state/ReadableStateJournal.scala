@@ -4,8 +4,7 @@ import js7.data.event.JournaledState
 import js7.journal.watch.EventWatch
 import monix.eval.Task
 
-trait ReadableStateJournal[S <: JournaledState[S]]
-{
+trait ReadableStateJournal[S <: JournaledState[S]]:
   protected type State <: JournaledState[State]
 
   protected val S: JournaledState.Companion[S]
@@ -16,4 +15,3 @@ trait ReadableStateJournal[S <: JournaledState[S]]
 
   final val state: Task[S] =
     Task(unsafeCurrentState())
-}

@@ -7,8 +7,7 @@ import scala.math.{multiplyExact, toIntExact}
 /**
   * @author Joacim Zschimmer
   */
-object DecimalPrefixes
-{
+object DecimalPrefixes:
   private val PrefixToFactor = Map(
     'k' -> 1000,
     'M' -> (1000*1000),
@@ -21,7 +20,7 @@ object DecimalPrefixes
           toIntExact(long)))
 
   def toLong(string: String): Checked[Long] =
-    if string.nonEmpty && string.last.isLetter then {
+    if string.nonEmpty && string.last.isLetter then
       val prefix = string.last
       PrefixToFactor.get(prefix)
         .toChecked(Problem(
@@ -31,6 +30,5 @@ object DecimalPrefixes
             multiplyExact(
               string.take(string.length - 1).toLong,
               factor)))
-    } else
+    else
       catchExpected[NumberFormatException](string.toLong)
-}

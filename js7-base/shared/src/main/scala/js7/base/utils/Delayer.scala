@@ -16,8 +16,7 @@ import scala.concurrent.duration.*
 
 // Stateful
 final class Delayer[F[_]] private(initialNow: Deadline, conf: DelayConf)
-  (implicit F: Async[F], timer: Timer[F])
-{
+  (implicit F: Async[F], timer: Timer[F]):
   import conf.{delays, resetWhen}
 
   private val _state = Atomic(State(initialNow, resetDelays(delays)))
@@ -47,8 +46,8 @@ final class Delayer[F[_]] private(initialNow: Deadline, conf: DelayConf)
         if !ok then Left(()) else Right(elapsed -> delay)
       }))
 
-  private sealed case class State(since: Deadline, nextDelays: LazyList[FiniteDuration]) {
-    def next(now: Deadline): (FiniteDuration, FiniteDuration, State) = {
+  private sealed case class State(since: Deadline, nextDelays: LazyList[FiniteDuration]):
+    def next(now: Deadline): (FiniteDuration, FiniteDuration, State) =
       val elapsed = now - since
       val delay = (nextDelays.head - elapsed) max ZeroDuration
       val next = State(
@@ -61,17 +60,13 @@ final class Delayer[F[_]] private(initialNow: Deadline, conf: DelayConf)
           else
             nextDelays)
       (elapsed, delay, next)
-    }
 
     override def toString =
       s"since=${since.elapsed.pretty} nextDelay=${nextDelays.headOption.getOrElse(delays.last).pretty}"
-  }
 
   override def toString = s"Delayer(${_state.get()} $conf)"
-}
 
-object Delayer
-{
+object Delayer:
   private val logger = Logger[this.type]
 
   def start[F[_]](conf: DelayConf)(implicit F: Async[F], timer: Timer[F])
@@ -90,8 +85,8 @@ object Delayer
         .prepend(()))
 
 
-  object syntax {
-    implicit final class RichDelayerTask[A](val underlying: Task[A]) extends AnyVal {
+  object syntax:
+    implicit final class RichDelayerTask[A](val underlying: Task[A]) extends AnyVal:
       def onFailureRestartWithDelayer(
         conf: DelayConf,
         onFailure: Throwable => Task[Unit] = _ => Task.unit,
@@ -104,9 +99,6 @@ object Delayer
                 onFailure(throwable) *>
                   delayer.sleep(onSleep).*>(retry(()))
             })
-    }
-  }
 
   private def resetDelays(delays: NonEmptySeq[FiniteDuration]): LazyList[FiniteDuration] =
     LazyList.from(delays.toSeq)
-}

@@ -11,8 +11,7 @@ import scala.concurrent.{Future, Promise}
 import scala.reflect.ClassTag
 import scala.util.control.NonFatal
 
-trait ClassEventBus[E] extends EventPublisher[E] with AutoCloseable
-{
+trait ClassEventBus[E] extends EventPublisher[E] with AutoCloseable:
   protected type Classifier
   protected type ClassifierToEvent[C <: Classifier] <: E
   private type Cls = Class[? <: Classifier]
@@ -28,70 +27,58 @@ trait ClassEventBus[E] extends EventPublisher[E] with AutoCloseable
   def close() = removeAllSubscriptions()
 
   final def publish(event: E): Unit =
-    for cls <- superclassCache.assignableClasses(classify(event)) do {   // Optimizable in addSubscription ???
-      register.get(cls) match {
+    for cls <- superclassCache.assignableClasses(classify(event)) do   // Optimizable in addSubscription ???
+      register.get(cls) match
         case null =>
         case subscriptions =>
-          for subscription <- subscriptions do {
+          for subscription <- subscriptions do
             try subscription.call(event)
             catch { case NonFatal(t) =>
               logger.error(s"Error in event handler ignored: $t", t)
             }
-          }
-      }
-    }
 
   final def addSubscription(subscription: EventSubscription): Unit =
-    register.synchronized {
-      for cls <- subscription.classes do {
+    register.synchronized:
+      for cls <- subscription.classes do
         register.put(
           cls,
           register.getOrDefault(cls, Vector.empty) :+ subscription)
-      }
-    }
 
   final def removeSubscription(subscription: EventSubscription): Unit =
-    register.synchronized {
-      for cls <- subscription.classes do {
-        register.get(cls) match {
+    register.synchronized:
+      for cls <- subscription.classes do
+        register.get(cls) match
           case null =>
           case list =>
             val removed = list.filterNot(_ eq subscription)
-            if removed.nonEmpty then {
+            if removed.nonEmpty then
               register.put(cls.asInstanceOf[Class[Classifier]], removed)
-            } else {
+            else
               register.remove(cls)
-            }
-        }
-      }
-    }
 
   final def removeAllSubscriptions(): Unit =
-    synchronized {
+    synchronized:
       register.clear()
-    }
 
   final def when[C <: Classifier : ClassTag]: Task[ClassifierToEvent[C]] =
     when_[C](_ => true)
 
   final def when_[C <: Classifier: ClassTag](predicate: ClassifierToEvent[C] => Boolean)
   : Task[ClassifierToEvent[C]] =
-    Task.deferFuture {
+    Task.deferFuture:
       val promise = Promise[ClassifierToEvent[C]]()
       oneShot[C](predicate)(promise.success)
       promise.future
-    }
 
   final def whenPF[C <: Classifier: ClassTag, D](pf: PartialFunction[ClassifierToEvent[C], D])
   : Task[D] =
     whenFilterMap(pf.lift)
 
   final def whenFilterMap[C <: Classifier: ClassTag, D](f: ClassifierToEvent[C] => Option[D]): Task[D] =
-    Task.deferFuture {
+    Task.deferFuture:
       val promise = Promise[D]()
       oneShotFilterMap(f)(promise.success)
       promise.future
-    }
 
   // TODO Replace above Task-returning call with the following Future-returning calls.
   // Denn die hier beginnen die Überwachung sofort und nicht irgendwann.
@@ -99,38 +86,34 @@ trait ClassEventBus[E] extends EventPublisher[E] with AutoCloseable
     whenFuture_[C](_ => true)
 
   final def whenFuture_[C <: Classifier : ClassTag](predicate: ClassifierToEvent[C] => Boolean)
-  : Future[ClassifierToEvent[C]] = {
+  : Future[ClassifierToEvent[C]] =
     val promise = Promise[ClassifierToEvent[C]]()
     oneShot[C](predicate)(promise.success)
     promise.future
-  }
 
   final def whenPFFuture[C <: Classifier: ClassTag, D](pf: PartialFunction[ClassifierToEvent[C], D])
   : Future[D] =
     whenFilterMapFuture(pf.lift)
 
   final def whenFilterMapFuture[C <: Classifier: ClassTag, D](f: ClassifierToEvent[C] => Option[D])
-  : Future[D] = {
+  : Future[D] =
     val promise = Promise[D]()
     oneShotFilterMap(f)(promise.success)
     promise.future
-  }
 
   final def oneShot[C <: Classifier: ClassTag](
     predicate: ClassifierToEvent[C] => Boolean = (_: ClassifierToEvent[C]) => true)
     (handle: ClassifierToEvent[C] => Unit)
-  : Unit = {
+  : Unit =
     val used = AtomicBoolean(false)
     lazy val subscription: EventSubscription =
       toSubscription { event_ =>
         val event = event_.asInstanceOf[ClassifierToEvent[C]]
-        if predicate(event) && !used.getAndSet(true) then {
+        if predicate(event) && !used.getAndSet(true) then
           subscription.close()
           handle(event)
-        }
       }
     addSubscription(subscription)
-  }
 
   private final def oneShotPF[C <: Classifier : ClassTag, A](
     pf: PartialFunction[ClassifierToEvent[C], A])
@@ -141,29 +124,25 @@ trait ClassEventBus[E] extends EventPublisher[E] with AutoCloseable
   final def oneShotFilterMap[C <: Classifier : ClassTag, A](
     f: ClassifierToEvent[C] => Option[A])
     (handle: A => Unit)
-  : Unit = {
+  : Unit =
     val used = AtomicBoolean(false)
     lazy val subscription: EventSubscription =
       toSubscription { event_ =>
         val event = event_.asInstanceOf[ClassifierToEvent[C]]
-        for a <- f(event) do {
-          if !used.getAndSet(true) then {
+        for a <- f(event) do
+          if !used.getAndSet(true) then
             subscription.close()
             handle(a)
-          }
-        }
       }
     addSubscription(subscription)
-  }
 
   final def subscribe[C <: Classifier: ClassTag](handle: ClassifierToEvent[C] => Unit): EventSubscription =
     subscribeToClass(implicitClass[C])(handle)
 
-  final def subscribeToClass[C <: Classifier](eventClass: Class[C])(handle: ClassifierToEvent[C] => Unit): EventSubscription = {
+  final def subscribeToClass[C <: Classifier](eventClass: Class[C])(handle: ClassifierToEvent[C] => Unit): EventSubscription =
     val subscription = classToSubscription(eventClass)(handle)
     addSubscription(subscription)
     subscription
-  }
 
   final def toSubscription[C <: Classifier: ClassTag](handle: E => Unit): EventSubscription =
     classToSubscription(implicitClass[C])(handle)
@@ -174,15 +153,11 @@ trait ClassEventBus[E] extends EventPublisher[E] with AutoCloseable
   final class EventSubscription(
     private[ClassEventBus] val classes: Set[Cls],
     private[ClassEventBus] val call: E => Unit)
-  extends AutoCloseable
-  {
+  extends AutoCloseable:
     //val assignableClasses: Set[Cls] = classes.asInstanceOf[Set[Cls]]
     //  .flatMap(c => superclassCache.assignableClasses(c).asInstanceOf[Set[Cls]])
 
     def close() = removeSubscription(this)
-  }
-}
 
-object ClassEventBus {
+object ClassEventBus:
   private val logger = Logger[this.type]
-}

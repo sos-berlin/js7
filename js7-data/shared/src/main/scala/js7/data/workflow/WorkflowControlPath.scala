@@ -7,15 +7,12 @@ import js7.data.item.{InventoryItemPath, UnsignedItemPath, VersionedControlPath}
 final case class WorkflowControlPath(workflowPath: WorkflowPath)
 extends UnsignedItemPath
 with VersionedControlPath
-with InventoryItemPath.AttachableToAgent
-{
+with InventoryItemPath.AttachableToAgent:
   def path = this
   def string = workflowPath.string
   def companion = WorkflowControlPath
-}
 
-object WorkflowControlPath extends VersionedControlPath.Companion[WorkflowControlPath]
-{
+object WorkflowControlPath extends VersionedControlPath.Companion[WorkflowControlPath]:
   protected def unchecked(string: String) = new WorkflowControlPath(WorkflowPath(string))
 
   override def checked(string: String): Checked[WorkflowControlPath] =
@@ -27,4 +24,3 @@ object WorkflowControlPath extends VersionedControlPath.Companion[WorkflowContro
   @javaApi @throws[RuntimeException]("on invalid syntax")
   def of(validWorkflowControlPath: String): WorkflowControlPath =
     apply(validWorkflowControlPath)
-}

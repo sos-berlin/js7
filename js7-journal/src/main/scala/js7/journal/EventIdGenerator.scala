@@ -11,8 +11,7 @@ import scala.collection.AbstractIterator
   * @author Joacim Zschimmer
   */
 final class EventIdGenerator(eventIdClock: EventIdClock)
-extends AbstractIterator[EventId]
-{
+extends AbstractIterator[EventId]:
   def this() = this(EventIdClock.Default)
 
   private val lastResult = new AtomicLong(EventId.BeforeFirst)
@@ -20,16 +19,15 @@ extends AbstractIterator[EventId]
   def lastUsedEventId: EventId = lastResult.get
 
   def updateLastEventId(newEventId: EventId): Unit =
-    while true do {
+    while true do
       val last = lastResult.get
       if newEventId < last then return
       if lastResult.compareAndSet(last, newEventId) then return
-    }
 
   def hasNext = true
 
   @tailrec
-  def next(): EventId = {
+  def next(): EventId =
     val nowId = eventIdClock.currentTimeMillis * EventId.IdsPerMillisecond
     val last = lastResult.get
     val nextId = if last < nowId then nowId else last + 1
@@ -37,18 +35,15 @@ extends AbstractIterator[EventId]
       nextId
     else
       next()
-  }
 
   def stamp[A](a: A, timestampMillis: Option[Long] = None): Stamped[A] =
     stampWith(a, next(),
       timestampMillis.orElse(
         !isWallclock ? eventIdClock.clock.epochMilli()))
 
-  private def stampWith[A](a: A, eventId: EventId, timestampMillis: Option[Long]): Stamped[A] = {
+  private def stampWith[A](a: A, eventId: EventId, timestampMillis: Option[Long]): Stamped[A] =
     val ts = timestampMillis getOrElse EventId.toEpochMilli(eventId)
     new Stamped(eventId, ts, a)
-  }
 
   @inline private def isWallclock =
     eventIdClock.clock eq WallClock
-}

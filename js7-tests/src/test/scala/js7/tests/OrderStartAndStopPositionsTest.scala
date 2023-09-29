@@ -19,8 +19,7 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.traced
 
-final class OrderStartAndStopPositionsTest extends OurTestSuite with ControllerAgentForScalaTest
-{
+final class OrderStartAndStopPositionsTest extends OurTestSuite with ControllerAgentForScalaTest:
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.controller.agent-driver.command-batch-delay = 0ms
@@ -33,7 +32,7 @@ final class OrderStartAndStopPositionsTest extends OurTestSuite with ControllerA
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(workflow, tryWorkflow)
 
-  "Invalid position" in {
+  "Invalid position" in:
     def addOrder(
       startPosition: Option[Position] = None,
       stopPositions: Set[PositionOrLabel] = Set.empty)
@@ -59,9 +58,8 @@ final class OrderStartAndStopPositionsTest extends OurTestSuite with ControllerA
     assert(
       addOrder(stopPositions = Set(forkedPosition)) == Left(Problem(
         "Order's startPosition or one of its stopPositions is not reachable: 0/then:0/fork+BRANCH:0")))
-  }
 
-  "startPosition == stopPositions" in {
+  "startPosition == stopPositions" in:
     val orderId = OrderId("A")
     val stampedEvents = controller.runOrder(FreshOrder(
       orderId, workflow.path,
@@ -74,9 +72,8 @@ final class OrderStartAndStopPositionsTest extends OurTestSuite with ControllerA
         stopPositions = Set(Position(1))),
       OrderStarted,
       OrderFinished()))
-  }
 
-  "startPosition and stopPositions" in {
+  "startPosition and stopPositions" in:
     val orderId = OrderId("B")
     val stampedEvents = controller.runOrder(FreshOrder(
       orderId, workflow.path,
@@ -98,9 +95,8 @@ final class OrderStartAndStopPositionsTest extends OurTestSuite with ControllerA
       OrderDetachable,
       OrderDetached,
       OrderFinished()))
-  }
 
-  "stopPositions point to an If statement" in {
+  "stopPositions point to an If statement" in:
     val orderId = OrderId("C")
     val stampedEvents = controller.runOrder(FreshOrder(
       orderId, workflow.path,
@@ -125,9 +121,8 @@ final class OrderStartAndStopPositionsTest extends OurTestSuite with ControllerA
       OrderDetachable,
       OrderDetached,
       OrderFinished()))
-  }
 
-  "startPosition and stopPosition point into If statements" in {
+  "startPosition and stopPosition point into If statements" in:
     val orderId = OrderId("D")
     val stampedEvents = controller.runOrder(FreshOrder(
       orderId, tryWorkflow.path,
@@ -158,9 +153,8 @@ final class OrderStartAndStopPositionsTest extends OurTestSuite with ControllerA
       OrderDetachable,
       OrderDetached,
       OrderFinished()))
-  }
 
-  "startPosition points into a Try statement" in {
+  "startPosition points into a Try statement" in:
     val orderId = OrderId("E")
     val stampedEvents = controller.runOrder(FreshOrder(
       orderId, tryWorkflow.path,
@@ -185,11 +179,8 @@ final class OrderStartAndStopPositionsTest extends OurTestSuite with ControllerA
       OrderDetachable,
       OrderDetached,
       OrderFinished()))
-  }
-}
 
-object OrderStartAndStopPositionsTest
-{
+object OrderStartAndStopPositionsTest:
   private val agentPath = AgentPath("A-AGENT")
 
   private val workflow = Workflow(WorkflowPath("A-WORKFLOW") ~ "INITIAL", Seq(
@@ -211,4 +202,3 @@ object OrderStartAndStopPositionsTest
         If(expr("true"), Workflow.of(Fail()))),
       Workflow.of(
         "CATCHED" @: Fail()))))
-}

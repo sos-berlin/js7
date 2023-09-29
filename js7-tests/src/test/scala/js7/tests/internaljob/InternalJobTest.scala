@@ -43,8 +43,7 @@ import scala.collection.mutable
 import scala.reflect.ClassTag
 
 final class InternalJobTest extends OurTestSuite with ControllerAgentForScalaTest
-with BlockingItemUpdater
-{
+with BlockingItemUpdater:
   protected val agentPaths = agentPath :: Nil
   protected val items = Nil
   override protected val controllerConfig = config"""
@@ -62,13 +61,13 @@ with BlockingItemUpdater
   private val orderIdIterator = Iterator.from(1).map(i => OrderId(s"🔷-$i"))
   private val testCounter = AtomicInt(0)
 
-  "One InternalJob.start for multiple InternalJob.toOrderProcess" in {
+  "One InternalJob.start for multiple InternalJob.toOrderProcess" in:
     val versionId = versionIdIterator.next()
     val workflow = Workflow.of(workflowPathIterator.next(), execute_[AddOneJob])
     withTemporaryItem(workflow) { workflow =>
       directoryProvider.updateVersionedItems(controller, versionId, Seq(workflow))
 
-      for processNumber <- 1 to 3 do withClue(s"#$processNumber ") {
+      for processNumber <- 1 to 3 do withClue(s"#$processNumber "):
         val order = FreshOrder(orderIdIterator.next(), workflow.path, Map("ORDER_ARG" -> NumberValue(300)))
         val events = controller.runOrder(order).map(_.value)
 
@@ -78,9 +77,7 @@ with BlockingItemUpdater
             "START" -> NumberValue(1),  // One start only for multiple toOrderProcess calls
             "PROCESS" -> NumberValue(processNumber),
             "RESULT" -> NumberValue(301)))))
-      }
     }
-  }
 
   addInternalJobTest(
     execute_[AddOneJob],
@@ -102,10 +99,9 @@ with BlockingItemUpdater
     Execute(WorkflowJob(agentPath, InternalExecutable(classOf[SimpleJob.type].getName))),
     expectedOutcome = Outcome.Succeeded(NamedValues.empty))
 
-  "When workflow of last test has been deleted, the SimpleJob is stopped" in {
+  "When workflow of last test has been deleted, the SimpleJob is stopped" in:
     waitForCondition(10.s, 10.ms)(SimpleJob.stopped)
     assert(SimpleJob.stopped)
-  }
 
   addInternalJobTest(
     Execute(WorkflowJob(agentPath, InternalExecutable(classOf[EmptyJob].getName))),
@@ -143,18 +139,15 @@ with BlockingItemUpdater
           }
           .toMap)
     }
-
-  "Kill InternalJob" in {
+  "Kill InternalJob" in:
     assert(CancelableJob.semaphore.flatMap(_.count).await(99.s) == 0)
     testCancelJob[CancelableJob]()
     assert(CancelableJob.semaphore.flatMap(_.count).await(99.s) == 0)
-  }
 
-  "Kill JavaBlockingJob" in {
+  "Kill JavaBlockingJob" in:
     testCancelJob[JCancelableJob]()
-  }
 
-  private def testCancelJob[J: ClassTag](): Unit = {
+  private def testCancelJob[J: ClassTag](): Unit =
     val versionId = versionIdIterator.next()
     val workflow = Workflow.of(execute_[J])
       .withId(workflowPathIterator.next() ~ versionId)
@@ -176,65 +169,58 @@ with BlockingItemUpdater
     val outcome = eventWatch.await[OrderProcessed](_.key == order.id).head.value.event.outcome
     assert(outcome == Outcome.Killed(Outcome.Failed(Some("Canceled"))))
     eventWatch.await[OrderProcessingKilled](_.key == order.id)
-  }
 
-  "stop" in {
+  "stop" in:
     controller.api.stop await 99.s
     controller.terminate() await 99.s
     agent.terminate() await 99.s
     assert(SimpleJob.stopped)
     assert(TestJInternalJob.stoppedCalled.containsKey(blockingThreadPoolName))
     assert(TestBlockingInternalJob.stoppedCalled.containsKey(blockingThreadPoolName))
-  }
 
   private def addInternalJobTest(
     execute: Execute,
     orderArguments: Map[String, Value] = Map.empty,
     expectedOutcome: Outcome)
     (using source.Position)
-  : Unit = {
+  : Unit =
     val orderId = orderIdIterator.next()
     addInternalJobTestWithMultipleOrders(execute,
       Map(orderId -> orderArguments),
       Map(orderId -> Seq(expectedOutcome)))
-  }
 
   private def addInternalJobTestWithMultipleOrders(
     execute: Execute,
     orderArguments: Map[OrderId, Map[String, Value]],
     expectedOutcomes: Map[OrderId, Seq[Outcome]])
     (using source.Position)
-  : Unit = {
+  : Unit =
     val testName = testCounter.incrementAndGet().toString + ") " + instructionToString(execute)
-    testName in {
+    testName in:
       testWithWorkflow(Workflow.of(execute), orderArguments, expectedOutcomes)
-    }
-  }
 
   private def testWithWorkflow(
     anonymousWorkflow: Workflow,
     ordersArguments: Map[OrderId, Map[String, Value]],
     expectedOutcomes: Map[OrderId, Seq[Outcome]])
     (using source.Position)
-  : Unit = {
+  : Unit =
     val orderToEvents = runMultipleOrdersWithWorkflow(anonymousWorkflow, ordersArguments)
     val outcomes = orderToEvents.view
       .mapValues(_.collect { case OrderProcessed(outcome) => outcome })
       .toMap
     assert(outcomes == expectedOutcomes)
 
-    for (orderId, events) <- orderToEvents do {
+    for (orderId, events) <- orderToEvents do
       if expectedOutcomes(orderId).last.isSucceeded then
         assert(events.exists(_.isInstanceOf[OrderFinished]))
       else
         assert(events.exists(_.isInstanceOf[OrderFailed]))
-    }
-  }
 
   private def runMultipleOrdersWithWorkflow(
     anonymousWorkflow: Workflow,
     ordersArguments: Map[OrderId, Map[String, Value]])
-  : Map[OrderId, Seq[OrderEvent]] = {
+  : Map[OrderId, Seq[OrderEvent]] =
     testPrintAndParse(anonymousWorkflow)
 
     val eventId = eventWatch.lastAddedEventId
@@ -255,11 +241,10 @@ with BlockingItemUpdater
         .observe(EventRequest.singleClass[OrderEvent](eventId, Some(99.s)))
         .filter(stamped => orderIds contains stamped.value.key)
         .map(_.value)
-        .tapEach {
+        .tapEach:
           case KeyedEvent(orderId: OrderId, _: OrderTerminated) =>
             _runningOrderIds -= orderId
           case _ =>
-        }
         .takeWhileInclusive(_ => _runningOrderIds.nonEmpty)
         .toL(Vector)
         .await(99.s)
@@ -268,18 +253,14 @@ with BlockingItemUpdater
     // When Workflow has been deleted, its Jobs are stopped
     eventWatch.await[ItemDeleted](_.event.key == workflowId, after = eventId)
     result
-  }
 
-  private def testPrintAndParse(anonymousWorkflow: Workflow): Unit = {
+  private def testPrintAndParse(anonymousWorkflow: Workflow): Unit =
     val workflowNotation = WorkflowPrinter.print(anonymousWorkflow.withoutSource)
     //val reparsedWorkflow = WorkflowParser.parse(workflowNotation).map(_.withoutSource)
     logger.debug(workflowNotation)
     //TODO assert(reparsedWorkflow == Right(anonymousWorkflow.withoutSource))
-  }
-}
 
-object InternalJobTest
-{
+object InternalJobTest:
   private val logger = Logger[this.type]
   private val agentPath = AgentPath("AGENT")
 
@@ -293,39 +274,32 @@ object InternalJobTest
           arguments = Map(
             "STEP_ARG" -> NamedValue("ORDER_ARG")))))
 
-  private object SimpleJob extends InternalJob
-  {
+  private object SimpleJob extends InternalJob:
     var started = false
     var stopped = false
 
-    override def start = Task {
+    override def start = Task:
       started = true
       Right(())
-    }
 
-    override def stop = Task {
+    override def stop = Task:
       assert(started)
       stopped = true
-    }
 
-    def toOrderProcess(step: Step) = {
+    def toOrderProcess(step: Step) =
       assert(started)
       OrderProcess(Task(Outcome.succeeded))
-    }
-  }
 
-  private final class AddOneJob(jobContext: JobContext) extends InternalJob
-  {
+  private final class AddOneJob(jobContext: JobContext) extends InternalJob:
     assertThat(jobContext.implementationClass == getClass)
     assertThat(jobContext.executable.script == "TEST SCRIPT")
 
     private val startCount = Atomic(0)
     private val processCount = Atomic(0)
 
-    override def start = Task {
+    override def start = Task:
       startCount += 1
       Right(())
-    }
 
     override def stop =
       Task.raiseError(new RuntimeException("AddOneJob.stop FAIL'S"))
@@ -342,12 +316,10 @@ object InternalJobTest
               "PROCESS" -> NumberValue(processCount.get()),
               "RESULT" -> NumberValue(value.number + 1)))))
         })
-  }
 
-  private class CancelableJob extends InternalJob
-  {
+  private class CancelableJob extends InternalJob:
     def toOrderProcess(step: Step) =
-       new OrderProcess.FiberCancelling {
+       new OrderProcess.FiberCancelling:
          def run =
            CancelableJob.semaphore
              .flatMap(_.acquire)
@@ -359,9 +331,5 @@ object InternalJobTest
              super.cancel(immediately)
            else
              sys.error("TEST EXCEPTION FOR KILL")
-    }
-  }
-  private object CancelableJob {
+  private object CancelableJob:
     val semaphore = Semaphore[Task](0).memoize
-  }
-}

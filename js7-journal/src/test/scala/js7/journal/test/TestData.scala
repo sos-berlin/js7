@@ -9,8 +9,7 @@ import js7.journal.data.JournalLocation
 /**
   * @author Joacim Zschimmer
   */
-private[journal] object TestData
-{
+private[journal] object TestData:
   val TestConfig = config"""
     js7.journal.sync = on
     js7.journal.delay = 0s
@@ -28,4 +27,3 @@ private[journal] object TestData
 
   def testJournalMeta(fileBase: Path) =
     JournalLocation(TestState, fileBase)
-}

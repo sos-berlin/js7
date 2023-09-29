@@ -18,8 +18,7 @@ final case class AgentDriverConfiguration(
   commandParallelism: Int,
   releaseEventsPeriod: FiniteDuration)
 
-object AgentDriverConfiguration
-{
+object AgentDriverConfiguration:
   def fromConfig(config: Config, journalConf: JournalConf): Checked[AgentDriverConfiguration] =
     RecouplingStreamReaderConfs.fromConfig(config)
       .flatMap(recouplingStreamReader =>
@@ -35,4 +34,3 @@ object AgentDriverConfiguration
             commandParallelism  = config.getInt     ("js7.controller.agent-driver.command-parallelism"),
             releaseEventsPeriod = config.getDuration("js7.controller.agent-driver.release-events-period").toFiniteDuration)
         })
-}

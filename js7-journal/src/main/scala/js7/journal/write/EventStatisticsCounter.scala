@@ -8,16 +8,14 @@ import js7.base.utils.ScalaUtils.syntax.*
 /**
   * @author Joacim Zschimmer
   */
-private[journal] final class EventStatisticsCounter(initialEventCount: Int) extends StatisticsCounter
-{
+private[journal] final class EventStatisticsCounter(initialEventCount: Int) extends StatisticsCounter:
   private var events = initialEventCount
   private var commits = 0
 
   def countEventsToBeCommitted(eventCount: Int): Unit =
-    if eventCount > 0 then {  // Count only commits with events
+    if eventCount > 0 then  // Count only commits with events
       events += eventCount
       commits += 1
-    }
 
   override def toString =
     if events == 0 then "no events"
@@ -36,4 +34,3 @@ private[journal] final class EventStatisticsCounter(initialEventCount: Int) exte
               factorFormat.format(commits.toDouble / syncCount) + " commits/sync, " +
               factorFormat.format(events.toDouble / syncCount) + " events/sync"))
         }))
-}

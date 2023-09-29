@@ -10,14 +10,11 @@ import js7.data_for_java.common.JJsonable
 import js7.data_for_java.workflow.position.JPosition
 
 final case class JHistoryOperation(asScala: HistoryOperation)
-extends JJsonable[JHistoryOperation]
-{
+extends JJsonable[JHistoryOperation]:
   type AsScala = HistoryOperation
   protected def companion = JHistoryOperation
-}
 
-object JHistoryOperation extends JJsonable.Companion[JHistoryOperation]
-{
+object JHistoryOperation extends JJsonable.Companion[JHistoryOperation]:
   type AsScala = HistoryOperation
 
   @javaApi @Nonnull
@@ -43,4 +40,3 @@ object JHistoryOperation extends JJsonable.Companion[JHistoryOperation]
 
   protected def jsonEncoder = HistoryOperation.jsonCodec
   protected def jsonDecoder = HistoryOperation.jsonCodec
-}

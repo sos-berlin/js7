@@ -22,14 +22,13 @@ import scala.concurrent.duration.*
 import scala.util.Random
 import scala.util.control.NoStackTrace
 
-final class RestartAfterFailureServiceTest extends OurTestSuite
-{
-  "RestartAfterFailureService" in {
+final class RestartAfterFailureServiceTest extends OurTestSuite:
+  "RestartAfterFailureService" in:
     implicit val scheduler = TestScheduler()
     val started = now
     val elapsedSeq = mutable.Buffer[(FiniteDuration, FiniteDuration)]()
 
-    def serviceResource: Resource[Task, RestartAfterFailureService[CancelableService]] = {
+    def serviceResource: Resource[Task, RestartAfterFailureService[CancelableService]] =
       var i = 0
       var lastEnd = started
 
@@ -52,7 +51,6 @@ final class RestartAfterFailureServiceTest extends OurTestSuite
                 Task.raiseError(new TestException("run"))
               })
         }))
-    }
 
     val running = serviceResource
       .use { (service: RestartAfterFailureService[CancelableService]) =>
@@ -86,9 +84,8 @@ final class RestartAfterFailureServiceTest extends OurTestSuite
       (10.s, 0.s),  // 17. 10s
       (10.s, 0.s),  // 18. 10s
       (10.s, 0.s))) // 19. 10s
-  }
 
-  "RestartAfterFailureService is stoppable anytime · Memory test when test.speed" in {
+  "RestartAfterFailureService is stoppable anytime · Memory test when test.speed" in:
     // For check agains OutOfMemoryError, set -Xmx10m !!!
     val testDuration = if sys.props.contains("test.speed") then 30.s else 100.ms
     import Scheduler.Implicits.traced
@@ -101,7 +98,7 @@ final class RestartAfterFailureServiceTest extends OurTestSuite
       runFails: Boolean,
       stopFails: Boolean,
       name: String)
-    extends Service.StoppableByRequest {
+    extends Service.StoppableByRequest:
       // startFailsRandomly: if start would fail every time, RestartAfterFailureService.start would
       // not terminate, and the caller has no opportunity to stop the not yet started service.
       // But start is cancelable !!!
@@ -109,7 +106,7 @@ final class RestartAfterFailureServiceTest extends OurTestSuite
       private lazy val unique = uniqueCounter.getAndIncrement(1)
 
       protected def start =
-        Task.defer {
+        Task.defer:
           if startFailsRandomly && Random.nextBoolean() then
             timer.sleep(Random.nextInt(5).ms) *> Task.raiseError(new TestException("start"))
           else
@@ -126,10 +123,8 @@ final class RestartAfterFailureServiceTest extends OurTestSuite
               .guarantee(Task {
                 runs -= 1
               }))
-        }
 
       override def toString = s"TestService($name $unique)"
-    }
 
     (0 until 8 /*2^3 == 8 combinations*/).toVector
       .parTraverse(i => Service
@@ -152,12 +147,8 @@ final class RestartAfterFailureServiceTest extends OurTestSuite
     // TODO That means, the service may continue to run a while after stop!
     waitForCondition(10.s, 10.ms)(runs.get() == 0)
     assert(runs.get() == 0)
-  }
-}
 
-object RestartAfterFailureServiceTest {
+object RestartAfterFailureServiceTest:
   private val logger = Logger[this.type]
-  private class TestException(msg: String) extends RuntimeException(msg) with NoStackTrace {
+  private class TestException(msg: String) extends RuntimeException(msg) with NoStackTrace:
     override def toString = s"TestException($msg)"
-  }
-}

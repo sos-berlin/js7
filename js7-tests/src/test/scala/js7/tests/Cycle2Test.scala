@@ -21,8 +21,7 @@ import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.*
 
 // Repeats the JS-2012 test case in CycleTest with the real wall clock, to be sure.
-final class Cycle2Test extends OurTestSuite with ControllerAgentForScalaTest with ScheduleTester
-{
+final class Cycle2Test extends OurTestSuite with ControllerAgentForScalaTest with ScheduleTester:
   protected val agentPaths = Nil
   protected val items = Seq(calendar, js2012Workflow)
 
@@ -35,15 +34,15 @@ final class Cycle2Test extends OurTestSuite with ControllerAgentForScalaTest wit
     js7.job.execution.signed-script-injection-allowed = on
     """
 
-  "One first cycle in mid of period (bug JS-2012)" in {
+  "One first cycle in mid of period (bug JS-2012)" in:
     val now = LocalTime.now()
     val now0 = now.withHour(0)
     if now.isBefore(LocalTime.of(1, 0))
      || now0.isAfter(LocalTime.of(0, 59)) && now0.isBefore(LocalTime.of(0, 0, 1))
-     || now0.isAfter(LocalTime.of(0, 59)) && now0.isBefore(LocalTime.of(0, 0, 1)) then {
+     || now0.isAfter(LocalTime.of(0, 59)) && now0.isBefore(LocalTime.of(0, 0, 1)) then
       logger.warn("Test does not work around a full hour")
       pending
-    } else {
+    else
       val today = LocalDate.now().toString
       val orderId = OrderId(s"#$today#ONCE-A-DAY")
       controller.api.addOrder(FreshOrder(orderId, js2012Workflow.path))
@@ -51,12 +50,8 @@ final class Cycle2Test extends OurTestSuite with ControllerAgentForScalaTest wit
       eventWatch.await[OrderCycleStarted](_.key == orderId)
       sleep(1.s)
       assert(eventWatch.eventsByKey[OrderEvent](orderId).count(_ == OrderCycleStarted) == 1)
-    }
-  }
-}
 
-object Cycle2Test
-{
+object Cycle2Test:
   private val logger = Logger[this.type]
 
   private val calendar = Calendar.jocStandard(CalendarPath("CALENDAR"), dateOffset = 0.h)
@@ -71,4 +66,3 @@ object Cycle2Test
           Ticking(1.h)))),
         Workflow.empty)),
     calendarPath = Some(calendar.path))
-}

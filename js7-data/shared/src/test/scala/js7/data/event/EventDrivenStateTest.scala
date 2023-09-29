@@ -10,11 +10,10 @@ import js7.data.event.KeyedEvent.NoKey
 /**
   * @author Joacim Zschimmer
   */
-final class EventDrivenStateTest extends OurTestSuite
-{
+final class EventDrivenStateTest extends OurTestSuite:
   private var s = TestState("")
 
-  "applyEvents" in {
+  "applyEvents" in:
     val stampedEvents =
       Stamped(1000L, Timestamp.ofEpochMilli(1), (NoKey <-: Added("("))) ::
       Stamped(2000L, Timestamp.ofEpochMilli(2), (NoKey <-: Added("ADDED"))) ::
@@ -25,9 +24,8 @@ final class EventDrivenStateTest extends OurTestSuite
     s = s.applyStampedEvents(stampedEvents).orThrow
 
     assert(s == TestState("(ADDED)"))
-  }
 
-  "EventNotApplicableProblem" in {
+  "EventNotApplicableProblem" in:
     assert(s.applyEvent(InvalidEvent) == Left(EventNotApplicableProblem(InvalidEvent, s)))
 
     val stampedEvents =
@@ -40,28 +38,21 @@ final class EventDrivenStateTest extends OurTestSuite
         EventNotApplicableProblem(InvalidEvent, TestState("(ADDED)MORE"))
           .withPrefix("Event 'Stamped(5000 1970-01-01T00:00:00.005Z InvalidEvent)' " +
             "cannot be applied to 'EventDrivenStateTest.TestCase':")))
-  }
-}
 
-object EventDrivenStateTest
-{
-  sealed trait TestEvent extends NoKeyEvent 
+object EventDrivenStateTest:
+  sealed trait TestEvent extends NoKeyEvent
 
   private case class Added(string: String) extends TestEvent
   private case object InvalidEvent extends TestEvent
 
   final case class TestState(string: String)
-  extends EventDrivenState[TestState, TestEvent]
-  {
+  extends EventDrivenState[TestState, TestEvent]:
     def companion = TestCase
 
     def applyEvent(keyedEvent: KeyedEvent[TestEvent]) =
-      keyedEvent match {
+      keyedEvent match
         case KeyedEvent(NoKey, Added(s)) =>
           Right(copy(string = string + s))
         case _ =>
           eventNotApplicable(keyedEvent)
-      }
-  }
   object TestCase extends EventDrivenState.Companion[TestState, TestEvent]
-}

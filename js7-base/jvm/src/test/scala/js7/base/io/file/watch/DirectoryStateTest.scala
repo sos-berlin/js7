@@ -7,9 +7,8 @@ import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted}
 import js7.base.io.file.watch.DirectoryState.Entry
 import js7.base.test.OurTestSuite
 
-final class DirectoryStateTest extends OurTestSuite
-{
-  "readDirectory" in {
+final class DirectoryStateTest extends OurTestSuite:
+  "readDirectory" in:
     withTemporaryDirectory("DirectoryStateTest-") { dir =>
       assert(DirectoryStateJvm.readDirectory(dir).isEmpty)
       dir / "TEST-1" := ""
@@ -20,9 +19,8 @@ final class DirectoryStateTest extends OurTestSuite
           Entry(Paths.get("TEST-1")),
           Entry(Paths.get("TEST-2")))))
     }
-  }
 
-  "applyAndReduceEvents" in {
+  "applyAndReduceEvents" in:
     assert(DirectoryState.empty.applyAndReduceEvents(Nil) == (Nil, DirectoryState.empty))
 
     var (events, state) = DirectoryState.empty.applyAndReduceEvents(Seq(
@@ -43,5 +41,3 @@ final class DirectoryStateTest extends OurTestSuite
       Entry(Paths.get("1")),
       Entry(Paths.get("3")),
       Entry(Paths.get("4")))))
-  }
-}

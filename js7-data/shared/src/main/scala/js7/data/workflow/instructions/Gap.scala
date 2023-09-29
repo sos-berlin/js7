@@ -9,19 +9,15 @@ import js7.data.workflow.Instruction
   * @author Joacim Zschimmer
   */
 final case class Gap(sourcePos: Option[SourcePos])
-extends Instruction
-{
+extends Instruction:
   def withoutSourcePos = copy(sourcePos = None)
 
   override def toString = "gap"
-}
 
-object Gap
-{
+object Gap:
   val empty = new Gap(None)
 
   def apply(sourcePos: Option[SourcePos] = None): Gap =
     sourcePos.fold(empty)(_ => new Gap(sourcePos))
 
   implicit val jsonCodec: Codec.AsObject[Gap] = deriveCodec
-}

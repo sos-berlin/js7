@@ -9,8 +9,7 @@ import js7.common.commandline.CommandLineArguments
 
 final case class Settings(admissions: Nel[Admission])
 
-object Settings
-{
+object Settings:
   private val defaultUserAndPassword = Option(UserAndPassword(UserId("demo"), SecretString("demo")))
 
   def parseArguments(args: Seq[String]): Settings =
@@ -26,4 +25,3 @@ object Settings
       Settings(
         Nel.unsafe(a.seqAs[Uri]("--controller=").map(Admission(_, userAndPassword))))
     }
-}

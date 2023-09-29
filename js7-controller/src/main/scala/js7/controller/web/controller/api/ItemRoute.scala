@@ -33,8 +33,7 @@ import monix.execution.Scheduler
 import scala.concurrent.duration.Deadline.now
 
 trait ItemRoute
-extends ControllerRouteProvider with EntitySizeLimitProvider
-{
+extends ControllerRouteProvider with EntitySizeLimitProvider:
   protected def actorSystem: ActorSystem
 
   protected def itemUpdater: ItemUpdater
@@ -46,8 +45,8 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
   private lazy val whenShuttingDownCompletion = new FutureCompletion(whenShuttingDown)
 
   final lazy val itemRoute: Route =
-    post {
-      pathEnd {
+    post:
+      pathEnd:
         authorizedUser(Set[Permission](ValidUserPermission, UpdateItemPermission)) { user =>
           withSizeLimit(entitySizeLimit) (
             entity(as[HttpEntity]) { httpEntity =>
@@ -88,20 +87,14 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
               }
             })
         }
-      }
-    }
 
-  private def verify(signedString: SignedString): Checked[Verified[SignableItem]] = {
+  private def verify(signedString: SignedString): Checked[Verified[SignableItem]] =
     val verified = itemUpdater.signedItemVerifier.verify(signedString)
     for verified <- verified do logger.info(Logger.SignatureVerified, verified.toString)
     verified
-  }
-}
 
-object ItemRoute
-{
+object ItemRoute:
   private val logger = Logger[this.type]
   private val emptyJsonObject = Json.obj()
 
   private case class ExitStreamException(problem: Problem) extends Exception
-}

@@ -14,26 +14,23 @@ import js7.data.item.{SourceType, VersionedItemPath}
   * @author Joacim Zschimmer
   */
 final class TestDockerEnvironment(agentPaths: Seq[AgentPath], temporaryDirectory: Path)
-extends AutoCloseable {
+extends AutoCloseable:
 
-  if exists(temporaryDirectory) then {
+  if exists(temporaryDirectory) then
     logger.warn(s"Deleting $temporaryDirectory")
     deleteDirectoryContentRecursively(temporaryDirectory)
-  }
 
   createDirectories(controllerDir / "config/private")
   createDirectories(controllerDir / "data")
-  for agentPath <- agentPaths do {
+  for agentPath <- agentPaths do
     createDirectories(agentDir(agentPath) / "config/private")
     createDirectories(agentDir(agentPath) / "config/executables")
     createDirectory(agentDir(agentPath) / "data")
-  }
 
-  def close(): Unit = {
+  def close(): Unit =
     deleteDirectoryContentRecursively(temporaryDirectory)
     try deleteIfExists(temporaryDirectory)
     catch { case t: IOException => logger.debug(s"Delete $temporaryDirectory: $t", t)}
-  }
 
   def controllerDir: Path =
     temporaryDirectory / "controller"
@@ -45,8 +42,6 @@ extends AutoCloseable {
     agentsDir / name.string
 
   def agentsDir = temporaryDirectory / "agents"
-}
 
-object TestDockerEnvironment {
+object TestDockerEnvironment:
   private val logger = Logger[this.type]
-}

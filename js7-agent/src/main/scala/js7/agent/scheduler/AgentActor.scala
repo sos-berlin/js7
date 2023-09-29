@@ -58,8 +58,7 @@ private[agent] final class AgentActor(
   clock: AlarmClock,
   agentConf: AgentConfiguration)
   (implicit protected val scheduler: Scheduler)
-extends Actor with Stash with SimpleStateActor
-{
+extends Actor with Stash with SimpleStateActor:
   import agentConf.{implicitAkkaAskTimeout, journalLocation}
   import context.{actorOf, watch}
   val journal = journalAllocated.allocatedThing
@@ -74,38 +73,32 @@ extends Actor with Stash with SimpleStateActor
   private def terminating = shutDownOnce.isDefined
   private val terminateCompleted = Promise[Completed]()
 
-  override def preStart() = {
+  override def preStart() =
     watch(journal.journalActor)
     super.preStart()
-  }
 
   override def postStop() =
-    logger.debugCall {
+    logger.debugCall:
       super.postStop()
-      if isResetting then {
+      if isResetting then
         journalLocation.deleteJournal(ignoreFailure = true)
-      }
       terminatePromise.trySuccess(
         DirectorTermination(
           restartJvm = shutDownOnce.toOption.fold(false)(_.restart),
           restartDirector = shutDownOnce.toOption.fold(false)(_.restartDirector)))
-    }
 
-  def receive = {
+  def receive =
     case Input.Start(recoveredAgentState) =>
       this.recoveredAgentState = recoveredAgentState
-      if recoveredAgentState.isDedicated then {
+      if recoveredAgentState.isDedicated then
         addOrderKeeper(recoveredAgentState.agentPath, recoveredAgentState.controllerId).orThrow
-      }
       become("ready")(ready)
       sender() ! Output.Ready
-  }
 
-  private def ready: Receive = {
+  private def ready: Receive =
     case cmd: Input.ExternalCommand =>
-      cmd.correlId.bind {
+      cmd.correlId.bind:
         executeExternalCommand(cmd)
-      }
 
     case ContinueReset(response) =>
       response.completeWith(terminateOrderKeeper(
@@ -117,20 +110,17 @@ extends Actor with Stash with SimpleStateActor
       context.stop(self)
 
     case Terminated(actor) if actor == journal.journalActor /*&& terminating*/ =>
-      if !terminating then {
+      if !terminating then
         // SwitchOver lets AgentOrderKeeper kill the JournalActor
         logger.error("JournalActor terminated unexpectedly")
         context.stop(self)
-      } else {
-        for _ <- terminateCompleted.future do {
+      else
+        for _ <- terminateCompleted.future do
           context.stop(self)
-        }
-      }
-  }
 
-  private def executeExternalCommand(externalCommand: Input.ExternalCommand): Unit = {
+  private def executeExternalCommand(externalCommand: Input.ExternalCommand): Unit =
     import externalCommand.{command, response}
-    command match {
+    command match
       case command: AgentCommand.ShutDown =>
         response.completeWith(
           if terminating then
@@ -139,7 +129,7 @@ extends Actor with Stash with SimpleStateActor
             terminateOrderKeeper(command))
 
       case AgentCommand.Reset(maybeAgentRunId) =>
-        maybeAgentRunId.fold(Checked.unit)(checkAgentRunId(_)) match {
+        maybeAgentRunId.fold(Checked.unit)(checkAgentRunId(_)) match
           case Left(AgentNotDedicatedProblem) =>
             response.success(Right(AgentCommand.Response.Accepted))
 
@@ -149,9 +139,9 @@ extends Actor with Stash with SimpleStateActor
           case Right(()) =>
             logger.info(s"❗ $command")
             isResetting = true
-            if terminating then {
+            if terminating then
               response.success(Right(AgentCommand.Response.Accepted/*???*/))
-            } else {
+            else
               dedicated.toOption
                 .fold(Task.unit)(dedicated => Task
                   .fromFuture(
@@ -174,8 +164,6 @@ extends Actor with Stash with SimpleStateActor
                       }
                   })
                 .runToFuture
-            }
-        }
 
       case AgentCommand.DedicateAgentDirector(directors, controllerId, controllerRunId, agentPath)
         if !terminating =>
@@ -209,13 +197,12 @@ extends Actor with Stash with SimpleStateActor
                       _: AgentCommand.ResetSubagent |
                       _: AgentCommand.ClusterSwitchOver) =>
         // TODO Check AgentRunId ?
-        dedicated.toOption match {
+        dedicated.toOption match
           case None =>
             response.success(Left(AgentNotDedicatedProblem))
           case Some(dedicated) =>
             dedicated.actor.forward(
               AgentOrderKeeper.Input.ExternalCommand(command, CorrelId.current, response))
-        }
 
       case command =>
         response.failure(
@@ -223,8 +210,6 @@ extends Actor with Stash with SimpleStateActor
             AgentIsShuttingDown.throwable
           else
             new RuntimeException(s"Unexpected command for AgentActor: $command"))
-    }
-  }
 
   private def dedicate(
     directors: Seq[SubagentId],
@@ -232,7 +217,7 @@ extends Actor with Stash with SimpleStateActor
     controllerRunId: ControllerRunId,
     agentPath: AgentPath)
   : Task[Checked[(AgentRunId, EventId)]] =
-    Task.defer {
+    Task.defer:
       // Command is idempotent until AgentState has been touched
       val agentRunId = AgentRunId(journal.journalId)
       journal
@@ -257,9 +242,8 @@ extends Actor with Stash with SimpleStateActor
           addOrderKeeper(agentPath, controllerId)
             .rightAs(agentRunId -> eventAndState._2.eventId)
         })
-    }
 
-  private def checkAgentPath(requestedAgentPath: AgentPath): Checked[Unit] = {
+  private def checkAgentPath(requestedAgentPath: AgentPath): Checked[Unit] =
     val agentState = journal.unsafeCurrentState()
     if !agentState.isDedicated then
       Left(AgentNotDedicatedProblem)
@@ -267,58 +251,51 @@ extends Actor with Stash with SimpleStateActor
       Left(AgentPathMismatchProblem(requestedAgentPath, agentState.agentPath))
     else
       RightUnit
-  }
 
-  private def checkAgentRunId(requestedAgentRunId: AgentRunId): Checked[Unit] = {
+  private def checkAgentRunId(requestedAgentRunId: AgentRunId): Checked[Unit] =
     val agentState = journal.unsafeCurrentState()
     if !agentState.isDedicated then
       Left(AgentNotDedicatedProblem)
-    else if requestedAgentRunId != agentState.meta.agentRunId then {
+    else if requestedAgentRunId != agentState.meta.agentRunId then
       val problem = AgentRunIdMismatchProblem(agentState.meta.agentPath)
       logger.warn(
         s"$problem, requestedAgentRunId=$requestedAgentRunId, agentRunId=${agentState.meta.agentRunId}")
       Left(problem)
-    } else
+    else
       Checked.unit
-  }
 
-  private def checkControllerRunId(requestedControllerRunId: ControllerRunId): Checked[Unit] = {
+  private def checkControllerRunId(requestedControllerRunId: ControllerRunId): Checked[Unit] =
     val agentState = journal.unsafeCurrentState()
     if !agentState.isDedicated then
       Left(AgentNotDedicatedProblem)
-    else if agentState.meta.controllerRunId.exists(_ != requestedControllerRunId) then {
+    else if agentState.meta.controllerRunId.exists(_ != requestedControllerRunId) then
       val problem = Problem("ControllerRunId does not match")
       logger.warn(
         s"$problem, requestedControllerRunId=$requestedControllerRunId, controllerRunId=${agentState.meta.controllerRunId}")
       Left(problem)
-    } else
+    else
       Checked.unit
-  }
 
   private def continueTermination(): Unit =
-    if terminating then {
-      if dedicated.isEmpty then {
+    if terminating then
+      if dedicated.isEmpty then
         // When no AgentOrderKeeper has been dedicated, we need to stop the journal ourselve
         //journal.journalActor ! JournalActor.Input.Terminate
         context.stop(self)
-      }
-    }
 
   private def terminateOrderKeeper(shutDown: AgentCommand.ShutDown)
-  : Future[Checked[AgentCommand.Response.Accepted]] = {
+  : Future[Checked[AgentCommand.Response.Accepted]] =
     logger.trace("terminateOrderKeeper")
     if !shutDownOnce.trySet(shutDown) then
       Future.successful(Left(AgentDirectorIsShuttingDownProblem))
     else
-      dedicated.toOption match {
+      dedicated.toOption match
         case None =>
           continueTermination()
           Future.successful(Right(AgentCommand.Response.Accepted))
 
         case (Some(dedicated)) =>
           terminateAgentOrderKeeper(dedicated, shutDown)
-      }
-  }
 
   private def terminateAgentOrderKeeper(dedicated: Dedicated, shutDown: AgentCommand.ShutDown)
   : Future[Checked[AgentCommand.Response.Accepted]] =
@@ -331,11 +308,11 @@ extends Actor with Stash with SimpleStateActor
       }
 
   private def addOrderKeeper(agentPath: AgentPath, controllerId: ControllerId): Checked[Unit] =
-    synchronized {
+    synchronized:
       if terminating then
         Left(AgentDirectorIsShuttingDownProblem)
       else
-        dedicated.toOption match {
+        dedicated.toOption match
           case Some(Dedicated(`agentPath`, `controllerId`, _)) =>
             logger.debug("❓ Already dedicated")
             Checked.unit
@@ -364,8 +341,6 @@ extends Actor with Stash with SimpleStateActor
             watch(actor)
             dedicated := Dedicated(agentPath, controllerId, actor)
             Checked.unit
-        }
-    }
 
   /** Emits the event, and ClusterSettingUpdated if needed, in separate transaction. */
   private def changeSubagentAndClusterNode(event: ItemAttachedToMe): Task[Checked[Unit]] =
@@ -407,24 +382,20 @@ extends Actor with Stash with SimpleStateActor
 
 
   override def toString = "AgentActor"
-}
 
-object AgentActor
-{
+object AgentActor:
   private val logger = Logger[this.type]
 
-  object Input {
+  object Input:
     final case class Start(agentState: AgentState)
     final case class ExternalCommand(
       userId: UserId,
       command: AgentCommand,
       correlId: CorrelId,
       response: Promise[Checked[AgentCommand.Response]])
-  }
 
-  object Output {
+  object Output:
     case object Ready
-  }
 
   private final case class Dedicated(
     agentPath: AgentPath,
@@ -434,4 +405,3 @@ object AgentActor
   private case class ContinueReset(response: Promise[Checked[AgentCommand.Response]])
 
   private case object AgentDirectorIsShuttingDownProblem extends Problem.ArgumentlessCoded
-}

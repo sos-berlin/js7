@@ -7,9 +7,9 @@ import js7.tester.CirceJsonTester.testJson
 /**
   * @author Joacim Zschimmer
   */
-final class JavaInformationTest extends OurTestSuite {
+final class JavaInformationTest extends OurTestSuite:
 
-  "JSON 1" in {
+  "JSON 1" in:
     testJson(JavaInformation(
       version = "x.y.z",
       availableProcessors = 8,
@@ -27,5 +27,3 @@ final class JavaInformationTest extends OurTestSuite {
         "test": "TEST"
       }
     }""")
-  }
-}

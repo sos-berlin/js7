@@ -10,8 +10,7 @@ import js7.data_for_java.vavr.Standards.VEither
 final case class JScheduleCalculator(asScala: ScheduleCalculator)
 extends JScheduleSimulator
 
-object JScheduleCalculator
-{
+object JScheduleCalculator:
   @Nonnull
   def checked(
     @Nonnull schedule: JSchedule,
@@ -21,4 +20,3 @@ object JScheduleCalculator
     io.vavr.control.Either.right(
       JScheduleCalculator(
       ScheduleCalculator(schedule.asScala, zone, dateOffset.toFiniteDuration)))
-}

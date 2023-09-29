@@ -14,8 +14,7 @@ import js7.data.workflow.instructions.ConsumeNotices
 // TODO Replace F-type polymorphism with a typeclass ? https://tpolecat.github.io/2015/04/29/f-bounds.html
 trait EventDrivenStateView[Self <: EventDrivenStateView[Self, E], E <: Event]
 extends EventDrivenState[Self, E]
-with StateView
-{
+with StateView:
   this: Self =>
 
   protected def update(
@@ -26,7 +25,7 @@ with StateView
   : Checked[Self]
 
   protected def applyOrderEvent(orderId: OrderId, event: OrderEvent): Checked[Self] =
-    event match {
+    event match
       case orderAdded: OrderAdded =>
         addOrder(Order.fromOrderAdded(orderId, orderAdded))
 
@@ -42,13 +41,12 @@ with StateView
       case _: OrderStdWritten =>
         // OrderStdWritten is not applied. But check OrderId.
         idToOrder.checked(orderId).rightAs(this)
-    }
 
   private def applyOrderCoreEvent(orderId: OrderId, event: OrderCoreEvent): Either[Problem, Self] =
     for
       previousOrder <- idToOrder.checked(orderId)
       updatedOrder <- previousOrder.applyEvent(event)
-      result <- event match {
+      result <- event match
         case OrderDetached =>
           if isAgent then
             update(removeOrders = orderId :: Nil)
@@ -63,7 +61,7 @@ with StateView
           if isAgent then
             eventNotApplicable(orderId <-: event)
           else
-            previousOrder.state match {
+            previousOrder.state match
               case forked: Order.Forked =>
                 update(
                   addOrders = updatedOrder :: Nil,
@@ -72,11 +70,10 @@ with StateView
               case state =>
                 Left(Problem(
                   s"For event $event, $orderId must be in Forked state, not: $state"))
-            }
 
         case event: OrderLockEvent =>
           event
-            .match {
+            .match
               case OrderLocksQueued(demands) =>
                 foreachLockDemand(demands)(_
                   .enqueue(orderId, _))
@@ -92,7 +89,6 @@ with StateView
               case OrderLocksReleased(lockPaths) =>
                 foreachLock(lockPaths)(_
                   .release(orderId))
-            }
             .flatMap(lockStates =>
               update(
                 addOrders = updatedOrder :: Nil,
@@ -127,7 +123,6 @@ with StateView
 
         case _ =>
           update(addOrders = updatedOrder :: Nil)
-      }
     yield result
 
   protected def addOrder(order: Order[Order.State]): Checked[Self] =
@@ -145,7 +140,7 @@ with StateView
     event: OrderNoticeEvent)
   : Checked[Self] =
     event
-      .match {
+      .match
         case OrderNoticePostedV2_3(notice) =>
           orderIdToBoardState(orderId)
             .flatMap(boardState => boardState.addNoticeV2_3(notice))
@@ -169,10 +164,9 @@ with StateView
               .flatMap(_.addExpectation(expected.noticeId, orderId)))
 
         case OrderNoticesRead =>
-          previousOrder.ifState[Order.ExpectingNotices] match {
+          previousOrder.ifState[Order.ExpectingNotices] match
             case None => Right(Nil)
             case Some(previousOrder) => removeNoticeExpectation(previousOrder)
-          }
 
         case OrderNoticesConsumptionStarted(consumptions) =>
           consumptions
@@ -190,17 +184,14 @@ with StateView
                 .flatten
                 .flatMap(_.traverse(_
                   .removeConsumption(previousOrder.id, succeeded = !failed))))
-      }
     .flatMap(o => update(
       addItemStates = o))
 
   private def removeNoticeExpectation(order: Order[Order.State]): Checked[Seq[BoardState]] =
-    order.ifState[Order.ExpectingNotices] match {
+    order.ifState[Order.ExpectingNotices] match
       case None => Right(Nil)
       case Some(order) =>
         order.state.expected
           .traverse(expected => keyTo(BoardState)
             .checked(expected.boardPath)
             .flatMap(_.removeExpectation(expected.noticeId, order.id)))
-    }
-}

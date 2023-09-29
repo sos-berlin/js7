@@ -45,11 +45,10 @@ import monix.reactive.Observable
 import scala.concurrent.duration.Deadline.now
 import scala.util.Try
 
-final class ControllerRepoTest extends OurTestSuite
-{
+final class ControllerRepoTest extends OurTestSuite:
   import ControllerRepoTest.*
 
-  "test" in {
+  "test" in:
     val provider = new DirectoryProvider(
       agentPaths = List(TestAgentPath),
       agentConfig = config"js7.job.execution.signed-script-injection-allowed = on",
@@ -70,7 +69,7 @@ final class ControllerRepoTest extends OurTestSuite
 
       provider.runAgents() { _ =>
         provider.runController() { controller =>
-          withClue("Add Workflow: ") {
+          withClue("Add Workflow: "):
             val v = V1
             val workflow = testWorkflow(v) withId AWorkflowPath ~ v
             val signed = itemSigner.sign(workflow)
@@ -84,24 +83,21 @@ final class ControllerRepoTest extends OurTestSuite
             // Empty UpdateRepo with same VersionId is rejected due to duplicate VersionId
             assert(controller.api.updateRepo(v, Nil).await(99.s) ==
               Left(DuplicateKey("VersionId", v)))
-          }
 
-          withClue("Add another Workflow: ") {
+          withClue("Add another Workflow: "):
             val v = V2
             val workflow = testWorkflow(v) withId BWorkflowPath ~ v
             val signed = itemSigner.sign(workflow)
             controller.api.updateRepo(v, Seq(signed)).await(99.s).orThrow
             controller.runOrder(FreshOrder(OrderId("B"), workflow.path))
-          }
 
-          withClue("Change first Workflow: ") {
+          withClue("Change first Workflow: "):
             val v = V3
             val workflow = testWorkflow(v) withId AWorkflowPath ~ v
             controller.api.updateRepo(v, Seq(itemSigner.sign(workflow))).await(99.s).orThrow
             runOrder(controller, workflow.id, OrderId("A-3"))
-          }
 
-          withClue("Delete a workflow containing orders: ") {
+          withClue("Delete a workflow containing orders: "):
             val v = VersionId("WITH-ORDER")
             val workflow = Workflow(WorkflowPath("WITH-ORDER") ~ v, Seq(Prompt(StringConstant(""))))
             controller.api.updateRepo(v, Seq(itemSigner.sign(workflow)))
@@ -119,7 +115,6 @@ final class ControllerRepoTest extends OurTestSuite
               .await(99.s).orThrow
             controller.eventWatch.await[OrderDeleted](_.key == orderId)
             controller.eventWatch.await[ItemDeleted](_.event.key == workflow.id)
-          }
         }
 
         // Recovery
@@ -129,13 +124,12 @@ final class ControllerRepoTest extends OurTestSuite
           runOrder(controller, BWorkflowPath ~ V2, OrderId("B-AGAIN"))
 
           // V4 - Add and use a new workflow
-          locally {
+          locally:
             val v = V4
             val workflow = testWorkflow(v) withId CWorkflowPath ~ v
             val signed = itemSigner.sign(workflow)
             controller.api.updateRepo(v, Seq(signed)).await(99.s).orThrow
             controller.runOrder(FreshOrder(OrderId("C"), workflow.path))
-          }
 
           // Change workflow
           provider.updateVersionedItems(controller, V5, testWorkflow(V5).withId(CWorkflowPath) :: Nil)
@@ -171,21 +165,19 @@ final class ControllerRepoTest extends OurTestSuite
         }
       }
 
-      def runOrder(controller: TestController, workflowId: WorkflowId, orderId: OrderId): Unit = {
+      def runOrder(controller: TestController, workflowId: WorkflowId, orderId: OrderId): Unit =
         val order = FreshOrder(orderId, workflowId.path)
         controller.api.addOrder(order).await(99.s).orThrow
         awaitOrder(controller, orderId, workflowId)
-      }
 
-      def awaitOrder(controller: TestController, orderId: OrderId, workflowId: WorkflowId): Unit = {
+      def awaitOrder(controller: TestController, orderId: OrderId, workflowId: WorkflowId): Unit =
         val orderAdded: OrderAdded = controller.eventWatch.await[OrderAdded](_.key == orderId).head.value.event
         assert(orderAdded.workflowId == workflowId)
         val written = controller.eventWatch.await[OrderStdoutWritten](_.key == orderId).head.value.event
         assert(written.chunk contains s"/VERSION-${workflowId.versionId.string}/")
         controller.eventWatch.await[OrderFinished](_.key == orderId)
-      }
 
-      def testSpeed(uri: Uri, credentials: Option[UserAndPassword], n: Int, itemCount: Int): Unit = {
+      def testSpeed(uri: Uri, credentials: Option[UserAndPassword], n: Int, itemCount: Int): Unit =
         val genStopwatch = new Stopwatch
         val operations = generateAddItemOperations(itemCount)
         logInfo(genStopwatch.itemsPerSecondString(itemCount, "items signed"))
@@ -234,9 +226,8 @@ final class ControllerRepoTest extends OurTestSuite
           })
           .runToFuture
           .await(1.h)
-      }
 
-      def generateAddItemOperations(n: Int): Seq[ItemOperation] = {
+      def generateAddItemOperations(n: Int): Seq[ItemOperation] =
         val workflow0 = Workflow.of(
           Prompt(StringConstant("")),
           Execute(WorkflowJob(TestAgentPath, ShellScriptExecutable(": # " + "BIG "*256))))
@@ -249,25 +240,19 @@ final class ControllerRepoTest extends OurTestSuite
           .prepend(AddVersion(v))
           .toL(Vector)
           .await(99.s)
-      }
 
-      def deleteItemOperations(n: Int): Observable[ItemOperation] = {
+      def deleteItemOperations(n: Int): Observable[ItemOperation] =
         val v = VersionId(s"SPEED-${versionCounter.incrementAndGet()}")
         (Observable(AddVersion(v)) ++
           Observable.fromIterable(1 to n)
             .map(i => RemoveVersioned(WorkflowPath(s"WORKFLOW-$i"))))
-      }
     }
-  }
 
-  private def logInfo(message: String): Unit = {
+  private def logInfo(message: String): Unit =
     logger.info(message)
     info(message)
-  }
-}
 
-object ControllerRepoTest
-{
+object ControllerRepoTest:
   private val logger = Logger[this.type]
 
   private val userAndPassword = UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD"))
@@ -284,4 +269,3 @@ object ControllerRepoTest
 
   private def testWorkflow(versionId: VersionId) = Workflow.of(
     Execute(WorkflowJob(TestAgentPath, RelativePathExecutable(s"EXECUTABLE-V${versionId.string}$sh"))))
-}

@@ -13,22 +13,19 @@ import scala.util.Random
 /**
  * @author Joacim Zschimmer
  */
-final class AkkasTest extends OurTestSuite
-{
-  "byteStringToTruncatedString" in {
+final class AkkasTest extends OurTestSuite:
+  "byteStringToTruncatedString" in:
     val byteString = ByteString(0, 1, 30, 31)
     assert(byteStringToTruncatedString(byteString) == "4 bytes 00 01 1e 1f")
-  }
 
-  "Big byteStringToTruncatedString" in {
+  "Big byteStringToTruncatedString" in:
     val byteString = ByteString.fromInts((0 until 1000)*)
     val string = byteStringToTruncatedString(byteString)
     assert(string startsWith "1000 bytes 00 01 02 03 04 ")
     assert(string endsWith " ...")
     assert(byteStringToTruncatedString(byteString).length < 330)
-  }
 
-  "encodeAsActorName" in {
+  "encodeAsActorName" in:
     intercept[IllegalArgumentException] { encodeAsActorName("") }
     assert(encodeAsActorName("a") == "a")
     assert(encodeAsActorName("$/$") == "%24%2F$")
@@ -43,17 +40,14 @@ final class AkkasTest extends OurTestSuite
     assert(encodeAsActorName("()") == "%28%29")
 
     check(((32 to 127) ++ (160 to 1000)).map(_.toChar).toString)
-    for _ <- 1 to 10000 do {
+    for _ <- 1 to 10000 do
       check(Vector.fill(100) { 32 + Random.nextInt(95) } .toString)
-    }
-    def check(string: String): Unit = {
+    def check(string: String): Unit =
       val actorName = encodeAsActorName(string)
       assert(ActorPath.isValidPathElement(actorName))
       assert(decodeActorName(actorName) == string)
-    }
-  }
 
-  "AkkaPath pretty" in {
+  "AkkaPath pretty" in:
     assert(ActorPath.fromString("akka://ActorSystem/a/b/c").pretty == "akka://ActorSystem/a/b/c")
     assert(ActorPath.fromString("akka://ActorSystem/a/b").pretty == "akka://ActorSystem/a/b")
     assert(ActorPath.fromString("akka://ActorSystem/%24%2F$").pretty == "akka://ActorSystem/$/$")
@@ -63,21 +57,18 @@ final class AkkasTest extends OurTestSuite
     assert(ActorPath.fromString("akka://ActorSystem/a%3Fb=!&c=%C3%B6%5B%5D%7B%7D").pretty == "akka://ActorSystem/a?b=!&c=ö[]{}")
     assert(ActorPath.fromString("akka://ActorSystem/%28%29").pretty == "akka://ActorSystem/()")
     assert(ActorPath.fromString("akka://ActorSystem/%F0%9F%94%BA%7C%F0%9F%A5%95").pretty == "akka://ActorSystem/🔺|🥕")
-  }
 
-  "SupervisorStrategy" in {
+  "SupervisorStrategy" in:
     val actorSystem = newActorSystem("AkkasTest")
-    try {
+    try
       actorSystem.actorOf(Props { new Actor {
         def receive = {
           case body: Function0[?] => body()
         }
       }})
-    }
     finally Akkas.terminateAndWait(actorSystem, 99.s)
-  }
 
-  "actorSystemResource" in {
+  "actorSystemResource" in:
     var _actorSystem: ActorSystem = null
     actorSystemResource("AkkasTest")
       .use(actorSystem => Task {
@@ -85,5 +76,3 @@ final class AkkasTest extends OurTestSuite
       })
       .await(99.s)
     assert(_actorSystem.whenTerminated.value.get.get.isInstanceOf[akka.actor.Terminated])
-  }
-}

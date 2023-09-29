@@ -8,9 +8,8 @@ import js7.data.execution.workflow.instructions.ScheduleTester
 import js7.data.workflow.instructions.Schedule.{Continuous, Periodic, Ticking}
 import js7.tester.CirceJsonTester.testJson
 
-final class ScheduleTest extends OurTestSuite
-{
-  "JSON" in {
+final class ScheduleTest extends OurTestSuite:
+  "JSON" in:
     testJson(ScheduleTester.schedule,
       json"""
       {
@@ -84,26 +83,21 @@ final class ScheduleTest extends OurTestSuite
           }
         ]
       }""")
-  }
 
-  "Periodic" in {
+  "Periodic" in:
     assert(Periodic.checked(1.h, Nil) == Left(Problem("Invalid Periodic arguments")))
     assert(Periodic.checked(1.h, Seq(1.h)) == Left(Problem("Invalid Periodic arguments")))
     assert(Periodic.checked(1.h, Seq(-1.s)) == Left(Problem("Invalid Periodic arguments")))
     assert(Periodic.checked(1.h, Seq(1.s, 1.s)) == Left(Problem("Invalid Periodic arguments")))
-  }
 
-  "Ticking" in {
+  "Ticking" in:
     assert(Ticking.checked(-1.s) == Left(Problem("Invalid Ticking arguments")))
     assert(Ticking.checked(0.s) == Left(Problem("Invalid Ticking arguments")))
     assert(Ticking.checked(1.s) == Right(Ticking(1.s)))
-  }
 
-  "Continuous" in {
+  "Continuous" in:
     assert(Continuous.checked() == Left(Problem("Continuous: limit or pause must be set")))
     assert(Continuous.checked(pause = 0.s) == Left(Problem("Continuous: limit or pause must be set")))
     assert(Continuous.checked(limit = Some(-1)) == Left(Problem("Invalid Continuous arguments")))
     assert(Continuous.checked(pause = -1.s) == Left(Problem("Invalid Continuous arguments")))
     assert(Continuous.checked(pause = 0.s, limit = Some(0)) == Right(Continuous(pause = 0.s, limit = Some(0))))
-  }
-}

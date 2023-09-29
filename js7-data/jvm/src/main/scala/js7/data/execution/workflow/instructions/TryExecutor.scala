@@ -10,7 +10,7 @@ import js7.data.workflow.position.*
 import js7.data.workflow.position.BranchPath.syntax.*
 
 private[instructions] final class TryExecutor(protected val service: InstructionExecutorService)
-extends PositionInstructionExecutor with EventInstructionExecutor {
+extends PositionInstructionExecutor with EventInstructionExecutor:
 
   type Instr = TryInstruction
   val instructionClass = classOf[TryInstruction]
@@ -29,4 +29,3 @@ extends PositionInstructionExecutor with EventInstructionExecutor {
 
   override def subworkflowEndToPosition(parentPos: Position) =
     Some(parentPos.increment)
-}

@@ -7,22 +7,16 @@ import js7.base.log.CorrelIdWrappedTest.*
 import js7.base.test.OurTestSuite
 import js7.tester.CirceJsonTester.*
 
-final class CorrelIdWrappedTest extends OurTestSuite
-{
-  "JSON" in {
+final class CorrelIdWrappedTest extends OurTestSuite:
+  "JSON" in:
     testJson(
       CorrelIdWrapped(CorrelId("_CORREL_"), A(7)),
       json"""{
         "correlId": "_CORREL_",
         "number": 7
       }""")
-  }
-}
 
-object CorrelIdWrappedTest
-{
+object CorrelIdWrappedTest:
   final case class A(number: Int)
-  object A {
+  object A:
     implicit val jsonCode: Codec.AsObject[A] = deriveCodec[A]
-  }
-}

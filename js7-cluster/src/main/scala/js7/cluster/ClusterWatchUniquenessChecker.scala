@@ -8,8 +8,7 @@ import js7.data.cluster.{ClusterWatchId, ClusterWatchRunId}
 import org.jetbrains.annotations.TestOnly
 import scala.collection.mutable
 
-final class ClusterWatchUniquenessChecker(memorySize: Int)
-{
+final class ClusterWatchUniquenessChecker(memorySize: Int):
   require(memorySize >= 1)
 
   private val usedRunIds = mutable.Queue.empty[ClusterWatchRunId]
@@ -17,39 +16,32 @@ final class ClusterWatchUniquenessChecker(memorySize: Int)
   private var idToRunId = Map.empty[ClusterWatchId, ClusterWatchRunId]
 
   def check(clusterWatchId: ClusterWatchId, clusterWatchRunId: ClusterWatchRunId): Checked[Unit] =
-    synchronized {
+    synchronized:
       if idToRunId.get(clusterWatchId) contains clusterWatchRunId then
         Checked.unit
-      else if idToRunId.values.exists(_ == clusterWatchRunId) || isUsedRunId(clusterWatchRunId) then {
+      else if idToRunId.values.exists(_ == clusterWatchRunId) || isUsedRunId(clusterWatchRunId) then
         // Only in the weird case, that the same clusterWatchRunId has another clusterWatchId
         val problem = ClusterWatchIdNotUniqueProblem(clusterWatchId, clusterWatchRunId)
         logger.warn(problem.toString)
         Left(problem)
-      } else {
+      else
         logger.debug(s"Remember $clusterWatchId $clusterWatchRunId")
         idToRunId = idToRunId.updated(clusterWatchId, clusterWatchRunId)
-        if usedRunIds.length >= memorySize then {
+        if usedRunIds.length >= memorySize then
           isUsedRunId -= usedRunIds.dequeue()
-        }
         usedRunIds += clusterWatchRunId
         isUsedRunId += clusterWatchRunId
         Checked.unit
-      }
-    }
 
   @TestOnly private[cluster] def test(
     clusterWatchId: ClusterWatchId,
     clusterWatchRunId: ClusterWatchRunId)
-  : Checked[Unit] = {
+  : Checked[Unit] =
     val result = check(clusterWatchId, clusterWatchRunId)
     assert(usedRunIds.sizeIs == isUsedRunId.size
       && usedRunIds.toSet == isUsedRunId
       && idToRunId.values.toSet.size == idToRunId.size)
     result
-  }
-}
 
-object ClusterWatchUniquenessChecker
-{
+object ClusterWatchUniquenessChecker:
   private val logger = Logger[this.type]
-}

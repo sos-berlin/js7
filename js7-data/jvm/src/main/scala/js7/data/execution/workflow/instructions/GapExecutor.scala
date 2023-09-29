@@ -7,7 +7,7 @@ import js7.data.state.StateView
 import js7.data.workflow.instructions.Gap
 
 private[instructions] final class GapExecutor(protected val service: InstructionExecutorService)
-extends EventInstructionExecutor {
+extends EventInstructionExecutor:
 
   type Instr = Gap
   val instructionClass = classOf[Gap]
@@ -17,4 +17,3 @@ extends EventInstructionExecutor {
       Left(Problem.pure(s"Gap instruction but order is not attached to an agent: $order"))
     else
       Right((order.id <-: OrderDetachable) :: Nil)
-}

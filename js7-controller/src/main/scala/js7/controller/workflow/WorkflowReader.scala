@@ -11,18 +11,15 @@ import js7.data.workflow.{Workflow, WorkflowId, WorkflowParser}
 /**
   * @author Joacim Zschimmer
   */
-object WorkflowReader extends VersionedItemReader
-{
+object WorkflowReader extends VersionedItemReader:
   val companion: Workflow.type = Workflow
 
-  def read(workflowId: WorkflowId, source: ByteArray) = {
+  def read(workflowId: WorkflowId, source: ByteArray) =
     case t: SourceType.JsonLike =>
       readAnonymousJsonLike(t, source).map(_ withId workflowId)
 
     case SourceType.Txt =>
       WorkflowParser.parse(source.utf8String).map(_ withId workflowId)
-  }
 
   override def convertFromJson(json: Json): Checked[Workflow] =
     Workflow.topJsonDecoder.decodeJson(json).toChecked
-}

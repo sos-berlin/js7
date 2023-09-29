@@ -8,13 +8,10 @@ import js7.tester.CirceJsonTester.*
 /**
   * @author Joacim Zschimmer
   */
-final class SnapshotMetaTest extends OurTestSuite
-{
-  "SnapshotEventId" in {
+final class SnapshotMetaTest extends OurTestSuite:
+  "SnapshotEventId" in:
     testJson[SnapshotMeta](SnapshotEventId(1000L),
       json"""{
         "TYPE": "SnapshotEventId",
         "eventId": 1000
       }""")
-  }
-}

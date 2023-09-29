@@ -9,9 +9,8 @@ import js7.journal.files.JournalFile.{anyJournalFilePattern, garbagePattern}
 /**
   * @author Joacim Zschimmer
   */
-final class JournalFileTest extends OurTestSuite
-{
-  "properLength" in {
+final class JournalFileTest extends OurTestSuite:
+  "properLength" in:
     val file = createTempFile("JournalFileTest-", ".tmp")
     assert(JournalFile(0, file).properLength == 0)
 
@@ -25,13 +24,11 @@ final class JournalFileTest extends OurTestSuite
     assert(JournalFile(0, file).properLength == 0)
 
     delete(file)
-  }
 
-  "toFile" in {
+  "toFile" in:
     assert(JournalFile.toFile(Paths.get("DIR/NAME"), 123) == Paths.get("DIR/NAME--123.journal"))
-  }
 
-  "maybeJournalfile" in {
+  "maybeJournalfile" in:
     val matcher = new JournalFile.Matcher(Paths.get("NAME"))
     assert(matcher.checkedFileEventId(Paths.get("NAME--0.journal")) == Right(0))
     assert(matcher.checkedFileEventId(Paths.get("NAME--1112223334445556667.journal")) == Right(1112223334445556667L))
@@ -41,9 +38,8 @@ final class JournalFileTest extends OurTestSuite
     assert(matcher.checkedFileEventId(Paths.get("NAME--.journal")).isLeft)
     assert(matcher.checkedFileEventId(Paths.get("OTHER--0.journal")).isLeft)
     assert(matcher.checkedFileEventId(Paths.get("--0.journal")).isLeft)
-  }
 
-  "anyJournalFilePattern" in {
+  "anyJournalFilePattern" in:
     val pattern = anyJournalFilePattern(Paths.get("NAME"))
     assert(pattern.matcher("NAME-journal").matches)
     assert(pattern.matcher("NAME--0.journal").matches)
@@ -52,9 +48,8 @@ final class JournalFileTest extends OurTestSuite
     assert(pattern.matcher("NAME--1000.journal~GARBAGE").matches)
     assert(pattern.matcher("NAME--1000.journal.tmp").matches)
     assert(!pattern.matcher("NAME--1000.journal.gz").matches)
-  }
 
-  "garbagePattern" in {
+  "garbagePattern" in:
     val pattern = garbagePattern(Paths.get("NAME"))
     assert(!pattern.matcher("NAME--0.journal").matches)
     assert(pattern.matcher("NAME--0.journal.tmp").matches)
@@ -65,5 +60,3 @@ final class JournalFileTest extends OurTestSuite
     assert(pattern.matcher("NAME--123456789.journal.tmp").matches)
     //assert(pattern.matcher("NAME--123456789.journal~").matches)
     //assert(pattern.matcher("NAME--123456789.journal~XX").matches)
-  }
-}

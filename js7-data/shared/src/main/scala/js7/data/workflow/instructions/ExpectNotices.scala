@@ -10,17 +10,13 @@ import js7.data.source.SourcePos
 final case class ExpectNotices(
   boardPaths: BoardPathExpression,
   sourcePos: Option[SourcePos] = None)
-extends ExpectOrConsumeNoticesInstruction
-{
+extends ExpectOrConsumeNoticesInstruction:
   def withoutSourcePos = copy(sourcePos = None)
 
   def referencedBoardPaths = boardPaths.boardPaths
 
   def fulfilledEvents(order: Order[Order.State], ignored: Vector[OrderNoticesExpected.Expected]) =
     OrderNoticesRead :: OrderMoved(order.position.increment) :: Nil
-}
 
-object ExpectNotices
-{
+object ExpectNotices:
   implicit val jsonCodec: Codec.AsObject[ExpectNotices] = ConfiguredCodec.derive(useDefaults = true)
-}

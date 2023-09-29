@@ -6,12 +6,9 @@ import js7.common.akkahttp.CirceJsonSupport.*
 import js7.controller.web.common.ControllerRouteProvider
 import js7.journal.watch.EventWatch
 
-trait JournalInfoRoute extends ControllerRouteProvider
-{
+trait JournalInfoRoute extends ControllerRouteProvider:
   protected def eventWatch: EventWatch
 
   final lazy val journalInfoRoute: Route =
-    pathEnd {
+    pathEnd:
       complete(eventWatch.journalInfo)
-    }
-}

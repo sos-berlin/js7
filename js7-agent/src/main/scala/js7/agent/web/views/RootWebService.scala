@@ -14,20 +14,15 @@ import monix.execution.Scheduler
 /**
  * @author Joacim Zschimmer
  */
-trait RootWebService extends AgentRouteProvider {
+trait RootWebService extends AgentRouteProvider:
 
   protected def agentOverview: Task[AgentOverview]
 
   private implicit def implicitScheduler: Scheduler = scheduler
 
   protected final lazy val apiRootRoute: Route =
-    pathEnd {
-      get {
-        respondWithHeader(`Cache-Control`(`max-age`(0))) {
-          completeTask {
+    pathEnd:
+      get:
+        respondWithHeader(`Cache-Control`(`max-age`(0))):
+          completeTask:
             agentOverview
-          }
-        }
-      }
-    }
-}

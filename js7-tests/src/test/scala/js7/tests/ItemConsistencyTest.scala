@@ -24,8 +24,7 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 
-final class ItemConsistencyTest extends OurTestSuite with ControllerAgentForScalaTest
-{
+final class ItemConsistencyTest extends OurTestSuite with ControllerAgentForScalaTest:
   override protected def controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     """
@@ -35,16 +34,15 @@ final class ItemConsistencyTest extends OurTestSuite with ControllerAgentForScal
 
   import directoryProvider.itemSigner
 
-  "Adding a FileWatch with missing Workflow is rejected" in {
+  "Adding a FileWatch with missing Workflow is rejected" in:
     val checked = controller.api
       .updateItems(Observable(AddOrChangeSimple(fileWatch)))
       .await(99.s)
     assert(checked == Left(Problem.Combined(Seq(
       MissingReferencedItemProblem(fileWatch.path, agentPath),
       MissingReferencedItemProblem(fileWatch.path, workflow.path)))))
-  }
 
-  "Workflow consistency" in {
+  "Workflow consistency" in:
     val checked = controller.api
       .updateItems(Observable(
         AddVersion(versionId),
@@ -65,18 +63,14 @@ final class ItemConsistencyTest extends OurTestSuite with ControllerAgentForScal
         AddOrChangeSigned(itemSigner.sign(workflow).signedString)))
       .await(99.s)
       .orThrow
-  }
 
-  "Adding the FileWatch" in {
+  "Adding the FileWatch" in:
     controller.api
       .updateItems(Observable(AddOrChangeSimple(fileWatch)))
       .await(99.s)
       .orThrow
-  }
-}
 
-object ItemConsistencyTest
-{
+object ItemConsistencyTest:
   private val agentPath = AgentPath("AGENT")
   private val subagentId = SubagentId("SUBAGENT")
   private val lock = Lock(LockPath("LOCK"))
@@ -90,4 +84,3 @@ object ItemConsistencyTest
 
   private val fileWatch = FileWatch(OrderWatchPath("ORDER-WATCH"), workflow.path, agentPath,
     expr("'/dev/null'"))
-}

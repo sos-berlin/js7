@@ -55,8 +55,7 @@ extends ServiceProviderRoute
 with WebLogDirectives
 with ClusterNodeRouteBindings[ControllerState]
 with ApiRoute
-with TestRoute
-{
+with TestRoute:
   import routeBinding.webServerBinding
 
   protected def whenShuttingDown    = routeBinding.whenStopRequested
@@ -81,13 +80,10 @@ with TestRoute
   logger.debug(s"new ControllerRoute($webServerBinding #${routeBinding.revision})")
 
   val webServerRoute: Route =
-    (decodeRequest & encodeResponse) {  // Before handleErrorAndLog to allow simple access to HttpEntity.Strict
-      webLog {
-        forbidCSRF {
+    (decodeRequest & encodeResponse):  // Before handleErrorAndLog to allow simple access to HttpEntity.Strict
+      webLog:
+        forbidCSRF:
           route
-        }
-      }
-    }
 
   private lazy val route =
     pathSegment("controller") {
@@ -97,17 +93,12 @@ with TestRoute
 
   val controllerRoute: Route =
     pathSegment("api") {
-      seal {
+      seal:
         apiRoute
-      }
     } ~
-      pathSegment("TEST") {
-        passIf(config.getBoolean("js7.web.server.test")) {
+      pathSegment("TEST"):
+        passIf(config.getBoolean("js7.web.server.test")):
           testRoute
-        }
-      }
-}
 
-object ControllerRoute {
+object ControllerRoute:
   private val logger = Logger[this.type]
-}

@@ -4,8 +4,7 @@ import java.nio.file.{Path, Paths}
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
 
-final case class CommandLine(arguments: Seq[String])
-{
+final case class CommandLine(arguments: Seq[String]):
   assertThat(arguments.nonEmpty)
 
   def file = Paths.get(arguments.head)
@@ -18,13 +17,10 @@ final case class CommandLine(arguments: Seq[String])
         arg
     }
     .mkString(" ")
-}
 
-object CommandLine
-{
+object CommandLine:
   def fromFile(file: Path) = new CommandLine(Seq(file.toString))
 
   def checked(arguments: Seq[String]): Checked[CommandLine] =
     if arguments.isEmpty then Left(Problem.pure("Command line must not be empty"))
     else Right(new CommandLine(arguments))
-}

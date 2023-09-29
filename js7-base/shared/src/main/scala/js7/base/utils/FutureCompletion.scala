@@ -17,19 +17,16 @@ import scala.util.Try
   *
   * @author Joacim Zschimmer
   */
-final class FutureCompletion[A](future: Future[A])(implicit ec: ExecutionContext)
-{
+final class FutureCompletion[A](future: Future[A])(implicit ec: ExecutionContext):
   private val numberToEntry = mutable.Map.empty[Int, Entry]
   private val counter = AtomicInt(0)
   @volatile private var completed: Option[Try[A]] = None
 
   future.onComplete { tried =>
-    numberToEntry.synchronized {
+    numberToEntry.synchronized:
       completed = Some(tried)
-      for entry <- numberToEntry.values do {
+      for entry <- numberToEntry.values do
         entry.promise.complete(tried)
-      }
-    }
   }
 
   def observable: Observable[Observable[A]] =
@@ -40,64 +37,51 @@ final class FutureCompletion[A](future: Future[A])(implicit ec: ExecutionContext
     Resource.fromAutoCloseable(Task(add()))
       .map(_.future)
 
-  private[utils] def add(): Entry = {
+  private[utils] def add(): Entry =
     val entry = new Entry
-    val wasCompleted = numberToEntry.synchronized {
-      if completed.isEmpty then {
+    val wasCompleted = numberToEntry.synchronized:
+      if completed.isEmpty then
         numberToEntry.update(entry.number, entry)
-      }
       completed
-    }
-    wasCompleted match {
+    wasCompleted match
       case None =>
         entry.promise.future onComplete { _ =>
           remove(entry)
         }
       case Some(tried) =>
         entry.promise.complete(tried)
-    }
     entry
-  }
 
   private def remove(entry: Entry): Unit =
-    numberToEntry.synchronized {
+    numberToEntry.synchronized:
       numberToEntry.remove(entry.number)
-    }
 
   @TestOnly
   private[utils] def size: Int =
-    numberToEntry.synchronized {
+    numberToEntry.synchronized:
       numberToEntry.size
-    }
 
-  final class Entry private[FutureCompletion] extends AutoCloseable {
+  final class Entry private[FutureCompletion] extends AutoCloseable:
     private[FutureCompletion] val promise = Promise[A]()
     private[FutureCompletion] val number = counter.incrementAndGet()
 
     def close() = remove(this)
 
     def future = promise.future
-  }
-}
 
-object FutureCompletion
-{
-  object syntax
-  {
-    implicit final class FutureCompletionObservable[A](private val observable: Observable[A]) extends AnyVal
-    {
+object FutureCompletion:
+  object syntax:
+    implicit final class FutureCompletionObservable[A](private val observable: Observable[A]) extends AnyVal:
       def takeUntilCompleted[B](futureCompletion: FutureCompletion[B]) =
         futureCompletion.observable flatMap observable.takeUntil
 
       def takeUntilCompletedAndDo[B](futureCompletion: FutureCompletion[B])(onCompleted: B => Task[Unit]) =
         futureCompletion.observable
           .flatMap(trigger => observable.takeUntil(trigger.doOnNext(onCompleted)))
-    }
 
-    implicit final class FutureCompletionFuture[A](private val future: CancelableFuture[A]) extends AnyVal
-    {
+    implicit final class FutureCompletionFuture[A](private val future: CancelableFuture[A]) extends AnyVal:
       def cancelOnCompletionOf[B](futureCompletion: FutureCompletion[B])(implicit s: Scheduler)
-      : CancelableFuture[A] = {
+      : CancelableFuture[A] =
         val entry = futureCompletion.add()
         entry.future.onComplete { _ =>
           future.cancel()
@@ -106,7 +90,3 @@ object FutureCompletion
           entry.close()
           tried
         }
-      }
-    }
-  }
-}

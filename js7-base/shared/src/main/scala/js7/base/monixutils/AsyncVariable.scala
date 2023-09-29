@@ -6,8 +6,7 @@ import js7.base.problem.Checked
 import js7.base.utils.AsyncLock
 import monix.eval.Task
 
-final class AsyncVariable[V](initial: V, varName: String, typeName: String)
-{
+final class AsyncVariable[V](initial: V, varName: String, typeName: String):
   @volatile private var _value = initial
   private val lock = AsyncLock(varName)
 
@@ -63,10 +62,7 @@ final class AsyncVariable[V](initial: V, varName: String, typeName: String)
     lock.lock(Task.defer/*shield access to _value in body*/(body))
 
   override lazy val toString = s"$varName: AsyncVariable[$typeName]"
-}
 
-object AsyncVariable
-{
+object AsyncVariable:
   def apply[A](initial: A)(implicit src: sourcecode.Enclosing, tag: Tag[A]) =
     new AsyncVariable(initial, src.value, tag.tag.toString)
-}

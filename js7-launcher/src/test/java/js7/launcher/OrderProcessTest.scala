@@ -11,15 +11,13 @@ import monix.eval.{Fiber, Task}
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.subjects.PublishSubject
 
-final class OrderProcessTest extends OurTestSuite
-{
-  "Run an OrderProcess" in {
+final class OrderProcessTest extends OurTestSuite:
+  "Run an OrderProcess" in:
     val orderProcess = OrderProcess(Task(Outcome.succeeded))
     val stdObservers = newStdObservers
     assert(orderProcess.start(stdObservers).flatten.await(99.s) == Outcome.succeeded)
-  }
 
-  "Intermediate test: cancel a Fiber" in {
+  "Intermediate test: cancel a Fiber" in:
     val semaphore = Semaphore[Task](0).memoize
     def count = semaphore.flatMap(_.count).await(99.s)
 
@@ -44,9 +42,8 @@ final class OrderProcessTest extends OurTestSuite
 
     // No waiting acquirer
     assert(waitForCondition(10.s, 10.ms)(count == 0))
-  }
 
-  "Cancel an OrderProcess Fiber" in {
+  "Cancel an OrderProcess Fiber" in:
     val semaphore = Semaphore[Task](0).memoize
     def count = semaphore.flatMap(_.count).await(99.s)
 
@@ -62,8 +59,6 @@ final class OrderProcessTest extends OurTestSuite
 
     // No waiting acquirer
     assert(waitForCondition(10.s, 10.ms)(count == 0))
-  }
 
   private def newStdObservers =
     new StdObservers(PublishSubject(), PublishSubject(), 100, keepLastErrLine = false)
-}

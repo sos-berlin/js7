@@ -18,26 +18,23 @@ import scala.reflect.ClassTag
   */
 sealed trait VersionedEvent extends NoKeyEvent
 
-object VersionedEvent {
+object VersionedEvent:
   final case class VersionAdded(versionId: VersionId) extends VersionedEvent
 
-  sealed trait VersionedItemEvent extends VersionedEvent {
+  sealed trait VersionedItemEvent extends VersionedEvent:
     def path: VersionedItemPath
-  }
 
   sealed trait VersionedItemAddedOrChanged
   extends VersionedItemEvent
   /*with SignedItemAddedOrChanged???*/
   with ItemAddedOrChanged
-  with Product {
+  with Product:
     def signedString = signed.signedString
     def signed: Signed[VersionedItem]
     def item: VersionedItem = signed.value
     def path: VersionedItemPath = item.path
     override def toShortString = s"$productPrefix($path)"
-  }
-  object VersionedItemAddedOrChanged
-  {
+  object VersionedItemAddedOrChanged:
     def unapply(event: VersionedItemAddedOrChanged) = Some(event.signed)
 
     // Use SignedItemAdded implementation (for ..AddedOrChanged and ..Changed events)
@@ -54,36 +51,28 @@ object VersionedEvent {
               Left(DecodingFailure(
                 s"VersionedItem expected in ${implicitClass.simpleName} event: ${item.key}", c.history))
           })
-  }
 
-  final case class VersionedItemAdded(signed: Signed[VersionedItem]) extends VersionedItemAddedOrChanged {
+  final case class VersionedItemAdded(signed: Signed[VersionedItem]) extends VersionedItemAddedOrChanged:
     def id = signed.value.key
-  }
-  object VersionedItemAdded
-  {
+  object VersionedItemAdded:
     private[VersionedEvent] implicit val jsonEncoder: Encoder.AsObject[VersionedItemAdded] =
       SignedItemAdded.jsonCodec(ControllerState)
         .contramapObject(e => SignedItemAdded(e.signed))
 
     private[VersionedEvent] implicit val jsonDecoder: Decoder[VersionedItemAdded] =
       VersionedItemAddedOrChanged.jsonDecoder(VersionedItemAdded(_))
-  }
 
-  final case class VersionedItemChanged(signed: Signed[VersionedItem]) extends VersionedItemAddedOrChanged {
+  final case class VersionedItemChanged(signed: Signed[VersionedItem]) extends VersionedItemAddedOrChanged:
     def id = signed.value.key
-  }
-  object VersionedItemChanged
-  {
+  object VersionedItemChanged:
     private[VersionedEvent] implicit val jsonEncoder: Encoder.AsObject[VersionedItemChanged] =
       SignedItemChanged.jsonCodec(ControllerState).contramapObject(e => SignedItemChanged(e.signed))
 
     private[VersionedEvent] implicit val jsonDecoder: Decoder[VersionedItemChanged] =
       VersionedItemAddedOrChanged.jsonDecoder(VersionedItemChanged(_))
-  }
 
-  final case class VersionedItemRemoved(path: VersionedItemPath) extends VersionedItemEvent {
+  final case class VersionedItemRemoved(path: VersionedItemPath) extends VersionedItemEvent:
     require(!path.isAnonymous, "VersionedItemRemoved event requires a path")
-  }
 
   implicit val jsonCodec: TypedJsonCodec[VersionedEvent] = TypedJsonCodec(
     Subtype(deriveCodec[VersionAdded]),
@@ -92,4 +81,3 @@ object VersionedEvent {
     Subtype(deriveCodec[VersionedItemRemoved]))
 
   intelliJuseImport((versionedItemJsonCodec, versionedItemPathJsonCodec))
-}

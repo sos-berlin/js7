@@ -10,7 +10,7 @@ import org.slf4j.Marker
   *
   * @author Joacim Zschimmer
   */
-final class LazyScalaLogger(delegate: Logger) {
+final class LazyScalaLogger(delegate: Logger):
 
   def error(message: => String) =
     delegate.error(message)
@@ -105,15 +105,12 @@ final class LazyScalaLogger(delegate: Logger) {
 
   //def trace(marker: Marker, message: String, args: Any*) =
   //  delegate.debug(marker, message, args*)
-}
 
-object LazyScalaLogger {
+object LazyScalaLogger:
 
-  implicit final class AsLazyScalaLogger(private val delegate: Logger) extends AnyVal {
+  implicit final class AsLazyScalaLogger(private val delegate: Logger) extends AnyVal:
     /**
       * Converts eager-looking (because macro-based) com.typesafe.scalalogging.Logger
       * to LazyScalaLogger with lazy function signatures.
       */
     def asLazy = new LazyScalaLogger(delegate)
-  }
-}

@@ -21,8 +21,7 @@ final class RestartAfterFailureService[S <: Service: Tag] private[service](
   startDelays: Seq[FiniteDuration] = defaultRestartDelays,
   runDelays: Seq[FiniteDuration] = defaultRestartDelays)
   (serviceResource: Resource[Task, S])
-extends Service
-{
+extends Service:
   self =>
 
   private val serviceName = implicitly[Tag[S]].tag.toString
@@ -62,12 +61,11 @@ extends Service
       .map(_.allocatedThing)
 
   private def setCurrentService(allocated: Allocated[Task, S]): Task[Unit] =
-    Task.defer {
+    Task.defer:
       currentAllocatedService
         .getAndSet(Some(allocated))
         .fold(Task.unit)(_.release.when(stopping))
         .*>(allocated.release.when(stopping))
-    }
 
   private def runUnderlyingService(service: S) =
     maybeRunDelay.fold(service.untilStopped)(delayConf =>
@@ -111,11 +109,8 @@ extends Service
     currentAllocatedService.get().fold("not started")(_.allocatedThing.toString)})"
 
   private def myName = s"RestartAfterFailureService[$serviceName]"
-}
 
-object RestartAfterFailureService
-{
+object RestartAfterFailureService:
   private val logger = Logger[this.type]
   private[service] val defaultRestartDelays: Seq[FiniteDuration] =
     Vector(0.s, 1.s, 3.s, 6.s, 10.s)
-}

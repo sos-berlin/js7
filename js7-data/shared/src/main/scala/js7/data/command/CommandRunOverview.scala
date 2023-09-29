@@ -15,10 +15,8 @@ final case class CommandRunOverview[C <: CommonCommand](
   duration: FiniteDuration,
   command: C)
 
-object CommandRunOverview
-{
+object CommandRunOverview:
   intelliJuseImport(FiniteDurationJsonEncoder)
 
   implicit def jsonCodec[C <: CommonCommand: Encoder.AsObject: Decoder]: Codec.AsObject[CommandRunOverview[C]] =
     deriveCodec[CommandRunOverview[C]]
-}

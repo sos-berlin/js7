@@ -10,31 +10,24 @@ import scala.concurrent.duration.*
 /**
   * @author Joacim Zschimmer
   */
-final class Synchronizer(what: String)
-{
+final class Synchronizer(what: String):
   private val synchronizeLock = new ReentrantLock  // No fairness
 
   /** Blocking synchronization with some debug messages logged. */
   def synchronize[A](body: => A): A =
-    try {
+    try
       logger.trace(s"Start synchronize '$what': wait for lock (${synchronizeLock.getQueueLength} in queue)")
-      if !synchronizeLock.tryLock() then {
-        blocking {
-          if !synchronizeLock.tryLock(LogAfter.toMillis, MILLISECONDS) then {
+      if !synchronizeLock.tryLock() then
+        blocking:
+          if !synchronizeLock.tryLock(LogAfter.toMillis, MILLISECONDS) then
             logger.debug(s"🟠 Start synchronize '$what': waiting for lock since ${LogAfter.pretty} (#${synchronizeLock.getQueueLength} in queue)")
             synchronizeLock.lock()
             logger.debug(s"🟢 synchronize '$what': continuing")
-          }
-        }
-      }
       body
-    } finally {
+    finally
       logger.trace(s"End synchronize '$what': release lock (${synchronizeLock.getQueueLength} in queue)")
       synchronizeLock.unlock()
-    }
-}
 
-object Synchronizer {
+object Synchronizer:
   private val LogAfter = 100.ms
   private val logger = Logger[this.type]
-}

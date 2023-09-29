@@ -22,8 +22,7 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
 
-final class SubagentDisabledTest extends OurTestSuite with SubagentTester
-{
+final class SubagentDisabledTest extends OurTestSuite with SubagentTester:
   override protected def agentConfig = config"""
     js7.auth.subagents.A-SUBAGENT = "$localSubagentId's PASSWORD"
     js7.auth.subagents.B-SUBAGENT = "$localSubagentId's PASSWORD"
@@ -48,20 +47,18 @@ final class SubagentDisabledTest extends OurTestSuite with SubagentTester
       .allocated
       .await(99.s)
 
-  override def beforeAll() = {
+  override def beforeAll() =
     super.beforeAll()
     aSubagent
     bSubagent
     eventWatch.await[ItemAttached](_.event.key == aSubagentId)
     eventWatch.await[ItemAttached](_.event.key == bSubagentId)
-  }
 
-  override def afterAll() = {
+  override def afterAll() =
     Task.parZip2(aSubagentRelease, bSubagentRelease).await(99.s)
     super.afterAll()
-  }
 
-  "All Subagents are enabled" in {
+  "All Subagents are enabled" in:
     runOrderAndCheck(localSubagentId)
     runOrderAndCheck(aSubagentId)
     runOrderAndCheck(bSubagentId)
@@ -69,9 +66,8 @@ final class SubagentDisabledTest extends OurTestSuite with SubagentTester
     runOrderAndCheck(localSubagentId)
     runOrderAndCheck(aSubagentId)
     runOrderAndCheck(bSubagentId)
-  }
 
-  "Disable localSubagentId" in {
+  "Disable localSubagentId" in:
     enableSubagents(localSubagentId -> false)
 
     runOrderAndCheck(aSubagentId)
@@ -79,21 +75,18 @@ final class SubagentDisabledTest extends OurTestSuite with SubagentTester
 
     runOrderAndCheck(aSubagentId)
     runOrderAndCheck(bSubagentId)
-  }
 
-  "Disable aSubagentId" in {
+  "Disable aSubagentId" in:
     enableSubagents(aSubagentItem.id -> false)
     runOrderAndCheck(bSubagentId)
     runOrderAndCheck(bSubagentId)
-  }
 
-  "Enable aSubagentId, disable bSubagentId" in {
+  "Enable aSubagentId, disable bSubagentId" in:
     enableSubagents(aSubagentItem.id -> true, bSubagentItem.id -> false)
     runOrderAndCheck(aSubagentId)
     runOrderAndCheck(aSubagentId)
-  }
 
-  "Disable all Subagents including Director, then re-enableSubagents one" in {
+  "Disable all Subagents including Director, then re-enableSubagents one" in:
     enableSubagents(aSubagentItem.id -> false)
 
     val orderId = nextOrderId()
@@ -101,9 +94,8 @@ final class SubagentDisabledTest extends OurTestSuite with SubagentTester
     controller.api.addOrder(toOrder(orderId)).await(99.s).orThrow
     eventWatch.await[OrderAttached](_.key == orderId, after = eventId)
     eventId = eventWatch.lastAddedEventId
-    intercept[TimeoutException] {
+    intercept[TimeoutException]:
       eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId, timeout = 200.ms)
-    }
 
     // Re-enableSubagents
     eventId = eventWatch.lastAddedEventId
@@ -118,23 +110,19 @@ final class SubagentDisabledTest extends OurTestSuite with SubagentTester
       .head.value.event
     assert(started.subagentId.contains(aSubagentId))
     eventWatch.await[OrderFinished](_.key == orderId, after = eventId)
-  }
 
   private def runOrderAndCheck(subagentId: SubagentId): Unit =
     runOrderAndCheck(nextOrderId(), subagentId)
 
-  private def runOrderAndCheck(orderId: OrderId, subagentId: SubagentId): Unit = {
+  private def runOrderAndCheck(orderId: OrderId, subagentId: SubagentId): Unit =
     val eventId = eventWatch.lastAddedEventId
     controller.api.addOrder(toOrder(orderId)).await(99.s).orThrow
     val started = eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
       .head.value.event
     assert(started.subagentId contains subagentId)
     eventWatch.await[OrderDeleted](_.key == orderId, after = eventId)
-  }
-}
 
-object SubagentDisabledTest
-{
+object SubagentDisabledTest:
   private val localSubagentId = toLocalSubagentId(agentPath)
   private val aSubagentId = SubagentId("A-SUBAGENT")
   private val bSubagentId = SubagentId("B-SUBAGENT")
@@ -150,4 +138,3 @@ object SubagentDisabledTest
 
   private def toOrder(orderId: OrderId) =
     FreshOrder(orderId, workflow.path, deleteWhenTerminated = true)
-}

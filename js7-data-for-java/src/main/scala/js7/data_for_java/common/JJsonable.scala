@@ -9,22 +9,17 @@ import js7.base.problem.Problem
 import js7.data_for_java.vavr.VavrConverters.*
 
 @javaApi
-trait JJsonable[A <: JJsonable[A]] extends JavaWrapper
-{
+trait JJsonable[A <: JJsonable[A]] extends JavaWrapper:
   protected def companion: JJsonable.Companion[A]
 
-  final def toJson: String = {
+  final def toJson: String =
     val companion = this.companion
     val u = asScala.asInstanceOf[companion.AsScala]
     companion.myJsonEncoder.apply(u).compactPrint
-  }
-}
 
 @javaApi
-object JJsonable
-{
-  trait Companion[A <: JJsonable[A]]
-  {
+object JJsonable:
+  trait Companion[A <: JJsonable[A]]:
     /** Must be the same type as JJsonable#AsScala. */
     type AsScala
 
@@ -40,5 +35,3 @@ object JJsonable
       io.circe.parser.parse(jsonString).toChecked
         .flatMap(o => jsonDecoder.decodeJson(o).toChecked map apply)
         .toVavr
-  }
-}

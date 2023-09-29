@@ -7,9 +7,8 @@ import js7.base.utils.Base64UUID
 import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
 import js7.tester.CirceJsonTester.testJson
 
-final class ClusterWatchingCommandTest extends OurTestSuite
-{
-  "JSON" in {
+final class ClusterWatchingCommandTest extends OurTestSuite:
+  "JSON" in:
     testJson[ClusterWatchingCommand](
       ClusterWatchConfirm(
         ClusterWatchRequest.RequestId(123L),
@@ -28,5 +27,3 @@ final class ClusterWatchingCommandTest extends OurTestSuite
           }
         }"""
     )
-  }
-}

@@ -10,7 +10,7 @@ import scala.util.{Failure, Success}
 
 private final class ObserverWriter(observer: Observer[String])
   (implicit u: UncaughtExceptionReporter)
-extends Writer {
+extends Writer:
   self =>
 
   private var ack: Future[Ack] = Continue
@@ -19,25 +19,20 @@ extends Writer {
     write(new String(array, offset, len))
 
   override def write(string: String) =
-    self.synchronized {
+    self.synchronized:
       await()
       ack = ack.syncOnContinue(observer.onNext(string))
-    }
 
   def flush() =
-    self.synchronized {
+    self.synchronized:
       await()
-    }
 
   def close() = observer.onComplete()
 
-  private def await(): Unit = {
+  private def await(): Unit =
     Await.ready(ack, Duration.Inf)
-    ack.value match {
+    ack.value match
       case Some(Failure(t: IOException)) => throw t
       case Some(Failure(t)) => throw new IOException(t.toString, t.getCause)
       case Some(Success(Stop)) => throw new IOException("Stream closed")
       case _ =>
-    }
-  }
-}

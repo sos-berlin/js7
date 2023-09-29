@@ -6,15 +6,12 @@ import js7.base.utils.ScalaUtils.syntax.*
 /**
   * @author Joacim Zschimmer
   */
-trait Permission {
+trait Permission:
   def name: String = getClass.simpleScalaName stripSuffix "Permission"
-}
 
-object Permission
-{
+object Permission:
   def toStringToPermission(permissions: Iterable[Permission]): Map[String, Permission] =
     permissions.toKeyedMap(_.name)
-}
 
 /** SuperPermission covering all permissions. */
 case object SuperPermission extends Permission

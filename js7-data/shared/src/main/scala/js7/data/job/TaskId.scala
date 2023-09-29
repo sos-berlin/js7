@@ -9,8 +9,7 @@ import scala.util.Random
  * @see C++ Process_id
  * @author Joacim Zschimmer
  */
-final case class TaskId private(string: String) extends GenericString
-{
+final case class TaskId private(string: String) extends GenericString:
   import js7.data.job.TaskId.*
 
   if !pattern.matcher(string).matches then
@@ -22,10 +21,8 @@ final case class TaskId private(string: String) extends GenericString
   def index = string.takeWhile(_ != '-').toLong
 
   override def toString = s"TaskId($string)"
-}
 
-object TaskId extends GenericString.Checked_[TaskId]
-{
+object TaskId extends GenericString.Checked_[TaskId]:
   private val pattern = "[A-Za-z0-9-][A-Za-z0-9._-]*".r.pattern  // Try to exclude any shell meta characters
 
   protected def unchecked(string: String) = new TaskId(string)
@@ -39,4 +36,3 @@ object TaskId extends GenericString.Checked_[TaskId]
   def newGenerator(start: Int = 1): Iterator[TaskId] =
     new IncreasingPositiveLongs(start = start, maximum = Int.MaxValue)
       .map(n => TaskId(index = n, salt = abs(Random.nextLong())))
-}

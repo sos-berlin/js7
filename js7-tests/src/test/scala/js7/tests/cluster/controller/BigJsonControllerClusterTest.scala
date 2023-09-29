@@ -26,8 +26,7 @@ import js7.tests.testenv.ProgramEnvTester.assertEqualJournalFiles
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 
-final class BigJsonControllerClusterTest extends OurTestSuite with ControllerClusterForScalaTest
-{
+final class BigJsonControllerClusterTest extends OurTestSuite with ControllerClusterForScalaTest:
   private val bigString = BigJsonControllerClusterTest.bigString // Allocate one
 
   private val workflow = Workflow(WorkflowPath("BIG-JSON") ~ "INITIAL",
@@ -38,7 +37,7 @@ final class BigJsonControllerClusterTest extends OurTestSuite with ControllerClu
   protected val items = Seq(workflow)
   override protected val clusterTiming = ClusterTiming(1.s, 10.s)
 
-  "Cluster replicates big JSON" in {
+  "Cluster replicates big JSON" in:
     runControllerAndBackup() { (primary, primaryController, _, backup, backupController, _, _) =>
       import primaryController.eventWatch
       eventWatch.await[ClusterEvent.ClusterCoupled]()
@@ -65,11 +64,8 @@ final class BigJsonControllerClusterTest extends OurTestSuite with ControllerClu
 
       controllerApi.stop await 99.s
     }
-  }
-}
 
-object BigJsonControllerClusterTest
-{
+object BigJsonControllerClusterTest:
   private val agentPath = AgentPath("AGENT")
   private val bigStringSize = 9_000_000 max
     Js7Configuration.defaultConfig.memorySizeAsInt("js7.web.chunk-size").orThrow
@@ -77,11 +73,8 @@ object BigJsonControllerClusterTest
   // Function, to keep heap small (for proper a heap dump)
   private def bigString = "+" * bigStringSize
 
-  private class TestJob extends InternalJob
-  {
+  private class TestJob extends InternalJob:
     def toOrderProcess(step: Step) =
       OrderProcess.succeeded(Map(
         "RESULT" -> StringValue(bigString)))
-  }
   private object TestJob extends InternalJob.Companion[TestJob]
-}

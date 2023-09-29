@@ -4,8 +4,7 @@ import cats.syntax.traverse.*
 import js7.base.problem.{Checked, Problem}
 import scala.collection.immutable.Seq
 
-private object WindowsCommandLineConversion
-{
+private object WindowsCommandLineConversion:
   // Here is how JDK does Windows quoting:
   // https://hg.openjdk.java.net/jdk8/jdk8/jdk/file/687fd7c7986d/src/windows/classes/java/lang/ProcessImpl.java
 
@@ -16,7 +15,7 @@ private object WindowsCommandLineConversion
       .sequence
       .map(_.mkString(" "))
 
-  private def quote(arg: String) = {
+  private def quote(arg: String) =
     if arg.contains('"') then
       Left(Problem.pure("Windows command line argument must not contain a quote (\")"))
     else
@@ -25,5 +24,3 @@ private object WindowsCommandLineConversion
           "\"" + arg + '"'
         else
           arg)
-  }
-}

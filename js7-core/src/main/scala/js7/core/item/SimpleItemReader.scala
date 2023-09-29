@@ -6,20 +6,15 @@ import js7.data.item.{InventoryItem, SimpleItem, SourceType}
 
 final class SimpleItemReader private(
   val companion: SimpleItem.Companion_)
-extends ItemReader
-{
+extends ItemReader:
   def read(key: companion.Key, source: ByteArray)
-  : PartialFunction[SourceType, Checked[InventoryItem]] = {
+  : PartialFunction[SourceType, Checked[InventoryItem]] =
     case SourceType.Json =>
       source
         .parseJsonAs(companion.jsonDecoder)
         .map(item => item
           .rename(key.asInstanceOf[item.companion.Key]))
-  }
-}
 
-object SimpleItemReader
-{
+object SimpleItemReader:
   def apply[I <: SimpleItem](implicit I: SimpleItem.Companion[I]): SimpleItemReader =
     new SimpleItemReader(I)
-}

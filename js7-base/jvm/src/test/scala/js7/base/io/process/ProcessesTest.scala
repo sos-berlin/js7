@@ -26,15 +26,15 @@ import scala.util.Try
 /**
  * @author Joacim Zschimmer
  */
-final class ProcessesTest extends OurTestSuite {
+final class ProcessesTest extends OurTestSuite:
 
-  "processToPidOption, toShellCommandArguments" in {
-    if isWindows then {
+  "processToPidOption, toShellCommandArguments" in:
+    if isWindows then
       val process = new ProcessBuilder(directShellCommandArguments("rem").asJava)
         .startRobustly().await(99.s)
       //assert(processToPidOption(process).isEmpty)
       process.waitFor()
-    } else {
+    else
       val args = directShellCommandArguments("echo $$")
       assert(args == List("/bin/sh", "-c", "echo $$"))
       val process = new ProcessBuilder(args.asJava).redirectInput(PIPE)
@@ -42,17 +42,14 @@ final class ProcessesTest extends OurTestSuite {
       val echoLine = scala.io.Source.fromInputStream(process.getInputStream).getLines().next()
       assert(processToPidOption(process) contains Pid(echoLine.toLong))
       process.waitFor()
-    }
-  }
 
-  "toShellCommandArguments" in {
+  "toShellCommandArguments" in:
     val file = Paths.get("FILE")
     val a = toShellCommandArguments(file, Args)
     assert(a == List("FILE") ++ Args)
     assert(toShellCommandArguments(file) == List("FILE"))  // Without arguments, it is shorter
-  }
 
-  "newTemporaryShellFile, toShellCommandArguments and script execution" in {
+  "newTemporaryShellFile, toShellCommandArguments and script execution" in:
     autoDeleting(newTemporaryShellFile("NAME")) { file =>
       assert(exists(file))
       assert(!(file.toString contains "--"))
@@ -67,31 +64,27 @@ final class ProcessesTest extends OurTestSuite {
       assert(echoLines.size - 1 == Args.size)
       process.waitFor()
     }
-  }
 
-  "newLogFile" in {
+  "newLogFile" in:
     autoDeleting(newLogFile(temporaryDirectory, "NAME", Stdout)) { file =>
       assert(exists(file))
       assert(!(file.toString contains "--"))
     }
-  }
 
-  "TextFileBusyIOException" in {
+  "TextFileBusyIOException" in:
     val (expected, exceptions) = List(
       true -> new IOException("xx  error=26, Text file busy"),
       true -> new IOException("xx  error=26, Das Programm kann nicht ausgeführt oder verändert werden (busy)"),
       true -> new IOException("error=26"),
       false -> new IOException("error=261")
     ).unzip
-    val r = for e <- exceptions yield e match {
+    val r = for e <- exceptions yield e match
       case RobustlyStartProcess.TextFileBusyIOException(x) => assert(x eq e); true
       case _ => false
-    }
     assert(r == expected)
-  }
 
-  "Many empty shell script processes" in {
-    for n <- sys.props.get("test.speed").flatMap(o => Try(o.toInt).toOption) do {
+  "Many empty shell script processes" in:
+    for n <- sys.props.get("test.speed").flatMap(o => Try(o.toInt).toOption) do
       withTemporaryFile("ProcessesTest-", ".sh") { file =>
         file.writeUtf8Executable(":")
         val since = now
@@ -102,11 +95,9 @@ final class ProcessesTest extends OurTestSuite {
           .await(99.s)
         info(Stopwatch.durationAndPerSecondString(since.elapsed, n, "processes"))
       }
-    }
-  }
 
-  "Many processes" in {
-    for n <- sys.props.get("test.speed").flatMap(o => Try(o.toInt).toOption) do {
+  "Many processes" in:
+    for n <- sys.props.get("test.speed").flatMap(o => Try(o.toInt).toOption) do
         val since = now
         (1 to n).toVector
           .traverse(_ => Future {
@@ -114,15 +105,11 @@ final class ProcessesTest extends OurTestSuite {
           })
           .await(99.s)
         info(Stopwatch.durationAndPerSecondString(since.elapsed, n, "processes"))
-    }
-  }
   //"runProcess" in {
   //  assert(runProcess("echo HELLO").trim == "HELLO")
   //}
-}
 
-private object ProcessesTest
-{
+private object ProcessesTest:
   // Different character combinations should not be changed (interpreted) by the operating systems shell script invoker.
   private val Args =
     if isWindows then
@@ -143,4 +130,3 @@ private object ProcessesTest
         (0 to Args.size map { i => s"echo %$i\r\n" } mkString "")
     else
       0 to Args.size map { i => s"""echo "$$$i"""" + '\n' } mkString ""
-}

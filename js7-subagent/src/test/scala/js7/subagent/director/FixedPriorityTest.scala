@@ -2,9 +2,8 @@ package js7.subagent.director
 
 import js7.base.test.OurTestSuite
 
-final class FixedPriorityTest extends OurTestSuite
-{
-  "next, same priority" in {
+final class FixedPriorityTest extends OurTestSuite:
+  "next, same priority" in:
     def isEquivalent(i: Int, j: Int) = true
 
     val fixedPriority = new FixedPriority
@@ -29,9 +28,8 @@ final class FixedPriorityTest extends OurTestSuite
 
     // 0 is an invalid argument, but yields 0 (for now)
     assert(fixedPriority.next(0, isEquivalent) == 0)
-  }
 
-  "next, different priorities" in {
+  "next, different priorities" in:
     val priorities = Vector(1, 1, 1, 0)
     def isEquivalent(i: Int, j: Int) = priorities(i) == priorities(j)
 
@@ -44,5 +42,3 @@ final class FixedPriorityTest extends OurTestSuite
     assert(fixedPriority.next(n, isEquivalent) == 1)
     assert(fixedPriority.next(n, isEquivalent) == 2)
     assert(fixedPriority.next(n, isEquivalent) == 0)
-  }
-}

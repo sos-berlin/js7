@@ -13,8 +13,7 @@ final case class TestState(
   eventId: EventId,
   standards: SnapshotableState.Standards = SnapshotableState.Standards.empty,
   keyToAggregate: Map[String, TestAggregate])
-extends SnapshotableState[TestState]
-{
+extends SnapshotableState[TestState]:
   def companion = TestState
 
   def estimatedSnapshotSize = standards.snapshotSize + keyToAggregate.size
@@ -24,7 +23,7 @@ extends SnapshotableState[TestState]
       Observable.fromIterable(keyToAggregate.values)
 
   def applyEvent(keyedEvent: KeyedEvent[Event]): Checked[TestState] =
-    keyedEvent match {
+    keyedEvent match
       case KeyedEvent(key: String, event: TestEvent.Added) =>
         assert(!keyToAggregate.contains(key))
         import event.{a, b, c, d, e, f, g, h, i, k, l, m, n, o, p, q, r, string}
@@ -41,27 +40,21 @@ extends SnapshotableState[TestState]
 
       case keyedEvent =>
         applyStandardEvent(keyedEvent)
-    }
 
   def withEventId(eventId: EventId): TestState =
     copy(eventId = eventId)
 
   def withStandards(standards: SnapshotableState.Standards) =
     copy(standards = standards)
-}
 
-object TestState extends SnapshotableState.Companion[TestState]
-{
+object TestState extends SnapshotableState.Companion[TestState]:
   val empty = TestState(EventId.BeforeFirst, SnapshotableState.Standards.empty, Map.empty)
 
-  def newBuilder() = new SnapshotableStateBuilder.Simple(TestState)
-  {
-    def onAddSnapshotObject = {
+  def newBuilder() = new SnapshotableStateBuilder.Simple(TestState):
+    def onAddSnapshotObject =
       case o: TestAggregate =>
         updateState(state.copy(keyToAggregate =
           state.keyToAggregate + (o.key -> o)))
-    }
-  }
 
   def snapshotObjectJsonCodec: TypedJsonCodec[Any] =
     TypedJsonCodec[Any](
@@ -73,4 +66,3 @@ object TestState extends SnapshotableState.Companion[TestState]
         KeyedSubtype[TestEvent])
 
   protected def inventoryItems = Nil
-}

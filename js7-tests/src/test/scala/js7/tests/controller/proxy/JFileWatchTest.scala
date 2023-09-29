@@ -10,8 +10,7 @@ import js7.tests.jobs.DeleteFileJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.traced
 
-final class JFileWatchTest extends OurTestSuite with ControllerAgentForScalaTest
-{
+final class JFileWatchTest extends OurTestSuite with ControllerAgentForScalaTest:
   protected def agentPaths = Seq(agentPath)
   protected def items = Seq(workflow)
   override protected def controllerConfig = config"""
@@ -22,15 +21,11 @@ final class JFileWatchTest extends OurTestSuite with ControllerAgentForScalaTest
     """
   private lazy val jControllerApi = new JControllerApi(controller.api, config = controller.config)
 
-  "JFileWatch" in {
+  "JFileWatch" in:
     JFileWatchTester.testFileOrder(jControllerApi)
     JFileWatchTester.testFileWatchApi(jControllerApi)
-  }
-}
 
-object JFileWatchTest
-{
+object JFileWatchTest:
   private val agentPath = AgentPath("AGENT")
   private val workflow = Workflow.of(WorkflowPath("WORKFLOW"),
     DeleteFileJob.execute(agentPath))
-}

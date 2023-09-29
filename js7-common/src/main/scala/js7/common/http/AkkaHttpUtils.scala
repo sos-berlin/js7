@@ -16,8 +16,7 @@ import monix.eval.Task
 /**
   * @author Joacim Zschimmer
   */
-object AkkaHttpUtils
-{
+object AkkaHttpUtils:
   def encodeGzip(request: HttpRequest): HttpRequest =
     Gzip.encodeMessage(request.withHeaders(`Accept-Encoding`(gzip) :: request.headers.toList))
 
@@ -26,14 +25,13 @@ object AkkaHttpUtils
     httpEncodingToCodec(response.encoding).decodeMessage(response)
 
   private def httpEncodingToCodec(encoding: HttpEncoding): Coder  =
-    encoding match {
+    encoding match
       case HttpEncodings.gzip => Gzip
       case HttpEncodings.deflate => Deflate
       case HttpEncodings.identity => NoCoding
       case o => throw new RuntimeException(s"Unsupported Encoding: $o")
-    }
 
-  implicit final class RichResponseEntity(private val underlying: HttpEntity) extends AnyVal {
+  implicit final class RichResponseEntity(private val underlying: HttpEntity) extends AnyVal:
     def asUtf8String(implicit m: Materializer): Task[String] =
       asByteString.map(_.utf8String)
 
@@ -48,9 +46,8 @@ object AkkaHttpUtils
         .fold
         .headL
         .logWhenItTakesLonger("HttpEntity.asByteString")
-  }
 
-  implicit final class RichHttpResponse(private val underlying: HttpResponse) extends AnyVal {
+  implicit final class RichHttpResponse(private val underlying: HttpResponse) extends AnyVal:
     /**
       * Returns the HttpResponse content interpreted as UTF-8, ignoring any Content-Type.
       * May return a very big String.
@@ -64,13 +61,9 @@ object AkkaHttpUtils
       */
     def byteString(implicit mat: Materializer): Task[ByteString] =
       underlying.entity.asByteString
-  }
 
-  implicit final class RichAkkaUri(private val underlying: Uri) extends AnyVal {
+  implicit final class RichAkkaUri(private val underlying: Uri) extends AnyVal:
     def asAkka = AkkaUri(underlying.string)
-  }
 
-  implicit final class RichAkkaAsUri(private val underlying: AkkaUri) extends AnyVal {
+  implicit final class RichAkkaAsUri(private val underlying: AkkaUri) extends AnyVal:
     def asUri = Uri(underlying.toString)
-  }
-}

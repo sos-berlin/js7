@@ -16,11 +16,10 @@ import org.bouncycastle.openpgp.{PGPKeyRingGenerator, PGPSecretKey, PGPSignature
 /**
   * @author Joacim Zschimmer
   */
-object PgpKeyGenerator
-{
+object PgpKeyGenerator:
   private val logger = Logger[this.type]
 
-  def generateSecretKey(id: SignerId, password: SecretString, keySize: Int = 4096): PGPSecretKey = {
+  def generateSecretKey(id: SignerId, password: SecretString, keySize: Int = 4096): PGPSecretKey =
     // See https://stackoverflow.com/questions/3087049/bouncy-castle-rsa-keypair-generation-using-lightweight-api
     val publicExponent = 0x10001  // Should be a Fermat number
     val certainty = 80
@@ -37,19 +36,17 @@ object PgpKeyGenerator
       new BcPBESecretKeyEncryptorBuilder(SymmetricKeyAlgorithmTags.AES_256, shaCalculator)
         .build(password.string.toArray)
     ).generateSecretKeyRing.getSecretKey
-  }
 
   private def newKeyPair(parameters: RSAKeyGenerationParameters): BcPGPKeyPair =
     new BcPGPKeyPair(PublicKeyAlgorithmTags.RSA_SIGN, newAsymmetricCipherKeyPair(parameters), new java.util.Date)
 
-  private def newAsymmetricCipherKeyPair(parameters: RSAKeyGenerationParameters): AsymmetricCipherKeyPair = {
+  private def newAsymmetricCipherKeyPair(parameters: RSAKeyGenerationParameters): AsymmetricCipherKeyPair =
     val generator = new RSAKeyPairGenerator
     generator.init(parameters)
     logger.debug(s"Generating PGP key, ${parameters.getStrength} bits ...")
     generator.generateKeyPair()
-  }
 
-  private def signatureSubpackets: PGPSignatureSubpacketVector = {
+  private def signatureSubpackets: PGPSignatureSubpacketVector =
     val generator = new PGPSignatureSubpacketGenerator
     // Declare its purpose
     generator.setKeyFlags(true, KeyFlags.CERTIFY_OTHER | KeyFlags.SIGN_DATA)
@@ -58,5 +55,3 @@ object PgpKeyGenerator
     // Request senders add additional checksums to the message (useful when verifying unsigned messages.)
     generator.setFeature(true, Features.FEATURE_MODIFICATION_DETECTION)
     generator.generate()
-  }
-}

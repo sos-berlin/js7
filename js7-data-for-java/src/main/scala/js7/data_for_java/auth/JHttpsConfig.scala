@@ -7,13 +7,10 @@ import js7.data_for_java.common.JavaWrapper
 import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.*
 
-final case class JHttpsConfig(asScala: HttpsConfig) extends JavaWrapper
-{
+final case class JHttpsConfig(asScala: HttpsConfig) extends JavaWrapper:
   type AsScala = HttpsConfig
-}
 
-object JHttpsConfig
-{
+object JHttpsConfig:
   val empty: JHttpsConfig = JHttpsConfig(HttpsConfig.empty)
 
   @Nonnull
@@ -22,4 +19,3 @@ object JHttpsConfig
     @Nonnull trustStoreRefs: java.util.List[TrustStoreRef])
   : HttpsConfig =
     HttpsConfig(keyStoreFile.toScala, trustStoreRefs.asScala.toSeq)
-}

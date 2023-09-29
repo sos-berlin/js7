@@ -10,7 +10,5 @@ import js7.subagent.SubagentSession
  *
  * @author Joacim Zschimmer
  */
-trait AgentRouteProvider extends RouteProvider
-{
+trait AgentRouteProvider extends RouteProvider:
   protected type OurSession = SubagentSession
-}

@@ -6,9 +6,8 @@ import js7.data.item.ItemRevision
 import js7.data.workflow.position.Label
 import js7.tester.CirceJsonTester.testJson
 
-final class WorkflowPathControlTest extends OurTestSuite
-{
-  "JSON" in {
+final class WorkflowPathControlTest extends OurTestSuite:
+  "JSON" in:
     testJson(
       WorkflowPathControl(
         WorkflowPathControlPath(WorkflowPath("WORKFLOW")),
@@ -21,5 +20,3 @@ final class WorkflowPathControlTest extends OurTestSuite
         "skip": [ "LABEL" ],
         "itemRevision": 1
       }""")
-  }
-}

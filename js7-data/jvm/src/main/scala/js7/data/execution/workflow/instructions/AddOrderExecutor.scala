@@ -9,8 +9,7 @@ import js7.data.workflow.instructions.AddOrder
 import scala.collection.View
 
 private[instructions] final class AddOrderExecutor(protected val service: InstructionExecutorService)
-extends EventInstructionExecutor
-{
+extends EventInstructionExecutor:
   type Instr = AddOrder
   val instructionClass = classOf[AddOrder]
 
@@ -43,4 +42,3 @@ extends EventInstructionExecutor
 
           case _ => Right(Nil)
         })
-}

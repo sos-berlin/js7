@@ -11,8 +11,7 @@ import scala.language.implicitConversions
   * @author Joacim Zschimmer
   */
 sealed abstract case class ExtendedLocalTime(toNanoOfDay: Long)
-extends Ordered[ExtendedLocalTime]
-{
+extends Ordered[ExtendedLocalTime]:
   require(toNanoOfDay >= 0, "ExtendedLocalTime must not be negative")
 
   def +(o: Duration): ExtendedLocalTime =
@@ -24,10 +23,9 @@ extends Ordered[ExtendedLocalTime]
   def compare(o: ExtendedLocalTime) =
     toNanoOfDay compare o.toNanoOfDay
 
-  def toInstant(localDate: LocalDate, zone: ZoneId) = {
+  def toInstant(localDate: LocalDate, zone: ZoneId) =
     val local = toLocalDateTime(localDate)
     local.toInstant(zone.getRules.getOffset(local))
-  }
 
   def toLocalDateTime(localDate: LocalDate) =
     LocalDateTime.of(localDate plusDays days, localTime)
@@ -38,7 +36,7 @@ extends Ordered[ExtendedLocalTime]
   def days: Long =
     toNanoOfDay / (24*60*60*Billion)
 
-  override def toString = {
+  override def toString =
     val h = toNanoOfDay / (60*60*Billion)
     val m = toNanoOfDay / (60*Billion) % 60
     val s = toNanoOfDay / Billion % 60
@@ -51,15 +49,12 @@ extends Ordered[ExtendedLocalTime]
     sb.append(':')
     if s < 10 then sb.append('0')
     sb.append(s)
-    if n != 0 then {
+    if n != 0 then
       sb.append('.')
       sb.append(n)
-    }
     sb.toString
-  }
-}
 
-object ExtendedLocalTime {
+object ExtendedLocalTime:
   private val Billion = 1000*1000*1000L
   val StartOfDay = of(0, 0)
   val EndOfDay = of(24, 0)
@@ -70,22 +65,19 @@ object ExtendedLocalTime {
     ExtendedLocalTime.ofNanoOfDay(localTime.toNanoOfDay)
 
   def fromString(o: String): ExtendedLocalTime =
-    o match {
+    o match
       case ParseRegex(hours, minutes, seconds) =>
         of(hours.toInt, minutes.toInt, (Option(seconds) getOrElse "0").toInt)
       case _ => throw new IllegalArgumentException(s"Not a local time: '$o'")
-  }
 
-  def of(hour: Int, minute: Int, second: Int = 0): ExtendedLocalTime = {
+  def of(hour: Int, minute: Int, second: Int = 0): ExtendedLocalTime =
     require(hour >= 0 && minute >= 0 && second >= 0, "Value must not be negative")
     require(minute < 60, "Minute must be less than 60")
     require(second < 60, "Secondmust be less than 60")
     ofSecondOfDay(hour * 60*60 + minute * 60 + second)
-  }
 
   def ofSecondOfDay(seconds: Int): ExtendedLocalTime =
     new ExtendedLocalTime(seconds * Billion) {}
 
   def ofNanoOfDay(nanos: Long): ExtendedLocalTime =
     new ExtendedLocalTime(nanos) {}
-}

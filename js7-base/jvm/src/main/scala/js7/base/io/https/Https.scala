@@ -29,8 +29,7 @@ import scala.util.control.NonFatal
   *      https://doc.akka.io/docs/akka-http/current/server-side/server-https-support.html
   *      https://tools.ietf.org/html/rfc5246
   */
-object Https
-{
+object Https:
   private val logger = Logger[this.type]
   private val PemHeader = ByteArray("-----BEGIN CERTIFICATE-----")
   private val algorithm = KeyManagerFactory.getDefaultAlgorithm  // "SunX509", but for IBM Java: "IbmX509"
@@ -40,7 +39,7 @@ object Https
   def loadSSLContext(
     keyStoreRef: Option[KeyStoreRef] = None,
     trustStoreRefs: Seq[TrustStoreRef] = Nil)
-  : SSLContext = {
+  : SSLContext =
     val keyManagers = keyStoreRef.fold(Array.empty[KeyManager])(keyStoreRefToKeyManagers)
     val trustManagers = trustStoreRefToKeyManagers(trustStoreRefs)
     val sslContext = SSLContext.getInstance("TLS")
@@ -49,9 +48,8 @@ object Https
       Array(CompositeX509TrustManager(trustManagers)),
       null)
     sslContext
-  }
 
-  private def keyStoreRefToKeyManagers(ref: KeyStoreRef): Array[KeyManager] = {
+  private def keyStoreRefToKeyManagers(ref: KeyStoreRef): Array[KeyManager] =
     val keyStore = loadKeyStore(ref, "private")
     for a <- ref.alias do if !keyStore.containsAlias(a) then throw new IllegalArgumentException(
       s"Unknown alias=$a for $ref - known aliases: ${keyStore.aliases.asScala.mkString(", ")}")
@@ -72,7 +70,6 @@ object Https
           }
         case o => o
       })
-  }
 
   private def trustStoreRefToKeyManagers(trustStoreRefs: Seq[TrustStoreRef]): Seq[X509TrustManager] =
     trustStoreRefs
@@ -81,12 +78,11 @@ object Https
         factory.init(loadKeyStore(trustStoreRef, "trust"))
         factory.getTrustManagers
       }
-      .collect {
+      .collect:
         case o: X509TrustManager => Some(o)
         case o =>
           logger.debug(s"Ignoring unknown TrustManager: ${o.getClass.getName} $o")
           None
-      }
       .flatten
 
   private def loadKeyStore(storeRef: StoreRef, kind: String): KeyStore =
@@ -98,10 +94,10 @@ object Https
     password: SecretString,
     sourcePath: String,
     kind: String)
-  : KeyStore = {
+  : KeyStore =
     val sizeLimit = 10_000_000
     val keyStore =
-      try {
+      try
         val content = ByteArray.fromInputStreamLimited(in, sizeLimit)
           .getOrElse(throw new RuntimeException(
             s"Certificate store must not have more than $sizeLimit bytes: $sourcePath"))
@@ -109,18 +105,16 @@ object Https
           pemToKeyStore(content.toInputStream, name = sourcePathToName(sourcePath))
         else
           pkcs12ToKeyStore(content.toInputStream, password)
-      } catch { case NonFatal(t) =>
+      catch { case NonFatal(t) =>
         throw new RuntimeException(s"Cannot load keystore '$sourcePath': $t", t)
       }
     log(keyStore, sourcePath, kind)
     keyStore
-  }
 
-  private def pkcs12ToKeyStore(in: InputStream, password: SecretString): KeyStore = {
+  private def pkcs12ToKeyStore(in: InputStream, password: SecretString): KeyStore =
     val keyStore = KeyStore.getInstance("PKCS12")
     password.provideCharArray(keyStore.load(in, _))
     keyStore
-  }
 
   private def certificateToString(cert: Certificate): String =
     (cert match {
@@ -131,34 +125,30 @@ object Https
     })
 
   private[https] def sourcePathToName(sourcePath: String): String =
-    sourcePath.replace('\\', '/').lastIndexOf('/') match {
+    sourcePath.replace('\\', '/').lastIndexOf('/') match
       case -1 => sourcePath
       case i => sourcePath.drop(i + 1)
-    }
 
-  private def pemToKeyStore(in: InputStream, name: String): KeyStore = {
+  private def pemToKeyStore(in: InputStream, name: String): KeyStore =
     val certs = mutable.Buffer.empty[Certificate]
     var eof = false
-    while !eof do {
+    while !eof do
       certs += CertificateFactory.getInstance("X.509").generateCertificate(in)
       in.mark(1)
       eof = in.read() < 0
       if !eof then in.reset()
-    }
     val keyStore = KeyStore.getInstance(KeyStore.getDefaultType)
     keyStore.load(null, null)
-    for (cert, i) <- certs.zipWithIndex do {
+    for (cert, i) <- certs.zipWithIndex do
       keyStore.setCertificateEntry(name + (certs.length > 1) ?? s"#${i + 1}", cert)
-    }
     keyStore
-  }
 
-  private def log(keyStore: KeyStore, sourcePath: String, kind: String): Unit = {
+  private def log(keyStore: KeyStore, sourcePath: String, kind: String): Unit =
     val iterator = keyStore.aliases.asScala
       .flatMap(a => Option(keyStore.getCertificate(a)).map(a -> _))
-    if iterator.isEmpty then {
+    if iterator.isEmpty then
       logger.warn(s"Loaded empty $kind keystore $sourcePath")
-    } else {
+    else
       logger.info(s"Loaded $kind keystore $sourcePath" +
         iterator.map { case (alias, cert) =>
           "\n  " +
@@ -168,6 +158,3 @@ object Https
             " alias=" + alias +
             " (hashCode=" + cert.hashCode + ")"
         }.mkString(""))
-    }
-  }
-}

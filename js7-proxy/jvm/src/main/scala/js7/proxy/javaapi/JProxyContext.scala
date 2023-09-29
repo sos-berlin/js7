@@ -24,8 +24,7 @@ import scala.jdk.CollectionConverters.*
 
 /** The class to start. */
 final class JProxyContext(config: Config)
-extends HasCloser
-{
+extends HasCloser:
   def this() = this(ConfigFactory.empty)
 
   // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
@@ -52,16 +51,15 @@ extends HasCloser
     executionContext = scheduler))
   private lazy val actorSystem = actorSystemLazy()
 
-  onClose {
+  onClose:
     logger.debug("close JS7 JProxyContext")
     for a <- actorSystemLazy do Akkas.terminateAndWait(a)
-  }
 
   @javaApi @Nonnull
   def newControllerApi(
     @Nonnull admissions: java.lang.Iterable[JAdmission],
     @Nonnull httpsConfig: JHttpsConfig
-  ): JControllerApi = {
+  ): JControllerApi =
     val apiResources = admissionsToApiResource(
       Nel.unsafe(admissions.asScala.map(_.asScala).toList),
       httpsConfig.asScala)(
@@ -69,10 +67,6 @@ extends HasCloser
     new JControllerApi(
       new ControllerApi(apiResources, proxyConf),
       config)
-  }
-}
 
-object JProxyContext
-{
+object JProxyContext:
   private val logger = Logger[this.type]
-}

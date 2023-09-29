@@ -15,8 +15,7 @@ import js7.data.workflow.instructions.ForkList
 import scala.collection.View
 
 private[instructions] final class ForkListExecutor(protected val service: InstructionExecutorService)
-extends ForkInstructionExecutor
-{
+extends ForkInstructionExecutor:
   type Instr = ForkList
   val instructionClass = classOf[ForkList]
 
@@ -59,4 +58,3 @@ extends ForkInstructionExecutor
         .flatten
         .groupMap(_._1)(_._2).view
         .mapValues(values => ListValue(values.toVector)).toMap))
-}

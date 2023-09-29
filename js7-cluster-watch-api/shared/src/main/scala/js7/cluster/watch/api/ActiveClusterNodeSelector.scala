@@ -15,7 +15,7 @@ import monix.eval.{Fiber, Task}
 import monix.reactive.Observable
 import scala.concurrent.duration.FiniteDuration
 
-object ActiveClusterNodeSelector {
+object ActiveClusterNodeSelector:
   private val logger = Logger[this.type]
 
   /** Selects the API for the active node, waiting until one is active.
@@ -38,7 +38,7 @@ object ActiveClusterNodeSelector {
     onCouplingError: Api => Throwable => Task[Unit],
     failureDelays: Nel[FiniteDuration])
   : Task[Api] =
-    apis match {
+    apis match
       case Nel(api, Nil) =>
         api
           .loginUntilReachable(
@@ -47,7 +47,7 @@ object ActiveClusterNodeSelector {
           .map((_: Completed) => api)
 
       case _ =>
-        Task.defer {
+        Task.defer:
           val failureDelayIterator = continueWithLast(failureDelays)
           Task
             .tailRecM(())(_ => apis
@@ -101,8 +101,6 @@ object ActiveClusterNodeSelector {
               logger.info(s"Selected $x ${clusterNodeState.nodeId} ${api.baseUri}")
               api
             }
-      }
-    }
 
   private case class ApiWithFiber[Api <: HttpClusterNodeApi](
     api: Api,
@@ -124,20 +122,16 @@ object ActiveClusterNodeSelector {
     list: List[ApiWithNodeState[Api]],
     maybeActive: Option[(ClusterNodeApi, ClusterNodeState)],
     n: Int)
-  : Unit = {
-    list.foreach {
+  : Unit =
+    list.foreach:
       case ApiWithNodeState(api, Left(problem)) =>
         logger.warn(s"Cluster node ${api.baseUri} is not accessible: $problem")
       case _ =>
-    }
     // Different clusterStates only iff nodes are not coupled
     val clusterStates = list
-      .collect {
+      .collect:
         case ApiWithNodeState(api, Right(clusterNodeState)) =>
           s"${api.baseUri} => ${clusterNodeState.clusterState.getClass.simpleScalaName}"
-      }
       .mkString(" · ")
     if maybeActive.isEmpty then logger.warn(
       s"No cluster node (out of $n) seems to be active${clusterStates.nonEmpty ?? s": $clusterStates"}")
-  }
-}

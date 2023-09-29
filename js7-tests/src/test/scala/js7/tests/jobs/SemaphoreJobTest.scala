@@ -14,15 +14,14 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.TimeoutException
 
-final class SemaphoreJobTest extends OurTestSuite with ControllerAgentForScalaTest
-{
+final class SemaphoreJobTest extends OurTestSuite with ControllerAgentForScalaTest:
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = true
     """
   protected val agentPaths = Seq(agentPath)
   protected lazy val items = Seq(workflow)
 
-  "continue and reset" in {
+  "continue and reset" in:
     assert(TestSemaphoreJob.semaphore.flatMap(_.count).await(99.s) == 0)
     val orderId = OrderId("ORDER")
     controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
@@ -43,9 +42,8 @@ final class SemaphoreJobTest extends OurTestSuite with ControllerAgentForScalaTe
 
     TestSemaphoreJob.reset()
     assert(TestSemaphoreJob.semaphore.flatMap(_.count).await(99.s) == 0)
-  }
 
-  "reset while job is waiting" in {
+  "reset while job is waiting" in:
     val orderId = OrderId("ORDER-2")
     controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
 
@@ -59,10 +57,8 @@ final class SemaphoreJobTest extends OurTestSuite with ControllerAgentForScalaTe
     controller.eventWatch.await[OrderProcessed](_.key == orderId)
 
     assert(TestSemaphoreJob.semaphore.flatMap(_.count).await(99.s) == 0)
-  }
-}
 
-object SemaphoreJobTest {
+object SemaphoreJobTest:
   private val agentPath = AgentPath("AGENT")
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",
@@ -71,4 +67,3 @@ object SemaphoreJobTest {
 
   final class TestSemaphoreJob extends SemaphoreJob(TestSemaphoreJob)
   object TestSemaphoreJob extends SemaphoreJob.Companion[TestSemaphoreJob]
-}

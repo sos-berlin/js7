@@ -8,13 +8,9 @@ import scala.collection.MapView
 
 final class NameToCheckedValueScope(
   override val nameToCheckedValue: MapView[String, Checked[Value]])
-extends Scope
-{
+extends Scope:
   override def toString = s"NameToCheckedValueScope(${namesToString(nameToCheckedValue)})"
-}
 
-object NameToCheckedValueScope
-{
+object NameToCheckedValueScope:
   def apply(nameToValue: MapView[String, Checked[Value]]): Scope =
     new NameToCheckedValueScope(nameToValue)
-}

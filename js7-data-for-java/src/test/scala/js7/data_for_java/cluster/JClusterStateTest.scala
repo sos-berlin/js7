@@ -10,8 +10,7 @@ import js7.data.node.NodeId
 /**
   * @author Joacim Zschimmer
   */
-final class JClusterStateTest extends OurTestSuite
-{
+final class JClusterStateTest extends OurTestSuite:
   private val setting = ClusterSetting(
     Map(
       NodeId("PRIMARY") -> Uri("https://PRIMARY"),
@@ -20,58 +19,47 @@ final class JClusterStateTest extends OurTestSuite
     ClusterTiming(10.s, 20.s),
     clusterWatchId = None)
 
-  "Empty" in {
+  "Empty" in:
     JClusterStateTester.testEmpty(JClusterState(ClusterState.Empty).asInstanceOf[JClusterState.Empty.type])
-  }
 
-  "NodesAppointed" in {
+  "NodesAppointed" in:
     val clusterState = ClusterState.NodesAppointed(setting)
     JClusterStateTester.testNodesAppointed(JClusterState(clusterState).asInstanceOf[JClusterState.NodesAppointed])
-  }
 
-  "HasNodes" in {
+  "HasNodes" in:
     val clusterState = ClusterState.Coupled(setting)
     JClusterStateTester.testHasNodes(JClusterState(clusterState).asInstanceOf[JClusterState.HasNodes])
-  }
 
-  "Coupled" in {
+  "Coupled" in:
     val clusterState = ClusterState.Coupled(setting)
     JClusterStateTester.testCoupled(JClusterState(clusterState).asInstanceOf[JClusterState.Coupled])
     JClusterStateTester.testCoupledOrDecoupled(JClusterState(clusterState).asInstanceOf[JClusterState.CoupledOrDecoupled])
-  }
 
-  "PreparedToBeCoupled" in {
+  "PreparedToBeCoupled" in:
     val clusterState = ClusterState.PreparedToBeCoupled(setting)
     JClusterStateTester.testPreparedToBeCoupled(JClusterState(clusterState).asInstanceOf[JClusterState.PreparedToBeCoupled])
-  }
 
-  "Reset" in {
+  "Reset" in:
     val clusterState = ClusterState.PassiveLost(setting)
     JClusterStateTester.testDecoupled(JClusterState(clusterState).asInstanceOf[JClusterState.Decoupled])
     JClusterStateTester.testCoupledOrDecoupled(JClusterState(clusterState).asInstanceOf[JClusterState.CoupledOrDecoupled])
-  }
 
-  "ActiveShutDown" in {
+  "ActiveShutDown" in:
     val clusterState = ClusterState.ActiveShutDown(setting)
     JClusterStateTester.testCoupledActiveShutDown(JClusterState(clusterState).asInstanceOf[JClusterState.ActiveShutDown])
     JClusterStateTester.testCoupledOrDecoupled(JClusterState(clusterState).asInstanceOf[JClusterState.CoupledOrDecoupled])
-  }
 
-  "PassiveLost" in {
+  "PassiveLost" in:
     val clusterState = ClusterState.PassiveLost(setting)
     JClusterStateTester.testPassiveLost(JClusterState(clusterState).asInstanceOf[JClusterState.PassiveLost])
     JClusterStateTester.testCoupledOrDecoupled(JClusterState(clusterState).asInstanceOf[JClusterState.CoupledOrDecoupled])
-  }
 
-  "SwitchedOver" in {
+  "SwitchedOver" in:
     val clusterState = ClusterState.SwitchedOver(setting)
     JClusterStateTester.testSwitchedOver(JClusterState(clusterState).asInstanceOf[JClusterState.SwitchedOver])
     JClusterStateTester.testCoupledOrDecoupled(JClusterState(clusterState).asInstanceOf[JClusterState.CoupledOrDecoupled])
-  }
 
-  "FailedOver" in {
+  "FailedOver" in:
     val clusterState = ClusterState.FailedOver(setting, JournalPosition(0L, 0L))
     JClusterStateTester.testFailedOver(JClusterState(clusterState).asInstanceOf[JClusterState.FailedOver])
     JClusterStateTester.testCoupledOrDecoupled(JClusterState(clusterState).asInstanceOf[JClusterState.CoupledOrDecoupled])
-  }
-}

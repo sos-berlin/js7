@@ -18,47 +18,43 @@ import js7.tests.subagent.SubagentTester.agentPath
 import monix.execution.Scheduler
 import monix.reactive.Observable
 
-final class SubagentMoveTwiceTest extends OurTestSuite with SubagentTester
-{
+final class SubagentMoveTwiceTest extends OurTestSuite with SubagentTester:
   protected val agentPaths = Seq(agentPath)
   protected lazy val items = Seq(workflow, bareSubagentItem)
   override protected val primarySubagentsDisabled = true
   protected implicit val scheduler = Scheduler.traced
 
-  "Change URI twice before Subagent has restarted" in {
+  "Change URI twice before Subagent has restarted" in:
     // Start bareSubagent
     val (bareSubagent, bareSubagentRelease) = subagentResource(bareSubagentItem, awaitDedicated = false)
       .allocated.await(99.s)
 
     var eventId = eventWatch.lastAddedEventId
     val aOrderId = OrderId("A-ORDER")
-    locally {
+    locally:
       controller.api.addOrder(FreshOrder(aOrderId, workflow.path)).await(99.s).orThrow
       val processingStarted = eventWatch
         .await[OrderProcessingStarted](_.key == aOrderId, after = eventId).head.value.event
       assert(processingStarted == OrderProcessingStarted(bareSubagentId))
       eventWatch.await[OrderStdoutWritten](_.key == aOrderId, after = eventId)
       // aOrderId is waiting for semaphore
-    }
 
     // Change URI, but do not start a corresponding Subagent
     eventId = eventWatch.lastAddedEventId
-    locally {
+    locally:
       val bare1SubagentItem = bareSubagentItem.copy(uri = findFreeLocalUri())
       val agentEventId = agent.eventWatch.lastAddedEventId
       controller.api.updateItems(Observable(AddOrChangeSimple(bare1SubagentItem)))
         .await(99.s).orThrow
       agent.eventWatch.await[SubagentCouplingFailed](_.key == bareSubagentId, after = agentEventId)
-    }
 
     // Change URI again and start the corresponding Subagent
     val bare2SubagentItem = bareSubagentItem.copy(uri = findFreeLocalUri())
-    locally {
+    locally:
       val agentEventId = agent.eventWatch.lastAddedEventId
       controller.api.updateItems(Observable(AddOrChangeSimple(bare2SubagentItem)))
         .await(99.s).orThrow
       agent.eventWatch.await[SubagentCouplingFailed](_.key == bareSubagentId, after = agentEventId)
-    }
 
     // Start the replacing bareSubagent
     runSubagent(bare2SubagentItem, suffix = "-2") { _ =>
@@ -81,7 +77,7 @@ final class SubagentMoveTwiceTest extends OurTestSuite with SubagentTester
       eventWatch.await[OrderFinished](_.key == aOrderId, after = eventId)
 
       eventId = eventWatch.lastAddedEventId
-      locally {
+      locally:
         // Start another order
         val bOrderId = OrderId("B-ORDER")
         TestSemaphoreJob.continue(1)
@@ -97,13 +93,9 @@ final class SubagentMoveTwiceTest extends OurTestSuite with SubagentTester
           .head.value.event
         assert(bProcessed == OrderProcessed(Outcome.succeeded))
         eventWatch.await[OrderFinished](_.key == bOrderId, after = eventId)
-      }
     }
-  }
-}
 
-object SubagentMoveTwiceTest
-{
+object SubagentMoveTwiceTest:
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",
     Seq(
@@ -111,4 +103,3 @@ object SubagentMoveTwiceTest
 
   final class TestSemaphoreJob extends SemaphoreJob(TestSemaphoreJob)
   object TestSemaphoreJob extends SemaphoreJob.Companion[TestSemaphoreJob]
-}

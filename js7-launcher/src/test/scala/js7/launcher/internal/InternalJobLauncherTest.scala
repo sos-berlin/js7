@@ -26,11 +26,10 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.subjects.PublishSubject
 
-final class InternalJobLauncherTest extends OurTestSuite
-{
+final class InternalJobLauncherTest extends OurTestSuite:
   private implicit val scheduler: Scheduler = Scheduler.traced
 
-  "InternalJobLauncher" in {
+  "InternalJobLauncher" in:
     val executable = InternalExecutable(
       classOf[TestInternalJob].getName,
       arguments = Map("ARG" -> NamedValue("ARG")))
@@ -71,15 +70,11 @@ final class InternalJobLauncherTest extends OurTestSuite
     err.onComplete()
     assert(whenOutString.await(99.s) == "OUT 1/" + "OUT 2" &&
            whenErrString.await(99.s) == "ERR 1/" + "ERR 2")
-  }
-}
 
-object InternalJobLauncherTest
-{
+object InternalJobLauncherTest:
   private val workflow = Workflow(WorkflowPath("WORKFLOW") ~ "1", Vector.empty)
 
-  private class TestInternalJob extends InternalJob
-  {
+  private class TestInternalJob extends InternalJob:
     override def toOrderProcess(step: Step) =
       OrderProcess(
         Task.fromFuture(step.outObserver.onNext("OUT 1/")) >>
@@ -94,5 +89,3 @@ object InternalJobLauncherTest
             .map(result => Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(result)))))
         }
       )
-  }
-}

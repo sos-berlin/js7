@@ -26,8 +26,7 @@ final case class Fork(
   agentPath: Option[AgentPath] = None,
   joinIfFailed: Boolean = false,
   sourcePos: Option[SourcePos] = None)
-extends ForkInstruction
-{
+extends ForkInstruction:
   def withoutSourcePos = copy(
     sourcePos = None,
     branches = branches.map(b => b.copy(workflow = b.workflow.withoutSourcePos)))
@@ -61,22 +60,19 @@ extends ForkInstruction
   //  branches.flatMap(_.workflow.determinedExecutingAgent).toSet
 
   override def workflow(branchId: BranchId) =
-    branchId match {
+    branchId match
       case BranchId.Named(name) if name startsWith BranchId.ForkPrefix =>
         val id = Branch.Id(name drop BranchId.ForkPrefix.length)
         branches.collectFirst { case Fork.Branch(`id`, workflow) => workflow }
           .fold(super.workflow(branchId))(Right.apply)
       case _ =>
         super.workflow(branchId)
-    }
 
   override def branchWorkflows = branches.map(b => b.id.toBranchId -> b.workflow)
 
   override def toString = s"Fork(${branches.map(_.id).mkString(",")})$sourcePosToString"
-}
 
-object Fork
-{
+object Fork:
   private def apply(branches: Seq[Fork.Branch], sourcePos: Option[SourcePos]) =
     throw new NotImplementedError
 
@@ -88,7 +84,7 @@ object Fork
     agentPath: Option[AgentPath] = None,
     joinIfFailed: Boolean = false,
     sourcePos: Option[SourcePos] = None)
-  : Checked[Fork] = {
+  : Checked[Fork] =
     val checkedResult = branches.view
       .flatMap(b => b.result.keys.view.map(_ -> b.id))
       .checkUniqueness_(_._1)(_
@@ -105,7 +101,6 @@ object Fork
     Seq(checkedResult, checkedUniqueBranchIds)
       .reduceLeftEither
       .map(_ => new Fork(branches.toVector, agentPath, joinIfFailed = joinIfFailed, sourcePos))
-  }
 
   def of(idAndWorkflows: (String, Workflow)*) =
     new Fork(
@@ -113,29 +108,24 @@ object Fork
         .map { case (id, workflow) => Branch(Branch.Id(id), workflow) }
         .toVector)
 
-  final case class Branch(id: Branch.Id, workflow: Workflow)
-  {
+  final case class Branch(id: Branch.Id, workflow: Workflow):
     def result: Map[String, Expression] =
       workflow.result.getOrElse(Map.empty)
-  }
-  object Branch {
+  object Branch:
     implicit def fromPair(pair: (String, Workflow)): Branch =
       new Branch(Branch.Id(pair._1), pair._2)
 
     /** Branch.Id("x").string == BranchId("fork+x") */
-    final case class Id(string: String) extends GenericString {
+    final case class Id(string: String) extends GenericString:
       def toBranchId = BranchId.fork(string)
-    }
-    object Id extends GenericString.Checked_[Id] {
+    object Id extends GenericString.Checked_[Id]:
       def unchecked(string: String) = new Id(string)
 
       implicit def fromString(string: String): Id =
         this.apply(string)
-    }
 
     implicit val jsonCodec: Codec.AsObject[Branch] =
       ConfiguredCodec.derive[Branch](useDefaults = true)
-  }
 
   //implicit lazy val jsonCodec: CirceObjectCodec[Fork] = deriveCodec[Fork]
   implicit val jsonEncoder: Encoder.AsObject[Fork] =
@@ -155,9 +145,7 @@ object Fork
         .toDecoderResult(c.history)
     yield fork
 
-  final case class DuplicatedBranchIdsInForkProblem(branchIds: Seq[Fork.Branch.Id]) extends Problem.Coded {
+  final case class DuplicatedBranchIdsInForkProblem(branchIds: Seq[Fork.Branch.Id]) extends Problem.Coded:
     def arguments = Map(
       "branchIds" -> branchIds.mkString(", ")
     )
-  }
-}

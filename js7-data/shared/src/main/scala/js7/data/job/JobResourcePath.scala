@@ -5,13 +5,10 @@ import js7.data.item.{InventoryItemPath, SignableSimpleItemPath}
 
 final case class JobResourcePath(string: String)
 extends SignableSimpleItemPath
-with InventoryItemPath.AttachableToAgent
-{
+with InventoryItemPath.AttachableToAgent:
   def companion = JobResourcePath
-}
 
-object JobResourcePath extends SignableSimpleItemPath.Companion[JobResourcePath]
-{
+object JobResourcePath extends SignableSimpleItemPath.Companion[JobResourcePath]:
   // May deadlock: override val itemTypeName = JobResource.typeName
 
   protected def unchecked(string: String) =
@@ -20,4 +17,3 @@ object JobResourcePath extends SignableSimpleItemPath.Companion[JobResourcePath]
   @javaApi
   def of(validName: String): JobResourcePath =
     apply(validName)
-}

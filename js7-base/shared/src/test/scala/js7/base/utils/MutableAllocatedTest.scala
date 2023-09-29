@@ -6,9 +6,9 @@ import js7.base.test.OurAsyncTestSuite
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 
-final class MutableAllocatedTest extends OurAsyncTestSuite {
+final class MutableAllocatedTest extends OurAsyncTestSuite:
 
-  "MutableAllocated" in {
+  "MutableAllocated" in:
     val a = new MutableAllocated[Int]
     var count = 0
     val resource = Resource.make(
@@ -45,5 +45,3 @@ final class MutableAllocatedTest extends OurAsyncTestSuite {
     yield succeed
 
     test.runToFuture
-  }
-}

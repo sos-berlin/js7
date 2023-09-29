@@ -11,20 +11,19 @@ import scala.collection.mutable
   */
 final class ByteSequenceToLinesObservable[ByteSeq](
   implicit ByteSeq: ByteSequence[ByteSeq])
-extends (ByteSeq => Observable[ByteArray])
-{
+extends (ByteSeq => Observable[ByteArray]):
   private val lines = mutable.Buffer.empty[ByteArray]
   private lazy val startedLine = mutable.ArrayBuffer.empty[ByteSeq]
 
   def apply(byteSeq: ByteSeq): Observable[ByteArray] =
     if byteSeq.isEmpty then
       Observable.empty
-    else {
+    else
       var p = 0
       val length = byteSeq.length
 
-      while p < length do {
-        byteSeq.indexOf('\n'.toByte, p) match {
+      while p < length do
+        byteSeq.indexOf('\n'.toByte, p) match
           case -1 =>
             startedLine += byteSeq.slice(p, length)
             p = length
@@ -35,8 +34,6 @@ extends (ByteSeq => Observable[ByteArray])
             lines += ByteArray.combineByteSequences(startedLine)
             startedLine.clear()
             p = i + 1
-        }
-      }
 
       val result =
         if lines.lengthIs == 1 then
@@ -45,5 +42,3 @@ extends (ByteSeq => Observable[ByteArray])
           Observable.fromIterable(lines.toVector)
       lines.clear()
       result
-  }
-}

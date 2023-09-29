@@ -6,9 +6,8 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AsyncFreeSpec
 
-final class SimpleLockTest extends AsyncFreeSpec
-{
-  "SimpleLock x" in {
+final class SimpleLockTest extends AsyncFreeSpec:
+  "SimpleLock x" in:
     val n = 1000
     val lock = new SimpleLock
     var resource = 0
@@ -29,5 +28,3 @@ final class SimpleLockTest extends AsyncFreeSpec
         succeed
       })
       .runToFuture
-  }
-}

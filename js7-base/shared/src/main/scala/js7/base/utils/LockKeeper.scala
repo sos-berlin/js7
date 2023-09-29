@@ -14,8 +14,7 @@ import scala.concurrent.duration.Deadline.now
 
 // TODO Timeout, web service for inspection ?
 
-final class LockKeeper[K]
-{
+final class LockKeeper[K]:
   // keyToQueue.contains(key): key is locked
   // keyToQueue(key).length: Number of clients waiting to get the lock
   private val keyToQueue = mutable.Map.empty[Any, mutable.Queue[Promise[Token]]]
@@ -27,10 +26,10 @@ final class LockKeeper[K]
     Resource.make(acquire(key))(release)
 
   private def acquire(key: K)(implicit enclosing: sourcecode.Enclosing): Task[Token] =
-    Task.defer {
+    Task.defer:
       var wasQueued, info = false
-      val result = synchronized {
-        keyToQueue.get(key) match {
+      val result = synchronized:
+        keyToQueue.get(key) match
           case None =>
             keyToQueue += key -> mutable.Queue.empty
             Task.pure(new Token(key))
@@ -49,37 +48,30 @@ final class LockKeeper[K]
                   info = true
                   logger.info(s"$sym Still waiting for $key (in ${enclosing.value}) since ${since.elapsed.pretty}")
                 }))
-        }
-      }
-      if info then {
+      if info then
         logger.info(s"🟢 Acquired lock '$key' (${enclosing.value})")
-      } else {
+      else {
         //logger.trace(s"↙ Acquired lock '$key' (${enclosing.value})")
       }
       result
-    }
 
   private def release(token: Token): Task[Unit] =
-    Task {
-      if !token.released.getAndSet(true) then {
+    Task:
+      if !token.released.getAndSet(true) then
         import token.key
-        val handedOver = synchronized {
-          keyToQueue(key).dequeueFirst(_ => true) match {
+        val handedOver = synchronized:
+          keyToQueue(key).dequeueFirst(_ => true) match
             case None =>
               keyToQueue.remove(key)
               false
             case Some(promise) =>
               promise.success(new Token(key))
               true
-          }
-        }
         // Log late, but outside the synchronized block
         //if (!handedOver)
         //  logger.trace(s"↙ Released lock '$key'")
         //else
         //  logger.trace(s"↙ Released lock '$key', handed over to queued request")
-      }
-    }
 
   override def toString =
     s"LockKeeper(${
@@ -91,15 +83,10 @@ final class LockKeeper[K]
       }
     })"
 
-  final class Token private[LockKeeper](private[LockKeeper] val key: K)
-  {
+  final class Token private[LockKeeper](private[LockKeeper] val key: K):
     private[LockKeeper] val released = AtomicBoolean(false)
 
     override def toString = s"LockKeeper.Token($key${released.get() ?? ", released"})"
-  }
-}
 
-object LockKeeper
-{
+object LockKeeper:
   private val logger = Logger[this.type]
-}

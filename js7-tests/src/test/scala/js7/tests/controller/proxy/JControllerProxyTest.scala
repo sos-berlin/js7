@@ -31,8 +31,7 @@ import scala.concurrent.CancellationException
 import scala.jdk.CollectionConverters.*
 import scala.util.{Failure, Try}
 
-final class JControllerProxyTest extends OurTestSuite with DirectoryProviderForScalaTest
-{
+final class JControllerProxyTest extends OurTestSuite with DirectoryProviderForScalaTest:
   override protected def controllerConfig = config"""
     js7.auth.users {
       Proxy {
@@ -54,21 +53,19 @@ final class JControllerProxyTest extends OurTestSuite with DirectoryProviderForS
   protected val agentPaths = AgentPath("AGENT") :: Nil
   protected val items = Nil
 
-  override def beforeAll() = {
+  override def beforeAll() =
     super.beforeAll()
-    for configDir <- List(directoryProvider.controllerEnv.configDir, directoryProvider.agentEnvs(0).configDir) do {
+    for configDir <- List(directoryProvider.controllerEnv.configDir, directoryProvider.agentEnvs(0).configDir) do
       createDirectory(configDir / "private/trusted-silly-signature-keys")
       configDir / "private/trusted-silly-signature-keys/key.silly" := "MY-SILLY-SIGNATURE"
-    }
     directoryProvider.agentEnvs.head.writeExecutable(RelativePathExecutable("TEST.cmd"), script(1.s))
-  }
 
-  "JControllerProxy" in {
+  "JControllerProxy" in:
     directoryProvider.runAgents() { _ =>
       val port = findFreeTcpPort()
       val controller = Lazy(
         directoryProvider.newController(httpPort = Some(port)))
-      try {
+      try
         val admissions = List(JAdmission.of(s"http://127.0.0.1:$port", ClusterProxyTest.primaryCredentials)).asJava
         val myVersionId = VersionId("MY-VERSION")
         JControllerProxyTester.run(admissions, JHttpsConfig.empty,
@@ -79,32 +76,26 @@ final class JControllerProxyTest extends OurTestSuite with DirectoryProviderForS
           (1 to 1000).map(i => workflow.withId(WorkflowPath(s"WORKFLOW-$i") ~ myVersionId))
             .map(_.asJson.compactPrint).asJava,
           () => controller())
-      } finally
-        for controller <- controller do {
+      finally
+        for controller <- controller do
           controller.stop.await(99.s)
-        }
     }
-  }
 
-  "cancel startProxy" in {
+  "cancel startProxy" in:
     val admissions = List(JAdmission.of("http://127.0.0.1:0", JCredentials.noCredentials)).asJava
     autoClosing(new JProxyContext) { context =>
       val api = context.newControllerApi(admissions, JHttpsConfig.empty)
       val future = api.startProxy()
-      Try(future.get(2, SECONDS)) match {
+      Try(future.get(2, SECONDS)) match
         case Failure(_: TimeoutException) =>
         case o => fail(s"startProxy must not complete: $o")
-      }
       assert(!future.isDone)
       future.cancel(false)
       val tried = Try(future.get(9, SECONDS))
       assert(tried.failed.toOption.exists(_.isInstanceOf[CancellationException]))
     }
-  }
-}
 
-object JControllerProxyTest
-{
+object JControllerProxyTest:
   val boardPath = BoardPath("BOARD")
   val boardVersion = VersionId("BOARD-VERSION")
 
@@ -117,4 +108,3 @@ object JControllerProxyTest
     Seq(ExpectNotices(boardPathExpr(s"'${boardPath.string}'"))))
 
   val expectingBoardWorkflowJson = (expectingBoardWorkflow: InventoryItem).asJson.compactPrint
-}

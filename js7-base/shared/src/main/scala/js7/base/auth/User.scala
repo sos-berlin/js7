@@ -10,8 +10,7 @@ import js7.base.problem.{Checked, Problem}
   *
   * @author Joacim Zschimmer
   */
-trait User
-{
+trait User:
   def id: UserId
   def hashedPassword: HashedPassword
   def grantedPermissions: Set[Permission]
@@ -36,18 +35,13 @@ trait User
     grantedPermissions.contains(requiredPermission) || grantedPermissions.contains(SuperPermission)
 
   final def isAnonymous = id.isAnonymous
-}
 
-object User
-{
-  trait Companion[U <: User] {
+object User:
+  trait Companion[U <: User]:
     def addPermissions(user: U, permissions: Set[Permission]): U
-  }
 
-  final case class UserDoesNotHavePermissionProblem(userId: UserId, permission: Permission) extends Problem.Coded {
+  final case class UserDoesNotHavePermissionProblem(userId: UserId, permission: Permission) extends Problem.Coded:
     def arguments = Map(
       "userId" -> userId.string,
       "permission" -> permission.name
     )
-  }
-}

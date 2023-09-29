@@ -8,11 +8,9 @@ import scala.collection.View
 import scala.concurrent.duration.FiniteDuration
 
 /** Adaptor AdmissionTimeScheme to Java Time.*/
-object AdmissionTimeSchemeForJavaTime
-{
+object AdmissionTimeSchemeForJavaTime:
   implicit final class RichAdmissionTimeScheme(private val admissionTimeScheme: AdmissionTimeScheme)
-  extends AnyVal
-  {
+  extends AnyVal:
     def hasAdmissionPeriodStartForDay(localDate: LocalDate, dateOffset: FiniteDuration): Boolean =
       admissionTimeScheme.periods
         .view
@@ -61,5 +59,3 @@ object AdmissionTimeSchemeForJavaTime
           AdmissionPeriodCalculator(period, dateOffset).findLocalIntervals(local).map(i -> _)
         }
         .mergeOrderedBy(_._2))
-  }
-}

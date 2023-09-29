@@ -7,8 +7,7 @@ import monix.eval.Task
 import scala.jdk.FutureConverters.CompletionStageOps
 
 private[js7] final class JInternalJobAdapter(jobContext: JobContext)
-extends InternalJob
-{
+extends InternalJob:
   private val helper = new InternalJobAdapterHelper[JInternalJob]
 
   override def start: Task[Checked[Unit]] =
@@ -20,10 +19,8 @@ extends InternalJob
     helper.callStop(
       job => Task.fromFuture(job.stop.asScala).void)
 
-  def toOrderProcess(step: Step) = {
+  def toOrderProcess(step: Step) =
     import jobContext.implicitJs7Scheduler
     val jStep = JInternalJob.Step(step)
     helper.callProcessOrder(_
       .toOrderProcess(jStep).asScala)
-  }
-}

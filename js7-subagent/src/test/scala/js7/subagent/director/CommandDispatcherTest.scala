@@ -11,10 +11,9 @@ import js7.subagent.director.CommandDispatcherTest.*
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 
-final class CommandDispatcherTest extends OurTestSuite
-{
-  "test" in {
-    val dispatcher = new CommandDispatcher {
+final class CommandDispatcherTest extends OurTestSuite:
+  "test" in:
+    val dispatcher = new CommandDispatcher:
       type Command = CommandDispatcherTest.Command
       type Response = CommandDispatcherTest.Response
 
@@ -29,21 +28,15 @@ final class CommandDispatcherTest extends OurTestSuite
             case _ => Task.pure(Left(Problem("FAILED")))
           })
       }
-    }
     dispatcher.start(subagentRunId).await(99.s)
     assert(dispatcher.executeCommand(Command("A")).await(99.s) == Right(Response("a")))
     assert(dispatcher.executeCommand(Command("B")).await(99.s) == Left(Problem("FAILED")))
-  }
 
-  "Repeat failed command after delay" in {
+  "Repeat failed command after delay" in:
     pending
-  }
-}
 
-object CommandDispatcherTest
-{
+object CommandDispatcherTest:
   private val subagentRunId = SubagentRunId(Base64UUID.ffff)
 
   private final case class Command(string: String) extends CommonCommand
   private final case class Response(string: String)
-}

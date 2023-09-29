@@ -50,8 +50,7 @@ extends SignedItemContainer
 with EventDrivenStateView[AgentState, Event]
 with SubagentDirectorState[AgentState]
 with FileWatchStateHandler[AgentState]
-with ClusterableState[AgentState]
-{
+with ClusterableState[AgentState]:
   override def isAgent = true
 
   override def maybeAgentPath =
@@ -109,7 +108,7 @@ with ClusterableState[AgentState]
     copy(standards = standards)
 
   def applyEvent(keyedEvent: KeyedEvent[Event]): Checked[AgentState] =
-    keyedEvent match {
+    keyedEvent match
       case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
         applyOrderEvent(orderId, event)
 
@@ -123,7 +122,7 @@ with ClusterableState[AgentState]
         fw.applyEvent(orderWatchPath <-: event)
 
       case KeyedEvent(_: NoKey, event: BasicItemEvent.ForDelegate) =>
-        event match {
+        event match
           case SignedItemAttachedToMe(signed: Signed[SignableItem]) =>
             Right(signed.value match {
               case workflow: Workflow =>
@@ -172,7 +171,7 @@ with ClusterableState[AgentState]
                 directors = agentRef.directors)))
 
           case ItemAttachedToMe(item: UnsignedItem) =>
-            item match {
+            item match
               case _: WorkflowPathControl |
                    _: WorkflowControl |
                    _: Calendar |
@@ -185,17 +184,15 @@ with ClusterableState[AgentState]
                     keyToUnsignedItemState_.updated(item.key, item.toInitialItemState)))
 
               case _ => eventNotApplicable(keyedEvent)
-            }
 
           case ItemDetached(itemKey, meta.agentPath) =>
-            itemKey match {
+            itemKey match
               case WorkflowId.as(workflowId) =>
-                for _ <- idToWorkflow.checked(workflowId) yield {
+                for _ <- idToWorkflow.checked(workflowId) yield
                   val updatedIdToWorkflow = idToWorkflow - workflowId
                   copy(
                     keyToSignedItem = keyToSignedItem - workflowId,
                     idToWorkflow = updatedIdToWorkflow)
-                }
 
               case path: OrderWatchPath =>
                 fw.detach(path)
@@ -207,7 +204,7 @@ with ClusterableState[AgentState]
                     pathToJobResource = pathToJobResource - path)
 
               case itemKey: UnsignedItemKey =>
-                itemKey match {
+                itemKey match
                   case _: WorkflowPathControlPath | WorkflowControlId.as(_) |
                        _: CalendarPath |
                        _: SubagentId | _: SubagentSelectionId =>
@@ -216,10 +213,8 @@ with ClusterableState[AgentState]
                         keyToUnsignedItemState_ = keyToUnsignedItemState_ - itemKey)
                   case _ =>
                     eventNotApplicable(keyedEvent)
-                }
 
               case _ => applyStandardEvent(keyedEvent)
-            }
 
           case ItemDetachingFromMe(id: SubagentId) =>
             for subagentItemState <- keyTo(SubagentItemState).checked(id) yield
@@ -228,10 +223,9 @@ with ClusterableState[AgentState]
                   subagentItemState.copy(isDetaching = true)))
 
           case _ => applyStandardEvent(keyedEvent)
-        }
 
       case KeyedEvent(subagentId: SubagentId, event: SubagentItemStateEvent) =>
-        event match {
+        event match
           case SubagentShutdown if !keyToUnsignedItemState_.contains(subagentId) =>
             // May arrive when SubagentItem has been deleted
             Right(this)
@@ -242,7 +236,6 @@ with ClusterableState[AgentState]
               subagentItemState <- subagentItemState.applyEvent(event)
             yield copy(
               keyToUnsignedItemState_ = keyToUnsignedItemState_.updated(subagentId, subagentItemState))
-        }
 
       case KeyedEvent(_: NoKey, AgentDedicated(directors, agentPath, agentRunId, controllerId, controllerRunId)) =>
         if meta.controllerRunId.exists(o => controllerRunId.exists(_ != o)) then
@@ -255,7 +248,6 @@ with ClusterableState[AgentState]
             controllerRunId = controllerRunId,
             directors = directors)))
       case _ => applyStandardEvent(keyedEvent)
-    }
 
   def keyToUnsignedItemState = keyToUnsignedItemState_.view
 
@@ -287,37 +279,33 @@ with ClusterableState[AgentState]
     meta.agentPath
 
   lazy val keyToItem: MapView[InventoryItemKey, InventoryItem] =
-    new MapView[InventoryItemKey, InventoryItem] {
+    new MapView[InventoryItemKey, InventoryItem]:
       def get(itemKey: InventoryItemKey): Option[InventoryItem] =
-        itemKey match {
+        itemKey match
           case path: JobResourcePath => pathToJobResource.get(path)
           case WorkflowId.as(id) => idToWorkflow.get(id)
           case itemKey: UnsignedItemKey => keyToUnsignedItemState_.get(itemKey).map(_.item)
-        }
 
       def iterator: Iterator[(InventoryItemKey, InventoryItem)] =
         pathToJobResource.iterator ++
           idToWorkflow.iterator ++
           keyToUnsignedItemState.mapValues(_.item).iterator
-    }
 
   def keyToSigned[I <: SignableItem](I: SignableItem.Companion[I]): MapView[I.Key, Signed[I]] =
-    new MapView[I.Key, Signed[I]] {
+    new MapView[I.Key, Signed[I]]:
       def get(key: I.Key) =
         keyToSignedItem.get(key).asInstanceOf[Option[Signed[I]]]
 
       def iterator =
-        keyToSignedItem.iterator.collect {
+        keyToSignedItem.iterator.collect:
           case pair @ (_, Signed(item, _)) if item.companion eq I =>
             pair.asInstanceOf[(I.Key, Signed[I])]
-        }
 
       //? override def values =
       //  keyToSignedItem.values.view.collect {
       //    case signed @ Signed(item: I, _) if I.cls.isAssignableFrom(item.getClass) =>
       //      signed.asInstanceOf[Signed[I]]
       //  }
-    }
 
   def workflowPathToId(workflowPath: WorkflowPath) =
     Left(Problem.pure("workflowPathToId is not available at Agent"))
@@ -338,12 +326,10 @@ with ClusterableState[AgentState]
         subagentId <- meta.clusterNodeIdToSubagentId(nodeId)
         userId <- subagentId.toUserId
       yield userId
-}
 
 object AgentState
 extends ClusterableState.Companion[AgentState]
-with ItemContainer.Companion[AgentState]
-{
+with ItemContainer.Companion[AgentState]:
   val empty = AgentState(EventId.BeforeFirst, SnapshotableState.Standards.empty,
     AgentMetaState.empty,
     Map.empty, Map.empty, Map.empty, Map.empty, Map.empty)
@@ -365,20 +351,16 @@ with ItemContainer.Companion[AgentState]
     agentPath: AgentPath,
     agentRunId: AgentRunId,
     controllerId: ControllerId,
-    controllerRunId: Option[ControllerRunId]/*COMPATIBLE None until v2.5, Some since v2.6*/)
-  {
+    controllerRunId: Option[ControllerRunId]/*COMPATIBLE None until v2.5, Some since v2.6*/):
     def clusterNodeIdToSubagentId(nodeId: NodeId): Checked[SubagentId]=
       if directors.sizeIs < 2 then
         Left(Problem("Agent has not enough directors to be a cluster"))
       else
-        nodeId match {
+        nodeId match
           case NodeId.primary => Right(directors(0))
           case NodeId.backup => Right(directors(1))
           case nodeId => Left(Problem(s"🔥 Unexpected $nodeId"))
-        }
-  }
-  object AgentMetaState
-  {
+  object AgentMetaState:
     val empty = AgentMetaState(
       Vector.empty,
       AgentPath.empty,
@@ -389,16 +371,14 @@ with ItemContainer.Companion[AgentState]
     implicit val jsonEncoder: Encoder.AsObject[AgentMetaState] = deriveEncoder
     implicit val jsonDecoder: Decoder[AgentMetaState] =
       c => for
-        directors <- c.get[Option[SubagentId]]("subagentId").flatMap {
+        directors <- c.get[Option[SubagentId]]("subagentId").flatMap:
           case None => c.get[Option[Seq[SubagentId]]]("directors").map(_.toVector.flatten)
           case Some(subagentId) => Right(Seq(subagentId))
-        }
         agentPath <- c.get[AgentPath]("agentPath")
         agentRunId <- c.get[AgentRunId]("agentRunId")
         controllerId <- c.get[ControllerId]("controllerId")
         controllerRunId <- c.get[Option[ControllerRunId]]("controllerRunId")
       yield AgentMetaState(directors, agentPath, agentRunId, controllerId, controllerRunId)
-  }
 
   val snapshotObjectJsonCodec = TypedJsonCodec[Any](
     Subtype[JournalState],
@@ -413,7 +393,7 @@ with ItemContainer.Companion[AgentState]
     Subtype(unsignedItemJsonCodec),
     Subtype[BasicItemEvent])
 
-  implicit val keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event] = {
+  implicit val keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event] =
     KeyedEventTypedJsonCodec[Event](
       KeyedSubtype[JournalEvent],
       KeyedSubtype[ClusterEvent],
@@ -422,5 +402,3 @@ with ItemContainer.Companion[AgentState]
       KeyedSubtype[AgentEvent],
       KeyedSubtype[InventoryItemEvent],
       KeyedSubtype[OrderWatchEvent])
-  }
-}

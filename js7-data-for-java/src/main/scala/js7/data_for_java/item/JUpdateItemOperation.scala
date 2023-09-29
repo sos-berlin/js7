@@ -7,13 +7,10 @@ import js7.data.item.{ItemOperation, SimpleItemPath, VersionId, VersionedItemPat
 import js7.data_for_java.common.JavaWrapper
 
 final case class JUpdateItemOperation(asScala: ItemOperation)
-extends JavaWrapper
-{
+extends JavaWrapper:
   type AsScala = ItemOperation
-}
 
-object JUpdateItemOperation
-{
+object JUpdateItemOperation:
   @Nonnull
   def addOrChangeSimple(@Nonnull item: JUnsignedSimpleItem): JUpdateItemOperation =
     new JUpdateItemOperation(ItemOperation.AddOrChangeSimple(item.asScala))
@@ -48,4 +45,3 @@ object JUpdateItemOperation
   def removeVersioned(@Nonnull path: VersionedItemPath): JUpdateItemOperation =
     new JUpdateItemOperation(
       RemoveVersioned(path))
-}

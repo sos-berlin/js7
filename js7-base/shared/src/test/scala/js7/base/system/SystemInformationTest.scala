@@ -7,13 +7,11 @@ import js7.tester.CirceJsonTester.testJson
 /**
   * @author Joacim Zschimmer
   */
-final class SystemInformationTest extends OurTestSuite {
+final class SystemInformationTest extends OurTestSuite:
 
-  "JSON 1" in {
+  "JSON 1" in:
     testJson(SystemInformation.ForTest,
       json"""{
         "hostname": "HOSTNAME",
         "mxBeans": {}
       }""")
-  }
-}

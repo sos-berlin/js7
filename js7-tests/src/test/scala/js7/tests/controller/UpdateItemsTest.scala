@@ -39,12 +39,11 @@ import scala.concurrent.duration.Deadline.now
   * @author Joacim Zschimmer
   */
 final class UpdateItemsTest extends OurTestSuite with ControllerAgentForScalaTest
-with BlockingItemUpdater
-{
+with BlockingItemUpdater:
   protected val agentPaths = agentPath :: Nil
   protected val items = Nil
 
-  override def beforeAll() = {
+  override def beforeAll() =
     directoryProvider.controllerEnv.privateConf ++=
        """js7.auth.users {
          |  TEST-USER {
@@ -59,36 +58,31 @@ with BlockingItemUpdater
     directoryProvider.agentToEnv(agentPath).writeExecutable(RelativePathExecutable("SCRIPT2.cmd"), ":")
     directoryProvider.agentToEnv(agentPath).writeExecutable(RelativePathExecutable("SCRIPT4.cmd"), ":")
     super.beforeAll()
-  }
 
-  "User requires permission 'UpdateItem'" in {
+  "User requires permission 'UpdateItem'" in:
     val controllerApi = controller.newControllerApi(Some(UserId("without-permission") -> SecretString("TEST-PASSWORD")))
     assert(controllerApi.updateItems(Observable(AddVersion(V1), AddOrChangeSigned(toSignedString(workflow1)))).await(99.s) ==
       Left(UserDoesNotHavePermissionProblem(UserId("without-permission"), UpdateItemPermission)))
     controllerApi.stop.await(99.s)
-  }
 
-  "ControllerCommand.UpdateRepo with VersionedItem" in {
+  "ControllerCommand.UpdateRepo with VersionedItem" in:
     val orderIds = Vector(OrderId("🔺"), OrderId("🔷"))
     controller.api.updateItems(Observable(AddVersion(V1), AddOrChangeSigned(toSignedString(workflow1)))).await(99.s).orThrow
     controller.api.addOrders(Observable(FreshOrder(orderIds(0), workflowPath))).await(99.s).orThrow
 
-    locally {
+    locally:
       val signedWorkflow2 = toSignedString(workflow2)
       controller.api.updateItems(Observable(AddVersion(V2), AddOrChangeSigned(signedWorkflow2))).await(99.s).orThrow
       controller.api.updateItems(Observable(AddVersion(V2), AddOrChangeSigned(signedWorkflow2))).await(99.s).orThrow  /*Duplicate effect is ignored*/
-    }
     controller.api.addOrders(Observable(FreshOrder(orderIds(1), workflowPath))).await(99.s).orThrow
 
     val promises = Vector.fill(2)(Promise[Deadline]())
-    for i <- orderIds.indices do {
+    for i <- orderIds.indices do
       controller.eventWatch
         .when[OrderFinished](EventRequest.singleClass[OrderFinished](timeout = Some(99.s)), _.key == orderIds(i))
-        .foreach {
+        .foreach:
           case EventSeq.NonEmpty(_) => promises(i).success(now)
           case o => promises(i).failure(new AssertionError(s"Unexpected: $o"))
-        }
-    }
     val finishedAt = promises.map(_.future) await 99.s
     // The two order running on separate workflow versions run in parallel
     assert(finishedAt(0) > finishedAt(1) + Tick)  // The second added order running on workflow version 2 finished before the first added order
@@ -100,23 +94,20 @@ with BlockingItemUpdater
 
     controller.api.executeCommand(DeleteOrdersWhenTerminated(orderIds)).await(99.s).orThrow
 
-    withClue("Tampered with configuration: ") {
+    withClue("Tampered with configuration: "):
       assert(controller.api.updateItems(Observable(
         AddVersion(VersionId("vTampered")),
         AddOrChangeSigned(toSignedString(workflow2).tamper)
       )).await(99.s) == Left(TamperedWithSignedMessageProblem))
-    }
-  }
 
-  "Divergent VersionId is rejected" in {
+  "Divergent VersionId is rejected" in:
     // The signer signs the VersionId, too
     assert(controller.api.updateItems(Observable(
       AddVersion(VersionId("DIVERGE")),
       AddOrChangeSigned(toSignedString(otherWorkflow4))
     )).await(99.s) == Left(ItemVersionDoesNotMatchProblem(VersionId("DIVERGE"), otherWorkflow4.id)))
-  }
 
-  "SimpleItem's ItemRevision must not be supplied" in {
+  "SimpleItem's ItemRevision must not be supplied" in:
     // itemRevision is set only be the Controller
     val lock = Lock(LockPath("LOCK"))
     assert(controller.api.updateUnsignedSimpleItems(Seq(lock.copy(itemRevision = Some(ItemRevision(1))))).await(99.s) ==
@@ -126,19 +117,16 @@ with BlockingItemUpdater
 
     assert(controller.api.updateUnsignedSimpleItems(Seq(lock.copy(limit = 7, itemRevision = Some(ItemRevision(1))))).await(99.s) ==
       Left(Problem("ItemRevision is not accepted here")))
-  }
 
-  "SignableItem" in {
+  "SignableItem" in:
     controller.api.updateItems(Observable(AddOrChangeSigned(toSignedString(jobResource))))
       .await(99.s).orThrow
-  }
 
-  "SignableItem, tampered" in {
+  "SignableItem, tampered" in:
     assert(controller.api.updateItems(Observable(AddOrChangeSigned(toSignedString(jobResource).tamper)))
       .await(99.s) == Left(TamperedWithSignedMessageProblem))
-  }
 
-  "Change a Workflow and delete the unused Board" in {
+  "Change a Workflow and delete the unused Board" in:
     val board = Board.singleNotice(BoardPath("BOARD"))
 
     val workflow = Workflow(WorkflowPath("WORKFLOW-WITH-BOARD"), Seq(
@@ -155,9 +143,8 @@ with BlockingItemUpdater
         DeleteSimple(board.path)))
       .await(99.s)
       .orThrow
-  }
 
-  "Change a Workflow with a WorkflowControl" in {
+  "Change a Workflow with a WorkflowControl" in:
     val workflow = Workflow(WorkflowPath("WORKFLOW-WITH-CONTROL"), Nil)
     val workflowControl = WorkflowControl(WorkflowControlId(workflow.id))
 
@@ -176,11 +163,8 @@ with BlockingItemUpdater
     assert(controllerState.keyToItem(Workflow).contains(workflow.path ~ v2))
     assert(!controllerState.keyToItem(WorkflowControl).contains(workflowControl.path ~ v1))
     assert(!controllerState.keyToItem(WorkflowControl).contains(workflowControl.path ~ v2))
-  }
-}
 
-object UpdateItemsTest
-{
+object UpdateItemsTest:
   private val Tick = 2.s
   private val agentPath = AgentPath("AGENT")
 
@@ -210,4 +194,3 @@ object UpdateItemsTest
   private val otherWorkflow4 = WorkflowParser.parse(WorkflowPath("OTHER-WORKFLOW") ~ V4, script4).orThrow
 
   private val jobResource = JobResource(JobResourcePath("JOB-RESOURCE"))
-}

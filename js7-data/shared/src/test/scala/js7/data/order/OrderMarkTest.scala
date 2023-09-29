@@ -6,9 +6,8 @@ import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.workflow.position.Position
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 
-final class OrderMarkTest extends OurTestSuite
-{
-  "Cancelling" in {
+final class OrderMarkTest extends OurTestSuite:
+  "Cancelling" in:
     testJson[OrderMark](OrderMark.Cancelling(CancellationMode.FreshOnly), json"""
       {
         "TYPE": "Cancelling",
@@ -16,9 +15,8 @@ final class OrderMarkTest extends OurTestSuite
           "TYPE": "FreshOnly"
         }
       }""")
-  }
 
-  "Suspending" in {
+  "Suspending" in:
     testJson[OrderMark](OrderMark.Suspending(), json"""
       {
         "TYPE": "Suspending",
@@ -34,9 +32,8 @@ final class OrderMarkTest extends OurTestSuite
           }
         }
       }""")
-  }
 
-  "Resuming" in {
+  "Resuming" in:
     testJson[OrderMark](OrderMark.Resuming(Some(Position(1)), asSucceeded = true), json"""
       {
         "TYPE": "Resuming",
@@ -51,5 +48,3 @@ final class OrderMarkTest extends OurTestSuite
         "position": [ 1 ],
         "historicOperations": []
       }""")
-  }
-}

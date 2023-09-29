@@ -5,8 +5,7 @@ import js7.data.value.expression.Expression.{FunctionCall, JobResourceVariable}
 import js7.data.value.expression.{Scope, ValueSearch}
 
 private[expression] class CombinedScope(first: Scope, second: Scope)
-extends Scope
-{
+extends Scope:
   override def symbolToValue(symbol: String) =
     first.symbolToValue(symbol) orElse second.symbolToValue(symbol)
 
@@ -23,4 +22,3 @@ extends Scope
     first.evalJobResourceVariable(v) orElse second.evalJobResourceVariable(v)
 
   override def toString = s"$first |+| $second"   // combine is associative
-}

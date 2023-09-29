@@ -5,8 +5,7 @@ import js7.base.generic.SecretString
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.*
 
-trait DocumentSigner
-{
+trait DocumentSigner:
   protected type MySignature <: Signature
 
   def companion: DocumentSigner.Companion { type MySignature = DocumentSigner.this.MySignature }
@@ -18,12 +17,9 @@ trait DocumentSigner
 
   final def toSignedString(document:String): SignedString =
     SignedString(document, signString(document).toGenericSignature)
-}
 
-object DocumentSigner
-{
-  trait Companion
-  {
+object DocumentSigner:
+  trait Companion:
     protected type MySignature <: Signature   //= MyMessageSigner#MySignature
     protected type MyMessageSigner <: DocumentSigner
 
@@ -33,5 +29,3 @@ object DocumentSigner
 
     override def toString =
       s"""${getClass.simpleScalaName}("$typeName")"""
-  }
-}

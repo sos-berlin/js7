@@ -12,9 +12,8 @@ import js7.journal.watch.TestData.{AEvent, TestState, journalId, writeJournal}
 /**
   * @author Joacim Zschimmer
   */
-final class FileEventIteratorPoolTest extends OurTestSuite
-{
-  "FileEventIteratorPool" in {
+final class FileEventIteratorPoolTest extends OurTestSuite:
+  "FileEventIteratorPool" in:
     FileUtils.withTemporaryDirectory("FileEventIteratorPoolTest-") { dir =>
       val journalLocation = JournalLocation(TestState, dir resolve "test")
       val journalFile = journalLocation.file(after = After)
@@ -24,7 +23,7 @@ final class FileEventIteratorPoolTest extends OurTestSuite
 
       assert(pool.firstEventPosition > 0)
 
-      locally {
+      locally:
         // borrowIterator, returnIterator
         val it1 = pool.borrowIterator()
         assert(it1.eventId == After)
@@ -43,7 +42,6 @@ final class FileEventIteratorPoolTest extends OurTestSuite
         pool.returnIterator(it4)
         pool.returnIterator(it4)
         pool.returnIterator(it1)
-      }
 
       val it1 = pool.borrowIterator()
       assert(it1.position == it1.firstEventPosition)  // it1 is the first opened iterator, used for firstEventPosition
@@ -59,17 +57,13 @@ final class FileEventIteratorPoolTest extends OurTestSuite
       assert(!it1a.hasNext)
 
       pool.close()  // Closes all iterators (and files)
-      intercept[ClosedException] {
+      intercept[ClosedException]:
         pool.borrowIterator()
-      }
     }
-  }
-}
 
-object FileEventIteratorPoolTest {
+object FileEventIteratorPoolTest:
   private val After = EventId(10009)
   private val TestEvents =
     Stamped(After + 1, "A" <-: AEvent) ::
     Stamped(After + 2, "B" <-: AEvent) ::
     Nil
-}

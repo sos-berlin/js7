@@ -37,18 +37,17 @@ import scala.util.{Failure, Success}
 
 /** Non-buffering (immediately responding) Observable for a Reader. */
 final class UnbufferedReaderObservable(in: Reader, chunkSizeMax: Int = 4096)
-extends Observable[String]
-{
+extends Observable[String]:
   require(chunkSizeMax > 0, "chunkSizeMax > 0")
 
   private[this] val wasSubscribed = Atomic(false)
 
-  def unsafeSubscribeFn(out: Subscriber[String]): Cancelable = {
-    if !wasSubscribed.compareAndSet(false, true) then {
+  def unsafeSubscribeFn(out: Subscriber[String]): Cancelable =
+    if !wasSubscribed.compareAndSet(false, true) then
       out.onError(APIContractViolationException(
         "UnbufferedReaderObservable does not support multiple subscribers"))
       Cancelable.empty
-    } else {
+    else
       val buffer = new Array[Char](chunkSizeMax)
       // A token that will be checked for cancellation
       val cancelable = BooleanCancelable()
@@ -56,28 +55,23 @@ extends Observable[String]
       // Schedule first cycle
       reschedule(Continue, buffer, out, cancelable, em)(out.scheduler)
       cancelable
-    }
-  }
 
   private def reschedule(
     ack: Future[Ack],
     b: Array[Char],
     out: Subscriber[String],
     c: BooleanCancelable,
-    em: ExecutionModel)(implicit s: Scheduler): Unit = {
+    em: ExecutionModel)(implicit s: Scheduler): Unit =
 
-    ack.onComplete {
+    ack.onComplete:
       case Success(next) =>
         // Should we continue, or should we close the stream?
-        if next == Continue && !c.isCanceled then {
+        if next == Continue && !c.isCanceled then
           // Using Scala's BlockContext, since this is potentially a blocking call
           blocking(fastLoop(b, out, c, em, 0))
-        }
       // else stop
       case Failure(ex) =>
         reportFailure(ex)
-    }
-  }
 
   @tailrec
   private def fastLoop(
@@ -85,7 +79,7 @@ extends Observable[String]
     out: Subscriber[String],
     c: BooleanCancelable,
     em: ExecutionModel,
-    syncIndex: Int)(implicit s: Scheduler): Unit = {
+    syncIndex: Int)(implicit s: Scheduler): Unit =
 
     // Dealing with mutable status in order to keep the
     // loop tail-recursive :-(
@@ -93,69 +87,59 @@ extends Observable[String]
     var ack: Future[Ack] = Continue
     var streamErrors = true
 
-    try {
+    try
       val length = in.read(buffer, 0, buffer.length)
       // From this point on, whatever happens is a protocol violation
       streamErrors = false
 
-      ack = if length >= 0 then {
+      ack = if length >= 0 then
         // As long as the returned length is positive, it means
         // we haven't reached EOF.
         out.onNext(new String(buffer, 0, length))
-      } else {
+      else
         out.onComplete()
         Stop
-      }
-    } catch {
+    catch
       case ex if NonFatal(ex) =>
         errorThrown = ex
-    }
 
-    if errorThrown == null then {
+    if errorThrown == null then
       // Logic for collapsing execution loops
       val nextIndex =
         if ack == Continue then em.nextFrameIndex(syncIndex)
         else if ack == Stop then -1
         else 0
 
-      if !c.isCanceled then {
+      if !c.isCanceled then
         if nextIndex > 0 then
           fastLoop(buffer, out, c, em, nextIndex)
         else if nextIndex == 0 then
           reschedule(ack, buffer, out, c, em)
         else
           () // Stop!
-      }
-    } else if streamErrors then {
+    else if streamErrors then
       sendError(out, errorThrown)
-    } else {
+    else
       reportFailure(errorThrown)
-    }
-  }
 
   private def sendError(out: Subscriber[Nothing], e: Throwable)(implicit s: UncaughtExceptionReporter): Unit =
     try out.onError(e)
-    catch {
+    catch
       case NonFatal(e2) =>
         if e ne e2 then e.addSuppressed(e2)
         reportFailure(e)
-    }
 
-  private def reportFailure(e: Throwable)(implicit s: UncaughtExceptionReporter): Unit = {
+  private def reportFailure(e: Throwable)(implicit s: UncaughtExceptionReporter): Unit =
     s.reportFailure(e)
     // Forcefully close in case of protocol violations, because we are
     // not signaling the error downstream, which could lead to leaks
     try in.close()
     catch { case NonFatal(_) => () }
-  }
-}
 
-object UnbufferedReaderObservable
-{
+object UnbufferedReaderObservable:
   def apply(newReader: Task[Reader], chunkSizeMax: Int = 4096)
   : Observable[String] =
     Observable
       .resource(newReader)(reader => Task(reader.close()))
       .flatMap(in => new UnbufferedReaderObservable(in, chunkSizeMax))
       .executeAsync
-}

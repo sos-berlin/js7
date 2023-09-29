@@ -11,8 +11,7 @@ import js7.data.orderwatch.{FileWatch, OrderWatchPath}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.WorkflowPath
 
-final class FileWatchManagerTest extends OurTestSuite
-{
+final class FileWatchManagerTest extends OurTestSuite:
   private lazy val fileWatch = FileWatch(
     OrderWatchPath("FILE-WATCH"),
     WorkflowPath("WORKFLOW"),
@@ -26,11 +25,9 @@ final class FileWatchManagerTest extends OurTestSuite
     .withZoneSameInstant(ZoneId.of("Pacific/Tahiti"))
     .format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
 
-  "relativePathToOrderId" in {
+  "relativePathToOrderId" in:
     assert(relativePathToOrderId(fileWatch, "X") == None)
 
     // Test may fail at midnight, Tahiti time, due to date change
     assert(relativePathToOrderId(fileWatch, "file-ORDER.csv") ==
       Some(Right(OrderId(s"#$yyyymmdd#F-FILE-WATCH:ORDER"))))
-  }
-}

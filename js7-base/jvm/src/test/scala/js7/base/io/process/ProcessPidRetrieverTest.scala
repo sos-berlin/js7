@@ -6,9 +6,6 @@ import js7.base.test.OurTestSuite
 /**
   * @author Joacim Zschimmer
   */
-final class ProcessPidRetrieverTest extends OurTestSuite
-{
-  "maybeOwnPid" in {
+final class ProcessPidRetrieverTest extends OurTestSuite:
+  "maybeOwnPid" in:
     assert(maybeOwnPid.isDefined == hasJava9)
-  }
-}

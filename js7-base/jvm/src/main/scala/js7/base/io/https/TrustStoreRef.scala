@@ -15,13 +15,10 @@ final case class TrustStoreRef(
   url: URL,
   /** Password for file */
   storePassword: SecretString)
-extends StoreRef
-{
+extends StoreRef:
   override def toString = s"TrustStore $url"
-}
 
-object TrustStoreRef
-{
+object TrustStoreRef:
   private val configKey = "js7.web.https.truststores"
 
   def apply(file: Path, storePassword: SecretString): TrustStoreRef =
@@ -42,4 +39,3 @@ object TrustStoreRef
 
   def fromKeyStore(keyStoreRef: KeyStoreRef): TrustStoreRef =
     new TrustStoreRef(keyStoreRef.url, keyStoreRef.storePassword)
-}

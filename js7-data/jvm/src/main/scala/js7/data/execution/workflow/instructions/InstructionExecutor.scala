@@ -15,8 +15,7 @@ import js7.data.workflow.position.Position
 /**
   * @author Joacim Zschimmer
   */
-trait InstructionExecutor
-{
+trait InstructionExecutor:
   type Instr <: Instruction
 
   protected val service: InstructionExecutorService
@@ -28,8 +27,8 @@ trait InstructionExecutor
     noObstacles
 
   def onReturnFromSubworkflow(instr: Instr, order: Order[Order.State], state: StateView)
-  : Checked[List[KeyedEvent[OrderActorEvent]]] = {
-    order.position.parent match {
+  : Checked[List[KeyedEvent[OrderActorEvent]]] =
+    order.position.parent match
       case None =>
         // Does not happen
         Left(Problem.pure(s"onReturnFromSubworkflow but no parent position for ${order.id}"))
@@ -37,20 +36,15 @@ trait InstructionExecutor
       case Some(parentPos) =>
         Right(
           (order.id <-: OrderMoved(parentPos.increment)) :: Nil)
-    }
-  }
 
   def subworkflowEndToPosition(parentPos: Position): Option[Position] =
     None
-}
 
-object InstructionExecutor {
+object InstructionExecutor:
   private def noObstacles: Checked[Set[OrderObstacle]] =
     Right(Set.empty)
-}
 
-trait EventInstructionExecutor extends InstructionExecutor
-{
+trait EventInstructionExecutor extends InstructionExecutor:
   final def clock: WallClock =
     service.clock
 
@@ -85,10 +79,7 @@ trait EventInstructionExecutor extends InstructionExecutor
   protected final def detach(order: Order[Order.State])
   : Option[Checked[List[KeyedEvent[OrderDetachable]]]] =
     order.isAttached ? Right((order.id <-: OrderDetachable) :: Nil)
-}
 
-trait PositionInstructionExecutor extends InstructionExecutor
-{
+trait PositionInstructionExecutor extends InstructionExecutor:
   def nextMove(instruction: Instr, order: Order[Order.State], stateView: StateView)
   : Checked[Option[OrderMoved]]
-}

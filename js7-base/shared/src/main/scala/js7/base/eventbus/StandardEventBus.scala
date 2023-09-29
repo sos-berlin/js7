@@ -5,8 +5,7 @@ import js7.base.log.Logger
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import scala.reflect.ClassTag
 
-final class StandardEventBus[E](eventClass: Class[E]) extends ClassEventBus[E]
-{
+final class StandardEventBus[E](eventClass: Class[E]) extends ClassEventBus[E]:
   def this()(implicit e: ClassTag[E]) =
     this(e.runtimeClass.asInstanceOf[Class[E]])
 
@@ -18,8 +17,6 @@ final class StandardEventBus[E](eventClass: Class[E]) extends ClassEventBus[E]
   protected def classifierSuperclass = eventClass
 
   protected def classify(event: E) = event.getClass
-}
 
-object StandardEventBus {
+object StandardEventBus:
   private val logger = Logger[this.type]
-}

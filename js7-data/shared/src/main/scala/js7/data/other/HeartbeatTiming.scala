@@ -9,8 +9,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import scala.concurrent.duration.FiniteDuration
 
-final case class HeartbeatTiming(heartbeat: FiniteDuration, heartbeatTimeout: FiniteDuration)
-{
+final case class HeartbeatTiming(heartbeat: FiniteDuration, heartbeatTimeout: FiniteDuration):
   def checked =
     if heartbeat.isZeroOrBelow || heartbeatTimeout.isZeroOrBelow then
       Left(Problem.pure("Invalid heartbeat timing values"))
@@ -22,10 +21,8 @@ final case class HeartbeatTiming(heartbeat: FiniteDuration, heartbeatTimeout: Fi
   def heartbeatValidDuration = heartbeat + heartbeatTimeout / 2
 
   override def toString = s"HeartbeatTiming(${heartbeat.pretty}, ${heartbeatTimeout.pretty})"
-}
 
-object HeartbeatTiming
-{
+object HeartbeatTiming:
   def checked(heartbeat: FiniteDuration, heartbeatTimeout: FiniteDuration)
   : Checked[HeartbeatTiming] =
     new HeartbeatTiming(heartbeat, heartbeatTimeout).checked
@@ -34,4 +31,3 @@ object HeartbeatTiming
     deriveCodec[HeartbeatTiming].checked(_.checked)
 
   intelliJuseImport((FiniteDurationJsonEncoder, FiniteDurationJsonDecoder))
-}

@@ -7,8 +7,7 @@ import js7.base.log.Logger
 import js7.base.system.ServiceProviders.findServices
 import js7.base.utils.Collections.implicits.RichIterable
 
-object SignatureServices
-{
+object SignatureServices:
   private val logger = Logger[this.type]
 
   private val standardVerifiers: Seq[SignatureVerifier.Companion] =
@@ -33,4 +32,3 @@ object SignatureServices
   lazy val nameToDocumentSignerCompanion: Map[String, DocumentSigner.Companion] =
     (standardSigners ++ services.flatMap(_.maybeSignerCompanion))
       .toKeyedMap(_.typeName)
-}

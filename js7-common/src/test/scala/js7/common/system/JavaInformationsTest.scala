@@ -8,13 +8,11 @@ import js7.data.system.JavaInformation
 /**
   * @author Joacim Zschimmer
   */
-final class JavaInformationsTest extends OurTestSuite {
+final class JavaInformationsTest extends OurTestSuite:
 
-  "JSON" in {
+  "JSON" in:
     val javaInformation = JavaInformations.javaInformation()
     val json = javaInformation.asJson
     assert(json.as[JavaInformation] == Right(javaInformation))
     assert(json.jsonObjectOrThrow.toMap("systemProperties").jsonObjectOrThrow.toMap contains "java.version")
     assert(json.jsonObjectOrThrow.toMap("systemProperties").jsonObjectOrThrow.toMap contains "os.arch")
-  }
-}

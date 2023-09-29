@@ -14,8 +14,7 @@ import js7.data.subagent.SubagentCommand
 import monix.eval.Task
 import monix.execution.Scheduler
 
-private trait CommandRoute extends SubagentRouteProvider with EntitySizeLimitProvider
-{
+private trait CommandRoute extends SubagentRouteProvider with EntitySizeLimitProvider:
   protected def executeCommand(command: Numbered[SubagentCommand], meta: CommandMeta)
   : Task[Checked[SubagentCommand.Response]]
 
@@ -28,4 +27,3 @@ private trait CommandRoute extends SubagentRouteProvider with EntitySizeLimitPro
           completeTask(
             executeCommand(command, CommandMeta(user))
               .map(_.map(o => o: SubagentCommand.Response))))))
-}

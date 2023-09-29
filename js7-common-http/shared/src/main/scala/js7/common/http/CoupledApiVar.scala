@@ -13,8 +13,7 @@ import monix.eval.Task
   * With `Left(TerminatedProblem)` the read operations fail with `ProblemException`.
   * Commands (`executeCommand`) waiting for coupling will be completed with `ProblemException`.
   */
-private[http] final class CoupledApiVar[Api <: SessionApi]
-{
+private[http] final class CoupledApiVar[Api <: SessionApi]:
   // The only Left value is TerminatedProblem
   private val coupledApiMVar = MVar.empty[Task, Checked[Api]]().memoize
   @volatile private var stopped = false
@@ -56,11 +55,9 @@ private[http] final class CoupledApiVar[Api <: SessionApi]
       .map(_.map(_.orThrow)))
 
   def isTerminated: Task[Boolean] =
-    coupledApiMVar.flatMap(_.tryRead).map {
+    coupledApiMVar.flatMap(_.tryRead).map:
       case Some(Left(TerminatedProblem)) => true
       case _ => false
-    }
 
   def put(api: Api): Task[Unit] =
     coupledApiMVar.flatMap(_.put(Right(api)))
-}

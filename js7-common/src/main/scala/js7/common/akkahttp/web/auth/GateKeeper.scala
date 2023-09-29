@@ -37,8 +37,7 @@ final class GateKeeper[U <: User](
     U: User.Companion[U],
     scheduler: Scheduler,
     /** For `Route` `seal`. */
-    exceptionHandler: ExceptionHandler)
-{
+    exceptionHandler: ExceptionHandler):
   // https://tools.ietf.org/html/rfc7235#section-3.1: "A server generating a 401 (Unauthorized) response
   // MUST send a WWW-Authenticate header field containing at least one challenge."
 
@@ -53,32 +52,27 @@ final class GateKeeper[U <: User](
   val anonymous: U = configuration.anonymous
 
   private val credentialRejectionHandler = RejectionHandler.newBuilder()
-    .handle {
+    .handle:
       case AuthenticationFailedRejection(AuthenticationFailedRejection.CredentialsRejected, challenge) =>
         logger.warn(s"HTTP request with invalid authentication rejected - delaying response for ${
           invalidAuthenticationDelay.pretty}")
-        respondWithHeader(`WWW-Authenticate`(challenge)) {
+        respondWithHeader(`WWW-Authenticate`(challenge)):
           completeDelayed(
             unauthorized)
-        }
 
       case AuthenticationFailedRejection(CredentialsMissing, challenge) =>
         // Handling of this case too avoids Akka-streams message
         // "Substream Source cannot be materialized more than once"
-        respondWithHeader(`WWW-Authenticate`(challenge)) {
-          complete {
+        respondWithHeader(`WWW-Authenticate`(challenge)):
+          complete:
             unauthorized
-          }
-        }
-    }
     .result()
 
-  def authenticateUser(userAndPassword: UserAndPassword): Option[U] = {
+  def authenticateUser(userAndPassword: UserAndPassword): Option[U] =
     if !userAndPassword.userId.isAnonymous then ifPublic foreach { reason =>
       logger.warn(s"User '${userAndPassword.userId.string}' logs in with credentials despite $reason")
     }
     authenticator.authenticate(userAndPassword)
-  }
 
   /** Continues with pre-authenticated UserIds or authenticated user or `Anonymous`,
     * or completes with Unauthorized.
@@ -184,22 +178,20 @@ final class GateKeeper[U <: User](
     * the returned user gets the `configuration.publicPermissioons`.
     */
   private[auth] def allowedUser(user: U, request: HttpRequest, requiredPermissions: Set[Permission]): Checked[U] =
-    ifPublic(request.method) match {
+    ifPublic(request.method) match
       case Some(reason) =>
         //if (!user.isAnonymous) logger.warn(s"User '${user.id.string}' has logged in despite $reason")
         val empoweredUser = U.addPermissions(user, reason match {
           case IsPublic | LoopbackIsPublic => configuration.publicPermissions
           case GetIsPublic                 => configuration.publicGetPermissions
         })
-        if empoweredUser.grantedPermissions != user.grantedPermissions then {
+        if empoweredUser.grantedPermissions != user.grantedPermissions then
           logger.debug(s"Due to $reason, user '${empoweredUser.id.string}' has all permissions for " +
             s"${request.method.value} ${request.uri.path}")
-        }
         Right(empoweredUser)
 
       case None =>
         ifPermitted(user, requiredPermissions, request.method)
-    }
 
   private[auth] def ifPublic(method: HttpMethod): Option[AuthorizationReason] =
     ifPublic.orElse(
@@ -230,10 +222,8 @@ final class GateKeeper[U <: User](
 
   def secureStateString: String =
     configuration.secureStateString(scheme)
-}
 
-object GateKeeper
-{
+object GateKeeper:
   private val logger = Logger[this.type]
 
   def apply[U <: User: User.Companion](
@@ -263,8 +253,7 @@ object GateKeeper
     getIsPublic: Boolean = false,
     httpsClientAuthRequired: Boolean = false,
     idToUser: UserId => Option[U],
-    distinguishedNameToIdsOrUser: DistinguishedName => Checked[Either[Set[UserId], U]])
-  {
+    distinguishedNameToIdsOrUser: DistinguishedName => Checked[Either[Set[UserId], U]]):
     val publicPermissions = Set[Permission](SuperPermission)
     val publicGetPermissions = Set[Permission](GetPermission)
     val anonymous: U = idToUser(UserId.Anonymous)
@@ -283,14 +272,13 @@ object GateKeeper
         " - HTTPS client authentication (mutual TLS) required"
       else
         ""
-  }
 
-  object Configuration {
+  object Configuration:
     def fromConfig[U <: User](
       config: Config,
       toUser: (UserId, HashedPassword, Set[Permission], Seq[DistinguishedName]) => U,
       permissions: Iterable[Permission] = Nil)
-    : Configuration[U] = {
+    : Configuration[U] =
       val idToUser = IdToUser.fromConfig(config, toUser, Permission.toStringToPermission(permissions))
       Configuration[U](
         realm                       = config.getString  ("js7.web.server.auth.realm"),
@@ -301,19 +289,14 @@ object GateKeeper
         httpsClientAuthRequired     = config.getBoolean ("js7.web.server.auth.https-client-authentication"),
         idToUser = idToUser,
         distinguishedNameToIdsOrUser = idToUser.distinguishedNameToIdsOrUser)
-    }
-  }
 
   private[auth] sealed trait AuthorizationReason
-  private[auth] object IsPublic extends AuthorizationReason {
+  private[auth] object IsPublic extends AuthorizationReason:
     override def toString = "public=true"
-  }
-  private[auth] object LoopbackIsPublic extends AuthorizationReason {
+  private[auth] object LoopbackIsPublic extends AuthorizationReason:
     override def toString = "loopback-is-public=true"
-  }
-  private[auth] object GetIsPublic extends AuthorizationReason {
+  private[auth] object GetIsPublic extends AuthorizationReason:
     override def toString = "get-is-public=true"
-  }
 
   def unauthorized: StatusCodes.ClientError = // For breakpoint
     Unauthorized
@@ -335,4 +318,3 @@ object GateKeeper
           }
           """,
         SimpleUser.apply))
-}

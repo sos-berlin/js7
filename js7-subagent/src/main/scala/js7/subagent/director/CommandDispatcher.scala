@@ -16,8 +16,7 @@ import monix.reactive.Observable
 import scala.concurrent.{Future, Promise}
 import scala.util.{Success, Try}
 
-private trait CommandDispatcher
-{
+private trait CommandDispatcher:
   protected type Command <: CommonCommand
   private type Response = Unit
   protected final type PostCommand = (Numbered[Command], SubagentRunId, Switch.ReadOnly) =>
@@ -45,9 +44,8 @@ private trait CommandDispatcher
     stopWithProblem(PartialFunction.empty)
 
   def stopAndFailCommands: Task[Unit] =
-    stopWithProblem {
+    stopWithProblem:
       case _ => StoppedProblem
-    }
 
   private def stopWithProblem(
     commandToProblem: PartialFunction[Command, Problem] = PartialFunction.empty)
@@ -89,12 +87,11 @@ private trait CommandDispatcher
     enqueueCommands(command :: Nil)
       .map(_.head)
 
-  private def enqueueCommands(commands: Iterable[Command]): Task[Seq[Task[Checked[Response]]]] = {
+  private def enqueueCommands(commands: Iterable[Command]): Task[Seq[Task[Checked[Response]]]] =
     val executes: Seq[Execute] = commands.view.map(new Execute(_)).toVector
     queue
       .enqueue(executes)
       .map(_ => executes.map(_.responded))
-  }
 
   private def processQueue(subagentRunId: SubagentRunId): Task[Unit] =
     logger.debugTask(Task.defer {
@@ -119,33 +116,27 @@ private trait CommandDispatcher
 
   private def executeCommandNow(subagentRunId: SubagentRunId, numbered: Numbered[Execute])
   : Task[Checked[Response]] =
-    numbered.value.correlId.bind {
+    numbered.value.correlId.bind:
       val numberedCommand = Numbered(numbered.number, numbered.value.command)
       postCommand(numberedCommand, subagentRunId, processingAllowed/*stop retrying when off*/)
-    }
 
   override def toString = s"CommandDispatcher($name)"
 
   protected final class Execute(
     val command: Command,
     val promise: Promise[Checked[Response]] = Promise(),
-    val correlId: CorrelId = CorrelId.current)
-  {
+    val correlId: CorrelId = CorrelId.current):
     val responded = Task.fromFuture(promise.future)
 
     def respond(response: Try[Checked[Response]]): Unit =
-      if !promise.tryComplete(response) then {
+      if !promise.tryComplete(response) then
         logger.warn/*debug?*/(
           s"response($response): command already responded: ${command.toShortString} => ${promise.future.value.get}")
-      }
 
     def tryRespond(response: Try[Checked[Response]]): Unit =
       promise.tryComplete(response)
 
     override def toString = s"Execute(${command.toShortString})"
-  }
-}
 
-object CommandDispatcher {
+object CommandDispatcher:
   private[director] val StoppedProblem = Problem.pure("CommandDispatcher stopped")
-}

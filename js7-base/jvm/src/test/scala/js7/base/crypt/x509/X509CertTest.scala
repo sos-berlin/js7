@@ -9,9 +9,8 @@ import js7.base.io.process.Processes.runProcess
 import js7.base.problem.Checked.*
 import js7.base.test.OurTestSuite
 
-final class X509CertTest extends OurTestSuite
-{
-  "signerId" in {
+final class X509CertTest extends OurTestSuite:
+  "signerId" in:
     withTemporaryDirectory("X509CertTest-") { dir =>
       val privateKeyFile = dir / "signer.key"
       val certificateFile = dir / "signer.crt"
@@ -23,5 +22,3 @@ final class X509CertTest extends OurTestSuite
       assert(cert.signersDistinguishedName == DistinguishedName("CN = TESTER ,  L = Berlin "))
       assert(cert.signersDistinguishedName != DistinguishedName("CN=Alien, L=Berlin"))
     }
-  }
-}

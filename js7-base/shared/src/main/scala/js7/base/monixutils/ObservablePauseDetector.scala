@@ -7,13 +7,11 @@ import monix.reactive.subjects.PublishSubject
 import monix.reactive.{Observable, OverflowStrategy}
 import scala.concurrent.duration.*
 
-object ObservablePauseDetector
-{
+object ObservablePauseDetector:
   private implicit val overflowStrategy: OverflowStrategy.BackPressure =
     OverflowStrategy.BackPressure(bufferSize = 2/*minimum*/)
 
-  implicit final class RichPauseObservable[A](private val underlying: Observable[A]) extends AnyVal
-  {
+  implicit final class RichPauseObservable[A](private val underlying: Observable[A]) extends AnyVal:
     // TODO Left should contain the timestamp of the last A, not the first Tick after the last A
     // TODO May parameterize the current Either return type with two functions for less allocs
     /** Returns Right[A], or Left for each pause (only one Left per pause). */
@@ -68,18 +66,15 @@ object ObservablePauseDetector
             .takeUntil(stop)
             .map(_ => Tick(now))
         ).merge
-          .scan[Element[A]](Tick(now)) {
+          .scan[Element[A]](Tick(now)):
             case (Tick(o), Tick(_)) => Expired(o)
             case (Expired(o), Tick(_)) => Expired(o)
             case (_, tick: Tick) => tick
             case (_, data: Data[A @unchecked]) => data
-          }
-          .collect {
+          .collect:
             case Expired(since) => fromPause(since)
             case Data(a: A @unchecked) => fromData(a)
-          }
       }
-  }
 
   private sealed trait Element[+A]
   private sealed trait Ticking extends Element[Nothing] with Product
@@ -88,4 +83,3 @@ object ObservablePauseDetector
   private case class Tick(since: MonixDeadline) extends Ticking
   private case class Expired(since: MonixDeadline) extends Expirable
   private final case class Data[A](event: A) extends Ticking with Expirable with Element[A]
-}

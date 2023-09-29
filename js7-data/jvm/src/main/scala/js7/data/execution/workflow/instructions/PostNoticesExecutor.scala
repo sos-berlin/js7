@@ -13,8 +13,7 @@ import js7.data.workflow.instructions.{ExpectOrConsumeNoticesInstruction, PostNo
 
 private[instructions] final class PostNoticesExecutor(
   protected val service: InstructionExecutorService)
-extends EventInstructionExecutor
-{
+extends EventInstructionExecutor:
   type Instr = PostNotices
   val instructionClass = classOf[PostNotices]
 
@@ -35,9 +34,8 @@ extends EventInstructionExecutor
             postingOrderEvents ++: expectingOrderEvents.toList
         else
           Right(Nil))
-}
 
-object PostNoticesExecutor {
+object PostNoticesExecutor:
   private final case class FatNotice(notice: Notice, boardState: BoardState)
 
   private def toPostingOrderEvents(notices: Vector[Notice], order: Order[Order.State])
@@ -77,4 +75,3 @@ object PostNoticesExecutor {
           }
           .map(_.flatten))
     yield events
-}

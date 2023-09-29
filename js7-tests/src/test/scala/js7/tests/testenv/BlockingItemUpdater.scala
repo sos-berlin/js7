@@ -13,65 +13,57 @@ import monix.execution.atomic.Atomic
 import monix.reactive.Observable
 import scala.annotation.tailrec
 
-trait BlockingItemUpdater {
+trait BlockingItemUpdater:
   private val nextVersionId_ = Atomic(1)
 
   protected def sign[A <: SignableItem](item: A): Signed[A]
   protected def controller: TestController
   protected def controllerState: ControllerState
 
-  protected final def nextVersionId() = {
+  protected final def nextVersionId() =
     val versionIdSet = controllerState.repo.versionIdSet
-    @tailrec def loop(): VersionId = {
+    @tailrec def loop(): VersionId =
       val v = VersionId(nextVersionId_.getAndIncrement().toString)
       if versionIdSet contains v then
         loop()
       else
         v
-    }
     loop()
-  }
 
   protected final def withTemporaryItem[I <: InventoryItem, A](item: I)(body: I => A)
     (implicit s: Scheduler)
-  : A = {
+  : A =
     val realItem = updateItem(item)
     try body(realItem)
     finally deleteItems(realItem.path)
-  }
 
   protected final def withItems[A](items: InventoryItem*)(body: => A)
     (implicit s: Scheduler)
-  : A = {
+  : A =
     updateItems(items*)
     try body
     finally deleteItems(items.map(_.path)*)
-  }
 
   protected final def updateItem[I <: InventoryItem](item: I)(implicit s: Scheduler)
-  : I = {
+  : I =
     val v = updateItems(item)
-    (item, v) match {
+    (item, v) match
       case (item: VersionedItem, Some(v)) => item.withVersion(v).asInstanceOf[I]
       case _ => item
-    }
-  }
 
   protected final def updateItems(items: InventoryItem*)(implicit s: Scheduler)
-  : Option[VersionId] = {
+  : Option[VersionId] =
     val versionId = Lazy(nextVersionId())
     val operations: Vector[AddOrChangeOperation] = items
       .toVector
-      .map {
+      .map:
         case item: VersionedItem if item.id.versionId.isAnonymous =>
           // Update versionId as a side effect !
           item withVersion versionId()
         case o => o
-      }
-      .map {
+      .map:
         case item: SignableItem => AddOrChangeSigned(sign(item).signedString)
         case item: UnsignedSimpleItem => AddOrChangeSimple(item)
-      }
 
     controller.api
       .updateItems(
@@ -81,7 +73,6 @@ trait BlockingItemUpdater {
       .orThrow
 
     versionId.toOption
-  }
 
   protected final def deleteItems(paths: InventoryItemPath*)(implicit s: Scheduler): Unit =
     controller.api
@@ -91,4 +82,3 @@ trait BlockingItemUpdater {
             paths.map(ItemOperation.Remove(_))))
       .await(99.s)
       .orThrow
-}

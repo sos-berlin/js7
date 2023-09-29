@@ -16,8 +16,7 @@ import scala.language.implicitConversions
 /**
   * @author Joacim Zschimmer
   */
-trait Instruction
-{
+trait Instruction:
   def instructionName: String =
     getClass.simpleScalaName
 
@@ -25,11 +24,10 @@ trait Instruction
 
   def withoutSourcePos: Instruction
 
-  def withPositions(position: Position): Instruction = {
+  def withPositions(position: Position): Instruction =
     if branchWorkflows.nonEmpty then throw new AssertionError(
       s"$instructionName.withPositions is not implemented")
     this
-  }
 
   def adopt(workflow: Workflow): Instruction =
     this
@@ -66,13 +64,10 @@ trait Instruction
 
   protected final def sourcePosToString: String =
     isTest ?? s" /*$sourcePos*/"
-}
 
-object Instruction
-{
-  object @: {
+object Instruction:
+  object `@:`:
     def unapply(labeled: Labeled) = Some((labeled.maybeLabel, labeled.instruction))
-  }
 
   implicit def toLabeled(instruction: Instruction): Labeled =
     Labeled(None, instruction)
@@ -80,8 +75,7 @@ object Instruction
   final case class Labeled(
     maybeLabel: Option[Label],
     instruction: Instruction,
-    maybePosition: Option[Position] = None)
-  {
+    maybePosition: Option[Position] = None):
     override def toString = labelString + instruction
 
     def labelString = maybeLabel.map(o => s"$o: ").mkString
@@ -90,10 +84,8 @@ object Instruction
       copy(
         maybePosition = Some(position),
         instruction = instruction withPositions position)
-  }
-  object Labeled
-  {
-    implicit def jsonEncoder(implicit instrEncoder: Encoder.AsObject[Instruction]): Encoder.AsObject[Labeled] = {
+  object Labeled:
+    implicit def jsonEncoder(implicit instrEncoder: Encoder.AsObject[Instruction]): Encoder.AsObject[Labeled] =
       case Labeled(None, instruction, None) =>
         instruction.asJsonObject
 
@@ -102,22 +94,18 @@ object Instruction
           maybeLabel.map(o => "label" -> o.asJson) ++
             maybePosition.map(o => "position" -> o.asJson)
         ) ++ instruction.asJsonObject
-    }
 
     private val rightNode = Right(None)
 
     implicit def jsonDecoder(implicit instrDecoder: Decoder[Instruction]): Decoder[Labeled] =
       cursor => for
         instruction <- cursor.as[Instruction]
-        labels <- {
+        labels <-
           val c1 = cursor.downField("label")
           if c1.succeeded then
             c1.as[Option[Label]]
           else
             rightNode
-        }
       yield Labeled(labels, instruction)
-  }
 
   trait IsOrderBoundary extends Instruction
-}

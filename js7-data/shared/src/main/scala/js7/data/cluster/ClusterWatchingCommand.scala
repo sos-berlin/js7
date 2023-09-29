@@ -7,12 +7,10 @@ import js7.base.problem.Problem
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 
 /** Command from ClusterWatch to a cluster node. */
-sealed trait ClusterWatchingCommand {
+sealed trait ClusterWatchingCommand:
   def toShortString: String = toString
-}
 
-object ClusterWatchingCommand
-{
+object ClusterWatchingCommand:
   // Command from ClusterWatch
   final case class ClusterWatchConfirm(
     requestId: ClusterWatchRequest.RequestId,
@@ -20,17 +18,14 @@ object ClusterWatchingCommand
     clusterWatchRunId: ClusterWatchRunId,
     manualConfirmer: Option[String],
     problem: Option[Problem])
-  extends ClusterWatchingCommand
-  {
+  extends ClusterWatchingCommand:
     override def toString =
       s"ClusterWatchConfirm($argString)"
 
     def argString =
       s"$requestId $clusterWatchId $clusterWatchRunId${problem.fold("")(o => s" ⛔ $o")}"
-  }
 
   implicit val jsonCodec: TypedJsonCodec[ClusterWatchingCommand] = TypedJsonCodec(
     Subtype(deriveCodec[ClusterWatchConfirm]))
 
   intelliJuseImport((FiniteDurationJsonEncoder, FiniteDurationJsonDecoder))
-}

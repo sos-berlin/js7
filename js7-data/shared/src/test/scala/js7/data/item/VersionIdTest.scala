@@ -10,20 +10,14 @@ import js7.tester.CirceJsonTester.testJson
 /**
   * @author Joacim Zschimmer
   */
-final class VersionIdTest extends OurTestSuite
-{
-  "JSON" in {
+final class VersionIdTest extends OurTestSuite:
+  "JSON" in:
     testJson(VersionId("X"), json""" "X" """)
-    intercept[IllegalArgumentException] {
+    intercept[IllegalArgumentException]:
       VersionId.Anonymous.asJson
-    }
-  }
 
-  "checked" in {
+  "checked" in:
     assert(VersionId.checked("1") == Right(VersionId("1")))
     assert(VersionId.checked("") == Left(EmptyStringProblem("VersionId")))
-    intercept[ProblemException] {
+    intercept[ProblemException]:
       VersionId("")
-    }
-  }
-}

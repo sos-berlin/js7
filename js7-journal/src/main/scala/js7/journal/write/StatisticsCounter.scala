@@ -10,8 +10,7 @@ import scala.concurrent.duration.*
 /**
   * @author Joacim Zschimmer
   */
-private[journal] trait StatisticsCounter
-{
+private[journal] trait StatisticsCounter:
   final val stopwatch = new Stopwatch
 
   private var flushes = 0
@@ -22,18 +21,16 @@ private[journal] trait StatisticsCounter
   final def beforeFlush(): Unit =
     flushNanos -= nanoTime
 
-  final def afterFlush(): Unit = {
+  final def afterFlush(): Unit =
     flushes += 1
     flushNanos += nanoTime
-  }
 
   final def beforeSync(): Unit =
     syncNanos -= nanoTime
 
-  final def afterSync(): Unit = {
+  final def afterSync(): Unit =
     syncs += 1
     syncNanos += nanoTime
-  }
 
   def flushesDebugString =
     s"$flushes flushes, $syncs syncs"
@@ -45,11 +42,8 @@ private[journal] trait StatisticsCounter
   final def flushCount = flushes
 
   final def syncCount = syncs
-}
 
-object StatisticsCounter
-{
+object StatisticsCounter:
   private def t(nanos: Long, n: Int, name: String): Option[String] =
     if n == 0 then None
     else Some((nanos / n).nanoseconds.pretty + s"/$name")
-}

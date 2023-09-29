@@ -11,7 +11,7 @@ import scala.util.Try
  * The log lines are colored, so use `less` with `LESS=-R` to let the escape sequences
  * take effect on your terminal.
  **/
-trait LoggingAnyFreeSpec extends AnyFreeSpec {
+trait LoggingAnyFreeSpec extends AnyFreeSpec:
 
   private val testAdder = new LoggingTestAdder(getClass.shortClassName)
 
@@ -30,14 +30,13 @@ trait LoggingAnyFreeSpec extends AnyFreeSpec {
       },
       suppressCorrelId = suppressTestCorrelId)
 
-  abstract override def run(testName: Option[String], args: Args): Status = {
+  abstract override def run(testName: Option[String], args: Args): Status =
     val tried = Try(super.run(testName, args))
     testAdder.afterAll()
     tried.get
-  }
 
   private def toUnified(stringWrapper: FreeSpecStringWrapper) =
-    new LoggingFreeSpecStringWrapper.UnifiedStringWrapper[Any, ResultOfTaggedAsInvocationOnString] {
+    new LoggingFreeSpecStringWrapper.UnifiedStringWrapper[Any, ResultOfTaggedAsInvocationOnString]:
       def -(addTests: => Unit) =
         stringWrapper - addTests
 
@@ -45,7 +44,7 @@ trait LoggingAnyFreeSpec extends AnyFreeSpec {
         stringWrapper in testBody
 
       def taggedAs(tag: Tag, more: Tag*) =
-        new LoggingFreeSpecStringWrapper.TaggedAs[Any] {
+        new LoggingFreeSpecStringWrapper.TaggedAs[Any]:
           def in(testBody: => Any) =
             testBody
 
@@ -54,6 +53,3 @@ trait LoggingAnyFreeSpec extends AnyFreeSpec {
 
           def is(pending: => PendingStatement) =
             pending
-        }
-    }
-}

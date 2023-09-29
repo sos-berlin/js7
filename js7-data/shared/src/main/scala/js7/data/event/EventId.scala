@@ -2,8 +2,7 @@ package js7.data.event
 
 import js7.base.time.Timestamp
 
-object EventId
-{
+object EventId:
   val BeforeFirst: EventId = 0L
   val IdsPerMillisecond = 1000
   // JavaScript uses floating point for all numbers, so it have 11 bits for a precise integer to
@@ -25,7 +24,7 @@ object EventId
     s"$eventId/${toDateTimeString(eventId)}"
 
   def toDateTimeString(eventId: EventId): String =
-    eventId match {
+    eventId match
       case BeforeFirst => "BeforeFirst"
       case _ =>
         val millis = eventId / 1000
@@ -33,7 +32,7 @@ object EventId
         val iso = Timestamp.ofEpochMilli(millis).toIsoString  // Timestamp has millisecond presision
         if true || micros == 0 then
           iso
-        else {
+        else
           val sb = new StringBuilder(iso.length + 10)
           sb ++= iso
           sb.deleteCharAt(sb.length - 1)  // 'Z'
@@ -43,6 +42,3 @@ object EventId
           sb += ('0' + micros / 10 % 10).toChar
           sb += ('0' + micros % 10).toChar
           sb.toString
-        }
-    }
-}

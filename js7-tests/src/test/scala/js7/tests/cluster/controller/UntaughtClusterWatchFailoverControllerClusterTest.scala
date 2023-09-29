@@ -24,14 +24,13 @@ import js7.tests.cluster.controller.UntaughtClusterWatchFailoverControllerCluste
 import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.Deadline.now
 
-final class UntaughtClusterWatchFailoverControllerClusterTest extends ControllerClusterTester
-{
+final class UntaughtClusterWatchFailoverControllerClusterTest extends ControllerClusterTester:
   override protected def primaryControllerConfig =
     // Short timeout because something blocks web server shutdown occasionally
     config"""js7.web.server.shutdown-timeout = 0.5s"""
       .withFallback(super.primaryControllerConfig)
 
-  "Failover and recouple" in {
+  "Failover and recouple" in:
     withControllerAndBackup(suppressClusterWatch = true) { (primary, _, backup, _, clusterSetting) =>
       val primaryController = primary.newController()
 
@@ -118,9 +117,6 @@ final class UntaughtClusterWatchFailoverControllerClusterTest extends Controller
         }
       }
     }
-  }
-}
 
-object UntaughtClusterWatchFailoverControllerClusterTest {
+object UntaughtClusterWatchFailoverControllerClusterTest:
   private val logger = Logger[this.type]
-}

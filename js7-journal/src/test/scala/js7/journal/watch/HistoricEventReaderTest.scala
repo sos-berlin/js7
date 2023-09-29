@@ -14,9 +14,8 @@ import monix.execution.Scheduler.Implicits.traced
 /**
   * @author Joacim Zschimmer
   */
-final class HistoricEventReaderTest extends OurTestSuite
-{
-  "eventsAfter" in {
+final class HistoricEventReaderTest extends OurTestSuite:
+  "eventsAfter" in:
     withTemporaryDirectory("HistoricEventReaderTest-") { dir =>
       val journalLocation = JournalLocation(TestState, dir resolve "test")
 
@@ -31,30 +30,24 @@ final class HistoricEventReaderTest extends OurTestSuite
         assert(reader.eventsAfter(After + 5) == None)
         assert(reader.eventsAfter(After + 15) == None)
         assert(reader.eventsAfter(After + 25) == None)
-        locally {
+        locally:
           val Some(closeableIterator) = reader.eventsAfter(After): @unchecked
           assert(closeableIterator.toList == TestEvents)
           closeableIterator.close()
-        }
-        locally {
+        locally:
           val Some(closeableIterator) = reader.eventsAfter(After + 10): @unchecked
           assert(closeableIterator.toList == TestEvents.tail)
           closeableIterator.close()
-        }
-        locally {
+        locally:
           val Some(closeableIterator) = reader.eventsAfter(After + 20): @unchecked
           assert(closeableIterator.toList == Nil)
           closeableIterator.close()
-        }
       }
     }
-  }
-}
 
-object HistoricEventReaderTest {
+object HistoricEventReaderTest:
   private val After = 1000
   private val TestEvents =
     Stamped(After + 10, "A" <-: AEvent) ::
     Stamped(After + 20, "B" <-: BEvent) ::
     Nil
-}

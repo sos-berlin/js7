@@ -45,8 +45,7 @@ import scala.jdk.OptionConverters.*
 
 @javaApi
 final class JControllerApi(val asScala: ControllerApi, config: Config)
-  (implicit scheduler: Scheduler)
-{
+  (implicit scheduler: Scheduler):
   private val clusterWatchService = AsyncVariable[Option[Allocated[Task, ClusterWatchService]]](None)
 
   def stop: CompletableFuture[Void] =
@@ -94,12 +93,11 @@ final class JControllerApi(val asScala: ControllerApi, config: Config)
   def clusterAppointNodes(
     @Nonnull idToUri: java.util.Map[NodeId, Uri],
     @Nonnull activeId: NodeId)
-  : CompletableFuture[VEither[Problem, Void]] = {
+  : CompletableFuture[VEither[Problem, Void]] =
     requireNonNull(activeId)
     runTask(asScala
       .clusterAppointNodes(idToUri.asScala.toMap, activeId)
       .map(_.toVoidVavr))
-  }
 
   /** Update the Items, i.e. add, change or remove/delete simple or versioned items.
     *
@@ -233,11 +231,10 @@ final class JControllerApi(val asScala: ControllerApi, config: Config)
 
   @Nonnull
   def deleteOrdersWhenTerminated(@Nonnull orderIds: Flux[OrderId])
-  : CompletableFuture[VEither[Problem, Void]] = {
+  : CompletableFuture[VEither[Problem, Void]] =
     runTask(asScala
       .deleteOrdersWhenTerminated(orderIds.asObservable)
       .map(_.toVoidVavr))
-  }
 
   @Nonnull
   def postNotice(
@@ -311,12 +308,11 @@ final class JControllerApi(val asScala: ControllerApi, config: Config)
 
   /** For testing (it's slow): wait for a condition in the running event stream. **/
   @Nonnull
-  def when(@Nonnull predicate: JEventAndControllerState[Event] => Boolean): CompletableFuture[JEventAndControllerState[Event]] = {
+  def when(@Nonnull predicate: JEventAndControllerState[Event] => Boolean): CompletableFuture[JEventAndControllerState[Event]] =
     requireNonNull(predicate)
     runTask(asScala
       .when(es => predicate(JEventAndControllerState(es)))
       .map(JEventAndControllerState.apply))
-  }
 
   @Nonnull
   def runClusterWatch(@Nonnull clusterWatchId: ClusterWatchId): CompletableFuture[Void] =
@@ -333,7 +329,7 @@ final class JControllerApi(val asScala: ControllerApi, config: Config)
     @Nonnull onUndecidableClusterNodeLoss: Consumer[ClusterNodeLossNotConfirmedProblem])
   : CompletableFuture[ClusterWatchService] =
     clusterWatchService
-      .update {
+      .update:
         case Some(service) => Task.some(service)
         case None =>
           ClusterWatchService
@@ -344,7 +340,6 @@ final class JControllerApi(val asScala: ControllerApi, config: Config)
               })
             .toAllocated
             .map(Some(_))
-      }
       .map(_.get.allocatedThing)
       .runToFuture.asJava
 
@@ -362,10 +357,9 @@ final class JControllerApi(val asScala: ControllerApi, config: Config)
   def manuallyConfirmNodeLoss(lostNodeId: NodeId, confirmer: String)
   : CompletableFuture[VEither[Problem, Void]] =
     clusterWatchService.value
-      .flatMap {
+      .flatMap:
         case None => Task.left(Problem("No ClusterWatchService"))
         case Some(allo) => allo.allocatedThing.manuallyConfirmNodeLoss(lostNodeId, confirmer)
-      }
       .map(_.toVoidVavr)
       .runToFuture
       .asJava
@@ -373,4 +367,3 @@ final class JControllerApi(val asScala: ControllerApi, config: Config)
 
   private def runTask[A](task: Task[A]): CompletableFuture[A] =
     CorrelId.bindNew(task.runToFuture).asJava
-}

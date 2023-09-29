@@ -5,10 +5,8 @@ import js7.data.cluster.{ClusterWatchId, ClusterWatchRequest, ClusterWatchRunId}
 final case class ClusterWatchConfirmation(
   requestId: ClusterWatchRequest.RequestId,
   clusterWatchId: ClusterWatchId,
-  clusterWatchRunId: ClusterWatchRunId)
-{
+  clusterWatchRunId: ClusterWatchRunId):
   def confirmer = clusterWatchId.toString
 
   override def toString =
     s"ConfirmedByClusterWatch($requestId $clusterWatchId $clusterWatchRunId)"
-}

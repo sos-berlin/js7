@@ -6,8 +6,7 @@ import js7.base.thread.IOExecutor
 import js7.common.system.startup.ServiceMain
 import monix.eval.Task
 
-object AgentMain
-{
+object AgentMain:
   // No Logger here!
 
   def main(args: Array[String]): Unit =
@@ -19,4 +18,3 @@ object AgentMain
         iox <- IOExecutor.resource[Task](conf.config, conf.name)
         _ <- agent.webServer.restartWhenHttpsChanges(iox)
       yield agent)
-}

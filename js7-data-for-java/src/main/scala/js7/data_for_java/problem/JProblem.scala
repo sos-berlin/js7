@@ -8,8 +8,7 @@ import js7.data_for_java.common.JJsonable
 import scala.jdk.OptionConverters.*
 
 final case class JProblem(asScala: Problem)
-extends JJsonable[JProblem]
-{
+extends JJsonable[JProblem]:
   type AsScala = Problem
   def companion = JProblem
 
@@ -19,14 +18,11 @@ extends JJsonable[JProblem]
 
   @Nonnull
   def argumentAsString(@Nonnull key: String): Optional[String] =
-    asScala match {
+    asScala match
       case problem: Problem.HasCode => problem.arguments.get(key).toJava
       case _ => Optional.empty()
-    }
-}
 
-object JProblem extends JJsonable.Companion[JProblem]
-{
+object JProblem extends JJsonable.Companion[JProblem]:
   type AsScala = Problem
 
   override def fromJson(jsonString: String): VEither[Problem, JProblem] =
@@ -34,4 +30,3 @@ object JProblem extends JJsonable.Companion[JProblem]
 
   protected def jsonEncoder = Problem.jsonEncoder
   protected def jsonDecoder = Problem.jsonDecoder
-}

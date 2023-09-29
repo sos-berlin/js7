@@ -20,8 +20,7 @@ import scala.concurrent.Future
 /**
   * @author Joacim Zschimmer
   */
-final class ClusterRouteTest extends OurTestSuite with RouteTester with ClusterRoute
-{
+final class ClusterRouteTest extends OurTestSuite with RouteTester with ClusterRoute:
   protected type OurSession = SimpleSession
 
   protected def scheduler = Scheduler.traced
@@ -44,21 +43,15 @@ final class ClusterRouteTest extends OurTestSuite with RouteTester with ClusterR
     throw new NotImplementedError
 
   private lazy val route: Route =
-    pathSegment("cluster") {
+    pathSegment("cluster"):
       clusterRoute
-    }
 
-  "/cluster" in {
-    Get("/cluster") ~> Accept(`application/json`) ~> route ~> check {
+  "/cluster" in:
+    Get("/cluster") ~> Accept(`application/json`) ~> route ~> check:
       assert(status == OK
         && responseAs[Stamped[ClusterState]] == Stamped(1, ClusterState.Empty))
-    }
-  }
 
-  "/cluster?return=ClusterNodeState" in {
-    Get("/cluster?return=ClusterNodeState") ~> Accept(`application/json`) ~> route ~> check {
+  "/cluster?return=ClusterNodeState" in:
+    Get("/cluster?return=ClusterNodeState") ~> Accept(`application/json`) ~> route ~> check:
       assert(status == OK
         && responseAs[ClusterNodeState] == ClusterNodeState(nodeId, false, ClusterState.Empty))
-    }
-  }
-}

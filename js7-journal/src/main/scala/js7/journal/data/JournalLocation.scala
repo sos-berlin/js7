@@ -6,9 +6,7 @@ import js7.data.event.SnapshotableState
 final case class JournalLocation(
   S: SnapshotableState.HasCodec,
   /** Path without extension, like "/directory/test". */
-  fileBase: Path)
-{
+  fileBase: Path):
   val name = fileBase.getFileName.toString
 
   def snapshotObjectJsonCodec = S.snapshotObjectJsonCodec
-}

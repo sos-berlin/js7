@@ -3,8 +3,7 @@ package js7.data
 /**
   * @author Joacim Zschimmer
   */
-package object event
-{
+package object event:
   /**
     *  Identifies [[js7.data.event.Stamped]]s taken at different times.
     *  <p>
@@ -19,4 +18,3 @@ package object event
     *
     */
   type EventId = Long
-}

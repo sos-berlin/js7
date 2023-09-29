@@ -8,9 +8,8 @@ import scala.collection.mutable
 /**
   * @author Joacim Zschimmer
   */
-final class ClassEventBusTest extends OurAsyncTestSuite
-{
-  "subscribe" in {
+final class ClassEventBusTest extends OurAsyncTestSuite:
+  "subscribe" in:
     val events = mutable.Buffer.empty[AnyRef]
     val eventBus = new TestEventBus
 
@@ -25,30 +24,26 @@ final class ClassEventBusTest extends OurAsyncTestSuite
     aSubscription.close()
     bSubscription.close()
     assert(eventBus.isEmpty)
-  }
 
-  "oneShot" in {
+  "oneShot" in:
     val events = mutable.Buffer.empty[Event[? <: Classifier]]
     val eventBus = new TestEventBus
     eventBus.oneShot[BClassifier]()((event: Event[BClassifier]) => events += event)
     eventBus.publish(Event(AClassifier("1"), "IGNORE"))
     eventBus.publish(Event(BClassifier(""), "MORE"))
     assert(events.toList == List(Event(BClassifier(""), "MORE")))
-  }
 
-  "when" in {
+  "when" in:
     val eventBus = new TestEventBus
     val future = eventBus.when[BClassifier].runToFuture
     assert(!future.isCompleted)
     assert(!eventBus.isEmpty)
     eventBus.publish(Event(AClassifier("1"), "IGNORE"))
     eventBus.publish(Event(BClassifier(""), "MORE"))
-    for event <- future yield {
+    for event <- future yield
       assert(event == Event(BClassifier(""), "MORE"))
-    }
-  }
 
-  "superclass" in {
+  "superclass" in:
     val events = mutable.Buffer.empty[(Classifier, String)]
     val eventBus = new TestEventBus
     eventBus.subscribe[Classifier](event => events += event.classifier -> "")
@@ -80,13 +75,9 @@ final class ClassEventBusTest extends OurAsyncTestSuite
     assert(events.toSet == Set(
       AClassifier("X") -> "",
       AClassifier("X") -> "A"))
-  }
-}
 
-private object ClassEventBusTest
-{
-  private final class TestEventBus extends ClassEventBus[Event[Classifier]]
-  {
+private object ClassEventBusTest:
+  private final class TestEventBus extends ClassEventBus[Event[Classifier]]:
     protected type Classifier = ClassEventBusTest.this.Classifier
     protected type ClassifierToEvent[C <: Classifier] = Event[C]
 
@@ -94,11 +85,9 @@ private object ClassEventBusTest
 
     protected def classify(event: Event[Classifier]) =
       event.classifier.getClass.asInstanceOf[Class[? <: Classifier]]
-  }
   private case class Event[+C <: Classifier](classifier: C, more: String = "")
   private sealed trait Classifier
   private sealed trait ABClassifier extends Classifier
   private final case class AClassifier(string: String) extends ABClassifier
   private case class BClassifier(string: String) extends ABClassifier
   private case class CClassifier(string: String) extends Classifier
-}

@@ -5,9 +5,7 @@ import io.circe.generic.semiauto.deriveCodec
 
 final case class AdmissionTimeScheme(periods: Seq[AdmissionPeriod])
 
-object AdmissionTimeScheme
-{
+object AdmissionTimeScheme:
   implicit val jsonCodec: Codec.AsObject[AdmissionTimeScheme] = deriveCodec
 
   val always = AdmissionTimeScheme(AlwaysPeriod :: Nil)
-}

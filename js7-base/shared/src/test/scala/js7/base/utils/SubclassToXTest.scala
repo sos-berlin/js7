@@ -4,9 +4,8 @@ import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import scala.collection.immutable.HashSet
 
-final class SubclassToXTest extends OurTestSuite
-{
-  "checked" in {
+final class SubclassToXTest extends OurTestSuite:
+  "checked" in:
     val superclassToX = Map[Class[? <: Iterable[?]], String](
       classOf[Seq[?]] -> "Seq",
       classOf[Set[?]] -> "Set")
@@ -20,5 +19,3 @@ final class SubclassToXTest extends OurTestSuite
 
     assert(toSuperClass.checked(classOf[Map[?, ?]]) == Left(Problem(
       "Unknown scala.collection.Iterable class: scala.collection.immutable.Map")))
-  }
-}

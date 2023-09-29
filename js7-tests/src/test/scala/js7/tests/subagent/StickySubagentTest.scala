@@ -27,8 +27,7 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler
 
-final class StickySubagentTest extends OurTestSuite with ControllerAgentForScalaTest
-{
+final class StickySubagentTest extends OurTestSuite with ControllerAgentForScalaTest:
   // See also SubagentKeeperTest, determineSubagentSelection
 
   override protected val controllerConfig = config"""
@@ -53,7 +52,7 @@ final class StickySubagentTest extends OurTestSuite with ControllerAgentForScala
 
   protected implicit val scheduler: Scheduler = Scheduler.traced
 
-  "StickySubagent with SubagentSelection" in {
+  "StickySubagent with SubagentSelection" in:
     enableSubagents(a1SubagentId -> false, a2SubagentId -> false)
 
     val orderId = OrderId("♣️")
@@ -126,9 +125,8 @@ final class StickySubagentTest extends OurTestSuite with ControllerAgentForScala
       OrderDetachable,
       OrderDetached,
       OrderFinished()))
-  }
 
-  "StickySubagent without SubagentSelection, but with a forking order" in {
+  "StickySubagent without SubagentSelection, but with a forking order" in:
     enableSubagents(aSubagentId -> false, a1SubagentId -> true, a2SubagentId -> false)
 
     val orderId = OrderId("🔷")
@@ -195,9 +193,8 @@ final class StickySubagentTest extends OurTestSuite with ControllerAgentForScala
       OrderPrompted(StringValue("PROMPT")),
       OrderPromptAnswered(),
       OrderMoved(Position(0) / "stickySubagent" % 2 / "fork+BRANCH" % 1)))
-  }
 
-  "Extra test: StickySubagent with job SubagentSelection" in {
+  "Extra test: StickySubagent with job SubagentSelection" in:
     enableSubagents(a1SubagentId -> false, a2SubagentId -> false)
 
     val orderId = OrderId("🟦")
@@ -246,9 +243,8 @@ final class StickySubagentTest extends OurTestSuite with ControllerAgentForScala
       OrderDetachable,
       OrderDetached,
       OrderFinished()))
-  }
 
-  "Fail in StickySubagent at Controller" in {
+  "Fail in StickySubagent at Controller" in:
     enableSubagents(aSubagentId -> true, a1SubagentId -> false, a2SubagentId -> false)
     val orderId = OrderId("♦️")
     val events = controller.runOrder(FreshOrder(orderId, failAtControllerWorkflow.path))
@@ -260,9 +256,8 @@ final class StickySubagentTest extends OurTestSuite with ControllerAgentForScala
       OrderOutcomeAdded(Outcome.failed),
       OrderStickySubagentLeaved,
       OrderFailed(Position(0))))
-  }
 
-  "Fail in StickySubagent at Agent" in {
+  "Fail in StickySubagent at Agent" in:
     enableSubagents(aSubagentId -> true, a1SubagentId -> false, a2SubagentId -> false)
     val orderId = OrderId("♦️♦️")
     val events = controller.runOrder(FreshOrder(orderId, failAtAgentWorkflow.path))
@@ -283,11 +278,8 @@ final class StickySubagentTest extends OurTestSuite with ControllerAgentForScala
       OrderDetachable,
       OrderDetached,
       OrderFailed(Position(1))))
-  }
-}
 
-object StickySubagentTest
-{
+object StickySubagentTest:
   private val aAgentPath = AgentPath("A-AGENT")
   private val aSubagentId = toLocalSubagentId(aAgentPath)
   private val a1SubagentId = SubagentId("A-1-SUBAGENT")
@@ -371,4 +363,3 @@ object StickySubagentTest
         subworkflow = Workflow.of(
           EmptyJob.execute(aAgentPath),
           Fail()))))
-}

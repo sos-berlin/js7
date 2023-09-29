@@ -32,8 +32,7 @@ import monix.execution.Scheduler.Implicits.traced
 import scala.util.control.NonFatal
 
 final class BecomeAgentClusterTest extends OurTestSuite with ControllerAgentForScalaTest
-with BlockingItemUpdater
-{
+with BlockingItemUpdater:
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.journal.remove-obsolete-files = false
@@ -59,12 +58,11 @@ with BlockingItemUpdater
 
   override protected def items = Seq(workflow)
 
-  "Run an Order without cluster" in {
+  "Run an Order without cluster" in:
     val stampedEvents = controller.runOrder(FreshOrder(OrderId("SIMPLE"), workflow.path))
     assert(stampedEvents.last.value.isInstanceOf[OrderFinished])
-  }
 
-  "Add a backup Subagent" in {
+  "Add a backup Subagent" in:
     val subagentAllocated: Allocated[Task, RunningAgent] =
       directoryProvider
         .directorEnvResource(backupSubagentItem, isClusterBackup = true,
@@ -79,7 +77,7 @@ with BlockingItemUpdater
         .await(99.s)
 
     TestAgent(subagentAllocated).useSync(99.s) { backupDirector =>
-      try {
+      try
         assert(controller.runOrder(FreshOrder(OrderId("🟦"), workflow.path))
           .last.value == OrderFinished())
 
@@ -133,16 +131,13 @@ with BlockingItemUpdater
         eventId = controller.eventWatch
           .await[AgentMirroredEvent](_.event.keyedEvent.event.isInstanceOf[ClusterFailedOver])
           .head.eventId
-      } catch {
+      catch
         case NonFatal(t) =>
           logger.error(t.toStringWithCauses, t)
           throw t
-      }
     }
-  }
-}
 
-object BecomeAgentClusterTest {
+object BecomeAgentClusterTest:
   private val logger = Logger[this.type]
   private val agentPath = AgentPath("AGENT")
   private val primarySubagentId = toLocalSubagentId(agentPath)
@@ -154,4 +149,3 @@ object BecomeAgentClusterTest {
 
   final class ASemaphoreJob extends SemaphoreJob(ASemaphoreJob)
   object ASemaphoreJob extends SemaphoreJob.Companion[ASemaphoreJob]
-}

@@ -42,8 +42,7 @@ import scala.util.{Failure, Success, Try}
 final class AkkaWebServer private(bindingAndResources: Vector[BindingAndResource], config: Config)
   (implicit testEventBus: StandardEventBus[Any])
 extends WebServerBinding.HasLocalUris
-with Service.StoppableByRequest
-{
+with Service.StoppableByRequest:
   private val _addrToHttpsFileToTime = mutable.Map.empty[InetSocketAddress, Map[Path, Try[FileTime]]]
 
   private[web] val webServerBindings =
@@ -94,14 +93,13 @@ with Service.StoppableByRequest
     bindingAndResource: BindingAndResource)
     (implicit iox: IOExecutor)
   : Task[Option[Allocated[Task, SinglePortAkkaWebServer]]] =
-    Task.defer {
+    Task.defer:
       val binding = bindingAndResource.webServerBinding
       readFileTimes(binding).flatMap { fileToTime =>
         val prevFileToTime = _addrToHttpsFileToTime.getOrElse(binding.address, Map.empty)
-        val diff = fileToTime.filterNot {
+        val diff = fileToTime.filterNot:
           case (file, Failure(_)) => prevFileToTime.get(file).exists(_.isFailure)
           case (file, t @ Success(_)) => prevFileToTime.get(file).contains(t)
-        }
         (if diff.isEmpty then {
           if fileToTime.nonEmpty then logger.debug(s"onHttpsKeyOrCertChanged but no change detected")
           Task.pure(previouslyAllocated)
@@ -114,10 +112,9 @@ with Service.StoppableByRequest
         }).<*(Task(
           _addrToHttpsFileToTime(binding.address) = prevFileToTime))
       }
-    }
 
   private def startPortWebServer(bindingAndResource: BindingAndResource)(implicit iox: IOExecutor)
-  : Task[Option[Allocated[Task, SinglePortAkkaWebServer]]] = {
+  : Task[Option[Allocated[Task, SinglePortAkkaWebServer]]] =
     import bindingAndResource.{resource, webServerBinding as binding}
 
     Delayer.start[Task](delayConf)
@@ -127,7 +124,7 @@ with Service.StoppableByRequest
           .flatMap(fileTimes =>
             resource.toAllocated
               .map(allo => (fileTimes -> allo).some))
-          .onErrorRestartLoop(()) {
+          .onErrorRestartLoop(()):
             case ((throwable, _, retry)) =>
               errorLogged = true
               logger.error(
@@ -138,14 +135,12 @@ with Service.StoppableByRequest
                   untilStopRequested,
                   delayer.sleep(logDelay(_, bindingAndResource.toString)))
                 .flatMap(_.fold(_ => Task.none/*stop requested*/, _ => retry(())))
-          }
           .map(_.map { case (fileTimes, allocated) =>
             _addrToHttpsFileToTime(binding.address) = fileTimes
             if errorLogged then logger.info(s"🟢 Web server for $bindingAndResource restarted")
             allocated
           })
       }
-  }
 
   private def readFileTimes(binding: WebServerBinding)(implicit iox: IOExecutor)
   : Task[Map[Path, Try[FileTime]]] =
@@ -161,10 +156,8 @@ with Service.StoppableByRequest
 
   override def toString =
     s"AkkaWebServer(${webServerPorts mkString " "})"
-}
 
-object AkkaWebServer
-{
+object AkkaWebServer:
   private val logger = Logger[this.type]
   private val delayConf = DelayConf(NonEmptySeq.of(1.s, 3.s, 6.s, 10.s))
 
@@ -230,10 +223,8 @@ object AkkaWebServer
 
   private final case class BindingAndResource(
     webServerBinding: WebServerBinding,
-    resource: Resource[Task, SinglePortAkkaWebServer])
-  {
+    resource: Resource[Task, SinglePortAkkaWebServer]):
     override def toString = webServerBinding.toString
-  }
 
   final case class RouteBinding private[web](
     webServerBinding: WebServerBinding,
@@ -242,7 +233,7 @@ object AkkaWebServer
     revision: Int,
     whenStopRequested: Future[Deadline])
 
-  trait BoundRoute {
+  trait BoundRoute:
     def serviceName: String
 
     def stillNotAvailableRoute: Route =
@@ -251,23 +242,19 @@ object AkkaWebServer
     def webServerRoute: Task[Route]
 
     def startupSecurityHint(scheme: WebServerBinding.Scheme): String
-  }
-  object BoundRoute {
+  object BoundRoute:
     def simple(route: Route): BoundRoute =
       new Simple(route)
 
-    final class Simple(route: Route) extends BoundRoute {
+    final class Simple(route: Route) extends BoundRoute:
       val serviceName = ""
 
       val webServerRoute = Task.pure(route)
 
       def startupSecurityHint(scheme: WebServerBinding.Scheme) = ""
-    }
-  }
 
   /** Event only for testing with EventBus. */
   object BeforeRestartEvent
 
   /** Event only for testing with EventBus. */
   object RestartedEvent
-}

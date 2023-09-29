@@ -10,7 +10,5 @@ final case class RegisteredController(
   agentPath: AgentPath,
   agentRunId: AgentRunId)
 
-object RegisteredController
-{
+object RegisteredController:
   implicit val jsonCodec: Codec.AsObject[RegisteredController] = deriveCodec[RegisteredController]
-}

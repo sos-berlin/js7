@@ -12,8 +12,7 @@ import scala.jdk.CollectionConverters.*
 
 @javaApi
 final case class JWorkflowControl(asScala: WorkflowControl)
-extends JUnsignedVersionedItem[JWorkflowControl, WorkflowControlPath]
-{
+extends JUnsignedVersionedItem[JWorkflowControl, WorkflowControlPath]:
   type AsScala = WorkflowControl
 
   def companion = JWorkflowControl
@@ -25,11 +24,9 @@ extends JUnsignedVersionedItem[JWorkflowControl, WorkflowControlPath]
   @Nonnull
   def breakpoints: java.util.Set[JPosition] =
     asScala.breakpoints.map(JPosition(_)).asJava
-}
 
 @javaApi
-object JWorkflowControl extends JJsonable.Companion[JWorkflowControl]
-{
+object JWorkflowControl extends JJsonable.Companion[JWorkflowControl]:
   type AsScala = WorkflowControl
 
   @Nonnull
@@ -38,4 +35,3 @@ object JWorkflowControl extends JJsonable.Companion[JWorkflowControl]
 
   protected def jsonEncoder = WorkflowControl.jsonEncoder
   protected def jsonDecoder = WorkflowControl.jsonDecoder
-}

@@ -15,7 +15,7 @@ import org.scalatest.concurrent.ScalaFutures
 /**
  * @author Joacim Zschimmer
  */
-final class AgentClientTest extends OurTestSuite with ScalaFutures with AgentTester {
+final class AgentClientTest extends OurTestSuite with ScalaFutures with AgentTester:
 
   override implicit val patienceConfig = PatienceConfig(timeout = 10.s)
 
@@ -23,15 +23,13 @@ final class AgentClientTest extends OurTestSuite with ScalaFutures with AgentTes
   private implicit lazy val actorSystem: ActorSystem = newActorSystem("AgentClientTest")
   private lazy val client = AgentClient(Admission(agent.localUri))
 
-  override def afterAll(): Unit = {
+  override def afterAll(): Unit =
     actorSystem.terminate().await(99.s)
     super.afterAll()
-  }
 
-  "get /" in {
+  "get /" in:
     val overview = client.overview await 99.s
     assert(overview.version == BuildInfo.prettyVersion)
-  }
 
   //"get /task" in {
   //  val view = awaitResult(client.task.overview, 2.s)
@@ -54,7 +52,6 @@ final class AgentClientTest extends OurTestSuite with ScalaFutures with AgentTes
   //  assert(e.response.entity.asString contains "UnknownTaskException")
   //  pending
   //}
-}
 
 //object AgentClientTest {
 //  private val TestTaskId = TaskId("1-123")

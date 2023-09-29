@@ -15,8 +15,7 @@ import scala.concurrent.duration.*
 
 final class ScheduleCalculator private(
   schedule: Schedule, zone: ZoneId, dateOffset: FiniteDuration, onlyOnePeriod: Boolean)
-extends ScheduleSimulator
-{
+extends ScheduleSimulator:
   def nextCycleState(now: Timestamp, cycleState: CycleState): Option[CycleState] =
     nextCycle(now, cycleState)
       .flatMap { case (schemeIndex, periodIndex, next) =>
@@ -55,7 +54,7 @@ extends ScheduleSimulator
             val first = (schemeIndex != cycleState.schemeIndex
               || periodIndex != cycleState.periodIndex)
             repeat
-              .match {
+              .match
                 case periodic: Periodic =>
                   nextPeriod(periodic, lastScheduledCycleStart, now, first = first, end)
 
@@ -73,7 +72,6 @@ extends ScheduleSimulator
                     val next = now.max(interval.start) + pause * (!first).toInt
                     if next <= now then Timestamp.Epoch else next
                   }
-              }
               .filter(_ < end)
               .map((schemeIndex, periodIndex, _))
           }
@@ -83,7 +81,7 @@ extends ScheduleSimulator
 
   private def nextPeriod(periodic: Periodic,
     last: Timestamp, now: Timestamp, first: Boolean, end: Timestamp)
-  : Option[Timestamp] = {
+  : Option[Timestamp] =
     import periodic.{offsets, period}
     val scheduleMillis = offsets.view.map(_.toMillis)
     val p = period.toMillis
@@ -114,11 +112,8 @@ extends ScheduleSimulator
     // other select the earliest time (after now)
     nextTimestamps.view.filter(_ <= now).maxOption
       .orElse(nextTimestamps.minOption)
-  }
-}
 
-object ScheduleCalculator
-{
+object ScheduleCalculator:
   private val monday1 = LocalDateTime.parse("2021-11-01T00:00")
   assert(monday1.getDayOfWeek == MONDAY)
 
@@ -132,4 +127,3 @@ object ScheduleCalculator
     onlyOnePeriod: Boolean)
   : Checked[ScheduleCalculator] =
     Right(new ScheduleCalculator(schedule, zone, dateOffset, onlyOnePeriod))
-}

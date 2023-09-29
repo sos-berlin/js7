@@ -35,8 +35,7 @@ import scala.concurrent.{Future, Promise}
 import scala.util.chaining.scalaUtilChainingOps
 import scala.util.{Failure, Success}
 
-trait JournaledProxy[S <: SnapshotableState[S]]
-{
+trait JournaledProxy[S <: SnapshotableState[S]]:
   protected val baseObservable: Observable[EventAndState[Event, S]]
   protected def scheduler: Scheduler
   protected val onEvent: EventAndState[Event, S] => Unit
@@ -66,7 +65,7 @@ trait JournaledProxy[S <: SnapshotableState[S]]
   final def observable: Observable[EventAndState[Event, S]] =
     connectableObservable
 
-  final def startObserving: Task[Unit] = {
+  final def startObserving: Task[Unit] =
     val cancelable = SerialCancelable()
     Task.deferFutureAction { implicit scheduler =>
       assertThat(observing.isEmpty)
@@ -75,16 +74,14 @@ trait JournaledProxy[S <: SnapshotableState[S]]
       cancelable := obs
       val whenCompleted = connectableObservable.completedL.runToFuture
       observingStopped.completeWith(whenCompleted)
-      whenCompleted.onComplete {
+      whenCompleted.onComplete:
         case Success(()) =>
-          if !stopRequested.isCompleted then {
+          if !stopRequested.isCompleted then
             logger.error("Observable has terminated")
-          }
           // ???
         case Failure(t) =>
           logger.error(t.toStringWithCauses, t.nullIfNoStackTrace)
           // ???
-      }
       CancelableFuture(
         currentStateFilled.future,
         () => {
@@ -93,10 +90,9 @@ trait JournaledProxy[S <: SnapshotableState[S]]
           cancelable.cancel()
         })
     }
-  }
 
   def sync(eventId: EventId): Task[Unit] =
-    Task.defer {
+    Task.defer:
       if currentState.eventId >= eventId then
         Task.unit
       else
@@ -107,7 +103,6 @@ trait JournaledProxy[S <: SnapshotableState[S]]
           .dropWhile(_ => currentState.eventId < eventId)
           .headL
           .void
-    }
 
   /** For testing: wait for a condition in the running event stream. **/
   def when(predicate: EventAndState[Event, S] => Boolean): Task[EventAndState[Event, S]] =
@@ -117,22 +112,18 @@ trait JournaledProxy[S <: SnapshotableState[S]]
       .map(_.getOrElse(throw new EndOfEventStreamException))
 
   final def stop: Task[Unit] =
-    Task.deferFuture {
+    Task.deferFuture:
       observing.toOption.fold(Future.successful(())) { _ =>
         stopRequested.trySuccess(())
         observingStopped.future
       }
-    }
 
   final def currentState: S =
-    _currentState match {
+    _currentState match
       case null => throw new IllegalStateException("JournaledProxy has not yet started")
       case o => o
-    }
-}
 
-object JournaledProxy
-{
+object JournaledProxy:
   private type RequiredApi_[S <: JournaledState[S]] =
     EventApi & HttpClusterNodeApi & SessionApi.HasUserAndPassword { type State = S }
 
@@ -145,7 +136,6 @@ object JournaledProxy
     proxyConf: ProxyConf)
     (implicit S: JournaledState.Companion[S])
   : Observable[EventAndState[Event, S]] =
-  {
     //if (apisResource.isEmpty) throw new IllegalArgumentException("apisResource must not be empty")
 
     def observable2: Observable[EventAndState[Event, S]] =
@@ -195,7 +185,7 @@ object JournaledProxy
       fromEventId.isEmpty && checkedCast[ProblemException](t).exists(_.problem is EventSeqTornProblem)
 
     def observeWithState(api: RequiredApi_[S], state: S, stateFetchDuration: FiniteDuration)
-    : Observable[EventAndState[Event, S]] = {
+    : Observable[EventAndState[Event, S]] =
       val seed = EventAndState(Stamped(state.eventId, ProxyStarted: AnyKeyedEvent), state, state)
       val recouplingStreamReader = new MyRecouplingStreamReader(onProxyEvent, stateFetchDuration,
         tornOlder = (fromEventId.isEmpty ? proxyConf.tornOlder).flatten,
@@ -208,15 +198,12 @@ object JournaledProxy
             s.state.applyEvent(stampedEvent.value)
               .orThrow/*TODO Restart*/
               .withEventId(stampedEvent.eventId)))
-    }
 
-    def onCouplingError(throwable: Throwable) = Task {
+    def onCouplingError(throwable: Throwable) = Task:
       onProxyEvent(ProxyCouplingError(Problem.fromThrowable(throwable)))
-    }
 
     observable2
       .tapEach(o => logger.trace(s"observable => ${o.stampedEvent.toString.truncateWithEllipsis(200)}"))
-  }
 
   /** Drop all events until the requested one and
     * replace the first event by ProxyStarted.
@@ -230,14 +217,13 @@ object JournaledProxy
   : Observable[EventAndState[Event, S]] =
     // TODO Optimize this with SnapshotableStateBuilder ?
     obs.dropWhile(_.stampedEvent.eventId < fromEventId)
-      .map {
+      .map:
         case es if es.stampedEvent.eventId == fromEventId &&
                    es.stampedEvent.value.event != ProxyStarted =>
           es.copy(
             stampedEvent = es.stampedEvent.copy(value = NoKey <-: ProxyStarted),
             previousState = es.state)
         case o => o
-      }
 
   private class MyRecouplingStreamReader[S <: JournaledState[S]](
     onProxyEvent: ProxyEvent => Unit,
@@ -246,11 +232,10 @@ object JournaledProxy
     recouplingStreamReaderConf: RecouplingStreamReaderConf)
     (implicit S: JournaledState.Companion[S])
   extends RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], RequiredApi_[S]](
-    _.eventId, recouplingStreamReaderConf)
-  {
+    _.eventId, recouplingStreamReaderConf):
     private var addToTornOlder = stateFetchDuration
 
-    def getObservable(api: RequiredApi_[S], after: EventId) = {
+    def getObservable(api: RequiredApi_[S], after: EventId) =
       import S.keyedEventJsonCodec
       HttpClient.liftProblem(api
         .eventObservable(
@@ -261,29 +246,23 @@ object JournaledProxy
           case None => Task { addToTornOlder = ZeroDuration }
           case _ => Task.unit
         })
-    }
 
     override def onCoupled(api: RequiredApi_[S], after: EventId) =
-      Task {
+      Task:
         onProxyEvent(ProxyCoupled(after))
         Completed
-      }
 
     override protected def onCouplingFailed(api: RequiredApi_[S], problem: Problem) =
       super.onCouplingFailed(api, problem) >>
-        Task {
+        Task:
           onProxyEvent(ProxyCouplingError(problem))
           false  // Terminate RecouplingStreamReader to allow to reselect a reachable Node (via Api[S[S)
-        }
 
     override protected val onDecoupled =
-      Task {
+      Task:
         onProxyEvent(ProxyDecoupled)
         Completed
-      }
 
     def stopRequested = false
-  }
 
   final class EndOfEventStreamException extends RuntimeException("Event stream terminated unexpectedly")
-}

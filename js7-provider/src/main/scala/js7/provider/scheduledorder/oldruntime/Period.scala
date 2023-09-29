@@ -5,7 +5,7 @@ import java.time.{Duration, LocalTime}
 /**
   * @author Joacim Zschimmer
   */
-trait Period extends Ordered[Period]{
+trait Period extends Ordered[Period]:
 
   def begin: LocalTime
 
@@ -16,4 +16,3 @@ trait Period extends Ordered[Period]{
   def nextLocalTime(t: LocalTime): Option[LocalTime]
 
   final def compare(o: Period) = begin compareTo o.begin
-}

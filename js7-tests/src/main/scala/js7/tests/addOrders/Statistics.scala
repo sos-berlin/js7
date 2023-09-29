@@ -19,8 +19,7 @@ private final case class Statistics(
   processedCount: Int,
   totalProcessDuration: FiniteDuration,
   maximumProcessDuration: FiniteDuration,
-  stdWritten: Long)
-{
+  stdWritten: Long):
   def totalOrderCount = completedOrderCount + completedForkedOrderCount
 
   def toLine: String =
@@ -43,9 +42,6 @@ private final case class Statistics(
       s"∅ ${if processedCount == 0 then "∞" else (totalProcessDuration / processedCount).pretty} job duration" +
         s", longest is ${maximumProcessDuration.pretty}",
       duration.pretty)
-}
 
-private object Statistics
-{
+private object Statistics:
   implicit val eq: Eq[Statistics] = Eq.fromUniversalEquals
-}

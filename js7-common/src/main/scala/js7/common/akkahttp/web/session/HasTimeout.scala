@@ -7,8 +7,7 @@ import scala.concurrent.duration.*
 /**
   * @author Joacim Zschimmer
   */
-trait HasTimeout
-{
+trait HasTimeout:
   @volatile
   private var timeoutAt: Long = Long.MaxValue
 
@@ -23,4 +22,3 @@ trait HasTimeout
 
   final def touchedAt =
     Timestamp.ofEpochMilli(timeoutAt)
-}

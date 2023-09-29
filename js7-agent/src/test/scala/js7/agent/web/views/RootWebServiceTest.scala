@@ -23,8 +23,7 @@ import scala.concurrent.Future
 /**
  * @author Joacim Zschimmer
  */
-final class RootWebServiceTest extends OurTestSuite with WebServiceTest with RootWebService
-{
+final class RootWebServiceTest extends OurTestSuite with WebServiceTest with RootWebService:
   protected def whenShuttingDown = Future.never
   protected def scheduler = Scheduler.traced
   protected def agentOverview = Task.pure(AgentOverview(
@@ -62,15 +61,12 @@ final class RootWebServiceTest extends OurTestSuite with WebServiceTest with Roo
   }"""
 
   private val route =
-    pathSegments("agent/api") {
+    pathSegments("agent/api"):
       apiRootRoute
-    }
 
   "overview" - {
     "Accept: application/json returns compact JSON" in {
-      Get("/agent/api") ~> Accept(`application/json`) ~> route ~> check {
+      Get("/agent/api") ~> Accept(`application/json`) ~> route ~> check:
         assert(responseAs[Json] == expectedOverviewJson)
         assert(!(response.utf8String.await(99.s) contains " ")) // Compact JSON
-      }
     }}
-}

@@ -23,8 +23,7 @@ import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.TimeoutException
 
 final class RetryDelayTest
-extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
-{
+extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater:
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.controller.agent-driver.command-batch-delay = 0ms
@@ -42,7 +41,7 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
   override protected def agentTestWiring = RunningAgent.TestWiring(
     alarmClock = Some(clock))
 
-  "Retry with delay" in {
+  "Retry with delay" in:
     val workflow = Workflow(
       WorkflowPath("RETRY-WITH-DELAY"),
       Seq(
@@ -113,13 +112,9 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
           start + 5.s -> OrderOutcomeAdded(Outcome.failed),
           start + 5.s -> OrderFailed(Position(0) / "try+4" % 0)))
     }
-  }
-}
 
-object RetryDelayTest
-{
+object RetryDelayTest:
   private implicit val zone: ZoneId = ZoneId.of("Europe/Mariehamn")
   private val start = local("2022-10-25T12:00")
   private val clock = TestAlarmClock(start)
   private val agentPath = AgentPath("AGENT")
-}

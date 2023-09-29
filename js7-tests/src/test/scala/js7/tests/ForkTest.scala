@@ -26,8 +26,7 @@ import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 
-final class ForkTest extends OurTestSuite with ControllerAgentForScalaTest
-{
+final class ForkTest extends OurTestSuite with ControllerAgentForScalaTest:
   override protected val controllerConfig = config"""
     js7.TEST-ONLY.suppress-order-id-check-for = "DUPLICATE|🥕"
     js7.controller.agent-driver.command-batch-delay = 0ms
@@ -41,13 +40,12 @@ final class ForkTest extends OurTestSuite with ControllerAgentForScalaTest
   protected val items = Seq(workflow, failingResultWorkflow, duplicateWorkflow,
     joinIfFailedForkWorkflow, failInForkWorkflow)
 
-  "Events" in {
+  "Events" in:
     controller.addOrderBlocking(TestOrder)
     eventWatch.await[OrderFinished](_.key == TestOrder.id)
     val keyedEvents = eventWatch.allKeyedEvents[OrderEvent]
-    for orderId <- Array(TestOrder.id, XOrderId, YOrderId) do {  // But ordering if each order is determined
+    for orderId <- Array(TestOrder.id, XOrderId, YOrderId) do  // But ordering if each order is determined
       assert(keyedEvents.filter(_.key == orderId) == ExpectedEvents.filter(_.key == orderId))
-    }
     assert(keyedEvents.toSet == ExpectedEvents.toSet)  // XOrderId and YOrderId run in parallel and ordering is not determined
 
     assert(controllerState.idToOrder(TestOrder.id).historicOutcomes == Seq(
@@ -61,9 +59,8 @@ final class ForkTest extends OurTestSuite with ControllerAgentForScalaTest
 
     controller.api.executeCommand(DeleteOrdersWhenTerminated(Seq(TestOrder.id)))
       .await(99.s).orThrow
-  }
 
-  "failingResultWorkflow" in {
+  "failingResultWorkflow" in:
     val events = controller.runOrder(FreshOrder(OrderId("💥"), failingResultWorkflow.id.path))
       .map(_.value)
     assert(events == Seq(
@@ -72,17 +69,15 @@ final class ForkTest extends OurTestSuite with ControllerAgentForScalaTest
       OrderForked(Vector("💥" -> OrderId("💥|💥"))),
       OrderJoined(Outcome.Failed(Some("No such named value: UNKNOWN"))),
       OrderFailed(Position(0))))
-  }
 
-  "joinIfFailed" in {
+  "joinIfFailed" in:
     val orderId = OrderId("JOIN-IF-FAILED")
     val childOrderId = orderId / "💥"
     controller.api.addOrder(FreshOrder(orderId, joinIfFailedForkWorkflow.path)).await(99.s).orThrow
     controller.eventWatch.await[OrderFailedInFork](_.key == childOrderId)
     controller.eventWatch.await[OrderFailed](_.key == orderId)
-  }
 
-  "Failed, resume failed child order" in {
+  "Failed, resume failed child order" in:
     val orderId = OrderId("FAIL-THEN-RESUME")
     val childOrderId = orderId / "💥"
     controller.api.addOrder(FreshOrder(orderId, failInForkWorkflow.path)).await(99.s).orThrow
@@ -97,9 +92,8 @@ final class ForkTest extends OurTestSuite with ControllerAgentForScalaTest
     controller.eventWatch.await[OrderResumed](_.key == childOrderId)
     val terminated = controller.eventWatch.await[OrderTerminated](_.key == orderId).head.value
     assert(terminated == orderId <-: OrderFinished())
-  }
 
-  "Failed, cancel failed child order" in {
+  "Failed, cancel failed child order" in:
     val orderId = OrderId("FAIL-THEN-CANCEL")
     val childOrderId = orderId / "💥"
     controller.api.addOrder(FreshOrder(orderId, failInForkWorkflow.path)).await(99.s).orThrow
@@ -108,9 +102,8 @@ final class ForkTest extends OurTestSuite with ControllerAgentForScalaTest
     controller.api.executeCommand(CancelOrders(Seq(childOrderId))).await(99.s).orThrow
     controller.eventWatch.await[OrderCancelled](_.key == childOrderId)
     controller.eventWatch.await[OrderFailed](_.key == orderId)
-  }
 
-  "Existing child OrderId" in {
+  "Existing child OrderId" in:
     // Existing child orders are thought only. It is expected to be impossible in production.
     val order = TestOrder.copy(id = OrderId("DUPLICATE"))
     controller.addOrderBlocking(FreshOrder.unchecked(OrderId("DUPLICATE|🥕"), duplicateWorkflow.id.path))  // Invalid syntax is allowed for this OrderId, check is suppressed
@@ -139,34 +132,27 @@ final class ForkTest extends OurTestSuite with ControllerAgentForScalaTest
       CancelOrders(Seq(OrderId("DUPLICATE|🥕")), CancellationMode.kill(immediately = true))
     ).await(99.s).orThrow
     eventWatch.await[OrderCancelled](_.key == OrderId("DUPLICATE|🥕"))
-  }
-}
 
-object ForkTest
-{
+object ForkTest:
   private val aAgentPath = AgentPath("AGENT-A")
   private val bAgentPath = AgentPath("AGENT-B")
   private val aSubagentId = toLocalSubagentId(aAgentPath)
   private val bSubagentId = toLocalSubagentId(bAgentPath)
 
 
-  private class SlowJob extends InternalJob
-  {
+  private class SlowJob extends InternalJob:
     def toOrderProcess(step: Step) =
       OrderProcess(
         Task.sleep(60.s)
           .as(Outcome.succeeded))
-  }
   private object SlowJob extends InternalJob.Companion[SlowJob]
 
-  final class TestJob extends InternalJob
-  {
+  final class TestJob extends InternalJob:
     def toOrderProcess(step: Step) =
       OrderProcess.fromCheckedOutcome(
         for arg <- step.arguments("ARG").asNumber yield
           Outcome.Succeeded(Map(
             "jobResult" -> NumberValue(arg + 1))))
-  }
   object TestJob extends InternalJob.Companion[TestJob]
 
   private val workflow = Workflow(
@@ -317,4 +303,3 @@ object ForkTest
     TestOrder.id <-: OrderJoined(Outcome.succeeded),
     TestOrder.id <-: OrderMoved(Position(5)),
     TestOrder.id <-: OrderFinished())
-}

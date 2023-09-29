@@ -7,7 +7,5 @@ import js7.base.problem.Problem
   * @author Joacim Zschimmer
   */
 final class HttpStatusCodeException(val statusCode: StatusCode, val problem: Problem)
-extends RuntimeException
-{
+extends RuntimeException:
   override def getMessage = s"${statusCode.intValue} ${statusCode.value} $problem".trim
-}

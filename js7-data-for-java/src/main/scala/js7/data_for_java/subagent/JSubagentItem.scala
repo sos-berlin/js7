@@ -13,8 +13,7 @@ import js7.data_for_java.item.JUnsignedSimpleItem
 import scala.jdk.OptionConverters.*
 
 final case class JSubagentItem(asScala: SubagentItem)
-extends JJsonable[JSubagentItem] with JUnsignedSimpleItem
-{
+extends JJsonable[JSubagentItem] with JUnsignedSimpleItem:
   type AsScala = SubagentItem
   protected def companion = JSubagentItem
 
@@ -40,10 +39,8 @@ extends JJsonable[JSubagentItem] with JUnsignedSimpleItem
   @Nonnull
   def withRevision(revision: Optional[ItemRevision]) =
     copy(asScala.withRevision(revision.toScala))
-}
 
-object JSubagentItem extends JJsonable.Companion[JSubagentItem]
-{
+object JSubagentItem extends JJsonable.Companion[JSubagentItem]:
   type AsScala = SubagentItem
 
   @Nonnull
@@ -61,4 +58,3 @@ object JSubagentItem extends JJsonable.Companion[JSubagentItem]
 
   protected def jsonEncoder = SubagentItem.jsonCodec
   protected def jsonDecoder = SubagentItem.jsonCodec
-}

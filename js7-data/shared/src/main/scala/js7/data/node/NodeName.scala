@@ -7,13 +7,9 @@ import js7.base.generic.GenericString
  *  A Subagent's NodeName is the SubagentId,
  * a Controller cluster node's NodeName is the ControllerId. */
 final case class NodeName private(string: String)
-extends GenericString
-{
+extends GenericString:
   override def toString = s"NodeName:$string"
-}
 
-object NodeName extends GenericString.NonEmpty[NodeName]
-{
+object NodeName extends GenericString.NonEmpty[NodeName]:
   protected def unchecked(string: String): NodeName =
     new NodeName(string)
-}

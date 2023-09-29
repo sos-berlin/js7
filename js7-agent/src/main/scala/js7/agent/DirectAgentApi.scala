@@ -9,8 +9,6 @@ import monix.eval.Task
 /**
   * @author Joacim Zschimmer
   */
-final class DirectAgentApi(commandHandler: CommandHandler, meta: CommandMeta)
-{
+final class DirectAgentApi(commandHandler: CommandHandler, meta: CommandMeta):
   def commandExecute(command: AgentCommand): Task[Checked[command.Response]] =
     commandHandler.typedExecute(command, meta)
-}

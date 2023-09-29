@@ -6,8 +6,7 @@ import js7.data.state.StateView
 import js7.data.workflow.instructions.Fail
 
 private[instructions] final class FailExecutor(protected val service: InstructionExecutorService)
-extends EventInstructionExecutor
-{
+extends EventInstructionExecutor:
   type Instr = Fail
   val instructionClass = classOf[Fail]
 
@@ -27,4 +26,3 @@ extends EventInstructionExecutor
 
           case _ => Right(Nil)
         })
-}

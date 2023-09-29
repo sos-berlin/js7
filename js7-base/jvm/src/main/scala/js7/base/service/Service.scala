@@ -18,7 +18,7 @@ import monix.execution.atomic.Atomic
 import scala.concurrent.duration.*
 import scala.util.{Failure, Success, Try}
 
-trait Service {
+trait Service:
   service =>
 
   private val started = Atomic(false)
@@ -28,14 +28,13 @@ trait Service {
   protected def stop: Task[Unit]
 
   final def untilStopped: Task[Unit] =
-    Task.defer {
+    Task.defer:
       if !started.get() then
         Task.raiseError(Problem.pure(
           s"$service.untilStopped but service has not been started").throwable)
       else
         stopped.get.flatMap(_
           .fold(Task.raiseError, Task(_)))
-    }
 
   protected final def startServiceAndLog(logger: ScalaLogger, args: String = "")(run: Task[Unit])
   : Task[Started] =
@@ -72,17 +71,14 @@ trait Service {
           case _ => Task.unit
         })
       .as(Started)
-}
 
-object Service
-{
+object Service:
   val defaultRestartDelays: Seq[FiniteDuration] =
     RestartAfterFailureService.defaultRestartDelays
 
-  private[service] object Empty extends Service {
+  private[service] object Empty extends Service:
     protected lazy val start = startService(Task.unit)
     protected def stop = Task.unit
-  }
 
   private val logger = Logger[this.type]
 
@@ -108,15 +104,13 @@ object Service
     args: String = "")
     (task: Task[A])
   : Task[A] =
-    Task.defer {
+    Task.defer:
       val a = args.nonEmpty ?? s"($args)"
       logger.info(s"$serviceName$a started")
-      task.guaranteeCase {
+      task.guaranteeCase:
         case ExitCase.Error(_) => Task.unit // start logs the error
         case ExitCase.Canceled => Task(logger.info(s"⚫ $serviceName canceled"))
         case ExitCase.Completed => Task(logger.info(s"$serviceName stopped"))
-      }
-    }
 
   def restartAfterFailure[S <: Service: Tag](
     startDelays: Seq[FiniteDuration] = defaultRestartDelays,
@@ -129,8 +123,6 @@ object Service
   trait StoppableByRequest extends Service with js7.base.service.StoppableByRequest
 
   /** Marker type to ensure call of `startFiber`. */
-  final class Started private[Service] {
+  final class Started private[Service]:
     override def toString = "Service.Started"
-  }
   private val Started = new Started()
-}

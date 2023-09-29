@@ -28,8 +28,7 @@ import scala.annotation.tailrec
 private final class ClusterWatchSynchronizer(
   ownId: NodeId,
   clusterWatch: ClusterWatchCounterpart,
-  timing: ClusterTiming)
-{
+  timing: ClusterTiming):
   private val suspendNesting = Atomic(0)
   private val suspendNestingLock = AsyncLock()
   private val registerClusterWatchId = SetOnce[RegisterClusterWatchId]
@@ -57,7 +56,7 @@ private final class ClusterWatchSynchronizer(
     clusterState: HasNodes,
     registerClusterWatchId: RegisterClusterWatchId)
   : Task[Checked[Completed]] =
-    Task.defer {
+    Task.defer:
       assertThat(clusterState.activeId == ownId)
       val logAsInfo = clusterState.isInstanceOf[HasNodes]
       if logAsInfo then logger.info("Asking ClusterWatch")
@@ -74,14 +73,13 @@ private final class ClusterWatchSynchronizer(
             s"${confirm.confirmer} agreed that this node is the active cluster node")
           Completed
       })
-    }
 
   def stop: Task[Unit] =
     stopHeartbeating
 
   def applyEvent(event: ClusterEvent, updatedClusterState: HasNodes)
   : Task[Checked[Option[ClusterWatchConfirmation]]] =
-    event match {
+    event match
       case _: ClusterPassiveLost =>
         suspendHeartbeat(Task.pure(updatedClusterState))(
           clusterWatch.applyEvent(event, updatedClusterState))
@@ -101,7 +99,6 @@ private final class ClusterWatchSynchronizer(
               changeClusterState(updatedClusterState)
             })
             .as(Checked.unit))
-    }
 
   def suspendHeartbeat[A](getClusterState: Task[ClusterState], forEvent: Boolean = false)
     (task: Task[A])
@@ -188,31 +185,28 @@ private final class ClusterWatchSynchronizer(
     })
 
   def stopHeartbeating(implicit enclosing: sourcecode.Enclosing): Task[Unit] =
-    Task.defer {
+    Task.defer:
       logger.trace(s"stopHeartbeating called by ${enclosing.value}")
       heartbeat.getAndSet(None)
         .fold(Task.unit)(_.stop)
-    }
 
-  def changeClusterState(clusterState: HasNodes): Unit = {
+  def changeClusterState(clusterState: HasNodes): Unit =
     @tailrec def loop(maybeHeartbeat: Option[Heartbeat]): Unit =
-      maybeHeartbeat match {
+      maybeHeartbeat match
         case None =>
         case Some(h) =>
           h.changeClusterState(clusterState)
           val h2 = heartbeat.get()
           if h2 ne maybeHeartbeat then loop(h2)
-      }
 
     loop(heartbeat.get())
-  }
 
   def isHeartbeating =
     heartbeat.get().isDefined
 
   private final class Heartbeat(
     initialClusterState: HasNodes,
-    registerClusterWatchId: RegisterClusterWatchId) {
+    registerClusterWatchId: RegisterClusterWatchId):
     @volatile private var clusterState = initialClusterState
     private val nr = heartbeatSessionNr.next()
     private val stopping = MVar.empty[Task, Unit]().memoize
@@ -279,27 +273,23 @@ private final class ClusterWatchSynchronizer(
         .as(Completed)
 
     private def doAHeartbeat: Task[Completed] =
-      stopping.flatMap(_.tryRead).flatMap {
+      stopping.flatMap(_.tryRead).flatMap:
         case Some(()) => Task.completed
         case None =>
           val clusterState = this.clusterState
           //logger.trace(s"Heartbeat ($nr) $clusterState")
           doACheckedHeartbeat(
             clusterState, registerClusterWatchId, clusterWatchIdChangeAllowed = true
-          ).flatMap {
+          ).flatMap:
             case Left(problem) =>
-              stopping.flatMap(_.tryRead).map {
+              stopping.flatMap(_.tryRead).map:
                 case Some(()) => Completed
                 case None =>
                   haltJava(s"🔥 HALT because ClusterWatch heartbeat failed: $problem",
                     restart = true)
-              }
 
             case Right(_) =>
               Task.pure(Completed)
-          }
-      }
-  }
 
   def doACheckedHeartbeat(
     clusterState: HasNodes,
@@ -312,7 +302,7 @@ private final class ClusterWatchSynchronizer(
         clusterState,
         clusterWatchIdChangeAllowed = clusterWatchIdChangeAllowed)
       .materializeIntoChecked
-      .flatMapT {
+      .flatMapT:
         case None =>
           Task.right(None)
 
@@ -325,13 +315,9 @@ private final class ClusterWatchSynchronizer(
           else
           // Not expected
             Task.left(Problem(s"New ${confirmation.clusterWatchId} cannot be registered now"))
-      }
-}
 
-object ClusterWatchSynchronizer
-{
+object ClusterWatchSynchronizer:
   private val logger = Logger[this.type]
   private val heartbeatSessionNr = Iterator.from(1)
 
   private type RegisterClusterWatchId = (ClusterWatchConfirmation, Boolean) => Task[Checked[Unit]]
-}

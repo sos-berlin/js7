@@ -27,8 +27,7 @@ import monix.execution.Scheduler.Implicits.traced
 final class TransferOrderTest
 extends OurTestSuite
 with ControllerAgentForScalaTest
-with BlockingItemUpdater
-{
+with BlockingItemUpdater:
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.journal.remove-obsolete-files = false
@@ -42,7 +41,7 @@ with BlockingItemUpdater
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(noticeBoad)
 
-  "TransferOrder" in {
+  "TransferOrder" in:
     withTemporaryItem(workflow) { v1Workflow =>
       // aOrderId sticks in Order.Prompting, is transferable
       val aOrderId = OrderId("A-ORDER")
@@ -101,9 +100,8 @@ with BlockingItemUpdater
       controller.api.executeCommand(TransferOrders(v1Workflow.id)).await(99.s).orThrow
 
       for orderId <- Seq(aOrderId, bOrderId, cOrderId, cChildOrderId, dOrderId) do
-        withClue(s"$orderId: ") {
+        withClue(s"$orderId: "):
           assert(controllerState.idToOrder(orderId).workflowId == v2Workflow.id)
-        }
 
       assert(eventWatch.eventsByKey[OrderEvent](aOrderId) == Seq(
         OrderAdded(v1Workflow.id, stopPositions = Set(Position(1))),
@@ -145,11 +143,8 @@ with BlockingItemUpdater
         .await(99.s).orThrow
       eventWatch.await[OrderFinished](_.key == dOrderId)
     }
-  }
-}
 
-object TransferOrderTest
-{
+object TransferOrderTest:
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)
 
@@ -171,4 +166,3 @@ object TransferOrderTest
         BoardPathExpression.ExpectNotice(noticeBoad.path),
         Workflow.of(
           EmptyJob.execute(agentPath)))))
-}

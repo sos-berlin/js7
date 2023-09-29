@@ -9,8 +9,7 @@ final class JavaNameValidator(
   val typeName: String,
   val isExtraNameStart: Char => Boolean = _ => false,
   val isExtraNamePart: Char => Boolean = _ => false)
-extends NameValidator
-{
+extends NameValidator:
   def checked(name: String): Checked[String] =
     if name.isEmpty then
       Left(EmptyStringProblem(typeName))
@@ -32,4 +31,3 @@ extends NameValidator
     isUnicodeIdentifierPart(c) && !isIdentifierIgnorable(c) ||
       isSurrogate(c)/*Like 🥕*/ ||
       isExtraNamePart(c)
-}

@@ -6,8 +6,7 @@ import js7.base.test.OurTestSuite
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.*
 
-final class IsEmptyTest extends OurTestSuite
-{
+final class IsEmptyTest extends OurTestSuite:
   private val emptyMap = Map.empty[Int, String]
   private val nonEmptyMap = Map(1 -> "")
 
@@ -21,18 +20,16 @@ final class IsEmptyTest extends OurTestSuite
   private val some: Option[Int]= Some(1)
 
   private case class Special(number: Int)
-  private object Special {
-    implicit val specialMonoid: Monoid[Special] = new Monoid[Special] {
+  private object Special:
+    implicit val specialMonoid: Monoid[Special] = new Monoid[Special]:
       val empty = Special(0)
       def combine(x: Special, y: Special) = Special(x.number + y.number)
-    }
     implicit val specialEq: Eq[Special] = Eq.fromUniversalEquals
-  }
 
   private def testIsEmpty[A](what: A)(implicit A: IsEmpty[A]): Boolean =
     A.isEmpty(what)
 
-  "isEmpty" in {
+  "isEmpty" in:
     assert(testIsEmpty(emptyMap))
     assert(!testIsEmpty(nonEmptyMap))
     assert(testIsEmpty(Map.empty/*no types*/))
@@ -48,9 +45,8 @@ final class IsEmptyTest extends OurTestSuite
 
     assert(testIsEmpty(emptySpecial))
     assert(!testIsEmpty(nonEmptySpecial))
-  }
 
-  "??" in {
+  "??" in:
     assert(emptyMap.?? == None)
     assert(Map(1 -> "").?? == Some(Map(1 -> "")))
 
@@ -75,9 +71,8 @@ final class IsEmptyTest extends OurTestSuite
 
     assert(emptySpecial.?? == None)
     assert(nonEmptySpecial.?? == Some(nonEmptySpecial))
-  }
 
-  "Monadic boolean ?? operator and dyadic ?? operator" in {
+  "Monadic boolean ?? operator and dyadic ?? operator" in:
     // Boolean ?? conflicts with dyadic operator
     //assert(false.?? == None)
     //assert(true.?? == Some(true))
@@ -89,5 +84,3 @@ final class IsEmptyTest extends OurTestSuite
     // The dyadic operator
     assert(true ?? "x" == "x")
     assert(false ?? "x" == "")
-  }
-}

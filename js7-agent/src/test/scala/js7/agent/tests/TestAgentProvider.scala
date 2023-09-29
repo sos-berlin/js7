@@ -12,7 +12,7 @@ import org.scalatest.{BeforeAndAfterAll, Suite}
 /**
  * @author Joacim Zschimmer
  */
-trait TestAgentProvider extends TestAgentDirectoryProvider with BeforeAndAfterAll {
+trait TestAgentProvider extends TestAgentDirectoryProvider with BeforeAndAfterAll:
   this: Suite =>
 
   protected def agentTestWiring: RunningAgent.TestWiring =
@@ -23,14 +23,12 @@ trait TestAgentProvider extends TestAgentDirectoryProvider with BeforeAndAfterAl
   protected final def newAgentConfiguration() =
     AgentConfiguration.forTest(configAndData = agentDirectory, getClass.simpleScalaName)
 
-  override def afterAll() = {
+  override def afterAll() =
     // Terminate Agent properly to avoid StackOverflowError due to a RejectedExecutionException when terminating Akka 2.6.6
     agent.terminate(Some(SIGKILL)) await 99.s
     super.afterAll()
-  }
 
   protected lazy final val agent: TestAgent =
     TestAgent
       .start(agentConfiguration, agentTestWiring)
       .await(99.s)
-}

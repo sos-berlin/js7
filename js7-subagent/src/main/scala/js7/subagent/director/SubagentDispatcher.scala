@@ -12,8 +12,7 @@ import monix.eval.Task
 private final class SubagentDispatcher(
   subagentId: SubagentId,
   protected val postCommand: PostCommand)
-extends CommandDispatcher
-{
+extends CommandDispatcher:
   protected type Command = SubagentCommand.Queueable
 
   protected def name = subagentId.toString
@@ -35,12 +34,9 @@ extends CommandDispatcher
             value = new Execute(numbered.value.command, numbered.value.promise))))))
 
   override def toString = s"SubagentDispatcher($name)"
-}
 
-private object SubagentDispatcher
-{
+private object SubagentDispatcher:
   type PostCommand = (Numbered[SubagentCommand.Queueable], SubagentRunId, Switch.ReadOnly) =>
     Task[Checked[Unit]]
 
   private val logger = Logger[this.type]
-}

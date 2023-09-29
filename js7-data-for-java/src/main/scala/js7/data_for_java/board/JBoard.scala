@@ -12,8 +12,7 @@ import js7.data_for_java.value.JExpression
 import scala.jdk.OptionConverters.*
 
 final case class JBoard(asScala: Board)
-extends JJsonable[JBoard] with JUnsignedSimpleItem
-{
+extends JJsonable[JBoard] with JUnsignedSimpleItem:
   type AsScala = Board
   protected def companion = JBoard
 
@@ -24,10 +23,8 @@ extends JJsonable[JBoard] with JUnsignedSimpleItem
   @Nonnull
   def withRevision(revision: Optional[ItemRevision]): JBoard =
     copy(asScala.withRevision(revision.toScala))
-}
 
-object JBoard extends JJsonable.Companion[JBoard]
-{
+object JBoard extends JJsonable.Companion[JBoard]:
   type AsScala = Board
 
   @Nonnull
@@ -45,4 +42,3 @@ object JBoard extends JJsonable.Companion[JBoard]
 
   protected def jsonEncoder = Board.jsonCodec
   protected def jsonDecoder = Board.jsonCodec
-}

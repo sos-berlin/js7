@@ -7,9 +7,9 @@ import js7.data.event.EventRequestTest.*
 /**
   * @author Joacim Zschimmer
   */
-final class EventRequestTest extends OurTestSuite {
+final class EventRequestTest extends OurTestSuite:
 
-  "toQueryParameters" in {
+  "toQueryParameters" in:
     assert(EventRequest.singleClass[AEvent](after = EventId(3), timeout = Some(123.s), delay = 500.ms, limit = 999, tornOlder = Some(10.s))
       .toQueryParameters ==
         Vector(
@@ -36,10 +36,7 @@ final class EventRequestTest extends OurTestSuite {
           "return" -> "AEvent",
           "delay" -> "0",
           "after" -> "0"))
-  }
-}
 
-object EventRequestTest {
+object EventRequestTest:
   private trait AEvent extends Event
   private trait BEvent extends Event
-}

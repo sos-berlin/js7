@@ -7,13 +7,11 @@ import js7.base.system.SystemInformation
 import js7.common.system.ServerOperatingSystem.operatingSystem
 import scala.util.Try
 
-object SystemInformations
-{
+object SystemInformations:
   def totalPhysicalMemory: Option[Long] =
-    getOperatingSystemMXBean match {
+    getOperatingSystemMXBean match
       case o: com.sun.management.OperatingSystemMXBean => Some(o.getTotalMemorySize)
       case _ => None
-  }
 
   private def filteredMap(keyValues: Iterable[(String, Any)]): Map[String, Any] =
     (keyValues flatMap {
@@ -22,17 +20,16 @@ object SystemInformations
     }).toMap
 
 
-  private def operatingSystemMXBean(): Map[String, Any] = {
+  private def operatingSystemMXBean(): Map[String, Any] =
     val bean = getOperatingSystemMXBean
     filteredMap(Map(
       "availableProcessors" -> bean.getAvailableProcessors,
       "systemLoadAverage" -> bean.getSystemLoadAverage))
-  }
 
   private val OperatingSystemObjectName =
     new ObjectName("java.lang", "type", "ServerOperatingSystem")
 
-  private def platformMBean(): Map[String, Any] = {
+  private def platformMBean(): Map[String, Any] =
     val bean = getPlatformMBeanServer
     val keys =
       "processCpuLoad" ::
@@ -44,7 +41,6 @@ object SystemInformations
       key <- keys
       value <- Try { bean.getAttribute(OperatingSystemObjectName, key.capitalize) }.toOption
     yield key -> value)
-  }
 
   def systemInformation(): SystemInformation =
     SystemInformation(
@@ -56,4 +52,3 @@ object SystemInformations
         platformMBean())))
 
   java8Polyfill()
-}

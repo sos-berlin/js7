@@ -20,7 +20,7 @@ import js7.data.workflow.position.WorkflowPosition
 import js7.journal.state.Journal
 import monix.eval.{Fiber, Task}
 
-trait SubagentDriver {
+trait SubagentDriver:
 
   def subagentItem: SubagentItem
 
@@ -93,4 +93,3 @@ trait SubagentDriver {
         jobResourcePaths = JobConf.jobResourcePathsFor(job, workflow)
         signedJobResources <- jobResourcePaths.traverse(s.keyToSigned(JobResource).checked)
       yield signedJobResources :+ signedWorkflow
-}

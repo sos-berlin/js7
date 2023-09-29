@@ -13,8 +13,7 @@ final case class GenericSignature(
   signerId: Option[SignerId] = None,
   /** Public key, yet to be verified against a root certificate. */
   signerCertificate: Option[String] = None)
-extends Signature
-{
+extends Signature:
   def toGenericSignature = this
 
   override def toString = s"Signature($toRawString)"
@@ -24,15 +23,13 @@ extends Signature
       signatureString
     else
       signatureString.take(15) + "..." + signatureString.substring(signatureString.length - 15)
-}
 
-object GenericSignature
-{
+object GenericSignature:
   @javaApi
   def of(typeName: String, signatureString: String) =
     new GenericSignature(typeName, signatureString)
 
-  implicit val jsonCodec: Codec.AsObject[GenericSignature] = {
+  implicit val jsonCodec: Codec.AsObject[GenericSignature] =
     Codec.AsObject.from[GenericSignature](
       Decoder.forProduct5(
         "TYPE",
@@ -48,5 +45,3 @@ object GenericSignature
         "signerId",
         "signerCertificate"
       )((o: GenericSignature) => (o.typeName, o.signatureString, o.algorithm, o.signerId, o.signerCertificate)))
-  }
-}

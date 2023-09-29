@@ -8,7 +8,7 @@ import scala.reflect.ClassTag
  * A mapper providing the bean properties of
  * @author Joacim Zschimmer
  */
-final class BeanPropertyReader[A](clas: Class[? <: A], nameToConverter: NameToConverter) {
+final class BeanPropertyReader[A](clas: Class[? <: A], nameToConverter: NameToConverter):
   private val methods = (
       for d <- java.beans.Introspector.getBeanInfo(clas).getPropertyDescriptors if nameToConverter isDefinedAt d.getName;
            m <- Option(d.getReadMethod) if m.getParameterCount == 0
@@ -20,9 +20,8 @@ final class BeanPropertyReader[A](clas: Class[? <: A], nameToConverter: NameToCo
          converter <- nameToConverter.lift(name);
          value <- converter.lift(method.invoke(bean))
     yield name -> value
-}
 
-object BeanPropertyReader {
+object BeanPropertyReader:
   type NameToConverter = PartialFunction[String, PartialFunction[Any, Any]]
   type ConditionalConverter = PartialFunction[Any, Any]
 
@@ -34,4 +33,3 @@ object BeanPropertyReader {
 
   def toMap[A : ClassTag](bean: A)(nameToConverter: NameToConverter): Map[String, Any] =
     new BeanPropertyReader[A](bean.getClass, nameToConverter).toMap(bean)
-}

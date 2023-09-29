@@ -10,7 +10,7 @@ import js7.provider.scheduledorder.oldruntime.InstantInterval
 /**
   * @author Joacim Zschimmer
   */
-final class ScheduledOrderGeneratorKeeper(scheduledOrderGenerators: Iterable[ScheduledOrderGenerator]) {
+final class ScheduledOrderGeneratorKeeper(scheduledOrderGenerators: Iterable[ScheduledOrderGenerator]):
 
   private val pathToOrderGenerator: Map[ScheduledOrderGeneratorPath, ScheduledOrderGenerator] =
     scheduledOrderGenerators toKeyedMap (_.path)
@@ -26,11 +26,9 @@ final class ScheduledOrderGeneratorKeeper(scheduledOrderGenerators: Iterable[Sch
         orderGenerator.arguments,
         Some(instant.toTimestamp)))
     .toVector.sortBy(_.scheduledFor)
-}
 
-object ScheduledOrderGeneratorKeeper {
+object ScheduledOrderGeneratorKeeper:
   private val Separator = "@"
 
   private def toOrderId(path: ScheduledOrderGeneratorPath, timestamp: Timestamp) =
     OrderId(s"${path.string.replace('/', '-')}$Separator$timestamp")  // '/' is a reserved character in OrderId
-}

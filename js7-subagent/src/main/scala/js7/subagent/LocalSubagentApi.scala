@@ -15,8 +15,7 @@ import scala.reflect.ClassTag
 
 private final class LocalSubagentApi(subagent: Subagent)
 extends SubagentApi
-with SessionApi.Dummy
-{
+with SessionApi.Dummy:
   def isLocal = true
 
   override def hasRelevantStackTrace(throwable: Throwable): Boolean =
@@ -35,4 +34,3 @@ with SessionApi.Dummy
   : Task[Checked[numbered.value.Response]] =
     subagent.commandExecutor.executeCommand(numbered, CommandMeta.System)
       .asInstanceOf[Task[Checked[numbered.value.Response]]]
-}

@@ -21,9 +21,8 @@ import monix.execution.Scheduler.Implicits.traced
 /**
   * @author Joacim Zschimmer
   */
-final class UpdateRepoAgentTest extends OurTestSuite
-{
-  "ControllerCommand.UpdateRepo" in {
+final class UpdateRepoAgentTest extends OurTestSuite:
+  "ControllerCommand.UpdateRepo" in:
     val directoryProvider = new DirectoryProvider(
       agentPaths = agentPath :: Nil,
       items = workflow :: Nil,
@@ -47,7 +46,7 @@ final class UpdateRepoAgentTest extends OurTestSuite
         runOrder(controller, OrderId("🔺"))
         agent1.terminate() await 99.s
 
-        for i <- 1 to 3 do {
+        for i <- 1 to 3 do
           if agent2 != null then agent2.terminate() await 99.s
           // Start a new Agent with same state but a (hopefully) different HTTP port
           val port = findFreeTcpPort()
@@ -62,7 +61,6 @@ final class UpdateRepoAgentTest extends OurTestSuite
               directoryProvider.subagentItems.head.copy(uri = agent2.localUri)))
             .await(99.s).orThrow
           runOrder(controller, OrderId(s"♣️-$i"))
-        }
       }
 
       // Controller recovery
@@ -72,11 +70,8 @@ final class UpdateRepoAgentTest extends OurTestSuite
 
       agent2.terminate() await 99.s
     }
-  }
-}
 
-object UpdateRepoAgentTest
-{
+object UpdateRepoAgentTest:
   private val agentPath = AgentPath("AGENT")
   private val workflow = WorkflowParser.parse(WorkflowPath("WORKFLOW"),
      """define workflow {
@@ -84,8 +79,6 @@ object UpdateRepoAgentTest
         }"""
   ).orThrow
 
-  private def runOrder(controller: TestController, orderId: OrderId): Unit = {
+  private def runOrder(controller: TestController, orderId: OrderId): Unit =
     controller.addOrderBlocking(FreshOrder(orderId, workflow.path))
     controller.eventWatch.await[OrderFinished](predicate = _.key == orderId)
-  }
-}

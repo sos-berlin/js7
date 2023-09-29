@@ -14,8 +14,7 @@ import scala.collection.mutable
 import scala.jdk.CollectionConverters.MapHasAsScala
 import scala.util.{Failure, Success, Try}
 
-private object TestResultCollector
-{
+private object TestResultCollector:
   val singleton = this
 
   private val results = mutable.Buffer[Result]()
@@ -23,10 +22,10 @@ private object TestResultCollector
   private val ThreadNameRegex = """(\d+-)?(.*)""".r
   private val dumpFile = Paths.get("target/test.hprof")
 
-  try {
+  try
     deleteIfExists(Paths.get(s"$dumpFile.idom")) // YourKit Java profiler file
     deleteIfExists(dumpFile)
-  } catch { case e: IOException => logger.warn(e.toStringWithCauses) }
+  catch { case e: IOException => logger.warn(e.toStringWithCauses) }
 
   sys.runtime.addShutdownHook(
     newMaybeVirtualThread("TestResultCollector-shutdown-hook") {
@@ -37,7 +36,7 @@ private object TestResultCollector
     })
 
   private def logThreads(): Unit =
-    if logger.underlying.isDebugEnabled then {
+    if logger.underlying.isDebugEnabled then
       val threadToTrace = Thread.getAllStackTraces.asScala
         .toVector
         .sortBy(th => (th._1.getName, th._1.threadId))
@@ -66,7 +65,6 @@ private object TestResultCollector
       //  logger.trace(s"Thread ${t.getName} #${t.threadId} ${t.getState}\n" +
       //    stack.view.map(o => s"  $o").mkString("\n"))
       //}
-    }
 
   private def dumpJavaHeap(): Unit =
     try dumpHeapTo(dumpFile)
@@ -79,12 +77,11 @@ private object TestResultCollector
     }
 
   def add(result: Result): Unit =
-    synchronized {
+    synchronized:
       results += result
-    }
 
   def asString: String =
-    synchronized {
+    synchronized:
       results
         .sortWith { (a, b) =>
           val at = weighTry(a.tried)
@@ -94,21 +91,17 @@ private object TestResultCollector
           else if a.prettyDuration != b.prettyDuration then
             a.duration < b.duration
           else
-            a.prefix.compareTo(b.prefix) match {
+            a.prefix.compareTo(b.prefix) match
               case 0 => a.testName == b.testName
               case i => i < 0
-            }
         }
         .map(_.toSummaryLine)
         .mkString("\n")
-    }
 
   private def weighTry(tried: Try[Unit]): Int =
-    tried match {
+    tried match
       case Success(_) => 1
       case Failure(_: TestPendingException) => 2
       case Failure(_) => 3
-    }
 
   java8Polyfill()
-}

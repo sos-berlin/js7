@@ -29,8 +29,7 @@ final case class ProcessOrder(
   controllerId: ControllerId,
   stdObservers: StdObservers,
   fileValueScope: Scope)
-extends ProcessingOrderScopes
-{
+extends ProcessingOrderScopes:
   /** Lazily evaluated defaultArguments. */
   private lazy val nameToLazyDefaultArgument: MapView[String, Checked[Value]] =
     evalLazilyJobDefaultArguments(jobArguments.view) +++
@@ -58,10 +57,8 @@ extends ProcessingOrderScopes
   lazy val scope: Scope =
     processingOrderScope |+|
       NameToCheckedValueScope(nameToLazyDefaultArgument)
-}
 
-object ProcessOrder
-{
+object ProcessOrder:
   def resource(
     order: Order[Order.Processing],
     workflow: Workflow,
@@ -94,4 +91,3 @@ object ProcessOrder
           case (k, v) => v.traverse(_.toStringValueString).map(k -> _)
         })
       .map(_.toMap)
-}

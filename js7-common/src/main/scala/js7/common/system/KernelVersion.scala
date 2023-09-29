@@ -8,13 +8,12 @@ import scala.util.control.NonFatal
 /**
  * @author Joacim Zschimmer
  */
-final case class KernelVersion(kernelName: String, version: Seq[Int]) {
+final case class KernelVersion(kernelName: String, version: Seq[Int]):
   def >=(o: KernelVersion) = kernelName == o.kernelName && (version compareElementWise o.version) >= 0
 
   override def toString = List(kernelName, version mkString ".") mkString " "
-}
 
-private object KernelVersion {
+private object KernelVersion:
   private val logger = Logger[this.type]
   val Unknown = KernelVersion("UNKNOWN-KERNEL", Nil)
 
@@ -24,11 +23,9 @@ private object KernelVersion {
 
   private def ignoreError(body: => KernelVersion): KernelVersion =
     try body
-    catch {
+    catch
       case NonFatal(t) =>
         logger.warn(s"Ignored: $t", t)
         Unknown
-    }
 
   def apply(): KernelVersion = Singleton
-}

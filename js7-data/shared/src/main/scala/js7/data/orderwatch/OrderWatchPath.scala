@@ -5,15 +5,12 @@ import js7.data.item.{InventoryItemPath, UnsignedSimpleItemPath}
 
 final case class OrderWatchPath(string: String)
 extends UnsignedSimpleItemPath
-with InventoryItemPath.AttachableToAgent
-{
+with InventoryItemPath.AttachableToAgent:
   protected type Self = OrderWatchPath
 
   val companion: OrderWatchPath.type = OrderWatchPath
-}
 
-object OrderWatchPath extends UnsignedSimpleItemPath.Companion[OrderWatchPath]
-{
+object OrderWatchPath extends UnsignedSimpleItemPath.Companion[OrderWatchPath]:
   type Item = OrderWatch
 
   @javaApi
@@ -21,4 +18,3 @@ object OrderWatchPath extends UnsignedSimpleItemPath.Companion[OrderWatchPath]
 
   override protected def unchecked(string: String) =
     new OrderWatchPath(string)
-}

@@ -4,9 +4,8 @@ import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.test.OurTestSuite
 import js7.tester.CirceJsonTester.testJson
 
-final class SignedStringTest extends OurTestSuite
-{
-  "JSON" in {
+final class SignedStringTest extends OurTestSuite:
+  "JSON" in:
     testJson(SignedString(
       "STRING",
       GenericSignature("SIGNATURE TYPE", "SIGNATURE")),
@@ -34,5 +33,3 @@ final class SignedStringTest extends OurTestSuite
           "signerCertificate": "SIGNERS CERTIFICATE"
         }
       }""")
-  }
-}

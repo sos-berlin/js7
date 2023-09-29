@@ -9,13 +9,10 @@ import js7.data_for_java.workflow.position.JWorkflowPosition
 import scala.jdk.OptionConverters.*
 
 final case class JSuspensionMode(asScala: SuspensionMode)
-extends JavaWrapper
-{
+extends JavaWrapper:
   type AsScala = SuspensionMode
-}
 
-object JSuspensionMode
-{
+object JSuspensionMode:
   @Nonnull
   val standard: JSuspensionMode =
     JSuspensionMode(SuspensionMode.standard)
@@ -44,4 +41,3 @@ object JSuspensionMode
       Kill(
         immediately = immediately,
         position.toScala.map(_.asScala)))))
-}

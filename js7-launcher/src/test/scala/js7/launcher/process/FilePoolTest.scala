@@ -10,21 +10,19 @@ import js7.data.job.JobKey
 /**
   * @author Joacim Zschimmer
   */
-final class FilePoolTest extends OurTestSuite
-{
+final class FilePoolTest extends OurTestSuite:
   private val filePool = new FilePool(JobKey.forTest, temporaryDirectory, UTF_8)
   private var a: FilePool.FileSet = null
   private var b: FilePool.FileSet = null
   private var c: FilePool.FileSet = null
 
-  "get" in {
+  "get" in:
     a = filePool.get()
     b = filePool.get()
     c = filePool.get()
     assert(a != b)
     assert(a != c)
     assert(b != c)
-  }
 
   //"underflow" in {
   //  intercept[IllegalStateException] {
@@ -32,26 +30,21 @@ final class FilePoolTest extends OurTestSuite
   //  }
   //}
 
-  "release" in {
+  "release" in:
     b.shellReturnValuesProvider.file := "TEST"
     filePool.release(b)
     val b2 = filePool.get()
     assert(b2 eq b)
     assert(b.shellReturnValuesProvider.file.contentString.isEmpty)
     filePool.release(b2)
-  }
 
-  "LIFO" in {
+  "LIFO" in:
     filePool.release(c)
     val c2 = filePool.get()
     assert(c2 eq c)
     filePool.release(c)
-  }
 
-  "close" in {
+  "close" in:
     filePool.close()
-    for o <- Array(a, b, c) do {
+    for o <- Array(a, b, c) do
       assert(!exists(o.shellReturnValuesProvider.file))
-    }
-  }
-}

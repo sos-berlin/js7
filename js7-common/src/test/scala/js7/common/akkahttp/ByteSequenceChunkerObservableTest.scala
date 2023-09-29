@@ -11,9 +11,8 @@ import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import scala.util.Random
 
-final class ByteSequenceChunkerObservableTest extends OurTestSuite
-{
-  "ByteSequenceChunkerObservable" in {
+final class ByteSequenceChunkerObservableTest extends OurTestSuite:
+  "ByteSequenceChunkerObservable" in:
     val maxSize = 2
     val strings = Vector.fill(100_000)(
       ('A' + Random.nextInt(26)).toChar.toString * Random.nextInt(maxSize + 1) + "\n")
@@ -27,5 +26,3 @@ final class ByteSequenceChunkerObservableTest extends OurTestSuite
       .await(99.s)
     assert(result.length == expectedCount)
     assert(result.view.map(_.utf8String).mkString == strings.mkString)
-  }
-}

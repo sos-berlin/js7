@@ -48,9 +48,8 @@ final case class Workflow(
   source: Option[String],
   outer: Option[Workflow])
 extends VersionedItem
-with TrivialItemState[Workflow]
-{
-  override def equals(o: Any) = o match {
+with TrivialItemState[Workflow]:
+  override def equals(o: Any) = o match
     case o: Workflow =>
       (id == o.id
         && rawLabeledInstructions == o.rawLabeledInstructions
@@ -63,7 +62,6 @@ with TrivialItemState[Workflow]
         && source == o.source)
       // Ignore `outer`
     case _ => false
-  }
 
   assertThat(isCorrectlyEnded(rawLabeledInstructions), "Missing implicit end instruction")
 
@@ -88,7 +86,7 @@ with TrivialItemState[Workflow]
   val item: Workflow = this
 
   /** Checks a complete workflow including subworkflows using jobs in its outer workflows. */
-  def completelyChecked: Checked[Workflow] = {
+  def completelyChecked: Checked[Workflow] =
     val chk =
       checkJobReferences ++
       checkJobs ++
@@ -101,7 +99,6 @@ with TrivialItemState[Workflow]
       Left(Problem.Combined(problems))
     else
       Right(this)
-  }
 
   def withPositions(branchPath: BranchPath): Workflow =
     copy(rawLabeledInstructions =
@@ -114,17 +111,16 @@ with TrivialItemState[Workflow]
 
   private def checkJobReferences: View[Checked[Unit]] =
     flattenedInstructions
-      .collect {
+      .collect:
         case (position, _ @: (o: Execute.Named)) =>
           nestedWorkflow(position.branchPath)
             .flatMap(_.findJob(o.name).map(_ => ()))
-      }
 
   private def checkJobs: View[Checked[Unit]] =
     workflowJobs.map(_.checked)
 
   private def checkRetry(inCatch: Boolean = false): Seq[Checked[Unit]] =
-    instructions flatMap {
+    instructions flatMap:
       case _: Retry =>
         !inCatch thenList Left(Problem("Statement 'retry' is only allowed in a catch block"))
       case instr: If =>
@@ -133,13 +129,11 @@ with TrivialItemState[Workflow]
         Vector(instr.tryWorkflow.checkRetry(inCatch), instr.catchWorkflow.checkRetry(true)).flatten
       case instr =>
         instr.workflows.flatMap(_.checkRetry())
-    }
 
   private def checkLabels: View[Checked[Unit]] =
     flattenedInstructions
-      .collect {
+      .collect:
         case (position, Some(label) @: _) => (label, position)
-      }
       .toVector
       .groupBy(_._1)
       .view
@@ -161,13 +155,12 @@ with TrivialItemState[Workflow]
     for (nr, Labeled(_, instr, _)) <- numberedInstructions yield
       for
         isInCycle <- instr
-          .match {
+          .match
             case _: Cycle => Right(true)
             case _: Break if !inCycle =>
               Left(Problem.pure(s"Break instruction at ${branchPath % nr} without Cycle"))
             case _: Instruction.IsOrderBoundary => Right(false)
             case _ => Right(inCycle)
-          }
         _ <- instr
           .branchWorkflows
           .flatMap { case (branchId, w) =>
@@ -189,14 +182,13 @@ with TrivialItemState[Workflow]
       .collect { case o: InventoryItemPath.AttachableToAgent with SignableSimpleItemPath => o }
       .toVector
 
-  override lazy val referencedItemPaths: View[SimpleItemPath] = {
+  override lazy val referencedItemPaths: View[SimpleItemPath] =
     val referencedLockAndBoardPaths =
       flattenedInstructions.view
         .map(_._2.instruction)
-        .collect {
+        .collect:
           case lock: LockInstruction => lock.lockPaths
           case board: BoardInstruction => board.referencedBoardPaths
-        }
         .flatten
         .toSet
 
@@ -212,7 +204,6 @@ with TrivialItemState[Workflow]
       calendarPath,
       referencedAgentPaths,
       knownSubagentSelectionIds)
-  }
 
   private[workflow] def knownSubagentSelectionIds: Set[SubagentSelectionId] =
     workflowJobs.view.flatMap(_
@@ -233,7 +224,7 @@ with TrivialItemState[Workflow]
     positionMatchesSearchNormalized(position.normalized, search)
 
   private def positionMatchesSearchNormalized(position: Position, search: PositionSearch): Boolean =
-    search match {
+    search match
       case PositionSearch.ByPrefix(name) =>
         labelToPosition(Label(name)) == Right(position) ||
           positionExecutesJob(position, WorkflowJob.Name(name))
@@ -243,13 +234,11 @@ with TrivialItemState[Workflow]
 
       case PositionSearch.ByWorkflowJob(jobName) =>
         positionExecutesJob(position, jobName)
-    }
 
   private def positionExecutesJob(position: Position, jobName: WorkflowJob.Name) =
-    instruction(position) match {
+    instruction(position) match
       case execute: Execute.Named => execute.name == jobName
       case _ => false
-    }
 
   //def searchPositions(search: PositionSearch): Checked[Set[Position]] =
   //  search match {
@@ -283,10 +272,9 @@ with TrivialItemState[Workflow]
       .toChecked(UnknownKeyProblem("Label", label.toString))
 
   def positionOrLabelToPosition(position: PositionOrLabel): Checked[Position] =
-    position match {
+    position match
       case position: Position => Right(position)
       case label: Label => labelToPosition(label)
-    }
 
   def isOrderAtStopPosition(order: Order[Order.State]): Boolean =
     Workflow.isOrderAtStopPosition(order, Some(this))
@@ -304,26 +292,23 @@ with TrivialItemState[Workflow]
     View(parents -> this) ++ nestedWorkflows(parents)
 
   private def nestedWorkflows(parents: BranchPath): View[(BranchPath, Workflow)] =
-    numberedInstructions flatMap {
+    numberedInstructions flatMap:
       case (nr, labeled) => labeled.instruction.flattenedWorkflows(parents % nr)
-    }
 
   def nestedWorkflow(branchPath: BranchPath): Checked[Workflow] =
-    branchPath match {
+    branchPath match
       case BranchPath.PositionAndBranchId(position, branchId) => instruction(position).workflow(branchId)
       case _ => Right(this)
-    }
 
   def flattenedInstructions: View[(Position, Instruction.Labeled)] =
     flattenedInstructions(Nil)
 
   private[workflow] def flattenedInstructions(branchPath: BranchPath)
   : View[(Position, Instruction.Labeled)] =
-    numberedInstructions.flatMap {
+    numberedInstructions.flatMap:
       case (nr, labeled) =>
         View((branchPath % nr) -> labeled) ++
           labeled.instruction.flattenedInstructions(branchPath % nr)
-    }
 
   def numberedInstructions: View[(InstructionNr, Instruction.Labeled)] =
     labeledInstructions.view
@@ -346,17 +331,16 @@ with TrivialItemState[Workflow]
     isStartableOnAgent(instruction(position), agentPath)
 
   private def isStartableOnAgent(instruction: Instruction, agentPath: AgentPath): Boolean =
-    instruction match {
+    instruction match
       case o: Fork => o isStartableOnAgent agentPath
       case o: Execute => o.isVisibleForAgent(agentPath, this)
       case _ => false
-    }
 
   private[workflow] def isStartableOnAgent(agentPath: AgentPath): Boolean =
     checkedWorkflowJob(Position(0)).exists(_ isExecutableOnAgent agentPath)
 
   def agentPath(position: Position): Option[AgentPath] =
-    instruction(position) match {
+    instruction(position) match
       case execute: Execute =>
         checkedWorkflowJob(position).toOption.map(_.agentPath)
 
@@ -364,14 +348,12 @@ with TrivialItemState[Workflow]
         fork.agentPath
 
       case _ => None
-    }
 
   def isDefinedAt(position: Position): Boolean =
-    position match {
+    position match
       case Position(Nil, nr) => isDefinedAt(nr)
       case Position(BranchPath.Segment(nr, branchId) :: tail, tailNr) =>
         instruction(nr).workflow(branchId).exists(_ isDefinedAt Position(tail, tailNr))
-    }
 
   private def isDefinedAt(nr: InstructionNr): Boolean =
     labeledInstructions.indices isDefinedAt nr.number
@@ -380,20 +362,17 @@ with TrivialItemState[Workflow]
     */
   @tailrec
   def findJob(name: WorkflowJob.Name): Checked[WorkflowJob] =
-    nameToJob.get(name) match {
+    nameToJob.get(name) match
       case Some(job) => Right(job)
       case None =>
-        outer match {
+        outer match
           case None => Left(Problem(s"Unknown job name '$name'"))
           case Some(o) => o.findJob(name)
-        }
-    }
 
   def positionToJobKey(position: Position): Checked[JobKey] =
-    checkedExecute(position).flatMap {
+    checkedExecute(position).flatMap:
       case _: Execute.Anonymous => Right(anonymousJobKey(id /: position))
       case o: Execute.Named     => jobKey(position.branchPath, o.name)
-    }
 
   def anonymousJobKey(workflowPosition: WorkflowPosition): JobKey.Anonymous =
     JobKey.Anonymous(workflowPosition.normalized)
@@ -419,23 +398,20 @@ with TrivialItemState[Workflow]
       val workflowBranchPath = WorkflowBranchPath(id, branchPath)
       val namedJobKeys = workflow.nameToJob.view
         .map { case (k, v) => JobKey.Named(workflowBranchPath, k) -> v }
-      val anonymousJobKeys = workflow.numberedInstructions.view.collect {
+      val anonymousJobKeys = workflow.numberedInstructions.view.collect:
         case (nr, _ @: (ex: Execute.Anonymous)) => JobKey.Anonymous(workflowBranchPath / nr) -> ex.job
-      }
       namedJobKeys ++ anonymousJobKeys
     }
 
   def checkedWorkflowJob(position: Position): Checked[WorkflowJob] =
-    checkedExecute(position) flatMap {
+    checkedExecute(position) flatMap:
       case o: Execute.Anonymous => Right(o.job)
       case o: Execute.Named => nestedWorkflow(position.branchPath).flatMap(_.findJob(o.name))
-    }
 
   def checkedExecute(position: Position): Checked[Execute] =
-    instruction(position) match {
+    instruction(position) match
       case o: Execute => Right(o)
       case o => Left(Problem(s"Expected 'Execute' statement at workflow position $position (not: ${o.getClass.simpleScalaName})"))
-    }
 
   def reachablePositions(from: Position): Iterable[Position] =
     if !isDefinedAt(from) then
@@ -462,7 +438,7 @@ with TrivialItemState[Workflow]
     }
 
   def instruction(position: Position): Instruction =
-    position match {
+    position match
       case Position(Nil, nr) =>
         instruction(nr)
 
@@ -470,7 +446,6 @@ with TrivialItemState[Workflow]
         instruction(nr).workflow(branchId.normalized)
           .map(_.instruction(Position(tail, tailNr)))
           .getOrElse(Gap.empty)
-    }
 
   def instruction(nr: InstructionNr): Instruction =
     if instructions.indices contains nr.number then
@@ -480,13 +455,12 @@ with TrivialItemState[Workflow]
 
   def instruction_[A <: Instruction: ClassTag](position: Position)
   : Checked[A] =
-    instruction(position) match {
+    instruction(position) match
       case o if implicitClass[A] isAssignableFrom o.getClass =>
         Right(o.asInstanceOf[A])
       case o =>
         Left(Problem(s"A '${Instructions.jsonCodec.classToName(implicitClass[A])}' Instruction " +
           s"is expected at position ${id /: position}, not: ${Instructions.jsonCodec.typeName(o)}"))
-    }
 
   def checkPosition(position: Position): Checked[Unit] =
     labeledInstruction(position).rightAs(())
@@ -511,11 +485,9 @@ with TrivialItemState[Workflow]
 
   override def toString = ((path != WorkflowPath.Anonymous) ?? s"$id ") +
     s"{${labeledInstructions.mkString("; ")} ${nameToJob.map { case (k, v) => s"define job $k { $v }" }.mkString(" ")} }"
-}
 
 object Workflow extends VersionedItem.Companion[Workflow]
-with TrivialItemState.Companion[Workflow]
-{
+with TrivialItemState.Companion[Workflow]:
   type Item = Workflow
   type Path = WorkflowPath
 
@@ -604,7 +576,7 @@ with TrivialItemState.Companion[Workflow]
   implicit lazy val jsonCodec: Codec.AsObject[Workflow] =
     Codec.AsObject.from(jsonDecoder_, jsonEncoder_)
 
-  private val jsonEncoder_ : Encoder.AsObject[Workflow] = {
+  private val jsonEncoder_ : Encoder.AsObject[Workflow] =
     case Workflow(id, instructions, namedJobs, orderPreparation, tz, jobResourcePaths,
     calendarPath, result, src, _) =>
       implicit val x: Encoder.AsObject[Instruction] = Instructions.jsonCodec
@@ -621,7 +593,6 @@ with TrivialItemState.Companion[Workflow]
           "jobs" -> namedJobs.??.asJson,
           "result" -> result.asJson,
           "source" -> src.asJson)
-  }
 
   private val jsonDecoder_ : Decoder[Workflow] =
     // TODO Differentiate between CompleteWorkflow.completelyChecked and Subworkflow. completeChecked should not be left to the caller.
@@ -646,4 +617,3 @@ with TrivialItemState.Companion[Workflow]
   // TODO Separate plain RawWorkflow, TopWorkflow and Subworkflow
   val topJsonDecoder: Decoder[Workflow] =
     cursor => jsonDecoder.decodeJson(cursor.value).flatMap(_.completelyChecked.toDecoderResult(cursor.history))
-}

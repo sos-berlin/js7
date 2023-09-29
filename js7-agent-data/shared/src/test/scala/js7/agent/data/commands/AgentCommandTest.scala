@@ -29,9 +29,8 @@ import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 /**
   * @author Joacim Zschimmer
   */
-final class AgentCommandTest extends OurTestSuite
-{
-  "Batch" in {
+final class AgentCommandTest extends OurTestSuite:
+  "Batch" in:
     testJson[AgentCommand](AgentCommand.Batch(
       List(
         CorrelIdWrapped(CorrelId.empty, AgentCommand.NoOperation),
@@ -43,9 +42,8 @@ final class AgentCommandTest extends OurTestSuite
           { "TYPE": "EmergencyStop", "correlId": "_CORREL_" }
         ]
       }""")
-  }
 
-  "Batch.Response" in {
+  "Batch.Response" in:
     testJson[AgentCommand.Response](
       AgentCommand.Batch.Response(Right(AgentCommand.Response.Accepted) :: Left(TestCodeProblem(Map("ARG" -> "VALUE"))) :: Nil),
       json"""{
@@ -62,9 +60,8 @@ final class AgentCommandTest extends OurTestSuite
           }
         ]
       }""")
-  }
 
-  "MarkOrder" in {
+  "MarkOrder" in:
     testJson[AgentCommand](AgentCommand.MarkOrder(OrderId("ORDER"), OrderMark.Cancelling(CancellationMode.FreshOnly)),
       json"""{
         "TYPE": "MarkOrder",
@@ -76,39 +73,34 @@ final class AgentCommandTest extends OurTestSuite
           }
         }
       }""")
-  }
 
   "EmergencyStop" - {
-    "restart=false" in {
+    "restart=false" in :
       testJson[AgentCommand](AgentCommand.EmergencyStop(),
         json"""{ "TYPE": "EmergencyStop" }""")
-    }
 
-    "restart=true" in {
+    "restart=true" in :
       testJson[AgentCommand](AgentCommand.EmergencyStop(restart = true),
         json"""{
           "TYPE": "EmergencyStop",
           "restart": true
         }""")
-    }
   }
 
-  "ReleaseEvents" in {
+  "ReleaseEvents" in:
     testJson[AgentCommand](AgentCommand.ReleaseEvents(123L),
       json"""{
         "TYPE": "ReleaseEvents",
         "untilEventId": 123
       }""")
-  }
 
-  "NoOperation" in {
+  "NoOperation" in:
     testJson[AgentCommand](AgentCommand.NoOperation,
       json"""{
         "TYPE": "NoOperation"
       }""")
-  }
 
-  "DedicateAgentDirector" in {
+  "DedicateAgentDirector" in:
     testJson[AgentCommand](AgentCommand.DedicateAgentDirector(
       Seq(SubagentId("SUBAGENT"), SubagentId("BACKUP-SUBAGENT")),
       ControllerId("CONTROLLER"),
@@ -134,9 +126,8 @@ final class AgentCommandTest extends OurTestSuite
         "agentPath": "AGENT",
         "controllerRunId": "AAAAAAAAAAAAAAAAAAAAAA"
       }""")
-  }
 
-  "DedicateAgentDirector.Response" in {
+  "DedicateAgentDirector.Response" in:
     testJson[AgentCommand.Response](
       AgentCommand.DedicateAgentDirector.Response(
         AgentRunId(JournalId(UUID.fromString("11111111-2222-3333-4444-555555555555"))),
@@ -146,9 +137,8 @@ final class AgentCommandTest extends OurTestSuite
         "agentRunId": "ERERESIiMzNERFVVVVVVVQ",
         "agentEventId": 1000
       }""")
-  }
 
-  "CoupleController" in {
+  "CoupleController" in:
     testJson[AgentCommand](
       AgentCommand.CoupleController(
         AgentPath("AGENT"),
@@ -162,9 +152,8 @@ final class AgentCommandTest extends OurTestSuite
         "controllerRunId": "AAAAAAAAAAAAAAAAAAAAAA",
         "eventId": 1000
       }""")
-  }
 
-  "Reset" in {
+  "Reset" in:
     testJson[AgentCommand](
       AgentCommand.Reset(
         Some(AgentRunId(JournalId(UUID.fromString("11111111-2222-3333-4444-555555555555"))))),
@@ -172,26 +161,23 @@ final class AgentCommandTest extends OurTestSuite
         "TYPE": "Reset",
         "agentRunId": "ERERESIiMzNERFVVVVVVVQ"
       }""")
-  }
 
-  "CoupleController.Response" in {
+  "CoupleController.Response" in:
     testJson[AgentCommand.Response](
       AgentCommand.CoupleController.Response(Set(OrderId("ORDER"))),
       json"""{
         "TYPE": "CoupleController.Response",
         "orderIds": [ "ORDER" ]
       }""")
-  }
 
   "ShutDown" - {
-    "using defaults" in {
+    "using defaults" in :
       testJsonDecoder[AgentCommand](AgentCommand.ShutDown(),
         json"""{
           "TYPE": "ShutDown"
         }""")
-    }
 
-    "JSON without sigkillDelay" in {
+    "JSON without sigkillDelay" in :
       testJson[AgentCommand](AgentCommand.ShutDown(processSignal = Some(SIGTERM)),
         json"""{
           "TYPE": "ShutDown",
@@ -200,9 +186,8 @@ final class AgentCommandTest extends OurTestSuite
           "restart": false,
           "restartDirector": false
         }""")
-    }
 
-    "JSON with restart" in {
+    "JSON with restart" in :
       testJson[AgentCommand](AgentCommand.ShutDown(restart = true, restartDirector = true),
         json"""{
           "TYPE": "ShutDown",
@@ -210,10 +195,9 @@ final class AgentCommandTest extends OurTestSuite
           "restart": true,
           "restartDirector": true
         }""")
-    }
   }
 
-  "AttachItem" in {
+  "AttachItem" in:
     testJson[AgentCommand](
       AgentCommand.AttachItem(
         FileWatch(OrderWatchPath("PATH"), WorkflowPath("WORKFLOW"), AgentPath("AGENT"),
@@ -229,9 +213,8 @@ final class AgentCommandTest extends OurTestSuite
           "delay": 0
         }
       }""")
-  }
 
-  "AttachSignedItem VersionedItem (without ItemRevision)" in {
+  "AttachSignedItem VersionedItem (without ItemRevision)" in:
     val itemSigner = new ItemSigner(SillySigner.Default, AgentState.signableItemJsonCodec)
     testJson[AgentCommand](
       AgentCommand.AttachSignedItem(
@@ -246,9 +229,8 @@ final class AgentCommandTest extends OurTestSuite
           "string": "{\"TYPE\":\"Workflow\",\"path\":\"WORKFLOW\",\"versionId\":\"VERSION\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentPath\":\"AGENT\",\"executable\":{\"TYPE\":\"PathExecutable\",\"path\":\"A.cmd\",\"v1Compatible\":true},\"defaultArguments\":{\"JOB_A\":\"'A-VALUE'\"},\"parallelism\":3}},{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentPath\":\"AGENT\",\"executable\":{\"TYPE\":\"PathExecutable\",\"path\":\"B.cmd\",\"v1Compatible\":true},\"defaultArguments\":{\"JOB_B\":\"'B-VALUE'\"},\"parallelism\":3}}]}"
         }
       }""")
-  }
 
-  "AttachSignedItem JobResource (with ItemRevision)" in {
+  "AttachSignedItem JobResource (with ItemRevision)" in:
     val jobResource = JobResource(JobResourcePath("JOB-RESOURCE"), itemRevision = Some(ItemRevision(7)))
     val itemSigner = new ItemSigner(SillySigner.Default, AgentState.signableItemJsonCodec)
     testJson[AgentCommand](
@@ -264,9 +246,8 @@ final class AgentCommandTest extends OurTestSuite
         },
         "itemRevision": 7
        }""")
-  }
 
-  "DetachItem" in {
+  "DetachItem" in:
     testJson[AgentCommand](
       AgentCommand.DetachItem(OrderWatchPath("PATH")),
       json"""{
@@ -280,44 +261,42 @@ final class AgentCommandTest extends OurTestSuite
         "TYPE": "DetachItem",
         "key": "Workflow:WORKFLOW~1"
       }""")
-  }
 
   "OrderCommand" - {
-    "AttachOrder" in {
+    "AttachOrder" in :
       testJson[AgentCommand](AgentCommand.AttachOrder(
-          Order(
-            OrderId("ORDER-ID"),
-            SimpleTestWorkflow.id /: Position(3),
-            Order.Ready,
-            Map("KEY" -> StringValue("VALUE"))),
-          AgentPath("AGENT")),
+        Order(
+          OrderId("ORDER-ID"),
+          SimpleTestWorkflow.id /: Position(3),
+          Order.Ready,
+          Map("KEY" -> StringValue("VALUE"))),
+        AgentPath("AGENT")),
         json"""{
-          "TYPE": "AttachOrder",
-          "order": {
-            "id": "ORDER-ID",
-            "workflowPosition": {
-              "workflowId": {
-                "path": "WORKFLOW",
-                "versionId": "VERSION"
-              },
-              "position": [ 3 ]
+        "TYPE": "AttachOrder",
+        "order": {
+          "id": "ORDER-ID",
+          "workflowPosition": {
+            "workflowId": {
+              "path": "WORKFLOW",
+              "versionId": "VERSION"
             },
-            "state": {
-              "TYPE": "Ready"
-            },
-            "arguments": {
-              "KEY": "VALUE"
-            },
-            "attachedState": {
-              "TYPE": "Attached",
-              "agentPath": "AGENT"
-            }
+            "position": [ 3 ]
+          },
+          "state": {
+            "TYPE": "Ready"
+          },
+          "arguments": {
+            "KEY": "VALUE"
+          },
+          "attachedState": {
+            "TYPE": "Attached",
+            "agentPath": "AGENT"
           }
-        }""")
-    }
+        }
+      }""")
   }
 
-  "ResetSubagent" in {
+  "ResetSubagent" in:
     testJson[AgentCommand](
       AgentCommand.ResetSubagent(SubagentId("SUBAGENT"), force = false),
       json"""{
@@ -325,9 +304,8 @@ final class AgentCommandTest extends OurTestSuite
         "subagentId": "SUBAGENT",
         "force": false
       }""")
-  }
 
-  "Batch toString" in {
+  "Batch toString" in:
     assert(Batch(Nil).toString == "Batch()")
     assert(Batch(Seq(CorrelIdWrapped(CorrelId("_CORREL_"), DetachOrder(OrderId("A")))))
       .toString == "Batch(DetachOrder)")
@@ -340,5 +318,3 @@ final class AgentCommandTest extends OurTestSuite
         CorrelIdWrapped(CorrelId("_CORREL_"), NoOperation),
         CorrelIdWrapped(CorrelId("_CORREL_"), NoOperation))
       ).toString == "Batch(2×DetachOrder, ShutDown, 3×NoOperation)")
-  }
-}

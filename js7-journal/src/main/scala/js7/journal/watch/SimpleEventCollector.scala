@@ -18,8 +18,7 @@ final class SimpleEventCollector(
   eventTypedJsonCodec: KeyedEventTypedJsonCodec[Event],
   config: Config = ConfigFactory.empty)
 (implicit protected val scheduler: Scheduler)
-extends AutoCloseable
-{
+extends AutoCloseable:
   private val directory = createTempDirectory("SimpleEventCollector-")
   private val journalLocation = JournalLocation(
     new SnapshotableState.HasCodec {
@@ -31,39 +30,31 @@ extends AutoCloseable
   private val journalId = JournalId.random()
   private val tornEventId = EventId.BeforeFirst
 
-  lazy val (eventWriter, eventWatch) = {
+  lazy val (eventWriter, eventWatch) =
     // Start the other when accessing one.
     val eventWatch = new JournalEventWatch(journalLocation, config withFallback JournalEventWatch.TestConfig)
-    val eventWriter = {
+    val eventWriter =
       val w = EventJournalWriter.forTest(journalLocation, tornEventId, journalId, Some(eventWatch))
       w.writeHeader(JournalHeaders.forTest("TestState", journalId, tornEventId))
       w.beginEventSection(sync = false)
       w.onJournalingStarted()
       w
-    }
     (eventWriter, eventWatch)
-  }
 
-  def close(): Unit = {
+  def close(): Unit =
     eventWriter.close()
     deleteDirectoryRecursively(directory)
-  }
 
   @TestOnly
-  def addStamped(stamped: Stamped[AnyKeyedEvent]): Unit = {
+  def addStamped(stamped: Stamped[AnyKeyedEvent]): Unit =
     eventWriter.writeEvent(stamped)
     eventWriter.flush(sync = false)
     eventWriter.onCommitted(eventWriter.fileLengthAndEventId, n = 1)
-  }
-}
 
-object SimpleEventCollector
-{
+object SimpleEventCollector:
   @TestOnly
   def apply[E <: Event: ClassTag](using E: Event.KeyCompanion[? >: E])(config: Config = ConfigFactory.empty)
   (implicit ke: Encoder[E.Key], kd: Decoder[E.Key], codec: TypedJsonCodec[E], scheduler: Scheduler)
-  : SimpleEventCollector = {
+  : SimpleEventCollector =
     val keyedEventTypedJsonCodec = KeyedEventTypedJsonCodec[Event](KeyedSubtype[E])
     new SimpleEventCollector(keyedEventTypedJsonCodec, config)
-  }
-}

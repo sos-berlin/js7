@@ -22,21 +22,18 @@ final case class ProviderConfiguration(
   httpsConfig: HttpsConfig,
   testSuppressStart: Boolean = false,
   config: Config = ConfigFactory.empty)
-extends BasicConfiguration
-{
+extends BasicConfiguration:
   val liveDirectory = configDirectory / "live"
   val orderGeneratorsDirectory = configDirectory / "order-generators"
 
   // Suppresses Config (which may contain secrets)
   override def toString = s"ProviderConfiguration($configDirectory,$controllerUri,Config)"
-}
 
-object ProviderConfiguration
-{
+object ProviderConfiguration:
   private val DefaultConfigResource = JavaResource("js7/provider/configuration/provider.conf")
 
   def fromCommandLine(a: CommandLineArguments, addConfig: Config = ConfigFactory.empty)
-  : ProviderConfiguration = {
+  : ProviderConfiguration =
     val configDir = a.as[Path]("--config-directory=").toAbsolutePath
     val config = ConfigFactory.parseMap(Map(
       "js7.config-directory" -> configDir.toString
@@ -54,5 +51,3 @@ object ProviderConfiguration
         .getOrElse(Uri(config.getString("js7.provider.controller.uri"))),
       HttpsConfig.fromConfig(config, configDir),
       config = config)
-  }
-}

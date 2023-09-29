@@ -10,8 +10,7 @@ import js7.base.system.OperatingSystem.isWindows
  * @see https://github.com/flapdoodle-oss/de.flapdoodle.embed.process/blob/controller/src/main/java/de/flapdoodle/embed/process/runtime/Processes.java
  * @author Joacim Zschimmer
  */
-object ProcessPidRetriever
-{
+object ProcessPidRetriever:
   // ProcessPidRetriever may be called at start-up, before logging framework is being initialized.
   // So do not use a Logger here !!!
 
@@ -21,7 +20,7 @@ object ProcessPidRetriever
     if !hasJava9 then
       None
     else
-      try {
+      try
         val processHandleClass = Class.forName("java.lang.ProcessHandle")
         val currentProcessHandle = processHandleClass.getMethod("current").invoke(null)
         Some(Pid(
@@ -29,11 +28,10 @@ object ProcessPidRetriever
             .getMethod("pid")
             .invoke(currentProcessHandle)
             .asInstanceOf[Long]))
-      } catch {
+      catch
         case t: Throwable =>
           //logger.debug(s"maybeOwnPid => ${t.toStringWithCauses}")
           None
-      }
 
   private[process] val processToPid: Process => Option[Pid] =
     if hasJava9 then
@@ -43,43 +41,38 @@ object ProcessPidRetriever
     else
       UnixBeforeJava9ProcessToPid
 
-  private object Java9ProcessToPid extends (Process => Option[Pid]) {
+  private object Java9ProcessToPid extends (Process => Option[Pid]):
     private val pidMethod = classOf[Process].getMethod("pid")   // Needs Java 9
     private var logged = false
 
     def apply(process: Process) =
       try Some(Pid(pidMethod.invoke(process).asInstanceOf[java.lang.Long]))
       catch { case t: Throwable =>
-        if !logged then {
+        if !logged then
           logged = true
           //logger.error(s"(Logged only once) Process.pid: ${t.toStringWithCauses}", t)
-        }
         None
       }
-  }
 
-  private object UnixBeforeJava9ProcessToPid extends (Process => Option[Pid]) {
+  private object UnixBeforeJava9ProcessToPid extends (Process => Option[Pid]):
     def apply(process: Process) =
-      try {
+      try
         val pidField = process.getClass.getDeclaredField("pid")
         pidField.setAccessible(true)
         Some(Pid(pidField.get(process).asInstanceOf[java.lang.Integer].longValue))
-      } catch { case _: Throwable =>
+      catch { case _: Throwable =>
         None
       }
-  }
 
-  private object WindowsBeforeJava9ProcessToPid extends (Process => Option[Pid]) {
+  private object WindowsBeforeJava9ProcessToPid extends (Process => Option[Pid]):
     def apply(process: Process) =
-      try {
+      try
         None // May be implemented with JNA https://github.com/java-native-access/jna !!!
         //val handleField = process.getClass.getDeclaredField("handle")
         //handleField.setAccessible(true)
         //val handle = new WinNT.HANDLE
         //handle.setPointer(Pointer.createConstant(handleField.getLong(process)))
         //Kernel32.INSTANCE.GetProcessId(handle)
-      } catch { case _: Throwable =>
+      catch { case _: Throwable =>
         None
       }
-    }
-}

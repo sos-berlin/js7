@@ -22,13 +22,10 @@ import js7.data.other.HeartbeatTiming
 import js7.data.subagent.SubagentState.*
 import js7.data.value.expression.Expression
 
-sealed trait SubagentCommand extends CommonCommand
-{
+sealed trait SubagentCommand extends CommonCommand:
   type Response <: SubagentCommand.Response
-}
 
-object SubagentCommand extends CommonCommand.Companion
-{
+object SubagentCommand extends CommonCommand.Companion:
   protected type Command = SubagentCommand
   sealed trait Response
 
@@ -36,18 +33,14 @@ object SubagentCommand extends CommonCommand.Companion
   case object Accepted extends Response
 
   final case class Batch(commands: Seq[CorrelIdWrapped[SubagentCommand]])
-  extends SubagentCommand with CommonBatch with Big {
+  extends SubagentCommand with CommonBatch with Big:
     type Response = Batch.Response
-  }
-  object Batch {
+  object Batch:
     final case class Response(responses: Seq[Checked[SubagentCommand.Response]])
-    extends SubagentCommand.Response with Big {
-      override def toString = {
+    extends SubagentCommand.Response with Big:
+      override def toString =
         val succeeded = responses count (_.isRight)
         s"Batch($succeeded succeeded and ${responses.size - succeeded} failed)"
-      }
-    }
-  }
 
   /** Registers the Controller identified by current User as a new Controller and couples it.
     * The Command is idempotent.
@@ -56,25 +49,22 @@ object SubagentCommand extends CommonCommand.Companion
     subagentId: SubagentId,
     agentPath: AgentPath,
     controllerId: ControllerId)
-  extends SubagentCommand {
+  extends SubagentCommand:
     type Response = DedicateSubagent.Response
-  }
-  object DedicateSubagent {
+  object DedicateSubagent:
     final case class Response(
       subagentRunId: SubagentRunId,
       subagentEventId: EventId,
       version/*COMPATIBLE with v2.3*/: Option[Version])
     extends SubagentCommand.Response
-  }
 
   final case class CoupleDirector(
     subagentId: SubagentId,
     subagentRunId: SubagentRunId,
     eventId: EventId,
     heartbeatTiming: HeartbeatTiming)
-  extends SubagentCommand {
+  extends SubagentCommand:
     type Response = SubagentCommand.Accepted
-  }
 
   //final case class AttachItem(item: InventoryItem)
   //extends SubagentCommand {
@@ -86,53 +76,47 @@ object SubagentCommand extends CommonCommand.Companion
 
   // TODO Send and check AgentRunId with each command
   final case class AttachSignedItem(signed: Signed[SignableItem])
-  extends SubagentCommand {
+  extends SubagentCommand:
     type Response = Accepted
 
     override def toShortString = s"AttachSignedItem(${signed.value.key})"
-  }
-  object AttachSignedItem {
+  object AttachSignedItem:
     // Same serialization as SignedItemAdded event
     implicit val jsonEncoder: Encoder.AsObject[AttachSignedItem] =
       o => SignableItem.signedEncodeJson(o.signed.signedString, o.signed.value.itemRevision)
 
     implicit val jsonDecoder: Decoder[AttachSignedItem] =
       c => SignableItem.signedJsonDecoder.decodeJson(c.value).map(AttachSignedItem(_))
-  }
 
   sealed trait Queueable extends SubagentCommand
 
-  sealed trait OrderCommand extends Queueable {
+  sealed trait OrderCommand extends Queueable:
     def orderId: OrderId
-  }
 
   final case class StartOrderProcess(
     order: Order[Order.Processing],
     defaultArguments: Map[String, Expression])
-  extends OrderCommand {
+  extends OrderCommand:
     type Response = Accepted
 
     def orderId = order.id
     override def toShortString = s"StartOrderProcess(${order.id})"
-  }
 
   final case class KillProcess(
     orderId: OrderId,
     signal: ProcessSignal = SIGTERM)
-  extends OrderCommand {
+  extends OrderCommand:
     type Response = Accepted
-  }
 
   final case class DetachProcessedOrder(orderId: OrderId)
-  extends OrderCommand {
+  extends OrderCommand:
     type Response = Accepted
-  }
 
   final case class ShutDown(
     processSignal: Option[ProcessSignal] = None,
     dontWaitForDirector: Boolean = false,
     restart: Boolean = false)
-  extends Queueable {
+  extends Queueable:
     type Response = Accepted
 
     override def toString =
@@ -140,10 +124,8 @@ object SubagentCommand extends CommonCommand.Companion
         Seq(processSignal, dontWaitForDirector ? "dontWaitForDirector", restart ? "restart")
           .flatten.mkString(" ") +
         ")"
-  }
-  object ShutDown {
+  object ShutDown:
     implicit val jsonCodec: Codec.AsObject[ShutDown] = deriveConfiguredCodec
-  }
 
   /** Some outer component no longer needs the events until (including) the given `untilEventId`.
    * JS7 may delete these events to reduce the journal,
@@ -152,13 +134,11 @@ object SubagentCommand extends CommonCommand.Companion
    * This is to detect a duplicate (idempotent) StartOrderProcess command.
    */
   final case class ReleaseEvents(untilEventId: EventId)
-  extends Queueable {
+  extends Queueable:
     type Response = Accepted
-  }
 
-  case object NoOperation extends SubagentCommand {
+  case object NoOperation extends SubagentCommand:
     type Response = Accepted
-  }
 
   implicit val jsonCodec: TypedJsonCodec[SubagentCommand] = TypedJsonCodec[SubagentCommand](
     Subtype(deriveCodec[Batch]),
@@ -176,4 +156,3 @@ object SubagentCommand extends CommonCommand.Companion
   implicit val responseJsonCodec: TypedJsonCodec[Response] = TypedJsonCodec(
     Subtype(Accepted),
     Subtype(deriveCodec[DedicateSubagent.Response]))
-}

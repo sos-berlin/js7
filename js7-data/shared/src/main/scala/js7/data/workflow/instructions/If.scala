@@ -17,8 +17,7 @@ final case class If(
   thenWorkflow: Workflow,
   elseWorkflow: Option[Workflow] = None,
   sourcePos: Option[SourcePos] = None)
-extends Instruction
-{
+extends Instruction:
   def withoutSourcePos = copy(
     sourcePos = None,
     thenWorkflow = thenWorkflow.withoutSourcePos,
@@ -39,19 +38,17 @@ extends Instruction
       elseWorkflow = elseWorkflow.map(_.reduceForAgent(agentPath)))
 
   override def workflow(branchId: BranchId) =
-    branchId match {
+    branchId match
       case BranchId.Then => Right(thenWorkflow)
       case BranchId.Else => elseWorkflow toChecked Problem.pure("This If has no 'else' branch")
       case _ => super.workflow(branchId)
-    }
 
   override def branchWorkflows = (BranchId.Then -> thenWorkflow) :: elseWorkflow.map(BranchId.Else -> _).toList
 
   override def toString = s"if ($predicate) $thenWorkflow" + elseWorkflow.fold("")(w => s" else $w") + sourcePosToString
-}
 
-object If {
-  implicit val jsonCodec: Codec.AsObject[If] = {
+object If:
+  implicit val jsonCodec: Codec.AsObject[If] =
     Codec.AsObject.from[If](
       Decoder.forProduct4(
         "predicate",
@@ -65,5 +62,3 @@ object If {
         "else",
         "sourcePos"
       )((o: If) => (o.predicate, o.thenWorkflow, o.elseWorkflow, o.sourcePos)))
-  }
-}

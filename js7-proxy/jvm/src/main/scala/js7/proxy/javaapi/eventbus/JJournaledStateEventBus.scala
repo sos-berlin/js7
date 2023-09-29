@@ -12,8 +12,7 @@ import scala.jdk.CollectionConverters.*
 class JJournaledStateEventBus[JS <: JJournaledState[JS, S], S <: JournaledState[S]]
   (val asScala: JournaledStateEventBus[S])
   (implicit JS: JJournaledState.Companion[JS, S])
-extends AutoCloseable
-{
+extends AutoCloseable:
   def this()(implicit S: JJournaledState.Companion[JS, S]) =
     this(new JournaledStateEventBus[S])
 
@@ -24,17 +23,16 @@ extends AutoCloseable
   final def subscribe[E <: Event](
     @Nonnull eventClasses: java.lang.Iterable[Class[? <: Event]],
     @Nonnull callback: java.util.function.BiConsumer[Stamped[KeyedEvent[E]], JS])
-  : EventSubscription = {
+  : EventSubscription =
     val subscription = newSubscription(eventClasses, callback)
     addSubscription(subscription)
     subscription
-  }
 
   @javaApi @Nonnull
   final def newSubscription[E <: Event](
     @Nonnull eventClasses: java.lang.Iterable[Class[? <: Event]],
     @Nonnull callback: java.util.function.BiConsumer[Stamped[KeyedEvent[E]], JS])
-  : EventSubscription = {
+  : EventSubscription =
     requireNonNull(callback)
     EventSubscription(
       new asScala.EventSubscription(
@@ -42,13 +40,11 @@ extends AutoCloseable
         o => callback.accept(
           o.stampedEvent.asInstanceOf[Stamped[KeyedEvent[E]]],
           JS(o.state))))
-  }
 
   @javaApi
-  final def addSubscription[E <: Event](@Nonnull subscription: EventSubscription): Unit = {
+  final def addSubscription[E <: Event](@Nonnull subscription: EventSubscription): Unit =
     assertThat(subscription.eventBus eq asScala)
     subscription.internalAddToEventBus()
-  }
 
   //@javaApi
   //final def removeSubscription[E <: Event](subscription: EventSubscription[E]): Unit = {
@@ -65,8 +61,7 @@ extends AutoCloseable
   case class EventSubscription(asScala: JJournaledStateEventBus.this.asScala.EventSubscription)
   extends js7.proxy.javaapi.eventbus.EventSubscription
   with JavaWrapper
-  with AutoCloseable
-  {
+  with AutoCloseable:
     type AsScala = JJournaledStateEventBus.this.asScala.EventSubscription
 
     /** For internal use only. */
@@ -78,5 +73,3 @@ extends AutoCloseable
     /** For internal use only. */
     private[JJournaledStateEventBus] def internalAddToEventBus(): Unit =
       JJournaledStateEventBus.this.asScala.addSubscription(asScala)
-  }
-}

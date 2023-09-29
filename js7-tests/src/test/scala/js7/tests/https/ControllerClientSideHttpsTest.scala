@@ -14,25 +14,21 @@ import monix.execution.Scheduler.Implicits.traced
   *
   * @author Joacim Zschimmer
   */
-final class ControllerClientSideHttpsTest extends ControllerHttpsStandardTests
-{
+final class ControllerClientSideHttpsTest extends ControllerHttpsStandardTests:
   override protected def useCluster = false
   override protected def agentHttpsMutual = true
   override protected def provideAgentClientCertificate = true
   override protected def controllerHttpsMutual = true
   override protected def provideControllerClientCertificate = true
 
-  "Client without HTTPS certificate is rejected" in {
+  "Client without HTTPS certificate is rejected" in:
     autoClosing(new AkkaHttpControllerApi(controller.localUri, None, actorSystem = actorSystem,
       httpsConfig = HttpsConfig(
         keyStoreRef = None,
         trustStoreRefs = ExportedControllerTrustStoreRef :: Nil))
     ) { api =>
-      intercept[SSLException] {
+      intercept[SSLException]:
         api.overview.await(99.s)
-      }
     }
-  }
 
   addTestsForCredentials()
-}

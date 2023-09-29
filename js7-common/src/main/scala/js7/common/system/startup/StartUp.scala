@@ -14,8 +14,7 @@ import monix.execution.atomic.AtomicBoolean
 /**
   * @author Joacim Zschimmer
   */
-object StartUp
-{
+object StartUp:
   val startedAt = Timestamp.now
   private var _isMain = false
   private val classPathLogged = AtomicBoolean(false)
@@ -25,28 +24,22 @@ object StartUp
 
   def isMain = _isMain
 
-  def logJavaSettings(): Unit = {
+  def logJavaSettings(): Unit =
     // Do not initialize logging framework to early
     val logger = Logger[this.type]
 
-    if !classPathLogged.getAndSet(true) then {  // Log only once (for tests running controller and agents in same JVM)
+    if !classPathLogged.getAndSet(true) then  // Log only once (for tests running controller and agents in same JVM)
       val paths = sys.props("java.class.path").split(File.pathSeparator).filter(_.nonEmpty)
       logger.debug(Logger.Java, s"Classpath contains ${paths.length} entries:")
-      for o <- paths do {
+      for o <- paths do
         logger.debug(Logger.Java, s"Classpath $o")
-      }
-    }
-    if CorrelId.isEnabled then {
+    if CorrelId.isEnabled then
       // Check isEnabled after some debug line has been logged,
       // because CorrelIds may be enabled automatically on the first use by Log4j.
-      CorrelId("CorrelId").bind {
+      CorrelId("CorrelId").bind:
         logger.debug("Correlation IDs are enabled")
-      }
-    }
-    logger.whenTraceEnabled {
+    logger.whenTraceEnabled:
       logger.debug("TRACE level logging is enabled")
-    }
-  }
 
   /** Log Java version, config and data directory, and classpath. */
   def startUpLine(): String =
@@ -72,4 +65,3 @@ object StartUp
     Instant.now.toString
       .replace('T', ' ')
       .take(23)/*ms*/
-}

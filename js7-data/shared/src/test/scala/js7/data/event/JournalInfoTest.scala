@@ -4,9 +4,8 @@ import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.test.OurTestSuite
 import js7.tester.CirceJsonTester
 
-final class JournalInfoTest extends OurTestSuite
-{
-  "JSON" in {
+final class JournalInfoTest extends OurTestSuite:
+  "JSON" in:
     CirceJsonTester.testJson(
       JournalInfo(
         lastEventId = 1L,
@@ -24,5 +23,3 @@ final class JournalInfoTest extends OurTestSuite
           }
         ]
       }""")
-  }
-}

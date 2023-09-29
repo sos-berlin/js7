@@ -20,20 +20,17 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.{script, toLocalSubagentId}
 import monix.execution.Scheduler.Implicits.traced
 
-final class DeleteOrderWhenTerminatedTest extends OurTestSuite with ControllerAgentForScalaTest
-{
+final class DeleteOrderWhenTerminatedTest extends OurTestSuite with ControllerAgentForScalaTest:
   protected val agentPaths = agentPath :: Nil
   protected val items = Seq(quickWorkflow)
 
-  override def beforeAll() = {
-    for a <- directoryProvider.agentEnvs do {
+  override def beforeAll() =
+    for a <- directoryProvider.agentEnvs do
       a.writeExecutable(quickPathExecutable, script(1.s))
       a.writeExecutable(slowPathExecutable, script(1.s))
-    }
     super.beforeAll()
-  }
 
-  "Delete a fresh order" in {
+  "Delete a fresh order" in:
     val order = FreshOrder(OrderId("🟦"), quickWorkflow.id.path, scheduledFor = Some(Timestamp.now + 1.s))
     controller.addOrderBlocking(order)
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
@@ -52,9 +49,8 @@ final class DeleteOrderWhenTerminatedTest extends OurTestSuite with ControllerAg
       OrderDetached,
       OrderFinished(),
       OrderDeleted))
-  }
 
-  "Delete a finished order" in {
+  "Delete a finished order" in:
     val order = FreshOrder(OrderId("🟧"), slowWorkflow.id.path)
     controller.addOrderBlocking(order)
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
@@ -73,11 +69,8 @@ final class DeleteOrderWhenTerminatedTest extends OurTestSuite with ControllerAg
       OrderDetached,
       OrderFinished(),
       OrderDeleted))
-  }
-}
 
-object DeleteOrderWhenTerminatedTest
-{
+object DeleteOrderWhenTerminatedTest:
   private val quickPathExecutable = RelativePathExecutable("quick.cmd")
   private val slowPathExecutable = RelativePathExecutable("slow.cmd")
   private val agentPath = AgentPath("AGENT")
@@ -91,4 +84,3 @@ object DeleteOrderWhenTerminatedTest
   private val slowWorkflow = Workflow.of(
     WorkflowPath("SINGLE") ~ versionId,
     Execute(WorkflowJob(agentPath, slowPathExecutable)))
-}

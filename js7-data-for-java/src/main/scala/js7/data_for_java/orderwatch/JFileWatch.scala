@@ -21,8 +21,7 @@ import js7.data_for_java.vavr.VavrConverters.RichVavrOption
 import scala.jdk.OptionConverters.*
 
 final case class JFileWatch(asScala: FileWatch)
-extends JJsonable[JFileWatch] with JUnsignedSimpleItem
-{
+extends JJsonable[JFileWatch] with JUnsignedSimpleItem:
   type AsScala = FileWatch
   protected def companion = JFileWatch
 
@@ -49,10 +48,8 @@ extends JJsonable[JFileWatch] with JUnsignedSimpleItem
   @Nonnull
   def withRevision(revision: Optional[ItemRevision]) =
     copy(asScala.withRevision(revision.toScala))
-}
 
-object JFileWatch extends JJsonable.Companion[JFileWatch]
-{
+object JFileWatch extends JJsonable.Companion[JFileWatch]:
   type AsScala = FileWatch
 
   @Nonnull
@@ -82,4 +79,3 @@ object JFileWatch extends JJsonable.Companion[JFileWatch]
 
   protected def jsonEncoder = FileWatch.jsonCodec
   protected def jsonDecoder = FileWatch.jsonCodec
-}

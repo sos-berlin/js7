@@ -4,17 +4,15 @@ import js7.subagent.director.Prioritized.prioritySort
 
 private final class Prioritized[A] private(
   private val orderedKeys: IndexedSeq[A],
-  private val toPriority: A => Int)
-{
+  private val toPriority: A => Int):
   private val fixedPriority = new FixedPriority
 
   override def equals(other: Any) =
-    other match {
+    other match
       case o: Prioritized[A] @unchecked =>
         toPriority.eq(o.toPriority) &&
           orderedKeys == o.orderedKeys
       case _ => false
-    }
 
   def insertFirst(a: A): Prioritized[A] =
     replaceAll(a +: orderedKeys.filter(_ != a))
@@ -31,32 +29,28 @@ private final class Prioritized[A] private(
   def clear: Prioritized[A] =
     copy(Vector.empty)
 
-  def selectNext(filter: A => Boolean): Option[A] = {
+  def selectNext(filter: A => Boolean): Option[A] =
     val orderedValues = orderedKeys.view.filter(filter).toVector
     if orderedValues.isEmpty then
       None
-    else {
+    else
       val highestPrio = toPriority(orderedValues.head)
       val highest = orderedValues.takeWhile(v => toPriority(v) == highestPrio)
       val next = fixedPriority.next(
         n = highest.size,
         isEquivalent = (i, j) => toPriority(orderedValues(i)) == toPriority(orderedValues(j)))
       highest.drop(next).headOption orElse highest.headOption
-    }
-  }
 
   private def copy(orderedKeys: IndexedSeq[A]) =
-    if orderedKeys == this.orderedKeys then {
+    if orderedKeys == this.orderedKeys then
       // Keep fixedPriority.index
       this
-    } else
+    else
       new Prioritized[A](orderedKeys, toPriority)
 
   override def toString = s"Prioritized(${orderedKeys.mkString(" ")})"
-}
 
-private object Prioritized
-{
+private object Prioritized:
   def empty[A](toPriority: A => Int) =
     new Prioritized[A](Vector.empty, toPriority)
 
@@ -71,4 +65,3 @@ private object Prioritized
       .toVector
       .sortWith((a, b) => a._2 > b._2)
       .map(_._1)
-}

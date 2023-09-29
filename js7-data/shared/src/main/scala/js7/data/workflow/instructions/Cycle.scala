@@ -14,8 +14,7 @@ final case class Cycle(
   cycleWorkflow: Workflow,
   onlyOnePeriod: Boolean = false,
   sourcePos: Option[SourcePos] = None)
-extends Instruction
-{
+extends Instruction:
   def withoutSourcePos = copy(
     sourcePos = None,
     cycleWorkflow = cycleWorkflow.withoutSourcePos)
@@ -42,16 +41,12 @@ extends Instruction
     (BranchId.Cycle -> cycleWorkflow) :: Nil
 
   override def workflow(branchId: BranchId) =
-    branchId match {
+    branchId match
       case BranchId.Cycle => Right(cycleWorkflow)
       case BranchId.Named(string) if string.startsWith(BranchId.CyclePrefix) => Right(cycleWorkflow)
       case _ => super.workflow(branchId)
-    }
-}
 
-object Cycle
-{
+object Cycle:
   implicit val jsonCodec: Codec.AsObject[Cycle] = ConfiguredCodec.derive(useDefaults = true)
 
   intelliJuseImport(FiniteDurationJsonDecoder)
-}

@@ -13,9 +13,8 @@ import scala.jdk.CollectionConverters.*
 /**
   * @author Joacim Zschimmer
   */
-final class EventIdGeneratorTest extends OurTestSuite
-{
-  "test" in {
+final class EventIdGeneratorTest extends OurTestSuite:
+  "test" in:
     val eventIds: mutable.Map[EventId, Unit] = new ConcurrentHashMap[EventId, Unit].asScala
     val eventIdGenerator = new EventIdGenerator
     val n = 10000 * sys.runtime.availableProcessors
@@ -24,9 +23,8 @@ final class EventIdGeneratorTest extends OurTestSuite
         eventIds += ((eventIdGenerator.next(), ()))
       }) await 99.s
     assert(eventIds.size == n)  // All EventIds are distinct
-  }
 
-  "updateLastEventId" in {
+  "updateLastEventId" in:
     val eventIdGenerator = new EventIdGenerator(EventIdClock.fixed(epochMilli = 100))
     assert(eventIdGenerator.lastUsedEventId == 0)
     assert(eventIdGenerator.next() == 100000)
@@ -38,5 +36,3 @@ final class EventIdGeneratorTest extends OurTestSuite
     eventIdGenerator.updateLastEventId(200000)
     assert(eventIdGenerator.lastUsedEventId == 200000)
     assert(eventIdGenerator.next() == 200001)
-  }
-}

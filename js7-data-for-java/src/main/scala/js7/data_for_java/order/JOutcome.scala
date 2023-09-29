@@ -10,14 +10,11 @@ import js7.data.value.Value
 import js7.data_for_java.common.JJsonable
 import scala.jdk.CollectionConverters.*
 
-sealed trait JOutcome extends JJsonable[JOutcome]
-{
+sealed trait JOutcome extends JJsonable[JOutcome]:
   type AsScala = Outcome
   def companion = JOutcome
-}
 
-object JOutcome extends JJsonable.Companion[JOutcome]
-{
+object JOutcome extends JJsonable.Companion[JOutcome]:
   type AsScala = Outcome
 
   @javaApi
@@ -41,25 +38,23 @@ object JOutcome extends JJsonable.Companion[JOutcome]
     JOutcome.Failed(Outcome.Failed(message.nonEmpty ? message, namedValues.asScala.toMap))
 
   def apply(asScala: Outcome): JOutcome =
-    asScala match {
+    asScala match
       case asScala: Outcome.Succeeded => Succeeded(asScala)
       case asScala: Outcome.Failed => Failed(asScala)
       case asScala: Outcome.TimedOut => TimedOut(asScala)
       case asScala: Outcome.Killed => Killed(asScala)
       case asScala: Outcome.Disrupted => Disrupted(asScala)
-    }
 
   @Nonnull
   override def fromJson(@Nonnull jsonString: String): VEither[Problem, JOutcome] =
     super.fromJson(jsonString)
 
-  sealed trait Completed extends JOutcome {
+  sealed trait Completed extends JOutcome:
     def asScala: Outcome.Completed
 
     @Nonnull
     final def namedValues: java.util.Map[String, Value] =
       asScala.namedValues.asJava
-  }
 
   final case class Succeeded(asScala: Outcome.Succeeded) extends Completed
   final case class Failed(asScala: Outcome.Failed) extends Completed
@@ -69,4 +64,3 @@ object JOutcome extends JJsonable.Companion[JOutcome]
 
   protected def jsonEncoder = Outcome.jsonEncoder
   protected def jsonDecoder = Outcome.jsonDecoder
-}

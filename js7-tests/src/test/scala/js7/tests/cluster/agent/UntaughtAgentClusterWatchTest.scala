@@ -30,8 +30,7 @@ import js7.tests.testenv.DirectoryProviderForScalaTest
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 
-final class UntaughtAgentClusterWatchTest extends OurTestSuite with DirectoryProviderForScalaTest
-{
+final class UntaughtAgentClusterWatchTest extends OurTestSuite with DirectoryProviderForScalaTest:
   private final val testHeartbeatLossPropertyKey = "js7.TEST." + SecretStringGenerator.randomString()
   private final val testAckLossPropertyKey = "js7.TEST." + SecretStringGenerator.randomString()
   sys.props(testAckLossPropertyKey) = "false"
@@ -52,7 +51,7 @@ final class UntaughtAgentClusterWatchTest extends OurTestSuite with DirectoryPro
   override protected def items =
     Seq(TestWorkflow, workflow, agentRef, subagentSelection) ++ subagentItems
 
-  "test" in {
+  "test" in:
     def allocateDirector(director: SubagentItem, otherDirectorId: SubagentId, backup: Boolean = false)
     : Allocated[Task, RunningAgent] =
       directoryProvider
@@ -119,10 +118,8 @@ final class UntaughtAgentClusterWatchTest extends OurTestSuite with DirectoryPro
         }
       }
     }
-  }
-}
 
-object UntaughtAgentClusterWatchTest {
+object UntaughtAgentClusterWatchTest:
   private val logger = Logger[this.type]
 
   private val clusterTiming = ClusterTiming(heartbeat = 500.ms, heartbeatTimeout = 500.ms)
@@ -147,4 +144,3 @@ object UntaughtAgentClusterWatchTest {
 
   final class ASemaphoreJob extends SemaphoreJob(ASemaphoreJob)
   object ASemaphoreJob extends SemaphoreJob.Companion[ASemaphoreJob]
-}

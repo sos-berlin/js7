@@ -32,9 +32,8 @@ import scala.concurrent.Future
 /**
  * @author Joacim Zschimmer
  */
-final class ShellScriptProcessTest extends OurTestSuite
-{
-  "ShellScriptProcess" in {
+final class ShellScriptProcessTest extends OurTestSuite:
+  "ShellScriptProcess" in:
     val envName = "ENVNAME"
     val envValue = "ENVVALUE"
     val exitCode = 42
@@ -47,15 +46,13 @@ final class ShellScriptProcessTest extends OurTestSuite
       assert(returnCode == ReturnCode(exitCode))
       shellProcess.terminated await 5.s
     }
-  }
 
-  if isUnix then {
+  if isUnix then
     if !KernelSupportsNestedShebang then
-      "#! (shebang) not testable because the kernel likely does not support nested interpreters" in {
+      "#! (shebang) not testable because the kernel likely does not support nested interpreters" in:
         pending
-      }
     else
-      "#! (shebang) is respected" in {
+      "#! (shebang) is respected" in:
         withScriptFile { interpreter =>
           interpreter :=
             """#! /bin/sh
@@ -80,14 +77,12 @@ final class ShellScriptProcessTest extends OurTestSuite
             RichProcess.tryDeleteFiles(stdFileMap.values)
           }
         }
-      }
-  }
 
-  "sendProcessSignal SIGKILL" in {
-    if isMac then {
+  "sendProcessSignal SIGKILL" in:
+    if isMac then
       info("Disabled on MacOS because it kills our builder process")
       pending
-    } else {
+    else
       val taskId = TaskId("TEST-PROCESS-ID")
       withScriptFile { scriptFile =>
         scriptFile.writeUtf8Executable(
@@ -106,13 +101,11 @@ final class ShellScriptProcessTest extends OurTestSuite
               s"@echo KILL-ARGUMENTS=%* >$killScriptOutputFile\n"
             else
               s"echo KILL-ARGUMENTS=$$* >$killScriptOutputFile\n")
-          closer.onClose {
-            waitForCondition(15.s, 1.s) {
+          closer.onClose:
+            waitForCondition(15.s, 1.s):
               RichProcess.tryDeleteFiles(stdFileMap.values)
-            }
             delete(killScriptOutputFile)
             delete(killScriptFile)
-          }
           val processConfig = ProcessConfiguration.forTest.copy(
             maybeTaskId = Some(taskId),
             killScriptOption = Some(ProcessKillScript(killScriptFile)))
@@ -133,15 +126,13 @@ final class ShellScriptProcessTest extends OurTestSuite
           assert(killScriptOutputFile.contentString contains s"KILL-ARGUMENTS=--kill-agent-task-id=${taskId.string}")
         }
       }
-    }
-  }
 
-  if !isWindows then {
-    "sendProcessSignal SIGTERM (Unix only)" in {
-      if isMac then {
+  if !isWindows then
+    "sendProcessSignal SIGTERM (Unix only)" in:
+      if isMac then
         info("Disabled on MacOS because it kills our builder process")
         pending
-      } else {
+      else
         withScriptFile { scriptFile =>
           scriptFile.writeUtf8Executable(
             "trap 'exit 7' SIGTERM; sleep 1; sleep 1; sleep 1;sleep 1; sleep 1; sleep 1;sleep 1; sleep 1; sleep 1; exit 3")
@@ -155,16 +146,13 @@ final class ShellScriptProcessTest extends OurTestSuite
           val rc = shellProcess.terminated await 99.s
           assert(rc == ReturnCode(7))
         }
-      }
-    }
-  }
 
   private def startShellScript(
     processConfiguration: ProcessConfiguration,
     executable: Path,
     stdFileMap: Map[StdoutOrStderr, Path] = Map.empty)
   : Task[ShellScriptProcess] =
-    Task.defer {
+    Task.defer:
       val out, err = PublishSubject[String]()
 
       def processOutErr(obs: Observable[String], outerr: StdoutOrStderr): Future[Unit] =
@@ -191,11 +179,8 @@ final class ShellScriptProcessTest extends OurTestSuite
         stdObservers,
         whenTerminated = Task.fromFuture(outErrFut).void
       ).map(_.orThrow)
-    }
 
-  private def withScriptFile[A](body: Path => A): A = {
+  private def withScriptFile[A](body: Path => A): A =
     val file = newTemporaryShellFile("ShellScriptProcessTest")
     try body(file)
     finally tryDeleteFile(file)
-  }
-}

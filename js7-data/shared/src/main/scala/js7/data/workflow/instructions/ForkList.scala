@@ -20,8 +20,7 @@ final case class ForkList(
   agentPath: Option[AgentPath] = None,
   joinIfFailed: Boolean = false,
   sourcePos: Option[SourcePos] = None)
-extends ForkInstruction
-{
+extends ForkInstruction:
   def checked: Checked[ForkList] =
     for
       childToId <- childToId.restrict("childToId", minimum = 1, maximum = 2)
@@ -53,18 +52,15 @@ extends ForkInstruction
     workflow.isStartableOnAgent(agentPath)
 
   override def workflow(branchId: BranchId) =
-    branchId match {
+    branchId match
       case BranchId.ForkList => Right(workflow)
       case _ => super.workflow(branchId)
-    }
 
   override def branchWorkflows = Seq(BranchId.ForkList -> workflow)
 
   override def toString = s"ForkList()$sourcePosToString"
-}
 
-object ForkList
-{
+object ForkList:
   def checked(
     children: Expression,
     childToId: ExprFunction,
@@ -82,4 +78,3 @@ object ForkList
   implicit val jsonDecoder: Decoder[ForkList] = ConfiguredDecoder
     .derive[ForkList](useDefaults = true)
     .emap(_.checked.left.map(_.toString))
-}

@@ -11,8 +11,7 @@ import org.jetbrains.annotations.TestOnly
   * @author Joacim Zschimmer
   */
 final class SillySignatureVerifier(signatures: Seq[SillySignature], val publicKeyOrigin: String)
-extends SignatureVerifier
-{
+extends SignatureVerifier:
   import SillySignatureVerifier.*
 
   def this() = this(SillySignature.Default :: Nil, publicKeyOrigin = "Silly")
@@ -34,10 +33,8 @@ extends SignatureVerifier
 
   def publicKeysToStrings =
     s"$typeName(origin=$publicKeyOrigin)" :: Nil
-}
 
-object SillySignatureVerifier extends SignatureVerifier.Companion
-{
+object SillySignatureVerifier extends SignatureVerifier.Companion:
   protected type MySignature = SillySignature
   protected type MySignatureVerifier = SillySignatureVerifier
 
@@ -54,7 +51,7 @@ object SillySignatureVerifier extends SignatureVerifier.Companion
         publicKeys.map(o => SillySignature(o.utf8String)),
         publicKeyOrigin = origin))
 
-  def genericSignatureToSignature(signature: GenericSignature) = {
+  def genericSignatureToSignature(signature: GenericSignature) =
     assertThat(signature.typeName == typeName)
     if signature.signerId.isDefined then
       Left(Problem("Silly signature does not accept a signerId"))
@@ -64,5 +61,3 @@ object SillySignatureVerifier extends SignatureVerifier.Companion
       Left(Problem("Silly signature does not accept a signature public key"))
     else
       Right(SillySignature(signature.signatureString))
-  }
-}

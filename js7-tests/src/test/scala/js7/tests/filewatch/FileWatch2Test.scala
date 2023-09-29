@@ -36,8 +36,7 @@ import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import java.io.File.separator
 
-final class FileWatch2Test extends OurTestSuite with DirectoryProviderForScalaTest
-{
+final class FileWatch2Test extends OurTestSuite with DirectoryProviderForScalaTest:
   protected val agentPaths = Seq(aAgentPath, bAgentPath)
   protected val items = Seq(workflow)
 
@@ -79,7 +78,7 @@ final class FileWatch2Test extends OurTestSuite with DirectoryProviderForScalaTe
   private val orderId6 = OrderId("file:FILE-WATCH:6")
   private val orderId7 = OrderId("file:FILE-WATCH:7")
 
-  "A sequence of directory changes" in {
+  "A sequence of directory changes" in:
     createDirectories(aDirectory)
     val initialFile = aDirectory / "1"
     initialFile := ""
@@ -102,7 +101,7 @@ final class FileWatch2Test extends OurTestSuite with DirectoryProviderForScalaTe
           await[OrderDeleted](_.key == initialOrderId)
           assert(!exists(initialFile))
 
-          locally {
+          locally:
             val orderId = orderId2
             val file = aDirectory / "2"
             file := ""
@@ -110,7 +109,6 @@ final class FileWatch2Test extends OurTestSuite with DirectoryProviderForScalaTe
             await[OrderFinished](_.key == orderId)
             await[OrderDeleted](_.key == orderId)
             assert(!exists(file))
-          }
 
           assert(!TestJob.semaphore.flatMap(_.tryAcquire).runSyncUnsafe())
           aDirectory / "3" := ""
@@ -126,7 +124,7 @@ final class FileWatch2Test extends OurTestSuite with DirectoryProviderForScalaTe
           await[OrderDeleted](_.key == orderId3)
           assert(!exists(aDirectory / "3"))
 
-          locally {
+          locally:
             // CHANGE DIRECTORY OF FILE ORDER SOURCE
             val orderId = orderId4
             val file = aDirectory / "4"
@@ -145,9 +143,8 @@ final class FileWatch2Test extends OurTestSuite with DirectoryProviderForScalaTe
             await[OrderFinished](_.key == orderId)
             await[OrderDeleted](_.key == orderId)
             assert(!exists(file))
-          }
 
-          locally {
+          locally:
             val orderId = orderId5
             val file = bDirectory / "5"
             file := ""
@@ -155,9 +152,8 @@ final class FileWatch2Test extends OurTestSuite with DirectoryProviderForScalaTe
             await[OrderFinished](_.key == orderId)
             await[OrderDeleted](_.key == orderId)
             assert(!exists(file))
-          }
 
-          locally {
+          locally:
             // DELETE AND RECREATE FILE WHILE ORDER IS RUNNING, YIELDING A SECOND ORDER
             val orderId = orderId6
             val file = bDirectory / "6"
@@ -179,9 +175,8 @@ final class FileWatch2Test extends OurTestSuite with DirectoryProviderForScalaTe
             await[OrderFinished](_.key == orderId, after = firstRemoved)
             await[OrderDeleted](_.key == orderId, after = firstRemoved)
             assert(!exists(file))
-          }
 
-          locally {
+          locally:
             // DELETE DIRECTORY
             // The DirectoryWatch keeps observing the directory because only the name is deleted.
             // So it periodically rereads the directory and restarts the watch.
@@ -196,7 +191,6 @@ final class FileWatch2Test extends OurTestSuite with DirectoryProviderForScalaTe
             await[OrderFinished](_.key == orderId)
             await[OrderDeleted](_.key == orderId)
             assert(!exists(file))
-          }
           val client = AgentClient(
             Admission(
               aAgent.localUri,
@@ -208,9 +202,8 @@ final class FileWatch2Test extends OurTestSuite with DirectoryProviderForScalaTe
 
       checkControllerEvents(eventWatch.keyedEvents[Event](after = EventId.BeforeFirst))
     }
-  }
 
-  private def checkControllerEvents(keyedEvents: Seq[AnyKeyedEvent]): Unit = {
+  private def checkControllerEvents(keyedEvents: Seq[AnyKeyedEvent]): Unit =
     val filteredLeyedEvents = keyedEvents
       .filter(_
         .event match {
@@ -322,9 +315,8 @@ final class FileWatch2Test extends OurTestSuite with DirectoryProviderForScalaTe
       orderId7 <-: OrderStderrWritten(s"Deleted $bDirectory${separator}7\n"),
       orderId7 <-: OrderFinished(),
       orderId7 <-: OrderDeleted))
-  }
 
-  private def checkAgentEvents(client: AgentClient): Unit = {
+  private def checkAgentEvents(client: AgentClient): Unit =
     client.login().await(99.s)
     val keyedEvents = client
       .eventObservable(EventRequest.singleClass[Event](after = EventId.BeforeFirst))
@@ -386,11 +378,8 @@ final class FileWatch2Test extends OurTestSuite with DirectoryProviderForScalaTe
         OrderId("file:FILE-WATCH:7"),
         Map("file" -> StringValue(s"$bDirectory${separator}7"))),
       orderWatchPath <-: ExternalOrderVanished(ExternalOrderName("7"))))
-  }
-}
 
-object FileWatch2Test
-{
+object FileWatch2Test:
   private val aAgentPath = AgentPath("AGENT-A")
   private val bAgentPath = AgentPath("AGENT-B")
 
@@ -410,4 +399,3 @@ object FileWatch2Test
 
   private class TestJob extends SemaphoreJob(TestJob)
   private object TestJob extends SemaphoreJob.Companion[TestJob]
-}

@@ -9,11 +9,10 @@ import monix.execution.schedulers.TestScheduler
 import scala.collection.mutable
 import scala.concurrent.duration.*
 
-final class DelayerTest extends OurAsyncTestSuite
-{
+final class DelayerTest extends OurAsyncTestSuite:
   private val conf = DelayConf(NonEmptySeq.of(1.s, 2.s, 3.s), resetWhen = 100.s)
 
-  "sleep" in {
+  "sleep" in:
     implicit val scheduler = TestScheduler()
     val times = mutable.Buffer[FiniteDuration]()
     val start = scheduler.now
@@ -51,9 +50,8 @@ final class DelayerTest extends OurAsyncTestSuite
     val future = test.runToFuture
     scheduler.tick(1.h)
     future
-  }
 
-  "observable" in {
+  "observable" in:
     implicit val scheduler = TestScheduler()
     val start = scheduler.now
     val test = Delayer
@@ -68,5 +66,3 @@ final class DelayerTest extends OurAsyncTestSuite
     val future = test.runToFuture
     scheduler.tick(1.h)
     future
-  }
-}

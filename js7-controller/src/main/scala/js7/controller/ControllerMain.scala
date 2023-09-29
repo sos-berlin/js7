@@ -3,8 +3,7 @@ package js7.controller
 import js7.common.system.startup.ServiceMain
 import js7.controller.configuration.ControllerConfiguration
 
-object ControllerMain
-{
+object ControllerMain:
   // No Logger here!
 
   def main(args: Array[String]): Unit =
@@ -14,4 +13,3 @@ object ControllerMain
       ControllerConfiguration.fromCommandLine(_),
       useLockFile = true)(
       RunningController.resource(_)(_))
-}

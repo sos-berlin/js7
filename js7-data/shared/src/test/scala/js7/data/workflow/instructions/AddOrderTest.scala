@@ -9,9 +9,8 @@ import js7.data.workflow.position.{Label, Position}
 import js7.data.workflow.{Instruction, WorkflowPath}
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 
-final class AddOrderTest extends OurTestSuite
-{
-  "JSON" in {
+final class AddOrderTest extends OurTestSuite:
+  "JSON" in:
     testJson[Instruction](
       AddOrder(
         expr("'ORDER-ID'"),
@@ -46,5 +45,3 @@ final class AddOrderTest extends OurTestSuite
         "orderId": "'ORDER-ID'",
         "workflowPath": "WORKFLOW"
       }""")
-  }
-}

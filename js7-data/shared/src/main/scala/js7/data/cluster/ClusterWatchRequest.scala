@@ -11,8 +11,7 @@ import js7.data.cluster.ClusterState.HasNodes
 import js7.data.cluster.ClusterWatchRequest.*
 import js7.data.node.NodeId
 
-sealed trait ClusterWatchRequest
-{
+sealed trait ClusterWatchRequest:
   def checked: Checked[this.type]
   def requestId: RequestId
   def correlId: CorrelId
@@ -21,7 +20,6 @@ sealed trait ClusterWatchRequest
   def maybeEvent: Option[ClusterEvent]
   def isNodeLostEvent(lostNodeId: NodeId): Boolean
   def toShortString: String
-}
 
 final case class ClusterWatchCheckEvent(
   requestId: RequestId,
@@ -29,8 +27,7 @@ final case class ClusterWatchCheckEvent(
   from: NodeId,
   event: ClusterEvent,
   clusterState: ClusterState.HasNodes)
-extends ClusterWatchRequest
-{
+extends ClusterWatchRequest:
   def checked: Checked[this.type] =
     if from != clusterState.activeId && !event.isInstanceOf[ClusterSwitchedOver] then
       Left(InvalidClusterWatchHeartbeatProblem(from, clusterState))
@@ -38,24 +35,21 @@ extends ClusterWatchRequest
       Right(this)
 
   def isNodeLostEvent(lostNodeId: NodeId): Boolean =
-    event match {
+    event match
       case event: ClusterNodeLostEvent => event.lostNodeId == lostNodeId
       case _ => false
-    }
 
   def maybeEvent = Some(event)
 
   override def toShortString =
     s"$requestId ${event.getClass.simpleScalaName} event"
-}
 
 final case class ClusterWatchCheckState(
   requestId: RequestId,
   correlId: CorrelId,
   from: NodeId,
   clusterState: ClusterState.HasNodes)
-extends ClusterWatchRequest
-{
+extends ClusterWatchRequest:
   def checked: Checked[this.type] =
     if from != clusterState.activeId then
       Left(InvalidClusterWatchHeartbeatProblem(from, clusterState))
@@ -68,27 +62,22 @@ extends ClusterWatchRequest
 
   override def toShortString =
     s"$requestId ClusterState.${clusterState.toShortString}"
-}
 
-object ClusterWatchRequest
-{
-  final case class RequestId(number: Long) extends GenericLong {
+object ClusterWatchRequest:
+  final case class RequestId(number: Long) extends GenericLong:
     def increment = RequestId(number + 1)
     override def toString = s"Request:$number"
-  }
   object RequestId extends GenericLong.Companion[RequestId]
 
   implicit val jsonCodec: TypedJsonCodec[ClusterWatchRequest] = TypedJsonCodec(
     Subtype(deriveCodec[ClusterWatchCheckState]),
     Subtype(deriveCodec[ClusterWatchCheckEvent]))
-}
 
 final case class InvalidClusterWatchHeartbeatProblem(from: NodeId, clusterState: ClusterState)
-  extends Problem.Coded {
+  extends Problem.Coded:
   def arguments = Map(
     "from" -> from.string,
     "clusterState" -> clusterState.toString)
-}
 
 // TODO Move InvalidClusterWatchHeartbeatProblem to js7-cluster-watch-api
 object InvalidClusterWatchHeartbeatProblem extends Problem.Coded.Companion

@@ -21,31 +21,27 @@ private[watch] class FileEventIterator(
   expectedJournalId: JournalId,
   fileEventId: EventId,
   committedLength: () => Long)
-extends CloseableIterator[Stamped[KeyedEvent[Event]]]
-{
+extends CloseableIterator[Stamped[KeyedEvent[Event]]]:
   private val logger = Logger.withPrefix[this.type](journalFile.getFileName.toString)
   private val journalReader = new JournalReader(S, journalFile, expectedJournalId)
   private var nextEvent: Stamped[KeyedEvent[Event]] = null
   private var closed = false
 
-  closeOnError(journalReader) {
+  closeOnError(journalReader):
     if journalReader.fileEventId != fileEventId then sys.error(
       s"Journal file '$journalFile': found fileEventId=${journalReader.fileEventId}, " +
         s"expected was: $fileEventId")
-  }
 
   def close(): Unit =
-    if !closed then {
+    if !closed then
       closed = true
       journalReader.close()
-    }
 
   final def firstEventPosition = journalReader.firstEventPosition
 
-  final def seek(positionAndEventId: PositionAnd[EventId]): Unit = {
+  final def seek(positionAndEventId: PositionAnd[EventId]): Unit =
     journalReader.seekEvent(positionAndEventId)
     nextEvent = null
-  }
 
   /** May take minutes for a gigabygte journal..
     * @return false iff `after` is unknown
@@ -74,14 +70,13 @@ extends CloseableIterator[Stamped[KeyedEvent[Event]]]
       nextEvent != null
     }
 
-  final def next(): Stamped[KeyedEvent[Event]] = {
+  final def next(): Stamped[KeyedEvent[Event]] =
     hasNext
     val r = nextEvent
     if r == null then throw new NoSuchElementException(
       s"End of committed part of journal file '${journalFile.getFileName}' reached")
     nextEvent = null
     r
-  }
 
   final def eventId = journalReader.eventId
   final def position = journalReader.position
@@ -92,25 +87,23 @@ extends CloseableIterator[Stamped[KeyedEvent[Event]]]
     s"FileEventIterator(${journalFile.getFileName} fileEventId=${EventId.toString(fileEventId)} " +
       s"eventId=$eventId)"
 
-  private class TimeWatch(after: EventId) {
+  private class TimeWatch(after: EventId):
     private val PositionAnd(startPosition, startEventId) = positionAndEventId
     private val runningSince = now
     private var skipped = 0
     private var debugIssued = false
 
-    def onSkipped(): Unit = {
+    def onSkipped(): Unit =
       skipped += 1
       val duration = runningSince.elapsed
-      if !debugIssued && (position - startPosition >= InfoSkippedSize || duration >= 1.s) then {
+      if !debugIssued && (position - startPosition >= InfoSkippedSize || duration >= 1.s) then
         logger.debug(s"⏳ $skipped events (${toKBGB(position - startPosition)}) skipped" +
           s" since ${duration.pretty} while searching " +
           s"${EventId.toDateTimeString(startEventId)}..${EventId.toDateTimeString(after)}" +
           " in journal, ")
         debugIssued = true
-      }
-    }
 
-    def end(): Unit = {
+    def end(): Unit =
       val skippedSize = position - startPosition
       val duration = runningSince.elapsed
       if skipped > 0 then
@@ -119,11 +112,7 @@ extends CloseableIterator[Stamped[KeyedEvent[Event]]]
       if skippedSize >= InfoSkippedSize || duration >= InfoDuration then
         logger.info(s"⏳ $skipped events (${toKBGB(skippedSize)}) read in ${duration.pretty}, " +
           s"in search of event '${EventId.toString(startEventId)}'")
-    }
-  }
-}
 
-object FileEventIterator {
+object FileEventIterator:
   private val InfoSkippedSize = 10*1000*1000
   private val InfoDuration = 3.s
-}

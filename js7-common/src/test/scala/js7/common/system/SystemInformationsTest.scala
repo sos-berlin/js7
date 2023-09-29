@@ -7,12 +7,10 @@ import js7.base.test.OurTestSuite
 /**
   * @author Joacim Zschimmer
   */
-final class SystemInformationsTest extends OurTestSuite {
+final class SystemInformationsTest extends OurTestSuite:
 
   // See also js7.base.system.SystemInformationTest
 
-  "JSON" in {
+  "JSON" in:
     val o = SystemInformations.systemInformation()
     assert(o.asJson.as[SystemInformation] == Right(o))
-  }
-}

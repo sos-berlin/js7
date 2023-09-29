@@ -14,8 +14,7 @@ final case class LockState(
   lock: Lock,
   acquired: Acquired = Available,
   queue: Queue[OrderId] = Queue.empty)
-extends UnsignedSimpleItemState with Big/*acquired and queue get big with many orders*/
-{
+extends UnsignedSimpleItemState with Big/*acquired and queue get big with many orders*/:
   import lock.limit
 
   protected type Self = LockState
@@ -36,16 +35,15 @@ extends UnsignedSimpleItemState with Big/*acquired and queue get big with many o
       Left(LockRefusal.AlreadyAcquiredByThisOrder.toProblem(lock.path))
     else if queue contains orderId then
       Left(Problem(s"$orderId already queues for $lockPath"))
-    else orderId.allParents.find(acquired.isAcquiredBy) match {
+    else orderId.allParents.find(acquired.isAcquiredBy) match
       case Some(parentOrderId) =>
         Left(Problem(s"$lockPath has already been acquired by parent $parentOrderId"))
       case None =>
         Right(copy(
           queue = queue.enqueue(orderId)))
-    }
 
   def isAvailable(orderId: OrderId, count: Option[Int] = None): Checked[Boolean] =
-    checkAcquire(orderId, count) match {
+    checkAcquire(orderId, count) match
       case Left(_: LockRefusal.NotAvailable) =>
         Right(false)
 
@@ -54,7 +52,6 @@ extends UnsignedSimpleItemState with Big/*acquired and queue get big with many o
 
       case Right(()) =>
         Right(true)
-    }
 
   def checkAcquire(orderId: OrderId, count: Option[Int] = None): Either[LockRefusal, Unit] =
     tryAcquire(orderId, count)
@@ -84,7 +81,7 @@ extends UnsignedSimpleItemState with Big/*acquired and queue get big with many o
     queue.headOption
 
   private def checkLimit(count: Option[Int]): Either[LockRefusal, Unit] =
-    count match {
+    count match
       case None =>
         if acquired == Available then
           Right(())
@@ -94,7 +91,7 @@ extends UnsignedSimpleItemState with Big/*acquired and queue get big with many o
       case Some(n) =>
         if n < 1 then
           Left(InvalidCount(n))
-        else {
+        else
           val ok =
             try math.addExact(acquired.lockCount, n) <= limit
             catch { case _: ArithmeticException => false }
@@ -102,8 +99,6 @@ extends UnsignedSimpleItemState with Big/*acquired and queue get big with many o
             Right(())
           else
             Left(LimitReached(limit = limit, count = n, alreadyRequiredCount = acquired.lockCount))
-        }
-    }
 
   private def toLockState(result: Either[LockRefusal, Acquired]): Checked[LockState] =
     result
@@ -114,13 +109,10 @@ extends UnsignedSimpleItemState with Big/*acquired and queue get big with many o
   private def lockPath = lock.path
 
   //TODO Break snapshot into smaller parts: private def toSnapshot: Observable[Any] = ...
-}
 
-object LockState extends UnsignedSimpleItemState.Companion[LockState]
-{
+object LockState extends UnsignedSimpleItemState.Companion[LockState]:
   type Key = LockPath
   type Item = Lock
   override type ItemState = LockState
 
   implicit val jsonCodec: Codec.AsObject[LockState] = deriveCodec[LockState]
-}

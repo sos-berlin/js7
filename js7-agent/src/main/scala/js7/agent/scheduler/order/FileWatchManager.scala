@@ -46,8 +46,7 @@ final class FileWatchManager(
   ownAgentPath: AgentPath,
   journal: Journal[AgentState],
   config: Config)
-  (implicit iox: IOExecutor)
-{
+  (implicit iox: IOExecutor):
   private val settings = DirectoryWatchSettings.fromConfig(config).orThrow
   private val lockKeeper = new LockKeeper[OrderWatchPath]
   private val idToStopper = AsyncMap(Map.empty[OrderWatchPath, Task[Unit]])
@@ -93,7 +92,7 @@ final class FileWatchManager(
     }
 
   def remove(fileWatchPath: OrderWatchPath): Task[Checked[Unit]] =
-    lockKeeper.lock(fileWatchPath) {
+    lockKeeper.lock(fileWatchPath):
       journal
         .persist(agentState =>
           Right(
@@ -111,9 +110,8 @@ final class FileWatchManager(
           stopWatching(fileWatchPath)
             .as(Checked.unit)
         }
-    }
 
-  private def startWatching(fileWatchState: FileWatchState): Task[Checked[Unit]] = {
+  private def startWatching(fileWatchState: FileWatchState): Task[Checked[Unit]] =
     val id = fileWatchState.fileWatch.path
     logger.debugTask("startWatching", id)(Task.defer {
       val stop = PublishSubject[Unit]()
@@ -142,14 +140,13 @@ final class FileWatchManager(
             .void)
         .logWhenItTakesLonger(s"startWatching $id")
     })
-  }
 
   private def stopWatching(id: OrderWatchPath): Task[Unit] =
     idToStopper
       .remove(id)
       .flatMap(_ getOrElse Task.unit)
 
-  private def watch(fileWatchState: FileWatchState, stop: Observable[Unit]): Checked[Task[Unit]] = {
+  private def watch(fileWatchState: FileWatchState, stop: Observable[Unit]): Checked[Task[Unit]] =
     import fileWatchState.fileWatch
 
     fileWatch.directoryExpr
@@ -178,11 +175,10 @@ final class FileWatchManager(
           .mapEval(dirEventSeqs =>
             lockKeeper.lock(fileWatch.path)(
               emitOrderWatchEvents(fileWatch, directory, dirEventSeqs)))
-          .foreachL {
+          .foreachL:
             case Left(problem) => logger.error(problem.toString)
             case Right((_, agentState)) =>
               directoryState = agentState.keyTo(FileWatchState)(fileWatch.path).directoryState
-          }
           .onErrorRestartLoop(now) { (throwable, since, restart) =>
             val delay = (since + delayIterator.next()).timeLeftOrZero
             logger.error(s"Delay ${delay.pretty} after error: ${throwable.toStringWithCauses}")
@@ -193,7 +189,6 @@ final class FileWatchManager(
             logger.debug(s"${fileWatch.path} watching $exitCase - $directory")
           })
       }
-  }
 
   private def emitOrderWatchEvents(
     fileWatch: FileWatch,
@@ -247,27 +242,22 @@ final class FileWatchManager(
 
   private def toOrderArguments(directory: Path, path: Path) =
     NamedValues(FileArgumentName -> StringValue(directory.resolve(path).toString))
-}
 
-object FileWatchManager
-{
+object FileWatchManager:
   private val logger = Logger[this.type]
   private val CanceledException = new Exception
 
-  def relativePathToOrderId(fileWatch: FileWatch, relativePath: String): Option[Checked[OrderId]] = {
+  def relativePathToOrderId(fileWatch: FileWatch, relativePath: String): Option[Checked[OrderId]] =
     lazy val default = OrderId.checked(s"file:${fileWatch.path.string}:$relativePath")
     val matcher = fileWatch.resolvedPattern.matcher(relativePath)
     matcher.matches() ? {
-      fileWatch.orderIdExpression match {
+      fileWatch.orderIdExpression match
         case None => default
         case Some(expr) =>
           evalAsString(fileWatch.path, expr, matcher)
             .flatMap(OrderId.checked)
-      }
     }
-  }
-
+    
   private def evalAsString(orderWatchPath: OrderWatchPath, expression: Expression, matchedMatcher: Matcher) =
     expression.evalAsString(
       FileWatchScope(orderWatchPath, matchedMatcher) |+| NowScope() |+| EnvScope)
-}

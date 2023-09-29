@@ -10,13 +10,12 @@ import js7.data.controller.ControllerCommand.ShutDown
 import js7.data.controller.ControllerCommand.ShutDown.ClusterAction
 import monix.execution.Scheduler.Implicits.traced
 
-final class ShutdownPassiveControllerClusterTest extends ControllerClusterTester
-{
+final class ShutdownPassiveControllerClusterTest extends ControllerClusterTester:
   protected override val clusterTiming = ClusterTiming(heartbeat = 500.ms, heartbeatTimeout = 5.s)
 
   override protected def removeObsoleteJournalFiles = false
 
-  "ShutDown passive node only (no switchover)" in {
+  "ShutDown passive node only (no switchover)" in:
     withControllerAndBackup() { (primary, _, backup, _, _) =>
       val backupController = backup.newController()
       primary.runController() { primaryController =>
@@ -29,9 +28,8 @@ final class ShutdownPassiveControllerClusterTest extends ControllerClusterTester
         primaryController.eventWatch.await[ClusterPassiveLost]()
       }
     }
-  }
 
-  "ShutDown passive node with switchover or failover is rejected" in {
+  "ShutDown passive node with switchover or failover is rejected" in:
     withControllerAndBackup() { (primary, _, backup, _, _) =>
       backup.runController(dontWaitUntilReady = true) { backupController =>
         primary.runController() { primaryController =>
@@ -45,5 +43,3 @@ final class ShutdownPassiveControllerClusterTest extends ControllerClusterTester
         }
       }
     }
-  }
-}

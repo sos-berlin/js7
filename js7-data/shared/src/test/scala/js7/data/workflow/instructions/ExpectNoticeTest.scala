@@ -7,9 +7,8 @@ import js7.data.workflow.Instruction
 import js7.data.workflow.instructions.Instructions.jsonCodec
 import js7.tester.CirceJsonTester.testJsonDecoder
 
-final class ExpectNoticeTest extends OurTestSuite
-{
-  "JSON compatible with v2.3" in {
+final class ExpectNoticeTest extends OurTestSuite:
+  "JSON compatible with v2.3" in:
     // COMPATIBLE with v2.3
     testJsonDecoder[Instruction](
       ExpectNotices(BoardPathExpression.ExpectNotice(BoardPath("BOARD"))),
@@ -18,5 +17,3 @@ final class ExpectNoticeTest extends OurTestSuite
           "TYPE": "ExpectNotice",
           "boardPath": "BOARD"
         }""")
-  }
-}

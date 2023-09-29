@@ -5,22 +5,17 @@ import io.circe.{Decoder, DecodingFailure, JsonObject}
 import js7.base.crypt.{Signed, SignedString}
 import js7.data.event.ItemContainer
 
-trait SignableItem extends InventoryItem
-{
+trait SignableItem extends InventoryItem:
   protected type Self <: SignableItem
 
   val companion: SignableItem.Companion[Self]
-}
 
-object SignableItem
-{
+object SignableItem:
   type Companion_ = Companion[? <: SignableItem]
 
-  trait Companion[A <: SignableItem] extends InventoryItem.Companion[A]
-  {
+  trait Companion[A <: SignableItem] extends InventoryItem.Companion[A]:
     type Key <: SignableItemKey
     def Key: SignableItemKey.Companion[Key]
-  }
 
   // Common JSON serialization for AgentCommand.AttachSignableItem and SignedItemAdded
 
@@ -31,7 +26,7 @@ object SignableItem
       "itemRevision" -> itemRevision.asJson)
 
   def signedJsonDecoder[S](implicit S: ItemContainer.Companion[S])
-  : Decoder[Signed[SignableItem]] = {
+  : Decoder[Signed[SignableItem]] =
       import S.signableItemJsonCodec
       c => for
         signedString <- c.get[SignedString]("signed")
@@ -39,13 +34,9 @@ object SignableItem
           .left.map(error => DecodingFailure(error.toString, c.history))
         item <- parsed.as[SignableItem]
         itemRevision <- c.get[Option[ItemRevision]]("itemRevision")
-      yield {
+      yield
         // Add itemRevision because it was not included in the SignedString
-        val revItem = (item, itemRevision) match {
+        val revItem = (item, itemRevision) match
           case (item: SignableSimpleItem, Some(rev)) => item.withRevision(Some(rev))
           case _ => item
-        }
         Signed(revItem, signedString)
-      }
-  }
-}

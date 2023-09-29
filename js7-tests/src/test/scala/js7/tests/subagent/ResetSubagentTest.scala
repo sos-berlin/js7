@@ -23,15 +23,14 @@ import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler
 import scala.collection.immutable.Seq
 
-final class ResetSubagentTest extends OurTestSuite with SubagentTester
-{
+final class ResetSubagentTest extends OurTestSuite with SubagentTester:
   protected val agentPaths = Seq(agentPath)
   override protected val primarySubagentsDisabled = true
   protected lazy val items = Seq(workflow, bareSubagentItem)
 
   protected implicit val scheduler = Scheduler.traced
 
-  "ResetSubagent after Subagent has been shutdown" in {
+  "ResetSubagent after Subagent has been shutdown" in:
     enableSubagents(directoryProvider.subagentId -> false)
 
     val orderId = OrderId("RESET-SUBAGENT-AFTER-SHUTDOWN")
@@ -91,9 +90,8 @@ final class ResetSubagentTest extends OurTestSuite with SubagentTester
       assert(processed2 == OrderProcessed(Outcome.succeeded))
       eventWatch.await[OrderFinished](_.key == orderId).head.value.event
     }
-  }
 
-  "ResetSubagent with reset for a Subagent started as inactive Director" in {
+  "ResetSubagent with reset for a Subagent started as inactive Director" in:
     val resource = for
       env <- directoryProvider.directorEnvResource(
         bareSubagentItem,
@@ -110,11 +108,8 @@ final class ResetSubagentTest extends OurTestSuite with SubagentTester
       assert(director.untilTerminated.await(99.s).restart)
       assert(subagent.untilTerminated.await(99.s).restart)
     }
-  }
-}
 
-object ResetSubagentTest
-{
+object ResetSubagentTest:
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",
     Seq(
@@ -122,4 +117,3 @@ object ResetSubagentTest
 
   final class TestSemaphoreJob extends SemaphoreJob(TestSemaphoreJob)
   object TestSemaphoreJob extends SemaphoreJob.Companion[TestSemaphoreJob]
-}

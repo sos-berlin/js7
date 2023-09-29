@@ -17,9 +17,8 @@ import js7.data.platform.PlatformInfo
 import js7.data.subagent.SubagentId
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 
-final class AgentRefStateTest extends OurTestSuite
-{
-  "JSON minimum" in {
+final class AgentRefStateTest extends OurTestSuite:
+  "JSON minimum" in:
     val agentRefState = AgentRefState(
       AgentRef(
         AgentPath("AGENT"),
@@ -62,9 +61,8 @@ final class AgentRefStateTest extends OurTestSuite
         },
         "eventId": 123
       }""")
-  }
 
-  "JSON full" in {
+  "JSON full" in:
     val agentRunId = AgentRunId(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF")))
 
     testJson(
@@ -151,5 +149,3 @@ final class AgentRefStateTest extends OurTestSuite
           }
         }
       }""")
-  }
-}

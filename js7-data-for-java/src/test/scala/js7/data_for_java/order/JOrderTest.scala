@@ -10,8 +10,7 @@ import js7.data.workflow.instructions.Fork
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.Position
 
-final class JOrderTest extends OurTestSuite
-{
+final class JOrderTest extends OurTestSuite:
   private val forkedOrder = Order(
     OrderId("ORDER-ID|A"),
     (WorkflowPath("WORKFLOW") ~ "1.0") /: (Position(1) / "fork+A" % 2),
@@ -22,7 +21,5 @@ final class JOrderTest extends OurTestSuite
     parent = Some(OrderId("ORDER-ID")),
     mark = Some(OrderMark.Cancelling(CancellationMode.FreshOrStarted(Some(CancellationMode.Kill())))))
 
-  "Java" in {
+  "Java" in:
     JOrderTester.testForkedOrder(JOrder(forkedOrder))
-  }
-}

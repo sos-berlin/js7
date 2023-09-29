@@ -17,12 +17,11 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.Deadline.now
 
-final class SpeedControllerClusterTest extends OurTestSuite with ControllerClusterForScalaTest
-{
+final class SpeedControllerClusterTest extends OurTestSuite with ControllerClusterForScalaTest:
   val items = Seq(workflow)
 
-  for n <- sys.props.get("test.speed"/*try 1000*/).map(_.toInt) do {
-    "Speed test" in {
+  for n <- sys.props.get("test.speed"/*try 1000*/).map(_.toInt) do
+    "Speed test" in:
       withControllerAndBackup() { (primary, _, backup, _, _) =>
         backup.runController(dontWaitUntilReady = true) { _ =>
           primary.runController() { primaryController =>
@@ -30,7 +29,7 @@ final class SpeedControllerClusterTest extends OurTestSuite with ControllerClust
 
             val orderIdIterator = Iterator.from(1).map(i => OrderId(i.toString))
 
-            def cycle = Task.defer {
+            def cycle = Task.defer:
               val orderId = orderIdIterator.synchronized(orderIdIterator.next())
               val order = FreshOrder(orderId, workflow.path)
               // 3 acks:
@@ -41,7 +40,6 @@ final class SpeedControllerClusterTest extends OurTestSuite with ControllerClust
                 _ <- primaryController.api.executeCommand(DeleteOrdersWhenTerminated(Seq(order.id)))
                   .map(_.orThrow)
               yield ()
-            }
             // Warm up
             Task.parSequence((1 to 1000).map(_ => cycle)).await(99.s)
 
@@ -51,12 +49,7 @@ final class SpeedControllerClusterTest extends OurTestSuite with ControllerClust
           }
         }
       }
-    }
-  }
-}
 
-object SpeedControllerClusterTest
-{
+object SpeedControllerClusterTest:
   private val workflow = Workflow(WorkflowPath("SPEED") ~ "INITIAL",
     Seq(Prompt(StringConstant(""))))
-}

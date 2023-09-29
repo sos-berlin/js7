@@ -13,9 +13,8 @@ import scala.concurrent.Await
 /**
   * @author Joacim Zschimmer
   */
-final class StreamingSupportTest extends OurTestSuite
-{
-  "Observable toAkkaSource" in {
+final class StreamingSupportTest extends OurTestSuite:
+  "Observable toAkkaSource" in:
     implicit val actorSystem = newActorSystem("StreamingSupportTest")
 
     var closed = 0
@@ -24,5 +23,3 @@ final class StreamingSupportTest extends OurTestSuite
     assert(closed == 1)
 
     Akkas.terminateAndWait(actorSystem, 99.s)
-  }
-}

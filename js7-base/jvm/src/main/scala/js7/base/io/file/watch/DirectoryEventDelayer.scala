@@ -40,8 +40,7 @@ private final class DirectoryEventDelayer(
   directory: Path,
   delay: FiniteDuration,
   logDelays: NonEmptySeq[FiniteDuration])
-extends Observable[Seq[DirectoryEvent]]
-{
+extends Observable[Seq[DirectoryEvent]]:
   def unsafeSubscribeFn(out: Subscriber[Seq[DirectoryEvent]]): Cancelable =
     source.subscribe(new Subscriber[DirectoryEvent] { self =>
       implicit val scheduler: Scheduler = out.scheduler
@@ -271,15 +270,13 @@ extends Observable[Seq[DirectoryEvent]]
         override def toString = s"$path ${since.elapsed.pretty} delayUntil=$delayUntil"
       }
     })
-}
 
-object DirectoryEventDelayer
-{
+object DirectoryEventDelayer:
   private val logger = Logger[this.type]
 
-  object syntax {
+  object syntax:
     implicit final class RichDelayLineObservable(private val self: Observable[DirectoryEvent])
-    extends AnyVal {
+    extends AnyVal:
       def delayFileAdded(
         directory: Path, delay: FiniteDuration, logDelays: NonEmptySeq[FiniteDuration])
       : Observable[Seq[DirectoryEvent]] =
@@ -287,6 +284,3 @@ object DirectoryEventDelayer
           new DirectoryEventDelayer(self, directory, delay, logDelays)
         else
           self.bufferIntrospective(1024)  // Similar to DirectoryEventDelayer, which buffers without limit
-    }
-  }
-}

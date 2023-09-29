@@ -6,48 +6,35 @@ import java.util.concurrent.ThreadPoolExecutor
 /**
   * @author Joacim Zschimmer
   */
-private trait NamedRunnable extends Runnable
-{
+private trait NamedRunnable extends Runnable:
   def name: String
 
   override def toString = name
-}
 
-private object NamedRunnable
-{
-  def apply(name: String)(body: => Unit) = {
+private object NamedRunnable:
+  def apply(name: String)(body: => Unit) =
     val name_ = name
-    new NamedRunnable {
+    new NamedRunnable:
       def name = name_
       def run() = body
-    }
-  }
 
-  private trait RenamesThread extends ThreadPoolExecutor
-  {
+  private trait RenamesThread extends ThreadPoolExecutor:
     private var restoreName: () => Unit = null
 
-    override def beforeExecute(thread: Thread, runnable: Runnable) = {
+    override def beforeExecute(thread: Thread, runnable: Runnable) =
       super.beforeExecute(thread, runnable)
-      runnable match {
+      runnable match
         case runnable: NamedRunnable =>
           val originalName = thread.getName
           restoreName = () => thread.setName(originalName)
           thread.setName(runnable.name)
         case _ =>
-      }
-    }
 
-    override def afterExecute(runnable: Runnable, throwable: Throwable) = {
-      runnable match {
+    override def afterExecute(runnable: Runnable, throwable: Throwable) =
+      runnable match
         case _: NamedRunnable =>
-          if restoreName != null then {
+          if restoreName != null then
             restoreName()
             restoreName = null
-          }
         case _ =>
-      }
       super.afterExecute(runnable, throwable)
-    }
-  }
-}

@@ -17,8 +17,7 @@ import js7.tests.feed.Feed.*
 import monix.eval.Task
 import monix.reactive.Observable
 
-final class Feed(controllerApi: ControllerApi, settings: Settings)
-{
+final class Feed(controllerApi: ControllerApi, settings: Settings):
   def run(in: Resource[Task, InputStream]): Task[Checked[Unit]] =
     in.use(in =>
       Task {
@@ -54,10 +53,8 @@ final class Feed(controllerApi: ControllerApi, settings: Settings)
           .fromIterable(orders)
           .map(_.copy(deleteWhenTerminated = true)))
         .rightAs(())
-}
 
-object Feed
-{
+object Feed:
   def run(in: Resource[Task, InputStream], settings: Settings): Task[Checked[Unit]] =
     Akkas.actorSystemResource("Feed")
       .flatMap(actorSystem =>
@@ -68,14 +65,12 @@ object Feed
         feed.run(in)
       }
 
-  val opJsonCodec = {
+  val opJsonCodec =
     import ControllerState.*
 
     TypedJsonCodec[Any](
       Subtype[ItemOperation],
       Subtype[FreshOrder])
       // More to come ...
-  }
 
   private case class Collector(itemOperations: Seq[ItemOperation], freshOrders: Seq[FreshOrder])
-}

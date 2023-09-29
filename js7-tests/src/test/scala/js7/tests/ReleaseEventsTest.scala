@@ -33,8 +33,7 @@ import monix.execution.Scheduler.Implicits.traced
 /**
   * @author Joacim Zschimmer
   */
-final class ReleaseEventsTest extends OurTestSuite with DirectoryProviderForScalaTest
-{
+final class ReleaseEventsTest extends OurTestSuite with DirectoryProviderForScalaTest:
   protected val agentPaths = TestAgentPath :: Nil
   protected val items = Seq(TestWorkflow)
   override protected val controllerConfig = config"""
@@ -48,10 +47,9 @@ final class ReleaseEventsTest extends OurTestSuite with DirectoryProviderForScal
     js7.controller.agent-driver.release-events-period = 0ms
     """
 
-  "ReleaseEvents" in {
-    for (_, env) <- directoryProvider.agentToEnv do {
+  "ReleaseEvents" in:
+    for (_, env) <- directoryProvider.agentToEnv do
       env.writeExecutable(TestPathExecutable, script(0.s))
-    }
 
     directoryProvider.run { (controller, _) =>
       controller.eventWatch.await[ControllerEvent.ControllerReady]()
@@ -61,10 +59,9 @@ final class ReleaseEventsTest extends OurTestSuite with DirectoryProviderForScal
     def controllerJournalFiles = listJournalFiles(directoryProvider.controllerEnv.dataDir / "state" / "controller")
     def agentJournalFiles = listJournalFiles(directoryProvider.agentEnvs(0).dataDir / "state" / "agent")
 
-    def assertControllerJournalFileCount(n: Int): Unit = {
+    def assertControllerJournalFileCount(n: Int): Unit =
       waitForCondition(9.s, 10.ms) { controllerJournalFiles.size == n }
       assert(controllerJournalFiles.size == n)
-    }
 
     assertControllerJournalFileCount(2)
     assert(agentJournalFiles.size == 2)
@@ -80,11 +77,10 @@ final class ReleaseEventsTest extends OurTestSuite with DirectoryProviderForScal
       val a = newApi(controller, aUserAndPassword)
       val b = newApi(controller, bUserAndPassword)
 
-      locally {
+      locally:
         val x = newApi(controller, xUserAndPassword)
         val result = x.httpClient.liftProblem(x.executeCommand(ReleaseEvents(controller.eventWatch.lastAddedEventId))).await(99.s)
         assert(result.left.toOption.exists(_ is UserIsNotEnabledToReleaseEventsProblem))
-      }
 
       a.executeCommand(ReleaseEvents(controller.eventWatch.lastAddedEventId)).await(99.s)
       assertControllerJournalFileCount(3)
@@ -131,11 +127,8 @@ final class ReleaseEventsTest extends OurTestSuite with DirectoryProviderForScal
       waitForCondition(5.s, 10.ms) { agentJournalFiles.size == 1 }
       assert(agentJournalFiles.size == 1)
     }
-  }
-}
 
-private object ReleaseEventsTest
-{
+private object ReleaseEventsTest:
   private val aUserAndPassword = UserAndPassword(UserId("A"), SecretString("PASSWORD"))
   private val bUserAndPassword = UserAndPassword(UserId("B"), SecretString("PASSWORD"))
   private val xUserAndPassword = UserAndPassword(UserId("X"), SecretString("PASSWORD"))
@@ -148,13 +141,11 @@ private object ReleaseEventsTest
   private val cOrder = FreshOrder(OrderId("🔻"), TestWorkflow.id.path)
   private val dOrder = FreshOrder(OrderId("🔺"), TestWorkflow.id.path)
 
-  private def newApi(controller: TestController, credentials: UserAndPassword): HttpControllerApi = {
+  private def newApi(controller: TestController, credentials: UserAndPassword): HttpControllerApi =
     val api = new TestApi(controller, credentials)
     api.loginUntilReachable() await 99.s
     api
-  }
 
   private class TestApi(controller: TestController, protected val credentials: UserAndPassword)
   extends AkkaHttpControllerApi(controller.localUri, Some(credentials), controller.actorSystem, name = "RunningController")
   with SessionApi.HasUserAndPassword
-}

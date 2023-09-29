@@ -16,19 +16,18 @@ import scala.concurrent.Await
 /**
   * @author Joacim Zschimmer
   */
-final class RecouplingStreamReaderTest extends OurAsyncTestSuite
-{
-  "RecouplingStreamReader" in {
+final class RecouplingStreamReaderTest extends OurAsyncTestSuite:
+  "RecouplingStreamReader" in:
     val userAndPassword = UserAndPassword(UserId("USER"), SecretString("PASSWORD"))
     val api = new TestSessionApi(Some(userAndPassword))
     val recouplingStreamReaderConf = RecouplingStreamReaderConf(timeout = 5.s, delay = 1.s,
       failureDelays = Nel.one(5.s))
 
-    val observable = Observable.defer {
+    val observable = Observable.defer:
       @volatile var lastErrorAt = -2
       def getUnderlyingObservable(after: Long) =
-        Task {
-          lastErrorAt match {
+        Task:
+          lastErrorAt match
             case -2 =>
               lastErrorAt = -1
               throw new IllegalArgumentException("GET-ERROR")
@@ -44,15 +43,12 @@ final class RecouplingStreamReaderTest extends OurAsyncTestSuite
                       throw new IllegalArgumentException("TEST-ERROR")
                     case i => i
                   }.map(_.toString))))
-          }
-        }
       RecouplingStreamReader.observe[Long, String, TestSessionApi](
         toIndex = _.toLong,
         api,
         recouplingStreamReaderConf,
         after = 0L,
         getObservable = getUnderlyingObservable)
-    }
     observable.take(10).toListL.timeout(99.s).runToFuture.flatMap { list =>
       assert(list == (1 to 10).map(_.toString).toList)
 
@@ -65,5 +61,3 @@ final class RecouplingStreamReaderTest extends OurAsyncTestSuite
       obs.cancel()
       assert(Await.ready(obs, 99.s).value exists (_.isFailure))
     }
-  }
-}

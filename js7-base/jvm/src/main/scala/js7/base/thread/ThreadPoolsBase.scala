@@ -10,11 +10,10 @@ import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime.*
 import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
 
-object ThreadPoolsBase
-{
+object ThreadPoolsBase:
   private val logger = Logger[this.type]
 
-  def newBlockingExecutor(config: Config, name: String): ExecutorService = {
+  def newBlockingExecutor(config: Config, name: String): ExecutorService =
     val keepAlive = config.getDuration("js7.thread-pools.io.keep-alive").toFiniteDuration
     val virtualAllowed = config.optionAs[String]("js7.thread-pools.virtual")
       .exists(Set("", "true"))
@@ -22,7 +21,6 @@ object ThreadPoolsBase
       newBlockingExecutor(name, keepAlive)
     else
       newBlockingNonVirtualExecutor(name, keepAlive)
-  }
 
   def newBlockingExecutor(name: String, keepAlive: FiniteDuration = 60.s): ExecutorService =
     maybeNewVirtualThreadExecutorService() getOrElse
@@ -47,7 +45,7 @@ object ThreadPoolsBase
     corePoolSize: Int = 0,
     maximumPoolSize: Int,
     queueSize: Option[Int])
-  : ThreadPoolExecutor = {
+  : ThreadPoolExecutor =
     val result = new ThreadPoolExecutor(
       corePoolSize,
       maximumPoolSize,
@@ -61,7 +59,6 @@ object ThreadPoolsBase
       myThreadFactory(name))
     logger.debug(s"newThreadPoolExecutor => $result")
     result
-  }
 
   private def myThreadFactory(name: String): ThreadFactory =
     runnable => {
@@ -72,4 +69,3 @@ object ThreadPoolsBase
     }
 
   java8Polyfill()
-}

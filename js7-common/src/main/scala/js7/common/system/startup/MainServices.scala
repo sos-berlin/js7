@@ -15,8 +15,7 @@ import monix.execution.Scheduler
 import scala.concurrent.duration.*
 
 // Needs access to js7-common/ThreadPools
-object MainServices
-{
+object MainServices:
   /** Run a MainService with its own ThreadPool. */
   def blockingRun[S <: MainService: Tag](
     threadPoolName: String,
@@ -36,4 +35,3 @@ object MainServices
           .await(timeout)
           .useSync(timeout)(use(_, scheduler))
       }
-}

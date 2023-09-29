@@ -10,22 +10,19 @@ import scala.util.Random
 /**
   * @author Joacim Zschimmer
   */
-final class SyncResourceTest extends OurTestSuite
-{
-  "SyncIO useSync" in {
+final class SyncResourceTest extends OurTestSuite:
+  "SyncIO useSync" in:
     val opened = mutable.Set.empty[MySimpleResource]
 
-    class MySimpleResource extends AutoCloseable {
+    class MySimpleResource extends AutoCloseable:
       private val value = AtomicAny[java.lang.Long](Random.nextLong())
       opened += this
 
       def isOpened = value.get() != null
 
-      def close() = {
+      def close() =
         assert(value.getAndSet(null) != null)
         opened -= this
-      }
-    }
 
     val resource = Resource.fromAutoCloseable(SyncIO { new MySimpleResource })
     assert(opened.isEmpty)
@@ -35,5 +32,3 @@ final class SyncResourceTest extends OurTestSuite
       7
     }
     assert(b == 7 && opened.isEmpty)
-  }
-}

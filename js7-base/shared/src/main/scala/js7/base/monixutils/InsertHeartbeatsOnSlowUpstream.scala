@@ -30,11 +30,11 @@ import scala.util.Success
 
 private[monixutils] final class InsertHeartbeatsOnSlowUpstream[+A](source: Observable[A], timeout: FiniteDuration,
   onlyOnce: Boolean, intersperseValue: A)
-  extends Observable[A] {
+  extends Observable[A]:
 
   private[this] val timeoutMillis = timeout.toMillis
 
-  def unsafeSubscribeFn(out: Subscriber[A]): Cancelable = {
+  def unsafeSubscribeFn(out: Subscriber[A]): Cancelable =
     val task = MultiAssignCancelable()
     val mainTask = SingleAssignCancelable()
     val composite = CompositeCancelable(mainTask, task)
@@ -201,5 +201,3 @@ private[monixutils] final class InsertHeartbeatsOnSlowUpstream[+A](source: Obser
     })
 
     composite
-  }
-}

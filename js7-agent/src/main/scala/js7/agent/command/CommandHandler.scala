@@ -8,10 +8,8 @@ import monix.eval.Task
 /**
  * @author Joacim Zschimmer
  */
-trait CommandHandler
-{
+trait CommandHandler:
   def execute(command: AgentCommand, meta: CommandMeta): Task[Checked[AgentCommand.Response]]
 
   final def typedExecute(command: AgentCommand, meta: CommandMeta): Task[Checked[command.Response]] =
     execute(command, meta).map(_.asInstanceOf[Checked[command.Response]])
-}

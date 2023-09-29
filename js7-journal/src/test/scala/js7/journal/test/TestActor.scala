@@ -28,8 +28,7 @@ import scala.concurrent.duration.DurationInt
   * @author Joacim Zschimmer
   */
 private[journal] final class TestActor(config: Config, journalLocation: JournalLocation, journalStopped: Promise[Unit])
-extends Actor with Stash
-{
+extends Actor with Stash:
   override val supervisorStrategy = SupervisorStrategies.escalate
   private implicit val askTimeout: Timeout = Timeout(99.seconds)
   private val journalConf = JournalConf.fromConfig(config)
@@ -40,7 +39,7 @@ extends Actor with Stash
 
   private def journalActor = journal.journalActor
 
-  override def preStart() = {
+  override def preStart() =
     super.preStart()
     StateRecoverer.recover[TestState](journalLocation, config)
     val recovered = StateRecoverer.recover[TestState](journalLocation, config)
@@ -52,20 +51,17 @@ extends Actor with Stash
       .await(99.s)
 
     val state = recovered.state
-    for aggregate <- state.keyToAggregate.values do {
+    for aggregate <- state.keyToAggregate.values do
       val actor = newAggregateActor(aggregate.key)
       actor ! TestAggregateActor.Input.RecoverFromSnapshot(aggregate)
       keyToAggregate += aggregate.key -> actor
-    }
-  }
 
-  override def postStop() = {
+  override def postStop() =
     journalAllocated.release await 99.s
     journalStopped.success(())
     super.postStop()
-  }
 
-  def receive = {
+  def receive =
     case Input.WaitUntilReady =>
       sender() ! Done
 
@@ -114,34 +110,27 @@ extends Actor with Stash
     case Input.Terminate =>
       terminator = sender()
       keyToAggregate.values foreach context.stop
-      if keyToAggregate.isEmpty then {
+      if keyToAggregate.isEmpty then
         context.stop(self)
         terminator ! Done
-      }
 
     case Terminated(actorRef) =>
       val key = keyToAggregate collectFirst { case (k, `actorRef`) => k }
       keyToAggregate --= key
-      if terminator != null && keyToAggregate.isEmpty then {
+      if terminator != null && keyToAggregate.isEmpty then
         context.stop(self)
         terminator ! Done
-      }
-  }
 
   private def newAggregateActor(key: String): ActorRef =
     context.watch(context.actorOf(
       Props { new TestAggregateActor(key, journalActor, journalConf) },
       s"Test-$key"))
-}
 
-private[journal] object TestActor
-{
-  object Input {
+private[journal] object TestActor:
+  object Input:
     case object WaitUntilReady
     case object TakeSnapshot
     final case class Forward(key: String, command: TestAggregateActor.Command)
     case object GetJournalState
     case object GetAll
     case object Terminate
-  }
-}
