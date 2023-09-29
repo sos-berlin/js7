@@ -22,11 +22,14 @@ trait JOrderEvent
 extends JJsonable[JOrderEvent]
 {
   type AsScala <: OrderEvent
+
   protected def companion = JOrderEvent
 }
 
 object JOrderEvent extends JJsonable.Companion[JOrderEvent]
 {
+  type AsScala = OrderEvent
+
   override def fromJson(jsonString: String): VEither[Problem, JOrderEvent] =
     super.fromJson(jsonString)
 

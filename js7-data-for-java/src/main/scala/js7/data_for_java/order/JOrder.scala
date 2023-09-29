@@ -75,6 +75,8 @@ extends JJsonable[JOrder]
 @javaApi
 object JOrder extends JJsonable.Companion[JOrder]
 {
+  type AsScala = Order[Order.State]
+
   @Nonnull
   override def fromJson(@Nonnull jsonString: String): VEither[Problem, JOrder] =
     super.fromJson(jsonString)

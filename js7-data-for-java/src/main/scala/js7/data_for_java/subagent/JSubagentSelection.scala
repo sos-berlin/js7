@@ -36,6 +36,8 @@ extends JJsonable[JSubagentSelection] with JUnsignedSimpleItem
 
 object JSubagentSelection extends JJsonable.Companion[JSubagentSelection]
 {
+  type AsScala = SubagentSelection
+
   def of(
     id: SubagentSelectionId,
     subagentToPriority: java.util.Map[SubagentId, java.lang.Integer])

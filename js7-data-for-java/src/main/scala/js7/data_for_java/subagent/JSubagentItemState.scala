@@ -33,6 +33,8 @@ extends JJsonable[JSubagentItemState]
 
 object JSubagentItemState extends JJsonable.Companion[JSubagentItemState]
 {
+  type AsScala = SubagentItemState
+
   @Nonnull
   override def fromJson(jsonString: String): VEither[Problem, JSubagentItemState] =
     super.fromJson(jsonString)

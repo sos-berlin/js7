@@ -43,6 +43,8 @@ extends JJsonable[JPosition] with JPositionOrLabel
 
 object JPosition extends JJsonable.Companion[JPosition]
 {
+  type AsScala = Position
+
   @javaApi @Nonnull
   def fromList(@Nonnull position: java.util.List[Any]): VEither[Problem, JPosition] =
     Position.fromSeq(position.asScala.toSeq).map(apply).toVavr
@@ -61,6 +63,8 @@ extends JJsonable[JLabel] with JPositionOrLabel
   protected val companion: JLabel.type = JLabel
 }
 object JLabel extends JJsonable.Companion[JLabel] {
+  type AsScala = Label
+
   def of(label: String): JLabel =
     JLabel(Label(label))
 

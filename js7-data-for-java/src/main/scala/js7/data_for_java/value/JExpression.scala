@@ -19,6 +19,8 @@ final case class JExpression(asScala: Expression) extends JJsonable[JExpression]
 
 object JExpression extends JJsonable.Companion[JExpression]
 {
+  type AsScala = Expression
+
   @Nonnull
   def parse(expression: String): VEither[Problem, JExpression] =
     parseExpression(expression)

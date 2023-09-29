@@ -49,6 +49,8 @@ extends JVersionedItem[JWorkflow, WorkflowPath]
 @javaApi
 object JWorkflow extends JJsonable.Companion[JWorkflow]
 {
+  type AsScala = Workflow
+
   @Nonnull
   override def fromJson(@Nonnull jsonString: String): VEither[Problem, JWorkflow] =
     super.fromJson(jsonString)

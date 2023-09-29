@@ -34,6 +34,8 @@ extends JJsonable[JControllerCommand]
 @javaApi
 object JControllerCommand extends JJsonable.Companion[JControllerCommand]
 {
+  type AsScala = ControllerCommand
+
   @Nonnull
   def addOrder(@Nonnull jFreshOrder: JFreshOrder): JControllerCommand =
     JControllerCommand(AddOrder(jFreshOrder.asScala))

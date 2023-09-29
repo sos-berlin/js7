@@ -25,14 +25,15 @@ object JJsonable
 {
   trait Companion[A <: JJsonable[A]]
   {
-    type AsScala = A#AsScala
+    /** Must be the same type as JJsonable#AsScala. */
+    type AsScala
 
-    def apply(underlying: A#AsScala): A
+    def apply(underlying: AsScala): A
 
     private[JJsonable] def myJsonEncoder = jsonEncoder
 
-    protected def jsonEncoder: Encoder[A#AsScala]
-    protected def jsonDecoder: Decoder[A#AsScala]
+    protected def jsonEncoder: Encoder[AsScala]
+    protected def jsonDecoder: Decoder[AsScala]
 
     @Nonnull
     def fromJson(@Nonnull jsonString: String): VEither[Problem, A] =

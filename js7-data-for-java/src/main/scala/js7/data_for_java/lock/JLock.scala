@@ -30,6 +30,8 @@ extends JJsonable[JLock] with JUnsignedSimpleItem
 
 object JLock extends JJsonable.Companion[JLock]
 {
+  type AsScala = Lock
+
   @Nonnull
   def of(@Nonnull lockPath: LockPath, limit: Int): JLock =
     JLock(Lock(lockPath, limit))

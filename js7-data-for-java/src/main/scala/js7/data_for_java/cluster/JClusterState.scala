@@ -16,6 +16,8 @@ extends JJsonable[JClusterState]
 
 object JClusterState extends JJsonable.Companion[JClusterState]
 {
+  type AsScala = ClusterState
+
   def apply(clusterState: ClusterState): JClusterState =
     clusterState match {
       case ClusterState.Empty => Empty

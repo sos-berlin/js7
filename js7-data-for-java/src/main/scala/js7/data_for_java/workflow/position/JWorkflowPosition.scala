@@ -25,6 +25,8 @@ extends JJsonable [JWorkflowPosition]
 
 object JWorkflowPosition extends JJsonable.Companion[JWorkflowPosition]
 {
+  type AsScala = WorkflowPosition
+
   @Nonnull
   def of(
     @Nonnull workflowId: JWorkflowId,

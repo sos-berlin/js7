@@ -53,6 +53,8 @@ extends JJsonable[JFileWatch] with JUnsignedSimpleItem
 
 object JFileWatch extends JJsonable.Companion[JFileWatch]
 {
+  type AsScala = FileWatch
+
   @Nonnull
   def checked(
     @Nonnull id: OrderWatchPath,

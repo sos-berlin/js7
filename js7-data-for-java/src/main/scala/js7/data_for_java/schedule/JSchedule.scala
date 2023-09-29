@@ -14,6 +14,8 @@ final case class JSchedule(asScala: Schedule) extends JJsonable[JSchedule]
 
 object JSchedule extends JJsonable.Companion[JSchedule]
 {
+  type AsScala = Schedule
+
   @Nonnull
   override def fromJson(@Nonnull jsonString: String): VEither[Problem, JSchedule] =
     super.fromJson(jsonString)

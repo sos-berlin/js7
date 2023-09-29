@@ -25,6 +25,8 @@ extends JJsonable[JWorkflowId] with JVersionedItemId[WorkflowPath]
 @javaApi
 object JWorkflowId extends JJsonable.Companion[JWorkflowId]
 {
+  type AsScala = WorkflowId
+
   @javaApi @Nonnull @throws[RuntimeException]("on invalid syntax")
   def of(path: String, versionId: String): JWorkflowId =
     JWorkflowId(WorkflowPath(path) ~ versionId)

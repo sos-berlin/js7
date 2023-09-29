@@ -18,6 +18,8 @@ sealed trait JOutcome extends JJsonable[JOutcome]
 
 object JOutcome extends JJsonable.Companion[JOutcome]
 {
+  type AsScala = Outcome
+
   @javaApi
   val succeeded: Succeeded =
     JOutcome.Succeeded(Outcome.Succeeded.empty)

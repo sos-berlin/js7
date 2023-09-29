@@ -27,6 +27,8 @@ extends JJsonable[JProblem]
 
 object JProblem extends JJsonable.Companion[JProblem]
 {
+  type AsScala = Problem
+
   override def fromJson(jsonString: String): VEither[Problem, JProblem] =
     super.fromJson(jsonString)
 

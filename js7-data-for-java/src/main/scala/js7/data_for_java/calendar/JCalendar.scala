@@ -43,6 +43,8 @@ extends JJsonable[JCalendar] with JUnsignedSimpleItem
 
 object JCalendar extends JJsonable.Companion[JCalendar]
 {
+  type AsScala = Calendar
+
   @Nonnull
   def of(
     @Nonnull path: CalendarPath,

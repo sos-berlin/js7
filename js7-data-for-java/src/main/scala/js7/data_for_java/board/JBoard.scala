@@ -28,6 +28,8 @@ extends JJsonable[JBoard] with JUnsignedSimpleItem
 
 object JBoard extends JJsonable.Companion[JBoard]
 {
+  type AsScala = Board
+
   @Nonnull
   def of(
     @Nonnull path: BoardPath,

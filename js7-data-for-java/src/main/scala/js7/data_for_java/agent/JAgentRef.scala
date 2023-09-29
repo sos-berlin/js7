@@ -33,6 +33,8 @@ extends JJsonable[JAgentRef] with JUnsignedSimpleItem
 
 object JAgentRef extends JJsonable.Companion[JAgentRef]
 {
+  type AsScala = AgentRef
+
   @Nonnull
   def of(
     @Nonnull path: AgentPath,

@@ -18,6 +18,8 @@ extends JJsonable[JHistoryOperation]
 
 object JHistoryOperation extends JJsonable.Companion[JHistoryOperation]
 {
+  type AsScala = HistoryOperation
+
   @javaApi @Nonnull
   def replace(@Nonnull historicOutcome: HistoricOutcome): JHistoryOperation =
     JHistoryOperation(ReplaceHistoricOutcome(historicOutcome))

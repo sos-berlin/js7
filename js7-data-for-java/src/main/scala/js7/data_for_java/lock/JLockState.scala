@@ -36,6 +36,8 @@ extends JJsonable[JLockState]
 
 object JLockState extends JJsonable.Companion[JLockState]
 {
+  type AsScala = LockState
+
   protected def jsonEncoder = LockState.jsonCodec
   protected def jsonDecoder = LockState.jsonCodec
 }

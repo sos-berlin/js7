@@ -13,11 +13,14 @@ final case class JHistoricOutcome(asScala: HistoricOutcome)
 extends JJsonable[JHistoricOutcome]
 {
   type AsScala = HistoricOutcome
+  
   protected def companion = JHistoricOutcome
 }
 
 object JHistoricOutcome extends JJsonable.Companion[JHistoricOutcome]
 {
+  type AsScala = HistoricOutcome
+
   @javaApi @Nonnull
   def of(@Nonnull position: JPosition, @Nonnull outcome: JOutcome): JHistoricOutcome =
     JHistoricOutcome(HistoricOutcome(position.asScala, outcome.asScala))

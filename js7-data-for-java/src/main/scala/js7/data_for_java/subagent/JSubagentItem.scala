@@ -44,6 +44,8 @@ extends JJsonable[JSubagentItem] with JUnsignedSimpleItem
 
 object JSubagentItem extends JJsonable.Companion[JSubagentItem]
 {
+  type AsScala = SubagentItem
+
   @Nonnull
   def of(
     @Nonnull id: SubagentId,

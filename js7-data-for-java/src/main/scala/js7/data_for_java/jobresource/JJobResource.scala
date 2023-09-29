@@ -30,6 +30,8 @@ extends JJsonable[JJobResource] with JSignableItem
 
 object JJobResource extends JJsonable.Companion[JJobResource]
 {
+  type AsScala = JobResource
+
   @Nonnull
   def of(
     @Nonnull path: JobResourcePath,

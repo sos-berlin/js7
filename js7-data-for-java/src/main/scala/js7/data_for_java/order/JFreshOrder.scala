@@ -44,6 +44,8 @@ extends JJsonable[JFreshOrder]
 @javaApi
 object JFreshOrder extends JJsonable.Companion[JFreshOrder]
 {
+  type AsScala = FreshOrder
+
   @Nonnull
   @throws[RuntimeException]("on invalid syntax")
   def of(
