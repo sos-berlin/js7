@@ -1,7 +1,8 @@
 package js7.tests.controller.proxy.history
 
-import com.softwaremill.diffx.generic.auto.*
-import com.softwaremill.diffx.scalatest.DiffShouldMatcher.*
+//diffx import com.softwaremill.diffx.generic.auto.*
+//diffx import com.softwaremill.diffx.scalatest.DiffShouldMatcher.*
+import js7.data.workflow.position.BranchPath.syntax.*
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.eventbus.StandardEventBus
 import js7.base.io.file.FileUtils.syntax.RichPath
@@ -104,7 +105,8 @@ final class ProxyHistoryTest extends OurTestSuite with ProvideActorSystem with C
                   case ProxyStarted =>
                     assert(!proxyStartedReceived)
                     proxyStartedReceived = true
-                    es.state shouldMatchTo lastState
+                    //diffx es.state shouldMatchTo lastState
+                    assert(es.state == lastState)
                   case _ =>
                     assert(lastState.eventId < es.stampedEvent.eventId)
                 }

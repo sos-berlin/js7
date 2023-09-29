@@ -2,7 +2,7 @@ package js7.cluster
 
 import akka.actor.ActorRefFactory
 import cats.effect.Resource
-import com.softwaremill.diffx
+//diffx import com.softwaremill.diffx
 import izumi.reflect.Tag
 import js7.base.eventbus.EventPublisher
 import js7.base.generic.Completed
@@ -38,7 +38,7 @@ import monix.execution.Scheduler
   * the ClusterNodesAppointed event.
   */
 final class WorkingClusterNode[
-  S <: ClusterableState[S]: ClusterableState.Companion: diffx.Diff: Tag
+  S <: ClusterableState[S]: ClusterableState.Companion/*: diffx.Diff*/: Tag
 ] private(
   val failedNodeId: Option[NodeId],
   val journalAllocated: Allocated[Task, FileJournal[S]],
@@ -198,7 +198,7 @@ object WorkingClusterNode
   private val logger = Logger[this.type]
 
   private[cluster]
-  def resource[S <: ClusterableState[S]: ClusterableState.Companion: diffx.Diff: Tag](
+  def resource[S <: ClusterableState[S]: ClusterableState.Companion/*: diffx.Diff*/: Tag](
     recovered: Recovered[S],
     common: ClusterCommon,
     clusterConf: ClusterConf,

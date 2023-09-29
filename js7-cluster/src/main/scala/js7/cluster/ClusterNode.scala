@@ -6,7 +6,7 @@ import cats.effect.concurrent.{Deferred, Ref}
 import cats.effect.{ExitCase, Resource}
 import cats.syntax.flatMap.*
 import cats.syntax.traverse.*
-import com.softwaremill.diffx
+//diffx import com.softwaremill.diffx
 import izumi.reflect.Tag
 import java.nio.file.Path
 import js7.base.auth.{Admission, UserId}
@@ -44,7 +44,7 @@ import scala.concurrent.Promise
 import scala.util.control.NoStackTrace
 import scala.util.{Failure, Success, Try}
 
-final class ClusterNode[S <: ClusterableState[S]: diffx.Diff: Tag] private(
+final class ClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/: Tag] private(
   prepared: Prepared[S],
   passiveOrWorkingNode: AtomicAny[Option[Either[PassiveClusterNode[S], Allocated[Task, WorkingClusterNode[S]]]]],
   currentStateRef: Ref[Task, Task[Either[Problem, S]]],
@@ -267,7 +267,7 @@ object ClusterNode
 {
   private val logger = Logger[this.type]
 
-  def recoveringResource[S <: ClusterableState[S] : diffx.Diff : Tag](
+  def recoveringResource[S <: ClusterableState[S] /*: diffx.Diff*/ : Tag](
     akkaResource: Resource[Task, ActorSystem],
     clusterNodeApi: (Admission, String, ActorSystem) => Resource[Task, ClusterNodeApi],
     licenseChecker: LicenseChecker,
@@ -293,7 +293,7 @@ object ClusterNode
         ).orThrow
       }
 
-  private def resource[S <: ClusterableState[S] : diffx.Diff : Tag](
+  private def resource[S <: ClusterableState[S] /*: diffx.Diff*/ : Tag](
     recovered: Recovered[S],
     clusterNodeApi: (Admission, String) => Resource[Task, ClusterNodeApi],
     licenseChecker: LicenseChecker,
@@ -333,7 +333,7 @@ object ClusterNode
       } yield clusterNode
   }
 
-  private def resource[S <: ClusterableState[S] : diffx.Diff : Tag](
+  private def resource[S <: ClusterableState[S] /*: diffx.Diff*/ : Tag](
     recovered: Recovered[S],
     common: ClusterCommon,
     journalLocation: JournalLocation,

@@ -2,7 +2,7 @@ package js7.cluster
 
 import cats.effect.concurrent.Deferred
 import cats.syntax.flatMap.*
-import com.softwaremill.diffx
+//diffx import com.softwaremill.diffx
 import io.circe.syntax.*
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
@@ -53,7 +53,7 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
 
-private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]: diffx.Diff](
+private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/](
   ownId: NodeId,
   setting: ClusterSetting,
   recovered: Recovered[S]/*TODO The maybe big ClusterableState at start sticks here*/,
@@ -694,7 +694,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]: diffx.
         s" ${recoveredJournalFile.fileEventId} does not match snapshot in next replicated journal file"
       // msg may get very big
       logger.error(msg)
-      msg ++= ":\n" ++ diffx.compare(recoveredJournalFile.state, snapshot).show()
+      //diffx msg ++= ":\n" ++ diffx.compare(recoveredJournalFile.state, snapshot).show()
       logger.info(msg)  // Without colors because msg is already colored
       sys.error(msg)
     }

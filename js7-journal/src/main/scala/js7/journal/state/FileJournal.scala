@@ -4,7 +4,7 @@ import akka.actor.{ActorRef, ActorRefFactory}
 import akka.pattern.ask
 import akka.util.Timeout
 import cats.effect.Resource
-import com.softwaremill.diffx
+//diffx import com.softwaremill.diffx
 import com.softwaremill.tagging.{@@, Tagger}
 import izumi.reflect.Tag
 import js7.base.eventbus.{EventPublisher, StandardEventBus}
@@ -142,7 +142,7 @@ object FileJournal
 {
   private val logger = Logger[this.type]
 
-  def resource[S <: SnapshotableState[S]: SnapshotableState.Companion: diffx.Diff: Tag](
+  def resource[S <: SnapshotableState[S]: SnapshotableState.Companion/*: diffx.Diff*/: Tag](
     recovered: Recovered[S],
     journalConf: JournalConf,
     eventIdGenerator: EventIdGenerator = new EventIdGenerator,

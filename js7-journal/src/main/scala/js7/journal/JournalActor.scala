@@ -1,7 +1,7 @@
 package js7.journal
 
 import akka.actor.{Actor, ActorRef, DeadLetterSuppression, Props, Stash}
-import com.softwaremill.diffx
+//diffx import com.softwaremill.diffx
 import io.circe.syntax.EncoderOps
 import java.nio.file.Files.{delete, exists, move}
 import java.nio.file.Path
@@ -46,7 +46,7 @@ import scala.util.control.NonFatal
 /**
   * @author Joacim Zschimmer
   */
-final class JournalActor[S <: SnapshotableState[S]: diffx.Diff] private(
+final class JournalActor[S <: SnapshotableState[S]/*: diffx.Diff*/] private(
   journalLocation: JournalLocation,
   protected val conf: JournalConf,
   keyedEventBus: EventPublisher[Stamped[AnyKeyedEvent]],
@@ -433,10 +433,10 @@ extends Actor with Stash with JournalLogging
     if (conf.slowCheckState && committedState != uncommittedState) {
       val msg = "SnapshotableState update mismatch: committedState != uncommittedState"
       logger.error(msg)
-      implicit val showConfig = diffx.ShowConfig.default.copy(
-        arrow = _.replace("->", "->>"),
-        transformer = diffx.DiffResultTransformer.skipIdentical)
-      logger.error(diffx.compare(committedState, uncommittedState).show())
+      //diffx implicit val showConfig = diffx.ShowConfig.default.copy(
+      //diffx   arrow = _.replace("->", "->>"),
+      //diffx   transformer = diffx.DiffResultTransformer.skipIdentical)
+      //diffx logger.error(diffx.compare(committedState, uncommittedState).show())
       sys.error(msg)
     }
     uncommittedState = committedState    // Reduce duplicate allocated objects
@@ -724,7 +724,7 @@ extends Actor with Stash with JournalLogging
       logger.error(msg)
       for (stamped <- stampedSeq) logger.error(stamped.toString.truncateWithEllipsis(200))
       // msg may get very big
-      msg ++= ":\n" ++ diffx.compare(couldBeRecoveredState, uncommittedState).show()
+      //diffx msg ++= ":\n" ++ diffx.compare(couldBeRecoveredState, uncommittedState).show()
       logger.info(msg)  // Without colors because msg is already colored
       throw new AssertionError(msg)
     }
@@ -737,7 +737,7 @@ object JournalActor
 
   //private val ClusterNodeHasBeenSwitchedOverProblem = Problem.pure("After switchover, this cluster node is no longer active")
 
-  def props[S <: SnapshotableState[S]: SnapshotableState.Companion: diffx.Diff](
+  def props[S <: SnapshotableState[S]: SnapshotableState.Companion/*: diffx.Diff*/](
     journalLocation: JournalLocation,
     conf: JournalConf,
     keyedEventBus: EventPublisher[Stamped[AnyKeyedEvent]],

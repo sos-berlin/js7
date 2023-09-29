@@ -1,6 +1,6 @@
 package js7.data.controller
 
-import com.softwaremill.diffx.generic.auto.*
+//diffx import com.softwaremill.diffx.generic.auto.*
 import js7.base.auth.UserId
 import js7.base.circeutils.CirceUtils.*
 import js7.base.crypt.silly.SillySigner

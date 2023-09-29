@@ -2,7 +2,7 @@ package js7.journal.state
 
 import akka.pattern.ask
 import akka.util.Timeout
-import com.softwaremill.diffx.generic.auto.*
+//diffx import com.softwaremill.diffx.generic.auto.*
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import java.nio.file.Files.createTempDirectory

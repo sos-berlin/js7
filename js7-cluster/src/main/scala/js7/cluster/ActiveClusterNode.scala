@@ -4,7 +4,7 @@ import akka.pattern.ask
 import akka.util.Timeout
 import cats.syntax.flatMap.*
 import cats.syntax.monoid.*
-import com.softwaremill.diffx
+//diffx import com.softwaremill.diffx
 import js7.base.auth.{Admission, UserAndPassword}
 import js7.base.generic.Completed
 import js7.base.log.Logger.syntax.*
@@ -46,7 +46,7 @@ import scala.concurrent.duration.*
 import scala.util.{Failure, Success}
 
 /** Active Cluster node active which is part of a cluster (ClusterState != Empty). */
-final class ActiveClusterNode[S <: ClusterableState[S]: diffx.Diff] private[cluster](
+final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[cluster](
   journal: FileJournal[S],
   passiveNodeUserAndPassword: Option[UserAndPassword],
   common: ClusterCommon,

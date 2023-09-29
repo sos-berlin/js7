@@ -1156,9 +1156,6 @@ final class ExpressionTest extends OurTestSuite
     exprString in {
       val checked = parseExpressionOrFunction(exprString.trim)
       assert(checked == Right(expression))
-      //if (checked != expression) {
-      //  fail(diffx.Diff.compare(checked, expression).toString)
-      //}
       assert(expression.eval == result)
     }
 }
