@@ -17,7 +17,7 @@ extends EventInstructionExecutor with PositionInstructionExecutor
   def toEvents(instruction: End, order: Order[Order.State], state: StateView) =
     order.position.parent
       .filter(_ => order.position.branchPath != order.innerBlock)
-      .match_ {
+      .match {
         case None =>
           order.state match {
             case _: Order.IsFreshOrReady =>

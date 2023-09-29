@@ -55,7 +55,7 @@ extends ScheduleSimulator
             val first = (schemeIndex != cycleState.schemeIndex
               || periodIndex != cycleState.periodIndex)
             repeat
-              .match_ {
+              .match {
                 case periodic: Periodic =>
                   nextPeriod(periodic, lastScheduledCycleStart, now, first = first, end)
 

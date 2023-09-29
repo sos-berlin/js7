@@ -838,7 +838,7 @@ with Stash
     journal.unsafeCurrentState()
       .idToWorkflow.checked(order.workflowId)
       .map(workflow => workflow -> workflow.instruction(order.position))
-      .match_ {
+      .match {
         case Left(problem) =>
           logger.error(s"onOrderIsProcessable => $problem")
 

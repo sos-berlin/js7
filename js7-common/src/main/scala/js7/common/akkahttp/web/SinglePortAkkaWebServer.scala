@@ -127,7 +127,7 @@ private object SinglePortAkkaWebServer
         }
 
       webServerBinding
-        .match_ {
+        .match {
           case o: WebServerBinding.Http => bind(o)
           case o: WebServerBinding.Https => bindHttps(o)
         }

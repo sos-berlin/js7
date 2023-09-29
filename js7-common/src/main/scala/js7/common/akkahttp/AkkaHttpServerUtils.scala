@@ -287,12 +287,12 @@ object AkkaHttpServerUtils
         extractRequest(_
           .headers
           .find(_.is(`x-js7-request-id`.lowercaseName))
-          .match_ {
+          .match {
             case None => reject(MissingHeaderRejection(`x-js7-request-id`.toString))
             case Some(h) =>
               `x-js7-request-id`
                 .parseNumber(h.value())
-                .match_ {
+                .match {
                   case Left(problem) =>
                     reject(MalformedHeaderRejection(`x-js7-request-id`.toString, problem.toString))
                   case Right(n) =>

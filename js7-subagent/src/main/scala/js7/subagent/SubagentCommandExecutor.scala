@@ -31,7 +31,7 @@ private[subagent] final class SubagentCommandExecutor(
       logger.debug(s"#${numbered.number} -> $command")
       val since = now
       command
-        .match_ {
+        .match {
           case StartOrderProcess(order, executeDefaultArguments) =>
             subagent.startOrderProcess(order, executeDefaultArguments)
               .rightAs(SubagentCommand.Accepted)

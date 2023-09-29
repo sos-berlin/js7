@@ -126,7 +126,7 @@ class AsyncMap[K: Tag, V: Tag](initial: Map[K, V] = Map.empty[K, V])
       Task.defer/*catch inside task*/(update(_map.get(key)))
         .flatMap { updated =>
           updated
-            .match_ {
+            .match {
               case Left(p) => Task.pure(Left(p))
               case Right(v) =>
                 shortLock.lock(Task {

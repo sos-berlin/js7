@@ -502,7 +502,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
     akkaExceptionRegex.findFirstMatchIn(t.toString)
       .toList
       .flatMap(_.subgroups)
-      .match_ {
+      .match {
         case List(m1, m2) => new LegibleAkkaHttpException(s"$name $m1): $m2", t)
         case _ => t
       }

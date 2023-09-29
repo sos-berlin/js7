@@ -183,7 +183,7 @@ object SessionApi
           .flatMap((_: Completed) =>
             body.onErrorRestartLoop(()) { (throwable, _, retry) =>
               throwable
-                .match_ {
+                .match {
                   case HttpException.HasProblem(problem)
                     if problem.is(InvalidSessionTokenProblem) && delays.hasNext =>
                     // Do not call onError on this minor problem

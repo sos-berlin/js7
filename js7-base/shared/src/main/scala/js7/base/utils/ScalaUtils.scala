@@ -110,7 +110,7 @@ object ScalaUtils
       /** Combines left sides of any, otherwise return right sides.*/
       def reduceLeftEither(implicit F: Factory[R, F[R]], L: Semigroup[L]): Either[L, F[R]] = {
         L.combineAllOption(iterable.view.collect { case Left(l) => l })
-          .match_ {
+          .match {
             case Some(problem) => Left(problem)
             case None => Right(iterable.view.collect { case Right(r) => r }.to(F))
           }
@@ -297,10 +297,6 @@ object ScalaUtils
 
       def narrow[B <: A: ClassTag]: Checked[B] =
         checkedCast[B](delegate)
-
-      /** match operator as method (like in Scala 3?). */
-      @inline def match_[B](f: A => B): B =
-        f(delegate)
 
       @inline def substitute(when: A, _then: => A): A =
         if delegate == when then _then else delegate

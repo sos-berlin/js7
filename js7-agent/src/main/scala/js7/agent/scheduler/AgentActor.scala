@@ -381,7 +381,7 @@ extends Actor with Stash with SimpleStateActor
 
               case Some(idToUri) =>
                 agentState.clusterState
-                  .match_ {
+                  .match {
                     case ClusterState.Empty =>
                       Some(NodeId.primary)
                     case clusterState: HasNodes =>

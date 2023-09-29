@@ -953,7 +953,7 @@ with MainJournalingActor[ControllerState, Event]
           .map(subagentItemState =>
             (subagentItemState.couplingState != DelegateCouplingState.Resetting(force))
               .thenList((subagentId <-: SubagentResetStartedByController(force = force))))
-          .match_ {
+          .match {
             case Left(problem) => Future.successful(Left(problem))
             case Right(events) =>
               persistMultiple(events) { (_, updated) =>
@@ -974,7 +974,7 @@ with MainJournalingActor[ControllerState, Event]
       case ControllerCommand.ClusterSwitchOver(Some(agentPath)) =>
         agentRegister.checked(agentPath)
           .map(_.agentDriver)
-          .match_ {
+          .match {
             case Left(problem) => Future.successful(Left(problem))
             case Right(agentDriver) =>
               agentDriver
@@ -988,7 +988,7 @@ with MainJournalingActor[ControllerState, Event]
       case ControllerCommand.ConfirmClusterNodeLoss(agentPath, lostNodeId, confirmer) =>
         agentRegister.checked(agentPath)
           .map(_.agentDriver)
-          .match_ {
+          .match {
             case Left(problem) => Future.successful(Left(problem))
             case Right(agentDriver) =>
               agentDriver
@@ -1033,7 +1033,7 @@ with MainJournalingActor[ControllerState, Event]
   : Future[Checked[ControllerCommand.Response]] =
     new TransferOrderEventSource(_controllerState)
       .transferOrders(cmd)
-      .match_ {
+      .match {
         case Left(problem) => Future.successful(Left(problem))
         case Right(events) =>
           persistTransaction(events ++ subsequentEvents(events)) { (stamped, updatedState) =>

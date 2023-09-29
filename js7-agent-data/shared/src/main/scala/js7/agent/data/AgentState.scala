@@ -159,7 +159,7 @@ with ClusterableState[AgentState]
               keyToUnsignedItemState_ = keyToUnsignedItemState_.updated(subagentItem.id,
                 keyTo(SubagentItemState)
                   .get(subagentItem.id)
-                  .match_ {
+                  .match {
                     case None => SubagentItemState.initial(subagentItem)
                     case Some(subagentState) => subagentState.copy(subagentItem = subagentItem)
                   })))

@@ -76,7 +76,7 @@ with StateView
 
         case event: OrderLockEvent =>
           event
-            .match_ {
+            .match {
               case OrderLocksQueued(demands) =>
                 foreachLockDemand(demands)(_
                   .enqueue(orderId, _))
@@ -145,7 +145,7 @@ with StateView
     event: OrderNoticeEvent)
   : Checked[Self] =
     event
-      .match_ {
+      .match {
         case OrderNoticePostedV2_3(notice) =>
           orderIdToBoardState(orderId)
             .flatMap(boardState => boardState.addNoticeV2_3(notice))

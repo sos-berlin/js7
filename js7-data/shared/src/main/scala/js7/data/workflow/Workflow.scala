@@ -161,7 +161,7 @@ with TrivialItemState[Workflow]
     for (nr, Labeled(_, instr, _)) <- numberedInstructions yield
       for
         isInCycle <- instr
-          .match_ {
+          .match {
             case _: Cycle => Right(true)
             case _: Break if !inCycle =>
               Left(Problem.pure(s"Break instruction at ${branchPath % nr} without Cycle"))

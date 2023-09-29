@@ -35,7 +35,7 @@ final class AgentsSubagentIdsScope(state: StateView) extends Scope
 
       case Some(thisAgentPath) =>
         arg
-          .match_ {
+          .match {
             case None =>
               Right(subagentIds(thisAgentPath))
             case Some(arg) =>

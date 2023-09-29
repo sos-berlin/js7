@@ -160,7 +160,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
     logger.traceTask("recoverOrderProcessing", order.id)(Task.defer {
       val subagentId = order.state.subagentId getOrElse legacyLocalSubagentId
       stateVar.get.idToDriver.get(subagentId)
-        .match_ {
+        .match {
           case None =>
             val orderProcessed = OrderProcessed(Outcome.Disrupted(Problem.pure(
               s"$subagentId is missed")))
@@ -282,7 +282,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
         .fold(Task.unit)(promise => Task(promise.success(())))
         .*>(orderToSubagent
           .get(orderId)
-          .match_ {
+          .match {
             case None => Task(logger.error(
               s"killProcess($orderId): unexpected internal state: orderToSubagent does not contain the OrderId"))
 

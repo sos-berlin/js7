@@ -21,7 +21,7 @@ final case class CommandRun[C <: CommonCommand](
   override def toString =
     s"Command by $userId: ${command.toShortString}"
 
-  def idString = "#" + batchInternalId.match_ {
+  def idString = "#" + batchInternalId.match {
     case None => correlId.toString
     case Some(batchId) => s"$batchId.$correlId"
   }

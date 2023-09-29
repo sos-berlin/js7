@@ -49,7 +49,7 @@ final class ShutdownFailoverControllerClusterTest extends ControllerClusterTeste
                 primaryController.eventWatch.awaitAsync[ClusterCoupled](
                   after = primaryController.eventWatch.lastFileEventId))
               .await(99.s)
-              .match_ {
+              .match {
                 case Left(ProgramTermination(/*restart=*/true)) =>
                 case _ =>
                   restart = false

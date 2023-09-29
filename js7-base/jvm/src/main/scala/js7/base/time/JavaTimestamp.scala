@@ -5,7 +5,6 @@ import java.time.{Instant, LocalDateTime, OffsetDateTime, ZoneId, ZoneOffset, Zo
 import js7.base.problem.Checked
 import js7.base.problem.Checked.catchExpected
 import js7.base.time.JavaTimestamp.dateTimeFormatter
-import js7.base.utils.ScalaUtils.syntax.RichAny
 import org.jetbrains.annotations.TestOnly
 import scala.jdk.CollectionConverters.*
 
@@ -81,7 +80,7 @@ object JavaTimestamp extends Timestamp.Companion
   private def ofLocalExact(zoned: ZonedDateTime): Option[Timestamp] = {
     val local = zoned.toLocalDateTime
     zoned.getZone
-      .match_ {
+      .match {
         case o: ZoneOffset => Some(o)
         case _ => zoned.getZone.getRules.getValidOffsets(local).asScala.headOption
       }

@@ -355,7 +355,7 @@ object RunningAgent {
     def executeCommand(cmd: AgentCommand, meta: CommandMeta)
     : Task[Checked[AgentCommand.Response]] =
       logger.debugTask("executeCommand", cmd.getClass.shortClassName)(cmd
-        .match_ {
+        .match {
           case cmd: ShutDown =>
             if cmd.clusterAction.nonEmpty && !clusterNode.isWorkingNode then
               Task.left(PassiveClusterNodeShutdownNotAllowedProblem)

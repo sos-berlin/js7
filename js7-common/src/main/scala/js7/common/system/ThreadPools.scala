@@ -94,7 +94,7 @@ object ThreadPools
     (implicit F: Sync[F])
   : Resource[F, Scheduler] =
     orCommon
-      .match_ {
+      .match {
         case Some(scheduler) =>
           Resource.pure[F, Scheduler](CorrelId.enableScheduler(scheduler))
         case None =>

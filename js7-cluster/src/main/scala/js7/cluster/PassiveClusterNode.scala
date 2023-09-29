@@ -184,7 +184,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
 
   private def backgroundNotifyActiveNodeAboutRestart(recoveredClusterState: ClusterState): Task[Unit] =
     recoveredClusterState
-      .match_ {
+      .match {
         case ClusterState.Empty =>
           Task.unit
 

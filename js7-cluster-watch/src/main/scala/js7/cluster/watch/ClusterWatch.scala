@@ -192,7 +192,7 @@ object ClusterWatch
         Right(None -> reportedClusterState)
       } else
         maybeEvent
-          .match_ {
+          .match {
             case Some(_: ClusterSwitchedOver) =>
               // ClusterSwitchedOver is applied by each node and is considered reliable
               Checked.unit
@@ -212,7 +212,7 @@ object ClusterWatch
           }
           .>>(clusterState
             .applyEvents(maybeEvent.map(NoKey <-: _))
-            .match_ {
+            .match {
               case Left(problem) =>
                 logger.warn(s"$from: $problem")
                 Left(ClusterWatchEventMismatchProblem(
