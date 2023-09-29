@@ -175,8 +175,8 @@ object BasicParsers
         case None => failWith(s"Expected keyword $key=")
         case Some(o) =>
           val A1 = implicitClass[A1]
-          if (!A1.isAssignableFrom(o.getClass))
-            if (A1.eq(classOf[Int]) && o.getClass.eq(classOf[Integer]))
+          if !A1.isAssignableFrom(o.getClass) then
+            if A1.eq(classOf[Int]) && o.getClass.eq(classOf[Integer]) then
               pure(o.asInstanceOf[Integer].toInt.asInstanceOf[A1])
             else
               failWith(s"Expected keyword $key=<${implicitClass[A1].simpleScalaName}>, " +
@@ -228,7 +228,7 @@ object BasicParsers
 
   def specificKeyValue[V](name: String, valueParser: Parser[V]): Parser[V] = {
     val keywordPart: Parser0[Unit] =
-      if (name.isEmpty)
+      if name.isEmpty then
         pure(())
       else
         keyword(name) <* (w ~ char('=') ~ w)

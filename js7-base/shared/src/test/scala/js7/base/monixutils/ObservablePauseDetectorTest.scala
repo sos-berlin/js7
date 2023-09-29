@@ -12,7 +12,7 @@ final class ObservablePauseDetectorTest extends OurTestSuite
 {
   private val pausingObservable = Observable.fromIterable(1 to 5)
     .doOnNext(i =>
-      Task.sleep(if (i == 3) 2.s else if (i == 4) 3.s else 100.ms)) // Long pause before the third element
+      Task.sleep(if i == 3 then 2.s else if i == 4 then 3.s else 100.ms)) // Long pause before the third element
 
   "detectPauses" in {
     implicit val scheduler = TestScheduler()

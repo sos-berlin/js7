@@ -29,7 +29,7 @@ trait Service {
 
   final def untilStopped: Task[Unit] =
     Task.defer {
-      if (!started.get())
+      if !started.get() then
         Task.raiseError(Problem.pure(
           s"$service.untilStopped but service has not been started").throwable)
       else
@@ -52,7 +52,7 @@ trait Service {
               case ExitCase.Error(t) =>
                 // A service should not die
                 val msg = s"$service died after ${since.elapsed.pretty}: ${t.toStringWithCauses}"
-                if (t.isInstanceOf[MainServiceTerminationException]) {
+                if t.isInstanceOf[MainServiceTerminationException] then {
                   logger.debug(msg)
                 } else {
                   logger.error(msg, t.nullIfNoStackTrace)
@@ -90,7 +90,7 @@ object Service
     Resource.make(
       acquire =
         newService.flatTap(service =>
-          if (service.started.getAndSet(true))
+          if service.started.getAndSet(true) then
             Task.raiseError(new IllegalStateException(s"$toString started twice"))
           else
             logger.traceTask(s"$service start")(

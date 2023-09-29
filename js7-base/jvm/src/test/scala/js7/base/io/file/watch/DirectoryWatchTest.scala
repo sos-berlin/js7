@@ -133,7 +133,7 @@ final class DirectoryWatchTest extends OurTestSuite
         .foreach(buffer :+= _)
       var first = 0
 
-      for (n <- Seq(1000, 1, 10, 500, 3, 50)) {
+      for n <- Seq(1000, 1, 10, 500, 3, 50) do {
         buffer = Vector.empty
         val indices = first + 0 until first + n
         val fileCreationFuture = Observable.fromIterable(indices).executeAsync.foreach { i =>

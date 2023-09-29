@@ -113,20 +113,20 @@ final class CheckedTest extends OurTestSuite
   }
 
   "for-comprehension (flatMap)" in {
-    val valid = for {
+    val valid = for
       a <- right1
       b <- right2
-    } yield a -> b
+    yield a -> b
     assert(valid == Right(1 -> 2))
   }
 
   "for-comprehension (flatMap), fail-fast" in {
-    val left = for {
+    val left = for
       a <- right1
       b <- leftX
       c <- right2
       d <- leftY
-    } yield (a, b, c, d)
+    yield (a, b, c, d)
     assert(left == Left(Problem("X")))
   }
 
@@ -167,7 +167,7 @@ final class CheckedTest extends OurTestSuite
   }
 
   "traverse with Checked" in {
-    def check(i: Int): Checked[String] = if ((i % 2) == 0) Right(i.toString) else Left(Problem(s"odd $i"))
+    def check(i: Int): Checked[String] = if (i % 2) == 0 then Right(i.toString) else Left(Problem(s"odd $i"))
     assert(Left(Problem("PROBLEM")).traverse(check) == Right(Left(Problem("PROBLEM"))))
     assert(Right(1).traverse(check) == Left(Problem("odd 1")))
     assert(Right(2).traverse(check) == Right(Right("2")))
@@ -190,7 +190,7 @@ final class CheckedTest extends OurTestSuite
   }
 
   "traverse a List" in {
-    def check(i: Int): Checked[String] = if ((i % 2) == 0) Right(i.toString) else Left(Problem(s"odd $i"))
+    def check(i: Int): Checked[String] = if (i % 2) == 0 then Right(i.toString) else Left(Problem(s"odd $i"))
     //assert(List(1, 2, 3).traverse(check) == Left(Problem.multiple("odd 1", "odd 3")))
     assert(List(1, 2, 3).traverse(check) == Left(Problem("odd 1")))
     assert(List(2, 4, 6).traverse(check) == Right(List("2", "4", "6")))
@@ -258,7 +258,7 @@ final class CheckedTest extends OurTestSuite
       var lastI = 0
       def f(i: Int) = {
         lastI = i
-        if (i % 2 == 0) Right(i) else Left(Problem("ODD"))
+        if i % 2 == 0 then Right(i) else Left(Problem("ODD"))
       }
       assert(List(2, 3, 4).failFastMap(f) == Left(Problem("ODD")))
       assert(lastI == 3)

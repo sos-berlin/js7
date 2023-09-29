@@ -77,7 +77,7 @@ final class DirectoryEventDelayerTest extends OurTestSuite with BeforeAndAfterAl
 
   "FileModifed delays even more" in {
     ack = publishSubject.onNext(aFileAdded).await(99.s)
-    for (_ <- 1 to 3) {
+    for _ <- 1 to 3 do {
       scheduler.tick(1.s)
       ack = publishSubject.onNext(aFileModified).await(99.s)
     }
@@ -120,7 +120,7 @@ final class DirectoryEventDelayerTest extends OurTestSuite with BeforeAndAfterAl
 
     val addedEvents = paths.map(FileAdded(_))
     val addedSince = Deadline.now
-    for (event <- addedEvents) {
+    for event <- addedEvents do {
       ack.syncOnContinue(publishSubject.onNext(event).await(9.s))
         .await(9.s) shouldBe Continue
       sleep(Random.nextInt(2).ms)
@@ -131,7 +131,7 @@ final class DirectoryEventDelayerTest extends OurTestSuite with BeforeAndAfterAl
 
     val deletedEvents = paths.map(FileDeleted(_))
     val deletedSince = Deadline.now
-    for (event <- deletedEvents) {
+    for event <- deletedEvents do {
       ack.syncOnContinue(publishSubject.onNext(event).await(9.s))
         .await(9.s) shouldBe Continue
     }

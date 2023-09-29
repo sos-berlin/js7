@@ -32,7 +32,7 @@ extends SignatureVerifier
   def companion = X509SignatureVerifier
 
   @TestOnly
-  def publicKeys = for (o <- trustedCertificates) yield
+  def publicKeys = for o <- trustedCertificates yield
     CertificatePem.toPem(ByteArray.unsafeWrap(o.x509Certificate.getEncoded))
 
   def publicKeysToStrings =
@@ -56,10 +56,10 @@ extends SignatureVerifier
           // We have to try each of the installed trusted certificates !!!
           trustedRootCertificates.iterator
             .map(rootCert =>
-              for {
+              for
                 signerId <- verifySignature(document, signature, signerCertificate)
                 _ <- verifySignersCertificate(signerCertificate, rootCert.x509Certificate.getPublicKey)
-              } yield signerId)
+              yield signerId)
             .takeWhileInclusive(_.isLeft)
             .toVector
             .lastOption match {
@@ -77,7 +77,7 @@ extends SignatureVerifier
       sig.initVerify(cert.x509Certificate.getPublicKey)
       sig.update(document.unsafeArray)
       val verified = sig.verify(signature.byteArray.unsafeArray)
-      if (!verified) Left(TamperedWithSignedMessageProblem)
+      if !verified then Left(TamperedWithSignedMessageProblem)
       else Right(SignerId(cert.x509Certificate.getSubjectX500Principal.toString))
     }.flatten
 
@@ -118,9 +118,9 @@ object X509SignatureVerifier extends SignatureVerifier.Companion
           .toCheckedKeyedMap(_.signersDistinguishedName, duplicateDNsToProblem)
           .map { signerDNToTrustedCertificate =>
             val rootCertificates = trustedCertificates.filter(_.isCA)
-            for (o <- rootCertificates) logger.debug(
+            for o <- rootCertificates do logger.debug(
               s"Trusting signatures signed with a certificate which is signed with root $o")
-            for (o <- signerDNToTrustedCertificate.values) logger.debug(
+            for o <- signerDNToTrustedCertificate.values do logger.debug(
               s"Trusting signatures signed with $o")
             new X509SignatureVerifier(
               trustedCertificates,

@@ -37,7 +37,7 @@ final class RefCountedResource[A: Tag](base: Resource[Task, A])
   private def releaseCached(label: String)(cached: Cached): Task[Unit] =
     lock.lock(s"$label->releaseCached")(Task.defer {
       cached.refCount -= 1
-      if (cached.releaseOnZero && cached.refCount == 0)
+      if cached.releaseOnZero && cached.refCount == 0 then
         cached.release
       else
         Task.unit
@@ -47,7 +47,7 @@ final class RefCountedResource[A: Tag](base: Resource[Task, A])
     lock.lock(src.value + "->clear")(Task.defer {
       maybeCached.fold(Task.unit) { cached =>
         maybeCached = None
-        if (cached.refCount == 0)
+        if cached.refCount == 0 then
           cached.release
         else {
           cached.releaseOnZero = true

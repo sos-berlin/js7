@@ -11,7 +11,7 @@ final class LazyTest extends OurTestSuite
     var counter = 0
     val a = Lazy({ counter += 1; 7 })
     assert(!a.isDefined)
-    for (_ <- a) fail()
+    for _ <- a do fail()
     //assert(a.map(_ * 3 ) == None)
     assert(a.toOption == None)
     assert(a.value == 7)
@@ -19,7 +19,7 @@ final class LazyTest extends OurTestSuite
     assert(a.toOption == Some(7))
     assert(a.isDefined)
     var foreachCalled = 0
-    for (x <- a) foreachCalled += x
+    for x <- a do foreachCalled += x
     assert(foreachCalled == 7)
     //assert(a.map(_ * 3 ) == Some(21))
     assert(a.value == 7)

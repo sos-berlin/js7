@@ -18,7 +18,7 @@ object Uris {
     encodeQuery(kvs)
 
   final def encodeQuery(kvs: Iterable[(String, String)]): String =
-    if (kvs.isEmpty)
+    if kvs.isEmpty then
       ""
     else
       "?" + kvs
@@ -60,28 +60,28 @@ object Uris {
   private final class Encoder(reservedChars: String) {
     private val isAllowedChar = BitSet((allAsciii -- reservedChars.toSet).toSeq.map(_.toInt)*)
     def encode(string: String) =
-      if (string.forall(c => isAllowedChar(c)))
+      if string.forall(c => isAllowedChar(c)) then
         string
       else {
         val result = new StringBuilder(string.length)
         val part = new StringBuilder
         var i = 0
 
-        while (i < string.length) {
+        while i < string.length do {
           var c = string.charAt(i)
-          if (isAllowedChar(c)) {
+          if isAllowedChar(c) then {
             result.append(c)
             i += 1
           } else {
             // convert to UTF-8 before hex conversion
-            while (i < string.length && { c = string.charAt(i); !isAllowedChar(c)}) {
+            while i < string.length && { c = string.charAt(i); !isAllowedChar(c)} do {
               part.append(c)
               i += 1
-              if (c >= 0xD800 && c <= 0xDBFF) {
+              if c >= 0xD800 && c <= 0xDBFF then {
                 // Surrogate pair
-                if (i < string.length) {
+                if i < string.length then {
                   val d = string.charAt(i)
-                  if (d >= 0xDC00 && d <= 0xDFFF) {
+                  if d >= 0xDC00 && d <= 0xDFFF then {
                     part.append(d)
                     i += 1
                   }
@@ -91,14 +91,14 @@ object Uris {
 
             val bytes = part.toString.getBytes(UTF_8)
             part.clear()
-            for (byte <- bytes) {
+            for byte <- bytes do {
               result.append('%')
               var ch = Character.forDigit((byte >> 4) & 0xF, 16)
               // converting to use uppercase letter as part of the hex value if ch is a letter.
-              if (isLetter(ch)) ch = (ch - caseDiff).toChar
+              if isLetter(ch) then ch = (ch - caseDiff).toChar
               result.append(ch)
               ch = Character.forDigit(byte & 0xF, 16)
-              if (isLetter(ch)) ch = (ch - caseDiff).toChar
+              if isLetter(ch) then ch = (ch - caseDiff).toChar
               result.append(ch)
             }
           }

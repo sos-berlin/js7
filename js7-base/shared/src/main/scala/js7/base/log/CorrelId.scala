@@ -22,13 +22,13 @@ sealed trait CorrelId extends GenericString
     or(CorrelId.generate())
 
   def or(correlId: => CorrelId): CorrelId =
-    if (isEmpty) correlId else this
+    if isEmpty then correlId else this
 
   def toOption: Option[CorrelId] =
-    if (isEmpty) None else Some(this)
+    if isEmpty then None else Some(this)
 
   override def toString =
-    if (isEmpty) "" else string
+    if isEmpty then "" else string
 
   /** ASCII encoding is required for HTTP header values. */
   def toAscii: String
@@ -41,7 +41,7 @@ sealed trait CorrelId extends GenericString
     bind(body)(CanBindCorrelId.synchronous)
 
   def fold[A](whenEmpty: => A, whenNonEmpty: CorrelId => A): A =
-    if (isEmpty) whenEmpty
+    if isEmpty then whenEmpty
     else whenNonEmpty(this)
 }
 
@@ -54,7 +54,7 @@ object CorrelId extends GenericString.Checked_[CorrelId]
   private[log] val local = Local(CorrelId.empty)
 
   private lazy val nextCorrelId: NextCorrelId =
-    if (isTest && isIntelliJIdea)
+    if isTest && isIntelliJIdea then
       new NextCorrelId {
         private val next = Atomic(LongCorrelId.checked("Cor_____").orThrow.long)
         def apply() = LongCorrelId(next.incrementAndGet())
@@ -97,7 +97,7 @@ object CorrelId extends GenericString.Checked_[CorrelId]
     throw new NotImplementedError("CorrelId.unchecked is not implemented")
 
   override def checked(string: String): Checked[CorrelId] =
-    if (string.isEmpty)
+    if string.isEmpty then
       Right(EmptyCorrelId)
     else
       LongCorrelId.checked(string)
@@ -106,7 +106,7 @@ object CorrelId extends GenericString.Checked_[CorrelId]
     c => c.as[String].flatMap(o => checked(o).toDecoderResult(c.history))
 
   def generate(): CorrelId =
-    if (!isEnabled)
+    if !isEnabled then
       CorrelId.empty
     else {
       generateCount += 1
@@ -117,7 +117,7 @@ object CorrelId extends GenericString.Checked_[CorrelId]
     F.defer(body(current))
 
   def current: CorrelId =
-    if (!CorrelId.isEnabled)
+    if !CorrelId.isEnabled then
       CorrelId.empty
     else {
       currentCorrelIdCount += 1
@@ -125,7 +125,7 @@ object CorrelId extends GenericString.Checked_[CorrelId]
     }
 
   def isolate[R](body: LogCorrelId => R): R =
-    if (!CorrelId.isEnabled)
+    if !CorrelId.isEnabled then
       body(EmptyLogCorrelId)
     else {
       val previous = current
@@ -141,7 +141,7 @@ object CorrelId extends GenericString.Checked_[CorrelId]
   extends LogCorrelId
   {
     def :=(correlId: CorrelId): Unit =
-      if (correlId != currCorrelId) {
+      if correlId != currCorrelId then {
         currCorrelId = correlId
         local.update(correlId)
       }
@@ -166,7 +166,7 @@ object CorrelId extends GenericString.Checked_[CorrelId]
     CanBindCorrelId.synchronous.bind(CorrelId.generate())(body)
 
   def enableScheduler(scheduler: Scheduler): Scheduler =
-    if (!CorrelId.couldBeEnabled)
+    if !CorrelId.couldBeEnabled then
       scheduler
     else
       TracingScheduler(scheduler)
@@ -215,7 +215,7 @@ object CorrelId extends GenericString.Checked_[CorrelId]
       val array = new Array[Char](width)
       var i = width - 1
       var a = long
-      while (i >= 0) {
+      while i >= 0 do {
         array(i) = toOurBase64_((a & 0x3f).toInt)
         a >>>= 6
         i -= 1
@@ -232,19 +232,19 @@ object CorrelId extends GenericString.Checked_[CorrelId]
       var long = 0L
       var i = 0
       val n = string.length
-      if (n > width)
+      if n > width then
         invalidCorrelId
       else {
         // string is interpreted left aligned, filled with zeros '_' to the right
-        while (i < width) {
-          val c: Char = if (i < n) string(i) else '_'
-          if (c < 0 || c >= fromBase64_.length) return invalidCorrelId
+        while i < width do {
+          val c: Char = if i < n then string(i) else '_'
+          if c < 0 || c >= fromBase64_.length then return invalidCorrelId
           val v = fromBase64_(c)
-          if (v == -1) return invalidCorrelId
+          if v == -1 then return invalidCorrelId
           long = (long << 6) | v
           i += 1
         }
-        if ((long & ~bitMask) != 0)
+        if (long & ~bitMask) != 0 then
           invalidCorrelId
         else
           Right(LongCorrelId(long))
@@ -264,7 +264,7 @@ object CorrelId extends GenericString.Checked_[CorrelId]
   }
 
   def logStatisticsIfEnabled(): Unit =
-    if (CorrelId.isEnabled) logStatistics()
+    if CorrelId.isEnabled then logStatistics()
 
   def logStatistics(): Unit = {
     // Logger must not be instantiated early, because it recursively uses this CorrelId object

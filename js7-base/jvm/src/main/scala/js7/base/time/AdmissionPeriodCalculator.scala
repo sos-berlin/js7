@@ -43,10 +43,10 @@ sealed trait AdmissionPeriodCalculator
       .from(first)
       .concat(
         View.unfold(from)(local =>
-          for {
+          for
             next <- nextCalendarPeriodStart(local) if local < next
             localInterval <- toLocalInterval(next) //if !first.contains(localInterval)
-          } yield localInterval -> next)
+          yield localInterval -> next)
           // first may be duplicate with the first LocalInterval of the tail
           .dropWhile(first contains _))
   }
@@ -130,7 +130,7 @@ object AdmissionPeriodCalculator
 
     private def toLocalInterval0(local: LocalDateTime) = {
       val lastInterval = toLocalInterval1(calendarPeriodStart(local) - JEpsilon)
-      if (lastInterval.contains(local))
+      if lastInterval.contains(local) then
         lastInterval
       else
         // Overlap from last calendar period — TODO Caller should check overlap
@@ -216,7 +216,7 @@ object AdmissionPeriodCalculator
 
     private[time] def admissionPeriodStart(local: LocalDateTime) = {
       val a = startOfMonth(local) plusSeconds admissionPeriod.secondOfMonth
-      if (a.getMonth == local.getMonth)
+      if a.getMonth == local.getMonth then
         a
       else
         endOfMonth(local) plusSeconds admissionPeriod.secondOfDay
@@ -263,7 +263,7 @@ object AdmissionPeriodCalculator
     private[time] def admissionPeriodStart(local: LocalDateTime): LocalDateTime = {
       val startOfMonthSeconds = startOfMonth(local).toEpochSecond(NoOffset)
       val startOfMonthSinceMonday = sinceStartOfWeek(startOfMonthSeconds)
-      val shiftWeek = if (startOfMonthSinceMonday / DaySeconds > admissionPeriod.dayOfWeek) WeekSeconds else 0
+      val shiftWeek = if startOfMonthSinceMonday / DaySeconds > admissionPeriod.dayOfWeek then WeekSeconds else 0
       val seconds = startOfMonthSeconds - startOfMonthSinceMonday + shiftWeek +
         admissionPeriod.secondOfWeeks
       LocalDateTime.ofEpochSecond(seconds, 0, NoOffset)

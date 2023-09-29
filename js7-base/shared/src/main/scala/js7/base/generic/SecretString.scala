@@ -16,7 +16,7 @@ final case class SecretString(string: String)
   def provideCharArray[A](body: Array[Char] => A): A = {
     val chars = string.toCharArray
     try body(chars)
-    finally for (i <- chars.indices) chars(i) = '\u0000'
+    finally for i <- chars.indices do chars(i) = '\u0000'
   }
 
   def isEmpty = string.isEmpty
@@ -60,7 +60,7 @@ object SecretString
     */
   def timingAttackSecureEqual(a: String, b: String) = {
     @tailrec def xor(i: Int, result: Int): Int =
-      if (i == a.length)
+      if i == a.length then
         result
       else
         xor(i + 1, result | (a(i) ^ b(i)))

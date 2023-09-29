@@ -21,6 +21,6 @@ object DelayConf {
     DelayConf(delays, delays.last)
 
   def maybe(delays: Seq[FiniteDuration]): Option[DelayConf] =
-    for (delays <- NonEmptySeq.fromSeq(delays)) yield
+    for delays <- NonEmptySeq.fromSeq(delays) yield
       DelayConf(delays)
 }

@@ -13,13 +13,13 @@ final class TaskObserverTest extends OurAsyncTestSuite
     val n = 10
     val taskObserver = TaskObserver(subject)
     val send = Task.tailRecM(1)(i =>
-      if (i <= n)
+      if i <= n then
         taskObserver.send(i).as(Left(i + 1))
       else
         Task.pure(Right(())) )
-    for {
+    for
       _ <- (send >> taskObserver.complete).runToFuture
       result <- observing
-    } yield assert(result == (1 to n))
+    yield assert(result == (1 to n))
   }
 }

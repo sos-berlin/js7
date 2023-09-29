@@ -39,7 +39,7 @@ object JavaDataJsonCodecs
 
   trait InstantDecoder extends Decoder[Instant] {
     def apply(cursor: HCursor) =
-      if (cursor.value.isNumber)
+      if cursor.value.isNumber then
         cursor.as[Long] map Instant.ofEpochMilli
       else
         cursor.as[String].map(o => Instant.from(dateTimeFormatter parse o))

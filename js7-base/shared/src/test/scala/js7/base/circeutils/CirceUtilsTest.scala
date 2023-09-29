@@ -77,13 +77,13 @@ final class CirceUtilsTest extends OurTestSuite
     }
 
     "Interpolating String value" in {
-      for (string <- Seq("STRING", "STRING\"", "STRING\"\u007f."))
+      for string <- Seq("STRING", "STRING\"", "STRING\"\u007f.") do
         assert(json"""{ "A": "!$string" }""" == Json.obj("A" -> Json.fromString("!" + string)))
     }
 
     "Interpolating GenericString value" in {
       case class MyGenericString(string: String) extends GenericString
-      for (string <- Seq(MyGenericString("STRING"), MyGenericString("STRING\")"), MyGenericString("STRING\"\u007f."))) {
+      for string <- Seq(MyGenericString("STRING"), MyGenericString("STRING\")"), MyGenericString("STRING\"\u007f.")) do {
         assert(json"""{ "A": "$string" }""" == Json.obj("A" -> Json.fromString(string.string)))
         assert(json"""{ "A": "!$string/$string" }""" == Json.obj("A" -> Json.fromString(s"!$string/$string")))
         assert(json"""{ "A": "$string/$string" }""" == Json.obj("A" -> Json.fromString(s"$string/$string")))
@@ -150,7 +150,7 @@ final class CirceUtilsTest extends OurTestSuite
 
   "Codec.checked" in {
     def checkSimple(simple: Simple) =
-      if (simple.int == 0)
+      if simple.int == 0 then
         Left(Problem("PROBLEM"))
       else
         Right(simple.copy(string = simple.string + "🔷"))

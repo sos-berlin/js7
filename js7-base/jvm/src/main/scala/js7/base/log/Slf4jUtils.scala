@@ -40,7 +40,7 @@ object Slf4jUtils
         }
 
       def log(level: LogLevel, message: => String): Unit =
-        if (isEnabled(level)) level match {
+        if isEnabled(level) then level match {
           case LogNone =>
           case Trace => delegate.trace(message)
           case Debug => delegate.debug(message)
@@ -50,7 +50,7 @@ object Slf4jUtils
         }
 
       def log(level: LogLevel, message: => String, throwable: Throwable): Unit =
-        if (isEnabled(level)) level match {
+        if isEnabled(level) then level match {
           case LogNone =>
           case Trace => delegate.trace(message, throwable)
           case Debug => delegate.debug(message, throwable)
@@ -60,7 +60,7 @@ object Slf4jUtils
         }
 
       def log(level: LogLevel, marker: Marker, message: => String): Unit =
-        if (isEnabled(level, marker)) level match {
+        if isEnabled(level, marker) then level match {
           case LogNone =>
           case Trace => delegate.trace(marker, message)
           case Debug => delegate.debug(marker, message)

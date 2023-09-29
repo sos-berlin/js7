@@ -80,7 +80,7 @@ object HttpClient
       case HttpException.HasProblem(problem) =>
         Success(problem)
       case t: HttpException if t.getMessage != null =>
-        val msg = t.getMessage + (if (t.getCause == null) "" else ", caused by " + t.getCause)
+        val msg = t.getMessage + (if t.getCause == null then "" else ", caused by " + t.getCause)
         Success(Problem.withHttpStatus(msg, t, httpStatusCode = t.statusInt))
       case t =>
         Failure(t.appendCurrentStackTrace)

@@ -9,9 +9,9 @@ final class CorrelIdLog4jStringMap(private[log] val correlId: CorrelId)
 extends StringMap
 {
   private def correlIdString =
-    if (correlId != null)
+    if correlId != null then
       correlId.fixedWidthString
-    else if (isTest)
+    else if isTest then
       throw new NullPointerException("CorrelIdLog4jStringMap: correlId is null") // ???
     else
       nullString

@@ -30,16 +30,16 @@ final class ByteArray private(val unsafeArray: Array[Byte])
   }
 
   def slice(from: Int, until: Int) =
-    if (from >= until)
+    if from >= until then
       ByteArray.empty
-    else if (from <= 0 && until >= unsafeArray.length)
+    else if from <= 0 && until >= unsafeArray.length then
       this
     else
       new ByteArray(java.util.Arrays.copyOfRange(unsafeArray, from max 0, until min length))
 
   def ++(o: ByteArray) =
-    if (o.isEmpty) this
-    else if (isEmpty) o
+    if o.isEmpty then this
+    else if isEmpty then o
     else {
       val a = new Array[Byte](length + o.length)
       arraycopy(unsafeArray, 0, a, 0, unsafeArray.length)
@@ -99,7 +99,7 @@ object ByteArray extends ByteSequence[ByteArray]
     java.util.Arrays.equals(a.unsafeArray, b.unsafeArray)
 
   def fromArray(bytes: Array[Byte]) =
-    if (bytes.isEmpty)
+    if bytes.isEmpty then
       empty
     else
       new ByteArray(bytes.clone())
@@ -156,7 +156,7 @@ object ByteArray extends ByteSequence[ByteArray]
         val byteArrays = mutable.ArrayBuffer.from(byteSeqsOnce)
         val result = new Array[Byte](byteArrays.view.map(_.length).sum)
         var pos = 0
-        for (byteArray <- byteArrays) {
+        for byteArray <- byteArrays do {
           byteArray.copyToArray(result, pos, byteArray.length)
           pos += byteArray.length
         }
@@ -174,15 +174,15 @@ object ByteArray extends ByteSequence[ByteArray]
     var eof = false
     var overflow = false
     val limit1 = limit min Int.MaxValue - 1 // Avoids overflow when adding 1
-    while (!eof && !overflow && totalLength <= limit) {
+    while !eof && !overflow && totalLength <= limit do {
       val size1 = inputStreamBufferSize min limit1 - totalLength + 1
       val bytes = new Array[Byte](size1)
       val readLength = in.read(bytes, 0, size1)
       eof = readLength <= 0
-      if (!eof) {
+      if !eof then {
         overflow = totalLength + readLength > limit
         val length = readLength min limit - totalLength
-        if (length == bytes.length) {
+        if length == bytes.length then {
           buffer += ByteArray.unsafeWrap(bytes)
         } else
           buffer += ByteArray.fromArray(bytes, 0, length)
@@ -190,6 +190,6 @@ object ByteArray extends ByteSequence[ByteArray]
       }
     }
     val result = ByteArray.combineAll(buffer)
-    if (overflow) Left(result) else Right(result)
+    if overflow then Left(result) else Right(result)
   }
 }

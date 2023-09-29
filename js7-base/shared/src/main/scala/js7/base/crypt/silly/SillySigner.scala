@@ -30,7 +30,7 @@ object SillySigner extends DocumentSigner.Companion
   def typeName = SillySignature.TypeName
 
   def checked(privateKey: ByteArray, password: SecretString = SecretString.empty) =
-    if (!password.string.isEmpty )
+    if !password.string.isEmpty  then
       Left(Problem.pure("Password for SillySigner must be empty"))
     else
       Right(new SillySigner(SillySignature(new String(privateKey.toArray, UTF_8))))

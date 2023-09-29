@@ -43,7 +43,7 @@ private object OperatingSystemSpecific
 {
   private val logger = Logger[this.type]
 
-  private[process] val OS: OperatingSystemSpecific = if (isWindows) OperatingSystemSpecific.Windows else OperatingSystemSpecific.Unix
+  private[process] val OS: OperatingSystemSpecific = if isWindows then OperatingSystemSpecific.Windows else OperatingSystemSpecific.Unix
 
   private object Unix extends OperatingSystemSpecific {
     val shellFileExtension = ".sh"

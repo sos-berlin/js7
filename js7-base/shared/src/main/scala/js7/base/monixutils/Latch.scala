@@ -22,7 +22,7 @@ final class Latch extends Latch.ReadOnly
   /** Close and return `task` iff switch was previously off. */
   def switchThen[A](task: => Task[A]): Task[Option[A]] =
     switch.flatMap(hasSwitched =>
-      if (hasSwitched)
+      if hasSwitched then
         task.map(Some(_))
       else
         Task.none)

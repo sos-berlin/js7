@@ -46,7 +46,7 @@ with Monoid[ByteSeq] with Eq[ByteSeq] with Show[ByteSeq]
   def fromArray(bytes: Array[Byte]): ByteSeq
 
   def fromArray(bytes: Array[Byte], from: Int, until: Int) =
-    if (bytes.isEmpty)
+    if bytes.isEmpty then
       empty
     else
       unsafeWrap(bytes.slice(from, until))
@@ -94,7 +94,7 @@ with Monoid[ByteSeq] with Eq[ByteSeq] with Show[ByteSeq]
   def show(byteSeq: ByteSeq) = {
     val len = length(byteSeq)
     val prefix = take(byteSeq, maxShowLength)
-    if (iterator(prefix).forall(o => o >= ' ' && o < '\u007f' || o == '\n' || o == '\r'))
+    if iterator(prefix).forall(o => o >= ' ' && o < '\u007f' || o == '\n' || o == '\r') then
       "»" + unsafeArray(byteSeq).map(byteToPrintable).mkString + "«" +
         (len > maxShowLength) ?? (s" ($len bytes)")
      else
@@ -151,8 +151,8 @@ with Monoid[ByteSeq] with Eq[ByteSeq] with Show[ByteSeq]
   def indexOf(byteSeq: ByteSeq, byte: Byte, from: Int, until: Int): Int = {
     var i = from
     val u = until min length(byteSeq)
-    while (i < u && at(byteSeq, i) != byte) i = i + 1
-    if (i == u) -1 else i
+    while i < u && at(byteSeq, i) != byte do i = i + 1
+    if i == u then -1 else i
   }
 
   def startsWith(byteSeq: ByteSeq, prefix: ByteSeq): Boolean = {
@@ -175,7 +175,7 @@ with Monoid[ByteSeq] with Eq[ByteSeq] with Show[ByteSeq]
     slice(byteSeq, n, length(byteSeq))
 
   def slice(byteSeq: ByteSeq, from: Int, until: Int): ByteSeq =
-    if (from <= 0 && lengthIs(byteSeq) <= until)
+    if from <= 0 && lengthIs(byteSeq) <= until then
       byteSeq
     else
       unsafeWrap(unsafeArray(byteSeq).slice(from, until))
@@ -188,7 +188,7 @@ with Monoid[ByteSeq] with Eq[ByteSeq] with Show[ByteSeq]
         val n = (len + chunkSize - 1) / chunkSize
         val array = new Array[ByteSeq](n)
         var i = 0
-        while (i < n) {
+        while i < n do {
           array(i) = slice(byteSeq, i * chunkSize, (i + 1) * chunkSize)
           i += 1
         }
@@ -224,7 +224,7 @@ with Monoid[ByteSeq] with Eq[ByteSeq] with Show[ByteSeq]
     toByteSequence(byteSeq)(ByteArray)
 
   def toByteSequence[A](byteSeq: ByteSeq)(implicit A: ByteSequence[A]): A =
-    if (A.asInstanceOf[ByteSequence[ByteSeq]] eq this)
+    if A.asInstanceOf[ByteSequence[ByteSeq]] eq this then
       byteSeq.asInstanceOf[A]
     else
       A.unsafeWrap(unsafeArray(byteSeq))

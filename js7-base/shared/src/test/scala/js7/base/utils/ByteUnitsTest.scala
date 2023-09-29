@@ -9,7 +9,7 @@ import js7.base.utils.ByteUnits.{formatNumber, toKBGB, toKiBGiB, toMB}
 final class ByteUnitsTest extends OurTestSuite
 {
   "formatNumber" in {
-    for (i <- 0 to 9) {
+    for i <- 0 to 9 do {
       assert(formatNumber(i, 1, "x") == i.toString + "x")
     }
     assert(formatNumber(10, 1, "x") == "10x")

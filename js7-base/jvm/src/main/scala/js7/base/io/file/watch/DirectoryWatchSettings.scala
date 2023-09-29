@@ -29,7 +29,7 @@ final case class DirectoryWatchSettings(
 
 object DirectoryWatchSettings {
   def fromConfig(config: Config): Checked[DirectoryWatchSettings] =
-    for {
+    for
       watchDelay <- config.finiteDuration("js7.directory-watch.watch-delay")
       pollTimeout <- config.finiteDuration("js7.directory-watch.poll-timeout")
       retryDelays <- catchNonFatal(NonEmptySeq
@@ -43,7 +43,7 @@ object DirectoryWatchSettings {
           .getDurationList("js7.directory-watch.log-delays")
           .asScala.map(_.toFiniteDuration).toVector)
         .getOrElse(NonEmptySeq.one(10.s)))
-    } yield
+    yield
       DirectoryWatchSettings(watchDelay, pollTimeout, retryDelays, directorySilence, logDelays)
 
   def forTest(pollTimeout: FiniteDuration = 60.s): DirectoryWatchSettings =

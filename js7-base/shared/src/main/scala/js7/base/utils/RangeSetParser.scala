@@ -11,7 +11,7 @@ import js7.base.utils.RangeSetParser.*
 private final class RangeSetParser[A: Ordering: Ordinal](parseValue: Parser[A]) {
 
   def parse(string: String): Checked[RangeSet[A]] =
-    if (string.forall(isWhiteChar))
+    if string.forall(isWhiteChar) then
       Right(RangeSet.empty)
     else
       checkedParse(string, rangeSet)

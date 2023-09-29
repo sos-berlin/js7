@@ -15,7 +15,7 @@ class ScalaConcurrentHashSet[A] extends mutable.Set[A]
 
   final def insert(key: A): this.type = {
     val existingValue = delegate.putIfAbsent(key, UNIT)
-    if (existingValue != null) throw new DuplicateKeyException(s"'$key' has already been registered")
+    if existingValue != null then throw new DuplicateKeyException(s"'$key' has already been registered")
     this
   }
 

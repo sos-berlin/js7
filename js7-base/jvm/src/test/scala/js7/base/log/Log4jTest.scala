@@ -14,7 +14,7 @@ final class Log4jTest extends OurTestSuite {
   private val testSpeed = sys.props contains "test.speed"
 
   "Speed" in {
-    if (!testSpeed) {
+    if !testSpeed then {
       testSpeed(3, 3)
     } else {
       testSpeed(1000, 1000)
@@ -31,13 +31,13 @@ final class Log4jTest extends OurTestSuite {
       .toVector
       .parTraverse(i =>
         CorrelId.bindNew(Task {
-          for (j <- 1 to m) {
+          for j <- 1 to m do {
             logger.debug(s"$i-$j")
           }
         }))
       .await(199.s)
     logger.info(Stopwatch.itemsPerSecondString(started.elapsed, n * m, "lines"))
-    if (testSpeed) info(Stopwatch.itemsPerSecondString(started.elapsed, n * m, "lines"))
+    if testSpeed then info(Stopwatch.itemsPerSecondString(started.elapsed, n * m, "lines"))
   }
 }
 

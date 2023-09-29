@@ -30,7 +30,7 @@ object MonixBlocking
             .runSyncStep
             .fold(_.runSyncUnsafe(duration), identity)
         catch { case NonFatal(t) =>
-          if (t.getStackTrace.forall(_.getClassName != getClass.getName)) {
+          if t.getStackTrace.forall(_.getClassName != getClass.getName) then {
             t.appendCurrentStackTrace
           }
           throw t

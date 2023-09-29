@@ -20,7 +20,7 @@ extends Signature
   override def toString = s"Signature($toRawString)"
 
   def toRawString =
-    if (signatureString.length <= 33)
+    if signatureString.length <= 33 then
       signatureString
     else
       signatureString.take(15) + "..." + signatureString.substring(signatureString.length - 15)

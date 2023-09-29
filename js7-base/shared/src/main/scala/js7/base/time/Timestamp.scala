@@ -42,9 +42,9 @@ trait Timestamp extends Ordered[Timestamp] {
   def -(o: Timestamp): FiniteDuration =
     new FiniteDuration(subtractSaturating(toEpochMilli, o.toEpochMilli), MILLISECONDS)
 
-  final def min(o: Timestamp) = if (this < o) this else o
+  final def min(o: Timestamp) = if this < o then this else o
 
-  final def max(o: Timestamp) = if (this > o) this else o
+  final def max(o: Timestamp) = if this > o then this else o
 
   final def roundToNextSecond: Timestamp = copy((toEpochMilli + 999)/ 1000 * 1000)
 
@@ -64,7 +64,7 @@ trait Timestamp extends Ordered[Timestamp] {
   def pretty = toString.replace('T', ' ')
 
   override def toString =
-    if (toEpochMilli == 0) "Epoch" else toIsoString
+    if toEpochMilli == 0 then "Epoch" else toIsoString
 }
 
 object Timestamp
@@ -110,7 +110,7 @@ object Timestamp
 
     implicit final val jsonDecoder: Decoder[Timestamp] =
       cursor =>
-        if (cursor.value.isString)
+        if cursor.value.isString then
           cursor.as[String] map parse
         else
           cursor.as[Long] map ofEpochMilli

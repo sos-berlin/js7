@@ -18,7 +18,7 @@ object ProcessPidRetriever
   private[process] val hasJava9 = SourceVersion.values.map(_.toString) contains "RELEASE_9"
 
   lazy val maybeOwnPid: Option[Pid] =
-    if (!hasJava9)
+    if !hasJava9 then
       None
     else
       try {
@@ -36,9 +36,9 @@ object ProcessPidRetriever
       }
 
   private[process] val processToPid: Process => Option[Pid] =
-    if (hasJava9)
+    if hasJava9 then
       Java9ProcessToPid
-    else if (isWindows)
+    else if isWindows then
       WindowsBeforeJava9ProcessToPid
     else
       UnixBeforeJava9ProcessToPid
@@ -50,7 +50,7 @@ object ProcessPidRetriever
     def apply(process: Process) =
       try Some(Pid(pidMethod.invoke(process).asInstanceOf[java.lang.Long]))
       catch { case t: Throwable =>
-        if (!logged) {
+        if !logged then {
           logged = true
           //logger.error(s"(Logged only once) Process.pid: ${t.toStringWithCauses}", t)
         }

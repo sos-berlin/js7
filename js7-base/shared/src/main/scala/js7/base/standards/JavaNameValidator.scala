@@ -12,9 +12,9 @@ final class JavaNameValidator(
 extends NameValidator
 {
   def checked(name: String): Checked[String] =
-    if (name.isEmpty)
+    if name.isEmpty then
       Left(EmptyStringProblem(typeName))
-    else if (isValid(name))
+    else if isValid(name) then
       Right(name)
     else
       Left(InvalidNameProblem(typeName, name))

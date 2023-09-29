@@ -10,27 +10,27 @@ import scala.concurrent.duration.Deadline.now
 
 final class ListVectorPerformanceTest extends OurTestSuite
 {
-  if (sys.props.contains("test.speed")) {
+  if sys.props.contains("test.speed") then {
     "Vector" in {
-      for (_ <- 1 to 10) {
+      for _ <- 1 to 10 do {
         testVector(10, 1_000_000)
       }
-      for (_ <- 1 to 10) {
+      for _ <- 1 to 10 do {
         testVector(100_000, 10)
       }
     }
 
     "List" in {
-      for (_ <- 1 to 10) {
+      for _ <- 1 to 10 do {
         testList(10, 1_000_000)
       }
-      for (_ <- 1 to 10) {
+      for _ <- 1 to 10 do {
         testList(100_000, 10)
       }
     }
 
     "Vector again" in {
-      for (_ <- 1 to 10) {
+      for _ <- 1 to 10 do {
         testVector(5, 1_000_000)
       }
     }
@@ -38,9 +38,9 @@ final class ListVectorPerformanceTest extends OurTestSuite
 
   private def testVector(m: Int, n: Int): Unit = {
     val t = now
-    for (_ <- 1 to m) {
+    for _ <- 1 to m do {
       val buffer = Vector.newBuilder[String]
-      for (_ <- 1 to n) buffer += ""
+      for _ <- 1 to n do buffer += ""
       val vector = buffer.result()
       assert(vector.head == "")
     }
@@ -49,9 +49,9 @@ final class ListVectorPerformanceTest extends OurTestSuite
 
   private def testList(m: Int, n: Int): Unit = {
     val t = now
-    for (_ <- 1 to m) {
+    for _ <- 1 to m do {
       val buffer = ListBuffer.empty[String]
-      for (_ <- 1 to n) buffer += ""
+      for _ <- 1 to n do buffer += ""
       val list = buffer.toList
       assert(list.head == "")
     }

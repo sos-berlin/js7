@@ -32,7 +32,7 @@ final class ProcessTextFileBusyTest extends OurTestSuite {
     val stopwatch = new Stopwatch
     val (files, processes) = Task
       .parSequenceUnordered(
-        for (i <- (0 until n)) yield Task.defer {
+        for i <- (0 until n) yield Task.defer {
           val file = newTemporaryShellFile(s"#$i")
           file := "exit"
           new ProcessBuilder(s"$file").startRobustly()
@@ -40,12 +40,12 @@ final class ProcessTextFileBusyTest extends OurTestSuite {
         })
       .await(99.s)
       .unzip
-    for (p <- processes) {
+    for p <- processes do {
       val rc = p.waitFor()
       assert(rc == 0)
     }
     info(stopwatch.itemsPerSecondString(n, "processes"))
-    if (isWindows) sleep(500.ms)  // Windows may lock the files for a short while after process termination
+    if isWindows then sleep(500.ms)  // Windows may lock the files for a short while after process termination
     files foreach tryDelete
     scheduler.shutdown()
   }

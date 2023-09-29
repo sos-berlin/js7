@@ -26,7 +26,7 @@ trait LoggingAnyFreeSpec extends AnyFreeSpec {
         ctx.beforeTest()
         val tried = Try(testBody)
         ctx.afterTest(tried)
-        for (t <- tried.failed) throw t
+        for t <- tried.failed do throw t
       },
       suppressCorrelId = suppressTestCorrelId)
 

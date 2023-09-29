@@ -19,10 +19,10 @@ final class LockKeeperTest extends OurAsyncTestSuite
     (1 to 3).toVector.traverse(_ => Task.defer {
       val locks = keys map lockKeeper.lockResource
       val keyToMap = new ConcurrentHashMap[Int, Int]
-      for (k <- keys) keyToMap.put(k, 0)
+      for k <- keys do keyToMap.put(k, 0)
       val stopwatch = new Stopwatch
       val n = 10000
-      (for (_ <- 1 to n; k <- keys) yield
+      (for _ <- 1 to n; k <- keys yield
         locks(k).use(_ => Task[Unit] {
           val v = keyToMap.get(k)
           keyToMap.put(k, v + 1)

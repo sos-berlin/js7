@@ -42,7 +42,7 @@ final class AsyncLockTest extends OurAsyncTestSuite
     }
 
     "No AsyncLock, concurrent" in {
-      if (sys.runtime.availableProcessors == 1) {
+      if sys.runtime.availableProcessors == 1 then {
         fail("This concurrent test requires more than one processor")
       } else {
         val maxTries = 100
@@ -50,7 +50,7 @@ final class AsyncLockTest extends OurAsyncTestSuite
         Task
           .tailRecM(0)(i =>
             doTest(identity).flatMap(result =>
-              if (i < maxTries && result == expected) {
+              if i < maxTries && result == expected then {
                 logger.warn("Retry because tasks did not run concurrently")
                 Task.left(i + 1)
               } else
@@ -75,14 +75,14 @@ final class AsyncLockTest extends OurAsyncTestSuite
       val guardedVariable = Atomic(initial)
       val idleDuration = 100.µs
       Task.parSequence(
-        for (_ <- 1 to n) yield
+        for _ <- 1 to n yield
           body {
             Task {
               val found = guardedVariable.get()
               idleNanos(idleDuration)
               guardedVariable += 1
               found
-            } .tapEval(_ => if (Random.nextBoolean()) Task.shift else Task.unit)
+            } .tapEval(_ => if Random.nextBoolean() then Task.shift else Task.unit)
               .flatMap { found =>
                 Task {
                   guardedVariable := initial
@@ -99,7 +99,7 @@ final class AsyncLockTest extends OurAsyncTestSuite
     def idleNanos(duration: FiniteDuration): Unit = {
       val t = System.nanoTime()
       val nanos = duration.toNanos
-      while (System.nanoTime() - t < nanos) {}
+      while System.nanoTime() - t < nanos do {}
     }
   }
 

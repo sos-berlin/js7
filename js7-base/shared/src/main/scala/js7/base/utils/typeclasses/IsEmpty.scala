@@ -11,7 +11,7 @@ trait IsEmpty[A]
 
   /** None if a isEmpty, otherwise Some(a). */
   def emptyToNone(a: A): Option[A] =
-    if (isEmpty(a)) None else Some(a)
+    if isEmpty(a) then None else Some(a)
 }
 
 object IsEmpty

@@ -70,7 +70,7 @@ object GenericString
   trait NonEmpty[A <: GenericString] extends GenericString.Checked_[A]
   {
     override def checked(string: String): Checked[A] =
-      if (string.nonEmpty) super.checked(string)
+      if string.nonEmpty then super.checked(string)
       else Left(EmptyStringProblem(name))
   }
 

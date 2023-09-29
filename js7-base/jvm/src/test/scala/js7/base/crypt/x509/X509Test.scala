@@ -121,7 +121,7 @@ final class X509Test extends OurTestSuite
     }
   }
 
-  if (sys.props.contains("test.speed")) {
+  if sys.props.contains("test.speed") then {
     "Speed test" in {
       val n = 10_000
       withTemporaryDirectory("X509Test-") { dir =>
@@ -150,7 +150,7 @@ final class X509Test extends OurTestSuite
 
         val verifier = X509SignatureVerifier.checked(Seq(ca.certificateFile.byteArray), origin = ca.certificateFile.toString)
           .orThrow
-        for (_ <- 1 to 10) {
+        for _ <- 1 to 10 do {
           t = now
           Observable.fromIterable(signedStrings)
             .mapParallelUnorderedBatch()(signedString =>
@@ -170,7 +170,7 @@ object X509Test
   def verify(certificateFile: Path, documentFile: Path, signature: X509Signature): Checked[Seq[SignerId]] = {
     lazy val verifier = X509SignatureVerifier.checked(Seq(certificateFile.byteArray), origin = certificateFile.toString).orThrow
     val verified = verifier.verifyString(documentFile.contentString, signature)
-    if (verified.isRight) {
+    if verified.isRight then {
       assert(verifier.verifyString(documentFile.contentString + "X", signature) == Left(TamperedWithSignedMessageProblem))
     }
     verified

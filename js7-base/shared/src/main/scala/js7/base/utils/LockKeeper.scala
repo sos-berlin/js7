@@ -51,7 +51,7 @@ final class LockKeeper[K]
                 }))
         }
       }
-      if (info) {
+      if info then {
         logger.info(s"🟢 Acquired lock '$key' (${enclosing.value})")
       } else {
         //logger.trace(s"↙ Acquired lock '$key' (${enclosing.value})")
@@ -61,7 +61,7 @@ final class LockKeeper[K]
 
   private def release(token: Token): Task[Unit] =
     Task {
-      if (!token.released.getAndSet(true)) {
+      if !token.released.getAndSet(true) then {
         import token.key
         val handedOver = synchronized {
           keyToQueue(key).dequeueFirst(_ => true) match {
@@ -84,8 +84,8 @@ final class LockKeeper[K]
   override def toString =
     s"LockKeeper(${
       synchronized {
-        (for ((key, queue) <- keyToQueue) yield
-          if (queue.isEmpty) key.toString
+        (for (key, queue) <- keyToQueue yield
+          if queue.isEmpty then key.toString
           else s"$key (${queue.length} waiting)"
         ).mkString(", ")
       }

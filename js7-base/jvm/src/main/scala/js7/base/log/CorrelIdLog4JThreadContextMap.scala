@@ -53,9 +53,9 @@ with CopyOnWrite
       case null => dummyNullCorrelId  // Happens occasionally in test
       case o => o
     }
-    if (isTest) requireNonNull(correlId)
+    if isTest then requireNonNull(correlId)
 
-    if (last.correlId eq correlId)
+    if last.correlId eq correlId then
       last
     else {
       getReadOnlyContextDataCount2 += 1
@@ -94,7 +94,7 @@ object CorrelIdLog4JThreadContextMap
   def statistics: String = {
     val percent = {
       val n = getReadOnlyContextDataCount
-      if (n == 0)
+      if n == 0 then
         ""
       else {
         val a = 100 * getReadOnlyContextDataCount2 / n
@@ -112,7 +112,7 @@ object CorrelIdLog4JThreadContextMap
     Logger[this.type].trace(statistics)
 
   private def debug(string: => String): Unit =
-    if (isDebug) println(myClassName + " - " + string)
+    if isDebug then println(myClassName + " - " + string)
 
   private def myClassName =
     classOf[CorrelIdLog4JThreadContextMap].getName.stripSuffix("$")

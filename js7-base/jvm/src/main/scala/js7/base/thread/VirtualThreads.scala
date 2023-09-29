@@ -13,10 +13,10 @@ object VirtualThreads
   private var enabled = javaVersion >= 19 && (isTest || sys.props.contains("js7.VirtualThread"))
 
   private lazy val maybeNewVirtualThreadPerTaskExecutor: Option[() => ExecutorService] =
-    for {
+    for
       factory <- newVirtualThreadFactory
       newThreadPerTaskExecutor <- newThreadPerTaskExecutor
-    } yield
+    yield
       () => newThreadPerTaskExecutor(factory)
 
   @TestOnly
@@ -37,13 +37,13 @@ object VirtualThreads
       case None =>
         name => runnable => {
           val thread = new Thread(runnable)
-          if (name.nonEmpty) thread.setName(name)
+          if name.nonEmpty then thread.setName(name)
           thread
         }
     }
 
   private lazy val newThreadPerTaskExecutor: Option[ThreadFactory => ExecutorService] =
-    if (!enabled)
+    if !enabled then
       None
     else
       try {
@@ -55,7 +55,7 @@ object VirtualThreads
       } catch throwableToNone
 
   private lazy val newVirtualThreadFactory: Option[ThreadFactory] =
-    if (!enabled)
+    if !enabled then
       None
     else
       try {

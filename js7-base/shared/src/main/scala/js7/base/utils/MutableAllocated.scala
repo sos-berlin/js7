@@ -30,7 +30,7 @@ final class MutableAllocated[A](implicit src: sourcecode.Enclosing, tag: Tag[A])
   def acquire(resource: Resource[Task, A]): Task[A] =
     allocatedVar
       .update(allocated =>
-        if (finallyReleased)
+        if finallyReleased then
           Task.raiseError(new IllegalStateException(
             s"$toString: has been finally released — new aqcuisition rejected"))
         else

@@ -35,7 +35,7 @@ object Java8Polyfill
 
       @tailrec def loop(): Unit = {
         val len = in.read(buffer)
-        if  (len > 0) {
+        if  len > 0 then {
           out.write(buffer, 0, len)
           count += len
           loop()

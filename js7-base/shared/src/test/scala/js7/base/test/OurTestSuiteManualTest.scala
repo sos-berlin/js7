@@ -10,7 +10,7 @@ final class OurTestSuiteManualTest extends OurTestSuite {
     logger.info("test")
   }
 
-  if (false)
+  if false then
   "failing" in {
     fail()
   }

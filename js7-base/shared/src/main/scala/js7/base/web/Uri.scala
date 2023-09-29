@@ -22,21 +22,21 @@ final case class Uri(string: String) extends GenericString
 
   /** Concats with exactly one slash between the parts. */
   def /(tail: String): Uri =
-    if (string.endsWith("/") != tail.startsWith("/"))
+    if string.endsWith("/") != tail.startsWith("/") then
       Uri(string + tail)
-    else if (string.endsWith("/") && tail.startsWith("/"))
+    else if string.endsWith("/") && tail.startsWith("/") then
       Uri(string + tail.tail)
     else
       Uri(string + '/' + tail)
 
   /** Concats with exactly one slash between the parts but returns `this` if `tail` is empty. */
   def /?(tail: String): Uri =
-    if (tail.isEmpty) this
+    if tail.isEmpty then this
     else this / tail
 
   def stripPath: Uri =
     string match {
-      case StripPathRegex(result) => if (result == string) this else Uri(result)
+      case StripPathRegex(result) => if result == string then this else Uri(result)
       case _ => this
     }
 }

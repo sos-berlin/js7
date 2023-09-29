@@ -36,7 +36,7 @@ final class IOExecutorTest extends OurTestSuite
       "java.lang.RuntimeException: FAILED")
   }
 
-  if (!VirtualThreads.isEnabled) {
+  if !VirtualThreads.isEnabled then {
     "Thread name" in {
       ioFuture {
         assert(Thread.currentThread.getName startsWith "JS7 global I/O-")
@@ -44,10 +44,10 @@ final class IOExecutorTest extends OurTestSuite
     }
   }
 
-  if (sys.props.contains("test.speed")) {
-    if (VirtualThreads.isEnabled) {
+  if sys.props.contains("test.speed") then {
+    if VirtualThreads.isEnabled then {
       "Performance with VirtualThread" in {
-        for (executor <- maybeNewVirtualThreadExecutorService()) {
+        for executor <- maybeNewVirtualThreadExecutorService() do {
           testPerformance(executor, 1000)
           testPerformance(executor, 10000)
           testPerformance(executor, 100000)
@@ -75,7 +75,7 @@ final class IOExecutorTest extends OurTestSuite
       .map(_.map(_.join))
       .map(_.combineAll)
       .flatten
-    for (i <- 1 to 3) {
+    for i <- 1 to 3 do {
       task.await(99.s)
       logger.info(itemsPerSecondString(since.elapsed, n))
     }

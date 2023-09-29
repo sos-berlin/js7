@@ -11,7 +11,7 @@ final class Js7PathValidator(val typeName: String) extends NameValidator
   private val js7NameValidator = new Js7NameValidator(typeName)
 
   override def checked(path: String): Checked[String] =
-    if (path.isEmpty)
+    if path.isEmpty then
       Left(EmptyStringProblem(typeName))
     else
       path

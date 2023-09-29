@@ -13,7 +13,7 @@ final case class SimpleUser(
   distinguishedNames: Seq[DistinguishedName] = Nil)
 extends User
 {
-  if (id.isAnonymous && grantedPermissions.contains(ValidUserPermission))
+  if id.isAnonymous && grantedPermissions.contains(ValidUserPermission) then
     throw new IllegalArgumentException("Anonymous must not have ValidUserPermission")
   // SuperPermission is allowed for empowered Anonymous (public = on | loopback-is-public = on)
 }

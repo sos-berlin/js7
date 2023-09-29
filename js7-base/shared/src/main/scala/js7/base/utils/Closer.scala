@@ -50,16 +50,16 @@ final class Closer extends AutoCloseable
   def close(): Unit =
     stack.pollLast() match {
       case null =>  // finish
-        for (t <- Option(throwable.get())) throw t
+        for t <- Option(throwable.get()) do throw t
 
       case closeable =>
         //Not in JavaScript: logger.traceCall[Unit](s"close $closeable") {
           try closeable.close()
           catch {
             case NonFatal(t) =>
-              if (!throwable.compareAndSet(null, t)) {
+              if !throwable.compareAndSet(null, t) then {
                 val tt = throwable.get()
-                if (tt ne t) {
+                if tt ne t then {
                   logger.debug(s"Throwable.addSuppressed($t)")
                   tt.addSuppressed(t)
                 }

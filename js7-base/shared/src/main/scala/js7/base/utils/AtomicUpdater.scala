@@ -13,7 +13,7 @@ final class AtomicUpdater[A <: AnyRef](initial: A)
   @tailrec
   def update(f: A => A): Unit = {
     val a = value.get()
-    if (!value.compareAndSet(a, f(a)))
+    if !value.compareAndSet(a, f(a)) then
       update(f)
   }
 

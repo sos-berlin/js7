@@ -23,5 +23,5 @@ final class AtomicUpdaterTest extends OurAsyncTestSuite
 
 object AtomicUpdaterTest {
   private var x = 0
-  private def delay() = for (_ <- 1 to 1000) x += 1
+  private def delay() = for _ <- 1 to 1000 do x += 1
 }

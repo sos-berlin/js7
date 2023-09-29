@@ -24,7 +24,7 @@ object CirceJsonTester
   : Assertion = {
     testJsonEncoder(a, json)
     testJsonDecoder(a, json)
-    for (json <- more) testJsonDecoder(a, json)
+    for json <- more do testJsonDecoder(a, json)
     succeed
   }
 
@@ -32,7 +32,7 @@ object CirceJsonTester
   : Assertion = {
     // Do a.asJson first to get the JSON string, then evaluate lazy json (which may have syntax errors during development).
     val asJson: Json = removeJNull(a.asJson)  // Circe converts None to JNull which we remove here (like Printer dropNullValues = true)
-    if (asJson != json) fail(
+    if asJson != json then fail(
       s"${prettyPrinter.print(normalizeJson(asJson))} did not equal ${prettyPrinter.print(normalizeJson(json))}")
     val reparsed = parseJson(printer.print(asJson))
     assert(reparsed == json)

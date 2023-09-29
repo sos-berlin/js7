@@ -31,7 +31,7 @@ object UnsafeMemoizable
         val deferred = Deferred.unsafe[F, A]
 
         Concurrent[F].defer {
-          if (!triggered.getAndSet(true))
+          if !triggered.getAndSet(true) then
             body.flatMap(a => deferred.complete(a).as(a))
           else
             deferred.get

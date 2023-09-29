@@ -17,14 +17,14 @@ final class UnbufferedReaderObservableTest extends OurTestSuite
       .toListL.runToFuture
 
     val expected = List("EINS", "ZWEI", "DREI")
-    for (s <- expected) {
+    for s <- expected do {
       w.write(s)
       w.flush()
       scheduler.tick()
     }
     w.close()
 
-    for (list <- whenCompleted) yield {
+    for list <- whenCompleted yield {
       assert(list == expected)
     }
   }

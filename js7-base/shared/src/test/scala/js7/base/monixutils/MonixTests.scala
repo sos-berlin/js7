@@ -14,19 +14,19 @@ final class MonixTests extends OurAsyncTestSuite
 {
   "Local" in {
     val local = Local("")
-    val task = for {
+    val task = for
       _ <- Task(local := "1")
       _ <- Task(assert(local.get == "1"))
       _ <- Task.shift
       _ <- Task(assert(local.get == "1"))
       _ <- TaskLocal.isolate(Task(local := "1"))
       _ <- Task(assert(local.get == "1"))
-    } yield succeed
+    yield succeed
     task.runToFuture
   }
 
   "TaskLocal #2" in {
-    val task = for {
+    val task = for
       local <- TaskLocal("")
       _ <- local.write("1")
       v <- local.read
@@ -37,13 +37,13 @@ final class MonixTests extends OurAsyncTestSuite
       _ <- TaskLocal.isolate(local.write("2"))
       v <- local.read
       _ <- Task(assert(v == "1"))
-    } yield succeed
+    yield succeed
     task.runToFuture
   }
 
   "TaskLocal" in {
     val local = TaskLocal("").memoize
-    val task = for {
+    val task = for
       _ <- local.flatMap(_.write("1"))
       v <- local.flatMap(_.read)
       _ <- Task(assert(v == "1"))
@@ -53,25 +53,25 @@ final class MonixTests extends OurAsyncTestSuite
       _ <- TaskLocal.isolate(local.flatMap(_.write("2")))
       v <- local.flatMap(_.read)
       _ <- Task(assert(v == "1"))
-    } yield succeed
+    yield succeed
     task.runToFuture
   }
 
   "Observable.tailRecM with possible OutOfMemoryError" - {
     // Observable.tailRecM may leak memory !!!  https://github.com/monix/monix/issues/791
 
-    if (false) "not leaking" in {
+    if false then "not leaking" in {
       check(i =>
         Observable(Right(i), Left(i + 1)))
     }
 
-    if (false) "leaks" in {
+    if false then "leaks" in {
       // Fails with Observable.empty after Left !!!
       check(i =>
         Observable(Right(i), Left(i + 1)) ++ Observable.empty)
     }
 
-    if (false) "fails with OutOfMemoryError" in {
+    if false then "fails with OutOfMemoryError" in {
       // Fails !!!
       check(i =>
         Observable.pure(Right(i)) ++
@@ -79,13 +79,13 @@ final class MonixTests extends OurAsyncTestSuite
             Observable.pure(Left(i + 1)))
     }
 
-    if (false) "not leaking" in {
+    if false then "not leaking" in {
       check(i =>
         Observable.pure(Right(i)) ++
           Observable.evalDelayed(1.ns, Left(i + 1)))
     }
 
-    if (false) "not leaking" in {
+    if false then "not leaking" in {
       check(i =>
         Observable.pure(Right(i)) ++
           Observable.pure(Left(i + 1)).delayExecution(1.ns))
@@ -94,7 +94,7 @@ final class MonixTests extends OurAsyncTestSuite
     def check(obs: Long => Observable[Either[Long, Long]]) =
       Observable
         .tailRecM(0L)(obs)
-        .map(i => if (i % 1000_000 == 0)
+        .map(i => if i % 1000_000 == 0 then
           println(s"$i ${ByteUnits.toKBGB(sys.runtime.totalMemory())}"))
         .completedL
         .map(_ => fail())

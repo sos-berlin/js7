@@ -4,9 +4,9 @@ final class Once {
   private var once = false
 
   def apply(body: => Unit): Unit =
-    if (!once) {
+    if !once then {
       synchronized {
-        if (!once) {
+        if !once then {
           body
           once = true
         }

@@ -38,12 +38,12 @@ final class RestartAfterFailureServiceTest extends OurTestSuite
           val delayed = now - lastEnd
           i += 1
           val sleep =
-            if (i < 8) 0.s
-            else if (i < 11) 5.s
-            else if (i < 12) 11.s
+            if i < 8 then 0.s
+            else if i < 11 then 5.s
+            else if i < 12 then 11.s
             else 0.s
           val n = 20
-          logger.debug(s"$toString $now i=$i ${if (i == n) "last" else s"sleep ${sleep.pretty}"}")
+          logger.debug(s"$toString $now i=$i ${if i == n then "last" else s"sleep ${sleep.pretty}"}")
           Task.when(i < n)(
             Task.sleep(sleep) *>
               Task.defer {
@@ -90,7 +90,7 @@ final class RestartAfterFailureServiceTest extends OurTestSuite
 
   "RestartAfterFailureService is stoppable anytime · Memory test when test.speed" in {
     // For check agains OutOfMemoryError, set -Xmx10m !!!
-    val testDuration = if (sys.props.contains("test.speed")) 30.s else 100.ms
+    val testDuration = if sys.props.contains("test.speed") then 30.s else 100.ms
     import Scheduler.Implicits.traced
     val timer = implicitly[Timer[Task]]
     val runs = Atomic(0)
@@ -110,14 +110,14 @@ final class RestartAfterFailureServiceTest extends OurTestSuite
 
       protected def start =
         Task.defer {
-          if (startFailsRandomly && Random.nextBoolean())
+          if startFailsRandomly && Random.nextBoolean() then
             timer.sleep(Random.nextInt(5).ms) *> Task.raiseError(new TestException("start"))
           else
             startService(Task
               .defer {
                 runs += 1
                 timer.sleep(Random.nextInt(5).ms) *> (
-                  if (runFails)
+                  if runFails then
                     Task.raiseError(new TestException("run"))
                   else
                     untilStopRequested >>

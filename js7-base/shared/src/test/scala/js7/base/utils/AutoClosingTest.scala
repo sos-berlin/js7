@@ -30,7 +30,7 @@ final class AutoClosingTest extends OurTestSuite
           throw new AException
         }
       }
-      for (suppressed <- x.getSuppressed) suppressed.asInstanceOf[ClosedException]
+      for suppressed <- x.getSuppressed do suppressed.asInstanceOf[ClosedException]
     }
   }
 
@@ -63,7 +63,7 @@ final class AutoClosingTest extends OurTestSuite
         }
       }
       assert(closeables collect { case a: A => a } forall { _.closed })
-      for (suppressed <- x.getSuppressed) {
+      for suppressed <- x.getSuppressed do {
         suppressed.asInstanceOf[ClosedException]
       }
     }

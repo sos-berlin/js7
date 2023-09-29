@@ -37,14 +37,14 @@ object JavaTimeConverters
   {
     /** Absolute values above ~292 years are converted to Inf respective MinusInf. */
     def toScala: ScalaDuration =
-      if ((underlying compareTo MaxDuration) > 0) ScalaDuration.Inf
-      else if ((underlying compareTo MinDuration) < 0) ScalaDuration.MinusInf
+      if (underlying compareTo MaxDuration) > 0 then ScalaDuration.Inf
+      else if (underlying compareTo MinDuration) < 0 then ScalaDuration.MinusInf
       else javaToFiniteDuration(underlying)
 
     /** Absolute values above ~292 years are capped at about ~292 years (±2**63ns). */
     def toFiniteDuration: FiniteDuration =
-      if ((underlying compareTo MaxDuration) > 0) FiniteDuration.MaxValue
-      else if ((underlying compareTo MinDuration) < 0) FiniteDuration.MinValue
+      if (underlying compareTo MaxDuration) > 0 then FiniteDuration.MaxValue
+      else if (underlying compareTo MinDuration) < 0 then FiniteDuration.MinValue
       else javaToFiniteDuration(underlying)
   }
 
@@ -54,9 +54,9 @@ object JavaTimeConverters
   }
 
   private def javaToFiniteDuration(o: Duration): FiniteDuration =
-    if (o.isZero)
+    if o.isZero then
       ZeroDuration // "0 seconds" instead of "0 nanoseconds", for logging
-    else if (o.isNegative && useJava8Workaround)
+    else if o.isNegative && useJava8Workaround then
       new FiniteDuration(-o.negated.toNanos, NANOSECONDS).toCoarsest
     else
       new FiniteDuration(o.toNanos, NANOSECONDS).toCoarsest

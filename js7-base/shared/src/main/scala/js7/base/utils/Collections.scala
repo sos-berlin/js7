@@ -20,11 +20,11 @@ object Collections
   object implicits {
     implicit final class RichIndexedSeq[A](private val underlying: IndexedSeq[A]) extends AnyVal {
       def get(i: Int): Option[A] =
-        if (underlying.indices contains i) Some(underlying(i)) else None
+        if underlying.indices contains i then Some(underlying(i)) else None
 
       def dropLastWhile(predicate: A => Boolean): IndexedSeq[A] = {
         var i = underlying.length
-        while (i > 0 && predicate(underlying(i - 1))) i = i -1
+        while i > 0 && predicate(underlying(i - 1)) do i = i -1
         underlying.slice(0, i)
       }
     }
@@ -45,30 +45,30 @@ object Collections
         when(!condition)
 
       def when(condition: Boolean)(implicit factory: Factory[A, CC[A]]): CC[A] =
-        if (condition)
+        if condition then
           iterableOnce
         else
           factory.fromSpecific(Nil)
 
       /** Returns each element as List head with n following elements as List tail. */
       def lookAhead(n: Int)(implicit factory: Factory[List[A], CC[List[A]]]): CC[List[A]] = {
-        if (n < 0) throw new IllegalArgumentException(s"lookAhead($n)?")
+        if n < 0 then throw new IllegalArgumentException(s"lookAhead($n)?")
 
         val buffer = mutable.ListBuffer.empty[A]
         buffer.sizeHint(n + 1)
 
         val it = iterableOnce.iterator
 
-        while (buffer.length < n - 1 && it.hasNext) buffer += it.next()
+        while buffer.length < n - 1 && it.hasNext do buffer += it.next()
 
         factory.fromSpecific(new Iterator[List[A]] {
           def hasNext = it.hasNext || buffer.nonEmpty
 
           def next() = {
-            if (it.hasNext) {
+            if it.hasNext then {
               buffer += it.next()
             }
-            if (buffer.isEmpty) throw new NoSuchElementException("lookAhead: end of sequence")
+            if buffer.isEmpty then throw new NoSuchElementException("lookAhead: end of sequence")
             val result = buffer.toList
             buffer.remove(0)
             result
@@ -86,8 +86,8 @@ object Collections
         * @param neutral is assumed to be a real neutral element
         */
       def foldFast(neutral: A)(operation: (A, A) => A): A =
-        if (underlying.isEmpty) neutral
-        else if (underlying.sizeIs == 1) underlying.head
+        if underlying.isEmpty then neutral
+        else if underlying.sizeIs == 1 then underlying.head
         else underlying reduce operation
 
       def toCheckedKeyedMap[K](toKey: A => K): Checked[Map[K, A]] =
@@ -146,7 +146,7 @@ object Collections
 
       /** Liefert die Duplikate, also Listenelemente, deren Schlüssel mehr als einmal vorkommt. */
       def duplicateKeys[K](key: A => K): Option[Map[K, Iterable[A]]] =
-        if (underlying.sizeIs == underlying.view.map(key).toSet.size)
+        if underlying.sizeIs == underlying.view.map(key).toSet.size then
           None
         else
           underlying.groupBy(key).filter(_._2.sizeIs > 1) match {
@@ -159,12 +159,12 @@ object Collections
         */
       def retainOrderGroupBy[K](toKey: A => K): Vector[(K, Vector[A])] = {
         val m = mutable.LinkedHashMap.empty[K, VectorBuilder[A]]
-        for (elem <- underlying) {
+        for elem <- underlying do {
           m.getOrElseUpdate(toKey(elem), new VectorBuilder[A]) += elem
         }
         val b = Vector.newBuilder[(K, Vector[A])]
         b.sizeHint(m.size)
-        for ((k, vectorBuilder) <- m) {
+        for (k, vectorBuilder) <- m do {
           b += ((k, vectorBuilder.result()))
         }
         b.result()
@@ -176,7 +176,7 @@ object Collections
         var firstNonMatching: Iterator[A] = Iterator.empty
         underlying.takeWhile { a =>
           val p = predicate(a)
-          if (!p) firstNonMatching = Iterator.single(a)
+          if !p then firstNonMatching = Iterator.single(a)
           p
         } ++ firstNonMatching
       }
@@ -194,7 +194,7 @@ object Collections
 
       def checkedUniqueToMap(duplicatesToProblem: Map[K, Iterable[V]] => Problem): Checked[Map[K, V]] = {
         val result = delegate.toMap
-        if (delegate.sizeIs != result.size)
+        if delegate.sizeIs != result.size then
           delegate
             .checkUniqueness_/*returns Left*/(_._1)(
               duplicates => duplicatesToProblem(duplicates.view.mapValues(_.map(_._2)).toMap))
@@ -205,13 +205,13 @@ object Collections
 
       def uniqueToMap: Map[K, V] = {
         val result = delegate.toMap
-        if (delegate.sizeIs != result.size) delegate.requireUniqueness(_._1)
+        if delegate.sizeIs != result.size then delegate.requireUniqueness(_._1)
         result
       }
 
       def uniqueToMap(ifNot: Iterable[K] => Nothing): Map[K, V] = {
         val result = delegate.toMap
-        if (delegate.sizeIs != result.size) delegate.ifNotUnique(_._1, ifNot)
+        if delegate.sizeIs != result.size then delegate.ifNotUnique(_._1, ifNot)
         result
       }
 
@@ -221,7 +221,7 @@ object Collections
 
     implicit final class InsertableMutableMap[K, V](private val delegate: mutable.Map[K, V]) extends AnyVal {
       def insert(key: K, value: V): Unit = {
-        if (delegate contains key) throw new DuplicateKeyException(s"Key $key is already known")
+        if delegate contains key then throw new DuplicateKeyException(s"Key $key is already known")
         delegate.update(key, value)
       }
     }
@@ -257,7 +257,7 @@ object Collections
       insert(kv._1, kv._2)
 
     def insert(key: K, value: V): Checked[Map[K, V]] =
-      if (underlying contains key)
+      if underlying contains key then
         Left(DuplicateKey(key.getClass.shortClassName, key))
       else
         Right(underlying.updated(key, value))
@@ -269,17 +269,17 @@ object Collections
   }
 
   implicit final class RichBufferedIterator[A](private val delegate: BufferedIterator[A]) extends AnyVal {
-    def headOption: Option[A] = if (delegate.hasNext) Some(delegate.head) else None
+    def headOption: Option[A] = if delegate.hasNext then Some(delegate.head) else None
   }
 
   def emptyToNone(@Nullable o: String): Option[String] =
-    if (o == null || o.isEmpty) None else Some(o)
+    if o == null || o.isEmpty then None else Some(o)
 
   def emptyToNone[A <: Iterable[?]](@Nullable o: A): Option[A] =
-    if (o == null || o.isEmpty) None else Some(o)
+    if o == null || o.isEmpty then None else Some(o)
 
   def emptyToNone[A](@Nullable o: Array[A]): Option[Array[A]] =
-    if (o == null || o.isEmpty) None else Some(o)
+    if o == null || o.isEmpty then None else Some(o)
 
   @tailrec
   private def compareIteratorsElementWise[A](a: Iterator[A], b: Iterator[A])(implicit ordering: Ordering[A]): Int =

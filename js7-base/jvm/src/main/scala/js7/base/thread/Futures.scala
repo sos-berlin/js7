@@ -40,7 +40,7 @@ object Futures {
   def namedThreadFuture[A](name: String)(body: => A): Future[A] = {
     val promise = Promise[A]()
     new Thread {
-      if (name.nonEmpty) setName(name)
+      if name.nonEmpty then setName(name)
       override def run() =
         try promise.success(body)
         catch { case t: Throwable =>  // Not only NonFatal (or what should we do else?)

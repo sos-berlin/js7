@@ -69,7 +69,7 @@ final class SetOnce[A](label: => String, notYetSetProblem: Problem)
    * @throws IllegalStateException
    */
   def :=(value: A): A = {
-    if (!trySet(value)) throw new IllegalStateException(s"SetOnce[$label] has already been set")
+    if !trySet(value) then throw new IllegalStateException(s"SetOnce[$label] has already been set")
     value
   }
 

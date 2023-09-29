@@ -17,13 +17,13 @@ extends (ByteSeq => Observable[ByteArray])
   private lazy val startedLine = mutable.ArrayBuffer.empty[ByteSeq]
 
   def apply(byteSeq: ByteSeq): Observable[ByteArray] =
-    if (byteSeq.isEmpty)
+    if byteSeq.isEmpty then
       Observable.empty
     else {
       var p = 0
       val length = byteSeq.length
 
-      while (p < length) {
+      while p < length do {
         byteSeq.indexOf('\n'.toByte, p) match {
           case -1 =>
             startedLine += byteSeq.slice(p, length)
@@ -39,7 +39,7 @@ extends (ByteSeq => Observable[ByteArray])
       }
 
       val result =
-        if (lines.lengthIs == 1)
+        if lines.lengthIs == 1 then
           Observable.pure(lines.head)
         else
           Observable.fromIterable(lines.toVector)

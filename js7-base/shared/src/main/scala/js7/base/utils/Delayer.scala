@@ -44,7 +44,7 @@ final class Delayer[F[_]] private(initialNow: Deadline, conf: DelayConf)
         val state = _state.get()
         val (elapsed, delay, next) = _state.get().next(now)
         val ok = _state.compareAndSet(state, next)
-        if (!ok) Left(()) else Right(elapsed -> delay)
+        if !ok then Left(()) else Right(elapsed -> delay)
       }))
 
   private sealed case class State(since: Deadline, nextDelays: LazyList[FiniteDuration]) {
@@ -54,9 +54,9 @@ final class Delayer[F[_]] private(initialNow: Deadline, conf: DelayConf)
       val next = State(
         now + delay,
         nextDelays =
-          if (elapsed >= resetWhen)
+          if elapsed >= resetWhen then
             resetDelays(delays)
-          else if (nextDelays.tail.nonEmpty)
+          else if nextDelays.tail.nonEmpty then
             nextDelays.tail
           else
             nextDelays)
@@ -76,7 +76,7 @@ object Delayer
 
   def start[F[_]](conf: DelayConf)(implicit F: Async[F], timer: Timer[F])
   : F[Delayer[F]] =
-    for (now <- timer.now) yield
+    for now <- timer.now yield
       new Delayer(now, conf)
 
   def observable[F[_]](conf: DelayConf)

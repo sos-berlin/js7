@@ -32,11 +32,11 @@ private final class LoggingTestAdder(suiteName: String) {
   : LoggingFreeSpecStringWrapper[R, T] =
     new LoggingFreeSpecStringWrapper(name, wrapper, this,
       (ctx, test) => {
-        if (!firstTestCalled) {
+        if !firstTestCalled then {
           firstTestCalled = true
           logger.info(bar)
         }
-        if (suppressCorrelId)
+        if suppressCorrelId then
           executeTest(ctx, test)
         else
           CorrelId.bindNow {
@@ -57,13 +57,13 @@ private final class LoggingTestAdder(suiteName: String) {
 
   def afterAll(): Unit =
     logger.info(s"$suiteName — " +
-      (if (succeededCount == 0) failureMarkup
-      else if (succeededCount > 0) successMarkup
+      (if succeededCount == 0 then failureMarkup
+      else if succeededCount > 0 then successMarkup
       else bold) +
       s"$succeededCount tests succeeded$resetColor" +
-      (if (failedCount == 0) "" else s" · $failureMarkup💥 $failedCount failed$resetColor") +
-      (if (pendingCount == 0) "" else s" · $pendingMarkup🚧 $pendingCount pending$resetColor") +
-      (if (failedCount == 0 && pendingCount == 0) s" $successMarkup✔︎$resetColor " else " · ") +
+      (if failedCount == 0 then "" else s" · $failureMarkup💥 $failedCount failed$resetColor") +
+      (if pendingCount == 0 then "" else s" · $pendingMarkup🚧 $pendingCount pending$resetColor") +
+      (if failedCount == 0 && pendingCount == 0 then s" $successMarkup✔︎$resetColor " else " · ") +
       since.elapsed.pretty + "\n")
 }
 
@@ -127,7 +127,7 @@ private object LoggingTestAdder {
         case Failure(t) =>
           clipStackTrace(t)
           adder.failedCount += 1
-          if (isSbt) System.err.println(logLine)
+          if isSbt then System.err.println(logLine)
           logger.error(logLine, t.nullIfNoStackTrace)
           logger.info(eager(failureMarkup + bar + resetColor))
           clipStackTrace(t)

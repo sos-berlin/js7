@@ -9,7 +9,7 @@ import js7.base.utils.JavaCollections.syntax.*
 final class JavaCollectionsTest extends OurTestSuite
 {
   "java.util.stream.Stream.asScala" in {
-    for ((a, b) <- java.util.stream.Stream.of(1, 2, 3).asScala zip Iterator(1, 2, 3))
+    for (a, b) <- java.util.stream.Stream.of(1, 2, 3).asScala zip Iterator(1, 2, 3) do
       assert(a == b)
   }
 }

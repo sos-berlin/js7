@@ -23,10 +23,10 @@ final class IncreasingNumberSync(initial: Long, valueToString: Long => String)
   def onAdded(a: Long): Unit = {
     //logger.trace(s"onAdded $a")
     synchronized {
-      if (a < _last) throw new IllegalArgumentException(s"Added ${valueToString(a)} < last ${valueToString(_last)}")
+      if a < _last then throw new IllegalArgumentException(s"Added ${valueToString(a)} < last ${valueToString(_last)}")
       _last = a
-      while (valueToPromise.nonEmpty && valueToPromise.firstKey < a) {
-        for (promise <- valueToPromise.remove(valueToPromise.firstKey))
+      while valueToPromise.nonEmpty && valueToPromise.firstKey < a do {
+        for promise <- valueToPromise.remove(valueToPromise.firstKey) do
           promise.success(())
       }
     }
@@ -45,9 +45,9 @@ final class IncreasingNumberSync(initial: Long, valueToString: Long => String)
     //  s"$after delay=${delay.pretty}${until.fold("")(o => " until=" + o.timeLeft.pretty)}"
     //logger.traceTaskWithResult("whenAvailable", argsString, task =
       Task.defer {
-        if (after < _last)
+        if after < _last then
           Task.True  // Event already waiting
-        else if (until.exists(_.hasElapsed))
+        else if until.exists(_.hasElapsed) then
           Task.False  // Timeout
         else {
           val task = whenAvailable2(after)
@@ -59,10 +59,10 @@ final class IncreasingNumberSync(initial: Long, valueToString: Long => String)
 
   private def whenAvailable2(after: Long): Task[Boolean] =
     Task.tailRecM(())(_ =>
-      if (after < _last)
+      if after < _last then
         RightTrue
       else synchronized {
-        if (after < _last)
+        if after < _last then
           RightTrue
         else {
           val promise = valueToPromise.getOrElseUpdate(after, Promise())

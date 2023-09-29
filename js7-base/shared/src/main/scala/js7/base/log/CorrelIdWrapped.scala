@@ -19,8 +19,8 @@ object CorrelIdWrapped
         .add("correlId", o.correlId.asJson))
 
   implicit def jsonDecoder[A](implicit A: Decoder[A]): Decoder[CorrelIdWrapped[A]] =
-    c => for {
+    c => for
       correlId <- c.getOrElse[CorrelId]("correlId")(CorrelId.empty)
       a <- c.as[A]
-    } yield CorrelIdWrapped(correlId, a)
+    yield CorrelIdWrapped(correlId, a)
 }

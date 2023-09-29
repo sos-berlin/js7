@@ -35,7 +35,7 @@ private final class BufferedObservable[+A](source: Observable[A], timespan: Opti
   maxWeight: Long, toWeight: A => Long)
 extends Observable[Seq[A]]
 {
-  for (t <- timespan) require(t.isPositive, "timespan must be strictly positive")
+  for t <- timespan do require(t.isPositive, "timespan must be strictly positive")
   require(maxWeight >= 0, "maxWeight must be positive")
 
   def unsafeSubscribeFn(out: Subscriber[Seq[A]]): Cancelable = {
@@ -58,13 +58,13 @@ extends Observable[Seq[A]]
       def run(): Unit = self.synchronized {
         val now = scheduler.clockMonotonic(MILLISECONDS)
         // Do we still have time remaining?
-        if (now < expiresAt) {
+        if now < expiresAt then {
           // If we still have time remaining, it's either a scheduler
           // problem, or we rushed to signaling the bundle upon reaching
           // the maximum size in onNext. So we sleep some more.
           val remaining = expiresAt - now
           timer := scheduler.scheduleOnce(remaining, MILLISECONDS, self)
-        } else if (buffer != null && buffer.nonEmpty) {
+        } else if buffer != null && buffer.nonEmpty then {
           // The timespan has passed since the last signal so we need
           // to send the current bundle
           sendNext()
@@ -89,7 +89,7 @@ extends Observable[Seq[A]]
 
       def onNext(elem: A): Future[Ack] = self.synchronized {
         val w = toWeight(elem)
-        if (buffer.nonEmpty && maxWeight < bufferWeight + w)
+        if buffer.nonEmpty && maxWeight < bufferWeight + w then
           sendNext().syncTryFlatten.syncFlatMap {
             case Continue => onNext2(elem, w)
             case Stop => Stop
@@ -100,11 +100,11 @@ extends Observable[Seq[A]]
 
       private def onNext2(elem: A, weight: Long): Future[Ack] = self.synchronized {
         val now = scheduler.clockMonotonic(MILLISECONDS)
-        if (buffer.isEmpty) {
-          for (span <- timespanMillis) {
+        if buffer.isEmpty then {
+          for span <- timespanMillis do {
             expiresAt = now + span
             val remaining = expiresAt - now
-            if (remaining > 0) {
+            if remaining > 0 then {
               timer := scheduler.scheduleOnce(remaining, MILLISECONDS, self)
             }
           }
@@ -112,7 +112,7 @@ extends Observable[Seq[A]]
         buffer.append(elem)
         bufferWeight += weight
 
-        if (expiresAt <= now || maxWeight <= bufferWeight)
+        if expiresAt <= now || maxWeight <= bufferWeight then
           sendNext()
         else
           Continue
@@ -128,7 +128,7 @@ extends Observable[Seq[A]]
       def onComplete(): Unit = self.synchronized {
         timer.cancel()
 
-        if (buffer.nonEmpty) {
+        if buffer.nonEmpty then {
           val bundleToSend = buffer.toList
           // In case the last onNext isn't finished, then
           // we need to apply back-pressure, otherwise this

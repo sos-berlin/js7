@@ -55,7 +55,7 @@ final class AsTest extends OurTestSuite {
     assert(!conv("false"))
     assert(!conv("off"))
     assert(!conv("no"))
-    for (o <- List(true, false)) assert(conv(o.toString) == o)
+    for o <- List(true, false) do assert(conv(o.toString) == o)
   }
 
   "StringAsPercentage" in {

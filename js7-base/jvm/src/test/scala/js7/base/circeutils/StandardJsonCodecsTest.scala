@@ -13,7 +13,7 @@ import scala.util.matching.Regex
 final class StandardJsonCodecsTest extends OurTestSuite
 {
   private val regexProblem = Problem(
-    if (javaVersion >= 19)
+    if javaVersion >= 19 then
       "JSON DecodingFailure at : java.util.regex.PatternSyntaxException: Unescaped trailing backslash near index 1\\n\\"
     else
       "JSON DecodingFailure at : java.util.regex.PatternSyntaxException: Unexpected internal error near index 1\\n\\")

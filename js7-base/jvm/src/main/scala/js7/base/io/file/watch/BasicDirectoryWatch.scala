@@ -38,7 +38,7 @@ extends Service.StoppableByRequest
         }))
 
   private[watch] def observableResource: Resource[Task, Observable[Seq[DirectoryEvent]]] =
-    for (_ <- directoryWatchResource) yield
+    for _ <- directoryWatchResource yield
       (true +: Observable.repeat(false))
         .mapEval(isFirst => Task
           .unless(isFirst)(Task.sleep(options.watchDelay)/*collect more events per context switch*/)
@@ -68,7 +68,7 @@ extends Service.StoppableByRequest
       def prefix = s"pollEvents($directory) ... ${since.elapsed.pretty} => "
       try {
         val events = pollWatchKey()
-        logger.trace(prefix + (if (events.isEmpty) "timed out" else events.mkString(", ")))
+        logger.trace(prefix + (if events.isEmpty then "timed out" else events.mkString(", ")))
         Task.pure(events)
       } catch {
        case NonFatal(t: ClosedWatchServiceException) if isStopping =>
@@ -104,10 +104,10 @@ object BasicDirectoryWatch
 {
   private val logger = Logger[this.type]
 
-  val systemWatchDelay = if (isMac/*polling*/) 2.s else 0.s
+  val systemWatchDelay = if isMac/*polling*/ then 2.s else 0.s
 
   private val highSensitivity: Array[WatchEvent.Modifier] =
-    if (isMac) // https://bugs.openjdk.java.net/browse/JDK-7133447
+    if isMac then // https://bugs.openjdk.java.net/browse/JDK-7133447
       try Array(com.sun.nio.file.SensitivityWatchEventModifier.HIGH/*2s instead of 10s*/)
       catch { case t: Throwable =>
         logger.debug(s"❗ SensitivityWatchEventModifier.HIGH => ${t.toStringWithCauses}")

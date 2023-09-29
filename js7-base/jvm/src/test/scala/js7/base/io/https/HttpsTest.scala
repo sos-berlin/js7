@@ -77,7 +77,7 @@ final class HttpsTest extends OurTestSuite
   private def executeCommand[A](command: Seq[String])(body: InputStream => A): A = {
     val p = new JavaProcessBuilder(command*)
     val process = p.start()
-    Future { autoClosing(process.getErrorStream) { stderr => while (stderr.read() != -1) {} } }
+    Future { autoClosing(process.getErrorStream) { stderr => while stderr.read() != -1 do {} } }
     try
       autoClosing(process.getInputStream) { in =>
         body(in)

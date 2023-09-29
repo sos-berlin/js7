@@ -22,9 +22,9 @@ object UserId extends GenericString.Checked_[UserId]
   protected def unchecked(string: String) = new UserId(string)
 
   override def checked(string: String) =
-    if (string.isEmpty)
+    if string.isEmpty then
       Left(EmptyStringProblem(name))
-    else if (isValid(string))
+    else if isValid(string) then
       Right(new UserId(string))
     else
       Left(InvalidNameProblem(name, string))

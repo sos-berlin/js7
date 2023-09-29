@@ -27,7 +27,7 @@ final class BasicDirectoryWatchTest extends OurTestSuite
           WatchOptions.forTest(dir, Set(ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY),
             isRelevantFile = _.toString startsWith "TEST-"))
         .use(watcher => Task {
-          for (i <- 2 to 4) {
+          for i <- 2 to 4 do {
             watcher.observableResource.use(observable => Task {
               val observed = observable
                 .map(_.filterNot(_.isInstanceOf[FileModified]))  // Windows emits FileModified, too ???

@@ -43,7 +43,7 @@ object CanBindCorrelId
 
   private object TaskCan extends CanBindCorrelId[Task[Any]] {
     def bind(correlId: CorrelId)(task: => Task[Any]): Task[Any] =
-      if (!CorrelId.isEnabled)
+      if !CorrelId.isEnabled then
         Task.defer(task)
       else
         Task.defer {
@@ -56,11 +56,11 @@ object CanBindCorrelId
         }
 
     def bindNewIfEmpty(task: => Task[Any]): Task[Any] =
-      if (!CorrelId.isEnabled)
+      if !CorrelId.isEnabled then
         Task.defer(task)
       else
         Task.defer {
-          if (CorrelId.current.nonEmpty)
+          if CorrelId.current.nonEmpty then
             task
           else
             bind(generate())(task)
@@ -69,7 +69,7 @@ object CanBindCorrelId
 
   private sealed trait FutureCan[F[r] <: Future[r], R] extends CanBindCorrelId[F[R]] {
     def bind(correlId: CorrelId)(future: => F[R]): F[R] =
-      if (!CorrelId.isEnabled)
+      if !CorrelId.isEnabled then
         future
       else {
         _bindCorrelIdCount += 1
@@ -85,7 +85,7 @@ object CanBindCorrelId
       }
 
     def bindNewIfEmpty(future: => F[R]): F[R] =
-      if (!CorrelId.isEnabled || CorrelId.current.nonEmpty)
+      if !CorrelId.isEnabled || CorrelId.current.nonEmpty then
         future
       else
         bind(generate())(future)
@@ -105,7 +105,7 @@ object CanBindCorrelId
         canBind.asInstanceOf[CanBindCorrelId[F[Unit]]]
 
       def bind(correlId: CorrelId)(resource: => Resource[F, A]): Resource[F, A] =
-        if (!CorrelId.isEnabled)
+        if !CorrelId.isEnabled then
           Resource.suspend(F.delay(resource))
         else
           Resource.suspend(
@@ -117,11 +117,11 @@ object CanBindCorrelId
               })
 
       def bindNewIfEmpty(resource: => Resource[F, A]): Resource[F, A] =
-        if (!CorrelId.isEnabled)
+        if !CorrelId.isEnabled then
           Resource.suspend(F.delay(resource))
         else
           Resource.suspend(F.delay(
-            if (CorrelId.current.nonEmpty)
+            if CorrelId.current.nonEmpty then
               resource
             else
               bind(generate())(resource)))
@@ -130,7 +130,7 @@ object CanBindCorrelId
   private object SynchronousCan extends CanBindCorrelId[Any]
   {
     def bind(correlId: CorrelId)(body: => Any): Any =
-      if (!CorrelId.isEnabled)
+      if !CorrelId.isEnabled then
         body
       else {
         _bindCorrelIdCount += 1
@@ -141,7 +141,7 @@ object CanBindCorrelId
       }
 
     def bindNewIfEmpty(body: => Any): Any =
-      if (!CorrelId.isEnabled || CorrelId.current.nonEmpty)
+      if !CorrelId.isEnabled || CorrelId.current.nonEmpty then
         body
       else
         bind(generate())(body)

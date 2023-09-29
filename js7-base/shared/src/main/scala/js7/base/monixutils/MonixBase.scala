@@ -46,7 +46,7 @@ object MonixBase
     implicit class RichMonixTask[A](private val task: Task[A]) extends AnyVal
     {
       def when(condition: Boolean)(implicit A: Monoid[A]): Task[A] =
-        if (condition)
+        if condition then
           task
         else
           Task.pure(A.empty)
@@ -100,16 +100,16 @@ object MonixBase
           var infoLogged = false
           task
             .whenItTakesLonger()(duration => Task {
-              val m = if (duration < InfoWorryDuration) "🟡" else "🟠"
+              val m = if duration < InfoWorryDuration then "🟡" else "🟠"
               def msg = s"$m Still waiting $preposition $what for ${duration.pretty}"
-              if (duration < InfoWorryDuration)
+              if duration < InfoWorryDuration then
                 logger.debug(msg)
               else {
                 infoLogged = true
                 logger.info(msg)
               }
             })
-            .guaranteeCase(exit => Task(if (infoLogged) exit match {
+            .guaranteeCase(exit => Task(if infoLogged then exit match {
               case ExitCase.Completed => logger.info(
                 s"🔵 $what $completed after ${since.elapsed.pretty}")
               case ExitCase.Canceled => logger.info(
@@ -121,7 +121,7 @@ object MonixBase
 
       /** When `this` takes longer than `duration` then call `thenDo` once. */
       def whenItTakesLonger(duration: FiniteDuration)(thenDo: Task[Unit]): Task[A] =
-        if (duration.isZeroOrBelow)
+        if duration.isZeroOrBelow then
           task
         else
           whenItTakesLonger(duration :: ZeroDuration :: Nil)(_ => thenDo)
@@ -135,14 +135,14 @@ object MonixBase
         (thenDo: FiniteDuration => Task[Unit])
       : Task[A] = {
         val durationIterator = durations.iterator
-        if (durationIterator.isEmpty)
+        if durationIterator.isEmpty then
           task
         else
           monotonicClock.flatMap(since =>
             Task
               .tailRecM(ZeroDuration) { lastDuration =>
                 val d = durationIterator.nextOption() getOrElse lastDuration
-                if (d.isPositive)
+                if d.isPositive then
                   Task.sleep(d)
                     .*>(Task(since.elapsed))
                     .flatMap(thenDo)
@@ -211,12 +211,12 @@ object MonixBase
         (f: A => B)
       : Observable[B] = {
         val minimumBackPressure = BackPressure(parallelism max 2)
-        if (batchSize <= 0 || parallelism <= 1)
+        if batchSize <= 0 || parallelism <= 1 then
           underlying.map(f)
-        else if (batchSize == 1)
+        else if batchSize == 1 then
           underlying.mapParallelOrdered(parallelism)(a => Task(f(a)))(
             minimumBackPressure)
-        else if (responsive)
+        else if responsive then
           underlying
             .mapParallelOrdered(parallelism)(a => Task(f(a)))(
               BackPressure(parallelism * batchSize max 2))
@@ -233,7 +233,7 @@ object MonixBase
         parallelism: Int = sys.runtime.availableProcessors)
         (f: A => B)
       : Observable[B] =
-        if (parallelism == 1)
+        if parallelism == 1 then
           underlying.map(f)
         else
           underlying
@@ -368,7 +368,7 @@ object MonixBase
           val next = last + nextDuration
           val delay = next - scheduler.now
           cancelable := (
-            if (iterator.hasNext)
+            if iterator.hasNext then
               scheduler.scheduleOnce(delay) {
                 body
                 loop(next)
@@ -376,7 +376,7 @@ object MonixBase
             else
               scheduler.scheduleAtFixedRate(delay, nextDuration)(body))
         }
-        if (iterator.hasNext) {
+        if iterator.hasNext then {
           loop(scheduler.now)
         }
         cancelable
@@ -420,7 +420,7 @@ object MonixBase
       Observable.tailRecM(a)(a =>
         f(a).flatMap {
           case o @ Left(_) =>
-            if (leftCounter >= limit) {
+            if leftCounter >= limit then {
               logger.debug(s"Limit Observable.tailRecM after $leftCounter× Left to reduce memory leakage")
               Observable.empty
             } else {

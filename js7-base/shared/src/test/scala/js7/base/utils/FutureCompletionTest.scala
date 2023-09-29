@@ -27,10 +27,10 @@ final class FutureCompletionTest extends OurAsyncTestSuite
     assert(futureCompletion.size == 2)
 
     promise.success(7)
-    for {
+    for
       a1 <- a.future
       c1 <- c.future
-    } yield {
+    yield {
       assert(a1 == 7 && !b.future.isCompleted && c1 == 7)
       assert(futureCompletion.size == 0)
     }

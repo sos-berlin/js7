@@ -29,7 +29,7 @@ import scala.util.Try
 final class ProcessesTest extends OurTestSuite {
 
   "processToPidOption, toShellCommandArguments" in {
-    if (isWindows) {
+    if isWindows then {
       val process = new ProcessBuilder(directShellCommandArguments("rem").asJava)
         .startRobustly().await(99.s)
       //assert(processToPidOption(process).isEmpty)
@@ -61,9 +61,9 @@ final class ProcessesTest extends OurTestSuite {
         .redirectOutput(PIPE)
         .startRobustly().await(99.s)
       val echoLines = scala.io.Source.fromInputStream(process.getInputStream).getLines().toList
-      val normalizedFirstEcho = if (isWindows) echoLines.head stripSuffix "\"" stripPrefix "\"" else echoLines.head  // Windows (with sbt?) may echo the quoted file path
+      val normalizedFirstEcho = if isWindows then echoLines.head stripSuffix "\"" stripPrefix "\"" else echoLines.head  // Windows (with sbt?) may echo the quoted file path
       assert(normalizedFirstEcho == file.toString)
-      for ((a, b) <- echoLines.tail zip Args) assert(a == b)
+      for (a, b) <- echoLines.tail zip Args do assert(a == b)
       assert(echoLines.size - 1 == Args.size)
       process.waitFor()
     }
@@ -83,7 +83,7 @@ final class ProcessesTest extends OurTestSuite {
       true -> new IOException("error=26"),
       false -> new IOException("error=261")
     ).unzip
-    val r = for (e <- exceptions) yield e match {
+    val r = for e <- exceptions yield e match {
       case RobustlyStartProcess.TextFileBusyIOException(x) => assert(x eq e); true
       case _ => false
     }
@@ -91,7 +91,7 @@ final class ProcessesTest extends OurTestSuite {
   }
 
   "Many empty shell script processes" in {
-    for (n <- sys.props.get("test.speed").flatMap(o => Try(o.toInt).toOption)) {
+    for n <- sys.props.get("test.speed").flatMap(o => Try(o.toInt).toOption) do {
       withTemporaryFile("ProcessesTest-", ".sh") { file =>
         file.writeUtf8Executable(":")
         val since = now
@@ -106,7 +106,7 @@ final class ProcessesTest extends OurTestSuite {
   }
 
   "Many processes" in {
-    for (n <- sys.props.get("test.speed").flatMap(o => Try(o.toInt).toOption)) {
+    for n <- sys.props.get("test.speed").flatMap(o => Try(o.toInt).toOption) do {
         val since = now
         (1 to n).toVector
           .traverse(_ => Future {
@@ -125,20 +125,20 @@ private object ProcessesTest
 {
   // Different character combinations should not be changed (interpreted) by the operating systems shell script invoker.
   private val Args =
-    if (isWindows)
+    if isWindows then
       List("1-one", "2-'two", "3\\three", "4-*")  // "--key=value" and several other strings do not work !!!
     else
       List("1 one",
         "2 'two",
         "3 \"three",
-        if (isSolaris || isMac)  // TestFailedException: "4[<FF>]our" did not equal "4[\f]our" - Solaris and macOS call to /bin/sh seems to interprete "\\f" as '\x0c' (FF)
+        if isSolaris || isMac then  // TestFailedException: "4[<FF>]our" did not equal "4[\f]our" - Solaris and macOS call to /bin/sh seems to interprete "\\f" as '\x0c' (FF)
           "4 four"  // Backslash is not useable as shell script argument !!!
         else "4\\four",
         "5 *",
         "--key=value")
 
   private val ShellScript =
-    if (isWindows)
+    if isWindows then
       "@echo off\r\n" +
         (0 to Args.size map { i => s"echo %$i\r\n" } mkString "")
     else

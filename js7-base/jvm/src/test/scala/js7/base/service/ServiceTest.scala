@@ -18,7 +18,7 @@ import scala.util.control.NoStackTrace
 final class ServiceTest extends OurAsyncTestSuite
 {
   private val delay = 200.ms
-  private val iterations = if (isIntelliJIdea) 100 else 10
+  private val iterations = if isIntelliJIdea then 100 else 10
 
   private def repeat(n: Int)(body: => Future[Assertion]): Future[Assertion] =
     Task.tailRecM(1)(i => logger
@@ -27,7 +27,7 @@ final class ServiceTest extends OurAsyncTestSuite
           withClue(s"#$i: ")(
             body)))
       .map(result =>
-        if (i < n)
+        if i < n then
           Left(i + 1)
         else
           Right(result)))

@@ -25,7 +25,7 @@ extends SignatureVerifier
   def publicKeys = signatures.map(_.string)
 
   def verify(document: ByteArray, signature: SillySignature) =
-    if (!signatures.contains(signature))
+    if !signatures.contains(signature) then
       Left(TamperedWithSignedMessageProblem)
     else
       Right(SillySignerId :: Nil)
@@ -56,11 +56,11 @@ object SillySignatureVerifier extends SignatureVerifier.Companion
 
   def genericSignatureToSignature(signature: GenericSignature) = {
     assertThat(signature.typeName == typeName)
-    if (signature.signerId.isDefined)
+    if signature.signerId.isDefined then
       Left(Problem("Silly signature does not accept a signerId"))
-    else if (signature.algorithm.isDefined)
+    else if signature.algorithm.isDefined then
       Left(Problem("Silly signature does not accept a signature algorithm"))
-    else if (signature.signerCertificate.isDefined)
+    else if signature.signerCertificate.isDefined then
       Left(Problem("Silly signature does not accept a signature public key"))
     else
       Right(SillySignature(signature.signatureString))

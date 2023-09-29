@@ -53,7 +53,7 @@ final class StandardEventBusTest extends OurAsyncTestSuite
     assert(!eventBus.isEmpty)
     eventBus.publish("ONE")
     eventBus.publish("ONE")
-    for (string <- future) yield {
+    for string <- future yield {
       assert(string == "ONE")
       assert(eventBus.isEmpty)
     }

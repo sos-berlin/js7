@@ -18,12 +18,12 @@ object ServiceProviders
       getClass.getClassLoader/*required for testing with sbt, sometimes*/)
 
     val iterator = serviceLoader.iterator.asScala
-    if (iterator.isEmpty)
+    if iterator.isEmpty then
       callback(
         s"No ${interface.simpleScalaName}",
         None)
     else
-      for (service <- iterator/*loads services lazily*/) {
+      for service <- iterator/*loads services lazily*/ do {
         val cls = service.getClass
         val where = Option(cls.getProtectionDomain.getCodeSource)
           .fold("")(o => s" in ${o.getLocation}")

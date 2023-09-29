@@ -17,7 +17,7 @@ extends GenericString.Checked_[A]
     pathValidator.isNamePartMaybe(c)
 
   override def checked(string: String): Checked[A] =
-    if (string.isEmpty)
+    if string.isEmpty then
       EmptyStringProblem(name)
     else
       pathValidator.checked(string)

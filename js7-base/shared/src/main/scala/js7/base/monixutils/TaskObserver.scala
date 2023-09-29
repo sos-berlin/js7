@@ -24,7 +24,7 @@ final class TaskObserver[A] private(observer: Observer[A])
             Stop
 
           case _ =>
-            if (ack.isCompleted)
+            if ack.isCompleted then
               ack.value.get match {
                 case Success(Continue) =>
                   ack = observer.onNext(a)
@@ -52,7 +52,7 @@ final class TaskObserver[A] private(observer: Observer[A])
   def complete: Task[Unit] =
     Task.defer {
       self.synchronized {
-        if (completed)
+        if completed then
           Task.unit
         else {
           completed = true

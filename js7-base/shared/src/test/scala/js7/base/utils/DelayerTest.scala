@@ -18,7 +18,7 @@ final class DelayerTest extends OurAsyncTestSuite
     val times = mutable.Buffer[FiniteDuration]()
     val start = scheduler.now
     val test =
-      for {
+      for
         delay <- Delayer.start[Task](conf)
         _ <- delay.sleep                  // +1s
         _ <- Task(times += start.elapsed) //    = 1s
@@ -44,7 +44,7 @@ final class DelayerTest extends OurAsyncTestSuite
         _ <- delay.sleep                  // +2s
         _ <- Task(times += start.elapsed) //    = 122s
 
-      } yield
+      yield
         assert(times.map(_.toCoarsest) == mutable.Buffer(
           1.s, 3.s, 6.s, 9.s, 13.s, 16.s, 19.s, 119.s, 120.s, 122.s))
 

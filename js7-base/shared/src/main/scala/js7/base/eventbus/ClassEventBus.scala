@@ -28,11 +28,11 @@ trait ClassEventBus[E] extends EventPublisher[E] with AutoCloseable
   def close() = removeAllSubscriptions()
 
   final def publish(event: E): Unit =
-    for (cls <- superclassCache.assignableClasses(classify(event))) {   // Optimizable in addSubscription ???
+    for cls <- superclassCache.assignableClasses(classify(event)) do {   // Optimizable in addSubscription ???
       register.get(cls) match {
         case null =>
         case subscriptions =>
-          for (subscription <- subscriptions) {
+          for subscription <- subscriptions do {
             try subscription.call(event)
             catch { case NonFatal(t) =>
               logger.error(s"Error in event handler ignored: $t", t)
@@ -43,7 +43,7 @@ trait ClassEventBus[E] extends EventPublisher[E] with AutoCloseable
 
   final def addSubscription(subscription: EventSubscription): Unit =
     register.synchronized {
-      for (cls <- subscription.classes) {
+      for cls <- subscription.classes do {
         register.put(
           cls,
           register.getOrDefault(cls, Vector.empty) :+ subscription)
@@ -52,12 +52,12 @@ trait ClassEventBus[E] extends EventPublisher[E] with AutoCloseable
 
   final def removeSubscription(subscription: EventSubscription): Unit =
     register.synchronized {
-      for (cls <- subscription.classes) {
+      for cls <- subscription.classes do {
         register.get(cls) match {
           case null =>
           case list =>
             val removed = list.filterNot(_ eq subscription)
-            if (removed.nonEmpty) {
+            if removed.nonEmpty then {
               register.put(cls.asInstanceOf[Class[Classifier]], removed)
             } else {
               register.remove(cls)
@@ -124,7 +124,7 @@ trait ClassEventBus[E] extends EventPublisher[E] with AutoCloseable
     lazy val subscription: EventSubscription =
       toSubscription { event_ =>
         val event = event_.asInstanceOf[ClassifierToEvent[C]]
-        if (predicate(event) && !used.getAndSet(true)) {
+        if predicate(event) && !used.getAndSet(true) then {
           subscription.close()
           handle(event)
         }
@@ -146,8 +146,8 @@ trait ClassEventBus[E] extends EventPublisher[E] with AutoCloseable
     lazy val subscription: EventSubscription =
       toSubscription { event_ =>
         val event = event_.asInstanceOf[ClassifierToEvent[C]]
-        for (a <- f(event)) {
-          if (!used.getAndSet(true)) {
+        for a <- f(event) do {
+          if !used.getAndSet(true) then {
             subscription.close()
             handle(a)
           }

@@ -24,7 +24,7 @@ trait User
       .map((_: Vector[Unit]) => ())
 
   final def checkPermission(requiredPermission: Permission): Checked[Unit] =
-    if (!hasPermission(requiredPermission))
+    if !hasPermission(requiredPermission) then
       Left(UserDoesNotHavePermissionProblem(id, requiredPermission))
     else
       Checked.unit

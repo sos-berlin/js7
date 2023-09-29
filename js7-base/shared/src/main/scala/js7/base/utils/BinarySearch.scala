@@ -10,12 +10,12 @@ object BinarySearch
   def binarySearch(start: Int, end: Int, compareTo: Int => Int): (Int, Boolean) =
   {
     @tailrec def loop(low: Int, high: Int): (Int, Boolean) =
-      if (low <= high) {
+      if low <= high then {
         val middle = (low + high) >>> 1
         val cmp = compareTo(middle)
-        if (cmp < 0)
+        if cmp < 0 then
           loop(low + 1, high)
-        else if (cmp > 0)
+        else if cmp > 0 then
           loop(low, high - 1)
         else
           middle -> true

@@ -47,16 +47,16 @@ object FileUtils
 
   def touchFile(path: Path): Unit = {
     val file = path.toFile
-    if (!file.createNewFile() && !file.setLastModified(System.currentTimeMillis))
+    if !file.createNewFile() && !file.setLastModified(System.currentTimeMillis) then
       throw new IOException("touchFile file: unable to update modification time of " + file)
   }
 
   def copyDirectoryContent(from: Path, to: Path, options: CopyOption*): Unit = {
-    if (!exists(to)) createDirectory(to)
+    if !exists(to) then createDirectory(to)
     autoClosing(Files.list(from)) { stream =>
-      for (file <- stream.asScala) {
+      for file <- stream.asScala do {
         val destination = to.resolve(file.getFileName)
-        if (isDirectory(file))
+        if isDirectory(file) then
           copyDirectoryContent(file, destination)
         else
           copy(file, destination, options*)
@@ -124,7 +124,7 @@ object FileUtils
         write(bytes.toArray)
 
       def write(string: String, encoding: Charset = UTF_8, append: Boolean = false): Unit = {
-        val options = Vector(CREATE, WRITE, if (append) APPEND else TRUNCATE_EXISTING)
+        val options = Vector(CREATE, WRITE, if append then APPEND else TRUNCATE_EXISTING)
         writeString(delegate, string, encoding, options*)
       }
 
@@ -164,7 +164,7 @@ object FileUtils
         })
 
       def makeExecutable(): Unit =
-        if (isUnix) {
+        if isUnix then {
           setPosixFilePermissions(delegate, PosixFilePermissions.fromString("r-x------"))
         }
 
@@ -239,22 +239,22 @@ object FileUtils
       })
 
   def deleteDirectoryRecursively(dir: Path): Unit = {
-    if (!isDirectory(dir)) throw new IOException(s"Not a directory: $dir")
-    if (!isSymbolicLink(dir)) {
+    if !isDirectory(dir) then throw new IOException(s"Not a directory: $dir")
+    if !isSymbolicLink(dir) then {
       deleteDirectoryContentRecursively(dir)
     }
     delete(dir)
   }
 
   def deleteDirectoryContentRecursively(dir: Path): Unit =
-    for (f <- dir.directoryContents) {
-      if (isDirectory(f) && !isSymbolicLink(f)) deleteDirectoryContentRecursively(f)
+    for f <- dir.directoryContents do {
+      if isDirectory(f) && !isSymbolicLink(f) then deleteDirectoryContentRecursively(f)
       delete(f)
     }
 
   def tryDeleteDirectoryContentRecursively(dir: Path): Unit =
-    for (f <- dir.directoryContents) {
-      if (isDirectory(f) && !isSymbolicLink(f)) deleteDirectoryContentRecursively(f)
+    for f <- dir.directoryContents do {
+      if isDirectory(f) && !isSymbolicLink(f) then deleteDirectoryContentRecursively(f)
       try delete(f)
       catch { case NonFatal(t) =>
         logger.warn(s"Delete $f => ${t.toStringWithCauses}")
@@ -274,9 +274,9 @@ object FileUtils
   private val RelativePathRegex = """^(/|\\|..?/|..?\\)|([/\\]..?([/\\]|$))""".r.unanchored
 
   def checkRelativePath(path: String): Checked[String] =
-    if (path.isEmpty)
+    if path.isEmpty then
       Left(Problem("Relative file path must not be empty"))
-    else if (RelativePathRegex.pattern.matcher(path).find())
+    else if RelativePathRegex.pattern.matcher(path).find() then
       Left(Problem(s"Not a valid relative file path: $path"))
     else
       Right(path)

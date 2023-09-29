@@ -29,7 +29,7 @@ object WaitForCondition
     val deadline = sleeper.now + timeout
     try body
     catch { case NonFatal(t) =>
-      while (deadline.hasTimeLeft) {
+      while deadline.hasTimeLeft do {
         sleeper.sleep(step min deadline.timeLeftOrZero)
         Try { body } match {
           case Success(result) => return result

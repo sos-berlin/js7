@@ -9,11 +9,11 @@ final class Pem private(val typeName: String)
   private val end = s"-----END $typeName-----"
 
   def fromPem(pem: String): Checked[ByteArray] = {
-    if (!pem.startsWith("-----BEGIN "))
+    if !pem.startsWith("-----BEGIN ") then
       Left(Problem.pure("PEM format expected"))
     else {
       val trimmed = pem.trim
-      if (!pem.startsWith(begin) || !trimmed.endsWith(end))
+      if !pem.startsWith(begin) || !trimmed.endsWith(end) then
         Left(Problem(s"PEM '$typeName' format expected"))
       else
         ByteArray.fromMimeBase64(trimmed
@@ -35,7 +35,7 @@ object Pem
 
   def pemTypeOf(string: String): Checked[String] = {
     val head = string.takeWhile(o => o != '\r' && o != '\n')
-    if (!head.startsWith("-----BEGIN ") || !head.endsWith("-----"))
+    if !head.startsWith("-----BEGIN ") || !head.endsWith("-----") then
       Left(Problem.pure("PEM format expected"))
     else
       Right(head.stripPrefix("-----BEGIN ").stripSuffix("-----"))

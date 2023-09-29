@@ -18,7 +18,7 @@ object ThreadPoolsBase
     val keepAlive = config.getDuration("js7.thread-pools.io.keep-alive").toFiniteDuration
     val virtualAllowed = config.optionAs[String]("js7.thread-pools.virtual")
       .exists(Set("", "true"))
-    if (virtualAllowed)
+    if virtualAllowed then
       newBlockingExecutor(name, keepAlive)
     else
       newBlockingNonVirtualExecutor(name, keepAlive)

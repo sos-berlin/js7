@@ -20,7 +20,7 @@ final class Fs2PubSubTest extends OurAsyncTestSuite
 
     def startStream[A <: AnyRef](pubSub: Fs2PubSub[IO, A], require: Int): IO[Fiber[IO, Vector[A]]] = {
       val initial = null.asInstanceOf[A]
-      for {
+      for
         streamStarted <- Deferred[IO, Unit]
         streamFiber <- pubSub
           .newStream
@@ -36,12 +36,12 @@ final class Fs2PubSubTest extends OurAsyncTestSuite
             .toVector)
           .start
         _ <- streamStarted.get
-      } yield streamFiber
+      yield streamFiber
     }
 
     def test(nr: Int): IO[Assertion] = {
       val pubSub = new Fs2PubSub[IO, String]
-      for {
+      for
         _ <- pubSub.publish("NULL")
         streaming1 <- startStream(pubSub, 1/*read last push "NULL" before continuing*/)
         _ <- pubSub.publish("EINS")
@@ -54,12 +54,12 @@ final class Fs2PubSubTest extends OurAsyncTestSuite
         result2 <- streaming2.join
         result3 <- streaming3.join
         result4 <- streaming4.join
-      } yield withClue(s"#$nr: ") {
+      yield withClue(s"#$nr: ") {
         assert(result1 == Vector("EINS", "ZWEI"))
         assert(result2 == Vector("ZWEI"))
         assert(result3 == Vector())
         assert(result4 == Vector())
-        if (isIntelliJIdea && nr % 100 == 0) print(s"✔")
+        if isIntelliJIdea && nr % 100 == 0 then print(s"✔")
         succeed
       }
     }

@@ -67,9 +67,9 @@ private[monixutils] final class InsertHeartbeatsOnSlowUpstream[+A](source: Obser
           }
 
         self.synchronized {
-          if (isDone)
+          if isDone then
             () // do nothing else
-          else if (!ack.isCompleted) {
+          else if !ack.isCompleted then {
             // The consumer is still processing its last message,
             // and this processing time does not enter the picture.
             // Given that the lastTSInMillis is set after Continue
@@ -81,7 +81,7 @@ private[monixutils] final class InsertHeartbeatsOnSlowUpstream[+A](source: Obser
               case _ =>
                 ()
             }
-          } else if (lastEvent == null || !hasValue) {
+          } else if lastEvent == null || !hasValue then {
             // on this branch either the data source hasn't emitted anything
             // yet (lastEvent == null), or we don't have a new value since
             // the last time we've tried (!hasValue), so keep waiting
@@ -90,7 +90,7 @@ private[monixutils] final class InsertHeartbeatsOnSlowUpstream[+A](source: Obser
             val rightNow = scheduler.clockMonotonic(MILLISECONDS)
             val sinceLastOnNext = rightNow - lastTSInMillis
 
-            if (sinceLastOnNext >= timeoutMillis) {
+            if sinceLastOnNext >= timeoutMillis then {
               // hasValue is set to false only if the onlyOnce param is
               // set to true (otherwise we keep repeating our current
               // value until a new one happens)
@@ -108,7 +108,7 @@ private[monixutils] final class InsertHeartbeatsOnSlowUpstream[+A](source: Obser
                       // subtracting it from the period
                       val executionTime = scheduler.clockMonotonic(MILLISECONDS) - rightNow
                       val delay =
-                        if (timeoutMillis > executionTime)
+                        if timeoutMillis > executionTime then
                           timeoutMillis - executionTime
                         else 0L
 
@@ -141,7 +141,7 @@ private[monixutils] final class InsertHeartbeatsOnSlowUpstream[+A](source: Obser
         def signalNext(ack: Future[Ack]): Future[Ack] =
           ack match {
             case Continue =>
-              if (isDone) Stop
+              if isDone then Stop
               else
                 out.onNext(elem) match {
                   case Continue => unfreeze()
@@ -158,7 +158,7 @@ private[monixutils] final class InsertHeartbeatsOnSlowUpstream[+A](source: Obser
           }
 
         self.synchronized {
-          if (isDone) Stop
+          if isDone then Stop
           else {
             lastEvent = elem
             ack = signalNext(ack.syncTryFlatten)
@@ -169,7 +169,7 @@ private[monixutils] final class InsertHeartbeatsOnSlowUpstream[+A](source: Obser
 
       def onError(ex: Throwable): Unit =
         self.synchronized {
-          if (!isDone) {
+          if !isDone then {
             isDone = true
             task.cancel()
             out.onError(ex)
@@ -178,7 +178,7 @@ private[monixutils] final class InsertHeartbeatsOnSlowUpstream[+A](source: Obser
 
       def onComplete(): Unit = {
         def signal(): Ack = {
-          if (!isDone) {
+          if !isDone then {
             isDone = true
             task.cancel()
             out.onComplete()

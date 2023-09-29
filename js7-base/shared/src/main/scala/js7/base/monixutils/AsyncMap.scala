@@ -152,8 +152,8 @@ class AsyncMap[K: Tag, V: Tag](initial: Map[K, V] = Map.empty[K, V])
       })
 
   private def updateMap(key: K, value: V): Checked[Unit] = {
-    val checked = if (_map.contains(key)) Checked.unit else onEntryInsert()
-    for (_ <- checked) {
+    val checked = if _map.contains(key) then Checked.unit else onEntryInsert()
+    for _ <- checked do {
       _map = _map.updated(key, value)
     }
     checked

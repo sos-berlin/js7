@@ -26,7 +26,7 @@ final class FutureCompletion[A](future: Future[A])(implicit ec: ExecutionContext
   future.onComplete { tried =>
     numberToEntry.synchronized {
       completed = Some(tried)
-      for (entry <- numberToEntry.values) {
+      for entry <- numberToEntry.values do {
         entry.promise.complete(tried)
       }
     }
@@ -43,7 +43,7 @@ final class FutureCompletion[A](future: Future[A])(implicit ec: ExecutionContext
   private[utils] def add(): Entry = {
     val entry = new Entry
     val wasCompleted = numberToEntry.synchronized {
-      if (completed.isEmpty) {
+      if completed.isEmpty then {
         numberToEntry.update(entry.number, entry)
       }
       completed

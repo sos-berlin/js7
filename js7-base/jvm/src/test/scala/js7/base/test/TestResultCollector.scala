@@ -32,12 +32,12 @@ private object TestResultCollector
     newMaybeVirtualThread("TestResultCollector-shutdown-hook") {
       logThreads()
       logger.info(s"Test summary:\n$asString\n")
-      if (sys.props.contains("js7.dumpHeap")) dumpJavaHeap()
-      if (false) Log4j.shutdown() // Set shutdownHook="disable" in project/log4j2.xml !!!
+      if sys.props.contains("js7.dumpHeap") then dumpJavaHeap()
+      if false then Log4j.shutdown() // Set shutdownHook="disable" in project/log4j2.xml !!!
     })
 
   private def logThreads(): Unit =
-    if (logger.underlying.isDebugEnabled) {
+    if logger.underlying.isDebugEnabled then {
       val threadToTrace = Thread.getAllStackTraces.asScala
         .toVector
         .sortBy(th => (th._1.getName, th._1.threadId))
@@ -89,9 +89,9 @@ private object TestResultCollector
         .sortWith { (a, b) =>
           val at = weighTry(a.tried)
           val bt = weighTry(b.tried)
-          if (at != bt)
+          if at != bt then
             at < bt
-          else if (a.prettyDuration != b.prettyDuration)
+          else if a.prettyDuration != b.prettyDuration then
             a.duration < b.duration
           else
             a.prefix.compareTo(b.prefix) match {

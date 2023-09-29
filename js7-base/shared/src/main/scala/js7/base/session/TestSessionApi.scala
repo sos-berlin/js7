@@ -17,7 +17,7 @@ extends SessionApi.HasUserAndPassword with HasIsIgnorableStackTrace
 
   def login_(userAndPassword: Option[UserAndPassword], onlyIfNotLoggedIn: Boolean) =
     Task {
-      if (userAndPassword == expectedUserAndPassword) {
+      if userAndPassword == expectedUserAndPassword then {
         sessionTokenRef := Some(sessionTokenGenerator.next())
         Completed
       } else throw new IllegalArgumentException("TestSessionApi: userAndPassword do not match")

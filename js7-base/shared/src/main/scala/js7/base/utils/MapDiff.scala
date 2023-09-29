@@ -9,13 +9,13 @@ final case class MapDiff[K, V] private(
   updated: Map[K, V],
   deleted: Set[K])
 {
-  if ((added.keySet & updated.keySet).nonEmpty ||
+  if (added.keySet & updated.keySet).nonEmpty ||
       (added.keySet & deleted).nonEmpty ||
-      (updated.keySet & deleted).nonEmpty)
+      (updated.keySet & deleted).nonEmpty then
     throw new IllegalArgumentException("MapDiff: duplicate keys")
 
   def applyTo(other: Map[K, V]): Map[K, V] =
-    if (isEmpty)
+    if isEmpty then
       other
     else
       (other.view.filterKeys(deleted) ++ updated ++ added).toMap
@@ -35,7 +35,7 @@ object MapDiff
     apply(added, Map.empty, Set.empty)
 
   def apply[K, V](added: Map[K, V], updated: Map[K, V], deleted: Set[K]): MapDiff[K, V] =
-    if (added.isEmpty && updated.isEmpty && deleted.isEmpty)
+    if added.isEmpty && updated.isEmpty && deleted.isEmpty then
       empty
     else
       new MapDiff(added, updated, deleted)

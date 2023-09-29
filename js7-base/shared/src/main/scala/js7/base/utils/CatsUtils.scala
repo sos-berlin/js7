@@ -53,7 +53,7 @@ object CatsUtils
 
     implicit final class RichTimer[F[_]](private val timer: Timer[F]) extends AnyVal {
       def now(implicit F: Functor[F]): F[Deadline] =
-        for (nanos <- timer.clock.monotonic(NANOSECONDS)) yield
+        for nanos <- timer.clock.monotonic(NANOSECONDS) yield
           Deadline(Duration(nanos, NANOSECONDS))
     }
 
@@ -108,7 +108,7 @@ object CatsUtils
       checked(seq).orThrow
 
     def checked[A: Tag](seq: Seq[A]): Checked[NonEmptyList[A]] =
-      if (seq.isEmpty)
+      if seq.isEmpty then
         Left(Problem(s"Cannot create NonEmptyList[${Tag[A].tag.longName}] from empty sequence"))
       else
         Right(NonEmptyList(seq.head, seq.toList.tail))
@@ -120,7 +120,7 @@ object CatsUtils
       checked(seq).orThrow
 
     def checked[A: Tag](seq: Seq[A]): Checked[NonEmptySeq[A]] =
-      if (seq.isEmpty)
+      if seq.isEmpty then
         Left(Problem(s"Cannot create NonEmptySeq[${Tag[A].tag.longName}] from empty sequence"))
       else
         Right(NonEmptySeq(seq.head, seq.tail))
@@ -142,7 +142,7 @@ object CatsUtils
     continueWithLast(NonEmptySeq.fromSeqUnsafe(Seq(head, next) ++ tail))
 
   def repeatLast[A](seq: Seq[A]): LazyList[A] =
-    if (seq.isEmpty)
+    if seq.isEmpty then
       LazyList.empty
     else {
       val last = seq.last

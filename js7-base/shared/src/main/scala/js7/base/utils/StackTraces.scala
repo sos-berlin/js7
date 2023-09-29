@@ -41,7 +41,7 @@ object StackTraces
       */
     def appendStackTrace(stackTrace: Array[StackTraceElement]): delegate.type = {
       delegate.setStackTrace(
-        if (delegate.getStackTrace.isEmpty)
+        if delegate.getStackTrace.isEmpty then
           stackTrace
         else
           (delegate.getStackTrace :+ eyecatcher) ++ stackTrace)

@@ -11,7 +11,7 @@ import scala.concurrent.{Await, Future, Promise}
   */
 final class MonixAntiBlockingTest extends OurTestSuite
 {
-  if (sys.props.get("scala.concurrent.context.numThreads") contains "1") {
+  if sys.props.get("scala.concurrent.context.numThreads") contains "1" then {
     "Trying to minimize blocking error ..." in {
       implicit val scheduler = Scheduler.traced
       val task = Task.deferFuture {

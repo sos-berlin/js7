@@ -32,12 +32,12 @@ object Log4j
 
   def initialize(): Unit =
     ifNotInitialized {
-      if (CorrelId.couldBeEnabled) CorrelIdLog4JThreadContextMap.initialize()
-      for (t <- shutdownMethod.failed) logger.warn(t.toString)
+      if CorrelId.couldBeEnabled then CorrelIdLog4JThreadContextMap.initialize()
+      for t <- shutdownMethod.failed do logger.warn(t.toString)
     }
 
   def setDefaultConfiguration(resource: String): Unit =
-    if (!sys.props.contains("log4j.configurationFile")) {
+    if !sys.props.contains("log4j.configurationFile") then {
       val uri = s"classpath:$resource"
       System.setProperty("log4j.configurationFile", uri)
       logger.debug(s"Default log4j.configurationFile=$uri")
@@ -47,12 +47,12 @@ object Log4j
     * Call in case the shutdown hook is disabled in log4j2.xml: &gt;configuration shutdownHook="disable">.
     */
   def shutdown(fast: Boolean = false): Unit =
-    if (!isShutdown.getAndSet(true)) {
-      if (!fast) {
+    if !isShutdown.getAndSet(true) then {
+      if !fast then {
         CorrelId.logStatisticsIfEnabled()
         CorrelIdLog4JThreadContextMap.logStatistics()
       }
-      for (shutdown <- shutdownMethod) {
+      for shutdown <- shutdownMethod do {
         // Log complete timestamp in case of short log timestamp
         logger.info("shutdown at " +
           LocalDateTime.now.toString.replace('T', ' ') +

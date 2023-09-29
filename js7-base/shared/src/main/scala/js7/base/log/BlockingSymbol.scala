@@ -29,14 +29,14 @@ final class BlockingSymbol {
   }
 
   private def increment(minimum: Int): Unit = {
-    if (_index < minimum)
+    if _index < minimum then
       _index = minimum
     else
       increment()
   }
 
   def increment(): Unit =
-    if (_index < 3) {
+    if _index < 3 then {
       _index += 1
     }
 

@@ -43,9 +43,9 @@ object Stopwatch
 
   def measureTime(n: Int, ops: String = "ops", warmUp: Int = 1)(body: => Unit): Result =
     try {
-      for (_ <- 1 to warmUp) body
+      for _ <- 1 to warmUp do body
       val start = nanoTime
-      for (_ <- 1 to n) body
+      for _ <- 1 to n do body
       val duration = (nanoTime - start).nanoseconds
       Result(duration, n, ops)
     } catch { case NonFatal(t) =>
@@ -68,7 +68,7 @@ object Stopwatch
     Result(duration, n, ops).toString
 
   def bytesPerSecondString(duration: FiniteDuration, n: Long): String =
-    if (n < 10_000_000)
+    if n < 10_000_000 then
       durationAndPerSecondString(duration, n / 1_000, "kB", gap = false)
     else
       durationAndPerSecondString(duration, n / 1_000_000, "MB")
@@ -84,29 +84,29 @@ object Stopwatch
 
   final case class Result(duration: FiniteDuration, n: Long, ops: String = "ops", private val gap: Boolean = true) {
     def singleDuration = duration / n
-    def perSecondString = if (duration.toNanos == 0) "∞" else (n * 1000L*1000*1000 / duration.toNanos).toString
+    def perSecondString = if duration.toNanos == 0 then "∞" else (n * 1000L*1000*1000 / duration.toNanos).toString
     val gapOps = (gap ?? " ") + ops
 
     override def toString =
-      if (n == 0)
+      if n == 0 then
         s"0$gapOps"
       else
         s"${duration.pretty}/$n$gapOps (⌀${singleDuration.pretty}), $perSecondString$gapOps/s"
 
     def toShortString =
-      if (n == 0 || duration.isZero)
+      if n == 0 || duration.isZero then
         s"${duration.pretty}/$n$gapOps"
       else
         s"${duration.pretty}/$n$gapOps, $perSecondString$gapOps/s"
 
     def countAndPerSecondString =
-      if (n == 0)
+      if n == 0 then
         s"0$gapOps"
       else
         s"$n$gapOps, $perSecondString/s"
 
     def toPerSecondsString =
-      if (n == 0)
+      if n == 0 then
         s"0$gapOps"
       else
         s"$perSecondString$gapOps/s"

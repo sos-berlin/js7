@@ -35,12 +35,12 @@ final class HttpClientTest extends OurAsyncTestSuite
   }
 
   "liftProblem withProblem" in {
-    for (checkedProblem <- liftProblem(Task.raiseError[Int](withProblem)).runToFuture) yield
+    for checkedProblem <- liftProblem(Task.raiseError[Int](withProblem)).runToFuture yield
       assert(checkedProblem == Left(problem))
   }
 
   "liftProblem HttpException without Problem" in {
-    for (tried <- liftProblem(Task.raiseError[Int](withoutProblem)).materialize.runToFuture) yield
+    for tried <- liftProblem(Task.raiseError[Int](withoutProblem)).materialize.runToFuture yield
       assert(tried == Success(Left(Problem(withoutProblem.getMessage))))
   }
 
@@ -52,7 +52,7 @@ final class HttpClientTest extends OurAsyncTestSuite
       override def getMessage = null/*default when no message is given*/
     }
 
-    for (tried <- liftProblem(Task.raiseError[Int](exception)).materialize.runToFuture) yield {
+    for tried <- liftProblem(Task.raiseError[Int](exception)).materialize.runToFuture yield {
       assert(tried == Failure(exception))
     }
   }
@@ -62,13 +62,13 @@ final class HttpClientTest extends OurAsyncTestSuite
     assert(problem.httpStatusCode == 503)
     assert(problem.toString == "WITHOUT PROBLEM")
 
-    for (case Success(Left(problem)) <- liftProblem(Task.raiseError[Int](withoutProblem)).materialize.runToFuture) yield
+    for case Success(Left(problem)) <- liftProblem(Task.raiseError[Int](withoutProblem)).materialize.runToFuture yield
       assert(problem.httpStatusCode == 503)
   }
 
   "liftProblem with unknown Exception" in {
     val other = new Exception("OTHER")
-    for (tried <- liftProblem(Task.raiseError[Int](other)).materialize.runToFuture) yield
+    for tried <- liftProblem(Task.raiseError[Int](other)).materialize.runToFuture yield
       assert(tried == Failure(other))
   }
 }

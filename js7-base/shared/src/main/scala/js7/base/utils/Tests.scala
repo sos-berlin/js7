@@ -28,7 +28,7 @@ object Tests
       "isScalaTest" -> isScalaTest,
       "isSbt" -> isSbt
     ).filter(_._2)
-    if (onlyTrues.nonEmpty) {
+    if onlyTrues.nonEmpty then {
       Logger[this.type].info(onlyTrues.view.map(_._1).mkString(" · "))
     }
   }

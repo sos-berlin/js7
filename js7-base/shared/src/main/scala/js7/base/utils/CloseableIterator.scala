@@ -20,7 +20,7 @@ trait CloseableIterator[+A] extends Iterator[A] with AutoCloseable
         this
 
       case _ =>
-        if (hasNext)
+        if hasNext then
           new CloseAtEnd[A](this)
         else {
           close()
@@ -140,7 +140,7 @@ object CloseableIterator {
 
     def close() =
       try a.close()
-      finally for (b <- b) b.close()
+      finally for b <- b do b.close()
 
     def hasNext = concatenated.hasNext
 

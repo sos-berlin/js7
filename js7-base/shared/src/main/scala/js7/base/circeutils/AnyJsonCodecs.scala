@@ -40,7 +40,7 @@ object AnyJsonCodecs
       case v: java.math.BigDecimal => Json.fromBigDecimal(v)
       case v: GenericString => Json.fromString(v.string)
       case v =>
-        if (unknownToString) Json.fromString(v.toString)
+        if unknownToString then Json.fromString(v.toString)
         else sys.error(s"Unsupported type for JSON serialization: ${v.getClass.getName}")
     }
 

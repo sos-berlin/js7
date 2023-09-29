@@ -16,7 +16,7 @@ final class WaitForConditionTest extends OurTestSuite
       var count = 0
       def apply(): Unit = {
         count += 1
-        if (count <= n) throw new IllegalStateException("FAILED")
+        if count <= n then throw new IllegalStateException("FAILED")
       }
     }
 

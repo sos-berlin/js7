@@ -73,9 +73,9 @@ object SessionApi
     throwable match {
       case _: javax.net.ssl.SSLException =>
       case _ =>
-        if (throwable.getStackTrace.nonEmpty
+        if throwable.getStackTrace.nonEmpty
           && throwable.getClass.scalaName != "akka.stream.StreamTcpException"
-          && Option(throwable.getCause).forall(_.getClass.scalaName != "akka.stream.StreamTcpException")) {
+          && Option(throwable.getCause).forall(_.getClass.scalaName != "akka.stream.StreamTcpException") then {
           logger.debug(s"$myToString: ${throwable.toString}", throwable)
         }
     }
@@ -100,7 +100,7 @@ object SessionApi
       onlyIfNotLoggedIn: Boolean = false)
     : Task[Completed] =
       Task.defer(
-        if (onlyIfNotLoggedIn && hasSession)
+        if onlyIfNotLoggedIn && hasSession then
           Task.completed
         else {
           val sym = new BlockingSymbol
@@ -108,7 +108,7 @@ object SessionApi
             .onErrorRestartLoop(()) { (throwable, _, retry) =>
               val isTemporary = isTemporaryUnreachable(throwable)
               onError(throwable).flatMap(continue =>
-                if (continue/*normally true*/ && delays.hasNext && isTemporary) {
+                if continue/*normally true*/ && delays.hasNext && isTemporary then {
                   val prefix = isTemporary ?? {
                     sym.onWarn()
                     s"$sym "
@@ -120,9 +120,9 @@ object SessionApi
             }
             .guaranteeCase {
               case ExitCase.Completed => Task(
-                if (sym.called) logger.info(s"🟢 $self logged-in"))
+                if sym.called then logger.info(s"🟢 $self logged-in"))
               case ExitCase.Canceled => Task(
-                if (sym.called) logger.info(s"⚫️ $self Canceled"))
+                if sym.called then logger.info(s"⚫️ $self Canceled"))
               case _ => Task.unit
             }
         })
@@ -192,7 +192,7 @@ object SessionApi
 
                   case e: HttpException if isTemporaryUnreachable(e) && delays.hasNext =>
                     onError(e).flatMap(continue =>
-                    if (continue) {
+                    if continue then {
                       sym.onWarn()
                       warn(s"$sym $toString", e)
                         loginUntilReachable(delays, onError = onError, onlyIfNotLoggedIn = true)
@@ -207,9 +207,9 @@ object SessionApi
             })
           .guaranteeCase {
             case ExitCase.Completed => Task(
-              if (sym.called) logger.info(s"🟢 $self reached"))
+              if sym.called then logger.info(s"🟢 $self reached"))
             case ExitCase.Canceled => Task(
-              if (sym.called) logger.info(s"⚫️ $self Canceled"))
+              if sym.called then logger.info(s"⚫️ $self Canceled"))
             case _ => Task.unit
           }
       }

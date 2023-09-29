@@ -77,7 +77,7 @@ final class RangeSetTest extends OurTestSuite {
       RangeSet.raw(Interval('a', 'c'), Single('x')))
   }
 
-  if (false) "RangeSet[String]" in {
+  if false then "RangeSet[String]" in {
     // Requires an Ordinal[String] with isSuccessorOf
   }
 
@@ -163,7 +163,7 @@ final class RangeSetTest extends OurTestSuite {
       assert((rangeSet.intersect(RangeSet(1, 4, 5, 99))/*: RangeSet[Int]*/) ==
         RangeSet.raw(Single(1), Single(4), Single(5)))
 
-      if (false) {
+      if false then {
         // Will deplete memory
         assert(toRangeSet("1..999999999").intersect(toRangeSet("1..999999999")) ==
           toRangeSet("1..999999999"))
@@ -174,7 +174,7 @@ final class RangeSetTest extends OurTestSuite {
       assert(toRangeSet("1..3") -- toRangeSet("2,5")/*: RangeSet[Int]*/ == toRangeSet("1,3"))
       assert(toRangeSet("2,5") -- toRangeSet("1..3")/*: RangeSet[Int]*/ == toRangeSet("5"))
 
-      if (false) {
+      if false then {
         // Will deplete memory
         assert(toRangeSet("1..999999999") -- toRangeSet("500000000..999999998") ==
         toRangeSet("1..499999999 999999999"))
@@ -185,7 +185,7 @@ final class RangeSetTest extends OurTestSuite {
       // Same as -- operator ?
       assert(toRangeSet("1..3").diff(toRangeSet("2,5"))/*: RangeSet[Int]*/ == toRangeSet("1,3"))
       assert(toRangeSet("2,5").diff(toRangeSet("1..3"))/*: RangeSet[Int]*/ == toRangeSet("5"))
-      if (false) {
+      if false then {
         // Will deplete memory
         assert(toRangeSet("1..999999999").diff(toRangeSet("500000000..999999998")) ==
           toRangeSet("1..499999999,999999999"))

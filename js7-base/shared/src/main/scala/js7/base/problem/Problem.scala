@@ -136,7 +136,7 @@ object Problem extends Semigroup[Problem]
 
   private def combineMessages(a: String, b: String) = {
     val b1 = b.trim
-    if (b1.isEmpty || a.trim == b1)
+    if b1.isEmpty || a.trim == b1 then
       a
     else
       normalizePrefix(a) + b
@@ -180,8 +180,8 @@ object Problem extends Semigroup[Problem]
 
     override def toString = {
       val msg = messageWithCause
-      if (s"$msg ".startsWith(s"${code.string} ") ||
-          s"$msg(".startsWith(s"${code.string}(")) msg
+      if s"$msg ".startsWith(s"${code.string} ") ||
+          s"$msg(".startsWith(s"${code.string}(") then msg
       else code.string + ": " + msg
     }
   }
@@ -245,7 +245,7 @@ object Problem extends Semigroup[Problem]
       throwables.headOption.map { head =>
         val throwable = new ProblemException(this)
         throwable.setStackTrace(head.getStackTrace)
-        for (o <- throwables.tail) throwable.appendStackTrace(o.getStackTrace)
+        for o <- throwables.tail do throwable.appendStackTrace(o.getStackTrace)
         throwable
       }
     }
@@ -301,9 +301,9 @@ object Problem extends Semigroup[Problem]
   }
 
   private def normalizePrefix(prefix: String): String =
-    if (prefix matches ".*[:-] *")
-      if (prefix endsWith " ") prefix else prefix + " "
-    else if (prefix.trim.isEmpty && prefix.endsWith(" "))
+    if prefix matches ".*[:-] *" then
+      if prefix endsWith " " then prefix else prefix + " "
+    else if prefix.trim.isEmpty && prefix.endsWith(" ") then
       prefix
     else
       prefix + ";\n"
@@ -326,11 +326,11 @@ object Problem extends Semigroup[Problem]
   }
 
   implicit val jsonDecoder: Decoder[Problem] =
-    c => for {
+    c => for
       maybeCode <- c.get[Option[ProblemCode]]("code")
       arguments <- c.getOrElse[Map[String, String]]("arguments")(Map.empty)
       message <- c.get[String]("message")
-    } yield
+    yield
       maybeCode match {
         case None => Problem.pure(message)
         case Some(code) => HasCodeAndMessage(code, arguments, message)

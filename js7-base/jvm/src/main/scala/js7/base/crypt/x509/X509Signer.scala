@@ -38,9 +38,9 @@ object X509Signer extends DocumentSigner.Companion
   def typeName = X509Signature.TypeName
 
   def checked(privateKey: ByteArray, password: SecretString = SecretString("")) =
-    if (true)
+    if true then
       Left(Problem.pure("X509Signer requirers a SignerId which the current API does not provide"))
-    else if (password.nonEmpty)
+    else if password.nonEmpty then
       Left(Problem.pure("X.509 private key does not require a password"))
     else
       checked(privateKey, SHA512withRSA, SignerId("???"))
@@ -59,10 +59,10 @@ object X509Signer extends DocumentSigner.Companion
   : Checked[(X509Signer, X509SignatureVerifier)] =
     withTemporaryDirectory("X509Signer") { dir =>
       val openssl = new Openssl(dir)
-      for {
+      for
         certWithPrivateKey <- openssl.generateCertWithPrivateKey("X509Signer", s"/${signerId.string}")
         signer <- X509Signer.checked(certWithPrivateKey.privateKey, SHA512withRSA, signerId)
         verifier <- X509SignatureVerifier.checked(certWithPrivateKey.certificate :: Nil, origin)
-      } yield signer -> verifier
+      yield signer -> verifier
     }
 }

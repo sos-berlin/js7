@@ -45,20 +45,20 @@ final class UnsafeMemoizableTest extends OurAsyncTestSuite
 
   private def check0[F[_]: Concurrent: FlatMap](expected: Int): F[Assertion] = {
     // These two calls are equivalent
-    (for {
+    (for
       _ <- check[F](_.unsafeMemoize, expected)
       _ <- check[F](UnsafeMemoizable.concurrentMemoizable.unsafeMemoize(_), expected)
-    } yield succeed)
+    yield succeed)
   }
 
   private def check[F[_]: Sync: FlatMap](f: F[Int] => F[Int], expected: Int): F[Assertion] = {
     val called = new AtomicInteger(0)
     // TODO How to test parallel execution?
     val x = f(Sync[F].delay(called.incrementAndGet()))
-    (for {
+    (for
       _ <- x
       _ <- x
       a <- x
-    } yield assert(a == expected))
+    yield assert(a == expected))
   }
 }

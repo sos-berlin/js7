@@ -59,7 +59,7 @@ object Checked
     }
 
   def check[A](predicate: Boolean, a: => A, problem: => Problem): Checked[A] =
-    if (predicate) Right(a) else Left(problem)
+    if predicate then Right(a) else Left(problem)
 
   def catchNonFatalFlatten[A](f: => Checked[A]): Checked[A] =
     catchNonFatal(f).flatten
@@ -69,7 +69,7 @@ object Checked
     try Right(f)
     catch {
       case NonFatal(t) =>
-        for (t <- t.ifStackTrace) catchLogger.debug(s"💥 Checked.catchNonFatal: ${t.toStringWithCauses}", t)
+        for t <- t.ifStackTrace do catchLogger.debug(s"💥 Checked.catchNonFatal: ${t.toStringWithCauses}", t)
         Left(Problem.fromThrowable(t))
     }
 
@@ -195,7 +195,7 @@ object Checked
       underlying.iterator.foreach(
         _.flatMap(f) match {
           case Left(problem) => leftBuilder += problem
-          case Right(b) => if (leftBuilder.isEmpty) rightBuilder += b
+          case Right(b) => if leftBuilder.isEmpty then rightBuilder += b
         })
       Problem.combineAllOption(leftBuilder) match {
         case Some(problem) => Left(problem)
@@ -209,7 +209,7 @@ object Checked
       rightBuilder.sizeHint(underlying)
       underlying.iterator.foreach {
         case Left(problem) => leftBuilder += problem
-        case Right(b) => if (leftBuilder.isEmpty) rightBuilder += b
+        case Right(b) => if leftBuilder.isEmpty then rightBuilder += b
       }
       Problem.combineAllOption(leftBuilder) match {
         case Some(problem) => Left(problem)
@@ -232,7 +232,7 @@ object Checked
       val builder = new VectorBuilder[B]
       var failed: Left[L, B] = null
       val it = underlying.iterator
-      while (failed == null && it.hasNext) {
+      while failed == null && it.hasNext do {
         f(it.next()) match {
           case o @ Left(_) => failed = o
           case Right(b) => builder += b
@@ -253,12 +253,12 @@ object Checked
     }
 
     implicit def checkedJsonDecoder[A: Decoder]: Decoder[Checked[A]] = c =>
-      for {
+      for
         typ <- c.get[Option[String]](TypedJsonCodec.TypeFieldName)
         result <- typ match {
           case Some("Problem") => c.as[Problem] map Left.apply
           case _ => c.as[A] map Right.apply
         }
-      } yield result
+      yield result
   }
 }

@@ -47,8 +47,8 @@ final case class JavaResource(classLoader: ClassLoader, path: String)
     * it is a non-empty directory <i>(optional specific exception)</i>
     */
   def copyToFiles(resourceNames: Iterable[String], directory: Path, copyOptions: CopyOption*): Seq[Path] = {
-    val resourcePathAndDllFiles = for (name <- resourceNames) yield (this / name, directory resolve name)
-    for ((resourcePath, file) <- resourcePathAndDllFiles) {
+    val resourcePathAndDllFiles = for name <- resourceNames yield (this / name, directory resolve name)
+    for (resourcePath, file) <- resourcePathAndDllFiles do {
       resourcePath.copyToFile(file, copyOptions*)   // After an exception here, already created files are left !!!
     }
     resourcePathAndDllFiles.toVector.map(_._2)

@@ -42,8 +42,8 @@ object JavaTime
     def /(o: Long): Duration = delegate dividedBy o
     def *(o: BigDecimal): Duration = bigDecimalToDuration(delegate.toBigDecimal * o)
     def /(o: BigDecimal): Duration = bigDecimalToDuration(delegate.toBigDecimal / o)
-    def min(o: Duration): Duration = if (this <= o) delegate else o
-    def max(o: Duration): Duration = if (this > o) delegate else o
+    def min(o: Duration): Duration = if this <= o then delegate else o
+    def max(o: Duration): Duration = if this > o then delegate else o
 
     def isPositive = delegate >= Duration.ZERO
 
@@ -51,7 +51,7 @@ object JavaTime
     override def toString = pretty  // For ScalaTest
 
     def pretty: String =
-      if ((delegate > MaxDuration)  || (delegate < MinDuration))
+      if (delegate > MaxDuration)  || (delegate < MinDuration) then
         delegate.toString
       else
         delegate.toFiniteDuration.pretty
@@ -63,8 +63,8 @@ object JavaTime
     def +(o: Duration) = delegate plus o
     def -(o: Duration) = delegate minus o
     def -(o: Instant) = Duration.between(o, delegate)
-    def min(o: Instant): Instant = if (this <= o) delegate else o
-    def max(o: Instant): Instant = if (this > o) delegate else o
+    def min(o: Instant): Instant = if this <= o then delegate else o
+    def max(o: Instant): Instant = if this > o then delegate else o
     def compare(o: RichInstant) = delegate compareTo o.delegate
 
     def roundTo(duration: Duration): Instant = this + duration / 2 roundDownTo duration
@@ -88,8 +88,8 @@ object JavaTime
     def +(o: FiniteDuration): LocalDateTime = localDateTime.plusNanos(o.toNanos)
     def -(o: Duration): LocalDateTime = localDateTime minus o
     def -(o: FiniteDuration): LocalDateTime = localDateTime.minusNanos(o.toNanos)
-    def min(o: LocalDateTime): LocalDateTime = if (this <= o) localDateTime else o
-    def max(o: LocalDateTime): LocalDateTime = if (this > o) localDateTime else o
+    def min(o: LocalDateTime): LocalDateTime = if this <= o then localDateTime else o
+    def max(o: LocalDateTime): LocalDateTime = if this > o then localDateTime else o
     def compare(o: RichLocalDateTime) = localDateTime compareTo o.localDateTime
     def toInstant(zone: ZoneId) = ZonedDateTime.of(localDateTime, zone).toInstant
   }

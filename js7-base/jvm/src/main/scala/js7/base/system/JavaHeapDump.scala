@@ -21,7 +21,7 @@ object JavaHeapDump
   def dumpHeapTo(file: Path, overwrite: Boolean = false): Unit =
     logger.debugCall {
       val since = now
-      if (overwrite) {
+      if overwrite then {
         deleteIfExists(file)
       }
       hotspotMBean.dumpHeap(file.toString, true)

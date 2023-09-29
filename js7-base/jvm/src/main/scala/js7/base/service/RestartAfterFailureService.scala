@@ -41,10 +41,10 @@ extends Service
     }.memoize
 
   protected def start: Task[Service.Started] =
-    for {
+    for
       service <- startUnderlyingService
       started <- startService(runUnderlyingService(service))
-    } yield started
+    yield started
 
 
   private def startUnderlyingService: Task[S] =
@@ -54,7 +54,7 @@ extends Service
         _.onFailureRestartWithDelayer(_,
           onFailure = t => Task {
             logger.error(s"$serviceName start failed: ${t.toStringWithCauses}")
-            for (st <- t.ifStackTrace)
+            for st <- t.ifStackTrace do
               logger.debug(s"$serviceName start failed: ${t.toStringWithCauses}", st)
           },
           onSleep = logDelay))
@@ -85,11 +85,11 @@ extends Service
                 // Service has already logged the throwable
                 logger.debug(s"💥 $serviceName start failed: ${throwable.toStringWithCauses}",
                   throwable.nullIfNoStackTrace)
-                if (stopping)
+                if stopping then
                   Task.right(())
                 else
-                  for (_ <- delayer.sleep(logDelay)) yield
-                    if (stopping)
+                  for _ <- delayer.sleep(logDelay) yield
+                    if stopping then
                       Right(()) // finish tailRecM
                     else
                       Left(None) /*loop*/
@@ -99,7 +99,7 @@ extends Service
   private def logDelay(duration: FiniteDuration) =
     Task(logger.info(
       "Due to failure, " + serviceName + " restarts " +
-        (if (duration.isZero) "now" else "in " + duration.pretty)))
+        (if duration.isZero then "now" else "in " + duration.pretty)))
 
   // Call only after this Service has been started!
   def unsafeCurrentService(): S =

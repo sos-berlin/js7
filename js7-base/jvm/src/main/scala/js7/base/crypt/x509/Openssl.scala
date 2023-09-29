@@ -30,9 +30,9 @@ final class Openssl(dir: Path)
       .map { dir =>
         lazy val cygwinOpensslCnf = Paths.get("""c:\cygwin64""") / dir / "openssl.cnf"
         lazy val winGitOpensslCnf = Paths.get("""C:\Program files\Git\usr\ssl""") / "openssl.cnf"
-        if (isWindows && dir.startsWith("/etc") && exists(cygwinOpensslCnf))
+        if isWindows && dir.startsWith("/etc") && exists(cygwinOpensslCnf) then
           cygwinOpensslCnf.contentString
-        else if (isWindows && dir == "/usr/ssl" && exists(winGitOpensslCnf))
+        else if isWindows && dir == "/usr/ssl" && exists(winGitOpensslCnf) then
           winGitOpensslCnf.contentString
         else
           (Paths.get(dir) / "openssl.cnf").contentString
@@ -62,7 +62,7 @@ final class Openssl(dir: Path)
   }
 
   def selectOpensslConf(ca: Boolean) =
-    if (ca) caConstraintFile else noCaConstraintFile
+    if ca then caConstraintFile else noCaConstraintFile
 
   // suppressCAContraint does not work since openssl 1.1.1i !!!
   final class Root(name: String, suppressCAContraint: Boolean = false) {
@@ -147,7 +147,7 @@ final class Openssl(dir: Path)
 
     opensslReq(distinguishedName, privateFile, certFile, ca = false)
 
-    for (privateKey <- PrivateKeyPem.fromPem(privateFile.contentString)) yield
+    for privateKey <- PrivateKeyPem.fromPem(privateFile.contentString) yield
       CertWithPrivateKey(privateKey = privateKey, certificate = certFile.byteArray)
   }
 
@@ -167,7 +167,7 @@ object Openssl
   private lazy val homebrewOpenssl = Paths.get("/usr/local/opt/openssl/bin/openssl")
   lazy val openssl = {
     val openssl =
-      if (useHomebrew && isMac && exists(homebrewOpenssl))
+      if useHomebrew && isMac && exists(homebrewOpenssl) then
         homebrewOpenssl
       else
         Paths.get("openssl")

@@ -37,9 +37,9 @@ extends AdmissionPeriod
   assert(duration <= DayDuration)
 
   def checked: Checked[DailyPeriod] =
-    if (secondOfDay < 0 || secondOfDay >= DaySeconds)
+    if secondOfDay < 0 || secondOfDay >= DaySeconds then
       Left(Problem(s"Invalid daytime number: $toString"))
-    else if (!duration.isPositive || duration > DayDuration)
+    else if !duration.isPositive || duration > DayDuration then
       Left(Problem(s"Duration must be positive: $toString"))
     else
       Right(this)
@@ -61,9 +61,9 @@ final case class WeekdayPeriod(secondOfWeek: Int, duration: FiniteDuration)
 extends AdmissionPeriod
 {
   def checked: Checked[this.type] =
-    if (secondOfWeek < 0 || secondOfWeek >= WeekSeconds)
+    if secondOfWeek < 0 || secondOfWeek >= WeekSeconds then
       Left(Problem(s"Invalid weekday time number: $toString"))
-    else if (!duration.isPositive || duration > WeekDuration)
+    else if !duration.isPositive || duration > WeekDuration then
       Left(Problem(s"Invalid WeekdayPeriod duration: $toString"))
     else
       Right(this)
@@ -92,9 +92,9 @@ final case class MonthlyDatePeriod(secondOfMonth: Int, duration: FiniteDuration)
 extends AdmissionPeriod
 {
   def checked: Checked[this.type] =
-    if (secondOfMonth < 0 || secondOfMonth >= 31*DaySeconds)
+    if secondOfMonth < 0 || secondOfMonth >= 31*DaySeconds then
       Left(Problem(s"Invalid time in a month: $toString"))
-    else if (!duration.isPositive)
+    else if !duration.isPositive then
       Left(Problem(s"Duration must be positive: $toString"))
     else
       Right(this)
@@ -121,9 +121,9 @@ final case class MonthlyLastDatePeriod(lastSecondOfMonth: Int, duration: FiniteD
 extends AdmissionPeriod
 {
   def checked: Checked[this.type] =
-    if (lastSecondOfMonth <= -28*DaySeconds || lastSecondOfMonth >= 0)
+    if lastSecondOfMonth <= -28*DaySeconds || lastSecondOfMonth >= 0 then
       Left(Problem(s"Invalid reverse time in a month (must be negative): $toString"))
-    else if (!duration.isPositive)
+    else if !duration.isPositive then
       Left(Problem(s"Duration must be positive: $toString"))
     else
       Right(this)
@@ -154,9 +154,9 @@ final case class MonthlyWeekdayPeriod(secondOfWeeks: Int, duration: FiniteDurati
 extends AdmissionPeriod
 {
   def checked: Checked[this.type] =
-    if (secondOfWeeks < 0 || secondOfWeeks >= 4*WeekSeconds)
+    if secondOfWeeks < 0 || secondOfWeeks >= 4*WeekSeconds then
       Left(Problem(s"Invalid time in a month: $secondOfWeeks $toString"))
-    else if (!duration.isPositive)
+    else if !duration.isPositive then
       Left(Problem(s"Duration must be positive: $toString"))
     else
       Right(this)
@@ -191,9 +191,9 @@ final case class MonthlyLastWeekdayPeriod(
 extends AdmissionPeriod
 {
   def checked: Checked[this.type] =
-    if (secondOfWeeks <= -4*WeekSeconds || secondOfWeeks >= 0)
+    if secondOfWeeks <= -4*WeekSeconds || secondOfWeeks >= 0 then
       Left(Problem(s"Invalid time in a month: $toString"))
-    else if (!duration.isPositive)
+    else if !duration.isPositive then
       Left(Problem(s"Duration must be positive: $toString"))
     else
       Right(this)

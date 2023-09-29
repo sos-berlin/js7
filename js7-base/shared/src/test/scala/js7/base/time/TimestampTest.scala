@@ -98,18 +98,18 @@ final class TimestampTest extends OurTestSuite
     assert(Timestamp("2018-11-21T12:34:56.987Z").pretty == "2018-11-21 12:34:56.987Z")
   }
 
-  if (sys.props contains "test.speed")
+  if sys.props contains "test.speed" then
   "JSON String/Number speed comparision" in {
     val n = 100000
     run("milliseconds")(Timestamp.implementation.NumericTimestampJsonEncoder, Timestamp.jsonDecoder)
     run("ISO string  ")(Timestamp.implementation.StringTimestampJsonEncoder, Timestamp.jsonDecoder)
 
     def run(what: String)(implicit encoder: Encoder[Timestamp], decoder: Decoder[Timestamp]) = {
-      for (i <- 1 to 100000) Timestamp.ofEpochMilli(i).asJson.as[Timestamp].orThrow  // Warm-up
+      for i <- 1 to 100000 do Timestamp.ofEpochMilli(i).asJson.as[Timestamp].orThrow  // Warm-up
       val t = System.currentTimeMillis
-      for (i <- 1 to n) Timestamp.ofEpochMilli(millis + i).asJson.as[Timestamp].orThrow
+      for i <- 1 to n do Timestamp.ofEpochMilli(millis + i).asJson.as[Timestamp].orThrow
       val duration = System.currentTimeMillis - t
-      info(s"Timestamp as $what: ${if (duration > 0) 1000*n / duration else "∞"} conversions/s")
+      info(s"Timestamp as $what: ${if duration > 0 then 1000*n / duration else "∞"} conversions/s")
     }
   }
 }

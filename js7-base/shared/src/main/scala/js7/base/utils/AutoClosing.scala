@@ -11,7 +11,7 @@ object AutoClosing
 
   def multipleAutoClosing[M[X] <: Iterable[X], A <: AutoCloseable, B](resources: M[A])(body: resources.type => B): B = {
     autoClosing(new Closer) { closer =>
-      for (o <- resources) closer.register(o)
+      for o <- resources do closer.register(o)
       body(resources)
     }
   }
@@ -26,7 +26,7 @@ object AutoClosing
   }
 
   final def closeOnError[A <: AutoCloseable, B](closeable: A)(body: => B): B = {
-    if (closeable == null) throw new NullPointerException
+    if closeable == null then throw new NullPointerException
     try body
     catch {
       case t: Throwable =>
@@ -43,10 +43,10 @@ object AutoClosing
     try resource.close()
     catch {
       case suppressed: Throwable =>
-        if (t ne suppressed) {
+        if t ne suppressed then {
           t.addSuppressed(suppressed)
           val suppresseds = t.getSuppressed
-          if (suppresseds.isEmpty || (suppresseds.last ne suppressed)) // Suppression disabled?
+          if suppresseds.isEmpty || (suppresseds.last ne suppressed) then // Suppression disabled?
             logger.warn(
               s"While handling an exception, this second exception is ignored: $suppressed\n" +
                 s"Original exception is: $t", suppressed)

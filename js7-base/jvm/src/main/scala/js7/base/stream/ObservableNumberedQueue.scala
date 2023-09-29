@@ -34,13 +34,13 @@ final class ObservableNumberedQueue[V: Tag]
       var queue = s.queue
       var nextNumber = s.nextNumber
       var lastNumber = -1L
-      for (command <- commands) {
+      for command <- commands do {
         queue :+= Numbered(nextNumber, command)
         lastNumber = nextNumber
         nextNumber += 1
       }
       _state = s.copy(queue = queue, nextNumber = nextNumber)
-      if (lastNumber != -1) {
+      if lastNumber != -1 then {
         sync.onAdded(lastNumber)
       }
     })
@@ -52,14 +52,14 @@ final class ObservableNumberedQueue[V: Tag]
         var queue = s.queue
         var nextNumber = s.nextNumber
         var lastNumber = -1L
-        for (command <- commands) {
+        for command <- commands do {
           assertThat(command.number >= nextNumber)
           queue :+= command
           lastNumber = command.number
           nextNumber = command.number + 1
         }
         _state = s.copy(queue = queue, nextNumber = nextNumber)
-        if (lastNumber != -1) {
+        if lastNumber != -1 then {
           sync.onAdded(lastNumber)
         }
       }))
@@ -93,7 +93,7 @@ final class ObservableNumberedQueue[V: Tag]
                 subject.onError(problem.throwable)
 
               case Success(Right(Right(values))) =>
-                if (values.isEmpty) {
+                if values.isEmpty then {
                   // Race condition ???
                   logger.warn(
                     s"Internal: sync.whenAvailable($after) triggered but no command available - delay 1s")
@@ -114,10 +114,10 @@ final class ObservableNumberedQueue[V: Tag]
   def release(after: Long): Task[Checked[Unit]] =
     lock.lock(Task {
       val s = _state
-      if (s.stopped)
+      if s.stopped then
         Checked.unit
       else
-        for (_ <- s.checkAfter(after)) yield {
+        for _ <- s.checkAfter(after) yield {
           val q = s.queue
           val (index, found) = binarySearch(0, q.length, q(_).number.compare(after))
           _state = s.copy(torn = after, queue = q.drop(index + found.toInt))
@@ -157,12 +157,12 @@ final class ObservableNumberedQueue[V: Tag]
         queue = Vector.empty)
 
     def readQueue(after: Long): Checked[Vector[Numbered[V]]] =
-      if (stopped)
+      if stopped then
         Left(StoppedProblem)
       else {
         val q = queue
         val (index, found) = binarySearch(0, q.length, q(_).number.compare(after))
-        if (!found && after != torn)
+        if !found && after != torn then
           Left(unknownAfterProblem(after))
         else
           Right(q.drop(index + found.toInt))
@@ -170,7 +170,7 @@ final class ObservableNumberedQueue[V: Tag]
 
     def requireValidNumber(after: Long): Task[Unit] = {
       val last = queue.lastOption.map(_.number)
-      if (after < torn || last.exists(_ < after))
+      if after < torn || last.exists(_ < after) then
         Task.raiseError(unknownAfterProblem(after).throwable)
       else
         Task.unit
@@ -197,7 +197,7 @@ final class ObservableNumberedQueue[V: Tag]
     }
 
     def notStopped: Checked[this.type] =
-      if (stopped)
+      if stopped then
         Left(StoppedProblem)
       else
         Right(this)

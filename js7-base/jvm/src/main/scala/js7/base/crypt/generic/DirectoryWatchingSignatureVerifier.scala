@@ -132,8 +132,8 @@ extends SignatureVerifier with Service.StoppableByRequest
 
       case Right(verifier) =>
         logger.info("Trusting signature key")
-        for (o <- verifier.publicKeysToStrings) logger.info(s"  $o")
-        if (files.isEmpty) {
+        for o <- verifier.publicKeysToStrings do logger.info(s"  $o")
+        if files.isEmpty then {
           logger.warn(
             s"  No public key files for signature verifier '${companion.typeName}' in directory '$directory'")
         }
@@ -189,7 +189,7 @@ object DirectoryWatchingSignatureVerifier extends SignatureVerifier.Companion
             .nameToSignatureVerifierCompanion
             .rightOr(typeName, UnknownSignatureTypeProblem(typeName))
             .flatMap(companion =>
-              if (!exists(directory))
+              if !exists(directory) then
                 Left(Problem.pure(
                   s"Signature key directory '$directory' for '$typeName' does not exists"))
               else
@@ -199,10 +199,10 @@ object DirectoryWatchingSignatureVerifier extends SignatureVerifier.Companion
       .sequence
       .map(_.toMap)
       .flatMap(companionToDirectory =>
-        if (companionToDirectory.isEmpty)
+        if companionToDirectory.isEmpty then
           Left(Problem.pure(s"No trusted signature keys - Configure one with $configPath!"))
         else
-          for (settings <- DirectoryWatchSettings.fromConfig(config)) yield
+          for settings <- DirectoryWatchSettings.fromConfig(config) yield
             new Prepared(companionToDirectory, settings))
 
   final class Prepared(

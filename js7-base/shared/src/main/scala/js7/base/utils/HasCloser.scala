@@ -5,7 +5,7 @@ trait HasCloser extends AutoCloseable
   private val _closer: Closer = new Closer
 
   protected implicit final def closer: Closer = {
-    if (_closer == null) throw new NullPointerException(s"$getClass should extend HasClose further in front?")
+    if _closer == null then throw new NullPointerException(s"$getClass should extend HasClose further in front?")
     _closer
   }
 

@@ -10,7 +10,7 @@ object StandardJsonCodecs
   implicit val PatternJsonCodec: Codec[Pattern] =
     stringJsonCodec(
       pattern =>
-        if (pattern.flags() != 0)
+        if pattern.flags() != 0 then
           throw new IllegalArgumentException(s"Pattern with flags cannot be JSON-encoded: $pattern")
         else
           pattern.pattern,

@@ -13,10 +13,10 @@ object Assertions
   def assertThat(predicate: sourcecode.Text[Boolean], clue: => String)
     (implicit fullName: sourcecode.FullName, filename: sourcecode.FileName, line: sourcecode.Line)
   : Unit =
-    if (!predicate.value) {
+    if !predicate.value then {
       val c = clue
       val fn =
-        if (isWindows)
+        if isWindows then
           filename.value.lastIndexOf('\\') match {
             case -1 => filename.value
             case i => filename.value.drop(i + 1)

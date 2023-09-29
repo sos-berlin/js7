@@ -245,24 +245,24 @@ final class AsyncMapTest extends OurAsyncTestSuite
     "empty" - {
       "stop" in {
         val asyncMap = AsyncMap.stoppable[Int, String]()
-        (for {
+        (for
           _ <- asyncMap.initiateStop
           checked <- asyncMap.insert(1, "NOT ALLOWED")
           _ = assert(checked == Left(Problem("AsyncMap[Int, String] is being stopped")))
-        } yield succeed
+        yield succeed
         ).runToFuture
       }
 
       "initiateStopWithProblem" in {
         val asyncMap = AsyncMap.stoppable[Int, String]()
         val myProblem = Problem("MY PROBLEM")
-        (for {
+        (for
           _ <- asyncMap.initiateStopWithProblem(myProblem)
           checked <- asyncMap.insert(1, "NOT ALLOWED")
           _ = assert(checked == Left(myProblem))
           _ = assert(asyncMap.isStoppingWith(myProblem))
           _ = assert(!asyncMap.isStoppingWith(Problem("OTHER")))
-        } yield succeed
+        yield succeed
         ).runToFuture
       }
 
@@ -270,27 +270,27 @@ final class AsyncMapTest extends OurAsyncTestSuite
         "non empty" in {
           val asyncMap = AsyncMap.stoppable[Int, String]()
           val myProblem = Problem("MY PROBLEM")
-          (for {
+          (for
             _ <- asyncMap.insert(1, "SOMETHING")
             ok <- asyncMap.initiateStopWithProblemIfEmpty(myProblem)
             _ = assert(!ok)
             checked <- asyncMap.insert(2, "NOT ALLOWED")
             _ = assert(checked.isRight)
             _ = assert(!asyncMap.isStoppingWith(myProblem))
-          } yield succeed
+          yield succeed
           ).runToFuture
         }
 
         "empty" in {
           val asyncMap = AsyncMap.stoppable[Int, String]()
           val myProblem = Problem("MY PROBLEM")
-          (for {
+          (for
             ok <- asyncMap.initiateStopWithProblemIfEmpty(myProblem)
             _ = assert(ok)
             checked <- asyncMap.insert(1, "NOT ALLOWED")
             _ = assert(checked == Left(myProblem))
             _ = assert(asyncMap.isStoppingWith(myProblem))
-          } yield succeed
+          yield succeed
           ).runToFuture
         }
       }
@@ -303,7 +303,7 @@ final class AsyncMapTest extends OurAsyncTestSuite
         .as(succeed).runToFuture
 
       "update is allowed" in {
-        (for {
+        (for
           checked <- asyncMap.insert(1, "EINS")
           _ = Task(assert(checked.isRight))
           _ <- asyncMap.initiateStop
@@ -319,7 +319,7 @@ final class AsyncMapTest extends OurAsyncTestSuite
 
           _ <- asyncMap.remove(1)
           _ <- asyncMap.whenStopped
-        } yield succeed
+        yield succeed
         ).runToFuture
       }
     }

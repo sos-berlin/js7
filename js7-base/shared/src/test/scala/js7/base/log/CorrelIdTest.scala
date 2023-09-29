@@ -68,7 +68,7 @@ final class CorrelIdTest extends OurTestSuite
       new String(encoded, US_ASCII)
     }
 
-    for (long <- Iterator.fill(10000)(Random.nextLong(1L << (CorrelId.longByteCount * 8)))) {
+    for long <- Iterator.fill(10000)(Random.nextLong(1L << (CorrelId.longByteCount * 8))) do {
       assert(LongCorrelId.fromBase64(LongCorrelId.toBase64(long)) == Right(long))
     }
   }
@@ -110,12 +110,12 @@ final class CorrelIdTest extends OurTestSuite
   }
 
   "speed" - {
-    val n = if (sys.props.contains("test.speed")) 1_000_000 else 100_000
+    val n = if sys.props.contains("test.speed") then 1_000_000 else 100_000
 
     "CorrelId.next" in {
-      for (_ <- 1 to 3) {
+      for _ <- 1 to 3 do {
         val since = Deadline.now
-        for (_ <- 1 to n) {
+        for _ <- 1 to n do {
           garbage = CorrelId.generate()
         }
         logger.info(itemsPerSecondString(since.elapsed, n, "CorrelIds"))
@@ -123,9 +123,9 @@ final class CorrelIdTest extends OurTestSuite
     }
 
     "CorrelId.string" in {
-      for (_ <- 1 to 3) {
+      for _ <- 1 to 3 do {
         val since = Deadline.now
-        for (_ <- 1 to n) {
+        for _ <- 1 to n do {
           garbage = CorrelId.generate().string
         }
         logger.info(itemsPerSecondString(since.elapsed, n, "strings"))

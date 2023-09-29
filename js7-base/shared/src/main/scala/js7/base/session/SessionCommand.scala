@@ -48,10 +48,10 @@ object SessionCommand
 
       implicit val jsonDecoder: Decoder[LoggedIn] =
         cursor =>
-          for {
+          for
             token <- cursor.get[String]("sessionToken")
             version <- cursor.get[Version]("js7Version")
-          } yield LoggedIn(SessionToken(SecretString(token)), js7Version = version)
+          yield LoggedIn(SessionToken(SecretString(token)), js7Version = version)
     }
   }
 
@@ -66,7 +66,7 @@ object SessionCommand
 
     implicit val jsonDecoder: Decoder[Logout] =
       cursor =>
-        for (token <- cursor.get[String]("sessionToken")) yield
+        for token <- cursor.get[String]("sessionToken") yield
           Logout(SessionToken(SecretString(token)))
   }
 

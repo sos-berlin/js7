@@ -20,7 +20,7 @@ object StringInterpolators {
     StringContext.checkLengths(args, stringContext.parts)
     val p = stringContext.parts.iterator
     appendable.append(p.next())
-    for (arg <- args) {
+    for arg <- args do {
       appendable.append(argToString(arg))
       appendable.append(p.next())
     }

@@ -13,7 +13,7 @@ extends NameValidator
     isExtraNamePart = c => isExtraNamePart0(c) || isSurrogate(c))
 
   override def checked(name: String) =
-    if (name endsWith ".")
+    if name endsWith "." then
       Left(InvalidNameProblem(typeName, name))
     else
       javaNameValidator.checked(name)

@@ -35,14 +35,14 @@ object Configs
   private val logger = Logger[this.type]
 
   def configIf(predicate: Boolean, config: => Config): Config =
-    if (predicate) config
+    if predicate then config
     else ConfigFactory.empty
 
   def parseConfigIfExists(file: Path, secret: Boolean): Config =
-    if (exists(file)) {
+    if exists(file) then {
       logger.info(s"Reading configuration file $file")
       var options = Required
-      if (secret) options = options.setOriginDescription(SecretOriginDescription)
+      if secret then options = options.setOriginDescription(SecretOriginDescription)
       ConfigFactory.parseFile(file.toFile, options)
     } else {
       logger.debug(s"No configuration file $file")
@@ -57,9 +57,9 @@ object Configs
   }
 
   def logConfig(config: Config): Unit =
-    for (entry <- config.entrySet.asScala.view.toVector.sortBy(_.getKey)) {
+    for entry <- config.entrySet.asScala.view.toVector.sortBy(_.getKey) do {
       def line = renderValue(entry.getKey, entry.getValue)
-      if (isInternal(entry.getValue))
+      if isInternal(entry.getValue) then
         logger.trace(line)
       else
         logger.debug(line)
@@ -71,11 +71,11 @@ object Configs
     sb += '='
     val secret = isSecret(value)
     sb ++=
-      (if (secret || key.endsWith("password"))
+      (if secret || key.endsWith("password") then
         "(secret)"
       else
         value.render(concise))
-    if (!secret && !isInternal(value)) {
+    if !secret && !isInternal(value) then {
       sb ++= " ("
       sb ++= value.origin.description
       sb += ')'
@@ -103,19 +103,19 @@ object Configs
   implicit final class RichConfig(private val underlying: Config) extends AnyVal
   {
     def getBoolean(path: String, default: Boolean): Boolean =
-      if (underlying.hasPath(path))
+      if underlying.hasPath(path) then
         underlying.getBoolean(path)
       else
         default
 
     def seqAs[W](path: String, default: => Iterable[W])(implicit convert: As[String, W]): IndexedSeq[W] =
-      if (underlying.hasPath(path)) seqAs(path)(convert) else default.toVector
+      if underlying.hasPath(path) then seqAs(path)(convert) else default.toVector
 
     def seqAs[W](path: String)(implicit convert: As[String, W]): IndexedSeq[W] =
       stringSeq(path) map wrappedConvert(convert.apply, path)
 
     def stringSeq(path: String, default: => Iterable[String]): IndexedSeq[String] =
-      if (underlying.hasPath(path)) stringSeq(path) else default.toVector
+      if underlying.hasPath(path) then stringSeq(path) else default.toVector
 
     def stringSeq(path: String): IndexedSeq[String] =
       underlying.getStringList(path).asScala.toVector
@@ -124,7 +124,7 @@ object Configs
       underlying.hasPath(path) ? underlying.getDuration(path)
 
     def checkedPath[A](path: String)(f: String => Checked[A]): Checked[A] =
-      if (!underlying.hasPath(path))
+      if !underlying.hasPath(path) then
         Left(Problem(s"Missing configuration key '$path'"))
       else
         f(path)
@@ -138,7 +138,7 @@ object Configs
 
     def memorySizeAsInt(path: String): Checked[Int] = {
       val bigInteger = underlying.getMemorySize(path).toBytesBigInteger
-      if (bigInteger.bitLength >= 32)
+      if bigInteger.bitLength >= 32 then
         Left(Problem(s"Number is to big: $path = $bigInteger"))
       else
         Right(bigInteger.intValue)

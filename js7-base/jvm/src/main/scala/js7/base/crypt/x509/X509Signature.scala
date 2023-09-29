@@ -34,7 +34,7 @@ object X509Signature
   val TypeName = "X509"
 
   def fromGenericSignature(signature: GenericSignature): Checked[X509Signature] =
-    for {
+    for
       signatureBytes <- ByteArray.fromMimeBase64(signature.signatureString)
       algorithm <- signature.algorithm match {
         case None => Left(Problem.pure("Missing X.509 signature algorithm"))
@@ -46,5 +46,5 @@ object X509Signature
           case (None, Some(cert)) => X509Cert.fromPem(cert) map Right.apply
           case _ => Left(Problem.pure("X.509 signature requires either a signerId or a signerCertificate"))
         }
-    } yield new X509Signature(signatureBytes, algorithm, signerIdOrCertificate)
+    yield new X509Signature(signatureBytes, algorithm, signerIdOrCertificate)
 }

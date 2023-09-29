@@ -139,7 +139,7 @@ object AlarmClock
           // Reschedule at each tick, in case the clock has been adjusted
           val now = epochMilli()
           val delay = (firstMilli - now) max 0
-          if (delay > tickInterval) {
+          if delay > tickInterval then {
             startTicking(tickInterval)
           } else {
             stopTicking()
@@ -150,30 +150,30 @@ object AlarmClock
       }
 
     private def startTicking(tickInterval: Long) =
-      if (!ticking) {
+      if !ticking then {
         ticking = true
         ticker := scheduler.scheduleAtFixedRate(tickInterval, tickInterval, MILLISECONDS, this)
         //logger.trace(s"Ticking ${tickInterval.ms.pretty}")
       }
 
     private def stopTicking() =
-      if (ticking) {
+      if ticking then {
         ticking = false
         ticker := Cancelable.empty
         //logger.trace(s"Ticking stopped")
       }
 
     final def run(): Unit =
-      if (!stopped) {
-        if (nextMilli <= epochMilli()) {
+      if !stopped then {
+        if nextMilli <= epochMilli() then {
           var alarms = Vector.empty[Alarm]
           self.synchronized {
-            while (epochMilliToAlarms.nonEmpty && epochMilliToAlarms.firstKey <= epochMilli()) {
+            while epochMilliToAlarms.nonEmpty && epochMilliToAlarms.firstKey <= epochMilli() do {
               alarms ++= epochMilliToAlarms.remove(epochMilliToAlarms.firstKey).get
             }
           }
           //logger.trace(s"Tick: ${alarms.size} alarms!")
-          for (a <- alarms) a.call()
+          for a <- alarms do a.call()
         } else {
           //logger.trace("Tick")
         }
@@ -197,15 +197,15 @@ object AlarmClock
       private val called = Atomic(false)
 
       def call(): Unit =
-        if (!called.getAndSet(true)) {
+        if !called.getAndSet(true) then {
           callback
         }
 
       def cancel() =
         self.synchronized {
-          for (alarms <- epochMilliToAlarms.get(epochMilli)) {
+          for alarms <- epochMilliToAlarms.get(epochMilli) do {
             val remaining = alarms.filterNot(_ eq this)
-            if (remaining.nonEmpty) {
+            if remaining.nonEmpty then {
               epochMilliToAlarms.update(epochMilli, remaining)
             } else {
               epochMilliToAlarms -= epochMilli

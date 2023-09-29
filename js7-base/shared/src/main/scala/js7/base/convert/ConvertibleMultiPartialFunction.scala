@@ -19,7 +19,7 @@ trait ConvertibleMultiPartialFunction[K, V] {
     else {
       val value = iterator.next()
       val result = wrappedConvert(convert.apply, renderKey(key))(value)
-      if (iterator.hasNext) throwNotUnique(key)
+      if iterator.hasNext then throwNotUnique(key)
       result
     }
   }

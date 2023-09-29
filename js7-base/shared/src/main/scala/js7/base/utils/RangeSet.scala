@@ -121,15 +121,15 @@ object RangeSet {
   private def normalize[A: Ordering: Ordinal](ranges: Vector[Range[A]]): Vector[Range[A]] = {
     val buffer = mutable.Buffer[Range[A]]()
     val it = ranges.sortBy(_.start).iterator
-    if (it.hasNext) buffer += it.next()
+    if it.hasNext then buffer += it.next()
 
-    while (it.hasNext) {
+    while it.hasNext do {
       val next = it.next()
       val last = buffer.last
-      if (last.end >= next.start) {
+      if last.end >= next.start then {
         // Merge overlapping ranges
         buffer(buffer.length - 1) = range(last.start, last.end max next.end)
-      } else if (next.start isSuccessorOf last.end) {
+      } else if next.start isSuccessorOf last.end then {
         // Merge successive ranges
         buffer(buffer.length - 1) = range(last.start, next.end)
       } else {
@@ -160,7 +160,7 @@ object RangeSet {
 
   // `range` function because Range collides with scala.collection.immutable.Range
   def range[A: Ordering: Ordinal](start: A, end: A): Range[A] =
-    if (start == end)
+    if start == end then
       Single(start)
     else
       Interval(start, end)
@@ -221,10 +221,10 @@ object RangeSet {
     c =>
       c.value.asArray match {
         case None =>
-          for {
+          for
             string <- c.as[String]
             rangeSet <- parse(parseValue, string).toDecoderResult(c.history)
-          } yield rangeSet
+          yield rangeSet
 
         case Some(array) =>
           array
@@ -255,7 +255,7 @@ object RangeSet {
   private def asArrayRangeDecoder[A: Ordering : Ordinal : Decoder]: Decoder[Range[A]] =
     c => {
       val json = c.value
-      if (json.isArray)
+      if json.isArray then
         json.asArray.get match {
           case Vector(a, b) =>
             a.as[A]
@@ -289,9 +289,9 @@ object RangeSet {
     }
 
     def addRange(start: A, end: A): this.type = {
-      if (start <= end) {
+      if start <= end then {
         buffer += (
-          if (start == end)
+          if start == end then
             Single(start)
           else
             Interval(start, end))

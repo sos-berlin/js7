@@ -248,7 +248,7 @@ extends OurTestSuite
   }
 
   "fromInputStreamUnlimited" in {
-    for (size <- Iterator(0, 1, 10000, 100001)) {
+    for size <- Iterator(0, 1, 10000, 100001) do {
       val byteSeq = ByteSequence[ByteSeq].random(size)
       assert(ByteSeq.fromInputStreamUnlimited(new ByteArrayInputStream(byteSeq.toArray)) == byteSeq)
     }
@@ -264,7 +264,7 @@ extends OurTestSuite
   }
 
   "fromInputStreamLimited at inputStreamBufferSize" in {
-    for (diff <- -2 to 2) {
+    for diff <- -2 to 2 do {
       val size = 2 * ByteArray.inputStreamBufferSize + diff
       val byteSeq = ByteSequence[ByteSeq].random(size)
       def newInputStream = new ByteArrayInputStream(byteSeq.toArray)
@@ -276,7 +276,7 @@ extends OurTestSuite
   }
 
   "toInputStream" in {
-    for (size <- Iterator(0, 1, 10000, 100001)) {
+    for size <- Iterator(0, 1, 10000, 100001) do {
       val byteSeq = ByteSequence[ByteSeq].random(size)
       assert(ByteSeq.fromInputStreamUnlimited(byteSeq.toInputStream) == byteSeq)
     }

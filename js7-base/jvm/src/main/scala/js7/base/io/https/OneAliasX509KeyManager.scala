@@ -11,13 +11,13 @@ extends X509KeyManager
   protected val alias: String
 
   def getCertificateChain(alias: String) =
-    if (alias != this.alias)
+    if alias != this.alias then
       null
     else
       keyManager.getCertificateChain(alias)
 
   def getPrivateKey(alias: String) =
-    if (alias != this.alias)
+    if alias != this.alias then
       null
     else
       keyManager.getPrivateKey(alias)

@@ -91,7 +91,7 @@ object Subtype {
     aliases: Seq[String] = Nil)
   : Subtype[A] =
     make(
-      if (subclasses.isEmpty) Seq(implicitClass[A]) else subclasses,
+      if subclasses.isEmpty then Seq(implicitClass[A]) else subclasses,
       Some(implicitClass[A]),
       typeName, implicitly[Encoder.AsObject[A]], implicitly[Decoder[A]], aliases)
 

@@ -253,7 +253,7 @@ final class MonixBaseTest extends OurAsyncTestSuite
       val scheduler = TestScheduler()
       val i = AtomicInt(0)
       val cancelable = scheduler.scheduleAtFixedRates(Array(2.s, 3.s, 4.s)) { i += 1 }
-      for (expected <- Array(0, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 6)) {
+      for expected <- Array(0, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 6) do {
         scheduler.tick(1.s)
         assert(i.get() == expected)
       }
@@ -267,12 +267,12 @@ final class MonixBaseTest extends OurAsyncTestSuite
     "when, unless" in {
       val list = List(1, 2, 3)
       val task =
-        for {
+        for
           whenTrue <- Task(list) when true
           whenFalse <- Task(list) when false
           unlessTrue <- Task(list) unless true
           unlessFalse <- Task(list) unless false
-        } yield
+        yield
           assert(whenTrue == list && whenFalse == Nil &&
             unlessTrue == Nil && unlessFalse == list)
       task.runToFuture
@@ -398,10 +398,10 @@ final class MonixBaseTest extends OurAsyncTestSuite
       "deferAction" in {
         val iterator = Iterator.from(1)
         val task = Observable.deferAction((_: Scheduler) => Observable.pure(iterator.next())).toListL
-        for {
+        for
           a <- task.runToFuture
           b <- task.runToFuture
-        } yield assert(a == List(1) && b == List(2))
+        yield assert(a == List(1) && b == List(2))
       }
     }
   }
@@ -414,7 +414,7 @@ final class MonixBaseTest extends OurAsyncTestSuite
       Observable.tailRecM(0)(i => obs(i).map(Right(_)) ++ Observable.pure(Left(i + 1)))
 
     val mem = Runtime.getRuntime.totalMemory
-    if (mem >= 50_000_000) pending
+    if mem >= 50_000_000 then pending
     val n = mem / 4
     observable.drop(n).headL.map(i => assert(i == -n)).runToFuture
   }

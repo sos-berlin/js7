@@ -144,9 +144,9 @@ object CloserTest
       private val closed = AtomicBoolean(false)
 
       def close() = {
-        if (closed.getAndSet(true)) sys.error("Duplicate close")
+        if closed.getAndSet(true) then sys.error("Duplicate close")
         closeables.add(this)
-        for (t <- throwable) throw t
+        for t <- throwable do throw t
       }
 
       def isClosed = closed.get()

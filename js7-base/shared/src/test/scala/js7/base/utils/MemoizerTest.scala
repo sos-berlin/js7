@@ -65,9 +65,9 @@ final class MemoizerTest extends OurAsyncTestSuite
       s"/$a/"
     }
     val m = memoizer(f)
-    Future.sequence(for (_ <- 1 to ParallelCount) yield Future { for (a <- Arguments) yield m(a) })
+    Future.sequence(for _ <- 1 to ParallelCount yield Future { for a <- Arguments yield m(a) })
       .map { result =>
-        for (r <- result) assert(r == (Arguments map { o => s"/$o/" }))
+        for r <- result do assert(r == (Arguments map { o => s"/$o/" }))
         calls.get
       }
   }

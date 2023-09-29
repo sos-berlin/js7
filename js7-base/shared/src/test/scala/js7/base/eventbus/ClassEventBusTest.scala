@@ -43,7 +43,7 @@ final class ClassEventBusTest extends OurAsyncTestSuite
     assert(!eventBus.isEmpty)
     eventBus.publish(Event(AClassifier("1"), "IGNORE"))
     eventBus.publish(Event(BClassifier(""), "MORE"))
-    for (event <- future) yield {
+    for event <- future yield {
       assert(event == Event(BClassifier(""), "MORE"))
     }
   }

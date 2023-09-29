@@ -68,7 +68,7 @@ final class Js7NameValidatorTest extends OurTestSuite
                   "🐣🐥🦆🦅🦉🦇🐺🐗🐴🦄🐝🐛🦋🐌🐚🐞🐜🦗🕷🕸🦂🐢🐍🦎🦖🦕🐙🦑🦐🦀🐡🐠🐟🐬🐳🐋🐊🐆🦓🦍" +
                   "🐘🐪🐫🦒🐃🐄🐎🐏🐑🦌🐕🐩🐓🕊🐁🐿🐉🎄🌲" +
                   "🇸🇪"
-    for ((cp, i) <- allowed.codePoints.iterator.asScala.zipWithIndex) {
+    for (cp, i) <- allowed.codePoints.iterator.asScala.zipWithIndex do {
       val identifier = new String(Character.toChars(cp))
       assert(isValid(identifier), f"#$i U+${cp.toInt}%04x $identifier")
     }

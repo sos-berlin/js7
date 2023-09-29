@@ -24,7 +24,7 @@ final class AsyncLock private(
   asyncLock =>
 
   private val lockM = MVar[Task].empty[Locked]().memoize
-  private val log = if (noLog) Logger.empty else logger
+  private val log = if noLog then Logger.empty else logger
 
   def lock[A](task: Task[A])(implicit src: sourcecode.Enclosing): Task[A] =
     lock(src.value)(task)
@@ -47,12 +47,12 @@ final class AsyncLock private(
   private def acquire(locked: Locked): Task[Unit] =
     lockM.flatMap(mvar => Task.defer {
       mvar.tryPut(locked).flatMap(hasAcquired =>
-        if (hasAcquired) {
-          if (logMinor) log.trace(s"↘ ⚪️${locked.nr} $name acquired by ${locked.who} ↘")
+        if hasAcquired then {
+          if logMinor then log.trace(s"↘ ⚪️${locked.nr} $name acquired by ${locked.who} ↘")
           locked.startMetering()
           Task.unit
         } else
-          if (noLog)
+          if noLog then
             mvar.put(locked)
               .as(Right(()))
           else {
@@ -66,7 +66,7 @@ final class AsyncLock private(
                     s"⟲ $sym${locked.nr} $name enqueues    ${locked.who} (currently acquired by ${lockedBy.withCorrelId}) ...")
                   mvar.put(locked)
                     .whenItTakesLonger(warnTimeouts)(_ =>
-                      for (lockedBy <- mvar.tryRead) yield {
+                      for lockedBy <- mvar.tryRead yield {
                         sym.onInfo()
                         logger.info(
                           s"⟲ $sym${locked.nr} $name: ${locked.who} is still waiting" +
@@ -81,12 +81,12 @@ final class AsyncLock private(
                   }
 
                 case None =>  // Lock has just become available
-                  for (hasAcquired <- mvar.tryPut(locked)) yield
-                    if (!hasAcquired)
+                  for hasAcquired <- mvar.tryPut(locked) yield
+                    if !hasAcquired then
                       Left(())  // Locked again by someone else, so try again
                     else {
                       // "…" denotes just-in-time availability
-                      if (logMinor) log.trace(s"↘ ⚪️${locked.nr} $name acquired by…${locked.who} ↘")
+                      if logMinor then log.trace(s"↘ ⚪️${locked.nr} $name acquired by…${locked.who} ↘")
                       locked.startMetering()
                       Right(())  // The lock is ours!
                     }
@@ -101,7 +101,7 @@ final class AsyncLock private(
     }
 
   private def logRelease(locked: Locked, exitCase: ExitCase[Throwable]): Unit =
-    if (logMinor) exitCase match {
+    if logMinor then exitCase match {
       case ExitCase.Completed =>
         log.trace(s"↙ ⚪️${locked.nr} $name released by ${locked.acquirer} ↙")
 
@@ -123,7 +123,7 @@ final class AsyncLock private(
     private var lockedSince: Long = 0
 
     private[AsyncLock] def withCorrelId: String =
-      if (lockedSince == 0)
+      if lockedSince == 0 then
         acquirer
       else
         correlId.fold("", o => s"$o ") + who
@@ -132,7 +132,7 @@ final class AsyncLock private(
       lockedSince = nanoTime()
 
     private[AsyncLock] def who: String =
-      if (lockedSince == 0)
+      if lockedSince == 0 then
         acquirer
       else {
         val duration = (nanoTime() - lockedSince).ns.pretty

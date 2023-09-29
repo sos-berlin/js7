@@ -53,7 +53,7 @@ object Https
 
   private def keyStoreRefToKeyManagers(ref: KeyStoreRef): Array[KeyManager] = {
     val keyStore = loadKeyStore(ref, "private")
-    for (a <- ref.alias) if (!keyStore.containsAlias(a)) throw new IllegalArgumentException(
+    for a <- ref.alias do if !keyStore.containsAlias(a) then throw new IllegalArgumentException(
       s"Unknown alias=$a for $ref - known aliases: ${keyStore.aliases.asScala.mkString(", ")}")
     val factory = KeyManagerFactory.getInstance(algorithm)
     ref.keyPassword.provideCharArray(
@@ -106,7 +106,7 @@ object Https
         val content = ByteArray.fromInputStreamLimited(in, sizeLimit)
           .getOrElse(throw new RuntimeException(
             s"Certificate store must not have more than $sizeLimit bytes: $sourcePath"))
-        if (content startsWith PemHeader)
+        if content startsWith PemHeader then
           pemToKeyStore(content.toInputStream, name = sourcePathToName(sourcePath))
         else
           pkcs12ToKeyStore(content.toInputStream, password)
@@ -140,15 +140,15 @@ object Https
   private def pemToKeyStore(in: InputStream, name: String): KeyStore = {
     val certs = mutable.Buffer.empty[Certificate]
     var eof = false
-    while (!eof) {
+    while !eof do {
       certs += CertificateFactory.getInstance("X.509").generateCertificate(in)
       in.mark(1)
       eof = in.read() < 0
-      if (!eof) in.reset()
+      if !eof then in.reset()
     }
     val keyStore = KeyStore.getInstance(KeyStore.getDefaultType)
     keyStore.load(null, null)
-    for ((cert, i) <- certs.zipWithIndex) {
+    for (cert, i) <- certs.zipWithIndex do {
       keyStore.setCertificateEntry(name + (certs.length > 1) ?? s"#${i + 1}", cert)
     }
     keyStore
@@ -157,7 +157,7 @@ object Https
   private def log(keyStore: KeyStore, sourcePath: String, kind: String): Unit = {
     val iterator = keyStore.aliases.asScala
       .flatMap(a => Option(keyStore.getCertificate(a)).map(a -> _))
-    if (iterator.isEmpty) {
+    if iterator.isEmpty then {
       logger.warn(s"Loaded empty $kind keystore $sourcePath")
     } else {
       logger.info(s"Loaded $kind keystore $sourcePath" +

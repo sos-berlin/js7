@@ -32,7 +32,7 @@ final class InsertHeartbeatsOnSlowUpstreamTest extends OurTestSuite
       .insertHeartbeatsOnSlowUpstream(80.ms, heartbeat)
       .toListL
       .runToFuture
-    for ( _ <- 1 to 100) scheduler.tick(80.ms)
+    for  _ <- 1 to 100 do scheduler.tick(80.ms)
     Await.result(future, 0.s)
   }
 }

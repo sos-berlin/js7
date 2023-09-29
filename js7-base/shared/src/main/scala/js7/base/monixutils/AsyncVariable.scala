@@ -22,7 +22,7 @@ final class AsyncVariable[V](initial: V, varName: String, typeName: String)
 
   def update(update: V => Task[V])(implicit src: sourcecode.Enclosing): Task[V] =
     shieldValue(
-      for (v <- update(_value)) yield {
+      for v <- update(_value) yield {
         _value = v
         v
       })
@@ -30,8 +30,8 @@ final class AsyncVariable[V](initial: V, varName: String, typeName: String)
   def updateChecked(update: V => Task[Checked[V]])(implicit src: sourcecode.Enclosing)
   : Task[Checked[V]] =
     shieldValue(
-      for (checked <- update(_value)) yield {
-        for (v <- checked) _value = v
+      for checked <- update(_value) yield {
+        for v <- checked do _value = v
         checked
       })
 

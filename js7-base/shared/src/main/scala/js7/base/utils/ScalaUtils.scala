@@ -38,7 +38,7 @@ object ScalaUtils
         when(!condition)
 
       def when(condition: Boolean)(implicit F: Monoid[F[A]]): F[A] =
-        if (condition)
+        if condition then
           underlying
         else
           F.empty
@@ -177,13 +177,13 @@ object ScalaUtils
 
       /** Simple class name prefixed by maybe outer class name. */
       def shortClassName: String =
-        if (underlying.isPrimitive)
+        if underlying.isPrimitive then
           underlying.getName.capitalize
         else {
           // Change '$' inner class concatenation character to '.'
           val simpleName = simpleScalaName
           val prefix = scalaName stripSuffix simpleName
-          val name = (if (prefix endsWith "$") prefix.init + '.' else prefix) + simpleName
+          val name = (if prefix endsWith "$" then prefix.init + '.' else prefix) + simpleName
           removePackageRegex.replaceFirstIn(name, "")
         }
     }
@@ -218,11 +218,11 @@ object ScalaUtils
           case null =>
           case cause =>
             val c = cause.toStringWithCauses
-            if (!result.contains(c)) {
+            if !result.contains(c) then {
               result = result.stripSuffix(":") + ", caused by: " + c
             }
         }
-        if (throwable.getSuppressed.nonEmpty) {
+        if throwable.getSuppressed.nonEmpty then {
           result += throwable.getSuppressed.map(t => " [suppressed: " + t.toStringWithCauses + "]").mkString
         }
         result
@@ -241,14 +241,14 @@ object ScalaUtils
             s"ArithmeticException: $msg"
 
           case _ =>
-            if (msg != null && msg != "" && (
+            if msg != null && msg != "" && (
               throwable.isInstanceOf[ProblemException] ||
                 throwable.getClass == classOf[IllegalArgumentException] ||
                 throwable.getClass == classOf[RuntimeException] ||
                 throwable.getClass == classOf[Exception] ||
                 throwable.isInstanceOf[PublicException] ||
                 throwable.getClass.getName == "scala.scalajs.js.JavaScriptException" ||
-                throwable.getClass.getName == "java.util.concurrent.CompletionException"))
+                throwable.getClass.getName == "java.util.concurrent.CompletionException") then
               msg
             else
               throwable.toString
@@ -264,7 +264,7 @@ object ScalaUtils
       /** Useable for logging.
         * `logger.info(throwable.toStringWithCauses, throwable.nullIfNoStackTrace)` */
       def nullIfNoStackTrace: Throwable =
-        if (throwable.getStackTrace.isEmpty) null else throwable
+        if throwable.getStackTrace.isEmpty then null else throwable
 
       def ifStackTrace: Option[Throwable] =
         Option(nullIfNoStackTrace)
@@ -272,8 +272,8 @@ object ScalaUtils
       def dropTopMethodsFromStackTrace(methodName: String): A = {
         val stackTrace = throwable.getStackTrace
         var i = 0
-        while (i < stackTrace.length && stackTrace(i).getMethodName == methodName) i += 1
-        if (i > 0) throwable.setStackTrace(stackTrace.drop(i))
+        while i < stackTrace.length && stackTrace(i).getMethodName == methodName do i += 1
+        if i > 0 then throwable.setStackTrace(stackTrace.drop(i))
         throwable
       }
     }
@@ -286,7 +286,7 @@ object ScalaUtils
 
       /** Apply the function conditionally. */
       def pipeIf[B >: A](condition: => Boolean)(f: A => B): B =
-        if (condition) f(delegate) else delegate
+        if condition then f(delegate) else delegate
 
       /** Apply the function conditionally. */
       def pipeMaybe[O, B >: A](maybe: => Option[O])(f: (A, O) => B): B =
@@ -303,12 +303,12 @@ object ScalaUtils
         f(delegate)
 
       @inline def substitute(when: A, _then: => A): A =
-        if (delegate == when) _then else delegate
+        if delegate == when then _then else delegate
     }
 
     implicit final class SwitchOnAtomicBoolean(private val delegate: AtomicBoolean) extends AnyVal {
-      def switchOn(body: => Unit) = if (delegate.compareAndSet(false, true)) body
-      def switchOff(body: => Unit) = if (delegate.compareAndSet(true, false)) body
+      def switchOn(body: => Unit) = if delegate.compareAndSet(false, true) then body
+      def switchOff(body: => Unit) = if delegate.compareAndSet(true, false) then body
     }
 
     implicit final class RichView[A](private val view: View[A]) extends AnyVal
@@ -434,13 +434,13 @@ object ScalaUtils
       override def buffered: MergeOrderedIterator.this.type = this
 
       def head = {
-        if (minimum.isEmpty) compute()
+        if minimum.isEmpty then compute()
         minimum.getOrElse(throw new NoSuchElementException)
       }
 
       override def headOption =
         minimum match {
-          case None => if (hasNext) minimum else None
+          case None => if hasNext then minimum else None
           case o => o
         }
 
@@ -460,20 +460,20 @@ object ScalaUtils
         minimum = None
         var selectedIterator: Iterator[A] = null.asInstanceOf[Iterator[A]]
         var i = 0
-        while (i < bufferedIterators.length) {
+        while i < bufferedIterators.length do {
           val iterator = bufferedIterators(i)
-          if (!iterator.hasNext) {
+          if !iterator.hasNext then {
             bufferedIterators.remove(i)
           } else {
             val a = iterator.head
-            if (minimum.forall(x => f(x) > f(a))) {
+            if minimum.forall(x => f(x) > f(a)) then {
               minimum = Some(a)
               selectedIterator = iterator
             }
             i += 1
           }
         }
-        if (minimum.isDefined) selectedIterator.next()
+        if minimum.isDefined then selectedIterator.next()
       }
     }
 
@@ -487,7 +487,7 @@ object ScalaUtils
     {
       def get(key: A): Option[B] = {
         val b = underlying.applyOrElse(key, checkFallback[B])
-        if (fallbackOccurred(b)) None else Some(b)
+        if fallbackOccurred(b) then None else Some(b)
       }
 
       def checked(key: A)(implicit A: Tag[A]): Checked[B] =
@@ -508,7 +508,7 @@ object ScalaUtils
       }
 
       def checkNoDuplicate(key: A)(implicit A: ClassTag[A]): Checked[Unit] =
-        if (underlying isDefinedAt key)
+        if underlying isDefinedAt key then
           Left(DuplicateKey(A.runtimeClass.shortClassName, key))
         else
           RightUnit
@@ -527,7 +527,7 @@ object ScalaUtils
 
           override def applyOrElse[A1 <: A, C1 >: C](a: A1, default: A1 => C1): C1 = {
             val b = underlying.applyOrElse(a, checkFallback[B])
-            if (fallbackOccurred(b))
+            if fallbackOccurred(b) then
               default(a)
             else
               bToC(b)
@@ -552,7 +552,7 @@ object ScalaUtils
         * <br>`false.? == None`
         */
       def ? : Option[Boolean] =
-        if (underlying) SomeTrue else None
+        if underlying then SomeTrue else None
 
       def option[A](a: => A): Option[A] =
         thenSome(a)
@@ -563,7 +563,7 @@ object ScalaUtils
         * <br>`(false option a) == None`
         */
       def thenSome[A](a: => A): Option[A] =
-        if (underlying) Some(a) else None
+        if underlying then Some(a) else None
 
       /**
         * Conditional `List`.
@@ -571,7 +571,7 @@ object ScalaUtils
         * <br>`(false option a) == Nil`
         */
       def thenList[A](a: => A): List[A] =
-        if (underlying) a :: Nil else Nil
+        if underlying then a :: Nil else Nil
 
       /**
         * Conditional `Vector`.
@@ -579,7 +579,7 @@ object ScalaUtils
         * <br>`(false option a) == Vector.empty`
         */
       def thenVector[A](a: => A): Vector[A] =
-        if (underlying) Vector(a) else Vector.empty
+        if underlying then Vector(a) else Vector.empty
 
       /**
         * Conditional `Set`.
@@ -587,7 +587,7 @@ object ScalaUtils
         * <br>`(false option a) == Set.empty`
         */
       def thenSet[A](a: => A): Set[A] =
-        if (underlying) Set(a) else Set.empty
+        if underlying then Set(a) else Set.empty
 
       /**
         * Conditional `Iterator`.
@@ -595,7 +595,7 @@ object ScalaUtils
         * <br>`(false option a) == Iterator.empty`
         */
       def thenIterator[A](a: => A): Iterator[A] =
-        if (underlying) Iterator.single(a) else Iterator.empty
+        if underlying then Iterator.single(a) else Iterator.empty
 
       /**
         * Conditional `View`.
@@ -603,21 +603,21 @@ object ScalaUtils
         * <br>`(false option a) == View.empty`
         */
       def thenView[A](a: => A): View[A] =
-        if (underlying) new View.Single(a) else View.empty
+        if underlying then new View.Single(a) else View.empty
 
       /** The string on the right side if true, otherwise the empty string. */
       def ??(string: => String): String =
-        if (underlying) string else ""
+        if underlying then string else ""
 
       def !!(problem: => Problem): Checked[Unit] =
         orLeft(problem)
 
       def orLeft[L](left: => L): Either[L, Unit] =
-        if (!underlying) Left(left)
+        if !underlying then Left(left)
         else RightUnit
 
       def toInt: Int =
-        if (underlying) 1 else 0
+        if underlying then 1 else 0
     }
 
     implicit final class RichEither[L, R](val either: Either[L, R]) extends AnyVal
@@ -659,7 +659,7 @@ object ScalaUtils
         either match {
           case Left(problem: Problem) =>
             var t = problem.throwable
-            if (t.getStackTrace.isEmpty) t = t.appendCurrentStackTrace
+            if t.getStackTrace.isEmpty then t = t.appendCurrentStackTrace
             throw t.dropTopMethodsFromStackTrace("orThrow$extension")
 
           case Left(_) =>
@@ -741,7 +741,7 @@ object ScalaUtils
 
           case Left(t) =>
             t.fillInStackTrace()
-            Left(if (t.getStackTrace.nonEmpty) t else new IllegalStateException(s"$t", t))
+            Left(if t.getStackTrace.nonEmpty then t else new IllegalStateException(s"$t", t))
         }
     }
 
@@ -754,43 +754,43 @@ object ScalaUtils
         firstLineOnly: Boolean = false,
         quote: Boolean = false)
       : String =
-        if (underlying.length <= n && !quote && !underlying.exists(_.isControl))
+        if underlying.length <= n && !quote && !underlying.exists(_.isControl) then
           underlying
         else {
           val sb = new StringBuilder(n + 2 * quote.toInt)
-          if (quote) sb.append('»')
-          val suffix = if (showLength) s"$Ellipsis(length ${underlying.length})" else Ellipsis
+          if quote then sb.append('»')
+          val suffix = if showLength then s"$Ellipsis(length ${underlying.length})" else Ellipsis
           val nn = max(/*suffix.length*/3, n)
-          val firstLine = if (firstLineOnly) underlying.firstLineLengthN(nn) else underlying.length
+          val firstLine = if firstLineOnly then underlying.firstLineLengthN(nn) else underlying.length
           val truncate = (nn min firstLine) < underlying.length
           val truncateAt =
-            if (truncate) nn - suffix.length min firstLineLength else underlying.length
+            if truncate then nn - suffix.length min firstLineLength else underlying.length
 
           var i = 0
-          while (i < truncateAt) {
+          while i < truncateAt do {
             var c = underlying(i)
-            if (c.isControl) c = '·'
+            if c.isControl then c = '·'
             sb.append(c)
             i += 1
           }
 
-          if (quote) sb.append('«')
-          if (truncate) sb.append(suffix)
+          if quote then sb.append('«')
+          if truncate then sb.append(suffix)
           sb.toString
         }
 
       def replaceChar(from: Char, to: Char): String =
-        if (underlying contains from) {
+        if underlying contains from then {
           val chars = new Array[Char](underlying.length)
           underlying.getChars(0, underlying.length, chars, 0)
-          for (i <- chars.indices) if (chars(i) == from) chars(i) = to
+          for i <- chars.indices do if chars(i) == from then chars(i) = to
           new String(chars)
         } else
           underlying
 
       def dropLastWhile(predicate: Char => Boolean): String = {
         var i = underlying.length
-        while (i > 0 && predicate(underlying(i - 1))) i = i -1
+        while i > 0 && predicate(underlying(i - 1)) do i = i -1
         underlying.substring(0, i)
       }
 
@@ -799,9 +799,9 @@ object ScalaUtils
       def firstLineLengthN(until: Int): Int = {
         val n = until min underlying.length
         var i = 0
-        while (i < n) {
-          if(underlying.charAt(i) == '\n') {
-            return if (i > 0 && underlying.charAt(i - 1) == '\r') i - 1 else i
+        while i < n do {
+          if underlying.charAt(i) == '\n' then {
+            return if i > 0 && underlying.charAt(i - 1) == '\r' then i - 1 else i
           }
           i += 1
         }
@@ -816,8 +816,8 @@ object ScalaUtils
         val insert = sb.length()
         body
         val shift = insert + width - sb.length()
-        if (shift > 0) {
-          if (shift <= spaceArray.length) {
+        if shift > 0 then {
+          if shift <= spaceArray.length then {
             sb.insertAll(insert, spaceArray, 0, shift)
           } else {
             sb.insertAll(insert, Iterator.fill(shift)(' '))
@@ -830,8 +830,8 @@ object ScalaUtils
         val right = sb.length() + width
         body
         val fill = right - sb.length()
-        if (fill > 0) {
-          if (fill <= spaceArray.length) {
+        if fill > 0 then {
+          if fill <= spaceArray.length then {
             sb.appendAll(spaceArray, 0, fill)
           } else {
             sb.appendAll(Iterator.fill(fill)(' '))
@@ -845,8 +845,8 @@ object ScalaUtils
       def indexOfByte(byte: Byte) = {
         val len = underlying.length
         var i = 0
-        while (i < len && underlying(i) != byte) i = i + 1
-        if (i == len) -1 else i
+        while i < len && underlying(i) != byte do i = i + 1
+        if i == len then -1 else i
       }
     }
   }
@@ -857,7 +857,7 @@ object ScalaUtils
 
   @inline
   def reuseIfEqual[A <: AnyRef](a: A, b: A): A =
-    if (a == b) a else b
+    if a == b then a else b
 
   @inline
   def reuseIfIdentical[A <: AnyRef](a: A)(f: A => A): A =
@@ -865,7 +865,7 @@ object ScalaUtils
 
   @inline
   def reuseIfIdentical[A <: AnyRef](a: A, b: A): A =
-    if (a eq b) a else b
+    if a eq b then a else b
 
   def implicitClass[A: ClassTag]: Class[A] =
     implicitly[ClassTag[A]].runtimeClass.asInstanceOf[Class[A]]
@@ -919,18 +919,18 @@ object ScalaUtils
 
   def checkedCast[A: ClassTag](o: Any, problem: => Problem): Checked[A] = {
     val A = implicitClass[A]
-    if (o == null)
+    if o == null then
       Left(Problem.fromThrowable(new NullPointerException(s"Expected ${A.getName}, found: null")))
-    else if (A isAssignableFrom o.getClass)
+    else if A isAssignableFrom o.getClass then
       Right(o.asInstanceOf[A])
     else
       Left(problem)
   }
 
   def ifCast[A: ClassTag](o: Any): Option[A] =
-    if (o == null)
+    if o == null then
       None
-    else if (implicitClass[A] isAssignableFrom o.getClass)
+    else if implicitClass[A] isAssignableFrom o.getClass then
       Some(o.asInstanceOf[A])
     else
       None
@@ -939,7 +939,7 @@ object ScalaUtils
     Some(a)
 
   def someUnless[A](a: A, none: A): Option[A] =
-    if (a == none) None else Some(a)
+    if a == none then None else Some(a)
 
   /** Simple implementation (for tests), converts the string to an Array[Byte],
     * risking `OutOfMemoryError` for long Strings. */
@@ -950,7 +950,7 @@ object ScalaUtils
 
   def bytesToHex(bytes: collection.Seq[Byte]): String = {
     val sb = new StringBuilder(2 * bytes.length)
-    for (b <- bytes.iterator) {
+    for b <- bytes.iterator do {
       sb.append(lowerCaseHex((b >> 4) & 0xf))
       sb.append(lowerCaseHex(b & 0xf))
     }
@@ -968,26 +968,26 @@ object ScalaUtils
 
   def chunkStrings(strings: Seq[String], maxSize: Int): Iterable[String] = {
     val total = strings.view.map(_.length).sum
-    if (total == 0)
+    if total == 0 then
       Nil
-    else if (total <= maxSize)
+    else if total <= maxSize then
       strings.combineAll :: Nil
     else {
       val result = mutable.Buffer.empty[String]
       val sb = new StringBuilder(maxSize)
-      for (str <- strings) {
-        if (sb.isEmpty && str.length == maxSize) {
+      for str <- strings do {
+        if sb.isEmpty && str.length == maxSize then {
           result.append(str)
         } else {
           var start = 0
-          while (start < str.length) {
+          while start < str.length do {
             val end = (start + maxSize - sb.length) min str.length
             val a = str.substring(start, end)
-            if (sb.isEmpty && a.length == maxSize) {
+            if sb.isEmpty && a.length == maxSize then {
               result.append(a)
             } else {
               sb.append(a)
-              if (sb.length == maxSize) {
+              if sb.length == maxSize then {
                 result.append(sb.toString)
                 sb.clear()
               }
@@ -996,7 +996,7 @@ object ScalaUtils
           }
         }
       }
-      if (sb.nonEmpty) result.append(sb.toString)
+      if sb.nonEmpty then result.append(sb.toString)
       result
     }
   }

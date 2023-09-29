@@ -22,7 +22,7 @@ object Base64UUID extends GenericString.Checked_[Base64UUID]
   protected def unchecked(string: String) = throw new NotImplementedError
 
   override def checked(string: String) =
-    for (uuid <- base64ToUUID(string)) yield new Base64UUID(uuid, string)
+    for uuid <- base64ToUUID(string) yield new Base64UUID(uuid, string)
 
   private lazy val toUrlBase64 = Base64.getUrlEncoder.withoutPadding.encodeToString _
 
@@ -34,15 +34,15 @@ object Base64UUID extends GenericString.Checked_[Base64UUID]
   }
 
   def base64ToUUID(base64String: String): Checked[UUID] =
-    for {
+    for
       bytes <- catchExpected[IllegalArgumentException](
         Base64.getUrlDecoder.decode(base64String))
       uuid <-
-        if (bytes.size != 16)
+        if bytes.size != 16 then
           Left(Problem(s"Not a Base64-encoded UUID: $base64String"))
         else {
           val buffer = ByteBuffer.wrap(bytes)
           Right(new UUID(buffer.getLong(0), buffer.getLong(8)))
         }
-    } yield uuid
+    yield uuid
 }

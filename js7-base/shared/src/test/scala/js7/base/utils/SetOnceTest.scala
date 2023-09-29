@@ -26,9 +26,9 @@ final class SetOnceTest extends OurTestSuite
     assert(a.toOption == Some(0))
     assert((a getOrElse -1) == -0)
     assert(intercept[IllegalStateException] { a := 0 } .getMessage == "SetOnce[Int] has already been set")
-    assert((for (i <- a.toOption) yield (i: Int) + 3) == Some(3))
+    assert((for i <- a.toOption yield (i: Int) + 3) == Some(3))
     var r = 7
-    for (_ <- a) r = a.orThrow
+    for _ <- a do r = a.orThrow
     assert(r == 0)
   }
 

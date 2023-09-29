@@ -46,7 +46,7 @@ final class FileUtilsTest extends OurTestSuite with BeforeAndAfterAll
         assert((a / "b").toString == s"a${separator}b")
       }
       "invalid" - {
-        for (invalid <- InvalidRelativePaths) {
+        for invalid <- InvalidRelativePaths do {
           invalid in {
             intercept[ProblemException] {
               a / invalid
@@ -248,7 +248,7 @@ final class FileUtilsTest extends OurTestSuite with BeforeAndAfterAll
     }
 
     "invalid" - {
-      for (invalid <- InvalidRelativePaths) {
+      for invalid <- InvalidRelativePaths do {
         invalid in {
           assert(checkRelativePath(invalid).isLeft)
         }
@@ -279,7 +279,7 @@ final class FileUtilsTest extends OurTestSuite with BeforeAndAfterAll
 
     def check(existing: Boolean): Unit = {
       withTemporaryFile("FileUtilsTest-", ".tmp") { file =>
-        if (!existing) delete(file)
+        if !existing then delete(file)
         provideFile[Coeval](file)
           .use(file => Coeval {
             assert(!exists(file))

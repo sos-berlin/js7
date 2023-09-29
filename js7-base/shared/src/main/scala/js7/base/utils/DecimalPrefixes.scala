@@ -21,7 +21,7 @@ object DecimalPrefixes
           toIntExact(long)))
 
   def toLong(string: String): Checked[Long] =
-    if (string.nonEmpty && string.last.isLetter) {
+    if string.nonEmpty && string.last.isLetter then {
       val prefix = string.last
       PrefixToFactor.get(prefix)
         .toChecked(Problem(

@@ -32,13 +32,13 @@ object Numbered
   implicit def jsonDecoder[A: Decoder]: Decoder[Numbered[A]] =
     c => c.values match {
       case Some(fields: IndexedSeq[Json]) =>
-        for {
+        for
           _ <- requireJson(fields.sizeIs == 2, DecodingFailure(
             "For Numbered, a JSON array with exactly two elements expected",
             c.history))
           number <- fields(0).as[Long]
           a <- fields(1).as[A]
-        } yield Numbered(number, a)
+        yield Numbered(number, a)
 
       case _ =>
         c.as[A].map(Numbered(0, _))

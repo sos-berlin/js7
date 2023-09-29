@@ -21,7 +21,7 @@ object DelayIterators
       .orElse(catchExpected[ConfigException](
         config.getDurationList(key).asScala.view.map(_.toScala).toVector))
       .flatMap(durations =>
-        if (durations.isEmpty)
+        if durations.isEmpty then
           Left(Problem(s"Setting '$key' must not be empty"))
         else
           Right(new DelayIterator(durations)))

@@ -32,7 +32,7 @@ object CirceUtils
     CirceConfiguration.default.withDefaults
 
   def requireJson(requirement: Boolean, failure: => DecodingFailure): Decoder.Result[Unit] =
-    if (!requirement)
+    if !requirement then
       Left(failure)
     else
       DecoderOK
@@ -83,7 +83,7 @@ object CirceUtils
     c => c
       .as[JsonObject]
       .flatMap(jsonObject =>
-        if (!jsonObject.keys.exists(keySet))
+        if !jsonObject.keys.exists(keySet) then
           decode(c)
         else
           decode.decodeJson(
@@ -125,8 +125,8 @@ object CirceUtils
   implicit final class RichJsonObject(private val underlying: JsonObject) extends AnyVal
   {
     def ++(o: JsonObject): JsonObject =
-      if (o.isEmpty) underlying
-      else if (underlying.isEmpty) o
+      if o.isEmpty then underlying
+      else if underlying.isEmpty then o
       else JsonObject.fromIterable(underlying.toIterable ++ o.toIterable)
 
     def toByteArray: ByteArray =
@@ -252,17 +252,17 @@ object CirceUtils
     new Codec[SeqMap[K, V]] {
       def apply(listMap: SeqMap[K, V]) =
         Json.fromValues(
-          for ((key, value) <- listMap) yield
+          for (key, value) <- listMap yield
             Json.fromJsonObject(JsonObject.fromMap(
               SeqMap(keyName -> key.asJson) ++
                 JsonObject.singleton(valueName, value.asJson).toMap)))
 
       private implicit val idAndScriptDecoder: Decoder[(K, V)] =
         cursor =>
-          for {
+          for
             id <- cursor.downField(keyName).as[K]
             value <- cursor.downField(valueName).as[V]
-          } yield
+          yield
             id -> value
 
       def apply(cursor: HCursor) =
@@ -314,7 +314,7 @@ object CirceUtils
       val p = sc.parts.iterator
       val builder = new mutable.StringBuilder(sc.parts.map(_.length).sum + 50)
       builder.append(p.next())
-      for (arg <- args) {
+      for arg <- args do {
         builder.append(toJsonString(arg))
         builder.append(p.next())
       }

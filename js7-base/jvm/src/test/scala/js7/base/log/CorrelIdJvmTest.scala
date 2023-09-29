@@ -75,7 +75,7 @@ final class CorrelIdJvmTest extends OurTestSuite with BeforeAndAfterAll
     "Task.runToFuture with Task.parSequence" in {
       val correlId = CorrelId("CCCCCCCC")
       val task = Task.parSequence(
-        for (i <- 1 to 8) yield
+        for i <- 1 to 8 yield
           Task {
             sleep(10.ms)
             logger.info(
@@ -130,7 +130,7 @@ final class CorrelIdJvmTest extends OurTestSuite with BeforeAndAfterAll
   "bindCorrelId[Task[r]]" in {
     val correlIds = Vector.tabulate(1000)(i => CorrelId(i.toString))
     val n = 200
-    for (i <- 1 to n) {
+    for i <- 1 to n do {
       val t = now
       correlIds
         .parTraverse(correlId =>
@@ -141,7 +141,7 @@ final class CorrelIdJvmTest extends OurTestSuite with BeforeAndAfterAll
               ()
             })(Vector)))
         .await(99.s)
-      if (i % (n / 10) == 0) {
+      if i % (n / 10) == 0 then {
         logger.info(itemsPerSecondString(t.elapsed, correlIds.size, "Tasks"))
       }
     }
@@ -150,7 +150,7 @@ final class CorrelIdJvmTest extends OurTestSuite with BeforeAndAfterAll
   "bindCorrelId[Future[r]]" in {
     val correlIds = Vector.tabulate(1000)(i => CorrelId(i.toString))
     val n = 200
-    for (i <- 1 to n) {
+    for i <- 1 to n do {
       val t = now
       Future
         .sequence(correlIds
@@ -162,22 +162,22 @@ final class CorrelIdJvmTest extends OurTestSuite with BeforeAndAfterAll
                 ()
               }))))
         .await(99.s)
-      if (i % (n / 10) == 0) {
+      if i % (n / 10) == 0 then {
         logger.info(itemsPerSecondString(t.elapsed, correlIds.size, "Futures"))
       }
     }
   }
 
-  if (false) "ThreadContext implemented with Monix Local, is stiched to the Fiber" in {
+  if false then "ThreadContext implemented with Monix Local, is stiched to the Fiber" in {
     // We do not use ThreadContext.put. Maybe it should work in non-Monix threads, too.
-    val task = for {
+    val task = for
       _ <- Task(ThreadContext.put("key", "0"))
       _ <- Task(assert(ThreadContext.get("key") == "0"))
       _ <- Task.shift
       _ <- Task(assert(ThreadContext.get("key") == "0"))
       _ <- TaskLocal.isolate(Task(ThreadContext.put("key", "1")))
       _ <- Task(assert(ThreadContext.get("key") == "0"))
-    } yield ()
+    yield ()
     task.await(99.s)
   }
 }

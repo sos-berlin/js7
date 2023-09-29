@@ -24,7 +24,7 @@ final class BufferedObservableTest extends OurAsyncTestSuite
     val whenList = obs.buffer(Some(delay), Int.MaxValue).toListL.runToFuture(testScheduler)
     testScheduler.tick(100.s)
 
-    for (list <- whenList) yield {
+    for list <- whenList yield {
       assert(list == List(
         List("A"),
         List("B-1", "B-2", "B-3", "B-4"),
@@ -43,7 +43,7 @@ final class BufferedObservableTest extends OurAsyncTestSuite
     val whenList = obs.buffer(Some(delay), maxCount = 50, toWeight = _.length).toListL.runToFuture(testScheduler)
     testScheduler.tick(100.s)
 
-    for (list <- whenList) yield {
+    for list <- whenList yield {
       assert(list == List(
         List(".........1.........2", ".........3.........4"),
         List(".........5.........6", ".........7.........8"),

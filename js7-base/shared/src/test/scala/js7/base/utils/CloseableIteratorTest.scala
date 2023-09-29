@@ -38,7 +38,7 @@ final class CloseableIteratorTest extends OurTestSuite
     var lazyBEvaluated = false
     lazy val lazyB = new TestIterator(Iterator(11, 12))
     def b = {
-      if (lazyBEvaluated) fail("lazyB is evaluated twice")
+      if lazyBEvaluated then fail("lazyB is evaluated twice")
       lazyBEvaluated = true
       lazyB
     }

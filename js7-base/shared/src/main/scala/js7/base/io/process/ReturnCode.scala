@@ -15,7 +15,7 @@ final case class ReturnCode private(number: Int) extends GenericInt
     number > 128 && number < 256
 
   def pretty(isWindows: Boolean) =
-    if (isWindows || !isProcessSignal)
+    if isWindows || !isProcessSignal then
       toString
     else
       number - 128 match {
@@ -33,13 +33,13 @@ object ReturnCode extends GenericInt.Companion[ReturnCode]
   val StandardFailure = predefined(1)
 
   def apply(number: Int): ReturnCode =
-    if (predefined isDefinedAt number)
+    if predefined isDefinedAt number then
       predefined(number)
     else
       new ReturnCode(number)
 
   def apply(o: Boolean): ReturnCode =
-    if (o) Success else StandardFailure
+    if o then Success else StandardFailure
 
   def apply(signal: ProcessSignal): ReturnCode =
     apply(128 + signal.number)

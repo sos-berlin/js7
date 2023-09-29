@@ -53,7 +53,7 @@ object Logger
     withPrefix(implicitClass[A], prefix)
 
   def withPrefix(c: Class[?], prefix: String): ScalaLogger =
-    if (prefix.isEmpty)
+    if prefix.isEmpty then
       apply(c)
     else
       ScalaLogger(new ConvertingLogger.Prefixed(
@@ -219,7 +219,7 @@ object Logger
       (implicit F: Sync[F])
     : F[A] =
       F.defer {
-        if (!logger.isEnabled(logLevel))
+        if !logger.isEnabled(logLevel) then
           body
         else {
           val ctx = new StartReturnLogContext(logger, logLevel, function, args)
@@ -230,7 +230,7 @@ object Logger
               case result =>
                 F.delay(ctx.logReturn(
                   "",
-                  if (resultToLoggable eq null)
+                  if resultToLoggable eq null then
                     "Completed"
                   else
                     resultToLoggable(result).toString))
@@ -250,13 +250,13 @@ object Logger
       Resource
         .makeCase(
           acquire = F.delay(
-            if (!logger.isEnabled(logLevel))
+            if !logger.isEnabled(logLevel) then
               None
             else
               Some(new StartReturnLogContext(logger, logLevel, function, args))))(
           release = (maybeCtx, exitCase) =>
             F.delay(
-              for (ctx <- maybeCtx) ctx.logExitCase(exitCase)))
+              for ctx <- maybeCtx do ctx.logExitCase(exitCase)))
         .flatMap(_ => resource)
 
     private def logObservable[A](logger: ScalaLogger, logLevel: LogLevel, function: String,
@@ -279,7 +279,7 @@ object Logger
     private val startedAt = System.nanoTime()
 
     private def duration: String =
-      if (startedAt == 0)
+      if startedAt == 0 then
         ""
       else
         (System.nanoTime() - startedAt).ns.pretty + " "
@@ -295,7 +295,7 @@ object Logger
     args: => Any = "")
   : Unit = {
     lazy val argsString = args.toString
-    if (argsString.isEmpty)
+    if argsString.isEmpty then
       logLevel match {
         case LogLevel.LogNone =>
         case LogLevel.Trace => logger.trace(s"↘ $function ↘")
@@ -339,7 +339,7 @@ object Logger
     msg: AnyRef)
   : Unit = {
     lazy val argsString = args.toString
-    if (argsString.isEmpty) {
+    if argsString.isEmpty then {
       logLevel match {
         case LogLevel.LogNone =>
         case LogLevel.Trace => logger.trace(s"↙$marker $function => $duration$msg ↙")

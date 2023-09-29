@@ -34,12 +34,12 @@ object CodedMessages
     val used = mutable.Set.empty[String]
     val it = pattern.iterator.buffered
     val sb = new StringBuilder(pattern.length)
-    while (it.hasNext) {
+    while it.hasNext do {
       val c = it.next()
-      if (c == '$' && it.headOption.exists(isUnicodeIdentifierStart)) {
+      if c == '$' && it.headOption.exists(isUnicodeIdentifierStart) then {
         val keyBuilder = new StringBuilder
         keyBuilder += it.next()
-        while (it.headOption.exists(isUnicodeIdentifierPart)) keyBuilder += it.next()
+        while it.headOption.exists(isUnicodeIdentifierPart) do keyBuilder += it.next()
         val key = keyBuilder.toString
         arguments.get(key) match {
           case None =>
@@ -53,8 +53,8 @@ object CodedMessages
         sb += c
     }
     val unused = arguments.keySet -- used
-    if (unused.nonEmpty) {
-      if (sb contains ' ') sb.append(' ')
+    if unused.nonEmpty then {
+      if sb contains ' ' then sb.append(' ')
       sb ++= unusedArgumentsToString(arguments.view.filterKeys(unused).toMap)
     }
     sb.toString

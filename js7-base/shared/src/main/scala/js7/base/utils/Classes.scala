@@ -10,7 +10,7 @@ object Classes
     superOf(cls, upperClass).asInstanceOf[Set[Class[? >: A <: U]]]
 
   private def superOf[U](cls: Class[?], upperClass: Class[U]): Set[Class[? <: U]] =
-    if (cls == null || !upperClass.isAssignableFrom(cls))
+    if cls == null || !upperClass.isAssignableFrom(cls) then
       Set.empty
     else
       (cls.getInterfaces :+ cls.getSuperclass)

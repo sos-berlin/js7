@@ -18,13 +18,13 @@ final class Js7VersionsTest extends OurTestSuite
     "valid" - {
       val validVersions = Seq("2.2.1", "2.2.2", "2.2.3", "2.2.3-SNAPSHOT+BUILD")
         .map(Version(_))
-      for (v <- validVersions) assert(check(v) == Right(()))
+      for v <- validVersions do assert(check(v) == Right(()))
     }
 
     "invalid" in {
       val invalidVersions = Seq("2.1.0", "2.3.0")
         .map(Version(_))
-      for (v <- invalidVersions) assert(check(v) == Left(Problem(
+      for v <- invalidVersions do assert(check(v) == Left(Problem(
         s"OTHER version $v does not match our version 2.2.2")))
     }
   }

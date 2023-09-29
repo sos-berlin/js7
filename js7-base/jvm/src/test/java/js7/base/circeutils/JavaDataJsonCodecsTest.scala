@@ -20,7 +20,7 @@ final class JavaDataJsonCodecsTest extends OurTestSuite {
   "Instant" - {  // See also Timestamp
     case class A(instant: Instant)
 
-    if (sys.props contains "test.speed")
+    if sys.props contains "test.speed" then
     "String/Number speed comparision" in {
       val millis = Instant.parse("2015-06-09T12:22:33.987Z").toEpochMilli
       val n = 100000
@@ -28,11 +28,11 @@ final class JavaDataJsonCodecsTest extends OurTestSuite {
       run("ISO string  ")(StringInstantEncoder, InstantDecoder)
 
       def run(what: String)(implicit instantJsonCodec: Encoder[Instant], decoder: Decoder[Instant]) = {
-        for (i <- 1 to 100000) Instant.ofEpochMilli(i).asJson.as[Instant].orThrow  // Warm-up
+        for i <- 1 to 100000 do Instant.ofEpochMilli(i).asJson.as[Instant].orThrow  // Warm-up
         val t = System.nanoTime
-        for (i <- 1 to n) Instant.ofEpochMilli(millis + i).asJson.as[Instant].orThrow
+        for i <- 1 to n do Instant.ofEpochMilli(millis + i).asJson.as[Instant].orThrow
         val duration = (System.nanoTime - t).nanoseconds
-        info(s"Instant as $what: ${if (duration.isPositive) 1000*n / duration.toMillis else "∞"} conversions/s")
+        info(s"Instant as $what: ${if duration.isPositive then 1000*n / duration.toMillis else "∞"} conversions/s")
       }
     }
 

@@ -16,7 +16,7 @@ object ScalaTestUtils extends org.scalatest.Assertions
     (implicit prettifier: Prettifier, pos: source.Position)
   : Assertion = {
     val until = now + timeLimit
-    while (now < until && !condition) Thread.sleep(10)
+    while now < until && !condition do Thread.sleep(10)
     assert(condition)
   }
 }

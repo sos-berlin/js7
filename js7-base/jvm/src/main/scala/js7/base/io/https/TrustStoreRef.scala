@@ -28,7 +28,7 @@ object TrustStoreRef
     new TrustStoreRef(file.toAbsolutePath.toUri.toURL, storePassword)
 
   def fromConfig(config: Config): Seq[TrustStoreRef] =
-    if (!config.hasPath(configKey))
+    if !config.hasPath(configKey) then
       Nil
     else
       config.getObjectList(configKey)

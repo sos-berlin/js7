@@ -120,7 +120,7 @@ object Parsers
         case list => "Expected one of " + list.mkString("\"", ", ", "\"")
       }
     case Expectation.InRange(_, lower, upper) =>
-      if (lower == upper) s"expected '$lower'"
+      if lower == upper then s"expected '$lower'"
       else s"Expected '$lower'-'$upper'"
     case Expectation.StartOfString(_) =>
       "Expected start of input"
@@ -176,7 +176,7 @@ object Parsers
       .flatten
       .toSet
 
-    if (expectedChars.size > AllChars.size - 20) {
+    if expectedChars.size > AllChars.size - 20 then {
       val notIn = AllChars.filterNot(expectedChars).sorted
       val notInAsString = charsToString(notIn)
       val msg = notIn.size match {
@@ -193,7 +193,7 @@ object Parsers
       expectedChars = Set.empty
     }
 
-    if (AllChars.filter(isIdentifierStart) forall expectedChars) {
+    if AllChars.filter(isIdentifierStart) forall expectedChars then {
       charSetExpectations = "Expected identifer" :: charSetExpectations
       expectedChars = expectedChars filterNot isIdentifierStart
     }

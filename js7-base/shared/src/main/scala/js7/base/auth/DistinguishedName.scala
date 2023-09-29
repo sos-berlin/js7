@@ -26,7 +26,7 @@ object DistinguishedName
   def apply(string: String) = checked(string).orThrow
 
   def checked(string: String): Checked[DistinguishedName] =
-    if (string.trim.isEmpty)
+    if string.trim.isEmpty then
       Left(EmptyStringProblem("DistinguishedName"))
     else
       Try(new X500Principal(string)) match {

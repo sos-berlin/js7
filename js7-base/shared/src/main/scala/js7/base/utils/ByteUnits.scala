@@ -37,7 +37,7 @@ object ByteUnits
   private[utils] def formatNumber(number: Long, divisor: Int, suffix: String): String = {
     val sb = new mutable.StringBuilder(16)
     val n = number / divisor
-    if (n >= 10) {
+    if n >= 10 then {
       sb.append(n)
     } else {
       10 * number / divisor % 10 match {

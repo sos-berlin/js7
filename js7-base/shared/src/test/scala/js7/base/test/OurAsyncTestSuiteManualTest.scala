@@ -14,7 +14,7 @@ final class OurAsyncTestSuiteManualTest extends OurAsyncTestSuite {
     }
   }
 
-  if (false)
+  if false then
   "failing" in {
     Future {
       Thread.sleep(10)

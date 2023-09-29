@@ -44,7 +44,7 @@ extends Observable[String]
   private[this] val wasSubscribed = Atomic(false)
 
   def unsafeSubscribeFn(out: Subscriber[String]): Cancelable = {
-    if (!wasSubscribed.compareAndSet(false, true)) {
+    if !wasSubscribed.compareAndSet(false, true) then {
       out.onError(APIContractViolationException(
         "UnbufferedReaderObservable does not support multiple subscribers"))
       Cancelable.empty
@@ -69,7 +69,7 @@ extends Observable[String]
     ack.onComplete {
       case Success(next) =>
         // Should we continue, or should we close the stream?
-        if (next == Continue && !c.isCanceled) {
+        if next == Continue && !c.isCanceled then {
           // Using Scala's BlockContext, since this is potentially a blocking call
           blocking(fastLoop(b, out, c, em, 0))
         }
@@ -98,7 +98,7 @@ extends Observable[String]
       // From this point on, whatever happens is a protocol violation
       streamErrors = false
 
-      ack = if (length >= 0) {
+      ack = if length >= 0 then {
         // As long as the returned length is positive, it means
         // we haven't reached EOF.
         out.onNext(new String(buffer, 0, length))
@@ -111,22 +111,22 @@ extends Observable[String]
         errorThrown = ex
     }
 
-    if (errorThrown == null) {
+    if errorThrown == null then {
       // Logic for collapsing execution loops
       val nextIndex =
-        if (ack == Continue) em.nextFrameIndex(syncIndex)
-        else if (ack == Stop) -1
+        if ack == Continue then em.nextFrameIndex(syncIndex)
+        else if ack == Stop then -1
         else 0
 
-      if (!c.isCanceled) {
-        if (nextIndex > 0)
+      if !c.isCanceled then {
+        if nextIndex > 0 then
           fastLoop(buffer, out, c, em, nextIndex)
-        else if (nextIndex == 0)
+        else if nextIndex == 0 then
           reschedule(ack, buffer, out, c, em)
         else
           () // Stop!
       }
-    } else if (streamErrors) {
+    } else if streamErrors then {
       sendError(out, errorThrown)
     } else {
       reportFailure(errorThrown)
@@ -137,7 +137,7 @@ extends Observable[String]
     try out.onError(e)
     catch {
       case NonFatal(e2) =>
-        if (e ne e2) e.addSuppressed(e2)
+        if e ne e2 then e.addSuppressed(e2)
         reportFailure(e)
     }
 

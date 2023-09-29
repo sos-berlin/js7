@@ -38,12 +38,12 @@ extends SignatureVerifier
   def publicKeyOrigin = "(GenericSignatureVerifier)"
 
   override def verify(document: ByteArray, signature: GenericSignature): Checked[Seq[SignerId]] =
-    for {
+    for
       verifier <- typeToVerifier.rightOr(signature.typeName,
         Problem(s"No trusted public key for signature type '${signature.typeName}'"))
       typedSignature <- verifier.companion.genericSignatureToSignature(signature)
       signerIds <- verifier.verify(document, typedSignature)
-    } yield signerIds
+    yield signerIds
 
   def isEmpty = typeToVerifier.isEmpty
 
@@ -77,13 +77,13 @@ object GenericSignatureVerifier extends SignatureVerifier.Companion
               .nameToSignatureVerifierCompanion
               .rightOr(typeName, UnknownSignatureTypeProblem(typeName))
               .flatMap(companion =>
-                if (!exists(directory))
+                if !exists(directory) then
                   Left(Problem.pure(
                     s"Signature key directory '$directory' for '$typeName' does not exists"))
                 else {
                   val files = autoClosing(Files.list(directory))(_
                     .asScala.filterNot(_.getFileName.toString.startsWith(".")).toVector)
-                  if (files.isEmpty) {
+                  if files.isEmpty then {
                     logger.warn(
                       s"No public key files for signature verifier '${companion.typeName}' in directory '$directory'")
                   }
@@ -96,7 +96,7 @@ object GenericSignatureVerifier extends SignatureVerifier.Companion
         case (k, Right(v)) => Right(v)
       }
       .flatMap { verifiers =>
-        if (verifiers.isEmpty)
+        if verifiers.isEmpty then
           Left(Problem.pure(s"No trusted signature keys - Configure one with $configPath!"))
         else {
           logVerifiers(verifiers)
@@ -113,7 +113,7 @@ object GenericSignatureVerifier extends SignatureVerifier.Companion
     Right(signature)
 
   private def logVerifiers(verifiers: Seq[SignatureVerifier]): Unit =
-    if (verifiers.isEmpty)
+    if verifiers.isEmpty then
       logger.info("Trusting NO public signature keys")
     else {
       logger.info(

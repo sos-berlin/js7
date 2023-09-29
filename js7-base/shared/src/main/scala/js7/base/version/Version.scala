@@ -19,7 +19,7 @@ final case class Version(
 extends GenericString with Ordered[Version]
 {
   def compare(o: Version) =
-    if (this eq o)
+    if this eq o then
       0
     else
       (major, minor, patch) compare (o.major, o.minor, o.patch) match {

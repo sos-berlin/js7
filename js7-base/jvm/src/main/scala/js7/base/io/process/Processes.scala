@@ -71,7 +71,7 @@ object Processes
 
       def buffer[T](f: => T) = f
     })
-    if (exitCode != 0)
+    if exitCode != 0 then
       throw new ProcessException(commandLine, ReturnCode(exitCode), ByteArray(stdout.toString), ByteArray(stderr.toString))
     stdout.toString
   }
@@ -96,7 +96,7 @@ object Processes
     Await.result(stdoutClosed, Duration.Inf)
     Await.result(stderrClosed, Duration.Inf)
     val returnCode = process.waitFor()
-    if (returnCode != 0)
+    if returnCode != 0 then
       throw new ProcessException(commandLine, ReturnCode(returnCode), stdout, stderr)
     stdout
   }

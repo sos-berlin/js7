@@ -83,7 +83,7 @@ final class ConfigsTest extends OurTestSuite
       assert(config"""A = "STRING\"\u007f." """ == ConfigFactory.parseMap(Map("A" -> "STRING\"\u007f.").asJava))
     }
 
-    for (string <- Seq("STRING", "STRING\"", "STRING\"\u007f.", "back\\slash")) {
+    for string <- Seq("STRING", "STRING\"", "STRING\"\u007f.", "back\\slash") do {
       s"Interpolating String: $string" in {
         assert(config"""A = "!$string" """ == ConfigFactory.parseMap(Map("A" -> s"!$string").asJava))
       }
@@ -96,7 +96,7 @@ final class ConfigsTest extends OurTestSuite
     }
 
     case class MyGenericString(string: String) extends GenericString
-    for (string <- MyGenericString("STRING") :: MyGenericString("STRING\")") :: MyGenericString("STRING\"\u007f.") :: Nil) {
+    for string <- MyGenericString("STRING") :: MyGenericString("STRING\")") :: MyGenericString("STRING\"\u007f.") :: Nil do {
       s"Interpolating GenericString: $string" in {
         assert(config"""A = "!$string" """ == ConfigFactory.parseMap(Map("A" -> s"!$string").asJava))
       }

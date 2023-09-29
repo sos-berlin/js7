@@ -426,7 +426,7 @@ final class ScalaUtilsTest extends OurTestSuite
           Seq(5, 4, 3, 2, 1))
       }
 
-      if (sys.props.contains("test.speed")) {
+      if sys.props.contains("test.speed") then {
         "speed, simple algorithm" in {
           testSpeed(_.mergeOrderedSlowBy(identity))
         }
@@ -435,11 +435,11 @@ final class ScalaUtilsTest extends OurTestSuite
       def testSpeed(mergeOrdered: Vector[Vector[Integer]] => Iterator[Integer]) = {
         val n = 10_000_000
         val buffers = Vector.fill(10)(Vector.newBuilder[Integer])
-        for (i <- 0 until n / 2) buffers(Random.nextInt(7)) += i
-        for (i <- n / 2 until n) buffers(7 + Random.nextInt(3)) += i
+        for i <- 0 until n / 2 do buffers(Random.nextInt(7)) += i
+        for i <- n / 2 until n do buffers(7 + Random.nextInt(3)) += i
         val seqs = buffers.map(_.result())
         logger.info(seqs.map(_.length).map(n => s"$n×").mkString(" "))
-        for (_ <- 1 to 3) {
+        for _ <- 1 to 3 do {
           val t = now
           val result = mergeOrdered(seqs).toVector
           val elapsed = t.elapsed
@@ -487,7 +487,7 @@ final class ScalaUtilsTest extends OurTestSuite
         intercept[NoSuchElementException](iterator.next())
       }
 
-      if (sys.props.contains("test.speed")) {
+      if sys.props.contains("test.speed") then {
         "speed" in {
           testSpeed(_.mergeOrderedOptimizedBy(identity))
         }
@@ -496,11 +496,11 @@ final class ScalaUtilsTest extends OurTestSuite
       def testSpeed(mergeOrdered: Vector[Vector[Integer]] => Iterator[Integer]) = {
         val n = 10_000_000
         val buffers = Vector.fill(10)(Vector.newBuilder[Integer])
-        for (i <- 0 until n / 2) buffers(Random.nextInt(7)) += i
-        for (i <- n / 2 until n) buffers(7 + Random.nextInt(3)) += i
+        for i <- 0 until n / 2 do buffers(Random.nextInt(7)) += i
+        for i <- n / 2 until n do buffers(7 + Random.nextInt(3)) += i
         val seqs = buffers.map(_.result())
         logger.info(seqs.map(_.length).map(n => s"$n×").mkString(" "))
-        for (_ <- 1 to 3) {
+        for _ <- 1 to 3 do {
           val t = now
           val result = mergeOrdered(seqs).toVector
           val elapsed = t.elapsed

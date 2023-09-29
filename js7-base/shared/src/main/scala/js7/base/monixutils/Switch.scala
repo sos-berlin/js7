@@ -10,10 +10,10 @@ extends Switch.ReadOnly
   private val lock = new SimpleLock
 
   private val filledWhenOff: Task[MVar[Task, Unit]] =
-    (if (initiallyOn) MVar[Task].empty[Unit]() else MVar[Task].of(()))
+    (if initiallyOn then MVar[Task].empty[Unit]() else MVar[Task].of(()))
       .memoize
   private val filledWhenOn: Task[MVar[Task, Unit]] =
-    (if (!initiallyOn) MVar[Task].empty[Unit]() else MVar[Task].of(()))
+    (if !initiallyOn then MVar[Task].empty[Unit]() else MVar[Task].of(()))
       .memoize
 
   /** Returns true iff switch turned from off to on. */

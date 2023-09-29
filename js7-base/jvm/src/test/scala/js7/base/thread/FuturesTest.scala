@@ -45,7 +45,7 @@ final class FuturesTest extends OurTestSuite
 
   "catchInFuture" in {
     def f(t: Boolean): Future[Unit] = {
-      if (t) throw new RuntimeException
+      if t then throw new RuntimeException
       Future { throw new RuntimeException }
     }
     intercept[RuntimeException] { f(true) }

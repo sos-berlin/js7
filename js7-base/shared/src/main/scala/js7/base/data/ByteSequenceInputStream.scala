@@ -10,7 +10,7 @@ final class ByteSequenceInputStream[A](byteSeq: A)(implicit A: ByteSequence[A]) 
   private val length = A.length(byteSeq)
 
   def read() =
-    if (i == length)
+    if i == length then
       -1
     else {
       i += 1

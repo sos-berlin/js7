@@ -14,7 +14,7 @@ class ScalaConcurrentHashMap[K, V] extends mutable.Map[K, V]{
 
   final def insert(key: K, value: V): this.type = {
     val existingValue = delegate.putIfAbsent(key, value)
-    if (existingValue != null) throw new DuplicateKeyException(s"'$key' has already been registered")
+    if existingValue != null then throw new DuplicateKeyException(s"'$key' has already been registered")
     this
   }
 

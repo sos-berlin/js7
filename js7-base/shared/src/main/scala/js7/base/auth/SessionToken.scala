@@ -42,5 +42,5 @@ object SessionToken
     }
 
   private def numberToShort(number: Long): String =
-    if (number == NoNumber) NoNumberShort else s"Session:$number"
+    if number == NoNumber then NoNumberShort else s"Session:$number"
 }
