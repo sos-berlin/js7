@@ -580,8 +580,8 @@ with MainJournalingActor[ControllerState, Event]
                   Future.successful(None)
                 case _ =>
                   persistTransactionTimestamped(timestampedEvents,
-                    CommitOptions(alreadyDelayed = agentDriverConfiguration.eventBufferDelay))
-                  {
+                    CommitOptions(alreadyDelayed = agentDriverConfiguration.eventBufferDelay)
+                  ) {
                     (stampedEvents, updatedState) =>
                       handleEvents(stampedEvents, updatedState)
                       Some(agentEventId)

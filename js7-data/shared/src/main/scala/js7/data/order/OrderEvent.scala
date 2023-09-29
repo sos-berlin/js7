@@ -27,6 +27,7 @@ import js7.data.subagent.{SubagentId, SubagentSelectionId}
 import js7.data.value.{NamedValues, Value}
 import js7.data.workflow.WorkflowId
 import js7.data.workflow.instructions.Fork
+import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{BranchPath, Position, PositionOrLabel, WorkflowPosition}
 import org.jetbrains.annotations.TestOnly
 import scala.annotation.nowarn

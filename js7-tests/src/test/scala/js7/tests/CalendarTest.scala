@@ -21,6 +21,7 @@ import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, Or
 import js7.data.order.{CycleState, FreshOrder, OrderId, Outcome}
 import js7.data.workflow.instructions.Schedule.Scheme
 import js7.data.workflow.instructions.{Cycle, Schedule}
+import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.CalendarTest.*

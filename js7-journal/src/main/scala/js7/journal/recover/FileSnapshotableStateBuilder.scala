@@ -117,9 +117,9 @@ final class FileSnapshotableStateBuilder[S <: SnapshotableState[S]](
             transaction.add(cast[Stamped[KeyedEvent[Event]]](journalRecord))
         }
 
-      case _ =>
-        throw new IllegalArgumentException(
-          s"Illegal JSON while journal file reader is in state '$journalProgress': ${journalRecord.toString.truncateWithEllipsis(100)}")
+      //case _ =>
+      //  throw new IllegalArgumentException(
+      //    s"Illegal JSON while journal file reader is in state '$journalProgress': ${journalRecord.toString.truncateWithEllipsis(100)}")
     }
 
   def rollbackToEventSection(): Unit =

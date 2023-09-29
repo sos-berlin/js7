@@ -275,10 +275,10 @@ private object JobDriver
         case outcome: Outcome.Completed =>
           if (timedOut)
              Outcome.TimedOut(outcome)
-           else if (isKilled)
-             Outcome.Killed(outcome)
-           else
-             outcome
+          else if (isKilled)
+            Outcome.Killed(outcome)
+          else
+            outcome
         case o => o
       }
   }

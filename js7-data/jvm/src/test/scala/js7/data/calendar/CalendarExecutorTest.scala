@@ -8,6 +8,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.{TimeInterval, Timestamp, Timezone}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.order.OrderId
+import scala.concurrent.duration.*
 
 final class CalendarExecutorTest extends OurTestSuite
 {

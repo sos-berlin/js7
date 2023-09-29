@@ -18,6 +18,7 @@ import js7.data.orderwatch.{ExternalOrderKey, ExternalOrderName, OrderWatchPath}
 import js7.data.subagent.{SubagentId, SubagentSelectionId}
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.WorkflowPath
+import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{BranchId, Label, Position}
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 import scala.annotation.nowarn

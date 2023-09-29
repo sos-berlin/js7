@@ -12,12 +12,17 @@ trait ConvertibleMultiPartialFunction[K, V] {
   def as[W](key: K, default: => W)(implicit convert: As[V, W]): W =
     optionAs[W](key) getOrElse default
 
-  def as[W](key: K)(implicit convert: As[V, W]): W =
-    apply(key) match {
-      case collection.Seq() => throw new NoSuchElementException(s"Missing ${renderKey(key)}")
-      case collection.Seq(value) => wrappedConvert(convert.apply, renderKey(key))(value)
-      case _ => throwNotUnique(key)
+  def as[W](key: K)(implicit convert: As[V, W]): W = {
+    val iterator = apply(key).iterator
+    if iterator.isEmpty then
+      throw new NoSuchElementException(s"Missing ${renderKey(key)}")
+    else {
+      val value = iterator.next()
+      val result = wrappedConvert(convert.apply, renderKey(key))(value)
+      if (iterator.hasNext) throwNotUnique(key)
+      result
     }
+  }
 
   def optionAs[W](key: K, default: => Option[W])(implicit convert: As[V, W]): Option[W] =
     optionAs(key)(convert) orElse default

@@ -11,6 +11,7 @@ import js7.data.board.BoardStateTest.*
 import js7.data.controller.ControllerState
 import js7.data.order.OrderId
 import js7.data.value.expression.ExpressionParser.expr
+import js7.data.workflow.position.BranchPath.syntax.*
 import monix.execution.Scheduler.Implicits.traced
 import scala.collection.View
 

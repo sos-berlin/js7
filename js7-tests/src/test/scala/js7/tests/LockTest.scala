@@ -27,6 +27,7 @@ import js7.data.value.ValuePrinter.quoteString
 import js7.data.value.expression.Expression.{NumericConstant, StringConstant}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{Fail, Finish, Fork, LockInstruction, Prompt, Retry, TryInstruction}
+import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowParser, WorkflowPath}
 import js7.tests.LockTest.*

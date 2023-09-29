@@ -2,6 +2,7 @@ package js7.data.workflow.position
 
 import cats.syntax.show.*
 import js7.data.workflow.WorkflowId
+import js7.data.workflow.position.BranchPath.syntax.*
 import scala.language.implicitConversions
 
 /**

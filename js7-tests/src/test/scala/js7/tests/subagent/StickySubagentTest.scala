@@ -18,6 +18,7 @@ import js7.data.value.StringValue
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{Fail, Fork, Prompt, StickySubagent}
+import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.EmptyJob

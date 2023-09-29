@@ -28,6 +28,7 @@ import js7.data.order.{CycleState, FreshOrder, OrderEvent, OrderId, OrderObstacl
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.Schedule.{Continuous, Periodic, Scheme, Ticking}
 import js7.data.workflow.instructions.{Break, Cycle, Fail, Fork, If, LockInstruction, Options, Schedule, Stop, TryInstruction}
+import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.CycleTest.*

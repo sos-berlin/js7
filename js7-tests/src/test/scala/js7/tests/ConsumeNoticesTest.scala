@@ -19,6 +19,7 @@ import js7.data.value.StringValue
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{ConsumeNotices, Execute, Fail, PostNotices, Prompt, Retry, TryInstruction}
+import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.ConsumeNoticesTest.*

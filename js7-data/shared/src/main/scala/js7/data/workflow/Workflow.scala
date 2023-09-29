@@ -4,6 +4,7 @@ import cats.syntax.foldable.*
 import cats.syntax.traverse.*
 import io.circe.syntax.EncoderOps
 import io.circe.{Codec, Decoder, Encoder, JsonObject}
+import js7.data.workflow.position.BranchPath.syntax.*
 import js7.base.circeutils.CirceUtils.*
 import js7.base.circeutils.typed.Subtype
 import js7.base.problem.Checked.*
@@ -31,6 +32,8 @@ import js7.data.workflow.position.{BranchId, BranchPath, InstructionNr, Label, P
 import scala.annotation.tailrec
 import scala.collection.View
 import scala.reflect.ClassTag
+import js7.data.workflow.position.syntax.*
+import js7.data.workflow.position.*
 
 /**
   * @author Joacim Zschimmer
@@ -51,7 +54,7 @@ with TrivialItemState[Workflow]
 {
   override def equals(o: Any) = o match {
     case o: Workflow =>
-      id == o.id
+      (id == o.id
         && rawLabeledInstructions == o.rawLabeledInstructions
         && nameToJob == o.nameToJob
         && orderPreparation == o.orderPreparation
@@ -59,7 +62,7 @@ with TrivialItemState[Workflow]
         && jobResourcePaths == o.jobResourcePaths
         && calendarPath == o.calendarPath
         && result == o.result
-        && source == o.source
+        && source == o.source)
       // Ignore `outer`
     case _ => false
   }
@@ -600,7 +603,8 @@ with TrivialItemState.Companion[Workflow]
   override lazy val subtype: Subtype[Workflow] =
     Subtype(jsonEncoder, topJsonDecoder)
 
-  implicit lazy val jsonCodec = Codec.AsObject.from(jsonDecoder_, jsonEncoder_)
+  implicit lazy val jsonCodec: Codec.AsObject[Workflow] =
+    Codec.AsObject.from(jsonDecoder_, jsonEncoder_)
 
   private val jsonEncoder_ : Encoder.AsObject[Workflow] = {
     case Workflow(id, instructions, namedJobs, orderPreparation, tz, jobResourcePaths,

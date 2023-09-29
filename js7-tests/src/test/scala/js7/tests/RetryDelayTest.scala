@@ -14,6 +14,7 @@ import js7.data.agent.AgentPath
 import js7.data.order.OrderEvent.{OrderAdded, OrderAwoke, OrderCaught, OrderFailed, OrderMoved, OrderOutcomeAdded, OrderRetrying, OrderStarted, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.workflow.instructions.{Fail, Retry, TryInstruction}
+import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.RetryDelayTest.*

@@ -66,23 +66,19 @@ addCommandAlias("publish-install", "; install/universal:publish; install-docker:
 addCommandAlias("TestControllerAgent", "js7-tests/runMain js7.tests.TestControllerAgent --agents=2 --nodes-per-agent=3 --tasks=3 --job-duration=1.5s --period=10.s")
 addCommandAlias("quickPublishLocal", "; compile; publishLocal; project js7JS; compile; publishLocal")
 
-//scalafixDependencies in ThisBuild += "org.scala-lang.modules" %% "scala-collection-migrations" % "2.1.4"
-//addCompilerPlugin(scalafixSemanticdb)
-//ThisBuild / scalacOptions ++= Seq("-P:semanticdb:synthetics:on", "-Yrangepos"/*required by SemanticDB compiler plugin*/)
-
-//scalafixDependencies in ThisBuild += "org.scalatest" %% "autofix" % "3.1.0.0"
-//addCompilerPlugin(scalafixSemanticdb) // enable SemanticDB
-
 //Scala 3? ThisBuild / scalacOptions ++= (if (isForDevelopment) Nil else
 //Scala 3?   Seq("-Wconf:cat=unused-imports:error"))
 
 ThisBuild / scalacOptions ++= Seq(
-  "-source:3.0-migration",
+  //"-source:3.0-migration",
   "-explain",
   "-feature",
   "-deprecation",
   "-Yretain-trees", // Required for Circe derived default values
   //"-Ysafe-init",
+  //? "-Wconf:cat=other-match-analysis:error",
+  //? "-Wconf:cat=lint-adapted-args:error",
+  //? "-Wconf:cat=unchecked&src=src/main/*:error",
   "-Wunused:imports",
   "-Wunused:implicits")
 

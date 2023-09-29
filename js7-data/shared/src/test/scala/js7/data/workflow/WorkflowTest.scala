@@ -1,5 +1,4 @@
 package js7.data.workflow
-
 import io.circe.syntax.*
 import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichCirceEither}
 import js7.base.problem.Checked.*
@@ -23,6 +22,8 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, ExpectNotices, Fail, Fork, Gap, If, ImplicitEnd, LockInstruction, PostNotices, Retry, TryInstruction}
 import js7.data.workflow.position.*
 import js7.data.workflow.position.BranchId.{Catch_, Else, Then, Try_, fork, try_}
+import js7.data.workflow.position.BranchPath.syntax.*
+import js7.data.workflow.position.syntax.*
 import js7.data.workflow.test.ForkTestSetting
 import js7.data.workflow.test.TestSetting.*
 import js7.tester.CirceJsonTester.{normalizeJson, removeJNull, testJson}

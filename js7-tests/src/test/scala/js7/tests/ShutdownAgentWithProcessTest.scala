@@ -23,6 +23,7 @@ import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.value.NumberValue
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, TryInstruction}
+import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.ShutdownAgentWithProcessTest.*

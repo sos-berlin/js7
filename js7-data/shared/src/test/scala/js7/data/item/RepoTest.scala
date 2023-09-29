@@ -14,6 +14,7 @@ import js7.base.time.Stopwatch
 import js7.data.Problems.{EventVersionDoesNotMatchProblem, ItemVersionDoesNotMatchProblem, VersionedItemRemovedProblem}
 import js7.data.item.RepoTest.*
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, VersionedItemChanged, VersionedItemRemoved}
+import js7.data.workflow.position.BranchPath.syntax.*
 
 /**
   * @author Joacim Zschimmer
@@ -22,7 +23,7 @@ final class RepoTest extends OurTestSuite
 {
   import itemSigner.sign
 
-  private lazy val Right(testRepo: Repo) = emptyRepo.applyEvents(versionedEvents)
+  private lazy val Right(testRepo: Repo) = emptyRepo.applyEvents(versionedEvents): @unchecked
 
   "empty" in {
     assert(emptyRepo.historyBefore(v("UNKNOWN")) == Left(UnknownKeyProblem("VersionId", VersionId("UNKNOWN"))))
@@ -37,7 +38,7 @@ final class RepoTest extends OurTestSuite
   }
 
   "empty version" in {
-    val Right(repo) = emptyRepo.applyEvent(VersionAdded(v("INITIAL")))
+    val Right(repo) = emptyRepo.applyEvent(VersionAdded(v("INITIAL"))): @unchecked
     assert(repo.historyBefore(v("INITIAL")) == Right(Nil))
     assert(repo.historyBefore(v("UNKNOWN")) == Left(UnknownKeyProblem("VersionId", VersionId("UNKNOWN"))))
 

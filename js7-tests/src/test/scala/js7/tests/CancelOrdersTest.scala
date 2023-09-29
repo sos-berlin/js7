@@ -1,5 +1,4 @@
 package js7.tests
-
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.io.process.{ProcessSignal, ReturnCode}
@@ -27,6 +26,7 @@ import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{BreakOrder, Execute, Fork, Prompt}
+import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{Position, WorkflowPosition}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.CancelOrdersTest.*

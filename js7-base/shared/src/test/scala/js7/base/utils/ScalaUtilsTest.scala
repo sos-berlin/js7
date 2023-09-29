@@ -672,7 +672,7 @@ final class ScalaUtilsTest extends OurTestSuite
         assert(Right[Throwable, Int](7).withStackTrace == Right[Throwable, Int](7))
         val t = new IllegalArgumentException
         assert(t.getStackTrace.nonEmpty)
-        val Left(t2) = Left[Throwable, Int](t).withStackTrace
+        val Left(t2) = Left[Throwable, Int](t).withStackTrace: @unchecked
         assert(t2 eq t)
       }
 

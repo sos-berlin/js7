@@ -15,6 +15,7 @@ import js7.data.order.{FreshOrder, HistoricOutcome, OrderEvent, OrderId, Outcome
 import js7.data.value.BooleanValue
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{Fail, If, LockInstruction, Options}
+import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.StopOnFailureTest.*

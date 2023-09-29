@@ -14,6 +14,7 @@ import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{ExpectNotices, PostNotices}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
+import scala.concurrent.duration.*
 
 final class PostNoticesExecutorTest extends OurTestSuite
 {

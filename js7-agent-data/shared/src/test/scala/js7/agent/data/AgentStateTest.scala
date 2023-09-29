@@ -34,6 +34,8 @@ import js7.data.subagent.{SubagentId, SubagentItem, SubagentSelection, SubagentS
 import js7.data.value.expression.Expression
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.position.*
+import js7.data.workflow.position.BranchPath.syntax.*
+import js7.data.workflow.position.syntax.*
 import js7.data.workflow.{Workflow, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
 import js7.tester.CirceJsonTester.{removeJNull, testJson, testJsonDecoder}
 import monix.execution.Scheduler.Implicits.traced

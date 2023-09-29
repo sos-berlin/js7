@@ -6,6 +6,7 @@ import js7.base.test.OurTestSuite
 import js7.base.time.Timestamp
 import js7.data.value.{BooleanValue, ListValue, NumberValue, StringValue}
 import js7.data.workflow.WorkflowPath
+import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{BranchId, Label, Position}
 import js7.tester.CirceJsonTester.testJson
 /**

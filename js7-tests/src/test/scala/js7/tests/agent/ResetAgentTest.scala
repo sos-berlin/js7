@@ -34,6 +34,7 @@ import js7.data.order.OrderEvent.{LockDemand, OrderAdded, OrderAttachable, Order
 import js7.data.order.{CycleState, FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.workflow.instructions.{Cycle, Fork, LockInstruction, Schedule, TryInstruction}
+import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.launcher.OrderProcess

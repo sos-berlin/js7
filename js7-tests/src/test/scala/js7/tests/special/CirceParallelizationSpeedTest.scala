@@ -17,6 +17,7 @@ import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
 import js7.data.value.{ListValue, StringValue}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.BranchId.Then
+import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.Position
 import js7.tests.special.CirceParallelizationSpeedTest.*
 import monix.execution.Scheduler.Implicits.traced

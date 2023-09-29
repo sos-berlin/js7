@@ -9,6 +9,7 @@ import js7.data.source.SourcePos
 import js7.data.value.expression.ExpressionParser.{expr, exprFunction}
 import js7.data.workflow.instructions.Instructions.jsonCodec
 import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Instruction, Workflow}
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}

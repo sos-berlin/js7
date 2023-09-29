@@ -9,6 +9,7 @@ import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.state.TestStateView
 import js7.data.workflow.instructions.{Fail, Fork}
 import js7.data.workflow.position.BranchId.Then
+import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{InstructionNr, Position, WorkflowPosition}
 import js7.data.workflow.{Workflow, WorkflowPath}
 

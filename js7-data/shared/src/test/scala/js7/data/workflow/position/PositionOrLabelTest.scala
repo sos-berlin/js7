@@ -6,6 +6,7 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.data.workflow.position.BranchId.{Then, catch_, try_}
+import js7.data.workflow.position.BranchPath.syntax.*
 import js7.tester.CirceJsonTester.testJson
 
 

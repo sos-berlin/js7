@@ -14,6 +14,7 @@ import js7.data.value.NamedValues
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{Fail, If, TryInstruction}
 import js7.data.workflow.position.BranchId.{Then, try_}
+import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath}
 import js7.tests.TryTest.*

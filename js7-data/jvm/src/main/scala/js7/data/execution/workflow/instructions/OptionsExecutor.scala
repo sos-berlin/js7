@@ -5,7 +5,8 @@ import js7.data.order.Order.IsFreshOrReady
 import js7.data.order.OrderEvent.OrderMoved
 import js7.data.state.StateView
 import js7.data.workflow.instructions.Options
-import js7.data.workflow.position.{BranchId, Position}
+import js7.data.workflow.position.*
+import js7.data.workflow.position.BranchPath.syntax.*
 
 private[instructions] final class OptionsExecutor(
   protected val service: InstructionExecutorService)

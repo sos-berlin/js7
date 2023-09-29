@@ -14,6 +14,7 @@ import js7.data.order.OrderEvent.OrderAdded
 import js7.data.orderwatch.ExternalOrderKey
 import js7.data.value.NamedValues
 import js7.data.workflow.WorkflowPath
+import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{BranchPath, Position, PositionOrLabel}
 import org.jetbrains.annotations.TestOnly
 

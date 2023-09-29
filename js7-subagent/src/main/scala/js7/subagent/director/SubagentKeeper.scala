@@ -167,19 +167,19 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
             persist(order.id, orderProcessed :: Nil, onEvents)
               .flatMapT(_ => Task.pure(orderProcessed).start.map(Right(_)))
 
-            case Some(subagentDriver) =>
-              forProcessingOrder(order.id, subagentDriver, onEvents)(
-                if (failedOverSubagentId contains subagentDriver.subagentId)
-                  subagentDriver.emitOrderProcessLost(order)
-                    .flatMap(_.traverse(orderProcessed => Task.pure(orderProcessed).start))
-                else
-                  subagentDriver.recoverOrderProcessing(order)
-              ).materializeIntoChecked
-              .flatTap {
-                case Left(problem) => Task(logger.error(
-                  s"recoverOrderProcessing ${order.id} => $problem"))
-                case Right(_) => Task.unit
-              }
+          case Some(subagentDriver) =>
+            forProcessingOrder(order.id, subagentDriver, onEvents)(
+              if (failedOverSubagentId contains subagentDriver.subagentId)
+                subagentDriver.emitOrderProcessLost(order)
+                  .flatMap(_.traverse(orderProcessed => Task.pure(orderProcessed).start))
+              else
+                subagentDriver.recoverOrderProcessing(order)
+            ).materializeIntoChecked
+            .flatTap {
+              case Left(problem) => Task(logger.error(
+                s"recoverOrderProcessing ${order.id} => $problem"))
+              case Right(_) => Task.unit
+            }
           }
     })
 

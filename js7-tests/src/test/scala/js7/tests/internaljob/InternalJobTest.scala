@@ -24,6 +24,7 @@ import js7.data.value.{NamedValues, NumberValue, Value}
 import js7.data.workflow.WorkflowPrinter.instructionToString
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath, WorkflowPrinter}
 import js7.launcher.OrderProcess
 import js7.launcher.forjava.internal.tests.{EmptyBlockingInternalJob, EmptyJInternalJob, TestBlockingInternalJob, TestJInternalJob}

@@ -1,5 +1,4 @@
 package js7.tests.controller.proxy.history
-
 import java.time.Instant
 import java.util.Optional
 import js7.base.time.JavaTimestamp.specific.*
@@ -8,6 +7,7 @@ import js7.data.event.{Event, EventId, KeyedEvent}
 import js7.data.order.{OrderEvent, OrderId}
 import js7.data.value.{NamedValues, StringValue, Value}
 import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.Position
 import js7.data_for_java.order.JOrderEvent.{JOrderAdded, JOrderCancelled, JOrderFailed, JOrderFinished, JOrderForked, JOrderJoined, JOrderProcessed, JOrderProcessingStarted, JOrderStdWritten}
 import js7.data_for_java.order.{JOrder, JOrderEvent}

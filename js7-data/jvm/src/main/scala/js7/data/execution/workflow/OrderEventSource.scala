@@ -27,6 +27,9 @@ import js7.data.workflow.position.{BranchId, Position, TryBranchId, WorkflowPosi
 import js7.data.workflow.{Instruction, Workflow}
 import scala.annotation.tailrec
 import scala.reflect.ClassTag
+import js7.data.workflow.position.syntax.*
+import js7.data.workflow.position.*
+import js7.data.workflow.position.BranchPath.syntax.*
 
 /**
   * @author Joacim Zschimmer

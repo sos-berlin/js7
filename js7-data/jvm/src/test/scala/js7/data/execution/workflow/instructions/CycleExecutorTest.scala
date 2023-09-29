@@ -17,6 +17,7 @@ import js7.data.order.{CycleState, Order, OrderEvent, OrderId}
 import js7.data.state.TestStateView
 import js7.data.workflow.instructions.Schedule.{Periodic, Scheme, Ticking}
 import js7.data.workflow.instructions.{Cycle, ImplicitEnd, Schedule}
+import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import scala.collection.immutable.VectorBuilder

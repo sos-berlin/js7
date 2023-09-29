@@ -21,6 +21,7 @@ import js7.data.order.OrderEvent.*
 import js7.data.orderwatch.ExternalOrderKey
 import js7.data.subagent.{SubagentId, SubagentSelectionId}
 import js7.data.value.{NamedValues, Value}
+import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{BranchId, BranchPath, InstructionNr, Position, PositionOrLabel, WorkflowPosition}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import scala.collection.{MapView, View, mutable}
@@ -741,9 +742,9 @@ final case class Order[+S <: Order.State](
   }
 
   def isSuspendedOrStopped: Boolean =
-    isSuspended
+    (isSuspended
       && !isState[Cancelled]/*COMPATIBLE Before v2.6 OrderCancelled did not reset isSuspended*/
-      || isState[Stopped]
+      || isState[Stopped])
 
   def isResuming =
     mark.exists(_.isInstanceOf[OrderMark.Resuming])

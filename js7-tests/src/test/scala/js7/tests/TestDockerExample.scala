@@ -27,7 +27,8 @@ import js7.controller.configuration.ControllerConfiguration
 import js7.controller.tests.TestDockerEnvironment
 import js7.data.agent.AgentPath
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.traced 
+import monix.execution.Scheduler.Implicits.traced
+import scala.concurrent.duration.* 
 
 /**
   * @author Joacim Zschimmer

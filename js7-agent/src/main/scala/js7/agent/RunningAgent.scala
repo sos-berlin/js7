@@ -5,7 +5,7 @@ import akka.http.scaladsl.server.directives.SecurityDirectives.Authenticator
 import cats.effect.Resource
 import cats.effect.concurrent.Deferred
 import cats.syntax.all.*
-import com.softwaremill.diffx.generic.auto.*
+import com.softwaremill.diffx.generic.auto.given
 import com.softwaremill.tagging.{@@, Tagger}
 import com.typesafe.config.ConfigUtil
 import js7.agent.RunningAgent.*

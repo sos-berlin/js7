@@ -4,6 +4,7 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.test.OurTestSuite
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{Position, WorkflowBranchPath}
 import js7.tester.CirceJsonTester.*
 

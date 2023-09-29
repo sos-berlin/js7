@@ -20,8 +20,8 @@ extends ScheduleSimulator
   def nextCycleState(now: Timestamp, cycleState: CycleState): Option[CycleState] =
     nextCycle(now, cycleState)
       .flatMap { case (schemeIndex, periodIndex, next) =>
-        val periodChanges = cycleState.index != 0/*0 is the initial value*/
-          && (schemeIndex != cycleState.schemeIndex || periodIndex != cycleState.periodIndex)
+        val periodChanges = (cycleState.index != 0/*0 is the initial value*/
+          && (schemeIndex != cycleState.schemeIndex || periodIndex != cycleState.periodIndex))
         !(onlyOnePeriod && periodChanges) ?
           cycleState.copy(
             schemeIndex = schemeIndex,
@@ -52,8 +52,8 @@ extends ScheduleSimulator
             import scheme.repeat
             val lastScheduledCycleStart = cycleState.next max interval.start
             val end = cycleState.end min interval.end
-            val first = schemeIndex != cycleState.schemeIndex
-              || periodIndex != cycleState.periodIndex
+            val first = (schemeIndex != cycleState.schemeIndex
+              || periodIndex != cycleState.periodIndex)
             repeat
               .match_ {
                 case periodic: Periodic =>

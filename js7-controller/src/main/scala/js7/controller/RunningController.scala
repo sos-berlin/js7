@@ -5,7 +5,7 @@ import akka.pattern.ask
 import akka.util.Timeout
 import cats.effect.{Resource, Sync, SyncIO}
 import cats.syntax.traverse.*
-import com.softwaremill.diffx.generic.auto.*
+import com.softwaremill.diffx.generic.auto.given
 import com.softwaremill.tagging.{@@, Tagger}
 import com.typesafe.config.Config
 import js7.base.auth.SimpleUser
@@ -247,7 +247,7 @@ object RunningController
         new LicenseChecker(LicenseCheckContext(conf.configDirectory)),
         journalLocation, clusterConf, eventIdClock, testEventBus)
 
-    val resources = CorrelId.bindNew(clusterNodeResource)
+    val resources = /*CorrelId.bindNew*/(clusterNodeResource)
       .parZip(CorrelId.bindNew(
         itemVerifierResource(config, testEventBus)))
 

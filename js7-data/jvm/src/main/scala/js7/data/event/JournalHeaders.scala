@@ -16,7 +16,7 @@ object JournalHeaders
       totalRunningTime: FiniteDuration,
       timestamp: Timestamp = Timestamp.now)
       (implicit S: BasicState.Companion[S])
-  : JournalHeader =
+    : JournalHeader =
       self.copy(
         typeName = Some(S.name),
         eventId = eventId,

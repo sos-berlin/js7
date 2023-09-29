@@ -19,6 +19,7 @@ import js7.data.value.StringValue
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{If, Prompt, TryInstruction}
 import js7.data.workflow.position.BranchId.{Try_, try_}
+import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPath}
 import js7.data_for_java.controller.{JControllerCommand, JControllerState}

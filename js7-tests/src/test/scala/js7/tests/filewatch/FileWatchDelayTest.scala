@@ -26,6 +26,7 @@ import js7.tests.jobs.DeleteFileJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
+import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
 
 final class FileWatchDelayTest extends OurTestSuite with ControllerAgentForScalaTest

@@ -7,6 +7,7 @@ import js7.data.order.{Order, OrderId, OrderMark}
 import js7.data.value.StringValue
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.instructions.Fork
+import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.Position
 
 final class JOrderTest extends OurTestSuite

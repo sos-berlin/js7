@@ -10,7 +10,8 @@ import js7.data.order.{Order, OrderEvent}
 import js7.data.state.StateView
 import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.{End, Finish, ForkInstruction}
-import js7.data.workflow.position.{BranchPath, InstructionNr}
+import js7.data.workflow.position.*
+import js7.data.workflow.position.BranchPath.syntax.*
 
 private[instructions] final class FinishExecutor(protected val service: InstructionExecutorService)
 extends EventInstructionExecutor

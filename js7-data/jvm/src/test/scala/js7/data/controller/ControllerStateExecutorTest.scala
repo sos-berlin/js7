@@ -29,6 +29,7 @@ import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.OrderParameterList.{MissingOrderArgumentProblem, WrongValueTypeProblem}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, LockInstruction}
+import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.Position
 import js7.data.workflow.{OrderParameter, OrderParameterList, OrderPreparation, Workflow, WorkflowPath}
 import monix.execution.Scheduler.Implicits.traced

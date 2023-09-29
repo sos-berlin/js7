@@ -411,8 +411,8 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
   : HttpResponse =
     response.entity match {
       case chunked: Chunked =>
-        val isUtf8 = chunked.contentType.charsetOption.contains(`UTF-8`)
-          || chunked.contentType.mediaType.toString == `application/x-ndjson`.toString
+        val isUtf8 = (chunked.contentType.charsetOption.contains(`UTF-8`)
+          || chunked.contentType.mediaType.toString == `application/x-ndjson`.toString)
         response.pipeIf(logger.underlying.isTraceEnabled)(_
           .withEntity(chunked.copy(
             chunks = chunked.chunks

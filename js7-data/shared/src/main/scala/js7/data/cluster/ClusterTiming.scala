@@ -9,7 +9,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.cluster.ClusterTiming.*
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.*
 
 final case class ClusterTiming(heartbeat: FiniteDuration, heartbeatTimeout: FiniteDuration)
 {

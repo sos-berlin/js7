@@ -1,11 +1,12 @@
 package js7.data.workflow.instructions
 
-import io.circe.Codec
-import io.circe.derivation.ConfiguredCodec
+import io.circe.{Codec, Decoder, Encoder}
+import io.circe.derivation.{ConfiguredCodec, ConfiguredDecoder, ConfiguredEncoder}
 import js7.data.source.SourcePos
 import js7.data.value.expression.Expression
 import js7.data.workflow.position.{BranchPath, Position, PositionOrLabel}
 import js7.data.workflow.{Instruction, WorkflowPath}
+import js7.data.workflow.position.BranchPath.syntax.*
 
 final case class AddOrder(
   orderId: Expression,
@@ -24,5 +25,6 @@ extends Instruction
 
 object AddOrder
 {
+  import BranchPath.syntax.jsonCodec
   implicit val jsonCodec: Codec.AsObject[AddOrder] = ConfiguredCodec.derive(useDefaults = true)
 }

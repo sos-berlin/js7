@@ -1,5 +1,4 @@
 package js7.data.order
-
 import cats.syntax.option.*
 import io.circe.Json
 import io.circe.syntax.EncoderOps
@@ -22,6 +21,7 @@ import js7.data.value.{NamedValues, NumberValue, StringValue, Value}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, Fork}
 import js7.data.workflow.position.BranchId.Then
+import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tester.CirceJsonTester.testJson
@@ -29,6 +29,7 @@ import org.scalactic.source
 import scala.annotation.nowarn
 import scala.collection.View
 import scala.collection.immutable.ListSet
+import scala.concurrent.duration.*
 import scala.reflect.ClassTag
 
 /**

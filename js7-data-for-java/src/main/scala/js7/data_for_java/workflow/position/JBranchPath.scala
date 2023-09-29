@@ -9,6 +9,7 @@ import js7.data_for_java.common.JavaWrapper
 import js7.data_for_java.vavr.Standards.VEither
 import js7.data_for_java.vavr.VavrConverters.RichVavrOption
 import scala.jdk.CollectionConverters.*
+import js7.data.workflow.position.BranchPath.syntax.*
 
 final case class JBranchPath(asScala: BranchPath) extends JavaWrapper {
   type AsScala = BranchPath

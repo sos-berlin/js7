@@ -116,15 +116,15 @@ object CanBindCorrelId
                   release = _ => correlId.bind(release))
               })
 
-    def bindNewIfEmpty(resource: => Resource[F, A]): Resource[F, A] =
-      if (!CorrelId.isEnabled)
-        Resource.suspend(F.delay(resource))
-      else
-        Resource.suspend(F.delay(
-          if (CorrelId.current.nonEmpty)
-            resource
-          else
-            bind(generate())(resource)))
+      def bindNewIfEmpty(resource: => Resource[F, A]): Resource[F, A] =
+        if (!CorrelId.isEnabled)
+          Resource.suspend(F.delay(resource))
+        else
+          Resource.suspend(F.delay(
+            if (CorrelId.current.nonEmpty)
+              resource
+            else
+              bind(generate())(resource)))
     }
 
   private object SynchronousCan extends CanBindCorrelId[Any]

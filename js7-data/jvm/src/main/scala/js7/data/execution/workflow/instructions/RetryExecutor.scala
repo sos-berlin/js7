@@ -10,7 +10,8 @@ import js7.data.order.OrderObstacle.WaitingForOtherTime
 import js7.data.order.{Order, OrderObstacleCalculator}
 import js7.data.state.StateView
 import js7.data.workflow.instructions.{Retry, TryInstruction}
-import js7.data.workflow.position.{BranchPath, TryBranchId}
+import js7.data.workflow.position.*
+import js7.data.workflow.position.BranchPath.syntax.*
 import scala.concurrent.duration.*
 
 /**

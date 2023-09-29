@@ -15,6 +15,8 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, TryInstruction}
 import js7.data.workflow.position.*
 import js7.data.workflow.position.BranchId.try_
+import js7.data.workflow.position.BranchPath.syntax.*
+import js7.data.workflow.position.syntax.*
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tester.CirceJsonTester.testJson
 

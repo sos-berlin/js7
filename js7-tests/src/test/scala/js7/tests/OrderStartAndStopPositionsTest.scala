@@ -10,6 +10,7 @@ import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, Or
 import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{Fail, Fork, If, TryInstruction}
+import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{BranchId, Label, Position, PositionOrLabel}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.OrderStartAndStopPositionsTest.*

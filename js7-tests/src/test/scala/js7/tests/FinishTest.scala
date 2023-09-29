@@ -16,6 +16,7 @@ import js7.data.value.StringValue
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{Fail, Finish, Fork, If, TryInstruction}
 import js7.data.workflow.position.BranchId.Then
+import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.FinishTest.*

@@ -5,6 +5,7 @@ import js7.base.test.OurTestSuite
 import js7.data.value.expression.Expression.*
 import js7.data.value.expression.ExpressionParser.*
 import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.position.BranchPath.syntax.*
 import org.scalactic.source
 
 final class ExpressionParserTest extends OurTestSuite

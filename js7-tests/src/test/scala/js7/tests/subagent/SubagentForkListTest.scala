@@ -13,6 +13,7 @@ import js7.data.subagent.{SubagentId, SubagentItem, SubagentSelection, SubagentS
 import js7.data.value.StringValue
 import js7.data.value.expression.ExpressionParser.{expr, exprFunction}
 import js7.data.workflow.instructions.ForkList
+import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.EmptyJob

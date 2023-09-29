@@ -15,7 +15,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.{TimeInterval, Timezone}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.order.OrderId
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.*
 import scala.util.matching.Regex
 
 final class CalendarExecutor private(

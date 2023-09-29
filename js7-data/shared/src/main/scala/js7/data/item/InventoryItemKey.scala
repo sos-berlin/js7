@@ -6,7 +6,6 @@ import js7.base.problem.Checked
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.data.item.InventoryItemKey.*
 import scala.math.Ordered.orderingToOrdered
-import scala.math.Ordering.*
 
 trait InventoryItemKey
 {
@@ -21,6 +20,9 @@ trait InventoryItemKey
 
 object InventoryItemKey
 {
+  import InventoryItemPath.inventoryItemPathOrdering
+  import VersionId.versionedIdOrdering
+  
   implicit val inventoryItemKeyOrdering: Ordering[InventoryItemKey] =
     (a, b) => a.path.compare(b.path) match {
       case 0 => a match {

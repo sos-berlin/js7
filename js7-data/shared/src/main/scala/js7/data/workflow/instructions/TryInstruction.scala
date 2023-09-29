@@ -7,6 +7,7 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.ZeroDuration
+import js7.data.workflow.position.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.data.agent.AgentPath
 import js7.data.source.SourcePos

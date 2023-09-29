@@ -2,6 +2,7 @@ package js7.base.time
 
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
+import scala.concurrent.duration.*
 
 final class TimeIntervalTest extends OurTestSuite
 {

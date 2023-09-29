@@ -167,7 +167,7 @@ trait RealEventWatch extends EventWatch
     predicate: E => Boolean)
   : Task[E] =
     whenKey[E](request.copy[E](limit = 1), key, predicate) map {
-      case eventSeq: EventSeq.NonEmpty[CloseableIterator, E] =>
+      case eventSeq: EventSeq.NonEmpty[CloseableIterator, E] @unchecked =>
         try eventSeq.stamped.next().value
         finally eventSeq.close()
       case _: EventSeq.Empty => throw new TimeoutException(s"Timed out: $request")

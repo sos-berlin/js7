@@ -1,10 +1,14 @@
 package js7.data.workflow.position
 
-import io.circe.{Decoder, DecodingFailure, HCursor, Json}
+import cats.Show
+import io.circe.syntax.EncoderOps
+import io.circe.{Codec, Decoder, DecodingFailure, Encoder, HCursor, Json}
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.*
 import scala.annotation.tailrec
-import scala.collection.mutable
+import scala.collection.{View, mutable}
+
+type BranchPath = List[BranchPath.Segment]
 
 /** Denotes globally a branch in a instruction, for example fork or if-then-else, globally unique.
   *
@@ -90,6 +94,7 @@ object BranchPath
       } yield Segment(nr, branchId)
 
   object PositionAndBranchId {
+    import BranchPath.syntax.*
     def unapply(branchPath: BranchPath): Option[(Position, BranchId)] =
       branchPath.nonEmpty ? {
         val last = branchPath.last
@@ -98,17 +103,49 @@ object BranchPath
   }
 
   object syntax {
-    implicit final class BranchPathOps(private val branchPath: BranchPath) extends AnyVal {
+    extension (segments: BranchPath) {
+      def %(nr: InstructionNr) = Position(segments, nr)
+
+      def %(parent: BranchPath.Segment): BranchPath =
+        segments ::: parent :: Nil
+
+      def parent: Option[Position] =
+        segments.nonEmpty ? (segments.init % segments.last.nr)
+
+      def dropChild: BranchPath = {
+        if (segments.isEmpty) throw new IllegalStateException("dropChild on empty BranchPath ?")
+        segments.init
+      }
+
+      private[workflow] def toJsonSeq: Vector[Json] =
+        segments.view.flatMap(p => View(p.nr.asJson, p.branchId.asJson)).toVector
+
+      def toFlatSeq: Vector[Any] =
+        segments.view.flatMap(p => View(Int.box(p.nr.number), p.branchId.string)).toVector
+
       def dropLastBranchId: Position =
-        branchPath.init % branchPath.last.nr
+        segments.init % segments.last.nr
 
       /** Returns 0 if not in a try/catch-block. */
       def tryCount: Int =
-        calculateTryCount(branchPath.reverse)
+        calculateTryCount(segments.reverse)
 
       /** Returns 0 if not in a try/catch-block. */
       def catchCount: Int =
-        calculateCatchCount(branchPath.reverse)
+        calculateCatchCount(segments.reverse)
+    }
+
+    implicit val branchPathShow: Show[BranchPath] =
+      _.map(p => s"${p.nr.number}/${p.branchId}").mkString(InstructionNr.Prefix)
+
+    implicit val jsonCodec: Codec[BranchPath] = {
+      val jsonEncoder: Encoder.AsArray[BranchPath] = _.toJsonSeq
+
+      val jsonDecoder: Decoder[BranchPath] =
+        cursor => cursor.as[List[Json]].flatMap(parts =>
+          BranchPath.decodeSegments(parts grouped 2, cursor))
+
+      Codec.from(jsonDecoder, jsonEncoder)
     }
 
     @tailrec

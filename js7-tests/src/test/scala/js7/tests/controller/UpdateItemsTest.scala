@@ -24,6 +24,7 @@ import js7.data.lock.{Lock, LockPath}
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.instructions.{Finish, PostNotices}
+import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowParser, WorkflowPath}
 import js7.tests.controller.UpdateItemsTest.*

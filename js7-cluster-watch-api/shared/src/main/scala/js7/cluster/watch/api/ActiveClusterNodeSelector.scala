@@ -95,12 +95,12 @@ object ActiveClusterNodeSelector {
               logger.warn(throwable.toStringWithCauses)
               if (throwable.getStackTrace.nonEmpty) logger.debug(s"💥 $throwable", throwable)
               tryAgain(()).delayExecution(failureDelayIterator.next())
-        }
-        .map { case (api, clusterNodeState) =>
-          val x = if (clusterNodeState.isActive) "active" else "maybe passive"
-          logger.info(s"Selected $x ${clusterNodeState.nodeId} ${api.baseUri}")
-          api
-        }
+            }
+            .map { case (api, clusterNodeState) =>
+              val x = if (clusterNodeState.isActive) "active" else "maybe passive"
+              logger.info(s"Selected $x ${clusterNodeState.nodeId} ${api.baseUri}")
+              api
+            }
       }
     }
 

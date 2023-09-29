@@ -2,6 +2,7 @@ package js7.data_for_java.workflow.position
 
 import java.util.Arrays.asList
 import js7.base.test.OurTestSuite
+import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.Position
 
 final class JBranchPathTest extends OurTestSuite {

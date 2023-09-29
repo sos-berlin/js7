@@ -5,6 +5,7 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.data.workflow.position.BranchPath.Segment
+import js7.data.workflow.position.BranchPath.syntax.*
 import js7.tester.CirceJsonTester.testJson
 
 /**
@@ -25,7 +26,7 @@ final class BranchPathTest extends OurTestSuite
     assert("""[ 1, 2 ]""".parseJsonAs[BranchPath] == Left(Problem(
       "JSON DecodingFailure at : Got value '2' with wrong type, expecting string")))
 
-    assert("""[ 1, 2, 3 ]""".parseJsonAs[BranchPath]== Left(Problem(
+    assert("""[ 1, 2, 3 ]""".parseJsonAs[BranchPath] == Left(Problem(
       "JSON DecodingFailure at : Not a valid BranchPath")))
   }
 

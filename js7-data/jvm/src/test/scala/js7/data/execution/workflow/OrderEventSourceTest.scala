@@ -29,6 +29,7 @@ import js7.data.value.expression.Expression.{BooleanConstant, Equal, LastReturnC
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, Fail, Fork, If, LockInstruction, TryInstruction}
 import js7.data.workflow.position.BranchId.{Else, Then, catch_, try_}
+import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.test.ForkTestSetting
 import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath}
