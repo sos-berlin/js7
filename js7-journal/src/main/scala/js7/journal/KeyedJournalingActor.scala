@@ -12,8 +12,8 @@ import scala.concurrent.Future
   * @author Joacim Zschimmer
   */
 trait KeyedJournalingActor[S <: JournaledState[S], E <: Event]
-(using protected val E: Event.KeyCompanion[? >: E])
-  extends JournalingActor[S, E]:
+  (using protected val E: Event.KeyCompanion[? >: E])
+extends JournalingActor[S, E]:
 
   protected def key: E.Key
 

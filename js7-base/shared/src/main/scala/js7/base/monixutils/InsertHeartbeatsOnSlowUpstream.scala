@@ -30,7 +30,7 @@ import scala.util.Success
 
 private[monixutils] final class InsertHeartbeatsOnSlowUpstream[+A](source: Observable[A], timeout: FiniteDuration,
   onlyOnce: Boolean, intersperseValue: A)
-  extends Observable[A]:
+extends Observable[A]:
 
   private[this] val timeoutMillis = timeout.toMillis
 
