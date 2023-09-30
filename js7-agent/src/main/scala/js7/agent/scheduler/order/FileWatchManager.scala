@@ -47,6 +47,7 @@ final class FileWatchManager(
   journal: Journal[AgentState],
   config: Config)
   (implicit iox: IOExecutor):
+
   private val settings = DirectoryWatchSettings.fromConfig(config).orThrow
   private val lockKeeper = new LockKeeper[OrderWatchPath]
   private val idToStopper = AsyncMap(Map.empty[OrderWatchPath, Task[Unit]])
@@ -257,7 +258,7 @@ object FileWatchManager:
           evalAsString(fileWatch.path, expr, matcher)
             .flatMap(OrderId.checked)
     }
-    
+
   private def evalAsString(orderWatchPath: OrderWatchPath, expression: Expression, matchedMatcher: Matcher) =
     expression.evalAsString(
       FileWatchScope(orderWatchPath, matchedMatcher) |+| NowScope() |+| EnvScope)

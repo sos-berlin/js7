@@ -75,6 +75,7 @@ object ClusterWatchRequest:
 
 final case class InvalidClusterWatchHeartbeatProblem(from: NodeId, clusterState: ClusterState)
   extends Problem.Coded:
+
   def arguments = Map(
     "from" -> from.string,
     "clusterState" -> clusterState.toString)

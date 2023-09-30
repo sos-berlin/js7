@@ -24,6 +24,7 @@ private final class StateRecoverer[S <: SnapshotableState[S]](
   journalLocation: JournalLocation,
   newFileJournaledStateBuilder: () => FileSnapshotableStateBuilder[S])
   (implicit S: SnapshotableState.Companion[S]):
+
   private val fileJournaledStateBuilder = newFileJournaledStateBuilder()
 
   private var _position = 0L

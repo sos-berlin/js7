@@ -14,6 +14,7 @@ final case class JobConf(
   controllerId: ControllerId,
   sigkillDelay: FiniteDuration,
   systemEncoding: Charset):
+
   val jobResourcePaths: Seq[JobResourcePath] =
     jobResourcePathsFor(workflowJob, workflow)
 

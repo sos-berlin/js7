@@ -20,6 +20,7 @@ final class AsyncLock private(
   warnTimeouts: IterableOnce[FiniteDuration],
   noLog: Boolean,
   logMinor: Boolean):
+
   asyncLock =>
 
   private val lockM = MVar[Task].empty[Locked]().memoize

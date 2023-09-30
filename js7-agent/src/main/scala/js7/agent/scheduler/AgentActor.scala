@@ -59,6 +59,7 @@ private[agent] final class AgentActor(
   agentConf: AgentConfiguration)
   (implicit protected val scheduler: Scheduler)
 extends Actor with Stash with SimpleStateActor:
+  
   import agentConf.{implicitAkkaAskTimeout, journalLocation}
   import context.{actorOf, watch}
   val journal = journalAllocated.allocatedThing

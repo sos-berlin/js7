@@ -7,6 +7,7 @@ import monix.eval.Task
 
 final class RefCountedResource[A: Tag](base: Resource[Task, A])
   (implicit enclosing: sourcecode.Enclosing):
+
   private val lock = AsyncLock(s"${enclosing.value}:RefCountedResource[${implicitly[Tag[A]].tag}]")
   @volatile private var maybeCached: Option[Cached] = None
 

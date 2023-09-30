@@ -7,6 +7,7 @@ final case class JournalLocation(
   S: SnapshotableState.HasCodec,
   /** Path without extension, like "/directory/test". */
   fileBase: Path):
+
   val name = fileBase.getFileName.toString
 
   def snapshotObjectJsonCodec = S.snapshotObjectJsonCodec

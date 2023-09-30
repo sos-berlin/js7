@@ -21,6 +21,7 @@ import scala.concurrent.duration.Deadline.now
 private[subagent] final class SubagentCommandExecutor(
   val subagent: Subagent,
   signatureVerifier: DirectoryWatchingSignatureVerifier):
+
   private val journal = subagent.journal
 
   def executeCommand(numbered: Numbered[SubagentCommand], meta: CommandMeta)

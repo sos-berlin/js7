@@ -31,6 +31,7 @@ final case class FreshOrder(
   innerBlock: BranchPath = BranchPath.empty,
   startPosition: Option[PositionOrLabel] = None,
   stopPositions: Set[PositionOrLabel] = Set.empty):
+
   workflowPath.requireNonAnonymous()
 
   def toOrderAdded(

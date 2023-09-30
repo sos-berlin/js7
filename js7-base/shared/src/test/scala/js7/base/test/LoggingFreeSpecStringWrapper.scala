@@ -8,6 +8,7 @@ final class LoggingFreeSpecStringWrapper[R, T](
   underlying: UnifiedStringWrapper[R, T],
   testAdder: LoggingTestAdder,
   executeTest: (LoggingTestAdder.TestContext, => R) => R):
+
   def -(addTests: => Unit): Unit =
     underlying - {
       testAdder.addTests(name, addTests)

@@ -30,6 +30,7 @@ final case class JournalHeader(
   version: String,
   js7Version: String,
   buildId: String):
+
   override def toString = s"JournalHeader($journalId, $eventId, #$generation, total=$totalEventCount, " +
     s"$timestamp, ${totalRunningTime.pretty} (${totalRunningTime.toSeconds}s), $initiallyStartedAt, " +
     s"$version, $js7Version, $buildId)"

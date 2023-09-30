@@ -27,6 +27,7 @@ private[agent] abstract class CommandQueue(
   agentPath: AgentPath,
   batchSize: Int,
   commandErrorDelay: FiniteDuration):
+
   protected def commandParallelism: Int
   protected def executeCommand(command: AgentCommand.Batch): Task[Checked[command.Response]]
   protected def asyncOnBatchSucceeded(queueableResponses: Seq[QueueableResponse]): Task[Unit]

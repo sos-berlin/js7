@@ -35,6 +35,7 @@ final case class WorkflowJob(
   failOnErrWritten: Boolean,
   admissionTimeScheme: Option[AdmissionTimeScheme],
   skipIfNoAdmissionStartForOrderDay: Boolean):
+
   def referencedJobResourcePaths =
     jobResourcePaths.view ++ executable.referencedJobResourcePaths
 

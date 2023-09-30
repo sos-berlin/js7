@@ -5,6 +5,7 @@ import js7.data.item.InventoryItemDiff.*
 final case class InventoryItemDiff[P <: InventoryItemPath, I <: InventoryItem](
   addedOrChanged: Seq[I] = Nil,
   removed: Seq[P] = Nil):
+
   /** For tests: ordering is irrelevant. */
   override def equals(other: Any) = other match
     case o: InventoryItemDiff[?, ?] =>

@@ -48,6 +48,7 @@ final case class Order[+S <: Order.State](
   stickySubagents: List[StickySubagent] = Nil,
   innerBlock: BranchPath = BranchPath.empty,
   stopPositions: Set[PositionOrLabel] = Set.empty):
+
   // Accelerate usage in Set[Order], for example in AgentDriver's CommandQueue
   override def hashCode = id.hashCode
 

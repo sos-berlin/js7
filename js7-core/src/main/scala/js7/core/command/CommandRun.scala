@@ -16,6 +16,7 @@ final case class CommandRun[C <: CommonCommand](
   command: C,
   runningSince: Deadline,
   batchInternalId: Option[CorrelId]):
+
   // CorrelId is not relevant for the User, and debug log should show the CorrelId.
   override def toString =
     s"Command by $userId: ${command.toShortString}"

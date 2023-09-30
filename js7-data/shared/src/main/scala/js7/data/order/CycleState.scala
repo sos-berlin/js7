@@ -20,6 +20,7 @@ final case class CycleState(
   periodIndex: Int = 0,
   index: Int,
   next: Timestamp):
+
   override def toString =
     s"CycleState(next=${next.pretty} index=$index schemeIndex=$schemeIndex period=$periodIndex end=$end)"
 

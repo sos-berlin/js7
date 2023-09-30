@@ -15,6 +15,7 @@ final case class PlatformInfo(
   operatingSystemDistribution: Option[String] = None,
   cpuModel: Option[String] = None,
   java: JavaInformation):
+
   override def toString =
     s"PlatformInfo($js7Version,${operatingSystemDistribution getOrElse ""})"
 

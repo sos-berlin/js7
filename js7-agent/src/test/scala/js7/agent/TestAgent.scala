@@ -34,6 +34,7 @@ import scala.util.control.NonFatal
 final class TestAgent(
   allocated: Allocated[Task, RunningAgent],
   terminateProcessesWith: Option[ProcessSignal] = None):
+
   val agent = allocated.allocatedThing
 
   def stop: Task[Unit] =

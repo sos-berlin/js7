@@ -23,6 +23,7 @@ final class CalendarExecutor private(
   zone: ZoneId,
   orderIdToDateRegex: Regex,
   period: CalendarExecutor.Period):
+
   private val offsetSeconds = calendar.dateOffset.toSeconds
 
   def orderIdToTimeInterval(orderId: OrderId): Checked[TimeInterval] =

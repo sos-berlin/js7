@@ -5,6 +5,7 @@ import js7.subagent.director.Prioritized.prioritySort
 private final class Prioritized[A] private(
   private val orderedKeys: IndexedSeq[A],
   private val toPriority: A => Int):
+
   private val fixedPriority = new FixedPriority
 
   override def equals(other: Any) =

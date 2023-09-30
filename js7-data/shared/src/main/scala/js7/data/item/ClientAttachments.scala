@@ -17,6 +17,7 @@ import scala.reflect.ClassTag
 /** Client side bookkeeping of attachments. */
 final case class ClientAttachments[D <: DelegateId: ClassTag: Tag](
   itemToDelegateToAttachedState: Map[InventoryItemKey, Map[D, ItemAttachedState.NotDetached]]):
+
   def estimatedSnapshotSize: Int =
     itemToDelegateToAttachedState.values.view.map(_.size).sum
 

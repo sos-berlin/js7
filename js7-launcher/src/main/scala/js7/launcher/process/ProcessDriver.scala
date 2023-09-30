@@ -28,6 +28,7 @@ final class ProcessDriver(
   orderId: OrderId,
   conf: TaskConfiguration,
   jobLauncherConf: JobLauncherConf):
+
   import jobLauncherConf.implicitIox
 
   private val taskId = taskIdGenerator.next()

@@ -34,6 +34,7 @@ import scala.reflect.ClassTag
   */
 final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
   (implicit executorService: InstructionExecutorService):
+
   import executorService.clock
   import state.{idToWorkflow, isAgent}
 

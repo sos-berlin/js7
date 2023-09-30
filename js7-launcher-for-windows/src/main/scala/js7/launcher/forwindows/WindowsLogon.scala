@@ -6,6 +6,7 @@ import js7.base.problem.Checked
 private[launcher] final case class WindowsLogon(
   credential: WindowsProcessCredential,
   withUserProfile: Boolean):
+
   def userName = credential.userName
 
 private[launcher] object WindowsLogon:

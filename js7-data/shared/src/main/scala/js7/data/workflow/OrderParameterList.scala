@@ -27,6 +27,7 @@ import scala.collection.{MapView, View}
 final case class OrderParameterList(
   nameToParameter: Map[String, OrderParameter],
   allowUndeclared: Boolean):
+
   def referencedJobResourcePaths: View[JobResourcePath] =
     nameToParameter.values.view.flatMap(_.referencedJobResourcePaths)
 

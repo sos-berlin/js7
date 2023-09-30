@@ -22,6 +22,7 @@ final class FileSnapshotableStateBuilder[S <: SnapshotableState[S]](
   expectedJournalId: Option[JournalId],
   newBuilder: () => SnapshotableStateBuilder[S])
   (implicit S: SnapshotableState.Companion[S]):
+
   def this(journalFileForInfo: Path, expectedJournalId: Option[JournalId])
     (implicit S: SnapshotableState.Companion[S])
   = this(journalFileForInfo, expectedJournalId, S.newBuilder _)

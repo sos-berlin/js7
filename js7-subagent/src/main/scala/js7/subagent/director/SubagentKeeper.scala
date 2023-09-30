@@ -55,6 +55,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
   directorConf: DirectorConf,
   actorSystem: ActorSystem)
   (implicit scheduler: Scheduler):
+
   private val reconnectDelayer: DelayIterator = DelayIterators
     .fromConfig(directorConf.config, "js7.subagent-driver.reconnect-delays")(scheduler)
     .orThrow

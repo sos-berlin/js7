@@ -24,6 +24,7 @@ final case class ClusterConf(
   testHeartbeatLossPropertyKey: Option[String] = None,
   testAckLossPropertyKey: Option[String] = None,
   config: Config):
+
   def isPrimary = !isBackup
 
 object ClusterConf:

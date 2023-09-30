@@ -36,6 +36,7 @@ final class JControllerProxy private[proxy](
   val api: JControllerApi,
   val controllerEventBus: JControllerEventBus)
   (implicit scheduler: Scheduler):
+
   /** Listen to the already running event stream. */
   @Nonnull
   def flux(): Flux[JEventAndControllerState[Event]] =

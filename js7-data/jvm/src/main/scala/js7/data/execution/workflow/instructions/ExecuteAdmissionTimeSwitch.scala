@@ -12,6 +12,7 @@ final class ExecuteAdmissionTimeSwitch(
   admissionTimeScheme: AdmissionTimeScheme,
   zone: ZoneId,
   onSwitch: Option[TimeInterval] => Unit):
+
   @volatile private var _nextTime: Option[Timestamp] = None
   private val timer = SerialCancelable()
 

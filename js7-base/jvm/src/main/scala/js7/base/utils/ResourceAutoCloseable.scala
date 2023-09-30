@@ -13,6 +13,7 @@ import scala.util.Try
 final case class ResourceAutoCloseable[A](resource: Resource[Task, A], timeout: Duration)
   (implicit aTag: Tag[A], s: Scheduler, src: sourcecode.Enclosing)
   extends AutoCloseable:
+
   private lazy val allocated = Try(resource.toAllocated.await(timeout))
   private val closed = Atomic(false)
 

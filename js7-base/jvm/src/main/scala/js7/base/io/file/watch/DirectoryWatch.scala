@@ -17,6 +17,7 @@ private final class DirectoryWatch(
   readDirectory: Task[DirectoryState],
   directoryEventObservable: Observable[Seq[DirectoryEvent]],
   hotLoopBrake: FiniteDuration):
+
   private def readDirectoryAndObserveForever(state: DirectoryState)
   : Observable[(Seq[DirectoryEvent], DirectoryState)] =
     logger.traceObservable(

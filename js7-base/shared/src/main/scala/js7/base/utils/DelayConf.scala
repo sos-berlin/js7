@@ -8,6 +8,7 @@ import scala.concurrent.duration.*
 final case class DelayConf(
   delays: NonEmptySeq[FiniteDuration],
   resetWhen: FiniteDuration):
+
   override def toString = s"DelayConf($argString)"
 
   def argString: String =

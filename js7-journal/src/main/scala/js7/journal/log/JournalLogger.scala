@@ -18,6 +18,7 @@ private[journal] final class JournalLogger(
   syncOrFlushString: String,
   infoLogEvents: Set[String],
   suppressTiming: Boolean = false):
+
   private val syncOrFlushWidth = 6 max syncOrFlushString.length
   private val ackSyncOrFlushString = syncOrFlushString.toUpperCase(ROOT)
 

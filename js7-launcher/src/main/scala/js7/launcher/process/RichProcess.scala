@@ -27,6 +27,7 @@ class RichProcess protected[process](
   val processConfiguration: ProcessConfiguration,
   process: Js7Process)
   (implicit iox: IOExecutor):
+
   private val runningSince = now
   val pidOption: Option[Pid] = process.pid
   @volatile private var _isKilling = false

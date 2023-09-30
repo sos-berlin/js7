@@ -20,6 +20,7 @@ private[watch] final class FileEventIteratorPool(
   journalFile: Path,
   fileEventId: EventId,
   committedLength: () => Long):
+
   private val freeIterators = mutable.ArrayBuffer.empty[FileEventIterator]
   private val lentIterators = mutable.ArrayBuffer.empty[FileEventIterator]
   private val closed = AtomicBoolean(false)

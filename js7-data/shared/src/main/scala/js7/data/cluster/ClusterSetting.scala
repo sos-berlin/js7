@@ -18,6 +18,7 @@ final case class ClusterSetting(
   activeId: NodeId,
   timing: ClusterTiming,
   clusterWatchId: Option[ClusterWatchId] = None):
+
   checkedUnit(idToUri, activeId).orThrow
 
   def activeUri: Uri =

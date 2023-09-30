@@ -18,6 +18,7 @@ private final class ShellReturnValuesProvider(
   tmpDirectory: Path,
   encoding: Charset,
   v1Compatible: Boolean = false):
+
   private var fileExists = false
 
   val file: Path =

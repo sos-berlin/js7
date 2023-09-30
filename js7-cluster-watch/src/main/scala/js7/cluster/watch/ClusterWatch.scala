@@ -28,6 +28,7 @@ final class ClusterWatch(
   onClusterStateChanged: (HasNodes) => Unit = _ => (),
   requireManualNodeLossConfirmation: Boolean = false,
   onUndecidableClusterNodeLoss: OnUndecidableClusterNodeLoss = _ => Task.unit):
+
   private val logger = Logger.withPrefix[this.type](label)
 
   // Variables are synchronized

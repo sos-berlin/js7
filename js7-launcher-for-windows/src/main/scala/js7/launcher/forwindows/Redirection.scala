@@ -11,6 +11,7 @@ private final class Redirection(
   val startupInfoHandle: HANDLE,
   closeStartupInfoHandle: Boolean,
   val pipeHandle: HANDLE):
+
   private val released = Atomic(false)
   //private val finished = Atomic(false)
   private val pipeClosed = Atomic(false)

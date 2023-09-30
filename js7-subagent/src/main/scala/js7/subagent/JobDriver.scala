@@ -33,6 +33,7 @@ private final class JobDriver(
   checkedJobLauncher: Checked[JobLauncher],
   fileValueState: FileValueState)
   (implicit scheduler: Scheduler):
+
   import jobConf.{jobKey, sigkillDelay, workflow, workflowJob}
 
   private val logger = Logger.withPrefix[this.type](jobKey.name)

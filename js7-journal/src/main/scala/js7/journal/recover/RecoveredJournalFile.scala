@@ -17,6 +17,7 @@ final case class RecoveredJournalFile[S <: SnapshotableState[S]](
   firstEventPosition: Long,
   /** The recovered state */
   state: S):
+
   assertThat(journalHeader.journalId == nextJournalHeader.journalId)
   assertThat(journalHeader.eventId < nextJournalHeader.eventId)
   assertThat(journalHeader.totalEventCount < nextJournalHeader.totalEventCount)

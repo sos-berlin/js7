@@ -9,4 +9,5 @@ final case class DirectorConf(
   httpsConfig: HttpsConfig,
   recouplingStreamReaderConf: RecouplingStreamReaderConf,
   subagentConf: SubagentConf):
+
   def config = subagentConf.config

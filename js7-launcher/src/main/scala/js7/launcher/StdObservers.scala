@@ -12,6 +12,7 @@ final class StdObservers(
   err_ : Observer[String],
   val charBufferSize: Int,
   keepLastErrLine: Boolean):
+
   private val lastLineErr = keepLastErrLine ? new KeepLastLineObserver(err_)
   val err: Observer[String] = lastLineErr.getOrElse(err_)
 

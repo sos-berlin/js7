@@ -6,6 +6,7 @@ final case class ClusterWatchConfirmation(
   requestId: ClusterWatchRequest.RequestId,
   clusterWatchId: ClusterWatchId,
   clusterWatchRunId: ClusterWatchRunId):
+
   def confirmer = clusterWatchId.toString
 
   override def toString =

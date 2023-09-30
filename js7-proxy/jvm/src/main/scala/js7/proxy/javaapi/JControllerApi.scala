@@ -46,6 +46,7 @@ import scala.jdk.OptionConverters.*
 @javaApi
 final class JControllerApi(val asScala: ControllerApi, config: Config)
   (implicit scheduler: Scheduler):
+
   private val clusterWatchService = AsyncVariable[Option[Allocated[Task, ClusterWatchService]]](None)
 
   def stop: CompletableFuture[Void] =

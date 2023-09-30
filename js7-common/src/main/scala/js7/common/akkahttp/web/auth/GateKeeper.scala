@@ -38,6 +38,7 @@ final class GateKeeper[U <: User](
     scheduler: Scheduler,
     /** For `Route` `seal`. */
     exceptionHandler: ExceptionHandler):
+
   // https://tools.ietf.org/html/rfc7235#section-3.1: "A server generating a 401 (Unauthorized) response
   // MUST send a WWW-Authenticate header field containing at least one challenge."
 

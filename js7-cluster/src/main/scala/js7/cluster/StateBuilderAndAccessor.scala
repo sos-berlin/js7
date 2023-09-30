@@ -12,6 +12,7 @@ import monix.execution.Scheduler
 private final class StateBuilderAndAccessor[S <: SnapshotableState[S]](
   initialState: S)
   (implicit S: SnapshotableState.Companion[S]):
+
   private val getStateMVarTask = MVar.of[Task, Task[S]](Task.pure(initialState)).memoize
   val state: Task[S] = getStateMVarTask.flatMap(_.read.flatten)
 

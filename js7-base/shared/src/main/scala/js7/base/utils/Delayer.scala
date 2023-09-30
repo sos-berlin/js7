@@ -17,6 +17,7 @@ import scala.concurrent.duration.*
 // Stateful
 final class Delayer[F[_]] private(initialNow: Deadline, conf: DelayConf)
   (implicit F: Async[F], timer: Timer[F]):
+
   import conf.{delays, resetWhen}
 
   private val _state = Atomic(State(initialNow, resetDelays(delays)))

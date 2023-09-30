@@ -68,6 +68,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
   (implicit
     S: ClusterableState.Companion[S],
     nodeNameToPassword: NodeNameToPassword[S]):
+
   import clusterConf.{config, journalConf}
   import recovered.{eventWatch, journalLocation}
   import setting.{activeId, idToUri}

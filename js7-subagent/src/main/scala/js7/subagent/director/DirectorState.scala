@@ -13,6 +13,7 @@ import scala.collection.MapView
 private final case class DirectorState(
   subagentToEntry: Map[SubagentId, Entry],
   selectionToPrioritized: Map[Option[SubagentSelectionId], Prioritized[SubagentId]]):
+
   val idToDriver: MapView[SubagentId, SubagentDriver] =
     subagentToEntry.view.mapValues(_.driver)
 

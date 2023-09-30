@@ -16,6 +16,7 @@ import scala.util.Success
 private final class StatisticsBuilder(
   isOurOrder: Set[OrderId],
   observer: Observer[Statistics]):
+
   private val since = now
   private val orderIdToStarted = mutable.Map.empty[OrderId, Timestamp]
   private val orderIdToProcessingStarted = mutable.Map.empty[OrderId, Timestamp]

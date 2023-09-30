@@ -17,6 +17,7 @@ import scala.collection.View
 final case class VerifiedUpdateItems private[controller](
   simple: VerifiedUpdateItems.Simple,
   maybeVersioned: Option[VerifiedUpdateItems.Versioned] = None):
+
   def itemCount =
     simple.itemCount + maybeVersioned.fold(0)(_.verifiedItems.size)
 

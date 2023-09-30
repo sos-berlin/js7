@@ -7,6 +7,7 @@ import java.nio.file.Path
 final case class HttpsConfig(
   keyStoreRef: Option[KeyStoreRef],
   trustStoreRefs: Seq[TrustStoreRef]):
+
   override def toString =
     s"HttpsConfig(keyStoreRef=$keyStoreRef trustStoreRefs=$trustStoreRefs)"
 

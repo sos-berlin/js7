@@ -41,6 +41,7 @@ final case class ControllerStateExecutor private(
   keyedEvents: Seq[AnyKeyedEvent],
   controllerState: ControllerState)
   (implicit instructionExecutorService: InstructionExecutorService):
+
   import ControllerStateExecutor.convertImplicitly
   import controllerState.controllerId
 

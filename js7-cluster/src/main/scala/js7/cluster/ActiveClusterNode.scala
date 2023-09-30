@@ -52,6 +52,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
   common: ClusterCommon,
   clusterConf: ClusterConf)
   (implicit scheduler: Scheduler):
+
   private implicit val askTimeout: Timeout = common.journalActorAskTimeout
   private val clusterStateLock = AsyncLock("ClusterState")
   private val journalActor = journal.journalActor

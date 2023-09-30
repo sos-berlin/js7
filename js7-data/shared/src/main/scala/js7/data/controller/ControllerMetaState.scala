@@ -11,6 +11,7 @@ final case class ControllerMetaState(
   controllerId: ControllerId,
   initiallyStartedAt: Timestamp,
   timezone: Timezone):
+
   def isDefined = this != ControllerMetaState.Undefined
 
 object ControllerMetaState:

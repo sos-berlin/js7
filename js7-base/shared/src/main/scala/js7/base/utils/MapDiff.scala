@@ -8,6 +8,7 @@ final case class MapDiff[K, V] private(
   added: Map[K, V],
   updated: Map[K, V],
   deleted: Set[K]):
+
   if (added.keySet & updated.keySet).nonEmpty ||
       (added.keySet & deleted).nonEmpty ||
       (updated.keySet & deleted).nonEmpty then

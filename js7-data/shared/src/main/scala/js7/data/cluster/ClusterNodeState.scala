@@ -8,6 +8,7 @@ final case class ClusterNodeState(
   nodeId: NodeId,
   isBackup: Boolean,
   clusterState: ClusterState):
+
   def isActive: Boolean =
     clusterState match
       case ClusterState.Empty => !isBackup

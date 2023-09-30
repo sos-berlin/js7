@@ -17,6 +17,7 @@ final case class EventRequest[E <: Event](
   delay: FiniteDuration = DefaultDelay,
   limit: Int = DefaultLimit,
   tornOlder: Option[FiniteDuration] = None):
+
   require(eventClasses.nonEmpty, "Missing Event class")
   require(limit >= 0, s"EventRequest limit=$limit must not be below zero")
 

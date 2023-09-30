@@ -29,6 +29,7 @@ private final class ClusterWatchSynchronizer(
   ownId: NodeId,
   clusterWatch: ClusterWatchCounterpart,
   timing: ClusterTiming):
+
   private val suspendNesting = Atomic(0)
   private val suspendNestingLock = AsyncLock()
   private val registerClusterWatchId = SetOnce[RegisterClusterWatchId]

@@ -20,6 +20,7 @@ private final case class Statistics(
   totalProcessDuration: FiniteDuration,
   maximumProcessDuration: FiniteDuration,
   stdWritten: Long):
+
   def totalOrderCount = completedOrderCount + completedForkedOrderCount
 
   def toLine: String =

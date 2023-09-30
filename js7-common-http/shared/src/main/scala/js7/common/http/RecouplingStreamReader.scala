@@ -33,6 +33,7 @@ abstract class RecouplingStreamReader[
   Api <: SessionApi.HasUserAndPassword & HasIsIgnorableStackTrace
 ](toIndex: V => I,
   conf: RecouplingStreamReaderConf):
+
   private val sym = new BlockingSymbol
 
   protected def couple(index: I): Task[Checked[I]] =

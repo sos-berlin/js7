@@ -21,6 +21,7 @@ final case class ProcessConfiguration(
   killForWindows: Seq[String],
   killScriptOption: Option[ProcessKillScript] = None,
   windowsLogon: Option[WindowsLogon] = None):
+
   require(killScriptOption.isEmpty || maybeTaskId.nonEmpty, "killScriptFile requires idString")
 
   for id <- maybeTaskId do require(id.nonEmpty)

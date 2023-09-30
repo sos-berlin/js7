@@ -21,6 +21,7 @@ final case class OrderEntry(
   terminatedAt: Optional[Instant] = Optional.empty,
   endWorkflowPosition: Optional[JWorkflowPosition] = Optional.empty,
   steps: java.util.List[OrderStepEntry] = Vector.empty.asJava):
+
   def updateLastStep(endedAt: Instant, outcome: Outcome, namedValues: java.util.Map[String, Value]): OrderEntry =
     val lastStep = steps.asScala.last
     copy(steps = (steps.asScala.take(steps.size - 1) :+

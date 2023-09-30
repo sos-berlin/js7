@@ -24,7 +24,8 @@ class ShellScriptProcess private(
   processConfiguration: ProcessConfiguration,
   process: Js7Process)
   (implicit iox: IOExecutor)
-  extends RichProcess(processConfiguration, process):
+extends RichProcess(processConfiguration, process):
+
   stdin.close() // Process gets an empty stdin
 
   private val _sigkilled = Promise[Unit]()

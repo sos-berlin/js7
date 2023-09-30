@@ -27,6 +27,7 @@ final case class Repo(
   pathToVersionToSignedItems: Map[VersionedItemPath, List[Version]],
   signatureVerifier: Option[SignatureVerifier],
   selfTest: Boolean = false):
+
   assert(versionIds.nonEmpty || pathToVersionToSignedItems.isEmpty)
 
   /** `signatureVerifier` is not compared - for testing only. */

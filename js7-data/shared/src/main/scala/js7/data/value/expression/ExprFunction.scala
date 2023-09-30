@@ -15,9 +15,10 @@ import scala.language.implicitConversions
 final case class ExprFunction(
   parameters: Seq[VariableDeclaration],
   expression: Expression)
-  ( maybeName: Option[String] = None,
+  (maybeName: Option[String] = None,
     minimumArgumentCount: Int = 0,
     maximumArgumentCount: Option[Int] = None):
+
   private def name = maybeName getOrElse toString.truncateWithEllipsis(50)
 
   def restrict(name: String, minimum: Int, maximum: Int): Checked[ExprFunction] =

@@ -27,6 +27,7 @@ final case class JobLauncherConf(
   iox: IOExecutor,
   blockingJobScheduler: Scheduler,
   clock: AlarmClock):
+
   implicit def implicitIox: IOExecutor = iox
 
 object JobLauncherConf:

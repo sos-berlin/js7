@@ -5,6 +5,7 @@ import monix.reactive.Observable
 /** For orthogonality, for Items with a still(!) separate empty ItemState. */
 trait SeparateTrivialItemState[A <: SeparateTrivialItemState[A]]
   extends InventoryItemState:
+
   this: A =>
 
   protected type Self <: InventoryItemState
