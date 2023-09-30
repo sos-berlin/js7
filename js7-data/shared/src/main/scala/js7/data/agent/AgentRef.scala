@@ -14,6 +14,7 @@ final case class AgentRef(
   uri: Option/*COMPATIBLE with v2.1*/[Uri] = None,
   itemRevision: Option[ItemRevision] = None)
 extends UnsignedSimpleItem:
+
   protected type Self = AgentRef
   val companion: AgentRef.type = AgentRef
 

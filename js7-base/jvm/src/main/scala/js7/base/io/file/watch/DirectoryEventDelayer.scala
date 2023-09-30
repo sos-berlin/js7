@@ -41,6 +41,7 @@ private final class DirectoryEventDelayer(
   delay: FiniteDuration,
   logDelays: NonEmptySeq[FiniteDuration])
 extends Observable[Seq[DirectoryEvent]]:
+
   def unsafeSubscribeFn(out: Subscriber[Seq[DirectoryEvent]]): Cancelable =
     source.subscribe(new Subscriber[DirectoryEvent] { self =>
       implicit val scheduler: Scheduler = out.scheduler

@@ -15,6 +15,7 @@ import scala.concurrent.duration.Deadline.now
 // TODO Timeout, web service for inspection ?
 
 final class LockKeeper[K]:
+
   // keyToQueue.contains(key): key is locked
   // keyToQueue(key).length: Number of clients waiting to get the lock
   private val keyToQueue = mutable.Map.empty[Any, mutable.Queue[Promise[Token]]]

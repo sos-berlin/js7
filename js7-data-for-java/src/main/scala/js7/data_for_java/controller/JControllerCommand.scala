@@ -25,6 +25,7 @@ import scala.jdk.OptionConverters.RichOptional
 @javaApi
 final case class JControllerCommand(asScala: ControllerCommand)
 extends JJsonable[JControllerCommand]:
+
   type AsScala = ControllerCommand
 
   protected def companion = JControllerCommand

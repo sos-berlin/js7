@@ -11,6 +11,7 @@ import monix.reactive.Observable
 trait EventApi
 extends SessionApi
 with HasIsIgnorableStackTrace:
+
   type State <: JournaledState[State]
 
   def baseUri: Uri

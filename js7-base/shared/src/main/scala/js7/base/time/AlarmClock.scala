@@ -12,6 +12,7 @@ import scala.collection.mutable
 import scala.concurrent.duration.*
 
 trait AlarmClock extends WallClock:
+
   def stop(): Unit
 
   def scheduleOnce(delay: FiniteDuration)(callback: => Unit)

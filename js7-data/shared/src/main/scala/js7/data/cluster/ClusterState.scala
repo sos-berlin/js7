@@ -14,6 +14,7 @@ import monix.reactive.Observable
 
 sealed trait ClusterState
 extends EventDrivenState[ClusterState, ClusterEvent]:
+
   import ClusterState.*
 
   def companion = ClusterState

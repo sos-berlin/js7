@@ -9,6 +9,7 @@ import scala.collection.mutable
   * @author Joacim Zschimmer
   */
 object CodedMessages:
+
   // Yes, a global static variable, to be intialized by main()
   private val _codeToPattern = AtomicAny[ProblemCode => Option[String]](noCodeToPattern)
 
@@ -32,7 +33,7 @@ object CodedMessages:
     val used = mutable.Set.empty[String]
     val it = pattern.iterator.buffered
     val sb = new StringBuilder(pattern.length)
-    
+
     while it.hasNext do
       val c = it.next()
       if c == '$' && it.headOption.exists(isUnicodeIdentifierStart) then
@@ -49,7 +50,7 @@ object CodedMessages:
             used += key
       else
         sb += c
-    
+
     val unused = arguments.keySet -- used
     if unused.nonEmpty then
       if sb contains ' ' then sb.append(' ')

@@ -8,6 +8,7 @@ import js7.data.value.{BooleanValue, FunctionValue, ListValue, MissingValue, Nam
 import scala.jdk.CollectionConverters.*
 
 object JavaUtils:
+
   val Void: Void = null.asInstanceOf[Void]
 
   // TEST IS MISSING

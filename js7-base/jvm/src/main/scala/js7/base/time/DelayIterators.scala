@@ -9,6 +9,7 @@ import scala.jdk.DurationConverters.JavaDurationOps
 import scala.util.Try
 
 object DelayIterators:
+
   /**
    * The delay sequence may be provide as a non-empty list.
    * Then the last element is endlessly repeated.

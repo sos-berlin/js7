@@ -21,6 +21,7 @@ final case class ForkList(
   joinIfFailed: Boolean = false,
   sourcePos: Option[SourcePos] = None)
 extends ForkInstruction:
+
   def checked: Checked[ForkList] =
     for
       childToId <- childToId.restrict("childToId", minimum = 1, maximum = 2)

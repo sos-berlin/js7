@@ -9,6 +9,7 @@ import js7.journal.web.GenericEventRoute
   * @author Joacim Zschimmer
   */
 trait EventRoute extends AgentRouteProvider with GenericEventRoute:
+
   implicit protected def akkaAskTimeout: Timeout
 
   protected final lazy val eventRoute = new RouteProvider().route

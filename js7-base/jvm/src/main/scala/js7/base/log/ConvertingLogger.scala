@@ -6,6 +6,7 @@ import org.slf4j.{Marker, Logger as Slf4jLogger}
   * @author Joacim Zschimmer
   */
 trait ConvertingLogger extends Slf4jLogger:
+
   protected val delegate: Slf4jLogger
 
   def convertMessage(o: String): String

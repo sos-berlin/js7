@@ -7,6 +7,7 @@ import monix.eval.Task
 
 private[controller] class MainOrderApi(controllerState: Task[Checked[ControllerState]])
 extends OrderApi:
+
   def order(orderId: OrderId): Task[Checked[Option[Order[Order.State]]]] =
     controllerState.map(_.map(_.idToOrder.get(orderId)))
 

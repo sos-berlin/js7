@@ -19,6 +19,7 @@ final case class FileWatchState(
   fileWatch: FileWatch,
   directoryState: DirectoryState)
 extends UnsignedSimpleItemState:
+
   protected type Self = FileWatchState
   val companion: FileWatchState.type = FileWatchState
 

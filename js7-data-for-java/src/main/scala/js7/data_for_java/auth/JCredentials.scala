@@ -8,6 +8,7 @@ import js7.data_for_java.auth.JCredentials.*
 
 @javaApi
 sealed trait JCredentials:
+
   def toScala: Option[UserAndPassword] =
     this match
       case NoCredentials => None

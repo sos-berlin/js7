@@ -7,6 +7,7 @@ import js7.data_for_java.common.JJsonable
 @javaApi
 trait JUnsignedVersionedItem[A <: JUnsignedVersionedItem[A, P], P <: VersionedControlPath]
 extends JInventoryItem with JJsonable[A]:
+
   type AsScala <: VersionedControl
 
   def id: JUnsignedVersionedItemId[P]

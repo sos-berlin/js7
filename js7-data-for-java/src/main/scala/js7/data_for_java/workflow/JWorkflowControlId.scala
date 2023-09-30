@@ -12,6 +12,7 @@ import js7.data_for_java.item.JUnsignedVersionedItemId
 @javaApi
 final case class JWorkflowControlId(asScala: WorkflowControlId)
 extends JJsonable[JWorkflowControlId] with JUnsignedVersionedItemId[WorkflowControlPath]:
+
   type AsScala = WorkflowControlId
   protected type ScalaPath = WorkflowControlPath
   protected def companion = JWorkflowControlId

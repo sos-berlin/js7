@@ -20,6 +20,7 @@ import scala.concurrent.duration.*
   * @author Joacim Zschimmer
   */
 object CatsUtils:
+
   type Nel[+A] = NonEmptyList[A]
   val Nel = NonEmptyList
 

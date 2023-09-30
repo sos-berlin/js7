@@ -30,6 +30,7 @@ import scala.util.control.NonFatal
   *      https://tools.ietf.org/html/rfc5246
   */
 object Https:
+
   private val logger = Logger[this.type]
   private val PemHeader = ByteArray("-----BEGIN CERTIFICATE-----")
   private val algorithm = KeyManagerFactory.getDefaultAlgorithm  // "SunX509", but for IBM Java: "IbmX509"

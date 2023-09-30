@@ -4,6 +4,7 @@ import cats.{Eq, Monoid}
 import scala.language.implicitConversions
 
 trait IsEmpty[A]:
+
   def isEmpty(a: A): Boolean
 
   final def isNonEmpty(a: A) = !isEmpty(a)

@@ -9,6 +9,7 @@ import scala.concurrent.duration.Deadline.now
   * @author Joacim Zschimmer
   */
 final class CommandRegister[C <: CommonCommand]:
+
   private var totalCounter = 0L
   private val idToCommand = mutable.Map.empty[CorrelId, CommandRun[C]]
 

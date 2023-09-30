@@ -39,7 +39,9 @@ final class AgentRoute(
 extends WebLogDirectives
 with ApiRoute
 with ClusterNodeRouteBindings[AgentState]:
+
   import routeBinding.webServerBinding
+
   protected def whenShuttingDown = routeBinding.whenStopRequested
   protected val gateKeeper = GateKeeper(webServerBinding, gateKeeperConf)
 

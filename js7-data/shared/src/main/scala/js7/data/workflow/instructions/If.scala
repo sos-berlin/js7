@@ -18,6 +18,7 @@ final case class If(
   elseWorkflow: Option[Workflow] = None,
   sourcePos: Option[SourcePos] = None)
 extends Instruction:
+
   def withoutSourcePos = copy(
     sourcePos = None,
     thenWorkflow = thenWorkflow.withoutSourcePos,

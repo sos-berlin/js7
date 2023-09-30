@@ -11,6 +11,7 @@ import js7.journal.web.GenericEventRoute.StampedEventFilter
   * @author Joacim Zschimmer
   */
 trait EventRoute extends ControllerRouteProvider with GenericEventRoute:
+
   protected def eventWatch: EventWatch
 
   protected lazy val eventRoute = filteredEventRoute(identity)

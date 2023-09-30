@@ -9,7 +9,7 @@ import js7.base.test.OurTestSuite
 final class EntitySizeLimitProviderTest extends OurTestSuite:
   "entitySizeLimit" in:
     val maxMemory_ = 1000L
-    
+
     trait X:
       def entitySizeLimit_ : Long
 

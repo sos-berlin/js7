@@ -16,6 +16,7 @@ final case class TrustStoreRef(
   /** Password for file */
   storePassword: SecretString)
 extends StoreRef:
+
   override def toString = s"TrustStore $url"
 
 object TrustStoreRef:

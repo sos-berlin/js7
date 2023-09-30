@@ -12,6 +12,7 @@ import scala.util.Random
   * @author Joacim Zschimmer
   */
 sealed case class HashedPassword(hashed: SecretString, hasher: String => String):
+
   def equalsClearText(clear: SecretString) = timingAttackSecureEqual(hashed.string, hasher(clear.string))
 
   def hashAgainRandom: HashedPassword =

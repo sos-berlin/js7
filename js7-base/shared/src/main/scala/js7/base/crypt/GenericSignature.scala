@@ -14,6 +14,7 @@ final case class GenericSignature(
   /** Public key, yet to be verified against a root certificate. */
   signerCertificate: Option[String] = None)
 extends Signature:
+
   def toGenericSignature = this
 
   override def toString = s"Signature($toRawString)"

@@ -7,6 +7,7 @@ import scala.jdk.CollectionConverters.*
 import scala.reflect.ClassTag
 
 object ServiceProviders:
+
   private val logger = Logger[this.type]
 
   def findServices[A](callback: (=> String, Option[A]) => Unit = defaultCallback[A])

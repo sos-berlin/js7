@@ -25,6 +25,7 @@ final case class FileWatch(
   delay: FiniteDuration = ZeroDuration,
   itemRevision: Option[ItemRevision] = None)
 extends OrderWatch:
+
   protected type Self = FileWatch
   val companion: FileWatch.type = FileWatch
 

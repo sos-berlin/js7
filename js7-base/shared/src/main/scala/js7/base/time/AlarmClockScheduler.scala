@@ -8,6 +8,7 @@ import scala.concurrent.duration.*
 // NOT USED
 private final class AlarmClockScheduler(underlying: SchedulerService, val alarmClock: AlarmClock)
 extends SchedulerService:
+
   def isShutdown =
     underlying.isShutdown
 

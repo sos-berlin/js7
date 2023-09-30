@@ -23,6 +23,7 @@ class AkkaHttpControllerApi(
     .defaultLoginDelays _,
   name: String = "")
 extends HttpControllerApi with SessionApi.HasUserAndPassword with AutoCloseable:
+
   final val httpClient: AkkaHttpClient =
     new AkkaHttpClient.Standard(
       baseUri, HttpControllerApi.UriPrefixPath, actorSystem, httpsConfig, name = name)

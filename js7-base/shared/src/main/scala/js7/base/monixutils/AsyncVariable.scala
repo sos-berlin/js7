@@ -7,6 +7,7 @@ import js7.base.utils.AsyncLock
 import monix.eval.Task
 
 final class AsyncVariable[V](initial: V, varName: String, typeName: String):
+
   @volatile private var _value = initial
   private val lock = AsyncLock(varName)
 

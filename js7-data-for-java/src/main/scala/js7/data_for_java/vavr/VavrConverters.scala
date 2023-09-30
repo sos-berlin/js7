@@ -6,6 +6,7 @@ import js7.data_for_java.common.JavaUtils.Void
 import scala.jdk.CollectionConverters.*
 
 object VavrConverters:
+
   implicit final class RichVavrOption[L, R](private val underlying: Either[L, R]) extends AnyVal:
     def toVavr: VEither[L, R] =
       underlying match

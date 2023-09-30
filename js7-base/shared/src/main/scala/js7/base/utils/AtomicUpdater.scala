@@ -4,6 +4,7 @@ import monix.execution.atomic.AtomicAny
 import scala.annotation.tailrec
 
 final class AtomicUpdater[A <: AnyRef](initial: A):
+
   private val value = AtomicAny(initial)
 
   def get: A =

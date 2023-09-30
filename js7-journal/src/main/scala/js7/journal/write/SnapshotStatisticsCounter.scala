@@ -8,6 +8,7 @@ import js7.base.utils.ScalaUtils.syntax.*
   * @author Joacim Zschimmer
   */
 private[journal] final class SnapshotStatisticsCounter extends StatisticsCounter:
+
   private var snapshots = 0
   private var _fileLength = 0L
 

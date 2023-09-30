@@ -8,6 +8,7 @@ import js7.data.event.EventId
   * @author Joacim Zschimmer
   */
 package object problems:
+
   final case class UnknownEventIdProblem(requestedEventId: EventId) extends Problem.Coded:
     def arguments = Map("requestedEventId" -> EventId.toString(requestedEventId))
   object UnknownEventIdProblem extends Problem.Coded.Companion

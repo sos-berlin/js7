@@ -8,6 +8,7 @@ import js7.base.utils.MapDiff
 import scala.collection.{View, mutable}
 
 final case class DirectoryState(fileToEntry: Map[Path, Entry]):
+
   def applyAndReduceEvents(events: Seq[DirectoryEvent]): (Seq[DirectoryEvent], DirectoryState) =
     val added = mutable.Map.empty[Path, Entry]
     val deleted = mutable.Set.empty[Path]

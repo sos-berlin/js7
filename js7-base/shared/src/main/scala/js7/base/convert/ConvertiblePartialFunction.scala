@@ -11,6 +11,7 @@ import js7.base.problem.{Checked, Problem}
   * @author Joacim Zschimmer
   */
 trait ConvertiblePartialFunction[K, V] extends PartialFunction[K, V]:
+
   def as[W](key: K)(implicit convert: As[V, W]): W =
     wrappedConvert(convert.apply, renderKey(key))(apply(key))
 

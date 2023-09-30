@@ -31,7 +31,7 @@ private[cluster] final class ClusterCommon private(
   licenseChecker: LicenseChecker,
   val testEventBus: EventPublisher[Any])(
   implicit val journalActorAskTimeout: Timeout):
-  
+
   import clusterConf.ownId
 
   val activationInhibitor = new ActivationInhibitor

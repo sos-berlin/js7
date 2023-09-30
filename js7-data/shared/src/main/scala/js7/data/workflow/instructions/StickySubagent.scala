@@ -14,6 +14,7 @@ final case class StickySubagent(
   subworkflow: Workflow,
   sourcePos: Option[SourcePos] = None)
 extends Instruction:
+
   def withoutSourcePos = copy(
     sourcePos = None,
     subworkflow = subworkflow.withoutSourcePos)

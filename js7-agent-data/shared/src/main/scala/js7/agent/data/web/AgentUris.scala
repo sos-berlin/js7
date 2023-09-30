@@ -11,6 +11,7 @@ import js7.data.event.{Event, EventRequest}
  * @author Joacim Zschimmer
  */
 final class AgentUris private(agentUri: Uri):
+
   private val prefixedUri = Uri(s"$agentUri/agent")
 
   val overview = toUri("api")

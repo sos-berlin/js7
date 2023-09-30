@@ -14,6 +14,7 @@ import scala.util.{Failure, Success, Try}
   * @author Joacim Zschimmer
   */
 trait HttpClient:
+
   def getDecodedLinesObservable[A: Decoder](uri: Uri, responsive: Boolean = false)
     (implicit s: Task[Option[SessionToken]])
   : Task[Observable[A]]

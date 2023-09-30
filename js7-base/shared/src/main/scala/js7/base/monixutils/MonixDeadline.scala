@@ -9,6 +9,7 @@ import scala.concurrent.duration.{Duration, FiniteDuration, NANOSECONDS}
 /** Like Scala's `scala.concurrent.duration.Deadline` but based on Monix' clock. */
 final case class MonixDeadline private(nanos: Long)(implicit scheduler: Scheduler)
 extends Ordered[MonixDeadline]:
+
   /**
    * Return a deadline advanced (i.e., moved into the future) by the given duration.
    */

@@ -10,6 +10,7 @@ import js7.base.problem.Problem
   * @author Joacim Zschimmer
   */
 final class SillySigner(signature: SillySignature) extends DocumentSigner:
+
   protected type MySignature = SillySignature
 
   def companion = SillySigner

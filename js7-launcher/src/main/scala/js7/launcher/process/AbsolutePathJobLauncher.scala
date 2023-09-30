@@ -11,6 +11,7 @@ final class AbsolutePathJobLauncher(
   protected val jobConf: JobConf,
   protected val jobLauncherConf: JobLauncherConf)
 extends PathProcessJobLauncher:
+
   protected val checkFile =
     Task {
       catchExpected[InvalidPathException](

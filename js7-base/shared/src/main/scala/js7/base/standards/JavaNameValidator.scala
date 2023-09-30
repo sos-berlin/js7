@@ -10,6 +10,7 @@ final class JavaNameValidator(
   val isExtraNameStart: Char => Boolean = _ => false,
   val isExtraNamePart: Char => Boolean = _ => false)
 extends NameValidator:
+
   def checked(name: String): Checked[String] =
     if name.isEmpty then
       Left(EmptyStringProblem(typeName))

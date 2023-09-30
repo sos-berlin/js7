@@ -36,6 +36,7 @@ final class ClusterWatchCounterpart private(
   testEventPublisher: EventPublisher[Any])
   (implicit scheduler: Scheduler)
 extends Service.StoppableByRequest:
+
   import clusterConf.ownId
 
   private val nextRequestId = Atomic(if isTest then 1 else

@@ -15,6 +15,7 @@ import js7.controller.web.serviceprovider.ServiceProviderRoute.*
   * @author Joacim Zschimmer
   */
 private[web] trait ServiceProviderRoute:
+
   protected def routeServiceContext: RouteServiceContext
   protected def config: Config
 

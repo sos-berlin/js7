@@ -8,6 +8,7 @@ import scala.reflect.ClassTag
 
 /** Map for subclasses to any of the given superclasses. */
 final class ToSuperclass[C](superclasses: Set[Class[? <: C]])(implicit C: ClassTag[C]):
+
   private val map = new ConcurrentHashMap[Class[? <: C], Option[Class[? <: C]]]
   map.putAll(superclasses.view.map(o => o -> Some(o)).toMap.asJava)
 

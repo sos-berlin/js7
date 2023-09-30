@@ -11,6 +11,7 @@ import js7.data_for_java.vavr.VavrConverters.*
 
 @javaApi
 object VavrUtils:
+
   /** For testing. */
   @javaApi
   //Void is null: @Nonnull

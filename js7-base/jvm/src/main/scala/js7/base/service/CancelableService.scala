@@ -6,6 +6,7 @@ import monix.eval.Task
 final class CancelableService private(
   protected val run: Task[Unit])
 extends Service.StoppableByRequest:
+
   protected def start =
     startService(Task
       .race(untilStopRequested, run) // Cancels run

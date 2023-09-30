@@ -12,6 +12,7 @@ import monix.eval.Task
 private[scopes] final class FileValueScope private(
   private[scopes] val fileValueState: FileValueState)
 extends Scope with AutoCloseable:
+
   fileValueState.startScope(this)
 
   override def evalFunctionCall(functionCall: Expression.FunctionCall)(implicit scope: Scope) =

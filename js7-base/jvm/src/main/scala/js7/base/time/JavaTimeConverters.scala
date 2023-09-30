@@ -7,6 +7,7 @@ import js7.base.time.ScalaTime.*
 import scala.concurrent.duration.{FiniteDuration, Duration as ScalaDuration}
 
 object JavaTimeConverters:
+
   private val logger = Logger[this.type]
   private val MaxDuration = Duration.ofNanos(Long.MaxValue)
   private val MinDuration = Duration.ofNanos(Long.MinValue + 1)

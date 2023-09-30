@@ -8,6 +8,7 @@ import js7.base.problem.{Checked, Problem}
 import scala.util.{Failure, Success, Try}
 
 final class DistinguishedName(private val x500Principal: X500Principal):
+
   lazy val string = x500Principal.toString
 
   override def equals(other: Any) = other match

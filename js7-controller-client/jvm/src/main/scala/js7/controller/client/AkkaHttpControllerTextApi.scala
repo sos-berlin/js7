@@ -24,6 +24,7 @@ private[controller] final class AkkaHttpControllerTextApi(
   configDirectory: Option[Path] = None)
 extends HasCloser with ProvideActorSystem with TextApi with HttpSessionApi with AkkaHttpClient
 with SessionApi.HasUserAndPassword:
+
   protected val config = config"akka.log-dead-letters = 0"
 
   protected val name = "AkkaHttpControllerTextApi"

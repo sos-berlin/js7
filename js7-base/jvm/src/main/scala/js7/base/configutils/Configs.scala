@@ -28,6 +28,7 @@ import scala.util.control.NonFatal
   * @author Joacim Zschimmer
   */
 object Configs:
+
   private val InternalOriginDescription = "JS7"
   private val SecretOriginDescription = "JS7 Secret"
   private val Required = ConfigParseOptions.defaults.setAllowMissing(false)

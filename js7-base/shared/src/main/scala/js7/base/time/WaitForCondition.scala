@@ -9,6 +9,7 @@ import scala.util.control.NonFatal
 import scala.util.{Success, Try}
 
 object WaitForCondition:
+
   private[time] trait Sleeper:
     def now: MonixDeadline
     final def sleepUntil(until: MonixDeadline) = sleep(until - now)

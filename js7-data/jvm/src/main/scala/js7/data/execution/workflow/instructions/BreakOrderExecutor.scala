@@ -8,6 +8,7 @@ import js7.data.workflow.instructions.BreakOrder
 private[instructions] final class BreakOrderExecutor(
   protected val service: InstructionExecutorService)
 extends EventInstructionExecutor:
+
   type Instr = BreakOrder
   val instructionClass = classOf[BreakOrder]
 

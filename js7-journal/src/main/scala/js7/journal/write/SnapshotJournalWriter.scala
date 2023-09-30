@@ -24,6 +24,7 @@ final class SnapshotJournalWriter(
   protected val simulateSync: Option[FiniteDuration])
   (implicit protected val scheduler: Scheduler)
 extends JournalWriter(S, after = after, append = false):
+
   private val logger = Logger.withPrefix(getClass, file.getFileName.toString)
   protected val statistics: SnapshotStatisticsCounter = new SnapshotStatisticsCounter
   private var snapshotStarted = false

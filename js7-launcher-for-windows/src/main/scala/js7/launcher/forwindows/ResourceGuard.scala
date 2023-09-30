@@ -7,6 +7,7 @@ import monix.execution.atomic.AtomicBoolean
   * Thread-safe.
   */
 private final class ResourceGuard[A] private(resource: A, release: A => Unit):
+
   private var usage = 1
   private val _releaseAfterUse = AtomicBoolean(false)
 

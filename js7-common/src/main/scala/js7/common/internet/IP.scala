@@ -11,6 +11,7 @@ import scala.util.control.NonFatal
   * @author Joacim Zschimmer
   */
 object IP:
+
   implicit object StringToInetAddress extends As[String, InetAddress]:
     def apply(o: String) =
       if o.isEmpty then throw new IllegalArgumentException("Missing IP address")

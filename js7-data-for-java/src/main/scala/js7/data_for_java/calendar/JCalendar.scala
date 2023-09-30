@@ -16,6 +16,7 @@ import scala.jdk.OptionConverters.*
 
 final case class JCalendar(asScala: Calendar)
 extends JJsonable[JCalendar] with JUnsignedSimpleItem:
+
   type AsScala = Calendar
   protected def companion = JCalendar
 

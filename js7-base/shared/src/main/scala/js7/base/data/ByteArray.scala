@@ -13,6 +13,7 @@ import js7.base.problem.Checked
 import scala.collection.mutable
 
 final class ByteArray private(val unsafeArray: Array[Byte]):
+
   def length = unsafeArray.length
 
   def apply(i: Int) = unsafeArray(i)

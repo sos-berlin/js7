@@ -16,6 +16,7 @@ import scala.concurrent.Future
 If ${R} is the result of a synchronous action, either build an implicit with
 CanBindCorrelId.synchronous or import CanBindCorrelId.Implicits.synchronousAsDefault.""")
 trait CanBindCorrelId[R]:
+
   private[log] def bind(correlId: CorrelId)(body: => R): R
   private[log] def bindNewIfEmpty(body: => R): R
 

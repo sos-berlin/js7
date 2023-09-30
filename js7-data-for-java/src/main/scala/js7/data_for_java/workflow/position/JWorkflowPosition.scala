@@ -10,6 +10,7 @@ import js7.data_for_java.workflow.JWorkflowId
 
 final case class JWorkflowPosition(asScala: WorkflowPosition)
 extends JJsonable [JWorkflowPosition]:
+
   type AsScala = WorkflowPosition
   protected def companion = JWorkflowPosition
 

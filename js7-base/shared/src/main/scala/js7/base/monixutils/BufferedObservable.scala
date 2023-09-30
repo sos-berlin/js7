@@ -34,6 +34,7 @@ import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
 private final class BufferedObservable[+A](source: Observable[A], timespan: Option[FiniteDuration],
   maxWeight: Long, toWeight: A => Long)
 extends Observable[Seq[A]]:
+
   for t <- timespan do require(t.isPositive, "timespan must be strictly positive")
   require(maxWeight >= 0, "maxWeight must be positive")
 

@@ -56,7 +56,7 @@ private[watch] final class FileEventIteratorPool(
         logger.trace(s"borrowIterator $iterator eventId=${iterator.eventId} position=${iterator.position}")
         iterator
       }
-      
+
   private def newIterator(): FileEventIterator =
     synchronized:
       if closed.get() then throw new ClosedException(journalFile)

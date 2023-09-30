@@ -19,6 +19,7 @@ final case class Calendar(
   periodDatePattern: String,
   itemRevision: Option[ItemRevision] = None)
 extends UnsignedSimpleItem:
+
   protected type Self = Calendar
 
   val companion: Calendar.type = Calendar

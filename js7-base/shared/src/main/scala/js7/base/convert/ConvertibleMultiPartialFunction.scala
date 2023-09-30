@@ -7,6 +7,7 @@ import js7.base.convert.ConvertiblePartialFunctions.wrappedConvert
   * @author Joacim Zschimmer
   */
 trait ConvertibleMultiPartialFunction[K, V]:
+
   this: PartialFunction[K, Iterable[V]] =>
 
   def as[W](key: K, default: => W)(implicit convert: As[V, W]): W =

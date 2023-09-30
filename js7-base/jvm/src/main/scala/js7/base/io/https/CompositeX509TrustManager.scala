@@ -23,6 +23,7 @@ import scala.util.{Failure, Success}
   */
 final class CompositeX509TrustManager private(val trustManagers: Seq[X509TrustManager])
 extends X509TrustManager:
+
   def checkClientTrusted(chain: Array[X509Certificate], authType: String) =
     tryTrustManagers(
       _.checkClientTrusted(chain, authType))

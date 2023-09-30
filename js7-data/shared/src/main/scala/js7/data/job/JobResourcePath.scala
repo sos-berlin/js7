@@ -6,6 +6,7 @@ import js7.data.item.{InventoryItemPath, SignableSimpleItemPath}
 final case class JobResourcePath(string: String)
 extends SignableSimpleItemPath
 with InventoryItemPath.AttachableToAgent:
+
   def companion = JobResourcePath
 
 object JobResourcePath extends SignableSimpleItemPath.Companion[JobResourcePath]:

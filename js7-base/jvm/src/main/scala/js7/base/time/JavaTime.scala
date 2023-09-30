@@ -10,6 +10,7 @@ import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.FiniteDuration
 
 object JavaTime:
+
   private val MaxDuration = Duration.ofSeconds(Long.MaxValue, 999999999)
   private val MinDuration = Duration.ofSeconds(Long.MinValue, 999999999)
   val Iso8601DurationRegex = "[0-9.A-Za-z]+".r

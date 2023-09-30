@@ -10,6 +10,7 @@ import js7.data.value.{ListValue, StringValue}
 import scala.collection.View
 
 final class AgentsSubagentIdsScope(state: StateView) extends Scope:
+
   override def evalFunctionCall(functionCall: Expression.FunctionCall)(implicit scope: Scope) =
     functionCall match
       case FunctionCall("subagentIds", Nil) =>

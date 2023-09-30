@@ -13,6 +13,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import scala.util.control.NonFatal
 
 object Parsers:
+
   object syntax:
     implicit final class RichParser0[+A](private val parser0: Parser0[A]) extends AnyVal:
       //def ignore: IgnoredParser0 =

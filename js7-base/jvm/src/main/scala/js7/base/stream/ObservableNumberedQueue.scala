@@ -21,6 +21,7 @@ import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
 final class ObservableNumberedQueue[V: Tag]:
+
   private val vName = implicitly[Tag[V]].tag.toString
   private val sync = new IncreasingNumberSync(initial = 0, i => s"#$i")
   private val lock = AsyncLock("ObservableNumberedQueue", suppressLog = true)

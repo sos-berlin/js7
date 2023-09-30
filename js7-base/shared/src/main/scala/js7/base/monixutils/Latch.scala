@@ -5,6 +5,7 @@ import monix.eval.Task
 
 /** A single-use latch, after being closed it can never opened again. */
 final class Latch extends Latch.ReadOnly:
+
   // Initially open
   private val latch = MVar[Task].empty[Unit]().memoize
 

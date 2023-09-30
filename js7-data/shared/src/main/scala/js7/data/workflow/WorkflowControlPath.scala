@@ -8,6 +8,7 @@ final case class WorkflowControlPath(workflowPath: WorkflowPath)
 extends UnsignedItemPath
 with VersionedControlPath
 with InventoryItemPath.AttachableToAgent:
+
   def path = this
   def string = workflowPath.string
   def companion = WorkflowControlPath

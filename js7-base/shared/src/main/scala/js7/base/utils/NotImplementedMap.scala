@@ -1,6 +1,7 @@
 package js7.base.utils
 
 final class NotImplementedMap[K, V] extends Map[K, V]:
+
   def removed(key: K): Map[K, V] =
     throw new NotImplementedError
 

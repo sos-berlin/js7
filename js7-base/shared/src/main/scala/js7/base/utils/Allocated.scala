@@ -9,6 +9,7 @@ import js7.base.utils.AutoClosing.autoClosing
 import scala.annotation.unused
 
 final class Allocated[F[_]: UnsafeMemoizable, +A](val allocatedThing: A, release_ : F[Unit], label: String):
+
   def this(allocatedThing: A, release: F[Unit])(implicit A: Tag[A]) =
     this(allocatedThing, release, label = A.tag.shortName)
 

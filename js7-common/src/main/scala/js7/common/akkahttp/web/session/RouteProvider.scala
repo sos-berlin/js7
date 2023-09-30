@@ -24,6 +24,7 @@ import monix.execution.Scheduler
   * @author Joacim Zschimmer
   */
 trait RouteProvider extends ExceptionHandling:
+
   protected type OurSession <: Session
   protected def sessionRegister: SessionRegister[OurSession]
 

@@ -14,6 +14,7 @@ import monix.eval.Task
   * Commands (`executeCommand`) waiting for coupling will be completed with `ProblemException`.
   */
 private[http] final class CoupledApiVar[Api <: SessionApi]:
+
   // The only Left value is TerminatedProblem
   private val coupledApiMVar = MVar.empty[Task, Checked[Api]]().memoize
   @volatile private var stopped = false

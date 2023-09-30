@@ -14,6 +14,7 @@ import scala.collection.mutable
   */
 private[process] final class FilePool(jobKey: JobKey, workDirectory: Path, encoding: Charset)
 extends AutoCloseable:
+
   private var free = List.empty[FileSet]
   private val used = mutable.Set.empty[FileSet]
 

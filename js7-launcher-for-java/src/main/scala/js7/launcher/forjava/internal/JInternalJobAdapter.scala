@@ -8,6 +8,7 @@ import scala.jdk.FutureConverters.CompletionStageOps
 
 private[js7] final class JInternalJobAdapter(jobContext: JobContext)
 extends InternalJob:
+
   private val helper = new InternalJobAdapterHelper[JInternalJob]
 
   override def start: Task[Checked[Unit]] =

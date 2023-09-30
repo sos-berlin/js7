@@ -22,6 +22,7 @@ import scala.util.control.NonFatal
 
 final class BasicDirectoryWatch private(options: WatchOptions)(implicit iox: IOExecutor)
 extends Service.StoppableByRequest:
+
   import options.{directory, kinds, pollTimeout}
 
   // TODO Use a single WatchService with central polling for all directories, and occupy only one thread!

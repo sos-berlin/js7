@@ -6,6 +6,7 @@ import js7.base.generic.GenericString
 /** This class implements equals (Java's Pattern does not). */
 final case class SimplePattern private(pattern: Pattern)
 extends GenericString:
+
   assert(pattern.flags == 0)
 
   override def equals(other: Any) =

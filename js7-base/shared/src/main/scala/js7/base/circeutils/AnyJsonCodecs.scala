@@ -10,6 +10,7 @@ import scala.jdk.CollectionConverters.*
   * @author Joacim Zschimmer
   */
 object AnyJsonCodecs:
+
   object implicits:
     implicit val MapJsonEncoder: Encoder[Map[String, Any]] = anyToJson(_)
     implicit val MapJsonDecoder: Decoder[Map[String, Any]] =

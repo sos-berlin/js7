@@ -10,6 +10,7 @@ import js7.data.workflow.instructions.Prompt
 
 private[instructions] final class PromptExecutor(protected val service: InstructionExecutorService)
 extends EventInstructionExecutor:
+
   type Instr = Prompt
   val instructionClass = classOf[Prompt]
 

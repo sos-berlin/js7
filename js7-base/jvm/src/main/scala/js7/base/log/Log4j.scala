@@ -13,6 +13,7 @@ import scala.util.{Failure, Success, Try}
   * @author Joacim Zschimmer
   */
 object Log4j:
+
   private val isShutdown = AtomicBoolean(false)
   private val startedAt = Timestamp.now
   private val runningSince = Deadline.now

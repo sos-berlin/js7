@@ -4,6 +4,7 @@ package js7.data.item
   * @author Joacim Zschimmer
   */
 trait VersionedItem extends SignableItem:
+
   protected type Self <: VersionedItem
   type Path = companion.Path
 

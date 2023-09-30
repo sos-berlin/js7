@@ -8,6 +8,7 @@ import js7.data_for_java.common.JavaWrapper
 
 final case class JUpdateItemOperation(asScala: ItemOperation)
 extends JavaWrapper:
+
   type AsScala = ItemOperation
 
 object JUpdateItemOperation:

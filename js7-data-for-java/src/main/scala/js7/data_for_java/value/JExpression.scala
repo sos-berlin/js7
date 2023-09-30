@@ -11,6 +11,7 @@ import js7.data_for_java.vavr.VavrConverters.*
 import scala.jdk.CollectionConverters.*
 
 final case class JExpression(asScala: Expression) extends JJsonable[JExpression]:
+
   type AsScala = Expression
 
   protected def companion = JExpression

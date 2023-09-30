@@ -9,6 +9,7 @@ import cats.kernel.CommutativeMonoid
   * @author Joacim Zschimmer
   */
 object Completed:
+
   // type Completed = Completed.type    <-- defined in package.scala
 
   override def toString = "Completed"

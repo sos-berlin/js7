@@ -27,6 +27,7 @@ final class ShellScriptJobLauncher(
   protected val jobConf: JobConf,
   protected val jobLauncherConf: JobLauncherConf)
 extends PathProcessJobLauncher:
+
   private val userToFileLock = AsyncLock("ShellScriptJobLauncher.userToFile")
   private val userToFile = mutable.Map.empty[Option[WindowsUserName], Path]
 

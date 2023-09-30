@@ -24,6 +24,7 @@ final class RestartableDirector private(
   testWiring: TestWiring = TestWiring.empty)
   (implicit scheduler: Scheduler)
 extends MainService with Service.StoppableByRequest:
+
   protected type Termination = DirectorTermination
 
   private val _currentDirector = AsyncVariable[RunningAgent](null: RunningAgent)

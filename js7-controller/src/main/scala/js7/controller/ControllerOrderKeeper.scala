@@ -103,6 +103,7 @@ final class ControllerOrderKeeper(
   (implicit protected val scheduler: Scheduler)
 extends Stash
 with MainJournalingActor[ControllerState, Event]:
+
   import context.watch
   import controllerConfiguration.config
   import js7.controller.ControllerOrderKeeper.RichIdToOrder

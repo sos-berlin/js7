@@ -10,6 +10,7 @@ import org.jetbrains.annotations.TestOnly
   * @author Joacim Zschimmer
   */
 final case class SignedString(string: String, signature: GenericSignature):
+
   override def toString = s"SignedString(${string.truncateWithEllipsis(100, showLength = true)}, $signature)"
 
   /** Tamper in a JSON-compatible way. */

@@ -9,6 +9,7 @@ import monix.execution.Scheduler
   * @author Joacim Zschimmer
   */
 private[journal] trait JournalingObserver:
+
   protected[journal] def onJournalingStarted(
     file: Path,
     expectedJournalId: JournalId,

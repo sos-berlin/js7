@@ -16,6 +16,7 @@ import scala.concurrent.duration.*
 
 // Needs access to js7-common/ThreadPools
 object MainServices:
+
   /** Run a MainService with its own ThreadPool. */
   def blockingRun[S <: MainService: Tag](
     threadPoolName: String,

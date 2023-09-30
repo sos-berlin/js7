@@ -8,6 +8,7 @@ import scala.language.implicitConversions
   * @author Joacim Zschimmer
   */
 final case class UserAndPassword(userId: UserId, password: SecretString):
+
   override def toString = s"UserAndPassword($userId)"
 
 object UserAndPassword:

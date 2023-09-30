@@ -15,6 +15,7 @@ final class X509Signer private(
   val algorithm: X509Algorithm,
   val signerId: SignerId)
 extends DocumentSigner:
+
   protected type MySignature = X509Signature
 
   def companion = X509Signer

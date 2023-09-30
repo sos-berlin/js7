@@ -11,6 +11,7 @@ import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.*
 
 final case class JNoticePlace(asScala: NoticePlace):
+
   @Nonnull
   def noticeId: NoticeId =
     asScala.noticeId

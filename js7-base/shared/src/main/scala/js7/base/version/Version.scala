@@ -17,6 +17,7 @@ final case class Version(
   prerelease: List[String] = Nil,
   build: List[String] = Nil)
 extends GenericString with Ordered[Version]:
+
   def compare(o: Version) =
     if this eq o then
       0

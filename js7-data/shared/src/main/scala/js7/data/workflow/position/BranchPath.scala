@@ -89,7 +89,7 @@ object BranchPath:
         val last = branchPath.last
         (branchPath.dropChild % last.nr, last.branchId)
       }
-      
+
   object syntax:
     extension (segments: BranchPath)
       def %(nr: InstructionNr) = Position(segments, nr)

@@ -3,6 +3,7 @@ package js7.base.utils
 import scala.annotation.tailrec
 
 object BinarySearch:
+
   def binarySearch(indexedSeq: IndexedSeq[Int], value: Int): (Int, Boolean) =
     binarySearch(0, indexedSeq.length, indexedSeq(_).compare(value))
 

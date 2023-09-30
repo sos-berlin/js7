@@ -9,14 +9,13 @@ import org.scalatest.freespec.AnyFreeSpec
 /**
   * @author Joacim Zschimmer
   */
-final class CirceJsonTesterTest extends AnyFreeSpec
-:
+final class CirceJsonTesterTest extends AnyFreeSpec:
+
   "Case class" in:
     implicit val codec: Codec.AsObject[A] = deriveCodec
     testJsonString(a, JsonString)
 
-object CirceJsonTesterTest
-:
+object CirceJsonTesterTest:
   private val JsonString = """{
       "boole": true,
       "int": 2147483647,

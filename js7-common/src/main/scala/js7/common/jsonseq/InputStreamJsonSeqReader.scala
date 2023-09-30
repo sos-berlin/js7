@@ -34,6 +34,7 @@ final class InputStreamJsonSeqReader(
   blockSize: Int = BlockSize,
   withRS: Boolean = false)
 extends AutoCloseable:
+
   private val inAtomic = AtomicAny(inputStream_)
   private val block = new Array[Byte](blockSize)
   private var blockPos = 0L
@@ -110,7 +111,7 @@ extends AutoCloseable:
         byteArrays.clear()
         PositionAnd(startPosition, result)
       }
-      
+
   private def fillByteBuffer(): Boolean =
     blockPos = position
     blockRead = 0

@@ -27,6 +27,7 @@ final case class Fork(
   joinIfFailed: Boolean = false,
   sourcePos: Option[SourcePos] = None)
 extends ForkInstruction:
+
   def withoutSourcePos = copy(
     sourcePos = None,
     branches = branches.map(b => b.copy(workflow = b.workflow.withoutSourcePos)))

@@ -12,6 +12,7 @@ final case class RepeatPeriod(
   absoluteRepeat: Duration)
   //startOnce: Boolean = false)
 extends Period:
+
   require(begin >= StartOfDay, s"RepeatPeriod.begin should be >= ${ExtendedLocalTime.StartOfDay}: $begin")
   require(end <= ExtendedLocalTime.EndOfDay, s"RepeatPeriod.end should be <= ${ExtendedLocalTime.EndOfDay}: $end")
   require(begin.toNanoOfDay <= end.toNanoOfDay, s"RepeatPeriod.begin should not be after end: begin=$begin end=$end")

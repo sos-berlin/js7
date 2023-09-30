@@ -4,6 +4,7 @@ import scala.concurrent.duration.FiniteDuration
 
 final class TestWallClock(start: Timestamp)
 extends WallClock:
+
   private var _now = start
 
   def epochMilli() =

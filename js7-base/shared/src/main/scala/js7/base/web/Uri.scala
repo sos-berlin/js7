@@ -7,6 +7,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.web.Uri.StripPathRegex
 
 final case class Uri(string: String) extends GenericString:
+
   private lazy val javaUri: Checked[URI] =
     try Right(new URI(string))
     catch { case t: URISyntaxException =>

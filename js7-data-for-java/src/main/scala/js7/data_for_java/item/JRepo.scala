@@ -11,6 +11,7 @@ import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.*
 
 final class JRepo(asScala: Repo):
+
   /** The current `VersionId`.
     * @return `Optional.empty` iff the repo is empty. */
   @Nonnull

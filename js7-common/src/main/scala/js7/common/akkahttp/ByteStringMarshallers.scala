@@ -10,6 +10,7 @@ import akka.util.ByteString
  * @author Joacim Zschimmer
  */
 object ByteStringMarshallers:
+
   implicit val ByteStringMarshaller: ToEntityMarshaller[ByteString] =
     Marshaller.withFixedContentType(`application/octet-stream`) { byteString =>
       HttpEntity(`application/octet-stream`, byteString)

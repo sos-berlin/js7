@@ -9,6 +9,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import scala.concurrent.duration.Deadline.now
 
 object DirectoryStateJvm:
+
   private val logger = Logger[this.type]
 
   def readDirectory(directory: Path, matches: Path => Boolean = _ => true): DirectoryState =

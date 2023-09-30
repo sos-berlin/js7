@@ -13,6 +13,7 @@ final case class PostNotices private(
   boardPaths: Vector[BoardPath],
   sourcePos: Option[SourcePos])
 extends BoardInstruction:
+
   val referencedBoardPaths = boardPaths.toSet
 
   protected def checked: Checked[this.type] =

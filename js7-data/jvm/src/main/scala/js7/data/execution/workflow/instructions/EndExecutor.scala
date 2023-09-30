@@ -8,6 +8,7 @@ import js7.data.workflow.instructions.End
 
 private[instructions] final class EndExecutor(protected val service: InstructionExecutorService)
 extends EventInstructionExecutor with PositionInstructionExecutor:
+
   type Instr = End
   val instructionClass = classOf[End]
 

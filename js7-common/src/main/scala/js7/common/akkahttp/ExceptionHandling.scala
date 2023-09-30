@@ -17,6 +17,7 @@ import scala.concurrent.duration.Deadline
   * @author Joacim Zschimmer
   */
 trait ExceptionHandling:
+
   protected def whenShuttingDown: Future[Deadline]
   protected def config: Config
 

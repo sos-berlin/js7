@@ -11,6 +11,7 @@ import js7.common.akkautils.ReceiveLoggingActor.*
   * @author Joacim Zschimmer
   */
 trait ReceiveLoggingActor extends SimpleStateActor:
+
   protected[ReceiveLoggingActor] val receiveLogLevel =
     context.system.settings.config.as[LogLevel]("js7.akka.actor-message-log-level")
 

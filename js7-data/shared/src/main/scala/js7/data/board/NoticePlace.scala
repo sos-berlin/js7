@@ -18,6 +18,7 @@ final case class NoticePlace(
   isInConsumption: Boolean = false,
   consumptionCount: Int = 0)
 extends Big:
+
   def checked: Checked[this.type] =
     (notice.forall(_.id == noticeId) !!
       Problem(s"NoticePlace($noticeId) with different NoticeIds")

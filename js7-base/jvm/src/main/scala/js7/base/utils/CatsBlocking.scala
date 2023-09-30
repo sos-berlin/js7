@@ -9,6 +9,7 @@ import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.*
 
 object CatsBlocking:
+
   implicit final class BlockingTaskResource[A](private val resource: Resource[Task, A]) extends AnyVal:
     @TestOnly
     def blockingUse[R](timeout: Duration)(block: A => R)

@@ -19,6 +19,7 @@ import scala.concurrent.duration.*
   */
 private[instructions] final class RetryExecutor(protected val service: InstructionExecutorService)
 extends EventInstructionExecutor:
+
   type Instr = Retry
   val instructionClass = classOf[Retry]
 

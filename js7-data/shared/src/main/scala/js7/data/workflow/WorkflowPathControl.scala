@@ -13,6 +13,7 @@ final case class WorkflowPathControl(
 extends UnsignedSimpleItem
 with UnsignedSimpleItemState
 with TrivialItemState[WorkflowPathControl]:
+
   protected type Self = WorkflowPathControl
   val companion: WorkflowPathControl.type = WorkflowPathControl
   val item: WorkflowPathControl = this

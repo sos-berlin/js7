@@ -13,6 +13,7 @@ import scala.util.Success
  * @author Joacim Zschimmer
  */
 final class SetOnce[A](label: => String, notYetSetProblem: Problem):
+
   protected[this] val promise = Promise[A]()
 
   lazy val task: Task[A] =

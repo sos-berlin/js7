@@ -7,6 +7,7 @@ package js7.base.utils
   * @author Joacim Zschimmer
   */
 final class Lazy[A] private(eval: => A):
+
   @volatile
   private var state: State = NotEvaluated
 

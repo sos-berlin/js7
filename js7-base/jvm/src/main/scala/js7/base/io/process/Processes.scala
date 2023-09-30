@@ -18,6 +18,7 @@ import scala.concurrent.Await
 import scala.concurrent.duration.*
 
 object Processes:
+
   private val logger = Logger[this.type]
 
   def processToString(process: Process): String = processToString(process, processToPidOption(process))

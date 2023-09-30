@@ -10,6 +10,7 @@ import js7.data.workflow.instructions.Fork
 
 private[instructions] final class ForkExecutor(protected val service: InstructionExecutorService)
 extends EventInstructionExecutor with ForkInstructionExecutor:
+
   type Instr = Fork
   val instructionClass = classOf[Fork]
 

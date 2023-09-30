@@ -19,6 +19,7 @@ final class SimpleEventCollector(
   config: Config = ConfigFactory.empty)
 (implicit protected val scheduler: Scheduler)
 extends AutoCloseable:
+
   private val directory = createTempDirectory("SimpleEventCollector-")
   private val journalLocation = JournalLocation(
     new SnapshotableState.HasCodec {

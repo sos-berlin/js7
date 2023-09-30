@@ -9,6 +9,7 @@ import org.jetbrains.annotations.TestOnly
 import scala.collection.mutable
 
 final class ClusterWatchUniquenessChecker(memorySize: Int):
+
   require(memorySize >= 1)
 
   private val usedRunIds = mutable.Queue.empty[ClusterWatchRunId]

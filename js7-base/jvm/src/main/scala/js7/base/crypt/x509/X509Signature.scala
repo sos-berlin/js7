@@ -12,6 +12,7 @@ private[x509] final case class X509Signature(
   algorithm: X509Algorithm,
   signerIdOrCertificate: Either[SignerId, X509Cert])
 extends Signature:
+
   def toGenericSignature =
     GenericSignature(
       TypeName,

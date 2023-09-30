@@ -15,6 +15,7 @@ import scala.concurrent.duration.*
   * Synchronizer for increasing numbers.
   */
 final class IncreasingNumberSync(initial: Long, valueToString: Long => String):
+
   // TODO Watch size of valueToPromise (for example via an inspection web service)
   private val valueToPromise = mutable.TreeMap[Long, Promise[Unit]]()
   @volatile private var _last = initial

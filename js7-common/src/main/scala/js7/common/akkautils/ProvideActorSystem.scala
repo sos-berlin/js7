@@ -13,6 +13,7 @@ import js7.common.akkautils.ProvideActorSystem.*
   * @author Joacim Zschimmer
   */
 trait ProvideActorSystem extends HasCloser:
+
   protected def actorSystemName: String = getClass.simpleScalaName
   protected def config: Config
 

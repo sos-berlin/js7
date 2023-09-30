@@ -7,6 +7,7 @@ import js7.data.event.JournalHeader.Version
 import scala.concurrent.duration.FiniteDuration
 
 object JournalHeaders:
+
   implicit final class RichJournalHeader(private val self: JournalHeader) extends AnyVal:
     def nextGeneration[S <: BasicState[S]](
       eventId: EventId,

@@ -12,6 +12,7 @@ final case class Options(
   block: Workflow,
   sourcePos: Option[SourcePos] = None)
 extends Instruction:
+
   def withoutSourcePos = copy(sourcePos = None)
 
   override def withPositions(position: Position): Instruction =

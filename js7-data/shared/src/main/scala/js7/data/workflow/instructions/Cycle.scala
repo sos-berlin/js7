@@ -15,6 +15,7 @@ final case class Cycle(
   onlyOnePeriod: Boolean = false,
   sourcePos: Option[SourcePos] = None)
 extends Instruction:
+
   def withoutSourcePos = copy(
     sourcePos = None,
     cycleWorkflow = cycleWorkflow.withoutSourcePos)

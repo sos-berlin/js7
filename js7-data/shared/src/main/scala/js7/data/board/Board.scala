@@ -18,6 +18,7 @@ final case class Board(
   endOfLife: Expression,
   itemRevision: Option[ItemRevision] = None)
 extends UnsignedSimpleItem:
+
   protected type Self = Board
   val companion: Board.type = Board
 

@@ -24,6 +24,7 @@ import scala.util.control.NonFatal
   * @author Joacim Zschimmer
   */
 final class IOExecutor(executor: Executor, name: String) extends Executor:
+
   implicit val executionContext: ExecutionContextExecutor =
     ExecutionContext.fromExecutor(
       executor,

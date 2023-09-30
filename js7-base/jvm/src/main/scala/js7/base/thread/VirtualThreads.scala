@@ -8,6 +8,7 @@ import js7.base.utils.Tests.isTest
 import org.jetbrains.annotations.TestOnly
 
 object VirtualThreads:
+
   private val logger = Logger[this.type]
   private var enabled = javaVersion >= 19 && (isTest || sys.props.contains("js7.VirtualThread"))
 

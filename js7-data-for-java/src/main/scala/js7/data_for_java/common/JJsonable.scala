@@ -10,6 +10,7 @@ import js7.data_for_java.vavr.VavrConverters.*
 
 @javaApi
 trait JJsonable[A <: JJsonable[A]] extends JavaWrapper:
+
   protected def companion: JJsonable.Companion[A]
 
   final def toJson: String =

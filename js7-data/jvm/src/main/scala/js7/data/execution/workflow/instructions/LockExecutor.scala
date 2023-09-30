@@ -10,6 +10,7 @@ import js7.data.workflow.instructions.LockInstruction
 
 private[instructions] final class LockExecutor(protected val service: InstructionExecutorService)
 extends EventInstructionExecutor:
+
   type Instr = LockInstruction
   val instructionClass = classOf[LockInstruction]
 

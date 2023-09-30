@@ -19,6 +19,7 @@ final case class KeyStoreRef(
   /** PKCS#12 key password */
   keyPassword: SecretString)
 extends StoreRef:
+
   override def toString = s"KeyStore $url"
 
 object KeyStoreRef:

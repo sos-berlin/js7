@@ -19,6 +19,7 @@ import monix.execution.atomic.Atomic
 final class FileValueState(
   private[scopes] val directory: Path)
 extends AutoCloseable:
+
   private val scopeRegister = new ScopeRegister
   private val commonDirectory = Paths.get("0")
   private val commonDirectoryCreated = Atomic(false)

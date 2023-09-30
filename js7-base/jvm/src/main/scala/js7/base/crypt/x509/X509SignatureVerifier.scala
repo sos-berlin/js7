@@ -26,6 +26,7 @@ final class X509SignatureVerifier private[x509](
   signerDNToTrustedCertificate: Map[DistinguishedName, X509Cert],
   val publicKeyOrigin: String)
 extends SignatureVerifier:
+
   protected type MySignature = X509Signature
 
   def companion = X509SignatureVerifier

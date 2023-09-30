@@ -51,6 +51,7 @@ with EventDrivenStateView[AgentState, Event]
 with SubagentDirectorState[AgentState]
 with FileWatchStateHandler[AgentState]
 with ClusterableState[AgentState]:
+
   override def isAgent = true
 
   override def maybeAgentPath =
@@ -330,6 +331,7 @@ with ClusterableState[AgentState]:
 object AgentState
 extends ClusterableState.Companion[AgentState]
 with ItemContainer.Companion[AgentState]:
+
   val empty = AgentState(EventId.BeforeFirst, SnapshotableState.Standards.empty,
     AgentMetaState.empty,
     Map.empty, Map.empty, Map.empty, Map.empty, Map.empty)

@@ -25,6 +25,7 @@ private[state] final class StateJournalingActor[S <: JournaledState[S], E <: Eve
   persistLaterPromise: Promise[PersistLaterFunction[E]])
   (implicit S: Tag[S], protected val scheduler: Scheduler)
 extends MainJournalingActor[S, E]:
+
   override def supervisorStrategy = SupervisorStrategies.escalate
 
   override def preStart() =

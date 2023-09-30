@@ -26,6 +26,7 @@ import scala.jdk.CollectionConverters.*
 final class GenericSignatureVerifier private[generic](
   verifiers: immutable.Iterable[SignatureVerifier])
 extends SignatureVerifier:
+
   private val typeToVerifier = verifiers.toKeyedMap(_.companion.typeName)
 
   protected type MySignature = GenericSignature

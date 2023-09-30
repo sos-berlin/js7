@@ -29,6 +29,7 @@ import scala.language.implicitConversions
 import scala.util.control.NonFatal
 
 object FileUtils:
+
   private val logger = Logger[this.type]
   val EmptyPath = Paths.get("")
   val WorkingDirectory = Paths.get(sys.props("user.dir")).toAbsolutePath

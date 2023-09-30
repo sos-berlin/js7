@@ -25,6 +25,7 @@ private[agent] final class AkkaHttpAgentTextApi(
   configDirectory: Option[Path] = None)
 extends HasCloser with ProvideActorSystem with TextApi with HttpSessionApi with AkkaHttpClient
 with SessionApi.HasUserAndPassword:
+
   protected val name = "AkkaHttpAgentTextApi"
   protected val config = config"akka.log-dead-letters = 0"
 

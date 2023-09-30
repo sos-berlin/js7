@@ -8,6 +8,7 @@ import scala.math.{multiplyExact, toIntExact}
   * @author Joacim Zschimmer
   */
 object DecimalPrefixes:
+
   private val PrefixToFactor = Map(
     'k' -> 1000,
     'M' -> (1000*1000),

@@ -10,6 +10,7 @@ import scala.concurrent.duration.FiniteDuration
 
 final class GrowingFileObservable(file: Path, pollDuration: Option[FiniteDuration] = None)(implicit scheduler: Scheduler)
 extends Observable[ByteArray]:
+
   def unsafeSubscribeFn(subscriber: Subscriber[ByteArray]): Cancelable =
     @volatile var cancelled = false
     val reader = new ByteArrayReader(file, fromEnd = pollDuration.isDefined)

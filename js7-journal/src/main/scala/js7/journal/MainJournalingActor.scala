@@ -11,6 +11,7 @@ import scala.concurrent.Future
   */
 trait MainJournalingActor[S <: JournaledState[S], E <: Event]
 extends JournalingActor[S, E]:
+
   protected final def persistAsync[EE <: E, A](
     keyedEvent: KeyedEvent[EE])
     (callback: (Stamped[KeyedEvent[EE]], S) => A)

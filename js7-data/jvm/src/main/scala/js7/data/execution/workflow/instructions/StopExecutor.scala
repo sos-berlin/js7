@@ -8,6 +8,7 @@ import js7.data.workflow.instructions.Stop
 private[instructions] final class StopExecutor(
   protected val service: InstructionExecutorService)
 extends EventInstructionExecutor:
+
   type Instr = Stop
   val instructionClass = classOf[Stop]
 

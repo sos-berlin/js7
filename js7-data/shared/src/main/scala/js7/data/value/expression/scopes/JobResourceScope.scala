@@ -15,6 +15,7 @@ final class JobResourceScope(
   pathToJobResource: PartialFunction[JobResourcePath, JobResource],
   useScope: Scope)
 extends Scope:
+
   override def evalJobResourceVariable(v: Expression.JobResourceVariable)
     (implicit fullScope: Scope)
   =

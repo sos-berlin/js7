@@ -7,6 +7,7 @@ final class OneAliasX509ExtendedX509KeyManager(
   protected val keyManager: X509ExtendedKeyManager,
   protected val alias: String)
 extends X509ExtendedKeyManager with OneAliasX509KeyManager:
+
   override def chooseEngineClientAlias(keyType: Array[String], issuers: Array[Principal],
     engine: SSLEngine) =
     alias

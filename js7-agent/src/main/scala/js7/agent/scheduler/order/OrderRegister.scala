@@ -11,6 +11,7 @@ import scala.concurrent.Promise
   * @author Joacim Zschimmer
   */
 private[order] final class OrderRegister extends ActorRegister[OrderId, OrderEntry](_.actor):
+
   def recover(orderId: OrderId, actor: ActorRef): OrderEntry =
     val orderEntry = new OrderEntry(orderId, actor)
     insert(orderId -> orderEntry)

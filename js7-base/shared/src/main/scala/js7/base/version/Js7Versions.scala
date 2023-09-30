@@ -5,6 +5,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.*
 
 object Js7Versions:
+
   def checkNonMatchingVersion(
     otherVersion: Version,
     otherName: => String,

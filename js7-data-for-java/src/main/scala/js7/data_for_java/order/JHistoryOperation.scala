@@ -11,6 +11,7 @@ import js7.data_for_java.workflow.position.JPosition
 
 final case class JHistoryOperation(asScala: HistoryOperation)
 extends JJsonable[JHistoryOperation]:
+
   type AsScala = HistoryOperation
   protected def companion = JHistoryOperation
 

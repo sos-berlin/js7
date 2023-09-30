@@ -12,6 +12,7 @@ import scala.concurrent.duration.FiniteDuration
 trait ClusterNodeApi
 extends SessionApi.HasUserAndPassword
 with HasIsIgnorableStackTrace:
+
   def clusterState: Task[Checked[ClusterState]]
 
   def clusterNodeState: Task[ClusterNodeState]

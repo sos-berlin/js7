@@ -11,6 +11,7 @@ final case class ExpectNotices(
   boardPaths: BoardPathExpression,
   sourcePos: Option[SourcePos] = None)
 extends ExpectOrConsumeNoticesInstruction:
+
   def withoutSourcePos = copy(sourcePos = None)
 
   def referencedBoardPaths = boardPaths.boardPaths

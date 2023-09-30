@@ -13,7 +13,7 @@ import js7.common.http.AkkaHttpClient
 final class SimpleAkkaHttpClient(
   label: String,
   protected val baseUri: Uri,
-  protected val uriPrefixPath: String) 
+  protected val uriPrefixPath: String)
 extends AkkaHttpClient:
 
   protected val name = label

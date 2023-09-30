@@ -5,8 +5,8 @@ import org.scalatest.exceptions.TestFailedException
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.{Duration, MILLISECONDS}
 
-final class ScalaTestUtilsTest extends AnyFreeSpec
-:
+final class ScalaTestUtilsTest extends AnyFreeSpec:
+
   "awaitAndAssert" in:
     pending // TODO Scala 3: try as a macro !
     val a = 1

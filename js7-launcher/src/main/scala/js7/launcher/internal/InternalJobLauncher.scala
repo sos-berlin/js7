@@ -28,6 +28,7 @@ final class InternalJobLauncher(
   clock: AlarmClock)
   (implicit scheduler: Scheduler, iox: IOExecutor)
 extends JobLauncher:
+
   private val internalJobLazy = Lazy[Checked[InternalJob]](
     toInstantiator(executable.className)
       .flatMap(_()))

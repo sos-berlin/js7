@@ -37,6 +37,7 @@ final case class ControllerConfiguration(
   name: String,
   config: Config)
 extends BasicConfiguration with CommonConfiguration:
+
   override def maybeConfigDirectory = Some(configDirectory)
 
   override def maybeDataDirectory = Some(dataDirectory)

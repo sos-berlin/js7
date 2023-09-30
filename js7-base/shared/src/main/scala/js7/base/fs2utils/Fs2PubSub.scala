@@ -9,6 +9,7 @@ import js7.base.catsutils.UnsafeMemoizable
 import js7.base.catsutils.UnsafeMemoizable.syntax.*
 
 final class Fs2PubSub[F[_]: Concurrent: UnsafeMemoizable, A <: AnyRef]:
+
   private val Initial = Fs2PubSub.Initial.asInstanceOf[A]
   private val EOF = Fs2PubSub.EOF.asInstanceOf[A]
 

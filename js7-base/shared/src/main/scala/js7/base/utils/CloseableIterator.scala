@@ -8,6 +8,7 @@ import scala.util.control.NonFatal
   * @author Joacim Zschimmer
   */
 trait CloseableIterator[+A] extends Iterator[A] with AutoCloseable:
+
   def strict: Seq[A] =
     try super.toVector
     finally close()

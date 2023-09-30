@@ -30,6 +30,7 @@ with SnapshotRoute
 with SessionRoute
 with ClusterRoute
 with LogRoute:
+
   final val apiRoute: Route =
     respondWithHeaders(StandardResponseHeaders):
       pathPrefix(Segment) {

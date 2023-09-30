@@ -9,6 +9,7 @@ import js7.base.data.{ByteArray, ByteSequence}
 import js7.base.problem.Checked
 
 object ByteStringByteSequence extends ByteSequence[ByteString]:
+
   val clazz = classOf[ByteString]
   val empty = ByteString.empty
 

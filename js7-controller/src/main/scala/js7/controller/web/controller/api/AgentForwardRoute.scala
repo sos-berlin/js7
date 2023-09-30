@@ -28,6 +28,7 @@ import monix.execution.Scheduler
 import scala.collection.MapView
 
 trait AgentForwardRoute extends ControllerRouteProvider:
+
   protected implicit def actorSystem: ActorSystem
   protected def pathToAgentRefState: Task[Checked[MapView[AgentPath, AgentRefState]]]
   protected def controllerConfiguration: ControllerConfiguration

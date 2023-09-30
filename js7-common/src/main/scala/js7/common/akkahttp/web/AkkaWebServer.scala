@@ -43,6 +43,7 @@ final class AkkaWebServer private(bindingAndResources: Vector[BindingAndResource
   (implicit testEventBus: StandardEventBus[Any])
 extends WebServerBinding.HasLocalUris
 with Service.StoppableByRequest:
+
   private val _addrToHttpsFileToTime = mutable.Map.empty[InetSocketAddress, Map[Path, Try[FileTime]]]
 
   private[web] val webServerBindings =

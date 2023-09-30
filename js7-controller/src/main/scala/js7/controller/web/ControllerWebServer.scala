@@ -19,6 +19,7 @@ import monix.execution.Scheduler
 import scala.concurrent.duration.Deadline
 
 object ControllerWebServer:
+
   def resource(
     orderApi: OrderApi,
     commandExecutor: ControllerCommandExecutor,

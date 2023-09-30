@@ -21,6 +21,7 @@ import scala.util.{Failure, Left, Success, Try}
   * @author Joacim Zschimmer
   */
 object Checked:
+
   val unit = Checked(())
   val completed = Checked(Completed)
 

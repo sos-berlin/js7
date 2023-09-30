@@ -9,6 +9,7 @@ import js7.data.event.JournalId
   * So and Agents keeps its `AgentRunId` event if its restartet,
   * as long as it uses the same event steam (Journal). */
 final case class AgentRunId(journalId: JournalId) extends GenericString:
+
   def string = journalId.string
 
   override def toString = typedToString

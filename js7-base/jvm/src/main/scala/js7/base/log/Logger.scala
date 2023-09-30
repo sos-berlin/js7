@@ -19,6 +19,7 @@ import org.slf4j.{LoggerFactory, Marker, MarkerFactory}
 import scala.reflect.ClassTag
 
 object Logger:
+
   private val ifNotInitialized = new Once
 
   Slf4jUtils.initialize()

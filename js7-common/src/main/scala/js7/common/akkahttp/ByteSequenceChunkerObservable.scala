@@ -5,6 +5,7 @@ import js7.base.data.ByteSequence.ops.*
 import monix.reactive.Observable
 
 object ByteSequenceChunkerObservable:
+
   object syntax:
     implicit class RichByteSequenceChunkerObservable[X](private val observable: Observable[X])
     extends AnyVal:

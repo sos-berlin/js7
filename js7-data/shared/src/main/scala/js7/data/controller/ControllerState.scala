@@ -64,6 +64,7 @@ extends SignedItemContainer
 with EventDrivenStateView[ControllerState, Event]
 with OrderWatchStateHandler[ControllerState]
 with ClusterableState[ControllerState]:
+
   def isAgent = false
 
   def controllerId = controllerMetaState.controllerId

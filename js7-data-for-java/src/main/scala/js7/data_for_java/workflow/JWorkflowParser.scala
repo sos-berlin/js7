@@ -9,6 +9,7 @@ import js7.data_for_java.vavr.VavrConverters.*
 
 @javaApi
 object JWorkflowParser:
+
   @Nonnull
   def parse(
     @Nonnull jWorkflowId: JWorkflowId,

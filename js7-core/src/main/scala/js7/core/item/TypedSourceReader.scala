@@ -12,6 +12,7 @@ import js7.data.item.{InventoryItem, InventoryItemKey, InventoryItemPath, Versio
   * @author Joacim Zschimmer
   */
 final class TypedSourceReader(directory: Path, readers: Iterable[ItemReader]):
+
   private val companionToReader: Map[InventoryItemPath.AnyCompanion, ItemReader] =
     readers.toKeyedMap(_.itemPathCompanion)
 

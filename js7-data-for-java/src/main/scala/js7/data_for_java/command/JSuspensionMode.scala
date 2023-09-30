@@ -10,6 +10,7 @@ import scala.jdk.OptionConverters.*
 
 final case class JSuspensionMode(asScala: SuspensionMode)
 extends JavaWrapper:
+
   type AsScala = SuspensionMode
 
 object JSuspensionMode:

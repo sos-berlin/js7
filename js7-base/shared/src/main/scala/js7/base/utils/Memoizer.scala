@@ -19,6 +19,7 @@ final class Memoizer[A, B](f: A => B, show: Memoizer.Show[A, B]) extends (A => B
   override def toString = show.show(this)
 
 object Memoizer:
+
   trait Show[A, B]:
     def show(memoizer: Memoizer[A, B]): String
   private def defaultShow[A, B]: Show[A, B] =

@@ -36,6 +36,7 @@ final class DirectoryWatchingSignatureVerifier private(
   onUpdated: () => Unit)
   (implicit iox: IOExecutor)
 extends SignatureVerifier with Service.StoppableByRequest:
+
   @volatile private var state = State(Map.empty)
 
   protected type MySignature = GenericSignature
@@ -201,6 +202,7 @@ object DirectoryWatchingSignatureVerifier extends SignatureVerifier.Companion:
   final class Prepared(
     companionToDirectory: Map[SignatureVerifier.Companion, Path],
     settings: DirectoryWatchSettings):
+
     def toResource(onUpdated: () => Unit)(implicit iox: IOExecutor)
     : Resource[Task, DirectoryWatchingSignatureVerifier] =
       Service.resource(Task(
@@ -216,6 +218,7 @@ object DirectoryWatchingSignatureVerifier extends SignatureVerifier.Companion:
 
   private final case class State(
     companionToVerifier: Map[SignatureVerifier.Companion, Checked[SignatureVerifier]]):
+
     // Failing verifiers are omitted !!!
     val genericVerifier = new GenericSignatureVerifier(
       companionToVerifier.values

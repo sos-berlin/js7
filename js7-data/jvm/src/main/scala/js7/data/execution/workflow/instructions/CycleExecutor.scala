@@ -16,6 +16,7 @@ import js7.data.workflow.instructions.Cycle
 
 private[instructions] final class CycleExecutor(protected val service: InstructionExecutorService)
 extends EventInstructionExecutor with PositionInstructionExecutor:
+
   type Instr = Cycle
   val instructionClass = classOf[Cycle]
 

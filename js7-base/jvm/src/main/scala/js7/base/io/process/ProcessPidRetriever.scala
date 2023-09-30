@@ -11,6 +11,7 @@ import js7.base.system.OperatingSystem.isWindows
  * @author Joacim Zschimmer
  */
 object ProcessPidRetriever:
+
   // ProcessPidRetriever may be called at start-up, before logging framework is being initialized.
   // So do not use a Logger here !!!
 

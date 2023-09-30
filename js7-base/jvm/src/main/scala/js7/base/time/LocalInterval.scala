@@ -7,6 +7,7 @@ import js7.base.time.ScalaTime.*
 import scala.concurrent.duration.FiniteDuration
 
 sealed trait LocalInterval extends Ordered[LocalInterval]:
+
   def contains(local: LocalDateTime): Boolean
 
   def contains(start: LocalDateTime, end: LocalDateTime): Boolean

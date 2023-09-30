@@ -6,6 +6,7 @@ import js7.data.item.{InventoryItemPath, UnsignedSimpleItemPath}
 final case class CalendarPath private(string: String)
 extends UnsignedSimpleItemPath
 with InventoryItemPath.AttachableToAgent:
+
   protected type Self = CalendarPath
 
   val companion: CalendarPath.type = CalendarPath

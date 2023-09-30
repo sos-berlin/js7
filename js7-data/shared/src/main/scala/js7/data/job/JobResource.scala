@@ -13,6 +13,7 @@ final case class JobResource(
   itemRevision: Option[ItemRevision] = None)
 extends SignableSimpleItem
 with TrivialItemState[JobResource]:
+
   protected type Self = JobResource
   val companion: JobResource.type = JobResource
   val item: JobResource = this

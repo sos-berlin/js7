@@ -17,6 +17,7 @@ import monix.eval.Task
 private[controller] final class ControllerCommandExecutor(
   otherCommandExecutor: CommandExecutor[ControllerCommand])
 extends CommandExecutor[ControllerCommand]:
+
   private val register = new CommandRegister[ControllerCommand]
 
   def executeCommand(command: ControllerCommand, meta: CommandMeta): Task[Checked[command.Response]] =

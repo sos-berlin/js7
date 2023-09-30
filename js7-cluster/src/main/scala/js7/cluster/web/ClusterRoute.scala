@@ -22,6 +22,7 @@ import monix.eval.Task
 import monix.execution.Scheduler
 
 trait ClusterRoute extends ClusterWatchRequestRoute:
+
   protected def scheduler: Scheduler
   protected def actorSystem: ActorSystem
   protected def checkedClusterState: Task[Checked[Stamped[ClusterState]]]

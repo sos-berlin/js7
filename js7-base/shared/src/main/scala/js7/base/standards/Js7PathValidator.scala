@@ -7,6 +7,7 @@ import js7.base.problem.Problems.InvalidNameProblem
 import js7.base.utils.ScalaUtils.syntax.RichEither
 
 final class Js7PathValidator(val typeName: String) extends NameValidator:
+
   private val js7NameValidator = new Js7NameValidator(typeName)
 
   override def checked(path: String): Checked[String] =

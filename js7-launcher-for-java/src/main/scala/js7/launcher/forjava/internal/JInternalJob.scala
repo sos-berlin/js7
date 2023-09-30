@@ -16,6 +16,7 @@ import scala.concurrent.Future
 
 @InternalJobAdapter(classOf[JInternalJobAdapter])
 trait JInternalJob:
+
   @Nonnull
   def start: CompletionStage[VEither[Problem, Void]] =
     CompletableFuture.completedFuture(VEither.right(Void))

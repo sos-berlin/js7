@@ -8,6 +8,7 @@ import js7.base.system.ServiceProviders.findServices
 import js7.base.utils.Collections.implicits.RichIterable
 
 object SignatureServices:
+
   private val logger = Logger[this.type]
 
   private val standardVerifiers: Seq[SignatureVerifier.Companion] =

@@ -34,6 +34,7 @@ import scala.concurrent.duration.Deadline.now
 
 trait ItemRoute
 extends ControllerRouteProvider with EntitySizeLimitProvider:
+
   protected def actorSystem: ActorSystem
 
   protected def itemUpdater: ItemUpdater

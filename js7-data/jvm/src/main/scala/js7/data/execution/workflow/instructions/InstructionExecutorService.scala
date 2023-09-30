@@ -12,6 +12,7 @@ import js7.data.state.StateView
 import js7.data.workflow.Instruction
 
 final class InstructionExecutorService(val clock: WallClock):
+
   val finishExecutor = new FinishExecutor(this)
 
   private val classToExecutor = new SubclassToX(

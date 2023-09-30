@@ -9,6 +9,7 @@ import scala.concurrent.duration.FiniteDuration
 
 /** Adaptor AdmissionTimeScheme to Java Time.*/
 object AdmissionTimeSchemeForJavaTime:
+
   implicit final class RichAdmissionTimeScheme(private val admissionTimeScheme: AdmissionTimeScheme)
   extends AnyVal:
     def hasAdmissionPeriodStartForDay(localDate: LocalDate, dateOffset: FiniteDuration): Boolean =

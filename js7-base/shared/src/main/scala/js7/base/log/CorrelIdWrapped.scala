@@ -5,6 +5,7 @@ import io.circe.{Decoder, Encoder}
 import js7.base.utils.ScalaUtils.syntax.RichAny
 
 final case class CorrelIdWrapped[+V](correlId: CorrelId, value: V):
+
   def bindCorrelId[R: CanBindCorrelId](body: V => R): R =
     correlId.orNew.bind(
       body(value))

@@ -11,6 +11,7 @@ import js7.base.standards.Js7NameValidator
 import js7.base.utils.ScalaUtils.syntax.*
 
 trait GenericString:
+
   def string: String
 
   def isEmpty = string.isEmpty

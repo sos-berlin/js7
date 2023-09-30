@@ -23,6 +23,7 @@ import scala.reflect.ClassTag
 @javaApi
 final case class JOrder(asScala: Order[Order.State])
 extends JJsonable[JOrder]:
+
   import JOrder.*
 
   type AsScala = Order[Order.State]

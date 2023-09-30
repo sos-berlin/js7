@@ -14,6 +14,7 @@ import js7.data.workflow.instructions.ExpectNotices
 private[instructions] final class ExpectNoticesExecutor(
   protected val service: InstructionExecutorService)
 extends EventInstructionExecutor:
+
   type Instr = ExpectNotices
   val instructionClass = classOf[ExpectNotices]
 

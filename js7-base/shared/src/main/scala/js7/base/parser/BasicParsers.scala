@@ -14,6 +14,7 @@ import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import scala.reflect.ClassTag
 
 object BasicParsers:
+
   private val inlineComment: Parser[Unit] =
     val untilStar = charsWhile0(_ != '*').with1 ~ char('*')
     (string("/*") ~

@@ -6,6 +6,7 @@ import scala.collection.mutable
   * @author Joacim Zschimmer
   */
 object ByteUnits:
+
   /** Converts to bytes, kB, MB or GB */
   def toKBGB(size: Long): String =
     size match

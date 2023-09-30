@@ -15,6 +15,7 @@ import monix.execution.schedulers.TracingScheduler
 
 /** Correlation ID. */
 sealed trait CorrelId extends GenericString:
+
   def fixedWidthString: String
 
   def orNew: CorrelId =

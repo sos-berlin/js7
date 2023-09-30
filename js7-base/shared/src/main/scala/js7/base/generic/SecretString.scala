@@ -10,6 +10,7 @@ import scala.annotation.tailrec
   * @author Joacim Zschimmer
   */
 final case class SecretString(string: String):
+
   requireNonNull(string)
 
   def provideCharArray[A](body: Array[Char] => A): A =

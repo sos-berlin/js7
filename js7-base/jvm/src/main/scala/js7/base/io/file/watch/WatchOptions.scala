@@ -15,6 +15,7 @@ final case class WatchOptions(
   retryDelays: NonEmptySeq[FiniteDuration])
 
 object WatchOptions:
+
   private val defaultKinds: Set[WatchEvent.Kind[Path]] =
     Set(ENTRY_CREATE, ENTRY_MODIFY, ENTRY_DELETE)
 

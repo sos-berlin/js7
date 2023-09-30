@@ -10,6 +10,7 @@ import js7.data.item.UnsignedSimpleItemPath
   */
 final case class AgentPath private(string: String)
 extends UnsignedSimpleItemPath with DelegateId with ClusterId:
+
   protected type Self = AgentPath
 
   val companion: AgentPath.type = AgentPath

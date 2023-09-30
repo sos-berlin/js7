@@ -10,6 +10,7 @@ import scala.collection.immutable.VectorBuilder
 import scala.collection.{BufferedIterator, Factory, mutable}
 
 object Collections:
+
   private def defaultDuplicatesToProblem[K](duplicates: Map[K, Iterable[?]]) =
     duplicatesToProblem("Unexpected duplicates", duplicates)
 

@@ -11,6 +11,7 @@ import monix.eval.Task
 
 /** Monix Task like unsafe memoize for any Cats Concurrent. */
 trait UnsafeMemoizable[F[_]]:
+
   def unsafeMemoize[A](f: F[A]): F[A]
 
 object UnsafeMemoizable:

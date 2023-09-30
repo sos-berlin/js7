@@ -4,6 +4,7 @@ import js7.base.log.BlockingSymbol.*
 
 /** Escalating symbols ⚪🟡🟠🔴 to show the patient retries after a temporary blocking failure.*/
 final class BlockingSymbol:
+
   private var _index = 0
   private var _debugLogged = false
   private var _warnLogged = false

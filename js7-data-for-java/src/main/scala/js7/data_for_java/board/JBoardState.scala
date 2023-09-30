@@ -6,6 +6,7 @@ import js7.data.board.{BoardPath, BoardState, NoticeId}
 import scala.jdk.OptionConverters.*
 
 final case class JBoardState(asScala: BoardState):
+
   @Nonnull
   def path: BoardPath =
     asScala.path

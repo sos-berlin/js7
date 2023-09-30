@@ -6,6 +6,7 @@ import scala.language.implicitConversions
 // Typeclass
 @implicitNotFound(msg = "No implicit Ordinal[${A}] defined.")
 trait Ordinal[A]:
+
   // succ, pred: throw on overflow ???
 
   /** Successor. */

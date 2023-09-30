@@ -24,6 +24,7 @@ import scala.util.Random
 trait ByteSequence[ByteSeq]
 extends Writable[ByteSeq]
 with Monoid[ByteSeq] with Eq[ByteSeq] with Show[ByteSeq]:
+
   implicit def implicitByteSequence: ByteSequence[ByteSeq] = this
 
   def clazz: Class[ByteSeq]

@@ -15,6 +15,7 @@ final case class ConsumeNotices(
   subworkflow: Workflow,
   sourcePos: Option[SourcePos] = None)
 extends ExpectOrConsumeNoticesInstruction:
+
   def withoutSourcePos =
     copy(sourcePos = None)
 

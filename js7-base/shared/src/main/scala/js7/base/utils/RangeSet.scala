@@ -19,6 +19,7 @@ import scala.math.Ordering.Implicits.*
 /** A Set which allows ranges. */
 final case class RangeSet[A: Ordering: Ordinal] private(ranges: Vector[Range[A]])
 extends immutable.Set[A]:
+
   //override protected def fromSpecific(coll: IterableOnce[A]): Set[A] =
   //  RangeSet.fromIterable(coll)
   //

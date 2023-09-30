@@ -19,6 +19,7 @@ import js7.common.internet.IP.StringToServerInetSocketAddress
   * @author Joacim Zschimmer
   */
 trait CommonConfiguration extends WebServerBinding.HasLocalUris with BasicConfiguration:
+
   def config: Config
 
   def configDirectory: Path

@@ -9,6 +9,7 @@ import scala.util.control.NonFatal
   * @author Joacim Zschimmer
   */
 object JavaDataJsonCodecs:
+
   implicit val DurationEncoder: Encoder[Duration] =
     o => o.getNano match
       case 0 => Json.fromLong(o.getSeconds)

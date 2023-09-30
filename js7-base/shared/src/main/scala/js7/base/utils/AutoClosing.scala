@@ -6,6 +6,7 @@ import scala.util.control.{ControlThrowable, NonFatal}
 /** Wie java try(AutoCloseable), aber für alle Klassen mit close().
   * @author Joacim Zschimmer */
 object AutoClosing:
+
   private val logger = Logger[this.type]
 
   def multipleAutoClosing[M[X] <: Iterable[X], A <: AutoCloseable, B](resources: M[A])(body: resources.type => B): B =

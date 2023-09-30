@@ -20,6 +20,7 @@ import scala.jdk.OptionConverters.*
 
 trait JOrderEvent
 extends JJsonable[JOrderEvent]:
+
   type AsScala <: OrderEvent
 
   protected def companion = JOrderEvent

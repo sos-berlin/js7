@@ -8,6 +8,7 @@ import js7.base.utils.ScalaUtils.syntax.*
   * @author Joacim Zschimmer
   */
 final case class JavaChecked[A](checked: Checked[A]):
+
   def isValid = checked.isRight
 
   def isInvalid = checked.isLeft

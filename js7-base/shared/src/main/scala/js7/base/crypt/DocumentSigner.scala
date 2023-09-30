@@ -6,6 +6,7 @@ import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.*
 
 trait DocumentSigner:
+
   protected type MySignature <: Signature
 
   def companion: DocumentSigner.Companion { type MySignature = DocumentSigner.this.MySignature }

@@ -25,6 +25,7 @@ import scala.concurrent.duration.Deadline.now
 import scala.concurrent.{Future, Promise}
 
 object MonixBase:
+
   private val FalseTask = Task.pure(false)
   private val TrueTask = Task.pure(true)
   private val CompletedTask = Task.pure(Completed)

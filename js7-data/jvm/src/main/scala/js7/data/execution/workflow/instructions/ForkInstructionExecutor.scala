@@ -149,7 +149,7 @@ trait ForkInstructionExecutor extends EventInstructionExecutor:
               Outcome.Failed(Some(toJoinFailedMessage(failedChildren)))
             else
               forkResult(fork, order, state, now))
-        }      
+        }
       }
 
   protected def calcResult(resultExpr: Map[String, Expression], childOrderId: OrderId,

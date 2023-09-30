@@ -10,8 +10,10 @@ import js7.data_for_java.vavr.VavrConverters.*
 import scala.jdk.CollectionConverters.*
 
 sealed trait JPositionOrLabel extends JavaWrapper:
+
   type AsScala <: PositionOrLabel
   def toJson: String
+
 object JPositionOrLabel:
   def apply(underlying: PositionOrLabel): JPositionOrLabel =
     underlying match

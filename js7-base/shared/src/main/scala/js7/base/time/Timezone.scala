@@ -6,6 +6,7 @@ import js7.base.generic.GenericString
 final case class Timezone(string: String) extends GenericString
 
 object Timezone extends GenericString.NonEmpty[Timezone]:
+
   val utc = new Timezone("UTC")
 
   protected def unchecked(string: String) = new Timezone(string)

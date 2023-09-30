@@ -11,6 +11,7 @@ private final class FileWatchScope private(
   orderWatchPath: OrderWatchPath,
   matchedMatcher: Matcher)
 extends Scope:
+
   override lazy val nameToCheckedValue =
     new MapView[String, Right[Nothing, Value]]:
       def get(key: String): Option[Right[Nothing, Value]] =

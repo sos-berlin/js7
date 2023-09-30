@@ -12,6 +12,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import scala.jdk.CollectionConverters.*
 
 private[x509] final case class X509Cert(x509Certificate: X509Certificate):
+
   import x509Certificate.*
 
   lazy val signersDistinguishedName = new DistinguishedName(getSubjectX500Principal)

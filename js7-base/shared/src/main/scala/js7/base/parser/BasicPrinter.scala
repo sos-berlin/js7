@@ -4,6 +4,7 @@ import java.lang.Character.{isIdentifierIgnorable, isUnicodeIdentifierPart, isUn
 import js7.base.utils.ScalaUtils.withStringBuilder
 
 object BasicPrinter:
+
   def identifierToString(identifier: String): String =
     if identifierRequiresBacktick(identifier) then
       withStringBuilder(appendIdentifierWithBackticks(_, identifier))

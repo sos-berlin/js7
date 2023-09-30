@@ -30,6 +30,7 @@ final case class AgentRefState(
   nodeToClusterNodeProblem: Map[NodeId, ClusterNodeLossNotConfirmedProblem] = Map.empty,
   platformInfo: Option[PlatformInfo])
 extends UnsignedSimpleItemState:
+
   protected type Self = AgentRefState
   val companion: AgentRefState.type = AgentRefState
 

@@ -22,6 +22,7 @@ import scala.jdk.OptionConverters.*
 
 final case class JFileWatch(asScala: FileWatch)
 extends JJsonable[JFileWatch] with JUnsignedSimpleItem:
+
   type AsScala = FileWatch
   protected def companion = JFileWatch
 

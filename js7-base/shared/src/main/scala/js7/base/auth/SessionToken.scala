@@ -9,6 +9,7 @@ import scala.util.control.NonFatal
   * @author Joacim Zschimmer
   */
 final case class SessionToken(secret: SecretString):
+
   lazy val number: Long =
     numberOf(secret.string)
 

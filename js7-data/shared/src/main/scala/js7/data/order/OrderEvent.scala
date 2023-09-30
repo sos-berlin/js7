@@ -73,6 +73,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     def addedOrderId(orderId: OrderId) = orderId
     override def toShortString = s"OrderAdded(${workflowId.path})"
   object OrderAdded:
+
     private[OrderEvent] implicit val jsonCodec: Encoder.AsObject[OrderAdded] =
       o => JsonObject(
         "workflowId" -> o.workflowId.asJson,
@@ -117,6 +118,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     def addedOrderId(o: OrderId) = orderId
     override def toShortString = s"OrderOrderAdded($orderId, ${workflowId.path})"
   object OrderOrderAdded:
+
     private[OrderEvent] implicit val jsonCodec: Encoder.AsObject[OrderOrderAdded] =
       o => JsonObject(
         "orderId" -> o.orderId.asJson,

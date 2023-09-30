@@ -13,6 +13,7 @@ import scala.jdk.OptionConverters.RichOptional
 
 final case class JSubagentSelection(asScala: SubagentSelection)
 extends JJsonable[JSubagentSelection] with JUnsignedSimpleItem:
+
   type AsScala = SubagentSelection
   protected def companion = JSubagentSelection
 

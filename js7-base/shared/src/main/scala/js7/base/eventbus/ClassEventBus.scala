@@ -12,6 +12,7 @@ import scala.reflect.ClassTag
 import scala.util.control.NonFatal
 
 trait ClassEventBus[E] extends EventPublisher[E] with AutoCloseable:
+
   protected type Classifier
   protected type ClassifierToEvent[C <: Classifier] <: E
   private type Cls = Class[? <: Classifier]

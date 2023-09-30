@@ -10,6 +10,7 @@ import js7.common.files.ByteArrayReader.*
 
 final class ByteArrayReader(file: Path, fromEnd: Boolean = false)
 extends AutoCloseable:
+
   val channel = FileChannel.open(file, READ)
   val buffer = ByteBuffer.allocate(ChunkSize)
 

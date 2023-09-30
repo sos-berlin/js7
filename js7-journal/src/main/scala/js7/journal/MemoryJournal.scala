@@ -28,6 +28,7 @@ final class MemoryJournal[S <: JournaledState[S]] private[journal](
   eventIdGenerator: EventIdGenerator = new EventIdGenerator)
   (implicit protected val S: JournaledState.Companion[S])
 extends Journal[S]:
+
   val journalId = JournalId.random()
 
   private val stateLock = AsyncLock("MemoryJournal.state")

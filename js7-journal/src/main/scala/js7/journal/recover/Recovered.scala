@@ -18,6 +18,7 @@ final class Recovered[S <: SnapshotableState[S]] private(
   val eventWatch: JournalEventWatch)
   (implicit S: SnapshotableState.Companion[S])
 extends AutoCloseable:
+
   def close() =
     eventWatch.close()
 

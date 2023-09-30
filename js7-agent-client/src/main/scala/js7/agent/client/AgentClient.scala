@@ -36,6 +36,7 @@ trait AgentClient
 extends HttpSessionApi with AkkaHttpClient
 with SessionApi.HasUserAndPassword
 with HttpClusterNodeApi:
+
   def httpClient = this
 
   def baseUri: Uri

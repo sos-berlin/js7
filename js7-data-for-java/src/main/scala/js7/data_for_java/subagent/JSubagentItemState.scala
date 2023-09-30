@@ -10,6 +10,7 @@ import scala.jdk.OptionConverters.*
 
 final case class JSubagentItemState(asScala: SubagentItemState)
 extends JJsonable[JSubagentItemState]:
+
   type AsScala = SubagentItemState
   protected def companion = JSubagentItemState
 

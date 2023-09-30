@@ -5,6 +5,7 @@ import io.circe.{Json, ParsingFailure}
 import java.nio.ByteBuffer
 
 private[circeutils] object CirceUtilsForPlatform:
+
   private val jawnParser = new JawnParser()
 
   private[circeutils] def parseJsonByteArray(bytes: Array[Byte]): Either[ParsingFailure, Json] =

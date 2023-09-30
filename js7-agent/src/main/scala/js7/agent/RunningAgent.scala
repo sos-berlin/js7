@@ -71,6 +71,7 @@ final class RunningAgent private(
   val conf: AgentConfiguration)
   (implicit val scheduler: Scheduler)
 extends MainService with Service.StoppableByRequest:
+
   protected type Termination = DirectorTermination
 
   lazy val localUri: Uri = getLocalUri()

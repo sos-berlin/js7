@@ -16,6 +16,7 @@ import scala.util.{Failure, Success, Try}
   * @author Joacim Zschimmer
   */
 object JavaMainLockfileSupport:
+
   // Do not call any function that may use a Logger before we own the lock file !!!
   // Because this could trigger an unexpected log file rotation.
 

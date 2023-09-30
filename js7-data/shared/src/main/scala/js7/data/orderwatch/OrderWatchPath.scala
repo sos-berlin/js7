@@ -6,6 +6,7 @@ import js7.data.item.{InventoryItemPath, UnsignedSimpleItemPath}
 final case class OrderWatchPath(string: String)
 extends UnsignedSimpleItemPath
 with InventoryItemPath.AttachableToAgent:
+
   protected type Self = OrderWatchPath
 
   val companion: OrderWatchPath.type = OrderWatchPath

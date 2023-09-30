@@ -17,6 +17,7 @@ import org.jetbrains.annotations.TestOnly
   */
 final class OutputStreamJsonSeqWriter(out: OutputStream, withRS: Boolean = false)
 extends AutoCloseable:
+
   private val extraLength = if withRS then 2 else 1
   private var _written = 0L
 

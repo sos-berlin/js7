@@ -5,6 +5,7 @@ package js7.base.problem
   */
 case class ProblemException private(problem: Problem, message: String, cause: Throwable)
 extends RuntimeException(message, cause):
+
   protected[problem] def this(problem: Problem, cause: Throwable) =
     this(problem, problem.message, cause)
 

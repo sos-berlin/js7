@@ -16,6 +16,7 @@ import scala.concurrent.duration.*
 final class ScheduleCalculator private(
   schedule: Schedule, zone: ZoneId, dateOffset: FiniteDuration, onlyOnePeriod: Boolean)
 extends ScheduleSimulator:
+
   def nextCycleState(now: Timestamp, cycleState: CycleState): Option[CycleState] =
     nextCycle(now, cycleState)
       .flatMap { case (schemeIndex, periodIndex, next) =>

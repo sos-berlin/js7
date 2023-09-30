@@ -4,6 +4,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import scala.jdk.CollectionConverters.*
 
 object Threads:
+
   def allThreadStackTraces(): Seq[String] =
     Thread.getAllStackTraces.asScala
       .toVector

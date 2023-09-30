@@ -1,6 +1,7 @@
 package js7.base.number
 
 object Numbers:
+
   // Like java.lang.Math.addExact
   def addSaturating(a: Long, b: Long): Long =
     val r = a + b

@@ -13,6 +13,7 @@ final class CommandLineJobLauncher(
   protected val jobConf: JobConf,
   protected val jobLauncherConf: JobLauncherConf)
 extends ProcessJobLauncher:
+
   override def stop = Task.unit
 
   def toOrderProcess(processOrder: ProcessOrder): Task[Checked[OrderProcess]] =

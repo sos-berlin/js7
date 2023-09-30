@@ -18,6 +18,7 @@ with EventRoute
 with SessionRoute
 with JournalRoute
 with ClusterRoute:
+
   protected final val apiRoute: Route =
     pathPrefix(Segment) {
       case "event" => eventRoute

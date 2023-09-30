@@ -14,6 +14,7 @@ import scala.util.control.NonFatal
   * @author Joacim Zschimmer
   */
 private class DeadLetterActor(output: (LogLevel, () => String) => Unit) extends Actor:
+
   def receive =
     case DeadLetter(_: DeadLetterSuppression, _, _) =>
     case UnhandledMessage(_: DeadLetterSuppression, _, _) =>

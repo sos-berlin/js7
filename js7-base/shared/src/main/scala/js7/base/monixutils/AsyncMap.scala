@@ -13,6 +13,7 @@ import js7.base.utils.{AsyncLock, LockKeeper}
 import monix.eval.Task
 
 class AsyncMap[K: Tag, V: Tag](initial: Map[K, V] = Map.empty[K, V]):
+
   private val lockKeeper = new LockKeeper[K]
   protected val name =
     s"AsyncMap[${implicitly[Tag[K]].tag}, ${implicitly[Tag[V]].tag}]"

@@ -25,6 +25,7 @@ private[journal] abstract class JournalWriter(
   after: EventId,
   append: Boolean)
 extends AutoCloseable:
+
   def file: Path
   protected def simulateSync: Option[FiniteDuration]
   protected val statistics: StatisticsCounter

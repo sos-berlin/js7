@@ -7,6 +7,7 @@ import js7.data.item.{InventoryItem, SimpleItem, SourceType}
 final class SimpleItemReader private(
   val companion: SimpleItem.Companion_)
 extends ItemReader:
+
   def read(key: companion.Key, source: ByteArray)
   : PartialFunction[SourceType, Checked[InventoryItem]] =
     case SourceType.Json =>

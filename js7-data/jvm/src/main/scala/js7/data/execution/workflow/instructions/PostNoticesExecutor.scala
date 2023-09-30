@@ -14,6 +14,7 @@ import js7.data.workflow.instructions.{ExpectOrConsumeNoticesInstruction, PostNo
 private[instructions] final class PostNoticesExecutor(
   protected val service: InstructionExecutorService)
 extends EventInstructionExecutor:
+
   type Instr = PostNotices
   val instructionClass = classOf[PostNotices]
 

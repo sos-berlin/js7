@@ -36,6 +36,7 @@ final class OrderActor private(
   protected val journalConf: JournalConf)
   (implicit protected val scheduler: Scheduler)
 extends KeyedJournalingActor[AgentState, OrderEvent]:
+
   private val logger = Logger.withPrefix[this.type](orderId.toString)
 
   private var order: Order[Order.State] = null

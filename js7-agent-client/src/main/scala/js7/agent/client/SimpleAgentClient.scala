@@ -22,6 +22,7 @@ final class SimpleAgentClient(
   protected val userAndPassword: Option[UserAndPassword],
   protected val httpsConfig: HttpsConfig = HttpsConfig.empty)
 extends HasCloser with AgentClient:
+
   protected val name = "SimpleAgentClient"
   protected val actorSystem =
     newActorSystem("SimpleAgentClient", config"akka.log-dead-letters = 0")

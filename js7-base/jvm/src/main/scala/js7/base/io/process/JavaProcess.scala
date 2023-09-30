@@ -5,6 +5,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
 
 final class JavaProcess(process: Process) extends Js7Process:
+
   def isAlive =
     process.isAlive
 

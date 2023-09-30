@@ -19,6 +19,7 @@ import scala.concurrent.duration.FiniteDuration
 trait AgentEvent extends NoKeyEvent
 
 object AgentEvent extends NoKeyEvent:
+
   /** Agent has been dedicated to a Controller. */
   final case class AgentDedicated(
     directors: Seq[SubagentId],

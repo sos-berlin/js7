@@ -4,6 +4,7 @@ import js7.base.data.ByteArray
 import js7.base.problem.{Checked, Problem}
 
 final class Pem private(val typeName: String):
+
   private val begin = s"-----BEGIN $typeName-----"
   private val end = s"-----END $typeName-----"
 

@@ -18,6 +18,7 @@ import monix.execution.Scheduler
   * @author Joacim Zschimmer
   */
 trait CommandRoute extends ControllerRouteProvider:
+
   protected def config: Config
 
   private lazy val entitySizeLimit =

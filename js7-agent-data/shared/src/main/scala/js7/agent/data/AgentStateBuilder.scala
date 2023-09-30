@@ -16,6 +16,7 @@ import scala.collection.mutable
 
 final class AgentStateBuilder
 extends SnapshotableStateBuilder[AgentState]:
+
   protected val S = AgentState
 
   private var agentMetaState = AgentMetaState.empty

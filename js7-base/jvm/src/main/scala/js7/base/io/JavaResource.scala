@@ -18,6 +18,7 @@ import scala.language.implicitConversions
  * @author Joacim Zschimmer
  */
 final case class JavaResource(classLoader: ClassLoader, path: String):
+
   requireNonNull(classLoader)
   require(!(path startsWith "/"), s"JavaResource must not start with a slash: $path")
 
@@ -45,7 +46,7 @@ final case class JavaResource(classLoader: ClassLoader, path: String):
     */
   def copyToFiles(resourceNames: Iterable[String], directory: Path, copyOptions: CopyOption*)
   : Seq[Path] =
-    val resourcePathAndDllFiles = for name <- resourceNames yield 
+    val resourcePathAndDllFiles = for name <- resourceNames yield
       (this / name, directory resolve name)
     for (resourcePath, file) <- resourcePathAndDllFiles do
       resourcePath.copyToFile(file, copyOptions*)   // After an exception here, already created files are left !!!
@@ -102,6 +103,7 @@ final case class JavaResource(classLoader: ClassLoader, path: String):
   override def toString = path
 
 object JavaResource:
+
   private val logger = Logger[this.type]
 
   def apply(classLoader: ClassLoader, path: String): JavaResource =

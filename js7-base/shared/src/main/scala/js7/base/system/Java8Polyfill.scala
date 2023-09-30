@@ -5,6 +5,7 @@ import java.io.{InputStream, OutputStream}
 import scala.annotation.{nowarn, tailrec}
 
 object Java8Polyfill:
+
   private val byteBufferSize = 8192
 
   val javaVersion: Int =

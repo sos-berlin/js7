@@ -18,6 +18,7 @@ final case class BoardState(
   idToNotice: Map[NoticeId, NoticePlace] = Map.empty,
   orderToConsumptionStack: Map[OrderId, List[NoticeId]] = Map.empty)
 extends UnsignedSimpleItemState:
+
   protected type Self = BoardState
   val companion: BoardState.type = BoardState
 

@@ -10,6 +10,7 @@ import scala.jdk.FutureConverters.*
 
 final case class JOrderProcess(asScala: OrderProcess)
 extends JavaWrapper:
+
   type AsScala = OrderProcess
 
 object JOrderProcess:

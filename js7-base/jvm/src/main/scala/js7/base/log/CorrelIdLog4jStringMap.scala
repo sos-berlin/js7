@@ -7,6 +7,7 @@ import org.apache.logging.log4j.util.{BiConsumer, ReadOnlyStringMap, StringMap, 
 
 final class CorrelIdLog4jStringMap(private[log] val correlId: CorrelId)
 extends StringMap:
+
   private def correlIdString =
     if correlId != null then
       correlId.fixedWidthString

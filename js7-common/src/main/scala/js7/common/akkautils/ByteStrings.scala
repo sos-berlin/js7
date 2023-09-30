@@ -5,6 +5,7 @@ import js7.base.data.ByteSequence
 import js7.base.data.ByteSequence.ops.*
 
 object ByteStrings:
+
   object syntax:
     implicit val byteStringByteSequence: ByteSequence[ByteString] =
       ByteStringByteSequence

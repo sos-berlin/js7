@@ -12,6 +12,7 @@ import scala.collection.mutable
 final class ByteSequenceToLinesObservable[ByteSeq](
   implicit ByteSeq: ByteSequence[ByteSeq])
 extends (ByteSeq => Observable[ByteArray]):
+
   private val lines = mutable.Buffer.empty[ByteArray]
   private lazy val startedLine = mutable.ArrayBuffer.empty[ByteSeq]
 

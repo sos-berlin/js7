@@ -14,6 +14,7 @@ final class TypedJsonCodec[A](
   private val printName: String,
   private val subtypes: Seq[Subtype[A]])
 extends Codec.AsObject[A]:
+
   val classToEncoder: Map[Class[?], Encoder.AsObject[A]] =
     subtypes
       .flatMap(_.classToEncoder)

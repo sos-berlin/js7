@@ -16,6 +16,7 @@ import scala.collection.View
 
 private[instructions] final class ForkListExecutor(protected val service: InstructionExecutorService)
 extends ForkInstructionExecutor:
+
   type Instr = ForkList
   val instructionClass = classOf[ForkList]
 

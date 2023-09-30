@@ -8,6 +8,7 @@ import monix.reactive.{Observable, OverflowStrategy}
 import scala.concurrent.duration.*
 
 object ObservablePauseDetector:
+
   private implicit val overflowStrategy: OverflowStrategy.BackPressure =
     OverflowStrategy.BackPressure(bufferSize = 2/*minimum*/)
 

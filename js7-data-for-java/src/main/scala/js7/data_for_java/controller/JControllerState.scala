@@ -50,6 +50,7 @@ import scala.jdk.StreamConverters.*
 @javaApi
 final case class JControllerState(asScala: ControllerState)
 extends JJournaledState[JControllerState, ControllerState]:
+
   @Nonnull
   def eventId: Long =
     asScala.eventId

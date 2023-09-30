@@ -7,6 +7,7 @@ import js7.base.problem.Problems.InvalidNameProblem
 
 trait Js7PathValidating[A <: GenericString]
 extends GenericString.Checked_[A]:
+
   private lazy val pathValidator = new Js7PathValidator(name)
 
   final def isNameStart(c: Char) =

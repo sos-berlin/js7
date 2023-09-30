@@ -10,6 +10,7 @@ import js7.base.time.ScalaTime.*
 import scala.concurrent.duration.Deadline.now
 
 object JavaHeapDump:
+
   private val logger = Logger[this.type]
 
   private lazy val hotspotMBean = newPlatformMXBeanProxy(

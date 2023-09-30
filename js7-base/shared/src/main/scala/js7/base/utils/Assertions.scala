@@ -4,6 +4,7 @@ import js7.base.system.OperatingSystem.isWindows
 import js7.base.utils.ScalaUtils.syntax.*
 
 object Assertions:
+
   def assertThat(predicate: sourcecode.Text[Boolean])
     (implicit fullName: sourcecode.FullName, filename: sourcecode.FileName, line: sourcecode.Line)
   : Unit =

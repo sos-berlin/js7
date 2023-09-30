@@ -6,6 +6,7 @@ import js7.base.standards.Js7NameValidator.*
 
 final class Js7NameValidator(val typeName: String)
 extends NameValidator:
+
   private val javaNameValidator = new JavaNameValidator(
     typeName,
     isExtraNameStart = _.isDigit,

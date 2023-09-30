@@ -14,6 +14,7 @@ import scala.jdk.OptionConverters.*
 
 final case class JAgentRef(asScala: AgentRef)
 extends JJsonable[JAgentRef] with JUnsignedSimpleItem:
+
   type AsScala = AgentRef
   protected def companion = JAgentRef
 

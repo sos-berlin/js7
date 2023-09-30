@@ -45,6 +45,7 @@ final class ClusterWatchService private[ClusterWatchService](
   onClusterStateChanged: (HasNodes) => Unit,
   onUndecidableClusterNodeLoss: OnUndecidableClusterNodeLoss)
 extends MainService with Service.StoppableByRequest:
+
   protected type Termination = ProgramTermination
 
   // Public for test

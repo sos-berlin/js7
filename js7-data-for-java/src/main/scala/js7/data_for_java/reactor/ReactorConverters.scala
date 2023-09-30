@@ -5,6 +5,7 @@ import monix.reactive.Observable
 import reactor.core.publisher.Flux
 
 object ReactorConverters:
+
   implicit final class FluxObservable[A](private val asScala: Observable[A]) extends AnyVal:
     /** Convert this Monix Observable to a Reactor Flux. */
     def asFlux(implicit scheduler: Scheduler): Flux[A] =

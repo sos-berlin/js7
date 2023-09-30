@@ -11,6 +11,7 @@ import monix.execution.atomic.AtomicAny
 import scala.util.control.NonFatal
 
 final class Closer extends AutoCloseable:
+
   private val stack = new ConcurrentLinkedDeque[AutoCloseable]
   private val throwable = AtomicAny[Throwable](null)
 

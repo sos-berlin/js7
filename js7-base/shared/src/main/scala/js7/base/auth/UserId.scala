@@ -9,6 +9,7 @@ import js7.base.problem.Problems.InvalidNameProblem
   * @author Joacim Zschimmer
   */
 final case class UserId private(string: String) extends GenericString:
+
   def isAnonymous = this == UserId.Anonymous
 
   override def toString = s"User:$string"

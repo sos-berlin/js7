@@ -1,6 +1,7 @@
 package js7.base.log
 
 object AnsiEscapeCodes:
+
   /** Reset color and mode. */
   @inline val resetColor = "\u001B[0m"
   @inline val bold = "\u001B[1m"

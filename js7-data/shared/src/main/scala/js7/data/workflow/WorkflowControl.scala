@@ -13,6 +13,7 @@ final case class WorkflowControl(
 extends VersionedControl
 with UnsignedItemState
 with TrivialItemState[WorkflowControl]:
+
   protected type Self = WorkflowControl
   val companion: WorkflowControl.type = WorkflowControl
   val item: WorkflowControl = this

@@ -1,6 +1,7 @@
 package js7.base.log
 
 object LoggingEscapeCodes:
+
   @inline val isColorAllowed: Boolean =
     sys.props.get("js7.log.colored").forall(Set("true", "yes", "on", ""))
 

@@ -66,7 +66,7 @@ final class AsyncLock private(
                     s"⟲ $sym${locked.nr} $name enqueues    ${locked.who} (currently acquired by ${lockedBy.withCorrelId}) ...")
                   mvar.put(locked)
                     .whenItTakesLonger(warnTimeouts) { _ =>
-                      for lockedBy <- mvar.tryRead yield 
+                      for lockedBy <- mvar.tryRead yield
                         sym.onInfo()
                         logger.info(
                           s"⟲ $sym${locked.nr} $name: ${locked.who} is still waiting" +
@@ -116,6 +116,7 @@ final class AsyncLock private(
     correlId: CorrelId,
     private[AsyncLock] val nr: Int,
     acquirerToString: => String):
+
     private[AsyncLock] lazy val acquirer = acquirerToString
     private var lockedSince: Long = 0
 

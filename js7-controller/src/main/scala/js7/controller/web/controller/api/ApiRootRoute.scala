@@ -20,6 +20,7 @@ import scala.concurrent.duration.Deadline
   * @author Joacim Zschimmer
   */
 trait ApiRootRoute extends ControllerRouteProvider:
+
   protected def controllerId: ControllerId
   protected def controllerState: Task[Checked[ControllerState]]
   protected def totalRunningSince: Deadline

@@ -13,6 +13,7 @@ final case class Finish(
   outcome: Option[Outcome.Completed] = None,
   sourcePos: Option[SourcePos] = None)
 extends Instruction:
+
   def withoutSourcePos = copy(sourcePos = None)
 
 object Finish:
