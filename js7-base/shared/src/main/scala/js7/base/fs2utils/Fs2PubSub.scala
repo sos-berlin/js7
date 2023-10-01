@@ -6,7 +6,6 @@ import cats.syntax.functor.*
 import fs2.Stream
 import fs2.concurrent.Topic
 import js7.base.catsutils.UnsafeMemoizable
-import js7.base.catsutils.UnsafeMemoizable.syntax.*
 
 final class Fs2PubSub[F[_]: Concurrent: UnsafeMemoizable, A <: AnyRef]:
 

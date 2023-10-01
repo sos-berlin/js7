@@ -5,19 +5,20 @@ import cats.effect.{Concurrent, IO, Sync, SyncIO}
 import cats.syntax.flatMap.*
 import cats.syntax.functor.*
 import java.util.concurrent.atomic.AtomicInteger
-import js7.base.catsutils.UnsafeMemoizable.syntax.*
+import js7.base.catsutils.UnsafeMemoizable.given
 import js7.base.test.OurAsyncTestSuite
 import monix.eval.Task
 import org.scalatest.Assertion
 import scala.concurrent.ExecutionContext
 
 final class UnsafeMemoizableTest extends OurAsyncTestSuite:
+
   "without unsafeMemoize" in:
-    implicit val concurrent: Concurrent[IO] = makeConcurrent()
+    given Concurrent[IO] = makeConcurrent()
     check[IO](identity, 3).unsafeToFuture()
 
   "unsafeMemoize with Cats IO" in:
-    implicit val concurrent: Concurrent[IO] = makeConcurrent()
+    given Concurrent[IO] = makeConcurrent()
     check[IO](_.unsafeMemoize, 1).unsafeToFuture()
 
   private def makeConcurrent(): Concurrent[IO] =
@@ -30,6 +31,9 @@ final class UnsafeMemoizableTest extends OurAsyncTestSuite:
   "unsafeMemoize with Monix Task, direct" in:
     import monix.execution.Scheduler.Implicits.traced
     check[Task](_.unsafeMemoize, 1).runToFuture
+
+  "Original memoize with Monix Task, direct" in:
+    import monix.execution.Scheduler.Implicits.traced
     check[Task](_.memoize/*native*/, 1).runToFuture
 
   "unsafeMemoize with Monix Task, via Concurrent" in:

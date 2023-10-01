@@ -1,7 +1,7 @@
 package js7.base.utils
 
 import cats.effect.{ContextShift, IO, Resource}
-import js7.base.catsutils.UnsafeMemoizable.concurrentMemoizable
+import js7.base.catsutils.UnsafeMemoizable
 import js7.base.test.OurAsyncTestSuite
 import js7.base.utils.CatsUtils.syntax.RichResource
 import monix.execution.Scheduler
@@ -33,7 +33,7 @@ final class AllocatedTest extends OurAsyncTestSuite:
   "Allocated" in:
     assert(nr == 0)
     val res = resource.toAllocatedResource.flatMap(a => resource.toAllocatedResource.map(a -> _))
-    res.use { case (a, b) =>
+    res.use { (a, b) =>
       IO:
         assert(nr == 2 && a.allocatedThing == 1 && b.allocatedThing == 2)
     }.map(_ => assert(nr == 0))
