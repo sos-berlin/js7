@@ -1,6 +1,7 @@
 package js7.base.test
 
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
+import org.scalactic.source
 import org.scalatest.Assertion
 import org.scalatest.freespec.AsyncFreeSpec
 import scala.concurrent.Future
@@ -20,6 +21,7 @@ trait LoggingAsyncFreeSpec extends AsyncFreeSpec:
   protected def suppressTestCorrelId = false
 
   protected implicit inline def implicitToFreeSpecStringWrapper(name: String)
+    (implicit pos: source.Position)
   : LoggingFreeSpecStringWrapper[Future[Assertion], ResultOfTaggedAsInvocationOnString] =
     testAdder.toStringWrapper(
       name,
@@ -37,12 +39,15 @@ trait LoggingAsyncFreeSpec extends AsyncFreeSpec:
     Future.fromTry(Try(startFuture)).flatten
 
   private def toUnified(stringWrapper: FreeSpecStringWrapper) =
-    new LoggingFreeSpecStringWrapper.UnifiedStringWrapper[Future[Assertion], ResultOfTaggedAsInvocationOnString]:
+    new LoggingFreeSpecStringWrapper.UnifiedStringWrapper[
+      Future[Assertion],
+      ResultOfTaggedAsInvocationOnString
+    ]:
       def -(addTests: => Unit) =
         stringWrapper - addTests
 
       def in(testBody: => Future[Assertion]) =
-        testBody
+        stringWrapper in testBody
 
       def taggedAs(tag: Tag, more: Tag*) =
         new LoggingFreeSpecStringWrapper.TaggedAs[Future[Assertion]]:
