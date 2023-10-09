@@ -94,6 +94,14 @@ object Logger:
       def infoTask[A](functionName: String, args: => Any = "")(task: Task[A]): Task[A] =
         logF[Task, A](logger, LogLevel.Info, functionName, args)(task)
 
+      def infoF[F[_], A](body: F[A])(using F: Sync[F], src: sourcecode.Name)
+      : F[A] =
+        infoF[F, A](functionName = src.value)(body)
+
+      def infoF[F[_], A](functionName: String, args: => Any = "")(body: F[A])(implicit F: Sync[F])
+      : F[A] =
+        logF[F, A](logger, LogLevel.Info, functionName, args)(body)
+
       def debugTask[A](task: Task[A])(implicit src: sourcecode.Name): Task[A] =
         debugTask(src.value)(task)
 
@@ -105,6 +113,10 @@ object Logger:
 
       def debugCall[A](functionName: String, args: => Any = "")(body: => A): A =
         logF[SyncIO, A](logger, LogLevel.Debug, functionName, args)(SyncIO(body)).unsafeRunSync()
+
+      def debugF[F[_], A](body: F[A])(using F: Sync[F], src: sourcecode.Name)
+      : F[A] =
+        debugF[F, A](functionName = src.value)(body)
 
       def debugF[F[_], A](functionName: String, args: => Any = "")(body: F[A])(implicit F: Sync[F])
       : F[A] =
@@ -131,6 +143,10 @@ object Logger:
 
       def traceTask[A](function: String, args: => Any = "")(task: Task[A]): Task[A] =
         logF[Task, A](logger, LogLevel.Trace, function, args)(task)
+
+      def traceF[F[_], A](body: F[A])(using F: Sync[F], src: sourcecode.Name)
+      : F[A] =
+        traceF(functionName = src.value)(body)
 
       def traceF[F[_], A](functionName: String, args: => Any = "")(body: F[A])(implicit F: Sync[F])
       : F[A] =
@@ -309,9 +325,12 @@ object Logger:
     exitCase: ExitCase[Throwable])
   : Unit =
     exitCase match
-      case Error(t) => logReturn(logger, logLevel, function, args, duration, "💥️", t.toStringWithCauses)
-      case Canceled => logReturn(logger, logLevel, function, args, duration, "⚫️", "Canceled")
-      case Completed => logReturn(logger, logLevel, function, args, duration, "", "Completed")
+      case Error(t) =>
+        logReturn(logger, logLevel, function, args, duration, "💥️", t.toStringWithCauses)
+      case Canceled =>
+        logReturn(logger, logLevel, function, args, duration, "⚫️", "Canceled")
+      case Completed =>
+        logReturn(logger, logLevel, function, args, duration, "", "Completed")
 
   private def logReturn(
     logger: ScalaLogger,
@@ -331,10 +350,11 @@ object Logger:
         case LogLevel.Info  => logger.info (s"↙$marker $function => $duration$msg ↙")
         case LogLevel.Warn  => logger.warn (s"↙$marker $function => $duration$msg ↙")
         case LogLevel.Error => logger.error(s"↙$marker $function => $duration$msg ↙")
-    else logLevel match
-      case LogLevel.LogNone =>
-      case LogLevel.Trace => logger.trace(s"↙$marker $function($argsString) => $duration$msg ↙")
-      case LogLevel.Debug => logger.debug(s"↙$marker $function($argsString) => $duration$msg ↙")
-      case LogLevel.Info  => logger.info (s"↙$marker $function($argsString) => $duration$msg ↙")
-      case LogLevel.Warn  => logger.warn (s"↙$marker $function($argsString) => $duration$msg ↙")
-      case LogLevel.Error => logger.error(s"↙$marker $function($argsString) => $duration$msg ↙")
+    else
+      logLevel match
+        case LogLevel.LogNone =>
+        case LogLevel.Trace => logger.trace(s"↙$marker $function($argsString) => $duration$msg ↙")
+        case LogLevel.Debug => logger.debug(s"↙$marker $function($argsString) => $duration$msg ↙")
+        case LogLevel.Info  => logger.info (s"↙$marker $function($argsString) => $duration$msg ↙")
+        case LogLevel.Warn  => logger.warn (s"↙$marker $function($argsString) => $duration$msg ↙")
+        case LogLevel.Error => logger.error(s"↙$marker $function($argsString) => $duration$msg ↙")
