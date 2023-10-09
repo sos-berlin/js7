@@ -38,11 +38,12 @@ import js7.base.thread.Futures.promiseFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.AlarmClock
 import js7.base.time.JavaTimeConverters.AsScalaDuration
+import js7.base.utils.Atomic.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{Allocated, ProgramTermination}
+import js7.base.utils.{Allocated, Atomic, ProgramTermination}
 import js7.base.web.Uri
 import js7.cluster.ClusterNode
 import js7.common.pekkohttp.web.PekkoWebServer
@@ -62,7 +63,6 @@ import js7.license.LicenseCheckContext
 import js7.subagent.Subagent
 import monix.eval.Task
 import monix.execution.Scheduler
-import monix.execution.atomic.Atomic
 import scala.collection.mutable
 import scala.concurrent.{Future, Promise}
 

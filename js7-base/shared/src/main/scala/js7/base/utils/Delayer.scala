@@ -10,7 +10,6 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.Delayer.*
 import monix.eval.{Task, TaskLike}
-import monix.execution.atomic.Atomic
 import monix.reactive.Observable
 import scala.concurrent.duration.*
 

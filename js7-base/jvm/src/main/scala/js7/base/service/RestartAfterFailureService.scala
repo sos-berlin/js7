@@ -12,9 +12,8 @@ import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.Delayer.syntax.RichDelayerTask
 import js7.base.utils.ScalaUtils.some
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{Allocated, DelayConf, Delayer}
+import js7.base.utils.{Allocated, Atomic, DelayConf, Delayer}
 import monix.eval.Task
-import monix.execution.atomic.Atomic
 import scala.concurrent.duration.*
 
 final class RestartAfterFailureService[S <: Service: Tag] private[service](

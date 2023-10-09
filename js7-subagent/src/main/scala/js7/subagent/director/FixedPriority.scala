@@ -1,6 +1,6 @@
 package js7.subagent.director
 
-import monix.execution.atomic.Atomic
+import js7.base.utils.Atomic
 import scala.annotation.tailrec
 
 private final class FixedPriority:

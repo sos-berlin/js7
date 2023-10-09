@@ -6,10 +6,10 @@ import java.security.SecureRandom
 import js7.base.circeutils.CirceUtils.*
 import js7.base.generic.GenericString
 import js7.base.problem.{Checked, Problem}
+import js7.base.utils.Atomic
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.{isIntelliJIdea, isTest}
 import monix.execution.Scheduler
-import monix.execution.atomic.Atomic
 import monix.execution.misc.Local
 import monix.execution.schedulers.TracingScheduler
 

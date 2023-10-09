@@ -6,7 +6,6 @@ import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.utils.CatsUtils.syntax.RichResource
 import monix.eval.Task
 import monix.execution.Scheduler
-import monix.execution.atomic.Atomic
 import scala.concurrent.duration.*
 import scala.util.Try
 

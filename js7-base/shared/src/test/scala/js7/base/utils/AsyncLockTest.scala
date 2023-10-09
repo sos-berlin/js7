@@ -4,9 +4,9 @@ import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
 import js7.base.utils.AsyncLockTest.*
+import js7.base.utils.Atomic.syntax.*
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
-import monix.execution.atomic.Atomic
 import monix.reactive.Observable
 import scala.concurrent.Promise
 import scala.concurrent.duration.FiniteDuration

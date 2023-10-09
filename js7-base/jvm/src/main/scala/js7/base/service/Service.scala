@@ -12,9 +12,9 @@ import js7.base.monixutils.MonixDeadline.syntax.DeadlineSchedule
 import js7.base.problem.Problem
 import js7.base.service.Service.*
 import js7.base.time.ScalaTime.*
+import js7.base.utils.Atomic
 import js7.base.utils.ScalaUtils.syntax.*
 import monix.eval.Task
-import monix.execution.atomic.Atomic
 import scala.concurrent.duration.*
 import scala.util.{Failure, Success, Try}
 

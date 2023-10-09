@@ -2,9 +2,9 @@ package js7.base.time
 
 import cats.effect.{Resource, Sync}
 import js7.base.time.ScalaTime.*
+import js7.base.utils.Atomic
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import monix.eval.Task
-import monix.execution.atomic.Atomic
 import monix.execution.cancelables.SerialCancelable
 import monix.execution.{Cancelable, Scheduler}
 import scala.annotation.unused

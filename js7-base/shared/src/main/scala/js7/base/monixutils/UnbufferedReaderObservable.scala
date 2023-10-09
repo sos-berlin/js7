@@ -22,10 +22,10 @@
 package js7.base.monixutils
 
 import java.io.Reader
+import js7.base.utils.Atomic
 import monix.eval.Task
 import monix.execution.*
 import monix.execution.Ack.{Continue, Stop}
-import monix.execution.atomic.Atomic
 import monix.execution.cancelables.BooleanCancelable
 import monix.execution.exceptions.APIContractViolationException
 import monix.reactive.Observable

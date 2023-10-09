@@ -12,8 +12,9 @@ import js7.base.monixutils.Switch
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
-import js7.base.utils.AsyncLock
+import js7.base.utils.Atomic.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.{AsyncLock, Atomic}
 import js7.common.http.RecouplingStreamReader
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.data.event.JournalEvent.StampedHeartbeat
@@ -32,7 +33,6 @@ import js7.subagent.configuration.SubagentConf
 import js7.subagent.director.SubagentEventListener.*
 import monix.catnap.MVar
 import monix.eval.{Fiber, Task}
-import monix.execution.atomic.Atomic
 import monix.reactive.Observable
 import scala.util.chaining.scalaUtilChainingOps
 

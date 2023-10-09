@@ -13,10 +13,10 @@ import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.service.Service
 import js7.base.stream.Numbered
-import js7.base.utils.AsyncLock
 import js7.base.utils.CatsUtils.completedFiber
 import js7.base.utils.ScalaUtils.chunkStrings
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.{AsyncLock, Atomic}
 import js7.core.command.CommandMeta
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
@@ -40,7 +40,6 @@ import js7.launcher.internal.JobLauncher
 import js7.subagent.DedicatedSubagent.*
 import js7.subagent.configuration.SubagentConf
 import monix.eval.{Fiber, Task}
-import monix.execution.atomic.Atomic
 import monix.reactive.Observable
 import monix.reactive.subjects.PublishSubject
 import scala.concurrent.Promise
@@ -69,7 +68,7 @@ extends Service.StoppableByRequest:
   def isLocal = true
 
   def isShuttingDown: Boolean =
-    shuttingDown()
+    shuttingDown.get()
 
   protected def start =
     startService(

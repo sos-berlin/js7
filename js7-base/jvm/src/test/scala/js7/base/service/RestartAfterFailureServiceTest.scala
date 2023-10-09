@@ -12,10 +12,11 @@ import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
+import js7.base.utils.Atomic
+import js7.base.utils.Atomic.syntax.*
 import js7.base.utils.CatsUtils.syntax.RichResource
 import monix.eval.Task
 import monix.execution.Scheduler
-import monix.execution.atomic.Atomic
 import monix.execution.schedulers.TestScheduler
 import scala.collection.mutable
 import scala.concurrent.duration.*
@@ -103,7 +104,7 @@ final class RestartAfterFailureServiceTest extends OurTestSuite:
       // not terminate, and the caller has no opportunity to stop the not yet started service.
       // But start is cancelable !!!
 
-      private lazy val unique = uniqueCounter.getAndIncrement(1)
+      private lazy val unique = uniqueCounter.getAndAdd(1)
 
       protected def start =
         Task.defer:

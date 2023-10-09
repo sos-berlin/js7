@@ -6,9 +6,10 @@ import js7.base.log.CorrelId
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.Atomic.syntax.*
 import js7.base.utils.BinarySearch.binarySearch
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{AsyncLock, CloseableIterator}
+import js7.base.utils.{AsyncLock, Atomic, CloseableIterator}
 import js7.data.event.{Event, EventId, JournalId, JournalInfo, JournaledState, KeyedEvent, Stamped}
 import js7.journal.log.JournalLogger
 import js7.journal.log.JournalLogger.SimpleLoggable
@@ -16,7 +17,6 @@ import js7.journal.state.Journal
 import js7.journal.watch.RealEventWatch
 import monix.catnap.Semaphore
 import monix.eval.Task
-import monix.execution.atomic.Atomic
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.Deadline.now
 

@@ -14,8 +14,8 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.service.Service
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
-import js7.base.utils.AsyncLock
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.{AsyncLock, Atomic}
 import js7.common.http.RecouplingStreamReader
 import js7.controller.agent.AgentDriver.DecoupledProblem
 import js7.controller.agent.DirectorDriver.*
@@ -32,7 +32,6 @@ import js7.data.orderwatch.OrderWatchEvent
 import js7.data.subagent.SubagentItemStateEvent
 import js7.journal.state.Journal
 import monix.eval.Task
-import monix.execution.atomic.Atomic
 import monix.reactive.Observable
 import scala.util.chaining.scalaUtilChainingOps
 

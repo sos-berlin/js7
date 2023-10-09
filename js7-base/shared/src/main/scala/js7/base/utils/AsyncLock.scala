@@ -11,7 +11,6 @@ import js7.base.utils.AsyncLock.*
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import monix.catnap.MVar
 import monix.eval.Task
-import monix.execution.atomic.Atomic
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.FiniteDuration
 

@@ -13,9 +13,9 @@ import js7.base.monixutils.MonixDeadline.now
 import js7.base.problem.Checked
 import js7.base.service.Service
 import js7.base.time.ScalaTime.RichDuration
-import js7.base.utils.AsyncLock
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isTest
+import js7.base.utils.{AsyncLock, Atomic}
 import js7.cluster.ClusterWatchCounterpart.*
 import js7.cluster.watch.api.ClusterWatchConfirmation
 import js7.data.cluster.ClusterEvent.{ClusterCouplingPrepared, ClusterNodesAppointed, ClusterPassiveLost, ClusterWatchRegistered}
@@ -26,7 +26,6 @@ import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
 import js7.data.cluster.{ClusterEvent, ClusterTiming, ClusterWatchCheckEvent, ClusterWatchCheckState, ClusterWatchId, ClusterWatchRequest}
 import monix.eval.Task
 import monix.execution.Scheduler
-import monix.execution.atomic.Atomic
 import scala.annotation.tailrec
 import scala.util.Random
 

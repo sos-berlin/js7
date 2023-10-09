@@ -2,7 +2,8 @@ package js7.base.time
 
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
-import monix.execution.atomic.Atomic
+import js7.base.utils.Atomic
+import js7.base.utils.Atomic.syntax.*
 import scala.concurrent.duration.*
 
 final class AlarmClockTest extends OurTestSuite:
@@ -16,16 +17,16 @@ final class AlarmClockTest extends OurTestSuite:
     clock.scheduleAt(start + 10.minutes + 7.s) { x += 1 }
     assert(clock.toString ==
       s"ClockCheckingTestAlarmClock($start, alarms=2021-01-01T00:10:07Z, ticking 60s)")
-    assert(x() == 0)
+    assert(x.get() == 0)
 
     clock.tick(1.s)
-    assert(x() == 0)
+    assert(x.get() == 0)
 
     clock.tick(clockCheckInterval)
-    assert(x() == 0)
+    assert(x.get() == 0)
 
     clock.tick(10.minutes + 7.s - (1.s + clockCheckInterval))
-    assert(x() == 1)
+    assert(x.get() == 1)
 
     assert(clock.toString == s"ClockCheckingTestAlarmClock(${clock.now()}, no alarm)")
 
@@ -36,10 +37,10 @@ final class AlarmClockTest extends OurTestSuite:
     clock.scheduleAt(start + clockCheckInterval) { x += 1 }
     assert(clock.toString ==
       s"ClockCheckingTestAlarmClock(${clock.now()}, alarms=2021-01-01T00:01:00Z)")
-    assert(x() == 0)
+    assert(x.get() == 0)
 
     clock.tick(clockCheckInterval)
-    assert(x() == 1)
+    assert(x.get() == 1)
 
     assert(clock.toString == s"ClockCheckingTestAlarmClock(${clock.now()}, no alarm)")
 
@@ -49,11 +50,11 @@ final class AlarmClockTest extends OurTestSuite:
 
     clock.scheduleAt(start + 10.minutes) { x += 1 }
     clock.tick(10.minutes - 3.s)
-    assert(x() == 0)
+    assert(x.get() == 0)
 
     // Tick later than the scheduled time
     clock.tick(3.s + clockCheckInterval)
-    assert(x() == 1)
+    assert(x.get() == 1)
 
     assert(clock.toString == s"ClockCheckingTestAlarmClock(${clock.now()}, no alarm)")
 
@@ -62,23 +63,23 @@ final class AlarmClockTest extends OurTestSuite:
     val x = Atomic(0)
 
     clock.scheduleAt(start + 10.minutes + 7.s) { x += 1 }
-    assert(x() == 0)
+    assert(x.get() == 0)
 
     // Put clock forward
     clock.resetTo(clock.now() + 30.s)
-    assert(x() == 0)
+    assert(x.get() == 0)
 
     clock.tick()
-    assert(x() == 0)
+    assert(x.get() == 0)
 
     clock.tick(9.minutes + 30.s)
-    assert(x() == 0)
+    assert(x.get() == 0)
 
     clock.tick(6.s)
-    assert(x() == 0)
+    assert(x.get() == 0)
 
     clock.tick(1.s)
-    assert(x() == 1)
+    assert(x.get() == 1)
 
     assert(clock.toString == s"ClockCheckingTestAlarmClock(${clock.now()}, no alarm)")
 
@@ -87,17 +88,17 @@ final class AlarmClockTest extends OurTestSuite:
     val x = Atomic(0)
 
     clock.scheduleAt(start + 10.minutes + 7.s) { x += 1 }
-    assert(x() == 0)
+    assert(x.get() == 0)
 
     // Put clock forward
     clock.resetTo(clock.now() + 10.minutes + 30.s)
-    assert(x() == 0)
+    assert(x.get() == 0)
 
     clock.tick()
-    assert(x() == 0)
+    assert(x.get() == 0)
 
     clock.tick(clockCheckInterval)
-    assert(x() == 1)
+    assert(x.get() == 1)
 
     assert(clock.toString == s"ClockCheckingTestAlarmClock(${clock.now()}, no alarm)")
 
@@ -106,23 +107,23 @@ final class AlarmClockTest extends OurTestSuite:
     val x = Atomic(0)
 
     clock.scheduleAt(start + 10.minutes) { x += 1 }
-    assert(x() == 0)
+    assert(x.get() == 0)
 
     // Put clock backward
     clock.resetTo(clock.now() - 5.minutes)
-    assert(x() == 0)
+    assert(x.get() == 0)
 
     clock.tick()
-    assert(x() == 0)
+    assert(x.get() == 0)
 
     clock.tick(10.minutes)
-    assert(x() == 0)
+    assert(x.get() == 0)
 
     clock.tick(4.minutes)
-    assert(x() == 0)
+    assert(x.get() == 0)
 
     clock.tick(1.minutes)
-    assert(x() == 1)
+    assert(x.get() == 1)
 
     assert(clock.toString == s"ClockCheckingTestAlarmClock(${clock.now()}, no alarm)")
 
@@ -144,13 +145,13 @@ final class AlarmClockTest extends OurTestSuite:
 
     assert(clock.toString ==
       s"ClockCheckingTestAlarmClock(${clock.now()}, alarms=2021-01-01T00:10:00Z, 3 alarms, ticking 60s)")
-    assert(x() == 0)
+    assert(x.get() == 0)
 
     clock.tick(10.minutes)
-    assert(x() == 7)
+    assert(x.get() == 7)
 
     clock.tick(20.minutes)
-    assert(x() == 777)
+    assert(x.get() == 777)
 
     assert(clock.toString == s"ClockCheckingTestAlarmClock(${clock.now()}, no alarm)")
 
@@ -170,5 +171,5 @@ final class AlarmClockTest extends OurTestSuite:
     b.cancel()
     e.cancel()
     clock.tick(20.minutes)
-    assert(x() == 50)
+    assert(x.get() == 50)
     assert(clock.toString == s"ClockCheckingTestAlarmClock(${clock.now()}, no alarm)")

@@ -8,13 +8,13 @@ import java.nio.file.{Files, Path, Paths}
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.utils.AtomicUpdater
+import js7.base.utils.Atomic.syntax.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ByteUnits.toKBGB
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichThrowable}
+import js7.base.utils.{Atomic, AtomicUpdater}
 import js7.data.value.expression.scopes.FileValueScope.functionName
 import js7.data.value.expression.scopes.FileValueState.*
-import monix.execution.atomic.Atomic
 
 final class FileValueState(
   private[scopes] val directory: Path)

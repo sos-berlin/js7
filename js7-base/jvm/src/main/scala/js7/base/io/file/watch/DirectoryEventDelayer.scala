@@ -11,10 +11,10 @@ import js7.base.monixutils.MonixBase.syntax.RichMonixAckFuture
 import js7.base.monixutils.MonixDeadline
 import js7.base.monixutils.MonixDeadline.now
 import js7.base.time.ScalaTime.*
+import js7.base.utils.Atomic
 import js7.base.utils.ByteUnits.toKBGB
 import js7.base.utils.CatsUtils.continueWithLast
 import monix.execution.Ack.{Continue, Stop}
-import monix.execution.atomic.Atomic
 import monix.execution.{Ack, Cancelable, Scheduler}
 import monix.reactive.Observable
 import monix.reactive.observers.Subscriber

@@ -4,8 +4,8 @@ import com.sun.jna.platform.win32.Kernel32Util.closeHandle
 import com.sun.jna.platform.win32.WinBase.{HANDLE_FLAG_INHERIT, INVALID_HANDLE_VALUE, SECURITY_ATTRIBUTES}
 import com.sun.jna.platform.win32.WinNT.{CREATE_ALWAYS, FILE_ATTRIBUTE_TEMPORARY, FILE_SHARE_READ, GENERIC_WRITE, HANDLE, HANDLEByReference}
 import java.io.File
+import js7.base.utils.Atomic
 import js7.launcher.forwindows.WindowsApi.{call, kernel32, throwLastError}
-import monix.execution.atomic.Atomic
 
 private final class Redirection(
   val startupInfoHandle: HANDLE,
