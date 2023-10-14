@@ -760,6 +760,9 @@ final case class Order[+S <: Order.State](
   def isProcessable =
     isState[IsFreshOrReady] && !isSuspendedOrStopped && !isMarked
 
+  def isInOutermostBlock: Boolean =
+    position.branchPath == innerBlock
+
   /** Number of executions for this job (starting with 1). */
   def historicJobExecutionCount(jobKey: JobKey, workflow: Workflow): Int = {
     val x = Right(jobKey)
