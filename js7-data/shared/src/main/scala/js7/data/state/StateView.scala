@@ -95,7 +95,8 @@ trait StateView extends ItemContainer
       })
 
   def isOrderAtStopPosition(order: Order[Order.State]): Boolean =
-    Workflow.isOrderAtStopPosition(order, idToWorkflow.get(order.workflowId))
+    order.stopPositions.nonEmpty/*return fast*/ &&
+      idToWorkflow(order.workflowId).isOrderAtStopPosition(order)
 
   def isOrderAtBreakpoint(order: Order[Order.State]): Boolean =
     order.isState[Order.IsFreshOrReady] &&
