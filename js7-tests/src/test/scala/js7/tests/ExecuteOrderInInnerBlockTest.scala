@@ -15,11 +15,12 @@ import js7.data.workflow.position.{BranchId, BranchPath, Position, PositionOrLab
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.ExecuteOrderInInnerBlockTest.*
 import js7.tests.jobs.{EmptyJob, FailingJob}
-import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
+import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import monix.execution.Scheduler.Implicits.traced
 
-final class ExecuteOrderInInnerBlockTest extends OurTestSuite with ControllerAgentForScalaTest
+final class ExecuteOrderInInnerBlockTest
+extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
 {
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
@@ -105,11 +106,11 @@ final class ExecuteOrderInInnerBlockTest extends OurTestSuite with ControllerAge
   "Leave innerBlock on failure, ignoring outer catch block" in {
     val innerBlock = forkBranchPath % 0 / "then" % 1 / "try" % 0 / "then"
 
-    val stampedEventsevents = controller.runOrder(
+    val stampedEvents = controller.runOrder(
       FreshOrder(OrderId("FORK-FAIL"), workflow.path, innerBlock = innerBlock,
         arguments = Map("FAIL" -> BooleanValue.True)))
 
-    assert(stampedEventsevents.map(_.value) == Seq(
+    assert(stampedEvents.map(_.value) == Seq(
       OrderAdded(workflow.id, innerBlock = innerBlock,
         arguments = Map("FAIL" -> BooleanValue.True)),
 
@@ -122,6 +123,23 @@ final class ExecuteOrderInInnerBlockTest extends OurTestSuite with ControllerAge
       OrderDetachable,
       OrderDetached,
       OrderFailed(innerBlock % 0)))
+  }
+
+  "JS-2093 OutOfMemoryError" in {
+    val workflow = Workflow(WorkflowPath("OOM"), Seq(
+      Fork.forTest(Seq(
+        "BRANCH" -> Workflow.of(
+          EmptyJob.execute(agentPath))))))
+
+    withTemporaryItem(workflow) { workflow =>
+      val innerBlock = Position(0) / BranchId.fork("BRANCH")
+      controller.runOrder(
+        FreshOrder(OrderId("OOM"), workflow.path,
+          innerBlock = innerBlock,
+          startPosition = Some(innerBlock % 0),
+          stopPositions = Set(innerBlock % 1),
+          arguments = Map("FAIL" -> BooleanValue.True)))
+    }
   }
 }
 

@@ -48,7 +48,8 @@ extends EventInstructionExecutor
                   s"Missing End instruction in branch ${forkPosition / branchId}")) // Does not happen
               events <- leaveBlocks(order, workflow,
                 instr.outcome.map(OrderOutcomeAdded(_)) ++:
-                  instr.outcome.forall(_.isSucceeded).thenList(OrderMoved(gotoEnd)))
+                  (instr.outcome.forall(_.isSucceeded) && order.position != gotoEnd)
+                    .thenList(OrderMoved(gotoEnd)))
             } yield events
         }
 

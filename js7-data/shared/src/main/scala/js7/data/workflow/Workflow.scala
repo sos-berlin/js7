@@ -288,7 +288,16 @@ with TrivialItemState[Workflow]
     }
 
   def isOrderAtStopPosition(order: Order[Order.State]): Boolean =
-    Workflow.isOrderAtStopPosition(order, Some(this))
+    !isOrderAtEndOfWorkflow(order) && (
+      order.stopPositions.contains(order.position.normalized) ||
+        order.stopPositions.exists(_.isInstanceOf[Label]) &&
+          labeledInstruction(order.position)
+            .toOption
+            .flatMap(_.maybeLabel)
+            .exists(order.stopPositions.contains))
+
+  private def isOrderAtEndOfWorkflow(order: Order[Order.State]): Boolean =
+    order.isInOutermostBlock && this.instruction(order.position).isInstanceOf[End]
 
   def lastWorkflowPosition: WorkflowPosition =
     id /: Position(lastNr)
@@ -587,15 +596,6 @@ with TrivialItemState.Companion[Workflow]
   def isCorrectlyEnded(labeledInstructions: IndexedSeq[Instruction.Labeled]): Boolean =
     labeledInstructions.nonEmpty &&
       labeledInstructions.last.instruction.isInstanceOf[End]
-
-  def isOrderAtStopPosition(order: Order[Order.State], workflow: => Option[Workflow]): Boolean =
-    order.stopPositions.contains(order.position.normalized) ||
-      order.stopPositions.exists(_.isInstanceOf[Label]) &&
-        workflow.fold(false)(workflow =>
-          workflow.labeledInstruction(order.position)
-            .toOption
-            .flatMap(_.maybeLabel)
-            .exists(order.stopPositions.contains))
 
   override lazy val subtype: Subtype[Workflow] =
     Subtype(jsonEncoder, topJsonDecoder)
