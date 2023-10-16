@@ -5,13 +5,15 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Checked.Ops
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.test.OurTestSuite
+import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent
 import js7.data.job.RelativePathExecutable
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderForked, OrderJoined, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderStarted}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCaught, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderForked, OrderJoined, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.NamedValues
+import js7.data.workflow.instructions.{Fail, Retry, TryInstruction}
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowParser, WorkflowPath}
 import js7.tests.FailTest.*
@@ -139,6 +141,30 @@ final class FailTest extends OurTestSuite with ControllerAgentForScalaTest
         OrderMoved(Position(0) / "fork+🍋" % 0 / "try+0" % 0),
         OrderOutcomeAdded(Outcome.failed),
         OrderFailedInFork(Position(0) / BranchId.fork("🍋") % 0 / BranchId.try_(0) % 0)))
+  }
+
+  "Uncatchable fail leaves retry loop" in {
+    val workflowId = workflowIdIterator.next()
+    runUntil[OrderFailed](OrderId("🔷"),
+      Workflow(workflowId, Seq(
+        TryInstruction(
+          tryWorkflow = Workflow.of(
+            TryInstruction(
+              tryWorkflow = Workflow.of(
+                Fail()),
+              catchWorkflow = Workflow.of(
+                Fail(uncatchable = true)))),
+          catchWorkflow = Workflow.of(
+            Retry()),
+          retryDelays = Option(Vector(100.s))))),
+      Vector(
+        OrderAdded(workflowId),
+        OrderMoved(Position(0) / "try+0" % 0 / "try+0" % 0),
+        OrderStarted,
+        OrderOutcomeAdded(Outcome.failed),
+        OrderCaught(Position(0) / "try+0" % 0 / "catch+0" % 0),
+        OrderOutcomeAdded(Outcome.failed),
+        OrderFailed(Position(0) / "try+0" % 0 / "catch+0" % 0)))
   }
 
   private def runUntil[E <: OrderEvent: ClassTag: Tag](
