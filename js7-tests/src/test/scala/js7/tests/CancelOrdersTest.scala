@@ -18,7 +18,7 @@ import js7.data.event.KeyedEvent
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion}
 import js7.data.item.VersionId
 import js7.data.job.ShellScriptExecutable
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderBroken, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOperationCancelled, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPrompted, OrderStarted, OrderStdWritten, OrderStdoutWritten, OrderSuspended, OrderTerminated}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderBroken, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCaught, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOperationCancelled, OrderOutcomeAdded, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPrompted, OrderRetrying, OrderStarted, OrderStdWritten, OrderStdoutWritten, OrderSuspended, OrderTerminated}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
 import js7.data.problems.CannotResumeOrderProblem
 import js7.data.value.Value.convenience.*
@@ -26,7 +26,7 @@ import js7.data.value.expression.Expression.NamedValue
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{BreakOrder, Execute, Fork, Prompt}
+import js7.data.workflow.instructions.{BreakOrder, Execute, Fail, Fork, Prompt, Retry, TryInstruction}
 import js7.data.workflow.position.{Position, WorkflowPosition}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.CancelOrdersTest.*
@@ -705,6 +705,40 @@ with BlockingItemUpdater
           OrderCancellationMarked(),
           OrderDetachable,
           OrderDetached,
+          OrderCancelled,
+          OrderDeleted))
+    }
+  }
+
+  "FIX JS-2089 Cancel an Order waiting in Retry instruction at an Agent" in {
+    val workflow = Workflow(WorkflowPath("RETRY"), Seq(
+      TryInstruction(
+        Workflow.of(
+          Fail()),
+        Workflow.of(
+          Retry()),
+        retryDelays = Some(Vector(100.s)))))
+
+    withTemporaryItem(workflow) { workflow =>
+      val orderId = OrderId("RETRY")
+      controllerApi.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+        .await(99.s).orThrow
+      eventWatch.await[OrderRetrying](_.key == orderId)
+
+      controllerApi.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+      eventWatch.await[OrderTerminated](_.key == orderId)
+
+      assert(eventWatch.eventsByKey[OrderEvent](orderId)
+        .map {
+          case OrderRetrying(movedTo, Some(_)) => OrderRetrying(movedTo)
+          case o => o
+        } == Seq(
+          OrderAdded(workflow.id, deleteWhenTerminated = true),
+          OrderMoved(Position(0) / "try+0" % 0),
+          OrderStarted,
+          OrderOutcomeAdded(Outcome.failed),
+          OrderCaught(Position(0) / "catch+0" % 0),
+          OrderRetrying(Position(0) / "try+1" % 0),
           OrderCancelled,
           OrderDeleted))
     }

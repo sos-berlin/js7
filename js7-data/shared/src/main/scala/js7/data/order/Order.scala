@@ -696,6 +696,7 @@ final case class Order[+S <: Order.State](
       isState[Processed] ||
       isState[ProcessingKilled] ||
       isState[BetweenCycles] ||
+      isState[DelayedAfterError] ||
       isState[FailedWhileFresh] ||
       isState[Failed] ||
       isState[FailedInFork] ||
