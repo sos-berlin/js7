@@ -221,6 +221,7 @@ final class ProxyHistoryTest extends OurTestSuite with ProvideActorSystem with C
       }
     }
 
+
 object ProxyHistoryTest:
   private val logger = Logger[this.type]
   private val AAgentPath = AgentPath("AGENT-A")

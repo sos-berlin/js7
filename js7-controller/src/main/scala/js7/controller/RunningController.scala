@@ -187,6 +187,7 @@ extends MainService with Service.StoppableByRequest:
     .mapTo[JournalActor.Output.JournalActorState]
     .await(99.s)
 
+
 object RunningController:
   private val logger = Logger[this.type]
 

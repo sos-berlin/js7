@@ -57,6 +57,7 @@ private final class StateRecoverer[S <: SnapshotableState[S]](
 
   def lastProperEventPosition: Long = _lastProperEventPosition
 
+
 object StateRecoverer:
   private val logger = Logger[this.type]
 

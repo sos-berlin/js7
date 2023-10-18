@@ -87,6 +87,7 @@ final class JavaResourceTest extends OurTestSuite:
       })
     assert(io.unsafeRunSync() == expectedString.stripSuffix("\n"))
 
+
 object JavaResourceTest:
   private val dirPath = "js7/base/io"
   private val path = "js7/base/io/test.txt"

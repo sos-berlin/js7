@@ -13,6 +13,7 @@ final case class TimeoutWithSteps(timeout: FiniteDuration, step: FiniteDuration)
   def toDeadlineIterator(start: MonixDeadline): Iterator[MonixDeadline] =
     deadlineIterator(start, timeout, step)
 
+
 object TimeoutWithSteps:
   /** Liefert einen Iterator mit den Zeitpunkten startInstant, startInstant + step, ..., startInstant + timeout.
   */

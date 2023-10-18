@@ -53,6 +53,7 @@ final class SubagentDeleteWhileMovedTest extends OurTestSuite with SubagentTeste
         .await(99.s).orThrow
       eventWatch.await[ItemDeleted](_.event.key == bareSubagentId, after = eventId)
 
+
 object SubagentDeleteWhileMovedTest:
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",

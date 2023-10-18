@@ -182,6 +182,7 @@ final class WorkingClusterNode[
 
   def isActive = _activeClusterNode.isDefined
 
+
 object WorkingClusterNode:
   private val logger = Logger[this.type]
 

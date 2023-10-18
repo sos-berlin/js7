@@ -10,6 +10,7 @@ final case class SystemInformation(
   cpuModel: Option[String] = None,
   mxBeans: Map[String, Any] = Map())
 
+
 object SystemInformation:
   (MapJsonDecoder, MapJsonEncoder)  // Force import usage for IntelliJ (hidden usage by @JsonCocec)
 

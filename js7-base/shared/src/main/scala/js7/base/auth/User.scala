@@ -36,6 +36,7 @@ trait User:
 
   final def isAnonymous = id.isAnonymous
 
+
 object User:
   trait Companion[U <: User]:
     def addPermissions(user: U, permissions: Set[Permission]): U

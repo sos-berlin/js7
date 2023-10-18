@@ -384,6 +384,7 @@ extends Actor with Stash with SimpleStateActor:
 
   override def toString = "AgentActor"
 
+
 object AgentActor:
   private val logger = Logger[this.type]
 

@@ -6,6 +6,7 @@ trait ProgramTermination:
   def restart: Boolean
   override def toString = s"ProgramTermination(${restart ?? "restart"})"
 
+
 object ProgramTermination:
   def apply(restart: Boolean = false): ProgramTermination =
     Standard(restart)

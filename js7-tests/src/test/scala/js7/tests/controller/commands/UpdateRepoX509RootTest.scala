@@ -104,6 +104,7 @@ final class UpdateRepoX509RootTest extends OurTestSuite with ControllerAgentForS
   }
 }
 
+
 object UpdateRepoX509RootTest
 {
   private val workflow = Workflow.of(WorkflowPath("WORKFLOW"))

@@ -18,6 +18,7 @@ final case class CommandLine(arguments: Seq[String]):
     }
     .mkString(" ")
 
+
 object CommandLine:
   def fromFile(file: Path) = new CommandLine(Seq(file.toString))
 

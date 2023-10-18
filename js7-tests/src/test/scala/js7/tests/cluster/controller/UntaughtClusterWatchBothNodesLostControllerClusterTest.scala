@@ -86,5 +86,6 @@ final class UntaughtClusterWatchBothNodesLostControllerClusterTest extends Contr
       }
     }
 
+
 object UntaughtClusterWatchBothNodesLostControllerClusterTest:
   private val logger = Logger[this.type]

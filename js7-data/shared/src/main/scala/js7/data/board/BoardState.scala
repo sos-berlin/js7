@@ -153,6 +153,7 @@ extends UnsignedSimpleItemState:
         case Some(notice) => Right(notice)
     yield notice
 
+
 object BoardState extends UnsignedSimpleItemState.Companion[BoardState]:
   type Key = BoardPath
   type Item = Board

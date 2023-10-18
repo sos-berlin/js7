@@ -71,6 +71,7 @@ with PekkoHttpClient:
                 request.toQueryParameters))),
         responsive = true))
 
+
 object HttpSubagentApi:
   def resource(
     admission: Admission,

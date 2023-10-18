@@ -71,6 +71,7 @@ extends SignatureVerifier:
       publicKeyRingCollection.asScala
         .flatMap(_.asScala.map(k => "  " + pgpPublicKeyToShortString(k)))
 
+
 object PgpSignatureVerifier extends SignatureVerifier.Companion:
   protected type MySignature = PgpSignature
   protected type MySignatureVerifier = PgpSignatureVerifier

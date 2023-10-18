@@ -222,5 +222,6 @@ final class JournaledProxyClusterTest extends OurTestSuite with ClusterProxyTest
     assert(es.stampedEvent.value.event == ProxyStarted)
     es.state
 
+
 object JournaledProxyClusterTest:
   private val logger = Logger[this.type]

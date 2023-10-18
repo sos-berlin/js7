@@ -80,6 +80,7 @@ final class IfTest extends OurTestSuite:
     val events = keyedEvents.iterator.filter(_.key == orderId).map(_.event).to(Vector)
     assert(events == ExpectedEvents(returnCode))
 
+
 object IfTest:
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)

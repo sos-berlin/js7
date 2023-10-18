@@ -219,6 +219,7 @@ object SpecificDatePeriod:
       localDateTime.toEpochSecond(ZoneOffset.ofTotalSeconds(0)),
       duration)
 
+
 object AdmissionPeriod:
   private[time] val DaySeconds = 24 * 3600
   private[time] val DayDuration = Duration(1, DAYS)

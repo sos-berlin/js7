@@ -419,6 +419,7 @@ extends OurTestSuite with BeforeAndAfterAll with ControllerAgentForScalaTest
     }
 }
 
+
 object ControllerWebServiceTest
 {
   private def writeControllerConfiguration(controller: ControllerEnv): Unit = {

@@ -31,6 +31,7 @@ final class InventoryItemFileTest extends OurTestSuite:
         s"Duplicate configuration files: ${dir / "test.workflow.json"}, ${dir / "test.workflow.txt"}")))
     }
 
+
 object InventoryItemFileTest:
   private val AWorkflowPath = WorkflowPath("test")
 

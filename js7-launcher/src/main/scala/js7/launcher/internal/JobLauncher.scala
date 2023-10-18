@@ -35,6 +35,7 @@ trait JobLauncher:
 
   override def toString = s"${getClass.simpleScalaName}(${jobConf.jobKey})"
 
+
 object JobLauncher:
   private val logger = Logger[this.type]
 

@@ -49,6 +49,7 @@ private final class DirectoryWatch(
         .map(_.swap)
         .filter(_._1.nonEmpty))
 
+
 object DirectoryWatch:
   private val logger = Logger[this.type]
 

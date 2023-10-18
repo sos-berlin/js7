@@ -25,6 +25,7 @@ final class NowScope(val now: Timestamp = Timestamp.now) extends Scope:
 
   override def toString = s"NowScope($now)"
 
+
 object NowScope:
   def apply(now: Timestamp = Timestamp.now): Scope =
     new NowScope(now)

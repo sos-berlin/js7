@@ -18,6 +18,7 @@ extends InventoryItemState:
   override final def toSnapshotObservable =
     Observable.pure(item)
 
+
 object SeparateTrivialItemState:
   trait Companion[A <: SeparateTrivialItemState[A]]
   extends InventoryItemState.Companion[A]

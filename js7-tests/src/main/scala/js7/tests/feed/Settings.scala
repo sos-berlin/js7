@@ -9,6 +9,7 @@ import js7.common.commandline.CommandLineArguments
 
 final case class Settings(admissions: Nel[Admission])
 
+
 object Settings:
   private val defaultUserAndPassword = Option(UserAndPassword(UserId("demo"), SecretString("demo")))
 

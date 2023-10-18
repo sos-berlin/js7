@@ -39,6 +39,7 @@ final class EventDrivenStateTest extends OurTestSuite:
           .withPrefix("Event 'Stamped(5000 1970-01-01T00:00:00.005Z InvalidEvent)' " +
             "cannot be applied to 'EventDrivenStateTest.TestCase':")))
 
+
 object EventDrivenStateTest:
   sealed trait TestEvent extends NoKeyEvent
 

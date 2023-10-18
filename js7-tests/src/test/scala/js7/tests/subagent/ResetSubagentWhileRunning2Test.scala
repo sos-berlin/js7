@@ -123,6 +123,7 @@ final class ResetSubagentWhileRunning2Test extends OurTestSuite with SubagentTes
         eventWatch.await[OrderFinished](_.key == orderId, after = eventId)
     }
 
+
 object ResetSubagentWhileRunning2Test:
   private val logger = Logger[this.type]
 

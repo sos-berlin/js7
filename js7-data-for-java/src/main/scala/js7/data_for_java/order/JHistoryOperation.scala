@@ -15,6 +15,7 @@ extends JJsonable[JHistoryOperation]:
   type AsScala = HistoryOperation
   protected def companion = JHistoryOperation
 
+
 object JHistoryOperation extends JJsonable.Companion[JHistoryOperation]:
   type AsScala = HistoryOperation
 

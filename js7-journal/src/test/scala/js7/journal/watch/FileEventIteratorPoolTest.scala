@@ -61,6 +61,7 @@ final class FileEventIteratorPoolTest extends OurTestSuite:
         pool.borrowIterator()
     }
 
+
 object FileEventIteratorPoolTest:
   private val After = EventId(10009)
   private val TestEvents =

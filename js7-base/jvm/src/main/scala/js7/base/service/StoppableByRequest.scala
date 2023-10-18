@@ -44,5 +44,6 @@ trait StoppableByRequest:
     Task:
       !isStopping !! Problem(s"$toString is stopping")
 
+
 object StoppableByRequest:
   private val logger = Logger[this.type]

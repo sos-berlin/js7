@@ -8,5 +8,6 @@ final case class ProxyConf(
   syncPolling: FiniteDuration,
   recouplingStreamReaderConf: RecouplingStreamReaderConf)
 
+
 object ProxyConf:
   def default: ProxyConf = ProxyConfs.default

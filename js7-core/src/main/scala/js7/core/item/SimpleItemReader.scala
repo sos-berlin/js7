@@ -16,6 +16,7 @@ extends ItemReader:
         .map(item => item
           .rename(key.asInstanceOf[item.companion.Key]))
 
+
 object SimpleItemReader:
   def apply[I <: SimpleItem](implicit I: SimpleItem.Companion[I]): SimpleItemReader =
     new SimpleItemReader(I)

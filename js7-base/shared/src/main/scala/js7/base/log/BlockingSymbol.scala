@@ -57,5 +57,6 @@ final class BlockingSymbol:
   override def toString =
     symbols(_index)
 
+
 object BlockingSymbol:
   private val symbols = Array("⚪", "🟡", "🟠", "🔴")

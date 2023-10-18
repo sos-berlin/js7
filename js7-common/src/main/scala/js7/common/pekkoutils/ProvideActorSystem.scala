@@ -24,6 +24,7 @@ trait ProvideActorSystem extends HasCloser:
           Pekkos.terminateAndWait(o, TerminationTimeout)
       }
 
+
 object ProvideActorSystem:
   private val TerminationTimeout = 60.s
 

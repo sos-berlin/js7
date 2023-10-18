@@ -134,6 +134,7 @@ private[journal] final class JournalLogger(
     sb.append(event.toShortString)
     logger.info(sb.toString)
 
+
 object JournalLogger:
   private val logger = Logger("js7.journal.Journal")
   private val MinimumDuration = 1.ms

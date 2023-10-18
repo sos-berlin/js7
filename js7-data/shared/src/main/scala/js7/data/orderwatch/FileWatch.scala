@@ -40,6 +40,7 @@ extends OrderWatch:
 
   override val referencedItemPaths = View(agentPath, workflowPath)
 
+
 object FileWatch extends OrderWatch.Companion[FileWatch]:
   val cls = classOf[FileWatch]
 

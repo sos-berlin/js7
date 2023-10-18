@@ -35,6 +35,7 @@ trait ConvertiblePartialFunction[K, V] extends PartialFunction[K, V]:
 
   protected def renderKey(key: K) = s"key '$key'"
 
+
 object ConvertiblePartialFunction:
   final case class MissingConfigurationKeyProblem(key: String) extends Problem.Coded:
     def arguments = Map(

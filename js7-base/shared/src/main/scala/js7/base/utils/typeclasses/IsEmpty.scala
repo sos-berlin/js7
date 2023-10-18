@@ -13,6 +13,7 @@ trait IsEmpty[A]:
   def emptyToNone(a: A): Option[A] =
     if isEmpty(a) then None else Some(a)
 
+
 object IsEmpty:
   def apply[A](implicit o: IsEmpty[A]): IsEmpty[A] = o
 

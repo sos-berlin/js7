@@ -54,5 +54,6 @@ final class ActorTest extends OurTestSuite with BeforeAndAfterAll with ProvideAc
     sleep(1.s)
     assert(!restarted.get() && startCounter.get() == 1)
 
+
 object ActorTest:
   private val logger = Logger[this.type]

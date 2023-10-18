@@ -8,6 +8,7 @@ extends UnsignedSimpleItemState with SeparateTrivialItemState[SubagentSelectionS
   protected type Self = SubagentSelectionState
   val companion: SubagentSelectionState.type = SubagentSelectionState
 
+
 object SubagentSelectionState extends UnsignedSimpleItemState.Companion[SubagentSelectionState]:
   type Key = SubagentSelectionId
   type Item = SubagentSelection

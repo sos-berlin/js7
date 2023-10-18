@@ -37,6 +37,7 @@ final class EventRequestTest extends OurTestSuite:
           "delay" -> "0",
           "after" -> "0"))
 
+
 object EventRequestTest:
   private trait AEvent extends Event
   private trait BEvent extends Event

@@ -17,6 +17,7 @@ sealed trait TimeInterval:
 
   def endsBefore(timestamp: Timestamp): Boolean
 
+
 object TimeInterval:
   val never = TimeInterval(Timestamp.ofEpochMilli(Long.MinValue), 0.s)
   val alwaysSinceEpoch = TimeInterval(Timestamp.Epoch, FiniteDuration.MaxValue)

@@ -52,6 +52,7 @@ extends AutoCloseable:
     eventWriter.flush(sync = false)
     eventWriter.onCommitted(eventWriter.fileLengthAndEventId, n = 1)
 
+
 object SimpleEventCollector:
   @TestOnly
   def apply[E <: Event: ClassTag](using E: Event.KeyCompanion[? >: E])(config: Config = ConfigFactory.empty)

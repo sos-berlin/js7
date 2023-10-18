@@ -206,6 +206,7 @@ extends AutoCloseable:
 
   def totalEventCount = _totalEventCount
 
+
 object JournalReader:
   def snapshot(S: SnapshotableState.HasCodec, journalFile: Path, expectedJournalId: JournalId)
   : Observable[Any] =

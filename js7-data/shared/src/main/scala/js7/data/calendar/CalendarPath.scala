@@ -11,6 +11,7 @@ with InventoryItemPath.AttachableToAgent:
 
   val companion: CalendarPath.type = CalendarPath
 
+
 object CalendarPath extends UnsignedSimpleItemPath.Companion[CalendarPath]:
   // May deadlock: override val itemTypeName = Calendar.typeName
   type Item = Calendar

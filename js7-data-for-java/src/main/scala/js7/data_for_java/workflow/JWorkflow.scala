@@ -43,6 +43,7 @@ extends JVersionedItem[JWorkflow, WorkflowPath]:
       .view.map(JPosition(_))
       .toVector.asJava
 
+
 @javaApi
 object JWorkflow extends JJsonable.Companion[JWorkflow]:
   type AsScala = Workflow

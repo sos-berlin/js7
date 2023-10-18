@@ -56,5 +56,6 @@ extends EventInstructionExecutor:
         else
           OrderLocksReleased(instr.lockPaths))))
 
+
 object LockExecutor:
   private val logger = Logger[this.type]

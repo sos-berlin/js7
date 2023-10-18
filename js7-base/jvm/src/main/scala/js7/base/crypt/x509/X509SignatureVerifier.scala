@@ -90,6 +90,7 @@ extends SignatureVerifier:
       Left(MessageSignedByUnknownProblem)
     }
 
+
 object X509SignatureVerifier extends SignatureVerifier.Companion:
   protected type MySignature = X509Signature
   protected type MySignatureVerifier = X509SignatureVerifier

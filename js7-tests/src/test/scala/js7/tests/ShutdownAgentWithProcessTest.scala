@@ -126,6 +126,7 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite with ControllerAge
         Some(agentPath <-: AgentReady("UTC", None))
       case _ => None
 
+
 object ShutdownAgentWithProcessTest:
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)

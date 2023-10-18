@@ -114,6 +114,7 @@ final class SubagentTest extends OurTestSuite with SubagentTester:
   //"Change URI of Director" --> See UpdateAgentRefsTest
   //"Change JobResource" in --> See JobResourceAtBareSubagentTest
 
+
 object SubagentTest:
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",

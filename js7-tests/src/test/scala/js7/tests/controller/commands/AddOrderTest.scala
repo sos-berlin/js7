@@ -80,6 +80,7 @@ final class AddOrderTest extends OurTestSuite with ControllerAgentForScalaTest:
         OrderDetached,
         OrderFinished()))
 
+
 object AddOrderTest:
   private val logger = Logger[this.type]
   private val agentPath = AgentPath("AGENT")

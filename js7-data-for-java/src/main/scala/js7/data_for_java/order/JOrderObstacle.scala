@@ -6,6 +6,7 @@ import js7.data.order.OrderObstacle
 
 sealed trait JOrderObstacle
 
+
 object JOrderObstacle:
   val toScalaClass = Map[Class[? <: JOrderObstacle], Class[? <: OrderObstacle]](
     WaitingForCommand.getClass -> classOf[OrderObstacle.WaitingForTime],

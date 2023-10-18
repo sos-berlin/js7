@@ -11,6 +11,7 @@ final case class HttpsConfig(
   override def toString =
     s"HttpsConfig(keyStoreRef=$keyStoreRef trustStoreRefs=$trustStoreRefs)"
 
+
 object HttpsConfig:
   val empty = HttpsConfig(None, Nil)
 

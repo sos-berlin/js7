@@ -62,6 +62,7 @@ extends JournaledState[S]:
       .fromObservable(toSnapshotObservable)
       .map(_.withEventId(eventId))
 
+
 object SnapshotableState:
   private val logger = Logger[this.type]
 

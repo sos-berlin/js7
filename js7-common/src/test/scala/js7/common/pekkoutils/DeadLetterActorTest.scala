@@ -28,6 +28,7 @@ final class DeadLetterActorTest extends OurTestSuite:
     assert(buffer.head startsWith "DeadLetter ")
     assert(buffer.head contains classOf[TestMessage].getName)
 
+
 object DeadLetterActorTest:
   private class TestMessage
   private class SuppressedMessage extends DeadLetterSuppression

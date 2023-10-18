@@ -99,5 +99,6 @@ private[watch] final class FileEventIteratorPool(
 
   def lentIteratorsCount = lentIterators.size
 
+
 object FileEventIteratorPool:
   private val logger = Logger[this.type]

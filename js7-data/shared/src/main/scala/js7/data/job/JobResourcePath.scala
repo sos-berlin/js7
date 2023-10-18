@@ -9,6 +9,7 @@ with InventoryItemPath.AttachableToAgent:
 
   def companion = JobResourcePath
 
+
 object JobResourcePath extends SignableSimpleItemPath.Companion[JobResourcePath]:
   // May deadlock: override val itemTypeName = JobResource.typeName
 

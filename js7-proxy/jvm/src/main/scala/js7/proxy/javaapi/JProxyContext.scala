@@ -68,5 +68,6 @@ extends HasCloser:
       new ControllerApi(apiResources, proxyConf),
       config)
 
+
 object JProxyContext:
   private val logger = Logger[this.type]

@@ -65,6 +65,7 @@ trait ExceptionHandling:
   protected final def seal(route: Route): Route =
     Route.seal(route)(exceptionHandler = exceptionHandler)
 
+
 object ExceptionHandling:
   val webLogger = Logger("js7.web.exception")
 

@@ -36,6 +36,7 @@ trait EventDrivenState[Self <: EventDrivenState[Self, E], E <: Event] extends Ba
   protected final def eventNotApplicable(keyedEvent: KeyedEvent[Event]) =
     Left(EventNotApplicableProblem(keyedEvent, this))
 
+
 object EventDrivenState:
   trait Companion[S <: EventDrivenState[S, E], E <: Event] extends BasicState.Companion[S]:
     implicit final val implicitEventDrivenStateCompanion: Companion[S, E] =

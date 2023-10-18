@@ -47,6 +47,7 @@ extends Instruction:
       case BranchId.Named(string) if string.startsWith(BranchId.CyclePrefix) => Right(cycleWorkflow)
       case _ => super.workflow(branchId)
 
+
 object Cycle:
   implicit val jsonCodec: Codec.AsObject[Cycle] = ConfiguredCodec.derive(useDefaults = true)
 

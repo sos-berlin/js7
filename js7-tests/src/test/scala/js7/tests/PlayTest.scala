@@ -72,6 +72,7 @@ final class PlayTest extends OurTestSuite with ControllerAgentForScalaTest:
 
     controller.runOrder(order).map(_.value)
 
+
 object PlayTest:
   private val logger = Logger[this.type]
 

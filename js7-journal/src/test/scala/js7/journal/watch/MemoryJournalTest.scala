@@ -156,6 +156,7 @@ final class MemoryJournalTest extends OurTestSuite:
       .toListL
       .await(99.s) == events)
 
+
 object MemoryJournalTest:
   private def newJournal(size: Int = Int.MaxValue) =
     new MemoryJournal(

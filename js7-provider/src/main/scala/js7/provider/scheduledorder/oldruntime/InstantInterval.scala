@@ -15,6 +15,7 @@ final case class InstantInterval(from: Instant, until: Instant):
 
   override def toString = s"[$from, $until)"
 
+
 object InstantInterval:
   def apply(from: Instant, duration: Duration): InstantInterval =
     new InstantInterval(from, from + duration)

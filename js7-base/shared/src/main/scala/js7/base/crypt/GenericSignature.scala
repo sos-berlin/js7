@@ -25,6 +25,7 @@ extends Signature:
     else
       signatureString.take(15) + "..." + signatureString.substring(signatureString.length - 15)
 
+
 object GenericSignature:
   @javaApi
   def of(typeName: String, signatureString: String) =

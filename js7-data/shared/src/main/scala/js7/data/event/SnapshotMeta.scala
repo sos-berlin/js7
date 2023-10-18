@@ -5,6 +5,7 @@ import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 
 sealed trait SnapshotMeta
 
+
 object SnapshotMeta:
   final case class SnapshotEventId(eventId: EventId)
   extends SnapshotMeta

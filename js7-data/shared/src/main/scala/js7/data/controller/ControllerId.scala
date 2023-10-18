@@ -11,6 +11,7 @@ final case class ControllerId private(string: String) extends GenericString:
 
   override def toString = s"ControllerId:$string"
 
+
 object ControllerId extends GenericString.Checked_[ControllerId]:
   protected def unchecked(string: String) = new ControllerId(string)
 

@@ -35,6 +35,7 @@ import scala.concurrent.duration.FiniteDuration
 sealed trait ControllerCommand extends CommonCommand:
   type Response <: ControllerCommand.Response
 
+
 object ControllerCommand extends CommonCommand.Companion:
   protected type Command = ControllerCommand
 

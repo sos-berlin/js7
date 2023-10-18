@@ -22,6 +22,7 @@ extends JJsonable [JWorkflowPosition]:
   def position: JPosition =
     JPosition(asScala.position)
 
+
 object JWorkflowPosition extends JJsonable.Companion[JWorkflowPosition]:
   type AsScala = WorkflowPosition
 

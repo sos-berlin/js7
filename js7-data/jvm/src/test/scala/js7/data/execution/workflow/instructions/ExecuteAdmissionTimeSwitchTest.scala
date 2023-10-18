@@ -133,6 +133,7 @@ final class ExecuteAdmissionTimeSwitchTest extends OurTestSuite
   }
 }
 
+
 object ExecuteAdmissionTimeSwitchTest
 {
   private final class Tester(admissionTimeScheme: AdmissionTimeScheme)(implicit zone: ZoneId)

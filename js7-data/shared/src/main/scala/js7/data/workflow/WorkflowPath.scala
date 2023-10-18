@@ -8,6 +8,7 @@ extends VersionedItemPath
 with InventoryItemPath.AttachableToAgent:
   def companion = WorkflowPath
 
+
 object WorkflowPath extends VersionedItemPath.Companion[WorkflowPath]:
   override val sourceTypeToFilenameExtension = Map(
     SourceType.Json -> ".workflow.json",

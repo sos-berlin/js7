@@ -41,6 +41,7 @@ trait EnvScope extends Scope:
 
   override def toString = "EnvScope"
 
+
 object EnvScope extends EnvScope:
   def get(name: String) =
     Option(testEnv.get(name)) orElse sys.env.get(name)

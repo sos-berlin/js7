@@ -10,6 +10,7 @@ with InventoryItemPath.AttachableToAgent:
   def string = workflowPath.string
   def companion = WorkflowPathControlPath
 
+
 object WorkflowPathControlPath extends UnsignedSimpleItemPath.Companion[WorkflowPathControlPath]:
   protected def unchecked(string: String) = new WorkflowPathControlPath(WorkflowPath(string))
 

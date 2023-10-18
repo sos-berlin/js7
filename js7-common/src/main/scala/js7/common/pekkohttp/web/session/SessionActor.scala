@@ -151,6 +151,7 @@ extends Actor:
       logger.info(s"$token for ${session.currentUser.id} deleted due to $reason")
     }
 
+
 object SessionActor:
   private val logger = Logger[this.type]
 

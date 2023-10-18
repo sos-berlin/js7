@@ -10,6 +10,7 @@ trait SignableItem extends InventoryItem:
 
   val companion: SignableItem.Companion[Self]
 
+
 object SignableItem:
   type Companion_ = Companion[? <: SignableItem]
 

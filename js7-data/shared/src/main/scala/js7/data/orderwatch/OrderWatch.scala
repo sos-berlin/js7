@@ -21,6 +21,7 @@ trait OrderWatch extends UnsignedSimpleItem:
   override def dedicatedAgentPath =
     Some(agentPath)
 
+
 object OrderWatch:
   trait Companion[A <: OrderWatch] extends UnsignedSimpleItem.Companion[A]:
     type Key = OrderWatchPath

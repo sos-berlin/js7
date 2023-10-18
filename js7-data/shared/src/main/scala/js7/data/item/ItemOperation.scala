@@ -10,6 +10,7 @@ import scala.annotation.unused
 
 sealed trait ItemOperation
 
+
 object ItemOperation:
   sealed trait SimpleItemOperation extends ItemOperation
   sealed trait AddOrChangeOperation extends ItemOperation

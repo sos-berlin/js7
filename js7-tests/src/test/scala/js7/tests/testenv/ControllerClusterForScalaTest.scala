@@ -250,6 +250,7 @@ trait ControllerClusterForScalaTest:
       .flatMap(_ => Task.deferFuture(controller.terminated))
       .map((_: ProgramTermination) => ())
 
+
 object ControllerClusterForScalaTest:
   val TestPathExecutable = RelativePathExecutable("TEST.cmd")
   val clusterWatchId = ClusterWatchId("CLUSTER-WATCH")

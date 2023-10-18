@@ -63,6 +63,7 @@ sealed trait Problem:
 
   def httpStatusCode: Int = Problem.DefaultHttpStatusCode
 
+
 object Problem extends Semigroup[Problem]:
   private val DefaultHttpStatusCode = 400  // Bad Request
 

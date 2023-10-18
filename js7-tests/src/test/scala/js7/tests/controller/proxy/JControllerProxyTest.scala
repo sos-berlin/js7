@@ -95,6 +95,7 @@ final class JControllerProxyTest extends OurTestSuite with DirectoryProviderForS
       assert(tried.failed.toOption.exists(_.isInstanceOf[CancellationException]))
     }
 
+
 object JControllerProxyTest:
   val boardPath = BoardPath("BOARD")
   val boardVersion = VersionId("BOARD-VERSION")

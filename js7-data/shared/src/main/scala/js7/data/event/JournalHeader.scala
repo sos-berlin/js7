@@ -35,6 +35,7 @@ final case class JournalHeader(
     s"$timestamp, ${totalRunningTime.pretty} (${totalRunningTime.toSeconds}s), $initiallyStartedAt, " +
     s"$version, $js7Version, $buildId)"
 
+
 object JournalHeader:
   val Version = "1"
   private val logger = Logger[this.type]

@@ -19,5 +19,6 @@ extends InternalJob:
       outcome
     })
 
+
 object EmptyJob extends InternalJob.Companion[EmptyJob]:
   private val logger = Logger[this.type]

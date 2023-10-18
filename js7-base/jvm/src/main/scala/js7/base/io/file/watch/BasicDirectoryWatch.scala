@@ -96,6 +96,7 @@ extends Service.StoppableByRequest:
   override def toString =
     s"BasicDirectoryWatch($directory)"
 
+
 object BasicDirectoryWatch:
   private val logger = Logger[this.type]
 

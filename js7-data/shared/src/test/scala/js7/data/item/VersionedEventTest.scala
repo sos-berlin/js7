@@ -85,6 +85,7 @@ final class VersionedEventTest extends OurTestSuite
   }
 }
 
+
 object VersionedEventTest
 {
   implicit private val itemPathJsonCodec: Codec[VersionedItemPath] =

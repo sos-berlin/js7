@@ -5,6 +5,7 @@ package js7.data.value.expression
   */
 final case class ValueSearch(where: ValueSearch.Where, what: ValueSearch.What)
 
+
 object ValueSearch:
   sealed trait Where
   case object Argument extends Where

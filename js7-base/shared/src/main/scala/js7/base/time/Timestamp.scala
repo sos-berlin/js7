@@ -65,6 +65,7 @@ trait Timestamp extends Ordered[Timestamp]:
   override def toString =
     if toEpochMilli == 0 then "Epoch" else toIsoString
 
+
 object Timestamp:
   private[time] val implementation: Companion = SystemTimestamp
   val Epoch: Timestamp = ofEpochMilli(0)

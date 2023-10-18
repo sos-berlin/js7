@@ -29,6 +29,7 @@ final class Stopwatch:
   override def toString =
     duration.pretty
 
+
 object Stopwatch:
   def measureTimeOfSingleRun(n: Int, ops: String = "ops")(body: => Unit): Result =
     Result(durationOf(body), n, ops)

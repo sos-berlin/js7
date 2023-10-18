@@ -76,6 +76,7 @@ final class KeyedEventTypedJsonCodecTest extends OurTestSuite:
     assert(StringEvent.jsonCodec.isOfType[E1](a1Json))
     assert(!StringEvent.jsonCodec.isOfType[E1](xJson))
 
+
 object KeyedEventTypedJsonCodecTest:
   sealed trait TestEvent extends Event
   object TestEvent:

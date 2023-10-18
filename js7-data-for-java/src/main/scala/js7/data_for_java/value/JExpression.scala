@@ -16,6 +16,7 @@ final case class JExpression(asScala: Expression) extends JJsonable[JExpression]
 
   protected def companion = JExpression
 
+
 object JExpression extends JJsonable.Companion[JExpression]:
   type AsScala = Expression
 

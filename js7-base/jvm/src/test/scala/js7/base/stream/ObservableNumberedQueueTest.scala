@@ -100,5 +100,6 @@ final class ObservableNumberedQueueTest extends OurTestSuite:
     assert(queue.release(7).await(99.s) == Left(Problem(
       "Unknown number: Numbered[ObservableNumberedQueueTest$::X]: #7 (must be >=3 and <=6)")))
 
+
 object ObservableNumberedQueueTest:
   private case class X(string: String)

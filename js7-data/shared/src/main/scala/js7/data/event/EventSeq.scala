@@ -13,6 +13,7 @@ import js7.data.event.EventSeq.{Empty, NonEmpty}
   */
 sealed trait TearableEventSeq[+M[_], +E]
 
+
 object TearableEventSeq:
   /** Requested event is no longer available.
     * `tornEventId` is for testing only.
@@ -41,6 +42,7 @@ object TearableEventSeq:
 
 
 sealed trait EventSeq[+M[_], +E] extends TearableEventSeq[M, E]
+
 
 object EventSeq:
   final case class NonEmpty[M[_] <: IterableOnce[?], E](stamped: M[Stamped[E]])

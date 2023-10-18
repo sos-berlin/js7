@@ -57,6 +57,7 @@ extends PathProcessJobLauncher:
       tryDeleteFiles(userToFile.values)
     })
 
+
 object ShellScriptJobLauncher:
   def checked(
     executable: ShellScriptExecutable,

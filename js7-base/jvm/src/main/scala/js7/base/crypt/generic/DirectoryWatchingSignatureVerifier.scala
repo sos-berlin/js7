@@ -154,6 +154,7 @@ extends SignatureVerifier with Service.StoppableByRequest:
   override def toString =
     s"DirectoryWatchingSignatureVerifier(${companionToDirectory.keys.map(_.typeName).mkString(" ")})"
 
+
 object DirectoryWatchingSignatureVerifier extends SignatureVerifier.Companion:
   private val configPath = "js7.configuration.trusted-signature-keys"
   private val logger = Logger[this.type]

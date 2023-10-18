@@ -15,6 +15,7 @@ final class CirceJsonTesterTest extends AnyFreeSpec:
     implicit val codec: Codec.AsObject[A] = deriveCodec
     testJsonString(a, JsonString)
 
+
 object CirceJsonTesterTest:
   private val JsonString = """{
       "boole": true,

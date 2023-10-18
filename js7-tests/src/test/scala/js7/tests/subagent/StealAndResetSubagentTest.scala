@@ -110,6 +110,7 @@ final class StealAndResetSubagentTest extends OurTestSuite with SubagentTester:
       eventWatch.await[OrderFinished](_.key == thieveOrderId, after = eventId)
     }
 
+
 object StealAndResetSubagentTest:
   private val thieveAgentPath = AgentPath("THIEVE-AGENT")
 

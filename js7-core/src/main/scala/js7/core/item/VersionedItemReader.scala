@@ -35,6 +35,7 @@ trait VersionedItemReader extends ItemReader:
 
   //private[item] def itemPathCompanion: VersionedItemPath.Companion[ThisItemPath] = companion.Path
 
+
 object VersionedItemReader:
   final case class SourceProblem(path: VersionedItemPath, sourceType: SourceType, underlying: Problem)
     extends Problem.Lazy(s"Problem with '$path' ($sourceType)", Some(underlying))

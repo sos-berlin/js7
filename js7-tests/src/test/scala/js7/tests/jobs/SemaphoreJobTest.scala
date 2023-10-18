@@ -58,6 +58,7 @@ final class SemaphoreJobTest extends OurTestSuite with ControllerAgentForScalaTe
 
     assert(TestSemaphoreJob.semaphore.flatMap(_.count).await(99.s) == 0)
 
+
 object SemaphoreJobTest:
   private val agentPath = AgentPath("AGENT")
   private val workflow = Workflow(

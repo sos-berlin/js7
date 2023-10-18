@@ -84,5 +84,6 @@ class ActorRegister[K, V](valueToActorRef: V => ActorRef):
 
   final def size = keyToValue.size
 
+
 object ActorRegister:
   def simple[K] = new ActorRegister[K, ActorRef](identity)

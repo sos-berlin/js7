@@ -66,6 +66,7 @@ extends (UserId => Option[U]):
         raw.permissions.flatMap(toPermission.lift),
         raw.distinguishedNames))
 
+
 object IdToUser:
   private val logger = Logger[this.type]
   private val UsersConfigPath = "js7.auth.users"

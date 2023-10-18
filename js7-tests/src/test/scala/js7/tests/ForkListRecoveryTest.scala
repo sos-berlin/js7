@@ -95,6 +95,7 @@ final class ForkListRecoveryTest extends OurTestSuite with DirectoryProviderForS
           OrderMoved(Position(0) / "fork" % 2)))
     }
 
+
 object ForkListRecoveryTest:
   private val n = 3
   private val parentOrderId = OrderId("PARENT")

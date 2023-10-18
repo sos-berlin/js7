@@ -233,6 +233,7 @@ final class WatchSignatureKeysTest extends OurTestSuite with ControllerAgentForS
   }
 }
 
+
 object WatchSignatureKeysTest
 {
   private val logger = Logger[this.type]

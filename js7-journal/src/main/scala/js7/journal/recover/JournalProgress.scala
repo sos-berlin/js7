@@ -2,6 +2,7 @@ package js7.journal.recover
 
 sealed trait JournalProgress
 
+
 object JournalProgress:
   case object Initial extends JournalProgress
 

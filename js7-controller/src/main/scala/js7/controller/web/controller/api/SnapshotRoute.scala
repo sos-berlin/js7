@@ -91,6 +91,7 @@ trait SnapshotRoute extends ControllerRouteProvider:
         .map(Chunk(_))
         .toPekkoSourceForHttpResponse)
 
+
 object SnapshotRoute:
   type SnapshotFilter = Observable[Any] => Observable[Any]
 

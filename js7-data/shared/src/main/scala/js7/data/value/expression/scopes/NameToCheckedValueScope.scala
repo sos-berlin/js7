@@ -11,6 +11,7 @@ final class NameToCheckedValueScope(
 extends Scope:
   override def toString = s"NameToCheckedValueScope(${namesToString(nameToCheckedValue)})"
 
+
 object NameToCheckedValueScope:
   def apply(nameToValue: MapView[String, Checked[Value]]): Scope =
     new NameToCheckedValueScope(nameToValue)

@@ -58,6 +58,7 @@ final case class OrderId private(string: String) extends GenericString:
     else
       Right(this)
 
+
 object OrderId extends GenericString.NonEmpty[OrderId]:
   val ChildSeparatorChar = '|'
   val ChildSeparator = ChildSeparatorChar.toString

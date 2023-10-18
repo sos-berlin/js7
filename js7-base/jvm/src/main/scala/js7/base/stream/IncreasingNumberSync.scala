@@ -70,6 +70,7 @@ final class IncreasingNumberSync(initial: Long, valueToString: Long => String):
   @TestOnly
   private[stream] def waitingCount = valueToPromise.size
 
+
 object IncreasingNumberSync:
   private val logger = Logger[this.type]
   private val RightTrue = Task.right(true)

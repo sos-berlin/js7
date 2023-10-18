@@ -97,5 +97,6 @@ final class UpdateRepoX509Test extends OurTestSuite with ControllerAgentForScala
         assert(controller.api.updateRepo(v4, Seq(signed)).await(99.s) == Left(Problem("The signature's SignerId is unknown: CN=ALIEN")))
     }
 
+
 object UpdateRepoX509Test:
   private val workflow = Workflow.of(WorkflowPath("WORKFLOW"))

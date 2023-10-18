@@ -29,6 +29,7 @@ final case class JournalState(userIdToReleasedEventId: Map[UserId, EventId]):
     val userToEventId = defaults ++ userIdToReleasedEventId
     (userToEventId.values.view :+ acknowledegedEventId).min
 
+
 object JournalState:
   val empty = JournalState(Map.empty)
   implicit val jsonCodec: Codec.AsObject[JournalState] = deriveCodec[JournalState]

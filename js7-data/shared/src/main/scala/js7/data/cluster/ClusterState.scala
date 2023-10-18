@@ -89,6 +89,7 @@ extends EventDrivenState[ClusterState, ClusterEvent]:
       case hasNodes: HasNodes =>
         s"${hasNodes.getClass.simpleScalaName}(${hasNodes.activeId} is active)"
 
+
 object ClusterState
 extends EventDrivenState.Companion[ClusterState, ClusterEvent]:
   private type Id = NodeId

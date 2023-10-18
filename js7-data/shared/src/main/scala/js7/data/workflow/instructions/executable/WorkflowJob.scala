@@ -60,6 +60,7 @@ final case class WorkflowJob(
       else
         Checked.unit)
 
+
 object WorkflowJob:
   val DefaultParallelism = 1
 

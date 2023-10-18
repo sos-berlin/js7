@@ -49,6 +49,7 @@ sealed trait AdmissionPeriodCalculator:
           // first may be duplicate with the first LocalInterval of the tail
           .dropWhile(first contains _))
 
+
 object AdmissionPeriodCalculator:
   private[time] val NoOffset = ZoneOffset.ofTotalSeconds(0)
   private val JEpsilon = FiniteDuration.Epsilon.toJava

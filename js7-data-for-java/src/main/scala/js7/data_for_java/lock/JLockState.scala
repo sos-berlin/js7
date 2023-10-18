@@ -33,6 +33,7 @@ extends JJsonable[JLockState]:
   def queuedOrderIds: java.util.List[OrderId] =
     asScala.queue.asJava
 
+
 object JLockState extends JJsonable.Companion[JLockState]:
   type AsScala = LockState
 

@@ -95,6 +95,7 @@ trait SessionRoute extends RouteProvider:
 
         result
 
+
 object SessionRoute:
   private val logger = Logger[this.type]
   private object AnonymousLoginProblem extends Problem.Eager("Login: user and password required")

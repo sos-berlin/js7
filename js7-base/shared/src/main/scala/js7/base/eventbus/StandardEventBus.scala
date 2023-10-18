@@ -18,5 +18,6 @@ final class StandardEventBus[E](eventClass: Class[E]) extends ClassEventBus[E]:
 
   protected def classify(event: E) = event.getClass
 
+
 object StandardEventBus:
   private val logger = Logger[this.type]

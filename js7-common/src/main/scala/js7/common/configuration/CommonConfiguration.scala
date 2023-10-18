@@ -61,6 +61,7 @@ trait CommonConfiguration extends WebServerBinding.HasLocalUris with BasicConfig
           keyStoreRef.mapProblem(Problem("HTTPS requires a key store:") |+| _).orThrow,
           trustStoreRefs)
 
+
 object CommonConfiguration:
   private val logger = Logger[this.type]
 

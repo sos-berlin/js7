@@ -20,6 +20,7 @@ abstract sealed case class PeriodSeq(orderedSeq: Seq[Period]):
   //def nextPeriod(from: LocalTime): Option[RepeatPeriod] =
   //  orderedSeq find { _ contains from }
 
+
 object PeriodSeq:
   val Empty = PeriodSeq(Nil)
 

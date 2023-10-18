@@ -80,6 +80,7 @@ final case class ClientAttachments[D <: DelegateId: ClassTag: Tag](
         copy(
           itemToDelegateToAttachedState = itemToDelegateToAttachedState - itemKey)
 
+
 object ClientAttachments:
   private val Empty = ClientAttachments[DelegateId](Map.empty)
 

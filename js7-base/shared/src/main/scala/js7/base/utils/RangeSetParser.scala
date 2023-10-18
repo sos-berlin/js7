@@ -33,6 +33,7 @@ private final class RangeSetParser[A: Ordering: Ordinal](parseValue: Parser[A]):
     ((w.with1 *> ranges) <* end)
       .map(RangeSet.fromRanges(_))
 
+
 object RangeSetParser:
   val rangeSymbol = ".."
   val delimiter = ","

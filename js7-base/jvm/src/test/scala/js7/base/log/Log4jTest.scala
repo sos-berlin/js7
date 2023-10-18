@@ -37,5 +37,6 @@ final class Log4jTest extends OurTestSuite:
     logger.info(Stopwatch.itemsPerSecondString(started.elapsed, n * m, "lines"))
     if testSpeed then info(Stopwatch.itemsPerSecondString(started.elapsed, n * m, "lines"))
 
+
 object Log4jTest:
   private val logger = Logger[this.type]

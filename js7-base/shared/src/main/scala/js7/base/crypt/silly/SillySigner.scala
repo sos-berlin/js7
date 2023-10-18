@@ -19,6 +19,7 @@ final class SillySigner(signature: SillySignature) extends DocumentSigner:
 
   def toVerifier = new SillySignatureVerifier(signature :: Nil, publicKeyOrigin = "SillySigner")
 
+
 object SillySigner extends DocumentSigner.Companion:
   protected type MySignature = SillySignature
   protected type MyMessageSigner = SillySigner

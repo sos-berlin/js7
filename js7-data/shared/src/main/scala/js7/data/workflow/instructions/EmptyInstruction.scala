@@ -11,6 +11,7 @@ extends Instruction:
 
   override def toString = "gap"
 
+
 object EmptyInstruction:
   val empty = new EmptyInstruction(None)
 

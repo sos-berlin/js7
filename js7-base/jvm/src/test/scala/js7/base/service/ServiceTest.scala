@@ -134,6 +134,7 @@ final class ServiceTest extends OurAsyncTestSuite:
     def resource(setRunning: Boolean => Unit): Resource[Task, MyService] =
       Service.resource(Task(new MyService(setRunning)))
 
+
 object ServiceTest:
   private val logger = Logger[this.type]
 

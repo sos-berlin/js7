@@ -14,6 +14,7 @@ sealed trait JPositionOrLabel extends JavaWrapper:
   type AsScala <: PositionOrLabel
   def toJson: String
 
+
 object JPositionOrLabel:
   def apply(underlying: PositionOrLabel): JPositionOrLabel =
     underlying match
@@ -37,6 +38,7 @@ extends JJsonable[JPosition] with JPositionOrLabel:
   def toList: java.util.List[Any] =
     asScala.toSeq.asJava
 
+
 object JPosition extends JJsonable.Companion[JPosition]:
   type AsScala = Position
 
@@ -54,6 +56,8 @@ final case class JLabel(asScala: Label)
 extends JJsonable[JLabel] with JPositionOrLabel:
   type AsScala = Label
   protected val companion: JLabel.type = JLabel
+
+
 object JLabel extends JJsonable.Companion[JLabel]:
   type AsScala = Label
 

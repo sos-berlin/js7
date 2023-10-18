@@ -925,6 +925,7 @@ final class ScalaUtilsTest extends OurTestSuite
   }
 }
 
+
 object ScalaUtilsTest
 {
   private val logger = Logger[this.type]

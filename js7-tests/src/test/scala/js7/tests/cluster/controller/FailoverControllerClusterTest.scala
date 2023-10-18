@@ -129,6 +129,7 @@ abstract class FailoverControllerClusterTest protected extends ControllerCluster
       backupController.stop.await(99.s)
     }
 
+
 object FailoverControllerClusterTest:
   private val logger = Logger[this.type]
 

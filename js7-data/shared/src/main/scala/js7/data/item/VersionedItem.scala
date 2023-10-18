@@ -30,6 +30,7 @@ trait VersionedItem extends SignableItem:
     if A != companion then throw new ClassCastException(s"Expected ${companion.Path.name}, but is: $path")
     this.asInstanceOf[A]
 
+
 object VersionedItem:
   type Companion_ = Companion[? <: VersionedItem]
 

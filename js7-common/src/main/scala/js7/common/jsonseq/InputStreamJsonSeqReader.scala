@@ -145,6 +145,7 @@ extends AutoCloseable:
   private def throwCorrupt(extra: String) =
     throwCorrupt2(lineNumber, position, extra)
 
+
 object InputStreamJsonSeqReader:
   private[jsonseq] val BlockSize = 8192
   private val logger = Logger[this.type]

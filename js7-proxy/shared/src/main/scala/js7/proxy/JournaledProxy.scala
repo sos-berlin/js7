@@ -123,6 +123,7 @@ trait JournaledProxy[S <: SnapshotableState[S]]:
       case null => throw new IllegalStateException("JournaledProxy has not yet started")
       case o => o
 
+
 object JournaledProxy:
   private type RequiredApi_[S <: JournaledState[S]] =
     EventApi & HttpClusterNodeApi & SessionApi.HasUserAndPassword { type State = S }

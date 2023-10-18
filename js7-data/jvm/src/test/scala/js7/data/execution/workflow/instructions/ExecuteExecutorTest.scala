@@ -84,6 +84,7 @@ final class ExecuteExecutorTest extends OurTestSuite
   }
 }
 
+
 object ExecuteExecutorTest
 {
   private val admissionTimeScheme = AdmissionTimeScheme(Seq(

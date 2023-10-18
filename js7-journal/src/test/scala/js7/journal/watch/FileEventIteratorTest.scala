@@ -135,6 +135,7 @@ final class FileEventIteratorTest extends OurTestSuite:
       iterator.close()
     }
 
+
 object FileEventIteratorTest:
   private val After = EventId(1000)
   private val TestEvents =

@@ -47,6 +47,7 @@ final class SignableItemVerifierTest extends OurTestSuite:
     val tampered = itemSigner.toSignedString(workflow).tamper
     assert(itemVerifier.verify(tampered) == Left(TamperedWithSignedMessageProblem))
 
+
 object SignableItemVerifierTest:
   private val workflow =
     val workflowScript = """define workflow { execute executable="SCRIPT.cmd", agent="AGENT"; }"""

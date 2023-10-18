@@ -72,6 +72,7 @@ extends CommonConfiguration:
   override def toString =
     s"AgentConfiguration($configDirectory,$dataDirectory,$webServerPorts,$name,Config)"
 
+
 object AgentConfiguration:
   val DefaultName = if isTest then "Agent" else "JS7"
 

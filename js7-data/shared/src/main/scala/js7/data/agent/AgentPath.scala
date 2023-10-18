@@ -17,6 +17,7 @@ extends UnsignedSimpleItemPath with DelegateId with ClusterId:
 
   override def toString = s"Agent:$string"  // instead of AgentRef:
 
+
 object AgentPath
 extends DelegateId.Companion[AgentPath]
 with UnsignedSimpleItemPath.Companion[AgentPath]:

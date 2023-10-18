@@ -8,6 +8,7 @@ import js7.data.event.ItemContainer
 sealed trait UnsignedItemEvent extends InventoryItemEvent:
   def key: VersionedControlId_
 
+
 object UnsignedItemEvent:
   // Restricted to VersionedControl Items
   // but may replace UnsignedSimpleItemEvent in future !!!

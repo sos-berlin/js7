@@ -30,6 +30,7 @@ trait Event:
 
   def isMinor = false
 
+
 object Event:
   /** This trait (but not it's derived traits) is the common trait of Events with a common key. */
   transparent trait IsKeyBase[E <: IsKeyBase[E]] extends Event:

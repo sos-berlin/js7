@@ -13,6 +13,7 @@ extends JavaWrapper:
 
   type AsScala = OrderProcess
 
+
 object JOrderProcess:
   def of(outcome: CompletionStage[JOutcome.Completed]): JOrderProcess =
     JOrderProcess(OrderProcess(

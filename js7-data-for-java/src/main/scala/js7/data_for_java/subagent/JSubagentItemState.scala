@@ -30,6 +30,7 @@ extends JJsonable[JSubagentItemState]:
   def problem: Optional[Problem] =
     asScala.problem.toJava
 
+
 object JSubagentItemState extends JJsonable.Companion[JSubagentItemState]:
   type AsScala = SubagentItemState
 

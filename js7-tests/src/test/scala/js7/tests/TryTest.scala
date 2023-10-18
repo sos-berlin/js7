@@ -243,6 +243,7 @@ with BlockingItemUpdater:
       val events = keyedEvents.iterator.filter(_.key == orderId).map(_.event).toVector
       assert(events == expected)
 
+
 object TryTest:
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)

@@ -19,6 +19,7 @@ extends StoreRef:
 
   override def toString = s"TrustStore $url"
 
+
 object TrustStoreRef:
   private val configKey = "js7.web.https.truststores"
 

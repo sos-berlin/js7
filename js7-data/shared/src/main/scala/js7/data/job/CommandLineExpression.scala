@@ -7,6 +7,7 @@ import js7.data.value.expression.ExpressionOptimizer.optimizeExpression
 final case class CommandLineExpression(string: String, expressions: List[Expression]):
   override def toString = string
 
+
 object CommandLineExpression:
   def optimizeCommandLine(commandLine: CommandLineExpression): CommandLineExpression =
     CommandLineExpression(

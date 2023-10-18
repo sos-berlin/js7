@@ -78,6 +78,7 @@ final class ByteArray private(val unsafeArray: Array[Byte]):
 
   override def toString = ByteArray.show(this)
 
+
 object ByteArray extends ByteSequence[ByteArray]:
   val clazz = classOf[ByteArray]
 

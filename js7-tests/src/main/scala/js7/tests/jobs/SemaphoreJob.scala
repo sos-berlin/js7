@@ -62,6 +62,7 @@ extends InternalJob:
             case ExitCase.Completed => logger.info(s"🟢 $semaName acquired")
           }))
 
+
 object SemaphoreJob:
   private val logger = Logger[this.type]
 

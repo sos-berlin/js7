@@ -57,6 +57,7 @@ extends StringMap:
   private def throwFrozen() =
     throw new IllegalStateException("CorrelId StringMap is frozen")
 
+
 object CorrelIdLog4jStringMap:
   private val nullString = "❓null❓"
   private var _forEachCount = 0L

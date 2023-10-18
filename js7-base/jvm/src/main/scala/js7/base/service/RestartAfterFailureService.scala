@@ -110,6 +110,7 @@ extends Service:
 
   private def myName = s"RestartAfterFailureService[$serviceName]"
 
+
 object RestartAfterFailureService:
   private val logger = Logger[this.type]
   private[service] val defaultRestartDelays: Seq[FiniteDuration] =

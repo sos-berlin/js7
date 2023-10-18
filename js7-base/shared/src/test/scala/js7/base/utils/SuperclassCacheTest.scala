@@ -40,6 +40,7 @@ final class SuperclassCacheTest extends OurTestSuite:
     // |  js7.base.utils.SuperclassCacheTest$Super ->
     // |    js7.base.utils.SuperclassCacheTest$Super""".stripMargin)
 
+
 object SuperclassCacheTest:
   private sealed trait X
   private sealed trait SuperSuper

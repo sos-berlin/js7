@@ -27,6 +27,7 @@ with TrivialItemState[JobResource]:
   def withRevision(revision: Option[ItemRevision]) =
     copy(itemRevision = revision)
 
+
 object JobResource
 extends SignableSimpleItem.Companion[JobResource]
 with TrivialItemState.Companion[JobResource]:

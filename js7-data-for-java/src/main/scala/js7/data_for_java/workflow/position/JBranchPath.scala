@@ -22,6 +22,7 @@ final case class JBranchPath(asScala: BranchPath) extends JavaWrapper:
 
   override def toString = asScala.show
 
+
 object JBranchPath:
   val empty: JBranchPath = JBranchPath(BranchPath.empty)
 

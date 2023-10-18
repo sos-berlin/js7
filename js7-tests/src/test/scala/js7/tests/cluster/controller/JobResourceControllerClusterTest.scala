@@ -54,6 +54,7 @@ final class JobResourceControllerClusterTest extends ControllerClusterTester:
       }
     }
 
+
 object JobResourceControllerClusterTest:
   private val jobResource = JobResource(JobResourcePath("JOB-RESOURCE"))
   private val jobResource0 = jobResource.copy(itemRevision = Some(ItemRevision(0)))

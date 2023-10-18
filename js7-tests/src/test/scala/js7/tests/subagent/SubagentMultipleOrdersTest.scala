@@ -109,6 +109,7 @@ final class SubagentMultipleOrdersTest extends OurTestSuite with SubagentTester:
       .map(_._1)
       .flatMap(o => Observable.fromIterable(o))
 
+
 object SubagentMultipleOrdersTest:
   private val logger = Logger[this.type]
 

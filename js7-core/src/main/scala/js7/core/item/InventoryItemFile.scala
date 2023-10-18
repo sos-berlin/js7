@@ -10,6 +10,7 @@ import js7.data.item.{InventoryItemPath, SourceType}
   */
 final case class InventoryItemFile(file: Path, path: InventoryItemPath, sourceType: SourceType)
 
+
 object InventoryItemFile:
   def checked(baseDirectory: Path, path: Path, companions: Iterable[js7.data.item.InventoryItemPath.AnyCompanion]): Checked[InventoryItemFile] =
     fileToItemPathAndSourceType(companions, baseDirectory, path)

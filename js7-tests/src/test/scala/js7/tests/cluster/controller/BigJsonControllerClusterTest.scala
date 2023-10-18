@@ -65,6 +65,7 @@ final class BigJsonControllerClusterTest extends OurTestSuite with ControllerClu
       controllerApi.stop await 99.s
     }
 
+
 object BigJsonControllerClusterTest:
   private val agentPath = AgentPath("AGENT")
   private val bigStringSize = 9_000_000 max

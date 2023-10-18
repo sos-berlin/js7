@@ -10,5 +10,6 @@ final case class TaskRegisterOverview(
   currentTaskCount: Int,
   totalTaskCount: Int)
 
+
 object TaskRegisterOverview:
   implicit val jsonCodec: Codec.AsObject[TaskRegisterOverview] = deriveCodec

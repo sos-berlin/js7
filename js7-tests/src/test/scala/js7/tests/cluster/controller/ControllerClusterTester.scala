@@ -15,6 +15,7 @@ with ControllerClusterForScalaTest:
   protected def items: Seq[InventoryItem] =
     Seq(TestWorkflow)
 
+
 object ControllerClusterTester:
   private[cluster] val TestWorkflow = Workflow(
     WorkflowPath("WORKFLOW"),

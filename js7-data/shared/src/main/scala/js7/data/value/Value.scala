@@ -268,6 +268,7 @@ final case class BooleanValue(booleanValue: Boolean) extends GoodValue:
 
   override def toString = convertToString
 
+
 object BooleanValue extends GoodValue.Companion[BooleanValue] with ValueType.Simple:
   val name = "Boolean"
   val True = BooleanValue(true)

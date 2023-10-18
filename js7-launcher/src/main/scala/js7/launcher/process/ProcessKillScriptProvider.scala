@@ -46,6 +46,7 @@ final class ProcessKillScriptProvider extends HasCloser:
       okay
     exists(file) && file.contentBytes.sameElements(content)
 
+
 object ProcessKillScriptProvider:
   private val logger = Logger[this.type]
   private val WindowsScriptResource = JavaResource("js7/launcher/process/scripts/windows/kill_task.cmd")

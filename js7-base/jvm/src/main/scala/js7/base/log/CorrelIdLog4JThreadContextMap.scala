@@ -59,6 +59,7 @@ with CopyOnWrite:
       lastCorrelIdLog4jStringMap = r
       r
 
+
 object CorrelIdLog4JThreadContextMap:
   /** Use this name in Log4j2 pattern as `%notEmpty{%X{js7.correlId} }`.
    * The value is empty iff CorrelId are switched off (-Djs7.log.correlId=false). */

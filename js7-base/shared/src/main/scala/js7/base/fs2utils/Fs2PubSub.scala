@@ -27,6 +27,7 @@ final class Fs2PubSub[F[_]: Concurrent: UnsafeMemoizable, A <: AnyRef]:
       .filter(_ != Initial)
       .takeWhile(_ != EOF))
 
+
 object Fs2PubSub:
   private val Initial = new AnyRef{}
   private val EOF = new AnyRef{}

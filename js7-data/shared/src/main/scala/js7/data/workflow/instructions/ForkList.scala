@@ -61,6 +61,7 @@ extends ForkInstruction:
 
   override def toString = s"ForkList()$sourcePosToString"
 
+
 object ForkList:
   def checked(
     children: Expression,

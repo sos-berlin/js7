@@ -104,5 +104,6 @@ final class CycleTest extends OurTestSuite:
         }
       }""")
 
+
 object CycleTest:
   val exampleCycle = Cycle(ScheduleTester.schedule, Workflow.empty)

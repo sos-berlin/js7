@@ -124,6 +124,7 @@ final class InventoryItemDiffTest extends OurTestSuite
   }
 }
 
+
 object InventoryItemDiffTest
 {
   private[tests] val V0 = VersionId("0")

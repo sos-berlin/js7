@@ -47,6 +47,7 @@ extends SnapshotableState[TestState]:
   def withStandards(standards: SnapshotableState.Standards) =
     copy(standards = standards)
 
+
 object TestState extends SnapshotableState.Companion[TestState]:
   val empty = TestState(EventId.BeforeFirst, SnapshotableState.Standards.empty, Map.empty)
 

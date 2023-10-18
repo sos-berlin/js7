@@ -44,6 +44,7 @@ extends Scope:
 
   override def toString = s"OrderVariablesScope(${order.id})"
 
+
 object OrderVariablesScope:
   def apply(order: Order[Order.State], workflow: Workflow): Scope =
     new OrderVariablesScope(order, workflow)

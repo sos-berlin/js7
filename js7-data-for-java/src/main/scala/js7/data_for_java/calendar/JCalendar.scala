@@ -40,6 +40,7 @@ extends JJsonable[JCalendar] with JUnsignedSimpleItem:
   def withRevision(revision: Optional[ItemRevision]) =
     copy(asScala.withRevision(revision.toScala))
 
+
 object JCalendar extends JJsonable.Companion[JCalendar]:
   type AsScala = Calendar
 

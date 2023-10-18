@@ -53,6 +53,7 @@ trait LogRoute extends ControllerRouteProvider:
             .map(_.toByteString)
             .toPekkoSourceForHttpResponse)))
 
+
 object LogRoute:
   private val logger = Logger[this.type]
   private val contentType = `text/plain(UTF-8)`

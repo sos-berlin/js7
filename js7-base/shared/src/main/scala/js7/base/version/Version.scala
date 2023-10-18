@@ -35,6 +35,7 @@ extends GenericString with Ordered[Version]:
 
   override def toString = string
 
+
 object Version extends GenericString.Checked_[Version]:
   private val VersionRegex =
   """([0-9]+)\.([0-9]+)\.([0-9]+)(-([A-Za-z0-9.]+))?(\+([A-Za-z0-9]+))?""".r

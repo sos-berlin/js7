@@ -13,6 +13,7 @@ extends JavaWrapper:
 
   type AsScala = CancellationMode
 
+
 object JCancellationMode:
   val freshOnly: JCancellationMode =
     JCancellationMode(CancellationMode.FreshOnly)

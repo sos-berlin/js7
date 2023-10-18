@@ -83,6 +83,7 @@ final class SetOnce[A](label: => String, notYetSetProblem: Problem):
       case None => Left(notYetSetProblem)
       case Some(o) => Right(o.get)
 
+
 object SetOnce:
   def apply[A](implicit A: Tag[A]): SetOnce[A] =
     lazy val label = A.tag.toString

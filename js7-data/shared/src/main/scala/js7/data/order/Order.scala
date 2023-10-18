@@ -768,6 +768,7 @@ final case class Order[+S <: Order.State](
           Left(Problem("OrderAttachedToAgent event requires an Attached order"))
     })
 
+
 object Order:
   def fromOrderAdded(id: OrderId, event: OrderAddedX): Order[Fresh] =
     Order(id,

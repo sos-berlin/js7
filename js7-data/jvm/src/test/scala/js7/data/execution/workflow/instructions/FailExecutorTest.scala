@@ -62,6 +62,7 @@ final class FailExecutorTest extends OurTestSuite
   }
 }
 
+
 object FailExecutorTest
 {
   private val TestWorkflowId = WorkflowPath("WORKFLOW") ~ "VERSION"

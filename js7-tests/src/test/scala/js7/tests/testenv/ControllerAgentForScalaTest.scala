@@ -202,5 +202,6 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest:
         })
     })
 
+
 object ControllerAgentForScalaTest:
   private val logger = Logger[this.type]

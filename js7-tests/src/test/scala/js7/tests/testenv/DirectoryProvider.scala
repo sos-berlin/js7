@@ -412,6 +412,7 @@ extends HasCloser:
   def subagentName(subagentId: SubagentId, suffix: String = ""): String =
     testName.fold("")(_ + "-") + subagentId.string + suffix
 
+
 object DirectoryProvider:
   private val Vinitial = VersionId("INITIAL")
   private val logger = Logger[this.type]

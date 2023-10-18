@@ -65,6 +65,7 @@ trait Instruction:
   protected final def sourcePosToString: String =
     isTest ?? s" /*$sourcePos*/"
 
+
 object Instruction:
   object `@:`:
     def unapply(labeled: Labeled) = Some((labeled.maybeLabel, labeled.instruction))

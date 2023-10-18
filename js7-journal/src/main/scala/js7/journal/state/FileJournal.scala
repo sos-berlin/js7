@@ -133,6 +133,7 @@ with FileJournal.PossibleFailover:
 
   override def toString = s"FileJournal[$S]"
 
+
 object FileJournal:
   private val logger = Logger[this.type]
 

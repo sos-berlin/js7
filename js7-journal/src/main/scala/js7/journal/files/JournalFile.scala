@@ -30,6 +30,7 @@ private[journal] final case class JournalFile private[journal](fileEventId: Even
         0
       }
 
+
 object JournalFile:
   def toFile(fileBase: Path, fileEventId: EventId): Path =
     fileBase resolveSibling s"${fileBase.getFileName}--$fileEventId.journal"

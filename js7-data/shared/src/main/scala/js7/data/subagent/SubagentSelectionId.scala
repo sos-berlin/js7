@@ -17,6 +17,7 @@ with InventoryItemPath.AttachableToAgent:
   // A SubagentId may be used as a SubagentSelectionId
   def toSubagentId = SubagentId(string)
 
+
 object SubagentSelectionId
 extends DelegateId.Companion[SubagentSelectionId]
 with UnsignedSimpleItemPath.Companion[SubagentSelectionId]:

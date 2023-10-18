@@ -9,6 +9,7 @@ import java.nio.file.Path
 trait SeekableInputStream extends InputStream:
   def seek(position: Long): Unit
 
+
 object SeekableInputStream:
   def openFile(file: Path): SeekableInputStream =
     new FileSeekableInputStream(new RandomAccessFile(file.toFile, "r"), file)

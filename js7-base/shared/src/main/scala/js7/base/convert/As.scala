@@ -10,6 +10,7 @@ trait As[V, W]:
   // Objects of this class are implicitly used. So do not extend V => W to avoid implicit use as function.
   def apply(v: V): W
 
+
 object As:
 
   def apply[V, W](asW: V => W): As[V, W] =

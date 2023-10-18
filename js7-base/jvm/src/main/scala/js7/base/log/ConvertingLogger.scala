@@ -196,6 +196,7 @@ trait ConvertingLogger extends Slf4jLogger:
   final def info(marker: Marker, msg: String, t: Throwable) =
     delegate.info(marker, convertMessage(msg), t)
 
+
 object ConvertingLogger:
   final class Prefixed(prefix: String, protected val delegate: Slf4jLogger) extends ConvertingLogger:
     protected val fullPrefix = s"($prefix) "

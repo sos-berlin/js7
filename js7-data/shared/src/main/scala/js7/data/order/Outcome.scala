@@ -24,6 +24,7 @@ sealed trait Outcome:
 
   def show: String
 
+
 object Outcome:
   val succeeded: Completed = Succeeded.empty
   val succeededRC0 = Succeeded.returnCode0

@@ -10,6 +10,7 @@ final case class JavaInformation(
   memory: Memory,
   systemProperties: Map[String, String])
 
+
 object JavaInformation:
 
   final case class Memory(maximum: Long, total: Long, free: Long):

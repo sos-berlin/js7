@@ -49,6 +49,7 @@ trait ScheduleTester extends OurTestSuite
   }
 }
 
+
 object ScheduleTester
 {
   val dateOffset = 6.h // Business day starts at 6:00 (i.e., switching from monday to tuesday)

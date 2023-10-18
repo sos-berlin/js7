@@ -668,6 +668,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
       .suspendHeartbeat(journal.clusterState, forEvent = forEvent)(
         task)
 
+
 object ActiveClusterNode:
   private val logger = Logger[this.type]
   private val passiveNodeCouplingResponseTimeout = 3.s

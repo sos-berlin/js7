@@ -156,6 +156,7 @@ final class PostNoticesExecutorTest extends OurTestSuite:
             notice2.id, Some(notice2)))),
         board3.path -> BoardState(board3)))
 
+
 object PostNoticesExecutorTest:
   private val clockTimestamp = Timestamp("2111-01-01T00:00:00Z")
   private val lifeTime = 24.h

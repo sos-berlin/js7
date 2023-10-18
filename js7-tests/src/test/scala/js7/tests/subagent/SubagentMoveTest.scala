@@ -84,6 +84,7 @@ final class SubagentMoveTest extends OurTestSuite with SubagentTester:
       bareSubagent.shutdown(Some(SIGKILL), dontWaitForDirector = true).await(99.s)
     }
 
+
 object SubagentMoveTest:
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",

@@ -43,6 +43,7 @@ final case class OrderEntry(
           log = Optional.of(lastStep.log.toScala.getOrElse("") + chunk))
       ).asJava)
 
+
 object OrderEntry:
   sealed trait Cause
   object Cause:

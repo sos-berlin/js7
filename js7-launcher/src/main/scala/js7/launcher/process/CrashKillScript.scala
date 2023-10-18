@@ -80,6 +80,7 @@ extends AutoCloseable:
     val cleanTail = args.tail collect { case CleanArgument(o) => o }
     ((s""""${args.head}"""" +: cleanTail) mkString " ") + LineSeparator
 
+
 object CrashKillScript:
   private val logger = Logger[this.type]
   private val LineSeparator = sys.props("line.separator")

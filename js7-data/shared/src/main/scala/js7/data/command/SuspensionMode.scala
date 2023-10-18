@@ -5,6 +5,7 @@ import js7.base.circeutils.CirceUtils.deriveConfiguredCodec
 
 final case class SuspensionMode(kill: Option[CancellationMode.Kill] = None)
 
+
 object SuspensionMode:
   val standard = new SuspensionMode()
   val kill = new SuspensionMode(Some(CancellationMode.Kill()))

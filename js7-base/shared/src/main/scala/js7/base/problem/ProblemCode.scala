@@ -8,6 +8,7 @@ import js7.base.generic.GenericString
   */
 final case class ProblemCode(string: String) extends GenericString
 
+
 object ProblemCode extends GenericString.NonEmpty[ProblemCode]:
   val empty: ProblemCode = unchecked("")
 

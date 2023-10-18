@@ -56,6 +56,7 @@ extends JournalWriter(S, after = after, append = false):
 
   override def toString = s"SnapshotJournalWriter(${file.getFileName})"
 
+
 object SnapshotJournalWriter:
   def forTest(journalLocation: JournalLocation, after: EventId)(implicit scheduler: Scheduler) =
     new SnapshotJournalWriter(journalLocation.S, journalLocation.file(after), after = after, simulateSync = None)

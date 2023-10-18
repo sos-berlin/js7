@@ -104,6 +104,7 @@ extends Actor:
         Halt.haltJava("🟥 EmergencyStop command received: JS7 AGENT STOPS NOW",
           restart = restart)
 
+
 object CommandActor:
   intelliJuseImport(StringInstantJsonCodec)
 

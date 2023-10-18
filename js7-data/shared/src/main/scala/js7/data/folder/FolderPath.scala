@@ -43,6 +43,7 @@ final case class FolderPath private(string: String) extends VersionedItemPath:
   override def toFile(t: SourceType) =
     throw new NotImplementedError("FolderPath.toFile")  // In Scala.js, don't use java.nio.file.Paths
 
+
 object FolderPath extends VersionedItemPath.Companion[FolderPath]:
   val Root = new FolderPath("")
   override val sourceTypeToFilenameExtension = Map.empty

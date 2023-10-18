@@ -7,5 +7,6 @@ import js7.data.event.SnapshotableState
 trait NodeNameToPassword[S <: SnapshotableState[S]]
 extends (NodeName => Checked[Option[SecretString]])
 
+
 object NodeNameToPassword {
 }

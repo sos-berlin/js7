@@ -48,6 +48,7 @@ extends Instruction:
 
   override def toString = s"if ($predicate) $thenWorkflow" + elseWorkflow.fold("")(w => s" else $w") + sourcePosToString
 
+
 object If:
   implicit val jsonCodec: Codec.AsObject[If] =
     Codec.AsObject.from[If](

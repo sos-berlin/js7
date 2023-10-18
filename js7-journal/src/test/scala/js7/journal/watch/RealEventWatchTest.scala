@@ -47,6 +47,7 @@ final class RealEventWatchTest extends OurTestSuite:
     assert(expectedNext.eventId == n + 1)
     assert(events == (1L to n).map(toStampedEvent))
 
+
 object RealEventWatchTest:
   private val EventsPerIteration = 3
 

@@ -439,6 +439,7 @@ final class CycleExecutorTest extends OurTestSuite with ScheduleTester
   }
 }
 
+
 object CycleExecutorTest
 {
   private val logger = Logger[this.type]

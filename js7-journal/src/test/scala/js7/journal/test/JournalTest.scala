@@ -178,6 +178,7 @@ final class JournalTest extends OurTestSuite with BeforeAndAfterAll with TestJou
     journalLocation.listJournalFiles.map(_.file.getFileName.toString)
 }
 
+
 object JournalTest
 {
   private val FirstJournal = Vector(

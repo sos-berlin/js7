@@ -21,6 +21,7 @@ final class OneTimeTokenProvider private():
   def confirms(token: OneTimeToken): Boolean =
     current.contains(token)
 
+
 object OneTimeTokenProvider:
   /** Unsafe because it has a state. */
   def unsafe(): OneTimeTokenProvider =

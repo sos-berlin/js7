@@ -14,6 +14,7 @@ sealed trait JOutcome extends JJsonable[JOutcome]:
   type AsScala = Outcome
   def companion = JOutcome
 
+
 object JOutcome extends JJsonable.Companion[JOutcome]:
   type AsScala = Outcome
 

@@ -99,5 +99,6 @@ final class IncreasingNumberSyncTest extends OurTestSuite:
       logger.info(stopwatch.itemsPerSecondString(n, "events"))
       assert(sync.waitingCount == 0)
 
+
 object IncreasingNumberSyncTest:
   private val logger = Logger[this.type]

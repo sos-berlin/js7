@@ -47,6 +47,7 @@ trait OrderScopes:
   final lazy val pureOrderScope =
     OrderVariablesScope(order, workflow) |+| variablelessOrderScope
 
+
 object OrderScopes:
   def apply(order: Order[Order.State], workflow: Workflow, controllerId: ControllerId)
   : OrderScopes =

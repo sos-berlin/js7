@@ -33,6 +33,7 @@ extends JournaledProxy[ControllerState]:
         sync(response.eventId)
           .map(_ => Right(response)))
 
+
 object ControllerProxy:
   private[proxy] def start(
     api: ControllerApi,

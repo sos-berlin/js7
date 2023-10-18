@@ -13,6 +13,7 @@ private class AssignableFrom[A : ClassTag] extends PartialFunction[Any, A]:
 
   def isDefinedAt(o: Any) = implicitClass[A] isAssignableFrom o.getClass
 
+
 object AssignableFrom:
   /**
    * @return A [[PartialFunction]]`[Any, A]`, defined iff the argument is an `A`, and then returning the argument as an `A`

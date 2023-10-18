@@ -64,6 +64,7 @@ extends EventDrivenStateView[TestStateView, Event]:
       keyToUnsignedItemState_ = keyToUnsignedItemState_ ++ addItemStates.map(o => o.path -> o))
     Right(x)
 
+
 object TestStateView extends EventDrivenState.Companion[TestStateView, Event]:
   def of(
     isAgent: Boolean,

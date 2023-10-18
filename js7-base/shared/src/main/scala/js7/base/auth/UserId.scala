@@ -14,6 +14,7 @@ final case class UserId private(string: String) extends GenericString:
 
   override def toString = s"User:$string"
 
+
 object UserId extends GenericString.Checked_[UserId]:
   val Anonymous = UserId("Anonymous")
 

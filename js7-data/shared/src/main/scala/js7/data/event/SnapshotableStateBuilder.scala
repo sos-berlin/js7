@@ -162,6 +162,7 @@ trait SnapshotableStateBuilder[S <: SnapshotableState[S]]:
     if eventId == EventId.BeforeFirst then Timestamp.now
     else EventId.toTimestamp(eventId)
 
+
 object SnapshotableStateBuilder:
   private val logger = Logger[this.type]
 

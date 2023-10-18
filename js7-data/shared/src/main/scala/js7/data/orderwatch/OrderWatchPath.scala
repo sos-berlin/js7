@@ -11,6 +11,7 @@ with InventoryItemPath.AttachableToAgent:
 
   val companion: OrderWatchPath.type = OrderWatchPath
 
+
 object OrderWatchPath extends UnsignedSimpleItemPath.Companion[OrderWatchPath]:
   type Item = OrderWatch
 

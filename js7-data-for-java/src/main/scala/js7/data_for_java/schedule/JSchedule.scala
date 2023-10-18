@@ -10,6 +10,7 @@ final case class JSchedule(asScala: Schedule) extends JJsonable[JSchedule]:
   type AsScala = Schedule
   protected val companion = JSchedule
 
+
 object JSchedule extends JJsonable.Companion[JSchedule]:
   type AsScala = Schedule
 

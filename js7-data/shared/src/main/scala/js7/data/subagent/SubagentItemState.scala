@@ -101,6 +101,7 @@ extends UnsignedSimpleItemState:
           eventId = EventId.BeforeFirst,
           problem = None))
 
+
 object SubagentItemState extends UnsignedSimpleItemState.Companion[SubagentItemState]:
   type Key = SubagentId
   type Item = SubagentItem

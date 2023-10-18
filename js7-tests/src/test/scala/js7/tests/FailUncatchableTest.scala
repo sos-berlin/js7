@@ -198,6 +198,7 @@ final class FailUncatchableTest extends OurTestSuite:
       }
     }
 
+
 object FailUncatchableTest:
   private val orderId = OrderId("🔺")
   private val TestAgentPath = AgentPath("AGENT")

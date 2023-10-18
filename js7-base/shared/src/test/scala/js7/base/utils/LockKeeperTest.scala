@@ -33,5 +33,6 @@ final class LockKeeperTest extends OurAsyncTestSuite:
     }).map(_.head/*Only the Assertion type is relevant, not the value*/)
       .runToFuture
 
+
 object LockKeeperTest:
   private val logger = Logger[this.type]

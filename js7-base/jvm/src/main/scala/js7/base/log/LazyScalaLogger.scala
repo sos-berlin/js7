@@ -106,6 +106,7 @@ final class LazyScalaLogger(delegate: Logger):
   //def trace(marker: Marker, message: String, args: Any*) =
   //  delegate.debug(marker, message, args*)
 
+
 object LazyScalaLogger:
 
   implicit final class AsLazyScalaLogger(private val delegate: Logger) extends AnyVal:

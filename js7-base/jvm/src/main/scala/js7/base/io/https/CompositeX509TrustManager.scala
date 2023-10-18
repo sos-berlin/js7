@@ -49,6 +49,7 @@ extends X509TrustManager:
   def getAcceptedIssuers: Array[X509Certificate] =
     trustManagers.view.flatMap(_.getAcceptedIssuers).toArray
 
+
 object CompositeX509TrustManager:
   private val logger = Logger[this.type]
 

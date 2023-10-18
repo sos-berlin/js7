@@ -54,6 +54,7 @@ final case class ExprFunction(
 
   override def toString = parameters.mkString("(", ",", ")") + "=>" + expression
 
+
 object ExprFunction:
   def apply(
     parameters: Seq[VariableDeclaration],

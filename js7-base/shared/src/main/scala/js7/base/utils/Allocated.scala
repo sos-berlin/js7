@@ -35,6 +35,7 @@ final class Allocated[F[_]: UnsafeMemoizable, +A](
   override def toString =
     allocatedThing.toString
 
+
 object Allocated:
   def apply[F[_]: UnsafeMemoizable, A: Tag](allocatedThing: A, release: F[Unit]) =
     new Allocated(allocatedThing, release)

@@ -8,6 +8,7 @@ trait Stoppable[F[_]]:
   // Idempotent
   protected def stop: F[Unit]
 
+
 object Stoppable:
   def resource[F[_]: Functor, A <: Stoppable[F]](acquire: F[A]): Resource[F, A] =
     Resource.make(

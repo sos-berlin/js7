@@ -10,6 +10,7 @@ sealed trait BoardPathExpression extends Precedence:
 
   def boardPaths: Set[BoardPath]
 
+
 object BoardPathExpression:
   final case class ExpectNotice(boardPath: BoardPath)
   extends BoardPathExpression:

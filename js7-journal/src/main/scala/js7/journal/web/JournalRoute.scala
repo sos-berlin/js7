@@ -91,6 +91,7 @@ trait JournalRoute extends RouteProvider:
             }
           }
 
+
 object JournalRoute:
   private val logger = Logger[this.type]
   private val JournalContentType = `application/x-ndjson`

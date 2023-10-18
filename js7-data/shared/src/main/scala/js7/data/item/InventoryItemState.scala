@@ -14,6 +14,7 @@ trait InventoryItemState:
   def toSnapshotObservable: Observable[Any] =
     Observable.pure(this)
 
+
 object InventoryItemState:
   type AnyCompanion = Companion[? <: InventoryItemState]
 

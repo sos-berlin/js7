@@ -25,6 +25,7 @@ extends JJsonable[JBoard] with JUnsignedSimpleItem:
   def withRevision(revision: Optional[ItemRevision]): JBoard =
     copy(asScala.withRevision(revision.toScala))
 
+
 object JBoard extends JJsonable.Companion[JBoard]:
   type AsScala = Board
 

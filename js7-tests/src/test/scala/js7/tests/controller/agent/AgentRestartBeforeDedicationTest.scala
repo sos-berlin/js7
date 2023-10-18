@@ -39,6 +39,7 @@ final class AgentRestartBeforeDedicationTest extends OurTestSuite with Directory
       }
     }
 
+
 object AgentRestartBeforeDedicationTest:
   private val agentPath = AgentPath("AGENT")
   private val workflow = Workflow(WorkflowPath("WORKFLOW") ~ "INITIAL", Seq(

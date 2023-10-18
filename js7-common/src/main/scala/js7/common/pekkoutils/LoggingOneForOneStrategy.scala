@@ -36,6 +36,7 @@ extends OneForOneStrategy(maxNrOfRetries = 0, loggingEnabled = loggingEnabled)(d
           case _ => Error
     logger.log(logLevel, s"$decision ${child.path.pretty}: $logMessage", throwable)
 
+
 object LoggingOneForOneStrategy:
   private val logger = Logger[this.type]
 

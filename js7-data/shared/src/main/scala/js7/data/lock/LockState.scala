@@ -111,6 +111,7 @@ extends UnsignedSimpleItemState with Big/*acquired and queue get big with many o
 
   //TODO Break snapshot into smaller parts: private def toSnapshot: Observable[Any] = ...
 
+
 object LockState extends UnsignedSimpleItemState.Companion[LockState]:
   type Key = LockPath
   type Item = Lock

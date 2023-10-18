@@ -184,6 +184,7 @@ extends Journal[S]:
     lastEventId: EventId,
     events: Vector[Stamped[KeyedEvent[Event]]])
 
+
 object MemoryJournal:
   def resource[S <: JournaledState[S]](
     initial: S,

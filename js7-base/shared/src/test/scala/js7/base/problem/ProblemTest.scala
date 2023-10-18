@@ -256,6 +256,7 @@ final class ProblemTest extends OurTestSuite
     intercept[ProblemException] { throw problem.throwable } .toStringWithCauses
 }
 
+
 object ProblemTest {
   final case class TestProblem(a: String) extends Problem.Coded {
     def arguments = Map("a" -> a)

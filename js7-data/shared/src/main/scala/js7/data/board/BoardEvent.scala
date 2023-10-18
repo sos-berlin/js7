@@ -9,6 +9,7 @@ import js7.data.event.{Event, KeyedEvent}
 sealed trait BoardEvent extends Event.IsKeyBase[BoardEvent]:
   val keyCompanion: BoardEvent.type = BoardEvent
 
+
 object BoardEvent extends Event.CompanionForKey[BoardPath, BoardEvent]:
   implicit def implicitSelf: BoardEvent.type = this
 

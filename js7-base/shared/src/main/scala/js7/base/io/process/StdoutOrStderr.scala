@@ -12,6 +12,7 @@ with Product with Serializable/*to be compatible with case object*/ :
   val string: String
   override def toString = string
 
+
 object StdoutOrStderr:
   val values = List(Stdout, Stderr)
 

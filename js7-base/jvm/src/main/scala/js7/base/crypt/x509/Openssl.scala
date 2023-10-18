@@ -144,6 +144,7 @@ final class Openssl(dir: Path):
       s"-out ${quote(certFile)} " +
       (ca ?? s"-extensions 'SAN' -config ${quote(caConstraintFile)}"))
 
+
 object Openssl:
   private val logger = Logger[this.type]
 

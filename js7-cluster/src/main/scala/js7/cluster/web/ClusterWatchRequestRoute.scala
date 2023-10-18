@@ -86,6 +86,7 @@ trait ClusterWatchRequestRoute extends RouteProvider:
           logger.debug("whenShuttingDown completed")
         }))
 
+
 object ClusterWatchRequestRoute:
   private val logger = Logger[this.type]
 

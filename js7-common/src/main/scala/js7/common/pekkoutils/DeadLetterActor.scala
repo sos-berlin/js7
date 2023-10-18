@@ -36,6 +36,7 @@ private class DeadLetterActor(output: (LogLevel, () => String) => Unit) extends 
       case NonFatal(t) => logger.warn(t.toString)
       case t: OutOfMemoryError => logger.error(t.toString, t)
 
+
 object DeadLetterActor:
   private val logger = Logger[this.type]
 

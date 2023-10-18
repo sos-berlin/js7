@@ -121,6 +121,7 @@ final class ResetSubagentWhileRunningTest extends OurTestSuite with SubagentTest
       eventWatch.await[OrderFinished](_.key == bOrderId, after = eventId)
     }
 
+
 object ResetSubagentWhileRunningTest:
   private val localSubagentId = toLocalSubagentId(agentPath)
 

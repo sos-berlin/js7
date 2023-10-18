@@ -21,6 +21,7 @@ extends JJsonable[JWorkflowControlId] with JUnsignedVersionedItemId[WorkflowCont
   def path: WorkflowControlPath =
     asScala.path
 
+
 @javaApi
 object JWorkflowControlId extends JJsonable.Companion[JWorkflowControlId]:
   type AsScala = WorkflowControlId

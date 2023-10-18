@@ -18,6 +18,7 @@ final case class JSigned[A](asScala: Signed[A]):
     asScala = asScala.copy(
       signedString = signedString))
 
+
 object JSigned:
   @Nonnull
   def of[A](value: A, signedString: SignedString) =

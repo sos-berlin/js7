@@ -81,6 +81,7 @@ final class ClusterWatchMainTest extends OurAsyncTestSuite with ControllerCluste
       yield succeed
     }.unsafeToFuture()
 
+
 object ClusterWatchMainTest:
   private val logger = Logger[this.type]
   private val workflow = Workflow(WorkflowPath("WORKFLOW"), Nil)

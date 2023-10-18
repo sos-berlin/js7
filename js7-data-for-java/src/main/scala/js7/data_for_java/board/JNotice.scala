@@ -28,6 +28,7 @@ final case class JNotice(asScala: Notice):
   def endOfLife: Instant =
     asScala.endOfLife.toInstant
 
+
 object JNotice:
   @Nonnull
   def of(

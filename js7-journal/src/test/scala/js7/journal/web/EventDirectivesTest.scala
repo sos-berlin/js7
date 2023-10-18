@@ -56,6 +56,7 @@ final class EventDirectivesTest extends OurTestSuite with ScalatestRouteTest:
     Get("/test?return=AEvent,BEvent&timeout=infinite&after=3") ~> route ~> check:
       assert(responseAs[String] == "C")
 
+
 object EventDirectivesTest:
   sealed trait MyEvent extends Event.IsKeyBase[MyEvent]:
     val keyCompanion: MyEvent.type = MyEvent

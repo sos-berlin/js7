@@ -18,6 +18,7 @@ final case class JobConf(
   val jobResourcePaths: Seq[JobResourcePath] =
     jobResourcePathsFor(workflowJob, workflow)
 
+
 object JobConf:
   def jobResourcePathsFor(workflowJob: WorkflowJob, workflow: Workflow): Seq[JobResourcePath] =
     (workflowJob.referencedJobResourcePaths ++ workflow.jobResourcePaths)

@@ -9,5 +9,6 @@ final case class Notice(id: NoticeId, boardPath: BoardPath, endOfLife: Timestamp
 extends BoardSnapshot:
   def toExpected = OrderNoticesExpected.Expected(boardPath, id)
 
+
 object Notice:
   implicit val jsonCodec: Codec.AsObject[Notice] = deriveCodec

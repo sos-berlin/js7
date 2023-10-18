@@ -116,6 +116,7 @@ extends OurTestSuite with ControllerAgentForScalaTest:
           itemRevision = Some(revision)))))
     keyedEvents.last.eventId
 
+
 object ControlWorkflowPathSkipJobTest:
   private val agentPath = AgentPath("A-AGENT")
   private val subagentId = toLocalSubagentId(agentPath)

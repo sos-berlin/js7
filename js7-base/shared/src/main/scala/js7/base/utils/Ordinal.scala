@@ -18,6 +18,7 @@ trait Ordinal[A]:
   /** a isSuccessorOf b. */
   def isSuccessorOf(a: A, b: A): Boolean
 
+
 object Ordinal:
   implicit def apply[A](implicit ordinal: Ordinal[A]): Ordinal[A] =
     ordinal

@@ -14,6 +14,7 @@ extends Instruction:
 
   override def toString = "gap"
 
+
 object Gap:
   val empty = new Gap(None)
 

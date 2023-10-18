@@ -352,6 +352,7 @@ final class OrderScopesTest extends OurTestSuite
   }
 }
 
+
 object OrderScopesTest
 {
   private val logger = Logger[this.type]

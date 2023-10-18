@@ -112,6 +112,7 @@ final class FileWatchDelayTest extends OurTestSuite with ControllerAgentForScala
       .parUnorderedTraverse(delayedFileAddedTest)
       .await(99.s)
 
+
 object FileWatchDelayTest:
   private val logger = Logger[this.type]
   private val agentPath = AgentPath("AGENT")

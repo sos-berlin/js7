@@ -328,6 +328,7 @@ with ClusterableState[AgentState]:
         userId <- subagentId.toUserId
       yield userId
 
+
 object AgentState
 extends ClusterableState.Companion[AgentState]
 with ItemContainer.Companion[AgentState]:

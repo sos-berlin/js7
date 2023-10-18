@@ -180,6 +180,7 @@ final class OrderStartAndStopPositionsTest extends OurTestSuite with ControllerA
       OrderDetached,
       OrderFinished()))
 
+
 object OrderStartAndStopPositionsTest:
   private val agentPath = AgentPath("A-AGENT")
 

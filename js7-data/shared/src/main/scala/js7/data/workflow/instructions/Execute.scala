@@ -22,6 +22,7 @@ sealed trait Execute extends Instruction:
     else
       Gap(sourcePos)
 
+
 object Execute:
   def apply(name: WorkflowJob.Name) =
     Named(name)

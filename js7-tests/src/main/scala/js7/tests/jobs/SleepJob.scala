@@ -25,6 +25,7 @@ final class SleepJob(jobContext: JobContext) extends InternalJob:
             .as(Outcome.succeeded))
         .map(Outcome.Completed.fromChecked))
 
+
 object SleepJob extends InternalJob.Companion[SleepJob]:
   def sleep(agentPath: AgentPath, duration: FiniteDuration): Execute =
     execute(

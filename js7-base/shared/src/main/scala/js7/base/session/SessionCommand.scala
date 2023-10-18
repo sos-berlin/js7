@@ -15,6 +15,7 @@ import js7.base.version.Version
 sealed trait SessionCommand:
   type Response
 
+
 object SessionCommand:
   /** Authenticate a user and establish a session.
     * @param userAndPassword if None, the HTTP header authentication is used to allow browser authentication dialog.

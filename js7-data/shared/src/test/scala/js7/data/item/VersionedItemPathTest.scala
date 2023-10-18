@@ -113,6 +113,7 @@ final class VersionedItemPathTest extends OurTestSuite:
     assert(u(APath("a") ~ "1") == "A")
     assert(u(BPath("b") ~ "1") == "B")
 
+
 object VersionedItemPathTest:
   private type AId = VersionedItemId[APath]
   private val AId = APath.VersionedItemIdCompanion

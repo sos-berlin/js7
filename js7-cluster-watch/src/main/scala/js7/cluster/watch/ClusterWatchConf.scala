@@ -23,6 +23,7 @@ final case class ClusterWatchConf(
   config: Config)
 extends BasicConfiguration
 
+
 object ClusterWatchConf:
   def fromCommandLine(args: CommandLineArguments): ClusterWatchConf =
     val configDir = args.as[Path]("--config-directory=").toAbsolutePath

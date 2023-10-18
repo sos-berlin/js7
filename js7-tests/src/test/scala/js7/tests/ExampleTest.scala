@@ -50,6 +50,7 @@ final class ExampleTest extends OurTestSuite with ControllerAgentForScalaTest:
       OrderFinished(),
       OrderDeleted))
 
+
 object ExampleTest:
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)

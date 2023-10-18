@@ -30,6 +30,7 @@ final case class JavaChecked[A](checked: Checked[A]):
       case Right(_) => Optional.empty[Problem]
       case Left(problem) => Optional.of(problem)
 
+
 object JavaChecked {
   //implicit final class ToJavaChecked[A](val underlying: Checked[A]) extends AnyVal {
   //  def toJava = JavaChecked(underlying)

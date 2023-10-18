@@ -56,6 +56,7 @@ extends DocumentSigner:
 
   override def toString = show"PgpSigner($pgpSecretKey)"
 
+
 object PgpSigner extends DocumentSigner.Companion:
   protected type MySignature = PgpSignature
   protected type MyMessageSigner = PgpSigner

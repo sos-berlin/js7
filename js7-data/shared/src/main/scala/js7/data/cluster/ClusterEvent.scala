@@ -10,6 +10,7 @@ import js7.data.node.NodeId
 
 sealed trait ClusterEvent extends NoKeyEvent
 
+
 object ClusterEvent:
   private type Id = NodeId
 

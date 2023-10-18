@@ -23,6 +23,7 @@ extends JJsonable[JProblem]:
       case problem: Problem.HasCode => problem.arguments.get(key).toJava
       case _ => Optional.empty()
 
+
 object JProblem extends JJsonable.Companion[JProblem]:
   type AsScala = Problem
 

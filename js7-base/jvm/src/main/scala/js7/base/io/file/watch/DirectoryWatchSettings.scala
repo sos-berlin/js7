@@ -26,6 +26,7 @@ final case class DirectoryWatchSettings(
       pollTimeout = pollTimeout,
       retryDelays = retryDelays)
 
+
 object DirectoryWatchSettings:
   def fromConfig(config: Config): Checked[DirectoryWatchSettings] =
     for

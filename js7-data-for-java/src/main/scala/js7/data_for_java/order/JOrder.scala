@@ -71,6 +71,7 @@ extends JJsonable[JOrder]:
         })
       .toVavr
 
+
 @javaApi
 object JOrder extends JJsonable.Companion[JOrder]:
   type AsScala = Order[Order.State]

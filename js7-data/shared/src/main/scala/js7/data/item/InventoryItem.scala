@@ -39,6 +39,7 @@ trait InventoryItem:
   // Accelerate usage in Set[InventoryItem], for example in AgentDriver's CommandQueue
   override def hashCode = 31 * key.hashCode + itemRevision.hashCode
 
+
 object InventoryItem:
   type Companion_ = Companion[? <: InventoryItem]
 

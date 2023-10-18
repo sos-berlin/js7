@@ -119,6 +119,7 @@ final class UntaughtAgentClusterWatchTest extends OurTestSuite with DirectoryPro
       }
     }
 
+
 object UntaughtAgentClusterWatchTest:
   private val logger = Logger[this.type]
 

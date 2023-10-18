@@ -323,6 +323,7 @@ final class ProviderTest extends OurTestSuite with ControllerAgentForScalaTest
     delete(live.resolve(path.toFile(SourceType.Json)))
 }
 
+
 object ProviderTest
 {
   private val logger = Logger[this.type]

@@ -272,6 +272,7 @@ extends Observable[Seq[DirectoryEvent]]:
       }
     })
 
+
 object DirectoryEventDelayer:
   private val logger = Logger[this.type]
 

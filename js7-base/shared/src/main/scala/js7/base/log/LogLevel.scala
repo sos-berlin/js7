@@ -7,6 +7,7 @@ import js7.base.convert.As
   */
 sealed trait LogLevel
 
+
 object LogLevel:
   object LogNone extends LogLevel
   object Trace extends LogLevel

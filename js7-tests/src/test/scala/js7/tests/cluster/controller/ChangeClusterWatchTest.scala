@@ -138,6 +138,7 @@ final class ChangeClusterWatchTest extends ControllerClusterTester:
       }
     }
 
+
 object ChangeClusterWatchTest:
   private val logger = Logger[this.type]
   private val aClusterWatchId = ClusterWatchId("A-CLUSTER-WATCH")

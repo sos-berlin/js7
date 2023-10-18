@@ -83,6 +83,7 @@ extends Scope:
 
   override def toString = "JobResourceScope"
 
+
 object JobResourceScope:
   def apply(pathToJobResource: PartialFunction[JobResourcePath, JobResource], useScope: Scope): Scope =
     new JobResourceScope(pathToJobResource, useScope)

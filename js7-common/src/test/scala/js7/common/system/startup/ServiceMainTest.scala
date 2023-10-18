@@ -24,6 +24,7 @@ final class ServiceMainTest extends OurTestSuite:
       (_, _) => TerminatingService.resource)
     assert(returnCode == ReturnCode(Js7ReturnCodes.Restart))
 
+
 object ServiceMainTest:
   private case class TestConf(config: Config) extends BasicConfiguration
 

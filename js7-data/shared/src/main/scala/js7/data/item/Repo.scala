@@ -452,6 +452,7 @@ final case class Repo(
       ).toVector
     lazy val items = addedOrChanged.view.map(_.signed.value).toVector
 
+
 object Repo:
   val empty = new Repo(Nil, Set.empty, Map.empty, None)
 

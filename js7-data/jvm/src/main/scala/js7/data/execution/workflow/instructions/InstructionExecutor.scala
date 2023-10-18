@@ -40,6 +40,7 @@ trait InstructionExecutor:
   def subworkflowEndToPosition(parentPos: Position): Option[Position] =
     None
 
+
 object InstructionExecutor:
   private def noObstacles: Checked[Set[OrderObstacle]] =
     Right(Set.empty)

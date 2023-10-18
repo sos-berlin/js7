@@ -24,5 +24,6 @@ extends NameValidator:
   def isNamePart(c: Char) =
     javaNameValidator.isNamePart(c) || isExtraNamePart0(c)
 
+
 object Js7NameValidator:
   private val isExtraNamePart0 = Set('-', '.')

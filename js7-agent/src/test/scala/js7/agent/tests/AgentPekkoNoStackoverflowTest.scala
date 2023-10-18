@@ -23,5 +23,6 @@ final class AgentPekkoNoStackoverflowTest extends OurTestSuite with AgentTester:
       }
     assert(exception.getMessage == "TEST ERROR")
 
+
 object AgentPekkoNoStackoverflowTest:
   private val logger = Logger[this.type]

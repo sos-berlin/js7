@@ -5,6 +5,7 @@ trait UnsignedSimpleItem extends SimpleItem with UnsignedItem:
 
   val companion: UnsignedSimpleItem.Companion[Self]
 
+
 object UnsignedSimpleItem:
   type Companion_ = Companion[? <: UnsignedSimpleItem]
 

@@ -8,6 +8,7 @@ import js7.data.event.ItemContainer
 trait SignedItemEvent extends InventoryItemEvent:
   def key: SignableItemKey
 
+
 object SignedItemEvent:
   sealed trait SignedItemAddedOrChanged extends SignedItemEvent with ItemAddedOrChanged with Product:
     def signedString = signed.signedString

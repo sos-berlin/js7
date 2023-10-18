@@ -133,5 +133,6 @@ final class DirectoryEventDelayerTest extends OurTestSuite with BeforeAndAfterAl
     logger.info(itemsPerSecondString(deletedSince.elapsed, paths.size, "FileDeleted"))
     assert(buffer == addedEvents ++ deletedEvents)
 
+
 object DirectoryEventDelayerTest:
   private val logger = Logger[this.type]

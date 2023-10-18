@@ -15,6 +15,7 @@ final case class DelayConf(
     delays.toSeq.view.map(_.pretty).mkString(" ") +
       ((resetWhen != FiniteDuration.MaxValue) ?? " resetWhen=%s".format(resetWhen.pretty) )
 
+
 object DelayConf:
   def apply(delays: NonEmptySeq[FiniteDuration]): DelayConf =
     DelayConf(delays, delays.last)

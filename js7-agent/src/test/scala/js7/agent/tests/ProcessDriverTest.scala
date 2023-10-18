@@ -92,6 +92,7 @@ final class ProcessDriverTest extends OurTestSuite with BeforeAndAfterAll with T
     RichProcess.tryDeleteFiles(shellFile :: Nil)
     deleteDirectoryRecursively(executableDirectory)
 
+
 object ProcessDriverTest:
   private val TestScript =
     if isWindows then """

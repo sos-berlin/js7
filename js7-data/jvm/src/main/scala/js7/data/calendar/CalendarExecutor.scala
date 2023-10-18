@@ -45,6 +45,7 @@ final class CalendarExecutor private(
       Option(temporalAccessor.query(period.query))
         .map(localDate => LocalDateTime.of(localDate, MIDNIGHT))
 
+
 object CalendarExecutor:
   def checked(calendar: Calendar, timezone: Timezone): Checked[CalendarExecutor] =
     for

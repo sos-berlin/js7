@@ -112,6 +112,7 @@ private[watch] final class JournalIndex(torn: PositionAnd[EventId], size: Int):
   private[watch] def spreadForTest = spread
   private[watch] def lengthForTest = length
 
+
 object JournalIndex:
   private val MinimumLength = 100
   private val logger = Logger[this.type]

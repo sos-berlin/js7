@@ -39,6 +39,7 @@ import scala.language.implicitConversions
 sealed trait OrderEvent extends Event.IsKeyBase[OrderEvent]:
   val keyCompanion: OrderEvent.type = OrderEvent
 
+
 object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   implicit def implicitSelf: OrderEvent.type = this
 

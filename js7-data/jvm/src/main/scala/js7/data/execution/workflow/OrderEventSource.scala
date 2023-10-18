@@ -506,6 +506,7 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
     else
       events
 
+
 object OrderEventSource:
   private val logger = Logger[this.type]
 

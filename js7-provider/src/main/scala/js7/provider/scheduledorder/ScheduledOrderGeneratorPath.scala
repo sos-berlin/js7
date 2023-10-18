@@ -8,6 +8,7 @@ import js7.data.item.{SourceType, VersionedItemPath}
 final case class ScheduledOrderGeneratorPath(string: String) extends VersionedItemPath:
   def companion = ScheduledOrderGeneratorPath
 
+
 object ScheduledOrderGeneratorPath extends VersionedItemPath.Companion[ScheduledOrderGeneratorPath]:
   override val sourceTypeToFilenameExtension = Map(
     SourceType.Xml -> ".order.xml")

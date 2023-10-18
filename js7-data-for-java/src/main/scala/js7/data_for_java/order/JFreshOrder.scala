@@ -40,6 +40,7 @@ extends JJsonable[JFreshOrder]:
   def stopPositions: java.util.Set[JPositionOrLabel] =
     asScala.stopPositions.map(JPositionOrLabel(_)).asJava
 
+
 @javaApi
 object JFreshOrder extends JJsonable.Companion[JFreshOrder]:
   type AsScala = FreshOrder

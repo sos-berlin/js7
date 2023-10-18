@@ -3,6 +3,7 @@ package js7.data.item
 sealed trait ItemChange:
   def path: InventoryItemPath
 
+
 object ItemChange:
   sealed trait Change extends ItemChange
 

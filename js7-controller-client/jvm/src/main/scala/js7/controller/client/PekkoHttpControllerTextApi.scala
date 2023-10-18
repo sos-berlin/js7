@@ -59,6 +59,7 @@ with SessionApi.HasUserAndPassword:
     logOpenSession()
     closer.close()
 
+
 object PekkoHttpControllerTextApi:
   // Like ControllerConfiguration.configDirectoryToConfig
   private def configDirectoryToConfig(configDirectory: Path): Config =

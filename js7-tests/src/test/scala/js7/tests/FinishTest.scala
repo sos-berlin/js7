@@ -393,6 +393,7 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
     }
 }
 
+
 object FinishTest
 {
   private val agentPath = AgentPath("AGENT")

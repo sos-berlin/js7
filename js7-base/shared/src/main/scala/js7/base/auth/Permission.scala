@@ -9,6 +9,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 trait Permission:
   def name: String = getClass.simpleScalaName stripSuffix "Permission"
 
+
 object Permission:
   def toStringToPermission(permissions: Iterable[Permission]): Map[String, Permission] =
     permissions.toKeyedMap(_.name)

@@ -79,6 +79,7 @@ final class IfExecutorTest extends OurTestSuite {
   }
 }
 
+
 object IfExecutorTest {
   private val TestWorkflowId = WorkflowPath("WORKFLOW") ~ "VERSION"
   private val AOrder = Order(OrderId("ORDER-A"), TestWorkflowId /: Position(7), Order.Processed,

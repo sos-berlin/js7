@@ -260,6 +260,7 @@ with BlockingItemUpdater:
     logger.debug(workflowNotation)
     //TODO assert(reparsedWorkflow == Right(anonymousWorkflow.withoutSource))
 
+
 object InternalJobTest:
   private val logger = Logger[this.type]
   private val agentPath = AgentPath("AGENT")

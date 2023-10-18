@@ -20,6 +20,7 @@ sealed trait LocalInterval extends Ordered[LocalInterval]:
 
   def toTimeInterval(zone: ZoneId): TimeInterval
 
+
 object LocalInterval:
   implicit val eq: Eq[LocalInterval] = Eq.fromUniversalEquals
 

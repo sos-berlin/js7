@@ -65,6 +65,7 @@ extends UnsignedSimpleItemState:
       Observable.fromIterable(directoryState.fileToEntry.values)
         .map(entry => EntrySnapshot(id, entry.path))
 
+
 object FileWatchState extends UnsignedSimpleItemState.Companion[FileWatchState]:
   type Key = OrderWatchPath
   type Item = FileWatch

@@ -392,6 +392,7 @@ extends Service.StoppableByRequest:
   override def toString =
     s"DedicatedSubagent($subagentId $agentPath $controllerId)"
 
+
 object DedicatedSubagent:
   private val logger = Logger[this.type]
 

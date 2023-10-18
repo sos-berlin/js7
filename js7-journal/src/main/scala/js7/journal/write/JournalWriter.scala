@@ -107,6 +107,7 @@ extends AutoCloseable:
 
   final def bytesWritten = jsonWriter.bytesWritten
 
+
 object JournalWriter:
   private val JsonBatchSize = DefaultBatchSize
   private val JsonParallelizationThreshold = 3 * JsonBatchSize

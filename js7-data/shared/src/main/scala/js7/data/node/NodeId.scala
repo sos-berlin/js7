@@ -9,6 +9,7 @@ final case class NodeId private(string: String)
 extends GenericString:
   override def toString = s"Node:$string"
 
+
 object NodeId extends GenericString.NonEmpty[NodeId]:
   val primary: NodeId = NodeId("Primary")
   val backup: NodeId = NodeId("Backup")

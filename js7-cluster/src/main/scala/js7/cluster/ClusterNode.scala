@@ -258,6 +258,7 @@ extends Service.StoppableByRequest:
 
   override def toString = s"ClusterNode(${ownId.string})"
 
+
 object ClusterNode:
   private val logger = Logger[this.type]
 

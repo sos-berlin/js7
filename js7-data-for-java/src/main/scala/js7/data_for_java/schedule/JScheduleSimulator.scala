@@ -17,6 +17,7 @@ trait JScheduleSimulator:
       .map(Scheduled(_))
       .asJavaSeqStream
 
+
 object JScheduleSimulator:
   final case class Scheduled(asScala: ScheduleSimulator.Scheduled):
     /** Instant when Order arrives and starts waiting for the scheduled time. */

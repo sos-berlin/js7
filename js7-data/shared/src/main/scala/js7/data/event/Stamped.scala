@@ -22,6 +22,7 @@ final case class Stamped[+A](eventId: EventId, timestampMillis: Long, value: A):
 
   override def toString = s"Stamped($eventId $timestamp $value)"
 
+
 object Stamped:
   def apply[A](eventId: EventId, value: A): Stamped[A] =
     new Stamped(eventId, EventId.toEpochMilli(eventId), value)

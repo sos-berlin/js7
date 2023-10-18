@@ -30,5 +30,6 @@ private final class StateBuilderAndAccessor[S <: SnapshotableState[S]](
       }
     builder
 
+
 object StateBuilderAndAccessor:
   private val logger = Logger[this.type]

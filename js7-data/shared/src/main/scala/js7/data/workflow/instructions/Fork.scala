@@ -73,6 +73,7 @@ extends ForkInstruction:
 
   override def toString = s"Fork(${branches.map(_.id).mkString(",")})$sourcePosToString"
 
+
 object Fork:
   private def apply(branches: Seq[Fork.Branch], sourcePos: Option[SourcePos]) =
     throw new NotImplementedError

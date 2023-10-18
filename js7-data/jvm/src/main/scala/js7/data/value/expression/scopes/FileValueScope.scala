@@ -56,6 +56,7 @@ extends Scope with AutoCloseable:
   def close() =
     fileValueState.releaseScope(this)
 
+
 object FileValueScope:
   val functionName = "toFile"
 

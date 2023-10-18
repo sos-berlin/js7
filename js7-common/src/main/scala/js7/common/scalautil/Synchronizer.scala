@@ -28,6 +28,7 @@ final class Synchronizer(what: String):
       logger.trace(s"End synchronize '$what': release lock (${synchronizeLock.getQueueLength} in queue)")
       synchronizeLock.unlock()
 
+
 object Synchronizer:
   private val LogAfter = 100.ms
   private val logger = Logger[this.type]

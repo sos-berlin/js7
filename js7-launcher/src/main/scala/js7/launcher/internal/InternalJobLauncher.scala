@@ -90,6 +90,7 @@ extends JobLauncher:
 
   override def toString = s"InternalJobLauncher(${jobConf.jobKey} ${executable.className})"
 
+
 object InternalJobLauncher:
   private val logger = Logger[this.type]
 

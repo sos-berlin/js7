@@ -21,6 +21,7 @@ extends BoardInstruction:
 
   def withoutSourcePos = copy(sourcePos = None)
 
+
 object PostNotices:
   def apply(
     boardPaths: Iterable[BoardPath],

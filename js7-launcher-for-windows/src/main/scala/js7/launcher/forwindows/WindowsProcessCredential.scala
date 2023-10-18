@@ -13,6 +13,7 @@ private[launcher] final case class WindowsProcessCredential(
   userName: WindowsUserName,
   password: SecretString)
 
+
 object WindowsProcessCredential:
   private[launcher] def byKey(key: String): Checked[WindowsProcessCredential] =
     readCredential(key) { cred =>

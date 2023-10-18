@@ -5,6 +5,7 @@ import js7.base.problem.Problem
 sealed trait LockRefusal:
   def toProblem(lockPath: LockPath): Problem
 
+
 object LockRefusal:
 
   sealed trait NotAvailable extends LockRefusal

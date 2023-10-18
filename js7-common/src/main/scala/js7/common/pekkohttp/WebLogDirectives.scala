@@ -186,6 +186,7 @@ trait WebLogDirectives extends ExceptionHandling:
               sb.append(streamSuffix)
     sb.toString
 
+
 object WebLogDirectives:
   private val webLogger = Logger("js7.web.log")
 

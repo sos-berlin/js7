@@ -36,6 +36,7 @@ extends EventInstructionExecutor:
         else
           Right(Nil))
 
+
 object PostNoticesExecutor:
   private final case class FatNotice(notice: Notice, boardState: BoardState)
 

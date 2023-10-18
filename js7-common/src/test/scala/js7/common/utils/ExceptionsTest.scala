@@ -70,5 +70,6 @@ final class ExceptionsTest extends OurTestSuite:
       catch andRethrow { throw new IllegalStateException }
     } .getSuppressed.map(_.getClass) shouldBe Array(classOf[IllegalStateException])
 
+
 object ExceptionsTest:
   private val logger = Logger[this.type]

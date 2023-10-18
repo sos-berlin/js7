@@ -34,6 +34,7 @@ final case class ProcessConfiguration(
       killScript <- killScriptOption
     yield killScript.toCommandArguments(id, pid)
 
+
 object ProcessConfiguration:
   def forTest = ProcessConfiguration(
     encoding = UTF_8/*Windows ???*/,

@@ -45,6 +45,7 @@ final class ExpressionsTest extends OurTestSuite:
     val events = stampedSeq.view.filter(_.key == orderId).map(_.event).to(Vector)
     assert(events == ExpectedEvents(orderId))
 
+
 object ExpressionsTest:
   private val TestAgentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(TestAgentPath)

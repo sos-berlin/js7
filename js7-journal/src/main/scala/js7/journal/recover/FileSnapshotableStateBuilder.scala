@@ -148,5 +148,6 @@ final class FileSnapshotableStateBuilder[S <: SnapshotableState[S]](
   def logStatistics(): Unit =
     builder.logStatistics(Try(Files.size(journalFileForInfo)).toOption)
 
+
 object FileSnapshotableStateBuilder:
   private val logger = Logger[this.type]

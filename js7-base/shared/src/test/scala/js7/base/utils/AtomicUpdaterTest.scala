@@ -18,6 +18,7 @@ final class AtomicUpdaterTest extends OurAsyncTestSuite:
       .map(_ => assert(atomicUpdater.get == n))
       .runToFuture
 
+
 object AtomicUpdaterTest:
   private var x = 0
   private def delay() = for _ <- 1 to 1000 do x += 1

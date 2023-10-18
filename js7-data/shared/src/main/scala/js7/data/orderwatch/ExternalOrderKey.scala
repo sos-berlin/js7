@@ -7,5 +7,6 @@ final case class ExternalOrderKey(
   orderWatchPath: OrderWatchPath,
   name: ExternalOrderName)
 
+
 object ExternalOrderKey:
   implicit val jsonCodec: Codec.AsObject[ExternalOrderKey] = deriveCodec

@@ -30,6 +30,7 @@ extends BasicConfiguration:
   // Suppresses Config (which may contain secrets)
   override def toString = s"ProviderConfiguration($configDirectory,$controllerUri,Config)"
 
+
 object ProviderConfiguration:
   private val DefaultConfigResource = JavaResource("js7/provider/configuration/provider.conf")
 

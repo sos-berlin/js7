@@ -88,5 +88,6 @@ trait EventWatch:
 
   def checkEventId(eventId: EventId): Checked[Unit]
 
+
 object EventWatch:
   private[watch] val Every: Any => Boolean = function1WithToString("Every")(_ => true)

@@ -9,6 +9,7 @@ trait VersionedControl extends UnsignedItem:
 
   final def path: companion.Path = key.path
 
+
 object VersionedControl:
   type Companion_ = Companion[? <: VersionedControl]
 

@@ -75,6 +75,7 @@ trait ClusterRoute extends ClusterWatchRequestRoute:
           }
     }
 
+
 object ClusterRoute:
   private val commandJsonCodec =
     ClusterCommand.jsonCodec | ClusterWatchingCommand.jsonCodec

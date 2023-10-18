@@ -25,6 +25,7 @@ sealed trait BranchId:
 
   def toCycleState: Checked[CycleState]
 
+
 object BranchId:
   val Then = BranchId("then")
   val Else = BranchId("else")

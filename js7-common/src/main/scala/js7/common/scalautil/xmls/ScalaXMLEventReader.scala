@@ -180,6 +180,7 @@ extends AutoCloseable:
 
   def xmlEventReader: XMLEventReader = delegate
 
+
 object ScalaXMLEventReader:
 
   private val IgnoredAttributeNamespaces = Set("http://www.w3.org/2001/XMLSchema-instance")

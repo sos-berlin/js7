@@ -497,6 +497,7 @@ final class ControllerStateExecutorTest extends OurTestSuite
   }
 }
 
+
 object ControllerStateExecutorTest
 {
   private implicit val instructionExecutorService: InstructionExecutorService =

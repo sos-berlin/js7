@@ -72,6 +72,7 @@ trait Service:
         })
       .as(Started)
 
+
 object Service:
   val defaultRestartDelays: Seq[FiniteDuration] =
     RestartAfterFailureService.defaultRestartDelays

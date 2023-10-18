@@ -313,8 +313,9 @@ final class PekkoHttpClientTest extends OurTestSuite with BeforeAndAfterAll with
   }
 }
 
-object PekkoHttpClientTest
-{
+
+object PekkoHttpClientTest:
+
   private val Setting = List[(Uri, Option[Uri])](
     Uri("http://example.com:9999") ->
       None,
@@ -344,4 +345,3 @@ object PekkoHttpClientTest
       Some(Uri("https://example.com:9999/PREFIX/api?q=1")))
 
   private final case class A(int: Int)
-}

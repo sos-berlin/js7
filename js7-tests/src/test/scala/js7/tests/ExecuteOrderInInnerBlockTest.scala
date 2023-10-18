@@ -138,6 +138,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
           arguments = Map("FAIL" -> BooleanValue.True)))
     }
 
+
 object ExecuteOrderInInnerBlockTest:
   private val agentPath = AgentPath("A-AGENT")
 

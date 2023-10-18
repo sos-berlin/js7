@@ -27,6 +27,7 @@ trait InventoryItemPath extends GenericString:
 
   override def toString = toTypedString
 
+
 object InventoryItemPath:
   implicit val inventoryItemPathOrdering: Ordering[InventoryItemPath] =
     GenericString.ordering[InventoryItemPath]

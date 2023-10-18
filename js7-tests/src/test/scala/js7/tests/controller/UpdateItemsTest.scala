@@ -164,6 +164,7 @@ with BlockingItemUpdater:
     assert(!controllerState.keyToItem(WorkflowControl).contains(workflowControl.path ~ v1))
     assert(!controllerState.keyToItem(WorkflowControl).contains(workflowControl.path ~ v2))
 
+
 object UpdateItemsTest:
   private val Tick = 2.s
   private val agentPath = AgentPath("AGENT")

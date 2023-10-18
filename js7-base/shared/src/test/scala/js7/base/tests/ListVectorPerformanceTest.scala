@@ -44,5 +44,6 @@ final class ListVectorPerformanceTest extends OurTestSuite:
       assert(list.head == "")
     logger.info(itemsPerSecondString(t.elapsed, m * n))
 
+
 object ListVectorPerformanceTest:
   private val logger = Logger[this.type]

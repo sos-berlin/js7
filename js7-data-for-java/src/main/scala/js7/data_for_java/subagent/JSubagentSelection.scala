@@ -33,6 +33,7 @@ extends JJsonable[JSubagentSelection] with JUnsignedSimpleItem:
   def withRevision(revision: Optional[ItemRevision]): JSubagentSelection =
     copy(asScala.withRevision(revision.toScala))
 
+
 object JSubagentSelection extends JJsonable.Companion[JSubagentSelection]:
   type AsScala = SubagentSelection
 

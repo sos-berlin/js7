@@ -13,6 +13,7 @@ final case class ControllerRunId(journalId: JournalId) extends GenericString:
 
   override def toString = typedToString
 
+
 object ControllerRunId extends GenericString.NonEmpty[ControllerRunId]:
   val empty = ControllerRunId(JournalId(Base64UUID.zero))
 

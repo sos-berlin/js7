@@ -31,6 +31,7 @@ extends UnsignedSimpleItem:
   def subagentIds =
     subagentToPriority.keySet.view
 
+
 object SubagentSelection extends UnsignedSimpleItem.Companion[SubagentSelection]:
   type Key = SubagentSelectionId
   def Key = SubagentSelectionId

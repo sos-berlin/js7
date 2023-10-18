@@ -10,6 +10,7 @@ import js7.data_for_java.vavr.Standards.VEither
 final case class JScheduleCalculator(asScala: ScheduleCalculator)
 extends JScheduleSimulator
 
+
 object JScheduleCalculator:
   @Nonnull
   def checked(

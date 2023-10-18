@@ -41,6 +41,7 @@ extends Scope:
 
   override def toString = s"FileWatchScope($orderWatchPath, ${matchedMatcher.pattern})"
 
+
 object FileWatchScope:
   def apply(orderWatchPath: OrderWatchPath, matchedMatcher: Matcher): Scope =
     new FileWatchScope(orderWatchPath, matchedMatcher)

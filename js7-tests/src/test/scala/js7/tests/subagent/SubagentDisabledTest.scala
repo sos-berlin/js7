@@ -122,6 +122,7 @@ final class SubagentDisabledTest extends OurTestSuite with SubagentTester:
     assert(started.subagentId contains subagentId)
     eventWatch.await[OrderDeleted](_.key == orderId, after = eventId)
 
+
 object SubagentDisabledTest:
   private val localSubagentId = toLocalSubagentId(agentPath)
   private val aSubagentId = SubagentId("A-SUBAGENT")

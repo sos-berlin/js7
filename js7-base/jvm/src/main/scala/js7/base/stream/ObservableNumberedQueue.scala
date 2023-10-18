@@ -193,6 +193,7 @@ final class ObservableNumberedQueue[V: Tag]:
       else
         Right(this)
 
+
 object ObservableNumberedQueue:
   private val logger = Logger[this.type]
   private val StoppedProblem = Problem.pure("ObservableNumberedQueue stopped")

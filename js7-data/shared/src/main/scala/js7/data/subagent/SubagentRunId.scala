@@ -9,6 +9,7 @@ final case class SubagentRunId(base64UUID: Base64UUID) extends GenericString:
 
   override def toString = typedToString
 
+
 object SubagentRunId extends GenericString.NonEmpty[SubagentRunId]:
   val empty = SubagentRunId(Base64UUID.zero)
 

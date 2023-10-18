@@ -8,6 +8,7 @@ trait Schedule {
   //def nextInterval(from: Instant): Option[InstantInterval]
 }
 
+
 object Schedule:
   val eternalInterval = InstantInterval(Instant.ofEpochSecond(0), Instant.ofEpochSecond(Long.MaxValue))
 

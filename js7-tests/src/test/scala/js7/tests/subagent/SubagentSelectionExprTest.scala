@@ -113,6 +113,7 @@ extends OurTestSuite with SubagentTester with BlockingItemUpdater:
         Some(bareSubagentId))
     eventWatch.await[OrderFinished](_.key == orderId)
 
+
 object SubagentSelectionExprTest:
   private val localSubagentId = toLocalSubagentId(agentPath)
   private val workflowPath = WorkflowPath("WORKFLOW")

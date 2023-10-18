@@ -245,6 +245,7 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater:
       eventWatch.await[OrderFinished](_.key == orderId)
     }
 
+
 object ControlWorkflowBreakpointTest:
   private val agentPath = AgentPath("A-AGENT")
   private val subagentId = toLocalSubagentId(agentPath)

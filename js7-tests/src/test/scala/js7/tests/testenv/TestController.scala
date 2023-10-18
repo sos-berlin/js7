@@ -177,5 +177,6 @@ final class TestController(allocated: Allocated[Task, RunningController], admiss
 
   override def toString = s"TestController(${conf.controllerId}/${conf.clusterConf.ownId})"
 
+
 object TestController:
   private val logger = Logger[this.type]

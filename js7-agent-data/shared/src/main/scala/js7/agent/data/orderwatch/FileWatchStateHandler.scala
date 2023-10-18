@@ -42,6 +42,7 @@ trait FileWatchStateHandler[Self]:
         .flatMap(o => updateFileWatchState(
           o.applyEvent(keyedEvent.event)))
 
+
 object FileWatchStateHandler:
   final class Builder:
     private val pathToFileWatch = mutable.Map.empty[OrderWatchPath, FileWatchState.Builder]

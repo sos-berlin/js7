@@ -211,6 +211,7 @@ extends UnsignedSimpleItemState:
       logger.error(msg)
       Right(this)
 
+
 object OrderWatchState extends UnsignedSimpleItemState.Companion[OrderWatchState]:
   type Key = OrderWatchPath
   type Item = OrderWatch

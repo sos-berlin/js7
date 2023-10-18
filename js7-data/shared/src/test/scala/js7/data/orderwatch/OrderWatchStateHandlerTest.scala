@@ -267,6 +267,7 @@ final class OrderWatchStateHandlerTest extends OurTestSuite
         externalOrderKey = Some(ExternalOrderKey(aOrderWatch.path, ExternalOrderName(name))))
 }
 
+
 object OrderWatchStateHandlerTest
 {
   private final case class TestState(pathToOrderWatchStateMap: Map[OrderWatchPath, OrderWatchState])

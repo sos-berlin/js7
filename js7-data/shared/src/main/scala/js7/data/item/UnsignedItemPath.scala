@@ -8,6 +8,7 @@ trait UnsignedItemPath extends InventoryItemPath:
 
   def companion: Companion[? <: UnsignedItemPath]
 
+
 object UnsignedItemPath:
   trait Companion[A <: UnsignedItemPath]
   extends InventoryItemPath.Companion[A]:

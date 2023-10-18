@@ -4,6 +4,7 @@ import js7.data.item.SimpleItemPath
 
 trait DelegateId extends SimpleItemPath
 
+
 object DelegateId:
   type Companion_ = Companion[? <: DelegateId]
 

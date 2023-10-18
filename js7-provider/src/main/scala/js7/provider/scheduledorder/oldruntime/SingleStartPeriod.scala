@@ -24,5 +24,6 @@ extends Period:
   def nextLocalTime(from: LocalTime) =
     from <= at option at
 
+
 object SingleStartPeriod:
   private val Epsilon = Duration.ofNanos(1)

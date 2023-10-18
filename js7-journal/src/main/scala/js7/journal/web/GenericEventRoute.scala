@@ -235,6 +235,7 @@ trait GenericEventRoute extends RouteProvider:
       observable.takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ =>
         Task { logger.debug("whenShuttingDown completed") }))
 
+
 object GenericEventRoute:
   type StampedEventFilter =
     Observable[Stamped[KeyedEvent[Event]]] =>

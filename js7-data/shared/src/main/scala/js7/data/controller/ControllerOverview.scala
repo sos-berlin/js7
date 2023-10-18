@@ -23,6 +23,7 @@ final case class ControllerOverview(
   system: SystemInformation,
   java: JavaInformation)
 
+
 object ControllerOverview:
   implicit val jsonCodec: Codec.AsObject[ControllerOverview] = deriveCodec
   intelliJuseImport(FiniteDurationJsonEncoder)

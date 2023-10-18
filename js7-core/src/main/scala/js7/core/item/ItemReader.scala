@@ -28,6 +28,7 @@ trait ItemReader:
           (_: SourceType) => Problem(s"Unrecognized SourceType '$sourceType' for path '$key'"))
     result.mapProblem(p => SourceProblem(key.path, sourceType, p))
 
+
 object ItemReader:
   final case class SourceProblem(
     path: InventoryItemPath,

@@ -10,6 +10,7 @@ final case class CorrelIdWrapped[+V](correlId: CorrelId, value: V):
     correlId.orNew.bind(
       body(value))
 
+
 object CorrelIdWrapped:
   implicit def jsonEncoder[A](implicit A: Encoder.AsObject[A]): Encoder.AsObject[CorrelIdWrapped[A]] =
     o => o.value.asJsonObject

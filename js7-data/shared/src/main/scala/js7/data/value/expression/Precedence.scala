@@ -8,6 +8,7 @@ trait Precedence:
   protected def makeString(a: Precedence, op: String, b: Precedence): String =
     Precedence.toString(a, op, precedence, b)
 
+
 object Precedence:
   // Higher number means higher precedence
   private val next = Iterator.from(1).next _

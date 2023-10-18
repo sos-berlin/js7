@@ -47,5 +47,6 @@ final class ClusterWatchChangeWhileNodesRestartsTest extends ControllerClusterTe
       }
     }
 
+
 object ClusterWatchChangeWhileNodesRestartsTest:
   private val logger = Logger[this.type]

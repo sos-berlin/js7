@@ -30,6 +30,7 @@ extends JJsonable[JAgentRef] with JUnsignedSimpleItem:
   def withRevision(revision: Optional[ItemRevision]) =
     copy(asScala.withRevision(revision.toScala))
 
+
 object JAgentRef extends JJsonable.Companion[JAgentRef]:
   type AsScala = AgentRef
 

@@ -34,5 +34,6 @@ final class DeleteFileJob(jobContext: JobContext) extends InternalJob:
           logger.info(s"Deleted $file")
           out(s"Deleted $file\n")
 
+
 object DeleteFileJob extends InternalJob.Companion[DeleteFileJob]:
   private val logger = Logger[this.type]

@@ -104,6 +104,7 @@ final class CalendarTest extends OurTestSuite with ControllerAgentForScalaTest:
     eventWatch.await[ItemDetached](_.event.key == calendar.path, after = eventId)
     eventWatch.await[ItemDeleted](_.event.key == calendar.path, after = eventId)
 
+
 object CalendarTest:
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)

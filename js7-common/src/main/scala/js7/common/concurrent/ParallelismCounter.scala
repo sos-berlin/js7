@@ -32,6 +32,7 @@ final class ParallelismCounter:
 
   def total = _total
 
+
 object ParallelismCounter:
   def expect[A](parallelismMaximum: Int)(body: ParallelismCounter => A): A =
     expect(Some(parallelismMaximum), None)(body)

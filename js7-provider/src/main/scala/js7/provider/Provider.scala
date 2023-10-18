@@ -207,6 +207,7 @@ with MainService with Service.StoppableByRequest:
   private def retryLoginDurations: Iterator[FiniteDuration] =
     firstRetryLoginDurations.iterator ++ Iterator.continually(firstRetryLoginDurations.lastOption getOrElse 10.s)
 
+
 object Provider:
   private val versionedItemPathCompanions = Set[VersionedItemPath.AnyCompanion](WorkflowPath)
   private val logger = Logger[this.type]

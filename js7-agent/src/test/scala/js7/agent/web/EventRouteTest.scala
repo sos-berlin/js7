@@ -175,6 +175,7 @@ final class EventRouteTest extends OurTestSuite with AgentTester:
       .await(99.s)
     assert(events.isEmpty)
 
+
 object EventRouteTest:
   private val agentPath = AgentPath("AGENT")
   private val controllerId = ControllerId("CONTROLLER")

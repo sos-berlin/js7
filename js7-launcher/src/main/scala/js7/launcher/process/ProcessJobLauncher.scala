@@ -61,6 +61,7 @@ trait ProcessJobLauncher extends JobLauncher:
           .map { case (k, StringValue(v)) => (V1EnvPrefix + k.toUpperCase(ROOT)) -> Some(v) }
           .toMap
 
+
 object ProcessJobLauncher:
   private val V1EnvPrefix = "SCHEDULER_PARAM_"
 

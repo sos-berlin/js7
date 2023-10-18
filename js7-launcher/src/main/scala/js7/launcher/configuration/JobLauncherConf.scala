@@ -30,6 +30,7 @@ final case class JobLauncherConf(
 
   implicit def implicitIox: IOExecutor = iox
 
+
 object JobLauncherConf:
   val ErrLineLengthMaximum = 4096  // Has to fit into the journal
 

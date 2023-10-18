@@ -42,6 +42,7 @@ final class IOExecutor(executor: Executor, name: String) extends Executor:
     logger.traceF(s"${src.value} --> IOExecutor($name).apply")(
       F(body) executeOn scheduler)
 
+
 object IOExecutor:
   private val logger = Logger[this.type]
   lazy val globalIOX =

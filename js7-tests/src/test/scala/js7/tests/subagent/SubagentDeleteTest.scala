@@ -173,6 +173,7 @@ final class SubagentDeleteTest extends OurTestSuite with SubagentTester:
     assert(checked == Left(
       ItemIsStillReferencedProblem(directoryProvider.subagentId, agentPath)))
 
+
 object SubagentDeleteTest:
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",

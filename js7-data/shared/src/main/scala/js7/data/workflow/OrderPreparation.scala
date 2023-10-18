@@ -14,6 +14,7 @@ final case class OrderPreparation(parameterList: OrderParameterList):
   def referencedJobResourcePaths: View[JobResourcePath] =
     parameterList.referencedJobResourcePaths
 
+
 object OrderPreparation:
   val default = OrderPreparation(OrderParameterList.default)
 

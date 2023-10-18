@@ -14,6 +14,7 @@ extends RuntimeException(message, cause):
 
   override def toString = s"ProblemException: $getMessage"
 
+
 object ProblemException:
   def unapply(e: ProblemException) = Some(e.problem)
 

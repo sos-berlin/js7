@@ -28,6 +28,7 @@ trait VersionedItemPath extends InventoryItemPath:
   final def isAnonymous =
     this == companion.Anonymous
 
+
 object VersionedItemPath:
   implicit def ordering[P <: VersionedItemPath]: Ordering[P] =
     (a, b) => a.string compare b.string match

@@ -45,6 +45,7 @@ trait ScheduleSimulator:
               timestamp += actionDuration
     }
 
+
 object ScheduleSimulator:
   final case class Result(scheduledView: View[Scheduled]/*, exitAt: Timestamp*/)
 

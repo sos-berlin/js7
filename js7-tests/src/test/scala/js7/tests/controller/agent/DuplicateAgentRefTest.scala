@@ -43,6 +43,7 @@ final class DuplicateAgentRefTest extends OurTestSuite with ControllerAgentForSc
     val a = controller.eventWatch.await[AgentCouplingFailed]().head.value.event
     assert(a == AgentCouplingFailed(AgentPathMismatchProblem(bAgentPath, aAgentPath)))
 
+
 object DuplicateAgentRefTest:
   private val aAgentPath = AgentPath("A-AGENT")
   private val bAgentPath = AgentPath("B-AGENT")

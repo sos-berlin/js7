@@ -272,6 +272,7 @@ extends OurTestSuite with DirectoryProviderForScalaTest:
           itemRevision = Some(revision)))))
     keyedEvents.last.eventId
 
+
 object ControlWorkflowPathSuspendWorkflowTest:
   private val aAgentPath = AgentPath("A-AGENT")
   private val bAgentPath = AgentPath("B-AGENT")

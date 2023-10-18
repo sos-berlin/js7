@@ -102,6 +102,7 @@ final case class JavaResource(classLoader: ClassLoader, path: String):
 
   override def toString = path
 
+
 object JavaResource:
 
   private val logger = Logger[this.type]

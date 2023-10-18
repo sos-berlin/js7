@@ -17,6 +17,7 @@ trait VersionedControlPath extends UnsignedItemPath:
   final def requireNonAnonymous(): Unit =
     companion.checked(string).orThrow
 
+
 object VersionedControlPath:
   implicit def ordering[P <: VersionedControlPath]: Ordering[P] =
     (a, b) => a.string compare b.string match

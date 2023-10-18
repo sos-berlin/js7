@@ -317,6 +317,7 @@ private final class ClusterWatchSynchronizer(
           // Not expected
             Task.left(Problem(s"New ${confirmation.clusterWatchId} cannot be registered now"))
 
+
 object ClusterWatchSynchronizer:
   private val logger = Logger[this.type]
   private val heartbeatSessionNr = Iterator.from(1)

@@ -147,6 +147,7 @@ final class ClusterWatch(
           state.lastHeartbeat.elapsed.pretty + " ago") +
       ")"
 
+
 object ClusterWatch:
   type OnUndecidableClusterNodeLoss = Option[ClusterNodeLossNotConfirmedProblem] => Task[Unit]
 

@@ -30,6 +30,7 @@ extends AutoCloseable:
         buffer.clear()
         result
 
+
 object ByteArrayReader:
   private[files] val ChunkSize = 8192
   private val logger = Logger[this.type]

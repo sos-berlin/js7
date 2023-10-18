@@ -148,6 +148,7 @@ final class AsyncLockTest extends OurAsyncTestSuite
   }
 }
 
+
 object AsyncLockTest
 {
   private val logger = js7.base.log.Logger[this.type]

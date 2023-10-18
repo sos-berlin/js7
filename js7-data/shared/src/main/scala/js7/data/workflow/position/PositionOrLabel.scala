@@ -16,6 +16,7 @@ import scala.collection.mutable.ListBuffer
 
 trait PositionOrLabel
 
+
 object PositionOrLabel:
   implicit val jsonEncoder: Encoder[PositionOrLabel] =
     case position: Position => position.asJson
@@ -93,6 +94,7 @@ extends PositionOrLabel:
     case Nil => nr.number.toString
     case _ => branchPath.show + nr
 
+
 object Position:
   val First = Position(InstructionNr.First)
   private val NoTryBlockProblem = Problem.pure("Retry, but not in a catch-block")
@@ -145,6 +147,7 @@ object Position:
             error match
               case Some(error) => Left(DecodingFailure(error, cursor.history))
               case None => Right(Position(branchPath.toList, InstructionNr(lastInstructionNr)))
+
 
 final case class Label private(string: String)
 extends PositionOrLabel with GenericString

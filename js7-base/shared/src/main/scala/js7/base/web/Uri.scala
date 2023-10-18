@@ -39,6 +39,7 @@ final case class Uri(string: String) extends GenericString:
       case StripPathRegex(result) => if result == string then this else Uri(result)
       case _ => this
 
+
 object Uri extends GenericString.NonEmpty[Uri]:
   private val StripPathRegex = "([^/]*//[^/]+/).*".r
 

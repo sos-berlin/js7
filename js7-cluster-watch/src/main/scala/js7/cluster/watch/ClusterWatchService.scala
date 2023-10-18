@@ -151,6 +151,7 @@ extends MainService with Service.StoppableByRequest:
   def clusterState(): Checked[ClusterState] =
     clusterWatch.clusterState()
 
+
 object ClusterWatchService:
   private val logger = Logger[this.type]
 

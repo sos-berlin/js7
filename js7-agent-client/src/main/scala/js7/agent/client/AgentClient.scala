@@ -85,6 +85,7 @@ with HttpClusterNodeApi:
         agentUris.controllersEvents(request),
         responsive = true))
 
+
 object AgentClient:
   private val logger = Logger[this.type]
 

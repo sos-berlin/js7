@@ -160,5 +160,6 @@ trait ClassEventBus[E] extends EventPublisher[E] with AutoCloseable:
 
     def close() = removeSubscription(this)
 
+
 object ClassEventBus:
   private val logger = Logger[this.type]

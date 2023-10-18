@@ -373,6 +373,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
         fail(s"Unexpected EventSeq received: $o")
 
 
+
 object RetryTest:
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)

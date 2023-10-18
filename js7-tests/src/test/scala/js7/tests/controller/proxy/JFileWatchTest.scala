@@ -25,6 +25,7 @@ final class JFileWatchTest extends OurTestSuite with ControllerAgentForScalaTest
     JFileWatchTester.testFileOrder(jControllerApi)
     JFileWatchTester.testFileWatchApi(jControllerApi)
 
+
 object JFileWatchTest:
   private val agentPath = AgentPath("AGENT")
   private val workflow = Workflow.of(WorkflowPath("WORKFLOW"),

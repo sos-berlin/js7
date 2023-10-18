@@ -272,6 +272,7 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor:
         logger.debug(s"»${JournalingActor.this.toString}« Long persist completed ($persistCount×, $firstName ...) - " +
           itemsPerSecondString(duration, eventCount, "events"))
 
+
 object JournalingActor:
   private val Inhibited = -1
   private val logger = Logger[this.type]

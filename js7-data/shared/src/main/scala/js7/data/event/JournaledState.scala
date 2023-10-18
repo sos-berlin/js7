@@ -22,6 +22,7 @@ extends EventDrivenState[S, Event]:
 
   def eventId: EventId
 
+
 object JournaledState:
   trait HasEventCodec:
     implicit def keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event]

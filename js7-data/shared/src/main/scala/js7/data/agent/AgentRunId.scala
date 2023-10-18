@@ -14,6 +14,7 @@ final case class AgentRunId(journalId: JournalId) extends GenericString:
 
   override def toString = typedToString
 
+
 object AgentRunId extends GenericString.NonEmpty[AgentRunId]:
   val empty = AgentRunId(JournalId(Base64UUID.zero))
 

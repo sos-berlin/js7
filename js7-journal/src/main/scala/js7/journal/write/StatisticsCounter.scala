@@ -43,6 +43,7 @@ private[journal] trait StatisticsCounter:
 
   final def syncCount = syncs
 
+
 object StatisticsCounter:
   private def t(nanos: Long, n: Int, name: String): Option[String] =
     if n == 0 then None

@@ -51,6 +51,7 @@ final class Cycle2Test extends OurTestSuite with ControllerAgentForScalaTest wit
       sleep(1.s)
       assert(eventWatch.eventsByKey[OrderEvent](orderId).count(_ == OrderCycleStarted) == 1)
 
+
 object Cycle2Test:
   private val logger = Logger[this.type]
 

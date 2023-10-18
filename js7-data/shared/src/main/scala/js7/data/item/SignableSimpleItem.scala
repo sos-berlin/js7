@@ -7,6 +7,7 @@ trait SignableSimpleItem extends SimpleItem with SignableItem:
   //val id: SignableSimpleItemPath
   val companion: SignableSimpleItem.Companion[Self]
 
+
 object SignableSimpleItem:
   type Companion_ = Companion[? <: SignableSimpleItem]
 

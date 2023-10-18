@@ -64,6 +64,7 @@ extends Big:
       isInConsumption = !isLast,
       consumptionCount = consumptionCount - 1)
 
+
 object NoticePlace:
   final case class Snapshot(
     boardPath: BoardPath,

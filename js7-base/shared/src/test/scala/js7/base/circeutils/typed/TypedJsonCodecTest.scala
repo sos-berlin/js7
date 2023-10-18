@@ -70,6 +70,7 @@ final class TypedJsonCodecTest extends OurTestSuite:
     assert(a1Json.toClass[A] == Some(classOf[A1]))
     assert(xJson.toClass[A] == None)
 
+
 object TypedJsonCodecTest:
   sealed trait A
   case object A0 extends A

@@ -67,6 +67,7 @@ final class Delayer[F[_]] private(initialNow: Deadline, conf: DelayConf)
 
   override def toString = s"Delayer(${_state.get()} $conf)"
 
+
 object Delayer:
   private val logger = Logger[this.type]
 

@@ -17,6 +17,7 @@ final case class JTimeInterval(asScala: TimeInterval) extends JavaWrapper:
   def duration: Duration =
     asScala.duration.toJava
 
+
 object JTimeInterval:
   @Nonnull
   def of(

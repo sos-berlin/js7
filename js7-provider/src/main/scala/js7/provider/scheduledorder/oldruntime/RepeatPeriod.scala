@@ -36,6 +36,7 @@ extends Period:
   //def toInstantInterval(date: LocalDate, timeZone: ZoneId) =
   //  InstantInterval(begin.atDate(date).toInstant(timeZone), end.atDate(date).toInstant(timeZone))
 
+
 object RepeatPeriod:
   val StartOfDay = LocalTime.of(0, 0)
 

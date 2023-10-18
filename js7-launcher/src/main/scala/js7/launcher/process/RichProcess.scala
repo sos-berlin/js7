@@ -182,6 +182,7 @@ class RichProcess protected[process](
   override def toString =
     process.toString
 
+
 object RichProcess:
   private val logger = Logger[this.type]
 

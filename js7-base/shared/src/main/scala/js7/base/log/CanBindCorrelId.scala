@@ -20,6 +20,7 @@ trait CanBindCorrelId[R]:
   private[log] def bind(correlId: CorrelId)(body: => R): R
   private[log] def bindNewIfEmpty(body: => R): R
 
+
 object CanBindCorrelId:
   private var _bindCorrelIdCount = 0L
 

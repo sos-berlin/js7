@@ -97,6 +97,7 @@ final class AgentShutDownTest extends OurTestSuite with BeforeAndAfterAll with T
     //  }
     //}
 
+
 object AgentShutDownTest:
   private val logger = Logger[this.type]
   private val agentPath = AgentPath("AGENT")

@@ -54,6 +54,7 @@ final class ControllerUris private(controllerUri: Uri):
 
   override def toString = controllerUri.string
 
+
 object ControllerUris:
   def apply(controllerUri: Uri): ControllerUris =
     new ControllerUris(Uri(controllerUri.string.stripSuffix("/") + "/"))

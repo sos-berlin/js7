@@ -16,5 +16,6 @@ extends Instruction:
 
   def withoutSourcePos = copy(sourcePos = None)
 
+
 object Finish:
   implicit val jsonCodec: Codec.AsObject[Finish] = deriveCodec

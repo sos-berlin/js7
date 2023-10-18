@@ -67,6 +67,7 @@ final class ManyAddOrdersTest extends OurTestSuite with ControllerAgentForScalaT
       .headL
     Task.sequence(Seq(addOrders, awaitRemoved)) await 99.s
 
+
 object ManyAddOrdersTest:
   private val pathExecutable = RelativePathExecutable("executable.cmd")
   private val agentPath1 = AgentPath("AGENT-1")

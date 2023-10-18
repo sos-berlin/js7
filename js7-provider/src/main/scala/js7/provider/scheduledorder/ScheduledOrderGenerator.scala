@@ -26,6 +26,7 @@ with TrivialItemState[ScheduledOrderGenerator]:
   def withId(id: VersionedItemId[ScheduledOrderGeneratorPath]) =
     reuseIfEqual(this, copy(id = id))
 
+
 object ScheduledOrderGenerator
 extends VersionedItem.Companion[ScheduledOrderGenerator]
 with TrivialItemState.Companion[ScheduledOrderGenerator]:

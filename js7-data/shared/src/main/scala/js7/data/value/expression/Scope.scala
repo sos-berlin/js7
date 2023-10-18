@@ -55,6 +55,7 @@ trait Scope:
       .combineProblems
       .map(_.toMap)
 
+
 object Scope extends Monoid[Scope]:
   implicit val monoid: Monoid[Scope] = this
 

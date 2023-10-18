@@ -59,6 +59,7 @@ private final class TestControllerProxy(controllerUri: Uri, httpPort: Int)(impli
           .guarantee(api.stop)
       }
 
+
 object TestControllerProxy:
   // Don't use a Logger here to avoid overwriting a concurrently used logfile
   private val userAndPassword = Some(UserAndPassword(UserId("demo"), SecretString("demo")))

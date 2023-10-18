@@ -5,6 +5,7 @@ import scala.language.implicitConversions
 abstract class ScalaThreadLocal[A]:
   def apply(): A
 
+
 object ScalaThreadLocal:
   def threadLocal[A](f: => A): ScalaThreadLocal[A] =
     new ScalaThreadLocal[A]:

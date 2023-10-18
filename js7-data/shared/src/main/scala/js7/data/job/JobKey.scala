@@ -18,6 +18,7 @@ sealed trait JobKey:
 
   override def toString = s"Job:$name"
 
+
 object JobKey:
   def apply(workflowPosition: WorkflowPosition) =
     Anonymous(workflowPosition)

@@ -7,6 +7,7 @@ import io.circe.{Decoder, DecodingFailure, Encoder, Json}
 final case class SourcePos(start: Int, end: Int):
   require(start <= end, s"Invalid SourcePos($start, $end)")
 
+
 object SourcePos:
   implicit val jsonEncoder: Encoder[SourcePos] =
     o => Json.fromValues(Array(o.start.asJson, o.end.asJson))

@@ -113,6 +113,7 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater:
           start + 5.s -> OrderFailed(Position(0) / "try+4" % 0)))
     }
 
+
 object RetryDelayTest:
   private implicit val zone: ZoneId = ZoneId.of("Europe/Mariehamn")
   private val start = local("2022-10-25T12:00")

@@ -28,6 +28,7 @@ extends SnapshotableState[S]:
             UserAndPassword(userId, password))
     yield maybeUserAndPassword
 
+
 object ClusterableState:
   trait Companion[S <: ClusterableState[S]]
   extends SnapshotableState.Companion[S]:

@@ -198,6 +198,7 @@ extends AutoCloseable:
 
   final def isInUse = iteratorPool.isLent
 
+
 object EventReader:
   private val EndOfJournalFileMarker = JournalSeparators.EndOfJournalFileMarker.toByteArray
   final class TimeoutException private[EventReader] extends scala.concurrent.TimeoutException

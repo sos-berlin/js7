@@ -1494,6 +1494,7 @@ final class OrderEventSourceTest extends OurTestSuite
   }
 }
 
+
 object OrderEventSourceTest
 {
   private implicit val instructionExecutorService: InstructionExecutorService =

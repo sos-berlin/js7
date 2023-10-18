@@ -685,6 +685,7 @@ with ClusterableState[ControllerState]:
   override def toString = s"ControllerState(${EventId.toString(eventId)} ${idToOrder.size} orders, " +
     s"Repo(${repo.currentVersionSize} objects, ...))"
 
+
 object ControllerState
 extends ClusterableState.Companion[ControllerState]
 with ItemContainer.Companion[ControllerState]:

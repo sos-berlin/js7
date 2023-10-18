@@ -210,6 +210,7 @@ final class JavaTimeTest extends OurTestSuite
   }
 }
 
+
 object JavaTimeTest
 {
   implicit private final class ImplicitDurationInt(private val delegate: Int) extends AnyVal {

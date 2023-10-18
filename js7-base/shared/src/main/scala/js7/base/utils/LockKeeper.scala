@@ -89,5 +89,6 @@ final class LockKeeper[K]:
 
     override def toString = s"LockKeeper.Token($key${released.get() ?? ", released"})"
 
+
 object LockKeeper:
   private val logger = Logger[this.type]

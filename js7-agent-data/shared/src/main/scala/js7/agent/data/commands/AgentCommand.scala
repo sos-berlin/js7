@@ -30,6 +30,7 @@ import js7.data.subagent.SubagentId
 sealed trait AgentCommand extends CommonCommand:
   type Response <: AgentCommand.Response
 
+
 object AgentCommand extends CommonCommand.Companion:
   protected type Command = AgentCommand
 

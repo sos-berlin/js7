@@ -148,6 +148,7 @@ final class RestartAfterFailureServiceTest extends OurTestSuite:
     waitForCondition(10.s, 10.ms)(runs.get() == 0)
     assert(runs.get() == 0)
 
+
 object RestartAfterFailureServiceTest:
   private val logger = Logger[this.type]
   private class TestException(msg: String) extends RuntimeException(msg) with NoStackTrace:

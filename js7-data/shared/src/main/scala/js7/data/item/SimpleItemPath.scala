@@ -10,6 +10,7 @@ trait SimpleItemPath extends InventoryItemKey with InventoryItemPath:
 
   final def path = this
 
+
 object SimpleItemPath:
   trait Companion[A <: SimpleItemPath]
   extends InventoryItemPath.Companion[A]

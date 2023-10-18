@@ -50,6 +50,7 @@ extends JJsonable[JFileWatch] with JUnsignedSimpleItem:
   def withRevision(revision: Optional[ItemRevision]) =
     copy(asScala.withRevision(revision.toScala))
 
+
 object JFileWatch extends JJsonable.Companion[JFileWatch]:
   type AsScala = FileWatch
 

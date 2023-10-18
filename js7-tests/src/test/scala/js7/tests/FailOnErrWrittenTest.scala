@@ -43,6 +43,7 @@ final class FailOnErrWrittenTest extends OurTestSuite with ControllerAgentForSca
       OrderProcessed(Outcome.Failed(Some("The job's error channel: ERROR"))),
     ))
 
+
 object FailOnErrWrittenTest:
   private val agentPath = AgentPath("AGENT")
 

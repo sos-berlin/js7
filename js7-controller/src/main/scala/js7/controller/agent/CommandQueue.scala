@@ -276,6 +276,7 @@ private[agent] abstract class CommandQueue(
       else
         maybeStartSendingLocked
 
+
 object CommandQueue:
   private[agent] final case class QueueableResponse(
     queueable: Queueable,

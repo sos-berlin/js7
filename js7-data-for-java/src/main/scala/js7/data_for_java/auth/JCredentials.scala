@@ -14,6 +14,7 @@ sealed trait JCredentials:
       case NoCredentials => None
       case o: JUserAndPassword => Some(o.asScala)
 
+
 @javaApi
 object JCredentials:
   final val noCredentials = NoCredentials

@@ -494,6 +494,7 @@ trait PekkoHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableS
 
   private lazy val nameString = name.nonEmpty ?? s" »$name«"
 
+
 object PekkoHttpClient:
   private val EmptyLine = ByteArray("\n")
 

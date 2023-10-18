@@ -115,8 +115,9 @@ final class AdmissionTimeSchemeTest extends OurTestSuite
   }
 }
 
-object AdmissionTimeSchemeTest
-{
+
+object AdmissionTimeSchemeTest:
+  
   def findLocalInterval(dateTimeString: String)(implicit admissionTimeScheme: AdmissionTimeScheme)
   : Option[LocalInterval] =
     admissionTimeScheme.findLocalInterval(
@@ -125,4 +126,3 @@ object AdmissionTimeSchemeTest
 
   def localInterval(dateTimeString: String, duration: FiniteDuration): LocalInterval =
     LocalInterval(LocalDateTime.parse(dateTimeString), duration)
-}

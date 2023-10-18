@@ -232,6 +232,7 @@ final class EventRouteTest extends OurTestSuite with RouteTester with EventRoute
     }
 }
 
+
 object EventRouteTest
 {
   private val TestEvents = for i <- 1 to 18 yield

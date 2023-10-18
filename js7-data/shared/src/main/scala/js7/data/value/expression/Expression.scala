@@ -72,6 +72,7 @@ sealed trait Expression extends Precedence:
   final def evalAsVector(implicit scope: Scope): Checked[Vector[Value]] =
     eval.flatMap(_.as[ListValue]).map(_.elements)
 
+
 object Expression:
   private val logger = Logger[this.type]
 

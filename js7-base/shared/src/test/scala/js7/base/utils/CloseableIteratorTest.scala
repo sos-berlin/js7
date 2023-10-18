@@ -122,6 +122,7 @@ final class CloseableIteratorTest extends OurTestSuite:
     closeableIterator.close()
     assert(closed)
 
+
 object CloseableIteratorTest:
   private final class TestIterator(iterator: Iterator[Int]) extends CloseableIterator[Int]:
     var closed = false

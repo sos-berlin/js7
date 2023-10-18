@@ -150,5 +150,6 @@ final class FileValueScopeTest extends OurTestSuite:
       assert(dir.directoryContents.isEmpty)
     }
 
+
 object FileValueScopeTest:
   private val logger = Logger[this.type]

@@ -113,6 +113,7 @@ trait AgentForwardRoute extends ControllerRouteProvider:
 
     route
 
+
 object AgentForwardRoute:
   private val isForwardableHeaderClass = Set[Class[? <: HttpHeader]](
     classOf[Accept],

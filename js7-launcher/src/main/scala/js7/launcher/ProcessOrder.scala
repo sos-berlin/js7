@@ -58,6 +58,7 @@ extends ProcessingOrderScopes:
     processingOrderScope |+|
       NameToCheckedValueScope(nameToLazyDefaultArgument)
 
+
 object ProcessOrder:
   def resource(
     order: Order[Order.Processing],

@@ -69,6 +69,7 @@ final class FileWatchLongTest extends OurTestSuite with ControllerAgentForScalaT
     eventWatch.await[ItemDeleted](_.event.key == fileWatch.path)
     assert(controllerState.keyTo(OrderWatchState).isEmpty)
 
+
 object FileWatchLongTest:
   private val agentPath = AgentPath("AGENT")
 

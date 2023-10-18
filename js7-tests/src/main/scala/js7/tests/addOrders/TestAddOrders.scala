@@ -76,6 +76,7 @@ final class TestAddOrders private(controllerApi: ControllerApi, settings: Settin
         controllerApi.deleteOrdersWhenTerminated(orderIds))
       .rightAs(())
 
+
 object TestAddOrders:
   private[addOrders] def run(
     settings: Settings,

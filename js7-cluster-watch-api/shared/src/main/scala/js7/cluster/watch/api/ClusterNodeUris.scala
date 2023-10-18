@@ -68,6 +68,7 @@ final class ClusterNodeUris private(prefixedUri: Uri):
 
   override def toString = prefixedUri.string
 
+
 object ClusterNodeUris:
   def apply(prefixedUri: Uri): ClusterNodeUris =
     new ClusterNodeUris(Uri(prefixedUri.string.stripSuffix("/") + "/"))

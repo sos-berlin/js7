@@ -118,5 +118,6 @@ final class UntaughtClusterWatchFailoverControllerClusterTest extends Controller
       }
     }
 
+
 object UntaughtClusterWatchFailoverControllerClusterTest:
   private val logger = Logger[this.type]

@@ -19,6 +19,7 @@ final case class VersionId(string: String) extends GenericString:
 
   override def toString = s"Version:$string"
 
+
 object VersionId extends GenericString.NonEmpty[VersionId]:
   // TODO Restrict VersionId syntax with Js7NameValidator?
 

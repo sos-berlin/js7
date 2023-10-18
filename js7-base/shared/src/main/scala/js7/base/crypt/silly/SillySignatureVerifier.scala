@@ -35,6 +35,7 @@ extends SignatureVerifier:
   def publicKeysToStrings =
     s"$typeName(origin=$publicKeyOrigin)" :: Nil
 
+
 object SillySignatureVerifier extends SignatureVerifier.Companion:
   protected type MySignature = SillySignature
   protected type MySignatureVerifier = SillySignatureVerifier

@@ -87,6 +87,7 @@ extends Instruction:
 
   override def toString = s"try $tryWorkflow catch $catchWorkflow$sourcePosToString"
 
+
 object TryInstruction:
   private val NoRetryDelay = ZeroDuration  // No retryDelays, no delay
   val InvalidMaxTriesProblem = Problem.pure("maxTries argument must be a positive number")

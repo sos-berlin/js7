@@ -24,6 +24,7 @@ final case class CycleState(
   override def toString =
     s"CycleState(next=${next.pretty} index=$index schemeIndex=$schemeIndex period=$periodIndex end=$end)"
 
+
 object CycleState:
   def initial(timeInterval: TimeInterval): CycleState =
     CycleState(

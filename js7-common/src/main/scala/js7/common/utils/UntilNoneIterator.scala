@@ -12,6 +12,7 @@ extends AbstractIterator[A] with SimpleIterator[A]
 with Iterator[A]:
   def computeNext() = read getOrElse endOfData
 
+
 object UntilNoneIterator:
   def apply[A](read: => Option[A]): Iterator[A] =
     new UntilNoneIterator(

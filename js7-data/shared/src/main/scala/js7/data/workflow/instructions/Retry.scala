@@ -14,5 +14,6 @@ extends Instruction:
 
   override def toString = "retry" + sourcePosToString
 
+
 object Retry:
   implicit val jsonCodec: Codec.AsObject[Retry] = deriveCodec[Retry]

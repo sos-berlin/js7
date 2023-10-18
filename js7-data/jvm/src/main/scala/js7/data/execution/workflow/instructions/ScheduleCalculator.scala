@@ -114,6 +114,7 @@ extends ScheduleSimulator:
     nextTimestamps.view.filter(_ <= now).maxOption
       .orElse(nextTimestamps.minOption)
 
+
 object ScheduleCalculator:
   private val monday1 = LocalDateTime.parse("2021-11-01T00:00")
   assert(monday1.getDayOfWeek == MONDAY)

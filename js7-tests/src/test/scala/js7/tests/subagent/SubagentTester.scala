@@ -34,5 +34,6 @@ trait SubagentTester extends ControllerAgentForScalaTest:
 
   protected val scheduler: Scheduler
 
+
 object SubagentTester:
   val agentPath = AgentPath("AGENT")

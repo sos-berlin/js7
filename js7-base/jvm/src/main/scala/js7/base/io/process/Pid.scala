@@ -8,4 +8,5 @@ final case class Pid(number: Long) extends GenericLong:
 
   override def toString = s"PID:$number"
 
+
 object Pid extends GenericLong.Companion[Pid]

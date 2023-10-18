@@ -153,6 +153,7 @@ extends ControllerRouteProvider with EntitySizeLimitProvider:
           Problem.pure(s"Does not exist: $orderId"): ToResponseMarshallable
       }))
 
+
 object OrderRoute:
   private val emptyJsonObject = Json.obj()
   private val logger = Logger[this.type]

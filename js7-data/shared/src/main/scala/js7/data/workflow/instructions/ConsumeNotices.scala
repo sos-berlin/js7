@@ -47,6 +47,7 @@ extends ExpectOrConsumeNoticesInstruction:
     else
       Right(subworkflow)
 
+
 object ConsumeNotices:
   implicit val jsonCodec: Codec.AsObject[ConsumeNotices] =
     ConfiguredCodec.derive(useDefaults = true)

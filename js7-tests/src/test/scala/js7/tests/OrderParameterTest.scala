@@ -70,6 +70,7 @@ final class OrderParameterTest extends OurTestSuite with ControllerAgentForScala
     if expectedOutcomes.last.isSucceeded then assert(events.last.isInstanceOf[OrderFinished])
     else assert(events.last.isInstanceOf[OrderFailed])
 
+
 object OrderParameterTest:
   private val agentPath = AgentPath("AGENT")
 

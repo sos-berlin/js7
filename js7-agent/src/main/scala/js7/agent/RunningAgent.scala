@@ -153,6 +153,7 @@ extends MainService with Service.StoppableByRequest:
 
   override def toString = "RunningAgent"
 
+
 object RunningAgent:
   private val logger = Logger[this.type]
 

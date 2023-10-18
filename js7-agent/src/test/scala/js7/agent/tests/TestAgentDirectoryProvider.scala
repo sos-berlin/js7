@@ -66,6 +66,7 @@ trait TestAgentDirectoryProvider extends HasCloser:
       s"""|js7.configuration.trusted-signature-keys.Silly = $${js7.config-directory}"/private/trusted-silly-signature-keys"
           |""".stripMargin
 
+
 object TestAgentDirectoryProvider:
   private val signature = SillySignature("MY-SILLY-SIGNATURE")
   final val itemSigner = new ItemSigner(new SillySigner(signature), AgentState.signableItemJsonCodec)

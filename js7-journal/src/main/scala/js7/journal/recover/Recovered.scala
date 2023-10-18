@@ -54,6 +54,7 @@ extends AutoCloseable:
   // Suppresses Config (which may contain secrets)
   override def toString = s"Recovered($journalLocation,$recoveredJournalFile,$eventWatch)"
 
+
 object Recovered:
   def fromJournalFile[S <: SnapshotableState[S]](
     journalLocation: JournalLocation,

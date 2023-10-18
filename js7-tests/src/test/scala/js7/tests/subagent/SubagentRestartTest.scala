@@ -173,6 +173,7 @@ final class SubagentRestartTest extends OurTestSuite with SubagentTester:
           assert(events.head.value.event.isInstanceOf[OrderFinished])
     }
 
+
 object SubagentRestartTest:
   private val logger = Logger[this.type]
 

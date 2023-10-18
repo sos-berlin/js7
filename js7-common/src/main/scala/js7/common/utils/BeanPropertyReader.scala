@@ -21,6 +21,7 @@ final class BeanPropertyReader[A](clas: Class[? <: A], nameToConverter: NameToCo
          value <- converter.lift(method.invoke(bean))
     yield name -> value
 
+
 object BeanPropertyReader:
   type NameToConverter = PartialFunction[String, PartialFunction[Any, Any]]
   type ConditionalConverter = PartialFunction[Any, Any]

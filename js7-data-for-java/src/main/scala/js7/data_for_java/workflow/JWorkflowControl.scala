@@ -25,6 +25,7 @@ extends JUnsignedVersionedItem[JWorkflowControl, WorkflowControlPath]:
   def breakpoints: java.util.Set[JPosition] =
     asScala.breakpoints.map(JPosition(_)).asJava
 
+
 @javaApi
 object JWorkflowControl extends JJsonable.Companion[JWorkflowControl]:
   type AsScala = WorkflowControl

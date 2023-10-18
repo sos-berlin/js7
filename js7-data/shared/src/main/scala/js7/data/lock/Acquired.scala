@@ -13,6 +13,7 @@ sealed trait Acquired:
   def acquireFor(orderId: OrderId, count: Option[Int]): Either[LockRefusal, Acquired]
   def release(orderId: OrderId): Either[LockRefusal, Acquired]
 
+
 object Acquired:
 
   case object Available extends Acquired:

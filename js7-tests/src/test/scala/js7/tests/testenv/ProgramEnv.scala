@@ -94,6 +94,7 @@ trait ProgramEnv extends AutoCloseable:
   def program(): Program =
     _currentProgram.getOrElse(throw new IllegalStateException(s"$toString: Program not started"))
 
+
 object ProgramEnv:
   private val logger = Logger[this.type]
 

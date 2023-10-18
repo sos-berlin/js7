@@ -125,6 +125,7 @@ final class SimpleAgentClusterTest extends ControllerClusterTester:
       }
     }
 
+
 object SimpleAgentClusterTest:
   private val logger = Logger[this.type]
 

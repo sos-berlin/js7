@@ -583,6 +583,7 @@ with BlockingItemUpdater:
         OrderFailed(Position(1) / "try+1" % 0)))
     }
 
+
 object ConsumeNoticesTest:
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)

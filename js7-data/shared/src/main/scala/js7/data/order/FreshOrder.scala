@@ -45,6 +45,7 @@ final case class FreshOrder(
       forceJobAdmission = forceJobAdmission,
       innerBlock, startPosition, stopPositions)
 
+
 object FreshOrder:
   def apply(
     id: OrderId,

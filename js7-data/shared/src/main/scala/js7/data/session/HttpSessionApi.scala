@@ -120,6 +120,7 @@ trait HttpSessionApi extends SessionApi with HasSessionToken:
           logger.debug(s"$S snapshot receive $exitCase - ${itemsPerSecondString(d, n, "objects")}"))
         .flatMap(S.fromObservable)
 
+
 object HttpSessionApi:
   private val logger = Logger[this.type]
   private val isPasswordLoggable = isTest &&

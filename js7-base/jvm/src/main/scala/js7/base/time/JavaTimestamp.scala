@@ -28,6 +28,7 @@ final case class JavaTimestamp private(toEpochMilli: Long) extends Timestamp:
   def copy(epochMilli: Long) =
     JavaTimestamp.ofEpochMilli(epochMilli)
 
+
 object JavaTimestamp extends Timestamp.Companion:
   object specific:
     implicit class RichJavaTimestamp(private val timestamp: Timestamp) extends AnyVal:

@@ -36,6 +36,7 @@ final class RetryExecutorTest extends OurTestSuite:
     assert(toEvents(tryPosition / "catch+3" % 0, delays) == Right(Seq(orderId <-: OrderRetrying(tryPosition / "try+4" % 0, Some(now + 12.s)))))
     assert(toEvents(tryPosition / "catch+4" % 0, delays) == Right(Seq(orderId <-: OrderRetrying(tryPosition / "try+5" % 0, Some(now + 12.s)))))
 
+
 object RetryExecutorTest:
   private val now = Timestamp("2019-03-08T12:00:00Z")
   private val orderId = OrderId("ORDER-A")

@@ -13,6 +13,7 @@ trait WallClock:
 
   override def toString = s"$productPrefix(${now()})"
 
+
 object WallClock extends WallClock:
   override def epochMilli() =
     System.currentTimeMillis()

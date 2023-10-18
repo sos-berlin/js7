@@ -33,6 +33,7 @@ trait AlarmClock extends WallClock:
   def lock[A](body: => A): A =
     body
 
+
 object AlarmClock:
   def apply(clockCheckInterval: Option[FiniteDuration] = None)(implicit s: Scheduler): AlarmClock =
     clockCheckInterval match

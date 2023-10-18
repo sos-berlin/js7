@@ -20,6 +20,7 @@ extends UnsignedSimpleItemPath with DelegateId with AttachableToAgent:
   def toNodeName: Checked[NodeName] =
     NodeName.checked(string)
 
+
 object SubagentId
 extends DelegateId.Companion[SubagentId]
 with UnsignedSimpleItemPath.Companion[SubagentId]:

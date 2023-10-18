@@ -35,6 +35,7 @@ trait InternalJob:
 
   def toOrderProcess(step: Step): OrderProcess
 
+
 object InternalJob:
   final case class JobContext(
     implementationClass: Class[?],

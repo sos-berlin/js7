@@ -54,6 +54,7 @@ extends Instruction:
   def lockPaths: List[LockPath] =
     demands.map(_.lockPath)
 
+
 object LockInstruction:
   @TestOnly
   def apply(

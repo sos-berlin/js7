@@ -15,6 +15,7 @@ extends JavaWrapper:
 
   type AsScala = Admission
 
+
 object JAdmission:
   @javaApi @Nonnull @throws[RuntimeException]("on invalid syntax")
   def of(uri: String, credentials: JCredentials): JAdmission =

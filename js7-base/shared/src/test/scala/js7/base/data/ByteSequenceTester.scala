@@ -277,6 +277,7 @@ extends OurTestSuite:
     val noJsonByteSeq = ByteSeq("""XXX""")
     assert(noJsonByteSeq.parseJsonAs[A] == Left(Problem("JSON ParsingFailure: expected json value got 'XXX' (line 1, column 1)")))
 
+
 object ByteSequenceTester:
   val mimeByte64Bytes: Array[Byte] = (0 to 0xff).map(_.toByte).toArray
   val mimeBase64string =

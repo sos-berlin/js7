@@ -38,6 +38,7 @@ extends RichProcess(processConfiguration, process):
     // leading to blocked child processes trying to write to stdout (as observed by a customer).
     _sigkilled.trySuccess(())
 
+
 object ShellScriptProcess:
   private val logger = Logger[this.type]
   private val stdoutAndStderrDetachDelay = 1.s  // TODO

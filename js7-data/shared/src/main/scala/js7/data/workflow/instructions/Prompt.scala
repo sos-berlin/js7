@@ -10,5 +10,6 @@ final case class Prompt(question: Expression, sourcePos: Option[SourcePos] = Non
 extends Instruction:
   def withoutSourcePos = copy(sourcePos = None)
 
+
 object Prompt:
   implicit val jsonCodec: Codec.AsObject[Prompt] = deriveCodec[Prompt]

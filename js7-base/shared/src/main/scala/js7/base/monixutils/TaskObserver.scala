@@ -67,6 +67,7 @@ final class TaskObserver[A] private(observer: Observer[A])
             .void
 }
 
+
 object TaskObserver:
   def apply[A](observer: Observer[A]): TaskObserver[A] =
     new TaskObserver(observer)

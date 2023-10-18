@@ -236,6 +236,7 @@ trait ForkInstructionExecutor extends EventInstructionExecutor:
           // Inefficient if only one of many children change the agent !!!
           order.isAttached ? None)
 
+
 object ForkInstructionExecutor:
   val MinimumChildCountForParentAttachment = 3
   private val logger = Logger[this.type]

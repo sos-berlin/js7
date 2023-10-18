@@ -18,6 +18,7 @@ final case class AgentDriverConfiguration(
   commandParallelism: Int,
   releaseEventsPeriod: FiniteDuration)
 
+
 object AgentDriverConfiguration:
   def fromConfig(config: Config, journalConf: JournalConf): Checked[AgentDriverConfiguration] =
     RecouplingStreamReaderConfs.fromConfig(config)

@@ -46,6 +46,7 @@ private[x509] final case class X509Cert(x509Certificate: X509Certificate):
   override def toString =
     s"X.509Certificate($getSubjectX500Principal)"
 
+
 object X509Cert:
   private val MayActAsCA = "2.5.29.19"
   val CertificatePem = Pem("CERTIFICATE")

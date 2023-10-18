@@ -23,6 +23,7 @@ trait CatchingSupervisorStrategy[A] extends SupervisorStrategy:
         logger.warn(s"promise.tryFailure failed: $throwable", throwable)
     super.processFailure(context, restart, child, throwable, stats, children)
 
+
 object CatchingSupervisorStrategy:
   private val logger = Logger[this.type]
   val StoppingDecider: Decider =

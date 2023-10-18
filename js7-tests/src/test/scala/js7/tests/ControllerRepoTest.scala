@@ -252,6 +252,7 @@ final class ControllerRepoTest extends OurTestSuite:
     logger.info(message)
     info(message)
 
+
 object ControllerRepoTest:
   private val logger = Logger[this.type]
 

@@ -7,6 +7,7 @@ import js7.base.io.file.watch.DirectoryEvent.*
 
 sealed trait DirectoryWatchEvent
 
+
 object DirectoryWatchEvent:
   private val PathOverflow = OVERFLOW.asInstanceOf[WatchEvent.Kind[Path]]
 
@@ -21,6 +22,7 @@ object DirectoryWatchEvent:
 
 sealed trait DirectoryEvent extends DirectoryWatchEvent:
   def relativePath: Path
+
 
 object DirectoryEvent:
   sealed trait FileAddedOrModified extends DirectoryEvent

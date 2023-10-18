@@ -89,6 +89,7 @@ extends AutoCloseable:
         true
     }
 
+
 object DirectoryWatcher:
   private val logger = Logger[this.type]
 

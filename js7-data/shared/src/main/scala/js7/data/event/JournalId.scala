@@ -9,6 +9,7 @@ import js7.base.utils.Base64UUID
 final case class JournalId(base64UUID: Base64UUID) extends GenericString:
   def string = base64UUID.string
 
+
 object JournalId extends GenericString.Checked_[JournalId]:
   def apply(uuid: UUID) = new JournalId(Base64UUID(uuid))
 

@@ -151,6 +151,7 @@ final class JournalWebServiceTest extends OurTestSuite with BeforeAndAfterAll wi
     assert(observedLines.count(_ == JournalSeparators.HeartbeatMarker.utf8String) > 1)
     assert(observedLines.filterNot(_ == JournalSeparators.HeartbeatMarker.utf8String) == lines)
 
+
 object JournalWebServiceTest:
   private val logger = Logger[this.type]
   private val agentPath = AgentPath("AGENT-111")

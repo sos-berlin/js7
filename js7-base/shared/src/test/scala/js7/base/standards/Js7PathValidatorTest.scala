@@ -28,6 +28,7 @@ final class Js7PathValidatorTest extends OurTestSuite:
     assert(checked("1").isRight)
     assert(checked("1A").isRight)
 
+
 object Js7PathValidatorTest:
   def checkInvalid[A](typeName: String, checked: String => Checked[A]): Unit =
     assert(checked("") == Left(EmptyStringProblem(typeName)))

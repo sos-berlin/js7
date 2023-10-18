@@ -21,6 +21,7 @@ final case class AddOrder(
 extends Instruction:
   def withoutSourcePos = copy(sourcePos = None)
 
+
 object AddOrder:
   import BranchPath.syntax.jsonCodec
   implicit val jsonCodec: Codec.AsObject[AddOrder] = ConfiguredCodec.derive(useDefaults = true)

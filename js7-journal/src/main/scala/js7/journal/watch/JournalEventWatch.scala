@@ -407,6 +407,7 @@ with JournalingObserver:
   private def checkedCurrentEventReader: Checked[CurrentEventReader] =
     maybeCurrentEventReader.toChecked(JournalFileIsNotReadyProblem(journalLocation.fileBase))
 
+
 object JournalEventWatch:
   private val logger = Logger[this.type]
 

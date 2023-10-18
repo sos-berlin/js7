@@ -75,5 +75,6 @@ private[provider] trait Observing extends OrderProvider:
           retry(())
       }
 
+
 object Observing:
   private val logger = Logger[this.type]

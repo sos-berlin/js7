@@ -13,5 +13,6 @@ extends Instruction:
 
   override def toString = "BreakOrder"
 
+
 object BreakOrder:
   implicit val jsonCodec: Codec.AsObject[BreakOrder] = deriveCodec

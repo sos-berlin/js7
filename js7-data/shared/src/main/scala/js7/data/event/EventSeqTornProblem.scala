@@ -10,4 +10,5 @@ final case class EventSeqTornProblem(requestedAfter: EventId, tornEventId: Event
     "requestedAfter" -> EventId.toString(requestedAfter),
     "tornEventId" -> EventId.toString(tornEventId))
 
+
 object EventSeqTornProblem extends Problem.Coded.Companion

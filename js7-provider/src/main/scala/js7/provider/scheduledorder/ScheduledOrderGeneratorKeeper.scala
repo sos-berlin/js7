@@ -27,6 +27,7 @@ final class ScheduledOrderGeneratorKeeper(scheduledOrderGenerators: Iterable[Sch
         Some(instant.toTimestamp)))
     .toVector.sortBy(_.scheduledFor)
 
+
 object ScheduledOrderGeneratorKeeper:
   private val Separator = "@"
 

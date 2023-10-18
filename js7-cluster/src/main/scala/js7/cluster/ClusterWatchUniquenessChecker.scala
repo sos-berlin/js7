@@ -44,5 +44,6 @@ final class ClusterWatchUniquenessChecker(memorySize: Int):
       && idToRunId.values.toSet.size == idToRunId.size)
     result
 
+
 object ClusterWatchUniquenessChecker:
   private val logger = Logger[this.type]

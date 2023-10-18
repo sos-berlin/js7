@@ -114,6 +114,7 @@ final class RouteProviderTest extends OurTestSuite with RouteProvider with Scala
   }
 }
 
+
 object RouteProviderTest {
   private val TestUser = SimpleUser(UserId("TEST-USER"), HashedPassword(SecretString("321"), _.reverse))
 

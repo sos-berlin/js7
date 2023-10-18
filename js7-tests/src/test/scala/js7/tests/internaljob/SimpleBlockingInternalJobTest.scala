@@ -32,6 +32,7 @@ final class SimpleBlockingInternalJobTest extends OurTestSuite with ControllerAg
       .collectFirst { case OrderProcessed(outcome) => outcome }
     assert(outcome contains Outcome.succeeded)
 
+
 object SimpleBlockingInternalJobTest:
   private val agentPath = AgentPath("AGENT")
   private val jobResource = JobResource(

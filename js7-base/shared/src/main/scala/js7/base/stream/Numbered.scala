@@ -12,6 +12,7 @@ final case class Numbered[+A](number: Long, value: A):
   def map[B](f: A => B): Numbered[B] =
     copy[B](value = f(value))
 
+
 object Numbered:
   implicit def jsonEncoder[A: Encoder]: Encoder.AsArray[Numbered[A]] =
     stamped => Vector(

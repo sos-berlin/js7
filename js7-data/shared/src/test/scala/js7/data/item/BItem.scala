@@ -16,6 +16,7 @@ with TrivialItemState[BItem]:
 
   def withId(id: VersionedItemId[BPath]) = copy(id = id)
 
+
 object BItem
 extends VersionedItem.Companion[BItem]
 with TrivialItemState.Companion[BItem]:
@@ -29,6 +30,7 @@ with TrivialItemState.Companion[BItem]:
 
 case class BPath(string: String) extends VersionedItemPath:
   def companion = BPath
+
 
 object BPath extends VersionedItemPath.Companion[BPath]:
   protected def unchecked(string: String) = new BPath(string)

@@ -6,6 +6,7 @@ import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 
 sealed trait JournalEvent extends NoKeyEvent
 
+
 object JournalEvent :
   type SnapshotTaken = SnapshotTaken.type
   case object SnapshotTaken extends JournalEvent

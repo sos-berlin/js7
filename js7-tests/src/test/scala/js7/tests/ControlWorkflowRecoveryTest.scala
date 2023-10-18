@@ -205,6 +205,7 @@ extends OurTestSuite with DirectoryProviderForScalaTest:
     // Controller has implicitly deleted WorkflowControl
     assert(controller.controllerState().keyTo(WorkflowControl).isEmpty)
 
+
 object ControlWorkflowRecoveryTest:
   private val aAgentPath = AgentPath("A-AGENT")
   private val bAgentPath = AgentPath("B-AGENT")

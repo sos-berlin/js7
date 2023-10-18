@@ -25,6 +25,7 @@ trait ItemContainer:
       .filter(_._2.companion eq I)
       .asInstanceOf[MapView[I.Key, I]]
 
+
 object ItemContainer:
   trait Companion[A]:
     implicit final val implicitItemContainer: Companion[A] = this

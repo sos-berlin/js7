@@ -94,6 +94,7 @@ extends ControllerRouteProvider with EntitySizeLimitProvider:
     for verified <- verified do logger.info(Logger.SignatureVerified, verified.toString)
     verified
 
+
 object ItemRoute:
   private val logger = Logger[this.type]
   private val emptyJsonObject = Json.obj()

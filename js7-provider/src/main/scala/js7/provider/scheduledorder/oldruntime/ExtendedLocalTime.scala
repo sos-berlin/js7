@@ -54,6 +54,7 @@ extends Ordered[ExtendedLocalTime]:
       sb.append(n)
     sb.toString
 
+
 object ExtendedLocalTime:
   private val Billion = 1000*1000*1000L
   val StartOfDay = of(0, 0)

@@ -18,6 +18,7 @@ import scala.reflect.ClassTag
   */
 sealed trait VersionedEvent extends NoKeyEvent
 
+
 object VersionedEvent:
   final case class VersionAdded(versionId: VersionId) extends VersionedEvent
 

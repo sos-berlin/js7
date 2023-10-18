@@ -108,6 +108,7 @@ final class JournalHeaderTest extends OurTestSuite:
       JournalHeader.checkedHeader[TestState](header, file, Some(header.journalId)) ==
         Right(()))
 
+
 object JournalHeaderTest:
   final case class TestState() extends BasicState[TestState]:
     def companion = TestState

@@ -67,5 +67,6 @@ final class ExceptionHandlingTest extends OurTestSuite with ScalatestRouteTest w
 
   private def post(path: String) = Post("/") ~> Accept(`application/json`)
 
+
 object ExceptionHandlingTest:
   private class TestException(message: String) extends RuntimeException(message) with NoStackTrace

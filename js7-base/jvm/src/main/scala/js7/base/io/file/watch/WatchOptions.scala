@@ -14,6 +14,7 @@ final case class WatchOptions(
   pollTimeout: FiniteDuration,
   retryDelays: NonEmptySeq[FiniteDuration])
 
+
 object WatchOptions:
 
   private val defaultKinds: Set[WatchEvent.Kind[Path]] =

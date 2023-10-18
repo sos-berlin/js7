@@ -50,6 +50,7 @@ final class OrderEventHandler(idToWorkflow: WorkflowId => Checked[Workflow]):
       case _ =>
         Right(Nil)
 
+
 object OrderEventHandler:
   sealed trait FollowUp
   object FollowUp:

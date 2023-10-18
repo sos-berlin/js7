@@ -10,5 +10,6 @@ final case class RecouplingStreamReaderConf(
   delay: FiniteDuration,
   failureDelays: NonEmptyList[FiniteDuration])
 
+
 object RecouplingStreamReaderConf:
   val forTest = RecouplingStreamReaderConf(55.s, 1.s, Nel.one(5.s))

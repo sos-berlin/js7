@@ -305,6 +305,7 @@ with Service.StoppableByRequest:
   override def toString =
     s"LocalSubagentDriver(${subagentItem.pathRev})"
 
+
 object LocalSubagentDriver:
   private[director] def resource[S <: SubagentDirectorState[S]](
     subagentItem: SubagentItem,

@@ -154,6 +154,7 @@ final class X509Test extends OurTestSuite:
           logger.info(itemsPerSecondString(t.elapsed, n, "verifys"))
       }
 
+
 object X509Test:
   private val logger = Logger[this.type]
 

@@ -17,6 +17,7 @@ final case class SignedString(string: String, signature: GenericSignature):
   @TestOnly
   def tamper = copy(string = string + " ")
 
+
 object SignedString:
   @javaApi
   def of(string: String, signatureTypeName: String, signatureString: String): SignedString =

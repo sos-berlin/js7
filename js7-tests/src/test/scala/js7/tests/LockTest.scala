@@ -1097,6 +1097,7 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
   }
 }
 
+
 object LockTest
 {
   private val agentPath = AgentPath("AGENT")

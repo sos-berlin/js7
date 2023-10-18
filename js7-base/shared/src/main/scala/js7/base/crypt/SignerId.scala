@@ -9,6 +9,7 @@ import js7.base.generic.GenericString
   */
 final case class SignerId private(string: String) extends GenericString
 
+
 object SignerId extends GenericString.NonEmpty[SignerId]:
   override protected def unchecked(signerId: String): SignerId =
     new SignerId(signerId)

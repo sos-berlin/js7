@@ -36,6 +36,7 @@ extends SessionApi.HasUserAndPassword with HasIsIgnorableStackTrace:
 
   override def toString = "TestSessionApi"
 
+
 object TestSessionApi:
   private val sessionTokenGenerator = new AbstractIterator[SessionToken]:
     private val counter = AtomicLong(0L)

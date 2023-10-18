@@ -10,6 +10,7 @@ import js7.base.utils.IntelliJUtils.intelliJuseImport
 sealed trait ClusterWatchingCommand:
   def toShortString: String = toString
 
+
 object ClusterWatchingCommand:
   // Command from ClusterWatch
   final case class ClusterWatchConfirm(

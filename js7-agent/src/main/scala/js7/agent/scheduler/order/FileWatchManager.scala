@@ -244,6 +244,7 @@ final class FileWatchManager(
   private def toOrderArguments(directory: Path, path: Path) =
     NamedValues(FileArgumentName -> StringValue(directory.resolve(path).toString))
 
+
 object FileWatchManager:
   private val logger = Logger[this.type]
   private val CanceledException = new Exception

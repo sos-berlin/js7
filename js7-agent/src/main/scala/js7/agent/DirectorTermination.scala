@@ -14,6 +14,7 @@ extends ProgramTermination:
       ((restartJvm ? "restartJvm") ++ (restartDirector ? "restartDirector")).mkString(" ")
     })"
 
+
 object DirectorTermination:
   def fromProgramTermination(termination: ProgramTermination): DirectorTermination =
     DirectorTermination(restartJvm = termination.restart)

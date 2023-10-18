@@ -13,6 +13,7 @@ sealed trait WebServerPort:
 
   override def toString = s"$scheme://${address.show}"
 
+
 object WebServerPort:
   def localhost(port: Int): Http =
     Http(new InetSocketAddress("127.0.0.1", port))

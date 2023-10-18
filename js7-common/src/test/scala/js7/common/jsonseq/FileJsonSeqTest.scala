@@ -157,6 +157,7 @@ final class FileJsonSeqTest extends OurTestSuite {
   }
 }
 
+
 object FileJsonSeqTest {
   private trait MyEvent extends Event.IsKeyBase[MyEvent] {
     val keyCompanion: MyEvent.type = MyEvent

@@ -25,6 +25,7 @@ import js7.data.value.expression.Expression
 sealed trait SubagentCommand extends CommonCommand:
   type Response <: SubagentCommand.Response
 
+
 object SubagentCommand extends CommonCommand.Companion:
   protected type Command = SubagentCommand
   sealed trait Response

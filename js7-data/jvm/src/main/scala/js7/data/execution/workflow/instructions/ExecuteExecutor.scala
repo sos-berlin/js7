@@ -136,6 +136,7 @@ extends EventInstructionExecutor with PositionInstructionExecutor:
             !admissionTimeScheme
               .hasAdmissionPeriodStartForDay(localDate, dateOffset = noDateOffset)))
 
+
 object ExecuteExecutor:
   // TODO Use a Calendar ?
   private val OrderDateRegex = "#([0-9]{4}-[0-9][0-9]-[0-9][0-9])#.*".r

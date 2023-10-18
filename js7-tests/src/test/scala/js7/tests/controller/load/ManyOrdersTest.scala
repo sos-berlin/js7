@@ -75,6 +75,7 @@ final class ManyOrdersTest extends OurTestSuite with ControllerAgentForScalaTest
       .headOptionL
       .await(longTimeout)
 
+
 object ManyOrdersTest:
   private val defaultN = 10
   private val defaultSize = 4_000_000

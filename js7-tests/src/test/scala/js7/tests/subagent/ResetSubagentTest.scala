@@ -109,6 +109,7 @@ final class ResetSubagentTest extends OurTestSuite with SubagentTester:
       assert(subagent.untilTerminated.await(99.s).restart)
     }
 
+
 object ResetSubagentTest:
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",

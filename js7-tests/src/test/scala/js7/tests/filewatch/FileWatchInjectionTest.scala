@@ -36,6 +36,7 @@ final class FileWatchInjectionTest extends OurTestSuite with ControllerAgentForS
     intercept[TimeoutException]:
       eventWatch.await[ItemAttached](_.event.key == fileWatch.path, timeout = 1.s)
 
+
 object FileWatchInjectionTest:
   private val agentPath = AgentPath("AGENT-A")
   private val workflow = Workflow(WorkflowPath("WORKFLOW"), Nil)

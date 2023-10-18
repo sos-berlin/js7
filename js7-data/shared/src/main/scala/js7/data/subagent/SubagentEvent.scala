@@ -9,6 +9,7 @@ import js7.data.subagent.SubagentState.inventoryItemJsonCodec
 
 trait SubagentEvent extends NoKeyEvent
 
+
 object SubagentEvent :
   final case class SubagentItemAttached(item: InventoryItem)
   extends SubagentEvent

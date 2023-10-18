@@ -8,6 +8,7 @@ final case class BoardPath private(string: String) extends UnsignedSimpleItemPat
 
   val companion: BoardPath.type = BoardPath
 
+
 object BoardPath extends UnsignedSimpleItemPath.Companion[BoardPath]:
   // May deadlock: override val itemTypeName = Board.typeName
   type Item = Board

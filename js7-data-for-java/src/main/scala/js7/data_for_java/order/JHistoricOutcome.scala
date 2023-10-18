@@ -16,6 +16,7 @@ extends JJsonable[JHistoricOutcome]:
 
   protected def companion = JHistoricOutcome
 
+
 object JHistoricOutcome extends JJsonable.Companion[JHistoricOutcome]:
   type AsScala = HistoricOutcome
 

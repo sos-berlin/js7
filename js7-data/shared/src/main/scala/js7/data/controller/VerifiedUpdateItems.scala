@@ -32,6 +32,7 @@ final case class VerifiedUpdateItems private[controller](
   def addedOrChangedAgentPaths: View[AgentPath] =
     simple.unsignedSimpleItems.view.collect { case o: AgentRef => o.path }
 
+
 object VerifiedUpdateItems:
   final case class Simple(
     unsignedSimpleItems: Seq[UnsignedSimpleItem] = Nil,

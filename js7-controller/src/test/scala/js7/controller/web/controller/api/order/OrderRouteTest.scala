@@ -97,6 +97,7 @@ final class OrderRouteTest extends OurTestSuite with RouteTester with OrderRoute
       assert(response.header[Location].isEmpty)
       assert(responseAs[ControllerCommand.Response] == AddOrders.Response(1234L))
 
+
 object OrderRouteTest:
   private val TestWorkflowId = WorkflowPath("WORKFLOW") ~ "VERSION"
   private val TestOrders: Map[OrderId, Order[Order.State]] = List(

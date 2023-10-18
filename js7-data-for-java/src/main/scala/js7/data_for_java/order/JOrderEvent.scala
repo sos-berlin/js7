@@ -25,6 +25,7 @@ extends JJsonable[JOrderEvent]:
 
   protected def companion = JOrderEvent
 
+
 object JOrderEvent extends JJsonable.Companion[JOrderEvent]:
   type AsScala = OrderEvent
 

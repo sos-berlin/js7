@@ -37,6 +37,7 @@ extends UnsignedSimpleItem:
   def withRevision(revision: Option[ItemRevision]) =
     copy(itemRevision = revision)
 
+
 object Calendar extends UnsignedSimpleItem.Companion[Calendar]:
   val cls = classOf[Calendar]
 

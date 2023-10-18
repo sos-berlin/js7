@@ -96,6 +96,7 @@ extends Codec.AsObject[A]:
 
   override def toString = printName
 
+
 object TypedJsonCodec:
   val TypeFieldName = "TYPE"
 

@@ -349,6 +349,7 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater:
     waitForCondition(10.s, 10.ms)(controllerState.keyTo(OrderWatchState).isEmpty)
     assert(controllerState.keyTo(OrderWatchState).isEmpty)
 
+
 object FileWatchTest:
   private val logger = Logger[this.type]
   private val aAgentPath = AgentPath("AGENT-A")

@@ -27,6 +27,7 @@ extends JJsonable[JJobResource] with JSignableItem:
       .toMap
       .asJava
 
+
 object JJobResource extends JJsonable.Companion[JJobResource]:
   type AsScala = JobResource
 

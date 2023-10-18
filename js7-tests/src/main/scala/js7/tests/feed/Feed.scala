@@ -54,6 +54,7 @@ final class Feed(controllerApi: ControllerApi, settings: Settings):
           .map(_.copy(deleteWhenTerminated = true)))
         .rightAs(())
 
+
 object Feed:
   def run(in: Resource[Task, InputStream], settings: Settings): Task[Checked[Unit]] =
     Pekkos.actorSystemResource("Feed")

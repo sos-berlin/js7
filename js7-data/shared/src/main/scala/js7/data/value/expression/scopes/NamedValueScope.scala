@@ -12,6 +12,7 @@ extends Scope:
 
   override def toString = s"NamedValueScope(${namesToString(nameToCheckedValue)})"
 
+
 object NamedValueScope:
   def apply(namedValue: (String, Value)*): Scope =
     apply(namedValue.toMap)

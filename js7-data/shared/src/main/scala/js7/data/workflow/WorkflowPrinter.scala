@@ -242,6 +242,7 @@ final class WorkflowPrinter(sb: StringBuilder):
   private def appendIdentifier(identifier: String): Unit =
     BasicPrinter.appendIdentifier(sb, identifier)
 
+
 object WorkflowPrinter:
   implicit val WorkflowShow: Show[Workflow] = w => print(w)
 

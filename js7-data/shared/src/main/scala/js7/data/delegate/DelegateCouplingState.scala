@@ -9,6 +9,7 @@ import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 
 sealed trait DelegateCouplingState
 
+
 object DelegateCouplingState:
   final case class Reset(reason: Reset.Reason) extends DelegateCouplingState
   object Reset:

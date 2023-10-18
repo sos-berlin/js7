@@ -22,6 +22,7 @@ final case class ReturnCode private(number: Int) extends GenericInt:
         case SIGKILL.number => s"ReturnCode($number/SIGKILL)"
         case signal => s"ReturnCode($number=128+$signal)"
 
+
 object ReturnCode extends GenericInt.Companion[ReturnCode]:
   private val predefined = (0 to 255).map(new ReturnCode(_)).toArray
 

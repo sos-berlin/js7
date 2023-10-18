@@ -248,6 +248,7 @@ final case class InternalExecutable(
 extends Executable with ScriptExecutable:
   override def toString = s"InternalExecutable($className)"
 
+
 object Executable:
   implicit val jsonCodec: TypedJsonCodec[Executable] = TypedJsonCodec(
     Subtype[PathExecutable](

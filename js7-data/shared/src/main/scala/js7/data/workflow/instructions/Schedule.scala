@@ -16,6 +16,7 @@ import scala.concurrent.duration.*
 
 final case class Schedule(schemes: Seq[Scheme])
 
+
 object Schedule:
   sealed trait Repeat
 

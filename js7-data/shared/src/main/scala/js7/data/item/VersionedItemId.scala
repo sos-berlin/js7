@@ -47,6 +47,7 @@ extends SignableItemKey:
     else
       s"${path.toTypedString}$VersionSeparator${versionId.string}"
 
+
 object VersionedItemId:
   val VersionSeparator = "~"  // Can be used in an Pekko actor name
 

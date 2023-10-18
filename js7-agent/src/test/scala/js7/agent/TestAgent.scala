@@ -100,6 +100,7 @@ final class TestAgent(
 
   override def toString = s"TestAgent($name)"
 
+
 object TestAgent:
   private val logger = Logger[this.type]
 

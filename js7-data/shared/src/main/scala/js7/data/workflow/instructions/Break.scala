@@ -11,5 +11,6 @@ extends Instruction:
 
   override def toString = "Break"
 
+
 object Break:
   implicit val jsonCodec: Codec.AsObject[Break] = deriveCodec

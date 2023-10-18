@@ -37,6 +37,7 @@ trait ServerOperatingSystem:
 
   def sleepingShellScript(duration: FiniteDuration): String
 
+
 object ServerOperatingSystem:
   lazy val unix = new Unix
   lazy val windows = new Windows

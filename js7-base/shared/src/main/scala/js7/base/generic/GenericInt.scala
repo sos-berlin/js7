@@ -13,6 +13,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 trait GenericInt:
   def number: Int
 
+
 object GenericInt:
   trait Companion[A <: GenericInt]:
     val name = getClass.shortClassName

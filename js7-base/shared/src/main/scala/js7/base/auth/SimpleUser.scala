@@ -17,6 +17,7 @@ extends User:
     throw new IllegalArgumentException("Anonymous must not have ValidUserPermission")
   // SuperPermission is allowed for empowered Anonymous (public = on | loopback-is-public = on)
 
+
 object SimpleUser extends User.Companion[SimpleUser]:
   /** The unauthenticated, anonymous user without permissions, for testing. */
   val TestAnonymous = SimpleUser(UserId.Anonymous, HashedPassword.newEmpty(), grantedPermissions = Set.empty)

@@ -14,5 +14,6 @@ final case class ClusterNodeState(
       case ClusterState.Empty => !isBackup
       case o: ClusterState.HasNodes => nodeId == o.activeId
 
+
 object ClusterNodeState:
   implicit val jsonCodec: Codec.AsObject[ClusterNodeState] = deriveCodec

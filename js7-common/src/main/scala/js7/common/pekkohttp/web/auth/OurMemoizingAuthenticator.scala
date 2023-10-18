@@ -40,5 +40,6 @@ extends Authenticator[U]:
     memoizedToUser(userAndPassword.userId)
       .filter(_.hashedPassword equalsClearText userAndPassword.password)
 
+
 object OurMemoizingAuthenticator:
   private val AnonymousAndPassword = UserAndPassword(UserId.Anonymous -> SecretString.empty)

@@ -10,5 +10,6 @@ import io.circe.generic.semiauto.deriveCodec
   */
 final case class JournalPosition(fileEventId: EventId, position: Long)
 
+
 object JournalPosition:
   implicit val jsonCodec: Codec.AsObject[JournalPosition] = deriveCodec[JournalPosition]

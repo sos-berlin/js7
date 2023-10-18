@@ -16,6 +16,7 @@ with TrivialItemState[AItem]:
 
   def withId(id: VersionedItemId[APath]) = copy(id = id)
 
+
 object AItem
 extends VersionedItem.Companion[AItem]
 with TrivialItemState.Companion[AItem]:
@@ -29,6 +30,7 @@ with TrivialItemState.Companion[AItem]:
 
 case class APath(string: String) extends VersionedItemPath:
   def companion = APath
+
 
 object APath extends VersionedItemPath.Companion[APath]:
   override val sourceTypeToFilenameExtension = Map(

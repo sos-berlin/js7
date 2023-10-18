@@ -23,6 +23,7 @@ trait GenericString:
   def typedToString: String =
     getClass.getSimpleName + ":" + string
 
+
 object GenericString:
   @Nullable def stringOrNull[A <: GenericString](o: Option[A]): String = o match
     case Some(a) => a.string

@@ -134,6 +134,7 @@ final class CorrelIdTest extends OurTestSuite
   }
 }
 
+
 object CorrelIdTest {
   var garbage: Any = null
   private val logger = Logger[this.type]

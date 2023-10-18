@@ -32,6 +32,7 @@ extends HttpControllerApi with SessionApi.HasUserAndPassword with AutoCloseable:
     logOpenSession()
     httpClient.close()
 
+
 object PekkoHttpControllerApi:
   private val defaultName = "ControllerApi"
 

@@ -14,6 +14,7 @@ extends Service.StoppableByRequest:
 
   override def toString = "CancelableService"
 
+
 object CancelableService:
   def resource(run: Task[Unit]): Resource[Task, CancelableService] =
     Service.resource(Task(new CancelableService(run)))

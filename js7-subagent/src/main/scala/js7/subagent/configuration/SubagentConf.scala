@@ -116,6 +116,7 @@ extends CommonConfiguration:
         catchExpected[Exception](Charset.forName(encodingName))
           .left.map(Problem(s"Unknown encoding for Windows code page $codepage:") |+| _)
 
+
 object SubagentConf:
   private def defaultLogDirectory(data: Path) = data / "logs"
 

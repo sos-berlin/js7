@@ -67,6 +67,7 @@ final class AttachSignedItemTest extends OurTestSuite with DirectoryProviderForS
         == Left(TamperedWithSignedMessageProblem))
     }
 
+
 object AttachSignedItemTest:
   private val agentPath = AgentPath("AGENT")
   private val controllerId = ControllerId("CONTROLLER")

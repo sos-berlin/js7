@@ -38,6 +38,7 @@ final class JavaShutdownHook private(onShutdown: () => Unit, name: String) exten
 
   override def toString = s"JavaShutdownHook($name)"
 
+
 object JavaShutdownHook:
   private val logger = Logger[this.type]
   private var shutdown = false

@@ -6,6 +6,7 @@ package js7.data.item
   */
 sealed trait SourceType
 
+
 object SourceType:
   sealed trait JsonLike extends SourceType
 

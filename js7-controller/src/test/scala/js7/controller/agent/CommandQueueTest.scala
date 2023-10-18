@@ -130,6 +130,7 @@ final class CommandQueueTest extends OurTestSuite:
     waitForCondition(9.s, 10.ms) { commandQueueSucceeded.get() == n }
     assert(commandQueueSucceeded.get() == n)
 
+
 object CommandQueueTest:
   private val logger = Logger[this.type]
   private val TestAgentPath = AgentPath("AGENT")

@@ -9,6 +9,7 @@ with SimpleItemState:
   val item: companion.Item
   def path: item.companion.Path
 
+
 object UnsignedSimpleItemState:
   trait Companion[A <: UnsignedSimpleItemState]
   extends UnsignedItemState.Companion[A]

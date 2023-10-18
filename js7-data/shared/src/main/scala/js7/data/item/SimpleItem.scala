@@ -19,6 +19,7 @@ trait SimpleItem extends InventoryItem:
 
   def pathRev = PathRev(path, itemRevision)
 
+
 object SimpleItem:
   type Companion_ = Companion[? <: SimpleItem]
 

@@ -47,6 +47,7 @@ extends Scope:
 
   override def toString = s"TimestampScope('$name')"
 
+
 object TimestampScope:
   def apply(name: String, lazyTimestamp: => Option[Timestamp]): Scope =
     new TimestampScope(name, lazyTimestamp)

@@ -15,6 +15,7 @@ final case class CommandRunOverview[C <: CommonCommand](
   duration: FiniteDuration,
   command: C)
 
+
 object CommandRunOverview:
   intelliJuseImport(FiniteDurationJsonEncoder)
 

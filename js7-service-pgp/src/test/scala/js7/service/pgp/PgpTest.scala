@@ -156,6 +156,7 @@ final class PgpTest extends OurTestSuite
   }
 }
 
+
 object PgpTest
 {
   private val TestMessage = "The data to be signed\n"

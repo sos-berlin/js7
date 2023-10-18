@@ -10,6 +10,7 @@ final case class NodeName private(string: String)
 extends GenericString:
   override def toString = s"NodeName:$string"
 
+
 object NodeName extends GenericString.NonEmpty[NodeName]:
   protected def unchecked(string: String): NodeName =
     new NodeName(string)

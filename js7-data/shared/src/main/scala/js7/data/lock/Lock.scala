@@ -24,6 +24,7 @@ extends UnsignedSimpleItem:
   def toInitialItemState: LockState =
     LockState(this)
 
+
 object Lock extends UnsignedSimpleItem.Companion[Lock]:
   val cls = classOf[Lock]
 

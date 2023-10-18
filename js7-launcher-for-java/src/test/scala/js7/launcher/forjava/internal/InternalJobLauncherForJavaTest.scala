@@ -165,6 +165,7 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite with BeforeAndAf
   }
 }
 
+
 object InternalJobLauncherForJavaTest
 {
   private val workflow = Workflow(WorkflowPath("WORKFLOW") ~ "1", Vector.empty)

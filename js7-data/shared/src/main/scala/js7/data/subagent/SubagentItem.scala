@@ -42,6 +42,7 @@ extends UnsignedSimpleItem:
       itemRevision = Some(
         itemRevision.fold(ItemRevision(1))(_.next)))
 
+
 object SubagentItem
 extends UnsignedSimpleItem.Companion[SubagentItem]:
   type Key = SubagentId

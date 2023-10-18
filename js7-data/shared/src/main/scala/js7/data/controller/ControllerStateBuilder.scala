@@ -384,4 +384,5 @@ with OrderWatchStateHandler[ControllerStateBuilder]:
       _idToOrder.toMap
     ).finish
 
+
 object ControllerStateBuilder extends EventDrivenState.Companion[ControllerStateBuilder, Event]

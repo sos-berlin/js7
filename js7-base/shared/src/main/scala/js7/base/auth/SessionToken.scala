@@ -18,6 +18,7 @@ final case class SessionToken(secret: SecretString):
   def short: String =
     numberToShort(number)
 
+
 object SessionToken:
   private val nextNumber = AtomicInt(0)
   private val NoNumber = 0L

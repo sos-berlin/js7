@@ -141,6 +141,7 @@ final class ConfigsTest extends OurTestSuite
   }
 }
 
+
 object ConfigsTest
 {
   private val TestConfig = config"""

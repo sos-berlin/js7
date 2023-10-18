@@ -100,5 +100,6 @@ with TestRoute:
         passIf(config.getBoolean("js7.web.server.test")):
           testRoute
 
+
 object ControllerRoute:
   private val logger = Logger[this.type]

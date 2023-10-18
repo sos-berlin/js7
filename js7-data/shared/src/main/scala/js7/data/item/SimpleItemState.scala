@@ -7,6 +7,7 @@ trait SimpleItemState extends InventoryItemState:
 
   val item: companion.Item
 
+
 object SimpleItemState:
   trait Companion[A <: SimpleItemState] extends InventoryItemState.Companion[A]:
     type Path <: SimpleItemPath

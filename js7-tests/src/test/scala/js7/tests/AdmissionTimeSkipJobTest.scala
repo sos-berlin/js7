@@ -135,8 +135,9 @@ final class AdmissionTimeSkipJobTest extends OurTestSuite with ControllerAgentFo
   }
 }
 
-object AdmissionTimeSkipJobTest
-{
+
+object AdmissionTimeSkipJobTest:
+  
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)
   private val timeZone = ZoneId.of("Europe/Mariehamn")
@@ -160,4 +161,3 @@ object AdmissionTimeSkipJobTest
       fridayExecute,
       EmptyJob.execute(agentPath)),
     timeZone = Timezone(timeZone.getId))
-}

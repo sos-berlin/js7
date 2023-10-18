@@ -28,6 +28,7 @@ sealed trait WebServerBinding:
 
   override def toString = s"$scheme://${address.show}"
 
+
 object WebServerBinding:
   def http(port: Int): Http =
     WebServerBinding.Http(new InetSocketAddress("0.0.0.0", port))

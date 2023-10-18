@@ -51,6 +51,7 @@ final case class ClusterTiming(heartbeat: FiniteDuration, heartbeatTimeout: Fini
 
   override def toString = s"ClusterTiming(${heartbeat.pretty}, ${heartbeatTimeout.pretty})"
 
+
 object ClusterTiming:
   def checked(heartbeat: FiniteDuration, heartbeatTimeout: FiniteDuration): Checked[ClusterTiming] =
     for _ <- checkedUnit(heartbeat, heartbeatTimeout) yield

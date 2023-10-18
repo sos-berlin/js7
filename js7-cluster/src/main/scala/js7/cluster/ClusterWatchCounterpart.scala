@@ -274,6 +274,7 @@ extends Service.StoppableByRequest:
 
     override def toString = s"$clusterWatchId($expires)"
 
+
 object ClusterWatchCounterpart:
   private val logger = Logger[this.type]
 

@@ -30,6 +30,7 @@ final class Latch extends Latch.ReadOnly:
   val when: Task[Unit] =
     latch.flatMap(_.read).void
 
+
 object Latch:
   trait ReadOnly:
     def is: Task[Boolean]

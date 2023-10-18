@@ -18,6 +18,7 @@ trait JJsonable[A <: JJsonable[A]] extends JavaWrapper:
     val u = asScala.asInstanceOf[companion.AsScala]
     companion.myJsonEncoder.apply(u).compactPrint
 
+
 @javaApi
 object JJsonable:
   trait Companion[A <: JJsonable[A]]:

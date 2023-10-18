@@ -29,6 +29,7 @@ final class OrdinalTest extends OurTestSuite:
     assert(Test(Int.MinValue) == Test(Int.MaxValue + 1))
     assert(Test(Int.MinValue).isSuccessorOf(Test(Int.MaxValue)))
 
+
 object OrdinalTest:
   private final case class Test(number: Int) extends GenericInt
   private object Test extends GenericInt.Companion[Test]

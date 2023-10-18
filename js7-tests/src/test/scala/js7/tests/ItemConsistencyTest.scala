@@ -70,6 +70,7 @@ final class ItemConsistencyTest extends OurTestSuite with ControllerAgentForScal
       .await(99.s)
       .orThrow
 
+
 object ItemConsistencyTest:
   private val agentPath = AgentPath("AGENT")
   private val subagentId = SubagentId("SUBAGENT")

@@ -224,6 +224,7 @@ final class GateKeeper[U <: User](
   def secureStateString: String =
     configuration.secureStateString(scheme)
 
+
 object GateKeeper:
   private val logger = Logger[this.type]
 

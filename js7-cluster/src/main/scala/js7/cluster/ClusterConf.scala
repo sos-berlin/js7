@@ -27,6 +27,7 @@ final case class ClusterConf(
 
   def isPrimary = !isBackup
 
+
 object ClusterConf:
   val ClusterProductName = "js7.controller.cluster"
 

@@ -9,6 +9,7 @@ import scala.language.implicitConversions
 trait NoKeyEvent extends Event.IsKeyBase[NoKeyEvent]:
   val keyCompanion: NoKeyEvent.type = NoKeyEvent
 
+
 object NoKeyEvent extends Event.CompanionForKey[NoKey, NoKeyEvent]:
   implicit val implicitSelf: NoKeyEvent.type = this
 

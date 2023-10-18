@@ -27,6 +27,7 @@ extends JJsonable[JLock] with JUnsignedSimpleItem:
   def withRevision(revision: Optional[ItemRevision]): JLock =
     copy(asScala.withRevision(revision.toScala))
 
+
 object JLock extends JJsonable.Companion[JLock]:
   type AsScala = Lock
 

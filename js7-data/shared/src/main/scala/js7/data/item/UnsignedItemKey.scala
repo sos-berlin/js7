@@ -8,6 +8,7 @@ trait UnsignedItemKey extends InventoryItemKey:
 
   def companion: Companion[? <: UnsignedItemKey]
 
+
 object UnsignedItemKey:
   type Companion_ = Companion[? <: UnsignedItemKey]
 

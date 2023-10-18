@@ -64,6 +64,7 @@ final class AsyncVariable[V](initial: V, varName: String, typeName: String):
 
   override lazy val toString = s"$varName: AsyncVariable[$typeName]"
 
+
 object AsyncVariable:
   def apply[A](initial: A)(implicit src: sourcecode.Enclosing, tag: Tag[A]) =
     new AsyncVariable(initial, src.value, tag.tag.toString)

@@ -34,6 +34,7 @@ final case class EventRequest[E <: Event](
   def matchesClass(clazz: Class[? <: Event]): Boolean =
     eventClasses.exists(_ isAssignableFrom clazz)
 
+
 object EventRequest:
   private val DefaultDelay = ZeroDuration
   private val DefaultLimit = Int.MaxValue

@@ -6,6 +6,7 @@ trait JJournaledState[Self <: JJournaledState[Self, S], S <: JournaledState[S]]
 extends JavaWrapper:
   type AsScala = S
 
+
 object JJournaledState:
   trait Companion[JS <: JJournaledState[JS, S], S <: JournaledState[S]]:
     def apply(journaledState: S): JS

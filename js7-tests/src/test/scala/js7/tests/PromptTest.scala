@@ -100,6 +100,7 @@ final class PromptTest extends OurTestSuite with ControllerAgentForScalaTest:
     controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
     eventWatch.await[OrderCancelled](_.key == orderId)
 
+
 object PromptTest:
   private val agentPath = AgentPath("AGENT")
 

@@ -61,6 +61,7 @@ final class Lazy[A] private(eval: => A):
   final class RecursiveLazyValueException(val origin: this.type)
   extends Exception("Recursive evaluation of Lazy")
 
+
 object Lazy:
   def apply[A](eval: => A): Lazy[A] =
     new Lazy(eval)

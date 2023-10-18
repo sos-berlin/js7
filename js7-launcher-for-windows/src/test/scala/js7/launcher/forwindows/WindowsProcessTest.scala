@@ -307,6 +307,7 @@ final class WindowsProcessTest extends OurTestSuite
   }
 }
 
+
 object WindowsProcessTest {
   val TargetSystemProperty = "js7.WindowsProcess.target"
 }

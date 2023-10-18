@@ -188,6 +188,7 @@ final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForSc
 
     agent.terminate() await 99.s
 
+
 object UpdateAgentRefsTest:
   private val agentPath = AgentPath("AGENT")
   private val subagentId = SubagentId("SUBAGENT")

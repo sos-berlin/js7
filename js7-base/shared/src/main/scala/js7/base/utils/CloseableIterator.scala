@@ -77,6 +77,7 @@ trait CloseableIterator[+A] extends Iterator[A] with AutoCloseable:
       def next() = baseIterator.next()
       override def toString = s"CloseableIterator($baseIterator)"
 
+
 object CloseableIterator:
   val empty = new CloseableIterator[Nothing]:
     def close() = {}

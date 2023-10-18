@@ -34,6 +34,7 @@ type AnyKeyedEvent = KeyedEvent[Event]
 
 val <-: = KeyedEvent
 
+
 object KeyedEvent:
   private[event] val KeyFieldName = "Key"
   val Arrow = "<-:"

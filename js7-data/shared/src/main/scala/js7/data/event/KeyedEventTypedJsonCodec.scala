@@ -91,6 +91,7 @@ extends Codec.AsObject[KeyedEvent[E]]:
 
   override def toString = printName
 
+
 object KeyedEventTypedJsonCodec:
   def apply[E <: Event: ClassTag](subtypes: KeyedSubtype[? <: E]*)
     (implicit enclosing: sourcecode.Enclosing)

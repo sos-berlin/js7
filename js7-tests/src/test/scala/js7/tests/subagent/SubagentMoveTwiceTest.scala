@@ -95,6 +95,7 @@ final class SubagentMoveTwiceTest extends OurTestSuite with SubagentTester:
         eventWatch.await[OrderFinished](_.key == bOrderId, after = eventId)
     }
 
+
 object SubagentMoveTwiceTest:
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",

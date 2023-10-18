@@ -265,6 +265,7 @@ extends JJournaledState[JControllerState, ControllerState]:
   private lazy val orderObstacleCalculator =
     new OrderObstacleCalculator(asScala)
 
+
 object JControllerState extends JJournaledState.Companion[JControllerState, ControllerState]:
   implicit val companion: JJournaledState.Companion[JControllerState, ControllerState] =
     this

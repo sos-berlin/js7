@@ -39,6 +39,7 @@ extends Instruction:
 
   override def toString = s"stickySubagent $subworkflow$sourcePosToString"
 
+
 object StickySubagent:
   implicit val jsonCodec: Codec.AsObject[StickySubagent] =
     deriveCodec[StickySubagent]

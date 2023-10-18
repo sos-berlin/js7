@@ -66,5 +66,6 @@ final class OrderScheduleGenerator(addOrders: Seq[FreshOrder] => Task[Completed]
 
   override def toString = "OrderScheduleGenerator"
 
+
 object OrderScheduleGenerator:
   private val logger = Logger[this.type]

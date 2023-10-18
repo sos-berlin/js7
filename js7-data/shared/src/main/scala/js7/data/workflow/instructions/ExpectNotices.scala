@@ -19,5 +19,6 @@ extends ExpectOrConsumeNoticesInstruction:
   def fulfilledEvents(order: Order[Order.State], ignored: Vector[OrderNoticesExpected.Expected]) =
     OrderNoticesRead :: OrderMoved(order.position.increment) :: Nil
 
+
 object ExpectNotices:
   implicit val jsonCodec: Codec.AsObject[ExpectNotices] = ConfiguredCodec.derive(useDefaults = true)

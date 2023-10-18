@@ -82,6 +82,7 @@ final class JobDriverStarvationTest extends OurTestSuite with ControllerAgentFor
 
     proxy.stop.await(99.s)
 
+
 object JobDriverStarvationTest:
   private val logger = Logger[this.type]
   private val n = 10_000

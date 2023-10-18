@@ -53,6 +53,7 @@ extends Switch.ReadOnly:
   val whenOn: Task[Unit] =
     filledWhenOn.flatMap(_.read).void
 
+
 object Switch:
   def apply(on: Boolean) = new Switch(on)
 

@@ -16,5 +16,6 @@ final case class SubagentOverview(
   java: JavaInformation)
 extends DelegateOverview
 
+
 object SubagentOverview:
   implicit val jsonCodec: Codec.AsObject[SubagentOverview] = deriveCodec[SubagentOverview]

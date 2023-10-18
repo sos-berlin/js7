@@ -11,6 +11,7 @@ import js7.data.workflow.position.WorkflowPosition
   */
 sealed trait CancellationMode
 
+
 object CancellationMode:
   val Default = FreshOrStarted(None)
 

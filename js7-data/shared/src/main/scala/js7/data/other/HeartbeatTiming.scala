@@ -22,6 +22,7 @@ final case class HeartbeatTiming(heartbeat: FiniteDuration, heartbeatTimeout: Fi
 
   override def toString = s"HeartbeatTiming(${heartbeat.pretty}, ${heartbeatTimeout.pretty})"
 
+
 object HeartbeatTiming:
   def checked(heartbeat: FiniteDuration, heartbeatTimeout: FiniteDuration)
   : Checked[HeartbeatTiming] =

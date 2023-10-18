@@ -117,6 +117,7 @@ extends Service.StoppableByRequest:
 
   override def toString = s"SessionRegister[${implicitly[Tag[S]].tag.shortName}]"
 
+
 object SessionRegister:
   def resource[S <: Session: Tag](
     newSession: SessionInit => S,

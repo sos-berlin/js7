@@ -53,6 +53,7 @@ final class EventSeqTest extends OurTestSuite:
       case eventSeq: EventSeq[Seq, E] => testJson(eventSeq, json)
       case _ =>
 
+
 object EventSeqTest {
   private trait TestEvent extends Event.IsKeyBase[TestEvent]:
     val keyCompanion: TestEvent.type = TestEvent

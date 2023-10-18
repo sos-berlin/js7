@@ -72,6 +72,7 @@ final class AgentConfigurationTest extends OurTestSuite:
       CommandLineArguments(args.toVector),
       config"user.name = AgentConfigurationTest"/*Will be overridden*/)
 
+
 object AgentConfigurationTest:
   private def provideConfigAndData(body: (Path, Path) => Unit): Unit =
     val config = createTempDirectory("AgentConfigurationTest-config")

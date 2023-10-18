@@ -130,6 +130,7 @@ extends UnsignedSimpleItemState:
         Right(copy(
           nodeToClusterNodeProblem = Map.empty))
 
+
 object AgentRefState extends UnsignedSimpleItemState.Companion[AgentRefState]:
   type Key = AgentPath
   type Item = AgentRef

@@ -11,6 +11,7 @@ with SimpleItemPath:
 
   def companion: Companion[? <: UnsignedSimpleItemPath]
 
+
 object UnsignedSimpleItemPath:
   type Companion_ = Companion[? <: UnsignedSimpleItemPath]
 

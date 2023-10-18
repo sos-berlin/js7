@@ -6,6 +6,7 @@ import js7.data.event.{ItemContainer, NoKeyEvent}
 trait InventoryItemEvent extends NoKeyEvent:
   def key: InventoryItemKey
 
+
 object InventoryItemEvent:
   def jsonCodec[S: ItemContainer.Companion] =
     (BasicItemEvent.jsonCodec |

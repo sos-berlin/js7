@@ -447,6 +447,7 @@ final class ControllerStateTest extends OurAsyncTestSuite
   }
 }
 
+
 object ControllerStateTest
 {
   private val jobResource = JobResource(JobResourcePath("JOB-RESOURCE"))

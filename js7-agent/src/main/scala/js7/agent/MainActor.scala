@@ -87,6 +87,7 @@ extends Actor:
       terminationPromise.trySuccess(DirectorTermination())
       context.stop(self)
 
+
 object MainActor:
   private val logger = Logger[this.type]
 

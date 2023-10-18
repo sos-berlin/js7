@@ -56,6 +56,7 @@ trait SessionApi:
   private[SessionApi] final def onErrorTryAgain(throwable: Throwable): Task[Boolean] =
     SessionApi.onErrorTryAgain(toString, throwable)
 
+
 object SessionApi:
   private val logger = Logger[this.type]
 

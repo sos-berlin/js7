@@ -7,6 +7,7 @@ trait PathAndParameterSerializable[A]:
   def toPathAndParameters(a: A): (String, Map[String, String])
   def fromPathAndParameters(pathAndParameters: (String, Map[String, String])): A
 
+
 object PathAndParameterSerializable:
 
   def toPathAndParameters[A: PathAndParameterSerializable](a: A): (String, Map[String, String]) =

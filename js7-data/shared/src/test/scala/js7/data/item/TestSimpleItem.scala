@@ -6,6 +6,7 @@ import io.circe.generic.semiauto.deriveCodec
 final case class TestSimplePath(string: String) extends UnsignedSimpleItemPath:
   def companion = TestSimplePath
 
+
 object TestSimplePath extends UnsignedSimpleItemPath.Companion[TestSimplePath]:
   protected def unchecked(string: String) =
     new TestSimplePath(string)
@@ -29,6 +30,7 @@ with TrivialItemState[TestSimpleItem]:
 
   def withRevision(revision: Option[ItemRevision]) =
     copy(itemRevision = revision)
+
 
 object TestSimpleItem
 extends UnsignedSimpleItem.Companion[TestSimpleItem]

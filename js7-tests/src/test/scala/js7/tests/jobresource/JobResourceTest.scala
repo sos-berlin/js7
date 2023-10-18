@@ -334,6 +334,7 @@ class JobResourceTest extends OurTestSuite with ControllerAgentForScalaTest
   }
 }
 
+
 object JobResourceTest
 {
   private val logger = Logger[this.type]

@@ -6,6 +6,7 @@ import js7.data.item.SignableSimpleItemPath.*
 trait SignableSimpleItemPath extends SimpleItemPath with SignableItemKey:
   def companion: Companion[? <: SignableSimpleItemPath]
 
+
 object SignableSimpleItemPath:
   type Companion_ = Companion[? <: SignableSimpleItemPath]
 

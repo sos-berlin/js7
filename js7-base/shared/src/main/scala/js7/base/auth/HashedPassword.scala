@@ -22,6 +22,7 @@ sealed case class HashedPassword(hashed: SecretString, hasher: String => String)
 
   override def toString = "HashedPassword"
 
+
 object HashedPassword:
   private val RehashSaltLength = 20
 

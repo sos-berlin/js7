@@ -495,6 +495,7 @@ with TrivialItemState[Workflow]:
   override def toString = ((path != WorkflowPath.Anonymous) ?? s"$id ") +
     s"{${labeledInstructions.mkString("; ")} ${nameToJob.map { case (k, v) => s"define job $k { $v }" }.mkString(" ")} }"
 
+
 object Workflow extends VersionedItem.Companion[Workflow]
 with TrivialItemState.Companion[Workflow]:
   type Item = Workflow

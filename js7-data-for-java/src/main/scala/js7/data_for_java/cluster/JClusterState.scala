@@ -12,6 +12,7 @@ extends JJsonable[JClusterState]:
 
   def companion = JClusterState
 
+
 object JClusterState extends JJsonable.Companion[JClusterState]:
   type AsScala = ClusterState
 

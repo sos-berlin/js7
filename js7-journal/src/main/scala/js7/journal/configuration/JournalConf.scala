@@ -25,6 +25,7 @@ final case class JournalConf(
   slowCheckState: Boolean = false,
   infoLogEvents: Set[String] = Set.empty)
 
+
 object JournalConf:
   private val logger = Logger[this.type]
   private val checkStateKey = "js7.journal.slow-check-state"

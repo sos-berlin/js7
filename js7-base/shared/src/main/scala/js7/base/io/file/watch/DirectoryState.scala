@@ -43,6 +43,7 @@ final case class DirectoryState(fileToEntry: Map[Path, Entry]):
   def isEmpty =
     fileToEntry.isEmpty
 
+
 object DirectoryState:
   val empty = new DirectoryState(Map.empty)
 

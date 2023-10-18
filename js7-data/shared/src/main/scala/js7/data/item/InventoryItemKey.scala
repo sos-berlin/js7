@@ -16,6 +16,7 @@ trait InventoryItemKey:
 
   def isAssignableToAgent: Boolean
 
+
 object InventoryItemKey:
   import InventoryItemPath.inventoryItemPathOrdering
   import VersionId.versionedIdOrdering

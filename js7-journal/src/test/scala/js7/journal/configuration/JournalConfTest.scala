@@ -34,6 +34,7 @@ final class JournalConfTest extends OurTestSuite:
     assert(JournalConf.fromConfig(c withFallback config) ==
       journalConf.copy(syncOnCommit = false, delay = 1.ms))
 
+
 object JournalConfTest:
   val config = config"""
      js7.journal {

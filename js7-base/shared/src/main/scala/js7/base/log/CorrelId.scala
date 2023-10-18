@@ -44,6 +44,7 @@ sealed trait CorrelId extends GenericString:
     if isEmpty then whenEmpty
     else whenNonEmpty(this)
 
+
 object CorrelId extends GenericString.Checked_[CorrelId]:
   private[log] val longByteCount = 6
   private[log] val width = (longByteCount + 2) / 3 * 4  // Base64 length

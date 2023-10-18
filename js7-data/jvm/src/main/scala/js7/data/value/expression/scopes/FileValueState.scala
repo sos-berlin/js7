@@ -101,6 +101,7 @@ extends AutoCloseable:
 
   override def toString = s"FileValueState($statistics)"
 
+
 object FileValueState:
   private val logger = Logger[this.type]
 

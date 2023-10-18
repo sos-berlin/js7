@@ -43,5 +43,6 @@ extends AutoCloseable:
 
   def agentsDir = temporaryDirectory / "agents"
 
+
 object TestDockerEnvironment:
   private val logger = Logger[this.type]

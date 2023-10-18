@@ -89,6 +89,7 @@ final class LockExecutorTest extends OurTestSuite:
     assert(service.toEvents(workflow.instruction(order.position), order, stateView) ==
       Right(Seq(order.id <-: event)))
 
+
 object LockExecutorTest:
   private val freeLock = Lock(LockPath("FREE-LOCK"), limit = 3)
   private val occupiedLock = Lock(LockPath("OCCUPIED-LOCK"), limit = 3)

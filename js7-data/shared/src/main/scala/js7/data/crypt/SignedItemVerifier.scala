@@ -21,6 +21,7 @@ final class SignedItemVerifier[A <: SignableItem](signatureVerifier: SignatureVe
       item <- jsonDecoder.decodeJson(json).toChecked
     yield Verified(Signed(item, signedString), signers)
 
+
 object SignedItemVerifier:
   final case class Verified[A <: SignableItem](signedItem: Signed[A], signerIds: Seq[SignerId]):
     def ifCast[A1 <: A: ClassTag]: Option[Verified[A1]] =

@@ -28,6 +28,7 @@ extends Signature:
       signerIdOrCertificate.fold(_.string, o => ByteArray(o.x509Certificate.getEncoded)) +
       ")"
 
+
 object X509Signature:
   val TypeName = "X509"
 

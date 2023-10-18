@@ -379,6 +379,7 @@ final class FileWatch2Test extends OurTestSuite with DirectoryProviderForScalaTe
         Map("file" -> StringValue(s"$bDirectory${separator}7"))),
       orderWatchPath <-: ExternalOrderVanished(ExternalOrderName("7"))))
 
+
 object FileWatch2Test:
   private val aAgentPath = AgentPath("AGENT-A")
   private val bAgentPath = AgentPath("AGENT-B")

@@ -50,5 +50,6 @@ final class SetOnceTest extends OurTestSuite:
     a := 7
     assert(a.toString == "7")
 
+
 object SetOnceTest:
   private case class A(number: Int)

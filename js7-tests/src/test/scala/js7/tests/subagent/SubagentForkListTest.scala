@@ -228,6 +228,7 @@ extends OurTestSuite with SubagentTester with BlockingItemUpdater:
         OrderDetached))
     }
 
+
 object SubagentForkListTest:
   private val localSubagentId = toLocalSubagentId(agentPath)
   private val subagentSelectionId = SubagentSelectionId("SUBAGENT-SELECTION")

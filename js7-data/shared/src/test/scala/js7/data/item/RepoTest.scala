@@ -484,6 +484,7 @@ final class RepoTest extends OurTestSuite
   //}
 }
 
+
 object RepoTest
 {
   private val logger = Logger[this.type]

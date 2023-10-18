@@ -13,6 +13,7 @@ import js7.base.utils.typeclasses.IsEmpty
 sealed trait ReturnCodeMeaning:
   def isSuccess(returnCode: ReturnCode): Boolean
 
+
 object ReturnCodeMeaning:
   val Default: ReturnCodeMeaning = Success(RangeSet.one(ReturnCode(0)))
   val NoFailure: ReturnCodeMeaning = Failure(RangeSet.empty)

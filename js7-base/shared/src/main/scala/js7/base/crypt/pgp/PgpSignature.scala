@@ -12,5 +12,6 @@ final case class PgpSignature(string: String) extends Signature:
 
   override def toString = s"PgpSignature(${string.truncateWithEllipsis(20)})"
 
+
 object PgpSignature:
   val TypeName = "PGP"

@@ -38,6 +38,7 @@ final class JavaProcess(process: Process) extends Js7Process:
 
   override def toString = processToString(process, pid)
 
+
 object JavaProcess:
   def apply(process: Process) =
     new JavaProcess(process)

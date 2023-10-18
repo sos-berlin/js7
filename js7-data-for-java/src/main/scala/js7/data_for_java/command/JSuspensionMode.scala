@@ -13,6 +13,7 @@ extends JavaWrapper:
 
   type AsScala = SuspensionMode
 
+
 object JSuspensionMode:
   @Nonnull
   val standard: JSuspensionMode =

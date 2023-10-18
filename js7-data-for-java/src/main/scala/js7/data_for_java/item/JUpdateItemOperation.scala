@@ -11,6 +11,7 @@ extends JavaWrapper:
 
   type AsScala = ItemOperation
 
+
 object JUpdateItemOperation:
   @Nonnull
   def addOrChangeSimple(@Nonnull item: JUnsignedSimpleItem): JUpdateItemOperation =

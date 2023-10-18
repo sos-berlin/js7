@@ -34,6 +34,7 @@ final class AgentUris private(agentUri: Uri):
 
   override def toString = agentUri.toString
 
+
 object AgentUris:
   def apply(uri: Uri) = new AgentUris(Uri(uri.string stripSuffix "/"))
 

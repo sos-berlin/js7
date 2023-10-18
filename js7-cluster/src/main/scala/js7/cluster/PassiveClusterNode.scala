@@ -714,6 +714,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
     def lastProperEventPosition = recoveredJournalFile.lastProperEventPosition
     override def toString = s"NextFile(${recoveredJournalFile.eventId})"
 
+
 object PassiveClusterNode:
   private val TmpSuffix = ".tmp"  // Duplicate in JournalActor
   private val logger = Logger[this.type]

@@ -94,6 +94,7 @@ extends ClusterNodeApi with HttpSessionApi with HasIsIgnorableStackTrace:
 
   override def toString = s"HttpClusterNodeApi($prefixedUri)"
 
+
 object HttpClusterNodeApi:
   val UriPrefixPath = "/controller"
 

@@ -58,6 +58,7 @@ final class WindowsLogonTest extends OurTestSuite with ControllerAgentForScalaTe
       assert(stdout.toLowerCase(Locale.ROOT).contains(s"username=$userName\r\n"))
       assert(stdout.contains(s"ORIGINAL_PATH=${sys.env(PathEnvName)}\r\n"))
 
+
 object WindowsLogonTest:
   private val agentPath = AgentPath("AGENT")
   private val logger = Logger[this.type]

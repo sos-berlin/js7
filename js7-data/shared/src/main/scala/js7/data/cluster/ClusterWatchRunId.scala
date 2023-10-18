@@ -9,6 +9,7 @@ final case class ClusterWatchRunId(base64UUID: Base64UUID) extends GenericString
   def string = base64UUID.string
   override def toString = s"ClusterWatchRunId:$string"
 
+
 object ClusterWatchRunId extends GenericString.Checked_[ClusterWatchRunId]:
   val empty: ClusterWatchRunId =
     ClusterWatchRunId(Base64UUID.zero)

@@ -4,6 +4,7 @@ import js7.base.time.Timestamp
 
 sealed trait OrderObstacle
 
+
 object OrderObstacle:
   val waitingForCommand: OrderObstacle =
     WaitingForCommand

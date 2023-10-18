@@ -12,6 +12,7 @@ extends Scope:
 
   override def toString = "SymbolScope"
 
+
 object SymbolScope:
   def apply(nameToValue: PartialFunction[String, Value]): Scope =
     new SymbolScope(nameToValue)

@@ -26,6 +26,7 @@ trait OrderProcess:
         .onErrorHandle(Outcome.Failed.fromThrowable)
     }
 
+
 object OrderProcess:
   def apply(run: Task[Outcome.Completed]): OrderProcess =
     new Simple(run)

@@ -67,6 +67,7 @@ extends UnsignedSimpleItem:
       case agentRef @ AgentRef(_, _, None, _) =>
         Right((agentRef, None))
 
+
 object AgentRef extends UnsignedSimpleItem.Companion[AgentRef]:
   val cls = classOf[AgentRef]
 

@@ -137,6 +137,7 @@ with BlockingItemUpdater:
           throw t
     }
 
+
 object BecomeAgentClusterTest:
   private val logger = Logger[this.type]
   private val agentPath = AgentPath("AGENT")

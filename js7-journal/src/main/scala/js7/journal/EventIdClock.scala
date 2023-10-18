@@ -12,6 +12,7 @@ final class EventIdClock(val clock: WallClock):
   def currentTimeMillis: Long =
     clock.epochMilli()
 
+
 object EventIdClock:
   val Default = EventIdClock(WallClock)
 

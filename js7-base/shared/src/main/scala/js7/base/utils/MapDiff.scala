@@ -23,6 +23,7 @@ final case class MapDiff[K, V] private(
   def isEmpty =
     this == Empty
 
+
 object MapDiff:
   private val Empty = new MapDiff(Map.empty, Map.empty, Set.empty)
 

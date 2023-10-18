@@ -45,6 +45,7 @@ final class HistoricEventReaderTest extends OurTestSuite:
       }
     }
 
+
 object HistoricEventReaderTest:
   private val After = 1000
   private val TestEvents =

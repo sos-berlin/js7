@@ -70,5 +70,6 @@ extends CommandExecutor[ControllerCommand]:
       case Batch(_) =>   // Log only individual commands
       case _ => logger.debug(s"↘ $run")
 
+
 object ControllerCommandExecutor:
   private val logger = Logger[this.type]

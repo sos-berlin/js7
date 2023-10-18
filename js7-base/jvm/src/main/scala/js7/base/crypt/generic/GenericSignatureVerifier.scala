@@ -50,6 +50,7 @@ extends SignatureVerifier:
   override def publicKeysToStrings =
     "GenericSignatureVerifier#publicKeysToStrings" :: Nil
 
+
 object GenericSignatureVerifier extends SignatureVerifier.Companion:
   private val configPath = "js7.configuration.trusted-signature-keys"
   private val logger = Logger[this.type]

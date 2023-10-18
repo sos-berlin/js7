@@ -71,6 +71,7 @@ final class InternalJobLauncherTest extends OurTestSuite:
     assert(whenOutString.await(99.s) == "OUT 1/" + "OUT 2" &&
            whenErrString.await(99.s) == "ERR 1/" + "ERR 2")
 
+
 object InternalJobLauncherTest:
   private val workflow = Workflow(WorkflowPath("WORKFLOW") ~ "1", Vector.empty)
 

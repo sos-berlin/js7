@@ -61,6 +61,7 @@ extends EventInstructionExecutor:
       case _ =>
         super.toObstacles(order, calculator)
 
+
 object RetryExecutor:
   private def missingTryProblem(branchPath: BranchPath) =
     Problem.pure(s"Retry: branchPath does not denotes a 'try' statement: $branchPath")

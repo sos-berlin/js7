@@ -13,6 +13,7 @@ private[workflow] object TryCatchBranchId:
       (i >= 0) ? i
     case _ => None
 
+
 object TryBranchId:
   private val NamePattern = """try\+([0-9]+)""".r
 

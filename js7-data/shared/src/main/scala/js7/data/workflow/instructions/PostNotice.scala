@@ -12,6 +12,7 @@ final case class PostNotice(
   boardPath: BoardPath,
   sourcePos: Option[SourcePos] = None)
 
+
 object PostNotice:
   @nowarn("msg=deprecated")
   val compatibleSubtype: Subtype[PostNotices] =

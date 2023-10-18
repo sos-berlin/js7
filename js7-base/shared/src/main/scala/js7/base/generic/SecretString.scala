@@ -34,6 +34,7 @@ final case class SecretString(string: String):
       case SecretString(otherString) => timingAttackSecureEqual(string, otherString)
       case _ => false
 
+
 object SecretString:
   val empty = SecretString("")
 

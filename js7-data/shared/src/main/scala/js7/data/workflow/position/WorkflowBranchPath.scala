@@ -15,6 +15,7 @@ final case class WorkflowBranchPath(workflowId: WorkflowId, branchPath: BranchPa
 
   override def toString = s"${workflowId.toSimpleString}${branchPath.show}"
 
+
 object WorkflowBranchPath:
   implicit def apply(workflowId: WorkflowId): WorkflowBranchPath =
     new WorkflowBranchPath(workflowId, Nil)

@@ -113,6 +113,7 @@ extends CloseableIterator[Stamped[KeyedEvent[Event]]]:
         logger.info(s"⏳ $skipped events (${toKBGB(skippedSize)}) read in ${duration.pretty}, " +
           s"in search of event '${EventId.toString(startEventId)}'")
 
+
 object FileEventIterator:
   private val InfoSkippedSize = 10*1000*1000
   private val InfoDuration = 3.s

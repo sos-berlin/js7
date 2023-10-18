@@ -207,6 +207,7 @@ final class SubagentConfTest extends OurTestSuite
   }
 }
 
+
 object SubagentConfTest {
   private val shellExt = if isWindows then "cmd" else "sh"
 

@@ -31,6 +31,7 @@ final case class JsTimestamp private(toEpochMilli: Long) extends Timestamp
     JsTimestamp.ofEpochMilli(epochMilli)
 }
 
+
 object JsTimestamp extends Timestamp.Companion
 {
   object specific {

@@ -53,6 +53,7 @@ final class OurMemoizingAuthenticatorTest extends OurTestSuite:
       UserId.Anonymous -> 1,
       UserId("x") -> 1))  // Unknown users are memoized, too !!!
 
+
 object OurMemoizingAuthenticatorTest:
   private val AUser = SimpleUser(UserId("A"), HashedPassword(SecretString("cba"), _.reverse))
   private val BUser = SimpleUser(UserId("B"), HashedPassword(SecretString("321"), _.reverse))

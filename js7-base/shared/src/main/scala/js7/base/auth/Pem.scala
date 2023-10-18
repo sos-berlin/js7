@@ -26,6 +26,7 @@ final class Pem private(val typeName: String):
   def toPem(byteArray: ByteArray): String =
     beginLine + byteArray.toMimeBase64 + endLine
 
+
 object Pem:
   def apply(typ: String) = new Pem(typ)
 

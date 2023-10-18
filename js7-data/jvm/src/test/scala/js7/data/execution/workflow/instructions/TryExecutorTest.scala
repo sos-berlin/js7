@@ -54,6 +54,7 @@ final class TryExecutorTest extends OurTestSuite
   }
 }
 
+
 object TryExecutorTest {
   private val TestWorkflowId = WorkflowPath("WORKFLOW") ~ "VERSION"
   private val AOrder = Order(OrderId("ORDER-A"), TestWorkflowId /: Position(7), Order.Fresh,

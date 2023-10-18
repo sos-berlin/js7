@@ -208,6 +208,7 @@ final class SubagentSelectionTest extends OurTestSuite with SubagentTester with 
     eventWatch.await[ItemDeleted](_.event.key == cSubagentId, after = eventId)
     eventWatch.await[ItemDeleted](_.event.key == dSubagentId, after = eventId)
 
+
 object SubagentSelectionTest:
   private val localSubagentId = toLocalSubagentId(agentPath)
   private val aSubagentId = SubagentId("A-SUBAGENT")

@@ -133,6 +133,7 @@ final class CloserTest extends OurTestSuite
   }
 }
 
+
 object CloserTest
 {
   private[utils] final class Context {

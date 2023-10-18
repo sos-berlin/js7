@@ -7,6 +7,7 @@ trait UnsignedItemState extends InventoryItemState:
 
   val item: companion.Item
 
+
 object UnsignedItemState:
   trait Companion[A <: UnsignedItemState] extends InventoryItemState.Companion[A]:
     type Path <: UnsignedItemPath

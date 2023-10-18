@@ -142,6 +142,7 @@ final class StdoutTest extends OurTestSuite with ControllerAgentForScalaTest:
     logger.debug(workflowNotation)
     assert(reparsedWorkflow == Right(anonymousWorkflow.withoutSource))
 
+
 object StdoutTest:
   private val logger = Logger[this.type]
   private val agentPath = AgentPath("AGENT")

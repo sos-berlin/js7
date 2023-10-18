@@ -20,6 +20,7 @@ extends Observable[ByteString]:
     CompositeCancelable(subscriber, subscription)
   //</editor-fold>
 
+
 object ByteStringSplittingObservable:
   private final class SplittingSubscriber(maxSize: Int, out: Subscriber[ByteString])
   extends Subscriber[ByteString] with Cancelable:

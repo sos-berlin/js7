@@ -52,6 +52,7 @@ with ItemContainer:
     idToWorkflow.values.view ++
       pathToJobResource.values.view
 
+
 object SubagentState
 extends JournaledState.Companion[SubagentState]
 with ItemContainer.Companion[SubagentState]:

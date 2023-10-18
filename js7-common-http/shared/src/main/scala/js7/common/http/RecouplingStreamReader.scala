@@ -277,6 +277,7 @@ abstract class RecouplingStreamReader[
   private val pauseBeforeRecoupling =
     Task.defer(pauseBeforeNextTry(recouplingPause.nextPause()))
 
+
 object RecouplingStreamReader:
   val TerminatedProblem = Problem.pure("RecouplingStreamReader has been stopped")
 

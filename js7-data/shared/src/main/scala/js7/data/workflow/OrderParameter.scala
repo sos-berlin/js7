@@ -8,6 +8,7 @@ sealed trait OrderParameter:
   val name: String
   def referencedJobResourcePaths: Iterable[JobResourcePath]
 
+
 object OrderParameter:
   def apply(name: String, valueType: ValueType): OrderParameter =
     Required(name, valueType)

@@ -13,6 +13,7 @@ import js7.data.agent.AgentPath
 trait ClusterId:
   def toTypedString: String
 
+
 object ClusterId:
   implicit val jsonEncoder: Encoder[ClusterId] = _.toTypedString.asJson
 

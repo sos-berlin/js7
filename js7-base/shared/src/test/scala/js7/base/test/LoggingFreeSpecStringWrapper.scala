@@ -42,6 +42,7 @@ final class LoggingFreeSpecStringWrapper[R, T](
     infix def ignore(testBody: => R): Unit =
       taggedAs.ignore(testBody)
 
+
 object LoggingFreeSpecStringWrapper:
 
   private[test] trait UnifiedStringWrapper[R, T]:

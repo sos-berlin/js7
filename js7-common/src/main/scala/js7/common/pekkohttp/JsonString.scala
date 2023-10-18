@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets.UTF_8
  */
 final case class JsonString(string: String)
 
+
 object JsonString:
   implicit val marshaller: ToEntityMarshaller[JsonString] =
     Marshaller.withFixedContentType(`application/json`) { value =>

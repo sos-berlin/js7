@@ -138,5 +138,6 @@ private trait CommandDispatcher:
 
     override def toString = s"Execute(${command.toShortString})"
 
+
 object CommandDispatcher:
   private[director] val StoppedProblem = Problem.pure("CommandDispatcher stopped")

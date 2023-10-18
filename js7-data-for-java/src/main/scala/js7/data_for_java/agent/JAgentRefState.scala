@@ -40,6 +40,7 @@ extends JJsonable[JAgentRefState]:
   def clusterState: JClusterState =
     JClusterState(asScala.clusterState)
 
+
 object JAgentRefState extends JJsonable.Companion[JAgentRefState]:
   type AsScala = AgentRefState
 

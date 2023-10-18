@@ -28,6 +28,7 @@ extends DocumentSigner:
 
   override def toString = s"X509Signer($x509PrivateKey)"
 
+
 object X509Signer extends DocumentSigner.Companion:
   protected type MySignature = X509Signature
   protected type MyMessageSigner = X509Signer

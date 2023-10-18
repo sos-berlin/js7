@@ -133,6 +133,7 @@ final class ForkTest extends OurTestSuite with ControllerAgentForScalaTest:
     ).await(99.s).orThrow
     eventWatch.await[OrderCancelled](_.key == OrderId("DUPLICATE|🥕"))
 
+
 object ForkTest:
   private val aAgentPath = AgentPath("AGENT-A")
   private val bAgentPath = AgentPath("AGENT-B")

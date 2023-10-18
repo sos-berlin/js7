@@ -16,6 +16,7 @@ import scala.concurrent.duration.FiniteDuration
 sealed trait ClusterCommand extends CommonCommand:
   type Response <: ClusterCommand.Response
 
+
 object ClusterCommand:
   /** Initialize the backup node.
    * @param activeNodeName to look up password for login at the active node

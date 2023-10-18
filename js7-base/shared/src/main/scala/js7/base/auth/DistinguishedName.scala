@@ -19,6 +19,7 @@ final class DistinguishedName(private val x500Principal: X500Principal):
 
   override def toString = string
 
+
 object DistinguishedName:
   def apply(string: String) = checked(string).orThrow
 

@@ -50,6 +50,7 @@ final class SpeedControllerClusterTest extends OurTestSuite with ControllerClust
         }
       }
 
+
 object SpeedControllerClusterTest:
   private val workflow = Workflow(WorkflowPath("SPEED") ~ "INITIAL",
     Seq(Prompt(StringConstant(""))))

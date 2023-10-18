@@ -182,6 +182,7 @@ final class CorrelIdJvmTest extends OurTestSuite with BeforeAndAfterAll
   }
 }
 
+
 object CorrelIdJvmTest {
   private val logger = Logger[this.type]
   java8Polyfill()

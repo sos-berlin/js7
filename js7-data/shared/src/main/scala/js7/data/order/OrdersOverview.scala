@@ -9,5 +9,6 @@ import io.circe.generic.semiauto.deriveCodec
 final case class OrdersOverview(
   count: Int)
 
+
 object OrdersOverview:
   implicit val jsonCodec: Codec.AsObject[OrdersOverview] = deriveCodec[OrdersOverview]

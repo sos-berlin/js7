@@ -84,6 +84,7 @@ extends immutable.Set[A]:
         case Interval(a, b) => s"${valueToString(a)}$rangeSymbol${valueToString(b)}"
       .mkString(delimiter)
 
+
 object RangeSet:
 
   def apply[A: Ordering: Ordinal](values: A*): RangeSet[A] =

@@ -17,6 +17,7 @@ final class Subtype[A](
   val nameToDecoder: Map[String, Decoder[A]],
   val nameToClass: Map[String, Class[A]])
 
+
 object Subtype:
   /**
     * Use implicit Encoder.AsObject and Decoder (CirceCodec); Simple class name is type name.

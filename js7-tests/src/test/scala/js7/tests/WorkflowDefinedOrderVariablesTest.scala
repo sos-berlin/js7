@@ -65,6 +65,7 @@ final class WorkflowDefinedOrderVariablesTest extends OurTestSuite with Controll
       FreshOrder(orderId, objectWorkflow.path, deleteWhenTerminated = true))
     assert(events.map(_.value).contains(OrderFinished()))
 
+
 object WorkflowDefinedOrderVariablesTest:
   private val agentPath = AgentPath("AGENT")
 

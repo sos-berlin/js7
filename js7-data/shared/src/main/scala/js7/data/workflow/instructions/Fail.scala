@@ -21,6 +21,7 @@ extends Instruction:
 
   def withoutSourcePos = copy(sourcePos = None)
 
+
 object Fail:
   implicit val jsonEncoder: Encoder.AsObject[Fail] =
     o => JsonObject(

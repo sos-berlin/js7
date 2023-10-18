@@ -65,6 +65,7 @@ with SessionApi.HasUserAndPassword:
     logOpenSession()
     closer.close()
 
+
 object PekkoHttpAgentTextApi:
   // Like AgentConfiguration.configDirectoryToConfig
   private def configDirectoryToConfig(configDirectory: Path): Config =

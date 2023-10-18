@@ -279,6 +279,7 @@ final class StickySubagentTest extends OurTestSuite with ControllerAgentForScala
       OrderDetached,
       OrderFailed(Position(1))))
 
+
 object StickySubagentTest:
   private val aAgentPath = AgentPath("A-AGENT")
   private val aSubagentId = toLocalSubagentId(aAgentPath)

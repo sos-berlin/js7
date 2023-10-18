@@ -54,6 +54,7 @@ extends UnsignedSimpleItem:
     for endOfLife <- endOfLife.fold(evalEndOfLife(scope))(Checked(_))
       yield Notice(noticeId, path, endOfLife)
 
+
 object Board extends UnsignedSimpleItem.Companion[Board]:
   val cls = classOf[Board]
 

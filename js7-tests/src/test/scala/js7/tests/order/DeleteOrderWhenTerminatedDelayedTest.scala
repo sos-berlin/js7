@@ -38,6 +38,7 @@ final class DeleteOrderWhenTerminatedDelayedTest extends OurTestSuite with Contr
     val removed = eventWatch.await[OrderDeleted](_.key == order.id).head
     assert(removed.timestamp - finished.timestamp > 500.ms)
 
+
 object DeleteOrderWhenTerminatedDelayedTest:
   private val pathExecutable = RelativePathExecutable("quick.cmd")
   private val agentPath = AgentPath("AGENT")

@@ -14,6 +14,7 @@ final case class ControllerMetaState(
 
   def isDefined = this != ControllerMetaState.Undefined
 
+
 object ControllerMetaState:
   val Undefined = ControllerMetaState(
     ControllerId("UNDEFINED-CONTROLLER-ID"),

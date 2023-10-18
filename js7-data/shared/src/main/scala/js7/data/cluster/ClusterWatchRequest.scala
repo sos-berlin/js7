@@ -63,6 +63,7 @@ extends ClusterWatchRequest:
   override def toShortString =
     s"$requestId ClusterState.${clusterState.toShortString}"
 
+
 object ClusterWatchRequest:
   final case class RequestId(number: Long) extends GenericLong:
     def increment = RequestId(number + 1)
@@ -81,4 +82,6 @@ final case class InvalidClusterWatchHeartbeatProblem(from: NodeId, clusterState:
     "clusterState" -> clusterState.toString)
 
 // TODO Move InvalidClusterWatchHeartbeatProblem to js7-cluster-watch-api
+
+
 object InvalidClusterWatchHeartbeatProblem extends Problem.Coded.Companion

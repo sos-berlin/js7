@@ -86,6 +86,7 @@ extends EventApi with HttpClusterNodeApi with HttpSessionApi with HasIsIgnorable
   final def snapshot(eventId: Option[EventId] = None): Task[ControllerState] =
     snapshotAs[ControllerState](uris.snapshot.list(eventId))
 
+
 object HttpControllerApi:
   val UriPrefixPath = "/controller"
 

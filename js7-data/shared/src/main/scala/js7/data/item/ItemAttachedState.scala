@@ -8,6 +8,7 @@ import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 sealed trait ItemAttachedState:
   def isAttachableOrAttached: Boolean
 
+
 object ItemAttachedState:
   case object Attachable
   extends NotDetached:

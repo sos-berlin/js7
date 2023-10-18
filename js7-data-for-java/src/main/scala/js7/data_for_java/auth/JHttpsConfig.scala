@@ -10,6 +10,7 @@ import scala.jdk.OptionConverters.*
 final case class JHttpsConfig(asScala: HttpsConfig) extends JavaWrapper:
   type AsScala = HttpsConfig
 
+
 object JHttpsConfig:
   val empty: JHttpsConfig = JHttpsConfig(HttpsConfig.empty)
 

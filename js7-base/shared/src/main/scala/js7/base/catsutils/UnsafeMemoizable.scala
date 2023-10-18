@@ -15,6 +15,7 @@ trait UnsafeMemoizable[F[_]]:
     def unsafeMemoize: F[A]
 
 
+
 object UnsafeMemoizable:
 
   given taskMemoizable: UnsafeMemoizable[Task] with

@@ -6,6 +6,7 @@ import io.circe.generic.semiauto.deriveCodec
 case class TestPath(string: String) extends VersionedItemPath:
   def companion = TestPath
 
+
 object TestPath extends VersionedItemPath.Companion[TestPath]:
   protected def unchecked(string: String) = new TestPath(string)
 
@@ -18,6 +19,7 @@ with TrivialItemState[TestVersionedItem]:
   val companion: TestVersionedItem.type = TestVersionedItem
 
   def withId(id: VersionedItemId[Path]) = copy(id)
+
 
 object TestVersionedItem
 extends VersionedItem.Companion[TestVersionedItem]

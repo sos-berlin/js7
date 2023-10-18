@@ -655,6 +655,7 @@ with BlockingItemUpdater
   }
 }
 
+
 object SuspendResumeOrdersTest
 {
   private val logger = Logger[this.type]

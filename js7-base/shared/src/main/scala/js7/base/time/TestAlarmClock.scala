@@ -21,6 +21,7 @@ trait TestAlarmClock extends AlarmClock:
 
   def tick(duration: FiniteDuration = ZeroDuration): Unit
 
+
 object TestAlarmClock:
   private val logger = Logger[this.type]
 

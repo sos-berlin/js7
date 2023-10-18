@@ -18,6 +18,7 @@ trait CommonCommand:
    */
   def toStringIsLonger = false
 
+
 object CommonCommand:
   trait Companion:
     protected type Command <: CommonCommand

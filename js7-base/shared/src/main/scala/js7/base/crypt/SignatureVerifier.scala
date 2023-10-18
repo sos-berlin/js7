@@ -32,6 +32,7 @@ trait SignatureVerifier:
   final def verifyString(document: String, signature: MySignature): Checked[Seq[SignerId]] =
     verify(ByteArray(document), signature)
 
+
 object SignatureVerifier:
   trait Companion:
     self =>

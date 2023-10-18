@@ -75,6 +75,7 @@ final class DirectoryReaderTest extends OurTestSuite
   }
 }
 
+
 object DirectoryReaderTest {
   private val logger = Logger[this.type]
 }

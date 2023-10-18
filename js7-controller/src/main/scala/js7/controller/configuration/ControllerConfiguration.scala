@@ -57,6 +57,7 @@ extends BasicConfiguration with CommonConfiguration:
   override def toString = s"ControllerConfiguration($controllerId,$dataDirectory,$configDirectory,$webServerPorts," +
     s"$timeZone,$journalConf,$clusterConf,$name,Config)"
 
+
 object ControllerConfiguration:
   val DefaultName = if isTest then "Controller" else "JS7"
 

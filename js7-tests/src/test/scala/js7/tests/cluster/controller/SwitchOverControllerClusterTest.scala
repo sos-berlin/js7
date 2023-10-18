@@ -90,5 +90,6 @@ final class SwitchOverControllerClusterTest extends ControllerClusterTester:
         controller.api.addOrders(orders).await(timeout).orThrow
       }
 
+
 object SwitchOverControllerClusterTest:
   private val logger = Logger[this.type]

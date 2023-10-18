@@ -19,6 +19,7 @@ trait DocumentSigner:
   final def toSignedString(document:String): SignedString =
     SignedString(document, signString(document).toGenericSignature)
 
+
 object DocumentSigner:
   trait Companion:
     protected type MySignature <: Signature   //= MyMessageSigner#MySignature

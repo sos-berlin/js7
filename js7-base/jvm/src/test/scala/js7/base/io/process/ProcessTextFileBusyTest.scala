@@ -48,6 +48,7 @@ final class ProcessTextFileBusyTest extends OurTestSuite:
     files foreach tryDelete
     scheduler.shutdown()
 
+
 object ProcessTextFileBusyTest:
   private val logger = Logger[this.type]
 

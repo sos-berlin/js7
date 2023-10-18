@@ -9,6 +9,7 @@ import js7.data.event.ItemContainer
 sealed trait UnsignedSimpleItemEvent extends InventoryItemEvent:
   def key: UnsignedSimpleItemPath
 
+
 object UnsignedSimpleItemEvent:
   sealed trait UnsignedSimpleItemAddedOrChanged extends UnsignedSimpleItemEvent with ItemAddedOrChanged:
     def item: UnsignedSimpleItem

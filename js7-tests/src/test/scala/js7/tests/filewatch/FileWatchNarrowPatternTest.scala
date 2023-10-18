@@ -82,6 +82,7 @@ final class FileWatchNarrowPatternTest extends OurTestSuite with ControllerAgent
     eventWatch.await[OrderDeleted](_.key == aOrderId)
     eventWatch.await[OrderDeleted](_.key == bOrderId)
 
+
 object FileWatchNarrowPatternTest:
   private val agentPath = AgentPath("AGENT")
 

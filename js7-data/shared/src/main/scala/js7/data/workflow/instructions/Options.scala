@@ -33,5 +33,6 @@ extends Instruction:
 
   override def branchWorkflows = (BranchId.Options -> block) :: Nil
 
+
 object Options:
   implicit val jsonCodec: Codec.AsObject[Options] = deriveCodec

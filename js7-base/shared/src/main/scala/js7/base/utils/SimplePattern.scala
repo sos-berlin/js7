@@ -18,6 +18,7 @@ extends GenericString:
 
   def string = pattern.pattern
 
+
 object SimplePattern extends GenericString.Checked_[SimplePattern]:
   protected def unchecked(string: String) =
     new SimplePattern(Pattern.compile(string))

@@ -22,6 +22,7 @@ final case class TaskId private(string: String) extends GenericString:
 
   override def toString = s"TaskId($string)"
 
+
 object TaskId extends GenericString.Checked_[TaskId]:
   private val pattern = "[A-Za-z0-9-][A-Za-z0-9._-]*".r.pattern  // Try to exclude any shell meta characters
 

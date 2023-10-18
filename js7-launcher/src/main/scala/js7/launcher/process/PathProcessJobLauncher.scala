@@ -32,5 +32,6 @@ trait PathProcessJobLauncher extends ProcessJobLauncher:
                 name = file.toString,
                 env)))))
 
+
 object PathProcessJobLauncher:
   private val logger = Logger[this.type]

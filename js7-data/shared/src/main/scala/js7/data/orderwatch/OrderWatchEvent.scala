@@ -12,6 +12,7 @@ sealed trait OrderWatchEvent extends Event.IsKeyBase[OrderWatchEvent]:
 
   def externalOrderName: ExternalOrderName
 
+
 object OrderWatchEvent extends Event.CompanionForKey[OrderWatchPath, OrderWatchEvent]:
   implicit def implicitSelf: OrderWatchEvent.type = this
 

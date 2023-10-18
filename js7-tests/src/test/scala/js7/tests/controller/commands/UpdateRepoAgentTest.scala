@@ -71,6 +71,7 @@ final class UpdateRepoAgentTest extends OurTestSuite:
       agent2.terminate() await 99.s
     }
 
+
 object UpdateRepoAgentTest:
   private val agentPath = AgentPath("AGENT")
   private val workflow = WorkflowParser.parse(WorkflowPath("WORKFLOW"),

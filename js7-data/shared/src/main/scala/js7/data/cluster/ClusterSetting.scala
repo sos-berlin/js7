@@ -47,6 +47,7 @@ final case class ClusterSetting(
     else if nodeId == passiveId then activeId
     else throw new IllegalArgumentException(s"Unknown $nodeId")
 
+
 object ClusterSetting:
   def checked(
     idToUri: Map[NodeId, Uri],

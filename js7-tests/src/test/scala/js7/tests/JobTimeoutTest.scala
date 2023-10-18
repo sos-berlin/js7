@@ -56,6 +56,7 @@ final class JobTimeoutTest extends OurTestSuite with ControllerAgentForScalaTest
         OrderDetached,
         OrderFailed(Position(0))))
 
+
 object JobTimeoutTest:
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)

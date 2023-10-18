@@ -48,6 +48,7 @@ trait HttpClient:
   def liftProblem[A](task: Task[A]): Task[Checked[A]] =
     HttpClient.liftProblem(task)
 
+
 object HttpClient:
   def sessionMayBeLost(t: Throwable): Boolean =
     t match

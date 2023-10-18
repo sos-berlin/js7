@@ -48,6 +48,7 @@ trait ReceiveLoggingActor extends SimpleStateActor:
         else
           recv.applyOrElse(x, default)
 
+
 object ReceiveLoggingActor:
   private val logger = Logger[this.type]
 

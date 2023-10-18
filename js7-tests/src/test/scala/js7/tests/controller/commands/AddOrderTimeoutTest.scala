@@ -42,6 +42,7 @@ final class AddOrderTimeoutTest extends OurTestSuite with ControllerAgentForScal
     // assert(status == ServiceUnavailable)
     assert(status == InternalServerError)
 
+
 object AddOrderTimeoutTest:
   private val agentRef = AgentRef(AgentPath("AGENT"), Seq(SubagentId("SUBAGENT")))
   private val subagentItem = SubagentItem(SubagentId("SUBAGENT"), AgentPath("AGENT"),

@@ -8,6 +8,7 @@ import io.circe.{Decoder, Encoder, Json}
 trait GenericLong:
   val number: Long
 
+
 object GenericLong:
 
   trait Companion[A <: GenericLong]:

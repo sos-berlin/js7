@@ -9,6 +9,7 @@ import io.circe.generic.semiauto.deriveCodec
 final case class WorkflowOverview(
   path: WorkflowPath)
 
+
 object WorkflowOverview:
   def fromWorkflow(workflow: Workflow) = WorkflowOverview(path = workflow.path)
 

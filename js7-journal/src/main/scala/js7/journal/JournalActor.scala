@@ -644,6 +644,7 @@ extends Actor with Stash with JournalLogging:
       logger.info(msg)  // Without colors because msg is already colored
       throw new AssertionError(msg)
 
+
 object JournalActor:
   private val logger = Logger[this.type]
   private val TmpSuffix = ".tmp"  // Duplicate in PassiveClusterNode

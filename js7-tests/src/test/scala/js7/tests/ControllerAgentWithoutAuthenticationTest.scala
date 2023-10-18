@@ -118,6 +118,7 @@ final class ControllerAgentWithoutAuthenticationTest extends OurTestSuite:
       }
     }
 
+
 object ControllerAgentWithoutAuthenticationTest:
   private val versionId = VersionId("INITIAL")
   private val agentPath = AgentPath("AGENT")

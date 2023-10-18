@@ -70,6 +70,7 @@ final class FutureCompletion[A](future: Future[A])(implicit ec: ExecutionContext
 
     def future = promise.future
 
+
 object FutureCompletion:
   object syntax:
     implicit final class FutureCompletionObservable[A](private val observable: Observable[A]) extends AnyVal:

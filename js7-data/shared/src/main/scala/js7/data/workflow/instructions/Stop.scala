@@ -11,5 +11,6 @@ extends Instruction:
 
   override def toString = "Stop"
 
+
 object Stop:
   implicit val jsonCodec: Codec.AsObject[Stop] = deriveCodec

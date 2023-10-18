@@ -327,6 +327,7 @@ trait RealEventWatch extends EventWatch:
         }
         .logWhenItTakesLonger(label))
 
+
 object RealEventWatch:
   private val NoMoreObservable = Task.pure((None, () => throw new NoSuchElementException/*dead code*/))
   private val logger = Logger[this.type]

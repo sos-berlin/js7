@@ -508,6 +508,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
 
   override def toString = s"SubagentKeeper(${orderToSubagent.size} processing orders)"
 
+
 object SubagentKeeper:
   private val logger = Logger[this.type]
 

@@ -11,6 +11,7 @@ final case class UserAndPassword(userId: UserId, password: SecretString):
 
   override def toString = s"UserAndPassword($userId)"
 
+
 object UserAndPassword:
   implicit def apply(userAndPassword: (UserId, SecretString)): UserAndPassword =
     new UserAndPassword(userAndPassword._1, userAndPassword._2)

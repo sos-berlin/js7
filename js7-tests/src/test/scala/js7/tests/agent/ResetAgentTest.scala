@@ -292,6 +292,7 @@ final class ResetAgentTest extends OurTestSuite with ControllerAgentForScalaTest
       }
     }
 
+
 object ResetAgentTest:
   private val logger = Logger[this.type]
 

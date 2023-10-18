@@ -70,6 +70,7 @@ final class DeleteOrderWhenTerminatedTest extends OurTestSuite with ControllerAg
       OrderFinished(),
       OrderDeleted))
 
+
 object DeleteOrderWhenTerminatedTest:
   private val quickPathExecutable = RelativePathExecutable("quick.cmd")
   private val slowPathExecutable = RelativePathExecutable("slow.cmd")

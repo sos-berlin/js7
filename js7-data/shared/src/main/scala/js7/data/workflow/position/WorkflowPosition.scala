@@ -19,5 +19,6 @@ final case class WorkflowPosition(workflowId: WorkflowId, position: Position):
 
   override def toString = s"${workflowId.toSimpleString}:$position"
 
+
 object WorkflowPosition:
   implicit val jsonCodec: Codec.AsObject[WorkflowPosition] = deriveCodec

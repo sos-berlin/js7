@@ -48,6 +48,7 @@ final class ExecuteNoScriptInjectionTest extends OurTestSuite with ControllerAge
   }
 }
 
+
 object ExecuteNoScriptInjectionTest
 {
   private val agentPath = AgentPath("AGENT")

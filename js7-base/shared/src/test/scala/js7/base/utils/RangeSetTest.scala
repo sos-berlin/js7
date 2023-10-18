@@ -208,6 +208,7 @@ final class RangeSetTest extends OurTestSuite {
   }
 }
 
+
 object RangeSetTest {
   private final case class Test(number: Int) extends GenericInt
   private object Test extends GenericInt.Companion[Test]

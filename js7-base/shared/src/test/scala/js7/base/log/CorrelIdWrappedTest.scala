@@ -16,6 +16,7 @@ final class CorrelIdWrappedTest extends OurTestSuite:
         "number": 7
       }""")
 
+
 object CorrelIdWrappedTest:
   final case class A(number: Int)
   object A:

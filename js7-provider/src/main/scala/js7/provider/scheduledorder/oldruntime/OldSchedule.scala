@@ -57,6 +57,7 @@ extends Schedule:
   private def periodSeq(date: LocalDate) =
     weekdays.lift(date.getDayOfWeek)
 
+
 object OldSchedule:
   private val PredictionLimit = Duration.ofDays(366)
 

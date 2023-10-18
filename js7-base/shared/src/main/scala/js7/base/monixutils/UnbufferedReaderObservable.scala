@@ -136,6 +136,7 @@ extends Observable[String]:
     try in.close()
     catch { case NonFatal(_) => () }
 
+
 object UnbufferedReaderObservable:
   def apply(newReader: Task[Reader], chunkSizeMax: Int = 4096)
   : Observable[String] =

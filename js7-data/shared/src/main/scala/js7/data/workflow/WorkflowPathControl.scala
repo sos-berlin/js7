@@ -27,6 +27,7 @@ with TrivialItemState[WorkflowPathControl]:
   def workflowPath: WorkflowPath =
     path.workflowPath
 
+
 object WorkflowPathControl
 extends UnsignedSimpleItem.Companion[WorkflowPathControl]
 with UnsignedSimpleItemState.Companion[WorkflowPathControl]
