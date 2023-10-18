@@ -1,6 +1,5 @@
 package js7.data.execution.workflow.instructions
 
-import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.order.Order
 import js7.data.order.OrderEvent.{OrderFinished, OrderMoved}
 import js7.data.state.StateView
@@ -17,7 +16,7 @@ extends EventInstructionExecutor with PositionInstructionExecutor:
   def toEvents(instruction: End, order: Order[Order.State], state: StateView) =
     order.position.parent
       .filter(_ => !order.isInOutermostBlock)
-      .match {
+      .match
         case None =>
           order.state match
             case _: Order.IsFreshOrReady =>

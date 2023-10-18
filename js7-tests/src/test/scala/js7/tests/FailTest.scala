@@ -13,8 +13,8 @@ import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCaught, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.NamedValues
-import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.instructions.{Fail, Retry, TryInstruction}
+import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowParser, WorkflowPath}
 import js7.tests.FailTest.*
@@ -25,7 +25,7 @@ import org.scalactic.source
 import scala.reflect.ClassTag
 
 final class FailTest
-extends OurTestSuite, ControllerAgentForScalaTest, with BlockingItemUpdater:
+extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
 
   protected val agentPaths = Seq(agentPath)
   protected val items = Nil

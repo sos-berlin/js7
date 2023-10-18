@@ -32,18 +32,16 @@ import scala.reflect.ClassTag
 final class RetryTest
 extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
 
-override protected val controllerConfig =
-  config"""
-  js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
-  js7.journal.simulate-sync = 10ms  # Avoid excessive syncs in case of test failure
-  """
+  override protected val controllerConfig = config"""
+    js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
+    js7.journal.simulate-sync = 10ms  # Avoid excessive syncs in case of test failure
+    """
 
-override protected def agentConfig =
-  config"""
-  js7.journal.simulate-sync = 10ms  # Avoid excessive syncs in case of test failure
-  js7.job.execution.signed-script-injection-allowed = on"""
+  override protected def agentConfig = config"""
+    js7.journal.simulate-sync = 10ms  # Avoid excessive syncs in case of test failure
+    js7.job.execution.signed-script-injection-allowed = on"""
 
-protected val agentPaths = TestAgentPath :: Nil
+  protected val agentPaths = agentPath :: Nil
   protected val items = Nil
 
   override def beforeAll() =
@@ -319,7 +317,7 @@ protected val agentPaths = TestAgentPath :: Nil
         val orderId = OrderId("🟪")
         var eventId = eventWatch.lastAddedEventId
         controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
-        for (_ <- 1 to 10)
+        for _ <- 1 to 10 do
           eventId = eventWatch.await[OrderRetrying](_.key == orderId, after = eventId).last.eventId
         controller.api
           .executeCommand(CancelOrders(Seq(orderId), CancellationMode.FreshOrStarted()))

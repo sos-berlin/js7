@@ -3,7 +3,6 @@ package js7.core.command
 import js7.base.auth.UserId
 import js7.base.log.CorrelId
 import js7.base.time.ScalaTime.*
-import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.command.{CommandRunOverview, CommonCommand}
 import scala.concurrent.duration.Deadline
 

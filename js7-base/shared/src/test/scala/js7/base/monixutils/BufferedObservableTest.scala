@@ -3,7 +3,6 @@ package js7.base.monixutils
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
-import monix.execution.Scheduler.Implicits.traced
 import monix.execution.schedulers.TestScheduler
 import monix.reactive.Observable
 

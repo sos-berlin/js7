@@ -121,7 +121,6 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
       OrderDetachable,
       OrderDetached,
       OrderFailed(innerBlock % 0)))
-  }
 
   "JS-2093 OutOfMemoryError" in:
     val workflow = Workflow(WorkflowPath("OOM"), Seq(
@@ -138,7 +137,6 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
           stopPositions = Set(innerBlock % 1),
           arguments = Map("FAIL" -> BooleanValue.True)))
     }
-}
 
 object ExecuteOrderInInnerBlockTest:
   private val agentPath = AgentPath("A-AGENT")

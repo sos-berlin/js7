@@ -29,7 +29,7 @@ extends EventInstructionExecutor:
             execute(instr, order, workflow, state)))
 
   private def execute(instr: Finish, order: Order[Order.State], workflow: Workflow, state: StateView)
-  : Checked[List[KeyedEvent[OrderEvent.OrderActorEvent]]] =
+  : Checked[List[KeyedEvent[OrderActorEvent]]] =
     order.state match
       case _: Order.Ready =>
         order.position.forkBranchReversed match
@@ -52,7 +52,6 @@ extends EventInstructionExecutor:
                   (instr.outcome.forall(_.isSucceeded) && order.position != gotoEnd)
                     .thenList(OrderMoved(gotoEnd)))
             yield events
-        }
 
       case _ => Right(Nil)
 
