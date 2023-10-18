@@ -723,11 +723,11 @@ with BlockingItemUpdater
 
     withTemporaryItem(workflow) { workflow =>
       val orderId = OrderId("RETRY")
-      controllerApi.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+      controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
         .await(99.s).orThrow
       eventWatch.await[OrderRetrying](_.key == orderId)
 
-      controllerApi.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+      controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
       eventWatch.await[OrderTerminated](_.key == orderId)
 
       assert(eventWatch.eventsByKey[OrderEvent](orderId)

@@ -77,7 +77,7 @@ final class FailTest extends OurTestSuite with ControllerAgentForScalaTest with 
 
     withTemporaryItem(workflow) { workflow =>
       val orderId = OrderId("FAIL-AND-CATCH")
-      controllerApi.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+      controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
         .await(99.s).orThrow
       eventWatch.await[OrderDeleted](_.key == orderId)
 

@@ -272,9 +272,9 @@ final class RetryTest extends OurTestSuite with ControllerAgentForScalaTest with
         controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
         for (_ <- 1 to 10)
           eventId = eventWatch.await[OrderRetrying](_.key == orderId, after = eventId).last.eventId
-        controller
-          .executeCommandForTest(CancelOrders(Seq(orderId), CancellationMode.FreshOrStarted()))
-          .orThrow
+        controller.api
+          .executeCommand(CancelOrders(Seq(orderId), CancellationMode.FreshOrStarted()))
+          .await(99.s).orThrow
         assert(eventWatch
           .keyedEvents[OrderEvent](_.key == orderId, after = EventId.BeforeFirst)
           .take(20)
@@ -323,9 +323,9 @@ final class RetryTest extends OurTestSuite with ControllerAgentForScalaTest with
         controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
         for (_ <- 1 to 10)
           eventId = eventWatch.await[OrderRetrying](_.key == orderId, after = eventId).last.eventId
-        controller
-          .executeCommandForTest(CancelOrders(Seq(orderId), CancellationMode.FreshOrStarted()))
-          .orThrow
+        controller.api
+          .executeCommand(CancelOrders(Seq(orderId), CancellationMode.FreshOrStarted()))
+          .await(99.s).orThrow
         assert(eventWatch
           .keyedEvents[OrderEvent](_.key == orderId, after = EventId.BeforeFirst)
           .take(25)
