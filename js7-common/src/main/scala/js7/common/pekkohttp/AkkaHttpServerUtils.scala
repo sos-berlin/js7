@@ -213,7 +213,7 @@ object PekkoHttpServerUtils:
   private class SegmentPathMatcher(segment: String) extends PathMatcher0:
     def apply(path: Uri.Path) = path match
       case Uri.Path.Segment(`segment`, tail) =>
-        Matched(tail, EmptyTuple)
+        Matched(tail, ())
       case _ =>
         Unmatched
 
@@ -238,12 +238,12 @@ object PekkoHttpServerUtils:
   private def matchSegments(prefix: Uri.Path): PathMatcher0 =
     import org.apache.pekko.http.scaladsl.server.PathMatcher.*
     if prefix.isEmpty then
-      provide(EmptyTuple)
+      provide(())
     else
       new PathMatcher[Unit]:
         def apply(path: Uri.Path) =
           if path startsWithPath prefix then
-            Matched(path drop prefix.length, EmptyTuple)
+            Matched(path drop prefix.length, ())
           else
             Unmatched
 
