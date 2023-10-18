@@ -16,8 +16,8 @@ extends EventInstructionExecutor with PositionInstructionExecutor:
 
   def toEvents(instruction: End, order: Order[Order.State], state: StateView) =
     order.position.parent
-      .filter(_ => order.position.branchPath != order.innerBlock)
-      .match
+      .filter(_ => !order.isInOutermostBlock)
+      .match {
         case None =>
           order.state match
             case _: Order.IsFreshOrReady =>
@@ -35,7 +35,7 @@ extends EventInstructionExecutor with PositionInstructionExecutor:
 
   def nextMove(instruction: End, order: Order[Order.State], state: StateView) =
     Right(
-      if order.position.branchPath == order.innerBlock then
+      if order.isInOutermostBlock then
         None
       else
         for

@@ -4,29 +4,40 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Checked.Ops
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.test.OurTestSuite
+import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent
 import js7.data.job.RelativePathExecutable
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderForked, OrderJoined, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderStarted}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCaught, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.NamedValues
 import js7.data.workflow.position.BranchPath.syntax.*
+import js7.data.workflow.instructions.{Fail, Retry, TryInstruction}
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowParser, WorkflowPath}
 import js7.tests.FailTest.*
-import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
+import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import monix.execution.Scheduler.Implicits.traced
 import org.scalactic.source
 import scala.reflect.ClassTag
 
-final class FailTest extends OurTestSuite with ControllerAgentForScalaTest:
+final class FailTest
+extends OurTestSuite, ControllerAgentForScalaTest, with BlockingItemUpdater:
+
   protected val agentPaths = Seq(agentPath)
   protected val items = Nil
+
+  override protected val controllerConfig = config"""
+    js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
+    """
+
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on
     """
+
   private val workflowIdIterator = Iterator.from(1).map(i => WorkflowPath(s"WORKFLOW-$i") ~ i.toString)
   private val orderIdIterator = Iterator.from(1).map(i => OrderId(s"♦️-$i"))
 
@@ -55,6 +66,31 @@ final class FailTest extends OurTestSuite with ControllerAgentForScalaTest:
         OrderDetachable,
         OrderDetached,
         OrderFailed(Position(1))))
+
+  "Fail and Catch" in:
+    val workflow = Workflow.of(WorkflowPath("FAIL-AND-CATCH"),
+      TryInstruction(
+        Workflow.of(
+          Fail()),
+        Workflow.empty))
+
+    withTemporaryItem(workflow) { workflow =>
+      val orderId = OrderId("FAIL-AND-CATCH")
+      controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+        .await(99.s).orThrow
+      eventWatch.await[OrderDeleted](_.key == orderId)
+
+      assert(eventWatch.eventsByKey[OrderEvent](orderId) ==
+        Seq(
+          OrderAdded(workflow.id, deleteWhenTerminated = true),
+          OrderMoved(Position(0) / "try+0" % 0),
+          OrderStarted,
+          OrderOutcomeAdded(Outcome.failed),
+          OrderCaught(Position(0) / "catch+0" % 0),
+          OrderMoved(Position(1)),
+          OrderFinished(),
+          OrderDeleted))
+    }
 
   "Fail (returnCode=7)" in:
     val workflowId = workflowIdIterator.next()
@@ -134,6 +170,31 @@ final class FailTest extends OurTestSuite with ControllerAgentForScalaTest:
         OrderMoved(Position(0) / "fork+🍋" % 0 / "try+0" % 0),
         OrderOutcomeAdded(Outcome.failed),
         OrderFailedInFork(Position(0) / BranchId.fork("🍋") % 0 / BranchId.try_(0) % 0)))
+
+  "Uncatchable fail leaves retry loop" in {
+    val workflowId = workflowIdIterator.next()
+    runUntil[OrderFailed](OrderId("🔷"),
+      Workflow(workflowId, Seq(
+        TryInstruction(
+          tryWorkflow = Workflow.of(
+            TryInstruction(
+              tryWorkflow = Workflow.of(
+                Fail()),
+              catchWorkflow = Workflow.of(
+                Fail(uncatchable = true)))),
+          catchWorkflow = Workflow.of(
+            Retry()),
+          retryDelays = Option(Vector(100.s)),
+          maxTries = Some(10)))),
+      Vector(
+        OrderAdded(workflowId),
+        OrderMoved(Position(0) / "try+0" % 0 / "try+0" % 0),
+        OrderStarted,
+        OrderOutcomeAdded(Outcome.failed),
+        OrderCaught(Position(0) / "try+0" % 0 / "catch+0" % 0),
+        OrderOutcomeAdded(Outcome.failed),
+        OrderFailed(Position(0) / "try+0" % 0 / "catch+0" % 0)))
+  }
 
   private def runUntil[E <: OrderEvent: ClassTag: Tag](
     orderId: OrderId,

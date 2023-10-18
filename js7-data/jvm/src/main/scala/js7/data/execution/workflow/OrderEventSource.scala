@@ -598,5 +598,5 @@ object OrderEventSource:
     catchStartsWithRetry &&
       firstCatchPos.parent.forall(parentPos =>
         workflow.instruction(parentPos) match { // Parent must be a TryInstruction
-          case t: TryInstruction => t.maxTries.forall(firstCatchPos.tryCount >= _)
+          case t: TryInstruction => t.maxTries.exists(firstCatchPos.tryCount >= _)
         })

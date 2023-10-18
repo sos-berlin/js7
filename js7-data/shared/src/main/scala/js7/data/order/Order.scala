@@ -671,6 +671,7 @@ final case class Order[+S <: Order.State](
       isState[Processed] ||
       isState[ProcessingKilled] ||
       isState[BetweenCycles] ||
+      isState[DelayedAfterError] ||
       isState[FailedWhileFresh] ||
       isState[Failed] ||
       isState[FailedInFork] ||
@@ -731,6 +732,9 @@ final case class Order[+S <: Order.State](
 
   def isProcessable =
     isState[IsFreshOrReady] && !isSuspendedOrStopped && !isMarked
+
+  def isInOutermostBlock: Boolean =
+    position.branchPath == innerBlock
 
   /** Number of executions for this job (starting with 1). */
   def historicJobExecutionCount(jobKey: JobKey, workflow: Workflow): Int =
