@@ -8,9 +8,9 @@ import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.https.{KeyStoreRef, TrustStoreRef}
 import js7.base.test.OurTestSuite
-import js7.common.akkahttp.web.data.{WebServerBinding, WebServerPort}
 import js7.common.commandline.CommandLineArguments
 import js7.common.configuration.CommonConfigurationTest.*
+import js7.common.pekkohttp.web.data.{WebServerBinding, WebServerPort}
 
 /**
   * @author Joacim Zschimmer

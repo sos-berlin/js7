@@ -1,6 +1,6 @@
 package js7.provider
 
-import akka.actor.ActorSystem
+import org.apache.pekko.actor.ActorSystem
 import cats.effect.Resource
 import cats.implicits.*
 import com.typesafe.config.ConfigUtil
@@ -23,9 +23,9 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.ProgramTermination
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichPartialFunction}
-import js7.common.akkautils.Akkas
+import js7.common.pekkoutils.Pekkos
 import js7.common.files.{DirectoryReader, PathSeqDiff, PathSeqDiffer}
-import js7.controller.client.{AkkaHttpControllerApi, HttpControllerApi}
+import js7.controller.client.{PekkoHttpControllerApi, HttpControllerApi}
 import js7.controller.workflow.WorkflowReader
 import js7.core.item.{ItemPaths, SimpleItemReader, TypedSourceReader}
 import js7.data.agent.AgentRef
@@ -219,7 +219,7 @@ object Provider:
   def resource(conf: ProviderConfiguration)(implicit scheduler: Scheduler)
   : Resource[Task, Provider] =
     for
-      actorSystem <- Akkas.actorSystemResource("Providor", conf.config)
+      actorSystem <- Pekkos.actorSystemResource("Providor", conf.config)
       iox <- IOExecutor.resource[Task](conf.config, "Provider")
       provider <- resource2(conf)(scheduler, iox, actorSystem)
     yield provider
@@ -232,10 +232,10 @@ object Provider:
       password <- conf.config.optionAs[String]("js7.provider.controller.password")
     yield UserAndPassword(UserId(userName), SecretString(password))
     for
-      api <- AkkaHttpControllerApi.resource(
+      api <- PekkoHttpControllerApi.resource(
         Admission(conf.controllerUri, userAndPassword), conf.httpsConfig)
       controllerApi <- ControllerApi.resource(
-        AkkaHttpControllerApi.admissionsToApiResource(
+        PekkoHttpControllerApi.admissionsToApiResource(
           Nel.one(Admission(conf.controllerUri, userAndPassword)),
           conf.httpsConfig))
 

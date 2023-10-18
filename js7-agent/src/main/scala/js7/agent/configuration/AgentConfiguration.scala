@@ -1,6 +1,5 @@
 package js7.agent.configuration
 
-import akka.util.Timeout
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Files.{createDirectory, exists}
 import java.nio.file.Path
@@ -12,21 +11,22 @@ import js7.base.time.JavaTimeConverters.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.base.utils.Tests.isTest
 import js7.cluster.ClusterConf
-import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.commandline.CommandLineArguments
 import js7.common.configuration.CommonConfiguration
 import js7.common.http.configuration.RecouplingStreamReaderConfs
+import js7.common.pekkohttp.web.data.WebServerPort
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalLocation
 import js7.subagent.configuration.{DirectorConf, SubagentConf}
+import org.apache.pekko.util.Timeout
 
 /**
  * @author Joacim Zschimmer
  */
 final case class AgentConfiguration(
   subagentConf: SubagentConf,
-  akkaAskTimeout: Timeout,
+  pekkoAskTimeout: Timeout,
   clusterConf: ClusterConf,
   name: String)
 extends CommonConfiguration:
@@ -48,7 +48,7 @@ extends CommonConfiguration:
   def config: Config =
     subagentConf.config
 
-  implicit def implicitAkkaAskTimeout: Timeout = akkaAskTimeout
+  implicit def implicitPekkoAskTimeout: Timeout = pekkoAskTimeout
 
   def createDirectories(): Unit =
     subagentConf.finishAndProvideFiles()
@@ -109,6 +109,6 @@ object AgentConfiguration:
     import subagentConf.config
     new AgentConfiguration(
       subagentConf,
-      akkaAskTimeout = config.getDuration("js7.akka.ask-timeout").toFiniteDuration,
+      pekkoAskTimeout = config.getDuration("js7.pekko.ask-timeout").toFiniteDuration,
       clusterConf = ClusterConf.fromConfig(config).orThrow,
       name = name)

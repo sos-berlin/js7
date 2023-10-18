@@ -1,6 +1,5 @@
 package js7.cluster
 
-import akka.util.Timeout
 import cats.effect.{ExitCase, Resource}
 import js7.base.auth.{Admission, UserAndPassword}
 import js7.base.eventbus.EventPublisher
@@ -21,6 +20,7 @@ import js7.data.cluster.ClusterState.{FailedOver, HasNodes, SwitchedOver}
 import js7.data.cluster.ClusterWatchProblems.{ClusterNodeLossNotConfirmedProblem, ClusterWatchInactiveNodeProblem}
 import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeApi, ClusterState}
 import monix.eval.Task
+import org.apache.pekko.util.Timeout
 import scala.concurrent.duration.Deadline.now
 import scala.reflect.ClassTag
 
@@ -170,7 +170,7 @@ private[js7] object ClusterCommon:
     clusterConf: ClusterConf,
     licenseChecker: LicenseChecker,
     testEventPublisher: EventPublisher[Any])(
-    implicit akkaTimeout: Timeout)
+    implicit pekkoTimeout: Timeout)
   : Resource[Task, ClusterCommon] =
       Resource.make(
         Task(new ClusterCommon(

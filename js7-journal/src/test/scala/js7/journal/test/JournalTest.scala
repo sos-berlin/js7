@@ -1,6 +1,6 @@
 package js7.journal.test
 
-import akka.pattern.ask
+import org.apache.pekko.pattern.ask
 import java.nio.file.Files.{delete, deleteIfExists}
 import js7.base.BuildInfo
 import js7.base.circeutils.CirceUtils.*

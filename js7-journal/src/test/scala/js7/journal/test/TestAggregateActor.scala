@@ -1,7 +1,7 @@
 package js7.journal.test
 
-import akka.Done
-import akka.actor.{ActorRef, Status}
+import org.apache.pekko.Done
+import org.apache.pekko.actor.{ActorRef, Status}
 import com.softwaremill.tagging.@@
 import js7.base.generic.Accepted
 import js7.base.log.Logger

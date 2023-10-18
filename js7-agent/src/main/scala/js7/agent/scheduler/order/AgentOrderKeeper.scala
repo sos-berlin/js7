@@ -1,7 +1,5 @@
 package js7.agent.scheduler.order
 
-import akka.actor.{ActorRef, DeadLetterSuppression, Stash, Terminated}
-import akka.pattern.{ask, pipe}
 import com.softwaremill.tagging.{@@, Tagger}
 import io.circe.syntax.EncoderOps
 import java.time.ZoneId
@@ -30,8 +28,8 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.base.utils.{Allocated, DuplicateKeyException, SetOnce}
 import js7.cluster.ClusterNode
-import js7.common.akkautils.Akkas.{encodeAsActorName, uniqueActorName}
-import js7.common.akkautils.SupervisorStrategies
+import js7.common.pekkoutils.Pekkos.{encodeAsActorName, uniqueActorName}
+import js7.common.pekkoutils.SupervisorStrategies
 import js7.common.system.PlatformInfos.currentPlatformInfo
 import js7.common.system.startup.ServiceMain
 import js7.common.utils.Exceptions.wrapException
@@ -64,6 +62,8 @@ import js7.subagent.Subagent
 import js7.subagent.director.SubagentKeeper
 import monix.eval.{Fiber, Task}
 import monix.execution.{Cancelable, Scheduler}
+import org.apache.pekko.actor.{ActorRef, DeadLetterSuppression, Stash, Terminated}
+import org.apache.pekko.pattern.{ask, pipe}
 import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.concurrent.duration.*
@@ -90,7 +90,7 @@ final class AgentOrderKeeper(
   (implicit protected val scheduler: Scheduler)
 extends MainJournalingActor[AgentState, Event]
 with Stash:
-  import conf.implicitAkkaAskTimeout
+  import conf.implicitPekkoAskTimeout
   import context.{actorOf, watch}
   import forDirector.{iox, subagent as localSubagent}
 

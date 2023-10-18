@@ -1,6 +1,6 @@
 package js7.agent
 
-import akka.actor.ActorSystem
+import org.apache.pekko.actor.ActorSystem
 import cats.effect.{ExitCase, Resource}
 import js7.agent.RunningAgent.TestWiring
 import js7.agent.TestAgent.*

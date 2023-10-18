@@ -1,11 +1,10 @@
 package js7.agent.tests
 
-import akka.http.scaladsl.model.StatusCodes.*
 import js7.agent.RunningAgent
-import js7.agent.client.AkkaHttpAgentTextApi
+import js7.agent.client.PekkoHttpAgentTextApi
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.commands.AgentCommand
-import js7.agent.tests.AkkaHttpAgentTextApiTest.*
+import js7.agent.tests.PekkoHttpAgentTextApiTest.*
 import js7.agent.tests.TestAgentDirectoryProvider.TestUserAndPassword
 import js7.base.auth.{HashedPassword, SimpleUser, UserAndPassword}
 import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichCirceString}
@@ -17,10 +16,12 @@ import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.HasCloser
-import js7.common.akkahttp.web.auth.OurMemoizingAuthenticator
-import js7.common.http.AkkaHttpClient
+import js7.common.http.PekkoHttpClient
+import js7.common.pekkohttp.web.auth.OurMemoizingAuthenticator
 import js7.common.utils.FreeTcpPortFinder.{findFreeLocalUri, findFreeTcpPort}
 import monix.execution.Scheduler.Implicits.traced
+import org.apache.pekko
+import org.apache.pekko.http.scaladsl.model.StatusCodes.*
 import org.scalatest.Assertions.*
 import org.scalatest.BeforeAndAfterAll
 import scala.collection.mutable
@@ -28,11 +29,11 @@ import scala.collection.mutable
 /**
  * @author Joacim Zschimmer
  */
-final class AkkaHttpAgentTextApiTest
+final class PekkoHttpAgentTextApiTest
 extends OurTestSuite with BeforeAndAfterAll with HasCloser with TestAgentProvider:
   override protected lazy val agentConfiguration = AgentConfiguration.forTest(
     configAndData = agentDirectory,
-    name = "AkkaHttpAgentTextApiTest",
+    name = "PekkoHttpAgentTextApiTest",
     config"js7.web.server.auth.https-client-authentication = off",   // TODO Test with client certificate
     httpPort = None, httpsPort = Some(findFreeTcpPort()))
 
@@ -66,7 +67,7 @@ extends OurTestSuite with BeforeAndAfterAll with HasCloser with TestAgentProvide
 
   "Unauthorized when credentials are wrong" in:
     autoClosing(newTextAgentClient(Some(TestUserId -> SecretString("WRONG-PASSWORD")))(_ => ())) { client =>
-      val e = intercept[AkkaHttpClient.HttpException]:
+      val e = intercept[PekkoHttpClient.HttpException]:
         client.login() await 99.s
       assert(e.status == Unauthorized)
       assert(e.dataAsString contains "Login: unknown user or invalid password")
@@ -90,24 +91,24 @@ extends OurTestSuite with BeforeAndAfterAll with HasCloser with TestAgentProvide
     }
     assert(output == List("JS7 Agent is responding"))
     val agentUri = findFreeLocalUri()
-    autoClosing(new AkkaHttpAgentTextApi(agentUri, None, _ => ())) { client =>
+    autoClosing(new PekkoHttpAgentTextApi(agentUri, None, _ => ())) { client =>
       val t = intercept[Exception]:
         client.requireIsResponding()
-      assert(t.isInstanceOf[akka.stream.StreamTcpException]
-        || t.getClass.getName.startsWith("akka.http")
+      assert(t.isInstanceOf[pekko.stream.StreamTcpException]
+        || t.getClass.getName.startsWith("pekko.http")
         || t.toString.contains("java.net.ConnectException"))
     }
 
   private def newTextAgentClient(userAndPassword: Option[UserAndPassword])(output: String => Unit) =
-    new AkkaHttpAgentTextApi(agentUri = agent.localUri, userAndPassword, output,
+    new PekkoHttpAgentTextApi(agentUri = agent.localUri, userAndPassword, output,
       configDirectory = Some(configDirectory))
 
-private object AkkaHttpAgentTextApiTest:
+private object PekkoHttpAgentTextApiTest:
   private val ExpectedTerminate = AgentCommand.ShutDown(Some(SIGTERM))
   private val TestUserId = TestUserAndPassword.userId
   private val Password = TestUserAndPassword.password
 
   private def interceptUnauthorized(body: => Unit) =
-    val e = intercept[AkkaHttpClient.HttpException]:
+    val e = intercept[PekkoHttpClient.HttpException]:
       body
     assert(e.status == Unauthorized)

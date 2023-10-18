@@ -1,6 +1,5 @@
 package js7.tests.controller.commands
 
-import akka.http.scaladsl.model.StatusCodes.InternalServerError
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.configutils.Configs.*
 import js7.base.generic.SecretString
@@ -9,8 +8,8 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
-import js7.common.http.AkkaHttpClient.HttpException
-import js7.controller.client.{AkkaHttpControllerApi, HttpControllerApi}
+import js7.common.http.PekkoHttpClient.HttpException
+import js7.controller.client.{HttpControllerApi, PekkoHttpControllerApi}
 import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.subagent.{SubagentId, SubagentItem}
@@ -18,18 +17,19 @@ import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.tests.controller.commands.AddOrderTimeoutTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.traced
+import org.apache.pekko.http.scaladsl.model.StatusCodes.InternalServerError
 
 final class AddOrderTimeoutTest extends OurTestSuite with ControllerAgentForScalaTest:
   protected val agentPaths = Nil
   protected val items = Seq(agentRef, subagentItem, workflow)
   override protected val controllerConfig = config"""
-    js7.akka.ask-timeout = 2s
+    js7.pekko.ask-timeout = 2s
     js7.TEST-ONLY.add-order-delay = 10s
     """
 
   "AddOrder timeout is returned as 403 Service Unavailable" in:
     val httpApi: HttpControllerApi =
-      new AkkaHttpControllerApi(
+      new PekkoHttpControllerApi(
         controller.localUri,
         Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD"))),
           actorSystem = controller.actorSystem, config = controller.config, name = controller.conf.name)

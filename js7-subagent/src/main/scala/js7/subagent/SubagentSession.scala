@@ -1,7 +1,7 @@
 package js7.subagent
 
 import js7.base.auth.SimpleUser
-import js7.common.akkahttp.web.session.{Session, SessionInit}
+import js7.common.pekkohttp.web.session.{Session, SessionInit}
 
 final case class SubagentSession(sessionInit: SessionInit)
 extends Session:

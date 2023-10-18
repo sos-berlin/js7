@@ -10,7 +10,7 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.base.web.Uri
 import js7.common.commandline.CommandLineArguments
 import js7.common.system.startup.JavaMain
-import js7.controller.client.AkkaHttpControllerTextApi
+import js7.controller.client.PekkoHttpControllerTextApi
 import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
 
@@ -34,7 +34,7 @@ object ControllerClientMain:
   def run(args: Seq[String], print: String => Unit): ReturnCode =
     val (controllerUri, configDir, dataDir, operations) = parseArgs(args)
     val sessionToken = SessionToken(SecretString(Files.readAllLines(dataDir resolve "work/session-token").asScala mkString ""))
-    autoClosing(new AkkaHttpControllerTextApi(controllerUri, None, print, configDir)) { textApi =>
+    autoClosing(new PekkoHttpControllerTextApi(controllerUri, None, print, configDir)) { textApi =>
       textApi.setSessionToken(sessionToken)
       if operations.isEmpty then
         ReturnCode(if textApi.checkIsResponding() then 0 else 1)

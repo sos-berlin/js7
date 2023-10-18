@@ -15,7 +15,7 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.common.akkahttp.web.data.WebServerPort
+import js7.common.pekkohttp.web.data.WebServerPort
 import js7.common.commandline.CommandLineArguments
 import js7.launcher.configuration.ProcessKillScript
 import js7.subagent.configuration.SubagentConfTest.*

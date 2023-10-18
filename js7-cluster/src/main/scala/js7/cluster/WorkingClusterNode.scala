@@ -1,6 +1,7 @@
 package js7.cluster
 
-import akka.actor.ActorRefFactory
+import org.apache.pekko
+import org.apache.pekko.actor.ActorRefFactory
 import cats.effect.Resource
 //diffx import com.softwaremill.diffx
 import izumi.reflect.Tag
@@ -195,7 +196,7 @@ object WorkingClusterNode:
       nodeNameToPassword: NodeNameToPassword[S],
       scheduler: Scheduler,
       actorRefFactory: ActorRefFactory,
-      timeout: akka.util.Timeout)
+      timeout: pekko.util.Timeout)
   : Resource[Task, WorkingClusterNode[S]] =
     for
       _ <- Resource.eval(Task.unless(recovered.clusterState == ClusterState.Empty)(

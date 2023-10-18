@@ -1,6 +1,6 @@
 package js7.tests
 
-import akka.actor.ActorSystem
+import org.apache.pekko.actor.ActorSystem
 import java.lang.System.lineSeparator as nl
 import js7.agent.TestAgent
 import js7.agent.client.AgentClient

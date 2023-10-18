@@ -1,13 +1,14 @@
 package js7.common.http
 
-import akka.NotUsed
-import akka.stream.Materializer
-import akka.stream.scaladsl.{Sink, Source}
+import org.apache.pekko
+import org.apache.pekko.NotUsed
+import org.apache.pekko.stream.Materializer
+import org.apache.pekko.stream.scaladsl.{Sink, Source}
 import cats.effect.ExitCase
 import com.typesafe.scalalogging.Logger
 import izumi.reflect.Tag
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
-import js7.common.akkahttp.ExceptionHandling.webLogger
+import js7.common.pekkohttp.ExceptionHandling.webLogger
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
@@ -19,27 +20,27 @@ import monix.reactive.Observable
 object StreamingSupport:
   private val logger = Logger("js7.common.http.StreamingSupport")  // TODO Use Logger adapter (unreachable in module common)
 
-  implicit final class AkkaObservable[A](private val observable: Observable[A]) extends AnyVal:
-    def toAkkaSourceForHttpResponse(implicit scheduler: Scheduler, A: Tag[A]): Source[A, NotUsed] =
-      logAkkaStreamErrorToWebLogAndIgnore(toAkkaSource)
+  implicit final class PekkoObservable[A](private val observable: Observable[A]) extends AnyVal:
+    def toPekkoSourceForHttpResponse(implicit scheduler: Scheduler, A: Tag[A]): Source[A, NotUsed] =
+      logPekkoStreamErrorToWebLogAndIgnore(toPekkoSource)
 
-    def toAkkaSourceTask(implicit A: Tag[A]): Task[Source[A, NotUsed]] =
+    def toPekkoSourceTask(implicit A: Tag[A]): Task[Source[A, NotUsed]] =
       Task.deferAction(implicit scheduler => Task(
-        toAkkaSource(scheduler, A)))
+        toPekkoSource(scheduler, A)))
 
-    def toAkkaSource(implicit scheduler: Scheduler, A: Tag[A]): Source[A, NotUsed] =
+    def toPekkoSource(implicit scheduler: Scheduler, A: Tag[A]): Source[A, NotUsed] =
       Source.fromPublisher(
         observable
           .guaranteeCase {
             case ExitCase.Completed => Task.unit
-            case exitCase => Task { logger.trace(s"Observable[${A.tag}] toAkkaSource: $exitCase") }
+            case exitCase => Task { logger.trace(s"Observable[${A.tag}] toPekkoSource: $exitCase") }
           }
           .toReactivePublisher(scheduler))
 
-  def logAkkaStreamErrorToWebLogAndIgnore[A: Tag](source: Source[A, NotUsed]): Source[A, NotUsed] =
+  def logPekkoStreamErrorToWebLogAndIgnore[A: Tag](source: Source[A, NotUsed]): Source[A, NotUsed] =
     source.recoverWithRetries(1, { case throwable =>
       // These are the only messages logged
-      val isDebug = throwable.isInstanceOf[akka.stream.AbruptTerminationException]
+      val isDebug = throwable.isInstanceOf[pekko.stream.AbruptTerminationException]
       val msg = s"Terminating Source[${implicitly[Tag[A]].tag}] stream due to error: ${throwable.toStringWithCauses}"
       if isDebug then webLogger.debug(msg)
       else webLogger.warn(msg)
@@ -52,7 +53,7 @@ object StreamingSupport:
       Source.empty
     })
 
-  implicit final class ObservableAkkaSource[Out, Mat](private val source: Source[Out, Mat]) extends AnyVal:
+  implicit final class ObservablePekkoSource[Out, Mat](private val source: Source[Out, Mat]) extends AnyVal:
     def toObservable(implicit m: Materializer): Observable[Out] =
       Observable
         .fromReactivePublisher(source.runWith(Sink.asPublisher(fanout = false)))

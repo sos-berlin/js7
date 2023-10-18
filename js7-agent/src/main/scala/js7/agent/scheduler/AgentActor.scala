@@ -1,7 +1,5 @@
 package js7.agent.scheduler
 
-import akka.actor.{Actor, ActorRef, Props, Stash, Terminated}
-import akka.pattern.ask
 import cats.syntax.traverse.*
 import java.util.Objects.requireNonNull
 import js7.agent.DirectorTermination
@@ -26,7 +24,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, SetOnce}
 import js7.base.web.Uri
 import js7.cluster.ClusterNode
-import js7.common.akkautils.{SimpleStateActor, SupervisorStrategies}
+import js7.common.pekkoutils.{SimpleStateActor, SupervisorStrategies}
 import js7.data.agent.Problems.{AgentAlreadyDedicatedProblem, AgentIsShuttingDown, AgentNotDedicatedProblem, AgentPathMismatchProblem, AgentRunIdMismatchProblem, AgentWrongControllerProblem}
 import js7.data.agent.{AgentPath, AgentRef, AgentRunId}
 import js7.data.cluster.ClusterEvent.ClusterResetStarted
@@ -44,6 +42,8 @@ import js7.subagent.Subagent
 import js7.subagent.director.RemoteSubagentDriver
 import monix.eval.Task
 import monix.execution.Scheduler
+import org.apache.pekko.actor.{Actor, ActorRef, Props, Stash, Terminated}
+import org.apache.pekko.pattern.ask
 import scala.concurrent.{Future, Promise}
 
 /**
@@ -60,7 +60,7 @@ private[agent] final class AgentActor(
   (implicit protected val scheduler: Scheduler)
 extends Actor with Stash with SimpleStateActor:
 
-  import agentConf.{implicitAkkaAskTimeout, journalLocation}
+  import agentConf.{implicitPekkoAskTimeout, journalLocation}
   import context.{actorOf, watch}
   val journal = journalAllocated.allocatedThing
   import journal.eventWatch

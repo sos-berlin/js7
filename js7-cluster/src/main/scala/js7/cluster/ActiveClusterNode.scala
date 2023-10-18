@@ -1,9 +1,9 @@
 package js7.cluster
 
-import akka.pattern.ask
-import akka.util.Timeout
 import cats.syntax.flatMap.*
 import cats.syntax.monoid.*
+import org.apache.pekko.pattern.ask
+import org.apache.pekko.util.Timeout
 //diffx import com.softwaremill.diffx
 import js7.base.auth.{Admission, UserAndPassword}
 import js7.base.generic.Completed

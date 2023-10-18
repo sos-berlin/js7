@@ -1,13 +1,13 @@
 package js7.controller.web.controller.api.test
 
-import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
+import org.apache.pekko.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import js7.base.auth.SimpleUser
 import js7.base.configutils.Configs.*
 import js7.base.time.ScalaTime.*
-import js7.common.akkahttp.web.auth.GateKeeper
-import js7.common.akkahttp.web.data.WebServerBinding
-import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
-import js7.common.akkahttp.{AkkaHttpUtils, ExceptionHandling}
+import js7.common.pekkohttp.web.auth.GateKeeper
+import js7.common.pekkohttp.web.data.WebServerBinding
+import js7.common.pekkohttp.web.session.{SessionRegister, SimpleSession}
+import js7.common.pekkohttp.{PekkoHttpUtils, ExceptionHandling}
 import js7.common.message.ProblemCodeMessages
 import js7.controller.configuration.ControllerConfiguration.DefaultConfig
 import monix.execution.Scheduler.Implicits.traced
@@ -40,8 +40,8 @@ trait RouteTester extends ScalatestRouteTest with ExceptionHandling:
   override final def testConfig = config
 
   protected def config = config"""
-    akka.http.host-connection-pool.response-entity-subscription-timeout = 10s
-    akka.loglevel = warning
+    pekko.http.host-connection-pool.response-entity-subscription-timeout = 10s
+    pekko.loglevel = warning
     js7.web.client.compression = off
     js7.web.server.verbose-error-messages = on
     js7.web.server.services.event.streaming.delay = 20ms
@@ -51,7 +51,7 @@ trait RouteTester extends ScalatestRouteTest with ExceptionHandling:
     """
 
   override def beforeAll() =
-    AkkaHttpUtils.avoidLazyObjectInitializationDeadlock()
+    PekkoHttpUtils.avoidLazyObjectInitializationDeadlock()
     super.beforeAll()
 
   override def afterAll() =

@@ -29,14 +29,14 @@ import js7.base.utils.{Allocated, HasCloser}
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatch.OnUndecidableClusterNodeLoss
 import js7.cluster.watch.ClusterWatchService
-import js7.common.akkautils.Akkas
 import js7.common.configuration.Js7Configuration
+import js7.common.pekkoutils.Pekkos
 import js7.common.utils.Exceptions.repeatUntilNoException
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.RunningController
 import js7.controller.RunningController.TestWiring
-import js7.controller.client.AkkaHttpControllerApi
-import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResource
+import js7.controller.client.PekkoHttpControllerApi
+import js7.controller.client.PekkoHttpControllerApi.admissionsToApiResource
 import js7.controller.configuration.ControllerConfiguration
 import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.cluster.ClusterWatchId
@@ -181,7 +181,7 @@ extends HasCloser:
               testController.waitUntilReady()
             body(testController)
           catch { case NonFatal(t) =>
-            // Akka may crash before the caller gets the error so we log the error here
+            // Pekko may crash before the caller gets the error so we log the error here
             logger.error(s"💥💥💥 ${t.toStringWithCauses}", t.nullIfNoStackTrace)
             try testController.terminate() await 99.s
             catch { case t2: Throwable if t2 ne t => t.addSuppressed(t2) }
@@ -189,7 +189,7 @@ extends HasCloser:
           }
         try testController.stop await 99.s
         catch { case NonFatal(t) =>
-          // Akka may crash before the caller gets the error so we log the error here
+          // Pekko may crash before the caller gets the error so we log the error here
           logger.error(s"💥💥💥 ${t.toStringWithCauses}", t.nullIfNoStackTrace)
           try testController.stop.await(99.s)
           catch { case t2: Throwable if t2 ne t => t.addSuppressed(t2) }
@@ -281,7 +281,7 @@ extends HasCloser:
     val result =
       try body(agents)
       catch { case NonFatal(t) =>
-        // Akka may crash before the caller gets the error so we log the error here
+        // Pekko may crash before the caller gets the error so we log the error here
         logger.error(s"💥💥💥 ${t.toStringWithCauses}", t.nullIfNoStackTrace)
         try agents.parTraverse(_.stop) await 99.s
         catch { case t2: Throwable if t2 ne t => t.addSuppressed(t2) }
@@ -452,7 +452,7 @@ object DirectoryProvider:
           |""".stripMargin + (delete ?? s"rm '$file'\n")
 
   /* Following resources have been generated with the command line:
-     js7-common/src/main/resources/js7/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh \
+     js7-common/src/main/resources/js7/common/pekkohttp/https/generate-self-signed-ssl-certificate-test-keystore.sh \
         --distinguished-name="CN=Primary Controller, DC=primary-controller, DC=DirectoryProvider, DC=tests, DC=js7, DC=sh" \
         --alias=controller \
         --host=localhost \
@@ -476,7 +476,7 @@ object DirectoryProvider:
     Seq(ExportedControllerTrustStoreRef))
 
   /* Following resources have been generated with the command line:
-     js7-common/src/main/resources/js7/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh \
+     js7-common/src/main/resources/js7/common/pekkohttp/https/generate-self-signed-ssl-certificate-test-keystore.sh \
         --distinguished-name="CN=Agent, DC=agent, DC=DirectoryProvider, DC=tests, DC=js7, DC=sh" \
         --alias=agent \
         --host=localhost \
@@ -496,11 +496,11 @@ object DirectoryProvider:
     config: Config = ConfigFactory.empty,
     onUndecidableClusterNodeLoss: OnUndecidableClusterNodeLoss = _ => Task.unit)
   : Resource[Task, ClusterWatchService] =
-    Akkas
+    Pekkos
       .actorSystemResource(clusterWatchId.string)
       .flatMap(implicit actorSystem =>
         ClusterWatchService.resource(
           clusterWatchId,
-          admissions.traverse(AkkaHttpControllerApi.resource(_, httpsConfig)),
+          admissions.traverse(PekkoHttpControllerApi.resource(_, httpsConfig)),
           config.withFallback(Js7Configuration.defaultConfig),
           onUndecidableClusterNodeLoss = onUndecidableClusterNodeLoss))

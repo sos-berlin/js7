@@ -1,6 +1,6 @@
 package js7.subagent.director
 
-import akka.actor.ActorSystem
+import org.apache.pekko.actor.ActorSystem
 import cats.effect.Resource
 import cats.implicits.catsSyntaxParallelUnorderedTraverse
 import cats.instances.option.*

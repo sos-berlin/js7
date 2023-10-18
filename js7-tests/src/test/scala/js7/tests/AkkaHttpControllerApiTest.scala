@@ -9,7 +9,7 @@ import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.web.Uri
-import js7.controller.client.AkkaHttpControllerApi
+import js7.controller.client.PekkoHttpControllerApi
 import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.controller.ControllerCommand.AddOrder
 import js7.data.controller.ControllerOverview
@@ -20,7 +20,7 @@ import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.AkkaHttpControllerApiTest.*
+import js7.tests.PekkoHttpControllerApiTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
@@ -28,12 +28,12 @@ import monix.execution.Scheduler.Implicits.traced
 /**
   * @author Joacim Zschimmer
   */
-final class AkkaHttpControllerApiTest extends OurTestSuite with ControllerAgentForScalaTest:
+final class PekkoHttpControllerApiTest extends OurTestSuite with ControllerAgentForScalaTest:
   protected val agentPaths = Nil
   protected val items = Seq(agentRef, subagentItem, workflow)
 
   private lazy val api =
-    new AkkaHttpControllerApi(controller.localUri, Some(userAndPassword),
+    new PekkoHttpControllerApi(controller.localUri, Some(userAndPassword),
       actorSystem = controller.actorSystem
     ).closeWithCloser
 
@@ -72,8 +72,8 @@ final class AkkaHttpControllerApiTest extends OurTestSuite with ControllerAgentF
     assert(controller.sessionRegister.count.await(99.s) == 1)
 
   "resource" in:
-    AkkaHttpControllerApi
-      .separateAkkaResource(Admission(controller.localUri, userAndPassword = Some(userAndPassword)))
+    PekkoHttpControllerApi
+      .separatePekkoResource(Admission(controller.localUri, userAndPassword = Some(userAndPassword)))
       .use(api => Task {
         api.login() await 99.s
         assert(controller.sessionRegister.count.await(99.s) == 2)
@@ -82,7 +82,7 @@ final class AkkaHttpControllerApiTest extends OurTestSuite with ControllerAgentF
       .map(_ => controller.sessionRegister.count.await(99.s) == 1)
       .await(99.s)
 
-private object AkkaHttpControllerApiTest:
+private object PekkoHttpControllerApiTest:
   private val userAndPassword = UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD"))
   private val agentRef = AgentRef(AgentPath("AGENT"), directors = Seq(SubagentId("SUBAGENT")))
   private val subagentItem = SubagentItem(SubagentId("SUBAGENT"), agentRef.path, Uri("http://0.0.0.0:0"))

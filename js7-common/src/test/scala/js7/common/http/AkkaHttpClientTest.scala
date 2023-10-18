@@ -1,13 +1,5 @@
 package js7.common.http
 
-import akka.actor.ActorSystem
-import akka.http.scaladsl.model.ContentTypes.{`application/json`, `text/plain(UTF-8)`}
-import akka.http.scaladsl.model.HttpMethods.POST
-import akka.http.scaladsl.model.StatusCodes.{BadRequest, InternalServerError, OK}
-import akka.http.scaladsl.model.headers.`Content-Type`
-import akka.http.scaladsl.model.{HttpEntity, HttpResponse}
-import akka.http.scaladsl.server.Directives.*
-import akka.util.ByteString
 import cats.syntax.option.*
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
@@ -27,18 +19,26 @@ import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.{Allocated, HasCloser}
 import js7.base.web.HttpClient.liftProblem
 import js7.base.web.Uri
-import js7.common.akkahttp.CirceJsonSupport
-import js7.common.akkahttp.web.AkkaWebServer
-import js7.common.akkautils.Akkas
-import js7.common.akkautils.Akkas.newActorSystem
-import js7.common.http.AkkaHttpClient.{HttpException, `x-js7-correlation-id`, `x-js7-request-id`, toPrettyProblem}
-import js7.common.http.AkkaHttpClientTest.*
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
-import js7.common.http.StreamingSupport.AkkaObservable
+import js7.common.http.PekkoHttpClient.{HttpException, `x-js7-correlation-id`, `x-js7-request-id`, toPrettyProblem}
+import js7.common.http.PekkoHttpClientTest.*
+import js7.common.http.StreamingSupport.PekkoObservable
+import js7.common.pekkohttp.CirceJsonSupport
+import js7.common.pekkohttp.web.PekkoWebServer
+import js7.common.pekkoutils.Pekkos
+import js7.common.pekkoutils.Pekkos.newActorSystem
 import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.http.scaladsl.model.ContentTypes.{`application/json`, `text/plain(UTF-8)`}
+import org.apache.pekko.http.scaladsl.model.HttpMethods.POST
+import org.apache.pekko.http.scaladsl.model.StatusCodes.{BadRequest, InternalServerError, OK}
+import org.apache.pekko.http.scaladsl.model.headers.`Content-Type`
+import org.apache.pekko.http.scaladsl.model.{HttpEntity, HttpResponse}
+import org.apache.pekko.http.scaladsl.server.Directives.*
+import org.apache.pekko.util.ByteString
 import org.scalatest.BeforeAndAfterAll
 import scala.concurrent.Await
 import scala.concurrent.duration.*
@@ -48,23 +48,23 @@ import scala.util.{Failure, Success}
 /**
   * @author Joacim Zschimmer
   */
-final class AkkaHttpClientTest extends OurTestSuite with BeforeAndAfterAll with HasCloser
+final class PekkoHttpClientTest extends OurTestSuite with BeforeAndAfterAll with HasCloser
 {
   implicit private lazy val actorSystem: ActorSystem =
-    newActorSystem("AkkaHttpClientTest", config"""akka.http.client.idle-timeout = 2s""")
+    newActorSystem("PekkoHttpClientTest", config"""pekko.http.client.idle-timeout = 2s""")
 
   override def afterAll() = {
     closer.close()
     // TODO shutdownAllConnectionPools blocks longer than 99s after "connection refused"
-    Akkas.terminateAndWait(actorSystem, 9.s)
+    Pekkos.terminateAndWait(actorSystem, 9.s)
     super.afterAll()
   }
 
   "Without a server" - {
-    lazy val httpClient = new AkkaHttpClient {
-      protected val actorSystem = AkkaHttpClientTest.this.actorSystem
+    lazy val httpClient = new PekkoHttpClient {
+      protected val actorSystem = PekkoHttpClientTest.this.actorSystem
       protected val baseUri = Uri("https://example.com:9999")
-      protected val name = "AkkaHttpClientTest"
+      protected val name = "PekkoHttpClientTest"
       protected def uriPrefixPath = "/PREFIX"
       protected def httpsConfig = HttpsConfig.empty
     }.closeWithCloser
@@ -91,13 +91,13 @@ final class AkkaHttpClientTest extends OurTestSuite with BeforeAndAfterAll with 
     //  val uri = Uri("https://example.com:9999/PREFIX")
     //  implicit val s = Task.pure(none[SessionToken])
     //  assert(Await.result(httpClient.get_[HttpResponse](uri).runToFuture.failed, 99.seconds).getMessage ==
-    //    "AkkaHttpClient has been closed: GET https://example.com:9999/PREFIX")
+    //    "PekkoHttpClient has been closed: GET https://example.com:9999/PREFIX")
     //}
   }
 
   "With a server" - {
     implicit val aJsonCodec: Codec.AsObject[A] = deriveCodec
-    lazy val allocatedWebServer: Allocated[Task, AkkaWebServer] = AkkaWebServer
+    lazy val allocatedWebServer: Allocated[Task, PekkoWebServer] = PekkoWebServer
       .testResource() {
         decodeRequest {
           import CirceJsonSupport.jsonMarshaller
@@ -121,13 +121,13 @@ final class AkkaHttpClientTest extends OurTestSuite with BeforeAndAfterAll with 
               path("STREAM") {
                 val source = Observable("ONE\n", "TWO\n")
                   .map(ByteString(_))
-                  .toAkkaSourceForHttpResponse
+                  .toPekkoSourceForHttpResponse
                 complete(HttpEntity(`application/x-ndjson`, source))
               } ~
               path("IDLE-TIMEOUT") {
                 val source = Observable(ByteString("IDLE-TIMEOUT\n"))
                   .delayExecution(5.s)
-                  .toAkkaSourceForHttpResponse
+                  .toPekkoSourceForHttpResponse
                 complete(HttpEntity(`application/x-ndjson`, source))
               }
             }
@@ -136,10 +136,10 @@ final class AkkaHttpClientTest extends OurTestSuite with BeforeAndAfterAll with 
       .toAllocated
       .await(99.s)
 
-    lazy val httpClient = new AkkaHttpClient {
-      protected val actorSystem = AkkaHttpClientTest.this.actorSystem
+    lazy val httpClient = new PekkoHttpClient {
+      protected val actorSystem = PekkoHttpClientTest.this.actorSystem
       protected val baseUri = allocatedWebServer.allocatedThing.localUri
-      protected val name = "AkkaHttpClientTest"
+      protected val name = "PekkoHttpClientTest"
       protected def uriPrefixPath = ""
       protected def httpsConfig = HttpsConfig.empty
     }.closeWithCloser
@@ -190,7 +190,7 @@ final class AkkaHttpClientTest extends OurTestSuite with BeforeAndAfterAll with 
     }
 
     "getRawLinesObservable: idle-timeout yield an empty observable" in {
-      // AkkaHttpClient converts the TcpIdleTimeoutException to the empty Observable
+      // PekkoHttpClient converts the TcpIdleTimeoutException to the empty Observable
       val result = Observable
         .fromTask(httpClient.getRawLinesObservable(Uri(s"$uri/IDLE-TIMEOUT")))
         .flatten
@@ -251,7 +251,7 @@ final class AkkaHttpClientTest extends OurTestSuite with BeforeAndAfterAll with 
   }
 
   "toPrettyProblem" in {
-    val t = new akka.stream.ConnectionException(
+    val t = new org.apache.pekko.stream.ConnectionException(
       "Tcp command [Connect(agent-1/<unresolved>:4443,None,List(),Some(10 seconds),true)] failed because of java.net.ConnectException: Connection refused")
       .initCause(new java.net.SocketException("Connection refused"))
     assert(toPrettyProblem(Problem.fromThrowable(t)) == Problem("TCP Connect agent-1:4443: Connection refused"))
@@ -260,10 +260,10 @@ final class AkkaHttpClientTest extends OurTestSuite with BeforeAndAfterAll with 
   "Connection refused, try two times" - {
     lazy val uri = findFreeLocalUri()
 
-    def newHttpClient() = new AkkaHttpClient {
-      protected val actorSystem = AkkaHttpClientTest.this.actorSystem
+    def newHttpClient() = new PekkoHttpClient {
+      protected val actorSystem = PekkoHttpClientTest.this.actorSystem
       protected val baseUri = uri
-      protected val name = "AkkaHttpClientTest"
+      protected val name = "PekkoHttpClientTest"
       protected def uriPrefixPath = "/PREFIX"
       protected def httpsConfig = HttpsConfig.empty
     }
@@ -278,8 +278,8 @@ final class AkkaHttpClientTest extends OurTestSuite with BeforeAndAfterAll with 
       }
     }
 
-    "Second call lets akka-http not block for a very long time" in {
-      // Akka 2.6.5 or our AkkaHttpClient blocked on next call after connection failure.
+    "Second call lets pekko-http not block for a very long time" in {
+      // Akka 2.6.5 or our PekkoHttpClient blocked on next call after connection failure.
       // This does not occur anymore!
       autoClosing(newHttpClient()) { httpClient =>
         val whenGot = httpClient.get_(Uri(s"$uri/PREFIX/TEST")).runToFuture
@@ -313,7 +313,7 @@ final class AkkaHttpClientTest extends OurTestSuite with BeforeAndAfterAll with 
   }
 }
 
-object AkkaHttpClientTest
+object PekkoHttpClientTest
 {
   private val Setting = List[(Uri, Option[Uri])](
     Uri("http://example.com:9999") ->

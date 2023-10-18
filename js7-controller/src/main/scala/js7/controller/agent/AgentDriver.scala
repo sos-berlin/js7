@@ -1,6 +1,5 @@
 package js7.controller.agent
 
-import akka.actor.ActorSystem
 import cats.data.NonEmptyList
 import cats.effect.Resource
 import cats.syntax.foldable.*
@@ -31,7 +30,7 @@ import js7.base.utils.{AsyncLock, MutableAllocated}
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatchService
 import js7.cluster.watch.api.ActiveClusterNodeSelector
-import js7.common.http.{AkkaHttpClient, RecouplingStreamReader}
+import js7.common.http.{PekkoHttpClient, RecouplingStreamReader}
 import js7.controller.agent.AgentDriver.*
 import js7.controller.agent.CommandQueue.QueueableResponse
 import js7.controller.agent.DirectorDriver.DirectorDriverStoppedProblem
@@ -54,6 +53,7 @@ import js7.journal.state.Journal
 import monix.eval.{Fiber, Task}
 import monix.execution.atomic.AtomicInt
 import monix.execution.{Cancelable, Scheduler}
+import org.apache.pekko.actor.ActorSystem
 
 final class AgentDriver private(
   initialAgentRef: AgentRef,
@@ -109,7 +109,7 @@ extends Service.StoppableByRequest:
           Task.unit
         else
           logger.warn(s"Coupling failed: $problem")
-          for t <- problem.throwableOption if AkkaHttpClient.hasRelevantStackTrace(t) do
+          for t <- problem.throwableOption if PekkoHttpClient.hasRelevantStackTrace(t) do
             logger.debug(s"Coupling failed: $problem", t)
           Task.unless(noJournal)(
             journal.persistKeyedEvent(agentPath <-: agentCouplingFailed)

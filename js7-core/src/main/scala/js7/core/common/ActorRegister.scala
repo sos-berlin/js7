@@ -1,10 +1,10 @@
 package js7.core.common
 
-import akka.actor.ActorRef
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.DuplicateKeyException
 import js7.base.utils.StackTraces.*
+import org.apache.pekko.actor.ActorRef
 import scala.collection.mutable
 
 /**

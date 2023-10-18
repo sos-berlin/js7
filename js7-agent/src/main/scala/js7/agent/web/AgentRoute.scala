@@ -1,7 +1,5 @@
 package js7.agent.web
 
-import akka.actor.ActorSystem
-import akka.http.scaladsl.server.Route
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
@@ -11,16 +9,18 @@ import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.cluster.ClusterNode
 import js7.cluster.web.ClusterNodeRouteBindings
-import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
-import js7.common.akkahttp.WebLogDirectives
-import js7.common.akkahttp.web.AkkaWebServer.RouteBinding
-import js7.common.akkahttp.web.auth.GateKeeper
-import js7.common.akkahttp.web.session.SessionRegister
+import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegments
+import js7.common.pekkohttp.WebLogDirectives
+import js7.common.pekkohttp.web.PekkoWebServer.RouteBinding
+import js7.common.pekkohttp.web.auth.GateKeeper
+import js7.common.pekkohttp.web.session.SessionRegister
 import js7.core.command.CommandMeta
 import js7.data.event.Stamped
 import js7.subagent.SubagentSession
 import monix.eval.Task
 import monix.execution.Scheduler
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.http.scaladsl.server.Route
 
 /**
  * @author Joacim Zschimmer
@@ -47,7 +47,7 @@ with ClusterNodeRouteBindings[AgentState]:
 
   protected val agentState = clusterNode.currentState
   protected def eventWatch = clusterNode.recoveredExtract.eventWatch
-  protected def akkaAskTimeout = agentConfiguration.akkaAskTimeout
+  protected def pekkoAskTimeout = agentConfiguration.pekkoAskTimeout
   protected def config = agentConfiguration.config
   protected def actorRefFactory = actorSystem
 

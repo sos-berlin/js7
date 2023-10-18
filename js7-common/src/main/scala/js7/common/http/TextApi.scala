@@ -7,10 +7,11 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.base.web.{HttpClient, Uri}
+import js7.data.workflow.position.BranchPath.syntax.*
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
+import org.apache.pekko
 import scala.concurrent.Await
-import js7.data.workflow.position.BranchPath.syntax.*
 
 /**
   * @author Joacim Zschimmer
@@ -71,11 +72,11 @@ trait TextApi:
   object ConnectionLost:
     def apply(t: Throwable): Boolean =
       t match
-        case _: akka.stream.StreamTcpException =>
+        case _: pekko.stream.StreamTcpException =>
           true
         case t: RuntimeException =>
           t.toString contains "java.net.ConnectException: Connection refused"
-        case _ if t.getMessage == "Connection was shutdown." =>  // akka.http.impl.engine.client.pool.SlotState$BusyState$$anon$1
+        case _ if t.getMessage == "Connection was shutdown." =>  // pekko.http.impl.engine.client.pool.SlotState$BusyState$$anon$1
           true
         case _ =>
           false

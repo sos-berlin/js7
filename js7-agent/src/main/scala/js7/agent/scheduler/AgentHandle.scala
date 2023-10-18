@@ -1,10 +1,10 @@
 package js7.agent.scheduler
 
-import akka.actor.ActorRef
 import js7.agent.data.commands.AgentCommand
 import js7.base.auth.UserId
 import js7.base.log.CorrelId
 import js7.base.problem.Checked
+import org.apache.pekko.actor.ActorRef
 import scala.concurrent.Promise
 
 /**

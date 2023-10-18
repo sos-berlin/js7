@@ -1,22 +1,22 @@
 package js7.common.http
 
-import akka.http.scaladsl.coding.Coder
-import akka.http.scaladsl.coding.Coders.{Deflate, Gzip, NoCoding}
-import akka.http.scaladsl.model.headers.HttpEncodings.gzip
-import akka.http.scaladsl.model.headers.{HttpEncoding, HttpEncodings, `Accept-Encoding`}
-import akka.http.scaladsl.model.{HttpEntity, HttpRequest, HttpResponse, Uri as AkkaUri}
-import akka.stream.Materializer
-import akka.util.ByteString
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.web.Uri
-import js7.common.akkautils.ByteStrings.syntax.*
-import js7.common.http.StreamingSupport.ObservableAkkaSource
+import js7.common.http.StreamingSupport.ObservablePekkoSource
+import js7.common.pekkoutils.ByteStrings.syntax.*
 import monix.eval.Task
+import org.apache.pekko.http.scaladsl.coding.Coder
+import org.apache.pekko.http.scaladsl.coding.Coders.{Deflate, Gzip, NoCoding}
+import org.apache.pekko.http.scaladsl.model.headers.HttpEncodings.gzip
+import org.apache.pekko.http.scaladsl.model.headers.{HttpEncoding, HttpEncodings, `Accept-Encoding`}
+import org.apache.pekko.http.scaladsl.model.{HttpEntity, HttpRequest, HttpResponse, Uri as PekkoUri}
+import org.apache.pekko.stream.Materializer
+import org.apache.pekko.util.ByteString
 
 /**
   * @author Joacim Zschimmer
   */
-object AkkaHttpUtils:
+object PekkoHttpUtils:
   def encodeGzip(request: HttpRequest): HttpRequest =
     Gzip.encodeMessage(request.withHeaders(`Accept-Encoding`(gzip) :: request.headers.toList))
 
@@ -62,8 +62,8 @@ object AkkaHttpUtils:
     def byteString(implicit mat: Materializer): Task[ByteString] =
       underlying.entity.asByteString
 
-  implicit final class RichAkkaUri(private val underlying: Uri) extends AnyVal:
-    def asAkka = AkkaUri(underlying.string)
+  implicit final class RichPekkoUri(private val underlying: Uri) extends AnyVal:
+    def asPekko = PekkoUri(underlying.string)
 
-  implicit final class RichAkkaAsUri(private val underlying: AkkaUri) extends AnyVal:
+  implicit final class RichPekkoAsUri(private val underlying: PekkoUri) extends AnyVal:
     def asUri = Uri(underlying.toString)

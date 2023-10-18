@@ -1,6 +1,5 @@
 package js7.controller.client
 
-import akka.actor.ActorSystem
 import cats.effect.Resource
 import com.typesafe.config.{Config, ConfigFactory}
 import js7.base.auth.{Admission, UserAndPassword}
@@ -8,12 +7,13 @@ import js7.base.io.https.HttpsConfig
 import js7.base.session.SessionApi
 import js7.base.utils.CatsUtils.Nel
 import js7.base.web.Uri
-import js7.common.akkautils.Akkas.actorSystemResource
-import js7.common.http.AkkaHttpClient
+import js7.common.http.PekkoHttpClient
+import js7.common.pekkoutils.Pekkos.actorSystemResource
 import monix.eval.Task
+import org.apache.pekko.actor.ActorSystem
 import scala.concurrent.duration.FiniteDuration
 
-class AkkaHttpControllerApi(
+class PekkoHttpControllerApi(
   val baseUri: Uri,
   protected final val userAndPassword: Option[UserAndPassword],
   actorSystem: ActorSystem,
@@ -24,25 +24,25 @@ class AkkaHttpControllerApi(
   name: String = "")
 extends HttpControllerApi with SessionApi.HasUserAndPassword with AutoCloseable:
 
-  final val httpClient: AkkaHttpClient =
-    new AkkaHttpClient.Standard(
+  final val httpClient: PekkoHttpClient =
+    new PekkoHttpClient.Standard(
       baseUri, HttpControllerApi.UriPrefixPath, actorSystem, httpsConfig, name = name)
 
   def close() =
     logOpenSession()
     httpClient.close()
 
-object AkkaHttpControllerApi:
+object PekkoHttpControllerApi:
   private val defaultName = "ControllerApi"
 
   /** Logs out when the resource is being released. */
-  def separateAkkaResource(
+  def separatePekkoResource(
     admission: Admission,
     httpsConfig: HttpsConfig = HttpsConfig.empty,
     config: Config = ConfigFactory.empty,
     name: String = "")
   : Resource[Task, HttpControllerApi] =
-    val myName = if name.nonEmpty then name else "AkkaHttpControllerApi"
+    val myName = if name.nonEmpty then name else "PekkoHttpControllerApi"
     for
       actorSystem <- actorSystemResource(name = myName, config)
       api <- resource(admission, httpsConfig, name = myName)(actorSystem)
@@ -66,7 +66,7 @@ object AkkaHttpControllerApi:
     (implicit actorSystem: ActorSystem)
   : Resource[Task, HttpControllerApi] =
     for
-      httpClient <- AkkaHttpClient.resource(
+      httpClient <- PekkoHttpClient.resource(
         admission.uri, uriPrefixPath = HttpControllerApi.UriPrefixPath,
         httpsConfig, name = name)
       api <- HttpControllerApi.resource(admission, httpClient, loginDelays)

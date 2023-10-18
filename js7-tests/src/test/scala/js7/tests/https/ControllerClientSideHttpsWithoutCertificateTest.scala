@@ -21,7 +21,7 @@ final class ControllerClientSideHttpsWithoutCertificateTest extends HttpsTestBas
     logger.info(exception.toString)  // Content of exception is not reliable. May be SSLxxException or TCP connection reset !!!
     //assert(exception.isInstanceOf[javax.net.ssl.SSLException] && exception.getMessage == "Received fatal alert: certificate_unknown" ||
     //       exception.toString == "javax.net.ssl.SSLHandshakeException: Received fatal alert: certificate_unknown]" ||  // Since Java 11
-    //       exception.toString == "akka.stream.StreamTcpException: The connection closed with error: Connection reset by peer")
+    //       exception.toString == "org.apache.pekko.stream.StreamTcpException: The connection closed with error: Connection reset by peer")
 
   "Login" in:
     val exception = intercept[Exception]:
@@ -29,7 +29,7 @@ final class ControllerClientSideHttpsWithoutCertificateTest extends HttpsTestBas
     assert(!exception.isInstanceOf[TimeoutException])
     logger.info(exception.toString)  // Content of exception is not reliable. May be SSLxxException or TCP connection reset !!!
     //assert(exception.isInstanceOf[javax.net.ssl.SSLException] && exception.getMessage == "Received fatal alert: certificate_unknown" ||
-    //       exception.toString == "akka.stream.StreamTcpException: The connection closed with error: Connection reset by peer")
+    //       exception.toString == "org.apache.pekko.stream.StreamTcpException: The connection closed with error: Connection reset by peer")
 
 private object ControllerClientSideHttpsWithoutCertificateTest:
   private val logger = Logger[this.type]

@@ -32,7 +32,7 @@ final class AgentClientSideHttpsWithoutCertificateTest extends HttpsTestBase:
     logger.info(problem.toString)  // Content of exception is not reliable. May be SSLxxException or TCP connection reset !!!
     //assert(msg == "javax.net.ssl.SSLException: Received fatal alert: certificate_unknown" ||
     //       msg.startsWith("javax.net.ssl.SSLHandshakeException:") ||  // Since Java 11
-    //       msg == "akka.stream.StreamTcpException: The connection closed with error: Connection reset by peer")
+    //       msg == "org.apache.pekko.stream.StreamTcpException: The connection closed with error: Connection reset by peer")
 
 private object AgentClientSideHttpsWithoutCertificateTest:
   private val logger = Logger[this.type]

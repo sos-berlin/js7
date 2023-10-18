@@ -11,9 +11,9 @@ import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.Nel
 import js7.cluster.ClusterConf
-import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.commandline.CommandLineArguments
 import js7.common.http.configuration.RecouplingStreamReaderConf
+import js7.common.pekkohttp.web.data.WebServerPort
 import js7.data.cluster.ClusterTiming
 import js7.data.controller.ControllerId
 import js7.data.node.NodeId
@@ -47,7 +47,7 @@ final class ControllerConfigurationTest extends OurTestSuite with BeforeAndAfter
         configDirectory = (directory / "CONFIG").toAbsolutePath,
         webServerPorts = Nil,
         ZoneId.systemDefault,
-        akkaAskTimeout = 1.h,
+        pekkoAskTimeout = 1.h,
         clusterConf = ClusterConf(
           JournalConf.fromConfig(configuration.config)
             .copy(slowCheckState = sys.props.get("js7.test").fold(false)(StringAsBoolean(_))),

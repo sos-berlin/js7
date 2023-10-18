@@ -64,7 +64,7 @@ object ThreadPoolsBase:
     runnable => {
       val thread = new Thread(runnable)
       thread.setName(s"$name-${thread.threadId}")
-      thread.setDaemon(true)  // Do it like Monix and Akka
+      thread.setDaemon(true)  // Do it like Monix and Pekko
       thread
     }
 

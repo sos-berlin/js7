@@ -2,7 +2,7 @@ package js7.agent.client
 
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Path
-import js7.agent.client.AkkaHttpAgentTextApi.*
+import js7.agent.client.PekkoHttpAgentTextApi.*
 import js7.agent.data.web.AgentUris
 import js7.base.auth.UserAndPassword
 import js7.base.configutils.Configs.*
@@ -11,23 +11,23 @@ import js7.base.io.https.{HttpsConfig, KeyStoreRef, TrustStoreRef}
 import js7.base.session.SessionApi
 import js7.base.utils.HasCloser
 import js7.base.web.Uri
-import js7.common.akkautils.ProvideActorSystem
-import js7.common.http.{AkkaHttpClient, TextApi}
+import js7.common.http.{PekkoHttpClient, TextApi}
+import js7.common.pekkoutils.ProvideActorSystem
 import js7.data.session.HttpSessionApi
 
 /**
   * @author Joacim Zschimmer
   */
-private[agent] final class AkkaHttpAgentTextApi(
+private[agent] final class PekkoHttpAgentTextApi(
   agentUri: Uri,
   protected val userAndPassword: Option[UserAndPassword],
   protected val print: String => Unit,
   configDirectory: Option[Path] = None)
-extends HasCloser with ProvideActorSystem with TextApi with HttpSessionApi with AkkaHttpClient
+extends HasCloser with ProvideActorSystem with TextApi with HttpSessionApi with PekkoHttpClient
 with SessionApi.HasUserAndPassword:
 
-  protected val name = "AkkaHttpAgentTextApi"
-  protected val config = config"akka.log-dead-letters = 0"
+  protected val name = "PekkoHttpAgentTextApi"
+  protected val config = config"pekko.log-dead-letters = 0"
 
   private val agentUris = AgentUris(agentUri)
 
@@ -65,7 +65,7 @@ with SessionApi.HasUserAndPassword:
     logOpenSession()
     closer.close()
 
-object AkkaHttpAgentTextApi:
+object PekkoHttpAgentTextApi:
   // Like AgentConfiguration.configDirectoryToConfig
   private def configDirectoryToConfig(configDirectory: Path): Config =
     ConfigFactory

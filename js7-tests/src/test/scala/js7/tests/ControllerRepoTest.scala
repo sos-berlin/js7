@@ -21,8 +21,8 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
-import js7.common.akkautils.Akkas.actorSystemResource
-import js7.controller.client.AkkaHttpControllerApi.resource
+import js7.common.pekkoutils.Pekkos.actorSystemResource
+import js7.controller.client.PekkoHttpControllerApi.resource
 import js7.data.Problems.VersionedItemRemovedProblem
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, TakeSnapshot}

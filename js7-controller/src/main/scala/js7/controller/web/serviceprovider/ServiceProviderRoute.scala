@@ -1,14 +1,14 @@
 package js7.controller.web.serviceprovider
 
-import akka.http.scaladsl.server.Route
+import org.apache.pekko.http.scaladsl.server.Route
 import com.typesafe.config.Config
 import js7.base.log.Logger
 import js7.base.system.ServiceProviders.findServices
 import js7.base.utils.Collections.implicits.*
 import js7.base.utils.Lazy
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
-import js7.common.akkahttp.StandardDirectives.combineRoutes
+import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegments
+import js7.common.pekkohttp.StandardDirectives.combineRoutes
 import js7.controller.web.serviceprovider.ServiceProviderRoute.*
 
 /**

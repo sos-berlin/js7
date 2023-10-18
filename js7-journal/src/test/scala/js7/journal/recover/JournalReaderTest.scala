@@ -1,6 +1,6 @@
 package js7.journal.recover
 
-import akka.pattern.ask
+import org.apache.pekko.pattern.ask
 import io.circe.Encoder
 import io.circe.syntax.EncoderOps
 import java.nio.charset.StandardCharsets.UTF_8

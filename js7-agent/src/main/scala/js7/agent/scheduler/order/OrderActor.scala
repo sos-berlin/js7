@@ -1,7 +1,7 @@
 package js7.agent.scheduler.order
 
-import akka.actor.{ActorRef, DeadLetterSuppression, Props, Status}
-import akka.pattern.pipe
+import org.apache.pekko.actor.{ActorRef, DeadLetterSuppression, Props, Status}
+import org.apache.pekko.pattern.pipe
 import com.softwaremill.tagging.@@
 import js7.agent.data.AgentState
 import js7.agent.scheduler.order.OrderActor.*

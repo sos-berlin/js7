@@ -1,7 +1,5 @@
 package js7.controller
 
-import akka.actor.{DeadLetterSuppression, Stash, Status, Terminated}
-import akka.pattern.{ask, pipe}
 import cats.instances.either.*
 import cats.instances.future.*
 import cats.instances.vector.*
@@ -37,7 +35,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.base.utils.{Allocated, ProgramTermination, SetOnce}
 import js7.cluster.WorkingClusterNode
-import js7.common.akkautils.SupervisorStrategies
+import js7.common.pekkoutils.SupervisorStrategies
 import js7.common.system.startup.ServiceMain
 import js7.controller.ControllerOrderKeeper.*
 import js7.controller.agent.{AgentDriver, AgentDriverConfiguration}
@@ -84,6 +82,8 @@ import js7.journal.{CommitOptions, JournalActor, MainJournalingActor}
 import monix.eval.Task
 import monix.execution.cancelables.SerialCancelable
 import monix.execution.{Cancelable, Scheduler}
+import org.apache.pekko.actor.{DeadLetterSuppression, Stash, Status, Terminated}
+import org.apache.pekko.pattern.{ask, pipe}
 import scala.collection.immutable.VectorBuilder
 import scala.collection.mutable
 import scala.concurrent.duration.*
@@ -798,8 +798,8 @@ with MainJournalingActor[ControllerState, Event]:
         Future.successful(Left(Problem.pure("THIS SHOULD NOT HAPPEN")))  // Never called
 
       case ControllerCommand.TakeSnapshot =>
-        import controllerConfiguration.implicitAkkaAskTimeout  // We need several seconds or even minutes
-        intelliJuseImport(implicitAkkaAskTimeout)
+        import controllerConfiguration.implicitPekkoAskTimeout  // We need several seconds or even minutes
+        intelliJuseImport(implicitPekkoAskTimeout)
         (journalActor ? JournalActor.Input.TakeSnapshot)
           .mapTo[JournalActor.Output.SnapshotTaken.type]
           .map(_ => Right(ControllerCommand.Response.Accepted))

@@ -1,9 +1,9 @@
 package js7.journal.test
 
-import akka.Done
-import akka.actor.{Actor, ActorRef, Props, Stash, Terminated}
-import akka.pattern.{ask, pipe}
-import akka.util.Timeout
+import org.apache.pekko.Done
+import org.apache.pekko.actor.{Actor, ActorRef, Props, Stash, Terminated}
+import org.apache.pekko.pattern.{ask, pipe}
+import org.apache.pekko.util.Timeout
 //diffx import com.softwaremill.diffx.generic.auto.*
 import com.typesafe.config.Config
 import js7.base.thread.Futures.implicits.*
@@ -11,7 +11,7 @@ import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Allocated
 import js7.base.utils.CatsUtils.syntax.RichResource
-import js7.common.akkautils.SupervisorStrategies
+import js7.common.pekkoutils.SupervisorStrategies
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalLocation
 import js7.journal.recover.StateRecoverer

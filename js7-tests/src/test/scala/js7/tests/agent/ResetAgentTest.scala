@@ -18,7 +18,7 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
-import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResource
+import js7.controller.client.PekkoHttpControllerApi.admissionsToApiResource
 import js7.data.Problems.AgentResetProblem
 import js7.data.agent.AgentRefStateEvent.{AgentCoupled, AgentCouplingFailed, AgentDedicated, AgentReset}
 import js7.data.agent.Problems.AgentAlreadyDedicatedProblem

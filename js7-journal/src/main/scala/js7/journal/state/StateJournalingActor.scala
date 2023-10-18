@@ -1,13 +1,13 @@
 package js7.journal.state
 
-import akka.actor.{ActorRef, Props}
+import org.apache.pekko.actor.{ActorRef, Props}
 import com.softwaremill.tagging.@@
 import izumi.reflect.Tag
 import js7.base.log.CorrelId
 import js7.base.monixutils.MonixBase.promiseTask
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.RichEitherF
-import js7.common.akkautils.SupervisorStrategies
+import js7.common.pekkoutils.SupervisorStrategies
 import js7.data.event.{Event, JournaledState, KeyedEvent, Stamped}
 import js7.journal.configuration.JournalConf
 import js7.journal.state.StateJournalingActor.*

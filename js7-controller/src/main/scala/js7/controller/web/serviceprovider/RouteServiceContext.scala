@@ -1,6 +1,6 @@
 package js7.controller.web.serviceprovider
 
-import akka.http.scaladsl.server.Route
+import org.apache.pekko.http.scaladsl.server.Route
 import com.typesafe.config.Config
 import js7.controller.web.controller.api.SnapshotRoute.SnapshotFilter
 import js7.journal.web.GenericEventRoute.StampedEventFilter

@@ -1,6 +1,6 @@
 package js7.agent.web.common
 
-import js7.common.akkahttp.web.session.RouteProvider
+import js7.common.pekkohttp.web.session.RouteProvider
 import js7.subagent.SubagentSession
 
 /**

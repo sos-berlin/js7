@@ -8,6 +8,7 @@ import js7.base.time.ScalaTime.*
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.client.main.ControllerClientMain
 import js7.tests.testenv.ControllerAgentForScalaTest
+import org.apache.pekko
 import scala.collection.mutable
 
 /**
@@ -69,5 +70,5 @@ final class ControllerClientMainTest extends OurTestSuite with ControllerAgentFo
         output += _)
       assert(output.map(_.parseJsonOrThrow) == List(json"""{ "TYPE": "Accepted" }"""))
     catch
-      case t: akka.stream.StreamTcpException if t.getMessage contains "Connection reset by peer" =>
+      case t: pekko.stream.StreamTcpException if t.getMessage contains "Connection reset by peer" =>
     controller.terminated await 99.s

@@ -1,21 +1,5 @@
 package js7.common.http
 
-import akka.Done
-import akka.actor.ActorSystem
-import akka.http.scaladsl.marshalling.Marshal
-import akka.http.scaladsl.model.ContentTypes.`application/json`
-import akka.http.scaladsl.model.HttpCharsets.`UTF-8`
-import akka.http.scaladsl.model.HttpEntity.{Chunk, ChunkStreamPart, Chunked, LastChunk}
-import akka.http.scaladsl.model.HttpMethods.{GET, POST}
-import akka.http.scaladsl.model.MediaTypes.`text/plain`
-import akka.http.scaladsl.model.StatusCodes.{Forbidden, GatewayTimeout, Unauthorized}
-import akka.http.scaladsl.model.headers.CacheDirectives.{`no-cache`, `no-store`}
-import akka.http.scaladsl.model.headers.{Accept, ModeledCustomHeader, ModeledCustomHeaderCompanion, `Cache-Control`}
-import akka.http.scaladsl.model.{ContentType, ErrorInfo, HttpEntity, HttpHeader, HttpMethod, HttpRequest, HttpResponse, MediaTypes, RequestEntity, StatusCode, Uri as AkkaUri}
-import akka.http.scaladsl.unmarshalling.{FromResponseUnmarshaller, Unmarshal}
-import akka.http.scaladsl.{ConnectionContext, Http}
-import akka.stream.Materializer
-import akka.util.ByteString
 import cats.effect.concurrent.Deferred
 import cats.effect.{ExitCase, Resource}
 import cats.syntax.flatMap.*
@@ -43,16 +27,33 @@ import js7.base.utils.ByteSequenceToLinesObservable
 import js7.base.utils.MonixAntiBlocking.executeOn
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.{HttpClient, Uri}
-import js7.common.akkahttp.ByteSequenceChunkerObservable.syntax.*
-import js7.common.akkahttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
-import js7.common.akkautils.ByteStrings.syntax.*
-import js7.common.http.AkkaHttpClient.*
-import js7.common.http.AkkaHttpUtils.{RichAkkaAsUri, RichAkkaUri, RichResponseEntity, decompressResponse, encodeGzip}
 import js7.common.http.JsonStreamingSupport.{StreamingJsonHeader, StreamingJsonHeaders, `application/x-ndjson`}
+import js7.common.http.PekkoHttpClient.*
+import js7.common.http.PekkoHttpUtils.{RichPekkoAsUri, RichPekkoUri, RichResponseEntity, decompressResponse, encodeGzip}
 import js7.common.http.StreamingSupport.*
+import js7.common.pekkohttp.ByteSequenceChunkerObservable.syntax.*
+import js7.common.pekkohttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
+import js7.common.pekkoutils.ByteStrings.syntax.*
 import monix.eval.Task
 import monix.execution.atomic.AtomicLong
 import monix.reactive.Observable
+import org.apache.pekko
+import org.apache.pekko.Done
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.http.scaladsl.marshalling.Marshal
+import org.apache.pekko.http.scaladsl.model.ContentTypes.`application/json`
+import org.apache.pekko.http.scaladsl.model.HttpCharsets.`UTF-8`
+import org.apache.pekko.http.scaladsl.model.HttpEntity.{Chunk, ChunkStreamPart, Chunked, LastChunk}
+import org.apache.pekko.http.scaladsl.model.HttpMethods.{GET, POST}
+import org.apache.pekko.http.scaladsl.model.MediaTypes.`text/plain`
+import org.apache.pekko.http.scaladsl.model.StatusCodes.{Forbidden, GatewayTimeout, Unauthorized}
+import org.apache.pekko.http.scaladsl.model.headers.CacheDirectives.{`no-cache`, `no-store`}
+import org.apache.pekko.http.scaladsl.model.headers.{Accept, ModeledCustomHeader, ModeledCustomHeaderCompanion, `Cache-Control`}
+import org.apache.pekko.http.scaladsl.model.{ContentType, ErrorInfo, HttpEntity, HttpHeader, HttpMethod, HttpRequest, HttpResponse, MediaTypes, RequestEntity, StatusCode, Uri as PekkoUri}
+import org.apache.pekko.http.scaladsl.unmarshalling.{FromResponseUnmarshaller, Unmarshal}
+import org.apache.pekko.http.scaladsl.{ConnectionContext, Http}
+import org.apache.pekko.stream.Materializer
+import org.apache.pekko.util.ByteString
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.Future
 import scala.concurrent.duration.Deadline.now
@@ -64,7 +65,7 @@ import scala.util.matching.Regex
 /**
   * @author Joacim Zschimmer
   */
-trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableStackTrace:
+trait PekkoHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableStackTrace:
   implicit protected def actorSystem: ActorSystem
   protected def baseUri: Uri
   protected def uriPrefixPath: String
@@ -72,7 +73,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
   protected def standardHeaders: List[HttpHeader] = Nil
 
   private lazy val http = Http(actorSystem)
-  private lazy val baseAkkaUri = AkkaUri(baseUri.string)
+  private lazy val basePekkoUri = PekkoUri(baseUri.string)
   private lazy val useCompression = http.system.settings.config.getBoolean("js7.web.client.compression")
   private lazy val jsonReadAhead = http.system.settings.config.getInt("js7.web.client.json-read-ahead")
   private lazy val chunkSize = http.system.settings.config.memorySizeAsInt("js7.web.chunk-size").orThrow
@@ -118,14 +119,14 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
       .onErrorRecover(ignoreIdleTimeout)
 
   private def endStreamOnNoMoreElementNeeded: PartialFunction[Throwable, Observable[Nothing]] =
-    case t @ akka.stream.SubscriptionWithCancelException.NoMoreElementsNeeded =>
+    case t @ pekko.stream.SubscriptionWithCancelException.NoMoreElementsNeeded =>
       // On NoMoreElementsNeeded the Observable ends silently !!! Maybe harmless?
       logger.warn(s"Ignore ${t.toString}")
       if hasRelevantStackTrace(t) then logger.debug(s"Ignore $t", t)
       Observable.empty
 
   private def ignoreIdleTimeout: PartialFunction[Throwable, Observable[Nothing]] =
-    case t: akka.stream.scaladsl.TcpIdleTimeoutException =>
+    case t: pekko.stream.scaladsl.TcpIdleTimeoutException =>
       // Idle timeout is silently ignored !!! Maybe harmless?
       logger.warn(s"Ignore ${t.toString}")
       if hasRelevantStackTrace(t) then logger.debug(s"Ignore $t", t)
@@ -144,7 +145,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
   final def get_[A: FromResponseUnmarshaller](uri: Uri, headers: List[HttpHeader] = Nil)
     (implicit s: Task[Option[SessionToken]])
   : Task[A] =
-    sendReceive(HttpRequest(GET, AkkaUri(uri.string), `Cache-Control`(`no-cache`, `no-store`) :: headers))
+    sendReceive(HttpRequest(GET, PekkoUri(uri.string), `Cache-Control`(`no-cache`, `no-store`) :: headers))
       .flatMap(unmarshal[A](GET, uri))
 
   final def post[A: Encoder, B: Decoder](uri: Uri, data: A)(implicit s: Task[Option[SessionToken]]): Task[B] =
@@ -176,11 +177,11 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
         .append[ChunkStreamPart](LastChunk)
         .takeUntilEval(stop.get)
         .guarantee(stopped.complete(()))
-        .toAkkaSourceTask
-        .flatMap(akkaChunks =>
+        .toPekkoSourceTask
+        .flatMap(pekkoChunks =>
           sendReceive(
-            HttpRequest(POST, uri.asAkka, AcceptJson,
-              HttpEntity.Chunked(`application/x-ndjson`.toContentType, akkaChunks)),
+            HttpRequest(POST, uri.asPekko, AcceptJson,
+              HttpEntity.Chunked(`application/x-ndjson`.toContentType, pekkoChunks)),
             logData = Some("postObservable")))
         .flatMap(unmarshal[B](POST, uri))
         .pipeIf(terminateStreamOnCancel)(_.doOnCancel(
@@ -195,11 +196,11 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
       .chunk(chunkSize)
       .map(Chunk(_))
       .append(LastChunk)
-      .toAkkaSourceTask
-      .flatMap(akkaChunks =>
+      .toPekkoSourceTask
+      .flatMap(pekkoChunks =>
         sendReceive(
-          HttpRequest(POST, uri.asAkka, AcceptJson,
-            HttpEntity.Chunked(`application/x-ndjson`.toContentType, akkaChunks)),
+          HttpRequest(POST, uri.asPekko, AcceptJson,
+            HttpEntity.Chunked(`application/x-ndjson`.toContentType, pekkoChunks)),
           logData = Some("postObservable")))
       .flatMap(unmarshal[Json](POST, uri))
 
@@ -238,14 +239,14 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
       //entity <- Task.deferFuture(executeOn(materializer.executionContext)(implicit ec => Marshal(data).to[RequestEntity]))
       entity <- Task.deferFutureAction(implicit s => Marshal(data).to[RequestEntity])
       response <- sendReceive(
-        HttpRequest(POST, uri.asAkka, headers, entity),
+        HttpRequest(POST, uri.asPekko, headers, entity),
         logData = Some(data.toString))
     yield response
 
   final def postRaw(uri: Uri, headers: List[HttpHeader], entity: RequestEntity)
     (implicit s: Task[Option[SessionToken]])
   : Task[HttpResponse] =
-    sendReceive(HttpRequest(POST, uri.asAkka, headers, entity))
+    sendReceive(HttpRequest(POST, uri.asPekko, headers, entity))
 
   final def sendReceive(request: HttpRequest, logData: => Option[String] = None)
     (implicit sessionTokenTask: Task[Option[SessionToken]])
@@ -253,7 +254,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
     withCheckedAgentUri(request)(request =>
       sessionTokenTask.flatMap { sessionToken =>
         if closed then {
-          logger.debug(s"(WARN) AkkaHttpClient has actually been closed: ${requestToString(request, logData)}")
+          logger.debug(s"(WARN) PekkoHttpClient has actually been closed: ${requestToString(request, logData)}")
         }
         val number = requestCounter.incrementAndGet()
         val headers = sessionToken.map(token => `x-js7-session`(token)).toList :::
@@ -283,7 +284,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
               }(scheduler)
           }
           .onErrorRecoverWith {
-            case t: akka.stream.StreamTcpException => Task.raiseError(makeAkkaExceptionLegible(t))
+            case t: pekko.stream.StreamTcpException => Task.raiseError(makePekkoExceptionLegible(t))
           }
           .map(decompressResponse)
           .pipeIf(logger.underlying.isDebugEnabled)(
@@ -300,9 +301,9 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
               canceled = true
               logger.debug(s"<~~ ⚫️$responseLogPrefix => canceled")
               if responseFuture != null then {
-                // TODO Akka's max-open-requests may be exceeded when new requests are opened
-                //  while many canceled requests are still not completed by Akka
-                //  until the server has reponded or some Akka (idle connection) timeout.
+                // TODO Pekko's max-open-requests may be exceeded when new requests are opened
+                //  while many canceled requests are still not completed by Pekko
+                //  until the server has reponded or some Pekko (idle connection) timeout.
                 //  Anyway, the caller's code should be fault-tolerant.
                 // TODO Maybe manage own connection pool? Or switch to http4s?
                 executeOn(materializer.executionContext) { implicit ec =>
@@ -321,10 +322,10 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
             case ExitCase.Error(throwable) => Task.defer {
               val sym = throwable match {
                 case _: java.net.ConnectException => "⭕"
-                case _: akka.stream.scaladsl.TcpIdleTimeoutException => "🔥"
-                case t: akka.stream.StreamTcpException
+                case _: pekko.stream.scaladsl.TcpIdleTimeoutException => "🔥"
+                case t: pekko.stream.StreamTcpException
                   if t.getMessage.contains("java.net.ConnectException: ") => "⭕"
-                case t: LegibleAkkaHttpException
+                case t: LegiblePekkoHttpException
                   if t.getMessage.contains("java.net.ConnectException: ") => "⭕"
                 case _ => "💥"
               }
@@ -445,24 +446,24 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
   private def withCheckedAgentUri[A](request: HttpRequest)(body: HttpRequest => Task[A]): Task[A] =
     toCheckedAgentUri(request.uri.asUri) match
       case Left(problem) => Task.raiseError(problem.throwable)
-      case Right(uri) => body(request.withUri(uri.asAkka))
+      case Right(uri) => body(request.withUri(uri.asPekko))
 
   private[http] final def toCheckedAgentUri(uri: Uri): Checked[Uri] =
     checkAgentUri(normalizeAgentUri(uri))
 
   private[http] final def normalizeAgentUri(uri: Uri): Uri =
-    val AkkaUri(scheme, authority, path, query, fragment) = uri.asAkka
+    val PekkoUri(scheme, authority, path, query, fragment) = uri.asPekko
     if scheme.isEmpty && authority.isEmpty then
-      AkkaUri(baseAkkaUri.scheme, baseAkkaUri.authority, path, query, fragment).asUri
+      PekkoUri(basePekkoUri.scheme, basePekkoUri.authority, path, query, fragment).asUri
     else
       uri
 
   /** Checks `uri` againts `baseUri` - scheme and authority must be equal. */
   private[http] final def checkAgentUri(uri: Uri): Checked[Uri] =
-    val akkaUri = uri.asAkka
-    if akkaUri.scheme == baseAkkaUri.scheme &&
-      akkaUri.authority == baseAkkaUri.authority &&
-      akkaUri.path.toString.startsWith(uriPrefixPath) then
+    val pekkoUri = uri.asPekko
+    if pekkoUri.scheme == basePekkoUri.scheme &&
+      pekkoUri.authority == basePekkoUri.authority &&
+      pekkoUri.path.toString.startsWith(uriPrefixPath) then
       Right(uri)
     else
       Left(Problem(s"URI '$uri' does not match $baseUri$uriPrefixPath"))
@@ -479,21 +480,21 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
     b.toString
 
   override def hasRelevantStackTrace(throwable: Throwable): Boolean =
-    AkkaHttpClient.hasRelevantStackTrace(throwable)
+    PekkoHttpClient.hasRelevantStackTrace(throwable)
 
-  private def makeAkkaExceptionLegible(t: akka.stream.StreamTcpException): RuntimeException =
-    akkaExceptionRegex.findFirstMatchIn(t.toString)
+  private def makePekkoExceptionLegible(t: pekko.stream.StreamTcpException): RuntimeException =
+    pekkoExceptionRegex.findFirstMatchIn(t.toString)
       .toList
       .flatMap(_.subgroups)
       .match
-        case List(m1, m2) => new LegibleAkkaHttpException(s"$name $m1): $m2", t)
+        case List(m1, m2) => new LegiblePekkoHttpException(s"$name $m1): $m2", t)
         case _ => t
 
   override def toString = s"$baseUri$nameString"
 
   private lazy val nameString = name.nonEmpty ?? s" »$name«"
 
-object AkkaHttpClient:
+object PekkoHttpClient:
   private val EmptyLine = ByteArray("\n")
 
   def resource(
@@ -502,11 +503,11 @@ object AkkaHttpClient:
     httpsConfig: HttpsConfig = HttpsConfig.empty,
     name: String = "")
     (implicit actorSystem: ActorSystem)
-  : Resource[Task, AkkaHttpClient] =
-    Resource.fromAutoCloseable(Task(new AkkaHttpClient.Standard(
+  : Resource[Task, PekkoHttpClient] =
+    Resource.fromAutoCloseable(Task(new PekkoHttpClient.Standard(
       uri, uriPrefixPath = uriPrefixPath, actorSystem, httpsConfig, name = name)))
     //Resource.make(
-    //  acquire = Task(new AkkaHttpClient.Standard(
+    //  acquire = Task(new PekkoHttpClient.Standard(
     //    uri, uriPrefixPath = uriPrefixPath, actorSystem, httpsConfig, name = name)))(
     //  release = { client =>
     //    val logout = client match {
@@ -574,13 +575,13 @@ object AkkaHttpClient:
     protected val actorSystem: ActorSystem,
     protected val httpsConfig: HttpsConfig = HttpsConfig.empty,
     protected val name: String = "")
-  extends AkkaHttpClient
+  extends PekkoHttpClient
 
   private val connectionWasClosedUnexpectedly = Problem.pure("Connection was closed unexpectedly")
 
-  private val AkkaTcpCommandRegex = """Tcp command \[([A-Za-z]+)\(([^,)]+).*""".r
+  private val PekkoTcpCommandRegex = """Tcp command \[([A-Za-z]+)\(([^,)]+).*""".r
 
-  private val akkaExceptionRegex = new Regex("akka.stream.StreamTcpException: Tcp command " +
+  private val pekkoExceptionRegex = new Regex("org.apache.pekko.stream.StreamTcpException: Tcp command " +
     """\[(Connect\([^,]+).+\)] failed because of ([a-zA-Z.]+Exception.*)""")
 
   def toPrettyProblem(problem: Problem): Problem =
@@ -597,7 +598,7 @@ object AkkaHttpClient:
   def toPrettyProblem(throwable: Throwable): Problem =
     def default = Problem.fromThrowable(throwable)
     throwable match
-      case akka.http.scaladsl.model.EntityStreamException(ErrorInfo(summary, _)) =>
+      case pekko.http.scaladsl.model.EntityStreamException(ErrorInfo(summary, _)) =>
         if summary contains "connection was closed unexpectedly" then
           connectionWasClosedUnexpectedly
         else Problem.pure(summary)
@@ -605,10 +606,10 @@ object AkkaHttpClient:
       case t if t.getClass.getName endsWith "UnexpectedConnectionClosureException" =>
         connectionWasClosedUnexpectedly
 
-      case t: akka.stream.StreamTcpException =>
-        // TODO Long longer active since makeAkkaExceptionLegible?
+      case t: pekko.stream.StreamTcpException =>
+        // TODO Long longer active since makePekkoExceptionLegible?
         t.getMessage match
-          case AkkaTcpCommandRegex(command, host_) =>
+          case PekkoTcpCommandRegex(command, host_) =>
             val host = host_.replace("/<unresolved>", "")
             val prefix = s"TCP $command $host"
             t.getCause match
@@ -657,14 +658,14 @@ object AkkaHttpClient:
   def hasRelevantStackTrace(throwable: Throwable): Boolean =
     throwable != null && throwable.getStackTrace.nonEmpty &&
       (throwable match {
-        case _: akka.stream.StreamTcpException => false
+        case _: pekko.stream.StreamTcpException => false
         case _: java.net.SocketException => false
         case _ => true
       })
 
-  private final class LegibleAkkaHttpException(
+  private final class LegiblePekkoHttpException(
     message: String,
-    cause: akka.stream.StreamTcpException)
+    cause: pekko.stream.StreamTcpException)
   extends RuntimeException(message, cause)
   with NoStackTrace:
     override def toString = getMessage

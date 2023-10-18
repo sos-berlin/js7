@@ -3,18 +3,18 @@ package js7.tests
 import js7.base.io.https.HttpsConfig
 import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
-import js7.common.akkautils.Akkas
-import js7.common.akkautils.Akkas.newActorSystem
-import js7.common.http.AkkaHttpClient
+import js7.common.pekkoutils.Pekkos
+import js7.common.pekkoutils.Pekkos.newActorSystem
+import js7.common.http.PekkoHttpClient
 
 /**
   * @author Joacim Zschimmer
   */
-final class SimpleAkkaHttpClient(
+final class SimplePekkoHttpClient(
   label: String,
   protected val baseUri: Uri,
   protected val uriPrefixPath: String)
-extends AkkaHttpClient:
+extends PekkoHttpClient:
 
   protected val name = label
   protected val httpsConfig = HttpsConfig.empty
@@ -26,4 +26,4 @@ extends AkkaHttpClient:
 
   override def close() =
     super.close()
-    Akkas.terminateAndWait(actorSystem, 99.s)
+    Pekkos.terminateAndWait(actorSystem, 99.s)

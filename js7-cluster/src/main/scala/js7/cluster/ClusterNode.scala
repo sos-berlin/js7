@@ -1,11 +1,12 @@
 package js7.cluster
 
-import akka.actor.ActorSystem
-import akka.util.Timeout
 import cats.effect.concurrent.{Deferred, Ref}
 import cats.effect.{ExitCase, Resource}
 import cats.syntax.flatMap.*
 import cats.syntax.traverse.*
+import org.apache.pekko
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.util.Timeout
 //diffx import com.softwaremill.diffx
 import izumi.reflect.Tag
 import java.nio.file.Path
@@ -57,7 +58,7 @@ final class ClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/: Tag] private(
   (implicit S: ClusterableState.Companion[S],
     nodeNameToPassword: NodeNameToPassword[S],
     scheduler: Scheduler,
-    timeout: akka.util.Timeout)
+    timeout: pekko.util.Timeout)
 extends Service.StoppableByRequest:
   clusterNode =>
 
@@ -261,7 +262,7 @@ object ClusterNode:
   private val logger = Logger[this.type]
 
   def recoveringResource[S <: ClusterableState[S] /*: diffx.Diff*/ : Tag](
-    akkaResource: Resource[Task, ActorSystem],
+    pekkoResource: Resource[Task, ActorSystem],
     clusterNodeApi: (Admission, String, ActorSystem) => Resource[Task, ClusterNodeApi],
     licenseChecker: LicenseChecker,
     journalLocation: JournalLocation,
@@ -272,11 +273,11 @@ object ClusterNode:
       S: ClusterableState.Companion[S],
       nodeNameToPassword: NodeNameToPassword[S],
       scheduler: Scheduler,
-      akkaTimeout: Timeout)
+      pekkoTimeout: Timeout)
   : Resource[Task, ClusterNode[S]] =
     StateRecoverer
       .resource[S](journalLocation, clusterConf.config)
-      .parZip(akkaResource/*start in parallel*/)
+      .parZip(pekkoResource/*start in parallel*/)
       .flatMap { case (recovered, actorSystem) =>
         implicit val a = actorSystem
         resource(
@@ -299,7 +300,7 @@ object ClusterNode:
       nodeNameToPassword: NodeNameToPassword[S],
       scheduler: Scheduler,
       actorSystem: ActorSystem,
-      akkaTimeout: akka.util.Timeout)
+      pekkoTimeout: pekko.util.Timeout)
   : Checked[Resource[Task, ClusterNode[S]]] =
     val checked = recovered.clusterState match
       case Empty =>
@@ -336,7 +337,7 @@ object ClusterNode:
       nodeNameToPassword: NodeNameToPassword[S],
       scheduler: Scheduler,
       actorSystem: ActorSystem,
-      timeout: akka.util.Timeout)
+      timeout: org.apache.pekko.util.Timeout)
   : Resource[Task, ClusterNode[S]] =
     import clusterConf.{config, ownId}
 

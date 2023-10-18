@@ -18,7 +18,7 @@ import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.IOExecutor
 import js7.base.time.AlarmClock
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.common.akkahttp.web.data.WebServerPort
+import js7.common.pekkohttp.web.data.WebServerPort
 import js7.common.commandline.CommandLineArguments
 import js7.common.configuration.{CommonConfiguration, Js7Configuration}
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort

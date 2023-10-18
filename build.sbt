@@ -1,4 +1,4 @@
-// WARNING: Start only in a secure closed environment (like Docker) !!!
+// WARNING: Run tests only in a secure closed environment (like Docker) !!!
 // because tests open localhost TCP ports that may allow code injection.
 /**
   * Install sbt from https://www.scala-sbt.org/.
@@ -372,10 +372,10 @@ lazy val `js7-common` = project
     import Dependencies.*
     libraryDependencies ++=
       typesafeConfig ++
-      akkaHttp ++
-      akkaActor ++
-      akkaSlf4j ++
-      akkaHttpTestkit % "test" ++
+      pekkoHttp ++
+      pekkoActor ++
+      pekkoSlf4j ++
+      pekkoHttpTestkit % "test" ++
       javaxInject ++
       findbugs ++
       scalaTest % "test" ++
@@ -400,7 +400,7 @@ lazy val `js7-common-http` = crossProject(JSPlatform, JVMPlatform)
   .jvmSettings {
     import Dependencies.*
     libraryDependencies ++=
-      akkaHttp ++
+      pekkoHttp ++
       scalaLogging ++
       log4j % "test" ++
       lmaxDisruptor % "test"
@@ -425,7 +425,7 @@ lazy val `js7-controller` = project
     import Dependencies.*
     libraryDependencies ++=
       scalaTest % "test" ++
-      akkaHttpTestkit % "test" ++
+      pekkoHttpTestkit % "test" ++
       log4j % "test" ++
       lmaxDisruptor % "test"
   }
@@ -466,7 +466,7 @@ lazy val `js7-proxy` = crossProject(JSPlatform, JVMPlatform)
   .jvmSettings(
     libraryDependencies ++= {
       import Dependencies.*
-      akkaHttp ++
+      pekkoHttp ++
       hamcrest % "test" ++
       log4j % "test" ++
       lmaxDisruptor % "test"
@@ -491,7 +491,7 @@ lazy val `js7-controller-client` = crossProject(JSPlatform, JVMPlatform)
   .jvmSettings(
     libraryDependencies ++= {
       import Dependencies.*
-      akkaHttp ++
+      pekkoHttp ++
       log4j % "test" ++
       lmaxDisruptor % "test"
     })
@@ -506,7 +506,7 @@ lazy val `js7-core` = project
     libraryDependencies ++=
       tagging ++
       diffx ++
-      akkaHttpTestkit % "test" ++
+      pekkoHttpTestkit % "test" ++
       scalaTest % "test" ++
       scalaCheck % "test" ++ log4j % "test" ++
       lmaxDisruptor % "test"
@@ -530,6 +530,7 @@ lazy val `js7-launcher-for-java` = project
   .settings {
     import Dependencies.*
     libraryDependencies ++=
+      java8Compat ++
       "io.vavr" % "vavr" % vavrVersion ++
       hamcrest % "test" ++
       scalaTest % "test" ++
@@ -556,8 +557,8 @@ lazy val `js7-journal` = project
   .settings {
     import Dependencies.*
     libraryDependencies ++=
-      akkaHttp ++
-      akkaHttpTestkit % "test" ++
+      pekkoHttp ++
+      pekkoHttpTestkit % "test" ++
       tagging ++
       diffx ++
       scalaTest % "test" ++
@@ -581,7 +582,7 @@ lazy val `js7-cluster` = project
     import Dependencies.*
     libraryDependencies ++=
       diffx ++
-      akkaHttpTestkit % "test" ++
+      pekkoHttpTestkit % "test" ++
       scalaTest % "test" ++
       scalaCheck % "test" ++
       log4j % "test" ++
@@ -640,11 +641,11 @@ lazy val `js7-agent` = project
     import Dependencies.*
     libraryDependencies ++=
       findbugs ++
-      akkaActor ++
-      akkaStream ++
-      akkaSlf4j ++
-      akkaHttpTestkit % "test" ++
-      akkaHttp ++
+      pekkoActor ++
+      pekkoStream ++
+      pekkoSlf4j ++
+      pekkoHttpTestkit % "test" ++
+      pekkoHttp ++
       intelliJAnnotations % "compile" ++
       scalaTest % "test" ++
       log4j % "test" ++
@@ -679,8 +680,8 @@ lazy val `js7-agent-client` = project
     import Dependencies.*
     libraryDependencies ++=
       "io.monix" %% "monix-reactive" % monixVersion ++
-      akkaActor ++
-      akkaHttp ++
+      pekkoActor ++
+      pekkoHttp ++
       scalaTest % "test" ++
       log4j % "test" ++
       lmaxDisruptor % "test"
@@ -747,7 +748,7 @@ lazy val `js7-tests` = project
   .settings {
     import Dependencies.*
     libraryDependencies ++=
-      akkaHttpTestkit % "test" ++  // For IntelliJ IDEA 2018.2
+      pekkoHttpTestkit % "test" ++  // For IntelliJ IDEA 2018.2
       scalaTest ++
       diffx % "test" ++
       diffxScalaTest % "test" ++
