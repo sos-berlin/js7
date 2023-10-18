@@ -731,6 +731,7 @@ final class OrderTest extends OurTestSuite
 
     "DelayedAfterError" in {
       checkAllEvents(Order(orderId, workflowId /: Position(0), DelayedAfterError(Timestamp("2019-03-07T12:00:00Z"))),
+        detachingAllowed[DelayedAfterError] orElse
         deletionMarkable[DelayedAfterError] orElse
         markable[DelayedAfterError] orElse
         cancelMarkedAllowed[DelayedAfterError] orElse
