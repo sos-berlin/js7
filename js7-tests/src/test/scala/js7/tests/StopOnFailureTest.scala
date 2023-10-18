@@ -24,8 +24,9 @@ import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import monix.execution.Scheduler.Implicits.traced
 
-final class StopOnFailureTest extends OurTestSuite with ControllerAgentForScalaTest
-with BlockingItemUpdater:
+final class StopOnFailureTest 
+  extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
+  
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.controller.agent-driver.command-batch-delay = 0ms

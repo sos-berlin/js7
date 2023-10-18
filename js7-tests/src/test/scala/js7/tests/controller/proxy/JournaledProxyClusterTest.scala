@@ -47,7 +47,8 @@ import org.apache.pekko.actor.ActorSystem
 import scala.concurrent.duration.Deadline.now
 import scala.jdk.CollectionConverters.*
 
-final class JournaledProxyClusterTest extends OurTestSuite with ClusterProxyTest:
+final class JournaledProxyClusterTest extends OurTestSuite, ClusterProxyTest:
+  
   private implicit def implicitActorSystem: ActorSystem = actorSystem
 
   "JournaledProxy[ControllerState]" in:

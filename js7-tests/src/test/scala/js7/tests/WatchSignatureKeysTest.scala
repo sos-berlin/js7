@@ -38,7 +38,7 @@ import monix.execution.Scheduler.Implicits.traced
 import scala.collection.View
 import scala.concurrent.Future
 
-final class WatchSignatureKeysTest extends OurTestSuite with ControllerAgentForScalaTest
+final class WatchSignatureKeysTest extends OurTestSuite, ControllerAgentForScalaTest
 {
   override protected def controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]

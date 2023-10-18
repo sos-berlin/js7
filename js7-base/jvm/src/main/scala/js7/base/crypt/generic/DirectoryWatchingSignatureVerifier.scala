@@ -35,7 +35,7 @@ final class DirectoryWatchingSignatureVerifier private(
   settings: DirectoryWatchSettings,
   onUpdated: () => Unit)
   (implicit iox: IOExecutor)
-extends SignatureVerifier with Service.StoppableByRequest:
+extends SignatureVerifier, Service.StoppableByRequest:
 
   @volatile private var state = State(Map.empty)
 

@@ -15,8 +15,7 @@ final case class ScheduledOrderGenerator(
   workflowPath: WorkflowPath,
   arguments: NamedValues,
   schedule: OldSchedule)
-extends VersionedItem
-with TrivialItemState[ScheduledOrderGenerator]:
+extends VersionedItem, TrivialItemState[ScheduledOrderGenerator]:
 
   protected type Self = ScheduledOrderGenerator
   val item: ScheduledOrderGenerator = this
@@ -28,8 +27,9 @@ with TrivialItemState[ScheduledOrderGenerator]:
 
 
 object ScheduledOrderGenerator
-extends VersionedItem.Companion[ScheduledOrderGenerator]
-with TrivialItemState.Companion[ScheduledOrderGenerator]:
+extends VersionedItem.Companion[ScheduledOrderGenerator], 
+  TrivialItemState.Companion[ScheduledOrderGenerator]:
+  
   type Item = ScheduledOrderGenerator
   type Path = ScheduledOrderGeneratorPath
 

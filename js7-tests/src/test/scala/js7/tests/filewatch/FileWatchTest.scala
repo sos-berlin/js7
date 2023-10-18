@@ -44,7 +44,8 @@ import monix.reactive.Observable
 import scala.concurrent.TimeoutException
 
 final class FileWatchTest
-extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater:
+extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
+  
   protected val agentPaths = Seq(aAgentPath, bAgentPath)
   protected val items = Nil // No Workflow, because we add Workflow and FileWatch in same operation
 

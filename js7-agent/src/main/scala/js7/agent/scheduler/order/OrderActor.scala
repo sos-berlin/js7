@@ -322,7 +322,7 @@ private[order] object OrderActor:
     extends Input
 
     final case class Terminate(processSignal: Option[ProcessSignal] = None)
-    extends Input with DeadLetterSuppression
+    extends Input, DeadLetterSuppression
 
   object Output:
     case object RecoveryFinished

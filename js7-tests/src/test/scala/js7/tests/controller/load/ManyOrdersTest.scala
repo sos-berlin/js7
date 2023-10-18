@@ -19,7 +19,8 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 
-final class ManyOrdersTest extends OurTestSuite with ControllerAgentForScalaTest:
+final class ManyOrdersTest extends OurTestSuite, ControllerAgentForScalaTest:
+  
   protected val agentPaths = agentPath :: Nil
   protected val items = Seq(workflow)
 

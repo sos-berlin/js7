@@ -18,7 +18,7 @@ import js7.common.pekkohttp.web.data.{WebServerBinding, WebServerPort}
 /**
   * @author Joacim Zschimmer
   */
-trait CommonConfiguration extends WebServerBinding.HasLocalUris with BasicConfiguration:
+trait CommonConfiguration extends WebServerBinding.HasLocalUris, BasicConfiguration:
 
   def config: Config
 

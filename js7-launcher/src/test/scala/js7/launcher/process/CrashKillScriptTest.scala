@@ -19,7 +19,8 @@ import org.scalatest.BeforeAndAfterAll
   *
   * @author Joacim Zschimmer
   */
-final class CrashKillScriptTest extends OurTestSuite with HasCloser with BeforeAndAfterAll:
+final class CrashKillScriptTest extends OurTestSuite, HasCloser, BeforeAndAfterAll:
+  
   override protected def afterAll() =
     closer.close()
     super.afterAll()

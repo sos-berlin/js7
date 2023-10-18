@@ -22,7 +22,8 @@ import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import org.scalatest.Assertions.*
 
-final class WorkflowDefinedOrderVariablesTest extends OurTestSuite with ControllerAgentForScalaTest:
+final class WorkflowDefinedOrderVariablesTest extends OurTestSuite, ControllerAgentForScalaTest:
+  
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on"""
 

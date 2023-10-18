@@ -54,7 +54,8 @@ final class JournalActor[S <: SnapshotableState[S]/*: diffx.Diff*/] private(
   eventIdGenerator: EventIdGenerator,
   stopped: Promise[Stopped])
   (implicit S: SnapshotableState.Companion[S])
-extends Actor with Stash with JournalLogging:
+extends Actor, Stash, JournalLogging:
+  
   assert(journalLocation.S eq S)
 
   import context.{become, stop}

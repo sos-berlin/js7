@@ -9,8 +9,8 @@ import scala.collection.mutable
  * @author Joacim Zschimmer
  */
 final class CommandLineArguments private(argMap: mutable.LinkedHashMap[String, Vector[Argument]])
-extends PartialFunction[String, Vector[String]]
-with ConvertibleMultiPartialFunction[String, String]:
+  extends PartialFunction[String, Vector[String]],
+  ConvertibleMultiPartialFunction[String, String]:
 
   private val unusedArguments = new mutable.LinkedHashMap[String, Vector[Argument]] ++ argMap
   private val unusedKeylessArguments = new mutable.HashSet[Int]() ++ apply("").indices

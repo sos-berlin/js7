@@ -28,7 +28,8 @@ import scala.concurrent.duration.DurationInt
   * @author Joacim Zschimmer
   */
 private[journal] final class TestActor(config: Config, journalLocation: JournalLocation, journalStopped: Promise[Unit])
-extends Actor with Stash:
+extends Actor, Stash:
+  
   override val supervisorStrategy = SupervisorStrategies.escalate
   private implicit val askTimeout: Timeout = Timeout(99.seconds)
   private val journalConf = JournalConf.fromConfig(config)

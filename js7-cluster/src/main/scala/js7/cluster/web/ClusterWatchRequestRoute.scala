@@ -90,4 +90,4 @@ trait ClusterWatchRequestRoute extends RouteProvider:
 object ClusterWatchRequestRoute:
   private val logger = Logger[this.type]
 
-  private object CanceledException extends Exception with NoStackTrace
+  private object CanceledException extends Exception, NoStackTrace

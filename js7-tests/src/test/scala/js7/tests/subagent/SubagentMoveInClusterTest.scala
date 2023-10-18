@@ -25,8 +25,9 @@ import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest, Dire
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 
-final class SubagentMoveInClusterTest extends OurTestSuite with ControllerAgentForScalaTest /*with SubagentTester*/
-with BlockingItemUpdater:
+final class SubagentMoveInClusterTest 
+  extends OurTestSuite, ControllerAgentForScalaTest /*, SubagentTester*/, BlockingItemUpdater:
+  
   override protected val controllerConfig = config"""
     js7.auth.agents.AGENT = "${agentPath.toString}-PASSWORD"
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]

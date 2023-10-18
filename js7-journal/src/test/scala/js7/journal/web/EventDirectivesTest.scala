@@ -17,7 +17,8 @@ import scala.concurrent.duration.*
 /**
   * @author Joacim Zschimmer
   */
-final class EventDirectivesTest extends OurTestSuite with ScalatestRouteTest:
+final class EventDirectivesTest extends OurTestSuite, ScalatestRouteTest:
+  
   override def testConfig = config"pekko.loglevel = warning"
     .withFallback(super.testConfig)
 

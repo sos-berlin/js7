@@ -39,7 +39,7 @@ import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import org.scalactic.source
 
-final class ExecuteTest extends OurTestSuite with ControllerAgentForScalaTest
+final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest
 {
   // TODO Test separate Subagent, too
 

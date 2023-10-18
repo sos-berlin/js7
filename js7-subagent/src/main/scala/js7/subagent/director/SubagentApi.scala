@@ -12,7 +12,8 @@ import monix.reactive.Observable
 import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
 
-trait SubagentApi extends SessionApi.HasUserAndPassword with HasIsIgnorableStackTrace:
+trait SubagentApi extends SessionApi.HasUserAndPassword, HasIsIgnorableStackTrace:
+  
   def eventObservable[E <: Event: ClassTag](
     request: EventRequest[E],
     subagentRunId: SubagentRunId,

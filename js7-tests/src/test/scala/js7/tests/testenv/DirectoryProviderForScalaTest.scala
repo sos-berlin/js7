@@ -24,7 +24,7 @@ import scala.collection.immutable.Iterable
   * @author Joacim Zschimmer
   */
 @TestOnly
-trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser:
+trait DirectoryProviderForScalaTest extends BeforeAndAfterAll, HasCloser:
   this: org.scalatest.Suite =>
 
   ProblemCodeMessages.initialize()

@@ -25,7 +25,7 @@ import org.scalatest.matchers.should.Matchers.*
 /**
  * @author Joacim Zschimmer
  */
-final class FileUtilsTest extends OurTestSuite with BeforeAndAfterAll
+final class FileUtilsTest extends OurTestSuite, BeforeAndAfterAll
 {
   private lazy val path = createTempFile("FileUtilTest-", ".tmp")
 

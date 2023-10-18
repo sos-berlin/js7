@@ -40,7 +40,8 @@ import scala.concurrent.duration.*
   * @author Joacim Zschimmer
   */
 private[https] trait HttpsTestBase
-extends OurTestSuite with BeforeAndAfterAll with ControllerAgentForScalaTest with ProvideActorSystem:
+extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest, ProvideActorSystem:
+  
   override protected final def provideAgentHttpsCertificate = true
   protected def provideControllerClientCertificate = false
   protected def useCluster = true

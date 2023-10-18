@@ -244,4 +244,4 @@ object GenericEventRoute:
   private val logger = Logger[this.type]
   private val LF = ByteString("\n")
 
-  private object CanceledException extends Exception with NoStackTrace
+  private object CanceledException extends Exception, NoStackTrace

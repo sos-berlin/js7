@@ -46,8 +46,8 @@ final class FileJournal[S <: SnapshotableState[S]: Tag] private(
   val journalActor: ActorRef @@ JournalActor.type)
   (implicit
     protected val S: SnapshotableState.Companion[S])
-extends Journal[S]
-with FileJournal.PossibleFailover:
+extends Journal[S], FileJournal.PossibleFailover:
+  
   def isHalted: Boolean =
     isHaltedFun()
 

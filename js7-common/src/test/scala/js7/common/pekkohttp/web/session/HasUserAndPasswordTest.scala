@@ -16,7 +16,8 @@ import monix.catnap.MVar
 import monix.eval.Task
 import monix.execution.Scheduler
 
-final class HasUserAndPasswordTest extends OurTestSuite with SessionRouteTester:
+final class HasUserAndPasswordTest extends OurTestSuite, SessionRouteTester:
+  
   protected implicit def scheduler = Scheduler.traced
 
   "HasUserAndPassword retryUntilReachable repeats body after server loss" in:

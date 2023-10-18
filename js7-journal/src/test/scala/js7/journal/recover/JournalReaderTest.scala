@@ -26,7 +26,7 @@ import monix.execution.Scheduler.Implicits.traced
 /**
   * @author Joacim Zschimmer
   */
-final class JournalReaderTest extends OurTestSuite with TestJournalMixin
+final class JournalReaderTest extends OurTestSuite, TestJournalMixin
 {
   private val journalId = JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))
   private val stateName = "TestState"

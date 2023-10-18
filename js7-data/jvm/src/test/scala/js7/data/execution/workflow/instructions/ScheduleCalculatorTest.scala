@@ -12,7 +12,7 @@ import js7.data.workflow.instructions.Schedule
 import js7.data.workflow.instructions.Schedule.{Periodic, Scheme, Ticking}
 import scala.concurrent.duration.*
 
-final class ScheduleCalculatorTest extends OurTestSuite with ScheduleTester
+final class ScheduleCalculatorTest extends OurTestSuite, ScheduleTester
 {
   "Details" - {
     val schedule = Schedule(

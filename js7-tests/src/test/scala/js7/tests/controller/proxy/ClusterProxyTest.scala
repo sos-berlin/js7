@@ -18,7 +18,7 @@ import js7.tests.testenv.ControllerClusterForScalaTest
 import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.{BeforeAndAfterAll, TestSuite}
 
-trait ClusterProxyTest extends BeforeAndAfterAll with ControllerClusterForScalaTest with ProvideActorSystem:
+trait ClusterProxyTest extends BeforeAndAfterAll, ControllerClusterForScalaTest, ProvideActorSystem:
   this: TestSuite =>
 
   protected val items = Seq(workflow)

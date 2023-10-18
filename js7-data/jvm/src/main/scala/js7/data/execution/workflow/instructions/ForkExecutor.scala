@@ -9,7 +9,7 @@ import js7.data.state.StateView
 import js7.data.workflow.instructions.Fork
 
 private[instructions] final class ForkExecutor(protected val service: InstructionExecutorService)
-extends EventInstructionExecutor with ForkInstructionExecutor:
+extends EventInstructionExecutor, ForkInstructionExecutor:
 
   type Instr = Fork
   val instructionClass = classOf[Fork]

@@ -13,8 +13,7 @@ import js7.data.workflow.instructions.ConsumeNotices
 
 // TODO Replace F-type polymorphism with a typeclass ? https://tpolecat.github.io/2015/04/29/f-bounds.html
 trait EventDrivenStateView[Self <: EventDrivenStateView[Self, E], E <: Event]
-extends EventDrivenState[Self, E]
-with StateView:
+extends EventDrivenState[Self, E], StateView:
   this: Self =>
 
   protected def update(

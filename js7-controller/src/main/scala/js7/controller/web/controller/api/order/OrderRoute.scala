@@ -42,7 +42,7 @@ import scala.concurrent.duration.Deadline.now
   * @author Joacim Zschimmer
   */
 trait OrderRoute
-extends ControllerRouteProvider with EntitySizeLimitProvider:
+extends ControllerRouteProvider, EntitySizeLimitProvider:
   protected def executeCommand(command: ControllerCommand, meta: CommandMeta): Task[Checked[command.Response]]
   protected def orderApi: OrderApi
   protected def actorSystem: ActorSystem

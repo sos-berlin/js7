@@ -44,7 +44,7 @@ import scala.concurrent.duration.*
 /**
   * @author Joacim Zschimmer
   */
-final class JournalRouteTest extends OurTestSuite with RouteTester with JournalRoute
+final class JournalRouteTest extends OurTestSuite, RouteTester, JournalRoute
 {
   protected type OurSession = SimpleSession
 

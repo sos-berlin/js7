@@ -21,7 +21,8 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import scala.util.Try
 
 private[execution] final class ExecuteExecutor(protected val service: InstructionExecutorService)
-extends EventInstructionExecutor with PositionInstructionExecutor:
+extends EventInstructionExecutor, PositionInstructionExecutor:
+  
   type Instr = Execute
   val instructionClass = classOf[Execute]
 

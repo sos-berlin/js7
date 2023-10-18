@@ -27,7 +27,8 @@ import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler
 import monix.reactive.Observable
 
-final class SubagentSelectionTest extends OurTestSuite with SubagentTester with BlockingItemUpdater:
+final class SubagentSelectionTest extends OurTestSuite, SubagentTester, BlockingItemUpdater:
+  
   override protected def agentConfig = config"""
     js7.auth.subagents.A-SUBAGENT = "$localSubagentId's PASSWORD"
     js7.auth.subagents.B-SUBAGENT = "$localSubagentId's PASSWORD"

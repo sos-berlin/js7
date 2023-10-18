@@ -46,7 +46,7 @@ import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
 
 final class GenericEventRouteTest
-extends OurTestSuite with BeforeAndAfterAll with ProvideActorSystem with GenericEventRoute
+extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, GenericEventRoute
 {
   protected type OurSession = SimpleSession
 

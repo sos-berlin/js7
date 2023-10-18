@@ -29,7 +29,7 @@ object TestAlarmClock:
     new SimpleTestAlarmClock(start)
 
   private final class SimpleTestAlarmClock(protected val start: Timestamp)
-  extends Simple with Impl:
+  extends Simple, Impl:
     override def productPrefix = "TestAlarmClock"
 
     override def scheduleOnce(delay: FiniteDuration)(callback: => Unit)
@@ -91,4 +91,4 @@ object TestAlarmClock:
   private final class ClockCheckingTestAlarmClock(
     protected val start: Timestamp,
     protected val clockCheckInterval: FiniteDuration)
-  extends Impl with ClockChecking
+  extends Impl, ClockChecking

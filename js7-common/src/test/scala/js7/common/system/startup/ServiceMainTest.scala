@@ -28,7 +28,7 @@ final class ServiceMainTest extends OurTestSuite:
 object ServiceMainTest:
   private case class TestConf(config: Config) extends BasicConfiguration
 
-  private class TestService extends MainService with StoppableByRequest:
+  private class TestService extends MainService, StoppableByRequest:
     protected type Termination = ProgramTermination
 
     protected def start =
@@ -41,7 +41,7 @@ object ServiceMainTest:
 
   private val termination = ProgramTermination(restart = true)
 
-  private class TerminatingService extends MainService with StoppableByRequest:
+  private class TerminatingService extends MainService, StoppableByRequest:
     protected type Termination = ProgramTermination
 
     protected def start =

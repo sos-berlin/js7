@@ -15,7 +15,7 @@ import org.scalatest.concurrent.ScalaFutures
 /**
  * @author Joacim Zschimmer
  */
-final class AgentClientTest extends OurTestSuite with ScalaFutures with AgentTester:
+final class AgentClientTest extends OurTestSuite, ScalaFutures, AgentTester:
 
   override implicit val patienceConfig = PatienceConfig(timeout = 10.s)
 

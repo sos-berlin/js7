@@ -43,7 +43,7 @@ import scala.concurrent.Future
 /**
   * @author Joacim Zschimmer
   */
-final class FileJournalTest extends OurTestSuite with BeforeAndAfterAll
+final class FileJournalTest extends OurTestSuite, BeforeAndAfterAll
 {
   private implicit lazy val scheduler: SchedulerService =
     Scheduler(Executors.newCachedThreadPool())  // Scheduler.Implicits.global blocks on 2-processor machine
@@ -226,7 +226,7 @@ private object FileJournalTest
 
   sealed trait TestEvent extends Event
 
-  sealed trait NumberEvent extends TestEvent with Event.IsKeyBase[NumberEvent] {
+  sealed trait NumberEvent extends TestEvent, Event.IsKeyBase[NumberEvent] {
     val keyCompanion: NumberEvent.type = NumberEvent
   }
   object NumberEvent extends Event.CompanionForKey[NumberKey, NumberEvent] {

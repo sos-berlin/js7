@@ -22,7 +22,8 @@ import monix.execution.Scheduler
 import monix.reactive.Observable
 
 final class SubagentSelectionExprTest
-extends OurTestSuite with SubagentTester with BlockingItemUpdater:
+extends OurTestSuite, SubagentTester, BlockingItemUpdater:
+  
   protected val agentPaths = Seq(agentPath)
   protected lazy val items = Seq(
     Workflow(

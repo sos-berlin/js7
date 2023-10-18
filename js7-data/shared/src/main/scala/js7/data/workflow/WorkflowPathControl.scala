@@ -10,9 +10,7 @@ final case class WorkflowPathControl(
   suspended: Boolean = false,
   skip: Set[Label] = Set.empty,
   itemRevision: Option[ItemRevision] = Some(ItemRevision(0)))
-extends UnsignedSimpleItem
-with UnsignedSimpleItemState
-with TrivialItemState[WorkflowPathControl]:
+extends UnsignedSimpleItem, UnsignedSimpleItemState, TrivialItemState[WorkflowPathControl]:
 
   protected type Self = WorkflowPathControl
   val companion: WorkflowPathControl.type = WorkflowPathControl
@@ -29,9 +27,10 @@ with TrivialItemState[WorkflowPathControl]:
 
 
 object WorkflowPathControl
-extends UnsignedSimpleItem.Companion[WorkflowPathControl]
-with UnsignedSimpleItemState.Companion[WorkflowPathControl]
-with TrivialItemState.Companion[WorkflowPathControl]:
+extends UnsignedSimpleItem.Companion[WorkflowPathControl],
+  UnsignedSimpleItemState.Companion[WorkflowPathControl],
+  TrivialItemState.Companion[WorkflowPathControl]:
+  
   override type Key = WorkflowPathControlPath
   def Key = WorkflowPathControlPath
 

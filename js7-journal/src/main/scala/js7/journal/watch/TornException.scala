@@ -8,7 +8,7 @@ import scala.util.control.NoStackTrace
   * @author Joacim Zschimmer
   */
 final class TornException private[watch](val after: EventId, val tornEventId: EventId)
-extends ProblemException(EventSeqTornProblem(requestedAfter = after, tornEventId = tornEventId))
-with NoStackTrace:
+extends ProblemException(EventSeqTornProblem(requestedAfter = after, tornEventId = tornEventId)),
+  NoStackTrace:
 
   override def getMessage = s"EventSeq is torn - requestedAfter=$after tornEventId=$tornEventId"

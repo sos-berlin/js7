@@ -41,7 +41,7 @@ import org.apache.pekko.actor.ActorSystem
 import org.scalatest.BeforeAndAfterAll
 
 final class JournaledProxyTest
-extends OurTestSuite with BeforeAndAfterAll with ProvideActorSystem with ControllerAgentForScalaTest
+extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, ControllerAgentForScalaTest
 {
   override protected def agentPaths = agentPath :: Nil
   protected val items = Nil

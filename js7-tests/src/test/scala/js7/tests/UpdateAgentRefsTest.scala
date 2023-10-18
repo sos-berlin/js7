@@ -31,7 +31,7 @@ import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import scala.annotation.tailrec
 
-final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForScalaTest:
+final class UpdateAgentRefsTest extends OurTestSuite, DirectoryProviderForScalaTest:
   override protected def controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.controller.agent-driver.command-batch-delay = 0ms

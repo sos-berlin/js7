@@ -112,7 +112,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     innerBlock: BranchPath = BranchPath.empty,
     startPosition: Option[Position] = None,
     stopPositions: Set[PositionOrLabel] = Set.empty)
-  extends OrderAddedX with OrderActorEvent:
+  extends OrderAddedX, OrderActorEvent:
     workflowId.requireNonAnonymous()
     def scheduledFor = None
     def externalOrderKey = None
@@ -364,7 +364,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     movedTo: Position,
     // COMPATIBLE with v2.4: outcome has been replaced by OrderOutcomeAdded event
     outcome: Option[Outcome.NotSucceeded])
-  extends OrderFailedEvent with OrderTerminated:
+  extends OrderFailedEvent, OrderTerminated:
     def moveTo(movedTo: Position) = copy(movedTo = movedTo)
   object OrderFailed:
     @deprecated("outcome is deprecated", "v2.5")
@@ -449,7 +449,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   case object OrderDetached extends OrderCoreEvent
 
   final case class OrderFinished(outcome: Option[Outcome.Completed] = None)
-  extends OrderActorEvent with OrderTerminated
+  extends OrderActorEvent, OrderTerminated
 
   type OrderDeletionMarked = OrderDeletionMarked.type
   case object OrderDeletionMarked extends OrderActorEvent
@@ -480,7 +480,7 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
   case object OrderOperationCancelled extends OrderActorEvent
 
   type OrderCancelled = OrderCancelled.type
-  case object OrderCancelled extends OrderActorEvent with OrderTerminated
+  case object OrderCancelled extends OrderActorEvent, OrderTerminated
 
   final case class OrderSuspensionMarked(mode: SuspensionMode = SuspensionMode.standard)
   extends OrderKillingMarked:
@@ -500,13 +500,13 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     position: Option[Position] = None,
     historyOperations: Seq[OrderResumed.HistoryOperation] = Nil,
     asSucceeded: Boolean = false)
-  extends OrderActorEvent with Big
+  extends OrderActorEvent, Big
 
   final case class OrderResumed(
     position: Option[Position] = None,
     historyOperations: Seq[OrderResumed.HistoryOperation] = Nil,
     asSucceeded: Boolean = false)
-  extends OrderActorEvent with Big
+  extends OrderActorEvent, Big
   object OrderResumed:
     sealed trait HistoryOperation:
       def positions: Iterable[Position]

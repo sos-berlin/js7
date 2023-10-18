@@ -44,8 +44,9 @@ import org.scalatest.Assertions.assert
 import scala.collection.View
 import scala.concurrent.duration.Deadline.now
 
-final class ForkListTest extends OurTestSuite with ControllerAgentForScalaTest
-with BlockingItemUpdater:
+final class ForkListTest 
+  extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
+  
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.controller.agent-driver.command-batch-delay = 0ms

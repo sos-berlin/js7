@@ -189,7 +189,7 @@ object Problem extends Semigroup[Problem]:
     private[problem] def codeOf(clas: Class[?]) =
       ProblemCode(clas.simpleScalaName stripSuffix "Problem")
 
-  trait ArgumentlessCoded extends Coded with Coded.Companion:
+  trait ArgumentlessCoded extends Coded, Coded.Companion:
     override val code = Coded.codeOf(getClass)
     final def arguments = Map.empty
 

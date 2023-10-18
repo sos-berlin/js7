@@ -39,7 +39,7 @@ import scala.reflect.ClassTag
 /**
   * @author Joacim Zschimmer
   */
-final class JournalEventWatchTest extends OurTestSuite with BeforeAndAfterAll
+final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll
 {
   import TestState.keyedEventJsonCodec
 

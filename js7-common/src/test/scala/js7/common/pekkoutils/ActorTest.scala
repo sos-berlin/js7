@@ -12,7 +12,8 @@ import org.scalatest.BeforeAndAfterAll
 import scala.concurrent.Promise
 import scala.util.control.NoStackTrace
 
-final class ActorTest extends OurTestSuite with BeforeAndAfterAll with ProvideActorSystem:
+final class ActorTest extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem:
+  
   protected def config = config"pekko.actor.guardian-supervisor-strategy = org.apache.pekko.actor.StoppingSupervisorStrategy"
 
   override def afterAll() =

@@ -15,7 +15,8 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 
-final class FeedMainTest extends OurTestSuite with ControllerAgentForScalaTest:
+final class FeedMainTest extends OurTestSuite, ControllerAgentForScalaTest:
+
   override protected def controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     """

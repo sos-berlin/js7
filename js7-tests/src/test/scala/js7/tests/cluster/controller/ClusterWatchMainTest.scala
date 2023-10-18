@@ -18,7 +18,7 @@ import js7.tests.testenv.ControllerClusterForScalaTest
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced as scheduler
 
-final class ClusterWatchMainTest extends OurAsyncTestSuite with ControllerClusterForScalaTest:
+final class ClusterWatchMainTest extends OurAsyncTestSuite, ControllerClusterForScalaTest:
   private implicit lazy val cs: ContextShift[IO] = IO.contextShift(scheduler)
   private lazy val serverAdmission = controllerAdmissions.head
 

@@ -33,7 +33,7 @@ import monix.execution.Scheduler.Implicits.traced
 /**
   * @author Joacim Zschimmer
   */
-final class ReleaseEventsTest extends OurTestSuite with DirectoryProviderForScalaTest:
+final class ReleaseEventsTest extends OurTestSuite, DirectoryProviderForScalaTest:
   protected val agentPaths = TestAgentPath :: Nil
   protected val items = Seq(TestWorkflow)
   override protected val controllerConfig = config"""
@@ -147,5 +147,5 @@ private object ReleaseEventsTest:
     api
 
   private class TestApi(controller: TestController, protected val credentials: UserAndPassword)
-  extends PekkoHttpControllerApi(controller.localUri, Some(credentials), controller.actorSystem, name = "RunningController")
-  with SessionApi.HasUserAndPassword
+  extends PekkoHttpControllerApi(controller.localUri, Some(credentials), controller.actorSystem, name = "RunningController"),
+    SessionApi.HasUserAndPassword

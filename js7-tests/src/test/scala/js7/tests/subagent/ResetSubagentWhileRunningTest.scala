@@ -22,7 +22,8 @@ import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler
 import scala.concurrent.TimeoutException
 
-final class ResetSubagentWhileRunningTest extends OurTestSuite with SubagentTester:
+final class ResetSubagentWhileRunningTest extends OurTestSuite, SubagentTester:
+
   protected val agentPaths = Seq(agentPath)
   protected lazy val items = Seq(workflow, bareSubagentItem)
   override protected val primarySubagentsDisabled = true

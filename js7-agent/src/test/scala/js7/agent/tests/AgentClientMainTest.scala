@@ -13,7 +13,8 @@ import scala.collection.mutable
 /**
  * @author Joacim Zschimmer
  */
-final class AgentClientMainTest extends OurTestSuite with BeforeAndAfterAll with TestAgentProvider:
+final class AgentClientMainTest extends OurTestSuite, BeforeAndAfterAll, TestAgentProvider:
+  
   override def afterAll() = closer closeThen super.afterAll()
 
   //override protected def agentTestWiring = RunningAgent.TestWiring(

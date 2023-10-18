@@ -55,9 +55,8 @@ private final class RemoteSubagentDriver private(
   protected val conf: RemoteSubagentDriver.Conf,
   protected val subagentConf: SubagentConf,
   protected val recouplingStreamReaderConf: RecouplingStreamReaderConf)
-extends SubagentDriver
-with Service.StoppableByRequest
-with SubagentEventListener:
+extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
+  
   private val logger = Logger.withPrefix[this.type](subagentItem.pathRev.toString)
   private val resetLock = AsyncLock()
   private val dispatcher = new SubagentDispatcher(subagentId, postQueuedCommand)

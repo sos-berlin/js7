@@ -47,8 +47,8 @@ final case class Workflow(
   result: Option[Map[String, Expression]],
   source: Option[String],
   outer: Option[Workflow])
-extends VersionedItem
-with TrivialItemState[Workflow]:
+extends VersionedItem, TrivialItemState[Workflow]:
+  
   override def equals(o: Any) = o match
     case o: Workflow =>
       (id == o.id
@@ -496,8 +496,8 @@ with TrivialItemState[Workflow]:
     s"{${labeledInstructions.mkString("; ")} ${nameToJob.map { case (k, v) => s"define job $k { $v }" }.mkString(" ")} }"
 
 
-object Workflow extends VersionedItem.Companion[Workflow]
-with TrivialItemState.Companion[Workflow]:
+object Workflow extends VersionedItem.Companion[Workflow], TrivialItemState.Companion[Workflow]:
+  
   type Item = Workflow
   type Path = WorkflowPath
 

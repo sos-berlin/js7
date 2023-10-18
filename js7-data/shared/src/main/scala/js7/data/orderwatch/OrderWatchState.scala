@@ -253,7 +253,7 @@ object OrderWatchState extends UnsignedSimpleItemState.Companion[OrderWatchState
   sealed trait VanishedOrArised
 
   final case class Arised(orderId: OrderId, arguments: NamedValues)
-  extends ArisedOrHasOrder with VanishedOrArised
+  extends ArisedOrHasOrder, VanishedOrArised
 
   final case class HasOrder(
     orderId: OrderId,

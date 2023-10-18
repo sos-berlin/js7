@@ -18,8 +18,8 @@ import js7.tests.NoticeEndOfLifeTest.*
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import monix.execution.Scheduler.Implicits.traced
 
-final class NoticeEndOfLifeTest extends OurTestSuite with ControllerAgentForScalaTest
-with BlockingItemUpdater
+final class NoticeEndOfLifeTest 
+  extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater
 {
   override protected val controllerConfig = config"""
     js7.journal.remove-obsolete-files = false

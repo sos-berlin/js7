@@ -37,7 +37,7 @@ import org.scalatest.BeforeAndAfterAll
 /**
   * @author Joacim Zschimmer
   */
-final class PekkoWebServerTest extends OurTestSuite with BeforeAndAfterAll
+final class PekkoWebServerTest extends OurTestSuite, BeforeAndAfterAll
 {
   private implicit lazy val actorSystem: ActorSystem =
     newActorSystem("PekkoWebServerTest")

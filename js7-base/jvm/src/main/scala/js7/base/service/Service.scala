@@ -121,7 +121,7 @@ object Service:
       resource(Task(
         new RestartAfterFailureService(startDelays, runDelays)(serviceResource)))
 
-  trait StoppableByRequest extends Service with js7.base.service.StoppableByRequest
+  trait StoppableByRequest extends Service, js7.base.service.StoppableByRequest
 
   /** Marker type to ensure call of `startFiber`. */
   final class Started private[Service]:

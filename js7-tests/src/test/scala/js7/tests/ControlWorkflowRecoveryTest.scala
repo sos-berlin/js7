@@ -30,7 +30,8 @@ import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 
 final class ControlWorkflowRecoveryTest
-extends OurTestSuite with DirectoryProviderForScalaTest:
+extends OurTestSuite, DirectoryProviderForScalaTest:
+  
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.controller.agent-driver.command-batch-delay = 0ms

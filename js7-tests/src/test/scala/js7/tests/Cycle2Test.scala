@@ -21,7 +21,8 @@ import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.*
 
 // Repeats the JS-2012 test case in CycleTest with the real wall clock, to be sure.
-final class Cycle2Test extends OurTestSuite with ControllerAgentForScalaTest with ScheduleTester:
+final class Cycle2Test extends OurTestSuite, ControllerAgentForScalaTest, ScheduleTester:
+  
   protected val agentPaths = Nil
   protected val items = Seq(calendar, js2012Workflow)
 

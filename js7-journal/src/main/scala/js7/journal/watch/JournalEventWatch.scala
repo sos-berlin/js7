@@ -46,10 +46,11 @@ final class JournalEventWatch(
   val journalLocation: JournalLocation,
   config: Config,
   announceNextFileEventId: Option[EventId] = None)
-extends AutoCloseable
-with RealEventWatch
-with FileEventWatch
-with JournalingObserver:
+extends AutoCloseable,
+  RealEventWatch,
+  FileEventWatch,
+  JournalingObserver:
+  
   logger.debug(
     s"new JournalEventWatch($journalLocation, announceNextFileEventId=$announceNextFileEventId)")
 

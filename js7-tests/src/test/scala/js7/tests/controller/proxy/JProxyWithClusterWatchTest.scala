@@ -5,7 +5,8 @@ import js7.data_for_java.auth.{JAdmission, JHttpsConfig}
 import js7.tests.testenv.ControllerAgentForScalaTest
 import scala.jdk.CollectionConverters.*
 
-final class JProxyWithClusterWatchTest extends OurTestSuite with ControllerAgentForScalaTest:
+final class JProxyWithClusterWatchTest extends OurTestSuite, ControllerAgentForScalaTest:
+  
   protected def items = Nil
   protected def agentPaths = Nil
 

@@ -517,9 +517,10 @@ object ClusterNode:
   // TODO Provisional fix because it's not easy to restart the recovery
   // ServiceMain catches this exception by its `MainServiceTerminationException` trait !!!
   final class RestartAfterJournalTruncationException
-  extends RuntimeException("Restart after journal truncation")
-  with MainServiceTerminationException
-  with NoStackTrace:
+  extends RuntimeException("Restart after journal truncation"),
+    MainServiceTerminationException,
+    NoStackTrace:
+
     def termination = ProgramTermination(restart = true)
 
   final case class ClusterWatchConfirmed(

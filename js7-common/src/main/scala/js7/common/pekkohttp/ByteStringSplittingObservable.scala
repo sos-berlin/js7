@@ -23,7 +23,7 @@ extends Observable[ByteString]:
 
 object ByteStringSplittingObservable:
   private final class SplittingSubscriber(maxSize: Int, out: Subscriber[ByteString])
-  extends Subscriber[ByteString] with Cancelable:
+  extends Subscriber[ByteString], Cancelable:
     //<editor-fold desc="NOT USED">
 
     @volatile private var canceled = false

@@ -11,7 +11,8 @@ import js7.data.item.UnsignedSimpleItemPath
 import js7.data.node.NodeName
 
 final case class SubagentId(string: String)
-extends UnsignedSimpleItemPath with DelegateId with AttachableToAgent:
+extends UnsignedSimpleItemPath, DelegateId, AttachableToAgent:
+  
   def companion = SubagentId
 
   def toUserId: Checked[UserId] =
@@ -22,8 +23,8 @@ extends UnsignedSimpleItemPath with DelegateId with AttachableToAgent:
 
 
 object SubagentId
-extends DelegateId.Companion[SubagentId]
-with UnsignedSimpleItemPath.Companion[SubagentId]:
+extends DelegateId.Companion[SubagentId], UnsignedSimpleItemPath.Companion[SubagentId]:
+  
   override val itemTypeName = "Subagent"
   override val pathTypeName = itemTypeName
 

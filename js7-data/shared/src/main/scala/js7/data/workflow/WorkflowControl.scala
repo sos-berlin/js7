@@ -10,9 +10,7 @@ final case class WorkflowControl(
   id: WorkflowControlId,
   breakpoints: Set[Position] = Set.empty,
   itemRevision: Option[ItemRevision] = None)
-extends VersionedControl
-with UnsignedItemState
-with TrivialItemState[WorkflowControl]:
+extends VersionedControl, UnsignedItemState, TrivialItemState[WorkflowControl]:
 
   protected type Self = WorkflowControl
   val companion: WorkflowControl.type = WorkflowControl
@@ -28,8 +26,8 @@ with TrivialItemState[WorkflowControl]:
 
 
 object WorkflowControl
-extends VersionedControl.Companion[WorkflowControl]
-with UnsignedItemState.Companion[WorkflowControl]:
+extends VersionedControl.Companion[WorkflowControl], UnsignedItemState.Companion[WorkflowControl]:
+  
   type Item = WorkflowControl
   val cls = classOf[WorkflowControl]
 

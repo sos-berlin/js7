@@ -8,8 +8,7 @@ import javax.xml.transform.stream.StreamSource
   * @author Joacim Zschimmer
   */
 final class FileSource(path: Path)
-extends StreamSource
-with AutoCloseable:
+extends StreamSource, AutoCloseable:
 
   private val in = new FileInputStream(path.toFile)
   setInputStream(new BufferedInputStream(in))

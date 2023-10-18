@@ -58,7 +58,7 @@ private[agent] final class AgentActor(
   clock: AlarmClock,
   agentConf: AgentConfiguration)
   (implicit protected val scheduler: Scheduler)
-extends Actor with Stash with SimpleStateActor:
+extends Actor, Stash, SimpleStateActor:
 
   import agentConf.{implicitPekkoAskTimeout, journalLocation}
   import context.{actorOf, watch}

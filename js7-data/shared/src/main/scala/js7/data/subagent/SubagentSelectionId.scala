@@ -7,9 +7,8 @@ import js7.data.delegate.DelegateId
 import js7.data.item.{InventoryItemPath, UnsignedSimpleItemPath}
 
 final case class SubagentSelectionId(string: String)
-extends UnsignedSimpleItemPath
-with DelegateId
-with InventoryItemPath.AttachableToAgent:
+extends UnsignedSimpleItemPath, DelegateId, InventoryItemPath.AttachableToAgent:
+
   def companion = SubagentSelectionId
 
   def toUserId = UserId(string)
@@ -19,8 +18,9 @@ with InventoryItemPath.AttachableToAgent:
 
 
 object SubagentSelectionId
-extends DelegateId.Companion[SubagentSelectionId]
-with UnsignedSimpleItemPath.Companion[SubagentSelectionId]:
+extends DelegateId.Companion[SubagentSelectionId], 
+  UnsignedSimpleItemPath.Companion[SubagentSelectionId]:
+  
   def fromSubagentId(subagentId: SubagentId): SubagentSelectionId =
     SubagentSelectionId(subagentId.string)
 

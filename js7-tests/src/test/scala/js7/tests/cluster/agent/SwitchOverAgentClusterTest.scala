@@ -30,8 +30,9 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import scala.util.control.NonFatal
 
-final class SwitchOverAgentClusterTest extends OurTestSuite with ControllerAgentForScalaTest
-with BlockingItemUpdater:
+final class SwitchOverAgentClusterTest 
+  extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
+  
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.journal.remove-obsolete-files = false

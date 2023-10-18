@@ -26,7 +26,7 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.traced
 
-final class AdmissionTimeSkipJobTest extends OurTestSuite with ControllerAgentForScalaTest
+final class AdmissionTimeSkipJobTest extends OurTestSuite, ControllerAgentForScalaTest
 {
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
@@ -137,7 +137,7 @@ final class AdmissionTimeSkipJobTest extends OurTestSuite with ControllerAgentFo
 
 
 object AdmissionTimeSkipJobTest:
-  
+
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)
   private val timeZone = ZoneId.of("Europe/Mariehamn")

@@ -23,10 +23,10 @@ object ItemOperation:
         case path: SimpleItemPath => ItemOperation.DeleteSimple(path)
 
   final case class AddOrChangeSimple(item: UnsignedSimpleItem)
-  extends SimpleItemOperation with AddOrChangeOperation
+  extends SimpleItemOperation, AddOrChangeOperation
 
   final case class DeleteSimple(path: SimpleItemPath)
-  extends SimpleItemOperation with Remove
+  extends SimpleItemOperation, Remove
 
   sealed trait VersionedOperation extends ItemOperation
   object VersionedOperation:
@@ -45,10 +45,10 @@ object ItemOperation:
   sealed trait VersionedItemOperation extends VersionedOperation
 
   final case class AddOrChangeSigned(signedString: SignedString)
-  extends VersionedItemOperation with AddOrChangeOperation
+  extends VersionedItemOperation, AddOrChangeOperation
 
   final case class RemoveVersioned(path: VersionedItemPath)
-  extends VersionedItemOperation with Remove
+  extends VersionedItemOperation, Remove
 
   implicit def jsonCodec(implicit
     @unused/*Scala 2.13.8 macro?*/ idJsonEncoder: Encoder[SimpleItemPath],

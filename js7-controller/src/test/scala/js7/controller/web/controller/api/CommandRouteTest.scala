@@ -19,7 +19,7 @@ import scala.concurrent.Future
 /**
   * @author Joacim Zschimmer
   */
-final class CommandRouteTest extends OurTestSuite with RouteTester with CommandRoute
+final class CommandRouteTest extends OurTestSuite, RouteTester, CommandRoute
 {
   protected val controllerId = ControllerId("TEST-CONTROLLER")
   protected def whenShuttingDown = Future.never

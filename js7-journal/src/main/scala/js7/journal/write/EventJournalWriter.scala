@@ -28,8 +28,9 @@ final class EventJournalWriter(
   withoutSnapshots: Boolean = false,
   initialEventCount: Int = 0)
   (implicit protected val scheduler: Scheduler)
-extends JournalWriter(S, after = after, append = !withoutSnapshots)
-with AutoCloseable:
+extends JournalWriter(S, after = after, append = !withoutSnapshots), 
+  AutoCloseable:
+  
   private val logger = Logger.withPrefix(getClass, file.getFileName.toString)
   protected val statistics: EventStatisticsCounter =
     new EventStatisticsCounter(initialEventCount)

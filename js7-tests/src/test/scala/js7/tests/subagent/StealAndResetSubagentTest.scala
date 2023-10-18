@@ -23,7 +23,8 @@ import monix.execution.Scheduler
 import monix.reactive.Observable
 import scala.concurrent.TimeoutException
 
-final class StealAndResetSubagentTest extends OurTestSuite with SubagentTester:
+final class StealAndResetSubagentTest extends OurTestSuite, SubagentTester:
+  
   override protected def agentConfig = config"""
     js7.auth.subagents.STOLEN-SUBAGENT = "THIEVE-AGENT-PASSWORD"
     """.withFallback(super.agentConfig)

@@ -26,10 +26,11 @@ object VersionedEvent:
     def path: VersionedItemPath
 
   sealed trait VersionedItemAddedOrChanged
-  extends VersionedItemEvent
-  /*with SignedItemAddedOrChanged???*/
-  with ItemAddedOrChanged
-  with Product:
+  extends VersionedItemEvent,
+    // SignedItemAddedOrChanged, ???
+    ItemAddedOrChanged,
+    Product:
+
     def signedString = signed.signedString
     def signed: Signed[VersionedItem]
     def item: VersionedItem = signed.value

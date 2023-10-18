@@ -29,7 +29,8 @@ import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
 
-final class FileWatchDelayTest extends OurTestSuite with ControllerAgentForScalaTest:
+final class FileWatchDelayTest extends OurTestSuite, ControllerAgentForScalaTest:
+  
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.journal.remove-obsolete-files = false

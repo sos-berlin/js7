@@ -205,7 +205,7 @@ final case class StringValue(string: String) extends GoodValue:
   override def toString =
     ValuePrinter.quoteString(string.truncateWithEllipsis(200, showLength = true))
 
-object StringValue extends GoodValue.Companion[StringValue] with ValueType.Simple:
+object StringValue extends GoodValue.Companion[StringValue], ValueType.Simple:
   val name = "String"
   val empty = StringValue("")
 
@@ -235,7 +235,7 @@ final case class NumberValue(number: BigDecimal) extends GoodValue:
 
   override def toString = convertToString
 
-object NumberValue extends GoodValue.Companion[NumberValue] with ValueType.Simple:
+object NumberValue extends GoodValue.Companion[NumberValue], ValueType.Simple:
   val name = "Number"
   val Zero = NumberValue(0)
   val One = NumberValue(1)
@@ -269,7 +269,7 @@ final case class BooleanValue(booleanValue: Boolean) extends GoodValue:
   override def toString = convertToString
 
 
-object BooleanValue extends GoodValue.Companion[BooleanValue] with ValueType.Simple:
+object BooleanValue extends GoodValue.Companion[BooleanValue], ValueType.Simple:
   val name = "Boolean"
   val True = BooleanValue(true)
   val False = BooleanValue(false)
@@ -287,7 +287,7 @@ final case class ListValue private(elements: Vector[Value]) extends GoodValue:
   override def toString = convertToString
 
 /** A list of values of undeclared type. */
-object ListValue extends GoodValue.Companion[ListValue] with ValueType.Compound:
+object ListValue extends GoodValue.Companion[ListValue], ValueType.Compound:
   val name = "List"
   val empty = ListValue(Vector.empty)
 
@@ -317,7 +317,7 @@ final case class ObjectValue(nameToValue: Map[String, Value]) extends GoodValue:
 
   override def toString = convertToString
 
-object ObjectValue extends GoodValue.Companion[ObjectValue] with ValueType.Compound:
+object ObjectValue extends GoodValue.Companion[ObjectValue], ValueType.Compound:
   val name = "Object"
   val empty = ObjectValue(Map.empty)
 
@@ -336,7 +336,7 @@ final case class FunctionValue(function: ExprFunction) extends GoodValue:
   def convertToString = function.toString
 
   override def toString = function.toString
-object FunctionValue extends GoodValue.Companion[FunctionValue] with ValueType:
+object FunctionValue extends GoodValue.Companion[FunctionValue], ValueType:
   val name = "Function"
 
 
@@ -344,7 +344,7 @@ object FunctionValue extends GoodValue.Companion[FunctionValue] with ValueType:
  *
  * Similar to Scala None (but there is no Some).
  * Unlike SQL null, this MissingValue equals itself. */
-case object MissingValue extends Value with ValueType.Simple:
+case object MissingValue extends Value, ValueType.Simple:
   val valueType = MissingValue
 
   val name = "Missing"

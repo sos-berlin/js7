@@ -15,8 +15,8 @@ final case class SubagentState(
   eventId: EventId,
   idToWorkflow: Map[WorkflowId, Workflow],
   pathToJobResource: Map[JobResourcePath, JobResource])
-extends JournaledState[SubagentState]
-with ItemContainer:
+extends JournaledState[SubagentState], ItemContainer:
+  
   val companion: SubagentState.type = SubagentState
 
   def withEventId(eventId: EventId) =
@@ -54,8 +54,8 @@ with ItemContainer:
 
 
 object SubagentState
-extends JournaledState.Companion[SubagentState]
-with ItemContainer.Companion[SubagentState]:
+extends JournaledState.Companion[SubagentState], ItemContainer.Companion[SubagentState]:
+  
   val empty = SubagentState(EventId.BeforeFirst, Map.empty, Map.empty)
 
   protected def inventoryItems =

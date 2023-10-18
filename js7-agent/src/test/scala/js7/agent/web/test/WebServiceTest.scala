@@ -26,7 +26,7 @@ import org.scalatest.{BeforeAndAfterAll, Suite}
 /**
   * @author Joacim Zschimmer
   */
-trait WebServiceTest extends HasCloser with BeforeAndAfterAll with ScalatestRouteTest:
+trait WebServiceTest extends HasCloser, BeforeAndAfterAll, ScalatestRouteTest:  
   this: AgentRouteProvider & Suite =>
 
   ProblemCodeMessages.initialize()

@@ -19,7 +19,8 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.traced
 
-final class AddOrderTest extends OurTestSuite with ControllerAgentForScalaTest:
+final class AddOrderTest extends OurTestSuite, ControllerAgentForScalaTest:
+
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.journal.remove-obsolete-files = false

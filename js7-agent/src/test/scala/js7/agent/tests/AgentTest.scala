@@ -37,7 +37,8 @@ import monix.execution.Scheduler.Implicits.traced
 /**
   * @author Joacim Zschimmer
   */
-final class AgentTest extends OurTestSuite with AgentTester:
+final class AgentTest extends OurTestSuite, AgentTester:
+
   "work/http-uri" in:
     assert((agentConfiguration.workDirectory / "http-uri").contentString ==
       s"${agent.localUri}/subagent")

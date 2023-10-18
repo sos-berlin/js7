@@ -31,7 +31,7 @@ import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 
-final class CalendarTest extends OurTestSuite with ControllerAgentForScalaTest:
+final class CalendarTest extends OurTestSuite, ControllerAgentForScalaTest:
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(calendar, workflow)
 

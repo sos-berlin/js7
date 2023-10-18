@@ -48,7 +48,7 @@ import scala.util.{Failure, Success}
 /**
   * @author Joacim Zschimmer
   */
-final class PekkoHttpClientTest extends OurTestSuite with BeforeAndAfterAll with HasCloser
+final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, HasCloser
 {
   implicit private lazy val actorSystem: ActorSystem =
     newActorSystem("PekkoHttpClientTest", config"""pekko.http.client.idle-timeout = 2s""")

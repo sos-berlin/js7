@@ -107,7 +107,7 @@ object Outcome:
         make(namedValues)
 
   final case class Failed(errorMessage: Option[String], namedValues: NamedValues)
-  extends Completed with NotSucceeded:
+  extends Completed, NotSucceeded:
     override def toString =
       View(errorMessage, namedValues.??).mkString("⚠️ Failed(", ", ", ")")
 
@@ -158,7 +158,7 @@ object Outcome:
     Killed(Outcome.Failed(Some("Canceled")))
 
   /** No response from job - some other error has occurred. */
-  final case class Disrupted(reason: Disrupted.Reason) extends Outcome with NotSucceeded:
+  final case class Disrupted(reason: Disrupted.Reason) extends Outcome, NotSucceeded:
     def show = s"Disrupted($reason)"
     override def toString = "💥 " + show
   object Disrupted:

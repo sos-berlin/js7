@@ -18,7 +18,8 @@ import js7.tests.FailOnErrWrittenTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.traced
 
-final class FailOnErrWrittenTest extends OurTestSuite with ControllerAgentForScalaTest:
+final class FailOnErrWrittenTest extends OurTestSuite, ControllerAgentForScalaTest:
+  
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.journal.remove-obsolete-files = false

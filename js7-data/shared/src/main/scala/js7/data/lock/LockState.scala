@@ -14,7 +14,7 @@ final case class LockState(
   lock: Lock,
   acquired: Acquired = Available,
   queue: Queue[OrderId] = Queue.empty)
-extends UnsignedSimpleItemState with Big/*acquired and queue get big with many orders*/:
+extends UnsignedSimpleItemState, Big/*acquired and queue get big, many orders*/:
 
   import lock.limit
 

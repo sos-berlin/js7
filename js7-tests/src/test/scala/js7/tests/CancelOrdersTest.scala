@@ -42,8 +42,8 @@ import scala.concurrent.duration.Deadline.now
 /**
   * @author Joacim Zschimmer
   */
-final class CancelOrdersTest extends OurTestSuite with ControllerAgentForScalaTest
-with BlockingItemUpdater
+final class CancelOrdersTest 
+  extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater
 {
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]

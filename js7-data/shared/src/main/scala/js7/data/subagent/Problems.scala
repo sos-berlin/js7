@@ -35,23 +35,23 @@ object Problems:
   // COMPATIBLE with v2.2
   type ProcessLostDueToUnknownReasonProblem = ProcessLostDueToUnknownReasonProblem.type
   case object ProcessLostDueToUnknownReasonProblem
-  extends ProcessLostProblem with Problem.ArgumentlessCoded
+  extends ProcessLostProblem, Problem.ArgumentlessCoded
 
   type ProcessLostDueToRestartProblem = ProcessLostDueToRestartProblem.type
   case object ProcessLostDueToRestartProblem
-  extends ProcessLostProblem with Problem.ArgumentlessCoded
+  extends ProcessLostProblem, Problem.ArgumentlessCoded
 
   type ProcessLostDueToResetProblem = ProcessLostDueToResetProblem.type
   case object ProcessLostDueToResetProblem
-  extends ProcessLostProblem with Problem.ArgumentlessCoded
+  extends ProcessLostProblem, Problem.ArgumentlessCoded
 
   type ProcessLostDueToShutdownProblem = ProcessLostDueToShutdownProblem.type
   case object ProcessLostDueToShutdownProblem
-  extends ProcessLostProblem with Problem.ArgumentlessCoded
+  extends ProcessLostProblem, Problem.ArgumentlessCoded
 
   type ProcessLostDueSubagentUriChangeProblem = ProcessLostDueSubagentUriChangeProblem.type
   case object ProcessLostDueSubagentUriChangeProblem
-  extends ProcessLostProblem with Problem.ArgumentlessCoded
+  extends ProcessLostProblem, Problem.ArgumentlessCoded
 
   type NoDirectorProblem = NoDirectorProblem.type
   case object NoDirectorProblem extends Problem.ArgumentlessCoded:

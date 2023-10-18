@@ -32,7 +32,8 @@ final class DirectorEnv(
   override protected val suppressSignatureKeys: Boolean = false,
   protected val otherSubagentIds: Seq[SubagentId] = Nil,
   protected val extraConfig: Config = ConfigFactory.empty)
-extends SubagentEnv with ProgramEnv.WithFileJournal:
+extends SubagentEnv, ProgramEnv.WithFileJournal:
+  
   type Program = RunningAgent
   protected type S = AgentState
   val S = AgentState

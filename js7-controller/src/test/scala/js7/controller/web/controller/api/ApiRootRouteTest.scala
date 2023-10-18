@@ -23,7 +23,8 @@ import scala.concurrent.duration.Deadline.now
 /**
   * @author Joacim Zschimmer
   */
-final class ApiRootRouteTest extends OurTestSuite with RouteTester with ApiRootRoute:
+final class ApiRootRouteTest extends OurTestSuite, RouteTester, ApiRootRoute:
+  
   protected val controllerId = ControllerId("TEST-CONTROLLER")
   protected def whenShuttingDown = Future.never
   protected implicit def scheduler: Scheduler = Scheduler.traced

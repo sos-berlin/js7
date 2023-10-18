@@ -37,7 +37,7 @@ object OrderParameter:
 
   /** An optional value may be overridden by an order argument. */
   final case class Optional(name: String, valueType: ValueType, expression: Expression)
-  extends HasType with HasExpression:
+  extends HasType, HasExpression:
     def referencedJobResourcePaths = expression.referencedJobResourcePaths
 
   /** A final value may not be overriden. */

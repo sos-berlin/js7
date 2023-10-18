@@ -25,9 +25,8 @@ import monix.execution.Scheduler.Implicits.traced
 import org.scalactic.source
 
 final class TryTest
-extends OurTestSuite
-with ControllerAgentForScalaTest
-with BlockingItemUpdater:
+extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
+  
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.journal.remove-obsolete-files = false

@@ -16,7 +16,8 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.TimeoutException
 
-final class FileWatchInjectionTest extends OurTestSuite with ControllerAgentForScalaTest:
+final class FileWatchInjectionTest extends OurTestSuite, ControllerAgentForScalaTest:
+  
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(workflow)
   override protected val controllerConfig = config"""

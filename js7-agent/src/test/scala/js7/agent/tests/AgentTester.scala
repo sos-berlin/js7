@@ -5,7 +5,7 @@ import org.scalatest.{BeforeAndAfterAll, Suite}
 /**
  * @author Joacim Zschimmer
  */
-trait AgentTester extends BeforeAndAfterAll with TestAgentProvider:
+trait AgentTester extends BeforeAndAfterAll, TestAgentProvider:
   this: Suite =>
 
   override protected def beforeAll() =

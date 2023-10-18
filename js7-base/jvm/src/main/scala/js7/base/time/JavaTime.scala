@@ -31,7 +31,7 @@ object JavaTime:
     }
 
   implicit final class RichDuration(private val delegate: Duration)
-  extends AnyVal with Ordered[RichDuration]:
+  extends AnyVal, Ordered[RichDuration]:
     def unary_- = Duration.ZERO minus delegate
     def +(o: Duration): Duration = delegate plus o
     def -(o: Duration): Duration = delegate minus o
@@ -55,7 +55,7 @@ object JavaTime:
 
     def compare(o: RichDuration) = delegate compareTo o.delegate
 
-  implicit final class RichInstant(private val delegate: Instant) extends AnyVal with Ordered[RichInstant]:
+  implicit final class RichInstant(private val delegate: Instant) extends AnyVal, Ordered[RichInstant]:
     def +(o: Duration) = delegate plus o
     def -(o: Duration) = delegate minus o
     def -(o: Instant) = Duration.between(o, delegate)
@@ -71,11 +71,11 @@ object JavaTime:
 
     override def toString = delegate.toString  // For ScalaTest
 
-  implicit final class RichLocalTime(private val delegate: LocalTime) extends AnyVal with Ordered[RichLocalTime]:
+  implicit final class RichLocalTime(private val delegate: LocalTime) extends AnyVal, Ordered[RichLocalTime]:
     def compare(o: RichLocalTime) = delegate compareTo o.delegate
 
   implicit final class RichLocalDateTime(private val localDateTime: LocalDateTime)
-  extends AnyVal with Ordered[RichLocalDateTime]:
+  extends AnyVal, Ordered[RichLocalDateTime]:
     def +(o: Duration): LocalDateTime = localDateTime plus o
     def +(o: FiniteDuration): LocalDateTime = localDateTime.plusNanos(o.toNanos)
     def -(o: Duration): LocalDateTime = localDateTime minus o

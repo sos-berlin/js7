@@ -22,8 +22,8 @@ private[controller] final class PekkoHttpControllerTextApi(
   protected val userAndPassword: Option[UserAndPassword],
   protected val print: String => Unit,
   configDirectory: Option[Path] = None)
-extends HasCloser with ProvideActorSystem with TextApi with HttpSessionApi with PekkoHttpClient
-with SessionApi.HasUserAndPassword:
+extends HasCloser,
+  ProvideActorSystem, TextApi, HttpSessionApi, PekkoHttpClient, SessionApi.HasUserAndPassword:
 
   protected val config = config"pekko.log-dead-letters = 0"
 

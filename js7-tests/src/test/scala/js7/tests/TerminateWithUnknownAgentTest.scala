@@ -17,7 +17,8 @@ import monix.execution.Scheduler.Implicits.traced
 /**
   * @author Joacim Zschimmer
   */
-final class TerminateWithUnknownAgentTest extends OurTestSuite with ControllerAgentForScalaTest:
+final class TerminateWithUnknownAgentTest extends OurTestSuite, ControllerAgentForScalaTest:
+  
   private lazy val socket = new ServerSocket(0, /*backlog=*/1)
   protected val items = Seq(agentRef, workflow)
   protected val agentPaths = Nil

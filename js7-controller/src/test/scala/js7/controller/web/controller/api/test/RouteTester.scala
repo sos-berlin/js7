@@ -17,7 +17,7 @@ import scala.concurrent.duration.*
 /**
   * @author Joacim Zschimmer
   */
-trait RouteTester extends ScalatestRouteTest with ExceptionHandling:
+trait RouteTester extends ScalatestRouteTest, ExceptionHandling:
   this: Suite =>
 
   ProblemCodeMessages.initialize()

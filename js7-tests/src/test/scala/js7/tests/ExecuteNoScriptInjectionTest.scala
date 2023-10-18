@@ -12,7 +12,7 @@ import js7.tests.ExecuteNoScriptInjectionTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.traced
 
-final class ExecuteNoScriptInjectionTest extends OurTestSuite with ControllerAgentForScalaTest
+final class ExecuteNoScriptInjectionTest extends OurTestSuite, ControllerAgentForScalaTest
 {
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(scriptWorkflow, absolutePathWorkflow)

@@ -14,7 +14,7 @@ import scala.collection.mutable
 /**
  * @author Joacim Zschimmer
  */
-final class ControllerClientMainTest extends OurTestSuite with ControllerAgentForScalaTest:
+final class ControllerClientMainTest extends OurTestSuite, ControllerAgentForScalaTest:
   protected val agentPaths = Nil
   protected val items = Nil
   private def configDirectory = directoryProvider.controllerEnv.configDir

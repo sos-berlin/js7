@@ -60,10 +60,10 @@ final case class ControllerState(
   deletionMarkedItems: Set[InventoryItemKey],
   idToOrder: Map[OrderId, Order[Order.State]],
   workflowToOrders: WorkflowToOrders = WorkflowToOrders(Map.empty))
-extends SignedItemContainer
-with EventDrivenStateView[ControllerState, Event]
-with OrderWatchStateHandler[ControllerState]
-with ClusterableState[ControllerState]:
+extends SignedItemContainer,
+  EventDrivenStateView[ControllerState, Event],
+  OrderWatchStateHandler[ControllerState],
+  ClusterableState[ControllerState]:
 
   def isAgent = false
 
@@ -687,8 +687,9 @@ with ClusterableState[ControllerState]:
 
 
 object ControllerState
-extends ClusterableState.Companion[ControllerState]
-with ItemContainer.Companion[ControllerState]:
+extends ClusterableState.Companion[ControllerState], 
+  ItemContainer.Companion[ControllerState]:
+  
   private val logger = Logger[this.type]
 
   val Undefined = ControllerState(

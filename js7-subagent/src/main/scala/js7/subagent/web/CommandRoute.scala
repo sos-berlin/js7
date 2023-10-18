@@ -14,7 +14,7 @@ import monix.execution.Scheduler
 import org.apache.pekko.http.scaladsl.server.Directives.{as, entity, pathEnd, post, withSizeLimit}
 import org.apache.pekko.http.scaladsl.server.Route
 
-private trait CommandRoute extends SubagentRouteProvider with EntitySizeLimitProvider:
+private trait CommandRoute extends SubagentRouteProvider, EntitySizeLimitProvider:
   protected def executeCommand(command: Numbered[SubagentCommand], meta: CommandMeta)
   : Task[Checked[SubagentCommand.Response]]
 

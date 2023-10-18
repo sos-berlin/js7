@@ -18,7 +18,7 @@ import org.apache.pekko.http.scaladsl.server.Route
  * @author Joacim Zschimmer
  */
 trait CommandWebService
-extends AgentRouteProvider with EntitySizeLimitProvider:
+extends AgentRouteProvider, EntitySizeLimitProvider:
 
   protected val executeCommand: (AgentCommand, CommandMeta) => Task[Checked[AgentCommand.Response]]
 

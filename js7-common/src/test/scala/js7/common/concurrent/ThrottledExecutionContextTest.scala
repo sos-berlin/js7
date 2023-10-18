@@ -12,7 +12,7 @@ import scala.util.Random
 /**
   * @author Joacim Zschimmer
   */
-final class ThrottledExecutionContextTest extends OurTestSuite with BeforeAndAfterAll:
+final class ThrottledExecutionContextTest extends OurTestSuite, BeforeAndAfterAll:
 
   private lazy val threadPool = newFixedThreadPool(3)
   private lazy val executionContext = ExecutionContext.fromExecutorService(threadPool)

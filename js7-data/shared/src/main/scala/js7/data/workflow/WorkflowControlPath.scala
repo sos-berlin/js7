@@ -5,9 +5,7 @@ import js7.base.problem.Checked
 import js7.data.item.{InventoryItemPath, UnsignedItemPath, VersionedControlPath}
 
 final case class WorkflowControlPath(workflowPath: WorkflowPath)
-extends UnsignedItemPath
-with VersionedControlPath
-with InventoryItemPath.AttachableToAgent:
+extends UnsignedItemPath, VersionedControlPath, InventoryItemPath.AttachableToAgent:
 
   def path = this
   def string = workflowPath.string
@@ -15,6 +13,7 @@ with InventoryItemPath.AttachableToAgent:
 
 
 object WorkflowControlPath extends VersionedControlPath.Companion[WorkflowControlPath]:
+  
   protected def unchecked(string: String) = new WorkflowControlPath(WorkflowPath(string))
 
   override def checked(string: String): Checked[WorkflowControlPath] =

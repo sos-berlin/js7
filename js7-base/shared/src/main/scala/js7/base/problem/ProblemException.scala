@@ -19,8 +19,7 @@ object ProblemException:
   def unapply(e: ProblemException) = Some(e.problem)
 
   private[problem] class NoStackTrace(problem: Problem, message: String, cause: Throwable)
-    extends ProblemException(problem, message, cause)
-    with scala.util.control.NoStackTrace:
+  extends ProblemException(problem, message, cause), scala.util.control.NoStackTrace:
     def this(problem: Problem, cause: Throwable) =
       this(problem, problem.message, cause)
 

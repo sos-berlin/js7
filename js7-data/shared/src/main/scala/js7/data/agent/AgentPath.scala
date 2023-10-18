@@ -9,7 +9,7 @@ import js7.data.item.UnsignedSimpleItemPath
   * @author Joacim Zschimmer
   */
 final case class AgentPath private(string: String)
-extends UnsignedSimpleItemPath with DelegateId with ClusterId:
+extends UnsignedSimpleItemPath, DelegateId, ClusterId:
 
   protected type Self = AgentPath
 
@@ -19,8 +19,7 @@ extends UnsignedSimpleItemPath with DelegateId with ClusterId:
 
 
 object AgentPath
-extends DelegateId.Companion[AgentPath]
-with UnsignedSimpleItemPath.Companion[AgentPath]:
+extends DelegateId.Companion[AgentPath], UnsignedSimpleItemPath.Companion[AgentPath]:
   type Item = AgentRef
 
   /** Internal use only. */

@@ -12,7 +12,7 @@ import js7.data_for_java.value.JExpression
 import scala.jdk.OptionConverters.*
 
 final case class JBoard(asScala: Board)
-extends JJsonable[JBoard] with JUnsignedSimpleItem:
+extends JJsonable[JBoard], JUnsignedSimpleItem:
 
   type AsScala = Board
   protected def companion = JBoard

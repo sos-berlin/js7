@@ -17,7 +17,8 @@ import monix.reactive.Observable
 import scala.concurrent.duration.*
 
 trait HttpClusterNodeApi
-extends ClusterNodeApi with HttpSessionApi with HasIsIgnorableStackTrace:
+extends ClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
+  
   def httpClient: HttpClient
 
   def baseUri: Uri

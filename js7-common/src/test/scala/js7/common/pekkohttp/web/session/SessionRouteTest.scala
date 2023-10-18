@@ -34,7 +34,7 @@ import scala.concurrent.duration.Deadline.now
   * @author Joacim Zschimmer
   */
 sealed abstract class SessionRouteTest(override protected val isPublic: Boolean)
-extends OurTestSuite with SessionRouteTester
+extends OurTestSuite, SessionRouteTester
 {
   protected final implicit def scheduler = Scheduler.traced
   private implicit val routeTestTimeout: RouteTestTimeout = RouteTestTimeout(10.s)

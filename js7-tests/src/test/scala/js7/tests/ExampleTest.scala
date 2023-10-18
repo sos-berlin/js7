@@ -17,7 +17,8 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.traced
 
-final class ExampleTest extends OurTestSuite with ControllerAgentForScalaTest:
+final class ExampleTest extends OurTestSuite, ControllerAgentForScalaTest:
+  
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(workflow)
   override protected def controllerConfig = config"""

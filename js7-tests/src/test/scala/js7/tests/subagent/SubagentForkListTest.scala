@@ -23,8 +23,8 @@ import js7.tests.testenv.BlockingItemUpdater
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler
 
-final class SubagentForkListTest
-extends OurTestSuite with SubagentTester with BlockingItemUpdater:
+final class SubagentForkListTest extends OurTestSuite, SubagentTester, BlockingItemUpdater:
+  
   override protected def agentConfig = config"""
     js7.auth.subagents.BARE-SUBAGENT = "$localSubagentId's PASSWORD"
     js7.auth.subagents.B-SUBAGENT = "$localSubagentId's PASSWORD"

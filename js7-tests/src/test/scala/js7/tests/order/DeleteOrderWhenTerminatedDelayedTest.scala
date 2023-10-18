@@ -19,7 +19,8 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.script
 import monix.execution.Scheduler.Implicits.traced
 
-final class DeleteOrderWhenTerminatedDelayedTest extends OurTestSuite with ControllerAgentForScalaTest:
+final class DeleteOrderWhenTerminatedDelayedTest extends OurTestSuite, ControllerAgentForScalaTest:
+  
   protected val agentPaths = agentPath :: Nil
   protected val items = workflow:: Nil
   override protected def controllerConfig = config"""js7.order.delete-delay = 1s"""

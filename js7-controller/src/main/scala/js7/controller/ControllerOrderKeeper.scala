@@ -101,8 +101,7 @@ final class ControllerOrderKeeper(
   controllerConfiguration: ControllerConfiguration,
   testEventPublisher: EventPublisher[Any])
   (implicit protected val scheduler: Scheduler)
-extends Stash
-with MainJournalingActor[ControllerState, Event]:
+extends Stash, MainJournalingActor[ControllerState, Event]:
 
   import context.watch
   import controllerConfiguration.config

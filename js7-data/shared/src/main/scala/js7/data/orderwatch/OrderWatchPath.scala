@@ -4,8 +4,7 @@ import js7.base.annotation.javaApi
 import js7.data.item.{InventoryItemPath, UnsignedSimpleItemPath}
 
 final case class OrderWatchPath(string: String)
-extends UnsignedSimpleItemPath
-with InventoryItemPath.AttachableToAgent:
+extends UnsignedSimpleItemPath, InventoryItemPath.AttachableToAgent:
 
   protected type Self = OrderWatchPath
 

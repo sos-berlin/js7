@@ -22,7 +22,8 @@ import scala.collection.mutable
 import scala.concurrent.duration.Deadline
 import scala.util.Random
 
-final class DirectoryEventDelayerTest extends OurTestSuite with BeforeAndAfterAll:
+final class DirectoryEventDelayerTest extends OurTestSuite, BeforeAndAfterAll:
+  
   private val aFileAdded = FileAdded(Paths.get("A"))
   private val aFileModified = FileModified(Paths.get("A"))
   private val bFileAdded = FileAdded(Paths.get("B"))

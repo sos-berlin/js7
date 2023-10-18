@@ -27,7 +27,8 @@ import monix.reactive.Observable
 import scala.util.Random
 
 // Try to resemble a failed manual test
-final class ManyAddOrdersTest extends OurTestSuite with ControllerAgentForScalaTest:
+final class ManyAddOrdersTest extends OurTestSuite, ControllerAgentForScalaTest:
+  
   protected val agentPaths = Seq(agentPath1, agentPath2)
   protected val items = Seq(workflow, workflow2)
   override def controllerConfig = config"""

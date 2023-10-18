@@ -16,7 +16,7 @@ import js7.common.pekkohttp.JsonStringTest.*
 /**
  * @author Joacim Zschimmer
  */
-final class JsonStringTest extends OurTestSuite with ScalatestRouteTest
+final class JsonStringTest extends OurTestSuite, ScalatestRouteTest
 {
   private val testString = """{"Ä": "a"}"""
   private val jsonString = JsonString(testString)

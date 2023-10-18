@@ -32,10 +32,11 @@ import js7.data.workflow.{Workflow, WorkflowControl, WorkflowId, WorkflowPath, W
 import scala.collection.mutable
 
 final class ControllerStateBuilder
-extends SnapshotableStateBuilder[ControllerState]
-with StandardsBuilder
-with EventDrivenStateView[ControllerStateBuilder, Event]
-with OrderWatchStateHandler[ControllerStateBuilder]:
+extends SnapshotableStateBuilder[ControllerState],
+  StandardsBuilder,
+  EventDrivenStateView[ControllerStateBuilder, Event],
+  OrderWatchStateHandler[ControllerStateBuilder]:
+  
   protected val S = ControllerState
   val companion: ControllerStateBuilder.type = ControllerStateBuilder
 

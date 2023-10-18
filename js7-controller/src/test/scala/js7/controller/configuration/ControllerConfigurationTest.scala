@@ -23,7 +23,7 @@ import org.scalatest.BeforeAndAfterAll
 /**
   * @author Joacim Zschimmer
   */
-final class ControllerConfigurationTest extends OurTestSuite with BeforeAndAfterAll:
+final class ControllerConfigurationTest extends OurTestSuite, BeforeAndAfterAll:
   private lazy val directory = createTempDirectory("ControllerConfigurationTest-")
 
   override def beforeAll() =

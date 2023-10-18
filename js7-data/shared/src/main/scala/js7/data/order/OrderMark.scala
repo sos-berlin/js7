@@ -22,7 +22,7 @@ object OrderMark:
     position: Option[Position] = None,
     historicOperations: Seq[OrderResumed.HistoryOperation] = Nil,
     asSucceeded: Boolean = false)
-  extends OrderMark with Big
+  extends OrderMark, Big
 
   implicit val jsonCodec: TypedJsonCodec[OrderMark] = TypedJsonCodec(
     Subtype(deriveCodec[Cancelling]),

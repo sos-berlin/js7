@@ -41,11 +41,11 @@ object AgentCommand extends CommonCommand.Companion:
       implicit val jsonCodec: Codec[Accepted] = singletonCodec(Accepted)
 
   final case class Batch(commands: Seq[CorrelIdWrapped[AgentCommand]])
-  extends AgentCommand with CommonBatch with Big:
+  extends AgentCommand, CommonBatch, Big:
     type Response = Batch.Response
   object Batch:
     final case class Response(responses: Seq[Checked[AgentCommand.Response]])
-    extends AgentCommand.Response with Big:
+    extends AgentCommand.Response, Big:
       override def toString =
         val succeeded = responses count (_.isRight)
         s"Batch($succeeded succeeded and ${responses.size - succeeded} failed)"
@@ -115,7 +115,7 @@ object AgentCommand extends CommonCommand.Companion:
     type Response = CoupleController.Response
   object CoupleController:
     final case class Response(orderIds: Set[OrderId])
-    extends AgentCommand.Response with Big:
+    extends AgentCommand.Response, Big:
       override def toString = s"Response(${orderIds.size} Orders attached)"
 
   final case class Reset(agentRunId: Option[AgentRunId])
@@ -190,7 +190,7 @@ object AgentCommand extends CommonCommand.Companion:
   sealed trait AttachOrDetachOrder extends OrderCommand
 
   final case class AttachOrder(order: Order[Order.IsFreshOrReady])
-  extends AttachOrDetachOrder with Big:
+  extends AttachOrDetachOrder, Big:
     order.workflowId.requireNonAnonymous()
     order.attached.orThrow
 

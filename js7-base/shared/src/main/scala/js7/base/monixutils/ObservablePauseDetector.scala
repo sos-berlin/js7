@@ -78,9 +78,9 @@ object ObservablePauseDetector:
       }
 
   private sealed trait Element[+A]
-  private sealed trait Ticking extends Element[Nothing] with Product
+  private sealed trait Ticking extends Element[Nothing], Product
   private sealed trait Expirable extends Element[Nothing]
 
   private case class Tick(since: MonixDeadline) extends Ticking
   private case class Expired(since: MonixDeadline) extends Expirable
-  private final case class Data[A](event: A) extends Ticking with Expirable with Element[A]
+  private final case class Data[A](event: A) extends Ticking, Expirable, Element[A]

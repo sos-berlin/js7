@@ -23,7 +23,8 @@ import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler
 import scala.collection.immutable.Seq
 
-final class ResetSubagentTest extends OurTestSuite with SubagentTester:
+final class ResetSubagentTest extends OurTestSuite, SubagentTester:
+  
   protected val agentPaths = Seq(agentPath)
   override protected val primarySubagentsDisabled = true
   protected lazy val items = Seq(workflow, bareSubagentItem)

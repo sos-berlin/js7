@@ -59,8 +59,7 @@ final class Provider(
   (implicit
     protected val scheduler: Scheduler,
     protected val iox: IOExecutor)
-extends Observing
-with MainService with Service.StoppableByRequest:
+extends Observing, MainService, Service.StoppableByRequest:
 
   protected type Termination = ProgramTermination
 

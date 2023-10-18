@@ -14,7 +14,8 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.TimeoutException
 
-final class SemaphoreJobTest extends OurTestSuite with ControllerAgentForScalaTest:
+final class SemaphoreJobTest extends OurTestSuite, ControllerAgentForScalaTest:
+  
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = true
     """

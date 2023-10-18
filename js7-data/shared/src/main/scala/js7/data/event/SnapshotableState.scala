@@ -80,12 +80,11 @@ object SnapshotableState:
     def snapshotObjectJsonCodec: TypedJsonCodec[Any]
 
   trait HasCodec
-  extends HasSnapshotCodec with JournaledState.HasEventCodec:
+  extends HasSnapshotCodec, JournaledState.HasEventCodec:
     def name: String // Defined in BasicState.Companion
 
   trait Companion[S <: SnapshotableState[S]]
-  extends JournaledState.Companion[S]
-  with HasCodec:
+  extends JournaledState.Companion[S], HasCodec:
     implicit final val implicitSnapshotableStateCompanion: Companion[S] = this
 
     def empty: S

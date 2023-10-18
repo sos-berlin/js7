@@ -23,7 +23,7 @@ final class RestartableDirector private(
   conf: AgentConfiguration,
   testWiring: TestWiring = TestWiring.empty)
   (implicit scheduler: Scheduler)
-extends MainService with Service.StoppableByRequest:
+extends MainService, Service.StoppableByRequest:
 
   protected type Termination = DirectorTermination
 

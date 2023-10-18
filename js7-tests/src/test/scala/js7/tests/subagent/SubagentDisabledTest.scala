@@ -22,7 +22,8 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
 
-final class SubagentDisabledTest extends OurTestSuite with SubagentTester:
+final class SubagentDisabledTest extends OurTestSuite, SubagentTester:
+  
   override protected def agentConfig = config"""
     js7.auth.subagents.A-SUBAGENT = "$localSubagentId's PASSWORD"
     js7.auth.subagents.B-SUBAGENT = "$localSubagentId's PASSWORD"

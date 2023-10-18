@@ -42,7 +42,7 @@ import scala.concurrent.duration.Deadline.now
 /**
   * @author Joacim Zschimmer
   */
-final class ProviderTest extends OurTestSuite with ControllerAgentForScalaTest
+final class ProviderTest extends OurTestSuite, ControllerAgentForScalaTest
 {
   override protected def doNotAddItems = true
   protected val agentPaths = agentPath :: Nil

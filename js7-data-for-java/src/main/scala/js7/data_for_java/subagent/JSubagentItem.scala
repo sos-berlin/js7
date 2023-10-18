@@ -13,7 +13,7 @@ import js7.data_for_java.item.JUnsignedSimpleItem
 import scala.jdk.OptionConverters.*
 
 final case class JSubagentItem(asScala: SubagentItem)
-extends JJsonable[JSubagentItem] with JUnsignedSimpleItem:
+extends JJsonable[JSubagentItem], JUnsignedSimpleItem:
 
   type AsScala = SubagentItem
   protected def companion = JSubagentItem

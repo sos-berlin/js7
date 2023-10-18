@@ -6,7 +6,7 @@ import js7.data_for_java.common.JJsonable
 
 @javaApi
 trait JVersionedItem[A <: JVersionedItem[A, P], P <: VersionedItemPath]
-extends JSignableItem with JJsonable[A]:
+extends JSignableItem, JJsonable[A]:
 
   type AsScala <: VersionedItem
 

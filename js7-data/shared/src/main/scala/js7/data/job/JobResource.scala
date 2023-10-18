@@ -11,8 +11,7 @@ final case class JobResource(
   variables: Map[String, Expression] = Map.empty,
   env: Map[String, Expression] = Map.empty,
   itemRevision: Option[ItemRevision] = None)
-extends SignableSimpleItem
-with TrivialItemState[JobResource]:
+extends SignableSimpleItem, TrivialItemState[JobResource]:
 
   protected type Self = JobResource
   val companion: JobResource.type = JobResource
@@ -29,8 +28,9 @@ with TrivialItemState[JobResource]:
 
 
 object JobResource
-extends SignableSimpleItem.Companion[JobResource]
-with TrivialItemState.Companion[JobResource]:
+extends SignableSimpleItem.Companion[JobResource],
+  TrivialItemState.Companion[JobResource]:
+
   type Key = JobResourcePath
   def Key = JobResourcePath
 

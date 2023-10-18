@@ -15,7 +15,8 @@ import js7.tests.controller.agent.DuplicateAgentRefTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.traced
 
-final class DuplicateAgentRefTest extends OurTestSuite with ControllerAgentForScalaTest:
+final class DuplicateAgentRefTest extends OurTestSuite, ControllerAgentForScalaTest:
+  
   override protected def controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     """

@@ -30,7 +30,8 @@ import js7.data.workflow.test.TestSetting.*
 import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.BeforeAndAfterAll
 
-final class AgentShutDownTest extends OurTestSuite with BeforeAndAfterAll with TestAgentDirectoryProvider:
+final class AgentShutDownTest extends OurTestSuite, BeforeAndAfterAll, TestAgentDirectoryProvider:
+  
   override def beforeAll() =
     (agentDirectory / "config" / "private" / "private.conf") ++= """
         |js7.auth.users.TEST-USER = "plain:TEST-PASSWORD"

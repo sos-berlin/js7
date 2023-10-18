@@ -45,7 +45,8 @@ import org.scalactic.source
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
 
-final class ProxyHistoryTest extends OurTestSuite with ProvideActorSystem with ClusterProxyTest:
+final class ProxyHistoryTest extends OurTestSuite, ProvideActorSystem, ClusterProxyTest:
+  
   private val maxRounds = 100
 
   override protected def config = config"""

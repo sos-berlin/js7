@@ -24,7 +24,7 @@ import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.{BeforeAndAfterAll, Suite}
 import scala.concurrent.Future
 
-trait SessionRouteTester extends BeforeAndAfterAll with ScalatestRouteTest with SessionRoute:
+trait SessionRouteTester extends BeforeAndAfterAll, ScalatestRouteTest, SessionRoute:
   this: Suite =>
 
   protected def isPublic = false

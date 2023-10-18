@@ -9,8 +9,7 @@ import monix.eval.Task
 import monix.reactive.Observable
 
 trait EventApi
-extends SessionApi
-with HasIsIgnorableStackTrace:
+extends SessionApi, HasIsIgnorableStackTrace:
 
   type State <: JournaledState[State]
 

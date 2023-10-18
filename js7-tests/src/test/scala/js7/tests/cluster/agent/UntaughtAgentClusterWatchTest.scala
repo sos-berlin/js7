@@ -30,7 +30,8 @@ import js7.tests.testenv.DirectoryProviderForScalaTest
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 
-final class UntaughtAgentClusterWatchTest extends OurTestSuite with DirectoryProviderForScalaTest:
+final class UntaughtAgentClusterWatchTest extends OurTestSuite, DirectoryProviderForScalaTest:
+  
   private final val testHeartbeatLossPropertyKey = "js7.TEST." + SecretStringGenerator.randomString()
   private final val testAckLossPropertyKey = "js7.TEST." + SecretStringGenerator.randomString()
   sys.props(testAckLossPropertyKey) = "false"

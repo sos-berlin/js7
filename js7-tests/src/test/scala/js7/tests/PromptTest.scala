@@ -20,7 +20,8 @@ import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.traced
 
-final class PromptTest extends OurTestSuite with ControllerAgentForScalaTest:
+final class PromptTest extends OurTestSuite, ControllerAgentForScalaTest:
+  
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(workflow, failingWorkflow, skippedWorkflow)
 

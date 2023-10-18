@@ -36,9 +36,7 @@ final class AgentRoute(
   (implicit
     protected val actorSystem: ActorSystem,
     protected val scheduler: Scheduler)
-extends WebLogDirectives
-with ApiRoute
-with ClusterNodeRouteBindings[AgentState]:
+extends WebLogDirectives, ApiRoute, ClusterNodeRouteBindings[AgentState]:
 
   import routeBinding.webServerBinding
 

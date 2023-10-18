@@ -28,7 +28,7 @@ import monix.execution.Scheduler.Implicits.traced
 /**
   * @author Joacim Zschimmer
   */
-final class PekkoHttpControllerApiTest extends OurTestSuite with ControllerAgentForScalaTest:
+final class PekkoHttpControllerApiTest extends OurTestSuite, ControllerAgentForScalaTest:
   protected val agentPaths = Nil
   protected val items = Seq(agentRef, subagentItem, workflow)
 

@@ -39,7 +39,7 @@ import scala.concurrent.duration.Deadline.now
 /**
   * @author Joacim Zschimmer
   */
-final class EventRouteTest extends OurTestSuite with RouteTester with EventRoute
+final class EventRouteTest extends OurTestSuite, RouteTester, EventRoute
 {
   private implicit val timeout: FiniteDuration = 99.s
   private implicit val routeTestTimeout: RouteTestTimeout = RouteTestTimeout(timeout - 1.s)

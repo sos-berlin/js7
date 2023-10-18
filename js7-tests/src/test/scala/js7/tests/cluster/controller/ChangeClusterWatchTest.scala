@@ -16,6 +16,7 @@ import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.Promise
 
 final class ChangeClusterWatchTest extends ControllerClusterTester:
+  
   "Start and stop some ClusterWatch with same or different ClusterWatchIds" in:
     withControllerAndBackup(suppressClusterWatch = true) { (primary, _, backup, _, _) =>
       val primaryController = primary.newController()

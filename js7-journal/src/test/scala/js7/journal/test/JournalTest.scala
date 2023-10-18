@@ -22,7 +22,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 /**
   * @author Joacim Zschimmer
   */
-final class JournalTest extends OurTestSuite with BeforeAndAfterAll with TestJournalMixin
+final class JournalTest extends OurTestSuite, BeforeAndAfterAll, TestJournalMixin
 {
   "First run" in {
     withTestActor() { (actorSystem, actor) =>

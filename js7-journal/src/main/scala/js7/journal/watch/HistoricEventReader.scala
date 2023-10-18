@@ -17,8 +17,8 @@ private[journal] final class HistoricEventReader(
   val fileEventId: EventId,
   protected val journalFile: Path,
   protected val config: Config)
-extends AutoCloseable
-with EventReader:
+extends AutoCloseable, EventReader:
+  
   protected def isHistoric = true
 
   /** Position of the first event in `journalFile`. */

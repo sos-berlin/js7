@@ -27,7 +27,7 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler
 
-final class StickySubagentTest extends OurTestSuite with ControllerAgentForScalaTest:
+final class StickySubagentTest extends OurTestSuite, ControllerAgentForScalaTest:
   // See also SubagentKeeperTest, determineSubagentSelection
 
   override protected val controllerConfig = config"""

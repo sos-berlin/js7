@@ -859,7 +859,7 @@ object Order:
   case object Fresh extends IsFreshOrReady
 
   type Ready = Ready.type
-  case object Ready extends IsStarted with IsFreshOrReady
+  case object Ready extends IsStarted, IsFreshOrReady
 
   final case class DelayedAfterError(until: Timestamp) extends IsStarted:
     override def maybeDelayedUntil = Some(until)
@@ -930,7 +930,7 @@ object Order:
   case object StoppedWhileFresh extends IsStarted
 
   type Finished = Finished.type
-  case object Finished extends IsStarted with IsTerminated
+  case object Finished extends IsStarted, IsTerminated
 
   type Cancelled = Cancelled.type
   // Position may be in a lock, but the lock has been released.

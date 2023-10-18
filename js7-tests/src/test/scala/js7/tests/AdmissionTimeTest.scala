@@ -28,8 +28,7 @@ import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.*
 
-final class AdmissionTimeTest extends OurTestSuite with ControllerAgentForScalaTest
-with BlockingItemUpdater
+final class AdmissionTimeTest extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater
 {
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]

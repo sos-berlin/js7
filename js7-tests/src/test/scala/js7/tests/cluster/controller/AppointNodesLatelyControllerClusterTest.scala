@@ -17,7 +17,8 @@ import js7.journal.files.JournalFiles.listJournalFiles
 import js7.tests.cluster.controller.ControllerClusterTester.*
 import monix.execution.Scheduler.Implicits.traced
 
-final class AppointNodesLatelyControllerClusterTest extends OurTestSuite with ControllerClusterTester:
+final class AppointNodesLatelyControllerClusterTest extends OurTestSuite, ControllerClusterTester:
+
   override protected def configureClusterNodes = false
 
   "ClusterAppointNodes command after first journal file has been deleted, then change Backup's URI" in:

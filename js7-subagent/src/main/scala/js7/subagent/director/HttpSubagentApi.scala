@@ -25,10 +25,8 @@ final class HttpSubagentApi private(
   protected val httpsConfig: HttpsConfig = HttpsConfig.empty,
   protected val name: String,
   protected val actorSystem: ActorSystem)
-extends SubagentApi
-with SessionApi.HasUserAndPassword
-with HttpSessionApi
-with PekkoHttpClient:
+extends SubagentApi, SessionApi.HasUserAndPassword, HttpSessionApi, PekkoHttpClient:
+  
   import admission.uri
 
   def isLocal = false

@@ -30,8 +30,9 @@ import monix.execution.Scheduler.Implicits.traced
 import scala.collection.View
 import scala.concurrent.duration.*
 
-final class ConsumeNoticesTest extends OurTestSuite with ControllerAgentForScalaTest
-with BlockingItemUpdater:
+final class ConsumeNoticesTest 
+  extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
+  
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.journal.remove-obsolete-files = false

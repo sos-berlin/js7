@@ -52,7 +52,8 @@ trait ReceiveLoggingActor extends SimpleStateActor:
 object ReceiveLoggingActor:
   private val logger = Logger[this.type]
 
-  trait WithStash extends pekko.actor.Stash with ReceiveLoggingActor:
+  trait WithStash extends pekko.actor.Stash, ReceiveLoggingActor:
+    
     override def stash() =
       if isLoggingEnabled then
         logger.log(receiveLogLevel, Logger.Actor, s"${context.self.path.pretty} stash")

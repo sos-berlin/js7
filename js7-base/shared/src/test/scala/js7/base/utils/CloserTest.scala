@@ -154,5 +154,5 @@ object CloserTest
     }
   }
 
-  private final class TestException(message: String) extends RuntimeException(message) with NoStackTrace
+  private final class TestException(message: String) extends RuntimeException(message), NoStackTrace
 }

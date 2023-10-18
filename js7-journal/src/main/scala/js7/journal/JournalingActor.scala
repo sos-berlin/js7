@@ -30,7 +30,8 @@ import scala.util.control.NonFatal
   * @author Joacim Zschimmer
   */
 trait JournalingActor[S <: JournaledState[S], E <: Event]
-extends Actor with Stash with ActorLogging with ReceiveLoggingActor:
+extends Actor, Stash, ActorLogging, ReceiveLoggingActor:
+  
   protected def journalActor: ActorRef @@ JournalActor.type
   protected def journalConf: JournalConf
   protected def scheduler: Scheduler

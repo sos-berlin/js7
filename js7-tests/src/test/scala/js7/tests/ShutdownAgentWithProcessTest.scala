@@ -31,7 +31,8 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.traced
 
-final class ShutdownAgentWithProcessTest extends OurTestSuite with ControllerAgentForScalaTest:
+final class ShutdownAgentWithProcessTest extends OurTestSuite, ControllerAgentForScalaTest:
+
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]"""
 

@@ -27,7 +27,7 @@ import monix.execution.Scheduler.Implicits.traced
 import scala.reflect.ClassTag
 
 final class FinishTest
-extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
+extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater
 {
   override protected def controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]

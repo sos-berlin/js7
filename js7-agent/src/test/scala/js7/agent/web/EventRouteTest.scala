@@ -27,7 +27,8 @@ import org.apache.pekko.actor.ActorSystem
 /**
   * @author Joacim Zschimmer
   */
-final class EventRouteTest extends OurTestSuite with AgentTester:
+final class EventRouteTest extends OurTestSuite, AgentTester:
+  
   protected val pekkoAskTimeout = 99.s
 
   implicit private lazy val actorSystem: ActorSystem = agent.actorSystem

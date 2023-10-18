@@ -38,7 +38,8 @@ import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.BeforeAndAfterAll
 import scala.collection.mutable
 
-final class JournalWebServiceTest extends OurTestSuite with BeforeAndAfterAll with ControllerAgentForScalaTest:
+final class JournalWebServiceTest extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest:
+  
   protected val agentPaths = agentPath :: Nil
   protected val items = Seq(workflow)
   private lazy val uri = controller.localUri

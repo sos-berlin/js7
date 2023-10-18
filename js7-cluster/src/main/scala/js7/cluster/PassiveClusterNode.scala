@@ -696,7 +696,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
     def maybeRecoveredJournalFile = None
 
   private sealed case class FirstPartialFile(recoveredJournalFile: RecoveredJournalFile[S])
-  extends Continuation.Replicatable with Continuation.HasRecoveredJournalFile:
+  extends Continuation.Replicatable, Continuation.HasRecoveredJournalFile:
     assertThat(recoveredJournalFile.file == file)
     def fileLength = recoveredJournalFile.length
     def fileEventId = recoveredJournalFile.fileEventId
@@ -705,7 +705,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
     override def toString = s"FirstPartialFile($fileEventId,$fileLength,${recoveredJournalFile.eventId})"
 
   private sealed case class NextFile(recoveredJournalFile: RecoveredJournalFile[S])
-  extends Continuation.Replicatable with Continuation.HasRecoveredJournalFile:
+  extends Continuation.Replicatable, Continuation.HasRecoveredJournalFile:
     /** The next file is initially empty. */
     def fileLength = 0
     /** The next file's EventId is the recovered file's last EventId. */

@@ -21,7 +21,7 @@ final class SimpleAgentClient(
   val baseUri: Uri,
   protected val userAndPassword: Option[UserAndPassword],
   protected val httpsConfig: HttpsConfig = HttpsConfig.empty)
-extends HasCloser with AgentClient:
+extends HasCloser, AgentClient:
 
   protected val name = "SimpleAgentClient"
   protected val actorSystem =

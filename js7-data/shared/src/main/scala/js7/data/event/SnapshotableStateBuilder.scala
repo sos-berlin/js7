@@ -167,8 +167,7 @@ object SnapshotableStateBuilder:
   private val logger = Logger[this.type]
 
   abstract class Simple[S <: SnapshotableState[S]](protected val S: SnapshotableState.Companion[S])
-  extends SnapshotableStateBuilder[S]
-  with StandardsBuilder:
+  extends SnapshotableStateBuilder[S], StandardsBuilder:
     private var _state = S.empty
 
     protected def onInitializeState(state: S) =

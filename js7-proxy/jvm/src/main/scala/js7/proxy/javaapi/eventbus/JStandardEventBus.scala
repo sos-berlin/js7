@@ -11,7 +11,7 @@ import scala.reflect.ClassTag
 
 @javaApi
 final class JStandardEventBus[E](val asScala: StandardEventBus[E])
-extends JavaWrapper with AutoCloseable:
+extends JavaWrapper, AutoCloseable:
   type AsScala = StandardEventBus[E]
 
   def this()(implicit e: ClassTag[E]) =
@@ -60,9 +60,8 @@ extends JavaWrapper with AutoCloseable:
   sealed/*instead of final in Scala 2: https://github.com/scala/bug/issues/4440*/
   case class EventSubscription private[JStandardEventBus](
     asScala: JStandardEventBus.this.asScala.EventSubscription)
-  extends js7.proxy.javaapi.eventbus.EventSubscription
-  with JavaWrapper
-  with AutoCloseable:
+  extends js7.proxy.javaapi.eventbus.EventSubscription, JavaWrapper, AutoCloseable:
+    
     type AsScala = JStandardEventBus.this.asScala.EventSubscription
 
     /** For internal use only. */

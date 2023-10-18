@@ -15,7 +15,7 @@ import scala.jdk.DurationConverters.ScalaDurationOps
 import scala.jdk.OptionConverters.*
 
 final case class JCalendar(asScala: Calendar)
-extends JJsonable[JCalendar] with JUnsignedSimpleItem:
+extends JJsonable[JCalendar], JUnsignedSimpleItem:
 
   type AsScala = Calendar
   protected def companion = JCalendar

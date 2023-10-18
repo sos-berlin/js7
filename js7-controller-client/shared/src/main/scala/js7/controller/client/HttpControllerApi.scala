@@ -21,7 +21,8 @@ import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.*
 
 trait HttpControllerApi
-extends EventApi with HttpClusterNodeApi with HttpSessionApi with HasIsIgnorableStackTrace:
+extends EventApi, HttpClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
+
   type State = ControllerState
 
   def httpClient: HttpClient

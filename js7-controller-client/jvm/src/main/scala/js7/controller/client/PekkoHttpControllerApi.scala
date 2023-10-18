@@ -22,7 +22,7 @@ class PekkoHttpControllerApi(
   override protected final val loginDelays: () => Iterator[FiniteDuration] = SessionApi
     .defaultLoginDelays _,
   name: String = "")
-extends HttpControllerApi with SessionApi.HasUserAndPassword with AutoCloseable:
+extends HttpControllerApi, SessionApi.HasUserAndPassword, AutoCloseable:
 
   final val httpClient: PekkoHttpClient =
     new PekkoHttpClient.Standard(

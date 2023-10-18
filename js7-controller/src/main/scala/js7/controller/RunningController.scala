@@ -94,7 +94,7 @@ final class RunningController private(
   val testEventBus: StandardEventBus[Any],
   val actorSystem: ActorSystem)
   (implicit val scheduler: Scheduler)
-extends MainService with Service.StoppableByRequest:
+extends MainService, Service.StoppableByRequest:
 
   protected type Termination = ProgramTermination
 

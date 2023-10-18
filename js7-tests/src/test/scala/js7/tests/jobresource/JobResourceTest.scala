@@ -43,7 +43,7 @@ import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import org.scalatest.Assertions.*
 
-class JobResourceTest extends OurTestSuite with ControllerAgentForScalaTest
+class JobResourceTest extends OurTestSuite, ControllerAgentForScalaTest
 {
   override protected final val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]

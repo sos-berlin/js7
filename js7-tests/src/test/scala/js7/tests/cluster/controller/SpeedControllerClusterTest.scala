@@ -17,7 +17,8 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.Deadline.now
 
-final class SpeedControllerClusterTest extends OurTestSuite with ControllerClusterForScalaTest:
+final class SpeedControllerClusterTest extends OurTestSuite, ControllerClusterForScalaTest:
+  
   val items = Seq(workflow)
 
   for n <- sys.props.get("test.speed"/*try 1000*/).map(_.toInt) do

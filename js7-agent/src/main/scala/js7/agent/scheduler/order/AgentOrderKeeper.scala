@@ -88,8 +88,8 @@ final class AgentOrderKeeper(
   private implicit val clock: AlarmClock,
   conf: AgentConfiguration)
   (implicit protected val scheduler: Scheduler)
-extends MainJournalingActor[AgentState, Event]
-with Stash:
+extends MainJournalingActor[AgentState, Event], Stash:
+  
   import conf.implicitPekkoAskTimeout
   import context.{actorOf, watch}
   import forDirector.{iox, subagent as localSubagent}

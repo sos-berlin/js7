@@ -36,7 +36,7 @@ final case class ControllerConfiguration(
   clusterConf: ClusterConf,
   name: String,
   config: Config)
-extends BasicConfiguration with CommonConfiguration:
+extends BasicConfiguration, CommonConfiguration:
 
   override def maybeConfigDirectory = Some(configDirectory)
 

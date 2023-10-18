@@ -24,7 +24,8 @@ import scala.concurrent.Future
 /**
  * @author Joacim Zschimmer
  */
-final class CommandWebServiceTest extends OurTestSuite with WebServiceTest with CommandWebService:
+final class CommandWebServiceTest extends OurTestSuite, WebServiceTest, CommandWebService:
+  
   protected def whenShuttingDown = Future.never
   protected def scheduler = Scheduler.traced
   override protected val uriPathPrefix = "test"

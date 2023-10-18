@@ -12,7 +12,8 @@ import monix.execution.Scheduler.Implicits.traced
 /**
   * @author Joacim Zschimmer
   */
-final class RootRouteTest extends OurTestSuite with ScalatestRouteTest with RootRoute:
+final class RootRouteTest extends OurTestSuite, ScalatestRouteTest, RootRoute:
+  
   override def testConfig = config"pekko.loglevel = warning"
     .withFallback(super.testConfig)
 

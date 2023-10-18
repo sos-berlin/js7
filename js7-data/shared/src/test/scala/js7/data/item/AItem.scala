@@ -7,8 +7,8 @@ import io.circe.generic.semiauto.deriveCodec
   * @author Joacim Zschimmer
   */
 final case class AItem(id: VersionedItemId[APath], content: String)
-extends VersionedItem
-with TrivialItemState[AItem]:
+extends VersionedItem, TrivialItemState[AItem]:
+  
   protected type Self = AItem
   val item: AItem = this
 
@@ -18,8 +18,8 @@ with TrivialItemState[AItem]:
 
 
 object AItem
-extends VersionedItem.Companion[AItem]
-with TrivialItemState.Companion[AItem]:
+extends VersionedItem.Companion[AItem], TrivialItemState.Companion[AItem]:
+  
   type Item = AItem
   type Path = APath
 

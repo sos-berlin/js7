@@ -23,7 +23,8 @@ import scala.concurrent.Future
 /**
  * @author Joacim Zschimmer
  */
-final class RootWebServiceTest extends OurTestSuite with WebServiceTest with RootWebService:
+final class RootWebServiceTest extends OurTestSuite, WebServiceTest, RootWebService:
+  
   protected def whenShuttingDown = Future.never
   protected def scheduler = Scheduler.traced
   protected def agentOverview = Task.pure(AgentOverview(

@@ -17,7 +17,8 @@ import org.scalatest.BeforeAndAfterAll
 /**
   * @author Joacim Zschimmer
   */
-final class VersionedItemReaderTest extends OurTestSuite with BeforeAndAfterAll:
+final class VersionedItemReaderTest extends OurTestSuite, BeforeAndAfterAll:
+
   private lazy val directory = createTempDirectory("test-")
 
   override def beforeAll() =
@@ -40,14 +41,14 @@ final class VersionedItemReaderTest extends OurTestSuite with BeforeAndAfterAll:
   private lazy val typedSourceReader = new TypedSourceReader(directory, Set(WorkflowReader, TestItemReader))
 
   "readVersionedItem with syntax errors and an alien file" in:
-      assert(typedSourceReader.readItems(DirectoryReader.files(directory)) ==
-        Left(Problem.Combined(Set(
-          Problem(
-            """Problem with 'Workflow:D' (txt) [Parsing failed at position 1 “❓ERROR” · Expected “define”]"""),
-          Problem("""Problem with 'Workflow:E' (JSON) [JSON ParsingFailure: expected json value got 'NO-JSO...' (line 1, column 1)]"""),
-          Problem(s"File '...${separator}folder${separator}test.alien.json'" +
-            " is not recognized as a configuration file" +
-            " (like *.workflow.json, *.workflow.txt, *.test.json)")))))
+    assert(typedSourceReader.readItems(DirectoryReader.files(directory)) ==
+      Left(Problem.Combined(Set(
+        Problem(
+          """Problem with 'Workflow:D' (txt) [Parsing failed at position 1 “❓ERROR” · Expected “define”]"""),
+        Problem("""Problem with 'Workflow:E' (JSON) [JSON ParsingFailure: expected json value got 'NO-JSO...' (line 1, column 1)]"""),
+        Problem(s"File '...${separator}folder${separator}test.alien.json'" +
+          " is not recognized as a configuration file" +
+          " (like *.workflow.json, *.workflow.txt, *.test.json)")))))
 
   "Duplicate VersionedItem, Workflows are not checked" in:
     directory / "A.workflow.txt" := "DUPLICATE"

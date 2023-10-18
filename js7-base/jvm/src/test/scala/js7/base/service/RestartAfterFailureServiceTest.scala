@@ -151,5 +151,5 @@ final class RestartAfterFailureServiceTest extends OurTestSuite:
 
 object RestartAfterFailureServiceTest:
   private val logger = Logger[this.type]
-  private class TestException(msg: String) extends RuntimeException(msg) with NoStackTrace:
+  private class TestException(msg: String) extends RuntimeException(msg), NoStackTrace:
     override def toString = s"TestException($msg)"

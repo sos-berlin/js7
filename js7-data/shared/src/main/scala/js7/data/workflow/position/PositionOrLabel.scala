@@ -150,7 +150,7 @@ object Position:
 
 
 final case class Label private(string: String)
-extends PositionOrLabel with GenericString
+extends PositionOrLabel, GenericString
 
 object Label extends GenericString.Checked_[Label]:
   protected def unchecked(string: String) = new Label(string)

@@ -52,13 +52,13 @@ object AlarmClock:
 
   private final class SimpleAlarmClock
     (implicit val s: Scheduler)
-  extends AlarmClock with Simple:
+  extends AlarmClock, Simple:
     def epochMilli() = scheduler.clockRealTime(MILLISECONDS)
     protected def scheduler = s
 
   private final class ClockCheckingAlarmClock(val clockCheckInterval: FiniteDuration)
     (implicit val s: Scheduler)
-  extends AlarmClock with ClockChecking:
+  extends AlarmClock, ClockChecking:
     def epochMilli() = scheduler.clockRealTime(MILLISECONDS)
     protected def scheduler = s
 

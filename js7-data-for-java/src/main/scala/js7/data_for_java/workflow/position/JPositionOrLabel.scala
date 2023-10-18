@@ -26,7 +26,7 @@ object JPositionOrLabel:
 
 /** Position in a Workflow. */
 final case class JPosition(asScala: Position)
-extends JJsonable[JPosition] with JPositionOrLabel:
+extends JJsonable[JPosition], JPositionOrLabel:
   type AsScala = Position
   protected def companion = JPosition
 
@@ -53,7 +53,7 @@ object JPosition extends JJsonable.Companion[JPosition]:
   protected def jsonDecoder = Position.jsonDecoder
 
 final case class JLabel(asScala: Label)
-extends JJsonable[JLabel] with JPositionOrLabel:
+extends JJsonable[JLabel], JPositionOrLabel:
   type AsScala = Label
   protected val companion: JLabel.type = JLabel
 

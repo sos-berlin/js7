@@ -5,8 +5,8 @@ import js7.base.problem.Checked
 import js7.data.item.{InventoryItemPath, UnsignedSimpleItemPath}
 
 final case class WorkflowPathControlPath(workflowPath: WorkflowPath)
-extends UnsignedSimpleItemPath
-with InventoryItemPath.AttachableToAgent:
+extends UnsignedSimpleItemPath, InventoryItemPath.AttachableToAgent:
+  
   def string = workflowPath.string
   def companion = WorkflowPathControlPath
 

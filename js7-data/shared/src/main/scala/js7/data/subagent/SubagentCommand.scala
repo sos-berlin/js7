@@ -34,11 +34,11 @@ object SubagentCommand extends CommonCommand.Companion:
   case object Accepted extends Response
 
   final case class Batch(commands: Seq[CorrelIdWrapped[SubagentCommand]])
-  extends SubagentCommand with CommonBatch with Big:
+  extends SubagentCommand, CommonBatch, Big:
     type Response = Batch.Response
   object Batch:
     final case class Response(responses: Seq[Checked[SubagentCommand.Response]])
-    extends SubagentCommand.Response with Big:
+    extends SubagentCommand.Response, Big:
       override def toString =
         val succeeded = responses count (_.isRight)
         s"Batch($succeeded succeeded and ${responses.size - succeeded} failed)"

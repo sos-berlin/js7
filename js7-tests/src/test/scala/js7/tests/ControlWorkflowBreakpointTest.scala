@@ -35,7 +35,8 @@ import monix.execution.Scheduler.Implicits.traced
 import scala.jdk.CollectionConverters.*
 
 final class ControlWorkflowBreakpointTest
-extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater:
+extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
+  
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.controller.agent-driver.command-batch-delay = 0ms

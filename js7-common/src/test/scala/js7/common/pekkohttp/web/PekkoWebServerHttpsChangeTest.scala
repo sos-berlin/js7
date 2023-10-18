@@ -41,7 +41,7 @@ import scala.concurrent.Promise
 import scala.concurrent.duration.Deadline.now
 import scala.util.{Failure, Try}
 
-final class PekkoWebServerHttpsChangeTest extends OurTestSuite with BeforeAndAfterAll
+final class PekkoWebServerHttpsChangeTest extends OurTestSuite, BeforeAndAfterAll
 {
   private implicit lazy val actorSystem: ActorSystem =
     newActorSystem("PekkoWebServerHttpsChangeTest")

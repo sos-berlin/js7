@@ -13,7 +13,8 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.internaljob.SimpleBlockingInternalJobTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 
-final class SimpleBlockingInternalJobTest extends OurTestSuite with ControllerAgentForScalaTest:
+final class SimpleBlockingInternalJobTest extends OurTestSuite, ControllerAgentForScalaTest:
+  
   protected val agentPaths = agentPath :: Nil
   protected val items = Seq(workflow, jobResource)
   override protected val controllerConfig = config"""

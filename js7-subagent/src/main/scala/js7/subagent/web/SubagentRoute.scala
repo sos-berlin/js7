@@ -39,10 +39,11 @@ private final class SubagentRoute(
   (implicit
     protected val scheduler: Scheduler,
     protected val actorSystem: ActorSystem)
-extends WebLogDirectives
-with CommandRoute
-with SessionRoute
-with EventRoute:
+extends WebLogDirectives,
+  CommandRoute,
+  SessionRoute,
+  EventRoute:
+  
   import routeBinding.webServerBinding
 
   protected def whenShuttingDown = routeBinding.whenStopRequested

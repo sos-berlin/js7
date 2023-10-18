@@ -39,7 +39,7 @@ import monix.reactive.Observable
 import scala.collection.immutable.Queue
 import scala.util.Random
 
-final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
+final class LockTest extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater
 {
   protected val agentPaths = Seq(agentPath, bAgentPath)
   protected val items = Seq(

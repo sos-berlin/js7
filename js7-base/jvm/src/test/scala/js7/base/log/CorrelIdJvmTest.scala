@@ -19,7 +19,7 @@ import org.scalatest.BeforeAndAfterAll
 import scala.concurrent.Future
 import scala.concurrent.duration.Deadline.now
 
-final class CorrelIdJvmTest extends OurTestSuite with BeforeAndAfterAll
+final class CorrelIdJvmTest extends OurTestSuite, BeforeAndAfterAll
 {
   Logger.initialize()
 

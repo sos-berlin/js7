@@ -108,7 +108,7 @@ object BasicItemEvent:
       deriveCodec[ItemDetachingFromMe]
 
   final case class ItemDetached(key: InventoryItemKey, delegateId: DelegateId)
-  extends ItemAttachedStateEvent with ForDelegate:
+  extends ItemAttachedStateEvent, ForDelegate:
     def attachedState = Detached
   object ItemDetached:
     // COMPATIBLE with version 2.1

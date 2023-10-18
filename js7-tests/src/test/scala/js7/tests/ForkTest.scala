@@ -26,7 +26,8 @@ import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 
-final class ForkTest extends OurTestSuite with ControllerAgentForScalaTest:
+final class ForkTest extends OurTestSuite, ControllerAgentForScalaTest:
+  
   override protected val controllerConfig = config"""
     js7.TEST-ONLY.suppress-order-id-check-for = "DUPLICATE|🥕"
     js7.controller.agent-driver.command-batch-delay = 0ms

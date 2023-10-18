@@ -46,11 +46,11 @@ final case class AgentState(
   idToWorkflow: Map[WorkflowId, Workflow/*reduced for this Agent!!!*/],
   pathToJobResource: Map[JobResourcePath, JobResource],
   keyToSignedItem : Map[SignableItemKey, Signed[SignableItem]])
-extends SignedItemContainer
-with EventDrivenStateView[AgentState, Event]
-with SubagentDirectorState[AgentState]
-with FileWatchStateHandler[AgentState]
-with ClusterableState[AgentState]:
+extends SignedItemContainer,
+  EventDrivenStateView[AgentState, Event],
+  SubagentDirectorState[AgentState],
+  FileWatchStateHandler[AgentState],
+  ClusterableState[AgentState]:
 
   override def isAgent = true
 
@@ -330,8 +330,7 @@ with ClusterableState[AgentState]:
 
 
 object AgentState
-extends ClusterableState.Companion[AgentState]
-with ItemContainer.Companion[AgentState]:
+extends ClusterableState.Companion[AgentState], ItemContainer.Companion[AgentState]:
 
   val empty = AgentState(EventId.BeforeFirst, SnapshotableState.Standards.empty,
     AgentMetaState.empty,

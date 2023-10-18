@@ -13,7 +13,7 @@ import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.DirectoryProviderForScalaTest
 import monix.execution.Scheduler.Implicits.traced
 
-final class AgentRestartBeforeDedicationTest extends OurTestSuite with DirectoryProviderForScalaTest:
+final class AgentRestartBeforeDedicationTest extends OurTestSuite, DirectoryProviderForScalaTest:
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on"""
 

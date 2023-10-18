@@ -28,7 +28,7 @@ import scala.concurrent.duration.*
 /**
   * @author Joacim Zschimmer
   */
-final class LogRouteTest extends OurTestSuite with RouteTester with LogRoute:
+final class LogRouteTest extends OurTestSuite, RouteTester, LogRoute:
   protected def whenShuttingDown = Future.never
   protected def currentLogFile = requireNonNull/*call lazily!*/(_currentLogFile)
 

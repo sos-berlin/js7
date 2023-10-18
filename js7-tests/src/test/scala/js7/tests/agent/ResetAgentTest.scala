@@ -49,7 +49,8 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 
-final class ResetAgentTest extends OurTestSuite with ControllerAgentForScalaTest:
+final class ResetAgentTest extends OurTestSuite, ControllerAgentForScalaTest:
+  
   override protected def controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.controller.agent-driver.command-batch-delay = 0ms

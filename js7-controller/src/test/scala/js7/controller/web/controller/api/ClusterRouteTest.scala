@@ -20,7 +20,8 @@ import scala.concurrent.Future
 /**
   * @author Joacim Zschimmer
   */
-final class ClusterRouteTest extends OurTestSuite with RouteTester with ClusterRoute:
+final class ClusterRouteTest extends OurTestSuite, RouteTester, ClusterRoute:
+  
   protected type OurSession = SimpleSession
 
   protected def scheduler = Scheduler.traced

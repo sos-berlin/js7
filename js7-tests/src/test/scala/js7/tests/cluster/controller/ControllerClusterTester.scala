@@ -10,8 +10,8 @@ import js7.tests.jobs.SleepJob
 import js7.tests.testenv.ControllerClusterForScalaTest
 
 private[cluster] trait ControllerClusterTester
-extends OurTestSuite
-with ControllerClusterForScalaTest:
+extends OurTestSuite, ControllerClusterForScalaTest:
+  
   protected def items: Seq[InventoryItem] =
     Seq(TestWorkflow)
 

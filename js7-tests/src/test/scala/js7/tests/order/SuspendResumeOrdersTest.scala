@@ -37,8 +37,8 @@ import js7.tests.testenv.DirectoryProvider.{toLocalSubagentId, waitingForFileScr
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import monix.execution.Scheduler.Implicits.traced
 
-final class SuspendResumeOrdersTest extends OurTestSuite with ControllerAgentForScalaTest
-with BlockingItemUpdater
+final class SuspendResumeOrdersTest 
+  extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater
 {
   override def controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]

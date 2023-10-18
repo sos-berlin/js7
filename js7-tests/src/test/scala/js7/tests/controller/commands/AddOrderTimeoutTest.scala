@@ -19,7 +19,8 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.traced
 import org.apache.pekko.http.scaladsl.model.StatusCodes.InternalServerError
 
-final class AddOrderTimeoutTest extends OurTestSuite with ControllerAgentForScalaTest:
+final class AddOrderTimeoutTest extends OurTestSuite, ControllerAgentForScalaTest:
+
   protected val agentPaths = Nil
   protected val items = Seq(agentRef, subagentItem, workflow)
   override protected val controllerConfig = config"""

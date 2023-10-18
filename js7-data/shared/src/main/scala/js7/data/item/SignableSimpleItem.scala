@@ -1,6 +1,7 @@
 package js7.data.item
 
-trait SignableSimpleItem extends SimpleItem with SignableItem:
+trait SignableSimpleItem extends SimpleItem, SignableItem:
+  
   protected type Self <: SignableSimpleItem
 
   //val key: companion.Key
@@ -12,7 +13,7 @@ object SignableSimpleItem:
   type Companion_ = Companion[? <: SignableSimpleItem]
 
   trait Companion[A <: SignableSimpleItem]
-  extends SimpleItem.Companion[A]
-  with SignableItem.Companion[A]:
+  extends SimpleItem.Companion[A], SignableItem.Companion[A]:
+
     type Key <: SignableSimpleItemPath
     def Key: js7.data.item.SignableSimpleItemPath.Companion[Key]

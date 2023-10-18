@@ -70,7 +70,7 @@ final class RunningAgent private(
   val actorSystem: ActorSystem,
   val conf: AgentConfiguration)
   (implicit val scheduler: Scheduler)
-extends MainService with Service.StoppableByRequest:
+extends MainService, Service.StoppableByRequest:
 
   protected type Termination = DirectorTermination
 

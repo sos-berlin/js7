@@ -40,11 +40,11 @@ object ControllerCommand extends CommonCommand.Companion:
   protected type Command = ControllerCommand
 
   final case class Batch(commands: Seq[CorrelIdWrapped[ControllerCommand]])
-  extends ControllerCommand with CommonBatch with Big:
+  extends ControllerCommand, CommonBatch, Big:
     type Response = Batch.Response
   object Batch:
     final case class Response(responses: Seq[Checked[ControllerCommand.Response]])
-    extends ControllerCommand.Response with CommonBatch.Response with Big:
+    extends ControllerCommand.Response, CommonBatch.Response, Big:
       override def productPrefix = "BatchResponse"
 
   final case class AddOrder(order: FreshOrder) extends ControllerCommand:
@@ -68,7 +68,7 @@ object ControllerCommand extends CommonCommand.Companion:
   final case class CancelOrders(
     orderIds: immutable.Iterable[OrderId],
     mode: CancellationMode = CancellationMode.FreshOrStarted())
-  extends ControllerCommand with Big:
+  extends ControllerCommand, Big:
     type Response = Response.Accepted
     override def toShortString = s"CancelOrders(${orderIds.size} orders, ${orderIds.take(3).map(o => o.toString + ", ").mkString} ...)"
   object CancelOrders:
@@ -97,7 +97,7 @@ object ControllerCommand extends CommonCommand.Companion:
     override def toShortString = s"DeleteNotice($boardPath, $noticeId)"
 
   final case class DeleteOrdersWhenTerminated(orderIds: immutable.Iterable[OrderId])
-  extends ControllerCommand with Big:
+  extends ControllerCommand, Big:
     type Response = Response.Accepted
     override def toShortString = s"DeleteOrdersWhenTerminated(${orderIds.size} orders, ${orderIds.take(3).map(o => o.toString + ", ").mkString} ...)"
 
@@ -171,17 +171,17 @@ object ControllerCommand extends CommonCommand.Companion:
     position: Option[Position] = None,
     historyOperations: Seq[OrderResumed.HistoryOperation] = Nil,
     asSucceeded: Boolean = false)
-  extends ControllerCommand with Big:
+  extends ControllerCommand, Big:
     type Response = Response.Accepted
 
   final case class ResumeOrders(orderIds: immutable.Iterable[OrderId], asSucceeded: Boolean = false)
-  extends ControllerCommand with Big:
+  extends ControllerCommand, Big:
     type Response = Response.Accepted
 
   final case class SuspendOrders(
     orderIds: immutable.Iterable[OrderId],
     mode: SuspensionMode = SuspensionMode.standard)
-  extends ControllerCommand with Big:
+  extends ControllerCommand, Big:
     type Response = Response.Accepted
 
   final case class TransferOrders(

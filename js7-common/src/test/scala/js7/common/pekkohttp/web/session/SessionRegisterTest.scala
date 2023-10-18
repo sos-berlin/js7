@@ -22,7 +22,7 @@ import scala.concurrent.duration.*
 /**
   * @author Joacim Zschimmer
   */
-final class SessionRegisterTest extends OurTestSuite with ScalatestRouteTest:
+final class SessionRegisterTest extends OurTestSuite, ScalatestRouteTest:
   override def testConfig = config"pekko.loglevel = warning"
     .withFallback(super.testConfig)
 

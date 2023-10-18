@@ -48,5 +48,5 @@ object SuperclassCacheTest:
   private sealed trait A extends Super
   private sealed trait B extends Super
   private sealed class A1 extends A
-  private sealed class A2 extends A1 with A
-  private sealed trait B1 extends X with B
+  private sealed class A2 extends A1, A
+  private sealed trait B1 extends X, B

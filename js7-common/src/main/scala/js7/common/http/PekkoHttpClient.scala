@@ -65,7 +65,8 @@ import scala.util.matching.Regex
 /**
   * @author Joacim Zschimmer
   */
-trait PekkoHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableStackTrace:
+trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrace:
+  
   implicit protected def actorSystem: ActorSystem
   protected def baseUri: Uri
   protected def uriPrefixPath: String
@@ -628,7 +629,7 @@ object PekkoHttpClient:
     val uri: Uri,
     httpResponse: HttpResponse,
     val dataAsString: String)
-  extends HttpClient.HttpException with NoStackTrace:
+  extends HttpClient.HttpException, NoStackTrace:
     def statusInt = status.intValue
 
     // Don't publish httpResponse because its entity stream has already been consumed for dataAsString
@@ -667,6 +668,5 @@ object PekkoHttpClient:
   private final class LegiblePekkoHttpException(
     message: String,
     cause: pekko.stream.StreamTcpException)
-  extends RuntimeException(message, cause)
-  with NoStackTrace:
+  extends RuntimeException(message, cause), NoStackTrace:
     override def toString = getMessage

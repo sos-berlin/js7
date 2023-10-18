@@ -21,7 +21,8 @@ import monix.execution.Scheduler
 import monix.reactive.Observable
 import org.scalatest.Assertion
 
-final class SubagentMultipleOrdersTest extends OurTestSuite with SubagentTester:
+final class SubagentMultipleOrdersTest extends OurTestSuite, SubagentTester:
+  
   protected val agentPaths = Seq(agentPath)
   protected lazy val items = Seq(workflow, bareSubagentItem)
 

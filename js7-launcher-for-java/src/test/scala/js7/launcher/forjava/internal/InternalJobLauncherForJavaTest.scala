@@ -40,7 +40,7 @@ import monix.reactive.subjects.PublishSubject
 import org.scalatest.BeforeAndAfterAll
 import scala.concurrent.Future
 
-final class InternalJobLauncherForJavaTest extends OurTestSuite with BeforeAndAfterAll
+final class InternalJobLauncherForJavaTest extends OurTestSuite, BeforeAndAfterAll
 {
   private val blockingThreadPoolName = "InternalJobLauncherForJavaTest"
   private val blockingJobScheduler = newUnlimitedNonVirtualScheduler(name = blockingThreadPoolName)

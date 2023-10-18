@@ -33,9 +33,7 @@ import scala.concurrent.duration.FiniteDuration
  * @author Joacim Zschimmer
  */
 trait AgentClient
-extends HttpSessionApi with PekkoHttpClient
-with SessionApi.HasUserAndPassword
-with HttpClusterNodeApi:
+extends HttpSessionApi, PekkoHttpClient, SessionApi.HasUserAndPassword, HttpClusterNodeApi:
 
   def httpClient = this
 

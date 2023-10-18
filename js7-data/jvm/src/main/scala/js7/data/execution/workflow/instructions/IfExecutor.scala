@@ -11,7 +11,8 @@ import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.*
 
 private[instructions] final class IfExecutor(protected val service: InstructionExecutorService)
-extends EventInstructionExecutor with PositionInstructionExecutor:
+extends EventInstructionExecutor, PositionInstructionExecutor:
+  
   type Instr = If
   val instructionClass = classOf[If]
 

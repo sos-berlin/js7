@@ -12,8 +12,8 @@ object TestPath extends VersionedItemPath.Companion[TestPath]:
 
 
 final case class TestVersionedItem(id: TestVersionedItem.Key, content: String)
-extends VersionedItem
-with TrivialItemState[TestVersionedItem]:
+extends VersionedItem, TrivialItemState[TestVersionedItem]:
+  
   protected type Self = TestVersionedItem
   val item: TestVersionedItem = this
   val companion: TestVersionedItem.type = TestVersionedItem
@@ -22,8 +22,8 @@ with TrivialItemState[TestVersionedItem]:
 
 
 object TestVersionedItem
-extends VersionedItem.Companion[TestVersionedItem]
-with TrivialItemState.Companion[TestVersionedItem]:
+extends VersionedItem.Companion[TestVersionedItem], TrivialItemState.Companion[TestVersionedItem]:
+  
   type Item = TestVersionedItem
   val cls = classOf[TestVersionedItem]
 

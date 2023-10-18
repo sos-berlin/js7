@@ -36,7 +36,8 @@ import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import java.io.File.separator
 
-final class FileWatch2Test extends OurTestSuite with DirectoryProviderForScalaTest:
+final class FileWatch2Test extends OurTestSuite, DirectoryProviderForScalaTest:
+  
   protected val agentPaths = Seq(aAgentPath, bAgentPath)
   protected val items = Seq(workflow)
 

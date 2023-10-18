@@ -12,7 +12,7 @@ import org.scalatest.{BeforeAndAfterAll, Suite}
 /**
  * @author Joacim Zschimmer
  */
-trait TestAgentProvider extends TestAgentDirectoryProvider with BeforeAndAfterAll:
+trait TestAgentProvider extends TestAgentDirectoryProvider, BeforeAndAfterAll:
   this: Suite =>
 
   protected def agentTestWiring: RunningAgent.TestWiring =

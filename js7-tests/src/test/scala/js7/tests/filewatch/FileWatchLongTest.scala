@@ -23,7 +23,8 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 
-final class FileWatchLongTest extends OurTestSuite with ControllerAgentForScalaTest:
+final class FileWatchLongTest extends OurTestSuite, ControllerAgentForScalaTest:
+  
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(workflow)
 

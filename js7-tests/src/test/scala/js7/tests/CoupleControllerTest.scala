@@ -27,7 +27,8 @@ import monix.execution.Scheduler.Implicits.traced
 /**
   * @author Joacim Zschimmer
   */
-final class CoupleControllerTest extends OurTestSuite with DirectoryProviderForScalaTest:
+final class CoupleControllerTest extends OurTestSuite, DirectoryProviderForScalaTest:
+  
   protected val agentPaths = agentPath :: Nil
   protected val items = Seq(TestWorkflow)
 

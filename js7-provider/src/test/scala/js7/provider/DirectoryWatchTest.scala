@@ -16,7 +16,7 @@ import scala.concurrent.duration.*
 /**
   * @author Joacim Zschimmer
   */
-final class DirectoryWatchTest extends OurTestSuite with BeforeAndAfterAll
+final class DirectoryWatchTest extends OurTestSuite, BeforeAndAfterAll
 {
   private val timeout = if isMac then 100.ms else 5.minutes
   private lazy val dir = createTempDirectory("DirectoryWatchTest-")

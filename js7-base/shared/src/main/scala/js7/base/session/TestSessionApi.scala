@@ -9,7 +9,7 @@ import monix.execution.atomic.{AtomicAny, AtomicLong}
 import scala.collection.AbstractIterator
 
 final class TestSessionApi(expectedUserAndPassword: Option[UserAndPassword] = None)
-extends SessionApi.HasUserAndPassword with HasIsIgnorableStackTrace:
+extends SessionApi.HasUserAndPassword, HasIsIgnorableStackTrace:
 
   protected def userAndPassword = expectedUserAndPassword
 

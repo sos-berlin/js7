@@ -109,7 +109,7 @@ object ScalaTime:
 
   def randomDuration(maximum: Duration): Duration = Duration(maximum.toNanos * Random.nextFloat(), NANOSECONDS)
 
-  implicit final class RichDuration(private val duration: Duration) extends AnyVal with Ordered[RichDuration]:
+  implicit final class RichDuration(private val duration: Duration) extends AnyVal, Ordered[RichDuration]:
     def unary_- = ZeroDuration - duration
 
     def min(o: Duration): Duration =

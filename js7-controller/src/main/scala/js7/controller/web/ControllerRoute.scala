@@ -50,12 +50,13 @@ final class ControllerRoute(
   gateKeeperConf: GateKeeper.Configuration[SimpleUser])(
   implicit
     protected val actorSystem: ActorSystem,
-    protected val scheduler: Scheduler)
-extends ServiceProviderRoute
-with WebLogDirectives
-with ClusterNodeRouteBindings[ControllerState]
-with ApiRoute
-with TestRoute:
+    protected val scheduler: Scheduler) 
+extends ServiceProviderRoute,
+  WebLogDirectives,
+  ClusterNodeRouteBindings[ControllerState],
+  ApiRoute,
+  TestRoute:
+  
   import routeBinding.webServerBinding
 
   protected def whenShuttingDown    = routeBinding.whenStopRequested

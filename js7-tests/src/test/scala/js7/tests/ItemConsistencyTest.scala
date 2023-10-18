@@ -24,7 +24,8 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 
-final class ItemConsistencyTest extends OurTestSuite with ControllerAgentForScalaTest:
+final class ItemConsistencyTest extends OurTestSuite, ControllerAgentForScalaTest:
+  
   override protected def controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     """

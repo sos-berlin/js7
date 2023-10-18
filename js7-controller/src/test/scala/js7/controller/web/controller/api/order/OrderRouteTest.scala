@@ -33,7 +33,8 @@ import scala.concurrent.Future
 /**
   * @author Joacim Zschimmer
   */
-final class OrderRouteTest extends OurTestSuite with RouteTester with OrderRoute:
+final class OrderRouteTest extends OurTestSuite, RouteTester, OrderRoute:
+  
   protected def whenShuttingDown = Future.never
   protected implicit def scheduler: Scheduler = Scheduler.traced
   protected def actorSystem = system

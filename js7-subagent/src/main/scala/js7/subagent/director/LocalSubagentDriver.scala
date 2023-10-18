@@ -35,8 +35,8 @@ private final class LocalSubagentDriver private(
   protected val journal: Journal[? <: SubagentDirectorState[?]],
   controllerId: ControllerId,
   protected val subagentConf: SubagentConf)
-extends SubagentDriver
-with Service.StoppableByRequest:
+extends SubagentDriver, Service.StoppableByRequest:
+  
   private val logger = Logger.withPrefix[this.type](subagentItem.pathRev.toString)
   // isDedicated when this Director gets activated after fail-over.
   private val wasRemote = subagent.isDedicated

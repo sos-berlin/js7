@@ -18,7 +18,8 @@ import js7.tests.subagent.SubagentTester.agentPath
 import monix.execution.Scheduler
 import monix.reactive.Observable
 
-final class SubagentMoveTwiceTest extends OurTestSuite with SubagentTester:
+final class SubagentMoveTwiceTest extends OurTestSuite, SubagentTester:
+  
   protected val agentPaths = Seq(agentPath)
   protected lazy val items = Seq(workflow, bareSubagentItem)
   override protected val primarySubagentsDisabled = true

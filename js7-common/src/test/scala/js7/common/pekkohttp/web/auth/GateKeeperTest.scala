@@ -32,7 +32,7 @@ import scala.language.implicitConversions
 /**
   * @author Joacim Zschimmer
   */
-final class GateKeeperTest extends OurTestSuite with ScalatestRouteTest
+final class GateKeeperTest extends OurTestSuite, ScalatestRouteTest
 {
   import GateKeeperTest.ImplicitGateKeeper
 

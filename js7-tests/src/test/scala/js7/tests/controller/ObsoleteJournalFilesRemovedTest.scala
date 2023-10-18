@@ -24,7 +24,7 @@ import monix.execution.Scheduler.Implicits.traced
 /**
   * @author Joacim Zschimmer
   */
-final class ObsoleteJournalFilesRemovedTest extends OurTestSuite with DirectoryProviderForScalaTest:
+final class ObsoleteJournalFilesRemovedTest extends OurTestSuite, DirectoryProviderForScalaTest:
   protected val agentPaths = agentPath :: Nil
   protected val items = Seq(workflow)
   override protected def controllerConfig = config"js7.journal.release-events-delay = 0s"

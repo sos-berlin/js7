@@ -21,7 +21,7 @@ import js7.data_for_java.vavr.VavrConverters.RichVavrOption
 import scala.jdk.OptionConverters.*
 
 final case class JFileWatch(asScala: FileWatch)
-extends JJsonable[JFileWatch] with JUnsignedSimpleItem:
+extends JJsonable[JFileWatch], JUnsignedSimpleItem:
 
   type AsScala = FileWatch
   protected def companion = JFileWatch

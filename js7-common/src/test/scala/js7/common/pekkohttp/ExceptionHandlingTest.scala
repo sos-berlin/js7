@@ -16,7 +16,8 @@ import scala.util.control.NoStackTrace
 /**
   * @author Joacim Zschimmer
   */
-final class ExceptionHandlingTest extends OurTestSuite with ScalatestRouteTest with ExceptionHandling:
+final class ExceptionHandlingTest extends OurTestSuite, ScalatestRouteTest, ExceptionHandling:
+  
   protected val config = config"js7.web.server.verbose-error-messages = true"
   protected def whenShuttingDown = Future.never
 
@@ -69,4 +70,4 @@ final class ExceptionHandlingTest extends OurTestSuite with ScalatestRouteTest w
 
 
 object ExceptionHandlingTest:
-  private class TestException(message: String) extends RuntimeException(message) with NoStackTrace
+  private class TestException(message: String) extends RuntimeException(message), NoStackTrace

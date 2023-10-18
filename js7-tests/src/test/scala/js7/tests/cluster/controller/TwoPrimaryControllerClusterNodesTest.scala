@@ -10,7 +10,8 @@ import js7.data.Problems.PrimaryClusterNodeMayNotBecomeBackupProblem
 import js7.data.controller.ControllerCommand.ClusterAppointNodes
 import monix.execution.Scheduler.Implicits.traced
 
-final class TwoPrimaryControllerClusterNodesTest extends OurTestSuite with ControllerClusterTester:
+final class TwoPrimaryControllerClusterNodesTest extends OurTestSuite, ControllerClusterTester:
+  
   override protected def configureClusterNodes = false
 
   "ClusterAppointNodes is rejected if backup cluster node is not configured as a backup" in:

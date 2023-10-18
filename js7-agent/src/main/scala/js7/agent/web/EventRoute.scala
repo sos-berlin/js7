@@ -8,7 +8,7 @@ import org.apache.pekko.util.Timeout
 /**
   * @author Joacim Zschimmer
   */
-trait EventRoute extends AgentRouteProvider with GenericEventRoute:
+trait EventRoute extends AgentRouteProvider, GenericEventRoute:
 
   implicit protected def pekkoAskTimeout: Timeout
 

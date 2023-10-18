@@ -17,7 +17,8 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.FiniteDuration
 
-final class TestAddOrdersTest extends OurTestSuite with ControllerAgentForScalaTest:
+final class TestAddOrdersTest extends OurTestSuite, ControllerAgentForScalaTest:
+  
   protected val agentPaths = Seq(AgentPath("agent-1"), AgentPath("agent-2"))
   protected val items = Seq(workflow)
 

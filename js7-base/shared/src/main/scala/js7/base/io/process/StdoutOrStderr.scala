@@ -7,8 +7,8 @@ import js7.base.generic.GenericString
 /**
  * @author Joacim Zschimmer
  */
-sealed trait StdoutOrStderr extends GenericString
-with Product with Serializable/*to be compatible with case object*/ :
+sealed trait StdoutOrStderr extends GenericString, Product, Serializable/*to be compatible with case object*/ :
+  
   val string: String
   override def toString = string
 
@@ -28,13 +28,13 @@ object StdoutOrStderr:
       case None => Left(DecodingFailure(s"'stdout' or 'stderr' expected, not: $string", cursor.history))
   }
 
-case object Stdout extends StdoutOrStderr with GenericString:
+case object Stdout extends StdoutOrStderr, GenericString:
   @javaApi
   val singleton = this
 
   val string = "stdout"
 
-case object Stderr extends StdoutOrStderr with GenericString:
+case object Stderr extends StdoutOrStderr, GenericString:
   @javaApi
   val singleton = this
 

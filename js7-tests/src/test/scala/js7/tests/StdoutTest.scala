@@ -23,7 +23,8 @@ import monix.eval.Task
 import scala.concurrent.duration.FiniteDuration
 import scala.util.Try
 
-final class StdoutTest extends OurTestSuite with ControllerAgentForScalaTest:
+final class StdoutTest extends OurTestSuite, ControllerAgentForScalaTest:
+  
   protected val agentPaths = Seq(agentPath)
   protected val items = Nil
   override protected val controllerConfig = config"""

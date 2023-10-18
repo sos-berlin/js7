@@ -41,8 +41,7 @@ import scala.util.{Failure, Success, Try}
  */
 final class PekkoWebServer private(bindingAndResources: Vector[BindingAndResource], config: Config)
   (implicit testEventBus: StandardEventBus[Any])
-extends WebServerBinding.HasLocalUris
-with Service.StoppableByRequest:
+extends WebServerBinding.HasLocalUris, Service.StoppableByRequest:
 
   private val _addrToHttpsFileToTime = mutable.Map.empty[InetSocketAddress, Map[Path, Try[FileTime]]]
 

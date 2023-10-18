@@ -35,7 +35,7 @@ final class AutoClosingTest extends OurTestSuite
   }
 
   "multipleAutoClosing" - {
-    class AutoCloseableA extends A with AutoCloseable
+    class AutoCloseableA extends A, AutoCloseable
 
     "without Exception" in {
       val closeables = List(new AutoCloseableA, new AutoCloseableA, new AutoCloseableA)

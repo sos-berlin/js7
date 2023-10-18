@@ -214,7 +214,7 @@ final case class ShellScriptExecutable(
   login: Option[KeyLogin] = None,
   returnCodeMeaning: ReturnCodeMeaning = ReturnCodeMeaning.Default,
   v1Compatible: Boolean = false)
-extends ProcessExecutable with ScriptExecutable:
+extends ProcessExecutable, ScriptExecutable:
 
   override def toString = "ShellScriptExecutable(" +
     login.fold("")(o => s"login=$o ") +
@@ -245,7 +245,7 @@ final case class InternalExecutable(
   jobArguments: Map[String, Expression] = Map.empty,
   /** Argument expressions evaluated for each `processOrder`. */
   arguments: Map[String, Expression] = Map.empty)
-extends Executable with ScriptExecutable:
+extends Executable, ScriptExecutable:
   override def toString = s"InternalExecutable($className)"
 
 

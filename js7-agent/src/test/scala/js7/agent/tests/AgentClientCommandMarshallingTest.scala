@@ -19,7 +19,7 @@ import org.scalatest.concurrent.ScalaFutures
  * @author Joacim Zschimmer
  */
 final class AgentClientCommandMarshallingTest
-extends OurTestSuite with ScalaFutures with AgentTester:
+extends OurTestSuite, ScalaFutures, AgentTester:
 
   //override protected val agentTestWiring = RunningAgent.TestWiring(
   //  commandHandler = Some(new CommandHandler {

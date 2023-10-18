@@ -10,8 +10,7 @@ import monix.reactive.Observable
 import scala.concurrent.duration.FiniteDuration
 
 trait ClusterNodeApi
-extends SessionApi.HasUserAndPassword
-with HasIsIgnorableStackTrace:
+extends SessionApi.HasUserAndPassword, HasIsIgnorableStackTrace:
 
   def clusterState: Task[Checked[ClusterState]]
 

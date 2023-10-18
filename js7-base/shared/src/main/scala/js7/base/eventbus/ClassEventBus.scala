@@ -11,7 +11,7 @@ import scala.concurrent.{Future, Promise}
 import scala.reflect.ClassTag
 import scala.util.control.NonFatal
 
-trait ClassEventBus[E] extends EventPublisher[E] with AutoCloseable:
+trait ClassEventBus[E] extends EventPublisher[E], AutoCloseable:
 
   protected type Classifier
   protected type ClassifierToEvent[C <: Classifier] <: E

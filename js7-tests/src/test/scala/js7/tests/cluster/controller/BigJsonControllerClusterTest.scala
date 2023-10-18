@@ -26,7 +26,7 @@ import js7.tests.testenv.ProgramEnvTester.assertEqualJournalFiles
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 
-final class BigJsonControllerClusterTest extends OurTestSuite with ControllerClusterForScalaTest:
+final class BigJsonControllerClusterTest extends OurTestSuite, ControllerClusterForScalaTest:
   private val bigString = BigJsonControllerClusterTest.bigString // Allocate one
 
   private val workflow = Workflow(WorkflowPath("BIG-JSON") ~ "INITIAL",

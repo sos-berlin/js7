@@ -14,8 +14,8 @@ import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
 
 private final class LocalSubagentApi(subagent: Subagent)
-extends SubagentApi
-with SessionApi.Dummy:
+extends SubagentApi, SessionApi.Dummy:
+  
   def isLocal = true
 
   override def hasRelevantStackTrace(throwable: Throwable): Boolean =

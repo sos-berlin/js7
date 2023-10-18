@@ -10,7 +10,7 @@ import org.apache.pekko.http.scaladsl.testkit.ScalatestRouteTest
 /**
   * @author Joacim Zschimmer
   */
-final class PekkoHttpServerUtilsTest extends OurTestSuite with ScalatestRouteTest {
+final class PekkoHttpServerUtilsTest extends OurTestSuite, ScalatestRouteTest {
 
   override def testConfig = config"pekko.loglevel = warning"
     .withFallback(super.testConfig)

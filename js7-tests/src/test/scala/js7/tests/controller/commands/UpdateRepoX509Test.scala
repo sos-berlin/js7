@@ -26,7 +26,8 @@ import monix.execution.Scheduler.Implicits.traced
 /**
   * @author Joacim Zschimmer
   */
-final class UpdateRepoX509Test extends OurTestSuite with ControllerAgentForScalaTest:
+final class UpdateRepoX509Test extends OurTestSuite, ControllerAgentForScalaTest:
+
   protected val agentPaths = Nil
   protected val items = Nil
   override protected lazy val verifier =

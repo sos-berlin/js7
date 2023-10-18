@@ -38,8 +38,9 @@ import scala.concurrent.duration.Deadline.now
 /**
   * @author Joacim Zschimmer
   */
-final class UpdateItemsTest extends OurTestSuite with ControllerAgentForScalaTest
-with BlockingItemUpdater:
+final class UpdateItemsTest 
+  extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
+  
   protected val agentPaths = agentPath :: Nil
   protected val items = Nil
 

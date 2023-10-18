@@ -16,7 +16,7 @@ import js7.launcher.internal.InternalJob
 import js7.tests.OrderParameterTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 
-final class OrderParameterTest extends OurTestSuite with ControllerAgentForScalaTest:
+final class OrderParameterTest extends OurTestSuite, ControllerAgentForScalaTest:
   override protected def controllerConfig = config"""
     js7.journal.remove-obsolete-files = false
     js7.controller.agent-driver.command-batch-delay = 0ms

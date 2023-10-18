@@ -22,7 +22,8 @@ import js7.tests.subagent.SubagentTest.*
 import js7.tests.subagent.SubagentTester.agentPath
 import monix.execution.Scheduler
 
-final class SubagentTest extends OurTestSuite with SubagentTester:
+final class SubagentTest extends OurTestSuite, SubagentTester:
+  
   protected val agentPaths = Seq(agentPath)
   protected lazy val items = Seq(workflow, bareSubagentItem)
   override protected val primarySubagentsDisabled = true

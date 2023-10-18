@@ -13,7 +13,7 @@ import org.apache.pekko.http.scaladsl.testkit.ScalatestRouteTest
 /**
   * @author Joacim Zschimmer
   */
-final class CSRFTest extends OurTestSuite with ScalatestRouteTest:
+final class CSRFTest extends OurTestSuite, ScalatestRouteTest:
 
   override def testConfig = config"pekko.loglevel = warning"
     .withFallback(super.testConfig)

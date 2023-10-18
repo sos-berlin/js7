@@ -28,7 +28,8 @@ import scala.concurrent.duration.Deadline.now
 /**
   * @author Joacim Zschimmer
   */
-trait HttpSessionApi extends SessionApi with HasSessionToken:
+trait HttpSessionApi extends SessionApi, HasSessionToken:
+  
   protected def httpClient: HttpClient
   protected def sessionUri: Uri
 

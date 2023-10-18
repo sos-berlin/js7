@@ -20,7 +20,8 @@ import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import scala.concurrent.duration.Deadline.now
 
-final class JobDriverStarvationTest extends OurTestSuite with ControllerAgentForScalaTest:
+final class JobDriverStarvationTest extends OurTestSuite, ControllerAgentForScalaTest:
+  
   override protected def controllerConfig = config"""
     js7.journal.slow-check-state = off
     """

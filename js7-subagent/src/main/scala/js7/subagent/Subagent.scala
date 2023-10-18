@@ -54,7 +54,7 @@ final class Subagent private(
   val conf: SubagentConf,
   jobLauncherConf: JobLauncherConf,
   val testEventBus: StandardEventBus[Any])
-extends MainService with Service.StoppableByRequest:
+extends MainService, Service.StoppableByRequest:
   subagent =>
 
   protected type Termination = ProgramTermination

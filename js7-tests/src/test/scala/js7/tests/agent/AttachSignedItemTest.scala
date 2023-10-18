@@ -20,7 +20,8 @@ import js7.tests.agent.AttachSignedItemTest.*
 import js7.tests.testenv.DirectoryProviderForScalaTest
 import monix.execution.Scheduler.Implicits.traced
 
-final class AttachSignedItemTest extends OurTestSuite with DirectoryProviderForScalaTest:
+final class AttachSignedItemTest extends OurTestSuite, DirectoryProviderForScalaTest:
+
   protected val agentPaths = Seq(agentPath)
   protected val items = Nil
 

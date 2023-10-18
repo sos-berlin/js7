@@ -55,7 +55,7 @@ import scala.util.Try
   * @author Joacim Zschimmer
   */
 final class ControllerWebServiceTest
-extends OurTestSuite with BeforeAndAfterAll with ControllerAgentForScalaTest
+extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest
 {
   override lazy val signer: SillySigner = new SillySigner(SillySignature("MY-SILLY-SIGNATURE"))
   override lazy val verifier = signer.toVerifier

@@ -23,7 +23,7 @@ import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.DirectoryProviderForScalaTest
 import monix.execution.Scheduler.Implicits.traced
 
-final class ForkListRecoveryTest extends OurTestSuite with DirectoryProviderForScalaTest:
+final class ForkListRecoveryTest extends OurTestSuite, DirectoryProviderForScalaTest:
   override protected val agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = yes
     """

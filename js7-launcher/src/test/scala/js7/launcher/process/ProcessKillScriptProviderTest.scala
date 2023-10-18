@@ -16,7 +16,7 @@ import org.scalatest.BeforeAndAfterAll
   *
   * @author Joacim Zschimmer
   */
-final class ProcessKillScriptProviderTest extends OurTestSuite with BeforeAndAfterAll:
+final class ProcessKillScriptProviderTest extends OurTestSuite, BeforeAndAfterAll:
 
   private lazy val tmp = createTempDirectory("test-")
   private val expectedFile = tmp / s"kill_task$ShellFileExtension"

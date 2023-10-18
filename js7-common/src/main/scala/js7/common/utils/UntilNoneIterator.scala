@@ -8,8 +8,8 @@ import scala.util.{Failure, Success}
   * @author Joacim Zschimmer
   */
 final class UntilNoneIterator[A] private(read: => Option[A])
-extends AbstractIterator[A] with SimpleIterator[A]
-with Iterator[A]:
+extends AbstractIterator[A], SimpleIterator[A], Iterator[A]:
+  
   def computeNext() = read getOrElse endOfData
 
 

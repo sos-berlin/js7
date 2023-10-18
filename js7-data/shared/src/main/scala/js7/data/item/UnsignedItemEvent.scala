@@ -14,8 +14,7 @@ object UnsignedItemEvent:
   // but may replace UnsignedSimpleItemEvent in future !!!
 
   sealed trait UnsignedItemAddedOrChanged
-  extends UnsignedItemEvent
-  with ItemAddedOrChanged:
+  extends UnsignedItemEvent, ItemAddedOrChanged:
     def item: VersionedControl
     assertThat(item.itemRevision.isDefined)
   object UnsignedItemAddedOrChanged:

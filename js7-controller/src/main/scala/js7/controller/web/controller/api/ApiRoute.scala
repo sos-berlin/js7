@@ -17,19 +17,19 @@ import org.apache.pekko.http.scaladsl.server.Route
   * @author Joacim Zschimmer
   */
 trait ApiRoute
-extends ControllerRouteProvider
-with ApiRootRoute
-with EventRoute
-with JournalRoute
-with JournalInfoRoute
-with CommandRoute
-with OrderRoute
-with ItemRoute
-with AgentForwardRoute
-with SnapshotRoute
-with SessionRoute
-with ClusterRoute
-with LogRoute:
+extends ControllerRouteProvider,
+  ApiRootRoute,
+  EventRoute,
+  JournalRoute,
+  JournalInfoRoute,
+  CommandRoute,
+  OrderRoute,
+  ItemRoute,
+  AgentForwardRoute,
+  SnapshotRoute,
+  SessionRoute,
+  ClusterRoute,
+  LogRoute:
 
   final val apiRoute: Route =
     respondWithHeaders(StandardResponseHeaders):

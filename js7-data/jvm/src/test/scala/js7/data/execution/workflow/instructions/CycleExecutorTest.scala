@@ -23,7 +23,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import scala.collection.immutable.VectorBuilder
 import scala.concurrent.duration.*
 
-final class CycleExecutorTest extends OurTestSuite with ScheduleTester
+final class CycleExecutorTest extends OurTestSuite, ScheduleTester
 {
   private implicit val zone: ZoneId = CycleExecutorTest.zone
 

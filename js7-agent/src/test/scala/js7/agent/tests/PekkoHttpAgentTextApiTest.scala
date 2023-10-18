@@ -30,7 +30,8 @@ import scala.collection.mutable
  * @author Joacim Zschimmer
  */
 final class PekkoHttpAgentTextApiTest
-extends OurTestSuite with BeforeAndAfterAll with HasCloser with TestAgentProvider:
+extends OurTestSuite, BeforeAndAfterAll, HasCloser, TestAgentProvider:
+  
   override protected lazy val agentConfiguration = AgentConfiguration.forTest(
     configAndData = agentDirectory,
     name = "PekkoHttpAgentTextApiTest",

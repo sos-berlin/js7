@@ -6,7 +6,7 @@ import javax.net.ssl.{SSLEngine, X509ExtendedKeyManager}
 final class OneAliasX509ExtendedX509KeyManager(
   protected val keyManager: X509ExtendedKeyManager,
   protected val alias: String)
-extends X509ExtendedKeyManager with OneAliasX509KeyManager:
+extends X509ExtendedKeyManager, OneAliasX509KeyManager:
 
   override def chooseEngineClientAlias(keyType: Array[String], issuers: Array[Principal],
     engine: SSLEngine) =

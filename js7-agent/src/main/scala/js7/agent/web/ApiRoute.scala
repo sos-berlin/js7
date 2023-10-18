@@ -12,12 +12,13 @@ import org.apache.pekko.http.scaladsl.server.Route
   * @author Joacim Zschimmer
   */
 trait ApiRoute
-extends RootWebService
-with CommandWebService
-with EventRoute
-with SessionRoute
-with JournalRoute
-with ClusterRoute:
+extends
+  RootWebService,
+  CommandWebService,
+  EventRoute,
+  SessionRoute,
+  JournalRoute,
+  ClusterRoute:
 
   protected final val apiRoute: Route =
     pathPrefix(Segment) {

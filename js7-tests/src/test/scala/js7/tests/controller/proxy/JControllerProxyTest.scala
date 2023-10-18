@@ -31,7 +31,8 @@ import scala.concurrent.CancellationException
 import scala.jdk.CollectionConverters.*
 import scala.util.{Failure, Try}
 
-final class JControllerProxyTest extends OurTestSuite with DirectoryProviderForScalaTest:
+final class JControllerProxyTest extends OurTestSuite, DirectoryProviderForScalaTest:
+  
   override protected def controllerConfig = config"""
     js7.auth.users {
       Proxy {

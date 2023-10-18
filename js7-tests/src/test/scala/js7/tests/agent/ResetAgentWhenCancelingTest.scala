@@ -20,8 +20,9 @@ import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import monix.execution.Scheduler.Implicits.traced
 
-final class ResetAgentWhenCancelingTest extends OurTestSuite with ControllerAgentForScalaTest
-with BlockingItemUpdater:
+final class ResetAgentWhenCancelingTest 
+  extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
+
   override protected def controllerConfig =
     config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]

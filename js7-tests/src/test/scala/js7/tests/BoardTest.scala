@@ -35,8 +35,8 @@ import monix.reactive.Observable
 import scala.collection.View
 import scala.concurrent.duration.*
 
-final class BoardTest extends OurTestSuite with ControllerAgentForScalaTest
-with BlockingItemUpdater
+final class BoardTest
+  extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater
 {
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]

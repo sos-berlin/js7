@@ -7,11 +7,10 @@ import org.apache.logging.log4j.spi.{CopyOnWrite, ReadOnlyThreadContextMap, Thre
 import org.apache.logging.log4j.util.StringMap
 
 final class CorrelIdLog4JThreadContextMap
-extends ThreadContextMap
-with ReadOnlyThreadContextMap
-// CopyOnWrite seems to mean that getReadOnlyContextData returns an immutable map.
-// Then Log4j do not make a copy.
-with CopyOnWrite:
+extends ThreadContextMap, ReadOnlyThreadContextMap, CopyOnWrite:
+  // CopyOnWrite seems to mean that getReadOnlyContextData returns an immutable map.
+  // Then Log4j do not make a copy.
+
   private var lastCorrelIdLog4jStringMap = new CorrelIdLog4jStringMap(CorrelId.empty)
 
   def clear() = {}

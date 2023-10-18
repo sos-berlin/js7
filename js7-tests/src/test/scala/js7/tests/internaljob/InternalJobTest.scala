@@ -42,8 +42,9 @@ import org.scalatest.Assertions.*
 import scala.collection.mutable
 import scala.reflect.ClassTag
 
-final class InternalJobTest extends OurTestSuite with ControllerAgentForScalaTest
-with BlockingItemUpdater:
+final class InternalJobTest 
+  extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
+  
   protected val agentPaths = agentPath :: Nil
   protected val items = Nil
   override protected val controllerConfig = config"""

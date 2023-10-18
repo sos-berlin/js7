@@ -36,7 +36,7 @@ import org.scalatest.BeforeAndAfterAll
 /**
   * @author Joacim Zschimmer
   */
-final class ProcessDriverTest extends OurTestSuite with BeforeAndAfterAll with TestAgentDirectoryProvider:
+final class ProcessDriverTest extends OurTestSuite, BeforeAndAfterAll, TestAgentDirectoryProvider:
   private lazy val ioxAllocated = IOExecutor.resource[Task](SubagentConf.DefaultConfig, "ProcessDriverTest")
     .toAllocated.await(99.s)
 

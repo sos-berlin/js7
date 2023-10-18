@@ -211,8 +211,7 @@ object ScalaXMLEventReader:
       case _ => false
 
   final class SimpleAttributeMap private[ScalaXMLEventReader](pairs: Iterator[(String, String)])
-  extends mutable.HashMap[String, String]
-  with ConvertiblePartialFunction[String, String]:
+  extends mutable.HashMap[String, String], ConvertiblePartialFunction[String, String]:
     this ++= pairs
     private val readAttributes = mutable.HashSet[String]()
     readAttributes.sizeHint(size)

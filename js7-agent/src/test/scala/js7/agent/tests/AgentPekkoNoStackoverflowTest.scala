@@ -11,7 +11,8 @@ import js7.base.time.ScalaTime.*
 /**
   * @author Joacim Zschimmer
   */
-final class AgentPekkoNoStackoverflowTest extends OurTestSuite with AgentTester:
+final class AgentPekkoNoStackoverflowTest extends OurTestSuite, AgentTester:
+
   "Job working directory" in:
     val exception = intercept[RuntimeException]:
       provideAgentDirectory { directory =>

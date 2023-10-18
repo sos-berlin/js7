@@ -10,7 +10,7 @@ import org.apache.pekko.http.scaladsl.server.Route
 /**
   * @author Joacim Zschimmer
   */
-trait EventRoute extends ControllerRouteProvider with GenericEventRoute:
+trait EventRoute extends ControllerRouteProvider, GenericEventRoute:
 
   protected def eventWatch: EventWatch
 

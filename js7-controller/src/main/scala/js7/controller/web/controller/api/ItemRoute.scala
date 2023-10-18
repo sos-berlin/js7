@@ -33,7 +33,7 @@ import org.apache.pekko.http.scaladsl.server.Route
 import scala.concurrent.duration.Deadline.now
 
 trait ItemRoute
-extends ControllerRouteProvider with EntitySizeLimitProvider:
+extends ControllerRouteProvider, EntitySizeLimitProvider:
 
   protected def actorSystem: ActorSystem
 

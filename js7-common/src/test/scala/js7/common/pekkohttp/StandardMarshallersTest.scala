@@ -25,7 +25,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 /**
   * @author Joacim Zschimmer
   */
-final class StandardMarshallersTest extends OurTestSuite with BeforeAndAfterAll {
+final class StandardMarshallersTest extends OurTestSuite, BeforeAndAfterAll {
 
   implicit private val actorSystem: ActorSystem =
     newActorSystem("StandardMarshallersTest")

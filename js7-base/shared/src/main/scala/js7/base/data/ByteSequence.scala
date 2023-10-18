@@ -22,8 +22,7 @@ import scala.util.Random
 
 //@typeclass(excludeParents = List("Writable", "Monoid", "Eq", "Show"))
 trait ByteSequence[ByteSeq]
-extends Writable[ByteSeq]
-with Monoid[ByteSeq] with Eq[ByteSeq] with Show[ByteSeq]:
+extends Writable[ByteSeq], Monoid[ByteSeq], Eq[ByteSeq], Show[ByteSeq]:
 
   implicit def implicitByteSequence: ByteSequence[ByteSeq] = this
 

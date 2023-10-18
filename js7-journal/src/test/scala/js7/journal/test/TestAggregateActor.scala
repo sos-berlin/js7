@@ -152,9 +152,9 @@ private[journal] object TestAggregateActor:
     final case class Append(string: String) extends Command
     case object AppendEmpty extends Command
     case object AcceptEarly extends Command
-    final case class AppendAsync(string: String) extends Command with IsAsync
+    final case class AppendAsync(string: String) extends Command, IsAsync
     final case class AppendNested(string: String) extends Command
-    final case class AppendNestedAsync(string: String) extends Command with IsAsync
+    final case class AppendNestedAsync(string: String) extends Command, IsAsync
     case object Remove extends Command
 
   object Response:
