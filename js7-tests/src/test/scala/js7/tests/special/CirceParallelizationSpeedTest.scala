@@ -7,10 +7,10 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.data.ByteArray
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase
-import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
+import js7.base.monixutils.MonixBase.syntax.RichMonixStream
 import js7.base.problem.Checked.*
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.measureTimeOfSingleRun
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
@@ -21,7 +21,7 @@ import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.Position
 import js7.tests.special.CirceParallelizationSpeedTest.*
 import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
+import fs2.Stream
 
 final class CirceParallelizationSpeedTest extends OurTestSuite:
   if sys.props.contains("test.speed") then
@@ -86,25 +86,25 @@ final class CirceParallelizationSpeedTest extends OurTestSuite:
       if i > m / 2 then logger.info(s"Decode $timing")
 
   private def encodeParallelBatch[A: Encoder](seq: Seq[A]): Seq[ByteArray] =
-    Observable.fromIterable(seq)
+    Stream.fromIterable(seq)
       .mapParallelBatch()(encode[A](_))
       .toListL
       .await(99.s)
 
   private def decodeParallelBatch[A: Decoder](seq: Seq[ByteArray]): Seq[A] =
-    Observable.fromIterable(seq)
+    Stream.fromIterable(seq)
       .mapParallelBatch()(decode[A])
       .toListL
       .await(99.s)
 
   private def encodeParallel[A: Encoder](seq: Seq[A]): Seq[ByteArray] =
-    Observable.fromIterable(seq)
+    Stream.fromIterable(seq)
       .mapParallelBatch()(encode[A](_))
       .toListL
       .await(99.s)
 
   private def decodeParallel[A: Decoder](seq: Seq[ByteArray]): Seq[A] =
-    Observable.fromIterable(seq)
+    Stream.fromIterable(seq)
       .mapParallelBatch()(bytes => decode(bytes))
       .toListL
       .await(99.s)

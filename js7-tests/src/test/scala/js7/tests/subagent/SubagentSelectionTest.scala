@@ -4,7 +4,7 @@ import cats.syntax.traverse.*
 import js7.agent.TestAgent
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
@@ -25,10 +25,10 @@ import js7.tests.subagent.SubagentTester.agentPath
 import js7.tests.testenv.BlockingItemUpdater
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler
-import monix.reactive.Observable
+import fs2.Stream
 
 final class SubagentSelectionTest extends OurTestSuite, SubagentTester, BlockingItemUpdater:
-  
+
   override protected def agentConfig = config"""
     js7.auth.subagents.A-SUBAGENT = "$localSubagentId's PASSWORD"
     js7.auth.subagents.B-SUBAGENT = "$localSubagentId's PASSWORD"
@@ -74,12 +74,12 @@ final class SubagentSelectionTest extends OurTestSuite, SubagentTester, Blocking
 
     controller.api
       .updateItems(
-        Observable(
-          Observable(
+        Stream(
+          Stream(
             AddOrChangeSimple(subagentSelection),
             AddVersion(versionId),
             AddOrChangeSigned(toSignedString(workflow))),
-          Observable
+          Stream
             .fromIterable(subagentItems)
             .map(AddOrChangeSimple(_))
         ).flatten)
@@ -130,7 +130,7 @@ final class SubagentSelectionTest extends OurTestSuite, SubagentTester, Blocking
   def runOrdersAndCheck(n: Int, expected: Map[SubagentId, Int]): Unit =
     val eventId = eventWatch.lastAddedEventId
     val orderIds = Vector.fill(n) { nextOrderId() }
-    controller.api.addOrders(Observable.fromIterable(orderIds).map(toOrder))
+    controller.api.addOrders(Stream.fromIterable(orderIds).map(toOrder))
       .await(99.s).orThrow
     val started = for orderId <- orderIds yield
       eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
@@ -143,7 +143,7 @@ final class SubagentSelectionTest extends OurTestSuite, SubagentTester, Blocking
     val changed = subagentSelection.copy(subagentToPriority = Map(
       aSubagentId -> 1))
     controller.api
-      .updateItems(Observable(AddOrChangeSimple(changed)))
+      .updateItems(Stream(AddOrChangeSimple(changed)))
       .await(99.s)
       .orThrow
 
@@ -172,12 +172,12 @@ final class SubagentSelectionTest extends OurTestSuite, SubagentTester, Blocking
   "SubagentSelection can only be deleted after Workflow" in:
     val eventId = eventWatch.lastAddedEventId
     val checked = controller.api
-      .updateItems(Observable(DeleteSimple(subagentSelection.id)))
+      .updateItems(Stream(DeleteSimple(subagentSelection.id)))
       .await(99.s)
     assert(checked == Left(ItemIsStillReferencedProblem(subagentSelection.id, workflow.id)))
 
     controller.api
-      .updateItems(Observable(
+      .updateItems(Stream(
         AddVersion(VersionId("DELETE")),
         RemoveVersioned(workflow.path)))
       .await(99.s)
@@ -186,21 +186,21 @@ final class SubagentSelectionTest extends OurTestSuite, SubagentTester, Blocking
 
   "Subagent can only be deleted after SubagentSelection" in:
     val checked = controller.api
-      .updateItems(Observable(DeleteSimple(aSubagentId)))
+      .updateItems(Stream(DeleteSimple(aSubagentId)))
       .await(99.s)
     assert(checked == Left(ItemIsStillReferencedProblem(aSubagentId, subagentSelection.id)))
 
   "Delete SubagentSelection" in:
     val eventId = eventWatch.lastAddedEventId
     controller.api
-      .updateItems(Observable(DeleteSimple(subagentSelection.id)))
+      .updateItems(Stream(DeleteSimple(subagentSelection.id)))
       .await(99.s)
     eventWatch.await[ItemDeleted](_.event.key == subagentSelection.id, after = eventId)
 
   "Delete Subagents" in:
     val eventId = eventWatch.lastAddedEventId
     controller.api
-      .updateItems(Observable(
+      .updateItems(Stream(
         DeleteSimple(bSubagentId),
         DeleteSimple(cSubagentId),
         DeleteSimple(dSubagentId)))

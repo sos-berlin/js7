@@ -7,9 +7,9 @@ import js7.base.utils.CloseableIterator
 import js7.base.utils.ScalaUtils.function1WithToString
 import js7.data.event.{Event, EventId, EventRequest, JournalInfo, KeyedEvent, Stamped, TearableEventSeq}
 import js7.journal.watch.EventWatch.*
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler
-import monix.reactive.Observable
+import fs2.Stream
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.Future
 import scala.concurrent.duration.*
@@ -19,8 +19,8 @@ import scala.reflect.ClassTag
   * @author Joacim Zschimmer
   */
 trait EventWatch:
-  def started: Task[this.type] =
-    Task.fromFuture(whenStarted).memoize.asInstanceOf[Task[this.type]]
+  def started: IO[this.type] =
+    IO.fromFuture(whenStarted).memoize.asInstanceOf[IO[this.type]]
 
   def whenStarted: Future[this.type] = Future.successful(this)
 
@@ -28,24 +28,24 @@ trait EventWatch:
     request: EventRequest[E],
     predicate: KeyedEvent[E] => Boolean = Every,
     onlyAcks: Boolean = false)
-  : Observable[Stamped[KeyedEvent[E]]]
+  : Stream[IO, Stamped[KeyedEvent[E]]]
 
-  def observeEventIds(timeout: Option[FiniteDuration]): Task[Checked[Observable[EventId]]]
+  def observeEventIds(timeout: Option[FiniteDuration]): IO[Checked[Stream[IO, EventId]]]
 
   def when[E <: Event](request: EventRequest[E], predicate: KeyedEvent[E] => Boolean = Every)
-  : Task[TearableEventSeq[CloseableIterator, KeyedEvent[E]]]
+  : IO[TearableEventSeq[CloseableIterator, KeyedEvent[E]]]
 
   def whenKeyedEvent[E <: Event](using E: Event.KeyCompanion[? >: E])(
     request: EventRequest[E],
     key: E.Key,
     predicate: E => Boolean = Every)
-  : Task[E]
+  : IO[E]
 
   def whenKey[E <: Event](using E: Event.KeyCompanion[? >: E])
     (request: EventRequest[E],
     key: E.Key,
     predicate: E => Boolean = Every)
-  : Task[TearableEventSeq[CloseableIterator, E]]
+  : IO[TearableEventSeq[CloseableIterator, E]]
 
   def journalInfo: JournalInfo
 
@@ -54,7 +54,7 @@ trait EventWatch:
     predicate: KeyedEvent[E] => Boolean = Every,
     after: EventId,
     timeout: Option[FiniteDuration])
-  : Task[Seq[Stamped[KeyedEvent[E]]]] =
+  : IO[Seq[Stamped[KeyedEvent[E]]]] =
     observe(EventRequest.singleClass[E](after = after, timeout = timeout))
       .filter(stamped => predicate(stamped.value))
       .mapAccumulate(Set.from(keys)) { (keys, stamped) =>
@@ -80,7 +80,7 @@ trait EventWatch:
     after: EventId = EventId.BeforeFirst,
     timeout: FiniteDuration = 99.s)
     (implicit s: Scheduler)
-  : Task[Vector[Stamped[KeyedEvent[E]]]]
+  : IO[Vector[Stamped[KeyedEvent[E]]]]
 
   def lastAddedEventId: EventId
 

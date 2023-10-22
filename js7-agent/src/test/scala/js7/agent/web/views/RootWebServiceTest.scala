@@ -8,14 +8,14 @@ import js7.agent.web.test.WebServiceTest
 import js7.base.circeutils.CirceUtils.*
 import js7.base.system.SystemInformation
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegments
 import js7.common.pekkohttp.CirceJsonSupport.*
 import js7.common.http.PekkoHttpUtils.RichHttpResponse
 import js7.data.system.JavaInformation
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.Future
@@ -24,10 +24,10 @@ import scala.concurrent.Future
  * @author Joacim Zschimmer
  */
 final class RootWebServiceTest extends OurTestSuite, WebServiceTest, RootWebService:
-  
+
   protected def whenShuttingDown = Future.never
   protected def scheduler = Scheduler.traced
-  protected def agentOverview = Task.pure(AgentOverview(
+  protected def agentOverview = IO.pure(AgentOverview(
     startedAt = Timestamp.parse("2015-06-01T12:00:00Z"),
     version = "TEST-VERSION",
     buildId = "BUILD-ID",

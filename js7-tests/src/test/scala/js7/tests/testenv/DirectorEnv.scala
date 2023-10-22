@@ -17,7 +17,6 @@ import js7.common.system.ThreadPools.ownThreadPoolResource
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.journal.data.JournalLocation
 import js7.tests.testenv.DirectoryProvider.*
-import monix.eval.Task
 
 /** Environment with config and data directories for a Subagent with Agent Director. */
 final class DirectorEnv(
@@ -33,7 +32,7 @@ final class DirectorEnv(
   protected val otherSubagentIds: Seq[SubagentId] = Nil,
   protected val extraConfig: Config = ConfigFactory.empty)
 extends SubagentEnv, ProgramEnv.WithFileJournal:
-  
+
   type Program = RunningAgent
   protected type S = AgentState
   val S = AgentState
@@ -93,18 +92,18 @@ extends SubagentEnv, ProgramEnv.WithFileJournal:
        |}
        |""".stripMargin
 
-  def programResource: Resource[Task, RunningAgent] =
+  def programResource: Resource[IO, RunningAgent] =
     directorResource
 
-  def directorResource: Resource[Task, RunningAgent] =
-    Resource.suspend/*delay access to agentConf*/(Task(
+  def directorResource: Resource[IO, RunningAgent] =
+    Resource.suspend/*delay access to agentConf*/(IO(
       ownThreadPoolResource(agentConf.name, agentConf.config)(implicit scheduler =>
         RunningAgent
           .resource(agentConf)
           .flatTap(programRegistering))))
 
-  def restartableDirectorResource: Resource[Task, RestartableDirector] =
-    Resource.suspend/*delay access to agentConf*/(Task(
+  def restartableDirectorResource: Resource[IO, RestartableDirector] =
+    Resource.suspend/*delay access to agentConf*/(IO(
       ownThreadPoolResource(agentConf.name, agentConf.config)(implicit scheduler =>
         RunningAgent.restartable(agentConf))))
 

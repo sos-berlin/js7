@@ -8,11 +8,11 @@ import js7.base.io.process.Processes.*
 import js7.base.log.Logger
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler
 import scala.util.control.NonFatal
 
@@ -30,9 +30,9 @@ final class ProcessTextFileBusyTest extends OurTestSuite:
   s"$n concurrent process starts with freshly written executables on $threadCount threads" in:
     implicit val scheduler = Scheduler.forkJoin(parallelism = n, maxThreads = n)
     val stopwatch = new Stopwatch
-    val (files, processes) = Task
+    val (files, processes) = IO
       .parSequenceUnordered(
-        for i <- (0 until n) yield Task.defer {
+        for i <- (0 until n) yield IO.defer {
           val file = newTemporaryShellFile(s"#$i")
           file := "exit"
           new ProcessBuilder(s"$file").startRobustly()

@@ -7,7 +7,7 @@ import js7.base.configutils.Configs.*
 import js7.base.log.Logger
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.RichTask
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.JavaTimestamp.specific.RichJavaTimestamp
 import js7.base.time.ScalaTime.DurationRichInt
@@ -35,9 +35,9 @@ import js7.tests.CycleTest.*
 import js7.tests.jobs.{EmptyJob, SemaphoreJob}
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
+import fs2.Stream
 import scala.collection.immutable.VectorBuilder
 import scala.concurrent.duration.*
 
@@ -589,7 +589,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
     "Break without Cycle is rejected" in {
       val versionId = VersionId("WILL-BE-REJECTED")
       val checked = controller.api
-        .updateItems(Observable(
+        .updateItems(Stream(
           AddVersion(versionId),
           AddOrChangeSigned(toSignedString(Workflow.of(
             WorkflowPath("WILL-BE-REJECTED") ~ versionId,
@@ -604,7 +604,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
     "Break in Fork without Cycle is rejected" in {
       val versionId = VersionId("WILL-BE-REJECTED")
       val checked = controller.api
-        .updateItems(Observable(
+        .updateItems(Stream(
           AddVersion(versionId),
           AddOrChangeSigned(toSignedString(Workflow(
             WorkflowPath("WILL-BE-REJECTED") ~ versionId,
@@ -720,7 +720,7 @@ object CycleTest
 
   private class TestJob extends SemaphoreJob(TestJob) {
     override def onAcquired(step: Step, semaphoreName: String) =
-      Task {
+      IO {
         val now = clock.now()
         logger.info(s"🔹 $now  ${LocalDateTime.ofInstant(now.toInstant, zone)}")
         Outcome.succeeded

@@ -1,9 +1,9 @@
 package js7.tests.subagent
 
 import js7.base.log.Logger
-import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
+import js7.base.monixutils.MonixBase.syntax.RichMonixStream
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.event.{EventId, KeyedEvent, Stamped}
@@ -16,13 +16,13 @@ import js7.launcher.OrderProcess
 import js7.launcher.internal.InternalJob
 import js7.tests.subagent.SubagentMultipleOrdersTest.*
 import js7.tests.subagent.SubagentTester.agentPath
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler
-import monix.reactive.Observable
+import fs2.Stream
 import org.scalatest.Assertion
 
 final class SubagentMultipleOrdersTest extends OurTestSuite, SubagentTester:
-  
+
   protected val agentPaths = Seq(agentPath)
   protected lazy val items = Seq(workflow, bareSubagentItem)
 
@@ -36,7 +36,7 @@ final class SubagentMultipleOrdersTest extends OurTestSuite, SubagentTester:
       val runOrders = runMultipleOrders(
         orderIds = for i <- 1 to n yield OrderId(s"ORDER-$i"),
         assertEvents = (orderId, events) =>
-          Task {
+          IO {
             val result = withClue(s"$orderId: ") {
               val anySubagentId = SubagentId("ANY")
               assert(events.collect {
@@ -67,10 +67,10 @@ final class SubagentMultipleOrdersTest extends OurTestSuite, SubagentTester:
 
   private def runMultipleOrders(
     orderIds: Iterable[OrderId],
-    assertEvents: (OrderId, Seq[OrderEvent]) => Task[Assertion])
-  : Task[Unit] =
+    assertEvents: (OrderId, Seq[OrderEvent]) => IO[Assertion])
+  : IO[Unit] =
     controller.api
-      .addOrders(Observable
+      .addOrders(Stream
         .fromIterable(orderIds)
         .map(FreshOrder(_, workflow.path)))
       .map(_.orThrow)
@@ -83,9 +83,9 @@ final class SubagentMultipleOrdersTest extends OurTestSuite, SubagentTester:
       .map(observedOrderIds => assert(observedOrderIds == orderIds.toSet) )
 
   private def observeFinishedOrderEvents(orderIds: Set[OrderId])
-  : Observable[(OrderId, Seq[OrderEvent])] =
+  : Stream[IO, (OrderId, Seq[OrderEvent])] =
     controller.api
-      .eventAndStateObservable(fromEventId = Some(EventId.BeforeFirst))
+      .eventAndStateStream(fromEventId = Some(EventId.BeforeFirst))
       .mapAccumulate(orderIds.map(_ -> Vector.empty[OrderEvent]).toMap):
         case (idToEvents, eventAndState) =>
           eventAndState.stampedEvent match
@@ -108,7 +108,7 @@ final class SubagentMultipleOrdersTest extends OurTestSuite, SubagentTester:
               idToEvents -> (None -> true)
       .takeWhileInclusive(_._2)
       .map(_._1)
-      .flatMap(o => Observable.fromIterable(o))
+      .flatMap(o => Stream.fromIterable(o))
 
 
 object SubagentMultipleOrdersTest:
@@ -122,7 +122,7 @@ object SubagentMultipleOrdersTest:
   final class TestJob extends InternalJob:
     def toOrderProcess(step: Step) =
       OrderProcess(
-        step.outTaskObserver.send("STDOUT 1\n") *>
-        step.outTaskObserver.send("STDOUT 2\n") *>
-        Task.pure(Outcome.succeeded))
+        step.outIOObserver.send("STDOUT 1\n") *>
+        step.outIOObserver.send("STDOUT 2\n") *>
+        IO.pure(Outcome.succeeded))
   object TestJob extends InternalJob.Companion[TestJob]

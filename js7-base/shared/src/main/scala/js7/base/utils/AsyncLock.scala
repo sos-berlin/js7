@@ -1,18 +1,18 @@
 package js7.base.utils
 
-import cats.effect.{ExitCase, Resource}
+import cats.effect.{IO, Outcome, OutcomeIO, Resource, kernel}
+import cats.syntax.flatMap.*
 import java.lang.System.nanoTime
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{BlockingSymbol, CorrelId, Logger}
-import js7.base.monixutils.MonixBase.DefaultWorryDurations
-import js7.base.monixutils.MonixBase.syntax.*
+import js7.base.utils.CatsUtils.DefaultWorryDurations
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AsyncLock.*
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
-import monix.catnap.MVar
-import monix.eval.Task
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.FiniteDuration
+import js7.base.catsutils.UnsafeMemoizable.given
+import js7.base.utils.CatsUtils.syntax.whenItTakesLonger
 
 final class AsyncLock private(
   name: String,
@@ -22,41 +22,41 @@ final class AsyncLock private(
 
   asyncLock =>
 
-  private val lockM = MVar[Task].empty[Locked]().memoize
+  private val lockM: IO[MVar[IO, Locked]] = MVar[IO].empty[Locked].unsafeMemoize
   private val log = if noLog then Logger.empty else logger
 
-  def lock[A](task: Task[A])(implicit src: sourcecode.Enclosing): Task[A] =
-    lock(src.value)(task)
+  def lock[A](io: IO[A])(implicit src: sourcecode.Enclosing): IO[A] =
+    lock(src.value)(io)
 
-  def lock[A](acquirer: => String)(task: Task[A]): Task[A] =
-    resource(acquirer).use(_ => task)
+  def lock[A](acquirer: => String)(io: IO[A]): IO[A] =
+    resource(acquirer).use(_ => io)
 
-  def resource(implicit src: sourcecode.Enclosing): Resource[Task, Locked] =
+  def resource(implicit src: sourcecode.Enclosing): Resource[IO, Locked] =
     resource(src.value)
 
-  def resource(acquirer: => String): Resource[Task, Locked] =
+  def resource(acquirer: => String): Resource[IO, Locked] =
     Resource.makeCase(
-      acquire = Task.defer {
+      acquire = IO.defer {
         val locked = new Locked(CorrelId.current, waitCounter.incrementAndGet(), acquirer)
         acquire(locked).as(locked)
       })(
       release = (locked, exitCase) =>
         release(locked, exitCase))
 
-  private def acquire(locked: Locked): Task[Unit] =
-    lockM.flatMap(mvar => Task.defer {
+  private def acquire(locked: Locked): IO[Unit] =
+    lockM.flatMap(mvar => IO.defer {
       mvar.tryPut(locked).flatMap(hasAcquired =>
-        if hasAcquired then {
+        if hasAcquired then
           if logMinor then log.trace(s"↘ ⚪️${locked.nr} $name acquired by ${locked.who} ↘")
           locked.startMetering()
-          Task.unit
-        } else
+          IO.unit
+        else
           if noLog then
             mvar.put(locked)
               .as(Right(()))
-          else {
+          else
             val waitingSince = now
-            Task.tailRecM(())(_ =>
+            ().tailRecM(_ =>
               mvar.tryRead.flatMap {
                 case Some(lockedBy) =>
                   val sym = new BlockingSymbol
@@ -90,23 +90,23 @@ final class AsyncLock private(
                       Right(())  // The lock is ours!
                     }
               })
-          })
+      )
     })
 
-  private def release(locked: Locked, exitCase: ExitCase[Throwable]): Task[Unit] =
-    Task.defer:
+  private def release(locked: Locked, exitCase: Resource.ExitCase): IO[Unit] =
+    IO.defer:
       logRelease(locked, exitCase)
       lockM.flatMap(_.take).void
 
-  private def logRelease(locked: Locked, exitCase: ExitCase[Throwable]): Unit =
+  private def logRelease(locked: Locked, exitCase: Resource.ExitCase): Unit =
     if logMinor then exitCase match
-      case ExitCase.Completed =>
+      case Resource.ExitCase.Succeeded =>
         log.trace(s"↙ ⚪️${locked.nr} $name released by ${locked.acquirer} ↙")
 
-      case ExitCase.Canceled =>
+      case Resource.ExitCase.Canceled =>
         log.trace(s"↙ ⚫${locked.nr} $name released by ${locked.acquirer} · Canceled ↙")
 
-      case ExitCase.Error(t) =>
+      case Resource.ExitCase.Errored(t) =>
         log.trace(s"↙ 💥${locked.nr} $name released by ${locked.acquirer} · ${t.toStringWithCauses} ↙")
 
   override def toString = s"AsyncLock:$name"

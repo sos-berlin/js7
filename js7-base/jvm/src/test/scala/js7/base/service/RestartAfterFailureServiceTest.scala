@@ -1,6 +1,6 @@
 package js7.base.service
 
-import cats.effect.{Resource, Timer}
+import cats.effect.{IO, Resource, Timer}
 import cats.implicits.catsSyntaxApplicativeError
 import cats.syntax.flatMap.*
 import cats.syntax.parallel.*
@@ -9,13 +9,12 @@ import js7.base.monixutils.MonixDeadline.now
 import js7.base.service.RestartAfterFailureServiceTest.*
 import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.SuccessFuture
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic
-import js7.base.utils.Atomic.syntax.*
+import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.tester.ScalaTestUtils.awaitAndAssert
-import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.schedulers.TestScheduler
 import scala.collection.mutable
@@ -29,12 +28,12 @@ final class RestartAfterFailureServiceTest extends OurTestSuite:
     val started = now
     val elapsedSeq = mutable.Buffer[(FiniteDuration, FiniteDuration)]()
 
-    def serviceResource: Resource[Task, RestartAfterFailureService[CancelableService]] =
+    def serviceResource: Resource[IO, RestartAfterFailureService[CancelableService]] =
       var i = 0
       var lastEnd = started
 
       Service.restartAfterFailure()(CancelableService.resource(
-        Task.defer {
+        IO.defer {
           val delayed = now - lastEnd
           i += 1
           val sleep =
@@ -44,12 +43,12 @@ final class RestartAfterFailureServiceTest extends OurTestSuite:
             else 0.s
           val n = 20
           logger.debug(s"$toString $now i=$i ${if i == n then "last" else s"sleep ${sleep.pretty}"}")
-          Task.when(i < n)(
-            Task.sleep(sleep) *>
-              Task.defer {
+          IO.whenA(i < n)(
+            IO.sleep(sleep) *>
+              IO.defer {
                 lastEnd = now
                 elapsedSeq += ((delayed.toCoarsest, sleep.toCoarsest))
-                Task.raiseError(new TestException("run"))
+                IO.raiseError(new TestException("run"))
               })
         }))
 
@@ -90,7 +89,7 @@ final class RestartAfterFailureServiceTest extends OurTestSuite:
     // For check agains OutOfMemoryError, set -Xmx10m !!!
     val testDuration = if sys.props.contains("test.speed") then 30.s else 100.ms
     import Scheduler.Implicits.traced
-    val timer = implicitly[Timer[Task]]
+    val timer = implicitly[Timer[IO]]
     val runs = Atomic(0)
     val uniqueCounter = Atomic(0)
 
@@ -107,21 +106,21 @@ final class RestartAfterFailureServiceTest extends OurTestSuite:
       private lazy val unique = uniqueCounter.getAndAdd(1)
 
       protected def start =
-        Task.defer:
+        IO.defer:
           if startFailsRandomly && Random.nextBoolean() then
-            timer.sleep(Random.nextInt(5).ms) *> Task.raiseError(new TestException("start"))
+            timer.sleep(Random.nextInt(5).ms) *> IO.raiseError(new TestException("start"))
           else
-            startService(Task
+            startService(IO
               .defer {
                 runs += 1
                 timer.sleep(Random.nextInt(5).ms) *> (
                   if runFails then
-                    Task.raiseError(new TestException("run"))
+                    IO.raiseError(new TestException("run"))
                   else
                     untilStopRequested >>
-                      Task.raiseWhen(stopFails)(new TestException("stopped")))
+                      IO.raiseWhen(stopFails)(new TestException("stopped")))
               }
-              .guarantee(Task {
+              .guarantee(IO {
                 runs -= 1
               }))
 
@@ -130,14 +129,14 @@ final class RestartAfterFailureServiceTest extends OurTestSuite:
     (0 until 8 /*2^3 == 8 combinations*/).toVector
       .parTraverse(i => Service
         .restartAfterFailure(startDelays = Seq(0.s), runDelays = Seq(0.s))(
-          Service.resource(Task(
+          Service.resource(IO(
             new TestService(
               startFailsRandomly = (i & 1) != 0,
               runFails = (i & 2) != 0,
               stopFails = (i & 4) != 0,
               i.toString))))
         .toAllocated)
-      .flatTap(_ => Task.sleep(testDuration))
+      .flatTap(_ => IO.sleep(testDuration))
       .flatMap(allocatedServices => allocatedServices
         .parTraverse(_
           .release

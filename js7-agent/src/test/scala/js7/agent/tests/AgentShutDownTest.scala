@@ -13,9 +13,9 @@ import js7.base.log.Logger
 import js7.base.problem.Checked.Ops
 import js7.base.system.ServerOperatingSystem.operatingSystem
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.base.utils.CatsBlocking.BlockingTaskResource
+import js7.base.utils.CatsBlocking.BlockingIOResource
 import js7.common.pekkoutils.Pekkos
 import js7.common.pekkoutils.Pekkos.actorSystemResource
 import js7.data.agent.{AgentPath, AgentRef}

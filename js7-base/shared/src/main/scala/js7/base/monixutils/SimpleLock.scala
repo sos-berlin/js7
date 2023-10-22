@@ -1,19 +1,14 @@
 package js7.base.monixutils
 
-import cats.effect.Resource
-import monix.catnap.MVar
-import monix.eval.Task
+import cats.effect.kernel.{Async, Concurrent}
+import cats.effect.{IO, Resource}
+import cats.effect.std.Mutex
+import js7.base.catsutils.UnsafeMemoizable.given
+import cats.syntax.flatMap.*
 
-final class SimpleLock:
+final class SimpleLock[F[_]](using F: Async[F]):
 
-  private val lockV = MVar[Task].of(()).memoize
+  private val mutex: F[Mutex[F]] = Mutex[F].unsafeMemoize
 
-  val resource = Resource.make(
-    acquire = lockV.flatMap(_.take))(
-    release = _ => lockV.flatMap(_.tryPut(()).map {
-      case false => sys.error("Switch: lockV release failed")
-      case true => ()
-    }))
-
-  def lock[A](task: Task[A]): Task[A] =
-    resource.use(_ => task)
+  def surround[A](body: F[A]): F[A] =
+    mutex.flatMap(_.lock.surround(body))

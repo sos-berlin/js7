@@ -2,33 +2,33 @@ package js7.base.monixutils
 
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.monixutils.MonixDeadline.now
-import monix.eval.Task
+import cats.effect.IO
 import monix.reactive.subjects.PublishSubject
-import monix.reactive.{Observable, OverflowStrategy}
 import scala.concurrent.duration.*
+import fs2.Stream
 
-object ObservablePauseDetector:
+object StreamPauseDetector:
 
   private implicit val overflowStrategy: OverflowStrategy.BackPressure =
     OverflowStrategy.BackPressure(bufferSize = 2/*minimum*/)
 
-  implicit final class RichPauseObservable[A](private val underlying: Observable[A]) extends AnyVal:
+  implicit final class RichPauseStream[A](private val underlying: Stream[IO, A]) extends AnyVal:
     // TODO Left should contain the timestamp of the last A, not the first Tick after the last A
     // TODO May parameterize the current Either return type with two functions for less allocs
     /** Returns Right[A], or Left for each pause (only one Left per pause). */
-    def detectPauses(delay: FiniteDuration): Observable[Either[MonixDeadline, A]] =
+    def detectPauses(delay: FiniteDuration): Stream[IO, Either[MonixDeadline, A]] =
       detectPauses(delay, Left(_), Right(_))
 
     def detectPauses[A1 <: A](delay: FiniteDuration, pause: A1)
-    : Observable[A] =
+    : Stream[IO, A] =
       detectPauses(delay, _ => pause, identity)
 
     def detectPauses[B](delay: FiniteDuration, fromPause: MonixDeadline => B, fromData: A => B)
-    : Observable[B] =
-      Observable.deferAction(implicit scheduler =>
-        Observable[Observable[Ticking]](
+    : Stream[IO, B] =
+      Stream.deferAction(implicit scheduler =>
+        Stream[IO, Stream[IO, Ticking]](
           underlying map Data.apply,
-          Observable.intervalWithFixedDelay(delay, delay).map(_ => Tick(now))
+          Stream.intervalWithFixedDelay(delay, delay).map(_ => Tick(now))
         ).merge
           .scan[Element[A]](Tick(now)) {
             case (Tick(o), Tick(_)) => Expired(o)
@@ -45,24 +45,24 @@ object ObservablePauseDetector:
     // TODO Left should contain the timestamp of the last A, not the first Tick after the last A
     // TODO May parameterize the current Either return type with two functions for less allocs
     /** Returns Right[A], or Left for each pause (only one Left per pause). */
-    def detectPauses2(delay: FiniteDuration): Observable[Either[MonixDeadline, A]] =
+    def detectPauses2(delay: FiniteDuration): Stream[IO, Either[MonixDeadline, A]] =
       detectPauses2(delay, Left(_), Right(_))
 
     /** NEW TERMINATING IMPLEMENTATION. */
     def detectPauses2[A1 <: A](delay: FiniteDuration, pause: A1)
-    : Observable[A] =
+    : Stream[IO, A] =
       detectPauses2(delay, _ => pause, identity)
 
     /** NEW TERMINATING IMPLEMENTATION. */
     def detectPauses2[B](delay: FiniteDuration, fromPause: MonixDeadline => B, fromData: A => B)
-    : Observable[B] =
-      Observable.deferAction { implicit scheduler =>
+    : Stream[IO, B] =
+      Stream.deferAction { implicit scheduler =>
         val stop = PublishSubject[Unit]()
-        Observable[Observable[Ticking]](
+        Stream[IO, Stream[IO, Ticking]](
           underlying
-            .guaranteeCase(_ => Task(stop.onComplete()))
+            .guaranteeCase(_ => IO(stop.onComplete()))
             .map(Data.apply),
-          Observable
+          Stream
             .intervalWithFixedDelay(delay, delay)
             .takeUntil(stop)
             .map(_ => Tick(now))

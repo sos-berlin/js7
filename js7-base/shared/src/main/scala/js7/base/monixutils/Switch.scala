@@ -1,65 +1,79 @@
 package js7.base.monixutils
 
+import cats.effect.std.Queue
+import cats.effect.{Deferred, IO}
 import cats.syntax.flatMap.*
-import monix.catnap.MVar
-import monix.eval.Task
+import js7.base.catsutils.UnsafeMemoizable
+import js7.base.catsutils.UnsafeMemoizable.given
+import js7.base.catsutils.UnsafeMemoizable.*
+import js7.base.utils.{Atomic, MVar}
 
-final class Switch private(initiallyOn: Boolean)
+final class Switch(initiallyOn: Boolean)
 extends Switch.ReadOnly:
-  private val lock = new SimpleLock
 
-  private val filledWhenOff: Task[MVar[Task, Unit]] =
-    (if initiallyOn then MVar[Task].empty[Unit]() else MVar[Task].of(()))
-      .memoize
-  private val filledWhenOn: Task[MVar[Task, Unit]] =
-    (if !initiallyOn then MVar[Task].empty[Unit]() else MVar[Task].of(()))
-      .memoize
+  private val on = Atomic(initiallyOn)
+  private val lock = SimpleLock[IO]
+
+  private val onQueue = Queue.bounded[IO, Unit](1)
+    .flatMap(q => IO.whenA(initiallyOn)(q.offer(())).as(q)).unsafeMemoize
+
+  private val offQueue = Queue.bounded[IO, Unit](1)
+    .flatMap(q => IO.unlessA(initiallyOn)(q.offer(())).as(q)).unsafeMemoize
+
+  private val filledWhenOff: IO[MVar[IO, Unit]] =
+    (if initiallyOn then MVar[IO].empty[Unit] else MVar[IO].of(()))
+      .unsafeMemoize
+
+  private val filledWhenOn: IO[MVar[IO, Unit]] =
+    (if !initiallyOn then MVar[IO].empty[Unit] else MVar[IO].of(()))
+      .unsafeMemoize
 
   /** Returns true iff switch turned from off to on. */
-  val switchOn: Task[Boolean] =
-    lock.lock(
-      filledWhenOff
-        .flatMap(_.tryTake)
-        .flatTap(_ => filledWhenOn.flatMap(_.tryPut(())))
-        .map(_.nonEmpty))
+  val switchOn: IO[Boolean] =
+    lock.surround:
+      if on.getAndSet(true) then
+        IO.pure(false)
+      else
+        for
+          _ <- offQueue.flatMap(_.take)
+          _ <- onQueue.flatMap(_.offer(()))
+        yield true
 
   // Not nestable !!!
-  def switchOnFor[A](task: Task[A]): Task[A] =
-    switchOn *> task.guarantee(switchOff.void)
+  def switchOnAround[A](io: IO[A]): IO[A] =
+    switchOn *> io.guarantee(switchOff.void)
 
-  /** Switch on and return `task` iff switch was previously off. */
-  def switchOnThen(task: => Task[Unit]): Task[Unit] =
-    switchOn.flatMap(Task.when(_)(task))
+  /** Switch on and return `io` iff switch was previously off. */
+  def switchOnThen(io: => IO[Unit]): IO[Unit] =
+    switchOn.flatMap(IO.whenA(_)(io))
 
   /** Returns true iff switch turned from on to off. */
-  val switchOff: Task[Boolean] =
-    lock.lock(
+  val switchOff: IO[Boolean] =
+    lock.surround:
       filledWhenOff
         .flatMap(_.tryPut(()))
-        .flatTap(_ => filledWhenOn.flatMap(_.tryTake)))
+        .flatTap(_ => filledWhenOn.flatMap(_.tryTake))
 
-  def switchOffThen(task: => Task[Unit]): Task[Unit] =
-    switchOff.flatMap(Task.when(_)(task))
+  def switchOffThen(io: => IO[Unit]): IO[Unit] =
+    switchOff.flatMap(IO.whenA(_)(io))
 
-  val isOn: Task[Boolean] =
+  val isOn: IO[Boolean] =
     filledWhenOff.flatMap(_.isEmpty)
 
-  val isOff: Task[Boolean] =
+  val isOff: IO[Boolean] =
     isOn.map(!_)
 
-  val whenOff: Task[Unit] =
+  val whenOff: IO[Unit] =
     filledWhenOff.flatMap(_.read).void
 
-  val whenOn: Task[Unit] =
+  val whenOn: IO[Unit] =
     filledWhenOn.flatMap(_.read).void
 
 
 object Switch:
-  def apply(on: Boolean) = new Switch(on)
-
   trait ReadOnly:
-    def isOn: Task[Boolean]
+    def isOn: IO[Boolean]
 
-    def isOff: Task[Boolean]
+    def isOff: IO[Boolean]
 
-    def whenOff: Task[Unit]
+    def whenOff: IO[Unit]

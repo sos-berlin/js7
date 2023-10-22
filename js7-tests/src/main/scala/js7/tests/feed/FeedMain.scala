@@ -5,7 +5,7 @@ import java.io.InputStream
 import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.thread.Futures.implicits.SuccessFuture
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler.Implicits.traced
 
 object FeedMain:
@@ -15,7 +15,7 @@ object FeedMain:
     if args.isEmpty || args.sameElements(Array("--help")) then
       println("Usage: testAddOrders --workflow=WORKFLOWPATH --order-count=1 --user=USER:PASSWORD")
     else
-      run(args, Resource.eval(Task.pure(System.in)))
+      run(args, Resource.eval(IO.pure(System.in)))
         .runToFuture
         .awaitInfinite
         match
@@ -25,6 +25,6 @@ object FeedMain:
 
           case Right(()) =>
 
-  def run(args: Array[String], in: Resource[Task, InputStream]): Task[Checked[Unit]] =
+  def run(args: Array[String], in: Resource[IO, InputStream]): IO[Checked[Unit]] =
     val settings = Settings.parseArguments(args.toSeq)
     Feed.run(in, settings)

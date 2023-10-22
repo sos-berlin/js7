@@ -9,6 +9,9 @@ import js7.base.utils.FutureCompletion
 import js7.base.utils.FutureCompletion.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.cluster.web.ClusterWatchRequestRoute.*
+import js7.common.pekkohttp.PekkoHttpServerUtils.{accept, streamToResponseMarshallable}
+import js7.common.pekkohttp.StandardMarshallers.*
+import js7.common.pekkohttp.web.session.RouteProvider
 import js7.common.http.JsonStreamingSupport.{NdJsonStreamingSupport, `application/x-ndjson`, jsonSeqMarshaller}
 import js7.common.pekkohttp.PekkoHttpServerUtils.{accept, observableToResponseMarshallable}
 import js7.common.pekkohttp.StandardMarshallers.*
@@ -17,13 +20,14 @@ import js7.data.cluster.{ClusterState, ClusterWatchRequest}
 import js7.data.event.Stamped
 import js7.data.node.NodeId
 import js7.journal.watch.EventWatch
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import org.apache.pekko.http.scaladsl.common.JsonEntityStreamingSupport
 import org.apache.pekko.http.scaladsl.marshalling.{ToEntityMarshaller, ToResponseMarshallable}
 import org.apache.pekko.http.scaladsl.server.Directives.*
 import org.apache.pekko.http.scaladsl.server.Route
+import fs2.Stream
 import org.reactivestreams.Publisher
 import scala.concurrent.duration.FiniteDuration
 import scala.util.control.NoStackTrace
@@ -35,8 +39,8 @@ trait ClusterWatchRequestRoute extends RouteProvider:
 
   private lazy val whenShuttingDownCompletion = new FutureCompletion(whenShuttingDown)
 
-  protected def checkedClusterState: Task[Checked[Stamped[ClusterState]]]
-  protected def clusterWatchRequestStream: Task[fs2.Stream[Task, ClusterWatchRequest]]
+  protected def checkedClusterState: IO[Checked[Stamped[ClusterState]]]
+  protected def clusterWatchRequestStream: IO[fs2.Stream[IO, ClusterWatchRequest]]
   protected def eventWatch: EventWatch
   protected def nodeId: NodeId
 
@@ -56,13 +60,13 @@ trait ClusterWatchRequestRoute extends RouteProvider:
                     Stream.empty
                   })
                 .flatMap { stream =>
-                  val observable = Observable.fromReactivePublisher(
+                  val stream = Stream.fromReactivePublisher(
                     stream.toUnicastPublisher: Publisher[ClusterWatchRequest])
-                  val toResponseMarshallable = observableToResponseMarshallable(
-                    observable, request, userId, whenShuttingDownCompletion,
+                  val toResponseMarshallable = streamToResponseMarshallable(
+                    stream, request, userId, whenShuttingDownCompletion,
                     keepAlive = Some(keepAlive),
                     chunkSize = chunkSize)
-                  Task(toResponseMarshallable)
+                  IO(toResponseMarshallable)
                     .onCancelRaiseError(CanceledException)
                     .onErrorRecover {
                       case CanceledException => emptyResponseMarshallable
@@ -74,15 +78,15 @@ trait ClusterWatchRequestRoute extends RouteProvider:
             }))))
 
   private val emptyResponseMarshallable: ToResponseMarshallable =
-    observableToMarshallable(Observable.empty)
+    streamToMarshallable(Stream.empty)
 
-  private def observableToMarshallable(observable: Observable[ClusterWatchRequest])
+  private def streamToMarshallable(stream: Stream[IO, ClusterWatchRequest])
   : ToResponseMarshallable =
     implicit val x: JsonEntityStreamingSupport = NdJsonStreamingSupport
     implicit val y: ToEntityMarshaller[ClusterWatchRequest] = jsonSeqMarshaller[ClusterWatchRequest]
-    monixObservableToMarshallable(
-      observable
-        .takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ => Task {
+    monixStreamToMarshallable(
+      stream
+        .takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ => IO {
           logger.debug("whenShuttingDown completed")
         }))
 

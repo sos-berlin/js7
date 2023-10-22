@@ -14,8 +14,8 @@ import js7.common.http.PekkoHttpClient
 import js7.data.event.{Event, EventRequest, KeyedEvent, Stamped}
 import js7.data.session.HttpSessionApi
 import js7.data.subagent.{SubagentCommand, SubagentRunId}
-import monix.eval.Task
-import monix.reactive.Observable
+import cats.effect.IO
+import fs2.Stream
 import org.apache.pekko.actor.ActorSystem
 import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
@@ -26,7 +26,7 @@ final class HttpSubagentApi private(
   protected val name: String,
   protected val actorSystem: ActorSystem)
 extends SubagentApi, SessionApi.HasUserAndPassword, HttpSessionApi, PekkoHttpClient:
-  
+
   import admission.uri
 
   def isLocal = false
@@ -45,7 +45,7 @@ extends SubagentApi, SessionApi.HasUserAndPassword, HttpSessionApi, PekkoHttpCli
   protected def userAndPassword = admission.userAndPassword
 
   def executeSubagentCommand[A <: SubagentCommand](numbered: Numbered[A])
-  : Task[Checked[numbered.value.Response]] =
+  : IO[Checked[numbered.value.Response]] =
     liftProblem(retryIfSessionLost()(
       httpClient
         .post[Numbered[SubagentCommand], SubagentCommand.Response](
@@ -53,14 +53,14 @@ extends SubagentApi, SessionApi.HasUserAndPassword, HttpSessionApi, PekkoHttpCli
           numbered.asInstanceOf[Numbered[SubagentCommand]])
         .map(_.asInstanceOf[numbered.value.Response])))
 
-  def eventObservable[E <: Event: ClassTag](
+  def eventStream[E <: Event: ClassTag](
     request: EventRequest[E],
     subagentRunId: SubagentRunId,
     heartbeat: Option[FiniteDuration] = None)
     (implicit kd: Decoder[KeyedEvent[E]])
-  : Task[Observable[Stamped[KeyedEvent[E]]]] =
+  : IO[Stream[IO, Stamped[KeyedEvent[E]]]] =
     retryIfSessionLost()(
-      httpClient.getDecodedLinesObservable[Stamped[KeyedEvent[E]]](
+      httpClient.getDecodedLinesStream[Stamped[KeyedEvent[E]]](
         Uri(
           eventUri.string +
             encodeQuery(
@@ -76,6 +76,6 @@ object HttpSubagentApi:
     httpsConfig: HttpsConfig = HttpsConfig.empty,
     name: String,
     actorSystem: ActorSystem)
-  : Resource[Task, HttpSubagentApi] =
-    SessionApi.resource(Task(
+  : Resource[IO, HttpSubagentApi] =
+    SessionApi.resource(IO(
       new HttpSubagentApi(admission, httpsConfig, name, actorSystem)))

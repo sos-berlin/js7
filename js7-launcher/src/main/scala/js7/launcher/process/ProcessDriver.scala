@@ -31,7 +31,7 @@ final class ProcessDriver(
 
   import jobLauncherConf.implicitIox
 
-  private val taskId = taskIdGenerator.next()
+  private val ioId = taskIdGenerator.next()
   private val checkedWindowsLogon = conf.login.traverse(WindowsLogon.fromKeyLogin)
   private lazy val returnValuesProvider = new ShellReturnValuesProvider(
     jobLauncherConf.tmpDirectory,
@@ -43,21 +43,21 @@ final class ProcessDriver(
   @volatile private var killedBeforeStart: Option[ProcessSignal] = None
 
   def startAndRunProcess(env: Map[String, Option[String]], stdObservers: StdObservers)
-  : Task[Fiber[Outcome.Completed]] =
+  : IO[Fiber[Outcome.Completed]] =
     startProcess(env, stdObservers)
       .flatMap:
-        case Left(problem) => Task.pure(Outcome.Failed.fromProblem(problem): Outcome.Completed).start
+        case Left(problem) => IO.pure(Outcome.Failed.fromProblem(problem): Outcome.Completed).start
         case Right(richProcess) => outcomeOf(richProcess).start
 
   private def startProcess(env: Map[String, Option[String]], stdObservers: StdObservers)
-  : Task[Checked[RichProcess]] =
-    Task.deferAction { implicit scheduler =>
+  : IO[Checked[RichProcess]] =
+    IO.deferAction { implicit scheduler =>
       killedBeforeStart match
         case Some(signal) =>
-          Task.pure(Left(Problem.pure("Processing killed before start")))
+          IO.pure(Left(Problem.pure("Processing killed before start")))
 
         case None =>
-          Task(checkedWindowsLogon
+          IO(checkedWindowsLogon
             .flatMap { maybeWindowsLogon =>
               catchNonFatal {
                 for o <- maybeWindowsLogon do
@@ -84,8 +84,8 @@ final class ProcessDriver(
                 .flatMapT { richProcess =>
                   logger.info(s"$orderId: Process $richProcess started, ${conf.jobKey}: ${conf.commandLine}")
                   terminatedPromise.future.value match {
-                    case Some(Failure(t)) => Task.pure(Left(Problem.fromThrowable(t)))
-                    case Some(Success(_)) => Task.pure(Left(Problem("Duplicate process start?")))
+                    case Some(Failure(t)) => IO.pure(Left(Problem.fromThrowable(t)))
+                    case Some(Success(_)) => IO.pure(Left(Problem("Duplicate process start?")))
                     case None =>
                       terminatedPromise.completeWith(
                         richProcess.terminated.as(Completed).runToFuture)
@@ -97,14 +97,14 @@ final class ProcessDriver(
                 }))
     }
 
-  private def outcomeOf(richProcess: RichProcess): Task[Outcome.Completed] =
+  private def outcomeOf(richProcess: RichProcess): IO[Outcome.Completed] =
     richProcess
       .terminated
       .materialize.flatMap { tried =>
         val rc = tried.map(_.pretty(isWindows = isWindows)).getOrElse(tried)
         logger.info(
           s"$orderId: Process $richProcess terminated with $rc after ${richProcess.duration.pretty}")
-        Task.fromTry(tried)
+        IO.fromTry(tried)
       }
       .map { returnCode =>
         fetchReturnValuesThenDeleteFile() match
@@ -116,7 +116,7 @@ final class ProcessDriver(
           case Right(namedValues) =>
             conf.toOutcome(namedValues, returnCode)
       }
-      .guarantee(Task {
+      .guarantee(IO {
         returnValuesProvider.tryDeleteFile()
       })
 
@@ -126,12 +126,12 @@ final class ProcessDriver(
       returnValuesProvider.tryDeleteFile()
       result
 
-  def kill(signal: ProcessSignal): Task[Unit] =
-    startProcessLock.lock("kill")(Task.defer {
+  def kill(signal: ProcessSignal): IO[Unit] =
+    startProcessLock.lock("kill")(IO.defer {
       richProcessOnce.toOption match {
         case None =>
           logger.debug(s"$orderId: Kill before start")
-          Task {
+          IO {
             terminatedPromise.tryFailure(new RuntimeException(s"$taskId killed before start"))
             killedBeforeStart = Some(signal)
           }
@@ -140,8 +140,8 @@ final class ProcessDriver(
       }
     })
 
-  private def sendProcessSignal(richProcess: RichProcess, signal: ProcessSignal): Task[Unit] =
-    Task.defer:
+  private def sendProcessSignal(richProcess: RichProcess, signal: ProcessSignal): IO[Unit] =
+    IO.defer:
       logger.info(s"$orderId: Process $richProcess: kill \"$signal\"")
       richProcess.sendProcessSignal(signal)
 

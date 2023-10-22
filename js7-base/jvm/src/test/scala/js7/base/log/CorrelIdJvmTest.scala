@@ -7,11 +7,12 @@ import js7.base.log.CorrelIdJvmTest.*
 import js7.base.system.Java8Polyfill.*
 import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.RichIO
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
-import monix.eval.{Task, TaskLocal}
+import cats.effect.IO
+import cats.effect.Fiber
 import monix.execution.schedulers.{ExecutorScheduler, TracingScheduler}
 import monix.execution.{CancelableFuture, ExecutionModel}
 import org.apache.logging.log4j.ThreadContext
@@ -21,7 +22,7 @@ import scala.concurrent.duration.Deadline.now
 
 final class CorrelIdJvmTest extends OurTestSuite, BeforeAndAfterAll
 {
-  private val taskBatchSize = 3
+  private val ioBatchSize = 3
 
   private lazy val underlyingScheduler =
     ExecutorScheduler.forkJoinDynamic("CorrelIdJvmTest",
@@ -29,7 +30,7 @@ final class CorrelIdJvmTest extends OurTestSuite, BeforeAndAfterAll
       maxThreads = sys.runtime.availableProcessors(),
       daemonic = true,
       reporter = t => println("CorrelIdJvmTest: " + t.toStringWithCauses),
-      ExecutionModel.BatchedExecution(taskBatchSize))
+      ExecutionModel.BatchedExecution(ioBatchSize))
 
   private implicit lazy val scheduler: TracingScheduler =
     TracingScheduler(underlyingScheduler)
@@ -57,41 +58,41 @@ final class CorrelIdJvmTest extends OurTestSuite, BeforeAndAfterAll
       logger.info(s"${currentThread.threadId} $current Synchronous (Unit) — not bound")
     }
 
-    "Task.runToFuture" in {
+    "IO.runToFuture" in {
       val correlId = CorrelId("BBBBBBBB")
-      val task = Task {
-        logger.info(s"${currentThread.threadId} $current Task.runToFuture")
+      val io = IO {
+        logger.info(s"${currentThread.threadId} $current IO.runToFuture")
         assert(current == correlId)
       }
       val future = correlId.bind {
-        task.runToFuture
+        io.runToFuture
       }
       future.await(99.s)
-      logger.info(s"${currentThread.threadId} $current Task.runToFuture — not bound")
+      logger.info(s"${currentThread.threadId} $current IO.runToFuture — not bound")
     }
 
-    "Task.runToFuture with Task.parSequence" in {
+    "IO.runToFuture with IO.parSequence" in {
       val correlId = CorrelId("CCCCCCCC")
-      val task = Task.parSequence(
+      val io = IO.parSequence(
         for i <- 1 to 8 yield
-          Task {
+          IO {
             sleep(10.ms)
             logger.info(
-              s"${currentThread.threadId} $current Task.runToFuture parSequence $i a")
+              s"${currentThread.threadId} $current IO.runToFuture parSequence $i a")
             assert(current == correlId)
           } *>
-          Task {
+          IO {
             logger.info(
-              s"${currentThread.threadId} $current Task.runToFuture parSequence $i b")
+              s"${currentThread.threadId} $current IO.runToFuture parSequence $i b")
             assert(current == correlId)
           }
       )
       val future = correlId.bind {
-        task.runToFuture
+        io.runToFuture
       }
       future.await(99.s)
       logger.info(
-        s"${currentThread.threadId} $current Task.runToFuture parSequence — not bound")
+        s"${currentThread.threadId} $current IO.runToFuture parSequence — not bound")
     }
 
     "Future" in {
@@ -108,24 +109,24 @@ final class CorrelIdJvmTest extends OurTestSuite, BeforeAndAfterAll
       logger.info(s"${currentThread.threadId} $current Future — not bound")
     }
 
-    "Task" in {
+    "IO" in {
       val correlId = CorrelId("EEEEEEEE")
       val future: CancelableFuture[Unit] =
         CorrelId("_WRONG__").bind {
-          val task: Task[Unit] =
-            correlId.bind(Task {
-              logger.info(s"${currentThread.threadId} $current Task")
+          val io: IO[Unit] =
+            correlId.bind(IO {
+              logger.info(s"${currentThread.threadId} $current IO")
               assert(current == correlId)
               ()
             })
-          task.runToFuture
+          io.runToFuture
         }
       future.await(99.s)
-      logger.info(s"${currentThread.threadId} $current Task — not bound")
+      logger.info(s"${currentThread.threadId} $current IO — not bound")
     }
   }
 
-  "bindCorrelId[Task[r]]" in {
+  "bindCorrelId[IO[r]]" in {
     val correlIds = Vector.tabulate(1000)(i => CorrelId(i.toString))
     val n = 200
     for i <- 1 to n do {
@@ -133,14 +134,14 @@ final class CorrelIdJvmTest extends OurTestSuite, BeforeAndAfterAll
       correlIds
         .parTraverse(correlId =>
           correlId.bind(
-            Task.traverse((1 to taskBatchSize + 1))(j => Task {
-              //  logger.debug(s"bindCorrelId[Task[r]] $i $correlId $j")
+            IO.traverse((1 to ioBatchSize + 1))(j => IO {
+              //  logger.debug(s"bindCorrelId[IO[r]] $i $correlId $j")
               assert(current == correlId)
               ()
             })(Vector)))
         .await(99.s)
       if i % (n / 10) == 0 then {
-        logger.info(itemsPerSecondString(t.elapsed, correlIds.size, "Tasks"))
+        logger.info(itemsPerSecondString(t.elapsed, correlIds.size, "IOs"))
       }
     }
   }
@@ -154,8 +155,8 @@ final class CorrelIdJvmTest extends OurTestSuite, BeforeAndAfterAll
         .sequence(correlIds
           .map(correlId =>
             correlId.bind(
-              Future.traverse((1 to taskBatchSize + 1).toVector)(j => Future {
-                //  logger.debug(s"bindCorrelId[Task[r]] $i $correlId $j")
+              Future.traverse((1 to ioBatchSize + 1).toVector)(j => Future {
+                //  logger.debug(s"bindCorrelId[IO[r]] $i $correlId $j")
                 assert(current == correlId)
                 ()
               }))))
@@ -168,15 +169,15 @@ final class CorrelIdJvmTest extends OurTestSuite, BeforeAndAfterAll
 
   if false then "ThreadContext implemented with Monix Local, is stiched to the Fiber" in {
     // We do not use ThreadContext.put. Maybe it should work in non-Monix threads, too.
-    val task = for
-      _ <- Task(ThreadContext.put("key", "0"))
-      _ <- Task(assert(ThreadContext.get("key") == "0"))
-      _ <- Task.shift
-      _ <- Task(assert(ThreadContext.get("key") == "0"))
-      _ <- TaskLocal.isolate(Task(ThreadContext.put("key", "1")))
-      _ <- Task(assert(ThreadContext.get("key") == "0"))
+    val io = for
+      _ <- IO(ThreadContext.put("key", "0"))
+      _ <- IO(assert(ThreadContext.get("key") == "0"))
+      _ <- IO.shift
+      _ <- IO(assert(ThreadContext.get("key") == "0"))
+      _ <- IOLocal.isolate(IO(ThreadContext.put("key", "1")))
+      _ <- IO(assert(ThreadContext.get("key") == "0"))
     yield ()
-    task.await(99.s)
+    io.await(99.s)
   }
 }
 

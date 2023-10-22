@@ -11,17 +11,17 @@ import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.base.utils.AutoClosing.autoClosing
-import js7.base.utils.CatsBlocking.BlockingTaskResource
+import js7.base.utils.CatsBlocking.BlockingIOResource
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.value.expression.Expression
 import js7.data.value.expression.Expression.{Argument, StringConstant}
 import js7.data.value.expression.scopes.FileValueScope.functionName
 import js7.data.value.expression.scopes.FileValueScopeTest.*
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.Deadline.now
 import scala.util.Random
@@ -113,15 +113,15 @@ final class FileValueScopeTest extends OurTestSuite:
               FileValueScope
                 .resource(fileValueState)
                 .use(fileValueScope =>
-                  Task.shift *>
-                    Task
-                      .parTraverse((1 to m).toVector)(_ => Task {
+                  IO.shift *>
+                    IO
+                      .parTraverse((1 to m).toVector)(_ => IO {
                         val string = strings(Random.nextInt(stringCount))
                         toFile(fileValueScope, Seq(string, string)).orThrow
                       })
                       .tapEval(files =>
-                        Task.shift *>
-                          Task(assert(files
+                        IO.shift *>
+                          IO(assert(files
                             .forall(file => file.contentString == file.getFileName.toString))))))
             .await(99.s)
 

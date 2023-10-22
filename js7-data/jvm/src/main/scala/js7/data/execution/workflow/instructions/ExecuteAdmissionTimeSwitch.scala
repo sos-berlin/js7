@@ -4,7 +4,7 @@ import java.time.ZoneId
 import js7.base.time.AdmissionTimeSchemeForJavaTime.*
 import js7.base.time.{AdmissionTimeScheme, AlarmClock, TimeInterval, Timestamp}
 import js7.base.utils.ScalaUtils.syntax.*
-import monix.execution.cancelables.SerialCancelable
+import js7.base.monixlike.SerialCancelable
 import org.jetbrains.annotations.TestOnly
 
 /** Mutable state for calculating the current or next admission time. */

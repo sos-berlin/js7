@@ -13,7 +13,7 @@ import js7.base.io.process.Processes.ShellFileExtension as sh
 import js7.base.problem.Checked.Ops
 import js7.base.system.ServerOperatingSystem.operatingSystem
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.DurationRichInt
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable

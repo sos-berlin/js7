@@ -5,10 +5,10 @@ import java.util.Objects.requireNonNull
 import java.util.concurrent.CompletableFuture
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
-import js7.base.monixutils.MonixBase.syntax.RichMonixTask
+import js7.base.monixutils.MonixBase.syntax.RichMonixIO
 import js7.base.problem.Checked.*
 import js7.base.problem.Problem
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.data.controller.ControllerCommand.AddOrdersResponse
 import js7.data.event.{Event, EventId, KeyedEvent, Stamped}
@@ -40,7 +40,7 @@ final class JControllerProxy private[proxy](
   /** Listen to the already running event stream. */
   @Nonnull
   def flux(): Flux[JEventAndControllerState[Event]] =
-    asScala.observable
+    asScala.stream
       .map(JEventAndControllerState.apply)
       .asFlux
 
@@ -58,7 +58,7 @@ final class JControllerProxy private[proxy](
   /** Like JControllerApi addOrders, but waits until the Proxy mirrors the added orders. */
   @Nonnull
   def addOrders(@Nonnull orders: Flux[JFreshOrder]): CompletableFuture[VEither[Problem, AddOrdersResponse]] =
-    asScala.addOrders(orders.asObservable.map(_.asScala))
+    asScala.addOrders(orders.asStream.map(_.asScala))
       .map(_.toVavr)
       .runToFuture
       .asJava
@@ -85,7 +85,7 @@ final class JControllerProxy private[proxy](
   @Nonnull
   private def runOrderForTest(@Nonnull order: JFreshOrder): CompletableFuture[Stamped[KeyedEvent[OrderTerminated]]] =
     requireNonNull(order)
-    val whenOrderTerminated = asScala.observable
+    val whenOrderTerminated = asScala.stream
       .collect:
         case EventAndState(stamped @ Stamped(_, _, KeyedEvent(orderId, _: OrderTerminated)), _, _)
           if orderId == order.id =>

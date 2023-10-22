@@ -1,24 +1,24 @@
 package js7.base.stream
 
+import cats.effect.IO
 import js7.base.problem.{Problem, ProblemException}
-import js7.base.stream.ObservableNumberedQueueTest.*
+import js7.base.stream.StreamNumberedQueueTest.*
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.tester.ScalaTestUtils.awaitAndAssert
-import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
+import fs2.Stream
 import scala.collection.mutable
 
-final class ObservableNumberedQueueTest extends OurTestSuite:
-  private val queue = new ObservableNumberedQueue[X]
+final class StreamNumberedQueueTest extends OurTestSuite:
+  private val queue = new StreamNumberedQueue[X]
 
   private def observe(after: Long, take: Int): List[Numbered[X]] =
     queue
-      .observable(after)
-      .flatMap(Observable.fromIterable)
+      .stream(after)
+      .flatMap(Stream.fromIterable)
       .take(take)
       .toListL
       .await(99.s)
@@ -34,11 +34,11 @@ final class ObservableNumberedQueueTest extends OurTestSuite:
     locally:
       val t = intercept[ProblemException](observe(3, take = 1))
       assert(t.problem == Problem(
-        "Unknown number: Numbered[ObservableNumberedQueueTest$::X]: #3 (must be >=0 and <=2)"))
+        "Unknown number: Numbered[StreamNumberedQueueTest$::X]: #3 (must be >=0 and <=2)"))
     locally:
       val t = intercept[ProblemException](observe(-1, take = 1))
       assert(t.problem == Problem(
-        "Unknown number: Numbered[ObservableNumberedQueueTest$::X]: #-1 (must be >=0 and <=2)"))
+        "Unknown number: Numbered[StreamNumberedQueueTest$::X]: #-1 (must be >=0 and <=2)"))
 
     queue.enqueue(Seq(X("c"))).await(99.s)
     assert(observe(0, take = 3) ==
@@ -51,9 +51,9 @@ final class ObservableNumberedQueueTest extends OurTestSuite:
     val buffer = mutable.Buffer.empty[Numbered[X]]
     var isCompleted = false
     val future = queue
-      .observable(0)
-      .flatMap(Observable.fromIterable)
-      .guarantee(Task { isCompleted = true })
+      .stream(0)
+      .flatMap(Stream.fromIterable)
+      .guarantee(IO { isCompleted = true })
       .foreach:
         buffer += _
 
@@ -87,7 +87,7 @@ final class ObservableNumberedQueueTest extends OurTestSuite:
       queue.release(1).await(99.s).orThrow
       val t = intercept[ProblemException](observe(0, take = 1))
       assert(t.problem == Problem(
-        "Unknown number: Numbered[ObservableNumberedQueueTest$::X]: #0 (must be >=1 and <=6)"))
+        "Unknown number: Numbered[StreamNumberedQueueTest$::X]: #0 (must be >=1 and <=6)"))
 
     assert(observe(1, take = 1) == List(Numbered(2, X("b"))))
 
@@ -95,11 +95,11 @@ final class ObservableNumberedQueueTest extends OurTestSuite:
       queue.release(3).await(99.s).orThrow
       val t = intercept[ProblemException](observe(0, take = 1))
       assert(t.problem == Problem(
-        "Unknown number: Numbered[ObservableNumberedQueueTest$::X]: #0 (must be >=3 and <=6)"))
+        "Unknown number: Numbered[StreamNumberedQueueTest$::X]: #0 (must be >=3 and <=6)"))
 
     assert(queue.release(7).await(99.s) == Left(Problem(
-      "Unknown number: Numbered[ObservableNumberedQueueTest$::X]: #7 (must be >=3 and <=6)")))
+      "Unknown number: Numbered[StreamNumberedQueueTest$::X]: #7 (must be >=3 and <=6)")))
 
 
-object ObservableNumberedQueueTest:
+object StreamNumberedQueueTest:
   private case class X(string: String)

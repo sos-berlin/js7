@@ -20,8 +20,8 @@ import js7.common.http.PekkoHttpClient
 import js7.data.Problems.ClusterNodeIsNotReadyProblem
 import js7.data.event.{Event, EventRequest, KeyedEvent, Stamped}
 import js7.data.session.HttpSessionApi
-import monix.eval.Task
-import monix.reactive.Observable
+import cats.effect.IO
+import fs2.Stream
 import org.apache.pekko.actor.ActorSystem
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.FiniteDuration
@@ -43,19 +43,19 @@ extends HttpSessionApi, PekkoHttpClient, SessionApi.HasUserAndPassword, HttpClus
   protected lazy val agentUris = AgentUris(baseUri)
   protected lazy val uriPrefixPath = "/agent"
 
-  final def repeatUntilAvailable[A](timeout: FiniteDuration)(body: Task[Checked[A]])
-  : Task[Checked[A]] =
-    Task.defer:
+  final def repeatUntilAvailable[A](timeout: FiniteDuration)(body: IO[Checked[A]])
+  : IO[Checked[A]] =
+    IO.defer:
       val sym = new BlockingSymbol
       val delays = Iterator(100.ms, 300.ms, 600.ms) ++ Iterator.continually(1.s)
       val until = now + timeout
-      Task.tailRecM(()) { _ =>
+      IO.tailRecM(()) { _ =>
         body
           .flatMap:
             case Left(problem) if (problem is ClusterNodeIsNotReadyProblem) && now < until =>
               sym.increment()
               logger.log(sym.logLevel, s"$sym $toString: $problem")
-              Task.sleep(delays.next()).as(Left(()))
+              IO.sleep(delays.next()).as(Left(()))
 
             case checked  =>
               logger.log(
@@ -64,22 +64,22 @@ extends HttpSessionApi, PekkoHttpClient, SessionApi.HasUserAndPassword, HttpClus
                   case Left(problem) => s"❓$toString: $problem"
                   case Right(_) => s"🟢 $toString was available again"
                 })
-              Task.right(checked)
-          .tapError(throwable => Task(
+              IO.right(checked)
+          .tapError(throwable => IO(
             logger.log(sym.releasedLogLevel, s"💥$toString => $throwable")))
       }
 
-  final def commandExecute(command: AgentCommand): Task[Checked[command.Response]] =
+  final def commandExecute(command: AgentCommand): IO[Checked[command.Response]] =
     liftProblem(
       post[AgentCommand, AgentCommand.Response](uri = agentUris.command, command)
         .map(_.asInstanceOf[command.Response]))
 
-  final def overview: Task[AgentOverview] = get[AgentOverview](agentUris.overview)
+  final def overview: IO[AgentOverview] = get[AgentOverview](agentUris.overview)
 
-  final def eventObservable(request: EventRequest[Event])
-  : Task[Checked[Observable[Stamped[KeyedEvent[Event]]]]] =
+  final def eventStream(request: EventRequest[Event])
+  : IO[Checked[Stream[IO, Stamped[KeyedEvent[Event]]]]] =
     liftProblem(
-      getDecodedLinesObservable[Stamped[KeyedEvent[Event]]](
+      getDecodedLinesStream[Stamped[KeyedEvent[Event]]](
         agentUris.controllersEvents(request),
         responsive = true))
 
@@ -113,7 +113,7 @@ object AgentClient:
     label: String = "Agent",
     httpsConfig: => HttpsConfig = HttpsConfig.empty)
     (implicit actorSystem: ActorSystem)
-  : Resource[Task, AgentClient] =
+  : Resource[IO, AgentClient] =
     Resource.make(
-      acquire = Task(apply(admission, label, httpsConfig)))(
-      release = client => client.tryLogout *> Task(client.close()))
+      acquire = IO(apply(admission, label, httpsConfig)))(
+      release = client => client.tryLogout *> IO(client.close()))

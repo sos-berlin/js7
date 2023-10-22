@@ -10,7 +10,7 @@ import js7.base.Js7Version
 import js7.base.auth.{HashedPassword, SimpleUser, UserId}
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Checked.*
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.HasCloser
 import js7.common.pekkohttp.WebLogDirectives
@@ -26,7 +26,7 @@ import org.scalatest.{BeforeAndAfterAll, Suite}
 /**
   * @author Joacim Zschimmer
   */
-trait WebServiceTest extends HasCloser, BeforeAndAfterAll, ScalatestRouteTest:  
+trait WebServiceTest extends HasCloser, BeforeAndAfterAll, ScalatestRouteTest:
   this: AgentRouteProvider & Suite =>
 
   ProblemCodeMessages.initialize()

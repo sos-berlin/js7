@@ -1,24 +1,25 @@
 package js7.base.utils
 
+import cats.effect.IO
 import cats.syntax.monoid.*
 import js7.base.data.ByteSequence.ops.*
 import js7.base.data.{ByteArray, ByteSequence}
-import monix.reactive.Observable
+import fs2.Stream
 import scala.collection.mutable
 
 /**
   * Splits a stream of UTF-8-encoded ByteSeqs into lines, separated by LF.
   */
-final class ByteSequenceToLinesObservable[ByteSeq](
+final class ByteSequenceToLinesStream[ByteSeq](
   implicit ByteSeq: ByteSequence[ByteSeq])
-extends (ByteSeq => Observable[ByteArray]):
+extends (ByteSeq => Stream[IO, ByteArray]):
 
   private val lines = mutable.Buffer.empty[ByteArray]
   private lazy val startedLine = mutable.ArrayBuffer.empty[ByteSeq]
 
-  def apply(byteSeq: ByteSeq): Observable[ByteArray] =
+  def apply(byteSeq: ByteSeq): Stream[IO, ByteArray] =
     if byteSeq.isEmpty then
-      Observable.empty
+      Stream.empty
     else
       var p = 0
       val length = byteSeq.length
@@ -36,10 +37,6 @@ extends (ByteSeq => Observable[ByteArray]):
             startedLine.clear()
             p = i + 1
 
-      val result =
-        if lines.lengthIs == 1 then
-          Observable.pure(lines.head)
-        else
-          Observable.fromIterable(lines.toVector)
+      val result = Stream.emits(lines)
       lines.clear()
       result

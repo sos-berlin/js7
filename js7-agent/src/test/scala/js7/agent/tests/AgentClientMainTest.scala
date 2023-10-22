@@ -14,13 +14,13 @@ import scala.collection.mutable
  * @author Joacim Zschimmer
  */
 final class AgentClientMainTest extends OurTestSuite, BeforeAndAfterAll, TestAgentProvider:
-  
+
   override def afterAll() = closer closeThen super.afterAll()
 
   //override protected def agentTestWiring = RunningAgent.TestWiring(
   //  commandHandler = Some(new CommandHandler {
-  //    def execute(command: AgentCommand, meta: CommandMeta): Task[Checked[command.Response]] =
-  //      Task {
+  //    def execute(command: AgentCommand, meta: CommandMeta): IO[Checked[command.Response]] =
+  //      IO {
   //        (command match {
   //          case ExpectedTerminate => Right(AgentCommand.Response.Accepted)
   //          case _ => fail()

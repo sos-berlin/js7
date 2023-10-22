@@ -1,6 +1,6 @@
 package js7.base.fs2utils
 
-import cats.effect.concurrent.Deferred
+import cats.effect.kernel.Deferred
 import cats.effect.{ContextShift, Fiber, IO}
 import cats.syntax.flatMap.*
 import cats.syntax.parallel.*
@@ -17,7 +17,7 @@ final class Fs2PubSubTest extends OurAsyncTestSuite:
   "FsPubSub" in:
     val n = 10000
 
-    def startStream[A <: AnyRef](pubSub: Fs2PubSub[IO, A], require: Int): IO[Fiber[IO, Vector[A]]] =
+    def startStream[A <: AnyRef](pubSub: Fs2PubSub[IO, A], require: Int): IO[FiberIO[Vector[A]]] =
       val initial = null.asInstanceOf[A]
       for
         streamStarted <- Deferred[IO, Unit]

@@ -17,8 +17,8 @@ import js7.common.pekkoutils.ReceiveLoggingActor
 import js7.data.event.{AnyKeyedEvent, Event, EventId, JournaledState, KeyedEvent, Stamped}
 import js7.journal.JournalingActor.*
 import js7.journal.configuration.JournalConf
-import monix.eval.Task
-import monix.execution.cancelables.SerialCancelable
+import cats.effect.IO
+import js7.base.monixlike.SerialCancelable
 import monix.execution.{Cancelable, Scheduler}
 import org.apache.pekko.actor.{Actor, ActorLogging, ActorRef, Stash}
 import scala.concurrent.duration.Deadline.now
@@ -59,20 +59,20 @@ extends Actor, Stash, ActorLogging, ReceiveLoggingActor:
     if stashingCount > 0 then throw new IllegalStateException("inhibitJournaling called while a persist operation is active?")
     stashingCount = Inhibited
 
-  protected final def persistKeyedEventTask[A](keyedEvent: KeyedEvent[E], async: Boolean = false)
+  protected final def persistKeyedEventIO[A](keyedEvent: KeyedEvent[E], async: Boolean = false)
     (callback: (Stamped[KeyedEvent[E]], S) => A)
-  : Task[Checked[A]] =
-    promiseTask[Checked[A]] { promise =>
+  : IO[Checked[A]] =
+    promiseIO[Checked[A]] { promise =>
       self ! Persist(keyedEvent, async = async, callback, promise)
     }
 
   /** Fast lane for events not affecting the journaled state. */
-  protected final def persistKeyedEventAcceptEarlyTask[EE <: E](
+  protected final def persistKeyedEventAcceptEarlyIO[EE <: E](
     keyedEvents: Seq[KeyedEvent[EE]],
     timestampMillis: Option[Long] = None,
     options: CommitOptions = CommitOptions.default)
-  : Task[Checked[Accepted]] =
-    promiseTask[Checked[Accepted]] { promise =>
+  : IO[Checked[Accepted]] =
+    promiseIO[Checked[Accepted]] { promise =>
       self ! PersistAcceptEarly(keyedEvents, timestampMillis, options, promise)
     }
 
@@ -178,7 +178,7 @@ extends Actor, Stash, ActorLogging, ReceiveLoggingActor:
           }))
 
     case PersistAcceptEarly(keyedEvents, timestampMillis, options, promise) =>
-      start(async = true, "persistKeyedEventAcceptEarlyTask")
+      start(async = true, "persistKeyedEventAcceptEarlyIO")
       val timestamped = keyedEvents.map(Timestamped(_, timestampMillis))
       journalActor.forward(
         JournalActor.Input.Store(CorrelId.current, timestamped, self, options, since = now, commitLater = true,

@@ -4,7 +4,7 @@ import cats.effect.Resource
 import cats.syntax.option.*
 import js7.base.generic.Completed
 import js7.base.log.Logger
-import js7.base.monixutils.MonixBase.durationOfTask
+import js7.base.monixutils.MonixBase.durationOfIO
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Checked.*
 import js7.base.problem.{Problem, ProblemException}
@@ -25,18 +25,18 @@ import js7.proxy.JournaledProxy.*
 import js7.proxy.configuration.ProxyConf
 import js7.proxy.data.event.ProxyEvent.{ProxyCoupled, ProxyCouplingError, ProxyDecoupled}
 import js7.proxy.data.event.{EventAndState, ProxyEvent, ProxyStarted}
-import monix.eval.Task
-import monix.execution.cancelables.SerialCancelable
+import cats.effect.IO
+import js7.base.monixlike.SerialCancelable
 import monix.execution.{Cancelable, CancelableFuture, Scheduler}
-import monix.reactive.Observable
-import monix.reactive.observables.ConnectableObservable
+import fs2.Stream
+import monix.reactive.streams.ConnectableStream
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{Future, Promise}
 import scala.util.chaining.scalaUtilChainingOps
 import scala.util.{Failure, Success}
 
 trait JournaledProxy[S <: SnapshotableState[S]]:
-  protected val baseObservable: Observable[EventAndState[Event, S]]
+  protected val baseStream: Stream[IO, EventAndState[Event, S]]
   protected def scheduler: Scheduler
   protected val onEvent: EventAndState[Event, S] => Unit
   protected def S: SnapshotableState.Companion[S]
@@ -49,35 +49,35 @@ trait JournaledProxy[S <: SnapshotableState[S]]:
   private val currentStateFilled = Promise[Unit]()
   @volatile private var _currentState = S.empty
 
-  private val connectableObservable: ConnectableObservable[EventAndState[Event, S]] =
-    baseObservable
+  private val connectableStream: ConnectableStream[EventAndState[Event, S]] =
+    baseStream
       .map { eventAndState =>
         _currentState = eventAndState.state
         currentStateFilled.trySuccess(())
         onEvent(eventAndState)
         eventAndState
       }
-      .takeUntil(Observable.fromFuture(stopRequested.future))
-      .doOnSubscriptionCancel(Task(
-        logger.debug("connectableObservable: cancelling")))
+      .takeUntil(Stream.fromFuture(stopRequested.future))
+      .doOnSubscriptionCancel(IO(
+        logger.debug("connectableStream: cancelling")))
       .publish(scheduler)
 
-  final def observable: Observable[EventAndState[Event, S]] =
-    connectableObservable
+  final def stream: Stream[IO, EventAndState[Event, S]] =
+    connectableStream
 
-  final def startObserving: Task[Unit] =
+  final def startObserving: IO[Unit] =
     val cancelable = SerialCancelable()
-    Task.deferFutureAction { implicit scheduler =>
+    IO.deferFutureAction { implicit scheduler =>
       assertThat(observing.isEmpty)
-      val obs = connectableObservable.connect()
+      val obs = connectableStream.connect()
       observing := obs
       cancelable := obs
-      val whenCompleted = connectableObservable.completedL.runToFuture
+      val whenCompleted = connectableStream.completedL.runToFuture
       observingStopped.completeWith(whenCompleted)
       whenCompleted.onComplete:
         case Success(()) =>
           if !stopRequested.isCompleted then
-            logger.error("Observable has terminated")
+            logger.error("Stream has terminated")
           // ???
         case Failure(t) =>
           logger.error(t.toStringWithCauses, t.nullIfNoStackTrace)
@@ -91,28 +91,28 @@ trait JournaledProxy[S <: SnapshotableState[S]]:
         })
     }
 
-  def sync(eventId: EventId): Task[Unit] =
-    Task.defer:
+  def sync(eventId: EventId): IO[Unit] =
+    IO.defer:
       if currentState.eventId >= eventId then
-        Task.unit
+        IO.unit
       else
-        Observable(
-          observable.dropWhile(_.stampedEvent.eventId < eventId),
-          Observable.timerRepeated(proxyConf.syncPolling, proxyConf.syncPolling, ())
-        ).merge(implicitly[Observable[Any] <:< Observable[Any]]/*required for Scala 3???*/)
+        Stream(
+          stream.dropWhile(_.stampedEvent.eventId < eventId),
+          Stream.timerRepeated(proxyConf.syncPolling, proxyConf.syncPolling, ())
+        ).merge(implicitly[Stream[IO, Any] <:< Stream[IO, Any]]/*required for Scala 3???*/)
           .dropWhile(_ => currentState.eventId < eventId)
           .headL
           .void
 
   /** For testing: wait for a condition in the running event stream. **/
-  def when(predicate: EventAndState[Event, S] => Boolean): Task[EventAndState[Event, S]] =
-    observable
+  def when(predicate: EventAndState[Event, S] => Boolean): IO[EventAndState[Event, S]] =
+    stream
       .filter(predicate)
       .headOptionL
       .map(_.getOrElse(throw new EndOfEventStreamException))
 
-  final def stop: Task[Unit] =
-    Task.deferFuture:
+  final def stop: IO[Unit] =
+    IO.deferFuture:
       observing.toOption.fold(Future.successful(())) { _ =>
         stopRequested.trySuccess(())
         observingStopped.future
@@ -130,28 +130,28 @@ object JournaledProxy:
 
   private val logger = Logger[this.type]
 
-  def observable[S <: JournaledState[S]](
-    apisResource: Resource[Task, Nel[RequiredApi_[S]]],
+  def stream[S <: JournaledState[S]](
+    apisResource: Resource[IO, Nel[RequiredApi_[S]]],
     fromEventId: Option[EventId],
     onProxyEvent: ProxyEvent => Unit = _ => (),
     proxyConf: ProxyConf)
     (implicit S: JournaledState.Companion[S])
-  : Observable[EventAndState[Event, S]] =
+  : Stream[IO, EventAndState[Event, S]] =
     //if (apisResource.isEmpty) throw new IllegalArgumentException("apisResource must not be empty")
 
-    def observable2: Observable[EventAndState[Event, S]] =
-      Observable.tailRecM(none[S])(maybeState =>
-        Observable
-          .fromResource(
+    def stream2: Stream[IO, EventAndState[Event, S]] =
+      Stream.tailRecM(none[S])(maybeState =>
+        Stream
+          .resource(
             ActiveClusterNodeSelector.selectActiveNodeApi[RequiredApi_[S]](
               apisResource,
               failureDelays = proxyConf.recouplingStreamReaderConf.failureDelays,
               _ => onCouplingError))
           .flatMap(api =>
-            Observable
-              .fromTask(
-                durationOfTask(
-                  maybeState.fold(api.checkedSnapshot(eventId = fromEventId))(s => Task.pure(Right(s)))))
+            Stream
+              .fromIO(
+                durationOfIO(
+                  maybeState.fold(api.checkedSnapshot(eventId = fromEventId))(s => IO.pure(Right(s)))))
               .map(o => o._1.orThrow/*TODO What happens then?*/ -> o._2)
               .flatMap { case (state, stateFetchDuration) =>
                 var lastState = state
@@ -177,8 +177,8 @@ object JournaledProxy:
                             EventId.toString(state.eventId))
                           Some(lastState)
                         }
-                      Observable.pure(Left(continueWithState))
-                        .delayExecution(1.s/*TODO*/)
+                      Stream.emit(Left(continueWithState))
+                        .delayBy(1.s/*TODO*/)
                   }
               }))
 
@@ -186,7 +186,7 @@ object JournaledProxy:
       fromEventId.isEmpty && checkedCast[ProblemException](t).exists(_.problem is EventSeqTornProblem)
 
     def observeWithState(api: RequiredApi_[S], state: S, stateFetchDuration: FiniteDuration)
-    : Observable[EventAndState[Event, S]] =
+    : Stream[IO, EventAndState[Event, S]] =
       val seed = EventAndState(Stamped(state.eventId, ProxyStarted: AnyKeyedEvent), state, state)
       val recouplingStreamReader = new MyRecouplingStreamReader(onProxyEvent, stateFetchDuration,
         tornOlder = (fromEventId.isEmpty ? proxyConf.tornOlder).flatten,
@@ -200,11 +200,11 @@ object JournaledProxy:
               .orThrow/*TODO Restart*/
               .withEventId(stampedEvent.eventId)))
 
-    def onCouplingError(throwable: Throwable) = Task:
+    def onCouplingError(throwable: Throwable) = IO:
       onProxyEvent(ProxyCouplingError(Problem.fromThrowable(throwable)))
 
-    observable2
-      .tapEach(o => logger.trace(s"observable => ${o.stampedEvent.toString.truncateWithEllipsis(200)}"))
+    stream2
+      .tapEach(o => logger.trace(s"stream => ${o.stampedEvent.toString.truncateWithEllipsis(200)}"))
 
   /** Drop all events until the requested one and
     * replace the first event by ProxyStarted.
@@ -213,9 +213,9 @@ object JournaledProxy:
     * (because it may be the original journal file snapshot).
     */
   private def dropEventsUntilRequestedEventIdAndReinsertProxyStarted[S <: JournaledState[S]](
-    obs: Observable[EventAndState[Event, S]],
+    obs: Stream[IO, EventAndState[Event, S]],
     fromEventId: EventId)
-  : Observable[EventAndState[Event, S]] =
+  : Stream[IO, EventAndState[Event, S]] =
     // TODO Optimize this with SnapshotableStateBuilder ?
     obs.dropWhile(_.stampedEvent.eventId < fromEventId)
       .map:
@@ -236,31 +236,31 @@ object JournaledProxy:
     _.eventId, recouplingStreamReaderConf):
     private var addToTornOlder = stateFetchDuration
 
-    def getObservable(api: RequiredApi_[S], after: EventId) =
+    def getStream(api: RequiredApi_[S], after: EventId) =
       import S.keyedEventJsonCodec
       HttpClient.liftProblem(api
-        .eventObservable(
+        .eventStream(
           EventRequest.singleClass[Event](after = after, delay = 1.s,
             tornOlder = tornOlder.map(o => (o + addToTornOlder).roundUpToNext(100.ms)),
             timeout = Some(recouplingStreamReaderConf.timeout)))
         .doOnFinish {
-          case None => Task { addToTornOlder = ZeroDuration }
-          case _ => Task.unit
+          case None => IO { addToTornOlder = ZeroDuration }
+          case _ => IO.unit
         })
 
     override def onCoupled(api: RequiredApi_[S], after: EventId) =
-      Task:
+      IO:
         onProxyEvent(ProxyCoupled(after))
         Completed
 
     override protected def onCouplingFailed(api: RequiredApi_[S], problem: Problem) =
       super.onCouplingFailed(api, problem) >>
-        Task:
+        IO:
           onProxyEvent(ProxyCouplingError(problem))
           false  // Terminate RecouplingStreamReader to allow to reselect a reachable Node (via Api[S[S)
 
     override protected val onDecoupled =
-      Task:
+      IO:
         onProxyEvent(ProxyDecoupled)
         Completed
 

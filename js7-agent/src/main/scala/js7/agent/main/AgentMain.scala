@@ -4,7 +4,6 @@ import js7.agent.RunningAgent
 import js7.agent.configuration.AgentConfiguration
 import js7.base.thread.IOExecutor
 import js7.common.system.startup.ServiceMain
-import monix.eval.Task
 
 object AgentMain:
   // No Logger here!
@@ -15,6 +14,6 @@ object AgentMain:
     )((conf, scheduler) =>
       for
         agent <- RunningAgent.restartable(conf)(scheduler)
-        iox <- IOExecutor.resource[Task](conf.config, conf.name)
+        iox <- IOExecutor.resource[IO](conf.config, conf.name)
         _ <- agent.webServer.restartWhenHttpsChanges(iox)
       yield agent)

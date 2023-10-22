@@ -25,9 +25,9 @@ final class RealEventWatchTest extends OurTestSuite:
     assert(a == events)
 
     // Event from 1970-01-01 is older than 1s
-    val observable = eventWatch.observe(EventRequest.singleClass[TestEvent](tornOlder = Some(1.s))).toListL.runToFuture
-    intercept[TornException] { observable await 99.s }
-    observable.cancel()
+    val stream = eventWatch.observe(EventRequest.singleClass[TestEvent](tornOlder = Some(1.s))).toListL.runToFuture
+    intercept[TornException] { stream await 99.s }
+    stream.cancel()
 
     assert(eventWatch.observe(EventRequest.singleClass[TestEvent](limit = 7, after = 1L, tornOlder = Some(1.s)))
       .toListL.runToFuture.await(99.s).isEmpty)

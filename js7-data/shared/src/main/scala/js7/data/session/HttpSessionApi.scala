@@ -1,6 +1,7 @@
 package js7.data.session
 
 import cats.effect.ExitCase
+import cats.syntax.option.*
 import js7.base.Js7Version
 import js7.base.auth.{SessionToken, UserAndPassword}
 import js7.base.convert.As.StringAsBoolean
@@ -20,8 +21,8 @@ import js7.base.web.HttpClient.HttpException
 import js7.base.web.{HttpClient, Uri}
 import js7.data.event.SnapshotableState
 import js7.data.session.HttpSessionApi.*
-import monix.eval.Task
-import monix.execution.atomic.AtomicAny
+import cats.effect.IO
+import js7.base.utils.Atomic
 import scala.concurrent.duration.Deadline.now
 // Test in SessionRouteTest
 
@@ -29,26 +30,26 @@ import scala.concurrent.duration.Deadline.now
   * @author Joacim Zschimmer
   */
 trait HttpSessionApi extends SessionApi, HasSessionToken:
-  
+
   protected def httpClient: HttpClient
   protected def sessionUri: Uri
 
   private val lock = AsyncLock("HttpSessionApi")
-  private val sessionTokenRef = AtomicAny[Option[SessionToken]](None)
+  private val sessionTokenRef = Atomic(none[SessionToken])
 
   protected final def logOpenSession(): Unit =
     for token <- sessionTokenRef.get() do
       logger.debug(s"close(), but $token not logged-out: $toString")
 
   final def login_(userAndPassword: Option[UserAndPassword], onlyIfNotLoggedIn: Boolean = false)
-  : Task[Completed] =
-    Task.defer(
+  : IO[Completed] =
+    IO.defer(
       if onlyIfNotLoggedIn && hasSession then
-        Task.completed // avoid lock logging
+        IO.completed // avoid lock logging
       else
-        lock.lock(Task.defer(
+        lock.lock(IO.defer(
           if onlyIfNotLoggedIn && hasSession then
-            Task.completed
+            IO.completed
           else {
             val cmd = Login(userAndPassword, Some(Js7Version))
             logger.debug(s"$toString: $cmd")
@@ -56,9 +57,9 @@ trait HttpSessionApi extends SessionApi, HasSessionToken:
               .pipeIf(isPasswordLoggable)(_.guaranteeCase {
                 case ExitCase.Error(t: HttpException) if t.statusInt == 401/*Unauthorized*/ =>
                   // Logs the password !!!
-                  Task(logger.debug(
+                  IO(logger.debug(
                     s"⛔️ Login ${userAndPassword.map(o => s"${o.userId} »${o.password.string}«")} => ${t.problem getOrElse t}"))
-                case _ => Task.unit
+                case _ => IO.unit
               })
               .map(response => {
                 logNonMatchingVersion(
@@ -69,19 +70,19 @@ trait HttpSessionApi extends SessionApi, HasSessionToken:
               })
           })))
 
-  final def logout(): Task[Completed] =
-    Task.defer(
+  final def logout(): IO[Completed] =
+    IO.defer(
       if sessionTokenRef.get().isEmpty then
-        Task.completed // avoid lock logging
+        IO.completed // avoid lock logging
       else
-        lock.lock(Task.defer(
+        lock.lock(IO.defer(
           sessionTokenRef.get() match {
-            case None => Task.completed
+            case None => IO.completed
             case sometoken @ Some(sessionToken) =>
               val cmd = Logout(sessionToken)
               logger.debug(s"$toString: $cmd")
               executeSessionCommand(cmd, suppressSessionToken = true)
-                .doOnFinish(_ => Task {
+                .doOnFinish(_ => IO {
                   // Change nothing in case of a concurrent successful Logout or Login
                   sessionTokenRef.compareAndSet(sometoken, None)
                 })
@@ -90,10 +91,10 @@ trait HttpSessionApi extends SessionApi, HasSessionToken:
           })))
 
   private def executeSessionCommand(command: SessionCommand, suppressSessionToken: Boolean = false)
-  : Task[command.Response] =
+  : IO[command.Response] =
     implicit val implicitSessionToken =
-      if suppressSessionToken then Task.pure(None)
-      else Task { sessionToken }
+      if suppressSessionToken then IO.pure(None)
+      else IO { sessionToken }
     httpClient.post[SessionCommand, SessionCommand.Response](sessionUri, command)
       .map(_.asInstanceOf[command.Response])
 
@@ -108,10 +109,10 @@ trait HttpSessionApi extends SessionApi, HasSessionToken:
 
   protected final def snapshotAs[S <: SnapshotableState[S]](uri: Uri)
     (implicit S: SnapshotableState.Companion[S])
-  : Task[S] =
-    Task.defer:
+  : IO[S] =
+    IO.defer:
       val startedAt = now
-      httpClient.getRawLinesObservable(uri)
+      httpClient.getRawLinesStream(uri)
         .logTiming(_.length, startedAt = startedAt, onComplete = (d, n, exitCase) =>
           logger.debug(s"$S snapshot receive $exitCase - ${bytesPerSecondString(d, n)}"))
         .map(_
@@ -119,7 +120,7 @@ trait HttpSessionApi extends SessionApi, HasSessionToken:
             .parseJsonAs(S.snapshotObjectJsonCodec).orThrow))
         .logTiming(startedAt = startedAt, onComplete = (d, n, exitCase) =>
           logger.debug(s"$S snapshot receive $exitCase - ${itemsPerSecondString(d, n, "objects")}"))
-        .flatMap(S.fromObservable)
+        .flatMap(S.fromStream)
 
 
 object HttpSessionApi:

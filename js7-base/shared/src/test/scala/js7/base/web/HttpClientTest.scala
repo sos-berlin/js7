@@ -3,7 +3,7 @@ package js7.base.web
 import js7.base.problem.Problem
 import js7.base.test.OurAsyncTestSuite
 import js7.base.web.HttpClient.liftProblem
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler.Implicits.traced
 import scala.util.{Failure, Success}
 
@@ -31,11 +31,11 @@ final class HttpClientTest extends OurAsyncTestSuite:
     })
 
   "liftProblem withProblem" in:
-    for checkedProblem <- liftProblem(Task.raiseError[Int](withProblem)).runToFuture yield
+    for checkedProblem <- liftProblem(IO.raiseError[Int](withProblem)).runToFuture yield
       assert(checkedProblem == Left(problem))
 
   "liftProblem HttpException without Problem" in:
-    for tried <- liftProblem(Task.raiseError[Int](withoutProblem)).materialize.runToFuture yield
+    for tried <- liftProblem(IO.raiseError[Int](withoutProblem)).materialize.runToFuture yield
       assert(tried == Success(Left(Problem(withoutProblem.getMessage))))
 
   "liftProblem with HttpException without Problem but getMessage is null" in:
@@ -45,7 +45,7 @@ final class HttpClientTest extends OurAsyncTestSuite:
       val problem = None
       override def getMessage = null/*default when no message is given*/
 
-    for tried <- liftProblem(Task.raiseError[Int](exception)).materialize.runToFuture yield
+    for tried <- liftProblem(IO.raiseError[Int](exception)).materialize.runToFuture yield
       assert(tried == Failure(exception))
 
   "liftProblem and failureToChecked save HTTP status code of the withoutProblem Exception" in:
@@ -53,10 +53,10 @@ final class HttpClientTest extends OurAsyncTestSuite:
     assert(problem.httpStatusCode == 503)
     assert(problem.toString == "WITHOUT PROBLEM")
 
-    for case Success(Left(problem)) <- liftProblem(Task.raiseError[Int](withoutProblem)).materialize.runToFuture yield
+    for case Success(Left(problem)) <- liftProblem(IO.raiseError[Int](withoutProblem)).materialize.runToFuture yield
       assert(problem.httpStatusCode == 503)
 
   "liftProblem with unknown Exception" in:
     val other = new Exception("OTHER")
-    for tried <- liftProblem(Task.raiseError[Int](other)).materialize.runToFuture yield
+    for tried <- liftProblem(IO.raiseError[Int](other)).materialize.runToFuture yield
       assert(tried == Failure(other))

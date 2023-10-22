@@ -21,7 +21,7 @@ import js7.data.controller.ControllerRunId
 import js7.data.event.{EventId, JournalId}
 import js7.data.order.OrderId
 import js7.subagent.SubagentSession
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.traced
 import org.apache.pekko.actor.ActorSystem
@@ -42,7 +42,7 @@ final class CommandWebServerTest extends OurAsyncTestSuite:
   private lazy val clientResource = for
     as <- actorSystemResource("CommandWebServerTest", testConfig)
     webServer <- PekkoWebServer.httpResource(findFreeTcpPort(), testConfig, route(as))(as)
-    client <- Resource.fromAutoCloseable(Task(AgentClient(
+    client <- Resource.fromAutoCloseable(IO(AgentClient(
       Admission(Uri(s"${webServer.localUri}"), userAndPassword = None))(
       as)))
   yield client
@@ -63,7 +63,7 @@ final class CommandWebServerTest extends OurAsyncTestSuite:
           protected def commandDetailed = throw new NotImplementedError
 
           protected val executeCommand = (command, meta) =>
-            Task(
+            IO(
               command match {
                 case _: CoupleController => Right(CoupleController.Response(orderIds))
                 case _ => fail()

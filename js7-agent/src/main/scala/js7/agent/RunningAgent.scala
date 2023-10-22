@@ -1,7 +1,7 @@
 package js7.agent
 
 import cats.effect.Resource
-import cats.effect.concurrent.Deferred
+import cats.effect.kernel.Deferred
 import cats.syntax.all.*
 import org.apache.pekko.actor.{ActorRef, ActorSystem, Props}
 import org.apache.pekko.http.scaladsl.server.directives.SecurityDirectives.Authenticator
@@ -26,7 +26,7 @@ import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.monixutils.MonixBase.syntax.{RichMonixResource, RichMonixTask}
+import js7.base.monixutils.MonixBase.syntax.{RichMonixResource, RichMonixIO}
 import js7.base.problem.Checked
 import js7.base.problem.Checked.*
 import js7.base.problem.Problems.ShuttingDownProblem
@@ -35,7 +35,7 @@ import js7.base.system.SystemInformations.systemInformation
 import js7.base.system.startup.StartUp
 import js7.base.time.AlarmClock
 import js7.base.time.JavaTimeConverters.AsScalaDuration
-import js7.base.utils.Atomic.syntax.*
+import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, Atomic, ProgramTermination}
 import js7.base.web.Uri
@@ -53,18 +53,18 @@ import js7.journal.state.FileJournal
 import js7.journal.watch.JournalEventWatch
 import js7.license.LicenseCheckContext
 import js7.subagent.Subagent
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler
 import scala.collection.mutable
 import scala.concurrent.{Future, Promise}
 
 final class RunningAgent private(
   clusterNode: ClusterNode[AgentState],
-  val journal: Task[FileJournal[AgentState]],
+  val journal: IO[FileJournal[AgentState]],
   getLocalUri: () => Uri,
-  untilMainActorTerminated: Task[DirectorTermination],
-  val untilReady: Task[MainActor.Ready],
-  val executeCommand: (AgentCommand, CommandMeta) => Task[Checked[AgentCommand.Response]],
+  untilMainActorTerminated: IO[DirectorTermination],
+  val untilReady: IO[MainActor.Ready],
+  val executeCommand: (AgentCommand, CommandMeta) => IO[Checked[AgentCommand.Response]],
   forDirector: Subagent.ForDirector,
   val testEventBus: StandardEventBus[Any],
   val actorSystem: ActorSystem,
@@ -83,31 +83,31 @@ extends MainService, Service.StoppableByRequest:
   // Then the restart flag of the command should be respected
   @volatile private var subagentTermination = ProgramTermination()
 
-  val untilTerminated: Task[Termination] =
+  val untilTerminated: IO[Termination] =
     untilMainActorTerminated
       .map(termination => termination.copy(
         restartJvm = termination.restartJvm | subagentTermination.restart))
-      .guarantee(Task(isTerminating := true))
+      .guarantee(IO(isTerminating := true))
       .memoize
 
-  def agentState: Task[Checked[AgentState]] =
+  def agentState: IO[Checked[AgentState]] =
     clusterNode.currentState
 
-  protected def start: Task[Service.Started] =
+  protected def start: IO[Service.Started] =
     startService(
       forDirector.subagent.untilTerminated
-        .flatTap(termination => Task {
+        .flatTap(termination => IO {
           subagentTermination = termination
         })
         .*>(stop/*TODO Subagent should terminate this Director ?*/)
         .startAndForget
-        .*>(Task.race(
+        .*>(IO.race(
           untilStopRequested *> shutdown,
           untilTerminated))
         .void)
 
-  private def shutdown: Task[Unit] =
-    logger.debugTask(
+  private def shutdown: IO[Unit] =
+    logger.debugIO(
       terminating(
         executeCommandAsSystemUser(ShutDown(Some(SIGTERM)))
           .attempt
@@ -123,8 +123,8 @@ extends MainService, Service.StoppableByRequest:
     processSignal: Option[ProcessSignal] = None,
     clusterAction: Option[ShutDown.ClusterAction] = None,
     suppressSnapshot: Boolean = false)
-  : Task[DirectorTermination] =
-    logger.debugTask(
+  : IO[DirectorTermination] =
+    logger.debugIO(
       terminating {
         executeCommand(
           ShutDown(processSignal, clusterAction, suppressSnapshot = suppressSnapshot),
@@ -132,16 +132,16 @@ extends MainService, Service.StoppableByRequest:
         ).map(_.orThrow)
       })
 
-  private def terminating(body: Task[Unit]): Task[DirectorTermination] =
-    Task.defer:
-      Task
+  private def terminating(body: IO[Unit]): IO[DirectorTermination] =
+    IO.defer:
+      IO
         .unless(isTerminating.getAndSet(true))(
           body)
         .*>(untilTerminated)
         .logWhenItTakesLonger
 
   private[agent] def executeCommandAsSystemUser(command: AgentCommand)
-  : Task[Checked[AgentCommand.Response]] =
+  : IO[Checked[AgentCommand.Response]] =
     for
       checkedSession <- forDirector.sessionRegister.systemSession
       checkedChecked <- checkedSession.traverse(session =>
@@ -161,7 +161,7 @@ object RunningAgent:
     conf: AgentConfiguration,
     testWiring: TestWiring = TestWiring.empty)
     (implicit scheduler: Scheduler)
-  : Resource[Task, RunningAgent] =
+  : Resource[IO, RunningAgent] =
     locally {
       for
         subagent <- subagentResource(conf)
@@ -173,7 +173,7 @@ object RunningAgent:
     conf: AgentConfiguration,
     testWiring: TestWiring = TestWiring.empty)
     (implicit scheduler: Scheduler)
-  : Resource[Task, RestartableDirector] =
+  : Resource[IO, RestartableDirector] =
     locally {
       for
         subagent <- subagentResource(conf)
@@ -182,11 +182,11 @@ object RunningAgent:
     }.executeOn(scheduler)
 
   def subagentResource(conf: AgentConfiguration)(implicit scheduler: Scheduler)
-  : Resource[Task, Subagent] =
-    Resource.suspend(Task {
+  : Resource[IO, Subagent] =
+    Resource.suspend(IO {
       val testEventBus = new StandardEventBus[Any]
       for
-        _ <- Resource.eval(Task {
+        _ <- Resource.eval(IO {
           if !StartUp.isMain then logger.debug("JS7 Agent starting ...\n" + "┈" * 80)
           conf.createDirectories()
           conf.journalLocation.deleteJournalIfMarked().orThrow
@@ -200,8 +200,8 @@ object RunningAgent:
     conf: AgentConfiguration,
     testWiring: TestWiring = TestWiring.empty)
     (implicit scheduler: Scheduler)
-  : Resource[Task, RunningAgent] =
-    Resource.suspend(Task {
+  : Resource[IO, RunningAgent] =
+    Resource.suspend(IO {
       import conf.{clusterConf, config, httpsConfig, implicitPekkoAskTimeout, journalLocation}
       val licenseChecker = new LicenseChecker(LicenseCheckContext(conf.configDirectory))
       // TODO Subagent itself should start Director when requested
@@ -217,7 +217,7 @@ object RunningAgent:
 
       for
         clusterNode <- ClusterNode.recoveringResource[AgentState](
-          pekkoResource = Resource.eval(Task.pure(forDirector.actorSystem)),
+          pekkoResource = Resource.eval(IO.pure(forDirector.actorSystem)),
           (admission, label, actorSystem) => AgentClient.resource(
             admission, label, httpsConfig)(actorSystem),
           licenseChecker,
@@ -235,7 +235,7 @@ object RunningAgent:
     testEventBus: StandardEventBus[Any],
     clock: AlarmClock)
     (implicit scheduler: Scheduler)
-  : Resource[Task, RunningAgent] =
+  : Resource[IO, RunningAgent] =
     import clusterNode.actorSystem
     import conf.config
 
@@ -243,7 +243,7 @@ object RunningAgent:
 
     def startMainActor(
       failedNodeId: Option[NodeId],
-      journalAllocated: Allocated[Task, FileJournal[AgentState]])
+      journalAllocated: Allocated[IO, FileJournal[AgentState]])
     : MainActorStarted =
       val failedOverSubagentId: Option[SubagentId] =
         for nodeId <- failedNodeId yield
@@ -274,18 +274,18 @@ object RunningAgent:
 
       MainActorStarted(
         actor,
-        Task.fromFuture(mainActorReadyPromise.future),
+        IO.fromFuture(mainActorReadyPromise.future),
         terminationPromise.future)
 
-    val journalDeferred = Deferred.unsafe[Task, FileJournal[AgentState]]
+    val journalDeferred = Deferred.unsafe[IO, FileJournal[AgentState]]
 
-    val mainActorStarted: Task[Either[DirectorTermination, MainActorStarted]] =
-      logger.traceTaskWithResult(
+    val mainActorStarted: IO[Either[DirectorTermination, MainActorStarted]] =
+      logger.traceIOWithResult(
         clusterNode.untilActivated
           .map(_.left.map(DirectorTermination.fromProgramTermination))
           .flatMapT(workingClusterNode =>
             journalDeferred.complete(workingClusterNode.journalAllocated.allocatedThing)
-              .*>(Task(
+              .*>(IO(
                 startMainActor(
                   workingClusterNode.failedNodeId,
                   workingClusterNode.journalAllocated)))
@@ -298,49 +298,49 @@ object RunningAgent:
 
     @deprecated val whenReady = Promise[Unit] // NOT USED ?
 
-    val untilReady: Task[MainActor.Ready] =
+    val untilReady: IO[MainActor.Ready] =
       mainActorStarted.flatMap:
-        case Left(_: DirectorTermination) => Task.raiseError(new IllegalStateException(
+        case Left(_: DirectorTermination) => IO.raiseError(new IllegalStateException(
           "Agent has been terminated"))
         case Right(mainActorStarted) => mainActorStarted.whenReady
 
     // The AgentOrderKeeper if started
-    val currentMainActor: Task[Checked[MainActorStarted]] =
+    val currentMainActor: IO[Checked[MainActorStarted]] =
       clusterNode.currentState
         .map(_.map(_.clusterState))
         .flatMapT { clusterState =>
           import clusterNode.clusterConf.{isBackup, ownId}
           if !clusterState.isActive(ownId, isBackup = isBackup) then
-            Task.left(ClusterNodeIsNotActiveProblem)
+            IO.left(ClusterNodeIsNotActiveProblem)
           else
             mainActorStarted.map:
               case Left(_) => Left(ShuttingDownProblem)
               case Right(o) => Right(o)
         }
-        .tapError(t => Task {
+        .tapError(t => IO {
           logger.debug(s"currentOrderKeeperActor => ${t.toStringWithCauses}", t)
           whenReady.tryFailure(t)
         })
 
     val untilMainActorTerminated =
       logger
-        .traceTask(
+        .traceIO(
           mainActorStarted
             .flatMap {
-              case Left(termination) => Task.pure(termination)
+              case Left(termination) => IO.pure(termination)
               case Right(o) =>
-                Task
+                IO
                   .fromFuture(o.termination)
-                  .tapError(t => Task(
+                  .tapError(t => IO(
                     logger.error(s"MainActor failed with ${t.toStringWithCauses}", t)))
             }
-            .tapError(t => Task(whenReady.tryFailure(t))))
+            .tapError(t => IO(whenReady.tryFailure(t))))
         .uncancelable /*a test may use this in `race`, unintentionally canceling this*/
         .memoize
 
     val gateKeeperConf = GateKeeper.Configuration.fromConfig(config, SimpleUser.apply)
 
-    val agentOverview = Task(AgentOverview(
+    val agentOverview = IO(AgentOverview(
       startedAt = StartUp.startedAt,
       version = BuildInfo.prettyVersion,
       buildId = BuildInfo.buildId,
@@ -349,12 +349,12 @@ object RunningAgent:
       java = javaInformation()))
 
     def executeCommand(cmd: AgentCommand, meta: CommandMeta)
-    : Task[Checked[AgentCommand.Response]] =
-      logger.debugTask("executeCommand", cmd.getClass.shortClassName)(cmd
+    : IO[Checked[AgentCommand.Response]] =
+      logger.debugIO("executeCommand", cmd.getClass.shortClassName)(cmd
         .match {
           case cmd: ShutDown =>
             if cmd.clusterAction.nonEmpty && !clusterNode.isWorkingNode then
-              Task.left(PassiveClusterNodeShutdownNotAllowedProblem)
+              IO.left(PassiveClusterNodeShutdownNotAllowedProblem)
             else {
               logger.info(s"❗ $cmd")
               //⚒️if (cmd.dontNotifyActiveNode && clusterNode.isPassive) {
@@ -371,14 +371,14 @@ object RunningAgent:
                     case Left(problem @ (ClusterNodeIsNotActiveProblem | ShuttingDownProblem
                               | BackupClusterNodeNotAppointed)) =>
                       logger.debug(s"❓$problem")
-                      Task.right(AgentCommand.Response.Accepted)
+                      IO.right(AgentCommand.Response.Accepted)
 
                     case Left(problem @ ClusterNodeIsNotReadyProblem /*???*/) =>
                       logger.error(s"❓ $cmd => $problem")
-                      Task.right(AgentCommand.Response.Accepted)
+                      IO.right(AgentCommand.Response.Accepted)
 
                     case Left(problem) =>
-                      Task.left(problem)
+                      IO.left(problem)
 
                     case Right(api) =>
                       api(meta).commandExecute(cmd)
@@ -394,9 +394,9 @@ object RunningAgent:
         .logWhenItTakesLonger(s"${cmd.getClass.simpleScalaName} command"))
 
     for
-      _ <- Resource.make(Task.unit)(release = _ =>
-        Task(for actor <- actors do actorSystem.stop(actor)))
-      agent <- Service.resource(Task(
+      _ <- Resource.make(IO.unit)(release = _ =>
+        IO(for actor <- actors do actorSystem.stop(actor)))
+      agent <- Service.resource(IO(
         new RunningAgent(
           clusterNode,
           journalDeferred.get,
@@ -407,7 +407,7 @@ object RunningAgent:
           testEventBus,
           actorSystem, conf)))
       _ <- forDirector.subagent.directorRegisteringResource(
-        routeBinding => Task.pure(
+        routeBinding => IO.pure(
           new AgentRoute(
             agentOverview,
             routeBinding,
@@ -429,5 +429,5 @@ object RunningAgent:
 
   private case class MainActorStarted(
     actor: ActorRef @@ MainActor,
-    whenReady: Task[MainActor.Ready],
+    whenReady: IO[MainActor.Ready],
     termination: Future[DirectorTermination])

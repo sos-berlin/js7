@@ -1,5 +1,6 @@
 package js7.controller.web.controller.api
 
+import cats.effect.IO
 import org.apache.pekko.http.scaladsl.testkit.RouteTestTimeout
 import java.nio.file.Files.{createTempDirectory, size}
 import java.util.UUID
@@ -9,7 +10,7 @@ import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.CatsUtils.syntax.RichResource
@@ -35,7 +36,6 @@ import js7.journal.watch.JournalEventWatch
 import js7.journal.web.JournalRoute
 import js7.journal.write.{EventJournalWriter, SnapshotJournalWriter}
 import js7.tester.ScalaTestUtils.awaitAndAssert
-import monix.eval.Task
 import monix.execution.{CancelableFuture, Scheduler}
 import scala.collection.mutable
 import scala.concurrent.Future
@@ -86,18 +86,18 @@ final class JournalRouteTest extends OurTestSuite, RouteTester, JournalRoute
     super.afterAll()
   }
 
-  implicit private val sessionToken: Task[Option[SessionToken]] = Task.pure(None)
+  implicit private val sessionToken: IO[Option[SessionToken]] = IO.pure(None)
   private lazy val file0 = journalLocation.file(0L)
 
   "/journal from start" in {
-    val lines = client.getRawLinesObservable(Uri(s"$uri/journal?timeout=0&file=0&position=0"))
+    val lines = client.getRawLinesStream(Uri(s"$uri/journal?timeout=0&file=0&position=0"))
       .await(99.s).toListL.await(99.s)
     assert(lines.map(_.utf8String).mkString == file0.contentString)
   }
 
   "/journal from end of file" in {
     val fileLength = size(file0)
-    val lines = client.getRawLinesObservable(Uri(s"$uri/journal?timeout=0&file=0&position=$fileLength"))
+    val lines = client.getRawLinesStream(Uri(s"$uri/journal?timeout=0&file=0&position=$fileLength"))
       .await(99.s).toListL.await(99.s)
     assert(lines.map(_.utf8String).isEmpty)
   }
@@ -109,7 +109,7 @@ final class JournalRouteTest extends OurTestSuite, RouteTester, JournalRoute
     "Nothing yet written" in {
       val initialFileLength = size(journalLocation.file(0L))
       observing = client
-        .getRawLinesObservable(Uri(s"$uri/journal?timeout=9&markEOF=true&file=0&position=$initialFileLength"))
+        .getRawLinesStream(Uri(s"$uri/journal?timeout=9&markEOF=true&file=0&position=$initialFileLength"))
         .await(99.s).foreach(observed += _.utf8String)
       sleep(100.ms)
       assert(observed.isEmpty)
@@ -167,7 +167,7 @@ final class JournalRouteTest extends OurTestSuite, RouteTester, JournalRoute
     eventWatch.onJournalingStarted(file3, journalId,
       PositionAnd(size(file3), 3000L), PositionAnd(size(file3), 3000L), isActiveNode = true)
 
-    val lines = client.getRawLinesObservable(Uri(s"$uri/journal?timeout=0&markEOF=true&file=2000&position=$file2size"))
+    val lines = client.getRawLinesStream(Uri(s"$uri/journal?timeout=0&markEOF=true&file=2000&position=$file2size"))
       .await(99.s).toListL.await(99.s)
     assert(lines == List(EndOfJournalFileMarker))
 
@@ -182,7 +182,7 @@ final class JournalRouteTest extends OurTestSuite, RouteTester, JournalRoute
       val file4size = size(file4)
       eventWatch = new JournalEventWatch(journalLocation, config)
       eventWatch.onJournalingStarted(file4, journalId, PositionAnd(file4size, 4000L), PositionAnd(file4size, 4000L), isActiveNode = true)
-      val bad = HttpClient.liftProblem(client.getRawLinesObservable(Uri(
+      val bad = HttpClient.liftProblem(client.getRawLinesStream(Uri(
         s"$uri/journal?timeout=0&markEOF=true&file=4000&position=$file4size&return=ack")))
       assert(bad.await(99.s) == Left(AckFromActiveClusterNodeProblem))
 
@@ -193,7 +193,7 @@ final class JournalRouteTest extends OurTestSuite, RouteTester, JournalRoute
       val file4size = size(file4)
       eventWatch = new JournalEventWatch(journalLocation, config)
       eventWatch.onJournalingStarted(file4, journalId, PositionAnd(file4size, 4000L), PositionAnd(file4size, 4000L), isActiveNode = false)
-      val lines = client.getRawLinesObservable(Uri(s"$uri/journal?timeout=0&markEOF=true&file=4000&position=$file4size&return=ack"))
+      val lines = client.getRawLinesStream(Uri(s"$uri/journal?timeout=0&markEOF=true&file=4000&position=$file4size&return=ack"))
         .await(99.s).toListL.await(99.s)
       assert(lines == Nil)
 

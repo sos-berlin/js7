@@ -5,10 +5,10 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.SuccessFuture
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
-import js7.base.utils.ByteSequenceToLinesObservable
+import js7.base.utils.ByteSequenceToLinesStream
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.http.JsonStreamingSupport
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
@@ -224,8 +224,8 @@ final class EventRouteTest extends OurTestSuite, RouteTester, EventRoute
       if status != OK then fail(s"$status - ${responseEntity.toStrict(timeout).value}")
       implicit val x = JsonStreamingSupport.NdJsonStreamingSupport
       response.entity.withoutSizeLimit.dataBytes
-        .toObservable
-        .flatMap(new ByteSequenceToLinesObservable)
+        .toStream
+        .flatMap(new ByteSequenceToLinesStream)
         .map(_.parseJsonAs[Stamped[KeyedEvent[OrderEvent]]].orThrow)
         .toListL
         .await(99.s)

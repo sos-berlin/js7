@@ -10,7 +10,6 @@ import js7.common.system.ThreadPools.ownThreadPoolResource
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.subagent.Subagent
 import js7.tests.testenv.DirectoryProvider.*
-import monix.eval.Task
 
 /** Environment with config and data directories for a bare Subagent. */
 final class BareSubagentEnv private[testenv](
@@ -39,10 +38,10 @@ extends SubagentEnv:
      |}
      |""".stripMargin
 
-  def programResource: Resource[Task, Subagent] =
+  def programResource: Resource[IO, Subagent] =
     subagentResource
 
-  def subagentResource: Resource[Task, Subagent] =
+  def subagentResource: Resource[IO, Subagent] =
     ownThreadPoolResource(subagentConf.name, subagentConf.config)(implicit scheduler =>
       Subagent.resource(subagentConf, new StandardEventBus[Any]))
 

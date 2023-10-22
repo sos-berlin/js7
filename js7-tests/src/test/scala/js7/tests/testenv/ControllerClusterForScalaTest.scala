@@ -35,7 +35,7 @@ import js7.data.job.RelativePathExecutable
 import js7.data.node.NodeId
 import js7.tests.testenv.ControllerClusterForScalaTest.*
 import js7.tests.testenv.DirectoryProvider.script
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler.Implicits.traced
 import org.jetbrains.annotations.TestOnly
 
@@ -226,9 +226,9 @@ trait ControllerClusterForScalaTest:
       .unsafeRunSync()
 
   protected final def clusterWatchServiceResource(clusterWatchId: ClusterWatchId)
-  : Resource[Task, (ClusterWatchService, StandardEventBus[ClusterNodeLossNotConfirmedProblem])] =
+  : Resource[IO, (ClusterWatchService, StandardEventBus[ClusterNodeLossNotConfirmedProblem])] =
     for
-      eventbus <- Resource.fromAutoCloseable(Task(
+      eventbus <- Resource.fromAutoCloseable(IO(
         new StandardEventBus[ClusterNodeLossNotConfirmedProblem]))
       clusterWatch <- DirectoryProvider.clusterWatchServiceResource(
         clusterWatchId,
@@ -236,18 +236,18 @@ trait ControllerClusterForScalaTest:
         HttpsConfig.empty,
         clusterWatchConfig,
         onUndecidableClusterNodeLoss = {
-          case Some(prblm) => Task(eventbus.publish(prblm))
-          case None => Task.unit
+          case Some(prblm) => IO(eventbus.publish(prblm))
+          case None => IO.unit
         })
     yield (clusterWatch, eventbus)
 
   /** Simulate a kill via ShutDown(failOver) - still writes new snapshot. */
-  protected final def simulateKillActiveNode(controller: TestController): Task[Unit] =
+  protected final def simulateKillActiveNode(controller: TestController): IO[Unit] =
     controller
       .api.executeCommand(
         ShutDown(clusterAction = Some(ShutDown.ClusterAction.Failover)))
       .map(_.orThrow)
-      .flatMap(_ => Task.deferFuture(controller.terminated))
+      .flatMap(_ => IO.deferFuture(controller.terminated))
       .map((_: ProgramTermination) => ())
 
 

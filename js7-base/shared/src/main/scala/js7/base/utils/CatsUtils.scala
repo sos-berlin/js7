@@ -1,19 +1,26 @@
 package js7.base.utils
 
-import cats.Functor
+import js7.base.catsutils.CatsDeadline.syntax.*
+import cats.{Defer, FlatMap, Functor}
+import cats.effect.{Deferred, FiberIO, GenTemporal, IO, MonadCancel, Outcome, Resource, Sync, SyncIO}
+import cats.syntax.functor.*
 import cats.data.{NonEmptyList, NonEmptySeq, Validated}
-import cats.effect.concurrent.Deferred
-import cats.effect.{BracketThrow, Resource, Sync, SyncIO, Timer}
+import cats.effect.kernel.{Clock, Fiber}
+import cats.effect.unsafe.Scheduler
 import cats.kernel.Monoid
 import cats.syntax.all.*
+import com.typesafe.scalalogging.Logger
 import izumi.reflect.Tag
 import java.io.{ByteArrayInputStream, InputStream}
 import java.util.Base64
-import js7.base.catsutils.UnsafeMemoizable
+import js7.base.catsutils.{CatsDeadline, UnsafeMemoizable}
+import js7.base.generic.Completed
 import js7.base.problem.{Checked, Problem}
+import js7.base.time.ScalaTime.*
+import js7.base.time.Timestamp
+import js7.base.utils.Delayer.syntax.RichDelayerIO
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StackTraces.*
-import monix.eval.{Fiber, Task}
 import scala.concurrent.duration.*
 
 /**
@@ -24,11 +31,16 @@ object CatsUtils:
   type Nel[+A] = NonEmptyList[A]
   val Nel = NonEmptyList
 
+  private val logger = Logger[this.type]
+
+  val DefaultWorryDurations: Seq[FiniteDuration] =
+    Seq(3.s, 7.s) ++ Seq.fill(((1.h - 10.s) / 10.s).toInt)(10.s) :+ 60.s
+
+  val InfoWorryDuration: FiniteDuration =
+    DefaultWorryDurations.last
+
   def combine[A: Monoid](as: A*): A =
     as.combineAll
-
-  def completedFiber[A](a: A): Fiber[A] =
-    Fiber(Task.pure(a), Task.unit)
 
   private def bytesToInputStreamResource(bytes: collection.Seq[Byte]): Resource[SyncIO, InputStream] =
     bytesToInputStreamResource(bytes.toArray)
@@ -50,38 +62,156 @@ object CatsUtils:
       @inline def containsType[B >: A]: F[A] =
         underlying
 
-    implicit final class RichTimer[F[_]](private val timer: Timer[F]) extends AnyVal:
-      def now(implicit F: Functor[F]): F[Deadline] =
-        for nanos <- timer.clock.monotonic(NANOSECONDS) yield
-          Deadline(Duration(nanos, NANOSECONDS))
+    extension[A](leftSide: IO[A])
+      def logWhenItTakesLonger(using enclosing: sourcecode.Enclosing): IO[A] =
+        logWhenItTakesLonger2("in", "continues", enclosing.value)
 
-    implicit final class RichSyncTimer(private val timer: Timer[SyncIO]) extends AnyVal:
-      def unsafeNow(): FiniteDuration =
-        Duration(
-          timer.clock.monotonic(NANOSECONDS).unsafeRunSync(),
-          NANOSECONDS)
+      def logWhenItTakesLonger(what: => String): IO[A] =
+        logWhenItTakesLonger2("for", "completed", what)
+
+      private def logWhenItTakesLonger2(preposition: String, completed: String, what: => String)
+      : IO[A] =
+        CatsDeadline.now.flatMap { now =>
+          val since = now
+          var infoLogged = false
+          leftSide
+            .whenItTakesLonger()(duration => IO {
+              val m = if duration < InfoWorryDuration then "🟡" else "🟠"
+
+              def msg = s"$m Still waiting $preposition $what for ${duration.pretty}"
+
+              if duration < InfoWorryDuration then
+                logger.debug(msg)
+              else
+                infoLogged = true
+                logger.info(msg)
+            })
+            .guaranteeCase(exit =>
+              IO.whenA(infoLogged):
+                for elapsed <- since.elapsed yield
+                exit match
+                  case Outcome.Succeeded(_) => logger.info(
+                    s"🔵 $what $completed after ${elapsed.pretty}")
+                  case Outcome.Canceled() => logger.info(
+                    s"⚫ $what canceled after ${elapsed.pretty}")
+                  case Outcome.Errored(t) => logger.info(
+                    s"💥 $what failed after ${elapsed.pretty} with ${t.toStringWithCauses}"))
+        }
+
+      /** When `this` takes longer than `duration` then call `thenDo` once. */
+      def whenItTakesLonger(duration: FiniteDuration)(thenDo: IO[Unit]): IO[A] =
+        if duration.isZeroOrBelow then
+          leftSide
+        else
+          whenItTakesLonger(duration :: ZeroDuration :: Nil)(_ => thenDo)
+
+      /** As long as `this` has not completed, call `thenDo` after each of `durations` .
+       *
+       * @param durations if empty then `thenDo` will not be called.
+       *                  The last entry is repeated until `this` completes.
+       *                  A zero or negative duration terminates calling of `thenDo`.
+       * @param thenDo    A function which gets the elapsed time since start as argument. */
+      def whenItTakesLonger(durations: IterableOnce[FiniteDuration] = DefaultWorryDurations)
+        (thenDo: FiniteDuration => IO[Unit])
+      : IO[A] =
+        val durationIterator = durations.iterator
+        if durationIterator.isEmpty then
+          leftSide
+        else
+          CatsDeadline.now.flatMap(since =>
+            ZeroDuration
+              .tailRecM { lastDuration =>
+                val d = durationIterator.nextOption() getOrElse lastDuration
+                if d.isPositive then
+                  IO.sleep(d)
+                    .*>(since.elapsed)
+                    .flatMap(thenDo)
+                    .as(Left(d))
+                else
+                  IO.pure(Right(()))
+              }
+              .start
+              .bracket(_ => leftSide)(_.cancel))
+
+
+    //implicit final class RichTimer[F[_]](private val timer: Timer[F]) extends AnyVal:
+    //  def now(implicit F: Functor[F]): F[Deadline] =
+    //    for nanos <- timer.clock.monotonic(NANOSECONDS) yield
+    //      Deadline(Duration(nanos, NANOSECONDS))
+    //
+    //implicit final class RichSyncTimer(private val timer: Timer[SyncIO]) extends AnyVal:
+    //  def unsafeNow(): FiniteDuration =
+    //    Duration(
+    //      timer.clock.monotonic(NANOSECONDS).unsafeRunSync(),
+    //      NANOSECONDS)
 
     implicit final class RichResource[F[_], A](private val resource: Resource[F, A])
     extends AnyVal:
-      def toAllocated[G[x] >: F[x], B >: A](using BracketThrow[G], UnsafeMemoizable[G], Tag[B])
+      def toAllocated[G[x] >: F[x], B >: A](
+        using Functor[F], MonadCancel[F, Throwable], UnsafeMemoizable[G], Tag[B])
       : G[Allocated[G, B]] =
-        resource.allocated[G, B].map(Allocated.fromPair(_))
+        resource.allocated[B].map(Allocated.fromPair(_))
 
-      def toLabeledAllocated[G[x] >: F[x], B >: A](label: String)(using BracketThrow[G], UnsafeMemoizable[G])
+      def toLabeledAllocated[G[x] >: F[x], B >: A](label: String)
+        (using Functor[F], MonadCancel[F, Throwable], UnsafeMemoizable[G])
       : G[Allocated[G, B]] =
-        resource.allocated[G, B]
+        resource.allocated[B]
           .map { case (b, release) => new Allocated(b, release, label = label) }
 
-      def toAllocatedResource[G[x] >: F[x], B >: A: Tag](implicit G: Sync[G], g: UnsafeMemoizable[G])
+      def toAllocatedResource[G[x] >: F[x], B >: A: Tag](
+        using G: Sync[G], F: MonadCancel[F, Throwable], g: UnsafeMemoizable[G])
       : Resource[G, Allocated[G, B]] =
         Resource.suspend(
           resource
             .toAllocated[G, B]
             .map(_.toSingleUseResource))
 
+    private val falseIO = IO.pure(false)
+    private val trueIO = IO.pure(true)
+    private val completedIO = IO.pure(Completed)
+
+    extension(x: IO.type)
+      def False: IO[Boolean] =
+        falseIO
+
+      def True: IO[Boolean] =
+        trueIO
+
+      def completed: IO[Completed] =
+        completedIO
+
+      def right[R](r: R): IO[Either[Nothing, R]] =
+        IO.pure(Right(r))
+
+      def left[L](l: L): IO[Either[L, Nothing]] =
+        IO.pure(Left(l))
+
+    extension[F[_], E](temporal: GenTemporal[F, E])
+      def now(using Functor[F]): F[Deadline] =
+        temporal.monotonic.map(Deadline(_))
+
+    extension(scheduler: Scheduler)
+      def now: Deadline =
+        Deadline((scheduler.monotonicNanos() / 1000_000).ms)
+
+      def scheduleAtFixedRate(delay: FiniteDuration, repeat: FiniteDuration, runnable: Runnable)
+      : Runnable =
+        val delayNanos = delay.toNanos
+        val repeatNanos = repeat.toNanos
+        var t = scheduler.monotonicNanos() + delay.toNanos
+
+        object callback extends Runnable:
+          def run() =
+            try runnable.run()
+            finally
+              t += repeatNanos
+              scheduler.sleep((t - scheduler.monotonicNanos()).ns, callback)
+
+        scheduler.sleep(delay, callback)
+
   implicit final class RichDeferred[F[_], A](private val deferred: Deferred[F, A]) extends AnyVal:
     /** For compatibility with Cats Effect 3. */
-    def complete3(a: A)(implicit F: Sync[F]): F[Boolean] =
+    @deprecated def complete3(a: A)(implicit F: Sync[F]): F[Boolean] =
       deferred.complete(a).attempt.map(_.isRight)
 
   implicit final class RichThrowableValidated[E <: Throwable, A](private val underlying: Validated[E, A]) extends AnyVal:

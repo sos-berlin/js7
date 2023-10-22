@@ -14,7 +14,7 @@ import js7.base.thread.IOExecutor
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.launcher.process.RichProcess.*
-import monix.eval.Task
+import cats.effect.IO
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.Deadline.now
 import scala.jdk.CollectionConverters.*
@@ -40,21 +40,21 @@ class RichProcess protected[process](
       logger.debug("destroyForcibly")
       process.destroyForcibly()
 
-  private val _terminated: Task[ReturnCode] =
-    Task.defer {
-      process.returnCode.map(Task.pure)
-        .getOrElse(iox(Task {
+  private val _terminated: IO[ReturnCode] =
+    IO.defer {
+      process.returnCode.map(IO.pure)
+        .getOrElse(iox(IO {
           waitForProcessTermination(process)
         }))
     }.memoize
 
   def duration = runningSince.elapsed
 
-  def terminated: Task[ReturnCode] =
+  def terminated: IO[ReturnCode] =
     _terminated
 
-  final def sendProcessSignal(signal: ProcessSignal): Task[Unit] =
-    Task.defer:
+  final def sendProcessSignal(signal: ProcessSignal): IO[Unit] =
+    IO.defer:
       if signal != SIGKILL && !isWindows then
         destroy(force = false)
       else
@@ -68,7 +68,7 @@ class RichProcess protected[process](
                   s"Cannot start kill script command '$args': ${t.toStringWithCauses}"))
                 .tapEval(_ => kill)
             }
-        ).guarantee(Task {
+        ).guarantee(IO {
           // The process may have terminated
           // while long running child processes inheriting the file handles
           // still use these.
@@ -78,15 +78,15 @@ class RichProcess protected[process](
           onSigkill()
         })
 
-  private def executeKillScript(args: Seq[String]): Task[Unit] =
+  private def executeKillScript(args: Seq[String]): IO[Unit] =
     ifAlive("executeKillScript")(
       if isMac then
-        Task {
+        IO {
           // TODO On MacOS, the kill script may kill a foreign process like the developers IDE
           logger.warn("Execution of kill script is suppressed on MacOS")
         }
       else
-        Task.defer {
+        IO.defer {
           logger.info("Executing kill script: " + args.mkString("  "))
           val processBuilder = new ProcessBuilder(args.asJava)
             .redirectOutput(INHERIT)
@@ -95,19 +95,19 @@ class RichProcess protected[process](
             .startRobustly()
             .executeOn(iox.scheduler)
             .flatMap(onKillProcess =>
-              iox(Task {
+              iox(IO {
                 waitForProcessTermination(JavaProcess(onKillProcess))
-              }) >> Task {
+              }) >> IO {
                 val exitCode = onKillProcess.exitValue
                 val logLevel = if exitCode == 0 then LogLevel.Debug else LogLevel.Warn
                 logger.log(logLevel, s"Kill script '${args(0)}' has returned exit code $exitCode")
               })
         })
 
-  private def kill: Task[Unit] =
+  private def kill: IO[Unit] =
     destroy(force = true)
 
-  private def destroy(force: Boolean): Task[Unit] =
+  private def destroy(force: Boolean): IO[Unit] =
     (process, pidOption) match
       case (_: JavaProcess, Some(pid)) =>
         // Do not destroy with Java because Java closes stdout and stdin immediately,
@@ -115,19 +115,19 @@ class RichProcess protected[process](
         destroyWithUnixCommand(pid, force)
 
       case _ =>
-        Task { destroyWithJava(force) }
+        IO { destroyWithJava(force) }
 
-  private def destroyWithUnixCommand(pid: Pid, force: Boolean): Task[Unit] =
+  private def destroyWithUnixCommand(pid: Pid, force: Boolean): IO[Unit] =
     ifAlive("destroyWithUnixCommand"):
       val argsPattern =
         if isWindows then processConfiguration.killForWindows
         else if force then processConfiguration.killWithSigkill
         else processConfiguration.killWithSigterm
       if argsPattern.isEmpty then
-        Task(destroyWithJava(force))
+        IO(destroyWithJava(force))
       else if !argsPattern.contains("$pid") then
         logger.error("Missing '$pid' in configured kill command")
-        Task(destroyWithJava(force))
+        IO(destroyWithJava(force))
       else
         val args = argsPattern.map:
           case "$pid" => pid.number.toString
@@ -135,21 +135,21 @@ class RichProcess protected[process](
         executeKillCommand(args)
           .flatMap { rc =>
             if rc.isSuccess then
-              Task.unit
-            else Task:
+              IO.unit
+            else IO:
               logger.warn(s"Could not kill with system command: ${args.mkString(" ")} => $rc")
               destroyWithJava(force)
           }
 
-  private def ifAlive(label: String)(body: Task[Unit]): Task[Unit] =
-    Task.defer(
+  private def ifAlive(label: String)(body: IO[Unit]): IO[Unit] =
+    IO.defer(
       if !process.isAlive then
-        Task(logger.debug(s"$label: Process has already terminated"))
+        IO(logger.debug(s"$label: Process has already terminated"))
       else
         body)
 
-  private def executeKillCommand(args: Seq[String]): Task[ReturnCode] =
-    Task.defer:
+  private def executeKillCommand(args: Seq[String]): IO[ReturnCode] =
+    IO.defer:
       logger.info(args.mkString(" "))
 
       val processBuilder = new ProcessBuilder(args.asJava)
@@ -160,7 +160,7 @@ class RichProcess protected[process](
         .startRobustly()
         .executeOn(iox.scheduler)
         .flatMap(killProcess =>
-          iox(Task {
+          iox(IO {
             waitForProcessTermination(JavaProcess(killProcess))
             ReturnCode(killProcess.exitValue)
           }))

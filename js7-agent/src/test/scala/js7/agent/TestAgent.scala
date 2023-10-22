@@ -15,7 +15,7 @@ import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
 import js7.base.problem.Checked
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AllocatedForJvm.BlockingAllocated
 import js7.base.utils.CatsUtils.syntax.RichResource
@@ -26,22 +26,22 @@ import js7.common.system.ThreadPools
 import js7.common.system.startup.MainServices
 import js7.core.command.CommandMeta
 import js7.journal.watch.EventWatch
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler
 import scala.concurrent.duration.FiniteDuration
 import scala.util.control.NonFatal
 
 final class TestAgent(
-  allocated: Allocated[Task, RunningAgent],
+  allocated: Allocated[IO, RunningAgent],
   terminateProcessesWith: Option[ProcessSignal] = None):
 
   val agent = allocated.allocatedThing
 
-  def stop: Task[Unit] =
+  def stop: IO[Unit] =
     agent.terminate(terminateProcessesWith).void *>
       allocated.release
 
-  def killForFailOver: Task[ProgramTermination] =
+  def killForFailOver: IO[ProgramTermination] =
     terminate(
       processSignal = Some(SIGTERM),
       clusterAction = Some(AgentCommand.ShutDown.ClusterAction.Failover))
@@ -50,12 +50,12 @@ final class TestAgent(
     processSignal: Option[ProcessSignal] = None,
     clusterAction: Option[ShutDown.ClusterAction] = None,
     suppressSnapshot: Boolean = false)
-  : Task[ProgramTermination] =
+  : IO[ProgramTermination] =
     agent
       .terminate(processSignal, clusterAction, suppressSnapshot)
       .guarantee(stop)
 
-  def untilTerminated: Task[ProgramTermination] =
+  def untilTerminated: IO[ProgramTermination] =
     agent.untilTerminated <*
       stop/*release outer resources*/
 
@@ -73,7 +73,7 @@ final class TestAgent(
   def sessionToken: SessionToken =
     agent.systemSessionToken
 
-  def untilReady: Task[MainActor.Ready] =
+  def untilReady: IO[MainActor.Ready] =
     agent.untilReady
 
   def currentAgentState(): AgentState =
@@ -86,10 +86,10 @@ final class TestAgent(
   def testEventBus: StandardEventBus[Any] =
     agent.testEventBus
 
-  def executeCommandAsSystemUser(command: AgentCommand): Task[Checked[AgentCommand.Response]] =
+  def executeCommandAsSystemUser(command: AgentCommand): IO[Checked[AgentCommand.Response]] =
     agent.executeCommandAsSystemUser(command)
 
-  def executeCommand(cmd: AgentCommand, meta: CommandMeta): Task[Checked[AgentCommand.Response]] =
+  def executeCommand(cmd: AgentCommand, meta: CommandMeta): IO[Checked[AgentCommand.Response]] =
     agent.executeCommand(cmd: AgentCommand, meta)
 
   def name: String =
@@ -105,7 +105,7 @@ object TestAgent:
   private val logger = Logger[this.type]
 
   def apply(
-    allocated: Allocated[Task, RunningAgent],
+    allocated: Allocated[IO, RunningAgent],
     terminateProcessesWith: Option[ProcessSignal] = None)
   : TestAgent =
     new TestAgent(allocated, terminateProcessesWith)
@@ -114,7 +114,7 @@ object TestAgent:
     conf: AgentConfiguration,
     testWiring: TestWiring = TestWiring.empty,
     terminateProcessesWith: Option[ProcessSignal] = None)
-  : Task[TestAgent] =
+  : IO[TestAgent] =
     CorrelId.bindNew(
       ThreadPools
         .ownThreadPoolResource(conf.name, conf.config)(
@@ -149,10 +149,10 @@ object TestAgent:
 
   private def resource(conf: AgentConfiguration, testWiring: TestWiring = TestWiring.empty)
     (implicit scheduler: Scheduler)
-  : Resource[Task, RunningAgent] =
+  : Resource[IO, RunningAgent] =
     RunningAgent.resource(conf, testWiring)
       .flatMap(agent => Resource.makeCase(
-        acquire = Task.pure(agent))(
+        acquire = IO.pure(agent))(
         release = (agent, exitCase) => {
           exitCase match {
             case ExitCase.Error(throwable) =>
@@ -161,7 +161,7 @@ object TestAgent:
           }
           // Avoid Akka 2.6 StackTraceError which occurs when agent.terminate() has not been executed:
           agent.untilTerminated.void
-            .timeoutTo(3.s, Task.unit)
-            .tapError(t => Task(
+            .timeoutTo(3.s, IO.unit)
+            .tapError(t => IO(
               logger.error(t.toStringWithCauses, t.nullIfNoStackTrace)))
         }))

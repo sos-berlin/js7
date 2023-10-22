@@ -1,6 +1,6 @@
 package js7.cluster
 
-import cats.effect.{ExitCase, Resource}
+import cats.effect.{ExitCase, Resource, IO}
 import cats.syntax.flatMap.*
 import js7.base.auth.{Admission, UserAndPassword}
 import js7.base.log.Logger
@@ -14,45 +14,45 @@ import js7.data.cluster.ClusterCommand.ClusterInhibitActivation
 import js7.data.cluster.ClusterState.FailedOver
 import js7.data.cluster.{ClusterNodeApi, ClusterSetting}
 import monix.catnap.MVar
-import monix.eval.Task
+import monix.eval.IO
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.FiniteDuration
 
 /** Inhibits activation of cluster node for the specified duration. */
 private[cluster] final class ActivationInhibitor:
 
-  private val stateMvarTask = MVar[Task].of[State](Initial).memoize
+  private val stateMvarIO = MVar[IO].of[State](Initial).memoize
 
-  def startActive: Task[Unit] =
+  def startActive: IO[Unit] =
     startAs(Active)
 
-  def startPassive: Task[Unit] =
+  def startPassive: IO[Unit] =
     startAs(Passive)
 
-  private def startAs(state: State): Task[Unit] =
-    Task.defer {
+  private def startAs(state: State): IO[Unit] =
+    IO.defer {
       logger.debug(s"startAs $state")
-      stateMvarTask.flatMap(mvar =>
+      stateMvarIO.flatMap(mvar =>
         mvar.tryTake.flatMap {
           case Some(Initial) =>
             mvar.put(state)
           case s =>
-            s.fold(Task.unit)(mvar.put) >>
-              Task.raiseError(new IllegalStateException(
+            s.fold(IO.unit)(mvar.put) >>
+              IO.raiseError(new IllegalStateException(
                 s"ActivationInhibitor startAs($state): Already '$s''"))
         })
     }
 
-  def tryToActivate(ifInhibited: Task[Checked[Boolean]], activate: Task[Checked[Boolean]])
-  : Task[Checked[Boolean]] =
-    logger.debugTask(
-      Task.defer {
-        stateMvarTask.flatMap(mvar =>
+  def tryToActivate(ifInhibited: IO[Checked[Boolean]], activate: IO[Checked[Boolean]])
+  : IO[Checked[Boolean]] =
+    logger.debugIO(
+      IO.defer {
+        stateMvarIO.flatMap(mvar =>
           mvar.take.flatMap {
             case Initial | Passive | Active =>
               activate
                 .guaranteeCase {
-                  case ExitCase.Completed => Task.unit
+                  case ExitCase.Completed => IO.unit
                   case exitCase =>
                     logger.debug(s"tryToActivate: Passive — due to $exitCase")
                     mvar.put(Passive)
@@ -69,7 +69,7 @@ private[cluster] final class ActivationInhibitor:
             case o: Inhibited =>
               logger.debug(s"tryToActivate: $o")
               mvar.put(o) *>
-                Task { logger.info("Activation inhibited") } *>
+                IO { logger.info("Activation inhibited") } *>
                 ifInhibited
           })
       })
@@ -77,9 +77,9 @@ private[cluster] final class ActivationInhibitor:
   /** Tries to inhibit activation for `duration`.
     * @return true if activation is or has been inhibited, false if already active
     */
-  def inhibitActivation(duration: FiniteDuration): Task[Checked[Boolean]] =
-    logger.debugTaskWithResult[Checked[Boolean]](
-      stateMvarTask.flatMap(mvar =>
+  def inhibitActivation(duration: FiniteDuration): IO[Checked[Boolean]] =
+    logger.debugIOWithResult[Checked[Boolean]](
+      stateMvarIO.flatMap(mvar =>
         mvar.take
           .flatMap {
             case state @ (Initial | Passive | _: Inhibited) =>
@@ -97,15 +97,15 @@ private[cluster] final class ActivationInhibitor:
                 .map(_ => Right(false))
           }))
 
-  private def setInhibitionTimer(duration: FiniteDuration): Task[Unit] =
-    Task.deferAction { implicit scheduler =>
-      Task {
+  private def setInhibitionTimer(duration: FiniteDuration): IO[Unit] =
+    IO.deferAction { implicit scheduler =>
+      IO {
         scheduler.scheduleOnce(duration) {
-          stateMvarTask.flatMap(mvar =>
+          stateMvarIO.flatMap(mvar =>
             mvar.take.flatMap {
               case Inhibited(1) => mvar.put(Passive)
               case Inhibited(n) => mvar.put(Inhibited(n - 1))
-              case state => Task {
+              case state => IO {
                 // Must not happen
                 logger.error(
                   s"inhibitActivation timeout after ${duration.pretty}: expected Inhibited but got '$state'")
@@ -121,8 +121,8 @@ private[cluster] final class ActivationInhibitor:
     }
 
   @TestOnly
-  private[cluster] def state: Task[Option[State]] =
-    stateMvarTask.flatMap(_.tryRead)
+  private[cluster] def state: IO[Option[State]] =
+    stateMvarIO.flatMap(_.tryRead)
 
 private[cluster] object ActivationInhibitor:
   private val logger = Logger[this.type]
@@ -130,9 +130,9 @@ private[cluster] object ActivationInhibitor:
   def inhibitActivationOfPassiveNode(
     setting: ClusterSetting,
     peersUserAndPassword: Option[UserAndPassword],
-    clusterNodeApi: (Admission, String) => Resource[Task, ClusterNodeApi])
-  : Task[Option[FailedOver]] =
-    Task.defer {
+    clusterNodeApi: (Admission, String) => Resource[IO, ClusterNodeApi])
+  : IO[Option[FailedOver]] =
+    IO.defer {
       val retryDelay = 5.s  // TODO
       clusterNodeApi(
         Admission(setting.passiveUri, peersUserAndPassword),
@@ -149,7 +149,7 @@ private[cluster] object ActivationInhibitor:
             throwable.toStringWithCauses
           logger.warn(msg)
           for t <- throwable.ifStackTrace do logger.debug(msg, t)
-          retry(()).delayExecution(retryDelay)
+          retry(()).delayBy(retryDelay)
         }
     }.map { maybeFailedOver =>
       logger.debug(s"${setting.passiveUri} ClusterInhibitActivation returned failedOver=$maybeFailedOver")

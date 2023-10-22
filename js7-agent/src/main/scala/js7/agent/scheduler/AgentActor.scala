@@ -15,7 +15,7 @@ import js7.base.generic.Completed
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
-import js7.base.monixutils.MonixBase.syntax.RichCheckedTask
+import js7.base.monixutils.MonixBase.syntax.RichCheckedIO
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.AlarmClock
@@ -40,7 +40,7 @@ import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.state.FileJournal
 import js7.subagent.Subagent
 import js7.subagent.director.RemoteSubagentDriver
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler
 import org.apache.pekko.actor.{Actor, ActorRef, Props, Stash, Terminated}
 import org.apache.pekko.pattern.ask
@@ -54,7 +54,7 @@ private[agent] final class AgentActor(
   failedOverSubagentId: Option[SubagentId],
   clusterNode: ClusterNode[AgentState],
   terminatePromise: Promise[DirectorTermination],
-  journalAllocated: Allocated[Task, FileJournal[AgentState]],
+  journalAllocated: Allocated[IO, FileJournal[AgentState]],
   clock: AlarmClock,
   agentConf: AgentConfiguration)
   (implicit protected val scheduler: Scheduler)
@@ -144,7 +144,7 @@ extends Actor, Stash, SimpleStateActor:
               response.success(Right(AgentCommand.Response.Accepted/*???*/))
             else
               dedicated.toOption
-                .fold(Task.unit)(dedicated => Task
+                .fold(IO.unit)(dedicated => IO
                   .fromFuture(
                     (dedicated.actor ? AgentOrderKeeper.Input.ResetAllSubagents)(
                       RemoteSubagentDriver.subagentResetTimeout))
@@ -158,9 +158,9 @@ extends Actor, Stash, SimpleStateActor:
                   })
                   .materializeIntoChecked
                   .flatMap {
-                    case Left(problem) => Task(response.success(Left(problem)))
+                    case Left(problem) => IO(response.success(Left(problem)))
                     case Right(_) =>
-                      Task.right {
+                      IO.right {
                         self ! ContinueReset(response)
                       }
                   })
@@ -217,8 +217,8 @@ extends Actor, Stash, SimpleStateActor:
     controllerId: ControllerId,
     controllerRunId: ControllerRunId,
     agentPath: AgentPath)
-  : Task[Checked[(AgentRunId, EventId)]] =
-    Task.defer:
+  : IO[Checked[(AgentRunId, EventId)]] =
+    IO.defer:
       // Command is idempotent until AgentState has been touched
       val agentRunId = AgentRunId(journal.journalId)
       journal
@@ -238,7 +238,7 @@ extends Actor, Stash, SimpleStateActor:
             Left(AgentAlreadyDedicatedProblem)
           else
             Right(Nil))
-        .flatMapT(eventAndState => Task {
+        .flatMapT(eventAndState => IO {
           logger.info(s"Dedicating $agentPath to '$controllerId'")
           addOrderKeeper(agentPath, controllerId)
             .rightAs(agentRunId -> eventAndState._2.eventId)
@@ -344,13 +344,13 @@ extends Actor, Stash, SimpleStateActor:
             Checked.unit
 
   /** Emits the event, and ClusterSettingUpdated if needed, in separate transaction. */
-  private def changeSubagentAndClusterNode(event: ItemAttachedToMe): Task[Checked[Unit]] =
-    logger.debugTask(journal.state
+  private def changeSubagentAndClusterNode(event: ItemAttachedToMe): IO[Checked[Unit]] =
+    logger.debugIO(journal.state
       .flatMap(agentState =>
         if !agentState.isDedicated then
           journal.persistKeyedEvent(event).rightAs(())
         else
-          Task.pure(agentState.applyEvent(event)).flatMapT(nextAgentState =>
+          IO.pure(agentState.applyEvent(event)).flatMapT(nextAgentState =>
             demandedClusterNodeUris(nextAgentState) match {
               case None =>
                 journal.persistKeyedEvent(event).rightAs(())
@@ -364,7 +364,7 @@ extends Actor, Stash, SimpleStateActor:
                       (clusterState.setting.idToUri != idToUri) ? clusterState.activeId
                   }
                   .fold(journal.persistKeyedEvent(event).rightAs(()))(activeNodeId =>
-                    Task(clusterNode.workingClusterNode)
+                    IO(clusterNode.workingClusterNode)
                       .flatMapT(_
                         .appointNodes(idToUri, activeNodeId, extraEvent = Some(event))))
             })))

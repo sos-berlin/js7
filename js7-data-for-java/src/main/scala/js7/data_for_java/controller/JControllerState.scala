@@ -210,7 +210,7 @@ extends JJournaledState[JControllerState, ControllerState]:
 
   @Nonnull
   def ordersBy(@Nonnull predicate: Order[Order.State] => Boolean)
-  : java.util.stream.Stream[JOrder] =
+  : java.util.stream.Stream[IO, JOrder] =
     asScala.idToOrder
       .valuesIterator
       .filter(predicate)

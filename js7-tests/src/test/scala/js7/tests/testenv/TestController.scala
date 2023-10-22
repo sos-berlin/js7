@@ -9,7 +9,7 @@ import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Checked
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.DurationRichInt
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.ScalaUtils.syntax.{RichEither, RichEitherF}
@@ -33,12 +33,12 @@ import js7.journal.JournalActor
 import js7.journal.watch.StrictEventWatch
 import js7.proxy.ControllerApi
 import js7.tests.testenv.TestController.*
-import monix.eval.Task
-import monix.reactive.Observable
+import cats.effect.IO
+import fs2.Stream
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
-final class TestController(allocated: Allocated[Task, RunningController], admission: Admission):
+final class TestController(allocated: Allocated[IO, RunningController], admission: Admission):
   val runningController: RunningController =
     allocated.allocatedThing
 
@@ -52,13 +52,13 @@ final class TestController(allocated: Allocated[Task, RunningController], admiss
   implicit lazy val api: ControllerApi =
     apiLazy.value
 
-  val stop: Task[Unit] =
+  val stop: IO[Unit] =
     stopControllerApi
       .guarantee(allocated.release)
       .memoize
 
-  private def stopControllerApi: Task[Unit] =
-    Task.defer(apiLazy.toOption.fold(Task.unit)(controllerApi =>
+  private def stopControllerApi: IO[Unit] =
+    IO.defer(apiLazy.toOption.fold(IO.unit)(controllerApi =>
       controllerApi
         .stop(dontLogout = true/*Pekko may block when server has just been shut down*/)
         .logWhenItTakesLonger))
@@ -94,45 +94,45 @@ final class TestController(allocated: Allocated[Task, RunningController], admiss
   def terminated: Future[ProgramTermination] =
     runningController.terminated
 
-  def untilTerminated: Task[ProgramTermination] =
+  def untilTerminated: IO[ProgramTermination] =
     runningController.untilTerminated.logWhenItTakesLonger
 
   def terminate(
     suppressSnapshot: Boolean = false,
     clusterAction: Option[ShutDown.ClusterAction] = None,
     dontNotifyActiveNode: Boolean = false)
-  : Task[ProgramTermination] =
-    logger.traceTask(
+  : IO[ProgramTermination] =
+    logger.traceIO(
       shutdown(ShutDown(
         suppressSnapshot = suppressSnapshot,
         clusterAction = clusterAction,
         dontNotifyActiveNode = dontNotifyActiveNode)
       ).guarantee(stop))
 
-  private def shutdown(cmd: ShutDown): Task[ProgramTermination] =
-    logger.debugTask(Task.defer {
+  private def shutdown(cmd: ShutDown): IO[ProgramTermination] =
+    logger.debugIO(IO.defer {
       if terminated.isCompleted then // Works only if previous termination has been completed
         untilTerminated
       else
         actorSystem.whenTerminated.value match {
-          case Some(Failure(t)) => Task.raiseError(t)
+          case Some(Failure(t)) => IO.raiseError(t)
           case Some(Success(_)) =>
             logger.warn("Controller terminate: Pekko has already been terminated")
-            Task.pure(ProgramTermination())
+            IO.pure(ProgramTermination())
           case None =>
             api
               .executeCommand(cmd)
               .rightAs(())
               .flatMapLeftCase { case problem @ ControllerIsShuttingDownProblem =>
                 logger.info(problem.toString)
-                Task.right(())
+                IO.right(())
               }
               .map(_.orThrow)
               .*>(untilTerminated)
         }
     }).logWhenItTakesLonger
 
-  def updateItemsAsSystemUser(operations: Observable[ItemOperation]): Task[Checked[Completed]] =
+  def updateItemsAsSystemUser(operations: Stream[IO, ItemOperation]): IO[Checked[Completed]] =
     runningController.updateItemsAsSystemUser(operations)
 
   def addOrderBlocking(order: FreshOrder): Unit =
@@ -142,7 +142,7 @@ final class TestController(allocated: Allocated[Task, RunningController], admiss
   def runOrder(order: FreshOrder): Seq[Stamped[OrderEvent]] =
     import runningController.scheduler
     val timeout = 99.s
-    logger.debugTask("runOrder", order.id)(Task.defer {
+    logger.debugIO("runOrder", order.id)(IO.defer {
       val eventId = eventWatch.lastAddedEventId
       addOrderBlocking(order)
       eventWatch
@@ -163,7 +163,7 @@ final class TestController(allocated: Allocated[Task, RunningController], admiss
   def waitUntilReady(): Unit =
     runningController.waitUntilReady()
 
-  def clusterState: Task[ClusterState] =
+  def clusterState: IO[ClusterState] =
     runningController.clusterState
 
   def journalActorState: JournalActor.Output.JournalActorState =

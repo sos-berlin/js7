@@ -9,12 +9,12 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.thread.IOExecutor.ioFuture
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.RichTask
 import js7.base.thread.ThreadPoolsBase.newBlockingNonVirtualExecutor
 import js7.base.thread.VirtualThreads.maybeNewVirtualThreadExecutorService
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.Await
 import scala.concurrent.duration.*
@@ -60,11 +60,11 @@ final class IOExecutorTest extends OurTestSuite:
   private def testPerformance(executor: Executor, n: Int): Unit =
     val iox = new IOExecutor(executor, "IOExecutorTest")
     val since = now
-    val task = (1 to n).toVector
-      .traverse(_ => iox(Task { sleep(100.ms) }).start)
+    val io = (1 to n).toVector
+      .traverse(_ => iox(IO { sleep(100.ms) }).start)
       .map(_.map(_.join))
       .map(_.combineAll)
       .flatten
     for i <- 1 to 3 do
-      task.await(99.s)
+      io.await(99.s)
       logger.info(itemsPerSecondString(since.elapsed, n))

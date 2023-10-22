@@ -10,7 +10,7 @@ import js7.base.auth.Admission
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.problem.Checked.*
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Closer.syntax.*
 import js7.data.agent.Problems.{AgentPathMismatchProblem, AgentRunIdMismatchProblem}
@@ -28,7 +28,7 @@ import org.apache.pekko.actor.ActorSystem
   * @author Joacim Zschimmer
   */
 final class EventRouteTest extends OurTestSuite, AgentTester:
-  
+
   protected val pekkoAskTimeout = 99.s
 
   implicit private lazy val actorSystem: ActorSystem = agent.actorSystem
@@ -54,22 +54,22 @@ final class EventRouteTest extends OurTestSuite, AgentTester:
     this.agentRunId = agentRunId
 
   "Request events after known EventId" in:
-    val Right(observable) = agentClient
-      .eventObservable(
+    val Right(stream) = agentClient
+      .eventStream(
         EventRequest.singleClass[Event](after = EventId.BeforeFirst, timeout = Some(0.s)))
       .await(99.s): @unchecked
-    assert(observable.headL.await(99.s).eventId > EventId.BeforeFirst)
+    assert(stream.headL.await(99.s).eventId > EventId.BeforeFirst)
 
   "AgentReady" in:
-    val Right(observable) = agentClient
-      .eventObservable(
+    val Right(stream) = agentClient
+      .eventStream(
         EventRequest[Event](Set(classOf[AgentReady]), after = EventId.BeforeFirst, timeout = Some(0.s)))
       .await(99.s): @unchecked
-    eventId = observable.lastL.await(99.s).eventId
+    eventId = stream.lastL.await(99.s).eventId
 
   "Requesting events after unknown EventId returns Torn" in:
     // When Controller requests events, the requested EventId (after=) must be known
-    val checked = agentClient.eventObservable(EventRequest.singleClass[Event](after = 1L))
+    val checked = agentClient.eventStream(EventRequest.singleClass[Event](after = 1L))
       .await(99.s)
     assert(checked == Left(EventSeqTornProblem(requestedAfter = 1, tornEventId = 0)))
 
@@ -90,7 +90,7 @@ final class EventRouteTest extends OurTestSuite, AgentTester:
         AgentPath("OTHER"), agentRunId, eventId, controllerRunId))
       .await(99.s) == Left(AgentPathMismatchProblem(AgentPath("OTHER"), agentPath)))
     assert(agentClient
-      .eventObservable(
+      .eventStream(
         EventRequest.singleClass[Event](after = EventId.BeforeFirst, timeout = Some(99.s)))
       .await(99.s)
       .orThrow
@@ -103,7 +103,7 @@ final class EventRouteTest extends OurTestSuite, AgentTester:
     snapshotEventId = eventId
     agentClient.commandExecute(TakeSnapshot).await(99.s).orThrow
     val stampedEvents = agentClient
-      .eventObservable(EventRequest.singleClass[Event](after = eventId))
+      .eventStream(EventRequest.singleClass[Event](after = eventId))
       .await(99.s)
       .orThrow
       .toListL
@@ -119,7 +119,7 @@ final class EventRouteTest extends OurTestSuite, AgentTester:
     agentClient.commandExecute(ReleaseEvents(eventId)).await(99.s).orThrow
     // Await JournalEventsReleased
     eventId = agentClient
-      .eventObservable(EventRequest.singleClass[Event](after = eventId))
+      .eventStream(EventRequest.singleClass[Event](after = eventId))
       .await(99.s)
       .orThrow
       .lastL
@@ -154,7 +154,7 @@ final class EventRouteTest extends OurTestSuite, AgentTester:
 
   "Continue fetching events" in:
     val events = agentClient
-      .eventObservable(EventRequest.singleClass[Event](after = eventId))
+      .eventStream(EventRequest.singleClass[Event](after = eventId))
         .map(_.orThrow)
         .flatMap(_.toListL)
         .await(99.s)
@@ -162,7 +162,7 @@ final class EventRouteTest extends OurTestSuite, AgentTester:
 
   "Torn EventSeq" in:
     assert(agentClient
-      .eventObservable(EventRequest.singleClass[Event](after = EventId.BeforeFirst))
+      .eventStream(EventRequest.singleClass[Event](after = EventId.BeforeFirst))
       .await(99.s)
       == Left(EventSeqTornProblem(EventId.BeforeFirst, tornEventId = snapshotEventId)))
 
@@ -170,7 +170,7 @@ final class EventRouteTest extends OurTestSuite, AgentTester:
     // Controller does not use this feature provided by GenericEventRoute. We test anyway.
     val futureEventId = eventId + 1
     val events = agentClient
-      .eventObservable(EventRequest.singleClass[Event](after = futureEventId))
+      .eventStream(EventRequest.singleClass[Event](after = futureEventId))
       .map(_.orThrow)
       .flatMap(_.toListL)
       .await(99.s)

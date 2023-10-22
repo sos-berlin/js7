@@ -9,11 +9,10 @@ import js7.launcher.ProcessOrder
 import js7.launcher.internal.JobLauncher.warnIfNotExecutable
 import js7.launcher.process.PathProcessJobLauncher.*
 import js7.launcher.process.ProcessJobLauncher.StartProcess
-import monix.eval.Task
 
 trait PathProcessJobLauncher extends ProcessJobLauncher:
   protected val executable: ProcessExecutable
-  protected def checkFile: Task[Checked[Path]]
+  protected def checkFile: IO[Checked[Path]]
 
   override final def precheckAndWarn =
     checkFile map:
@@ -22,7 +21,7 @@ trait PathProcessJobLauncher extends ProcessJobLauncher:
 
   final def toOrderProcess(processOrder: ProcessOrder) =
     checkFile
-      .flatMapT(file => Task(
+      .flatMapT(file => IO(
         ProcessOrder.evalEnv(executable.env, processOrder.scope)
           .map(env =>
             makeOrderProcess(

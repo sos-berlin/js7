@@ -1,5 +1,6 @@
 package js7.base.monixutils
 
+/*
 import cats.Monoid
 import cats.effect.{ExitCase, Resource}
 import cats.syntax.flatMap.*
@@ -14,7 +15,7 @@ import js7.base.utils.CloseableIterator
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import monix.eval.Task
 import monix.execution.Ack.{Continue, Stop}
-import monix.execution.cancelables.SerialCancelable
+import js7.base.monixlike.SerialCancelable
 import monix.execution.{Ack, Cancelable, Scheduler, UncaughtExceptionReporter}
 import monix.reactive.Observable
 import monix.reactive.OverflowStrategy.BackPressure
@@ -36,11 +37,6 @@ object MonixBase:
   private val logger = js7.base.log.Logger[this.type]
 
   object syntax:
-    implicit class RichTaskCompanion(private val underlying: Task.type) extends AnyVal:
-      def False = FalseTask
-      def True = TrueTask
-      def completed = CompletedTask
-
     implicit class RichMonixTask[A](private val task: Task[A]) extends AnyVal:
       def when(condition: Boolean)(implicit A: Monoid[A]): Task[A] =
         if condition then
@@ -391,3 +387,4 @@ object MonixBase:
 
           case o => Observable.pure(o)
         })
+*/

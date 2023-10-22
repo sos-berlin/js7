@@ -12,7 +12,7 @@ import js7.base.configutils.Configs.*
 import js7.base.generic.SecretString
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.HasCloser
@@ -31,7 +31,7 @@ import scala.collection.mutable
  */
 final class PekkoHttpAgentTextApiTest
 extends OurTestSuite, BeforeAndAfterAll, HasCloser, TestAgentProvider:
-  
+
   override protected lazy val agentConfiguration = AgentConfiguration.forTest(
     configAndData = agentDirectory,
     name = "PekkoHttpAgentTextApiTest",

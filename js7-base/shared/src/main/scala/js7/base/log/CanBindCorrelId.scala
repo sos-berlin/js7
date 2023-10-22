@@ -2,14 +2,13 @@ package js7.base.log
 
 import cats.effect.{Resource, Sync}
 import cats.syntax.functor.*
-import implicitbox.Not
 import js7.base.log.CorrelId.generate
-import monix.eval.Task
-import monix.execution.CancelableFuture
-import monix.execution.misc.Local
-import monix.execution.schedulers.TrampolineExecutionContext
+import cats.effect.IO
 import scala.annotation.{implicitNotFound, unused}
 import scala.concurrent.Future
+import scala.util.NotGiven
+
+// FIXME CorreldId for Cats Effect 3
 
 // Inspired by Monix 3.4 CanBindLocals
 @implicitNotFound("""Cannot find an implicit value for CanBindCorrelId[${R}].
@@ -26,14 +25,11 @@ object CanBindCorrelId:
 
   private[log] def bindCorrelIdCount = _bindCorrelIdCount
 
-  implicit def task[R]: CanBindCorrelId[Task[R]] =
-    TaskCan.asInstanceOf[CanBindCorrelId[Task[R]]]
+  implicit def io[R]: CanBindCorrelId[IO[R]] =
+    IOCan.asInstanceOf[CanBindCorrelId[IO[R]]]
 
   implicit def future[R]: CanBindCorrelId[Future[R]] =
     FutureCan.asInstanceOf[CanBindCorrelId[Future[R]]]
-
-  implicit def cancelableFuture[R]: CanBindCorrelId[CancelableFuture[R]] =
-    CancelableFutureCan.asInstanceOf[CanBindCorrelId[CancelableFuture[R]]]
 
   @inline implicit def forUnit: CanBindCorrelId[Unit] =
     synchronous[Unit]
@@ -41,28 +37,28 @@ object CanBindCorrelId:
   def synchronous[R]: CanBindCorrelId[R] =
     SynchronousCan.asInstanceOf[CanBindCorrelId[R]]
 
-  private object TaskCan extends CanBindCorrelId[Task[Any]]:
-    def bind(correlId: CorrelId)(task: => Task[Any]): Task[Any] =
+  private object IOCan extends CanBindCorrelId[IO[Any]]:
+    def bind(correlId: CorrelId)(io: => IO[Any]): IO[Any] =
       if !CorrelId.isEnabled then
-        Task.defer(task)
+        IO.defer(io)
       else
-        Task.defer:
-          val saved = Local.getContext()
+        IO.defer:
+          //Cats??? val saved = Local.getContext()
           _bindCorrelIdCount += 1
-          Task.defer {
-            Local.setContext(saved.bind(CorrelId.local.key, Some(correlId)))
-            task
-          }.guarantee(Task(Local.setContext(saved)))
+          IO.defer {
+            //Cats??? Local.setContext(saved.bind(CorrelId.local.key, Some(correlId)))
+            io
+          }//Cats??? .guarantee(IO(Local.setContext(saved)))
 
-    def bindNewIfEmpty(task: => Task[Any]): Task[Any] =
+    def bindNewIfEmpty(io: => IO[Any]): IO[Any] =
       if !CorrelId.isEnabled then
-        Task.defer(task)
+        IO.defer(io)
       else
-        Task.defer:
+        IO.defer:
           if CorrelId.current.nonEmpty then
-            task
+            io
           else
-            bind(generate())(task)
+            bind(generate())(io)
 
   private sealed trait FutureCan[F[r] <: Future[r], R] extends CanBindCorrelId[F[R]]:
     def bind(correlId: CorrelId)(future: => F[R]): F[R] =
@@ -70,15 +66,15 @@ object CanBindCorrelId:
         future
       else
         _bindCorrelIdCount += 1
-        val saved = Local.getContext()
-        Local.setContext(saved.bind(CorrelId.local.key, Some(correlId)))
-        try
+        //Cats??? val saved = Local.getContext()
+        //Cats??? Local.setContext(saved.bind(CorrelId.local.key, Some(correlId)))
+        //Cats??? try
           future.transform(result => {
             CorrelId.local.clear()
             result
-          })(TrampolineExecutionContext.immediate).asInstanceOf[F[R]]
-        finally
-          Local.setContext(saved)
+          })/*(TrampolineExecutionContext.immediate)*/.asInstanceOf[F[R]]
+        //Cats??? finally
+        //Cats???   Local.setContext(saved)
 
     def bindNewIfEmpty(future: => F[R]): F[R] =
       if !CorrelId.isEnabled || CorrelId.current.nonEmpty then
@@ -87,8 +83,6 @@ object CanBindCorrelId:
         bind(generate())(future)
 
   private object FutureCan extends FutureCan[Future, Any]
-
-  private object CancelableFutureCan extends FutureCan[CancelableFuture, Any]
 
   implicit def resourceCan[F[_], x, A](implicit F: Sync[F], canBind: CanBindCorrelId[F[x]])
   : CanBindCorrelId[Resource[F, A]] =
@@ -126,11 +120,12 @@ object CanBindCorrelId:
       if !CorrelId.isEnabled then
         body
       else
-        _bindCorrelIdCount += 1
-        val saved = Local.getContext()
-        Local.setContext(saved.bind(CorrelId.local.key, Some(correlId)))
-        try body
-        finally Local.setContext(saved)
+        //Cats??? _bindCorrelIdCount += 1
+        //Cats??? val saved = Local.getContext()
+        //Cats??? Local.setContext(saved.bind(CorrelId.local.key, Some(correlId)))
+        //Cats??? try body
+        //Cats??? finally Local.setContext(saved)
+        body
 
     def bindNewIfEmpty(body: => Any): Any =
       if !CorrelId.isEnabled || CorrelId.current.nonEmpty then
@@ -138,12 +133,20 @@ object CanBindCorrelId:
       else
         bind(generate())(body)
 
+  private type SavedLocal = Any
+
+  private def save(): SavedLocal =
+    null
+
+  private def restore(saved: SavedLocal): Unit =
+    {}
+
   object implicits:
     /** Implicit instance for all things synchronous.
      *
      * Needs to be imported explicitly in scope. Will NOT override
      * other `CanBindCorrelId` implicits that are already visible.
      */
-    @inline implicit def synchronousAsDefault[R](implicit @unused ev: Not[CanBindCorrelId[R]])
+    @inline implicit def synchronousAsDefault[R](implicit @unused ev: NotGiven[CanBindCorrelId[R]])
     : CanBindCorrelId[R] =
       CanBindCorrelId.synchronous[R]

@@ -21,12 +21,12 @@ final class DirectoryWatchTest extends OurTestSuite, BeforeAndAfterAll
   private val timeout = if isMac then 100.ms else 5.minutes
   private lazy val dir = createTempDirectory("DirectoryWatchTest-")
   private lazy val directoryWatcher = new DirectoryWatcher(dir, timeout)
-  private lazy val observable = directoryWatcher.singleUseObservable
-  private lazy val observableFuture = observable.map(_ => counter += 1) foreach { _ => }
+  private lazy val stream = directoryWatcher.singleUseStream
+  private lazy val streamFuture = stream.map(_ => counter += 1) foreach { _ => }
   private var counter = 0
 
   override def beforeAll() = {
-    observableFuture
+    streamFuture
     super.beforeAll()
   }
 
@@ -73,9 +73,9 @@ final class DirectoryWatchTest extends OurTestSuite, BeforeAndAfterAll
   }
 
   "cancel" in {
-    assert(!directoryWatcher.isClosed && !observableFuture.isCompleted)
-    observableFuture.cancel()
-    observableFuture await 99.s
+    assert(!directoryWatcher.isClosed && !streamFuture.isCompleted)
+    streamFuture.cancel()
+    streamFuture await 99.s
     assert(directoryWatcher.isClosed)
   }
 }

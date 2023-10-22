@@ -12,13 +12,13 @@ import js7.base.web.{HttpClient, Uri}
 import js7.data.cluster.{ClusterCommand, ClusterNodeApi, ClusterNodeState, ClusterState, ClusterWatchId, ClusterWatchRequest, ClusterWatchingCommand}
 import js7.data.event.{Event, EventId, EventRequest, JournalPosition, KeyedEvent, Stamped}
 import js7.data.session.HttpSessionApi
-import monix.eval.Task
-import monix.reactive.Observable
+import cats.effect.IO
+import fs2.Stream
 import scala.concurrent.duration.*
 
 trait HttpClusterNodeApi
 extends ClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
-  
+
   def httpClient: HttpClient
 
   def baseUri: Uri
@@ -30,67 +30,67 @@ extends ClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
 
   private lazy val uris = ClusterNodeUris(prefixedUri)
 
-  final def clusterState: Task[Checked[ClusterState]] =
+  final def clusterState: IO[Checked[ClusterState]] =
     liftProblem(
       httpClient.get[ClusterState](uris.clusterState))
 
-  final def clusterNodeState: Task[ClusterNodeState] =
+  final def clusterNodeState: IO[ClusterNodeState] =
     httpClient.get[ClusterNodeState](uris.clusterNodeState)
 
-  final def eventObservable[E <: Event](request: EventRequest[E])
+  final def eventStream[E <: Event](request: EventRequest[E])
     (implicit kd: Decoder[KeyedEvent[E]])
-  : Task[Observable[Stamped[KeyedEvent[E]]]] =
-    httpClient.getDecodedLinesObservable[Stamped[KeyedEvent[E]]](
+  : IO[Stream[IO, Stamped[KeyedEvent[E]]]] =
+    httpClient.getDecodedLinesStream[Stamped[KeyedEvent[E]]](
       uris.events(request),
       responsive = true)
 
-  final def eventIdObservable[E <: Event](
+  final def eventIdStream[E <: Event](
     timeout: Option[FiniteDuration] = None,
     heartbeat: Option[FiniteDuration] = None)
-  : Task[Observable[EventId]] =
-    httpClient.getDecodedLinesObservable[EventId](
+  : IO[Stream[IO, EventId]] =
+    httpClient.getDecodedLinesStream[EventId](
       uris.eventIds(timeout, heartbeat = heartbeat),
       responsive = true)
 
-  /** Observable for a journal file.
+  /** Stream for a journal file.
     * @param journalPosition start of observation
     * @param markEOF mark EOF with the special line `JournalSeparators.EndOfJournalFileMarker`
     */
-  final def journalObservable(
+  final def journalStream(
     journalPosition: JournalPosition,
     heartbeat: Option[FiniteDuration] = None, timeout: Option[FiniteDuration] = None,
     markEOF: Boolean = false, returnAck: Boolean = false)
-  : Task[Observable[ByteArray]] =
-    httpClient.getRawLinesObservable(
+  : IO[Stream[IO, ByteArray]] =
+    httpClient.getRawLinesStream(
       uris.journal(journalPosition, heartbeat = heartbeat,
         timeout = timeout, markEOF = markEOF, returnAck = returnAck))
 
-  /** Observable for the growing flushed (and maybe synced) length of a journal file.
+  /** Stream for the growing flushed (and maybe synced) length of a journal file.
     * @param journalPosition start of observation
     * @param markEOF prepend every line with a space and return a last line "TIMEOUT\n" in case of timeout
     */
-  private final def journalLengthObservable(
+  private final def journalLengthStream(
     journalPosition: JournalPosition,
     timeout: FiniteDuration,
     markEOF: Boolean = false)
-  : Task[Observable[Long]] =
-    journalObservable(journalPosition,
+  : IO[Stream[IO, Long]] =
+    journalStream(journalPosition,
       timeout = Some(timeout), markEOF = markEOF, returnAck = true
     ).map(_.map(_.utf8String.stripSuffix("\n").toLong))
 
-  final def clusterWatchRequestObservable(
+  final def clusterWatchRequestStream(
     clusterWatchId: ClusterWatchId,
     keepAlive: Option[FiniteDuration])
-  : Task[Observable[ClusterWatchRequest]] =
-    httpClient.getDecodedLinesObservable[ClusterWatchRequest](
+  : IO[Stream[IO, ClusterWatchRequest]] =
+    httpClient.getDecodedLinesStream[ClusterWatchRequest](
       uris.clusterWatchMessages(clusterWatchId, keepAlive),
       responsive = true)
 
-  final def executeClusterCommand(cmd: ClusterCommand): Task[cmd.Response] =
+  final def executeClusterCommand(cmd: ClusterCommand): IO[cmd.Response] =
     httpClient.post[ClusterCommand, ClusterCommand.Response](uris.command, cmd)
       .map(_.asInstanceOf[cmd.Response])
 
-  final def executeClusterWatchingCommand(cmd: ClusterWatchingCommand): Task[Unit] =
+  final def executeClusterWatchingCommand(cmd: ClusterWatchingCommand): IO[Unit] =
     httpClient.post[ClusterWatchingCommand, Unit](uris.command, cmd)
 
   override def toString = s"HttpClusterNodeApi($prefixedUri)"
@@ -105,8 +105,8 @@ object HttpClusterNodeApi:
     httpClient: HttpClient,
     uriPrefix: String,
     loginDelays: () => Iterator[FiniteDuration] = SessionApi.defaultLoginDelays _)
-  : Resource[Task, HttpClusterNodeApi] =
-    SessionApi.resource(Task(
+  : Resource[IO, HttpClusterNodeApi] =
+    SessionApi.resource(IO(
       new HttpClusterNodeApi.Standard(admission, httpClient, uriPrefix, loginDelays)))
 
   private final class Standard(

@@ -4,7 +4,7 @@ import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
 import js7.base.monixutils.TaskObserver
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.launcher.utils.KeepLastLineObserver
-import monix.eval.Task
+import cats.effect.IO
 import monix.reactive.Observer
 
 final class StdObservers(
@@ -19,15 +19,15 @@ final class StdObservers(
   def errorLine: Option[String] =
     lastLineErr.flatMap(_.lastLine)
 
-  val outTaskObserver = TaskObserver(out)
-  val errTaskObserver = TaskObserver(err)
+  val outIOObserver = TaskObserver(out)
+  val errIOObserver = TaskObserver(err)
 
-  def taskObserver(outerr: StdoutOrStderr): TaskObserver[String] =
+  def ioObserver(outerr: StdoutOrStderr): TaskObserver[String] =
     outerr match
-      case Stdout => outTaskObserver
-      case Stderr => errTaskObserver
+      case Stdout => outIOObserver
+      case Stderr => errIOObserver
 
-  val stop: Task[Unit] =
-    Task.parZip2(outTaskObserver.complete, errTaskObserver.complete)
+  val stop: IO[Unit] =
+    IO.parZip2(outIOObserver.complete, errIOObserver.complete)
       .void
       .memoize

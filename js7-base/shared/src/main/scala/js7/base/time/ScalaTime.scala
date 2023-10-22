@@ -13,7 +13,7 @@ import scala.util.Random
 
 object ScalaTime:
   /** This is 0 seconds, while Scala's Duration Zero is 0 days. */
-  val ZeroDuration = Duration(0, SECONDS)
+  val ZeroDuration: FiniteDuration = Duration(0, SECONDS)
   private val MaxDuration = Duration(Long.MaxValue, NANOSECONDS)
   private val MinDuration = Duration(Long.MinValue + 1, NANOSECONDS)
 

@@ -17,8 +17,7 @@ import js7.common.pekkohttp.web.auth.GateKeeper
 import js7.common.pekkohttp.web.session.RouteProvider.*
 import js7.common.http.PekkoHttpClient.`x-js7-session`
 import js7.data.problems.InvalidLoginProblem
-import monix.eval.Task
-import monix.execution.Scheduler
+import cats.effect.IO
 
 /**
   * @author Joacim Zschimmer
@@ -103,8 +102,8 @@ trait RouteProvider extends ExceptionHandling:
         else
           ZeroDuration
       complete:
-        Task.pure(statusCode -> problem)
-          .delayExecution(delay)
+        IO.pure(statusCode -> problem)
+          .delayBy(delay)
           .runToFuture
 
 

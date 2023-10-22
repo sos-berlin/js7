@@ -5,7 +5,7 @@ import js7.agent.data.commands.AgentCommand.{AttachSignedItem, DedicateAgentDire
 import js7.base.Problems.TamperedWithSignedMessageProblem
 import js7.base.auth.SimpleUser
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.core.command.CommandMeta
 import js7.data.agent.AgentPath

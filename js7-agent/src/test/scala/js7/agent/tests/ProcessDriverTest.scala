@@ -12,7 +12,7 @@ import js7.base.system.OperatingSystem.isWindows
 import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.IOExecutor
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.RichIO
 import js7.base.time.AlarmClock
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.measureTime
@@ -28,7 +28,7 @@ import js7.launcher.StdObservers
 import js7.launcher.configuration.{JobLauncherConf, TaskConfiguration}
 import js7.launcher.process.{ProcessDriver, RichProcess}
 import js7.subagent.configuration.SubagentConf
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler.Implicits.traced as scheduler
 import monix.reactive.subjects.PublishSubject
 import org.scalatest.BeforeAndAfterAll
@@ -37,7 +37,7 @@ import org.scalatest.BeforeAndAfterAll
   * @author Joacim Zschimmer
   */
 final class ProcessDriverTest extends OurTestSuite, BeforeAndAfterAll, TestAgentDirectoryProvider:
-  private lazy val ioxAllocated = IOExecutor.resource[Task](SubagentConf.DefaultConfig, "ProcessDriverTest")
+  private lazy val ioxAllocated = IOExecutor.resource[IO](SubagentConf.DefaultConfig, "ProcessDriverTest")
     .toAllocated.await(99.s)
 
   override protected def afterAll() =

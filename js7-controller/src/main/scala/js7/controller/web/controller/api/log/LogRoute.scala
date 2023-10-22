@@ -17,11 +17,11 @@ import js7.base.utils.FutureCompletion.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.pekkohttp.PekkoHttpServerUtils.passIf
 import js7.common.pekkoutils.ByteStrings.syntax.*
-import js7.common.files.GrowingFileObservable
+import js7.common.files.GrowingFileStream
 import js7.common.http.StreamingSupport.*
 import js7.controller.web.common.ControllerRouteProvider
 import js7.controller.web.controller.api.log.LogRoute.*
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler
 
 trait LogRoute extends ControllerRouteProvider:
@@ -47,9 +47,9 @@ trait LogRoute extends ControllerRouteProvider:
       complete(
         HttpEntity(
           contentType,  // Ignore requester's `Accept` header
-          new GrowingFileObservable(file, endless ? pollDuration)
+          new GrowingFileStream(file, endless ? pollDuration)
             .takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ =>
-              Task { logger.debug("whenShuttingDown completed") })
+              IO { logger.debug("whenShuttingDown completed") })
             .map(_.toByteString)
             .toPekkoSourceForHttpResponse)))
 

@@ -11,8 +11,9 @@ import js7.base.utils.CatsUtils.{Nel, continueWithLast}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.HttpClient
 import js7.data.cluster.{ClusterNodeApi, ClusterNodeState}
-import monix.eval.{Fiber, Task}
-import monix.reactive.Observable
+import cats.effect.IO
+import cats.effect.Fiber
+import fs2.Stream
 import scala.concurrent.duration.FiniteDuration
 
 object ActiveClusterNodeSelector:
@@ -21,11 +22,11 @@ object ActiveClusterNodeSelector:
   /** Selects the API for the active node, waiting until one is active.
    * The returned EventApi is logged-in. */
   final def selectActiveNodeApi[Api <: HttpClusterNodeApi](
-    apisResource: Resource[Task, Nel[Api]],
+    apisResource: Resource[IO, Nel[Api]],
     failureDelays: Nel[FiniteDuration],
-    onCouplingError: Api => Throwable => Task[Unit] =
+    onCouplingError: Api => Throwable => IO[Unit] =
       (_: Api) => (t: Throwable) => SessionApi.onErrorTryAgain(toString, t).void)
-  : Resource[Task, Api] =
+  : Resource[IO, Api] =
     apisResource.flatMap(apis =>
       Resource.eval(
         selectActiveNodeApiOnly[Api](
@@ -35,9 +36,9 @@ object ActiveClusterNodeSelector:
 
   private def selectActiveNodeApiOnly[Api <: HttpClusterNodeApi](
     apis: Nel[Api],
-    onCouplingError: Api => Throwable => Task[Unit],
+    onCouplingError: Api => Throwable => IO[Unit],
     failureDelays: Nel[FiniteDuration])
-  : Task[Api] =
+  : IO[Api] =
     apis match
       case Nel(api, Nil) =>
         api
@@ -47,9 +48,9 @@ object ActiveClusterNodeSelector:
           .map((_: Completed) => api)
 
       case _ =>
-        Task.defer:
+        IO.defer:
           val failureDelayIterator = continueWithLast(failureDelays)
-          Task
+          IO
             .tailRecM(())(_ => apis
               .traverse(api =>
                 fetchClusterNodeState(api)
@@ -57,12 +58,12 @@ object ActiveClusterNodeSelector:
                   .start
                   .map(ApiWithFiber(api, _)))
               .flatMap((apisWithClusterNodeStateFibers: Nel[ApiWithFiber[Api]]) =>
-                Observable.fromIterable(apisWithClusterNodeStateFibers.toList)
-                  .map(o => Observable
-                    .fromTask(o.fiber.join)
+                Stream.fromIterable(apisWithClusterNodeStateFibers.toList)
+                  .map(o => Stream
+                    .fromIO(o.fiber.join)
                     .map(ApiWithNodeState(o.api, _)))
                   // Query nodes in parallel and continue with first response first
-                  .merge(implicitly[Observable[ApiWithNodeState[Api]] <:< Observable[ApiWithNodeState[Api]]]/*required for Scala 3???*/)
+                  .merge(implicitly[Stream[IO, ApiWithNodeState[Api]] <:< Stream[IO, ApiWithNodeState[Api]]]/*required for Scala 3???*/)
                   .takeWhileInclusive(o => !o.clusterNodeState.exists(_.isActive))
                   .toListL
                   .flatMap { list =>
@@ -78,12 +79,12 @@ object ActiveClusterNodeSelector:
                       }
                       .sequence
                       .flatMap(_ => maybeActive match {
-                        case None => Task.sleep(failureDelayIterator.next()).as(Left(()))
-                        case Some(x) => Task.pure(Right(x))
+                        case None => IO.sleep(failureDelayIterator.next()).as(Left(()))
+                        case Some(x) => IO.pure(Right(x))
                       })
                   }
                   .guaranteeCase {
-                    case ExitCase.Completed => Task.unit
+                    case ExitCase.Completed => IO.unit
                     case exitCase =>
                       logger.debug(s"selectActiveNodeApiOnly => $exitCase")
                       apisWithClusterNodeStateFibers
@@ -94,7 +95,7 @@ object ActiveClusterNodeSelector:
             .onErrorRestartLoop(()) { (throwable, _, tryAgain) =>
               logger.warn(throwable.toStringWithCauses)
               if throwable.getStackTrace.nonEmpty then logger.debug(s"💥 $throwable", throwable)
-              tryAgain(()).delayExecution(failureDelayIterator.next())
+              tryAgain(()).delayBy(failureDelayIterator.next())
             }
             .map { case (api, clusterNodeState) =>
               val x = if clusterNodeState.isActive then "active" else "maybe passive"
@@ -110,12 +111,12 @@ object ActiveClusterNodeSelector:
     api: Api,
     clusterNodeState: Checked[ClusterNodeState])
 
-  private def fetchClusterNodeState(api: HttpClusterNodeApi): Task[Checked[ClusterNodeState]] =
+  private def fetchClusterNodeState(api: HttpClusterNodeApi): IO[Checked[ClusterNodeState]] =
     HttpClient
       .liftProblem(
         api.retryIfSessionLost()(
           api.clusterNodeState))
-      .tapEval(checked => Task(
+      .tapEval(checked => IO(
         logger.trace(s"${api.baseUri} => ${checked.fold(identity, identity)}")))
 
   private def logProblems[Api <: HttpClusterNodeApi](

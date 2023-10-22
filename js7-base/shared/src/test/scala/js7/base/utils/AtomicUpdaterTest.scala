@@ -2,7 +2,7 @@ package js7.base.utils
 
 import cats.syntax.foldable.*
 import js7.base.utils.AtomicUpdaterTest.*
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler.Implicits.traced
 import js7.base.test.OurAsyncTestSuite
 
@@ -10,9 +10,9 @@ final class AtomicUpdaterTest extends OurAsyncTestSuite:
   "update" in:
     val n = 1000
     val atomicUpdater = new AtomicUpdater(0: java.lang.Integer)
-    Task
+    IO
       .parSequenceUnordered(
-        (1 to n).map(_ => Task(
+        (1 to n).map(_ => IO(
           atomicUpdater.update { i => delay(); i + 1 })))
       .map(_.combineAll)
       .map(_ => assert(atomicUpdater.get == n))

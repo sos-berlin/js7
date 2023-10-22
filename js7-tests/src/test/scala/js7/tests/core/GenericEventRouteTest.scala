@@ -8,7 +8,7 @@ import js7.base.configutils.Configs.*
 import js7.base.io.https.HttpsConfig
 import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.CatsUtils.syntax.RichResource
@@ -35,9 +35,9 @@ import js7.journal.watch.{JournalEventWatch, SimpleEventCollector}
 import js7.journal.web.GenericEventRoute
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.core.GenericEventRouteTest.*
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler
-import monix.reactive.Observable
+import fs2.Stream
 import org.apache.pekko.actor.ActorSystem
 import org.scalatest.BeforeAndAfterAll
 import scala.collection.mutable
@@ -120,7 +120,7 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, GenericEventRoute
     protected def httpsConfig = HttpsConfig.empty
   }
 
-  private implicit val noSessionToken: Task[Option[SessionToken]] = Task.pure(None)
+  private implicit val noSessionToken: IO[Option[SessionToken]] = IO.pure(None)
 
   override def beforeAll() = {
     super.beforeAll()
@@ -134,16 +134,16 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, GenericEventRoute
     super.afterAll()
   }
 
-  "Read event stream with getDecodedLinesObservable" - {
+  "Read event stream with getDecodedLinesStream" - {
     "empty, timeout=0" in {
-      val observable = getEventObservable(EventRequest.singleClass[Event](after = EventId.BeforeFirst, timeout = Some(0.s)))
-      assert(observable.toListL.await(99.s) == Nil)
+      val stream = getEventStream(EventRequest.singleClass[Event](after = EventId.BeforeFirst, timeout = Some(0.s)))
+      assert(stream.toListL.await(99.s) == Nil)
     }
 
     "empty, timeout > 0" in {
       val t = now
-      val observable = getEventObservable(EventRequest.singleClass[Event](after = EventId.BeforeFirst, timeout = Some(100.ms)))
-      assert(observable.toListL.await(99.s) == Nil)
+      val stream = getEventStream(EventRequest.singleClass[Event](after = EventId.BeforeFirst, timeout = Some(100.ms)))
+      assert(stream.toListL.await(99.s) == Nil)
       assert(t.elapsed >= 90.ms)
     }
 
@@ -151,7 +151,7 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, GenericEventRoute
       eventCollector.addStamped(TestEvents(0))
 
       val observed = mutable.Buffer[Stamped[KeyedEvent[Event]]]()
-      val observableCompleted = getEventObservable(EventRequest.singleClass[Event](after = EventId.BeforeFirst, timeout = Some(99.s)))
+      val streamCompleted = getEventStream(EventRequest.singleClass[Event](after = EventId.BeforeFirst, timeout = Some(99.s)))
         .foreach(observed += _)
       awaitAndAssert { observed.size == 1 }
       assert(observed(0) == TestEvents(0))
@@ -160,7 +160,7 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, GenericEventRoute
       awaitAndAssert { observed.size == 2 }
       assert(observed(1) == TestEvents(1))
 
-      observableCompleted.cancel()
+      streamCompleted.cancel()
     }
 
     "Fetch events with repeated GET requests" - {  // Similar to EventRouteTest
@@ -235,7 +235,7 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, GenericEventRoute
     "Fetch EventIds while active is rejected" in {
       assert(eventWatch.isActiveNode)
       val response = intercept[HttpException](
-        getDecodedLinesObservable[EventId](Uri("/event?onlyAcks=true&timeout=0")))
+        getDecodedLinesStream[EventId](Uri("/event?onlyAcks=true&timeout=0")))
       assert(response.problem == Some(AckFromActiveClusterNodeProblem))
     }
 
@@ -243,7 +243,7 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, GenericEventRoute
       val wasActive = eventWatch.isActiveNode
       eventWatch.isActiveNode = false
 
-      assert(getDecodedLinesObservable[EventId](Uri("/event?onlyAcks=true&timeout=0")) == Seq(180L))
+      assert(getDecodedLinesStream[EventId](Uri("/event?onlyAcks=true&timeout=0")) == Seq(180L))
 
       eventWatch.isActiveNode = wasActive
     }
@@ -253,7 +253,7 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, GenericEventRoute
       eventWatch.isActiveNode = false
 
       val uri = Uri("/event?onlyAcks=true&heartbeat=0.1&timeout=3")
-      val events = Observable.fromTask(api.getDecodedLinesObservable[EventId](uri))
+      val events = Stream.fromIO(api.getDecodedLinesStream[EventId](uri))
         .flatten
         .take(3)
         .toListL
@@ -275,46 +275,46 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, GenericEventRoute
     //}
 
     "whenShuttingDown" - {
-      "completes a running observable" in {
+      "completes a running stream" in {
         val started = Promise[Unit]()
-        val observableCompleted = getEventObservable(EventRequest.singleClass[Event](after = EventId.BeforeFirst, timeout = Some(99.s)))
-          .doOnStart(_ => Task {
+        val streamCompleted = getEventStream(EventRequest.singleClass[Event](after = EventId.BeforeFirst, timeout = Some(99.s)))
+          .doOnStart(_ => IO {
             started.success(())
           })
           .completedL.runToFuture
         started.future await 9.s
-        assert(!observableCompleted.isCompleted)
+        assert(!streamCompleted.isCompleted)
         // Shut down service
         shuttingDown.success(now)
-        observableCompleted await 99.s
+        streamCompleted await 99.s
       }
 
-      "completes a observable request, before observable started" in {
+      "completes a stream request, before stream started" in {
         // Shut down service, try again, in case the previous test failed
         shuttingDown.trySuccess(now)
-        val observableCompleted = getEventObservable(EventRequest.singleClass[Event](after = eventWatch.lastAddedEventId, timeout = Some(99.s)))
+        val streamCompleted = getEventStream(EventRequest.singleClass[Event](after = eventWatch.lastAddedEventId, timeout = Some(99.s)))
           .completedL.runToFuture
         // Previous test has already shut down the service
-        observableCompleted await 99.s
+        streamCompleted await 99.s
       }
     }
   }
 
-  private def getEventObservable(eventRequest: EventRequest[Event]): Observable[Stamped[KeyedEvent[Event]]] =
+  private def getEventStream(eventRequest: EventRequest[Event]): Stream[IO, Stamped[KeyedEvent[Event]]] =
     getEvents(eventRequest).await(99.s)
 
-  private def getEvents(eventRequest: EventRequest[Event]): Task[Observable[Stamped[KeyedEvent[Event]]]] = {
+  private def getEvents(eventRequest: EventRequest[Event]): IO[Stream[IO, Stamped[KeyedEvent[Event]]]] = {
     import ControllerState.keyedEventJsonCodec
-    api.getDecodedLinesObservable[Stamped[KeyedEvent[Event]]](
+    api.getDecodedLinesStream[Stamped[KeyedEvent[Event]]](
       Uri("/" + encodePath("event") + encodeQuery(eventRequest.toQueryParameters)),
       responsive = true)
   }
 
   private def getEventsByUri(uri: Uri): Seq[Stamped[KeyedEvent[OrderEvent]]] =
-    getDecodedLinesObservable[Stamped[KeyedEvent[OrderEvent]]](uri)
+    getDecodedLinesStream[Stamped[KeyedEvent[OrderEvent]]](uri)
 
-  private def getDecodedLinesObservable[A: Decoder: Tag](uri: Uri): Seq[A] =
-    Observable.fromTask(api.getDecodedLinesObservable[A](uri, responsive = true))
+  private def getDecodedLinesStream[A: Decoder: Tag](uri: Uri): Seq[A] =
+    Stream.fromIO(api.getDecodedLinesStream[A](uri, responsive = true))
       .flatten
       .toListL
       .await(99.s)

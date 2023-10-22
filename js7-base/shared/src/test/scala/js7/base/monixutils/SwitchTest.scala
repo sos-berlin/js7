@@ -2,7 +2,7 @@ package js7.base.monixutils
 
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler.Implicits.traced
 import monix.execution.schedulers.TestScheduler
 import scala.annotation.nowarn
@@ -53,14 +53,14 @@ final class SwitchTest extends OurAsyncTestSuite:
     val future = switch
       .whenOff
       .*>(switch.switchOn)
-      .*>(Task.race(
+      .*>(IO.race(
         switch.whenOff.map(_ => fail()),
-        Task.sleep(100.ms)))
+        IO.sleep(100.ms)))
       .map(_.fold(identity _: @nowarn, identity))
       .*>(switch.switchOff)
-      .*>(Task.race(
+      .*>(IO.race(
         switch.whenOff,
-        Task.sleep(100.ms).map(_ => fail())))
+        IO.sleep(100.ms).map(_ => fail())))
       .as(succeed)
       .runToFuture
 
@@ -74,13 +74,13 @@ final class SwitchTest extends OurAsyncTestSuite:
     val future = switch
       .whenOn
       .*>(switch.switchOff)
-      .*>(Task.race(
+      .*>(IO.race(
         switch.whenOn.map(_ => fail()),
-        Task.sleep(100.ms)))
+        IO.sleep(100.ms)))
       .*>(switch.switchOn)
-      .*>(Task.race(
+      .*>(IO.race(
         switch.whenOn,
-        Task.sleep(100.ms).map(_ => fail())))
+        IO.sleep(100.ms).map(_ => fail())))
       .as(succeed)
       .runToFuture
 

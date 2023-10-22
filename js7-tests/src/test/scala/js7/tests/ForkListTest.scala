@@ -11,7 +11,7 @@ import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.SuccessFuture
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.data.agent.AgentPath
@@ -37,16 +37,16 @@ import js7.tests.ForkListTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
+import fs2.Stream
 import org.scalatest.Assertions.assert
 import scala.collection.View
 import scala.concurrent.duration.Deadline.now
 
-final class ForkListTest 
+final class ForkListTest
   extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
-  
+
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.controller.agent-driver.command-batch-delay = 0ms
@@ -68,7 +68,7 @@ final class ForkListTest
     val orderId = OrderId("SNAPSHOT-TEST")
     val n = 3
 
-    val asserted = proxy.observable
+    val asserted = proxy.stream
       .collect:
         case EventAndState(Stamped(_, _, KeyedEvent(`orderId`, _: OrderForked)), _, state) =>
           assert(state.idToOrder(orderId) ==
@@ -326,7 +326,7 @@ final class ForkListTest
     val childOrderIds = (1 to n).map(i => orderId / s"ELEMENT-$i").toSet
     val eventId = eventWatch.lastAddedEventId
 
-    val childOrdersProcessed = proxy.observable
+    val childOrdersProcessed = proxy.stream
       .map(_.stampedEvent.value)
       .collect:
         case KeyedEvent(orderId: OrderId, event: OrderEvent)
@@ -338,7 +338,7 @@ final class ForkListTest
       .runToFuture
 
     val order = newOrder(orderId, workflowPath, n)
-    controller.api.addOrders(Observable(order)).await(99.s).orThrow
+    controller.api.addOrders(Stream(order)).await(99.s).orThrow
 
     childOrdersProcessed.await(9.s)
     if cancelChildOrders then
@@ -349,7 +349,7 @@ final class ForkListTest
     assert(eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
       .head.value.event == expectedTerminationEvent)
     val terminatedOrder = controllerState.idToOrder(orderId)
-    controller.api.deleteOrdersWhenTerminated(Observable(orderId)).await(99.s).orThrow
+    controller.api.deleteOrdersWhenTerminated(Stream(orderId)).await(99.s).orThrow
     terminatedOrder
 
   "Mixed agents" in:
@@ -514,7 +514,7 @@ object ForkListTest:
 
   private class TestJob extends InternalJob:
     def toOrderProcess(step: Step) =
-      OrderProcess(Task {
+      OrderProcess(IO {
         assert(step.order.arguments.keySet == Set("element", "myList"))
         assert(step.order.arguments("element").toStringValueString.orThrow.startsWith("ELEMENT-"))
         step.order.arguments("myList").as[ListValue].orThrow

@@ -1,5 +1,6 @@
 package js7.tests.addOrders
 
+import fs.Stream
 import cats.syntax.flatMap.*
 import com.typesafe.config.ConfigFactory
 import js7.base.monixutils.MonixBase.syntax.*
@@ -14,9 +15,10 @@ import js7.proxy.ControllerApi
 import js7.proxy.configuration.ProxyConfs
 import js7.tests.addOrders.TestAddOrders.*
 import monix.catnap.MVar
-import monix.eval.Task
+import cats.effect.IO
+import cats.effect.Fiber
 import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
+import fs2.Stream
 import monix.reactive.subjects.PublishSubject
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Deadline, FiniteDuration}
@@ -28,18 +30,18 @@ final class TestAddOrders private(controllerApi: ControllerApi, settings: Settin
     * @return Tuple with
     *         - Public Observable returning the duration of adding all orders
     *         - Public Observable returning the changed number of main orders.
-    *         - The complete Task returning `Statistics`.
+    *         - The complete IO returning `Statistics`.
     */
-  private def run(): (Observable[FiniteDuration], Observable[Statistics], Task[Checked[Statistics]]) =
+  private def run(): (Stream[IO, FiniteDuration], Stream[IO, Statistics], IO[Checked[Statistics]]) =
     val allOrdersAddedSubject = PublishSubject[FiniteDuration]()
     val statisticsSubject = PublishSubject[Statistics]()
-    val task = Task.defer:
+    val io = IO.defer:
       val orderIds = 1 to orderCount map toOrderId
       val isOurOrder = orderIds.toSet
-      val observationStarted = MVar.empty[Task, Deadline]().memoize
+      val observationStarted = MVar.empty[IO, Deadline]().memoize
 
       val awaitOrderCompletion = controllerApi
-        .eventAndStateObservable()
+        .eventAndStateStream()
         .doOnStart(_ => observationStarted.flatMap(_.put(now)))
         .scan(new StatisticsBuilder(isOurOrder, statisticsSubject))((s, es) =>
           s.count(es.stampedEvent))
@@ -48,7 +50,7 @@ final class TestAddOrders private(controllerApi: ControllerApi, settings: Settin
         .map(_.toStatistics)
         .map { statistics =>
           if statistics.completedOrderCount != orderCount then
-            Left(Problem.pure("eventAndStateObservable terminated unexpectedly, " +
+            Left(Problem.pure("eventAndStateStream terminated unexpectedly, " +
               s"${statistics.completedOrderCount} orders run"))
           else
             Right(statistics)
@@ -56,19 +58,19 @@ final class TestAddOrders private(controllerApi: ControllerApi, settings: Settin
 
       val add = observationStarted.flatMap(_.read)
         .flatMap(since =>
-          addOrders(Observable.fromIterable(orderIds))
+          addOrders(Stream.fromIterable(orderIds))
             .flatTap(result =>
-              Task.fromFuture(allOrdersAddedSubject.onNext(since.elapsed)).void
+              IO.fromFuture(allOrdersAddedSubject.onNext(since.elapsed)).void
                 .unless(result.isLeft)))
 
-      Task.parMap2(
+      IO.parMap2(
         awaitOrderCompletion.map(_.orThrow/*abort parMap2*/),
         add.map(_.orThrow)
       )((statistics, _) => statistics)
         .materialize.map(Checked.fromTry)
-    (allOrdersAddedSubject, statisticsSubject, task)
+    (allOrdersAddedSubject, statisticsSubject, io)
 
-  private def addOrders(orderIds: Observable[OrderId]): Task[Checked[Unit]] =
+  private def addOrders(orderIds: Stream[IO, OrderId]): IO[Checked[Unit]] =
     controllerApi
       .addOrders(
         orderIds.map(FreshOrder(_, workflowPath)))
@@ -82,7 +84,7 @@ object TestAddOrders:
     settings: Settings,
     onStatisticsUpdate: Statistics => Unit,
     onOrdersAdded: FiniteDuration => Unit)
-  : Task[Checked[Statistics]] =
+  : IO[Checked[Statistics]] =
     val config = ConfigFactory.systemProperties.withFallback(ProxyConfs.defaultConfig)
     Pekkos.actorSystemResource("TestAddOrders", config)
       .flatMap(actorSystem =>
@@ -91,10 +93,10 @@ object TestAddOrders:
           ProxyConfs.fromConfig(config)))
       .use { controllerApi =>
         val testAddOrders = new TestAddOrders(controllerApi, settings)
-        val (allOrdersAddedObservable, statisticsObservable, runOrdersTask) = testAddOrders.run()
+        val (allOrdersAddedObservable, statisticsObservable, runOrdersIO) = testAddOrders.run()
         allOrdersAddedObservable.foreach(onOrdersAdded)
         statisticsObservable foreach onStatisticsUpdate
-        runOrdersTask
+        runOrdersIO
       }
 
   private def toOrderId(i: Int) = OrderId(s"TestAddOrders-$i")

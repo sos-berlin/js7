@@ -2,7 +2,7 @@ package js7.tests.subagent
 
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEither}
 import js7.data.controller.ControllerCommand.ResetSubagent

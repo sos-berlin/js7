@@ -4,12 +4,12 @@ import java.nio.file.{Files, Path}
 import js7.base.data.ByteArray
 import monix.execution.Ack.{Continue, Stop}
 import monix.execution.{Cancelable, Scheduler}
-import monix.reactive.Observable
+import fs2.Stream
 import monix.reactive.observers.Subscriber
 import scala.concurrent.duration.FiniteDuration
 
-final class GrowingFileObservable(file: Path, pollDuration: Option[FiniteDuration] = None)(implicit scheduler: Scheduler)
-extends Observable[ByteArray]:
+final class GrowingFileStream(file: Path, pollDuration: Option[FiniteDuration] = None)(implicit scheduler: Scheduler)
+extends Stream[IO, ByteArray]:
 
   def unsafeSubscribeFn(subscriber: Subscriber[ByteArray]): Cancelable =
     @volatile var cancelled = false

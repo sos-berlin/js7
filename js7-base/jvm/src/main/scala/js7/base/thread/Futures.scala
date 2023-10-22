@@ -6,7 +6,6 @@ import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.StackTraces.*
-import monix.execution.CancelableFuture
 import scala.collection.BuildFrom
 import scala.concurrent.*
 import scala.concurrent.duration.*
@@ -92,11 +91,7 @@ object Futures:
         logger.traceCall[A](s"${src.value} awaitInfinite"):
           Await.ready(delegate, Duration.Inf).value.get match
             case Success(o) => o
-            case Failure(t) =>
-              delegate match
-                case o: CancelableFuture[A] => o.cancel()
-                case _ =>
-              throw t.appendCurrentStackTrace
+            case Failure(t) => throw t.appendCurrentStackTrace
 
 
       def await(duration: FiniteDuration)(implicit A: Tag[A], src: sourcecode.Enclosing): A =
@@ -107,11 +102,7 @@ object Futures:
           }
           delegate.value.get match
             case Success(o) => o
-            case Failure(t) =>
-              delegate match
-                case o: CancelableFuture[A] => o.cancel()
-                case _ =>
-              throw t.appendCurrentStackTrace
+            case Failure(t) => throw t.appendCurrentStackTrace
 
     implicit final class RichFutures[A, M[X] <: IterableOnce[X]](private val future: M[Future[A]]) extends AnyVal:
       /**

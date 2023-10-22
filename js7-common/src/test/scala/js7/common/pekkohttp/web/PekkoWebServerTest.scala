@@ -13,7 +13,7 @@ import js7.base.io.https.{KeyStoreRef, TrustStoreRef}
 import js7.base.problem.Checked.Ops
 import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Allocated
 import js7.base.utils.CatsUtils.syntax.RichResource
@@ -24,7 +24,8 @@ import js7.common.pekkohttp.web.data.WebServerBinding
 import js7.common.pekkoutils.Pekkos
 import js7.common.pekkoutils.Pekkos.newActorSystem
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
-import monix.eval.Task
+import cats.effect.IO
+import cats.effect.Fiber
 import monix.execution.Scheduler.Implicits.traced
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.http.scaladsl.model.HttpMethods.GET
@@ -57,7 +58,7 @@ final class PekkoWebServerTest extends OurTestSuite, BeforeAndAfterAll
       .orThrow
   }
 
-  private lazy val webServer: Allocated[Task, PekkoWebServer] = PekkoWebServer
+  private lazy val webServer: Allocated[IO, PekkoWebServer] = PekkoWebServer
     .resource(
       Seq(
         WebServerBinding.Http(new InetSocketAddress("127.0.0.1", httpPort)),

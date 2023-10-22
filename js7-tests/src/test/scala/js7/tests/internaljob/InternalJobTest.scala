@@ -2,10 +2,9 @@ package js7.tests.internaljob
 
 import js7.base.configutils.Configs.*
 import js7.base.log.Logger
-import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
+import js7.base.monixutils.MonixBase.syntax.RichMonixStream
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
-import js7.base.thread.VirtualThreads
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.implicitClass
@@ -33,11 +32,11 @@ import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.internaljob.InternalJobTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
-import monix.catnap.Semaphore
-import monix.eval.Task
+import cats.effect.std.Semaphore
+import cats.effect.IO
 import monix.execution.Scheduler.Implicits.traced
 import monix.execution.atomic.{Atomic, AtomicInt}
-import monix.reactive.Observable
+import fs2.Stream
 import org.scalactic.source
 import org.scalatest.Assertions.*
 import scala.collection.mutable
@@ -231,7 +230,7 @@ final class InternalJobTest
       workflowId = workflow.id
       val eventId = eventWatch.lastAddedEventId
       controller.api.addOrders(
-        Observable.fromIterable(ordersArguments)
+        Stream.fromIterable(ordersArguments)
           .map { case (orderId, args) =>
             FreshOrder(orderId, workflow.path, arguments = args, deleteWhenTerminated = true)
           })
@@ -280,17 +279,17 @@ object InternalJobTest:
     var started = false
     var stopped = false
 
-    override def start = Task:
+    override def start = IO:
       started = true
       Right(())
 
-    override def stop = Task:
+    override def stop = IO:
       assert(started)
       stopped = true
 
     def toOrderProcess(step: Step) =
       assert(started)
-      OrderProcess(Task(Outcome.succeeded))
+      OrderProcess(IO(Outcome.succeeded))
 
   private final class AddOneJob(jobContext: JobContext) extends InternalJob:
     assertThat(jobContext.implementationClass == getClass)
@@ -299,15 +298,15 @@ object InternalJobTest:
     private val startCount = Atomic(0)
     private val processCount = Atomic(0)
 
-    override def start = Task:
+    override def start = IO:
       startCount += 1
       Right(())
 
     override def stop =
-      Task.raiseError(new RuntimeException("AddOneJob.stop FAILS"))
+      IO.raiseError(new RuntimeException("AddOneJob.stop FAIL'S"))
 
     def toOrderProcess(step: Step) =
-      OrderProcess(Task {
+      OrderProcess(IO {
         processCount += 1
         Outcome.Completed.fromChecked(
           step.arguments
@@ -334,4 +333,4 @@ object InternalJobTest:
            else
              sys.error("TEST EXCEPTION FOR KILL")
   private object CancelableJob:
-    val semaphore = Semaphore[Task](0).memoize
+    val semaphore = Semaphore[IO](0).memoize

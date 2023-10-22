@@ -1,7 +1,7 @@
 package js7.tests.https
 
 import js7.base.log.Logger
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.agent.AgentRefStateEvent.AgentCouplingFailed

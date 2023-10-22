@@ -3,9 +3,9 @@ package js7.base.monixutils
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.schedulers.TestScheduler
-import monix.reactive.Observable
+import fs2.Stream
 import scala.concurrent.Await
 
 /**
@@ -16,16 +16,16 @@ final class InsertHeartbeatsOnSlowUpstreamTest extends OurTestSuite:
   private val heartbeat = -1
 
   "insertHeartbeatsOnSlowUpstream" in:
-    assert(runObservable(List(1, 2, 100, 200, 100)) ==
+    assert(runStream(List(1, 2, 100, 200, 100)) ==
       List(1, 2, heartbeat, 100, heartbeat, heartbeat, 200, heartbeat, 100))
 
   "insertHeartbeatsOnSlowUpstream from start" in:
-    assert(runObservable(List(200, 1, 2, 100)) ==
+    assert(runStream(List(200, 1, 2, 100)) ==
       List(heartbeat, heartbeat, 200, 1, 2, heartbeat, 100))
 
-  private def runObservable(milliseconds: Seq[Int]): Seq[Int] =
-    val future = Observable.fromIterable(milliseconds)
-      .mapEval(i => Task(i).delayExecution(i.ms))
+  private def runStream(milliseconds: Seq[Int]): Seq[Int] =
+    val future = Stream.fromIterable(milliseconds)
+      .mapEval(i => IO(i).delayBy(i.ms))
       .insertHeartbeatsOnSlowUpstream(80.ms, heartbeat)
       .toListL
       .runToFuture

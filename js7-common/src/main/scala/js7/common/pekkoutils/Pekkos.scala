@@ -9,8 +9,6 @@ import js7.base.time.JavaTimeConverters.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.configuration.Js7Configuration
-import monix.eval.Task
-import monix.execution.Scheduler
 import org.apache.pekko.actor.{ActorContext, ActorPath, ActorRef, ActorRefFactory, ActorSystem, ChildActorPath, Props, RootActorPath, Terminated}
 import org.apache.pekko.http.scaladsl.Http
 import org.apache.pekko.http.scaladsl.model.Uri
@@ -53,9 +51,9 @@ object Pekkos:
         logger.warn(s"ActorSystem('${actorSystem.name}').terminate(): ${t.toStringWithCauses}")
       })
 
-  def terminate(actorSystem: ActorSystem): Task[Unit] =
-    logger.debugTask(s"terminate ActorSystem('${actorSystem.name}')")(
-      Task.deferFuture(
+  def terminate(actorSystem: ActorSystem): IO[Unit] =
+    logger.debugIO(s"terminate ActorSystem('${actorSystem.name}')")(
+      IO.deferFuture(
         terminateFuture(actorSystem)
       ).void)
 
@@ -140,14 +138,14 @@ object Pekkos:
         case child: ChildActorPath => child.parent.pretty.stripSuffix("/") + "/" + decodeActorName(child.name)
 
   def actorSystemResource(name: String, config: Config = ConfigFactory.empty)
-  : Resource[Task, ActorSystem] =
-    Resource.suspend(Task.deferAction(scheduler => Task(
+  : Resource[IO, ActorSystem] =
+    Resource.suspend(IO.deferAction(scheduler => IO(
       actorSystemResource1(name, config, scheduler))))
 
   private def actorSystemResource1(name: String, config: Config, scheduler: Scheduler)
-  : Resource[Task, ActorSystem] =
+  : Resource[IO, ActorSystem] =
     Resource.make(
-      acquire = Task(newActorSystem(name, config, scheduler)).executeOn(scheduler))(
+      acquire = IO(newActorSystem(name, config, scheduler)).executeOn(scheduler))(
       release = terminate)
 
   def actorResource[F[_]](props: Props, name: String)

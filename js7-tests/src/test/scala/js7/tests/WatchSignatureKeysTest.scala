@@ -11,12 +11,12 @@ import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.watch.BasicDirectoryWatch.systemWatchDelay
 import js7.base.log.Logger
-import js7.base.monixutils.MonixBase.syntax.RichMonixTask
+import js7.base.monixutils.MonixBase.syntax.RichMonixIO
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.SuccessFuture
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
@@ -33,7 +33,7 @@ import js7.tests.WatchSignatureKeysTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler.Implicits.traced
 import scala.collection.View
 import scala.concurrent.Future
@@ -214,7 +214,7 @@ final class WatchSignatureKeysTest extends OurTestSuite, ControllerAgentForScala
   }
 
   private def whenControllerAndAgentUpdated(): Future[Unit] =
-    Task.parZip3(
+    IO.parZip3(
       controller.testEventBus.when[RunningController.ItemSignatureKeysUpdated]
         .logWhenItTakesLonger("RunningController.ItemSignatureKeysUpdated"),
       agent.testEventBus.when[Subagent.ItemSignatureKeysUpdated]

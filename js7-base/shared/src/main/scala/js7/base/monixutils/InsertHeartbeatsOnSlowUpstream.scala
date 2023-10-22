@@ -1,4 +1,4 @@
-// Copy of Monix EchoObservable.scala to output a constant value instead of the last event
+// Copy of Monix EchoStream.scala to output a constant value instead of the last event
 /*
  * Copyright (c) 2014-2020 by The Monix Project Developers.
  * See the project homepage at: https://monix.io
@@ -22,22 +22,22 @@ import java.util.concurrent.TimeUnit
 import monix.execution.Ack.{Continue, Stop}
 import monix.execution.cancelables.{CompositeCancelable, MultiAssignCancelable, SingleAssignCancelable}
 import monix.execution.{Ack, Cancelable}
-import monix.reactive.Observable
+import fs2.Stream
 import monix.reactive.observers.Subscriber
 import scala.concurrent.Future
 import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
 import scala.util.Success
 
-private[monixutils] final class InsertHeartbeatsOnSlowUpstream[+A](source: Observable[A], timeout: FiniteDuration,
+private[monixutils] final class InsertHeartbeatsOnSlowUpstream[+A](source: Stream[IO, A], timeout: FiniteDuration,
   onlyOnce: Boolean, intersperseValue: A)
-extends Observable[A]:
+extends Stream[IO, A]:
 
   private[this] val timeoutMillis = timeout.toMillis
 
   def unsafeSubscribeFn(out: Subscriber[A]): Cancelable =
-    val task = MultiAssignCancelable()
+    val io = MultiAssignCancelable()
     val mainTask = SingleAssignCancelable()
-    val composite = CompositeCancelable(mainTask, task)
+    val composite = CompositeCancelable(mainTask, io)
 
     mainTask := source.unsafeSubscribeFn(new Subscriber[A] with Runnable { self =>
       implicit val scheduler = out.scheduler
@@ -55,7 +55,7 @@ extends Observable[A]:
       def scheduleNext(delayMillis: Long): Unit = {
         // No need to synchronize this assignment, since we have a
         // happens-before relationship between scheduleOnce invocations.
-        task := scheduler.scheduleOnce(delayMillis, TimeUnit.MILLISECONDS, self)
+        io := scheduler.scheduleOnce(delayMillis, TimeUnit.MILLISECONDS, self)
       }
 
       def run(): Unit = {
@@ -171,7 +171,7 @@ extends Observable[A]:
         self.synchronized {
           if !isDone then {
             isDone = true
-            task.cancel()
+            io.cancel()
             out.onError(ex)
           }
         }
@@ -180,7 +180,7 @@ extends Observable[A]:
         def signal(): Ack = {
           if !isDone then {
             isDone = true
-            task.cancel()
+            io.cancel()
             out.onComplete()
           }
           Stop

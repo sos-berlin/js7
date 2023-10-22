@@ -16,7 +16,7 @@ import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkohttp.web.auth.GateKeeper.unauthorized
 import js7.common.pekkohttp.web.session.SessionRoute.*
 import js7.data.problems.InvalidLoginProblem
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler
 
 /**
@@ -45,10 +45,10 @@ trait SessionRoute extends RouteProvider:
         }
 
   private def execute(command: SessionCommand, idsOrUser: Either[Set[UserId], SimpleUser], sessionTokenOption: Option[SessionToken])
-  : Task[Checked[SessionCommand.Response]] =
+  : IO[Checked[SessionCommand.Response]] =
     command match
       case Login(userAndPasswordOption, version) =>
-        Task(authenticateOrUseHttpUser(idsOrUser, userAndPasswordOption))
+        IO(authenticateOrUseHttpUser(idsOrUser, userAndPasswordOption))
           .flatMapT(user =>
             sessionRegister.login(user, version, sessionTokenOption)
               .map(_.map(Login.LoggedIn(_, Js7Version))))

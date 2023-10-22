@@ -4,7 +4,7 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic
-import js7.base.utils.Atomic.syntax.*
+import js7.base.utils.Atomic.extensions.*
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future

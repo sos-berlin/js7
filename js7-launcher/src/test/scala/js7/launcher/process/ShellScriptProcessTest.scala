@@ -13,7 +13,7 @@ import js7.base.system.OperatingSystem.{isMac, isSolaris, isUnix, isWindows}
 import js7.base.system.ServerOperatingSystem.KernelSupportsNestedShebang
 import js7.base.test.OurTestSuite
 import js7.base.thread.IOExecutor.Implicits.globalIOX
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.Closer.withCloser
@@ -23,10 +23,10 @@ import js7.launcher.StdObservers
 import js7.launcher.configuration.ProcessKillScript
 import js7.launcher.process.RichProcess.tryDeleteFile
 import js7.launcher.process.ShellScriptProcess.startPipedShellScript
+import cats.effect.IO
 import js7.tester.ScalaTestUtils.awaitAndAssert
-import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
+import fs2.Stream
 import monix.reactive.subjects.PublishSubject
 import scala.concurrent.Future
 
@@ -150,20 +150,20 @@ final class ShellScriptProcessTest extends OurTestSuite:
     processConfiguration: ProcessConfiguration,
     executable: Path,
     stdFileMap: Map[StdoutOrStderr, Path] = Map.empty)
-  : Task[ShellScriptProcess] =
-    Task.defer:
+  : IO[ShellScriptProcess] =
+    IO.defer:
       val out, err = PublishSubject[String]()
 
-      def processOutErr(obs: Observable[String], outerr: StdoutOrStderr): Future[Unit] =
+      def processOutErr(obs: Stream[IO, String], outerr: StdoutOrStderr): Future[Unit] =
         stdFileMap.get(outerr)
           .fold(obs)(file =>
-            Observable
-              .fromResource(Resource.fromAutoCloseable(Task(
+            Stream
+              .resource(Resource.fromAutoCloseable(IO(
                 new OutputStreamWriter(
                   new BufferedOutputStream(
                     new FileOutputStream(file.toFile))))))
               .flatMap(writer => obs
-                .doOnNext(string => Task(writer.write(string)))))
+                .doOnNext(string => IO(writer.write(string)))))
           .completedL
           .runToFuture
 
@@ -176,7 +176,7 @@ final class ShellScriptProcessTest extends OurTestSuite:
         CommandLine(executable.toString :: Nil),
         processConfiguration,
         stdObservers,
-        whenTerminated = Task.fromFuture(outErrFut).void
+        whenTerminated = IO.fromFuture(outErrFut).void
       ).map(_.orThrow)
 
   private def withScriptFile[A](body: Path => A): A =

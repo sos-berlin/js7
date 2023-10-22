@@ -13,33 +13,33 @@ import js7.base.utils.SetOnce
 import js7.data.order.Outcome
 import js7.data_for_java.vavr.VavrConverters.*
 import js7.launcher.OrderProcess
-import monix.eval.Task
+import cats.effect.IO
 import scala.reflect.ClassTag
 import scala.util.control.NonFatal
 
 private[internal] final class InternalJobAdapterHelper[J: ClassTag: Tag]:
   private val checkedJobOnce = SetOnce[Checked[J]]  // SetOnce for late arriving Scheduler
 
-  def callStart(jJobContext: JavaJobContext, call: J => Task[VEither[Problem, Void]]): Task[Checked[Unit]] =
-    Task(instantiate(jJobContext))
+  def callStart(jJobContext: JavaJobContext, call: J => IO[VEither[Problem, Void]]): IO[Checked[Unit]] =
+    IO(instantiate(jJobContext))
       .flatMapT(jInternalJob =>
         call(jInternalJob)
           .map(_.toScala.rightAs(()))
           .materializeIntoChecked
-          .tapEval(checked => Task {
+          .tapEval(checked => IO {
             checkedJobOnce := checked.map(_ => jInternalJob)
             checked
           }))
 
-  def callStop(call: J => Task[Unit]): Task[Unit] =
-    Task.defer:
-      checkedJobOnce.toOption.fold(Task.unit)(checked =>
+  def callStop(call: J => IO[Unit]): IO[Unit] =
+    IO.defer:
+      checkedJobOnce.toOption.fold(IO.unit)(checked =>
         call(checked.orThrow))
 
   def callProcessOrder(call: J => OrderProcess): OrderProcess =
     checkedJobOnce.checked.flatten match
       case Left(problem) =>
-        OrderProcess(Task.pure(Outcome.Failed.fromProblem(problem)))
+        OrderProcess(IO.pure(Outcome.Failed.fromProblem(problem)))
 
       case Right(jInternalJob) =>
         call(jInternalJob)

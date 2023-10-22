@@ -1,7 +1,7 @@
 package js7.tests.cluster.controller
 
 import cats.effect.{ContextShift, IO}
-import cats.effect.concurrent.Deferred
+import cats.effect.kernel.Deferred
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryDirectory
@@ -15,7 +15,7 @@ import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.cluster.controller.ClusterWatchMainTest.*
 import js7.tests.testenv.ControllerClusterForScalaTest
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler.Implicits.traced as scheduler
 
 final class ClusterWatchMainTest extends OurAsyncTestSuite, ControllerClusterForScalaTest:
@@ -55,10 +55,10 @@ final class ClusterWatchMainTest extends OurAsyncTestSuite, ControllerClusterFor
             val args = Array(
               "--cluster-watch-id=MY-CLUSTER-WATCH",
               "--config-directory=" + dir)
-            ClusterWatchMain.run(args)(service => Task
+            ClusterWatchMain.run(args)(service => IO
               .race(
                 service.untilStopped,
-                stopClusterWatch.get.to[Task])
+                stopClusterWatch.get.to[IO])
               .as(ProgramTermination()))
           }
         catch { case t: Throwable =>

@@ -126,9 +126,7 @@ val commonSettings = Seq(
       Nil
     else {
       import Dependencies.*
-      cats ++
-        ("org.typelevel" %% "cats-core" % catsVersion) ++
-        ("org.typelevel" %% "cats-effect" % catsEffectVersion) ++
+      //? catsEffect ++
         circe ++
         slf4j
       }
@@ -311,6 +309,7 @@ lazy val `js7-base` = crossProject(JSPlatform, JVMPlatform)
       "org.typelevel" %%% "cats-effect" % catsEffectVersion ++
       "org.typelevel" %%% "cats-laws" % catsVersion % "test" ++
       "org.typelevel" %%% "cats-parse" % catsParseVersion ++
+      "io.github.timwspence" %% "cats-stm" % catsSTMVersion ++
       "org.typelevel" %%% "discipline-core" % disciplineVersion % "test" ++
       "org.typelevel" %%% "discipline-scalatest" % disciplineScalaTestVersion % "test" ++
       "io.circe" %%% "circe-core" % circeVersion ++
@@ -318,13 +317,12 @@ lazy val `js7-base` = crossProject(JSPlatform, JVMPlatform)
       "io.circe" %%% "circe-generic" % circeVersion ++
       "co.fs2" %% "fs2-core" % fs2Version ++
       "co.fs2" %% "fs2-reactive-streams" % fs2Version ++
-      "io.monix" %%% "monix-eval" % monixVersion ++
-      "io.monix" %%% "monix-reactive" % monixVersion ++
       "com.lihaoyi" %%% "sourcecode" % sourcecodeVersion ++
       "com.outr" %%% "scribe" % scribeVersion ++
       "com.softwaremill.diffx" %%% "diffx-core" % diffxVersion ++
       findbugs ++
       intelliJAnnotations % "compile" ++
+      catsEffectTesting ++
       "org.scalactic" %%% "scalactic" % scalaTestVersion % testWhenIntelliJ ++
       "org.scalatest" %%% "scalatest" % scalaTestVersion % testWhenIntelliJ ++
       "org.scalatestplus" %%% "scalacheck-1-16" % scalaTestCheckVersion % "test" ++
@@ -430,7 +428,8 @@ lazy val `js7-common-http` = crossProject(JSPlatform, JVMPlatform)
   .settings {
     import Dependencies.*
     libraryDependencies ++= scalaTest % "test"
-    libraryDependencies += "io.monix" %%% "monix-eval" % monixVersion
+    libraryDependencies += "org.typelevel" %% "cats-core" % catsVersion
+    libraryDependencies += "org.typelevel" %% "cats-effect" % catsEffectVersion
   }
   .jvmSettings {
     import Dependencies.*
@@ -713,8 +712,9 @@ lazy val `js7-agent-client` = project
   .settings(description := "JS7 Agent - Client")
   .settings {
     import Dependencies.*
+    libraryDependencies += "org.typelevel" %% "cats-core" % catsVersion
+    libraryDependencies += "org.typelevel" %% "cats-effect" % catsEffectVersion
     libraryDependencies ++=
-      "io.monix" %% "monix-reactive" % monixVersion ++
       pekkoActor ++
       pekkoHttp ++
       scalaTest % "test" ++

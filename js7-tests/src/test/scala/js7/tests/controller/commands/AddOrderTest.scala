@@ -7,7 +7,7 @@ import js7.base.log.Logger
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.{AddOrder, DeleteOrdersWhenTerminated}
@@ -98,7 +98,7 @@ object AddOrderTest:
   private class EchoJob extends InternalJob:
     def toOrderProcess(step: Step) =
       OrderProcess(step
-        .outTaskObserver.send(
+        .outIOObserver.send(
           s"STRING=${step.arguments("STRING").convertToString}\n" +
           s"NUMBER=${step.arguments("NUMBER").convertToString}\n")
         .as(Outcome.succeeded))

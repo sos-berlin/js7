@@ -1,15 +1,15 @@
 package js7.base.utils
 
+import cats.effect.unsafe.IORuntime
 import cats.effect.{ContextShift, IO, Resource}
 import js7.base.catsutils.UnsafeMemoizable
 import js7.base.test.OurAsyncTestSuite
 import js7.base.utils.CatsUtils.syntax.RichResource
-import monix.execution.Scheduler
 
 final class AllocatedTest extends OurAsyncTestSuite:
 
   private var nr = 0
-  private implicit val contextShift: ContextShift[IO] =
+  private implicit val ioRuntime: IORuntime =
     IO.contextShift(Scheduler.traced)
 
   private val resource = Resource.make(
@@ -25,8 +25,8 @@ final class AllocatedTest extends OurAsyncTestSuite:
 
   "Normal usage" in:
     val res = resource.flatMap(a => resource.map(a -> _))
-    res.use { case (a, b) =>
-      IO:
+    res
+      .use { (a, b) => IO:
         assert(nr == 2 && a == 1 && b == 2)
     }.unsafeToFuture()
 
@@ -36,5 +36,5 @@ final class AllocatedTest extends OurAsyncTestSuite:
     res.use { (a, b) =>
       IO:
         assert(nr == 2 && a.allocatedThing == 1 && b.allocatedThing == 2)
-    }.map(_ => assert(nr == 0))
+      .map(_ => assert(nr == 0))
       .unsafeToFuture()

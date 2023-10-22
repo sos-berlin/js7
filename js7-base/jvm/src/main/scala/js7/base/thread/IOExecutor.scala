@@ -1,6 +1,9 @@
 package js7.base.thread
 
-import cats.effect.{Resource, Sync}
+import cats.effect.implicits.asyncOps
+import cats.effect.kernel.Async
+import cats.effect.syntax.async.*
+import cats.effect.{IO, Resource, Sync}
 import com.typesafe.config.Config
 import java.lang.Thread.currentThread
 import java.util.concurrent.{Executor, ExecutorService}
@@ -12,9 +15,6 @@ import js7.base.thread.IOExecutor.*
 import js7.base.thread.ThreadPoolsBase.newBlockingExecutor
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
-import monix.eval.{Task, TaskLike}
-import monix.execution.ExecutionModel.SynchronousExecution
-import monix.execution.{Scheduler, UncaughtExceptionReporter}
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
 import scala.util.Try
 import scala.util.control.NonFatal
@@ -25,27 +25,42 @@ import scala.util.control.NonFatal
   */
 final class IOExecutor(executor: Executor, name: String) extends Executor:
 
-  implicit val executionContext: ExecutionContextExecutor =
-    ExecutionContext.fromExecutor(
-      executor,
-      t => logger.error(t.toStringWithCauses, t))
+  given executionContext: ExecutionContextExecutor =
+    ExecutionContext.fromExecutor(executor, reportException)
 
-  lazy val scheduler = CorrelId.enableScheduler(
-    Scheduler(executionContext, uncaughtExceptionReporter(executor, name), SynchronousExecution))
+  private def reportException(throwable: Throwable) =
+    def msg = "Uncaught exception in thread " +
+      s"${currentThread.threadId} '${currentThread.getName}': ${throwable.toStringWithCauses}"
 
-  def execute(runnable: Runnable) = executionContext.execute(runnable)
+    throwable match
+      case throwable: java.util.concurrent.RejectedExecutionException =>
+        val isShuttDown = executor match
+          case executor: ExecutorService => executor.isShutdown
+          case _ => false
+        if isShuttDown then
+          logger.error(s"'$name' ${executor.getClass.simpleScalaName} has been shut down: $msg",
+            throwable.nullIfNoStackTrace)
+        else
+          logger.error(msg, throwable.nullIfNoStackTrace)
 
-  def apply[F[_], A](body: F[A])(implicit F: TaskLike[F], src: sourcecode.FullName): Task[A] =
+      case _ =>
+        logger.error(msg, throwable.nullIfNoStackTrace)
+
+  def execute(runnable: Runnable) =
+    executionContext.execute(runnable)
+
+  def apply[F[_], A](body: F[A])(using F: Async[F], src: sourcecode.FullName): F[A] =
     // logger.traceF lets Monix check for cancellation, too (but why?)
     // Without it, the body seems be executed after a cancellation,
     // despite executor has already been terminated (observed with DirectoryWatch).
     logger.traceF(s"${src.value} --> IOExecutor($name).apply")(
-      F(body) executeOn scheduler)
+      body.evalOn(executionContext))
 
 
 object IOExecutor:
   private val logger = Logger[this.type]
-  lazy val globalIOX =
+
+  lazy val globalIOX: IOExecutor =
     val name = "JS7 global I/O"
     new IOExecutor(
       newBlockingExecutor(name, keepAlive = 10.s),
@@ -76,29 +91,5 @@ object IOExecutor:
       }
     catch
       case NonFatal(t) => Future.failed(t)
-
-  private[thread] def uncaughtExceptionReporter(executor: Executor, name: String)
-  : UncaughtExceptionReporter =
-    throwable =>
-      def msg = "Uncaught exception in thread " +
-        s"${currentThread.threadId} '${currentThread.getName}': ${throwable.toStringWithCauses}"
-      throwable match
-        case throwable: java.util.concurrent.RejectedExecutionException =>
-          val isShuttDown = executor match
-            case executor: ExecutorService => executor.isShutdown
-            case _ => false
-          if isShuttDown then
-            logger.error(s"'$name' ${executor.getClass.simpleScalaName} has been shut down: $msg",
-              throwable.nullIfNoStackTrace)
-          else
-            logger.error(msg, throwable.nullIfNoStackTrace)
-
-        case NonFatal(_) =>
-          logger.error(msg, throwable.nullIfNoStackTrace)
-
-        case throwable =>
-          logger.error(msg, throwable.nullIfNoStackTrace)
-          // Writes to stderr:
-          UncaughtExceptionReporter.default.reportFailure(throwable)
 
   java8Polyfill()

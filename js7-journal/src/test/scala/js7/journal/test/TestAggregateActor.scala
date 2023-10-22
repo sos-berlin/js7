@@ -70,8 +70,8 @@ extends KeyedJournalingActor[TestState, TestEvent]:
         case Command.AcceptEarly =>
           val sender = this.sender()
           val event = TestEvent.NothingDone
-          persistAcceptEarlyTask(event).runToFuture onComplete:
-            // persistAcceptEarlyTask does not update persistedEventId
+          persistAcceptEarlyIO(event).runToFuture onComplete:
+            // persistAcceptEarlyIO does not update persistedEventId
             case Success(Right(_: Accepted)) => sender ! Response.Completed(disturbance)
             case Success(Left(problem)) =>
               logger.error(problem.toString)

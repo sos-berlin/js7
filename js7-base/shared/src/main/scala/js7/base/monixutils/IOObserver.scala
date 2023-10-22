@@ -1,19 +1,19 @@
 package js7.base.monixutils
 
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Ack
 import monix.execution.Ack.{Continue, Stop}
 import monix.reactive.Observer
 import scala.concurrent.Future
 import scala.util.Success
 
-final class TaskObserver[A] private(observer: Observer[A])
+final class IOObserver[A] private(observer: Observer[A])
 { self =>
   @volatile private var ack: Future[Ack] = Continue
   @volatile private var completed = false
 
-  def send(a: A): Task[Ack] =
-    Task.deferFutureAction(implicit s =>
+  def send(a: A): IO[Ack] =
+    IO.deferFutureAction(implicit s =>
       self.synchronized {
         ack match {
           case Continue =>
@@ -43,20 +43,20 @@ final class TaskObserver[A] private(observer: Observer[A])
         }
       })
 
-  def sync: Task[Unit] =
-    Task
+  def sync: IO[Unit] =
+    IO
       .deferFutureAction(implicit s =>
         ack.syncMap(identity))
       .void
 
-  def complete: Task[Unit] =
-    Task.defer:
+  def complete: IO[Unit] =
+    IO.defer:
       self.synchronized:
         if completed then
-          Task.unit
+          IO.unit
         else
           completed = true
-          Task
+          IO
             .deferFutureAction { implicit s =>
               ack = ack.syncTryFlatten.syncMap { _ =>
                 observer.onComplete()
@@ -68,6 +68,6 @@ final class TaskObserver[A] private(observer: Observer[A])
 }
 
 
-object TaskObserver:
-  def apply[A](observer: Observer[A]): TaskObserver[A] =
-    new TaskObserver(observer)
+object IOObserver:
+  def apply[A](observer: Observer[A]): IOObserver[A] =
+    new IOObserver(observer)

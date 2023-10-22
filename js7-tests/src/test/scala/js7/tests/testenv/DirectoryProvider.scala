@@ -17,7 +17,7 @@ import js7.base.io.https.{HttpsConfig, KeyStoreRef, TrustStoreRef}
 import js7.base.log.{CorrelId, Logger}
 import js7.base.problem.Checked.*
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.closeOnError
 import js7.base.utils.CatsBlocking.BlockingTaskResource
@@ -48,11 +48,11 @@ import js7.proxy.ControllerApi
 import js7.service.pgp.PgpSigner
 import js7.subagent.Subagent
 import js7.tests.testenv.DirectoryProvider.*
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.traced
-import monix.execution.atomic.AtomicBoolean
-import monix.reactive.Observable
+import js7.base.utils.Atomic
+import fs2.Stream
 import org.jetbrains.annotations.TestOnly
 import scala.collection.immutable.{Iterable, Map}
 import scala.concurrent.duration.*
@@ -129,7 +129,7 @@ extends HasCloser:
   lazy val subagentItems: Vector[SubagentItem] = agentEnvs.map(_.subagentItem) ++ bareSubagentItems
   lazy val subagentId: SubagentId = agentEnvs.head.localSubagentId
 
-  private val itemsHaveBeenAdded = AtomicBoolean(false)
+  private val itemsHaveBeenAdded = Atomic(false)
 
   closeOnError(this):
     agentEnvs foreach prepareAgentFiles
@@ -153,7 +153,7 @@ extends HasCloser:
     itemSigner.sign(item)
 
   /** Proxy's ControllerApi */
-  def controllerApiResource(runningController: RunningController): Resource[Task, ControllerApi] =
+  def controllerApiResource(runningController: RunningController): Resource[IO, ControllerApi] =
     ControllerApi.resource(
       admissionsToApiResource(
         Nel.one(controllerAdmission(runningController)))(
@@ -214,7 +214,7 @@ extends HasCloser:
     config: Config = ConfigFactory.empty,
     httpPort: Option[Int] = Some(controllerPort_),
     httpsPort: Option[Int] = None)
-  : Resource[Task, TestController] =
+  : Resource[IO, TestController] =
     Resource.make(
       runningControllerResource(testWiring, config, httpPort, httpsPort)
         .toAllocated
@@ -229,7 +229,7 @@ extends HasCloser:
     config: Config = ConfigFactory.empty,
     httpPort: Option[Int] = Some(controllerPort_),
     httpsPort: Option[Int] = None)
-  : Resource[Task, RunningController] =
+  : Resource[IO, RunningController] =
     val conf = ControllerConfiguration.forTest(
       configAndData = controllerEnv.directory,
       config.withFallback(controllerConfig),
@@ -249,9 +249,9 @@ extends HasCloser:
             val signableItems = versionedItems ++ items.collect { case o: SignableSimpleItem => o }
             runningController
               .updateItemsAsSystemUser(
-                Observable.from(items).collect { case o: UnsignedSimpleItem => ItemOperation.AddOrChangeSimple(o) } ++
-                  Observable.fromIterable(versionedItems.nonEmpty ? ItemOperation.AddVersion(Vinitial)) ++
-                  Observable.fromIterable(signableItems)
+                Stream.from(items).collect { case o: UnsignedSimpleItem => ItemOperation.AddOrChangeSimple(o) } ++
+                  Stream.fromIterable(versionedItems.nonEmpty ? ItemOperation.AddVersion(Vinitial)) ++
+                  Stream.fromIterable(signableItems)
                     .map(itemSigner.toSignedString)
                     .map(ItemOperation.AddOrChangeSigned.apply))
               .await(99.s).orThrow
@@ -260,11 +260,11 @@ extends HasCloser:
         logger.debug(t.toStringWithCauses, t)
 
     CorrelId.bindNew(
-      RunningController.threadPoolResource[Task](conf, orCommon = scheduler)
+      RunningController.threadPoolResource[IO](conf, orCommon = scheduler)
         .flatMap(js7Scheduler =>
           RunningController
             .resource(conf, testWiring)(js7Scheduler)
-            .evalTap(runningController => Task {
+            .evalTap(runningController => IO {
               startForTest(runningController)
             })))
 
@@ -292,18 +292,18 @@ extends HasCloser:
     result
 
   def startAgents(testWiring: RunningAgent.TestWiring = RunningAgent.TestWiring.empty)
-  : Task[Seq[TestAgent]] =
+  : IO[Seq[TestAgent]] =
     agentEnvs.parTraverse(a => startAgent(a.agentPath, testWiring))
 
   def startAgent(
     agentPath: AgentPath,
     testWiring: RunningAgent.TestWiring = RunningAgent.TestWiring.empty)
-  : Task[TestAgent] =
+  : IO[TestAgent] =
     TestAgent.start(
       agentToEnv(agentPath).agentConf,
       testWiring)
 
-  def startBareSubagents(): Task[Map[SubagentId, Allocated[Task, Subagent]]] =
+  def startBareSubagents(): IO[Map[SubagentId, Allocated[IO, Subagent]]] =
     bareSubagentItems
       .parTraverse(subagentItem =>
         bareSubagentResource(subagentItem, config = agentConfig)
@@ -319,11 +319,11 @@ extends HasCloser:
   : Unit =
     controller.updateItemsAsSystemUser(
       AddVersion(versionId) +:
-        (Observable.fromIterable(change)
+        (Stream.fromIterable(change)
           .map(_ withVersion versionId)
           .map(itemSigner.toSignedString)
           .map(AddOrChangeSigned(_)) ++
-          Observable.fromIterable(delete)
+          Stream.fromIterable(delete)
             .map(RemoveVersioned.apply))
     ).await(99.s).orThrow
 
@@ -340,9 +340,9 @@ extends HasCloser:
     isClusterBackup: Boolean = false,
     suppressSignatureKeys: Boolean = false,
     extraConfig: Config = ConfigFactory.empty)
-  : Resource[Task, DirectorEnv] =
+  : Resource[IO, DirectorEnv] =
     Resource
-      .fromAutoCloseable(Task(
+      .fromAutoCloseable(IO(
         newDirectorEnv(subagentItem, suffix, otherSubagentIds,
           isClusterBackup = isClusterBackup,
           suppressSignatureKeys = suppressSignatureKeys,
@@ -375,7 +375,7 @@ extends HasCloser:
     config: Config = ConfigFactory.empty,
     suffix: String = "",
     suppressSignatureKeys: Boolean = false)
-  : Resource[Task, Subagent] =
+  : Resource[IO, Subagent] =
     for
       env <- bareSubagentEnvResource(subagentItem,
         director = director,
@@ -391,9 +391,9 @@ extends HasCloser:
     suffix: String = "",
     suppressSignatureKeys: Boolean = false,
     extraConfig: Config = ConfigFactory.empty)
-  : Resource[Task, BareSubagentEnv] =
+  : Resource[IO, BareSubagentEnv] =
     Resource
-      .fromAutoCloseable(Task(
+      .fromAutoCloseable(IO(
         new BareSubagentEnv(
           subagentItem = subagentItem,
           directorSubagentId = director,
@@ -495,8 +495,8 @@ object DirectoryProvider:
     admissions: Nel[Admission],
     httpsConfig: HttpsConfig,
     config: Config = ConfigFactory.empty,
-    onUndecidableClusterNodeLoss: OnUndecidableClusterNodeLoss = _ => Task.unit)
-  : Resource[Task, ClusterWatchService] =
+    onUndecidableClusterNodeLoss: OnUndecidableClusterNodeLoss = _ => IO.unit)
+  : Resource[IO, ClusterWatchService] =
     Pekkos
       .actorSystemResource(clusterWatchId.string)
       .flatMap(implicit actorSystem =>

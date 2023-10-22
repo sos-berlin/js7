@@ -11,7 +11,7 @@ import js7.base.log.Logger
 import js7.base.problem.Checked.*
 import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.SuccessFuture
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.item.BasicItemEvent.ItemAttached
@@ -24,13 +24,13 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.filewatch.FileWatchDelayTest.*
 import js7.tests.jobs.DeleteFileJob
 import js7.tests.testenv.ControllerAgentForScalaTest
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
 
 final class FileWatchDelayTest extends OurTestSuite, ControllerAgentForScalaTest:
-  
+
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.journal.remove-obsolete-files = false
@@ -70,7 +70,7 @@ final class FileWatchDelayTest extends OurTestSuite, ControllerAgentForScalaTest
     await[ItemAttached](_.event.key == orderWatchPath)
 
     // Each test has an increasing sequence of file modifications, delaying FileAdded and OrderAdded.
-    def delayedFileAddedTest(i: Int) = Task:
+    def delayedFileAddedTest(i: Int) = IO:
       val filename = s"file-$i:"
       withClue(filename):
         val file = watchedDirectory / filename

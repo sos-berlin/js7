@@ -3,7 +3,7 @@ package js7.base.monixutils
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurAsyncTestSuite
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler.Implicits.traced
 import scala.collection.View
 import scala.util.{Failure, Success}
@@ -12,13 +12,13 @@ final class AsyncMapTest extends OurAsyncTestSuite
 {
   private val asyncMap = AsyncMap(Map(1 -> "EINS"))
 
-  private def update(maybe: Option[String]): Task[String] =
-    maybe.fold(Task("FIRST"))(o => Task.pure(o + "-UPDATED"))
+  private def update(maybe: Option[String]): IO[String] =
+    maybe.fold(IO("FIRST"))(o => IO.pure(o + "-UPDATED"))
 
-  private def propertlyCrashingUpdate(maybe: Option[String]): Task[String] =
-    Task.raiseError(new RuntimeException("CRASH"))
+  private def propertlyCrashingUpdate(maybe: Option[String]): IO[String] =
+    IO.raiseError(new RuntimeException("CRASH"))
 
-  private def earlyCrashingUpdate(maybe: Option[String]): Task[String] =
+  private def earlyCrashingUpdate(maybe: Option[String]): IO[String] =
     throw new RuntimeException("CRASH")
 
   "get existing" in {
@@ -40,13 +40,13 @@ final class AsyncMapTest extends OurAsyncTestSuite
   "remove" in {
     asyncMap
       .update(2, {
-        case None => Task("ZWEI")
+        case None => IO("ZWEI")
         case o => fail(s"UNEXPECTED: $o")
       })
       .flatMap(_ => asyncMap.remove(2))
-      .flatMap(maybe => Task(assert(maybe == Some("ZWEI"))))
+      .flatMap(maybe => IO(assert(maybe == Some("ZWEI"))))
       .flatMap(_ => asyncMap.remove(2))
-      .flatMap(maybe => Task(assert(maybe == None)))
+      .flatMap(maybe => IO(assert(maybe == None)))
       .runToFuture
   }
 
@@ -71,7 +71,7 @@ final class AsyncMapTest extends OurAsyncTestSuite
             case Success(_) => fail()
             case Failure(t) => assert(t.getMessage == "CRASH")
           }
-          .tapEval(_ => Task {
+          .tapEval(_ => IO {
             // assert that the lock is released
             assert(asyncMap.get(0) == Some("FIRST-UPDATED"))
           })
@@ -99,10 +99,10 @@ final class AsyncMapTest extends OurAsyncTestSuite
   }
 
   "updateChecked" - {
-    def updateChecked(maybe: Option[String]): Task[Checked[String]] =
+    def updateChecked(maybe: Option[String]): IO[Checked[String]] =
       maybe match {
-        case None => Task(Right("FIRST"))
-        case Some(_) => Task(Left(Problem("EXISTING")))
+        case None => IO(Right("FIRST"))
+        case Some(_) => IO(Left(Problem("EXISTING")))
       }
 
     "standard" in {
@@ -118,10 +118,10 @@ final class AsyncMapTest extends OurAsyncTestSuite
     }
 
     "updateChecked, crashing" - {
-      def properlyCrashingUpdateChecked(maybe: Option[String]): Task[Checked[String]] =
-        Task.raiseError(new RuntimeException("CRASH"))
+      def properlyCrashingUpdateChecked(maybe: Option[String]): IO[Checked[String]] =
+        IO.raiseError(new RuntimeException("CRASH"))
 
-      def earlyCrashingUpdateChecked(maybe: Option[String]): Task[Checked[String]] =
+      def earlyCrashingUpdateChecked(maybe: Option[String]): IO[Checked[String]] =
         throw new RuntimeException("CRASH")
 
       for ((upd, name) <- View(
@@ -135,7 +135,7 @@ final class AsyncMapTest extends OurAsyncTestSuite
               case Success(_) => fail()
               case Failure(t) => assert(t.getMessage == "CRASH")
             }
-            .tapEval(_ => Task {
+            .tapEval(_ => IO {
               // assert that the lock is released
               assert(asyncMap.get(0) == Some("FIRST-UPDATED"))
             })
@@ -148,10 +148,10 @@ final class AsyncMapTest extends OurAsyncTestSuite
   "updateCheckedWithResult" - {
     val asyncMap = AsyncMap(Map(0 -> "ZERO"))
 
-    def updateCheckedWithResult(maybe: Option[String]): Task[Checked[(String, Int)]] =
+    def updateCheckedWithResult(maybe: Option[String]): IO[Checked[(String, Int)]] =
       maybe match {
-        case None => Task(Right("FIRST" -> 7))
-        case Some(_) => Task(Left(Problem("EXISTING")))
+        case None => IO(Right("FIRST" -> 7))
+        case Some(_) => IO(Left(Problem("EXISTING")))
       }
 
     "standard, check result is 7" in {
@@ -174,10 +174,10 @@ final class AsyncMapTest extends OurAsyncTestSuite
     }
 
     "updateCheckedWithResult, crashing" - {
-      def properlyCrashingUpdateChecked(maybe: Option[String]): Task[Checked[(String, Int)]] =
-        Task.raiseError(new RuntimeException("CRASH"))
+      def properlyCrashingUpdateChecked(maybe: Option[String]): IO[Checked[(String, Int)]] =
+        IO.raiseError(new RuntimeException("CRASH"))
 
-      def earlyCrashingUpdateChecked(maybe: Option[String]): Task[Checked[(String, Int)]] =
+      def earlyCrashingUpdateChecked(maybe: Option[String]): IO[Checked[(String, Int)]] =
         throw new RuntimeException("CRASH")
 
       for ((upd, name) <- View(
@@ -191,7 +191,7 @@ final class AsyncMapTest extends OurAsyncTestSuite
               case Success(_) => fail()
               case Failure(t) => assert(t.getMessage == "CRASH")
             }
-            .tapEval(_ => Task {
+            .tapEval(_ => IO {
               // assert that the lock is released
               assert(asyncMap.get(0) == Some("ZERO"))
             })
@@ -305,17 +305,17 @@ final class AsyncMapTest extends OurAsyncTestSuite
       "update is allowed" in {
         (for
           checked <- asyncMap.insert(1, "EINS")
-          _ = Task(assert(checked.isRight))
+          _ = IO(assert(checked.isRight))
           _ <- asyncMap.initiateStop
 
           _ <- asyncMap.getAndUpdate(1, {
-            case Some("EINS") => Task("EINS*")
+            case Some("EINS") => IO("EINS*")
             case _ => fail()
           })
-          _ <- Task(assert(asyncMap.get(1) == Some("EINS*")))
+          _ <- IO(assert(asyncMap.get(1) == Some("EINS*")))
 
-          tried <- asyncMap.getOrElseUpdate(2, Task("ZWEI")).materialize
-          _ <- Task(assert(tried.isFailure))
+          tried <- asyncMap.getOrElseUpdate(2, IO("ZWEI")).materialize
+          _ <- IO(assert(tried.isFailure))
 
           _ <- asyncMap.remove(1)
           _ <- asyncMap.whenStopped

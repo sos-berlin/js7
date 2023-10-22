@@ -1,5 +1,6 @@
 package js7.common.pekkohttp
 
+import cats.effect.IO
 import cats.effect.concurrent.Deferred
 import io.circe.Encoder
 import io.circe.syntax.EncoderOps
@@ -14,9 +15,6 @@ import js7.common.http.PekkoHttpClient.`x-js7-request-id`
 import js7.common.http.StreamingSupport.PekkoObservable
 import js7.common.pekkohttp.ByteSequenceChunkerObservable.syntax.RichByteSequenceChunkerObservable
 import js7.common.pekkoutils.ByteStrings.syntax.byteStringByteSequence
-import monix.eval.Task
-import monix.execution.Scheduler
-import monix.reactive.Observable
 import org.apache.pekko.http.scaladsl.marshalling.{ToResponseMarshallable, ToResponseMarshaller}
 import org.apache.pekko.http.scaladsl.model.HttpEntity.Chunk
 import org.apache.pekko.http.scaladsl.model.headers.Accept
@@ -247,17 +245,17 @@ object PekkoHttpServerUtils:
           else
             Unmatched
 
-  def completeTask[A: ToResponseMarshaller](task: Task[A])(implicit s: Scheduler): Route =
+  def completeIO[A: ToResponseMarshaller](io: IO[A])(implicit s: Scheduler): Route =
     optionalAttribute(WebLogDirectives.CorrelIdAttributeKey):
       case None =>
         complete:
-          task.runToFuture
+          io.unsafeToFuture()
 
       case Some(correlId) =>
         complete:
           import js7.base.log.CanBindCorrelId.cancelableFuture
           correlId.bind {
-            task.runToFuture
+            io.runToFuture
           } (cancelableFuture)
 
   val extractJs7RequestId: Directive1[Long] =
@@ -300,7 +298,7 @@ object PekkoHttpServerUtils:
       case None => chunks
       case Some(h) =>
         for
-          terminated <- Observable.from(Deferred[Task, Unit])
+          terminated <- Observable.from(Deferred[IO, Unit])
           chunk <-
             Observable(
               chunks.guarantee(terminated.complete(())),
@@ -312,7 +310,7 @@ object PekkoHttpServerUtils:
       HttpEntity.Chunked(
         `application/x-ndjson`,
         obs
-          .takeUntilCompletedAndDo(shuttingDownCompletion)(_ => Task {
+          .takeUntilCompletedAndDo(shuttingDownCompletion)(_ => IO {
             logger.debug(s"Shutdown observing events for $userId ${httpRequest.uri}")
           })
           .toPekkoSourceForHttpResponse))

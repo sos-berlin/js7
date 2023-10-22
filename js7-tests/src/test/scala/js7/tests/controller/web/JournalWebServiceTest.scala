@@ -11,7 +11,7 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger
 import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Closer.syntax.*
 import js7.base.utils.StackTraces.StackTraceThrowable
@@ -33,13 +33,13 @@ import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.controller.web.JournalWebServiceTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.script
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.BeforeAndAfterAll
 import scala.collection.mutable
 
 final class JournalWebServiceTest extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest:
-  
+
   protected val agentPaths = agentPath :: Nil
   protected val items = Seq(workflow)
   private lazy val uri = controller.localUri
@@ -66,7 +66,7 @@ final class JournalWebServiceTest extends OurTestSuite, BeforeAndAfterAll, Contr
 
   "/controller/api/journal requires authentication" in:
     val e = intercept[HttpException]:
-      httpClient.getDecodedLinesObservable[String](Uri(s"$uri/controller/api/journal?file=0&position=0")) await 99.s
+      httpClient.getDecodedLinesStream[String](Uri(s"$uri/controller/api/journal?file=0&position=0")) await 99.s
     assert(e.status == Unauthorized)
 
   "Login" in:
@@ -78,12 +78,12 @@ final class JournalWebServiceTest extends OurTestSuite, BeforeAndAfterAll, Contr
     var replicated = ByteArray.empty
     controller.eventWatch.await[AgentReady](_ => true)  // Await last event
 
-    val whenReplicated = httpClient.getRawLinesObservable(Uri(s"$uri/controller/api/journal?markEOF=true&file=0&position=0"))
+    val whenReplicated = httpClient.getRawLinesStream(Uri(s"$uri/controller/api/journal?markEOF=true&file=0&position=0"))
       .await(99.s)
       .foreach { replicated ++= _ }
 
     val observedLengths = mutable.Buffer[String]()
-    val whenLengthsObserved = httpClient.getRawLinesObservable(Uri(s"$uri/controller/api/journal?markEOF=true&file=0&position=0&return=ack"))
+    val whenLengthsObserved = httpClient.getRawLinesStream(Uri(s"$uri/controller/api/journal?markEOF=true&file=0&position=0&return=ack"))
       .await(99.s)
       .foreach(o => observedLengths += o.utf8String)
 
@@ -115,7 +115,7 @@ final class JournalWebServiceTest extends OurTestSuite, BeforeAndAfterAll, Contr
   "Timeout" in:
     var eventId = controller.eventWatch.await[AgentDedicated](timeout = 9.s).last.eventId
     eventId = controller.eventWatch.await[AgentEventsObserved](timeout = 9.s, after = eventId).last.eventId
-    val lines = httpClient.getRawLinesObservable(Uri(s"$uri/controller/api/journal?timeout=0&markEOF=true&after=$eventId"))
+    val lines = httpClient.getRawLinesStream(Uri(s"$uri/controller/api/journal?timeout=0&markEOF=true&after=$eventId"))
       .await(99.s)
       .map(_.utf8String)
       .toListL
@@ -127,13 +127,13 @@ final class JournalWebServiceTest extends OurTestSuite, BeforeAndAfterAll, Contr
     var observedLines = Vector.empty[String]
     val fileAfter = controller.eventWatch.lastFileEventId
     val u = Uri(s"$uri/controller/api/journal?markEOF=true&file=$fileAfter&position=0")
-    httpClient.getRawLinesObservable(u).await(99.s)
+    httpClient.getRawLinesStream(u).await(99.s)
       .foreach:
         lines :+= _.utf8String
     val observeWithHeartbeat = httpClient
-      .getRawLinesObservable(Uri(u.string + "&heartbeat=0.1")).await(99.s)
+      .getRawLinesStream(Uri(u.string + "&heartbeat=0.1")).await(99.s)
       .timeoutOnSlowUpstream(2.s/*sometimes 1s is too short*/)  // Check heartbeat
-      .doOnError(t => Task(logger.error(t.toString)))
+      .doOnError(t => IO(logger.error(t.toString)))
       .foreach { bytes =>
         observedLines :+= bytes.utf8String
         logger.debug(s"observeWithHeartbeat: ${bytes.utf8String.trim}")

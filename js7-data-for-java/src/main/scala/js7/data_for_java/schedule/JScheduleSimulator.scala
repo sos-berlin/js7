@@ -11,7 +11,7 @@ import scala.jdk.StreamConverters.IterableHasSeqStream
 trait JScheduleSimulator:
   this: JScheduleCalculator =>
 
-  def simulate(timeInterval: JTimeInterval, actionDuration: Duration): Stream[Scheduled] =
+  def simulate(timeInterval: JTimeInterval, actionDuration: Duration): Stream[IO, Scheduled] =
     asScala
       .simulate(timeInterval.asScala, actionDuration.toFiniteDuration)
       .map(Scheduled(_))

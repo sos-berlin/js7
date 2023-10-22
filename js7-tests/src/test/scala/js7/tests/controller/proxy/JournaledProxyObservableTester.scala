@@ -4,33 +4,33 @@ import js7.base.utils.ScalaUtils.*
 import js7.data.event.{Event, KeyedEvent, SnapshotableState, Stamped}
 import js7.proxy.JournaledProxy
 import js7.proxy.data.event.EventAndState
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler
 import scala.concurrent.Promise
 import scala.reflect.ClassTag
 
-object JournaledProxyObservableTester:
+object JournaledProxyStreamTester:
   object syntax:
     implicit final class TestJournaledProxy[S <: SnapshotableState[S]](
       private val underlying: JournaledProxy[S])
     extends AnyVal:
       def awaitEvent[E <: Event: ClassTag](
         predicate: EventAndState[E, S] => Boolean = (_: EventAndState[E, S]) => true)
-        (body: Task[?])
+        (body: IO[?])
         (implicit s: Scheduler)
-      : Task[EventAndState[E, S]] =
-        JournaledProxyObservableTester.this.awaitEvent(underlying, predicate)(body)
+      : IO[EventAndState[E, S]] =
+        JournaledProxyStreamTester.this.awaitEvent(underlying, predicate)(body)
 
   private def awaitEvent[E <: Event: ClassTag, S <: SnapshotableState[S]](
     proxy: JournaledProxy[S],
     predicate: EventAndState[E, S] => Boolean = (_: EventAndState[E, S]) => true)
-    (body: Task[?])
+    (body: IO[?])
     (implicit s: Scheduler)
-  : Task[EventAndState[E, S]] =
-    // The observing promise tries to avoid the race condition between start of observable and body.
+  : IO[EventAndState[E, S]] =
+    // The observing promise tries to avoid the race condition between start of stream and body.
     val observingStarted = Promise[Unit]()
-    val whenAdded = proxy.observable
-      .doAfterSubscribe(Task {
+    val whenAdded = proxy.stream
+      .doAfterSubscribe(IO {
         observingStarted.success(())
       })
       .collect:
@@ -40,9 +40,9 @@ object JournaledProxyObservableTester:
       .filter(predicate)
       .headL
       .runToFuture
-    Task.fromFuture(observingStarted.future)
+    IO.fromFuture(observingStarted.future)
       .flatMap(_ => body)
-      .flatMap(_ => Task.fromFuture(whenAdded))
-      .guarantee(Task {
+      .flatMap(_ => IO.fromFuture(whenAdded))
+      .guarantee(IO {
         whenAdded.cancel()
       })

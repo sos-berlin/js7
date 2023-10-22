@@ -15,22 +15,22 @@ import js7.launcher.configuration.JobLauncherConf
 import js7.launcher.configuration.Problems.SignedInjectionNotAllowed
 import js7.launcher.process.{AbsolutePathJobLauncher, CommandLineJobLauncher, RelativePathJobLauncher, ShellScriptJobLauncher}
 import js7.launcher.{OrderProcess, ProcessOrder}
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler
 import scala.util.Try
 
 trait JobLauncher:
   protected val jobConf: JobConf
 
-  def precheckAndWarn = Task.unit
+  def precheckAndWarn = IO.unit
 
-  protected def start: Task[Checked[Unit]]
+  protected def start: IO[Checked[Unit]]
 
-  def stop: Task[Unit]
+  def stop: IO[Unit]
 
-  def toOrderProcess(processOrder: ProcessOrder): Task[Checked[OrderProcess]]
+  def toOrderProcess(processOrder: ProcessOrder): IO[Checked[OrderProcess]]
 
-  final lazy val startIfNeeded: Task[Checked[Unit]] =
+  final lazy val startIfNeeded: IO[Checked[Unit]] =
     start.memoize
 
   override def toString = s"${getClass.simpleScalaName}(${jobConf.jobKey})"

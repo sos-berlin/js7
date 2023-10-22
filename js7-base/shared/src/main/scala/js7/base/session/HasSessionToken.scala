@@ -1,7 +1,7 @@
 package js7.base.session
 
+import cats.effect.IO
 import js7.base.auth.SessionToken
-import monix.eval.Task
 
 /**
   * @author Joacim Zschimmer
@@ -13,5 +13,5 @@ trait HasSessionToken:
   final def hasSession: Boolean =
     sessionToken.isDefined
 
-  implicit def implicitSessionToken: Task[Option[SessionToken]] =
-    Task(sessionToken)
+  implicit def implicitSessionToken: IO[Option[SessionToken]] =
+    IO(sessionToken)

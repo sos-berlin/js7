@@ -23,7 +23,7 @@ import js7.data.event.{Event, EventId}
 import js7.proxy.data.event.ProxyEvent
 import js7.proxy.{ControllerApi, JournaledStateEventBus}
 import js7.tests.controller.proxy.TestControllerProxy.*
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler
 import org.apache.pekko.http.scaladsl.common.JsonEntityStreamingSupport
 import org.apache.pekko.http.scaladsl.marshalling.ToEntityMarshaller
@@ -31,7 +31,7 @@ import org.apache.pekko.http.scaladsl.server.Directives.{complete, get, pathSing
 import scala.util.Try
 
 private final class TestControllerProxy(controllerUri: Uri, httpPort: Int)(implicit scheduler: Scheduler):
-  def run(): Task[Unit] =
+  def run(): IO[Unit] =
     Pekkos.actorSystemResource("TestControllerProxy")
       .use { implicit actorSystem =>
         val apiResource = PekkoHttpControllerApi.resource(Admission(controllerUri, userAndPassword))
@@ -43,10 +43,10 @@ private final class TestControllerProxy(controllerUri: Uri, httpPort: Int)(impli
         api.startProxy(proxyEventBus, eventBus)
           .flatMap { proxy =>
             PekkoWebServer
-              .httpResource(httpPort, ConfigFactory.empty, webServiceRoute(Task(currentState)))
+              .httpResource(httpPort, ConfigFactory.empty, webServiceRoute(IO(currentState)))
               .use(_ =>
-                Task.tailRecM(())(_ =>
-                  Task {
+                IO.tailRecM(())(_ =>
+                  IO {
                     println(
                       Try(currentState).map(controllerState =>
                         EventId.toTimestamp(controllerState.eventId).show + " " +
@@ -77,7 +77,7 @@ object TestControllerProxy:
         .runSyncUnsafe()
     }
 
-  private def webServiceRoute(snapshot: Task[ControllerState])(implicit s: Scheduler) =
+  private def webServiceRoute(snapshot: IO[ControllerState])(implicit s: Scheduler) =
     pathSegments("proxy/api/snapshot"):
       pathSingleSlash:
         get:
@@ -86,5 +86,5 @@ object TestControllerProxy:
               implicit val x: JsonEntityStreamingSupport = NdJsonStreamingSupport
               implicit val y: TypedJsonCodec[Any] = ControllerState.snapshotObjectJsonCodec
               implicit val z: ToEntityMarshaller[Any] = jsonSeqMarshaller
-              monixObservableToMarshallable(controllerState.toSnapshotObservable)
+              monixStreamToMarshallable(controllerState.toSnapshotStream)
             }.runToFuture)

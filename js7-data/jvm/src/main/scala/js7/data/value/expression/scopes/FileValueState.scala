@@ -8,7 +8,7 @@ import java.nio.file.{Files, Path, Paths}
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.utils.Atomic.syntax.*
+import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ByteUnits.toKBGB
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichThrowable}

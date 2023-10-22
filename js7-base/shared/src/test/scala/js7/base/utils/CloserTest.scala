@@ -3,7 +3,7 @@ package js7.base.utils
 import java.util.concurrent.ConcurrentLinkedQueue
 import js7.base.test.OurTestSuite
 import js7.base.utils.CloserTest.*
-import monix.execution.atomic.AtomicBoolean
+import js7.base.utils.Atomic
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
 import scala.util.control.NoStackTrace

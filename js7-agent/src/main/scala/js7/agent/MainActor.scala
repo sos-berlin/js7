@@ -15,7 +15,7 @@ import js7.core.command.CommandMeta
 import js7.data.subagent.SubagentId
 import js7.journal.state.FileJournal
 import js7.subagent.Subagent
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler
 import scala.concurrent.Promise
 import scala.util.control.NoStackTrace
@@ -27,7 +27,7 @@ final class MainActor(
   forDirector: Subagent.ForDirector,
   failedOverSubagentId: Option[SubagentId],
   clusterNode: ClusterNode[AgentState],
-  journalAllocated: Allocated[Task, FileJournal[AgentState]],
+  journalAllocated: Allocated[IO, FileJournal[AgentState]],
   agentConfiguration: AgentConfiguration,
   testCommandHandler: Option[CommandHandler],
   readyPromise: Promise[Ready],

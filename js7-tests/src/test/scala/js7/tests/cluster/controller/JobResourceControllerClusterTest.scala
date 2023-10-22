@@ -1,7 +1,7 @@
 package js7.tests.cluster.controller
 
 import js7.base.problem.Checked.Ops
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.cluster.ClusterEvent.ClusterCoupled
@@ -15,7 +15,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.cluster.controller.JobResourceControllerClusterTest.*
 import js7.tests.jobs.EmptyJob
 import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
+import fs2.Stream
 
 final class JobResourceControllerClusterTest extends ControllerClusterTester:
   "Cluster handles JobResources properly" in:
@@ -24,7 +24,7 @@ final class JobResourceControllerClusterTest extends ControllerClusterTester:
         backup.runController(dontWaitUntilReady = true) { backupController =>
           primary.runController() { primaryController =>
             primaryController.eventWatch.await[ClusterCoupled]()
-            primaryController.updateItemsAsSystemUser(Observable(
+            primaryController.updateItemsAsSystemUser(Stream(
               AddOrChangeSigned(primary.itemSigner.toSignedString(jobResource)),
               AddVersion(versionId),
               AddOrChangeSigned(primary.itemSigner.toSignedString(workflow))

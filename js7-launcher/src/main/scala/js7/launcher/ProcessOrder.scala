@@ -15,7 +15,7 @@ import js7.data.value.{MissingValue, Value}
 import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.launcher.ProcessOrder.evalEnv
-import monix.eval.Task
+import cats.effect.IO
 import scala.collection.MapView
 
 final case class ProcessOrder(
@@ -71,7 +71,7 @@ object ProcessOrder:
     controllerId: ControllerId,
     stdObservers: StdObservers,
     fileValueState: FileValueState)
-  : Resource[Task, ProcessOrder] =
+  : Resource[IO, ProcessOrder] =
     for fileValueScope <- FileValueScope.resource(fileValueState) yield
       ProcessOrder(
         order, workflow, jobKey, workflowJob, jobResources,

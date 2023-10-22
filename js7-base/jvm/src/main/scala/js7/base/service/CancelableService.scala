@@ -1,14 +1,13 @@
 package js7.base.service
 
 import cats.effect.Resource
-import monix.eval.Task
+import cats.effect.IO
 
-final class CancelableService private(
-  protected val run: Task[Unit])
+final class CancelableService private(protected val run: IO[Unit])
 extends Service.StoppableByRequest:
 
   protected def start =
-    startService(Task
+    startService(IO
       .race(untilStopRequested, run) // Cancels run
       .map(_.fold(identity, identity)))
 
@@ -16,5 +15,5 @@ extends Service.StoppableByRequest:
 
 
 object CancelableService:
-  def resource(run: Task[Unit]): Resource[Task, CancelableService] =
-    Service.resource(Task(new CancelableService(run)))
+  def resource(run: IO[Unit]): Resource[IO, CancelableService] =
+    Service.resource(IO(new CancelableService(run)))

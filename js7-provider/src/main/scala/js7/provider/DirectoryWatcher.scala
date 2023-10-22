@@ -11,9 +11,9 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.closeOnError
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.provider.DirectoryWatcher.*
-import monix.execution.atomic.AtomicBoolean
+import js7.base.utils.Atomic
 import monix.execution.{Ack, Cancelable, Scheduler}
-import monix.reactive.Observable
+import fs2.Stream
 import scala.concurrent.Future
 import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.*
@@ -25,8 +25,8 @@ import scala.util.{Failure, Success}
 final class DirectoryWatcher(directory: Path, timeout: Duration)(implicit iox: IOExecutor, s: Scheduler)
 extends AutoCloseable:
   private val watchService = directory.getFileSystem.newWatchService()
-  private val closed = AtomicBoolean(false)
-  private val subscribed = AtomicBoolean(false)
+  private val closed = Atomic(false)
+  private val subscribed = Atomic(false)
 
   closeOnError(watchService):
     // Register early to get the events from now
@@ -38,10 +38,10 @@ extends AutoCloseable:
 
   def isClosed = closed.get()
 
-  /** Observable may only be subscribed to once, because it uses the outer WatchService. */
-  def singleUseObservable: Observable[Unit] =
+  /** Stream may only be subscribed to once, because it uses the outer WatchService. */
+  def singleUseStream: Stream[IO, Unit] =
     subscriber => {
-      if subscribed.getAndSet(true) then sys.error("DirectoryWatcher singleUseObservable is subscribable only once")
+      if subscribed.getAndSet(true) then sys.error("DirectoryWatcher singleUseStream is subscribable only once")
       new Cancelable:
         def cancel() =
           logger.trace(s"$directory: cancel")

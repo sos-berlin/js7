@@ -9,7 +9,7 @@ import js7.base.io.process.Processes.ShellFileExtension as sh
 import js7.base.problem.Checked.Ops
 import js7.base.session.SessionApi
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.controller.client.{PekkoHttpControllerApi, HttpControllerApi}
 import js7.core.command.CommandMeta

@@ -10,22 +10,22 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.order.FreshOrder
 import js7.provider.scheduledorder.OrderScheduleGenerator.*
 import js7.provider.scheduledorder.oldruntime.InstantInterval
-import monix.eval.Task
-import monix.execution.atomic.AtomicBoolean
-import monix.execution.cancelables.SerialCancelable
+import cats.effect.IO
+import js7.base.utils.Atomic
+import js7.base.monixlike.SerialCancelable
 import monix.execution.{Cancelable, Scheduler}
 import scala.util.{Failure, Success}
 
 /**
   * @author Joacim Zschimmer
   */
-final class OrderScheduleGenerator(addOrders: Seq[FreshOrder] => Task[Completed], config: Config):
+final class OrderScheduleGenerator(addOrders: Seq[FreshOrder] => IO[Completed], config: Config):
   private val addEvery = config.getDuration("js7.provider.add-orders-every").toFiniteDuration
   private val addEarlier = config.getDuration("js7.provider.add-orders-earlier").toFiniteDuration
   @volatile private var scheduledOrderGeneratorKeeper = new ScheduledOrderGeneratorKeeper(Nil)
   @volatile private var generatedUntil = Timestamp.now.roundToNextSecond
   @volatile private var timer = Cancelable.empty
-  private val started = AtomicBoolean(false)
+  private val started = Atomic(false)
   @volatile private var closed = false
   private val addOrdersCancelable = SerialCancelable()
 

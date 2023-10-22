@@ -2,7 +2,7 @@ package js7.tests.testenv
 
 import java.util.Locale
 import js7.base.crypt.Signed
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Atomic, Lazy}
@@ -11,7 +11,7 @@ import js7.data.item.ItemOperation.{AddOrChangeOperation, AddOrChangeSigned, Add
 import js7.data.item.{InventoryItem, InventoryItemPath, ItemOperation, SignableItem, UnsignedSimpleItem, VersionId, VersionedItem, VersionedItemPath}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import monix.execution.Scheduler
-import monix.reactive.Observable
+import fs2.Stream
 import scala.annotation.tailrec
 
 trait BlockingItemUpdater:
@@ -76,8 +76,8 @@ trait BlockingItemUpdater:
 
     controller.api
       .updateItems(
-        Observable.fromIterable(versionId.toOption.map(AddVersion(_))) ++
-          Observable.fromIterable(operations))
+        Stream.fromIterable(versionId.toOption.map(AddVersion(_))) ++
+          Stream.fromIterable(operations))
       .await(99.s)
       .orThrow
 
@@ -86,7 +86,7 @@ trait BlockingItemUpdater:
   protected final def deleteItems(paths: InventoryItemPath*)(implicit s: Scheduler): Unit =
     controller.api
       .updateItems(
-        Observable.fromIterable(
+        Stream.fromIterable(
           (paths.exists(_.isInstanceOf[VersionedItemPath]) ? AddVersion(nextVersionId())) ++
             paths.map(ItemOperation.Remove(_))))
       .await(99.s)

@@ -1,12 +1,13 @@
 package js7.base.time
 
-import js7.base.monixutils.MonixDeadline.syntax.*
-import monix.execution.Scheduler
 import scala.collection.AbstractIterator
 import scala.concurrent.duration.{Duration, FiniteDuration}
+import cats.effect.unsafe.{IORuntime, Scheduler}
+import js7.base.utils.CatsUtils.syntax.now
+import js7.base.catsutils.CatsDeadline.given
 
 /** Returns an endless sequence of durations usable to delay operation. */
-final class DelayIterator(durations: Seq[FiniteDuration])(implicit scheduler: Scheduler)
+final class DelayIterator(durations: Seq[FiniteDuration])(using scheduler: Scheduler)
 extends AbstractIterator[FiniteDuration]:
 
   assert(durations.nonEmpty, "DelayIterator must not be empty")

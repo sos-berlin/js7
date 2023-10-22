@@ -9,7 +9,7 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.problem.Checked.*
 import js7.base.system.OperatingSystem.isMac
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Tests.isIntelliJIdea
 import js7.data.agent.AgentPath
@@ -33,11 +33,11 @@ import js7.tests.filewatch.FileWatch2Test.*
 import js7.tests.jobs.{DeleteFileJob, SemaphoreJob}
 import js7.tests.testenv.DirectoryProviderForScalaTest
 import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
+import fs2.Stream
 import java.io.File.separator
 
 final class FileWatch2Test extends OurTestSuite, DirectoryProviderForScalaTest:
-  
+
   protected val agentPaths = Seq(aAgentPath, bAgentPath)
   protected val items = Seq(workflow)
 
@@ -320,10 +320,10 @@ final class FileWatch2Test extends OurTestSuite, DirectoryProviderForScalaTest:
   private def checkAgentEvents(client: AgentClient): Unit =
     client.login().await(99.s)
     val keyedEvents = client
-      .eventObservable(EventRequest.singleClass[Event](after = EventId.BeforeFirst))
+      .eventStream(EventRequest.singleClass[Event](after = EventId.BeforeFirst))
       .await(99.s).orThrow
       .map(_.value)
-      .flatMap(ke => Observable.fromIterable(Some(ke.event)
+      .flatMap(ke => Stream.fromIterable(Some(ke.event)
         .collect {
           case e: AgentReady => e.copy(
             timezone = "Europe/Berlin",

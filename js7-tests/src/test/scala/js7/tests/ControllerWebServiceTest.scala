@@ -15,7 +15,7 @@ import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.system.ServerOperatingSystem.operatingSystem
 import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.{Timestamp, WaitForCondition}
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
@@ -38,9 +38,9 @@ import js7.journal.EventIdClock
 import js7.tester.CirceJsonTester.testJson
 import js7.tests.ControllerWebServiceTest.*
 import js7.tests.testenv.{ControllerAgentForScalaTest, ControllerEnv, DirectorEnv}
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
+import fs2.Stream
 import org.apache.pekko.http.scaladsl.model.ContentTypes.`text/plain(UTF-8)`
 import org.apache.pekko.http.scaladsl.model.MediaTypes.`application/json`
 import org.apache.pekko.http.scaladsl.model.StatusCodes.{Forbidden, NotFound, OK}
@@ -73,8 +73,8 @@ extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest
 
   private var sessionToken: String = "INVALID"
 
-  private implicit def implicitSessionToken: Task[Some[SessionToken]] =
-    Task(Some(SessionToken(SecretString(sessionToken))))
+  private implicit def implicitSessionToken: IO[Some[SessionToken]] =
+    IO(Some(SessionToken(SecretString(sessionToken))))
 
   override protected def agentTestWiring = RunningAgent.TestWiring(
     eventIdClock = Some(EventIdClock.fixed(2000)))
@@ -149,7 +149,7 @@ extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest
   "Add workflows" in {
     controller.updateItemsAsSystemUser(
       ItemOperation.AddVersion(VersionId("VERSION-1")) +:
-        Observable(
+        Stream(
           Workflow.of(WorkflowPath("WORKFLOW") ~ "VERSION-1",
             Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable(s"A$sh")))),
           Workflow.of(WorkflowPath("FOLDER/WORKFLOW-2") ~ "VERSION-1",

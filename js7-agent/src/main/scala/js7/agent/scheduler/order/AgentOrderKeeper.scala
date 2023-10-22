@@ -16,10 +16,10 @@ import js7.base.generic.Completed
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.{BlockingSymbol, CorrelId, Logger}
 import js7.base.monixutils.AsyncVariable
-import js7.base.monixutils.MonixBase.syntax.{RichCheckedTask, RichMonixTask}
+import js7.base.monixutils.MonixBase.syntax.{RichCheckedTask, RichMonixIO}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.RichTask
 import js7.base.time.JavaTime.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.{AdmissionTimeScheme, AlarmClock, TimeInterval}
@@ -62,7 +62,7 @@ import js7.journal.{JournalActor, MainJournalingActor}
 import js7.launcher.configuration.Problems.SignedInjectionNotAllowed
 import js7.subagent.Subagent
 import js7.subagent.director.SubagentKeeper
-import monix.eval.{Fiber, Task}
+import cats.effect.Fiber
 import monix.execution.{Cancelable, Scheduler}
 import org.apache.pekko.actor.{ActorRef, DeadLetterSuppression, Stash, Terminated}
 import org.apache.pekko.pattern.{ask, pipe}
@@ -84,8 +84,8 @@ final class AgentOrderKeeper(
   clusterNode: ClusterNode[AgentState],
   failedOverSubagentId: Option[SubagentId],
   recoveredAgentState : AgentState,
-  changeSubagentAndClusterNode: ItemAttachedToMe => Task[Checked[Unit]],
-  journalAllocated: Allocated[Task, FileJournal[AgentState]],
+  changeSubagentAndClusterNode: ItemAttachedToMe => IO[Checked[Unit]],
+  journalAllocated: Allocated[IO, FileJournal[AgentState]],
   shutDownOnce: SetOnce[AgentCommand.ShutDown],
   private implicit val clock: AlarmClock,
   conf: AgentConfiguration)
@@ -439,7 +439,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
     case AgentCommand.ResetSubagent(subagentId, force) =>
       val task =
         if journal.unsafeCurrentState().meta.directors.contains(subagentId) then
-          Task.left(Problem(s"$subagentId as an Agent Director cannot be reset"))
+          IO.left(Problem(s"$subagentId as an Agent Director cannot be reset"))
         else
           subagentKeeper.startResetSubagent(subagentId, force)
             .rightAs(AgentCommand.Response.Accepted)
@@ -492,29 +492,29 @@ extends MainJournalingActor[AgentState, Event], Stash:
 
   @volatile private var changeSubagentAndClusterNodeAndProceedFiberStop = false
   private val changeSubagentAndClusterNodeAndProceedFiber =
-    AsyncVariable(Fiber(Task.pure(Checked.unit), Task.unit))
+    AsyncVariable(Fiber(IO.pure(Checked.unit), IO.unit))
 
-  private def changeSubagentAndClusterNodeThenProceed(event: ItemAttachedToMe): Task[Checked[Unit]] =
+  private def changeSubagentAndClusterNodeThenProceed(event: ItemAttachedToMe): IO[Checked[Unit]] =
     changeSubagentAndClusterNodeAndProceedFiber
       .update { fiber =>
         changeSubagentAndClusterNodeAndProceedFiberStop = true
         fiber.join *>
-          Task.defer:
+          IO.defer:
             changeSubagentAndClusterNodeAndProceedFiberStop = false
             tryForeverChangeSubagentAndClusterNodeAndProceed(event)
               .start
       }
-      .flatMap(_.join.timeoutTo(10.s /*???*/ , Task.right(()) /*respond the command*/))
+      .flatMap(_.join.timeoutTo(10.s /*???*/ , IO.right(()) /*respond the command*/))
 
   private def tryForeverChangeSubagentAndClusterNodeAndProceed(event: ItemAttachedToMe)
-  : Task[Checked[Unit]] =
-    Task.defer:
+  : IO[Checked[Unit]] =
+    IO.defer:
       import event.item
       val label = s"${event.getClass.simpleScalaName}(${item.key})"
       val since = now
       val delays = continueWithLast(1.s, 3.s, 10.s)
       val sym = new BlockingSymbol
-      Task.tailRecM(()) { _ =>
+      IO.tailRecM(()) { _ =>
         changeSubagentAndClusterNode(event)
           .flatMapT(_ => proceedWithItem(item))
           .uncancelable // Only the loop should be cancelable, but not the inner operations
@@ -523,14 +523,14 @@ extends MainJournalingActor[AgentState, Event], Stash:
               sym.increment()
               logger.warn(
                 s"$sym $label => $problem — trying since ${since.elapsed.pretty} ...")
-              Task.sleep(delays.next()).as(Left(())/*repeat*/)
+              IO.sleep(delays.next()).as(Left(())/*repeat*/)
 
             case checked =>
               if sym.called then checked match {
                 case Left(problem) => logger.error(s"🔥 $label => $problem")
                 case Right(()) => logger.info(s"🟢 $label => Cluster setting has been changed")
               }
-              Task.right(checked)
+              IO.right(checked)
       }
 
   private def attachSignedItem(signed: Signed[SignableItem]): Future[Checked[Response.Accepted]] =
@@ -573,7 +573,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
             Future.successful(Left(Problem.pure(s"AgentCommand.AttachSignedItem(${signed.value.key}) for unknown SignableItem")))
 
   private def proceedWithItem(/*previous: Option[InventoryItem],*/ item: InventoryItem)
-  : Task[Checked[Unit]] =
+  : IO[Checked[Unit]] =
     item match
       case agentRef: AgentRef =>
         //val processLimitIncreased = previous
@@ -587,7 +587,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
       case subagentItem: SubagentItem =>
         journal.state.flatMap(_
           .idToSubagentItemState.get(subagentItem.id)
-          .fold(Task.pure(Checked.unit))(subagentItemState => subagentKeeper
+          .fold(IO.pure(Checked.unit))(subagentItemState => subagentKeeper
             .proceedWithSubagent(subagentItemState)
             .materializeIntoChecked))
 
@@ -600,9 +600,9 @@ extends MainJournalingActor[AgentState, Event], Stash:
           for order <- journal.unsafeCurrentState().orders
                if order.workflowPath == workflowPathControl.workflowPath do
             proceedWithOrder(order)
-        Task.right(())
+        IO.right(())
 
-      case _ => Task.right(())
+      case _ => IO.right(())
 
   private def processOrderCommand(cmd: OrderCommand): Future[Checked[Response]] = cmd match
     case AttachOrder(order) =>
@@ -892,17 +892,17 @@ extends MainJournalingActor[AgentState, Event], Stash:
       orderRegister.remove(orderId)
 
   private def switchOver(cmd: AgentCommand): Future[Checked[AgentCommand.Response]] =
-    Task
+    IO
       .defer {
         logger.info(s"❗️ $cmd")
         switchingOver = true // Asynchronous !!!
-        Task(clusterNode.workingClusterNode)
+        IO(clusterNode.workingClusterNode)
           .flatTapT(_ =>
             // SubagentKeeper stops the local (surrounding) Subagent,
             // which lets the Director (RunningAgent) stop
             subagentKeeper.stop.as(Right(())))
           .flatMapT(_.switchOver)
-          .flatMapT(_ => Task.right(self ! Internal.ContinueSwitchover))
+          .flatMapT(_ => IO.right(self ! Internal.ContinueSwitchover))
           .rightAs(AgentCommand.Response.Accepted)
       }
       .runToFuture

@@ -13,7 +13,7 @@ import js7.data.job.CommandLine
 import js7.launcher.StdObservers
 import js7.launcher.forwindows.WindowsProcess
 import js7.launcher.forwindows.WindowsProcess.StartWindowsProcess
-import js7.launcher.process.InputStreamToObservable.copyInputStreamToObservable
+import js7.launcher.process.InputStreamToStream.copyInputStreamToStream
 import monix.eval.{Fiber, Task}
 import monix.reactive.Observer
 import scala.concurrent.Promise
@@ -30,8 +30,8 @@ extends RichProcess(processConfiguration, process):
 
   private val _sigkilled = Promise[Unit]()
 
-  final val sigkilled: Task[Unit] =
-    Task.fromFuture(_sigkilled.future).memoize
+  final val sigkilled: IO[Unit] =
+    IO.fromFuture(_sigkilled.future).memoize
 
   override protected def onSigkill(): Unit =
     // We do not super.onSigkill(), because Process.destroyForcibly closes stdout and stderr
@@ -47,10 +47,10 @@ object ShellScriptProcess:
     commandLine: CommandLine,
     conf: ProcessConfiguration,
     stdObservers: StdObservers,
-    whenTerminated: Task[Unit] = Task.unit)
+    whenTerminated: IO[Unit] = IO.unit)
     (implicit iox: IOExecutor)
-  : Task[Checked[ShellScriptProcess]] =
-    Task.defer:
+  : IO[Checked[ShellScriptProcess]] =
+    IO.defer:
       val commandArgs = toShellCommandArguments(
         commandLine.file,
         commandLine.arguments.tail ++ conf.idArgumentOption /*TODO Should not be an argument*/)
@@ -62,23 +62,23 @@ object ShellScriptProcess:
             import conf.encoding
             import stdObservers.{charBufferSize, err, out}
 
-            private def copyToObservable(outErr: StdoutOrStderr, in: InputStream, obs: Observer[String])
-            : Task[Unit] =
-              copyInputStreamToObservable(in, obs, encoding, charBufferSize)
+            private def copyToStream(outErr: StdoutOrStderr, in: InputStream, obs: Observer[String])
+            : IO[Unit] =
+              copyInputStreamToStream(in, obs, encoding, charBufferSize)
                 .onErrorRecover {
                   case t: IOException if isKilling /*Happens under Windows*/ => logger.warn(
                     s"While killing the process, $outErr become unreadable: ${t.toStringWithCauses}")
                 }
 
-            def await(outerr: StdoutOrStderr, fiber: Fiber[Unit]): Task[Unit] =
+            def await(outerr: StdoutOrStderr, fiber: Fiber[Unit]): IO[Unit] =
               fiber.join.onErrorHandle(t => logger.warn(outerr.toString + ": " + t.toStringWithCauses))
 
             override val terminated =
               (for
-                outFiber <- copyToObservable(Stdout, process.stdout, out).start
-                errFiber <- copyToObservable(Stderr, process.stderr, err).start
-                _ <- Task.race(
-                  sigkilled.delayExecution(stdoutAndStderrDetachDelay).map { _ =>
+                outFiber <- copyToStream(Stdout, process.stdout, out).start
+                errFiber <- copyToStream(Stderr, process.stderr, err).start
+                _ <- IO.race(
+                  sigkilled.delayBy(stdoutAndStderrDetachDelay).map { _ =>
                     if false then Try(process.stdout.close()) // FIXME
                     if false then Try(process.stderr.close()) // FIXME
                     if process.isAlive then {
@@ -94,7 +94,7 @@ object ShellScriptProcess:
         })
 
   private def startProcess(args: Seq[String], conf: ProcessConfiguration)
-  : Task[Checked[Js7Process]] =
+  : IO[Checked[Js7Process]] =
     conf.windowsLogon match
       case None =>
         val processBuilder = new ProcessBuilder(args.asJava)
@@ -106,7 +106,7 @@ object ShellScriptProcess:
           .map(o => Right(JavaProcess(o)))
 
       case Some(logon) =>
-        Task(
+        IO(
           WindowsProcess.startWithWindowsLogon(
             StartWindowsProcess(
               args,

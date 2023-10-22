@@ -7,7 +7,7 @@ import org.apache.pekko.http.scaladsl.server.Route
 import org.apache.pekko.http.scaladsl.testkit.ScalatestRouteTest
 import js7.base.auth.{SessionToken, UserId, ValidUserPermission}
 import js7.base.configutils.Configs.*
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Allocated
 import js7.base.utils.CatsUtils.syntax.RichResource
@@ -18,8 +18,8 @@ import js7.common.pekkohttp.web.auth.GateKeeper
 import js7.common.pekkoutils.Pekkos
 import js7.common.http.PekkoHttpClient
 import js7.common.http.PekkoHttpClient.HttpException
-import monix.eval.Task
-import monix.execution.Scheduler
+import cats.effect.IO
+import cats.effect.Fiber
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.{BeforeAndAfterAll, Suite}
 import scala.concurrent.Future
@@ -82,7 +82,7 @@ trait SessionRouteTester extends BeforeAndAfterAll, ScalatestRouteTest, SessionR
     .testUriAndResource()(route)
 
   protected lazy val localUri = localUri_
-  protected final lazy val allocatedWebServer: Allocated[Task, PekkoWebServer] =
+  protected final lazy val allocatedWebServer: Allocated[IO, PekkoWebServer] =
     webServerResource.toAllocated.await(99.s)
 
   override def afterAll() =
@@ -91,23 +91,23 @@ trait SessionRouteTester extends BeforeAndAfterAll, ScalatestRouteTest, SessionR
     super.afterAll()
 
   protected final def requireAuthorizedAccess(client: PekkoHttpClient, expectedUserId: UserId = UserId("A-USER"))
-    (implicit s: Task[Option[SessionToken]]): Unit =
+    (implicit s: IO[Option[SessionToken]]): Unit =
     requireAccessToUnprotected(client)
     client.get_[String](Uri(s"$localUri/authorizedUser")) await 99.s shouldEqual expectedUserId.string
 
-  protected final def requireAccessIsUnauthorizedOrPublic(client: PekkoHttpClient)(implicit s: Task[Option[SessionToken]]): Unit =
+  protected final def requireAccessIsUnauthorizedOrPublic(client: PekkoHttpClient)(implicit s: IO[Option[SessionToken]]): Unit =
     requireAccessToUnprotected(client)
     if isPublic then
       requireAccessIsPublic(client)
     else
       requireAccessIsUnauthorized(client)
 
-  protected final def requireAccessIsPublic(client: PekkoHttpClient)(implicit s: Task[Option[SessionToken]]): Unit =
+  protected final def requireAccessIsPublic(client: PekkoHttpClient)(implicit s: IO[Option[SessionToken]]): Unit =
     assert(isPublic)
     requireAccessToUnprotected(client)
     getViaAuthorizedUsed(client)
 
-  protected final def requireAccessIsUnauthorized(client: PekkoHttpClient)(implicit s: Task[Option[SessionToken]]): HttpException =
+  protected final def requireAccessIsUnauthorized(client: PekkoHttpClient)(implicit s: IO[Option[SessionToken]]): HttpException =
     requireAccessToUnprotected(client)
     val exception = intercept[PekkoHttpClient.HttpException]:
       getViaAuthorizedUsed(client)
@@ -116,7 +116,7 @@ trait SessionRouteTester extends BeforeAndAfterAll, ScalatestRouteTest, SessionR
       Some(`WWW-Authenticate`(List(HttpChallenges.basic(realm = "TEST REALM")))))
     exception
 
-  protected final def requireAccessIsForbidden(client: PekkoHttpClient)(implicit s: Task[Option[SessionToken]]): HttpException =
+  protected final def requireAccessIsForbidden(client: PekkoHttpClient)(implicit s: IO[Option[SessionToken]]): HttpException =
     requireAccessToUnprotected(client)
     val exception = intercept[PekkoHttpClient.HttpException]:
       getViaAuthorizedUsed(client)
@@ -124,8 +124,8 @@ trait SessionRouteTester extends BeforeAndAfterAll, ScalatestRouteTest, SessionR
     assert(exception.header[`WWW-Authenticate`].isEmpty)
     exception
 
-  private def getViaAuthorizedUsed(client: PekkoHttpClient)(implicit s: Task[Option[SessionToken]]) =
+  private def getViaAuthorizedUsed(client: PekkoHttpClient)(implicit s: IO[Option[SessionToken]]) =
     client.get_[String](Uri(s"$localUri/authorizedUser")) await 99.s
 
-  protected final def requireAccessToUnprotected(client: PekkoHttpClient)(implicit s: Task[Option[SessionToken]]): Unit =
+  protected final def requireAccessToUnprotected(client: PekkoHttpClient)(implicit s: IO[Option[SessionToken]]): Unit =
     client.get_[String](Uri(s"$localUri/unprotected")) await 99.s shouldEqual "THE RESPONSE"

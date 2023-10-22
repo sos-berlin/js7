@@ -1,6 +1,7 @@
 package js7.base.utils
 
-import cats.effect.{Bracket, Resource, SyncIO}
+import cats.MonadError
+import cats.effect.{Resource, SyncIO}
 import izumi.reflect.Tag
 import java.io.{ByteArrayInputStream, InputStream}
 import js7.base.utils.CatsUtils.syntax.RichResource
@@ -19,7 +20,7 @@ object SyncResource:
     implicit final class RichSyncResource[A](private val underlying: Resource[SyncIO, A])
     extends AnyVal:
       /** Like `SyncIO`'s `use`, but synchronously. */
-      def useSync[B](f: A => B)(implicit F: Bracket[SyncIO, Throwable], A: Tag[A]): B =
+      def useSync[B](f: A => B)(implicit F: MonadError[SyncIO, Throwable], A: Tag[A]): B =
         underlying.toAllocated.unsafeRunSync().blockingUse(f)
 
     implicit final class ByteArrayAsResource[A](private val underlying: Array[Byte]) extends AnyVal:

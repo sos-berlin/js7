@@ -3,7 +3,7 @@ package js7.tests.subagent
 import js7.base.problem.Problem
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderOutcomeAdded, OrderProcessingStarted}
@@ -19,11 +19,11 @@ import js7.tests.subagent.SubagentTester.agentPath
 import js7.tests.testenv.BlockingItemUpdater
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler
-import monix.reactive.Observable
+import fs2.Stream
 
 final class SubagentSelectionExprTest
 extends OurTestSuite, SubagentTester, BlockingItemUpdater:
-  
+
   protected val agentPaths = Seq(agentPath)
   protected lazy val items = Seq(
     Workflow(
@@ -86,7 +86,7 @@ extends OurTestSuite, SubagentTester, BlockingItemUpdater:
           agentPath,
           subagentSelectionId = Some(expr("'*INVALID*'")))))
     val checked = controller.api
-      .updateItems(Observable(
+      .updateItems(Stream(
         AddVersion(workflow.id.versionId),
         AddOrChangeSigned(toSignedString(workflow))))
       .await(99.s)

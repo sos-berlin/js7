@@ -11,6 +11,7 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{OneTimeToken, OneTimeTokenProvider, SetOnce}
+import js7.base.utils.CatsUtils.syntax.*
 import js7.cluster.ClusterCommon.*
 import js7.cluster.ClusterConf.ClusterProductName
 import js7.common.system.startup.Halt.haltJava
@@ -19,14 +20,14 @@ import js7.data.cluster.ClusterEvent.{ClusterFailedOver, ClusterNodeLostEvent, C
 import js7.data.cluster.ClusterState.{FailedOver, HasNodes, SwitchedOver}
 import js7.data.cluster.ClusterWatchProblems.{ClusterNodeLossNotConfirmedProblem, ClusterPassiveLostWhileFailedOverProblem, ClusterWatchInactiveNodeProblem}
 import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeApi, ClusterState}
-import monix.eval.Task
+import cats.effect.IO
 import org.apache.pekko.util.Timeout
 import scala.concurrent.duration.Deadline.now
 import scala.reflect.ClassTag
 
 private[cluster] final class ClusterCommon private(
   val clusterWatchCounterpart: ClusterWatchCounterpart,
-  val clusterNodeApi: (Admission, String) => Resource[Task, ClusterNodeApi],
+  val clusterNodeApi: (Admission, String) => Resource[IO, ClusterNodeApi],
   clusterConf: ClusterConf,
   licenseChecker: LicenseChecker,
   val testEventBus: EventPublisher[Any])(
@@ -38,15 +39,15 @@ private[cluster] final class ClusterCommon private(
   private val _clusterWatchSynchronizer = SetOnce[ClusterWatchSynchronizer]
   val couplingTokenProvider = OneTimeTokenProvider.unsafe()
 
-  def stop: Task[Unit] =
-    Task.defer:
-      _clusterWatchSynchronizer.toOption.fold(Task.unit)(_.stop)
+  def stop: IO[Unit] =
+    IO.defer:
+      _clusterWatchSynchronizer.toOption.fold(IO.unit)(_.stop)
 
-  def requireValidLicense: Task[Checked[Unit]] =
-    Task(licenseChecker.checkLicense(ClusterProductName))
+  def requireValidLicense: IO[Checked[Unit]] =
+    IO(licenseChecker.checkLicense(ClusterProductName))
 
-  def clusterWatchSynchronizer(clusterState: ClusterState.HasNodes): Task[ClusterWatchSynchronizer] =
-    Task:
+  def clusterWatchSynchronizer(clusterState: ClusterState.HasNodes): IO[ClusterWatchSynchronizer] =
+    IO:
       _clusterWatchSynchronizer
         .toOption
         .getOrElse(initialClusterWatchSynchronizer(clusterState))
@@ -68,15 +69,15 @@ private[cluster] final class ClusterCommon private(
         _clusterWatchSynchronizer := result
         result
 
-  def tryEndlesslyToSendCommand(admission: Admission, command: ClusterCommand): Task[Unit] =
+  def tryEndlesslyToSendCommand(admission: Admission, command: ClusterCommand): IO[Unit] =
     val name = command.getClass.simpleScalaName
     tryEndlesslyToSendCommand(clusterNodeApi(admission, name), _ => command)
 
   def tryEndlesslyToSendCommand[C <: ClusterCommand: ClassTag](
-    apiResource: Resource[Task, ClusterNodeApi],
+    apiResource: Resource[IO, ClusterNodeApi],
     toCommand: OneTimeToken => C)
-  : Task[Unit] =
-    Task.defer:
+  : IO[Unit] =
+    IO.defer:
       val name = implicitClass[C].simpleScalaName
       var warned = false
       val since = now
@@ -92,31 +93,31 @@ private[cluster] final class ClusterCommon private(
             logger.warn(s"🔴 $name command failed with ${throwable.toStringWithCauses}")
             logger.debug(throwable.toString, throwable)
             // TODO ClusterFailed event?
-            Task.sleep(1.s/*TODO*/) *> // TODO Handle heartbeat timeout?
+            IO.sleep(1.s/*TODO*/) *> // TODO Handle heartbeat timeout?
               retry(())
           }
           .guaranteeCase {
-            case ExitCase.Completed => Task(
+            case ExitCase.Completed => IO(
               if warned then logger.info(s"🟢 $name command succeeded after ${since.elapsed.pretty}"))
-            case ExitCase.Canceled => Task(
+            case ExitCase.Canceled => IO(
               if warned then logger.info(s"⚫️ $name Canceled after ${since.elapsed.pretty}"))
-            case _ => Task.unit
+            case _ => IO.unit
           })
 
   def inhibitActivationOfPeer(clusterState: HasNodes, peersUserAndPassword: Option[UserAndPassword])
-  : Task[Option[FailedOver]] =
+  : IO[Option[FailedOver]] =
     ActivationInhibitor.inhibitActivationOfPassiveNode(
       clusterState.setting, peersUserAndPassword, clusterNodeApi)
 
   def ifClusterWatchAllowsActivation(
     clusterState: ClusterState.HasNodes,
     event: ClusterNodeLostEvent)
-    (body: Task[Checked[Boolean]])
-  : Task[Checked[Boolean]] =
-    logger.traceTaskWithResult(
+    (body: IO[Checked[Boolean]])
+  : IO[Checked[Boolean]] =
+    logger.traceIOWithResult(
       activationInhibitor.tryToActivate(
-        ifInhibited = Task.right(false),
-        activate = Task.pure(clusterState.applyEvent(event))
+        ifInhibited = IO.right(false),
+        activate = IO.pure(clusterState.applyEvent(event))
           .flatMapT {
             case updatedClusterState: HasNodes =>
               clusterWatchSynchronizer(clusterState)
@@ -135,13 +136,13 @@ private[cluster] final class ClusterCommon private(
                           " and is waiting for ClusterWatch's agreement, " +
                           "the passive node failed over"
                         if (clusterConf.testDontHaltWhenPassiveLostRejected)
-                          Task.left(ClusterPassiveLostWhileFailedOverProblem) // For test only
+                          IO.left(ClusterPassiveLostWhileFailedOverProblem) // For test only
                         else
                           haltJava(msg, restart = true, warnOnly = true)
                       else
-                        Task.right(false)  // Ignore heartbeat loss
+                        IO.right(false)  // Ignore heartbeat loss
                     else
-                      Task.left(problem)
+                      IO.left(problem)
 
                   case Right(None) =>
                     logger.debug(
@@ -160,7 +161,7 @@ private[cluster] final class ClusterCommon private(
                     testEventBus.publish(ClusterWatchAgreedToActivation)
                     body
                 }
-            case ClusterState.Empty => Task.left(Problem.pure(
+            case ClusterState.Empty => IO.left(Problem.pure(
               "ClusterState.Empty in ifClusterWatchAllowsActivation ??"))
           }))
 
@@ -169,14 +170,14 @@ private[js7] object ClusterCommon:
 
   def resource(
     clusterWatchCounterpart: ClusterWatchCounterpart,
-    clusterNodeApi: (Admission, String) => Resource[Task, ClusterNodeApi],
+    clusterNodeApi: (Admission, String) => Resource[IO, ClusterNodeApi],
     clusterConf: ClusterConf,
     licenseChecker: LicenseChecker,
     testEventPublisher: EventPublisher[Any])(
     implicit pekkoTimeout: Timeout)
-  : Resource[Task, ClusterCommon] =
+  : Resource[IO, ClusterCommon] =
       Resource.make(
-        Task(new ClusterCommon(
+        IO(new ClusterCommon(
           clusterWatchCounterpart,
           clusterNodeApi, clusterConf, licenseChecker, testEventPublisher)))(
         release = _.stop)

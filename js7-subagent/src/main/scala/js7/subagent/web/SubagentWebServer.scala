@@ -9,17 +9,17 @@ import js7.common.pekkohttp.web.data.WebServerBinding
 import js7.common.pekkohttp.web.session.SessionRegister
 import js7.subagent.configuration.SubagentConf
 import js7.subagent.{DirectorRouteVariable, Subagent, SubagentSession}
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler
 
 object SubagentWebServer:
   def resource(
-    subagent: Task[Subagent],
+    subagent: IO[Subagent],
     toDirectorRoute: DirectorRouteVariable.ToRoute,
     sessionRegister: SessionRegister[SubagentSession],
     conf: SubagentConf)
     (implicit actorSystem: ActorSystem, scheduler: Scheduler)
-  : Resource[Task, (PekkoWebServer)] =
+  : Resource[IO, (PekkoWebServer)] =
     PekkoWebServer.resource(
       conf.webServerBindings,
       conf.config,

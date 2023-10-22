@@ -8,7 +8,7 @@ import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.configutils.Configs.*
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Lazy
@@ -32,7 +32,7 @@ import scala.jdk.CollectionConverters.*
 import scala.util.{Failure, Try}
 
 final class JControllerProxyTest extends OurTestSuite, DirectoryProviderForScalaTest:
-  
+
   override protected def controllerConfig = config"""
     js7.auth.users {
       Proxy {

@@ -19,12 +19,12 @@ import js7.launcher.OrderProcess
 import js7.launcher.internal.InternalJob
 import js7.tests.StdoutTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
-import monix.eval.Task
+import cats.effect.IO
 import scala.concurrent.duration.FiniteDuration
 import scala.util.Try
 
 final class StdoutTest extends OurTestSuite, ControllerAgentForScalaTest:
-  
+
   protected val agentPaths = Seq(agentPath)
   protected val items = Nil
   override protected val controllerConfig = config"""
@@ -104,7 +104,7 @@ final class StdoutTest extends OurTestSuite, ControllerAgentForScalaTest:
           // - ".........9.......10\n"
           // - "........11........12........13........14........15.......16\n"
           ".........5........6\n.........7........8\n",
-          // Break because Observable.buffer limit reached
+          // Break because Stream.buffer limit reached
           ".........9.......10\n",
           "........11........12........13........14........15",
           ".......16\n"))
@@ -158,7 +158,7 @@ object StdoutTest:
 
   private final class TestInternalJob extends InternalJob:
     def toOrderProcess(step: Step) =
-      import Task.sleep
+      import IO.sleep
       OrderProcess(
         step.send(Stdout, "A\n") >>
           sleep(longDelay) >>
@@ -182,5 +182,5 @@ object StdoutTest:
           step.send(Stdout, ".........7........8\n") >>
           step.send(Stdout, ".........9.......10\n") >>
           step.send(Stdout, "........11........12........13........14........15.......16\n") >>
-          Task.pure(Outcome.succeeded))
+          IO.pure(Outcome.succeeded))
   private object TestInternalJob extends InternalJob.Companion[TestInternalJob]

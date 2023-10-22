@@ -5,7 +5,7 @@ import js7.base.problem.Checked.*
 import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.IOExecutor.globalIOX
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.AlarmClock
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
@@ -22,7 +22,7 @@ import js7.data.workflow.position.{Position, WorkflowBranchPath}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.launcher.internal.InternalJobLauncherTest.*
 import js7.launcher.{OrderProcess, ProcessOrder, StdObservers}
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler
 import monix.reactive.subjects.PublishSubject
 
@@ -80,11 +80,11 @@ object InternalJobLauncherTest:
   private class TestInternalJob extends InternalJob:
     override def toOrderProcess(step: Step) =
       OrderProcess(
-        Task.fromFuture(step.outObserver.onNext("OUT 1/")) >>
-        Task.fromFuture(step.errObserver.onNext("ERR 1/")) >>
-        Task.fromFuture(step.outObserver.onNext("OUT 2")) >>
-        Task.fromFuture(step.errObserver.onNext("ERR 2")) >>
-        Task {
+        IO.fromFuture(step.outObserver.onNext("OUT 1/")) >>
+        IO.fromFuture(step.errObserver.onNext("ERR 1/")) >>
+        IO.fromFuture(step.outObserver.onNext("OUT 2")) >>
+        IO.fromFuture(step.errObserver.onNext("ERR 2")) >>
+        IO {
           Outcome.Completed.fromChecked(
           step.arguments.checked("ARG")
             .flatMap(_.as[NumberValue])

@@ -14,7 +14,7 @@ import js7.base.io.file.FileUtils.{deleteDirectoryContentRecursively, temporaryD
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.Log4j
 import js7.base.thread.Futures.implicits.*
-import js7.base.thread.MonixBlocking.syntax.{RichTask, RichTaskTraversable}
+import js7.base.thread.CatsBlocking.syntax.{RichTask, RichTaskTraversable}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsBlocking.BlockingTaskResource
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
@@ -26,7 +26,7 @@ import js7.controller.RunningController
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.tests.TestDockerEnvironment
 import js7.data.agent.AgentPath
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.*
 
@@ -71,7 +71,7 @@ object TestDockerExample:
           .start(AgentConfiguration.forTest(
             configAndData = env.agentDir(agentPath),
             name = AgentConfiguration.DefaultName))
-          .flatTap(agent => Task(closer.onClose(agent.stop.await(99.s))))
+          .flatTap(agent => IO(closer.onClose(agent.stop.await(99.s))))
           .await(99.s)
         //env.file(agentPath, SourceType.Json) := AgentRef(AgentPath.NoId, uri = agent.localUri.toString)
         agent

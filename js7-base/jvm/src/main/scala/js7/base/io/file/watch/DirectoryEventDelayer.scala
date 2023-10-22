@@ -1,6 +1,8 @@
 package js7.base.io.file.watch
 
 import cats.data.NonEmptySeq
+import cats.effect.IO
+import fs2.Stream
 import java.io.IOException
 import java.nio.file.Files.size
 import java.nio.file.Path
@@ -33,14 +35,14 @@ import scala.util.Try
   *
   * Yields only FileAdded and FileDeleted events.
   *
-  * Derived from Monix' `DelayByTimespanObservable`.
+  * Derived from Monix' `DelayByTimespanStream`.
   */
 private final class DirectoryEventDelayer(
-  source: Observable[DirectoryEvent],
+  source: Stream[IO, DirectoryEvent],
   directory: Path,
   delay: FiniteDuration,
   logDelays: NonEmptySeq[FiniteDuration])
-extends Observable[Seq[DirectoryEvent]]:
+extends Stream[IO, Seq[DirectoryEvent]]:
 
   def unsafeSubscribeFn(out: Subscriber[Seq[DirectoryEvent]]): Cancelable =
     source.subscribe(new Subscriber[DirectoryEvent] { self =>
@@ -277,11 +279,11 @@ object DirectoryEventDelayer:
   private val logger = Logger[this.type]
 
   object syntax:
-    implicit final class RichDelayLineObservable(private val self: Observable[DirectoryEvent])
+    implicit final class RichDelayLineStream(private val self: Stream[IO, DirectoryEvent])
     extends AnyVal:
       def delayFileAdded(
         directory: Path, delay: FiniteDuration, logDelays: NonEmptySeq[FiniteDuration])
-      : Observable[Seq[DirectoryEvent]] =
+      : Stream[IO, Seq[DirectoryEvent]] =
         if delay.isPositive then
           new DirectoryEventDelayer(self, directory, delay, logDelays)
         else

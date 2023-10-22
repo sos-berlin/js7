@@ -2,7 +2,7 @@ package js7.launcher.internal
 
 import java.nio.charset.Charset
 import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
-import js7.base.monixutils.TaskObserver
+import js7.base.monixutils.IOObserver
 import js7.base.problem.Checked
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.thread.IOExecutor
@@ -16,7 +16,7 @@ import js7.data.value.{NamedValues, Value}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.launcher.{OrderProcess, ProcessOrder}
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.{Ack, Scheduler}
 import monix.reactive.Observer
 import scala.collection.MapView
@@ -27,11 +27,11 @@ import scala.reflect.ClassTag
 trait InternalJob:
   protected type Step = InternalJob.Step
 
-  def start: Task[Checked[Unit]] =
-    Task.pure(Right(()))
+  def start: IO[Checked[Unit]] =
+    IO.pure(Right(()))
 
-  def stop: Task[Unit] =
-    Task.unit
+  def stop: IO[Unit] =
+    IO.unit
 
   def toOrderProcess(step: Step): OrderProcess
 
@@ -64,21 +64,21 @@ object InternalJob:
     def workflow = processOrder.workflow
     def outObserver = processOrder.stdObservers.out
     def errObserver = processOrder.stdObservers.err
-    def outTaskObserver = processOrder.stdObservers.outTaskObserver
-    def errTaskObserver = processOrder.stdObservers.errTaskObserver
+    def outIOObserver = processOrder.stdObservers.outIOObserver
+    def errIOObserver = processOrder.stdObservers.errIOObserver
 
-    def send(outErr: StdoutOrStderr, string: String): Task[Ack] =
-      outErrTaskObserver(outErr).send(string)
+    def send(outErr: StdoutOrStderr, string: String): IO[Ack] =
+      outErrIOObserver(outErr).send(string)
 
     def outErrObserver(stdoutOrStderr: StdoutOrStderr): Observer[String] =
       stdoutOrStderr match
         case Stdout => outObserver
         case Stderr => errObserver
 
-    private def outErrTaskObserver(outErr: StdoutOrStderr): TaskObserver[String] =
+    private def outErrIOObserver(outErr: StdoutOrStderr): IOObserver[String] =
       outErr match
-        case Stdout => outTaskObserver
-        case Stderr => errTaskObserver
+        case Stdout => outIOObserver
+        case Stderr => errIOObserver
 
     def jobResourceVariable(jobResourcePath: JobResourcePath, variableName: String): Checked[Value] =
       jobResourceToVariables

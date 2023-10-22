@@ -6,7 +6,7 @@ import org.apache.pekko.http.scaladsl.server.Route
 import js7.base.auth.ValidUserPermission
 import js7.base.data.ByteArray
 import js7.base.log.Logger
-import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
+import js7.base.monixutils.MonixBase.syntax.RichMonixStream
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.utils.FutureCompletion
@@ -18,13 +18,13 @@ import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkohttp.web.session.RouteProvider
 import js7.common.pekkoutils.ByteStrings.syntax.*
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
-import js7.common.http.StreamingSupport.PekkoObservable
+import js7.common.http.StreamingSupport.PekkoStream
 import js7.common.jsonseq.PositionAnd
 import js7.data.event.JournalSeparators.{EndOfJournalFileMarker, HeartbeatMarker}
 import js7.data.event.{EventId, JournalPosition}
 import js7.journal.watch.FileEventWatch
 import js7.journal.web.JournalRoute.*
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler
 import scala.concurrent.duration.FiniteDuration
 
@@ -61,23 +61,23 @@ trait JournalRoute extends RouteProvider:
               "return" ? ""
             ) { (maybeFileEventId, maybePosition, timeout, markEOF, heartbeat, returnType) =>
               accept(JournalContentType):
-                complete(Task
+                complete(IO
                   .pure((maybeFileEventId, maybePosition) match {
                     case (None, None) => eventWatch.journalPosition  // Convenient for manual tests
                     case (Some(f), Some(p)) => Right(JournalPosition(f, p))
                     case _ => Left(Problem("Missing one of the arguments: file, position, eventId"))
                   })
-                  .flatMapT(journalPosition => Task
+                  .flatMapT(journalPosition => IO
                     .pure(parseReturnAckParameter(returnType))
                     .flatMapT(returnAck =>
                       eventWatch
                         .observeFile(journalPosition, timeout,
                           markEOF = markEOF, onlyAcks = returnAck)
-                        .map(_.map(observable =>
+                        .map(_.map(stream =>
                           HttpEntity.Chunked(
                             JournalContentType,
-                            observable
-                              .takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ => Task {
+                            stream
+                              .takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ => IO {
                                 logger.debug("whenShuttingDown completed")
                               })
                               .map(if returnAck then toLength else toContent)

@@ -11,7 +11,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}
 import js7.base.utils.ScalaUtils.syntax.{RichAny, RichEitherF}
-import js7.base.utils.{ByteSequenceToLinesObservable, FutureCompletion}
+import js7.base.utils.{ByteSequenceToLinesStream, FutureCompletion}
 import js7.common.http.StreamingSupport.*
 import js7.common.pekkohttp.CirceJsonSupport.jsonMarshaller
 import js7.common.pekkoutils.ByteStrings.syntax.*
@@ -56,9 +56,9 @@ extends ControllerRouteProvider, EntitySizeLimitProvider:
                 var byteCount = 0L
                 val operations = httpEntity
                   .dataBytes
-                  .toObservable
+                  .toStream
                   .pipeIf(logger.underlying.isDebugEnabled)(_.map { o => byteCount += o.length; o })
-                  .flatMap(new ByteSequenceToLinesObservable)
+                  .flatMap(new ByteSequenceToLinesStream)
                   .mapParallelBatch()(_
                     .parseJsonAs[ItemOperation].orThrow)
                 VerifiedUpdateItems.fromOperations(operations, verify, user)

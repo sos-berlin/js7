@@ -23,11 +23,11 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.version.Version
 import js7.common.http.PekkoHttpClient.`x-js7-session`
 import js7.common.pekkoutils.Pekkos
-import monix.eval.Task
-import monix.execution.Scheduler
 import org.apache.pekko.actor.{ActorRef, ActorRefFactory}
 import org.apache.pekko.pattern.ask
 import org.apache.pekko.util.Timeout
+import js7.common.system.ServerOperatingSystem.operatingSystem
+import cats.effect.IO
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.Promise
 
@@ -40,32 +40,32 @@ final class SessionRegister[S <: Session: Tag] private[session](
   componentName: String)
 extends Service.StoppableByRequest:
   private val systemSessionPromise = Promise[Checked[S]]()
-  val systemSession: Task[Checked[S]] =
-    Task.fromFuture(systemSessionPromise.future)
+  val systemSession: IO[Checked[S]] =
+    IO.fromFuture(systemSessionPromise.future)
       .logWhenItTakesLonger/*in case it will never been created*/
       .memoize
-  val systemUser: Task[Checked[SimpleUser]] =
+  val systemUser: IO[Checked[SimpleUser]] =
     systemSession.map(_.map(_.currentUser./*???*/asInstanceOf[SimpleUser]))
 
   protected def start =
     startService(untilStopRequested)
 
   def placeSessionTokenInDirectory(user: SimpleUser, workDirectory: Path)
-  : Resource[Task, SessionToken] =
+  : Resource[IO, SessionToken] =
     val sessionTokenFile = workDirectory / "session-token"
     val headersFile = workDirectory / "secret-http-headers"
     provideSessionTokenFile(user, sessionTokenFile)
-      .flatTap(sessionToken => provideFile[Task](headersFile)
-        .*>(Resource.eval(Task {
+      .flatTap(sessionToken => provideFile[IO](headersFile)
+        .*>(Resource.eval(IO {
           createFile(headersFile, operatingSystem.secretFileAttributes*)
           headersFile := `x-js7-session`.name + ": " + sessionToken.secret.string + "\n"
         })))
 
-  private def provideSessionTokenFile(user: SimpleUser, file: Path): Resource[Task, SessionToken] =
-    provideFile[Task](file)
+  private def provideSessionTokenFile(user: SimpleUser, file: Path): Resource[IO, SessionToken] =
+    provideFile[IO](file)
       .flatMap(file => Resource.eval(createSystemSession(user, file)))
 
-  private def createSystemSession(user: SimpleUser, file: Path): Task[SessionToken] =
+  private def createSystemSession(user: SimpleUser, file: Path): IO[SessionToken] =
     for checked <- login(user, Some(Js7Version), isEternalSession = true) yield
       val sessionToken = checked.orThrow
       deleteIfExists(file)
@@ -80,8 +80,8 @@ extends Service.StoppableByRequest:
     clientVersion: Option[Version],
     sessionTokenOption: Option[SessionToken] = None,
     isEternalSession: Boolean = false)
-  : Task[Checked[SessionToken]] =
-    Task
+  : IO[Checked[SessionToken]] =
+    IO
       .deferFuture(
         (actor ? SessionActor.Command.Login(user, clientVersion, sessionTokenOption,
           isEternalSession = isEternalSession)).mapTo[SessionToken])
@@ -99,20 +99,20 @@ extends Service.StoppableByRequest:
             Problem.pure(
               s"Client's version $v does not match $componentName version $ourVersion")
 
-  def logout(sessionToken: SessionToken): Task[Completed] =
-    Task.deferFuture(
+  def logout(sessionToken: SessionToken): IO[Completed] =
+    IO.deferFuture(
       (actor ? SessionActor.Command.Logout(sessionToken)).mapTo[Completed])
 
-  private[session] def session(sessionToken: SessionToken, idsOrUser: Either[Set[UserId], SimpleUser]): Task[Checked[S]] =
-    Task.deferFuture(
+  private[session] def session(sessionToken: SessionToken, idsOrUser: Either[Set[UserId], SimpleUser]): IO[Checked[S]] =
+    IO.deferFuture(
       sessionFuture(sessionToken, idsOrUser))
 
   private[session] def sessionFuture(sessionToken: SessionToken, idsOrUser: Either[Set[UserId], SimpleUser]) =
     (actor ? SessionActor.Command.Get(sessionToken, idsOrUser)).mapTo[Checked[S]]
 
   @TestOnly
-  private[js7] def count: Task[Int] =
-    Task.deferFuture(
+  private[js7] def count: IO[Int] =
+    IO.deferFuture(
       (actor ? SessionActor.Command.GetCount).mapTo[Int])
 
   override def toString = s"SessionRegister[${implicitly[Tag[S]].tag.shortName}]"
@@ -123,12 +123,12 @@ object SessionRegister:
     newSession: SessionInit => S,
     config: Config)
     (implicit arf: ActorRefFactory, scheduler: Scheduler)
-  : Resource[Task, SessionRegister[S]] =
+  : Resource[IO, SessionRegister[S]] =
     for
-      actor <- Pekkos.actorResource[Task](
+      actor <- Pekkos.actorResource[IO](
         SessionActor.props(newSession, config),
         implicitly[Tag[S]].tag.longName)
-      sessionRegister <- Service.resource(Task(new SessionRegister[S](
+      sessionRegister <- Service.resource(IO(new SessionRegister[S](
         actor,
         pekkoAskTimeout = config.getDuration("js7.pekko.ask-timeout").toFiniteDuration,
         componentName = config.getString("js7.component.name"))))

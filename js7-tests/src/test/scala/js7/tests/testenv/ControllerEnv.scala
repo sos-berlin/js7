@@ -13,7 +13,7 @@ import js7.data.agent.AgentPath
 import js7.data.controller.ControllerState
 import js7.journal.data.JournalLocation
 import js7.tests.testenv.DirectoryProvider.{AgentTrustStoreResource, defaultVerifier}
-import monix.eval.Task
+import cats.effect.IO
 import scala.collection.immutable.Iterable
 
 /** Environment with config and data directories for a Controller. */
@@ -31,7 +31,7 @@ extends ProgramEnv.WithFileJournal:
 
   protected def confFilename = "controller.conf"
 
-  def programResource: Resource[Task, RunningController] = ???
+  def programResource: Resource[IO, RunningController] = ???
 
   val journalLocation = JournalLocation(ControllerState, stateDir / "controller")
   val userAndPassword = UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD"))

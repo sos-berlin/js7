@@ -8,7 +8,6 @@ import js7.base.test.OurTestSuite
 import js7.base.utils.ProgramTermination
 import js7.common.configuration.{BasicConfiguration, Js7Configuration}
 import js7.common.system.startup.ServiceMainTest.*
-import monix.eval.Task
 
 final class ServiceMainTest extends OurTestSuite:
 
@@ -35,9 +34,9 @@ object ServiceMainTest:
       startService(untilStopRequested)
 
     def untilTerminated =
-      Task.pure(ProgramTermination())
+      IO.pure(ProgramTermination())
   private object TestService:
-    val resource = Service.resource(Task(new TestService))
+    val resource = Service.resource(IO(new TestService))
 
   private val termination = ProgramTermination(restart = true)
 
@@ -45,12 +44,12 @@ object ServiceMainTest:
     protected type Termination = ProgramTermination
 
     protected def start =
-      startService(Task.raiseError(new MainServiceTerminationException {
+      startService(IO.raiseError(new MainServiceTerminationException {
         def termination = ServiceMainTest.termination
         override def getMessage = "Test termination!"
       }))
 
     def untilTerminated =
-      Task.pure(ProgramTermination())
+      IO.pure(ProgramTermination())
   private object TerminatingService:
-    val resource = Service.resource(Task(new TerminatingService))
+    val resource = Service.resource(IO(new TerminatingService))

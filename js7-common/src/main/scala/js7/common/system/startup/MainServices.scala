@@ -4,13 +4,13 @@ import cats.effect.{Resource, SyncIO}
 import com.typesafe.config.Config
 import izumi.reflect.Tag
 import js7.base.service.MainService
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.utils.AllocatedForJvm.*
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ProgramTermination
 import js7.base.utils.SyncResource.syntax.*
 import js7.common.system.ThreadPools
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler
 import scala.concurrent.duration.*
 
@@ -22,7 +22,7 @@ object MainServices:
     threadPoolName: String,
     config: Config,
     timeout: Duration = Duration.Inf)(
-    resource: Scheduler => Resource[Task, S],
+    resource: Scheduler => Resource[IO, S],
     use: (S, Scheduler) => ProgramTermination = (service: S, scheduler: Scheduler) => {
       implicit val s = scheduler
       service.untilTerminated.await(timeout)

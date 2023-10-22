@@ -12,7 +12,7 @@ import js7.base.log.{Log4j, Logger}
 import js7.base.service.{MainService, MainServiceTerminationException, Service}
 import js7.base.system.startup.StartUp
 import js7.base.system.startup.StartUp.{logJavaSettings, nowString, printlnWithClock}
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
@@ -22,7 +22,7 @@ import js7.common.configuration.BasicConfiguration
 import js7.common.system.ThreadPools
 import js7.common.system.startup.Js7ReturnCodes.terminationToReturnCode
 import js7.common.utils.JavaShutdownHook
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler
 import scala.concurrent.duration.{Deadline, Duration}
 
@@ -34,8 +34,8 @@ object ServiceMain:
     name: String,
     argsToConf: CommandLineArguments => Conf,
     useLockFile: Boolean = false)(
-    toResource: (Conf, Scheduler) => Resource[Task, S],
-    use: (Conf, S, Scheduler) => Task[ProgramTermination] =
+    toResource: (Conf, Scheduler) => Resource[IO, S],
+    use: (Conf, S, Scheduler) => IO[ProgramTermination] =
       (_: Conf, state: S, _: Scheduler) => state.untilTerminated)
   : Unit =
     val returnCode =
@@ -48,8 +48,8 @@ object ServiceMain:
     name: String,
     argsToConf: CommandLineArguments => Conf,
     useLockFile: Boolean = false)(
-    toServiceResource: (Conf, Scheduler) => Resource[Task, S],
-    use: (Conf, S, Scheduler) => Task[ProgramTermination] =
+    toServiceResource: (Conf, Scheduler) => Resource[IO, S],
+    use: (Conf, S, Scheduler) => IO[ProgramTermination] =
     (_: Conf, state: S, _: Scheduler) => state.untilTerminated)
   : ReturnCode =
     val nanoTime = System.nanoTime() // Before anything else, fetch clock
@@ -124,7 +124,7 @@ object ServiceMain:
 
     ///** Adds an own ThreadPool and a shutdown hook. */
     //def blockingRun[S <: MainService: Tag](name: String, config: Config)(
-    //  resource: Scheduler => Resource[Task, S])
+    //  resource: Scheduler => Resource[IO, S])
     //: ProgramTermination =
     //  blockingRun(name, config, resource)((_: S).untilTerminated)
 
@@ -132,8 +132,8 @@ object ServiceMain:
     private[ServiceMain] def blockingRun[S <: MainService: Tag](
       name: String,
       config: Config,
-      resource: Scheduler => Resource[Task, S])(
-      use: (S, Scheduler) => Task[ProgramTermination])
+      resource: Scheduler => Resource[IO, S])(
+      use: (S, Scheduler) => IO[ProgramTermination])
     : ProgramTermination =
       ThreadPools.standardSchedulerResource[SyncIO](name, config)
         .use(implicit scheduler => SyncIO(
@@ -149,21 +149,21 @@ object ServiceMain:
         logger.info(t.getMessage)
         t.termination
 
-    private def withShutdownHook[S <: MainService: Tag](serviceResource: Resource[Task, S])
+    private def withShutdownHook[S <: MainService: Tag](serviceResource: Resource[IO, S])
       (implicit scheduler: Scheduler)
-    : Resource[Task, S] =
+    : Resource[IO, S] =
       serviceResource
         .toAllocatedResource
         .flatTap(allocated =>
-          shutdownHookResource[Task](name = allocated.allocatedThing.toString)(
+          shutdownHookResource[IO](name = allocated.allocatedThing.toString)(
             onJavaShutdown(allocated)))
         .map(_.allocatedThing)
 
-    private def onJavaShutdown[S <: Service](allocatedService: Allocated[Task, S])
+    private def onJavaShutdown[S <: Service](allocatedService: Allocated[IO, S])
       (implicit s: Scheduler)
     : Unit =
       logger.warn(s"Trying to shut down $allocatedService due to Java shutdown")
-      val stop = logger.debugTask("onJavaShutDown stop service")(
+      val stop = logger.debugIO("onJavaShutDown stop service")(
         allocatedService.release)
       for t <- stop.attempt.runSyncUnsafe().left do
         logger.error(s"onJavaShutdown: ${t.toStringWithCauses}", t.nullIfNoStackTrace)

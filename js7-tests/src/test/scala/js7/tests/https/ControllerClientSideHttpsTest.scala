@@ -2,7 +2,7 @@ package js7.tests.https
 
 import javax.net.ssl.SSLException
 import js7.base.io.https.HttpsConfig
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.controller.client.PekkoHttpControllerApi

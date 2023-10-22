@@ -1,10 +1,11 @@
 package js7.common.pekkoutils
 
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.common.pekkoutils.Pekkos.*
-import monix.eval.Task
+import cats.effect.IO
+import cats.effect.Fiber
 import monix.execution.Scheduler.Implicits.traced
 import org.apache.pekko
 import org.apache.pekko.actor.{Actor, ActorPath, ActorSystem, Props}
@@ -72,7 +73,7 @@ final class PekkosTest extends OurTestSuite:
   "actorSystemResource" in:
     var _actorSystem: ActorSystem = null
     actorSystemResource("PekkosTest")
-      .use(actorSystem => Task {
+      .use(actorSystem => IO {
         _actorSystem = actorSystem
       })
       .await(99.s)

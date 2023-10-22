@@ -3,7 +3,7 @@ package js7.tests.subagent
 import java.util.concurrent.TimeoutException
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
@@ -18,12 +18,12 @@ import js7.tests.jobs.EmptyJob
 import js7.tests.subagent.SubagentDisabledTest.*
 import js7.tests.subagent.SubagentTester.agentPath
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler
-import monix.reactive.Observable
+import fs2.Stream
 
 final class SubagentDisabledTest extends OurTestSuite, SubagentTester:
-  
+
   override protected def agentConfig = config"""
     js7.auth.subagents.A-SUBAGENT = "$localSubagentId's PASSWORD"
     js7.auth.subagents.B-SUBAGENT = "$localSubagentId's PASSWORD"
@@ -56,7 +56,7 @@ final class SubagentDisabledTest extends OurTestSuite, SubagentTester:
     eventWatch.await[ItemAttached](_.event.key == bSubagentId)
 
   override def afterAll() =
-    Task.parZip2(aSubagentRelease, bSubagentRelease).await(99.s)
+    IO.parZip2(aSubagentRelease, bSubagentRelease).await(99.s)
     super.afterAll()
 
   "All Subagents are enabled" in:
@@ -101,7 +101,7 @@ final class SubagentDisabledTest extends OurTestSuite, SubagentTester:
     // Re-enableSubagents
     eventId = eventWatch.lastAddedEventId
     controller.api
-      .updateItems(Observable(
+      .updateItems(Stream(
         AddOrChangeSimple(aSubagentItem.copy(disabled = false))))
       .await(99.s).orThrow
 

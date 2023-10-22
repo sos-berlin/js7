@@ -1,9 +1,7 @@
 package js7.base.log
 
-import cats.Applicative
-import cats.effect.ExitCase.{Canceled, Completed, Error}
-import cats.effect.syntax.bracket.*
-import cats.effect.{ExitCase, Resource, Sync, SyncIO}
+import cats.{Applicative, MonadError}
+import cats.effect.{IO, MonadCancel, Outcome, OutcomeIO, Resource, Sync, SyncIO}
 import cats.syntax.flatMap.*
 import com.typesafe.scalalogging.Logger as ScalaLogger
 import js7.base.log.Slf4jUtils.syntax.*
@@ -14,8 +12,7 @@ import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.base.utils.{Once, Tests}
-import monix.eval.Task
-import monix.reactive.Observable
+import fs2.Stream
 import org.slf4j.{LoggerFactory, Marker, MarkerFactory}
 import scala.reflect.ClassTag
 
@@ -91,8 +88,11 @@ object Logger:
       def log(level: LogLevel, marker: Marker, message: => String): Unit =
         logger.underlying.log(level, marker, message)
 
-      def infoTask[A](functionName: String, args: => Any = "")(task: Task[A]): Task[A] =
-        logF[Task, A](logger, LogLevel.Info, functionName, args)(task)
+      def infoIO[A](body: IO[A])(src: sourcecode.Name): IO[A] =
+        infoF(functionName = src.value)(body)
+
+      def infoIO[A](functionName: String, args: => Any = "")(body: IO[A]): IO[A] =
+        infoF(functionName, args)(body)
 
       def infoF[F[_], A](body: F[A])(using F: Sync[F], src: sourcecode.Name)
       : F[A] =
@@ -102,17 +102,17 @@ object Logger:
       : F[A] =
         logF[F, A](logger, LogLevel.Info, functionName, args)(body)
 
-      def debugTask[A](task: Task[A])(implicit src: sourcecode.Name): Task[A] =
-        debugTask(src.value)(task)
-
-      def debugTask[A](functionName: String, args: => Any = "")(task: Task[A]): Task[A] =
-        logF[Task, A](logger, LogLevel.Debug, functionName, args)(task)
-
       def debugCall[A](body: => A)(implicit src: sourcecode.Name): A =
         debugCall[A](src.value)(body)
 
       def debugCall[A](functionName: String, args: => Any = "")(body: => A): A =
         logF[SyncIO, A](logger, LogLevel.Debug, functionName, args)(SyncIO(body)).unsafeRunSync()
+
+      def debugIO[A](body: IO[A])(using src: sourcecode.Name): IO[A] =
+        debugF(body)
+
+      def debugIO[A](functionName: String, args: => Any = "")(body: IO[A]): IO[A] =
+        debugF(functionName, args)(body)
 
       def debugF[F[_], A](body: F[A])(using F: Sync[F], src: sourcecode.Name)
       : F[A] =
@@ -122,27 +122,27 @@ object Logger:
       : F[A] =
         logF[F, A](logger, LogLevel.Debug, functionName, args)(body)
 
-      def debugTaskWithResult[A](task: Task[A])(implicit src: sourcecode.Name): Task[A] =
-        debugTaskWithResult[A](src.value)(task)
+      def debugIOWithResult[A](io: IO[A])(implicit src: sourcecode.Name): IO[A] =
+        debugIOWithResult[A](src.value)(io)
 
-      def debugTaskWithResult[A](function: String)(task: Task[A])
-      : Task[A] =
-        logF[Task, A](logger, LogLevel.Debug, function)(task)
+      def debugIOWithResult[A](function: String)(body: IO[A])
+      : IO[A] =
+        logF[IO, A](logger, LogLevel.Debug, function)(body)
 
-      def debugTaskWithResult[A](function: String, args: => Any)(task: Task[A])
-      : Task[A] =
-        logF[Task, A](logger, LogLevel.Debug, function, args)(task)
+      def debugIOWithResult[A](function: String, args: => Any)(io: IO[A])
+      : IO[A] =
+        logF[IO, A](logger, LogLevel.Debug, function, args)(io)
 
-      def debugTaskWithResult[A](function: String, args: => Any = "", result: A => Any = null)
-        (task: Task[A])
-      : Task[A] =
-        logF[Task, A](logger, LogLevel.Debug, function, args, result)(task)
+      def debugIOWithResult[A](function: String, args: => Any = "", result: A => Any = null)
+        (io: IO[A])
+      : IO[A] =
+        logF[IO, A](logger, LogLevel.Debug, function, args, result)(io)
 
-      def traceTask[A](task: Task[A])(implicit src: sourcecode.Name): Task[A] =
-        traceTask(src.value)(task)
+      def traceIO[A](body: IO[A])(using src: sourcecode.Name): IO[A] =
+        traceF(functionName = src.value)(body)
 
-      def traceTask[A](function: String, args: => Any = "")(task: Task[A]): Task[A] =
-        logF[Task, A](logger, LogLevel.Trace, function, args)(task)
+      def traceIO[A](functionName: String, args: => Any = "")(body: IO[A]): IO[A] =
+        traceF(functionName, args)(body)
 
       def traceF[F[_], A](body: F[A])(using F: Sync[F], src: sourcecode.Name)
       : F[A] =
@@ -152,16 +152,16 @@ object Logger:
       : F[A] =
         logF[F, A](logger, LogLevel.Trace, functionName, args)(body)
 
-      def traceTaskWithResult[A](task: Task[A])(implicit src: sourcecode.Name): Task[A] =
-        traceTaskWithResult[A](src.value, task = task)
+      def traceIOWithResult[A](body: IO[A])(implicit src: sourcecode.Name): IO[A] =
+        traceIOWithResult[A](src.value, body = body)
 
-      def traceTaskWithResult[A](
+      def traceIOWithResult[A](
         function: String,
         args: => Any = "",
         result: A => Any = identity[A](_),
-        task: Task[A])
-      : Task[A] =
-        logF[Task, A](logger, LogLevel.Trace, function, args, result)(task)
+        body: IO[A])
+      : IO[A] =
+        logF[IO, A](logger, LogLevel.Trace, function, args, result)(body)
 
       def traceCall[A](body: => A)(implicit src: sourcecode.Name): A =
         traceCall[A](src.value)(body)
@@ -178,17 +178,17 @@ object Logger:
         logF[SyncIO, A](logger, LogLevel.Trace, function, args, result)(SyncIO(body))
           .unsafeRunSync()
 
-      def infoResource[A](function: String, args: => Any = "")(resource: Resource[Task, A])
-      : Resource[Task, A] =
-        logResourceUse[Task, A](logger, LogLevel.Info, function, args)(resource)
+      def infoResource[A](function: String, args: => Any = "")(resource: Resource[IO, A])
+      : Resource[IO, A] =
+        logResourceUse[IO, A](logger, LogLevel.Info, function, args)(resource)
 
-      def debugResource[A](resource: Resource[Task, A])(implicit src: sourcecode.Name)
-      : Resource[Task, A] =
+      def debugResource[A](resource: Resource[IO, A])(implicit src: sourcecode.Name)
+      : Resource[IO, A] =
         debugResource(src.value + ".use")(resource)
 
-      def debugResource[A](function: String, args: => Any = "")(resource: Resource[Task, A])
-      : Resource[Task, A] =
-        logResourceUse[Task, A](logger, LogLevel.Debug, function, args)(resource)
+      def debugResource[A](function: String, args: => Any = "")(resource: Resource[IO, A])
+      : Resource[IO, A] =
+        logResourceUse[IO, A](logger, LogLevel.Debug, function, args)(resource)
 
       def traceResource[F[_], A](resource: Resource[F, A])
         (implicit F: Applicative[F] & Sync[F], src: sourcecode.Name)
@@ -200,27 +200,27 @@ object Logger:
       : Resource[F, A] =
         logResourceUse[F, A](logger, LogLevel.Trace, function, args)(resource)
 
-      def infoObservable[A](function: String, args: => Any = "")(observable: Observable[A])
-      : Observable[A] =
-        logObservable[A](logger, LogLevel.Info, function, args)(observable)
+      def infoStream[A](function: String, args: => Any = "")(stream: Stream[IO, A])
+      : Stream[IO, A] =
+        logStream[A](logger, LogLevel.Info, function, args)(stream)
 
-      def debugObservable[A](observable: Observable[A])(implicit src: sourcecode.Name)
-      : Observable[A] =
-        debugObservable(src.value + ": Observable")(observable)
+      def debugStream[A](stream: Stream[IO, A])(implicit src: sourcecode.Name)
+      : Stream[IO, A] =
+        debugStream(src.value + ": Stream")(stream)
 
-      def debugObservable[A](function: String, args: => Any = "")(observable: Observable[A])
-      : Observable[A] =
-        logObservable[A](logger, LogLevel.Debug, function, args)(observable)
+      def debugStream[A](function: String, args: => Any = "")(stream: Stream[IO, A])
+      : Stream[IO, A] =
+        logStream[A](logger, LogLevel.Debug, function, args)(stream)
 
-      def traceObservable[A](observable: Observable[A])(implicit src: sourcecode.Name)
-      : Observable[A] =
-        traceObservable(src.value + ": Observable")(observable)
+      def traceStream[A](stream: Stream[IO, A])(implicit src: sourcecode.Name)
+      : Stream[IO, A] =
+        traceStream(src.value + ": Stream")(stream)
 
-      def traceObservable[A](function: String, args: => Any = "")(observable: Observable[A])
-      : Observable[A] =
-        logObservable[A](logger, LogLevel.Trace, function, args)(observable)
+      def traceStream[A](function: String, args: => Any = "")(stream: Stream[IO, A])
+      : Stream[IO, A] =
+        logStream[A](logger, LogLevel.Trace, function, args)(stream)
 
-    private def logF[F[_], A](
+    private def logF[F[_] <: MonadError[F, Throwable], A](
       logger: ScalaLogger,
       logLevel: LogLevel,
       function: String,
@@ -246,8 +246,8 @@ object Logger:
                   else
                     resultToLoggable(result).toString))
             .guaranteeCase:
-              case Completed => F.unit
-              case exitCase => F.delay(ctx.logExitCase(exitCase))
+              case Outcome.Succeeded(_) => F.unit
+              case outcome => F.delay(ctx.logOutcome(outcome))
 
     private def logResourceUse[F[_], A](logger: ScalaLogger, logLevel: LogLevel, function: String,
       args: => Any = "")
@@ -263,20 +263,20 @@ object Logger:
               Some(new StartReturnLogContext(logger, logLevel, function, args))))(
           release = (maybeCtx, exitCase) =>
             F.delay(
-              for ctx <- maybeCtx do ctx.logExitCase(exitCase)))
+              for ctx <- maybeCtx do ctx.logOutcome(exitCase.toOutcome)))
         .flatMap(_ => resource)
 
-    private def logObservable[A](logger: ScalaLogger, logLevel: LogLevel, function: String,
+    private def logStream[A](logger: ScalaLogger, logLevel: LogLevel, function: String,
       args: => Any = "")
-      (observable: Observable[A])
-    : Observable[A] =
-      observable
+      (stream: Stream[IO, A])
+    : Stream[IO, A] =
+      stream
         .doOnSubscribe(
-          Task.when(logger.isEnabled(logLevel))(Task(
+          IO.whenA(logger.isEnabled(logLevel))(IO(
             logStart(logger, logLevel, function, args))))
         .guaranteeCase(exitCase =>
-          Task.when(logger.isEnabled(logLevel))(Task(
-            logExitCase(logger, logLevel, function, args, duration = "", exitCase))))
+          IO.whenA(logger.isEnabled(logLevel))(IO(
+            logOutcome(logger, logLevel, function, args, duration = "", exitCase))))
 
   private final class StartReturnLogContext(logger: ScalaLogger, logLevel: LogLevel,
     function: String, args: => Any = ""):
@@ -289,8 +289,8 @@ object Logger:
       else
         (System.nanoTime() - startedAt).ns.pretty + " "
 
-    def logExitCase(exitCase: ExitCase[Throwable]): Unit =
-      Logger.logExitCase(logger, logLevel, function, "", duration, exitCase)
+    def logOutcome[A](outcome: OutcomeIO[A]): Unit =
+      Logger.logOutcome(logger, logLevel, function, "", duration, outcome)
 
     def logReturn(marker: String, msg: AnyRef): Unit =
       Logger.logReturn(logger, logLevel, function, "", duration, marker, msg)
@@ -316,20 +316,20 @@ object Logger:
         case LogLevel.Warn  => logger.warn (s"↘ $function($argsString) ↘")
         case LogLevel.Error => logger.error(s"↘ $function($argsString) ↘")
 
-  private def logExitCase(
+  private def logOutcome[A](
     logger: ScalaLogger,
     logLevel: LogLevel,
     function: String,
     args: => Any,
     duration: String,
-    exitCase: ExitCase[Throwable])
+    exitCase: OutcomeIO[A])
   : Unit =
     exitCase match
-      case Error(t) =>
+      case Outcome.Errored(t) =>
         logReturn(logger, logLevel, function, args, duration, "💥️", t.toStringWithCauses)
-      case Canceled =>
+      case Outcome.Canceled() =>
         logReturn(logger, logLevel, function, args, duration, "⚫️", "Canceled")
-      case Completed =>
+      case Outcome.Succeeded(_) =>
         logReturn(logger, logLevel, function, args, duration, "", "Completed")
 
   private def logReturn(

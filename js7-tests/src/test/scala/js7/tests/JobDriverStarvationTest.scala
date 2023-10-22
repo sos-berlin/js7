@@ -5,7 +5,7 @@ import js7.base.log.Logger
 import js7.base.problem.Checked.*
 import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.SuccessFuture
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.data.agent.AgentPath
@@ -17,7 +17,7 @@ import js7.tests.JobDriverStarvationTest.*
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
+import fs2.Stream
 import scala.concurrent.duration.Deadline.now
 
 final class JobDriverStarvationTest extends OurTestSuite, ControllerAgentForScalaTest:
@@ -50,7 +50,7 @@ final class JobDriverStarvationTest extends OurTestSuite, ControllerAgentForScal
     val orderIds = for i <- 1 to n yield OrderId(s"ORDER-$i")
     val proxy = controller.api.startProxy().await(99.s)
 
-    val firstOrdersProcessing = proxy.observable
+    val firstOrdersProcessing = proxy.stream
       .map(_.stampedEvent.value)
       .collect:
         case KeyedEvent(orderId: OrderId, _: OrderProcessingStarted) => orderId
@@ -58,7 +58,7 @@ final class JobDriverStarvationTest extends OurTestSuite, ControllerAgentForScal
       .completedL
       .runToFuture
 
-    val allOrdersDeleted = proxy.observable
+    val allOrdersDeleted = proxy.stream
       .map(_.stampedEvent.value)
       .collect:
         case KeyedEvent(orderId: OrderId, _: OrderDeleted) => orderId
@@ -69,7 +69,7 @@ final class JobDriverStarvationTest extends OurTestSuite, ControllerAgentForScal
 
     var t = now
     controller.api
-      .addOrders(Observable
+      .addOrders(Stream
         .fromIterable(orderIds)
         .map(FreshOrder(_, workflow.path, deleteWhenTerminated = true)))
       .await(99.s).orThrow

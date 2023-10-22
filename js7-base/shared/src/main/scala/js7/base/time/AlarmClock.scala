@@ -1,12 +1,13 @@
 package js7.base.time
 
-import cats.effect.{Resource, Sync}
+import cats.effect.unsafe.{IORuntime, Scheduler}
+import cats.effect.{IO, Resource, Sync}
+import js7.base.monixlike.SerialCancelable
 import js7.base.time.ScalaTime.*
+import js7.base.utils.CatsUtils.syntax.scheduleAtFixedRate
 import js7.base.utils.Atomic
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
-import monix.eval.Task
-import monix.execution.cancelables.SerialCancelable
-import monix.execution.{Cancelable, Scheduler}
+import js7.base.utils.{Atomic, EmptyRunnable}
 import scala.annotation.unused
 import scala.collection.mutable
 import scala.concurrent.duration.*
@@ -16,17 +17,19 @@ trait AlarmClock extends WallClock:
   def stop(): Unit
 
   def scheduleOnce(delay: FiniteDuration)(callback: => Unit)
-    (implicit fullName: sourcecode.FullName): Cancelable
+    (using sourcecode.FullName)
+  : Runnable
 
   def scheduleAt(at: Timestamp)(callback: => Unit)
-    (implicit fullName: sourcecode.FullName): Cancelable
+    (using sourcecode.FullName)
+  : Runnable
 
-  def sleep(delay: FiniteDuration): Task[Unit] =
-    Task.create((_, callback) =>
+  def sleep(delay: FiniteDuration): IO[Unit] =
+    IO.async_[Unit](callback =>
       scheduleOnce(delay)(callback(Right(()))))
 
-  def sleepUntil(ts: Timestamp): Task[Unit] =
-    Task.create((_, callback) =>
+  def sleepUntil(ts: Timestamp): IO[Unit] =
+    IO.async_[Unit](callback =>
       scheduleAt(ts)(callback(Right(()))))
 
   /** TestAlarmClock synchronizes time query and time change. */
@@ -35,32 +38,21 @@ trait AlarmClock extends WallClock:
 
 
 object AlarmClock:
-  def apply(clockCheckInterval: Option[FiniteDuration] = None)(implicit s: Scheduler): AlarmClock =
+  def apply(clockCheckInterval: Option[FiniteDuration] = None)(implicit ior: IORuntime)
+  : AlarmClock =
+    given Scheduler = ior.scheduler
     clockCheckInterval match
       case None =>
         new SimpleAlarmClock
-
       case Some(clockCheckInterval) =>
         new ClockCheckingAlarmClock(clockCheckInterval)
 
   def resource[F[_]](clockCheckInterval: Option[FiniteDuration] = None)
-    (implicit F: Sync[F], s: Scheduler)
+    (using F: Sync[F], ior: IORuntime)
   : Resource[F, AlarmClock] =
     Resource.make(
       acquire = F.delay(AlarmClock(clockCheckInterval)))(
       release = clock => F.delay(clock.stop()))
-
-  private final class SimpleAlarmClock
-    (implicit val s: Scheduler)
-  extends AlarmClock, Simple:
-    def epochMilli() = scheduler.clockRealTime(MILLISECONDS)
-    protected def scheduler = s
-
-  private final class ClockCheckingAlarmClock(val clockCheckInterval: FiniteDuration)
-    (implicit val s: Scheduler)
-  extends AlarmClock, ClockChecking:
-    def epochMilli() = scheduler.clockRealTime(MILLISECONDS)
-    protected def scheduler = s
 
   private[time] trait Simple:
     self: AlarmClock =>
@@ -70,15 +62,25 @@ object AlarmClock:
     def stop() = {}
 
     def scheduleOnce(delay: FiniteDuration)(callback: => Unit)
-      (implicit @unused fullName: sourcecode.FullName): Cancelable =
-      scheduler.scheduleOnce(delay)(callback)
+      (implicit @unused fullName: sourcecode.FullName)
+    : Runnable =
+      scheduler.sleep(delay, () => callback)
 
     def scheduleAt(at: Timestamp)(callback: => Unit)
-      (implicit @unused fullName: sourcecode.FullName): Cancelable =
-      scheduler.scheduleOnce((at - now()) max Duration.Zero)(callback)
-    //
-    //override def toString =
-    //  productPrefix + "(" + now() + ")"
+      (implicit @unused fullName: sourcecode.FullName)
+    : Runnable =
+      scheduler.sleep((at - now()) max Duration.Zero, () =>callback)
+
+  private final class SimpleAlarmClock()(using s: Scheduler)
+  extends AlarmClock with Simple:
+    def epochMilli() = scheduler.nowMillis()
+    protected def scheduler = s
+
+  private final class ClockCheckingAlarmClock(val clockCheckInterval: FiniteDuration)
+    (using val s: Scheduler)
+  extends AlarmClock with ClockChecking:
+    def epochMilli() = scheduler.nowMillis()
+    protected def scheduler = s
 
   /** Checks the clock for change and corrects the schedule. */
   private[time] trait ClockChecking extends Runnable:
@@ -107,12 +109,12 @@ object AlarmClock:
 
     final def scheduleOnce(delay: FiniteDuration)(callback: => Unit)
       (implicit fullName: sourcecode.FullName)
-    : Cancelable =
+    : Runnable =
       scheduleAt(now() + delay)(callback)
 
     final def scheduleAt(at: Timestamp)(callback: => Unit)
       (implicit @unused fullName: sourcecode.FullName)
-    : Cancelable =
+    : Runnable =
       val milli = at.toEpochMilli
       val alarm = new Alarm(milli, callback)
       self.synchronized:
@@ -131,23 +133,23 @@ object AlarmClock:
           val now = epochMilli()
           val delay = (firstMilli - now) max 0
           if delay > tickInterval then
-            startTicking(tickInterval)
+            startTicking(tickInterval.ms)
           else
             stopTicking()
           //logger.trace(s"scheduleOnce ${delay.ms.pretty} (${Timestamp.ofEpochMilli(now)})")
-          timer := scheduler.scheduleOnce(delay, MILLISECONDS, this)
+          timer := scheduler.sleep(delay.ms, this)
           nextMilli = firstMilli
 
-    private def startTicking(tickInterval: Long) =
+    private def startTicking(tickInterval: FiniteDuration) =
       if !ticking then
         ticking = true
-        ticker := scheduler.scheduleAtFixedRate(tickInterval, tickInterval, MILLISECONDS, this)
+        ticker := scheduler.scheduleAtFixedRate(tickInterval, tickInterval, this)
         //logger.trace(s"Ticking ${tickInterval.ms.pretty}")
 
     private def stopTicking() =
       if ticking then
         ticking = false
-        ticker := Cancelable.empty
+        ticker := EmptyRunnable
         //logger.trace(s"Ticking stopped")
 
     final def run(): Unit =
@@ -176,7 +178,7 @@ object AlarmClock:
         ")"
 
     private final class Alarm(epochMilli: Long, callback: => Unit)
-    extends Cancelable:
+    extends Runnable:
       private val called = Atomic(false)
 
       def call(): Unit =

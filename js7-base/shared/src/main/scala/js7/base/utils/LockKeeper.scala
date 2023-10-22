@@ -2,12 +2,12 @@ package js7.base.utils
 
 import cats.effect.Resource
 import js7.base.log.{BlockingSymbol, CorrelId, Logger}
-import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.time.ScalaTime.{RichDeadline, RichDuration}
 import js7.base.utils.LockKeeper.*
 import js7.base.utils.ScalaUtils.syntax.*
-import monix.eval.Task
-import monix.execution.atomic.AtomicBoolean
+import cats.effect.IO
+import js7.base.utils.Atomic
+import js7.base.utils.CatsUtils.syntax.whenItTakesLonger
 import scala.collection.mutable
 import scala.concurrent.Promise
 import scala.concurrent.duration.Deadline.now
@@ -20,20 +20,20 @@ final class LockKeeper[K]:
   // keyToQueue(key).length: Number of clients waiting to get the lock
   private val keyToQueue = mutable.Map.empty[Any, mutable.Queue[Promise[Token]]]
 
-  def lock[A](key: K)(body: Task[A])(implicit enclosing: sourcecode.Enclosing): Task[A] =
+  def lock[A](key: K)(body: IO[A])(implicit enclosing: sourcecode.Enclosing): IO[A] =
     lockResource(key).use(_ => body)
 
-  def lockResource(key: K)(implicit enclosing: sourcecode.Enclosing): Resource[Task, Token] =
+  def lockResource(key: K)(implicit enclosing: sourcecode.Enclosing): Resource[IO, Token] =
     Resource.make(acquire(key))(release)
 
-  private def acquire(key: K)(implicit enclosing: sourcecode.Enclosing): Task[Token] =
-    Task.defer:
+  private def acquire(key: K)(implicit enclosing: sourcecode.Enclosing): IO[Token] =
+    IO.defer:
       var wasQueued, info = false
       val result = synchronized:
         keyToQueue.get(key) match
           case None =>
             keyToQueue += key -> mutable.Queue.empty
-            Task.pure(new Token(key))
+            IO.pure(new Token(key))
 
           case Some(queue) =>
             val since = now
@@ -43,8 +43,8 @@ final class LockKeeper[K]:
             val sym = new BlockingSymbol
             logger.debug(s"🟡 Waiting for $key (in ${enclosing.value})")
             CorrelId.current.bind(
-              Task.fromFuture(promise.future)
-                .whenItTakesLonger()(_ => Task {
+              IO.fromFuture(IO.pure(promise.future))
+                .whenItTakesLonger()(_ => IO {
                   sym.onInfo()
                   info = true
                   logger.info(s"$sym Still waiting for $key (in ${enclosing.value}) since ${since.elapsed.pretty}")
@@ -56,8 +56,8 @@ final class LockKeeper[K]:
       }
       result
 
-  private def release(token: Token): Task[Unit] =
-    Task:
+  private def release(token: Token): IO[Unit] =
+    IO:
       if !token.released.getAndSet(true) then
         import token.key
         val handedOver = synchronized:
@@ -85,7 +85,7 @@ final class LockKeeper[K]:
     })"
 
   final class Token private[LockKeeper](private[LockKeeper] val key: K):
-    private[LockKeeper] val released = AtomicBoolean(false)
+    private[LockKeeper] val released = Atomic(false)
 
     override def toString = s"LockKeeper.Token($key${released.get() ?? ", released"})"
 

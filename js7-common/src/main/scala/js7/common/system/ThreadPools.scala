@@ -17,7 +17,7 @@ import js7.base.utils.Closer
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isTest
 import js7.common.system.startup.Halt.haltJava
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.ExecutionModel.SynchronousExecution
 import monix.execution.atomic.AtomicInt
 import monix.execution.schedulers.{ExecutorScheduler, SchedulerService}
@@ -81,10 +81,10 @@ object ThreadPools:
   private val nextNumber = AtomicInt(0)
 
   def ownThreadPoolResource[A](name: String, config: Config)
-    (resource: Scheduler => Resource[Task, A])
-  : Resource[Task, A] =
+    (resource: Scheduler => Resource[IO, A])
+  : Resource[IO, A] =
     for
-      ownScheduler <- standardSchedulerResource[Task](name, config)
+      ownScheduler <- standardSchedulerResource[IO](name, config)
       a <- resource(ownScheduler).executeOn(ownScheduler)
     yield a
 

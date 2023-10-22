@@ -9,7 +9,6 @@ import js7.controller.command.ControllerCommandExecutor.*
 import js7.core.command.{CommandExecutor, CommandMeta, CommandRegister, CommandRun}
 import js7.data.controller.ControllerCommand
 import js7.data.controller.ControllerCommand.{Batch, EmergencyStop}
-import monix.eval.Task
 
 /**
   * @author Joacim Zschimmer
@@ -20,12 +19,12 @@ extends CommandExecutor[ControllerCommand]:
 
   private val register = new CommandRegister[ControllerCommand]
 
-  def executeCommand(command: ControllerCommand, meta: CommandMeta): Task[Checked[command.Response]] =
+  def executeCommand(command: ControllerCommand, meta: CommandMeta): IO[Checked[command.Response]] =
     executeCommand(command, meta, None)
 
   private def executeCommand(command: ControllerCommand, meta: CommandMeta, batchId: Option[CorrelId])
-  : Task[Checked[command.Response]] =
-    Task.defer:
+  : IO[Checked[command.Response]] =
+    IO.defer:
       val correlId = CorrelId.current
       val run = register.add(command, meta, correlId, batchId)
       logCommand(run)
@@ -42,7 +41,7 @@ extends CommandExecutor[ControllerCommand]:
           for problem <- checkedResponse.left do logger.warn(s"$run rejected: $problem")
           checkedResponse.map(_.asInstanceOf[command.Response])
         }
-        .doOnFinish(maybeThrowable => Task {
+        .doOnFinish(maybeThrowable => IO {
           for t <- maybeThrowable if run.batchInternalId.isEmpty do {
             logger.warn(s"$run failed: ${t.toStringWithCauses}")
           }
@@ -50,14 +49,14 @@ extends CommandExecutor[ControllerCommand]:
         })
 
   private def executeCommand2(command: ControllerCommand, meta: CommandMeta, id: CorrelId, batchId: Option[CorrelId])
-  : Task[Checked[ControllerCommand.Response]] =
-    Task.defer:
+  : IO[Checked[ControllerCommand.Response]] =
+    IO.defer:
       command match
         case Batch(correlIdWrappedCommands) =>
-          val tasks = for CorrelIdWrapped(correlId, command) <- correlIdWrappedCommands yield
+          val ios = for CorrelIdWrapped(correlId, command) <- correlIdWrappedCommands yield
             correlId.bind:
               executeCommand(command, meta, batchId orElse Some(id))
-          Task.sequence(tasks).map(checkedResponses => Right(Batch.Response(checkedResponses)))
+          IO.sequence(ios).map(checkedResponses => Right(Batch.Response(checkedResponses)))
 
         case EmergencyStop(restart) =>
           Halt.haltJava("🟥 EmergencyStop command received: JS7 CONTROLLER STOPS NOW", restart = restart)

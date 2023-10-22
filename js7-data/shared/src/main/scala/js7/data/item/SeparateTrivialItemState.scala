@@ -1,6 +1,6 @@
 package js7.data.item
 
-import monix.reactive.Observable
+import fs2.Stream
 
 /** For orthogonality, for Items with a still(!) separate empty ItemState. */
 trait SeparateTrivialItemState[A <: SeparateTrivialItemState[A]]
@@ -15,8 +15,8 @@ extends InventoryItemState:
   final def updateItem(item: companion.Item) =
     Right(item.toInitialItemState./*???*/asInstanceOf[companion.ItemState])
 
-  override final def toSnapshotObservable =
-    Observable.pure(item)
+  override final def toSnapshotStream =
+    Stream.emit(item)
 
 
 object SeparateTrivialItemState:

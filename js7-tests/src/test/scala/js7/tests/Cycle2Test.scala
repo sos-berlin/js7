@@ -4,7 +4,7 @@ import java.time.{LocalDate, LocalTime}
 import js7.base.configutils.Configs.*
 import js7.base.log.Logger
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.{DurationRichInt, sleep}
 import js7.base.time.{AdmissionTimeScheme, DailyPeriod}
 import js7.base.utils.ScalaUtils.syntax.RichEither
@@ -22,7 +22,7 @@ import scala.concurrent.duration.*
 
 // Repeats the JS-2012 test case in CycleTest with the real wall clock, to be sure.
 final class Cycle2Test extends OurTestSuite, ControllerAgentForScalaTest, ScheduleTester:
-  
+
   protected val agentPaths = Nil
   protected val items = Seq(calendar, js2012Workflow)
 

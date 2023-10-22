@@ -1,56 +1,57 @@
 package js7.base.service
 
 import cats.effect.Resource
-import cats.effect.concurrent.Deferred
+import cats.effect.kernel.Deferred
 import cats.syntax.flatMap.*
 import cats.syntax.option.*
 import izumi.reflect.Tag
 import js7.base.log.Logger
 import js7.base.service.RestartAfterFailureService.*
 import js7.base.time.ScalaTime.*
-import js7.base.utils.CatsUtils.syntax.RichResource
-import js7.base.utils.Delayer.syntax.RichDelayerTask
+import js7.base.utils.CatsUtils.syntax.*
+import js7.base.utils.Delayer.syntax.*
 import js7.base.utils.ScalaUtils.some
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, Atomic, DelayConf, Delayer}
-import monix.eval.Task
+import js7.base.utils.{Allocated, DelayConf, Delayer}
+import cats.effect.IO
 import scala.concurrent.duration.*
+import js7.base.catsutils.UnsafeMemoizable.given
 
 final class RestartAfterFailureService[S <: Service: Tag] private[service](
   startDelays: Seq[FiniteDuration] = defaultRestartDelays,
   runDelays: Seq[FiniteDuration] = defaultRestartDelays)
-  (serviceResource: Resource[Task, S])
+  (serviceResource: Resource[IO, S])
 extends Service:
   self =>
 
   private val serviceName = implicitly[Tag[S]].tag.toString
-  private val currentAllocatedService = Atomic(none[Allocated[Task, S]])
+  private val currentAllocatedService = Atomic(none[Allocated[IO, S]])
   @volatile private var stopping = false
-  private val untilStopRequested = Deferred.unsafe[Task, Unit]
+  private val untilStopRequested = Deferred.unsafe[IO, Unit]
 
   private val maybeStartDelay = DelayConf.maybe(startDelays)
   private val maybeRunDelay = DelayConf.maybe(runDelays)
 
   protected val stop =
-    Task.defer {
+    IO.defer {
       stopping = true
       untilStopRequested.complete(()) *>
-        currentAllocatedService.get().fold(Task.unit)(_.release)
-    }.memoize
+        currentAllocatedService.get().fold(IO.unit)(_.release)
+    }.unsafeMemoize
 
-  protected def start: Task[Service.Started] =
+  protected def start: IO[Service.Started] =
     for
       service <- startUnderlyingService
       started <- startService(runUnderlyingService(service))
     yield started
 
-
-  private def startUnderlyingService: Task[S] =
+  private def startUnderlyingService: IO[S] =
     serviceResource
       .toAllocated
       .pipeMaybe(maybeStartDelay)(
         _.onFailureRestartWithDelayer(_,
-          onFailure = t => Task {
+          onFailure = t => IO {
             logger.error(s"$serviceName start failed: ${t.toStringWithCauses}")
             for st <- t.ifStackTrace do
               logger.debug(s"$serviceName start failed: ${t.toStringWithCauses}", st)
@@ -59,31 +60,31 @@ extends Service:
       .flatTap(setCurrentService)
       .map(_.allocatedThing)
 
-  private def setCurrentService(allocated: Allocated[Task, S]): Task[Unit] =
-    Task.defer:
+  private def setCurrentService(allocated: Allocated[IO, S]): IO[Unit] =
+    IO.defer:
       currentAllocatedService
         .getAndSet(Some(allocated))
-        .fold(Task.unit)(_.release.when(stopping))
+        .fold(IO.unit)(_.release.when(stopping))
         .*>(allocated.release.when(stopping))
 
   private def runUnderlyingService(service: S) =
     maybeRunDelay.fold(service.untilStopped)(delayConf =>
-      Delayer.start[Task](delayConf).flatMap(delayer =>
-        Task.tailRecM(some(service)) { initialService =>
+      Delayer.start[IO](delayConf).flatMap(delayer =>
+        service.some.tailRecM { initialService =>
           val service = initialService match {
-            case Some(initialService) => Task.pure(initialService) // First iteration
+            case Some(initialService) => IO.pure(initialService) // First iteration
             case None => startUnderlyingService // Following iterations
           }
           service.flatMap(service =>
             service
               .untilStopped
               .map(Right(_))
-              .onErrorHandleWith { throwable =>
+              .handleErrorWith { throwable =>
                 // Service has already logged the throwable
                 logger.debug(s"💥 $serviceName start failed: ${throwable.toStringWithCauses}",
                   throwable.nullIfNoStackTrace)
                 if stopping then
-                  Task.right(())
+                  IO.right(())
                 else
                   for _ <- delayer.sleep(logDelay) yield
                     if stopping then
@@ -94,7 +95,7 @@ extends Service:
         }))
 
   private def logDelay(duration: FiniteDuration) =
-    Task(logger.info(
+    IO(logger.info(
       "Due to failure, " + serviceName + " restarts " +
         (if duration.isZero then "now" else "in " + duration.pretty)))
 

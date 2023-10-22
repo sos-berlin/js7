@@ -7,7 +7,7 @@ import js7.agent.tests.AgentClientCommandMarshallingTest.*
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.problem.Checked
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Closer.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
@@ -23,8 +23,8 @@ extends OurTestSuite, ScalaFutures, AgentTester:
 
   //override protected val agentTestWiring = RunningAgent.TestWiring(
   //  commandHandler = Some(new CommandHandler {
-  //    def execute(command: AgentCommand, meta: CommandMeta): Task[Checked[command.Response]] =
-  //      Task {
+  //    def execute(command: AgentCommand, meta: CommandMeta): IO[Checked[command.Response]] =
+  //      IO {
   //        (command match {
   //          case ExpectedTerminate => Right(AgentCommand.Response.Accepted)
   //          case EmergencyStop(false) => Right(AgentCommand.Response.Accepted)

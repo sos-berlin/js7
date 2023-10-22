@@ -4,7 +4,7 @@ import java.util.concurrent.TimeoutException
 import js7.agent.TestAgent
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.Problems.ItemIsStillReferencedProblem
@@ -18,10 +18,10 @@ import js7.tests.jobs.SemaphoreJob
 import js7.tests.subagent.SubagentDeleteTest.*
 import js7.tests.subagent.SubagentTester.agentPath
 import monix.execution.Scheduler
-import monix.reactive.Observable
+import fs2.Stream
 
 final class SubagentDeleteTest extends OurTestSuite, SubagentTester:
-  
+
   protected val agentPaths = Seq(agentPath)
   protected lazy val items = Seq(workflow, bareSubagentItem)
   override protected val primarySubagentsDisabled = true
@@ -42,7 +42,7 @@ final class SubagentDeleteTest extends OurTestSuite, SubagentTester:
     runSubagent(bareSubagentItem) { _ =>
       val eventId = eventWatch.lastAddedEventId
       controller.api
-        .updateItems(Observable(DeleteSimple(bareSubagentItem.id)))
+        .updateItems(Stream(DeleteSimple(bareSubagentItem.id)))
         .await(99.s)
         .orThrow
       eventWatch.await[ItemDetachable](_.event.key == bareSubagentItem.id, after = eventId)
@@ -55,7 +55,7 @@ final class SubagentDeleteTest extends OurTestSuite, SubagentTester:
     var eventId = eventWatch.lastAddedEventId
 
     controller.api
-      .updateItems(Observable(AddOrChangeSimple(bareSubagentItem)))
+      .updateItems(Stream(AddOrChangeSimple(bareSubagentItem)))
       .await(99.s).orThrow
     runSubagent(bareSubagentItem) { _ =>
       locally:
@@ -67,7 +67,7 @@ final class SubagentDeleteTest extends OurTestSuite, SubagentTester:
         // aOrderId waits for semaphore
 
       controller.api
-        .updateItems(Observable(DeleteSimple(bareSubagentItem.path)))
+        .updateItems(Stream(DeleteSimple(bareSubagentItem.path)))
         .await(99.s).orThrow
       eventWatch.await[ItemDetachable](_.event.key == bareSubagentItem.id, after = eventId)
 
@@ -95,7 +95,7 @@ final class SubagentDeleteTest extends OurTestSuite, SubagentTester:
     // START SUBAGENT AGAIN
 
     controller.api
-      .updateItems(Observable(AddOrChangeSimple(bareSubagentItem)))
+      .updateItems(Stream(AddOrChangeSimple(bareSubagentItem)))
       .await(99.s).orThrow
 
     runSubagent(bareSubagentItem) { _ =>
@@ -123,7 +123,7 @@ final class SubagentDeleteTest extends OurTestSuite, SubagentTester:
         // orderId waits for semaphore
 
       controller.api
-        .updateItems(Observable(DeleteSimple(bareSubagentItem.path)))
+        .updateItems(Stream(DeleteSimple(bareSubagentItem.path)))
         .await(99.s).orThrow
       eventWatch.await[ItemDetachable](_.event.key == bareSubagentItem.id, after = eventId)
 
@@ -135,14 +135,14 @@ final class SubagentDeleteTest extends OurTestSuite, SubagentTester:
       // Changing a Subagent is rejected while it is being deleted
       locally:
         val checked = controller.api
-          .updateItems(Observable(AddOrChangeSimple(bareSubagentItem.copy(disabled = true))))
+          .updateItems(Stream(AddOrChangeSimple(bareSubagentItem.copy(disabled = true))))
           .await(99.s)
         assert(checked == Left(Problem(
           "Subagent:BARE-SUBAGENT is marked as deleted and cannot be changed")))
 
       // Deleting a Subagent is ignored while it is being deleted
       controller.api
-        .updateItems(Observable(DeleteSimple(bareSubagentId)))
+        .updateItems(Stream(DeleteSimple(bareSubagentId)))
         .await(99.s)
         .orThrow
 
@@ -168,7 +168,7 @@ final class SubagentDeleteTest extends OurTestSuite, SubagentTester:
 
   "The Director Subagent cannot be deleted" in:
     val checked = controller.api
-      .updateItems(Observable(
+      .updateItems(Stream(
         DeleteSimple(directoryProvider.subagentId)))
       .await(99.s)
     assert(checked == Left(

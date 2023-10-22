@@ -7,7 +7,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.base.web.{HttpClient, Uri}
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler.Implicits.traced
 import org.apache.pekko
 import scala.concurrent.Await
@@ -24,7 +24,7 @@ trait TextApi:
   protected def httpClient: HttpClient
   protected def sessionToken: Option[SessionToken]
 
-  implicit private def implicitSessionToken: Task[Option[SessionToken]] = Task(sessionToken)
+  implicit private def implicitSessionToken: IO[Option[SessionToken]] = IO(sessionToken)
 
   def executeCommand(command: String): Unit =
     val response = awaitResult(
@@ -54,8 +54,8 @@ trait TextApi:
     catch
       case ConnectionLost(_) => false
 
-  private def awaitResult[A](task: Task[A]): A =
-    try Await.result(task.runToFuture, 65.s)  // TODO Use standard Futures method await when available in subproject 'base'
+  private def awaitResult[A](io: IO[A]): A =
+    try Await.result(io.runToFuture, 65.s)  // TODO Use standard Futures method await when available in subproject 'base'
     catch
       case t: Throwable =>
         t.appendCurrentStackTrace

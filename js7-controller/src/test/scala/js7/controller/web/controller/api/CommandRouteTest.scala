@@ -8,7 +8,7 @@ import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegments
 import js7.controller.web.controller.api.test.RouteTester
 import js7.core.command.CommandMeta
 import js7.data.controller.{ControllerCommand, ControllerId}
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler
 import org.apache.pekko.http.scaladsl.model.MediaTypes.`application/json`
 import org.apache.pekko.http.scaladsl.model.StatusCodes.PayloadTooLarge
@@ -27,11 +27,11 @@ final class CommandRouteTest extends OurTestSuite, RouteTester, CommandRoute
 
   private var commandReceived = false
 
-  protected def executeCommand(command: ControllerCommand, meta: CommandMeta): Task[Checked[command.Response]] =
+  protected def executeCommand(command: ControllerCommand, meta: CommandMeta): IO[Checked[command.Response]] =
     command match {
       case ControllerCommand.NoOperation(None) =>
         commandReceived = true
-        Task.pure(Right(ControllerCommand.Response.Accepted.asInstanceOf[command.Response]))
+        IO.pure(Right(ControllerCommand.Response.Accepted.asInstanceOf[command.Response]))
 
       case _ =>
         fail()

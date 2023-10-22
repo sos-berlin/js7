@@ -2,7 +2,7 @@ package js7.base.monixutils
 
 import js7.base.problem.Problem
 import js7.base.test.OurAsyncTestSuite
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler.Implicits.traced
 
 final class AsyncVariableTest extends OurAsyncTestSuite
@@ -23,26 +23,26 @@ final class AsyncVariableTest extends OurAsyncTestSuite
   "set" in {
     asyncVariable.set(7)
       .map(v => assert(v == 7))
-      .*>(Task(assert(asyncVariable.get == 7)))
+      .*>(IO(assert(asyncVariable.get == 7)))
       .*>(asyncVariable.set(1).as(succeed))
       .runToFuture
   }
 
   "updated" in {
-    asyncVariable.update(i => Task(i + 1))
+    asyncVariable.update(i => IO(i + 1))
       .map(v => assert(v == 2))
       .runToFuture
   }
 
   "updatedChecked" - {
     "Left" in {
-      asyncVariable.updateChecked(i => Task(Left(Problem("PROBLEM"))))
+      asyncVariable.updateChecked(i => IO(Left(Problem("PROBLEM"))))
         .map(checked => assert(checked == Left(Problem("PROBLEM"))))
         .runToFuture
     }
 
     "Right" in {
-      asyncVariable.updateChecked(i => Task(Right(i + 1)))
+      asyncVariable.updateChecked(i => IO(Right(i + 1)))
         .map(v => assert(v == Right(3)))
         .runToFuture
     }
@@ -51,7 +51,7 @@ final class AsyncVariableTest extends OurAsyncTestSuite
   "updateCheckedWithResult" - {
     "Left" in {
       asyncVariable
-        .updateCheckedWithResult[Nothing](_ => Task(Left(Problem("PROBLEM"))))
+        .updateCheckedWithResult[Nothing](_ => IO(Left(Problem("PROBLEM"))))
         .map(checked =>
           assert(checked == Left(Problem("PROBLEM")) && asyncVariable.get == 3))
         .runToFuture
@@ -59,7 +59,7 @@ final class AsyncVariableTest extends OurAsyncTestSuite
 
     "Right" in {
       asyncVariable
-        .updateCheckedWithResult(i => Task(Right(i + 4 -> "hej")))
+        .updateCheckedWithResult(i => IO(Right(i + 4 -> "hej")))
         .map(checked =>
           assert(checked == Right("hej") && asyncVariable.get == 7))
         .runToFuture

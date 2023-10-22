@@ -1,5 +1,5 @@
 /*
- * DERIVED FROM MONIX CharsReaderObservable, which buffers.
+ * DERIVED FROM MONIX CharsReaderStream, which buffers.
  * Original copyright below.
  */
 /*
@@ -23,21 +23,21 @@ package js7.base.monixutils
 
 import java.io.Reader
 import js7.base.utils.Atomic
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.*
 import monix.execution.Ack.{Continue, Stop}
 import monix.execution.cancelables.BooleanCancelable
 import monix.execution.exceptions.APIContractViolationException
-import monix.reactive.Observable
+import fs2.Stream
 import monix.reactive.observers.Subscriber
 import scala.annotation.tailrec
 import scala.concurrent.{Future, blocking}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
 
-/** Non-buffering (immediately responding) Observable for a Reader. */
-final class UnbufferedReaderObservable(in: Reader, chunkSizeMax: Int = 4096)
-extends Observable[String]:
+/** Non-buffering (immediately responding) Stream for a Reader. */
+final class UnbufferedReaderStream(in: Reader, chunkSizeMax: Int = 4096)
+extends Stream[IO, String]:
   require(chunkSizeMax > 0, "chunkSizeMax > 0")
 
   private[this] val wasSubscribed = Atomic(false)
@@ -45,7 +45,7 @@ extends Observable[String]:
   def unsafeSubscribeFn(out: Subscriber[String]): Cancelable =
     if !wasSubscribed.compareAndSet(false, true) then
       out.onError(APIContractViolationException(
-        "UnbufferedReaderObservable does not support multiple subscribers"))
+        "UnbufferedReaderStream does not support multiple subscribers"))
       Cancelable.empty
     else
       val buffer = new Array[Char](chunkSizeMax)
@@ -137,10 +137,10 @@ extends Observable[String]:
     catch { case NonFatal(_) => () }
 
 
-object UnbufferedReaderObservable:
-  def apply(newReader: Task[Reader], chunkSizeMax: Int = 4096)
-  : Observable[String] =
-    Observable
-      .resource(newReader)(reader => Task(reader.close()))
-      .flatMap(in => new UnbufferedReaderObservable(in, chunkSizeMax))
+object UnbufferedReaderStream:
+  def apply(newReader: IO[Reader], chunkSizeMax: Int = 4096)
+  : Stream[IO, String] =
+    Stream
+      .resource(newReader)(reader => IO(reader.close()))
+      .flatMap(in => new UnbufferedReaderStream(in, chunkSizeMax))
       .executeAsync

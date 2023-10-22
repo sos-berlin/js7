@@ -6,30 +6,30 @@ import js7.base.log.Logger
 import js7.base.monixutils.Latch
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.{Checked, Problem}
-import js7.base.stream.ObservableNumberedQueue.*
+import js7.base.stream.StreamNumberedQueue.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AsyncLock
 import js7.base.utils.BinarySearch.binarySearch
 import js7.base.utils.ScalaUtils.syntax.*
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Ack
 import monix.execution.Ack.Continue
-import monix.reactive.Observable
+import fs2.Stream
 import monix.reactive.subjects.PublishToOneSubject
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
-final class ObservableNumberedQueue[V: Tag]:
+final class StreamNumberedQueue[V: Tag]:
 
   private val vName = implicitly[Tag[V]].tag.toString
   private val sync = new IncreasingNumberSync(initial = 0, i => s"#$i")
-  private val lock = AsyncLock("ObservableNumberedQueue", suppressLog = true)
+  private val lock = AsyncLock("StreamNumberedQueue", suppressLog = true)
   private val stopped = new Latch
   @volatile private var _state = State()
 
-  def enqueue(commands: Iterable[V]): Task[Unit] =
-    lock.lock(Task {
+  def enqueue(commands: Iterable[V]): IO[Unit] =
+    lock.lock(IO {
       val s = _state
       var queue = s.queue
       var nextNumber = s.nextNumber
@@ -45,9 +45,9 @@ final class ObservableNumberedQueue[V: Tag]:
       }
     })
 
-  def enqueueNumbered(commands: Iterable[Numbered[V]]): Task[Unit] =
-    Task.when(commands.nonEmpty)(
-      lock.lock(Task {
+  def enqueueNumbered(commands: Iterable[Numbered[V]]): IO[Unit] =
+    IO.whenA(commands.nonEmpty)(
+      lock.lock(IO {
         val s = _state
         var queue = s.queue
         var nextNumber = s.nextNumber
@@ -64,20 +64,20 @@ final class ObservableNumberedQueue[V: Tag]:
         }
       }))
 
-  def observable: Observable[Seq[Numbered[V]]] =
-    observable(after = _state.torn)
+  def stream: Stream[IO, Seq[Numbered[V]]] =
+    stream(after = _state.torn)
 
-  def observable(after: Long): Observable[Seq[Numbered[V]]] =
-    Observable.deferAction { implicit s =>
+  def stream(after: Long): Stream[IO, Seq[Numbered[V]]] =
+    Stream.deferAction { implicit s =>
       val subject = PublishToOneSubject[Seq[Numbered[V]]]()
 
       def loop(ack: Future[Ack], after: Long): Unit =
         ack.syncTryFlatten.syncOnContinue:
-          Task
+          IO
             .race(
               stopped.when, // -> Left
               sync.whenAvailable(after = after, until = None) // -> Right
-                .*>(Task(_state.readQueue(after))))
+                .*>(IO(_state.readQueue(after))))
             .runToFuture  // Be sure to leave the `loop` recursion stack
             .onComplete:
               case Failure(t) =>
@@ -97,7 +97,7 @@ final class ObservableNumberedQueue[V: Tag]:
                   // Race condition ???
                   logger.warn(
                     s"Internal: sync.whenAvailable($after) triggered but no command available - delay 1s")
-                  Task(loop(Continue, after)).delayExecution(1.s).runAsyncAndForget
+                  IO(loop(Continue, after)).delayBy(1.s).runAsyncAndForget
                 else
                   val ack = subject.onNext(values)
                   loop(ack, after = values.lastOption.fold(after)(_.number))
@@ -108,8 +108,8 @@ final class ObservableNumberedQueue[V: Tag]:
       subject
     }
 
-  def release(after: Long): Task[Checked[Unit]] =
-    lock.lock(Task {
+  def release(after: Long): IO[Checked[Unit]] =
+    lock.lock(IO {
       val s = _state
       if s.stopped then
         Checked.unit
@@ -120,10 +120,10 @@ final class ObservableNumberedQueue[V: Tag]:
           _state = s.copy(torn = after, queue = q.drop(index + found.toInt))
     })
 
-  def stop: Task[Vector[Numbered[V]]] =
+  def stop: IO[Vector[Numbered[V]]] =
     lock.lock(
       stopped.switch
-        .*>(Task {
+        .*>(IO {
           val s = _state
           val result = s.queue
           _state = s.stop
@@ -131,15 +131,15 @@ final class ObservableNumberedQueue[V: Tag]:
         }))
 
   // Unused
-  private def dequeueSelected(predicate: V => Boolean): Task[Vector[Numbered[V]]] =
-    lock.lock(Task {
+  private def dequeueSelected(predicate: V => Boolean): IO[Vector[Numbered[V]]] =
+    lock.lock(IO {
       val s = _state
       val (result, remaining) = s.queue.partition(numbered => predicate(numbered.value))
       _state = s.copy(queue = remaining)
       result
     })
 
-  override def toString = s"ObservableNumberedQueue[$vName]"
+  override def toString = s"StreamNumberedQueue[$vName]"
 
   private sealed case class State(
     torn: Long = 0L,
@@ -162,12 +162,12 @@ final class ObservableNumberedQueue[V: Tag]:
         else
           Right(q.drop(index + found.toInt))
 
-    def requireValidNumber(after: Long): Task[Unit] =
+    def requireValidNumber(after: Long): IO[Unit] =
       val last = queue.lastOption.map(_.number)
       if after < torn || last.exists(_ < after) then
-        Task.raiseError(unknownAfterProblem(after).throwable)
+        IO.raiseError(unknownAfterProblem(after).throwable)
       else
-        Task.unit
+        IO.unit
 
     def checkAfter(after: Long): Checked[Unit] =
       notStopped *> {
@@ -194,6 +194,6 @@ final class ObservableNumberedQueue[V: Tag]:
         Right(this)
 
 
-object ObservableNumberedQueue:
+object StreamNumberedQueue:
   private val logger = Logger[this.type]
-  private val StoppedProblem = Problem.pure("ObservableNumberedQueue stopped")
+  private val StoppedProblem = Problem.pure("StreamNumberedQueue stopped")

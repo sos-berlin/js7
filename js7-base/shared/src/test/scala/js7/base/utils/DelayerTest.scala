@@ -4,7 +4,7 @@ import cats.data.NonEmptySeq
 import js7.base.monixutils.MonixDeadline.syntax.DeadlineSchedule
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.schedulers.TestScheduler
 import scala.collection.mutable
 import scala.concurrent.duration.*
@@ -18,30 +18,30 @@ final class DelayerTest extends OurAsyncTestSuite:
     val start = scheduler.now
     val test =
       for
-        delay <- Delayer.start[Task](conf)
+        delay <- Delayer.start[IO](conf)
         _ <- delay.sleep                  // +1s
-        _ <- Task(times += start.elapsed) //    = 1s
+        _ <- IO(times += start.elapsed) //    = 1s
         _ <- delay.sleep                  // +2s
-        _ <- Task(times += start.elapsed) //    = 3s
+        _ <- IO(times += start.elapsed) //    = 3s
         _ <- delay.sleep                  // +3s
-        _ <- Task(times += start.elapsed) //    = 6s
-        _ <- Task.sleep(1.s)              // 7s
+        _ <- IO(times += start.elapsed) //    = 6s
+        _ <- IO.sleep(1.s)              // 7s
         _ <- delay.sleep                  // +3s - 1s
-        _ <- Task(times += start.elapsed) //    = 9s
-        _ <- Task.sleep(4.s)              // 13s
+        _ <- IO(times += start.elapsed) //    = 9s
+        _ <- IO.sleep(4.s)              // 13s
         _ <- delay.sleep                  // +0s
-        _ <- Task(times += start.elapsed) //    = 13s
+        _ <- IO(times += start.elapsed) //    = 13s
         _ <- delay.sleep                  // +3s
-        _ <- Task(times += start.elapsed) //    = 16s
+        _ <- IO(times += start.elapsed) //    = 16s
         _ <- delay.sleep                  // +3s
-        _ <- Task(times += start.elapsed) //    = 19s
-        _ <- Task.sleep(100.s)            // +100s   resetWhen reached
+        _ <- IO(times += start.elapsed) //    = 19s
+        _ <- IO.sleep(100.s)            // +100s   resetWhen reached
         _ <- delay.sleep                  // 119s
-        _ <- Task(times += start.elapsed) //    = 119s
+        _ <- IO(times += start.elapsed) //    = 119s
         _ <- delay.sleep                  // +1s
-        _ <- Task(times += start.elapsed) //    = 120s
+        _ <- IO(times += start.elapsed) //    = 120s
         _ <- delay.sleep                  // +2s
-        _ <- Task(times += start.elapsed) //    = 122s
+        _ <- IO(times += start.elapsed) //    = 122s
 
       yield
         assert(times.map(_.toCoarsest) == mutable.Buffer(
@@ -51,11 +51,11 @@ final class DelayerTest extends OurAsyncTestSuite:
     scheduler.tick(1.h)
     future
 
-  "observable" in:
+  "stream" in:
     implicit val scheduler = TestScheduler()
     val start = scheduler.now
     val test = Delayer
-      .observable[Task](conf)
+      .stream[IO](conf)
       .map(_ => start.elapsed)
       .take(6)
       .toListL

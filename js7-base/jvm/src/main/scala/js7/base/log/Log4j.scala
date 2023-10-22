@@ -5,7 +5,7 @@ import java.time.LocalDateTime
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.Once
-import monix.execution.atomic.AtomicBoolean
+import js7.base.utils.Atomic
 import scala.concurrent.duration.Deadline
 import scala.util.{Failure, Success, Try}
 
@@ -14,7 +14,7 @@ import scala.util.{Failure, Success, Try}
   */
 object Log4j:
 
-  private val isShutdown = AtomicBoolean(false)
+  private val isShutdown = Atomic(false)
   private val startedAt = Timestamp.now
   private val runningSince = Deadline.now
   private val ifNotInitialized = new Once

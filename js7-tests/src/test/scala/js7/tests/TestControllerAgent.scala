@@ -15,7 +15,7 @@ import js7.base.problem.Checked.Ops
 import js7.base.system.Java8Polyfill.*
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.Futures.implicits.*
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.time.{Stopwatch, Timestamp}
 import js7.base.utils.AutoClosing.autoClosing
@@ -36,7 +36,7 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, Fork, If}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.testenv.DirectoryProvider
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.*
@@ -61,7 +61,7 @@ object TestControllerAgent:
           deleteDirectoryContentRecursively(directory)
       }
     val conf = Conf.parse(args.toIndexedSeq, () => directory)
-    println(s"${conf.agentCount * conf.workflowLength} jobs/agent, ${conf.jobDuration.pretty} each, ${conf.tasksPerJob} tasks/agent, ${conf.agentCount} agents, ${conf.period.pretty}/order")
+    println(s"${conf.agentCount * conf.workflowLength} jobs/agent, ${conf.jobDuration.pretty} each, ${conf.parallelism} ios/agent, ${conf.agentCount} agents, ${conf.period.pretty}/order")
     try run(conf)
     finally Log4j.shutdown()
 
@@ -100,7 +100,7 @@ object TestControllerAgent:
           directoryProvider.runController() { controller =>
             JavaShutdownHook.add("TestControllerAgent") {
               print('\n')
-              Task
+              IO
                 .parZip2(
                   controller.stop,
                   agents.parTraverse(_.terminate(processSignal = Some(SIGTERM))))
@@ -192,14 +192,14 @@ object TestControllerAgent:
     directory: Path,
     agentCount: Int,
     workflowLength: Int,
-    tasksPerJob: Int,
+    parallelism: Int,
     jobDuration: FiniteDuration,
     stdoutSize: Int,
     period: FiniteDuration,
     orderGeneratorCount: Int):
     require(agentCount >= 1)
     require(workflowLength >= 1)
-    require(tasksPerJob >= 1)
+    require(parallelism >= 1)
     require(period.isPositive)
     require(orderGeneratorCount >= 1)
 
@@ -214,7 +214,7 @@ object TestControllerAgent:
           directory = a.as[Path]("--directory=", directory()),
           agentCount = agentCount,
           workflowLength = a.as[Int]("--jobs-per-agent=", 1),
-          tasksPerJob = a.as[Int]("--tasks=", (sys.runtime.availableProcessors + agentCount - 1) / agentCount),
+          parallelism = a.as[Int]("--tasks=", (sys.runtime.availableProcessors + agentCount - 1) / agentCount),
           jobDuration = a.as[FiniteDuration]("--job-duration=", 0.s),
           stdoutSize = a.as("--stdout-size=", StdoutRowSize)(o => DecimalPrefixes.toInt(o).orThrowWithoutStacktrace),
           period = a.as[FiniteDuration]("--period=", 1.s),
@@ -227,7 +227,7 @@ object TestControllerAgent:
     def usage(conf: Conf) =
       s"""Usage: --agents=${conf.agentCount}
          |       --jobs-per-agent=${conf.workflowLength}
-         |       --tasks=${conf.tasksPerJob}
+         |       --tasks=${conf.parallelism}
          |       --job-duration=${conf.jobDuration}
          |       --period=${conf.period}
          |       --orders=${conf.orderGeneratorCount}

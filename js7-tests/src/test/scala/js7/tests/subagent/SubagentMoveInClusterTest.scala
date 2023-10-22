@@ -5,7 +5,7 @@ import js7.agent.{RunningAgent, TestAgent}
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.copyDirectoryContent
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AllocatedForJvm.BlockingAllocated
 import js7.base.utils.CatsUtils.syntax.RichResource
@@ -22,12 +22,12 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.subagent.SubagentMoveInClusterTest.*
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest, DirectorEnv}
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler.Implicits.traced
 
-final class SubagentMoveInClusterTest 
+final class SubagentMoveInClusterTest
   extends OurTestSuite, ControllerAgentForScalaTest /*, SubagentTester*/, BlockingItemUpdater:
-  
+
   override protected val controllerConfig = config"""
     js7.auth.agents.AGENT = "${agentPath.toString}-PASSWORD"
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
@@ -55,21 +55,21 @@ final class SubagentMoveInClusterTest
   protected lazy val items = Nil
 
   "Restart Subagent at another URI" in:
-    lazy val primaryDirectorResource: Resource[Task, (DirectorEnv, RunningAgent)] =
+    lazy val primaryDirectorResource: Resource[IO, (DirectorEnv, RunningAgent)] =
       directoryProvider
         .directorEnvResource(
           primarySubagentItem,
           otherSubagentIds = Seq(backupSubagentId, newBackupSubagentItem.id))
         .flatMap(env => env.directorResource.map(env -> _))
 
-    lazy val backupDirectorEnvResource: Resource[Task, DirectorEnv] =
+    lazy val backupDirectorEnvResource: Resource[IO, DirectorEnv] =
       directoryProvider
         .directorEnvResource(
           backupSubagentItem,
           otherSubagentIds = Seq(primarySubagentId),
           isClusterBackup = true)
 
-    lazy val newBackupDirectorEnvResource: Resource[Task, DirectorEnv] =
+    lazy val newBackupDirectorEnvResource: Resource[IO, DirectorEnv] =
       directoryProvider
         .directorEnvResource(
           newBackupSubagentItem,

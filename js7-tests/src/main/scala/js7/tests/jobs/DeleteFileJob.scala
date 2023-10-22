@@ -12,7 +12,6 @@ import js7.launcher.OrderProcess
 import js7.launcher.internal.InternalJob
 import js7.launcher.internal.InternalJob.JobContext
 import js7.tests.jobs.DeleteFileJob.logger
-import monix.eval.Task
 
 final class DeleteFileJob(jobContext: JobContext) extends InternalJob:
   def toOrderProcess(step: Step) =
@@ -25,11 +24,11 @@ final class DeleteFileJob(jobContext: JobContext) extends InternalJob:
         .rightAs(Outcome.succeeded)
         .map(Outcome.Completed.fromChecked))
 
-  private def deleteFile(file: Path, out: String => Task[Unit]): Task[Unit] =
-    Task(deleteIfExists(file))
+  private def deleteFile(file: Path, out: String => IO[Unit]): IO[Unit] =
+    IO(deleteIfExists(file))
       .executeOn(jobContext.ioExecutor.scheduler)
       .flatMap:
-        case false => Task.unit
+        case false => IO.unit
         case true =>
           logger.info(s"Deleted $file")
           out(s"Deleted $file\n")

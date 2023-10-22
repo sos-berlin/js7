@@ -1,21 +1,22 @@
 package js7.base.monixutils
 
-import js7.base.monixutils.ObservablePauseDetector.*
+import js7.base.monixutils.StreamPauseDetector.*
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.schedulers.TestScheduler
-import monix.reactive.Observable
+import fs2.Stream
 import scala.util.Success
 
-final class ObservablePauseDetectorTest extends OurTestSuite:
-  private val pausingObservable = Observable.fromIterable(1 to 5)
-    .doOnNext(i =>
-      Task.sleep(if i == 3 then 2.s else if i == 4 then 3.s else 100.ms)) // Long pause before the third element
+final class StreamPauseDetectorTest extends OurTestSuite:
+
+  private val pausingStream = Stream.fromIterable(1 to 5)
+    .doOnNext(i => IO.sleep(
+      if i == 3 then 2.s else if i == 4 then 3.s else 100.ms)) // Long pause before the third element
 
   "detectPauses" in:
     implicit val scheduler = TestScheduler()
-    val future = pausingObservable.detectPauses2(1.s).toListL.runToFuture
+    val future = pausingStream.detectPauses2(1.s).toListL.runToFuture
     scheduler.tick(100.s)
     assert(future.value == Some(Success(List(
       Right(1),
@@ -29,7 +30,7 @@ final class ObservablePauseDetectorTest extends OurTestSuite:
 
   "detectPauses detects initial pause" in:
     implicit val scheduler = TestScheduler()
-    val future = (Observable.fromTask(Task(0).delayExecution(2.s)) ++ pausingObservable)
+    val future = (Stream.fromIO(IO(0).delayBy(2.s)) ++ pausingStream)
       .detectPauses2(1001.ms).toListL.runToFuture
     scheduler.tick(100.s)
     assert(future.value == Some(Success(List(
@@ -46,7 +47,7 @@ final class ObservablePauseDetectorTest extends OurTestSuite:
 
   "echoRepeated"  in:
     implicit val scheduler = TestScheduler()
-    val future = pausingObservable.echoRepeated(800.ms).toListL.runToFuture
+    val future = pausingStream.echoRepeated(800.ms).toListL.runToFuture
     scheduler.tick(100.s)
     assert(future.value == Some(Success(List(
       1,

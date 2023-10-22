@@ -11,7 +11,7 @@ import js7.controller.web.controller.api.test.RouteTester
 import js7.data.cluster.ClusterState
 import js7.data.controller.{ControllerId, ControllerMetaState, ControllerOverview, ControllerState}
 import js7.data.event.{EventId, JournalState, SnapshotableState}
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler
 import org.apache.pekko.http.scaladsl.model.MediaTypes.`application/json`
 import org.apache.pekko.http.scaladsl.model.headers.Accept
@@ -28,7 +28,7 @@ final class ApiRootRouteTest extends OurTestSuite, RouteTester, ApiRootRoute:
   protected val controllerId = ControllerId("TEST-CONTROLLER")
   protected def whenShuttingDown = Future.never
   protected implicit def scheduler: Scheduler = Scheduler.traced
-  protected def controllerState = Task.pure(Right(ControllerState.empty.copy(
+  protected def controllerState = IO.pure(Right(ControllerState.empty.copy(
     eventId = EventId(1001),
     standards = SnapshotableState.Standards(
       JournalState(Map(UserId("A") -> EventId(1000))),

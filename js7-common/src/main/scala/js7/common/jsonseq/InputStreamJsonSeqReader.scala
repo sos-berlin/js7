@@ -14,8 +14,8 @@ import js7.base.utils.Ascii.{LF, RS}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.jsonseq.InputStreamJsonSeqReader.*
 import js7.common.utils.UntilNoneIterator
-import monix.eval.Task
-import monix.execution.atomic.AtomicAny
+import cats.effect.IO
+import js7.base.utils.Atomic
 import scala.collection.mutable
 
 /**
@@ -35,7 +35,7 @@ final class InputStreamJsonSeqReader(
   withRS: Boolean = false)
 extends AutoCloseable:
 
-  private val inAtomic = AtomicAny(inputStream_)
+  private val inAtomic = Atomic(inputStream_)
   private val block = new Array[Byte](blockSize)
   private var blockPos = 0L
   private var blockLength = 0
@@ -150,8 +150,8 @@ object InputStreamJsonSeqReader:
   private[jsonseq] val BlockSize = 8192
   private val logger = Logger[this.type]
 
-  def resource(file: Path): Resource[Task, InputStreamJsonSeqReader] =
-    Resource.fromAutoCloseable(Task(InputStreamJsonSeqReader.open(file)))
+  def resource(file: Path): Resource[IO, InputStreamJsonSeqReader] =
+    Resource.fromAutoCloseable(IO(InputStreamJsonSeqReader.open(file)))
 
   def open(file: Path, blockSize: Int = BlockSize): InputStreamJsonSeqReader =
     new InputStreamJsonSeqReader(SeekableInputStream.openFile(file), name = file.getFileName.toString, blockSize)

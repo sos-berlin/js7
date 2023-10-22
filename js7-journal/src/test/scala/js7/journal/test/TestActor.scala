@@ -7,7 +7,7 @@ import org.apache.pekko.util.Timeout
 //diffx import com.softwaremill.diffx.generic.auto.*
 import com.typesafe.config.Config
 import js7.base.thread.Futures.implicits.*
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Allocated
 import js7.base.utils.CatsUtils.syntax.RichResource
@@ -18,7 +18,7 @@ import js7.journal.recover.StateRecoverer
 import js7.journal.state.FileJournal
 import js7.journal.test.TestActor.*
 import js7.journal.{EventIdClock, EventIdGenerator, JournalActor}
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler.Implicits.traced
 import scala.collection.mutable
 import scala.concurrent.Promise
@@ -29,13 +29,13 @@ import scala.concurrent.duration.DurationInt
   */
 private[journal] final class TestActor(config: Config, journalLocation: JournalLocation, journalStopped: Promise[Unit])
 extends Actor, Stash:
-  
+
   override val supervisorStrategy = SupervisorStrategies.escalate
   private implicit val askTimeout: Timeout = Timeout(99.seconds)
   private val journalConf = JournalConf.fromConfig(config)
   private val keyToAggregate = mutable.Map[String, ActorRef]()
   private var terminator: ActorRef = null
-  private var journalAllocated: Allocated[Task, FileJournal[TestState]] = null
+  private var journalAllocated: Allocated[IO, FileJournal[TestState]] = null
   private def journal = journalAllocated.allocatedThing
 
   private def journalActor = journal.journalActor

@@ -16,8 +16,9 @@ import js7.base.io.file.FileUtils.{autoDeleting, checkRelativePath, copyDirector
 import js7.base.io.file.FileUtilsTest.*
 import js7.base.problem.ProblemException
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
-import monix.eval.{Coeval, Task}
+import js7.base.thread.CatsBlocking.syntax.RichTask
+import cats.effect.IO
+import cats.effect.Fiber
 import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers.*
@@ -213,7 +214,7 @@ final class FileUtilsTest extends OurTestSuite, BeforeAndAfterAll
   "temporaryDirectoryResource" in {
     var directory: Path = null
     temporaryDirectoryResource("FileUtilsTest-")
-      .use(dir => Task {
+      .use(dir => IO {
         directory = dir
         touchFile(dir / "FILE")
         createDirectory(dir / "SUBDIRECTORY")

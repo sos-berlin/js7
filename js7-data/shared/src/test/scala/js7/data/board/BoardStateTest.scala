@@ -33,7 +33,7 @@ final class BoardStateTest extends OurAsyncTestSuite
             NoticeId("NOTICE"),
             Some(Notice(NoticeId("NOTICE"), boardPath, endOfLife = Timestamp.ofEpochSecond(123))))))
 
-      boardState.toSnapshotObservable
+      boardState.toSnapshotStream
         .map(_
           .asJson(ControllerState.snapshotObjectJsonCodec)
           .compactPrint)
@@ -82,8 +82,8 @@ final class BoardStateTest extends OurAsyncTestSuite
           NoticeId("NOTICE-2"),
           NoticeId("NOTICE-1"))))
 
-    "toSnapshotObservable JSON" in {
-      boardState.toSnapshotObservable
+    "toSnapshotStream JSON" in {
+      boardState.toSnapshotStream
         .map(_
           .asJson(ControllerState.snapshotObjectJsonCodec)
           .printWith(Printer.noSpaces.copy(dropNullValues = true)))
@@ -125,9 +125,9 @@ final class BoardStateTest extends OurAsyncTestSuite
         .runToFuture
     }
 
-    "toSnapshotObservable and recover" in {
+    "toSnapshotStream and recover" in {
       var recovered: BoardState = null
-      boardState.toSnapshotObservable
+      boardState.toSnapshotStream
         .map(o =>
           reparseJson(o, ControllerState.snapshotObjectJsonCodec).orThrow)
         .map {
@@ -291,7 +291,7 @@ final class BoardStateTest extends OurAsyncTestSuite
   }
 
   "BoardState snapshot" in {
-    (for snapshot <- boardState.toSnapshotObservable.toListL yield {
+    (for snapshot <- boardState.toSnapshotStream.toListL yield {
       assert(snapshot == List(board, notice))
 
       // Order of addExpectation is irrelevant

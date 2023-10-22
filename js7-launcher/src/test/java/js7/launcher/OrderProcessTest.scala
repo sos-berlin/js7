@@ -2,33 +2,35 @@ package js7.launcher
 
 import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.data.job.JobKey
 import js7.data.order.{OrderId, Outcome}
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import monix.catnap.Semaphore
-import monix.eval.{Fiber, Task}
+import cats.effect.IO
+import cats.effect.Fiber
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.subjects.PublishSubject
 
 final class OrderProcessTest extends OurTestSuite:
+
   "Run an OrderProcess" in:
-    val orderProcess = OrderProcess(Task(Outcome.succeeded))
+    val orderProcess = OrderProcess(IO(Outcome.succeeded))
     val stdObservers = newStdObservers
     assert(
       orderProcess.start(OrderId("ORDER"), JobKey.forTest("JOB"), stdObservers).flatten.await(99.s)
         == Outcome.succeeded)
 
   "Intermediate test: cancel a Fiber" in:
-    val semaphore = Semaphore[Task](0).memoize
+    val semaphore = Semaphore[IO](0).memoize
     def count = semaphore.flatMap(_.count).await(99.s)
 
-    var fiber: Fiber[Unit] = null
+    var fiber: FiberIO[Unit] = null
     val future = semaphore
       .flatMap(_.acquire)
       .start
-      .tapEval(fib => Task { fiber = fib })
+      .tapEval(fib => IO { fiber = fib })
       .flatMap(_.join)
       .runToFuture
 
@@ -47,7 +49,7 @@ final class OrderProcessTest extends OurTestSuite:
     awaitAndAssert(count == 0)
 
   "Cancel an OrderProcess Fiber" in:
-    val semaphore = Semaphore[Task](0).memoize
+    val semaphore = Semaphore[IO](0).memoize
     def count = semaphore.flatMap(_.count).await(99.s)
 
     val orderProcess = OrderProcess(semaphore.flatMap(_.acquire).as(Outcome.succeeded))

@@ -14,7 +14,7 @@ import js7.base.problem.Checked.*
 import js7.base.system.OperatingSystem.isMac
 import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.SuccessFuture
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.data.Problems.{CannotDeleteWatchingOrderProblem, ItemIsStillReferencedProblem}
@@ -40,7 +40,7 @@ import js7.tests.filewatch.FileWatchTest.*
 import js7.tests.jobs.{DeleteFileJob, SemaphoreJob}
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
+import fs2.Stream
 import scala.concurrent.TimeoutException
 
 final class FileWatchTest
@@ -123,7 +123,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
     delete(file)
     eventWatch.await[OrderDeleted](_.key == orderId)
 
-    controller.api.updateItems(Observable(DeleteSimple(myFileWatch.path))).await(99.s).orThrow
+    controller.api.updateItems(Stream(DeleteSimple(myFileWatch.path))).await(99.s).orThrow
 
   "Add a file" in:
     val file = watchDirectory / "2"
@@ -327,7 +327,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
         NoKey <-: ItemAttached(fileWatch.path, Some(ItemRevision(1)), bAgentPath)))
 
   "Deleting the Workflow referenced by the FileWatch is rejected" in:
-    assert(controller.api.updateItems(Observable(
+    assert(controller.api.updateItems(Stream(
       AddVersion(VersionId("TRY-DELETE")),
       RemoveVersioned(workflow.path)
     )).await(99.s) ==
@@ -335,7 +335,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
 
   "Delete a FileWatch" in:
     val eventId = eventWatch.lastAddedEventId
-    assert(controller.api.updateItems(Observable(
+    assert(controller.api.updateItems(Stream(
       DeleteSimple(fileWatch.path),
       DeleteSimple(waitingFileWatch.path)
     )).await(99.s) == Right(Completed))

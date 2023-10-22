@@ -2,7 +2,7 @@ package js7.base.auth
 
 import js7.base.auth.SessionToken.*
 import js7.base.generic.SecretString
-import monix.execution.atomic.AtomicInt
+import js7.base.utils.Atomic
 import scala.util.control.NonFatal
 
 /**
@@ -20,7 +20,7 @@ final case class SessionToken(secret: SecretString):
 
 
 object SessionToken:
-  private val nextNumber = AtomicInt(0)
+  private val nextNumber = Atomic(0)
   private val NoNumber = 0L
   private val NoNumberShort = "Session:?"
 

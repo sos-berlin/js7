@@ -1,47 +1,50 @@
 package js7.base.service
 
-import StoppableByRequest._
-import cats.effect.concurrent.Deferred
+import cats.effect.{Fiber, FiberIO, IO}
+import cats.effect.kernel.Deferred
+import js7.base.catsutils.CatsEffectExtensions.raceFold
+import js7.base.catsutils.UnsafeMemoizable.given
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.monixutils.MonixBase.syntax.RichMonixTask
 import js7.base.problem.{Checked, Problem}
+import js7.base.service.StoppableByRequest.*
+import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
-import monix.eval.{Fiber, Task}
 
 trait StoppableByRequest:
-  private final val fiber = Deferred.unsafe[Task, Fiber[Unit]]
-  private val stopRequested = Deferred.unsafe[Task, Unit]
+  private final val fiber = Deferred.unsafe[IO, FiberIO[Unit]]
+  private val stopRequested = Deferred.unsafe[IO, Unit]
   @volatile private var _isStopping = false
 
   protected final def isStopping: Boolean =
     _isStopping
 
-  private[service] final def onFiberStarted(fiber: Fiber[Unit]): Task[Unit] =
-    this.fiber.complete(fiber)
+  private[service] final def onFiberStarted(fiber: FiberIO[Unit]): IO[Unit] =
+    this.fiber.complete(fiber).void
 
-  protected final def untilStopRequested: Task[Unit] =
+  protected final def untilStopRequested: IO[Unit] =
     stopRequested.get
 
   private val memoizedStop =
-    Task.defer(
-      logger.traceTask(s"$toString stop") {
+    IO.defer(
+      logger.traceIO(s"$toString stop") {
         _isStopping = true
         stopRequested.complete(())
           .*>(fiber.get)
           .flatMap(_.join)
-      }).memoize
+          .void
+      }).unsafeMemoize
 
-  protected def stop: Task[Unit] =
+  protected def stop: IO[Unit] =
     memoizedStop
 
-  protected final def failWhenStopRequested[A](body: Task[A]): Task[A] =
+  protected final def failWhenStopRequested[A](body: IO[A]): IO[A] =
     body.raceFold(
       untilStopRequested *>
-        Task.raiseError(new IllegalStateException(s"$toString is being stopped")))
+        IO.raiseError(new IllegalStateException(s"$toString is being stopped")))
 
-  protected final def requireNotStopping: Task[Checked[Unit]] =
-    Task:
+  protected final def requireNotStopping: IO[Checked[Unit]] =
+    IO:
       !isStopping !! Problem(s"$toString is stopping")
 
 

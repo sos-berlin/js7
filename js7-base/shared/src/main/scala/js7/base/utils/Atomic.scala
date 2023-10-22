@@ -21,7 +21,7 @@ object Atomic:
   //    case o: Int => new AtomicInteger(o)
   //    case o if o.isInstanceOf[AnyRef] => new AtomicReference(o)
 
-  object syntax:
+  object extensions:
     extension(o: AtomicBoolean)
       def :=(a: Boolean): Unit =
         o.set(a)

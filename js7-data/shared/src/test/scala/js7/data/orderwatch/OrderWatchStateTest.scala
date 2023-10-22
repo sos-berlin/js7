@@ -185,7 +185,7 @@ final class OrderWatchStateTest extends OurAsyncTestSuite
           Subtype(UnsignedSimpleItemEvent.jsonCodec(ControllerState)),
           Subtype[OrderWatchState.Snapshot])
 
-      for snapshot <- orderWatchState.toSnapshotObservable.toListL.runToFuture yield
+      for snapshot <- orderWatchState.toSnapshotStream.toListL.runToFuture yield
         assert(snapshot.asJson ==json"""[
           {
             "TYPE": "UnsignedSimpleItemAdded",

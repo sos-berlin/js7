@@ -3,7 +3,7 @@ package js7.base.time
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic
-import js7.base.utils.Atomic.syntax.*
+import js7.base.utils.Atomic.extensions.*
 import scala.concurrent.duration.*
 
 final class AlarmClockTest extends OurTestSuite:

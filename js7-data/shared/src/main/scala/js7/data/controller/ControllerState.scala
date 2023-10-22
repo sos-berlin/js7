@@ -41,7 +41,7 @@ import js7.data.subagent.SubagentItemStateEvent.SubagentShutdown
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent, SubagentSelection, SubagentSelectionId, SubagentSelectionState}
 import js7.data.value.Value
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
-import monix.reactive.Observable
+import fs2.Stream
 import scala.collection.{MapView, View}
 import scala.util.chaining.scalaUtilChainingOps
 
@@ -90,25 +90,25 @@ extends SignedItemContainer,
     deletionMarkedItems.size +
     idToOrder.size
 
-  def toSnapshotObservable: Observable[Any] =
-    Observable(
-      Observable.pure(SnapshotEventId(eventId)),
-      standards.toSnapshotObservable,
-      Observable.fromIterable(controllerMetaState.isDefined ? controllerMetaState),
-      Observable.fromIterable(keyTo(WorkflowPathControl).values).flatMap(_.toSnapshotObservable),
-      Observable.fromIterable(keyTo(WorkflowControl).values).flatMap(_.toSnapshotObservable),
-      Observable.fromIterable(keyTo(AgentRefState).values).flatMap(_.toSnapshotObservable),
-      Observable.fromIterable(keyTo(SubagentItemState).values).flatMap(_.toSnapshotObservable),
-      Observable.fromIterable(keyTo(SubagentSelectionState).values).flatMap(_.toSnapshotObservable),
-      Observable.fromIterable(keyTo(LockState).values).flatMap(_.toSnapshotObservable),
-      Observable.fromIterable(keyTo(BoardState).values).flatMap(_.toSnapshotObservable),
-      Observable.fromIterable(keyTo(CalendarState).values).flatMap(_.toSnapshotObservable),
-      Observable.fromIterable(keyTo(OrderWatchState).values).flatMap(_.toSnapshotObservable),
-      Observable.fromIterable(pathToSignedSimpleItem.values).map(SignedItemAdded(_)),
-      Observable.fromIterable(repo.toEvents),
-      agentAttachments.toSnapshotObservable,
-      Observable.fromIterable(deletionMarkedItems.map(ItemDeletionMarked(_))),
-      Observable.fromIterable(idToOrder.values)
+  def toSnapshotStream: Stream[IO, Any] =
+    Stream(
+      Stream.emit(SnapshotEventId(eventId)),
+      standards.toSnapshotStream,
+      Stream.fromIterable(controllerMetaState.isDefined ? controllerMetaState),
+      Stream.fromIterable(keyTo(WorkflowPathControl).values).flatMap(_.toSnapshotStream),
+      Stream.fromIterable(keyTo(WorkflowControl).values).flatMap(_.toSnapshotStream),
+      Stream.fromIterable(keyTo(AgentRefState).values).flatMap(_.toSnapshotStream),
+      Stream.fromIterable(keyTo(SubagentItemState).values).flatMap(_.toSnapshotStream),
+      Stream.fromIterable(keyTo(SubagentSelectionState).values).flatMap(_.toSnapshotStream),
+      Stream.fromIterable(keyTo(LockState).values).flatMap(_.toSnapshotStream),
+      Stream.fromIterable(keyTo(BoardState).values).flatMap(_.toSnapshotStream),
+      Stream.fromIterable(keyTo(CalendarState).values).flatMap(_.toSnapshotStream),
+      Stream.fromIterable(keyTo(OrderWatchState).values).flatMap(_.toSnapshotStream),
+      Stream.fromIterable(pathToSignedSimpleItem.values).map(SignedItemAdded(_)),
+      Stream.fromIterable(repo.toEvents),
+      agentAttachments.toSnapshotStream,
+      Stream.fromIterable(deletionMarkedItems.map(ItemDeletionMarked(_))),
+      Stream.fromIterable(idToOrder.values)
     ).flatten
 
   def withEventId(eventId: EventId) =
@@ -687,9 +687,9 @@ extends SignedItemContainer,
 
 
 object ControllerState
-extends ClusterableState.Companion[ControllerState], 
+extends ClusterableState.Companion[ControllerState],
   ItemContainer.Companion[ControllerState]:
-  
+
   private val logger = Logger[this.type]
 
   val Undefined = ControllerState(

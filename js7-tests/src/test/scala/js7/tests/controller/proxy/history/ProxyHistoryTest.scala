@@ -11,7 +11,7 @@ import js7.base.log.Logger
 import js7.base.problem.Checked.Ops
 import js7.base.problem.ProblemException
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.*
@@ -39,7 +39,7 @@ import js7.tests.controller.proxy.history.JControllerApiHistoryTester.TestWorkfl
 import js7.tests.controller.proxy.history.ProxyHistoryTest.*
 import js7.tests.testenv.ControllerClusterForScalaTest.TestPathExecutable
 import js7.tests.testenv.DirectoryProvider.{StdoutOutput, toLocalSubagentId}
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler.Implicits.traced
 import org.scalactic.source
 import scala.collection.mutable
@@ -89,8 +89,8 @@ final class ProxyHistoryTest extends OurTestSuite, ProvideActorSystem, ClusterPr
           logger.info(s"Round $rounds")
           var proxyStartedReceived = false
           try
-            controllerApi.eventAndStateObservable(new StandardEventBus, Some(lastState.eventId))
-              .doOnNext(es => Task(logger.debug(s"observe ${es.stampedEvent}")))
+            controllerApi.eventAndStateStream(new StandardEventBus, Some(lastState.eventId))
+              .doOnNext(es => IO(logger.debug(s"observe ${es.stampedEvent}")))
               .takeWhileInclusive:
                 case EventAndState(Stamped(_, _, KeyedEvent(TestOrder.id, _: OrderFinished)), _, _) =>
                   finished = true
@@ -98,7 +98,7 @@ final class ProxyHistoryTest extends OurTestSuite, ProvideActorSystem, ClusterPr
                 case _=>
                   true
               .take(3)  // Process two events (and initial ProxyStarted) each test round
-              .doOnNext(es => Task {
+              .doOnNext(es => IO {
                 es.stampedEvent.value.event match {
                   case ProxyStarted =>
                     assert(!proxyStartedReceived)
@@ -193,7 +193,7 @@ final class ProxyHistoryTest extends OurTestSuite, ProvideActorSystem, ClusterPr
 
         // TORN EVENT STREAM
         val problem = controllerApi
-          .eventAndStateObservable(fromEventId = Some(EventId.BeforeFirst))
+          .eventAndStateStream(fromEventId = Some(EventId.BeforeFirst))
           .take(1)
           .completedL
           .materialize
@@ -202,7 +202,7 @@ final class ProxyHistoryTest extends OurTestSuite, ProvideActorSystem, ClusterPr
           .problem
         assert(problem == SnapshotForUnknownEventIdProblem(EventId.BeforeFirst))
 
-        val eventId = controllerApi.eventAndStateObservable(fromEventId = Some(finishedEventId))
+        val eventId = controllerApi.eventAndStateStream(fromEventId = Some(finishedEventId))
           .headL.await(99.s).state.eventId
         assert(eventId == finishedEventId)
         controllerApi.stop.await(99.s)

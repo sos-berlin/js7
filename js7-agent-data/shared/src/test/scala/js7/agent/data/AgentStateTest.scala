@@ -38,7 +38,7 @@ import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.{Workflow, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
 import js7.tester.CirceJsonTester.{removeJNull, testJson, testJsonDecoder}
 import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
+import fs2.Stream
 
 /**
   * @author Joacim Zschimmer
@@ -196,12 +196,12 @@ final class AgentStateTest extends OurAsyncTestSuite:
 
   "estimatedSnapshotSize" in:
     assert(agentState.estimatedSnapshotSize == 14)
-    for n <- agentState.toSnapshotObservable.countL.runToFuture
+    for n <- agentState.toSnapshotStream.countL.runToFuture
       yield assert(n == agentState.estimatedSnapshotSize)
 
   "Snapshot JSON" in:
     implicit val x = AgentState.snapshotObjectJsonCodec
-    agentState.toSnapshotObservable.map(_.asJson).map(removeJNull).toListL.runToFuture
+    agentState.toSnapshotStream.map(_.asJson).map(removeJNull).toListL.runToFuture
       .flatMap { jsons =>
         assert(jsons == List(
           json"""{
@@ -332,8 +332,8 @@ final class AgentStateTest extends OurAsyncTestSuite:
           }"""))
 
         AgentState
-          .fromObservable(
-            Observable.fromIterable(jsons)
+          .fromStream(
+            Stream.fromIterable(jsons)
               .map(o => AgentState.snapshotObjectJsonCodec.decodeJson(o).toChecked.orThrow))
           .runToFuture
           .flatMap { fromSnapshot =>

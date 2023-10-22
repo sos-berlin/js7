@@ -2,7 +2,7 @@ package js7.tests.subagent
 
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
@@ -16,10 +16,10 @@ import js7.tests.jobs.SemaphoreJob
 import js7.tests.subagent.SubagentMoveTwiceTest.*
 import js7.tests.subagent.SubagentTester.agentPath
 import monix.execution.Scheduler
-import monix.reactive.Observable
+import fs2.Stream
 
 final class SubagentMoveTwiceTest extends OurTestSuite, SubagentTester:
-  
+
   protected val agentPaths = Seq(agentPath)
   protected lazy val items = Seq(workflow, bareSubagentItem)
   override protected val primarySubagentsDisabled = true
@@ -45,7 +45,7 @@ final class SubagentMoveTwiceTest extends OurTestSuite, SubagentTester:
     locally:
       val bare1SubagentItem = bareSubagentItem.copy(uri = findFreeLocalUri())
       val agentEventId = agent.eventWatch.lastAddedEventId
-      controller.api.updateItems(Observable(AddOrChangeSimple(bare1SubagentItem)))
+      controller.api.updateItems(Stream(AddOrChangeSimple(bare1SubagentItem)))
         .await(99.s).orThrow
       agent.eventWatch.await[SubagentCouplingFailed](_.key == bareSubagentId, after = agentEventId)
 
@@ -53,7 +53,7 @@ final class SubagentMoveTwiceTest extends OurTestSuite, SubagentTester:
     val bare2SubagentItem = bareSubagentItem.copy(uri = findFreeLocalUri())
     locally:
       val agentEventId = agent.eventWatch.lastAddedEventId
-      controller.api.updateItems(Observable(AddOrChangeSimple(bare2SubagentItem)))
+      controller.api.updateItems(Stream(AddOrChangeSimple(bare2SubagentItem)))
         .await(99.s).orThrow
       agent.eventWatch.await[SubagentCouplingFailed](_.key == bareSubagentId, after = agentEventId)
 

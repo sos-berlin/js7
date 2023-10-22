@@ -10,7 +10,7 @@ import js7.base.generic.Completed
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.*
-import js7.base.monixutils.ObservablePauseDetector.*
+import js7.base.monixutils.StreamPauseDetector.*
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.time.ScalaTime.*
@@ -36,11 +36,11 @@ import js7.data.item.BasicItemEvent.ItemAttachedToMe
 import js7.data.node.NodeId
 import js7.journal.JournalActor
 import js7.journal.state.FileJournal
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler
-import monix.execution.atomic.AtomicBoolean
-import monix.execution.cancelables.SerialCancelable
-import monix.reactive.{Observable, OverflowStrategy}
+import js7.base.utils.Atomic
+import js7.base.monixlike.SerialCancelable
+import monix.reactive.{Stream, OverflowStrategy}
 import scala.concurrent.Promise
 import scala.concurrent.duration.*
 import scala.util.{Failure, Success}
@@ -56,10 +56,10 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
   private implicit val askTimeout: Timeout = common.journalActorAskTimeout
   private val clusterStateLock = AsyncLock("ClusterState")
   private val journalActor = journal.journalActor
-  private val isFetchingAcks = AtomicBoolean(false)
+  private val isFetchingAcks = Atomic(false)
   private val fetchingAcks = SerialCancelable()
   private val fetchingAcksTerminatedUnexpectedlyPromise = Promise[Checked[Completed]]()
-  private val startingBackupNode = AtomicBoolean(false)
+  private val startingBackupNode = Atomic(false)
   private val sendingClusterStartBackupNode = SerialCancelable()
   @volatile private var noMoreJournaling = false
   @volatile private var stopRequested = false
@@ -69,8 +69,8 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
 
   import clusterConf.ownId
 
-  def start(eventId: EventId): Task[Checked[Unit]] =
-    logger.debugTask:
+  def start(eventId: EventId): IO[Checked[Unit]] =
+    logger.debugIO:
       // When ClusterWatchId changes at start, an ClusterWatchRegistered event is emitted,
       // changing the ClusterState (the ClusterWatchId part).
       // In this case we continue with the updated ClusterState
@@ -94,10 +94,10 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
         .flatMap { initialClusterState =>
           // ClusterState may have changed to PassiveLost but here we look at initialClusterState
           assertThat(initialClusterState.activeId == ownId)
-          clusterStateLock.lock(Task
+          clusterStateLock.lock(IO
             .parMap2(
               // .start requires a locked clusterStateLock!
-              Task.defer {
+              IO.defer {
                 clusterWatchSynchronizerOnce :=
                   common.initialClusterWatchSynchronizer(initialClusterState)
                 clusterWatchSynchronizer.start(currentClusterState, registerClusterWatchId)
@@ -108,7 +108,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
         }
 
   private def awaitAcknowledgmentIfCoupled(initialClusterState: HasNodes, eventId: EventId)
-  : Task[Checked[Completed]] =
+  : IO[Checked[Completed]] =
     initialClusterState match
       case clusterState @ (_: Coupled | _: ActiveShutDown) =>
         logger.info(
@@ -118,21 +118,21 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
             // In case of ClusterWatchRegistered, check journal.currentState.eventId too
             if ackEventId == eventId || ackEventId == journal.unsafeCurrentState().eventId then {
               logger.info("Passive node acknowledged the recovered state")
-              Task.right(Completed)
+              IO.right(Completed)
             } else
-              Task.left(Problem(
+              IO.left(Problem(
                 s"Passive Cluster node acknowledged $ackEventId which is not the expected EventId")))
-      case _ => Task.right(Completed)
+      case _ => IO.right(Completed)
 
-  def stop: Task[Unit] =
-    logger.debugTask(Task.defer {
+  def stop: IO[Unit] =
+    logger.debugIO(IO.defer {
       stopRequested = true
       fetchingAcks.cancel()
-      clusterWatchSynchronizerOnce.toOption.fold(Task.unit)(_.stop)
+      clusterWatchSynchronizerOnce.toOption.fold(IO.unit)(_.stop)
     })
 
-  def beforeJournalingStarts: Task[Checked[Unit]] =
-    Task.defer:
+  def beforeJournalingStarts: IO[Checked[Unit]] =
+    IO.defer:
       logger.trace("beforeJournalingStarts")
       journal.clusterState flatMap:
         case clusterState: Coupled =>
@@ -147,13 +147,13 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
               case None =>
                 Right(Completed)
         case _ =>
-          Task.right(Completed)
+          IO.right(Completed)
 
   private[cluster] def changePassiveUri(
     passiveUri: Uri,
     extraEvent: Option[ItemAttachedToMe] = None)
-  : Task[Checked[Unit]] =
-    logger.debugTask:
+  : IO[Checked[Unit]] =
+    logger.debugIO:
       common.requireValidLicense.flatMapT(_ =>
         clusterStateLock.lock(
           suspendHeartbeat(forEvent = true)(
@@ -180,10 +180,10 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
                 case (stampedEvents, state: HasNodes) if stampedEvents.nonEmpty =>
                   proceedNodesAppointed(state).as(Right(()))
                 case _ =>
-                  Task.right(())
+                  IO.right(())
               }))))
 
-  private[cluster] def onRestartActiveNode: Task[Checked[Completed]] =
+  private[cluster] def onRestartActiveNode: IO[Checked[Completed]] =
     clusterStateLock.lock(
       persist() {
         case _: ActiveShutDown =>
@@ -192,7 +192,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
           Right(None)
       }.mapt(_ => Completed))
 
-  def executeCommand(command: ClusterCommand): Task[Checked[ClusterCommand.Response]] =
+  def executeCommand(command: ClusterCommand): IO[Checked[ClusterCommand.Response]] =
     command match
       case _: ClusterCommand.ClusterStartBackupNode =>
         throw new AssertionError("ClusterStartBackupNode at active node?")
@@ -281,7 +281,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
             }.map(_.map(_ => ClusterCommand.Response.Accepted))))
 
       case ClusterCommand.ClusterPassiveDown(activeId, passiveId) =>
-        requireOwnNodeId(command, activeId)(Task.defer {
+        requireOwnNodeId(command, activeId)(IO.defer {
           logger.info(s"The passive $passiveId is shutting down")
           clusterStateLock.lock(command.toShortString)(
             persist() {
@@ -296,10 +296,10 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
       case _: ClusterCommand.ClusterInhibitActivation =>
         throw new NotImplementedError
 
-  private def requireOwnNodeId[A](command: ClusterCommand, nodeId: NodeId)(body: Task[Checked[A]])
-  : Task[Checked[A]] =
+  private def requireOwnNodeId[A](command: ClusterCommand, nodeId: NodeId)(body: IO[Checked[A]])
+  : IO[Checked[A]] =
     if nodeId != ownId then
-      Task.left(Problem.pure(
+      IO.left(Problem.pure(
         s"'${command.getClass.simpleScalaName}' command may only be directed to the active node"))
     else
       body
@@ -308,8 +308,8 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
   //  Neues Kommando vom Aktiven an Passiven, dass den Passiven die Kennung prüft lässt
   //  ClusterCheckCoupling(Base64UUID)
   private def checkCouplingToken(command: ClusterCommand.ClusterCouplingCommand)
-  : Task[Checked[Unit]] =
-    logger.debugTask(
+  : IO[Checked[Unit]] =
+    logger.debugIO(
       journal.state.map(_.clusterState)
         .map {
           case o @ ClusterState.Empty => Left(ClusterCommandInapplicableProblem(command, o): Problem)
@@ -324,7 +324,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
               HttpClient.liftProblem(
                 api.executeClusterCommand(ClusterConfirmCoupling(command.token))
                   .void))
-          .timeoutTo(passiveNodeCouplingResponseTimeout, Task.left(Problem(
+          .timeoutTo(passiveNodeCouplingResponseTimeout, IO.left(Problem(
             s"Passive node did not respond within ${passiveNodeCouplingResponseTimeout.pretty}")))
           .onErrorHandle { throwable =>
             val msg = s"A passive cluster node wanted to couple but $passiveUri does not respond"
@@ -332,7 +332,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
             Left(Problem(msg))
           }))
 
-  def switchOver: Task[Checked[Completed]] =
+  def switchOver: IO[Checked[Completed]] =
     clusterStateLock.lock(
       persist() {
         case coupled: Coupled =>
@@ -345,7 +345,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
           Completed
         }))
 
-  def shutDownThisNode: Task[Checked[Completed]] =
+  def shutDownThisNode: IO[Checked[Completed]] =
     clusterStateLock.lock(
       persist() {
         case _: Coupled =>
@@ -357,7 +357,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
         Completed
       }))
 
-  private def proceed(state: ClusterState): Task[Completed] =
+  private def proceed(state: ClusterState): IO[Completed] =
     state match
       case state: NodesAppointed =>
         proceedNodesAppointed(state)
@@ -365,13 +365,13 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
       case state: Coupled =>
         proceedCoupled(state)
 
-      case _ => Task.completed
+      case _ => IO.completed
 
-  private def proceedNodesAppointed(clusterState: HasNodes): Task[Completed] =
-    logger.traceTask(
+  private def proceedNodesAppointed(clusterState: HasNodes): IO[Completed] =
+    logger.traceIO(
       clusterState match {
         case clusterState: NodesAppointed =>
-          Task {
+          IO {
             if !startingBackupNode.getAndSet(true) then {
               startSendingClusterStartBackupNode(clusterState)
             }
@@ -379,7 +379,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
           }
 
         case _ =>
-          Task.completed
+          IO.completed
       })
 
   private def startSendingClusterStartBackupNode(clusterState: NodesAppointed): Unit =
@@ -403,11 +403,11 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
         logger.error(s"Sending ClusterStartBackupNode command to backup node failed: $t", t)
     sendingClusterStartBackupNode := sending
 
-  private def proceedCoupled(state: Coupled): Task[Completed] =
+  private def proceedCoupled(state: Coupled): IO[Completed] =
     startFetchAndHandleAcknowledgedEventIds(state)
 
-  private def startFetchAndHandleAcknowledgedEventIds(initialState: Coupled): Task[Completed] =
-    Task:
+  private def startFetchAndHandleAcknowledgedEventIds(initialState: Coupled): IO[Completed] =
+    IO:
       if isFetchingAcks.getAndSet(true) then
         logger.debug("fetchAndHandleAcknowledgedEventIds: already isFetchingAcks")
       else
@@ -428,7 +428,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
     passiveId: NodeId,
     passiveUri: Uri,
     timing: ClusterTiming)
-  : Task[Checked[Completed]] =
+  : IO[Checked[Completed]] =
     fetchAndHandleAcknowledgedEventIds2(passiveId, passiveUri, timing)
       .flatMap:
         case Left(missingHeartbeatProblem @ MissingPassiveClusterNodeHeartbeatProblem(passiveId, duration)) =>
@@ -455,7 +455,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
                 val passiveLost = ClusterPassiveLost(passiveId)
                 suspendHeartbeat(forEvent = true)(
                   common.ifClusterWatchAllowsActivation(clusterState, passiveLost)(
-                    Task.deferFuture {
+                    IO.deferFuture {
                       // Release a concurrent persist operation, which waits for the missing acknowledgement and
                       // blocks the persist lock. Avoid a deadlock.
                       // This does not hurt if the concurrent persist operation is a ClusterEvent, too,
@@ -473,12 +473,12 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
                   else
                     Left(missingHeartbeatProblem)))
               case _ =>
-                Task.pure(Left(missingHeartbeatProblem))
+                IO.pure(Left(missingHeartbeatProblem))
             })
 
         case o =>
-          Task.pure(o)
-      .materialize.flatTap(tried => Task { tried match {
+          IO.pure(o)
+      .materialize.flatTap(tried => IO { tried match {
         case Success(Right(Completed)) =>
           if !stopRequested then logger.error("fetchAndHandleAcknowledgedEventIds terminated unexpectedly")
         case Success(Left(_: MissingPassiveClusterNodeHeartbeatProblem)) =>
@@ -499,16 +499,16 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
             t)
       }})
       .dematerialize
-      .guarantee(Task {
+      .guarantee(IO {
         logger.debug("isFetchingAcks := false")
         isFetchingAcks := false
       })
 
   private def fetchAndHandleAcknowledgedEventIds2(passiveId: NodeId, passiveUri: Uri, timing: ClusterTiming)
-  : Task[Checked[Completed]] =
-    logger.debugTask(HttpClient
-      .liftProblem(Observable
-        .fromResource(
+  : IO[Checked[Completed]] =
+    logger.debugIO(HttpClient
+      .liftProblem(Stream
+        .resource(
           common.clusterNodeApi(
             Admission(passiveUri, passiveNodeUserAndPassword),
             "acknowledgements"))
@@ -523,10 +523,10 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
                 val problem: Problem =
                   MissingPassiveClusterNodeHeartbeatProblem(passiveId, noHeartbeatSince.elapsed)
                 logger.trace(problem.toString)
-                Task.left(problem)
+                IO.left(problem)
 
               case Right(eventId) =>
-                Task.deferFuture {
+                IO.deferFuture {
                   // Possible dead letter when `noMoreJournaling` is detected too late !!!
                   // because after JournalActor has committed SwitchedOver (after ack), JournalActor stops.
                   (journalActor ? JournalActor.Input.PassiveNodeAcknowledged(eventId = eventId))
@@ -538,8 +538,8 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
         .map(_.toLeft(Completed)))
       .map(_.flatten))
 
-  private def awaitAcknowledgement(passiveUri: Uri, eventId: EventId): Task[Checked[EventId]] =
-    logger.debugTask(common
+  private def awaitAcknowledgement(passiveUri: Uri, eventId: EventId): IO[Checked[EventId]] =
+    logger.debugIO(common
       .clusterNodeApi(Admission(passiveUri, passiveNodeUserAndPassword), "awaitAcknowledgement")
       .use(api => HttpClient
         .liftProblem(
@@ -547,30 +547,30 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
             .dropWhile(_ < eventId)
             .headOptionL
             .map(_.toRight(Problem.pure(
-              s"awaitAcknowledgement($eventId): Observable ended unexpectedly"))))
+              s"awaitAcknowledgement($eventId): Stream ended unexpectedly"))))
         .map(_.flatten))
       .logWhenItTakesLonger("passive cluster node acknowledgement"))
 
   private def observeEventIds(api: ClusterNodeApi, heartbeat: Option[FiniteDuration])
-  : Observable[EventId] =
+  : Stream[IO, EventId] =
     RecouplingStreamReader
       .observe[EventId, EventId, ClusterNodeApi](
         toIndex = identity,
         api,
         clusterConf.recouplingStreamReader,
         after = -1L/*unused, web service returns always the newest EventIds*/,
-        getObservable = (_: EventId) =>
+        getStream = (_: EventId) =>
           HttpClient.liftProblem(
-            api.eventIdObservable(heartbeat = heartbeat)),
+            api.eventIdStream(heartbeat = heartbeat)),
         stopRequested = () => stopRequested)
 
-  def executeClusterWatchConfirm(cmd: ClusterWatchConfirm): Task[Checked[Unit]] =
+  def executeClusterWatchConfirm(cmd: ClusterWatchConfirm): IO[Checked[Unit]] =
     common.clusterWatchCounterpart.executeClusterWatchConfirm(cmd)
 
   // Called back by clusterWatchCounterpart.executeClusterWatchConfirm
   private def registerClusterWatchId(confirmation: ClusterWatchConfirmation, alreadyLocked: Boolean)
-  : Task[Checked[Unit]] =
-    logger.traceTask(Task.defer {
+  : IO[Checked[Unit]] =
+    logger.traceIO(IO.defer {
       if alreadyLocked then
         nonLockingRegisterClusterWatchId(confirmation)
       else
@@ -579,13 +579,13 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
     })
 
   private def nonLockingRegisterClusterWatchId(confirmation: ClusterWatchConfirmation)
-  : Task[Checked[Unit]] =
+  : IO[Checked[Unit]] =
     journal.clusterState
       .flatMap(clusterState =>
-        Task(isClusterWatchRegistered(clusterState, confirmation.clusterWatchId))
+        IO(isClusterWatchRegistered(clusterState, confirmation.clusterWatchId))
           .flatMapT(
             if _ then // Short cut
-              Task.right(Nil -> clusterState)
+              IO.right(Nil -> clusterState)
             else
               journal
                 .persistTransaction[ClusterEvent](NoKey)(s =>
@@ -607,7 +607,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
                 clusterWatchIdChangeAllowed = event.isInstanceOf[ClusterWatchRegistered])
               .rightAs(())
 
-          case (Seq(), _) => Task.right(())
+          case (Seq(), _) => IO.right(())
           case o => throw new MatchError(o)
       }
 
@@ -622,18 +622,18 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
         else
           Right(hasNodes.setting.clusterWatchId contains clusterWatchId)
 
-  def onTerminatedUnexpectedly: Task[Checked[Completed]] =
-    Task.fromFuture(fetchingAcksTerminatedUnexpectedlyPromise.future)
+  def onTerminatedUnexpectedly: IO[Checked[Completed]] =
+    IO.fromFuture(fetchingAcksTerminatedUnexpectedlyPromise.future)
 
   private def persist()(toEvents: ClusterState => Checked[Option[ClusterEvent]])
-  : Task[Checked[(Seq[Stamped[KeyedEvent[ClusterEvent]]], ClusterState)]] =
+  : IO[Checked[(Seq[Stamped[KeyedEvent[ClusterEvent]]], ClusterState)]] =
     suspendHeartbeat(forEvent = true)(
       persistWithoutTouchingHeartbeat()(toEvents))
 
   private def persistWithoutTouchingHeartbeat(extraEvent: Option[ItemAttachedToMe] = None)(
     toEvents: ClusterState => Checked[Option[ClusterEvent]])
-  : Task[Checked[(Seq[Stamped[KeyedEvent[ClusterEvent]]], ClusterState)]] =
-    Task.defer:
+  : IO[Checked[(Seq[Stamped[KeyedEvent[ClusterEvent]]], ClusterState)]] =
+    IO.defer:
       assertThat(!clusterWatchSynchronizer.isHeartbeating)
       journal
         .persistTransaction[NoKeyEvent](NoKey)(state =>
@@ -672,18 +672,18 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
                 .rightAs(clusterStampedEvents -> clusterState)
 
             case (Seq(), clusterState) =>
-              Task.right(clusterStampedEvents -> clusterState)
+              IO.right(clusterStampedEvents -> clusterState)
 
             case _ =>
-              Task.left(Problem.pure("persistWithoutTouchingHeartbeat does not match"))
+              IO.left(Problem.pure("persistWithoutTouchingHeartbeat does not match"))
         }
 
-  private def suspendHeartbeat[A](forEvent: Boolean = false)(task: Task[Checked[A]])
+  private def suspendHeartbeat[A](forEvent: Boolean = false)(io: IO[Checked[A]])
     (implicit enclosing: sourcecode.Enclosing)
-  : Task[Checked[A]] =
+  : IO[Checked[A]] =
     clusterWatchSynchronizer
       .suspendHeartbeat(journal.clusterState, forEvent = forEvent)(
-        task)
+        io)
 
 
 object ActiveClusterNode:

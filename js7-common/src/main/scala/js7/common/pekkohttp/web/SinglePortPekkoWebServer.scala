@@ -20,8 +20,7 @@ import js7.common.pekkohttp.web.SinglePortPekkoWebServer.*
 import js7.common.pekkohttp.web.data.{WebServerBinding, WebServerPort}
 import js7.common.http.JsonStreamingSupport
 import js7.common.internet.IP.inetSocketAddressShow
-import monix.eval.Task
-import monix.execution.Scheduler
+import cats.effect.IO
 import scala.concurrent.duration.{Deadline, FiniteDuration}
 import scala.concurrent.{Future, Promise}
 import scala.util.chaining.scalaUtilChainingOps
@@ -37,7 +36,7 @@ extends Service.StoppableByRequest:
     startService(
       untilStopRequested *> onStop)
 
-  private def onStop: Task[Unit] =
+  private def onStop: IO[Unit] =
     binding.stop
       //.onErrorHandle(t =>
       //  logger.error(s"$toString $binding.terminate => ${t.toStringWithCauses}",
@@ -54,9 +53,9 @@ private object SinglePortPekkoWebServer:
     shutdownTimeout: FiniteDuration,
     httpsClientAuthRequired: Boolean)
     (implicit actorSystem: ActorSystem)
-  : Resource[Task, SinglePortPekkoWebServer] =
-    Resource.suspend(Task {
-      // The revision counter is saved in this memoized Task, see end of this task.
+  : Resource[IO, SinglePortPekkoWebServer] =
+    Resource.suspend(IO {
+      // The revision counter is saved in this memoized IO, see end of this io.
       val revision = Atomic(1)
 
       def makeBoundRoute(): (BoundRoute, Promise[Deadline]) = {
@@ -75,11 +74,11 @@ private object SinglePortPekkoWebServer:
     shutdownTimeout: FiniteDuration,
     httpsClientAuthRequired: Boolean)
     (implicit actorSystem: ActorSystem)
-  : Resource[Task, SinglePortPekkoWebServer] =
-    Service.resource(Task.defer {
+  : Resource[IO, SinglePortPekkoWebServer] =
+    Service.resource(IO.defer {
       val pekkoHttp = Http(actorSystem)
 
-      def bindHttps(https: WebServerBinding.Https): Task[Binding] = {
+      def bindHttps(https: WebServerBinding.Https): IO[Binding] = {
         logger.info(
           s"Using HTTPS certificate in ${https.keyStoreRef.url} for port ${https.toWebServerPort}")
         bind(
@@ -92,8 +91,8 @@ private object SinglePortPekkoWebServer:
       def bind(
         binding: WebServerBinding,
         httpsConnectionContext: Option[HttpsConnectionContext] = None)
-      : Task[Binding] =
-        Task.defer {
+      : IO[Binding] =
+        IO.defer {
           val serverBuilder = pekkoHttp
             .newServerAt(
               interface = binding.address.getAddress.getHostAddress,
@@ -108,14 +107,14 @@ private object SinglePortPekkoWebServer:
 
           val (boundRoute, terminatingPromise) = makeBoundRoute()
           val bindingString = s"${binding.scheme}://${binding.address.show}"
-          Task
+          IO
             .deferFutureAction { implicit scheduler =>
               val routeDelegator = new DelayedRouteDelegator(binding, boundRoute, bindingString)
               val whenBound = serverBuilder.bind(routeDelegator.webServerRoute)
               terminatingPromise.completeWith(whenBound.flatMap(_.whenTerminationSignalIssued))
               whenBound
             }
-            .<*(Task {
+            .<*(IO {
               // An info line will be logged by DelayedRouteDelegator
               val securityHint = boundRoute.startupSecurityHint(binding.scheme)
               logger.debug(s"$bindingString is bound to $boundRoute$securityHint")
@@ -142,7 +141,7 @@ private object SinglePortPekkoWebServer:
 
     private val whenRealRoute: Future[Route] =
       boundRoute.webServerRoute
-        .tapEval(realRoute => Task {
+        .tapEval(realRoute => IO {
           if _realRoute.compareAndSet(None, Some(realRoute)) then {
             val serviceName = boundRoute.serviceName.emptyToNone.fold("")(_ + " ")
             val securityHint = boundRoute.startupSecurityHint(binding.scheme)
@@ -170,10 +169,10 @@ private object SinglePortPekkoWebServer:
     val webServerPort: WebServerPort =
       webServerBinding.toWebServerPort
 
-    def stop: Task[Unit] =
+    def stop: IO[Unit] =
       logger
-        .debugTask(s"Terminate $toString")(
-          Task.deferFuture(
+        .debugIO(s"Terminate $toString")(
+          IO.deferFuture(
             pekkoBinding.terminate(hardDeadline = shutdownTimeout)))
         .void
 

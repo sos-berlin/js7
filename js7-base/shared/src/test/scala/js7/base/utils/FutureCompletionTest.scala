@@ -33,7 +33,7 @@ final class FutureCompletionTest extends OurAsyncTestSuite:
       assert(a1 == 7 && !b.future.isCompleted && c1 == 7)
       assert(futureCompletion.size == 0)
 
-  "Task cancelOnCompletionOf, not shut down" in:
+  "IO cancelOnCompletionOf, not shut down" in:
     implicit val scheduler = TestScheduler()
     val shutdownPromise = Promise[Int]()
     val futureCompletion = new FutureCompletion[Int](shutdownPromise.future)

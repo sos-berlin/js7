@@ -9,7 +9,7 @@ import js7.base.generic.Completed
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.log.{CorrelId, Logger}
-import js7.base.monixutils.MonixBase.syntax.RichCheckedTask
+import js7.base.monixutils.MonixBase.syntax.RichCheckedIO
 import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
 import js7.base.utils.Assertions.assertThat
@@ -20,7 +20,7 @@ import js7.data.order.{Order, OrderEvent, OrderId, OrderMark}
 import js7.journal.configuration.JournalConf
 import js7.journal.{JournalActor, KeyedJournalingActor}
 import js7.subagent.director.SubagentKeeper
-import monix.eval.{Fiber, Task}
+import cats.effect.Fiber
 import monix.execution.Scheduler
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
@@ -62,8 +62,8 @@ extends KeyedJournalingActor[AgentState, OrderEvent]:
               events => self ! Internal.UpdateEvents(events, orderCorrelId))
             .materializeIntoChecked
             .tapEval:
-              case Left(problem) => Task(logger.error(s"recoverOrderProcessing(${o.id}): $problem"))
-              case Right(_) => Task.unit
+              case Left(problem) => IO(logger.error(s"recoverOrderProcessing(${o.id}): $problem"))
+              case Right(_) => IO.unit
             .foreach { (_: Checked[Fiber[OrderProcessed]]) =>
               sender ! Output.RecoveryFinished
             }

@@ -7,7 +7,7 @@ import js7.base.utils.Collections.RichMap
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentSelection, SubagentSelectionId}
 import js7.subagent.director.DirectorState.*
-import monix.eval.Task
+import cats.effect.IO
 import scala.collection.MapView
 
 private final case class DirectorState(
@@ -17,11 +17,11 @@ private final case class DirectorState(
   val idToDriver: MapView[SubagentId, SubagentDriver] =
     subagentToEntry.view.mapValues(_.driver)
 
-  def idToAllocatedDriver: MapView[SubagentId, Allocated[Task, SubagentDriver]] =
+  def idToAllocatedDriver: MapView[SubagentId, Allocated[IO, SubagentDriver]] =
     subagentToEntry.view.mapValues(_.allocatedDriver)
 
   def insertSubagentDriver(
-    allocatedDriver: Allocated[Task, SubagentDriver],
+    allocatedDriver: Allocated[IO, SubagentDriver],
     disabled: Boolean = false)
   : Checked[DirectorState] =
     val subagentId = allocatedDriver.allocatedThing.subagentId
@@ -43,7 +43,7 @@ private final case class DirectorState(
                   selectionToPrioritized(None).add(subagentId))))
 
   def replaceSubagentDriver(
-    allocatedDriver: Allocated[Task, SubagentDriver],
+    allocatedDriver: Allocated[IO, SubagentDriver],
     subagentItem: SubagentItem)
   : Checked[DirectorState] =
     val subagentId = allocatedDriver.allocatedThing.subagentId
@@ -112,7 +112,7 @@ private object DirectorState:
   private val DefaultPriority = 0
 
   final case class Entry(
-    allocatedDriver: Allocated[Task, SubagentDriver],
+    allocatedDriver: Allocated[IO, SubagentDriver],
     disabled: Boolean = false):
     val driver: SubagentDriver =
       allocatedDriver.allocatedThing

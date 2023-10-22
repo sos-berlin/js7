@@ -8,7 +8,7 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Checked
 import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.SuccessFuture
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.time.WaitForCondition.waitForCondition
@@ -32,11 +32,11 @@ import js7.tests.ControlWorkflowPathSuspendWorkflowTest.*
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.testenv.{DirectoryProviderForScalaTest, TestController}
 import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
+import fs2.Stream
 
 final class ControlWorkflowPathSuspendWorkflowTest
 extends OurTestSuite, DirectoryProviderForScalaTest:
-  
+
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.controller.agent-driver.command-batch-delay = 0ms
@@ -232,7 +232,7 @@ extends OurTestSuite, DirectoryProviderForScalaTest:
     val eventId = eventWatch.lastAddedEventId
 
     controller.api
-      .updateItems(Observable(
+      .updateItems(Stream(
         AddVersion(VersionId("DELETE")),
         RemoveVersioned(aWorkflow.path),
         RemoveVersioned(bWorkflow.path)))

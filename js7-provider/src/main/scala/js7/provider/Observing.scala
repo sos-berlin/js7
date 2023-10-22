@@ -10,8 +10,8 @@ import js7.base.problem.Checked.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.HttpClient
 import js7.provider.Observing.*
-import monix.eval.Task
-import monix.reactive.Observable
+import cats.effect.IO
+import fs2.Stream
 
 /**
   * @author Joacim Zschimmer
@@ -23,38 +23,38 @@ private[provider] trait Observing extends OrderProvider:
   private val watchDuration     = conf.config.finiteDuration("js7.provider.directory-watch.poll-interval").orThrow
   private val errorWaitDuration = conf.config.finiteDuration("js7.provider.directory-watch.error-delay").orThrow
 
-  final def observe: Observable[Completed] =
-    val observables = observeLive ::
+  final def observe: Stream[IO, Completed] =
+    val streams = observeLive ::
       exists(conf.orderGeneratorsDirectory).thenList(observeOrderGenerators)
-    Observable.combineLatestList(observables*)
+    Stream.combineLatestList(streams*)
       .takeUntilEval(untilStopRequested)
       .map((_: Seq[Completed]) => Completed)
 
-  private def observeLive: Observable[Completed] =
+  private def observeLive: Stream[IO, Completed] =
     observeDirectory(conf.liveDirectory, initiallyUpdateControllerConfiguration(), updateControllerConfiguration())
 
-  private def observeOrderGenerators: Observable[Completed] =
+  private def observeOrderGenerators: Stream[IO, Completed] =
     startAddingOrders()  // No orders will be added before an OrderGenerator has been read from directory
-    val replace = Task(replaceOrderGenerators.map(_ => Completed))
+    val replace = IO(replaceOrderGenerators.map(_ => Completed))
     observeDirectory(conf.orderGeneratorsDirectory, replace, replace)
 
   private def observeDirectory(
     directory: Path,
-    replace: Task[Checked[Completed]],
-    update: Task[Checked[Completed]])
-  : Observable[Completed] =
+    replace: IO[Checked[Completed]],
+    update: IO[Checked[Completed]])
+  : Stream[IO, Completed] =
     // Start DirectoryWatcher before replaceControllerConfiguration, otherwise the first events may get lost!
     val directoryWatcher = new DirectoryWatcher(directory, watchDuration)
-    Observable.fromTask(
+    Stream.fromIO(
       retryUntilNoError(replace))
       .appendAll(
-        directoryWatcher.singleUseObservable
-          .guarantee(Task { directoryWatcher.close() })
+        directoryWatcher.singleUseStream
+          .guarantee(IO { directoryWatcher.close() })
           .debounce(minimumSilence)
           .mapEval(_ =>
             retryUntilNoError(update)))
 
-  protected def retryUntilNoError[A](body: => Task[Checked[A]]): Task[A] =
+  protected def retryUntilNoError[A](body: => IO[Checked[A]]): IO[A] =
     body
       .map(_.asTry).dematerialize  // Unify Success(Left(problem)) and Failure
       .onErrorRestartLoop(()) { (throwable, _, retry) =>
@@ -69,9 +69,9 @@ private[provider] trait Observing extends OrderProvider:
               Completed
             }
           else
-            Task.unit
+            IO.unit
         logout >>
-          loginUntilReachable.delayExecution(errorWaitDuration) >>
+          loginUntilReachable.delayBy(errorWaitDuration) >>
           retry(())
       }
 

@@ -8,7 +8,7 @@ import js7.base.io.file.FileUtils.{copyDirectoryContent, deleteDirectoryContentR
 import js7.base.problem.Checked.*
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
 import js7.common.pekkohttp.web.data.WebServerPort
@@ -28,7 +28,7 @@ import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerTestUtils.newControllerApi
 import js7.tests.testenv.{DirectorEnv, DirectoryProviderForScalaTest}
 import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
+import fs2.Stream
 import scala.annotation.tailrec
 
 final class UpdateAgentRefsTest extends OurTestSuite, DirectoryProviderForScalaTest:
@@ -73,7 +73,7 @@ final class UpdateAgentRefsTest extends OurTestSuite, DirectoryProviderForScalaT
 
     controllerApi
       .updateItems(
-        Observable(
+        Stream(
           AddOrChangeSimple(agentRef),
           AddOrChangeSimple(subagentItem),
           AddVersion(v1),
@@ -87,14 +87,14 @@ final class UpdateAgentRefsTest extends OurTestSuite, DirectoryProviderForScalaT
   "Delete AgentRef" in:
     copyDirectoryContent(agentEnv.stateDir, outdatedState)
 
-    assert(controllerApi.updateItems(Observable(DeleteSimple(agentPath))).await(99.s) ==
+    assert(controllerApi.updateItems(Stream(DeleteSimple(agentPath))).await(99.s) ==
       Left(Problem.combine(
         ItemIsStillReferencedProblem(agentPath, subagentId),
         ItemIsStillReferencedProblem(agentPath, workflow.path ~ v1))))
 
     val eventId = eventWatch.lastAddedEventId
 
-    controllerApi.updateItems(Observable(
+    controllerApi.updateItems(Stream(
       DeleteSimple(agentPath),
       DeleteSimple(subagentId),
       AddVersion(VersionId("DELETE")),
@@ -114,7 +114,7 @@ final class UpdateAgentRefsTest extends OurTestSuite, DirectoryProviderForScalaT
     @tailrec def loop(n: Int): Unit =
       val checked = controllerApi
         .updateItems(
-          Observable(
+          Stream(
             AddOrChangeSimple(agentRef),
             AddOrChangeSimple(subagentItem),
             AddVersion(versionId),

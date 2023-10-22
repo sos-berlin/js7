@@ -13,7 +13,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.common.system.startup.Halt
 import js7.core.command.{CommandMeta, CommandRegister, CommandRun}
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler
 import org.apache.pekko.actor.{Actor, ActorRef}
 import scala.concurrent.Promise
@@ -126,7 +126,7 @@ object CommandActor:
 
   final class Handle(actor: ActorRef) extends CommandHandler:
     def execute(command: AgentCommand, meta: CommandMeta) =
-      Task.deferFuture:
+      IO.deferFuture:
         val promise = Promise[Checked[Response]]()
         actor ! Input.Execute(command, meta, CorrelId.current, promise)
         promise.future

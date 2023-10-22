@@ -4,7 +4,7 @@ import org.apache.pekko.actor.{ActorRef, Props}
 import com.softwaremill.tagging.@@
 import izumi.reflect.Tag
 import js7.base.log.CorrelId
-import js7.base.monixutils.MonixBase.promiseTask
+import js7.base.monixutils.MonixBase.promiseIO
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.RichEitherF
 import js7.common.pekkoutils.SupervisorStrategies
@@ -12,7 +12,7 @@ import js7.data.event.{Event, JournaledState, KeyedEvent, Stamped}
 import js7.journal.configuration.JournalConf
 import js7.journal.state.StateJournalingActor.*
 import js7.journal.{CommitOptions, JournalActor, MainJournalingActor}
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler
 import scala.concurrent.Promise
 import scala.util.{Failure, Success, Try}
@@ -38,13 +38,13 @@ extends MainJournalingActor[S, E]:
     stateToEvents: StateToEvents[S, E],
     options: CommitOptions,
     correlId: CorrelId)
-  : Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
-    promiseTask[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] { promise =>
+  : IO[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
+    promiseIO[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] { promise =>
       self ! Persist(stateToEvents, options, correlId, promise)
     }
 
-  private def persistLater(keyedEvents: Seq[KeyedEvent[E]], options: CommitOptions): Task[Checked[Unit]] =
-    promiseTask[Checked[Unit]] { promise =>
+  private def persistLater(keyedEvents: Seq[KeyedEvent[E]], options: CommitOptions): IO[Checked[Unit]] =
+    promiseIO[Checked[Unit]] { promise =>
       self ! PersistLater(keyedEvents, options, promise)
     }
 
@@ -69,7 +69,7 @@ extends MainJournalingActor[S, E]:
 
     case PersistLater(keyedEvents, options, promise) =>
       promise.completeWith(
-        persistKeyedEventAcceptEarlyTask(keyedEvents, options = options)
+        persistKeyedEventAcceptEarlyIO(keyedEvents, options = options)
           .rightAs(())
           .runToFuture)
 
@@ -92,10 +92,10 @@ private[state] object StateJournalingActor:
 
   type PersistFunction[S <: JournaledState[S], E <: Event] =
     (StateToEvents[S, E], CommitOptions, CorrelId) =>
-      Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]]
+      IO[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]]
 
   type PersistLaterFunction[E <: Event] =
-    (Seq[KeyedEvent[E]], CommitOptions) => Task[Checked[Unit]]
+    (Seq[KeyedEvent[E]], CommitOptions) => IO[Checked[Unit]]
 
   def props[S <: JournaledState[S], E <: Event](
     currentState: () => S,

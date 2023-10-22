@@ -2,7 +2,7 @@ package js7.tests.cluster.controller
 
 import java.io.RandomAccessFile
 import js7.base.io.file.FileUtils.syntax.*
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterPassiveLost}

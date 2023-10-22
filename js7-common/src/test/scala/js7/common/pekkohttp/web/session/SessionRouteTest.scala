@@ -13,7 +13,7 @@ import js7.base.problem.Problem
 import js7.base.session.SessionApi
 import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.*
@@ -25,8 +25,8 @@ import js7.common.http.PekkoHttpClient.HttpException
 import js7.data.problems.InvalidLoginProblem
 import js7.data.session.HttpSessionApi
 import js7.tester.ScalaTestUtils.awaitAndAssert
-import monix.eval.Task
-import monix.execution.Scheduler
+import cats.effect.IO
+import cats.effect.Fiber
 import org.scalatest.matchers.should.Matchers.*
 import scala.concurrent.duration.Deadline.now
 
@@ -68,7 +68,7 @@ extends OurTestSuite, SessionRouteTester
       withSessionApi(Some(UserId("INVALID") -> SecretString("INVALID"))) { api =>
         import api.implicitSessionToken
         @volatile var count = 0
-        def onError(t: Throwable) = Task {
+        def onError(t: Throwable) = IO {
           count += 1
           logger.debug(s"count=$count " + t.toStringWithCauses)
           true
@@ -95,7 +95,7 @@ extends OurTestSuite, SessionRouteTester
     "authorized" in {
       withSessionApi(Some(AUserAndPassword)) { api =>
         import api.implicitSessionToken
-        api.loginUntilReachable(Iterator.continually(10.ms), _ => Task.pure(true)) await 99.s
+        api.loginUntilReachable(Iterator.continually(10.ms), _ => IO.pure(true)) await 99.s
         requireAuthorizedAccess(api)
         api.logout() await 99.s
         requireAccessIsUnauthorizedOrPublic(api)

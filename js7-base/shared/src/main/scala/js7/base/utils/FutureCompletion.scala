@@ -1,15 +1,12 @@
 package js7.base.utils
 
-import cats.effect.Resource
-import monix.eval.Task
-import monix.execution.atomic.AtomicInt
-import monix.execution.{CancelableFuture, Scheduler}
-import monix.reactive.Observable
+import cats.effect.{IO, Resource}
+import fs2.Stream
+import java.util.concurrent.atomic.AtomicInteger
 import org.jetbrains.annotations.TestOnly
 import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.Try
-
 /**
   * A register for `Future` completion which allows removal of handlers.
   *
@@ -20,7 +17,7 @@ import scala.util.Try
 final class FutureCompletion[A](future: Future[A])(implicit ec: ExecutionContext):
 
   private val numberToEntry = mutable.Map.empty[Int, Entry]
-  private val counter = AtomicInt(0)
+  private val counter = Atomic(0)
   @volatile private var completed: Option[Try[A]] = None
 
   future.onComplete { tried =>
@@ -30,12 +27,12 @@ final class FutureCompletion[A](future: Future[A])(implicit ec: ExecutionContext
         entry.promise.complete(tried)
   }
 
-  def observable: Observable[Observable[A]] =
-    Observable.fromResource(resource)
-      .map(o => Observable.fromFuture(o))
+  def stream: Stream[IO, Stream[IO, A]] =
+    Stream.resource(resource)
+      .map(o => Stream.eval(IO.fromFuture(IO(o))))
 
-  def resource: Resource[Task, Future[A]] =
-    Resource.fromAutoCloseable(Task(add()))
+  def resource: Resource[IO, Future[A]] =
+    Resource.fromAutoCloseable(IO(add()))
       .map(_.future)
 
   private[utils] def add(): Entry =
@@ -73,22 +70,10 @@ final class FutureCompletion[A](future: Future[A])(implicit ec: ExecutionContext
 
 object FutureCompletion:
   object syntax:
-    implicit final class FutureCompletionObservable[A](private val observable: Observable[A]) extends AnyVal:
+    implicit final class FutureCompletionStream[A](private val stream: Stream[IO, A]) extends AnyVal:
       def takeUntilCompleted[B](futureCompletion: FutureCompletion[B]) =
-        futureCompletion.observable flatMap observable.takeUntil
+        futureCompletion.stream.flatMap(trigger => stream.interruptWhen(trigger.as(true)))
 
-      def takeUntilCompletedAndDo[B](futureCompletion: FutureCompletion[B])(onCompleted: B => Task[Unit]) =
-        futureCompletion.observable
-          .flatMap(trigger => observable.takeUntil(trigger.doOnNext(onCompleted)))
-
-    implicit final class FutureCompletionFuture[A](private val future: CancelableFuture[A]) extends AnyVal:
-      def cancelOnCompletionOf[B](futureCompletion: FutureCompletion[B])(implicit s: Scheduler)
-      : CancelableFuture[A] =
-        val entry = futureCompletion.add()
-        entry.future.onComplete { _ =>
-          future.cancel()
-        }
-        future.transform { tried =>
-          entry.close()
-          tried
-        }
+      def takeUntilCompletedAndDo[B](futureCompletion: FutureCompletion[B])(onCompleted: B => IO[Unit]) =
+        futureCompletion.stream
+          .flatMap(trigger => stream.interruptWhen(trigger.evalTap(onCompleted).as(true)))

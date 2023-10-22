@@ -2,7 +2,7 @@ package js7.common.pekkohttp
 
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.common.pekkohttp.ByteSequenceChunkerObservable.syntax.*
 import js7.common.pekkoutils.ByteStrings.syntax.*

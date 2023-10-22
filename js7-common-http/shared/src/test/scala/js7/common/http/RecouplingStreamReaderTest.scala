@@ -8,9 +8,9 @@ import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.Nel
 import js7.common.http.configuration.RecouplingStreamReaderConf
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
+import fs2.Stream
 import scala.concurrent.Await
 
 /**
@@ -23,10 +23,10 @@ final class RecouplingStreamReaderTest extends OurAsyncTestSuite:
     val recouplingStreamReaderConf = RecouplingStreamReaderConf(timeout = 5.s, delay = 1.s,
       failureDelays = Nel.one(5.s))
 
-    val observable = Observable.defer:
+    val stream = Stream.defer:
       @volatile var lastErrorAt = -2
-      def getUnderlyingObservable(after: Long) =
-        Task:
+      def getUnderlyingStream(after: Long) =
+        IO:
           lastErrorAt match
             case -2 =>
               lastErrorAt = -1
@@ -35,7 +35,7 @@ final class RecouplingStreamReaderTest extends OurAsyncTestSuite:
               lastErrorAt = 0
               Left(Problem("TEST-PROBLEM"))
             case _ =>
-              Right(Observable.fromIterator(Task(
+              Right(Stream.fromIterator(IO(
                 Iterator.from(after.toInt + 1)
                   .map {
                     case 3 if lastErrorAt != 3 =>
@@ -48,12 +48,12 @@ final class RecouplingStreamReaderTest extends OurAsyncTestSuite:
         api,
         recouplingStreamReaderConf,
         after = 0L,
-        getObservable = getUnderlyingObservable)
-    observable.take(10).toListL.timeout(99.s).runToFuture.flatMap { list =>
+        getStream = getUnderlyingStream)
+    stream.take(10).toListL.timeout(99.s).runToFuture.flatMap { list =>
       assert(list == (1 to 10).map(_.toString).toList)
 
       // Cancel
-      val obs = observable.doOnNext(_ => Task.sleep(10.ms))
+      val obs = stream.doOnNext(_ => IO.sleep(10.ms))
         .toListL
         .onCancelRaiseError(new RuntimeException("TEST"))
         .runToFuture

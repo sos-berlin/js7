@@ -3,9 +3,10 @@ package js7.base.utils
 import izumi.reflect.Tag
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
-import monix.eval.Task
+import cats.effect.IO
 import scala.concurrent.{Future, Promise}
 import scala.util.Success
+import js7.base.catsutils.UnsafeMemoizable.given
 
 /**
  * Variable which can be set only once. Thread-safe.
@@ -16,8 +17,8 @@ final class SetOnce[A](label: => String, notYetSetProblem: Problem):
 
   protected[this] val promise = Promise[A]()
 
-  lazy val task: Task[A] =
-    Task.fromFuture(future).memoize
+  lazy val io: IO[A] =
+    IO.fromFuture(IO.pure(future)).unsafeMemoize
 
   override def toString = toStringOr(s"SetOnce[$label](not yet set)")
 

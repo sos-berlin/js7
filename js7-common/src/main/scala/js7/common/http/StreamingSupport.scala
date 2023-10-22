@@ -9,9 +9,9 @@ import com.typesafe.scalalogging.Logger
 import izumi.reflect.Tag
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.common.pekkohttp.ExceptionHandling.webLogger
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler
-import monix.reactive.Observable
+import fs2.Stream
 
 
 /**
@@ -20,20 +20,20 @@ import monix.reactive.Observable
 object StreamingSupport:
   private val logger = Logger("js7.common.http.StreamingSupport")  // TODO Use Logger adapter (unreachable in module common)
 
-  implicit final class PekkoObservable[A](private val observable: Observable[A]) extends AnyVal:
+  implicit final class PekkoStream[A](private val stream: Stream[IO, A]) extends AnyVal:
     def toPekkoSourceForHttpResponse(implicit scheduler: Scheduler, A: Tag[A]): Source[A, NotUsed] =
       logPekkoStreamErrorToWebLogAndIgnore(toPekkoSource)
 
-    def toPekkoSourceTask(implicit A: Tag[A]): Task[Source[A, NotUsed]] =
-      Task.deferAction(implicit scheduler => Task(
+    def toPekkoSourceIO(implicit A: Tag[A]): IO[Source[A, NotUsed]] =
+      IO.deferAction(implicit scheduler => IO(
         toPekkoSource(scheduler, A)))
 
     def toPekkoSource(implicit scheduler: Scheduler, A: Tag[A]): Source[A, NotUsed] =
       Source.fromPublisher(
-        observable
+        stream
           .guaranteeCase {
-            case ExitCase.Completed => Task.unit
-            case exitCase => Task { logger.trace(s"Observable[${A.tag}] toPekkoSource: $exitCase") }
+            case ExitCase.Completed => IO.unit
+            case exitCase => IO { logger.trace(s"Stream[IO, ${A.tag}] toPekkoSource: $exitCase") }
           }
           .toReactivePublisher(scheduler))
 
@@ -53,10 +53,10 @@ object StreamingSupport:
       Source.empty
     })
 
-  implicit final class ObservablePekkoSource[Out, Mat](private val source: Source[Out, Mat]) extends AnyVal:
-    def toObservable(implicit m: Materializer): Observable[Out] =
-      Observable
+  implicit final class StreamPekkoSource[Out, Mat](private val source: Source[Out, Mat]) extends AnyVal:
+    def toStream(implicit m: Materializer): Stream[IO, Out] =
+      Stream
         .fromReactivePublisher(source.runWith(Sink.asPublisher(fanout = false)))
         .guaranteeCase:
-          case ExitCase.Completed => Task.unit
-          case exitCase => Task { logger.trace(s"toObservable: $exitCase") }
+          case ExitCase.Completed => IO.unit
+          case exitCase => IO { logger.trace(s"toStream: $exitCase") }

@@ -1,11 +1,11 @@
 package js7.cluster
 
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.problem.{Checked, Problem}
 import js7.cluster.ActivationInhibitor.{Active, Inhibited, Initial, Passive, State}
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.schedulers.TestScheduler
 import scala.util.Success
 
@@ -214,15 +214,15 @@ final class ActivationInhibitorTest extends OurTestSuite
   }
 
   private def succeedingActivation(inhibitor: ActivationInhibitor, bodyResult: Checked[Boolean])
-  : Task[Checked[Boolean]] =
+  : IO[Checked[Boolean]] =
     inhibitor.tryToActivate(
-      ifInhibited = Task.right(false),
-      activate = Task.pure(bodyResult).delayExecution(1.s))
+      ifInhibited = IO.right(false),
+      activate = IO.pure(bodyResult).delayBy(1.s))
 
-  private def failingActivation(inhibitor: ActivationInhibitor): Task[Checked[Boolean]] =
+  private def failingActivation(inhibitor: ActivationInhibitor): IO[Checked[Boolean]] =
     inhibitor.tryToActivate(
-      ifInhibited = Task.right(false),
-      activate = Task.raiseError(new RuntimeException("TEST")).delayExecution(1.s))
+      ifInhibited = IO.right(false),
+      activate = IO.raiseError(new RuntimeException("TEST")).delayBy(1.s))
 
   private def state(implicit inhibitor: ActivationInhibitor): Option[State] = {
     val a = inhibitor.state.runToFuture

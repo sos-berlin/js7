@@ -17,7 +17,7 @@ import js7.common.pekkohttp.web.session.SessionRegister
 import js7.core.command.CommandMeta
 import js7.data.event.Stamped
 import js7.subagent.SubagentSession
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.http.scaladsl.server.Route
@@ -26,9 +26,9 @@ import org.apache.pekko.http.scaladsl.server.Route
  * @author Joacim Zschimmer
  */
 final class AgentRoute(
-  protected val agentOverview: Task[AgentOverview],
+  protected val agentOverview: IO[AgentOverview],
   routeBinding: RouteBinding,
-  protected val executeCommand: (AgentCommand, CommandMeta) => Task[Checked[AgentCommand.Response]],
+  protected val executeCommand: (AgentCommand, CommandMeta) => IO[Checked[AgentCommand.Response]],
   protected val clusterNode: ClusterNode[AgentState],
   protected val agentConfiguration: AgentConfiguration,
   gateKeeperConf: GateKeeper.Configuration[SimpleUser],

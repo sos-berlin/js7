@@ -16,7 +16,7 @@ import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Allocated
 import js7.base.utils.CatsUtils.syntax.RichResource
@@ -33,10 +33,10 @@ import js7.journal.state.FileJournalTest.*
 import js7.journal.test.TestData
 import js7.journal.watch.JournalEventWatch
 import js7.journal.{EventIdClock, EventIdGenerator, JournalActor}
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler
 import monix.execution.schedulers.SchedulerService
-import monix.reactive.Observable
+import fs2.Stream
 import org.scalatest.BeforeAndAfterAll
 import scala.concurrent.Future
 
@@ -136,7 +136,7 @@ final class FileJournalTest extends OurTestSuite, BeforeAndAfterAll
 
   private class RunningJournal extends ProvideActorSystem {
     protected def config = TestConfig
-    private var journalAllocated: Allocated[Task, FileJournal[TestState]] = null
+    private var journalAllocated: Allocated[IO, FileJournal[TestState]] = null
     def journal = journalAllocated.allocatedThing
 
     def start() = {
@@ -278,7 +278,7 @@ private object FileJournalTest
 
     def estimatedSnapshotSize = numberThingCollection.numberThings.size
 
-    def toSnapshotObservable = Observable.fromIterable(numberThingCollection.numberThings.values)
+    def toSnapshotStream = Stream.fromIterable(numberThingCollection.numberThings.values)
   }
   object TestState extends SnapshotableState.Companion[TestState]
   {

@@ -6,7 +6,7 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Allocated
 import js7.base.utils.CatsUtils.syntax.RichResource
@@ -27,11 +27,11 @@ import js7.tests.cluster.agent.UntaughtAgentClusterWatchTest.*
 import js7.tests.cluster.controller.ControllerClusterTester.*
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.testenv.DirectoryProviderForScalaTest
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler.Implicits.traced
 
 final class UntaughtAgentClusterWatchTest extends OurTestSuite, DirectoryProviderForScalaTest:
-  
+
   private final val testHeartbeatLossPropertyKey = "js7.TEST." + SecretStringGenerator.randomString()
   private final val testAckLossPropertyKey = "js7.TEST." + SecretStringGenerator.randomString()
   sys.props(testAckLossPropertyKey) = "false"
@@ -54,7 +54,7 @@ final class UntaughtAgentClusterWatchTest extends OurTestSuite, DirectoryProvide
 
   "test" in:
     def allocateDirector(director: SubagentItem, otherDirectorId: SubagentId, backup: Boolean = false)
-    : Allocated[Task, RunningAgent] =
+    : Allocated[IO, RunningAgent] =
       directoryProvider
         .directorEnvResource(director, otherSubagentIds = Seq(otherDirectorId),
           isClusterBackup = backup)
@@ -62,10 +62,10 @@ final class UntaughtAgentClusterWatchTest extends OurTestSuite, DirectoryProvide
         .toAllocated
         .await(99.s)
 
-    val primaryDirectorAllocated: Allocated[Task, RunningAgent] =
+    val primaryDirectorAllocated: Allocated[IO, RunningAgent] =
       allocateDirector(subagentItems(0), subagentItems(1).id)
 
-    val backupDirectorAllocated: Allocated[Task, RunningAgent] =
+    val backupDirectorAllocated: Allocated[IO, RunningAgent] =
       allocateDirector(subagentItems(1), subagentItems(0).id, backup = true)
 
     TestAgent(primaryDirectorAllocated).useSync(99.s) { primaryDirector =>

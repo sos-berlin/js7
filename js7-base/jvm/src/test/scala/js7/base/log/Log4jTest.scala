@@ -3,10 +3,10 @@ package js7.base.log
 import cats.syntax.parallel.*
 import js7.base.log.Log4jTest.*
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.{DurationRichInt, RichDeadline, sleep}
 import js7.base.time.Stopwatch
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.Deadline.now
 
@@ -28,7 +28,7 @@ final class Log4jTest extends OurTestSuite:
     (1 to n)
       .toVector
       .parTraverse(i =>
-        CorrelId.bindNew(Task {
+        CorrelId.bindNew(IO {
           for j <- 1 to m do {
             logger.debug(s"$i-$j")
           }

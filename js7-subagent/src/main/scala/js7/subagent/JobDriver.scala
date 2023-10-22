@@ -22,9 +22,9 @@ import js7.data.value.expression.scopes.FileValueState
 import js7.launcher.internal.JobLauncher
 import js7.launcher.{OrderProcess, ProcessOrder, StdObservers}
 import js7.subagent.JobDriver.*
-import monix.eval.{Fiber, Task}
-import monix.execution.Scheduler
-import monix.execution.cancelables.SerialCancelable
+import cats.effect.IO
+import cats.effect.Fiber
+import js7.base.monixlike.SerialCancelable
 import scala.concurrent.Promise
 
 private final class JobDriver(
@@ -41,17 +41,17 @@ private final class JobDriver(
   @volatile private var lastProcessTerminated: Promise[Unit] = null
 
   for launcher <- checkedJobLauncher do
-    // TODO JobDriver.start(): Task[Checked[JobDriver]]
+    // TODO JobDriver.start(): IO[Checked[JobDriver]]
     launcher.precheckAndWarn.runAsyncAndForget
 
   for problem <- checkedJobLauncher.left do logger.error(problem.toString)
 
-  def stop(signal: ProcessSignal): Task[Unit] =
-    Task.defer:
+  def stop(signal: ProcessSignal): IO[Unit] =
+    IO.defer:
       logger.debug("Stop")
       lastProcessTerminated = Promise()
       (if orderToProcess.isEmpty then
-        Task.unit
+        IO.unit
       else
         killAll(signal)
           .map(_ =>
@@ -61,10 +61,10 @@ private final class JobDriver(
               }
             })
           .flatMap(_ =>
-            Task.fromFuture(lastProcessTerminated.future))
+            IO.fromFuture(lastProcessTerminated.future))
           .logWhenItTakesLonger(s"'killing all $jobKey processes'")
       ).flatMap(_ =>
-        checkedJobLauncher.toOption.fold(Task.unit) { jobLauncher =>
+        checkedJobLauncher.toOption.fold(IO.unit) { jobLauncher =>
           logger.trace("JobLauncher stop")
           jobLauncher
             .stop
@@ -78,14 +78,14 @@ private final class JobDriver(
     order: Order[Order.Processing],
     executeArguments: Map[String, Expression],
     stdObservers: StdObservers)
-  : Task[Fiber[Outcome]] =
+  : IO[FiberIO[Outcome]] =
     val entry = new Entry(order.id)
-    Task(checkedJobLauncher)
+    IO(checkedJobLauncher)
       .flatTapT(_ =>
         orderToProcess.insert(order.id, entry))
       .flatMap:
         case Left(problem) =>
-          Task.pure(completedFiber(Outcome.Disrupted(problem)))
+          IO.pure(Outcome.Disrupted(problem)).start
 
         case Right(jobLauncher: JobLauncher) =>
           processOrder(order, executeArguments, stdObservers, jobLauncher, entry)
@@ -98,8 +98,8 @@ private final class JobDriver(
     stdObservers: StdObservers,
     jobLauncher: JobLauncher,
     entry: Entry)
-  : Task[Outcome] =
-    Task(processOrderResource(order, executeArguments, stdObservers))
+  : IO[Outcome] =
+    IO(processOrderResource(order, executeArguments, stdObservers))
       .flatMapT(_.use(processOrder_ =>
         processOrder2(jobLauncher, processOrder_, entry)))
       .materializeIntoChecked
@@ -108,7 +108,7 @@ private final class JobDriver(
         case Right(outcome) => outcome
 
   private def processOrder2(jobLauncher: JobLauncher, processOrder: ProcessOrder, entry: Entry)
-  : Task[Checked[Outcome]] =
+  : IO[Checked[Outcome]] =
     jobLauncher.startIfNeeded
       .flatMapT(_ => jobLauncher.toOrderProcess(processOrder))
       .flatMapT { orderProcess =>
@@ -119,17 +119,17 @@ private final class JobDriver(
             val whenCompleted = runningProcess.runToFuture
             entry.terminated.completeWith(whenCompleted)
             val maybeKillAfterStart = entry.killSignal.traverse(killOrder(entry, _))
-            val awaitTermination = Task.defer:
+            val awaitTermination = IO.defer:
               entry.runningSince = scheduler.now
               scheduleTimeout(entry)
-              Task
+              IO
                 .fromFuture(whenCompleted)
                 .map(entry.modifyOutcome)
                 .map:
                   case outcome: Succeeded =>
                     readErrorLine(processOrder).getOrElse(outcome)
                   case outcome => outcome
-            Task.parMap2(maybeKillAfterStart, awaitTermination)((_, outcome) => outcome)
+            IO.parMap2(maybeKillAfterStart, awaitTermination)((_, outcome) => outcome)
           }
           .onErrorHandle { t =>
             logger.error(s"${processOrder.order.id}: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
@@ -142,7 +142,7 @@ private final class JobDriver(
     order: Order[Order.Processing],
     executeArguments: Map[String, Expression],
     stdObservers: StdObservers)
-  : Checked[Resource[Task, ProcessOrder]] =
+  : Checked[Resource[IO, ProcessOrder]] =
     checkedJobLauncher
       // Read JobResources each time because they may change at any time
       .flatMap(_ => jobConf.jobResourcePaths.traverse(pathToJobResource))
@@ -170,8 +170,8 @@ private final class JobDriver(
         Outcome.Failed(Some(s"The job's error channel: $errorLine"))
       }
 
-  private def removeEntry(entry: Entry): Task[Unit] =
-    Task.defer:
+  private def removeEntry(entry: Entry): IO[Unit] =
+    IO.defer:
       import entry.orderId
       entry.timeoutSchedule.cancel()
       orderToProcess
@@ -187,14 +187,14 @@ private final class JobDriver(
         logger.error(t.toStringWithCauses + " - " + entry.orderId, t))
       .runAsyncAndForget
 
-  def killOrder(orderId: OrderId, signal: ProcessSignal): Task[Unit] =
-    Task.defer(
+  def killOrder(orderId: OrderId, signal: ProcessSignal): IO[Unit] =
+    IO.defer(
       orderToProcess
         .get(orderId)
-        .fold(Task(logger.debug(s"⚠️ killOrder $orderId => no process for Order")))(
+        .fold(IO(logger.debug(s"⚠️ killOrder $orderId => no process for Order")))(
           killOrder(_, signal)))
 
-  private def killOrder(entry: Entry, signal_ : ProcessSignal): Task[Unit] =
+  private def killOrder(entry: Entry, signal_ : ProcessSignal): IO[Unit] =
     val signal = if sigkillDelay.isZeroOrBelow then SIGKILL else signal_
     entry.killSignal = Some(signal)
     killProcess(entry, signal)
@@ -206,8 +206,8 @@ private final class JobDriver(
           }
         })
 
-  private def killAll(signal: ProcessSignal): Task[Unit] =
-    Task.defer:
+  private def killAll(signal: ProcessSignal): IO[Unit] =
+    IO.defer:
       val entries = orderToProcess.toMap.values
       if entries.nonEmpty then logger.warn(
         s"Terminating, sending $signal to $orderProcessCount processes")
@@ -218,21 +218,21 @@ private final class JobDriver(
         .onErrorHandle(t =>
           logger.error(t.toStringWithCauses, t))
 
-  private def killProcess(entry: Entry, signal: ProcessSignal): Task[Unit] =
-    Task.defer:
+  private def killProcess(entry: Entry, signal: ProcessSignal): IO[Unit] =
+    IO.defer:
       if signal == SIGKILL && entry.sigkilled then
-        Task.unit
+        IO.unit
       else
         entry.orderProcess match
           case None =>
             logger.debug(s"killProcess(${entry.orderId},  $signal): no OrderProcess")
-            Task.unit
+            IO.unit
           case Some(orderProcess) =>
             logger.debug(s"Kill $signal ${entry.orderId}")
             entry.isKilled = true
             entry.sigkilled |= signal == SIGKILL
-            Task
-              .defer/*catch inside task*/ :
+            IO
+              .defer/*catch inside io*/ :
                 orderProcess.cancel(immediately = signal == SIGKILL)
               .onErrorHandle(t => logger.error(
                 s"Kill ${entry.orderId}}: ${t.toStringWithCauses}", t.nullIfNoStackTrace))

@@ -2,7 +2,7 @@ package js7.tests.cluster.controller
 
 import js7.base.problem.Checked.Ops
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
 import js7.data.cluster.ClusterEvent
@@ -13,12 +13,12 @@ import js7.data.workflow.instructions.Prompt
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.cluster.controller.SpeedControllerClusterTest.*
 import js7.tests.testenv.ControllerClusterForScalaTest
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.Deadline.now
 
 final class SpeedControllerClusterTest extends OurTestSuite, ControllerClusterForScalaTest:
-  
+
   val items = Seq(workflow)
 
   for n <- sys.props.get("test.speed"/*try 1000*/).map(_.toInt) do
@@ -30,7 +30,7 @@ final class SpeedControllerClusterTest extends OurTestSuite, ControllerClusterFo
 
             val orderIdIterator = Iterator.from(1).map(i => OrderId(i.toString))
 
-            def cycle = Task.defer:
+            def cycle = IO.defer:
               val orderId = orderIdIterator.synchronized(orderIdIterator.next())
               val order = FreshOrder(orderId, workflow.path)
               // 3 acks:
@@ -42,10 +42,10 @@ final class SpeedControllerClusterTest extends OurTestSuite, ControllerClusterFo
                   .map(_.orThrow)
               yield ()
             // Warm up
-            Task.parSequence((1 to 1000).map(_ => cycle)).await(99.s)
+            IO.parSequence((1 to 1000).map(_ => cycle)).await(99.s)
 
             val t = now
-            Task.parSequence((1 to n).map(_ => cycle)).await(99.s)
+            IO.parSequence((1 to n).map(_ => cycle)).await(99.s)
             info(Stopwatch.itemsPerSecondString(t.elapsed, 3 * n, "acks"))
           }
         }

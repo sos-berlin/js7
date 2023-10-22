@@ -6,7 +6,7 @@ import js7.base.io.JavaResource
 import js7.base.log.{CorrelId, CorrelIdLog4jThreadContextMap, Logger}
 import js7.base.problem.Checked.*
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.durationAndPerSecondString
 import js7.data.agent.AgentPath

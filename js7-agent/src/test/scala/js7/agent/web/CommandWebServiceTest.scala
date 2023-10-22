@@ -14,7 +14,7 @@ import js7.base.time.ScalaTime.*
 import js7.common.pekkohttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
 import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegments
 import js7.data.agent.Problems.AgentIsShuttingDown
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler
 import org.apache.pekko.http.scaladsl.model.MediaTypes.`application/json`
 import org.apache.pekko.http.scaladsl.model.StatusCodes.{OK, ServiceUnavailable}
@@ -25,13 +25,13 @@ import scala.concurrent.Future
  * @author Joacim Zschimmer
  */
 final class CommandWebServiceTest extends OurTestSuite, WebServiceTest, CommandWebService:
-  
+
   protected def whenShuttingDown = Future.never
   protected def scheduler = Scheduler.traced
   override protected val uriPathPrefix = "test"
 
   protected val executeCommand = (command, _) =>
-    Task(
+    IO(
       command match {
         case TestCommand => Right(AgentCommand.Response.Accepted)
         case TestCommandWhileShuttingDown => Left(AgentIsShuttingDown)

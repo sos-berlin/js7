@@ -22,7 +22,7 @@ import js7.base.utils.Closer.syntax.*
 import js7.base.utils.Closer.withCloser
 import js7.base.utils.JavaCollections.syntax.*
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
-import monix.eval.Task
+import cats.effect.IO
 import scala.annotation.tailrec
 import scala.collection.AbstractIterator
 import scala.language.implicitConversions
@@ -203,10 +203,10 @@ object FileUtils:
       body(dir)
     }
 
-  def temporaryDirectoryResource(prefix: String): Resource[Task, Path] =
+  def temporaryDirectoryResource(prefix: String): Resource[IO, Path] =
     Resource.make(
-      acquire = Task(Files.createTempDirectory(prefix)))(
-      release = dir => Task(deleteDirectoryRecursively(dir)))
+      acquire = IO(Files.createTempDirectory(prefix)))(
+      release = dir => IO(deleteDirectoryRecursively(dir)))
 
   def provideFile[F[_]](file: Path)(implicit F: Sync[F]): Resource[F, Path] =
     Resource.make(

@@ -5,7 +5,7 @@ import js7.base.monixutils.MonixDeadline.syntax.DeadlineSchedule
 import js7.base.problem.Checked
 import js7.base.problem.Checked.*
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.RichIO
 import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatch.Confirmed
@@ -18,7 +18,7 @@ import js7.data.cluster.{ClusterEvent, ClusterSetting, ClusterState, ClusterTimi
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, JournalPosition}
 import js7.data.node.NodeId
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler.Implicits.traced
 import monix.execution.schedulers.TestScheduler
 import scala.collection.mutable
@@ -293,7 +293,7 @@ final class ClusterWatchTest extends OurTestSuite
     : Checked[Confirmed] = {
       assert(expectedClusterState == clusterState.applyEvent(event).orThrow)
       watch.processRequest(ClusterWatchCheckEvent(RequestId(123), correlId, from, event, expectedClusterState))
-        .<*(Task(
+        .<*(IO(
           assert(watch.clusterState() == Right(expectedClusterState))))
         .await(99.s)
     }
@@ -308,8 +308,8 @@ final class ClusterWatchTest extends OurTestSuite
     val eventBus = new ClusterWatchEventBus
     val watch = new ClusterWatch(() => scheduler.now,
       onUndecidableClusterNodeLoss = {
-        case Some(problem) => Task(eventBus.publish(problem))
-        case None => Task.unit
+        case Some(problem) => IO(eventBus.publish(problem))
+        case None => IO.unit
       })
     val passiveLost = PassiveLost(setting)
     import passiveLost.{activeId, passiveId}
@@ -419,7 +419,7 @@ final class ClusterWatchTest extends OurTestSuite
       lazy val watch = new ClusterWatch(
         () => scheduler.now,
         requireManualNodeLossConfirmation = true,
-        onUndecidableClusterNodeLoss = _ => Task.unit)
+        onUndecidableClusterNodeLoss = _ => IO.unit)
 
       // Initialize ClusterWatch
       watch.processRequest(ClusterWatchCheckState(RequestId(123), correlId, activeId, coupled))

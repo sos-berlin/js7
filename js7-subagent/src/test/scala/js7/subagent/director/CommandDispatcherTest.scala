@@ -2,13 +2,13 @@ package js7.subagent.director
 
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Base64UUID
 import js7.data.command.CommonCommand
 import js7.data.subagent.SubagentRunId
 import js7.subagent.director.CommandDispatcherTest.*
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler.Implicits.traced
 
 final class CommandDispatcherTest extends OurTestSuite:
@@ -24,8 +24,8 @@ final class CommandDispatcherTest extends OurTestSuite:
         isStopped.isOn
           .map(assert(_))
           .*>(numberedCommand.value match {
-            case Command("A") => Task.pure(Right(Response("a")))
-            case _ => Task.pure(Left(Problem("FAILED")))
+            case Command("A") => IO.pure(Right(Response("a")))
+            case _ => IO.pure(Left(Problem("FAILED")))
           })
       }
     dispatcher.start(subagentRunId).await(99.s)

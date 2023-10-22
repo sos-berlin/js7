@@ -1,5 +1,6 @@
 package js7.base.io.file.watch
 
+import cats.effect.IO
 import java.nio.file.Files.{createDirectory, delete}
 import java.nio.file.Paths
 import js7.base.io.file.FileUtils.syntax.*
@@ -9,12 +10,11 @@ import js7.base.io.file.watch.DirectoryState.Entry
 import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.IOExecutor.Implicits.globalIOX
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.tester.ScalaTestUtils.awaitAndAssert
-import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
+import fs2.Stream
 import monix.reactive.subjects.PublishSubject
 import scala.concurrent.Promise
 import scala.math.Ordering.Int
@@ -51,7 +51,7 @@ final class DirectoryWatchTest extends OurTestSuite:
     def readDirectory() =
       toDirectoryState(files*)
 
-    val watcher = new DirectoryWatch(Task(readDirectory()), directoryEvents, 1.s)
+    val watcher = new DirectoryWatch(IO(readDirectory()), directoryEvents, 1.s)
 
     def observe(state: DirectoryState, n: Int) =
       watcher.readDirectoryAndObserve(state)
@@ -76,8 +76,8 @@ final class DirectoryWatchTest extends OurTestSuite:
       val subscribed = Promise[Unit]()
       val stop = PublishSubject[Unit]()
       val whenObserved = DirectoryWatch
-        .observable(dir, DirectoryState.empty, DirectoryWatchSettings.forTest())
-        .doOnSubscribe(Task(subscribed.success(())))
+        .stream(dir, DirectoryState.empty, DirectoryWatchSettings.forTest())
+        .doOnSubscribe(IO(subscribed.success(())))
         .takeUntil(stop)
         .foreach(buffer :+= _.toSet)
       subscribed.future await 99.s
@@ -95,8 +95,8 @@ final class DirectoryWatchTest extends OurTestSuite:
       val subscribed = Promise[Unit]()
       val stop = PublishSubject[Unit]()
       val whenObserved = DirectoryWatch
-        .observable(dir, DirectoryState.empty, DirectoryWatchSettings.forTest(pollTimeout = 100.ms))
-        .doOnSubscribe(Task(subscribed.success(())))
+        .stream(dir, DirectoryState.empty, DirectoryWatchSettings.forTest(pollTimeout = 100.ms))
+        .doOnSubscribe(IO(subscribed.success(())))
         .takeUntil(stop)
         .foreach(buffer ++= _)
       sleep(500.ms)  // Delay directory creation
@@ -121,14 +121,14 @@ final class DirectoryWatchTest extends OurTestSuite:
     withTemporaryDirectory("DirectoryWatchTest-") { dir =>
       var buffer = Vector.empty[Seq[DirectoryEvent]]
       val whenObserved = DirectoryWatch
-        .observable(dir, DirectoryState.empty, DirectoryWatchSettings.forTest())
+        .stream(dir, DirectoryState.empty, DirectoryWatchSettings.forTest())
         .foreach(buffer :+= _)
       var first = 0
 
       for n <- Seq(1000, 1, 10, 500, 3, 50) do
         buffer = Vector.empty
         val indices = first + 0 until first + n
-        val fileCreationFuture = Observable.fromIterable(indices).executeAsync.foreach { i =>
+        val fileCreationFuture = Stream.fromIterable(indices).executeAsync.foreach { i =>
           touchFile(dir / i.toString)
         }
         awaitAndAssert(buffer.view.map(_.size).sum == indices.size)

@@ -2,7 +2,7 @@ package js7.tests.https
 
 import js7.base.BuildInfo
 import js7.base.auth.UserAndPassword
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.data.cluster.ClusterEvent.ClusterCoupled
 import js7.data.order.OrderEvent.OrderFinished

@@ -50,7 +50,7 @@ final class ControllerStateTest extends OurAsyncTestSuite
 {
   "estimatedSnapshotSize" in {
     assert(controllerState.estimatedSnapshotSize == 21)
-    for n <- controllerState.toSnapshotObservable.countL.runToFuture yield
+    for n <- controllerState.toSnapshotStream.countL.runToFuture yield
       assert(controllerState.estimatedSnapshotSize == n)
   }
 
@@ -61,8 +61,8 @@ final class ControllerStateTest extends OurAsyncTestSuite
     assert(controllerState.pathToSimpleItem.toMap == sum.toKeyedMap(_.key))
   }
 
-  "toSnapshotObservable" in {
-    for list <- controllerState.toSnapshotObservable.toListL.runToFuture
+  "toSnapshotStream" in {
+    for list <- controllerState.toSnapshotStream.toListL.runToFuture
       yield assert(list ==
         Seq(
           SnapshotEventId(1001L),
@@ -156,9 +156,9 @@ final class ControllerStateTest extends OurAsyncTestSuite
         workflow.path -> Set(fileWatch.path)))
   }
 
-  "fromIterator is the reverse of toSnapshotObservable" in {
+  "fromIterator is the reverse of toSnapshotStream" in {
     ControllerState
-      .fromObservable(controllerState.toSnapshotObservable)
+      .fromStream(controllerState.toSnapshotStream)
       .map(expectedState => assertEqual(controllerState, expectedState))
       .runToFuture
   }
@@ -357,10 +357,10 @@ final class ControllerStateTest extends OurAsyncTestSuite
       }
     ]"""
 
-  "toSnapshotObservable JSON" in {
+  "toSnapshotStream JSON" in {
     implicit val x = ControllerState.snapshotObjectJsonCodec
     for
-      jsonArray <- controllerState.toSnapshotObservable.toListL.runToFuture
+      jsonArray <- controllerState.toSnapshotStream.toListL.runToFuture
       assertion <- testJson(jsonArray, expectedSnapshotJsonArray)
     yield assertion
   }

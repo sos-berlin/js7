@@ -6,7 +6,6 @@ import js7.launcher.configuration.JobLauncherConf
 import js7.launcher.internal.JobLauncher.warnIfNotExecutable
 import js7.launcher.process.ProcessJobLauncher.StartProcess
 import js7.launcher.{OrderProcess, ProcessOrder}
-import monix.eval.Task
 
 final class CommandLineJobLauncher(
   protected val executable: CommandLineExecutable,
@@ -14,10 +13,10 @@ final class CommandLineJobLauncher(
   protected val jobLauncherConf: JobLauncherConf)
 extends ProcessJobLauncher:
 
-  override def stop = Task.unit
+  override def stop = IO.unit
 
-  def toOrderProcess(processOrder: ProcessOrder): Task[Checked[OrderProcess]] =
-    Task:
+  def toOrderProcess(processOrder: ProcessOrder): IO[Checked[OrderProcess]] =
+    IO:
       new CommandLineEvaluator()(processOrder.scope)
         .eval(executable.commandLineExpression)
         .flatMap { commandLine =>

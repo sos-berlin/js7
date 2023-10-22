@@ -13,7 +13,7 @@ import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.{itemsPerSecondString, measureTimeOfSingleRun}
 import js7.base.time.WaitForCondition.waitForCondition
@@ -41,9 +41,9 @@ import js7.proxy.data.event.{ProxyEvent, ProxyStarted}
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.controller.proxy.ClusterProxyTest.{backupUserAndPassword, primaryCredentials, primaryUserAndPassword, workflow}
 import js7.tests.controller.proxy.JournaledProxyClusterTest.*
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
+import fs2.Stream
 import org.apache.pekko.actor.ActorSystem
 import scala.concurrent.duration.Deadline.now
 import scala.jdk.CollectionConverters.*
@@ -104,14 +104,14 @@ final class JournaledProxyClusterTest extends OurTestSuite, ClusterProxyTest:
       val api = new ControllerApi(controllerApiResource map Nel.one)
       val workflowPaths = (1 to n).map(i => WorkflowPath(s"WORKFLOW-$i"))
       val sw = new Stopwatch
-      val operations = Observable.fromIterable(workflowPaths)
-        .mapParallelUnordered(sys.runtime.availableProcessors)(path => Task(
+      val operations = Stream.fromIterable(workflowPaths)
+        .mapParallelUnordered(sys.runtime.availableProcessors)(path => IO(
           ItemOperation.AddOrChangeSigned(
             primary.toSignedString(workflow.copy(id = path ~ versionId)))))
           .toListL await 99.s
       logger.info(sw.itemsPerSecondString(n, "signatures"))
       val logLine = measureTimeOfSingleRun(n, "workflows"):
-        api.updateItems(Observable.fromIterable(AddVersion(versionId) :: operations))
+        api.updateItems(Stream.fromIterable(AddVersion(versionId) :: operations))
           .await(999.s).orThrow
       logger.info(logLine.toString)
       // TODO Await Event
@@ -148,7 +148,7 @@ final class JournaledProxyClusterTest extends OurTestSuite, ClusterProxyTest:
       val orderIds = (1 to n).map(i => OrderId(s"ORDER-$i"))
       val logLine = measureTimeOfSingleRun(n, "orders"):
         api.addOrders(
-          Observable.fromIterable(orderIds)
+          Stream.fromIterable(orderIds)
             .map(orderId => bigOrder.copy(id = orderId))
         ).await(199.s).orThrow
       logger.info(logLine.toString)
@@ -171,7 +171,7 @@ final class JournaledProxyClusterTest extends OurTestSuite, ClusterProxyTest:
     val bigOrder = order + " "*(990_000 - order.length)
     val n = 100_000_000/*bytes*/ / bigOrder.length
     logger.info(s"Adding $n orders")
-    val orders = Observable.range(0, n).map(_ => bigOrder)
+    val orders = Stream.range(0, n).map(_ => bigOrder)
     runControllerAndBackup() { (_, primaryController, _, _, _, _, _) =>
       primaryController.waitUntilReady()
       logger.info(s"Adding $n invalid orders à ${bigOrder.length} bytes ${toKBGB(n * bigOrder.length)}")
@@ -184,14 +184,14 @@ final class JournaledProxyClusterTest extends OurTestSuite, ClusterProxyTest:
         api.login().await(99.s)
         locally:
           val response = HttpClient.liftProblem(
-            api.postObservableJsonString("controller/api/order", orders)
+            api.postStreamJsonString("controller/api/order", orders)
               .map(_ => Completed)
           ).await(99.s)
           assert(response == Left(Problem(s"Unexpected duplicates: $n×Order:ORDER")))
 
         locally:
           val response = HttpClient.liftProblem(
-            api.postObservableJsonString("controller/api/order", orders.map("¿" + _))
+            api.postStreamJsonString("controller/api/order", orders.map("¿" + _))
               .map(_ => Completed)
           ).await(99.s)
           assert(response == Left(Problem("JSON ParsingFailure: expected json value got '¿{\"id...' (line 1, column 1)")))
@@ -217,7 +217,7 @@ final class JournaledProxyClusterTest extends OurTestSuite, ClusterProxyTest:
 
   private def meterFetchSnapshot(n: Int, api: ControllerApi, eventWatch: StrictEventWatch): ControllerState =
     val t = now
-    val es = api.eventAndStateObservable(new StandardEventBus[ProxyEvent], fromEventId = Some(eventWatch.lastAddedEventId))
+    val es = api.eventAndStateStream(new StandardEventBus[ProxyEvent], fromEventId = Some(eventWatch.lastAddedEventId))
       .headL
       .await(99.s)
     logger.info(s"Fetch snapshot: ${itemsPerSecondString(t.elapsed, n, "objects")}")

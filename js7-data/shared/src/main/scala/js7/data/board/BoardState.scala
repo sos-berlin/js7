@@ -10,7 +10,7 @@ import js7.data.event.KeyedEvent
 import js7.data.item.UnsignedSimpleItemState
 import js7.data.order.OrderEvent.OrderNoticesConsumptionStarted
 import js7.data.order.{Order, OrderId}
-import monix.reactive.Observable
+import fs2.Stream
 import scala.collection.View
 
 final case class BoardState(
@@ -30,9 +30,9 @@ extends UnsignedSimpleItemState:
 
   override def toString = s"BoardState(${board.pathRev} $idToNotice)"
 
-  override def toSnapshotObservable: Observable[Any/*BoardState | BoardSnapshot*/] =
+  override def toSnapshotStream: Stream[IO, Any/*BoardState | BoardSnapshot*/] =
     // Notice expectations are recovered from Order[Order.ExpectingNotice]
-    Observable.fromIterable(
+    Stream.fromIterable(
       View(board) ++
         notices ++
         idToNotice.values.view.flatMap(_.toSnapshot(path)) ++

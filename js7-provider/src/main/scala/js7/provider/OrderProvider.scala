@@ -11,7 +11,7 @@ import js7.core.item.TypedSourceReader
 import js7.data.order.FreshOrder
 import js7.provider.configuration.ProviderConfiguration
 import js7.provider.scheduledorder.{OrderScheduleGenerator, ScheduledOrderGenerator, ScheduledOrderGeneratorReader}
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler
 
 /**
@@ -20,7 +20,7 @@ import monix.execution.Scheduler
 trait OrderProvider extends HasCloser:
   protected def conf: ProviderConfiguration
   protected def httpControllerApi: HttpControllerApi
-  protected def retryUntilNoError[A](body: => Task[Checked[A]]): Task[A]
+  protected def retryUntilNoError[A](body: => IO[Checked[A]]): IO[A]
 
   private lazy val typedSourceReader = new TypedSourceReader(conf.orderGeneratorsDirectory,
     new ScheduledOrderGeneratorReader(ZoneId.systemDefault) :: Nil)
@@ -30,7 +30,7 @@ trait OrderProvider extends HasCloser:
   protected def startAddingOrders()(implicit s: Scheduler) =
     orderScheduleGenerator.start()
 
-  private def addOrders(orders: Seq[FreshOrder]): Task[Completed] =
+  private def addOrders(orders: Seq[FreshOrder]): IO[Completed] =
     retryUntilNoError {
       httpControllerApi.login(onlyIfNotLoggedIn = true) >>
         httpControllerApi

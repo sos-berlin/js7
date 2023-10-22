@@ -3,7 +3,7 @@ package js7.journal.web
 import izumi.reflect.Tag
 import js7.base.auth.{UserId, ValidUserPermission}
 import js7.base.log.Logger
-import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
+import js7.base.monixutils.MonixBase.syntax.RichMonixStream
 import js7.base.problem.Problem
 import js7.base.problem.Problems.ShuttingDownProblem
 import js7.base.time.JavaTimeConverters.AsScalaDuration
@@ -12,8 +12,11 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.FutureCompletion
 import js7.base.utils.FutureCompletion.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.common.pekkohttp.PekkoHttpServerUtils.{accept, completeIO, observableToResponseMarshallable}
+import js7.common.pekkohttp.StandardMarshallers.*
+import js7.common.pekkohttp.web.session.RouteProvider
 import js7.common.http.JsonStreamingSupport.*
-import js7.common.pekkohttp.PekkoHttpServerUtils.{accept, completeTask, observableToResponseMarshallable}
+import js7.common.pekkohttp.PekkoHttpServerUtils.{accept, completeIO, observableToResponseMarshallable}
 import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkohttp.web.session.RouteProvider
 import js7.data.event.JournalEvent.StampedHeartbeat
@@ -21,9 +24,8 @@ import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, Ev
 import js7.journal.watch.{ClosedException, EventWatch}
 import js7.journal.web.EventDirectives.eventRequest
 import js7.journal.web.GenericEventRoute.*
-import monix.eval.Task
-import monix.execution.Scheduler
-import monix.reactive.Observable
+import cats.effect.IO
+import fs2.Stream
 import org.apache.pekko.NotUsed
 import org.apache.pekko.actor.ActorRefFactory
 import org.apache.pekko.http.scaladsl.common.JsonEntityStreamingSupport
@@ -60,7 +62,7 @@ trait GenericEventRoute extends RouteProvider:
 
     protected def defaultReturnType: Option[Class[? <: Event]] = Some(classOf[Event])
 
-    protected def filterObservable: StampedEventFilter =
+    protected def filterStream: StampedEventFilter =
       identity
 
     implicit private val exceptionHandler: ExceptionHandler =
@@ -115,12 +117,12 @@ trait GenericEventRoute extends RouteProvider:
       parameter("timeout" ? defaultJsonSeqChunkTimeout) { timeout =>
         implicit val x: ToEntityMarshaller[EventId] = jsonSeqMarshaller
 
-        completeTask[ToResponseMarshallable](
+        completeIO[ToResponseMarshallable](
           eventWatch
             .observeEventIds(Some(timeout))
-            .map(_.map(observable =>
-              observableToMarshallable(
-                observable
+            .map(_.map(stream =>
+              streamToMarshallable(
+                stream
                   .pipe(o => maybeHeartbeat.fold(o)(o.echoRepeated))))))
       }
 
@@ -131,16 +133,16 @@ trait GenericEventRoute extends RouteProvider:
       (implicit userId: UserId, s: JsonEntityStreamingSupport)
     : Route =
       extractRequest { httpRequest =>
-        val toResponseMarshallable: Task[ToResponseMarshallable] =
+        val toResponseMarshallable: IO[ToResponseMarshallable] =
           maybeHeartbeat match
             case None =>
               // Await the first event to check for Torn and convert it to a proper error message, otherwise continue with observe
-              awaitFirstEventObservable(request, eventWatch, httpRequest)
+              awaitFirstEventStream(request, eventWatch, httpRequest)
 
             case Some(heartbeat) =>
-              Task(
-                observableToResponseMarshallable(
-                  heartbeatingObservable(request, heartbeat, eventWatch),
+              IO(
+                streamToResponseMarshallable(
+                  heartbeatingStream(request, heartbeat, eventWatch),
                   httpRequest, userId, whenShuttingDownCompletion, chunkSize = chunkSize))
 
         complete(
@@ -153,13 +155,13 @@ trait GenericEventRoute extends RouteProvider:
             .cancelOnCompletionOf(whenShuttingDownCompletion))
       }
 
-    private def awaitFirstEventObservable(
+    private def awaitFirstEventStream(
       request: EventRequest[Event],
       eventWatch: EventWatch,
       httpRequest: HttpRequest)
       (implicit userId: UserId, s: JsonEntityStreamingSupport)
-    : Task[ToResponseMarshallable] =
-      Task.defer:
+    : IO[ToResponseMarshallable] =
+      IO.defer:
         val runningSince = now
         val initialRequest = request.copy[Event](
           limit = 1 min request.limit)
@@ -181,38 +183,38 @@ trait GenericEventRoute extends RouteProvider:
                 limit = request.limit - 1,
                 delay = (request.delay - runningSince.elapsed) min ZeroDuration)
 
-              observableToResponseMarshallable(
-                head +: eventObservable(tailRequest, isRelevantEvent, eventWatch),
+              streamToResponseMarshallable(
+                head +: eventStream(tailRequest, isRelevantEvent, eventWatch),
                 httpRequest, userId, whenShuttingDownCompletion, chunkSize = chunkSize)
 
     private def emptyResponseMarshallable(implicit s: JsonEntityStreamingSupport)
     : ToResponseMarshallable =
       implicit val x: ToEntityMarshaller[Unit] = jsonSeqMarshaller
-      observableToMarshallable(
-        Observable.empty[Unit])
+      streamToMarshallable(
+        Stream.empty[Unit])
 
-    private def heartbeatingObservable(
+    private def heartbeatingStream(
       request: EventRequest[Event],
       heartbeat: FiniteDuration,
       eventWatch: EventWatch)
-    : Observable[Stamped[AnyKeyedEvent]] =
-      // TODO Check if torn then return Task.raiseError
+    : Stream[IO, Stamped[AnyKeyedEvent]] =
+      // TODO Check if torn then return IO.raiseError
       StampedHeartbeat +:
-        eventObservable(request, isRelevantEvent, eventWatch)
+        eventStream(request, isRelevantEvent, eventWatch)
           .insertHeartbeatsOnSlowUpstream(heartbeat, StampedHeartbeat)
 
-    private def eventObservable(
+    private def eventStream(
       request: EventRequest[Event],
       predicate: AnyKeyedEvent => Boolean,
       eventWatch: EventWatch)
-    : Observable[Stamped[AnyKeyedEvent]] =
-      filterObservable(
-        eventWatch  // Continue with an Observable, skipping the already read event
+    : Stream[IO, Stamped[AnyKeyedEvent]] =
+      filterStream(
+        eventWatch  // Continue with an Stream, skipping the already read event
           .observe(request, predicate)
       ) .onErrorRecoverWith { case NonFatal(e) =>
           logger.warn(e.toStringWithCauses)
           if e.getStackTrace.nonEmpty then logger.debug(e.toStringWithCauses, e)
-          Observable.empty  // The streaming event web service doesn't have an error channel, so we simply end the tail
+          Stream.empty  // The streaming event web service doesn't have an error channel, so we simply end the tail
         }
 
     private def eventDirective(
@@ -228,18 +230,18 @@ trait GenericEventRoute extends RouteProvider:
           defaultReturnType = defaultReturnType.map(_.simpleScalaName))
         .apply(eventRequest => inner(Tuple1(eventRequest))))
 
-  private def observableToMarshallable[A: Tag](observable: Observable[A])
+  private def streamToMarshallable[A: Tag](stream: Stream[IO, A])
     (implicit q: Source[A, NotUsed] => ToResponseMarshallable)
   : ToResponseMarshallable =
-    monixObservableToMarshallable(
-      observable.takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ =>
-        Task { logger.debug("whenShuttingDown completed") }))
+    monixStreamToMarshallable(
+      stream.takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ =>
+        IO { logger.debug("whenShuttingDown completed") }))
 
 
 object GenericEventRoute:
   type StampedEventFilter =
-    Observable[Stamped[KeyedEvent[Event]]] =>
-      Observable[Stamped[KeyedEvent[Event]]]
+    Stream[IO, Stamped[KeyedEvent[Event]]] =>
+      Stream[IO, Stamped[KeyedEvent[Event]]]
 
   private val logger = Logger[this.type]
   private val LF = ByteString("\n")

@@ -19,7 +19,7 @@ import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
 import js7.base.utils.Closer.syntax.*
@@ -111,7 +111,7 @@ final class OrderAgentTest extends OurTestSuite:
 
           // Await OrderDetachable
           agentClient
-            .eventObservable(EventRequest.singleClass[Event](timeout = Some(10.s)))
+            .eventStream(EventRequest.singleClass[Event](timeout = Some(10.s)))
             .map(_.orThrow)
             .map(_.find {
                 case Stamped(_, _, KeyedEvent(order.id, OrderDetachable)) =>  true
@@ -176,7 +176,7 @@ final class OrderAgentTest extends OurTestSuite:
           val ready = mutable.Set.empty[OrderId]
           while ready != awaitedOrderIds do
             ready ++= agentClient
-              .eventObservable(EventRequest.singleClass[Event](timeout = Some(timeout)))
+              .eventStream(EventRequest.singleClass[Event](timeout = Some(timeout)))
               .map(_.orThrow)
               .await(99.s)
               .map(_.value)

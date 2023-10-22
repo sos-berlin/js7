@@ -17,7 +17,7 @@ import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.*
@@ -31,7 +31,7 @@ import js7.journal.watch.TestData.{writeJournal, writeJournalSnapshot}
 import js7.journal.write.EventJournalWriter
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
+import fs2.Stream
 import org.scalatest.BeforeAndAfterAll
 import scala.collection.mutable
 import scala.reflect.ClassTag
@@ -320,9 +320,9 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll
         autoClosing(EventJournalWriter.forTest(journalLocation, after = EventId.BeforeFirst, journalId, Some(eventWatch), withoutSnapshots = false)) { writer =>
           writer.onJournalingStarted()  // Notifies eventWatch about this journal file
 
-          val Some(observable) = eventWatch.snapshotAfter(EventId.BeforeFirst): @unchecked
+          val Some(stream) = eventWatch.snapshotAfter(EventId.BeforeFirst): @unchecked
           // Contains only JournalHeader
-          assert(observable.toListL.await(99.s).map(_.asInstanceOf[JournalHeader].eventId) == List(EventId.BeforeFirst))
+          assert(stream.toListL.await(99.s).map(_.asInstanceOf[JournalHeader].eventId) == List(EventId.BeforeFirst))
         }
       }
 
@@ -335,29 +335,29 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll
         eventWatch.onJournalingStarted(journalLocation.file(after), journalId,
           lengthAndEventId, lengthAndEventId, isActiveNode = true)
         locally {
-          val Some(observable) = eventWatch.snapshotAfter(EventId.BeforeFirst): @unchecked
+          val Some(stream) = eventWatch.snapshotAfter(EventId.BeforeFirst): @unchecked
           // Contains only JournalHeader
-          assert(observable.toListL.await(99.s)
+          assert(stream.toListL.await(99.s)
             .map(_.asInstanceOf[JournalHeader].eventId)
             == List(EventId.BeforeFirst))
         }
         locally {
-          val Some(observable) = eventWatch.snapshotAfter(99L): @unchecked
+          val Some(stream) = eventWatch.snapshotAfter(99L): @unchecked
           // Contains only JournalHeader
-          assert(observable.toListL.await(99.s)
+          assert(stream.toListL.await(99.s)
             .map(_.asInstanceOf[JournalHeader].eventId)
             == List(EventId.BeforeFirst))
         }
         locally {
-          val Some(observable) = eventWatch.snapshotAfter(100L): @unchecked
-          assert(observable.map {
+          val Some(stream) = eventWatch.snapshotAfter(100L): @unchecked
+          assert(stream.map {
             case o: JournalHeader => o.eventId
             case o => o
           }.toListL.await(99.s) == 100L :: snapshotObjects)
         }
         locally {
-          val Some(observable) = eventWatch.snapshotAfter(101L): @unchecked
-          assert(observable.map {
+          val Some(stream) = eventWatch.snapshotAfter(101L): @unchecked
+          assert(stream.map {
             case o: JournalHeader => o.eventId
             case o => o
           }.toListL.await(99.s) == 100L :: snapshotObjects)
@@ -381,7 +381,7 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll
         .await(99.s)
         .orThrow
         .onErrorRecoverWith {
-          case _: EventReader.TimeoutException => Observable.empty
+          case _: EventReader.TimeoutException => Stream.empty
         }
         .foreach(o => jsons += o.value.utf8String.parseJsonOrThrow)
       awaitAndAssert { jsons.size == 2 }

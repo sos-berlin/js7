@@ -7,7 +7,7 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler
 import monix.execution.schedulers.TestScheduler
 import scala.concurrent.Future
@@ -91,7 +91,7 @@ final class IncreasingNumberSyncTest extends OurTestSuite:
       val stopwatch = new Stopwatch
       val eventIds = for _ <- 1 to n yield eventIdGenerator.next()
       val futures: Seq[Future[Boolean]] = for eventId <- eventIds yield
-        Task.defer(sync.whenAvailable(after = eventId - 1, until = Some(now + 99.seconds)))
+        IO.defer(sync.whenAvailable(after = eventId - 1, until = Some(now + 99.seconds)))
           .runToFuture
       eventIds foreach sync.onAdded
       val result = futures await 99.s

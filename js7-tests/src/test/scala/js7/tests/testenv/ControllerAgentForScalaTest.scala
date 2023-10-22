@@ -6,7 +6,7 @@ import js7.agent.TestAgent
 import js7.base.configutils.Configs.*
 import js7.base.log.Logger
 import js7.base.problem.Checked
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.WallClock
 import js7.base.utils.CatsBlocking.BlockingTaskResource
@@ -25,9 +25,9 @@ import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.subagent.Subagent
 import js7.tests.testenv.ControllerAgentForScalaTest.*
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
+import fs2.Stream
 import org.jetbrains.annotations.TestOnly
 import scala.collection.mutable
 import scala.util.control.NonFatal
@@ -43,7 +43,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest:
     .await(99.s)
   protected final lazy val agent: TestAgent = agents.head
 
-  protected final lazy val idToAllocatedSubagent: Map[SubagentId, Allocated[Task, Subagent]] =
+  protected final lazy val idToAllocatedSubagent: Map[SubagentId, Allocated[IO, Subagent]] =
     directoryProvider
       .startBareSubagents()
       .await(99.s)
@@ -58,9 +58,9 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest:
 
   protected final lazy val eventWatch = controller.eventWatch
 
-  private val clusterWatchServiceOnce = SetOnce[Allocated[Task, ClusterWatchService]]
+  private val clusterWatchServiceOnce = SetOnce[Allocated[IO, ClusterWatchService]]
 
-  protected def clusterWatchServiceResource: Option[Resource[Task, ClusterWatchService]] =
+  protected def clusterWatchServiceResource: Option[Resource[IO, ClusterWatchService]] =
     None
 
   protected def controllerHttpsMutual = false
@@ -94,7 +94,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest:
           eventWatch.await[SubagentCoupled](_.key == subagentItem.id)
 
   override def afterAll() =
-    Task
+    IO
       .parSequence(
         Seq(
           Seq(controller.terminate().void),
@@ -134,7 +134,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest:
     idToAllocatedSubagent(subagentId).release.await(99.s)
 
   protected final def startBareSubagent(subagentId: SubagentId)
-  : (Subagent, Task[Unit]) =
+  : (Subagent, IO[Unit]) =
     val subagentItem = directoryProvider.subagentItems
       .find(_.id == subagentId)
       .getOrElse(throw new NoSuchElementException(s"Missing $subagentId"))
@@ -144,7 +144,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest:
   protected final def enableSubagents(subagentIdToEnable: (SubagentId, Boolean)*): Unit =
     val eventId = eventWatch.lastAddedEventId
     controller.api
-      .updateItems(Observable
+      .updateItems(Stream
         .fromIterable(subagentIdToEnable)
         .map {
           case (subagentId, enable) =>
@@ -186,15 +186,15 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest:
     suffix: String = "",
     awaitDedicated: Boolean = true,
     suppressSignatureKeys: Boolean = false)
-  : Resource[Task, Subagent] =
-    Resource.suspend(Task {
+  : Resource[IO, Subagent] =
+    Resource.suspend(IO {
       val eventId = eventWatch.lastAddedEventId
       directoryProvider
         .bareSubagentResource(subagentItem, director = director,
           config,
           suffix = suffix,
           suppressSignatureKeys = suppressSignatureKeys)
-        .evalTap(_ => Task {
+        .evalTap(_ => IO {
           if awaitDedicated then {
             val e = eventWatch.await[SubagentDedicated](after = eventId).head.eventId
             eventWatch.await[SubagentCoupled](after = e)

@@ -4,51 +4,52 @@ import cats.effect.{ExitCase, Resource}
 import java.io.{InputStream, InputStreamReader, Reader}
 import java.nio.charset.Charset
 import js7.base.log.Logger
-import js7.base.monixutils.UnbufferedReaderObservable
+import js7.base.monixutils.UnbufferedReaderStream
 import js7.base.thread.IOExecutor
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Cancelable
-import monix.reactive.{Observable, Observer}
+import monix.reactive.{Stream, Observer}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
+import fs2.Stream
 
-object InputStreamToObservable:
+object InputStreamToStream:
   private val logger = Logger[this.type]
 
-  def copyInputStreamToObservable(
+  def copyInputStreamToStream(
     in: InputStream,
     observer: Observer[String],
     encoding: Charset,
     charBufferSize: Int)
     (implicit iox: IOExecutor)
-  : Task[Unit] =
-    copyInputStreamToObservable(Resource.pure[Task, InputStream](in), observer, encoding,
+  : IO[Unit] =
+    copyInputStreamToStream(Resource.pure[IO, InputStream](in), observer, encoding,
       charBufferSize)
 
-  def copyInputStreamToObservable(
-    in: Resource[Task, InputStream],
+  def copyInputStreamToStream(
+    in: Resource[IO, InputStream],
     observer: Observer[String],
     encoding: Charset,
     charBufferSize: Int)
     (implicit iox: IOExecutor)
-  : Task[Unit] =
-    copyReaderToObservable(
+  : IO[Unit] =
+    copyReaderToStream(
       in.map(new InputStreamReader(_, encoding)),
       observer,
       charBufferSize)
 
-  def copyReaderToObservable(reader: Resource[Task, Reader], observer: Observer[String], charBufferSize: Int)
+  def copyReaderToStream(reader: Resource[IO, Reader], observer: Observer[String], charBufferSize: Int)
     (implicit iox: IOExecutor)
-  : Task[Unit] =
-    Task.create[Unit] { (scheduler, callback) =>
+  : IO[Unit] =
+    IO.create[Unit] { (scheduler, callback) =>
       try
-        readerToObservable(reader, charBufferSize)
+        readerToStream(reader, charBufferSize)
           .guaranteeCase:
             case ExitCase.Canceled =>
               logger.debug("Canceled")
-              Task(callback(Success(())))
-            case _ => Task.unit
+              IO(callback(Success(())))
+            case _ => IO.unit
           .subscribe(
             new Observer[String] {
               def onNext(o: String) =
@@ -71,12 +72,12 @@ object InputStreamToObservable:
       }
     }
 
-  def readerToObservable(reader: Resource[Task, Reader], charBufferSize: Int)
+  def readerToStream(reader: Resource[IO, Reader], charBufferSize: Int)
     (implicit iox: IOExecutor)
-  : Observable[String] =
-    Observable
-      .fromTask(reader.use(reader => Task {
-        new UnbufferedReaderObservable(reader, charBufferSize)
+  : Stream[IO, String] =
+    Stream
+      .fromIO(reader.use(reader => IO {
+        new UnbufferedReaderStream(reader, charBufferSize)
           .executeOn(iox.scheduler)
       }))
       .flatten

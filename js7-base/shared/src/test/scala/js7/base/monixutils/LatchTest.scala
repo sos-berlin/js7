@@ -1,7 +1,7 @@
 package js7.base.monixutils
 
 import js7.base.time.ScalaTime.*
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler.Implicits.traced
 import js7.base.test.OurAsyncTestSuite
 import scala.concurrent.Promise
@@ -36,23 +36,23 @@ final class LatchTest extends OurAsyncTestSuite:
 
     val whenClosed = latch
       .when
-      .*>(Task { promise.success(()) })
+      .*>(IO { promise.success(()) })
       .runToFuture
 
-    Task.sleep(100.ms)
+    IO.sleep(100.ms)
       .map(_ => assert(!promise.isCompleted))
       .*>(latch.switch)
       .map(assert(_))
-      .*>(Task.fromFuture(promise.future))
-      .*>(Task.fromFuture(whenClosed).as(succeed))
+      .*>(IO.fromFuture(promise.future))
+      .*>(IO.fromFuture(whenClosed).as(succeed))
     .runToFuture
 
   "switchThen" in:
     val latch = new Latch
     val promise = Promise[Unit]()
     latch
-      .switchThen(Task { promise.success(()); 7 })
+      .switchThen(IO { promise.success(()); 7 })
       .map(maybe => assert(maybe.contains(7) && promise.isCompleted))
-      .*>(latch.switchThen(Task { promise.success(()) }))
+      .*>(latch.switchThen(IO { promise.success(()) }))
       .map(maybe => assert(maybe.isEmpty))
       .runToFuture

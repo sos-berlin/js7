@@ -1,7 +1,7 @@
 package js7.tests.cluster.controller
 
 import js7.base.configutils.Configs.HoconStringInterpolator
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.cluster.ClusterWatchCounterpart.WaitingForConfirmation
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterPassiveLost}

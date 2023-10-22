@@ -1,6 +1,6 @@
 package js7.tests.https
 
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import monix.execution.Scheduler.Implicits.traced
 

@@ -6,9 +6,9 @@ import org.apache.pekko.http.scaladsl.server.Directives.*
 import org.apache.pekko.http.scaladsl.server.Route
 import js7.agent.data.views.AgentOverview
 import js7.agent.web.common.AgentRouteProvider
-import js7.common.pekkohttp.PekkoHttpServerUtils.completeTask
+import js7.common.pekkohttp.PekkoHttpServerUtils.completeIO
 import js7.common.pekkohttp.CirceJsonSupport.*
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler
 
 /**
@@ -16,7 +16,7 @@ import monix.execution.Scheduler
  */
 trait RootWebService extends AgentRouteProvider:
 
-  protected def agentOverview: Task[AgentOverview]
+  protected def agentOverview: IO[AgentOverview]
 
   private implicit def implicitScheduler: Scheduler = scheduler
 
@@ -24,5 +24,5 @@ trait RootWebService extends AgentRouteProvider:
     pathEnd:
       get:
         respondWithHeader(`Cache-Control`(`max-age`(0))):
-          completeTask:
+          completeIO:
             agentOverview

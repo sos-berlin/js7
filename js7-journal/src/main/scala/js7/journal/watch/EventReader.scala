@@ -5,7 +5,7 @@ import java.nio.file.Path
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.*
 import js7.base.log.Logger
-import js7.base.monixutils.MonixBase.memoryLeakLimitedObservableTailRecM
+import js7.base.monixutils.MonixBase.memoryLeakLimitedStreamTailRecM
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.monixutils.MonixDeadline
 import js7.base.monixutils.MonixDeadline.now
@@ -22,9 +22,9 @@ import js7.data.event.{Event, EventId, JournalId, JournalSeparators, KeyedEvent,
 import js7.journal.data.JournalLocation
 import js7.journal.recover.JournalReader
 import js7.journal.watch.EventReader.*
-import monix.eval.Task
-import monix.execution.atomic.AtomicAny
-import monix.reactive.Observable
+import cats.effect.IO
+import js7.base.utils.Atomic
+import fs2.Stream
 import scala.concurrent.duration.FiniteDuration
 
 /**
@@ -42,7 +42,7 @@ extends AutoCloseable:
   protected def isFlushedAfterPosition(position: Long): Boolean
   protected def committedLength: Long
   protected def isEOF(position: Long): Boolean
-  protected def whenDataAvailableAfterPosition(position: Long, until: MonixDeadline): Task[Boolean]
+  protected def whenDataAvailableAfterPosition(position: Long, until: MonixDeadline): IO[Boolean]
   /** Must be constant if `isHistoric`. */
   protected def config: Config
 
@@ -89,7 +89,7 @@ extends AutoCloseable:
 
   private final class EventIterator(iterator_ : FileEventIterator, after: EventId)
   extends CloseableIterator[Stamped[KeyedEvent[Event]]]:
-    private val iteratorAtomic = AtomicAny(iterator_)
+    private val iteratorAtomic = Atomic(iterator_)
     private var eof = false
     private var _next: Stamped[KeyedEvent[Event]] = null
 
@@ -146,26 +146,26 @@ extends AutoCloseable:
 
     private def iteratorName = iterator_.toString
 
-  final def snapshot: Observable[Any] =
+  final def snapshot: Stream[IO, Any] =
     JournalReader.snapshot(journalLocation.S, journalFile, expectedJournalId)
 
-  final def rawSnapshot: Observable[ByteArray] =
+  final def rawSnapshot: Stream[IO, ByteArray] =
     JournalReader.rawSnapshot(journalLocation.S, journalFile, expectedJournalId)
 
   /** Observes a journal file lines and length. */
   final def observeFile(position: Long, timeout: FiniteDuration, markEOF: Boolean = false, onlyAcks: Boolean)
-  : Observable[PositionAnd[ByteArray]] =
-    Observable.deferAction(implicit scheduler =>
-      Observable.fromResource(InputStreamJsonSeqReader.resource(journalFile))
+  : Stream[IO, PositionAnd[ByteArray]] =
+    Stream.deferAction(implicit scheduler =>
+      Stream.resource(InputStreamJsonSeqReader.resource(journalFile))
         .flatMap { jsonSeqReader =>
           val until = now + timeout
           jsonSeqReader.seek(position)
 
-          memoryLeakLimitedObservableTailRecM(position, limit = limitTailRecM)(position =>
-            Observable.fromTask(whenDataAvailableAfterPosition(position, until))
+          memoryLeakLimitedStreamTailRecM(position, limit = limitTailRecM)(position =>
+            Stream.fromIO(whenDataAvailableAfterPosition(position, until))
               .flatMap {
                 case false =>  // Timeout
-                  Observable.empty
+                  Stream.empty
                 case true =>  // Data may be available
                   var lastPosition = position
                   var eof = false
@@ -187,8 +187,8 @@ extends AutoCloseable:
                       if o.value == EndOfJournalFileMarker then sys.error(s"Journal file must not contain a line like $o")
                     } ++
                       (eof && markEOF).thenIterator(PositionAnd(lastPosition, EndOfJournalFileMarker))
-                  Observable.fromIteratorUnsafe(iterator map Right.apply) ++
-                    Observable.fromIterable(
+                  Stream.fromIteratorUnsafe(iterator map Right.apply) ++
+                    Stream.fromIterable(
                       !eof ? Left(lastPosition))
                 })
         })

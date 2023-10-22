@@ -27,7 +27,7 @@ import js7.data.agent.AgentRefState
 import js7.data.controller.{ControllerCommand, ControllerState}
 import js7.data.event.Stamped
 import js7.journal.watch.FileEventWatch
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.http.scaladsl.server.Directives.*
@@ -50,13 +50,13 @@ final class ControllerRoute(
   gateKeeperConf: GateKeeper.Configuration[SimpleUser])(
   implicit
     protected val actorSystem: ActorSystem,
-    protected val scheduler: Scheduler) 
+    protected val scheduler: Scheduler)
 extends ServiceProviderRoute,
   WebLogDirectives,
   ClusterNodeRouteBindings[ControllerState],
   ApiRoute,
   TestRoute:
-  
+
   import routeBinding.webServerBinding
 
   protected def whenShuttingDown    = routeBinding.whenStopRequested
@@ -75,7 +75,7 @@ extends ServiceProviderRoute,
   protected val gateKeeper = GateKeeper(webServerBinding, gateKeeperConf)
 
   protected def executeCommand(command: ControllerCommand, meta: CommandMeta)
-  : Task[Checked[command.Response]] =
+  : IO[Checked[command.Response]] =
     commandExecutor.executeCommand(command, meta)
 
   logger.debug(s"new ControllerRoute($webServerBinding #${routeBinding.revision})")

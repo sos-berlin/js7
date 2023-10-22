@@ -1,7 +1,11 @@
 package js7.base.utils
 
+import cats.FlatMap
 import cats.data.NonEmptySeq
-import cats.effect.{Async, Timer}
+import cats.effect.kernel.Temporal
+import cats.effect.unsafe.IORuntime
+import cats.effect.{Async, GenTemporal, IO}
+import cats.implicits.catsSyntaxMonadIdOps
 import cats.syntax.apply.*
 import cats.syntax.flatMap.*
 import cats.syntax.functor.*
@@ -9,13 +13,14 @@ import js7.base.log.Logger
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.Delayer.*
-import monix.eval.{Task, TaskLike}
-import monix.reactive.Observable
+import fs2.Stream
+import js7.base.fs2utils.StreamExtensions.*
 import scala.concurrent.duration.*
+import js7.base.catsutils.CatsDeadline.syntax.*
 
 // Stateful
 final class Delayer[F[_]] private(initialNow: Deadline, conf: DelayConf)
-  (implicit F: Async[F], timer: Timer[F]):
+  (implicit F: Async[F], temporal: Temporal[F]):
 
   import conf.{delays, resetWhen}
 
@@ -31,7 +36,7 @@ final class Delayer[F[_]] private(initialNow: Deadline, conf: DelayConf)
   private def sleep_(onSleep: FiniteDuration => F[Unit]): F[Unit] =
     nextDelay2.flatMap { case (elapsed, delay) =>
       logger.trace(s"sleep ${delay.pretty} elapsed=${elapsed.pretty} $toString")
-      onSleep(delay) *> timer.sleep(delay)
+      onSleep(delay) *> temporal.sleep(delay)
     }
 
   def nextDelay: F[FiniteDuration] =
@@ -39,7 +44,7 @@ final class Delayer[F[_]] private(initialNow: Deadline, conf: DelayConf)
 
   private def nextDelay2: F[(FiniteDuration, FiniteDuration)] =
     F.tailRecM(())(_ =>
-      timer.now.flatMap(now => F.delay {
+      F.now.flatMap(now => F.delay {
         val state = _state.get()
         val (elapsed, delay, next) = _state.get().next(now)
         val ok = _state.compareAndSet(state, next)
@@ -70,36 +75,35 @@ final class Delayer[F[_]] private(initialNow: Deadline, conf: DelayConf)
 object Delayer:
   private val logger = Logger[this.type]
 
-  def start[F[_]](conf: DelayConf)(implicit F: Async[F], timer: Timer[F])
-  : F[Delayer[F]] =
-    for now <- timer.now yield
+  def start[F[_]](conf: DelayConf)(using F: Async[F], temporal: Temporal[F]): F[Delayer[F]] =
+    for now <- temporal.now yield
       new Delayer(now, conf)
 
-  def observable[F[_]](conf: DelayConf)
-    (implicit F: Async[F], timer: Timer[F], taskLike: TaskLike[F])
-  : Observable[Unit] =
-    Observable
-      .from(start(conf))
-      .flatMap(delayer => Observable
-        .fromIteratorF(F.delay(Iterator.continually(())))
-        .mapEvalF(_ => delayer.sleep)
-        .prepend(()))
-
+  def stream[F[_]](conf: DelayConf)(using F: Async[F]): Stream[F, Unit] =
+    Stream
+      .eval(start(conf))
+      .flatMap(delayer => Stream
+        .constant((), chunkSize = 1)
+        .evalMap(_ => delayer.sleep))
+      .prepend(())
 
   object syntax:
-    implicit final class RichDelayerTask[A](val underlying: Task[A]) extends AnyVal:
+    implicit final class RichDelayerIO[A](val io: IO[A]) extends AnyVal:
       def onFailureRestartWithDelayer(
         conf: DelayConf,
-        onFailure: Throwable => Task[Unit] = _ => Task.unit,
-        onSleep: FiniteDuration => Task[Unit] = _ => Task.unit)
-      : Task[A] =
-        Delayer.start[Task](conf).flatMap(delayer =>
-          underlying
-            .onErrorRestartLoop(()) {
-              case (throwable, _, retry) =>
-                onFailure(throwable) *>
-                  delayer.sleep(onSleep).*>(retry(()))
-            })
+        onFailure: Throwable => IO[Unit] = _ => IO.unit,
+        onSleep: FiniteDuration => IO[Unit] = _ => IO.unit)
+      : IO[A] =
+        Delayer.start[IO](conf)
+          .flatMap { delayer =>
+            ().tailRecM { _ =>
+              io.attempt.flatMap:
+                case Left(throwable) =>
+                  onFailure(throwable) *> delayer.sleep(onSleep).as(Left(()))
+                case Right(a) =>
+                  IO.right(a)
+            }
+          }
 
   private def resetDelays(delays: NonEmptySeq[FiniteDuration]): LazyList[FiniteDuration] =
     LazyList.from(delays.toSeq)

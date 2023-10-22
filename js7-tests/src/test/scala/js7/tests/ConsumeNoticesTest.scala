@@ -3,7 +3,7 @@ package js7.tests
 import java.time.LocalDate
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.RichEither
@@ -30,9 +30,9 @@ import monix.execution.Scheduler.Implicits.traced
 import scala.collection.View
 import scala.concurrent.duration.*
 
-final class ConsumeNoticesTest 
+final class ConsumeNoticesTest
   extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
-  
+
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.journal.remove-obsolete-files = false

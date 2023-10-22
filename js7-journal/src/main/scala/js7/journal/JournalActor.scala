@@ -35,7 +35,7 @@ import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.log.JournalLogger.Loggable
 import js7.journal.watch.JournalingObserver
 import js7.journal.write.{EventJournalWriter, SnapshotJournalWriter}
-import monix.execution.cancelables.SerialCancelable
+import js7.base.monixlike.SerialCancelable
 import monix.execution.{Cancelable, Scheduler}
 import scala.collection.mutable
 import scala.concurrent.duration.Deadline.now
@@ -501,7 +501,7 @@ extends Actor, Stash, JournalLogging:
     locally:
       lazy val checkingBuilder = S.newBuilder()
 
-      val future = committedState.toSnapshotObservable
+      val future = committedState.toSnapshotStream
         .filter:
           case SnapshotEventId(_) => false  // JournalHeader contains already the EventId
           case _ => true

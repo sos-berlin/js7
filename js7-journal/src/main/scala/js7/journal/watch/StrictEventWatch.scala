@@ -2,16 +2,16 @@ package js7.journal.watch
 
 import izumi.reflect.Tag
 import js7.base.monixutils.MonixBase.syntax.*
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CloseableIterator
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import js7.journal.watch.EventWatch.Every
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler
-import monix.reactive.Observable
+import fs2.Stream
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.*
 import scala.reflect.ClassTag
@@ -37,18 +37,18 @@ final class StrictEventWatch(val underlying: FileEventWatch):
     request: EventRequest[E],
     predicate: KeyedEvent[E] => Boolean = (_: KeyedEvent[E]) => true,
     onlyAcks: Boolean = false)
-  : Observable[Stamped[KeyedEvent[E]]] =
+  : Stream[IO, Stamped[KeyedEvent[E]]] =
     underlying.observe(request, predicate, onlyAcks)
 
   def when[E <: Event](request: EventRequest[E], predicate: KeyedEvent[E] => Boolean = Every)
-  : Task[TearableEventSeq[Seq, KeyedEvent[E]]] =
+  : IO[TearableEventSeq[Seq, KeyedEvent[E]]] =
     delegate(_.when(request, predicate))
 
   def whenKeyedEvent[E <: Event](using E: Event.KeyCompanion[? >: E])(
     request: EventRequest[E],
     key: E.Key,
     predicate: E => Boolean = Every)
-  : Task[E] =
+  : IO[E] =
     underlying.whenKeyedEvent(request, key, predicate)
 
   /** TEST ONLY - Blocking. */
@@ -80,7 +80,7 @@ final class StrictEventWatch(val underlying: FileEventWatch):
     after: EventId = EventId.BeforeFirst,
     timeout: FiniteDuration = 99.s)
     (using s: Scheduler)
-  : Task[Vector[Stamped[KeyedEvent[E]]]] =
+  : IO[Vector[Stamped[KeyedEvent[E]]]] =
     underlying.awaitAsync(predicate, after, timeout)
 
   @TestOnly
@@ -156,7 +156,7 @@ final class StrictEventWatch(val underlying: FileEventWatch):
 
   @TestOnly
   private def allAfter[E <: Event: ClassTag: Tag](after: EventId = EventId.BeforeFirst)
-  : Task[Seq[Stamped[KeyedEvent[E]]]] =
+  : IO[Seq[Stamped[KeyedEvent[E]]]] =
     when[E](EventRequest.singleClass[E](after = after), _ => true)
       .map:
         case TearableEventSeq.Torn(after) =>
@@ -165,8 +165,8 @@ final class StrictEventWatch(val underlying: FileEventWatch):
         case EventSeq.NonEmpty(seq) => seq
 
   @inline
-  private def delegate[A](body: EventWatch => Task[TearableEventSeq[CloseableIterator, A]])
-  : Task[TearableEventSeq[Seq, A]] =
+  private def delegate[A](body: EventWatch => IO[TearableEventSeq[CloseableIterator, A]])
+  : IO[TearableEventSeq[Seq, A]] =
     body(underlying).map(_.strict)
 
   def tornEventId = underlying.tornEventId

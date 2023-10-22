@@ -13,7 +13,7 @@ import js7.data.event.{Event, EventId, JournalHeader, JournaledState, KeyedEvent
 import js7.journal.write.EventJournalWriter.SerializationException
 import js7.journal.write.JournalWriter.*
 import monix.execution.Scheduler
-import monix.reactive.Observable
+import fs2.Stream
 import scala.concurrent.duration.FiniteDuration
 import scala.util.control.NonFatal
 
@@ -72,7 +72,7 @@ extends AutoCloseable:
   private def writeJsonInParallel[A: Encoder](seq: Seq[A]): Unit =
     // TODO Try to call it asynchronously (in JournalActor)
     implicit val s = scheduler
-    Observable.fromIterable(seq)
+    Stream.fromIterable(seq)
       .mapParallelBatch(batchSize = JsonBatchSize)(
         serialize[A])
       .foreachL(jsonWriter.write)

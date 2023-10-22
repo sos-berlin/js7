@@ -12,16 +12,16 @@ import js7.base.log.Logger
 import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.pekkohttp.web.data.WebServerPort
 import js7.common.commandline.CommandLineArguments
 import js7.launcher.configuration.ProcessKillScript
 import js7.subagent.configuration.SubagentConfTest.*
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
+import fs2.Stream
 import scala.collection.View
 import scala.jdk.CollectionConverters.*
 
@@ -177,11 +177,11 @@ final class SubagentConfTest extends OurTestSuite
       val configuredCodepages  = SubagentConf.DefaultConfig.getObject("js7.windows.codepages")
         .asScala.keySet
       // Parallelize for shorter test duration (4s instead of 17s)
-      val cpToEnc = Observable.fromIterable(1 to 32767)
+      val cpToEnc = Stream.fromIterable(1 to 32767)
         .bufferTumbling(512)
-        .mapParallelOrdered(sys.runtime.availableProcessors)(chunk => Task(
+        .mapParallelOrdered(sys.runtime.availableProcessors)(chunk => IO(
           chunk.map(cp => cp -> subagentConf.windowsCodepageToEncoding(cp))))
-        .flatMap(Observable.fromIterable)
+        .flatMap(Stream.fromIterable)
         .collect { case (codepage, Right(encoding)) => codepage -> encoding }
         .toListL
         .await(99.s)

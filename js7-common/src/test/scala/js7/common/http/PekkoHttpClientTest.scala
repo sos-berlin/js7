@@ -11,7 +11,7 @@ import js7.base.io.https.HttpsConfig
 import js7.base.log.CorrelId
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.CatsUtils.syntax.RichResource
@@ -28,7 +28,8 @@ import js7.common.pekkohttp.web.PekkoWebServer
 import js7.common.pekkoutils.Pekkos
 import js7.common.pekkoutils.Pekkos.newActorSystem
 import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
-import monix.eval.Task
+import cats.effect.IO
+import cats.effect.Fiber
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import org.apache.pekko.actor.ActorSystem
@@ -73,7 +74,7 @@ final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, HasClos
       for case (uri, None) <- Setting do s"$uri" in {
         assert(httpClient.checkAgentUri(uri).isLeft)
         assert(httpClient.toCheckedAgentUri(uri).isLeft)
-        implicit val s = Task.pure(none[SessionToken])
+        implicit val s = IO.pure(none[SessionToken])
         assert(Await.result(httpClient.get_[HttpResponse](uri).runToFuture.failed, 99.seconds).getMessage
           contains "does not match")
       }
@@ -89,7 +90,7 @@ final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, HasClos
     //"Operations after close are rejected" in {
     //  httpClient.close()
     //  val uri = Uri("https://example.com:9999/PREFIX")
-    //  implicit val s = Task.pure(none[SessionToken])
+    //  implicit val s = IO.pure(none[SessionToken])
     //  assert(Await.result(httpClient.get_[HttpResponse](uri).runToFuture.failed, 99.seconds).getMessage ==
     //    "PekkoHttpClient has been closed: GET https://example.com:9999/PREFIX")
     //}
@@ -97,7 +98,7 @@ final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, HasClos
 
   "With a server" - {
     implicit val aJsonCodec: Codec.AsObject[A] = deriveCodec
-    lazy val allocatedWebServer: Allocated[Task, PekkoWebServer] = PekkoWebServer
+    lazy val allocatedWebServer: Allocated[IO, PekkoWebServer] = PekkoWebServer
       .testResource() {
         decodeRequest {
           import CirceJsonSupport.jsonMarshaller
@@ -126,7 +127,7 @@ final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, HasClos
               } ~
               path("IDLE-TIMEOUT") {
                 val source = Observable(ByteString("IDLE-TIMEOUT\n"))
-                  .delayExecution(5.s)
+                  .delayBy(5.s)
                   .toPekkoSourceForHttpResponse
                 complete(HttpEntity(`application/x-ndjson`, source))
               }
@@ -145,7 +146,7 @@ final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, HasClos
     }.closeWithCloser
 
     lazy val uri = allocatedWebServer.allocatedThing.localUri
-    implicit val sessionToken: Task[Option[SessionToken]] = Task.pure(None)
+    implicit val sessionToken: IO[Option[SessionToken]] = IO.pure(None)
 
     "OK" in {
       assert(httpClient.post(Uri(s"$uri/OK"), A(1)).await(99.s) == A(2))
@@ -181,7 +182,7 @@ final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, HasClos
 
     "getRawLinesObservable" in {
       val result = Observable
-        .fromTask(httpClient.getRawLinesObservable(Uri(s"$uri/STREAM")))
+        .fromIO(httpClient.getRawLinesObservable(Uri(s"$uri/STREAM")))
         .flatten
         .toListL
         .await(99.s)
@@ -192,7 +193,7 @@ final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, HasClos
     "getRawLinesObservable: idle-timeout yield an empty observable" in {
       // PekkoHttpClient converts the TcpIdleTimeoutException to the empty Observable
       val result = Observable
-        .fromTask(httpClient.getRawLinesObservable(Uri(s"$uri/IDLE-TIMEOUT")))
+        .fromIO(httpClient.getRawLinesObservable(Uri(s"$uri/IDLE-TIMEOUT")))
         .flatten
         .toListL
         .await(99.s)
@@ -207,7 +208,7 @@ final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, HasClos
 
   "liftProblem, HttpException#problem" - {
     "No Exception" in {
-      assert(liftProblem(Task(1)).runSyncUnsafe(99.seconds) == Right(1))
+      assert(liftProblem(IO(1)).runSyncUnsafe(99.seconds) == Right(1))
     }
 
     "HttpException with problem" in {
@@ -219,7 +220,7 @@ final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, HasClos
         HttpResponse(BadRequest, entity = HttpEntity(`application/json`, jsonString.getBytes(UTF_8))),
         jsonString)
       assert(e.problem == Some(problem))
-      assert(liftProblem(Task.raiseError(e)).runSyncUnsafe(99.seconds) == Left(problem))
+      assert(liftProblem(IO.raiseError(e)).runSyncUnsafe(99.seconds) == Left(problem))
     }
 
     "HttpException with broken problem" in {
@@ -231,7 +232,7 @@ final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, HasClos
         jsonString)
       assert(e.problem.isEmpty)
       assert(e.getMessage == "HTTP 400 Bad Request: POST /URI => {}")
-      assert(liftProblem(Task.raiseError(e)).runSyncUnsafe(99.seconds) == Left(Problem(e.getMessage)))
+      assert(liftProblem(IO.raiseError(e)).runSyncUnsafe(99.seconds) == Left(Problem(e.getMessage)))
     }
 
     "HttpException with string response" in {
@@ -241,12 +242,12 @@ final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, HasClos
         HttpResponse(BadRequest, `Content-Type`(`text/plain(UTF-8)`) :: Nil),
         "{}")
       assert(e.getMessage == "HTTP 400 Bad Request: POST /URI => {}")
-      assert(liftProblem(Task.raiseError(e)).runSyncUnsafe(99.seconds) == Left(Problem(e.getMessage)))
+      assert(liftProblem(IO.raiseError(e)).runSyncUnsafe(99.seconds) == Left(Problem(e.getMessage)))
     }
 
     "Other exception" in {
       val e = new Exception
-      assert(liftProblem(Task.raiseError(e)).failed.runSyncUnsafe(99.seconds) eq e)
+      assert(liftProblem(IO.raiseError(e)).failed.runSyncUnsafe(99.seconds) eq e)
     }
   }
 
@@ -267,7 +268,7 @@ final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, HasClos
       protected def uriPrefixPath = "/PREFIX"
       protected def httpsConfig = HttpsConfig.empty
     }
-    implicit val sessionToken = Task.pure(none[SessionToken])
+    implicit val sessionToken = IO.pure(none[SessionToken])
 
     "First call" in {
       autoClosing(newHttpClient()) { httpClient =>

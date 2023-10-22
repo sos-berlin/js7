@@ -17,7 +17,7 @@ import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVa
 import js7.data.orderwatch.OrderWatchState.{Arised, ArisedOrHasOrder, ExternalOrderSnapshot, HasOrder, ToOrderAdded, Vanished, logger}
 import js7.data.value.NamedValues
 import js7.data.workflow.position.BranchPath.syntax.*
-import monix.reactive.Observable
+import fs2.Stream
 import scala.collection.View
 
 /**
@@ -192,9 +192,9 @@ extends UnsignedSimpleItemState:
   def estimatedSnapshotSize =
     1 + externalToState.size
 
-  override def toSnapshotObservable: Observable[Any] =
+  override def toSnapshotStream: Stream[IO, Any] =
     UnsignedSimpleItemAdded(orderWatch) +:
-      Observable.fromIterable(externalToState)
+      Stream.fromIterable(externalToState)
         .map { case (externalOrderName, state) =>
           ExternalOrderSnapshot(orderWatch.key, externalOrderName, state)
         }

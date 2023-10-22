@@ -8,10 +8,9 @@ import js7.base.io.file.FileUtils.temporaryDirectoryResource
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurTestSuite
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.IOExecutor.Implicits.globalIOX
-import js7.base.thread.MonixBlocking.syntax.*
-import js7.base.thread.VirtualThreads
 import js7.base.time.AlarmClock
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.{RichEitherF, RichEitherIterable, RichPartialFunction}
@@ -35,7 +34,7 @@ import js7.launcher.forjava.internal.tests.{TestBlockingInternalJob, TestJIntern
 import js7.launcher.internal.{InternalJobLauncher, JobLauncher}
 import js7.launcher.process.ProcessConfiguration
 import js7.launcher.{ProcessOrder, StdObservers}
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.subjects.PublishSubject
 import org.scalatest.BeforeAndAfterAll
@@ -87,8 +86,8 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite, BeforeAndAfterA
       }
 
       "orderProcess" in {
-        val (outcomeTask, out, err) = processOrder(NumericConstant(1000)).await(99.s).orThrow
-        assert(outcomeTask == Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(1001))))
+        val (outcomeIO, out, err) = processOrder(NumericConstant(1000)).await(99.s).orThrow
+        assert(outcomeIO == Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(1001))))
         assertOutErr(out, err)
       }
 
@@ -98,12 +97,12 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite, BeforeAndAfterA
           processOrder(NumericConstant(i))
             .map(_.orThrow)
             .flatMap {
-              case (outcome: Outcome.Succeeded, _, _) => Task.pure(outcome.namedValues.checked("RESULT"))
-              case (outcome: Outcome.NotSucceeded, _, _) => Task.left(Problem(outcome.toString))
-              case (outcome, _, _) => Task(fail(s"UNEXPECTED: $outcome"))
+              case (outcome: Outcome.Succeeded, _, _) => IO.pure(outcome.namedValues.checked("RESULT"))
+              case (outcome: Outcome.NotSucceeded, _, _) => IO.left(Problem(outcome.toString))
+              case (outcome, _, _) => IO(fail(s"UNEXPECTED: $outcome"))
             }
         }
-        assert(Task.parSequence(processes).await(99.s).reduceLeftEither ==
+        assert(IO.parSequence(processes).await(99.s).reduceLeftEither ==
           Right(indices.map(_ + 1).map(NumberValue(_))))
       }
 
@@ -130,7 +129,7 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite, BeforeAndAfterA
     }
 
   private def processOrder(arg: Expression)(implicit executor: InternalJobLauncher)
-  : Task[Checked[(Outcome, Future[String], Future[String])]] = {
+  : IO[Checked[(Outcome, Future[String], Future[String])]] = {
     val out, err = PublishSubject[String]()
     val outFuture = out.fold.lastOrElseL("").runToFuture
     val errFuture = err.fold.lastOrElseL("").runToFuture
@@ -139,7 +138,7 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite, BeforeAndAfterA
     val jobKey = executor.jobConf.jobKey
     temporaryDirectoryResource("InternalJobLauncherForJavaTest-")
       .flatMap(dir => Resource
-        .fromAutoCloseable(Task(new FileValueState(dir)))
+        .fromAutoCloseable(IO(new FileValueState(dir)))
         .flatMap(fileValueState => FileValueScope.resource(fileValueState)))
       .use(fileValueScope =>
         executor
@@ -161,7 +160,7 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite, BeforeAndAfterA
             .await(99.s).orThrow
             .start(orderId, jobKey, stdObservers)
             .flatten
-            .guarantee(Task {
+            .guarantee(IO {
               try out.onComplete()
               finally err.onComplete()
             })

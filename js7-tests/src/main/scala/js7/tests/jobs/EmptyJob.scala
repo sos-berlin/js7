@@ -6,7 +6,6 @@ import js7.data.order.Outcome
 import js7.launcher.OrderProcess
 import js7.launcher.internal.InternalJob
 import js7.tests.jobs.EmptyJob.logger
-import monix.eval.Task
 
 class EmptyJob(outcome: Outcome.Completed)
 extends InternalJob:
@@ -14,7 +13,7 @@ extends InternalJob:
   def this() = this(Outcome.succeeded)
 
   final def toOrderProcess(step: Step) =
-    OrderProcess(Task {
+    OrderProcess(IO {
       logger.debug(s"${getClass.simpleScalaName} ${step.order.id}")
       outcome
     })

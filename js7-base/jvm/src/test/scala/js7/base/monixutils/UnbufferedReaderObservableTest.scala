@@ -2,17 +2,17 @@ package js7.base.monixutils
 
 import java.io.{PipedReader, PipedWriter}
 import js7.base.test.OurTestSuite
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler.Implicits.traced
 import monix.execution.schedulers.TestScheduler
 
-final class UnbufferedReaderObservableTest extends OurTestSuite:
-  "UnbufferedReaderObservable" in:
+final class UnbufferedReaderStreamTest extends OurTestSuite:
+  "UnbufferedReaderStream" in:
     val scheduler = TestScheduler()
     val w = new PipedWriter
     val r = new PipedReader(w)
 
-    val whenCompleted = UnbufferedReaderObservable(Task.pure(r))
+    val whenCompleted = UnbufferedReaderStream(IO.pure(r))
       .toListL.runToFuture
 
     val expected = List("EINS", "ZWEI", "DREI")

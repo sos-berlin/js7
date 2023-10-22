@@ -1,5 +1,6 @@
 package js7.tests
 
+import cats.effect.IO
 import java.nio.file.Files.{createTempFile, delete}
 import java.util.regex.Pattern
 import js7.base.configutils.Configs.*
@@ -10,7 +11,7 @@ import js7.base.problem.Checked.*
 import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.RichIO
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.retryUntil
 import js7.base.time.WallClock
@@ -36,9 +37,9 @@ import js7.launcher.internal.InternalJob
 import js7.tests.ExecuteTest.*
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest, DirectorEnv}
-import monix.eval.Task
+import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
+import fs2.Stream
 import org.scalactic.source
 
 final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
@@ -498,7 +499,7 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
   }
 
   "Command line arguments" in {
-    // TODO Replace --agent-task-id= by something different (for example, PID returned by Java 9)
+    // TODO Replace --agent-io-id= by something different (for example, PID returned by Java 9)
     def removeTaskId(string: String): String =
       Pattern.compile(""" --agent-task-id=[0-9]+-[0-9]+""").matcher(string).replaceAll("")
 
@@ -521,7 +522,7 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
         ParallelInternalJob.execute(agentPath, processLimit = processLimit)))
       val orderIds = for i <- 1 to processLimit yield OrderId(s"JOB-LIMIT-$i")
       val eventId = eventWatch.lastAddedEventId
-      controller.api.addOrders(Observable
+    controller.api.addOrders(Stream
         .fromIterable(orderIds)
         .map(FreshOrder(_, workflow.path)))
         .await(99.s).orThrow
@@ -703,7 +704,7 @@ object ExecuteTest
   {
     def toOrderProcess(step: Step) =
       OrderProcess(
-        Task {
+        IO {
           Outcome.Completed.fromChecked(
             for number <- step.arguments.checked("ARG").flatMap(_.asNumber) yield
               Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(number + 1))))

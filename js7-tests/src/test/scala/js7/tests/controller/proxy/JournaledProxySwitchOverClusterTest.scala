@@ -4,7 +4,7 @@ import js7.base.auth.Admission
 import js7.base.problem.Checked.Ops
 import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver}
@@ -21,7 +21,7 @@ import monix.execution.Scheduler.Implicits.traced
 import scala.jdk.CollectionConverters.*
 
 final class JournaledProxySwitchOverClusterTest extends OurTestSuite, ClusterProxyTest:
-  
+
   override protected val removeObsoleteJournalFiles = false
 
   "JournaledProxy accesses a switching Cluster" in:
@@ -32,7 +32,7 @@ final class JournaledProxySwitchOverClusterTest extends OurTestSuite, ClusterPro
       var lastEventId = EventId.BeforeFirst
 
       def runOrder(orderId: OrderId): Unit =
-        val whenFinished = proxy.observable
+        val whenFinished = proxy.stream
           .find:
             case EventAndState(Stamped(_, _, KeyedEvent(`orderId`, _: OrderFinished)), _, _) => true
             case _ => false

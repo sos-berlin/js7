@@ -4,10 +4,10 @@ import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
 import js7.base.utils.AsyncLockTest.*
-import js7.base.utils.Atomic.syntax.*
-import monix.eval.Task
+import js7.base.utils.Atomic.extensions.*
+import cats.effect.IO
 import monix.execution.Scheduler.Implicits.traced
-import monix.reactive.Observable
+import fs2.Stream
 import scala.concurrent.Promise
 import scala.concurrent.duration.FiniteDuration
 import scala.util.Random
@@ -35,8 +35,8 @@ final class AsyncLockTest extends OurAsyncTestSuite
         .map(o => assert(o == Vector.fill(n)(initial)))
         // High probability to fail once
         .onErrorRestartLoop(100_000) {
-          case (t, 0, _) => Task.raiseError(t)
-          case (_, i, retry) => Task.sleep(1.ms) *> retry(i - 1)
+          case (t, 0, _) => IO.raiseError(t)
+          case (_, i, retry) => IO.sleep(1.ms) *> retry(i - 1)
         }
         .runToFuture
     }
@@ -47,22 +47,22 @@ final class AsyncLockTest extends OurAsyncTestSuite
       } else {
         val maxTries = 100
         val expected = Vector.fill(n)(initial)
-        Task
+        IO
           .tailRecM(0)(i =>
             doTest(identity).flatMap(result =>
               if i < maxTries && result == expected then {
-                logger.warn("Retry because tasks did not run concurrently")
-                Task.left(i + 1)
+                logger.warn("Retry because ios did not run concurrently")
+                IO.left(i + 1)
               } else
-                Task.right(assert(result != expected))))
+                IO.right(assert(result != expected))))
           .runToFuture
       }
     }
 
     "AsyncLock, not concurrent" in {
       val lock = AsyncLock("TEST", logWorryDurations = Nil, suppressLog = suppressLog)
-      Observable.fromIterable(1 to n)
-        .mapEval(_ => lock.lock(Task.unit))
+      Stream.fromIterable(1 to n)
+        .mapEval(_ => lock.lock(IO.unit))
         .completedL
         .timed.map { case (duration, ()) =>
           logger.info(Stopwatch.itemsPerSecondString(duration, n))
@@ -71,20 +71,20 @@ final class AsyncLockTest extends OurAsyncTestSuite
         .runToFuture
     }
 
-    def doTest(body: Task[Int] => Task[Int]): Task[Seq[Int]] = {
+    def doTest(body: IO[Int] => IO[Int]): IO[Seq[Int]] = {
       val guardedVariable = Atomic(initial)
       val idleDuration = 100.µs
-      Task.parSequence(
+      IO.parSequence(
         for _ <- 1 to n yield
           body {
-            Task {
+            IO {
               val found = guardedVariable.get()
               idleNanos(idleDuration)
               guardedVariable += 1
               found
-            } .tapEval(_ => if Random.nextBoolean() then Task.shift else Task.unit)
+            } .tapEval(_ => if Random.nextBoolean() then IO.shift else IO.unit)
               .flatMap { found =>
-                Task {
+                IO {
                   guardedVariable := initial
                   found
                 }
@@ -103,44 +103,44 @@ final class AsyncLockTest extends OurAsyncTestSuite
     }
   }
 
-  "Cancel releases lock only after task has been canceled" in {
+  "Cancel releases lock only after io has been canceled" in {
     val lock = AsyncLock("CANCEL", logWorryDurations = Nil)
-    val taskStarted = Promise[Unit]()
-    val taskCancelationStarted = Promise[Unit]()
-    val taskCompleted = Promise[Unit]()
+    val ioStarted = Promise[Unit]()
+    val ioCancelationStarted = Promise[Unit]()
+    val ioCompleted = Promise[Unit]()
     val continue = Promise[Unit]()
 
     val future = lock
-      .lock(Task.defer {
-        taskStarted.success(())
-        Task.never
-          .doOnCancel(Task.defer {
-            taskCancelationStarted.success(())
-            Task.sleep(100.ms)
-              .*>(Task.defer {
-                Task.fromFuture(continue.future)
-                  .*>(Task {
-                    taskCompleted.success(())
+      .lock(IO.defer {
+        ioStarted.success(())
+        IO.never
+          .doOnCancel(IO.defer {
+            ioCancelationStarted.success(())
+            IO.sleep(100.ms)
+              .*>(IO.defer {
+                IO.fromFuture(continue.future)
+                  .*>(IO {
+                    ioCompleted.success(())
                   })
               })
           })
       })
       .runToFuture
 
-    Task
-      .fromFuture(taskStarted.future)
-      .flatMap(_ => Task.defer {
+    IO
+      .fromFuture(ioStarted.future)
+      .flatMap(_ => IO.defer {
         future.cancel()
 
-        Task
-          .fromFuture(taskCancelationStarted.future)
-          .*>(Task {
-            assert(!taskCompleted.isCompleted)
+        IO
+          .fromFuture(ioCancelationStarted.future)
+          .*>(IO {
+            assert(!ioCompleted.isCompleted)
             continue.success(())
           })
           .*>(lock
             .lock(
-              Task.fromFuture(taskCompleted.future))
+              IO.fromFuture(ioCompleted.future))
             .timeoutWith(9.s, new RuntimeException("Cancel operation has not released the lock")))
           .as(succeed)
       })

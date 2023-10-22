@@ -2,8 +2,11 @@ package js7.base.generic
 
 import cats.kernel.CommutativeMonoid
 
+
+type Completed = Completed.type
+
 /**
-  * May be used for Task[Completed].
+  * May be used for IO[Completed].
   * Like Pekko's `Done`.
   *
   * @author Joacim Zschimmer

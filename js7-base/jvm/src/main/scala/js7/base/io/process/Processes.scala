@@ -1,8 +1,10 @@
 package js7.base.io.process
 
+import cats.effect.IO
 import java.io.{ByteArrayOutputStream, IOException}
 import java.nio.file.Path
 import java.nio.file.attribute.FileAttribute
+import js7.base.catsutils.CatsEffectExtensions.onErrorRestartLoop
 import js7.base.data.ByteArray
 import js7.base.io.process.OperatingSystemSpecific.OS
 import js7.base.io.process.Processes.RobustlyStartProcess.TextFileBusyIOException
@@ -12,7 +14,6 @@ import js7.base.thread.IOExecutor
 import js7.base.thread.IOExecutor.ioFuture
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
-import monix.eval.Task
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.Await
 import scala.concurrent.duration.*
@@ -112,16 +113,16 @@ object Processes:
       * @see https://bugs.openjdk.java.net/browse/JDK-8068370
       */
     def startRobustly(durations: Iterable[FiniteDuration] = RobustlyStartProcess.DefaultDurations)
-    : Task[Process] =
+    : IO[Process] =
       val durationsIterator = durations.iterator
-      Task(processBuilder.start())
+      IO(processBuilder.start())
         .onErrorRestartLoop(()):
           case (TextFileBusyIOException(e), _, restart) if durationsIterator.hasNext =>
             logger.warn(s"Retrying process start after error: ${e.toString}")
-            restart(()).delayExecution(durationsIterator.next())
+            restart(()).delayBy(durationsIterator.next())
 
           case (throwable, _, _) =>
-            Task.raiseError(throwable)
+            IO.raiseError(throwable)
 
   private[process] object RobustlyStartProcess:
     private val DefaultDurations = List(10.ms, 50.ms, 500.ms, 1440.ms)

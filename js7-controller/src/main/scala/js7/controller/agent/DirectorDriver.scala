@@ -1,7 +1,7 @@
 package js7.controller.agent
 
 import cats.effect.Resource
-import cats.effect.concurrent.Deferred
+import cats.effect.kernel.Deferred
 import js7.agent.client.AgentClient
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.CoupleController
@@ -33,8 +33,8 @@ import js7.data.order.{OrderEvent, OrderId}
 import js7.data.orderwatch.OrderWatchEvent
 import js7.data.subagent.SubagentItemStateEvent
 import js7.journal.state.Journal
-import monix.eval.Task
-import monix.reactive.Observable
+import cats.effect.IO
+import fs2.Stream
 import scala.util.chaining.scalaUtilChainingOps
 
 private[agent] final class DirectorDriver private(
@@ -42,11 +42,11 @@ private[agent] final class DirectorDriver private(
   agentPath: AgentPath,
   initialEventId: EventId,
   client: AgentClient,
-  dedicateAgentIfNeeded: DirectorDriver => Task[Checked[(AgentRunId, EventId)]],
-  onCouplingFailed_ : Problem => Task[Boolean],
-  onCoupled_ : Set[OrderId] => Task[Unit],
-  onDecoupled_ : Task[Unit],
-  adoptEvents: Seq[Stamped[AnyKeyedEvent]] => Task[Unit],
+  dedicateAgentIfNeeded: DirectorDriver => IO[Checked[(AgentRunId, EventId)]],
+  onCouplingFailed_ : Problem => IO[Boolean],
+  onCoupled_ : Set[OrderId] => IO[Unit],
+  onDecoupled_ : IO[Unit],
+  adoptEvents: Seq[Stamped[AnyKeyedEvent]] => IO[Unit],
   journal: Journal[ControllerState],
   conf: AgentDriverConfiguration)
 extends Service.StoppableByRequest:
@@ -55,7 +55,7 @@ extends Service.StoppableByRequest:
   private val index = DirectorDriver.index.incrementAndGet()
   private val logger = Logger.withPrefix[this.type](agentPath.toString + " #" + index)
   private var adoptedEventId = initialEventId
-  private val untilFetchingStopped = Deferred.unsafe[Task, Unit]
+  private val untilFetchingStopped = Deferred.unsafe[IO, Unit]
   private val onFetchedEventsLock = AsyncLock() // Fence for super.isStopping
 
   logger.trace(s"initialEventId=$initialEventId")
@@ -63,11 +63,11 @@ extends Service.StoppableByRequest:
   protected def start =
     startService(
       continuallyFetchEvents *>
-        Task(assertThat(isStopping)) *>
-        onFetchedEventsLock.lock(Task.unit) *>
+        IO(assertThat(isStopping)) *>
+        onFetchedEventsLock.lock(IO.unit) *>
         stopEventFetcher)
 
-  private def stopEventFetcher: Task[Unit] =
+  private def stopEventFetcher: IO[Unit] =
     eventFetcher.terminateAndLogout *>
       untilFetchingStopped.get
 
@@ -82,7 +82,7 @@ extends Service.StoppableByRequest:
         .flatMapT(agentRefState =>
           ((agentRefState.couplingState, agentRefState.agentRunId) match {
             case (Resetting(false), None) =>
-              Task.pure(Left(Problem.pure("Resetting, but no AgentRunId?"))) // Invalid state
+              IO.pure(Left(Problem.pure("Resetting, but no AgentRunId?"))) // Invalid state
 
             case (Resetting(force), maybeAgentRunId) if force || maybeAgentRunId.isDefined =>
               executeCommand(AgentCommand.Reset(maybeAgentRunId))
@@ -94,7 +94,7 @@ extends Service.StoppableByRequest:
                   journal.persistKeyedEvent(agentPath <-: AgentReset))
 
             case _ =>
-              Task.pure(Checked.unit)
+              IO.pure(Checked.unit)
           }))
         .flatMapT(_ => dedicateAgentIfNeeded(directorDriver))
         .flatMapT { case (agentRunId, agentEventId) =>
@@ -127,33 +127,33 @@ extends Service.StoppableByRequest:
             }
         }
 
-    protected def getObservable(api: AgentClient, after: EventId) =
-      Task {logger.debug(s"getObservable(after=$after)")} *>
-        api.eventObservable(EventRequest[Event](EventClasses, after = after,
+    protected def getStream(api: AgentClient, after: EventId) =
+      IO {logger.debug(s"getStream(after=$after)")} *>
+        api.eventStream(EventRequest[Event](EventClasses, after = after,
           timeout = Some(requestTimeout)))
 
     override protected def onCouplingFailed(api: AgentClient, problem: Problem) =
       onCouplingFailed_(problem)
 
     override protected def onCoupled(api: AgentClient, after: EventId) =
-      Task.defer:
+      IO.defer:
         logger.info(s"Coupled with $api after=${EventId.toString(after)}")
         assertThat(attachedOrderIds != null)
         onCoupled_(attachedOrderIds)
-          .*>(Task {
+          .*>(IO {
             attachedOrderIds = null
           })
           .as(Completed)
 
     override protected def onDecoupled =
-      Task.defer:
+      IO.defer:
         logger.debug("onDecoupled")
         onDecoupled_
           .as(Completed)
 
     protected def stopRequested = directorDriver.isStopping
 
-  private def continuallyFetchEvents: Task[Unit] =
+  private def continuallyFetchEvents: IO[Unit] =
     observeAndConsumeEvents
       .onErrorHandle(t => logger.error(t.toStringWithCauses, t))
       .flatMapLoop(())((_, _, again) =>
@@ -163,12 +163,12 @@ extends Service.StoppableByRequest:
             .raceFold(untilStopRequested))
           .void
           .onErrorHandle(t => logger.error(t.toStringWithCauses, t))
-          .*>(Task.defer(Task.unless(isStopping)(
+          .*>(IO.defer(IO.unless(isStopping)(
             again(())))))
       .guarantee(untilFetchingStopped.complete(()))
 
-  private def observeAndConsumeEvents: Task[Unit] =
-    logger.traceTask(Task.defer {
+  private def observeAndConsumeEvents: IO[Unit] =
+    logger.traceIO(IO.defer {
       val delay = conf.eventBufferDelay max conf.commitDelay
       eventFetcher.observe(client, after = adoptedEventId)
         .pipe(obs =>
@@ -180,22 +180,22 @@ extends Service.StoppableByRequest:
               maxCount = conf.eventBufferSize) // ticks
             .filter(_.nonEmpty)) // Ignore empty ticks
         .takeUntilEval(untilStopRequested) // Cancels the stream above
-        .flatMap(o => Observable
+        .flatMap(o => Stream
           // When the other cluster node may have failed-over,
           // wait until we know that it hasn't (or this node is aborted).
           // Avoids "Unknown OrderId" failures due to double activation.
-          .fromTask(journal.whenNoFailoverByOtherNode
+          .fromIO(journal.whenNoFailoverByOtherNode
             .logWhenItTakesLonger("whenNoFailoverByOtherNode"))
           .map(_ => o))
         .mapEval(onEventsFetched)
         .completedL
     })
 
-  private def onEventsFetched(stampedEvents: Seq[Stamped[AnyKeyedEvent]]): Task[Unit] =
-    onFetchedEventsLock.lock(logger.traceTask(Task.defer {
+  private def onEventsFetched(stampedEvents: Seq[Stamped[AnyKeyedEvent]]): IO[Unit] =
+    onFetchedEventsLock.lock(logger.traceIO(IO.defer {
       assertThat(stampedEvents.nonEmpty)
       if isStopping then
-        Task(logger.debug(
+        IO(logger.debug(
           s"❌Late onEventsFetched(${stampedEvents.size} events) suppressed due to isStopping"))
       else {
         val reducedStampedEvents = stampedEvents dropWhile { stamped =>
@@ -203,7 +203,7 @@ extends Service.StoppableByRequest:
           if drop then logger.debug(s"Drop duplicate received event: $stamped")
           drop
         }
-        Task.when(reducedStampedEvents.nonEmpty) {
+        IO.whenA(reducedStampedEvents.nonEmpty) {
           val lastEventId = stampedEvents.last.eventId
           // The events must be journaled and handled by ControllerOrderKeeper
           adoptedEventId = lastEventId
@@ -212,19 +212,19 @@ extends Service.StoppableByRequest:
       }
     }))
 
-  def resetAgentAndStop(agentRunId: Option[AgentRunId]): Task[Checked[Unit]] =
+  def resetAgentAndStop(agentRunId: Option[AgentRunId]): IO[Checked[Unit]] =
     // TODO If stopEventFetcher would not send a Logout, it could run concurrently
     resetAgent(agentRunId)
       .flatTapT(_ => stop.map(Right(_)))
 
-  private def resetAgent(agentRunId: Option[AgentRunId]): Task[Checked[Unit]] =
-    logger.debugTask(
+  private def resetAgent(agentRunId: Option[AgentRunId]): IO[Checked[Unit]] =
+    logger.debugIO(
       executeCommand(client, AgentCommand.Reset(agentRunId))
         .logWhenItTakesLonger
         .rightAs(()))
 
   def executeCommand(command: AgentCommand, mustBeCoupled: Boolean = false)
-  : Task[Checked[command.Response]] =
+  : IO[Checked[command.Response]] =
     if mustBeCoupled then
       eventFetcher.coupledApi
         .map(_.toRight(DecoupledProblem))
@@ -233,10 +233,10 @@ extends Service.StoppableByRequest:
       executeCommand(client, command)
 
   private def executeCommand(client: AgentClient, command: AgentCommand)
-  : Task[Checked[command.Response]] =
-    Task
+  : IO[Checked[command.Response]] =
+    IO
       .race(
-        untilStopRequested.delayExecution(10.s/*because AgentDriver stops on SwitchOver*/),
+        untilStopRequested.delayBy(10.s/*because AgentDriver stops on SwitchOver*/),
         client.retryIfSessionLost()(
           client.commandExecute(command)))
       .map:
@@ -244,6 +244,7 @@ extends Service.StoppableByRequest:
         case Right(o) => o
 
   override def toString = s"DirectorDriver($agentPath #$index)"
+
 
 private[agent] object DirectorDriver:
   private val index = Atomic(0)
@@ -262,15 +263,15 @@ private[agent] object DirectorDriver:
     agentPath: AgentPath,
     initialEventId: EventId,
     client: AgentClient,
-    dedicateAgentIfNeeded: DirectorDriver => Task[Checked[(AgentRunId, EventId)]],
-    onCouplingFailed: Problem => Task[Boolean],
-    onCoupled: Set[OrderId] => Task[Unit],
-    onDecoupled: Task[Unit],
-    adoptEvents: Seq[Stamped[AnyKeyedEvent]] => Task[Unit],  // TODO Stream
+    dedicateAgentIfNeeded: DirectorDriver => IO[Checked[(AgentRunId, EventId)]],
+    onCouplingFailed: Problem => IO[Boolean],
+    onCoupled: Set[OrderId] => IO[Unit],
+    onDecoupled: IO[Unit],
+    adoptEvents: Seq[Stamped[AnyKeyedEvent]] => IO[Unit],  // TODO Stream
     journal: Journal[ControllerState],
     conf: AgentDriverConfiguration)
-  : Resource[Task, DirectorDriver] =
-    Service.resource(Task(
+  : Resource[IO, DirectorDriver] =
+    Service.resource(IO(
       new DirectorDriver(
         agentDriver, agentPath, initialEventId, client,
         dedicateAgentIfNeeded,

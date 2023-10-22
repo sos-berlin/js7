@@ -1,5 +1,6 @@
 package js7.common.pekkohttp.web.auth
 
+import cats.effect.IO
 import com.typesafe.config.{Config, ConfigFactory}
 import java.security.cert.X509Certificate
 import js7.base.auth.{DistinguishedName, GetPermission, HashedPassword, Permission, SimpleUser, SuperPermission, User, UserAndPassword, UserId, ValidUserPermission}
@@ -13,8 +14,6 @@ import js7.common.auth.IdToUser
 import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkohttp.web.auth.GateKeeper.*
 import js7.common.pekkohttp.web.data.WebServerBinding
-import monix.eval.Task
-import monix.execution.Scheduler
 import org.apache.pekko.http.scaladsl.marshalling.ToResponseMarshallable
 import org.apache.pekko.http.scaladsl.model.HttpMethods.{GET, HEAD}
 import org.apache.pekko.http.scaladsl.model.StatusCodes.{Forbidden, Unauthorized}
@@ -217,7 +216,7 @@ final class GateKeeper[U <: User](
           Left(Problem.pure("Anonymous is permitted HTTP GET only")))
 
   private def completeDelayed(body: => ToResponseMarshallable): Route =
-    complete(Task(body).delayExecution(invalidAuthenticationDelay).runToFuture)
+    complete(IO(body).delayBy(invalidAuthenticationDelay).runToFuture)
 
   def invalidAuthenticationDelay = configuration.invalidAuthenticationDelay
 

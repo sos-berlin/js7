@@ -12,7 +12,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import monix.execution.Ack.Continue
-import monix.execution.cancelables.SerialCancelable
+import js7.base.monixlike.SerialCancelable
 import monix.execution.schedulers.TestScheduler
 import monix.execution.{Ack, Scheduler}
 import monix.reactive.subjects.PublishSubject

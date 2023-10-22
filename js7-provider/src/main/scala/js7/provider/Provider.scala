@@ -38,10 +38,10 @@ import js7.data.workflow.{WorkflowControl, WorkflowPath, WorkflowPathControl}
 import js7.provider.Provider.*
 import js7.provider.configuration.ProviderConfiguration
 import js7.proxy.ControllerApi
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler
-import monix.execution.atomic.AtomicAny
-import monix.reactive.Observable
+import js7.base.utils.Atomic
+import fs2.Stream
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.*
@@ -70,7 +70,7 @@ extends Observing, MainService, Service.StoppableByRequest:
     .asScala.map(_.toFiniteDuration)
   private val typedSourceReader = new TypedSourceReader(conf.liveDirectory, readers)
   private val newVersionId = new VersionIdGenerator
-  private val lastEntries = AtomicAny(Vector.empty[DirectoryReader.Entry])
+  private val lastEntries = Atomic(Vector.empty[DirectoryReader.Entry])
 
   val untilTerminated =
     untilStopped.as(ProgramTermination())
@@ -78,15 +78,15 @@ extends Observing, MainService, Service.StoppableByRequest:
   protected def start =
     startService(run)
 
-  private def run: Task[Unit] =
+  private def run: IO[Unit] =
     if conf.testSuppressStart then untilStopRequested else observe.completedL
 
   override protected def stop =
-    Task(close()) *> super.stop
+    IO(close()) *> super.stop
 
   /** Compares the directory with the Controller's repo and sends the difference.
    * Parses each file, so it may take some time for a big configuration directory. */
-  def initiallyUpdateControllerConfiguration(versionId: Option[VersionId] = None): Task[Checked[Completed]] =
+  def initiallyUpdateControllerConfiguration(versionId: Option[VersionId] = None): IO[Checked[Completed]] =
     for
       localEntries <- readDirectory
       checkedDiff <- controllerDiff(localEntries)
@@ -99,7 +99,7 @@ extends Observing, MainService, Service.StoppableByRequest:
       checkedCompleted
 
   @TestOnly
-  def testControllerDiff: Task[Checked[InventoryItemDiff_]] =
+  def testControllerDiff: IO[Checked[InventoryItemDiff_]] =
     for
       localEntries <- readDirectory
       diff <- controllerDiff(localEntries)
@@ -108,18 +108,18 @@ extends Observing, MainService, Service.StoppableByRequest:
   /** Compares the directory with the Controller's repo and sends the difference.
    * Parses each file, so it may take some time for a big configuration directory. */
   private def controllerDiff(localEntries: Seq[DirectoryReader.Entry])
-  : Task[Checked[InventoryItemDiff_]] =
+  : IO[Checked[InventoryItemDiff_]] =
     for
-      pair <- Task.parZip2(readLocalItems(localEntries.map(_.file)), fetchControllerItems)
+      pair <- IO.parZip2(readLocalItems(localEntries.map(_.file)), fetchControllerItems)
       (checkedLocalItemSeq, controllerItems) = pair
     yield
       checkedLocalItemSeq.map(
         InventoryItemDiff.diff(_, controllerItems, ignoreVersion = true))
 
-  private def readLocalItems(files: Seq[Path]): Task[Checked[Seq[InventoryItem]]] =
-    Task(typedSourceReader.readItems(files))
+  private def readLocalItems(files: Seq[Path]): IO[Checked[Seq[InventoryItem]]] =
+    IO(typedSourceReader.readItems(files))
 
-  def updateControllerConfiguration(versionId: Option[VersionId] = None): Task[Checked[Completed]] =
+  def updateControllerConfiguration(versionId: Option[VersionId] = None): IO[Checked[Completed]] =
     for
       _ <- loginUntilReachable
       last = lastEntries.get()
@@ -137,10 +137,10 @@ extends Observing, MainService, Service.StoppableByRequest:
         } else
           Right(completed))
 
-  protected lazy val loginUntilReachable: Task[Completed] =
-    Task.defer:
+  protected lazy val loginUntilReachable: IO[Completed] =
+    IO.defer:
       if httpControllerApi.hasSession then
-        Task.completed
+        IO.completed
       else
         httpControllerApi.loginUntilReachable(retryLoginDurations)
           .map { completed =>
@@ -149,9 +149,9 @@ extends Observing, MainService, Service.StoppableByRequest:
           }
 
   private def execute(versionId: Option[VersionId], diff: InventoryItemDiff_)
-  : Task[Checked[Completed]] =
+  : IO[Checked[Completed]] =
     if diff.isEmpty && versionId.isEmpty then
-      Task(Checked.completed)
+      IO(Checked.completed)
     else
       val v = versionId getOrElse newVersionId()
       logUpdate(v, diff)
@@ -161,11 +161,11 @@ extends Observing, MainService, Service.StoppableByRequest:
     itemSigner: ItemSigner[SignableItem],
     versionId: VersionId,
     diff: InventoryItemDiff_)
-  : Task[Checked[Completed]] =
-    val addVersion = Observable.fromIterable(
+  : IO[Checked[Completed]] =
+    val addVersion = Stream.fromIterable(
       diff.containsVersionedItem ? AddVersion(versionId))
 
-    val addOrChange = Observable
+    val addOrChange = Stream
       .fromIterable(diff.addedOrChanged)
       .map:
         case item: VersionedItem => item.withVersion(versionId)
@@ -174,7 +174,7 @@ extends Observing, MainService, Service.StoppableByRequest:
         case item: UnsignedSimpleItem => ItemOperation.AddOrChangeSimple(item)
         case item: SignableItem => ItemOperation.AddOrChangeSigned(itemSigner.toSignedString(item))
 
-    val remove = Observable.fromIterable(diff.removed).map(ItemOperation.Remove(_))
+    val remove = Stream.fromIterable(diff.removed).map(ItemOperation.Remove(_))
 
     controllerApi.updateItems(addVersion ++ addOrChange ++ remove)
 
@@ -184,7 +184,7 @@ extends Observing, MainService, Service.StoppableByRequest:
     for o <- diff.addedOrChanged.map(_.path: InventoryItemPath).sorted do
       logger.info(s"AddOrChange $o")
 
-  private def fetchControllerItems: Task[Iterable[InventoryItem]] =
+  private def fetchControllerItems: IO[Iterable[InventoryItem]] =
     httpControllerApi
       .retryUntilReachable()(
         httpControllerApi.snapshot())
@@ -192,8 +192,8 @@ extends Observing, MainService, Service.StoppableByRequest:
         !o.isInstanceOf[WorkflowPathControl] &&
           !o.isInstanceOf[WorkflowControl]))
 
-  private def readDirectory: Task[Vector[DirectoryReader.Entry]] =
-    Task(DirectoryReader.entries(conf.liveDirectory).toVector)
+  private def readDirectory: IO[Vector[DirectoryReader.Entry]] =
+    IO(DirectoryReader.entries(conf.liveDirectory).toVector)
 
   private def toItemDiff(diff: PathSeqDiff): Checked[InventoryItemDiff_] =
     val checkedAddedOrChanged = typedSourceReader.readItems(diff.added ++ diff.changed)
@@ -217,16 +217,16 @@ object Provider:
     SimpleItemReader(Calendar))
 
   def resource(conf: ProviderConfiguration)(implicit scheduler: Scheduler)
-  : Resource[Task, Provider] =
+  : Resource[IO, Provider] =
     for
       actorSystem <- Pekkos.actorSystemResource("Providor", conf.config)
-      iox <- IOExecutor.resource[Task](conf.config, "Provider")
+      iox <- IOExecutor.resource[IO](conf.config, "Provider")
       provider <- resource2(conf)(scheduler, iox, actorSystem)
     yield provider
 
   private def resource2(conf: ProviderConfiguration)
     (implicit scheduler: Scheduler, iox: IOExecutor, actorSystem: ActorSystem)
-  : Resource[Task, Provider] =
+  : Resource[IO, Provider] =
     val userAndPassword: Option[UserAndPassword] = for
       userName <- conf.config.optionAs[String]("js7.provider.controller.user")
       password <- conf.config.optionAs[String]("js7.provider.controller.password")
@@ -240,7 +240,7 @@ object Provider:
           conf.httpsConfig))
 
       itemSigner = toItemSigner(conf).orThrow
-      provider <- Service.resource(Task(new Provider(itemSigner, api, controllerApi, conf)))
+      provider <- Service.resource(IO(new Provider(itemSigner, api, controllerApi, conf)))
     yield provider
 
   private def toItemSigner(conf: ProviderConfiguration): Checked[ItemSigner[SignableItem]] =

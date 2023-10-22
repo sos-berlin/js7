@@ -2,8 +2,8 @@ package js7.base.log
 
 import cats.effect.Resource
 import js7.base.utils.ScalaUtils.implicitClass
-import monix.eval.Task
-import monix.reactive.Observable
+import cats.effect.IO
+import fs2.Stream
 import scala.reflect.ClassTag
 import sourcecode.{FileName, Line, Name, Pkg}
 
@@ -45,55 +45,55 @@ object Logger
           logger.log(logLevelToScribe(level), message, Some(throwable))
         }
 
-      def debugTask[A](task: Task[A])/*(implicit src: sourcecode.Name)*/: Task[A] =
-        task
+      def debugIO[A](io: IO[A])/*(implicit src: sourcecode.Name)*/: IO[A] =
+        io
 
-      def debugTask[A](functionName: String, args: => Any = "")(task: Task[A]): Task[A] =
-        task
+      def debugIO[A](functionName: String, args: => Any = "")(io: IO[A]): IO[A] =
+        io
 
-      def debugTaskWithResult[A](task: Task[A])/*(implicit src: sourcecode.Name)*/: Task[A] =
-        task
+      def debugIOWithResult[A](io: IO[A])/*(implicit src: sourcecode.Name)*/: IO[A] =
+        io
 
-      def debugTaskWithResult[A](
+      def debugIOWithResult[A](
         function: String,
         args: => Any = "",
         result: A => Any = identity[A](_))
-        (task: Task[A])
-      : Task[A] =
-        task
+        (io: IO[A])
+      : IO[A] =
+        io
 
-      def traceTask[A](task: Task[A])/*(implicit src: sourcecode.Name)*/: Task[A] =
-        task
+      def traceIO[A](io: IO[A])/*(implicit src: sourcecode.Name)*/: IO[A] =
+        io
 
-      def traceTask[A](function: String, args: => Any = "")(task: Task[A]): Task[A] =
-        task
+      def traceIO[A](function: String, args: => Any = "")(io: IO[A]): IO[A] =
+        io
 
-      def traceTaskWithResult[A](task: Task[A])(implicit src: sourcecode.Name): Task[A] =
-        traceTaskWithResult[A](src.value)(task)
+      def traceIOWithResult[A](io: IO[A])(implicit src: sourcecode.Name): IO[A] =
+        traceIOWithResult[A](src.value)(io)
 
-      def traceTaskWithResult[A](
+      def traceIOWithResult[A](
         function: String,
         args: => Any = "",
         result: A => Any = identity[A](_))
-        (task: Task[A])
-      : Task[A] =
-        task
+        (io: IO[A])
+      : IO[A] =
+        io
 
-      def debugResource[A](resource: Resource[Task, A])(implicit src: sourcecode.Name)
-      : Resource[Task, A] =
+      def debugResource[A](resource: Resource[IO, A])(implicit src: sourcecode.Name)
+      : Resource[IO, A] =
         debugResource(src.value)(resource)
 
-      def debugResource[A](function: String, args: => Any = "")(resource: Resource[Task, A])
-      : Resource[Task, A] =
+      def debugResource[A](function: String, args: => Any = "")(resource: Resource[IO, A])
+      : Resource[IO, A] =
         resource
 
-      def debugObservable[A](observable: Observable[A])/*(implicit src: sourcecode.Name)*/
-      : Observable[A] =
-        observable
+      def debugStream[A](stream: Stream[IO, A])/*(implicit src: sourcecode.Name)*/
+      : Stream[IO, A] =
+        stream
 
-      def debugObservable[A](function: String, args: => Any = "")(observable: Observable[A])
-      : Observable[A] =
-        observable
+      def debugStream[A](function: String, args: => Any = "")(stream: Stream[IO, A])
+      : Stream[IO, A] =
+        stream
     }
   }
 

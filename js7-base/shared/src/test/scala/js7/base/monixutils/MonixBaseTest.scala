@@ -8,12 +8,12 @@ import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CloseableIterator
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.traced
 import monix.execution.atomic.AtomicInt
 import monix.execution.schedulers.TestScheduler
-import monix.reactive.Observable
+import fs2.Stream
 import scala.concurrent.TimeoutException
 import scala.concurrent.duration.*
 
@@ -24,14 +24,14 @@ final class MonixBaseTest extends OurAsyncTestSuite
 {
   "maybeTimeout" - {
     "Duration.Inf" in {
-      Task(3).delayExecution(200.ms)
+      IO(3).delayBy(200.ms)
         .maybeTimeout(Duration.Inf)
         .map(o => assert(o == 3))
         .runToFuture
     }
 
     "FiniteDuration" in {
-      Task(3).delayExecution(99.s)
+      IO(3).delayBy(99.s)
         .maybeTimeout(0.s)
         .map(_ => assert(false))
         .onErrorHandle(t => assert(t.isInstanceOf[TimeoutException]))
@@ -44,8 +44,8 @@ final class MonixBaseTest extends OurAsyncTestSuite
       "Once" in {
         val scheduler = TestScheduler()
         var called = 0
-        val future = Task.sleep(10.s)
-          .whenItTakesLonger(3.s)(Task {
+        val future = IO.sleep(10.s)
+          .whenItTakesLonger(3.s)(IO {
             called += 1
           })
           .runToFuture(scheduler)
@@ -62,8 +62,8 @@ final class MonixBaseTest extends OurAsyncTestSuite
       "Zero duration is ignoried" in {
         val scheduler = TestScheduler()
         var called = 0
-        val future = Task.sleep(10.s)
-          .whenItTakesLonger(0.s)(Task {
+        val future = IO.sleep(10.s)
+          .whenItTakesLonger(0.s)(IO {
             called += 1
           })
           .runToFuture(scheduler)
@@ -77,8 +77,8 @@ final class MonixBaseTest extends OurAsyncTestSuite
       "Repeatedly" in {
         val scheduler = TestScheduler()
         var called = Vector.empty[FiniteDuration]
-        val future = Task.sleep(20.s)
-          .whenItTakesLonger(Iterator(3.s, 5.s))(duration => Task {
+        val future = IO.sleep(20.s)
+          .whenItTakesLonger(Iterator(3.s, 5.s))(duration => IO {
             called :+= duration
           })
           .runToFuture(scheduler)
@@ -98,8 +98,8 @@ final class MonixBaseTest extends OurAsyncTestSuite
       "Empty sequence" in {
         val scheduler = TestScheduler()
         var called = false
-        val future = Task.sleep(10.s)
-          .whenItTakesLonger(Nil)(_ => Task {
+        val future = IO.sleep(10.s)
+          .whenItTakesLonger(Nil)(_ => IO {
             called = true
           })
           .runToFuture(scheduler)
@@ -111,8 +111,8 @@ final class MonixBaseTest extends OurAsyncTestSuite
       "Zero duration as first element" in {
         val scheduler = TestScheduler()
         var called = 0
-        val future = Task.sleep(10.s)
-          .whenItTakesLonger(Iterator(0.s, 1.s))(_ => Task {
+        val future = IO.sleep(10.s)
+          .whenItTakesLonger(Iterator(0.s, 1.s))(_ => IO {
             called += 1
           })
           .runToFuture(scheduler)
@@ -124,8 +124,8 @@ final class MonixBaseTest extends OurAsyncTestSuite
       "Zero duration" in {
         val scheduler = TestScheduler()
         var called = 0
-        val future = Task.sleep(10.s)
-          .whenItTakesLonger(Iterator(1.s, 0.s, 1.s))(_ => Task {
+        val future = IO.sleep(10.s)
+          .whenItTakesLonger(Iterator(1.s, 0.s, 1.s))(_ => IO {
             called += 1
           })
           .runToFuture(scheduler)
@@ -137,8 +137,8 @@ final class MonixBaseTest extends OurAsyncTestSuite
       "Negative duration" in {
         val scheduler = TestScheduler()
         var called = 0
-        val future = Task.sleep(10.s)
-          .whenItTakesLonger(Iterator(1.s, -1.s, 1.s))(_ => Task {
+        val future = IO.sleep(10.s)
+          .whenItTakesLonger(Iterator(1.s, -1.s, 1.s))(_ => IO {
             called += 1
           })
           .runToFuture(scheduler)
@@ -156,8 +156,8 @@ final class MonixBaseTest extends OurAsyncTestSuite
       "Cancel" in {
         val scheduler = TestScheduler()
         var called = 0
-        val future = Task.sleep(10.s)
-          .whenItTakesLonger(Iterator(1.s))(_ => Task {
+        val future = IO.sleep(10.s)
+          .whenItTakesLonger(Iterator(1.s))(_ => IO {
             called += 1
           })
           .runToFuture(scheduler)
@@ -174,10 +174,10 @@ final class MonixBaseTest extends OurAsyncTestSuite
     }
   }
 
-  "Task[Checked[x]]" -  {
+  "IO[Checked[x]]" -  {
     "materializeIntoChecked" - {
       "Right(value)" in {
-        Task.pure(Checked(1))
+        IO.pure(Checked(1))
           .materializeIntoChecked
           .runToFuture
           .map(o =>
@@ -185,7 +185,7 @@ final class MonixBaseTest extends OurAsyncTestSuite
       }
 
       "Left(problem)" in {
-        Task.pure(Left(Problem("PROBLEM")): Checked[Int])
+        IO.pure(Left(Problem("PROBLEM")): Checked[Int])
           .materializeIntoChecked
           .runToFuture
           .map(o =>
@@ -193,7 +193,7 @@ final class MonixBaseTest extends OurAsyncTestSuite
       }
 
       "exception" in {
-        Task(sys.error("ERROR"): Checked[Int])
+        IO(sys.error("ERROR"): Checked[Int])
           .materializeIntoChecked
           .runToFuture
           .map(o =>
@@ -203,7 +203,7 @@ final class MonixBaseTest extends OurAsyncTestSuite
 
     "orThrow" - {
       "Right(value)" in {
-        Task.pure(Checked(1))
+        IO.pure(Checked(1))
           .orThrow
           .runToFuture
           .map(o =>
@@ -211,7 +211,7 @@ final class MonixBaseTest extends OurAsyncTestSuite
       }
 
       "Left(problem)" in {
-        Task.pure(Left(Problem("PROBLEM")): Checked[Int])
+        IO.pure(Left(Problem("PROBLEM")): Checked[Int])
           .orThrow
           .materialize
           .map(_.failed.get.asInstanceOf[ProblemException].problem)
@@ -221,7 +221,7 @@ final class MonixBaseTest extends OurAsyncTestSuite
       }
 
       "exception" in {
-        Task(sys.error("ERROR"): Checked[Int])
+        IO(sys.error("ERROR"): Checked[Int])
           .orThrow
           .materialize
           .map(_.failed.get)
@@ -232,7 +232,7 @@ final class MonixBaseTest extends OurAsyncTestSuite
     }
   }
 
-  "closeableIteratorToObservable" in {
+  "closeableIteratorToStream" in {
     var closed = false
     val iterator = new CloseableIterator[Int] {
       private val it = List(1, 2, 3).iterator
@@ -241,7 +241,7 @@ final class MonixBaseTest extends OurAsyncTestSuite
       def next() = it.next()
     }
     assert(!closed)
-    closeableIteratorToObservable(iterator).toListL
+    closeableIteratorToStream(iterator).toListL
       .runToFuture.map { result =>
         assert(result == List(1, 2, 3))
         assert(closed)
@@ -263,23 +263,23 @@ final class MonixBaseTest extends OurAsyncTestSuite
     }
   }
 
-  "Task" - {
+  "IO" - {
     "when, unless" in {
       val list = List(1, 2, 3)
-      val task =
+      val io =
         for
-          whenTrue <- Task(list) when true
-          whenFalse <- Task(list) when false
-          unlessTrue <- Task(list) unless true
-          unlessFalse <- Task(list) unless false
+          whenTrue <- IO(list) when true
+          whenFalse <- IO(list) when false
+          unlessTrue <- IO(list) unless true
+          unlessFalse <- IO(list) unless false
         yield
           assert(whenTrue == list && whenFalse == Nil &&
             unlessTrue == Nil && unlessFalse == list)
-      task.runToFuture
+      io.runToFuture
     }
 
-    "durationOfTask" in {
-      durationOfTask(Task.pure(7).delayResult(10.ms))
+    "durationOfIO" in {
+      durationOfIO(IO.pure(7).delayResult(10.ms))
         .map(o =>
           assert(o._1 == 7 && o._2 >= 10.ms))
         .runToFuture
@@ -288,50 +288,50 @@ final class MonixBaseTest extends OurAsyncTestSuite
     "raceFold" - {
       "canceled" in {
         @volatile var canceled = false
-        Task.never
-          .doOnCancel(Task {
+        IO.never
+          .doOnCancel(IO {
             canceled = true
             Logger[this.type].info(s"raceFold canceled")
           })
-          .raceFold(Task.unit)
+          .raceFold(IO.unit)
           .map(result => assert(result.getClass == classOf[Unit] /*&& canceled NOT RELIABLE ???*/))
           .runToFuture
       }
 
       "not canceled" in {
         @volatile var cancelerIsCanceled = false
-        Task(7)
-          .raceFold(Task.never.doOnCancel(Task {
+        IO(7)
+          .raceFold(IO.never.doOnCancel(IO {
             cancelerIsCanceled = true // The canceler will not be canceld
           }))
-          .<*(Task.sleep(100.ms))
+          .<*(IO.sleep(100.ms))
           .map(result => assert(result == 7 && cancelerIsCanceled))
           .runToFuture
       }
     }
   }
 
-  "Observable" - {
+  "Stream" - {
     "to(List)" in {
-      Observable(1, 2, 3).toL(List)
+      Stream(1, 2, 3).toL(List)
         .map((o: List[Int]) => assert(o  == List(1, 2, 3)))
         .runToFuture
     }
 
     "to(Vector)" in {
-      Observable(1, 2, 3).toL(Vector)
+      Stream(1, 2, 3).toL(Vector)
         .map((o: Vector[Int]) => assert(o  == Vector(1, 2, 3)))
         .runToFuture
     }
 
     "to(Set)" in {
-      Observable(1, 2, 2, 3).toL(Set)
+      Stream(1, 2, 2, 3).toL(Set)
         .map((o: Set[Int]) => assert(o  == Set(1, 2, 3)))
         .runToFuture
     }
 
     "tapEach catches exception" in {
-      Observable.range(1, 100)
+      Stream.range(1, 100)
         .tapEach {
           case 2 => throw new IllegalArgumentException("TEST")
           case _ =>
@@ -344,8 +344,8 @@ final class MonixBaseTest extends OurAsyncTestSuite
 
     "mapParallelBatch" in {
       val n = 7777
-      Observable.range(0, n)
-        .mapParallelOrdered(sys.runtime.availableProcessors)(o => Task(o * -1))
+      Stream.range(0, n)
+        .mapParallelOrdered(sys.runtime.availableProcessors)(o => IO(o * -1))
         .toListL
         .map(list => assert(list == (0 until n).map(_ * -1)))
         .runToFuture
@@ -353,7 +353,7 @@ final class MonixBaseTest extends OurAsyncTestSuite
 
     "mapParallelUnorderedBatch" in {
       val n = 7777
-      Observable.range(0, n)
+      Stream.range(0, n)
         .mapParallelUnorderedBatch()(_ * -1)
         .toListL
         .map(list => assert(list.toSet == (0 until n).map(_ * -1).toSet))
@@ -361,7 +361,7 @@ final class MonixBaseTest extends OurAsyncTestSuite
     }
 
     "updateState" in {
-      Observable(1, 2, 3, 4, 5)
+      Stream(1, 2, 3, 4, 5)
         .updateState(0) { case (state, int) => state + int }
         .takeWhileInclusive(_._1 != 10)
         .map(_._2)
@@ -371,7 +371,7 @@ final class MonixBaseTest extends OurAsyncTestSuite
     }
 
     "updateStateWhileInclusive" in {
-      Observable(1, 2, 3, 4, 5)
+      Stream(1, 2, 3, 4, 5)
         .updateStateWhileInclusive(0)(_ != 10) { case (state, int) => state + int }
         .toListL
         .map(list => assert(list == List(1, 2, 3, 4)))
@@ -383,7 +383,7 @@ final class MonixBaseTest extends OurAsyncTestSuite
       var duration: FiniteDuration = null
       var count: Long = 0
       var exitCase: ExitCase[Throwable] = null
-      Observable.range(0, n)
+      Stream.range(0, n)
         .logTiming(_ => 2, (d, n, e) => {
           duration = d
           count = n
@@ -394,28 +394,28 @@ final class MonixBaseTest extends OurAsyncTestSuite
         .runToFuture
     }
 
-    "Observable" - {
+    "Stream" - {
       "deferAction" in {
         val iterator = Iterator.from(1)
-        val task = Observable.deferAction((_: Scheduler) => Observable.pure(iterator.next())).toListL
+        val io = Stream.deferAction((_: Scheduler) => Stream.emit(iterator.next())).toListL
         for
-          a <- task.runToFuture
-          b <- task.runToFuture
+          a <- io.runToFuture
+          b <- io.runToFuture
         yield assert(a == List(1) && b == List(2))
       }
     }
   }
 
-  "No Observable.tailRecM  memory leak" in {
-    def obs(i: Int): Observable[Int] =
-      Observable.pure(-i)
+  "No Stream.tailRecM  memory leak" in {
+    def obs(i: Int): Stream[IO, Int] =
+      Stream.emit(-i)
 
-    val observable: Observable[Int] =
-      Observable.tailRecM(0)(i => obs(i).map(Right(_)) ++ Observable.pure(Left(i + 1)))
+    val stream: Stream[IO, Int] =
+      Stream.tailRecM(0)(i => obs(i).map(Right(_)) ++ Stream.emit(Left(i + 1)))
 
     val mem = Runtime.getRuntime.totalMemory
     if mem >= 50_000_000 then pending
     val n = mem / 4
-    observable.drop(n).headL.map(i => assert(i == -n)).runToFuture
+    stream.drop(n).headL.map(i => assert(i == -n)).runToFuture
   }
 }

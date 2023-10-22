@@ -584,6 +584,6 @@ object ControllerStateExecutorTest
     }
 
     def toSnapshot: Seq[Any] =
-      controllerState.toSnapshotObservable.toListL.runSyncUnsafe()
+      controllerState.toSnapshotStream.toListL.runSyncUnsafe()
   }
 }

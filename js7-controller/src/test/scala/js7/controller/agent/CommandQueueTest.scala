@@ -3,11 +3,12 @@ package js7.controller.agent
 import cats.syntax.traverse.*
 import com.typesafe.scalalogging.Logger as ScalaLogger
 import js7.agent.data.commands.AgentCommand
+import cats.effect.IO
 import js7.agent.data.commands.AgentCommand.Batch
 import js7.base.log.Logger
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.CatsBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.controller.agent.AgentDriver.Queueable
 import js7.controller.agent.CommandQueue.QueueableResponse
@@ -19,7 +20,6 @@ import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tester.ScalaTestUtils.awaitAndAssert
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import monix.execution.atomic.AtomicInt
@@ -36,10 +36,10 @@ final class CommandQueueTest extends OurTestSuite:
     val commandQueueFailed = mutable.Buffer[(Vector[Queueable], Problem)]()
     val commandQueue = new MyCommandQueue(logger, batchSize = 3):
       protected def asyncOnBatchSucceeded(queueableResponses: Seq[QueueableResponse]) =
-        Task(commandQueueSucceeded += queueableResponses)
+        IO(commandQueueSucceeded += queueableResponses)
 
       protected def asyncOnBatchFailed(queueables: Vector[Queueable], problem: Problem) =
-        Task(commandQueueFailed += ((queueables, problem)))
+        IO(commandQueueFailed += ((queueables, problem)))
 
     val expected = mutable.Buffer[Seq[QueueableResponse]]()
 
@@ -92,10 +92,10 @@ final class CommandQueueTest extends OurTestSuite:
     // because MarkOrder is executeted asynchronously and effect occurs later.
     val queue = new MyCommandQueue(logger, batchSize = 3):
       protected def asyncOnBatchSucceeded(queueableResponses: Seq[QueueableResponse]) =
-        Task.unit
+        IO.unit
 
       protected def asyncOnBatchFailed(queueables: Vector[Queueable], problem: Problem) =
-        Task.unit
+        IO.unit
     var ok = queue.enqueue(Queueable.MarkOrder(OrderId("ORDER"), OrderMark.Suspending())).await(99.s)
     assert(ok)
     ok = queue.enqueue(Queueable.MarkOrder(OrderId("ORDER"), OrderMark.Suspending())).await(99.s)
@@ -142,4 +142,4 @@ object CommandQueueTest:
     protected def commandParallelism = 2
 
     protected def executeCommand(command: AgentCommand.Batch) =
-      Task(Right(Batch.Response(Vector.fill(command.commands.size)(Right(AgentCommand.Response.Accepted)))))
+      IO(Right(Batch.Response(Vector.fill(command.commands.size)(Right(AgentCommand.Response.Accepted)))))

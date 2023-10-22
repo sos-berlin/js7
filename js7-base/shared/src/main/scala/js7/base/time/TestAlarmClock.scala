@@ -4,9 +4,8 @@ import js7.base.log.Logger
 import js7.base.time.AlarmClock.{ClockChecking, Simple}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
-import monix.execution.Cancelable
-import monix.execution.atomic.AtomicLong
-import monix.execution.schedulers.TestScheduler
+import js7.base.utils.Atomic
+import js7.base.utils.Atomic.extensions.*
 import scala.concurrent.duration.FiniteDuration
 
 trait TestAlarmClock extends AlarmClock:
@@ -34,7 +33,7 @@ object TestAlarmClock:
 
     override def scheduleOnce(delay: FiniteDuration)(callback: => Unit)
       (implicit fullName: sourcecode.FullName)
-    : Cancelable =
+    : Runnable =
       logger.trace(s"scheduleOnce ${delay.pretty} for ${fullName.value}")
       super.scheduleOnce(delay):
         logger.trace("🔔 scheduled " + delay.pretty)
@@ -42,7 +41,7 @@ object TestAlarmClock:
 
     override def scheduleAt(at: Timestamp)(callback: => Unit)
       (implicit fullName: sourcecode.FullName)
-    : Cancelable =
+    : Runnable =
       logger.trace(s"scheduleAt $at for ${fullName.value}")
       super.scheduleAt(at):
         logger.trace(s"🔔 scheduled $at for ${fullName.value}")
@@ -53,9 +52,9 @@ object TestAlarmClock:
     protected def start: Timestamp
     protected final val scheduler = TestScheduler()
 
-    private val clock = AtomicLong(start.toEpochMilli)
+    private val clock = Atomic(start.toEpochMilli)
 
-    final def epochMilli() = clock()
+    final def epochMilli() = clock.get
 
     override def lock[A](body: => A): A =
       synchronized(body)

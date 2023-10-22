@@ -16,7 +16,7 @@ import js7.data.value.expression.Scope.evalExpressionMap
 import js7.launcher.ProcessOrder
 import js7.launcher.internal.InternalJob.{JobContext, Step}
 import js7.launcher.internal.InternalJobLauncher.*
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler
 import scala.util.control.NonFatal
 
@@ -33,22 +33,22 @@ extends JobLauncher:
     toInstantiator(executable.className)
       .flatMap(_()))
 
-  val start: Task[Checked[Unit]] =
-    Task { internalJobLazy() }
+  val start: IO[Checked[Unit]] =
+    IO { internalJobLazy() }
       .flatMapT(_.start)
       .tapEval:
-        case Left(problem) => Task(
+        case Left(problem) => IO(
           logger.debug(s"${executable.className} start: $problem", problem.throwableOption.orNull))
-        case Right(_) => Task.unit
+        case Right(_) => IO.unit
       .memoize
 
-  val stop: Task[Unit] =
-    Task.defer {
-      internalJobLazy.value.fold(_ => Task.unit, _.stop)
+  val stop: IO[Unit] =
+    IO.defer {
+      internalJobLazy.value.fold(_ => IO.unit, _.stop)
     }.memoize
 
   def toOrderProcess(processOrder: ProcessOrder) =
-    Task:
+    IO:
       for
         internalJob <- internalJobLazy()
         step <- toStep(processOrder)

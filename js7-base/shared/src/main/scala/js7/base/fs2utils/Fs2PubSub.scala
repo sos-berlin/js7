@@ -7,16 +7,16 @@ import fs2.Stream
 import fs2.concurrent.Topic
 import js7.base.catsutils.UnsafeMemoizable
 
-final class Fs2PubSub[F[_]: Concurrent: UnsafeMemoizable, A <: AnyRef]:
+final class Fs2PubSub[F[_]: UnsafeMemoizable, A <: AnyRef](F: Concurrent[F]):
 
   private val Initial = Fs2PubSub.Initial.asInstanceOf[A]
   private val EOF = Fs2PubSub.EOF.asInstanceOf[A]
 
   private val topic: F[Topic[F, A]] =
-    Topic[F, A](Initial).unsafeMemoize
+    Topic[F, A](F.delay(Initial)).unsafeMemoize
 
   def publish(a: A): F[Unit] =
-    topic.flatMap(_.publish1(a))
+    topic.flatMap(_.publish1(a).void)
 
   def complete: F[Unit] =
     publish(EOF)

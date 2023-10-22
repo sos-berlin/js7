@@ -2,7 +2,7 @@ package js7.tests
 
 import java.net.ServerSocket
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
 import js7.data.agent.AgentRefStateEvent.AgentCouplingFailed
@@ -18,7 +18,7 @@ import monix.execution.Scheduler.Implicits.traced
   * @author Joacim Zschimmer
   */
 final class TerminateWithUnknownAgentTest extends OurTestSuite, ControllerAgentForScalaTest:
-  
+
   private lazy val socket = new ServerSocket(0, /*backlog=*/1)
   protected val items = Seq(agentRef, workflow)
   protected val agentPaths = Nil

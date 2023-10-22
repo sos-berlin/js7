@@ -1,6 +1,6 @@
 package js7.cluster
 
-import cats.effect.concurrent.Deferred
+import cats.effect.kernel.Deferred
 import cats.effect.{ExitCase, Resource}
 import cats.syntax.flatMap.*
 import js7.base.eventbus.EventPublisher
@@ -24,7 +24,7 @@ import js7.data.cluster.ClusterWatchProblems.{ClusterNodeLossNotConfirmedProblem
 import js7.data.cluster.ClusterWatchRequest.RequestId
 import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
 import js7.data.cluster.{ClusterEvent, ClusterTiming, ClusterWatchCheckEvent, ClusterWatchCheckState, ClusterWatchId, ClusterWatchRequest}
-import monix.eval.Task
+import cats.effect.IO
 import monix.execution.Scheduler
 import scala.annotation.tailrec
 import scala.util.Random
@@ -43,7 +43,7 @@ extends Service.StoppableByRequest:
       / 1000_000 * 1000_000)
   private val lock = AsyncLock()
   private val _requested = Atomic(None: Option[Requested])
-  private val pubsub = new Fs2PubSub[Task, ClusterWatchRequest]
+  private val pubsub = new Fs2PubSub[IO, ClusterWatchRequest]
 
   private val clusterWatchUniquenessChecker = new ClusterWatchUniquenessChecker(
     clusterConf.clusterWatchUniquenessMemorySize)
@@ -54,13 +54,13 @@ extends Service.StoppableByRequest:
       untilStopRequested *> pubsub.complete)
 
   def checkClusterState(clusterState: HasNodes, clusterWatchIdChangeAllowed: Boolean)
-  : Task[Checked[Option[ClusterWatchConfirmation]]] =
+  : IO[Checked[Option[ClusterWatchConfirmation]]] =
     if !clusterState.setting.clusterWatchId.isDefined
       && !clusterWatchIdChangeAllowed
       && !clusterState.isInstanceOf[Coupled]
       && !clusterState.isInstanceOf[PassiveLost]
       && !clusterState.isInstanceOf[FailedOver] then
-      Task.right(None)
+      IO.right(None)
     else
       initializeCurrentClusterWatchId(clusterState) *>
         CorrelId.use(correlId =>
@@ -70,8 +70,8 @@ extends Service.StoppableByRequest:
             clusterWatchIdChangeAllowed = clusterWatchIdChangeAllowed
           ).map(_.map(Some(_))))
 
-  private def initializeCurrentClusterWatchId(clusterState: HasNodes): Task[Unit] =
-    Task:
+  private def initializeCurrentClusterWatchId(clusterState: HasNodes): IO[Unit] =
+    IO:
       if currentClusterWatchId.isEmpty then
         for clusterWatchId <- clusterState.setting.clusterWatchId do
           // Set expiration time on start to inhibit change of registered ClusterWatchId when
@@ -80,12 +80,12 @@ extends Service.StoppableByRequest:
 
   def applyEvent(event: ClusterEvent, clusterState: HasNodes,
     clusterWatchIdChangeAllowed: Boolean = false)
-  : Task[Checked[Option[ClusterWatchConfirmation]]] =
+  : IO[Checked[Option[ClusterWatchConfirmation]]] =
     CorrelId.use { correlId =>
       event match
         case _: ClusterNodesAppointed | _: ClusterCouplingPrepared
           if !clusterState.setting.clusterWatchId.isDefined =>
-          Task.right(None)
+          IO.right(None)
 
         case _ =>
           check(
@@ -99,17 +99,17 @@ extends Service.StoppableByRequest:
     clusterWatchId: Option[ClusterWatchId],
     toRequest: RequestId => ClusterWatchRequest,
     clusterWatchIdChangeAllowed: Boolean)
-  : Task[Checked[ClusterWatchConfirmation]] =
+  : IO[Checked[ClusterWatchConfirmation]] =
     if !clusterWatchIdChangeAllowed && !clusterWatchId.isDefined then
-      Task.left(NoClusterWatchProblem)
+      IO.left(NoClusterWatchProblem)
     else
-      Task.defer:
+      IO.defer:
         val reqId = RequestId(nextRequestId.getAndIncrement())
         val request = toRequest(reqId)
         lock.lock(
-          logger.traceTaskWithResult("check",
+          logger.traceIOWithResult("check",
             s"$request${!clusterWatchIdChangeAllowed ?? ",clusterWatchIdChangeAllowed=false"}",
-            task = check2(
+            body = check2(
               clusterWatchId, request,
               new Requested(clusterWatchId, request,
                 clusterWatchIdChangeAllowed = clusterWatchIdChangeAllowed))))
@@ -118,20 +118,20 @@ extends Service.StoppableByRequest:
     clusterWatchId: Option[ClusterWatchId],
     request: ClusterWatchRequest,
     requested: Requested)
-  : Task[Checked[ClusterWatchConfirmation]] =
-    Task.defer:
+  : IO[Checked[ClusterWatchConfirmation]] =
+    IO.defer:
       _requested.set(Some(requested))
       val since = now
       val sym = new BlockingSymbol
       pubsub.publish(request)
         .logWhenItTakesLonger(s"ClusterWatch.send($request)")
-        .*>(Task(
+        .*>(IO(
           testEventPublisher.publish(WaitingForConfirmation(request))))
         .*>(requested
           .untilConfirmed
           .timeoutTo(
             timing.clusterWatchReactionTimeout,
-            Task.raiseError(RequestTimeoutException)))
+            IO.raiseError(RequestTimeoutException)))
         .onErrorRestartLoop(()):
           case (RequestTimeoutException, _, retry) =>
             sym.onWarn()
@@ -143,30 +143,30 @@ extends Service.StoppableByRequest:
               " for " + since.elapsed.pretty + "...")
             retry(())
 
-          case (t, _, _) => Task.raiseError(t)
+          case (t, _, _) => IO.raiseError(t)
         .flatTap:
           case Left(problem) =>
-            Task(logger.warn(s"⛔ ClusterWatch rejected ${request.toShortString}: $problem"))
+            IO(logger.warn(s"⛔ ClusterWatch rejected ${request.toShortString}: $problem"))
 
           case Right(confirmation) =>
-            Task:
+            IO:
               if sym.warnLogged then logger.info(
                 s"🟢 ${confirmation.clusterWatchId} finally confirmed ${
                   request.toShortString} after ${since.elapsed.pretty}")
         .guaranteeCase:
-          case ExitCase.Error(t) if sym.warnLogged => Task:
+          case ExitCase.Error(t) if sym.warnLogged => IO:
             logger.warn(
               s"💥 ${request.toShortString} => ${t.toStringWithCauses} · after ${since.elapsed.pretty}")
-          case ExitCase.Canceled if sym.warnLogged => Task:
+          case ExitCase.Canceled if sym.warnLogged => IO:
             logger.info(
               s"⚫ ${request.toShortString} => Canceled after ${since.elapsed.pretty}")
-          case _ => Task.unit
-        .guarantee(Task(
+          case _ => IO.unit
+        .guarantee(IO(
           _requested.set(None)))
 
-  def executeClusterWatchConfirm(confirm: ClusterWatchConfirm): Task[Checked[Unit]] =
-    Task(clusterWatchUniquenessChecker.check(confirm.clusterWatchId, confirm.clusterWatchRunId))
-      .flatMapT(_ => Task(takeRequest(confirm)))
+  def executeClusterWatchConfirm(confirm: ClusterWatchConfirm): IO[Checked[Unit]] =
+    IO(clusterWatchUniquenessChecker.check(confirm.clusterWatchId, confirm.clusterWatchRunId))
+      .flatMapT(_ => IO(takeRequest(confirm)))
       .flatMapT { requested =>
         val confirmation = toConfirmation(confirm)
         (requested.request.maybeEvent, confirmation) match
@@ -181,7 +181,7 @@ extends Service.StoppableByRequest:
             // Keep _requested
             _requested.compareAndSet(None, Some(requested))
             logger.warn(problem.toString)
-            Task.right(())
+            IO.right(())
 
           case _ =>
             for confirmer <- confirm.manualConfirmer do
@@ -189,7 +189,7 @@ extends Service.StoppableByRequest:
                 } has MANUALLY BEEN CONFIRMED by '$confirmer' ‼️")
             requested.confirm(confirmation)
       }
-      .flatMapT(_ => Task {
+      .flatMapT(_ => IO {
         for o <- currentClusterWatchId do o.touch(confirm.clusterWatchId)
         Checked.unit
       })
@@ -250,11 +250,11 @@ extends Service.StoppableByRequest:
                 case _ =>
               Right(requested)
 
-  def onClusterWatchRegistered(clusterWatchId: ClusterWatchId): Task[Unit] =
-    Task:
+  def onClusterWatchRegistered(clusterWatchId: ClusterWatchId): IO[Unit] =
+    IO:
       currentClusterWatchId = Some(CurrentClusterWatchId(clusterWatchId))
 
-  def newStream: Task[fs2.Stream[Task, ClusterWatchRequest]] =
+  def newStream: IO[fs2.Stream[IO, ClusterWatchRequest]] =
     pubsub.newStream // TODO Delete all but the last request at a time. At push-side?
 
   override def toString = "ClusterWatchCounterpart"
@@ -282,8 +282,8 @@ object ClusterWatchCounterpart:
     clusterConf: ClusterConf,
     timing: ClusterTiming,
     testEventPublisher: EventPublisher[Any])
-  : Resource[Task, ClusterWatchCounterpart] =
-    Service.resource(Task.deferAction(scheduler => Task(
+  : Resource[IO, ClusterWatchCounterpart] =
+    Service.resource(IO.deferAction(scheduler => IO(
       new ClusterWatchCounterpart(clusterConf, timing, testEventPublisher)(scheduler))))
 
   /** A request to ClusterWatch yet to be responded. */
@@ -292,12 +292,12 @@ object ClusterWatchCounterpart:
     val request: ClusterWatchRequest,
     val clusterWatchIdChangeAllowed: Boolean):
     def id = request.requestId
-    private val confirmation = Deferred.unsafe[Task, Checked[ClusterWatchConfirmation]]
+    private val confirmation = Deferred.unsafe[IO, Checked[ClusterWatchConfirmation]]
 
-    def untilConfirmed: Task[Checked[ClusterWatchConfirmation]] =
+    def untilConfirmed: IO[Checked[ClusterWatchConfirmation]] =
       confirmation.get
 
-    def confirm(confirm: Checked[ClusterWatchConfirmation]): Task[Checked[Unit]] =
+    def confirm(confirm: Checked[ClusterWatchConfirmation]): IO[Checked[Unit]] =
       confirmation.complete(confirm)
         .materialize/*Ignore duplicate complete*/.as(Checked.unit)
 
