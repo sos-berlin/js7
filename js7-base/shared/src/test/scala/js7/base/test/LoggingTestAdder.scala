@@ -1,6 +1,6 @@
 package js7.base.test
 
-import js7.base.log.LoggingEscapeCodes.{blue, bold, green, orange, resetColor}
+import js7.base.log.LoggingEscapeCodes.{bold, green, magenta, orange, resetColor}
 import js7.base.log.{CorrelId, Logger}
 import js7.base.test.LoggingFreeSpecStringWrapper.{StringWrapper, TaggedAs}
 import js7.base.test.LoggingTestAdder.*
@@ -69,7 +69,7 @@ private final class LoggingTestAdder(suiteName: String) {
 
 private object LoggingTestAdder {
   private val logger = Logger("TEST")
-  private val bar = "⎯" * 72
+  private val bar = "\n" + magenta + "━" * 100 + resetColor
   private val successMarkup = green + bold
   private val pendingMarkup = ""
   private val failureMarkup = orange + bold
@@ -100,7 +100,7 @@ private object LoggingTestAdder {
     private val prefix = nesting.view.reverse.mkString("", " — ", " — ")
 
     def beforeTest(): Unit = {
-      logger.info(eager(s"↘ $blue$bold$prefix$testName$resetColor"))
+      logger.info(eager(s"↘ $magenta$bold$prefix$testName$resetColor"))
       since
     }
 

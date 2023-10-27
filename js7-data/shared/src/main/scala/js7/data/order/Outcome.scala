@@ -30,7 +30,7 @@ object Outcome
 {
   val succeeded: Completed = Succeeded.empty
   val succeededRC0 = Succeeded.returnCode0
-  val failed = new Failed(None, Map.empty)
+  val failed = Failed(None, Map.empty)
 
   def leftToFailed(checked: Checked[Outcome]): Outcome =
     checked match {
@@ -83,7 +83,10 @@ object Outcome
       def rc(returnCode: ReturnCode): A =
         make(NamedValues.rc(returnCode))
 
-      def apply(namedValues: NamedValues = Map.empty): A =
+      def apply(): A =
+        make(Map.empty)
+
+      def apply(namedValues: NamedValues): A =
         make(namedValues)
     }
 
@@ -118,18 +121,30 @@ object Outcome
         make(namedValues)
   }
 
-  final case class Failed(errorMessage: Option[String], namedValues: NamedValues)
+  final case class Failed(
+    errorMessage: Option[String],
+    namedValues: NamedValues,
+    uncatchable: Boolean)
   extends Completed with NotSucceeded
   {
     override def toString =
-      View(errorMessage, namedValues.??).mkString("⚠️ Failed(", ", ", ")")
+      View(uncatchable ? "uncatchable", errorMessage, namedValues.??)
+        .flatten
+        .mkString("⚠️ Failed(", ", ", ")")
 
-    def show = "Failed" + (errorMessage.fold("")("(" + _ + ")"))
+    def show =
+        "Failed" +
+          ((uncatchable || errorMessage.isDefined) ??
+            ("(" + (View(uncatchable ? "uncatchable", errorMessage).flatten.mkString(", ")) + ")"))
   }
   object Failed extends Completed.Companion[Failed]
   {
-    def apply(errorMessage: Option[String]): Failed =
-      Failed(errorMessage, Map.empty)
+    def apply(
+      errorMessage: Option[String] = None,
+      namedValues: NamedValues = Map.empty,
+      uncatchable: Boolean = false)
+    : Failed =
+      new Failed(errorMessage, namedValues, uncatchable)
 
     def fromProblem(problem: Problem, namedValues: NamedValues = NamedValues.empty): Failed =
       Failed(Some(problem.toString), namedValues)
@@ -146,14 +161,16 @@ object Outcome
 
     implicit val jsonEncoder: Encoder.AsObject[Failed] =
       o => JsonObject.fromIterable(
+        ("uncatchable" -> (o.uncatchable ? true).asJson) ::
         ("message" -> o.errorMessage.asJson) ::
         o.namedValues.nonEmpty.thenList("namedValues" -> o.namedValues.asJson))
 
     implicit val jsonDecoder: Decoder[Failed] =
       c => for {
+        uncatchable <- c.getOrElse[Boolean]("uncatchable")(false)
         errorMessage <- c.get[Option[String]]("message")
         namedValues <- c.getOrElse[NamedValues]("namedValues")(Map.empty)
-      } yield Failed(errorMessage, namedValues)
+      } yield Failed(errorMessage, namedValues, uncatchable)
   }
 
   final case class TimedOut(outcome: Outcome.Completed)
@@ -177,17 +194,32 @@ object Outcome
     Killed(Outcome.Failed(Some("Canceled")))
 
   /** No response from job - some other error has occurred. */
-  final case class Disrupted(reason: Disrupted.Reason) extends Outcome with NotSucceeded {
+  final case class Disrupted(reason: Disrupted.Reason, uncatchable: Boolean = false)
+  extends Outcome with NotSucceeded {
     def show = s"Disrupted($reason)"
-    override def toString = "💥 " + show
+    override def toString = "💥 " + (uncatchable ?? "uncatchable ") + show
   }
   object Disrupted {
     def apply(problem: Problem): Disrupted =
-      Disrupted(Other(problem))
+      apply(problem, uncatchable = false)
+
+    def apply(problem: Problem, uncatchable: Boolean): Disrupted =
+      Disrupted(Other(problem), uncatchable)
 
     sealed trait Reason {
       def problem: Problem
     }
+
+    implicit val jsonEncoder: Encoder.AsObject[Disrupted] =
+      o => JsonObject(
+        "reason" -> o.reason.asJson,
+        "uncatchable" -> (o.uncatchable ? true).asJson)
+
+    implicit val jsonDecoder: Decoder[Disrupted] =
+      c => for {
+        problem <- c.get[Disrupted.Reason]("reason")
+        uncatchable <- c.getOrElse[Boolean]("uncatchable")(false)
+      } yield Disrupted(problem, uncatchable)
 
     final case class ProcessLost(problem: Problem) extends Reason
     object ProcessLost {
@@ -214,11 +246,13 @@ object Outcome
   def processLost(problem: Problem): Disrupted =
     Disrupted(ProcessLost(problem))
 
-  sealed trait NotSucceeded extends Outcome
+  sealed trait NotSucceeded extends Outcome {
+    def uncatchable: Boolean
+  }
   object NotSucceeded {
     implicit val jsonCodec: TypedJsonCodec[NotSucceeded] = TypedJsonCodec(
       Subtype[Failed],
-      Subtype(deriveCodec[Disrupted]))
+      Subtype[Disrupted])
   }
 
   private val typedJsonCodec = TypedJsonCodec[Outcome](
@@ -226,7 +260,7 @@ object Outcome
     Subtype[Failed],
     Subtype(deriveCodec[TimedOut]),
     Subtype(deriveCodec[Killed]),
-    Subtype(deriveCodec[Disrupted]))
+    Subtype[Disrupted])
 
   private val predefinedRC0SucceededJson: JsonObject =
     TypedJsonCodec.typeField[Succeeded] +: Succeeded.returnCode0.asJsonObject

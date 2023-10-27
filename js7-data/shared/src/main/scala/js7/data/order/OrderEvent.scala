@@ -446,9 +446,7 @@ object OrderEvent
 
   /** Only intermediate, not persisted. Will be converted to `OrderFailed`, `OrderCaught` or
    * `OrderStopped`,  */
-  final case class OrderFailedIntermediate_(
-    outcome: Option[Outcome.NotSucceeded] = None,
-    uncatchable: Boolean = false)
+  final case class OrderFailedIntermediate_(outcome: Option[Outcome.NotSucceeded] = None)
   extends OrderActorEvent
 
   final case class OrderRetrying(movedTo: Position, delayedUntil: Option[Timestamp] = None)
