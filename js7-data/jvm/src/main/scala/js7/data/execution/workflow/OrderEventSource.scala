@@ -64,7 +64,7 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
   private def checkedNextEvents(order: Order[Order.State])
   : Checked[Seq[KeyedEvent[OrderActorEvent]]] =
     if (order.shouldFail)
-      fail(order)
+      fail(order, uncatchable = order.failedUncatchable)
         .map(_.map(order.id <-: _))
     else
       catchNonFatalFlatten {
@@ -90,9 +90,13 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
                             applyMoveInstructions(idToOrder(orderId), moved)
                               .map(_.map(orderId <-: _))
 
-                          case orderId <-: OrderFailedIntermediate_(outcome, uncatchable) =>
+                          case orderId <-: OrderFailedIntermediate_(outcome) =>
                             // OrderFailedIntermediate_ is used internally only
-                            fail(idToOrder(orderId), outcome, uncatchable)
+                            val uncatchable = outcome match {
+                              case Some(o: Outcome.Failed) => o.uncatchable
+                              case _ => false
+                            }
+                            fail(idToOrder(orderId), outcome, uncatchable = uncatchable)
                               .map(_.map(orderId <-: _))
 
                           case o => Right(o :: Nil)
@@ -163,7 +167,7 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
   private[data] def fail(
     order: Order[Order.State],
     outcome: Option[Outcome.NotSucceeded] = None,
-    uncatchable: Boolean = false)
+    uncatchable: Boolean)
   : Checked[List[OrderActorEvent]] =
     for {
       workflow <- idToWorkflow.checked(order.workflowId)

@@ -30,7 +30,7 @@ object Outcome
 {
   val succeeded: Completed = Succeeded.empty
   val succeededRC0 = Succeeded.returnCode0
-  val failed = new Failed(None, Map.empty)
+  val failed = Failed(None, Map.empty)
 
   def leftToFailed(checked: Checked[Outcome]): Outcome =
     checked match {
@@ -83,7 +83,10 @@ object Outcome
       def rc(returnCode: ReturnCode): A =
         make(NamedValues.rc(returnCode))
 
-      def apply(namedValues: NamedValues = Map.empty): A =
+      def apply(): A =
+        make(Map.empty)
+
+      def apply(namedValues: NamedValues): A =
         make(namedValues)
     }
 
@@ -118,18 +121,28 @@ object Outcome
         make(namedValues)
   }
 
-  final case class Failed(errorMessage: Option[String], namedValues: NamedValues)
+  final case class Failed(
+    errorMessage: Option[String], namedValues: NamedValues, uncatchable: Boolean)
   extends Completed with NotSucceeded
   {
     override def toString =
-      View(errorMessage, namedValues.??).mkString("⚠️ Failed(", ", ", ")")
+      View(uncatchable ? "uncatchable", errorMessage, namedValues.??)
+        .flatten
+        .mkString("⚠️ Failed(", ", ", ")")
 
-    def show = "Failed" + (errorMessage.fold("")("(" + _ + ")"))
+    def show =
+        "Failed" +
+          ((uncatchable || errorMessage.isDefined) ??
+            ("(" + (View(uncatchable ? "uncatchable", errorMessage).flatten.mkString(", ")) + ")"))
   }
   object Failed extends Completed.Companion[Failed]
   {
-    def apply(errorMessage: Option[String]): Failed =
-      Failed(errorMessage, Map.empty)
+    def apply(
+      errorMessage: Option[String] = None,
+      namedValues: NamedValues = Map.empty,
+      uncatchable: Boolean = false)
+    : Failed =
+      new Failed(errorMessage, namedValues, uncatchable)
 
     def fromProblem(problem: Problem, namedValues: NamedValues = NamedValues.empty): Failed =
       Failed(Some(problem.toString), namedValues)
@@ -146,14 +159,16 @@ object Outcome
 
     implicit val jsonEncoder: Encoder.AsObject[Failed] =
       o => JsonObject.fromIterable(
+        ("uncatchable" -> (o.uncatchable ? true).asJson) ::
         ("message" -> o.errorMessage.asJson) ::
         o.namedValues.nonEmpty.thenList("namedValues" -> o.namedValues.asJson))
 
     implicit val jsonDecoder: Decoder[Failed] =
       c => for {
+        uncatchable <- c.getOrElse[Boolean]("uncatchable")(false)
         errorMessage <- c.get[Option[String]]("message")
         namedValues <- c.getOrElse[NamedValues]("namedValues")(Map.empty)
-      } yield Failed(errorMessage, namedValues)
+      } yield Failed(errorMessage, namedValues, uncatchable)
   }
 
   final case class TimedOut(outcome: Outcome.Completed)

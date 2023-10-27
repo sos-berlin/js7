@@ -71,6 +71,13 @@ final class OutcomeTest extends OurTestSuite
           "TYPE": "Failed",
           "namedValues": {}
         }""")
+
+      testJsonDecoder[Outcome](Outcome.Failed(None, Map.empty, uncatchable = true), json"""
+        {
+          "TYPE": "Failed",
+          "uncatchable": true,
+          "namedValues": {}
+        }""")
     }
 
     "Failed complete" in {
