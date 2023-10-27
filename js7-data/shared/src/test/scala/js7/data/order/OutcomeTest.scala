@@ -71,6 +71,13 @@ final class OutcomeTest extends OurTestSuite
           "TYPE": "Failed",
           "namedValues": {}
         }""")
+
+      testJsonDecoder[Outcome](Outcome.Failed(None, Map.empty, uncatchable = true), json"""
+        {
+          "TYPE": "Failed",
+          "uncatchable": true,
+          "namedValues": {}
+        }""")
     }
 
     "Failed complete" in {
@@ -162,9 +169,10 @@ final class OutcomeTest extends OurTestSuite
     }
 
     "Disrupted(Other)" in {
-      testJson[Outcome](Outcome.Disrupted(Problem("OTHER")), json"""
+      testJson[Outcome](Outcome.Disrupted(Problem("OTHER"), uncatchable = true), json"""
         {
           "TYPE": "Disrupted",
+          "uncatchable": true,
           "reason": {
             "TYPE": "Other",
             "problem": {

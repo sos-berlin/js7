@@ -155,7 +155,7 @@ final case class Order[+S <: Order.State](
             historicOutcomes =
               outcome.fold(historicOutcomes)(o => historicOutcomes :+ HistoricOutcome(position, o))))
 
-      case OrderFailedIntermediate_(_, _) =>
+      case OrderFailedIntermediate_(_) =>
         inapplicable  // Intermediate event, internal only
 
       case OrderCatched(movedTo, outcome) =>
@@ -535,13 +535,14 @@ final case class Order[+S <: Order.State](
         else
           inapplicable
 
+  /** An Order being transferred back to Controller, should fail after failure. */
   def shouldFail: Boolean =
     isFailed && isFailable
 
   def isFailed: Boolean =
     lastOutcome match
       // Do not fail but let ExecuteExecutor repeat the job:
-      case Outcome.Disrupted(Outcome.Disrupted.ProcessLost(_)) => false
+      case Outcome.Disrupted(Outcome.Disrupted.ProcessLost(_), _) => false
 
       // Let ExecuteExecutor handle this case (and fail then):
       case Outcome.Killed(_) => !isState[Processed]

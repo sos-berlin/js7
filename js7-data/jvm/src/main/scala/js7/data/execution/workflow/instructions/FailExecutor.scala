@@ -20,8 +20,9 @@ extends EventInstructionExecutor:
                 .toImpureOrderExecutingScope(order, clock.now())
                 .flatMap(messageExpr.evalAsString(_))
                 .fold(_.toString, identity))
-            val outcome = Outcome.Failed(maybeErrorMessage, fail.namedValues)
-            val event = OrderFailedIntermediate_(Some(outcome), uncatchable = fail.uncatchable)
+            val outcome =
+              Outcome.Failed(maybeErrorMessage, fail.namedValues, uncatchable = fail.uncatchable)
+            val event = OrderFailedIntermediate_(Some(outcome))
             Right((order.id <-: event) :: Nil)
 
           case _ => Right(Nil)

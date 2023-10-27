@@ -65,7 +65,7 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
   private def checkedNextEvents(order: Order[Order.State])
   : Checked[Seq[KeyedEvent[OrderActorEvent]]] =
     if order.shouldFail then
-      fail(order)
+      fail(order, uncatchable = isUncatchable(order.lastOutcome))
         .map(_.map(order.id <-: _))
     else
       catchNonFatalFlatten:
@@ -91,9 +91,9 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
                             applyMoveInstructions(idToOrder(orderId), moved)
                               .map(_.map(orderId <-: _))
 
-                          case orderId <-: OrderFailedIntermediate_(outcome, uncatchable) =>
+                          case orderId <-: OrderFailedIntermediate_(outcome) =>
                             // OrderFailedIntermediate_ is used internally only
-                            fail(idToOrder(orderId), outcome, uncatchable)
+                            fail(idToOrder(orderId), outcome)
                               .map(_.map(orderId <-: _))
 
                           case o => Right(o :: Nil)
@@ -140,7 +140,8 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
   : Seq[KeyedEvent[OrderActorEvent]] =
     val events =
       if order.isFailable then
-        fail(order, Some(Outcome.Disrupted(problem)), uncatchable = true) match
+        // Before v2.5.6, due to JS-2087 uncatchable got lost in transfer back to Controller !!!
+        fail(order, Some(Outcome.Disrupted(problem/*, uncatchable = true*/))) match
           case Left(prblm) =>
             logger.debug(s"WARN ${order.id}: $prblm")
             OrderOutcomeAdded(Outcome.Disrupted(problem)) ::
@@ -159,7 +160,8 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
   : Checked[List[OrderActorEvent]] =
     for
       workflow <- idToWorkflow.checked(order.workflowId)
-      events <- fail(workflow, order, outcome, uncatchable = uncatchable)
+      events <- fail(workflow, order, outcome,
+        uncatchable = uncatchable || outcome.exists(isUncatchable))
     yield events
 
   private[workflow] def fail(
@@ -208,7 +210,8 @@ final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
   private def joinedEvents(order: Order[Order.State]): Checked[List[KeyedEvent[OrderActorEvent]]] =
     if order.parent.isDefined
       && (order.isDetached || order.isAttached)
-      && (order.isState[FailedInFork] || order.isState[Cancelled]) then
+      && (order.isState[FailedInFork] || order.isState[Cancelled])
+    then
       for
         forkPosition <- order.forkPosition
         fork <- state.instruction_[ForkInstruction](order.workflowId /: forkPosition)
@@ -601,3 +604,9 @@ object OrderEventSource:
         workflow.instruction(parentPos) match { // Parent must be a TryInstruction
           case t: TryInstruction => t.maxTries.exists(firstCatchPos.tryCount >= _)
         })
+
+  /** Used in combination with `isFailed` to handle failed Orders transferred back to Controller. */
+  private def isUncatchable(outcome: Outcome): Boolean =
+    outcome match
+      case o: Outcome.NotSucceeded => o.uncatchable
+      case _ => false
