@@ -179,7 +179,7 @@ final class FailUncatchableTest extends OurTestSuite:
         OrderDetachable,
         OrderDetached))
 
-  "Uncatchable fail at Controller" in {
+  "Uncatchable fail at Controller" in:
     val workflowId = TestWorkflowId
     checkEvents[OrderTerminated](
       Workflow(workflowId, Seq(
@@ -193,9 +193,8 @@ final class FailUncatchableTest extends OurTestSuite:
         OrderStarted,
         OrderOutcomeAdded(Outcome.failed.copy(uncatchable = true)),
         OrderFailed(Position(0) / "try+0" % 0)))
-  }
 
-  "JS-2087 Uncatchable fail at Agent" in {
+  "JS-2087 Uncatchable fail at Agent" in:
     val workflowId = TestWorkflowId
     checkEvents[OrderTerminated](
       Workflow(workflowId, Seq(
@@ -216,9 +215,8 @@ final class FailUncatchableTest extends OurTestSuite:
         OrderDetachable,
         OrderDetached,
         OrderFailed(Position(1) / "try+0" % 0)))
-  }
 
-  "JS-2087 Uncatchable fail leaves retry loop, Jira test case" in {
+  "JS-2087 Uncatchable fail leaves retry loop, Jira test case" in:
     val workflowId = TestWorkflowId
     checkEvents[OrderFailed](
       Workflow(workflowId, Seq(
@@ -246,7 +244,6 @@ final class FailUncatchableTest extends OurTestSuite:
         OrderDetachable,
         OrderDetached,
         OrderFailed(Position(0) / "try+0" % 0 / "catch+0" % 0)))
-  }
 
   private def checkEvents[E <: OrderEvent: ClassTag: Tag](workflowNotation: String, expectedEvents: Vector[OrderEvent]): Unit =
     assert(runUntil[E](workflowNotation).map(_.event) == expectedEvents)
