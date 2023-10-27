@@ -169,9 +169,10 @@ final class OutcomeTest extends OurTestSuite
     }
 
     "Disrupted(Other)" in {
-      testJson[Outcome](Outcome.Disrupted(Problem("OTHER")), json"""
+      testJson[Outcome](Outcome.Disrupted(Problem("OTHER"), uncatchable = true), json"""
         {
           "TYPE": "Disrupted",
+          "uncatchable": true,
           "reason": {
             "TYPE": "Other",
             "problem": {

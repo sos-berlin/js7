@@ -66,7 +66,7 @@ extends EventInstructionExecutor with PositionInstructionExecutor
             .ifState[Processed]
             .map { order =>
               val event = order.lastOutcome match {
-                case Outcome.Disrupted(_: ProcessLost) =>
+                case Outcome.Disrupted(_: ProcessLost, _) =>
                   OrderMoved(order.position) // Repeat
 
                 case _: Outcome.Killed =>

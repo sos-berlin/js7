@@ -559,19 +559,12 @@ final case class Order[+S <: Order.State](
   def isFailed: Boolean =
     lastOutcome match {
       // Do not fail but let ExecuteExecutor repeat the job:
-      case Outcome.Disrupted(Outcome.Disrupted.ProcessLost(_)) => false
+      case Outcome.Disrupted(Outcome.Disrupted.ProcessLost(_), _) => false
 
       // Let ExecuteExecutor handle this case (and fail then):
       case Outcome.Killed(_) => !isState[Processed]
 
       case o => !o.isSucceeded
-    }
-
-  /** Used in combination with `isFailed` to handle failed Orders transferred back to Controller. */
-  def failedUncatchable: Boolean =
-    lastOutcome match {
-      case o: Outcome.Failed => o.uncatchable
-      case _ => false
     }
 
   def lastOutcome: Outcome =
