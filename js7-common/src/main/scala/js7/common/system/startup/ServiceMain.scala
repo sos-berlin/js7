@@ -52,9 +52,13 @@ object ServiceMain:
     use: (Conf, S, Scheduler) => Task[ProgramTermination] =
     (_: Conf, state: S, _: Scheduler) => state.untilTerminated)
   : ReturnCode =
-    logging.startUp(name)
+    val nanoTime = System.nanoTime() // Before anything else, fetch clock
+    printlnWithClock(s"JS7 $name ${BuildInfo.longVersion}")
+    _runningSince = Some(Deadline(Duration.fromNanos(nanoTime)))
+    StartUp.initializeMain()
+
     handleProgramTermination(name):
-      JavaMainLockfileSupport.runMain(args, useLockFile = useLockFile) { commandLineArguments =>
+      JavaMainLockfileSupport.runMain(name, args, useLockFile = useLockFile) { commandLineArguments =>
         lazy val conf =
           val conf = argsToConf(commandLineArguments)
           commandLineArguments.requireNoMoreArguments() // throws
@@ -74,23 +78,20 @@ object ServiceMain:
       _runningSince.fold("")(o => s" (after ${o.elapsed.pretty})") +
       "\n" + "─" * 80
 
+  private def startUp(name: String): Unit =
+    val nanoTime = System.nanoTime() // Before anything else, fetch clock
+
+    printlnWithClock(s"JS7 $name ${BuildInfo.longVersion}")
+
+    _runningSince = Some(Deadline(Duration.fromNanos(nanoTime)))
+    StartUp.initializeMain()
+
+
   /** For usage after logging system has properly been initialized. */
   private object logging:
     private lazy val logger =
-      Logger.initialize()
+      Logger.initialize("JS7 Engine") // In case it has not yet been initialized
       Logger[ServiceMain.type]
-
-    def startUp(name: String): Unit =
-      val nanoTime = System.nanoTime() // Before anything else, fetch clock
-
-      printlnWithClock(s"JS7 $name ${BuildInfo.longVersion}")
-      // Log early for early timestamp and proper logger initialization by a
-      // single (non-concurrent) call
-      // Log a bar, in case the previous log file is being appended
-      logger.info(s"JS7 $name ${BuildInfo.longVersion}\n${"━" * 80}")
-
-      _runningSince = Some(Deadline(Duration.fromNanos(nanoTime)))
-      StartUp.initializeMain()
 
     def onProgramTermination(name: String, termination: ProgramTermination): ReturnCode =
       try
@@ -112,7 +113,6 @@ object ServiceMain:
 
     def logFirstLines(commandLineArguments: CommandLineArguments, conf: => BasicConfiguration)
     : Unit =
-      logger.info(startUpLine())
       logger.debug(commandLineArguments.toString)
 
       val paths = conf.maybeConfigDirectory.map(o => s"config=$o") ++

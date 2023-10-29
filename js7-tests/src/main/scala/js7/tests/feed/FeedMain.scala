@@ -10,7 +10,7 @@ import monix.execution.Scheduler.Implicits.traced
 
 object FeedMain:
   def main(args: Array[String]): Unit =
-    Logger.initialize()
+    Logger.initialize("JS7 Feed")
 
     if args.isEmpty || args.sameElements(Array("--help")) then
       println("Usage: testAddOrders --workflow=WORKFLOWPATH --order-count=1 --user=USER:PASSWORD")

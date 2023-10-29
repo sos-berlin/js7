@@ -8,6 +8,7 @@ import cats.syntax.flatMap.*
 import com.typesafe.scalalogging.Logger as ScalaLogger
 import js7.base.log.Slf4jUtils.syntax.*
 import js7.base.problem.Problem
+import js7.base.system.startup.StartUp
 import js7.base.time.ScalaTime.{DurationRichLong, RichDuration}
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
@@ -27,9 +28,10 @@ object Logger:
   lazy val empty: ScalaLogger =
     ScalaLogger(org.slf4j.helpers.NOPLogger.NOP_LOGGER)
 
-  def initialize(): Unit =
+  def initialize(name: String): Unit =
     ifNotInitialized:
-      Log4j.initialize()
+      Log4j.initialize(name)
+      Logger[this.type].info(StartUp.startUpLine(name))
       Tests.log()
 
   //val Timing: Marker = MarkerFactory.getMarker("Timing")

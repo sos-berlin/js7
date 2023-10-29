@@ -30,9 +30,9 @@ object Log4j:
           case o => Success(o)
         })
 
-  def initialize(): Unit =
+  def initialize(name: String) =
     ifNotInitialized:
-      if CorrelId.couldBeEnabled then CorrelIdLog4JThreadContextMap.initialize()
+      if CorrelId.couldBeEnabled then CorrelIdLog4jThreadContextMap.initialize(name)
       for t <- shutdownMethod.failed do logger.warn(t.toString)
 
   def setDefaultConfiguration(resource: String): Unit =
@@ -48,7 +48,7 @@ object Log4j:
     if !isShutdown.getAndSet(true) then
       if !fast then
         CorrelId.logStatisticsIfEnabled()
-        CorrelIdLog4JThreadContextMap.logStatistics()
+        CorrelIdLog4jThreadContextMap.logStatistics()
       for shutdown <- shutdownMethod do
         // Log complete timestamp in case of short log timestamp
         logger.info("shutdown at " +

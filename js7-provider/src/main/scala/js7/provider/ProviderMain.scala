@@ -7,5 +7,5 @@ object ProviderMain:
   // No Logger here!
 
   def main(args: Array[String]): Unit =
-    ServiceMain.mainThenExit(args, "Provider", ProviderConfiguration.fromCommandLine(_))(
+    ServiceMain.mainThenExit(args, "JS7 Provider", ProviderConfiguration.fromCommandLine(_))(
       Provider.resource(_)(_))

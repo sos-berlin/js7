@@ -15,7 +15,7 @@ import scala.util.{Failure, Success, Try}
 
 private final class LoggingTestAdder(suiteName: String):
 
-  Logger.initialize()
+  Logger.initialize("JS7 Test")
 
   private lazy val since = now
   private val outerNames = Seq(suiteName).to(mutable.Stack)

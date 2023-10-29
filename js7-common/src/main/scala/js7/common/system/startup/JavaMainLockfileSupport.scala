@@ -8,8 +8,8 @@ import java.nio.file.StandardOpenOption.{CREATE, WRITE}
 import java.nio.file.{Path, Paths}
 import js7.base.io.file.FileUtils.tryDeleteDirectoryContentRecursively
 import js7.base.io.process.ProcessPidRetriever
-import js7.common.commandline.CommandLineArguments
 import js7.base.system.startup.StartUp.printlnWithClock
+import js7.common.commandline.CommandLineArguments
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -20,19 +20,19 @@ object JavaMainLockfileSupport:
   // Do not call any function that may use a Logger before we own the lock file !!!
   // Because this could trigger an unexpected log file rotation.
 
-  def runMain[R](args: Array[String], useLockFile: Boolean = false)
+  def runMain[R](name: String, args: Array[String], useLockFile: Boolean = false)
     (body: CommandLineArguments => R)
   : R =
     if useLockFile then
-      lockAndRunMain(args)(body)
+      lockAndRunMain(name, args)(body)
     else
       val arguments = CommandLineArguments(args.toIndexedSeq)
-      JavaMain.runMain:
+      JavaMain.runMain(name):
         body(arguments)
 
   // Cleans also work directory
   /** Exit if lockFile is already locked. */
-  def lockAndRunMain[R](args: Array[String])(body: CommandLineArguments => R): R =
+  private def lockAndRunMain[R](name: String, args: Array[String])(body: CommandLineArguments => R): R =
     val arguments = CommandLineArguments(args.toIndexedSeq)
     val data = Paths.get(arguments.as[String]("--data-directory="))
     val state = data.resolve("state")
@@ -40,7 +40,7 @@ object JavaMainLockfileSupport:
     // The lockFile secures the state directory against double use.
     val lockFile = state.resolve("lock")
     lock(lockFile):
-      JavaMain.runMain:
+      JavaMain.runMain(name):
         cleanWorkDirectory(data.resolve("work"))
         body(arguments)
 

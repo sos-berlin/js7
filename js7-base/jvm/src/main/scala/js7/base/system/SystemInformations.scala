@@ -4,7 +4,6 @@ import java.lang.management.ManagementFactory.{getOperatingSystemMXBean, getPlat
 import javax.management.ObjectName
 import js7.base.system.Java8Polyfill.*
 import js7.base.system.ServerOperatingSystem.operatingSystem
-import js7.base.system.SystemInformation
 import scala.util.Try
 
 object SystemInformations:

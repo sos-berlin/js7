@@ -2,6 +2,7 @@ package js7.base.system.startup
 
 import java.io.File
 import java.time.Instant
+import js7.base.BuildInfo
 import js7.base.io.process.ProcessPidRetriever.maybeOwnPid
 import js7.base.log.{CorrelId, Logger}
 import js7.base.time.Timestamp
@@ -40,6 +41,10 @@ object StartUp:
         logger.debug("Correlation IDs are enabled")
     logger.whenTraceEnabled:
       logger.debug("TRACE level logging is enabled")
+
+  def startUpLine(name: String): String =
+    s"""$name ${BuildInfo.longVersion} · ${startUpLine()}
+       |${"━" * 80}""".stripMargin // Log a bar, in case the previous log file is being appended
 
   /** Log Java version, config and data directory, and classpath. */
   def startUpLine(): String =

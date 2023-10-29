@@ -28,9 +28,7 @@ final class JProxyContext(config: Config)
 extends HasCloser:
   def this() = this(ConfigFactory.empty)
 
-  // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
-  logger.info(s"JS7 Proxy ${BuildInfo.longVersion}")
-  logger.debug(StartUp.startUpLine())
+  logger.info(StartUp.startUpLine("JS7 Proxy"))
 
   ProblemCodeMessages.initialize()
 

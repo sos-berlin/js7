@@ -11,7 +11,7 @@ object AgentMain:
 
   def main(args: Array[String]): Unit =
     ServiceMain.mainThenExit(
-      args, "Agent", AgentConfiguration.fromCommandLine(_), useLockFile = true
+      args, "JS7 Agent", AgentConfiguration.fromCommandLine(_), useLockFile = true
     )((conf, scheduler) =>
       for
         agent <- RunningAgent.restartable(conf)(scheduler)

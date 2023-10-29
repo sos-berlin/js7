@@ -3,7 +3,7 @@ package js7.tests.addOrders
 import js7.base.circeutils.CirceUtils.RichCirceString
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.JavaResource
-import js7.base.log.{CorrelId, CorrelIdLog4JThreadContextMap, Logger}
+import js7.base.log.{CorrelId, CorrelIdLog4jThreadContextMap, Logger}
 import js7.base.problem.Checked.*
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
@@ -18,7 +18,7 @@ import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.FiniteDuration
 
 final class TestAddOrdersTest extends OurTestSuite, ControllerAgentForScalaTest:
-  
+
   protected val agentPaths = Seq(AgentPath("agent-1"), AgentPath("agent-2"))
   protected val items = Seq(workflow)
 
@@ -54,7 +54,7 @@ final class TestAddOrdersTest extends OurTestSuite, ControllerAgentForScalaTest:
     controller.eventWatch.await[OrderDeleted](_.key.string startsWith "TestAddOrders-")
     for line <- statistics.logLines do info(line)
     CorrelId.logStatisticsIfEnabled()
-    CorrelIdLog4JThreadContextMap.logStatistics()
+    CorrelIdLog4jThreadContextMap.logStatistics()
 
 private object TestAddOrdersTest:
   private val logger = Logger[this.type]

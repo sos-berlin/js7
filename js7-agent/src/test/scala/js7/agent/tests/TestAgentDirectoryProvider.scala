@@ -22,7 +22,7 @@ import scala.util.control.NonFatal
 
 trait TestAgentDirectoryProvider extends HasCloser:
   ProblemCodeMessages.initialize()
-  Logger.initialize()
+  Logger.initialize("JS7 TestAgentDirectoryProvider")
 
   final val itemSigner = TestAgentDirectoryProvider.itemSigner
 

@@ -1,7 +1,7 @@
 package js7.base.log
 
-import js7.base.log.CorrelIdLog4JThreadContextMap.CorrelIdKey
 import js7.base.log.CorrelIdLog4jStringMap.*
+import js7.base.log.CorrelIdLog4jThreadContextMap.CorrelIdKey
 import js7.base.utils.Tests.isTest
 import org.apache.logging.log4j.util.{BiConsumer, ReadOnlyStringMap, StringMap, TriConsumer}
 
@@ -33,11 +33,13 @@ extends StringMap:
     key == CorrelIdKey
 
   def getValue[V](key: String): V =
-    key match
-      case CorrelIdKey =>
+    val string: String =
+      if (key == CorrelIdKey) then
         CorrelId.onCorrelIdLogged()
-        correlIdString.asInstanceOf[V]
-      case _ => null.asInstanceOf[V]
+        correlIdString
+      else
+        CorrelIdLog4jThreadContextMap.getOtherKey(key)
+    string.asInstanceOf[V]
 
   def forEach[V](action: BiConsumer[String, ? >: V]): Unit =
     action.accept(CorrelIdKey, correlIdString.asInstanceOf[V])

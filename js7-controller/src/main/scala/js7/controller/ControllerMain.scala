@@ -9,7 +9,7 @@ object ControllerMain:
   def main(args: Array[String]): Unit =
     ServiceMain.mainThenExit[ControllerConfiguration, RunningController](
       args,
-      "Controller",
+      "JS7 Controller",
       ControllerConfiguration.fromCommandLine(_),
       useLockFile = true)(
       RunningController.resource(_)(_))

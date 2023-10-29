@@ -1,8 +1,5 @@
 package js7.tests.controller.proxy
 
-import org.apache.pekko.http.scaladsl.common.JsonEntityStreamingSupport
-import org.apache.pekko.http.scaladsl.marshalling.ToEntityMarshaller
-import org.apache.pekko.http.scaladsl.server.Directives.{complete, get, pathSingleSlash}
 import com.typesafe.config.ConfigFactory
 import java.time.LocalDateTime
 import js7.base.BuildInfo
@@ -14,12 +11,12 @@ import js7.base.log.Logger
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.Nel
 import js7.base.web.Uri
+import js7.common.commandline.CommandLineArguments
+import js7.common.http.JsonStreamingSupport.{NdJsonStreamingSupport, jsonSeqMarshaller}
 import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegments
 import js7.common.pekkohttp.StandardMarshallers.monixObservableToMarshallable
 import js7.common.pekkohttp.web.PekkoWebServer
 import js7.common.pekkoutils.Pekkos
-import js7.common.commandline.CommandLineArguments
-import js7.common.http.JsonStreamingSupport.{NdJsonStreamingSupport, jsonSeqMarshaller}
 import js7.controller.client.PekkoHttpControllerApi
 import js7.data.controller.ControllerState
 import js7.data.event.{Event, EventId}
@@ -28,6 +25,9 @@ import js7.proxy.{ControllerApi, JournaledStateEventBus}
 import js7.tests.controller.proxy.TestControllerProxy.*
 import monix.eval.Task
 import monix.execution.Scheduler
+import org.apache.pekko.http.scaladsl.common.JsonEntityStreamingSupport
+import org.apache.pekko.http.scaladsl.marshalling.ToEntityMarshaller
+import org.apache.pekko.http.scaladsl.server.Directives.{complete, get, pathSingleSlash}
 import scala.util.Try
 
 private final class TestControllerProxy(controllerUri: Uri, httpPort: Int)(implicit scheduler: Scheduler):
@@ -68,7 +68,7 @@ object TestControllerProxy:
     implicit val scheduler: Scheduler = Scheduler.traced
     println(s"${LocalDateTime.now.toString.replace('T', ' ')} " +
       s"JS7 TestControllerProxy ${BuildInfo.longVersion}")
-    Logger.initialize()
+    Logger.initialize("JS7 TestControllerProxy")
     CommandLineArguments.parse(args.toSeq) { arguments =>
       val controllerUri = arguments.as[Uri]("--controller-uri=")
       val httpPort = arguments.as[Int]("--http-port=")

@@ -21,6 +21,6 @@ object ClusterWatchMain:
     JavaMain.exitIfNonZero(returnCode)
 
   def run(args: Array[String])(use: ClusterWatchService => Task[ProgramTermination]): ReturnCode =
-    ServiceMain.returnCodeMain(args, "ClusterWatch", ClusterWatchConf.fromCommandLine)(
+    ServiceMain.returnCodeMain(args, "JS7 ClusterWatch", ClusterWatchConf.fromCommandLine)(
       (conf, _) => ClusterWatchService.completeResource(conf),
       use = (_, service: ClusterWatchService, _) => use(service))

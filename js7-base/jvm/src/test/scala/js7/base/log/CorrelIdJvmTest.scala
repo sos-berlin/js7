@@ -21,8 +21,6 @@ import scala.concurrent.duration.Deadline.now
 
 final class CorrelIdJvmTest extends OurTestSuite, BeforeAndAfterAll
 {
-  Logger.initialize()
-
   private val taskBatchSize = 3
 
   private lazy val underlyingScheduler =
@@ -40,7 +38,7 @@ final class CorrelIdJvmTest extends OurTestSuite, BeforeAndAfterAll
     super.afterAll()
     underlyingScheduler.shutdown()
     CorrelId.logStatistics()
-    CorrelIdLog4JThreadContextMap.logStatistics()
+    CorrelIdLog4jThreadContextMap.logStatistics()
   }
 
   "Manual tests" - {

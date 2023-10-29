@@ -10,7 +10,7 @@ object TestAddOrdersMain:
   private val ClearLine = "\u001B[K"
 
   def main(args: Array[String]): Unit =
-    Logger.initialize()
+    Logger.initialize("JS7 TestAddOrdersMain")
 
     if args.isEmpty || args.sameElements(Array("--help")) then
       println("Usage: testAddOrders --workflow=WORKFLOWPATH --order-count=1 --user=USER:PASSWORD")
