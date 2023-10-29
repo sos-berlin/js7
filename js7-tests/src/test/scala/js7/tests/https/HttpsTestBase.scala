@@ -11,6 +11,7 @@ import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.https.{HttpsConfig, KeyStoreRef}
 import js7.base.io.process.Processes.ShellFileExtension as sh
 import js7.base.problem.Checked.Ops
+import js7.base.system.ServerOperatingSystem.operatingSystem
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.DurationRichInt
@@ -19,7 +20,6 @@ import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.common.pekkoutils.ProvideActorSystem
-import js7.common.system.ServerOperatingSystem.operatingSystem
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.client.PekkoHttpControllerApi
 import js7.data.agent.AgentPath
@@ -41,7 +41,7 @@ import scala.concurrent.duration.*
   */
 private[https] trait HttpsTestBase
 extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest, ProvideActorSystem:
-  
+
   override protected final def provideAgentHttpsCertificate = true
   protected def provideControllerClientCertificate = false
   protected def useCluster = true

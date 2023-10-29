@@ -1,4 +1,4 @@
-package js7.common.system
+package js7.base.system
 
 import js7.base.log.Logger
 import js7.base.utils.Collections.implicits.RichIterableOnce

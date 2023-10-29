@@ -20,8 +20,8 @@ import js7.common.pekkohttp.web.auth.CSRF.forbidCSRF
 import js7.common.pekkohttp.web.auth.GateKeeper
 import js7.common.pekkohttp.web.session.{SessionRegister, SessionRoute}
 import js7.common.system.JavaInformations.javaInformation
-import js7.common.system.SystemInformations.systemInformation
-import js7.common.system.startup.StartUp
+import js7.base.system.SystemInformations.systemInformation
+import js7.base.system.startup.StartUp
 import js7.core.command.CommandMeta
 import js7.data.subagent.{SubagentCommand, SubagentOverview}
 import js7.subagent.web.SubagentRoute.*

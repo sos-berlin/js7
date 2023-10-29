@@ -6,6 +6,7 @@ import javax.annotation.Nonnull
 import js7.base.BuildInfo
 import js7.base.annotation.javaApi
 import js7.base.log.{CorrelId, Logger}
+import js7.base.system.startup.StartUp
 import js7.base.utils.CatsUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{HasCloser, Lazy}
@@ -13,7 +14,7 @@ import js7.common.pekkoutils.Pekkos
 import js7.common.pekkoutils.Pekkos.newActorSystem
 import js7.common.message.ProblemCodeMessages
 import js7.common.system.ThreadPools
-import js7.common.system.startup.StartUp
+import js7.base.system.startup.StartUp
 import js7.controller.client.PekkoHttpControllerApi.admissionsToApiResource
 import js7.data_for_java.auth.{JAdmission, JHttpsConfig}
 import js7.proxy.ControllerApi

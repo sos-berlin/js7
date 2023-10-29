@@ -1,7 +1,7 @@
 package js7.common.system
 
 import io.circe.syntax.EncoderOps
-import js7.base.system.SystemInformation
+import js7.base.system.{SystemInformation, SystemInformations}
 import js7.base.test.OurTestSuite
 
 /**

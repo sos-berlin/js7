@@ -2,11 +2,11 @@ package js7.controller.web.controller.api
 
 import js7.base.BuildInfo
 import js7.base.auth.UserId
+import js7.base.system.startup.StartUp
 import js7.base.test.OurTestSuite
 import js7.base.time.{Timestamp, Timezone}
 import js7.common.pekkohttp.CirceJsonSupport.jsonUnmarshaller
 import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegment
-import js7.common.system.startup.StartUp
 import js7.controller.web.controller.api.test.RouteTester
 import js7.data.cluster.ClusterState
 import js7.data.controller.{ControllerId, ControllerMetaState, ControllerOverview, ControllerState}
@@ -24,7 +24,7 @@ import scala.concurrent.duration.Deadline.now
   * @author Joacim Zschimmer
   */
 final class ApiRootRouteTest extends OurTestSuite, RouteTester, ApiRootRoute:
-  
+
   protected val controllerId = ControllerId("TEST-CONTROLLER")
   protected def whenShuttingDown = Future.never
   protected implicit def scheduler: Scheduler = Scheduler.traced

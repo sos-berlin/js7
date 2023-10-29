@@ -11,7 +11,7 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.RichFutures
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
-import js7.common.system.ServerOperatingSystem.operatingSystem.sleepingShellScript
+import js7.base.system.ServerOperatingSystem.operatingSystem.sleepingShellScript
 import js7.data.Problems.{ItemVersionDoesNotMatchProblem, VersionedItemRemovedProblem}
 import js7.data.agent.AgentPath
 import js7.data.board.{Board, BoardPath}

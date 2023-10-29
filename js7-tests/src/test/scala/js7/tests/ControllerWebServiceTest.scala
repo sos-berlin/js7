@@ -12,6 +12,7 @@ import js7.base.io.process.Processes.ShellFileExtension as sh
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.problem.Problems.UnknownKeyProblem
+import js7.base.system.ServerOperatingSystem.operatingSystem
 import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
@@ -22,7 +23,6 @@ import js7.base.web.Uri
 import js7.base.{BuildInfo, Js7Version}
 import js7.common.http.PekkoHttpClient.HttpException
 import js7.common.http.PekkoHttpUtils.RichHttpResponse
-import js7.common.system.ServerOperatingSystem.operatingSystem
 import js7.controller.RunningController
 import js7.data.Problems.UnknownItemPathProblem
 import js7.data.agent.{AgentPath, AgentRefStateEvent}

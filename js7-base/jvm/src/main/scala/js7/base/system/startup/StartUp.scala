@@ -1,4 +1,4 @@
-package js7.common.system.startup
+package js7.base.system.startup
 
 import java.io.File
 import java.time.Instant
@@ -6,9 +6,9 @@ import js7.base.io.process.ProcessPidRetriever.maybeOwnPid
 import js7.base.log.{CorrelId, Logger}
 import js7.base.time.Timestamp
 import js7.base.utils.ByteUnits.toKiBGiB
-import js7.base.utils.ScalaUtils.syntax.*
-import js7.common.system.ServerOperatingSystem.operatingSystem.{cpuModel, distributionNameAndVersionOption, hostname}
-import js7.common.system.SystemInformations.totalPhysicalMemory
+import js7.base.system.SystemInformations.totalPhysicalMemory
+import js7.base.utils.ScalaUtils.syntax.RichBoolean
+import js7.base.system.ServerOperatingSystem.operatingSystem.{cpuModel, distributionNameAndVersionOption, hostname}
 import monix.execution.atomic.AtomicBoolean
 
 /**
@@ -43,7 +43,7 @@ object StartUp:
 
   /** Log Java version, config and data directory, and classpath. */
   def startUpLine(): String =
-    "Java " + sys.props.getOrElse("java.version", "") + " · " +
+    ("Java " + sys.props.getOrElse("java.version", "") + " · " +
       sys.props.getOrElse("java.vm.name", sys.props.getOrElse("java.runtime.name", "vm")) + " " +
       sys.props.getOrElse("java.vm.version", "") + " " +
       "(" + toKiBGiB(sys.runtime.maxMemory) + ") · " +
@@ -53,6 +53,7 @@ object StartUp:
       " · " +
       maybeOwnPid.fold("")(pid => s"pid=${pid.number} ") +
       (hostname.nonEmpty ?? s"host=$hostname ")
+    ).trim
 
   def printlnWithClockIgnoringException(line: String) =
     try printlnWithClock(line)

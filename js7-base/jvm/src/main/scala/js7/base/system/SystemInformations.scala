@@ -1,10 +1,10 @@
-package js7.common.system
+package js7.base.system
 
 import java.lang.management.ManagementFactory.{getOperatingSystemMXBean, getPlatformMBeanServer}
 import javax.management.ObjectName
 import js7.base.system.Java8Polyfill.*
+import js7.base.system.ServerOperatingSystem.operatingSystem
 import js7.base.system.SystemInformation
-import js7.common.system.ServerOperatingSystem.operatingSystem
 import scala.util.Try
 
 object SystemInformations:

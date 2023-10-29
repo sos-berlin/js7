@@ -10,6 +10,7 @@ import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.io.process.Processes.newTemporaryShellFile
 import js7.base.io.process.{ReturnCode, Stderr, Stdout, StdoutOrStderr}
 import js7.base.system.OperatingSystem.{isMac, isSolaris, isUnix, isWindows}
+import js7.base.system.ServerOperatingSystem.KernelSupportsNestedShebang
 import js7.base.test.OurTestSuite
 import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.thread.MonixBlocking.syntax.RichTask
@@ -17,7 +18,6 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.Closer.withCloser
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.common.system.ServerOperatingSystem.KernelSupportsNestedShebang
 import js7.data.job.{CommandLine, TaskId}
 import js7.launcher.StdObservers
 import js7.launcher.configuration.ProcessKillScript

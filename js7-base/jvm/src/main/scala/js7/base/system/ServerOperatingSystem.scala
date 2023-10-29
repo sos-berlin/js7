@@ -1,4 +1,4 @@
-package js7.common.system
+package js7.base.system
 
 import java.io.{File, FileInputStream}
 import java.net.InetAddress

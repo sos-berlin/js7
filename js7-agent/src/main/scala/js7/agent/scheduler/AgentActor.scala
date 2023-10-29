@@ -18,13 +18,17 @@ import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.RichCheckedTask
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
+import js7.base.system.SystemInformations.systemInformation
+import js7.base.system.startup.StartUp
+import js7.base.thread.IOExecutor
 import js7.base.time.AlarmClock
 import js7.base.utils.ScalaUtils.RightUnit
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{Allocated, SetOnce}
+import js7.base.utils.{Allocated, ProgramTermination, SetOnce}
 import js7.base.web.Uri
 import js7.cluster.ClusterNode
 import js7.common.pekkoutils.{SimpleStateActor, SupervisorStrategies}
+import js7.common.system.JavaInformations.javaInformation
 import js7.data.agent.Problems.{AgentAlreadyDedicatedProblem, AgentIsShuttingDown, AgentNotDedicatedProblem, AgentPathMismatchProblem, AgentRunIdMismatchProblem, AgentWrongControllerProblem}
 import js7.data.agent.{AgentPath, AgentRef, AgentRunId}
 import js7.data.cluster.ClusterEvent.ClusterResetStarted

@@ -1,8 +1,5 @@
 package js7.common.pekkohttp.web.session
 
-import org.apache.pekko.actor.{ActorRef, ActorRefFactory}
-import org.apache.pekko.pattern.ask
-import org.apache.pekko.util.Timeout
 import cats.effect.Resource
 import cats.syntax.apply.*
 import cats.syntax.flatMap.*
@@ -20,14 +17,18 @@ import js7.base.monixutils.MonixBase.syntax.RichMonixTask
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.service.Service
+import js7.base.system.ServerOperatingSystem.operatingSystem
 import js7.base.time.JavaTimeConverters.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.version.Version
-import js7.common.pekkoutils.Pekkos
 import js7.common.http.PekkoHttpClient.`x-js7-session`
-import js7.common.system.ServerOperatingSystem.operatingSystem
+import js7.common.pekkohttp.web.session.SessionRegister.*
+import js7.common.pekkoutils.Pekkos
 import monix.eval.Task
 import monix.execution.Scheduler
+import org.apache.pekko.actor.{ActorRef, ActorRefFactory}
+import org.apache.pekko.pattern.ask
+import org.apache.pekko.util.Timeout
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.Promise
 

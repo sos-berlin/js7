@@ -17,7 +17,9 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsBlocking.BlockingTaskResource
 import js7.common.pekkoutils.Pekkos
 import js7.common.pekkoutils.Pekkos.actorSystemResource
-import js7.common.system.ServerOperatingSystem.operatingSystem
+import js7.base.system.ServerOperatingSystem.operatingSystem
+import js7.base.test.OurTestSuite
+import js7.base.system.ServerOperatingSystem.operatingSystem
 import js7.data.agent.AgentPath
 import js7.data.controller.{ControllerId, ControllerRunId}
 import js7.data.event.JournalId
@@ -31,7 +33,7 @@ import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.BeforeAndAfterAll
 
 final class AgentShutDownTest extends OurTestSuite, BeforeAndAfterAll, TestAgentDirectoryProvider:
-  
+
   override def beforeAll() =
     (agentDirectory / "config" / "private" / "private.conf") ++= """
         |js7.auth.users.TEST-USER = "plain:TEST-PASSWORD"

@@ -2,9 +2,10 @@ package js7.common.system.startup
 
 import js7.base.io.process.ReturnCode
 import js7.base.log.{Log4j, Logger}
+import js7.base.system.startup.StartUp.printlnWithClock
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.message.ProblemCodeMessages
-import js7.common.system.startup.StartUp.printlnWithClock
+import js7.common.utils.JavaShutdownHook
 
 object JavaMain:
   private lazy val logger = Logger[this.type]
