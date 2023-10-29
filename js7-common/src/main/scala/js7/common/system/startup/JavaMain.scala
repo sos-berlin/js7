@@ -10,7 +10,6 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.commandline.CommandLineArguments
 import js7.common.message.ProblemCodeMessages
-import js7.common.system.startup.StartUp.{logJavaSettings, printlnWithClock, startUpLine}
 import js7.common.utils.JavaShutdownHook
 
 object JavaMain

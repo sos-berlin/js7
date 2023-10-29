@@ -5,11 +5,11 @@ import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.server.Route
 import js7.base.BuildInfo
 import js7.base.auth.UserId
+import js7.base.system.startup.StartUp
 import js7.base.test.OurTestSuite
 import js7.base.time.{Timestamp, Timezone}
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegment
 import js7.common.akkahttp.CirceJsonSupport.jsonUnmarshaller
-import js7.common.system.startup.StartUp
 import js7.controller.web.controller.api.test.RouteTester
 import js7.data.cluster.ClusterState
 import js7.data.controller.{ControllerId, ControllerMetaState, ControllerOverview, ControllerState}

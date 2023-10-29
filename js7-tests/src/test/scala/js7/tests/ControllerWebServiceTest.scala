@@ -29,7 +29,7 @@ import js7.base.web.Uri
 import js7.base.{BuildInfo, Js7Version}
 import js7.common.http.AkkaHttpClient.HttpException
 import js7.common.http.AkkaHttpUtils.RichHttpResponse
-import js7.common.system.ServerOperatingSystem.operatingSystem
+import js7.base.system.ServerOperatingSystem.operatingSystem
 import js7.data.Problems.UnknownItemPathProblem
 import js7.data.agent.{AgentPath, AgentRefStateEvent}
 import js7.data.item.{ItemOperation, VersionId}

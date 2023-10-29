@@ -10,6 +10,7 @@ import com.typesafe.config.Config
 import js7.base.BuildInfo
 import js7.base.auth.{AgentDirectorPermission, SimpleUser}
 import js7.base.stream.Numbered
+import js7.base.system.startup.StartUp
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegment
 import js7.common.akkahttp.CirceJsonSupport.jsonMarshaller
 import js7.common.akkahttp.WebLogDirectives
@@ -19,8 +20,7 @@ import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.akkahttp.web.session.{SessionRegister, SessionRoute, SimpleSession}
 import js7.common.system.JavaInformations.javaInformation
-import js7.common.system.SystemInformations.systemInformation
-import js7.common.system.startup.StartUp
+import js7.base.system.SystemInformations.systemInformation
 import js7.data.subagent.{SubagentCommand, SubagentOverview}
 import js7.journal.watch.EventWatch
 import js7.subagent.SubagentCommandExecutor

@@ -7,7 +7,7 @@ import js7.cluster.watch.api.HttpClusterNodeApi
 import js7.common.akkautils.Akkas.actorSystemResource
 import js7.common.commandline.CommandLineArguments
 import js7.common.http.AkkaHttpClient
-import js7.common.system.startup.StartUp.printlnWithClock
+import js7.base.system.startup.StartUp.printlnWithClock
 import js7.common.system.startup.{JavaMain, ServiceMain}
 import monix.eval.Task
 import monix.execution.Scheduler

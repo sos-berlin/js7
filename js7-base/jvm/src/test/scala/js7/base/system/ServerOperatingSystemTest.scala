@@ -1,10 +1,10 @@
-package js7.common.system
+package js7.base.system
 
 import java.io.File
 import java.io.File.pathSeparator
 import js7.base.system.OperatingSystem.{isMac, isWindows}
+import js7.base.system.ServerOperatingSystem.*
 import js7.base.test.OurTestSuite
-import js7.common.system.ServerOperatingSystem.*
 
 /**
  * @author Joacim Zschimmer

@@ -9,7 +9,7 @@ import java.nio.file.{Path, Paths}
 import js7.base.io.file.FileUtils.tryDeleteDirectoryContentRecursively
 import js7.base.io.process.ProcessPidRetriever
 import js7.common.commandline.CommandLineArguments
-import js7.common.system.startup.StartUp.printlnWithClock
+import js7.base.system.startup.StartUp.printlnWithClock
 import scala.util.{Failure, Success, Try}
 
 /**

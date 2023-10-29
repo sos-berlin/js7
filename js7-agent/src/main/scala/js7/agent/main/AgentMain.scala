@@ -7,6 +7,7 @@ import js7.base.BuildInfo
 import js7.base.configutils.Configs.logConfig
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.Logger
+import js7.base.system.startup.StartUp
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ProgramTermination
@@ -14,8 +15,8 @@ import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.common.commandline.CommandLineArguments
 import js7.common.system.startup.JavaMain.withShutdownHooks
 import js7.common.system.startup.JavaMainLockfileSupport.lockAndRunMain
-import js7.common.system.startup.StartUp.{nowString, printlnWithClock}
-import js7.common.system.startup.{Js7ReturnCodes, StartUp}
+import js7.base.system.startup.StartUp.{nowString, printlnWithClock}
+import js7.common.system.startup.Js7ReturnCodes
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.subagent.BareSubagent
 import scala.concurrent.duration.{Deadline, Duration, NANOSECONDS}

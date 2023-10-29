@@ -22,6 +22,7 @@ import js7.base.io.process.ProcessSignal
 import js7.base.log.{CorrelId, Logger}
 import js7.base.problem.Checked
 import js7.base.problem.Checked.*
+import js7.base.system.startup.StartUp
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.Futures.promiseFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
@@ -35,7 +36,6 @@ import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.session.SessionRegister
 import js7.common.guice.GuiceImplicits.*
-import js7.common.system.startup.StartUp
 import js7.core.cluster.watch.ClusterWatchRegister
 import js7.core.command.CommandMeta
 import js7.journal.files.JournalFiles.JournalMetaOps

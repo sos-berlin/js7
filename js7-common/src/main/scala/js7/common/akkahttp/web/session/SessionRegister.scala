@@ -26,7 +26,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.version.Version
 import js7.common.akkahttp.web.session.SessionRegister.*
 import js7.common.http.AkkaHttpClient.`x-js7-session`
-import js7.common.system.ServerOperatingSystem.operatingSystem
+import js7.base.system.ServerOperatingSystem.operatingSystem
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly

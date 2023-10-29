@@ -3,14 +3,15 @@ package js7.controller
 import js7.base.BuildInfo
 import js7.base.configutils.Configs.logConfig
 import js7.base.log.Logger
+import js7.base.system.startup.StartUp
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.utils.ProgramTermination
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import js7.common.commandline.CommandLineArguments
 import js7.common.system.startup.JavaMain.withShutdownHooks
 import js7.common.system.startup.JavaMainLockfileSupport.lockAndRunMain
-import js7.common.system.startup.StartUp.{logJavaSettings, nowString, printlnWithClock, startUpLine}
-import js7.common.system.startup.{Js7ReturnCodes, StartUp}
+import js7.base.system.startup.StartUp.{logJavaSettings, nowString, printlnWithClock, startUpLine}
+import js7.common.system.startup.Js7ReturnCodes
 import js7.controller.configuration.ControllerConfiguration
 import monix.execution.Scheduler
 import scala.concurrent.duration.{Deadline, Duration, NANOSECONDS}
