@@ -34,8 +34,8 @@
       <appenderRef level="off"   ref="stderr"/>
       <appenderRef level="trace" ref="file"/>
     </root>
-    <logger level="warn"  name="akka.actor.CoordinatedShutdown"/>
-    <logger level="warn"  name="akka.event.slf4j.Slf4jLogger"/>
+    <logger level="warn"  name="pekko.actor.CoordinatedShutdown"/>
+    <logger level="warn"  name="pekko.event.slf4j.Slf4jLogger"/>
     <logger level="trace" name="js7"/>
     <logger level="trace" name="js7.journal.Journal"/>
     <logger level="trace" name="js7.launcher.forwindows"/>
