@@ -15,11 +15,10 @@ import scala.util.{Failure, Success, Try}
 
 private final class LoggingTestAdder(suiteName: String) {
 
-  Logger.initialize()
+  logger.info(magenta + bar + " " + bold + suiteName + resetColor)
 
   private val since = now
   private val outerNames = Seq(suiteName).to(mutable.Stack)
-  private var firstTestCalled = false
   private var succeededCount = 0
   private var pendingCount = 0
   private var failedCount = 0
@@ -32,10 +31,6 @@ private final class LoggingTestAdder(suiteName: String) {
   : LoggingFreeSpecStringWrapper[R] =
     new LoggingFreeSpecStringWrapper(name, wrapper, this,
       (ctx, test) => {
-        if (!firstTestCalled) {
-          firstTestCalled = true
-          logger.info(bar)
-        }
         if (suppressCorrelId)
           executeTest(ctx, test)
         else
@@ -56,7 +51,10 @@ private final class LoggingTestAdder(suiteName: String) {
       outerNames.toVector,
       testName)
 
-  def afterAll(): Unit =
+  def beforeTest(): Unit =
+    logger.info(magenta + bar + resetColor)
+
+  def afterTest(): Unit =
     logger.info(s"$suiteName — " +
       (if (succeededCount == 0) failureMarkup
       else if (succeededCount > 0) successMarkup
@@ -69,8 +67,9 @@ private final class LoggingTestAdder(suiteName: String) {
 }
 
 private object LoggingTestAdder {
-  private val logger = Logger("TEST")
-  private val bar = "\n" + magenta + "━" * 100 + resetColor
+  // logger is lazy because Log4j must be initialized first
+  private lazy val logger = Logger("TEST")
+  private val bar = "━" * 72
   private val successMarkup = green + bold
   private val pendingMarkup = ""
   private val failureMarkup = orange + bold

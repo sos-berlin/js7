@@ -33,6 +33,7 @@ trait LoggingAnyFreeSpec extends AnyFreeSpec {
       suppressCorrelId = suppressTestCorrelId)
 
   abstract override def run(testName: Option[String], args: Args): Status = {
+    testAdder.beforeTest()
     val tried = Try(super.run(testName, args))
     testAdder.afterAll()
     tried.get
