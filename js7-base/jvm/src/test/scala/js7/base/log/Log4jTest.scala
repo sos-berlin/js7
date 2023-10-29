@@ -21,7 +21,7 @@ final class Log4jTest extends OurTestSuite {
       sleep(1.s)
       testSpeed(6000, 6000)
       logger.info(CorrelId.statistics)
-      logger.info(CorrelIdLog4JThreadContextMap.statistics)
+      logger.info(CorrelIdLog4jThreadContextMap.statistics)
     }
   }
 

@@ -1,10 +1,12 @@
 package js7.base.log
 
-import js7.base.log.CorrelIdLog4JThreadContextMap.*
+import js7.base.BuildInfo
+import js7.base.log.CorrelIdLog4jThreadContextMap.*
+import js7.base.system.startup.StartUp
 import org.apache.logging.log4j.spi.{CopyOnWrite, ReadOnlyThreadContextMap, ThreadContextMap}
 import org.apache.logging.log4j.util.StringMap
 
-final class CorrelIdLog4JThreadContextMap
+final class CorrelIdLog4jThreadContextMap
 extends ThreadContextMap
 with ReadOnlyThreadContextMap
 // CopyOnWrite seems to mean that getReadOnlyContextData returns an immutable map.
@@ -22,23 +24,24 @@ with CopyOnWrite
 
   def isEmpty = false
 
+  // Not used
   def get(key: String) =
-    key match {
-      case CorrelIdKey =>
-        getCount += 1
-        CorrelId.current.fixedWidthString
+    if (key == CorrelIdKey) {
+      getCount += 1
+      CorrelId.current.fixedWidthString
+    } else
+      getOtherKey(key)
 
-      case _ =>
-        null
-    }
-
+  // Not used
   def containsKey(key: String) =
-    key == CorrelIdKey
+    keys(key)
 
+  // Not used
   def getImmutableMapOrNull =
     getCopy
 
-  def getCopy: java.util.Map[String, String] = {
+  // Not used
+  def getCopy = {
     getCopyCount += 1
     java.util.Collections.singletonMap(CorrelIdKey, CorrelId.local().fixedWidthString)
   }
@@ -58,11 +61,17 @@ with CopyOnWrite
   }
 }
 
-object CorrelIdLog4JThreadContextMap
+object CorrelIdLog4jThreadContextMap
 {
   /** Use this name in Log4j2 pattern as `%notEmpty{%X{js7.correlId} }`.
    * The value is empty iff CorrelId are switched off (-Djs7.log.correlId=false). */
   private[log] val CorrelIdKey = "js7.correlId"
+  private val NameKey = "js7.name"
+  private val VersionKey = "js7.version"
+  private val SystemKey = "js7.system"
+  private val keys = Set(CorrelIdKey, NameKey, VersionKey, SystemKey)
+
+  private[log] var name = ""
 
   // Counters are not accurate because not synchronized !!!
   private var putSuppressedCount = 0L
@@ -71,13 +80,22 @@ object CorrelIdLog4JThreadContextMap
   private var getReadOnlyContextDataCount = 0L
   private var getReadOnlyContextDataCount2 = 0L
 
+  private[log] def getOtherKey(key: String): String =
+    key match {
+      case NameKey => name
+      case VersionKey => BuildInfo.longVersion
+      case SystemKey => StartUp.startUpLine()
+      case _ => null
+    }
+
   private val isDebug: Boolean =
     sys.props.get("log4j2.debug") match {
       case Some("" | "true") => true
       case _ => false
     }
 
-  def initialize(): Unit = {
+  private[log] def initialize(name: String): Unit = {
+    this.name = name
     System.setProperty("log4j2.threadContextMap", myClassName)
     debug(s"log4j2.threadContextMap=$myClassName")
   }
@@ -106,5 +124,5 @@ object CorrelIdLog4JThreadContextMap
     if (isDebug) println(myClassName + " - " + string)
 
   private def myClassName =
-    classOf[CorrelIdLog4JThreadContextMap].getName.stripSuffix("$")
+    classOf[CorrelIdLog4jThreadContextMap].getName.stripSuffix("$")
 }

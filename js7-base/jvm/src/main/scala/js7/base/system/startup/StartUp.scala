@@ -2,13 +2,14 @@ package js7.base.system.startup
 
 import java.io.File
 import java.time.Instant
+import js7.base.BuildInfo
 import js7.base.io.process.ProcessPidRetriever.maybeOwnPid
 import js7.base.log.{CorrelId, Logger}
+import js7.base.system.ServerOperatingSystem.operatingSystem.{cpuModel, distributionNameAndVersionOption, hostname}
+import js7.base.system.SystemInformations.totalPhysicalMemory
 import js7.base.time.Timestamp
 import js7.base.utils.ByteUnits.toKiBGiB
-import js7.base.system.SystemInformations.totalPhysicalMemory
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
-import js7.base.system.ServerOperatingSystem.operatingSystem.{cpuModel, distributionNameAndVersionOption, hostname}
 import monix.execution.atomic.AtomicBoolean
 import scala.concurrent.duration.Deadline.now
 
@@ -49,6 +50,10 @@ object StartUp
       logger.debug("TRACE level logging is enabled")
     }
   }
+
+  def startUpLine(name: String): String =
+    s"""$name ${BuildInfo.longVersion} · ${startUpLine()}
+       |${"━" * 80}""".stripMargin // Log a bar, in case the previous file is appended
 
   /** Log Java version, config and data directory, and classpath. */
   def startUpLine(): String =

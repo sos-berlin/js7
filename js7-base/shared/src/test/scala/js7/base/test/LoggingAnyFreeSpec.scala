@@ -1,5 +1,6 @@
 package js7.base.test
 
+import js7.base.log.{Log4j, Logger}
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import org.scalactic.source
 import org.scalatest.freespec.AnyFreeSpec
@@ -13,6 +14,8 @@ import scala.util.Try
  * take effect on your terminal.
  **/
 trait LoggingAnyFreeSpec extends AnyFreeSpec {
+
+  Log4j.initialize("JS7 Tests")
 
   private val testAdder = new LoggingTestAdder(getClass.shortClassName)
 
@@ -35,7 +38,12 @@ trait LoggingAnyFreeSpec extends AnyFreeSpec {
   abstract override def run(testName: Option[String], args: Args): Status = {
     testAdder.beforeTest()
     val tried = Try(super.run(testName, args))
-    testAdder.afterAll()
+    testAdder.afterTest()
     tried.get
   }
+}
+
+object LoggingAnyFreeSpec {
+  // logger is lazy because it must be initialized first
+  private lazy val logger = Logger[this.type]
 }

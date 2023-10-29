@@ -19,7 +19,7 @@ object ClusterWatchMain
     // Lazy, otherwise Log4j may be used and implicitly start uninitialized
     lazy val arguments = CommandLineArguments(args.toVector)
     lazy val conf = ClusterWatchConf.fromCommandLine(arguments)
-    JavaMain.runMain("ClusterWatch", arguments, conf.config) {
+    JavaMain.runMain("JS7 ClusterWatch", arguments, conf.config) {
       run(conf)(_ => Task.never)
     }
   }

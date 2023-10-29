@@ -3,7 +3,6 @@ package js7.proxy.javaapi
 import com.typesafe.config.{Config, ConfigFactory}
 import java.util.concurrent.ForkJoinPool
 import javax.annotation.Nonnull
-import js7.base.BuildInfo
 import js7.base.annotation.javaApi
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.log.{CorrelId, Logger}
@@ -30,8 +29,7 @@ extends HasCloser
   def this() = this(ConfigFactory.empty)
 
   // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
-  logger.info(s"JS7 Proxy ${BuildInfo.longVersion}")
-  logger.debug(StartUp.startUpLine())
+  logger.debug(StartUp.startUpLine("JS7 Proxy"))
 
   // Do not initialize Log4j and log4j2.threadContextMap.
   // It's the caller responsibility. It is to late, anyway.

@@ -4,13 +4,13 @@ import js7.base.BuildInfo
 import js7.base.configutils.Configs.logConfig
 import js7.base.log.Logger
 import js7.base.system.startup.StartUp
+import js7.base.system.startup.StartUp.{logJavaSettings, nowString, printlnWithClock, startUpLine}
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.utils.ProgramTermination
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import js7.common.commandline.CommandLineArguments
 import js7.common.system.startup.JavaMain.withShutdownHooks
 import js7.common.system.startup.JavaMainLockfileSupport.lockAndRunMain
-import js7.base.system.startup.StartUp.{logJavaSettings, nowString, printlnWithClock, startUpLine}
 import js7.common.system.startup.Js7ReturnCodes
 import js7.controller.configuration.ControllerConfiguration
 import monix.execution.Scheduler
@@ -28,10 +28,7 @@ final class ControllerMain
   def run(arguments: CommandLineArguments): ProgramTermination = {
     // Log early for early timestamp and proper logger initialization by a
     // single (non-concurrent) call
-    // Log a bar, in case the previous file is appended
-    logger.info("JS7 Controller " + BuildInfo.longVersion +
-      "\n" + "━" * 80)
-    logger.info(startUpLine())
+    logger.info(startUpLine("JS7 Controller"))
     logger.debug(arguments.toString)
     val conf = ControllerConfiguration.fromCommandLine(arguments)
     logger.info(s"${conf.controllerId} config=${conf.configDirectory} data=${conf.dataDirectory}")
@@ -80,7 +77,7 @@ object ControllerMain
     StartUp.initializeMain()
 
     var terminate = ProgramTermination()
-    lockAndRunMain(args) { commandLineArguments =>
+    lockAndRunMain("JS7 Controller", args) { commandLineArguments =>
       terminate = new ControllerMain().run(commandLineArguments)
     }
     if (terminate.restart) {

@@ -21,7 +21,7 @@ object JavaMainLockfileSupport
   // Because this could trigger an unexpected log file rotation.
 
   /** Exit if lockFile is already locked. */
-  def lockAndRunMain(args: Array[String])(body: CommandLineArguments => Unit): Unit =
+  def lockAndRunMain(name: String, args: Array[String])(body: CommandLineArguments => Unit): Unit =
     CommandLineArguments.parse(args.toIndexedSeq) { arguments =>
       val data = Paths.get(arguments.as[String]("--data-directory="))
       val state = data.resolve("state")
@@ -29,7 +29,7 @@ object JavaMainLockfileSupport
       // The lockFile secures the state directory against double use.
       val lockFile = state.resolve("lock")
       lock(lockFile) {
-        JavaMain.runMain {
+        JavaMain.runMain(name) {
           cleanWorkDirectory(data.resolve("work"))
           body(arguments)
         }

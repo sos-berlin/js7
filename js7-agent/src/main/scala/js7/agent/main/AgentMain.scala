@@ -8,6 +8,7 @@ import js7.base.configutils.Configs.logConfig
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.Logger
 import js7.base.system.startup.StartUp
+import js7.base.system.startup.StartUp.{nowString, printlnWithClock}
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ProgramTermination
@@ -15,7 +16,6 @@ import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.common.commandline.CommandLineArguments
 import js7.common.system.startup.JavaMain.withShutdownHooks
 import js7.common.system.startup.JavaMainLockfileSupport.lockAndRunMain
-import js7.base.system.startup.StartUp.{nowString, printlnWithClock}
 import js7.common.system.startup.Js7ReturnCodes
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.subagent.BareSubagent
@@ -34,9 +34,7 @@ final class AgentMain
     // Log early for early timestamp and proper logger initialization by a
     // single (non-concurrent) call
     // Log a bar, in case the previous file is appended
-    logger.info("JS7 Agent " + BuildInfo.longVersion +
-      "\n" + "━" * 80)
-    logger.info(StartUp.startUpLine())
+    logger.info(StartUp.startUpLine("JS7 Agent"))
     logger.debug(arguments.toString)
 
     val agentConf = AgentConfiguration.fromCommandLine(arguments)
@@ -111,7 +109,7 @@ object AgentMain
     StartUp.initializeMain()
 
     var terminated = ProgramTermination()
-    lockAndRunMain(args) { commandLineArguments =>
+    lockAndRunMain("JS7 Agent", args) { commandLineArguments =>
       terminated = new AgentMain().run(commandLineArguments)
     }
     if (terminated.restart) {

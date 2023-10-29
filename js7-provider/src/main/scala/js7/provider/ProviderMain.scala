@@ -26,7 +26,7 @@ object ProviderMain
   private lazy val logger = Logger[this.type]
 
   def main(args: Array[String]): Unit =
-    runMain {
+    runMain("JS7 Provider") {
       // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
       logger.info(s"Provider ${BuildInfo.longVersion}")
       val conf = ProviderConfiguration.fromCommandLine(args.toVector)

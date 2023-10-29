@@ -24,8 +24,8 @@ object Logger
   lazy val empty: ScalaLogger =
     ScalaLogger(org.slf4j.helpers.NOPLogger.NOP_LOGGER)
 
-  def initialize(): Unit =
-    Log4j.initialize()
+  def initialize(name: String): Unit =
+    Log4j.initialize(name)
 
   //val Timing: Marker = MarkerFactory.getMarker("Timing")
   //val Event: Marker = MarkerFactory.getMarker("Event")

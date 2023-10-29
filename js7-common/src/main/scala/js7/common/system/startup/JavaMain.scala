@@ -2,10 +2,10 @@ package js7.common.system.startup
 
 import cats.effect.{Resource, Sync}
 import com.typesafe.config.Config
-import js7.base.BuildInfo
 import js7.base.configutils.Configs.{ConvertibleConfig, logConfig}
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.log.{Log4j, Logger}
+import js7.base.system.startup.StartUp.{logJavaSettings, printlnWithClock, startUpLine}
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.commandline.CommandLineArguments
@@ -19,13 +19,7 @@ object JavaMain
 
   def runMain[A](name: String, arguments: => CommandLineArguments, config: => Config)(body: => A)
   : Unit =
-    runMain {
-      // Log early for early timestamp and proper logger initialization by a
-      // single (non-concurrent) call
-      // Log a bar, in case the previous file is appended
-      logger.info(s"$name ${BuildInfo.longVersion}" +
-        "\n" + "━" * 80)  // In case, the previous file is appended
-      logger.info(startUpLine())
+    runMain(name) {
       logger.debug(arguments.toString)
       //logger.info(s"config=${conf.configDirectory}")
       logConfig(config)
@@ -33,9 +27,12 @@ object JavaMain
       body
     }
 
-  def runMain(body: => Unit): Unit =
+  def runMain(name: String)(body: => Unit): Unit =
     try {
-      Log4j.initialize()
+      Log4j.initialize(name)
+      // Log early for early timestamp and proper logger initialization by a
+      // single (non-concurrent) call
+      logger.info(startUpLine(name))
       coupleScribeWithSlf4j()
       ProblemCodeMessages.initialize()
       // Initialize class and object for possible quicker emergency stop

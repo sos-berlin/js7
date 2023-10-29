@@ -30,10 +30,10 @@ object Log4j
           case o => Success(o)
         })
 
-  def initialize() =
+  def initialize(name: String = "JS7 Engine") =
     synchronized {
       if (!initialized) {
-        if (CorrelId.couldBeEnabled) CorrelIdLog4JThreadContextMap.initialize()
+        if (CorrelId.couldBeEnabled) CorrelIdLog4jThreadContextMap.initialize(name)
         for (t <- shutdownMethod.failed) logger.warn(t.toString)
         initialized = true
 
@@ -55,7 +55,7 @@ object Log4j
     if (!isShutdown.getAndSet(true)) {
       if (!fast) {
         CorrelId.logStatisticsIfEnabled()
-        CorrelIdLog4JThreadContextMap.logStatistics()
+        CorrelIdLog4jThreadContextMap.logStatistics()
       }
       for (shutdown <- shutdownMethod) {
         // Log complete timestamp in case of short log timestamp
