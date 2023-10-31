@@ -5,7 +5,6 @@ import io.circe.{Decoder, Encoder, JsonObject}
 import js7.base.circeutils.CirceUtils.CirceUtilsChecked
 import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.generic.GenericString
-import js7.base.io.process.KeyLogin
 import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
 import js7.base.time.AdmissionTimeScheme
@@ -74,7 +73,6 @@ object WorkflowJob
     parallelism: Int = DefaultParallelism,
     sigkillDelay: Option[FiniteDuration] = None,
     timeout: Option[FiniteDuration] = None,
-    login: Option[KeyLogin] = None,
     failOnErrWritten: Boolean = false,
     admissionTimeScheme: Option[AdmissionTimeScheme] = None,
     skipIfNoAdmissionStartForOrderDay: Boolean = false)

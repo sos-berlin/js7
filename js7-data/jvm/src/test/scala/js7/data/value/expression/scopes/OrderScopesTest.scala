@@ -76,7 +76,6 @@ final class OrderScopesTest extends OurTestSuite
           parallelism = 1,
           sigkillDelay = sigkillDelay,
           timeout = timeout,
-          login = None,
           failOnErrWritten = false,
           admissionTimeScheme = None,
           skipIfNoAdmissionStartForOrderDay = false)
