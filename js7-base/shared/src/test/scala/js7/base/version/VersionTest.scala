@@ -10,13 +10,29 @@ final class VersionTest extends OurTestSuite
     assert(Version.checked("1") == Left(Problem("Unrecognized version: 1")))
     assert(Version.checked("1.2.x") == Left(Problem("Unrecognized version: 1.2.x")))
     assert(Version.checked("1.2.9876543210") == Left(Problem("""NumberFormatException: For input string: "9876543210"""")))
+    assert(Version.checked("1.2.3.9876543210") == Left(Problem("""NumberFormatException: For input string: "9876543210"""")))
 
     assertEqual(Version("0.0.1"), Version("0.0.1", 0, 0, 1))
     assertEqual(Version("1.2.3"), Version("1.2.3", 1 ,2, 3))
-    assertEqual(Version("1.2.3-SNAPSHOT"), Version("1.2.3-SNAPSHOT", 1, 2, 3, List("SNAPSHOT")))
-    assertEqual(Version("1.2.3-SNAPSHOT+1abc"), Version("1.2.3-SNAPSHOT+1abc", 1, 2, 3, List("SNAPSHOT"), List("1abc")))
-    assertEqual(Version("1.2.3-alpha.20210324"), Version("1.2.3-alpha.20210324", 1 ,2, 3, List("alpha", "20210324")))
-    assertEqual(Version("1.2.3+1abc"), Version("1.2.3+1abc", 1 ,2, 3, Nil, List("1abc")))
+    assertEqual(Version("1.2.3.4"), Version("1.2.3.4", 1 ,2, 3, Some(4)))
+
+    assertEqual(Version("1.2.3-SNAPSHOT"),
+      Version("1.2.3-SNAPSHOT", 1, 2, 3, None, List("SNAPSHOT")))
+
+    assertEqual(Version("1.2.3.4-SNAPSHOT"),
+      Version("1.2.3.4-SNAPSHOT", 1, 2, 3, Some(4), List("SNAPSHOT")))
+
+    assertEqual(Version("1.2.3-SNAPSHOT+1abc"),
+      Version("1.2.3-SNAPSHOT+1abc", 1, 2, 3, None, List("SNAPSHOT"), List("1abc")))
+
+    assertEqual(Version("1.2.3.4-SNAPSHOT+1abc"),
+      Version("1.2.3.4-SNAPSHOT+1abc", 1, 2, 3, Some(4), List("SNAPSHOT"), List("1abc")))
+
+    assertEqual(Version("1.2.3-alpha.20210324"),
+      Version("1.2.3-alpha.20210324", 1 ,2, 3, None, List("alpha", "20210324")))
+
+    assertEqual(Version("1.2.3+1abc"),
+      Version("1.2.3+1abc", 1 ,2, 3, None, Nil, List("1abc")))
 
     def assertEqual(a: Version, b: Version) = {
       assert(a == b)
@@ -28,8 +44,13 @@ final class VersionTest extends OurTestSuite
     // SNAPSHOT > 1.2.3-alpha but < 1.2.3
     assert(Version("0.0.1") > Version("0.0.0"))
     assert(Version("10.0.0") > Version("9.0.0"))
+    assert(Version("0.0.0.1") > Version("0.0.0"))
+    assert(Version("0.0.1") > Version("0.0.0.1"))
+    assert(Version("0.0.0.1") > Version("0.0.0.0"))
+    assert(Version("1.2.3.1") > Version("1.2.3.1-SNAPSHOT"))
     assert(Version("1.2.4-SNAPSHOT") > Version("1.2.3"))
     assert(Version("1.2.3") > Version("1.2.3-SNAPSHOT"))
+    assert(Version("1.2.3.1") > Version("1.2.3.1-SNAPSHOT"))
     assert(Version("1.2.3-alpha.20210324") > Version("1.2.3-SNAPSHOT"))
     assert(Version("1.2.3-beta") > Version("1.2.3-alpha.20210324"))
     assert(Version("1.2.3-beta.1") > Version("1.2.3-beta"))
