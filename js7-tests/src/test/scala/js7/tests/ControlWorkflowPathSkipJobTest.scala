@@ -17,19 +17,21 @@ import js7.data.item.{ItemRevision, VersionId}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.value.expression.ExpressionParser.expr
+import js7.data.workflow.instructions.{Execute, If}
+import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.If
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{Label, Position}
 import js7.data.workflow.{Workflow, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
 import js7.tests.ControlWorkflowPathSkipJobTest.*
 import js7.tests.jobs.EmptyJob
-import js7.tests.testenv.ControllerAgentForScalaTest
+import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 
 final class ControlWorkflowPathSkipJobTest
-extends OurTestSuite, ControllerAgentForScalaTest:
+extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
 
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
@@ -83,6 +85,50 @@ extends OurTestSuite, ControllerAgentForScalaTest:
       OrderDetached,
       OrderFinished(),
       OrderDeleted))
+
+  "JS-2103 Bug: frozen Orders and \"Unhandled message StartProcessing\"" in:
+    val workflow = Workflow(WorkflowPath("JS-2103-WORKFLOW"), Seq(
+      EmptyJob.execute(agentPath),
+      If(expr("true"), Workflow.of(
+        label @: Execute(WorkflowJob.Name("JOB")))),
+      EmptyJob.execute(agentPath),
+      // JS-2103 bug blocks here
+      Execute(WorkflowJob.Name("JOB"))),
+      nameToJob = Map(
+        WorkflowJob.Name("JOB") -> EmptyJob.workflowJob(agentPath)))
+
+    withTemporaryItem(workflow) { workflow =>
+      skipJob(workflow.path, true, ItemRevision(1))
+      val orderId = OrderId("B")
+      val events = controller
+        .runOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+        .map(_.value)
+      assert(events == Seq(
+        OrderAdded(workflow.id, deleteWhenTerminated = true),
+        OrderAttachable(agentPath),
+        OrderAttached(agentPath),
+
+        OrderStarted,
+        OrderProcessingStarted(subagentId),
+        OrderProcessed(Outcome.succeeded),
+        OrderMoved(Position(1) / "then" % 0),
+        OrderMoved(Position(1) / "then" % 1,
+          reason = Some(OrderMoved.SkippedDueToWorkflowPathControl)),
+        OrderMoved(Position(2)),
+
+        OrderProcessingStarted(subagentId),
+        OrderProcessed(Outcome.succeeded),
+        OrderMoved(Position(3)),
+
+        OrderProcessingStarted(subagentId),
+        OrderProcessed(Outcome.succeeded),
+        OrderMoved(Position(4)),
+
+        OrderDetachable,
+        OrderDetached,
+        OrderFinished(),
+        OrderDeleted))
+    }
 
   "WorkflowPathControl disappears with the last Workflow version" in:
     val eventId = eventWatch.lastAddedEventId

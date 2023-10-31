@@ -1,5 +1,6 @@
 package js7.agent.scheduler.order
 
+import cats.syntax.parallel.*
 import com.softwaremill.tagging.{@@, Tagger}
 import io.circe.syntax.EncoderOps
 import java.time.ZoneId
@@ -40,7 +41,7 @@ import js7.data.agent.Problems.{AgentDuplicateOrder, AgentIsShuttingDown}
 import js7.data.calendar.Calendar
 import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{<-:, Event, EventId, JournalState, KeyedEvent, Stamped}
+import js7.data.event.{<-:, Event, EventId, JournalState, Stamped}
 import js7.data.execution.workflow.OrderEventSource
 import js7.data.execution.workflow.instructions.{ExecuteAdmissionTimeSwitch, InstructionExecutorService}
 import js7.data.item.BasicItemEvent.{ItemAttachedToMe, ItemDetached, ItemDetachingFromMe, SignedItemAttachedToMe}
@@ -89,7 +90,7 @@ final class AgentOrderKeeper(
   conf: AgentConfiguration)
   (implicit protected val scheduler: Scheduler)
 extends MainJournalingActor[AgentState, Event], Stash:
-  
+
   import conf.implicitPekkoAskTimeout
   import context.{actorOf, watch}
   import forDirector.{iox, subagent as localSubagent}
@@ -747,18 +748,31 @@ extends MainJournalingActor[AgentState, Event], Stash:
           logger.debug(s"❌ ERROR order    =$order")
           logger.debug(s"❌ ERROR idToOrder=${agentState.idToOrder(order.id)}")
           //assertThat(oes.state.idToOrder(order.id) == order)
+
         val keyedEvents = oes.nextEvents(order.id)
-        keyedEvents foreach { case KeyedEvent(orderId_, event) =>
-          val future = orderRegister(orderId_).actor ?
-            OrderActor.Command.HandleEvents(event :: Nil, CorrelId.current)
-          try Await.result(future, 99.s) // TODO Blocking! SLOW because inhibits parallelization
-          catch { case NonFatal(t) => logger.error(
-            s"$orderId_ <-: ${event.toShortString} => ${t.toStringWithCauses}")
+        val future = keyedEvents
+          .groupMap(_.key)(_.event)
+          .toSeq
+          .parTraverse((orderId_ : OrderId, events) =>
+            Task
+              .fromFuture(
+                orderRegister(orderId_).actor ?
+                  OrderActor.Command.HandleEvents(events, CorrelId.current))
+              .attempt
+              .map(orderId_ -> events -> _))
+          .runToFuture
+        // TODO Not awaiting the response may lead to duplicate events
+        //  for example when OrderSuspensionMarked is emitted after OrderProcessed and before OrderMoved.
+        //  Then, two OrderMoved are emitted, because the second event is based on the same Order state.
+        // TODO Blocking! SLOW because inhibits parallelization
+        try Await.result(future, 99.s)
+          .collect { case ((orderId_, events), Left(throwable)) =>
+            logger.error(
+              s"$orderId_ <-: ${events.map(_.toShortString)} => ${throwable.toStringWithCauses}")
           }
-          // TODO Not awaiting the response may lead to duplicate events
-          //  for example when OrderSuspensionMarked is emitted after OrderProcessed and before OrderMoved.
-          //  Then, two OrderMoved are emitted, because the second event is based on the same Order state.
-        }
+        catch case NonFatal(t) => logger.error(
+          s"${keyedEvents.map(_.toShortString)} => ${t.toStringWithCauses}")
+
         if keyedEvents.isEmpty
           && journal.unsafeCurrentState().isOrderProcessable(order)
           && order.isAttached

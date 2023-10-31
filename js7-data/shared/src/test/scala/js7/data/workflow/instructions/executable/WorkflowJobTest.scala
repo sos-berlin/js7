@@ -4,7 +4,7 @@ import java.time.DayOfWeek.{MONDAY, TUESDAY}
 import java.time.LocalTime
 import js7.base.circeutils.CirceUtils.*
 import js7.base.generic.GenericString.EmptyStringProblem
-import js7.base.io.process.{KeyLogin, ReturnCode}
+import js7.base.io.process.ReturnCode
 import js7.base.problem.Problems.InvalidNameProblem
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
@@ -53,7 +53,6 @@ final class WorkflowJobTest extends OurTestSuite
           parallelism = 3,
           Some(10.s),
           Some(60.s),
-          Some(KeyLogin("CREDENTIALS KEY", withUserProfile = true)),
           failOnErrWritten = true,
           Some(AdmissionTimeScheme(Seq(
             WeekdayPeriod(MONDAY, LocalTime.of(1, 0), 1.h),
