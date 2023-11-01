@@ -1,11 +1,10 @@
 package js7.agent.configuration.inject
 
-import akka.actor.{ActorRefFactory, ActorSystem}
 import com.google.inject.{AbstractModule, Provides}
 import com.typesafe.config.Config
 import javax.inject.Singleton
 import js7.agent.configuration.AgentConfiguration
-import js7.agent.configuration.Akkas.newAgentActorSystem
+import js7.agent.configuration.Pekkos.newAgentActorSystem
 import js7.agent.web.common.AgentSession
 import js7.base.auth.SimpleUser
 import js7.base.eventbus.StandardEventBus
@@ -16,13 +15,14 @@ import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.{AlarmClock, WallClock}
 import js7.base.utils.Closer
 import js7.base.utils.ScalaUtils.syntax.RichEither
-import js7.common.akkahttp.web.auth.GateKeeper
-import js7.common.akkahttp.web.session.SessionRegister
+import js7.common.pekkohttp.web.auth.GateKeeper
+import js7.common.pekkohttp.web.session.SessionRegister
 import js7.common.system.ThreadPools
 import js7.common.system.ThreadPools.newUnlimitedScheduler
 import js7.journal.{EventIdClock, EventIdGenerator}
 import js7.launcher.configuration.JobLauncherConf
 import monix.execution.Scheduler
+import org.apache.pekko.actor.{ActorRefFactory, ActorSystem}
 import scala.concurrent.ExecutionContext
 
 /**

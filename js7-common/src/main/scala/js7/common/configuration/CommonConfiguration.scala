@@ -9,10 +9,10 @@ import js7.base.io.https.{HttpsConfig, KeyStoreRef, TrustStoreRef}
 import js7.base.log.Logger
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
-import js7.common.akkahttp.web.data.{WebServerBinding, WebServerPort}
 import js7.common.commandline.CommandLineArguments
 import js7.common.configuration.CommonConfiguration.*
 import js7.common.internet.IP.StringToServerInetSocketAddress
+import js7.common.pekkohttp.web.data.{WebServerBinding, WebServerPort}
 
 /**
   * @author Joacim Zschimmer

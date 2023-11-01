@@ -20,9 +20,9 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.HasCloser
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichPartialFunction}
-import js7.common.akkautils.ProvideActorSystem
 import js7.common.files.{DirectoryReader, PathSeqDiff, PathSeqDiffer}
-import js7.controller.client.AkkaHttpControllerApi
+import js7.common.pekkoutils.ProvideActorSystem
+import js7.controller.client.PekkoHttpControllerApi
 import js7.controller.workflow.WorkflowReader
 import js7.core.item.{ItemPaths, SimpleItemReader, TypedSourceReader}
 import js7.data.agent.AgentRef
@@ -57,14 +57,14 @@ extends HasCloser with Observing with ProvideActorSystem
       password <- conf.config.optionAs[String]("js7.provider.controller.password")
     } yield UserAndPassword(UserId(userName), SecretString(password))
 
-  protected val httpControllerApi: AkkaHttpControllerApi =
-    new AkkaHttpControllerApi(
+  protected val httpControllerApi: PekkoHttpControllerApi =
+    new PekkoHttpControllerApi(
       conf.controllerUri, userAndPassword,
       actorSystem = actorSystem,
       conf.config, conf.httpsConfig)
 
   private val controllerApi = new ControllerApi(
-    Nel.one(AkkaHttpControllerApi.admissionToApiResource(
+    Nel.one(PekkoHttpControllerApi.admissionToApiResource(
     Admission(conf.controllerUri, userAndPassword), conf.httpsConfig)(actorSystem)))
 
   protected def config = conf.config

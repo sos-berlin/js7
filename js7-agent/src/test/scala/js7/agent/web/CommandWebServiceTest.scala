@@ -1,8 +1,5 @@
 package js7.agent.web
 
-import akka.http.scaladsl.model.MediaTypes.`application/json`
-import akka.http.scaladsl.model.StatusCodes.{OK, ServiceUnavailable}
-import akka.http.scaladsl.model.headers.Accept
 import io.circe.Json
 import io.circe.syntax.EncoderOps
 import js7.agent.data.commands.AgentCommand
@@ -15,13 +12,16 @@ import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.CorrelId
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
-import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
-import js7.common.akkahttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
+import js7.common.pekkohttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
+import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegments
 import js7.core.command.CommandMeta
 import js7.data.agent.Problems.AgentIsShuttingDown
 import js7.data.command.{CommandHandlerDetailed, CommandHandlerOverview, CommandRunOverview}
 import monix.eval.Task
 import monix.execution.Scheduler
+import org.apache.pekko.http.scaladsl.model.MediaTypes.`application/json`
+import org.apache.pekko.http.scaladsl.model.StatusCodes.{OK, ServiceUnavailable}
+import org.apache.pekko.http.scaladsl.model.headers.Accept
 import scala.concurrent.Future
 
 /**

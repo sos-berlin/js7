@@ -1,8 +1,5 @@
 package js7.journal.state
 
-import akka.actor.{ActorRef, ActorRefFactory}
-import akka.pattern.ask
-import akka.util.Timeout
 import com.softwaremill.diffx
 import com.softwaremill.tagging.{@@, Tagger}
 import izumi.reflect.Tag
@@ -13,7 +10,7 @@ import js7.base.problem.Checked
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.SetOnce
-import js7.common.akkautils.Akkas.encodeAsActorName
+import js7.common.pekkoutils.Pekkos.encodeAsActorName
 import js7.data.cluster.ClusterState
 import js7.data.event.{Event, JournalHeader, JournalHeaders, JournalId, KeyedEvent, SnapshotableState, Stamped}
 import js7.journal.configuration.JournalConf
@@ -25,6 +22,9 @@ import js7.journal.watch.FileEventWatch
 import js7.journal.{CommitOptions, EventIdGenerator, JournalActor, StampedKeyedEventBus}
 import monix.eval.Task
 import monix.execution.Scheduler
+import org.apache.pekko.actor.{ActorRef, ActorRefFactory}
+import org.apache.pekko.pattern.ask
+import org.apache.pekko.util.Timeout
 import scala.concurrent.{Future, Promise}
 
 // TODO Lock for NoKey is to wide. Restrict to a set of Event superclasses, like ClusterEvent, ControllerEvent?
@@ -42,7 +42,7 @@ final class FileStatePersistence[S <: SnapshotableState[S]: Tag](
     protected val S: SnapshotableState.Companion[S],
     scheduler: Scheduler,
     actorRefFactory: ActorRefFactory,
-    timeout: akka.util.Timeout)
+    timeout: org.apache.pekko.util.Timeout)
 extends StatePersistence[S]
 with FileStatePersistence.PossibleFailover
 with AutoCloseable
@@ -213,7 +213,7 @@ object FileStatePersistence
     (implicit
       scheduler: Scheduler,
       actorRefFactory: ActorRefFactory,
-      timeout: akka.util.Timeout)
+      timeout: org.apache.pekko.util.Timeout)
   : Task[FileStatePersistence[S]] = {
     import recovered.journalMeta
     val persistence = prepare(recovered.journalId, recovered.eventWatch, journalMeta, journalConf,
@@ -232,7 +232,7 @@ object FileStatePersistence
     (implicit
       scheduler: Scheduler,
       actorRefFactory: ActorRefFactory,
-      timeout: akka.util.Timeout)
+      timeout: org.apache.pekko.util.Timeout)
   : FileStatePersistence[S] = {
     val journalActorStopped = Promise[JournalActor.Stopped]()
     val journalActor = actorRefFactory

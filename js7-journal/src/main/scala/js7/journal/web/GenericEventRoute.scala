@@ -1,15 +1,5 @@
 package js7.journal.web
 
-import akka.NotUsed
-import akka.actor.ActorRefFactory
-import akka.http.scaladsl.common.JsonEntityStreamingSupport
-import akka.http.scaladsl.marshalling.{ToEntityMarshaller, ToResponseMarshallable}
-import akka.http.scaladsl.model.HttpRequest
-import akka.http.scaladsl.model.StatusCodes.{BadRequest, ServiceUnavailable}
-import akka.http.scaladsl.server.Directives.*
-import akka.http.scaladsl.server.{Directive, Directive1, ExceptionHandler, Route}
-import akka.stream.scaladsl.Source
-import akka.util.ByteString
 import izumi.reflect.Tag
 import js7.base.auth.{UserId, ValidUserPermission}
 import js7.base.log.Logger
@@ -22,10 +12,10 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.FutureCompletion
 import js7.base.utils.FutureCompletion.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.common.akkahttp.AkkaHttpServerUtils.{accept, observableToResponseMarshallable}
-import js7.common.akkahttp.StandardMarshallers.*
-import js7.common.akkahttp.web.session.RouteProvider
 import js7.common.http.JsonStreamingSupport.*
+import js7.common.pekkohttp.PekkoHttpServerUtils.{accept, observableToResponseMarshallable}
+import js7.common.pekkohttp.StandardMarshallers.*
+import js7.common.pekkohttp.web.session.RouteProvider
 import js7.data.event.JournalEvent.StampedHeartbeat
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, EventSeqTornProblem, KeyedEvent, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}
 import js7.journal.watch.{ClosedException, EventWatch}
@@ -34,6 +24,16 @@ import js7.journal.web.GenericEventRoute.*
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
+import org.apache.pekko.NotUsed
+import org.apache.pekko.actor.ActorRefFactory
+import org.apache.pekko.http.scaladsl.common.JsonEntityStreamingSupport
+import org.apache.pekko.http.scaladsl.marshalling.{ToEntityMarshaller, ToResponseMarshallable}
+import org.apache.pekko.http.scaladsl.model.HttpRequest
+import org.apache.pekko.http.scaladsl.model.StatusCodes.{BadRequest, ServiceUnavailable}
+import org.apache.pekko.http.scaladsl.server.Directives.*
+import org.apache.pekko.http.scaladsl.server.{Directive, Directive1, ExceptionHandler, Route}
+import org.apache.pekko.stream.scaladsl.Source
+import org.apache.pekko.util.ByteString
 import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
 import scala.util.chaining.*
@@ -72,7 +72,7 @@ trait GenericEventRoute extends RouteProvider
             complete(ServiceUnavailable -> ShuttingDownProblem)
           else
             complete(ServiceUnavailable -> Problem.pure(t.getMessage))
-        //case t: akka.pattern.AskTimeoutException =>  // When getting EventWatch (Actor maybe terminated)
+        //case t: org.apache.pekko.pattern.AskTimeoutException =>  // When getting EventWatch (Actor maybe terminated)
         //  logger.debug(t.toStringWithCauses, t)
         //  complete(ServiceUnavailable -> Problem.pure(t.toString))
       }

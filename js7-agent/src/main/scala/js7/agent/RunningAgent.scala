@@ -1,6 +1,5 @@
 package js7.agent
 
-import akka.actor.{ActorRef, ActorSystem, Props}
 import cats.syntax.traverse.*
 import com.google.inject.Stage.PRODUCTION
 import com.google.inject.util.Modules
@@ -32,10 +31,10 @@ import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Closer, ProgramTermination}
 import js7.base.web.Uri
-import js7.common.akkahttp.web.AkkaWebServer
-import js7.common.akkahttp.web.auth.GateKeeper
-import js7.common.akkahttp.web.session.SessionRegister
 import js7.common.guice.GuiceImplicits.*
+import js7.common.pekkohttp.web.PekkoWebServer
+import js7.common.pekkohttp.web.auth.GateKeeper
+import js7.common.pekkohttp.web.session.SessionRegister
 import js7.core.cluster.watch.ClusterWatchRegister
 import js7.core.command.CommandMeta
 import js7.journal.files.JournalFiles.JournalMetaOps
@@ -44,6 +43,7 @@ import js7.journal.state.{FileStatePersistence, ReadableStatePersistence}
 import js7.journal.{EventIdGenerator, StampedKeyedEventBus}
 import monix.eval.Task
 import monix.execution.Scheduler
+import org.apache.pekko.actor.{ActorRef, ActorSystem, Props}
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.*
 import scala.concurrent.{ExecutionContext, Future, Promise}
@@ -58,7 +58,7 @@ import scala.util.{Failure, Success, Try}
  */
 final class RunningAgent private(
   val persistence: ReadableStatePersistence[AgentState],
-  val webServer: AkkaWebServer & AkkaWebServer.HasUri,
+  val webServer: PekkoWebServer & PekkoWebServer.HasUri,
   mainActor: ActorRef,
   terminated1: Future[ProgramTermination],
   val api: CommandMeta => DirectAgentApi,
@@ -179,7 +179,7 @@ object RunningAgent {
     // Run under scheduler from start (and let debugger show Controller's thread names)
     Future {
       val agentConfiguration = injector.instance[AgentConfiguration]
-      import agentConfiguration.{config, implicitAkkaAskTimeout, journalConf, journalMeta}
+      import agentConfiguration.{config, implicitPekkoAskTimeout, journalConf, journalMeta}
       agentConfiguration.journalMeta.deleteJournalIfMarked()
         .orThrow
       val whenRecovered = Future(StateRecoverer.recover[AgentState](journalMeta, config))

@@ -1,6 +1,5 @@
 package js7.agent.client
 
-import akka.actor.ActorSystem
 import js7.agent.data.AgentApi
 import js7.agent.data.AgentState.keyedEventJsonCodec
 import js7.agent.data.commands.AgentCommand
@@ -12,11 +11,12 @@ import js7.base.io.https.HttpsConfig
 import js7.base.problem.Checked
 import js7.base.session.SessionApi
 import js7.base.web.Uri
-import js7.common.http.AkkaHttpClient
+import js7.common.http.PekkoHttpClient
 import js7.data.event.{Event, EventRequest, KeyedEvent, Stamped}
 import js7.data.session.HttpSessionApi
 import monix.eval.Task
 import monix.reactive.Observable
+import org.apache.pekko.actor.ActorSystem
 
 /**
  * Client for JS7 Agent.
@@ -25,7 +25,7 @@ import monix.reactive.Observable
  * @author Joacim Zschimmer
  */
 trait AgentClient
-extends AgentApi with HttpSessionApi with AkkaHttpClient
+extends AgentApi with HttpSessionApi with PekkoHttpClient
 with SessionApi.HasUserAndPassword
 {
   protected def httpClient = this

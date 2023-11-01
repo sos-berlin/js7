@@ -1,8 +1,5 @@
 package js7.journal.web
 
-import akka.http.scaladsl.server.Directive1
-import akka.http.scaladsl.server.Directives.*
-import akka.http.scaladsl.testkit.ScalatestRouteTest
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.configutils.Configs.HoconStringInterpolator
@@ -13,6 +10,9 @@ import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{Event, EventId, EventRequest, KeyedEvent, KeyedEventTypedJsonCodec}
 import js7.journal.web.EventDirectives.eventRequest
 import js7.journal.web.EventDirectivesTest.*
+import org.apache.pekko.http.scaladsl.server.Directive1
+import org.apache.pekko.http.scaladsl.server.Directives.*
+import org.apache.pekko.http.scaladsl.testkit.ScalatestRouteTest
 import scala.concurrent.duration.*
 
 /**
@@ -22,7 +22,7 @@ final class EventDirectivesTest extends OurTestSuite with ScalatestRouteTest
 {
   coupleScribeWithSlf4j()
 
-  override def testConfig = config"akka.loglevel = warning"
+  override def testConfig = config"pekko.loglevel = warning"
     .withFallback(super.testConfig)
 
   private implicit val myKeyedEventJsonFormat: KeyedEventTypedJsonCodec[MyEvent] =

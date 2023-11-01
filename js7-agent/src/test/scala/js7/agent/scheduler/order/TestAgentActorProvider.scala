@@ -1,6 +1,5 @@
 package js7.agent.scheduler.order
 
-import akka.actor.{ActorRef, ActorSystem, Props}
 import com.google.inject.Guice
 import com.softwaremill.diffx.generic.auto.*
 import java.nio.file.Path
@@ -23,6 +22,7 @@ import js7.journal.recover.Recovered
 import js7.journal.state.{FileStatePersistence, StatePersistence}
 import js7.journal.{EventIdGenerator, StampedKeyedEventBus}
 import monix.execution.Scheduler
+import org.apache.pekko.actor.{ActorRef, ActorSystem, Props}
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.{Future, Promise}
 
@@ -58,10 +58,10 @@ object TestAgentActorProvider {
   private def start(configAndData: Path, testName: String)(implicit closer: Closer)
   : (AgentConfiguration, StatePersistence[AgentState], ActorRef) = {
     implicit val agentConfiguration = AgentConfiguration.forTest(configAndData = configAndData, name = testName)
-    import agentConfiguration.{config, implicitAkkaAskTimeout, journalConf, journalMeta}
+    import agentConfiguration.{config, implicitPekkoAskTimeout, journalConf, journalMeta}
     val injector = Guice.createInjector(new AgentModule(agentConfiguration))
 
-    // Initialize Akka here to solve a classloader problem when Akka reads its reference.conf
+    // Initialize Pekko here to solve a classloader problem when Pekko reads its reference.conf
     implicit val actorSystem: ActorSystem = injector.instance[ActorSystem]
     implicit val scheduler: Scheduler = injector.instance[Scheduler]
 

@@ -1,15 +1,12 @@
 package js7.agent.scheduler.order
 
-import akka.actor.{Actor, ActorRef, PoisonPill, Props, Terminated}
-import akka.pattern.ask
-import akka.util.Timeout
 import com.softwaremill.diffx.generic.auto.*
 import com.typesafe.config.{Config, ConfigValueFactory}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.{createDirectory, exists}
 import java.nio.file.{Files, Path}
 import js7.agent.configuration.AgentConfiguration
-import js7.agent.configuration.Akkas.newAgentActorSystem
+import js7.agent.configuration.Pekkos.newAgentActorSystem
 import js7.agent.data.AgentState
 import js7.agent.scheduler.order.OrderActorTest.*
 import js7.agent.tests.TestAgentDirectoryProvider
@@ -28,8 +25,8 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.ByteUnits.toKBGB
 import js7.base.utils.HasCloser
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.common.akkautils.{CatchingActor, SupervisorStrategies}
 import js7.common.http.configuration.RecouplingStreamReaderConf
+import js7.common.pekkoutils.{CatchingActor, SupervisorStrategies}
 import js7.common.utils.Exceptions.repeatUntilNoException
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
@@ -52,6 +49,9 @@ import js7.launcher.configuration.JobLauncherConf
 import js7.launcher.process.ProcessConfiguration
 import js7.subagent.director.SubagentKeeper
 import monix.execution.Scheduler.Implicits.traced
+import org.apache.pekko.actor.{Actor, ActorRef, PoisonPill, Props, Terminated}
+import org.apache.pekko.pattern.ask
+import org.apache.pekko.util.Timeout
 import org.scalatest.Assertions.*
 import org.scalatest.BeforeAndAfterAll
 import scala.collection.mutable
@@ -163,7 +163,7 @@ private object OrderActorTest {
       |echo "result=TEST-RESULT-$SCHEDULER_PARAM_VAR1" >>"$SCHEDULER_RETURN_VALUES"
       |""".stripMargin
 
-  private implicit val TestAkkaTimeout: Timeout = Timeout(99.s)
+  private implicit val TestPekkoTimeout: Timeout = Timeout(99.s)
 
   private case class Result(events: Seq[OrderEvent], stdoutStderr: Map[StdoutOrStderr, String], duration: FiniteDuration)
 

@@ -1,10 +1,10 @@
 package js7.journal
 
-import akka.actor.ActorRef
-import akka.event.{EventBus, SubchannelClassification}
-import akka.util.Subclassification
 import javax.inject.Singleton
 import js7.data.event.{AnyKeyedEvent, Stamped, Event as EngineEvent}
+import org.apache.pekko.actor.ActorRef
+import org.apache.pekko.event.{EventBus, SubchannelClassification}
+import org.apache.pekko.util.Subclassification
 
 /**
   * @author Joacim Zschimmer

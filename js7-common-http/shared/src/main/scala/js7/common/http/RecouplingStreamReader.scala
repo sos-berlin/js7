@@ -223,7 +223,7 @@ abstract class RecouplingStreamReader[
               .timeoutOnSlowUpstream(idleTimeout)  // cancels upstream!
               .onErrorRecoverWith { case t: UpstreamTimeoutException =>
                 logger.debug(s"💥 $api: ${t.toString}")
-                // This should let Akka close the TCP connection to abort the stream
+                // This should let Pekko close the TCP connection to abort the stream
                 Observable.empty
               })))
 
@@ -256,7 +256,7 @@ abstract class RecouplingStreamReader[
                   for {
                     _ <- Task.when(problem == InvalidSessionTokenProblem)(
                       api.tryLogout.void)
-                    // TODO akka.stream.scaladsl.TcpIdleTimeoutException sollte still ignoriert werden, ist aber abhängig von Akka
+                    // TODO org.apache.pekko.stream.scaladsl.TcpIdleTimeoutException sollte still ignoriert werden, ist aber abhängig von Pekko
                     continue <- onCouplingFailed(api, problem)
                     either <-
                       if (continue)

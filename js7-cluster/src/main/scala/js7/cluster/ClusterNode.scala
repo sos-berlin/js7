@@ -1,7 +1,5 @@
 package js7.cluster
 
-import akka.actor.ActorSystem
-import akka.util.Timeout
 import cats.effect.Resource
 import com.softwaremill.diffx
 import com.typesafe.config.Config
@@ -34,6 +32,8 @@ import js7.journal.recover.{Recovered, StateRecoverer}
 import js7.journal.state.FileStatePersistence
 import monix.eval.Task
 import monix.execution.Scheduler
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.util.Timeout
 import scala.concurrent.Promise
 import scala.util.control.NoStackTrace
 

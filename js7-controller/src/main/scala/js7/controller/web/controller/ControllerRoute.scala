@@ -1,10 +1,10 @@
 package js7.controller.web.controller
 
-import akka.http.scaladsl.server.Directives.*
-import akka.http.scaladsl.server.Route
-import js7.common.akkahttp.AkkaHttpServerUtils.{passIf, pathSegment}
-import js7.common.akkahttp.WebLogDirectives
+import js7.common.pekkohttp.PekkoHttpServerUtils.{passIf, pathSegment}
+import js7.common.pekkohttp.WebLogDirectives
 import js7.controller.web.controller.api.ApiRoute
+import org.apache.pekko.http.scaladsl.server.Directives.*
+import org.apache.pekko.http.scaladsl.server.Route
 
 /**
   * @author Joacim Zschimmer

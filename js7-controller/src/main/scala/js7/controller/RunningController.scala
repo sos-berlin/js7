@@ -1,8 +1,5 @@
 package js7.controller
 
-import akka.actor.{ActorRef, ActorSystem, Props}
-import akka.pattern.ask
-import akka.util.Timeout
 import cats.syntax.flatMap.*
 import cats.syntax.traverse.*
 import com.google.inject.Stage.{DEVELOPMENT, PRODUCTION}
@@ -35,12 +32,12 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Closer, ProgramTermination, SetOnce}
 import js7.cluster.ClusterNode.RestartAfterJournalTruncationException
 import js7.cluster.{ClusterNode, WorkingClusterNode}
-import js7.common.akkahttp.web.AkkaWebServer
-import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.guice.GuiceImplicits.RichInjector
+import js7.common.pekkohttp.web.PekkoWebServer
+import js7.common.pekkohttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.RunningController.*
-import js7.controller.client.{AkkaHttpControllerApi, HttpControllerApi}
+import js7.controller.client.{HttpControllerApi, PekkoHttpControllerApi}
 import js7.controller.command.ControllerCommandExecutor
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.configuration.inject.ControllerModule
@@ -66,6 +63,9 @@ import js7.license.LicenseCheckContext
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
+import org.apache.pekko.actor.{ActorRef, ActorSystem, Props}
+import org.apache.pekko.pattern.ask
+import org.apache.pekko.util.Timeout
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.*
 import scala.concurrent.{Await, Future, Promise}
@@ -81,7 +81,7 @@ import scala.util.{Failure, Success}
  */
 final class RunningController private(
   val eventWatch: StrictEventWatch,
-  webServer: AkkaWebServer & AkkaWebServer.HasUri,
+  webServer: PekkoWebServer & PekkoWebServer.HasUri,
   val recoveredEventId: EventId,
   val orderApi: OrderApi,
   val controllerState: Task[ControllerState],
@@ -99,13 +99,13 @@ extends AutoCloseable
   val sessionRegister: SessionRegister[SimpleSession] = injector.instance[SessionRegister[SimpleSession]]
   private lazy val controllerConfiguration = injector.instance[ControllerConfiguration]
   private val httpApiUserAndPassword = SetOnce[Option[UserAndPassword]]
-  private val _httpApi = SetOnce[AkkaHttpControllerApi]
+  private val _httpApi = SetOnce[PekkoHttpControllerApi]
 
   @TestOnly lazy val localUri = webServer.localUri
   @TestOnly lazy val httpApi: HttpControllerApi = {
     if (_httpApi.isEmpty) {
       httpApiUserAndPassword.trySet(None)
-      _httpApi := new AkkaHttpControllerApi(localUri, httpApiUserAndPassword.orThrow,
+      _httpApi := new PekkoHttpControllerApi(localUri, httpApiUserAndPassword.orThrow,
         actorSystem = actorSystem, config = config, name = controllerConfiguration.name)
     }
     _httpApi.orThrow
@@ -137,7 +137,7 @@ extends AutoCloseable
         injector.instance[ActorSystem].whenTerminated.value match {
           case Some(Failure(t)) => Task.raiseError(t)
           case Some(Success(_)) =>
-            logger.warn("Controller terminate: Akka has already been terminated")
+            logger.warn("Controller terminate: Pekko has already been terminated")
             Task.pure(ProgramTermination(restart = false))
           case None =>
             logger.debug("terminate")
@@ -309,7 +309,7 @@ object RunningController
     private implicit lazy val closer: Closer = injector.instance[Closer]
     private implicit lazy val actorSystem: ActorSystem = injector.instance[ActorSystem]
 
-    import controllerConfiguration.{implicitAkkaAskTimeout, journalMeta}
+    import controllerConfiguration.{implicitPekkoAskTimeout, journalMeta}
     @volatile private var clusterStartupTermination = ProgramTermination()
 
     private[RunningController] def start(): Future[RunningController] = {
@@ -451,11 +451,11 @@ object RunningController
           httpsConfig,
           config,
           injector.instance[EventIdGenerator],
-          (uri, name) => AkkaHttpControllerApi
+          (uri, name) => PekkoHttpControllerApi
             .resource(uri, clusterConf.peersUserAndPassword, httpsConfig, name = name),
           new LicenseChecker(LicenseCheckContext(controllerConfiguration.configDirectory)),
           testEventBus,
-          implicitAkkaAskTimeout)
+          implicitPekkoAskTimeout)
       }
 
       class StartingClusterCancelledException extends NoStackTrace

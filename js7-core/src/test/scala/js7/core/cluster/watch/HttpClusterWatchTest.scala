@@ -1,7 +1,5 @@
 package js7.core.cluster.watch
 
-import akka.http.scaladsl.server.Directives.*
-import akka.http.scaladsl.server.Route
 import com.typesafe.config.ConfigFactory
 import js7.base.Js7Version
 import js7.base.auth.{SessionToken, SimpleUser}
@@ -13,11 +11,11 @@ import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Closer.syntax.*
 import js7.base.web.Uri
-import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
-import js7.common.akkahttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
-import js7.common.akkahttp.web.AkkaWebServer
-import js7.common.akkahttp.web.session.SessionInit
-import js7.common.akkautils.ProvideActorSystem
+import js7.common.pekkohttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
+import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegments
+import js7.common.pekkohttp.web.PekkoWebServer
+import js7.common.pekkohttp.web.session.SessionInit
+import js7.common.pekkoutils.ProvideActorSystem
 import js7.core.cluster.watch.HttpClusterWatchTest.*
 import js7.data.cluster.ClusterEvent.ClusterNodesAppointed
 import js7.data.cluster.{ClusterSetting, ClusterState, ClusterTiming}
@@ -25,6 +23,8 @@ import js7.data.controller.ControllerId
 import js7.data.node.NodeId
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global
+import org.apache.pekko.http.scaladsl.server.Directives.*
+import org.apache.pekko.http.scaladsl.server.Route
 import org.scalatest.BeforeAndAfterAll
 
 final class HttpClusterWatchTest extends OurTestSuite with BeforeAndAfterAll with ProvideActorSystem
@@ -53,7 +53,7 @@ final class HttpClusterWatchTest extends OurTestSuite with BeforeAndAfterAll wit
     }.route
   }
 
-  private lazy val server = AkkaWebServer.forTest()(
+  private lazy val server = PekkoWebServer.forTest()(
     decodeRequest {
       testSessionRoute ~
       pathSegments("agent/api/clusterWatch") {

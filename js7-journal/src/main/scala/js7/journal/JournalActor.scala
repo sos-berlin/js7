@@ -1,6 +1,5 @@
 package js7.journal
 
-import akka.actor.{Actor, ActorRef, DeadLetterSuppression, Props, Stash}
 import com.softwaremill.diffx
 import io.circe.syntax.EncoderOps
 import java.nio.file.Files.{delete, exists, move}
@@ -18,8 +17,8 @@ import js7.base.utils.ByteUnits.toKBGB
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.SetOnce
 import js7.base.utils.StackTraces.StackTraceThrowable
-import js7.common.akkautils.SupervisorStrategies
 import js7.common.jsonseq.PositionAnd
+import js7.common.pekkoutils.SupervisorStrategies
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeShutDown, ClusterCoupled, ClusterFailedOver, ClusterPassiveLost, ClusterSwitchedOver}
 import js7.data.cluster.{ClusterEvent, ClusterState}
 import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
@@ -36,6 +35,7 @@ import js7.journal.watch.JournalingObserver
 import js7.journal.write.{EventJournalWriter, SnapshotJournalWriter}
 import monix.execution.cancelables.SerialCancelable
 import monix.execution.{Cancelable, Scheduler}
+import org.apache.pekko.actor.{Actor, ActorRef, DeadLetterSuppression, Props, Stash}
 import scala.collection.mutable
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Deadline, FiniteDuration}

@@ -1,8 +1,5 @@
 package js7.agent.scheduler
 
-import akka.actor.ActorRef
-import akka.pattern.ask
-import akka.util.Timeout
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.views.AgentOverview
 import js7.agent.scheduler.AgentActor.Command
@@ -10,6 +7,9 @@ import js7.base.auth.UserId
 import js7.base.log.CorrelId
 import js7.base.problem.Checked
 import monix.eval.Task
+import org.apache.pekko.actor.ActorRef
+import org.apache.pekko.pattern.ask
+import org.apache.pekko.util.Timeout
 import scala.concurrent.Promise
 
 /**

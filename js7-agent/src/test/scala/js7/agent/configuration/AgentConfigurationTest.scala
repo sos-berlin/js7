@@ -11,8 +11,8 @@ import js7.base.io.file.FileUtils.*
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.test.OurTestSuite
-import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.commandline.CommandLineArguments
+import js7.common.pekkohttp.web.data.WebServerPort
 import js7.journal.configuration.JournalConf
 import js7.launcher.configuration.ProcessKillScript
 import scala.concurrent.duration.*
@@ -38,7 +38,7 @@ final class AgentConfigurationTest extends OurTestSuite
         logDirectory = data / "logs",
         jobWorkingDirectory = WorkingDirectory,
         killScript = Some(ProcessKillScript(""))/*unused, replaced by SubagentConf.killScript*/,
-        akkaAskTimeout = 1.hour,
+        pekkoAskTimeout = 1.hour,
         journalConf = JournalConf.fromConfig(DefaultConfig)
           .copy(slowCheckState = sys.props.get("js7.test").fold(false)(StringAsBoolean(_))),
         name = AgentConfiguration.DefaultName,

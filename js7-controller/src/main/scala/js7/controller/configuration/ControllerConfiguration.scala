@@ -1,6 +1,5 @@
 package js7.controller.configuration
 
-import akka.util.Timeout
 import com.typesafe.config.{Config, ConfigFactory}
 import java.net.InetSocketAddress
 import java.nio.file.Files.createDirectory
@@ -14,13 +13,14 @@ import js7.base.problem.Checked.*
 import js7.base.time.JavaTimeConverters.*
 import js7.base.utils.Tests.isTest
 import js7.cluster.ClusterConf
-import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.commandline.CommandLineArguments
 import js7.common.configuration.{CommonConfiguration, Js7Configuration}
+import js7.common.pekkohttp.web.data.WebServerPort
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.data.controller.{ControllerId, ControllerState}
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
+import org.apache.pekko.util.Timeout
 import scala.jdk.CollectionConverters.*
 
 /**
@@ -32,14 +32,14 @@ final case class ControllerConfiguration(
   configDirectory: Path,
   webServerPorts: Seq[WebServerPort],
   timeZone: ZoneId,
-  akkaAskTimeout: Timeout,
+  pekkoAskTimeout: Timeout,
   journalConf: JournalConf,
   clusterConf: ClusterConf,
   name: String,
   config: Config)
 extends CommonConfiguration
 {
-  implicit def implicitAkkaAskTimeout: Timeout = akkaAskTimeout
+  implicit def implicitPekkoAskTimeout: Timeout = pekkoAskTimeout
 
   def itemDirectory: Path = configDirectory / "live"
 
@@ -114,7 +114,7 @@ object ControllerConfiguration
       configDirectory = configDir,
       webServerPorts = Nil,
       timeZone = ZoneId.systemDefault,
-      akkaAskTimeout = config.getDuration("js7.akka.ask-timeout").toFiniteDuration,
+      pekkoAskTimeout = config.getDuration("js7.pekko.ask-timeout").toFiniteDuration,
       journalConf = JournalConf.fromConfig(config),
       clusterConf = ClusterConf.fromConfig(controllerId.toUserId, config).orThrow,
       name = name,
@@ -134,7 +134,7 @@ object ControllerConfiguration
       .resolve()
   }
 
-  // Same code in AkkaHttpControllerTextApi.configDirectoryConfig
+  // Same code in PekkoHttpControllerTextApi.configDirectoryConfig
   private def configDirectoryConfig(configDirectory: Path): Config =
     parseConfigIfExists(configDirectory / "private/private.conf", secret = true)
       .withFallback(parseConfigIfExists(configDirectory / "controller.conf", secret = false))

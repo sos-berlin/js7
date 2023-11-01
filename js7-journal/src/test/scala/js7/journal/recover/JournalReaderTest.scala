@@ -1,6 +1,5 @@
 package js7.journal.recover
 
-import akka.pattern.ask
 import io.circe.Encoder
 import io.circe.syntax.EncoderOps
 import java.nio.charset.StandardCharsets.UTF_8
@@ -22,6 +21,7 @@ import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.test.{TestActor, TestAggregate, TestAggregateActor, TestEvent, TestJournalMixin}
 import js7.journal.write.{EventJournalWriter, FileJsonWriter, SnapshotJournalWriter}
 import monix.execution.Scheduler.Implicits.traced
+import org.apache.pekko.pattern.ask
 
 /**
   * @author Joacim Zschimmer

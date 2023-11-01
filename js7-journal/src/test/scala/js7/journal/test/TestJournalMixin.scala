@@ -1,9 +1,5 @@
 package js7.journal.test
 
-import akka.Done
-import akka.actor.{Actor, ActorRef, ActorSystem, Props}
-import akka.pattern.ask
-import akka.util.Timeout
 import com.typesafe.config.{Config, ConfigFactory}
 import io.circe.Json
 import io.circe.syntax.EncoderOps
@@ -23,14 +19,18 @@ import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.common.akkautils.Akkas.newActorSystem
-import js7.common.akkautils.{Akkas, DeadLetterActor}
 import js7.common.jsonseq.InputStreamJsonSeqReader
+import js7.common.pekkoutils.Pekkos.newActorSystem
+import js7.common.pekkoutils.{DeadLetterActor, Pekkos}
 import js7.data.event.{Event, JournalId, KeyedEvent}
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.test.TestData.{TestConfig, testJournalMeta}
 import js7.journal.test.TestJournalMixin.*
 import js7.journal.test.TestState.keyedEventJsonCodec
+import org.apache.pekko.Done
+import org.apache.pekko.actor.{Actor, ActorRef, ActorSystem, Props}
+import org.apache.pekko.pattern.ask
+import org.apache.pekko.util.Timeout
 import org.scalatest.{BeforeAndAfterAll, Suite}
 import scala.collection.immutable.VectorBuilder
 import scala.concurrent.duration.*
@@ -67,7 +67,7 @@ private[journal] trait TestJournalMixin extends BeforeAndAfterAll { this: Suite 
       (actor ? TestActor.Input.Terminate) await 99.s
       whenJournalStopped.future.await(99.s)   // No memory leak
     }
-    finally Akkas.terminateAndWait(actorSystem, 99.s)
+    finally Pekkos.terminateAndWait(actorSystem, 99.s)
   }
 
   protected final def simpleExecute(actor: ActorRef, key: String, command: TestAggregateActor.Command) =

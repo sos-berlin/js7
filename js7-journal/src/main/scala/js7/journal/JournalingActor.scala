@@ -1,6 +1,5 @@
 package js7.journal
 
-import akka.actor.{Actor, ActorLogging, ActorRef, Stash}
 import com.softwaremill.tagging.@@
 import js7.base.circeutils.typed.TypedJsonCodec.typeName
 import js7.base.generic.Accepted
@@ -14,13 +13,14 @@ import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StackTraces.StackTraceThrowable
-import js7.common.akkautils.ReceiveLoggingActor
+import js7.common.pekkoutils.ReceiveLoggingActor
 import js7.data.event.{AnyKeyedEvent, Event, EventId, JournaledState, KeyedEvent, Stamped}
 import js7.journal.JournalingActor.*
 import js7.journal.configuration.JournalConf
 import monix.eval.Task
 import monix.execution.cancelables.SerialCancelable
 import monix.execution.{Cancelable, Scheduler}
+import org.apache.pekko.actor.{Actor, ActorLogging, ActorRef, Stash}
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.{Future, Promise}
 import scala.util.Success

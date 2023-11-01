@@ -1,6 +1,5 @@
 package js7.agent.web
 
-import akka.actor.ActorSystem
 import js7.agent.client.AgentClient
 import js7.agent.data.commands.AgentCommand.{CoupleController, DedicateAgentDirector, ReleaseEvents, TakeSnapshot}
 import js7.agent.data.event.AgentEvent.AgentReady
@@ -23,13 +22,14 @@ import js7.data.problems.UnknownEventIdProblem
 import js7.data.subagent.SubagentId
 import js7.journal.files.JournalFiles.listJournalFiles
 import monix.execution.Scheduler
+import org.apache.pekko.actor.ActorSystem
 
 /**
   * @author Joacim Zschimmer
   */
 final class EventRouteTest extends OurTestSuite with AgentTester
 {
-  protected val akkaAskTimeout = 99.s
+  protected val pekkoAskTimeout = 99.s
 
   implicit private lazy val scheduler: Scheduler = agent.injector.instance[Scheduler]
   implicit private lazy val actorSystem: ActorSystem = agent.actorSystem

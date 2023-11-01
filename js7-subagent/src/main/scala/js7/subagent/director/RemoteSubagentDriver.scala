@@ -1,6 +1,5 @@
 package js7.subagent.director
 
-import akka.actor.ActorSystem
 import cats.syntax.flatMap.*
 import cats.syntax.traverse.*
 import com.typesafe.config.ConfigUtil
@@ -44,6 +43,7 @@ import js7.subagent.configuration.SubagentConf
 import js7.subagent.director.RemoteSubagentDriver.*
 import monix.catnap.MVar
 import monix.eval.Task
+import org.apache.pekko.actor.ActorSystem
 import scala.annotation.unused
 import scala.concurrent.Promise
 import scala.concurrent.duration.Deadline.now

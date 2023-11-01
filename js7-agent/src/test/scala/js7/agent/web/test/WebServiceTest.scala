@@ -1,9 +1,5 @@
 package js7.agent.web.test
 
-import akka.actor.ActorRefFactory
-import akka.http.scaladsl.model.HttpHeader
-import akka.http.scaladsl.model.headers.RawHeader
-import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.web.common.{AgentRouteProvider, AgentSession}
 import js7.base.Js7Version
@@ -13,13 +9,17 @@ import js7.base.problem.Checked.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.HasCloser
-import js7.common.akkahttp.WebLogDirectives
-import js7.common.akkahttp.web.auth.GateKeeper
-import js7.common.akkahttp.web.data.WebServerBinding
-import js7.common.akkahttp.web.session.SessionRegister
-import js7.common.http.AkkaHttpClient.`x-js7-session`
+import js7.common.http.PekkoHttpClient.`x-js7-session`
 import js7.common.message.ProblemCodeMessages
+import js7.common.pekkohttp.WebLogDirectives
+import js7.common.pekkohttp.web.auth.GateKeeper
+import js7.common.pekkohttp.web.data.WebServerBinding
+import js7.common.pekkohttp.web.session.SessionRegister
 import monix.execution.Scheduler.Implicits.traced
+import org.apache.pekko.actor.ActorRefFactory
+import org.apache.pekko.http.scaladsl.model.HttpHeader
+import org.apache.pekko.http.scaladsl.model.headers.RawHeader
+import org.apache.pekko.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import org.scalatest.{BeforeAndAfterAll, Suite}
 
 /**
@@ -40,7 +40,7 @@ trait WebServiceTest extends HasCloser with BeforeAndAfterAll with ScalatestRout
     actorRefFactory, AgentSession.apply, SessionRegister.TestConfig)
 
   override def testConfig =
-    config"akka.loglevel = warning"
+    config"pekko.loglevel = warning"
       .withFallback(AgentConfiguration.DefaultConfig.resolve())
       .withFallback(super.testConfig)
 

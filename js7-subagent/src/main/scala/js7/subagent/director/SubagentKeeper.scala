@@ -1,6 +1,5 @@
 package js7.subagent.director
 
-import akka.actor.ActorSystem
 import cats.effect.Resource
 import cats.implicits.catsSyntaxParallelUnorderedTraverse
 import cats.instances.option.*
@@ -37,6 +36,7 @@ import js7.subagent.director.SubagentKeeper.*
 import js7.subagent.{LocalSubagentDriver, SubagentDriver}
 import monix.eval.{Coeval, Task}
 import monix.reactive.Observable
+import org.apache.pekko.actor.ActorSystem
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.Promise
 

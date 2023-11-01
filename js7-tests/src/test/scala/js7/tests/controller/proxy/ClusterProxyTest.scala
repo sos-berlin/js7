@@ -7,8 +7,8 @@ import js7.base.problem.Checked.*
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
-import js7.common.akkautils.ProvideActorSystem
-import js7.controller.client.AkkaHttpControllerApi
+import js7.common.pekkoutils.ProvideActorSystem
+import js7.controller.client.PekkoHttpControllerApi
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.data_for_java.auth.JCredentials
 import js7.proxy.ControllerApi
@@ -35,7 +35,7 @@ trait ClusterProxyTest extends BeforeAndAfterAll with ControllerClusterForScalaT
     for {
       x <- admissions.zipWithIndex
       (a, i) = x
-    } yield AkkaHttpControllerApi.resource(
+    } yield PekkoHttpControllerApi.resource(
       a.uri,
       a.userAndPassword,
       name = s"${getClass.simpleScalaName}-Controller-$i")(

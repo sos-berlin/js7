@@ -1,6 +1,5 @@
 package js7.controller.agent
 
-import akka.actor.{DeadLetterSuppression, Props}
 import cats.data.EitherT
 import com.typesafe.config.ConfigUtil
 import js7.agent.client.AgentClient
@@ -25,8 +24,8 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.SetOnce
 import js7.base.web.Uri
-import js7.common.akkautils.ReceiveLoggingActor
 import js7.common.http.RecouplingStreamReader
+import js7.common.pekkoutils.ReceiveLoggingActor
 import js7.controller.agent.AgentDriver.*
 import js7.controller.agent.CommandQueue.QueuedInputResponse
 import js7.controller.configuration.ControllerConfiguration
@@ -47,6 +46,7 @@ import monix.eval.Task
 import monix.execution.atomic.AtomicInt
 import monix.execution.{Cancelable, CancelableFuture, Scheduler}
 import monix.reactive.Observable
+import org.apache.pekko.actor.{DeadLetterSuppression, Props}
 import scala.concurrent.Promise
 import scala.concurrent.duration.Deadline.now
 import scala.util.chaining.scalaUtilChainingOps

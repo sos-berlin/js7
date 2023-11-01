@@ -1,14 +1,13 @@
 package js7.controller.web
 
-import akka.actor.ActorSystem
 import com.google.inject.Injector
 import javax.inject.{Inject, Singleton}
 import js7.base.problem.Checked
 import js7.base.utils.Closer
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.cluster.ClusterNode
-import js7.common.akkahttp.web.AkkaWebServer
-import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
+import js7.common.pekkohttp.web.PekkoWebServer
+import js7.common.pekkohttp.web.session.{SessionRegister, SimpleSession}
 import js7.controller.OrderApi
 import js7.controller.command.ControllerCommandExecutor
 import js7.controller.configuration.ControllerConfiguration
@@ -16,6 +15,7 @@ import js7.controller.item.ItemUpdater
 import js7.data.controller.ControllerState
 import js7.journal.watch.FileEventWatch
 import monix.eval.Task
+import org.apache.pekko.actor.ActorSystem
 import scala.concurrent.duration.Deadline
 
 object ControllerWebServer
@@ -36,8 +36,8 @@ object ControllerWebServer
       clusterNode: ClusterNode[ControllerState],
       totalRunningSince: Deadline,
       eventWatch: FileEventWatch)
-    : AkkaWebServer & AkkaWebServer.HasUri =
-      new AkkaWebServer.Standard(
+    : PekkoWebServer & PekkoWebServer.HasUri =
+      new PekkoWebServer.Standard(
         controllerConfiguration.webServerBindings,
         controllerConfiguration.config,
         (binding, whenShuttingDown) =>

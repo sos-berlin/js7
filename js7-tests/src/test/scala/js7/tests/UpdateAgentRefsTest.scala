@@ -12,7 +12,7 @@ import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
-import js7.common.akkahttp.web.data.WebServerPort
+import js7.common.pekkohttp.web.data.WebServerPort
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
 import js7.data.Problems.ItemIsStillReferencedProblem
 import js7.data.agent.AgentRefStateEvent.{AgentCouplingFailed, AgentDedicated, AgentReady}

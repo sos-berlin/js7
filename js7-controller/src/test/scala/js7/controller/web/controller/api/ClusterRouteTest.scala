@@ -1,21 +1,21 @@
 package js7.controller.web.controller.api
 
-import akka.http.scaladsl.model.MediaTypes.`application/json`
-import akka.http.scaladsl.model.StatusCodes.OK
-import akka.http.scaladsl.model.headers.Accept
-import akka.http.scaladsl.server.Route
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.test.OurTestSuite
 import js7.cluster.web.ClusterRoute
-import js7.common.akkahttp.AkkaHttpServerUtils.pathSegment
-import js7.common.akkahttp.CirceJsonSupport.jsonUnmarshaller
-import js7.common.akkahttp.web.session.SimpleSession
+import js7.common.pekkohttp.CirceJsonSupport.jsonUnmarshaller
+import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegment
+import js7.common.pekkohttp.web.session.SimpleSession
 import js7.controller.web.controller.api.test.RouteTester
 import js7.data.cluster.{ClusterCommand, ClusterNodeState, ClusterState, ClusterWatchingCommand}
 import js7.data.event.Stamped
 import js7.data.node.NodeId
 import monix.eval.Task
 import monix.execution.Scheduler
+import org.apache.pekko.http.scaladsl.model.MediaTypes.`application/json`
+import org.apache.pekko.http.scaladsl.model.StatusCodes.OK
+import org.apache.pekko.http.scaladsl.model.headers.Accept
+import org.apache.pekko.http.scaladsl.server.Route
 import scala.concurrent.Future
 
 /**

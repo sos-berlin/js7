@@ -1,7 +1,7 @@
 package js7.agent.client.main
 
 import java.nio.file.{Files, Path}
-import js7.agent.client.AkkaHttpAgentTextApi
+import js7.agent.client.PekkoHttpAgentTextApi
 import js7.base.auth.SessionToken
 import js7.base.convert.AsJava.StringAsPath
 import js7.base.generic.SecretString
@@ -35,7 +35,7 @@ object AgentClientMain
   def run(args: Seq[String], print: String => Unit): Int = {
     val (agentUri, configDirectory, dataDir, operations) = parseArgs(args)
     val sessionToken = SessionToken(SecretString(Files.readAllLines(dataDir resolve "work/session-token").asScala mkString ""))
-    autoClosing(new AkkaHttpAgentTextApi(agentUri, None, print, configDirectory)) { textApi =>
+    autoClosing(new PekkoHttpAgentTextApi(agentUri, None, print, configDirectory)) { textApi =>
       textApi.setSessionToken(sessionToken)
       if (operations.isEmpty)
         if (textApi.checkIsResponding()) 0 else 1

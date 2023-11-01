@@ -11,7 +11,7 @@ object MonixAntiBlocking
     * - ExecutionContext is a Monix-3.0.0-RC2 Scheduler (TrampolineExecutionContext)
     * - -Dscala.concurrent.context.numThreads=1
     * - Calling Unmarshal(httpResponse).to[X]
-    * - Akka blocks in Await.ready() (after actorOf and ask), waiting for ask response
+    * - Pekko blocks in Await.ready() (after actorOf and ask), waiting for ask response
     * - After 20s, actor.creation-timeout kicks in.
     */
   def executeOn[A](ec: ExecutionContext)(future: ExecutionContext => Future[A]): Future[A] =

@@ -1,7 +1,5 @@
 package js7.agent.scheduler
 
-import akka.actor.{Actor, ActorRef, Props, Stash, Terminated}
-import akka.pattern.ask
 import java.util.Objects.requireNonNull
 import javax.inject.{Inject, Singleton}
 import js7.agent.configuration.AgentConfiguration
@@ -21,15 +19,15 @@ import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.{CorrelId, Logger}
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
+import js7.base.system.SystemInformations.systemInformation
 import js7.base.system.startup.StartUp
 import js7.base.thread.IOExecutor
 import js7.base.time.AlarmClock
 import js7.base.utils.ScalaUtils.RightUnit
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{ProgramTermination, SetOnce}
-import js7.common.akkautils.{SimpleStateActor, SupervisorStrategies}
+import js7.common.pekkoutils.{SimpleStateActor, SupervisorStrategies}
 import js7.common.system.JavaInformations.javaInformation
-import js7.base.system.SystemInformations.systemInformation
 import js7.data.agent.Problems.{AgentAlreadyDedicatedProblem, AgentIsShuttingDown, AgentNotDedicatedProblem, AgentPathMismatchProblem, AgentRunIdMismatchProblem, AgentWrongControllerProblem}
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.ControllerId
@@ -40,6 +38,8 @@ import js7.journal.state.FileStatePersistence
 import js7.launcher.configuration.JobLauncherConf
 import monix.eval.Task
 import monix.execution.Scheduler
+import org.apache.pekko.actor.{Actor, ActorRef, Props, Stash, Terminated}
+import org.apache.pekko.pattern.ask
 import scala.concurrent.{Future, Promise}
 
 /**
@@ -55,7 +55,7 @@ private[agent] final class AgentActor private(
   (implicit protected val scheduler: Scheduler, iox: IOExecutor)
   extends Actor with Stash with SimpleStateActor
 {
-  import agentConf.{implicitAkkaAskTimeout, journalMeta}
+  import agentConf.{implicitPekkoAskTimeout, journalMeta}
   import context.{actorOf, watch}
   import persistence.eventWatch
 

@@ -1,10 +1,9 @@
 package js7.agent.tests
 
-import akka.actor.ActorSystem
 import js7.agent.RunningAgent
 import js7.agent.client.AgentClient
 import js7.agent.configuration.AgentConfiguration
-import js7.agent.configuration.Akkas.newAgentActorSystem
+import js7.agent.configuration.Pekkos.newAgentActorSystem
 import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.{AttachItem, AttachOrder, AttachSignedItem, Batch, DedicateAgentDirector, DetachOrder}
@@ -37,6 +36,7 @@ import js7.data.workflow.position.Position
 import js7.data.workflow.test.TestSetting.*
 import js7.service.pgp.PgpSigner
 import monix.execution.Scheduler.Implicits.traced
+import org.apache.pekko.actor.ActorSystem
 import org.scalatest.matchers.should.Matchers.*
 import scala.collection.mutable
 import scala.concurrent.duration.*

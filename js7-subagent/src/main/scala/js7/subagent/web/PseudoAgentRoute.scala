@@ -1,9 +1,5 @@
 package js7.subagent.web
 
-import akka.http.scaladsl.model.StatusCodes.{BadRequest, NotFound, ServiceUnavailable}
-import akka.http.scaladsl.server.Directives.{Segment, as, complete, entity, get, pathEnd, pathEndOrSingleSlash, pathPrefix, post, withSizeLimit}
-import akka.http.scaladsl.server.Route
-import akka.http.scaladsl.server.RouteConcatenation.*
 import cats.syntax.traverse.*
 import io.circe.{Json, JsonObject}
 import js7.base.auth.ValidUserPermission
@@ -14,10 +10,10 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.stream.Numbered
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
-import js7.common.akkahttp.AkkaHttpServerUtils.{completeTask, pathSegment}
-import js7.common.akkahttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
-import js7.common.akkahttp.StandardMarshallers.*
-import js7.common.akkahttp.web.session.SessionRoute
+import js7.common.pekkohttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
+import js7.common.pekkohttp.PekkoHttpServerUtils.{completeTask, pathSegment}
+import js7.common.pekkohttp.StandardMarshallers.*
+import js7.common.pekkohttp.web.session.SessionRoute
 import js7.core.web.EntitySizeLimitProvider
 import js7.data.agent.Problems.AgentNotDedicatedProblem
 import js7.data.subagent.Problems.SubagentAlreadyDedicatedProblem
@@ -26,6 +22,10 @@ import js7.subagent.SubagentCommandExecutor
 import js7.subagent.web.PseudoAgentRoute.*
 import monix.eval.Task
 import monix.execution.Scheduler
+import org.apache.pekko.http.scaladsl.model.StatusCodes.{BadRequest, NotFound, ServiceUnavailable}
+import org.apache.pekko.http.scaladsl.server.Directives.{Segment, as, complete, entity, get, pathEnd, pathEndOrSingleSlash, pathPrefix, post, withSizeLimit}
+import org.apache.pekko.http.scaladsl.server.Route
+import org.apache.pekko.http.scaladsl.server.RouteConcatenation.*
 
 /** Looks like Agent Director web service to detect a client's request for an Director. */
 private trait PseudoAgentRoute extends SessionRoute with EntitySizeLimitProvider

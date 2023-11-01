@@ -11,6 +11,7 @@ import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.https.{HttpsConfig, KeyStoreRef}
 import js7.base.io.process.Processes.ShellFileExtension as sh
 import js7.base.problem.Checked.Ops
+import js7.base.system.ServerOperatingSystem.operatingSystem
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -18,10 +19,9 @@ import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
-import js7.common.akkautils.ProvideActorSystem
-import js7.base.system.ServerOperatingSystem.operatingSystem
+import js7.common.pekkoutils.ProvideActorSystem
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
-import js7.controller.client.AkkaHttpControllerApi
+import js7.controller.client.PekkoHttpControllerApi
 import js7.data.agent.AgentPath
 import js7.data.cluster.ClusterWatchId
 import js7.data.job.RelativePathExecutable
@@ -149,7 +149,7 @@ extends OurTestSuite with BeforeAndAfterAll with ControllerAgentForScalaTest wit
       trustStoreRefs = ExportedControllerTrustStoreRef :: Nil)
 
   protected final lazy val httpControllerApi =
-    new AkkaHttpControllerApi(
+    new PekkoHttpControllerApi(
       controller.localUri,
       standardUserAndPassword,
       actorSystem,
@@ -198,7 +198,7 @@ extends OurTestSuite with BeforeAndAfterAll with ControllerAgentForScalaTest wit
 private[https] object HttpsTestBase
 {
   /* Following resources have been generated with the command line:
-     js7-common/src/main/resources/js7/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh \
+     js7-common/src/main/resources/js7/common/pekkohttp/https/generate-self-signed-ssl-certificate-test-keystore.sh \
         --alias=client \
         --distinguished-name="CN=Test client, DC=test-client, DC=HttpsTestBase, DC=tests, DC=js7, DC=sh" \
         --host=localhost \
@@ -208,7 +208,7 @@ private[https] object HttpsTestBase
   private val ClientKeyStoreResource = JavaResource("js7/tests/https/resources/private/client-https-keystore.p12")
   private val ExportedClientTrustStoreResource = JavaResource("js7/tests/https/resources/export/client-https-truststore.p12")
 
-  /* js7-common/src/main/resources/js7/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh \
+  /* js7-common/src/main/resources/js7/common/pekkohttp/https/generate-self-signed-ssl-certificate-test-keystore.sh \
         --alias=backup-controller \
         --distinguished-name="CN=Backup Controller, DC=backup-controller, DC=HttpsTestBase, DC=tests, DC=js7, DC=sh" \
         --host=localhost \

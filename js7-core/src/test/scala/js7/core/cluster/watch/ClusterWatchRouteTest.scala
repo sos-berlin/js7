@@ -1,9 +1,5 @@
 package js7.core.cluster.watch
 
-import akka.http.scaladsl.model.MediaTypes.`application/json`
-import akka.http.scaladsl.model.StatusCodes.{BadRequest, OK}
-import akka.http.scaladsl.model.headers.Accept
-import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import io.circe.JsonObject
 import js7.base.auth.{SessionToken, SimpleUser}
 import js7.base.configutils.Configs.HoconStringInterpolator
@@ -14,16 +10,20 @@ import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
-import js7.common.akkahttp.AkkaHttpServerUtils.pathSegment
-import js7.common.akkahttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
-import js7.common.akkahttp.web.session.SessionInit
-import js7.common.http.AkkaHttpClient.`x-js7-request-id`
+import js7.common.http.PekkoHttpClient.`x-js7-request-id`
+import js7.common.pekkohttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
+import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegment
+import js7.common.pekkohttp.web.session.SessionInit
 import js7.data.cluster.ClusterEvent.ClusterNodesAppointed
 import js7.data.cluster.ClusterWatchRequest.RequestId
 import js7.data.cluster.{ClusterSetting, ClusterState, ClusterTiming, ClusterWatchCheckEvent, ClusterWatchRequest}
 import js7.data.controller.ControllerId
 import js7.data.node.NodeId
 import monix.execution.Scheduler
+import org.apache.pekko.http.scaladsl.model.MediaTypes.`application/json`
+import org.apache.pekko.http.scaladsl.model.StatusCodes.{BadRequest, OK}
+import org.apache.pekko.http.scaladsl.model.headers.Accept
+import org.apache.pekko.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 
 /**
   * @author Joacim Zschimmer
@@ -38,7 +38,7 @@ final class ClusterWatchRouteTest extends OurTestSuite with ScalatestRouteTest w
   private implicit val routeTestTimeout: RouteTestTimeout = RouteTestTimeout(10.s)
   private val controllerId = ControllerId("CONTROLLER")
 
-  override def testConfig = config"akka.loglevel = warning"
+  override def testConfig = config"pekko.loglevel = warning"
     .withFallback(super.testConfig)
 
   private val route = pathSegment("cluster") {

@@ -11,7 +11,7 @@ import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.{autoClosing, multipleAutoClosing}
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.common.akkautils.Akkas
+import js7.common.pekkoutils.Pekkos
 import js7.controller.RunningController
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerEvent
@@ -116,14 +116,14 @@ final class RecoveryTest extends OurTestSuite
       // TODO Duplicate code in DirectoryProvider
       try body(controller)
       catch { case NonFatal(t) =>
-        logger.error(t.toStringWithCauses) /* Akka may crash before the caller gets the error so we log the error here */
+        logger.error(t.toStringWithCauses) /* Pekko may crash before the caller gets the error so we log the error here */
         try controller.terminate(suppressSnapshot = true) await 99.s
         catch { case t2: Throwable if t2 ne t => t.addSuppressed(t2) }
         throw t
       }
       logger.info("🔥🔥🔥 TERMINATE CONTROLLER 🔥🔥🔥")
       // Kill Controller ActorSystem
-      Akkas.terminateAndWait(controller.actorSystem, 99.s)
+      Pekkos.terminateAndWait(controller.actorSystem, 99.s)
     }
 
   private def runAgents(directoryProvider: DirectoryProvider)(body: IndexedSeq[RunningAgent] => Unit): Unit = {
@@ -135,14 +135,14 @@ final class RecoveryTest extends OurTestSuite
       // TODO Duplicate code in DirectoryProvider
       try body(agents)
       catch { case NonFatal(t) =>
-        logger.error(t.toStringWithCauses) /* Akka may crash before the caller gets the error so we log the error here */
+        logger.error(t.toStringWithCauses) /* Pekko may crash before the caller gets the error so we log the error here */
         try agents.traverse(_.terminate()) await 99.s
         catch { case t2: Throwable if t2 ne t => t.addSuppressed(t2) }
         throw t
       }
       logger.info("🔥🔥🔥 TERMINATE AGENTS 🔥🔥🔥")
       // Kill Agents ActorSystems
-      for (agent <- agents) Akkas.terminateAndWait(agent.actorSystem, 99.s)
+      for (agent <- agents) Pekkos.terminateAndWait(agent.actorSystem, 99.s)
     }
   }
 }

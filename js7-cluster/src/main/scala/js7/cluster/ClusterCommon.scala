@@ -1,7 +1,5 @@
 package js7.cluster
 
-import akka.actor.ActorSystem
-import akka.util.Timeout
 import cats.effect.Resource
 import com.typesafe.config.{Config, ConfigUtil}
 import js7.base.auth.UserAndPassword
@@ -31,6 +29,8 @@ import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeApi, ClusterSt
 import js7.data.controller.ControllerId
 import monix.eval.Task
 import monix.execution.Scheduler
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.util.Timeout
 
 private[cluster] final class ClusterCommon(
   controllerId: ControllerId,

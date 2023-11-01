@@ -18,9 +18,9 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.base.web.{HttpClient, Uri}
-import js7.common.akkautils.ProvideActorSystem
 import js7.common.configuration.Js7Configuration
-import js7.common.http.AkkaHttpClient
+import js7.common.http.PekkoHttpClient
+import js7.common.pekkoutils.ProvideActorSystem
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.ControllerId
@@ -68,7 +68,7 @@ with ProvideActorSystem
             BareSubagent.blockingRun(conf)
           }
 
-          val client = new AkkaHttpClient.Standard(uri, actorSystem = actorSystem)
+          val client = new PekkoHttpClient.Standard(uri, actorSystem = actorSystem)
           implicit val sessionToken: Task[Option[SessionToken]] = Task.none
 
           locally {

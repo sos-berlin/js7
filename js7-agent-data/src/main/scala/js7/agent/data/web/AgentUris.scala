@@ -1,10 +1,10 @@
 package js7.agent.data.web
 
-import akka.http.scaladsl.model.Uri.{Path, Query}
-import akka.http.scaladsl.model.Uri as AkkaUri
 import js7.agent.data.web.AgentUris.*
 import js7.base.web.Uri
 import js7.data.event.{Event, EventRequest}
+import org.apache.pekko.http.scaladsl.model.Uri as PekkoUri
+import org.apache.pekko.http.scaladsl.model.Uri.{Path, Query}
 
 /**
  * URIs of the JS7 Agent.
@@ -13,7 +13,7 @@ import js7.data.event.{Event, EventRequest}
  */
 final class AgentUris private(agentUri: Uri)
 {
-  private val prefixedUri = AkkaUri(s"$agentUri/agent")
+  private val prefixedUri = PekkoUri(s"$agentUri/agent")
 
   val overview = toUri("api")
   val session = toUri("api/session")
@@ -34,7 +34,7 @@ final class AgentUris private(agentUri: Uri)
 
   private def toUri(uri: String): Uri = Uri(withPath(uri).toString)
 
-  private def withPath(uri: AkkaUri): AkkaUri = {
+  private def withPath(uri: PekkoUri): PekkoUri = {
     val u = uri.resolvedAgainst(prefixedUri)
     u.copy(path = Path(s"${prefixedUri.path}/${stripLeadingSlash(uri.path.toString())}"))
   }

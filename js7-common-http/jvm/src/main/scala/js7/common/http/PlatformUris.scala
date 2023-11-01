@@ -1,6 +1,6 @@
 package js7.common.http
 
-import akka.http.scaladsl.model.Uri
+import org.apache.pekko.http.scaladsl.model.Uri
 
 /**
   * @author Joacim Zschimmer

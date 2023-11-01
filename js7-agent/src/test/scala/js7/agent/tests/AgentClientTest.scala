@@ -1,14 +1,14 @@
 package js7.agent.tests
 
-import akka.actor.ActorSystem
 import js7.agent.client.AgentClient
-import js7.agent.configuration.Akkas
+import js7.agent.configuration.Pekkos
 import js7.base.BuildInfo
 import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import monix.execution.Scheduler.Implicits.traced
+import org.apache.pekko.actor.ActorSystem
 import org.scalatest.concurrent.ScalaFutures
 
 /**
@@ -20,7 +20,7 @@ final class AgentClientTest extends OurTestSuite with ScalaFutures with AgentTes
 
   override lazy val agentConfiguration = newAgentConfiguration()
   private implicit lazy val actorSystem: ActorSystem =
-    Akkas.newAgentActorSystem("AgentClientTest")(closer)
+    Pekkos.newAgentActorSystem("AgentClientTest")(closer)
   private lazy val client = AgentClient(agentUri = agent.localUri, userAndPassword = None)
 
   override def afterAll(): Unit = {

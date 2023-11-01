@@ -1,6 +1,5 @@
 package js7.agent
 
-import akka.actor.{Actor, Props, Terminated}
 import com.google.inject.Injector
 import js7.agent.MainActor.*
 import js7.agent.command.{CommandActor, CommandHandler}
@@ -12,12 +11,13 @@ import js7.base.auth.UserId
 import js7.base.log.{CorrelId, Logger}
 import js7.base.problem.Checked
 import js7.base.utils.ProgramTermination
-import js7.common.akkautils.CatchingSupervisorStrategy
 import js7.common.guice.GuiceImplicits.RichInjector
+import js7.common.pekkoutils.CatchingSupervisorStrategy
 import js7.core.command.CommandMeta
 import js7.journal.recover.Recovered
 import js7.journal.state.FileStatePersistence
 import monix.execution.Scheduler
+import org.apache.pekko.actor.{Actor, Props, Terminated}
 import scala.concurrent.Promise
 import scala.util.control.NoStackTrace
 
@@ -32,7 +32,7 @@ final class MainActor(
   terminationPromise: Promise[ProgramTermination])
 extends Actor {
 
-  import agentConfiguration.implicitAkkaAskTimeout
+  import agentConfiguration.implicitPekkoAskTimeout
   import context.{actorOf, watch}
 
   override val supervisorStrategy = CatchingSupervisorStrategy(terminationPromise)

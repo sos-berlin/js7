@@ -1,24 +1,24 @@
 package js7.agent.web
 
-import akka.actor.ActorSystem
-import akka.http.scaladsl.server.Route
-import akka.http.scaladsl.server.directives.CodingDirectives.{decodeRequest, encodeResponse}
 import js7.agent.DirectAgentApi
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.commands.AgentCommand
 import js7.agent.web.common.AgentSession
 import js7.base.auth.{SimpleUser, UserId}
-import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
-import js7.common.akkahttp.WebLogDirectives
-import js7.common.akkahttp.web.AkkaWebServer
-import js7.common.akkahttp.web.auth.CSRF.forbidCSRF
-import js7.common.akkahttp.web.auth.GateKeeper
-import js7.common.akkahttp.web.data.WebServerBinding
-import js7.common.akkahttp.web.session.SessionRegister
+import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegments
+import js7.common.pekkohttp.WebLogDirectives
+import js7.common.pekkohttp.web.PekkoWebServer
+import js7.common.pekkohttp.web.auth.CSRF.forbidCSRF
+import js7.common.pekkohttp.web.auth.GateKeeper
+import js7.common.pekkohttp.web.data.WebServerBinding
+import js7.common.pekkohttp.web.session.SessionRegister
 import js7.core.cluster.watch.ClusterWatchRegister
 import js7.core.command.CommandMeta
 import js7.journal.watch.EventWatch
 import monix.execution.Scheduler
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.http.scaladsl.server.Route
+import org.apache.pekko.http.scaladsl.server.directives.CodingDirectives.{decodeRequest, encodeResponse}
 import scala.concurrent.Future
 import scala.concurrent.duration.Deadline
 
@@ -37,7 +37,7 @@ private final class AgentBoundRoute(
   (implicit
     protected val actorSystem: ActorSystem,
     protected val scheduler: Scheduler)
-extends AkkaWebServer.BoundRoute
+extends PekkoWebServer.BoundRoute
 with WebLogDirectives
 with ApiRoute
 {
@@ -56,7 +56,7 @@ with ApiRoute
   protected def commandOverview = anonymousApi.commandOverview
   protected def commandDetailed = anonymousApi.commandDetailed
 
-  protected def akkaAskTimeout = agentConfiguration.akkaAskTimeout
+  protected def pekkoAskTimeout = agentConfiguration.pekkoAskTimeout
   protected def config = agentConfiguration.config
   protected def actorRefFactory = actorSystem
 

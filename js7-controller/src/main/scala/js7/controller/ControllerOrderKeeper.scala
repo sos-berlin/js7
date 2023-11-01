@@ -1,7 +1,5 @@
 package js7.controller
 
-import akka.actor.{ActorRef, DeadLetterSuppression, Stash, Status, Terminated}
-import akka.pattern.{ask, pipe}
 import cats.instances.either.*
 import cats.instances.future.*
 import cats.instances.vector.*
@@ -32,8 +30,8 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.base.utils.{ProgramTermination, SetOnce}
 import js7.cluster.WorkingClusterNode
-import js7.common.akkautils.Akkas.encodeAsActorName
-import js7.common.akkautils.SupervisorStrategies
+import js7.common.pekkoutils.Pekkos.encodeAsActorName
+import js7.common.pekkoutils.SupervisorStrategies
 import js7.controller.ControllerOrderKeeper.*
 import js7.controller.agent.{AgentDriver, AgentDriverConfiguration}
 import js7.controller.configuration.ControllerConfiguration
@@ -81,6 +79,8 @@ import js7.journal.{CommitOptions, JournalActor, MainJournalingActor}
 import monix.eval.Task
 import monix.execution.cancelables.SerialCancelable
 import monix.execution.{Cancelable, Scheduler}
+import org.apache.pekko.actor.{ActorRef, DeadLetterSuppression, Stash, Status, Terminated}
+import org.apache.pekko.pattern.{ask, pipe}
 import scala.collection.immutable.VectorBuilder
 import scala.collection.mutable
 import scala.concurrent.duration.*
@@ -102,7 +102,7 @@ extends Stash
 with MainJournalingActor[ControllerState, Event]
 {
   import context.{actorOf, watch}
-  import controllerConfiguration.{akkaAskTimeout, config}
+  import controllerConfiguration.{config, pekkoAskTimeout}
   import js7.controller.ControllerOrderKeeper.RichIdToOrder
 
   override val supervisorStrategy = SupervisorStrategies.escalate
@@ -861,8 +861,8 @@ with MainJournalingActor[ControllerState, Event]
         Future.successful(Left(Problem.pure("THIS SHOULD NOT HAPPEN")))  // Never called
 
       case ControllerCommand.TakeSnapshot =>
-        import controllerConfiguration.implicitAkkaAskTimeout  // We need several seconds or even minutes
-        intelliJuseImport(implicitAkkaAskTimeout)
+        import controllerConfiguration.implicitPekkoAskTimeout  // We need several seconds or even minutes
+        intelliJuseImport(implicitPekkoAskTimeout)
         (journalActor ? JournalActor.Input.TakeSnapshot)
           .mapTo[JournalActor.Output.SnapshotTaken.type]
           .map(_ => Right(ControllerCommand.Response.Accepted))
@@ -921,7 +921,7 @@ with MainJournalingActor[ControllerState, Event]
                               // ResetAgent command may return with error despite it has reset the orders
                               agentEntry.isResetting = true
                               val resettingAgent = agentEntry
-                                .actor.?(AgentDriver.Input.Reset(force = force))(akkaAskTimeout)
+                                .actor.?(AgentDriver.Input.Reset(force = force))(pekkoAskTimeout)
                                 .mapTo[Try[Boolean]]
                                 .map { tried =>
                                   for (t <- tried.failed)

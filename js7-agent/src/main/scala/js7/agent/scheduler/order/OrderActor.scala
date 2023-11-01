@@ -1,7 +1,5 @@
 package js7.agent.scheduler.order
 
-import akka.actor.{ActorRef, DeadLetterSuppression, Props, Status}
-import akka.pattern.pipe
 import com.softwaremill.tagging.@@
 import js7.agent.data.AgentState
 import js7.agent.scheduler.order.OrderActor.*
@@ -21,6 +19,8 @@ import js7.journal.{JournalActor, KeyedJournalingActor}
 import js7.subagent.director.RemoteSubagentDriver.SubagentDriverStoppedProblem
 import js7.subagent.director.SubagentKeeper
 import monix.execution.Scheduler
+import org.apache.pekko.actor.{ActorRef, DeadLetterSuppression, Props, Status}
+import org.apache.pekko.pattern.pipe
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 

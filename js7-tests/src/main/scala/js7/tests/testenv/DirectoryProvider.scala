@@ -33,14 +33,14 @@ import js7.base.utils.HasCloser
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatchService
-import js7.common.akkahttp.web.data.WebServerPort
-import js7.common.akkautils.Akkas
 import js7.common.configuration.Js7Configuration
+import js7.common.pekkohttp.web.data.WebServerPort
+import js7.common.pekkoutils.Pekkos
 import js7.common.utils.Exceptions.repeatUntilNoException
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.RunningController
-import js7.controller.client.AkkaHttpControllerApi
-import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
+import js7.controller.client.PekkoHttpControllerApi
+import js7.controller.client.PekkoHttpControllerApi.admissionsToApiResources
 import js7.controller.configuration.ControllerConfiguration
 import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.cluster.ClusterWatchId
@@ -180,14 +180,14 @@ extends HasCloser
         }
         body(runningController)
       } catch { case NonFatal(t) =>
-        logger.error(t.toStringWithCauses) /* Akka may crash before the caller gets the error so we log the error here */
+        logger.error(t.toStringWithCauses) /* Pekko may crash before the caller gets the error so we log the error here */
         try runningController.terminate() await 99.s
         catch { case t2: Throwable if t2 ne t => t.addSuppressed(t2) }
         throw t
       }
     try runningController.terminate() await 99.s
     catch { case NonFatal(t) =>
-      logger.error(t.toStringWithCauses) /* Akka may crash before the caller gets the error so we log the error here */
+      logger.error(t.toStringWithCauses) /* Pekko may crash before the caller gets the error so we log the error here */
       try runningController.close()
       catch { case t2: Throwable if t2 ne t => t.addSuppressed(t2) }
       throw t
@@ -250,7 +250,7 @@ extends HasCloser
       val result =
         try body(agents)
         catch { case NonFatal(t) =>
-          logger.error(t.toStringWithCauses) /* Akka may crash before the caller gets the error so we log the error here */
+          logger.error(t.toStringWithCauses) /* Pekko may crash before the caller gets the error so we log the error here */
           try agents.traverse(_.terminate()) await 99.s
           catch { case t2: Throwable if t2 ne t => t.addSuppressed(t2) }
           throw t
@@ -593,7 +593,7 @@ object DirectoryProvider
   }
 
   /* Following resources have been generated with the command line:
-     js7-common/src/main/resources/js7/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh \
+     js7-common/src/main/resources/js7/common/pekkohttp/https/generate-self-signed-ssl-certificate-test-keystore.sh \
         --distinguished-name="CN=Primary Controller, DC=primary-controller, DC=DirectoryProvider, DC=tests, DC=js7, DC=sh" \
         --alias=controller \
         --host=localhost \
@@ -617,7 +617,7 @@ object DirectoryProvider
     Seq(ExportedControllerTrustStoreRef))
 
   /* Following resources have been generated with the command line:
-     js7-common/src/main/resources/js7/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh \
+     js7-common/src/main/resources/js7/common/pekkohttp/https/generate-self-signed-ssl-certificate-test-keystore.sh \
         --distinguished-name="CN=Agent, DC=agent, DC=DirectoryProvider, DC=tests, DC=js7, DC=sh" \
         --alias=agent \
         --host=localhost \
@@ -634,11 +634,11 @@ object DirectoryProvider
     httpsConfig: HttpsConfig,
     config: Config = ConfigFactory.empty)
   : Resource[Task, ClusterWatchService] =
-    Akkas
+    Pekkos
       .actorSystemResource(clusterWatchId.string)
       .flatMap(implicit actorSystem =>
         ClusterWatchService.resource(
           clusterWatchId,
-          admissions.traverse(AkkaHttpControllerApi.admissionToApiResource(_, httpsConfig)),
+          admissions.traverse(PekkoHttpControllerApi.admissionToApiResource(_, httpsConfig)),
           config.withFallback(Js7Configuration.defaultConfig)))
 }

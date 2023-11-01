@@ -7,8 +7,8 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.Closer.syntax.RichClosersAny
 import js7.base.utils.HasCloser
 import js7.base.web.Uri
-import js7.common.akkautils.Akkas
-import js7.common.akkautils.Akkas.newActorSystem
+import js7.common.pekkoutils.Pekkos
+import js7.common.pekkoutils.Pekkos.newActorSystem
 
 /**
  * Simple client for JS7 Agent.
@@ -25,8 +25,8 @@ extends HasCloser with AgentClient
 {
   protected val name = "SimpleAgentClient"
   protected val actorSystem =
-    newActorSystem("SimpleAgentClient", config"akka.log-dead-letters = 0")
-      .withCloser(Akkas.terminateAndWait(_, 10.s/*!!!*/))
+    newActorSystem("SimpleAgentClient", config"pekko.log-dead-letters = 0")
+      .withCloser(Pekkos.terminateAndWait(_, 10.s/*!!!*/))
 
   onClose { super[AgentClient].close() }
 

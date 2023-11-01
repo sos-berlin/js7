@@ -1,7 +1,5 @@
 package js7.agent.scheduler
 
-import akka.pattern.ask
-import akka.util.Timeout
 import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.{AttachItem, AttachOrder, AttachSignedItem, CoupleController, DedicateAgentDirector, DetachOrder}
@@ -10,11 +8,11 @@ import js7.agent.scheduler.order.TestAgentActorProvider
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.problem.Checked.Ops
 import js7.base.system.OperatingSystem.isWindows
+import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
-import js7.base.test.OurTestSuite
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
@@ -29,6 +27,8 @@ import js7.data.workflow.position.Position
 import js7.data.workflow.test.TestSetting.*
 import js7.journal.recover.Recovered
 import monix.execution.Scheduler.Implicits.traced
+import org.apache.pekko.pattern.ask
+import org.apache.pekko.util.Timeout
 import scala.concurrent.duration.Deadline.now
 
 /**

@@ -1,6 +1,5 @@
 package js7.tests.controller.proxy
 
-import akka.actor.ActorSystem
 import js7.base.Js7Version
 import js7.base.configutils.Configs.*
 import js7.base.generic.Completed
@@ -13,8 +12,8 @@ import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.Nel
-import js7.common.akkautils.ProvideActorSystem
-import js7.controller.client.AkkaHttpControllerApi
+import js7.common.pekkoutils.ProvideActorSystem
+import js7.controller.client.PekkoHttpControllerApi
 import js7.data.Problems.ItemVersionDoesNotMatchProblem
 import js7.data.agent.{AgentPath, AgentRefState}
 import js7.data.event.{KeyedEvent, Stamped}
@@ -37,6 +36,7 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.{script, toLocalSubagentId}
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
+import org.apache.pekko.actor.ActorSystem
 import org.scalatest.BeforeAndAfterAll
 
 final class JournaledProxyTest
@@ -57,7 +57,7 @@ extends OurTestSuite with BeforeAndAfterAll with ProvideActorSystem with Control
 
   private implicit def implicitActorSystem: ActorSystem = actorSystem
   private val versionId = VersionId("MY-VERSION")
-  private lazy val api = new ControllerApi(Nel.one(AkkaHttpControllerApi.resource(
+  private lazy val api = new ControllerApi(Nel.one(PekkoHttpControllerApi.resource(
     controller.localUri,
     Some(primaryUserAndPassword),
     name = "JournaledProxyTest")))

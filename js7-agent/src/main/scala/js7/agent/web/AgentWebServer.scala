@@ -1,17 +1,17 @@
 package js7.agent.web
 
-import akka.actor.ActorSystem
 import js7.agent.DirectAgentApi
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.web.common.AgentSession
 import js7.base.auth.SimpleUser
-import js7.common.akkahttp.web.AkkaWebServer
-import js7.common.akkahttp.web.auth.GateKeeper
-import js7.common.akkahttp.web.session.SessionRegister
+import js7.common.pekkohttp.web.PekkoWebServer
+import js7.common.pekkohttp.web.auth.GateKeeper
+import js7.common.pekkohttp.web.session.SessionRegister
 import js7.core.cluster.watch.ClusterWatchRegister
 import js7.core.command.CommandMeta
 import js7.journal.watch.EventWatch
 import monix.eval.Task
+import org.apache.pekko.actor.ActorSystem
 
 object AgentWebServer
 {
@@ -23,8 +23,8 @@ object AgentWebServer
     clusterWatchRegister: ClusterWatchRegister,
     eventWatch: EventWatch)
     (implicit actorSystem: ActorSystem)
-  : AkkaWebServer & AkkaWebServer.HasUri =
-    new AkkaWebServer.Standard(
+  : PekkoWebServer & PekkoWebServer.HasUri =
+    new PekkoWebServer.Standard(
       agentConfiguration.webServerBindings,
       agentConfiguration.config,
       (binding, whenShuttingDown) =>

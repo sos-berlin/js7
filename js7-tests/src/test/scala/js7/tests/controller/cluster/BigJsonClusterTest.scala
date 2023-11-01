@@ -8,7 +8,7 @@ import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.Nel
 import js7.common.configuration.Js7Configuration
-import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
+import js7.controller.client.PekkoHttpControllerApi.admissionsToApiResources
 import js7.data.agent.AgentPath
 import js7.data.cluster.{ClusterEvent, ClusterState, ClusterTiming}
 import js7.data.node.NodeId

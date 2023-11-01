@@ -1,6 +1,5 @@
 package js7.core.cluster.watch
 
-import akka.actor.ActorSystem
 import io.circe.*
 import js7.base.auth.UserAndPassword
 import js7.base.generic.Completed
@@ -16,7 +15,7 @@ import js7.base.web.HttpClient.HttpException
 import js7.base.web.Uri
 import js7.cluster.watch.api.ClusterWatchApi
 import js7.cluster.watch.api.ClusterWatchProblems.isClusterWatchProblem
-import js7.common.http.AkkaHttpClient
+import js7.common.http.PekkoHttpClient
 import js7.core.cluster.watch.HttpClusterWatch.*
 import js7.data.cluster.ClusterState.HasNodes
 import js7.data.cluster.ClusterWatchRequest.RequestId
@@ -24,6 +23,7 @@ import js7.data.cluster.{ClusterEvent, ClusterState, ClusterTiming, ClusterWatch
 import js7.data.node.NodeId
 import js7.data.session.HttpSessionApi
 import monix.eval.Task
+import org.apache.pekko.actor.ActorSystem
 import scala.annotation.unused
 
 final class HttpClusterWatch(
@@ -33,7 +33,7 @@ final class HttpClusterWatch(
   protected val httpsConfig: HttpsConfig,
   protected val actorSystem: ActorSystem,
   timing: ClusterTiming)
-extends ClusterWatchApi with AkkaHttpClient with HttpSessionApi
+extends ClusterWatchApi with PekkoHttpClient with HttpSessionApi
 with SessionApi.HasUserAndPassword
 {
   protected val sessionUri = Uri(s"$baseUri/agent/api/session")

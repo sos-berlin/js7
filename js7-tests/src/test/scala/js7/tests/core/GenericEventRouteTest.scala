@@ -14,15 +14,15 @@ import js7.base.time.Timestamp
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.web.Uri
-import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
-import js7.common.akkahttp.AkkaHttpUtils
-import js7.common.akkahttp.web.AkkaWebServer
-import js7.common.akkahttp.web.auth.GateKeeper
-import js7.common.akkahttp.web.data.WebServerBinding
-import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
-import js7.common.akkautils.{Akkas, ProvideActorSystem}
-import js7.common.http.AkkaHttpClient
+import js7.common.http.PekkoHttpClient
 import js7.common.http.Uris.{encodePath, encodeQuery}
+import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegments
+import js7.common.pekkohttp.PekkoHttpUtils
+import js7.common.pekkohttp.web.PekkoWebServer
+import js7.common.pekkohttp.web.auth.GateKeeper
+import js7.common.pekkohttp.web.data.WebServerBinding
+import js7.common.pekkohttp.web.session.{SessionRegister, SimpleSession}
+import js7.common.pekkoutils.{Pekkos, ProvideActorSystem}
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.data.controller.ControllerState
 import js7.data.event.{Event, EventId, EventRequest, KeyedEvent, Stamped}
@@ -54,7 +54,7 @@ extends OurTestSuite with BeforeAndAfterAll with ProvideActorSystem with Generic
       auth.session {
         timeout = 1 minute
       }
-      akka.shutdown-timeout = 10s
+      pekko.shutdown-timeout = 10s
       web.chunk-size = 1MiB
       web.server {
         verbose-error-messages = on
@@ -98,16 +98,16 @@ extends OurTestSuite with BeforeAndAfterAll with ProvideActorSystem with Generic
       override def isRelevantEvent(keyedEvent: KeyedEvent[Event]) = true
     }.route)
 
-  private lazy val server = new AkkaWebServer with AkkaWebServer.HasUri {
+  private lazy val server = new PekkoWebServer with PekkoWebServer.HasUri {
     protected implicit def actorSystem = GenericEventRouteTest.this.actorSystem
     protected val config = GenericEventRouteTest.this.config
     protected val bindings = WebServerBinding.Http(
       new InetSocketAddress(InetAddress.getLoopbackAddress, findFreeTcpPort())) :: Nil
     protected def newBoundRoute(binding: WebServerBinding, whenTerminating: Future[Deadline]) =
-      Task.pure(AkkaWebServer.BoundRoute(route, whenTerminating))
+      Task.pure(PekkoWebServer.BoundRoute(route, whenTerminating))
   }
 
-  private lazy val api = new AkkaHttpClient {
+  private lazy val api = new PekkoHttpClient {
     protected val actorSystem = GenericEventRouteTest.this.actorSystem
     protected val baseUri = server.localUri
     protected val name = "GenericEventRouteTest"
@@ -119,13 +119,13 @@ extends OurTestSuite with BeforeAndAfterAll with ProvideActorSystem with Generic
 
   override def beforeAll() = {
     super.beforeAll()
-    AkkaHttpUtils.avoidLazyObjectInitializationDeadlock()
+    PekkoHttpUtils.avoidLazyObjectInitializationDeadlock()
     server.start await 99.s
   }
 
   override def afterAll() = {
     server.stop().await(99.s)
-    Akkas.terminateAndWait(actorSystem, 99.s)
+    Pekkos.terminateAndWait(actorSystem, 99.s)
     super.afterAll()
   }
 
@@ -241,8 +241,8 @@ extends OurTestSuite with BeforeAndAfterAll with ProvideActorSystem with Generic
       assert(events == Seq(180, 180/*heartbeat*/, 180/*heartbeat*/))
     }
 
-    //"cancel AkkaHttpClient request" in {
-    //  for (i <- 1 to 16/*below Akka's max-open-requests, see js7.conf, otherwise the pool will overflow and block*/) {
+    //"cancel PekkoHttpClient request" in {
+    //  for (i <- 1 to 16/*below Pekko's max-open-requests, see js7.conf, otherwise the pool will overflow and block*/) {
     //    logger.debug(s"cancel #$i")
     //    val future = getEvents(EventRequest.singleClass[Event](after = eventWatch.lastAddedEventId, timeout = Some(99.s)))
     //      .runToFuture

@@ -1,8 +1,5 @@
 package js7.tests.controller.proxy
 
-import akka.http.scaladsl.common.JsonEntityStreamingSupport
-import akka.http.scaladsl.marshalling.ToEntityMarshaller
-import akka.http.scaladsl.server.Directives.{complete, get, pathSingleSlash}
 import com.typesafe.config.ConfigFactory
 import java.time.LocalDateTime
 import js7.base.BuildInfo
@@ -14,13 +11,13 @@ import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.Nel
 import js7.base.web.Uri
-import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
-import js7.common.akkahttp.StandardMarshallers.monixObservableToMarshallable
-import js7.common.akkahttp.web.AkkaWebServer
-import js7.common.akkautils.Akkas
 import js7.common.commandline.CommandLineArguments
 import js7.common.http.JsonStreamingSupport.{NdJsonStreamingSupport, jsonSeqMarshaller}
-import js7.controller.client.AkkaHttpControllerApi
+import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegments
+import js7.common.pekkohttp.StandardMarshallers.monixObservableToMarshallable
+import js7.common.pekkohttp.web.PekkoWebServer
+import js7.common.pekkoutils.Pekkos
+import js7.controller.client.PekkoHttpControllerApi
 import js7.data.controller.ControllerState
 import js7.data.event.{Event, EventId}
 import js7.proxy.data.event.ProxyEvent
@@ -28,14 +25,17 @@ import js7.proxy.{ControllerApi, JournaledStateEventBus}
 import js7.tests.controller.proxy.TestControllerProxy.*
 import monix.eval.Task
 import monix.execution.Scheduler
+import org.apache.pekko.http.scaladsl.common.JsonEntityStreamingSupport
+import org.apache.pekko.http.scaladsl.marshalling.ToEntityMarshaller
+import org.apache.pekko.http.scaladsl.server.Directives.{complete, get, pathSingleSlash}
 import scala.util.Try
 
 private final class TestControllerProxy(controllerUri: Uri, httpPort: Int)(implicit scheduler: Scheduler)
 {
   def run(): Task[Unit] =
-    Akkas.actorSystemResource("TestControllerProxy")
+    Pekkos.actorSystemResource("TestControllerProxy")
       .use { implicit actorSystem =>
-        val apiResource = AkkaHttpControllerApi.resource(controllerUri, userAndPassword)
+        val apiResource = PekkoHttpControllerApi.resource(controllerUri, userAndPassword)
         val proxyEventBus = new StandardEventBus[ProxyEvent]
         val eventBus = new JournaledStateEventBus[ControllerState]
         var currentState: ControllerState = null
@@ -43,7 +43,7 @@ private final class TestControllerProxy(controllerUri: Uri, httpPort: Int)(impli
         val api = new ControllerApi(Nel.one(apiResource))
         api.startProxy(proxyEventBus, eventBus)
           .flatMap { proxy =>
-            AkkaWebServer
+            PekkoWebServer
               .resourceForHttp(httpPort, webServiceRoute(Task(currentState)), ConfigFactory.empty)
               .use(_ =>
                 Task.tailRecM(())(_ =>

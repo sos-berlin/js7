@@ -1,6 +1,5 @@
 package js7.agent.configuration
 
-import akka.util.Timeout
 import com.typesafe.config.{Config, ConfigFactory}
 import java.net.InetSocketAddress
 import java.nio.file.Files.{createDirectory, exists}
@@ -20,16 +19,17 @@ import js7.base.time.JavaTimeConverters.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.base.utils.Tests.isTest
-import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.commandline.CommandLineArguments
 import js7.common.configuration.CommonConfiguration
 import js7.common.http.configuration.RecouplingStreamReaderConfs
+import js7.common.pekkohttp.web.data.WebServerPort
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
 import js7.launcher.configuration.{JobLauncherConf, ProcessKillScript}
 import js7.subagent.configuration.{DirectorConf, SubagentConf}
 import monix.execution.Scheduler
+import org.apache.pekko.util.Timeout
 import scala.jdk.CollectionConverters.*
 
 /**
@@ -42,7 +42,7 @@ final case class AgentConfiguration(
   logDirectory: Path,
   jobWorkingDirectory: Path = WorkingDirectory,
   killScript: Option[ProcessKillScript],  // TODO Duplicate with SubagentConf
-  akkaAskTimeout: Timeout,
+  pekkoAskTimeout: Timeout,
   journalConf: JournalConf,
   name: String,
   config: Config)  // Should not be the first argument to avoid the misleading call AgentConfiguration(config)
@@ -52,7 +52,7 @@ extends CommonConfiguration
 
   val recouplingStreamReaderConf = RecouplingStreamReaderConfs.fromConfig(config).orThrow
 
-  implicit def implicitAkkaAskTimeout: Timeout = akkaAskTimeout
+  implicit def implicitPekkoAskTimeout: Timeout = pekkoAskTimeout
 
   private def withCommandLineArguments(a: CommandLineArguments): AgentConfiguration = {
     val common = CommonConfiguration.Common.fromCommandLineArguments(a)
@@ -118,7 +118,7 @@ extends CommonConfiguration
 
   // Suppresses Config (which may contain secrets)
   override def toString = s"AgentConfiguration($configDirectory,$dataDirectory,$webServerPorts," +
-    s"$logDirectory,$jobWorkingDirectory,$killScript,$akkaAskTimeout,$journalConf,$name,Config)"
+    s"$logDirectory,$jobWorkingDirectory,$killScript,$pekkoAskTimeout,$journalConf,$name,Config)"
 }
 
 object AgentConfiguration
@@ -153,7 +153,7 @@ object AgentConfiguration
       webServerPorts = Nil,
       logDirectory = config.optionAs("js7.job.execution.log.directory")(asAbsolutePath) getOrElse defaultLogDirectory(dataDirectory),
       killScript = Some(DelayUntilFinishKillScript),  // Changed later
-      akkaAskTimeout = config.getDuration("js7.akka.ask-timeout").toFiniteDuration,
+      pekkoAskTimeout = config.getDuration("js7.pekko.ask-timeout").toFiniteDuration,
       journalConf = JournalConf.fromConfig(config),
       name = name,
       config = config)

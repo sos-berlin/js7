@@ -1,11 +1,5 @@
 package js7.controller.web.controller.api
 
-import akka.http.scaladsl.model.HttpEntity
-import akka.http.scaladsl.model.HttpEntity.Chunk
-import akka.http.scaladsl.server.Directives.{complete, get, pathEndOrSingleSlash}
-import akka.http.scaladsl.server.Route
-import akka.http.scaladsl.server.directives.ParameterDirectives.*
-import akka.util.ByteString
 import io.circe.syntax.*
 import js7.base.auth.ValidUserPermission
 import js7.base.circeutils.CirceUtils.RichJson
@@ -15,12 +9,12 @@ import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Checked
 import js7.base.utils.FutureCompletion
 import js7.base.utils.FutureCompletion.syntax.*
-import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
-import js7.common.akkahttp.ByteSequenceChunkerObservable.syntax.*
-import js7.common.akkahttp.StandardMarshallers.*
-import js7.common.akkautils.ByteStrings.syntax.*
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
-import js7.common.http.StreamingSupport.AkkaObservable
+import js7.common.http.StreamingSupport.PekkoObservable
+import js7.common.pekkohttp.ByteSequenceChunkerObservable.syntax.*
+import js7.common.pekkohttp.PekkoHttpServerUtils.completeTask
+import js7.common.pekkohttp.StandardMarshallers.*
+import js7.common.pekkoutils.ByteStrings.syntax.*
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.web.common.ControllerRouteProvider
 import js7.controller.web.controller.api.SnapshotRoute.*
@@ -31,6 +25,12 @@ import js7.journal.watch.FileEventWatch
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
+import org.apache.pekko.http.scaladsl.model.HttpEntity
+import org.apache.pekko.http.scaladsl.model.HttpEntity.Chunk
+import org.apache.pekko.http.scaladsl.server.Directives.{complete, get, pathEndOrSingleSlash}
+import org.apache.pekko.http.scaladsl.server.Route
+import org.apache.pekko.http.scaladsl.server.directives.ParameterDirectives.*
+import org.apache.pekko.util.ByteString
 
 trait SnapshotRoute extends ControllerRouteProvider
 {
@@ -77,7 +77,7 @@ trait SnapshotRoute extends ControllerRouteProvider
               .map(_.toByteString)
               .chunk(chunkSize)  // TODO Maybe fill-up chunks
               .map(Chunk(_))
-              .toAkkaSourceForHttpResponse))
+              .toPekkoSourceForHttpResponse))
       }
       checked
     }
@@ -95,7 +95,7 @@ trait SnapshotRoute extends ControllerRouteProvider
           .chunk(chunkSize))
         .flatMap(Observable.fromIterable)
         .map(Chunk(_))
-        .toAkkaSourceForHttpResponse)
+        .toPekkoSourceForHttpResponse)
 }
 
 object SnapshotRoute

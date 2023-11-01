@@ -1,6 +1,5 @@
 package js7.tests.controller.web
 
-import akka.http.scaladsl.model.StatusCodes.Unauthorized
 import java.nio.file.Files
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.configutils.Configs.*
@@ -16,8 +15,8 @@ import js7.base.utils.Closer.syntax.*
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.base.web.Uri
 import js7.common.guice.GuiceImplicits.RichInjector
-import js7.common.http.AkkaHttpClient.HttpException
-import js7.controller.client.AkkaHttpControllerApi
+import js7.common.http.PekkoHttpClient.HttpException
+import js7.controller.client.PekkoHttpControllerApi
 import js7.controller.configuration.ControllerConfiguration
 import js7.data.agent.AgentPath
 import js7.data.agent.AgentRefStateEvent.{AgentDedicated, AgentEventsObserved, AgentReady}
@@ -36,6 +35,7 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.script
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
+import org.apache.pekko.http.scaladsl.model.StatusCodes.Unauthorized
 import org.scalatest.BeforeAndAfterAll
 import scala.collection.mutable
 
@@ -44,7 +44,7 @@ final class JournalWebServiceTest extends OurTestSuite with BeforeAndAfterAll wi
   protected val agentPaths = agentPath :: Nil
   protected val items = Seq(workflow)
   private lazy val uri = controller.localUri
-  private lazy val httpControllerApi = new AkkaHttpControllerApi(
+  private lazy val httpControllerApi = new PekkoHttpControllerApi(
     uri,
     Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD"))),
     controller.actorSystem

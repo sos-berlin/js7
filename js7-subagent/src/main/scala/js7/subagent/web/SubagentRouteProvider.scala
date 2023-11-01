@@ -1,6 +1,6 @@
 package js7.subagent.web
 
-import js7.common.akkahttp.web.session.{RouteProvider, SimpleSession}
+import js7.common.pekkohttp.web.session.{RouteProvider, SimpleSession}
 
 private trait SubagentRouteProvider extends RouteProvider
 {

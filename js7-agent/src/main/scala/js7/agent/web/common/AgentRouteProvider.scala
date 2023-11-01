@@ -1,6 +1,6 @@
 package js7.agent.web.common
 
-import js7.common.akkahttp.web.session.RouteProvider
+import js7.common.pekkohttp.web.session.RouteProvider
 
 /**
  * Standard trait for Agent web services.

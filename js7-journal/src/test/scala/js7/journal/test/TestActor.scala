@@ -1,15 +1,11 @@
 package js7.journal.test
 
-import akka.Done
-import akka.actor.{Actor, ActorRef, Props, Stash, Terminated}
-import akka.pattern.{ask, pipe}
-import akka.util.Timeout
 import com.softwaremill.diffx.generic.auto.*
 import com.typesafe.config.Config
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.common.akkautils.SupervisorStrategies
+import js7.common.pekkoutils.SupervisorStrategies
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
 import js7.journal.recover.StateRecoverer
@@ -17,6 +13,10 @@ import js7.journal.state.FileStatePersistence
 import js7.journal.test.TestActor.*
 import js7.journal.{EventIdClock, EventIdGenerator, JournalActor}
 import monix.execution.Scheduler.Implicits.traced
+import org.apache.pekko.Done
+import org.apache.pekko.actor.{Actor, ActorRef, Props, Stash, Terminated}
+import org.apache.pekko.pattern.{ask, pipe}
+import org.apache.pekko.util.Timeout
 import scala.collection.mutable
 import scala.concurrent.Promise
 import scala.concurrent.duration.DurationInt

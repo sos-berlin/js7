@@ -17,8 +17,8 @@ import js7.base.time.AlarmClock
 import js7.base.utils.ProgramTermination
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
-import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
-import js7.common.akkautils.Akkas
+import js7.common.pekkohttp.web.session.{SessionRegister, SimpleSession}
+import js7.common.pekkoutils.Pekkos
 import js7.common.system.ThreadPools
 import js7.common.system.ThreadPools.{newUnlimitedScheduler, schedulerServiceToResource}
 import js7.data.subagent.SubagentCommand.ShutDown
@@ -114,7 +114,7 @@ object BareSubagent
             journal, conf, conf.toJobLauncherConf(iox, blockingInternalJobScheduler, clock).orThrow)(
             scheduler, iox)))(
           release = _.stopV1_5_1)
-        actorSystem <- Akkas.actorSystemResource(conf.name, config, js7Scheduler)
+        actorSystem <- Pekkos.actorSystemResource(conf.name, config, js7Scheduler)
         sessionRegister = SessionRegister.start[SimpleSession](
           actorSystem, SimpleSession(_), config)
         _ <- sessionRegister.placeSessionTokenInDirectory(SimpleUser.System, conf.workDirectory)

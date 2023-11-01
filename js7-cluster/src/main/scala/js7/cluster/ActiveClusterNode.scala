@@ -1,12 +1,11 @@
 package js7.cluster
 
-import akka.pattern.ask
 import cats.syntax.flatMap.*
 import cats.syntax.monoid.*
 import com.softwaremill.diffx
 import js7.base.generic.Completed
-import js7.base.log.{CorrelId, Logger}
 import js7.base.log.Logger.syntax.*
+import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.InfoWorryDuration
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.monixutils.ObservablePauseDetector.*
@@ -38,6 +37,7 @@ import monix.execution.Scheduler
 import monix.execution.atomic.AtomicBoolean
 import monix.execution.cancelables.SerialCancelable
 import monix.reactive.{Observable, OverflowStrategy}
+import org.apache.pekko.pattern.ask
 import scala.concurrent.Promise
 import scala.concurrent.duration.*
 import scala.util.{Failure, Success}

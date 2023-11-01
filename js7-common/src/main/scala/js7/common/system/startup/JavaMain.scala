@@ -14,7 +14,7 @@ import js7.common.utils.JavaShutdownHook
 
 object JavaMain
 {
-  private val AkkaShutdownHook = "akka.coordinated-shutdown.run-by-jvm-shutdown-hook"
+  private val PekkoShutdownHook = "pekko.coordinated-shutdown.run-by-jvm-shutdown-hook"
   private lazy val logger = Logger[this.type]
 
   def runMain[A](name: String, arguments: => CommandLineArguments, config: => Config)(body: => A)
@@ -59,8 +59,8 @@ object JavaMain
 
   private def addJavaShutdownHooks(config: Config, name: String, onJavaShutdown: () => Unit): AutoCloseable = {
     val hooks =
-      if (config.as[Boolean](AkkaShutdownHook, false)) {
-        logger.debug(s"JS7 shutdown hook suppressed because Akka has one: $AkkaShutdownHook = on")
+      if (config.as[Boolean](PekkoShutdownHook, false)) {
+        logger.debug(s"JS7 shutdown hook suppressed because Pekko has one: $PekkoShutdownHook = on")
         Nil
       } else
         JavaShutdownHook.add(name) {

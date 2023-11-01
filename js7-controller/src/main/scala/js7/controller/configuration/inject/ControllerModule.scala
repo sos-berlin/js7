@@ -1,6 +1,5 @@
 package js7.controller.configuration.inject
 
-import akka.actor.{ActorRefFactory, ActorSystem}
 import com.google.inject.{AbstractModule, Provides}
 import com.typesafe.config.Config
 import javax.inject.Singleton
@@ -12,13 +11,14 @@ import js7.base.time.JavaTimeConverters.*
 import js7.base.time.{AlarmClock, WallClock}
 import js7.base.utils.Closer
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
-import js7.common.akkautils.{Akkas, DeadLetterActor}
+import js7.common.pekkohttp.web.session.{SessionRegister, SimpleSession}
+import js7.common.pekkoutils.{DeadLetterActor, Pekkos}
 import js7.common.system.ThreadPools
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.configuration.inject.ControllerModule.*
 import js7.journal.{EventIdClock, EventIdGenerator}
 import monix.execution.Scheduler
+import org.apache.pekko.actor.{ActorRefFactory, ActorSystem}
 import scala.concurrent.ExecutionContext
 
 /**
@@ -72,9 +72,9 @@ extends AbstractModule
       name,
       config = Some(config),
       Some(getClass.getClassLoader),
-      defaultExecutionContext = config.getBoolean("js7.akka.use-js7-thread-pool") ? executionContext)
+      defaultExecutionContext = config.getBoolean("js7.pekko.use-js7-thread-pool") ? executionContext)
     closer.onClose {
-      Akkas.terminateAndWait(actorSystem, config.getDuration("js7.akka.shutdown-timeout").toFiniteDuration)
+      Pekkos.terminateAndWait(actorSystem, config.getDuration("js7.pekko.shutdown-timeout").toFiniteDuration)
     }
     DeadLetterActor.subscribe(actorSystem)
     actorSystem

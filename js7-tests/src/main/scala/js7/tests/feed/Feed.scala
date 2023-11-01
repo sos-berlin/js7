@@ -7,8 +7,8 @@ import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.data.ByteArray
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.common.akkautils.Akkas
-import js7.controller.client.AkkaHttpControllerApi.admissionToApiResource
+import js7.common.pekkoutils.Pekkos
+import js7.controller.client.PekkoHttpControllerApi.admissionToApiResource
 import js7.data.controller.ControllerState
 import js7.data.item.ItemOperation
 import js7.data.order.FreshOrder
@@ -59,7 +59,7 @@ final class Feed(controllerApi: ControllerApi, settings: Settings)
 object Feed
 {
   def run(in: Resource[Task, InputStream], settings: Settings): Task[Checked[Unit]] =
-    Akkas.actorSystemResource("Feed")
+    Pekkos.actorSystemResource("Feed")
       .flatMap(actorSystem =>
         ControllerApi.resource(
           settings.admissions.map(admissionToApiResource(_)(actorSystem))))

@@ -1,6 +1,5 @@
 package js7.tests.controller.proxy
 
-import akka.actor.ActorSystem
 import io.circe.Encoder
 import io.circe.syntax.*
 import izumi.reflect.Tag
@@ -21,8 +20,8 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ByteUnits.toKBGB
 import js7.base.utils.CatsUtils.Nel
 import js7.base.web.HttpClient
-import js7.common.http.AkkaHttpClient
-import js7.controller.client.{AkkaHttpControllerApi, HttpControllerApi}
+import js7.common.http.PekkoHttpClient
+import js7.controller.client.{HttpControllerApi, PekkoHttpControllerApi}
 import js7.data.controller.ControllerCommand.TakeSnapshot
 import js7.data.controller.ControllerState
 import js7.data.controller.ControllerState.versionedItemJsonCodec
@@ -42,6 +41,7 @@ import js7.tests.controller.proxy.JournaledProxyClusterTest.*
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
+import org.apache.pekko.actor.ActorSystem
 import scala.concurrent.duration.Deadline.now
 import scala.jdk.CollectionConverters.*
 
@@ -57,8 +57,8 @@ class JournaledProxyClusterTest extends OurTestSuite with ClusterProxyTest
     runControllerAndBackup() { (_, primaryController, _, backupController, _) =>
       primaryController.waitUntilReady()
       val controllerApiResources = Nel.of(
-        AkkaHttpControllerApi.resource(primaryController.localUri, Some(primaryUserAndPassword), name = "JournaledProxy-Primary"),
-        AkkaHttpControllerApi.resource(backupController.localUri, Some(backupUserAndPassword), name = "JournaledProxy-Backup"))
+        PekkoHttpControllerApi.resource(primaryController.localUri, Some(primaryUserAndPassword), name = "JournaledProxy-Primary"),
+        PekkoHttpControllerApi.resource(backupController.localUri, Some(backupUserAndPassword), name = "JournaledProxy-Backup"))
       val proxy = new ControllerApi(controllerApiResources).startProxy().await(99.s)
       try {
         val whenProcessed = proxy.eventBus.when[OrderProcessed].runToFuture
@@ -95,7 +95,7 @@ class JournaledProxyClusterTest extends OurTestSuite with ClusterProxyTest
     logger.info(s"Adding $n Workflows")
     runControllerAndBackup() { (primary, primaryController, _, _, _) =>
       primaryController.waitUntilReady()
-      val controllerApiResource = AkkaHttpControllerApi.resource(primaryController.localUri, Some(primaryUserAndPassword), name = "JournaledProxy")
+      val controllerApiResource = PekkoHttpControllerApi.resource(primaryController.localUri, Some(primaryUserAndPassword), name = "JournaledProxy")
       val api = new ControllerApi(Nel.one(controllerApiResource))
       val workflowPaths = (1 to n).map(i => WorkflowPath(s"WORKFLOW-$i"))
       val sw = new Stopwatch
@@ -138,7 +138,7 @@ class JournaledProxyClusterTest extends OurTestSuite with ClusterProxyTest
     runControllerAndBackup() { (_, primaryController, _, _, _) =>
       primaryController.waitUntilReady()
       val api = new ControllerApi(Nel.one(
-        AkkaHttpControllerApi.resource(primaryController.localUri, Some(primaryUserAndPassword), name = "JournaledProxy")))
+        PekkoHttpControllerApi.resource(primaryController.localUri, Some(primaryUserAndPassword), name = "JournaledProxy")))
       val orderIds = (1 to n).map(i => OrderId(s"ORDER-$i"))
       val logLine = measureTimeOfSingleRun(n, "orders") {
         api.addOrders(
@@ -172,7 +172,7 @@ class JournaledProxyClusterTest extends OurTestSuite with ClusterProxyTest
     runControllerAndBackup() { (_, primaryController, _, _, _) =>
       primaryController.waitUntilReady()
       logger.info(s"Adding $n invalid orders à ${bigOrder.length} bytes ${toKBGB(n * bigOrder.length)}")
-      val httpClient = new AkkaHttpClient.Standard(primaryController.localUri, HttpControllerApi.UriPrefixPath, actorSystem,
+      val httpClient = new PekkoHttpClient.Standard(primaryController.localUri, HttpControllerApi.UriPrefixPath, actorSystem,
         name = "JournaledProxy")
       autoClosing(httpClient) { _ =>
         val api = new HttpControllerApi.Standard(primaryController.localUri, Some(primaryUserAndPassword), httpClient)
