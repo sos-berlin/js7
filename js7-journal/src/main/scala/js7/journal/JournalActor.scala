@@ -9,8 +9,8 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.generic.Completed
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.*
+import js7.base.problem.Checked
 import js7.base.problem.Checked.*
-import js7.base.problem.Problem
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ByteUnits.toKBGB
@@ -180,9 +180,7 @@ extends Actor with Stash with JournalLogging
         val stampedEvents = timestamped.view.map(t => eventIdGenerator.stamp(t.keyedEvent, t.timestampMillis)).toVector
         uncommittedState.applyStampedEvents(stampedEvents) match {
           case Left(problem) =>
-            logger.error(problem.toString)
-            for (stamped <- stampedEvents) logger.error(stamped.toString)
-            reply(sender(), replyTo, Output.StoreFailure(problem, callersItem))
+            reply(sender(), replyTo, Output.Stored(Left(problem),  uncommittedState, callersItem))
 
           case Right(updatedState) =>
             uncommittedState = updatedState
@@ -440,7 +438,8 @@ extends Actor with Stash with JournalLogging
   private def continueCallers(persist: StandardPersist): Unit = {
     if (persist.replyTo != Actor.noSender) {
       // Continue caller
-      reply(persist.sender, persist.replyTo, Output.Stored(persist.stampedSeq, committedState, persist.callersItem))
+      reply(persist.sender, persist.replyTo,
+        Output.Stored(Right(persist.stampedSeq), committedState, persist.callersItem))
     }
     for (stamped <- persist.stampedSeq) {
       keyedEventBus.publish(stamped)
@@ -771,14 +770,13 @@ object JournalActor
     final case class Ready(journalHeader: JournalHeader)
 
     private[journal] final case class Stored[S <: SnapshotableState[S]](
-      stamped: Seq[Stamped[AnyKeyedEvent]],
+      stamped: Checked[Seq[Stamped[AnyKeyedEvent]]],
       journaledState: S,
       callersItem: CallersItem)
     extends Output
 
     private[journal] final case class Accepted(callersItem: CallersItem) extends Output
     //final case class SerializationFailure(throwable: Throwable) extends Output
-    final case class StoreFailure(problem: Problem, callersItem: CallersItem) extends Output
     case object SnapshotTaken
     final case class JournalActorState(isFlushed: Boolean, isSynced: Boolean, isRequiringClusterAcknowledgement: Boolean)
   }

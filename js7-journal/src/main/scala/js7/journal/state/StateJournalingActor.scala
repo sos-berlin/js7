@@ -63,8 +63,9 @@ extends MainJournalingActor[S, E]
           case Success(Left(problem)) => promise.success(Left(problem))
           case Success(Right(keyedEvents)) =>
             promise.completeWith(
-              persistKeyedEvents(toTimestamped(keyedEvents), options, async = true) { (stampedKeyedEvents, journaledState) =>
-                Right(stampedKeyedEvents -> journaledState)
+              persistKeyedEventsReturnChecked(toTimestamped(keyedEvents), options, async = true) {
+                (stampedKeyedEvents, journaledState) =>
+                  stampedKeyedEvents -> journaledState
               })
         }
       }
