@@ -43,6 +43,7 @@ import js7.data.execution.workflow.instructions.{ExecuteAdmissionTimeSwitch, Ins
 import js7.data.item.BasicItemEvent.{ItemAttachedToMe, ItemDetached, ItemDetachingFromMe, SignedItemAttachedToMe}
 import js7.data.item.{InventoryItem, SignableItem, UnsignedItem}
 import js7.data.job.{JobKey, JobResource}
+import js7.data.order.Order.InapplicableOrderEventProblem
 import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderCoreEvent, OrderDetached, OrderProcessed}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
@@ -586,10 +587,11 @@ final class AgentOrderKeeper(
                 val promise = Promise[Unit]()
                 orderEntry.detachResponses ::= promise
                 (orderEntry.actor ? OrderActor.Command.HandleEvents(OrderDetached :: Nil, CorrelId.current))
-                  .mapTo[Completed]
+                  .mapTo[Checked[Completed]]
                   .onComplete {
                     case Failure(t) => promise.tryFailure(t)
-                    case Success(Completed) =>
+                    case Success(Left(problem)) => promise.tryFailure(problem.throwable)
+                    case Success(Right(Completed)) =>
                       // Ignore this and instead await OrderActor termination and removal from orderRegister.
                       // Otherwise in case of a quick Controller restart, CoupleController would response with this OrderId
                       // and the Controller will try again to DetachOrder, while the original DetachOrder is still in progress.
@@ -614,13 +616,37 @@ final class AgentOrderKeeper(
               case Left(problem) => Future.failed(problem.throwable)
               case Right(None) => Future.successful(Right(AgentCommand.Response.Accepted))
               case Right(Some(events)) =>
+                val sender = this.sender()
                 // Several MarkOrder in sequence are not properly handled
                 // one after the other because execution is asynchronous.
                 // A second command may may see the same not yet updated order.
                 // TODO Queue for each order? And no more OrderActor?
-                (orderEntry.actor ? OrderActor.Command.HandleEvents(events, CorrelId.current))
-                  .mapTo[Completed]
-                  .map(_ => Right(AgentCommand.Response.Accepted))
+                Task
+                  .deferFuture(
+                    (orderEntry.actor ? OrderActor.Command.HandleEvents(events, CorrelId.current))
+                      .mapTo[Checked[Completed]])
+                  .flatMap {
+                    case Left(problem)
+                      if problem.exists(_.isInstanceOf[InapplicableOrderEventProblem]) =>
+                      Task.sleep(100.ms) // brake
+                        .*>(Task.defer {
+                          logger.warn(s"Repeating $cmd due to race condition: $problem")
+                          val promise = Promise[Checked[Response]]()
+                          self.!(Input.ExternalCommand(cmd, CorrelId.current, promise))(sender)
+                          Task
+                            .fromFuture(promise.future)
+                            .map(_.map(_.asInstanceOf[Response.Accepted]))
+                        })
+
+                    case Left(problem) =>
+                      // Should not happen. Controller does not handle the problem.
+                      logger.warn(s"$cmd => $problem")
+                      Task.left(problem)
+
+                    case Right(Completed) =>
+                      Task.right(AgentCommand.Response.Accepted)
+                  }
+                .runToFuture
             }
       }
 
@@ -725,9 +751,10 @@ final class AgentOrderKeeper(
           .parTraverse { case (orderId_ : OrderId, events) =>
             Task
               .fromFuture(
-                orderRegister(orderId_).actor ?
+                (orderRegister(orderId_).actor ?
                   OrderActor.Command.HandleEvents(events, CorrelId.current))
-              .attempt
+                    .mapTo[Checked[Completed]])
+              .materializeIntoChecked
               .map(orderId_ -> events -> _)
           }
           .runToFuture
@@ -736,9 +763,9 @@ final class AgentOrderKeeper(
         //  Then, two OrderMoved are emitted, because the second event is based on the same Order state.
         // TODO Blocking! SLOW because inhibits parallelization
         try Await.result(future, 99.s)
-          .collect { case ((orderId_, events), Left(throwable)) =>
+          .collect { case ((orderId_, events), Left(problem)) =>
             logger.error(
-              s"$orderId_ <-: ${events.map(_.toShortString)} => ${throwable.toStringWithCauses}")
+              s"$orderId_ <-: ${events.map(_.toShortString)} => $problem")
           }
         catch { case NonFatal(t) => logger.error(
           s"${keyedEvents.map(_.toShortString)} => ${t.toStringWithCauses}")

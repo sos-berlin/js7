@@ -8,6 +8,7 @@ import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.RichCheckedTask
+import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.*
@@ -81,9 +82,9 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
                 sender() ! Status.Failure(problem.throwable)
 
               case Right(orderAttachedToAgent) =>
-                becomeAsStateOf(attachedOrder, force = true)
                 persist(orderAttachedToAgent) {
                   (event, updatedState) =>
+                    becomeAsStateOf(attachedOrder, force = true)
                     update(event :: Nil)
                     Completed
                 } pipeTo sender()
@@ -110,10 +111,11 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
     receiveEvent orElse {
       case Input.StartProcessing =>
         orderCorrelId.bind[Unit] {
-          if (order.isProcessable) {
+          if (!order.isProcessable)
+            logger.warn("Input.StartProcessing but !order.isProcessable")
+          else {
             // Separate CorrelId for each order process
             CorrelId.bindNew {
-              become("processing")(processing)
               subagentKeeper
                 .processOrder(
                   order.checkedState[Order.IsFreshOrReady].orThrow,
@@ -141,12 +143,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
     }
 
   private def processing: Receive =
-    receiveCommand orElse receiveEvent orElse {
-      case Internal.UpdateEvents(events, correlId) =>
-        correlId.bind {
-          update(events)
-        }
-
+    receiveEvent orElse receiveCommand orElse {
       case Input.Terminate(signal) =>
         terminating = true
         if (subagentKeeper.orderIsLocal(orderId)) {
@@ -167,24 +164,27 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
     receiveEvent orElse receiveCommand orElse receiveTerminate
 
   private def receiveEvent: Receive = {
-    case Command.HandleEvents(events, correlId) =>
+    case Internal.UpdateEvents(events, correlId) =>
       correlId.bind {
+        update(events)
+      }
+
+    case Command.HandleEvents(events, correlId) =>
+      correlId.bind[Unit] {
         handleEvents(events) pipeTo sender()
       }
   }
 
-  private def handleEvents(events: Seq[OrderCoreEvent]): Future[Completed] =
+  private def handleEvents(events: Seq[OrderCoreEvent]): Future[Checked[Completed]] =
     order.applyEvents(events) match {
       case Left(problem) =>
-        logger.error(s"${events.headOption.getOrElse("?")}...: $problem")
-        Future.successful(Completed)
+        Future.successful(Left(problem))
 
       case Right(updated) =>
-        becomeAsStateOf(updated)
         if (events.size == 1 && events.head.isInstanceOf[OrderCancellationMarked] && updated == order)  // Duplicate, already cancelling with same CancellationMode?
-          Future.successful(Completed)
+          Future.successful(Right(Completed))
         else
-          persistTransaction(events) { (event, updatedState) =>
+          persistTransactionReturnChecked(events) { (event, updatedState) =>
             update(events)
             if (terminating) {
               context.stop(self)
@@ -223,7 +223,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
     if (anOrder.isDetaching)
       become("detaching")(detaching)
     else
-    if (force || anOrder.state.getClass != order.state.getClass) {
+    if (true || force || anOrder.state.getClass != order.state.getClass) {
       anOrder.state match {
         case _: Order.Fresh             => become("fresh")(wrap(fresh))
         case _: Order.Ready             => become("ready")(wrap(ready))
@@ -254,7 +254,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
   }
 
   private def detaching: Receive =
-    receiveCommand orElse receiveEvent orElse receiveTerminate
+    receiveEvent orElse receiveCommand orElse receiveTerminate
 
   private def receiveTerminate: Receive = {
     case _: Input.Terminate =>
@@ -274,6 +274,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
   private def update(events: Seq[OrderEvent]) = {
     val previousOrderOrNull = order
     events foreach updateOrder
+    becomeAsStateOf(order)
     context.parent ! Output.OrderChanged(orderId, CorrelId.current, previousOrderOrNull, events)
     events.last match {
       case OrderDetached =>
@@ -287,8 +288,6 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
       case _: OrderProcessed =>
         if (terminating) {
           context.stop(self)
-        } else {
-          become("processed")(processed)
         }
       case _ =>
     }
@@ -313,7 +312,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
 
   override def unhandled(msg: Any) =
     msg match {
-      case msg @ (_: Command | _: Input) =>
+      case msg @ (_: Command | _: Input | _: Internal.UpdateEvents) =>
         logger.error(s"Unhandled message $msg in Actor state '$actorStateName', Order state is ${order.state}")
 
       case _ =>
