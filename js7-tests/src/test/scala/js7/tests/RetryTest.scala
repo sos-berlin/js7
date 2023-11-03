@@ -3,17 +3,20 @@ package js7.tests
 import izumi.reflect.Tag
 import js7.base.configutils.Configs.*
 import js7.base.io.process.Processes.ShellFileExtension as sh
+import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.problem.Checked.Ops
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
+import js7.base.utils.Tests.isIntelliJIdea
 import js7.data.agent.AgentPath
 import js7.data.command.CancellationMode
 import js7.data.controller.ControllerCommand.CancelOrders
 import js7.data.event.{EventId, EventRequest, EventSeq}
 import js7.data.job.RelativePathExecutable
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwoke, OrderCaught, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderRetrying, OrderStarted}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwoke, OrderCancelled, OrderCaught, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderRetrying, OrderStarted}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.NamedValues
 import js7.data.workflow.instructions.{Fail, Retry, TryInstruction}
@@ -22,24 +25,26 @@ import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath}
 import js7.tests.RetryTest.*
-import js7.tests.jobs.EmptyJob
+import js7.tests.jobs.{EmptyJob, FailingJob}
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.*
 import scala.reflect.ClassTag
+import scala.util.Random
 
 final class RetryTest
 extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
 
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
-    js7.journal.simulate-sync = 10ms  # Avoid excessive syncs in case of test failure
-    """
+    js7.controller.agent-driver.command-batch-delay = 0ms
+    js7.controller.agent-driver.event-buffer-delay = 0ms"""
 
   override protected def agentConfig = config"""
-    js7.journal.simulate-sync = 10ms  # Avoid excessive syncs in case of test failure
-    js7.job.execution.signed-script-injection-allowed = on"""
+    js7.job.execution.signed-script-injection-allowed = on
+    js7.controller.agent-driver.command-batch-delay = 0ms
+    js7.controller.agent-driver.event-buffer-delay = 0ms"""
 
   protected val agentPaths = agentPath :: Nil
   protected val items = Nil
@@ -317,11 +322,13 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
         val orderId = OrderId("🟪")
         var eventId = eventWatch.lastAddedEventId
         controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
-        for _ <- 1 to 10 do
+        for _ <- 1 to 3 do
           eventId = eventWatch.await[OrderRetrying](_.key == orderId, after = eventId).last.eventId
         controller.api
           .executeCommand(CancelOrders(Seq(orderId), CancellationMode.FreshOrStarted()))
           .await(99.s).orThrow
+        eventWatch.await[OrderCancelled](_.key == orderId)
+
         assert(eventWatch
           .keyedEvents[OrderEvent](_.key == orderId, after = EventId.BeforeFirst)
           .take(25)
@@ -358,9 +365,64 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
           OrderProcessed(Outcome.succeeded),
           OrderMoved(Position(0) / catch_(2) % 1),
           OrderRetrying(Position(0) / try_(3) % 0)))
+
+        controller.api
+          .executeCommand(CancelOrders(Seq(orderId), CancellationMode.FreshOrStarted()))
+          .await(99.s).orThrow
+        eventWatch.await[OrderCancelled](_.key == orderId)
       }
     }
   }
+
+  private def repeatTest(n: Int)(body: Int => Any): Unit = {
+    for (i <- 1 to n) {
+      logger.debugCall(s"#$i", "")(
+        withClue(s"#$i: ")(
+          body(i)))
+    }
+  }
+
+  "JS-2105 Cancel while retrying (Engine has to synchronize OrderDetachable with ongoing events)" in
+    repeatTest(if (isIntelliJIdea) 100 else 10) { testIndex =>
+      // No more InapplicableEventProblem!
+      val workflow = Workflow(WorkflowPath("CANCEL-WHILE-RETRYING"), Seq(
+        TryInstruction(
+          Workflow.of(
+            FailingJob.execute(agentPath)),
+          Workflow.of(
+            Retry()))))
+
+      withTemporaryItem(workflow) { workflow =>
+        val orderId = OrderId(s"🟨$testIndex")
+        var eventId = eventWatch.lastAddedEventId
+        controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path, deleteWhenTerminated = true))
+        eventId = eventWatch.await[OrderRetrying](_.key == orderId, after = eventId).last.eventId
+        sleep(Random.nextInt(10).ms)
+        controller.api
+          .executeCommand(CancelOrders(Seq(orderId), CancellationMode.FreshOrStarted()))
+          .await(99.s)
+          .orThrow
+        eventWatch.await[OrderCancelled](_.key == orderId)
+
+        assert(eventWatch
+          .keyedEvents[OrderEvent](_.key == orderId, after = EventId.BeforeFirst)
+          .take(9)
+          .map(_.event)
+          .map {
+            case e: OrderRetrying => e.copy(delayedUntil = None)
+            case e => e
+          } == Seq(
+          OrderAdded(workflow.id, deleteWhenTerminated = true),
+          OrderMoved(Position(0) / try_(0) % 0),
+          OrderAttachable(agentPath),
+          OrderAttached(agentPath),
+          OrderStarted,
+          OrderProcessingStarted(Some(toLocalSubagentId(agentPath))),
+          OrderProcessed(FailingJob.outcome),
+          OrderCaught(Position(0) / "catch+0" % 0),
+          OrderRetrying(Position(0) / try_(1) % 0)))
+      }
+    }
 
   private def awaitAndCheckEventSeq[E <: OrderEvent: ClassTag: Tag](after: EventId, orderId: OrderId, expected: Vector[OrderEvent]): Unit =
     eventWatch.await[E](_.key == orderId, after = after)
@@ -373,7 +435,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
         fail(s"Unexpected EventSeq received: $o")
 
 
-
 object RetryTest:
+  private val logger = Logger[this.type]
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)

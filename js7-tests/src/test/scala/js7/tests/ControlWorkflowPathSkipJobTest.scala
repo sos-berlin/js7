@@ -17,16 +17,15 @@ import js7.data.item.{ItemRevision, VersionId}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.value.expression.ExpressionParser.expr
-import js7.data.workflow.instructions.{Execute, If}
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.If
+import js7.data.workflow.instructions.{Execute, If}
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{Label, Position}
 import js7.data.workflow.{Workflow, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
 import js7.tests.ControlWorkflowPathSkipJobTest.*
 import js7.tests.jobs.EmptyJob
-import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
+import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 

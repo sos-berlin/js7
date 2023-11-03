@@ -9,7 +9,7 @@ import js7.base.annotation.javaApi
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StackTraces.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.*
-import scala.collection.immutable
+import scala.collection.{View, immutable}
 import scala.language.implicitConversions
 
 /**
@@ -35,6 +35,14 @@ sealed trait Problem:
   def cause: Option[Problem]
 
   def head: Problem = this
+
+  final def exists(predicate: Problem => Boolean): Boolean =
+    predicate(this)
+      || cause.exists(predicate)
+      || flatten.filter(_ ne this).exists(_.exists(predicate))
+
+  def flatten: View[Problem] =
+    View(this) ++ cause
 
   final def withKey(key: Any): Problem = withPrefix(s"Problem with '$key':")
 
@@ -224,6 +232,10 @@ object Problem extends Semigroup[Problem]:
         for o <- throwables.tail do throwable.appendStackTrace(o.getStackTrace)
         throwable
       }
+
+    // Omits this Combined
+    override def flatten: View[Problem] =
+      problems.view.flatMap(_.flatten)
 
     lazy val message = problems.map(_.toString) reduce combineMessages
 

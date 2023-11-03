@@ -47,4 +47,15 @@ extends JournalingActor[S, E]:
     if isTest then assert(event.keyCompanion eq E)
     key.asInstanceOf[event.keyCompanion.Key] <-: event
 
+  protected final def persistTransactionReturnChecked[EE <: E, A](
+    events: Seq[EE], async: Boolean = false)
+    (callback: (Seq[EE], S) => A)
+  : Future[Checked[A]] =
+    super.persistKeyedEventsReturnChecked(
+      events.map(e => Timestamped(key.asInstanceOf[e.keyCompanion.Key/*???*/] <-: e)),
+      CommitOptions(transaction = true),
+      async = async) {
+      (stampedEvents, journaledState) => callback(stampedEvents.map(_.value.event.asInstanceOf[EE]), journaledState)
+    }
+
   override def toString = s"${ getClass.simpleScalaName }($key)"
