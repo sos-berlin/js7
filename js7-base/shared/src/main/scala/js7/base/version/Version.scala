@@ -14,6 +14,7 @@ final case class Version(
   major: Int,
   minor: Int,
   patch: Int,
+  patch2: Option[Int] = None,  // special extension
   prerelease: List[String] = Nil,
   build: List[String] = Nil)
 extends GenericString, Ordered[Version]:
@@ -22,7 +23,7 @@ extends GenericString, Ordered[Version]:
     if this eq o then
       0
     else
-      (major, minor, patch) compare (o.major, o.minor, o.patch) match
+      (major, minor, patch, patch2) compare (o.major, o.minor, o.patch, o.patch2) match
         case 0 =>
           (prerelease, o.prerelease) match
             case (_ :: _, Nil) => -1
@@ -38,18 +39,21 @@ extends GenericString, Ordered[Version]:
 
 object Version extends GenericString.Checked_[Version]:
   private val VersionRegex =
-  """([0-9]+)\.([0-9]+)\.([0-9]+)(-([A-Za-z0-9.]+))?(\+([A-Za-z0-9]+))?""".r
+    """([0-9]+)\.([0-9]+)\.([0-9]+)(?:\.([0-9]+))?(?:-([A-Za-z0-9.]+))?(?:\+([A-Za-z0-9]+))?""".r
 
   protected def unchecked(string: String) =
     checked(string).orThrow
 
   override def checked(string: String): Checked[Version] =
     string match
-      case VersionRegex(major, minor, patch, _, prereleaseGroup, _, buildGroup) =>
+      case VersionRegex(major, minor, patch, patch2, prereleaseGroup, buildGroup) =>
         val prerelease = Option(prereleaseGroup).fold[List[String]](Nil)(_.split("\\.").toList)
         val build = Option(buildGroup).fold[List[String]](Nil)(_.split("\\.").toList)
         catchExpected[NumberFormatException](
-          new Version(string, major.toInt, minor.toInt, patch.toInt, prerelease, build))
+          new Version(string,
+            major.toInt, minor.toInt, patch.toInt,
+            Option(patch2).map(_.toInt),
+            prerelease, build))
 
       case _ =>
         Left(Problem(s"Unrecognized version: $string"))
