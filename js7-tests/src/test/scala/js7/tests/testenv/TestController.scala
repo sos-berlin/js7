@@ -1,6 +1,5 @@
 package js7.tests.testenv
 
-import akka.actor.ActorSystem
 import com.typesafe.config.Config
 import js7.base.auth.Admission
 import js7.base.eventbus.StandardEventBus
@@ -16,8 +15,8 @@ import js7.base.utils.ScalaUtils.syntax.{RichEither, RichEitherF}
 import js7.base.utils.{Allocated, Lazy, ProgramTermination}
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatch
-import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
-import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResource
+import js7.common.pekkohttp.web.session.{SessionRegister, SimpleSession}
+import js7.controller.client.PekkoHttpControllerApi.admissionsToApiResource
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.problems.ControllerIsShuttingDownProblem
 import js7.controller.{OrderApi, RunningController}
@@ -35,6 +34,7 @@ import js7.proxy.ControllerApi
 import js7.tests.testenv.TestController.*
 import monix.eval.Task
 import monix.reactive.Observable
+import org.apache.pekko.actor.ActorSystem
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
@@ -61,7 +61,7 @@ final class TestController(allocated: Allocated[Task, RunningController], admiss
   private def stopControllerApi: Task[Unit] =
     Task.defer(apiLazy.toOption.fold(Task.unit)(controllerApi =>
       controllerApi
-        .stop(dontLogout = true/*Akka may block when server has just been shut down*/)
+        .stop(dontLogout = true/*Pekko may block when server has just been shut down*/)
         .logWhenItTakesLonger))
 
   def config: Config =
@@ -119,7 +119,7 @@ final class TestController(allocated: Allocated[Task, RunningController], admiss
         actorSystem.whenTerminated.value match {
           case Some(Failure(t)) => Task.raiseError(t)
           case Some(Success(_)) =>
-            logger.warn("Controller terminate: Akka has already been terminated")
+            logger.warn("Controller terminate: Pekko has already been terminated")
             Task.pure(ProgramTermination())
           case None =>
             api

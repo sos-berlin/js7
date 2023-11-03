@@ -1,6 +1,5 @@
 package js7.agent
 
-import akka.actor.{Actor, ActorRef, Props, Terminated}
 import js7.agent.MainActor.*
 import js7.agent.command.{CommandActor, CommandHandler}
 import js7.agent.configuration.AgentConfiguration
@@ -10,13 +9,14 @@ import js7.base.log.Logger
 import js7.base.time.AlarmClock
 import js7.base.utils.{Allocated, SetOnce}
 import js7.cluster.ClusterNode
-import js7.common.akkautils.CatchingSupervisorStrategy
+import js7.common.pekkoutils.CatchingSupervisorStrategy
 import js7.core.command.CommandMeta
 import js7.data.subagent.SubagentId
 import js7.journal.state.FileJournal
 import js7.subagent.Subagent
 import monix.eval.Task
 import monix.execution.Scheduler
+import org.apache.pekko.actor.{Actor, ActorRef, Props, Terminated}
 import scala.concurrent.Promise
 import scala.util.control.NoStackTrace
 

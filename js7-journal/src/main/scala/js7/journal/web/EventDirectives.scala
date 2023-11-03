@@ -1,13 +1,13 @@
 package js7.journal.web
 
-import akka.http.scaladsl.model.headers.`Timeout-Access`
-import akka.http.scaladsl.server.Directives.*
-import akka.http.scaladsl.server.{Directive, Directive1, Route, ValidationRejection}
 import cats.syntax.option.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.implicitClass
-import js7.common.akkahttp.StandardMarshallers.*
+import js7.common.pekkohttp.StandardMarshallers.*
 import js7.data.event.*
+import org.apache.pekko.http.scaladsl.model.headers.`Timeout-Access`
+import org.apache.pekko.http.scaladsl.server.Directives.*
+import org.apache.pekko.http.scaladsl.server.{Directive, Directive1, Route, ValidationRejection}
 import scala.concurrent.duration.*
 import scala.reflect.ClassTag
 
@@ -19,7 +19,7 @@ object EventDirectives
   val DefaultTimeout = 0.s
   val DefaultDelay = 500.ms
   val MinimumDelay = 100.ms
-  private val AkkaTimeoutTolerance = 1.s  // To let event reader timeout before Akka
+  private val PekkoTimeoutTolerance = 1.s  // To let event reader timeout before Pekko
 
   def eventRequest[E <: Event: KeyedEventTypedJsonCodec: ClassTag]: Directive1[EventRequest[E]] =
     eventRequest[E](None)
@@ -74,14 +74,14 @@ object EventDirectives
                 }
                 parameter("delay" ? defaultDelay) { delay =>
                   parameter("tornOlder" ? none[FiniteDuration]) { tornOlder =>
-                    optionalHeaderValueByType(`Timeout-Access`) { timeoutAccess =>  // Setting akka.http.server.request-timeout
+                    optionalHeaderValueByType(`Timeout-Access`) { timeoutAccess =>  // Setting pekko.http.server.request-timeout
                       val eventRequest = EventRequest[E](eventClasses,
                         after = after,
                         timeout = timeoutAccess.map(_.timeoutAccess.timeout) match {
-                          case Some(akkaTimeout: FiniteDuration) =>
+                          case Some(pekkoTimeout: FiniteDuration) =>
                             maybeTimeout.map(t =>
-                              if (akkaTimeout > AkkaTimeoutTolerance && t > akkaTimeout - AkkaTimeoutTolerance)
-                                t - AkkaTimeoutTolerance  // Requester's timeout before Akkas akka.http.server.request-timeout
+                              if (pekkoTimeout > PekkoTimeoutTolerance && t > pekkoTimeout - PekkoTimeoutTolerance)
+                                t - PekkoTimeoutTolerance  // Requester's timeout before Pekkos pekko.http.server.request-timeout
                               else t)
                           case _ => maybeTimeout
                         },

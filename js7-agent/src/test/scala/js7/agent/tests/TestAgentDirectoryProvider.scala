@@ -81,7 +81,7 @@ object TestAgentDirectoryProvider
   def apply() = new TestAgentDirectoryProvider {}
 
   /* Following resources have been generated with the command lines:
-     js7-common/src/main/resources/js7/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh \
+     js7-common/src/main/resources/js7/common/pekkohttp/https/generate-self-signed-ssl-certificate-test-keystore.sh \
         --distinguished-name="CN=Web server, DC=webserver, DC=TestAgentDirectoryProvider, DC=tests, DC=js7, DC=sh" \
         --alias=webserver \
         --host=localhost \

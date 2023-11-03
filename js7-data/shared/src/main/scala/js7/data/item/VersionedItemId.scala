@@ -52,7 +52,7 @@ extends SignableItemKey
 
 object VersionedItemId
 {
-  val VersionSeparator = "~"  // Can be used in an Akka actor name
+  val VersionSeparator = "~"  // Can be used in an Pekko actor name
 
   // TODO Use this implicit convertion only for tests
   implicit def pathToItemId[P <: VersionedItemPath: VersionedItemPath.Companion](path: P): VersionedItemId[P] =

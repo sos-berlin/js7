@@ -34,7 +34,7 @@ final class CoupleControllerTest extends OurTestSuite with DirectoryProviderForS
 
   override protected def controllerConfig = config"""
     js7.journal.remove-obsolete-files = false
-    js7.akka.http.connection-pool-shutdown-timeout = 0s
+    js7.pekko.http.connection-pool-shutdown-timeout = 0s
     """.withFallback(super.controllerConfig)
 
   override protected def agentConfig = config"""

@@ -1,8 +1,8 @@
 package js7.controller.web
 
-import akka.http.scaladsl.model.StatusCodes.NotFound
-import akka.http.scaladsl.model.Uri
-import akka.http.scaladsl.server.Directives.{complete, extractRequest}
+import org.apache.pekko.http.scaladsl.model.StatusCodes.NotFound
+import org.apache.pekko.http.scaladsl.model.Uri
+import org.apache.pekko.http.scaladsl.server.Directives.{complete, extractRequest}
 
 /**
   * @author Joacim Zschimmer

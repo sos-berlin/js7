@@ -1,7 +1,5 @@
 package js7.agent
 
-import akka.actor.{ActorRef, ActorSystem, Props}
-import akka.http.scaladsl.server.directives.SecurityDirectives.Authenticator
 import cats.effect.Resource
 import cats.effect.concurrent.Deferred
 import cats.syntax.all.*
@@ -37,7 +35,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, ProgramTermination}
 import js7.base.web.Uri
 import js7.cluster.ClusterNode
-import js7.common.akkahttp.web.auth.GateKeeper
+import js7.common.pekkohttp.web.auth.GateKeeper
 import js7.common.system.JavaInformations.javaInformation
 import js7.common.system.SystemInformations.systemInformation
 import js7.common.system.startup.StartUp
@@ -55,6 +53,8 @@ import js7.subagent.Subagent
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.atomic.Atomic
+import org.apache.pekko.actor.{ActorRef, ActorSystem, Props}
+import org.apache.pekko.http.scaladsl.server.directives.SecurityDirectives.Authenticator
 import scala.collection.mutable
 import scala.concurrent.{Future, Promise}
 
@@ -203,7 +203,7 @@ object RunningAgent {
     (implicit scheduler: Scheduler)
   : Resource[Task, RunningAgent] =
     Resource.suspend(Task {
-      import conf.{clusterConf, config, httpsConfig, implicitAkkaAskTimeout, journalLocation}
+      import conf.{clusterConf, config, httpsConfig, implicitPekkoAskTimeout, journalLocation}
       val licenseChecker = new LicenseChecker(LicenseCheckContext(conf.configDirectory))
       // TODO Subagent itself should start Director when requested
       val forDirector = subagent.forDirector
@@ -218,7 +218,7 @@ object RunningAgent {
 
       for {
         clusterNode <- ClusterNode.recoveringResource[AgentState](
-          akkaResource = Resource.eval(Task.pure(forDirector.actorSystem)),
+          pekkoResource = Resource.eval(Task.pure(forDirector.actorSystem)),
           (admission, label, actorSystem) => AgentClient.resource(
             admission, label, httpsConfig)(actorSystem),
           licenseChecker,

@@ -1,6 +1,5 @@
 package js7.cluster
 
-import akka.actor.ActorRefFactory
 import cats.effect.Resource
 import com.softwaremill.diffx
 import izumi.reflect.Tag
@@ -28,6 +27,7 @@ import js7.journal.recover.Recovered
 import js7.journal.state.FileJournal
 import monix.eval.Task
 import monix.execution.Scheduler
+import org.apache.pekko.actor.ActorRefFactory
 
 /** A WorkingClusterNode may be in Empty (no cluster) or HasNodes ClusterState.
   *
@@ -208,7 +208,7 @@ object WorkingClusterNode
       nodeNameToPassword: NodeNameToPassword[S],
       scheduler: Scheduler,
       actorRefFactory: ActorRefFactory,
-      timeout: akka.util.Timeout)
+      timeout: org.apache.pekko.util.Timeout)
   : Resource[Task, WorkingClusterNode[S]] =
     for {
       _ <- Resource.eval(Task.unless(recovered.clusterState == ClusterState.Empty)(

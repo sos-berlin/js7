@@ -1,15 +1,15 @@
 package js7.subagent
 
-import akka.http.scaladsl.server.Directives.complete
-import akka.http.scaladsl.server.Route
 import cats.effect.Resource
 import js7.base.utils.AsyncLock
-import js7.common.akkahttp.StandardMarshallers.*
-import js7.common.akkahttp.web.AkkaWebServer.RouteBinding
-import js7.common.akkahttp.web.data.WebServerBinding
+import js7.common.pekkohttp.StandardMarshallers.*
+import js7.common.pekkohttp.web.PekkoWebServer.RouteBinding
+import js7.common.pekkohttp.web.data.WebServerBinding
 import js7.data.subagent.Problems.NoDirectorProblem
 import js7.subagent.DirectorRouteVariable.*
 import monix.eval.Task
+import org.apache.pekko.http.scaladsl.server.Directives.complete
+import org.apache.pekko.http.scaladsl.server.Route
 import scala.collection.mutable
 
 /** Store for the Agent Director's Route while running. */

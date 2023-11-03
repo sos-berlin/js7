@@ -1,11 +1,5 @@
 package js7.tests
 
-import akka.http.scaladsl.model.ContentTypes.`text/plain(UTF-8)`
-import akka.http.scaladsl.model.MediaTypes.`application/json`
-import akka.http.scaladsl.model.StatusCodes.{Forbidden, NotFound, OK}
-import akka.http.scaladsl.model.headers.{Accept, Location, RawHeader}
-import akka.http.scaladsl.model.{HttpEntity, HttpHeader, Uri as AkkaUri}
-import akka.stream.Materializer
 import io.circe.syntax.EncoderOps
 import io.circe.{Json, JsonObject}
 import js7.agent.RunningAgent
@@ -26,8 +20,8 @@ import js7.base.time.{Timestamp, WaitForCondition}
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.web.Uri
 import js7.base.{BuildInfo, Js7Version}
-import js7.common.http.AkkaHttpClient.HttpException
-import js7.common.http.AkkaHttpUtils.RichHttpResponse
+import js7.common.http.PekkoHttpClient.HttpException
+import js7.common.http.PekkoHttpUtils.RichHttpResponse
 import js7.common.system.ServerOperatingSystem.operatingSystem
 import js7.controller.RunningController
 import js7.data.Problems.UnknownItemPathProblem
@@ -47,6 +41,12 @@ import js7.tests.testenv.{ControllerAgentForScalaTest, ControllerEnv, DirectorEn
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
+import org.apache.pekko.http.scaladsl.model.ContentTypes.`text/plain(UTF-8)`
+import org.apache.pekko.http.scaladsl.model.MediaTypes.`application/json`
+import org.apache.pekko.http.scaladsl.model.StatusCodes.{Forbidden, NotFound, OK}
+import org.apache.pekko.http.scaladsl.model.headers.{Accept, Location, RawHeader}
+import org.apache.pekko.http.scaladsl.model.{HttpEntity, HttpHeader, Uri as PekkoUri}
+import org.apache.pekko.stream.Materializer
 import org.scalactic.source
 import org.scalatest.BeforeAndAfterAll
 import scala.util.Try
@@ -68,7 +68,7 @@ extends OurTestSuite with BeforeAndAfterAll with ControllerAgentForScalaTest
   protected val items = Nil
   private lazy val agent1Uri = directoryProvider.agentEnvs(0).localUri
   private lazy val agent2Uri = directoryProvider.agentEnvs(1).localUri
-  private lazy val httpClient = new SimpleAkkaHttpClient(label = "ControllerWebServiceTest", uri, "/controller")
+  private lazy val httpClient = new SimplePekkoHttpClient(label = "ControllerWebServiceTest", uri, "/controller")
     .closeWithCloser
 
   private var sessionToken: String = "INVALID"
@@ -253,7 +253,7 @@ extends OurTestSuite with BeforeAndAfterAll with ControllerAgentForScalaTest
         val headers = RawHeader("x-js7-session", sessionToken) :: Accept(`application/json`) :: Nil
         val response = httpClient.post_[Json](Uri(s"$uri/controller/api/order"), order, headers) await 99.s
         assert(response.status.intValue == 201/*Created*/)
-        assert(response.header[Location] == Some(Location(AkkaUri(s"$uri/controller/api/order/ORDER-ID"))))
+        assert(response.header[Location] == Some(Location(PekkoUri(s"$uri/controller/api/order/ORDER-ID"))))
         response.entity.discardBytes()
       }
 
@@ -261,7 +261,7 @@ extends OurTestSuite with BeforeAndAfterAll with ControllerAgentForScalaTest
         val headers = RawHeader("x-js7-session", sessionToken) :: Accept(`application/json`) :: Nil
         val response = httpClient.post_[Json](Uri(s"$uri/controller/api/order"), order, headers) await 99.s
         assert(response.status.intValue == 409/*Conflict*/)
-        assert(response.header[Location] == Some(Location(AkkaUri(s"$uri/controller/api/order/ORDER-ID"))))
+        assert(response.header[Location] == Some(Location(PekkoUri(s"$uri/controller/api/order/ORDER-ID"))))
         response.entity.discardBytes()
       }
 

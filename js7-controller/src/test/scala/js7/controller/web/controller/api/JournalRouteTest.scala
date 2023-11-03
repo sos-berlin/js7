@@ -1,6 +1,5 @@
 package js7.controller.web.controller.api
 
-import akka.http.scaladsl.testkit.RouteTestTimeout
 import java.nio.file.Files.{createTempDirectory, size}
 import java.util.UUID
 import js7.base.auth.SessionToken
@@ -15,11 +14,11 @@ import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.web.{HttpClient, Uri}
-import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
-import js7.common.akkahttp.web.AkkaWebServer
-import js7.common.akkahttp.web.session.SimpleSession
-import js7.common.http.AkkaHttpClient
+import js7.common.http.PekkoHttpClient
 import js7.common.jsonseq.PositionAnd
+import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegments
+import js7.common.pekkohttp.web.PekkoWebServer
+import js7.common.pekkohttp.web.session.SimpleSession
 import js7.controller.web.controller.api.test.RouteTester
 import js7.data.Problems.AckFromActiveClusterNodeProblem
 import js7.data.controller.ControllerState
@@ -37,6 +36,7 @@ import js7.journal.web.JournalRoute
 import js7.journal.write.{EventJournalWriter, SnapshotJournalWriter}
 import monix.eval.Task
 import monix.execution.{CancelableFuture, Scheduler}
+import org.apache.pekko.http.scaladsl.testkit.RouteTestTimeout
 import scala.collection.mutable
 import scala.concurrent.Future
 import scala.concurrent.duration.*
@@ -61,13 +61,13 @@ final class JournalRouteTest extends OurTestSuite with RouteTester with JournalR
   private val journalId = JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))
   private var eventWriter: EventJournalWriter = null
 
-  private lazy val allocatedWebServer = AkkaWebServer
+  private lazy val allocatedWebServer = PekkoWebServer
     .testResource()(pathSegments("journal")(journalRoute))
     .toAllocated
     .await(99.s)
 
   private lazy val uri = allocatedWebServer.allocatedThing.localUri
-  private lazy val client = new AkkaHttpClient.Standard(uri, actorSystem = system,
+  private lazy val client = new PekkoHttpClient.Standard(uri, actorSystem = system,
     name = "JournalRouteTest")
 
   override def beforeAll() = {

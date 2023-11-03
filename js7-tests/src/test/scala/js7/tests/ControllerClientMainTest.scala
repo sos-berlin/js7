@@ -77,7 +77,7 @@ final class ControllerClientMainTest extends OurTestSuite with ControllerAgentFo
         output += _)
       assert(output.map(_.parseJsonOrThrow) == List(json"""{ "TYPE": "Accepted" }"""))
     } catch {
-      case t: akka.stream.StreamTcpException if t.getMessage contains "Connection reset by peer" =>
+      case t: org.apache.pekko.stream.StreamTcpException if t.getMessage contains "Connection reset by peer" =>
     }
     controller.terminated await 99.s
   }

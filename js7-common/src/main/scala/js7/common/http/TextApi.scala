@@ -77,11 +77,11 @@ trait TextApi
   object ConnectionLost {
      def apply(t: Throwable): Boolean =
        t match {
-         case _: akka.stream.StreamTcpException =>
+         case _: org.apache.pekko.stream.StreamTcpException =>
            true
          case t: RuntimeException =>
            t.toString contains "java.net.ConnectException: Connection refused"
-         case _ if t.getMessage == "Connection was shutdown." =>  // akka.http.impl.engine.client.pool.SlotState$BusyState$$anon$1
+         case _ if t.getMessage == "Connection was shutdown." =>  // org.apache.pekko.http.impl.engine.client.pool.SlotState$BusyState$$anon$1
            true
          case _ =>
            false

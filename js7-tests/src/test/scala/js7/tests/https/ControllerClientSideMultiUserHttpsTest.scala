@@ -1,17 +1,17 @@
 package js7.tests.https
 
-import akka.http.scaladsl.model.HttpHeader
-import akka.http.scaladsl.model.StatusCodes.{Forbidden, Unauthorized}
-import akka.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials}
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.generic.SecretString
 import js7.base.problem.Problem
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.common.http.AkkaHttpClient
+import js7.common.http.PekkoHttpClient
 import js7.data.cluster.ClusterState
 import js7.data.problems.InvalidLoginProblem
 import monix.execution.Scheduler.Implicits.traced
+import org.apache.pekko.http.scaladsl.model.HttpHeader
+import org.apache.pekko.http.scaladsl.model.StatusCodes.{Forbidden, Unauthorized}
+import org.apache.pekko.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials}
 
 final class ControllerClientSideMultiUserHttpsTest extends ControllerHttpsStandardTests
 {
@@ -29,21 +29,21 @@ final class ControllerClientSideMultiUserHttpsTest extends ControllerHttpsStanda
   }
 
   "Login without credentials is rejected" in {
-    val e = intercept[AkkaHttpClient.HttpException] {
+    val e = intercept[PekkoHttpClient.HttpException] {
       httpControllerApi.login_(None).await(99.s)
     }
     assert(e.status == Unauthorized && e.problem == Some(InvalidLoginProblem))
   }
 
   "Login with non-listed UserId is rejected" in {
-    val e = intercept[AkkaHttpClient.HttpException] {
+    val e = intercept[PekkoHttpClient.HttpException] {
       httpControllerApi.login_(Some(otherUserAndPassword)).await(99.s)
     }
     assert(e.status == Unauthorized && e.problem == Some(InvalidLoginProblem))
   }
 
   "Login with listed UserId but wrong password is rejected" in {
-    val e = intercept[AkkaHttpClient.HttpException] {
+    val e = intercept[PekkoHttpClient.HttpException] {
       httpControllerApi.login_(Some(otherUserAndPassword.copy(password = SecretString("WRONG")))).await(99.s)
     }
     assert(e.status == Unauthorized && e.problem == Some(InvalidLoginProblem))
@@ -56,7 +56,7 @@ final class ControllerClientSideMultiUserHttpsTest extends ControllerHttpsStanda
     }
 
     "Missing authentication is rejected" in {
-      val e = intercept[AkkaHttpClient.HttpException] {
+      val e = intercept[PekkoHttpClient.HttpException] {
         get(Nil)
       }
       assert(e.status == Unauthorized)
@@ -68,14 +68,14 @@ final class ControllerClientSideMultiUserHttpsTest extends ControllerHttpsStanda
     }
 
     "Wrong authentication" in {
-      val e = intercept[AkkaHttpClient.HttpException] {
+      val e = intercept[PekkoHttpClient.HttpException] {
         get(Authorization(BasicHttpCredentials("TEST", "WRONG-PASSWORD")) ::Nil)
       }
       assert(e.status == Unauthorized)
     }
 
     "Non-listed UserId is rejected" in {
-      val e = intercept[AkkaHttpClient.HttpException] {
+      val e = intercept[PekkoHttpClient.HttpException] {
         get(Authorization(BasicHttpCredentials(otherUserAndPassword.userId.string, otherUserAndPassword.password.string)) ::Nil)
       }
       assert(e.status == Forbidden &&

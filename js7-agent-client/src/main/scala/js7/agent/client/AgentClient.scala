@@ -1,6 +1,5 @@
 package js7.agent.client
 
-import akka.actor.ActorSystem
 import cats.effect.Resource
 import js7.agent.client.AgentClient.*
 import js7.agent.data.AgentState.keyedEventJsonCodec
@@ -17,12 +16,13 @@ import js7.base.session.SessionApi
 import js7.base.time.ScalaTime.DurationRichInt
 import js7.base.web.Uri
 import js7.cluster.watch.api.HttpClusterNodeApi
-import js7.common.http.AkkaHttpClient
+import js7.common.http.PekkoHttpClient
 import js7.data.Problems.ClusterNodeIsNotReadyProblem
 import js7.data.event.{Event, EventRequest, KeyedEvent, Stamped}
 import js7.data.session.HttpSessionApi
 import monix.eval.Task
 import monix.reactive.Observable
+import org.apache.pekko.actor.ActorSystem
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.FiniteDuration
 
@@ -33,7 +33,7 @@ import scala.concurrent.duration.FiniteDuration
  * @author Joacim Zschimmer
  */
 trait AgentClient
-extends HttpSessionApi with AkkaHttpClient
+extends HttpSessionApi with PekkoHttpClient
 with SessionApi.HasUserAndPassword
 with HttpClusterNodeApi
 {

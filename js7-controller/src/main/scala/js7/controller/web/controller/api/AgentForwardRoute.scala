@@ -1,12 +1,5 @@
 package js7.controller.web.controller.api
 
-import akka.actor.ActorSystem
-import akka.http.scaladsl.model.HttpMethods.GET
-import akka.http.scaladsl.model.StatusCodes.Forbidden
-import akka.http.scaladsl.model.headers.{Accept, `Accept-Charset`, `Accept-Encoding`, `Accept-Ranges`, `Cache-Control`, `Content-Encoding`, `Content-Length`, `Content-Range`, `Content-Type`, `If-Match`, `If-Modified-Since`, `If-None-Match`, `If-Range`}
-import akka.http.scaladsl.model.{HttpEntity, HttpHeader, HttpRequest, HttpResponse, headers, Uri as AkkaUri}
-import akka.http.scaladsl.server.Directives.*
-import akka.http.scaladsl.server.{PathMatchers, Route}
 import com.typesafe.config.ConfigUtil
 import js7.agent.client.AgentClient
 import js7.base.auth.{Admission, UserAndPassword, ValidUserPermission}
@@ -15,9 +8,9 @@ import js7.base.generic.SecretString
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
-import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
-import js7.common.akkahttp.StandardMarshallers.*
-import js7.common.http.AkkaHttpUtils.RichAkkaUri
+import js7.common.http.PekkoHttpUtils.RichPekkoUri
+import js7.common.pekkohttp.PekkoHttpServerUtils.completeTask
+import js7.common.pekkohttp.StandardMarshallers.*
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.web.common.ControllerRouteProvider
 import js7.controller.web.controller.api.AgentForwardRoute.*
@@ -25,6 +18,13 @@ import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
 import js7.data.controller.ControllerState
 import monix.eval.Task
 import monix.execution.Scheduler
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.http.scaladsl.model.HttpMethods.GET
+import org.apache.pekko.http.scaladsl.model.StatusCodes.Forbidden
+import org.apache.pekko.http.scaladsl.model.headers.{Accept, `Accept-Charset`, `Accept-Encoding`, `Accept-Ranges`, `Cache-Control`, `Content-Encoding`, `Content-Length`, `Content-Range`, `Content-Type`, `If-Match`, `If-Modified-Since`, `If-None-Match`, `If-Range`}
+import org.apache.pekko.http.scaladsl.model.{HttpEntity, HttpHeader, HttpRequest, HttpResponse, headers, Uri as PekkoUri}
+import org.apache.pekko.http.scaladsl.server.Directives.*
+import org.apache.pekko.http.scaladsl.server.{PathMatchers, Route}
 import scala.collection.MapView
 
 trait AgentForwardRoute extends ControllerRouteProvider
@@ -78,10 +78,10 @@ trait AgentForwardRoute extends ControllerRouteProvider
       controllerState
         .map(_.map { s =>
           val uri = s.agentToUris(agentRef.path).head // FIXME Use AgentDriver and select the active Director
-          val akkaUri = uri.asAkka.copy(
-            path = AkkaUri.Path((uri.asAkka.path ?/ "agent" / "api").toString + remainingUrl),
+          val pekkoUri = uri.asPekko.copy(
+            path = PekkoUri.Path((uri.asPekko.path ?/ "agent" / "api").toString + remainingUrl),
             rawQueryString = request.uri.rawQueryString)
-          uri -> akkaUri
+          uri -> pekkoUri
         })
         .flatMap {
           case Left(problem) =>
@@ -90,11 +90,11 @@ trait AgentForwardRoute extends ControllerRouteProvider
               // Encoding: application/json, or use standard marshaller ???
               entity = HttpEntity(problem.toString)))
 
-          case Right((uri, akkaUri)) =>
-            forwardTo(agentRef, uri, akkaUri, request.headers)
+          case Right((uri, pekkoUri)) =>
+            forwardTo(agentRef, uri, pekkoUri, request.headers)
         }
 
-    def forwardTo(agentRef: AgentRef, uri: Uri, akkaUri: AkkaUri, headers: Seq[HttpHeader])
+    def forwardTo(agentRef: AgentRef, uri: Uri, pekkoUri: PekkoUri, headers: Seq[HttpHeader])
     : Task[HttpResponse] =
       AgentClient // TODO Reuse AgentClient of AgentDriver
         .resource(
@@ -105,7 +105,7 @@ trait AgentForwardRoute extends ControllerRouteProvider
           implicit val sessionToken = Task(agentClient.sessionToken)
           agentClient.login() *>
             agentClient
-              .sendReceive(HttpRequest(request.method, akkaUri,
+              .sendReceive(HttpRequest(request.method, pekkoUri,
                 headers = headers.filter(h => isForwardableHeaderClass(h.getClass)),
                 entity = request.entity))
               .map(response => response.withHeaders(

@@ -15,8 +15,8 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsBlocking.BlockingTaskResource
-import js7.common.akkautils.Akkas
-import js7.common.akkautils.Akkas.actorSystemResource
+import js7.common.pekkoutils.Pekkos
+import js7.common.pekkoutils.Pekkos.actorSystemResource
 import js7.common.system.ServerOperatingSystem.operatingSystem
 import js7.data.agent.AgentPath
 import js7.data.controller.{ControllerId, ControllerRunId}
@@ -49,7 +49,7 @@ final class AgentShutDownTest extends OurTestSuite with BeforeAndAfterAll with T
     TestAgent.blockingRun(agentConfiguration,  99.s) { agent =>
       actorSystemResource("AgentShutDownTest").blockingUse(99.s) { implicit actorSystem =>
         val userId = UserId("TEST-USER")
-        closer onClose Akkas.terminateAndWait(actorSystem, 10.s)
+        closer onClose Pekkos.terminateAndWait(actorSystem, 10.s)
 
         val client = AgentClient(Admission(
           agent.localUri,
