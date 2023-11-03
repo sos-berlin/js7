@@ -64,10 +64,10 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
             job `JOB-2`;
           };
           define job `JOB-1` {
-            execute agent="${agentPath.string}", script=${quoteString(waitingForFileScript(file))}, parallelism = 100;
+            execute agent="${agentPath.string}", script=${quoteString(waitingForFileScript(file))}, processLimit = 100;
           }
           define job `JOB-2` {
-            execute agent="${bAgentPath.string}", script=${quoteString(waitingForFileScript(file))}, parallelism = 100;
+            execute agent="${bAgentPath.string}", script=${quoteString(waitingForFileScript(file))}, processLimit = 100;
           }
         }""")
       assert(workflow.referencedItemPaths.toSet == Set(lockPath, agentPath, bAgentPath))
@@ -160,7 +160,7 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
           limit2LockPath,
           count = Some(1),
           lockedWorkflow = Workflow.of(
-            SleepJob.execute(agentPath, parallelism = 99, arguments = Map(
+            SleepJob.execute(agentPath, processLimit = 99, arguments = Map(
               "sleep" -> expr("0.050"))))))))
 
     val workflow2 = updateItem(Workflow(
@@ -170,7 +170,7 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
           limit2LockPath,
           count = Some(2),
           lockedWorkflow = Workflow.of(
-            SleepJob.execute(agentPath, parallelism = 99, arguments = Map(
+            SleepJob.execute(agentPath, processLimit = 99, arguments = Map(
               "sleep" -> expr("0.100"))))))))
 
     val order2Id = OrderId("🟥-TWO")
@@ -208,7 +208,7 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
             agentPath,
             arguments = Map(
               "sleep" -> NumericConstant(10.ms.toBigDecimalSeconds)),
-            parallelism = 99)))))
+            processLimit = 99)))))
 
     val workflow2 = updateItem(Workflow.of(workflow2Path,
       LockInstruction(
@@ -218,7 +218,7 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
             agentPath,
             arguments = Map(
               "sleep" -> NumericConstant(10.ms.toBigDecimalSeconds)),
-            parallelism = 99)))))
+            processLimit = 99)))))
 
     val orders = Random.shuffle(
       for (workflow <- Seq(workflow1, workflow2); i <- 1 to 100) yield

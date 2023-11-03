@@ -253,7 +253,7 @@ object SubagentSelectionTest
       EmptyJob.execute(
         agentPath,
         subagentSelectionId = Some(StringConstant(subagentSelection.id.string)),
-        parallelism = 100)))
+        processLimit = 100)))
 
   private def toOrder(orderId: OrderId) =
     FreshOrder(orderId, workflow.path, deleteWhenTerminated = true)

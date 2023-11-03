@@ -930,7 +930,7 @@ object AgentOrderKeeper {
       admissionTimeIntervalSwitch.updateAndCheck(onPermissionGranted)(clock)
 
     def isBelowParallelismLimit =
-      taskCount < workflowJob.parallelism
+      taskCount < workflowJob.processLimit
   }
 
   final class OrderQueue private[order] {

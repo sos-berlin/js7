@@ -100,7 +100,7 @@ extends OurTestSuite with SubagentTester with BlockingItemUpdater
             EmptyJob.execute(
               agentPath,
               subagentSelectionId = Some(expr("$subagentId")),
-              parallelism = 100)),
+              processLimit = 100)),
           agentPath = Some(agentPath))))
     withTemporaryItem(workflow) { workflow =>
       val orderId = OrderId("UNKNOWN")
@@ -131,7 +131,7 @@ extends OurTestSuite with SubagentTester with BlockingItemUpdater
             EmptyJob.execute(
               agentPath,
               subagentSelectionId = Some(expr("$subagentId")),
-              parallelism = 100)),
+              processLimit = 100)),
           agentPath = Some(agentPath))))
 
     withTemporaryItem(workflow) { workflow =>
@@ -185,7 +185,7 @@ extends OurTestSuite with SubagentTester with BlockingItemUpdater
             EmptyJob.execute(
               agentPath,
               subagentSelectionId = Some(expr("$subagentId")),
-              parallelism = 100)),
+              processLimit = 100)),
           agentPath = Some(agentPath))))
 
     withTemporaryItem(workflow) { workflow =>

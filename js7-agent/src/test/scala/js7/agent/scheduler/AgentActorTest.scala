@@ -38,7 +38,7 @@ final class AgentActorTest extends OurTestSuite
 {
   private implicit val askTimeout: Timeout = Timeout(60.s)
 
-  for (n <- List(10) ++ (sys.props.contains("test.speed") ? 1000 /*needs Job.parallelism=100 !!!*/)) {
+  for (n <- List(10) ++ (sys.props.contains("test.speed") ? 1000 /*needs Job.processLimit=100 !!!*/)) {
     s"AgentActorTest, $n orders" in {
       TestAgentActorProvider.provide("AgentActorTest") { provider =>
         import provider.{agentDirectory, executeCommand}

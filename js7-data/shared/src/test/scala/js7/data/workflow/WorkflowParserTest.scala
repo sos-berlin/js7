@@ -64,7 +64,7 @@ final class WorkflowParserTest extends OurTestSuite
          |  execute executable = "my/executable",
          |          agent = "AGENT",
          |          defaultArguments = { "A": "aaa", "B": "bbb", "I": -123 },
-         |          parallelism = 3,
+         |          processLimit = 3,
          |          sigkillDelay = 30;
          |}""".stripMargin,
       Workflow.of(
@@ -75,10 +75,10 @@ final class WorkflowParserTest extends OurTestSuite
               "A" -> StringConstant("aaa"),
               "B" -> StringConstant("bbb"),
               "I" -> NumericConstant(-123)),
-            parallelism = 3,
+            processLimit = 3,
             sigkillDelay = Some(30.s)),
-          sourcePos = sourcePos(20, 207)),
-        ImplicitEnd(sourcePos(209, 210))))
+          sourcePos = sourcePos(20, 208)),
+        ImplicitEnd(sourcePos(210, 211))))
   }
 
   "Execute script with \\n" in {

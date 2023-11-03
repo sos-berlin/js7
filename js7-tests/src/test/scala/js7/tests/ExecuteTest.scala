@@ -509,11 +509,11 @@ final class ExecuteTest extends OurTestSuite with ControllerAgentForScalaTest
       .contains("ARGUMENTS=/1 two three ARG-VALUE/"))
   }
 
-  "parallelism" in {
-    val parallelism = 2
+  "processLimit" in {
+    val processLimit = 2
     val workflow = addWorkflow(Workflow.of(
-      ParallelInternalJob.execute(agentPath, parallelism = parallelism)))
-    val orderIds = for (i <- 1 to parallelism) yield OrderId(s"PARALLEL-$i")
+      ParallelInternalJob.execute(agentPath, processLimit = processLimit)))
+    val orderIds = for (i <- 1 to processLimit) yield OrderId(s"PARALLEL-$i")
     val eventId = eventWatch.lastAddedEventId
     controllerApi.addOrders(Observable
       .fromIterable(orderIds)

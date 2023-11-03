@@ -93,8 +93,8 @@ object FileWatchNarrowPatternTest
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",
     Vector(
-      TestJob.execute(agentPath, parallelism = 10),
-      DeleteFileJob.execute(agentPath, parallelism = 10)))
+      TestJob.execute(agentPath, processLimit = 10),
+      DeleteFileJob.execute(agentPath, processLimit = 10)))
 
   private class TestJob extends SemaphoreJob(TestJob)
   private object TestJob extends SemaphoreJob.Companion[TestJob]

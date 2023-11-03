@@ -21,9 +21,9 @@ private[js7] object TestSetting
   val BJobName = WorkflowJob.Name("B")
   val APathExecutable = RelativePathExecutable.checked("A.cmd", v1Compatible = true).orThrow
   val BPathExecutable = RelativePathExecutable.checked("B.cmd", v1Compatible = true).orThrow
-  val AJob = WorkflowJob(TestAgentPath, APathExecutable, Map("JOB_A" -> StringConstant("A-VALUE")), parallelism = 3)
-  val BJob = WorkflowJob(TestAgentPath, BPathExecutable, Map("JOB_B" -> StringConstant("B-VALUE")), parallelism = 3)
-  val B1Job = WorkflowJob(TestAgentPath, BPathExecutable, Map("JOB_B1" -> StringConstant("B1-VALUE")), parallelism = 3)
+  val AJob = WorkflowJob(TestAgentPath, APathExecutable, Map("JOB_A" -> StringConstant("A-VALUE")), processLimit = 3)
+  val BJob = WorkflowJob(TestAgentPath, BPathExecutable, Map("JOB_B" -> StringConstant("B-VALUE")), processLimit = 3)
+  val B1Job = WorkflowJob(TestAgentPath, BPathExecutable, Map("JOB_B1" -> StringConstant("B1-VALUE")), processLimit = 3)
   val AExecute = Execute(AJob)
   val BExecute = Execute(BJob)
   val TestPathExecutables = Vector(APathExecutable, BPathExecutable)

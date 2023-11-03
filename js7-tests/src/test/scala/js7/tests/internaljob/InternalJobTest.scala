@@ -132,7 +132,7 @@ with BlockingItemUpdater
             script = "TEST SCRIPT",
             jobArguments = Map("blockingThreadPoolName" -> StringConstant(blockingThreadPoolName)),
             arguments = Map("STEP_ARG" -> NamedValue("ORDER_ARG"))),
-          parallelism = n)),
+          processLimit = n)),
         indexedOrderIds
           .map { case (i, orderId) => orderId -> Map("ORDER_ARG" -> NumberValue(i)) }
           .toMap,

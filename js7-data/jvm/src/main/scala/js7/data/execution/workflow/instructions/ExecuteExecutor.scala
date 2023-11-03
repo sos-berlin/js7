@@ -105,7 +105,7 @@ extends EventInstructionExecutor with PositionInstructionExecutor
           .map(interval => WaitingForAdmission(interval.start))
           .toSet
         admissionObstacles ++
-          (calculator.jobToOrderCount(jobKey) >= job.parallelism)
+          (calculator.jobToOrderCount(jobKey) >= job.processLimit)
             .thenSet(jobParallelismLimitReached)
       } else
         Set.empty
