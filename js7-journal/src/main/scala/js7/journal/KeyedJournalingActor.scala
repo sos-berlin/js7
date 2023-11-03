@@ -41,5 +41,16 @@ trait KeyedJournalingActor[S <: JournaledState[S], E <: Event]
       (stampedEvents, journaledState) => callback(stampedEvents.map(_.value.event.asInstanceOf[EE]), journaledState)
     }
 
+  protected final def persistTransactionReturnChecked[EE <: E, A](
+    events: Seq[EE], async: Boolean = false)
+    (callback: (Seq[EE], S) => A)
+  : Future[Checked[A]] =
+    super.persistKeyedEventsReturnChecked(
+      events.map(e => Timestamped(KeyedEvent(key, e))),
+      CommitOptions(transaction = true),
+      async = async) {
+      (stampedEvents, journaledState) => callback(stampedEvents.map(_.value.event.asInstanceOf[EE]), journaledState)
+    }
+
   override def toString = s"${ getClass.simpleScalaName }($key)"
 }

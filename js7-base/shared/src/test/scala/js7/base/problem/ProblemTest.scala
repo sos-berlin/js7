@@ -7,6 +7,7 @@ import js7.base.test.OurTestSuite
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.exceptions.TestFailedException
+import scala.collection.immutable.Seq
 import scala.util.Try
 
 /**
@@ -82,10 +83,17 @@ final class ProblemTest extends OurTestSuite
   }
 
   "cause" in {
-    assert(Problem("A", Some(Problem("B"))).toString == "A [B]")
-    assert(Problem.pure("A", Some(Problem("B"))).toString == "A [B]")
-    assert(new Problem.Lazy("A", Some(Problem("B"))).toString == "A [B]")
-    assert(catch_(new Problem.Lazy("A", Some(Problem("B")))) == "A [B]")
+    val cause = Problem("B")
+    val problem = Problem("A", Some(cause))
+    assert(problem.toString == "A [B]")
+    assert(Problem.pure("A", Some(cause)).toString == "A [B]")
+    assert(new Problem.Lazy("A", Some(cause)).toString == "A [B]")
+    assert(catch_(new Problem.Lazy("A", Some(cause))) == "A [B]")
+
+    assert(problem.flatten.toSeq == Seq(problem, cause))
+    assert(problem.exists(_ eq problem))
+    assert(problem.exists(_ eq cause))
+    assert(!problem.exists(_ eq Problem("ALIEN")))
   }
 
   "combine" in {
@@ -105,10 +113,30 @@ final class ProblemTest extends OurTestSuite
   }
 
   "Combined" in {
-    Problem("A") |+| Problem("B") match {
-      case Problem.Combined(problems) => assert(problems == List(Problem("A"), Problem("B")))
+    val a = Problem("A")
+    val b = Problem("B")
+    val combined = a |+| b
+    combined match {
+      case Problem.Combined(problems) => assert(problems == List(a, b))
       case _ => fail()
     }
+
+    assert(combined.flatten.toSeq == Seq(a, b))
+    assert(combined.exists(_ eq a))
+    assert(combined.exists(_ eq b))
+    assert(!combined.exists(_ eq Problem("ALIEN")))
+  }
+
+  "Combined with cause: exists" in {
+    val b = Problem("B")
+    val cause = Problem("CAUSE")
+    val a = Problem("A", Some(cause))
+    val combined = a |+| b
+    assert((combined).flatten.toSeq == Seq(a, Problem("CAUSE"), b))
+    assert(combined.exists(_ eq a))
+    assert(combined.exists(_ eq cause))
+    assert(combined.exists(_ eq b))
+    assert(!combined.exists(_ eq Problem("ALIEN")))
   }
 
   "Combined shows only distinct problems" in {
