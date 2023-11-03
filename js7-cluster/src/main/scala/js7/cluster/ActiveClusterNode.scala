@@ -1,7 +1,5 @@
 package js7.cluster
 
-import akka.pattern.ask
-import akka.util.Timeout
 import cats.syntax.flatMap.*
 import cats.syntax.monoid.*
 import com.softwaremill.diffx
@@ -41,6 +39,8 @@ import monix.execution.Scheduler
 import monix.execution.atomic.AtomicBoolean
 import monix.execution.cancelables.SerialCancelable
 import monix.reactive.{Observable, OverflowStrategy}
+import org.apache.pekko.pattern.ask
+import org.apache.pekko.util.Timeout
 import scala.concurrent.Promise
 import scala.concurrent.duration.*
 import scala.util.{Failure, Success}

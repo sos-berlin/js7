@@ -4,7 +4,7 @@ import cats.kernel.CommutativeMonoid
 
 /**
   * May be used for Task[Completed].
-  * Like Akka's `Done`.
+  * Like Pekko's `Done`.
   *
   * @author Joacim Zschimmer
   */

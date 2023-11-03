@@ -1,6 +1,5 @@
 package js7.tests
 
-import akka.actor.{Actor, Props}
 import cats.syntax.parallel.*
 import java.lang.management.ManagementFactory.getOperatingSystemMXBean
 import java.nio.file.Files.createDirectory
@@ -39,6 +38,7 @@ import js7.tests.testenv.DirectoryProvider
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.traced
+import org.apache.pekko.actor.{Actor, Props}
 import scala.concurrent.duration.*
 
 /**

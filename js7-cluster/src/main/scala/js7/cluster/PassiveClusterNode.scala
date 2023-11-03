@@ -128,7 +128,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]: diffx.
         .tapEval {
           case Left(clusterState) =>
             // The connection of the killed notifyActive HTTP request may be still blocked !!!
-            // until it is responded (see AkkaHttpClient)
+            // until it is responded (see PekkoHttpClient)
             // It should not disturb the shutdown.
             Task(logger.debug(s"notifyActiveNodeAboutShutdown: clusterState=$clusterState"))
           case Right(()) =>

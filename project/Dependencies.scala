@@ -7,8 +7,8 @@ object Dependencies
 {
   val scalaVersion = "2.13.11"
 
-  val akkaVersion = "2.6.21"      // Do not update to v2.7, due to restrictive Akka licences!
-  val akkaHttpVersion = "10.2.10" // Do not update to v10.4, due to restrictive Akka licences!
+  val pekkoVersion = "1.0.1"
+  val pekkoHttpVersion = "1.0.0"
   val slf4jVersion = "2.0.5"  // See also plugins.sbt
   val log4jVersion = "2.20.0"  // See also plugins.sbt
   val catsVersion = "2.9.0"
@@ -52,21 +52,22 @@ object Dependencies
   val tagging             = "com.softwaremill.common" %% "tagging" % softwaremillTaggingVersion
   val diffx               = "com.softwaremill.diffx" %% "diffx-core" % diffxVersion
   val diffxScalaTest      = "com.softwaremill.diffx" %% "diffx-scalatest-should" % diffxVersion
+  val java8Compat         = "org.scala-lang.modules" %% "scala-java8-compat" % "1.0.2"
 
   val javaxInject         = "javax.inject" % "javax.inject" % "1"
 
   val typesafeConfig      = "com.typesafe" % "config" % "1.4.2"
 
-  val akkaActor           = "com.typesafe.akka" %% "akka-actor" % akkaVersion cross for3Use2_13
-  val akkaStream          = "com.typesafe.akka" %% "akka-stream" % akkaVersion cross for3Use2_13
-  val akkaSlf4j           = "com.typesafe.akka" %% "akka-slf4j" % akkaVersion cross for3Use2_13
-  val akkaHttp            = List(
-    "com.typesafe.akka" %% "akka-http" % akkaHttpVersion cross for3Use2_13,
-    akkaStream,
-    akkaActor/*force version*/)
-  val akkaHttpTestkit     = List(
-    "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpVersion cross for3Use2_13,
-    "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion/*force version*/ cross for3Use2_13)
+  val pekkoActor           = "org.apache.pekko" %% "pekko-actor" % pekkoVersion cross for3Use2_13
+  val pekkoStream          = "org.apache.pekko" %% "pekko-stream" % pekkoVersion cross for3Use2_13
+  val pekkoSlf4j           = "org.apache.pekko" %% "pekko-slf4j" % pekkoVersion cross for3Use2_13
+  val pekkoHttp            = List(
+    "org.apache.pekko" %% "pekko-http" % pekkoHttpVersion cross for3Use2_13,
+    pekkoStream,
+    pekkoActor/*force version*/)
+  val pekkoHttpTestkit     = List(
+    "org.apache.pekko" %% "pekko-http-testkit" % pekkoHttpVersion cross for3Use2_13,
+    "org.apache.pekko" %% "pekko-stream-testkit" % pekkoVersion/*force version*/ cross for3Use2_13)
 
   val circe               = "io.circe" %% "circe-core" % circeVersion ::
                             "io.circe" %% "circe-parser" % circeVersion ::

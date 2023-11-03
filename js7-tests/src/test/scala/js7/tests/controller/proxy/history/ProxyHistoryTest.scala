@@ -14,7 +14,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.*
-import js7.common.akkautils.ProvideActorSystem
+import js7.common.pekkoutils.ProvideActorSystem
 import js7.data.Problems.SnapshotForUnknownEventIdProblem
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.TakeSnapshot
@@ -47,7 +47,7 @@ final class ProxyHistoryTest extends OurTestSuite with ProvideActorSystem with C
   private val maxRounds = 100
 
   override protected def config = config"""
-    akka.http.host-connection-pool.max-connections = ${4 + maxRounds}
+    pekko.http.host-connection-pool.max-connections = ${4 + maxRounds}
     """.withFallback(super.config)
 
   private val controllerConfig = config"""
@@ -121,7 +121,7 @@ final class ProxyHistoryTest extends OurTestSuite with ProvideActorSystem with C
               .await(99.s)
             assert(proxyStartedReceived)
           }
-          catch { case t @ akka.stream.SubscriptionWithCancelException.NoMoreElementsNeeded =>
+          catch { case t @ org.apache.pekko.stream.SubscriptionWithCancelException.NoMoreElementsNeeded =>
             // TODO NoMoreElementsNeeded occurs occasionally for unknown reason
             // Anyway, the caller should repeat the call.
             logger.error(s"Ignore ${t.toString}")

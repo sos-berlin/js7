@@ -1,12 +1,12 @@
 package js7.agent.web
 
-import akka.http.scaladsl.model.StatusCodes.NotFound
-import akka.http.scaladsl.server.Directives.*
-import akka.http.scaladsl.server.Route
 import js7.agent.web.views.RootWebService
 import js7.cluster.web.ClusterRoute
-import js7.common.akkahttp.web.session.SessionRoute
+import js7.common.pekkohttp.web.session.SessionRoute
 import js7.journal.web.JournalRoute
+import org.apache.pekko.http.scaladsl.model.StatusCodes.NotFound
+import org.apache.pekko.http.scaladsl.server.Directives.*
+import org.apache.pekko.http.scaladsl.server.Route
 
 /**
   * @author Joacim Zschimmer

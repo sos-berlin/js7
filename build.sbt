@@ -27,7 +27,7 @@
   *
   * sbt allows to preset these command line options in the environment variable SBT_OPTS.
   */
-import BuildUtils._
+import BuildUtils.*
 import java.nio.file.Paths
 import sbt.Keys.testOptions
 import sbt.file
@@ -161,7 +161,7 @@ val commonSettings = Seq(
     if (sys.props.contains("evictionWarnings"))
       Nil
     else {
-      import Dependencies._
+      import Dependencies.*
       cats ++
         ("org.typelevel" %% "cats-core" % catsVersion) ++
         ("org.typelevel" %% "cats-effect" % catsEffectVersion) ++
@@ -245,7 +245,7 @@ lazy val `js7-install` = project
   .settings(commonSettings)
   .enablePlugins(JavaAppPackaging, UniversalDeployPlugin)
   .settings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++= log4j ++ lmaxDisruptor
   }
   .settings(
@@ -267,7 +267,7 @@ lazy val `js7-install` = project
 lazy val `js7-docker` = project
   .settings(commonSettings)
   .settings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++= log4j ++ lmaxDisruptor
   }
   .enablePlugins(JavaAppPackaging, UniversalDeployPlugin)
@@ -282,7 +282,7 @@ lazy val `js7-tester` = crossProject(JSPlatform, JVMPlatform)
   .withoutSuffixFor(JVMPlatform)
   .settings(commonSettings)
   .settings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++=
       diffx ++
       slf4j ++
@@ -301,7 +301,7 @@ lazy val `js7-base` = crossProject(JSPlatform, JVMPlatform)
   .dependsOn(`js7-tester` % "test")
   .settings(commonSettings)
   .settings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++=
       "dev.zio" %%% "izumi-reflect" % izumiReflectVersion ++
       "org.typelevel" %%% "cats-core" % catsVersion ++
@@ -331,7 +331,7 @@ lazy val `js7-base` = crossProject(JSPlatform, JVMPlatform)
     libraryDependencies += "com.outr" %%% "scribe" % Dependencies.scribeVersion
   }
   .jvmSettings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++=
       scalaLogging ++ log4j % "test" ++ lmaxDisruptor % "test" ++
       typesafeConfig ++
@@ -375,7 +375,7 @@ lazy val `js7-data` = crossProject(JSPlatform, JVMPlatform)
   .dependsOn(`js7-base`, `js7-base` % "test->test", `js7-tester` % "test")
   .settings(commonSettings)
   .settings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++=
       "org.scalatest" %%% "scalatest" % scalaTestVersion % "test" ++
     //"org.scalatest" %%% "scalatest-freespec" % scalaTestVersion % "test" ++
@@ -391,7 +391,7 @@ lazy val `js7-data-for-java` = project
     `js7-tester`.jvm % "test")
   .settings(commonSettings)
   .settings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++=
       typesafeConfig ++
       "io.vavr" % "vavr" % vavrVersion ++
@@ -409,13 +409,13 @@ lazy val `js7-common` = project
     `js7-tester`.jvm % "test")
   .settings(commonSettings)
   .settings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++=
       typesafeConfig ++
-      akkaHttp ++
-      akkaActor ++
-      akkaSlf4j ++
-      akkaHttpTestkit % "test" ++
+      pekkoHttp ++
+      pekkoActor ++
+      pekkoSlf4j ++
+      pekkoHttpTestkit % "test" ++
       javaxInject ++
       findbugs ++
       scalaTest % "test" ++
@@ -433,14 +433,14 @@ lazy val `js7-common-http` = crossProject(JSPlatform, JVMPlatform)
   .jvmConfigure(_.dependsOn(`js7-common`))
   .settings(commonSettings)
   .settings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++= scalaTest % "test"
     libraryDependencies += "io.monix" %%% "monix-eval" % monixVersion
   }
   .jvmSettings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++=
-      akkaHttp ++
+      pekkoHttp ++
       scalaLogging ++
       log4j % "test" ++
       lmaxDisruptor % "test"
@@ -462,10 +462,10 @@ lazy val `js7-controller` = project
   .settings(
     Compile / packageDoc / mappings := Seq.empty)
   .settings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++=
       scalaTest % "test" ++
-      akkaHttpTestkit % "test" ++
+      pekkoHttpTestkit % "test" ++
       log4j % "test" ++
       lmaxDisruptor % "test"
   }
@@ -478,7 +478,7 @@ lazy val `js7-provider` = project
   .settings(
     Compile / packageDoc / mappings := Seq.empty)
   .settings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++=
       scalaTest % "test" ++
       log4j % "test" ++
@@ -498,15 +498,15 @@ lazy val `js7-proxy` = crossProject(JSPlatform, JVMPlatform)
   .settings(commonSettings)
   .settings(
     libraryDependencies ++= {
-      import Dependencies._
+      import Dependencies.*
       "org.scalatest" %%% "scalatest" % scalaTestVersion % "test" ++
       Nil/*++
       "org.scalatest" %%% "scalatest-freespec" % scalaTestVersion % "test"*/
     })
   .jvmSettings(
     libraryDependencies ++= {
-      import Dependencies._
-      akkaHttp ++
+      import Dependencies.*
+      pekkoHttp ++
       hamcrest % "test" ++
       log4j % "test" ++
       lmaxDisruptor % "test"
@@ -524,14 +524,14 @@ lazy val `js7-controller-client` = crossProject(JSPlatform, JVMPlatform)
   .settings(commonSettings)
   .settings(
     libraryDependencies += {
-      import Dependencies._
+      import Dependencies.*
       "org.scalatest" %%% "scalatest" % scalaTestVersion % "test" /*++
       "org.scalatest" %%% "scalatest-freespec" % scalaTestVersion % "test"*/
     })
   .jvmSettings(
     libraryDependencies ++= {
-      import Dependencies._
-      akkaHttp ++
+      import Dependencies.*
+      pekkoHttp ++
       log4j % "test" ++
       lmaxDisruptor % "test"
     })
@@ -542,11 +542,11 @@ lazy val `js7-core` = project
     `js7-service-pgp` % "test")
   .settings(commonSettings)
   .settings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++=
       tagging ++
       diffx ++
-      akkaHttpTestkit % "test" ++
+      pekkoHttpTestkit % "test" ++
       scalaTest % "test" ++
       scalaCheck % "test" ++ log4j % "test" ++
       lmaxDisruptor % "test"
@@ -556,7 +556,7 @@ lazy val `js7-launcher` = project
   .dependsOn(`js7-launcher-for-windows`, `js7-core`, `js7-base`.jvm % "test->test", `js7-tester`.jvm % "test")
   .settings(commonSettings)
   .settings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++=
       scalaTest % "test" ++
       scalaCheck % "test" ++
@@ -568,8 +568,9 @@ lazy val `js7-launcher-for-java` = project
   .dependsOn(`js7-launcher`, `js7-data-for-java`, `js7-base`.jvm % "test->test", `js7-tester`.jvm % "test")
   .settings(commonSettings)
   .settings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++=
+      java8Compat ++
       "io.vavr" % "vavr" % vavrVersion ++
       hamcrest % "test" ++
       scalaTest % "test" ++
@@ -582,7 +583,7 @@ lazy val `js7-launcher-for-windows` = project
   .dependsOn(`js7-base`.jvm, `js7-base`.jvm % "test->test", `js7-tester`.jvm % "test")
   .settings(commonSettings)
   .settings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++=
       jna ++
       scalaTest % "test" ++
@@ -594,10 +595,10 @@ lazy val `js7-journal` = project
   .dependsOn(`js7-common-http`.jvm, `js7-common`, `js7-base`.jvm % "test->test", `js7-tester`.jvm % "test")
   .settings(commonSettings)
   .settings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++=
-      akkaHttp ++
-      akkaHttpTestkit % "test" ++
+      pekkoHttp ++
+      pekkoHttpTestkit % "test" ++
       tagging ++
       diffx ++
       scalaTest % "test" ++
@@ -618,10 +619,10 @@ lazy val `js7-cluster` = project
     `js7-journal` % "test->test")
   .settings(commonSettings)
   .settings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++=
       diffx ++
-      akkaHttpTestkit % "test" ++
+      pekkoHttpTestkit % "test" ++
       scalaTest % "test" ++
       scalaCheck % "test" ++
       log4j % "test" ++
@@ -637,7 +638,7 @@ lazy val `js7-cluster-watch-api` = crossProject(JSPlatform, JVMPlatform)
     `js7-tester` % "test")
   .settings(commonSettings)
   .settings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++=
       diffx ++
       scalaTest % "test" ++
@@ -654,7 +655,7 @@ lazy val `js7-cluster-watch` = project
     `js7-tester`.jvm % "test")
   .settings(commonSettings)
   .settings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++=
       diffx ++
       scalaTest % "test" ++
@@ -677,14 +678,14 @@ lazy val `js7-agent` = project
     `js7-service-pgp` % "test")
   .settings(commonSettings)
   .settings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++=
       findbugs ++
-      akkaActor ++
-      akkaStream ++
-      akkaSlf4j ++
-      akkaHttpTestkit % "test" ++
-      akkaHttp ++
+      pekkoActor ++
+      pekkoStream ++
+      pekkoSlf4j ++
+      pekkoHttpTestkit % "test" ++
+      pekkoHttp ++
       intelliJAnnotations % "compile" ++
       scalaTest % "test" ++
       log4j % "test" ++
@@ -700,7 +701,7 @@ lazy val `js7-subagent` = project
     `js7-tester`.jvm % "test")
   .settings(commonSettings)
   .settings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++=
       intelliJAnnotations % "compile" ++
       scalaTest % "test" ++
@@ -716,11 +717,11 @@ lazy val `js7-agent-client` = project
   .settings(commonSettings)
   .settings(description := "JS7 Agent - Client")
   .settings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++=
       "io.monix" %% "monix-reactive" % monixVersion ++
-      akkaActor ++
-      akkaHttp ++
+      pekkoActor ++
+      pekkoHttp ++
       scalaTest % "test" ++
       log4j % "test" ++
       lmaxDisruptor % "test"
@@ -734,7 +735,7 @@ lazy val `js7-agent-data` = crossProject(JSPlatform, JVMPlatform)
   .settings(commonSettings)
   .settings(description := "JS7 Agent - Value Classes")
   .settings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++=
       findbugs ++
       intelliJAnnotations % "compile" ++
@@ -757,7 +758,7 @@ lazy val `js7-service-pgp` = project
     `js7-tester`.jvm % "test")
   .settings(commonSettings)
   .settings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies += bouncyCastle
   }
 
@@ -785,9 +786,9 @@ lazy val `js7-tests` = project
     publish / skip := true,
     description := "JS7 Tests")
   .settings {
-    import Dependencies._
+    import Dependencies.*
     libraryDependencies ++=
-      akkaHttpTestkit % "test" ++  // For IntelliJ IDEA 2018.2
+      pekkoHttpTestkit % "test" ++  // For IntelliJ IDEA 2018.2
       scalaTest ++
       diffx % "test" ++
       diffxScalaTest % "test" ++

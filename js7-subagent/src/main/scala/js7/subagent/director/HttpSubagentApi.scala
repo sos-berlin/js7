@@ -1,6 +1,5 @@
 package js7.subagent.director
 
-import akka.actor.ActorSystem
 import cats.effect.Resource
 import io.circe.Decoder
 import js7.base.auth.Admission
@@ -11,12 +10,13 @@ import js7.base.stream.Numbered
 import js7.base.time.ScalaTime.RichFiniteDuration
 import js7.base.web.Uri
 import js7.base.web.Uris.encodeQuery
-import js7.common.http.AkkaHttpClient
+import js7.common.http.PekkoHttpClient
 import js7.data.event.{Event, EventRequest, KeyedEvent, Stamped}
 import js7.data.session.HttpSessionApi
 import js7.data.subagent.{SubagentCommand, SubagentRunId}
 import monix.eval.Task
 import monix.reactive.Observable
+import org.apache.pekko.actor.ActorSystem
 import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
 
@@ -28,7 +28,7 @@ final class HttpSubagentApi private(
 extends SubagentApi
 with SessionApi.HasUserAndPassword
 with HttpSessionApi
-with AkkaHttpClient
+with PekkoHttpClient
 {
   import admission.uri
 

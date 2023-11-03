@@ -1,11 +1,5 @@
 package js7.controller.web.controller.api.log
 
-import akka.http.scaladsl.model.ContentTypes.`text/plain(UTF-8)`
-import akka.http.scaladsl.model.HttpEntity
-import akka.http.scaladsl.server.Route
-import akka.http.scaladsl.server.directives.ParameterDirectives.*
-import akka.http.scaladsl.server.directives.PathDirectives.pathEnd
-import akka.http.scaladsl.server.directives.RouteDirectives.complete
 import com.typesafe.config.Config
 import java.nio.file.Files.{isReadable, isRegularFile}
 import java.nio.file.Path
@@ -15,14 +9,20 @@ import js7.base.time.JavaTimeConverters.*
 import js7.base.utils.FutureCompletion
 import js7.base.utils.FutureCompletion.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.common.akkahttp.AkkaHttpServerUtils.passIf
-import js7.common.akkautils.ByteStrings.syntax.*
 import js7.common.files.GrowingFileObservable
 import js7.common.http.StreamingSupport.*
+import js7.common.pekkohttp.PekkoHttpServerUtils.passIf
+import js7.common.pekkoutils.ByteStrings.syntax.*
 import js7.controller.web.common.ControllerRouteProvider
 import js7.controller.web.controller.api.log.LogRoute.*
 import monix.eval.Task
 import monix.execution.Scheduler
+import org.apache.pekko.http.scaladsl.model.ContentTypes.`text/plain(UTF-8)`
+import org.apache.pekko.http.scaladsl.model.HttpEntity
+import org.apache.pekko.http.scaladsl.server.Route
+import org.apache.pekko.http.scaladsl.server.directives.ParameterDirectives.*
+import org.apache.pekko.http.scaladsl.server.directives.PathDirectives.pathEnd
+import org.apache.pekko.http.scaladsl.server.directives.RouteDirectives.complete
 
 trait LogRoute extends ControllerRouteProvider
 {
@@ -52,7 +52,7 @@ trait LogRoute extends ControllerRouteProvider
             .takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ =>
               Task { logger.debug("whenShuttingDown completed") })
             .map(_.toByteString)
-            .toAkkaSourceForHttpResponse)))
+            .toPekkoSourceForHttpResponse)))
 }
 
 object LogRoute

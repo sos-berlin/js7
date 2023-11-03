@@ -1,6 +1,5 @@
 package js7.agent
 
-import akka.actor.ActorSystem
 import cats.effect.{ExitCase, Resource}
 import js7.agent.RunningAgent.TestWiring
 import js7.agent.TestAgent.*
@@ -28,6 +27,7 @@ import js7.core.command.CommandMeta
 import js7.journal.watch.EventWatch
 import monix.eval.Task
 import monix.execution.Scheduler
+import org.apache.pekko.actor.ActorSystem
 import scala.concurrent.duration.FiniteDuration
 import scala.util.control.NonFatal
 
@@ -160,7 +160,7 @@ object TestAgent {
               logger.error(throwable.toStringWithCauses, throwable.nullIfNoStackTrace)
             case _ =>
           }
-          // Avoid Akka 2.6 StackTraceError which occurs when agent.terminate() has not been executed:
+          // Avoid Pekko 2.6 StackTraceError which occurs when agent.terminate() has not been executed:
           agent.untilTerminated.void
             .timeoutTo(3.s, Task.unit)
             .tapError(t => Task(

@@ -1,9 +1,5 @@
 package js7.controller.web.controller.api.log
 
-import akka.http.scaladsl.model.MediaTypes.`text/plain`
-import akka.http.scaladsl.model.StatusCodes.{NotFound, OK}
-import akka.http.scaladsl.model.headers.Accept
-import akka.http.scaladsl.testkit.RouteTestTimeout
 import java.io.{FileOutputStream, OutputStreamWriter}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.delete
@@ -18,10 +14,14 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
-import js7.common.akkahttp.AkkaHttpServerUtils.pathSegment
 import js7.common.http.StreamingSupport.*
+import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegment
 import js7.controller.web.controller.api.test.RouteTester
 import monix.execution.Scheduler
+import org.apache.pekko.http.scaladsl.model.MediaTypes.`text/plain`
+import org.apache.pekko.http.scaladsl.model.StatusCodes.{NotFound, OK}
+import org.apache.pekko.http.scaladsl.model.headers.Accept
+import org.apache.pekko.http.scaladsl.testkit.RouteTestTimeout
 import scala.concurrent.Future
 import scala.concurrent.duration.*
 
@@ -57,7 +57,7 @@ final class LogRouteTest extends OurTestSuite with RouteTester with LogRoute
 
       if (false) {
         // Endless streaming response
-        // Akka testkit seems only support synchronous, blocking calls. So this blocks and fails:
+        // Pekko testkit seems only support synchronous, blocking calls. So this blocks and fails:
         Get("/log") ~> Accept(`text/plain`) ~> route ~> check {
           assert(status == OK)
           val queue = new ArrayBlockingQueue[String](100)

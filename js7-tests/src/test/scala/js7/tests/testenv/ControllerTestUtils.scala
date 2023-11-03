@@ -2,7 +2,7 @@ package js7.tests.testenv
 
 import js7.base.auth.{Admission, UserAndPassword}
 import js7.base.utils.CatsUtils.Nel
-import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResource
+import js7.controller.client.PekkoHttpControllerApi.admissionsToApiResource
 import js7.proxy.ControllerApi
 import org.jetbrains.annotations.TestOnly
 

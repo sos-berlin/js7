@@ -1,6 +1,5 @@
 package js7.subagent
 
-import akka.actor.ActorSystem
 import cats.effect.Resource
 import cats.effect.concurrent.Deferred
 import cats.syntax.traverse.*
@@ -26,9 +25,9 @@ import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, ProgramTermination, SetOnce}
 import js7.base.web.Uri
-import js7.common.akkahttp.web.AkkaWebServer
-import js7.common.akkahttp.web.session.SessionRegister
-import js7.common.akkautils.Akkas
+import js7.common.pekkohttp.web.PekkoWebServer
+import js7.common.pekkohttp.web.session.SessionRegister
+import js7.common.pekkoutils.Pekkos
 import js7.common.system.ThreadPools.unlimitedSchedulerResource
 import js7.data.event.EventId
 import js7.data.order.OrderEvent.OrderProcessed
@@ -44,9 +43,10 @@ import js7.subagent.configuration.SubagentConf
 import js7.subagent.web.SubagentWebServer
 import monix.eval.{Fiber, Task}
 import monix.execution.Scheduler
+import org.apache.pekko.actor.ActorSystem
 
 final class Subagent private(
-  val webServer: AkkaWebServer,
+  val webServer: PekkoWebServer,
   directorRouteVariable: DirectorRouteVariable,
   toForDirector: Subagent => ForDirector,
   val journal: MemoryJournal[SubagentState],
@@ -222,7 +222,7 @@ object Subagent
       .orThrow
 
     for {
-      actorSystem <- Akkas.actorSystemResource(conf.name, config)
+      actorSystem <- Pekkos.actorSystemResource(conf.name, config)
       sessionRegister <- {
         implicit val a = actorSystem
         SessionRegister.resource(SubagentSession(_), config)

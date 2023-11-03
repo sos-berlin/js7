@@ -1,6 +1,5 @@
 package js7.tests
 
-import akka.actor.ActorSystem
 import java.lang.System.lineSeparator as nl
 import js7.agent.TestAgent
 import js7.agent.client.AgentClient
@@ -29,6 +28,7 @@ import js7.tests.ShutdownAgentWithProcessTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.traced
+import org.apache.pekko.actor.ActorSystem
 
 final class ShutdownAgentWithProcessTest extends OurTestSuite with ControllerAgentForScalaTest
 {

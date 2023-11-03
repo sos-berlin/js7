@@ -1,7 +1,5 @@
 package js7.agent.web.views
 
-import akka.http.scaladsl.model.MediaTypes.`application/json`
-import akka.http.scaladsl.model.headers.Accept
 import io.circe.Json
 import js7.agent.data.views.AgentOverview
 import js7.agent.web.test.WebServiceTest
@@ -11,13 +9,15 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
-import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
-import js7.common.akkahttp.CirceJsonSupport.*
-import js7.common.http.AkkaHttpUtils.RichHttpResponse
+import js7.common.http.PekkoHttpUtils.RichHttpResponse
+import js7.common.pekkohttp.CirceJsonSupport.*
+import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegments
 import js7.data.system.JavaInformation
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.traced
+import org.apache.pekko.http.scaladsl.model.MediaTypes.`application/json`
+import org.apache.pekko.http.scaladsl.model.headers.Accept
 import scala.concurrent.Future
 
 /**

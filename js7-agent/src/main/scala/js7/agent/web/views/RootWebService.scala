@@ -1,15 +1,15 @@
 package js7.agent.web.views
 
-import akka.http.scaladsl.model.headers.CacheDirectives.`max-age`
-import akka.http.scaladsl.model.headers.`Cache-Control`
-import akka.http.scaladsl.server.Directives.*
-import akka.http.scaladsl.server.Route
 import js7.agent.data.views.AgentOverview
 import js7.agent.web.common.AgentRouteProvider
-import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
-import js7.common.akkahttp.CirceJsonSupport.*
+import js7.common.pekkohttp.CirceJsonSupport.*
+import js7.common.pekkohttp.PekkoHttpServerUtils.completeTask
 import monix.eval.Task
 import monix.execution.Scheduler
+import org.apache.pekko.http.scaladsl.model.headers.CacheDirectives.`max-age`
+import org.apache.pekko.http.scaladsl.model.headers.`Cache-Control`
+import org.apache.pekko.http.scaladsl.server.Directives.*
+import org.apache.pekko.http.scaladsl.server.Route
 
 /**
  * @author Joacim Zschimmer

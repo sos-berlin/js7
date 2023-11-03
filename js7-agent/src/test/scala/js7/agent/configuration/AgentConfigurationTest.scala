@@ -12,8 +12,8 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.test.OurTestSuite
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.cluster.ClusterConf
-import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.commandline.CommandLineArguments
+import js7.common.pekkohttp.web.data.WebServerPort
 import js7.launcher.configuration.ProcessKillScript
 import js7.subagent.configuration.SubagentConf
 import scala.concurrent.duration.*
@@ -40,7 +40,7 @@ final class AgentConfigurationTest extends OurTestSuite
           internalConfig = DefaultConfig)
         AgentConfiguration(
           subagentConf,
-          akkaAskTimeout = 1.hour,
+          pekkoAskTimeout = 1.hour,
           clusterConf = {
             val clusterConf = ClusterConf
               .fromConfig(subagentConf.config)

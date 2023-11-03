@@ -1,11 +1,5 @@
 package js7.controller.web.controller.api
 
-import akka.http.scaladsl.model.ContentType
-import akka.http.scaladsl.model.MediaTypes.`application/json`
-import akka.http.scaladsl.model.StatusCodes.{BadRequest, OK}
-import akka.http.scaladsl.model.headers.Accept
-import akka.http.scaladsl.testkit.RouteTestTimeout
-import akka.util.ByteString
 import js7.base.circeutils.CirceUtils.RichCirceString
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.{Checked, Problem}
@@ -16,12 +10,12 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.ByteSequenceToLinesObservable
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
-import js7.common.akkautils.ByteStrings.syntax.*
-import js7.common.http.AkkaHttpUtils.{RichHttpResponse, RichResponseEntity}
 import js7.common.http.JsonStreamingSupport
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
-import js7.common.http.StreamingSupport.ObservableAkkaSource
+import js7.common.http.PekkoHttpUtils.{RichHttpResponse, RichResponseEntity}
+import js7.common.http.StreamingSupport.ObservablePekkoSource
+import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegments
+import js7.common.pekkoutils.ByteStrings.syntax.*
 import js7.controller.web.controller.api.EventRouteTest.*
 import js7.controller.web.controller.api.test.RouteTester
 import js7.data.Problems.AckFromActiveClusterNodeProblem
@@ -32,6 +26,12 @@ import js7.data.workflow.WorkflowPath
 import js7.journal.watch.{JournalEventWatch, SimpleEventCollector}
 import js7.journal.web.EventDirectives
 import monix.execution.Scheduler
+import org.apache.pekko.http.scaladsl.model.ContentType
+import org.apache.pekko.http.scaladsl.model.MediaTypes.`application/json`
+import org.apache.pekko.http.scaladsl.model.StatusCodes.{BadRequest, OK}
+import org.apache.pekko.http.scaladsl.model.headers.Accept
+import org.apache.pekko.http.scaladsl.testkit.RouteTestTimeout
+import org.apache.pekko.util.ByteString
 import scala.concurrent.Future
 import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
@@ -52,7 +52,7 @@ final class EventRouteTest extends OurTestSuite with RouteTester with EventRoute
 
   override protected def config = config"""
     js7.web.chunk-size = 1MiB
-    akka.actor.default-dispatcher.fork-join-executor {
+    pekko.actor.default-dispatcher.fork-join-executor {
       parallelism-min = 1
       parallelism-factor = 0
       parallelism-max = 2

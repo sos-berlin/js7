@@ -10,7 +10,7 @@
     <root level="WARN">
       <appenderRef ref="stderr"/>
     </root>
-    <logger level="warn"  name="akka.actor.CoordinatedShutdown"/>
-    <logger level="warn"  name="akka.event.slf4j.Slf4jLogger"/>
+    <logger level="warn"  name="org.apache.pekko.Actor.CoordinatedShutdown"/>
+    <logger level="warn"  name="org.apache.pekko.event.slf4j.Slf4jLogger"/>
   </loggers>
 </configuration>

@@ -1,0 +1,273 @@
+package js7.common.pekkohttp.web
+
+import cats.data.NonEmptySeq
+import cats.effect.Resource
+import cats.instances.vector.*
+import cats.syntax.all.*
+import com.typesafe.config.{Config, ConfigFactory}
+import java.net.InetSocketAddress
+import java.nio.file.attribute.FileTime
+import java.nio.file.{Files, Path}
+import js7.base.configutils.Configs.*
+import js7.base.eventbus.StandardEventBus
+import js7.base.io.file.watch.DirectoryWatchSettings
+import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
+import js7.base.monixutils.AsyncVariable
+import js7.base.problem.Problems.WebServiceStillNotAvailableProblem
+import js7.base.service.Service
+import js7.base.thread.IOExecutor
+import js7.base.time.ScalaTime.{DurationRichInt, RichFiniteDuration}
+import js7.base.utils.CatsUtils.syntax.RichResource
+import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.{Allocated, DelayConf, Delayer}
+import js7.base.web.Uri
+import js7.common.pekkohttp.StandardMarshallers.*
+import js7.common.pekkohttp.web.PekkoWebServer.{BindingAndResource, *}
+import js7.common.pekkohttp.web.data.WebServerBinding
+import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
+import monix.eval.Task
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.http.scaladsl.server.Directives.complete
+import org.apache.pekko.http.scaladsl.server.Route
+import org.jetbrains.annotations.TestOnly
+import scala.collection.mutable
+import scala.concurrent.Future
+import scala.concurrent.duration.{Deadline, FiniteDuration}
+import scala.util.{Failure, Success, Try}
+
+/**
+ * @author Joacim Zschimmer
+ */
+final class PekkoWebServer private(bindingAndResources: Vector[BindingAndResource], config: Config)
+  (implicit testEventBus: StandardEventBus[Any])
+extends WebServerBinding.HasLocalUris
+with Service.StoppableByRequest
+{
+  private val _addrToHttpsFileToTime = mutable.Map.empty[InetSocketAddress, Map[Path, Try[FileTime]]]
+
+  private[web] val webServerBindings =
+    bindingAndResources.map(_.webServerBinding)
+
+  protected val webServerPorts =
+    bindingAndResources.map(_.webServerBinding.toWebServerPort)
+
+  private val portWebServerAllocated =
+    AsyncVariable[Vector[Option[Allocated[Task, SinglePortPekkoWebServer]]]](Vector.empty)
+
+  protected def start =
+    bindingAndResources
+      .traverse(_.resource.toAllocated.map(Some(_)))
+      .flatMap(portWebServerAllocated.set)
+      .*>(startService(
+        untilStopRequested))
+
+
+  @TestOnly def stopSingleWebServers: Task[Unit] =
+    portWebServerAllocated.value
+      .map(_.flatMap(_.map(_.release)))
+      .flatMap(_.sequence)
+      .map(_.combineAll)
+
+  def restartWhenHttpsChanges(implicit iox: IOExecutor): Resource[Task,Unit] =
+    HttpsDirectoryWatch
+      .resource(
+        DirectoryWatchSettings.fromConfig(config).orThrow,
+        webServerBindings.flatMap(_.requiredFiles),
+        onHttpsKeyOrCertChanged)
+      .void
+
+  private[web] def onHttpsKeyOrCertChanged(implicit iox: IOExecutor): Task[Unit] =
+    logger.debugTask(Task.defer {
+      testEventBus.publish(BeforeRestartEvent)
+
+      portWebServerAllocated
+        .update(sequence =>
+          sequence
+            .zip(bindingAndResources)
+            .parTraverse((checkFilesThenRestart _).tupled))
+        .void
+    })
+
+  private def checkFilesThenRestart(
+    previouslyAllocated: Option[Allocated[Task, SinglePortPekkoWebServer]],
+    bindingAndResource: BindingAndResource)
+    (implicit iox: IOExecutor)
+  : Task[Option[Allocated[Task, SinglePortPekkoWebServer]]] =
+    Task.defer {
+      val binding = bindingAndResource.webServerBinding
+      readFileTimes(binding).flatMap { fileToTime =>
+        val prevFileToTime = _addrToHttpsFileToTime.getOrElse(binding.address, Map.empty)
+        val diff = fileToTime.filterNot {
+          case (file, Failure(_)) => prevFileToTime.get(file).exists(_.isFailure)
+          case (file, t @ Success(_)) => prevFileToTime.get(file).contains(t)
+        }
+        (if (diff.isEmpty) {
+          if (fileToTime.nonEmpty) logger.debug(s"onHttpsKeyOrCertChanged but no change detected")
+          Task.pure(previouslyAllocated)
+        } else {
+          logger.info(s"Restart HTTPS web server due to changed keys or certificates: ${
+            diff.view.mapValues(_.fold(_.toString, _.toString)).mkString(", ")}")
+          previouslyAllocated.fold(Task.unit)(_.release) *>
+            startPortWebServer(bindingAndResource) <*
+            Task(testEventBus.publish(RestartedEvent))
+        }).<*(Task(
+          _addrToHttpsFileToTime(binding.address) = prevFileToTime))
+      }
+    }
+
+  private def startPortWebServer(bindingAndResource: BindingAndResource)(implicit iox: IOExecutor)
+  : Task[Option[Allocated[Task, SinglePortPekkoWebServer]]] = {
+    import bindingAndResource.{resource, webServerBinding as binding}
+
+    Delayer.start[Task](delayConf)
+      .flatMap { delayer =>
+        var errorLogged = false
+        readFileTimes(binding)
+          .flatMap(fileTimes =>
+            resource.toAllocated
+              .map(allo => (fileTimes -> allo).some))
+          .onErrorRestartLoop(()) {
+            case ((throwable, _, retry)) =>
+              errorLogged = true
+              logger.error(
+                s"🔴 Web server for $bindingAndResource: ${throwable.toStringWithCauses}")
+              for (t <- throwable.ifStackTrace) logger.debug(s"💥 ${t.toStringWithCauses}", t)
+              Task
+                .race(
+                  untilStopRequested,
+                  delayer.sleep(logDelay(_, bindingAndResource.toString)))
+                .flatMap(_.fold(_ => Task.none/*stop requested*/, _ => retry(())))
+          }
+          .map(_.map { case (fileTimes, allocated) =>
+            _addrToHttpsFileToTime(binding.address) = fileTimes
+            if (errorLogged) logger.info(s"🟢 Web server for $bindingAndResource restarted")
+            allocated
+          })
+      }
+  }
+
+  private def readFileTimes(binding: WebServerBinding)(implicit iox: IOExecutor)
+  : Task[Map[Path, Try[FileTime]]] =
+    Task(
+      binding.requiredFiles
+        .map(file => file -> Try(Files.getLastModifiedTime(file)))
+        .toMap
+    ).executeOn(iox.scheduler)
+
+  private def logDelay(duration: FiniteDuration, name: String) =
+    Task(logger.debug(
+      s"Restart $name ${if (duration.isZero) "now" else "in " + duration.pretty} due to failure"))
+
+  override def toString =
+    s"PekkoWebServer(${webServerPorts mkString " "})"
+}
+
+object PekkoWebServer
+{
+  private val logger = Logger[this.type]
+  private val delayConf = DelayConf(NonEmptySeq.of(1.s, 3.s, 6.s, 10.s))
+
+  private[web] val testConfig = config"""
+    js7.web.server.auth.https-client-authentication = off
+    js7.web.server.shutdown-timeout = 10s
+    """
+
+  @TestOnly
+  def testResource()(route: Route)(implicit as: ActorSystem): Resource[Task, PekkoWebServer] =
+    testUriAndResource()(route)._2
+
+  @TestOnly
+  def testUriAndResource()(route: Route)(implicit as: ActorSystem)
+  : (Uri, Resource[Task, PekkoWebServer]) =
+    testResource(ConfigFactory.empty)(route)
+
+  @TestOnly
+  def testResource(config: Config)(route: Route)(implicit as: ActorSystem)
+  : (Uri, Resource[Task, PekkoWebServer]) =
+    testResource(findFreeTcpPort(), config, route = route)
+
+  @TestOnly
+  def testResource(port: Int = findFreeTcpPort(), config: Config = ConfigFactory.empty, route: Route)(implicit as: ActorSystem)
+  : (Uri, Resource[Task, PekkoWebServer]) =
+    Uri(s"http://127.0.0.1:$port") -> httpResource(port = port, config.withFallback(testConfig), route)
+
+  def httpResource(port: Int, config: Config, route: Route)
+    (implicit actorSystem: ActorSystem)
+  : Resource[Task, PekkoWebServer] =
+    resource(
+      Seq(WebServerBinding.http(port)),
+      config,
+      _ => BoundRoute.simple(route))
+
+  def resource(
+    webServerBindings: Seq[WebServerBinding],
+    config: Config,
+    toBoundRoute: RouteBinding => BoundRoute)
+    (implicit actorSystem: ActorSystem,
+      testEventBus: StandardEventBus[Any] = new StandardEventBus)
+  : Resource[Task, PekkoWebServer] =
+    Resource.suspend(Task {
+      val shutdownTimeout = config.finiteDuration("js7.web.server.shutdown-timeout").orThrow
+      val httpsClientAuthRequired = config.getBoolean(
+        "js7.web.server.auth.https-client-authentication")
+
+      Service.resource(Task(
+        new PekkoWebServer(
+          for (webServerBinding <- webServerBindings.toVector) yield
+            BindingAndResource(
+              webServerBinding,
+              SinglePortPekkoWebServer.resource(
+                webServerBinding,
+                toBoundRoute(_),
+                shutdownTimeout = shutdownTimeout,
+                httpsClientAuthRequired = httpsClientAuthRequired)),
+          config)))
+    })
+
+  private lazy val stillNotAvailableRoute: Route =
+    complete(WebServiceStillNotAvailableProblem)
+
+  private final case class BindingAndResource(
+    webServerBinding: WebServerBinding,
+    resource: Resource[Task, SinglePortPekkoWebServer])
+  {
+    override def toString = webServerBinding.toString
+  }
+
+  final case class RouteBinding private[web](
+    webServerBinding: WebServerBinding,
+    /** revision distinguishes a second RouteBinding from the first one, when the Route is
+     * established anew due to changed HTTPS key or certificate. */
+    revision: Int,
+    whenStopRequested: Future[Deadline])
+
+  trait BoundRoute {
+    def serviceName: String
+
+    def stillNotAvailableRoute: Route =
+      PekkoWebServer.stillNotAvailableRoute
+
+    def webServerRoute: Task[Route]
+
+    def startupSecurityHint(scheme: WebServerBinding.Scheme): String
+  }
+  object BoundRoute {
+    def simple(route: Route): BoundRoute =
+      new Simple(route)
+
+    final class Simple(route: Route) extends BoundRoute {
+      val serviceName = ""
+
+      val webServerRoute = Task.pure(route)
+
+      def startupSecurityHint(scheme: WebServerBinding.Scheme) = ""
+    }
+  }
+
+  /** Event only for testing with EventBus. */
+  object BeforeRestartEvent
+
+  /** Event only for testing with EventBus. */
+  object RestartedEvent
+}

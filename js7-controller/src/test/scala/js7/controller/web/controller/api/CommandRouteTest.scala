@@ -1,19 +1,19 @@
 package js7.controller.web.controller.api
 
-import akka.http.scaladsl.model.MediaTypes.`application/json`
-import akka.http.scaladsl.model.StatusCodes.PayloadTooLarge
-import akka.http.scaladsl.model.headers.Accept
-import akka.http.scaladsl.server.Route
 import js7.base.problem.Checked
 import js7.base.test.OurTestSuite
-import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
-import js7.common.akkahttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
-import js7.common.akkahttp.JsonString
+import js7.common.pekkohttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
+import js7.common.pekkohttp.JsonString
+import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegments
 import js7.controller.web.controller.api.test.RouteTester
 import js7.core.command.CommandMeta
 import js7.data.controller.{ControllerCommand, ControllerId}
 import monix.eval.Task
 import monix.execution.Scheduler
+import org.apache.pekko.http.scaladsl.model.MediaTypes.`application/json`
+import org.apache.pekko.http.scaladsl.model.StatusCodes.PayloadTooLarge
+import org.apache.pekko.http.scaladsl.model.headers.Accept
+import org.apache.pekko.http.scaladsl.server.Route
 import scala.concurrent.Future
 
 /**

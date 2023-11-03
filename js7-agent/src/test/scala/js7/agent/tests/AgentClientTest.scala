@@ -1,6 +1,5 @@
 package js7.agent.tests
 
-import akka.actor.ActorSystem
 import js7.agent.client.AgentClient
 import js7.base.BuildInfo
 import js7.base.auth.Admission
@@ -8,8 +7,9 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.common.akkautils.Akkas.newActorSystem
+import js7.common.pekkoutils.Pekkos.newActorSystem
 import monix.execution.Scheduler.Implicits.traced
+import org.apache.pekko.actor.ActorSystem
 import org.scalatest.concurrent.ScalaFutures
 
 /**

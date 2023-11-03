@@ -1,6 +1,5 @@
 package js7.cluster
 
-import akka.pattern.AskTimeoutException
 import cats.effect.ExitCase
 import java.util.ConcurrentModificationException
 import js7.base.generic.Completed
@@ -23,6 +22,7 @@ import monix.eval.{Fiber, Task}
 import monix.execution.atomic.{Atomic, AtomicAny}
 import monix.reactive.Observable
 import monix.reactive.OverflowStrategy.DropNew
+import org.apache.pekko.pattern.AskTimeoutException
 import scala.annotation.tailrec
 
 private final class ClusterWatchSynchronizer(

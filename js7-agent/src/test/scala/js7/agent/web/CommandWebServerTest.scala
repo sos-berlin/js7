@@ -1,7 +1,5 @@
 package js7.agent.web
 
-import akka.actor.ActorSystem
-import akka.http.scaladsl.server.Directives.decodeRequest
 import cats.effect.Resource
 import js7.agent.client.AgentClient
 import js7.agent.configuration.AgentConfiguration
@@ -11,12 +9,12 @@ import js7.base.auth.{Admission, SimpleUser}
 import js7.base.configutils.Configs.*
 import js7.base.test.OurAsyncTestSuite
 import js7.base.web.Uri
-import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
-import js7.common.akkahttp.web.AkkaWebServer
-import js7.common.akkahttp.web.auth.GateKeeper
-import js7.common.akkahttp.web.data.WebServerBinding
-import js7.common.akkahttp.web.session.SessionRegister
-import js7.common.akkautils.Akkas.actorSystemResource
+import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegments
+import js7.common.pekkohttp.web.PekkoWebServer
+import js7.common.pekkohttp.web.auth.GateKeeper
+import js7.common.pekkohttp.web.data.WebServerBinding
+import js7.common.pekkohttp.web.session.SessionRegister
+import js7.common.pekkoutils.Pekkos.actorSystemResource
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.ControllerRunId
@@ -26,6 +24,8 @@ import js7.subagent.SubagentSession
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.traced
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.http.scaladsl.server.Directives.decodeRequest
 import scala.concurrent.Future
 
 /**
@@ -42,7 +42,7 @@ final class CommandWebServerTest extends OurAsyncTestSuite
     ControllerRunId(JournalId.random()))
   private lazy val clientResource = for {
     as <- actorSystemResource("CommandWebServerTest", testConfig)
-    webServer <- AkkaWebServer.httpResource(findFreeTcpPort(), testConfig, route(as))(as)
+    webServer <- PekkoWebServer.httpResource(findFreeTcpPort(), testConfig, route(as))(as)
     client <- Resource.fromAutoCloseable(Task(AgentClient(
       Admission(Uri(s"${webServer.localUri}"), userAndPassword = None))(
       as)))
@@ -88,6 +88,6 @@ private object CommandWebServerTest
     config"""
       js7.web.server.auth.public = on
       js7.web.server.shutdown-timeout = 10s
-      akka.http.client.parsing.max-content-length = 100MB
+      pekko.http.client.parsing.max-content-length = 100MB
     """.withFallback(AgentConfiguration.DefaultConfig)
 }

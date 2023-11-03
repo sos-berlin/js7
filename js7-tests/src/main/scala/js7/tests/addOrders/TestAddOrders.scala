@@ -7,8 +7,8 @@ import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.common.akkautils.Akkas
-import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResource
+import js7.common.pekkoutils.Pekkos
+import js7.controller.client.PekkoHttpControllerApi.admissionsToApiResource
 import js7.data.order.{FreshOrder, OrderId}
 import js7.proxy.ControllerApi
 import js7.proxy.configuration.ProxyConfs
@@ -88,7 +88,7 @@ object TestAddOrders
     onOrdersAdded: FiniteDuration => Unit)
   : Task[Checked[Statistics]] = {
     val config = ConfigFactory.systemProperties.withFallback(ProxyConfs.defaultConfig)
-    Akkas.actorSystemResource("TestAddOrders", config)
+    Pekkos.actorSystemResource("TestAddOrders", config)
       .flatMap(actorSystem =>
         ControllerApi.resource(
           admissionsToApiResource(settings.admissions)(actorSystem),

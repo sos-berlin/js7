@@ -1,6 +1,5 @@
 package js7.agent.command
 
-import akka.actor.{Actor, ActorRef}
 import cats.instances.future.*
 import cats.syntax.traverse.*
 import js7.agent.command.CommandActor.*
@@ -16,6 +15,7 @@ import js7.common.system.startup.Halt
 import js7.core.command.{CommandMeta, CommandRegister, CommandRun}
 import monix.eval.Task
 import monix.execution.Scheduler
+import org.apache.pekko.actor.{Actor, ActorRef}
 import scala.concurrent.Promise
 import scala.util.{Success, Try}
 

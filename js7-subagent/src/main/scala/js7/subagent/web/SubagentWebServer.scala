@@ -1,16 +1,16 @@
 package js7.subagent.web
 
-import akka.actor.ActorSystem
 import cats.effect.Resource
 import js7.base.auth.{AgentDirectorPermission, SimpleUser}
-import js7.common.akkahttp.web.AkkaWebServer
-import js7.common.akkahttp.web.auth.GateKeeper
-import js7.common.akkahttp.web.data.WebServerBinding
-import js7.common.akkahttp.web.session.SessionRegister
+import js7.common.pekkohttp.web.PekkoWebServer
+import js7.common.pekkohttp.web.auth.GateKeeper
+import js7.common.pekkohttp.web.data.WebServerBinding
+import js7.common.pekkohttp.web.session.SessionRegister
 import js7.subagent.configuration.SubagentConf
 import js7.subagent.{DirectorRouteVariable, Subagent, SubagentSession}
 import monix.eval.Task
 import monix.execution.Scheduler
+import org.apache.pekko.actor.ActorSystem
 
 object SubagentWebServer
 {
@@ -20,11 +20,11 @@ object SubagentWebServer
     sessionRegister: SessionRegister[SubagentSession],
     conf: SubagentConf)
     (implicit actorSystem: ActorSystem, scheduler: Scheduler)
-  : Resource[Task, (AkkaWebServer)] =
-    AkkaWebServer.resource(
+  : Resource[Task, (PekkoWebServer)] =
+    PekkoWebServer.resource(
       conf.webServerBindings,
       conf.config,
-      routeBinding => new AkkaWebServer.BoundRoute {
+      routeBinding => new PekkoWebServer.BoundRoute {
         private val gateKeeperConf =
           GateKeeper.Configuration.fromConfig(conf.config, SimpleUser.apply, Seq(
             AgentDirectorPermission))

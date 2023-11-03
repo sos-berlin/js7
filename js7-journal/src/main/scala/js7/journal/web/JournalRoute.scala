@@ -1,8 +1,5 @@
 package js7.journal.web
 
-import akka.http.scaladsl.model.HttpEntity
-import akka.http.scaladsl.server.Directives.*
-import akka.http.scaladsl.server.Route
 import js7.base.auth.ValidUserPermission
 import js7.base.data.ByteArray
 import js7.base.log.Logger
@@ -12,20 +9,23 @@ import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.utils.FutureCompletion
 import js7.base.utils.FutureCompletion.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.common.akkahttp.AkkaHttpServerUtils.accept
-import js7.common.akkahttp.ByteSequenceChunkerObservable.syntax.*
-import js7.common.akkahttp.StandardMarshallers.*
-import js7.common.akkahttp.web.session.RouteProvider
-import js7.common.akkautils.ByteStrings.syntax.*
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
-import js7.common.http.StreamingSupport.AkkaObservable
+import js7.common.http.StreamingSupport.PekkoObservable
 import js7.common.jsonseq.PositionAnd
+import js7.common.pekkohttp.ByteSequenceChunkerObservable.syntax.*
+import js7.common.pekkohttp.PekkoHttpServerUtils.accept
+import js7.common.pekkohttp.StandardMarshallers.*
+import js7.common.pekkohttp.web.session.RouteProvider
+import js7.common.pekkoutils.ByteStrings.syntax.*
 import js7.data.event.JournalSeparators.{EndOfJournalFileMarker, HeartbeatMarker}
 import js7.data.event.{EventId, JournalPosition}
 import js7.journal.watch.FileEventWatch
 import js7.journal.web.JournalRoute.*
 import monix.eval.Task
 import monix.execution.Scheduler
+import org.apache.pekko.http.scaladsl.model.HttpEntity
+import org.apache.pekko.http.scaladsl.server.Directives.*
+import org.apache.pekko.http.scaladsl.server.Route
 import scala.concurrent.duration.FiniteDuration
 
 // TODO Similar to GenericEventRoute
@@ -87,7 +87,7 @@ trait JournalRoute extends RouteProvider
                               .map(_.toByteString)
                               .chunk(chunkSize)
                               .map(HttpEntity.Chunk(_))
-                              .toAkkaSourceForHttpResponse)))))
+                              .toPekkoSourceForHttpResponse)))))
                   .runToFuture)
               }
             }

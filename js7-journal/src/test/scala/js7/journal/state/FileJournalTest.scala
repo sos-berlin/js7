@@ -1,7 +1,5 @@
 package js7.journal.state
 
-import akka.pattern.ask
-import akka.util.Timeout
 import com.softwaremill.diffx.generic.auto.*
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
@@ -23,7 +21,7 @@ import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.Collections.RichMap
 import js7.base.utils.Collections.implicits.*
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.common.akkautils.ProvideActorSystem
+import js7.common.pekkoutils.ProvideActorSystem
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{Event, EventId, JournalEvent, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotableState, SnapshotableStateBuilder, Stamped}
 import js7.journal.configuration.JournalConf
@@ -37,6 +35,8 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.schedulers.SchedulerService
 import monix.reactive.Observable
+import org.apache.pekko.pattern.ask
+import org.apache.pekko.util.Timeout
 import org.scalatest.BeforeAndAfterAll
 import scala.concurrent.Future
 
@@ -166,7 +166,7 @@ private object FileJournalTest
 {
   private val TestConfig = TestData.TestConfig
     .withFallback(config"""
-      js7.akka.actor-message-log-level = Trace
+      js7.pekko.actor-message-log-level = Trace
       js7.journal.users-allowed-to-release-events = []
       js7.journal.release-events-delay = 0s
       js7.journal.remove-obsolete-files = true

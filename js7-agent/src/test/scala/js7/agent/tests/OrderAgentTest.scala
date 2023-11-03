@@ -1,6 +1,5 @@
 package js7.agent.tests
 
-import akka.actor.ActorSystem
 import js7.agent.TestAgent
 import js7.agent.client.AgentClient
 import js7.agent.configuration.AgentConfiguration
@@ -25,8 +24,8 @@ import js7.base.time.Stopwatch
 import js7.base.utils.Closer.syntax.*
 import js7.base.utils.Closer.withCloser
 import js7.base.web.Uri
-import js7.common.akkautils.Akkas
-import js7.common.akkautils.Akkas.newActorSystem
+import js7.common.pekkoutils.Pekkos
+import js7.common.pekkoutils.Pekkos.newActorSystem
 import js7.data.agent.AgentPath
 import js7.data.controller.{ControllerId, ControllerRunId}
 import js7.data.event.{Event, EventRequest, JournalId, KeyedEvent, Stamped}
@@ -39,6 +38,7 @@ import js7.data.workflow.position.Position
 import js7.data.workflow.test.TestSetting.*
 import js7.service.pgp.PgpSigner
 import monix.execution.Scheduler.Implicits.traced
+import org.apache.pekko.actor.ActorSystem
 import org.scalatest.matchers.should.Matchers.*
 import scala.collection.mutable
 import scala.concurrent.duration.*
@@ -188,7 +188,7 @@ final class OrderAgentTest extends OurTestSuite
           info(stopwatch.itemsPerSecondString(n, "orders"))
 
           agentClient.commandExecute(AgentCommand.ShutDown()).await(99.s).orThrow
-          Akkas.terminateAndWait(actorSystem)
+          Pekkos.terminateAndWait(actorSystem)
         }
       }
     }

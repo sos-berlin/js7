@@ -1,8 +1,5 @@
 package js7.controller
 
-import akka.actor.{ActorRef, ActorSystem, Props}
-import akka.pattern.ask
-import akka.util.Timeout
 import cats.effect.{Resource, Sync, SyncIO}
 import cats.syntax.traverse.*
 import com.softwaremill.diffx.generic.auto.*
@@ -35,12 +32,12 @@ import js7.base.utils.{Allocated, ProgramTermination}
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatchService
 import js7.cluster.{ClusterNode, WorkingClusterNode}
-import js7.common.akkahttp.web.AkkaWebServer
-import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
-import js7.common.akkautils.Akkas.actorSystemResource
+import js7.common.pekkohttp.web.PekkoWebServer
+import js7.common.pekkohttp.web.session.{SessionRegister, SimpleSession}
+import js7.common.pekkoutils.Pekkos.actorSystemResource
 import js7.common.system.ThreadPools
 import js7.controller.RunningController.logger
-import js7.controller.client.AkkaHttpControllerApi
+import js7.controller.client.PekkoHttpControllerApi
 import js7.controller.command.ControllerCommandExecutor
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.item.ItemUpdater
@@ -66,6 +63,9 @@ import js7.license.LicenseCheckContext
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
+import org.apache.pekko.actor.{ActorRef, ActorSystem, Props}
+import org.apache.pekko.pattern.ask
+import org.apache.pekko.util.Timeout
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{Future, Promise}
@@ -80,7 +80,7 @@ import scala.util.{Failure, Try}
  */
 final class RunningController private(
   val eventWatch: StrictEventWatch,
-  val webServer: AkkaWebServer,
+  val webServer: PekkoWebServer,
   val recoveredEventId: EventId,
   val orderApi: OrderApi,
   val controllerState: Task[ControllerState],
@@ -229,7 +229,7 @@ object RunningController
     eventIdClock: EventIdClock)
     (implicit scheduler: Scheduler, iox: IOExecutor)
   : Resource[Task, RunningController] = {
-    import conf.{clusterConf, config, httpsConfig, implicitAkkaAskTimeout, journalLocation}
+    import conf.{clusterConf, config, httpsConfig, implicitPekkoAskTimeout, journalLocation}
 
     implicit val testEventBus = new StandardEventBus[Any]
 
@@ -242,7 +242,7 @@ object RunningController
     val clusterNodeResource =
       ClusterNode.recoveringResource[ControllerState](
         actorSystemResource(conf.name, config),
-        (admission, name, actorSystem) => AkkaHttpControllerApi.resource(
+        (admission, name, actorSystem) => PekkoHttpControllerApi.resource(
           admission, httpsConfig, name = name)(actorSystem),
         new LicenseChecker(LicenseCheckContext(conf.configDirectory)),
         journalLocation, clusterConf, eventIdClock, testEventBus)

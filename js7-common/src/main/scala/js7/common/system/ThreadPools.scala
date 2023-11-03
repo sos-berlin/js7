@@ -42,10 +42,10 @@ object ThreadPools
   private val uncaughtExceptionReporter: UncaughtExceptionReporter = { throwable =>
     def msg = s"Uncaught exception in thread ${currentThread.threadId} '${currentThread.getName}': ${throwable.toStringWithCauses}"
     throwable match {
-      case _: akka.stream.StreamTcpException | _: akka.http.scaladsl.model.EntityStreamException =>
+      case _: org.apache.pekko.stream.StreamTcpException | _: org.apache.pekko.http.scaladsl.model.EntityStreamException =>
         // TODO Not sure how to handle or ignore an unexpectedly closed connection while reading a stream.
         // "Entity stream truncation. The HTTP parser was receiving an entity when the underlying connection was closed unexpectedly."
-        // Maybe, letting the thread die is normal Akka behaviour, and the original Akka thread pool does not log this ???
+        // Maybe, letting the thread die is normal Pekko behaviour, and the original Pekko thread pool does not log this ???
         logger.warn(msg, throwable.nullIfNoStackTrace)
 
       case NonFatal(_) =>

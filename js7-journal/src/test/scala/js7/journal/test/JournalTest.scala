@@ -1,6 +1,5 @@
 package js7.journal.test
 
-import akka.pattern.ask
 import java.nio.file.Files.{delete, deleteIfExists}
 import js7.base.BuildInfo
 import js7.base.circeutils.CirceUtils.*
@@ -15,6 +14,7 @@ import js7.data.event.JournalHeader
 import js7.journal.JournalActor
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.test.JournalTest.*
+import org.apache.pekko.pattern.ask
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers.*
 import scala.concurrent.ExecutionContext.Implicits.global

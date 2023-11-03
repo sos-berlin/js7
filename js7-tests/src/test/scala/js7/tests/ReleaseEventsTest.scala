@@ -12,7 +12,7 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
-import js7.controller.client.{AkkaHttpControllerApi, HttpControllerApi}
+import js7.controller.client.{HttpControllerApi, PekkoHttpControllerApi}
 import js7.core.command.CommandMeta
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.{ReleaseEvents, TakeSnapshot}
@@ -155,6 +155,6 @@ private object ReleaseEventsTest
   }
 
   private class TestApi(controller: TestController, protected val credentials: UserAndPassword)
-  extends AkkaHttpControllerApi(controller.localUri, Some(credentials), controller.actorSystem, name = "RunningController")
+  extends PekkoHttpControllerApi(controller.localUri, Some(credentials), controller.actorSystem, name = "RunningController")
   with SessionApi.HasUserAndPassword
 }

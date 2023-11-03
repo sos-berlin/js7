@@ -20,9 +20,9 @@ import js7.base.web.HttpClient.HttpException
 import js7.cluster.watch.ClusterWatch.{Confirmed, OnUndecidableClusterNodeLoss}
 import js7.cluster.watch.ClusterWatchService.*
 import js7.cluster.watch.api.HttpClusterNodeApi
-import js7.common.akkautils.Akkas.actorSystemResource
 import js7.common.configuration.Js7Configuration.defaultConfig
-import js7.common.http.AkkaHttpClient
+import js7.common.http.PekkoHttpClient
+import js7.common.pekkoutils.Pekkos.actorSystemResource
 import js7.data.cluster.ClusterEvent.ClusterNodeLostEvent
 import js7.data.cluster.ClusterState.HasNodes
 import js7.data.cluster.ClusterWatchProblems.ClusterWatchRequestDoesNotMatchProblem
@@ -161,12 +161,12 @@ object ClusterWatchService
   def completeResource(conf: ClusterWatchConf): Resource[Task, ClusterWatchService] = {
     import conf.{clusterNodeAdmissions, config, httpsConfig}
     for {
-      akka <- actorSystemResource(name = "ClusterWatch", config)
+      pekko <- actorSystemResource(name = "ClusterWatch", config)
       service <- resource(
         conf.clusterWatchId,
         apisResource = clusterNodeAdmissions
-          .traverse(admission => AkkaHttpClient
-            .resource(admission.uri, uriPrefixPath = "", httpsConfig, name = "ClusterNode")(akka)
+          .traverse(admission => PekkoHttpClient
+            .resource(admission.uri, uriPrefixPath = "", httpsConfig, name = "ClusterNode")(pekko)
             .flatMap(HttpClusterNodeApi.resource(admission, _, uriPrefix = "controller"))),
         config)
     } yield service
