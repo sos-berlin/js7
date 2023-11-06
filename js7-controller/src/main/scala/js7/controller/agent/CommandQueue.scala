@@ -5,7 +5,7 @@ import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.Batch
 import js7.base.log.{CorrelId, CorrelIdWrapped, Logger}
 import js7.base.problem.{Checked, Problem}
-import js7.base.time.ScalaTime.{RichDeadline, RichFiniteDuration}
+import js7.base.time.ScalaTime.{DurationRichInt, RichDeadline, RichFiniteDuration}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AsyncLock
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichThrowable}
@@ -34,6 +34,7 @@ private[agent] abstract class CommandQueue(
   protected def asyncOnBatchFailed(queueables: Vector[Queueable], problem: Problem): Task[Unit]
 
   private val logger = Logger.withPrefix[this.type](agentPath.string)
+  private val shortErrorDelay = 1.s min commandErrorDelay
   private val lock = AsyncLock()
   private val attachedOrderIds = mutable.Set.empty[OrderId]
   private val isExecuting = mutable.Set.empty[Queueable]
@@ -258,11 +259,12 @@ private[agent] abstract class CommandQueue(
         })
     })
 
-  final def handleBatchFailed(queuables: Seq[Queueable]): Task[Unit] =
+  final def handleBatchFailed(queuables: Seq[Queueable], delay: Boolean): Task[Unit] =
     lock.lock(Task.defer {
-      delayCommandExecutionAfterErrorUntil = now + commandErrorDelay
-      logger.trace(
-        s"delayCommandExecutionAfterErrorUntil=${delayCommandExecutionAfterErrorUntil.toTimestamp}")
+      delayCommandExecutionAfterErrorUntil =
+        now + (if delay then commandErrorDelay else shortErrorDelay)
+      logger.trace:
+        s"delayCommandExecutionAfterErrorUntil=${delayCommandExecutionAfterErrorUntil.toTimestamp}"
       // Don't remove from queue. Queued queueables will be processed again
       onQueueableResponded(queuables.toSet)
     })

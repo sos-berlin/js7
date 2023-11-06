@@ -197,11 +197,15 @@ extends Service.StoppableByRequest:
       Task.defer:
         val msg = s"Command batch ${queueables.map(_.getClass.simpleScalaName)} failed: $problem"
         problem match
-          case DecoupledProblem | RecouplingStreamReader.TerminatedProblem =>
+          case DecoupledProblem =>
             logger.debug(msg)
+            commandQueue.handleBatchFailed(queueables, delay = false)
+          case RecouplingStreamReader.TerminatedProblem =>
+            logger.debug(msg)
+            commandQueue.handleBatchFailed(queueables, delay = true)
           case _ =>
             logger.warn(msg)
-        commandQueue.handleBatchFailed(queueables)
+            commandQueue.handleBatchFailed(queueables, delay = true)
 
   protected def start =
     startService(
