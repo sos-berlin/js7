@@ -214,9 +214,9 @@ object JournalLogger
         else if (forTrace && nr == beforeLastEventNr) '⎨'
         else '⎪'
       else if (!forTrace) ' '
-      else if (isFirstEvent) '┐'
-      else if (isLastEvent) '┘'
-      //else if (nr == beforeLastEventNr) '┤'
+      else if (isFirstEvent) '┌'
+      else if (isLastEvent) '└'
+      else if (nr == beforeLastEventNr) '┤'
       else '╷' // ┆╎
   }
 }

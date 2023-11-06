@@ -26,7 +26,7 @@ import js7.base.utils.Closer.withCloser
 import js7.base.web.Uri
 import js7.common.pekkoutils.Pekkos
 import js7.common.pekkoutils.Pekkos.newActorSystem
-import js7.data.agent.AgentPath
+import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.controller.{ControllerId, ControllerRunId}
 import js7.data.event.{Event, EventRequest, JournalId, KeyedEvent, Stamped}
 import js7.data.item.{ItemSigner, SignableItem}
@@ -81,6 +81,11 @@ final class OrderAgentTest extends OurTestSuite
             .commandExecute(
               DedicateAgentDirector(Seq(subagentId), controllerId, controllerRunId, agentPath))
             .await(99.s).orThrow.isInstanceOf[DedicateAgentDirector.Response])
+
+          agentClient
+            .commandExecute(
+              AttachItem(AgentRef(agentPath, directors = Seq(subagentId))))
+            .await(99.s).orThrow
 
           agentClient
             .commandExecute(

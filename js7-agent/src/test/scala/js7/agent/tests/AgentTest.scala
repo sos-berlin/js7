@@ -19,7 +19,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.base.web.Uri
 import js7.core.command.CommandMeta
-import js7.data.agent.AgentPath
+import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.controller.{ControllerId, ControllerRunId}
 import js7.data.event.JournalId
 import js7.data.job.RelativePathExecutable
@@ -67,6 +67,10 @@ final class AgentTest extends OurTestSuite with AgentTester
             agentApi
               .commandExecute(
                 DedicateAgentDirector(Seq(subagentId), controllerId, controllerRunId, agentPath))
+              .await(99.s).orThrow
+            agentApi
+              .commandExecute(
+                AttachItem(AgentRef(agentPath, Seq(subagentId))))
               .await(99.s).orThrow
             agentApi
               .commandExecute(

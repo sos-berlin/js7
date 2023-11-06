@@ -32,7 +32,7 @@ extends OurTestSuite with SubagentTester with BlockingItemUpdater
         EmptyJob.execute(
           agentPath,
           subagentSelectionId = Some(expr("$subagentSelectionId")),
-          parallelism = 100))),
+          processLimit = 100))),
     bareSubagentItem,
     SubagentSelection(subagentSelectionId, Map(
       localSubagentId -> 1,

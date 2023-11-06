@@ -1302,10 +1302,8 @@ with MainJournalingActor[ControllerState, Event]
 
   private def proceedWithItem(itemKey: InventoryItemKey): Unit = {
     itemKey match {
-      case agentPath: AgentPath =>
-        // TODO Handle AgentRef here: agentEntry .actor ! AgentDriver.Queueable.StartFetchingEvents ...
-
       case itemKey: InventoryItemKey =>
+        // TODO Handle AgentRef here: agentEntry .actor ! AgentDriver.Input.StartFetchingEvents ...
         for (agentToAttachedState <- _controllerState.itemToAgentToAttachedState.get(itemKey)) {
           for ((agentPath, attachedState) <- agentToAttachedState) {
             // TODO Does nothing if Agent is added later! (should be impossible, anyway)

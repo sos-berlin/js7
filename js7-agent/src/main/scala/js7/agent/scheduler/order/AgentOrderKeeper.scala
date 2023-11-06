@@ -121,6 +121,7 @@ with Stash
   protected def journalConf = conf.journalConf
 
   private var journalState = JournalState.empty
+  private var agentProcessCount = 0
   private val jobRegister = mutable.Map.empty[JobKey, JobEntry]
   private val workflowRegister = new WorkflowRegister(ownAgentPath)
   private val fileWatchManager = new FileWatchManager(ownAgentPath, journal, conf.config)
@@ -311,6 +312,7 @@ with Stash
         for (order <- state.idToOrder.values.view.flatMap(_.ifState[Order.Processing])) {
           for (jobKey <- state.jobKey(order.workflowPosition).toOption) {
             jobRegister(jobKey).recoverProcessingOrder(order)
+            agentProcessCount += 1
           }
         }
 
@@ -375,7 +377,8 @@ with Stash
                     logger.error(s"OrderActor.Output.OrderChanged($orderId) => $problem")
 
                   case Right(jobEntry) =>
-                    jobEntry.taskCount -= 1
+                    jobEntry.processCount -= 1
+                    agentProcessCount -= 1
                     myJobEntry = jobEntry
                 }
                 order = order.applyEvent(event).orThrow
@@ -387,7 +390,10 @@ with Stash
             }
             handleOrderEvent(order, event)
           }
-          if (myJobEntry != null) tryStartProcessing(myJobEntry)
+          if (myJobEntry != null) {
+            tryStartProcessing(myJobEntry)
+            tryStartProcessing()
+          }
           if (!events.lastOption.contains(OrderDetached)) {
             proceedWithOrder(order)
           }
@@ -401,6 +407,9 @@ with Stash
       for (jobEntry <- jobRegister.get(jobKey)) {
         tryStartProcessing(jobEntry)
       }
+
+    case Internal.TryStartProcessing =>
+      tryStartProcessing()
 
     case Input.ResetAllSubagents =>
       subagentKeeper
@@ -509,10 +518,11 @@ with Stash
           .rightAs(AgentCommand.Response.Accepted)
           .runToFuture
 
-      case item @ (_: Calendar | _: SubagentSelection |
+      case item @ (_: AgentRef | _: Calendar | _: SubagentSelection |
                    _: WorkflowPathControl | _: WorkflowControl) =>
+        //val previousItem = journal.unsafeCurrentState().keyToItem.get(item.key)
         persist(ItemAttachedToMe(item)) { (stampedEvent, journaledState) =>
-          proceedWithItem(item).runToFuture
+          proceedWithItem(/*previousItem,*/ item).runToFuture
         }.flatten
           .rightAs(AgentCommand.Response.Accepted)
 
@@ -608,8 +618,19 @@ with Stash
         }
     }
 
-  private def proceedWithItem(item: InventoryItem): Task[Checked[Unit]] =
+  private def proceedWithItem(/*previous: Option[InventoryItem],*/ item: InventoryItem)
+  : Task[Checked[Unit]] =
     item match {
+      case agentRef: AgentRef =>
+        //val processLimitIncreased = previous
+        //  .collect { case o: AgentRef => o.processLimit }
+        //  .flatten
+        //  .exists(previous => agentRef.processLimit.forall(previous < _))
+        //if (processLimitIncreased) {
+          self ! Internal.TryStartProcessing
+        //}
+        Task.right(())
+
       case subagentItem: SubagentItem =>
         journal.state.flatMap(_
           .idToSubagentItemState.get(subagentItem.id)
@@ -907,23 +928,27 @@ with Stash
       tryStartProcessing(jobEntry)
     }
 
-  private def tryStartProcessing(jobEntry: JobEntry): Unit = {
+  private def tryStartProcessing(): Unit = {
+    val it = jobRegister.valuesIterator
+    while (it.hasNext && tryStartProcessing(it.next())) {}
+  }
+
+  private def tryStartProcessing(jobEntry: JobEntry): Boolean = {
     lazy val isEnterable = jobEntry.checkAdmissionTimeInterval(clock) {
       self ! Internal.JobDue(jobEntry.jobKey)
     }
     val idToOrder = journal.unsafeCurrentState().idToOrder
 
-    @tailrec def loop(): Unit =
-      if (jobEntry.isBelowParallelismLimit) {
+    @tailrec def loop(): Boolean =
+      (jobEntry.isBelowProcessLimit && isBelowAgentProcessLimit()) && (
         jobEntry.queue.dequeueWhere(orderId =>
           idToOrder.get(orderId).exists(_.forceJobAdmission) || isEnterable)
         match {
-          case None =>
+          case None => true
           case Some(orderId) =>
             startProcessing(orderId, jobEntry)
             loop()
-        }
-      }
+        })
     loop()
   }
 
@@ -933,7 +958,8 @@ with Stash
         logger.error(s"onOrderIsProcessable => $problem")
 
       case Right(orderEntry) =>
-        jobEntry.taskCount += 1
+        jobEntry.processCount += 1
+        agentProcessCount += 1
         orderEntry.actor ! OrderActor.Input.StartProcessing
     }
 
@@ -994,6 +1020,18 @@ with Stash
   private def orderEventSource =
     new OrderEventSource(journal.unsafeCurrentState())
 
+  private def isBelowAgentProcessLimit() =
+    agentProcessLimit().forall(agentProcessCount < _)
+
+  private def agentProcessLimit(): Option[Int] =
+    journal.unsafeCurrentState().keyToItem(AgentRef).get(ownAgentPath) match {
+      case None =>
+        logger.warn("Missing own AgentRef — assuming processLimit = 0")
+        Some(0)
+      case Some(agentRef) =>
+        agentRef.processLimit
+    }
+
   override def toString = "AgentOrderKeeper"
 }
 
@@ -1015,6 +1053,7 @@ object AgentOrderKeeper {
     final case class OrdersRecovered(agentState: AgentState)
     final case class Due(orderId: OrderId)
     final case class JobDue(jobKey: JobKey)
+    case object TryStartProcessing
     case object JobDriverStopped
     case object StillTerminating extends DeadLetterSuppression
     case object ContinueSwitchover
@@ -1034,21 +1073,21 @@ object AgentOrderKeeper {
           logger.debug(s"$jobKey: Next admission: ${to getOrElse "None"} $zone")
         })
 
-    var taskCount = 0
+    var processCount = 0
 
     def close(): Unit =
       admissionTimeIntervalSwitch.cancel()
 
     def recoverProcessingOrder(order: Order[Order.Processing]): Unit = {
-      taskCount += 1
+      processCount += 1
       queue.recoverProcessingOrder(order)
     }
 
     def checkAdmissionTimeInterval(clock: AlarmClock)(onPermissionGranted: => Unit): Boolean =
       admissionTimeIntervalSwitch.updateAndCheck(onPermissionGranted)(clock)
 
-    def isBelowParallelismLimit =
-      taskCount < workflowJob.parallelism
+    def isBelowProcessLimit =
+      processCount < workflowJob.processLimit
   }
 
   final class OrderQueue private[order] {

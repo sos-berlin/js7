@@ -9,8 +9,8 @@ object Dependencies
 
   val pekkoVersion = "1.0.1"
   val pekkoHttpVersion = "1.0.0"
-  val slf4jVersion = "2.0.5"  // See also plugins.sbt
-  val log4jVersion = "2.20.0"  // See also plugins.sbt
+  val slf4jVersion = "2.0.9"  // See also plugins.sbt
+  val log4jVersion = "2.21.1"  // See also plugins.sbt
   val catsVersion = "2.9.0"
   val catsEffectVersion = "2.5.5"
   val izumiReflectVersion = "2.1.3"

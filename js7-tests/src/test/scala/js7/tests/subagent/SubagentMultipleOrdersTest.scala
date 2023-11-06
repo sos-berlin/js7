@@ -123,7 +123,7 @@ object SubagentMultipleOrdersTest
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",
     Seq(
-      TestJob.execute(agentPath, parallelism = 1_000_000)))
+      TestJob.execute(agentPath, processLimit = 1_000_000)))
 
   final class TestJob extends InternalJob
   {

@@ -146,7 +146,7 @@ object SubagentDisabledTest
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ versionId,
     Seq(
-      EmptyJob.execute(agentPath, parallelism = 100)))
+      EmptyJob.execute(agentPath, processLimit = 100)))
 
   private def toOrder(orderId: OrderId) =
     FreshOrder(orderId, workflow.path, deleteWhenTerminated = true)

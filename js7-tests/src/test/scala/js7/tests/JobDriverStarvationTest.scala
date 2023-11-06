@@ -56,7 +56,7 @@ final class JobDriverStarvationTest extends OurTestSuite with ControllerAgentFor
       .collect {
         case KeyedEvent(orderId: OrderId, _: OrderProcessingStarted) => orderId
       }
-      .take(parallelism)
+      .take(processLimit)
       .completedL
       .runToFuture
 
@@ -92,13 +92,13 @@ object JobDriverStarvationTest
 {
   private val logger = Logger[this.type]
   private val n = 10_000
-  private val parallelism = 97 min n
+  private val processLimit = 97 min n
   private val agentPath = AgentPath("AGENT")
 
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",
     Vector(
-      TestJob.execute(agentPath, parallelism = parallelism)))
+      TestJob.execute(agentPath, processLimit = processLimit)))
 
   private class TestJob extends SemaphoreJob(TestJob)
   private object TestJob extends SemaphoreJob.Companion[TestJob]

@@ -91,9 +91,9 @@ final class WorkflowPrinterTest extends OurTestSuite
               "my-script",
               returnCodeMeaning = ReturnCodeMeaning.NoFailure),
             Map("KEY" -> StringConstant("VALUE")),
-            parallelism = 3, sigkillDelay = Some(10.s))))),
+            processLimit = 3, sigkillDelay = Some(10.s))))),
       """define workflow {
-        |  execute agent='AGENT', parallelism=3, defaultArguments={'KEY': 'VALUE'}, sigkillDelay=10, failureReturnCodes=[], executable='my-script';
+        |  execute agent='AGENT', processLimit=3, defaultArguments={'KEY': 'VALUE'}, sigkillDelay=10, failureReturnCodes=[], executable='my-script';
         |}
         |""".stripMargin)
   }

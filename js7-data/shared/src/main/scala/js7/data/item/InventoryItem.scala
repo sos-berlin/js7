@@ -30,7 +30,7 @@ trait InventoryItem
     * <ul>
     *   <li>dedicated to an Agent (like FileWatch) or else
     *   <li>depend on Order's Agent (like Workflow, JobResource) or else
-    *   <li>be used at Controller only (like AgentRef, Lock).
+    *   <li>be used at Controller only (like Lock).
     * </ul>*/
   def dedicatedAgentPath: Option[AgentPath] = None
 

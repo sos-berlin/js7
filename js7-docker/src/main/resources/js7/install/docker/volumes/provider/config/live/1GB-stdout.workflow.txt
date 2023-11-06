@@ -2,7 +2,7 @@ define workflow {
   job JOB;
 
   define job JOB {
-    execute agent="agent-1", parallelism=100, script='#!/usr/bin/env bash
+    execute agent="agent-1", processLimit=100, script='#!/usr/bin/env bash
 
 for i in {0..999}; do
   # Write 1MB for each iterator

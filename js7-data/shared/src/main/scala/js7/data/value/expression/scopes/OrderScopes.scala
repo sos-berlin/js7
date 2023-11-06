@@ -122,7 +122,8 @@ trait ProcessingOrderScopes extends OrderScopes
         workflowJob.sigkillDelay.map(_.toMillis).fold[Value](MissingValue)(NumberValue(_)),
       "timeoutMillis" ->
         workflowJob.timeout.map(_.toMillis).fold[Value](MissingValue)(NumberValue(_)),
-      "parallelism" -> NumberValue(workflowJob.parallelism),
+      "processLimit" -> NumberValue(workflowJob.processLimit),
+      "parallelism" -> NumberValue(workflowJob.processLimit),  // deprecated
       "executionCount" -> NumberValue(jobExecutionCount)))))
 
   /** To avoid name clash, JobResources are not allowed to access order variables. */

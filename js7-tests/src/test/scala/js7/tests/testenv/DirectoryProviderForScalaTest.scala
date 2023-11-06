@@ -12,7 +12,7 @@ import js7.base.web.Uri
 import js7.common.message.ProblemCodeMessages
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.RunningController
-import js7.data.agent.AgentPath
+import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.item.{InventoryItem, SignableItem}
 import js7.data.subagent.SubagentItem
 import monix.execution.Scheduler
@@ -35,6 +35,9 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
   protected def agentPaths: Seq[AgentPath]
   protected def agentHttps = false
   protected def agentPorts: Seq[Int] = Nil
+  protected def directorEnvToToAgentRef(directorEnv: DirectorEnv): AgentRef =
+    AgentRef(directorEnv.agentPath, Seq(directorEnv.localSubagentId))
+
 
   protected def primarySubagentsDisabled = false
   protected def bareSubagentItems: Seq[SubagentItem] = Nil
@@ -48,6 +51,7 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
     agentHttpsMutual = agentHttpsMutual,
     agentConfig = agentConfig,
     agentPorts = agentPorts,
+    directorEnvToAgentRef = directorEnvToToAgentRef,
     primarySubagentsDisabled = primarySubagentsDisabled,
     provideAgentHttpsCertificate = provideAgentHttpsCertificate,
     provideAgentClientCertificate = provideAgentClientCertificate,
