@@ -9,8 +9,8 @@ object Dependencies
 
   val pekkoVersion = "1.0.1"
   val pekkoHttpVersion = "1.0.0"
-  val slf4jVersion = "2.0.5"  // See also plugins.sbt
-  val log4jVersion = "2.20.0"  // See also plugins.sbt
+  val slf4jVersion = "2.0.9"  // See also plugins.sbt
+  val log4jVersion = "2.21.1"  // See also plugins.sbt
   val catsVersion = "2.9.0"
   val catsEffectVersion = "2.5.5"
   val izumiReflectVersion = "2.1.3"
@@ -55,7 +55,7 @@ object Dependencies
   val java8Compat         = "org.scala-lang.modules" %% "scala-java8-compat" % "1.0.2"
 
   val javaxInject         = "javax.inject" % "javax.inject" % "1"
-  val guava               = "com.google.guava" % "guava" % "32.0.1-jre"
+  val guava               = "com.google.guava" % "guava" % "32.1.1-jre"
   val guice               = ("com.google.inject" % "guice" % "5.1.0") :: javaxInject :: guava :: Nil
 
   val typesafeConfig      = "com.typesafe" % "config" % "1.4.2"
