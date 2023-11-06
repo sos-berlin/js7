@@ -12,6 +12,7 @@ final case class AgentRef(
   path: AgentPath,
   directors: Seq[SubagentId],
   uri: Option/*COMPATIBLE with v2.1*/[Uri] = None,
+  processLimit: Option[Int] = None,
   itemRevision: Option[ItemRevision] = None)
 extends UnsignedSimpleItem
 {
@@ -41,6 +42,9 @@ extends UnsignedSimpleItem
   def toInitialItemState: AgentRefState =
     AgentRefState(this)
 
+  override def dedicatedAgentPath: Option[AgentPath] =
+    Some(path)
+
   override def referencedItemPaths = directors.view
 
   def director = directors.headOption
@@ -49,7 +53,7 @@ extends UnsignedSimpleItem
   /** Converts a legacy AgentRef to a modern AgentRef and a local SubagentItem. */
   def convertFromV2_1: Checked[(AgentRef, Option[SubagentItem])] =
     this match {
-      case AgentRef(agentPath, directors, Some(uri), itemRevision) =>
+      case AgentRef(agentPath, directors, Some(uri), None, itemRevision) =>
         if (directors.nonEmpty)
           Left(Problem.pure("Invalid AgentRef: both directors and uri?"))
         else {
@@ -65,8 +69,8 @@ extends UnsignedSimpleItem
           Right((agentRef, Some(subagentItem)))
       }
 
-      case agentRef @ AgentRef(_, _, None, _) =>
-        Right((agentRef, None))
+      case _ =>
+        Right((this, None))
     }
 }
 
@@ -88,8 +92,9 @@ object AgentRef extends UnsignedSimpleItem.Companion[AgentRef]
         path <- c.get[AgentPath]("path")
         directors <- c.getOrElse[Vector[SubagentId]]("directors")(Vector.empty)
         uri <- c.get[Option[Uri]]("uri")
+        processLimit <- c.get[Option[Int]]("processLimit")
         rev <- c.get[Option[ItemRevision]]("itemRevision")
-        agentRef <- AgentRef(path, directors, uri, rev)
+        agentRef <- AgentRef(path, directors, uri, processLimit, rev)
           .checked.toDecoderResult(c.history)
       } yield agentRef
 

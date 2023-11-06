@@ -24,7 +24,7 @@ import js7.base.time.Stopwatch
 import js7.base.utils.Closer.syntax.*
 import js7.base.utils.Closer.withCloser
 import js7.base.web.Uri
-import js7.data.agent.AgentPath
+import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.controller.ControllerId
 import js7.data.event.{Event, EventRequest, KeyedEvent, Stamped}
 import js7.data.item.{ItemSigner, SignableItem}
@@ -75,6 +75,10 @@ final class OrderAgentTest extends OurTestSuite
                 DedicateAgentDirector(Some(subagentId), controllerId, agentPath))
             .await(99.s).toOption.get
             .isInstanceOf[DedicateAgentDirector.Response])
+          agentClient
+            .commandExecute(
+              AttachItem(AgentRef(agentPath, directors = Seq(subagentId))))
+            .await(99.s).orThrow
           agentClient
             .commandExecute(
               AttachItem(SubagentItem(subagentId, agentPath, Uri("http://127.0.0.1:0"))))

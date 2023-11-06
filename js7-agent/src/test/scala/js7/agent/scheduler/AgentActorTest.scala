@@ -16,7 +16,7 @@ import js7.base.time.Stopwatch
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
-import js7.data.agent.AgentPath
+import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.agent.Problems.AgentDuplicateOrder
 import js7.data.controller.ControllerId
 import js7.data.event.{EventId, EventRequest}
@@ -61,6 +61,9 @@ final class AgentActorTest extends OurTestSuite
         val agentRunId = executeCommand(
           DedicateAgentDirector(Some(subagentId), controllerId, agentPath)
         ).await(99.s).orThrow.asInstanceOf[DedicateAgentDirector.Response].agentRunId
+
+        executeCommand(AttachItem(AgentRef(agentPath, Seq(subagentId)))).await(99.s).orThrow
+
         val stopwatch = new Stopwatch
         val orderIds = for (i <- 0 until n) yield OrderId(s"TEST-ORDER-$i")
 

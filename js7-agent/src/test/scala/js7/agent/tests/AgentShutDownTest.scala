@@ -17,7 +17,7 @@ import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.common.pekkoutils.Pekkos
-import js7.data.agent.AgentPath
+import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.controller.ControllerId
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId, Outcome}
@@ -53,6 +53,10 @@ final class AgentShutDownTest extends OurTestSuite with BeforeAndAfterAll with T
     client.login() await 99.s
     client
       .commandExecute(DedicateAgentDirector(Some(SubagentId("SUBAGENT")), controllerId, agentPath))
+      .await(99.s)
+
+    client
+      .commandExecute(AttachItem(AgentRef(agentPath, Seq(SubagentId("SUBAGENT")))))
       .await(99.s)
 
     val subagentId = SubagentId("SUBAGENT")

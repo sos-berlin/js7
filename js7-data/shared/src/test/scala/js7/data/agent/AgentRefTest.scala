@@ -16,11 +16,13 @@ final class AgentRefTest extends OurTestSuite
     testJson(AgentRef(
       AgentPath("AGENT"),
       directors = Seq(SubagentId("SUBAGENT-1")),
+      processLimit = Some(10),
       itemRevision = Some(ItemRevision(7))),
       json"""{
         "path": "AGENT",
         "directors": [ "SUBAGENT-1" ] ,
-        "itemRevision": 7
+        "itemRevision": 7,
+        "processLimit": 10
       }""")
 
     // Compatible with v2.1

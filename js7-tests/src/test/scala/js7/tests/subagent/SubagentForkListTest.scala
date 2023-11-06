@@ -200,10 +200,10 @@ extends OurTestSuite with SubagentTester with BlockingItemUpdater
         OrderAttached(agentPath),
         OrderStarted,
         OrderForked(Vector(
-          OrderForked.Child(localSubagentOrderId, Map(
-            "subagentId" -> StringValue("AGENT-0"))),
           OrderForked.Child(bareSubagentOrderId, Map(
             "subagentId" -> StringValue("BARE-SUBAGENT"))),
+          OrderForked.Child(localSubagentOrderId, Map(
+            "subagentId" -> StringValue("AGENT-0"))),
           OrderForked.Child(bSubagentOrderId, Map(
             "subagentId" -> StringValue("B-SUBAGENT"))))),
         OrderDetachable,

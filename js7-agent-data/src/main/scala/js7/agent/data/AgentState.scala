@@ -12,7 +12,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.RichMap
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isTest
-import js7.data.agent.{AgentPath, AgentRefState, AgentRunId}
+import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
 import js7.data.calendar.{Calendar, CalendarPath, CalendarState}
 import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
@@ -83,6 +83,7 @@ with SnapshotableState[AgentState]
   def toSnapshotObservable = Observable(
     standards.toSnapshotObservable,
     Observable.fromIterable(meta != AgentMetaState.empty thenList meta),
+    Observable.fromIterable(keyToItem(AgentRef).values),
     Observable.fromIterable(keyTo(SubagentItemState).values).flatMap(_.toSnapshotObservable),
     Observable.fromIterable(keyTo(SubagentSelectionState).values).flatMap(_.toSnapshotObservable),
     Observable.fromIterable(keyTo(FileWatchState).values).flatMap(_.toSnapshotObservable),
@@ -163,7 +164,8 @@ with SnapshotableState[AgentState]
 
           case ItemAttachedToMe(item: UnsignedItem) =>
             item match {
-              case _: WorkflowPathControl |
+              case _: AgentRef |
+                   _: WorkflowPathControl |
                    _: WorkflowControl |
                    _: Calendar |
                    _: SubagentSelection =>
@@ -195,14 +197,24 @@ with SnapshotableState[AgentState]
 
               case itemKey: UnsignedItemKey =>
                 itemKey match {
-                  case _: WorkflowPathControlPath | WorkflowControlId.as(_) |
-                       _: CalendarPath |
-                       _: SubagentId | _: SubagentSelectionId =>
-                    for (_ <- keyToUnsignedItemState_.checked(itemKey)) yield
-                      copy(
-                        keyToUnsignedItemState_ = keyToUnsignedItemState_ - itemKey)
+                  case _: AgentPath =>
+                    // The Controller detaches all attached Items.
+                    // But without its AgentRef, AgentOrderKeeper may complain about missing
+                    // AgentRef.processLimit, when trying to start a job (short before shutdown).
+                    // So we keep our AgentRef silently.
+                    Right(this)
+
                   case _ =>
-                    eventNotApplicable(keyedEvent)
+                    itemKey match {
+                      case _: WorkflowPathControlPath | WorkflowControlId.as(_) |
+                           _: CalendarPath |
+                           _: SubagentId | _: SubagentSelectionId =>
+                        for (_ <- keyToUnsignedItemState_.checked(itemKey)) yield
+                          copy(
+                            keyToUnsignedItemState_ = keyToUnsignedItemState_ - itemKey)
+                      case _ =>
+                        eventNotApplicable(keyedEvent)
+                    }
                 }
 
               case _ => applyStandardEvent(keyedEvent)
@@ -321,11 +333,11 @@ with ItemContainer.Companion[AgentState]
   def newBuilder() = new AgentStateBuilder
 
   protected val inventoryItems = Vector(
-    FileWatch, JobResource, Calendar, Workflow, WorkflowPathControl, WorkflowControl,
+    AgentRef, FileWatch, JobResource, Calendar, Workflow, WorkflowPathControl, WorkflowControl,
     SubagentItem, SubagentSelection)
 
   override lazy val itemPaths =
-    inventoryItems.map(_.Path) :+ AgentPath
+    inventoryItems.map(_.Path)
 
   final case class AgentMetaState(
     subagentId: Option[SubagentId],

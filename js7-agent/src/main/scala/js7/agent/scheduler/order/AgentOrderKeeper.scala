@@ -33,6 +33,7 @@ import js7.common.pekkoutils.SupervisorStrategies
 import js7.common.system.PlatformInfos.currentPlatformInfo
 import js7.common.utils.Exceptions.wrapException
 import js7.core.problems.ReverseReleaseEventsProblem
+import js7.data.agent.AgentRef
 import js7.data.agent.Problems.{AgentDuplicateOrder, AgentIsShuttingDown}
 import js7.data.calendar.Calendar
 import js7.data.event.JournalEvent.JournalEventsReleased
@@ -104,6 +105,7 @@ final class AgentOrderKeeper(
   protected def journalConf = conf.journalConf
 
   private var journalState = JournalState.empty
+  private var agentProcessCount = 0
   private val jobRegister = mutable.Map.empty[JobKey, JobEntry]
   private val workflowRegister = new WorkflowRegister(ownAgentPath)
   private val fileWatchManager = new FileWatchManager(ownAgentPath, persistence, conf.config)
@@ -289,6 +291,7 @@ final class AgentOrderKeeper(
         for (order <- state.idToOrder.values.view.flatMap(_.ifState[Order.Processing])) {
           for (jobKey <- state.jobKey(order.workflowPosition).toOption) {
             jobRegister(jobKey).recoverProcessingOrder(order)
+            agentProcessCount += 1
           }
         }
 
@@ -360,7 +363,8 @@ final class AgentOrderKeeper(
                     logger.error(s"OrderActor.Output.OrderChanged($orderId) => $problem")
 
                   case Right(jobEntry) =>
-                    jobEntry.taskCount -= 1
+                    jobEntry.processCount -= 1
+                    agentProcessCount -= 1
                     myJobEntry = jobEntry
                 }
                 order = order.applyEvent(event).orThrow
@@ -372,7 +376,10 @@ final class AgentOrderKeeper(
             }
             handleOrderEvent(order, event)
           }
-          if (myJobEntry != null) tryStartProcessing(myJobEntry)
+          if (myJobEntry != null) {
+            tryStartProcessing(myJobEntry)
+            tryStartProcessing()
+          }
           if (!events.lastOption.contains(OrderDetached)) {
             proceedWithOrder(order)
           }
@@ -386,6 +393,9 @@ final class AgentOrderKeeper(
       for (jobEntry <- jobRegister.get(jobKey)) {
         tryStartProcessing(jobEntry)
       }
+
+    case Internal.TryStartProcessing =>
+      tryStartProcessing()
   }
 
   private def processCommand(cmd: AgentCommand): Future[Checked[Response]] = cmd match {
@@ -468,10 +478,11 @@ final class AgentOrderKeeper(
             .map(_.rightAs(AgentCommand.Response.Accepted))
             .runToFuture
 
-      case item @ (_: Calendar | _: SubagentItem | _: SubagentSelection |
+      case item @ (_: AgentRef | _: Calendar | _: SubagentItem | _: SubagentSelection |
                    _: WorkflowPathControl | _: WorkflowControl) =>
+        val previousItem = persistence.currentState.keyToItem.get(item.key)
         persist(ItemAttachedToMe(item)) { (stampedEvent, journaledState) =>
-          proceedWithItem(item).runToFuture
+          proceedWithItem(previousItem, item).runToFuture
         }.flatten
           .rightAs(AgentCommand.Response.Accepted)
 
@@ -521,8 +532,19 @@ final class AgentOrderKeeper(
         }
     }
 
-  private def proceedWithItem(item: InventoryItem): Task[Checked[Unit]] =
+  private def proceedWithItem(previous: Option[InventoryItem], item: InventoryItem)
+  : Task[Checked[Unit]] =
     item match {
+      case agentRef: AgentRef =>
+        val processLimitIncreased = previous
+          .collect { case o: AgentRef => o.processLimit }
+          .flatten
+          .exists(previous => agentRef.processLimit.forall(previous < _))
+        if (processLimitIncreased) {
+          self ! Internal.TryStartProcessing
+        }
+        Task.right(())
+
       case subagentItem: SubagentItem =>
         persistence.state.flatMap(_
           .idToSubagentItemState.get(subagentItem.id)
@@ -812,23 +834,27 @@ final class AgentOrderKeeper(
       tryStartProcessing(jobEntry)
     }
 
-  private def tryStartProcessing(jobEntry: JobEntry): Unit = {
+  private def tryStartProcessing(): Unit = {
+    val it = jobRegister.valuesIterator
+    while (it.hasNext && tryStartProcessing(it.next())) {}
+  }
+
+  private def tryStartProcessing(jobEntry: JobEntry): Boolean = {
     lazy val isEnterable = jobEntry.checkAdmissionTimeInterval(clock) {
       self ! Internal.JobDue(jobEntry.jobKey)
     }
     val idToOrder = persistence.currentState.idToOrder
 
-    @tailrec def loop(): Unit =
-      if (jobEntry.isBelowParallelismLimit) {
+    @tailrec def loop(): Boolean =
+      (jobEntry.isBelowProcessLimit && isBelowAgentProcessLimit()) && (
         jobEntry.queue.dequeueWhere(orderId =>
           idToOrder.get(orderId).exists(_.forceJobAdmission) || isEnterable)
         match {
-          case None =>
+          case None => true
           case Some(orderId) =>
             startProcessing(orderId, jobEntry)
             loop()
-        }
-      }
+        })
     loop()
   }
 
@@ -838,7 +864,8 @@ final class AgentOrderKeeper(
         logger.error(s"onOrderIsProcessable => $problem")
 
       case Right(orderEntry) =>
-        jobEntry.taskCount += 1
+        jobEntry.processCount += 1
+        agentProcessCount += 1
         orderEntry.actor ! OrderActor.Input.StartProcessing
     }
 
@@ -877,6 +904,18 @@ final class AgentOrderKeeper(
   private def orderEventSource =
     new OrderEventSource(persistence.currentState)
 
+  private def isBelowAgentProcessLimit() =
+    agentProcessLimit().forall(agentProcessCount < _)
+
+  private def agentProcessLimit(): Option[Int] =
+    persistence.currentState.keyToItem(AgentRef).get(ownAgentPath) match {
+      case None =>
+        logger.warn("Missing own AgentRef — assuming processLimit = 0")
+        Some(0)
+      case Some(agentRef) =>
+        agentRef.processLimit
+    }
+
   override def toString = "AgentOrderKeeper"
 }
 
@@ -898,6 +937,7 @@ object AgentOrderKeeper {
     case object Ready
     final case class Due(orderId: OrderId)
     final case class JobDue(jobKey: JobKey)
+    case object TryStartProcessing
     case object JobDriverStopped
     object StillTerminating extends DeadLetterSuppression
   }
@@ -916,21 +956,21 @@ object AgentOrderKeeper {
           logger.debug(s"$jobKey: Next admission: ${to getOrElse "None"} $zone")
         })
 
-    var taskCount = 0
+    var processCount = 0
 
     def close(): Unit =
       admissionTimeIntervalSwitch.cancel()
 
     def recoverProcessingOrder(order: Order[Order.Processing]): Unit = {
-      taskCount += 1
+      processCount += 1
       queue.recoverProcessingOrder(order)
     }
 
     def checkAdmissionTimeInterval(clock: AlarmClock)(onPermissionGranted: => Unit): Boolean =
       admissionTimeIntervalSwitch.updateAndCheck(onPermissionGranted)(clock)
 
-    def isBelowParallelismLimit =
-      taskCount < workflowJob.processLimit
+    def isBelowProcessLimit =
+      processCount < workflowJob.processLimit
   }
 
   final class OrderQueue private[order] {

@@ -5,12 +5,13 @@ import java.util.concurrent.ConcurrentHashMap
 import js7.base.problem.Checked
 import js7.base.time.{Timestamp, WallClock}
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.data.agent.AgentRef
 import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.job.JobKey
 import js7.data.order.Order.Processing
-import js7.data.order.OrderObstacle.{WaitingForAdmission, WaitingForCommand, WaitingForOtherTime}
+import js7.data.order.OrderObstacle.{AgentProcessLimitReached, WaitingForAdmission, WaitingForCommand, WaitingForOtherTime}
 import js7.data.state.StateView
-import scala.collection.View
+import scala.collection.{View, mutable}
 
 final class OrderObstacleCalculator(val stateView: StateView)
 {
@@ -50,19 +51,26 @@ final class OrderObstacleCalculator(val stateView: StateView)
   private def workflowSuspendedObstacle(order: Order[Order.State]) =
     stateView.isWorkflowSuspended(order.workflowPath) ? OrderObstacle.WorkflowSuspended
 
-  private def orderStateToObstacles(order: Order[Order.State]): Set[OrderObstacle] =
+  private def orderStateToObstacles(order: Order[Order.State]): Set[OrderObstacle] = {
+    val result = mutable.Set.empty[OrderObstacle]
     order.state match {
       case Order.Fresh =>
-        order.scheduledFor
-          .map(WaitingForOtherTime(_))
-          .toSet
+        result ++= order.scheduledFor.map(WaitingForOtherTime(_))
 
       case Order.FailedWhileFresh | Order.Failed | Order.Cancelled =>
-        Set(WaitingForCommand)
+        result += WaitingForCommand
 
       case _ =>
-        Set.empty
     }
+    if (order.isState[Order.IsFreshOrReady]) {
+      for (agentPath <- order.attached) {
+        val limit = stateView.keyToItem(AgentRef).get(agentPath).flatMap(_.processLimit)
+        if (limit.exists(_ <= stateView.slowProcessingOrderCount(agentPath)))
+          result += AgentProcessLimitReached
+      }
+    }
+    result.toSet
+  }
 
   private val _jobToOrderCount = new ConcurrentHashMap[JobKey, Int]()
 

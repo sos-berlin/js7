@@ -36,7 +36,7 @@ import js7.data.controller.ControllerState
 import js7.data.delegate.DelegateCouplingState.{Coupled, Resetting}
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, Stamped}
 import js7.data.item.ItemAttachedState.{Attachable, Attached}
-import js7.data.item.{InventoryItemEvent, InventoryItemKey, SignableItem, UnsignedItem}
+import js7.data.item.{InventoryItemEvent, InventoryItemKey, SignableItem, UnsignedItem, UnsignedSimpleItemPath}
 import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderDetached}
 import js7.data.order.{Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.OrderWatchEvent
@@ -533,20 +533,21 @@ extends ReceiveLoggingActor.WithStash
                   .map(_.map { _ =>
                     // Asynchronous assignment
                     agentRunIdOnce := agentRunId
-                    reattachSubagents()
+                    reattachSomeItems()
                   }))
               .rightAs(agentRunId -> agentEventId)
             }
       }
     }
 
-  private def reattachSubagents(): Unit = {
+  private def reattachSomeItems(): Unit = {
     val controllerState = persistence.currentState
     controllerState.itemToAgentToAttachedState
       .foreach {
-        case (subagentId: SubagentId, agentToAttachedState) =>
+        case (itemPath: UnsignedSimpleItemPath, agentToAttachedState)
+        if itemPath.isInstanceOf[AgentPath] || itemPath.isInstanceOf[SubagentId] =>
           // After Agent Reset, re-attach SubagentItems
-          controllerState.pathToUnsignedSimpleItem.get(subagentId)
+          controllerState.pathToUnsignedSimpleItem.get(itemPath)
             .foreach(item => agentToAttachedState.get(agentPath)
               .foreach {
                 case Attachable =>

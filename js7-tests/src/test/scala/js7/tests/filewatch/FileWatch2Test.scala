@@ -209,7 +209,7 @@ final class FileWatch2Test extends OurTestSuite with DirectoryProviderForScalaTe
       .filter(_
         .event match {
           case _: ControllerShutDown => true
-          case e: ItemAttachedStateEvent if e.key.isInstanceOf[SubagentId] => false
+          case e: ItemAttachedStateEvent if e.key.isInstanceOf[AgentPath] || e.key.isInstanceOf[SubagentId] => false
           case _: BasicItemEvent => true
           case e: UnsignedSimpleItemEvent if e.key.isInstanceOf[OrderWatchPath] => true
           case _: OrderAdded => true
@@ -327,7 +327,8 @@ final class FileWatch2Test extends OurTestSuite with DirectoryProviderForScalaTe
             timezone = "Europe/Berlin",
             totalRunningTime = 1.s,
             platformInfo = Some(PlatformInfo.test))
-          case e: InventoryItemEvent if !e.key.isInstanceOf[SubagentId] => e
+          case e: InventoryItemEvent
+            if !e.key.isInstanceOf[AgentPath] && !e.key.isInstanceOf[SubagentId] => e
           case e: OrderWatchEvent => e
         }
         .map(e => ke.copy(event = e))))
