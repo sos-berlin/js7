@@ -12,7 +12,7 @@ Beispiel in JSON:
     "NAME": "'VALUE'",
     "NUMBER": "7"
   },
-  "parallelism": 1,
+  "processLimit": 1,
   "sigkillDelay": 15,
   "timeout": 3600
 }

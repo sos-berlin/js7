@@ -282,7 +282,7 @@
           ]
         }
       },
-      "parallelism": 100
+      "processLimit": 100
     },
     "job-2": {
       "agentPath": "agent-2",
@@ -295,7 +295,7 @@
           ]
         }
       },
-      "parallelism": 100
+      "processLimit": 100
     }
   }
 }

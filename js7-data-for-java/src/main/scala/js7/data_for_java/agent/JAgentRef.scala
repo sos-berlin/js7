@@ -1,7 +1,7 @@
 package js7.data_for_java.agent
 
 import io.vavr.control.Either as VEither
-import java.util.Optional
+import java.util.{Optional, OptionalInt}
 import javax.annotation.Nonnull
 import js7.base.problem.Problem
 import js7.data.agent.{AgentPath, AgentRef}
@@ -27,6 +27,10 @@ extends JJsonable[JAgentRef] with JUnsignedSimpleItem
     asScala.directors.asJava
 
   @Nonnull
+  def processLimit: java.util.OptionalInt =
+    asScala.processLimit.toJavaPrimitive
+
+  @Nonnull
   def withRevision(revision: Optional[ItemRevision]) =
     copy(asScala.withRevision(revision.toScala))
 }
@@ -36,9 +40,13 @@ object JAgentRef extends JJsonable.Companion[JAgentRef]
   @Nonnull
   def of(
     @Nonnull path: AgentPath,
-    @Nonnull directors: java.lang.Iterable[SubagentId])
+    @Nonnull directors: java.lang.Iterable[SubagentId],
+    @Nonnull processLimit: OptionalInt)
   : JAgentRef =
-    JAgentRef(AgentRef(path, directors = directors.asScala.toVector))
+    JAgentRef(AgentRef(
+      path,
+      directors = directors.asScala.toVector,
+      processLimit = processLimit.toScala))
 
   @Nonnull
   def of(

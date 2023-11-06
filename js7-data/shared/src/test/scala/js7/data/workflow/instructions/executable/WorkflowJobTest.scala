@@ -33,9 +33,10 @@ final class WorkflowJobTest extends OurTestSuite
             "TYPE": "PathExecutable",
             "path": "EXECUTABLE"
           },
-          "parallelism": 1
+          "processLimit": 1
         }""")
 
+      // COMPATIBLE with 2.5.5, 2.6.2
       testJsonDecoder(
         WorkflowJob(
           AgentPath("AGENT"),
@@ -46,7 +47,7 @@ final class WorkflowJobTest extends OurTestSuite
             "TYPE": "PathExecutable",
             "path": "EXECUTABLE"
           },
-          "processLimit": 1
+          "paralellism": 1
         }""")
     }
 
@@ -87,7 +88,7 @@ final class WorkflowJobTest extends OurTestSuite
           "jobResourcePaths": [
             "JOB-RESOURCE"
           ],
-          "parallelism": 3,
+          "processLimit": 3,
           "sigkillDelay": 10,
           "timeout": 60,
           "failOnErrWritten": true,

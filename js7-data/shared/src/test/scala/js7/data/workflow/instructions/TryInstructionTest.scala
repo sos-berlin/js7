@@ -39,7 +39,7 @@ final class TryInstructionTest extends OurTestSuite
                     "TYPE": "PathExecutable",
                     "path": "TRY"
                   },
-                  "parallelism": 1
+                  "processLimit": 1
                 }
               }
             ]
@@ -54,7 +54,7 @@ final class TryInstructionTest extends OurTestSuite
                     "TYPE": "PathExecutable",
                     "path": "CATCH"
                   },
-                  "parallelism": 1
+                  "processLimit": 1
                 }
               }
             ]

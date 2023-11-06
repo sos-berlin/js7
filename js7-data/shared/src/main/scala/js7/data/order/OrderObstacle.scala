@@ -18,10 +18,6 @@ object OrderObstacle
   val agentProcessLimitReached: OrderObstacle =
     AgentProcessLimitReached
 
-  @deprecated("Use jobProcessLimitReached", "v2.5.6, v2.6.3")
-  val jobParallelismLimitReached: OrderObstacle =
-    JobParallelismLimitReached
-
   val jobProcessLimitReached: OrderObstacle =
     JobProcessLimitReached
 
@@ -39,10 +35,6 @@ object OrderObstacle
   extends WaitingForTime
 
   case object AgentProcessLimitReached
-  extends OrderObstacle
-
-  @deprecated("Use JobProcessLimitReached", "v2.5.6, v2.6.3")
-  case object JobParallelismLimitReached
   extends OrderObstacle
 
   case object JobProcessLimitReached
