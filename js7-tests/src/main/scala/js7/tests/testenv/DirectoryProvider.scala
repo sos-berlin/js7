@@ -80,6 +80,7 @@ final class DirectoryProvider(
   agentHttpsMutual: Boolean = false,
   agentConfig: Config = ConfigFactory.empty,
   agentPorts: Iterable[Int] = Nil,
+  agentTreeToAgentRef: AgentTree => AgentRef = a => AgentRef(a.agentPath, Seq(a.localSubagentId)),
   subagentsDisabled: Boolean = false,
   provideAgentHttpsCertificate: Boolean = false,
   provideAgentClientCertificate: Boolean = false,
@@ -126,8 +127,7 @@ extends HasCloser
       }
       .toMap
   val agents: Vector[AgentTree] = agentToTree.values.toVector
-  lazy val agentRefs: Vector[AgentRef] =
-    for (a <- agents) yield AgentRef(a.agentPath, Seq(a.localSubagentId))
+  lazy val agentRefs: Vector[AgentRef] = agents.map(agentTreeToAgentRef)
   lazy val subagentItems: Vector[SubagentItem] = agents.flatMap(_.subagentItems)
   lazy val subagentId: SubagentId = agents.head.localSubagentId
 

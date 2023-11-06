@@ -13,9 +13,10 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.common.message.ProblemCodeMessages
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
-import js7.data.agent.AgentPath
+import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.item.{InventoryItem, SignableItem}
 import js7.data.subagent.SubagentId
+import js7.tests.testenv.DirectoryProvider.AgentTree
 import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly
 import org.scalatest.BeforeAndAfterAll
@@ -37,6 +38,9 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
   protected def agentPaths: Seq[AgentPath]
   protected def agentHttps = false
   protected def agentPorts: Iterable[Int] = Nil
+  protected def agentTreeToAgentRef(agentTree: AgentTree): AgentRef =
+    AgentRef(agentTree.agentPath, Seq(agentTree.localSubagentId))
+
   protected def doNotAddItems = false
 
   protected def bareSubagentIds: Map[AgentPath, Seq[SubagentId]] = Map.empty
@@ -51,6 +55,7 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
     agentHttpsMutual = agentHttpsMutual,
     agentConfig = agentConfig,
     agentPorts = agentPorts,
+    agentTreeToAgentRef = agentTreeToAgentRef,
     subagentsDisabled = subagentsDisabled,
     provideAgentHttpsCertificate = provideAgentHttpsCertificate,
     provideAgentClientCertificate = provideAgentClientCertificate,
