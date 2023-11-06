@@ -116,7 +116,7 @@ object WorkflowJob:
       "executable" -> workflowJob.executable.asJson,
       "defaultArguments" -> workflowJob.defaultArguments.??.asJson,
       "jobResourcePaths" -> workflowJob.jobResourcePaths.??.asJson,
-      "parallelism" -> workflowJob.processLimit.asJson,
+      "processLimit" -> workflowJob.processLimit.asJson,
       "sigkillDelay" -> workflowJob.sigkillDelay.asJson,
       "timeout" -> workflowJob.timeout.asJson,
       "failOnErrWritten" -> workflowJob.failOnErrWritten.?.asJson,
@@ -136,6 +136,7 @@ object WorkflowJob:
       jobResourcePaths <- c.getOrElse[Seq[JobResourcePath]]("jobResourcePaths")(Nil)
       maybeProcessLimit <- c.get[Option[Int]]("processLimit")
       maybeProcessLimit <- maybeProcessLimit
+        // COMPATIBLE with 2.5.5, 2.6.2
         .fold(c.getOrElse[Int]("parallelism")(DefaultProcessLimit))(Right(_))
       sigkillDelay <- c.get[Option[FiniteDuration]]("sigkillDelay")
       timeout <- c.get[Option[FiniteDuration]]("timeout")

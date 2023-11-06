@@ -52,7 +52,7 @@ final class IfTest extends OurTestSuite:
                   "TYPE": "PathExecutable",
                   "path": "THEN"
                 },
-                "parallelism": 1
+                "processLimit": 1
               }
             }
           ]
@@ -67,7 +67,7 @@ final class IfTest extends OurTestSuite:
                   "TYPE": "PathExecutable",
                   "path": "ELSE"
                 },
-                "parallelism": 1
+                "processLimit": 1
               }
             }
           ]

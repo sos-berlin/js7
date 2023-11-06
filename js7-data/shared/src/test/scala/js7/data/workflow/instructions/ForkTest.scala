@@ -56,7 +56,7 @@ final class ForkTest extends OurTestSuite
                         "TYPE": "PathExecutable",
                         "path": "A"
                       },
-                      "parallelism": 1
+                      "processLimit": 1
                     }
                   }
                 ],
@@ -76,7 +76,7 @@ final class ForkTest extends OurTestSuite
                         "TYPE": "PathExecutable",
                         "path": "B"
                       },
-                      "parallelism": 1
+                      "processLimit": 1
                     }
                   }
                 ]

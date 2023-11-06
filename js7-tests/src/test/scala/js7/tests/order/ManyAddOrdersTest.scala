@@ -152,7 +152,7 @@ object ManyAddOrdersTest:
             "TYPE": "ShellScriptExecutable",
             "script": "echo \"hello world1\"\n"
           },
-          "parallelism": 500
+          "processLimit": 500
         },
         "job1_d": {
           "agentPath": "AGENT-1",
@@ -160,7 +160,7 @@ object ManyAddOrdersTest:
             "TYPE": "ShellScriptExecutable",
             "script": "echo \"hello world1\"\n"
           },
-          "parallelism": 500
+          "processLimit": 500
         },
         "job2_c": {
           "agentPath": "AGENT-1",
@@ -168,7 +168,7 @@ object ManyAddOrdersTest:
             "TYPE": "ShellScriptExecutable",
             "script": "echo \"hello world\"\n"
           },
-          "parallelism": 500
+          "processLimit": 500
         },
         "job2_b": {
           "agentPath": "AGENT-2",
@@ -176,7 +176,7 @@ object ManyAddOrdersTest:
             "TYPE": "ShellScriptExecutable",
             "script": "echo \"hello world\"\n"
           },
-          "parallelism": 500
+          "processLimit": 500
         },
         "job2": {
           "agentPath": "AGENT-2",
@@ -184,7 +184,7 @@ object ManyAddOrdersTest:
             "TYPE": "ShellScriptExecutable",
             "script": "echo \"hello world1\"\n"
           },
-          "parallelism": 500
+          "processLimit": 500
         },
         "job1": {
           "agentPath": "AGENT-1",
@@ -192,7 +192,7 @@ object ManyAddOrdersTest:
             "TYPE": "ShellScriptExecutable",
             "script": "echo \"hello world1\"\n"
           },
-          "parallelism": 500
+          "processLimit": 500
         },
         "job3": {
           "agentPath": "AGENT-2",
@@ -200,7 +200,7 @@ object ManyAddOrdersTest:
             "TYPE": "ShellScriptExecutable",
             "script": "echo \"hello world\"\nsleep 1"
           },
-          "parallelism": 500
+          "processLimit": 500
         },
         "job1_b": {
           "agentPath": "AGENT-1",
@@ -208,7 +208,7 @@ object ManyAddOrdersTest:
             "TYPE": "ShellScriptExecutable",
             "script": "echo \"hello world1\"\n"
           },
-          "parallelism": 500
+          "processLimit": 500
         },
         "job2_a": {
           "agentPath": "AGENT-1",
@@ -216,7 +216,7 @@ object ManyAddOrdersTest:
             "TYPE": "ShellScriptExecutable",
             "script": "echo \"hello world\"\n"
           },
-          "parallelism": 500
+          "processLimit": 500
         },
         "job1_a": {
           "agentPath": "AGENT-2",
@@ -224,7 +224,7 @@ object ManyAddOrdersTest:
             "TYPE": "ShellScriptExecutable",
             "script": "echo \"hello world1\"\n"
           },
-          "parallelism": 500
+          "processLimit": 500
         }
       }
     }""".as[Workflow].orThrow

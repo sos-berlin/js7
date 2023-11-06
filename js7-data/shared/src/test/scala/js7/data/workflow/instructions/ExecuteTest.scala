@@ -54,7 +54,7 @@ final class ExecuteTest extends OurTestSuite
               "TYPE": "PathExecutable",
               "path": "EXECUTABLE"
             },
-            "parallelism": 1
+            "processLimit" : 1
           }
         }""")
     }
@@ -86,7 +86,7 @@ final class ExecuteTest extends OurTestSuite
                 "NUMBER": "7"
               }
             },
-            "parallelism": 1,
+            "processLimit": 1,
             "defaultArguments": {
               "ARG": "'VALUE'"
             }
