@@ -133,7 +133,8 @@ object Fork
         apply(string)
     }
 
-    implicit val jsonCodec = deriveConfiguredCodec[Branch]
+    implicit val jsonCodec: Codec.AsObject[Branch] =
+      deriveConfiguredCodec[Branch]
   }
 
   //implicit lazy val jsonCodec: CirceObjectCodec[Fork] = deriveCodec[Fork]

@@ -47,7 +47,7 @@ final class StickySubagentTest extends OurTestSuite with ControllerAgentForScala
     aAgentPath -> Seq(a1SubagentId, a2SubagentId),
     bAgentPath -> Nil)
 
-  protected implicit val scheduler = Scheduler.traced
+  protected implicit val scheduler: Scheduler = Scheduler.traced
 
   "StickySubagent with SubagentSelection" in {
     enableSubagents(a1SubagentId -> false, a2SubagentId -> false)

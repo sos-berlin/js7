@@ -304,7 +304,7 @@ object RunningController
   private class Starter(injector: Injector)
   {
     private val controllerConfiguration = injector.instance[ControllerConfiguration]
-    private implicit val iox = injector.instance[IOExecutor]
+    private implicit val iox: IOExecutor = injector.instance[IOExecutor]
     private implicit val scheduler: Scheduler = injector.instance[Scheduler]
     private implicit lazy val closer: Closer = injector.instance[Closer]
     private implicit lazy val actorSystem: ActorSystem = injector.instance[ActorSystem]

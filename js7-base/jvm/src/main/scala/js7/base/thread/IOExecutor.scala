@@ -14,7 +14,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import monix.eval.{Task, TaskLike}
 import monix.execution.ExecutionModel.SynchronousExecution
 import monix.execution.{Scheduler, UncaughtExceptionReporter}
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
 import scala.util.Try
 import scala.util.control.NonFatal
 
@@ -24,7 +24,7 @@ import scala.util.control.NonFatal
   */
 final class IOExecutor(executor: Executor, name: String) extends Executor
 {
-  implicit val executionContext = ExecutionContext.fromExecutor(
+  implicit val executionContext: ExecutionContextExecutor = ExecutionContext.fromExecutor(
     executor,
     t => logger.error(t.toStringWithCauses, t))
 

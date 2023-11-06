@@ -28,6 +28,7 @@ import js7.tests.ShutdownAgentWithProcessTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.traced
+import org.apache.pekko.actor.ActorSystem
 
 final class ShutdownAgentWithProcessTest extends OurTestSuite with ControllerAgentForScalaTest
 {
@@ -41,7 +42,8 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite with ControllerAge
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(simpleWorkflow, catchingWorkflow)
 
-  private implicit def actorSystem = controller.actorSystem
+  private implicit def actorSystem: ActorSystem =
+    controller.actorSystem
 
   override def beforeAll() = {
     super.beforeAll()

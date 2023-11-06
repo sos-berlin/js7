@@ -1,7 +1,7 @@
 package js7.base.fs2utils
 
 import cats.effect.concurrent.Deferred
-import cats.effect.{Fiber, IO}
+import cats.effect.{ContextShift, Fiber, IO}
 import cats.syntax.flatMap.*
 import cats.syntax.parallel.*
 import fs2.Stream
@@ -12,7 +12,8 @@ import org.scalatest.{Assertion, Succeeded}
 
 final class Fs2PubSubTest extends OurAsyncTestSuite
 {
-  private implicit val contextShift = IO.contextShift(scheduler)
+  private implicit val contextShift: ContextShift[IO] =
+    IO.contextShift(scheduler)
 
   "FsPubSub" in {
     val n = 10000

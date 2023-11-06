@@ -38,6 +38,7 @@ import monix.execution.atomic.AtomicBoolean
 import monix.execution.cancelables.SerialCancelable
 import monix.reactive.{Observable, OverflowStrategy}
 import org.apache.pekko.pattern.ask
+import org.apache.pekko.util.Timeout
 import scala.concurrent.Promise
 import scala.concurrent.duration.*
 import scala.util.{Failure, Success}
@@ -48,7 +49,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
   clusterConf: ClusterConf)
   (implicit scheduler: Scheduler)
 {
-  private implicit val askTimeout = common.journalActorAskTimeout
+  private implicit val askTimeout: Timeout = common.journalActorAskTimeout
   private val clusterStateLock = AsyncLock("ClusterState")
   private val journalActor = persistence.journalActor
   private val isFetchingAcks = AtomicBoolean(false)
