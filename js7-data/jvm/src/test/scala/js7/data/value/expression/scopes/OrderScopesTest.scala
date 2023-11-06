@@ -73,7 +73,7 @@ final class OrderScopesTest extends OurTestSuite
           defaultArguments = Map.empty,
           subagentSelectionId = None,
           jobResourcePaths = Nil,
-          parallelism = 1,
+          processLimit = 1,
           sigkillDelay = sigkillDelay,
           timeout = timeout,
           failOnErrWritten = false,

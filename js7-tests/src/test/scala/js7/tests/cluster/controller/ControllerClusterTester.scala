@@ -20,5 +20,5 @@ object ControllerClusterTester:
   private[cluster] val TestWorkflow = Workflow(
     WorkflowPath("WORKFLOW"),
     Seq(
-      SleepJob.execute(AgentPath("AGENT"), parallelism = 2, arguments = Map(
+      SleepJob.execute(AgentPath("AGENT"), processLimit = 2, arguments = Map(
         "sleep" -> expr("$sleep ? 1")))))

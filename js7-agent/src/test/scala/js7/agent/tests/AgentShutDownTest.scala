@@ -11,16 +11,14 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger
 import js7.base.problem.Checked.Ops
+import js7.base.system.ServerOperatingSystem.operatingSystem
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsBlocking.BlockingTaskResource
 import js7.common.pekkoutils.Pekkos
 import js7.common.pekkoutils.Pekkos.actorSystemResource
-import js7.base.system.ServerOperatingSystem.operatingSystem
-import js7.base.test.OurTestSuite
-import js7.base.system.ServerOperatingSystem.operatingSystem
-import js7.data.agent.AgentPath
+import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.controller.{ControllerId, ControllerRunId}
 import js7.data.event.JournalId
 import js7.data.order.OrderEvent.OrderProcessingStarted
@@ -63,6 +61,10 @@ final class AgentShutDownTest extends OurTestSuite, BeforeAndAfterAll, TestAgent
             client.commandExecute(DedicateAgentDirector(
               Seq(SubagentId("SUBAGENT")), controllerId, controllerRunId, agentPath)))
           .await(99.s)
+
+    client
+      .commandExecute(AttachItem(AgentRef(agentPath, Seq(SubagentId("SUBAGENT")))))
+      .await(99.s)
 
         val subagentId = SubagentId("SUBAGENT")
         client

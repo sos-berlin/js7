@@ -15,8 +15,15 @@ object OrderObstacle:
   def waitingForAdmmission(until: Timestamp): OrderObstacle =
     WaitingForAdmission(until)
 
+  val agentProcessLimitReached: OrderObstacle =
+    AgentProcessLimitReached
+
+  @deprecated("Use jobProcessLimitReached", "v2.5.6, v2.6.3")
   val jobParallelismLimitReached: OrderObstacle =
     JobParallelismLimitReached
+
+  val jobProcessLimitReached: OrderObstacle =
+    JobProcessLimitReached
 
   case object WaitingForCommand extends OrderObstacle
 
@@ -29,7 +36,14 @@ object OrderObstacle:
   final case class WaitingForOtherTime(until: Timestamp)
   extends WaitingForTime
 
+  case object AgentProcessLimitReached
+  extends OrderObstacle
+
+  @deprecated("Use JobProcessLimitReached", "v2.5.6, v2.6.3")
   case object JobParallelismLimitReached
+  extends OrderObstacle
+
+  case object JobProcessLimitReached
   extends OrderObstacle
 
   type WorkflowSuspended = WorkflowSuspended.type

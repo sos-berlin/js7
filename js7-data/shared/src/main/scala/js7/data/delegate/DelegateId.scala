@@ -1,8 +1,8 @@
 package js7.data.delegate
 
-import js7.data.item.SimpleItemPath
+import js7.data.item.{SimpleItemPath, UnsignedSimpleItemPath}
 
-trait DelegateId extends SimpleItemPath
+trait DelegateId extends UnsignedSimpleItemPath
 
 
 object DelegateId:

@@ -28,7 +28,7 @@ final case class WorkflowJob(
   defaultArguments: Map[String, Expression],
   subagentSelectionId: Option[Expression],
   jobResourcePaths: Seq[JobResourcePath],
-  parallelism: Int,
+  processLimit: Int,
   sigkillDelay: Option[FiniteDuration],
   timeout: Option[FiniteDuration],
   failOnErrWritten: Boolean,
@@ -61,7 +61,8 @@ final case class WorkflowJob(
 
 
 object WorkflowJob:
-  val DefaultParallelism = 1
+
+  val DefaultProcessLimit = 1 // Or unlimited like AgentRef.processLimit ???
 
   def apply(
     agentPath: AgentPath,
@@ -69,7 +70,7 @@ object WorkflowJob:
     defaultArguments: Map[String, Expression] = Map.empty,
     subagentSelectionId: Option[Expression] = None,
     jobResourcePaths: Seq[JobResourcePath] = Nil,
-    parallelism: Int = DefaultParallelism,
+    processLimit: Int = DefaultProcessLimit,
     sigkillDelay: Option[FiniteDuration] = None,
     timeout: Option[FiniteDuration] = None,
     failOnErrWritten: Boolean = false,
@@ -77,7 +78,7 @@ object WorkflowJob:
     skipIfNoAdmissionStartForOrderDay: Boolean = false)
   : WorkflowJob =
     checked(agentPath, executable, defaultArguments, subagentSelectionId, jobResourcePaths,
-      parallelism, sigkillDelay, timeout, failOnErrWritten = failOnErrWritten,
+      processLimit, sigkillDelay, timeout, failOnErrWritten = failOnErrWritten,
       admissionTimeScheme, skipIfNoAdmissionStartForOrderDay
     ).orThrow
 
@@ -87,7 +88,7 @@ object WorkflowJob:
     defaultArguments: Map[String, Expression] = Map.empty,
     subagentSelectionId: Option[Expression] = None,
     jobResourcePaths: Seq[JobResourcePath] = Nil,
-    parallelism: Int = DefaultParallelism,
+    processLimit: Int = DefaultProcessLimit,
     sigkillDelay: Option[FiniteDuration] = None,
     timeout: Option[FiniteDuration] = None,
     failOnErrWritten: Boolean = false,
@@ -97,7 +98,7 @@ object WorkflowJob:
     for _ <- jobResourcePaths.checkUniqueness yield
       new WorkflowJob(
         agentPath, executable, defaultArguments, subagentSelectionId, jobResourcePaths,
-        parallelism, sigkillDelay, timeout, failOnErrWritten,
+        processLimit, sigkillDelay, timeout, failOnErrWritten,
         admissionTimeScheme, skipIfNoAdmissionStartForOrderDay)
 
   final case class Name private(string: String) extends GenericString
@@ -115,7 +116,7 @@ object WorkflowJob:
       "executable" -> workflowJob.executable.asJson,
       "defaultArguments" -> workflowJob.defaultArguments.??.asJson,
       "jobResourcePaths" -> workflowJob.jobResourcePaths.??.asJson,
-      "parallelism" -> workflowJob.parallelism.asJson,
+      "parallelism" -> workflowJob.processLimit.asJson,
       "sigkillDelay" -> workflowJob.sigkillDelay.asJson,
       "timeout" -> workflowJob.timeout.asJson,
       "failOnErrWritten" -> workflowJob.failOnErrWritten.?.asJson,
@@ -133,7 +134,9 @@ object WorkflowJob:
       agentPath <- c.get[AgentPath]("agentPath")
       arguments <- c.getOrElse[Map[String, Expression]]("defaultArguments")(Map.empty)
       jobResourcePaths <- c.getOrElse[Seq[JobResourcePath]]("jobResourcePaths")(Nil)
-      parallelism <- c.getOrElse[Int]("parallelism")(DefaultParallelism)
+      maybeProcessLimit <- c.get[Option[Int]]("processLimit")
+      maybeProcessLimit <- maybeProcessLimit
+        .fold(c.getOrElse[Int]("parallelism")(DefaultProcessLimit))(Right(_))
       sigkillDelay <- c.get[Option[FiniteDuration]]("sigkillDelay")
       timeout <- c.get[Option[FiniteDuration]]("timeout")
       failOnErrWritten <- c.getOrElse[Boolean]("failOnErrWritten")(false)
@@ -144,7 +147,7 @@ object WorkflowJob:
           case None => // COMPATIBLE with v2.4
             c.getOrElse[Boolean]("skipIfNoAdmissionForOrderDay")(false)
       job <- checked(agentPath, executable, arguments, subagentSelectionId, jobResourcePaths,
-        parallelism, sigkillDelay, timeout, failOnErrWritten, admissionTimeScheme,
+        maybeProcessLimit, sigkillDelay, timeout, failOnErrWritten, admissionTimeScheme,
         skipIfNoAdmissionStartForOrderDay
       ).toDecoderResult(c.history)
     yield job

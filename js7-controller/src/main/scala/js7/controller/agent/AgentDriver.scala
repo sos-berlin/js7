@@ -44,7 +44,7 @@ import js7.data.cluster.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem
 import js7.data.controller.{ControllerRunId, ControllerState}
 import js7.data.event.{AnyKeyedEvent, EventId, KeyedEvent, Stamped}
 import js7.data.item.ItemAttachedState.{Attachable, Attached}
-import js7.data.item.{InventoryItemKey, ItemAttachedState, SignableItem, UnsignedItem}
+import js7.data.item.{InventoryItemKey, ItemAttachedState, SignableItem, UnsignedItem, UnsignedSimpleItemPath}
 import js7.data.node.NodeId
 import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderDetached}
 import js7.data.order.{Order, OrderId, OrderMark}
@@ -349,7 +349,7 @@ extends Service.StoppableByRequest:
                         agentPath <-: AgentDedicated(agentRunId, Some(agentEventId)))
                       .flatMapT { _ =>
                         lastAgentRunId = Some(agentRunId)
-                        reattachSubagents().map(Right(_))
+                        reattachSomeItems().map(Right(_))
                       }
                   ).rightAs(agentRunId -> agentEventId)
                 }
@@ -357,15 +357,16 @@ extends Service.StoppableByRequest:
         }
     })
 
-  private def reattachSubagents(): Task[Unit] =
+  private def reattachSomeItems(): Task[Unit] =
     journal.state.flatMap(controllerState =>
       controllerState
         .itemToAgentToAttachedState
         .toVector
         .flatMap {
-          case (subagentId: SubagentId, agentToAttachedState) =>
-            // After Agent Reset, re-attach SubagentItems
-            controllerState.pathToUnsignedSimpleItem.get(subagentId)
+          case (itemPath: UnsignedSimpleItemPath, agentToAttachedState)
+            if itemPath.isInstanceOf[AgentPath] || itemPath.isInstanceOf[SubagentId] =>
+            // After Agent Reset, re-attach AgentRef and SubagentItems
+            controllerState.pathToUnsignedSimpleItem.get(itemPath)
               .flatMap(item => agentToAttachedState.get(agentPath).map(item -> _))
           case _ => Nil
         }

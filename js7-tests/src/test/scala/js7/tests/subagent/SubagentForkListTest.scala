@@ -97,7 +97,7 @@ final class SubagentForkListTest extends OurTestSuite, SubagentTester, BlockingI
             EmptyJob.execute(
               agentPath,
               subagentSelectionId = Some(expr("$subagentId")),
-              parallelism = 100)),
+              processLimit = 100)),
           agentPath = Some(agentPath))))
     withTemporaryItem(workflow) { workflow =>
       val orderId = OrderId("UNKNOWN")
@@ -127,7 +127,7 @@ final class SubagentForkListTest extends OurTestSuite, SubagentTester, BlockingI
             EmptyJob.execute(
               agentPath,
               subagentSelectionId = Some(expr("$subagentId")),
-              parallelism = 100)),
+              processLimit = 100)),
           agentPath = Some(agentPath))))
 
     withTemporaryItem(workflow) { workflow =>
@@ -180,7 +180,7 @@ final class SubagentForkListTest extends OurTestSuite, SubagentTester, BlockingI
             EmptyJob.execute(
               agentPath,
               subagentSelectionId = Some(expr("$subagentId")),
-              parallelism = 100)),
+              processLimit = 100)),
           agentPath = Some(agentPath))))
 
     withTemporaryItem(workflow) { workflow =>

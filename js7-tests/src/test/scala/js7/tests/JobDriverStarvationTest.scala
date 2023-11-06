@@ -21,7 +21,7 @@ import monix.reactive.Observable
 import scala.concurrent.duration.Deadline.now
 
 final class JobDriverStarvationTest extends OurTestSuite, ControllerAgentForScalaTest:
-  
+
   override protected def controllerConfig = config"""
     js7.journal.slow-check-state = off
     """
@@ -54,7 +54,7 @@ final class JobDriverStarvationTest extends OurTestSuite, ControllerAgentForScal
       .map(_.stampedEvent.value)
       .collect:
         case KeyedEvent(orderId: OrderId, _: OrderProcessingStarted) => orderId
-      .take(parallelism)
+      .take(processLimit)
       .completedL
       .runToFuture
 
@@ -87,13 +87,13 @@ final class JobDriverStarvationTest extends OurTestSuite, ControllerAgentForScal
 object JobDriverStarvationTest:
   private val logger = Logger[this.type]
   private val n = 10_000
-  private val parallelism = 97 min n
+  private val processLimit = 97 min n
   private val agentPath = AgentPath("AGENT")
 
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",
     Vector(
-      TestJob.execute(agentPath, parallelism = parallelism)))
+      TestJob.execute(agentPath, processLimit = processLimit)))
 
   private class TestJob extends SemaphoreJob(TestJob)
   private object TestJob extends SemaphoreJob.Companion[TestJob]

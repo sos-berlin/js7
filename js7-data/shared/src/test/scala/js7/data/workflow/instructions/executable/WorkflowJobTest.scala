@@ -35,6 +35,19 @@ final class WorkflowJobTest extends OurTestSuite
           },
           "parallelism": 1
         }""")
+
+      testJsonDecoder(
+        WorkflowJob(
+          AgentPath("AGENT"),
+          RelativePathExecutable("EXECUTABLE")),
+        json"""{
+          "agentPath": "AGENT",
+          "executable": {
+            "TYPE": "PathExecutable",
+            "path": "EXECUTABLE"
+          },
+          "processLimit": 1
+        }""")
     }
 
     "complete" in {
@@ -50,7 +63,7 @@ final class WorkflowJobTest extends OurTestSuite
             "NUMBER" -> NumericConstant(7)),
           Some(expr("'SELECTION'")),
           Seq(JobResourcePath("JOB-RESOURCE")),
-          parallelism = 3,
+          processLimit = 3,
           Some(10.s),
           Some(60.s),
           failOnErrWritten = true,

@@ -97,7 +97,7 @@ object WorkflowParser:
         keyValue("jobResourcePaths", inParentheses(commaSequence(quotedString.map(JobResourcePath.apply)))) |
         keyValue("successReturnCodes", successReturnCodes) |
         keyValue("failureReturnCodes", failureReturnCodes) |
-        keyValue("parallelism", int) |
+        keyValue("processLimit", int) |
         keyValue("sigkillDelay", int))
       agentPath <- kv[AgentPath]("agent")
       defaultArguments <- kv.getOrElse[ObjectExpr]("defaultArguments", ObjectExpr.empty)
@@ -123,13 +123,13 @@ object WorkflowParser:
               jobArguments = jobArguments.nameToExpr,
               arguments = arguments.nameToExpr)))
         case _ => failWith("Invalid executable")  // Does not happen
-      parallelism <- kv.getOrElse[Int]("parallelism", WorkflowJob.DefaultParallelism)
+      processLimit <- kv.getOrElse[Int]("processLimit", WorkflowJob.DefaultProcessLimit)
       sigkillDelay <- kv.get[Int]("sigkillDelay").map(_.map(_.s))
     yield
       WorkflowJob(agentPath, executable, defaultArguments.nameToExpr,
         subagentSelectionId = None/*TODO*/,
         jobResourcePaths,
-        parallelism = parallelism,
+        processLimit = processLimit,
         sigkillDelay = sigkillDelay)
 
     private val executeInstruction: Parser[Execute.Anonymous] =

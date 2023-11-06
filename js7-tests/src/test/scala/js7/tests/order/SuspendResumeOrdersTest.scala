@@ -663,7 +663,7 @@ object SuspendResumeOrdersTest
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)
   private val versionId = VersionId("INITIAL")
-  private val executeJob = Execute(WorkflowJob(agentPath, pathExecutable, parallelism = 100))
+  private val executeJob = Execute(WorkflowJob(agentPath, pathExecutable, processLimit = 100))
 
   private val singleJobWorkflow = Workflow.of(
     WorkflowPath("SINGLE") ~ versionId,

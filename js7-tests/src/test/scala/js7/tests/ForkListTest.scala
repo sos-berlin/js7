@@ -498,7 +498,7 @@ object ForkListTest:
     exprFunction("(element) => { element: $element }"),
     Workflow.anonymous(
       Seq(
-        TestJob.execute(agentPath, parallelism = 100_000)),
+        TestJob.execute(agentPath, processLimit = 100_000)),
       result = Some(Map("resultList" -> expr("$result")))))
 
   private val atControllerWorkflow = Workflow(

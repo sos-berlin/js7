@@ -10,7 +10,7 @@ import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichPartialFunction}
 import js7.data.execution.workflow.instructions.ExecuteExecutor.{noDateOffset, orderIdToDate}
 import js7.data.order.Order.{IsFreshOrReady, Processed}
 import js7.data.order.OrderEvent.{OrderFailedIntermediate_, OrderMoved, OrderProcessingKilled}
-import js7.data.order.OrderObstacle.{WaitingForAdmission, jobParallelismLimitReached}
+import js7.data.order.OrderObstacle.{WaitingForAdmission, jobParallelismLimitReached, jobProcessLimitReached}
 import js7.data.order.Outcome.Disrupted.ProcessLost
 import js7.data.order.{Order, OrderId, OrderObstacle, OrderObstacleCalculator, Outcome}
 import js7.data.state.StateView
@@ -22,7 +22,7 @@ import scala.util.Try
 
 private[execution] final class ExecuteExecutor(protected val service: InstructionExecutorService)
 extends EventInstructionExecutor, PositionInstructionExecutor:
-  
+
   type Instr = Execute
   val instructionClass = classOf[Execute]
 
@@ -105,8 +105,10 @@ extends EventInstructionExecutor, PositionInstructionExecutor:
           .map(interval => WaitingForAdmission(interval.start))
           .toSet
         admissionObstacles ++
-          (calculator.jobToOrderCount(jobKey) >= job.parallelism)
-            .thenSet(jobParallelismLimitReached)
+          (if calculator.jobToOrderCount(jobKey) >= job.processLimit then
+            Set(jobProcessLimitReached, jobParallelismLimitReached)
+          else
+            Set.empty)
       else
         Set.empty
 

@@ -37,6 +37,10 @@ trait StateView extends ItemContainer:
 
   def orders: Iterable[Order[Order.State]]
 
+  // TODO SLOW!
+  def slowProcessingOrderCount(agentPath: AgentPath): Int =
+    orders.iterator.filter(_.attached.contains(agentPath)).count(_.isState[Processing])
+
   // SLOW !!!
   def jobToOrderCount(jobKey: JobKey): Int =
     idToWorkflow

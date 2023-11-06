@@ -77,8 +77,8 @@ object ManyAddOrdersTest:
 
   private val workflow = Workflow.of(
     WorkflowPath("SINGLE") ~ versionId,
-    Execute(WorkflowJob(agentPath1, pathExecutable, parallelism = 3)),
-    Execute(WorkflowJob(agentPath2, pathExecutable, parallelism = 3)))
+    Execute(WorkflowJob(agentPath1, pathExecutable, processLimit = 3)),
+    Execute(WorkflowJob(agentPath2, pathExecutable, processLimit = 3)))
 
   private val workflow2 =json"""
     {

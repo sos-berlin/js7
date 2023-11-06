@@ -23,6 +23,13 @@ import scala.reflect.ClassTag
   * @author Joacim Zschimmer
   */
 final class StrictEventWatch(val underlying: FileEventWatch):
+  self =>
+
+  private var _lastWatchedEventId = EventId.BeforeFirst
+
+  def lastWatchedEventId: EventId =
+    _lastWatchedEventId
+
   def fileEventIds: Seq[EventId] =
     underlying.fileEventIds
 
@@ -43,6 +50,19 @@ final class StrictEventWatch(val underlying: FileEventWatch):
     predicate: E => Boolean = Every)
   : Task[E] =
     underlying.whenKeyedEvent(request, key, predicate)
+
+  /** TEST ONLY - Blocking. */
+  @TestOnly
+  def awaitNext[E <: Event : ClassTag](
+    predicate: KeyedEvent[E] => Boolean = Every,
+    after: EventId = _lastWatchedEventId,
+    timeout: FiniteDuration = 99.s)
+    (implicit s: Scheduler, E: Tag[E])
+  : Vector[Stamped[KeyedEvent[E]]] = {
+    val r = await(predicate, after, timeout)
+    _lastWatchedEventId = r.last.eventId
+    r
+  }
 
   /** TEST ONLY - Blocking. */
   @TestOnly
@@ -78,15 +98,29 @@ final class StrictEventWatch(val underlying: FileEventWatch):
 
   /** TEST ONLY - Blocking. */
   @TestOnly
+  def expectNext[E <: Event : ClassTag](
+    predicate: KeyedEvent[E] => Boolean = Every,
+    after: EventId = _lastWatchedEventId,
+    timeout: FiniteDuration = 99.s)
+    (implicit s: Scheduler, E: Tag[E])
+  : Expect[E] =
+    new Expect(awaitNext(predicate, after = after, timeout))
+
+  /** TEST ONLY - Blocking. */
+  @TestOnly
   def expect[E <: Event : ClassTag, A](
     predicate: KeyedEvent[E] => Boolean = Every,
     timeout: FiniteDuration = 99.s)
-    (body: => A)
     (implicit s: Scheduler, E: Tag[E])
-  : Vector[Stamped[KeyedEvent[E]]] =
-    val eventId = lastAddedEventId
-    body
-    await(predicate, after = eventId, timeout)
+  : Expect[E] =
+    val eventId = this._lastWatchedEventId
+    new Expect(await(predicate, after = eventId, timeout))
+
+  final class Expect[E <: Event : ClassTag] private[StrictEventWatch](await: => Any):
+    def apply[A](body: => A): A =
+      val a = body
+      await
+      a
 
   /** TEST ONLY - Blocking. */
   @TestOnly

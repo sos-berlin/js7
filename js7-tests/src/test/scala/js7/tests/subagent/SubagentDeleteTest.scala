@@ -179,7 +179,7 @@ object SubagentDeleteTest:
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",
     Seq(
-      TestSemaphoreJob.execute(agentPath, parallelism = 99)))
+      TestSemaphoreJob.execute(agentPath, processLimit = 99)))
 
   final class TestSemaphoreJob extends SemaphoreJob(TestSemaphoreJob)
   object TestSemaphoreJob extends SemaphoreJob.Companion[TestSemaphoreJob]

@@ -10,7 +10,7 @@ define workflow {
     },
     "🍋": {
       try (retryDelays=[0, 1]) {
-        execute agent="agent-1", parallelism=10, executable="fail", env={"HELLO": "やあ"};
+        execute agent="agent-1", processLimit=10, executable="fail", env={"HELLO": "やあ"};
       } catch {
         if (catchCount < 5) {
           job SLEEP, defaultArguments={"hello": "Will try again ⭕️"};
@@ -26,7 +26,7 @@ define workflow {
   // Fork with all jobs at same (current) Agent
   fork {
     "🥕": {
-      execute agent="agent-1", parallelism=10, executable="test", env={"hello": "你好"};
+      execute agent="agent-1", processLimit=10, executable="test", env={"hello": "你好"};
       job TEST1;
     },
     "🍋": {
@@ -45,7 +45,7 @@ define workflow {
     execute
       agent="agent-1",
       executable="test",
-      parallelism=50,
+      processLimit=50,
       env={
         "HELLO": variable("hello", default="")
       };
@@ -54,7 +54,7 @@ define workflow {
   define job TEST2 {
     execute
       agent="agent-2",
-      parallelism=50,
+      processLimit=50,
       env={
         "TEST_ARGUMENT": "☘️"
       },
@@ -72,7 +72,7 @@ exit
     execute
       agent="agent-1",
       executable="sleep",
-      parallelism=10,
+      processLimit=10,
       env={
         "HELLO": variable("hello", default="")
       };

@@ -102,13 +102,13 @@ object InternalJob:
       agentPath: AgentPath,
       arguments: Map[String, Expression] = Map.empty,
       subagentSelectionId: Option[Expression] = None,
-      parallelism: Int = 1,
+      processLimit: Int = 1,
       timeout: Option[FiniteDuration] = None,
       jobResourcePaths: Seq[JobResourcePath] = Nil)
     : Execute.Anonymous =
       Execute(workflowJob(
         agentPath, arguments, subagentSelectionId,
-        parallelism = parallelism,
+        processLimit = processLimit,
         timeout = timeout,
         jobResourcePaths = jobResourcePaths))
 
@@ -116,7 +116,7 @@ object InternalJob:
       agentPath: AgentPath,
       arguments: Map[String, Expression] = Map.empty,
       subagentSelectionId: Option[Expression] = None,
-      parallelism: Int = 1,
+      processLimit: Int = 1,
       timeout: Option[FiniteDuration] = None,
       jobResourcePaths: Seq[JobResourcePath] = Nil)
     : WorkflowJob =
@@ -124,6 +124,6 @@ object InternalJob:
         agentPath,
         executable(arguments = arguments),
         subagentSelectionId = subagentSelectionId,
-        parallelism = parallelism,
+        processLimit = processLimit,
         timeout = timeout,
         jobResourcePaths = jobResourcePaths)

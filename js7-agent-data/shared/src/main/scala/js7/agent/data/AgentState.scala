@@ -173,7 +173,8 @@ extends SignedItemContainer,
 
           case ItemAttachedToMe(item: UnsignedItem) =>
             item match
-              case _: WorkflowPathControl |
+              case _: AgentRef |
+                   _: WorkflowPathControl |
                    _: WorkflowControl |
                    _: Calendar |
                    _: SubagentSelection |
@@ -206,12 +207,22 @@ extends SignedItemContainer,
 
               case itemKey: UnsignedItemKey =>
                 itemKey match
-                  case _: WorkflowPathControlPath | WorkflowControlId.as(_) |
-                       _: CalendarPath |
-                       _: SubagentId | _: SubagentSelectionId =>
+                  case _: AgentPath =>
+                    // The Controller detaches all attached Items.
+                    // But without its AgentRef, AgentOrderKeeper may complain about missing
+                    // AgentRef.processLimit, when trying to start a job (short before shutdown).
+                    // So we keep our AgentRef silently.
+                    Right(this)
+
+                  case _ =>
+                    itemKey match
+                      case _: WorkflowPathControlPath | WorkflowControlId.as(_) |
+                           _: CalendarPath |
+                           _: SubagentId | _: SubagentSelectionId =>
                     for _ <- keyToUnsignedItemState_.checked(itemKey) yield
-                      copy(
-                        keyToUnsignedItemState_ = keyToUnsignedItemState_ - itemKey)
+                          copy(
+                            keyToUnsignedItemState_ = keyToUnsignedItemState_ - itemKey)
+
                   case _ =>
                     eventNotApplicable(keyedEvent)
 
@@ -344,9 +355,6 @@ extends ClusterableState.Companion[AgentState], ItemContainer.Companion[AgentSta
   protected val inventoryItems = Vector(
     AgentRef, SubagentItem, SubagentSelection,
     FileWatch, JobResource, Calendar, Workflow, WorkflowPathControl, WorkflowControl)
-
-  //protected override def itemPaths =
-  //  super.itemPaths :+ AgentPath
 
   final case class AgentMetaState(
     directors: Seq[SubagentId],

@@ -193,7 +193,7 @@ object JournalLogger:
         else if forTrace && nr == beforeLastEventNr then '⎨'
         else '⎪'
       else if !forTrace then ' '
-      else if isFirstEvent then '┐'
-      else if isLastEvent then '┘'
-      //else if (nr == beforeLastEventNr) '┤'
+      else if isFirstEvent then '┌'
+      else if isLastEvent then '└'
+      else if nr == beforeLastEventNr then '┤'
       else '╷' // ┆╎

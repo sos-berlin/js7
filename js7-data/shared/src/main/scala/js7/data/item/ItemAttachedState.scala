@@ -45,9 +45,3 @@ object ItemAttachedState:
       Subtype(Attachable),
       Subtype[Attached],
       Subtype(Detachable))
-
-  sealed trait AttachableOrAttached extends NotDetached
-  object AttachableOrAttached:
-    implicit val jsonCodec: TypedJsonCodec[NotDetached] = TypedJsonCodec(
-      Subtype(Attachable),
-      Subtype[Attached])

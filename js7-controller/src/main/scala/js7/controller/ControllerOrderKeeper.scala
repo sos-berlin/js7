@@ -1210,12 +1210,10 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
 
   private def proceedWithItem(itemKey: InventoryItemKey): Unit =
     itemKey match
-      case agentPath: AgentPath =>
-        // TODO Handle AgentRef here: agentEntry .actor ! AgentDriver.Queueable.StartFetchingEvents ...
-
-      case _ =>
-        for agentToAttachedState <- _controllerState.itemToAgentToAttachedState.get(itemKey) do
-          for (agentPath, attachedState) <- agentToAttachedState do
+      case itemKey: InventoryItemKey =>
+        // TODO Handle AgentRef here: agentEntry .actor ! AgentDriver.Input.StartFetchingEvents ...
+        for (agentToAttachedState <- _controllerState.itemToAgentToAttachedState.get(itemKey)) do
+          for ((agentPath, attachedState) <- agentToAttachedState) do
             // TODO Does nothing if Agent is added later! (should be impossible, anyway)
             for agentEntry <- agentRegister.get(agentPath) do
               val agentDriver = agentEntry.agentDriver
@@ -1253,6 +1251,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
                         .awaitInfinite // TODO
 
                   case _ =>
+    end match
 
     // ResetSubagent
     itemKey match
@@ -1269,6 +1268,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
                   .awaitInfinite // TODO
             case _ =>
       case _ =>
+  end proceedWithItem
 
   private def handleOrderEvent(keyedEvent: KeyedEvent[OrderEvent]): Set[OrderId] =
     val KeyedEvent(orderId, event) = keyedEvent
