@@ -515,128 +515,116 @@ final class ExecuteTest extends OurTestSuite, ControllerAgentForScalaTest, Block
   }
 
   "processLimit" - {
-    "WorkflowJob processLimit" in {
+    "WorkflowJob processLimit" in:
       val processLimit = 2
       val workflow = addWorkflow(Workflow.of(
         ParallelInternalJob.execute(agentPath, processLimit = processLimit)))
       val orderIds = for i <- 1 to processLimit yield OrderId(s"JOB-LIMIT-$i")
       val eventId = eventWatch.lastAddedEventId
-    controller.api.addOrders(Observable
+      controller.api.addOrders(Observable
         .fromIterable(orderIds)
         .map(FreshOrder(_, workflow.path)))
         .await(99.s).orThrow
-    for orderId <- orderIds do {
+      for orderId <- orderIds do
         eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
-      }
       val extraOrderId = OrderId("JOB-LIMIT-EXTRA")
-    controller.api.addOrder(FreshOrder(extraOrderId, workflow.path)).await(99.s).orThrow
+      controller.api.addOrder(FreshOrder(extraOrderId, workflow.path)).await(99.s).orThrow
       eventWatch.await[OrderAttached](_.key == extraOrderId, after = eventId)
       assert(orderToObstacles(extraOrderId)(WallClock) ==
         Right(Set(jobProcessLimitReached)))
 
-    controller.api.executeCommand(CancelOrders(extraOrderId :: Nil)).await(99.s).orThrow
+      controller.api.executeCommand(CancelOrders(extraOrderId :: Nil)).await(99.s).orThrow
       eventWatch.await[OrderCancelled](_.key == extraOrderId, after = eventId)
 
-    controller.api
+      controller.api
         .executeCommand(
           CancelOrders(orderIds, CancellationMode.kill(immediately = true)))
         .await(99.s).orThrow
-    for orderId <- orderIds do {
+      for orderId <- orderIds do
         eventWatch.await[OrderCancelled](_.key == orderId, after = eventId)
-      }
-    }
 
-    "Agent processLimit" in {
+    "Agent processLimit" in:
       val jobProcessLimit = 2
       assert(agentProcessLimit == Some(3)/*last test*/)
       val firstEventId = eventWatch.lastAddedEventId
       val workflows = for (_ <- 0 until 2) yield updateItem(Workflow.of(
         ParallelInternalJob.execute(agentPath, processLimit = jobProcessLimit)))
-      try {
+      try
         val orderIds = for (i <- 0 until agentProcessLimit.get) yield OrderId(s"AGENT-LIMIT-$i")
         val eventId = eventWatch.lastAddedEventId
         controller.api.addOrders(Observable
           .fromIterable(0 until agentProcessLimit.get)
           .map(i => FreshOrder(orderIds(i), workflows(i / jobProcessLimit).path)))
           .await(99.s).orThrow
-        for (orderId <- orderIds) {
+        for orderId <- orderIds do
           eventWatch.awaitNext[OrderProcessingStarted](_.key == orderId, after = eventId)
-        }
 
         val extraOrderId = OrderId("AGENT-LIMIT-EXTRA")
         addAndExpectedLimitIsReached(extraOrderId, workflows(1).path)
 
-        eventWatch.expectNext[OrderProcessed]().apply {
-          eventWatch.expectNext[OrderProcessingStarted]().apply {
+        eventWatch.expectNext[OrderProcessed]():
+          eventWatch.expectNext[OrderProcessingStarted]():
             ParallelInternalJob.continue(1)
-          }
-        }
+
+        ParallelInternalJob.reset()
+        for orderId <- orderIds :+ extraOrderId do
+          eventWatch.await[OrderFinished](_.key == orderId, after = firstEventId)
+      finally
+        deleteItems(workflows.map(_.path)*)
+
+    s"Increase Agent processLimit=4" in:
+      test(increasedProcessLimit = Some(4), "B")
+
+    s"Increase Agent processLimit=None" in:
+      test(increasedProcessLimit = None, "C")
+
+    def test(increasedProcessLimit: Option[Int], name: String) =
+      eventWatch.expectNext[ItemAttached](_.event.key == agentPath):
+        controller.api
+          .updateUnsignedSimpleItems(Seq(
+            controllerState.keyToItem(AgentRef)(agentPath)
+              .copy(processLimit = Some(3), itemRevision = None)))
+          .await(99.s).orThrow
+      assert(agentProcessLimit == Some(3))
+      ParallelInternalJob.reset()
+      val firstEventId = eventWatch.lastAddedEventId
+
+      val workflow = Workflow.of(
+        ParallelInternalJob.execute(agentPath, processLimit = Int.MaxValue))
+      withTemporaryItem(workflow) { workflow =>
+        val orderIds = for (i <- 0 until agentProcessLimit.get) yield
+          OrderId(s"AGENT-LIMIT-$name-$i")
+        val eventId = eventWatch.lastAddedEventId
+        controller.api.addOrders(Observable
+          .fromIterable(0 until agentProcessLimit.get)
+          .map(i => FreshOrder(orderIds(i), workflow.path)))
+          .await(99.s).orThrow
+        for orderId <- orderIds do
+          eventWatch.awaitNext[OrderProcessingStarted](_.key == orderId, after = eventId)
+
+        val extraOrderId = OrderId(s"AGENT-LIMIT-$name-EXTRA")
+        addAndExpectedLimitIsReached(extraOrderId, workflow.path)
+
+        // Increase Agent processLimit
+        eventWatch.expectNext[OrderProcessingStarted]():
+          eventWatch.expectNext[ItemAttached](_.event.key == agentPath):
+            controller.api
+              .updateUnsignedSimpleItems(Seq(
+                controllerState.keyToItem(AgentRef)(agentPath)
+                  .copy(processLimit = increasedProcessLimit, itemRevision = None)))
+              .await(99.s).orThrow
 
         ParallelInternalJob.reset()
         for (orderId <- orderIds :+ extraOrderId)
           eventWatch.await[OrderFinished](_.key == orderId, after = firstEventId)
-      } finally
-        deleteItems(workflows.map(_.path)*)
-    }
-
-    test(increasedProcessLimit = Some(4), "B")
-    test(increasedProcessLimit = None, "C")
-
-    def test(increasedProcessLimit: Option[Int], name: String) =
-      s"Increase Agent processLimit=$increasedProcessLimit" in {
-        eventWatch.expectNext[ItemAttached](_.event.key == agentPath).apply {
-          controller.api
-            .updateUnsignedSimpleItems(Seq(
-              controllerState.keyToItem(AgentRef)(agentPath)
-                .copy(processLimit = Some(3), itemRevision = None)))
-            .await(99.s).orThrow
-        }
-        assert(agentProcessLimit == Some(3))
-        ParallelInternalJob.reset()
-        val firstEventId = eventWatch.lastAddedEventId
-
-        val workflow = Workflow.of(
-          ParallelInternalJob.execute(agentPath, processLimit = Int.MaxValue))
-        withTemporaryItem(workflow) { workflow =>
-          val orderIds = for (i <- 0 until agentProcessLimit.get) yield
-            OrderId(s"AGENT-LIMIT-$name-$i")
-          val eventId = eventWatch.lastAddedEventId
-          controller.api.addOrders(Observable
-            .fromIterable(0 until agentProcessLimit.get)
-            .map(i => FreshOrder(orderIds(i), workflow.path)))
-            .await(99.s).orThrow
-          for (orderId <- orderIds) {
-            eventWatch.awaitNext[OrderProcessingStarted](_.key == orderId, after = eventId)
-          }
-
-          val extraOrderId = OrderId(s"AGENT-LIMIT-$name-EXTRA")
-          addAndExpectedLimitIsReached(extraOrderId, workflow.path)
-
-          // Increase Agent processLimit
-          eventWatch.expectNext[OrderProcessingStarted]().apply {
-            eventWatch.expectNext[ItemAttached](_.event.key == agentPath).apply {
-              controller.api
-                .updateUnsignedSimpleItems(Seq(
-                  controllerState.keyToItem(AgentRef)(agentPath)
-                    .copy(processLimit = increasedProcessLimit, itemRevision = None)))
-                .await(99.s).orThrow
-            }
-          }
-
-          ParallelInternalJob.reset()
-          for (orderId <- orderIds :+ extraOrderId)
-            eventWatch.await[OrderFinished](_.key == orderId, after = firstEventId)
-        }
       }
 
-    def addAndExpectedLimitIsReached(orderId: OrderId, workflowPath: WorkflowPath): Unit = {
-      eventWatch.expectNext[OrderAttached](_.key == orderId).apply {
+    def addAndExpectedLimitIsReached(orderId: OrderId, workflowPath: WorkflowPath): Unit =
+      eventWatch.expectNext[OrderAttached](_.key == orderId):
         controller.api.addOrder(FreshOrder(orderId, workflowPath)).await(99.s).orThrow
-      }
-      retryUntil(9.s, 10.ms)(
-        assert(orderToObstacles(orderId)(WallClock) == Right(Set(agentProcessLimitReached))))
+      retryUntil(9.s, 10.ms):
+        assert(orderToObstacles(orderId)(WallClock) == Right(Set(agentProcessLimitReached)))
       assert(controllerState.idToOrder(orderId).isState[Order.Fresh])
-    }
   }
 
   private def addExecuteTest(

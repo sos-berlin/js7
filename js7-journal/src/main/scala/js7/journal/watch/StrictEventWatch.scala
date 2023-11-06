@@ -57,7 +57,7 @@ final class StrictEventWatch(val underlying: FileEventWatch):
     predicate: KeyedEvent[E] => Boolean = Every,
     after: EventId = _lastWatchedEventId,
     timeout: FiniteDuration = 99.s)
-    (implicit s: Scheduler, E: Tag[E])
+    (using s: Scheduler, E: Tag[E])
   : Vector[Stamped[KeyedEvent[E]]] = {
     val r = await(predicate, after, timeout)
     _lastWatchedEventId = r.last.eventId
@@ -70,7 +70,7 @@ final class StrictEventWatch(val underlying: FileEventWatch):
     predicate: KeyedEvent[E] => Boolean = Every,
     after: EventId = tornEventId,
     timeout: FiniteDuration = 99.s)
-    (implicit s: Scheduler, E: Tag[E])
+    (using s: Scheduler, E: Tag[E])
   : Vector[Stamped[KeyedEvent[E]]] =
     underlying.await(predicate, after, timeout)
 
@@ -79,7 +79,7 @@ final class StrictEventWatch(val underlying: FileEventWatch):
     predicate: KeyedEvent[E] => Boolean = Every,
     after: EventId = EventId.BeforeFirst,
     timeout: FiniteDuration = 99.s)
-    (implicit s: Scheduler)
+    (using s: Scheduler)
   : Task[Vector[Stamped[KeyedEvent[E]]]] =
     underlying.awaitAsync(predicate, after, timeout)
 
@@ -89,7 +89,7 @@ final class StrictEventWatch(val underlying: FileEventWatch):
     predicate: KeyedEvent[E] => Boolean = Every,
     after: EventId = EventId.BeforeFirst,
     timeout: FiniteDuration = 99.s)
-    (implicit s: Scheduler)
+    (using s: Scheduler)
   : Seq[Stamped[KeyedEvent[E]]] =
     underlying
       .untilAllKeys(keys, predicate, after = after, timeout = Some(timeout))
@@ -98,11 +98,11 @@ final class StrictEventWatch(val underlying: FileEventWatch):
 
   /** TEST ONLY - Blocking. */
   @TestOnly
-  def expectNext[E <: Event : ClassTag](
+  def expectNext[E <: Event](
     predicate: KeyedEvent[E] => Boolean = Every,
     after: EventId = _lastWatchedEventId,
     timeout: FiniteDuration = 99.s)
-    (implicit s: Scheduler, E: Tag[E])
+    (using s: Scheduler, E: Tag[E], classTag: ClassTag[E])
   : Expect[E] =
     new Expect(awaitNext(predicate, after = after, timeout))
 
@@ -111,7 +111,7 @@ final class StrictEventWatch(val underlying: FileEventWatch):
   def expect[E <: Event : ClassTag, A](
     predicate: KeyedEvent[E] => Boolean = Every,
     timeout: FiniteDuration = 99.s)
-    (implicit s: Scheduler, E: Tag[E])
+    (using s: Scheduler, E: Tag[E])
   : Expect[E] =
     val eventId = this._lastWatchedEventId
     new Expect(await(predicate, after = eventId, timeout))
@@ -136,7 +136,7 @@ final class StrictEventWatch(val underlying: FileEventWatch):
   def keyedEvents[E <: Event: ClassTag: Tag](
     predicate: KeyedEvent[E] => Boolean = Every,
     after: EventId)
-    (implicit s: Scheduler)
+    (using s: Scheduler)
   : Seq[KeyedEvent[E]] =
     allAfter[E](after = after).await(99.s)
       .filter(stamped => predicate(stamped.value))
@@ -144,13 +144,13 @@ final class StrictEventWatch(val underlying: FileEventWatch):
 
   /** TEST ONLY - Blocking. */
   @TestOnly
-  def allKeyedEvents[E <: Event: ClassTag](implicit s: Scheduler, E: Tag[E])
+  def allKeyedEvents[E <: Event: ClassTag](using s: Scheduler, E: Tag[E])
   : Seq[KeyedEvent[E]] =
     allStamped[E].map(_.value)
 
   /** TEST ONLY - Blocking. */
   @TestOnly
-  def allStamped[E <: Event: ClassTag](implicit s: Scheduler, E: Tag[E])
+  def allStamped[E <: Event: ClassTag](using s: Scheduler, E: Tag[E])
   : Seq[Stamped[KeyedEvent[E]]] =
     allAfter[E]().await(99.s)
 
