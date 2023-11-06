@@ -23,7 +23,7 @@ import js7.data.item.BasicItemEvent.ItemAttached
 import js7.data.item.VersionId
 import js7.data.job.{AbsolutePathExecutable, CommandLineExecutable, CommandLineParser, Executable, JobResource, JobResourcePath, ProcessExecutable, RelativePathExecutable, ReturnCodeMeaning, ShellScriptExecutable}
 import js7.data.order.OrderEvent.{OrderAttached, OrderCancelled, OrderFailed, OrderFinished, OrderProcessed, OrderProcessingStarted, OrderStdWritten, OrderStdoutWritten}
-import js7.data.order.OrderObstacle.{agentProcessLimitReached, jobParallelismLimitReached, jobProcessLimitReached}
+import js7.data.order.OrderObstacle.{agentProcessLimitReached, jobProcessLimitReached}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
 import js7.data.value.expression.Expression.{NamedValue, NumericConstant, StringConstant}
 import js7.data.value.expression.ExpressionParser.expr
@@ -534,7 +534,7 @@ with BlockingItemUpdater
       controllerApi.addOrder(FreshOrder(extraOrderId, workflow.path)).await(99.s).orThrow
       eventWatch.await[OrderAttached](_.key == extraOrderId, after = eventId)
       assert(orderToObstacles(extraOrderId)(WallClock) ==
-        Right(Set(jobProcessLimitReached, jobParallelismLimitReached)))
+        Right(Set(jobProcessLimitReached)))
 
       controllerApi.executeCommand(CancelOrders(extraOrderId :: Nil)).await(99.s).orThrow
       eventWatch.await[OrderCancelled](_.key == extraOrderId, after = eventId)

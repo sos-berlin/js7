@@ -43,7 +43,7 @@ final class ForkListTest extends OurTestSuite
                   "TYPE": "PathExecutable",
                   "path": "A"
                 },
-                "parallelism": 1
+                "processLimit": 1
               }
             }
           ]

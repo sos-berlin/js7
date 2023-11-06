@@ -17,9 +17,8 @@ object JOrderObstacle
       case o: OrderObstacle.WaitingForAdmission => WaitingForAdmission(o)
       case o: OrderObstacle.WaitingForOtherTime => WaitingForOtherTime(o)
       case OrderObstacle.WaitingForCommand => WaitingForCommand
-      case OrderObstacle.AgentProcessLimitReached => jobParallelismLimitReached
+      case OrderObstacle.AgentProcessLimitReached => agentProcessLimitReached
       case OrderObstacle.JobProcessLimitReached => jobProcessLimitReached
-      case OrderObstacle.JobParallelismLimitReached => jobParallelismLimitReached
       case OrderObstacle.WorkflowSuspended => workflowSuspended
     }
 
@@ -47,17 +46,10 @@ object JOrderObstacle
   val agentProcessLimitReached =
     AgentProcessLimitReached(OrderObstacle.AgentProcessLimitReached)
 
-  val jobParallelismLimitReached =
-    JobParallelismLimitReached(OrderObstacle.JobParallelismLimitReached)
-
   final case class AgentProcessLimitReached(reached: OrderObstacle.AgentProcessLimitReached.type)
   extends JOrderObstacle
 
   final case class JobProcessLimitReached(reached: OrderObstacle.JobProcessLimitReached.type)
-  extends JOrderObstacle
-
-  @deprecated("Use JobProcessLimitReached", "v2.5.6, v2.6.3")
-  final case class JobParallelismLimitReached(asScala: OrderObstacle.JobParallelismLimitReached.type)
   extends JOrderObstacle
 
   val workflowSuspended = WorkflowSuspended(OrderObstacle.WorkflowSuspended)

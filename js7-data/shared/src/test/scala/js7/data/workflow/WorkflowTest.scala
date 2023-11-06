@@ -74,7 +74,7 @@ final class WorkflowTest extends OurTestSuite
                   "v1Compatible": true,
                   "path": "A.cmd"
                 },
-                "parallelism": 3,
+                "processLimit": 3,
                 "defaultArguments": { "JOB_A": "'A-VALUE'" }
               }
             }, {
@@ -94,7 +94,7 @@ final class WorkflowTest extends OurTestSuite
                       "v1Compatible": true,
                       "path": "B.cmd"
                     },
-                    "parallelism": 3 ,
+                    "processLimit": 3 ,
                     "defaultArguments": { "JOB_B1": "'B1-VALUE'" }
                   }
                 }
@@ -110,7 +110,7 @@ final class WorkflowTest extends OurTestSuite
                         "v1Compatible": true,
                         "path": "B.cmd"
                       },
-                      "parallelism": 3,
+                      "processLimit": 3,
                       "defaultArguments": { "JOB_B": "'B-VALUE'" }
                     }
                   }
@@ -132,7 +132,7 @@ final class WorkflowTest extends OurTestSuite
                             "v1Compatible": true,
                             "path": "A.cmd"
                           },
-                          "parallelism": 3,
+                          "processLimit": 3,
                           "defaultArguments": { "JOB_A": "'A-VALUE'" }
                         }
                       }, {
@@ -153,7 +153,7 @@ final class WorkflowTest extends OurTestSuite
                             "v1Compatible": true,
                             "path": "B.cmd"
                           },
-                          "parallelism": 3,
+                          "processLimit": 3,
                           "defaultArguments": { "JOB_B": "'B-VALUE'" }
                         }
                       },
@@ -175,7 +175,7 @@ final class WorkflowTest extends OurTestSuite
                   "v1Compatible": true,
                   "path": "B.cmd"
                 },
-                "parallelism": 1,
+                "processLimit": 1,
                 "subagentSelectionIdExpr": "'SUBAGENT-SELECTION'"
               }
             }
@@ -188,7 +188,7 @@ final class WorkflowTest extends OurTestSuite
                 "v1Compatible": true,
                 "path": "A.cmd"
               },
-              "parallelism": 3,
+              "processLimit": 3,
               "defaultArguments": { "JOB_A": "'A-VALUE'" }
             },
             "B": {
@@ -198,7 +198,7 @@ final class WorkflowTest extends OurTestSuite
                 "v1Compatible": true,
                 "path": "B.cmd"
               },
-              "parallelism": 3,
+              "processLimit": 3,
               "defaultArguments": { "JOB_B": "'B-VALUE'" }}
           },
           "jobResourcePaths": [ "JOB-RESOURCE" ],
@@ -241,7 +241,7 @@ final class WorkflowTest extends OurTestSuite
                   "v1Compatible": true,
                   "path": "A.cmd"
                 },
-                "parallelism": 3,
+                "processLimit": 3,
                 "defaultArguments": { "JOB_A": "'A-VALUE'" }
               }
             }, {
@@ -263,7 +263,7 @@ final class WorkflowTest extends OurTestSuite
                       "v1Compatible": true,
                       "path": "B.cmd"
                     },
-                    "parallelism": 3 ,
+                    "processLimit": 3 ,
                     "defaultArguments": { "JOB_B1": "'B1-VALUE'" }
                   }
                 }
@@ -280,7 +280,7 @@ final class WorkflowTest extends OurTestSuite
                         "v1Compatible": true,
                         "path": "B.cmd"
                       },
-                      "parallelism": 3,
+                      "processLimit": 3,
                       "defaultArguments": { "JOB_B": "'B-VALUE'" }
                     }
                   }, {
@@ -307,7 +307,7 @@ final class WorkflowTest extends OurTestSuite
                             "v1Compatible": true,
                             "path": "A.cmd"
                           },
-                          "parallelism": 3,
+                          "processLimit": 3,
                           "defaultArguments": { "JOB_A": "'A-VALUE'" }
                         }
                       }, {
@@ -334,7 +334,7 @@ final class WorkflowTest extends OurTestSuite
                             "v1Compatible": true,
                             "path": "B.cmd"
                           },
-                          "parallelism": 3,
+                          "processLimit": 3,
                           "defaultArguments": { "JOB_B": "'B-VALUE'" }
                         }
                       }, {
@@ -362,7 +362,7 @@ final class WorkflowTest extends OurTestSuite
                   "v1Compatible": true,
                   "path": "B.cmd"
                 },
-                "parallelism": 1,
+                "processLimit": 1,
                 "subagentSelectionIdExpr" : "'SUBAGENT-SELECTION'"
               }
             }, {
@@ -378,7 +378,7 @@ final class WorkflowTest extends OurTestSuite
                 "v1Compatible": true,
                 "path": "A.cmd"
               },
-              "parallelism": 3,
+              "processLimit": 3,
               "defaultArguments": { "JOB_A": "'A-VALUE'" }
             },
             "B": {
@@ -388,7 +388,7 @@ final class WorkflowTest extends OurTestSuite
                 "v1Compatible": true,
                 "path": "B.cmd"
               },
-              "parallelism": 3,
+              "processLimit": 3,
               "defaultArguments": { "JOB_B": "'B-VALUE'" }}
           },
           "jobResourcePaths": [ "JOB-RESOURCE" ],
@@ -434,7 +434,7 @@ final class WorkflowTest extends OurTestSuite
                 "TYPE": "PathExecutable",
                 "path": "EXECUTABLE"
               },
-              "parallelism": 1
+              "processLimit": 1
             },
             "OWN-SCRIPT": {
               "agentPath": "AGENT",
@@ -442,7 +442,7 @@ final class WorkflowTest extends OurTestSuite
                 "TYPE": "ShellScriptExecutable",
                 "script": "#!/usr/bin/env bash\n..."
               },
-              "parallelism": 1
+              "processLimit": 1
             }
           }
         }""")
@@ -461,7 +461,7 @@ final class WorkflowTest extends OurTestSuite
                   "v1Compatible": true,
                   "path": "A.cmd"
                 },
-                "parallelism": 3,
+                "processLimit": 3,
                 "defaultArguments": {
                   "JOB_A": "'A-VALUE'"
                 }
@@ -487,7 +487,7 @@ final class WorkflowTest extends OurTestSuite
                   "TYPE": "ShellScriptExecutable",
                   "script": "echo HELLO\n"
                 },
-                "parallelism": 1
+                "processLimit": 1
               }
             }
           ],
