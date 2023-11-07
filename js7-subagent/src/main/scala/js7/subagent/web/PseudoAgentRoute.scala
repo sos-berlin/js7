@@ -99,7 +99,7 @@ private trait PseudoAgentRoute extends SessionRoute with EntitySizeLimitProvider
         }
         .start
         .as(ServiceUnavailable -> Problem(
-          "Subagent becomes a fresh Agent Director - try again after a second")))
+          "Subagent is becoming a fresh Agent Director - try again after a second")))
 }
 
 object PseudoAgentRoute
