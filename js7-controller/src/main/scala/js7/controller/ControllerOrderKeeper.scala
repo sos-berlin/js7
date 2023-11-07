@@ -401,6 +401,9 @@ with MainJournalingActor[ControllerState, Event]
             .runToFuture
             .pipeTo(self)
 
+          for (path <- _controllerState.keyToItem(AgentRef).keys) {
+            proceedWithItem(path)
+          }
           for (path <- _controllerState.keyTo(WorkflowPathControl).keys) {
             proceedWithItem(path)
           }

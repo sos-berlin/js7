@@ -34,7 +34,9 @@ import js7.data.agent.Problems.AgentNotDedicatedProblem
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
 import js7.data.controller.ControllerState
 import js7.data.delegate.DelegateCouplingState.{Coupled, Resetting}
+import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, Stamped}
+import js7.data.item.BasicItemEvent.ItemAttachable
 import js7.data.item.ItemAttachedState.{Attachable, Attached}
 import js7.data.item.{InventoryItemEvent, InventoryItemKey, SignableItem, UnsignedItem, UnsignedSimpleItemPath}
 import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderDetached}
@@ -130,8 +132,22 @@ extends ReceiveLoggingActor.WithStash
                 .lock(agentPath)(
                   persistence.persist(controllerState =>
                     for (a <- controllerState.keyTo(AgentRefState).checked(agentPath)) yield
-                      (a.couplingState != Coupled || a.problem.nonEmpty)
-                        .thenList(agentPath <-: AgentCoupled)))
+                      Seq(
+                        (a.couplingState != Coupled || a.problem.nonEmpty) ?
+                          (agentPath <-: AgentCoupled),
+                        // The coupled Agent may not yet have an AgentRef (containing the
+                        // processLimit). So we need to check this:
+                        !controllerState.itemToAgentToAttachedState.contains(agentPath) ?
+                          (NoKey <-: ItemAttachable(agentPath, agentPath))
+                      ).flatten))
+                .flatTapT { case (stamepdSeq, _) =>
+                  Task {
+                    if (stamepdSeq.exists(_.value.event.isInstanceOf[ItemAttachable])) {
+                      context.self ! AgentDriver.Input.AttachUnsignedItem(agentRef)
+                    }
+                    Checked.unit
+                  }
+                }
                 .rightAs(agentEventId)
             }
         })
