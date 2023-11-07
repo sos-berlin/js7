@@ -81,7 +81,6 @@ final class OrderWatchStateHandlerTest extends OurTestSuite
       assert(state.pathToOrderWatchStateMap == Map(
         aOrderWatch.path -> OrderWatchState(
           aOrderWatch,
-          Map.empty,
           Map(
             ExternalOrderName("A") -> arised("A"),
             ExternalOrderName("B") -> arised("B"))),
