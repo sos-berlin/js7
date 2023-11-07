@@ -8,10 +8,9 @@ import js7.base.utils.Collections.RichMap
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.base.utils.Tests.isStrict
-import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent
 import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemAdded
-import js7.data.item.{ItemAttachedState, UnsignedSimpleItemState}
+import js7.data.item.UnsignedSimpleItemState
 import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderDeletionMarked}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
@@ -233,7 +232,6 @@ object OrderWatchState extends UnsignedSimpleItemState.Companion[OrderWatchState
 
   def apply(
     orderWatch: OrderWatch,
-    agentPathToAttachedState: Map[AgentPath, ItemAttachedState.NotDetached],
     sourceToOrderId: Map[ExternalOrderName, ArisedOrHasOrder])
   : OrderWatchState =
     OrderWatchState(orderWatch, sourceToOrderId, Set.empty, Set.empty)

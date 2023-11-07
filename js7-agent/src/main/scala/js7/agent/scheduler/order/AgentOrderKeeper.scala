@@ -625,7 +625,7 @@ with Stash
         //val processLimitIncreased = previous
         //  .collect { case o: AgentRef => o.processLimit }
         //  .flatten
-        //  .exists(previous => agentRef.processLimit.forall(previous < _))
+        //  .forall(previous => agentRef.processLimit.forall(previous < _))
         //if (processLimitIncreased) {
           self ! Internal.TryStartProcessing
         //}
