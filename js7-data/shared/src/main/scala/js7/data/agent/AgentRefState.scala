@@ -42,8 +42,6 @@ extends UnsignedSimpleItemState:
 
   def agentPath = agentRef.path
 
-  def agentPathToAttachedState = Map.empty
-
   def applyEvent(event: AgentRefStateEvent): Checked[AgentRefState] =
     event match
       case AgentDedicated(agentRunId_, eventId_) =>

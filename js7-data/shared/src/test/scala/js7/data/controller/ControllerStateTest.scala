@@ -20,7 +20,7 @@ import js7.data.delegate.DelegateCouplingState
 import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.{EventId, JournalState, SnapshotableState, Stamped}
 import js7.data.item.BasicItemEvent.{ItemAttachable, ItemDeletionMarked}
-import js7.data.item.ItemAttachedState.{Attachable, Attached}
+import js7.data.item.ItemAttachedState.Attachable
 import js7.data.item.SignedItemEvent.SignedItemAdded
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, VersionedItemChanged}
@@ -536,7 +536,6 @@ object ControllerStateTest
       subagentSelection.id -> SubagentSelectionState(subagentSelection),
       fileWatch.path -> OrderWatchState(
         fileWatch,
-        Map(agentRef.path -> Attached(Some(ItemRevision(7)))),
         Map(
           ExternalOrderName("ORDER-NAME") -> HasOrder(OrderId("ORDER"), Some(Vanished)))),
       WorkflowPathControlPath(workflow.path) -> WorkflowPathControl(

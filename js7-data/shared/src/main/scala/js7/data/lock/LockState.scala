@@ -27,8 +27,6 @@ extends UnsignedSimpleItemState, Big/*acquired and queue get big, many orders*/:
   def updateItem(lock: Lock): Checked[LockState] =
     Right(copy(lock = lock))
 
-  def agentPathToAttachedState = Map.empty
-
   def enqueue(orderId: OrderId, count: Option[Int]): Checked[LockState] =
     if !count.forall(_ <= limit) then
       Left(Problem(s"Cannot fulfill lock count=${count getOrElse ""} with $lockPath limit=$limit"))

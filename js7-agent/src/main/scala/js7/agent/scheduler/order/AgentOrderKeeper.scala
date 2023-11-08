@@ -579,7 +579,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
         //val processLimitIncreased = previous
         //  .collect { case o: AgentRef => o.processLimit }
         //  .flatten
-        //  .exists(previous => agentRef.processLimit.forall(previous < _))
+        //  .forall(previous => agentRef.processLimit.forall(previous < _))
         //if processLimitIncreased then
         self ! Internal.TryStartProcessing
         Task.right(())

@@ -423,7 +423,7 @@ extends Service.StoppableByRequest:
       //adoptedEventId <- Resource.eval(Task(state.adoptedEventId))
       afterEventId <- Resource.eval(agentRefState.map(_.eventId))
       directorDriver <- DirectorDriver.resource(
-        agentPath, afterEventId,
+        agentDriver, agentPath, afterEventId,
         client,
         dedicateAgentIfNeeded, onCouplingFailed, onCoupled, onDecoupled,
         onEventsFetched,

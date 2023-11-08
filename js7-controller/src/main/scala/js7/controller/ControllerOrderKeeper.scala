@@ -331,6 +331,8 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
             .runToFuture
             .pipeTo(self)
 
+          for path <- _controllerState.keyToItem(AgentRef).keys do
+            proceedWithItem(path)
           for path <- _controllerState.keyTo(WorkflowPathControl).keys do
             proceedWithItem(path)
           for itemKey <- _controllerState.keyTo(WorkflowControl).keys do

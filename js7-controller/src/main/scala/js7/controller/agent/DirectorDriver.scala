@@ -21,11 +21,13 @@ import js7.controller.agent.AgentDriver.DecoupledProblem
 import js7.controller.agent.DirectorDriver.*
 import js7.data.agent.AgentRefStateEvent.{AgentCoupled, AgentReset}
 import js7.data.agent.Problems.AgentNotDedicatedProblem
-import js7.data.agent.{AgentPath, AgentRefState, AgentRunId}
+import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
 import js7.data.cluster.ClusterEvent
 import js7.data.controller.{ControllerRunId, ControllerState}
 import js7.data.delegate.DelegateCouplingState.{Coupled, Resetting}
+import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, Stamped}
+import js7.data.item.BasicItemEvent.ItemAttachable
 import js7.data.item.InventoryItemEvent
 import js7.data.order.{OrderEvent, OrderId}
 import js7.data.orderwatch.OrderWatchEvent
@@ -36,6 +38,7 @@ import monix.reactive.Observable
 import scala.util.chaining.scalaUtilChainingOps
 
 private[agent] final class DirectorDriver private(
+  agentDriver: AgentDriver,
   agentPath: AgentPath,
   initialEventId: EventId,
   client: AgentClient,
@@ -105,8 +108,21 @@ extends Service.StoppableByRequest:
                 .lock(agentPath)(
                   journal.persist(controllerState =>
                     for a <- controllerState.keyTo(AgentRefState).checked(agentPath) yield
-                      (a.couplingState != Coupled || a.problem.nonEmpty)
-                        .thenList(agentPath <-: AgentCoupled)))
+                      Seq(
+                        (a.couplingState != Coupled || a.problem.nonEmpty) ?
+                          (agentPath <-: AgentCoupled),
+                        // The coupled Agent may not yet have an AgentRef (containing the
+                        // processLimit). So we need to check this:
+                        !controllerState.itemToAgentToAttachedState.contains(agentPath) ?
+                          (NoKey <-: ItemAttachable(agentPath, agentPath))
+                      ).flatten))
+                .flatTapT { case (stamped, state) =>
+                  Task
+                    .when(stamped.exists(_.value.event.isInstanceOf[ItemAttachable]))(
+                      state.keyToItem(AgentRef).get(agentPath).fold(Task.unit)(agentRef =>
+                        agentDriver.send(AgentDriver.Queueable.AttachUnsignedItem(agentRef))))
+                    .as(Checked.unit)
+                }
                 .rightAs(agentEventId)
             }
         }
@@ -242,6 +258,7 @@ private[agent] object DirectorDriver:
     classOf[ClusterEvent])
 
   def resource(
+    agentDriver: AgentDriver,
     agentPath: AgentPath,
     initialEventId: EventId,
     client: AgentClient,
@@ -255,7 +272,7 @@ private[agent] object DirectorDriver:
   : Resource[Task, DirectorDriver] =
     Service.resource(Task(
       new DirectorDriver(
-        agentPath, initialEventId, client,
+        agentDriver, agentPath, initialEventId, client,
         dedicateAgentIfNeeded,
         onCouplingFailed, onCoupled, onDecoupled, adoptEvents,
         journal, conf)))
