@@ -27,10 +27,13 @@
 //object TestAlarmClock:
 //  private val logger = Logger[this.type]
 //
-//  def apply(start: Timestamp): TestAlarmClock =
+//  def apply(start: Timestamp)(using Scheduler, TestControl[_]): TestAlarmClock =
 //    new SimpleTestAlarmClock(start)
 //
 //  private final class SimpleTestAlarmClock(protected val start: Timestamp)
+//    (using
+//      protected val scheduler: Scheduler,
+//      protected val testControl: TestControl[_])
 //  extends Simple, Impl:
 //    override def productPrefix = "TestAlarmClock"
 //
@@ -50,11 +53,7 @@
 //        logger.trace(s"🔔 scheduled $at for ${fullName.value}")
 //        callback
 //
-//    protected def scheduler: Scheduler = ??? // FIXME
-//
-//    protected def testControl: TestControl[_] = ??? // FIXME
-//
-//  private trait Impl extends TestAlarmClock:
+//  private transparent trait Impl extends TestAlarmClock:
 //    protected def testControl: TestControl[?]
 //    protected def start: Timestamp
 //
@@ -91,13 +90,14 @@
 //
 //  /** Only to test the ClockChecking feature. */
 //  private[time] def forTest(start: Timestamp, clockCheckInterval: FiniteDuration)
+//    (using Scheduler, TestControl[_])
 //  : TestAlarmClock =
 //    new ClockCheckingTestAlarmClock(start, clockCheckInterval)
 //
 //  private final class ClockCheckingTestAlarmClock(
 //    protected val start: Timestamp,
 //    protected val clockCheckInterval: FiniteDuration)
-//  extends Impl, ClockChecking:
-//    protected def scheduler: Scheduler = ??? // FIXME
-//
-//    protected def testControl: TestControl[_] = ??? // FIXME
+//    (using
+//      protected val scheduler: Scheduler,
+//      protected val testControl: TestControl[_])
+//  extends Impl, ClockChecking

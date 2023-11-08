@@ -10,7 +10,6 @@ final class StreamExtensionsTest extends OurTestSuite:
     val intStream: Stream[Pure, Int] = 1 +: Stream(2, 3)
     assert(intStream.compile.to(Seq) == Seq(1, 2, 3))
 
-    Stream(2, 3)
     val stream = ("one" +: Stream[Pure, Int](2, 3))
     assert(stream.toList == List("one", 2, 3))
 
@@ -22,4 +21,4 @@ final class StreamExtensionsTest extends OurTestSuite:
     assert(anyStream.toList == List("one", 2, 3))
 
   "takeUntilEval" in:
-    ??? // FIXME Monix
+    pending // FIXME Monix

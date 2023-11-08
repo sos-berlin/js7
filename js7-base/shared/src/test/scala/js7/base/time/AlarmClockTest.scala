@@ -1,5 +1,6 @@
 //package js7.base.time
 //
+//import cats.effect.testkit.TestControl
 //import js7.base.test.OurTestSuite
 //import js7.base.time.ScalaTime.*
 //import js7.base.utils.Atomic
@@ -11,6 +12,8 @@
 //  private val clockCheckInterval = 1.minute
 //
 //  "scheduleAt, and tick at scheduled time" in:
+//    implicit val testControl: TestControl[Unit] = TestControl()
+//
 //    val clock = TestAlarmClock.forTest(start, clockCheckInterval = clockCheckInterval)
 //    val x = Atomic(0)
 //
