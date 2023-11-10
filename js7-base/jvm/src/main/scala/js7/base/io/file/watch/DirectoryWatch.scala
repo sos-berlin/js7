@@ -1,6 +1,11 @@
 package js7.base.io.file.watch
 
+import cats.effect.IO
+import cats.syntax.flatMap.*
+import fs2.Stream
 import java.nio.file.Path
+import js7.base.catsutils.CatsEffectExtensions.left
+import js7.base.fs2utils.StreamExtensions.tapEach
 import js7.base.io.file.watch.BasicDirectoryWatch.repeatWhileIOException
 import js7.base.io.file.watch.DirectoryWatch.*
 import js7.base.log.Logger
@@ -8,10 +13,6 @@ import js7.base.log.Logger.syntax.*
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.thread.IOExecutor
 import js7.base.time.ScalaTime.*
-import cats.effect.IO
-import cats.syntax.flatMap.*
-import fs2.Stream
-import js7.base.fs2utils.StreamExtensions.tapEach
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.FiniteDuration
 
@@ -20,21 +21,21 @@ private final class DirectoryWatch(
   directoryEventStream: Stream[IO, Seq[DirectoryEvent]],
   hotLoopBrake: FiniteDuration):
 
-  private def readDirectoryAndObserveForever(state: DirectoryState)
+  private def readDirectoryThenStreamForever(state: DirectoryState)
   : Stream[IO, (Seq[DirectoryEvent], DirectoryState)] =
     logger.traceStream:
       state.tailRecM { state =>
         val since = now
         @volatile var lastState = state
-        readDirectoryAndObserve(state)
+        readDirectoryThenStream(state)
           .tapEach((_, state) => lastState = state)
           .map(Right(_))
           .append(Stream.eval(
-            IO(Left(lastState))
+            IO.left(lastState)
               .delayBy((since + hotLoopBrake).timeLeftOrZero)))
       }
 
-  private[watch] def readDirectoryAndObserve(state: DirectoryState)
+  private[watch] def readDirectoryThenStream(state: DirectoryState)
   : Stream[IO, (Seq[DirectoryEvent], DirectoryState)] =
     logger.traceStream:
       Stream
@@ -61,7 +62,7 @@ object DirectoryWatch:
     isRelevantFile: Path => Boolean = WatchOptions.everyFileIsRelevant)
     (implicit iox: IOExecutor)
   : Stream[IO, Seq[DirectoryEvent]] =
-    DirectoryWatch.stream2(
+    stream2(
       directoryState,
       settings.toWatchOptions(directory, isRelevantFile))
 
@@ -82,6 +83,6 @@ object DirectoryWatch:
             .resource(basicWatch.streamResource)
             .flatMap(stream =>
               new DirectoryWatch(readDirectory, stream, hotLoopBrake = options.retryDelays.head)
-                .readDirectoryAndObserveForever(state)
+                .readDirectoryThenStreamForever(state)
                 .map(_._1))
         }

@@ -1,0 +1,185 @@
+package js7.base.io.file.watch
+
+import cats.syntax.apply.*
+import cats.effect.{Deferred, IO}
+import fs2.Stream
+import java.nio.file.Files.{createDirectory, delete}
+import java.nio.file.Paths
+import js7.base.fs2utils.Fs2PubSub
+import js7.base.fs2utils.StreamExtensions.*
+import js7.base.io.file.FileUtils
+import js7.base.io.file.FileUtils.syntax.*
+import js7.base.io.file.FileUtils.{temporaryDirectoryResource, touchFile, withTemporaryDirectory}
+import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted}
+import js7.base.io.file.watch.DirectoryState.Entry
+import js7.base.log.Logger
+import js7.base.test.OurAsyncTestSuite
+import js7.base.thread.Futures.implicits.SuccessFuture
+import js7.base.thread.IOExecutor.Implicits.globalIOX
+import js7.base.time.ScalaTime.*
+import js7.base.time.WaitForCondition.retryUntil
+import js7.tester.ScalaTestUtils
+import js7.tester.ScalaTestUtils.awaitAndAssert
+import scala.math.Ordering.Int
+
+final class DirectoryWatchTest extends OurAsyncTestSuite:
+
+  "readDirectory, readDirectoryAsEvents" in:
+    withTemporaryDirectory("DirectoryWatchTest-") { dir =>
+      touchFile(dir / "TEST-1")
+      touchFile(dir / "IGNORED")
+      touchFile(dir / "TEST-2")
+      val state = DirectoryStateJvm.readDirectory(dir, _.toString startsWith "TEST-")
+      assert(state == DirectoryState(Map(
+        Paths.get("TEST-1") -> DirectoryState.Entry(Paths.get("TEST-1")),
+        Paths.get("TEST-2") -> DirectoryState.Entry(Paths.get("TEST-2")))))
+
+      touchFile(dir / "TEST-A")
+      touchFile(dir / "TEST-1")
+
+      assert(state.diffTo(DirectoryStateJvm.readDirectory(dir, _.toString startsWith "TEST-")).toSet ==
+        Set(FileAdded(Paths.get("TEST-A"))))
+    }
+
+  "readDirectoryThenStream" in:
+    Fs2PubSub
+      .resource[IO, Seq[DirectoryEvent]]
+      .use(publisher => IO.defer:
+        @volatile var files = Seq("0")
+
+        def addFile(name: String): IO[Unit] =
+          files :+= name
+          publisher.publish(Seq(FileAdded(Paths.get(name))))
+
+        def toDirectoryState(names: String*) =
+          DirectoryState.fromIterable(names.map(Paths.get(_)).map(Entry(_)))
+
+        def readDirectory() =
+          toDirectoryState(files*)
+
+        def observe(state: DirectoryState, n: Int)
+        : IO[List[(Seq[DirectoryEvent], DirectoryState)]] =
+          publisher.newStream.flatMap(_.use(stream =>
+            new DirectoryWatch(IO(readDirectory()), stream, 1.s)
+              .readDirectoryThenStream(state)
+              .take(n).compile.toList))
+
+        var state = readDirectory()
+        for
+          _ <- addFile("TEST-1")
+          events <- observe(state, 1)
+          _ = assert:
+            events == Seq(
+              Seq(FileAdded(Paths.get("TEST-1"))) -> toDirectoryState("0", "TEST-1"))
+          _ <- // The duplicate event will be ignored
+            publisher.publish(Seq(FileAdded(Paths.get("TEST-1"))))
+          _ <-
+            state = readDirectory()
+            addFile("TEST-2")
+          events <- observe(state, 1)
+        yield assert:
+          events == Seq(
+            Seq(FileAdded(Paths.get("TEST-2"))) -> toDirectoryState("0", "TEST-1", "TEST-2")))
+
+  "stream" in:
+    temporaryDirectoryResource[IO]("DirectoryWatchTest-")
+      .use(dir => IO.defer:
+        var buffer = Vector.empty[Set[DirectoryEvent]]
+        val stop = Deferred.unsafe[IO, Unit]
+        val subscribed = Deferred.unsafe[IO, Unit]
+        DirectoryWatch
+          .stream(dir, DirectoryState.empty, DirectoryWatchSettings.forTest())
+          .doOnSubscribe(subscribed.complete(()).void)
+          .takeUntilEval(stop.get)
+          .foreach(events => IO:
+            buffer :+= events.toSet)
+          .compile
+          .drain
+          .both(subscribed.get
+            .*>(IO.interruptible:
+              assert(buffer.isEmpty)
+              touchFile(dir / "TEST-1")
+              awaitAndAssert:
+                buffer == Seq(Set(FileAdded(Paths.get("TEST-1")))))
+            .*>(stop.complete(())))
+          .as(succeed))
+
+  "stream, while directory is being deleted and recreated" in:
+    temporaryDirectoryResource[IO]("DirectoryWatchTest-")
+      .use(mainDir => IO.defer:
+        val dir = mainDir / "DIRECTORY"
+        var buffer = Vector.empty[DirectoryEvent]
+        val subscribed = Deferred.unsafe[IO, Unit]
+        val stop = Deferred.unsafe[IO, Unit]
+        DirectoryWatch
+          .stream(dir, DirectoryState.empty, DirectoryWatchSettings.forTest(pollTimeout = 100.ms))
+          .doOnSubscribe(subscribed.complete(()).void)
+          .takeUntilEval(stop.get)
+          .foreach(events => IO:
+            Logger.info(s"### $events")
+            buffer ++= events)
+          .evalTap(_ => IO(Logger.info(s"### compile")))
+          .compile
+          .drain
+          .*>(IO(Logger.info(s"### drained")))
+          .both(
+            IO(Logger.info(s"Second fiber"))
+              .*>(IO.sleep(500.ms)) // Delay directory creation
+              .*>(IO.defer:
+                createDirectory(dir)
+                subscribed.get)
+              .*>(IO(Logger.info(s"### subscribed")))
+              .*>(IO.interruptible:
+                assert(buffer.isEmpty)
+                touchFile(dir / "TEST-1")
+                awaitAndAssert:
+                  buffer contains FileAdded(Paths.get("TEST-1"))
+                Logger.info(s"### delete TEST-1")
+                delete(dir / "TEST-1")
+
+                delete(dir)
+                sleep(300.ms)
+                createDirectory(dir)
+                touchFile(dir / "TEST-2")
+                Logger.info(s"### delete TEST-2 touched")
+                awaitAndAssert:
+                  buffer.contains(FileDeleted(Paths.get("TEST-1")))
+                    && buffer.contains(FileAdded(Paths.get("TEST-2")))
+                Logger.info(s"### stop"))
+              .*>(stop.complete(())))
+      .as(succeed))
+
+  "Starting observation under load" in:
+    temporaryDirectoryResource[IO]("DirectoryWatchTest-")
+      .use(dir => IO.defer:
+        var buffer = Vector.empty[Seq[DirectoryEvent]]
+        DirectoryWatch
+          .stream(dir, DirectoryState.empty, DirectoryWatchSettings.forTest())
+          .foreach(events => IO(buffer :+= events))
+          .compile
+          .drain
+          .racePair(IO.interruptible:
+            var first = 0
+
+            for n <- Seq(1000, 1, 10, 500, 3, 50) do
+              buffer = Vector.empty
+              val indices = first + 0 until first + n
+              val fileCreationFuture = Stream.emits(indices).covary[IO]
+                .foreach(i => IO:
+                  touchFile(dir / i.toString))
+                .compile
+                .drain
+                .unsafeToFuture()
+              awaitAndAssert(99.s):
+                buffer.view.map(_.size).sum == indices.size
+              fileCreationFuture.await(100.ms)
+              assert(buffer.flatten.sortBy(_.relativePath.getFileName.toString.toInt) ==
+                indices.map(i => FileAdded(Paths.get(i.toString))))
+              sleep(100.ms)
+              first += n)
+          .flatMap:
+            case Left((outcome, fiber)) => IO(fail())
+            case Right((fiber, outcome)) => fiber.cancel.*>(outcome.embedError).as(succeed))
+
+  "Starting observation under load with some deletions" in:
+    pending

@@ -203,10 +203,10 @@ object FileUtils:
       body(dir)
     }
 
-  def temporaryDirectoryResource(prefix: String): Resource[IO, Path] =
+  def temporaryDirectoryResource[F[_]](using F: Sync[F])(prefix: String): Resource[F, Path] =
     Resource.make(
-      acquire = IO(Files.createTempDirectory(prefix)))(
-      release = dir => IO(deleteDirectoryRecursively(dir)))
+      acquire = F.delay(Files.createTempDirectory(prefix)))(
+      release = dir => F.delay(deleteDirectoryRecursively(dir)))
 
   def provideFile[F[_]](file: Path)(implicit F: Sync[F]): Resource[F, Path] =
     Resource.make(

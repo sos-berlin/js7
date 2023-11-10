@@ -15,26 +15,27 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.{autoDeleting, checkRelativePath, copyDirectoryContent, deleteDirectoryRecursively, provideFile, temporaryDirectoryResource, touchFile, withTemporaryDirectory, withTemporaryFile}
 import js7.base.io.file.FileUtilsTest.*
 import js7.base.problem.ProblemException
-import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.test.{OurAsyncTestSuite, OurTestSuite, TestCatsEffect}
 import js7.base.thread.CatsBlocking.syntax.*
 import org.scalatest.BeforeAndAfterAll
+import org.scalatest.Assertion
 import org.scalatest.matchers.should.Matchers.*
 /**
  * @author Joacim Zschimmer
  */
-final class FileUtilsTest extends OurTestSuite, BeforeAndAfterAll, TestCatsEffect
+final class FileUtilsTest extends OurAsyncTestSuite, BeforeAndAfterAll, TestCatsEffect
 {
   private lazy val path = createTempFile("FileUtilTest-", ".tmp")
 
   override def afterAll() = delete(path)
 
-  "implicit fileToPath" in {
+  "implicit fileToPath" in:
     new File("/a"): Path
-  }
+    succeed
 
-  "implicit pathToFile" in {
+  "implicit pathToFile" in:
     new File("/a").toPath: File
-  }
+    succeed
 
   "Path extention methods" - {
     "slash" - {
@@ -48,6 +49,7 @@ final class FileUtilsTest extends OurTestSuite, BeforeAndAfterAll, TestCatsEffec
             intercept[ProblemException] {
               a / invalid
             }
+            succeed
           }
         }
       }
@@ -141,6 +143,7 @@ final class FileUtilsTest extends OurTestSuite, BeforeAndAfterAll, TestCatsEffec
       assert(dir.directoryContentsAs(Set) == files)
       files foreach delete
       delete(dir)
+      succeed
     }
   }
 
@@ -173,6 +176,7 @@ final class FileUtilsTest extends OurTestSuite, BeforeAndAfterAll, TestCatsEffec
         deleteDirectoryRecursively(b)
       }
     }
+    succeed
   }
 
   "createShortNamedDirectory" in {
@@ -189,6 +193,7 @@ final class FileUtilsTest extends OurTestSuite, BeforeAndAfterAll, TestCatsEffec
     assert(dirs.toSet.size == n)
     dirs foreach delete
     delete(dir)
+    succeed
   }
 
   "withTemporaryFile" in {
@@ -209,15 +214,14 @@ final class FileUtilsTest extends OurTestSuite, BeforeAndAfterAll, TestCatsEffec
 
   "temporaryDirectoryResource" in {
     var directory: Path = null
-    temporaryDirectoryResource("FileUtilsTest-")
+    temporaryDirectoryResource[IO]("FileUtilsTest-")
       .use(dir => IO {
         directory = dir
         touchFile(dir / "FILE")
         createDirectory(dir / "SUBDIRECTORY")
         touchFile(dir / "SUBDIRECTORY" / "FILE")
       })
-      .awaitInfinite
-    assert(!exists(directory))
+      .*>(IO(assert(!exists(directory))))
   }
 
   "autoDeleting" in {
@@ -274,7 +278,7 @@ final class FileUtilsTest extends OurTestSuite, BeforeAndAfterAll, TestCatsEffec
       check(existing = true)
     }
 
-    def check(existing: Boolean): Unit = {
+    def check(existing: Boolean): Assertion =
       withTemporaryFile("FileUtilsTest-", ".tmp") { file =>
         if !existing then delete(file)
         provideFile[SyncIO](file)
@@ -285,7 +289,6 @@ final class FileUtilsTest extends OurTestSuite, BeforeAndAfterAll, TestCatsEffec
           .unsafeRunSync()
         assert(!exists(file))
       }
-    }
   }
 }
 

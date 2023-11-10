@@ -5,7 +5,7 @@ import cats.effect.IO
 import cats.effect.testkit.TestControl
 import js7.base.catsutils.CatsDeadline
 import js7.base.test.OurAsyncTestSuite
-import js7.base.test.CatsEffectTestkitExtensions.toSucceeded
+import js7.base.test.CatsEffectTestkitExtensions.{orRaiseError, test}
 import js7.base.time.ScalaTime.*
 import scala.collection.mutable
 import scala.concurrent.duration.*
@@ -56,10 +56,8 @@ final class DelayerTest extends OurAsyncTestSuite:
         assert(times.map(_.toCoarsest) == mutable.Buffer(
           1.s, 3.s, 6.s, 9.s, 13.s, 16.s, 19.s, 119.s, 120.s, 122.s))
 
-    TestControl.execute(program).flatMap(control =>
-      control.tickFor(1.h)
-        .*>(control.toSucceeded))
-
+    TestControl.test(program).use(_
+      .tickFor(1.h).as(succeed))
 
   "stream" in:
     val program =
@@ -75,4 +73,4 @@ final class DelayerTest extends OurAsyncTestSuite:
 
     TestControl.execute(program).flatMap(control => control
       .tickFor(1.h)
-      .*>(control.toSucceeded))
+      .*>(control.orRaiseError))

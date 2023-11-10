@@ -5,8 +5,8 @@ import js7.base.time.ScalaTime.*
 import scala.concurrent.duration.*
 
 /** Like Scala's `scala.concurrent.duration.Deadline` but based on Monix' clock. */
-final case class CatsDeadline(sinceZero: FiniteDuration):
-//extends Ordered[CatsDeadline]
+final case class CatsDeadline(sinceZero: FiniteDuration)
+extends Ordered[CatsDeadline]:
 
   def nanosSinceZero: Long =
     sinceZero.toNanos
@@ -69,11 +69,8 @@ final case class CatsDeadline(sinceZero: FiniteDuration):
   def timeLeft: IO[FiniteDuration] =
     for o <- elapsed yield -o
 
-  ///**
-  // * The natural ordering for deadline is determined by the natural order of the underlying (finite) duration.
-  // */
-  //def compare(other: CatsDeadline) =
-  //  sinceZero compare other.sinceZero
+  def compare(other: CatsDeadline) =
+    sinceZero compare other.sinceZero
 
   /** Not immutable, may return a different string for each call. */
   override def toString =

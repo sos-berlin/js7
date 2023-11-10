@@ -1,24 +1,24 @@
 package js7.base.io.file.watch
 
-import cats.effect.Resource
+import cats.effect.{IO, Resource}
+import fs2.Stream
 import java.io.IOException
 import java.nio.file.{ClosedWatchServiceException, NotDirectoryException, Path, WatchEvent, WatchKey}
 import java.util.concurrent.TimeUnit.MILLISECONDS
+import js7.base.catsutils.CatsEffectExtensions.{onErrorRestartLoop, raceFold}
+import js7.base.fs2utils.StreamExtensions.+:
 import js7.base.io.file.watch.BasicDirectoryWatch.*
 import js7.base.io.file.watch.DirectoryWatchEvent.Overflow
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.service.Service
 import js7.base.system.OperatingSystem.isMac
-import js7.base.thread.IOExecutor
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.continueWithLast
-import js7.base.utils.ScalaUtils.syntax.RichThrowable
-import cats.effect.IO
-import fs2.Stream
-import js7.base.catsutils.CatsEffectExtensions.{onErrorRestartLoop, raceFold}
-import js7.base.fs2utils.StreamExtensions.+:
+import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
+import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichThrowable}
 import scala.concurrent.duration.Deadline.now
+import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
 
@@ -51,11 +51,12 @@ extends Service.StoppableByRequest:
 
   private def directoryWatchResource: Resource[IO, WatchKey] =
     Resource.make(
-      acquire = failWhenStopRequested(repeatWhileIOException(options, IO {
-        logger.debug(
-          s"register watchService $kinds, ${highSensitivity.mkString(",")} $directory")
-        directory.register(watchService, kinds.toArray: Array[WatchEvent.Kind[?]], highSensitivity*)
-      })))(
+      acquire =
+        failWhenStopRequested(repeatWhileIOException(options, IO {
+          logger.debug(s"register watchService $kinds, ${modifiers.mkString(",")} $directory")
+          directory.register(watchService, kinds.toArray: Array[WatchEvent.Kind[?]], modifiers*)
+        }))
+        .logWhenItTakesLonger(s"Registering $directory in WatchService"))(
       release = watchKey => IO {
         logger.debug(s"watchKey.cancel() $directory")
         try watchKey.cancel()
@@ -65,33 +66,37 @@ extends Service.StoppableByRequest:
       })
 
   private def poll: IO[Seq[DirectoryWatchEvent]] =
-    IO.blocking(logger
-      .traceCallWithResult(
+    logger
+      .traceIOWithResult(
         s"WatchService.poll() $directory",
         result = (events: Seq[DirectoryWatchEvent]) =>
           if events.isEmpty then "timed out" else events.mkString(", "),
         body =
-          try pollWatchKey()
-          catch case NonFatal(t: ClosedWatchServiceException) =>
-            logger.debug(s"${t.toStringWithCauses}")
-            // This may execute after service stopped, and the tread pool may be closed too.
-            // Therefore we never continue.
-            // May this let block cancellation in cats-effect 3 ???
-            // This is not a little memory leak, or ???
-            Nil))
+          pollWatchKey().recover:
+            case NonFatal(t: ClosedWatchServiceException) =>
+              logger.debug(s"${t.toStringWithCauses}")
+              // This may execute after service stopped, and the tread pool may be closed too.
+              // Therefore we never continue.
+              // May this let block cancellation in cats-effect 3 ???
+              // This is not a little memory leak, or ???
+              Nil)
 
-  private def pollWatchKey(): Seq[DirectoryWatchEvent] =
-    watchService.poll(pollTimeout.toMillis, MILLISECONDS) match
-      case null => Nil
-      case watchKey =>
-        try watchKey.pollEvents().asScala.view
-          .collect:
-            case o: WatchEvent[Path @unchecked]
-              if o.context.isInstanceOf[Path] && options.isRelevantFile(o.context) => o
-          .map(DirectoryWatchEvent.fromJava)
-          .toVector
-        finally
-          watchKey.reset()
+  /** Wait for events. */
+  private def pollWatchKey(): IO[Seq[DirectoryWatchEvent]] =
+    IO.interruptible:
+      watchService.poll(pollTimeout.toMillis, MILLISECONDS) match
+        case null => Nil
+        case watchKey => retrieveEvents(watchKey)
+
+  private def retrieveEvents(watchKey: WatchKey): Seq[DirectoryWatchEvent] =
+    try watchKey.pollEvents().asScala.view
+      .collect:
+        case o: WatchEvent[Path @unchecked]
+          if o.context.isInstanceOf[Path] && options.isRelevantFile(o.context) => o
+      .map(DirectoryWatchEvent.fromJava)
+      .toVector
+    finally
+      watchKey.reset()
 
   override def toString =
     s"BasicDirectoryWatch($directory)"
@@ -100,20 +105,22 @@ extends Service.StoppableByRequest:
 object BasicDirectoryWatch:
   private val logger = Logger[this.type]
 
-  val systemWatchDelay = if isMac/*polling*/ then 2.s else 0.s
+  private val sensitivity = isMac ? // https://bugs.openjdk.java.net/browse/JDK-7133447
+    com.sun.nio.file.SensitivityWatchEventModifier.HIGH
 
-  private val highSensitivity: Array[WatchEvent.Modifier] =
-    if isMac then // https://bugs.openjdk.java.net/browse/JDK-7133447
-      try Array(com.sun.nio.file.SensitivityWatchEventModifier.HIGH/*2s instead of 10s*/)
-      catch { case t: Throwable =>
-        logger.debug(s"❗ SensitivityWatchEventModifier.HIGH => ${t.toStringWithCauses}")
-        Array.empty
-      }
-    else
-      Array.empty
+  val systemWatchDelay: FiniteDuration =
+    sensitivity.fold(0.s)(_.sensitivityValueInSeconds.s/*2s*/)
 
-  def resource(options: WatchOptions)(implicit iox: IOExecutor)
-  : Resource[IO, BasicDirectoryWatch] =
+  private val modifiers: Array[WatchEvent.Modifier] =
+    sensitivity match
+      case None => Array.empty
+      case Some(sensitivity) =>
+        try Array(sensitivity)
+        catch case t: Throwable =>
+          logger.debug(s"❗ SensitivityWatchEventModifier.HIGH => ${t.toStringWithCauses}")
+          Array.empty
+
+  def resource(options: WatchOptions): Resource[IO, BasicDirectoryWatch] =
     Service.resource(IO(new BasicDirectoryWatch(options)))
 
   //private implicit val watchEventShow: Show[WatchEvent[?]] = e =>

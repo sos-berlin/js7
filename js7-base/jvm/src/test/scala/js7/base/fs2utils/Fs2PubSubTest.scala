@@ -5,13 +5,14 @@ import cats.syntax.parallel.*
 import js7.base.test.OurAsyncTestSuite
 import js7.base.utils.Tests.isIntelliJIdea
 import org.scalatest.{Assertion, Succeeded}
+import fs2.Stream
 
 final class Fs2PubSubTest extends OurAsyncTestSuite:
 
-  "FsPubSub" in:
+  "FsPubSub with several newStream" in:
     val n = 10000
 
-    def startStream[A <: AnyRef](pubSub: Fs2PubSub[IO, A], require: Int): IO[FiberIO[Vector[A]]] =
+    def startStream[A <: AnyRef](pubSub: Fs2PubSub[IO, A]): IO[FiberIO[Vector[A]]] =
       pubSub
         .newStream
         .flatMap(_.allocated)
@@ -24,14 +25,14 @@ final class Fs2PubSubTest extends OurAsyncTestSuite:
     def test(nr: Int): IO[Assertion] =
       Fs2PubSub.resource[IO, String].use(pubSub =>
         for
-          _ <- pubSub.publish("NULL")
-          streaming1 <- startStream(pubSub, 1/*read last push "NULL" before continuing*/)
+          _ <- pubSub.publish("IGNORED")
+          streaming1 <- startStream(pubSub)
           _ <- pubSub.publish("EINS")
-          streaming2 <- startStream(pubSub, 1/*read last push "EINS" before continuing*/)
+          streaming2 <- startStream(pubSub)
           _ <- pubSub.publish("ZWEI")
-          streaming3 <- startStream(pubSub, 1/*read last push "ZWEI" before continuing*/)
+          streaming3 <- startStream(pubSub)
           _ <- pubSub.close
-          streaming4 <- startStream(pubSub, 0)
+          streaming4 <- startStream(pubSub)
           result1 <- asSucceeded(streaming1.join)
           result2 <- asSucceeded(streaming2.join)
           result3 <- asSucceeded(streaming3.join)
@@ -41,7 +42,7 @@ final class Fs2PubSubTest extends OurAsyncTestSuite:
           assert(result2 == Vector("ZWEI"))
           assert(result3 == Vector())
           assert(result4 == Vector())
-          if isIntelliJIdea && nr % 100 == 0 then print(s"✔")
+          if isIntelliJIdea && nr % 100 == 0 then print("✔")
           succeed)
 
     (1 to n).toVector.parTraverse(i => test(i))
@@ -51,8 +52,7 @@ final class Fs2PubSubTest extends OurAsyncTestSuite:
   private def asSucceeded[A](outcomeIO: IO[OutcomeIO[A]]): IO[A] =
     for
       outcome <- outcomeIO
-      a <- {
+      a <-
         val Outcome.Succeeded(io) = outcome: @unchecked
         io
-      }
     yield a

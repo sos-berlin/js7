@@ -17,6 +17,7 @@ import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.base.utils.{Atomic, Once, Tests}
 import org.slf4j.{LoggerFactory, Marker, MarkerFactory}
 import scala.reflect.ClassTag
+import fs2.Stream
 
 object Logger extends AdHocLogger:
 
@@ -90,7 +91,7 @@ object Logger extends AdHocLogger:
       def log(level: LogLevel, marker: Marker, message: => String): Unit =
         logger.underlying.log(level, marker, message)
 
-      def infoIO[A](body: IO[A])(src: sourcecode.Name): IO[A] =
+      def infoIO[A](body: IO[A])(using src: sourcecode.Name): IO[A] =
         infoF(functionName = src.value)(body)
 
       def infoIO[A](functionName: String, args: => Any = "")(body: IO[A]): IO[A] =
@@ -288,6 +289,21 @@ object Logger extends AdHocLogger:
           .onFinalizeCase(exitCase =>
             IO.whenA(logger.isEnabled(logLevel))(IO(
               logOutcome(logger, logLevel, function, args, duration = "", exitCase.toOutcome[IO]))))
+
+    // TODO Or this implementation?
+    //private def logStream[A](logger: ScalaLogger, logLevel: LogLevel, function: String,
+    //  args: => Any = "")
+    //  (stream: Stream[IO, A])
+    //: Stream[IO, A] =
+    //  Stream
+    //    .eval(IO.whenA(
+    //      logger.isEnabled(logLevel))(IO(
+    //      logStart(logger, logLevel, function, args))))
+    //    .drop(1)
+    //    .asInstanceOf[Stream[IO, A]]
+    //    .++(stream.onFinalizeCase(exitCase =>
+    //      IO.whenA(logger.isEnabled(logLevel))(IO(
+    //        logOutcome(logger, logLevel, function, args, duration = "", exitCase.toOutcome[IO])))))
 
   private final class StartReturnLogContext(logger: ScalaLogger, logLevel: LogLevel,
     function: String, args: => Any = ""):

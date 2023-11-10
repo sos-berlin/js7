@@ -1,8 +1,8 @@
 package js7.base.fs2utils
 
 import cats.effect.{Concurrent, Sync}
+import cats.syntax.functor.*
 import fs2.Stream
-import js7.base.utils.ScalaUtils.*
 
 object StreamExtensions:
 
@@ -23,9 +23,20 @@ object StreamExtensions:
         a)
 
     def takeUntilEval[X](completed: F[X])(using Concurrent[F]): Stream[F, A] =
+      takeUntil(Stream.eval(completed))
+
+    def takeUntil[X](completed: Stream[F, X])(using Concurrent[F]): Stream[F, A] =
       stream
         .map(Right(_))
         .merge:
-          Stream.eval(completed).as(Left(()))
+          completed.as(Left(()))
         .takeWhile(_.isRight)
         .map(_.asInstanceOf[Right[Unit, A]].value)
+
+    /** Like Monix Observable doOnSubscribe. */
+    inline def doOnSubscribe(onSubscribe: F[Unit]): Stream[F, A] =
+      onStart(onSubscribe)
+
+    /** Like Monix Observable doOnSubscribe. */
+    def onStart(onStart: F[Unit]): Stream[F, A] =
+      Stream.exec(onStart) ++ stream
