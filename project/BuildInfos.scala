@@ -86,6 +86,17 @@ object BuildInfos
     "commitId" -> git.gitHeadCommit.value,
     "commitMessage" -> git.gitHeadMessage.value))
 
+  val buildPropertiesString: Def.Initialize[String] =
+    Def.setting(
+      buildInfoMap.value
+        .mapValues {
+          case None => ""
+          case Some(v) => v.toString.trim
+          case v => v.toString.trim
+        }
+        .map { case (k, v) => s"build.$k=$v\n" }
+        .mkString)
+
   private val instantFormatter = new DateTimeFormatterBuilder()
     .append(ISO_LOCAL_DATE_TIME)
     .appendPattern("XX")
