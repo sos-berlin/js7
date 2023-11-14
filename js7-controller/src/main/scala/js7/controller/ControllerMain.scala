@@ -4,7 +4,7 @@ import js7.base.BuildInfo
 import js7.base.configutils.Configs.logConfig
 import js7.base.log.Logger
 import js7.base.system.startup.StartUp
-import js7.base.system.startup.StartUp.{logJavaSettings, nowString, printlnWithClock, startUpLine}
+import js7.base.system.startup.StartUp.{logJavaSettings, nowString, printlnWithClock}
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.utils.ProgramTermination
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
@@ -28,7 +28,6 @@ final class ControllerMain
   def run(arguments: CommandLineArguments): ProgramTermination = {
     // Log early for early timestamp and proper logger initialization by a
     // single (non-concurrent) call
-    logger.info(startUpLine("JS7 Controller"))
     logger.debug(arguments.toString)
     val conf = ControllerConfiguration.fromCommandLine(arguments)
     logger.info(s"${conf.controllerId} config=${conf.configDirectory} data=${conf.dataDirectory}")

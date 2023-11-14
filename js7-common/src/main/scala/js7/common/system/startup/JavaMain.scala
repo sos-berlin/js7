@@ -21,7 +21,6 @@ object JavaMain
   : Unit =
     runMain(name) {
       logger.debug(arguments.toString)
-      //logger.info(s"config=${conf.configDirectory}")
       logConfig(config)
       logJavaSettings()
       body

@@ -34,7 +34,6 @@ final class AgentMain
     // Log early for early timestamp and proper logger initialization by a
     // single (non-concurrent) call
     // Log a bar, in case the previous file is appended
-    logger.info(StartUp.startUpLine("JS7 Agent"))
     logger.debug(arguments.toString)
 
     val agentConf = AgentConfiguration.fromCommandLine(arguments)
