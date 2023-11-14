@@ -265,7 +265,7 @@ lazy val `js7-engine` = project.in(file("target/js7-engine"))
   .settings(
     Compile / resourceGenerators += Def.task {
       val file = (Compile / resourceManaged).value / "js7/js7-engine.properties"
-      IO.write(file, BuildInfos.buildPropertiesString.value)
+      IO.write(file, BuildInfos.info.value.buildPropertiesString)
       Seq(file)
     }.taskValue,
 
@@ -347,14 +347,14 @@ lazy val `js7-base` = crossProject(JSPlatform, JVMPlatform)
   .jvmSettings(
     Compile / resourceGenerators += Def.task {
       val versionFile = (Compile / resourceManaged).value / "js7/base/installation/VERSION"
-      IO.write(versionFile, BuildInfos.longVersion.value + "\n")
+      IO.write(versionFile, BuildInfos.info.value.longVersion + "\n")
       Seq(versionFile)
     }.taskValue)
   .enablePlugins(BuildInfoPlugin)
   .settings(
     buildInfoPackage := "js7.base",
     buildInfoUsePackageAsPath := true,
-    buildInfoKeys := BuildInfos.buildInfoMap.value.map(BuildInfoKey(_)).toSeq)
+    buildInfoKeys := BuildInfos.info.value.buildInfoMap.map(BuildInfoKey(_)).toSeq)
 
 /** js7-build-info provides version info in a Scala-free jar. */
 lazy val `js7-build-info` = (project in file("target/project-js7-build-info"))
@@ -365,15 +365,7 @@ lazy val `js7-build-info` = (project in file("target/project-js7-build-info"))
   .settings(
     Compile / resourceGenerators += Def.task {
       val file = (Compile / resourceManaged).value / "js7/build-info/build-info.properties"
-      IO.write(
-        file,
-        BuildInfos.buildInfoMap.value
-          .mapValues {
-            case v: Option[?] => v.fold("")(_.toString)
-            case v => v.toString
-          }
-          .map { case (k, v) => s"$k=${v.trim.replace('\n', '⏎')}\n"}
-          .mkString)
+      IO.write(file, BuildInfos.info.value.buildPropertiesString)
       Seq(file)
     }.taskValue)
 

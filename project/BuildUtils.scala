@@ -1,4 +1,3 @@
-import BuildInfos.prettyVersion
 import java.lang.ProcessBuilder.Redirect
 import java.nio.file.Files.{createDirectories, deleteIfExists}
 import java.nio.file.Paths
@@ -29,7 +28,7 @@ object BuildUtils
   private val logger = org.slf4j.LoggerFactory.getLogger("BuildUtils")
 
   // Initial call to Logger for proper slf4j and log4j initialization ???
-  logger.info(s"Building $prettyVersion, test.parallel=$testParallelization")
+  logger.info(s"test.parallel=$testParallelization")
 
   if (sys.props("java.runtime.version") startsWith "1.8.0_15") {  // Special for Java 8u151 or Java 8u152 (delete this)
     Security.setProperty("crypto.policy", "unlimited")
