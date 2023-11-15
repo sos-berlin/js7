@@ -5,6 +5,7 @@ import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.VirtualThreads
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.implicitClass
@@ -117,7 +118,7 @@ with BlockingItemUpdater
     Execute(WorkflowJob(agentPath, InternalExecutable(classOf[EmptyBlockingInternalJob].getName))),
     expectedOutcome = Outcome.Succeeded(NamedValues.empty))
 
-  private val blockingThreadPoolName = "JS7 blocking job"
+  private val blockingThreadPoolName = if (VirtualThreads.isEnabled) "" else "JS7 blocking job"
 
   for (jobClass <- Seq(classOf[TestJInternalJob], classOf[TestBlockingInternalJob]))
     jobClass.getName - {
