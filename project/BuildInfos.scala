@@ -34,12 +34,7 @@ object BuildInfos
   }
 
   private val isUncommitted = Def.setting {
-    val isUncommitted = git.gitUncommittedChanges.value || git.gitHeadCommit.value.isEmpty/*no Git?*/
-    if (isUncommitted && !version.value.endsWith("-SNAPSHOT")) {
-        println(
-          s"❓ Uncommitted files but version does not ends with -SNAPSHOT: ${version.value} ❓")
-      }
-    isUncommitted
+    git.gitUncommittedChanges.value || git.gitHeadCommit.value.isEmpty/*no Git?*/
   }
 
   /** Git commit date as "yyyy-mm-ddThh:mmZ". */
@@ -50,16 +45,18 @@ object BuildInfos
 
   lazy val info: Def.Initialize[Info] = Def.setting {
     val versionIsTagged = git.gitCurrentTags.value.contains("v" + version.value)
-    if (isUncommitted.value)
-      new Uncommitted(version.value, branch = branch.value,
+    if (isUncommitted.value) {
+      val info = new Uncommitted(version.value, branch = branch.value,
         commitHash = git.gitHeadCommit.value.getOrElse(""))
-    else if (!versionIsTagged) {
-      if (!version.value.contains("-SNAPSHOT")) {
-        println(s"❗ Commit is not tagged with v${version.value} ❗")
-      }
-      new Untagged(version.value, branch = branch.value, commitHash = shortCommitHash.value)
+      if (isUncommitted.value && !info.isSnapshot) println(
+        s"❓ Uncommitted files but version does not ends with -SNAPSHOT: ${version.value} ❓")
+      info
+    } else if (!versionIsTagged) {
+      val info = new Untagged(version.value, branch = branch.value, commitHash = shortCommitHash.value)
+      if (!info.isSnapshot) println(s"❗ Commit is not tagged with v${version.value} ❗")
+      info
     } else
-      new ReproducibleRelease(version.value, branch = branch.value,
+      new Tagged(version.value, branch = branch.value,
         commitHash = shortCommitHash.value)
   }
 
@@ -86,30 +83,50 @@ object BuildInfos
         }
         .map { case (k, v) => s"build.$k=$v\n" }
         .mkString
+
+    lazy val isSnapshot =
+      version.contains("-SNAPSHOT")
   }
 
-  final class ReproducibleRelease(val version: String, branch: String, val commitHash: String)
+  /** A committed and properly tagged version. */
+  final class Tagged(val version: String, branch: String, val commitHash: String)
   extends Info {
     val longVersion =
       version
 
     val prettyVersion =
-      longVersion + (if (branch == "main") "" else s" ($branch)")
+      longVersion + (if (!isSnapshot || branch == "main") "" else s" ($branch)")
 
     val buildId =
       longVersion
   }
 
-  final class Untagged(val version: String, branch: String, val commitHash: String)
-  extends Info {
+  sealed trait Branch {
+    this: Info =>
+    def branch: String
+
+    private def branchSuffix =
+      if (isSnapshot && (branch == "main" || releaseBranch.contains(branch)))
+        ""
+      else
+        s" ($branch)"
+
+    private def releaseBranch: Option[String] =
+      version.indexOf('.', 2) match {
+        case -1 => None
+        case i => Some("release/" + version.take(i))
+      }
+
+    lazy val prettyVersion =
+      longVersion + branchSuffix
+  }
+
+  /** Version is not tagged despite it's not a SNAPSHOT version.
+   * THIS IS WRONG AND SHOULD BE DONE!. */
+  final class Untagged(val version: String, val branch: String, val commitHash: String)
+  extends Info with Branch {
     val longVersion =
       s"$version+$commitHash"
-
-    val prettyVersion =
-      longVersion + (
-        if (version.contains("-SNAPSHOT") && branch.nonEmpty)
-          s" ($branch)"
-        else "")
 
     val buildId =
       longVersion
@@ -117,7 +134,7 @@ object BuildInfos
 
   /** Uncommitted contains build time dependent values. Not for release versions. */
   final class Uncommitted(val version: String, val branch: String, val commitHash: String)
-  extends Info {
+  extends Info with Branch {
     /** "2.0.0+UNCOMMITTED.20210127.120000" */
     val longVersion =
       version + "+UNCOMMITTED." +
@@ -125,9 +142,6 @@ object BuildInfos
           .filter(c => c != '-' && c != ':')
           .take(13)
           .replace('T', '.')
-
-    val prettyVersion =
-      s"$longVersion (${now.toString.take(15) + "Z"})"
 
     val buildId = {
       val uuid = UUID.randomUUID
