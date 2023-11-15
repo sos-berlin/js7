@@ -12,7 +12,7 @@ import js7.base.io.https.HttpsConfig
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.problem.Checked.*
 import js7.base.time.ScalaTime.*
-import js7.base.time.WaitForCondition.waitForCondition
+import js7.base.time.WaitForCondition.retryUntil
 import js7.base.utils.CatsBlocking.BlockingTaskResource
 import js7.base.utils.CatsUtils.{Nel, combine}
 import js7.base.utils.Closer.syntax.*
@@ -251,15 +251,18 @@ object ControllerClusterForScalaTest
     n: Int)
     (implicit pos: source.Position)
   : Unit = {
-    waitForCondition(9.s, 10.ms) { listJournalFiles(primary.stateDir / "controller").size == n }
+    retryUntil(9.s, 10.ms)(assert(
+      listJournalFiles(primary.stateDir / "controller").size == n))
     val journalFiles = listJournalFiles(primary.stateDir / "controller")
     // Snapshot is not being acknowledged, so a new journal file starts asynchronously (or when one event has been written)
     assert(journalFiles.size == n)
-    waitForCondition(9.s, 10.ms) { listJournalFiles(backup.stateDir / "controller").size == n }
+    retryUntil(9.s, 10.ms)(assert(
+      listJournalFiles(backup.stateDir / "controller").size == n))
     for (primaryFile <- journalFiles.map(_.file)) {
       withClue(s"$primaryFile: ") {
         val backupJournalFile = backup.stateDir.resolve(primaryFile.getFileName)
-        waitForCondition(9.s, 100.ms)(backupJournalFile.contentString == primaryFile.contentString)
+        retryUntil(9.s, 100.ms)(assert(
+          backupJournalFile.contentString == primaryFile.contentString))
         assert(backupJournalFile.contentString == primaryFile.contentString)
         assert(backupJournalFile.byteArray == primaryFile.byteArray)
       }

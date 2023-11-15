@@ -6,8 +6,6 @@ import js7.agent.data.commands.AgentCommand.Batch
 import js7.base.log.Logger
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
-import js7.base.time.ScalaTime.*
-import js7.base.time.WaitForCondition.waitForCondition
 import js7.controller.agent.AgentDriver.{Input, Queueable}
 import js7.controller.agent.CommandQueue.QueuedInputResponse
 import js7.controller.agent.CommandQueueTest.*
@@ -18,6 +16,7 @@ import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import monix.execution.atomic.AtomicInt
@@ -54,37 +53,31 @@ final class CommandQueueTest extends OurTestSuite
     assert(!ok)
 
     expected += toQueuedInputResponse(aOrder) :: Nil
-    waitForCondition(99.s, 10.ms) { commandQueueSucceeded == expected }
-    assert(commandQueueSucceeded == expected)
+    awaitAndAssert { commandQueueSucceeded == expected }
 
     val twoOrders = toOrder("B") :: toOrder("C") :: Nil
     for (o <- twoOrders) commandQueue.enqueue(AgentDriver.Input.AttachOrder(o, TestAgentPath))
-    waitForCondition(99.s, 10.ms) { commandQueueSucceeded == expected }
-    assert(commandQueueSucceeded == expected)
+    awaitAndAssert { commandQueueSucceeded == expected }
 
     // After the Agent has processed the Input, the two queued commands are sent as a Batch to the Agent
     commandQueue.handleBatchSucceeded(commandQueueSucceeded.last) shouldEqual List(Input.AttachOrder(aOrder, TestAgentPath))
     expected += twoOrders map toQueuedInputResponse
-    waitForCondition(99.s, 10.ms) { commandQueueSucceeded == expected }
-    assert(commandQueueSucceeded == expected)
+    awaitAndAssert { commandQueueSucceeded == expected }
 
     val fiveOrders = toOrder("D") :: toOrder("E") :: toOrder("F") :: toOrder("G") :: toOrder("H") :: Nil
     for (o <- fiveOrders) commandQueue.enqueue(AgentDriver.Input.AttachOrder(o, TestAgentPath))
     expected += fiveOrders take 1 map toQueuedInputResponse
-    waitForCondition(99.s, 10.ms) { commandQueueSucceeded == expected }
-    assert(commandQueueSucceeded == expected)
+    awaitAndAssert { commandQueueSucceeded == expected }
 
     // After the Agent has processed the Input, three of the queued commands are sent as a Batch to the Agent
     commandQueue.handleBatchSucceeded(commandQueueSucceeded.last) shouldEqual fiveOrders.take(1).map(o => Input.AttachOrder(o, TestAgentPath))
     expected += fiveOrders drop 1 take 3 map toQueuedInputResponse
-    waitForCondition(99.s, 10.ms) { commandQueueSucceeded == expected }
-    assert(commandQueueSucceeded == expected)
+    awaitAndAssert { commandQueueSucceeded == expected }
 
     // Finally, the last queued Input is processed
     commandQueue.handleBatchSucceeded(commandQueueSucceeded.last)
     expected += fiveOrders drop 4 map toQueuedInputResponse
-    waitForCondition(99.s, 10.ms) { commandQueueSucceeded == expected }
-    assert(commandQueueSucceeded == expected)
+    awaitAndAssert { commandQueueSucceeded == expected }
     assert(commandQueueFailed.isEmpty)
   }
 
@@ -120,8 +113,7 @@ final class CommandQueueTest extends OurTestSuite
       commandQueue.enqueue(AgentDriver.Input.AttachOrder(order, TestAgentPath))
     }
     commandQueue.maySend()
-    waitForCondition(9.s, 10.ms) { commandQueueSucceeded.get() == n }
-    assert(commandQueueSucceeded.get() == n)
+    awaitAndAssert { commandQueueSucceeded.get() == n }
   }
 }
 

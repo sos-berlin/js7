@@ -24,6 +24,7 @@ import js7.launcher.StdObservers
 import js7.launcher.configuration.ProcessKillScript
 import js7.launcher.process.RichProcess.tryDeleteFile
 import js7.launcher.process.ShellScriptProcess.startPipedShellScript
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
@@ -123,8 +124,7 @@ final class ShellScriptProcessTest extends OurTestSuite
           sleep(3.s)
           assert(shellProcess.isAlive)
           shellProcess.sendProcessSignal(SIGKILL).await(99.s)
-          waitForCondition(10.s, 100.ms) { !shellProcess.isAlive }
-          assert(!shellProcess.isAlive)
+          awaitAndAssert { !shellProcess.isAlive }
           val rc = shellProcess.terminated await 99.s
           assert(rc == (
             if (isWindows) ReturnCode(1/* This is Java destroy()*/)
@@ -153,8 +153,7 @@ final class ShellScriptProcessTest extends OurTestSuite
           sleep(3.s)
           assert(shellProcess.isAlive)
           shellProcess.sendProcessSignal(SIGTERM).await(99.s)
-          waitForCondition(10.s, 100.ms) { !shellProcess.isAlive }
-          assert(!shellProcess.isAlive)
+          awaitAndAssert { !shellProcess.isAlive }
           val rc = shellProcess.terminated await 99.s
           assert(rc == ReturnCode(7))
         }

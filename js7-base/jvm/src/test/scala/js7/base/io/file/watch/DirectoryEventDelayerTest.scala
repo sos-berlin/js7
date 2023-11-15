@@ -9,7 +9,7 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
-import js7.base.time.WaitForCondition.waitForCondition
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import monix.execution.Ack.Continue
 import monix.execution.cancelables.SerialCancelable
 import monix.execution.schedulers.TestScheduler
@@ -125,7 +125,7 @@ final class DirectoryEventDelayerTest extends OurTestSuite with BeforeAndAfterAl
       sleep(Random.nextInt(2).ms)
     }
     assert(ack == Continue)
-    waitForCondition(99.s, 10.ms)(buffer.size == addedEvents.size)
+    awaitAndAssert(99.s)(buffer.size == addedEvents.size)
     logger.info(itemsPerSecondString(addedSince.elapsed, paths.size, "FileAdded"))
 
     val deletedEvents = paths.map(FileDeleted(_))

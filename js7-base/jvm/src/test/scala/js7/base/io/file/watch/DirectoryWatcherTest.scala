@@ -13,7 +13,7 @@ import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
-import js7.base.time.WaitForCondition.waitForCondition
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
@@ -91,8 +91,7 @@ final class DirectoryWatcherTest extends OurTestSuite
       subscribed.future await 99.s
       assert(buffer.isEmpty)
       touchFile(dir / "TEST-1")
-      waitForCondition(11.s, 10.ms)(buffer == Seq(Set(FileAdded(Paths.get("TEST-1")))))
-      assert(buffer == Seq(Set(FileAdded(Paths.get("TEST-1")))))
+      awaitAndAssert(buffer == Seq(Set(FileAdded(Paths.get("TEST-1")))))
       stop.onComplete()
       whenObserved.await(99.s)
     }
@@ -114,16 +113,15 @@ final class DirectoryWatcherTest extends OurTestSuite
       subscribed.future await 99.s
       assert(buffer.isEmpty)
       touchFile(dir / "TEST-1")
-      waitForCondition(11.s, 10.ms)(buffer contains FileAdded(Paths.get("TEST-1")))
-      assert(buffer contains FileAdded(Paths.get("TEST-1")))
+      awaitAndAssert(buffer contains FileAdded(Paths.get("TEST-1")))
       delete(dir / "TEST-1")
 
       delete(dir)
       sleep(300.ms)
       createDirectory(dir)
       touchFile(dir / "TEST-2")
-      waitForCondition(11.s, 10.ms)(buffer.contains(FileDeleted(Paths.get("TEST-1"))) && buffer.contains(FileAdded(Paths.get("TEST-2"))))
-      assert(buffer.contains(FileDeleted(Paths.get("TEST-1"))) && buffer.contains(FileAdded(Paths.get("TEST-2"))))
+      awaitAndAssert(buffer.contains(FileDeleted(Paths.get("TEST-1")))
+        && buffer.contains(FileAdded(Paths.get("TEST-2"))))
       stop.onComplete()
       whenObserved.await(99.s)
     }
@@ -143,7 +141,7 @@ final class DirectoryWatcherTest extends OurTestSuite
         val fileCreationFuture = Observable.fromIterable(indices).executeAsync.foreach { i =>
           touchFile(dir / i.toString)
         }
-        waitForCondition(99.s, 10.ms)(buffer.view.map(_.size).sum == indices.size)
+        awaitAndAssert(buffer.view.map(_.size).sum == indices.size)
         fileCreationFuture.await(100.ms)
 
         assert(buffer.flatten.sortBy(_.relativePath.getFileName.toString.toInt) ==

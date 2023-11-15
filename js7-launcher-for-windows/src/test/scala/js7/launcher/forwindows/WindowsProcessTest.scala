@@ -12,10 +12,10 @@ import js7.base.problem.Checked.*
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
-import js7.base.time.WaitForCondition.waitForCondition
 import js7.launcher.forwindows.WindowsApi.windowsDirectory
 import js7.launcher.forwindows.WindowsProcess.StartWindowsProcess
 import js7.launcher.forwindows.WindowsProcessTest.*
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import org.scalatest.matchers.should.Matchers.*
 import scala.util.{Failure, Try}
 
@@ -144,10 +144,10 @@ final class WindowsProcessTest extends OurTestSuite
           process.waitFor(5.s) shouldBe true
           assert(process.returnCode == Some(ReturnCode(0)))
 
-          waitForCondition(10.s, 10.ms)(Try(stdoutFile.byteArray).isSuccess)  // For Windows
+          awaitAndAssert(Try(stdoutFile.byteArray).isSuccess)  // For Windows
           assert(stdoutFile.contentString(commandCharset) contains s"$testVariableName=$testVariableValue")
 
-          waitForCondition(10.s, 10.ms)(Try(delete(stdoutFile)).isSuccess)  // For Windows
+          awaitAndAssert(Try(delete(stdoutFile)).isSuccess)  // For Windows
           deleteIfExists(stdoutFile)
         }
 
@@ -173,7 +173,7 @@ final class WindowsProcessTest extends OurTestSuite
           process.stdin.flush()
           process.waitFor(5.s) shouldBe true
           stdoutFile.contentString(commandCharset) shouldEqual s"input=$testString"
-          waitForCondition(10.s, 10.ms) { Try(delete(stdoutFile)).isSuccess }
+          awaitAndAssert { Try(delete(stdoutFile)).isSuccess }
           deleteIfExists(stdoutFile)
           delete(scriptFile)
         }

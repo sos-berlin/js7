@@ -13,11 +13,10 @@ import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
-import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
-import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.agent.Problems.AgentDuplicateOrder
+import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.controller.ControllerId
 import js7.data.event.{EventId, EventRequest}
 import js7.data.order.{HistoricOutcome, Order, OrderEvent, OrderId, Outcome}
@@ -26,6 +25,7 @@ import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.position.Position
 import js7.data.workflow.test.TestSetting.*
 import js7.journal.recover.Recovered
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import monix.execution.Scheduler.Implicits.traced
 import org.apache.pekko.pattern.ask
 import org.apache.pekko.util.Timeout
@@ -89,7 +89,7 @@ final class AgentActorTest extends OurTestSuite
           eventWatch.whenKeyedEvent[OrderEvent.OrderDetachable](EventRequest.singleClass(timeout = Some(90.s)), orderId) await 99.s
         info(stopwatch.itemsPerSecondString(n, "Orders"))
 
-        waitForCondition(10.s, 10.ms) {
+        awaitAndAssert {
           // orderRegister is updated lately, so we may wait a moment
           !persistence.currentState.idToOrder.values.exists(_.isAttached/*should be _.isDetaching*/)
         }

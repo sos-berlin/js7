@@ -18,7 +18,7 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.base.time.{Timestamp, WaitForCondition}
+import js7.base.time.Timestamp
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.web.Uri
 import js7.base.{BuildInfo, Js7Version}
@@ -36,6 +36,7 @@ import js7.data.workflow.test.TestSetting.TestAgentPath
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.journal.EventIdClock
 import js7.tester.CirceJsonTester.testJson
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.ControllerWebServiceTest.*
 import js7.tests.testenv.{ControllerAgentForScalaTest, DirectoryProvider}
 import monix.eval.Task
@@ -122,7 +123,8 @@ extends OurTestSuite with BeforeAndAfterAll with ControllerAgentForScalaTest
   "/controller/api" in {
     val overview = httpClient.get[Json](Uri(s"$uri/controller/api")) await 99.s
     assert(overview.fieldOrThrow("version").stringOrThrow == BuildInfo.prettyVersion)
-    WaitForCondition.waitForCondition(9.s, 10.ms) { Try(overview.fieldOrThrow("initiallyStartedAt")).isSuccess }
+    awaitAndAssert(
+      Try(overview.fieldOrThrow("initiallyStartedAt")).isSuccess)
     assert(overview.fieldOrThrow("initiallyStartedAt").longOrThrow >= testStartedAt.toEpochMilli)
     assert(overview.fieldOrThrow("initiallyStartedAt").longOrThrow < Timestamp.parse("2100-01-01T00:00:00Z").toEpochMilli)
   }

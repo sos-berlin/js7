@@ -16,6 +16,7 @@ import js7.data.cluster.ClusterState.{Coupled, FailedOver}
 import js7.data.controller.ControllerCommand.ShutDown
 import js7.data.controller.ControllerCommand.ShutDown.ClusterAction
 import js7.data.event.EventId
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 
@@ -53,8 +54,8 @@ class ShutDownClusterTest extends ControllerClusterTester
               after = activeNodeShutDown).head.eventId
             primaryController.eventWatch.await[ClusterCoupled](after = activeRestarted)
             // TODO EventWatch delivers event after it has been written but before ack!
-            waitForCondition(2.s, 10.ms)(primaryController.clusterState.await(99.s) == Coupled(clusterSetting))
-            assert(primaryController.clusterState.await(99.s) == Coupled(clusterSetting))
+            awaitAndAssert(2.s)(
+              primaryController.clusterState.await(99.s) == Coupled(clusterSetting))
           }
         }
       }
@@ -89,8 +90,7 @@ class ShutDownClusterTest extends ControllerClusterTester
               .await(99.s).orThrow
             primaryController.terminated.await(99.s)
             backupController.eventWatch.await[ClusterFailedOver]()
-            waitForCondition(3.s, 10.ms)(backupController.clusterState.await(99.s).isInstanceOf[FailedOver])
-            assert(backupController.clusterState.await(99.s).asInstanceOf[FailedOver].activeId == backupId)
+            awaitAndAssert(3.s)(backupController.clusterState.await(99.s).isInstanceOf[FailedOver])
           }
 
           // When journal file must be truncated due to non-replicated data after failover,

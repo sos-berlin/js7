@@ -7,7 +7,6 @@ import js7.base.problem.Checked.Ops
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.base.time.WaitForCondition.waitForCondition
 import js7.cluster.ClusterWatchCounterpart.WaitingForConfirmation
 import js7.cluster.watch.api.ClusterWatchProblems.ClusterNodeIsNotLostProblem
 import js7.common.guice.GuiceImplicits.RichInjector
@@ -22,6 +21,7 @@ import js7.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.value.NumberValue
 import js7.journal.files.JournalFiles.JournalMetaOps
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.controller.cluster.ControllerClusterTester.*
 import js7.tests.controller.cluster.UntaughtClusterWatchFailoverClusterTest.*
 import monix.execution.Scheduler.Implicits.global
@@ -41,7 +41,7 @@ final class UntaughtClusterWatchFailoverClusterTest extends ControllerClusterTes
 
       withClusterWatchService() { clusterWatch =>
         primaryController.eventWatch.await[ClusterCoupled]()
-        waitForCondition(10.s, 10.ms)(clusterWatch.clusterState().exists(_.isInstanceOf[Coupled]))
+        awaitAndAssert(clusterWatch.clusterState().exists(_.isInstanceOf[Coupled]))
       }
 
       val since = now
@@ -76,7 +76,7 @@ final class UntaughtClusterWatchFailoverClusterTest extends ControllerClusterTes
           == Left(ClusterNodeIsNotLostProblem(backupId)))
 
         // primaryId is lost. Wait until passive node has detected it.
-        waitForCondition(99.s, 10.ms)(
+        awaitAndAssert(
           clusterWatchService.manuallyConfirmNodeLoss(primaryId, "CONFIRMER")
             != Left(ClusterNodeIsNotLostProblem(primaryId)))
         clusterWatchService.manuallyConfirmNodeLoss(primaryId, "CONFIRMER").orThrow

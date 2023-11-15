@@ -4,13 +4,13 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.log.Logger
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.cluster.ClusterWatchCounterpart.WaitingForConfirmation
 import js7.cluster.watch.api.ClusterWatchProblems.{ClusterNodeIsNotLostProblem, ClusterNodeLossNotConfirmedProblem}
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterPassiveLost}
 import js7.data.cluster.ClusterState.{Coupled, PassiveLost}
 import js7.data.cluster.ClusterWatchCheckEvent
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.controller.cluster.UntaughtClusterWatchBothNodesLostTest.*
 import monix.execution.Scheduler.Implicits.global
 
@@ -29,7 +29,7 @@ final class UntaughtClusterWatchBothNodesLostTest extends ControllerClusterTeste
 
       withClusterWatchService() { clusterWatch =>
         primaryController.eventWatch.await[ClusterCoupled]()
-        waitForCondition(10.s, 10.ms)(clusterWatch.clusterState().exists(_.isInstanceOf[Coupled]))
+        awaitAndAssert(clusterWatch.clusterState().exists(_.isInstanceOf[Coupled]))
       }
 
       // Suppress acknowledges heartbeat, simulating a connection loss between the cluster nodes
@@ -72,7 +72,7 @@ final class UntaughtClusterWatchBothNodesLostTest extends ControllerClusterTeste
         assert(clusterWatchService.manuallyConfirmNodeLoss(primaryId, "CONFIRMER")
           == Left(ClusterNodeIsNotLostProblem(primaryId)))
 
-        waitForCondition(10.s, 10.ms)(
+        awaitAndAssert(
           primaryController.clusterState.await(99.s).isInstanceOf[PassiveLost])
 
         assert(clusterWatchService.manuallyConfirmNodeLoss(primaryId, "CONFIRMER")

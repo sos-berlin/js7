@@ -9,7 +9,6 @@ import js7.base.problem.Checked.Ops
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.base.time.WaitForCondition.waitForCondition
 import js7.cluster.ClusterCommon.{ClusterWatchAgreedToActivation, ClusterWatchDisagreedToActivation}
 import js7.common.guice.GuiceImplicits.RichInjector
 import js7.controller.configuration.ControllerConfiguration
@@ -25,6 +24,7 @@ import js7.data.order.{FreshOrder, OrderId}
 import js7.data.value.NumberValue
 import js7.journal.files.JournalFiles
 import js7.journal.files.JournalFiles.JournalMetaOps
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.controller.cluster.ControllerClusterTester.*
 import js7.tests.testenv.ControllerClusterForScalaTest.assertEqualJournalFiles
 import monix.execution.Scheduler.Implicits.traced
@@ -81,7 +81,7 @@ class FailoverClusterTest extends ControllerClusterTester
       val expectedFailedFile = primaryController.injector.instance[ControllerConfiguration].journalMeta.file(failedOver.failedAt.fileEventId)
       assert(failedOver.failedAt.position == size(expectedFailedFile))
 
-      waitForCondition(10.s, 10.ms)(backupController.clusterState.await(99.s).isInstanceOf[FailedOver])  // Is a delay okay ???
+      awaitAndAssert(backupController.clusterState.await(99.s).isInstanceOf[FailedOver])  // Is a delay okay ???
       assert(backupController.clusterState.await(99.s) ==
         FailedOver(clusterSetting.copy(activeId = backupId), failedOver.failedAt))
 

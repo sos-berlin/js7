@@ -4,12 +4,12 @@ import js7.base.log.Logger
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.AutoClosing.autoClosing
 import js7.cluster.ClusterNode.ClusterWatchConfirmed
 import js7.cluster.watch.api.ClusterWatchProblems.{ClusterWatchRequestDoesNotMatchProblem, OtherClusterWatchStillAliveProblem}
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterCouplingPrepared, ClusterWatchRegistered}
 import js7.data.cluster.{ClusterState, ClusterWatchId}
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.controller.cluster.ClusterWatchChangeTest.*
 import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.Promise
@@ -45,7 +45,7 @@ final class ClusterWatchChangeTest extends ControllerClusterTester
           .clusterState.asInstanceOf[ClusterState.Coupled].setting.clusterWatchId
           == Some(aClusterWatchId))
 
-        waitForCondition(10.s, 10.ms)(
+        awaitAndAssert(
           a.clusterState().exists(_.isInstanceOf[ClusterState.Coupled]))
       }
 

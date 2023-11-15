@@ -12,7 +12,6 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.web.Uri
 import js7.cluster.ClusterCommon.ClusterWatchAgreedToActivation
 import js7.common.pekkohttp.web.data.WebServerPort
@@ -26,6 +25,7 @@ import js7.data.event.EventId
 import js7.data.order.OrderEvent.{OrderFinished, OrderStarted}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.journal.files.JournalFiles.listJournalFiles
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.controller.cluster.ControllerClusterTester.*
 import monix.execution.Scheduler.Implicits.traced
 
@@ -153,8 +153,7 @@ class AppointNodesLatelyClusterTest extends OurTestSuite with ControllerClusterT
             .await(99.s)
           backupController.eventWatch.await[ClusterFailedOver](after = eventId)
 
-          waitForCondition(10.s, 10.ms)(backupController.clusterState.await(99.s).isNonEmptyActive(backupId))
-          assert(backupController.clusterState.await(99.s).isNonEmptyActive(backupId))
+          awaitAndAssert(backupController.clusterState.await(99.s).isNonEmptyActive(backupId))
 
           whenClusterWatchAgrees await 99.s
         } else {
