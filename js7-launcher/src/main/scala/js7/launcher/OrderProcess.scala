@@ -24,7 +24,6 @@ trait OrderProcess
       Task.race(fiber.join, fiberCanceled)
         .guarantee(stdObservers.stop)
         .map(_.fold(identity, identity))
-        .onErrorHandle(Outcome.Failed.fromThrowable)
     }
 }
 
