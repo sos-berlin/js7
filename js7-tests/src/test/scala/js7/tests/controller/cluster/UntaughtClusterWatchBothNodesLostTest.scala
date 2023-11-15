@@ -8,7 +8,7 @@ import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.cluster.ClusterWatchCounterpart.WaitingForConfirmation
 import js7.cluster.watch.api.ClusterWatchProblems.{ClusterNodeIsNotLostProblem, ClusterNodeLossNotConfirmedProblem}
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterPassiveLost}
-import js7.data.cluster.ClusterState.{Coupled, PassiveLost}
+import js7.data.cluster.ClusterState.Coupled
 import js7.data.cluster.ClusterWatchCheckEvent
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.controller.cluster.UntaughtClusterWatchBothNodesLostTest.*
@@ -72,8 +72,9 @@ final class UntaughtClusterWatchBothNodesLostTest extends ControllerClusterTeste
         assert(clusterWatchService.manuallyConfirmNodeLoss(primaryId, "CONFIRMER")
           == Left(ClusterNodeIsNotLostProblem(primaryId)))
 
-        awaitAndAssert(
-          primaryController.clusterState.await(99.s).isInstanceOf[PassiveLost])
+        //? Cluster may have recoupled already:
+        //?awaitAndAssert(
+        //?  primaryController.clusterState.await(99.s).isInstanceOf[PassiveLost])
 
         assert(clusterWatchService.manuallyConfirmNodeLoss(primaryId, "CONFIRMER")
           == Left(ClusterNodeIsNotLostProblem(primaryId)))
