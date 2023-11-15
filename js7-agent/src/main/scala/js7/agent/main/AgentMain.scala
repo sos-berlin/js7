@@ -103,7 +103,7 @@ object AgentMain
 
   def main(args: Array[String]): Unit = {
     val nanoTime = System.nanoTime() // Before anything else, fetch clock
-    printlnWithClock(s"JS7 Agent ${BuildInfo.longVersion}")
+    printlnWithClock(s"JS7 Agent ${BuildInfo.prettyVersion}")
     _runningSince = Some(Deadline(Duration(nanoTime, NANOSECONDS)))
     StartUp.initializeMain()
 

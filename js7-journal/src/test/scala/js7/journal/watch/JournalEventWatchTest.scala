@@ -384,7 +384,7 @@ final class JournalEventWatchTest extends OurTestSuite with BeforeAndAfterAll
         }
         .foreach(o => jsons += o.value.utf8String.parseJsonOrThrow)
       awaitAndAssert { jsons.size == 2 }
-      assert(jsons(0).as[JournalHeader].orThrow.js7Version == BuildInfo.longVersion)
+      assert(jsons(0).as[JournalHeader].orThrow.js7Version == BuildInfo.prettyVersion)
       assert(jsons(1) == JournalSeparators.EventHeader)
 
       writer.writeEvents(Stamped(1L, "1" <-: A1) :: Stamped(2L, "2" <-: B1) :: Nil)

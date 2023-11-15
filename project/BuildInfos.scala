@@ -103,6 +103,7 @@ object BuildInfos
 
   sealed trait Branch {
     this: Info =>
+
     def branch: String
 
     private def branchSuffix =
@@ -117,7 +118,7 @@ object BuildInfos
         case i => Some("release/" + version.take(i))
       }
 
-    lazy val prettyVersion =
+    lazy final val prettyVersion =
       longVersion + branchSuffix
   }
 

@@ -83,7 +83,7 @@ object CorrelIdLog4jThreadContextMap
   private[log] def getOtherKey(key: String): String =
     key match {
       case NameKey => name
-      case VersionKey => BuildInfo.longVersion
+      case VersionKey => BuildInfo.prettyVersion
       case SystemKey => StartUp.startUpLine()
       case _ => null
     }

@@ -52,7 +52,7 @@ object StartUp
   }
 
   def startUpLine(name: String): String =
-    s"""$name ${BuildInfo.longVersion} · ${startUpLine()}
+    s"""$name ${BuildInfo.prettyVersion} · ${startUpLine()}
        |${"━" * 80}""".stripMargin // Log a bar, in case the previous file is appended
 
   /** Log Java version, config and data directory, and classpath. */

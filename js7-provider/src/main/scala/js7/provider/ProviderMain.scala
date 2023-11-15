@@ -28,7 +28,7 @@ object ProviderMain
   def main(args: Array[String]): Unit =
     runMain("JS7 Provider") {
       // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
-      logger.info(s"Provider ${BuildInfo.longVersion}")
+      logger.info(s"Provider ${BuildInfo.prettyVersion}")
       val conf = ProviderConfiguration.fromCommandLine(args.toVector)
       logger.info(s"config=${conf.configDirectory}")
       logConfig(conf.config)

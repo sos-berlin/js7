@@ -71,7 +71,7 @@ object ControllerMain
 
   def main(args: Array[String]): Unit = {
     val nanoTime = System.nanoTime() // Before anything else, fetch clock
-    printlnWithClock(s"JS7 Controller ${BuildInfo.longVersion}")
+    printlnWithClock(s"JS7 Controller ${BuildInfo.prettyVersion}")
     _runningSince = Some(Deadline(Duration(nanoTime, NANOSECONDS)))
     StartUp.initializeMain()
 

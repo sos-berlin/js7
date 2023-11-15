@@ -15,7 +15,7 @@ import monix.execution.Scheduler
 object ClusterWatchMain
 {
   def main(args: Array[String]): Unit = {
-    printlnWithClock(s"JS7 ClusterWatch ${BuildInfo.longVersion}")
+    printlnWithClock(s"JS7 ClusterWatch ${BuildInfo.prettyVersion}")
     // Lazy, otherwise Log4j may be used and implicitly start uninitialized
     lazy val arguments = CommandLineArguments(args.toVector)
     lazy val conf = ClusterWatchConf.fromCommandLine(arguments)
