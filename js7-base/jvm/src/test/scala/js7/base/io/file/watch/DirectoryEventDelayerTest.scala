@@ -55,36 +55,38 @@ final class DirectoryEventDelayerTest extends OurTestSuite with BeforeAndAfterAl
     assert(buffer.isEmpty)
     scheduler.tick(2.s)
     assert(buffer.last == aFileAdded)
+    assert(buffer.toSeq == Seq(aFileAdded))
   }
 
   "Two FileAdded" in {
     ack = publishSubject.onNext(bFileAdded).await(99.s)
     assert(ack == Continue)
-    assert(buffer.last == aFileAdded)
+    assert(buffer.toSeq == Seq(aFileAdded))
 
     scheduler.tick(1.s)
     ack = publishSubject.onNext(cFileAdded).await(99.s)
     assert(ack == Continue)
-    assert(buffer.last == aFileAdded)
+    assert(buffer.toSeq == Seq(aFileAdded))
 
     scheduler.tick(1.s)
-    assert(buffer.last == bFileAdded)
+    assert(buffer.toSeq == Seq(aFileAdded, bFileAdded))
 
     scheduler.tick(1.s)
-    assert(buffer.last == cFileAdded)
+    assert(buffer.toSeq == Seq(aFileAdded, bFileAdded, cFileAdded))
   }
 
   "FileModifed delays even more" in {
+    buffer.clear()
     ack = publishSubject.onNext(aFileAdded).await(99.s)
     for (_ <- 1 to 3) {
       scheduler.tick(1.s)
       ack = publishSubject.onNext(aFileModified).await(99.s)
     }
     scheduler.tick(1.s)
-    assert(buffer.last == cFileAdded)
+    assert(buffer.isEmpty)
 
     scheduler.tick(1.s)
-    assert(buffer.last == aFileAdded)
+    assert(buffer.toSeq == Seq(aFileAdded))
   }
 
   "FileDeleted is not delayed" in {
@@ -99,9 +101,8 @@ final class DirectoryEventDelayerTest extends OurTestSuite with BeforeAndAfterAl
     assert(buffer == Seq(/*bFileAdded, bFileDeleted,*/ aFileAdded))
 
     // Single FileDeleted without a currently delayed FileAdded
-    buffer.clear()
     ack = publishSubject.onNext(bFileDeleted).await(99.s)
-    assert(buffer == Seq(bFileDeleted))
+    assert(buffer == Seq(aFileAdded, bFileDeleted))
   }
 
   "Crash test" in {
