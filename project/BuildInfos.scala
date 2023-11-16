@@ -5,7 +5,7 @@ import java.time.format.DateTimeFormatterBuilder
 import java.time.{Instant, OffsetDateTime}
 import java.util.{Base64, UUID}
 import sbt.Def
-import sbt.Keys.{isSnapshot, version}
+import sbt.Keys.{isSnapshot, scalaVersion, version}
 import scala.collection.immutable.ListMap
 
 object BuildInfos
@@ -82,7 +82,10 @@ object BuildInfos
       "longVersion" -> longVersion,
       "prettyVersion" -> prettyVersion,
       "buildId" -> buildId,
-      "commitId" -> commitHash)
+      "commitId" -> commitHash,
+      // TODO The version of the Java compiler would be more appropriate:
+      "javaVersion" -> sys.props.getOrElse("java.version", ""),
+      "javaRuntimeVersion" -> sys.props.getOrElse("java.runtime.version", ""))
 
     final lazy val buildPropertiesString: String =
       buildInfoMap
