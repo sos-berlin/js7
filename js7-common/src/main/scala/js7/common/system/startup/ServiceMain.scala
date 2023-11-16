@@ -88,11 +88,11 @@ object ServiceMain
     def startUp(name: String): Unit = {
       val nanoTime = System.nanoTime() // Before anything else, fetch clock
 
-      printlnWithClock(s"JS7 $name ${BuildInfo.longVersion}")
+      printlnWithClock(s"JS7 $name ${BuildInfo.prettyVersion}")
       // Log early for early timestamp and proper logger initialization by a
       // single (non-concurrent) call
       // Log a bar, in case the previous log file is being appended
-      logger.info(s"JS7 $name ${BuildInfo.longVersion}\n${"━" * 80}")
+      logger.info(s"JS7 $name ${BuildInfo.prettyVersion}\n${"━" * 80}")
 
       _runningSince = Some(Deadline(Duration.fromNanos(nanoTime)))
       StartUp.initializeMain()

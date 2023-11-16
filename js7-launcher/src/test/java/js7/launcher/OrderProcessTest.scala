@@ -4,8 +4,8 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.base.time.WaitForCondition.waitForCondition
 import js7.data.order.Outcome
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import monix.catnap.Semaphore
 import monix.eval.{Fiber, Task}
 import monix.execution.Scheduler.Implicits.traced
@@ -32,7 +32,7 @@ final class OrderProcessTest extends OurTestSuite
       .runToFuture
 
     // One waiting acquirer
-    assert(waitForCondition(10.s, 10.ms)(count == -1))
+    awaitAndAssert(count == -1)
 
     // Does not work if the Future is being canceled. Instead, the Fiber must be canceled.
     //future.cancel()
@@ -43,7 +43,7 @@ final class OrderProcessTest extends OurTestSuite
     assert(!future.isCompleted)
 
     // No waiting acquirer
-    assert(waitForCondition(10.s, 10.ms)(count == 0))
+    awaitAndAssert(count == 0)
   }
 
   "Cancel an OrderProcess Fiber" in {
@@ -55,13 +55,13 @@ final class OrderProcessTest extends OurTestSuite
     val future = orderProcess.start(stdObservers).flatten.runToFuture
 
     // One waiting acquirer
-    assert(waitForCondition(10.s, 10.ms)(count == -1))
+    awaitAndAssert(count == -1)
 
     orderProcess.cancel(false).await(99.s)
     assert(future.await(99.s) == Outcome.Failed(Some("Canceled")))
 
     // No waiting acquirer
-    assert(waitForCondition(10.s, 10.ms)(count == 0))
+    awaitAndAssert(count == 0)
   }
 
   private def newStdObservers =

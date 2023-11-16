@@ -4,7 +4,7 @@ ENV LANG=C.UTF-8
 
 ENV JAVA_HOME=/opt/java/openjdk
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
-COPY --from=eclipse-temurin:8 $JAVA_HOME $JAVA_HOME
+COPY --from=eclipse-temurin:8u392-b08-jdk-centos7 $JAVA_HOME $JAVA_HOME
 # Own Docker image layer with downloaded microdnf metadata (may take several seconds)
 RUN yum -y install procps git unzip which sudo openssl
 # Until here, same Dockerfile command sequence as in JS7 Docker example for shorter build time
@@ -15,7 +15,7 @@ RUN \
   yum clean packages
 
 RUN \
-  sbtVersion=1.9.6 &&\
+  sbtVersion=1.9.7 &&\
   mkdir --parents /opt/lib/sbt-$sbtVersion &&\
   curl --location https://github.com/sbt/sbt/releases/download/v$sbtVersion/sbt-$sbtVersion.tgz |\
     tar xzf - --directory=/opt/lib/sbt-$sbtVersion --strip-components=1 sbt/ &&\

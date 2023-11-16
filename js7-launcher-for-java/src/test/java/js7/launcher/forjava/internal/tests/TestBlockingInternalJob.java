@@ -125,7 +125,7 @@ public final class TestBlockingInternalJob implements BlockingInternalJob
     private void doSomethingInParallel() {
         try {
             CompletableFuture<String> future = CompletableFuture.supplyAsync(() -> currentThread().getName());
-            assert !future.get().startsWith(expectedBlockingThreadPoolName);
+            assert future.get().startsWith("ForkJoinPool.commonPool");
         } catch (Throwable t) {
             throw new RuntimeException(t);
         }

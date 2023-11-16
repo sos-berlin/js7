@@ -99,23 +99,27 @@ extends Observable[Seq[A]]
       }
 
       private def onNext2(elem: A, weight: Long): Future[Ack] = self.synchronized {
-        val now = scheduler.clockMonotonic(MILLISECONDS)
-        if (buffer.isEmpty) {
-          for (span <- timespanMillis) {
-            expiresAt = now + span
-            val remaining = expiresAt - now
-            if (remaining > 0) {
-              timer := scheduler.scheduleOnce(remaining, MILLISECONDS, self)
+        if (buffer == null)
+          Stop
+        else {
+          val now = scheduler.clockMonotonic(MILLISECONDS)
+          if (buffer.isEmpty) {
+            for (span <- timespanMillis) {
+              expiresAt = now + span
+              val remaining = expiresAt - now
+              if (remaining > 0) {
+                timer := scheduler.scheduleOnce(remaining, MILLISECONDS, self)
+              }
             }
           }
-        }
-        buffer.append(elem)
-        bufferWeight += weight
+          buffer.append(elem)
+          bufferWeight += weight
 
-        if (expiresAt <= now || maxWeight <= bufferWeight)
-          sendNext()
-        else
+          if (expiresAt <= now || maxWeight <= bufferWeight)
+            sendNext()
+          else
           Continue
+        }
       }
 
       def onError(ex: Throwable): Unit = self.synchronized {
@@ -128,7 +132,7 @@ extends Observable[Seq[A]]
       def onComplete(): Unit = self.synchronized {
         timer.cancel()
 
-        if (buffer.nonEmpty) {
+        if (buffer != null && buffer.nonEmpty) {
           val bundleToSend = buffer.toList
           // In case the last onNext isn't finished, then
           // we need to apply back-pressure, otherwise this

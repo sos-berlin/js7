@@ -12,7 +12,6 @@ import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.time.{AdmissionTimeScheme, DailyPeriod, Timestamp}
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.CatsUtils.Nel
@@ -39,6 +38,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.launcher.OrderProcess
 import js7.launcher.internal.InternalJob
 import js7.proxy.ControllerApi
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.agent.ResetAgentTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
@@ -202,9 +202,8 @@ final class ResetAgentTest extends OurTestSuite with ControllerAgentForScalaTest
       case _: DelegateCouplingState.Resetting | _: DelegateCouplingState.Reset => true
       case _ => false
     }
-    waitForCondition(10.s, 10.ms)(isResettingOrReset(
+    awaitAndAssert(isResettingOrReset(
       controllerState.keyTo(AgentRefState)(agentPath).couplingState))
-    assert(isResettingOrReset(controllerState.keyTo(AgentRefState)(agentPath).couplingState))
   }
 
   "Simulate journal deletion at restart" in {

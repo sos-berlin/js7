@@ -10,7 +10,7 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
-import js7.base.time.WaitForCondition.waitForCondition
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import monix.execution.Ack.Continue
 import monix.execution.cancelables.SerialCancelable
 import monix.execution.schedulers.TestScheduler
@@ -56,36 +56,38 @@ final class DirectoryEventDelayerTest extends OurTestSuite with BeforeAndAfterAl
     assert(buffer.isEmpty)
     scheduler.tick(2.s)
     assert(buffer.last == aFileAdded)
+    assert(buffer.toSeq == Seq(aFileAdded))
   }
 
   "Two FileAdded" in {
     ack = publishSubject.onNext(bFileAdded).await(99.s)
     assert(ack == Continue)
-    assert(buffer.last == aFileAdded)
+    assert(buffer.toSeq == Seq(aFileAdded))
 
     scheduler.tick(1.s)
     ack = publishSubject.onNext(cFileAdded).await(99.s)
     assert(ack == Continue)
-    assert(buffer.last == aFileAdded)
+    assert(buffer.toSeq == Seq(aFileAdded))
 
     scheduler.tick(1.s)
-    assert(buffer.last == bFileAdded)
+    assert(buffer.toSeq == Seq(aFileAdded, bFileAdded))
 
     scheduler.tick(1.s)
-    assert(buffer.last == cFileAdded)
+    assert(buffer.toSeq == Seq(aFileAdded, bFileAdded, cFileAdded))
   }
 
   "FileModifed delays even more" in {
+    buffer.clear()
     ack = publishSubject.onNext(aFileAdded).await(99.s)
     for (_ <- 1 to 3) {
       scheduler.tick(1.s)
       ack = publishSubject.onNext(aFileModified).await(99.s)
     }
     scheduler.tick(1.s)
-    assert(buffer.last == cFileAdded)
+    assert(buffer.isEmpty)
 
     scheduler.tick(1.s)
-    assert(buffer.last == aFileAdded)
+    assert(buffer.toSeq == Seq(aFileAdded))
   }
 
   "FileDeleted is not delayed" in {
@@ -100,9 +102,8 @@ final class DirectoryEventDelayerTest extends OurTestSuite with BeforeAndAfterAl
     assert(buffer == Seq(/*bFileAdded, bFileDeleted,*/ aFileAdded))
 
     // Single FileDeleted without a currently delayed FileAdded
-    buffer.clear()
     ack = publishSubject.onNext(bFileDeleted).await(99.s)
-    assert(buffer == Seq(bFileDeleted))
+    assert(buffer == Seq(aFileAdded, bFileDeleted))
   }
 
   "Crash test" in {
@@ -126,7 +127,7 @@ final class DirectoryEventDelayerTest extends OurTestSuite with BeforeAndAfterAl
       sleep(Random.nextInt(2).ms)
     }
     assert(ack == Continue)
-    waitForCondition(99.s, 10.ms)(buffer.size == addedEvents.size)
+    awaitAndAssert(99.s)(buffer.size == addedEvents.size)
     logger.info(itemsPerSecondString(addedSince.elapsed, paths.size, "FileAdded"))
 
     val deletedEvents = paths.map(FileDeleted(_))

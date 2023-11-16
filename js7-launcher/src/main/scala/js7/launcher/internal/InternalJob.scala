@@ -91,6 +91,8 @@ object InternalJob
         .rightOr(jobResourcePath, UnknownKeyProblem("JobResource", jobResourcePath.string))
         .flatMap(_.rightOr(variableName, UnknownKeyProblem("JobResource variable", variableName)))
         .flatten
+
+    override def toString = s"Step(${processOrder.order.id} in ${processOrder.jobKey})"
   }
 
   abstract class Companion[I <: InternalJob](implicit classTag: ClassTag[I])

@@ -29,7 +29,7 @@ extends HasCloser
   def this() = this(ConfigFactory.empty)
 
   // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
-  logger.info(s"JS7 Proxy ${BuildInfo.longVersion}")
+  logger.info(s"JS7 Proxy ${BuildInfo.prettyVersion}")
   logger.debug(StartUp.startUpLine())
 
   ProblemCodeMessages.initialize()

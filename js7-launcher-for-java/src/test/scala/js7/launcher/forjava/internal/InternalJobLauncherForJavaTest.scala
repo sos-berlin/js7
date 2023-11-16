@@ -11,6 +11,7 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.VirtualThreads
 import js7.base.time.AlarmClock
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.{RichEitherF, RichEitherIterable, RichPartialFunction}
@@ -42,7 +43,8 @@ import scala.concurrent.Future
 
 final class InternalJobLauncherForJavaTest extends OurTestSuite with BeforeAndAfterAll
 {
-  private val blockingThreadPoolName = "InternalJobLauncherForJavaTest"
+  private val blockingThreadPoolName =
+    if (VirtualThreads.isEnabled) "" else "InternalJobLauncherForJavaTest"
   private val blockingJobScheduler = newUnlimitedNonVirtualScheduler(name = blockingThreadPoolName)
 
   override def afterAll() = {

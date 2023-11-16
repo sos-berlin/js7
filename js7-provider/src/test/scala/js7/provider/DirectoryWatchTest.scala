@@ -8,7 +8,7 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.time.ScalaTime.*
-import js7.base.time.WaitForCondition.waitForCondition
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.BeforeAndAfterAll
 import scala.concurrent.duration.*
@@ -39,8 +39,7 @@ final class DirectoryWatchTest extends OurTestSuite with BeforeAndAfterAll
   if (isMac) {
     "Java's WatchService does not work properly under MacOS" in {
       // https://bugs.openjdk.java.net/browse/JDK-7133447
-      waitForCondition(99.s, 10.ms)(counter > 0)
-      assert(counter > 0)
+      awaitAndAssert(counter > 0)
     }
   } else {
     "Add some files" - {
@@ -69,8 +68,7 @@ final class DirectoryWatchTest extends OurTestSuite with BeforeAndAfterAll
     sleep(10.ms)
     assert(counter == n)
     body
-    waitForCondition(99.s, 10.ms)(counter > n)
-    assert(counter > n)
+    awaitAndAssert(counter > n)
     sleep(10.ms)
   }
 

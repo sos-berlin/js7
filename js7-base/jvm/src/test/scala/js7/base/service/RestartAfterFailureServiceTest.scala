@@ -11,8 +11,8 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
-import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.CatsUtils.syntax.RichResource
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.atomic.Atomic
@@ -150,7 +150,7 @@ final class RestartAfterFailureServiceTest extends OurTestSuite
 
     // runs > 0 probably because a race condition between stop and restart of the service.
     // TODO That means, the service may continue to run a while after stop!
-    waitForCondition(10.s, 10.ms)(runs.get() == 0)
+    awaitAndAssert(runs.get() == 0)
     assert(runs.get() == 0)
   }
 }

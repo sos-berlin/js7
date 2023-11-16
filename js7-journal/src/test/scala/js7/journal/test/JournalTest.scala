@@ -192,7 +192,7 @@ object JournalTest
       "initiallyStartedAt": "STARTED-AT",
       "timestamp": "TIMESTAMP",
       "version": "${JournalHeader.Version}",
-      "js7Version": "${BuildInfo.longVersion}",
+      "js7Version": "${BuildInfo.prettyVersion}",
       "buildId": "${BuildInfo.buildId}"
     }""",
     json""""-------SNAPSHOT-------"""",
@@ -277,7 +277,7 @@ object JournalTest
       "TYPE": "JS7.Journal",
       "typeName": "TestState",
       "version": "${JournalHeader.Version}",
-      "js7Version": "${BuildInfo.longVersion}",
+      "js7Version": "${BuildInfo.prettyVersion}",
       "buildId": "${BuildInfo.buildId}",
       "journalId": "ABEiM0RVZneImaq7zN3u_w",
       "eventId": 1000068,

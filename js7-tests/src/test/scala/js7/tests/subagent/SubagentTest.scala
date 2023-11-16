@@ -6,7 +6,6 @@ import js7.base.Problems.MessageSignedByUnknownProblem
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
-import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.command.CancellationMode
 import js7.data.controller.ControllerCommand.CancelOrders
@@ -33,8 +32,8 @@ final class SubagentTest extends OurTestSuite with SubagentTester
   "Local Subagent couplingState is Coupled" in {
     val localSubagentId = SubagentId("AGENT-0")
     eventWatch.await[SubagentCoupled](_.key == localSubagentId)
-    assert(waitForCondition(10.s, 10.ms)(
-      controllerState.keyTo(SubagentItemState)(localSubagentId).couplingState == Coupled))
+    awaitAndAssert(
+      controllerState.keyTo(SubagentItemState)(localSubagentId).couplingState == Coupled)
     awaitAndAssert(controllerState.keyTo(SubagentItemState)(localSubagentId)
       .platformInfo.map(_.js7Version) contains Js7Version)
   }
@@ -96,8 +95,8 @@ final class SubagentTest extends OurTestSuite with SubagentTester
     enableSubagents(directoryProvider.subagentId -> false)
 
     // Be sure that BareSubagent's shutdown has been detected
-    assert(waitForCondition(10.s, 10.ms)(
-      controllerState.keyTo(SubagentItemState)(bareSubagentId).problem.isDefined))
+    awaitAndAssert(10.s, 10.ms)(
+      controllerState.keyTo(SubagentItemState)(bareSubagentId).problem.isDefined)
 
     val orderId = OrderId("WAIT-FOR-SUBAGENT")
     controller.addOrderBlocking(FreshOrder(orderId, workflow.path))

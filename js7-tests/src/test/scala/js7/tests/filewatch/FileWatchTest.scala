@@ -17,7 +17,6 @@ import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
-import js7.base.time.WaitForCondition.waitForCondition
 import js7.data.Problems.{CannotDeleteWatchingOrderProblem, ItemIsStillReferencedProblem}
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.{CancelOrders, DeleteOrdersWhenTerminated}
@@ -36,6 +35,7 @@ import js7.data.value.expression.Expression.StringConstant
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.expression.scopes.EnvScope
 import js7.data.workflow.{OrderParameter, OrderParameterList, OrderPreparation, Workflow, WorkflowPath}
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.filewatch.FileWatchTest.*
 import js7.tests.jobs.{DeleteFileJob, SemaphoreJob}
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
@@ -364,8 +364,7 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
       NoKey <-: ItemDetachable(fileWatch.path, bAgentPath),
       NoKey <-: ItemDetached(fileWatch.path, bAgentPath),
       NoKey <-: ItemDeleted(fileWatch.path)))
-    waitForCondition(10.s, 10.ms)(controllerState.keyTo(OrderWatchState).isEmpty)
-    assert(controllerState.keyTo(OrderWatchState).isEmpty)
+    awaitAndAssert(controllerState.keyTo(OrderWatchState).isEmpty)
   }
 }
 

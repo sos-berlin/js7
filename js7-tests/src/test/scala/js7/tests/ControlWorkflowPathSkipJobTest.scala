@@ -4,7 +4,6 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
-import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.ControlWorkflowPath
@@ -17,14 +16,15 @@ import js7.data.item.{ItemRevision, VersionId}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.value.expression.ExpressionParser.expr
-import js7.data.workflow.instructions.{Execute, If}
 import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.instructions.{Execute, If}
 import js7.data.workflow.position.{Label, Position}
 import js7.data.workflow.{Workflow, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.ControlWorkflowPathSkipJobTest.*
 import js7.tests.jobs.EmptyJob
-import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
+import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 
@@ -145,8 +145,7 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
       == ItemDetached(bWorkflow.id, agentPath))
 
     assert(agent.currentAgentState().keyTo(WorkflowPathControl).isEmpty)
-    waitForCondition(10.s, 100.ms)(controllerState.keyTo(WorkflowPathControl).isEmpty)
-    assert(controllerState.keyTo(WorkflowPathControl).isEmpty)
+    awaitAndAssert(controllerState.keyTo(WorkflowPathControl).isEmpty)
   }
 
   private def skipJob(workflowPath: WorkflowPath, skip: Boolean, revision: ItemRevision)

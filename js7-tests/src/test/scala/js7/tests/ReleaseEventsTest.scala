@@ -11,7 +11,6 @@ import js7.base.session.SessionApi
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.base.time.WaitForCondition.waitForCondition
 import js7.controller.client.{HttpControllerApi, PekkoHttpControllerApi}
 import js7.core.command.CommandMeta
 import js7.data.agent.AgentPath
@@ -25,6 +24,7 @@ import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.journal.files.JournalFiles.listJournalFiles
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.ReleaseEventsTest.*
 import js7.tests.testenv.DirectoryProvider.script
 import js7.tests.testenv.{DirectoryProviderForScalaTest, TestController}
@@ -62,8 +62,7 @@ final class ReleaseEventsTest extends OurTestSuite with DirectoryProviderForScal
     def agentJournalFiles = listJournalFiles(directoryProvider.agentEnvs(0).dataDir / "state" / "agent")
 
     def assertControllerJournalFileCount(n: Int): Unit = {
-      waitForCondition(9.s, 10.ms) { controllerJournalFiles.size == n }
-      assert(controllerJournalFiles.size == n)
+      awaitAndAssert { controllerJournalFiles.size == n }
     }
 
     assertControllerJournalFileCount(2)
@@ -119,16 +118,14 @@ final class ReleaseEventsTest extends OurTestSuite with DirectoryProviderForScal
       assert(tornEventId < lastFileEventId)
       a.executeCommand(ReleaseEvents(lastFileEventId)).await(99.s)
       b.executeCommand(ReleaseEvents(lastFileEventId)).await(99.s)
-      waitForCondition(5.s, 10.ms) { tornEventId == lastFileEventId }
-      assert(tornEventId == lastFileEventId)
+      awaitAndAssert { tornEventId == lastFileEventId }
 
       // Agent's journal file count should be 1 after TakeSnapshot and after Controller has read all events
       agent.executeCommand(AgentCommand.TakeSnapshot, CommandMeta(SimpleUser(UserId("Controller"))))
         .await(99.s).orThrow
-      waitForCondition(5.s, 10.ms) { agentJournalFiles.size == 2 }
-      assert(agentJournalFiles.size == 2)
+      awaitAndAssert(5.s) { agentJournalFiles.size == 2 }
       controller.runOrder(dOrder)
-      waitForCondition(5.s, 10.ms) { agentJournalFiles.size == 1 }
+      awaitAndAssert(5.s) { agentJournalFiles.size == 1 }
       assert(agentJournalFiles.size == 1)
     }
   }

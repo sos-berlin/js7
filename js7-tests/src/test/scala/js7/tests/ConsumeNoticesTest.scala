@@ -6,7 +6,6 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
-import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.board.BoardPathExpressionParser.boardPathExpr
@@ -21,6 +20,7 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{ConsumeNotices, Execute, Fail, PostNotices, Prompt, Retry, TryInstruction}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.ConsumeNoticesTest.*
 import js7.tests.jobs.{FailingJob, SemaphoreJob}
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
@@ -338,8 +338,8 @@ with BlockingItemUpdater
 
     TestJob.continue()
     eventWatch.await[OrderNoticesConsumed](_.key == aOrderId)
-    waitForCondition(10.s, 10.ms)(controllerState.keyTo(BoardState)(aBoard.path).idToNotice.get(noticeId).isEmpty)
-    assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice.get(noticeId).isEmpty)
+    awaitAndAssert(
+      controllerState.keyTo(BoardState)(aBoard.path).idToNotice.get(noticeId).isEmpty)
 
     deleteItems(workflow.path)
     assert(eventWatch.eventsByKey[OrderEvent](aOrderId) == Seq(
