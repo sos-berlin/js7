@@ -5,7 +5,7 @@ import java.time.format.DateTimeFormatterBuilder
 import java.time.{Instant, OffsetDateTime}
 import java.util.{Base64, UUID}
 import sbt.Def
-import sbt.Keys.version
+import sbt.Keys.{isSnapshot, scalaVersion, version}
 import scala.collection.immutable.ListMap
 
 object BuildInfos
@@ -51,8 +51,9 @@ object BuildInfos
       if (isUncommitted.value && !info.isSnapshot) println(
         s"❓ Uncommitted files but version does not ends with -SNAPSHOT: ${version.value} ❓")
       info
-    } else if (!versionIsTagged) {
-      val info = new Untagged(version.value, branch = branch.value, commitHash = shortCommitHash.value)
+    } else if (!versionIsTagged || isSnapshot.value) {
+      val info = new Untagged(version.value, branch = branch.value,
+        committedAt = committedAt.value, commitHash = shortCommitHash.value)
       if (!info.isSnapshot) println(s"❗ Commit is not tagged with v${version.value} ❗")
       info
     } else
@@ -61,10 +62,19 @@ object BuildInfos
   }
 
   sealed trait Info {
+    /** Version as configured in source.
+     * Taken from the version.sbt file in root directory. */
     def version: String
+
+    /** The version, maybe with a suffix consisting of "+", timestamp and commit hash.
+     * This is the relevant and unique version number. */
     def longVersion: String
+
+    /** longVersion, maybe appended with a space and the branch name. */
     def prettyVersion: String
     def commitHash: String
+
+    /** version or a random number. */
     def buildId: String
 
     final lazy val buildInfoMap = ListMap[String, Any](
@@ -72,7 +82,10 @@ object BuildInfos
       "longVersion" -> longVersion,
       "prettyVersion" -> prettyVersion,
       "buildId" -> buildId,
-      "commitId" -> commitHash)
+      "commitId" -> commitHash,
+      // TODO The version of the Java compiler would be more appropriate:
+      "javaVersion" -> sys.props.getOrElse("java.version", ""),
+      "javaRuntimeVersion" -> sys.props.getOrElse("java.runtime.version", ""))
 
     final lazy val buildPropertiesString: String =
       buildInfoMap
@@ -95,7 +108,7 @@ object BuildInfos
       version
 
     val prettyVersion =
-      longVersion + (if (!isSnapshot || branch == "main") "" else s" ($branch)")
+      longVersion
 
     val buildId =
       longVersion
@@ -122,12 +135,15 @@ object BuildInfos
       longVersion + branchSuffix
   }
 
-  /** Version is not tagged despite it's not a SNAPSHOT version.
-   * THIS IS WRONG AND SHOULD BE DONE!. */
-  final class Untagged(val version: String, val branch: String, val commitHash: String)
+  /** Version is not properly tagged or it's a SNAPSHOT version. */
+  final class Untagged(
+    val version: String, val
+    branch: String,
+    val committedAt: Option[String],
+    val commitHash: String)
   extends Info with Branch {
     val longVersion =
-      s"$version+$commitHash"
+      s"$version+${committedAt.fold("")(o => o.dropRight(1/*"Z"*/) + ".")}$commitHash"
 
     val buildId =
       longVersion
@@ -138,11 +154,12 @@ object BuildInfos
   extends Info with Branch {
     /** "2.0.0+UNCOMMITTED.20210127.120000" */
     val longVersion =
-      version + "+UNCOMMITTED." +
+      version + "+" +
         now.toString
           .filter(c => c != '-' && c != ':')
           .take(13)
-          .replace('T', '.')
+          .replace('T', '.') +
+        ".UNCOMMITTED"
 
     val buildId = {
       val uuid = UUID.randomUUID
