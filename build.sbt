@@ -191,12 +191,45 @@ val universalPluginSettings = Seq(
 
 resolvers += Resolver.mavenLocal
 
-lazy val js7 = (project in file("."))
-  .aggregate(
-    `js7-install`,
+// List each subproject here !!!
+// Only these subprojects may be tested and published
+lazy val js7Subprojects: Seq[ProjectReference] = {
+  import BuildUtils.Implicit.crossProjectToJvmProjectReference
+  Seq(
+    `js7-agent`,
+    `js7-agent-client`,
+    `js7-agent-data`,
+    `js7-base`,
+    `js7-cluster`,
+    `js7-cluster-watch`,
+    `js7-cluster-watch-api`,
+    `js7-common`,
+    `js7-common-http`,
+    `js7-controller`,
+    `js7-controller-client`,
+    `js7-core`,
+    `js7-data`.jvm,
+    `js7-data-for-java`,
     `js7-docker`,
+    `js7-install`,
+    `js7-journal`,
+    `js7-launcher`,
+    `js7-launcher-for-java`,
+    `js7-launcher-for-windows`,
+    `js7-license`,
+    `js7-license-fake`,
+    `js7-provider`,
+    `js7-proxy`,
+    `js7-service-pgp`,
+    `js7-subagent`,
+    `js7-tester`,
     `js7-tests`)
-  .settings(publish / skip := true)
+}
+
+lazy val js7 = project.in(file("."))
+  .aggregate(js7Subprojects *)
+  .settings(
+    publish / skip := true)
 
 lazy val js7JS = (project in file("target/project-js7JS"))
   .aggregate(
