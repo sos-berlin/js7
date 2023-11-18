@@ -1,9 +1,13 @@
 package js7.launcher
 
+import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
+import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.base.utils.SetOnce
-import js7.data.order.Outcome
+import js7.data.job.JobKey
+import js7.data.order.{OrderId, Outcome}
 import js7.data.value.NamedValues
+import js7.launcher.OrderProcess.*
 import monix.eval.{Fiber, Task}
 import scala.concurrent.Promise
 
@@ -18,17 +22,24 @@ trait OrderProcess
   protected def fiberCanceled: Task[Outcome.Failed] = Task.never
 
   /** Returns a Task for the started and running process. */
-  final def start(stdObservers: StdObservers): Task[Task[Outcome.Completed]] =
+  final def start(orderId: OrderId, jobKey: JobKey, stdObservers: StdObservers)
+  : Task[Task[Outcome.Completed]] =
     run.map { fiber =>
       onStarted(fiber)
       Task.race(fiber.join, fiberCanceled)
         .guarantee(stdObservers.stop)
         .map(_.fold(identity, identity))
+        .onErrorHandle { t =>
+          logger.warn(s"$orderId in $jobKey: ${t.toStringWithCauses}", t)
+          Outcome.Failed.fromThrowable(t)
+        }
     }
 }
 
 object OrderProcess
 {
+  private val logger = Logger[this.type]
+
   def apply(run: Task[Outcome.Completed]): OrderProcess =
     new Simple(run)
 

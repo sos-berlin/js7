@@ -91,14 +91,9 @@ final class JobDriver(
               .flatMapT { orderProcess =>
                 entry.orderProcess = Some(orderProcess)
                 // Start the orderProcess. The future completes the stdObservers (stdout, stderr)
-                orderProcess.start(processOrder.stdObservers)
+                orderProcess.start(order.id, jobKey, processOrder.stdObservers)
                   .flatMap { runningProcess =>
-                    val whenCompleted = runningProcess
-                      .onErrorHandle { t =>
-                        logger.error(s"${order.id} Job failed: ${t.toStringWithCauses}", t)
-                        Outcome.Failed.fromThrowable(t)
-                      }
-                      .runToFuture
+                    val whenCompleted = runningProcess.runToFuture
                     entry.terminated.completeWith(whenCompleted)
                     val maybeKillAfterStart = entry.killSignal.traverse(killOrder(entry, _))
                     val awaitTermination = Task.defer {

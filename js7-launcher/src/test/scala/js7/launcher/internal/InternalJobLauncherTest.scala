@@ -52,11 +52,13 @@ final class InternalJobLauncherTest extends OurTestSuite
     val whenOutString = out.fold.lastL.runToFuture
     val whenErrString = err.fold.lastL.runToFuture
     val stdObservers = new StdObservers(out, err, charBufferSize = 4096, keepLastErrLine = false)
+    val orderId = OrderId("TEST")
+    val jobKey = JobKey.Named(WorkflowBranchPath(WorkflowPath("WORKFLOW"), Nil), WorkflowJob.Name("TEST-JOB"))
     val orderProcess = executor.toOrderProcess(
       ProcessOrder(
-        Order(OrderId("TEST"), workflow.id /: Position(0), Order.Processing(SubagentId("SUBAGENT"))),
+        Order(orderId, workflow.id /: Position(0), Order.Processing(SubagentId("SUBAGENT"))),
         workflow,
-        JobKey.Named(WorkflowBranchPath(WorkflowPath("WORKFLOW"), Nil), WorkflowJob.Name("TEST-JOB")),
+        jobKey,
         workflowJob,
         jobResources = Nil,
         Map("ARG" -> NumericConstant(1)),
@@ -64,7 +66,7 @@ final class InternalJobLauncherTest extends OurTestSuite
         stdObservers,
         fileValueScope = Scope.empty)
     ).await(99.s).orThrow
-    val outcome = orderProcess.start(stdObservers).flatten.await(99.s)
+    val outcome = orderProcess.start(orderId, jobKey, stdObservers).flatten.await(99.s)
     assert(outcome == Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(2))))
     out.onComplete()
     err.onComplete()

@@ -136,6 +136,8 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite with BeforeAndAf
     val outFuture = out.fold.lastOrElseL("").runToFuture
     val errFuture = err.fold.lastOrElseL("").runToFuture
     val stdObservers = new StdObservers(out, err, 4096, keepLastErrLine = false)
+    val orderId = OrderId("TEST")
+    val jobKey = executor.jobConf.jobKey
     temporaryDirectoryResource("InternalJobLauncherForJavaTest-")
       .flatMap(dir => Resource
         .fromAutoCloseable(Task(new FileValueState(dir)))
@@ -146,10 +148,10 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite with BeforeAndAf
           .flatMapT(_ =>
             executor.toOrderProcess(
               ProcessOrder(
-                Order(OrderId("TEST"), workflow.id /: Position(0),
+                Order(orderId, workflow.id /: Position(0),
                   Order.Processing(SubagentId("SUBAGENT"))),
                 workflow,
-                executor.jobConf.jobKey,
+                jobKey,
                 WorkflowJob(AgentPath("AGENT"), ShellScriptExecutable("")),
                 jobResources = Nil,
                 Map("ORDER_ARG" -> arg),
@@ -157,7 +159,7 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite with BeforeAndAf
                 stdObservers,
                 fileValueScope))
             .await(99.s).orThrow
-            .start(stdObservers)
+            .start(orderId, jobKey, stdObservers)
             .flatten
             .guarantee(Task {
               try out.onComplete()
