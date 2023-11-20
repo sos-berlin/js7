@@ -7,6 +7,7 @@ import java.util.concurrent.TimeUnit.MILLISECONDS
 import js7.base.io.file.watch.BasicDirectoryWatcher.*
 import js7.base.io.file.watch.DirectoryWatchEvent.Overflow
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.service.Service
 import js7.base.system.OperatingSystem.isMac
 import js7.base.thread.IOExecutor
@@ -56,32 +57,31 @@ extends Service.StoppableByRequest
     )(release = watchKey => Task {
       logger.debug(s"watchKey.cancel() $directory")
       try watchKey.cancel()
-      catch { case t: java.nio.file.ClosedWatchServiceException =>
+      catch { case t: ClosedWatchServiceException =>
         logger.debug(s"watchKey.cancel() => ${t.toStringWithCauses}")
       }
     })
 
   private def poll(canceled: => Boolean): Task[Seq[DirectoryWatchEvent]] =
-    Task.defer {
-      val since = now
-      def prefix = s"pollEvents ... ${since.elapsed.pretty} => "
-      try {
-        val events = pollWatchKey()
-        logger.trace(prefix + (if (events.isEmpty) "timed out" else events.mkString(", ")))
-        Task.pure(events)
-      } catch {
-        case NonFatal(t) if canceled =>
-          logger.trace(s"${prefix}canceled (${t.toStringWithCauses})")
+    logger
+      .traceTaskWithResult(
+        s"WatchService.poll() $directory",
+        result = (events: Seq[DirectoryWatchEvent]) =>
+          if (events.isEmpty) "timed out" else events.mkString(", ")
+      )(Task(
+        pollWatchKey()))
+      .onErrorRecoverWith {
+        case NonFatal(_) if canceled =>
           // Ignore the error, otherwise it would be logged by the thread pool.
           Task.never  // because the task is canceled
 
-       case NonFatal(t: ClosedWatchServiceException) =>
-         // At least for testing, check ClosedWatchServiceException exception as early as here,
-         // otherwise RejectedExecutionException may be thrown later.
-         logger.debug(s"${t.toStringWithCauses}")
-         Task.pure(Nil)
+        case NonFatal(t: ClosedWatchServiceException) =>
+          // At least for testing, check ClosedWatchServiceException exception as early as here,
+          // otherwise RejectedExecutionException may be thrown later.
+          logger.debug(s"${t.toStringWithCauses}")
+          Task.pure(Nil)
       }
-    }.executeOn(iox.scheduler)
+      .executeOn(iox.scheduler)
 
   private def pollWatchKey(): Seq[DirectoryWatchEvent] =
     watchService.poll(pollTimeout.toMillis, MILLISECONDS) match {
