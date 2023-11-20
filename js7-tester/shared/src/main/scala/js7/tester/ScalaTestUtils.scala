@@ -2,6 +2,7 @@ package js7.tester
 
 import org.scalactic.{Prettifier, source}
 import org.scalatest.Assertion
+import scala.concurrent.blocking
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Duration, FiniteDuration, MILLISECONDS, SECONDS}
 
@@ -26,7 +27,10 @@ object ScalaTestUtils extends org.scalatest.Assertions
     (implicit prettifier: Prettifier, pos: source.Position)
   : Assertion = {
     val until = now + timeLimit
-    while (now < until && !condition) Thread.sleep(step.toMillis)
+    while (now < until && !condition)
+      blocking {
+        Thread.sleep(step.toMillis)
+      }
     assert(condition)
   }
 }
