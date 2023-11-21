@@ -49,7 +49,7 @@ final class FileWatchDelayTest extends OurTestSuite with ControllerAgentForScala
   private lazy val watchedDirectory = directoryProvider.agentEnvs(0).dataDir / "tmp/a-files"
   private val orderWatchPath = OrderWatchPath("FILE-WATCH")
 
-  private val writeDuration = systemWatchDelay + 1.s
+  private val writeDuration = 2 * systemWatchDelay + 500.ms
 
   private lazy val fileWatch = FileWatch(
     orderWatchPath,

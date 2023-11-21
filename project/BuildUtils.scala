@@ -2,8 +2,11 @@ import java.lang.ProcessBuilder.Redirect
 import java.nio.file.Files.{createDirectories, deleteIfExists}
 import java.nio.file.Paths
 import java.security.Security
-import sbt.ModuleID
+import sbt.{ModuleID, ProjectReference}
+import sbtcrossproject.CrossPlugin.autoImport.JVMCrossProjectOps
+import sbtcrossproject.CrossProject
 import scala.jdk.CollectionConverters.*
+import scala.language.implicitConversions
 
 object BuildUtils
 {
@@ -63,5 +66,10 @@ object BuildUtils
          |$commandLine
          |""".stripMargin +
         Seq(stderr, stdout).mkString("\n")
+  }
+
+  object Implicit {
+    implicit def crossProjectToJvmProjectReference(project: CrossProject): ProjectReference =
+      project.jvm
   }
 }

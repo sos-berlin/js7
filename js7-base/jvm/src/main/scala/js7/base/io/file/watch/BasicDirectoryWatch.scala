@@ -7,6 +7,7 @@ import java.util.concurrent.TimeUnit.MILLISECONDS
 import js7.base.io.file.watch.BasicDirectoryWatch.*
 import js7.base.io.file.watch.DirectoryWatchEvent.Overflow
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.MonixBase.syntax.RichMonixTask
 import js7.base.service.Service
 import js7.base.system.OperatingSystem.isMac
@@ -57,29 +58,29 @@ extends Service.StoppableByRequest
       release = watchKey => Task {
         logger.debug(s"watchKey.cancel() $directory")
         try watchKey.cancel()
-        catch { case t: java.nio.file.ClosedWatchServiceException =>
+        catch { case t: ClosedWatchServiceException =>
           logger.debug(s"watchKey.cancel() => ${t.toStringWithCauses}")
         }
       })
 
   private def poll: Task[Seq[DirectoryWatchEvent]] =
-    Task.defer {
-      val since = now
-      def prefix = s"pollEvents($directory) ... ${since.elapsed.pretty} => "
-      try {
-        val events = pollWatchKey()
-        logger.trace(prefix + (if (events.isEmpty) "timed out" else events.mkString(", ")))
-        Task.pure(events)
-      } catch {
-       case NonFatal(t: ClosedWatchServiceException) if isStopping =>
-         logger.debug(s"$prefix => ${t.toStringWithCauses}")
-         // This may execute after service stopped, and the tread pool may be closed too.
-         // Therefore we never continue.
-         // May this let block cancellation in cats-effect 3 ???
-         // This is not a little memory leak, or ???
-         Task.never
+    logger
+      .traceTaskWithResult(
+        s"WatchService.poll() $directory",
+        result = (events: Seq[DirectoryWatchEvent]) =>
+          if (events.isEmpty) "timed out" else events.mkString(", "),
+        task = Task(
+          pollWatchKey()))
+      .onErrorRecoverWith {
+        case NonFatal(t: ClosedWatchServiceException) =>
+          logger.debug(s"${t.toStringWithCauses}")
+          // This may execute after service stopped, and the tread pool may be closed too.
+          // Therefore we never continue.
+          // May this let block cancellation in cats-effect 3 ???
+          // This is not a little memory leak, or ???
+          Task.never
       }
-    }.executeOn(iox.scheduler)
+      .executeOn(iox.scheduler)
 
   private def pollWatchKey(): Seq[DirectoryWatchEvent] =
     watchService.poll(pollTimeout.toMillis, MILLISECONDS) match {
