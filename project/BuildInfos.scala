@@ -5,7 +5,7 @@ import java.time.format.DateTimeFormatterBuilder
 import java.time.{Instant, OffsetDateTime}
 import java.util.{Base64, UUID}
 import sbt.Def
-import sbt.Keys.{isSnapshot, scalaVersion, version}
+import sbt.Keys.{isSnapshot, version}
 import scala.collection.immutable.ListMap
 
 object BuildInfos
@@ -37,11 +37,10 @@ object BuildInfos
     git.gitUncommittedChanges.value || git.gitHeadCommit.value.isEmpty/*no Git?*/
   }
 
-  /** Git commit date as "yyyy-mm-ddThh:mmZ". */
-  lazy val committedAt: Def.Initialize[Option[String]] =
-    Def.setting(git.gitHeadCommitDate.value
-      .map(o => parseInstant(o).toString)
-      .map(_.take(13) + "Z"))
+  /** Git commit date as Instant". */
+  lazy val committedAt: Def.Initialize[Option[Instant]] =
+    Def.setting(
+      git.gitHeadCommitDate.value.map(parseInstant))
 
   lazy val info: Def.Initialize[Info] = Def.setting {
     val versionIsTagged = git.gitCurrentTags.value.contains("v" + version.value)
@@ -139,11 +138,11 @@ object BuildInfos
   final class Untagged(
     val version: String, val
     branch: String,
-    val committedAt: Option[String],
+    val committedAt: Option[Instant],
     val commitHash: String)
   extends Info with Branch {
     val longVersion =
-      s"$version+${committedAt.fold("")(o => o.dropRight(1/*"Z"*/) + ".")}$commitHash"
+      s"$version+${committedAt.fold("")(o => toSemverDate(o) + ".")}$commitHash"
 
     val buildId =
       longVersion
@@ -154,12 +153,7 @@ object BuildInfos
   extends Info with Branch {
     /** "2.0.0+UNCOMMITTED.20210127.120000" */
     val longVersion =
-      version + "+" +
-        now.toString
-          .filter(c => c != '-' && c != ':')
-          .take(13)
-          .replace('T', '.') +
-        ".UNCOMMITTED"
+      version + "+" + toSemverDate(now) + ".UNCOMMITTED"
 
     val buildId = {
       val uuid = UUID.randomUUID
@@ -169,6 +163,13 @@ object BuildInfos
       toUrlBase64(buffer.array)
     }
   }
+
+  private def toSemverDate(instant: Instant): String =
+    instant
+      .toString
+      .filter(c => c != '-' && c != ':')
+      .take(13) // 20231213T1200
+      .replace('T', '.')
 
   private val instantFormatter = new DateTimeFormatterBuilder()
     .append(ISO_LOCAL_DATE_TIME)
