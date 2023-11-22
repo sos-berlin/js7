@@ -863,6 +863,7 @@ releaseVersion := (v =>
     } else {
       val prerelease = {
         val commitDate = BuildInfos.committedAt.value
+          .map(_.toString)
           .getOrElse(sys.error("gitHeadCommitDate returned None (no Git?)"))
           .take(10)/*yyyy-mm-dd*/
         // Remove hyphens according to Semantic Versioning pre-release syntax
