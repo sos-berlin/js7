@@ -79,12 +79,14 @@ private final class ClusterWatchSynchronizer(
   def stop: Task[Unit] =
     stopHeartbeating
 
-  def applyEvent(event: ClusterEvent, updatedClusterState: HasNodes)
+  def applyEvent(event: ClusterEvent, updatedClusterState: HasNodes,
+    clusterWatchIdChangeAllowed: Boolean = false)
   : Task[Checked[Option[ClusterWatchConfirmation]]] =
     event match {
       case _: ClusterPassiveLost =>
         suspendHeartbeat(Task.pure(updatedClusterState))(
-          clusterWatch.applyEvent(event, updatedClusterState))
+          clusterWatch.applyEvent(event, updatedClusterState,
+            clusterWatchIdChangeAllowed = clusterWatchIdChangeAllowed))
 
       case _ =>
         // ClusterSwitchedOver must be emitted by the passive cluster node,
@@ -92,7 +94,8 @@ private final class ClusterWatchSynchronizer(
         // A ClusterSwitchedOver event will be written to the journal after applyEvent.
         // So journal.clusterState will reflect the outdated ClusterState for a short while.
         clusterWatch
-          .applyEvent(event, updatedClusterState)
+          .applyEvent(event, updatedClusterState,
+            clusterWatchIdChangeAllowed = clusterWatchIdChangeAllowed)
           .flatTapT(_ => Task
             // ClusterWatchRegistered may be emitted by the background heartbeat, which
             // does not suspend heartbeat (it would suspend/kill itself).

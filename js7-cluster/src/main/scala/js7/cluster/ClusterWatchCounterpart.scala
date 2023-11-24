@@ -18,7 +18,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isTest
 import js7.cluster.ClusterWatchCounterpart.*
 import js7.cluster.watch.api.ClusterWatchConfirmation
-import js7.data.cluster.ClusterEvent.{ClusterCouplingPrepared, ClusterNodesAppointed, ClusterPassiveLost, ClusterWatchRegistered}
+import js7.data.cluster.ClusterEvent.{ClusterCouplingPrepared, ClusterNodesAppointed, ClusterPassiveLost}
 import js7.data.cluster.ClusterState.{Coupled, FailedOver, HasNodes, PassiveLost}
 import js7.data.cluster.ClusterWatchProblems.{ClusterNodeLossNotConfirmedProblem, ClusterWatchIdDoesNotMatchProblem, ClusterWatchRequestDoesNotMatchProblem, NoClusterWatchProblem, OtherClusterWatchStillAliveProblem}
 import js7.data.cluster.ClusterWatchRequest.RequestId
@@ -82,7 +82,8 @@ extends Service.StoppableByRequest
       }
     }
 
-  def applyEvent(event: ClusterEvent, clusterState: HasNodes)
+  def applyEvent(event: ClusterEvent, clusterState: HasNodes,
+    clusterWatchIdChangeAllowed: Boolean = false)
   : Task[Checked[Option[ClusterWatchConfirmation]]] =
     CorrelId.use { correlId =>
       event match {
@@ -94,7 +95,7 @@ extends Service.StoppableByRequest
           check(
             clusterState.setting.clusterWatchId,
             ClusterWatchCheckEvent(_, correlId, ownId, event, clusterState),
-            clusterWatchIdChangeAllowed = event.isInstanceOf[ClusterWatchRegistered]
+            clusterWatchIdChangeAllowed = clusterWatchIdChangeAllowed
           ).map(_.map(Some(_)))
       }
     }

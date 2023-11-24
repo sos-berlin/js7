@@ -615,7 +615,10 @@ final class ActiveClusterNode[S <: ClusterableState[S]: diffx.Diff] private[clus
         val events = stampedEvents.map(_.value.event)
         (events, clusterState) match {
           case (Seq(event), clusterState: HasNodes) =>
-            clusterWatchSynchronizer.applyEvent(event, clusterState)
+            clusterWatchSynchronizer
+              .applyEvent(
+                event, clusterState,
+                clusterWatchIdChangeAllowed = event.isInstanceOf[ClusterWatchRegistered])
               .rightAs(())
 
           case (Seq(), _) => Task.right(())
