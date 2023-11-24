@@ -76,8 +76,8 @@ trait ControllerClusterForScalaTest
   ProblemCodeMessages.initialize()
   protected final val testHeartbeatLossPropertyKey = "js7.TEST." + SecretStringGenerator.randomString()
   protected final val testAckLossPropertyKey = "js7.TEST." + SecretStringGenerator.randomString()
-  sys.props(testAckLossPropertyKey) = "false"
   sys.props(testHeartbeatLossPropertyKey) = "false"
+  sys.props(testAckLossPropertyKey) = "false"
 
   final def runControllerAndBackup(suppressClusterWatch: Boolean = false)
     (body: (DirectoryProvider, TestController, Vector[TestAgent],
@@ -258,5 +258,5 @@ trait ControllerClusterForScalaTest
 object ControllerClusterForScalaTest
 {
   val TestPathExecutable = RelativePathExecutable("TEST.cmd")
-  val clusterWatchId = ClusterWatchId("CLUSTER-WATCH")
+  private val clusterWatchId = ClusterWatchId("CLUSTER-WATCH")
 }

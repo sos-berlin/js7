@@ -596,14 +596,14 @@ final class ActiveClusterNode[S <: ClusterableState[S]: diffx.Diff] private[clus
   : Task[Checked[Unit]] =
     journal.clusterState
       .flatMap(clusterState =>
-        Task(ifClusterWatchRegistered(clusterState, confirmation.clusterWatchId))
+        Task(isClusterWatchRegistered(clusterState, confirmation.clusterWatchId))
           .flatMapT(
             if (_) // Short cut
               Task.right(Nil -> clusterState)
             else
               journal
                 .persistTransaction[ClusterEvent](NoKey)(s =>
-                  ifClusterWatchRegistered(s.clusterState, confirmation.clusterWatchId)
+                  isClusterWatchRegistered(s.clusterState, confirmation.clusterWatchId)
                     .map(!_ thenList ClusterWatchRegistered(confirmation.clusterWatchId)))
                 .map(_.map { case (stampedEvents, journaledState) =>
                   stampedEvents -> journaledState.clusterState
@@ -624,7 +624,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]: diffx.Diff] private[clus
       }
 
   // Returns Right(true) iff clusterState settings contains clusterWatchId
-  private def ifClusterWatchRegistered(clusterState: ClusterState, clusterWatchId: ClusterWatchId)
+  private def isClusterWatchRegistered(clusterState: ClusterState, clusterWatchId: ClusterWatchId)
   : Checked[Boolean] =
     clusterState match {
       case ClusterState.Empty => Left(ClusterStateEmptyProblem)

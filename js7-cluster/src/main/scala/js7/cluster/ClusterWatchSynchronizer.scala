@@ -301,7 +301,7 @@ private final class ClusterWatchSynchronizer(
       }
   }
 
-  def doACheckedHeartbeat(
+  private def doACheckedHeartbeat(
     clusterState: HasNodes,
     registerClusterWatchId: RegisterClusterWatchId,
     clusterWatchIdChangeAllowed: Boolean,
