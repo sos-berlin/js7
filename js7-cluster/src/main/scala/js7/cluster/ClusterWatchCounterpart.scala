@@ -197,7 +197,7 @@ extends Service.StoppableByRequest
 
           case _ =>
             for (confirmer <- confirm.manualConfirmer) {
-              logger.info(s"‼️ ${requested.request.maybeEvent.fold("?")(_.getClass.simpleScalaName)
+              logger.info(s"‼️  ${requested.request.maybeEvent.fold("?")(_.getClass.simpleScalaName)
                 } has MANUALLY BEEN CONFIRMED by '$confirmer' ‼️")
             }
             requested.confirm(confirmation)
@@ -327,7 +327,8 @@ object ClusterWatchCounterpart
       confirmation.complete(confirm)
         .materialize/*Ignore duplicate complete*/.as(Checked.unit)
 
-    override def toString = s"Requested($id,$clusterWatchId)"
+    override def toString =
+      s"Requested($id,$clusterWatchId,clusterWatchIdChangeAllowed=$clusterWatchIdChangeAllowed)"
   }
 
   private object RequestTimeoutException extends Exception

@@ -682,7 +682,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]: diffx.
     tuple match {
       case (_, HeartbeatMarker, _)
       if clusterConf.testHeartbeatLossPropertyKey.fold(false)(k => sys.props(k).toBoolean) =>
-        logger.warn("TEST: Suppressing received heartbeat")
+        logger.warn("TEST: Suppressing the received heartbeat")
         false
       case _ => true
     }
