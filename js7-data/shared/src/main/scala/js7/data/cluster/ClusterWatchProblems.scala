@@ -53,6 +53,8 @@ object ClusterWatchProblems
 
   final case object ClusterFailOverWhilePassiveLostProblem extends Problem.ArgumentlessCoded
 
+  final case object ClusterPassiveLostWhileFailedOverProblem extends Problem.ArgumentlessCoded
+
   final case class ClusterNodeLossNotConfirmedProblem(
     fromNodeId: NodeId,
     event: ClusterNodeLostEvent)

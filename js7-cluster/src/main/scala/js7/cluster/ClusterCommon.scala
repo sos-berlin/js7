@@ -15,9 +15,9 @@ import js7.cluster.ClusterCommon.*
 import js7.cluster.ClusterConf.ClusterProductName
 import js7.common.system.startup.Halt.haltJava
 import js7.core.license.LicenseChecker
-import js7.data.cluster.ClusterEvent.{ClusterNodeLostEvent, ClusterPassiveLost}
+import js7.data.cluster.ClusterEvent.{ClusterFailedOver, ClusterNodeLostEvent, ClusterPassiveLost}
 import js7.data.cluster.ClusterState.{FailedOver, HasNodes, SwitchedOver}
-import js7.data.cluster.ClusterWatchProblems.{ClusterNodeLossNotConfirmedProblem, ClusterWatchInactiveNodeProblem}
+import js7.data.cluster.ClusterWatchProblems.{ClusterNodeLossNotConfirmedProblem, ClusterPassiveLostWhileFailedOverProblem, ClusterWatchInactiveNodeProblem}
 import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeApi, ClusterState}
 import monix.eval.Task
 import org.apache.pekko.util.Timeout
@@ -125,7 +125,9 @@ private[cluster] final class ClusterCommon private(
           .flatMapT {
             case updatedClusterState: HasNodes =>
               clusterWatchSynchronizer(clusterState)
-                .flatMap(_.applyEvent(event, updatedClusterState))
+                .flatMap(_.applyEvent(event, updatedClusterState,
+                  // Changed ClusterWatch must only confirm when taught and sure !!!
+                  clusterWatchIdChangeAllowed = event.isInstanceOf[ClusterFailedOver]))
                 .flatMap {
                   case Left(problem) =>
                     if (problem.is(ClusterNodeLossNotConfirmedProblem)
@@ -134,14 +136,15 @@ private[cluster] final class ClusterCommon private(
                         s"⛔ ClusterWatch did not agree to '${event.getClass.simpleScalaName}' event: $problem")
                       testEventBus.publish(ClusterWatchDisagreedToActivation)
                       if (event.isInstanceOf[ClusterPassiveLost]) {
-                        haltJava(
-                          "🟥 While this node has lost the passive node" +
-                            " and is waiting for ClusterWatch's agreement, " +
-                            "the passive node failed over",
-                          restart = true,
-                          warnOnly = true)
-                      }
-                      Task.right(false)  // Ignore heartbeat loss
+                        val msg = "🟥 While this node has lost the passive node" +
+                          " and is waiting for ClusterWatch's agreement, " +
+                          "the passive node failed over"
+                        if (clusterConf.testDontHaltWhenPassiveLostRejected)
+                          Task.left(ClusterPassiveLostWhileFailedOverProblem) // For test only
+                        else
+                          haltJava(msg, restart = true, warnOnly = true)
+                      } else
+                        Task.right(false)  // Ignore heartbeat loss
                     } else
                       Task.left(problem)
 

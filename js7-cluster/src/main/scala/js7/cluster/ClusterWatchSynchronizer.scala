@@ -1,6 +1,7 @@
 package js7.cluster
 
 import cats.effect.ExitCase
+import cats.syntax.flatMap.*
 import java.util.ConcurrentModificationException
 import js7.base.generic.Completed
 import js7.base.log.Logger.syntax.*
@@ -15,6 +16,7 @@ import js7.cluster.watch.api.ClusterWatchConfirmation
 import js7.common.system.startup.Halt.haltJava
 import js7.data.cluster.ClusterEvent.{ClusterPassiveLost, ClusterWatchRegistered}
 import js7.data.cluster.ClusterState.HasNodes
+import js7.data.cluster.ClusterWatchProblems.ClusterPassiveLostWhileFailedOverProblem
 import js7.data.cluster.{ClusterEvent, ClusterState, ClusterTiming}
 import js7.data.node.NodeId
 import monix.catnap.MVar
@@ -107,17 +109,18 @@ private final class ClusterWatchSynchronizer(
     }
 
   def suspendHeartbeat[A](getClusterState: Task[ClusterState], forEvent: Boolean = false)
-    (task: Task[A])
+    (task: Task[Checked[A]])
     (implicit enclosing: sourcecode.Enclosing)
-  : Task[A] =
+  : Task[Checked[A]] =
     logger.traceTask(
       startNestedSuspension *>
         task
-          .<*(
+          .flatTap(taskResult =>
             endNestedSuspension(
               getClusterState
                 .flatMap {
-                  case clusterState: HasNodes if clusterState.activeId == ownId =>
+                  case clusterState: HasNodes if clusterState.activeId == ownId
+                    && taskResult != Left(ClusterPassiveLostWhileFailedOverProblem) =>
                     continueHeartbeating(
                       clusterState,
                       registerClusterWatchId.orThrow,
