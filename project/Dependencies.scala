@@ -33,7 +33,7 @@ object Dependencies
   val diffxVersion = "0.8.2"
   val reactorVersion = "3.5.2"
   val vavrVersion = "0.10.4"
-  val jnaVersion = "5.12.1"
+  val jnaVersion = "5.13.0"
 
   val slf4j               = "org.slf4j" % "slf4j-api"    % slf4jVersion
   val slf4jNop            = "org.slf4j" % "slf4j-nop"    % slf4jVersion
