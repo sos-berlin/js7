@@ -3,11 +3,11 @@ package js7.tests.cluster.controller
 import js7.base.problem.Checked.Ops
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.base.time.WaitForCondition.waitForCondition
 import js7.data.cluster.{ClusterEvent, ClusterTiming}
 import js7.data.controller.ControllerCommand.TakeSnapshot
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.cluster.controller.ControllerClusterTester.*
 import js7.tests.testenv.ProgramEnvTester.assertEqualJournalFiles
 import monix.execution.Scheduler.Implicits.traced
@@ -49,8 +49,7 @@ final class ReplicatingControllerClusterTest extends ControllerClusterTester:
       backup.runController(dontWaitUntilReady = true) { backupController =>
         primary.runController() { primaryController =>
           // Recoupling may take a short time
-          waitForCondition(10.s, 10.ms)(primaryController.journalActorState.isRequiringClusterAcknowledgement)
-          assert(primaryController.journalActorState.isRequiringClusterAcknowledgement)
+          awaitAndAssert(primaryController.journalActorState.isRequiringClusterAcknowledgement)
 
           val lastEventId = primaryController.eventWatch.lastAddedEventId
           primaryController.runOrder(FreshOrder(OrderId("🔹"), TestWorkflow.path))

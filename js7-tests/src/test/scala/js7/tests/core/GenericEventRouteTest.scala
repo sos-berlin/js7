@@ -11,7 +11,6 @@ import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
-import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.web.Uri
@@ -34,6 +33,7 @@ import js7.data.order.{OrderEvent, OrderId}
 import js7.data.workflow.WorkflowPath
 import js7.journal.watch.{JournalEventWatch, SimpleEventCollector}
 import js7.journal.web.GenericEventRoute
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.core.GenericEventRouteTest.*
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -153,11 +153,11 @@ extends OurTestSuite, BeforeAndAfterAll, ProvideActorSystem, GenericEventRoute
       val observed = mutable.Buffer[Stamped[KeyedEvent[Event]]]()
       val observableCompleted = getEventObservable(EventRequest.singleClass[Event](after = EventId.BeforeFirst, timeout = Some(99.s)))
         .foreach(observed += _)
-      waitForCondition(9.s, 1.ms) { observed.size == 1 }
+      awaitAndAssert { observed.size == 1 }
       assert(observed(0) == TestEvents(0))
 
       eventCollector.addStamped(TestEvents(1))
-      waitForCondition(9.s, 1.ms) { observed.size == 2 }
+      awaitAndAssert { observed.size == 2 }
       assert(observed(1) == TestEvents(1))
 
       observableCompleted.cancel()

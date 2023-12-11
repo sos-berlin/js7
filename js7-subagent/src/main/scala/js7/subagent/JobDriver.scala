@@ -114,7 +114,7 @@ private final class JobDriver(
       .flatMapT { orderProcess =>
         entry.orderProcess = Some(orderProcess)
         // Start the orderProcess. The future completes the stdObservers (stdout, stderr)
-        orderProcess.start(processOrder.stdObservers)
+        orderProcess.start(processOrder.order.id, jobKey, processOrder.stdObservers)
           .flatMap { runningProcess =>
             val whenCompleted = runningProcess.runToFuture
             entry.terminated.completeWith(whenCompleted)

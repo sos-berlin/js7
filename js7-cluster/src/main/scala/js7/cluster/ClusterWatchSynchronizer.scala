@@ -1,6 +1,7 @@
 package js7.cluster
 
 import cats.effect.ExitCase
+import cats.syntax.flatMap.*
 import java.util.ConcurrentModificationException
 import js7.base.generic.Completed
 import js7.base.log.Logger.syntax.*
@@ -15,6 +16,7 @@ import js7.cluster.watch.api.ClusterWatchConfirmation
 import js7.common.system.startup.Halt.haltJava
 import js7.data.cluster.ClusterEvent.{ClusterPassiveLost, ClusterWatchRegistered}
 import js7.data.cluster.ClusterState.HasNodes
+import js7.data.cluster.ClusterWatchProblems.ClusterPassiveLostWhileFailedOverProblem
 import js7.data.cluster.{ClusterEvent, ClusterState, ClusterTiming}
 import js7.data.node.NodeId
 import monix.catnap.MVar
@@ -78,12 +80,14 @@ private final class ClusterWatchSynchronizer(
   def stop: Task[Unit] =
     stopHeartbeating
 
-  def applyEvent(event: ClusterEvent, updatedClusterState: HasNodes)
+  def applyEvent(event: ClusterEvent, updatedClusterState: HasNodes,
+    clusterWatchIdChangeAllowed: Boolean = false)
   : Task[Checked[Option[ClusterWatchConfirmation]]] =
     event match
       case _: ClusterPassiveLost =>
         suspendHeartbeat(Task.pure(updatedClusterState))(
-          clusterWatch.applyEvent(event, updatedClusterState))
+          clusterWatch.applyEvent(event, updatedClusterState,
+            clusterWatchIdChangeAllowed = clusterWatchIdChangeAllowed))
 
       case _ =>
         // ClusterSwitchedOver must be emitted by the passive cluster node,
@@ -91,7 +95,8 @@ private final class ClusterWatchSynchronizer(
         // A ClusterSwitchedOver event will be written to the journal after applyEvent.
         // So journal.clusterState will reflect the outdated ClusterState for a short while.
         clusterWatch
-          .applyEvent(event, updatedClusterState)
+          .applyEvent(event, updatedClusterState,
+            clusterWatchIdChangeAllowed = clusterWatchIdChangeAllowed)
           .flatTapT(_ => Task
             // ClusterWatchRegistered may be emitted by the background heartbeat, which
             // does not suspend heartbeat (it would suspend/kill itself).
@@ -102,17 +107,18 @@ private final class ClusterWatchSynchronizer(
             .as(Checked.unit))
 
   def suspendHeartbeat[A](getClusterState: Task[ClusterState], forEvent: Boolean = false)
-    (task: Task[A])
+    (task: Task[Checked[A]])
     (implicit enclosing: sourcecode.Enclosing)
-  : Task[A] =
+  : Task[Checked[A]] =
     logger.traceTask(
       startNestedSuspension *>
         task
-          .<*(
+          .flatTap(taskResult =>
             endNestedSuspension(
               getClusterState
                 .flatMap {
-                  case clusterState: HasNodes if clusterState.activeId == ownId =>
+                  case clusterState: HasNodes if clusterState.activeId == ownId
+                    && taskResult != Left(ClusterPassiveLostWhileFailedOverProblem) =>
                     continueHeartbeating(
                       clusterState,
                       registerClusterWatchId.orThrow,
@@ -292,7 +298,7 @@ private final class ClusterWatchSynchronizer(
             case Right(_) =>
               Task.pure(Completed)
 
-  def doACheckedHeartbeat(
+  private def doACheckedHeartbeat(
     clusterState: HasNodes,
     registerClusterWatchId: RegisterClusterWatchId,
     clusterWatchIdChangeAllowed: Boolean,

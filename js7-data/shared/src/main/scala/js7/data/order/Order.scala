@@ -705,8 +705,10 @@ final case class Order[+S <: Order.State](
     mark.isDefined
 
   def isSuspendible =
-    (isState[IsFreshOrReady] /*|| isState[DelayedAfterError]*/ || isState[ProcessingKilled] && isSuspendingWithKill) &&
-    (isDetached || isAttached)
+    (isState[IsFreshOrReady]
+      || isState[DelayedAfterError]
+      || isState[ProcessingKilled] && isSuspendingWithKill
+    ) && (isDetached || isAttached)
 
   private def isSuspending =
     mark.exists(_.isInstanceOf[OrderMark.Suspending])

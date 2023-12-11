@@ -175,10 +175,10 @@ final class WorkingClusterNode[
       .flatMapT(_.executeCommand(command))
 
   def shutDownThisNode: Task[Checked[Completed]] =
-    Task.defer:
+    logger.debugTask(Task.defer:
       _activeClusterNode.toOption match
         case None => Task.right(Completed)
-        case Some(o) => o.shutDownThisNode
+        case Some(o) => o.shutDownThisNode)
 
   def isActive = _activeClusterNode.isDefined
 

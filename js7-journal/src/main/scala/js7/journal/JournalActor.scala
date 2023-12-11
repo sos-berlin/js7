@@ -138,15 +138,10 @@ extends Actor, Stash, JournalLogging:
       takeSnapshot()
       unstashAll()
       become(ready)
-      logReady()
       sender ! Output.Ready(journalHeader)
 
     case _ =>
       stash()
-
-  private def logReady() =
-    val how = if conf.syncOnCommit then "(with sync)" else "(without sync)"
-    logger.debug(s"Snapshot written to Writing $how journal file ${eventWriter.file.getFileName}")
 
   private def ready: Receive = receiveGet orElse:
     case Input.Store(correlId, timestamped, replyTo, options, since, commitLater, callersItem) =>
@@ -468,7 +463,6 @@ extends Actor, Stash, JournalLogging:
         logger.debug(s"Delaying snapshot until last event has been committed and acknowledged (lastAcknowledgedEventId=$lastAcknowledgedEventId lastWrittenEventId=$lastWrittenEventId)")
       else
         takeSnapshot()
-        logReady()
 
   private def responseAfterSnapshotTaken(): Unit =
     for sender <- snapshotRequesters if sender != self do sender ! Output.SnapshotTaken
@@ -558,6 +552,9 @@ extends Actor, Stash, JournalLogging:
     eventWriter.onJournalingStarted(fileLengthBeforeEvents = fileLengthBeforeEvents)
 
     onReadyForAcknowledgement()
+
+    val how = if (conf.syncOnCommit) "(with sync)" else "(without sync)"
+    logger.debug(s"Snapshot written $how to journal file ${eventWriter.file.getFileName}")
 
   private def newEventJsonWriter(after: EventId, withoutSnapshots: Boolean = false) =
     assertThat(journalHeader != null)

@@ -6,7 +6,6 @@ import js7.base.log.Logger
 import js7.base.problem.Checked.Ops
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.base.time.WaitForCondition.waitForCondition
 import js7.cluster.ClusterWatchCounterpart.WaitingForConfirmation
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterWatchRegistered}
 import js7.data.cluster.ClusterState.{Coupled, FailedOver}
@@ -19,6 +18,7 @@ import js7.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.value.NumberValue
 import js7.journal.files.JournalFiles.JournalMetaOps
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.cluster.controller.ControllerClusterTester.*
 import js7.tests.cluster.controller.UntaughtClusterWatchFailoverControllerClusterTest.*
 import monix.execution.Scheduler.Implicits.traced
@@ -40,7 +40,7 @@ final class UntaughtClusterWatchFailoverControllerClusterTest extends Controller
       backup.runController(dontWaitUntilReady = true) { backupController =>
         withClusterWatchService() { (clusterWatch, _) =>
           primaryController.eventWatch.await[ClusterCoupled]()
-          waitForCondition(10.s, 10.ms)(clusterWatch.clusterState().exists(_.isInstanceOf[Coupled]))
+          awaitAndAssert(clusterWatch.clusterState().exists(_.isInstanceOf[Coupled]))
           // Let ClusterWatch run because it confirms after ClusterCoupled has been committed
 
           since = now
@@ -77,7 +77,7 @@ final class UntaughtClusterWatchFailoverControllerClusterTest extends Controller
             == Left(ClusterNodeIsNotLostProblem(backupId)))
 
           // primaryId is lost. Wait until passive node has detected it.
-          waitForCondition(99.s, 10.ms)(
+          awaitAndAssert(
             clusterWatchService
               .manuallyConfirmNodeLoss(primaryId, "CONFIRMER")
               .await(99.s)
@@ -110,8 +110,7 @@ final class UntaughtClusterWatchFailoverControllerClusterTest extends Controller
               clusterWatchId = Some(clusterWatchService.clusterWatchId)),
             clusterFailedOver.failedAt)
           // Why wait ???
-          waitForCondition(10.s, 10.ms)(backupController.clusterState.await(99.s) == expectedFailedOver)
-          assert(backupController.clusterState.await(99.s) == expectedFailedOver)
+          awaitAndAssert(backupController.clusterState.await(99.s) == expectedFailedOver)
 
           backupController.eventWatch.await[OrderFinished](_.key == orderId, after = failedOverEventId)
         }

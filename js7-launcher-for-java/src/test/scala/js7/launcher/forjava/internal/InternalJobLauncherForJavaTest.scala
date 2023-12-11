@@ -11,6 +11,7 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.VirtualThreads
 import js7.base.time.AlarmClock
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.{RichEitherF, RichEitherIterable, RichPartialFunction}
@@ -42,7 +43,8 @@ import scala.concurrent.Future
 
 final class InternalJobLauncherForJavaTest extends OurTestSuite, BeforeAndAfterAll
 {
-  private val blockingThreadPoolName = "InternalJobLauncherForJavaTest"
+  private val blockingThreadPoolName =
+    if (VirtualThreads.isEnabled) "" else "InternalJobLauncherForJavaTest"
   private val blockingJobScheduler = newUnlimitedNonVirtualScheduler(name = blockingThreadPoolName)
 
   override def afterAll() = {
@@ -133,6 +135,8 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite, BeforeAndAfterA
     val outFuture = out.fold.lastOrElseL("").runToFuture
     val errFuture = err.fold.lastOrElseL("").runToFuture
     val stdObservers = new StdObservers(out, err, 4096, keepLastErrLine = false)
+    val orderId = OrderId("TEST")
+    val jobKey = executor.jobConf.jobKey
     temporaryDirectoryResource("InternalJobLauncherForJavaTest-")
       .flatMap(dir => Resource
         .fromAutoCloseable(Task(new FileValueState(dir)))
@@ -143,10 +147,10 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite, BeforeAndAfterA
           .flatMapT(_ =>
             executor.toOrderProcess(
               ProcessOrder(
-                Order(OrderId("TEST"), workflow.id /: Position(0),
+                Order(orderId, workflow.id /: Position(0),
                   Order.Processing(SubagentId("SUBAGENT"))),
                 workflow,
-                executor.jobConf.jobKey,
+                jobKey,
                 WorkflowJob(AgentPath("AGENT"), ShellScriptExecutable("")),
                 jobResources = Nil,
                 executeArguments = Map.empty,
@@ -155,7 +159,7 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite, BeforeAndAfterA
                 stdObservers,
                 fileValueScope))
             .await(99.s).orThrow
-            .start(stdObservers)
+            .start(orderId, jobKey, stdObservers)
             .flatten
             .guarantee(Task {
               try out.onComplete()

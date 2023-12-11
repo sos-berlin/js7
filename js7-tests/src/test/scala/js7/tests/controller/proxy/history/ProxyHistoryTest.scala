@@ -13,7 +13,6 @@ import js7.base.problem.ProblemException
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.*
 import js7.common.pekkoutils.ProvideActorSystem
@@ -34,6 +33,7 @@ import js7.data_for_java.auth.{JAdmission, JHttpsConfig}
 import js7.journal.files.JournalFiles.listJournalFiles
 import js7.proxy.data.event.{EventAndState, ProxyStarted}
 import js7.proxy.javaapi.JProxyContext
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.controller.proxy.ClusterProxyTest
 import js7.tests.controller.proxy.history.JControllerApiHistoryTester.TestWorkflowId
 import js7.tests.controller.proxy.history.ProxyHistoryTest.*
@@ -46,7 +46,7 @@ import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
 
 final class ProxyHistoryTest extends OurTestSuite, ProvideActorSystem, ClusterProxyTest:
-  
+
   private val maxRounds = 100
 
   override protected def config = config"""
@@ -69,8 +69,7 @@ final class ProxyHistoryTest extends OurTestSuite, ProvideActorSystem, ClusterPr
         .map(_.file.getFileName.toString)
 
       def assertJournalFileCount(n: Int)(implicit pos: source.Position): Unit =
-        waitForCondition(9.s, 10.ms) { listJournalFilenames.size == n }
-        assert(listJournalFilenames.size == n)
+        awaitAndAssert { listJournalFilenames.size == n }
 
       val keyedEvents = mutable.Buffer[KeyedEvent[OrderEvent]]()
 

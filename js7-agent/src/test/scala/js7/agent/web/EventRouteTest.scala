@@ -12,7 +12,6 @@ import js7.base.problem.Checked.*
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.Closer.syntax.*
 import js7.data.agent.Problems.{AgentPathMismatchProblem, AgentRunIdMismatchProblem}
 import js7.data.agent.{AgentPath, AgentRunId}
@@ -21,6 +20,7 @@ import js7.data.event.{Event, EventId, EventRequest, EventSeqTornProblem, Journa
 import js7.data.problems.UnknownEventIdProblem
 import js7.data.subagent.SubagentId
 import js7.journal.files.JournalFiles.listJournalFiles
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import monix.execution.Scheduler.Implicits.traced
 import org.apache.pekko.actor.ActorSystem
 
@@ -128,7 +128,7 @@ final class EventRouteTest extends OurTestSuite, AgentTester:
 
     // Wait until ReleaseEvents takes effect (otherwise CoupleController may succeed or
     // fail with watch.ClosedException)
-    waitForCondition(9.s, 10.ms) { journalFiles.head.fileEventId > EventId.BeforeFirst }
+    awaitAndAssert { journalFiles.head.fileEventId > EventId.BeforeFirst }
 
     assert(agentClient
       .commandExecute(CoupleController(

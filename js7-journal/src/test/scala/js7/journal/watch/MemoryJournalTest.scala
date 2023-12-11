@@ -13,6 +13,7 @@ import js7.data.event.{EventId, EventRequest, KeyedEvent, Stamped}
 import js7.journal.test.{TestAggregate, TestEvent, TestState}
 import js7.journal.watch.MemoryJournalTest.*
 import js7.journal.{EventIdClock, EventIdGenerator, MemoryJournal}
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import monix.execution.Scheduler.Implicits.traced
 import scala.collection.mutable
 
@@ -129,13 +130,11 @@ final class MemoryJournalTest extends OurTestSuite:
 
     def lastObserved = synchronized(observed.lastOption).map(_.eventId)
 
-    waitForCondition(10.s, 10.ms)(lastObserved.contains(1002L) && journal.queueLength == 3)
-    assert(observed.last.eventId == 1002 && journal.queueLength == 3)
+    awaitAndAssert(lastObserved.contains(1002L) && journal.queueLength == 3)
 
     for i <- 0 until n - size do withClue(s"#$i"):
       journal.releaseEvents(untilEventId = 1000 + i).await(99.s).orThrow
-      waitForCondition(10.s, 10.ms)(lastObserved.contains(1000L + size + i) && journal.queueLength == 3)
-      assert(lastObserved.contains(1000L + size + i) && journal.queueLength == 3)
+      awaitAndAssert(lastObserved.contains(1000L + size + i) && journal.queueLength == 3)
 
     persisting.await(9.s)
     observing.cancel()

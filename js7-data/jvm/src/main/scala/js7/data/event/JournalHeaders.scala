@@ -24,7 +24,7 @@ object JournalHeaders:
         totalRunningTime = totalRunningTime,
         timestamp = timestamp,
         version = Version,
-        js7Version = BuildInfo.longVersion,
+        js7Version = BuildInfo.prettyVersion,
         buildId = BuildInfo.buildId)
 
   def forTest(typeName: String, journalId: JournalId, eventId: EventId = EventId.BeforeFirst): JournalHeader =
@@ -37,7 +37,7 @@ object JournalHeaders:
       ZeroDuration,
       timestamp = Timestamp.now,
       initiallyStartedAt = Timestamp.now,
-      js7Version = BuildInfo.longVersion,
+      js7Version = BuildInfo.prettyVersion,
       version = Version,
       buildId = BuildInfo.buildId)
 
@@ -53,5 +53,5 @@ object JournalHeaders:
       timestamp = Timestamp.now,
       initiallyStartedAt = Timestamp.now,
       version = Version,
-      js7Version = BuildInfo.longVersion,
+      js7Version = BuildInfo.prettyVersion,
       buildId = BuildInfo.buildId)

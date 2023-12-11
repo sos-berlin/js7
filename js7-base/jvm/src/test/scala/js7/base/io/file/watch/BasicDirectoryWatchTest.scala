@@ -11,7 +11,7 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.base.time.WaitForCondition.waitForCondition
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import scala.collection.mutable
@@ -61,8 +61,7 @@ final class BasicDirectoryWatchTest extends OurTestSuite:
               val observed = observable foreach { events ++= _ }
               val file = dir / "1"
               file := ""
-              waitForCondition(10.s, 10.ms)(events.lastOption contains FileAdded(file.getFileName))
-              assert(events.lastOption contains FileAdded(file.getFileName))
+              awaitAndAssert(events.lastOption contains FileAdded(file.getFileName))
 
               observed.cancel()
             })

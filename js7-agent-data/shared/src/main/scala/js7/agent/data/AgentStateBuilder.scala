@@ -5,6 +5,7 @@ import js7.agent.data.orderwatch.{FileWatchState, FileWatchStateHandler}
 import js7.base.crypt.Signed
 import js7.base.problem.Checked.*
 import js7.base.utils.Collections.implicits.*
+import js7.data.agent.AgentRef
 import js7.data.cluster.{ClusterState, ClusterStateSnapshot}
 import js7.data.event.{JournalState, SnapshotableStateBuilder, Stamped}
 import js7.data.item.SignedItemEvent.SignedItemAdded
@@ -100,4 +101,11 @@ extends SnapshotableStateBuilder[AgentState]:
     _state.clusterState
 
   def result() =
+    fixMetaBeforev2_6_3()
     _state.copy(eventId = eventId)
+
+  private def fixMetaBeforev2_6_3(): Unit =
+    val meta = _state.meta
+    if meta != AgentMetaState.empty && meta.directors.isEmpty then
+      for agentRef <- _state.keyToItem(AgentRef).get(meta.agentPath) do
+        _state = _state.copy(meta = meta.copy(directors = agentRef.directors))

@@ -6,6 +6,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.syntax.*
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
@@ -53,7 +54,7 @@ final class ResourceGuardTest extends OurTestSuite:
             case None =>
               stop = true
     sleep(100.ms)
-    waitForCondition(10.s, 10.ms)(notReleased.get() > 1)
+    awaitAndAssert(notReleased.get() > 1)
     g.releaseAfterUse()
     futures await 99.s
     assert(released.get() == 1)

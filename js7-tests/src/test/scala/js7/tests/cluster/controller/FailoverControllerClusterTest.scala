@@ -10,7 +10,6 @@ import js7.base.problem.Checked.Ops
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.base.time.WaitForCondition.waitForCondition
 import js7.cluster.ClusterCommon.{ClusterWatchAgreedToActivation, ClusterWatchDisagreedToActivation}
 import js7.cluster.ClusterNode.RestartAfterJournalTruncationException
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterSwitchedOver, ClusterWatchRegistered}
@@ -28,6 +27,7 @@ import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.tests.cluster.controller.ControllerClusterTester.*
 import js7.tests.cluster.controller.FailoverControllerClusterTest.*
 import js7.tests.testenv.ProgramEnvTester.assertEqualJournalFiles
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.Deadline.now
 
@@ -68,7 +68,7 @@ abstract class FailoverControllerClusterTest protected extends ControllerCluster
       val expectedFailedFile = primaryController.conf.journalLocation.file(failedOver.failedAt.fileEventId)
       assert(failedOver.failedAt.position == size(expectedFailedFile))
 
-      waitForCondition(10.s, 10.ms)(backupController.clusterState.await(99.s).isInstanceOf[FailedOver])  // Is a delay okay ???
+      awaitAndAssert(backupController.clusterState.await(99.s).isInstanceOf[FailedOver])  // Is a delay okay ???
       assert(backupController.clusterState.await(99.s) ==
         FailedOver(clusterSetting.copy(activeId = backupId), failedOver.failedAt))
 

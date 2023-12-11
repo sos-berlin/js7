@@ -15,7 +15,7 @@ import scala.util.{Failure, Success, Try}
 
 private final class LoggingTestAdder(suiteName: String):
 
-  Logger.initialize("JS7 Test")
+  logger.info(s"$magenta${"━" * barLength} $bold↘ $suiteName$resetColor")
 
   private lazy val since = now
   private val outerNames = Seq(suiteName).to(mutable.Stack)
@@ -34,7 +34,7 @@ private final class LoggingTestAdder(suiteName: String):
       (ctx, test) => {
         if !firstTestCalled then {
           firstTestCalled = true
-          logger.info(bar)
+          logger.info("\n" + magenta + "━" * barLength + resetColor)
         }
         if suppressCorrelId then
           executeTest(ctx, test)
@@ -62,11 +62,16 @@ private final class LoggingTestAdder(suiteName: String):
       (if failedCount == 0 then "" else s" · $failureMarkup💥 $failedCount failed$resetColor") +
       (if pendingCount == 0 then "" else s" · $pendingMarkup🚧 $pendingCount pending$resetColor") +
       (if failedCount == 0 && pendingCount == 0 then s" $successMarkup✔︎$resetColor " else " · ") +
-      since.elapsed.pretty + "\n")
+      since.elapsed.pretty)
+    logger.info(s"$magenta${"▲" * barLength} $bold↙ $suiteName$resetColor\n")
+
 
 private object LoggingTestAdder:
+  Logger.initialize("JS7 Test")  // In case it is not yet initialized
+
   private val logger = Logger("TEST")
-  private val bar = "\n" + magenta + "━" * 100 + resetColor
+  private val barLength = 100
+  private val bar = "╼" * barLength
   private val successMarkup = green + bold
   private val pendingMarkup = ""
   private val failureMarkup = orange + bold
@@ -111,7 +116,7 @@ private object LoggingTestAdder:
       tried match
         case Success(_) =>
           adder.succeededCount += 1
-          logger.info(s"↙ $logLine")
+          logger.info(logLine)
           logger.info(eager(successMarkup + bar + resetColor))
 
         case Failure(_: TestPendingException) =>
@@ -139,7 +144,7 @@ private object LoggingTestAdder:
     def toLogLine: String =
       tried match
         case Success(_) =>
-          s"$successMarkup$prefix$testName$resetColor $prettyDuration"
+          s"$successMarkup↙ $prefix$testName$resetColor $prettyDuration"
 
         case Failure(_: TestPendingException) =>
           s"🚧 $pendingMarkup$prefix$testName (PENDING)$resetColor $prettyDuration"

@@ -30,7 +30,7 @@ final class JournalHeadersTest extends OurTestSuite:
         "timestamp": "2019-05-23T22:22:22.222Z",
         "initiallyStartedAt": "2019-05-22T12:00:00Z",
         "version": "${JournalHeader.Version}",
-        "js7Version": "${BuildInfo.longVersion}",
+        "js7Version": "${BuildInfo.prettyVersion}",
         "buildId": "${BuildInfo.buildId}"
       }""")
 

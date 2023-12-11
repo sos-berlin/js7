@@ -582,14 +582,14 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
   : Task[Checked[Unit]] =
     journal.clusterState
       .flatMap(clusterState =>
-        Task(ifClusterWatchRegistered(clusterState, confirmation.clusterWatchId))
+        Task(isClusterWatchRegistered(clusterState, confirmation.clusterWatchId))
           .flatMapT(
             if _ then // Short cut
               Task.right(Nil -> clusterState)
             else
               journal
                 .persistTransaction[ClusterEvent](NoKey)(s =>
-                  ifClusterWatchRegistered(s.clusterState, confirmation.clusterWatchId)
+                  isClusterWatchRegistered(s.clusterState, confirmation.clusterWatchId)
                     .map(!_ thenList ClusterWatchRegistered(confirmation.clusterWatchId)))
                 .map(_.map { case (stampedEvents, journaledState) =>
                   stampedEvents -> journaledState.clusterState
@@ -601,7 +601,10 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
         val events = stampedEvents.map(_.value.event)
         (events, clusterState) match
           case (Seq(event), clusterState: HasNodes) =>
-            clusterWatchSynchronizer.applyEvent(event, clusterState)
+            clusterWatchSynchronizer
+              .applyEvent(
+                event, clusterState,
+                clusterWatchIdChangeAllowed = event.isInstanceOf[ClusterWatchRegistered])
               .rightAs(())
 
           case (Seq(), _) => Task.right(())
@@ -609,7 +612,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
       }
 
   // Returns Right(true) iff clusterState settings contains clusterWatchId
-  private def ifClusterWatchRegistered(clusterState: ClusterState, clusterWatchId: ClusterWatchId)
+  private def isClusterWatchRegistered(clusterState: ClusterState, clusterWatchId: ClusterWatchId)
   : Checked[Boolean] =
     clusterState match
       case ClusterState.Empty => Left(ClusterStateEmptyProblem)
@@ -638,7 +641,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
             case Some(event) if !state.clusterState.isEmptyOrActive(ownId) =>
               Left(Problem(s"ClusterEvent is only allowed on active cluster node: $event"))
             case maybeEvent =>
-              Right((extraEvent.toList ::: maybeEvent.toList))
+              Right(extraEvent.toList ::: maybeEvent.toList)
           })
         .flatMapT { case (stampedEvents, state) =>
           assertThat(!clusterWatchSynchronizer.isHeartbeating)
@@ -651,7 +654,21 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
           val events = clusterStampedEvents.map(_.value.event)
           (events, state.clusterState) match
             case (Seq(event), clusterState: HasNodes) =>
-              clusterWatchSynchronizer.applyEvent(event, clusterState)
+              clusterWatchSynchronizer
+                .applyEvent(
+                  event, clusterState,
+                  clusterWatchIdChangeAllowed =
+                    events == Seq(ClusterPassiveLost(clusterState.passiveId)))
+                .flatMapT {
+                  case Some(confirmation)
+                    // After SwitchOver this ClusterNode is no longer active
+                    if clusterState.isNonEmptyActive(ownId) =>
+                    // JS-2092 We depend on the ClusterWatch,
+                    // that it confirms the event only if it is taught about the ClusterState.
+                    // Then, a ClusterWatch change is allowed.
+                    registerClusterWatchId(confirmation, alreadyLocked = true)
+                  case _ => Task.right(())
+                }
                 .rightAs(clusterStampedEvents -> clusterState)
 
             case (Seq(), clusterState) =>
@@ -661,9 +678,9 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
               Task.left(Problem.pure("persistWithoutTouchingHeartbeat does not match"))
         }
 
-  private def suspendHeartbeat[A](forEvent: Boolean = false)(task: Task[A])
+  private def suspendHeartbeat[A](forEvent: Boolean = false)(task: Task[Checked[A]])
     (implicit enclosing: sourcecode.Enclosing)
-  : Task[A] =
+  : Task[Checked[A]] =
     clusterWatchSynchronizer
       .suspendHeartbeat(journal.clusterState, forEvent = forEvent)(
         task)

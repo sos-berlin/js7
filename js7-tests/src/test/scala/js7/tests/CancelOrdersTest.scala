@@ -18,7 +18,7 @@ import js7.data.event.KeyedEvent
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion}
 import js7.data.item.VersionId
 import js7.data.job.ShellScriptExecutable
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderBroken, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCaught, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOperationCancelled, OrderOutcomeAdded, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPrompted, OrderRetrying, OrderStarted, OrderStdWritten, OrderStdoutWritten, OrderSuspended, OrderTerminated}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderBroken, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCaught, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOperationCancelled, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPrompted, OrderRetrying, OrderStarted, OrderStdWritten, OrderStdoutWritten, OrderSuspended, OrderTerminated}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
 import js7.data.problems.CannotResumeOrderProblem
 import js7.data.value.Value.convenience.*
@@ -31,7 +31,7 @@ import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{Position, WorkflowPosition}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.CancelOrdersTest.*
-import js7.tests.jobs.EmptyJob
+import js7.tests.jobs.{EmptyJob, FailingJob}
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import monix.execution.Scheduler.Implicits.traced
@@ -42,7 +42,7 @@ import scala.concurrent.duration.Deadline.now
 /**
   * @author Joacim Zschimmer
   */
-final class CancelOrdersTest 
+final class CancelOrdersTest
   extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater
 {
   override protected val controllerConfig = config"""
@@ -717,7 +717,7 @@ final class CancelOrdersTest
     val workflow = Workflow(WorkflowPath("RETRY"), Seq(
       TryInstruction(
         Workflow.of(
-          Fail()),
+          FailingJob.execute(agentPath)),
         Workflow.of(
           Retry()),
         retryDelays = Some(Vector(100.s)))))
@@ -738,10 +738,16 @@ final class CancelOrdersTest
         } == Seq(
           OrderAdded(workflow.id, deleteWhenTerminated = true),
           OrderMoved(Position(0) / "try+0" % 0),
+          OrderAttachable(agentPath),
+          OrderAttached(agentPath),
           OrderStarted,
-          OrderOutcomeAdded(Outcome.failed),
+          OrderProcessingStarted(subagentId),
+          OrderProcessed(FailingJob.outcome),
           OrderCaught(Position(0) / "catch+0" % 0),
           OrderRetrying(Position(0) / "try+1" % 0),
+          OrderCancellationMarked(),
+          OrderDetachable,
+          OrderDetached,
           OrderCancelled,
           OrderDeleted))
     }

@@ -98,25 +98,25 @@ extends Observable[Seq[A]]:
           onNext2(elem, w)
       }
 
-      private def onNext2(elem: A, weight: Long): Future[Ack] = self.synchronized {
-        val now = scheduler.clockMonotonic(MILLISECONDS)
-        if buffer.isEmpty then {
-          for span <- timespanMillis do {
-            expiresAt = now + span
-            val remaining = expiresAt - now
-            if remaining > 0 then {
-              timer := scheduler.scheduleOnce(remaining, MILLISECONDS, self)
-            }
-          }
-        }
-        buffer.append(elem)
-        bufferWeight += weight
+      private def onNext2(elem: A, weight: Long): Future[Ack] =
+        self.synchronized:
+          if (buffer == null)
+            Stop
+          else
+            val now = scheduler.clockMonotonic(MILLISECONDS)
+            if buffer.isEmpty then
+              for span <- timespanMillis do
+                expiresAt = now + span
+                val remaining = expiresAt - now
+                if remaining > 0 then
+                  timer := scheduler.scheduleOnce(remaining, MILLISECONDS, self)
+            buffer.append(elem)
+            bufferWeight += weight
 
-        if expiresAt <= now || maxWeight <= bufferWeight then
-          sendNext()
-        else
-          Continue
-      }
+            if expiresAt <= now || maxWeight <= bufferWeight then
+              sendNext()
+            else
+              Continue
 
       def onError(ex: Throwable): Unit = self.synchronized {
         timer.cancel()
@@ -128,7 +128,7 @@ extends Observable[Seq[A]]:
       def onComplete(): Unit = self.synchronized {
         timer.cancel()
 
-        if buffer.nonEmpty then {
+        if buffer != null && buffer.nonEmpty then
           val bundleToSend = buffer.toList
           // In case the last onNext isn't finished, then
           // we need to apply back-pressure, otherwise this
@@ -137,10 +137,9 @@ extends Observable[Seq[A]]:
             out.onNext(bundleToSend)
             out.onComplete()
           }
-        } else {
+        else
           // We can just stream directly
           out.onComplete()
-        }
 
         // GC relief
         buffer = null

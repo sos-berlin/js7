@@ -142,17 +142,15 @@ extends Service.StoppableByRequest:
         workingNodeStarted.complete(Success(Left(termination))).attempt.void
 
   private def startWorkingNode(recovered: Recovered[S]): Task[WorkingClusterNode[S]] =
-    logger.traceTask(
-      {
-        WorkingClusterNode
-          .resource(recovered, common, clusterConf, eventIdGenerator, eventBus)
-          // Not compilable with Scala 3.3.1: .toAllocated
-          .toLabeledAllocated(label = s"WorkingClusterNode[${implicitly[Tag[S]].tag.shortName}]")
-          .flatTap(allocated => Task {
-            passiveOrWorkingNode := Some(Right(allocated))
-          })
-          .map(_.allocatedThing)
-      })
+    logger.traceTask:
+      WorkingClusterNode
+        .resource(recovered, common, clusterConf, eventIdGenerator, eventBus)
+        // Not compilable with Scala 3.3.1: .toAllocated
+        .toLabeledAllocated(label = s"WorkingClusterNode[${implicitly[Tag[S]].tag.shortName}]")
+        .flatTap(allocated => Task {
+          passiveOrWorkingNode := Some(Right(allocated))
+        })
+        .map(_.allocatedThing)
 
   def workingClusterNode: Checked[WorkingClusterNode[S]] =
     passiveOrWorkingNode.get()

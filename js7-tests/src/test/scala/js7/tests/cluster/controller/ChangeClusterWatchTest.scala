@@ -4,19 +4,19 @@ import js7.base.log.Logger
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import js7.cluster.ClusterNode.ClusterWatchConfirmed
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterCouplingPrepared, ClusterWatchRegistered}
 import js7.data.cluster.ClusterWatchProblems.{ClusterWatchRequestDoesNotMatchProblem, OtherClusterWatchStillAliveProblem}
 import js7.data.cluster.{ClusterState, ClusterWatchId}
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.cluster.controller.ChangeClusterWatchTest.*
 import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.Promise
 
 final class ChangeClusterWatchTest extends ControllerClusterTester:
-  
+
   "Start and stop some ClusterWatch with same or different ClusterWatchIds" in:
     withControllerAndBackup(suppressClusterWatch = true) { (primary, _, backup, _, _) =>
       val primaryController = primary.newController()
@@ -49,8 +49,8 @@ final class ChangeClusterWatchTest extends ControllerClusterTester:
             .clusterState.asInstanceOf[ClusterState.Coupled].setting.clusterWatchId
             == Some(aClusterWatchId))
 
-          waitForCondition(10.s, 10.ms)(
-            a.clusterState().exists(_.isInstanceOf[ClusterState.Coupled]))
+          awaitAndAssert:
+            a.clusterState().exists(_.isInstanceOf[ClusterState.Coupled])
         }
 
         logger.info("🔷 Same ClusterWatchId again")

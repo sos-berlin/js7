@@ -18,7 +18,7 @@ import js7.base.utils.Tests.isTest
 import js7.base.utils.{AsyncLock, Atomic}
 import js7.cluster.ClusterWatchCounterpart.*
 import js7.cluster.watch.api.ClusterWatchConfirmation
-import js7.data.cluster.ClusterEvent.{ClusterCouplingPrepared, ClusterNodesAppointed, ClusterPassiveLost, ClusterWatchRegistered}
+import js7.data.cluster.ClusterEvent.{ClusterCouplingPrepared, ClusterNodesAppointed, ClusterPassiveLost}
 import js7.data.cluster.ClusterState.{Coupled, FailedOver, HasNodes, PassiveLost}
 import js7.data.cluster.ClusterWatchProblems.{ClusterNodeLossNotConfirmedProblem, ClusterWatchIdDoesNotMatchProblem, ClusterWatchRequestDoesNotMatchProblem, NoClusterWatchProblem, OtherClusterWatchStillAliveProblem}
 import js7.data.cluster.ClusterWatchRequest.RequestId
@@ -78,7 +78,8 @@ extends Service.StoppableByRequest:
           // another ClusterWatch tries to confirm, too.
           currentClusterWatchId = Some(CurrentClusterWatchId(clusterWatchId))
 
-  def applyEvent(event: ClusterEvent, clusterState: HasNodes)
+  def applyEvent(event: ClusterEvent, clusterState: HasNodes,
+    clusterWatchIdChangeAllowed: Boolean = false)
   : Task[Checked[Option[ClusterWatchConfirmation]]] =
     CorrelId.use { correlId =>
       event match
@@ -90,7 +91,7 @@ extends Service.StoppableByRequest:
           check(
             clusterState.setting.clusterWatchId,
             ClusterWatchCheckEvent(_, correlId, ownId, event, clusterState),
-            clusterWatchIdChangeAllowed = event.isInstanceOf[ClusterWatchRegistered]
+            clusterWatchIdChangeAllowed = clusterWatchIdChangeAllowed
           ).map(_.map(Some(_)))
     }
 
@@ -184,7 +185,7 @@ extends Service.StoppableByRequest:
 
           case _ =>
             for confirmer <- confirm.manualConfirmer do
-              logger.info(s"‼️ ${requested.request.maybeEvent.fold("?")(_.getClass.simpleScalaName)
+              logger.info(s"‼️  ${requested.request.maybeEvent.fold("?")(_.getClass.simpleScalaName)
                 } has MANUALLY BEEN CONFIRMED by '$confirmer' ‼️")
             requested.confirm(confirmation)
       }
@@ -300,7 +301,8 @@ object ClusterWatchCounterpart:
       confirmation.complete(confirm)
         .materialize/*Ignore duplicate complete*/.as(Checked.unit)
 
-    override def toString = s"Requested($id,$clusterWatchId)"
+    override def toString =
+      s"Requested($id,$clusterWatchId,clusterWatchIdChangeAllowed=$clusterWatchIdChangeAllowed)"
 
   private object RequestTimeoutException extends Exception
 

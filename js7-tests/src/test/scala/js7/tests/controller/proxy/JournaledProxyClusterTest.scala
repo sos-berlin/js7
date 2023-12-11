@@ -38,6 +38,7 @@ import js7.data_for_java.auth.{JAdmission, JHttpsConfig}
 import js7.journal.watch.StrictEventWatch
 import js7.proxy.ControllerApi
 import js7.proxy.data.event.{ProxyEvent, ProxyStarted}
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.controller.proxy.ClusterProxyTest.{backupUserAndPassword, primaryCredentials, primaryUserAndPassword, workflow}
 import js7.tests.controller.proxy.JournaledProxyClusterTest.*
 import monix.eval.Task
@@ -48,7 +49,7 @@ import scala.concurrent.duration.Deadline.now
 import scala.jdk.CollectionConverters.*
 
 final class JournaledProxyClusterTest extends OurTestSuite, ClusterProxyTest:
-  
+
   private implicit def implicitActorSystem: ActorSystem = actorSystem
 
   "JournaledProxy[ControllerState]" in:
@@ -116,7 +117,7 @@ final class JournaledProxyClusterTest extends OurTestSuite, ClusterProxyTest:
       // TODO Await Event
       val proxy = api.startProxy().await(99.s)
       try
-        waitForCondition(30.s, 50.ms)(proxy.currentState.repo.currentTyped[Workflow].sizeIs == n + 1)
+        awaitAndAssert(proxy.currentState.repo.currentTyped[Workflow].sizeIs == n + 1)
         assert(proxy.currentState.repo.currentTyped[Workflow].keys.toVector.sorted == (
           workflowPaths :+ ClusterProxyTest.workflow.path).sorted)
       finally proxy.stop await 99.s

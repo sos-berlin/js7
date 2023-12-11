@@ -11,6 +11,7 @@ object Js7Configuration:
     val map = Map(
       "js7.version" -> BuildInfo.version,
       "js7.longVersion" -> BuildInfo.longVersion,
+      "js7.prettyVersion" -> BuildInfo.prettyVersion,
       "js7.test" -> (
         if sys.props.contains("test.speed") then
           "off"

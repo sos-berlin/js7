@@ -5,8 +5,8 @@ import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.thread.VirtualThreads
 import js7.base.time.ScalaTime.*
-import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax.{RichEither, RichPartialFunction}
@@ -29,6 +29,7 @@ import js7.launcher.OrderProcess
 import js7.launcher.forjava.internal.tests.{EmptyBlockingInternalJob, EmptyJInternalJob, TestBlockingInternalJob, TestJInternalJob}
 import js7.launcher.internal.InternalJob
 import js7.launcher.internal.InternalJob.JobContext
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.internaljob.InternalJobTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
@@ -42,9 +43,9 @@ import org.scalatest.Assertions.*
 import scala.collection.mutable
 import scala.reflect.ClassTag
 
-final class InternalJobTest 
+final class InternalJobTest
   extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
-  
+
   protected val agentPaths = agentPath :: Nil
   protected val items = Nil
   override protected val controllerConfig = config"""
@@ -101,8 +102,7 @@ final class InternalJobTest
     expectedOutcome = Outcome.Succeeded(NamedValues.empty))
 
   "When workflow of last test has been deleted, the SimpleJob is stopped" in:
-    waitForCondition(10.s, 10.ms)(SimpleJob.stopped)
-    assert(SimpleJob.stopped)
+    awaitAndAssert(SimpleJob.stopped)
 
   addInternalJobTest(
     Execute(WorkflowJob(agentPath, InternalExecutable(classOf[EmptyJob].getName))),
@@ -116,7 +116,7 @@ final class InternalJobTest
     Execute(WorkflowJob(agentPath, InternalExecutable(classOf[EmptyBlockingInternalJob].getName))),
     expectedOutcome = Outcome.Succeeded(NamedValues.empty))
 
-  private val blockingThreadPoolName = "JS7 blocking job"
+  private val blockingThreadPoolName = if (VirtualThreads.isEnabled) "" else "JS7 blocking job"
 
   for jobClass <- Seq(classOf[TestJInternalJob], classOf[TestBlockingInternalJob]) do
     jobClass.getName - {
@@ -304,7 +304,7 @@ object InternalJobTest:
       Right(())
 
     override def stop =
-      Task.raiseError(new RuntimeException("AddOneJob.stop FAIL'S"))
+      Task.raiseError(new RuntimeException("AddOneJob.stop FAILS"))
 
     def toOrderProcess(step: Step) =
       OrderProcess(Task {

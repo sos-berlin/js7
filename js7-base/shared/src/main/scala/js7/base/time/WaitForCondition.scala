@@ -21,6 +21,7 @@ object WaitForCondition:
     def now = Scheduler.traced.now
     def sleep(duration: FiniteDuration) = ScalaTime.sleep(duration)
 
+  /** Retry until no exception has been thrown or time has elapsed. */
   def retryUntil[A](timeout: FiniteDuration, step: FiniteDuration)(body: => A)
     (implicit sleeper: Sleeper = defaultSleeper)
   : A =

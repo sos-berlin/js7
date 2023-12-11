@@ -741,6 +741,8 @@ final class OrderTest extends OurTestSuite
           case (OrderCancelled, _                 , _, IsDetached             ) => _.isInstanceOf[Cancelled]
           case (_: OrderOutcomeAdded, _           , _, _                      ) => _.isInstanceOf[DelayedAfterError]
           case (_: OrderTransferred , _           , _, IsDetached             ) => _.isInstanceOf[DelayedAfterError]
+          case (_: OrderSuspended, _              , _, IsDetached             ) => _.isInstanceOf[DelayedAfterError]
+          case (_: OrderSuspended, _, IsSuspended(true), IsAttached           ) => _.isInstanceOf[DelayedAfterError]
           case (_: OrderBroken, _                 , _, _                      ) => _.isInstanceOf[Broken]
         })
     }

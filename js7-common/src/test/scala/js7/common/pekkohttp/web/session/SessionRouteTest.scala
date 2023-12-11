@@ -15,7 +15,6 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.{HttpClient, Uri}
@@ -25,6 +24,7 @@ import js7.common.http.PekkoHttpClient
 import js7.common.http.PekkoHttpClient.HttpException
 import js7.data.problems.InvalidLoginProblem
 import js7.data.session.HttpSessionApi
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.scalatest.matchers.should.Matchers.*
@@ -79,7 +79,7 @@ extends OurTestSuite, SessionRouteTester
           onError = onError
         ).runToFuture
         // Pekko delays 100ms, 200ms, 400ms: "Connection attempt failed. Backing off new connection attempts for at least 100 milliseconds"
-        waitForCondition(99.s, 10.ms)(count >= 3)
+        awaitAndAssert(count >= 3)
         assert(count >= 3)
         // Start web server
         allocatedWebServer

@@ -238,7 +238,8 @@ object CorrelId extends GenericString.Checked_[CorrelId]:
 
   private object EmptyCorrelId extends CorrelId:
     val string = ""
-    val fixedWidthString = " " * width
+    // fixedWidthString should not be empty for easier log file parsing
+    val fixedWidthString = "·" + " " * (width - 1)
     val toAscii = ""
 
   def logStatisticsIfEnabled(): Unit =

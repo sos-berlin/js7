@@ -11,7 +11,6 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.web.{HttpClient, Uri}
@@ -35,6 +34,7 @@ import js7.journal.files.JournalFiles.*
 import js7.journal.watch.JournalEventWatch
 import js7.journal.web.JournalRoute
 import js7.journal.write.{EventJournalWriter, SnapshotJournalWriter}
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import monix.eval.Task
 import monix.execution.{CancelableFuture, Scheduler}
 import scala.collection.mutable
@@ -124,7 +124,7 @@ final class JournalRouteTest extends OurTestSuite, RouteTester, JournalRoute
     "flushed" in {
       assert(observed.isEmpty)
       eventWriter.flush(false)
-      waitForCondition(9.s, 10.ms)(observed.nonEmpty)
+      awaitAndAssert(observed.nonEmpty)
       assert(observed.mkString ==
          """{"eventId":1000,"Key":"1","TYPE":"OrderAdded","workflowId":{"path":"TEST","versionId":"VERSION"}}
            |""".stripMargin)

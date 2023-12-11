@@ -23,6 +23,7 @@ final case class ClusterConf(
   clusterWatchUniquenessMemorySize: Int,
   testHeartbeatLossPropertyKey: Option[String] = None,
   testAckLossPropertyKey: Option[String] = None,
+  testDontHaltWhenPassiveLostRejected: Boolean = false,
   config: Config):
 
   def isPrimary = !isBackup
@@ -62,6 +63,8 @@ object ClusterConf:
       clusterWatchUniquenessMemorySize = config.getInt("js7.journal.cluster.watch.uniqueness-memory-size")
       testHeartbeatLoss = config.optionAs[String]("js7.journal.cluster.TEST-HEARTBEAT-LOSS")
       testAckLoss = config.optionAs[String]("js7.journal.cluster.TEST-ACK-LOSS")
+      testDontHaltWhenPassiveLostRejected = config.getBoolean(
+        "js7.journal.cluster.dont-halt-when-passive-lost-rejected", false)
       setting <- maybeIdToUri.traverse(ClusterSetting.checked(_, nodeId, timing, clusterWatchId))
     yield
       new ClusterConf(
@@ -75,4 +78,5 @@ object ClusterConf:
         clusterWatchUniquenessMemorySize,
         testHeartbeatLoss,
         testAckLoss,
+        testDontHaltWhenPassiveLostRejected,
         config = config)

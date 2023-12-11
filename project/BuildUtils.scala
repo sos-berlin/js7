@@ -1,10 +1,12 @@
-import BuildInfos.prettyVersion
 import java.lang.ProcessBuilder.Redirect
 import java.nio.file.Files.{createDirectories, deleteIfExists}
 import java.nio.file.Paths
 import java.security.Security
-import sbt.ModuleID
+import sbt.{ModuleID, ProjectReference}
+import sbtcrossproject.CrossPlugin.autoImport.JVMCrossProjectOps
+import sbtcrossproject.CrossProject
 import scala.jdk.CollectionConverters.*
+import scala.language.implicitConversions
 
 object BuildUtils
 {
@@ -29,7 +31,7 @@ object BuildUtils
   private val logger = org.slf4j.LoggerFactory.getLogger("BuildUtils")
 
   // Initial call to Logger for proper slf4j and log4j initialization ???
-  logger.info(s"Building $prettyVersion, test.parallel=$testParallelization")
+  logger.info(s"test.parallel=$testParallelization")
 
   if (sys.props("java.runtime.version") startsWith "1.8.0_15") {  // Special for Java 8u151 or Java 8u152 (delete this)
     Security.setProperty("crypto.policy", "unlimited")
@@ -64,5 +66,10 @@ object BuildUtils
          |$commandLine
          |""".stripMargin +
         Seq(stderr, stdout).mkString("\n")
+  }
+
+  object Implicit {
+    implicit def crossProjectToJvmProjectReference(project: CrossProject): ProjectReference =
+      project.jvm
   }
 }

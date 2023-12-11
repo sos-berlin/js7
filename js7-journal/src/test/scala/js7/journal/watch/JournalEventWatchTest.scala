@@ -19,7 +19,6 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.jsonseq.PositionAnd
@@ -30,6 +29,7 @@ import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.watch.JournalEventWatchTest.*
 import js7.journal.watch.TestData.{writeJournal, writeJournalSnapshot}
 import js7.journal.write.EventJournalWriter
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import org.scalatest.BeforeAndAfterAll
@@ -260,13 +260,13 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll
         writer.writeEvents(stampedSeq)
         writer.flush(sync = false)
         writer.onCommitted(writer.fileLengthAndEventId, stampedSeq.length)
-        waitForCondition(99.s, 10.ms) { stampeds.size == 2 }
+        awaitAndAssert { stampeds.size == 2 }
         assert(stampeds == Seq(Stamped(1L, "1" <-: A1), Stamped(3L, "3" <-: A1)))
 
         writer.writeEvents(Seq(Stamped(4L, "4" <-: A1)))
         writer.flush(sync = false)
         writer.onCommitted(writer.fileLengthAndEventId, 1)
-        waitForCondition(99.s, 10.ms) { stampeds.size == 3 }
+        awaitAndAssert { stampeds.size == 3 }
         assert(stampeds == Seq(Stamped(1L, "1" <-: A1), Stamped(3L, "3" <-: A1), Stamped(4L, "4" <-: A1)))
 
         // limit=3 reached
@@ -384,21 +384,21 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll
           case _: EventReader.TimeoutException => Observable.empty
         }
         .foreach(o => jsons += o.value.utf8String.parseJsonOrThrow)
-      waitForCondition(99.s, 10.ms) { jsons.size == 2 }
-      assert(jsons(0).as[JournalHeader].orThrow.js7Version == BuildInfo.longVersion)
+      awaitAndAssert { jsons.size == 2 }
+      assert(jsons(0).as[JournalHeader].orThrow.js7Version == BuildInfo.prettyVersion)
       assert(jsons(1) == JournalSeparators.EventHeader)
 
       writer.writeEvents(Stamped(1L, "1" <-: A1) :: Stamped(2L, "2" <-: B1) :: Nil)
       writer.flush(sync = false)  // TODO Flush sollte hier nicht erforderlich sein!
       writer.onCommitted(writer.fileLengthAndEventId, n = 2)
-      waitForCondition(99.s, 10.ms) { jsons.size == 4 }
+      awaitAndAssert { jsons.size == 4 }
       assert(jsons(2).as[Stamped[KeyedEvent[Event]]] == Right(Stamped(1L, "1" <-: A1)))
       assert(jsons(3).as[Stamped[KeyedEvent[Event]]] == Right(Stamped(2L, "2" <-: B1)))
 
       writer.writeEvents(Stamped(3L, "3" <-: A1) :: Nil)
       writer.flush(sync = false)  // TODO Flush sollte hier nicht erforderlich sein!
       writer.onCommitted(writer.fileLengthAndEventId, 1)
-      waitForCondition(99.s, 10.ms) { jsons.size == 5 }
+      awaitAndAssert { jsons.size == 5 }
       assert(jsons(4).as[Stamped[KeyedEvent[Event]]] == Right(Stamped(3L, "3" <-: A1)))
 
       observing.cancel()

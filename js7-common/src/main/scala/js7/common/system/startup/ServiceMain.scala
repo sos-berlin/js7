@@ -81,7 +81,7 @@ object ServiceMain:
   private def startUp(name: String): Unit =
     val nanoTime = System.nanoTime() // Before anything else, fetch clock
 
-    printlnWithClock(s"JS7 $name ${BuildInfo.longVersion}")
+      printlnWithClock(s"JS7 $name ${BuildInfo.prettyVersion}")
 
     _runningSince = Some(Deadline(Duration.fromNanos(nanoTime)))
     StartUp.initializeMain()

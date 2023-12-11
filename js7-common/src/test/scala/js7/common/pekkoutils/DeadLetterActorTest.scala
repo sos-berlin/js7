@@ -3,9 +3,9 @@ package js7.common.pekkoutils
 import js7.base.configutils.Configs.*
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
-import js7.base.time.WaitForCondition.waitForCondition
 import js7.common.pekkoutils.DeadLetterActorTest.*
 import js7.common.pekkoutils.Pekkos.newActorSystem
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import org.apache.pekko.actor.{Actor, DeadLetterSuppression, Props}
 import scala.collection.mutable
 
@@ -22,7 +22,7 @@ final class DeadLetterActorTest extends OurTestSuite:
     actorRef ! "stop"
     actorRef ! new SuppressedMessage
     actorRef ! new TestMessage
-    waitForCondition(10.s, 10.ms) { buffer.size == 1 }
+    awaitAndAssert { buffer.size == 1 }
     Pekkos.terminateAndWait(actorSystem, 99.s)
     assert(buffer.size == 1)
     assert(buffer.head startsWith "DeadLetter ")

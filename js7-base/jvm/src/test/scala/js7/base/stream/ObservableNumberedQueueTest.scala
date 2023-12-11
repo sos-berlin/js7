@@ -5,8 +5,8 @@ import js7.base.stream.ObservableNumberedQueueTest.*
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
@@ -57,26 +57,26 @@ final class ObservableNumberedQueueTest extends OurTestSuite:
       .foreach:
         buffer += _
 
-    waitForCondition(10.s, 10.ms)(buffer.length == 3)
+    awaitAndAssert(buffer.length == 3)
     assert(buffer == Seq(
       Numbered(1, X("a")),
       Numbered(2, X("b")),
       Numbered(3, X("c"))))
 
     queue.enqueue(Seq(X("d"))).await(99.s)
-    waitForCondition(10.s, 10.ms)(buffer.length == 4)
+    awaitAndAssert(buffer.length == 4)
     assert(buffer(3) == Numbered(4, X("d")))
 
     queue.enqueue(Seq(X("e"))).await(99.s)
-    waitForCondition(10.s, 10.ms)(buffer.length == 5)
+    awaitAndAssert(buffer.length == 5)
     assert(buffer(4) == Numbered(5, X("e")))
 
     queue.enqueue(Seq(X("f"))).await(99.s)
-    waitForCondition(10.s, 10.ms)(buffer.length == 6)
+    awaitAndAssert(buffer.length == 6)
     assert(buffer(5) == Numbered(6, X("f")))
 
     future.cancel()
-    waitForCondition(10.s, 10.ms)(isCompleted)
+    awaitAndAssert(isCompleted)
     assert(isCompleted)
 
   "release" in:
