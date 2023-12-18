@@ -328,14 +328,16 @@ lazy val `js7-tester` = crossProject(JSPlatform, JVMPlatform)
   .settings {
     import Dependencies.*
     libraryDependencies ++=
-      diffx ++
-      slf4j ++
-      "com.outr" %%% "scribe" % scribeVersion ++
+      "org.typelevel" %%% "cats-core" % catsVersion ++
       "io.circe" %%% "circe-core" % circeVersion ++
       "io.circe" %%% "circe-parser" % circeVersion ++
       "io.circe" %%% "circe-generic" % circeVersion ++
-      "org.scalatest" %%% "scalatest" % scalaTestVersion /*++
-      "org.scalatest" %%% "scalatest-freespec" % scalaTestVersion*/
+      "com.softwaremill.diffx" %%% "diffx-core" % diffxVersion ++
+      "org.scalatest" %%% "scalatest" % scalaTestVersion ++
+      "org.scalactic" %%% "scalactic" % scalaTestVersion
+  }
+  .jsSettings {
+    libraryDependencies += "com.outr" %%% "scribe" % Dependencies.scribeVersion
   }
 
 lazy val `js7-base` = crossProject(JSPlatform, JVMPlatform)
