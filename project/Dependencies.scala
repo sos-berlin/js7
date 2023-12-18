@@ -18,7 +18,7 @@ object Dependencies
   val catsParseVersion = "0.3.9"
   val circeVersion = "0.14.6"
   val circeGenericExtrasVersion = "0.14.3"
-  val scalaTestVersion = "3.2.16"
+  val scalaTestVersion = "3.2.17"
   val scalaTestCheckVersion = "3.2.14.0"
   val scalaCheckVersion= "1.17.0"
   val sourcecodeVersion = "0.3.0"
@@ -35,8 +35,8 @@ object Dependencies
   val vavrVersion = "0.10.4"
   val jnaVersion = "5.13.0"
 
-  val slf4j               = "org.slf4j" % "slf4j-api"    % slf4jVersion
-  val slf4jNop            = "org.slf4j" % "slf4j-nop"    % slf4jVersion
+  val slf4j               = "org.slf4j" % "slf4j-api" % slf4jVersion
+  val slf4jNop            = "org.slf4j" % "slf4j-nop" % slf4jVersion
   val lmaxDisruptor       = "com.lmax" % "disruptor" % "3.4.4"
   val log4j               = "org.apache.logging.log4j" % "log4j-api" % log4jVersion ::
                             "org.apache.logging.log4j" % "log4j-core" % log4jVersion ::
@@ -60,14 +60,14 @@ object Dependencies
 
   val typesafeConfig      = "com.typesafe" % "config" % "1.4.2"
 
-  val pekkoActor           = "org.apache.pekko" %% "pekko-actor" % pekkoVersion cross for3Use2_13
-  val pekkoStream          = "org.apache.pekko" %% "pekko-stream" % pekkoVersion cross for3Use2_13
-  val pekkoSlf4j           = "org.apache.pekko" %% "pekko-slf4j" % pekkoVersion cross for3Use2_13
-  val pekkoHttp            = List(
+  val pekkoActor          = "org.apache.pekko" %% "pekko-actor" % pekkoVersion cross for3Use2_13
+  val pekkoStream         = "org.apache.pekko" %% "pekko-stream" % pekkoVersion cross for3Use2_13
+  val pekkoSlf4j          = "org.apache.pekko" %% "pekko-slf4j" % pekkoVersion cross for3Use2_13
+  val pekkoHttp           = List(
     "org.apache.pekko" %% "pekko-http" % pekkoHttpVersion cross for3Use2_13,
     pekkoStream,
     pekkoActor/*force version*/)
-  val pekkoHttpTestkit     = List(
+  val pekkoHttpTestkit    = List(
     "org.apache.pekko" %% "pekko-http-testkit" % pekkoHttpVersion cross for3Use2_13,
     "org.apache.pekko" %% "pekko-stream-testkit" % pekkoVersion/*force version*/ cross for3Use2_13)
 
