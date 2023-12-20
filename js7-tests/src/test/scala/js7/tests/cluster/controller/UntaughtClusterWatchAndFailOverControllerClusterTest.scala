@@ -112,7 +112,7 @@ final class UntaughtClusterWatchAndFailOverControllerClusterTest extends Control
         assert(clusterWatchService.clusterNodeLossEventToBeConfirmed(backupId) == None)
 
         val ClusterFailedOver(`primaryId`, `backupId`, _) = eventWatch.await[ClusterFailedOver]()
-          .head.value.event
+          .head.value.event: @unchecked
 
         assert(clusterWatchService.manuallyConfirmNodeLoss(backupId, "CONFIRMER")
           .await(99.s)

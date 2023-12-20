@@ -94,7 +94,7 @@ final class UntaughtClusterWatchAndPassiveLostControllerClusterTest extends Cont
         assert(clusterWatchService.clusterNodeLossEventToBeConfirmed(backupId) == Some(clusterPassiveLost))
 
         val ClusterPassiveLost(`backupId`) = eventWatch.await[ClusterPassiveLost]()
-          .head.value.event
+          .head.value.event: @unchecked
 
         assert(clusterWatchService.manuallyConfirmNodeLoss(primaryId, "CONFIRMER")
           .await(99.s)

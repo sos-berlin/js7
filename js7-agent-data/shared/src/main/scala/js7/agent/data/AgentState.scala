@@ -223,9 +223,6 @@ extends SignedItemContainer,
                           copy(
                             keyToUnsignedItemState_ = keyToUnsignedItemState_ - itemKey)
 
-                  case _ =>
-                    eventNotApplicable(keyedEvent)
-
               case _ => applyStandardEvent(keyedEvent)
 
           case ItemDetachingFromMe(id: SubagentId) =>
