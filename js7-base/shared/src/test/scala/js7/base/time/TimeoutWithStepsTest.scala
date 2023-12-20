@@ -3,8 +3,6 @@ package js7.base.time
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.time.TimeoutWithSteps.deadlineIterator
-import js7.base.utils.CatsUtils.syntax.monotonicTime
-import js7.base.time.MonotonicClock
 
 final class TimeoutWithStepsTest extends OurTestSuite:
 

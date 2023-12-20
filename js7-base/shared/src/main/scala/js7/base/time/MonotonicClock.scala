@@ -1,6 +1,5 @@
 package js7.base.time
 
-import cats.effect.{IO, SyncIO}
 import js7.base.log.Logger
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.*

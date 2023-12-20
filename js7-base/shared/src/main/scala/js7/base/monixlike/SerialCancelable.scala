@@ -1,9 +1,5 @@
 package js7.base.monixlike
 
-import js7.base.log.Logger
-import js7.base.monixlike.SerialCancelable.*
-import js7.base.utils.ScalaUtils.*
-import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Atomic, EmptyRunnable}
 import scala.annotation.{tailrec, targetName}
 

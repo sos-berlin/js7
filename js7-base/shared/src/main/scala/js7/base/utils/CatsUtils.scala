@@ -3,7 +3,7 @@ package js7.base.utils
 import cats.Functor
 import cats.data.{NonEmptyList, NonEmptySeq, Validated}
 import cats.effect.unsafe.Scheduler
-import cats.effect.{Deferred, GenTemporal, IO, MonadCancel, Outcome, Resource, Sync, SyncIO}
+import cats.effect.{Deferred, IO, MonadCancel, Outcome, Resource, Sync, SyncIO}
 import cats.kernel.Monoid
 import cats.syntax.all.*
 import com.typesafe.scalalogging.Logger

@@ -1,7 +1,7 @@
 package js7.base.catsutils
 
 import js7.base.catsutils.CatsDeadline.now
-import js7.base.test.{OurAsyncTestSuite, OurTestSuite, WithTestScheduler}
+import js7.base.test.{OurTestSuite, WithTestScheduler}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.syntax.monotonicTime
 

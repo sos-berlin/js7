@@ -3,7 +3,6 @@ package js7.base.monixutils
 import cats.effect.{IO, Resource}
 import izumi.reflect.Tag
 import js7.base.utils.AsyncLock
-import fs2.Stream
 
 final class RefCountedResource[A: Tag](base: Resource[IO, A])
   (implicit enclosing: sourcecode.Enclosing):

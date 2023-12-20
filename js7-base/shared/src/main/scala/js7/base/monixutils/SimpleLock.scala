@@ -1,10 +1,9 @@
 package js7.base.monixutils
 
-import cats.effect.{Async, Concurrent}
-import cats.effect.{IO, Resource}
+import cats.effect.Async
 import cats.effect.std.Mutex
-import js7.base.catsutils.UnsafeMemoizable.given
 import cats.syntax.flatMap.*
+import js7.base.catsutils.UnsafeMemoizable.given
 
 final class SimpleLock[F[_]](using F: Async[F]):
 

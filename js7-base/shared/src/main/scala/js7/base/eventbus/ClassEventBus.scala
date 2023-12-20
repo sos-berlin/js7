@@ -1,12 +1,11 @@
 package js7.base.eventbus
 
-import js7.base.utils.Atomic
+import cats.effect.IO
 import java.util.concurrent.ConcurrentHashMap
 import js7.base.eventbus.ClassEventBus.*
 import js7.base.log.Logger
 import js7.base.utils.ScalaUtils.implicitClass
-import js7.base.utils.SuperclassCache
-import cats.effect.{Deferred, IO}
+import js7.base.utils.{Atomic, SuperclassCache}
 import scala.concurrent.{Future, Promise}
 import scala.reflect.ClassTag
 import scala.util.control.NonFatal

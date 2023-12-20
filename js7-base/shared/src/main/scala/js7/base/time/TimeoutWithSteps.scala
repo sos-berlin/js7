@@ -1,6 +1,5 @@
 package js7.base.time
 
-import js7.base.time.MonotonicClock
 import js7.base.time.TimeoutWithSteps.deadlineIterator
 import scala.concurrent.duration.*
 

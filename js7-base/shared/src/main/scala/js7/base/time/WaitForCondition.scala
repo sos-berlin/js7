@@ -4,9 +4,7 @@ import js7.base.time.ScalaTime.*
 import scala.annotation.tailrec
 import scala.concurrent.blocking
 import scala.concurrent.duration.*
-import scala.util.control.Breaks.{break, breakable}
-import scala.util.control.{Breaks, NonFatal}
-import scala.util.{Success, Try}
+import scala.util.control.NonFatal
 
 object WaitForCondition:
 

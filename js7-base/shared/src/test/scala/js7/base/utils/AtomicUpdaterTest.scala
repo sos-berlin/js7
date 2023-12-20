@@ -1,7 +1,6 @@
 package js7.base.utils
 
 import cats.effect.IO
-import cats.syntax.applicative.*
 import cats.syntax.foldable.*
 import cats.syntax.traverse.*
 import js7.base.test.OurAsyncTestSuite

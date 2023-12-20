@@ -11,8 +11,6 @@ import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.fs2utils.StreamExtensions.*
 import js7.base.log.Logger
 import js7.base.time.ScalaTime.*
-import js7.base.utils.CatsUtils.syntax.*
-import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.utils.Delayer.*
 import scala.concurrent.duration.*
 

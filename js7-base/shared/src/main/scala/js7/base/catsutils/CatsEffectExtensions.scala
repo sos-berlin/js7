@@ -1,11 +1,9 @@
 package js7.base.catsutils
 
-import cats.effect.Clock
-import cats.effect.{GenSpawn, IO}
+import cats.effect.{Clock, GenSpawn, IO}
 import cats.syntax.applicativeError.*
 import cats.syntax.flatMap.*
 import cats.syntax.functor.*
-import cats.syntax.apply.*
 import cats.{ApplicativeError, Functor, MonadError}
 import js7.base.log.Logger
 import scala.util.{Failure, Success, Try}

@@ -5,7 +5,6 @@ import cats.effect.{IO, Resource, SyncIO}
 import cats.syntax.flatMap.*
 import cats.syntax.parallel.*
 import js7.base.catsutils.CatsDeadline
-import js7.base.catsutils.CatsEffectExtensions.monotonicTime
 import js7.base.log.Logger
 import js7.base.service.RestartAfterFailureServiceTest.*
 import js7.base.test.{OurTestSuite, TestCatsEffect}

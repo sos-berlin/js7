@@ -6,7 +6,6 @@ import cats.syntax.functor.*
 import io.github.timwspence.cats.stm.STM
 import js7.base.log.Logger
 import js7.base.utils.MVar.*
-import js7.base.catsutils.UnsafeMemoizable.given
 
 final class MVar[F[_], A] private(stm: STM[F])(tmvar: stm.TMVar[A])/*(using F: Async[F])*/:
 

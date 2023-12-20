@@ -1,9 +1,10 @@
 package js7.base.session
 
-import js7.base.utils.CatsUtils.syntax.*
+import cats.effect.{IO, Outcome, Resource}
 import cats.syntax.flatMap.*
-import cats.effect.{IO, Outcome, OutcomeIO, Resource}
 import js7.base.auth.UserAndPassword
+import js7.base.catsutils.CatsEffectExtensions
+import js7.base.catsutils.CatsEffectExtensions.{onErrorRestartLoop, right}
 import js7.base.generic.Completed
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{BlockingSymbol, Logger}
@@ -12,11 +13,10 @@ import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.session.SessionApi.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AsyncLock
+import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.HttpClient
 import js7.base.web.HttpClient.HttpException
-import js7.base.catsutils.CatsEffectExtensions
-import js7.base.catsutils.CatsEffectExtensions.{onErrorRestartLoop, right}
 import scala.concurrent.duration.*
 
 // Test in SessionRouteTest

@@ -5,7 +5,7 @@ import js7.base.catsutils.CatsEffectExtensions.materialize
 import js7.base.log.Logger
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.problem.{Checked, Problem}
-import js7.base.test.{OurAsyncTestSuite, OurTestSuite, TestCatsEffect}
+import js7.base.test.OurAsyncTestSuite
 import scala.collection.View
 import scala.util.{Failure, Success}
 
