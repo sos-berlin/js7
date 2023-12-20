@@ -28,7 +28,6 @@ import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
-import ControlWorkflowPathSkipJobTest.*
 
 final class ControlWorkflowPathSkipJobTest
 extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:

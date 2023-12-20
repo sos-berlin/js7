@@ -11,7 +11,6 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
-import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.syntax.*
 import js7.base.utils.CatsUtils.syntax.RichResource

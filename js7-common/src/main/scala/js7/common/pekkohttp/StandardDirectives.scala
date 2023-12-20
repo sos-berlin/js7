@@ -1,6 +1,5 @@
 package js7.common.pekkohttp
 
-import org.apache.pekko.http.scaladsl.model.DateTime
 import js7.base.problem.{Checked, CheckedString}
 import js7.base.utils.Collections.implicits.*
 import js7.data.item.VersionedItemPath
@@ -12,12 +11,6 @@ import org.apache.pekko.http.scaladsl.model.headers.{ETag, `Cache-Control`}
 import org.apache.pekko.http.scaladsl.server.Directives.*
 import org.apache.pekko.http.scaladsl.server.PathMatcher.{Matched, Unmatched}
 import org.apache.pekko.http.scaladsl.server.{Directive0, PathMatcher1, Route}
-import js7.base.BuildInfo
-import js7.base.problem.{Checked, CheckedString}
-import js7.base.utils.Collections.implicits.*
-import js7.data.item.VersionedItemPath
-import monix.eval.Task
-import monix.execution.Scheduler
 import scala.concurrent.Future
 
 /**

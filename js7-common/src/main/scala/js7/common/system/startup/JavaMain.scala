@@ -1,6 +1,5 @@
 package js7.common.system.startup
 
-import js7.base.BuildInfo
 import js7.base.io.process.ReturnCode
 import js7.base.log.{Log4j, Logger}
 import js7.base.system.startup.StartUp

@@ -3,7 +3,6 @@ package js7.launcher.forwindows
 import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
-import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.syntax.*
 import js7.tester.ScalaTestUtils.awaitAndAssert

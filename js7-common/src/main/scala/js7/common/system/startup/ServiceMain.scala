@@ -11,7 +11,7 @@ import js7.base.log.Logger.syntax.*
 import js7.base.log.{Log4j, Logger}
 import js7.base.service.{MainService, MainServiceTerminationException, Service}
 import js7.base.system.startup.StartUp
-import js7.base.system.startup.StartUp.{logJavaSettings, nowString, printlnWithClock, startUpLine}
+import js7.base.system.startup.StartUp.{logJavaSettings, nowString, printlnWithClock}
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.syntax.*

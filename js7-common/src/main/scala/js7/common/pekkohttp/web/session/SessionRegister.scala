@@ -22,7 +22,6 @@ import js7.base.time.JavaTimeConverters.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.version.Version
 import js7.common.http.PekkoHttpClient.`x-js7-session`
-import js7.common.pekkohttp.web.session.SessionRegister.*
 import js7.common.pekkoutils.Pekkos
 import monix.eval.Task
 import monix.execution.Scheduler

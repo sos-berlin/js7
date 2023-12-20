@@ -7,7 +7,6 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.base.web.{HttpClient, Uri}
-import js7.data.workflow.position.BranchPath.syntax.*
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import org.apache.pekko
