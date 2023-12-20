@@ -50,6 +50,10 @@ object TestAlarmClock:
         logger.trace(s"🔔 scheduled $at for ${fullName.value}")
         callback
 
+    protected def scheduler: Scheduler = ??? // FIXME
+
+    protected def testControl: TestControl[_] = ??? // FIXME
+
   private trait Impl extends TestAlarmClock:
     protected def testControl: TestControl[?]
     protected def start: Timestamp
@@ -93,4 +97,7 @@ object TestAlarmClock:
   private final class ClockCheckingTestAlarmClock(
     protected val start: Timestamp,
     protected val clockCheckInterval: FiniteDuration)
-  extends Impl, ClockChecking
+  extends Impl, ClockChecking:
+    protected def scheduler: Scheduler = ??? // FIXME
+
+    protected def testControl: TestControl[_] = ??? // FIXME

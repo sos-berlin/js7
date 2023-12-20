@@ -1,9 +1,12 @@
 package js7.base.log
 
-import cats.{Applicative, MonadError}
-import cats.effect.{IO, MonadCancel, Outcome, OutcomeIO, Resource, Sync, SyncIO}
+import cats.effect.implicits.monadCancelOps
+import cats.{Applicative, Defer}
+import cats.effect.syntax.monadCancel.*
+import cats.effect.{IO, MonadCancel, Outcome, Resource, Sync, SyncIO}
 import cats.syntax.flatMap.*
 import com.typesafe.scalalogging.Logger as ScalaLogger
+import fs2.Stream
 import js7.base.log.Slf4jUtils.syntax.*
 import js7.base.problem.Problem
 import js7.base.system.startup.StartUp
@@ -11,12 +14,11 @@ import js7.base.time.ScalaTime.{DurationRichLong, RichDuration}
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.base.utils.StackTraces.StackTraceThrowable
-import js7.base.utils.{Once, Tests}
-import fs2.Stream
+import js7.base.utils.{Atomic, Once, Tests}
 import org.slf4j.{LoggerFactory, Marker, MarkerFactory}
 import scala.reflect.ClassTag
 
-object Logger:
+object Logger extends AdHocLogger:
 
   private val ifNotInitialized = new Once
 
@@ -98,7 +100,9 @@ object Logger:
       : F[A] =
         infoF[F, A](functionName = src.value)(body)
 
-      def infoF[F[_], A](functionName: String, args: => Any = "")(body: F[A])(implicit F: Sync[F])
+      def infoF[F[_], A](functionName: String, args: => Any = "")
+        (body: F[A])
+        (using F: Sync[F])
       : F[A] =
         logF[F, A](logger, LogLevel.Info, functionName, args)(body)
 
@@ -220,7 +224,7 @@ object Logger:
       : Stream[IO, A] =
         logStream[A](logger, LogLevel.Trace, function, args)(stream)
 
-    private def logF[F[_] <: MonadError[F, Throwable], A](
+    private def logF[F[_], A](
       logger: ScalaLogger,
       logLevel: LogLevel,
       function: String,
@@ -235,7 +239,7 @@ object Logger:
         else
           val ctx = new StartReturnLogContext(logger, logLevel, function, args)
           body
-            .flatTap:
+            .flatTap { (result: A) => result match
               case left @ Left(_: Throwable | _: Problem) =>
                 F.delay(ctx.logReturn("❓", left))
               case result =>
@@ -245,9 +249,11 @@ object Logger:
                     "Completed"
                   else
                     resultToLoggable(result).toString))
-            .guaranteeCase:
+            }
+            .guaranteeCase { (outcome: Outcome[F, Throwable, A]) => outcome match
               case Outcome.Succeeded(_) => F.unit
               case outcome => F.delay(ctx.logOutcome(outcome))
+            }
 
     private def logResourceUse[F[_], A](logger: ScalaLogger, logLevel: LogLevel, function: String,
       args: => Any = "")
@@ -266,17 +272,22 @@ object Logger:
               for ctx <- maybeCtx do ctx.logOutcome(exitCase.toOutcome)))
         .flatMap(_ => resource)
 
+    // TODO Check and fix logging of Outcome this
     private def logStream[A](logger: ScalaLogger, logLevel: LogLevel, function: String,
       args: => Any = "")
       (stream: Stream[IO, A])
     : Stream[IO, A] =
-      stream
-        .doOnSubscribe(
-          IO.whenA(logger.isEnabled(logLevel))(IO(
-            logStart(logger, logLevel, function, args))))
-        .guaranteeCase(exitCase =>
-          IO.whenA(logger.isEnabled(logLevel))(IO(
-            logOutcome(logger, logLevel, function, args, duration = "", exitCase))))
+      Stream.deferInstance[IO].defer:
+        lazy val touched = Atomic(false)
+        stream
+          .map { o =>
+            if !touched.getAndSet(true) && logger.isEnabled(logLevel) then
+              logStart(logger, logLevel, function, args)
+            o
+          }
+          .onFinalizeCase(exitCase =>
+            IO.whenA(logger.isEnabled(logLevel))(IO(
+              logOutcome(logger, logLevel, function, args, duration = "", exitCase.toOutcome[IO]))))
 
   private final class StartReturnLogContext(logger: ScalaLogger, logLevel: LogLevel,
     function: String, args: => Any = ""):
@@ -289,7 +300,7 @@ object Logger:
       else
         (System.nanoTime() - startedAt).ns.pretty + " "
 
-    def logOutcome[A](outcome: OutcomeIO[A]): Unit =
+    def logOutcome[F[_], A](outcome: Outcome[F, Throwable, A]): Unit =
       Logger.logOutcome(logger, logLevel, function, "", duration, outcome)
 
     def logReturn(marker: String, msg: AnyRef): Unit =
@@ -316,15 +327,15 @@ object Logger:
         case LogLevel.Warn  => logger.warn (s"↘ $function($argsString) ↘")
         case LogLevel.Error => logger.error(s"↘ $function($argsString) ↘")
 
-  private def logOutcome[A](
+  private def logOutcome[F[_], A](
     logger: ScalaLogger,
     logLevel: LogLevel,
     function: String,
     args: => Any,
     duration: String,
-    exitCase: OutcomeIO[A])
+    outcome: Outcome[F, Throwable, A])
   : Unit =
-    exitCase match
+    outcome match
       case Outcome.Errored(t) =>
         logReturn(logger, logLevel, function, args, duration, "💥️", t.toStringWithCauses)
       case Outcome.Canceled() =>
