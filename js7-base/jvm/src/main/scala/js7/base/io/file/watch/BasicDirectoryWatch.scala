@@ -78,7 +78,7 @@ extends Service.StoppableByRequest:
           // Therefore we never continue.
           // May this let block cancellation in cats-effect 3 ???
           // This is not a little memory leak, or ???
-          Task.never
+          Task.pure(Nil)
       .executeOn(iox.scheduler)
 
   private def pollWatchKey(): Seq[DirectoryWatchEvent] =
