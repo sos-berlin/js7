@@ -14,7 +14,7 @@ final class ByteSequenceToLinesStream[ByteSeq](
   implicit ByteSeq: ByteSequence[ByteSeq])
 extends (ByteSeq => Stream[IO, ByteArray]):
 
-  private val lines = mutable.Buffer.empty[ByteArray]
+  private val lines = Vector.newBuilder[ByteArray]
   private lazy val startedLine = mutable.ArrayBuffer.empty[ByteSeq]
 
   def apply(byteSeq: ByteSeq): Stream[IO, ByteArray] =
@@ -37,6 +37,6 @@ extends (ByteSeq => Stream[IO, ByteArray]):
             startedLine.clear()
             p = i + 1
 
-      val result = Stream.emits(lines)
+      val result = Stream.emits(lines.result())
       lines.clear()
       result
