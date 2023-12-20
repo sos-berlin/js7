@@ -62,36 +62,36 @@ final class AgentShutDownTest extends OurTestSuite, BeforeAndAfterAll, TestAgent
               Seq(SubagentId("SUBAGENT")), controllerId, controllerRunId, agentPath)))
           .await(99.s)
 
-    client
-      .commandExecute(AttachItem(AgentRef(agentPath, Seq(SubagentId("SUBAGENT")))))
-      .await(99.s)
-
-        val subagentId = SubagentId("SUBAGENT")
         client
-          .repeatUntilAvailable(99.s)(
-            client.commandExecute(AttachItem(SubagentItem(subagentId, agentPath, agent.localUri))))
-          .await(99.s).orThrow
-        client.commandExecute(AttachSignedItem(itemSigner.sign(SimpleTestWorkflow)))
-          .await(99.s).orThrow
+          .commandExecute(AttachItem(AgentRef(agentPath, Seq(SubagentId("SUBAGENT")))))
+          .await(99.s)
 
-        (for orderId <- orderIds yield
-          client.commandExecute(AttachOrder(
-            Order(
-              orderId,
-              SimpleTestWorkflow.id /: Position(0),
-              Order.Ready,
-              Map("a" -> StringValue("A"))),
-            TestAgentPath))
-        ) await 99.s
+            val subagentId = SubagentId("SUBAGENT")
+            client
+              .repeatUntilAvailable(99.s)(
+                client.commandExecute(AttachItem(SubagentItem(subagentId, agentPath, agent.localUri))))
+              .await(99.s).orThrow
+            client.commandExecute(AttachSignedItem(itemSigner.sign(SimpleTestWorkflow)))
+              .await(99.s).orThrow
 
-        for orderId <- orderIds do
-          agent.eventWatch.await[OrderProcessingStarted](_.key == orderId)
-        sleep(2.s)
+            (for orderId <- orderIds yield
+              client.commandExecute(AttachOrder(
+                Order(
+                  orderId,
+                  SimpleTestWorkflow.id /: Position(0),
+                  Order.Ready,
+                  Map("a" -> StringValue("A"))),
+                TestAgentPath))
+            ) await 99.s
 
-        client.commandExecute(ShutDown(Some(SIGKILL))).await(99.s).orThrow
-        agent.untilTerminated.await(99.s)
-        client.close()
-      }
+            for orderId <- orderIds do
+              agent.eventWatch.await[OrderProcessingStarted](_.key == orderId)
+            sleep(2.s)
+
+            client.commandExecute(ShutDown(Some(SIGKILL))).await(99.s).orThrow
+            agent.untilTerminated.await(99.s)
+            client.close()
+        }
     }
 
     //Times out, but why ??? Since v2.6.0-SNAPSHOT 2023-03-13
