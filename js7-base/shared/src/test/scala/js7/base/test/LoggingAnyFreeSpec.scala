@@ -6,6 +6,7 @@ import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.{Args, PendingStatement, Status, Tag}
 import scala.language.implicitConversions
 import scala.util.Try
+import org.scalactic.source
 
 /**
  * Extends `AnyFreeSpec` with logging of test names and their outcomes.
@@ -20,11 +21,17 @@ trait LoggingAnyFreeSpec extends AnyFreeSpec:
 
   protected def suppressTestCorrelId = false
 
-  protected implicit inline final def implicitToFreeSpecStringWrapper(name: String)
-  : LoggingFreeSpecStringWrapper[Any, ResultOfTaggedAsInvocationOnString] =
+  // inline for proper source.Position (why?)
+  inline protected implicit final def implicitToFreeSpecStringWrapper(name: String)
+    (using source.Position)
+  : LoggingFreeSpecStringWrapper[Any, Any, ResultOfTaggedAsInvocationOnString] =
+    toFreeSpecStringWrapper(name, convertToFreeSpecStringWrapper(name))
+
+  private def toFreeSpecStringWrapper(name: String, stringWrapper: FreeSpecStringWrapper)
+  : LoggingFreeSpecStringWrapper[Any, Any, ResultOfTaggedAsInvocationOnString] =
     testAdder.toStringWrapper(
       name,
-      toUnified(/*convertToFreeSpecStringWrapper*/(name)),
+      toUnified(stringWrapper),
       (ctx, testBody) => {
         ctx.beforeTest()
         val tried = Try(testBody)

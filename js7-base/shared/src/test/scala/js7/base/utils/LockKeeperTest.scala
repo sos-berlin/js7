@@ -1,16 +1,16 @@
 package js7.base.utils
 
+import cats.effect.IO
 import cats.syntax.traverse.*
 import java.util.concurrent.ConcurrentHashMap
 import js7.base.log.Logger
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.Stopwatch
 import js7.base.utils.LockKeeperTest.*
-import cats.effect.IO
-import monix.execution.Scheduler.Implicits.traced
 import scala.jdk.CollectionConverters.*
 
 final class LockKeeperTest extends OurAsyncTestSuite:
+
   "LockKeeper.lockResource" in:
     val keys = 0 until 8
     val lockKeeper = new LockKeeper[Int]
@@ -31,7 +31,7 @@ final class LockKeeperTest extends OurAsyncTestSuite:
         assert(keyToMap.asScala.toMap == keys.map(k => k -> n).toMap)
       }
     }).map(_.head/*Only the Assertion type is relevant, not the value*/)
-      .runToFuture
+      .unsafeToFuture()
 
 
 object LockKeeperTest:

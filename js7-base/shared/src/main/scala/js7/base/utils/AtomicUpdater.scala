@@ -1,6 +1,5 @@
 package js7.base.utils
 
-import js7.base.utils.Atomic
 import scala.annotation.tailrec
 
 final class AtomicUpdater[A <: AnyRef](initial: A):

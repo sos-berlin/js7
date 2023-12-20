@@ -1,16 +1,13 @@
 package js7.base.utils
 
-import js7.base.utils.FutureCompletion.syntax.*
-import monix.execution.CancelablePromise
-import monix.execution.schedulers.TestScheduler
 import js7.base.test.OurAsyncTestSuite
 import scala.concurrent.Promise
-import scala.util.Success
 
 /**
   * @author Joacim Zschimmer
   */
 final class FutureCompletionTest extends OurAsyncTestSuite:
+
   "FutureCompletion" in:
     val promise = Promise[Int]()
     val futureCompletion = new FutureCompletion[Int](promise.future)
@@ -34,25 +31,26 @@ final class FutureCompletionTest extends OurAsyncTestSuite:
       assert(futureCompletion.size == 0)
 
   "IO cancelOnCompletionOf, not shut down" in:
-    implicit val scheduler = TestScheduler()
-    val shutdownPromise = Promise[Int]()
-    val futureCompletion = new FutureCompletion[Int](shutdownPromise.future)
-
-    locally:
-      val p = CancelablePromise[String]()
-      val fut = p.future.cancelOnCompletionOf(futureCompletion)
-      p.success("OK")
-      scheduler.tick()
-      assert(fut.isCompleted)
-      assert(fut.value == Some(Success("OK")))
-      assert(futureCompletion.size == 0)
-
-    locally:
-      val p = CancelablePromise[String]()
-      val fut = p.future.cancelOnCompletionOf(futureCompletion)
-      shutdownPromise.success(7)
-      scheduler.tick()
-      p.success("LOST")
-      scheduler.tick()
-      assert(!fut.isCompleted)
-      assert(futureCompletion.size == 0)
+    pending // FIXME Monix
+    //monix implicit val scheduler = TestScheduler()
+    //monix val shutdownPromise = Promise[Int]()
+    //monix val futureCompletion = new FutureCompletion[Int](shutdownPromise.future)
+    //monix
+    //monix locally:
+    //monix   val p = CancelablePromise[String]()
+    //monix   val fut = p.future.cancelOnCompletionOf(futureCompletion)
+    //monix   p.success("OK")
+    //monix   scheduler.tick()
+    //monix   assert(fut.isCompleted)
+    //monix   assert(fut.value == Some(Success("OK")))
+    //monix   assert(futureCompletion.size == 0)
+    //monix
+    //monix locally:
+    //monix   val p = CancelablePromise[String]()
+    //monix   val fut = p.future.cancelOnCompletionOf(futureCompletion)
+    //monix   shutdownPromise.success(7)
+    //monix   scheduler.tick()
+    //monix   p.success("LOST")
+    //monix   scheduler.tick()
+    //monix   assert(!fut.isCompleted)
+    //monix   assert(futureCompletion.size == 0)

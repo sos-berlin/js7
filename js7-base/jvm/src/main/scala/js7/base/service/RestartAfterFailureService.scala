@@ -1,22 +1,20 @@
 package js7.base.service
 
-import cats.effect.Resource
-import cats.effect.kernel.Deferred
+import cats.effect.{Deferred, IO, Resource}
 import cats.syntax.flatMap.*
 import cats.syntax.option.*
 import izumi.reflect.Tag
+import js7.base.catsutils.CatsEffectExtensions.right
+import js7.base.catsutils.CatsEffectExtensions.monotonicTime
+import js7.base.catsutils.UnsafeMemoizable.given
 import js7.base.log.Logger
 import js7.base.service.RestartAfterFailureService.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.Delayer.syntax.*
-import js7.base.utils.ScalaUtils.some
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, Atomic, DelayConf, Delayer}
-import js7.base.utils.{Allocated, DelayConf, Delayer}
-import cats.effect.IO
 import scala.concurrent.duration.*
-import js7.base.catsutils.UnsafeMemoizable.given
 
 final class RestartAfterFailureService[S <: Service: Tag] private[service](
   startDelays: Seq[FiniteDuration] = defaultRestartDelays,

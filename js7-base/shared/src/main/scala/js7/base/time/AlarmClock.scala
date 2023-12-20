@@ -5,7 +5,6 @@ import cats.effect.{IO, Resource, Sync}
 import js7.base.monixlike.SerialCancelable
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.syntax.scheduleAtFixedRate
-import js7.base.utils.Atomic
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import js7.base.utils.{Atomic, EmptyRunnable}
 import scala.annotation.unused
@@ -184,6 +183,8 @@ object AlarmClock:
       def call(): Unit =
         if !called.getAndSet(true) then
           callback
+
+      def run() = cancel()
 
       def cancel() =
         self.synchronized:

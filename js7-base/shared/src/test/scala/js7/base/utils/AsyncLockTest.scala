@@ -1,22 +1,24 @@
 package js7.base.utils
 
+import cats.effect.{Deferred, IO}
+import cats.syntax.flatMap.*
+import cats.syntax.parallel.*
+import fs2.Stream
+import js7.base.catsutils.CatsEffectExtensions.{left, onErrorRestartLoop, right}
+import js7.base.log.Logger
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
 import js7.base.utils.AsyncLockTest.*
 import js7.base.utils.Atomic.extensions.*
-import cats.effect.IO
-import monix.execution.Scheduler.Implicits.traced
-import fs2.Stream
-import scala.concurrent.Promise
+import js7.base.utils.CatsUtils.syntax.*
 import scala.concurrent.duration.FiniteDuration
 import scala.util.Random
-
 /**
   * @author Joacim Zschimmer
   */
-final class AsyncLockTest extends OurAsyncTestSuite
-{
+final class AsyncLockTest extends OurAsyncTestSuite:
+
   private val initial = 1
   private val n = 1000
 
@@ -28,7 +30,7 @@ final class AsyncLockTest extends OurAsyncTestSuite
     addTests(n, suppressLog = true)
   }
 
-  def addTests(n: Int, suppressLog: Boolean): Unit = {
+  private def addTests(n: Int, suppressLog: Boolean): Unit = {
     "AsyncLock, concurrent" in {
       val lock = AsyncLock("TEST", logWorryDurations = Nil, suppressLog = suppressLog)
       doTest(lock.lock(_))
@@ -38,7 +40,6 @@ final class AsyncLockTest extends OurAsyncTestSuite
           case (t, 0, _) => IO.raiseError(t)
           case (_, i, retry) => IO.sleep(1.ms) *> retry(i - 1)
         }
-        .runToFuture
     }
 
     "No AsyncLock, concurrent" in {
@@ -47,54 +48,49 @@ final class AsyncLockTest extends OurAsyncTestSuite
       } else {
         val maxTries = 100
         val expected = Vector.fill(n)(initial)
-        IO
-          .tailRecM(0)(i =>
-            doTest(identity).flatMap(result =>
-              if i < maxTries && result == expected then {
-                logger.warn("Retry because ios did not run concurrently")
-                IO.left(i + 1)
-              } else
-                IO.right(assert(result != expected))))
-          .runToFuture
+        0.tailRecM(i =>
+          doTest(identity).flatMap(result =>
+            if i < maxTries && result == expected then {
+              logger.warn("Retry because ios did not run concurrently")
+              IO.left(i + 1)
+            } else
+              IO.right(assert(result != expected))))
       }
     }
 
     "AsyncLock, not concurrent" in {
       val lock = AsyncLock("TEST", logWorryDurations = Nil, suppressLog = suppressLog)
-      Stream.fromIterable(1 to n)
-        .mapEval(_ => lock.lock(IO.unit))
-        .completedL
+      Stream.emits(1 to n)
+        .evalMap(_ => lock.lock(IO.unit))
+        .compile
+        .drain
         .timed.map { case (duration, ()) =>
           logger.info(Stopwatch.itemsPerSecondString(duration, n))
           succeed
         }
-        .runToFuture
     }
 
-    def doTest(body: IO[Int] => IO[Int]): IO[Seq[Int]] = {
+    def doTest(body: IO[Int] => IO[Int]): IO[Seq[Int]] =
       val guardedVariable = Atomic(initial)
       val idleDuration = 100.µs
-      IO.parSequence(
-        for _ <- 1 to n yield
-          body {
+      val ios: Seq[IO[Int]] =
+        for i <- 1 to n yield
+          body:
             IO {
               val found = guardedVariable.get()
               idleNanos(idleDuration)
               guardedVariable += 1
               found
-            } .tapEval(_ => if Random.nextBoolean() then IO.shift else IO.unit)
-              .flatMap { found =>
-                IO {
+            } .flatTap(_ => IO.whenA(Random.nextBoolean())(IO.cede))
+              .flatMap(found =>
+                IO:
                   guardedVariable := initial
-                  found
-                }
-              }
-          })
+                  found)
+      ios.parSequence
         .timed.map { case (duration, result) =>
           logger.info(Stopwatch.itemsPerSecondString(duration, n))
           result
       }
-    }
 
     def idleNanos(duration: FiniteDuration): Unit = {
       val t = System.nanoTime()
@@ -103,53 +99,45 @@ final class AsyncLockTest extends OurAsyncTestSuite
     }
   }
 
-  "Cancel releases lock only after io has been canceled" in {
+  "Cancel releases lock only after io has been canceled" in:
     val lock = AsyncLock("CANCEL", logWorryDurations = Nil)
-    val ioStarted = Promise[Unit]()
-    val ioCancelationStarted = Promise[Unit]()
-    val ioCompleted = Promise[Unit]()
-    val continue = Promise[Unit]()
+    val ioStarted = Deferred.unsafe[IO, Unit]
+    val ioCancelationStarted = Deferred.unsafe[IO, Unit]
+    val ioCompleted = Deferred.unsafe[IO, Unit]
+    //Monix: val continue = Deferred.unsafe[IO, Unit]
 
-    val future = lock
-      .lock(IO.defer {
-        ioStarted.success(())
-        IO.never
-          .doOnCancel(IO.defer {
-            ioCancelationStarted.success(())
-            IO.sleep(100.ms)
-              .*>(IO.defer {
-                IO.fromFuture(continue.future)
-                  .*>(IO {
-                    ioCompleted.success(())
-                  })
-              })
-          })
-      })
-      .runToFuture
+    val run = IO.defer:
+      lock.lock:
+        for
+          _ <- ioStarted.complete(())
+          _ <- IO.never.onCancel:
+            for
+              _ <- ioCancelationStarted.complete(())
+              _ <- IO.sleep(100.ms)
+              //Monix: _ <- continue.get
+              _ <- ioCompleted.complete(())
+            yield ()
+        yield ()
 
-    IO
-      .fromFuture(ioStarted.future)
-      .flatMap(_ => IO.defer {
-        future.cancel()
-
-        IO
-          .fromFuture(ioCancelationStarted.future)
-          .*>(IO {
-            assert(!ioCompleted.isCompleted)
-            continue.success(())
-          })
-          .*>(lock
-            .lock(
-              IO.fromFuture(ioCompleted.future))
-            .timeoutWith(9.s, new RuntimeException("Cancel operation has not released the lock")))
-          .as(succeed)
-      })
-      .runToFuture
-  }
-}
+    for
+      fiber <- run.start
+      _ <- ioStarted.get
+      _ <-
+        for
+          _ <- fiber.cancel
+          _ <- ioCancelationStarted.get
+          isCompleted <- ioCompleted.get.as(true).timeoutTo(0.s, IO.False)
+          _ <- IO(assert(isCompleted))
+          //Monix: _ <- IO(assert(!isCompleted))
+          //Monix: _ <- continue.complete(())
+          _ <- lock
+              .lock(ioCompleted.get)
+              .timeoutTo(9.s,
+                IO.raiseError(new RuntimeException("Cancel operation has not released the lock")))
+            .as(succeed)
+        yield ()
+    yield succeed
 
 
-object AsyncLockTest
-{
-  private val logger = js7.base.log.Logger[this.type]
-}
+object AsyncLockTest:
+  private val logger = Logger[this.type]

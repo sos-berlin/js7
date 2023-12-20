@@ -1,67 +1,64 @@
 package js7.base.service
 
-import cats.effect.{IO, Resource, Timer}
-import cats.implicits.catsSyntaxApplicativeError
+import cats.effect.testkit.TestControl
+import cats.effect.{IO, Resource, SyncIO}
 import cats.syntax.flatMap.*
 import cats.syntax.parallel.*
+import js7.base.catsutils.CatsDeadline
+import js7.base.catsutils.CatsEffectExtensions.monotonicTime
 import js7.base.log.Logger
-import js7.base.monixutils.MonixDeadline.now
 import js7.base.service.RestartAfterFailureServiceTest.*
-import js7.base.test.OurTestSuite
-import js7.base.thread.Futures.implicits.SuccessFuture
-import js7.base.thread.CatsBlocking.syntax.RichTask
+import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.tester.ScalaTestUtils.awaitAndAssert
-import monix.execution.Scheduler
-import monix.execution.schedulers.TestScheduler
 import scala.collection.mutable
 import scala.concurrent.duration.*
 import scala.util.Random
 import scala.util.control.NoStackTrace
 
-final class RestartAfterFailureServiceTest extends OurTestSuite:
+final class RestartAfterFailureServiceTest extends OurTestSuite, TestCatsEffect:
+
   "RestartAfterFailureService" in:
-    implicit val scheduler = TestScheduler()
-    val started = now
     val elapsedSeq = mutable.Buffer[(FiniteDuration, FiniteDuration)]()
 
-    def serviceResource: Resource[IO, RestartAfterFailureService[CancelableService]] =
-      var i = 0
-      var lastEnd = started
+    val program =
+      IO.monotonic.map(CatsDeadline(_)).flatMap { started =>
+        def serviceResource: Resource[IO, RestartAfterFailureService[CancelableService]] =
+          var i = 0
+          var lastEnd = started
 
-      Service.restartAfterFailure()(CancelableService.resource(
-        IO.defer {
-          val delayed = now - lastEnd
-          i += 1
-          val sleep =
-            if i < 8 then 0.s
-            else if i < 11 then 5.s
-            else if i < 12 then 11.s
-            else 0.s
-          val n = 20
-          logger.debug(s"$toString $now i=$i ${if i == n then "last" else s"sleep ${sleep.pretty}"}")
-          IO.whenA(i < n)(
-            IO.sleep(sleep) *>
-              IO.defer {
-                lastEnd = now
-                elapsedSeq += ((delayed.toCoarsest, sleep.toCoarsest))
-                IO.raiseError(new TestException("run"))
-              })
-        }))
+          Service.restartAfterFailure()(CancelableService.resource(
+            IO.monotonic.map(CatsDeadline(_)).flatMap { now =>
+              val delayed = now - lastEnd
+              i += 1
+              val sleep =
+                if i < 8 then 0.s
+                else if i < 11 then 5.s
+                else if i < 12 then 11.s
+                else 0.s
+              val n = 20
+              logger.debug(s"$toString i=$i ${if i == n then "last" else s"sleep ${sleep.pretty}"}")
+              IO.whenA(i < n):
+                IO.sleep(sleep) *>
+                  IO.monotonic.map(CatsDeadline(_)).flatMap(now =>
+                    lastEnd = now
+                    elapsedSeq += ((delayed.toCoarsest, sleep.toCoarsest))
+                    IO.raiseError(new TestException("run")))
+            }))
 
-    val running = serviceResource
-      .use { (service: RestartAfterFailureService[CancelableService]) =>
-        // Due to automatic restart, the underlying service may change.
-        service.unsafeCurrentService(): CancelableService
-        service.untilStopped
+        serviceResource
+          .use { (service: RestartAfterFailureService[CancelableService]) =>
+            // Due to automatic restart, the underlying service may change.
+            service.unsafeCurrentService(): CancelableService
+            service.untilStopped
+          }
       }
-      .runToFuture
 
-    scheduler.tick(900.s)
-    running.await(99.s)
+    TestControl.execute(program).flatMap(_.tickFor(900.s)).await(99.s)
 
     assert(elapsedSeq == Seq(
       // (delayed, run duration)
@@ -88,8 +85,6 @@ final class RestartAfterFailureServiceTest extends OurTestSuite:
   "RestartAfterFailureService is stoppable anytime · Memory test when test.speed" in:
     // For check agains OutOfMemoryError, set -Xmx10m !!!
     val testDuration = if sys.props.contains("test.speed") then 30.s else 100.ms
-    import Scheduler.Implicits.traced
-    val timer = implicitly[Timer[IO]]
     val runs = Atomic(0)
     val uniqueCounter = Atomic(0)
 
@@ -108,12 +103,12 @@ final class RestartAfterFailureServiceTest extends OurTestSuite:
       protected def start =
         IO.defer:
           if startFailsRandomly && Random.nextBoolean() then
-            timer.sleep(Random.nextInt(5).ms) *> IO.raiseError(new TestException("start"))
+            IO.sleep(Random.nextInt(5).ms) *> IO.raiseError(new TestException("start"))
           else
             startService(IO
               .defer {
                 runs += 1
-                timer.sleep(Random.nextInt(5).ms) *> (
+                IO.sleep(Random.nextInt(5).ms) *> (
                   if runFails then
                     IO.raiseError(new TestException("run"))
                   else

@@ -1,14 +1,12 @@
 package js7.base.service
 
-import cats.effect.{Fiber, FiberIO, IO}
-import cats.effect.kernel.Deferred
+import cats.effect.{Deferred, FiberIO, IO}
 import js7.base.catsutils.CatsEffectExtensions.raceFold
 import js7.base.catsutils.UnsafeMemoizable.given
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.service.StoppableByRequest.*
-import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
 
 trait StoppableByRequest:

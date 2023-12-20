@@ -1,24 +1,19 @@
 package js7.base.utils
 
-import js7.base.catsutils.CatsDeadline.syntax.*
-import cats.{Defer, FlatMap, Functor}
-import cats.effect.{Deferred, FiberIO, GenTemporal, IO, MonadCancel, Outcome, Resource, Sync, SyncIO}
-import cats.syntax.functor.*
+import cats.Functor
 import cats.data.{NonEmptyList, NonEmptySeq, Validated}
-import cats.effect.kernel.{Clock, Fiber}
 import cats.effect.unsafe.Scheduler
+import cats.effect.{Deferred, GenTemporal, IO, MonadCancel, Outcome, Resource, Sync, SyncIO}
 import cats.kernel.Monoid
 import cats.syntax.all.*
 import com.typesafe.scalalogging.Logger
 import izumi.reflect.Tag
 import java.io.{ByteArrayInputStream, InputStream}
 import java.util.Base64
-import js7.base.catsutils.{CatsDeadline, UnsafeMemoizable}
+import js7.base.catsutils.{CatsDeadline, SyncDeadline, UnsafeMemoizable}
 import js7.base.generic.Completed
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
-import js7.base.time.Timestamp
-import js7.base.utils.Delayer.syntax.RichDelayerIO
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StackTraces.*
 import scala.concurrent.duration.*
@@ -180,19 +175,29 @@ object CatsUtils:
       def completed: IO[Completed] =
         completedIO
 
-      def right[R](r: R): IO[Either[Nothing, R]] =
-        IO.pure(Right(r))
+      //def right[R](r: R): IO[Either[Nothing, R]] =
+      //  IO.pure(Right(r))
+      //
+      //def left[L](l: L): IO[Either[L, Nothing]] =
+      //  IO.pure(Left(l))
 
-      def left[L](l: L): IO[Either[L, Nothing]] =
-        IO.pure(Left(l))
 
-    extension[F[_], E](temporal: GenTemporal[F, E])
-      def now(using Functor[F]): F[Deadline] =
-        temporal.monotonic.map(Deadline(_))
+    //extension[F[_], E](temporal: GenTemporal[F, E])
+    //  @deprecated("Use monotonicTime — now will be the wall clock", "")
+    //  def now(using Functor[F]): F[CatsDeadline] =
+    //    monotonicTime
+    //
+    //  def monotonicTime(using Functor[F]): F[CatsDeadline] =
+    //    temporal.monotonic.map(CatsDeadline(_))
+
 
     extension(scheduler: Scheduler)
-      def now: Deadline =
-        Deadline((scheduler.monotonicNanos() / 1000_000).ms)
+      @deprecated("Use monotonicTime — now will be the wall clock", "")
+      def now(): SyncDeadline =
+        monotonicTime()
+
+      def monotonicTime(): SyncDeadline =
+        SyncDeadline(scheduler.monotonicNanos())(using scheduler)
 
       def scheduleAtFixedRate(delay: FiniteDuration, repeat: FiniteDuration, runnable: Runnable)
       : Runnable =
@@ -208,6 +213,24 @@ object CatsUtils:
               scheduler.sleep((t - scheduler.monotonicNanos()).ns, callback)
 
         scheduler.sleep(delay, callback)
+
+      //def isTimeLeft(o: CatsDeadline): Boolean =
+      //  !isElapsed(o)
+      //
+      //def timeLeft(o: CatsDeadline): FiniteDuration =
+      //  -elapsedSince(o)
+      //
+      //def isElapsed(o: CatsDeadline): Boolean =
+      //  scheduler.monotonicNanos() - o.nanosSinceZero >= 0
+      //
+      //def elapsedSince(o: CatsDeadline): FiniteDuration =
+      //  elapsedNanos(o).ns
+      //
+      //def elapsedSinceOrZero(o: CatsDeadline): FiniteDuration =
+      //  elapsedNanos(o).max(0).ns
+      //
+      //def elapsedNanos(o: CatsDeadline): Long =
+      //  scheduler.monotonicNanos() - o.nanosSinceZero
 
   implicit final class RichDeferred[F[_], A](private val deferred: Deferred[F, A]) extends AnyVal:
     /** For compatibility with Cats Effect 3. */

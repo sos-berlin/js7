@@ -2,11 +2,10 @@ package js7.base.monixutils
 
 import cats.effect.IO
 import cats.syntax.parallel.*
-import js7.base.test.{OurAsyncTestSuite, OurTestSuite}
+import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
-import org.scalatest.freespec.AsyncFreeSpec
 
-final class SimpleLockTest extends OurAsyncTestSuite
+final class SimpleLockTest extends OurAsyncTestSuite:
 
   "SimpleLock" in:
     val n = 1000

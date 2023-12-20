@@ -1,5 +1,6 @@
 package js7.base.io.process
 
+import cats.effect.IO
 import java.nio.file.Files.delete
 import java.nio.file.Path
 import js7.base.io.file.FileUtils.syntax.RichPath
@@ -7,13 +8,11 @@ import js7.base.io.process.ProcessTextFileBusyTest.*
 import js7.base.io.process.Processes.*
 import js7.base.log.Logger
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.test.OurTestSuite
-import js7.base.thread.CatsBlocking.syntax.RichTask
+import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
-import cats.effect.IO
-import monix.execution.Scheduler
 import scala.util.control.NonFatal
 
 /**
@@ -22,31 +21,31 @@ import scala.util.control.NonFatal
   * @author Joacim Zschimmer
   * @see https://bugs.openjdk.java.net/browse/JDK-8068370
   */
-final class ProcessTextFileBusyTest extends OurTestSuite:
+final class ProcessTextFileBusyTest extends OurTestSuite, TestCatsEffect:
 
   private val n = 1000
   private val threadCount = 10 * sys.runtime.availableProcessors
 
   s"$n concurrent process starts with freshly written executables on $threadCount threads" in:
-    implicit val scheduler = Scheduler.forkJoin(parallelism = n, maxThreads = n)
+    //implicit val scheduler = Scheduler.forkJoin(parallelism = n, maxThreads = n)
     val stopwatch = new Stopwatch
     val (files, processes) = IO
-      .parSequenceUnordered(
-        for i <- (0 until n) yield IO.defer {
+      .parSequenceN(sys.runtime.availableProcessors):
+        for i <- (0 until n).toVector yield IO.defer:
           val file = newTemporaryShellFile(s"#$i")
           file := "exit"
-          new ProcessBuilder(s"$file").startRobustly()
-            .map(file -> _)
-        })
+          new ProcessBuilder(s"$file").startRobustly().map(file -> _)
       .await(99.s)
       .unzip
+
     for p <- processes do
       val rc = p.waitFor()
       assert(rc == 0)
+
     info(stopwatch.itemsPerSecondString(n, "processes"))
     if isWindows then sleep(500.ms)  // Windows may lock the files for a short while after process termination
     files foreach tryDelete
-    scheduler.shutdown()
+    //??? scheduler.shutdown()
 
 
 object ProcessTextFileBusyTest:

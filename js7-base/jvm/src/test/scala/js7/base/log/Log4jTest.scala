@@ -1,16 +1,16 @@
 package js7.base.log
 
+import cats.effect.IO
 import cats.syntax.parallel.*
 import js7.base.log.Log4jTest.*
-import js7.base.test.OurTestSuite
-import js7.base.thread.CatsBlocking.syntax.RichTask
+import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.time.ScalaTime.{DurationRichInt, RichDeadline, sleep}
 import js7.base.time.Stopwatch
-import cats.effect.IO
-import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.Deadline.now
 
-final class Log4jTest extends OurTestSuite:
+final class Log4jTest extends OurTestSuite, TestCatsEffect:
+
   private val testSpeed = sys.props contains "test.speed"
 
   "Speed" in:

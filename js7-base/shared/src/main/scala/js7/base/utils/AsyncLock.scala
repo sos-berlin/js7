@@ -1,18 +1,18 @@
 package js7.base.utils
 
-import cats.effect.{IO, Outcome, OutcomeIO, Resource, kernel}
+import cats.effect.{IO, Resource, kernel}
 import cats.syntax.flatMap.*
 import java.lang.System.nanoTime
+import js7.base.catsutils.UnsafeMemoizable.given
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{BlockingSymbol, CorrelId, Logger}
-import js7.base.utils.CatsUtils.DefaultWorryDurations
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AsyncLock.*
+import js7.base.utils.CatsUtils.DefaultWorryDurations
+import js7.base.utils.CatsUtils.syntax.whenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.FiniteDuration
-import js7.base.catsutils.UnsafeMemoizable.given
-import js7.base.utils.CatsUtils.syntax.whenItTakesLonger
 
 final class AsyncLock private(
   name: String,

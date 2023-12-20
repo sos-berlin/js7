@@ -16,7 +16,6 @@ import js7.base.time.Stopwatch
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.ScalaUtilsTest.*
-import monix.eval.Coeval
 import org.scalatest.matchers.should.Matchers.*
 import scala.collection.{MapView, View}
 import scala.concurrent.duration.Deadline.now
@@ -93,11 +92,11 @@ final class ScalaUtilsTest extends OurTestSuite
       }
     }
 
-    "Coeval" in {
-      assert(Coeval[E](Left("A")).flatMapT(_ => Coeval.pure(Left("B"))).value() == Left("A"))
-      assert(Coeval[E](Left("A")).flatMapT(right => Coeval.pure(Right(3 * right))).value() == Left("A"))
-      assert(Coeval[E](Right(7)).flatMapT(_ => Coeval.pure(Left("B"))).value() == Left("B"))
-      assert(Coeval[E](Right(7)).flatMapT(right => Coeval.pure(Right(3 * right))).value() == Right(21))
+    "SyncIO" in {
+      assert(SyncIO[E](Left("A")).flatMapT(_ => SyncIO.pure(Left("B"))).unsafeRunSync() == Left("A"))
+      assert(SyncIO[E](Left("A")).flatMapT(right => SyncIO.pure(Right(3 * right))).unsafeRunSync() == Left("A"))
+      assert(SyncIO[E](Right(7)).flatMapT(_ => SyncIO.pure(Left("B"))).unsafeRunSync() == Left("B"))
+      assert(SyncIO[E](Right(7)).flatMapT(right => SyncIO.pure(Right(3 * right))).unsafeRunSync() == Right(21))
     }
 
     "flatMapLeft" in {

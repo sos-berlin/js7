@@ -1,10 +1,9 @@
 package js7.base.time
 
+import cats.effect.unsafe.Scheduler
+import js7.base.utils.CatsUtils.syntax.monotonicTime
 import scala.collection.AbstractIterator
 import scala.concurrent.duration.{Duration, FiniteDuration}
-import cats.effect.unsafe.{IORuntime, Scheduler}
-import js7.base.utils.CatsUtils.syntax.now
-import js7.base.catsutils.CatsDeadline.given
 
 /** Returns an endless sequence of durations usable to delay operation. */
 final class DelayIterator(durations: Seq[FiniteDuration])(using scheduler: Scheduler)
@@ -22,11 +21,11 @@ extends AbstractIterator[FiniteDuration]:
     it.next()
 
   def reset(): Iterator[FiniteDuration] =
-    val start = scheduler.now
+    val start = scheduler.monotonicTime()
     val result = durations.iterator
       .concat(Iterator.continually(last))
       .scanLeft(Duration.Zero)((sum, d) => sum + d)
       .drop(1)
-      .map(d => start + d - scheduler.now max Duration.Zero)
+      .map(d => start + d - scheduler.monotonicTime() max Duration.Zero)
     it = result
     result

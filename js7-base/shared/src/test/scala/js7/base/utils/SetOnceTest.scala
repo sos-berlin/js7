@@ -3,7 +3,6 @@ package js7.base.utils
 import js7.base.problem.{Problem, ProblemException}
 import js7.base.test.OurTestSuite
 import js7.base.utils.SetOnceTest.*
-import monix.execution.atomic.AtomicInt
 
 /**
  * @author Joacim Zschimmer
@@ -31,7 +30,7 @@ final class SetOnceTest extends OurTestSuite:
     assert(r == 0)
 
   "getOrUpdate" in:
-    val counter = AtomicInt(0)
+    val counter = Atomic(0)
     val a = SetOnce[A]
     assert((a getOrUpdate A(counter.incrementAndGet())) == A(1))
     assert((a getOrUpdate A(counter.incrementAndGet())) == A(1))

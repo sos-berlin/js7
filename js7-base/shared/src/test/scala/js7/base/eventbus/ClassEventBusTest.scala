@@ -1,7 +1,6 @@
 package js7.base.eventbus
 
 import js7.base.eventbus.ClassEventBusTest.*
-import monix.execution.Scheduler.Implicits.traced
 import js7.base.test.OurAsyncTestSuite
 import scala.collection.mutable
 
@@ -35,11 +34,15 @@ final class ClassEventBusTest extends OurAsyncTestSuite:
 
   "when" in:
     val eventBus = new TestEventBus
-    val future = eventBus.when[BClassifier].runToFuture
+    val future = eventBus.when[BClassifier]
+    // 💥Fails when future has not been started yet: assert(!eventBus.isEmpty)
     assert(!future.isCompleted)
-    assert(!eventBus.isEmpty)
+
     eventBus.publish(Event(AClassifier("1"), "IGNORE"))
+    assert(!future.isCompleted)
+
     eventBus.publish(Event(BClassifier(""), "MORE"))
+    assert(future.isCompleted)
     for event <- future yield
       assert(event == Event(BClassifier(""), "MORE"))
 

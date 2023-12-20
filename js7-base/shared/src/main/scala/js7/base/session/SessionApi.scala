@@ -16,7 +16,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.HttpClient
 import js7.base.web.HttpClient.HttpException
 import js7.base.catsutils.CatsEffectExtensions
-import js7.base.catsutils.CatsEffectExtensions.onErrorRestartLoop
+import js7.base.catsutils.CatsEffectExtensions.{onErrorRestartLoop, right}
 import scala.concurrent.duration.*
 
 // Test in SessionRouteTest

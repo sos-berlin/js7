@@ -1,14 +1,12 @@
 package js7.base.thread
 
 import cats.effect.implicits.asyncOps
-import cats.effect.kernel.Async
-import cats.effect.syntax.async.*
-import cats.effect.{IO, Resource, Sync}
+import cats.effect.{Async, Resource, Sync}
 import com.typesafe.config.Config
 import java.lang.Thread.currentThread
 import java.util.concurrent.{Executor, ExecutorService}
+import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.log.{CorrelId, Logger}
 import js7.base.system.Java8Polyfill.*
 import js7.base.thread.Futures.promiseFuture
 import js7.base.thread.IOExecutor.*

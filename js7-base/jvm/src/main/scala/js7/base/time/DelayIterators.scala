@@ -1,6 +1,6 @@
 package js7.base.time
 
-import cats.effect.unsafe.{IORuntime, Scheduler}
+import cats.effect.unsafe.Scheduler
 import com.typesafe.config.{Config, ConfigException}
 import js7.base.problem.Checked.catchExpected
 import js7.base.problem.{Checked, Problem}

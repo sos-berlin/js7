@@ -1,12 +1,8 @@
 package js7.base.fs2utils
 
-import cats.effect.Concurrent
-import cats.effect.{Resource, Sync}
+import cats.effect.{Concurrent, Sync}
 import fs2.Stream
-import js7.base.fs2utils.StreamExtensions.*
-import js7.base.log.Logger
 import js7.base.utils.ScalaUtils.*
-import js7.base.utils.ScalaUtils.syntax.*
 
 object StreamExtensions:
 

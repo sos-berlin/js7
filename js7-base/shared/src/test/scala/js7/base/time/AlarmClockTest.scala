@@ -166,10 +166,11 @@ final class AlarmClockTest extends OurTestSuite:
     val e = clock.scheduleAt(start + 20.minutes) { x += 20 }
     val f = clock.scheduleAt(start + 20.minutes) { x += 40 }
 
-    a.cancel()
-    c.cancel()
-    b.cancel()
-    e.cancel()
+    // Cancel timers:
+    a.run()
+    c.run()
+    b.run()
+    e.run()
     clock.tick(20.minutes)
     assert(x.get() == 50)
     assert(clock.toString == s"ClockCheckingTestAlarmClock(${clock.now()}, no alarm)")

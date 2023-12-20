@@ -1,6 +1,6 @@
 package js7.base.monixutils
 
-import cats.effect.kernel.{Async, Concurrent}
+import cats.effect.{Async, Concurrent}
 import cats.effect.{IO, Resource}
 import cats.effect.std.Mutex
 import js7.base.catsutils.UnsafeMemoizable.given

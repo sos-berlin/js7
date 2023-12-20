@@ -1,42 +1,61 @@
 package js7.base.test
 
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
+import js7.base.log.Logger
+import js7.base.test.LoggingAsyncFreeSpec.*
+import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import org.scalactic.source
-import org.scalatest.Assertion
 import org.scalatest.freespec.AsyncFreeSpec
-import scala.concurrent.Future
+import org.scalatest.{Assertion, PendingStatement, Tag}
+import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.{Future, TimeoutException}
 import scala.language.implicitConversions
-import scala.util.Try
-import org.scalatest.{PendingStatement, Tag}
+import scala.util.{Failure, Left, Success, Try}
 
 /**
  * Extends `AnyFreeSpec` with logging of test names and their outcomes.
- * The log lines are colored, so use `less` with `LESS=-R` to let the escape sequences
- * take effect on your terminal.
+ * The log lines are colored.
+ * The Unix command `less -R` shows the colors on your terminal.
  **/
 trait LoggingAsyncFreeSpec extends AsyncFreeSpec:
 
-  private val testAdder = new LoggingTestAdder(getClass.shortClassName)
+  protected def testTimeout: FiniteDuration = 99.s
+  protected implicit def ioRuntime: IORuntime
+
+  private val suiteName = getClass.shortClassName
+  private val testAdder = new LoggingTestAdder(suiteName)
 
   protected def suppressTestCorrelId = false
 
+  // inline for proper source.Position
   protected implicit inline def implicitToFreeSpecStringWrapper(name: String)
-    (implicit pos: source.Position)
-  : LoggingFreeSpecStringWrapper[Future[Assertion], ResultOfTaggedAsInvocationOnString] =
-    testAdder.toStringWrapper(
+    (using pos: source.Position)
+  : LoggingFreeSpecStringWrapper[OwnResult, Future[Assertion], ResultOfTaggedAsInvocationOnString] =
+    testAdder.toStringWrapper[OwnResult, Future[Assertion], ResultOfTaggedAsInvocationOnString](
       name,
-      toUnified(/*super.convertToFreeSpecStringWrapper*/(name)),
+      toUnified(convertToFreeSpecStringWrapper(name)),
       (ctx, testBody) =>
-        Future(ctx.beforeTest())
-          .flatMap(_ =>
-            catchInFuture(testBody))
-          .andThen { case tried =>
-            ctx.afterTest(tried)
-          },
+        run(name):
+          for
+            _ <- IO(ctx.beforeTest())
+            either <- executeTest(testBody)
+              .timeoutTo(testTimeout, IO.raiseError(new TimeoutException(
+                s"Test timed out after ${testTimeout.pretty}: $suiteName · $name")))
+              .attempt
+            _ <- IO(ctx.afterTest(either.toTry))
+            result <- IO.fromEither(either)
+          yield result,
       suppressCorrelId = suppressTestCorrelId)
 
-  private def catchInFuture[A](startFuture: => Future[A]): Future[A] =
-    Future.fromTry(Try(startFuture)).flatten
+  def run(name: String)(io: IO[Assertion]): Assertion =
+    io.syncStep(Int.MaxValue)
+      .unsafeRunSync() match
+        case Left(io) =>
+          //logger.trace(s"Asynchronous boundary in $suiteName · $name")
+          io.unsafeRunSync()
+        case Right(assertion) => assertion
 
   private def toUnified(stringWrapper: FreeSpecStringWrapper) =
     new LoggingFreeSpecStringWrapper.UnifiedStringWrapper[
@@ -49,13 +68,25 @@ trait LoggingAsyncFreeSpec extends AsyncFreeSpec:
       def in(testBody: => Future[Assertion]) =
         stringWrapper in testBody
 
-      def taggedAs(tag: Tag, more: Tag*) =
+      def taggedAs(tag: Tag, more: Tag*): LoggingFreeSpecStringWrapper.TaggedAs[Future[Assertion]] =
         new LoggingFreeSpecStringWrapper.TaggedAs[Future[Assertion]]:
           def in(testBody: => Future[Assertion]) =
             testBody
 
           def ignore(testBody: => Future[Assertion]) =
-            testBody
+            Future.failed(new RuntimeException(("Test ignored")))  // Not expected to be thrown
 
           def is(pending: => PendingStatement) =
             pending
+
+  private def executeTest(testBody: => OwnResult): IO[Assertion] =
+    Try(testBody) match
+      case Failure(t) => IO.raiseError(t)
+      case Success(o: Assertion) => IO.pure(o)
+      case Success(o: Future[Assertion]) => IO.fromFuture(IO.pure(o))
+      case Success(io: IO[Assertion]) => io
+
+
+object LoggingAsyncFreeSpec:
+  private type OwnResult = Assertion | Future[Assertion] | IO[Assertion]
+  private val logger = Logger[this.type]

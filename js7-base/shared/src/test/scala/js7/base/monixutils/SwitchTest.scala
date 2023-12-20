@@ -3,18 +3,19 @@ package js7.base.monixutils
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
 import cats.effect.IO
-import monix.execution.Scheduler.Implicits.traced
-import monix.execution.schedulers.TestScheduler
+import js7.base.catsutils.CatsEffectExtensions.adHocInfo
+import js7.base.log.Logger
+import js7.base.time.TestScheduler
 import scala.annotation.nowarn
 
 final class SwitchTest extends OurAsyncTestSuite:
+
   "Initially off" in:
     val switch = Switch(false)
     switch.isOff
       .map(assert(_))
       .*>(switch.isOn)
       .map(o => assert(!o))
-      .runToFuture
 
   "Initially on" in:
     val switch = Switch(true)
@@ -22,18 +23,20 @@ final class SwitchTest extends OurAsyncTestSuite:
       .map(assert(_))
       .*>(switch.isOff)
       .map(o => assert(!o))
-      .runToFuture
 
   "switchOn" in:
     val switch = Switch(false)
     switch
       .switchOn
+      .adHocInfo(o => s"### o=$o")
       .map(assert(_))
+      .adHocInfo(s"### switchOn")
       .*>(switch.switchOn)
+      .adHocInfo(o => s"### o=$o")
       .map(o => assert(!o))
       .*>(switch.isOn)
+      .adHocInfo(o => s"### isOn => $o")
       .map(assert(_))
-      .runToFuture
 
   "switchOff" in:
     val switch = Switch(true)
@@ -44,7 +47,6 @@ final class SwitchTest extends OurAsyncTestSuite:
       .map(o => assert(!o))
       .*>(switch.isOff)
       .map(assert(_))
-      .runToFuture
 
   "whenOff" in:
     implicit val scheduler = TestScheduler()
@@ -62,7 +64,7 @@ final class SwitchTest extends OurAsyncTestSuite:
         switch.whenOff,
         IO.sleep(100.ms).map(_ => fail())))
       .as(succeed)
-      .runToFuture
+      .unsafeToFuture()
 
     scheduler.tick(100.ms)
     future
@@ -82,7 +84,7 @@ final class SwitchTest extends OurAsyncTestSuite:
         switch.whenOn,
         IO.sleep(100.ms).map(_ => fail())))
       .as(succeed)
-      .runToFuture
+      .unsafeToFuture()
 
     scheduler.tick(100.ms)
     future

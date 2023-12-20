@@ -1,5 +1,6 @@
 package js7.base.problem
 
+import cats.effect.SyncIO
 import cats.instances.either.*
 import cats.instances.int.*
 import cats.instances.list.*
@@ -17,7 +18,6 @@ import js7.base.generic.Completed
 import js7.base.problem.Checked.*
 import js7.base.test.OurTestSuite
 import js7.tester.CirceJsonTester.testJson
-import monix.eval.Coeval
 import scala.util.{Failure, Success}
 
 /**
@@ -179,14 +179,14 @@ final class CheckedTest extends OurTestSuite
     assert(Right(2).traverse(toList) == Right(1) :: Right(2) :: Nil)
   }
 
-  "traverse with Coeval" in {
-    def toCoeval(n: Int) = Coeval(n)
+  "traverse with SyncIO" in {
+    def toSyncIO(n: Int) = SyncIO(n)
 
-    val a: Coeval[Checked[Int]] = Left(Problem("PROBLEM")).traverse(toCoeval)
-    assert(a.run().toTry == Success(Left(Problem("PROBLEM"))))
+    val a: SyncIO[Checked[Int]] = Left(Problem("PROBLEM")).traverse(toSyncIO)
+    assert(a.unsafeRunSync() == Left(Problem("PROBLEM")))
 
-    val b: Coeval[Checked[Int]] = Right(1).traverse(toCoeval)
-    assert(b.run().toTry == Success(Right(1)))
+    val b: SyncIO[Checked[Int]] = Right(1).traverse(toSyncIO)
+    assert(b.unsafeRunSync() == Right(1))
   }
 
   "traverse a List" in {

@@ -48,7 +48,9 @@ object Dependencies
   val scalaLogging        = "com.typesafe.scala-logging" %% "scala-logging" % "3.9.5" :: slf4j :: Nil
   val cats                = "org.typelevel" %% "cats-core" % catsVersion
   val catsEffect          = "org.typelevel" %% "cats-effect" % catsEffectVersion :: cats :: Nil
-  val catsEffectTesting   = "org.typelevel" %% "cats-effect-testing-scalatest" % "1.5.0" % Test
+  val catsEffectTesting   = List(
+    "org.typelevel" %% "cats-effect-testkit" % catsEffectVersion % Test,
+    "org.typelevel" %% "cats-effect-testing-scalatest" % "1.5.0" % Test)
   val catsSTM             = "io.github.timwspence" %% "cats-stm" % catsSTMVersion
   val tagging             = "com.softwaremill.common" %% "tagging" % softwaremillTaggingVersion
   val diffx               = "com.softwaremill.diffx" %% "diffx-core" % diffxVersion

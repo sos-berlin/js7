@@ -1,19 +1,14 @@
 package js7.base.log
 
 import cats.Defer
-import cats.effect.IOLocal
 import io.circe.Decoder
 import java.security.SecureRandom
 import js7.base.circeutils.CirceUtils.*
 import js7.base.generic.GenericString
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Atomic
-import js7.base.thread.Futures.implicits.SuccessFuture
-import js7.base.utils.Atomic
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.{isIntelliJIdea, isTest}
-import scala.concurrent.duration.Duration
-
 /** Correlation ID. */
 sealed trait CorrelId extends GenericString:
 
@@ -51,8 +46,12 @@ object CorrelId extends GenericString.Checked_[CorrelId]:
   private[log] val width = (longByteCount + 2) / 3 * 4  // Base64 length
   private[log] val bitMask = (1L << (longByteCount * 8)) - 1
   val empty: CorrelId = EmptyCorrelId
-  private[log] val local = IOLocal(CorrelId.empty)
-    .unsafeRunSyncToFuture().awaitInfinite/*???*/
+  //private[log] val local = IOLocal(CorrelId.empty)
+  //  .unsafeRunSyncToFuture().awaitInfinite /*???*/
+  private[log] val local = DummyLocal()
+  final class DummyLocal:
+    def apply() = CorrelId.empty
+    def update(o: CorrelId) = {}
 
   private lazy val nextCorrelId: NextCorrelId =
     if isTest && isIntelliJIdea then

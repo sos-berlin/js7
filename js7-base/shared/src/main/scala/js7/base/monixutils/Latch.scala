@@ -1,10 +1,6 @@
 package js7.base.monixutils
 
-import cats.effect.std.{Mutex, Queue}
-import cats.effect.{Deferred, IO, Ref}
-import js7.base.catsutils.UnsafeMemoizable.given
-import js7.base.utils.Atomic.extensions.:=
-import js7.base.utils.{Atomic, MVar}
+import cats.effect.{Deferred, IO}
 
 /** A single-use, initially open latch.
  * After being closed it cannot opened again. */

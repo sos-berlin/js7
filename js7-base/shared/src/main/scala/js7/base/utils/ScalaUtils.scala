@@ -237,7 +237,7 @@ object ScalaUtils:
 
     implicit final class RichAny[A](private val delegate: A) extends AnyVal:
       /** Apply the function. */
-      @inline def |>[B](f: A => B): B =
+      inline def |>[B](f: A => B): B =
         delegate.pipe(f)
 
       /** Apply the function conditionally. */

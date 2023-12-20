@@ -1,21 +1,20 @@
 package js7.base.thread
 
+import cats.effect.IO
 import cats.instances.vector.*
 import cats.syntax.foldable.*
 import cats.syntax.traverse.*
 import java.util.concurrent.Executor
 import js7.base.log.Logger
-import js7.base.test.OurTestSuite
+import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.thread.IOExecutor.ioFuture
-import js7.base.thread.CatsBlocking.syntax.RichTask
 import js7.base.thread.ThreadPoolsBase.newBlockingNonVirtualExecutor
 import js7.base.thread.VirtualThreads.maybeNewVirtualThreadExecutorService
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
-import cats.effect.IO
-import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.Await
 import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
@@ -23,7 +22,7 @@ import scala.concurrent.duration.Deadline.now
 /**
   * @author Joacim Zschimmer
   */
-final class IOExecutorTest extends OurTestSuite:
+final class IOExecutorTest extends OurTestSuite, TestCatsEffect:
   private val logger = Logger[this.type]
 
   "Success" in:
@@ -62,7 +61,7 @@ final class IOExecutorTest extends OurTestSuite:
     val since = now
     val io = (1 to n).toVector
       .traverse(_ => iox(IO { sleep(100.ms) }).start)
-      .map(_.map(_.join))
+      .map(_.map(_.joinWithUnit))
       .map(_.combineAll)
       .flatten
     for i <- 1 to 3 do

@@ -1,10 +1,9 @@
 package js7.base.utils
 
+import cats.effect.IO
 import cats.syntax.all.*
 import js7.base.test.OurAsyncTestSuite
 import js7.base.utils.Atomic.extensions.*
-import cats.effect.IO
-import monix.execution.Scheduler.Implicits.traced
 
 final class OnceTest extends OurAsyncTestSuite:
 
@@ -19,4 +18,4 @@ final class OnceTest extends OurAsyncTestSuite:
       }))
       .void
       .*>(IO(assert(number.get() == 1)))
-      .runToFuture
+      .unsafeToFuture()

@@ -5,9 +5,9 @@ import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
-import monix.execution.schedulers.TestScheduler
 
 final class DelayIteratorsTest extends OurTestSuite:
+
   private implicit val scheduler: TestScheduler = TestScheduler()
 
   "Wrong type" in:

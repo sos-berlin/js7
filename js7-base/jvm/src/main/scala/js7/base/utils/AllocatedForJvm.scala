@@ -1,12 +1,11 @@
 package js7.base.utils
 
 import cats.:<:
-import js7.base.utils.AutoClosing.autoClosing
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import js7.base.thread.CatsBlocking.syntax.await
+import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
-import scala.annotation.unused
 import scala.concurrent.duration.Duration
 
 object AllocatedForJvm:

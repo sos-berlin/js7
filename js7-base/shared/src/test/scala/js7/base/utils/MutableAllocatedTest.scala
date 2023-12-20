@@ -1,10 +1,8 @@
 package js7.base.utils
 
-import cats.effect.Resource
+import cats.effect.{IO, Resource}
 import js7.base.problem.Problem
 import js7.base.test.OurAsyncTestSuite
-import cats.effect.IO
-import monix.execution.Scheduler.Implicits.traced
 
 final class MutableAllocatedTest extends OurAsyncTestSuite:
 
@@ -44,4 +42,4 @@ final class MutableAllocatedTest extends OurAsyncTestSuite:
           "MutableAllocated[Int]: has been finally released — new aqcuisition rejected")))
     yield succeed
 
-    test.runToFuture
+    test.unsafeToFuture()

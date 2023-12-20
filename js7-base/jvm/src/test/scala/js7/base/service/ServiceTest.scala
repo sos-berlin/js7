@@ -1,46 +1,41 @@
 package js7.base.service
 
-import cats.effect.Resource
-import cats.effect.kernel.Deferred
+import cats.effect.{Deferred, IO, Resource}
+import cats.syntax.flatMap.*
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.service.ServiceTest.*
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.DurationRichInt
 import js7.base.utils.Tests.isIntelliJIdea
-import cats.effect.IO
-import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.Assertion
 import scala.concurrent.Future
-import scala.util.Failure
 import scala.util.control.NoStackTrace
 
 final class ServiceTest extends OurAsyncTestSuite:
+
   private val delay = 200.ms
   private val iterations = if isIntelliJIdea then 100 else 10
 
-  private def repeat(n: Int)(body: => Future[Assertion]): Future[Assertion] =
-    IO.tailRecM(1)(i => logger
-      .debugIO(s"#$i")(IO
-        .deferFuture(
-          withClue(s"#$i: ")(
-            body)))
+  private def repeat(n: Int)(body: => IO[Assertion]): IO[Assertion] =
+    (1).tailRecM(i => logger
+      .debugIO(s"#$i")(
+          /*withClue(s"#$i: ")*/(
+            body))
       .map(result =>
         if i < n then
           Left(i + 1)
         else
           Right(result)))
-      .runToFuture
 
   "Resource.release does not suppresses exceptions" in:
     Resource
       .make(IO.unit)(_ => IO.raiseError(new IllegalStateException))
-      .use(_ => IO(succeed))
-      .materialize
+      .surround(IO(succeed))
+      .attempt
       .flatMap:
-        case Failure(_: IllegalStateException) => IO(succeed)
+        case Left(_: IllegalStateException) => IO(succeed)
         case other => fail(s"UNEXPECTED: $other")
-      .runToFuture
 
   "Service terminates while still in use" in repeat(iterations):
     var isRunning = false
@@ -51,41 +46,36 @@ final class ServiceTest extends OurAsyncTestSuite:
           service.stop *>
           IO(assert(!isRunning))
             .as(succeed))
-      .runToFuture
 
   "Service fails while still in use" in repeat(iterations):
     val serviceFailed = Deferred.unsafe[IO, Unit]
     FailingService
-      .resource(onFailed = serviceFailed.complete(()))
-      .use(_ => serviceFailed.get.delayBy(delay))
-      .materialize
+      .resource(onFailed = serviceFailed.complete(()).void)
+      //v2.6? .surround(serviceFailed.get.delayBy(delay))
+      .use(service => serviceFailed.get.delayBy(delay) *> service.untilStopped)
+      .attempt
       .map:
-        case Failure(FailingService.exception) =>
-          succeed
+        case Left(FailingService.exception) => succeed
         case o => fail(s"Unexpected $o")
-      .runToFuture
 
   "Use ends when service has stopped" in repeat(iterations):
     // General use case. Similar to the test above.
     val serviceFailed = Deferred.unsafe[IO, Unit]
     FailingService
-      .resource(onFailed = serviceFailed.complete(()))
+      .resource(onFailed = serviceFailed.complete(()).void)
       .use(_.untilStopped)
-      .materialize
+      .attempt
       .map:
-        case Failure(FailingService.exception) =>
-          succeed
+        case Left(FailingService.exception) => succeed
         case o => fail(s"Unexpected $o")
-      .runToFuture
 
   "Service usage terminates before service would die" in repeat(iterations):
     val serviceFailed = Deferred.unsafe[IO, Unit]
     FailingService
       .resource(
         whenFail = IO.sleep(delay),
-        onFailed = serviceFailed.complete(()))
+        onFailed = serviceFailed.complete(()).void)
       .use(_ => IO.pure(succeed))
-      .runToFuture
 
   "Service fails while usage is terminating (race)" in repeat(iterations):
     val failService = Deferred.unsafe[IO, Unit]
@@ -94,9 +84,8 @@ final class ServiceTest extends OurAsyncTestSuite:
       .use(_ =>
         // service fails while in use!
         failService.complete(()).as(succeed))
-      .onErrorRecover:
+      .recover:
         case FailingService.exception => succeed
-      .runToFuture
 
   "No failure " in repeat(iterations):
     var isRunning = false
@@ -106,10 +95,9 @@ final class ServiceTest extends OurAsyncTestSuite:
           .flatMap(_ => IO {
             assert(isRunning)
           }))
-      .tapEval(_ => IO {
+      .flatTap(_ => IO {
         assert(!isRunning)
       })
-      .runToFuture
 
   private class MyService(setRunning: Boolean => Unit)
   extends Service.StoppableByRequest:
@@ -150,6 +138,7 @@ object ServiceTest:
       whenFail *> IO.raiseError(FailingService.exception).guarantee(onFailed)
 
     override def toString = "FailingService"
+
   private object FailingService:
     val exception = new Exception("SERVICE FAILED") with NoStackTrace
 

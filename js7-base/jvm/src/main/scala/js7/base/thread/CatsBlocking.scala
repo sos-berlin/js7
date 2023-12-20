@@ -10,7 +10,6 @@ import js7.base.log.Logger.syntax.*
 import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.StackTraces.StackTraceThrowable
-import scala.collection.BuildFrom
 import scala.concurrent.TimeoutException
 import scala.concurrent.duration.*
 import scala.util.control.NonFatal

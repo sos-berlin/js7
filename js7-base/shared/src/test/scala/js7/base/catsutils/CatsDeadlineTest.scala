@@ -1,34 +1,27 @@
 package js7.base.catsutils
 
-import js7.base.catsutils.CatsDeadline.{monotonicClock, now}
-import js7.base.test.OurAsyncTestSuite
+import js7.base.catsutils.CatsDeadline.now
+import js7.base.test.{OurAsyncTestSuite, OurTestSuite, WithTestScheduler}
 import js7.base.time.ScalaTime.*
+import js7.base.utils.CatsUtils.syntax.monotonicTime
 
-/**
-  * @author Joacim Zschimmer
-  */
-final class CatsDeadlineTest extends OurAsyncTestSuite:
-  private implicit val scheduler: TestScheduler = TestScheduler()
+final class CatsDeadlineTest extends OurTestSuite, WithTestScheduler:
 
   "now" in:
-    val scheduler = TestScheduler()
     now.flatMap { deadline0 =>
       scheduler.tick(1.s)
       now.map { deadline1 =>
-        assert(deadline0.nanos == 0 && deadline1.nanos == 1_000_000_000)
+        assert(deadline0.sinceZero.isZero && deadline1.sinceZero == 1.s)
       }
     }
-    .runToFuture(scheduler)
 
   "Zero CatsDeadline" in:
-    implicit val scheduler = TestScheduler()
-    assert(!now.hasTimeLeft)
-    assert(now.hasElapsed)
+    assert(!scheduler.monotonicTime().hasTimeLeft)
+    assert(scheduler.monotonicTime().hasElapsed)
 
   "Late CatsDeadline" in:
-    implicit val scheduler = TestScheduler()
-    val late = now
-    assert(late == now)
+    val late = scheduler.monotonicTime()
+    assert(late == scheduler.monotonicTime())
     scheduler.tick(1.s)
 
     assert(late.elapsed == 1.s)
@@ -40,7 +33,7 @@ final class CatsDeadlineTest extends OurAsyncTestSuite:
     assert(late.isOverdue)
 
   "Early CatsDeadline" in:
-    val early = now + 2.s
+    val early = scheduler.monotonicTime() + 2.s
     scheduler.tick(1.s)
 
     assert(early.elapsed == -1.s)
@@ -52,18 +45,18 @@ final class CatsDeadlineTest extends OurAsyncTestSuite:
     assert(!early.isOverdue)
 
   "Operations" in:
-    assert(now + 1.s - now == 1.s)
-    assert(now - 1.s - now == -1.s)
+    assert(scheduler.monotonicTime() + 1.s - scheduler.monotonicTime() == 1.s)
+    assert(scheduler.monotonicTime() - 1.s - scheduler.monotonicTime() == -1.s)
 
   "Ordering" in:
-    assert((now + 1.s).compare(now) > 0)
-    assert(now.compare(now) == 0)
-    assert((now - 1.s).compare(now) < 0)
+    assert((scheduler.monotonicTime() + 1.s).compare(scheduler.monotonicTime()) > 0)
+    assert(scheduler.monotonicTime().compare(scheduler.monotonicTime()) == 0)
+    assert((scheduler.monotonicTime() - 1.s).compare(scheduler.monotonicTime()) < 0)
 
-    assert(now + 1.s > now)
-    assert(now + 1.s >= now)
-    assert(now >= now)
-    assert(now == now)
-    assert(now <= now)
-    assert(now <= now + 1.s)
-    assert(now < now + 1.s)
+    assert(scheduler.monotonicTime() + 1.s > scheduler.monotonicTime())
+    assert(scheduler.monotonicTime() + 1.s >= scheduler.monotonicTime())
+    assert(scheduler.monotonicTime() >= scheduler.monotonicTime())
+    assert(scheduler.monotonicTime() == scheduler.monotonicTime())
+    assert(scheduler.monotonicTime() <= scheduler.monotonicTime())
+    assert(scheduler.monotonicTime() <= scheduler.monotonicTime() + 1.s)
+    assert(scheduler.monotonicTime() < scheduler.monotonicTime() + 1.s)

@@ -1,20 +1,17 @@
 package js7.base.service
 
-import cats.effect.kernel.Deferred
-import cats.effect.{Outcome, Resource}
-import cats.syntax.flatMap.*
+import cats.effect.{Deferred, IO, Outcome, Resource}
 import com.typesafe.scalalogging.Logger as ScalaLogger
 import izumi.reflect.Tag
+import js7.base.catsutils.CatsDeadline
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
-import js7.base.utils.CatsUtils.syntax.*
 import js7.base.problem.Problem
 import js7.base.service.Service.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic
+import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
-import cats.effect.IO
-import js7.base.catsutils.CatsDeadline
 import scala.concurrent.duration.*
 import scala.util.{Failure, Success, Try}
 
@@ -27,6 +24,7 @@ trait Service:
   protected def start: IO[Started]
   protected def stop: IO[Unit]
 
+  /** Returns an error when Service has failed. */
   final def untilStopped: IO[Unit] =
     IO.defer:
       if !started.get() then

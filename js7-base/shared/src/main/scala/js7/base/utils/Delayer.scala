@@ -1,26 +1,24 @@
 package js7.base.utils
 
-import cats.FlatMap
 import cats.data.NonEmptySeq
-import cats.effect.kernel.Temporal
-import cats.effect.unsafe.IORuntime
-import cats.effect.{Async, GenTemporal, IO}
-import cats.implicits.catsSyntaxMonadIdOps
+import cats.effect.{Async, IO, Temporal}
 import cats.syntax.apply.*
 import cats.syntax.flatMap.*
 import cats.syntax.functor.*
+import fs2.Stream
+import js7.base.catsutils.CatsDeadline
+import js7.base.catsutils.CatsEffectExtensions.*
+import js7.base.fs2utils.StreamExtensions.*
 import js7.base.log.Logger
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.syntax.*
+import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.utils.Delayer.*
-import fs2.Stream
-import js7.base.fs2utils.StreamExtensions.*
 import scala.concurrent.duration.*
-import js7.base.catsutils.CatsDeadline.syntax.*
 
 // Stateful
-final class Delayer[F[_]] private(initialNow: Deadline, conf: DelayConf)
-  (implicit F: Async[F], temporal: Temporal[F]):
+final class Delayer[F[_]] private(using F: Async[F], temporal: Temporal[F])
+  (initialNow: CatsDeadline, conf: DelayConf):
 
   import conf.{delays, resetWhen}
 
@@ -44,15 +42,17 @@ final class Delayer[F[_]] private(initialNow: Deadline, conf: DelayConf)
 
   private def nextDelay2: F[(FiniteDuration, FiniteDuration)] =
     F.tailRecM(())(_ =>
-      F.now.flatMap(now => F.delay {
-        val state = _state.get()
-        val (elapsed, delay, next) = _state.get().next(now)
-        val ok = _state.compareAndSet(state, next)
-        if !ok then Left(()) else Right(elapsed -> delay)
-      }))
+      F.monotonic.map(CatsDeadline(_)).flatMap(now =>
+        F.delay {
+          val state = _state.get()
+          val (elapsed, delay, next) = _state.get().next(now)
+          val ok = _state.compareAndSet(state, next)
+          if !ok then Left(()) else Right(elapsed -> delay)
+        }))
 
-  private sealed case class State(since: Deadline, nextDelays: LazyList[FiniteDuration]):
-    def next(now: Deadline): (FiniteDuration, FiniteDuration, State) =
+  private sealed case class State(since: CatsDeadline, nextDelays: LazyList[FiniteDuration]):
+
+    def next(now: CatsDeadline): (FiniteDuration, FiniteDuration, State) =
       val elapsed = now - since
       val delay = (nextDelays.head - elapsed) max ZeroDuration
       val next = State(
@@ -67,7 +67,7 @@ final class Delayer[F[_]] private(initialNow: Deadline, conf: DelayConf)
       (elapsed, delay, next)
 
     override def toString =
-      s"since=${since.elapsed.pretty} nextDelay=${nextDelays.headOption.getOrElse(delays.last).pretty}"
+      s"nextDelay=${nextDelays.headOption.getOrElse(delays.last).pretty}"
 
   override def toString = s"Delayer(${_state.get()} $conf)"
 
@@ -76,8 +76,9 @@ object Delayer:
   private val logger = Logger[this.type]
 
   def start[F[_]](conf: DelayConf)(using F: Async[F], temporal: Temporal[F]): F[Delayer[F]] =
-    for now <- temporal.now yield
-      new Delayer(now, conf)
+    F.monotonic
+      .map(CatsDeadline(_))
+      .flatMap(now => F.delay(new Delayer(now, conf)))
 
   def stream[F[_]](conf: DelayConf)(using F: Async[F]): Stream[F, Unit] =
     Stream
@@ -88,7 +89,7 @@ object Delayer:
       .prepend(())
 
   object syntax:
-    implicit final class RichDelayerIO[A](val io: IO[A]) extends AnyVal:
+    extension[A](io: IO[A])
       def onFailureRestartWithDelayer(
         conf: DelayConf,
         onFailure: Throwable => IO[Unit] = _ => IO.unit,

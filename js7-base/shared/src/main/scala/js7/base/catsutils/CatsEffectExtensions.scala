@@ -1,27 +1,21 @@
 package js7.base.catsutils
 
-import cats.effect.IO
-import cats.effect.kernel.GenSpawn
-import cats.{:<:, Applicative, ApplicativeError, FlatMap, Functor, MonadError}
+import cats.effect.Clock
+import cats.effect.{GenSpawn, IO}
+import cats.syntax.applicativeError.*
 import cats.syntax.flatMap.*
 import cats.syntax.functor.*
-import cats.syntax.monadError.*
-import cats.syntax.applicativeError.*
-import cats.syntax.applicative.*
-import js7.base.catsutils.CatsEffectExtensions.*
-import js7.base.generic.Completed
+import cats.syntax.apply.*
+import cats.{ApplicativeError, Functor, MonadError}
 import js7.base.log.Logger
-import js7.base.utils.ScalaUtils.*
-import js7.base.utils.ScalaUtils.syntax.*
 import scala.util.{Failure, Success, Try}
 
 object CatsEffectExtensions:
 
   extension[F[_], A](underlying: F[A])
-
-    def onErrorRestartLoop[S, B >: A](initial: S)(onError: (Throwable, S, S => F[B]) => F[B])
+    def onErrorRestartLoop[S](initial: S)(onError: (Throwable, S, S => F[A]) => F[A])
       (using ApplicativeError[F, Throwable])
-    : F[B] =
+    : F[A] =
       underlying.handleErrorWith(throwable =>
         onError(
           throwable,
@@ -45,3 +39,24 @@ object CatsEffectExtensions:
       underlying.asInstanceOf[F[Try[A1]]].flatMap:
         case Failure(t) => F.raiseError(t)
         case Success(a) => F.pure(a)
+
+
+  extension[A](io: IO[A])
+    inline def adHocInfo(inline toMsg: A => String)(using src: sourcecode.Enclosing): IO[A] =
+      io.flatTap(a => IO(Logger.info(toMsg(a))))
+
+    inline def adHocInfo(inline msg: String)(using src: sourcecode.Enclosing): IO[A] =
+      io.flatTap(a => IO(Logger.info(msg)))
+
+
+  extension(x: IO.type)
+    def left[L](value: L): IO[Either[L, Nothing]] =
+      IO.pure(Left(value))
+
+    def right[R](value: R): IO[Either[Nothing, R]] =
+      IO.pure(Right(value))
+
+
+  extension[F[_]](clock: Clock[F])
+    def monotonicTime(using Functor[F]): F[CatsDeadline] =
+      clock.monotonic.map(CatsDeadline(_))

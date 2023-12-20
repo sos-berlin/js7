@@ -1,9 +1,8 @@
 package js7.base.log
 
-import cats.effect.{Resource, Sync}
+import cats.effect.{IO, Resource, Sync}
 import cats.syntax.functor.*
 import js7.base.log.CorrelId.generate
-import cats.effect.IO
 import scala.annotation.{implicitNotFound, unused}
 import scala.concurrent.Future
 import scala.util.NotGiven
@@ -62,19 +61,20 @@ object CanBindCorrelId:
 
   private sealed trait FutureCan[F[r] <: Future[r], R] extends CanBindCorrelId[F[R]]:
     def bind(correlId: CorrelId)(future: => F[R]): F[R] =
-      if !CorrelId.isEnabled then
+      // FIXME Monix
+      //monix if !CorrelId.isEnabled then
         future
-      else
-        _bindCorrelIdCount += 1
-        //Cats??? val saved = Local.getContext()
-        //Cats??? Local.setContext(saved.bind(CorrelId.local.key, Some(correlId)))
-        //Cats??? try
-          future.transform(result => {
-            CorrelId.local.clear()
-            result
-          })/*(TrampolineExecutionContext.immediate)*/.asInstanceOf[F[R]]
-        //Cats??? finally
-        //Cats???   Local.setContext(saved)
+      //monix else
+      //monix   _bindCorrelIdCount += 1
+      //monix   val saved = Local.getContext()
+      //monix   Local.setContext(saved.bind(CorrelId.local.key, Some(correlId)))
+      //monix   try
+      //monix     future.transform(result => {
+      //monix       CorrelId.local.clear()
+      //monix       result
+      //monix     })(TrampolineExecutionContext.immediate).asInstanceOf[F[R]]
+      //monix   finally
+      //monix     Local.setContext(saved)
 
     def bindNewIfEmpty(future: => F[R]): F[R] =
       if !CorrelId.isEnabled || CorrelId.current.nonEmpty then

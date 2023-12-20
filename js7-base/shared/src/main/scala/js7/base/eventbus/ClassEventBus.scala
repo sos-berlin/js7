@@ -61,15 +61,16 @@ trait ClassEventBus[E] extends EventPublisher[E], AutoCloseable:
     synchronized:
       register.clear()
 
-  final def when[C <: Classifier : ClassTag]: IO[ClassifierToEvent[C]] =
+  // TODO Replace IO-returning call with Future-returning calls.
+  // Denn da beginnt die Überwachung sofort und nicht irgendwann.
+  final def when[C <: Classifier : ClassTag]: Future[ClassifierToEvent[C]] =
     when_[C](_ => true)
 
   final def when_[C <: Classifier: ClassTag](predicate: ClassifierToEvent[C] => Boolean)
-  : IO[ClassifierToEvent[C]] =
-    IO.defer:
-      val deferred = Deferred.unsafe[IO, ClassifierToEvent[C]]
-      oneShot[C](predicate)(o => deferred.complete(o).void)
-      deferred.get
+  : Future[ClassifierToEvent[C]] =
+      val promise = Promise[ClassifierToEvent[C]]()
+      oneShot[C](predicate)(promise.success)
+      promise.future
 
   final def whenPF[C <: Classifier: ClassTag, D](pf: PartialFunction[ClassifierToEvent[C], D])
   : IO[D] =
@@ -81,8 +82,6 @@ trait ClassEventBus[E] extends EventPublisher[E], AutoCloseable:
       oneShotFilterMap(f)(promise.success)
       promise.future)
 
-  // TODO Replace above IO-returning call with the following Future-returning calls.
-  // Denn die hier beginnen die Überwachung sofort und nicht irgendwann.
   final def whenFuture[C <: Classifier : ClassTag]: Future[ClassifierToEvent[C]] =
     whenFuture_[C](_ => true)
 

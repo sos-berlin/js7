@@ -7,7 +7,7 @@ import fs2.Stream
 import scala.reflect.ClassTag
 import sourcecode.{FileName, Line, Name, Pkg}
 
-object Logger
+object Logger extends AdHocLogger
 {
   val empty: scribe.Logger =
     scribe.Logger.empty

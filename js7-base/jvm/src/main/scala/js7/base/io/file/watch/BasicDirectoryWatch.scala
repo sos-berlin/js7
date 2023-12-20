@@ -22,7 +22,7 @@ import scala.concurrent.duration.Deadline.now
 import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
 
-final class BasicDirectoryWatch private(options: WatchOptions)(implicit iox: IOExecutor)
+final class BasicDirectoryWatch private(options: WatchOptions)
 extends Service.StoppableByRequest:
 
   import options.{directory, kinds, pollTimeout}

@@ -1,17 +1,15 @@
 package js7.base.catsutils
 
-import cats.effect.{Concurrent, ContextShift, IO, Sync, SyncIO, Timer}
+import cats.effect.kernel.Async
+import cats.effect.{IO, Sync, SyncIO}
 import cats.syntax.all.*
 import cats.{FlatMap, effect}
 import java.util.concurrent.atomic.AtomicInteger
 import js7.base.catsutils.UnsafeMemoizable.given
 import js7.base.log.Logger
-import js7.base.utils.Atomic
 import js7.base.test.OurAsyncTestSuite
-import cats.effect.IO
-import cats.effect.unsafe.IORuntime
+import js7.base.utils.Atomic
 import org.scalatest.Assertion
-import scala.concurrent.ExecutionContext
 
 final class UnsafeMemoizableTest extends OurAsyncTestSuite:
 
@@ -24,11 +22,11 @@ final class UnsafeMemoizableTest extends OurAsyncTestSuite:
   "unsafeMemoize with Cats SyncIO (blocking, experimental only)" in:
     check[SyncIO](_.unsafeMemoize, 1).unsafeRunSync()
 
-  private def check0[F[_]: Concurrent: ContextShift: FlatMap](expected: Int): F[Assertion] =
+  private def check0[F[_]: Async](expected: Int): F[Assertion] =
     // These two calls are equivalent
     for
       _ <- check[F](_.unsafeMemoize, expected)
-      _ <- check[F](UnsafeMemoizable.concurrentMemoizable.unsafeMemoize(_), expected)
+      _ <- check[F](UnsafeMemoizable.given_UnsafeMemoizable_F.unsafeMemoize(_), expected)
     yield succeed
 
   private def check[F[_]: Sync: FlatMap](f: F[Int] => F[Int], expected: Int): F[Assertion] =

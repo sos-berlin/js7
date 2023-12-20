@@ -1,6 +1,8 @@
 package js7.base.test
 
 import org.scalatest.freespec.AsyncFreeSpec
-import cats.effect.testing.scalatest.AsyncIOSpec
+import scala.concurrent.ExecutionContext
 
-abstract class OurAsyncTestSuite extends AsyncFreeSpec, AsyncIOSpec, LoggingAsyncFreeSpec
+abstract class OurAsyncTestSuite extends AsyncFreeSpec, LoggingAsyncFreeSpec, TestCatsEffect:
+  override implicit def executionContext: ExecutionContext =
+    super[TestCatsEffect].executionContext

@@ -24,24 +24,24 @@ private final class LoggingTestAdder(suiteName: String):
   private var pendingCount = 0
   private var failedCount = 0
 
-  def toStringWrapper[R, T](
+  def toStringWrapper[OwnResult, ScalaTestResult, T](
     name: String,
-    wrapper: UnifiedStringWrapper[R, T],
-    executeTest: (LoggingTestAdder.TestContext, => R) => R,
+    wrapper: UnifiedStringWrapper[ScalaTestResult, T],
+    executeTest: (LoggingTestAdder.TestContext, => OwnResult) => ScalaTestResult,
     suppressCorrelId: Boolean)
-  : LoggingFreeSpecStringWrapper[R, T] =
-    new LoggingFreeSpecStringWrapper(name, wrapper, this,
-      (ctx, test) => {
-        if !firstTestCalled then {
+  : LoggingFreeSpecStringWrapper[OwnResult, ScalaTestResult, T] =
+    new LoggingFreeSpecStringWrapper[OwnResult, ScalaTestResult, T](
+      name, wrapper, this,
+      (ctx, testBody) => {
+        if !firstTestCalled then
           firstTestCalled = true
           logger.info("\n" + magenta + "━" * barLength + resetColor)
-        }
+
         if suppressCorrelId then
-          executeTest(ctx, test)
+          executeTest(ctx, testBody)
         else
-          CorrelId.bindNow {
-            executeTest(ctx, test)
-          }
+          CorrelId.bindNow:
+            executeTest(ctx, testBody)
       })
 
   def addTests(name: String, addTests: => Unit): Unit =
@@ -54,7 +54,7 @@ private final class LoggingTestAdder(suiteName: String):
     new TestContext(this, outerNames.toVector, testName)
 
   def afterAll(): Unit =
-    logger.info(s"$suiteName — " +
+    logger.info(s"$suiteName · " +
       (if succeededCount == 0 then failureMarkup
       else if succeededCount > 0 then successMarkup
       else bold) +
@@ -99,7 +99,7 @@ private object LoggingTestAdder:
 
   final class TestContext(adder: LoggingTestAdder, val nesting: Seq[String], testName: String):
     private lazy val since = now
-    private val prefix = nesting.view.reverse.mkString("", " — ", " — ")
+    private val prefix = nesting.view.reverse.mkString("", " · ", " · ")
 
     def beforeTest(): Unit =
       logger.info(eager(s"↘ $magenta$bold$prefix$testName$resetColor"))

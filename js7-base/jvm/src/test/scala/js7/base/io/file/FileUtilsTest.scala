@@ -1,6 +1,6 @@
 package js7.base.io.file
 
-import cats.effect.SyncIO
+import cats.effect.{IO, SyncIO}
 import io.circe.Json
 import java.io.File.separator
 import java.io.{BufferedReader, File, IOException, InputStreamReader}
@@ -15,18 +15,14 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.{autoDeleting, checkRelativePath, copyDirectoryContent, deleteDirectoryRecursively, provideFile, temporaryDirectoryResource, touchFile, withTemporaryDirectory, withTemporaryFile}
 import js7.base.io.file.FileUtilsTest.*
 import js7.base.problem.ProblemException
-import js7.base.test.OurTestSuite
-import js7.base.thread.CatsBlocking.syntax.RichTask
-import cats.effect.IO
-import cats.effect.Fiber
-import monix.execution.Scheduler.Implicits.traced
+import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.thread.CatsBlocking.syntax.*
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers.*
-
 /**
  * @author Joacim Zschimmer
  */
-final class FileUtilsTest extends OurTestSuite, BeforeAndAfterAll
+final class FileUtilsTest extends OurTestSuite, BeforeAndAfterAll, TestCatsEffect
 {
   private lazy val path = createTempFile("FileUtilTest-", ".tmp")
 
@@ -281,12 +277,12 @@ final class FileUtilsTest extends OurTestSuite, BeforeAndAfterAll
     def check(existing: Boolean): Unit = {
       withTemporaryFile("FileUtilsTest-", ".tmp") { file =>
         if !existing then delete(file)
-        provideFile[Coeval](file)
-          .use(file => Coeval {
+        provideFile[SyncIO](file)
+          .use(file => SyncIO {
             assert(!exists(file))
             file := "Hej!"
           })
-          .value()
+          .unsafeRunSync()
         assert(!exists(file))
       }
     }

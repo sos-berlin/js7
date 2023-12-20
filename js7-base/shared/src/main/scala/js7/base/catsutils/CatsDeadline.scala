@@ -1,15 +1,15 @@
 package js7.base.catsutils
 
 import cats.effect.IO
-import cats.effect.kernel.Clock
-import js7.base.catsutils.CatsDeadline
 import js7.base.time.ScalaTime.*
-import js7.base.utils.ScalaUtils.syntax.*
 import scala.concurrent.duration.*
 
 /** Like Scala's `scala.concurrent.duration.Deadline` but based on Monix' clock. */
-final case class CatsDeadline private(sinceZero: FiniteDuration):
+final case class CatsDeadline(sinceZero: FiniteDuration):
 //extends Ordered[CatsDeadline]
+
+  def nanosSinceZero: Long =
+    sinceZero.toNanos
 
   /**
    * Return a deadline advanced (i.e., moved into the future) by the given duration.
@@ -75,21 +75,23 @@ final case class CatsDeadline private(sinceZero: FiniteDuration):
   //def compare(other: CatsDeadline) =
   //  sinceZero compare other.sinceZero
 
-  def now: IO[CatsDeadline] =
-    for o <- IO.monotonic yield CatsDeadline(o)
-
   /** Not immutable, may return a different string for each call. */
   override def toString =
-    (for o <- elapsed yield (o.isPositive ?? "+") + o.pretty)
-      .syncStep(limit = 1000)
-      .map:
-        case Left(_) => "Deadline"
-        case Right(o) => o
+    "CatsDeadline"
+    //(for o <- elapsed yield (o.isPositive ?? "+") + o.pretty)
+    //  .syncStep(limit = 1000)
+    //  .map:
+    //    case Left(_) => "Deadline"
+    //    case Right(o) => o
 
 
 object CatsDeadline:
-  val now: IO[CatsDeadline] =
+
+  val monotonicTime: IO[CatsDeadline] =
     for o <- IO.monotonic yield CatsDeadline(o)
+
+  val now: IO[CatsDeadline] =
+    monotonicTime
 
   @deprecated
   val monotonicClock: IO[CatsDeadline] =

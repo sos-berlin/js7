@@ -1,13 +1,11 @@
 package js7.base.utils
 
-import cats.effect.Resource
+import cats.effect.{IO, Resource}
 import js7.base.log.{BlockingSymbol, CorrelId, Logger}
 import js7.base.time.ScalaTime.{RichDeadline, RichDuration}
+import js7.base.utils.CatsUtils.syntax.whenItTakesLonger
 import js7.base.utils.LockKeeper.*
 import js7.base.utils.ScalaUtils.syntax.*
-import cats.effect.IO
-import js7.base.utils.Atomic
-import js7.base.utils.CatsUtils.syntax.whenItTakesLonger
 import scala.collection.mutable
 import scala.concurrent.Promise
 import scala.concurrent.duration.Deadline.now
@@ -21,7 +19,7 @@ final class LockKeeper[K]:
   private val keyToQueue = mutable.Map.empty[Any, mutable.Queue[Promise[Token]]]
 
   def lock[A](key: K)(body: IO[A])(implicit enclosing: sourcecode.Enclosing): IO[A] =
-    lockResource(key).use(_ => body)
+    lockResource(key).surround(body)
 
   def lockResource(key: K)(implicit enclosing: sourcecode.Enclosing): Resource[IO, Token] =
     Resource.make(acquire(key))(release)

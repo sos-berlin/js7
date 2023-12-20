@@ -1,13 +1,11 @@
 package js7.base.utils
 
-import cats.effect.Resource
+import cats.effect.{IO, Resource}
 import java.util.Objects.requireNonNull
 import java.util.concurrent.ConcurrentLinkedDeque
 import js7.base.log.Logger
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Closer.*
-import cats.effect.IO
-import js7.base.utils.Atomic
 import scala.util.control.NonFatal
 
 final class Closer extends AutoCloseable:

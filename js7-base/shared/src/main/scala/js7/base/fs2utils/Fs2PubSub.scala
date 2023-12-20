@@ -1,33 +1,39 @@
 package js7.base.fs2utils
 
-import cats.effect.Concurrent
+import cats.effect
+import cats.effect.{Concurrent, Resource, Sync}
 import cats.syntax.flatMap.*
 import cats.syntax.functor.*
 import fs2.Stream
 import fs2.concurrent.Topic
 import js7.base.catsutils.UnsafeMemoizable
 
-final class Fs2PubSub[F[_]: UnsafeMemoizable, A <: AnyRef](F: Concurrent[F]):
-
-  private val Initial = Fs2PubSub.Initial.asInstanceOf[A]
-  private val EOF = Fs2PubSub.EOF.asInstanceOf[A]
+final class Fs2PubSub[F[_]: UnsafeMemoizable, A <: AnyRef] private(
+  using F: Concurrent[F] & Sync[F]):
 
   private val topic: F[Topic[F, A]] =
-    Topic[F, A](F.delay(Initial)).unsafeMemoize
+    Topic[F, A].unsafeMemoize
 
   def publish(a: A): F[Unit] =
     topic.flatMap(_.publish1(a).void)
 
+  @deprecated
   def complete: F[Unit] =
-    publish(EOF)
+    close
 
-  def newStream: F[Stream[F, A]] =
+  def close: F[Unit] =
+    topic.flatMap(_.close.void)
+
+  def newStream: F[Resource[F, Stream[F, A]]] =
     topic.map(_
-      .subscribe(maxQueued = 1)
-      .filter(_ != Initial)
-      .takeWhile(_ != EOF))
-
+      .subscribeAwait(maxQueued = 1))
 
 object Fs2PubSub:
-  private val Initial = new AnyRef{}
-  private val EOF = new AnyRef{}
+  @deprecated("Besser Fs2PubSub als Resource nutzen!")
+  def apply[F[_]: UnsafeMemoizable, A <: AnyRef](using F: Concurrent[F] & Sync[F])
+  : Fs2PubSub[F, A] =
+    new Fs2PubSub[F, A]
+
+  def resource[F[_]: UnsafeMemoizable, A <: AnyRef](using F: Concurrent[F] & Sync[F])
+  : Resource[F, Fs2PubSub[F, A]] =
+    Resource.make(F.delay(new Fs2PubSub[F, A]))(_.close)

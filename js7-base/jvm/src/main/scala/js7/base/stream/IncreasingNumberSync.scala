@@ -8,6 +8,7 @@ import js7.base.time.ScalaTime.*
 import cats.effect.IO
 import cats.syntax.flatMap.*
 import cats.syntax.traverse.*
+import js7.base.catsutils.CatsEffectExtensions.right
 import org.jetbrains.annotations.TestOnly
 import scala.collection.mutable
 import scala.concurrent.Promise

@@ -1,7 +1,6 @@
 package js7.base.eventbus
 
 import js7.base.eventbus.StandardEventBusTest.*
-import monix.execution.Scheduler.Implicits.traced
 import js7.base.test.OurAsyncTestSuite
 import scala.collection.mutable
 
@@ -9,6 +8,7 @@ import scala.collection.mutable
   * @author Joacim Zschimmer
   */
 final class StandardEventBusTest extends OurAsyncTestSuite:
+
   "subscribe" in:
     val events = mutable.Buffer.empty[AnyRef]
     val eventBus = new StandardEventBus[Any]
@@ -45,7 +45,7 @@ final class StandardEventBusTest extends OurAsyncTestSuite:
 
   "when" in:
     val eventBus = new StandardEventBus[Any]
-    val future = eventBus.when[String].runToFuture
+    val future = eventBus.when[String]
     assert(!future.isCompleted)
     assert(!eventBus.isEmpty)
     eventBus.publish("ONE")
