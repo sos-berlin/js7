@@ -93,8 +93,9 @@ Global / concurrentRestrictions := Seq(
   Tags.limitAll(if (parallelExecution.value) sys.runtime.availableProcessors max testParallelization else 1))
 
 // https://www.scalatest.org/user_guide/using_scalatest_with_sbt
-val scalaTestArguments = Tests.Argument(TestFrameworks.ScalaTest,
-  (if (testParallelization > 1) "-oNCLPQF" else "-oF") +: Seq("-W", "30", "30"): _*)
+val scalaTestArguments = Tests.Argument(
+  TestFrameworks.ScalaTest,
+  ((if (testParallelization > 1) "-oNCLPQF" else "-oF") +: Seq("-W", "30", "30")) *)
 
 val _dummy_ = {
   sys.props("TEST") = "true"
@@ -428,8 +429,8 @@ lazy val `js7-common-http` = crossProject(JSPlatform, JVMPlatform)
   .settings {
     import Dependencies.*
     libraryDependencies ++= scalaTest % "test"
-    libraryDependencies += "org.typelevel" %% "cats-core" % catsVersion
-    libraryDependencies += "org.typelevel" %% "cats-effect" % catsEffectVersion
+    libraryDependencies += "org.typelevel" %%% "cats-core" % catsVersion
+    libraryDependencies += "org.typelevel" %%% "cats-effect" % catsEffectVersion
   }
   .jvmSettings {
     import Dependencies.*
