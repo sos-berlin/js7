@@ -336,9 +336,6 @@ lazy val `js7-tester` = crossProject(JSPlatform, JVMPlatform)
       "org.scalatest" %%% "scalatest" % scalaTestVersion ++
       "org.scalactic" %%% "scalactic" % scalaTestVersion
   }
-  .jsSettings {
-    libraryDependencies += "com.outr" %%% "scribe" % Dependencies.scribeVersion
-  }
 
 lazy val `js7-base` = crossProject(JSPlatform, JVMPlatform)
   .withoutSuffixFor(JVMPlatform)
@@ -364,11 +361,11 @@ lazy val `js7-base` = crossProject(JSPlatform, JVMPlatform)
       "io.monix" %%% "monix-reactive" % monixVersion ++
       "com.lihaoyi" %%% "sourcecode" % sourcecodeVersion ++
       "com.outr" %%% "scribe" % scribeVersion ++
-      "org.scalactic" %%% "scalactic" % scalaTestVersion % Test ++
+      "com.softwaremill.diffx" %%% "diffx-core" % diffxVersion ++
       findbugs ++
       intelliJAnnotations % "compile" ++
-      "org.scalatest" %%% "scalatest" % scalaTestVersion % "test" ++
-    //"org.scalatest" %%% "scalatest-freespec" % scalaTestVersion % "test" ++
+      "org.scalactic" %%% "scalactic" % scalaTestVersion % testWhenIntelliJ ++
+      "org.scalatest" %%% "scalatest" % scalaTestVersion % testWhenIntelliJ ++
       "org.scalatestplus" %%% "scalacheck-1-16" % scalaTestCheckVersion % "test" ++
       "org.scalacheck" %%% "scalacheck" % scalaCheckVersion % "test"
   }
