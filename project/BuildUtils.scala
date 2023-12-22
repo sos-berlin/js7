@@ -39,6 +39,11 @@ object BuildUtils
 
   System.setProperty("js7.test", "on")
 
+  // IntelliJ does not compile (`js7-tester` % "test") when used by js7-base ???
+  // It compiles when "test" is changed to "compile".
+  val isIntelliJIdea = sys.props.get("idea.managed").contains("true")
+  val testWhenIntelliJ = if (isIntelliJIdea) "compile" else "test"
+
   implicit def singleModuleIDToList(o: sbt.ModuleID): List[ModuleID] =
     o :: Nil
 
