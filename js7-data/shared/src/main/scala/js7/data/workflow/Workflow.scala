@@ -600,7 +600,8 @@ with TrivialItemState.Companion[Workflow]
   override lazy val subtype: Subtype[Workflow] =
     Subtype(jsonEncoder, topJsonDecoder)
 
-  implicit lazy val jsonCodec = Codec.AsObject.from(jsonDecoder_, jsonEncoder_)
+  implicit lazy val jsonCodec: Codec.AsObject[Workflow] =
+    Codec.AsObject.from(jsonDecoder_, jsonEncoder_)
 
   private val jsonEncoder_ : Encoder.AsObject[Workflow] = {
     case Workflow(id, instructions, namedJobs, orderPreparation, tz, jobResourcePaths,
