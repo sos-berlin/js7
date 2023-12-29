@@ -22,7 +22,6 @@ import js7.base.utils.Closer.syntax.*
 import js7.base.utils.Closer.withCloser
 import js7.base.utils.JavaCollections.syntax.*
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
-import cats.effect.IO
 import scala.annotation.tailrec
 import scala.collection.AbstractIterator
 import scala.language.implicitConversions

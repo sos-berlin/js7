@@ -5,7 +5,6 @@ import cats.effect.IO
 import cats.effect.testkit.TestControl
 import js7.base.catsutils.CatsDeadline
 import js7.base.test.OurAsyncTestSuite
-import js7.base.test.CatsEffectTestkitExtensions.{orRaiseError, test}
 import js7.base.time.ScalaTime.*
 import scala.collection.mutable
 import scala.concurrent.duration.*
@@ -14,7 +13,7 @@ final class DelayerTest extends OurAsyncTestSuite:
   private val conf = DelayConf(NonEmptySeq.of(1.s, 2.s, 3.s), resetWhen = 100.s)
 
   "sleep" in:
-    val program =
+    TestControl.executeEmbed:
       val times = mutable.Buffer[FiniteDuration]()
       for
         start <- IO.monotonic.map(CatsDeadline(_))
@@ -56,11 +55,8 @@ final class DelayerTest extends OurAsyncTestSuite:
         assert(times.map(_.toCoarsest) == mutable.Buffer(
           1.s, 3.s, 6.s, 9.s, 13.s, 16.s, 19.s, 119.s, 120.s, 122.s))
 
-    TestControl.test(program).use(_
-      .tickFor(1.h).as(succeed))
-
   "stream" in:
-    val program =
+    TestControl.executeEmbed:
       IO.monotonic.map(CatsDeadline(_)).flatMap(start =>
       Delayer
         .stream[IO](conf)
@@ -70,7 +66,3 @@ final class DelayerTest extends OurAsyncTestSuite:
         .toVector
         .map(times =>
           assert(times.map(_.toCoarsest) == Vector(0.s, 1.s, 3.s, 6.s, 9.s, 12.s))))
-
-    TestControl.execute(program).flatMap(control => control
-      .tickFor(1.h)
-      .*>(control.orRaiseError))

@@ -5,7 +5,6 @@ import cats.syntax.parallel.*
 import js7.base.test.OurAsyncTestSuite
 import js7.base.utils.Tests.isIntelliJIdea
 import org.scalatest.{Assertion, Succeeded}
-import fs2.Stream
 
 final class Fs2PubSubTest extends OurAsyncTestSuite:
 
@@ -14,8 +13,8 @@ final class Fs2PubSubTest extends OurAsyncTestSuite:
 
     def startStream[A <: AnyRef](pubSub: Fs2PubSub[IO, A]): IO[FiberIO[Vector[A]]] =
       pubSub
-        .newStream
-        .flatMap(_.allocated)
+        .streamResource
+        .allocated
         .flatMap((stream, release) =>
           stream.compile
             .toVector
@@ -33,10 +32,10 @@ final class Fs2PubSubTest extends OurAsyncTestSuite:
           streaming3 <- startStream(pubSub)
           _ <- pubSub.close
           streaming4 <- startStream(pubSub)
-          result1 <- asSucceeded(streaming1.join)
-          result2 <- asSucceeded(streaming2.join)
-          result3 <- asSucceeded(streaming3.join)
-          result4 <- asSucceeded(streaming4.join)
+          result1 <- streaming1.joinWith(IO.raiseError(new Exception("Canceled?")))
+          result2 <- streaming2.joinWith(IO.raiseError(new Exception("Canceled?")))
+          result3 <- streaming3.joinWith(IO.raiseError(new Exception("Canceled?")))
+          result4 <- streaming4.joinWith(IO.raiseError(new Exception("Canceled?")))
         yield withClue(s"#$nr: "):
           assert(result1 == Vector("EINS", "ZWEI"))
           assert(result2 == Vector("ZWEI"))
@@ -48,11 +47,3 @@ final class Fs2PubSubTest extends OurAsyncTestSuite:
     (1 to n).toVector.parTraverse(i => test(i))
       .flatTap(results => IO(assert(results.size == n && results.forall(_ == Succeeded))))
       .as(succeed)
-
-  private def asSucceeded[A](outcomeIO: IO[OutcomeIO[A]]): IO[A] =
-    for
-      outcome <- outcomeIO
-      a <-
-        val Outcome.Succeeded(io) = outcome: @unchecked
-        io
-    yield a

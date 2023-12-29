@@ -15,11 +15,9 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.{autoDeleting, checkRelativePath, copyDirectoryContent, deleteDirectoryRecursively, provideFile, temporaryDirectoryResource, touchFile, withTemporaryDirectory, withTemporaryFile}
 import js7.base.io.file.FileUtilsTest.*
 import js7.base.problem.ProblemException
-import js7.base.test.{OurAsyncTestSuite, OurTestSuite, TestCatsEffect}
-import js7.base.thread.CatsBlocking.syntax.*
-import org.scalatest.BeforeAndAfterAll
-import org.scalatest.Assertion
+import js7.base.test.{OurAsyncTestSuite, TestCatsEffect}
 import org.scalatest.matchers.should.Matchers.*
+import org.scalatest.{Assertion, BeforeAndAfterAll}
 /**
  * @author Joacim Zschimmer
  */

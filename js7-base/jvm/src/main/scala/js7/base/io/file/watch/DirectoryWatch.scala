@@ -10,8 +10,6 @@ import js7.base.io.file.watch.BasicDirectoryWatch.repeatWhileIOException
 import js7.base.io.file.watch.DirectoryWatch.*
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.utils.CatsUtils.syntax.*
-import js7.base.thread.IOExecutor
 import js7.base.time.ScalaTime.*
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.FiniteDuration
@@ -24,7 +22,7 @@ private final class DirectoryWatch(
   private def readDirectoryThenStreamForever(state: DirectoryState)
   : Stream[IO, (Seq[DirectoryEvent], DirectoryState)] =
     logger.traceStream:
-      state.tailRecM { state =>
+      state.tailRecM: state =>
         val since = now
         @volatile var lastState = state
         readDirectoryThenStream(state)
@@ -33,7 +31,6 @@ private final class DirectoryWatch(
           .append(Stream.eval(
             IO.left(lastState)
               .delayBy((since + hotLoopBrake).timeLeftOrZero)))
-      }
 
   private[watch] def readDirectoryThenStream(state: DirectoryState)
   : Stream[IO, (Seq[DirectoryEvent], DirectoryState)] =
@@ -60,29 +57,27 @@ object DirectoryWatch:
     directoryState: DirectoryState,
     settings: DirectoryWatchSettings,
     isRelevantFile: Path => Boolean = WatchOptions.everyFileIsRelevant)
-    (implicit iox: IOExecutor)
   : Stream[IO, Seq[DirectoryEvent]] =
     stream2(
       directoryState,
       settings.toWatchOptions(directory, isRelevantFile))
 
   private def stream2(state: DirectoryState, options: WatchOptions)
-    (implicit iox: IOExecutor)
   : Stream[IO, Seq[DirectoryEvent]] =
     logger.traceStream:
       Stream
         .resource(BasicDirectoryWatch.resource(options))
-        .flatMap { basicWatch =>
+        .flatMap: basicWatch =>
           import options.directory
           // BasicDirectoryWatch has been started before reading directory,
           // so that no directory change will be overlooked.
           val readDirectory = repeatWhileIOException(
             options,
-            iox(IO(DirectoryStateJvm.readDirectory(directory, options.isRelevantFile))))
+            IO.interruptible:
+              DirectoryStateJvm.readDirectory(directory, options.isRelevantFile))
           Stream
             .resource(basicWatch.streamResource)
             .flatMap(stream =>
               new DirectoryWatch(readDirectory, stream, hotLoopBrake = options.retryDelays.head)
                 .readDirectoryThenStreamForever(state)
                 .map(_._1))
-        }

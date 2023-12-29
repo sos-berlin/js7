@@ -249,6 +249,8 @@ object ScalaTime:
 
     def isZeroOrBelow = duration.length <= 0
 
+    def isZeroOrAbove = duration.length >= 0
+
     def isNegative = duration.length < 0
 
     def withMillis(milliseconds: Int) =

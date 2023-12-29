@@ -1,8 +1,7 @@
 package js7.base.service
 
 import cats.effect.testkit.TestControl
-import cats.effect.{IO, Resource, SyncIO}
-import cats.syntax.flatMap.*
+import cats.effect.{IO, Resource}
 import cats.syntax.parallel.*
 import js7.base.catsutils.CatsDeadline
 import js7.base.log.Logger
@@ -25,13 +24,13 @@ final class RestartAfterFailureServiceTest extends OurTestSuite, TestCatsEffect:
     val elapsedSeq = mutable.Buffer[(FiniteDuration, FiniteDuration)]()
 
     val program =
-      IO.monotonic.map(CatsDeadline(_)).flatMap { started =>
+      CatsDeadline.now.flatMap: started =>
         def serviceResource: Resource[IO, RestartAfterFailureService[CancelableService]] =
           var i = 0
           var lastEnd = started
 
           Service.restartAfterFailure()(CancelableService.resource(
-            IO.monotonic.map(CatsDeadline(_)).flatMap { now =>
+            CatsDeadline.now.flatMap: now =>
               val delayed = now - lastEnd
               i += 1
               val sleep =
@@ -42,20 +41,18 @@ final class RestartAfterFailureServiceTest extends OurTestSuite, TestCatsEffect:
               val n = 20
               logger.debug(s"$toString i=$i ${if i == n then "last" else s"sleep ${sleep.pretty}"}")
               IO.whenA(i < n):
-                IO.sleep(sleep) *>
-                  IO.monotonic.map(CatsDeadline(_)).flatMap(now =>
+                IO.sleep(sleep)
+                  .*>(CatsDeadline.now)
+                  .flatMap: now =>
                     lastEnd = now
                     elapsedSeq += ((delayed.toCoarsest, sleep.toCoarsest))
-                    IO.raiseError(new TestException("run")))
-            }))
+                    IO.raiseError(new TestException("run"))))
 
         serviceResource
-          .use { (service: RestartAfterFailureService[CancelableService]) =>
+          .use: (service: RestartAfterFailureService[CancelableService]) =>
             // Due to automatic restart, the underlying service may change.
             service.unsafeCurrentService(): CancelableService
             service.untilStopped
-          }
-      }
 
     TestControl.execute(program).flatMap(_.tickFor(900.s)).await(99.s)
 
@@ -105,7 +102,7 @@ final class RestartAfterFailureServiceTest extends OurTestSuite, TestCatsEffect:
             IO.sleep(Random.nextInt(5).ms) *> IO.raiseError(new TestException("start"))
           else
             startService(IO
-              .defer {
+              .defer:
                 runs += 1
                 IO.sleep(Random.nextInt(5).ms) *> (
                   if runFails then
@@ -113,10 +110,8 @@ final class RestartAfterFailureServiceTest extends OurTestSuite, TestCatsEffect:
                   else
                     untilStopRequested >>
                       IO.raiseWhen(stopFails)(new TestException("stopped")))
-              }
-              .guarantee(IO {
-                runs -= 1
-              }))
+              .guarantee(IO:
+                runs -= 1))
 
       override def toString = s"TestService($name $unique)"
 

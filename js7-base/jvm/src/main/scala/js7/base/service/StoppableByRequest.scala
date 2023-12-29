@@ -10,6 +10,7 @@ import js7.base.service.StoppableByRequest.*
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
 
 trait StoppableByRequest:
+  self =>
   private final val fiber = Deferred.unsafe[IO, FiberIO[Unit]]
   private val stopRequested = Deferred.unsafe[IO, Unit]
   @volatile private var _isStopping = false
@@ -29,9 +30,12 @@ trait StoppableByRequest:
         _isStopping = true
         stopRequested.complete(())
           .*>(fiber.get)
-          .flatMap(_.join)
+          .flatMap(_.joinWith(raiseCanceled))
           .void
       }).unsafeMemoize
+
+  private def raiseCanceled =
+    IO.defer(IO.raiseError(new RuntimeException(s"$self has been canceled"))) // ?
 
   protected def stop: IO[Unit] =
     memoizedStop

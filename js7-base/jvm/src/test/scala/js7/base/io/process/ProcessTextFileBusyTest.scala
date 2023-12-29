@@ -45,7 +45,6 @@ final class ProcessTextFileBusyTest extends OurTestSuite, TestCatsEffect:
     info(stopwatch.itemsPerSecondString(n, "processes"))
     if isWindows then sleep(500.ms)  // Windows may lock the files for a short while after process termination
     files foreach tryDelete
-    //??? scheduler.shutdown()
 
 
 object ProcessTextFileBusyTest:

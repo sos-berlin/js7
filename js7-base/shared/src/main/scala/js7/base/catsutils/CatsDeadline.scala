@@ -2,11 +2,12 @@ package js7.base.catsutils
 
 import cats.effect.IO
 import js7.base.time.ScalaTime.*
+import js7.base.utils.ScalaUtils.syntax.*
 import scala.concurrent.duration.*
 
 /** Like Scala's `scala.concurrent.duration.Deadline` but based on Monix' clock. */
-final case class CatsDeadline(sinceZero: FiniteDuration)
-extends Ordered[CatsDeadline]:
+final case class CatsDeadline(sinceZero: FiniteDuration):
+//extends Ordered[CatsDeadline]:
 
   def nanosSinceZero: Long =
     sinceZero.toNanos
@@ -49,13 +50,13 @@ extends Ordered[CatsDeadline]:
 
   /** Returns true even if timeLeft == 0, this is different to `timeLeft` */
   def hasElapsed: IO[Boolean] =
-    for o <- IO.monotonic yield !o.isNegative
+    for o <- elapsed yield !o.isNegative
 
   def elapsedOrZero: IO[FiniteDuration] =
     for o <- elapsed yield o max ZeroDuration
 
   def elapsed: IO[FiniteDuration] =
-    for o <- IO.monotonic yield o - sinceZero
+    for o <- timeLeft yield -o
 
   def timeLeftOrZero: IO[FiniteDuration] =
     for o <- timeLeft yield o max ZeroDuration
@@ -67,19 +68,28 @@ extends Ordered[CatsDeadline]:
    * Check `System.nanoTime` for your platform.
    */
   def timeLeft: IO[FiniteDuration] =
-    for o <- elapsed yield -o
+    for o <- IO.monotonic yield sinceZero - o
 
-  def compare(other: CatsDeadline) =
-    sinceZero compare other.sinceZero
+  //def compare(other: CatsDeadline) =
+  //  sinceZero compare other.sinceZero
 
-  /** Not immutable, may return a different string for each call. */
+  // ??? If we had access to IORuntime or Scheduler (like a IO.runtime: IO[IORuntime),
+  // we could to a reliant calculation ???
+  /** Not immutable, may return a different string for each call.
+   *
+   * Does work with TestControl, because IO.monotonic will be executed under the outer
+   * real (non-test) IORuntime.
+   * Then toString calculates the difference to now from two very different clocks.
+   */
   override def toString =
-    "CatsDeadline"
-    //(for o <- elapsed yield (o.isPositive ?? "+") + o.pretty)
-    //  .syncStep(limit = 1000)
-    //  .map:
-    //    case Left(_) => "Deadline"
-    //    case Right(o) => o
+    //s"CatsDeadline(\"${sinceZero.pretty}\")" // Only differences between CatsDeadlines are relevant
+    elapsed
+      .map(o => (o.isPositive ?? "+") + o.pretty)
+      .syncStep(limit = 1000)
+      .map:
+        case Left(_) => "CatsDeadline(?)"
+        case Right(o) => o
+      .unsafeRunSync()
 
 
 object CatsDeadline:
@@ -93,9 +103,6 @@ object CatsDeadline:
   @deprecated
   val monotonicClock: IO[CatsDeadline] =
     now
-  //  IO.deferAction { scheduler =>
-  //    IO.pure(CatsDeadline.now(scheduler))
-  //  }
 
   //def fromNanos(sinceZero: Long)(implicit s: Scheduler): CatsDeadline =
   //  new CatsDeadline(sinceZero.ns)

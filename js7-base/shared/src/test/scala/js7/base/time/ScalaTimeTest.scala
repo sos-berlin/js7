@@ -317,6 +317,12 @@ final class ScalaTimeTest extends OurTestSuite
       assert((-1).s.isZeroOrBelow)
     }
 
+    "isZeroOrAbove" in:
+      assert(Duration.Zero.isZeroOrAbove)
+      assert(new FiniteDuration(0, NANOSECONDS).isZeroOrAbove)
+      assert(1.s.isZeroOrAbove)
+      assert(!(-1).s.isZeroOrAbove)
+
     "isNegative" in {
       assert(!Duration.Zero.isNegative)
       assert(!new FiniteDuration(0, NANOSECONDS).isNegative)

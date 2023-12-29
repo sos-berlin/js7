@@ -2,7 +2,6 @@ package js7.base.test
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
-import js7.base.log.Logger
 import js7.base.test.LoggingAsyncFreeSpec.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
@@ -83,10 +82,9 @@ trait LoggingAsyncFreeSpec extends AsyncFreeSpec:
     Try(testBody) match
       case Failure(t) => IO.raiseError(t)
       case Success(o: Assertion) => IO.pure(o)
-      case Success(o: Future[Assertion]) => IO.fromFuture(IO.pure(o))
+      case Success(o: Future[Assertion @unchecked]) => IO.fromFuture(IO.pure(o))
       case Success(io: IO[Assertion]) => io
 
 
 object LoggingAsyncFreeSpec:
   private type OwnResult = Assertion | Future[Assertion] | IO[Assertion]
-  private val logger = Logger[this.type]

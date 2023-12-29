@@ -1,7 +1,8 @@
 package js7.base.fs2utils
 
 import cats.effect.{Concurrent, Sync}
-import cats.syntax.functor.*
+import cats.syntax.apply.*
+import cats.syntax.monadError.*
 import fs2.Stream
 
 object StreamExtensions:
@@ -36,6 +37,11 @@ object StreamExtensions:
     /** Like Monix Observable doOnSubscribe. */
     inline def doOnSubscribe(onSubscribe: F[Unit]): Stream[F, A] =
       onStart(onSubscribe)
+
+    def onErrorEvalTap(pf: PartialFunction[Throwable, F[Unit]])(using F: Sync[F]): Stream[F, A] =
+      stream.handleErrorWith(t =>
+        Stream.eval:
+          pf.applyOrElse(t, _ => F.unit) *> F.raiseError(t))
 
     /** Like Monix Observable doOnSubscribe. */
     def onStart(onStart: F[Unit]): Stream[F, A] =

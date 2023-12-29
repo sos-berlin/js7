@@ -6,7 +6,6 @@ import izumi.reflect.Tag
 import js7.base.catsutils.UnsafeMemoizable.given
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.monixutils.AsyncMap.logger
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.*
@@ -139,28 +138,21 @@ class AsyncMap[K: Tag, V: Tag](initial: Map[K, V] = Map.empty[K, V]):
   final def updateCheckedWithResult[R](key: K, update: Option[V] => IO[Checked[(V, R)]])
     (implicit src: sourcecode.Enclosing)
   : IO[Checked[R]] = IO.defer {
-    logger.info(s"### updateCheckedWithResult: lockKeeper.lock")
     lockKeeper.lock(key):
       IO.defer:
-        logger.info(s"### updateCheckedWithResult: update")
         update(_map.get(key))
           .flatMapT { case (v, r) =>
-            logger.info(s"### updateCheckedWithResult: shortLock")
             shortLock
-              .lock(IO {
-                updateMap(key, v)
-              }.<*(IO(logger.info(s"### updateCheckedWithResult: updated 2"))))
-              .<*(IO(logger.info(s"### updateCheckedWithResult: after lock")))
+              .lock(IO:
+                updateMap(key, v))
               .rightAs(r)
           }
   }
 
   private def updateMap(key: K, value: V): Checked[Unit] =
     val checked = if _map.contains(key) then Checked.unit else onEntryInsert()
-    logger.info(s"### updateMap: $checked")
     for _ <- checked do
       _map = _map.updated(key, value)
-      logger.info(s"### updateMap: $key := $value")
     checked
 
   override def toString =
@@ -209,12 +201,11 @@ object AsyncMap:
       IO.defer:
         logger.trace(s"$name initiateStopWithProblemIfEmpty $problem")
         shortLock
-          .lock(IO {
+          .lock(IO:
             isEmpty && {
               stoppingProblem = problem
               true
-            }
-          })
+            })
           .flatTap(IO.whenA(_)(
             whenEmpty.complete(()).void))
 
@@ -222,10 +213,9 @@ object AsyncMap:
       IO.defer:
         logger.trace(s"$name initiateStopWithProblem $problem")
         shortLock
-          .lock(IO {
+          .lock(IO:
             stoppingProblem = problem
-            isEmpty
-          })
+            isEmpty)
           .flatMap(IO.whenA(_)(
             whenEmpty.complete(()).attempt.void))
 

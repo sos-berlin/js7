@@ -1,6 +1,5 @@
 package js7.base.io.file.watch
 
-import cats.syntax.apply.*
 import cats.effect.{Deferred, IO}
 import fs2.Stream
 import java.nio.file.Files.{createDirectory, delete}
@@ -12,12 +11,11 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.{temporaryDirectoryResource, touchFile, withTemporaryDirectory}
 import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted}
 import js7.base.io.file.watch.DirectoryState.Entry
+import js7.base.io.file.watch.DirectoryWatchTest.*
 import js7.base.log.Logger
 import js7.base.test.OurAsyncTestSuite
 import js7.base.thread.Futures.implicits.SuccessFuture
-import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.time.ScalaTime.*
-import js7.base.time.WaitForCondition.retryUntil
 import js7.tester.ScalaTestUtils
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import scala.math.Ordering.Int
@@ -25,7 +23,7 @@ import scala.math.Ordering.Int
 final class DirectoryWatchTest extends OurAsyncTestSuite:
 
   "readDirectory, readDirectoryAsEvents" in:
-    withTemporaryDirectory("DirectoryWatchTest-") { dir =>
+    withTemporaryDirectory("DirectoryWatchTest-"): dir =>
       touchFile(dir / "TEST-1")
       touchFile(dir / "IGNORED")
       touchFile(dir / "TEST-2")
@@ -39,7 +37,6 @@ final class DirectoryWatchTest extends OurAsyncTestSuite:
 
       assert(state.diffTo(DirectoryStateJvm.readDirectory(dir, _.toString startsWith "TEST-")).toSet ==
         Set(FileAdded(Paths.get("TEST-A"))))
-    }
 
   "readDirectoryThenStream" in:
     Fs2PubSub
@@ -59,10 +56,10 @@ final class DirectoryWatchTest extends OurAsyncTestSuite:
 
         def observe(state: DirectoryState, n: Int)
         : IO[List[(Seq[DirectoryEvent], DirectoryState)]] =
-          publisher.newStream.flatMap(_.use(stream =>
+          publisher.streamResource.use(stream =>
             new DirectoryWatch(IO(readDirectory()), stream, 1.s)
               .readDirectoryThenStream(state)
-              .take(n).compile.toList))
+              .take(n).compile.toList)
 
         var state = readDirectory()
         for
@@ -116,36 +113,34 @@ final class DirectoryWatchTest extends OurAsyncTestSuite:
           .doOnSubscribe(subscribed.complete(()).void)
           .takeUntilEval(stop.get)
           .foreach(events => IO:
-            Logger.info(s"### $events")
             buffer ++= events)
-          .evalTap(_ => IO(Logger.info(s"### compile")))
           .compile
           .drain
-          .*>(IO(Logger.info(s"### drained")))
+          .*>(IO(logger.info("drained")))
           .both(
-            IO(Logger.info(s"Second fiber"))
+            IO(logger.info(s"Second fiber"))
               .*>(IO.sleep(500.ms)) // Delay directory creation
               .*>(IO.defer:
                 createDirectory(dir)
                 subscribed.get)
-              .*>(IO(Logger.info(s"### subscribed")))
+              .*>(IO(logger.info(s"subscribed")))
               .*>(IO.interruptible:
                 assert(buffer.isEmpty)
                 touchFile(dir / "TEST-1")
                 awaitAndAssert:
                   buffer contains FileAdded(Paths.get("TEST-1"))
-                Logger.info(s"### delete TEST-1")
+                logger.info(s"delete TEST-1")
                 delete(dir / "TEST-1")
 
                 delete(dir)
                 sleep(300.ms)
                 createDirectory(dir)
                 touchFile(dir / "TEST-2")
-                Logger.info(s"### delete TEST-2 touched")
+                logger.info(s"delete TEST-2 touched")
                 awaitAndAssert:
                   buffer.contains(FileDeleted(Paths.get("TEST-1")))
                     && buffer.contains(FileAdded(Paths.get("TEST-2")))
-                Logger.info(s"### stop"))
+                logger.info("stop"))
               .*>(stop.complete(())))
       .as(succeed))
 
@@ -183,3 +178,6 @@ final class DirectoryWatchTest extends OurAsyncTestSuite:
 
   "Starting observation under load with some deletions" in:
     pending
+
+object DirectoryWatchTest:
+  private val logger = Logger[this.type]

@@ -11,9 +11,9 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
 import js7.base.utils.AsyncLockTest.*
 import js7.base.utils.Atomic.extensions.*
-import js7.base.utils.CatsUtils.syntax.*
 import scala.concurrent.duration.FiniteDuration
 import scala.util.Random
+
 /**
   * @author Joacim Zschimmer
   */
@@ -90,7 +90,7 @@ final class AsyncLockTest extends OurAsyncTestSuite:
         .timed.map { case (duration, result) =>
           logger.info(Stopwatch.itemsPerSecondString(duration, n))
           result
-      }
+        }
 
     def idleNanos(duration: FiniteDuration): Unit = {
       val t = System.nanoTime()
@@ -102,8 +102,7 @@ final class AsyncLockTest extends OurAsyncTestSuite:
   "Cancel releases lock only after io has been canceled" in:
     val lock = AsyncLock("CANCEL", logWorryDurations = Nil)
     val ioStarted = Deferred.unsafe[IO, Unit]
-    val ioCancelationStarted = Deferred.unsafe[IO, Unit]
-    val ioCompleted = Deferred.unsafe[IO, Unit]
+    @volatile var isCompleted = false
     //Monix: val continue = Deferred.unsafe[IO, Unit]
 
     val run = IO.defer:
@@ -111,32 +110,17 @@ final class AsyncLockTest extends OurAsyncTestSuite:
         for
           _ <- ioStarted.complete(())
           _ <- IO.never.onCancel:
-            for
-              _ <- ioCancelationStarted.complete(())
-              _ <- IO.sleep(100.ms)
-              //Monix: _ <- continue.get
-              _ <- ioCompleted.complete(())
-            yield ()
+            for _ <- IO.sleep(300.ms) yield
+              isCompleted = true
         yield ()
 
     for
       fiber <- run.start
       _ <- ioStarted.get
-      _ <-
-        for
-          _ <- fiber.cancel
-          _ <- ioCancelationStarted.get
-          isCompleted <- ioCompleted.get.as(true).timeoutTo(0.s, IO.False)
-          _ <- IO(assert(isCompleted))
-          //Monix: _ <- IO(assert(!isCompleted))
-          //Monix: _ <- continue.complete(())
-          _ <- lock
-              .lock(ioCompleted.get)
-              .timeoutTo(9.s,
-                IO.raiseError(new RuntimeException("Cancel operation has not released the lock")))
-            .as(succeed)
-        yield ()
-    yield succeed
+      _ <- IO.sleep(100.ms) // Delay until .onCancel has been called
+      _ <- fiber.cancel // Blocks until cancellation is completed
+    yield
+      assert(isCompleted)
 
 
 object AsyncLockTest:

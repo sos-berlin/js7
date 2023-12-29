@@ -30,10 +30,10 @@ final class Delayer[F[_]] private(using F: Async[F], temporal: Temporal[F])
 
   /** Concurrently callable */
   private def sleep_(onSleep: FiniteDuration => F[Unit]): F[Unit] =
-    nextDelay2.flatMap { case (elapsed, delay) =>
-      logger.trace(s"sleep ${delay.pretty} elapsed=${elapsed.pretty} $toString")
-      onSleep(delay) *> temporal.sleep(delay)
-    }
+    nextDelay2.flatMap:
+      case (elapsed, delay) =>
+        logger.trace(s"sleep ${delay.pretty} elapsed=${elapsed.pretty} $toString")
+        onSleep(delay) *> temporal.sleep(delay)
 
   def nextDelay: F[FiniteDuration] =
     nextDelay2.map(_._2)
@@ -95,13 +95,12 @@ object Delayer:
       : IO[A] =
         Delayer.start[IO](conf)
           .flatMap { delayer =>
-            ().tailRecM { _ =>
+            ().tailRecM(_ =>
               io.attempt.flatMap:
                 case Left(throwable) =>
                   onFailure(throwable) *> delayer.sleep(onSleep).as(Left(()))
                 case Right(a) =>
-                  IO.right(a)
-            }
+                  IO.right(a))
           }
 
   private def resetDelays(delays: NonEmptySeq[FiniteDuration]): LazyList[FiniteDuration] =

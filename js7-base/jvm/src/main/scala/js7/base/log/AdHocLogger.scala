@@ -1,5 +1,6 @@
 package js7.base.log
 
+import izumi.reflect.Tag
 import cats.Applicative
 import cats.effect.{IO, Resource, Sync}
 import com.typesafe.scalalogging.Logger as ScalaLogger
@@ -179,7 +180,8 @@ transparent trait AdHocLogger:
   : Stream[IO, A] =
     logger.debugStream(function, args)(stream)
 
-  inline def traceStream[A](stream: Stream[IO, A])(using sourcecode.Name, sourcecode.Enclosing)
+  inline def traceStream[A](stream: Stream[IO, A])
+    (using sourcecode.Name, sourcecode.Enclosing, Tag[A])
   : Stream[IO, A] =
     logger.traceStream(stream)
 

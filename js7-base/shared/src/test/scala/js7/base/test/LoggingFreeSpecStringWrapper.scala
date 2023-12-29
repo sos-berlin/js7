@@ -1,6 +1,5 @@
 package js7.base.test
 
-import cats.syntax.apply.*
 import js7.base.test.LoggingFreeSpecStringWrapper.*
 import org.scalatest.{PendingStatement, Tag}
 import scala.language.implicitConversions

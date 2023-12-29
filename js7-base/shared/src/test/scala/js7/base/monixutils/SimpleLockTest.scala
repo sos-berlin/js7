@@ -22,7 +22,7 @@ final class SimpleLockTest extends OurAsyncTestSuite:
               }))
         .start)
       .toVector
-      .parTraverse(_.flatMap(_.join))
+      .parTraverse(_.flatMap(_.joinWith(IO.raiseError(new Exception("Canceled?")))))
       .flatMap(_ => IO {
         assert(resource == n)
         succeed

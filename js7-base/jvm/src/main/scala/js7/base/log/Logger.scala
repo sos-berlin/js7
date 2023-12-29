@@ -1,12 +1,13 @@
 package js7.base.log
 
+import cats.Applicative
 import cats.effect.implicits.monadCancelOps
-import cats.{Applicative, Defer}
-import cats.effect.syntax.monadCancel.*
-import cats.effect.{IO, MonadCancel, Outcome, Resource, Sync, SyncIO}
+import cats.effect.{IO, Outcome, Resource, Sync, SyncIO}
 import cats.syntax.flatMap.*
+import cats.syntax.apply.*
 import com.typesafe.scalalogging.Logger as ScalaLogger
 import fs2.Stream
+import izumi.reflect.Tag
 import js7.base.log.Slf4jUtils.syntax.*
 import js7.base.problem.Problem
 import js7.base.system.startup.StartUp
@@ -14,10 +15,9 @@ import js7.base.time.ScalaTime.{DurationRichLong, RichDuration}
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.base.utils.StackTraces.StackTraceThrowable
-import js7.base.utils.{Atomic, Once, Tests}
+import js7.base.utils.{Once, Tests}
 import org.slf4j.{LoggerFactory, Marker, MarkerFactory}
 import scala.reflect.ClassTag
-import fs2.Stream
 
 object Logger extends AdHocLogger:
 
@@ -217,9 +217,9 @@ object Logger extends AdHocLogger:
       : Stream[IO, A] =
         logStream[A](logger, LogLevel.Debug, function, args)(stream)
 
-      def traceStream[A](stream: Stream[IO, A])(implicit src: sourcecode.Name)
+      def traceStream[A](stream: Stream[IO, A])(implicit src: sourcecode.Name, A: Tag[A])
       : Stream[IO, A] =
-        traceStream(src.value + ": Stream")(stream)
+        traceStream(s"${src.value}: Stream[${A.tag.shortName}]")(stream)
 
       def traceStream[A](function: String, args: => Any = "")(stream: Stream[IO, A])
       : Stream[IO, A] =
@@ -240,21 +240,20 @@ object Logger extends AdHocLogger:
         else
           val ctx = new StartReturnLogContext(logger, logLevel, function, args)
           body
-            .flatTap { (result: A) => result match
-              case left @ Left(_: Throwable | _: Problem) =>
-                F.delay(ctx.logReturn("❓", left))
-              case result =>
-                F.delay(ctx.logReturn(
-                  "",
-                  if resultToLoggable eq null then
-                    "Completed"
-                  else
-                    resultToLoggable(result).toString))
-            }
-            .guaranteeCase { (outcome: Outcome[F, Throwable, A]) => outcome match
+            .flatTap: (result: A) =>
+              result match
+                case left @ Left(_: Throwable | _: Problem) =>
+                  F.delay(ctx.logReturn("❓", left))
+                case result =>
+                  F.delay(ctx.logReturn(
+                    "",
+                    if resultToLoggable eq null then
+                      "Completed"
+                    else
+                      "· " + resultToLoggable(result)))
+            .guaranteeCase:
               case Outcome.Succeeded(_) => F.unit
               case outcome => F.delay(ctx.logOutcome(outcome))
-            }
 
     private def logResourceUse[F[_], A](logger: ScalaLogger, logLevel: LogLevel, function: String,
       args: => Any = "")
@@ -271,39 +270,21 @@ object Logger extends AdHocLogger:
           release = (maybeCtx, exitCase) =>
             F.delay(
               for ctx <- maybeCtx do ctx.logOutcome(exitCase.toOutcome)))
-        .flatMap(_ => resource)
+        .*>(resource)
 
-    // TODO Check and fix logging of Outcome this
     private def logStream[A](logger: ScalaLogger, logLevel: LogLevel, function: String,
       args: => Any = "")
       (stream: Stream[IO, A])
     : Stream[IO, A] =
-      Stream.deferInstance[IO].defer:
-        lazy val touched = Atomic(false)
-        stream
-          .map { o =>
-            if !touched.getAndSet(true) && logger.isEnabled(logLevel) then
-              logStart(logger, logLevel, function, args)
-            o
-          }
-          .onFinalizeCase(exitCase =>
-            IO.whenA(logger.isEnabled(logLevel))(IO(
-              logOutcome(logger, logLevel, function, args, duration = "", exitCase.toOutcome[IO]))))
-
-    // TODO Or this implementation?
-    //private def logStream[A](logger: ScalaLogger, logLevel: LogLevel, function: String,
-    //  args: => Any = "")
-    //  (stream: Stream[IO, A])
-    //: Stream[IO, A] =
-    //  Stream
-    //    .eval(IO.whenA(
-    //      logger.isEnabled(logLevel))(IO(
-    //      logStart(logger, logLevel, function, args))))
-    //    .drop(1)
-    //    .asInstanceOf[Stream[IO, A]]
-    //    .++(stream.onFinalizeCase(exitCase =>
-    //      IO.whenA(logger.isEnabled(logLevel))(IO(
-    //        logOutcome(logger, logLevel, function, args, duration = "", exitCase.toOutcome[IO])))))
+      Stream
+        .eval(IO.whenA(
+          logger.isEnabled(logLevel))(IO(
+          logStart(logger, logLevel, function, args))))
+        .drop(1)
+        .asInstanceOf[Stream[IO, A]]
+        .++(stream.onFinalizeCase(exitCase =>
+          IO.whenA(logger.isEnabled(logLevel))(IO(
+            logOutcome(logger, logLevel, function, args, duration = "", exitCase.toOutcome[IO])))))
 
   private final class StartReturnLogContext(logger: ScalaLogger, logLevel: LogLevel,
     function: String, args: => Any = ""):
@@ -325,7 +306,12 @@ object Logger extends AdHocLogger:
   private def logStart(logger: ScalaLogger, logLevel: LogLevel, function: String,
     args: => Any = "")
   : Unit =
-    lazy val argsString = args.toString
+    lazy val argsString = args match
+      case null => "null"
+      case o =>
+        try o.toString
+        catch case t: Throwable => t.toStringWithCauses
+
     if argsString.isEmpty then
       logLevel match
         case LogLevel.LogNone =>

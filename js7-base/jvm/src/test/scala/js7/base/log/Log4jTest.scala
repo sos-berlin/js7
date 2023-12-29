@@ -27,12 +27,10 @@ final class Log4jTest extends OurTestSuite, TestCatsEffect:
     val started = now
     (1 to n)
       .toVector
-      .parTraverse(i =>
-        CorrelId.bindNew(IO {
-          for j <- 1 to m do {
-            logger.debug(s"$i-$j")
-          }
-        }))
+      .parTraverse: i =>
+        CorrelId.bindNew(IO:
+          for j <- 1 to m do
+            logger.debug(s"$i-$j"))
       .await(199.s)
     logger.info(Stopwatch.itemsPerSecondString(started.elapsed, n * m, "lines"))
     if testSpeed then info(Stopwatch.itemsPerSecondString(started.elapsed, n * m, "lines"))

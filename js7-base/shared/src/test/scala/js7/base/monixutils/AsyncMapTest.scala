@@ -1,8 +1,8 @@
 package js7.base.monixutils
 
 import cats.effect.IO
+import cats.syntax.apply.*
 import js7.base.catsutils.CatsEffectExtensions.materialize
-import js7.base.log.Logger
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurAsyncTestSuite
@@ -44,17 +44,16 @@ final class AsyncMapTest extends OurAsyncTestSuite
         case None => IO("ZWEI")
         case o => fail(s"UNEXPECTED: $o")
       })
-      .flatMap(_ => asyncMap.remove(2))
+      .*>(asyncMap.remove(2))
       .flatMap(maybe => IO(assert(maybe == Some("ZWEI"))))
-      .flatMap(_ => asyncMap.remove(2))
+      .*>(asyncMap.remove(2))
       .flatMap(maybe => IO(assert(maybe == None)))
   }
 
   "getAndUpdate" in {
     asyncMap.getAndUpdate(0, update)
       .map(pair => assert(pair == (None, "FIRST")))
-      .flatMap(_ =>
-        asyncMap.getAndUpdate(0, update))
+      .*>(asyncMap.getAndUpdate(0, update))
       .map(pair => assert(pair == (Some("FIRST"), "FIRST-UPDATED")))
   }
 
@@ -70,7 +69,7 @@ final class AsyncMapTest extends OurAsyncTestSuite
             case Left(t) => assert(t.getMessage == "CRASH")
             case Right(_) => fail()
           }
-          .flatMap(_ => IO {
+          .*>(IO {
             // assert that the lock is released
             assert(asyncMap.get(0) == Some("FIRST-UPDATED"))
           })
@@ -148,12 +147,9 @@ final class AsyncMapTest extends OurAsyncTestSuite
 
     "standard, check result is 7" in {
       asyncMap.updateCheckedWithResult(4, updateCheckedWithResult)
-        .<*(IO(Logger[this.type].info(s"### TEST 0")).as(succeed))
         .map(o => assert(o == Right(7)))
         .*>(asyncMap.updateCheckedWithResult(4, updateCheckedWithResult))
-        .<*(IO(Logger[this.type].info(s"### FINISH 0")).as(succeed))
         .map(o => assert(o == Left(Problem("EXISTING"))))
-        .<*(IO(Logger[this.type].info(s"### FINISH")).as(succeed))
     }
 
     "standard, check updated value is FIRST" in {

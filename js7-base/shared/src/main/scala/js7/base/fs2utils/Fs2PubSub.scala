@@ -17,20 +17,24 @@ final class Fs2PubSub[F[_]: UnsafeMemoizable, A <: AnyRef] private(
   def publish(a: A): F[Unit] =
     topic.flatMap(_.publish1(a).void)
 
-  @deprecated
+  @deprecated("Use close")
   def complete: F[Unit] =
     close
 
   def close: F[Unit] =
     topic.flatMap(_.close.void)
 
+  @deprecated("Use streamResource")
   def newStream: F[Resource[F, Stream[F, A]]] =
     topic.map(_
       .subscribeAwait(maxQueued = 1))
 
+  def streamResource: Resource[F, Stream[F, A]] =
+    Resource.eval(topic).flatMap(_.subscribeAwait(maxQueued = 1))
+
 object Fs2PubSub:
   @deprecated("Besser Fs2PubSub als Resource nutzen!")
-  def apply[F[_]: UnsafeMemoizable, A <: AnyRef](using F: Concurrent[F] & Sync[F])
+  def apply[F[_]: UnsafeMemoizable, A <: AnyRef](using Concurrent[F] & Sync[F])
   : Fs2PubSub[F, A] =
     new Fs2PubSub[F, A]
 

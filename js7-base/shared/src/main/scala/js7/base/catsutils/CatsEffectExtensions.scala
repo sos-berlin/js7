@@ -4,6 +4,7 @@ import cats.effect.{Clock, GenSpawn, IO}
 import cats.syntax.applicativeError.*
 import cats.syntax.flatMap.*
 import cats.syntax.functor.*
+import cats.syntax.monadError.*
 import cats.{ApplicativeError, Functor, MonadError}
 import js7.base.log.Logger
 import scala.util.{Failure, Success, Try}
@@ -40,6 +41,11 @@ object CatsEffectExtensions:
 
 
   extension[A](io: IO[A])
+    def onErrorTap(pf: PartialFunction[Throwable, IO[Unit]]): IO[A] =
+      io.attemptTap:
+        case Right(_) => IO.unit
+        case Left(t) => pf.applyOrElse(t, _ => IO.unit)
+
     inline def adHocInfo(inline toMsg: A => String)(using src: sourcecode.Enclosing): IO[A] =
       io.flatTap(a => IO(Logger.info(toMsg(a))))
 

@@ -33,13 +33,13 @@ final class StreamExtensionsTest extends OurAsyncTestSuite:
     Stream
       .fromIterator[IO](Iterator.from(1), chunkSize = 1)
       .delayBy(1.ms)
-      .evalTap(_ => started.complete(()))
+      .evalTap(i => IO.whenA(i == 3)(started.complete(()).void))
       .takeUntilEval(stop.get)
       .compile
       .count
       .both(
-        started.get *> (IO.sleep(100.ms) *> stop.complete(())))
-      .flatMap((n, _) => IO(assert(n >= 2)))
+        started.get *> IO.sleep(100.ms) *> stop.complete(()))
+      .flatMap((n, _) => IO(assert(n >= 3)))
 
   "doOnSubscribe, onStart" in:
     val subscribed = Atomic(0)
@@ -53,3 +53,17 @@ final class StreamExtensionsTest extends OurAsyncTestSuite:
       b <- stream.compile.toList
       _ <- IO(assert(subscribed.get == 2 && a == List(1, 2, 3) && a == b))
     yield succeed
+
+  "onErrorEvalTap" in:
+    val throwable = new Exception("TEST")
+    var catched: Throwable = null
+    for
+      _ <- Stream.eval(IO(1)).onErrorEvalTap(t => IO.unit).compile.drain
+      result <- Stream
+        .raiseError[IO](throwable)
+        .onErrorEvalTap(t => IO { catched = t })
+        .compile.drain
+        .attempt
+    yield
+      val Left(t) = result: @unchecked
+      assert((t eq throwable) && (catched eq throwable))

@@ -48,11 +48,10 @@ extends Service:
       .toAllocated
       .pipeMaybe(maybeStartDelay)(
         _.onFailureRestartWithDelayer(_,
-          onFailure = t => IO {
+          onFailure = t => IO:
             logger.error(s"$serviceName start failed: ${t.toStringWithCauses}")
             for st <- t.ifStackTrace do
-              logger.debug(s"$serviceName start failed: ${t.toStringWithCauses}", st)
-          },
+              logger.debug(s"$serviceName start failed: ${t.toStringWithCauses}", st),
           onSleep = logDelay))
       .flatTap(setCurrentService)
       .map(_.allocatedThing)
