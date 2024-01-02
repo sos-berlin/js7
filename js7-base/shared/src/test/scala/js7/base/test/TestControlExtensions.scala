@@ -9,10 +9,10 @@ object TestControlExtensions:
 
   extension[A](control: TestControl[A])
     def finish: IO[A] =
-      control.tick *> resultOrFail
+      control.tick *> successOrFail
 
     /** Returns the succeeded value or fails. */
-    def resultOrFail: IO[A] =
+    def successOrFail: IO[A] =
       control.results.map:
         case Some(Outcome.Succeeded(a)) => a
         case Some(Outcome.Errored(t)) => throw t

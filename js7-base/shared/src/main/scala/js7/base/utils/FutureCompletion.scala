@@ -7,6 +7,7 @@ import org.jetbrains.annotations.TestOnly
 import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.Try
+
 /**
   * A register for `Future` completion which allows removal of handlers.
   *
@@ -14,6 +15,7 @@ import scala.util.Try
   *
   * @author Joacim Zschimmer
   */
+@deprecated("Avoid Future", "v2.7")
 final class FutureCompletion[A](future: Future[A])(implicit ec: ExecutionContext):
 
   private val numberToEntry = mutable.Map.empty[Int, Entry]

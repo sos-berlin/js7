@@ -10,6 +10,7 @@ import js7.base.problem.Checked.*
 import js7.base.test.OurTestSuite
 
 final class X509CertTest extends OurTestSuite:
+
   "signerId" in:
     withTemporaryDirectory("X509CertTest-") { dir =>
       val privateKeyFile = dir / "signer.key"

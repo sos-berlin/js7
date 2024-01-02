@@ -52,6 +52,11 @@ extends Writable[ByteSeq], Monoid[ByteSeq], Eq[ByteSeq], Show[ByteSeq]:
 
   def fromByteArray(byteArray: ByteArray): ByteSeq
 
+  def fromByteBuffer(buffer: ByteBuffer): ByteSeq =
+    val array = new Array[Byte](buffer.remaining)
+    buffer.get(buffer.position, array)
+    unsafeWrap(array)
+
   def fromSeq(bytes: collection.Seq[Byte]): ByteSeq =
     bytes match
       case arraySeq: immutable.ArraySeq.ofByte => unsafeWrap(arraySeq.unsafeArray)
@@ -86,6 +91,17 @@ extends Writable[ByteSeq], Monoid[ByteSeq], Eq[ByteSeq], Show[ByteSeq]:
     unsafeWrap(bytes)
 
   def unsafeWrap(bytes: Array[Byte]): ByteSeq
+
+  def wrapChunk(chunk: fs2.Chunk[Byte]): ByteSeq =
+    unsafeWrap(chunk.toArray)
+
+  def unsafeWrapChunk(chunk: fs2.Chunk[Byte]): ByteSeq =
+    chunk match
+      case fs2.Chunk.ArraySlice(array: Array[Byte] @unchecked, 0, len)
+        if len == array.length =>
+        unsafeWrap(array)
+      case _ =>
+        unsafeWrap(chunk.toArray)
 
   def show(byteSeq: ByteSeq) =
     val len = length(byteSeq)

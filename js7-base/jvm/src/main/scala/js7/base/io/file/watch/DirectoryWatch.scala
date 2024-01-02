@@ -57,13 +57,13 @@ object DirectoryWatch:
     directoryState: DirectoryState,
     settings: DirectoryWatchSettings,
     isRelevantFile: Path => Boolean = WatchOptions.everyFileIsRelevant)
-  : Stream[IO, Seq[DirectoryEvent]] =
+  : Stream[IO, DirectoryEvent] =
     stream2(
       directoryState,
       settings.toWatchOptions(directory, isRelevantFile))
 
   private def stream2(state: DirectoryState, options: WatchOptions)
-  : Stream[IO, Seq[DirectoryEvent]] =
+  : Stream[IO, DirectoryEvent] =
     logger.traceStream:
       Stream
         .resource(BasicDirectoryWatch.resource(options))
@@ -80,4 +80,5 @@ object DirectoryWatch:
             .flatMap(stream =>
               new DirectoryWatch(readDirectory, stream, hotLoopBrake = options.retryDelays.head)
                 .readDirectoryThenStreamForever(state)
-                .map(_._1))
+                .map(_._1)
+                .flatMap(Stream.iterable))

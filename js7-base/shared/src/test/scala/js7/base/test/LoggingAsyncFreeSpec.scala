@@ -61,7 +61,7 @@ trait LoggingAsyncFreeSpec extends AsyncFreeSpec:
       Future[Assertion],
       ResultOfTaggedAsInvocationOnString
     ]:
-      def -(addTests: => Unit) =
+      def tests(addTests: => Unit) =
         stringWrapper - addTests
 
       def in(testBody: => Future[Assertion]) =

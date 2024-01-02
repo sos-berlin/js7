@@ -15,13 +15,11 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.{autoDeleting, checkRelativePath, copyDirectoryContent, deleteDirectoryRecursively, provideFile, temporaryDirectoryResource, touchFile, withTemporaryDirectory, withTemporaryFile}
 import js7.base.io.file.FileUtilsTest.*
 import js7.base.problem.ProblemException
-import js7.base.test.{OurAsyncTestSuite, TestCatsEffect}
+import js7.base.test.OurAsyncTestSuite
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.{Assertion, BeforeAndAfterAll}
-/**
- * @author Joacim Zschimmer
- */
-final class FileUtilsTest extends OurAsyncTestSuite, BeforeAndAfterAll, TestCatsEffect
+
+final class FileUtilsTest extends OurAsyncTestSuite, BeforeAndAfterAll
 {
   private lazy val path = createTempFile("FileUtilTest-", ".tmp")
 

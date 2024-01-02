@@ -83,16 +83,17 @@ final class DirectoryWatchTest extends OurAsyncTestSuite:
       .use(dir => IO.defer:
         var buffer = Vector.empty[Set[DirectoryEvent]]
         val stop = Deferred.unsafe[IO, Unit]
-        val subscribed = Deferred.unsafe[IO, Unit]
+        val started = Deferred.unsafe[IO, Unit]
         DirectoryWatch
           .stream(dir, DirectoryState.empty, DirectoryWatchSettings.forTest())
-          .doOnSubscribe(subscribed.complete(()).void)
+          .onStart(started.complete(()).void)
           .takeUntilEval(stop.get)
-          .foreach(events => IO:
-            buffer :+= events.toSet)
+          .chunks
+          .foreach(chunk => IO:
+            buffer :+= chunk.to(Set))
           .compile
           .drain
-          .both(subscribed.get
+          .both(started.get
             .*>(IO.interruptible:
               assert(buffer.isEmpty)
               touchFile(dir / "TEST-1")
@@ -106,14 +107,15 @@ final class DirectoryWatchTest extends OurAsyncTestSuite:
       .use(mainDir => IO.defer:
         val dir = mainDir / "DIRECTORY"
         var buffer = Vector.empty[DirectoryEvent]
-        val subscribed = Deferred.unsafe[IO, Unit]
+        val started = Deferred.unsafe[IO, Unit]
         val stop = Deferred.unsafe[IO, Unit]
         DirectoryWatch
           .stream(dir, DirectoryState.empty, DirectoryWatchSettings.forTest(pollTimeout = 100.ms))
-          .doOnSubscribe(subscribed.complete(()).void)
+          .onStart(started.complete(()).void)
           .takeUntilEval(stop.get)
-          .foreach(events => IO:
-            buffer ++= events)
+          .chunks
+          .foreach(chunk => IO:
+            buffer ++= chunk.to(Seq))
           .compile
           .drain
           .*>(IO(logger.info("drained")))
@@ -122,8 +124,8 @@ final class DirectoryWatchTest extends OurAsyncTestSuite:
               .*>(IO.sleep(500.ms)) // Delay directory creation
               .*>(IO.defer:
                 createDirectory(dir)
-                subscribed.get)
-              .*>(IO(logger.info(s"subscribed")))
+                started.get)
+              .*>(IO(logger.info(s"started")))
               .*>(IO.interruptible:
                 assert(buffer.isEmpty)
                 touchFile(dir / "TEST-1")
@@ -150,7 +152,8 @@ final class DirectoryWatchTest extends OurAsyncTestSuite:
         var buffer = Vector.empty[Seq[DirectoryEvent]]
         DirectoryWatch
           .stream(dir, DirectoryState.empty, DirectoryWatchSettings.forTest())
-          .foreach(events => IO(buffer :+= events))
+          .chunks
+          .foreach(chunk => IO(buffer :+= chunk.to(Seq)))
           .compile
           .drain
           .racePair(IO.interruptible:

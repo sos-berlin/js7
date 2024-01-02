@@ -147,10 +147,10 @@ private object LoggingTestAdder:
           s"$successMarkup↙ $prefix$testName$resetColor $prettyDuration"
 
         case Failure(_: TestPendingException) =>
-          s"🚧 $pendingMarkup$prefix$testName (PENDING)$resetColor $prettyDuration"
+          s"$pendingMarkup↙ 🚧 $prefix$testName (PENDING)$resetColor $prettyDuration"
 
         case Failure(t) =>
-          s"💥 $failureMarkup$prefix$testName 💥$resetColor $prettyDuration"
+          s"$failureMarkup↙ 💥 $prefix$testName 💥$resetColor $prettyDuration"
 
     def toSummaryLine: String =
       val shortTestName = testName.truncateWithEllipsis(100) // Replaces \n

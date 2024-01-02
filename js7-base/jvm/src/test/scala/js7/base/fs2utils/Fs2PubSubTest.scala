@@ -1,6 +1,6 @@
 package js7.base.fs2utils
 
-import cats.effect.{FiberIO, IO, Outcome, OutcomeIO}
+import cats.effect.{FiberIO, IO}
 import cats.syntax.parallel.*
 import js7.base.test.OurAsyncTestSuite
 import js7.base.utils.Tests.isIntelliJIdea
@@ -44,6 +44,7 @@ final class Fs2PubSubTest extends OurAsyncTestSuite:
           if isIntelliJIdea && nr % 100 == 0 then print("✔")
           succeed)
 
-    (1 to n).toVector.parTraverse(i => test(i))
+    (1 to n).toVector
+      .parTraverse(test)
       .flatTap(results => IO(assert(results.size == n && results.forall(_ == Succeeded))))
       .as(succeed)

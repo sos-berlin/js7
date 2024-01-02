@@ -2,7 +2,6 @@ package js7.base.fs2utils
 
 import cats.effect.{Concurrent, Sync}
 import cats.syntax.apply.*
-import cats.syntax.monadError.*
 import fs2.Stream
 
 object StreamExtensions:
@@ -35,6 +34,7 @@ object StreamExtensions:
         .map(_.asInstanceOf[Right[Unit, A]].value)
 
     /** Like Monix Observable doOnSubscribe. */
+    @deprecated("Use onStart")
     inline def doOnSubscribe(onSubscribe: F[Unit]): Stream[F, A] =
       onStart(onSubscribe)
 

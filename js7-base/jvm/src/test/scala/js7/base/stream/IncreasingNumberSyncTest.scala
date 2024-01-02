@@ -7,7 +7,6 @@ import js7.base.test.{OurTestSuite, TestCatsEffect}
 import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
-import js7.base.utils.Tests.isIntelliJIdea
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import scala.concurrent.Future
 import scala.concurrent.duration.*
@@ -49,7 +48,7 @@ final class IncreasingNumberSyncTest extends OurTestSuite, TestCatsEffect:
       assert(sync.waitingCount == 1)
       waitingCount = sync.waitingCount
 
-  if isIntelliJIdea || sys.props.contains("test.speed") then "speed" in:
+  if sys.props.contains("test.speed") then "speed" in:
     val sync = new IncreasingNumberSync(initial = 0L, _.toString)
     val n = 10000
     val eventIdGenerator = Iterator.from(1).map(_.toLong)

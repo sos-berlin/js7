@@ -11,7 +11,10 @@ final class LoggingFreeSpecStringWrapper[OwnResult, ScalaTestResult, T](
   executeTest: (LoggingTestAdder.TestContext, => OwnResult) => ScalaTestResult):
 
   def -(addTests: => Unit): Unit =
-    underlying - {
+    tests(addTests)
+
+  def tests(addTests: => Unit): Unit =
+    underlying tests {
       testAdder.addTests(name, addTests)
     }
 
@@ -49,7 +52,7 @@ final class LoggingFreeSpecStringWrapper[OwnResult, ScalaTestResult, T](
 object LoggingFreeSpecStringWrapper:
 
   private[test] trait UnifiedStringWrapper[R, T]:
-    def -(addTests: => Unit): Unit
+    def tests(addTests: => Unit): Unit
 
     def in(testBody: => R): Unit
 

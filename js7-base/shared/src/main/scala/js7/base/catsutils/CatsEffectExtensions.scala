@@ -1,5 +1,6 @@
 package js7.base.catsutils
 
+import cats.effect.unsafe.IORuntime
 import cats.effect.{Clock, GenSpawn, IO}
 import cats.syntax.applicativeError.*
 import cats.syntax.flatMap.*
@@ -7,6 +8,7 @@ import cats.syntax.functor.*
 import cats.syntax.monadError.*
 import cats.{ApplicativeError, Functor, MonadError}
 import js7.base.log.Logger
+import js7.base.utils.CancelableFuture
 import scala.util.{Failure, Success, Try}
 
 object CatsEffectExtensions:
@@ -46,6 +48,9 @@ object CatsEffectExtensions:
         case Right(_) => IO.unit
         case Left(t) => pf.applyOrElse(t, _ => IO.unit)
 
+    def unsafeToCancelableFuture()(using IORuntime): CancelableFuture[A] =
+      CancelableFuture(io.unsafeToFutureCancelable())
+
     inline def adHocInfo(inline toMsg: A => String)(using src: sourcecode.Enclosing): IO[A] =
       io.flatTap(a => IO(Logger.info(toMsg(a))))
 
@@ -60,6 +65,11 @@ object CatsEffectExtensions:
     def right[R](value: R): IO[Either[Nothing, R]] =
       IO.pure(Right(value))
 
+
+  //extension[F[_], E, A](fiber: Fiber[F, E, A])
+  //  def joinStd(using F: MonadError[F, E]): F[A] =
+  //    fiber.joinWith(F.defer(F.raiseError:
+  //      new RuntimeException("Fiber has been canceled")))
 
   extension[F[_]](clock: Clock[F])
     def monotonicTime(using Functor[F]): F[CatsDeadline] =

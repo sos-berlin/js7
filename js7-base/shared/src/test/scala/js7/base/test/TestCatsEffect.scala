@@ -11,4 +11,4 @@ trait TestCatsEffect:
     IORuntime.global
 
   implicit def executionContext: ExecutionContext =
-    IORuntime.global.compute
+    ioRuntime.compute

@@ -43,12 +43,11 @@ final class CorrelIdTest extends OurTestSuite
   "isEmpty" in {
     assert(CorrelId.empty.isEmpty)
     assert(CorrelId("").isEmpty) // Should not occur
-    assert(!CorrelId.generate().isEmpty)
+
   }
 
   "width" in {
     assert(CorrelId.width == 8)
-    assert(CorrelId.generate().string.length == CorrelId.width)
   }
 
   "bitMask" in {
@@ -72,6 +71,15 @@ final class CorrelIdTest extends OurTestSuite
       assert(LongCorrelId.fromBase64(LongCorrelId.toBase64(long)) == Right(long))
     }
   }
+
+  "generate" in:
+    if !CorrelId.isEnabled then
+      println("❗CorrelId is disabled❗️")
+      pending
+    else
+      val correlId = CorrelId.generate()
+      assert(!correlId.isEmpty)
+      assert(correlId.string.length == CorrelId.width)
 
   "bind[Unit]" in {
     pending // FIXME Monix

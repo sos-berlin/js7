@@ -92,12 +92,10 @@ final class ServiceTest extends OurAsyncTestSuite:
     MyService.resource(isRunning = _)
       .use(service =>
         service.running.get
-          .flatMap(_ => IO {
-            assert(isRunning)
-          }))
-      .flatTap(_ => IO {
-        assert(!isRunning)
-      })
+          .<*(IO:
+            assert(isRunning)))
+      .*>(IO:
+        assert(!isRunning))
 
   private class MyService(setRunning: Boolean => Unit)
   extends Service.StoppableByRequest:
@@ -111,10 +109,9 @@ final class ServiceTest extends OurAsyncTestSuite:
         running
           .complete(())
           .*>(untilStopRequested)
-          .guaranteeCase(exitCase => IO {
+          .guaranteeCase(exitCase => IO:
             logger.info(s"$exitCase")
-            setRunning(false)
-          })
+            setRunning(false))
       })
 
     override def toString = "MyService"

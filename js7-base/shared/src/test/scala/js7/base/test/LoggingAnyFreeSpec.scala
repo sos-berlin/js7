@@ -47,7 +47,7 @@ trait LoggingAnyFreeSpec extends AnyFreeSpec:
 
   private def toUnified(stringWrapper: FreeSpecStringWrapper) =
     new LoggingFreeSpecStringWrapper.UnifiedStringWrapper[Any, ResultOfTaggedAsInvocationOnString]:
-      def -(addTests: => Unit) =
+      def tests(addTests: => Unit) =
         stringWrapper - addTests
 
       def in(testBody: => Any) =

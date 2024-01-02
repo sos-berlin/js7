@@ -41,12 +41,14 @@ final class StreamExtensionsTest extends OurAsyncTestSuite:
         started.get *> IO.sleep(100.ms) *> stop.complete(()))
       .flatMap((n, _) => IO(assert(n >= 3)))
 
-  "doOnSubscribe, onStart" in:
+  "onStart" in:
     val subscribed = Atomic(0)
     val stream: Stream[IO, Int] =
       Stream(1, 2, 3)
         .covary[IO]
-        .doOnSubscribe(IO { subscribed += 1 })
+        .onStart:
+          IO:
+            subscribed += 1
 
     for
       a <- stream.compile.toList

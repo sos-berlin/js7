@@ -187,6 +187,16 @@ object FileUtils:
   def withTemporaryFile[A](prefix: String, suffix: String, attributes: FileAttribute[?]*)(body: Path => A): A =
     autoDeleting(Files.createTempFile(prefix, suffix, attributes*))(body)
 
+  def temporaryFileResource[F[_], A](
+    prefix: String = "",
+    suffix: String = ".tmp",
+    attributes: FileAttribute[?]*)
+    (using F: Sync[F])
+  : Resource[F, Path] =
+    Resource.make(
+      acquire = F.delay(Files.createTempFile(prefix, suffix, attributes*)))(
+      release = file => F.delay(Files.deleteIfExists(file)))
+
   def autoDeleting[A](file: Path)(body: Path => A): A =
     withCloser { closer =>
       closer.onClose:

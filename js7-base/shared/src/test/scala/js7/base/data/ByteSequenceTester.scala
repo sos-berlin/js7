@@ -4,7 +4,7 @@ import cats.syntax.monoid.*
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
-import java.nio.ReadOnlyBufferException
+import java.nio.{ByteBuffer, ReadOnlyBufferException}
 import js7.base.data.ByteSequence.ops.*
 import js7.base.data.ByteSequenceTester.*
 import js7.base.problem.Problem
@@ -15,6 +15,7 @@ import scala.util.Random
 
 abstract class ByteSequenceTester[ByteSeq](implicit ByteSeq: ByteSequence[ByteSeq])
 extends OurTestSuite:
+
   "empty" in:
     assert(ByteSeq.empty.length == 0)
 
@@ -46,12 +47,108 @@ extends OurTestSuite:
     assert(ByteSeq.fromArray(a, 2, 2) == ByteSeq.empty)
     assert(ByteSeq.fromArray(a, 3, 2) == ByteSeq.empty)
 
+  "fromByteBuffer".tests:
+    "slice" in:
+      val buffer = ByteBuffer.allocate(64)
+      buffer.put(Array[Byte](1, 2, 3, 4, 5))
+      buffer.position(2)
+      buffer.limit(5)
+      assert(buffer.position == 2 && buffer.limit == 5 && buffer.remaining == 3)
+
+      val byteSeq = ByteSeq.fromByteBuffer(buffer)
+      assert(byteSeq == ByteSeq(3, 4, 5))
+      assert(buffer.position == 2 && buffer.limit == 5 && buffer.remaining == 3)
+
+      // ByteSeq uses its own Array
+      buffer.position(2)
+      buffer.put(99.toByte)
+      assert(byteSeq == ByteSeq(3, 4, 5))
+
+    "complete Array" in:
+      val array = Array[Byte](1, 2, 3)
+      val buffer = ByteBuffer.wrap(array)
+      assert(buffer.array eq array)
+      assert(buffer.position == 0 && buffer.limit == 3 && buffer.remaining == 3)
+
+      val byteSeq = ByteSeq.fromByteBuffer(buffer)
+      assert(byteSeq == ByteSeq(1, 2, 3))
+      assert(buffer.position == 0 && buffer.limit == 3 && buffer.remaining == 3)
+
+      // ByteSeq uses its own Array
+      assert(byteSeq.unsafeArray ne array)
+      array(0) = 99
+      assert(byteSeq == ByteSeq(1, 2, 3))
+
   "fromSeq" in:
     val a = Seq[Byte](1, 2)
     assert(ByteSeq.fromSeq(a).unsafeArray sameElements a)
 
   "fromMimeBase64" in:
     assert(ByteArray.fromMimeBase64(mimeBase64string) == Right(ByteArray(mimeByte64Bytes)))
+
+  "unsafeWrap" in:
+    val a = Array[Byte](1, 2, 3)
+    assert(ByteSeq.unsafeWrap(a).unsafeArray eq a)
+
+  "wrapChunk" in:
+    val array = Array[Byte](1, 2, 3)
+    val chunk = fs2.Chunk.array(array)
+    val byteSeq = ByteSeq.wrapChunk(chunk)
+    assert(byteSeq == ByteSeq(1, 2, 3))
+
+    array(0) = 99
+    assert(chunk == fs2.Chunk[Byte](99, 2, 3))
+
+    // byteSeq has its own copy
+    assert(byteSeq == ByteSeq(1, 2, 3))
+
+  "unsafeWrapChunk".tests:
+    "whole Array is wrapped" in:
+      val array = Array[Byte](1, 2, 3)
+      val chunk = fs2.Chunk.array(array)
+      val byteSeq = ByteSeq.unsafeWrapChunk(chunk)
+
+      assert(ByteSeq.unsafeWrapChunk(fs2.Chunk.array(array, 0, 2)).unsafeArray ne array)
+      assert(ByteSeq.unsafeWrapChunk(fs2.Chunk.array(array, 1, 2)).unsafeArray ne array)
+
+      array(0) = 99
+      assert(chunk == fs2.Chunk[Byte](99, 2, 3))
+
+      // byteSeq wraps the original array passed via Chunk
+      assert(byteSeq.unsafeArray eq array)
+      assert(byteSeq == ByteSeq(99, 2, 3))
+
+    "Chunk.array checks strictly length of slice" in:
+      intercept[IllegalArgumentException]:
+        fs2.Chunk.array(Array[Byte](1, 2, 3), 0, 4)
+
+      intercept[ArrayIndexOutOfBoundsException]:
+        fs2.Chunk.array(Array[Byte](1, 2, 3), 3, 1)
+
+    "prefix of Array is not wrapped" in:
+      val array = Array[Byte](1, 2, 3)
+      val byteSeq = ByteSeq.unsafeWrapChunk(fs2.Chunk.array(array, 0, 2))
+
+      assert(byteSeq.unsafeArray ne array)
+      assert(byteSeq == ByteSeq(1, 2))
+
+    "suffix of Array is not wrapped" in:
+      val array = Array[Byte](1, 2, 3)
+      val byteSeq = ByteSeq.unsafeWrapChunk(fs2.Chunk.array(array, 1, 2))
+
+      assert(byteSeq.unsafeArray ne array)
+      assert(byteSeq == ByteSeq(2, 3))
+
+  "unwrapChunk" in:
+    val a = Array[Byte](1, 2, 3)
+    val chunk = fs2.Chunk.array(a)
+
+    assert(chunk.asInstanceOf[fs2.Chunk.ArraySlice[Byte]].values eq a)
+    assert(chunk.asInstanceOf[fs2.Chunk.ArraySlice[Byte]].offset == 0)
+    assert(chunk.asInstanceOf[fs2.Chunk.ArraySlice[Byte]].length == a.length)
+
+    a(2) = 33
+    assert(chunk.toVector == Vector[Byte](1, 2, 33))
 
   "equality" in:
     assert(ByteArray.empty == ByteArray(""))

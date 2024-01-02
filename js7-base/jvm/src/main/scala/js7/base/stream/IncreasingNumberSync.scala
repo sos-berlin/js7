@@ -1,14 +1,13 @@
 package js7.base.stream
 
-import js7.base.log.Logger
-import js7.base.utils.CatsUtils.syntax.*
-import js7.base.catsutils.CatsDeadline
-import js7.base.stream.IncreasingNumberSync.*
-import js7.base.time.ScalaTime.*
 import cats.effect.IO
 import cats.syntax.flatMap.*
 import cats.syntax.traverse.*
+import js7.base.catsutils.CatsDeadline
 import js7.base.catsutils.CatsEffectExtensions.right
+import js7.base.stream.IncreasingNumberSync.*
+import js7.base.time.ScalaTime.*
+import js7.base.utils.CatsUtils.syntax.*
 import org.jetbrains.annotations.TestOnly
 import scala.collection.mutable
 import scala.concurrent.Promise
@@ -50,27 +49,25 @@ final class IncreasingNumberSync(initial: Long, valueToString: Long => String):
       else
         until
           .traverse(_.timeLeftOrZero)
-          .flatMap(maybeTimeLeft =>
+          .flatMap: maybeTimeLeft =>
             if maybeTimeLeft.exists(_.isZero) then
               IO.False // Timeout
             else
               val io = whenAvailable2(after) <*
                 IO.sleep(delay min maybeTimeLeft.getOrElse(FiniteDuration.MaxValue))
-              maybeTimeLeft.fold(io)(t => io.timeoutTo(t, IO.False)))
+              maybeTimeLeft.fold(io)(t => io.timeoutTo(t, IO.False))
 
   private def whenAvailable2(after: Long): IO[Boolean] =
-    ().tailRecM(_ =>
+    ().tailRecM: _ =>
       if after < _last then
         RightTrue
-      else synchronized {
+      else synchronized:
         if after < _last then
           RightTrue
-        else {
+        else
           val promise = valueToPromise.getOrElseUpdate(after, Promise())
-          IO.fromFuture(IO.pure(promise.future))
+          IO.fromFutureCancelable(IO.pure(promise.future -> IO.unit))
             .as(Left(()))  // Check again
-        }
-      })
 
   def last = _last
 
@@ -79,5 +76,4 @@ final class IncreasingNumberSync(initial: Long, valueToString: Long => String):
 
 
 object IncreasingNumberSync:
-  private val logger = Logger[this.type]
   private val RightTrue = IO.right(true)

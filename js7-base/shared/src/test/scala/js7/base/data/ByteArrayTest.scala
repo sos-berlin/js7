@@ -4,6 +4,7 @@ import js7.base.data.ByteSequence.ops.*
 import scala.collection.immutable.ArraySeq
 
 final class ByteArrayTest extends ByteSequenceTester[ByteArray]:
+
   "unsafeWrap, unsafeArray" in:
     val a = Array(1.toByte)
     assert(ByteArray.unsafeWrap(a).unsafeArray eq a)
