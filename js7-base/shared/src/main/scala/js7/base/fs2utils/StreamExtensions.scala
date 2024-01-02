@@ -1,8 +1,12 @@
 package js7.base.fs2utils
 
-import cats.effect.{Concurrent, Sync}
+import cats.effect
+import cats.effect.{Concurrent, Resource, Sync}
 import cats.syntax.apply.*
 import fs2.Stream
+import js7.base.time.ScalaTime.RichDeadline
+import scala.concurrent.duration.Deadline.now
+import scala.concurrent.duration.{Deadline, FiniteDuration}
 
 object StreamExtensions:
 
@@ -46,3 +50,47 @@ object StreamExtensions:
     /** Like Monix Observable doOnSubscribe. */
     def onStart(onStart: F[Unit]): Stream[F, A] =
       Stream.exec(onStart) ++ stream
+
+    def logTiming(
+      toCount: A => Long = simpleCount,
+      onComplete: (FiniteDuration, Long, Resource.ExitCase) => Unit,
+      startedAt: Deadline = now)
+      (using F: Sync[F])
+    : Stream[F, A] =
+      Stream.suspend:
+        var count = 0L
+        stream
+          .map: a =>
+            count += toCount(a)
+            a
+          .onFinalizeCase: exitCase =>
+            F.delay(onComplete(startedAt.elapsed, count, exitCase))
+
+  //extension [A](underlying: IO[Stream[IO, A]])
+  //  def logTiming(
+  //    toCount: A => Long = simpleCount,
+  //    onComplete: (FiniteDuration, Long, Outcome[IO, A, Throwable]) => Unit,
+  //    startedAt: Deadline = now)
+  //  : IO[Stream[IO, A]] =
+  //    underlying
+  //      .map(Right(_))
+  //      .logTiming(toCount, onComplete, startedAt)
+  //      .map(_.orThrow /*never throws*/)
+  //
+  //extension [A](underlying: IO[Checked[Stream[IO, A]]])
+  //  def logTiming(
+  //    toCount: A => Long = simpleCount,
+  //    onComplete: (FiniteDuration, Long, Outcome[IO, A, Throwable]) => Unit,
+  //    startedAt: => Deadline = now)
+  //  : IO[Checked[Stream[IO, A]]] =
+  //    IO.defer:
+  //      val startedAt_ = startedAt
+  //      var counter = 0L
+  //      underlying.map(_.map(_
+  //        .map: a =>
+  //          counter += toCount(a)
+  //          a
+  //        .onFinalizeCase(exitCase => IO:
+  //          onComplete(startedAt_.elapsed, counter, exitCase.toOutcome))))
+
+  private def simpleCount[A](a: A) = 1L

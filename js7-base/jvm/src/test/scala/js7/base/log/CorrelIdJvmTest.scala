@@ -48,18 +48,18 @@ final class CorrelIdJvmTest extends OurTestSuite, BeforeAndAfterAll, TestCatsEff
         logger.info(s"${currentThread.threadId} $current Synchronous (Unit)")
       logger.info(s"${currentThread.threadId} $current Synchronous (Unit) — not bound")
 
-    "IO.runToFuture" in:
+    "IO.unsafeToFuture()" in:
       pending // TODO
       val correlId = CorrelId("BBBBBBBB")
       val io = IO:
-        logger.info(s"${currentThread.threadId} $current IO.runToFuture")
+        logger.info(s"${currentThread.threadId} $current IO.unsafeToFuture()")
         assert(current == correlId)
       val future = correlId.bind:
         io.unsafeToFuture()
       future.await(99.s)
-      logger.info(s"${currentThread.threadId} $current IO.runToFuture — not bound")
+      logger.info(s"${currentThread.threadId} $current IO.unsafeToFuture() — not bound")
 
-    "IO.runToFuture with parTraverse" in:
+    "IO.unsafeToFuture() with parTraverse" in:
       pending // TODO
       val correlId = CorrelId("CCCCCCCC")
       val io =
@@ -67,18 +67,18 @@ final class CorrelIdJvmTest extends OurTestSuite, BeforeAndAfterAll, TestCatsEff
           IO:
             sleep(10.ms)
             logger.info(
-              s"${currentThread.threadId} $current IO.runToFuture parSequence $i a")
+              s"${currentThread.threadId} $current IO.unsafeToFuture() parSequence $i a")
             assert(current == correlId)
           *>
             IO:
               logger.info(
-                s"${currentThread.threadId} $current IO.runToFuture parSequence $i b")
+                s"${currentThread.threadId} $current IO.unsafeToFuture() parSequence $i b")
               assert(current == correlId)
       val future = correlId.bind:
         io.unsafeToFuture()
       future.await(99.s)
       logger.info(
-        s"${currentThread.threadId} $current IO.runToFuture parSequence — not bound")
+        s"${currentThread.threadId} $current IO.unsafeToFuture() parSequence — not bound")
 
     "Future" in:
       pending // TODO

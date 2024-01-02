@@ -76,7 +76,7 @@ addCommandAlias("quickPublishLocal", "; compile; publishLocal; project js7JS; co
 //Scala 3?   Seq("-Wconf:cat=unused-imports:error"))
 
 ThisBuild / scalacOptions ++= Seq(
-  "-explain",
+  //"-explain",
   "-feature",
   "-deprecation",
   "-Yretain-trees", // Required for Circe derived default values

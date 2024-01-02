@@ -1,7 +1,7 @@
 package js7.base.monixlike
 
 import js7.base.utils.{Atomic, EmptyRunnable}
-import scala.annotation.{tailrec, targetName}
+import scala.annotation.{nowarn, tailrec, targetName}
 
 /** Inspired vom Monix SerialCancelable.
   *
@@ -23,6 +23,7 @@ import scala.annotation.{tailrec, targetName}
   * Also see [[OrderedCancelable]], which is similar, but doesn't cancel
   * the old cancelable upon assignment.
   */
+@deprecated
 final class SerialCancelable(initial: Runnable):
   private val state = Atomic(initial)
 
@@ -47,6 +48,7 @@ final class SerialCancelable(initial: Runnable):
 
 
 object SerialCancelable:
+  @nowarn("msg=deprecated")
   def apply(): SerialCancelable =
     new SerialCancelable(EmptyRunnable)
   //
