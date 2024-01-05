@@ -3,8 +3,8 @@ package js7.base.log
 import cats.Applicative
 import cats.effect.implicits.monadCancelOps
 import cats.effect.{IO, Outcome, Resource, Sync, SyncIO}
-import cats.syntax.flatMap.*
 import cats.syntax.apply.*
+import cats.syntax.flatMap.*
 import com.typesafe.scalalogging.Logger as ScalaLogger
 import fs2.Stream
 import izumi.reflect.Tag
@@ -17,6 +17,7 @@ import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.base.utils.{Once, Tests}
 import org.slf4j.{LoggerFactory, Marker, MarkerFactory}
+import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
 
 object Logger extends AdHocLogger:
@@ -225,6 +226,17 @@ object Logger extends AdHocLogger:
       : Stream[IO, A] =
         logStream[A](logger, LogLevel.Trace, function, args)(stream)
 
+      def logStart(logLevel: LogLevel, function: String, args: => Any = ""): Unit =
+        Logger.logStart(logger, logLevel, function, args)
+
+      def logOutcome[F[_], A](
+        logLevel: LogLevel,
+        function: String,
+        duration: FiniteDuration,
+        outcome: Outcome[F, Throwable, A])
+      : Unit =
+        Logger.logOutcome[F, A](logger, logLevel, function, args = "", duration.pretty + " ", outcome)
+
     private def logF[F[_], A](
       logger: ScalaLogger,
       logLevel: LogLevel,
@@ -288,6 +300,7 @@ object Logger extends AdHocLogger:
 
   private final class StartReturnLogContext(logger: ScalaLogger, logLevel: LogLevel,
     function: String, args: => Any = ""):
+
     logStart(logger, logLevel, function, args)
     private val startedAt = System.nanoTime()
 
@@ -303,8 +316,7 @@ object Logger extends AdHocLogger:
     def logReturn(marker: String, msg: AnyRef): Unit =
       Logger.logReturn(logger, logLevel, function, "", duration, marker, msg)
 
-  private def logStart(logger: ScalaLogger, logLevel: LogLevel, function: String,
-    args: => Any = "")
+  private def logStart(logger: ScalaLogger, logLevel: LogLevel, function: String, args: => Any = "")
   : Unit =
     lazy val argsString = args match
       case null => "null"

@@ -283,18 +283,18 @@ extends OurTestSuite:
 
   "chunk" in:
     val byteSeq = ByteSeq("abcd")
-    assert(byteSeq.chunk(1) == Stream(ByteSeq("a"), ByteSeq("b"), ByteSeq("c"), ByteSeq("d")))
-    assert(byteSeq.chunk(2) == Stream(ByteSeq("ab"), ByteSeq("cd")))
-    assert(byteSeq.chunk(3) == Stream(ByteSeq("abc"), ByteSeq("d")))
-    assert(byteSeq.chunk(4) == Stream(ByteSeq("abcd")))
+    assert(byteSeq.chunk(1).toList == Stream(ByteSeq("a"), ByteSeq("b"), ByteSeq("c"), ByteSeq("d")).toList)
+    assert(byteSeq.chunk(2).toList == Stream(ByteSeq("ab"), ByteSeq("cd")).toList)
+    assert(byteSeq.chunk(3).toList == Stream(ByteSeq("abc"), ByteSeq("d")).toList)
+    assert(byteSeq.chunk(4).toList == Stream(ByteSeq("abcd")).toList)
 
   "byteStream" in:
     val byteSeq = ByteSeq("abcd")
     def chunk(string: String) = Chunk.array(string.getBytes(UTF_8))
-    assert(byteSeq.byteStream(1).chunks == Stream(chunk("a"), chunk("b"), chunk("c"), chunk("d")))
-    assert(byteSeq.byteStream(2).chunks == Stream(chunk("ab"), chunk("cd")))
-    assert(byteSeq.byteStream(3).chunks == Stream(chunk("abc"), chunk("d")))
-    assert(byteSeq.byteStream(4).chunks == Stream(chunk("abcd")))
+    assert(byteSeq.byteStream(1).chunks.toList == Stream(chunk("a"), chunk("b"), chunk("c"), chunk("d")).toList)
+    assert(byteSeq.byteStream(2).chunks.toList == Stream(chunk("ab"), chunk("cd")).toList)
+    assert(byteSeq.byteStream(3).chunks.toList == Stream(chunk("abc"), chunk("d")).toList)
+    assert(byteSeq.byteStream(4).chunks.toList == Stream(chunk("abcd")).toList)
 
   "utf8String" in:
     assert(ByteSeq("aå").utf8String == "aå")

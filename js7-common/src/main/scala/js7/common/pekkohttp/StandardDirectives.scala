@@ -1,5 +1,7 @@
 package js7.common.pekkohttp
 
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import js7.base.problem.{Checked, CheckedString}
 import js7.base.utils.Collections.implicits.*
 import js7.data.item.VersionedItemPath
@@ -10,8 +12,6 @@ import org.apache.pekko.http.scaladsl.server.Directives.*
 import org.apache.pekko.http.scaladsl.server.PathMatcher.{Matched, Unmatched}
 import org.apache.pekko.http.scaladsl.server.{Directive0, PathMatcher1, Route}
 import scala.concurrent.{ExecutionContext, Future}
-import cats.effect.IO
-import cats.effect.unsafe.IORuntime
 
 /**
   * @author Joacim Zschimmer
@@ -51,7 +51,7 @@ object StandardDirectives:
 
   def ioRoute(routeIO: IO[Route])(using ioRuntime: IORuntime): Route =
     implicit val ec: ExecutionContext = ioRuntime.compute
-    // TODO Check Cats migration:
+    // TODO Check migration to Cats Effect :
     ctx => routeIO.unsafeToFuture().flatMap(_(ctx))
 
   //def routeFuture(routeFuture: Future[Route])(implicit scheduler: Scheduler): Route =

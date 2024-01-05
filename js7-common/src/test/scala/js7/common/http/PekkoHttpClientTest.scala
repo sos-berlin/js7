@@ -1,6 +1,6 @@
 package js7.common.http
 
-import cats.effect.{Fiber, IO}
+import cats.effect.IO
 import cats.syntax.option.*
 import fs2.Stream
 import io.circe.Codec
@@ -24,8 +24,7 @@ import js7.base.web.Uri
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.PekkoHttpClient.{HttpException, `x-js7-correlation-id`, `x-js7-request-id`, toPrettyProblem}
 import js7.common.http.PekkoHttpClientTest.*
-import js7.common.http.StreamingSupport.*
-import js7.common.pekkohttp.PekkoHttpServerUtils.completeIO
+import js7.common.pekkohttp.PekkoHttpServerUtils.completeWithStream
 import js7.common.pekkohttp.web.PekkoWebServer
 import js7.common.pekkohttp.{CirceJsonSupport, PekkoHttpServerUtils}
 import js7.common.pekkoutils.Pekkos
@@ -119,21 +118,12 @@ final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, TestCat
           } ~
             get {
               path("STREAM") {
-                completeIO:
-                  Stream("ONE\n", "TWO\n")
-                    .map(ByteString(_))
-                    .covary[IO]
-                    .toPekkoSourceForHttpResponse
-                    .map(HttpEntity(`application/x-ndjson`, _))
+                completeWithStream(`application/x-ndjson`):
+                  Stream("ONE\n", "TWO\n").map(ByteString(_))
               } ~
-              path("IDLE-TIMEOUT") {
-                completeIO:
-                  Stream.emit(ByteString("IDLE-TIMEOUT\n"))
-                    .covary[IO]
-                    .delayBy(5.s)
-                    .toPekkoSourceForHttpResponse
-                    .map(HttpEntity(`application/x-ndjson`, _))
-              }
+              path("IDLE-TIMEOUT"):
+                completeWithStream(`application/x-ndjson`):
+                  Stream.emit(ByteString("IDLE-TIMEOUT\n")).covary[IO].delayBy(5.s)
             }
         }
       }
@@ -250,7 +240,7 @@ final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, TestCat
 
     "Other exception" in {
       val e = new Exception
-      assert(liftProblem(IO.raiseError(e)).await(99.s).left.toOption.get eq e)
+      assert(Try(liftProblem(IO.raiseError(e)).await(99.s)).failed.get eq e)
     }
   }
 

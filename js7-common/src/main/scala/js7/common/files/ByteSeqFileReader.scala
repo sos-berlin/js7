@@ -1,15 +1,15 @@
 package js7.common.files
 
 import java.nio.ByteBuffer
-import java.nio.channels.{FileChannel, ReadableByteChannel}
+import java.nio.channels.FileChannel
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption.READ
-import js7.base.data.{ByteArray, ByteSequence}
+import js7.base.data.ByteSequence
 import js7.base.log.Logger
-import js7.common.files.ChunkFileReader.*
+import js7.common.files.ByteSeqFileReader.*
 
 /** Reads ByteSequences from a file. **/
-final class ChunkFileReader[ByteSeq](file: Path, fromEnd: Boolean = false)
+final class ByteSeqFileReader[ByteSeq](file: Path, fromEnd: Boolean = false)
   (using ByteSeq: ByteSequence[ByteSeq])
 extends AutoCloseable:
 
@@ -17,6 +17,7 @@ extends AutoCloseable:
   private val buffer = ByteBuffer.allocate(ChunkSize)
 
   if fromEnd then
+    Logger.info(s"### position ${channel.size}")
     channel.position(channel.size)
 
   def close() =
@@ -24,16 +25,15 @@ extends AutoCloseable:
     channel.close()
 
   def read(): ByteSeq =
+    buffer.clear()
     channel.read(buffer) match
       case -1 =>
         ByteSeq.empty
       case _ =>
         buffer.flip()
-        val chunk = ByteSeq.fromByteBuffer(buffer)
-        buffer.clear()
-        chunk
+        ByteSeq.fromByteBuffer(buffer)
 
 
-object ChunkFileReader:
-  private[files] val ChunkSize = 8192
+object ByteSeqFileReader:
+  private[files] val ChunkSize = 64*1024
   private val logger = Logger[this.type]

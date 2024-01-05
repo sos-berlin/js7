@@ -13,6 +13,8 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.data.ByteSequence.{byteToPrintable, maxShowLength}
 import js7.base.problem.{Checked, Problem}
 import js7.base.system.Java8Polyfill.*
+import js7.base.utils.Assertions
+import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.*
 import scala.annotation.targetName
@@ -213,30 +215,31 @@ extends Writable[ByteSeq], Monoid[ByteSeq], Eq[ByteSeq], Show[ByteSeq]:
   //      ArraySeq.unsafeWrapArray(array)
 
   def chunk[F[_]](byteSeq: ByteSeq, maxSize: Int): fs2.Stream[F, ByteSeq] =
+    assertThat(maxSize >= 1)
     length(byteSeq) match
       case 0 => fs2.Stream.empty
       case 1 => fs2.Stream.emit(byteSeq)
-      case _ =>
-        fs2.Stream.unfold(0): i =>
-          val offset = i * maxSize
-          val length = (i + 1) * maxSize
-          (length > 0) ? (this.slice(byteSeq, offset, length), i + 1)
+      case byteSeqLength =>
+        fs2.Stream.unfold(0): offset =>
+          val chunkLength = maxSize.min(byteSeqLength - offset)
+          (chunkLength > 0) ?
+            (this.slice(byteSeq, offset, until = offset + chunkLength), offset + chunkLength)
 
-  def byteStream[F[_]](byteSeq: ByteSeq, maxSize: Int): fs2.Stream[F, Byte] =
+  def byteStream[F[_]](byteSeq: ByteSeq, chunkSize: Int): fs2.Stream[F, Byte] =
     length(byteSeq) match
       case 0 => fs2.Stream.empty
       case 1 => fs2.Stream.emit(at(byteSeq, 0))
       case _ =>
         unsafeWrappedArray(byteSeq) match
           case None =>
-            chunk(byteSeq, maxSize)
+            chunk(byteSeq, chunkSize)
               .map(byteSeq => fs2.Chunk.array(unsafeArray(byteSeq)))
               .unchunks
           case Some(array) =>
-            fs2.Stream.unfoldChunk(0): i =>
-              val offset = i * maxSize
-              val length = (i + 1) * maxSize
-              (length > 0) ? (fs2.Chunk.array(array, offset, length), i + 1)
+            fs2.Stream.unfoldChunk(0): offset =>
+              val chunkLength = chunkSize.min(array.length - offset)
+              (chunkLength > 0) ?
+                (fs2.Chunk.array(array, offset, chunkLength), offset + chunkLength)
 
   def iterator(byteSeq: ByteSeq): Iterator[Byte]
 
@@ -374,7 +377,7 @@ object ByteSequence:
     def ++(tail: ByteSeq): ByteSeq =
       typeClassInstance.++(self, tail)
 
-    /** Split ByteSeq to parts of maxSize and stream them (by copying). */
+    /** Split ByteSeq to parts of chunkSize and stream them (by copying). */
     def chunk[F[_]](chunkSize: Int): fs2.Stream[F, ByteSeq] =
       typeClassInstance.chunk(self, chunkSize)
 

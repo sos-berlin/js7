@@ -25,7 +25,7 @@ object Fs2ChunkByteSequence extends ByteSequence[Chunk[Byte]]:
     chunk.isEmpty
 
   def length(chunk: Chunk[Byte]) =
-    chunk.length
+    chunk.size
 
   def at(chunk: Chunk[Byte], i: Int): Byte =
     chunk(i)
@@ -37,7 +37,7 @@ object Fs2ChunkByteSequence extends ByteSequence[Chunk[Byte]]:
     chunk.drop(n)
 
   override def slice(chunk: Chunk[Byte], from: Int, until: Int) =
-    chunk.slice(from, until)
+    chunk.drop(from).take(until - from)
 
   def iterator(chunk: Chunk[Byte]): Iterator[Byte] =
     chunk.iterator
@@ -64,7 +64,7 @@ object Fs2ChunkByteSequence extends ByteSequence[Chunk[Byte]]:
     chunk.copyToArray(array, start, len)
 
   override def toByteBuffer(chunk: Chunk[Byte]): ByteBuffer =
-    chunk.toByteBuffer
+    chunk.toByteBuffer.asReadOnlyBuffer
 
   def eqv(a: Chunk[Byte], b: Chunk[Byte]): Boolean =
     a == b

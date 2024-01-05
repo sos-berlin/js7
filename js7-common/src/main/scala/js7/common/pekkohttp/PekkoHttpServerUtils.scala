@@ -1,34 +1,35 @@
 package js7.common.pekkohttp
 
-import cats.effect.IO
-import cats.effect.Deferred
 import cats.effect.unsafe.IORuntime
-import io.circe.Encoder
+import cats.effect.{Deferred, IO, Resource}
 import fs2.Stream
+import io.circe.Encoder
 import io.circe.syntax.EncoderOps
 import izumi.reflect.Tag
 import js7.base.auth.UserId
 import js7.base.circeutils.CirceUtils.RichJson
-import js7.base.log.Logger
-import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.fs2utils.StreamExtensions.takeUntilEval
+import js7.base.log.Logger.syntax.*
+import js7.base.log.{LogLevel, Logger}
+import js7.base.time.ScalaTime.RichDeadline
 import js7.base.utils.FutureCompletion
 import js7.base.utils.FutureCompletion.syntax.*
-import js7.common.http.JsonStreamingSupport.{StreamingJsonHeader, `application/x-ndjson`}
+import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.PekkoHttpClient.`x-js7-request-id`
 import js7.common.http.StreamingSupport.*
 import js7.common.pekkohttp.ByteSequenceStreamExtensions.*
+import js7.common.pekkohttp.StandardDirectives.ioRoute
 import js7.common.pekkoutils.ByteStrings.syntax.byteStringByteSequence
 import org.apache.pekko.http.scaladsl.marshalling.{ToResponseMarshallable, ToResponseMarshaller}
 import org.apache.pekko.http.scaladsl.model.HttpEntity.Chunk
 import org.apache.pekko.http.scaladsl.model.headers.Accept
-import org.apache.pekko.http.scaladsl.model.{HttpEntity, HttpHeader, HttpRequest, MediaType, Uri}
+import org.apache.pekko.http.scaladsl.model.{ContentType, HttpEntity, HttpHeader, HttpRequest, MediaType, Uri}
 import org.apache.pekko.http.scaladsl.server.Directives.*
 import org.apache.pekko.http.scaladsl.server.PathMatcher.{Matched, Unmatched}
 import org.apache.pekko.http.scaladsl.server.{ContentNegotiator, Directive, Directive0, Directive1, MalformedHeaderRejection, MissingHeaderRejection, PathMatcher, PathMatcher0, Route, UnacceptedResponseContentTypeRejection, ValidationRejection}
 import org.apache.pekko.util.ByteString
 import scala.annotation.tailrec
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.{Deadline, FiniteDuration}
 
 /**
   * @author Joacim Zschimmer
@@ -250,6 +251,27 @@ object PekkoHttpServerUtils:
           else
             Unmatched
 
+  def completeWithStream(contentType: ContentType)(stream: Stream[IO, ByteString])
+    (using IORuntime)
+  : Route =
+    ioRoute:
+      logger.logStart(LogLevel.Trace, "completeWithStream")
+      val since = Deadline.now
+      val deferredRelease = Deferred.unsafe[IO, Resource.ExitCase => IO[Unit]]
+      stream
+        .onFinalizeCase: exitCase =>
+          deferredRelease.get.flatMap(_(exitCase))
+        .toPekkoSourceForHttpResponse
+        .allocated
+        .flatTap: (_, release) =>
+          deferredRelease.complete: exitCase =>
+            logger.logOutcome(LogLevel.Trace, "completeWithStream", since.elapsed,
+              exitCase.toOutcome[IO])
+            release
+        .map: (source, _) =>
+          complete:
+            HttpEntity(contentType, source)
+
   def completeIO[A: ToResponseMarshaller](io: IO[A])(using IORuntime): Route =
     optionalAttribute(WebLogDirectives.CorrelIdAttributeKey):
       case None =>
@@ -290,7 +312,7 @@ object PekkoHttpServerUtils:
     chunkSize: Int,
     keepAlive: Option[FiniteDuration] = None)
     (using IORuntime)
-  : IO[ToResponseMarshallable] =
+  : Resource[IO, ToResponseMarshallable] =
     val chunks = stream
       .evalMap(a => IO:
         a.asJson.toByteSequence[ByteString].concat(LF))
@@ -314,8 +336,9 @@ object PekkoHttpServerUtils:
               .takeUntilEval(terminated.get))
         yield chunk
 
-    for source <- result
+    result
       .takeUntilCompletedAndDo(shuttingDownCompletion)(_ => IO:
         logger.debug(s"Shutdown observing events for $userId ${httpRequest.uri}"))
       .toPekkoSourceForHttpResponse
-    yield ToResponseMarshallable(HttpEntity.Chunked(`application/x-ndjson`, source))
+      .map: source =>
+        ToResponseMarshallable(HttpEntity.Chunked(`application/x-ndjson`, source))

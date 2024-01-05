@@ -1,7 +1,18 @@
 package js7.common.pekkohttp
 
-import cats.effect.IO
 import cats.effect.unsafe.IORuntime
+import cats.effect.{IO, Resource}
+import fs2.Stream
+import io.circe.Encoder
+import io.circe.syntax.*
+import izumi.reflect.Tag
+import js7.base.circeutils.CirceUtils.*
+import js7.base.fs2utils.StreamExtensions.*
+import js7.base.generic.GenericString
+import js7.base.problem.{Checked, Problem}
+import js7.common.http.StreamingSupport.*
+import js7.common.pekkohttp.CirceJsonSupport.jsonMarshaller
+import js7.common.pekkoutils.ByteStrings.syntax.*
 import org.apache.pekko.NotUsed
 import org.apache.pekko.http.scaladsl.marshalling.{Marshaller, Marshalling, ToEntityMarshaller, ToResponseMarshallable, ToResponseMarshaller}
 import org.apache.pekko.http.scaladsl.model.ContentTypes.`application/json`
@@ -11,18 +22,6 @@ import org.apache.pekko.http.scaladsl.model.{ContentType, HttpEntity, HttpRespon
 import org.apache.pekko.http.scaladsl.unmarshalling.{FromStringUnmarshaller, Unmarshaller}
 import org.apache.pekko.stream.scaladsl.Source
 import org.apache.pekko.util.ByteString
-import io.circe.Encoder
-import io.circe.syntax.*
-import izumi.reflect.Tag
-import js7.base.circeutils.CirceUtils.*
-import js7.base.generic.GenericString
-import js7.base.catsutils.CatsEffectExtensions.*
-import js7.base.problem.{Checked, Problem}
-import js7.common.pekkohttp.CirceJsonSupport.jsonMarshaller
-import js7.common.pekkoutils.ByteStrings.syntax.*
-import js7.common.http.StreamingSupport.*
-import fs2.Stream
-import js7.base.fs2utils.StreamExtensions.*
 import scala.concurrent.Future
 import scala.concurrent.duration.*
 import scala.language.implicitConversions
@@ -57,13 +56,13 @@ object StandardMarshallers:
 
   def monixObservableToMarshallable[A: Tag](stream: Stream[IO, A])
     (implicit toMarshallable: Source[A, NotUsed] => ToResponseMarshallable)
-  : IO[ToResponseMarshallable] =
+  : Resource[IO, ToResponseMarshallable] =
     stream.toPekkoSourceForHttpResponse.map(toMarshallable)
 
   private def observableToJsonArrayHttpEntity[A: Encoder: Tag](stream: Stream[IO, A])
     (using IORuntime)
-  : IO[HttpEntity.Chunked] =
-    for source <- stream
+  : Resource[IO, HttpEntity.Chunked] =
+    stream
       .parEvalMapUnbounded(o => IO:
         o.asJson.toByteSequence[ByteString])
       //??? Monix .mapParallelBatch()(o => o.asJson.toByteSequence[ByteString])
@@ -71,7 +70,7 @@ object StandardMarshallers:
       .appendOne(ByteString("]"))
       .intersperse(ByteString(","))
       .toPekkoSourceForHttpResponse
-    yield HttpEntity(`application/json`, source)
+      .map(HttpEntity(`application/json`, _))
 
   implicit val problemToEntityMarshaller: ToEntityMarshaller[Problem] =
     Marshaller.oneOf(

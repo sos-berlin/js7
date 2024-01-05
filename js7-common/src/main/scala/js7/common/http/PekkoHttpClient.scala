@@ -1,19 +1,19 @@
 package js7.common.http
 
-import js7.base.catsutils.CatsEffectExtensions.*
-import js7.base.fs2utils.StreamExtensions.*
 import cats.effect.{Deferred, IO, Outcome, Resource}
-import cats.syntax.flatMap.*
+import fs2.Stream
 import io.circe.syntax.*
 import io.circe.{Decoder, Encoder, Json}
 import java.util.Locale
 import js7.base.auth.SessionToken
+import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.circeutils.CirceUtils.implicits.*
 import js7.base.circeutils.CirceUtils.{RichCirceString, RichJson}
 import js7.base.configutils.Configs.RichConfig
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.*
 import js7.base.exceptions.HasIsIgnorableStackTrace
+import js7.base.fs2utils.StreamExtensions.*
 import js7.base.generic.SecretString
 import js7.base.io.https.Https.loadSSLContext
 import js7.base.io.https.HttpsConfig
@@ -23,9 +23,10 @@ import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.bytesPerSecondString
-import js7.base.utils.ByteSequenceToLinesStream
+import js7.base.utils.CatsUtils.syntax.whenItTakesLonger
 import js7.base.utils.MonixAntiBlocking.executeOn
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.{Atomic, ByteSequenceToLinesStream}
 import js7.base.web.{HttpClient, Uri}
 import js7.common.http.JsonStreamingSupport.{StreamingJsonHeader, StreamingJsonHeaders, `application/x-ndjson`}
 import js7.common.http.PekkoHttpClient.*
@@ -34,9 +35,6 @@ import js7.common.http.StreamingSupport.{toFs2Stream, *}
 import js7.common.pekkohttp.ByteSequenceStreamExtensions.*
 import js7.common.pekkohttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
 import js7.common.pekkoutils.ByteStrings.syntax.*
-import js7.base.utils.Atomic
-import js7.base.utils.Atomic.extensions.*
-import fs2.Stream
 import org.apache.pekko
 import org.apache.pekko.Done
 import org.apache.pekko.actor.ActorSystem
@@ -44,8 +42,6 @@ import org.apache.pekko.http.scaladsl.marshalling.Marshal
 import org.apache.pekko.http.scaladsl.model.ContentTypes.`application/json`
 import org.apache.pekko.http.scaladsl.model.HttpCharsets.`UTF-8`
 import org.apache.pekko.http.scaladsl.model.HttpEntity.{Chunk, ChunkStreamPart, Chunked, LastChunk}
-import fs2.Stream
-import js7.base.utils.CatsUtils.syntax.whenItTakesLonger
 import org.apache.pekko.http.scaladsl.model.HttpMethods.{GET, POST}
 import org.apache.pekko.http.scaladsl.model.MediaTypes.`text/plain`
 import org.apache.pekko.http.scaladsl.model.StatusCodes.{Forbidden, GatewayTimeout, Unauthorized}
@@ -184,12 +180,12 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
         .takeUntilEval(stop.get)
         .onFinalize:
           stopped.complete(()).void
-        .toPekkoSourceIO
-        .flatMap(pekkoChunks =>
+        .toPekkoSourceResource
+        .use: pekkoChunks =>
           sendReceive(
             HttpRequest(POST, uri.asPekko, AcceptJson,
               HttpEntity.Chunked(`application/x-ndjson`.toContentType, pekkoChunks)),
-            logData = Some("postStream")))
+            logData = Some("postStream"))
         .flatMap(unmarshal[B](POST, uri))
         .pipeIf(terminateStreamOnCancel)(_.onCancel:
           // Terminate stream properly to avoid "TCP Connection reset" error
@@ -205,12 +201,12 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
       .splitByteSequences(chunkSize)
       .map(Chunk(_))
       .append(Stream.emit(LastChunk))
-      .toPekkoSourceIO
-      .flatMap(pekkoChunks =>
+      .toPekkoSourceResource
+      .use: pekkoChunks =>
         sendReceive(
           HttpRequest(POST, uri.asPekko, AcceptJson,
             HttpEntity.Chunked(`application/x-ndjson`.toContentType, pekkoChunks)),
-          logData = Some("postStream")))
+          logData = Some("postStream"))
       .flatMap(unmarshal[Json](POST, uri))
 
   final def postWithHeaders[A: Encoder, B: Decoder](uri: Uri, data: A, headers: List[HttpHeader])

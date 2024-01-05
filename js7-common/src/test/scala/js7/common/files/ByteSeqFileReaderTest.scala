@@ -17,25 +17,25 @@ import scala.util.Random
 /**
   * @author Joacim Zschimmer
   */
-final class ChunkFileReaderTest extends OurTestSuite:
+final class ByteSeqFileReaderTest extends OurTestSuite:
 
-  "ChunkFileReader[ByteArray]" in:
+  "ByteSeqFileReader[ByteArray]" in:
     testWith[ByteArray]
 
-  "ChunkFileReader[fs2.Chunk[Byte]" in:
+  "ByteSeqFileReader[fs2.Chunk[Byte]" in:
     testWith[fs2.Chunk[Byte]]
 
-  "ChunkFileReader[ByteString]" in:
+  "ByteSeqFileReader[ByteString]" in:
     // Not used. Just for completeness. And test of Pekko's ByteString.
     testWith[ByteString]
 
   private def testWith[ByteSeq](using ByteSeq: ByteSequence[ByteSeq]) =
-    withTemporaryFile("ChunkFileReaderTest", ".tmp"): file =>
-      val content = ByteSeq.unsafeWrap(Random.nextBytes(3 * ChunkFileReader.ChunkSize - 7))
+    withTemporaryFile("ByteSeqFileReaderTest", ".tmp"): file =>
+      val content = ByteSeq.unsafeWrap(Random.nextBytes(3 * ByteSeqFileReader.ChunkSize - 7))
       file := content
 
       val result = mutable.Buffer.empty[ByteSeq]
-      autoClosing(new ChunkFileReader[ByteSeq](file)): reader =>
+      autoClosing(new ByteSeqFileReader[ByteSeq](file)): reader =>
         var eof = false
         while !eof do
           val byteSeq = reader.read()
