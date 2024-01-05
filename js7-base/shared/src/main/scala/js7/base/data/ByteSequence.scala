@@ -1,6 +1,7 @@
 package js7.base.data
 
 import cats.effect.{Resource, SyncIO}
+import cats.syntax.semigroup.*
 import cats.{Eq, Monoid, Show}
 import io.circe.{Decoder, Json}
 import java.io.{FileInputStream, InputStream, OutputStream}
@@ -14,6 +15,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.system.Java8Polyfill.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.*
+import scala.annotation.targetName
 import scala.collection.immutable
 import scala.collection.immutable.ArraySeq
 import scala.language.implicitConversions
@@ -31,7 +33,8 @@ extends Writable[ByteSeq], Monoid[ByteSeq], Eq[ByteSeq], Show[ByteSeq]:
   implicit lazy val classTag: ClassTag[ByteSeq] =
     ClassTag(clazz)
 
-  final def typeName = clazz.simpleScalaName
+  final def typeName: String =
+    clazz.simpleScalaName
 
   def apply[I](bytes: I*)(implicit I: Integral[I]): ByteSeq =
     unsafeWrap(bytes.view.map(i => I.toInt(i).toByte).toArray)
@@ -102,6 +105,10 @@ extends Writable[ByteSeq], Monoid[ByteSeq], Eq[ByteSeq], Show[ByteSeq]:
         unsafeWrap(array)
       case _ =>
         unsafeWrap(chunk.toArray)
+
+  /** Fast only when ByteSeq wraps a single Array. */
+  def toChunk(byteSeq: ByteSeq): fs2.Chunk[Byte] =
+    fs2.Chunk.array(unsafeArray(byteSeq))
 
   def show(byteSeq: ByteSeq) =
     val len = length(byteSeq)
@@ -188,18 +195,48 @@ extends Writable[ByteSeq], Monoid[ByteSeq], Eq[ByteSeq], Show[ByteSeq]:
     else
       unsafeWrap(unsafeArray(byteSeq).slice(from, until))
 
-  def chunk(byteSeq: ByteSeq, chunkSize: Int): Seq[ByteSeq] =
+  @targetName("concat")
+  def ++(start: ByteSeq, tail: ByteSeq): ByteSeq =
+    start |+| tail
+
+  //def chunk(byteSeq: ByteSeq, chunkSize: Int): Seq[ByteSeq] =
+  //  length(byteSeq) match
+  //    case 0 => Nil
+  //    case 1 => byteSeq :: Nil
+  //    case len =>
+  //      val n = (len + chunkSize - 1) / chunkSize
+  //      val array = new Array[ByteSeq](n)
+  //      var i = 0
+  //      while i < n do
+  //        array(i) = slice(byteSeq, i * chunkSize, (i + 1) * chunkSize)
+  //        i += 1
+  //      ArraySeq.unsafeWrapArray(array)
+
+  def chunk[F[_]](byteSeq: ByteSeq, maxSize: Int): fs2.Stream[F, ByteSeq] =
     length(byteSeq) match
-      case 0 => Nil
-      case 1 => byteSeq :: Nil
-      case len =>
-        val n = (len + chunkSize - 1) / chunkSize
-        val array = new Array[ByteSeq](n)
-        var i = 0
-        while i < n do
-          array(i) = slice(byteSeq, i * chunkSize, (i + 1) * chunkSize)
-          i += 1
-        ArraySeq.unsafeWrapArray(array)
+      case 0 => fs2.Stream.empty
+      case 1 => fs2.Stream.emit(byteSeq)
+      case _ =>
+        fs2.Stream.unfold(0): i =>
+          val offset = i * maxSize
+          val length = (i + 1) * maxSize
+          (length > 0) ? (this.slice(byteSeq, offset, length), i + 1)
+
+  def byteStream[F[_]](byteSeq: ByteSeq, maxSize: Int): fs2.Stream[F, Byte] =
+    length(byteSeq) match
+      case 0 => fs2.Stream.empty
+      case 1 => fs2.Stream.emit(at(byteSeq, 0))
+      case _ =>
+        unsafeWrappedArray(byteSeq) match
+          case None =>
+            chunk(byteSeq, maxSize)
+              .map(byteSeq => fs2.Chunk.array(unsafeArray(byteSeq)))
+              .unchunks
+          case Some(array) =>
+            fs2.Stream.unfoldChunk(0): i =>
+              val offset = i * maxSize
+              val length = (i + 1) * maxSize
+              (length > 0) ? (fs2.Chunk.array(array, offset, length), i + 1)
 
   def iterator(byteSeq: ByteSeq): Iterator[Byte]
 
@@ -212,7 +249,10 @@ extends Writable[ByteSeq], Monoid[ByteSeq], Eq[ByteSeq], Show[ByteSeq]:
   def toArray(byteSeq: ByteSeq): Array[Byte]
 
   def unsafeArray(byteSeq: ByteSeq): Array[Byte] =
-    toArray(byteSeq)
+    unsafeWrappedArray(byteSeq) getOrElse toArray(byteSeq)
+
+  def unsafeWrappedArray(byteSeq: ByteSeq): Option[Array[Byte]] =
+    None
 
   def copyToArray(byteSeq: ByteSeq, array: Array[Byte]): Int =
     copyToArray(byteSeq, array, 0, Int.MaxValue)
@@ -252,6 +292,10 @@ extends Writable[ByteSeq], Monoid[ByteSeq], Eq[ByteSeq], Show[ByteSeq]:
 
   def parseJson(byteSeq: ByteSeq): Checked[Json] =
     parseJsonByteArray(unsafeArray(byteSeq)).toChecked
+    // TODO Better performance with ByteBuffer instead of copying to an Array?
+    //unsafeWrappedArray(byteSeq) match
+    //  case None => parseJsonByteBuffer(toByteBuffer(byteSeq)).toChecked
+    //  case Some(array) => parseJsonByteArray(array).toChecked
 
 
 object ByteSequence:
@@ -326,8 +370,21 @@ object ByteSequence:
     def slice(from: Int, until: Int): ByteSeq =
       typeClassInstance.slice(self, from, until)
 
-    def chunk(chunkSize: Int): Seq[ByteSeq] =
+    @targetName("concat")
+    def ++(tail: ByteSeq): ByteSeq =
+      typeClassInstance.++(self, tail)
+
+    /** Split ByteSeq to parts of maxSize and stream them (by copying). */
+    def chunk[F[_]](chunkSize: Int): fs2.Stream[F, ByteSeq] =
       typeClassInstance.chunk(self, chunkSize)
+
+    /** Fast only when ByteSeq wraps a single Array. */
+    def toChunk: fs2.Chunk[Byte] =
+      typeClassInstance.toChunk(self)
+
+    /** Tries not to copy the underlying Array. */
+    def byteStream[F[_]](chunkSize: Int): fs2.Stream[F, Byte] =
+      typeClassInstance.byteStream(self, chunkSize)
 
     def iterator: Iterator[Byte] =
       typeClassInstance.iterator(self)
@@ -343,6 +400,10 @@ object ByteSequence:
 
     def unsafeArray: Array[Byte] =
       typeClassInstance.unsafeArray(self)
+
+    /** Returns the underlying Array or None. */
+    def unsafeWrappedArray: Option[Array[Byte]] =
+      typeClassInstance.unsafeWrappedArray(self)
 
     def copyToArray(array: Array[Byte]): Int =
       typeClassInstance.copyToArray(self, array)

@@ -11,7 +11,7 @@ import scala.collection.mutable
   * Splits a stream of UTF-8-encoded ByteSeqs into lines, separated by LF.
   */
 final class ByteSequenceToLinesStream[ByteSeq](
-  implicit ByteSeq: ByteSequence[ByteSeq])
+  using ByteSeq: ByteSequence[ByteSeq])
 extends (ByteSeq => Stream[IO, ByteArray]):
 
   private val lines = Vector.newBuilder[ByteArray]

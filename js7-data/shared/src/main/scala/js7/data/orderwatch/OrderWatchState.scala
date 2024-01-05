@@ -19,7 +19,6 @@ import js7.data.order.{FreshOrder, OrderId}
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
 import js7.data.orderwatch.OrderWatchState.{Arised, ArisedOrHasOrder, ExternalOrderSnapshot, HasOrder, ToOrderAdded, Vanished, logger}
 import js7.data.value.NamedValues
-import js7.data.workflow.position.BranchPath.syntax.*
 import scala.collection.View
 
 /**

@@ -12,6 +12,9 @@ import js7.base.system.Java8Polyfill.*
 import js7.base.test.OurTestSuite
 import js7.base.utils.SyncResource.syntax.*
 import scala.util.Random
+import fs2.{Chunk, Stream}
+import java.nio.charset.StandardCharsets
+import java.nio.charset.StandardCharsets.UTF_8
 
 abstract class ByteSequenceTester[ByteSeq](implicit ByteSeq: ByteSequence[ByteSeq])
 extends OurTestSuite:
@@ -92,12 +95,12 @@ extends OurTestSuite:
 
   "wrapChunk" in:
     val array = Array[Byte](1, 2, 3)
-    val chunk = fs2.Chunk.array(array)
+    val chunk = Chunk.array(array)
     val byteSeq = ByteSeq.wrapChunk(chunk)
     assert(byteSeq == ByteSeq(1, 2, 3))
 
     array(0) = 99
-    assert(chunk == fs2.Chunk[Byte](99, 2, 3))
+    assert(chunk == Chunk[Byte](99, 2, 3))
 
     // byteSeq has its own copy
     assert(byteSeq == ByteSeq(1, 2, 3))
@@ -105,14 +108,14 @@ extends OurTestSuite:
   "unsafeWrapChunk".tests:
     "whole Array is wrapped" in:
       val array = Array[Byte](1, 2, 3)
-      val chunk = fs2.Chunk.array(array)
+      val chunk = Chunk.array(array)
       val byteSeq = ByteSeq.unsafeWrapChunk(chunk)
 
-      assert(ByteSeq.unsafeWrapChunk(fs2.Chunk.array(array, 0, 2)).unsafeArray ne array)
-      assert(ByteSeq.unsafeWrapChunk(fs2.Chunk.array(array, 1, 2)).unsafeArray ne array)
+      assert(ByteSeq.unsafeWrapChunk(Chunk.array(array, 0, 2)).unsafeArray ne array)
+      assert(ByteSeq.unsafeWrapChunk(Chunk.array(array, 1, 2)).unsafeArray ne array)
 
       array(0) = 99
-      assert(chunk == fs2.Chunk[Byte](99, 2, 3))
+      assert(chunk == Chunk[Byte](99, 2, 3))
 
       // byteSeq wraps the original array passed via Chunk
       assert(byteSeq.unsafeArray eq array)
@@ -120,32 +123,32 @@ extends OurTestSuite:
 
     "Chunk.array checks strictly length of slice" in:
       intercept[IllegalArgumentException]:
-        fs2.Chunk.array(Array[Byte](1, 2, 3), 0, 4)
+        Chunk.array(Array[Byte](1, 2, 3), 0, 4)
 
       intercept[ArrayIndexOutOfBoundsException]:
-        fs2.Chunk.array(Array[Byte](1, 2, 3), 3, 1)
+        Chunk.array(Array[Byte](1, 2, 3), 3, 1)
 
     "prefix of Array is not wrapped" in:
       val array = Array[Byte](1, 2, 3)
-      val byteSeq = ByteSeq.unsafeWrapChunk(fs2.Chunk.array(array, 0, 2))
+      val byteSeq = ByteSeq.unsafeWrapChunk(Chunk.array(array, 0, 2))
 
       assert(byteSeq.unsafeArray ne array)
       assert(byteSeq == ByteSeq(1, 2))
 
     "suffix of Array is not wrapped" in:
       val array = Array[Byte](1, 2, 3)
-      val byteSeq = ByteSeq.unsafeWrapChunk(fs2.Chunk.array(array, 1, 2))
+      val byteSeq = ByteSeq.unsafeWrapChunk(Chunk.array(array, 1, 2))
 
       assert(byteSeq.unsafeArray ne array)
       assert(byteSeq == ByteSeq(2, 3))
 
   "unwrapChunk" in:
     val a = Array[Byte](1, 2, 3)
-    val chunk = fs2.Chunk.array(a)
+    val chunk = Chunk.array(a)
 
-    assert(chunk.asInstanceOf[fs2.Chunk.ArraySlice[Byte]].values eq a)
-    assert(chunk.asInstanceOf[fs2.Chunk.ArraySlice[Byte]].offset == 0)
-    assert(chunk.asInstanceOf[fs2.Chunk.ArraySlice[Byte]].length == a.length)
+    assert(chunk.asInstanceOf[Chunk.ArraySlice[Byte]].values eq a)
+    assert(chunk.asInstanceOf[Chunk.ArraySlice[Byte]].offset == 0)
+    assert(chunk.asInstanceOf[Chunk.ArraySlice[Byte]].length == a.length)
 
     a(2) = 33
     assert(chunk.toVector == Vector[Byte](1, 2, 33))
@@ -280,10 +283,18 @@ extends OurTestSuite:
 
   "chunk" in:
     val byteSeq = ByteSeq("abcd")
-    assert(byteSeq.chunk(1) == Seq(ByteSeq("a"), ByteSeq("b"), ByteSeq("c"), ByteSeq("d")))
-    assert(byteSeq.chunk(2) == Seq(ByteSeq("ab"), ByteSeq("cd")))
-    assert(byteSeq.chunk(3) == Seq(ByteSeq("abc"), ByteSeq("d")))
-    assert(byteSeq.chunk(4) == Seq(ByteSeq("abcd")))
+    assert(byteSeq.chunk(1) == Stream(ByteSeq("a"), ByteSeq("b"), ByteSeq("c"), ByteSeq("d")))
+    assert(byteSeq.chunk(2) == Stream(ByteSeq("ab"), ByteSeq("cd")))
+    assert(byteSeq.chunk(3) == Stream(ByteSeq("abc"), ByteSeq("d")))
+    assert(byteSeq.chunk(4) == Stream(ByteSeq("abcd")))
+
+  "byteStream" in:
+    val byteSeq = ByteSeq("abcd")
+    def chunk(string: String) = Chunk.array(string.getBytes(UTF_8))
+    assert(byteSeq.byteStream(1).chunks == Stream(chunk("a"), chunk("b"), chunk("c"), chunk("d")))
+    assert(byteSeq.byteStream(2).chunks == Stream(chunk("ab"), chunk("cd")))
+    assert(byteSeq.byteStream(3).chunks == Stream(chunk("abc"), chunk("d")))
+    assert(byteSeq.byteStream(4).chunks == Stream(chunk("abcd")))
 
   "utf8String" in:
     assert(ByteSeq("aå").utf8String == "aå")

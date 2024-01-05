@@ -17,6 +17,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.continueWithLast
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichThrowable}
+import scala.annotation.nowarn
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters.*
@@ -108,9 +109,11 @@ object BasicDirectoryWatch:
   private val sensitivity = isMac ? // https://bugs.openjdk.java.net/browse/JDK-7133447
     com.sun.nio.file.SensitivityWatchEventModifier.HIGH
 
+  @nowarn("msg=SensitivityWatchEventModifier in package com.sun.nio.file is deprecated")
   val systemWatchDelay: FiniteDuration =
     sensitivity.fold(0.s)(_.sensitivityValueInSeconds.s/*2s*/)
 
+  @nowarn("msg=class SensitivityWatchEventModifier in package com.sun.nio.file is deprecated")
   private val modifiers: Array[WatchEvent.Modifier] =
     sensitivity match
       case None => Array.empty

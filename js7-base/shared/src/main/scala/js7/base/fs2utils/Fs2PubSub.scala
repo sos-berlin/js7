@@ -8,6 +8,8 @@ import fs2.Stream
 import fs2.concurrent.Topic
 import js7.base.catsutils.UnsafeMemoizable
 
+// TODO Use fs2.concurrent.Channel ?
+
 final class Fs2PubSub[F[_]: UnsafeMemoizable, A <: AnyRef] private(
   using F: Concurrent[F] & Sync[F]):
 

@@ -14,7 +14,7 @@ final case class PostNotice(
 
 
 object PostNotice:
-  @nowarn("msg=deprecated")
+  @nowarn("msg=PostNotice in package js7.data.workflow.instructions is deprecated")
   val compatibleSubtype: Subtype[PostNotices] =
     Subtype.decodeCompatible(deriveDecoder[PostNotice])(postNotice =>
       Right(PostNotices(Vector(postNotice.boardPath), postNotice.sourcePos)))

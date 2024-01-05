@@ -84,7 +84,7 @@ object Delayer:
       .flatMap(delayer => Stream
         .constant((), chunkSize = 1)
         .evalMap(_ => delayer.sleep))
-      .prepend(())
+      .prependOne(())
 
   object syntax:
     extension[A](io: IO[A])

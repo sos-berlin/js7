@@ -17,11 +17,11 @@ final class StreamExtensionsTest extends OurAsyncTestSuite:
     val stream = ("one" +: Stream[Pure, Int](2, 3))
     assert(stream.toList == List("one", 2, 3))
 
-  "prepend" in:
-    val intStream: Stream[Pure, Int] = Stream(2, 3).prepend(1)
+  "prependOne" in:
+    val intStream: Stream[Pure, Int] = Stream(2, 3).prependOne(1)
     assert(intStream.compile.to(Seq) == Seq(1, 2, 3))
 
-    val anyStream = Stream(2, 3).prepend("one")
+    val anyStream = Stream(2, 3).prependOne("one")
     assert(anyStream.toList == List("one", 2, 3))
 
   "takeUntil" in:

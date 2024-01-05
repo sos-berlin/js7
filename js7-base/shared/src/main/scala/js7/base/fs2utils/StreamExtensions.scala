@@ -3,7 +3,7 @@ package js7.base.fs2utils
 import cats.effect
 import cats.effect.{Concurrent, Resource, Sync}
 import cats.syntax.apply.*
-import fs2.Stream
+import fs2.{Chunk, RaiseThrowable, Stream}
 import js7.base.time.ScalaTime.RichDeadline
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Deadline, FiniteDuration}
@@ -12,19 +12,30 @@ object StreamExtensions:
 
   extension[F[_], A, B >: A](b: B)
     def +:(stream: Stream[F, A]): Stream[F, B] =
-      stream.prepend(b)
+      stream.prependOne(b)
 
   extension[F[_], A](stream: Stream[F, A])
     //def +:[A1 >: A](a: A1): Stream[F, A1] =
-    //  prepend(a)
+    //  prependOne(a)
 
-    def prepend[A1 >: A](a: A1): Stream[F, A1] =
+    def prependOne[A1 >: A](a: A1): Stream[F, A1] =
       Stream.emit[F, A1](a) ++ stream
+
+    def appendOne[A1 >: A](a: A1): Stream[F, A1] =
+      stream ++ Stream.emit[F, A1](a)
 
     def tapEach(f: A => Unit)(using F: Sync[F]): Stream[F, A] =
       stream.evalMap(a => F.delay:
         f(a)
         a)
+
+    def tapEachChunk(f: Chunk[A] => Unit)(using F: Sync[F]): Stream[F, A] =
+      stream
+        .chunks
+        .evalMap(chunk => F.delay:
+          f(chunk)
+          chunk)
+        .unchunks
 
     def takeUntilEval[X](completed: F[X])(using Concurrent[F]): Stream[F, A] =
       takeUntil(Stream.eval(completed))
@@ -36,6 +47,11 @@ object StreamExtensions:
           completed.as(Left(()))
         .takeWhile(_.isRight)
         .map(_.asInstanceOf[Right[Unit, A]].value)
+
+    /** Like IO recoverWith. */
+    def recoverWith(pf: PartialFunction[Throwable, Stream[F, A]])(using F: RaiseThrowable[F])
+    : Stream[F, A] =
+      stream.handleErrorWith(pf orElse (t => Stream.raiseError[F](t)))
 
     /** Like Monix Observable doOnSubscribe. */
     @deprecated("Use onStart")

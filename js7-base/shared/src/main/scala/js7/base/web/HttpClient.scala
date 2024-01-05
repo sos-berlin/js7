@@ -37,7 +37,7 @@ trait HttpClient:
   : IO[B]
 
   @TestOnly
-  def postStreamJsonString(uri: Uri, data: Stream[IO, String])
+  def postJsonStringStream(uri: Uri, data: Stream[IO, String])
     (implicit s: IO[Option[SessionToken]])
   : IO[Json]
 

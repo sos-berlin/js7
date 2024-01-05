@@ -9,11 +9,13 @@ import cats.syntax.monadError.*
 import cats.{ApplicativeError, Functor, MonadError}
 import js7.base.log.Logger
 import js7.base.utils.CancelableFuture
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
 object CatsEffectExtensions:
 
   extension[F[_], A](underlying: F[A])
+    /** Like Monix. */
     def onErrorRestartLoop[S](initial: S)(onError: (Throwable, S, S => F[A]) => F[A])
       (using ApplicativeError[F, Throwable])
     : F[A] =
@@ -57,6 +59,8 @@ object CatsEffectExtensions:
     inline def adHocInfo(inline msg: String)(using src: sourcecode.Enclosing): IO[A] =
       io.flatTap(a => IO(Logger.info(msg)))
 
+  private val trueIO = IO.pure(true)
+  private val falseIO = IO.pure(false)
 
   extension(x: IO.type)
     def left[L](value: L): IO[Either[L, Nothing]] =
@@ -65,6 +69,21 @@ object CatsEffectExtensions:
     def right[R](value: R): IO[Either[Nothing, R]] =
       IO.pure(Right(value))
 
+    inline def True: IO[Boolean] =
+      trueIO
+
+    inline def False: IO[Boolean] =
+      falseIO
+
+    @deprecated("Use more Cats-like fromFutureWithEC", "v2.7")
+    def deferFutureAction[A](future: ExecutionContext => Future[A]): IO[A] =
+      fromFutureWithEC(ec => IO(future(ec)))
+
+    def fromFutureWithEC[A](io: ExecutionContext => IO[Future[A]]): IO[A] =
+      for
+        ec <- IO.executionContext
+        a <- IO.fromFuture(io(ec))
+      yield a
 
   //extension[F[_], E, A](fiber: Fiber[F, E, A])
   //  def joinStd(using F: MonadError[F, E]): F[A] =
