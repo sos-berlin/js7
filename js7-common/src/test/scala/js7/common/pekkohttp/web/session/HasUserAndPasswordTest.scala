@@ -1,7 +1,6 @@
 package js7.common.pekkohttp.web.session
 
 import cats.effect.Resource
-import cats.syntax.flatMap.*
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.generic.SecretString
 import js7.base.io.https.HttpsConfig
@@ -14,7 +13,6 @@ import js7.common.http.PekkoHttpClient
 import js7.data.session.HttpSessionApi
 import js7.base.utils.MVar
 import cats.effect.IO
-import cats.effect.Fiber
 import js7.base.catsutils.UnsafeMemoizable.given
 
 final class HasUserAndPasswordTest extends OurTestSuite, SessionRouteTester, TestCatsEffect:

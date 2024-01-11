@@ -11,7 +11,6 @@ import org.apache.pekko.http.scaladsl.model.StatusCodes.{Forbidden, InternalServ
 import org.apache.pekko.http.scaladsl.model.headers.Accept
 import org.apache.pekko.http.scaladsl.server.Directives.*
 import org.apache.pekko.http.scaladsl.testkit.ScalatestRouteTest
-import scala.concurrent.Future
 import scala.util.control.NoStackTrace
 
 /**

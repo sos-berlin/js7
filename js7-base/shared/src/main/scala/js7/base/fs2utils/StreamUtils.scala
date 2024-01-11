@@ -11,7 +11,6 @@ import java.nio.channels.{Channels, ReadableByteChannel}
 import java.util
 import js7.base.log.Logger
 import js7.base.utils.CloseableIterator
-import js7.base.utils.ScalaUtils.*
 
 object StreamUtils:
 

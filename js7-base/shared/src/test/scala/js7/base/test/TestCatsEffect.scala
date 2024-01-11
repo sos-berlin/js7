@@ -7,9 +7,11 @@ import scala.concurrent.ExecutionContext
 trait TestCatsEffect:
 
   // Or use own IORuntime for each test class ???
-  protected implicit final def ioRuntime: IORuntime =
+  protected final def ioRuntime: IORuntime =
     //IORuntime.global
     OurIORuntime.ioRuntime
+
+  given IORuntime = ioRuntime
 
   implicit def executionContext: ExecutionContext =
     ioRuntime.compute

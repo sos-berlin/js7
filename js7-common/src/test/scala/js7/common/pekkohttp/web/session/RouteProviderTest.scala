@@ -5,7 +5,6 @@ import js7.base.Js7Version
 import js7.base.auth.{HashedPassword, SessionToken, SimpleUser, UserId}
 import js7.base.configutils.Configs.*
 import js7.base.generic.SecretString
-import js7.base.problem.Checked.*
 import js7.base.test.{OurTestSuite, TestCatsEffect}
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -19,7 +18,6 @@ import org.apache.pekko.http.scaladsl.model.headers.{Authorization, BasicHttpCre
 import org.apache.pekko.http.scaladsl.server.Directives.*
 import org.apache.pekko.http.scaladsl.server.Route
 import org.apache.pekko.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
-import scala.concurrent.Future
 import scala.concurrent.duration.*
 
 /**

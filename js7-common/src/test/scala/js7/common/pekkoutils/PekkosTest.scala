@@ -1,11 +1,10 @@
 package js7.common.pekkoutils
 
+import cats.effect.IO
 import js7.base.test.{OurTestSuite, TestCatsEffect}
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.common.pekkoutils.Pekkos.*
-import cats.effect.IO
-import cats.effect.Fiber
 import org.apache.pekko
 import org.apache.pekko.actor.{Actor, ActorPath, ActorSystem, Props}
 import org.apache.pekko.util.ByteString

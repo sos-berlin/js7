@@ -1,11 +1,9 @@
 package js7.base.utils
 
-import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.Duration
 import scala.concurrent.{CanAwait, ExecutionContext, Future}
 import scala.util.Try
 
-@TestOnly // TODO Test is missing
 final class CancelableFuture[A](future: Future[A], val cancel: () => Future[Unit])
 extends Future[A]:
 
@@ -38,5 +36,5 @@ extends Future[A]:
 
 object CancelableFuture:
 
-  def apply[A](pair: (Future[A], () => Future[Unit])): CancelableFuture[A] =
+  def fromPair[A](pair: (Future[A], () => Future[Unit])): CancelableFuture[A] =
     new CancelableFuture(pair._1, pair._2)

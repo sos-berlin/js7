@@ -11,19 +11,19 @@ object ScalaTestUtils extends org.scalatest.Assertions:
   private val DefaultTimeLimit = Duration(10, SECONDS)
   private val DefaultStep = Duration(10, MILLISECONDS)
 
-  def awaitAndAssert(condition: => Boolean)
+  inline def awaitAndAssert(inline condition: => Boolean)
     (implicit prettifier: Prettifier, pos: source.Position)
   : Assertion =
     awaitAndAssert(DefaultTimeLimit, DefaultStep)(condition)
 
-  def awaitAndAssert(timeLimit: FiniteDuration)
-    (condition: => Boolean)
+  inline def awaitAndAssert(timeLimit: FiniteDuration)
+    (inline condition: => Boolean)
     (implicit prettifier: Prettifier, pos: source.Position)
   : Assertion =
     awaitAndAssert(timeLimit, DefaultStep)(condition)
 
-  def awaitAndAssert(timeLimit: FiniteDuration, step: FiniteDuration = DefaultStep)
-    (condition: => Boolean)
+  inline def awaitAndAssert(timeLimit: FiniteDuration, step: FiniteDuration = DefaultStep)
+    (inline condition: => Boolean)
     (implicit prettifier: Prettifier, pos: source.Position)
   : Assertion =
     val until = now + timeLimit

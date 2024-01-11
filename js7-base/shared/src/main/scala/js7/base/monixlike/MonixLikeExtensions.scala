@@ -24,7 +24,6 @@ object MonixLikeExtensions:
 
     def scheduleAtFixedRate(delay: FiniteDuration, repeat: FiniteDuration)(body: => Unit)
     : Cancelable =
-      val delayNanos = delay.toNanos
       val repeatNanos = repeat.toNanos
       var t = scheduler.monotonicNanos() + delay.toNanos
 
@@ -96,4 +95,4 @@ object MonixLikeExtensions:
         case Left(t) => pf.applyOrElse(t, _ => IO.unit)
 
     def unsafeToCancelableFuture()(using IORuntime): CancelableFuture[A] =
-      CancelableFuture(io.unsafeToFutureCancelable())
+      CancelableFuture.fromPair(io.unsafeToFutureCancelable())

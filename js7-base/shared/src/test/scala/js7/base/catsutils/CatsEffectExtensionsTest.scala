@@ -2,7 +2,6 @@ package js7.base.catsutils
 
 import cats.effect.IO
 import cats.syntax.option.*
-import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.catsutils.CatsEffectExtensionsTest.*
 import js7.base.log.Logger
 import js7.base.monixlike.MonixLikeExtensions.*

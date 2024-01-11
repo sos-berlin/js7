@@ -2,7 +2,6 @@ package js7.common.files
 
 import cats.syntax.foldable.*
 import cats.syntax.monoid.*
-import js7.base.data.ByteSequence.ops.*
 import js7.base.data.{ByteArray, ByteSequence}
 import js7.base.fs2utils.Fs2ChunkByteSequence.*
 import js7.base.io.file.FileUtils.syntax.*
@@ -30,11 +29,11 @@ final class ByteSeqFileReaderTest extends OurTestSuite:
     testWith[ByteString]
 
   private def testWith[ByteSeq](using ByteSeq: ByteSequence[ByteSeq]) =
-    withTemporaryFile("ByteSeqFileReaderTest", ".tmp"): file =>
-      val content = ByteSeq.unsafeWrap(Random.nextBytes(3 * ByteSeqFileReader.ChunkSize - 7))
-      file := content
+    val content = ByteSeq.unsafeWrap(Random.nextBytes(3 * ByteSeqFileReader.ChunkSize - 7))
+    val result = mutable.Buffer.empty[ByteSeq]
 
-      val result = mutable.Buffer.empty[ByteSeq]
+    withTemporaryFile("ByteSeqFileReaderTest", ".tmp"): file =>
+      file := content
       autoClosing(new ByteSeqFileReader[ByteSeq](file)): reader =>
         var eof = false
         while !eof do
@@ -44,4 +43,4 @@ final class ByteSeqFileReaderTest extends OurTestSuite:
           else
             result += byteSeq
 
-      assert(result.toSeq.combineAll == content)
+    assert(result.toSeq.combineAll == content)

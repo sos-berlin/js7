@@ -1,12 +1,10 @@
 package js7.base.fs2utils
 
 import cats.effect
-import cats.effect.{Concurrent, IO, Resource, Sync}
+import cats.effect.std.Queue
+import cats.effect.{Concurrent, IO, Ref, Resource, Sync}
 import cats.syntax.apply.*
 import fs2.{Chunk, RaiseThrowable, Stream}
-import js7.base.data.ByteSequence
-import js7.base.log.Logger
-import js7.base.log.Logger.syntax.*
 import js7.base.time.ScalaTime.RichDeadline
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Deadline, FiniteDuration}
@@ -64,48 +62,6 @@ object StreamExtensions:
     //          val pair = chunk(i)
     //          pair._1.nonEmpty ? pair
 
-    /** Taken from Monix Observable:
-     * Mirror the source Stream as long as the source keeps emitting items,
-     * otherwise if timeout passes without the source emitting anything new
-     * then the Stream will start emitting the last item repeatedly. */
-    def echoRepeated(duration: FiniteDuration)(using F[A] =:= IO[A]): Stream[IO, A] =
-      Logger.error("### ❗️Implement echoRepeated ❗️") // FIXME
-
-      //Stream
-      //  .eval(Ref.of[IO, Option[A]](None))
-      //  .flatMap: last =>
-      //    stream.chunks.filter(_.nonEmpty).flatMap: chunk =>
-      //      ???
-
-      //Stream
-      //  .eval:
-      //    for
-      //      last <- Ref.of[IO, Option[A]](None)
-      //      emptyFiber <- IO.unit.start
-      //      repeat <- Ref.of[IO, FiberIO[Unit]](emptyFiber)
-      //    yield (last, repeat)
-      //  .flatMap: (last, repeat) =>
-      //    stream.chunks.filter(_.nonEmpty).pull.uncons1.flatMap:
-      //      case None => Pull.done
-      //      case Some((firstChunk, tail)) =>
-      //        val x: Pull[F, Chunk[A], Option[Stream[F, A]]] =
-      //          Pull.output1(firstChunk) >>
-      //            tail
-      //              .flatMap: chunk =>
-      //                last.set(chunk.last.get)
-      //                Stream.emit(chunk) ++
-      //                  Stream.fixedDelay(duration).as(Chunk(chunk.last.get)).repeat
-      //              .unchunks
-      //              .pull
-      //              .echoChunk
-      //        x
-      stream.asInstanceOf[Stream[IO, A]]
-
-    def insertHeartbeatsOnSlowUpstream(duration: FiniteDuration, heartbeat: A): Stream[F, A] =
-      Logger.error("### ❗️Implement insertHeartbeatsOnSlowUpstream ❗️") // FIXME
-      stream
-
-
     /** Like IO recoverWith. */
     def recoverWith(pf: PartialFunction[Throwable, Stream[F, A]])(using F: RaiseThrowable[F])
     : Stream[F, A] =
@@ -140,6 +96,64 @@ object StreamExtensions:
           .onFinalizeCase: exitCase =>
             F.delay(onComplete(startedAt.elapsed, count, exitCase))
 
+
+  extension[A](stream: Stream[IO, A])
+
+    /** Mirror the source Stream as long as the source keeps emitting items,
+     * otherwise if timeout passes without the source emitting anything new
+     * then the Stream will start emitting the last item repeatedly.
+     *
+     * — <i>Taken from Monix Observable</i>
+     */
+    def echoRepeated(delay: FiniteDuration): Stream[IO, A] =
+      for
+        queue <- Stream.eval(Queue.bounded[IO, Option[Either[Throwable, Chunk[A]]]](capacity = 1))
+        _ <- Stream.supervise:
+          stream.chunks
+            .filter(_.nonEmpty) // The processing below requires non-empty chunks
+            .attempt
+            .enqueueNoneTerminated(queue)
+            .compile.drain
+        maybeFirst <- Stream.eval(queue.take)
+        result <- maybeFirst match
+          case None => Stream.empty // End
+          case Some(Left(error)) => Stream.raiseError[IO](error)
+          case Some(Right(firstChunk)) =>
+            for
+              // Above we assured that firstChunk.isNonEmpty
+              lastRef <- Stream.eval(Ref.of[IO, A](firstChunk.last.get))
+              a <- Stream
+                .chunk(firstChunk)
+                .append(Stream
+                  .eval:
+                    queue.take
+                      .timeoutTo(delay, lastRef.get.map(last => Some(Right(Chunk(last)))))
+                      .flatTap(_
+                        .flatMap(_.toOption)
+                        .flatMap(_.last)
+                        .fold(IO.none)(lastRef.set))
+                  .repeat
+                  .unNoneTerminate
+                  .rethrow
+                  .unchunks)
+            yield a
+      yield result
+
+    def insertHeartbeatsOnSlowUpstream(delay: FiniteDuration, heartbeat: A): Stream[IO, A] =
+      for
+        queue <- Stream.eval:
+          Queue.bounded[IO, Option[Either[Throwable, Chunk[A]]]](capacity = 1)
+        _ <- Stream.supervise:
+          stream.chunks.attempt.enqueueNoneTerminated(queue).compile.drain
+        a <-
+          Stream
+            .eval:
+              queue.take.timeoutTo(delay, IO.some(Right(Chunk(heartbeat))))
+            .repeat
+            .unNoneTerminate
+            .rethrow
+            .unchunks
+      yield a
 
   extension(x: Stream.type)
     /** Like Monix Observable fromAsyncStateAction. */

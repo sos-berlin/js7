@@ -2,14 +2,12 @@ package js7.common.pekkohttp.web.session
 
 import cats.effect.IO
 import cats.effect.testkit.TestControl
-import org.apache.pekko.http.scaladsl.testkit.ScalatestRouteTest
 import js7.base.Js7Version
 import js7.base.auth.{HashedPassword, SessionToken, SimpleUser, UserId}
-import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.generic.{Completed, SecretString}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problems.InvalidSessionTokenProblem
-import js7.base.test.{OurAsyncTestSuite, OurTestSuite, TestCatsEffect}
+import js7.base.test.{OurAsyncTestSuite, TestCatsEffect}
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.version.Version

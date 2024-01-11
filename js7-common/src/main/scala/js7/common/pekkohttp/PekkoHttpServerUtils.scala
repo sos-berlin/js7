@@ -6,29 +6,21 @@ import fs2.Stream
 import io.circe.Encoder
 import io.circe.syntax.EncoderOps
 import izumi.reflect.Tag
-import js7.base.auth.UserId
 import js7.base.circeutils.CirceUtils.RichJson
-import js7.base.data.ByteSequence.ops.*
 import js7.base.fs2utils.Fs2ChunkByteSequence.*
-import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.fs2utils.StreamExtensions.takeUntilEval
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{LogLevel, Logger}
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime.RichDeadline
-import js7.base.utils.FutureCompletion
-import js7.base.utils.FutureCompletion.syntax.*
-import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.PekkoHttpClient.`x-js7-request-id`
 import js7.common.http.StreamingSupport.*
-import js7.common.pekkohttp.ByteSequenceStreamExtensions.*
 import js7.common.pekkohttp.StandardDirectives.ioRoute
 import js7.common.pekkohttp.StandardMarshallers.*
-import js7.common.pekkoutils.ByteStrings.syntax.{ByteStringToByteSequence, byteStringByteSequence}
+import js7.common.pekkoutils.ByteStrings.syntax.ByteStringToByteSequence
 import org.apache.pekko.http.scaladsl.marshalling.{ToResponseMarshallable, ToResponseMarshaller}
-import org.apache.pekko.http.scaladsl.model.HttpEntity.Chunk as PekkoChunk
 import org.apache.pekko.http.scaladsl.model.headers.Accept
-import org.apache.pekko.http.scaladsl.model.{ContentType, HttpEntity, HttpHeader, HttpRequest, MediaType, Uri}
+import org.apache.pekko.http.scaladsl.model.{ContentType, HttpEntity, HttpHeader, MediaType, Uri}
 import org.apache.pekko.http.scaladsl.server.Directives.*
 import org.apache.pekko.http.scaladsl.server.PathMatcher.{Matched, Unmatched}
 import org.apache.pekko.http.scaladsl.server.{ContentNegotiator, Directive, Directive0, Directive1, MalformedHeaderRejection, MissingHeaderRejection, PathMatcher, PathMatcher0, Route, UnacceptedResponseContentTypeRejection, ValidationRejection}

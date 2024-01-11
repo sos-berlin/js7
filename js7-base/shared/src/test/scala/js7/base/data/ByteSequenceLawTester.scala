@@ -8,7 +8,7 @@ import org.typelevel.discipline.scalatest.FunSuiteDiscipline
 
 class ByteSequenceLawTester[ByteSeq](implicit ByteSeq: ByteSequence[ByteSeq])
 extends AnyFunSuite, FunSuiteDiscipline, Configuration:
-  
+
   private implicit def arbByteSeq: Arbitrary[ByteSeq] =
     Arbitrary(Gen.oneOf(Gen.const(ByteSeq.empty), Arbitrary.arbitrary[String] map ByteSeq.fromString))
 

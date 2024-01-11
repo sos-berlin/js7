@@ -26,7 +26,6 @@ import js7.data.problems.InvalidLoginProblem
 import js7.data.session.HttpSessionApi
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import cats.effect.IO
-import cats.effect.Fiber
 import org.scalatest.matchers.should.Matchers.*
 import scala.concurrent.duration.Deadline.now
 

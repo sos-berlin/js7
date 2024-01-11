@@ -29,7 +29,6 @@ import js7.common.pekkoutils.Pekkos
 import js7.common.pekkoutils.Pekkos.newActorSystem
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
 import cats.effect.IO
-import cats.effect.Fiber
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.http.scaladsl.model.HttpMethods.GET
 import org.apache.pekko.http.scaladsl.model.StatusCodes.OK

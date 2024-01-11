@@ -1,29 +1,27 @@
 package js7.common.pekkohttp.web.session
 
-import org.apache.pekko.http.scaladsl.model.StatusCodes.{Forbidden, ServiceUnavailable, Unauthorized}
-import org.apache.pekko.http.scaladsl.model.headers.{HttpChallenges, `WWW-Authenticate`}
-import org.apache.pekko.http.scaladsl.server.Directives.*
-import org.apache.pekko.http.scaladsl.server.Route
-import org.apache.pekko.http.scaladsl.testkit.ScalatestRouteTest
+import cats.effect.{Deferred, IO}
 import js7.base.auth.{SessionToken, UserId, ValidUserPermission}
 import js7.base.configutils.Configs.*
+import js7.base.test.TestCatsEffect
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Allocated
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.web.Uri
+import js7.common.http.PekkoHttpClient
+import js7.common.http.PekkoHttpClient.HttpException
 import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegment
 import js7.common.pekkohttp.web.PekkoWebServer
 import js7.common.pekkohttp.web.auth.GateKeeper
 import js7.common.pekkoutils.Pekkos
-import js7.common.http.PekkoHttpClient
-import js7.common.http.PekkoHttpClient.HttpException
-import cats.effect.{Deferred, Fiber, IO}
-import fs2.concurrent.Signal
-import js7.base.test.TestCatsEffect
+import org.apache.pekko.http.scaladsl.model.StatusCodes.{Forbidden, ServiceUnavailable, Unauthorized}
+import org.apache.pekko.http.scaladsl.model.headers.{HttpChallenges, `WWW-Authenticate`}
+import org.apache.pekko.http.scaladsl.server.Directives.*
+import org.apache.pekko.http.scaladsl.server.Route
+import org.apache.pekko.http.scaladsl.testkit.ScalatestRouteTest
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.{BeforeAndAfterAll, Suite}
-import scala.concurrent.Future
 
 trait SessionRouteTester extends BeforeAndAfterAll, TestCatsEffect, ScalatestRouteTest, SessionRoute:
   this: Suite =>

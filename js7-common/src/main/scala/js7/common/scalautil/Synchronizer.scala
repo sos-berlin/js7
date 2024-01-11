@@ -11,6 +11,7 @@ import scala.concurrent.duration.*
   * @author Joacim Zschimmer
   */
 final class Synchronizer(what: String):
+
   private val synchronizeLock = new ReentrantLock  // No fairness
 
   /** Blocking synchronization with some debug messages logged. */

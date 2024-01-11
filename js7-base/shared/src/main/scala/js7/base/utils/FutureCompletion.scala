@@ -1,6 +1,5 @@
 package js7.base.utils
 
-import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, Resource}
 import fs2.Stream
 import java.util.concurrent.atomic.AtomicInteger

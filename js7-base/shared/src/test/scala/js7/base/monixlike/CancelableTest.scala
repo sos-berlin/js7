@@ -1,16 +1,20 @@
 package js7.base.monixlike
 
-import cats.effect.IO
+import js7.base.monixlike.MonixLikeExtensions.scheduleOnce
 import js7.base.test.{OurTestSuite, TestCatsEffect}
-import js7.base.thread.Futures.implicits.*
-import org.scalatest.freespec.AnyFreeSpec
-import scala.concurrent.Future
+import js7.base.time.ScalaTime.*
 
 final class CancelableTest extends OurTestSuite, TestCatsEffect:
 
-  "unsafeCancelAndForget" in:
-    pending
-    //val cancelable: Cancelable = Cancelable:
-    //  IO.never.onCancel(IO("canceled")).unsafeRunCancelable()
-    //assert:
-    //  cancelable.unsafeCancelAndForget().await(99.s) == "canceled"
+  private val scheduler = ioRuntime.scheduler
+
+  "cancel" in:
+    var scheduled = false
+
+    val cancelable: Cancelable =
+      scheduler.scheduleOnce(50.ms):
+        scheduled = true
+
+    cancelable.unsafeCancelAndForget()
+    sleep(00.ms)
+    assert(!scheduled)

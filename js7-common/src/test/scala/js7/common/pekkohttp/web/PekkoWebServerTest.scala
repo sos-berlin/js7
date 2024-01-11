@@ -1,6 +1,6 @@
 package js7.common.pekkohttp.web
 
-import cats.effect.{Fiber, IO}
+import cats.effect.IO
 import java.net.{InetAddress, InetSocketAddress}
 import java.nio.file.Files.{createDirectory, createTempDirectory}
 import javax.net.ssl.SSLHandshakeException

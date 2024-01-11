@@ -1,7 +1,6 @@
 package js7.base.stream
 
 import cats.effect.IO
-import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.monixlike.MonixLikeExtensions.unsafeToCancelableFuture
 import js7.base.problem.{Problem, ProblemException}
 import js7.base.stream.StreamNumberedQueueTest.*

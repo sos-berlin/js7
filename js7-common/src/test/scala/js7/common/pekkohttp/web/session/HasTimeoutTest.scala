@@ -2,7 +2,7 @@ package js7.common.pekkohttp.web.session
 
 import cats.effect.IO
 import cats.effect.testkit.TestControl
-import js7.base.test.{OurAsyncTestSuite, OurTestSuite, TestCatsEffect}
+import js7.base.test.OurAsyncTestSuite
 import scala.concurrent.duration.*
 
 /**
