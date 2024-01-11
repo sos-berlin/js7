@@ -1,15 +1,14 @@
 package js7.common.pekkohttp.web
 
 import cats.data.NonEmptySeq
-import cats.effect.Resource
-import cats.effect.IO
+import cats.effect.{IO, Resource}
 import cats.instances.vector.*
 import cats.syntax.all.*
 import com.typesafe.config.{Config, ConfigFactory}
 import java.net.InetSocketAddress
 import java.nio.file.attribute.FileTime
 import java.nio.file.{Files, Path}
-import js7.base.catsutils.CatsEffectExtensions.onErrorRestartLoop
+import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
 import js7.base.configutils.Configs.*
 import js7.base.eventbus.StandardEventBus
 import js7.base.io.file.watch.DirectoryWatchSettings

@@ -4,7 +4,8 @@ import cats.effect.{Deferred, IO}
 import cats.syntax.flatMap.*
 import cats.syntax.parallel.*
 import fs2.Stream
-import js7.base.catsutils.CatsEffectExtensions.{left, onErrorRestartLoop, right}
+import js7.base.monixlike.MonixLikeExtensions.{onErrorRestartLoop}
+import js7.base.catsutils.CatsEffectExtensions.{left, right}
 import js7.base.log.Logger
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*

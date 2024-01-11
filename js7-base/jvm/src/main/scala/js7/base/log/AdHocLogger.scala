@@ -13,6 +13,12 @@ import org.slf4j.Marker
 transparent trait AdHocLogger:
   this: Logger.type =>
 
+  inline def error(inline msg: String)(using sourcecode.Enclosing): Unit =
+    logger.error(msg)
+
+  inline def warn(inline msg: String)(using sourcecode.Enclosing): Unit =
+    logger.warn(msg)
+
   inline def info(inline msg: String)(using sourcecode.Enclosing): Unit =
     logger.info(msg)
 

@@ -1,14 +1,14 @@
 package js7.common.pekkohttp.web
 
-import cats.effect.Resource
-import cats.effect.IO
+import cats.effect.{IO, Resource}
 import cats.syntax.all.*
 import fs2.Stream
 import java.nio.file.Path
-import js7.base.io.file.watch.{DirectoryStateJvm, DirectoryWatch, DirectoryWatchSettings}
-import js7.base.log.Logger
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.fs2utils.StreamExtensions.*
+import js7.base.io.file.watch.{DirectoryStateJvm, DirectoryWatch, DirectoryWatchSettings}
+import js7.base.log.Logger
+import js7.base.monixlike.MonixLikeExtensions.onErrorTap
 import js7.base.service.Service
 import js7.base.thread.IOExecutor
 import js7.base.utils.ScalaUtils.syntax.RichThrowable

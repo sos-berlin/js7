@@ -4,7 +4,7 @@ import cats.effect.IO
 import java.io.{ByteArrayOutputStream, IOException}
 import java.nio.file.Path
 import java.nio.file.attribute.FileAttribute
-import js7.base.catsutils.CatsEffectExtensions.onErrorRestartLoop
+import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
 import js7.base.data.ByteArray
 import js7.base.io.process.OperatingSystemSpecific.OS
 import js7.base.io.process.Processes.RobustlyStartProcess.TextFileBusyIOException

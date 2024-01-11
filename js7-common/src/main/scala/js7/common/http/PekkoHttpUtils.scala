@@ -1,7 +1,6 @@
 package js7.common.http
 
 import cats.effect.IO
-import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.web.Uri
 import js7.common.http.StreamingSupport.*

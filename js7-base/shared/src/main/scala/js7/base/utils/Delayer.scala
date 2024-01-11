@@ -1,6 +1,7 @@
 package js7.base.utils
 
 import cats.data.NonEmptySeq
+import cats.effect.kernel.Sync
 import cats.effect.{Async, IO, Temporal}
 import cats.syntax.apply.*
 import cats.syntax.flatMap.*
@@ -15,8 +16,7 @@ import js7.base.utils.Delayer.*
 import scala.concurrent.duration.*
 
 // Stateful
-final class Delayer[F[_]] private(using F: Async[F], temporal: Temporal[F])
-  (initialNow: CatsDeadline, conf: DelayConf):
+final class Delayer[F[_]] private(using F: Async[F])(initialNow: CatsDeadline, conf: DelayConf):
 
   import conf.{delays, resetWhen}
 
@@ -33,14 +33,14 @@ final class Delayer[F[_]] private(using F: Async[F], temporal: Temporal[F])
     nextDelay2.flatMap:
       case (elapsed, delay) =>
         logger.trace(s"sleep ${delay.pretty} elapsed=${elapsed.pretty} $toString")
-        onSleep(delay) *> temporal.sleep(delay)
+        onSleep(delay) *> F.sleep(delay)
 
   def nextDelay: F[FiniteDuration] =
     nextDelay2.map(_._2)
 
   private def nextDelay2: F[(FiniteDuration, FiniteDuration)] =
     F.tailRecM(())(_ =>
-      F.monotonic.map(CatsDeadline(_)).flatMap(now =>
+      F.monotonic.map(CatsDeadline.fromMonotonic).flatMap(now =>
         F.delay {
           val state = _state.get()
           val (elapsed, delay, next) = _state.get().next(now)
@@ -73,10 +73,10 @@ final class Delayer[F[_]] private(using F: Async[F], temporal: Temporal[F])
 object Delayer:
   private val logger = Logger[this.type]
 
-  def start[F[_]](conf: DelayConf)(using F: Async[F], temporal: Temporal[F]): F[Delayer[F]] =
+  def start[F[_]](conf: DelayConf)(using F: Async[F]): F[Delayer[F]] =
     F.monotonic
-      .map(CatsDeadline(_))
-      .flatMap(now => F.delay(new Delayer(now, conf)))
+      .map(CatsDeadline.fromMonotonic)
+      .map(now => new Delayer(now, conf))
 
   def stream[F[_]](conf: DelayConf)(using F: Async[F]): Stream[F, Unit] =
     Stream

@@ -64,7 +64,7 @@ final class ProcessesTest extends OurTestSuite, TestCatsEffect:
       for (a, b) <- echoLines.tail zip Args do assert(a == b)
       assert(echoLines.size - 1 == Args.size)
       process.waitFor()
-      Future.successful(succeed)
+      succeed
     }
 
   "newLogFile" in:

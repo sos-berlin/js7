@@ -1,7 +1,7 @@
 package js7.base.test
 
-import cats.effect.IO
 import cats.effect.unsafe.IORuntime
+import cats.effect.{IO, SyncIO}
 import js7.base.test.LoggingAsyncFreeSpec.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
@@ -48,7 +48,7 @@ trait LoggingAsyncFreeSpec extends AsyncFreeSpec:
           yield result,
       suppressCorrelId = suppressTestCorrelId)
 
-  def run(name: String)(io: IO[Assertion]): Assertion =
+  private def run(name: String)(io: IO[Assertion]): Assertion =
     io.syncStep(Int.MaxValue)
       .unsafeRunSync() match
         case Left(io) =>
@@ -84,7 +84,13 @@ trait LoggingAsyncFreeSpec extends AsyncFreeSpec:
       case Success(o: Assertion) => IO.pure(o)
       case Success(o: Future[Assertion @unchecked]) => IO.fromFuture(IO.pure(o))
       case Success(io: IO[Assertion]) => io
+      case Success(o: SyncIO[Assertion]) => o.to[IO]
 
 
 object LoggingAsyncFreeSpec:
-  private type OwnResult = Assertion | Future[Assertion] | IO[Assertion]
+  private type OwnResult = Assertion | Future[Assertion] | IO[Assertion] | SyncIO[Assertion]
+
+  private[test] def isAsyncResult(result: Any) =
+    result match
+      case _: Future[_] | _: IO[_] | _: SyncIO[_] => true
+      case _ => false

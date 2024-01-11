@@ -1,5 +1,6 @@
 package js7.base.utils
 
+import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, Resource}
 import fs2.Stream
 import java.util.concurrent.atomic.AtomicInteger
@@ -79,3 +80,15 @@ object FutureCompletion:
       def takeUntilCompletedAndDo[B](futureCompletion: FutureCompletion[B])(onCompleted: B => IO[Unit]) =
         futureCompletion.stream
           .flatMap(trigger => stream.interruptWhen(trigger.evalTap(onCompleted).as(true)))
+
+    implicit final class FutureCompletionFuture[A](private val future: CancelableFuture[A]) extends AnyVal:
+      def cancelOnCompletionOf[B](futureCompletion: FutureCompletion[B])(using ExecutionContext)
+      : CancelableFuture[A] =
+        val entry = futureCompletion.add()
+        entry.future.onComplete { _ =>
+          future.cancel()
+        }
+        future.transform { tried =>
+          entry.close()
+          tried
+        }

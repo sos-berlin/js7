@@ -18,8 +18,8 @@ import js7.common.pekkohttp.web.auth.GateKeeper
 import js7.common.pekkoutils.Pekkos
 import js7.common.http.PekkoHttpClient
 import js7.common.http.PekkoHttpClient.HttpException
-import cats.effect.IO
-import cats.effect.Fiber
+import cats.effect.{Deferred, Fiber, IO}
+import fs2.concurrent.Signal
 import js7.base.test.TestCatsEffect
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.{BeforeAndAfterAll, Suite}
@@ -32,7 +32,7 @@ trait SessionRouteTester extends BeforeAndAfterAll, TestCatsEffect, ScalatestRou
 
   protected type OurSession = SimpleSession
 
-  protected final def whenShuttingDown = Future.never
+  protected final val whenShuttingDown = Deferred.unsafe
   protected final val config = config"js7.web.server.verbose-error-messages = on"
 
   override def testConfig = config"""

@@ -5,7 +5,7 @@ import fs2.Stream
 import java.io.IOException
 import java.nio.file.{ClosedWatchServiceException, NotDirectoryException, Path, WatchEvent, WatchKey}
 import java.util.concurrent.TimeUnit.MILLISECONDS
-import js7.base.catsutils.CatsEffectExtensions.{onErrorRestartLoop, raceFold}
+import js7.base.monixlike.MonixLikeExtensions.{onErrorRestartLoop, raceFold}
 import js7.base.fs2utils.StreamExtensions.+:
 import js7.base.io.file.watch.BasicDirectoryWatch.*
 import js7.base.io.file.watch.DirectoryWatchEvent.Overflow

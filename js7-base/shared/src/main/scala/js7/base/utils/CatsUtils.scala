@@ -197,22 +197,7 @@ object CatsUtils:
         monotonicTime()
 
       def monotonicTime(): SyncDeadline =
-        SyncDeadline(scheduler.monotonicNanos())(using scheduler)
-
-      def scheduleAtFixedRate(delay: FiniteDuration, repeat: FiniteDuration, runnable: Runnable)
-      : Runnable =
-        val delayNanos = delay.toNanos
-        val repeatNanos = repeat.toNanos
-        var t = scheduler.monotonicNanos() + delay.toNanos
-
-        object callback extends Runnable:
-          def run() =
-            try runnable.run()
-            finally
-              t += repeatNanos
-              scheduler.sleep((t - scheduler.monotonicNanos()).ns, callback)
-
-        scheduler.sleep(delay, callback)
+        SyncDeadline.fromNanos(scheduler.monotonicNanos())(using scheduler)
 
       //def isTimeLeft(o: CatsDeadline): Boolean =
       //  !isElapsed(o)

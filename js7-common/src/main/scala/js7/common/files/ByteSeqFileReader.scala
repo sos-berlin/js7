@@ -15,13 +15,13 @@ extends AutoCloseable:
 
   private val channel = FileChannel.open(file, READ)
   private val buffer = ByteBuffer.allocate(ChunkSize)
+  logger.debug(s"↘ opened $file ↘")
 
   if fromEnd then
-    Logger.info(s"### position ${channel.size}")
     channel.position(channel.size)
 
   def close() =
-    logger.trace(s"close $file")
+    logger.debug(s"↙ close $file ↙")
     channel.close()
 
   def read(): ByteSeq =

@@ -1,8 +1,9 @@
 package js7.common.pekkohttp
 
+import cats.effect.kernel.Deferred
 import js7.base.configutils.Configs.*
 import js7.base.problem.Problem
-import js7.base.test.OurTestSuite
+import js7.base.test.{OurTestSuite, TestCatsEffect}
 import js7.common.pekkohttp.CirceJsonSupport.jsonUnmarshaller
 import js7.common.pekkohttp.ExceptionHandlingTest.*
 import org.apache.pekko.http.scaladsl.model.MediaTypes.`application/json`
@@ -16,10 +17,11 @@ import scala.util.control.NoStackTrace
 /**
   * @author Joacim Zschimmer
   */
-final class ExceptionHandlingTest extends OurTestSuite, ScalatestRouteTest, ExceptionHandling:
+final class ExceptionHandlingTest 
+extends OurTestSuite, TestCatsEffect, ScalatestRouteTest, ExceptionHandling:
 
   protected val config = config"js7.web.server.verbose-error-messages = true"
-  protected def whenShuttingDown = Future.never
+  protected val whenShuttingDown = Deferred.unsafe
 
   override def testConfig = config"pekko.loglevel = warning"
     .withFallback(super.testConfig)

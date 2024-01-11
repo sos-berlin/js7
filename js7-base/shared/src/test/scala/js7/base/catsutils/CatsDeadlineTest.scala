@@ -57,20 +57,20 @@ final class CatsDeadlineTest extends OurAsyncTestSuite:
         assert(deadline + 1.s - deadline == 1.s)
         assert(deadline - 1.s - deadline == -1.s)
 
-  //"Ordering" in:
-  //  TestControl.executeEmbed:
-  //    for deadline <- CatsDeadline.now
-  //    yield
-  //      assert((deadline + 1.s).compare(deadline) > 0)
-  //      assert(deadline.compare(deadline) == 0)
-  //      assert((deadline - 1.s).compare(deadline) < 0)
-  //      assert(deadline + 1.s > deadline)
-  //      assert(deadline + 1.s >= deadline)
-  //      assert(deadline >= deadline)
-  //      assert(deadline == deadline)
-  //      assert(deadline <= deadline)
-  //      assert(deadline <= deadline + 1.s)
-  //      assert(deadline < deadline + 1.s)
+  "Ordering" in:
+    TestControl.executeEmbed:
+      for deadline <- CatsDeadline.now
+      yield
+        assert((deadline + 1.s).compare(deadline) > 0)
+        assert(deadline.compare(deadline) == 0)
+        assert((deadline - 1.s).compare(deadline) < 0)
+        assert(deadline + 1.s > deadline)
+        assert(deadline + 1.s >= deadline)
+        assert(deadline >= deadline)
+        assert(deadline == deadline)
+        assert(deadline <= deadline)
+        assert(deadline <= deadline + 1.s)
+        assert(deadline < deadline + 1.s)
 
   //"toString" in:
   //  TestControl.executeEmbed:

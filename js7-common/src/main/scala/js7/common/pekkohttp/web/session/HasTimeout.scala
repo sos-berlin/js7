@@ -5,7 +5,6 @@ import cats.syntax.option.*
 import js7.base.catsutils.CatsDeadline
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.time.ScalaTime.*
-import js7.base.time.Timestamp
 import js7.common.pekkohttp.web.session.HasTimeout.*
 import scala.concurrent.duration.*
 

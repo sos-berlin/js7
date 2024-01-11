@@ -8,9 +8,13 @@ import io.circe.syntax.EncoderOps
 import izumi.reflect.Tag
 import js7.base.auth.UserId
 import js7.base.circeutils.CirceUtils.RichJson
+import js7.base.data.ByteSequence.ops.*
+import js7.base.fs2utils.Fs2ChunkByteSequence.*
+import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.fs2utils.StreamExtensions.takeUntilEval
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{LogLevel, Logger}
+import js7.base.problem.Checked
 import js7.base.time.ScalaTime.RichDeadline
 import js7.base.utils.FutureCompletion
 import js7.base.utils.FutureCompletion.syntax.*
@@ -19,9 +23,10 @@ import js7.common.http.PekkoHttpClient.`x-js7-request-id`
 import js7.common.http.StreamingSupport.*
 import js7.common.pekkohttp.ByteSequenceStreamExtensions.*
 import js7.common.pekkohttp.StandardDirectives.ioRoute
-import js7.common.pekkoutils.ByteStrings.syntax.byteStringByteSequence
+import js7.common.pekkohttp.StandardMarshallers.*
+import js7.common.pekkoutils.ByteStrings.syntax.{ByteStringToByteSequence, byteStringByteSequence}
 import org.apache.pekko.http.scaladsl.marshalling.{ToResponseMarshallable, ToResponseMarshaller}
-import org.apache.pekko.http.scaladsl.model.HttpEntity.Chunk
+import org.apache.pekko.http.scaladsl.model.HttpEntity.Chunk as PekkoChunk
 import org.apache.pekko.http.scaladsl.model.headers.Accept
 import org.apache.pekko.http.scaladsl.model.{ContentType, HttpEntity, HttpHeader, HttpRequest, MediaType, Uri}
 import org.apache.pekko.http.scaladsl.server.Directives.*
@@ -37,8 +42,8 @@ import scala.concurrent.duration.{Deadline, FiniteDuration}
 object PekkoHttpServerUtils:
 
   private val logger = Logger[this.type]
-  private val LF = ByteString("\n")
-  private val heartbeatChunk = Chunk(LF)
+  private val LF = fs2.Chunk[Byte]('\n')
+  private val heartbeatChunk = LF
 
   object implicits:
     implicit final class RichOption[A](private val delegate: Option[A]) extends AnyVal:
@@ -251,24 +256,40 @@ object PekkoHttpServerUtils:
           else
             Unmatched
 
+  def completeWithCheckedStream(contentType: ContentType)
+    (checkedStream: IO[Checked[Stream[IO, ByteString]]])
+    (using IORuntime)
+  : Route =
+    ioRoute:
+      checkedStream.flatMap:
+        case Left(problem) => IO.pure(complete(problem))
+        case Right(stream) => completeWithIOStream(contentType)(stream)
+
   def completeWithStream(contentType: ContentType)(stream: Stream[IO, ByteString])
     (using IORuntime)
   : Route =
     ioRoute:
-      logger.logStart(LogLevel.Trace, "completeWithStream")
-      val since = Deadline.now
-      val deferredRelease = Deferred.unsafe[IO, Resource.ExitCase => IO[Unit]]
-      stream
-        .onFinalizeCase: exitCase =>
-          deferredRelease.get.flatMap(_(exitCase))
-        .toPekkoSourceForHttpResponse
-        .allocated
-        .flatTap: (_, release) =>
-          deferredRelease.complete: exitCase =>
-            logger.logOutcome(LogLevel.Trace, "completeWithStream", since.elapsed,
-              exitCase.toOutcome[IO])
-            release
-        .map: (source, _) =>
+      completeWithIOStream(contentType)(stream)
+
+  private def completeWithIOStream(contentType: ContentType)(stream: Stream[IO, ByteString])
+    (using IORuntime)
+  : IO[Route] =
+    // TODO Use streamToResponseMarshallable ?
+    logger.logStart(LogLevel.Trace, "completeWithStream")
+    val since = Deadline.now
+    val deferredRelease = Deferred.unsafe[IO, Resource.ExitCase => IO[Unit]]
+    stream
+      .onFinalizeCase: exitCase =>
+        deferredRelease.get.flatMap(_(exitCase))
+      .toPekkoSourceForHttpResponse
+      .allocated
+      .flatTap: (_, release) =>
+        deferredRelease.complete: exitCase =>
+          logger.logOutcome(LogLevel.Trace, "completeWithStream", since.elapsed,
+            exitCase.toOutcome[IO])
+          release
+      .map: (source, _) =>
+        accept(contentType.mediaType):
           complete:
             HttpEntity(contentType, source)
 
@@ -304,41 +325,35 @@ object PekkoHttpServerUtils:
                 }
           })
 
-  def observableToResponseMarshallable[A: Encoder : Tag](
+  def streamToResponseMarshallable[A: Encoder : Tag](
     stream: Stream[IO, A],
-    httpRequest: HttpRequest,
-    userId: UserId,
-    shuttingDownCompletion: FutureCompletion[?],
+    shutdownSignaled: IO[Either[Throwable, Unit]],
     chunkSize: Int,
     keepAlive: Option[FiniteDuration] = None)
     (using IORuntime)
-  : Resource[IO, ToResponseMarshallable] =
+  : Stream[IO, ByteString] =
     val chunks = stream
-      .evalMap(a => IO:
-        a.asJson.toByteSequence[ByteString].concat(LF))
+      .parEvalMapUnbounded(a => IO:
+        a.asJson.toByteSequence[fs2.Chunk[Byte]] ++ LF)
       //??? Monix: .mapParallelBatch(responsive = true)(_
       //  .asJson
       //  .toByteSequence[ByteString]
       //  .concat(LF))
-      .splitByteSequences(chunkSize)
-      .map(Chunk(_))
+      //? .splitByteSequences(chunkSize)
+      .chunkLimit(chunkSize)
+      .unchunks
 
-    val result: Stream[IO, Chunk] =
-      keepAlive.fold(chunks): keepAlive =>
+    keepAlive
+      .fold(chunks): keepAlive =>
         for
           terminated <- Stream.eval(Deferred[IO, Unit])
-          chunk <- chunks
+          byteString <- chunks
             .onFinalize(terminated.complete(()).void)
             .merge(Stream
               .constant(heartbeatChunk, chunkSize = 1)
               .covary[IO]
               .delayBy(keepAlive)
               .takeUntilEval(terminated.get))
-        yield chunk
-
-    result
-      .takeUntilCompletedAndDo(shuttingDownCompletion)(_ => IO:
-        logger.debug(s"Shutdown observing events for $userId ${httpRequest.uri}"))
-      .toPekkoSourceForHttpResponse
-      .map: source =>
-        ToResponseMarshallable(HttpEntity.Chunked(`application/x-ndjson`, source))
+        yield byteString
+      .map(_.toByteString)
+      .interruptWhen(shutdownSignaled)

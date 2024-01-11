@@ -1,15 +1,9 @@
 package js7.common.pekkohttp.web
 
+import cats.effect.{IO, Resource}
+import cats.syntax.all.*
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.catsutils.UnsafeMemoizable.given
-import org.apache.pekko.actor.ActorSystem
-import org.apache.pekko.http.scaladsl.server.Directives.extractRequest
-import org.apache.pekko.http.scaladsl.server.Route
-import org.apache.pekko.http.scaladsl.settings.{ParserSettings, ServerSettings}
-import org.apache.pekko.http.scaladsl.{ConnectionContext, Http, HttpsConnectionContext}
-import org.apache.pekko.stream.TLSClientAuth
-import cats.effect.{IO, Ref, Resource}
-import cats.syntax.all.*
 import js7.base.io.https.Https.loadSSLContext
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
@@ -17,14 +11,19 @@ import js7.base.service.Service
 import js7.base.utils.Atomic
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.toIsEmptyAllOps
+import js7.common.http.JsonStreamingSupport
+import js7.common.internet.IP.inetSocketAddressShow
 import js7.common.pekkohttp.web.PekkoWebServer.{BoundRoute, RouteBinding}
 import js7.common.pekkohttp.web.SinglePortPekkoWebServer.*
 import js7.common.pekkohttp.web.data.{WebServerBinding, WebServerPort}
-import js7.common.http.JsonStreamingSupport
-import js7.common.internet.IP.inetSocketAddressShow
-import cats.effect.unsafe.IORuntime
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.http.scaladsl.server.Directives.extractRequest
+import org.apache.pekko.http.scaladsl.server.Route
+import org.apache.pekko.http.scaladsl.settings.{ParserSettings, ServerSettings}
+import org.apache.pekko.http.scaladsl.{ConnectionContext, Http, HttpsConnectionContext}
+import org.apache.pekko.stream.TLSClientAuth
 import scala.concurrent.duration.{Deadline, FiniteDuration}
-import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.concurrent.{Future, Promise}
 import scala.util.chaining.scalaUtilChainingOps
 import scala.util.{Failure, Success, Try}
 

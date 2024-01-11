@@ -24,12 +24,12 @@ extends Switch.ReadOnly:
         .map(_.nonEmpty)
 
   // Not nestable !!!
-  def switchOnFor[A](task: IO[A]): IO[A] =
-    switchOn *> task.guarantee(switchOff.void)
+  def switchOnAround[A](body: IO[A]): IO[A] =
+    switchOn *> body.guarantee(switchOff.void)
 
   /** Switch on and return `task` iff switch was previously off. */
-  def switchOnThen(task: => IO[Unit]): IO[Unit] =
-    switchOn.flatMap(IO.whenA(_)(task))
+  def switchOnThen(body: => IO[Unit]): IO[Unit] =
+    switchOn.flatMap(IO.whenA(_)(body))
 
   /** Returns true iff switch turned from on to off. */
   val switchOff: IO[Boolean] =
@@ -38,8 +38,8 @@ extends Switch.ReadOnly:
         .flatMap(_.tryPut(()))
         .flatTap(_ => filledWhenOn.flatMap(_.tryTake))
 
-  def switchOffThen(task: => IO[Unit]): IO[Unit] =
-    switchOff.flatMap(IO.whenA(_)(task))
+  def switchOffThen(body: => IO[Unit]): IO[Unit] =
+    switchOff.flatMap(IO.whenA(_)(body))
 
   val isOn: IO[Boolean] =
     filledWhenOff.flatMap(_.isEmpty)

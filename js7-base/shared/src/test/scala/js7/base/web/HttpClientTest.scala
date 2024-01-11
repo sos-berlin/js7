@@ -1,7 +1,7 @@
 package js7.base.web
 
 import cats.effect.IO
-import js7.base.catsutils.CatsEffectExtensions.materialize
+import js7.base.monixlike.MonixLikeExtensions.materialize
 import js7.base.problem.Problem
 import js7.base.test.OurAsyncTestSuite
 import js7.base.web.HttpClient.liftProblem

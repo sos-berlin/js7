@@ -9,7 +9,7 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.generic.{Completed, SecretString}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problems.InvalidSessionTokenProblem
-import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.test.{OurAsyncTestSuite, OurTestSuite, TestCatsEffect}
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.version.Version
@@ -22,7 +22,7 @@ import scala.concurrent.duration.*
 /**
   * @author Joacim Zschimmer
   */
-final class SessionRegisterTest extends OurTestSuite, TestCatsEffect:
+final class SessionRegisterTest extends OurAsyncTestSuite, TestCatsEffect:
 
   //??? override def executor = super.executor  // Not implicit
 
@@ -40,6 +40,7 @@ final class SessionRegisterTest extends OurTestSuite, TestCatsEffect:
 
   "login anonymously" in:
     sessionToken = sessionRegister.login(Anonymous, Some(Js7Version)).await(99.s): SessionToken
+    succeed
 
   "login and update User" in:
     val originalSession = sessionRegister.session(sessionToken, Right(Anonymous)).await(99.s).orThrow
@@ -79,6 +80,7 @@ final class SessionRegisterTest extends OurTestSuite, TestCatsEffect:
     assert(mySessionRegister.session(sessionToken, Right(Anonymous)).await(99.s).toOption.get.currentUser == AUser)
 
     Pekkos.terminateAndWait(mySystem, 10.s)
+    succeed
 
   "logout" in:
     assert(sessionRegister.logout(sessionToken).await(99.s) == Completed)
@@ -106,6 +108,7 @@ final class SessionRegisterTest extends OurTestSuite, TestCatsEffect:
   "Non-matching version are still not checked" in:
     sessionRegister.login(AUser, Some(Version("2.2.0"))).await(99.s): SessionToken
       //Left(Problem(s"Client's version 2.2.0 does not match JS7 TEST version $Js7Version")))
+    succeed
 
 
 private object SessionRegisterTest:

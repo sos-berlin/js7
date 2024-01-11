@@ -16,7 +16,7 @@ final class DelayerTest extends OurAsyncTestSuite:
     TestControl.executeEmbed:
       val times = mutable.Buffer[FiniteDuration]()
       for
-        start <- IO.monotonic.map(CatsDeadline(_))
+        start <- CatsDeadline.now
         delay <- Delayer.start[IO](conf)
         _ <- delay.sleep      // +1s
         t <- start.elapsed    //    = 1s
@@ -57,12 +57,12 @@ final class DelayerTest extends OurAsyncTestSuite:
 
   "stream" in:
     TestControl.executeEmbed:
-      IO.monotonic.map(CatsDeadline(_)).flatMap(start =>
-      Delayer
-        .stream[IO](conf)
-        .evalMap(_ => start.elapsed)
-        .take(6)
-        .compile
-        .toVector
-        .map(times =>
-          assert(times.map(_.toCoarsest) == Vector(0.s, 1.s, 3.s, 6.s, 9.s, 12.s))))
+      CatsDeadline.now.flatMap(start =>
+        Delayer
+          .stream[IO](conf)
+          .evalMap(_ => start.elapsed)
+          .take(6)
+          .compile
+          .toVector
+          .map(times =>
+            assert(times.map(_.toCoarsest) == Vector(0.s, 1.s, 3.s, 6.s, 9.s, 12.s))))

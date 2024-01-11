@@ -1,10 +1,6 @@
 package js7.common.pekkohttp.web.session
 
-import org.apache.pekko.http.scaladsl.model.StatusCodes.{Forbidden, OK, Unauthorized}
-import org.apache.pekko.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials}
-import org.apache.pekko.http.scaladsl.server.Directives.*
-import org.apache.pekko.http.scaladsl.server.Route
-import org.apache.pekko.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
+import cats.effect.Deferred
 import js7.base.Js7Version
 import js7.base.auth.{HashedPassword, SessionToken, SimpleUser, UserId}
 import js7.base.configutils.Configs.*
@@ -13,11 +9,16 @@ import js7.base.problem.Checked.*
 import js7.base.test.{OurTestSuite, TestCatsEffect}
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
+import js7.common.auth.IdToUser
+import js7.common.http.PekkoHttpClient.`x-js7-session`
 import js7.common.pekkohttp.web.auth.GateKeeper
 import js7.common.pekkohttp.web.data.WebServerBinding
 import js7.common.pekkohttp.web.session.RouteProviderTest.*
-import js7.common.auth.IdToUser
-import js7.common.http.PekkoHttpClient.`x-js7-session`
+import org.apache.pekko.http.scaladsl.model.StatusCodes.{Forbidden, OK, Unauthorized}
+import org.apache.pekko.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials}
+import org.apache.pekko.http.scaladsl.server.Directives.*
+import org.apache.pekko.http.scaladsl.server.Route
+import org.apache.pekko.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import scala.concurrent.Future
 import scala.concurrent.duration.*
 
@@ -31,7 +32,7 @@ final class RouteProviderTest extends OurTestSuite, RouteProvider, TestCatsEffec
 
   protected type OurSession = SimpleSession
 
-  protected def whenShuttingDown = Future.never
+  protected def whenShuttingDown = Deferred.unsafe
   protected val config = config"js7.web.server.verbose-error-messages = on"
   protected lazy val sessionRegister =
     SessionRegister.forTest(SimpleSession.apply, SessionRegister.TestConfig)

@@ -7,7 +7,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.StackTraces.StackTraceThrowable
 import cats.effect.IO
 import fs2.Stream
-import js7.base.catsutils.CatsEffectExtensions.{dematerialize, materialize}
+import js7.base.monixlike.MonixLikeExtensions.{dematerialize, materialize}
 import org.jetbrains.annotations.TestOnly
 import scala.util.{Failure, Success, Try}
 

@@ -1,61 +1,40 @@
 package js7.common.pekkohttp.web.session
 
-import cats.syntax.traverse.*
-import js7.base.time.ScalaTime.*
-import js7.base.utils.ScalaUtils.syntax.*
-import SessionRegister.*
+import cats.effect.std.AtomicCell
 import cats.effect.{Deferred, FiberIO, IO, Resource}
 import cats.syntax.apply.*
 import cats.syntax.flatMap.*
 import cats.syntax.option.*
-import cats.syntax.either.*
+import cats.syntax.traverse.*
 import com.typesafe.config.Config
 import izumi.reflect.Tag
 import java.nio.file.Files.{createFile, deleteIfExists}
 import java.nio.file.Path
 import js7.base.Js7Version
 import js7.base.auth.{SessionToken, SimpleUser, UserId}
+import js7.base.catsutils.CatsEffectExtensions.*
+import js7.base.catsutils.UnsafeMemoizable.given
 import js7.base.configutils.Configs.*
 import js7.base.generic.Completed
 import js7.base.io.file.FileUtils.provideFile
 import js7.base.io.file.FileUtils.syntax.*
-import js7.base.catsutils.CatsEffectExtensions.*
+import js7.base.log.Logger
 import js7.base.problem.Checked.*
+import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.problem.{Checked, Problem}
 import js7.base.service.Service
 import js7.base.system.ServerOperatingSystem.operatingSystem
-import js7.base.time.JavaTimeConverters.{logger, *}
-import js7.base.version.Version
-import js7.common.http.PekkoHttpClient.`x-js7-session`
-import js7.common.pekkoutils.Pekkos
-import org.apache.pekko.actor.{ActorRef, ActorRefFactory}
-import org.apache.pekko.pattern.ask
-import org.apache.pekko.util.Timeout
-import js7.base.system.ServerOperatingSystem.operatingSystem
-import cats.effect.std.AtomicCell
-import cats.effect.unsafe.{IORuntime, Scheduler}
-import org.jetbrains.annotations.TestOnly
-import scala.concurrent.{Future, Promise}
-import js7.base.catsutils.UnsafeMemoizable.given
-import js7.common.auth.SecretStringGenerator
-import scala.collection.mutable
-import cats.effect.unsafe.IORuntime
-import org.apache.pekko.actor.{Actor, DeadLetterSuppression, Props}
-import com.typesafe.config.Config
-import js7.base.Js7Version
-import js7.base.auth.{SessionToken, SimpleUser, User, UserId}
-import js7.base.generic.Completed
-import js7.base.log.Logger
-import js7.base.problem.Checked
-import js7.base.problem.Problems.InvalidSessionTokenProblem
+import js7.base.time.JavaTimeConverters.AsScalaDuration
+import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Atomic
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
-import js7.base.utils.Collections.implicits.InsertableMutableMap
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.version.{Js7Versions, Version}
 import js7.common.auth.SecretStringGenerator
-import scala.collection.mutable
+import js7.common.http.PekkoHttpClient.`x-js7-session`
+import js7.common.pekkohttp.web.session.SessionRegister.*
+import org.jetbrains.annotations.TestOnly
 import scala.util.chaining.scalaUtilChainingOps
 
 /**

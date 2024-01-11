@@ -36,7 +36,7 @@ object JavaTimeConverters:
       else if (underlying compareTo MinDuration) < 0 then ScalaDuration.MinusInf
       else javaToFiniteDuration(underlying)
 
-    /** Absolute values above ~292 years are capped at about ~292 years (±2**63ns). */
+    /** Absolute values above ~292 years are capped (±2**63ns). */
     def toFiniteDuration: FiniteDuration =
       if (underlying compareTo MaxDuration) > 0 then FiniteDuration.MaxValue
       else if (underlying compareTo MinDuration) < 0 then FiniteDuration.MinValue

@@ -2,11 +2,15 @@ package js7.base.fs2utils
 
 import cats.effect.{Deferred, IO}
 import fs2.{Pure, Stream}
+import js7.base.data.ByteArray
 import js7.base.fs2utils.StreamExtensions.*
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.*
+import js7.base.test.OurTestSuite
+import js7.base.time.ScalaTime.*
+import scala.util.Random
 
 final class StreamExtensionsTest extends OurAsyncTestSuite:
 
@@ -40,6 +44,24 @@ final class StreamExtensionsTest extends OurAsyncTestSuite:
       .both(
         started.get *> IO.sleep(100.ms) *> stop.complete(()))
       .flatMap((n, _) => IO(assert(n >= 3)))
+
+  //"splitBigByteSeqs" in:
+  //    val maxSize = 2
+  //    val strings = Vector.fill(100_000)(
+  //      ('A' + Random.nextInt(26)).toChar.toString * Random.nextInt(maxSize + 1) + "\n")
+  //    val expectedCount = strings.view.map(o => (o.size + maxSize - 1) / maxSize).sum
+  //    val result = Stream
+  //      .iterable(strings)
+  //      .map(ByteArray(_))
+  //      .splitBigByteSeqs(maxSize)
+  //      .evalTap: byteSeq =>
+  //        assert(byteSeq.length <= maxSize)
+  //      .compile.toList
+  //    assert(result.length == expectedCount)
+  //    assert(result.view.map(_.utf8String).mkString == strings.mkString)
+
+  "echoRepeated" in:
+    fail("TEST IS MISSING") // FIXME
 
   "onStart" in:
     val subscribed = Atomic(0)

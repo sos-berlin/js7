@@ -1,12 +1,13 @@
 package js7.base.test
 
 import js7.base.log.{Log4j, Logger}
-import js7.base.utils.ScalaUtils.syntax.RichJavaClass
+import js7.base.utils.ScalaUtils.syntax.*
+import org.scalactic.source
+import org.scalatest.Assertions.fail
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.{Args, PendingStatement, Status, Tag}
 import scala.language.implicitConversions
 import scala.util.Try
-import org.scalactic.source
 
 /**
  * Extends `AnyFreeSpec` with logging of test names and their outcomes.
@@ -32,12 +33,13 @@ trait LoggingAnyFreeSpec extends AnyFreeSpec:
     testAdder.toStringWrapper(
       name,
       toUnified(stringWrapper),
-      (ctx, testBody) => {
+      (ctx, testBody) =>
         ctx.beforeTest()
         val tried = Try(testBody)
         ctx.afterTest(tried)
-        for t <- tried.failed do throw t
-      },
+        val result = tried.get // Throw on error!
+        if LoggingAsyncFreeSpec.isAsyncResult(result) then
+          fail(s"Asynchronous result of test '$name' requires AsyncFreeSpec: $result"),
       suppressCorrelId = suppressTestCorrelId)
 
   abstract override def run(testName: Option[String], args: Args): Status =
@@ -64,7 +66,6 @@ trait LoggingAnyFreeSpec extends AnyFreeSpec:
           def is(pending: => PendingStatement) =
             pending
 
-object LoggingAnyFreeSpec {
+object LoggingAnyFreeSpec:
   // logger is lazy because it must be initialized first
   private lazy val logger = Logger[this.type]
-}

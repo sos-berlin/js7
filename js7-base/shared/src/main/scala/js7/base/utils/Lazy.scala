@@ -1,5 +1,8 @@
 package js7.base.utils
 
+import scala.concurrent
+import scala.concurrent.blocking
+
 /**
   * Like Scala lazy but synchronization moved to own object.
   * `Lazy` is queryable about its state and detects recursive evaluation.
@@ -25,15 +28,16 @@ final class Lazy[A] private(eval: => A):
     state match
       case Evaluated(a) => Some(a)
       case _ =>
-        synchronized:
-          state match
-            case Evaluated(a) => Some(a)
-            case Evaluating => None
-            case NotEvaluated =>
-              state = Evaluating
-              val a = eval
-              state = Evaluated(a)
-              Some(a)
+        blocking:
+          synchronized:
+            state match
+              case Evaluated(a) => Some(a)
+              case Evaluating => None
+              case NotEvaluated =>
+                state = Evaluating
+                val a = eval
+                state = Evaluated(a)
+                Some(a)
 
   def toOption: Option[A] =
     state match

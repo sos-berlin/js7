@@ -18,6 +18,7 @@ import js7.base.generic.SecretString
 import js7.base.io.https.Https.loadSSLContext
 import js7.base.io.https.HttpsConfig
 import js7.base.log.{CorrelId, Logger}
+import js7.base.monixlike.MonixLikeExtensions.onErrorTap
 import js7.base.problem.Checked.*
 import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.problem.{Checked, Problem}

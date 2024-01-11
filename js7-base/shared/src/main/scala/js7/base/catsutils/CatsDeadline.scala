@@ -6,8 +6,8 @@ import js7.base.utils.ScalaUtils.syntax.*
 import scala.concurrent.duration.*
 
 /** Like Scala's `scala.concurrent.duration.Deadline` but based on Monix' clock. */
-final case class CatsDeadline(sinceZero: FiniteDuration):
-//extends Ordered[CatsDeadline]:
+final case class CatsDeadline private(sinceZero: FiniteDuration)
+extends Ordered[CatsDeadline]:
 
   def nanosSinceZero: Long =
     sinceZero.toNanos
@@ -70,8 +70,8 @@ final case class CatsDeadline(sinceZero: FiniteDuration):
   def timeLeft: IO[FiniteDuration] =
     for o <- IO.monotonic yield sinceZero - o
 
-  //def compare(other: CatsDeadline) =
-  //  sinceZero compare other.sinceZero
+  def compare(other: CatsDeadline) =
+    (nanosSinceZero - other.nanosSinceZero).compare(0L)
 
   // ??? If we had access to IORuntime or Scheduler (like a IO.runtime: IO[IORuntime),
   // we could to a reliant calculation ???
@@ -104,8 +104,11 @@ object CatsDeadline:
   val monotonicClock: IO[CatsDeadline] =
     now
 
-  //def fromNanos(sinceZero: Long)(implicit s: Scheduler): CatsDeadline =
-  //  new CatsDeadline(sinceZero.ns)
+  def fromMonotonicNanos(nanos: Long): CatsDeadline =
+    fromMonotonic(nanos.ns)
+
+  def fromMonotonic(duration: FiniteDuration): CatsDeadline =
+    new CatsDeadline(duration)
 
   ///**
   // * The natural ordering for deadline is determined by the natural order of the underlying (finite) duration.

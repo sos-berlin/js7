@@ -1,7 +1,9 @@
 package js7.base.monixlike
 
-import js7.base.utils.{Atomic, EmptyRunnable}
-import scala.annotation.{nowarn, tailrec, targetName}
+import js7.base.log.Logger
+import js7.base.utils.Atomic
+import scala.annotation.targetName
+import scala.concurrent.Future
 
 /** Inspired vom Monix SerialCancelable.
   *
@@ -23,35 +25,38 @@ import scala.annotation.{nowarn, tailrec, targetName}
   * Also see [[OrderedCancelable]], which is similar, but doesn't cancel
   * the old cancelable upon assignment.
   */
-@deprecated
-final class SerialCancelable(initial: Runnable):
+final class SerialCancelable(initial: Cancelable = Cancelable.empty)
+extends Cancelable:
+
+  @volatile private var canceled = false
   private val state = Atomic(initial)
 
-  def isCanceled: Boolean =
-    state.get() match
-      case null => true
-      case _ => false
+  def unsafeCancelAndForget(): Unit =
+    canceled = true
+    state.get().unsafeCancelAndForget()
 
-  def cancel(): Unit =
-    state.getAndSet(null) match
-      case null => () // nothing to do
-      case ref => ref.run()
+  //def unsafeBlockingCancel(): Unit =
+  //  canceled = true
+  //  blockingCancel(state.get())
 
-  @tailrec @targetName("set")
-  def :=(cancel: Runnable): this.type =
-    val current = state.get()
-    if !state.compareAndSet(current, cancel) then
-      :=(cancel) // retry
-    else
-      current.run()
-      this
+  @targetName("set")
+  def :=(cancelable: () => Future[Unit]): this.type =
+    :=(Cancelable(cancelable))
+
+  @targetName("set")
+  def :=(cancelable: Cancelable): this.type =
+    state.getAndSet(cancelable).unsafeCancelAndForget()
+    if canceled then cancelable.unsafeCancelAndForget()
+    this
+
+  //private def blockingCancel(cancelable: Cancelable) =
+  //  val cancelingFuture = cancelable.unsafeCancel()
+  //  blocking:
+  //    try Await.result(cancelingFuture, Duration.Inf)
+  //    catch case NonFatal(t) =>
+  //      logger.error(s"${enclosing.value}.unsafeCancel => ${t.toStringWithCauses}")
 
 
 object SerialCancelable:
-  @nowarn("msg=deprecated")
-  def apply(): SerialCancelable =
-    new SerialCancelable(EmptyRunnable)
-  //
-  ///** Builder for [[SerialCancelable]]. */
-  //def apply(initial: Runnable): SerialCancelable =
-  //  new SerialCancelable(initial)
+
+  private val logger = Logger[this.type]

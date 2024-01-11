@@ -1,15 +1,14 @@
-package js7.base.catsutils
+package js7.base.monixlike
 
 import cats.effect.IO
 import cats.syntax.option.*
-import js7.base.catsutils.CatsEffectExtensions.*
-import js7.base.catsutils.CatsEffectExtensionsTest.*
+import js7.base.monixlike.MonixLikeExtensionsTest.*
 import js7.base.log.Logger
 import js7.base.monixlike.MonixLikeExtensions.*
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
 
-final class CatsEffectExtensionsTest extends OurAsyncTestSuite:
+final class MonixLikeExtensionsTest extends OurAsyncTestSuite:
 
   "raceFold" - {
     "canceled" in:
@@ -58,5 +57,5 @@ final class CatsEffectExtensionsTest extends OurAsyncTestSuite:
       yield assert(attempted.left.exists(_ eq throwable) && tapped == None)
   }
 
-object CatsEffectExtensionsTest:
+object MonixLikeExtensionsTest:
   private val logger = Logger[this.type]

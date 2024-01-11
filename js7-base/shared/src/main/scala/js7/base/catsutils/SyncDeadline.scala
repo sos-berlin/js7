@@ -7,7 +7,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import scala.concurrent.duration.{Duration, FiniteDuration, NANOSECONDS}
 
 /** Like Scala's `scala.concurrent.duration.Deadline` but based on Cats Effect's Scheduler. */
-final case class SyncDeadline(nanosSinceZero: Long)(implicit scheduler: Scheduler)
+final case class SyncDeadline private(nanosSinceZero: Long)(using scheduler: Scheduler)
 extends Ordered[SyncDeadline]:
 
   /**
@@ -75,13 +75,10 @@ extends Ordered[SyncDeadline]:
    * The natural ordering for deadline is determined by the natural order of the underlying (finite) duration.
    */
   def compare(other: SyncDeadline) =
-    nanosSinceZero compare other.nanosSinceZero
-
-  def now: SyncDeadline =
-    SyncDeadline(scheduler.monotonicNanos())
+    (nanosSinceZero - other.nanosSinceZero).compare(0L)
 
   def toCatsDeadline: CatsDeadline =
-    CatsDeadline(nanosSinceZero.ns)
+    CatsDeadline.fromMonotonicNanos(nanosSinceZero)
 
   /** Not immutable, may return each nanosecond a different string. */
   override def toString =
@@ -90,6 +87,10 @@ extends Ordered[SyncDeadline]:
 
 
 object SyncDeadline:
+
+  def fromMonotonicNanos(nanos: Long)(implicit s: Scheduler): SyncDeadline =
+    new SyncDeadline(nanos)
+
   def monotonicClock(using Scheduler): IO[SyncDeadline] =
     IO.delay(now)
 
