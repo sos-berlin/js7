@@ -45,8 +45,18 @@ object Checked:
       case None => Left(problem)
       case Some(o) => Right(o)
 
+  def flattenAttemptedChecked[A](eitherChecked: Either[Throwable, Checked[A]]): Checked[A] =
+    eitherChecked match
+      case Left(t) => Left(Problem.fromThrowable(t))
+      case Right(checked) => checked
+
   def flattenTryChecked[A](tryChecked: Try[Checked[A]]): Checked[A] =
     fromTry(tryChecked).flatten
+
+  def fromThrowableEither[A](either: Either[Throwable, A]): Checked[A] =
+    either match
+      case Left(t) => Left(Problem.fromThrowable(t))
+      case Right(o) => Right(o)
 
   def fromTry[A](tried: Try[A]): Checked[A] =
     tried match

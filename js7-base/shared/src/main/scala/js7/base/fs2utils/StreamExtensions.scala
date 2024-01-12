@@ -4,7 +4,7 @@ import cats.effect
 import cats.effect.std.Queue
 import cats.effect.{Concurrent, IO, Ref, Resource, Sync}
 import cats.syntax.apply.*
-import fs2.{Chunk, RaiseThrowable, Stream}
+import fs2.{Chunk, Compiler, RaiseThrowable, Stream}
 import js7.base.time.ScalaTime.RichDeadline
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Deadline, FiniteDuration}
@@ -96,7 +96,10 @@ object StreamExtensions:
           .onFinalizeCase: exitCase =>
             F.delay(onComplete(startedAt.elapsed, count, exitCase))
 
+    def toListL(using Compiler[F, F]): F[List[A]] =
+      stream.compile.toList
 
+  
   extension[A](stream: Stream[IO, A])
 
     /** Mirror the source Stream as long as the source keeps emitting items,
@@ -154,6 +157,13 @@ object StreamExtensions:
             .rethrow
             .unchunks
       yield a
+
+
+  extension[F[_], A](stream: Stream[F, Stream[F, A]])
+
+    def mergeAll(using F: Concurrent[F]): Stream[F, A] =
+      stream.fold[Stream[F, A]](Stream.empty)((a, b) => a.merge(b)).flatten
+
 
   extension(x: Stream.type)
     /** Like Monix Observable fromAsyncStateAction. */
