@@ -1,6 +1,6 @@
 package js7.base.catsutils
 
-import cats.effect.unsafe.IORuntime
+import cats.effect.unsafe.{IORuntime, Scheduler}
 import cats.effect.{Resource, Sync}
 import com.typesafe.config.Config
 import java.lang.Thread.currentThread
@@ -26,6 +26,9 @@ object OurIORuntime:
     _ioRuntime
 
   given IORuntime = ioRuntime
+
+  def scheduler: Scheduler =
+    ioRuntime.scheduler
 
   /** For now, we return always the same global IORuntime and never shuts it down*/
   def resource[F[_]](name: String, config: Config)(using F: Sync[F]): Resource[F, IORuntime] =

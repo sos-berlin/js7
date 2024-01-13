@@ -160,39 +160,42 @@ extends AutoCloseable:
   : Stream[IO, PositionAnd[ByteArray]] =
     Stream.resource(InputStreamJsonSeqReader.resource(journalFile))
       .flatMap: jsonSeqReader =>
-        val until = SyncDeadline.now + timeout
-        jsonSeqReader.seek(position)
+        Stream.eval(SyncDeadline.now).flatMap: now =>
+          val until = now + timeout
+          jsonSeqReader.seek(position)
 
-        memoryLeakLimitedStreamTailRecM(position, limit = limitTailRecM)(position =>
-          Stream.eval(whenDataAvailableAfterPosition(position, until.toCatsDeadline))
-            .flatMap {
-              case false =>  // Timeout
-                Stream.empty
-              case true =>  // Data may be available
-                var lastPosition = position
-                var eof = false
-                var iterator = UntilNoneIterator {
-                  val maybeLine = jsonSeqReader.readRaw().map(_.value)
-                  eof = maybeLine.isEmpty
-                  lastPosition = jsonSeqReader.position
-                  maybeLine.map(PositionAnd(lastPosition, _))
-                }.takeWhileInclusive(_ => isFlushedAfterPosition(lastPosition))
-                if onlyAcks then {
-                  // TODO Optimierung: Bei onlyAcks interessiert nur die geschriebene Dateilänge.
-                  //  Dann brauchen wir die Datei nicht zu lesen, sondern nur die geschriebene Dateilänge zurückzugeben.
-                  var last = null.asInstanceOf[PositionAnd[ByteArray]]
-                  iterator foreach { last = _ }
-                  iterator = Option(last).iterator
-                }
-                iterator = iterator
-                  .tapEach { o =>
-                    if o.value == EndOfJournalFileMarker then sys.error(s"Journal file must not contain a line like $o")
-                  } ++
-                    (eof && markEOF).thenIterator(PositionAnd(lastPosition, EndOfJournalFileMarker))
-                Stream.fromIterator[IO](iterator map Right.apply, chunkSize = 1/*???*/) ++
-                  Stream.iterable(
-                    (!eof).thenList(Left(lastPosition)))
-              })
+          memoryLeakLimitedStreamTailRecM(position, limit = limitTailRecM)(position =>
+            Stream.eval(whenDataAvailableAfterPosition(position, until.toCatsDeadline))
+              .flatMap {
+                case false =>  // Timeout
+                  Stream.empty
+                case true =>  // Data may be available
+                  var lastPosition = position
+                  var eof = false
+                  var iterator = UntilNoneIterator {
+                    val maybeLine = jsonSeqReader.readRaw().map(_.value)
+                    eof = maybeLine.isEmpty
+                    lastPosition = jsonSeqReader.position
+                    maybeLine.map(PositionAnd(lastPosition, _))
+                  }.takeWhileInclusive(_ => isFlushedAfterPosition(lastPosition))
+                  if onlyAcks then {
+                    // TODO Optimierung: Bei onlyAcks interessiert nur die geschriebene Dateilänge.
+                    //  Dann brauchen wir die Datei nicht zu lesen, sondern nur die geschriebene Dateilänge zurückzugeben.
+                    var last = null.asInstanceOf[PositionAnd[ByteArray]]
+                    iterator foreach { last = _ }
+                    iterator = Option(last).iterator
+                  }
+                  iterator = iterator
+                    .tapEach { o =>
+                      if o.value == EndOfJournalFileMarker then
+                        sys.error(s"Journal file must not contain a line like $o")
+                    } ++
+                      (eof && markEOF).thenIterator:
+                        PositionAnd(lastPosition, EndOfJournalFileMarker)
+                  Stream.fromIterator[IO](iterator map Right.apply, chunkSize = 1/*???*/) ++
+                    Stream.iterable(
+                      (!eof).thenList(Left(lastPosition)))
+                })
 
   final def lastUsedAt: Long =
     _lastUsed

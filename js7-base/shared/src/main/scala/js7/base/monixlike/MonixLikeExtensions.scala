@@ -7,21 +7,25 @@ import cats.syntax.flatMap.*
 import cats.syntax.functor.*
 import cats.syntax.monadError.*
 import cats.{ApplicativeError, Functor, MonadError}
-import js7.base.catsutils.SyncDeadline
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CancelableFuture
 import js7.base.{catsutils, monixlike}
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.{Deadline, FiniteDuration}
 import scala.util.{Failure, Success, Try}
 
 object MonixLikeExtensions:
 
   extension (scheduler: Scheduler)
+
+    def nowAsDeadline(): Deadline =
+      Deadline(scheduler.monotonicNanos().ns)
+
     /** Monix like */
     def scheduleOnce(after: FiniteDuration)(callback: => Unit): Cancelable =
       Cancelable.fromRunnable:
         scheduler.sleep(after, () => callback)
 
+    /** Monix like */
     def scheduleAtFixedRate(delay: FiniteDuration, repeat: FiniteDuration)(body: => Unit)
     : Cancelable =
       val repeatNanos = repeat.toNanos
@@ -36,14 +40,15 @@ object MonixLikeExtensions:
 
       Cancelable.fromRunnable(scheduler.sleep(delay, callback))
 
+    /** Monix like */
     def scheduleAtFixedRates(durations: IterableOnce[FiniteDuration])(body: => Unit): Cancelable =
       val cancelable = SerialCancelable()
       val iterator = durations.iterator
 
-      def loop(last: SyncDeadline): Unit =
+      def loop(last: Deadline): Unit =
         val nextDuration = iterator.next()
         val next = last + nextDuration
-        val delay = next - SyncDeadline.now(using scheduler)
+        val delay = next - nowAsDeadline()
         cancelable := (
           if iterator.hasNext then
             scheduleOnce(delay):
@@ -53,7 +58,7 @@ object MonixLikeExtensions:
             scheduleAtFixedRate(delay, nextDuration)(body))
 
       if iterator.hasNext then
-        loop(SyncDeadline.now(using scheduler))
+        loop(nowAsDeadline())
 
       cancelable
 

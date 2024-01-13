@@ -321,6 +321,7 @@ lazy val `js7-base` = crossProject(JSPlatform, JVMPlatform)
       "co.fs2" %% "fs2-reactive-streams" % fs2Version ++
       "com.lihaoyi" %%% "sourcecode" % sourcecodeVersion ++
       "com.outr" %%% "scribe" % scribeVersion ++
+      "com.softwaremill.common" %% "tagging" % softwaremillTaggingVersion ++
       "com.softwaremill.diffx" %%% "diffx-core" % diffxVersion ++
       findbugs ++
       intelliJAnnotations % "compile" ++
@@ -540,7 +541,6 @@ lazy val `js7-core` = project
   .settings {
     import Dependencies.*
     libraryDependencies ++=
-      tagging ++
       diffx ++
       pekkoHttpTestkit % "test" ++
       scalaTest % "test" ++

@@ -1,7 +1,7 @@
 package js7.base.time
 
 import cats.effect.unsafe.Scheduler
-import js7.base.utils.CatsUtils.syntax.monotonicTime
+import js7.base.catsutils.SyncDeadline
 import scala.collection.AbstractIterator
 import scala.concurrent.duration.{Duration, FiniteDuration}
 
@@ -21,11 +21,11 @@ extends AbstractIterator[FiniteDuration]:
     it.next()
 
   def reset(): Iterator[FiniteDuration] =
-    val start = scheduler.monotonicTime()
+    val start = SyncDeadline.fromScheduler
     val result = durations.iterator
       .concat(Iterator.continually(last))
       .scanLeft(Duration.Zero)((sum, d) => sum + d)
       .drop(1)
-      .map(d => start + d - scheduler.monotonicTime() max Duration.Zero)
+      .map(d => start + d - SyncDeadline.fromScheduler max Duration.Zero)
     it = result
     result
