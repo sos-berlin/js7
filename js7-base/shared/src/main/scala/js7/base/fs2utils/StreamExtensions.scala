@@ -41,6 +41,7 @@ object StreamExtensions:
     def takeUntilEval[X](completed: F[X])(using Concurrent[F]): Stream[F, A] =
       takeUntil(Stream.eval(completed))
 
+    // TODO use interruptWhen
     def takeUntil[X](completed: Stream[F, X])(using Concurrent[F]): Stream[F, A] =
       stream
         .map(Right(_))
@@ -99,7 +100,7 @@ object StreamExtensions:
     def toListL(using Compiler[F, F]): F[List[A]] =
       stream.compile.toList
 
-  
+
   extension[A](stream: Stream[IO, A])
 
     /** Mirror the source Stream as long as the source keeps emitting items,

@@ -166,56 +166,18 @@ object CatsUtils:
     private val completedIO = IO.pure(Completed)
 
     extension(x: IO.type)
+      @deprecated("Use CatsEffectExtensions")
       def False: IO[Boolean] =
         falseIO
 
+      @deprecated("Use CatsEffectExtensions")
       def True: IO[Boolean] =
         trueIO
 
+      @deprecated("Use CatsEffectExtensions")
       def completed: IO[Completed] =
         completedIO
 
-      //def right[R](r: R): IO[Either[Nothing, R]] =
-      //  IO.pure(Right(r))
-      //
-      //def left[L](l: L): IO[Either[L, Nothing]] =
-      //  IO.pure(Left(l))
-
-
-    //extension[F[_], E](temporal: GenTemporal[F, E])
-    //  @deprecated("Use monotonicTime — now will be the wall clock", "")
-    //  def now(using Functor[F]): F[CatsDeadline] =
-    //    monotonicTime
-    //
-    //  def monotonicTime(using Functor[F]): F[CatsDeadline] =
-    //    temporal.monotonic.map(CatsDeadline(_))
-
-
-    extension(scheduler: Scheduler)
-      @deprecated("Use monotonicTime — now will be the wall clock", "")
-      def now(): SyncDeadline =
-        monotonicTime()
-
-      def monotonicTime(): SyncDeadline =
-        SyncDeadline.fromNanos(scheduler.monotonicNanos())(using scheduler)
-
-      //def isTimeLeft(o: CatsDeadline): Boolean =
-      //  !isElapsed(o)
-      //
-      //def timeLeft(o: CatsDeadline): FiniteDuration =
-      //  -elapsedSince(o)
-      //
-      //def isElapsed(o: CatsDeadline): Boolean =
-      //  scheduler.monotonicNanos() - o.nanosSinceZero >= 0
-      //
-      //def elapsedSince(o: CatsDeadline): FiniteDuration =
-      //  elapsedNanos(o).ns
-      //
-      //def elapsedSinceOrZero(o: CatsDeadline): FiniteDuration =
-      //  elapsedNanos(o).max(0).ns
-      //
-      //def elapsedNanos(o: CatsDeadline): Long =
-      //  scheduler.monotonicNanos() - o.nanosSinceZero
 
   implicit final class RichDeferred[F[_], A](private val deferred: Deferred[F, A]) extends AnyVal:
     /** For compatibility with Cats Effect 3. */

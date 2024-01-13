@@ -4,6 +4,7 @@ import cats.effect.kernel.MonadCancel
 import cats.effect.{Clock, Fiber, IO, Outcome}
 import cats.syntax.functor.*
 import cats.{Defer, Functor, MonadError, effect}
+import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.problem.Checked
 import scala.concurrent.{ExecutionContext, Future}
@@ -53,6 +54,7 @@ object CatsEffectExtensions:
 
   private val trueIO = IO.pure(true)
   private val falseIO = IO.pure(false)
+  private val completedIO = IO.pure(Completed)
 
   extension(x: IO.type)
     def left[L](value: L): IO[Either[L, Nothing]] =
@@ -66,6 +68,9 @@ object CatsEffectExtensions:
 
     inline def False: IO[Boolean] =
       falseIO
+
+    inline def completed: IO[Completed] =
+      completedIO
 
     @deprecated("Use more Cats-like fromFutureWithEC", "v2.7")
     def deferFutureAction[A](future: ExecutionContext => Future[A]): IO[A] =

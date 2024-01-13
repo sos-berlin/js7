@@ -1,6 +1,6 @@
 package js7.cluster.watch.api
 
-import cats.effect.{Fiber, FiberIO, IO, Outcome, Resource}
+import cats.effect.{FiberIO, IO, Outcome, Resource}
 import cats.syntax.flatMap.*
 import cats.syntax.traverse.*
 import fs2.Stream

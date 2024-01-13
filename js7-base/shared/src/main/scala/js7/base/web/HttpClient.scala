@@ -67,6 +67,11 @@ object HttpClient:
       case Failure(throwable) => throwableToTry(throwable).map(Left(_))
       case Success(a) => Success(Right(a))
 
+  def attemptedToChecked[A](either: Either[Throwable, A]): Either[Throwable, Checked[A]] =
+    either match
+      case Left(throwable) => throwableToTry(throwable).map(Left(_)).toEither
+      case Right(a) => Right(Right(a))
+
   def throwableToProblem(throwable: Throwable): Problem =
     throwableToTry(throwable) match
       case Failure(throwable) => Problem.fromThrowable(throwable)
