@@ -4,7 +4,7 @@ import cats.effect.IO
 import cats.syntax.flatMap.*
 import cats.syntax.traverse.*
 import js7.base.catsutils.CatsDeadline
-import js7.base.catsutils.CatsEffectExtensions.right
+import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.stream.IncreasingNumberSync.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.syntax.*

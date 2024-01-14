@@ -1,18 +1,21 @@
 package js7.data.session
 
-import cats.effect.Outcome
+import cats.effect.{IO, Outcome}
 import cats.syntax.option.*
 import js7.base.Js7Version
 import js7.base.auth.{SessionToken, UserAndPassword}
+import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.convert.As.StringAsBoolean
+import js7.base.fs2utils.StreamExtensions.*
 import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.problem.Checked.*
-import js7.base.utils.Atomic.extensions.*
 import js7.base.session.SessionCommand.{Login, Logout}
 import js7.base.session.{HasSessionToken, SessionApi, SessionCommand}
 import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}
-import js7.base.utils.AsyncLock
+import js7.base.utils.{AsyncLock, Atomic}
+import js7.base.utils.Atomic.extensions.*
+import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.ScalaUtils.syntax.RichAny
 import js7.base.utils.Tests.isTest
 import js7.base.version.Js7Versions.checkNonMatchingVersion
@@ -21,13 +24,9 @@ import js7.base.web.HttpClient.HttpException
 import js7.base.web.{HttpClient, Uri}
 import js7.data.event.SnapshotableState
 import js7.data.session.HttpSessionApi.*
-import cats.effect.IO
-import js7.base.fs2utils.StreamExtensions.logTiming
-import js7.base.utils.Atomic
-import js7.base.utils.CatsUtils.syntax.*
 import scala.concurrent.duration.Deadline.now
-// Test in SessionRouteTest
 
+// Test in SessionRouteTest
 /**
   * @author Joacim Zschimmer
   */

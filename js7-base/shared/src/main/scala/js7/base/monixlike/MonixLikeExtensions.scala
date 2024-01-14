@@ -9,7 +9,6 @@ import cats.syntax.monadError.*
 import cats.{ApplicativeError, Functor, MonadError}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CancelableFuture
-import js7.base.{catsutils, monixlike}
 import scala.concurrent.duration.{Deadline, FiniteDuration}
 import scala.util.{Failure, Success, Try}
 

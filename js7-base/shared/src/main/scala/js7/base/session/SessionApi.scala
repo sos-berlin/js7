@@ -4,7 +4,7 @@ import cats.effect.{IO, Outcome, Resource}
 import cats.syntax.flatMap.*
 import js7.base.auth.UserAndPassword
 import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
-import js7.base.catsutils.CatsEffectExtensions.right
+import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.generic.Completed
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{BlockingSymbol, Logger}

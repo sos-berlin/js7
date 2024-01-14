@@ -2,7 +2,6 @@ package js7.base.utils
 
 import cats.Functor
 import cats.data.{NonEmptyList, NonEmptySeq, Validated}
-import cats.effect.unsafe.Scheduler
 import cats.effect.{Deferred, IO, MonadCancel, Outcome, Resource, Sync, SyncIO}
 import cats.kernel.Monoid
 import cats.syntax.all.*
@@ -10,8 +9,7 @@ import com.typesafe.scalalogging.Logger
 import izumi.reflect.Tag
 import java.io.{ByteArrayInputStream, InputStream}
 import java.util.Base64
-import js7.base.catsutils.{CatsDeadline, SyncDeadline, UnsafeMemoizable}
-import js7.base.generic.Completed
+import js7.base.catsutils.{CatsDeadline, UnsafeMemoizable}
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
@@ -129,17 +127,6 @@ object CatsUtils:
               .bracket(_ => leftSide)(_.cancel))
 
 
-    //implicit final class RichTimer[F[_]](private val timer: Timer[F]) extends AnyVal:
-    //  def now(implicit F: Functor[F]): F[Deadline] =
-    //    for nanos <- timer.clock.monotonic(NANOSECONDS) yield
-    //      Deadline(Duration(nanos, NANOSECONDS))
-    //
-    //implicit final class RichSyncTimer(private val timer: Timer[SyncIO]) extends AnyVal:
-    //  def unsafeNow(): FiniteDuration =
-    //    Duration(
-    //      timer.clock.monotonic(NANOSECONDS).unsafeRunSync(),
-    //      NANOSECONDS)
-
     implicit final class RichResource[F[_], A](private val resource: Resource[F, A])
     extends AnyVal:
       def toAllocated[G[x] >: F[x], B >: A](
@@ -160,23 +147,6 @@ object CatsUtils:
           resource
             .toAllocated[G, B]
             .map(_.toSingleUseResource))
-
-    private val falseIO = IO.pure(false)
-    private val trueIO = IO.pure(true)
-    private val completedIO = IO.pure(Completed)
-
-    extension(x: IO.type)
-      @deprecated("Use CatsEffectExtensions")
-      def False: IO[Boolean] =
-        falseIO
-
-      @deprecated("Use CatsEffectExtensions")
-      def True: IO[Boolean] =
-        trueIO
-
-      @deprecated("Use CatsEffectExtensions")
-      def completed: IO[Completed] =
-        completedIO
 
 
   implicit final class RichDeferred[F[_], A](private val deferred: Deferred[F, A]) extends AnyVal:
@@ -233,8 +203,3 @@ object CatsUtils:
     else
       val last = seq.last
       seq ++: LazyList.continually(last)
-
-  //def repeatLast[A](seq: NonEmptySeq[A]): LazyList[A] = {
-  //  val last = seq.last
-  //  seq.toSeq ++: LazyList.continually(last)
-  //}

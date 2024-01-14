@@ -92,8 +92,8 @@ object SyncDeadline:
     for d <- IO.monotonic yield
       Now(d.toNanos)
 
-  def use[A](use: Now => IO[A]): IO[A] =
-    now.flatMap(use)
+  def use[A](use: Now => A): IO[A] =
+    now.map(use)
 
   implicit object SyncDeadline2IsOrdered extends Ordering[SyncDeadline]:
     def compare(a: SyncDeadline, b: SyncDeadline) = a compare b

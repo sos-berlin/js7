@@ -76,7 +76,7 @@ trait RealEventWatch extends EventWatch:
                   new TornException(after = request.after, tornEventId = tornAfter)
 
             case EventSeq.Empty(lastEventId) =>
-              SyncDeadline.use(implicit now => IO:
+              SyncDeadline.use(implicit now =>
                 val remaining = deadline.map(_.timeLeft)
                 (remaining.forall(_.isPositive) ? Stream.empty,
                   () => request.copy[E](
@@ -118,23 +118,27 @@ trait RealEventWatch extends EventWatch:
 
     def next(lazyAfter: () => (EventId, Option[FiniteDuration]))
     : IO[(Option[Stream[IO, EventId]], () => (EventId, Option[FiniteDuration]))] =
-      SyncDeadline.use(implicit now => IO.defer:
-        val (after, maybeTimeout) = lazyAfter()
+      SyncDeadline.use(implicit now =>
         // Timeout is renewed after every fetched event
+        val (after, maybeTimeout) = lazyAfter()
         deadline = maybeTimeout.map(t => now + (t min EventRequest.LongTimeout))
+        after
+      ).flatMap: after =>
         committedEventIdSync.whenAvailable(after, deadline.map(_.toCatsDeadline))
-          .map:
+          .flatMap:
             case false =>
-              val remaining = deadline.map(_.timeLeft)
-              logger.debug("committedEventIdSync.whenAvailable returned false" +
-                remaining.fold("")(o => ", remaining=" + o.pretty))
-              (remaining.forall(_.isPositive) ? Stream.empty,
-                () => after -> deadline.map(_.timeLeftOrZero))
+              SyncDeadline.use(implicit now =>
+                val remaining = deadline.map(_.timeLeft)
+                logger.debug("committedEventIdSync.whenAvailable returned false" +
+                  remaining.fold("")(o => ", remaining=" + o.pretty))
+                (remaining.forall(_.isPositive) ? Stream.empty,
+                  () => after -> deadline.map(_.timeLeftOrZero)))
 
             case true =>
-              val lastEventId = lastAddedEventId
-              (Some(Stream.emit(lastEventId)),
-                () => lastEventId -> originalTimeout))
+              IO:
+                val lastEventId = lastAddedEventId
+                (Some(Stream.emit(lastEventId)),
+                  () => lastEventId -> originalTimeout)
 
     val lastEventId = lastAddedEventId
 
@@ -193,11 +197,13 @@ trait RealEventWatch extends EventWatch:
     request: EventRequest[E],
     collect: PartialFunction[AnyKeyedEvent, A])
   : IO[TearableEventSeq[CloseableIterator, A]] =
-    SyncDeadline.use(implicit now => IO.defer:
-      // Protected against Timestamp overflow
-      val deadline = request.timeout.map(t => now + t.min(EventRequest.LongTimeout))
-      whenAnyKeyedEvents2(request.after, deadline, request.delay, collect, request.limit,
-        maybeTornOlder = request.tornOlder))
+    SyncDeadline
+      .use(implicit now =>
+        // Protected against Timestamp overflow
+        request.timeout.map(t => now + t.min(EventRequest.LongTimeout)))
+      .flatMap: deadline =>
+        whenAnyKeyedEvents2(request.after, deadline, request.delay, collect, request.limit,
+          maybeTornOlder = request.tornOlder)
 
   private def whenAnyKeyedEvents2[A](
     after: EventId,
@@ -237,10 +243,10 @@ trait RealEventWatch extends EventWatch:
               }
 
             case empty @ EventSeq.Empty(lastEventId) =>
-              SyncDeadline.use(implicit now => IO.defer {
-                if deadline.forall(_.hasTimeLeft) then {
+              SyncDeadline.now.flatMap(implicit now => IO.defer:
+                if deadline.forall(_.hasTimeLeft) then
                   val preventOverheating =
-                    if lastEventId < committedEventIdSync.last then {
+                    if lastEventId < committedEventIdSync.last then
                       // May happen due to race condition ???
                       val delay = overheatingDurations.next()
                       logger.debug(s"committedEventIdSync.whenAvailable(after=$after," +
@@ -248,13 +254,12 @@ trait RealEventWatch extends EventWatch:
                         s" last=${committedEventIdSync.last} => $eventArrived," +
                         s" unexpected $empty, delaying ${delay.pretty}")
                       delay
-                    } else
+                    else
                       ZeroDuration
 
                   untilNonEmpty(lastEventId).delayBy(preventOverheating)
-                } else
-                  IO.pure(EventSeq.Empty(lastEventId))
-              })
+                else
+                  IO.pure(EventSeq.Empty(lastEventId)))
 
           case o: TearableEventSeq.Torn =>
             IO.pure(o)
