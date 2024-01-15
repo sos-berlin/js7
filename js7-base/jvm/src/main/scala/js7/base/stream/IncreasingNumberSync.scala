@@ -7,7 +7,6 @@ import js7.base.catsutils.CatsDeadline
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.stream.IncreasingNumberSync.*
 import js7.base.time.ScalaTime.*
-import js7.base.utils.CatsUtils.syntax.*
 import org.jetbrains.annotations.TestOnly
 import scala.collection.mutable
 import scala.concurrent.Promise

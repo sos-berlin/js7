@@ -1,10 +1,10 @@
 package js7.base.log
 
-import izumi.reflect.Tag
 import cats.Applicative
 import cats.effect.{IO, Resource, Sync}
 import com.typesafe.scalalogging.Logger as ScalaLogger
 import fs2.Stream
+import izumi.reflect.Tag
 import js7.base.log.Logger.syntax.*
 import org.slf4j.Marker
 

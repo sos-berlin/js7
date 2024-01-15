@@ -4,7 +4,7 @@ import cats.effect.unsafe.{IORuntime, Scheduler}
 import cats.effect.IO
 import js7.base.catsutils.SyncDeadline.*
 import js7.base.time.ScalaTime.*
-import scala.concurrent.duration.{Duration, FiniteDuration, NANOSECONDS}
+import scala.concurrent.duration.FiniteDuration
 
 /** Like Scala's `scala.concurrent.duration.Deadline` but based on Cats Effect's Scheduler. */
 sealed class SyncDeadline private(val nanosSinceZero: Long)
@@ -20,15 +20,15 @@ extends Ordered[SyncDeadline]:
 
   /** Return a deadline advanced (i.e.s, moved into the future) by the given duration. */
   def +(other: FiniteDuration): SyncDeadline =
-    SyncDeadline(nanosSinceZero = nanosSinceZero + other.toNanos)
+    SyncDeadline(nanosSinceZero + other.toNanos)
 
   /** Return a deadline moved backwards (i.e., towards the past) by the given duration. */
   def -(other: FiniteDuration): SyncDeadline =
-    SyncDeadline(nanosSinceZero = nanosSinceZero - other.toNanos)
+    SyncDeadline(nanosSinceZero - other.toNanos)
 
   /** Calculate time difference between this and the other deadline, where the result is directed (i.e., may be negative). */
   def -(other: SyncDeadline): FiniteDuration =
-    Duration(nanosSinceZero - other.nanosSinceZero, NANOSECONDS)
+    (nanosSinceZero - other.nanosSinceZero).ns
 
   /** Determine whether the deadline lies in the past at the point where this method is called. */
   def isOverdue(using Now): Boolean =
@@ -46,14 +46,14 @@ extends Ordered[SyncDeadline]:
     elapsed max ZeroDuration
 
   def elapsed(using Now): FiniteDuration =
-    Duration(elapsedNanos, NANOSECONDS)
+    elapsedNanos.ns
 
   def timeLeftOrZero(using Now): FiniteDuration =
     timeLeft max ZeroDuration
 
   /** Calculate time difference between this duration and now; the result is negative if the deadline has passed. */
   def timeLeft(using Now): FiniteDuration =
-    Duration(-elapsedNanos, NANOSECONDS)
+    (-elapsedNanos).ns
 
   private def elapsedNanos(using now: Now) =
     now.nanosSinceZero - nanosSinceZero
@@ -65,19 +65,31 @@ extends Ordered[SyncDeadline]:
   def toCatsDeadline: CatsDeadline =
     CatsDeadline.fromMonotonicNanos(nanosSinceZero)
 
-  //** Not immutable, may return each nanosecond a different string. */
-  override def toString = "SyncDeadline"
-    //val t = elapsed
-    //(t.isPositive ?? "+") + t.pretty
+  override def toString =
+    if nanosSinceZero.abs < toStringTestingLimit then
+      // Probably executed for testing
+      if nanosSinceZero >= 0 then
+        s"SyncDeadline(start+${nanosSinceZero.ns.pretty})"
+      else
+        s"SyncDeadline(start${nanosSinceZero.ns.pretty})"
+    else
+      s"SyncDeadline($nanosSinceZero)"
 
 
 object SyncDeadline:
 
-  final class Now private[SyncDeadline](nanos: Long) extends SyncDeadline(nanos):
-    override def toString = "Now"
+  // Below this limit, it's probably a testing value and we can show it.
+  // Otherwise it's a duration since a random point in time.
+  private val toStringTestingLimit = (24.h).toNanos
+
+  final class Now private[SyncDeadline](nanos: Long) extends SyncDeadline(nanos)
+    //override def toString = "Now"
 
   def fromNanos(nanos: Long): SyncDeadline =
     new SyncDeadline(nanos)
+
+  def fromMonotonic(duration: FiniteDuration): SyncDeadline =
+    SyncDeadline(duration.toNanos)
 
   def fromScheduler(implicit scheduler: Scheduler): Now =
     Now(scheduler.monotonicNanos())

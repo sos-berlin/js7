@@ -160,12 +160,6 @@ object StreamExtensions:
       yield a
 
 
-  extension[F[_], A](stream: Stream[F, Stream[F, A]])
-
-    def mergeAll(using F: Concurrent[F]): Stream[F, A] =
-      stream.fold[Stream[F, A]](Stream.empty)((a, b) => a.merge(b)).flatten
-
-
   extension(x: Stream.type)
     /** Like Monix Observable fromAsyncStateAction. */
     @deprecated("Use unfold")

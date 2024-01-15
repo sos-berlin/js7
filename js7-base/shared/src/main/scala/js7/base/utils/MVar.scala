@@ -7,6 +7,7 @@ import io.github.timwspence.cats.stm.STM
 import js7.base.log.Logger
 import js7.base.utils.MVar.*
 
+// TODO Replace by AtomicCell
 final class MVar[F[_], A] private(stm: STM[F])(tmvar: stm.TMVar[A])/*(using F: Async[F])*/:
 
   def put(a: A): F[Unit] =

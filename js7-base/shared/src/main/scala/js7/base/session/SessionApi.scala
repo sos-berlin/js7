@@ -13,7 +13,6 @@ import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.session.SessionApi.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AsyncLock
-import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.HttpClient
 import js7.base.web.HttpClient.HttpException
