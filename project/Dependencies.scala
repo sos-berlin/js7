@@ -10,7 +10,7 @@ object Dependencies
   val slf4jVersion = "2.0.9"  // See also plugins.sbt
   val log4jVersion = "2.21.1"  // See also plugins.sbt
   val catsVersion = "2.9.0"
-  val catsEffectVersion = "3.5.2"
+  val catsEffectVersion = "3.5.3"
   val catsSTMVersion = "0.13.4"
   val izumiReflectVersion = "2.1.3"
   //val kittensVersion = "1.2.1"
@@ -23,7 +23,7 @@ object Dependencies
   val sourcecodeVersion = "0.3.1"
   val disciplineVersion = "1.5.1"
   val disciplineScalaTestVersion = "2.2.0"
-  val fs2Version = "3.7.0"
+  val fs2Version = "3.9.3"
   val monocleVersion = "1.5.0"
   val scribeVersion = "3.6.7" // TODO "3.8.2"
   val scalaJsDomVersion = "2.2.0"

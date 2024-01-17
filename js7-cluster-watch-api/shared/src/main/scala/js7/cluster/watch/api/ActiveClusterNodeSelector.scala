@@ -4,8 +4,7 @@ import cats.effect.{FiberIO, IO, Outcome, Resource}
 import cats.syntax.flatMap.*
 import cats.syntax.traverse.*
 import fs2.Stream
-import js7.base.catsutils.CatsEffectExtensions.{catchIntoChecked, joinStd}
-import js7.base.fs2utils.StreamExtensions.mergeAll
+import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
@@ -66,7 +65,7 @@ object ActiveClusterNodeSelector:
                     .eval(o.fiber.joinStd)
                     .map(ApiWithNodeState(o.api, _)))
                   // Query nodes in parallel and continue with first response first
-                  .mergeAll //(implicitly[Stream[IO, ApiWithNodeState[Api]] <:< Stream[IO, ApiWithNodeState[Api]]]/*required for Scala 3???*/)
+                  .parJoinUnbounded
                   .takeThrough(o => !o.clusterNodeState.exists(_.isActive))
                   .compile
                   .toList
@@ -87,7 +86,7 @@ object ActiveClusterNodeSelector:
                         case Some(x) => IO.pure(Right(x))
                       })
                   }
-                  .guaranteeCase {
+                  .guaranteeCaseLazy {
                     case Outcome.Succeeded(_) => IO.unit
                     case outcome =>
                       logger.debug(s"selectActiveNodeApiOnly => $outcome")

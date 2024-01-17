@@ -36,3 +36,9 @@ object UnsafeMemoizable:
         // `Lazy` blocks the thread when used concurrently !!!
         val lzy = Lazy(syncIO.unsafeRunSync())
         SyncIO.delay(lzy.value)
+
+  extension [A](syncIO: SyncIO[A])
+    def unsafeMemoize: SyncIO[A] =
+      // `Lazy` blocks the thread when used concurrently !!!
+      val lzy = Lazy(syncIO.unsafeRunSync())
+      SyncIO.delay(lzy.value)

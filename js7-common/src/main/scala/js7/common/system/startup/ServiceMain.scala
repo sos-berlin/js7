@@ -1,28 +1,19 @@
 package js7.common.system.startup
 
-import cats.effect.kernel.Resource
-import cats.effect.{ExitCode, IO, Resource, Sync, SyncIO}
-import cats.syntax.flatMap.*
-import com.typesafe.config.Config
+import cats.effect.{ExitCode, IO, Resource}
 import izumi.reflect.Tag
 import js7.base.BuildInfo
 import js7.base.configutils.Configs.logConfig
-import js7.base.io.process.ReturnCode
-import js7.base.log.Logger.syntax.*
 import js7.base.log.{Log4j, Logger}
-import js7.base.service.{MainService, MainServiceTerminationException, Service}
+import js7.base.service.{MainService, MainServiceTerminationException}
 import js7.base.system.startup.StartUp
 import js7.base.system.startup.StartUp.{logJavaSettings, nowString, printlnWithClock}
-import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.base.utils.CatsUtils.syntax.*
+import js7.base.utils.ProgramTermination
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{Allocated, ProgramTermination}
 import js7.common.commandline.CommandLineArguments
 import js7.common.configuration.BasicConfiguration
-import js7.common.system.startup.Js7ReturnCodes.{terminationToExitCode}
-import js7.common.utils.JavaShutdownHook
-import cats.effect.unsafe.IORuntime
+import js7.common.system.startup.Js7ReturnCodes.terminationToExitCode
 import scala.concurrent.duration.{Deadline, Duration}
 
 object ServiceMain:

@@ -79,7 +79,7 @@ final class StreamNumberedQueueTest extends OurAsyncTestSuite:
     awaitAndAssert(buffer.length == 6)
     assert(buffer(5) == Numbered(6, X("f")))
 
-    future.cancel().await(99.s)
+    future.cancelToFuture().await(99.s)
     awaitAndAssert(isCompleted)
     assert(isCompleted)
 

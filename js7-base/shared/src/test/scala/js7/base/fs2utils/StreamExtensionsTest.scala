@@ -8,7 +8,7 @@ import js7.base.catsutils.CatsDeadline
 import js7.base.fs2utils.StreamExtensions.*
 import js7.base.fs2utils.StreamExtensionsTest.*
 import js7.base.log.Logger
-import js7.base.test.OurAsyncTestSuite
+import js7.base.test.{OurAsyncTestSuite, TestCatsEffect}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.*
@@ -45,6 +45,30 @@ final class StreamExtensionsTest extends OurAsyncTestSuite:
       .both(
         started.get *> IO.sleep(100.ms) *> stop.complete(()))
       .flatMap((n, _) => IO(assert(n >= 3)))
+
+  "onlyNewest" - {
+    "onlyNewest" in:
+      val stream: Stream[IO, Int] =
+        Stream.sleep_[IO](1.s) ++ Stream(1) ++ Stream(2, 3) ++
+          Stream.sleep_[IO](1.s) ++ Stream(4, 5) ++ Stream(6) ++
+          Stream.sleep_[IO](1.s) ++ Stream(7) ++ Stream(8, 9)
+
+      val program =
+        for
+          result <- stream.onlyNewest.evalTap(_ => IO.sleep(100.ms)).compile.toList
+        yield
+          assert(result == List(1, 3, 5, 6, 7, 9))
+
+      TestControl.executeEmbed(program, seed = Some(TestCatsEffect.toSeed(1)))
+
+    "Error handling" in:
+      val e = new IllegalStateException("TEST ERROR")
+      TestControl.executeEmbed:
+        for
+          result <- Stream.raiseError[IO](e).covaryOutput[Long].onlyNewest.attempt.compile.toList
+        yield
+          assert(result.size == 1 && result.head.left.toOption.get.eq(e))
+  }
 
   //"splitBigByteSeqs" in:
   //    val maxSize = 2

@@ -1,7 +1,6 @@
 package js7.common.system.startup
 
 import cats.effect.ExitCode
-import js7.base.io.process.ReturnCode
 import js7.base.utils.ProgramTermination
 
 object Js7ReturnCodes:

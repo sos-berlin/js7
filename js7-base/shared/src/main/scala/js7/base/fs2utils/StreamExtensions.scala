@@ -1,9 +1,10 @@
 package js7.base.fs2utils
 
-import cats.effect
 import cats.effect.std.Queue
 import cats.effect.{Concurrent, IO, Ref, Resource, Sync}
 import cats.syntax.apply.*
+import cats.syntax.option.*
+import cats.{Eq, effect}
 import fs2.{Chunk, Compiler, RaiseThrowable, Stream}
 import js7.base.time.ScalaTime.RichDeadline
 import scala.concurrent.duration.Deadline.now
@@ -50,6 +51,25 @@ object StreamExtensions:
         .takeWhile(_.isRight)
         .map(_.asInstanceOf[Right[Unit, A]].value)
 
+    /** When multiple elements are available, take only the newest one and drop the older ones.
+     *
+     * Consecutive equal elements are collapsed to one.
+     */
+    def onlyNewest(using Concurrent[F], Eq[A]): Stream[F, A] =
+      for
+        last <- Stream.eval(Ref[F].of(none[A]))
+        output <-
+          stream.chunks
+            .flatMap(chunk => Stream.fromOption[F](chunk.last))
+            .evalTap(a => last.set(Some(a)))
+            .noneTerminate
+            .hold1
+            .flatMap(_.discrete)
+            .unNoneTerminate
+            .append(Stream.eval(last.get).unNoneTerminate)
+            .changes
+      yield output
+    
     //def splitBigByteSeqs[ByteSeq: ByteSequence](chunkSize: Int)(using ByteSeq =:= A): Stream[F, ByteSeq] =
     //  stream.asInstanceOf[Stream[F, ByteSeq]]
     //    .flatMap: byteSeq =>

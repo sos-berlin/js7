@@ -81,7 +81,7 @@ final class StreamNumberedQueue[V: Tag]:
             IO.some(Chunk.empty -> after).delayBy(1.s)
 
           case Right(Right(values)) =>
-            IO.some(Chunk.vector(values) -> values.last.number)
+            IO.some(Chunk.from(values) -> values.last.number)
 
   def release(after: Long): IO[Checked[Unit]] =
     mutex.lock(IO:

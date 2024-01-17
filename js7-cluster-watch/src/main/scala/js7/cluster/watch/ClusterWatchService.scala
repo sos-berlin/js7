@@ -5,7 +5,7 @@ import cats.effect.{IO, Resource}
 import com.typesafe.config.Config
 import fs2.Stream
 import js7.base.configutils.Configs.RichConfig
-import js7.base.fs2utils.StreamExtensions.{mergeAll, onStart, takeUntilEval}
+import js7.base.fs2utils.StreamExtensions.{onStart, takeUntilEval}
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.problem.Checked
@@ -66,7 +66,7 @@ extends MainService, Service.StoppableByRequest:
           val nodeWatch = new NodeServer(nodeApi)
           nodeWatch.stream.map(nodeWatch -> _)
         })
-      .mergeAll // ?(/*Scala 3*/implicitly[Stream[IO, (NodeServer, ClusterWatchRequest)] <:< Stream[IO, (NodeServer, ClusterWatchRequest)]])
+      .parJoinUnbounded
       .evalMap { case (nodeWatch, request) =>
         // Synchronize requests from both nodes
         request.correlId.bind(

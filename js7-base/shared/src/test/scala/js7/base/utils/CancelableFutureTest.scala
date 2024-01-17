@@ -21,7 +21,7 @@ final class CancelableFutureTest extends OurAsyncTestSuite:
           .onCancel(canceled.set(true))
           .unsafeToCancelableFuture()
         _ <- started.get
-        _ <- IO.fromFuture(IO(future.cancel()))
+        _ <- IO.fromFuture(IO(future.cancelToFuture()))
         _ <- IO.fromFuture(IO(future)).attempt/*because the fiber has been canceled*/
         isCanceled <- canceled.get
       yield assert(future.isCompleted && isCanceled)

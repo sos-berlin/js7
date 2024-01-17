@@ -299,7 +299,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
                   response
                 else
                   logResponseStream(response, prefix)
-          .guaranteeCase:
+          .guaranteeCaseLazy:
             case Outcome.Canceled() => IO:
               canceled = true
               logger.debug(s"<~~ ⚫️$responseLogPrefix => canceled")

@@ -9,7 +9,6 @@ import js7.base.fs2utils.StreamExtensions.insertHeartbeatsOnSlowUpstream
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.JavaTimeConverters.AsScalaDuration
-import js7.base.utils.FutureCompletion
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.pekkohttp.PekkoHttpServerUtils

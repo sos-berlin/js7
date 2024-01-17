@@ -1,7 +1,7 @@
 package js7.base.catsutils
 
-import cats.effect.unsafe.{IORuntime, Scheduler}
 import cats.effect.IO
+import cats.effect.unsafe.{IORuntime, Scheduler}
 import js7.base.catsutils.SyncDeadline.*
 import js7.base.time.ScalaTime.*
 import scala.concurrent.duration.FiniteDuration
@@ -83,7 +83,13 @@ object SyncDeadline:
   private val toStringTestingLimit = (24.h).toNanos
 
   final class Now private[SyncDeadline](nanos: Long) extends SyncDeadline(nanos)
-    //override def toString = "Now"
+
+  object Now:
+    def fromIORuntime(using ioRuntime: IORuntime): Now =
+      Now(ioRuntime.scheduler.monotonicNanos())
+
+    given (using ioRuntime: IORuntime): Now =
+      fromIORuntime
 
   def fromNanos(nanos: Long): SyncDeadline =
     new SyncDeadline(nanos)
@@ -98,7 +104,7 @@ object SyncDeadline:
     fromScheduler(ioRuntime.scheduler)
 
   def fromCatsDeadline(catsDeadline: CatsDeadline) =
-    new SyncDeadline(catsDeadline.nanosSinceZero)
+    fromNanos(catsDeadline.nanosSinceZero)
 
   def now: IO[Now] =
     for d <- IO.monotonic yield

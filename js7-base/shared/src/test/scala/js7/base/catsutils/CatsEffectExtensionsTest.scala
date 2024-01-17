@@ -1,61 +1,57 @@
 package js7.base.catsutils
 
-import cats.effect.IO
-import cats.syntax.option.*
-import js7.base.catsutils.CatsEffectExtensionsTest.*
-import js7.base.log.Logger
-import js7.base.monixlike.MonixLikeExtensions.*
+import cats.effect.{IO, OutcomeIO}
+import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
+import scala.collection.mutable
 
 final class CatsEffectExtensionsTest extends OurAsyncTestSuite:
 
-  "raceFold" - {
-    "canceled" in:
-      @volatile var canceled = false
-      IO.never
-        .onCancel(IO {
-          canceled = true
-          logger.info(s"raceFold canceled")
-        })
-        .raceFold(IO.sleep(100.ms)/*Wait for .onCancel*/)
-        .map(result =>
-          assert(result.getClass == classOf[Unit] && canceled))
+  "guaranteeCaseLazy" - {
+    "ERROR: guaranteeCase evaluates the Canceled case eagerly even when not Canceled" in:
+      val evaluatedCases = mutable.Buffer.empty[OutcomeIO[Int]]
+
+      IO(7)
+        .guaranteeCase: outcome =>
+          evaluatedCases += outcome
+          IO.unit
+        .map: _ =>
+          assert(evaluatedCases.toString == "ArrayBuffer(Canceled(), Succeeded(IO(7)))")
+        .unsafeToFuture()
+
+    "guaranteeCaseLazy evalutes the Canceled case only when Canceled" in:
+      val outcomes = mutable.Buffer.empty[OutcomeIO[Int]]
+
+      IO(7)
+        .guaranteeCaseLazy: outcome =>
+          outcomes += outcome
+          IO.unit
+        .map: _ =>
+          assert(outcomes.toString == "ArrayBuffer(Succeeded(IO(7)))")
+        .unsafeToFuture()
   }
 
-  "onErrorTap" - {
-    "No error" in:
-      var tapped = none[Throwable]
-      for
-        one <- IO(1).onErrorTap(t => IO { tapped = t.some })
-      yield assert(one == 1)
+  "onCancelLazy" - {
+    "ERROR: onCancel evaluates the handler even when not canceled" in :
+      var canceledEvaluated = false
 
-    "Tapped exception" in:
-      val throwable = new IllegalArgumentException
-      var tapped = none[Throwable]
-      for attempted <- IO.raiseError(throwable).onErrorTap(t => IO { tapped = t.some }).attempt
-      yield assert(attempted.left.exists(_ eq throwable) && (tapped.get eq throwable))
+      IO(7)
+        .onCancel:
+          canceledEvaluated = true
+          IO.unit
+        .map: _ =>
+          assert(canceledEvaluated)
+        .unsafeToFuture()
 
-    "matching PartialFunction" in:
-      val throwable = new IllegalArgumentException
-      var tapped = none[IllegalArgumentException]
-      for
-        attempted <- IO.raiseError(throwable)
-          .onErrorTap:
-            case t: IllegalArgumentException => IO { tapped = t.some }
-          .attempt
-      yield assert(attempted.left.exists(_ eq throwable) && (tapped.get eq throwable))
+    "onCancelLazy evaluate the handler only when canceled" in :
+      var canceledEvaluated = false
 
-    "non-matching PartialFunction" in:
-      val throwable = new IllegalStateException()
-      var tapped = none[IllegalArgumentException]
-      for
-        attempted <- IO.raiseError(throwable)
-          .onErrorTap:
-            case t: IllegalArgumentException => IO { tapped = t.some }
-          .attempt
-      yield assert(attempted.left.exists(_ eq throwable) && tapped == None)
+      IO(7)
+        .onCancelLazy:
+          canceledEvaluated = true
+          IO.unit
+        .map: _ =>
+          assert(!canceledEvaluated)
+        .unsafeToFuture()
   }
-
-object CatsEffectExtensionsTest:
-  private val logger = Logger[this.type]

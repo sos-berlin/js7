@@ -1,13 +1,12 @@
 package js7.base.log
 
-import cats.effect.Resource
-import js7.base.utils.ScalaUtils.implicitClass
-import cats.effect.IO
+import cats.effect.{IO, Resource}
 import fs2.Stream
+import js7.base.utils.ScalaUtils.implicitClass
 import scala.reflect.ClassTag
 import sourcecode.{FileName, Line, Name, Pkg}
 
-object Logger extends AdHocLogger
+object Logger
 {
   val empty: scribe.Logger =
     scribe.Logger.empty

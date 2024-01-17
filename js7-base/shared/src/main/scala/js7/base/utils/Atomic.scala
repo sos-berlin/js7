@@ -2,6 +2,12 @@ package js7.base.utils
 
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger, AtomicLong, AtomicReference}
 
+//type Atomic[A] = A match
+//  case Boolean => AtomicBoolean
+//  case Int => AtomicInteger
+//  case Long => AtomicLong
+//  case _ => AtomicReference[A]
+
 object Atomic:
   inline def apply(initial: Boolean): AtomicBoolean =
     new AtomicBoolean(initial)

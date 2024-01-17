@@ -2,10 +2,10 @@ package js7.common.http
 
 import cats.effect
 import cats.effect.{IO, Resource}
-import com.typesafe.scalalogging.Logger
 import fs2.Stream
 import fs2.interop.reactivestreams.*
 import izumi.reflect.Tag
+import js7.base.log.Logger
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.common.pekkohttp.ExceptionHandling.webLogger
 import org.apache.pekko
@@ -18,7 +18,7 @@ import org.apache.pekko.stream.scaladsl.{Sink, Source}
   */
 object StreamingSupport:
 
-  private val logger = Logger[this.type]  // TODO Use Logger adapter (unreachable in module common)
+  private val logger = Logger[this.type]
 
   extension [A](stream: Stream[IO, A])
     def toPekkoSourceForHttpResponse(using A: Tag[A]): Resource[IO, Source[A, NotUsed]] =

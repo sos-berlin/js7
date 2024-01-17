@@ -38,7 +38,7 @@ object StreamPauseDetector:
             case (_, tick: Tick) => tick
             case (_, value: Value[A @unchecked]) => value
           .collect:
-            case o: Expirable[A] => o
+            case o: Expirable[A @unchecked] => o
 
   sealed transparent trait Element
   sealed trait Ticking extends Element

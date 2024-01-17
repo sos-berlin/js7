@@ -1,33 +1,27 @@
 package js7.base.catsutils
 
-import cats.effect.kernel.Async
 import cats.effect.{IO, Sync, SyncIO}
 import cats.syntax.all.*
 import cats.{FlatMap, effect}
 import java.util.concurrent.atomic.AtomicInteger
 import js7.base.catsutils.UnsafeMemoizable.given
-import js7.base.log.Logger
 import js7.base.test.OurAsyncTestSuite
 import js7.base.utils.Atomic
 import org.scalatest.Assertion
 
 final class UnsafeMemoizableTest extends OurAsyncTestSuite:
 
-  "without unsafeMemoize" in:
+  "without .unsafeMemoize" in:
     check[IO](identity, 3)
 
-  "unsafeMemoize with Cats IO" in:
+  ".unsafeMemoize with Cats IO" in:
     checkIO(_.unsafeMemoize, 1)
 
-  "unsafeMemoize with Cats SyncIO (blocking, experimental only)" in:
-    check[SyncIO](_.unsafeMemoize, 1).unsafeRunSync()
+  ".memoize.flatten with Cats IO does not memoize" in:
+    checkIO(_.memoize.flatten, 3)
 
-  private def check0[F[_]: Async](expected: Int): F[Assertion] =
-    // These two calls are equivalent
-    for
-      _ <- check[F](_.unsafeMemoize, expected)
-      _ <- check[F](UnsafeMemoizable.given_UnsafeMemoizable_F.unsafeMemoize(_), expected)
-    yield succeed
+  ".unsafeMemoize with Cats SyncIO (blocking, experimental only)" in:
+    check[SyncIO](_.unsafeMemoize, 1).unsafeRunSync()
 
   private def check[F[_]: Sync: FlatMap](f: F[Int] => F[Int], expected: Int): F[Assertion] =
     val called = Atomic(0)

@@ -12,7 +12,7 @@ import js7.data.event.KeyedEvent
 import js7.data.item.VersionId
 import js7.data.order.OrderEvent.OrderAdded
 import js7.data.orderwatch.ExternalOrderKey
-import js7.data.value.NamedValues
+import js7.data.value.{NamedValues, Value}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.BranchPath.syntax.*
 import js7.data.workflow.position.{BranchPath, Position, PositionOrLabel}
@@ -50,13 +50,13 @@ object FreshOrder:
   def apply(
     id: OrderId,
     workflowPath: WorkflowPath,
-    arguments: NamedValues = Map.empty,
+    arguments: NamedValues = NamedValues.empty,
     scheduledFor: Option[Timestamp] = None,
     deleteWhenTerminated: Boolean = false,
     forceJobAdmission: Boolean = false,
     innerBlock: BranchPath = BranchPath.empty,
     startPosition: Option[PositionOrLabel] = None,
-    stopPositions: Set[PositionOrLabel] = Set.empty)
+    stopPositions: Set[PositionOrLabel] = Set.empty[PositionOrLabel])
   : FreshOrder =
     checked(id, workflowPath, arguments, scheduledFor,
       deleteWhenTerminated, forceJobAdmission,

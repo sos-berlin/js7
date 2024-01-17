@@ -12,7 +12,6 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
-import js7.base.utils.FutureCompletion
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.http.JsonStreamingSupport.*
 import js7.common.pekkohttp.PekkoHttpServerUtils.{accept, completeWithCheckedStream, streamToResponseMarshallable}
@@ -129,7 +128,7 @@ trait GenericEventRoute extends RouteProvider:
       request: EventRequest[Event],
       maybeHeartbeat: Option[FiniteDuration],
       eventWatch: EventWatch)
-      (implicit userId: UserId, s: JsonEntityStreamingSupport)
+      (implicit s: JsonEntityStreamingSupport)
     : Route =
       extractRequest { httpRequest =>
         val checkedStream: IO[Checked[Stream[IO, ByteString]]] =
@@ -150,7 +149,6 @@ trait GenericEventRoute extends RouteProvider:
       }
 
     private def awaitFirstEventStream(request: EventRequest[Event], eventWatch: EventWatch)
-      (implicit s: JsonEntityStreamingSupport)
     : IO[Checked[Stream[IO, ByteString]]] =
       IO.defer:
         val runningSince = now

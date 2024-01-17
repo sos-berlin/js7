@@ -1,17 +1,28 @@
 package js7.base.catsutils
 
 import cats.effect.kernel.MonadCancel
-import cats.effect.{Clock, Fiber, IO, Outcome}
+import cats.effect.{Clock, Fiber, IO, Outcome, OutcomeIO}
 import cats.syntax.functor.*
 import cats.{Defer, Functor, MonadError, effect}
 import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.problem.Checked
+import scala.annotation.unchecked.uncheckedVariance
 import scala.concurrent.{ExecutionContext, Future}
 
 object CatsEffectExtensions:
 
   extension[A](io: IO[A])
+
+    /** Evaluates the Canceled() case only when not Canceled. */
+    def guaranteeCaseLazy(finalizer: OutcomeIO[A @uncheckedVariance] => IO[Unit]): IO[A] =
+      io.guaranteeCase:
+        case o @ Outcome.Canceled() => IO.defer(finalizer(o))
+        case o => finalizer(o)
+
+    /** Evaluates the Canceled() only when not canceled. */
+    def onCancelLazy(fin: => IO[Unit]): IO[A] =
+      io.onCancel(IO.defer(fin))
 
     // inline for proper processing of Enclosing
     inline def adHocInfo(inline toMsg: A => String)(using src: sourcecode.Enclosing): IO[A] =
@@ -42,9 +53,9 @@ object CatsEffectExtensions:
         case Left(problem) => IO.raiseError(problem.throwable)
         case Right(a) => IO.pure(a)
 
-    def guaranteeExceptWhenRight(release: IO[Unit]): IO[Checked[A]] =
+    def guaranteeExceptWhenRight(release: => IO[Unit]): IO[Checked[A]] =
       io
-        .guaranteeCase:
+        .guaranteeCaseLazy:
           case Outcome.Succeeded(_) => IO.unit
           case _ => release
         .flatTap:

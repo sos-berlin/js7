@@ -8,12 +8,13 @@ import cats.syntax.flatMap.*
 import com.typesafe.scalalogging.Logger as ScalaLogger
 import fs2.Stream
 import izumi.reflect.Tag
+import js7.base.fs2utils.StreamExtensions.tapEachChunk
 import js7.base.log.Slf4jUtils.syntax.*
 import js7.base.problem.Problem
 import js7.base.system.startup.StartUp
 import js7.base.time.ScalaTime.{DurationRichLong, RichDuration}
 import js7.base.utils.ScalaUtils.implicitClass
-import js7.base.utils.ScalaUtils.syntax.RichThrowable
+import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichThrowable}
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.base.utils.{Once, Tests}
 import org.slf4j.{LoggerFactory, Marker, MarkerFactory}
@@ -288,15 +289,24 @@ object Logger extends AdHocLogger:
       args: => Any = "")
       (stream: Stream[IO, A])
     : Stream[IO, A] =
-      Stream
-        .eval(IO.whenA(
-          logger.isEnabled(logLevel))(IO(
-          logStart(logger, logLevel, function, args))))
-        .drop(1)
-        .asInstanceOf[Stream[IO, A]]
-        .++(stream.onFinalizeCase(exitCase =>
-          IO.whenA(logger.isEnabled(logLevel))(IO(
-            logOutcome(logger, logLevel, function, args, duration = "", exitCase.toOutcome[IO])))))
+      Stream.suspend:
+        var chunkCount, elemCount = 0L
+        Stream
+          .eval:
+            IO.whenA(logger.isEnabled(logLevel))(IO:
+              logStart(logger, logLevel, function, args))
+          .drop(1)
+          .asInstanceOf[Stream[IO, A]]
+          .tapEachChunk: chunk =>
+            chunkCount += 1
+            elemCount += chunk.size
+          .append:
+            stream
+              .onFinalizeCase: exitCase =>
+                IO.whenA(logger.isEnabled(logLevel))(IO:
+                  logOutcome(logger, logLevel, function, args, duration = "",
+                    exitCase.toOutcome[IO],
+                    result = s"$chunkCount chunks, $elemCount elements"))
 
   private final class StartReturnLogContext(logger: ScalaLogger, logLevel: LogLevel,
     function: String, args: => Any = ""):
@@ -347,7 +357,8 @@ object Logger extends AdHocLogger:
     function: String,
     args: => Any,
     duration: String,
-    outcome: Outcome[F, Throwable, A])
+    outcome: Outcome[F, Throwable, A],
+    result: => String = "")
   : Unit =
     outcome match
       case Outcome.Errored(t) =>
@@ -355,7 +366,9 @@ object Logger extends AdHocLogger:
       case Outcome.Canceled() =>
         logReturn(logger, logLevel, function, args, duration, "⚫️", "Canceled")
       case Outcome.Succeeded(_) =>
-        logReturn(logger, logLevel, function, args, duration, "", "Completed")
+        val res = result
+        logReturn(logger, logLevel, function, args, duration, "", "Completed" +
+          (res.nonEmpty ?? " · " + res))
 
   private def logReturn(
     logger: ScalaLogger,

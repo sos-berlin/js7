@@ -317,6 +317,7 @@ object PekkoHttpServerUtils:
                 }
           })
 
+  // TODO Fix the name
   def streamToResponseMarshallable[A: Encoder : Tag](
     stream: Stream[IO, A],
     shutdownSignaled: IO[Either[Throwable, Unit]],
@@ -339,13 +340,14 @@ object PekkoHttpServerUtils:
       .fold(chunks): keepAlive =>
         for
           terminated <- Stream.eval(Deferred[IO, Unit])
-          byteString <- chunks
+          chunk <- chunks
             .onFinalize(terminated.complete(()).void)
             .merge(Stream
+              // Is this insertHeartbeatsOnSlowUpstream ???
               .constant(heartbeatChunk, chunkSize = 1)
               .covary[IO]
               .delayBy(keepAlive)
               .takeUntilEval(terminated.get))
-        yield byteString
+        yield chunk
       .map(_.toByteString)
       .interruptWhen(shutdownSignaled)

@@ -5,11 +5,12 @@ import cats.data.{NonEmptyList, NonEmptySeq, Validated}
 import cats.effect.{Deferred, IO, MonadCancel, Outcome, Resource, Sync, SyncIO}
 import cats.kernel.Monoid
 import cats.syntax.all.*
-import com.typesafe.scalalogging.Logger
 import izumi.reflect.Tag
 import java.io.{ByteArrayInputStream, InputStream}
 import java.util.Base64
+import js7.base.catsutils.CatsEffectExtensions.guaranteeCaseLazy
 import js7.base.catsutils.{CatsDeadline, UnsafeMemoizable}
+import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
@@ -79,7 +80,7 @@ object CatsUtils:
                 infoLogged = true
                 logger.info(msg)
             })
-            .guaranteeCase(exit =>
+            .guaranteeCaseLazy(exit =>
               IO.whenA(infoLogged):
                 for elapsed <- since.elapsed yield
                 exit match

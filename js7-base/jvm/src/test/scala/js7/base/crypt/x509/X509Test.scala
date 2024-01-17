@@ -128,7 +128,7 @@ final class X509Test extends OurTestSuite, TestCatsEffect:
 
         var t = now
         val signedStrings = Stream
-          .chunk(Chunk.indexedSeq(1 to n))
+          .chunk(Chunk.from(1 to n))
           .covary[IO]
           .parEvalMapUnordered(sys.runtime.availableProcessors): i =>
             IO:
@@ -156,7 +156,7 @@ final class X509Test extends OurTestSuite, TestCatsEffect:
         for _ <- 1 to 10 do
           t = now
           Stream
-            .chunk(Chunk.indexedSeq(signedStrings))
+            .chunk(Chunk.from(signedStrings))
             .covary[IO]
             .parEvalMapUnordered(sys.runtime.availableProcessors): signedString =>
               IO:

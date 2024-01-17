@@ -7,24 +7,23 @@ import cats.syntax.flatMap.*
 import cats.syntax.functor.*
 import cats.syntax.monadError.*
 import cats.{ApplicativeError, Functor, MonadError}
+import fs2.{Pull, Stream}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CancelableFuture
+import scala.concurrent.TimeoutException
 import scala.concurrent.duration.{Deadline, FiniteDuration}
 import scala.util.{Failure, Success, Try}
 
 object MonixLikeExtensions:
 
   extension (scheduler: Scheduler)
-
     def nowAsDeadline(): Deadline =
       Deadline(scheduler.monotonicNanos().ns)
 
-    /** Monix like */
     def scheduleOnce(after: FiniteDuration)(callback: => Unit): Cancelable =
       Cancelable.fromRunnable:
         scheduler.sleep(after, () => callback)
 
-    /** Monix like */
     def scheduleAtFixedRate(delay: FiniteDuration, repeat: FiniteDuration)(body: => Unit)
     : Cancelable =
       val repeatNanos = repeat.toNanos
@@ -39,7 +38,6 @@ object MonixLikeExtensions:
 
       Cancelable.fromRunnable(scheduler.sleep(delay, callback))
 
-    /** Monix like */
     def scheduleAtFixedRates(durations: IterableOnce[FiniteDuration])(body: => Unit): Cancelable =
       val cancelable = SerialCancelable()
       val iterator = durations.iterator
@@ -94,9 +92,42 @@ object MonixLikeExtensions:
 
   extension [A](io: IO[A])
     def onErrorTap(pf: PartialFunction[Throwable, IO[Unit]]): IO[A] =
+      tapError(pf)
+
+    def tapError(pf: PartialFunction[Throwable, IO[Unit]]): IO[A] =
       io.attemptTap:
         case Right(_) => IO.unit
         case Left(t) => pf.applyOrElse(t, _ => IO.unit)
 
     def unsafeToCancelableFuture()(using IORuntime): CancelableFuture[A] =
       CancelableFuture.fromPair(io.unsafeToFutureCancelable())
+
+
+  extension (x: IO.type)
+    @deprecated("Monix compatibility")
+    def parMap2[A, B, C](a: IO[A], b: IO[B])(f: (A, B) => C): IO[C] =
+      IO.both(a, b).map((a, b) => f(a, b))
+
+    @deprecated("Use IO.both")
+    def parZip2[A, B](a: IO[A], b: IO[B]): IO[(A, B)] =
+      IO.both(a, b)
+
+
+  extension [A](stream: Stream[IO, A])
+    // Implementation taken from Stream.Pull.timeout documentation.
+    def timeoutOnSlowUpstream(timeout: FiniteDuration): Stream[IO, A] =
+      stream.pull
+        .timed: timedPull =>
+          def timeoutException = new UpstreamTimeoutException(
+            s"timeoutOnSlowUpstream timed-out after ${timeout.pretty}")
+
+          def go(timedPull: Pull.Timed[IO, A]): Pull[IO, A, Unit] =
+            timedPull.timeout(timeout) >> // starts new timeout and stops the previous one
+              timedPull.uncons.flatMap:
+                case Some((Left(_), next)) => Pull.raiseError(timeoutException) >> go(next)
+                case Some((Right(chunk), next)) => Pull.output(chunk) >> go(next)
+                case None => Pull.done
+          go(timedPull)
+        .stream
+
+  final class UpstreamTimeoutException(msg: String) extends TimeoutException(msg)
