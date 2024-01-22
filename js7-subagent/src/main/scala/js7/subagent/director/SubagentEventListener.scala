@@ -1,0 +1,281 @@
+package js7.subagent.director
+
+import cats.effect.{FiberIO, IO}
+import cats.syntax.flatMap.*
+import cats.syntax.foldable.*
+import cats.syntax.traverse.*
+import fs2.Stream
+import js7.base.catsutils.CatsEffectExtensions.{joinStd, left}
+import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
+import js7.base.fs2utils.StreamExtensions.takeUntilEval
+import js7.base.generic.Completed
+import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
+import js7.base.monixlike.MonixLikeExtensions.completedL
+import js7.base.monixutils.StreamPauseDetector.*
+import js7.base.monixutils.Switch
+import js7.base.problem.Checked.*
+import js7.base.problem.{Checked, Problem}
+import js7.base.time.ScalaTime.*
+import js7.base.utils.Atomic.extensions.*
+import js7.base.utils.CatsUtils.PureFiberIO
+import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
+import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.{AsyncLock, Atomic, MVar}
+import js7.common.http.RecouplingStreamReader
+import js7.common.http.configuration.RecouplingStreamReaderConf
+import js7.data.event.JournalEvent.StampedHeartbeat
+import js7.data.event.KeyedEvent.NoKey
+import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, Stamped}
+import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten}
+import js7.data.order.{OrderEvent, OrderId}
+import js7.data.other.HeartbeatTiming
+import js7.data.subagent.Problems.{ProcessLostDueToShutdownProblem, ProcessLostProblem}
+import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentDied, SubagentEventsObserved, SubagentShutdown}
+import js7.data.subagent.SubagentState.keyedEventJsonCodec
+import js7.data.subagent.{SubagentDirectorState, SubagentEvent, SubagentId, SubagentRunId}
+import js7.journal.CommitOptions
+import js7.journal.state.Journal
+import js7.subagent.configuration.SubagentConf
+import js7.subagent.director.SubagentEventListener.*
+import scala.util.chaining.scalaUtilChainingOps
+
+private trait SubagentEventListener:
+
+  protected def subagentId: SubagentId
+  protected def subagentConf: SubagentConf
+  protected def conf: RemoteSubagentDriver.Conf
+  protected def recouplingStreamReaderConf: RecouplingStreamReaderConf
+  protected def api: SubagentApi
+  protected def journal: Journal[? <: SubagentDirectorState[?]]
+  protected def detachProcessedOrder(orderId: OrderId): IO[Unit]
+  protected def releaseEvents(eventId: EventId): IO[Unit]
+  protected def onOrderProcessed(orderId: OrderId, orderProcessed: OrderProcessed)
+  : IO[Option[IO[Unit]]]
+  protected def onSubagentDied(orderProblem: ProcessLostProblem, subagentDiedEvent: SubagentDied)
+  : IO[Unit]
+  protected def dedicateOrCouple: IO[Checked[(SubagentRunId, EventId)]]
+  protected def emitSubagentCouplingFailed(maybeProblem: Option[Problem]): IO[Unit]
+  protected def isCoupled: Boolean
+  protected def isLocal: Boolean
+
+  private val logger = Logger.withPrefix[SubagentEventListener](subagentId.toString)
+  private lazy val stdoutCommitOptions = CommitOptions(delay = subagentConf.stdoutCommitDelay)  // TODO Use it!
+  private val stopObserving = MVar.empty[IO, Unit].unsafeMemoize
+  @volatile private var observing: FiberIO[Unit] = PureFiberIO(())
+  private val _isHeartbeating = Atomic(false)
+  private val isListening = Atomic(false)
+  private val lock = AsyncLock()
+
+  protected final val coupled = Switch(false)
+
+  protected final def stopEventListener: IO[Unit] =
+    lock.lock(
+      logger.debugIO(IO.defer(
+        IO.whenA(isListening.getAndSet(false))(IO.defer {
+          stopObserving
+            .flatMap(_.tryPut(())).void
+            .*>(IO.defer(observing.joinStd))
+        }))))
+
+  protected final def startEventListener: IO[Unit] =
+    lock.lock(IO.defer {
+      if isListening.getAndSet(true) then {
+        val msg = "Duplicate startEventListener"
+        logger.error(msg)
+        IO.raiseError(new RuntimeException(s"$toString: $msg"))
+      } else
+        stopObserving.flatMap(_.tryTake)
+          .*>(observeEvents)
+          .start
+          .flatMap(fiber => IO {
+            observing = fiber
+          })
+    })
+
+  private def observeEvents: IO[Unit] =
+    logger.debugIO(IO.defer {
+      val recouplingStreamReader = newEventListener()
+      val bufferDelay = conf.eventBufferDelay max conf.commitDelay
+      logger.debugIO(recouplingStreamReader
+        .observe(
+          api,
+          after = journal.unsafeCurrentState().idToSubagentItemState(subagentId).eventId)
+        .takeUntilEval(stopObserving.flatMap(_.read))
+        .pipe(stream =>
+          if !bufferDelay.isPositive then
+            stream.chunks
+          else
+            stream
+              .groupWithin( // ticks
+                conf.eventBufferSize,
+                conf.eventBufferDelay max conf.commitDelay)
+              .filter(_.nonEmpty)) // Ignore empty ticks
+        .evalMap(_
+          .traverse(handleEvent)
+          .flatMap { updatedStampedChunk0 =>
+            val (updatedStampedSeqSeq, followUps) = updatedStampedChunk0.toArraySeq.unzip
+            val updatedStampedSeq = updatedStampedSeqSeq.flatten
+            val lastEventId = updatedStampedSeq.lastOption.map(_.eventId)
+            val events = updatedStampedSeq.view.map(_.value)
+              .concat(lastEventId.map(subagentId <-: SubagentEventsObserved(_)))
+              .toVector
+            // TODO Save Stamped timestamp
+            journal
+              .persistKeyedEvents(events, CommitOptions(transaction = true))
+              .map(_.orThrow/*???*/)
+              // After an OrderProcessed event an DetachProcessedOrder must be sent,
+              // to terminate StartOrderProcess command idempotency detection and
+              // allow a new StartOrderProcess command for a next process.
+              .*>(updatedStampedSeq
+                .collect { case Stamped(_, _, KeyedEvent(o: OrderId, _: OrderProcessed)) => o }
+                .traverse(detachProcessedOrder))
+              .*>(lastEventId.traverse(releaseEvents))
+              .*>(followUps.combineAll)
+          })
+        .onFinalize(recouplingStreamReader
+          .terminateAndLogout
+          .logWhenItTakesLonger)
+        .completedL)
+    })
+
+  /** Returns optionally the event and a follow-up task. */
+  private def handleEvent(stamped: Stamped[AnyKeyedEvent])
+  : IO[(Option[Stamped[AnyKeyedEvent]], IO[Unit])] =
+    stamped.value match
+      case keyedEvent @ KeyedEvent(orderId: OrderId, event: OrderEvent) =>
+        event match
+          case _: OrderStdWritten =>
+            // TODO Save Timestamp
+            IO.pure(Some(stamped) -> IO.unit)
+
+          case orderProcessed: OrderProcessed =>
+            // TODO Save Timestamp
+            onOrderProcessed(orderId, orderProcessed).map:
+              case None => None -> IO.unit  // OrderProcessed already handled
+              case Some(followUp) =>
+                // The followUp IO notifies OrderActor about OrderProcessed by calling `onEvents`
+                Some(stamped) -> followUp
+
+          case _ =>
+            logger.error(s"Unexpected event: $keyedEvent")
+            IO.pure(None -> IO.unit)
+
+      case KeyedEvent(_: NoKey, SubagentEvent.SubagentShutdown) =>
+        IO.pure(None -> onSubagentDied(ProcessLostDueToShutdownProblem, SubagentShutdown))
+
+      case KeyedEvent(_: NoKey, event: SubagentEvent.SubagentItemAttached) =>
+        logger.debug(event.toShortString)
+        IO.pure(None -> IO.unit)
+
+      case keyedEvent =>
+        logger.error(s"Unexpected event: $keyedEvent")
+        IO.pure(None -> IO.unit)
+
+  private def newEventListener() =
+    new RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], SubagentApi](
+      _.eventId, recouplingStreamReaderConf):
+      private var lastProblem: Option[Problem] = None
+      override protected def idleTimeout = None  // SubagentEventListener itself detects heartbeat loss
+
+      override protected def couple(eventId: EventId) =
+        logger.debugIO(
+          dedicateOrCouple
+            .flatMapT { case (_, eventId) =>
+              coupled.switchOn
+                .as(Right(eventId))
+            })
+          .<*(IO {
+            lastProblem = None
+          })
+
+      protected def getStream(api: SubagentApi, after: EventId) =
+        logger.debugIO(s"getObservable(after=$after)")(
+          journal.state.map(_.idToSubagentItemState.checked(subagentId).map(_.subagentRunId))
+            .flatMapT {
+              case None => IO.left(Problem.pure("Subagent not yet dedicated"))
+              case Some(subagentRunId) => getStream(api, after, subagentRunId)
+            })
+
+      private def getStream(api: SubagentApi, after: EventId, subagentRunId: SubagentRunId) =
+        api.login(onlyIfNotLoggedIn = true) *>
+          api
+            .eventStream(
+              EventRequest.singleClass[Event](after = after, timeout = None),
+              subagentRunId,
+              heartbeat = Some(heartbeatTiming.heartbeat))
+            .map(_
+              .detectPauses(heartbeatTiming.longHeartbeatTimeout, PauseDetected)
+              .flatTap:
+                case PauseDetected =>
+                  val problem = Problem.pure(s"Missing heartbeat from $subagentId")
+                  logger.warn(problem.toString)
+                  Stream.eval(onSubagentDecoupled(Some(problem)))
+                case _ =>
+                  onHeartbeatStarted
+              .filter(_ != StampedHeartbeat)
+              .takeWhile(_ ne PauseDetected))
+              //.guaranteeCase(exitCase => IO.defer {
+              //  // guaranteeCase runs concurrently, maybe with onDecoupled ?
+              //  IO.when((exitCase != ExitCase.Completed /*&& exitCase != ExitCase.Canceled*/) || /*isCoupled*/isHeartbeating)(
+              //    stopObserving.flatMap(_.tryRead).map(_.isDefined)
+              //      .flatMap(stopped =>
+              //        if (stopped) {
+              //          logger.debug("stopped")
+              //          IO.unit
+              //        } else {
+              //          val problem = exitCase match {
+              //            case ExitCase.Completed =>
+              //              Problem.pure(s"$subagentId event stream has ended")
+              //            case _ =>
+              //              Problem.pure(s"$subagentId event stream: $exitCase")
+              //          }
+              //          logger.warn(problem.toString)
+              //          onSubagentDecoupled(Some(problem))
+              //        }))
+              //}))
+            .map(Right(_))
+
+      override protected def onCouplingFailed(api: SubagentApi, problem: Problem) =
+        stopObserving.flatMap(_.tryRead).map(_.isDefined)
+          .flatMap(stopped =>
+            if stopped then
+              IO.pure(false)
+            else
+              onSubagentDecoupled(Some(problem)) *>
+                IO {
+                  if lastProblem contains problem then {
+                    logger.debug(s"⚠️ Coupling failed again: $problem")
+                  } else {
+                    lastProblem = Some(problem)
+                    logger.warn(s"Coupling failed: $problem")
+                  }
+                  true
+                })
+
+      override protected val onDecoupled =
+        logger.traceIO(
+          onSubagentDecoupled(None) *>
+            coupled.switchOff.as(Completed))
+
+      protected def stopRequested = false
+
+  private val onHeartbeatStarted: Stream[IO, Unit] =
+    Stream.eval(
+      IO.defer(IO.whenA(!_isHeartbeating.getAndSet(true) && isCoupled)(
+        // Different to AgentDriver,
+        // for Subagents the Coupling state is tied to the continuous flow of events.
+        journal.persistKeyedEvent(subagentId <-: SubagentCoupled)
+          .map(_.orThrow))))
+
+  protected final def isHeartbeating = isLocal || _isHeartbeating.get()
+
+  private def onSubagentDecoupled(problem: Option[Problem]): IO[Unit] =
+    IO.defer:
+      _isHeartbeating := false
+      IO.whenA(true || isCoupled)(
+        emitSubagentCouplingFailed(problem))
+
+private object SubagentEventListener:
+  private val PauseDetected: Stamped[KeyedEvent[Event]] = Stamped(0L, null)
+  private[subagent] val heartbeatTiming = HeartbeatTiming(3.s, 10.s)  // TODO
