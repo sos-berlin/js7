@@ -14,14 +14,15 @@ trait TestCatsEffect:
     //IORuntime.global
     OurIORuntime.ioRuntime
 
-  implicit def executionContext: ExecutionContext =
+  protected implicit def executionContext: ExecutionContext =
     ioRuntime.compute
 
-  given IORuntime = ioRuntime
+  protected given IORuntime = ioRuntime
 
 
 object TestCatsEffect:
 
+  /** Make a seed for Cats Effect TestControl. */
   def toSeed(number: Long) =
     ByteArray(
       Base64.getEncoder.encode(number.toString.getBytes(UTF_8))

@@ -1,13 +1,12 @@
 package js7.base.catsutils
 
 import cats.effect.kernel.MonadCancel
-import cats.effect.{Clock, Fiber, FiberIO, IO, Outcome, OutcomeIO}
+import cats.effect.{Clock, Fiber, IO, Outcome, OutcomeIO}
 import cats.syntax.functor.*
 import cats.{Defer, Functor, effect}
 import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.problem.Checked
-import js7.base.utils.CatsUtils.{PureFiber, PureFiberIO}
 import scala.annotation.unchecked.uncheckedVariance
 import scala.concurrent.{ExecutionContext, Future}
 

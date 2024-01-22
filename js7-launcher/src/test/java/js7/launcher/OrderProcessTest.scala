@@ -54,7 +54,7 @@ final class OrderProcessTest extends OurAsyncTestSuite:
     val semaphore = Semaphore[IO](0).unsafeMemoize
     def count = semaphore.flatMap(_.count).await(99.s)
 
-    val orderProcess = OrderProcess(semaphore.flatMap(_.acquire).as(Outcome.succeeded).onCancel(IO(Logger.info(s"### onCancel"))))
+    val orderProcess = OrderProcess(semaphore.flatMap(_.acquire).as(Outcome.succeeded))
 
     StdObservers
       .resource(100, keepLastErrLine = false)

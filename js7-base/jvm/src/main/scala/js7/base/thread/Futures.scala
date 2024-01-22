@@ -81,7 +81,10 @@ object Futures:
       /**
         * Awaits the futures completion for the duration or infinite.
         */
-      def await(duration: Option[FiniteDuration])(implicit A: Tag[A]): A =
+      def await(duration: Option[FiniteDuration])
+        (using A: Tag[A], 
+          src: sourcecode.Enclosing, file: sourcecode.FileName, line: sourcecode.Line)
+      : A =
         duration match
           case Some(o) => await(o)
           case None => awaitInfinite
@@ -94,11 +97,14 @@ object Futures:
             case Failure(t) => throw t.appendCurrentStackTrace
 
 
-      def await(duration: FiniteDuration)(implicit A: Tag[A], src: sourcecode.Enclosing): A =
-        logger.traceCall[A](s"${src.value} await ${duration.pretty}"):
+      def await(duration: FiniteDuration)
+        (using A: Tag[A], 
+          src: sourcecode.Enclosing, file: sourcecode.FileName, line: sourcecode.Line)
+      : A =
+        logger.traceCall[A](s"${file.value}:${line.value} ${src.value}:Future[${A.tag}] await ${duration.pretty}"):
           try Await.ready(delegate, duration)
           catch { case _: TimeoutException =>
-            throw new TimeoutException(s"await(${duration.pretty}): Future[${A.tag.toString}] has not been completed in time")
+            throw new TimeoutException(s"await(${duration.pretty}): Future[${A.tag}] has not been completed in time")
           }
           delegate.value.get match
             case Success(o) => o

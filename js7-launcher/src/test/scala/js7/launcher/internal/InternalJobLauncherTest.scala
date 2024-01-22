@@ -84,10 +84,10 @@ object InternalJobLauncherTest:
   private class TestInternalJob extends InternalJob:
     override def toOrderProcess(step: Step) =
       OrderProcess(
-        step.forward(Stdout, "OUT 1/") >>
-        step.forward(Stderr, "ERR 1/") >>
-        step.forward(Stdout, "OUT 2") >>
-        step.forward(Stderr, "ERR 2") >>
+        step.write(Stdout, "OUT 1/") >>
+        step.write(Stderr, "ERR 1/") >>
+        step.write(Stdout, "OUT 2") >>
+        step.write(Stderr, "ERR 2") >>
         IO {
           Outcome.Completed.fromChecked(
             step.arguments.checked("ARG")

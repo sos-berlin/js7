@@ -8,7 +8,7 @@ import js7.data.value.expression.Expression.{Argument, FunctionCall}
 import js7.data.value.expression.scopes.FileValueScope.*
 import js7.data.value.expression.{Expression, Scope}
 
-private[scopes] final class FileValueScope private(
+private[js7] final class FileValueScope private(
   private[scopes] val fileValueState: FileValueState)
 extends Scope, AutoCloseable:
 

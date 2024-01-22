@@ -41,11 +41,12 @@ trait AlarmClock extends WallClock:
 //  /** TestAlarmClock synchronizes time query and time change. */
 //  def lock[A](body: => A): A =
 //    body
-//
-//
+
+
 object AlarmClock:
-//  def apply(clockCheckInterval: Option[FiniteDuration] = None)(implicit ior: IORuntime)
-//  : AlarmClock =
+  def apply(clockCheckInterval: Option[FiniteDuration] = None)(implicit ior: IORuntime)
+  : AlarmClock =
+    null // FIXME
 //    given Scheduler = ior.scheduler
 //    clockCheckInterval match
 //      case None =>

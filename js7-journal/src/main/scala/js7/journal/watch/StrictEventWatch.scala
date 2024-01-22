@@ -84,7 +84,7 @@ final class StrictEventWatch(val underlying: FileEventWatch):
     underlying.awaitAsync(predicate, after, timeout)
 
   @TestOnly
-  def awaitKeys[E <: Event : ClassTag](using E: Event.KeyCompanion[? >: E])(
+  def awaitKeys[E <: Event : ClassTag : Tag](using E: Event.KeyCompanion[? >: E])(
     keys: IterableOnce[E.Key],
     predicate: KeyedEvent[E] => Boolean = Every,
     after: EventId = EventId.BeforeFirst,

@@ -18,6 +18,7 @@ import js7.launcher.internal.InternalJob.{JobContext, Step}
 import js7.launcher.internal.InternalJobLauncher.*
 import cats.effect.IO
 import scala.util.control.NonFatal
+import Logger.syntax.*
 import cats.effect.unsafe.IORuntime
 import js7.base.catsutils.UnsafeMemoizable.given
 import scala.concurrent.ExecutionContext
@@ -37,7 +38,9 @@ extends JobLauncher:
 
   val start: IO[Checked[Unit]] =
     IO { internalJobLazy() }
-      .flatMapT(_.start)
+      .flatMapT: internalJob =>
+        logger.traceIO(s"${executable.className} start"):
+          internalJob.start
       .flatTap:
         case Left(problem) => IO(
           logger.debug(s"${executable.className} start: $problem", problem.throwableOption.orNull))
@@ -46,7 +49,9 @@ extends JobLauncher:
 
   val stop: IO[Unit] =
     IO.defer {
-      internalJobLazy.value.fold(_ => IO.unit, _.stop)
+      internalJobLazy.value.fold(_ => IO.unit, internalJob =>
+        logger.traceIO(s"${executable.className} stop"):
+          internalJob.stop)
     }.unsafeMemoize
 
   def toOrderProcess(processOrder: ProcessOrder) =

@@ -86,7 +86,8 @@ object Logger extends AdHocLogger:
             logger.error(problem.toString)
 
   object syntax:
-    implicit final class RichScalaLogger(private val logger: ScalaLogger) extends AnyVal:
+    extension (logger: ScalaLogger)
+
       def isEnabled(level: LogLevel): Boolean =
         logger.underlying.isEnabled(level)
 
@@ -154,10 +155,22 @@ object Logger extends AdHocLogger:
       : IO[A] =
         logF[IO, A](logger, LogLevel.Debug, function, args, result)(io)
 
-      def traceIO[A](body: IO[A])(using src: sourcecode.Name): IO[A] =
-        traceF(functionName = src.value)(body)
+      inline def traceIO[A](inline body: IO[A])(using inline src: sourcecode.Name): IO[A] =
+        traceIOif(functionName = src.value)(body)
 
-      def traceIO[A](functionName: String, args: => Any = "")(body: IO[A]): IO[A] =
+      inline def traceIO[A](inline functionName: String, inline args: Any = "")(inline body: IO[A])
+      : IO[A] =
+        traceIOif(functionName, args)(body)
+
+      private inline def traceIOif[A](inline functionName: String, inline args: Any = "")
+        (inline body: IO[A])
+      : IO[A] =
+        if isTraceEnabled /*not deferred*/ then
+          traceIO_(functionName, args)(body)
+        else
+          body
+
+      private def traceIO_[A](functionName: String, args: => Any = "")(body: IO[A]): IO[A] =
         traceF(functionName, args)(body)
 
       def traceF[F[_], A](body: F[A])(using F: Sync[F], src: sourcecode.Name)
@@ -247,6 +260,22 @@ object Logger extends AdHocLogger:
       : Unit =
         Logger.logOutcome[F, A](logger, logLevel, function, args = "", duration.pretty + " ", outcome)
 
+      inline def isErrorEnabled: Boolean =
+        logger.underlying.isErrorEnabled
+
+      inline def isWarnEnabled: Boolean =
+        logger.underlying.isWarnEnabled
+
+      inline def isInfoEnabled: Boolean =
+        logger.underlying.isInfoEnabled
+
+      inline def isDebugEnabled: Boolean =
+        logger.underlying.isDebugEnabled
+
+      inline def isTraceEnabled: Boolean =
+        logger.underlying.isTraceEnabled
+
+
     private def logF[F[_], A](
       logger: ScalaLogger,
       logLevel: LogLevel,
@@ -303,7 +332,7 @@ object Logger extends AdHocLogger:
         Stream
           .eval:
             IO.whenA(logger.isEnabled(logLevel))(IO:
-              logStart(logger, logLevel, function, args))
+              Logger.logStart(logger, logLevel, function, args))
           .drop(1)
           .asInstanceOf[Stream[IO, A]]
           .tapEachChunk: chunk =>
@@ -313,7 +342,7 @@ object Logger extends AdHocLogger:
             stream
               .onFinalizeCase: exitCase =>
                 IO.whenA(logger.isEnabled(logLevel))(IO:
-                  logOutcome(logger, logLevel, function, args, duration = "",
+                  Logger.logOutcome(logger, logLevel, function, args, duration = "",
                     exitCase.toOutcome[IO],
                     result = s"$chunkCount chunks, $elemCount elements"))
 

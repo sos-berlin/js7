@@ -22,10 +22,14 @@ object CatsBlocking:
 
   object syntax:
     extension [A](io: IO[A])
-      def await(duration: Duration)(using rt: IORuntime, src: sourcecode.Enclosing): A =
+      def await(duration: Duration)
+        (using A: Tag[A], rt: IORuntime,
+          src: sourcecode.Enclosing, file: sourcecode.FileName, line: sourcecode.Line)
+      : A =
         try
           logger
-            .traceIO(s"${src.value} await ${duration.pretty}"):
+            .traceIO(
+              s"${file.value}:${line.value} ${src.value}:Future[${A.tag}] await ${duration.pretty}"):
               io
             .unsafeRunSync()
         catch case NonFatal(t) =>
@@ -33,7 +37,7 @@ object CatsBlocking:
             t.appendCurrentStackTrace
           throw t
 
-      def awaitInfinite(implicit rt: IORuntime, src: sourcecode.Enclosing): A =
+      def awaitInfinite(using A: Tag[A], rt: IORuntime, src: sourcecode.Enclosing): A =
         await(Duration.Inf)
 
     extension [A, M[X] <: Iterable[X]](io: M[IO[A]])

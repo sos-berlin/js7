@@ -1,0 +1,23 @@
+package js7.launcher.forjava.internal
+
+import cats.effect.IO
+import fs2.concurrent.Channel
+import js7.base.catsutils.CatsEffectExtensions.joinStd
+import js7.base.test.OurAsyncTestSuite
+import js7.launcher.StdWriter
+
+final class ObserverWriterTest extends OurAsyncTestSuite:
+
+  "ObserverWriter" in:
+    for
+      channel <- Channel.bounded[IO, Either[Throwable, String]](1)
+      resultFiber <- channel.stream.rethrow.compile.toList.start
+      _ <- IO.interruptible:
+        val w = BlockingStdWriter(StdWriter(channel))
+        w.write("EINS")
+        w.write('-')
+        w.write("ZWEI")
+      _ <- channel.close
+      result <- resultFiber.joinStd
+    yield
+      assert(result == List("EINS", "-", "ZWEI") )

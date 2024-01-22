@@ -11,13 +11,14 @@ import js7.data.value.NamedValues
 import js7.launcher.OrderProcess.*
 
 trait OrderProcess:
+
   protected def run: IO[FiberIO[Outcome.Completed]]
 
   protected def onStarted(fiber: FiberIO[Outcome.Completed]) = {}
 
   def cancel(immediately: Boolean): IO[Unit]
 
-  /** Returns a IO for the started and running process. */
+  /** Returns an IO for the started and running process. */
   final def start(orderId: OrderId, jobKey: JobKey, stdObservers: StdObservers)
   : IO[IO[Outcome.Completed]] =
     for fiber <- run yield
@@ -44,7 +45,8 @@ object OrderProcess:
 
   private final class Simple(io: IO[Outcome.Completed])
   extends OrderProcess.FiberCancelling:
-    val run = io.start
+    val run = io
+      .start
 
     override def toString = "OrderProcess.Simple"
 

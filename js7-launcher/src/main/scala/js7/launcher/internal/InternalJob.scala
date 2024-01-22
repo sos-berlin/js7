@@ -16,7 +16,7 @@ import js7.data.value.expression.Expression
 import js7.data.value.{NamedValues, Value}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.launcher.{OrderProcess, ProcessOrder}
+import js7.launcher.{OrderProcess, ProcessOrder, StdWriter}
 import scala.collection.MapView
 import scala.collection.immutable.ListMap
 import scala.concurrent.ExecutionContext
@@ -36,7 +36,7 @@ trait InternalJob:
 
 
 object InternalJob:
-  
+
   final case class JobContext(
     implementationClass: Class[?],
     executable: InternalExecutable,
@@ -64,12 +64,15 @@ object InternalJob:
     def order = processOrder.order
     def workflow = processOrder.workflow
 
-    @deprecated("Use forward")
+    @deprecated("Use write")
     def send(outErr: StdoutOrStderr, string: String): IO[Unit] =
-      forward(outErr, string)
+      write(outErr, string)
 
-    def forward(outErr: StdoutOrStderr, string: String): IO[Unit] =
+    def write(outErr: StdoutOrStderr, string: String): IO[Unit] =
       processOrder.stdObservers.write(outErr, string)
+
+    def writer(outErr: StdoutOrStderr): StdWriter =
+      processOrder.stdObservers.writer(outErr)
 
     def jobResourceVariable(jobResourcePath: JobResourcePath, variableName: String): Checked[Value] =
       jobResourceToVariables
