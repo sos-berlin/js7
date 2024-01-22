@@ -1,0 +1,98 @@
+package js7.launcher.internal
+
+import cats.effect.IO
+import java.nio.charset.StandardCharsets.UTF_8
+import js7.base.catsutils.CatsEffectExtensions.joinStd
+import js7.base.io.process.{Stderr, Stdout}
+import js7.base.problem.Checked.*
+import js7.base.test.OurAsyncTestSuite
+import js7.base.thread.IOExecutor.Implicits.globalIOX
+import js7.base.time.AlarmClock
+import js7.base.time.ScalaTime.*
+import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
+import js7.data.agent.AgentPath
+import js7.data.controller.ControllerId
+import js7.data.job.{InternalExecutable, JobConf, JobKey}
+import js7.data.order.{Order, OrderId, Outcome}
+import js7.data.subagent.SubagentId
+import js7.data.value.expression.Expression.{NamedValue, NumericConstant}
+import js7.data.value.expression.Scope
+import js7.data.value.{NamedValues, NumberValue}
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.position.{Position, WorkflowBranchPath}
+import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.launcher.internal.InternalJobLauncherTest.*
+import js7.launcher.{OrderProcess, ProcessOrder, StdObservers}
+
+final class InternalJobLauncherTest extends OurAsyncTestSuite:
+
+  "InternalJobLauncher" in:
+    val executable = InternalExecutable(
+      classOf[TestInternalJob].getName,
+      arguments = Map("ARG" -> NamedValue("ARG")))
+    val workflowJob = WorkflowJob(AgentPath("AGENT"), executable)
+    val executor = new InternalJobLauncher(
+      executable,
+      JobConf(
+        JobKey(WorkflowBranchPath(WorkflowPath("WORKFLOW") ~ "1", Nil), WorkflowJob.Name("JOB")),
+        workflowJob,
+        workflow,
+        ControllerId("CONTROLLER"),
+        sigkillDelay = 0.s,
+        UTF_8),
+      Map.empty,
+      blockingJobScheduler = globalIOX.executionContext,
+      null: AlarmClock)
+
+
+    StdObservers
+      .resource(charBufferSize = 4096, keepLastErrLine = false)
+      .use(stdObservers => IO.defer:
+        val orderId = OrderId("TEST")
+        val jobKey = JobKey.Named(WorkflowBranchPath(WorkflowPath("WORKFLOW"), Nil), WorkflowJob.Name("TEST-JOB"))
+        for
+          outStringFiber <- stdObservers.outStream.foldMonoid.compile.last.map(_.get).start
+          errStringFiber <- stdObservers.errStream.foldMonoid.compile.last.map(_.get).start
+          orderProcess <- executor
+            .toOrderProcess(
+              ProcessOrder(
+              Order(orderId, workflow.id /: Position(0), Order.Processing(SubagentId("SUBAGENT"))),
+              workflow,
+              jobKey,
+              workflowJob,
+              jobResources = Nil,
+              executeArguments = Map.empty,
+              jobArguments = Map("ARG" -> NumericConstant(1)),
+              ControllerId("CONTROLLER"),
+              stdObservers,
+              fileValueScope = Scope.empty))
+            .map(_.orThrow)
+          outcome <- orderProcess.start(orderId, jobKey, stdObservers).flatten
+          _ = assert(outcome == Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(2))))
+          _ <- stdObservers.outChannel.close
+          _ <- stdObservers.outChannel.close
+          outString <- outStringFiber.joinStd
+          errString <- errStringFiber.joinStd
+        yield assert:
+          outString == "OUT 1/" + "OUT 2" &&
+          errString == "ERR 1/" + "ERR 2")
+
+
+object InternalJobLauncherTest:
+  private val workflow = Workflow(WorkflowPath("WORKFLOW") ~ "1", Vector.empty)
+
+  private class TestInternalJob extends InternalJob:
+    override def toOrderProcess(step: Step) =
+      OrderProcess(
+        step.forward(Stdout, "OUT 1/") >>
+        step.forward(Stderr, "ERR 1/") >>
+        step.forward(Stdout, "OUT 2") >>
+        step.forward(Stderr, "ERR 2") >>
+        IO {
+          Outcome.Completed.fromChecked(
+            step.arguments.checked("ARG")
+              .flatMap(_.as[NumberValue])
+              .map(_.number + 1)
+              .map(result => Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(result)))))
+        }
+      )

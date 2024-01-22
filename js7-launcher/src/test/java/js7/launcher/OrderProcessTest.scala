@@ -1,0 +1,73 @@
+package js7.launcher
+
+import cats.effect.std.Semaphore
+import cats.effect.{FiberIO, IO}
+import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
+import js7.base.test.OurAsyncTestSuite
+import js7.base.thread.CatsBlocking.syntax.*
+import js7.base.thread.Futures.implicits.*
+import js7.base.time.ScalaTime.*
+import js7.data.job.JobKey
+import js7.data.order.{OrderId, Outcome}
+import js7.tester.ScalaTestUtils.awaitAndAssert
+import scala.concurrent.Await
+import scala.util.Try
+
+final class OrderProcessTest extends OurAsyncTestSuite:
+
+  "Run an OrderProcess" in:
+    val orderProcess = OrderProcess(IO(Outcome.succeeded))
+    StdObservers
+      .resource(100, keepLastErrLine = false)
+      .use: stdObservers =>
+        for
+          running <- orderProcess.start(OrderId("ORDER"), JobKey.forTest("JOB"), stdObservers)
+          outcome <- running
+        yield assert(outcome == Outcome.succeeded)
+
+  "Intermediate test: cancel a Fiber" in:
+    val semaphore = Semaphore[IO](0).unsafeMemoize
+    def count = semaphore.flatMap(_.count).await(99.s)
+
+    val canceled = new RuntimeException("TEST FIBER CANCELED")
+    var fiber: FiberIO[Unit] = null
+    val future = semaphore
+      .flatMap(_.acquire)
+      .start
+      .flatTap(fib => IO { fiber = fib })
+      .flatMap(_.joinWith(IO.raiseError(canceled)))
+      .unsafeToFuture()
+
+    // One waiting acquirer
+    awaitAndAssert(count == -1)
+
+    fiber.cancel.await(99.s)
+
+    // The Future completes with Canceled
+    val result: Try[Unit] = Await.ready(future, 99.s).value.get
+    assert(result.failed.get eq canceled)
+
+    // No waiting acquirer
+    awaitAndAssert(count == 0)
+
+  "Cancel an OrderProcess Fiber" in:
+    val semaphore = Semaphore[IO](0).unsafeMemoize
+    def count = semaphore.flatMap(_.count).await(99.s)
+
+    val orderProcess = OrderProcess(semaphore.flatMap(_.acquire).as(Outcome.succeeded).onCancel(IO(Logger.info(s"### onCancel"))))
+
+    StdObservers
+      .resource(100, keepLastErrLine = false)
+      .use: stdObservers =>
+        IO:
+          val future = orderProcess.start(OrderId("ORDER"), JobKey.forTest("JOB"), stdObservers)
+            .flatten.unsafeToFuture()
+
+          // One waiting acquirer
+          awaitAndAssert(count == -1)
+
+          orderProcess.cancel(false).await(99.s)
+          assert(future.await(99.s) == Outcome.Failed(Some("Canceled")))
+
+          // No waiting acquirer
+          awaitAndAssert(count == 0)
