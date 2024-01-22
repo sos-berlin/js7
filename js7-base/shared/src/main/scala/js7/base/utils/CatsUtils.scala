@@ -1,10 +1,10 @@
 package js7.base.utils
 
-import cats.Functor
 import cats.data.{NonEmptyList, NonEmptySeq, Validated}
-import cats.effect.{Deferred, IO, MonadCancel, Outcome, Resource, Sync, SyncIO}
+import cats.effect.{Deferred, Fiber, FiberIO, IO, MonadCancel, Outcome, Resource, Sync, SyncIO}
 import cats.kernel.Monoid
 import cats.syntax.all.*
+import cats.{Applicative, Functor}
 import izumi.reflect.Tag
 import java.io.{ByteArrayInputStream, InputStream}
 import java.util.Base64
@@ -204,3 +204,19 @@ object CatsUtils:
     else
       val last = seq.last
       seq ++: LazyList.continually(last)
+
+
+  /** Fiber immediately returns the given value, not cancelable. */
+  final case class PureFiber[F[_], E, A](a: A)(using F: Applicative[F])
+    extends Fiber[F, E, A]:
+
+    def cancel: F[Unit] =
+      F.pure(())
+
+    def join: F[Outcome[F, E, A]] =
+      F.pure(Outcome.Succeeded(F.pure(a)))
+
+  type PureFiberIO[A] = PureFiber[IO, Throwable, A]
+  object PureFiberIO:
+    def apply[A](a: A): FiberIO[A] =
+      PureFiber(a)

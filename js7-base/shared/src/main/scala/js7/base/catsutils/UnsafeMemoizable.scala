@@ -30,6 +30,25 @@ object UnsafeMemoizable:
                 deferred.complete(tried) >> F.fromEither(tried))
               .uncancelable // TODO Allow cancellation, then synchronize `triggered`
 
+  // Only to allow IntelliJ to get the proper result type:
+  extension [F[_], A](underlying: F[A])(using F: Async[F])
+    def unsafeMemoize: F[A] =
+      unsafeMemoizeAsync[F, A](underlying)
+
+  private def unsafeMemoizeAsync[F[_], A](underlying: F[A])(using F: Async[F]) =
+    val triggered = Atomic(false)
+    val deferred = Deferred.unsafe[F, Either[Throwable, A]]
+    F.defer:
+      if triggered.getAndSet(true) then
+        deferred.get.flatMap(F.fromEither)
+      else
+        underlying
+          .attempt
+          .flatMap(tried =>
+            deferred.complete(tried) >> F.fromEither(tried))
+          .uncancelable // TODO Allow cancellation, then synchronize `triggered`
+
+
   given UnsafeMemoizable[SyncIO] with
     extension[A](syncIO: SyncIO[A])
       def unsafeMemoize: SyncIO[A] =

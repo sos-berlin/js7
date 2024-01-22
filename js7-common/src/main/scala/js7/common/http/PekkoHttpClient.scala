@@ -102,7 +102,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
         // Ignore empty keep-alives
         .collect { case o if o != EmptyLine => o }
         // TODO Check parallelism, maybe prefetch, break chunks in to parts, and parmap them
-        .parEvalMap(sys.runtime.availableProcessors)(line => IO:
+        .parEvalMapUnbounded(line => IO:
           line.parseJsonAs[A].orThrow))
 
   final def getRawLinesStream(uri: Uri)(implicit s: IO[Option[SessionToken]])
@@ -120,7 +120,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
 
   private def endStreamOnNoMoreElementNeeded: PartialFunction[Throwable, Stream[IO, Nothing]] =
     case t @ pekko.stream.SubscriptionWithCancelException.NoMoreElementsNeeded =>
-      // On NoMoreElementsNeeded the Observable ends silently !!! Maybe harmless?
+      // On NoMoreElementsNeeded the Stream ends silently !!! Maybe harmless?
       logger.warn(s"Ignore ${t.toString}")
       if hasRelevantStackTrace(t) then logger.debug(s"Ignore $t", t)
       Stream.empty

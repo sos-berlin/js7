@@ -24,7 +24,7 @@ final case class ReturnCode private(number: Int) extends GenericInt:
         case SIGKILL.number => s"ReturnCode($number/SIGKILL)"
         case signal => s"ReturnCode($number=128+$signal)"
 
-  def toCats: ExitCode =
+  def toExitCode: ExitCode =
     ExitCode(number)
 
 

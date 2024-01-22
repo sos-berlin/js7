@@ -9,7 +9,7 @@ extends Service.StoppableByRequest:
   protected def start =
     startService(IO
       .race(untilStopRequested, run) // Cancels run
-      .map(_.fold(identity, identity)))
+      .map(_.merge))
 
   override def toString = "CancelableService"
 

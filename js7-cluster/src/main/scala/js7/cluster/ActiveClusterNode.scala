@@ -1,7 +1,6 @@
 package js7.cluster
 
 import cats.effect.unsafe.IORuntime
-import cats.syntax.flatMap.*
 import cats.syntax.monoid.*
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.catsutils.SyncDeadline

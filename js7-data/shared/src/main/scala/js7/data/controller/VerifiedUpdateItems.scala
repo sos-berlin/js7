@@ -68,7 +68,7 @@ object VerifiedUpdateItems:
     @volatile var problemOccurred: Option[Problem] = None
 
     stream
-      .parEvalMap(sys.runtime.availableProcessors):
+      .parEvalMapUnbounded:
         case AddOrChangeSigned(signedString) => IO:
           if problemOccurred.isEmpty then
             verify(signedString) match
@@ -89,7 +89,9 @@ object VerifiedUpdateItems:
           case RemoveVersioned(path) => versionedRemoves_ += path
           case AddVersion(v) =>
             if maybeVersionId.isEmpty then maybeVersionId = Some(v)
-            else problemOccurred = Some(Problem("Duplicate AddVersion"))))
+            else problemOccurred = Some(Problem("Duplicate AddVersion"))
+          // To satisfy the Scala compiler:
+          case AddOrChangeSigned(_) => throw new IllegalStateException))
       .compile
       .drain
       .map: _ =>

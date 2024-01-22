@@ -32,18 +32,12 @@ extends Ordered[CatsDeadline]:
 
   /**
    * Determine whether the deadline lies in the past at the point where this method is called.
-   *
-   * '''''Note that on some systems this operation is costly because it entails a system call.'''''
-   * Check `System.nanoTime` for your platform.
    */
   def isOverdue: IO[Boolean] =
     hasElapsed
 
   /**
    * Determine whether the deadline still lies in the future at the point where this method is called.
-   *
-   * '''''Note that on some systems this operation is costly because it entails a system call.'''''
-   * Check `System.nanoTime` for your platform.
    */
   def hasTimeLeft: IO[Boolean] =
     hasElapsed.map(!_)
@@ -63,9 +57,6 @@ extends Ordered[CatsDeadline]:
 
   /**
    * Calculate time difference between this duration and now; the result is negative if the deadline has passed.
-   *
-   * '''''Note that on some systems this operation is costly because it entails a system call.'''''
-   * Check `System.nanoTime` for your platform.
    */
   def timeLeft: IO[FiniteDuration] =
     for o <- IO.monotonic yield sinceZero - o
@@ -94,15 +85,8 @@ extends Ordered[CatsDeadline]:
 
 object CatsDeadline:
 
-  val monotonicTime: IO[CatsDeadline] =
-    for o <- IO.monotonic yield CatsDeadline(o)
-
   val now: IO[CatsDeadline] =
-    monotonicTime
-
-  @deprecated
-  val monotonicClock: IO[CatsDeadline] =
-    now
+    for o <- IO.monotonic yield CatsDeadline(o)
 
   def fromMonotonicNanos(nanos: Long): CatsDeadline =
     fromMonotonic(nanos.ns)

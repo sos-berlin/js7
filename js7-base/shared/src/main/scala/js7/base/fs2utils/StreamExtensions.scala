@@ -12,6 +12,20 @@ import scala.concurrent.duration.{Deadline, FiniteDuration}
 
 object StreamExtensions:
 
+  extension (chunk: Chunk[Char])
+    def convertToString: String =
+      chunk match
+        case Chunk.ArraySlice(array, offset, length) =>
+          String(array, offset, length)
+        case _ =>
+          String(chunk.toArray) // One extra copy
+
+
+  extension (x: Chunk.type)
+    def fromString(string: String): Chunk[Char] =
+      Chunk.array(string.toCharArray)
+
+
   extension[F[_], A, B >: A](b: B)
     def +:(stream: Stream[F, A]): Stream[F, B] =
       stream.prependOne(b)
@@ -69,7 +83,7 @@ object StreamExtensions:
             .append(Stream.eval(last.get).unNoneTerminate)
             .changes
       yield output
-    
+
     //def splitBigByteSeqs[ByteSeq: ByteSequence](chunkSize: Int)(using ByteSeq =:= A): Stream[F, ByteSeq] =
     //  stream.asInstanceOf[Stream[F, ByteSeq]]
     //    .flatMap: byteSeq =>
@@ -87,11 +101,6 @@ object StreamExtensions:
     def recoverWith(pf: PartialFunction[Throwable, Stream[F, A]])(using F: RaiseThrowable[F])
     : Stream[F, A] =
       stream.handleErrorWith(pf orElse (t => Stream.raiseError[F](t)))
-
-    /** Like Monix Observable doOnSubscribe. */
-    @deprecated("Use onStart")
-    inline def doOnSubscribe(onSubscribe: F[Unit]): Stream[F, A] =
-      onStart(onSubscribe)
 
     def onErrorEvalTap(pf: PartialFunction[Throwable, F[Unit]])(using F: Sync[F]): Stream[F, A] =
       stream.handleErrorWith(t =>
@@ -119,6 +128,16 @@ object StreamExtensions:
 
     def toListL(using Compiler[F, F]): F[List[A]] =
       stream.compile.toList
+
+
+  extension[F[_]](stream: Stream[F, String])
+    def stringToChar: Stream[F, Char] =
+      stream.map(Chunk.fromString).unchunks
+
+
+  extension[F[_]](stream: Stream[F, Char])
+    def charToString: Stream[F, String] =
+      stream.chunks.map(_.convertToString)
 
 
   extension[A](stream: Stream[IO, A])
@@ -186,6 +205,7 @@ object StreamExtensions:
     def fromAsyncStateAction[S, A](f: S => IO[(A, S)])(seed: => S): Stream[IO, A] =
       Stream.unfoldEval(seed)(s => f(s).map(Some(_)))
 
+
   //extension [A](underlying: IO[Stream[IO, A]])
   //  def logTiming(
   //    toCount: A => Long = simpleCount,
@@ -212,5 +232,6 @@ object StreamExtensions:
   //          a
   //        .onFinalizeCase(exitCase => IO:
   //          onComplete(startedAt_.elapsed, counter, exitCase.toOutcome))))
+
 
   private def simpleCount[A](a: A) = 1L

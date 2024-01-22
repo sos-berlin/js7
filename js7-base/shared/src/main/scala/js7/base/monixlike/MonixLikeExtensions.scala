@@ -6,12 +6,16 @@ import cats.syntax.applicativeError.*
 import cats.syntax.flatMap.*
 import cats.syntax.functor.*
 import cats.syntax.monadError.*
+import cats.syntax.parallel.*
 import cats.{ApplicativeError, Functor, MonadError}
 import fs2.{Pull, Stream}
+import js7.base.catsutils.CatsEffectExtensions.fromFutureWithEC
+import js7.base.fs2utils.StreamExtensions.onStart
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CancelableFuture
-import scala.concurrent.TimeoutException
+import scala.collection.Factory
 import scala.concurrent.duration.{Deadline, FiniteDuration}
+import scala.concurrent.{ExecutionContext, Future, TimeoutException}
 import scala.util.{Failure, Success, Try}
 
 object MonixLikeExtensions:
@@ -73,7 +77,7 @@ object MonixLikeExtensions:
 
     def raceFold[B >: A, E](canceler: F[B])(using F: GenSpawn[F, E] & Functor[F]): F[B] =
       F.race(canceler, underlying)
-        .map(_.fold(identity, identity))
+        .map(_.merge)
 
     //@deprecated("Use onError")
     //def tapError(tap: Throwable => Unit)(using F: ApplicativeError[F, Throwable], FM: FlatMap[F]): F[A] =
@@ -111,6 +115,45 @@ object MonixLikeExtensions:
     @deprecated("Use IO.both")
     def parZip2[A, B](a: IO[A], b: IO[B]): IO[(A, B)] =
       IO.both(a, b)
+
+    def parSequence[A, M[X] <: Iterable[X]](in: M[IO[A]])
+      (using factory: Factory[A, M[A]])
+    : IO[M[A]] =
+      in.toSeq.parSequence.map(_.to(factory))
+
+    def parTraverse[A, B, M[X] <: Iterable[X]](in: M[A])
+      (f: A => IO[B])
+      (using factory: Factory[B, M[B]])
+    : IO[M[B]] =
+      in.toSeq.parTraverse(f).map(_.to(factory))
+
+    def deferFuture[A](future: => Future[A]): IO[A] =
+      IO.fromFuture(IO(future))
+
+    //@deprecated("Use more Cats-like fromFutureWithEC", "v2.7")
+    def deferFutureAction[A](future: ExecutionContext => Future[A]): IO[A] =
+      IO.fromFutureWithEC(ec => IO(future(ec)))
+
+
+  extension [F[_], A](stream: Stream[F, A])
+
+    @deprecated("Use onStart")
+    inline def doOnSubscribe(onSubscribe: F[Unit]): Stream[F, A] =
+      stream.onStart(onSubscribe)
+
+    @deprecated("Check this call!")
+    inline def doAfterSubscribe(afterSubscribe: F[Unit]): Stream[F, A] =
+      stream.onStart(afterSubscribe)
+
+    def headL(using fs2.Compiler[F, F])(using Functor[F]): F[A] =
+      stream.head.compile.last
+        .map(_.getOrElse(throw new NoSuchElementException(".headL on empty stream")))
+
+    def toListL(using fs2.Compiler[F, F])(using Functor[F]): F[List[A]] =
+      stream.compile.toList
+
+    def completedL(using fs2.Compiler[F, F])(using Functor[F]): F[Unit] =
+      stream.compile.drain
 
 
   extension [A](stream: Stream[IO, A])

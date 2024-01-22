@@ -58,7 +58,7 @@ final class IncreasingNumberSyncTest extends OurTestSuite, TestCatsEffect:
       val futures: Seq[Future[Boolean]] =
         for eventId <- eventIds yield
           (for
-            now <- CatsDeadline.monotonicTime
+            now <- CatsDeadline.now
             o <- sync.whenAvailable(after = eventId - 1, until = Some(now + 99.seconds))
           yield o)
             .unsafeToFuture()

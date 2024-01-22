@@ -130,7 +130,7 @@ final class X509Test extends OurTestSuite, TestCatsEffect:
         val signedStrings = Stream
           .chunk(Chunk.from(1 to n))
           .covary[IO]
-          .parEvalMapUnordered(sys.runtime.availableProcessors): i =>
+          .parEvalMapUnorderedUnbounded: i =>
             IO:
               val documentFile = dir / s"document-$i"
               documentFile := Random.nextString(1024)

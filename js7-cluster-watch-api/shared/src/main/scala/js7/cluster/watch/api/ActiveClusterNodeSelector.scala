@@ -120,7 +120,7 @@ object ActiveClusterNodeSelector:
         api.retryIfSessionLost()(
           api.clusterNodeState))
       .flatTap(checked => IO(
-        logger.trace(s"${api.baseUri} => ${checked.fold(identity, identity)}")))
+        logger.trace(s"${api.baseUri} => ${checked.merge}")))
 
   private def logProblems[Api <: HttpClusterNodeApi](
     list: List[ApiWithNodeState[Api]],

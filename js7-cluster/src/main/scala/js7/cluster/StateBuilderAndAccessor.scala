@@ -1,7 +1,6 @@
 package js7.cluster
 
 import cats.effect.IO
-import cats.effect.std.AtomicCell
 import cats.effect.unsafe.IORuntime
 import js7.base.catsutils.UnsafeMemoizable.given
 import js7.base.log.Logger

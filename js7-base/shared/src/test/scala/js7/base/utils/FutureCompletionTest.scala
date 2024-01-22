@@ -1,11 +1,13 @@
 package js7.base.utils
 
 import js7.base.test.OurAsyncTestSuite
+import scala.annotation.nowarn
 import scala.concurrent.Promise
 
 /**
   * @author Joacim Zschimmer
   */
+@nowarn("msg=class FutureCompletion in package js7.base.utils is deprecated")
 final class FutureCompletionTest extends OurAsyncTestSuite:
 
   "FutureCompletion" in:

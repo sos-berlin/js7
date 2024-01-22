@@ -86,7 +86,10 @@ object SyncDeadline:
 
   object Now:
     def fromIORuntime(using ioRuntime: IORuntime): Now =
-      Now(ioRuntime.scheduler.monotonicNanos())
+      fromScheduler(using ioRuntime.scheduler)
+
+    def fromScheduler(using scheduler: Scheduler): Now =
+      Now(scheduler.monotonicNanos())
 
     given (using ioRuntime: IORuntime): Now =
       fromIORuntime

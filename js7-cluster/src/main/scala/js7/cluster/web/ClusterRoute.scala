@@ -7,7 +7,6 @@ import io.circe.{Json, JsonObject}
 import js7.base.auth.ValidUserPermission
 import js7.base.circeutils.CirceUtils.RichCirceEither
 import js7.base.problem.Checked
-import js7.base.utils.FutureCompletion
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.cluster.web.ClusterRoute.*
 import js7.common.pekkohttp.CirceJsonSupport.*

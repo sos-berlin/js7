@@ -16,7 +16,7 @@ object StreamPauseDetector:
     def detectPauses(delay: FiniteDuration): Stream[IO, Either[SyncDeadline, A]] =
       detectPauses(delay, Left(_), Right(_))
 
-    def detectPauses[A1 <: A](delay: FiniteDuration, pause: A1): Stream[IO, A] =
+    def detectPauses[P](delay: FiniteDuration, pause: P): Stream[IO, A | P] =
       detectPauses(delay, _ => pause, identity)
 
     def detectPauses[B](delay: FiniteDuration, fromPause: SyncDeadline => B, fromValue: A => B)
@@ -37,6 +37,8 @@ object StreamPauseDetector:
             case (Expired(o), Tick(_)) => Expired(o)
             case (_, tick: Tick) => tick
             case (_, value: Value[A @unchecked]) => value
+            case (_, Expired(_)) => throw new IllegalStateException(
+              "Duplicate Expired in StreamPauseDetector")
           .collect:
             case o: Expirable[A @unchecked] => o
 

@@ -1,6 +1,7 @@
 package js7.common.pekkohttp.web
 
 import cats.data.NonEmptySeq
+import cats.effect.kernel.Deferred
 import cats.effect.{IO, Resource}
 import cats.instances.vector.*
 import cats.syntax.all.*
@@ -32,7 +33,6 @@ import org.apache.pekko.http.scaladsl.server.Directives.complete
 import org.apache.pekko.http.scaladsl.server.Route
 import org.jetbrains.annotations.TestOnly
 import scala.collection.mutable
-import scala.concurrent.Future
 import scala.concurrent.duration.{Deadline, FiniteDuration}
 import scala.util.{Failure, Success, Try}
 
@@ -231,7 +231,7 @@ object PekkoWebServer:
     /** revision distinguishes a second RouteBinding from the first one, when the Route is
      * established anew due to changed HTTPS key or certificate. */
     revision: Int,
-    whenStopRequested: Future[Deadline])
+    whenStopRequested: Deferred[IO, Deadline])
 
   trait BoundRoute:
     def serviceName: String

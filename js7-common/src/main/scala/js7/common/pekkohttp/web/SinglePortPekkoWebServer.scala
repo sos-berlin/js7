@@ -1,6 +1,6 @@
 package js7.common.pekkohttp.web
 
-import cats.effect.{IO, Resource}
+import cats.effect.{Deferred, IO, Resource}
 import cats.syntax.all.*
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.catsutils.UnsafeMemoizable.given
@@ -22,8 +22,8 @@ import org.apache.pekko.http.scaladsl.server.Route
 import org.apache.pekko.http.scaladsl.settings.{ParserSettings, ServerSettings}
 import org.apache.pekko.http.scaladsl.{ConnectionContext, Http, HttpsConnectionContext}
 import org.apache.pekko.stream.TLSClientAuth
+import scala.concurrent.Future
 import scala.concurrent.duration.{Deadline, FiniteDuration}
-import scala.concurrent.{Future, Promise}
 import scala.util.chaining.scalaUtilChainingOps
 import scala.util.{Failure, Success, Try}
 
@@ -39,7 +39,7 @@ extends Service.StoppableByRequest:
 
   private def onStop: IO[Unit] =
     binding.stop
-      //.onErrorHandle(t =>
+      //.handleError(t =>
       //  logger.error(s"$toString $binding.terminate => ${t.toStringWithCauses}",
       //    t.nullIfNoStackTrace))
 
@@ -59,10 +59,10 @@ private object SinglePortPekkoWebServer:
       // The revision counter is saved in this memoized IO, see end of this io.
       val revision = Atomic(1)
 
-      def makeBoundRoute(): (BoundRoute, Promise[Deadline]) = {
+      def makeBoundRoute(): (BoundRoute, Deferred[IO, Deadline]) = {
         val rev = revision.getAndIncrement()
-        val terminatingPromise = Promise[Deadline]()
-        toBoundRoute(RouteBinding(webServerBinding, rev, terminatingPromise.future)) ->
+        val terminatingPromise = Deferred.unsafe[IO, Deadline]
+        toBoundRoute(RouteBinding(webServerBinding, rev, terminatingPromise)) ->
           terminatingPromise
       }
 
@@ -71,7 +71,7 @@ private object SinglePortPekkoWebServer:
 
   private def resource2(
     webServerBinding: WebServerBinding,
-    makeBoundRoute: () => (BoundRoute, Promise[Deadline]),
+    makeBoundRoute: () => (BoundRoute, Deferred[IO, Deadline]),
     shutdownTimeout: FiniteDuration,
     httpsClientAuthRequired: Boolean)
     (implicit actorSystem: ActorSystem)
@@ -113,7 +113,9 @@ private object SinglePortPekkoWebServer:
             routeDelegator <- DelayedRouteDelegator.start(binding, boundRoute, bindingString)
             pekkoBinding <- IO.fromFutureWithEC(implicit ec => IO:
               val whenBound = serverBuilder.bind(routeDelegator.webServerRoute)
-              terminatingPromise.completeWith(whenBound.flatMap(_.whenTerminationSignalIssued))
+              whenBound
+                .flatMap(_.whenTerminationSignalIssued)
+                .foreach(terminatingPromise.complete)
               whenBound)
           yield
             // An info line will be logged by DelayedRouteDelegator

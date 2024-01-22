@@ -22,6 +22,7 @@ import js7.data.value.expression.Expression.{Argument, StringConstant}
 import js7.data.value.expression.scopes.FileValueScope.functionName
 import js7.data.value.expression.scopes.FileValueScopeTest.*
 import cats.effect.IO
+import js7.base.monixlike.MonixLikeExtensions.parTraverse
 import scala.concurrent.duration.Deadline.now
 import scala.util.Random
 
@@ -114,7 +115,7 @@ final class FileValueScopeTest extends OurTestSuite, TestCatsEffect:
                 .use(fileValueScope =>
                   IO.cede *>
                     IO
-                      .parTraverseN(sys.runtime.availableProcessors)((1 to m).toVector)(_ => IO:
+                      .parTraverse((1 to m).toVector)(_ => IO:
                         val string = strings(Random.nextInt(stringCount))
                         toFile(fileValueScope, Seq(string, string)).orThrow)
                       .flatTap: files =>

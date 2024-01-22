@@ -4,7 +4,6 @@ import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import fs2.Stream
 import izumi.reflect.Tag
-import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.syntax.*

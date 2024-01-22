@@ -1,12 +1,13 @@
 package js7.base.catsutils
 
 import cats.effect.kernel.MonadCancel
-import cats.effect.{Clock, Fiber, IO, Outcome, OutcomeIO}
+import cats.effect.{Clock, Fiber, FiberIO, IO, Outcome, OutcomeIO}
 import cats.syntax.functor.*
-import cats.{Defer, Functor, MonadError, effect}
+import cats.{Defer, Functor, effect}
 import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.problem.Checked
+import js7.base.utils.CatsUtils.{PureFiber, PureFiberIO}
 import scala.annotation.unchecked.uncheckedVariance
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -35,6 +36,18 @@ object CatsEffectExtensions:
     /** Converts a failed IO into a `Checked[A]`. */
     def catchAsChecked: IO[Checked[A]] =
       io.attempt.map(Checked.fromThrowableEither)
+
+    @deprecated("Use guaranteeExceptWhenSucceeded")
+    def guaranteeExceptWhenCompleted(finalizer: IO[Unit]): IO[A] =
+      guaranteeExceptWhenSucceeded(finalizer)
+
+    def guaranteeExceptWhenSucceeded(finalizer: IO[Unit]): IO[A] =
+      io.guaranteeCase:
+        case Outcome.Succeeded(_) => IO.unit
+        case _ => finalizer
+
+    def startAndForget: IO[Unit] =
+      io.start.void
 
 
   extension [A](io: IO[Checked[A]])
@@ -83,10 +96,6 @@ object CatsEffectExtensions:
     inline def completed: IO[Completed] =
       completedIO
 
-    @deprecated("Use more Cats-like fromFutureWithEC", "v2.7")
-    def deferFutureAction[A](future: ExecutionContext => Future[A]): IO[A] =
-      fromFutureWithEC(ec => IO(future(ec)))
-
     def fromFutureWithEC[A](io: ExecutionContext => IO[Future[A]]): IO[A] =
       for
         ec <- IO.executionContext
@@ -95,12 +104,15 @@ object CatsEffectExtensions:
 
 
   extension[F[_], A](fiber: Fiber[F, Throwable, A])
-    def joinStd(using F: MonadCancel[F, Throwable] & MonadError[F, Throwable] & Defer[F])
+    /** Like joinWithUnit but a canceled Fiber results in a Throwable. */
+    def joinStd(using F: MonadCancel[F, Throwable] & Defer[F])
     : F[A] =
-      fiber.joinWith(F.defer(F.raiseError:
-        new RuntimeException("Fiber has been canceled")))
+      fiber.joinWith(F.defer(F.raiseError(new FiberCanceledException)))
 
 
   extension[F[_]](clock: Clock[F])
     def monotonicTime(using Functor[F]): F[CatsDeadline] =
       clock.monotonic.map(CatsDeadline.fromMonotonic)
+
+
+  final class FiberCanceledException extends RuntimeException("Fiber has been canceled")

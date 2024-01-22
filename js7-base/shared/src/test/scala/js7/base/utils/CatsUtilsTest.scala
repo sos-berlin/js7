@@ -4,14 +4,16 @@ import cats.data.Validated.{Invalid, Valid}
 import cats.data.{NonEmptyList, NonEmptySeq, Validated}
 import cats.instances.int.*
 import cats.instances.string.*
+import js7.base.catsutils.CatsEffectExtensions.joinStd
 import js7.base.problem.{Problem, ProblemException}
-import js7.base.test.OurTestSuite
+import js7.base.test.OurAsyncTestSuite
 import js7.base.utils.CatsUtils.*
 
 /**
   * @author Joacim Zschimmer
   */
-final class CatsUtilsTest extends OurTestSuite:
+final class CatsUtilsTest extends OurAsyncTestSuite:
+  
   "combine" in:
     assert(combine(1, 2, 3, 4) == 10)
     assert(combine("a", "-", "b") == "a-b")
@@ -49,3 +51,8 @@ final class CatsUtilsTest extends OurTestSuite:
     assert(repeatLast(Nil).isEmpty)
     assert(repeatLast(Seq(1, 2, 3)).take(5) == Seq(1, 2, 3, 3, 3))
     //assert(repeatLast(NonEmptySeq.of(1, 2, 3)).take(5) == Seq(1, 2, 3, 3, 3))
+
+  "PureFiberIO" in:
+    val fiber = PureFiberIO(7)
+    for result <- fiber.joinStd yield
+      assert(result == 7)

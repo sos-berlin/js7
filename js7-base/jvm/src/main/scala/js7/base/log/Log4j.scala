@@ -4,8 +4,7 @@ import java.lang.reflect.Method
 import java.time.LocalDateTime
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
-import js7.base.utils.Once
-import js7.base.utils.Atomic
+import js7.base.utils.{Atomic, Once}
 import scala.concurrent.duration.Deadline
 import scala.util.{Failure, Success, Try}
 

@@ -2,6 +2,7 @@ package js7.base.log
 
 import cats.Applicative
 import cats.effect.implicits.monadCancelOps
+import cats.effect.kernel.Sync
 import cats.effect.{IO, Outcome, Resource, Sync, SyncIO}
 import cats.syntax.apply.*
 import cats.syntax.flatMap.*
@@ -9,6 +10,7 @@ import com.typesafe.scalalogging.Logger as ScalaLogger
 import fs2.Stream
 import izumi.reflect.Tag
 import js7.base.fs2utils.StreamExtensions.tapEachChunk
+import js7.base.log.Log4j.{initialize, shutdown}
 import js7.base.log.Slf4jUtils.syntax.*
 import js7.base.problem.Problem
 import js7.base.system.startup.StartUp
@@ -29,6 +31,13 @@ object Logger extends AdHocLogger:
 
   lazy val empty: ScalaLogger =
     ScalaLogger(org.slf4j.helpers.NOPLogger.NOP_LOGGER)
+
+  def resource[F[_]](name: String)(using F: Sync[F]): Resource[F, Unit] =
+    Resource.make(
+      acquire = F.delay:
+        initialize(name))(
+      release = _ => F.delay:
+        Log4j.shutdown())
 
   def initialize(name: String): Unit =
     ifNotInitialized:

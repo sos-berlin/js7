@@ -4,6 +4,7 @@ import cats.effect.{IO, Resource}
 import fs2.Stream
 import java.util.concurrent.atomic.AtomicInteger
 import org.jetbrains.annotations.TestOnly
+import scala.annotation.nowarn
 import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.Try
@@ -70,6 +71,7 @@ final class FutureCompletion[A](future: Future[A])(implicit ec: ExecutionContext
     def future = promise.future
 
 
+@nowarn("msg=class FutureCompletion in package js7.base.utils is deprecated")
 object FutureCompletion:
   object syntax:
     implicit final class FutureCompletionStream[A](private val stream: Stream[IO, A]) extends AnyVal:

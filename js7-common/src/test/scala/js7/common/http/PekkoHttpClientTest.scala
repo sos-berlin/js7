@@ -184,7 +184,7 @@ final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, TestCat
     }
 
     "getRawLinesStream: idle-timeout yield an empty observable" in {
-      // PekkoHttpClient converts the TcpIdleTimeoutException to the empty Observable
+      // PekkoHttpClient converts the TcpIdleTimeoutException to the empty Stream
       val result = Stream
         .eval(httpClient.getRawLinesStream(Uri(s"$uri/IDLE-TIMEOUT")))
         .flatten

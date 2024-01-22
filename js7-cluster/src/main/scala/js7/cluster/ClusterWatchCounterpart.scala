@@ -3,15 +3,13 @@ package js7.cluster
 import cats.effect.kernel.Deferred
 import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, Outcome, Resource}
-import cats.syntax.flatMap.*
-import cats.syntax.traverse.*
 import js7.base.catsutils.CatsEffectExtensions.*
-import js7.base.catsutils.{CatsDeadline, SyncDeadline}
+import js7.base.catsutils.SyncDeadline
 import js7.base.eventbus.EventPublisher
 import js7.base.fs2utils.Fs2PubSub
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{BlockingSymbol, CorrelId, Logger}
-import js7.base.monixlike.MonixLikeExtensions.{materialize, onErrorRestartLoop}
+import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
 import js7.base.problem.Checked
 import js7.base.service.Service
 import js7.base.time.ScalaTime.RichDuration

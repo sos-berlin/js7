@@ -1,6 +1,6 @@
 package js7.common.system.startup
 
-import cats.effect.IO
+import cats.effect.{ExitCode, IO}
 import js7.base.io.process.ReturnCode
 import js7.base.log.{Log4j, Logger}
 import js7.base.system.startup.StartUp
@@ -16,15 +16,28 @@ object JavaMain:
     IO
       .defer:
         Logger.initialize(name)
-        ProblemCodeMessages.initialize()
-        // Initialize class and object for possible quicker emergency stop
-        Halt.initialize()
+        initialize()
         body
       .recover:
         case t: Throwable =>
           logger.error(t.toStringWithCauses, t)
           printlnWithClock(s"TERMINATING DUE TO ERROR: ${t.toStringWithCauses}")
           exit1()
+
+  def run(name: String)(body: => IO[ExitCode]): IO[ExitCode] =
+    Logger.resource[IO](name).surround:
+      IO(initialize())
+        .*>(body)
+        .recover:
+          case t: Throwable =>
+            logger.error(t.toStringWithCauses, t)
+            printlnWithClock(s"TERMINATING DUE TO ERROR: ${t.toStringWithCauses}")
+            ExitCode(1)
+
+  private def initialize(): Unit =
+    ProblemCodeMessages.initialize()
+    // Initialize class and object for possible quicker emergency stop
+    Halt.initialize()
 
   @deprecated("Use Cats Effect")
   def exit1(): Nothing =

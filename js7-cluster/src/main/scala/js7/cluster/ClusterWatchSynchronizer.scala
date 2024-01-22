@@ -1,7 +1,6 @@
 package js7.cluster
 
 import cats.effect.{FiberIO, IO, Outcome}
-import cats.syntax.flatMap.*
 import cats.syntax.option.*
 import fs2.Stream
 import java.util.ConcurrentModificationException

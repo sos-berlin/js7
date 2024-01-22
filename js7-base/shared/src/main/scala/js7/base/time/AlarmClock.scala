@@ -1,4 +1,9 @@
-//package js7.base.time
+package js7.base.time
+
+import cats.effect.kernel.{Resource, Sync}
+import cats.effect.unsafe.IORuntime
+import scala.concurrent.duration.FiniteDuration
+
 //
 //import cats.effect.unsafe.{IORuntime, Scheduler}
 //import cats.effect.{IO, Resource, Sync}
@@ -11,8 +16,10 @@
 //import scala.collection.mutable
 //import scala.concurrent.duration.*
 //
-//trait AlarmClock extends WallClock:
-//
+@deprecated("NOT IMPLEMENTED❗️")
+trait AlarmClock extends WallClock:
+  ???
+
 //  def stop(): Unit
 //
 //  def scheduleOnce(delay: FiniteDuration)(callback: => Unit)
@@ -36,7 +43,7 @@
 //    body
 //
 //
-//object AlarmClock:
+object AlarmClock:
 //  def apply(clockCheckInterval: Option[FiniteDuration] = None)(implicit ior: IORuntime)
 //  : AlarmClock =
 //    given Scheduler = ior.scheduler
@@ -45,10 +52,11 @@
 //        new SimpleAlarmClock
 //      case Some(clockCheckInterval) =>
 //        new ClockCheckingAlarmClock(clockCheckInterval)
-//
-//  def resource[F[_]](clockCheckInterval: Option[FiniteDuration] = None)
-//    (using F: Sync[F], ior: IORuntime)
-//  : Resource[F, AlarmClock] =
+
+  def resource[F[_]](clockCheckInterval: Option[FiniteDuration] = None)
+    (using F: Sync[F], ior: IORuntime)
+  : Resource[F, AlarmClock] =
+    Resource.pure(null: AlarmClock)
 //    Resource.make(
 //      acquire = F.delay(AlarmClock(clockCheckInterval)))(
 //      release = clock => F.delay(clock.stop()))

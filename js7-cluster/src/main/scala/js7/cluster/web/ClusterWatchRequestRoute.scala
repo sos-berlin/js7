@@ -3,17 +3,13 @@ package js7.cluster.web
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import fs2.Stream
-import fs2.interop.reactivestreams.*
 import js7.base.auth.UserId
 import js7.base.log.Logger
 import js7.base.problem.Checked
-import js7.base.utils.FutureCompletion
-import js7.base.utils.FutureCompletion.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.cluster.web.ClusterWatchRequestRoute.*
-import js7.common.http.JsonStreamingSupport.{NdJsonStreamingSupport, `application/x-ndjson`, jsonSeqMarshaller}
+import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.pekkohttp.PekkoHttpServerUtils.{accept, completeWithStream, streamToResponseMarshallable}
-import js7.common.pekkohttp.StandardDirectives
 import js7.common.pekkohttp.StandardDirectives.ioRoute
 import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkohttp.web.session.RouteProvider
@@ -21,11 +17,8 @@ import js7.data.cluster.{ClusterState, ClusterWatchRequest}
 import js7.data.event.Stamped
 import js7.data.node.NodeId
 import js7.journal.watch.EventWatch
-import org.apache.pekko.http.scaladsl.common.JsonEntityStreamingSupport
-import org.apache.pekko.http.scaladsl.marshalling.{ToEntityMarshaller, ToResponseMarshallable}
 import org.apache.pekko.http.scaladsl.server.Directives.*
 import org.apache.pekko.http.scaladsl.server.Route
-import org.reactivestreams.Publisher
 import scala.concurrent.duration.FiniteDuration
 import scala.util.control.NoStackTrace
 
