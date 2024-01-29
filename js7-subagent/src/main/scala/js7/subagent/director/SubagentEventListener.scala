@@ -7,11 +7,10 @@ import cats.syntax.traverse.*
 import fs2.Stream
 import js7.base.catsutils.CatsEffectExtensions.{joinStd, left}
 import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
-import js7.base.fs2utils.StreamExtensions.takeUntilEval
 import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.monixlike.MonixLikeExtensions.completedL
+import js7.base.monixlike.MonixLikeExtensions.{completedL, takeUntilEval}
 import js7.base.monixutils.StreamPauseDetector.*
 import js7.base.monixutils.Switch
 import js7.base.problem.Checked.*

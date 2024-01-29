@@ -1,5 +1,6 @@
 package js7.data.orderwatch
 
+import cats.effect.unsafe.IORuntime
 import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
@@ -19,6 +20,8 @@ import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 
 final class OrderWatchStateTest extends OurAsyncTestSuite
 {
+  private given IORuntime = ioRuntime
+
   private val orderWatchState = OrderWatchState(
     FileWatch(
       OrderWatchPath("FILE-WATCH"),

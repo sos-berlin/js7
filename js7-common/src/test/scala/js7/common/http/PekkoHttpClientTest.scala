@@ -1,6 +1,7 @@
 package js7.common.http
 
 import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import cats.syntax.option.*
 import fs2.Stream
 import io.circe.Codec
@@ -49,6 +50,8 @@ import scala.util.{Failure, Success, Try}
   */
 final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, TestCatsEffect, HasCloser
 {
+  private given IORuntime = ioRuntime
+
   implicit private lazy val actorSystem: ActorSystem =
     newActorSystem("PekkoHttpClientTest", config"""pekko.http.client.idle-timeout = 2s""")
 

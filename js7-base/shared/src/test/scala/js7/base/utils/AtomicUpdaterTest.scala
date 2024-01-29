@@ -1,12 +1,15 @@
 package js7.base.utils
 
 import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import cats.syntax.foldable.*
 import cats.syntax.traverse.*
 import js7.base.test.OurAsyncTestSuite
 import js7.base.utils.AtomicUpdaterTest.*
 
 final class AtomicUpdaterTest extends OurAsyncTestSuite:
+
+  private given IORuntime = ioRuntime
 
   "update" in:
     val n = 1000

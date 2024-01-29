@@ -1,6 +1,7 @@
 package js7.base.catsutils
 
 import cats.effect.kernel.MonadCancel
+import cats.effect.unsafe.Scheduler
 import cats.effect.{Clock, Fiber, IO, Outcome, OutcomeIO}
 import cats.syntax.functor.*
 import cats.{Defer, Functor, effect}
@@ -11,6 +12,8 @@ import scala.annotation.unchecked.uncheckedVariance
 import scala.concurrent.{ExecutionContext, Future}
 
 object CatsEffectExtensions:
+
+  private val logger = Logger[this.type]
 
   extension[A](io: IO[A])
 
@@ -26,11 +29,11 @@ object CatsEffectExtensions:
 
     // inline for proper processing of Enclosing
     inline def adHocInfo(inline toMsg: A => String)(using src: sourcecode.Enclosing): IO[A] =
-      io.flatTap(a => IO(Logger.info(toMsg(a))))
+      io.flatTap(a => IO(logger.info(toMsg(a))))
 
     // inline for proper processing of Enclosing
     inline def adHocInfo(inline msg: String)(using src: sourcecode.Enclosing): IO[A] =
-      io.flatTap(a => IO(Logger.info(msg)))
+      io.flatTap(a => IO(logger.info(msg)))
 
     /** Converts a failed IO into a `Checked[A]`. */
     def catchAsChecked: IO[Checked[A]] =
@@ -100,6 +103,18 @@ object CatsEffectExtensions:
         ec <- IO.executionContext
         a <- IO.fromFuture(io(ec))
       yield a
+
+    def unsafeScheduler: IO[Scheduler] =
+      IO.unsafeRuntime.map(_.scheduler)
+
+    //def fromCancelableFutureWithEC[A](io: ExecutionContext => IO[CancelableFuture[A]]): IO[A] =
+    //  for
+    //    ec <- IO.executionContext
+    //    a <- IO.fromCancelableFuture(io(ec))
+    //  yield a
+    //
+    //def fromCancelableFuture[A](io: IO[CancelableFuture[A]]): IO[A] =
+    //  io.flatMap(future => IO.fromFutureCancelable(future, future.cancelToFuture)
 
 
   extension[F[_], A](fiber: Fiber[F, Throwable, A])

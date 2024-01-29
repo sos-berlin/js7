@@ -9,7 +9,7 @@ import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.cluster.web.ClusterWatchRequestRoute.*
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
-import js7.common.pekkohttp.PekkoHttpServerUtils.{accept, completeWithStream, streamToResponseMarshallable}
+import js7.common.pekkohttp.PekkoHttpServerUtils.{accept, completeWithStream, encodeAndHeartbeatStream}
 import js7.common.pekkohttp.StandardDirectives.ioRoute
 import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkohttp.web.session.RouteProvider
@@ -48,7 +48,7 @@ trait ClusterWatchRequestRoute extends RouteProvider:
                   })
                 .map: stream =>
                   completeWithStream(`application/x-ndjson`):
-                    streamToResponseMarshallable(
+                    encodeAndHeartbeatStream(
                       stream, shutdownSignaled, keepAlive = Some(keepAlive), chunkSize = chunkSize)
                 //Monix: .cancelOnCompletionOf(whenShuttingDownCompletion)
             }))))

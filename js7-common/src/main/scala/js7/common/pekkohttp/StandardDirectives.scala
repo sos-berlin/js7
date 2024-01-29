@@ -54,7 +54,11 @@ object StandardDirectives:
     // TODO Check migration to Cats Effect :
     ctx => routeIO.unsafeToFuture().flatMap(_(ctx))
 
-  //def routeFuture(routeFuture: Future[Route])(implicit scheduler: Scheduler): Route =
+  //// For completeWithStream if it returned a Resource:
+  //private def resourceRoute(resource: Resource[IO, Route])(using ioRuntime: IORuntime): Route =
+  //  ???
+
+  //def routeFuture(routeFuture: Future[Route])(using ioRuntime: IORuntime): Route =
   //  ctx => routeFuture.flatMap(_(ctx))
 
   private val removeEtag: Directive0 =

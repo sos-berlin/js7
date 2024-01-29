@@ -21,7 +21,8 @@ object Java8Polyfill:
       }
       .getOrElse(0)
 
-  /** Required when IDE compiles with JDK >8, but code must still be compilable with JDK 8. */
+  /** Required when IDE compiles with JDK >8, but code must still be compilable with JDK 8
+   *  and imports should be kept. */
   def java8Polyfill() = {}
 
   implicit final class InputStreamPolyfill(private val in: InputStream) extends AnyVal:

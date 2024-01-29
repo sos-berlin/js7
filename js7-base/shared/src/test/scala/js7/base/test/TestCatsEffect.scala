@@ -11,13 +11,10 @@ trait TestCatsEffect:
 
   // Or use own IORuntime for each test class ???
   protected final def ioRuntime: IORuntime =
-    //IORuntime.global
     OurIORuntime.ioRuntime
 
-  protected implicit def executionContext: ExecutionContext =
+  protected def executionContext: ExecutionContext =
     ioRuntime.compute
-
-  protected given IORuntime = ioRuntime
 
 
 object TestCatsEffect:

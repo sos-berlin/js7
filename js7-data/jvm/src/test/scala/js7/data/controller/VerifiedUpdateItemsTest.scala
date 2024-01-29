@@ -1,5 +1,6 @@
 package js7.data.controller
 
+import cats.effect.unsafe.IORuntime
 import js7.base.Problems.TamperedWithSignedMessageProblem
 import js7.base.auth.User.UserDoesNotHavePermissionProblem
 import js7.base.auth.{SimpleUser, UpdateItemPermission, UserId, ValidUserPermission}
@@ -21,6 +22,9 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import fs2.Stream
 
 final class VerifiedUpdateItemsTest extends OurTestSuite, TestCatsEffect:
+  
+  private given IORuntime = ioRuntime
+  
   private lazy val (signer, signatureVerifier) = X509Signer.forTest
   private lazy val itemVerifier = new SignedItemVerifier(signatureVerifier, signableItemJsonCodec)
   private lazy val itemSigner = new ItemSigner[SignableItem](signer, signableItemJsonCodec)

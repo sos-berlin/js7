@@ -2,7 +2,6 @@ package js7.launcher.forjava.internal
 
 import cats.effect.unsafe.IORuntime
 import io.vavr.control.Either as VEither
-import java.io.IOException
 import java.util.concurrent.{CompletableFuture, CompletionStage}
 import javax.annotation.Nonnull
 import js7.base.io.process.{Stderr, Stdout}
@@ -12,7 +11,6 @@ import js7.launcher.StdWriter
 import js7.launcher.forjava.internal.JInternalJob.*
 import js7.launcher.internal.{InternalJob, InternalJobAdapter}
 import scala.compat.java8.FutureConverters.*
-import scala.concurrent.Future
 
 @InternalJobAdapter(classOf[JInternalJobAdapter])
 trait JInternalJob:

@@ -2,6 +2,7 @@ package js7.base.io.file.watch
 
 import cats.data.NonEmptySeq
 import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import java.nio.file.Files.createDirectory
 import java.nio.file.Paths
 import java.nio.file.StandardWatchEventKinds.{ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY}
@@ -17,6 +18,8 @@ import js7.tester.ScalaTestUtils.awaitAndAssert
 import scala.collection.mutable
 
 final class BasicDirectoryWatchTest extends OurAsyncTestSuite:
+
+  private given IORuntime = ioRuntime
 
   "step for step" in:
     temporaryDirectoryResource[IO]("DirectoryWatchTest-").use { dir =>

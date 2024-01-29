@@ -1,15 +1,22 @@
 package js7.launcher.process
 
+import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, Resource}
-import fs2.Stream
+import cats.syntax.traverse.*
+import fs2.{Chunk, Stream}
 import java.io.{BufferedOutputStream, FileOutputStream, OutputStreamWriter}
 import java.nio.file.Files.*
 import java.nio.file.Path
+import fs2.io.file.Files as Fs2Files
+import fs2.io.file.Path as Fs2Path
+import java.nio.charset.StandardCharsets
+import java.nio.charset.StandardCharsets.UTF_8
+import js7.base.catsutils.CatsEffectExtensions.joinStd
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.FileUtils.temporaryDirectory
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
-import js7.base.io.process.Processes.newTemporaryShellFile
-import js7.base.io.process.{ReturnCode, Stderr, Stdout, StdoutOrStderr}
+import js7.base.io.process.Processes.{newLogFile, newTemporaryShellFile, temporaryShellFileResource}
+import js7.base.io.process.{Processes, ReturnCode, Stderr, Stdout, StdoutOrStderr}
 import js7.base.system.OperatingSystem.{isMac, isSolaris, isUnix, isWindows}
 import js7.base.system.ServerOperatingSystem.KernelSupportsNestedShebang
 import js7.base.test.OurAsyncTestSuite
@@ -32,6 +39,8 @@ import scala.concurrent.Future
  */
 final class ShellScriptProcessTest extends OurAsyncTestSuite:
 
+  private given IORuntime = ioRuntime
+
   "ShellScriptProcess" in:
     val envName = "ENVNAME"
     val envValue = "ENVVALUE"
@@ -46,6 +55,22 @@ final class ShellScriptProcessTest extends OurAsyncTestSuite:
       shellProcess.terminated await 5.s
       succeed
     }
+
+  "stdout" in:
+    temporaryShellFileResource[IO]("stdout").use: scriptFile =>
+      for
+        _ <- IO(scriptFile.writeUtf8Executable:
+          (isWindows ?? "@echo off\n") +
+            """echo TEST-SCRIPT-1
+              |echo TEST-SCRIPT-2""".stripMargin)
+        stdFileMap = createStdFiles(temporaryDirectory, id = s"ShellScriptProcessTest-stdout")
+        shellProcess <- startShellScript(ProcessConfiguration.forTest, scriptFile, stdFileMap)
+        rc <- shellProcess.terminated
+      yield
+        assert(rc == ReturnCode(0) &&
+          stdFileMap(Stdout).contentString == "TEST-SCRIPT-1\nTEST-SCRIPT-2\n")
+        RichProcess.tryDeleteFiles(stdFileMap.values)
+        succeed
 
   if isUnix then
     if !KernelSupportsNestedShebang then
@@ -65,7 +90,7 @@ final class ShellScriptProcessTest extends OurAsyncTestSuite:
               s"""#! $interpreter
                  |echo TEST-SCRIPT
                  |""".stripMargin)
-            val stdFileMap = RichProcess.createStdFiles(temporaryDirectory, id = s"ShellScriptProcessTest-shebang")
+            val stdFileMap = createStdFiles(temporaryDirectory, id = s"ShellScriptProcessTest-shebang")
             val shellProcess = startShellScript(ProcessConfiguration.forTest, scriptFile, stdFileMap)
               .await(99.s)
             shellProcess.terminated await 99.s
@@ -94,7 +119,7 @@ final class ShellScriptProcessTest extends OurAsyncTestSuite:
           else
             "echo SCRIPT-ARGUMENTS=$*; sleep 6")
         withCloser { closer =>
-          val stdFileMap = RichProcess.createStdFiles(temporaryDirectory, id = "ShellScriptProcessTest-kill")
+          val stdFileMap = createStdFiles(temporaryDirectory, id = "ShellScriptProcessTest-kill")
           val killScriptOutputFile = createTempFile("test-", ".tmp")
           val killScriptFile = newTemporaryShellFile("TEST-KILL-SCRIPT")
           killScriptFile := (
@@ -146,6 +171,12 @@ final class ShellScriptProcessTest extends OurAsyncTestSuite:
           assert(rc == ReturnCode(7))
         }
 
+  private def createStdFiles(directory: Path, id: String): Map[StdoutOrStderr, Path] =
+    StdoutOrStderr.values
+      .map: o =>
+        o -> newLogFile(directory, id, o)
+      .toMap
+
   private def startShellScript(
     processConfiguration: ProcessConfiguration,
     executable: Path,
@@ -154,30 +185,29 @@ final class ShellScriptProcessTest extends OurAsyncTestSuite:
     IO.defer:
       StdObservers
         .resource(charBufferSize = 4096, keepLastErrLine = false)
-        .use: stdObservers =>
-          def processOutErr(stream: Stream[IO, String], outerr: StdoutOrStderr): Future[Unit] =
+        .allocated // startPipedShellScript will release it at end of stdout and stderr
+        .flatMap: (stdObservers, _) =>
+          def processOutErr(stream: Stream[IO, String], outerr: StdoutOrStderr): IO[Unit] =
             stdFileMap.get(outerr)
-              .fold(stream)(file =>
-                Stream
-                  .resource(Resource.fromAutoCloseable(IO(
-                    new OutputStreamWriter(
-                      new BufferedOutputStream(
-                        new FileOutputStream(file.toFile))))))
-                  .flatMap(writer => stream
-                    .evalTap(string => IO(writer.write(string)))))
+              .fold(stream): file =>
+                stream
+                  .through(fs2.text.utf8.encode)
+                  .through(Fs2Files[IO].writeAll(file.toFs2))
               .compile.drain
-              .unsafeToFuture()
 
-          val outErrFut = Future.sequence(Seq(
-            processOutErr(stdObservers.outStream, Stdout),
-            processOutErr(stdObservers.errStream, Stderr)))
+          for
+            outErrFut <-
+              Seq(
+                processOutErr(stdObservers.outStream, Stdout),
+                processOutErr(stdObservers.errStream, Stderr)
+              ).sequence.start
 
-          startPipedShellScript(
-            CommandLine(executable.toString :: Nil),
-            processConfiguration,
-            stdObservers,
-            whenTerminated = IO.fromFuture(IO(outErrFut)).void
-          ).map(_.orThrow)
+            checkedProcess <- startPipedShellScript(
+              CommandLine(List(executable.toString)),
+              processConfiguration,
+              stdObservers,
+              whenTerminated = outErrFut.joinStd.void)
+          yield checkedProcess.orThrow
 
   private def withScriptFile[A](body: Path => A): A =
     val file = newTemporaryShellFile("ShellScriptProcessTest")

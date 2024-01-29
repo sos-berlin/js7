@@ -1,5 +1,6 @@
 package js7.journal.test
 
+import cats.effect.unsafe.IORuntime
 import org.apache.pekko.Done
 import org.apache.pekko.actor.{Actor, ActorRef, ActorSystem, Props}
 import org.apache.pekko.pattern.ask
@@ -42,6 +43,8 @@ import scala.util.control.NonFatal
   */
 private[journal] trait TestJournalMixin extends BeforeAndAfterAll, TestCatsEffect
 { this: Suite =>
+
+  private given IORuntime = ioRuntime
 
   protected implicit val askTimeout: Timeout = Timeout(99.seconds)
   protected lazy val directory = createTempDirectory("JournalTest-")

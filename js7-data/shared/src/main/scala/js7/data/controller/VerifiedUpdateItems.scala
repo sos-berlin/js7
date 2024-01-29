@@ -5,6 +5,7 @@ import fs2.Stream
 import js7.base.auth.{SimpleUser, UpdateItemPermission, ValidUserPermission}
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.crypt.SignedString
+import js7.base.fs2utils.StreamExtensions.mapParallelBatch
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichEitherF
@@ -68,8 +69,8 @@ object VerifiedUpdateItems:
     @volatile var problemOccurred: Option[Problem] = None
 
     stream
-      .parEvalMapUnbounded:
-        case AddOrChangeSigned(signedString) => IO:
+      .mapParallelBatch():
+        case AddOrChangeSigned(signedString) =>
           if problemOccurred.isEmpty then
             verify(signedString) match
               case Left(problem) =>
@@ -80,7 +81,7 @@ object VerifiedUpdateItems:
           else
             ()
 
-        case o => IO.pure(o)
+        case o => o
       .foreach(o => IO(o match
           case AddOrChangeSimple(item) => unsignedSimpleItems_ += item
           case DeleteSimple(path) => simpleDeletes_ += path

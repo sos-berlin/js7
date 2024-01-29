@@ -26,6 +26,7 @@ import js7.data.problems.InvalidLoginProblem
 import js7.data.session.HttpSessionApi
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import org.scalatest.matchers.should.Matchers.*
 import scala.concurrent.duration.Deadline.now
 
@@ -35,6 +36,8 @@ import scala.concurrent.duration.Deadline.now
 sealed abstract class SessionRouteTest(override protected val isPublic: Boolean)
 extends OurTestSuite, TestCatsEffect, SessionRouteTester
 {
+  private given IORuntime = ioRuntime
+
   private implicit val routeTestTimeout: RouteTestTimeout = RouteTestTimeout(10.s)
 
   override protected[session] val specificLoginRequiredProblem = Problem.pure("specificLoginRequired")

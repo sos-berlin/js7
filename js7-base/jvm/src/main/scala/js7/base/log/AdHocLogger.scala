@@ -196,5 +196,7 @@ transparent trait AdHocLogger:
   : Stream[IO, A] =
     logger.traceStream(function, args)(stream)
 
+  private val nameRegex = """#\$.*$""".r
+
   private def logger(using src: sourcecode.Enclosing): ScalaLogger =
-    Logger(src.value.replace("#", "."))
+    Logger(nameRegex.replaceFirstIn(src.value, "").replace("#", "."))

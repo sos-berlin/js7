@@ -1,12 +1,13 @@
 package js7.base.service
 
 import cats.effect.testkit.TestControl
+import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, Resource}
 import cats.syntax.parallel.*
 import js7.base.catsutils.CatsDeadline
 import js7.base.log.Logger
 import js7.base.service.RestartAfterFailureServiceTest.*
-import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.test.{OurAsyncTestSuite, TestCatsEffect}
 import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic
@@ -18,67 +19,67 @@ import scala.concurrent.duration.*
 import scala.util.Random
 import scala.util.control.NoStackTrace
 
-final class RestartAfterFailureServiceTest extends OurTestSuite, TestCatsEffect:
+final class RestartAfterFailureServiceTest extends OurAsyncTestSuite, TestCatsEffect:
 
   "RestartAfterFailureService" in:
     val elapsedSeq = mutable.Buffer[(FiniteDuration, FiniteDuration)]()
 
-    val program =
-      CatsDeadline.now.flatMap: started =>
-        def serviceResource: Resource[IO, RestartAfterFailureService[CancelableService]] =
-          var i = 0
-          var lastEnd = started
+    TestControl
+      .executeEmbed:
+        CatsDeadline.now.flatMap: started =>
+          val serviceResource: Resource[IO, RestartAfterFailureService[CancelableService]] =
+            var i = 0
+            var lastEnd = started
 
-          Service.restartAfterFailure()(CancelableService.resource(
-            CatsDeadline.now.flatMap: now =>
-              val delayed = now - lastEnd
-              i += 1
-              val sleep =
-                if i < 8 then 0.s
-                else if i < 11 then 5.s
-                else if i < 12 then 11.s
-                else 0.s
-              val n = 20
-              logger.debug(s"$toString i=$i ${if i == n then "last" else s"sleep ${sleep.pretty}"}")
-              IO.whenA(i < n):
-                IO.sleep(sleep)
-                  .*>(CatsDeadline.now)
-                  .flatMap: now =>
-                    lastEnd = now
-                    elapsedSeq += ((delayed.toCoarsest, sleep.toCoarsest))
-                    IO.raiseError(new TestException("run"))))
-
-        serviceResource
-          .use: (service: RestartAfterFailureService[CancelableService]) =>
-            // Due to automatic restart, the underlying service may change.
-            service.unsafeCurrentService(): CancelableService
-            service.untilStopped
-
-    TestControl.execute(program).flatMap(_.tickFor(900.s)).await(99.s)
-
-    assert(elapsedSeq == Seq(
-      // (delayed, run duration)
-      (0.s, 0.s),   // 1.  first
-      (0.s, 0.s),   // 2.  0s
-      (1.s, 0.s),   // 3.  1s
-      (3.s, 0.s),   // 4.  3s
-      (6.s, 0.s),   // 5.  6s
-      (10.s, 0.s),  // 6.  10s
-      (10.s, 0.s),  // 7.  10s
-      (10.s, 5.s),  // 8.  10s
-      (5.s, 5.s),   // 9.  10s
-      (5.s, 5.s),   // 10. 10s
-      (5.s, 11.s),  // 11. 10s
-      (0.s, 0.s),   // 12. 0s reset because duration was >= 10s
-      (0.s, 0.s),   // 13. 1s
-      (1.s, 0.s),   // 14. 3s
-      (3.s, 0.s),   // 15. 6s
-      (6.s, 0.s),   // 16. 10s
-      (10.s, 0.s),  // 17. 10s
-      (10.s, 0.s),  // 18. 10s
-      (10.s, 0.s))) // 19. 10s
+            Service.restartAfterFailure()(CancelableService.resource(
+              CatsDeadline.now.flatMap: now =>
+                val delayed = now - lastEnd
+                i += 1
+                val sleep =
+                  if i < 8 then 0.s
+                  else if i < 11 then 5.s
+                  else if i < 12 then 11.s
+                  else 0.s
+                val n = 20
+                logger.debug(s"$toString i=$i ${if i == n then "last" else s"sleep ${sleep.pretty}"}")
+                IO.whenA(i < n):
+                  IO.sleep(sleep)
+                    .*>(CatsDeadline.now)
+                    .flatMap: now =>
+                      lastEnd = now
+                      elapsedSeq += ((delayed.toCoarsest, sleep.toCoarsest))
+                      IO.raiseError(new TestException("run"))))
+          serviceResource
+            .use: (service: RestartAfterFailureService[CancelableService]) =>
+              // Due to automatic restart, the underlying service may change.
+              service.unsafeCurrentService(): CancelableService
+              service.untilStopped
+      .map: _ =>
+        assert(elapsedSeq == Seq(
+          // (delayed, run duration)
+          (0.s, 0.s),   // 1.  first
+          (0.s, 0.s),   // 2.  0s
+          (1.s, 0.s),   // 3.  1s
+          (3.s, 0.s),   // 4.  3s
+          (6.s, 0.s),   // 5.  6s
+          (10.s, 0.s),  // 6.  10s
+          (10.s, 0.s),  // 7.  10s
+          (10.s, 5.s),  // 8.  10s
+          (5.s, 5.s),   // 9.  10s
+          (5.s, 5.s),   // 10. 10s
+          (5.s, 11.s),  // 11. 10s
+          (0.s, 0.s),   // 12. 0s reset because duration was >= 10s
+          (0.s, 0.s),   // 13. 1s
+          (1.s, 0.s),   // 14. 3s
+          (3.s, 0.s),   // 15. 6s
+          (6.s, 0.s),   // 16. 10s
+          (10.s, 0.s),  // 17. 10s
+          (10.s, 0.s),  // 18. 10s
+          (10.s, 0.s))) // 19. 10s
 
   "RestartAfterFailureService is stoppable anytime · Memory test when test.speed" in:
+    given IORuntime = ioRuntime
+
     // For check agains OutOfMemoryError, set -Xmx10m !!!
     val testDuration = if sys.props.contains("test.speed") then 30.s else 100.ms
     val runs = Atomic(0)

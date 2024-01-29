@@ -1,5 +1,6 @@
 package js7.base.stream
 
+import cats.effect.unsafe.IORuntime
 import js7.base.catsutils.CatsDeadline
 import js7.base.log.Logger
 import js7.base.stream.IncreasingNumberSyncTest.*
@@ -8,13 +9,16 @@ import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
 import js7.tester.ScalaTestUtils.awaitAndAssert
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer
   */
 final class IncreasingNumberSyncTest extends OurTestSuite, TestCatsEffect:
+
+  private given IORuntime = ioRuntime
+  private given ExecutionContext = ioRuntime.compute
 
   "test" in:
     val sync = new IncreasingNumberSync(initial = 0L, _.toString)

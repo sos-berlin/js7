@@ -1,14 +1,18 @@
 package js7.common.system.startup
 
+import cats.effect.unsafe.IORuntime
 import cats.effect.{ExitCode, IO, Resource}
 import izumi.reflect.Tag
-import js7.base.BuildInfo
+import js7.base.{BuildInfo, utils}
 import js7.base.configutils.Configs.logConfig
 import js7.base.log.{Log4j, Logger}
 import js7.base.service.{MainService, MainServiceTerminationException}
 import js7.base.system.startup.StartUp
 import js7.base.system.startup.StartUp.{logJavaSettings, nowString, printlnWithClock}
+import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.time.ScalaTime.*
+import js7.base.utils.AllocatedForJvm.useSync
+import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ProgramTermination
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.commandline.CommandLineArguments
@@ -68,10 +72,20 @@ object ServiceMain:
       .guarantee(IO:
         Log4j.shutdown())
 
-  private def handleProgramTermination(name: String)(body: IO[ProgramTermination]): IO[ExitCode] =
-    body.attempt.map:
-      case Left(throwable) => logging.throwableToExitCode(throwable)
-      case Right(termination) => logging.onProgramTermination(name, termination)
+  def blockingRun[S <: MainService](
+    name: String,
+    timeout: Duration = Duration.Inf)
+    (using rt: IORuntime, S: Tag[S])
+    (resource: Resource[IO, S],
+    use: S => ProgramTermination = (_: S)
+      .untilTerminated
+      .map(o => o: ProgramTermination) // because we have no Tag[S#Termination]
+      .await(timeout))
+  : ProgramTermination =
+    resource
+      .toAllocated
+      .await(timeout)
+      .useSync(timeout + 1.s)(use)
 
   def readyMessageWithLine(prefix: String): String =
     prefix +

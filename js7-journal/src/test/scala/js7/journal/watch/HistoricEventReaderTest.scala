@@ -1,5 +1,6 @@
 package js7.journal.watch
 
+import cats.effect.unsafe.IORuntime
 import js7.base.io.file.FileUtils.*
 import js7.base.test.{OurTestSuite, TestCatsEffect}
 import js7.base.utils.AutoClosing.autoClosing
@@ -14,6 +15,8 @@ import js7.journal.write.EventJournalWriter
   * @author Joacim Zschimmer
   */
 final class HistoricEventReaderTest extends OurTestSuite, TestCatsEffect:
+
+  private given IORuntime = ioRuntime
 
   "eventsAfter" in:
     withTemporaryDirectory("HistoricEventReaderTest-") { dir =>

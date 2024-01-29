@@ -5,6 +5,7 @@ import cats.effect.{Resource, Sync}
 import com.typesafe.config.Config
 import java.lang.Thread.currentThread
 import js7.base.log.Logger
+import js7.base.system.Java8Polyfill.*
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
 import scala.util.control.NonFatal
@@ -14,7 +15,6 @@ object OurIORuntime:
   // Lazy, to allow proper initialisation of logging
   private lazy val logger = Logger[this.type]
 
-  // TODO How to shutdown IORuntime? Should we?
   private var _ioRuntime: IORuntime =
     IORuntime.builder()
       .setFailureReporter(uncaughtExceptionReporter)
@@ -33,6 +33,7 @@ object OurIORuntime:
   /** For now, we return always the same global IORuntime and never shuts it down*/
   def resource[F[_]](name: String, config: Config)(using F: Sync[F]): Resource[F, IORuntime] =
     Resource.eval(F.delay(ioRuntime))
+    // How to shutdown a self-built IORuntime ?
 
   private def uncaughtExceptionReporter(throwable: Throwable) =
     def msg = s"Uncaught exception in thread ${currentThread.threadId} '${
@@ -58,3 +59,5 @@ object OurIORuntime:
       case throwable =>
         logger.error(msg, throwable.nullIfNoStackTrace)
         throwable.printStackTrace(System.err)
+
+  java8Polyfill()

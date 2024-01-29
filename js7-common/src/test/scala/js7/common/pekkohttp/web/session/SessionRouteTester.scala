@@ -1,5 +1,6 @@
 package js7.common.pekkohttp.web.session
 
+import cats.effect.unsafe.IORuntime
 import cats.effect.{Deferred, IO}
 import js7.base.auth.{SessionToken, UserId, ValidUserPermission}
 import js7.base.configutils.Configs.*
@@ -25,6 +26,8 @@ import org.scalatest.{BeforeAndAfterAll, Suite}
 
 trait SessionRouteTester extends BeforeAndAfterAll, TestCatsEffect, ScalatestRouteTest, SessionRoute:
   this: Suite =>
+
+  private given IORuntime = ioRuntime
 
   protected def isPublic = false
 

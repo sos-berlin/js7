@@ -5,9 +5,10 @@ import cats.effect.{IO, Resource}
 import com.typesafe.config.Config
 import fs2.Stream
 import js7.base.configutils.Configs.RichConfig
-import js7.base.fs2utils.StreamExtensions.{onStart, takeUntilEval}
+import js7.base.fs2utils.StreamExtensions.onStart
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
+import js7.base.monixlike.MonixLikeExtensions.takeUntilEval
 import js7.base.problem.Checked
 import js7.base.service.{MainService, Service}
 import js7.base.time.JavaTimeConverters.AsScalaDuration

@@ -1,9 +1,11 @@
 package js7.launcher.process
 
+import cats.effect.IO
 import java.io.OutputStream
 import java.lang.ProcessBuilder.Redirect.INHERIT
 import java.nio.file.Files.delete
 import java.nio.file.Path
+import js7.base.catsutils.UnsafeMemoizable.given
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.io.process.Processes.*
 import js7.base.io.process.{JavaProcess, Js7Process, Pid, ProcessSignal, ReturnCode, StdoutOrStderr}
@@ -14,12 +16,10 @@ import js7.base.thread.IOExecutor
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.launcher.process.RichProcess.*
-import cats.effect.IO
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.Deadline.now
 import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
-import js7.base.catsutils.UnsafeMemoizable.given
 
 /**
   * @author Joacim Zschimmer
@@ -186,9 +186,6 @@ abstract class RichProcess protected[process](
 
 object RichProcess:
   private val logger = Logger[this.type]
-
-  def createStdFiles(directory: Path, id: String): Map[StdoutOrStderr, Path] =
-    (StdoutOrStderr.values map { o => o -> newLogFile(directory, id, o) }).toMap
 
   private def waitForProcessTermination(process: Js7Process): ReturnCode =
     logger.trace(s"waitFor $process ...")

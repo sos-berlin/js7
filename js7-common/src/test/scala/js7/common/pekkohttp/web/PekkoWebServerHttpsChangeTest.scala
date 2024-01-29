@@ -29,6 +29,7 @@ import js7.common.pekkoutils.Pekkos
 import js7.common.pekkoutils.Pekkos.newActorSystem
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
 import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.http.scaladsl.model.HttpMethods.GET
 import org.apache.pekko.http.scaladsl.model.StatusCodes.OK
@@ -42,6 +43,8 @@ import scala.util.{Failure, Try}
 
 final class PekkoWebServerHttpsChangeTest extends OurTestSuite, BeforeAndAfterAll, TestCatsEffect
 {
+  private given IORuntime = ioRuntime
+
   private implicit lazy val actorSystem: ActorSystem =
     newActorSystem("PekkoWebServerHttpsChangeTest")
   private lazy val List(httpPort, httpsPort) = findFreeTcpPorts(2)

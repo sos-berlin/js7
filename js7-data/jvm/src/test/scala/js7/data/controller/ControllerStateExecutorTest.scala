@@ -40,6 +40,8 @@ final class ControllerStateExecutorTest extends OurTestSuite, TestCatsEffect
   import ControllerStateExecutorTest.instructionExecutorService
   import ControllerStateExecutorTest.itemSigner.sign
 
+  private given IORuntime = ioRuntime
+  
   "resetAgent" in {
     pending // TODO
   }

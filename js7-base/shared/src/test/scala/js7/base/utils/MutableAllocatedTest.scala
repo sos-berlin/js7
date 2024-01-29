@@ -1,11 +1,14 @@
 package js7.base.utils
 
+import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, Resource}
 import js7.base.problem.Problem
 import js7.base.test.OurAsyncTestSuite
 
 final class MutableAllocatedTest extends OurAsyncTestSuite:
 
+  private given IORuntime = ioRuntime
+  
   "MutableAllocated" in:
     val a = new MutableAllocated[Int]
     var count = 0

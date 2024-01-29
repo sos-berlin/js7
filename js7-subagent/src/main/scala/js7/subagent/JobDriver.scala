@@ -23,7 +23,7 @@ import cats.effect.unsafe.{IORuntime, Scheduler}
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.catsutils.SyncDeadline
 import js7.base.monixlike.MonixLikeExtensions.*
-import js7.base.monixlike.SerialCancelable
+import js7.base.monixlike.{SerialFutureCancelable, SerialSyncCancelable}
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import scala.concurrent.Promise
 import js7.data.order.OrderOutcome
@@ -252,7 +252,7 @@ private object JobDriver:
     var orderProcess: Option[OrderProcess] = None
     val terminated = Promise[OrderOutcome.Completed]()
     var killSignal: Option[ProcessSignal] = None
-    val timeoutSchedule = SerialCancelable()
+    val timeoutSchedule = SerialSyncCancelable()
     var runningSince: SyncDeadline = null
     var isKilled = false
     var sigkilled = false

@@ -114,13 +114,13 @@ trait HttpSessionApi extends SessionApi, HasSessionToken:
       val startedAt = now
       httpClient.getRawLinesStream(uri)
         .map(_
-          .logTiming(_.length, startedAt = startedAt, onComplete = (d, n, exitCase) =>
+          .logTiming(_.length, startedAt = startedAt, onComplete = (d, n, exitCase) => IO:
             logger.debug(s"$S snapshot receive $exitCase - ${bytesPerSecondString(d, n)}"))
-          .parEvalMap(sys.runtime.availableProcessors)(line => IO:
-            line.parseJsonAs(S.snapshotObjectJsonCodec).orThrow)
-          .logTiming(startedAt = startedAt, onComplete = (d, n, exitCase) =>
-          logger.debug:
-            s"$S snapshot receive $exitCase - ${itemsPerSecondString(d, n, "objects")}"))
+          .mapParallelBatch()(_
+            .parseJsonAs(S.snapshotObjectJsonCodec).orThrow)
+          .logTiming(startedAt = startedAt, onComplete = (d, n, exitCase) => IO:
+            logger.debug:
+              s"$S snapshot receive $exitCase - ${itemsPerSecondString(d, n, "objects")}"))
         .flatMap(S.fromStream)
 
 

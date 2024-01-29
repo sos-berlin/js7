@@ -9,7 +9,7 @@ import js7.base.catsutils.CatsEffectUtils.promiseIO
 import js7.base.circeutils.typed.TypedJsonCodec.typeName
 import js7.base.generic.Accepted
 import js7.base.log.{CorrelId, Logger}
-import js7.base.monixlike.Cancelable
+import js7.base.monixlike.{FutureCancelable, SerialFutureCancelable}
 import js7.base.problem.{Checked, ProblemException}
 import js7.base.thread.Futures.promiseFuture
 import js7.base.time.ScalaTime.*
@@ -39,12 +39,12 @@ extends Actor, Stash, ActorLogging, ReceiveLoggingActor:
   protected def journalConf: JournalConf
   protected def ioRuntime: IORuntime
 
-  given IORuntime = ioRuntime
+  private given IORuntime = ioRuntime
 
   private var stashingCount = 0
   private val persistStatistics = new PersistStatistics
   private var _persistedEventId = EventId.BeforeFirst
-  private val journalingTimer = Atomic(Cancelable.empty)
+  private val journalingTimer = SerialFutureCancelable()
 
   become("receive")(receive)
 
@@ -56,7 +56,7 @@ extends Actor, Stash, ActorLogging, ReceiveLoggingActor:
     super.become(stateName)(journaling orElse receive)
 
   override def postStop(): Unit =
-    journalingTimer.get().unsafeCancelAndForget()
+    journalingTimer.unsafeCancelAndForget()
     super.postStop()
 
   // TODO Inhibit bedeutet gehemmt, beeintrichtigt. Besser etwas wie 'stop'
@@ -249,9 +249,10 @@ extends Actor, Stash, ActorLogging, ReceiveLoggingActor:
       context.become(journaling, discardOld = false)
       logger.whenWarnEnabled:
         val since = now
-        val cancelable = Cancelable(Stream
+        journalingTimer := FutureCancelable(Stream
           .iterable(journalConf.persistWarnDurations)
           .append(Stream.constant(journalConf.persistWarnDurations.last))
+          .covary[IO]
           .evalMap(IO.sleep)
           .foreach(_ => IO:
             // Under load it may be normal to be busy for some time ???
@@ -259,7 +260,6 @@ extends Actor, Stash, ActorLogging, ReceiveLoggingActor:
               } ($stashingCount persist operations in progress)"))
           .compile.drain
           .unsafeRunCancelable())
-        journalingTimer.getAndSet(cancelable).unsafeCancelAndForget()
 
   private def endStashing(stamped: Seq[Stamped[AnyKeyedEvent]]): Unit =
     if stashingCount == 0 then
@@ -268,7 +268,7 @@ extends Actor, Stash, ActorLogging, ReceiveLoggingActor:
       throw new RuntimeException(msg)
     stashingCount -= 1
     if stashingCount == 0 then
-      journalingTimer := Cancelable.empty
+      journalingTimer.unsafeCancelAndForget()
       unstashAll()
       persistStatistics.endStashing()
       if TraceLog then logger.trace(s"»$toString« unbecome")

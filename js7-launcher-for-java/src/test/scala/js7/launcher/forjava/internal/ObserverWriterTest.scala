@@ -1,12 +1,15 @@
 package js7.launcher.forjava.internal
 
 import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import fs2.concurrent.Channel
 import js7.base.catsutils.CatsEffectExtensions.joinStd
 import js7.base.test.OurAsyncTestSuite
 import js7.launcher.StdWriter
 
 final class ObserverWriterTest extends OurAsyncTestSuite:
+
+  private given IORuntime = ioRuntime
 
   "ObserverWriter" in:
     for

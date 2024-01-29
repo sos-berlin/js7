@@ -40,8 +40,8 @@ import scala.concurrent.duration.FiniteDuration
 trait JournalRoute extends RouteProvider:
   protected def eventWatch: FileEventWatch
 
-  given IORuntime = ioRuntime
-  given ExecutionContext = ioRuntime.compute
+  private given IORuntime = ioRuntime
+  private given ExecutionContext = ioRuntime.compute
 
   private lazy val defaultJsonSeqChunkTimeout = config
     .getDuration("js7.web.server.services.event.streaming.chunk-timeout")
@@ -60,7 +60,6 @@ trait JournalRoute extends RouteProvider:
               "heartbeat".as[FiniteDuration].?,
               "return" ? ""
             ) { (maybeFileEventId, maybePosition, timeout, markEOF, heartbeat, returnType) =>
-              //accept(JournalContentType):
               (maybeFileEventId, maybePosition)
                 .match
                   case (None, None) => eventWatch.journalPosition  // Convenient for manual tests

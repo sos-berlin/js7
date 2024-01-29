@@ -1,7 +1,6 @@
 package js7.journal
 
 import java.util.concurrent.atomic.AtomicLong
-import js7.base.time.WallClock
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.event.{EventId, Stamped}
 import scala.annotation.tailrec
@@ -12,7 +11,7 @@ import scala.collection.AbstractIterator
   */
 final class EventIdGenerator(eventIdClock: EventIdClock)
 extends AbstractIterator[EventId]:
-  def this() = this(EventIdClock.Default)
+  def this() = this(EventIdClock.SystemEventIdClock)
 
   private val lastResult = new AtomicLong(EventId.BeforeFirst)
 
@@ -38,12 +37,10 @@ extends AbstractIterator[EventId]:
 
   def stamp[A](a: A, timestampMillis: Option[Long] = None): Stamped[A] =
     stampWith(a, next(),
-      timestampMillis.orElse(
-        !isWallclock ? eventIdClock.clock.epochMilli()))
+      timestampMillis.orElse:
+        !eventIdClock.isRealClock ?
+          eventIdClock.currentTimeMillis)
 
   private def stampWith[A](a: A, eventId: EventId, timestampMillis: Option[Long]): Stamped[A] =
     val ts = timestampMillis getOrElse EventId.toEpochMilli(eventId)
     new Stamped(eventId, ts, a)
-
-  @inline private def isWallclock =
-    eventIdClock.clock eq WallClock

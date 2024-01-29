@@ -75,6 +75,8 @@ addCommandAlias("quickPublishLocal", "; compile; publishLocal; project js7JS; co
 //Scala 3? ThisBuild / scalacOptions ++= (if (isForDevelopment) Nil else
 //Scala 3?   Seq("-Wconf:cat=unused-imports:error"))
 
+ThisBuild / dependencyOverrides += "org.typelevel" %% "cats-effect" % Dependencies.catsEffectSOSVersion
+
 ThisBuild / scalacOptions ++= Seq(
   //"-explain",
   "-feature",
@@ -307,9 +309,9 @@ lazy val `js7-base` = crossProject(JSPlatform, JVMPlatform)
     libraryDependencies ++=
       "dev.zio" %%% "izumi-reflect" % izumiReflectVersion ++
       "org.typelevel" %%% "cats-core" % catsVersion ++
-      "org.typelevel" %%% "cats-effect" % catsEffectVersion ++
       "org.typelevel" %%% "cats-laws" % catsVersion % "test" ++
       "org.typelevel" %%% "cats-parse" % catsParseVersion ++
+      "org.typelevel" %%% "cats-effect" % catsEffectSOSVersion ++
       "io.github.timwspence" %% "cats-stm" % catsSTMVersion ++
       "org.typelevel" %%% "discipline-core" % disciplineVersion % "test" ++
       "org.typelevel" %%% "discipline-scalatest" % disciplineScalaTestVersion % "test" ++
@@ -318,6 +320,7 @@ lazy val `js7-base` = crossProject(JSPlatform, JVMPlatform)
       "io.circe" %%% "circe-generic" % circeVersion ++
       "co.fs2" %% "fs2-core" % fs2Version ++
       "co.fs2" %% "fs2-reactive-streams" % fs2Version ++
+      "co.fs2" %% "fs2-io" % fs2Version ++
       "com.lihaoyi" %%% "sourcecode" % sourcecodeVersion ++
       "com.outr" %%% "scribe" % scribeVersion ++
       "com.softwaremill.common" %% "tagging" % softwaremillTaggingVersion ++
@@ -431,7 +434,7 @@ lazy val `js7-common-http` = crossProject(JSPlatform, JVMPlatform)
     import Dependencies.*
     libraryDependencies ++= scalaTest % "test"
     libraryDependencies += "org.typelevel" %%% "cats-core" % catsVersion
-    libraryDependencies += "org.typelevel" %%% "cats-effect" % catsEffectVersion
+    libraryDependencies += "org.typelevel" %%% "cats-effect" % catsEffectSOSVersion
   }
   .jvmSettings {
     import Dependencies.*
@@ -553,7 +556,6 @@ lazy val `js7-launcher` = project
   .settings {
     import Dependencies.*
     libraryDependencies ++=
-      "co.fs2" %% "fs2-io" % fs2Version ++
       scalaTest % "test" ++
       scalaCheck % "test" ++
       log4j % "test" ++
@@ -715,7 +717,7 @@ lazy val `js7-agent-client` = project
   .settings {
     import Dependencies.*
     libraryDependencies += "org.typelevel" %% "cats-core" % catsVersion
-    libraryDependencies += "org.typelevel" %% "cats-effect" % catsEffectVersion
+    libraryDependencies += "org.typelevel" %% "cats-effect" % catsEffectSOSVersion
     libraryDependencies ++=
       pekkoActor ++
       pekkoHttp ++

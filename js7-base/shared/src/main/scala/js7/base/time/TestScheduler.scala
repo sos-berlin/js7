@@ -9,9 +9,13 @@ import scala.concurrent.duration.FiniteDuration
 @deprecated
 final class TestScheduler extends Scheduler:
 
-  private val nanos = Atomic(0L)
+  private val _monotonicNanos = Atomic(0L)
 
   def sleep(delay: FiniteDuration, task: Runnable): Runnable =
+    ???
+
+  protected def scheduleOnce(delay: FiniteDuration)(callback: => Unit)(using sourcecode.FullName)
+  : Runnable =
     ???
 
   /** The real wall clock time. */
@@ -19,10 +23,10 @@ final class TestScheduler extends Scheduler:
     System.currentTimeMillis()
 
   def monotonicNanos(): Long =
-    nanos.get
+    _monotonicNanos.get
 
   def tick(duration: FiniteDuration): Unit =
-    this.nanos += duration.toNanos
+    this._monotonicNanos += duration.toNanos
 
   @deprecated
   def tick(): Unit =

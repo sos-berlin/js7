@@ -1,7 +1,7 @@
 package js7.base.monixlike
 
 import cats.effect.unsafe.{IORuntime, Scheduler}
-import cats.effect.{GenSpawn, IO}
+import cats.effect.{Concurrent, GenSpawn, IO}
 import cats.syntax.applicativeError.*
 import cats.syntax.flatMap.*
 import cats.syntax.functor.*
@@ -12,7 +12,7 @@ import fs2.{Pull, Stream}
 import js7.base.catsutils.CatsEffectExtensions.fromFutureWithEC
 import js7.base.fs2utils.StreamExtensions.onStart
 import js7.base.time.ScalaTime.*
-import js7.base.utils.CancelableFuture
+import js7.base.utils.{CancelableFuture, emptyRunnable}
 import scala.collection.Factory
 import scala.concurrent.duration.{Deadline, FiniteDuration}
 import scala.concurrent.{ExecutionContext, Future, TimeoutException}
@@ -24,44 +24,58 @@ object MonixLikeExtensions:
     def nowAsDeadline(): Deadline =
       Deadline(scheduler.monotonicNanos().ns)
 
-    def scheduleOnce(after: FiniteDuration)(callback: => Unit): Cancelable =
-      Cancelable.fromRunnable:
+    def scheduleOnce(after: FiniteDuration)(callback: => Unit)
+      (using sourcecode.FullName)
+    : SyncCancelable =
+      SyncCancelable:
         scheduler.sleep(after, () => callback)
 
     def scheduleAtFixedRate(delay: FiniteDuration, repeat: FiniteDuration)(body: => Unit)
-    : Cancelable =
+    : SyncCancelable =
       val repeatNanos = repeat.toNanos
       var t = scheduler.monotonicNanos() + delay.toNanos
+      @volatile var _stop = false
+      @volatile var _currentCancelable = emptyRunnable
 
       object callback extends Runnable:
         def run() =
-          try body
-          finally
-            t += repeatNanos
-            scheduler.sleep((t - scheduler.monotonicNanos()).ns, callback)
+          if !_stop then
+            try body
+            finally
+              t += repeatNanos
+              _currentCancelable =
+                scheduler.sleep((t - scheduler.monotonicNanos()).ns, callback)
 
-      Cancelable.fromRunnable(scheduler.sleep(delay, callback))
+      _currentCancelable = scheduler.sleep(delay, callback)
+      SyncCancelable: () =>
+        _stop = true
+        _currentCancelable.run()
 
-    def scheduleAtFixedRates(durations: IterableOnce[FiniteDuration])(body: => Unit): Cancelable =
-      val cancelable = SerialCancelable()
+    def scheduleAtFixedRates(durations: IterableOnce[FiniteDuration])(body: => Unit)
+    : SyncCancelable =
+      var _stop = false
+      var _currentCancelable = SyncCancelable.empty
       val iterator = durations.iterator
 
       def loop(last: Deadline): Unit =
         val nextDuration = iterator.next()
         val next = last + nextDuration
         val delay = next - nowAsDeadline()
-        cancelable := (
+        _currentCancelable =
           if iterator.hasNext then
             scheduleOnce(delay):
-              body
-              loop(next)
+              if !_stop then
+                try body
+                finally loop(next)
           else
-            scheduleAtFixedRate(delay, nextDuration)(body))
+            scheduleAtFixedRate(delay, nextDuration)(body)
 
       if iterator.hasNext then
         loop(nowAsDeadline())
 
-      cancelable
+      SyncCancelable: () =>
+        _stop = true
+        _currentCancelable.cancel()
 
 
   extension [F[_], A](underlying: F[A])
@@ -93,6 +107,10 @@ object MonixLikeExtensions:
         case Failure(t) => F.raiseError(t)
         case Success(a) => F.pure(a)
 
+    @deprecated("NOT IMPLEMENTED")
+    def onCancelRaiseError(throwable: => Throwable): F[A] =
+      ???
+
 
   extension [A](io: IO[A])
     def onErrorTap(pf: PartialFunction[Throwable, IO[Unit]]): IO[A] =
@@ -105,6 +123,9 @@ object MonixLikeExtensions:
 
     def unsafeToCancelableFuture()(using IORuntime): CancelableFuture[A] =
       CancelableFuture.fromPair(io.unsafeToFutureCancelable())
+
+    def foreach(f: A => Unit)(using IORuntime): Future[Unit] =
+      io.flatMap(a => IO(f(a))).unsafeToFuture()
 
 
   extension (x: IO.type)
@@ -145,9 +166,26 @@ object MonixLikeExtensions:
     inline def doAfterSubscribe(afterSubscribe: F[Unit]): Stream[F, A] =
       stream.onStart(afterSubscribe)
 
+    def takeUntilEval[X](completed: F[X])(using Concurrent[F]): Stream[F, A] =
+      takeUntil(Stream.eval(completed))
+
+    // TODO use interruptWhen
+    def takeUntil[X](completed: Stream[F, X])(using Concurrent[F]): Stream[F, A] =
+      stream
+        .map(Right(_))
+        .merge:
+          completed.as(Left(()))
+        .takeWhile(_.isRight)
+        .map(_.asInstanceOf[Right[Unit, A]].value)
+
     def headL(using fs2.Compiler[F, F])(using Functor[F]): F[A] =
       stream.head.compile.last
         .map(_.getOrElse(throw new NoSuchElementException(".headL on empty stream")))
+
+    def lastL(using fs2.Compiler[F, F])(using Functor[F]): F[A] =
+      stream.last.compile.last
+        .map(_.flatten)
+        .map(_.getOrElse(throw new NoSuchElementException(".lastL on empty stream")))
 
     def toListL(using fs2.Compiler[F, F])(using Functor[F]): F[List[A]] =
       stream.compile.toList
@@ -157,6 +195,7 @@ object MonixLikeExtensions:
 
 
   extension [A](stream: Stream[IO, A])
+
     // Implementation taken from Stream.Pull.timeout documentation.
     def timeoutOnSlowUpstream(timeout: FiniteDuration): Stream[IO, A] =
       stream.pull

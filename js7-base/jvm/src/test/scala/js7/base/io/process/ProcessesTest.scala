@@ -1,5 +1,6 @@
 package js7.base.io.process
 
+import cats.effect.unsafe.IORuntime
 import cats.instances.future.*
 import cats.instances.vector.*
 import cats.syntax.traverse.*
@@ -17,7 +18,7 @@ import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.Deadline.now
 import scala.jdk.CollectionConverters.*
 import scala.util.Try
@@ -26,6 +27,9 @@ import scala.util.Try
  * @author Joacim Zschimmer
  */
 final class ProcessesTest extends OurTestSuite, TestCatsEffect:
+
+  private given IORuntime = ioRuntime
+  private given ExecutionContext = ioRuntime.compute
 
   "processToPidOption, toShellCommandArguments" in:
     if isWindows then

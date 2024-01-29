@@ -1,6 +1,7 @@
 package js7.base.log
 
 import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import cats.syntax.parallel.*
 import js7.base.log.Log4jTest.*
 import js7.base.test.{OurTestSuite, TestCatsEffect}
@@ -10,6 +11,8 @@ import js7.base.time.Stopwatch
 import scala.concurrent.duration.Deadline.now
 
 final class Log4jTest extends OurTestSuite, TestCatsEffect:
+
+  private given IORuntime = ioRuntime
 
   private val testSpeed = sys.props contains "test.speed"
 

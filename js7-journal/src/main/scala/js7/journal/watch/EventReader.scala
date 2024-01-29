@@ -46,8 +46,8 @@ extends AutoCloseable:
   protected def config: Config
   protected def ioRuntime: IORuntime
 
-  given IORuntime = ioRuntime
-  given Scheduler = ioRuntime.scheduler
+  private given IORuntime = ioRuntime
+  private given Scheduler = ioRuntime.scheduler
 
   private lazy val logger = Logger.withPrefix[this.type](journalFile.getFileName.toString)
   protected lazy val journalIndex = new JournalIndex(PositionAnd(firstEventPosition, fileEventId),

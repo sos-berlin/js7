@@ -1,6 +1,7 @@
 package js7.common.system.startup
 
 import cats.effect.ExitCode
+import js7.base.io.process.ReturnCode
 import js7.base.utils.ProgramTermination
 
 object Js7ReturnCodes:
@@ -17,5 +18,4 @@ object Js7ReturnCodes:
 
   @deprecated
   def terminationToReturnCode(termination: ProgramTermination) =
-    ExitCode:
-      terminationToExitCode(termination).code
+    ReturnCode(terminationToExitCode(termination).code)

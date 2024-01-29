@@ -17,7 +17,7 @@ import js7.base.auth.{Admission, UserAndPassword}
 import js7.base.generic.Completed
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
-import js7.base.monixlike.SerialCancelable
+import js7.base.monixlike.SerialFutureCancelable
 import js7.base.monixutils.StreamPauseDetector.*
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem, ProblemException}
@@ -61,10 +61,10 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
   private val clusterStateLock = AsyncLock("ClusterState")
   private val journalActor = journal.journalActor
   private val isFetchingAcks = Atomic(false)
-  private val fetchingAcks = SerialCancelable()
+  private val fetchingAcks = SerialFutureCancelable()
   private val fetchingAcksTerminatedUnexpectedlyPromise = Promise[Checked[Completed]]()
   private val startingBackupNode = Atomic(false)
-  private val sendingClusterStartBackupNode = SerialCancelable()
+  private val sendingClusterStartBackupNode = SerialFutureCancelable()
   @volatile private var noMoreJournaling = false
   @volatile private var stopRequested = false
   private val clusterWatchSynchronizerOnce = SetOnce[ClusterWatchSynchronizer]
@@ -132,7 +132,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
   def stop: IO[Unit] =
     logger.debugIO(IO.defer {
       stopRequested = true
-      fetchingAcks.cancel()
+      fetchingAcks.unsafeCancelAndForget()
       clusterWatchSynchronizerOnce.toOption.fold(IO.unit)(_.stop)
     })
 
@@ -658,7 +658,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
               o.asInstanceOf[Stamped[KeyedEvent[ClusterEvent]]]
           state.clusterState match
             case Empty | _: NodesAppointed =>
-            case _: HasNodes => sendingClusterStartBackupNode.cancel()
+            case _: HasNodes => sendingClusterStartBackupNode.unsafeCancelAndForget()
           val events = clusterStampedEvents.map(_.value.event)
           (events, state.clusterState) match
             case (Seq(event), clusterState: HasNodes) =>

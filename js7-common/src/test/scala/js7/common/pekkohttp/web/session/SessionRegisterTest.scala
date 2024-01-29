@@ -2,6 +2,7 @@ package js7.common.pekkohttp.web.session
 
 import cats.effect.IO
 import cats.effect.testkit.TestControl
+import cats.effect.unsafe.IORuntime
 import js7.base.Js7Version
 import js7.base.auth.{HashedPassword, SessionToken, SimpleUser, UserId}
 import js7.base.generic.{Completed, SecretString}
@@ -22,6 +23,7 @@ import scala.concurrent.duration.*
   */
 final class SessionRegisterTest extends OurAsyncTestSuite, TestCatsEffect:
 
+  private given IORuntime = ioRuntime
   //??? override def executor = super.executor  // Not implicit
 
   private val unknownSessionToken = SessionToken(SecretString("UNKNOWN"))

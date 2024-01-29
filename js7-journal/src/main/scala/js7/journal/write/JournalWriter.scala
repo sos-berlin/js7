@@ -8,6 +8,7 @@ import io.circe.syntax.EncoderOps
 import java.nio.file.{Files, Path}
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.data.ByteArray
+import js7.base.fs2utils.StreamExtensions.mapParallelBatch
 import js7.base.utils.ByteUnits.toMB
 import js7.data.event.JournalSeparators.EventHeader
 import js7.data.event.{Event, EventId, JournalHeader, JournaledState, KeyedEvent, Stamped}
@@ -72,10 +73,8 @@ extends AutoCloseable:
     // TODO Try to call it asynchronously (in JournalActor)
     implicit val s = ioRuntime
     Stream.iterable[IO, A](seq)
-      .parEvalMapUnbounded(a => IO:
-        serialize[A](a))
-      //.mapParallelBatch(batchSize = JsonBatchSize)(
-      //  serialize[A])
+      .mapParallelBatch(batchSizeMin = JsonBatchSize)(
+        serialize[A])
       .foreach(byteArray => IO(jsonWriter.write(byteArray)))
       .compile.drain
       .unsafeRunSync() /*Blocking !!!*/

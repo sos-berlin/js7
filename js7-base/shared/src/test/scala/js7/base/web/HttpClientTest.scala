@@ -1,6 +1,7 @@
 package js7.base.web
 
 import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import js7.base.monixlike.MonixLikeExtensions.materialize
 import js7.base.problem.Problem
 import js7.base.test.OurAsyncTestSuite
@@ -11,6 +12,8 @@ import scala.util.{Failure, Success}
   * @author Joacim Zschimmer
   */
 final class HttpClientTest extends OurAsyncTestSuite:
+
+  private given IORuntime = ioRuntime
 
   private val problem = Problem.pure("PROBLEM")
   private val withProblem = new HttpClient.HttpException:

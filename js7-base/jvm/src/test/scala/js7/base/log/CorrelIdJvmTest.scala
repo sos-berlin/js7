@@ -1,6 +1,7 @@
 package js7.base.log
 
 import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import cats.instances.vector.*
 import cats.syntax.parallel.*
 import cats.syntax.traverse.*
@@ -14,11 +15,14 @@ import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
 import org.scalatest.BeforeAndAfterAll
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.Deadline.now
 
 final class CorrelIdJvmTest extends OurTestSuite, BeforeAndAfterAll, TestCatsEffect:
 
+  private given IORuntime = ioRuntime
+  private given ExecutionContext = ioRuntime.compute
+  
   private val ioBatchSize = 3
 
   //private lazy val underlyingScheduler =

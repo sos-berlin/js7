@@ -1,8 +1,10 @@
 package js7.journal.state
 
+import cats.effect.unsafe.IORuntime
 import js7.base.test.TestCatsEffect
 import org.apache.pekko.pattern.ask
 import org.apache.pekko.util.Timeout
+import scala.concurrent.ExecutionContext
 //diffx import com.softwaremill.diffx.generic.auto.*
 import cats.effect.IO
 import fs2.Stream
@@ -43,6 +45,9 @@ import scala.concurrent.Future
   */
 final class FileJournalTest extends OurTestSuite, BeforeAndAfterAll, TestCatsEffect
 {
+  private given IORuntime = ioRuntime
+  private given ExecutionContext = ioRuntime.compute
+
   //Monix: private implicit lazy val scheduler: SchedulerService =
   //  Scheduler(Executors.newCachedThreadPool())  // Scheduler.Implicits.global blocks on 2-processor machine
   protected lazy val directory = createTempDirectory("FileJournalTest-")

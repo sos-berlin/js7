@@ -1,5 +1,6 @@
 package js7.journal.watch
 
+import cats.effect.unsafe.IORuntime
 import java.nio.file.Path
 import java.util.UUID
 import js7.base.circeutils.CirceUtils.RichJsonObject
@@ -19,6 +20,8 @@ import js7.journal.write.{EventJournalWriter, SnapshotJournalWriter}
   */
 private[watch] object TestData extends TestCatsEffect:
   
+  private given IORuntime = ioRuntime
+
   val journalId = JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))
 
   sealed trait TestEvent extends Event.IsKeyBase[TestEvent]:

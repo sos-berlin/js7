@@ -34,8 +34,7 @@ object OurIORuntime:
     Resource.eval(F.delay(ioRuntime))
 
   private def uncaughtExceptionReporter(throwable: Throwable) =
-    def msg = s"Uncaught exception in thread ${currentThread.threadId} '${
-      currentThread.getName}': ${throwable.toStringWithCauses}"
+    def msg = s"Uncaught exception: ${throwable.toStringWithCauses}"
 
     throwable match
       case NonFatal(_) =>

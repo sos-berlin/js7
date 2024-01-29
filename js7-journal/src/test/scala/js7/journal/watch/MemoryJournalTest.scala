@@ -1,7 +1,7 @@
 package js7.journal.watch
 
 import cats.effect.IO
-import cats.effect.unsafe.Scheduler
+import cats.effect.unsafe.{IORuntime, Scheduler}
 import cats.instances.try_.*
 import cats.syntax.foldable.*
 import js7.base.monixlike.MonixLikeExtensions.{materialize, unsafeToCancelableFuture}
@@ -21,6 +21,7 @@ import scala.collection.mutable
 
 final class MemoryJournalTest extends OurTestSuite, TestCatsEffect:
 
+  private given IORuntime = ioRuntime
   private given Scheduler = ioRuntime.scheduler
 
   "Initial values" in:
@@ -95,7 +96,7 @@ final class MemoryJournalTest extends OurTestSuite, TestCatsEffect:
       Stamped(1001, "B" <-: TestEvent.Added("B")),
       Stamped(1002, "C" <-: TestEvent.Added("C"))))
 
-    observing.cancel()
+    observing.unsafeCancelAndForget()
 
     assert(eventWatch.tornEventId == EventId.BeforeFirst)
     journal.releaseEvents(1001).await(99.s).orThrow
@@ -148,7 +149,7 @@ final class MemoryJournalTest extends OurTestSuite, TestCatsEffect:
       awaitAndAssert(lastObserved.contains(1000L + size + i) && journal.queueLength == 3)
 
     persisting.await(9.s)
-    observing.cancel(): Unit
+    observing.unsafeCancelAndForget(): Unit
 
   "persist more than size events at once" in:
     val size = 3

@@ -1,6 +1,7 @@
 package js7.common.pekkoutils
 
 import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import js7.base.test.{OurTestSuite, TestCatsEffect}
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -14,6 +15,8 @@ import scala.util.Random
  * @author Joacim Zschimmer
  */
 final class PekkosTest extends OurTestSuite, TestCatsEffect:
+
+  private given IORuntime = ioRuntime
 
   "byteStringToTruncatedString" in:
     val byteString = ByteString(0, 1, 30, 31)

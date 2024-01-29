@@ -1,6 +1,7 @@
 package js7.base.io.process
 
 import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import java.nio.file.Files.delete
 import java.nio.file.Path
 import js7.base.io.file.FileUtils.syntax.RichPath
@@ -22,6 +23,8 @@ import scala.util.control.NonFatal
   * @see https://bugs.openjdk.java.net/browse/JDK-8068370
   */
 final class ProcessTextFileBusyTest extends OurTestSuite, TestCatsEffect:
+
+  private given IORuntime = ioRuntime
 
   private val n = 1000
   private val threadCount = 10 * sys.runtime.availableProcessors

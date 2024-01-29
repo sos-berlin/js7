@@ -1,6 +1,7 @@
 package js7.common.pekkohttp.web
 
 import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import java.net.{InetAddress, InetSocketAddress}
 import java.nio.file.Files.{createDirectory, createTempDirectory}
 import javax.net.ssl.SSLHandshakeException
@@ -38,6 +39,8 @@ import org.scalatest.BeforeAndAfterAll
   */
 final class PekkoWebServerTest extends OurTestSuite, BeforeAndAfterAll, TestCatsEffect
 {
+  private given IORuntime = ioRuntime
+
   private implicit lazy val actorSystem: ActorSystem =
     newActorSystem("PekkoWebServerTest")
   private lazy val List(httpPort, httpsPort) = findFreeTcpPorts(2)

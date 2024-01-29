@@ -1,6 +1,7 @@
 package js7.base.stream
 
 import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import js7.base.monixlike.MonixLikeExtensions.unsafeToCancelableFuture
 import js7.base.problem.{Problem, ProblemException}
 import js7.base.stream.StreamNumberedQueueTest.*
@@ -13,6 +14,8 @@ import js7.tester.ScalaTestUtils.awaitAndAssert
 import scala.collection.mutable
 
 final class StreamNumberedQueueTest extends OurAsyncTestSuite:
+
+  private given IORuntime = ioRuntime
 
   private val streamNumberedQueue = new StreamNumberedQueue[X]
 

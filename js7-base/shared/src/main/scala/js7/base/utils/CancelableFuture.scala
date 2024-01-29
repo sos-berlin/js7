@@ -1,12 +1,12 @@
 package js7.base.utils
 
-import js7.base.monixlike.Cancelable
+import js7.base.monixlike.FutureCancelable
 import scala.concurrent.duration.Duration
 import scala.concurrent.{CanAwait, ExecutionContext, Future}
 import scala.util.Try
 
-final class CancelableFuture[A](future: Future[A], val cancelToFuture : () => Future[Unit])
-extends Future[A], Cancelable:
+final class CancelableFuture[A](future: Future[A], cancelToFuture_ : () => Future[Unit])
+extends Future[A], FutureCancelable:
 
   def onComplete[U](f: Try[A] => U)(using ExecutionContext): Unit =
     future.onComplete(f)
@@ -34,8 +34,8 @@ extends Future[A], Cancelable:
   def result(atMost: Duration)(using CanAwait): A =
     future.result(atMost)
 
-  def unsafeCancelAndForget(): Unit =
-    cancelToFuture()
+  def cancelToFuture(): Future[Unit] =
+    cancelToFuture_()
 
 
 object CancelableFuture:

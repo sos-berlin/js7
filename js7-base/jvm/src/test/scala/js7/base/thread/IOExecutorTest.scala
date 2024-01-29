@@ -1,6 +1,7 @@
 package js7.base.thread
 
 import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import cats.instances.vector.*
 import cats.syntax.foldable.*
 import cats.syntax.traverse.*
@@ -23,6 +24,9 @@ import scala.concurrent.duration.Deadline.now
   * @author Joacim Zschimmer
   */
 final class IOExecutorTest extends OurTestSuite, TestCatsEffect:
+
+  private given IORuntime = ioRuntime
+  
   private val logger = Logger[this.type]
 
   "Success" in:

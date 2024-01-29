@@ -31,7 +31,7 @@ extends AutoCloseable:
         ByteSeq.empty
       case _ =>
         buffer.flip()
-        ByteSeq.fromByteBuffer(buffer)
+        ByteSeq.readByteBuffer(buffer)
 
 
 object ByteSeqFileReader:

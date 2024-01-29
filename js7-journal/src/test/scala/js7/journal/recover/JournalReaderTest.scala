@@ -1,5 +1,6 @@
 package js7.journal.recover
 
+import cats.effect.unsafe.IORuntime
 import io.circe.Encoder
 import io.circe.syntax.EncoderOps
 import java.nio.charset.StandardCharsets.UTF_8
@@ -26,6 +27,8 @@ import org.apache.pekko.pattern.ask
   */
 final class JournalReaderTest extends OurTestSuite, TestCatsEffect, TestJournalMixin
 {
+  private given IORuntime = ioRuntime
+
   private val journalId = JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))
   private val stateName = "TestState"
 

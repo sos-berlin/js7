@@ -1,7 +1,6 @@
 package js7.base.fs2utils
 
 import cats.effect.*
-import cats.instances.all.*
 import fs2.concurrent.SignallingRef
 import fs2.{Pipe, Pull, Stream}
 import js7.base.test.OurAsyncTestSuite
@@ -9,13 +8,15 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.Tests
 import js7.base.utils.Tests.isIntelliJIdea
 import scala.collection.immutable.ArraySeq
+import scala.concurrent.Future
 import scala.concurrent.duration.*
 
 /** Some examples for FS2. */
-final class Fs2Test extends OurAsyncTestSuite:
+final class yFs2Test extends OurAsyncTestSuite:
 
-  "Pull".tests:
+  "Pull" - {
     "take(n)" in:
+
       def myTake[F[_], A](nrOfElements: Long): Pipe[F, A, A] =
         stream =>
           def go(stream: Stream[F, A], remaining: Long): Pull[F, A, Unit] =
@@ -56,9 +57,10 @@ final class Fs2Test extends OurAsyncTestSuite:
         .toList
       assert(list == List("2", "5", "6"))
       succeed
+  }
 
-  "Signal".tests:
-    if isIntelliJIdea/*time critical*/ then "interruptWhen" in:
+  "Signal" - {
+    if isIntelliJIdea /*time critical*/ then "interruptWhen" in :
       for
         signal <- SignallingRef[IO, Boolean](false)
         times <-
@@ -66,3 +68,4 @@ final class Fs2Test extends OurAsyncTestSuite:
           val s2 = Stream.sleep[IO](300.ms) >> Stream.eval(signal.set(true))
           s1.concurrently(s2).compile.toVector
       yield assert((times: Seq[FiniteDuration]).map(d => d.toMillis / 100) == Seq(1, 2, 3))
+  }

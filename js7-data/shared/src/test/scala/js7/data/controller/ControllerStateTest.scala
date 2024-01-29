@@ -1,6 +1,7 @@
 package js7.data.controller
 
 //diffx import com.softwaremill.diffx.generic.auto.*
+import cats.effect.unsafe.IORuntime
 import js7.base.auth.UserId
 import js7.base.circeutils.CirceUtils.*
 import js7.base.crypt.silly.SillySigner
@@ -47,6 +48,8 @@ import js7.tester.DiffxAssertions.assertEqual
   */
 final class ControllerStateTest extends OurAsyncTestSuite
 {
+  private given IORuntime = ioRuntime
+
   "estimatedSnapshotSize" in {
     assert(controllerState.estimatedSnapshotSize == 21)
     for n <- controllerState.toSnapshotStream.compile.count.unsafeToFuture() yield

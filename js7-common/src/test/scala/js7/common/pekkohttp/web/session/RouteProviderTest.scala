@@ -1,6 +1,7 @@
 package js7.common.pekkohttp.web.session
 
 import cats.effect.Deferred
+import cats.effect.unsafe.IORuntime
 import js7.base.Js7Version
 import js7.base.auth.{HashedPassword, SessionToken, SimpleUser, UserId}
 import js7.base.configutils.Configs.*
@@ -25,6 +26,8 @@ import scala.concurrent.duration.*
   */
 final class RouteProviderTest extends OurTestSuite, RouteProvider, TestCatsEffect, ScalatestRouteTest
 {
+  private given IORuntime = ioRuntime
+
   override def testConfig = config"pekko.loglevel = warning"
     .withFallback(super.testConfig)
 

@@ -1,5 +1,6 @@
 package js7.base.utils
 
+import cats.effect.unsafe.IORuntime
 import cats.effect.{Deferred, IO, Ref}
 import cats.syntax.foldable.*
 import cats.syntax.parallel.*
@@ -8,8 +9,12 @@ import js7.base.test.OurAsyncTestSuite
 import js7.base.test.ScalaTestForCats.given
 import js7.base.time.ScalaTime.*
 import org.scalatest.compatible.Assertion
+import scala.concurrent.ExecutionContext
 
 final class CancelableFutureTest extends OurAsyncTestSuite:
+
+  private given IORuntime = ioRuntime
+  private given ExecutionContext = ioRuntime.compute
 
   "cancel" in:
     val myTest =

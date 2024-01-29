@@ -14,7 +14,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.http.JsonStreamingSupport.*
-import js7.common.pekkohttp.PekkoHttpServerUtils.{accept, completeWithCheckedStream, streamToResponseMarshallable}
+import js7.common.pekkohttp.PekkoHttpServerUtils.{accept, completeWithCheckedStream, encodeAndHeartbeatStream}
 import js7.common.pekkohttp.StandardDirectives
 import js7.common.pekkohttp.StandardDirectives.ioRoute
 import js7.common.pekkohttp.StandardMarshallers.*
@@ -44,8 +44,8 @@ trait GenericEventRoute extends RouteProvider:
   protected implicit def actorRefFactory: ActorRefFactory
   protected def eventWatch: EventWatch
 
-  given IORuntime = ioRuntime
-  given ExecutionContext = ioRuntime.compute
+  private given IORuntime = ioRuntime
+  private given ExecutionContext = ioRuntime.compute
 
   private lazy val defaultJsonSeqChunkTimeout =
     config.getDuration("js7.web.server.services.event.streaming.chunk-timeout").toFiniteDuration
@@ -128,24 +128,20 @@ trait GenericEventRoute extends RouteProvider:
       request: EventRequest[Event],
       maybeHeartbeat: Option[FiniteDuration],
       eventWatch: EventWatch)
-      (implicit s: JsonEntityStreamingSupport)
     : Route =
       extractRequest { httpRequest =>
-        val checkedStream: IO[Checked[Stream[IO, ByteString]]] =
+        completeWithCheckedStream(`application/x-ndjson`):
           maybeHeartbeat match
             case None =>
               // Await the first event to check for Torn and convert it to a proper error message, otherwise continue with observe
               awaitFirstEventStream(request, eventWatch)
 
             case Some(heartbeat) =>
-              IO.pure(Right(streamToResponseMarshallable(
-                heartbeatingStream(request, heartbeat, eventWatch),
-                shutdownSignaled, chunkSize = chunkSize)))
-
-        completeWithCheckedStream(`application/x-ndjson`):
-          checkedStream
-            .map(_.map(_
-              .interruptWhen(shutdownSignaled)))
+              IO.pure(Right(
+                encodeAndHeartbeatStream(
+                  heartbeatingStream(request, heartbeat, eventWatch),
+                  shutdownSignaled, chunkSize = chunkSize
+                ).interruptWhen(shutdownSignaled)))
       }
 
     private def awaitFirstEventStream(request: EventRequest[Event], eventWatch: EventWatch)
@@ -169,7 +165,7 @@ trait GenericEventRoute extends RouteProvider:
               limit = request.limit - 1,
               delay = (request.delay - runningSince.elapsed) min ZeroDuration)
 
-            Right(streamToResponseMarshallable(
+            Right(encodeAndHeartbeatStream(
               head +: eventStream(tailRequest, isRelevantEvent, eventWatch),
               shutdownSignaled, chunkSize = chunkSize))
 

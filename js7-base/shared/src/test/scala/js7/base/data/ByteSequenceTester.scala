@@ -50,7 +50,7 @@ extends OurTestSuite:
     assert(ByteSeq.fromArray(a, 2, 2) == ByteSeq.empty)
     assert(ByteSeq.fromArray(a, 3, 2) == ByteSeq.empty)
 
-  "fromByteBuffer".tests:
+  "readByteBuffer".tests:
     "slice" in:
       val buffer = ByteBuffer.allocate(64)
       buffer.put(Array[Byte](1, 2, 3, 4, 5))
@@ -58,9 +58,9 @@ extends OurTestSuite:
       buffer.limit(5)
       assert(buffer.position == 2 && buffer.limit == 5 && buffer.remaining == 3)
 
-      val byteSeq = ByteSeq.fromByteBuffer(buffer)
+      val byteSeq = ByteSeq.readByteBuffer(buffer)
       assert(byteSeq == ByteSeq(3, 4, 5))
-      assert(buffer.position == 2 && buffer.limit == 5 && buffer.remaining == 3)
+      assert(buffer.position == 5 && buffer.limit == 5 && buffer.remaining == 0)
 
       // ByteSeq uses its own Array
       buffer.position(2)
@@ -73,9 +73,9 @@ extends OurTestSuite:
       assert(buffer.array eq array)
       assert(buffer.position == 0 && buffer.limit == 3 && buffer.remaining == 3)
 
-      val byteSeq = ByteSeq.fromByteBuffer(buffer)
+      val byteSeq = ByteSeq.readByteBuffer(buffer)
       assert(byteSeq == ByteSeq(1, 2, 3))
-      assert(buffer.position == 0 && buffer.limit == 3 && buffer.remaining == 3)
+      assert(buffer.position == 3 && buffer.limit == 3 && buffer.remaining == 0)
 
       // ByteSeq uses its own Array
       assert(byteSeq.unsafeArray ne array)
@@ -281,12 +281,12 @@ extends OurTestSuite:
     assert(byteSeq.slice(1, 2) == ByteSeq("b"))
     assert(byteSeq.slice(99, 99) == ByteSeq.empty)
 
-  "chunk" in:
+  "chunkStream" in:
     val byteSeq = ByteSeq("abcd")
-    assert(byteSeq.chunk(1).toList == Stream(ByteSeq("a"), ByteSeq("b"), ByteSeq("c"), ByteSeq("d")).toList)
-    assert(byteSeq.chunk(2).toList == Stream(ByteSeq("ab"), ByteSeq("cd")).toList)
-    assert(byteSeq.chunk(3).toList == Stream(ByteSeq("abc"), ByteSeq("d")).toList)
-    assert(byteSeq.chunk(4).toList == Stream(ByteSeq("abcd")).toList)
+    assert(byteSeq.chunkStream(1).toList == List(ByteSeq("a"), ByteSeq("b"), ByteSeq("c"), ByteSeq("d")))
+    assert(byteSeq.chunkStream(2).toList == List(ByteSeq("ab"), ByteSeq("cd")))
+    assert(byteSeq.chunkStream(3).toList == List(ByteSeq("abc"), ByteSeq("d")))
+    assert(byteSeq.chunkStream(4).toList == List(ByteSeq("abcd")))
 
   "byteStream" in:
     val byteSeq = ByteSeq("abcd")

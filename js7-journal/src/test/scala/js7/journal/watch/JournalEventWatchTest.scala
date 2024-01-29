@@ -1,6 +1,7 @@
 package js7.journal.watch
 
 import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import io.circe.*
 import io.circe.generic.semiauto.deriveCodec
 import io.circe.syntax.*
@@ -43,6 +44,8 @@ import scala.reflect.ClassTag
 final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll, TestCatsEffect
 {
   import TestState.keyedEventJsonCodec
+
+  private given IORuntime = ioRuntime
 
   "JournalId is checked" in {
     withJournalMeta { journalLocation =>
@@ -406,7 +409,7 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll, TestC
       awaitAndAssert { jsons.size == 5 }
       assert(jsons(4).as[Stamped[KeyedEvent[Event]]] == Right(Stamped(3L, "3" <-: A1)))
 
-      observing.cancel()
+      observing.unsafeCancelAndForget()
       if isWindows then sleep(100.ms)  // Let observing close the read file to allow deletion
     }
   }

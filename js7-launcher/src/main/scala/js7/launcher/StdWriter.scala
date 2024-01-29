@@ -10,7 +10,7 @@ final class StdWriter(channel: Channel[IO, Either[Throwable, String]]):
 
   /** Forwards the character chunk to the (asynchronous) event writer.
    *
-   * @return true iff channel is closed.
+   * @return false iff channel is closed.
    */
   def write(chunk: String): IO[Boolean] =
     channel.send(Right(chunk)).map(_.isRight)

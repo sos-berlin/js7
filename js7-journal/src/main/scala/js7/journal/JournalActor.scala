@@ -2,7 +2,8 @@ package js7.journal
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
-import js7.base.monixlike.Cancelable
+import js7.base.fs2utils.StreamExtensions.mapParallelBatch
+import js7.base.monixlike.{FutureCancelable, SerialSyncCancelable, SyncCancelable}
 import js7.base.monixlike.MonixLikeExtensions.{scheduleAtFixedRates, scheduleOnce}
 import org.apache.pekko.actor.{Actor, ActorRef, DeadLetterSuppression, Props, Stash}
 //diffx import com.softwaremill.diffx
@@ -14,7 +15,7 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.eventbus.EventPublisher
 import js7.base.generic.Completed
 import js7.base.log.{BlockingSymbol, CorrelId, Logger}
-import js7.base.monixlike.SerialCancelable
+import js7.base.monixlike.SerialFutureCancelable
 import js7.base.problem.Checked
 import js7.base.problem.Checked.*
 import js7.base.time.ScalaTime.*
@@ -61,13 +62,13 @@ extends Actor, Stash, JournalLogging:
   assert(journalLocation.S eq S)
 
   import context.{become, stop}
-  given IORuntime = ioRuntime
+  private given IORuntime = ioRuntime
 
   private val scheduler = ioRuntime.scheduler
   override val supervisorStrategy = SupervisorStrategies.escalate
 
   private val snapshotRequesters = mutable.Set.empty[ActorRef]
-  private var snapshotSchedule: Cancelable = null
+  private var snapshotSchedule: SyncCancelable = null
 
   private var uncommittedState: S = null.asInstanceOf[S]
   // committedState is being read asynchronously from outside this JournalActor. Always keep consistent!
@@ -85,7 +86,7 @@ extends Actor, Stash, JournalLogging:
   private var lastWrittenEventId = EventId.BeforeFirst
   private var lastAcknowledgedEventId = EventId.BeforeFirst
   private var commitDeadline: Deadline = null
-  private val delayedCommit = SerialCancelable()
+  private val delayedCommit = SerialSyncCancelable()
   private var totalEventCount = 0L
   private var fileEventCount = 0L
   private var lastSnapshotSizeEventCount = 0L
@@ -95,7 +96,7 @@ extends Actor, Stash, JournalLogging:
   private val ackWarnMinimumDuration =
     conf.ackWarnDurations.headOption.getOrElse(FiniteDuration.MaxValue)
   private var waitingForAcknowledge = false
-  private val waitingForAcknowledgeTimer = SerialCancelable()
+  private val waitingForAcknowledgeTimer = SerialSyncCancelable()
   private var waitingForAcknowledgeSince = now
   private val waitingForAckSym = new BlockingSymbol
   private var isHalted = false
@@ -106,8 +107,8 @@ extends Actor, Stash, JournalLogging:
 
   override def postStop() =
     isHalted = true // is publicly readable via Journal#isHalted, even after actor stop
-    if snapshotSchedule != null then snapshotSchedule.unsafeCancelAndForget()
-    delayedCommit.unsafeCancelAndForget() // Discard commit for fast exit
+    if snapshotSchedule != null then snapshotSchedule.cancel()
+    delayedCommit.cancel() // Discard commit for fast exit
     stopped.trySuccess(Stopped)
     if snapshotWriter != null then
       logger.debug(s"Deleting temporary journal files due to termination: ${snapshotWriter.file}")
@@ -115,7 +116,7 @@ extends Actor, Stash, JournalLogging:
       delete(snapshotWriter.file)
     if eventWriter != null then
       eventWriter.close()
-    waitingForAcknowledgeTimer.unsafeCancelAndForget()
+    waitingForAcknowledgeTimer.cancel()
     logger.debug(s"Stopped · ${statistics.logLine}")
     super.postStop()
 
@@ -283,7 +284,7 @@ extends Actor, Stash, JournalLogging:
         else
           logger.trace(s"StillWaitingForAcknowledge n=0, persistBuffer.size=${persistBuffer.size}")
       else
-        waitingForAcknowledgeTimer := Cancelable.empty
+        waitingForAcknowledgeTimer := SyncCancelable.empty
 
   private def forwardCommit(delay: FiniteDuration): Unit =
     val deadline = now + delay
@@ -299,7 +300,7 @@ extends Actor, Stash, JournalLogging:
   /** Flushes and syncs the already written events to disk, then notifying callers and EventBus. */
   private def commit(terminating: Boolean = false): Unit =
     commitDeadline = null
-    delayedCommit := Cancelable.empty
+    delayedCommit := SyncCancelable.empty
     if persistBuffer.nonEmpty then
       try eventWriter.flush(sync = conf.syncOnCommit)
       catch { case NonFatal(t) if !terminating =>
@@ -342,7 +343,7 @@ extends Actor, Stash, JournalLogging:
       waitingForAckSym.clear()
       requireClusterAcknowledgement = false
       waitingForAcknowledge = false
-      waitingForAcknowledgeTimer := Cancelable.empty
+      waitingForAcknowledgeTimer := SyncCancelable.empty
     commit()
 
   private def onCommitAcknowledged(n: Int, ack: Option[EventId] = None): Unit =
@@ -396,7 +397,7 @@ extends Actor, Stash, JournalLogging:
       assertEqualSnapshotState("onAllCommitsFinished",
         journaledStateBuilder.result().withEventId(committedState.eventId))
     waitingForAcknowledge = false
-    waitingForAcknowledgeTimer := Cancelable.empty
+    waitingForAcknowledgeTimer := SyncCancelable.empty
     maybeDoASnapshot()
 
   private def continueCallers(persist: StandardPersist): Unit =
@@ -477,7 +478,7 @@ extends Actor, Stash, JournalLogging:
     val snapshotTaken = eventIdGenerator.stamp(KeyedEvent(JournalEvent.SnapshotTaken))
 
     if snapshotSchedule != null then
-      snapshotSchedule.unsafeCancelAndForget()
+      snapshotSchedule.cancel()
       snapshotSchedule = null
     if eventWriter != null then
       if persistBuffer.nonEmpty then  // Unfortunately we must avoid a recursion, because commit() may try a snapshot again
@@ -509,10 +510,10 @@ extends Actor, Stash, JournalLogging:
         .filter:
           case SnapshotEventId(_) => false  // JournalHeader contains already the EventId
           case _ => true
-        //.mapParallelBatch() { snapshotObject =>
-        .parEvalMapUnbounded(snapshotObject => IO:
+        .mapParallelBatch() { snapshotObject =>
           logger.trace(s"Snapshot ${snapshotObject.toString.truncateWithEllipsis(200)}")
-          snapshotObject -> snapshotObject.asJson(S.snapshotObjectJsonCodec).toByteArray)
+          snapshotObject -> snapshotObject.asJson(S.snapshotObjectJsonCodec).toByteArray
+        }
         .foreach((snapshotObject, byteArray) => IO:
           if conf.slowCheckState then checkingBuilder.addSnapshotObject(snapshotObject)
           snapshotWriter.writeSnapshot(byteArray))

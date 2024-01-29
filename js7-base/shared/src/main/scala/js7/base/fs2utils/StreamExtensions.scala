@@ -1,16 +1,20 @@
 package js7.base.fs2utils
 
+import cats.effect.kernel.Resource.ExitCase
 import cats.effect.std.Queue
 import cats.effect.{Concurrent, IO, Ref, Resource, Sync}
 import cats.syntax.apply.*
 import cats.syntax.option.*
-import cats.{Eq, effect}
+import cats.syntax.parallel.*
+import cats.{Applicative, Eq, effect}
 import fs2.{Chunk, Compiler, RaiseThrowable, Stream}
 import js7.base.time.ScalaTime.RichDeadline
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Deadline, FiniteDuration}
 
 object StreamExtensions:
+
+  val DefaultBatchSizeMin = 256
 
   extension (chunk: Chunk[Char])
     def convertToString: String =
@@ -19,6 +23,10 @@ object StreamExtensions:
           String(array, offset, length)
         case _ =>
           String(chunk.toArray) // One extra copy
+
+  extension [A](chunk: Chunk[Chunk[A]])
+    def flatten: Chunk[A] =
+      chunk.flatMap(identity)
 
 
   extension (x: Chunk.type)
@@ -52,18 +60,6 @@ object StreamExtensions:
           f(chunk)
           chunk)
         .unchunks
-
-    def takeUntilEval[X](completed: F[X])(using Concurrent[F]): Stream[F, A] =
-      takeUntil(Stream.eval(completed))
-
-    // TODO use interruptWhen
-    def takeUntil[X](completed: Stream[F, X])(using Concurrent[F]): Stream[F, A] =
-      stream
-        .map(Right(_))
-        .merge:
-          completed.as(Left(()))
-        .takeWhile(_.isRight)
-        .map(_.asInstanceOf[Right[Unit, A]].value)
 
     /** When multiple elements are available, take only the newest one and drop the older ones.
      *
@@ -113,9 +109,9 @@ object StreamExtensions:
 
     def logTiming(
       toCount: A => Long = simpleCount,
-      onComplete: (FiniteDuration, Long, Resource.ExitCase) => Unit,
+      onComplete: (FiniteDuration, Long, ExitCase) => F[Unit],
       startedAt: Deadline = now)
-      (using F: Sync[F])
+      (using Applicative[F])
     : Stream[F, A] =
       Stream.suspend:
         var count = 0L
@@ -124,7 +120,7 @@ object StreamExtensions:
             count += toCount(a)
             a
           .onFinalizeCase: exitCase =>
-            F.delay(onComplete(startedAt.elapsed, count, exitCase))
+            onComplete(startedAt.elapsed, count, exitCase)
 
     def toListL(using Compiler[F, F]): F[List[A]] =
       stream.compile.toList
@@ -198,6 +194,42 @@ object StreamExtensions:
             .unchunks
       yield a
 
+    //def mapParallelBatch[B](
+    //  batchSize: Int = DefaultBatchSize,
+    //  responsive: Boolean = false,
+    //  parallelism: Int = sys.runtime.availableProcessors)
+    //  (f: A => B)
+    //: Stream[IO, B] =
+    //  //if true || responsive then
+    //    mapParallelBatchResponsive(parallelism = parallelism)(f)
+    //  //else
+    //  //  stream
+    //  //    .chunkN(batchSize)
+    //  //    .parEvalMap(parallelism)(chunk => IO(chunk.map(f)))
+    //  //    .unchunks
+
+    def mapParallelBatch[B](
+      batchSizeMin: Int = DefaultBatchSizeMin,
+      parallelism: Int = sys.runtime.availableProcessors)
+      (f: A => B)
+    : Stream[IO, B] =
+      stream
+        .chunks
+        .evalMap: chunk =>
+          val n = chunk.size
+          if n < batchSizeMin.max(2) then
+            // Small chunks are not worth to parallelize
+            IO(chunk.map(f))
+          else
+            val chunkSize = (n + parallelism - 1) / parallelism
+            chunk.iterator
+              .sliding(chunkSize, step = chunkSize)
+              .toVector
+              .parTraverse(chunk => IO(chunk.map(f)))
+              .map(_.flatten)
+              .map(Chunk.from)
+        .unchunks
+
 
   extension(x: Stream.type)
     /** Like Monix Observable fromAsyncStateAction. */
@@ -232,6 +264,5 @@ object StreamExtensions:
   //          a
   //        .onFinalizeCase(exitCase => IO:
   //          onComplete(startedAt_.elapsed, counter, exitCase.toOutcome))))
-
 
   private def simpleCount[A](a: A) = 1L

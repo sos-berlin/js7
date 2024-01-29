@@ -1,7 +1,7 @@
 package js7.journal.watch
 
 import cats.effect.IO
-import cats.effect.unsafe.Scheduler
+import cats.effect.unsafe.{IORuntime, Scheduler}
 import js7.base.monixlike.MonixLikeExtensions.unsafeToCancelableFuture
 import js7.base.test.{OurTestSuite, TestCatsEffect}
 import js7.base.thread.CatsBlocking.syntax.await
@@ -17,6 +17,7 @@ import scala.collection.mutable
   */
 final class RealEventWatchTest extends OurTestSuite, TestCatsEffect:
 
+  private given IORuntime = ioRuntime
   private given Scheduler = ioRuntime.scheduler
 
   "tornOlder" in:
@@ -40,7 +41,7 @@ final class RealEventWatchTest extends OurTestSuite, TestCatsEffect:
       .compile.toList
       .unsafeToCancelableFuture()
     intercept[TornException] { stream await 99.s }
-    stream.cancel()
+    stream.unsafeCancelAndForget()
 
     assert:
       eventWatch

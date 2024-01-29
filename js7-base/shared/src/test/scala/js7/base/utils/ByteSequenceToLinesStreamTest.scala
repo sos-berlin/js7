@@ -1,9 +1,12 @@
 package js7.base.utils
 
+import cats.effect.unsafe.IORuntime
 import js7.base.data.ByteArray
 import js7.base.test.OurAsyncTestSuite
 
 final class ByteSequenceToLinesStreamTest extends OurAsyncTestSuite:
+
+  private given IORuntime = ioRuntime
 
   "empty" in:
     val toLines = new ByteSequenceToLinesStream[ByteArray]

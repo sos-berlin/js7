@@ -1,0 +1,52 @@
+package js7.data.execution.workflow.instructions
+
+import cats.effect.IO
+import java.time.ZoneId
+import js7.base.catsutils.SerialCancelRunnable
+import js7.base.log.Logger
+import js7.base.time.AdmissionTimeSchemeForJavaTime.*
+import js7.base.time.{AdmissionTimeScheme, AlarmClock, TimeInterval, Timestamp}
+import js7.base.utils.ScalaUtils.syntax.*
+import org.jetbrains.annotations.TestOnly
+
+/** Mutable state for calculating the current or next admission time. */
+final class ExecuteAdmissionTimeSwitch(
+  admissionTimeScheme: AdmissionTimeScheme,
+  zone: ZoneId,
+  onSwitch: Option[TimeInterval] => Unit):
+
+  @volatile private var _nextTime: Option[Timestamp] = None
+  private val _timer = SerialCancelRunnable()
+
+  @TestOnly
+  private[instructions] def nextTime = _nextTime
+
+  /** Cancel the callback _timer for admission start. */
+  def cancel(): Unit =
+    _nextTime = None
+    _timer.cancel()
+
+  /** Update the state with the current or next admission time and set a _timer.
+   * @return true iff an AdmissionTimeInterval is effective now. */
+  def updateAndCheck(onAdmissionStart: => Unit)(using clock: AlarmClock): IO[Boolean] =
+    Logger.infoIO:
+     clock
+      .lock(IO:
+        val now = clock.now()
+        admissionTimeScheme.findTimeInterval(now, zone, dateOffset = ExecuteExecutor.noDateOffset)
+        match
+          case None =>
+            _timer.cancel()
+            false // Not enterable now
+
+          case Some(interval) =>
+            if !_nextTime.contains(interval.start) then
+              onSwitch((interval != TimeInterval.never) ? interval)
+              // Also set _timer if clock has been adjusted
+              if now < interval.start then
+                _nextTime = Some(interval.start)
+                _timer := clock.scheduleAt(interval.start):
+                  _nextTime = None
+                  onAdmissionStart
+
+            interval.contains(now)) // Has admission now?

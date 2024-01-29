@@ -3,7 +3,7 @@ package js7.base.log
 import cats.Applicative
 import cats.effect.implicits.monadCancelOps
 import cats.effect.kernel.Sync
-import cats.effect.{IO, Outcome, Resource, Sync, SyncIO}
+import cats.effect.{IO, Outcome, Resource, SyncIO}
 import cats.syntax.apply.*
 import cats.syntax.flatMap.*
 import com.typesafe.scalalogging.Logger as ScalaLogger

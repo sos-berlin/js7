@@ -8,7 +8,10 @@ import izumi.reflect.Tag
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.thread.Futures.implicits.*
+import js7.base.thread.Futures.makeBlockingWaitingString
 import js7.base.time.ScalaTime.*
+import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
+import js7.base.utils.ScalaUtils.syntax.RichAny
 import js7.base.utils.StackTraces.StackTraceThrowable
 import scala.concurrent.TimeoutException
 import scala.concurrent.duration.*
@@ -26,26 +29,46 @@ object CatsBlocking:
         (using A: Tag[A], rt: IORuntime,
           src: sourcecode.Enclosing, file: sourcecode.FileName, line: sourcecode.Line)
       : A =
+        inline def name = makeBlockingWaitingString[A]("IO", duration)
         try
           logger
-            .traceIO(
-              s"${file.value}:${line.value} ${src.value}:Future[${A.tag}] await ${duration.pretty}"):
+            .traceIO(name):
               io
-            .unsafeRunSync()
+                .pipeIf(duration != Duration.Inf):
+                  _.timeoutTo(
+                    duration,
+                    IO.defer(IO.raiseError(throw new TimeoutException(name + " timed out"))))
+            .syncStep(Int.MaxValue)
+            .unsafeRunSync() match
+              case Left(io) =>
+                io.logWhenItTakesLonger(name).unsafeRunSync()
+              case Right(a) => a
+
         catch case NonFatal(t) =>
           if t.getStackTrace.forall(_.getClassName != getClass.getName) then
             t.appendCurrentStackTrace
           throw t
 
-      def awaitInfinite(using A: Tag[A], rt: IORuntime, src: sourcecode.Enclosing): A =
+      def awaitInfinite(using A: Tag[A], rt: IORuntime, src: sourcecode.Enclosing,
+        file: sourcecode.FileName, line: sourcecode.Line)
+      : A =
         await(Duration.Inf)
 
-    extension [A, M[X] <: Iterable[X]](io: M[IO[A]])
+    extension [F[_], A](iterable: F[IO[A]])
       def await(duration: FiniteDuration)
-        (using rt: IORuntime, M: Traverse[M], tag: Tag[M[A]], src: sourcecode.Enclosing)
-      : M[A] =
-        io.sequence.unsafeRunTimed(duration).getOrElse(
-          throw new TimeoutException(s"${src.value}.await(${duration.pretty}) timed out"))
+        (using rt: IORuntime, t: Traverse[F], fTag: Tag[F], A: Tag[A],
+          enc: sourcecode.Enclosing, file: sourcecode.FileName, line: sourcecode.Line)
+      : F[A] =
+        inline def name = makeBlockingWaitingString(fTag.tag.toString, duration)
+        logger
+          .traceIO(name):
+            iterable.sequence
+              .timeoutTo(duration,
+                IO.raiseError(new TimeoutException(name + " timed out")))
+              .logWhenItTakesLonger(name)
+          .unsafeRunSync()
 
-      def awaitInfinite(using IORuntime, Traverse[M]): M[A] =
-        io.sequence.unsafeToFuture().awaitInfinite
+      def awaitInfinite(using IORuntime, Traverse[F], Tag[F[A]],
+        sourcecode.Enclosing, sourcecode.FileName, sourcecode.Line)
+      : F[A] =
+        iterable.sequence.unsafeToFuture().awaitInfinite

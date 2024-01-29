@@ -5,6 +5,7 @@ import cats.effect.unsafe.IORuntime
 import cats.syntax.flatMap.*
 import js7.base.catsutils.CatsEffectExtensions.{left, right}
 import js7.base.catsutils.SyncDeadline
+import js7.base.fs2utils.StreamExtensions.mapParallelBatch
 import js7.base.monixutils.RefCountedResource
 import js7.base.monixutils.StreamPauseDetector.detectPauses
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
@@ -378,17 +379,13 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
             s"position=${continuation.fileLength}) failed with ${t.toStringWithCauses}", t)
           Stream.raiseError[IO](t)
         // detectPauses here ???
-        .parEvalMapUnbounded(positionAndLine => IO:
-          (positionAndLine.position,
-            positionAndLine.value,
-            positionAndLine.value.parseJson.flatMap(S.decodeJournalJson).orThrow))
-        //Monix: .mapParallelBatch(
-        //  batchSize = jsonReadAhead / sys.runtime.availableProcessors,
-        //  responsive = true)(
-        //  positionAndLine =>
-        //    (positionAndLine.position,
-        //      positionAndLine.value,
-        //      positionAndLine.value.parseJson.flatMap(S.decodeJournalJson).orThrow))
+        .mapParallelBatch(
+          /*batchSize = jsonReadAhead / sys.runtime.availableProcessors,
+          responsive = true*/)(
+          positionAndLine =>
+            (positionAndLine.position,
+              positionAndLine.value,
+              positionAndLine.value.parseJson.flatMap(S.decodeJournalJson).orThrow))
         .filter(testHeartbeatSuppressor) // for testing
         .detectPauses(setting.timing.activeLostTimeout)
         .flatMap[IO, Checked[Unit]]:

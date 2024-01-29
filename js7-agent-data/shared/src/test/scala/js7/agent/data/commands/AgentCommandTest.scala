@@ -30,6 +30,7 @@ import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
   * @author Joacim Zschimmer
   */
 final class AgentCommandTest extends OurTestSuite:
+
   "Batch" in:
     testJson[AgentCommand](AgentCommand.Batch(
       List(

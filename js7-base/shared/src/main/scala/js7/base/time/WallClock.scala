@@ -3,6 +3,7 @@ package js7.base.time
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 
 trait WallClock:
+
   def epochMilli(): Long
 
   final def now(): Timestamp =
@@ -15,12 +16,16 @@ trait WallClock:
 
 
 object WallClock extends WallClock:
+
+  def monotonicNanos() =
+    System.nanoTime()
+
   override def epochMilli() =
     System.currentTimeMillis()
 
   def fixed(timestamp: Timestamp): WallClock =
-    Fixed(timestamp)
+    FixedWallclock(timestamp)
 
-  private final case class Fixed(now_ : Timestamp)
+  private final case class FixedWallclock(fixed: Timestamp)
   extends WallClock:
-    def epochMilli() = now_.toEpochMilli
+    def epochMilli() = fixed.toEpochMilli

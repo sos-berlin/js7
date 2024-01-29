@@ -1,11 +1,14 @@
 package js7.base.monixutils
 
 import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import js7.base.problem.Problem
 import js7.base.test.OurAsyncTestSuite
 
 final class AsyncVariableTest extends OurAsyncTestSuite
 {
+  private given IORuntime = ioRuntime
+
   private val asyncVariable = AsyncVariable(1)
 
   "get" in {

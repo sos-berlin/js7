@@ -10,7 +10,9 @@ object Dependencies
   val slf4jVersion = "2.0.9"  // See also plugins.sbt
   val log4jVersion = "2.21.1"  // See also plugins.sbt
   val catsVersion = "2.9.0"
-  val catsEffectVersion = "3.5.3"
+  val catsEffectSOSVersion = "3.5.3000-SOS" // v3.5.3 with IO.unsafeRuntime
+  val catsEffectTestingVersion = "3.5.3"
+  val catsEffectOrga = "com.sos-berlin.js7.engine" // was: "org.typelevel"
   val catsSTMVersion = "0.13.4"
   val izumiReflectVersion = "2.1.3"
   //val kittensVersion = "1.2.1"
@@ -23,7 +25,7 @@ object Dependencies
   val sourcecodeVersion = "0.3.1"
   val disciplineVersion = "1.5.1"
   val disciplineScalaTestVersion = "2.2.0"
-  val fs2Version = "3.9.3"
+  val fs2Version = "3.9.4"
   val monocleVersion = "1.5.0"
   val scribeVersion = "3.6.7" // TODO "3.8.2"
   val scalaJsDomVersion = "2.2.0"
@@ -47,9 +49,8 @@ object Dependencies
                             "org.scalacheck" %% "scalacheck" % scalaCheckVersion :: Nil
   val scalaLogging        = "com.typesafe.scala-logging" %% "scala-logging" % "3.9.5" :: slf4j :: Nil
   val cats                = "org.typelevel" %% "cats-core" % catsVersion
-  val catsEffect          = "org.typelevel" %% "cats-effect" % catsEffectVersion :: cats :: Nil
   val catsEffectTesting   = List(
-    "org.typelevel" %% "cats-effect-testkit" % catsEffectVersion % Test,
+    "org.typelevel" %% "cats-effect-testkit" % catsEffectTestingVersion % Test,
     "org.typelevel" %% "cats-effect-testing-scalatest" % "1.5.0" % Test)
   val catsSTM             = "io.github.timwspence" %% "cats-stm" % catsSTMVersion
   val tagging             = "com.softwaremill.common" %% "tagging" % softwaremillTaggingVersion

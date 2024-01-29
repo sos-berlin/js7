@@ -6,6 +6,7 @@ import fs2.Stream
 import fs2.interop.reactivestreams.*
 import izumi.reflect.Tag
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.common.pekkohttp.ExceptionHandling.webLogger
 import org.apache.pekko
@@ -22,13 +23,11 @@ object StreamingSupport:
 
   extension [A](stream: Stream[IO, A])
     def toPekkoSourceForHttpResponse(using A: Tag[A]): Resource[IO, Source[A, NotUsed]] =
-      toPekkoSourceResource.map(logPekkoStreamErrorToWebLogAndIgnore)
+      logger.traceResource:
+        toPekkoSourceResource.map(logPekkoStreamErrorToWebLogAndIgnore)
 
     def toPekkoSourceResource(using A: Tag[A]): Resource[IO, Source[A, NotUsed]] =
       stream
-        .onFinalizeCase:
-          case Resource.ExitCase.Succeeded => IO.unit
-          case exitCase => IO(logger.trace(s"Stream[IO, ${A.tag}] toPekkoSource => $exitCase"))
         .toUnicastPublisher
         .map(Source.fromPublisher)
 
@@ -54,4 +53,4 @@ object StreamingSupport:
       fromPublisher[IO, Out](publisher, bufferSize = 1)
         .onFinalizeCase:
           case Resource.ExitCase.Succeeded => IO.unit
-          case exitCase => IO { logger.trace(s"toStream: $exitCase") }
+          case exitCase => IO { logger.trace(s"toFs2Stream: $exitCase") }

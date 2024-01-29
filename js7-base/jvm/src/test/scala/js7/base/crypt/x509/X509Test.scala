@@ -1,6 +1,7 @@
 package js7.base.crypt.x509
 
 import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import fs2.{Chunk, Stream}
 import java.nio.file.Files.delete
 import java.nio.file.Path
@@ -24,6 +25,8 @@ import scala.concurrent.duration.Deadline.now
 import scala.util.Random
 
 final class X509Test extends OurTestSuite, TestCatsEffect:
+
+  private given IORuntime = ioRuntime
 
   "Sign programmatically and verify" in:
     val (signer, verifier) = X509Signer.forTest

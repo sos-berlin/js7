@@ -1,5 +1,6 @@
 package js7.data.board
 
+import cats.effect.unsafe.IORuntime
 import io.circe.Printer
 import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichJson, parseJson, reparseJson}
@@ -15,6 +16,8 @@ import scala.collection.View
 
 final class BoardStateTest extends OurAsyncTestSuite
 {
+  private given IORuntime = ioRuntime
+
   "JSON" - {
     val boardPath = BoardPath("BOARD")
 

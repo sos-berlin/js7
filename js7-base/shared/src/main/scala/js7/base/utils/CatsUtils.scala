@@ -10,7 +10,8 @@ import java.io.{ByteArrayInputStream, InputStream}
 import java.util.Base64
 import js7.base.catsutils.CatsEffectExtensions.guaranteeCaseLazy
 import js7.base.catsutils.{CatsDeadline, UnsafeMemoizable}
-import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
+import js7.base.log.{LogLevel, Logger}
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
@@ -56,7 +57,7 @@ object CatsUtils:
       @inline def containsType[B >: A]: F[A] =
         underlying
 
-    extension[A](leftSide: IO[A])
+    extension[A](underlying: IO[A])
       def logWhenItTakesLonger(using enclosing: sourcecode.Enclosing): IO[A] =
         logWhenItTakesLonger2("in", "continues", enclosing.value)
 
@@ -67,35 +68,41 @@ object CatsUtils:
       : IO[A] =
         CatsDeadline.now.flatMap { now =>
           val since = now
-          var infoLogged = false
-          leftSide
+          var level: LogLevel = LogLevel.LogNone
+          underlying
             .whenItTakesLonger()(duration => IO {
               val m = if duration < InfoWorryDuration then "🟡" else "🟠"
 
               def msg = s"$m Still waiting $preposition $what for ${duration.pretty}"
 
               if duration < InfoWorryDuration then
+                level = LogLevel.Debug
                 logger.debug(msg)
               else
-                infoLogged = true
+                level = LogLevel.Info
                 logger.info(msg)
             })
             .guaranteeCaseLazy(exit =>
-              IO.whenA(infoLogged):
+              IO.whenA(level != LogLevel.LogNone):
                 for elapsed <- since.elapsed yield
-                exit match
-                  case Outcome.Succeeded(_) => logger.info(
-                    s"🔵 $what $completed after ${elapsed.pretty}")
-                  case Outcome.Canceled() => logger.info(
-                    s"⚫ $what canceled after ${elapsed.pretty}")
-                  case Outcome.Errored(t) => logger.info(
-                    s"💥 $what failed after ${elapsed.pretty} with ${t.toStringWithCauses}"))
+                  exit match
+                    case Outcome.Succeeded(_) => logger.log(level,
+                      s"🔵 $what $completed after ${elapsed.pretty}")
+                    case Outcome.Canceled() => logger.log(level,
+                      s"⚫ $what canceled after ${elapsed.pretty}")
+                    case Outcome.Errored(t) => logger.log(level,
+                      s"💥 $what failed after ${elapsed.pretty} with ${t.toStringWithCauses}"))
         }
 
       /** When `this` takes longer than `duration` then call `thenDo` once. */
+      @deprecated("Use whenItTakesLongerThan", "v2.7")
       def whenItTakesLonger(duration: FiniteDuration)(thenDo: IO[Unit]): IO[A] =
+        whenItTakesLongerThan(duration)(thenDo)
+
+      /** When `this` takes longer than `duration` then call `thenDo` once. */
+      def whenItTakesLongerThan(duration: FiniteDuration)(thenDo: IO[Unit]): IO[A] =
         if duration.isZeroOrBelow then
-          leftSide
+          underlying
         else
           whenItTakesLonger(duration :: ZeroDuration :: Nil)(_ => thenDo)
 
@@ -110,7 +117,7 @@ object CatsUtils:
       : IO[A] =
         val durationIterator = durations.iterator
         if durationIterator.isEmpty then
-          leftSide
+          underlying
         else
           CatsDeadline.now.flatMap(since =>
             ZeroDuration
@@ -125,7 +132,7 @@ object CatsUtils:
                   IO.pure(Right(()))
               }
               .start
-              .bracket(_ => leftSide)(_.cancel))
+              .bracket(_ => underlying)(_.cancel))
 
 
     implicit final class RichResource[F[_], A](private val resource: Resource[F, A])

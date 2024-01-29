@@ -18,14 +18,13 @@ import js7.base.generic.SecretString
 import js7.base.io.https.Https.loadSSLContext
 import js7.base.io.https.HttpsConfig
 import js7.base.log.{CorrelId, Logger}
-import js7.base.monixlike.MonixLikeExtensions.onErrorTap
+import js7.base.monixlike.MonixLikeExtensions.{onErrorTap, takeUntilEval}
 import js7.base.problem.Checked.*
 import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.bytesPerSecondString
 import js7.base.utils.CatsUtils.syntax.whenItTakesLonger
-import js7.base.utils.MonixAntiBlocking.executeOn
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Atomic, ByteSequenceToLinesStream}
 import js7.base.web.{HttpClient, Uri}
@@ -101,16 +100,17 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
       .map(_
         // Ignore empty keep-alives
         .collect { case o if o != EmptyLine => o }
-        // TODO Check parallelism, maybe prefetch, break chunks in to parts, and parmap them
-        .parEvalMapUnbounded(line => IO:
-          line.parseJsonAs[A].orThrow))
+        .mapParallelBatch(
+          /*batchSize = jsonReadAhead / sys.runtime.availableProcessors,
+          responsive = responsive*/)(
+          _.parseJsonAs[A].orThrow))
 
   final def getRawLinesStream(uri: Uri)(implicit s: IO[Option[SessionToken]])
   : IO[Stream[IO, ByteArray]] =
     get_[HttpResponse](uri, StreamingJsonHeaders)
       .map(_.entity.withoutSizeLimit.dataBytes.toFs2Stream)
       .pipeIf(logger.underlying.isDebugEnabled)(_.map(_
-        .logTiming(_.size, (d, s, _) =>
+        .logTiming(_.size, (d, s, _) => IO:
           if d >= 1.s && s > 10_000_000 then
             logger.debug(s"get $uri: ${bytesPerSecondString(d, s)}"))))
       .map(_
@@ -127,7 +127,8 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
 
   private def ignoreIdleTimeout: PartialFunction[Throwable, Stream[IO, Nothing]] =
     case t: pekko.stream.scaladsl.TcpIdleTimeoutException =>
-      // Idle timeout is silently ignored !!! Maybe harmless?
+      // Idle timeout is silently ignored !!!  Maybe something is weird.
+      // We issue a warning, because the caller should make this not happen.
       logger.warn(s"Ignore ${t.toString}")
       if hasRelevantStackTrace(t) then logger.debug(s"Ignore $t", t)
       Stream.empty
@@ -158,19 +159,16 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
     terminateStreamOnCancel: Boolean = false)
     (implicit s: IO[Option[SessionToken]])
   : IO[B] =
-    def toNdJson(a: A) = a.asJson.toByteSequence[ByteString] ++ LF
+    def toNdJson(a: A): ByteString = a.asJson.toByteSequence[ByteString] ++ LF
 
     val chunks: Stream[IO, ByteString] =
       if responsive then
         for a <- data yield toNdJson(a)
       else
         data
-          .parEvalMapUnbounded(a => IO:
-            toNdJson(a))
-          //??? Monix:
-          //.mapParallelBatch(responsive = responsive)(a =>
-          //  toNdJson(a).chunk(chunkSize))
-          //.flatMap(Observable.fromIterable)
+          .mapParallelBatch(/*responsive = responsive*/): a =>
+            toNdJson(a).chunkStream(chunkSize).toVector
+          .flatMap(Stream.iterable)
 
     IO.defer:
       val stop = Deferred.unsafe[IO, Unit]
@@ -270,25 +268,43 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
           standardHeaders
         val req = request.withHeaders(headers).pipeIf(useCompression)(encodeGzip)
         @volatile var canceled = false
-        var responseFuture: Future[HttpResponse] = null
+        //var responseFuture: Future[HttpResponse] = null
         val since = now
         lazy val logPrefix = s"#$number$nameString${sessionToken.fold("")(o => " " + o.short)}"
         lazy val responseLog0 = s"$logPrefix ${requestToString(req, logData, isResponse = true)} "
         def responseLogPrefix = responseLog0 + since.elapsed.pretty
         logger.trace(s">-->  $logPrefix ${requestToString(req, logData)}")
         IO
-          .fromFutureWithEC(implicit ec => IO:
-            responseFuture = http.singleRequest(req,
-              if req.uri.scheme == "https" then httpsConnectionContext else http.defaultClientHttpsContext)
-            responseFuture
-              .recover:
-                case t if canceled =>
-                  logger.trace(s"$logPrefix Ignored after cancel: ${t.toStringWithCauses}")
-                  // IO guarantee below may report a failure after cancel
-                  // via thread pools's reportFailure. To avoid this, we convert the failure
-                  // to a dummy successful response, which will get lost immediately.
-                  HttpResponse(GatewayTimeout, entity = "CANCELED"))
+          .fromFutureCancelable:
+            IO:
+              val httpsCtx = req.uri.scheme match
+                case "https" => httpsConnectionContext
+                case _ => http.defaultClientHttpsContext
+              val future = http.singleRequest(req, httpsCtx)
+              val cancel = IO.executionContext.flatMap(implicit ec => IO:
+                logger.debug(s"    ⚫️ $responseLogPrefix cancel ...")
+                // TODO Pekko's max-open-requests may be exceeded when new requests are opened
+                //  while many canceled requests are still not completed by Pekko
+                //  until the server has responded or some Pekko (idle connection) timed out.
+                //  Anyway, the caller's code should be fault-tolerant.
+                // TODO Maybe manage own connection pool? Or switch to http4s?
+                future
+                  .flatMap(_
+                    .discardEntityBytes().future.andThen: tried =>
+                      logger.debug(s"    🗑️ $responseLogPrefix discardEntityBytes => " +
+                        tried.fold(_.toStringWithCauses, _ => "ok")))
+                  .map((_: Done) => ())
+                  .recover(_ => ())
+                () // Forget the started Future, discard the remaining entities in background
+              )
+              future -> cancel
           .recoverWith:
+            case t if canceled => IO:
+              logger.trace(s"$logPrefix Ignored after cancel: ${t.toStringWithCauses}")
+              // IO guarantee below may report a failure after cancel
+              // via thread pools's reportFailure. To avoid this, we convert the failure
+              // to a dummy successful response, which will get lost immediately.
+              HttpResponse(GatewayTimeout, entity = "CANCELED")
             case t: pekko.stream.StreamTcpException => IO.raiseError(makePekkoExceptionLegible(t))
           .map(decompressResponse)
           .pipeIf(logger.underlying.isDebugEnabled):
@@ -303,23 +319,6 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
             case Outcome.Canceled() => IO:
               canceled = true
               logger.debug(s"<~~ ⚫️$responseLogPrefix => canceled")
-              if responseFuture != null then {
-                // TODO Pekko's max-open-requests may be exceeded when new requests are opened
-                //  while many canceled requests are still not completed by Pekko
-                //  until the server has reponded or some Pekko (idle connection) timeout.
-                //  Anyway, the caller's code should be fault-tolerant.
-                // TODO Maybe manage own connection pool? Or switch to http4s?
-                executeOn(materializer.executionContext) { implicit ec =>
-                  responseFuture
-                    .flatMap(_
-                      .discardEntityBytes().future.andThen { case tried =>
-                        logger.debug(s"    🗑️ $responseLogPrefix discardEntityBytes => " +
-                          tried.fold(_.toStringWithCauses, _ => "ok"))
-                      })
-                    .map((_: Done) => ())
-                    .recover { case _ => () }
-                }
-              }
 
             case Outcome.Errored(throwable) => IO.defer:
               val sym = throwable match

@@ -1,5 +1,6 @@
 package js7.launcher.process
 
+import cats.effect.unsafe.IORuntime
 import java.io.InputStream
 import java.lang.ProcessBuilder.Redirect.INHERIT
 import java.nio.file.Files.*
@@ -30,6 +31,8 @@ import scala.jdk.CollectionConverters.*
   * @author Joacim Zschimmer
   */
 final class ProcessKillScriptTest extends OurAsyncTestSuite:
+
+  private given IORuntime = ioRuntime
 
   "Kill script kills descendants" in:
     if isMac then

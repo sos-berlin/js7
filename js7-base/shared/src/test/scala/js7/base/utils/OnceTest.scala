@@ -1,12 +1,15 @@
 package js7.base.utils
 
 import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import cats.syntax.all.*
 import js7.base.test.OurAsyncTestSuite
 import js7.base.utils.Atomic.extensions.*
 
 final class OnceTest extends OurAsyncTestSuite:
 
+  private given IORuntime = ioRuntime
+  
   "parallel" in:
     val number = Atomic(0)
     val once = new Once

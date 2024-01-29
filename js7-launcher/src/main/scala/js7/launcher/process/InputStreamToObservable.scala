@@ -1,25 +1,18 @@
 package js7.launcher.process
 
 import cats.effect.{IO, Outcome}
-import cats.syntax.flatMap.*
-import fs2.Stream
 import fs2.concurrent.Channel
-import fs2.io.file.{Files, Flags, Path}
-import java.io.{InputStream, InputStreamReader, Reader}
+import java.io.InputStream
 import java.nio.charset.Charset
-import java.nio.file.Path as JPath
+import js7.base.io.process.StdoutOrStderr
 import js7.base.log.Logger
-import js7.base.thread.IOExecutor
-import js7.base.utils.ScalaUtils.syntax.RichThrowable
-import js7.launcher.StdWriter
-import scala.util.control.NonFatal
-import scala.util.{Failure, Success}
 
-object InputStreamToStream:
+object CopyInputStreamToStringChannel:
 
   private val logger = Logger[this.type]
 
-  def copyInputStreamToStream(
+  def copyInputStreamToStringChannel(
+    outerr: StdoutOrStderr,
     in: InputStream,
     channel: Channel[IO, Either[Throwable, String]],
     encoding: Charset,
@@ -29,8 +22,11 @@ object InputStreamToStream:
         .readInputStream(IO.pure(in), chunkSize = charBufferSize/*byte???*/, closeAfterUse = false)
         .chunks
         .through(fs2.text.decodeCWithCharset(encoding))
-        .evalTap: chunk =>
-          channel.send(Right(chunk)).void
+        .foreach: chunk =>
+          channel.send(Right(chunk)).flatMap:
+            case Left(Channel.Closed) =>
+              IO.raiseError(new IllegalStateException(s"$outerr FS2 Channel closed"))
+            case Right(()) => IO.unit
         .compile
         .drain
         .guaranteeCase:

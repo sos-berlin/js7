@@ -63,9 +63,7 @@ object StandardMarshallers:
     (using IORuntime)
   : Resource[IO, HttpEntity.Chunked] =
     stream
-      .parEvalMapUnbounded(o => IO:
-        o.asJson.toByteSequence[ByteString])
-      //??? Monix .mapParallelBatch()(o => o.asJson.toByteSequence[ByteString])
+      .mapParallelBatch()(_.asJson.toByteSequence[ByteString])
       .prependOne(ByteString("["))
       .appendOne(ByteString("]"))
       .intersperse(ByteString(","))

@@ -9,7 +9,10 @@ import java.nio.ByteBuffer
 import java.nio.channels.Channels.newChannel
 import java.nio.channels.{Channels, ReadableByteChannel}
 import java.util
+import js7.base.data.ByteSequence
+import js7.base.fs2utils.Fs2ChunkByteSequence.*
 import js7.base.log.Logger
+import js7.base.system.Java8Polyfill.*
 import js7.base.utils.CloseableIterator
 
 object StreamUtils:
@@ -45,16 +48,16 @@ object StreamUtils:
         .repeatEval:
           IO
             .interruptible:
-              channel.read(buffer.clear())
+              buffer.clear()
+              channel.read(buffer)
             .map:
               case -1 =>
                 null
               case o if o < 1 =>
                 throw new RuntimeException(s"'$channel'.read return 0 ?'")
-              case n =>
-                val a = new Array[Byte](n)
-                buffer.get(0, a)
-                Chunk.array(a)
+              case _ =>
+                buffer.flip()
+                ByteSequence[Chunk[Byte]].readByteBuffer(buffer)
         .takeWhile(_ != null)
         .unchunks
 
@@ -91,3 +94,5 @@ object StreamUtils:
 
           case o => Stream.emit(o)
         })
+
+  java8Polyfill();

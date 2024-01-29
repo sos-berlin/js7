@@ -1,5 +1,6 @@
 package js7.base.io.file.watch
 
+import cats.effect.unsafe.IORuntime
 import cats.effect.{Deferred, IO}
 import fs2.Stream
 import java.nio.file.Files.{createDirectory, delete}
@@ -13,6 +14,7 @@ import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted}
 import js7.base.io.file.watch.DirectoryState.Entry
 import js7.base.io.file.watch.DirectoryWatchTest.*
 import js7.base.log.Logger
+import js7.base.monixlike.MonixLikeExtensions.takeUntilEval
 import js7.base.test.OurAsyncTestSuite
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.time.ScalaTime.*
@@ -21,6 +23,8 @@ import js7.tester.ScalaTestUtils.awaitAndAssert
 import scala.math.Ordering.Int
 
 final class DirectoryWatchTest extends OurAsyncTestSuite:
+
+  private given IORuntime = ioRuntime
 
   "readDirectory, readDirectoryAsEvents" in:
     withTemporaryDirectory("DirectoryWatchTest-"): dir =>

@@ -33,7 +33,7 @@ object AgentClientMain extends IOApp:
         logger.error(t.toString, t)
         ExitCode(1))
 
-  def run(args: Seq[String], print: String => Unit): ReturnCode =
+  def run(args: Seq[String], print: String => Unit)(using IORuntime/*for testing*/): ReturnCode =
     val (agentUri, configDirectory, dataDir, operations) = parseArgs(args)
     val sessionToken = SessionToken(SecretString(Files.readAllLines(dataDir resolve "work/session-token").asScala mkString ""))
     autoClosing(new PekkoHttpAgentTextApi(agentUri, None, print, configDirectory)) { textApi =>

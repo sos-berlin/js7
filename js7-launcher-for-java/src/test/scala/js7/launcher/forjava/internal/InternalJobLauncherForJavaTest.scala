@@ -1,5 +1,6 @@
 package js7.launcher.forjava.internal
 
+import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, Resource}
 import java.lang.System.lineSeparator as nl
 import java.nio.charset.StandardCharsets.UTF_8
@@ -43,6 +44,8 @@ import scala.concurrent.Future
 
 final class InternalJobLauncherForJavaTest extends OurTestSuite, TestCatsEffect, BeforeAndAfterAll
 {
+  private given IORuntime = ioRuntime
+
   private val blockingThreadPoolName =
     if (VirtualThreads.isEnabled) "" else "InternalJobLauncherForJavaTest"
   private val blockingJobExecutionContext =

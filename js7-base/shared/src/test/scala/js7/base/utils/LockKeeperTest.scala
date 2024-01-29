@@ -1,6 +1,7 @@
 package js7.base.utils
 
 import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import cats.syntax.traverse.*
 import java.util.concurrent.ConcurrentHashMap
 import js7.base.log.Logger
@@ -10,6 +11,8 @@ import js7.base.utils.LockKeeperTest.*
 import scala.jdk.CollectionConverters.*
 
 final class LockKeeperTest extends OurAsyncTestSuite:
+
+  private given IORuntime = ioRuntime
 
   "LockKeeper.lockResource" in:
     val keys = 0 until 8

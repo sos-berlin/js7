@@ -1,7 +1,7 @@
 package js7.subagent.director
 
 import cats.effect.unsafe.IORuntime
-import cats.effect.{FiberIO, IO, Resource}
+import cats.effect.{Deferred, FiberIO, IO, Resource}
 import cats.implicits.catsSyntaxParallelUnorderedTraverse
 import cats.instances.option.*
 import cats.syntax.foldable.*
@@ -42,7 +42,6 @@ import js7.subagent.configuration.DirectorConf
 import js7.subagent.director.SubagentKeeper.*
 import org.apache.pekko.actor.ActorSystem
 import org.jetbrains.annotations.TestOnly
-import scala.concurrent.Promise
 
 final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
   localSubagentId: SubagentId,
@@ -67,7 +66,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
     toPriority = _ => 0/*same priority for each entry, round-robin*/)
   private val stateVar = AsyncVariable[DirectorState](DirectorState(Map.empty, Map(
     /*local Subagent*/None -> defaultPrioritized)))
-  private val orderToWaitForSubagent = AsyncMap.empty[OrderId, Promise[Unit]]
+  private val orderToWaitForSubagent = AsyncMap.empty[OrderId, Deferred[IO, Unit]]
   private val orderToSubagent = AsyncMap.empty[OrderId, SubagentDriver]
   private val subagentItemLockKeeper = new LockKeeper[SubagentId]
   @volatile private var processingStarted = false // Delays SubagentDriver#startObserving
@@ -224,7 +223,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
         cancelableWhileWaitingForSubagent(order.id)
           .use(canceledPromise =>
             IO.race(
-              IO.fromFuture(IO.pure(CorrelId.current.bind(canceledPromise.future))),
+              canceledPromise.get,
               selectSubagentDriver(subagentSelectionId)))
           .map(_
             .toOption
@@ -245,9 +244,10 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
         determineSubagentSelection(order, agentPath, maybeJobsSelectionId)
 
   /** While waiting for a Subagent, the Order is cancelable. */
-  private def cancelableWhileWaitingForSubagent(orderId: OrderId): Resource[IO, Promise[Unit]] =
+  private def cancelableWhileWaitingForSubagent(orderId: OrderId)
+  : Resource[IO, Deferred[IO, Unit]] =
     Resource
-      .eval(IO(Promise[Unit]()))
+      .eval(Deferred[IO, Unit])
       .flatMap(canceledPromise =>
         Resource.make(
           acquire = orderToWaitForSubagent.put(orderId, canceledPromise))(
@@ -272,7 +272,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
       // TODO Race condition?
       orderToWaitForSubagent
         .get(orderId)
-        .fold(IO.unit)(promise => IO(promise.success(())))
+        .fold(IO.unit)(_.complete(()))
         .*>(orderToSubagent
           .get(orderId) match {
             case None => IO(logger.error(

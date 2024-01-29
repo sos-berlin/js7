@@ -1,8 +1,10 @@
 package js7.base.io.process
 
 import cats.effect.IO
+import cats.effect.Sync
+import cats.effect.Resource
 import java.io.{ByteArrayOutputStream, IOException}
-import java.nio.file.Path
+import java.nio.file.{Files, Path}
 import java.nio.file.attribute.FileAttribute
 import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
 import js7.base.data.ByteArray
@@ -46,6 +48,13 @@ object Processes:
   val ShellFileAttributes: Seq[FileAttribute[java.util.Set[?]]] = OS.shellFileAttributes
 
   def newTemporaryShellFile(name: String): Path = OS.newTemporaryShellFile(name)
+
+  def temporaryShellFileResource[F[_]](name: String)(using F: Sync[F]): Resource[F, Path] =
+    Resource.make(
+      acquire = F.interruptible:
+        OS.newTemporaryShellFile(name))(
+      release = file => F.interruptible:
+        Files.delete(file))
 
   def newLogFile(directory: Path, name: String, outerr: StdoutOrStderr): Path = OS.newLogFile(directory, name, outerr)
 

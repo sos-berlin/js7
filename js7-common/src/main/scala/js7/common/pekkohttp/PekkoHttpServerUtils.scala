@@ -1,5 +1,6 @@
 package js7.common.pekkohttp
 
+import cats.effect.kernel.Resource.ExitCase
 import cats.effect.unsafe.IORuntime
 import cats.effect.{Deferred, IO, Resource}
 import fs2.Stream
@@ -7,17 +8,20 @@ import io.circe.Encoder
 import io.circe.syntax.EncoderOps
 import izumi.reflect.Tag
 import js7.base.circeutils.CirceUtils.RichJson
-import js7.base.fs2utils.Fs2ChunkByteSequence.*
-import js7.base.fs2utils.StreamExtensions.takeUntilEval
+import js7.base.fs2utils.StreamExtensions.mapParallelBatch
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{LogLevel, Logger}
+import js7.base.monixlike.MonixLikeExtensions.takeUntilEval
 import js7.base.problem.Checked
-import js7.base.time.ScalaTime.RichDeadline
+import js7.base.time.ScalaTime.{DurationRichInt, RichDeadline}
+import js7.base.utils.CatsUtils.syntax.{logWhenItTakesLonger, whenItTakesLongerThan}
+import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.PekkoHttpClient.`x-js7-request-id`
 import js7.common.http.StreamingSupport.*
 import js7.common.pekkohttp.StandardDirectives.ioRoute
 import js7.common.pekkohttp.StandardMarshallers.*
-import js7.common.pekkoutils.ByteStrings.syntax.ByteStringToByteSequence
+import js7.common.pekkoutils.ByteStrings.*
+import js7.common.pekkoutils.ByteStrings.syntax.*
 import org.apache.pekko.http.scaladsl.marshalling.{ToResponseMarshallable, ToResponseMarshaller}
 import org.apache.pekko.http.scaladsl.model.headers.Accept
 import org.apache.pekko.http.scaladsl.model.{ContentType, HttpEntity, HttpHeader, MediaType, Uri}
@@ -34,7 +38,7 @@ import scala.concurrent.duration.{Deadline, FiniteDuration}
 object PekkoHttpServerUtils:
 
   private val logger = Logger[this.type]
-  private val LF = fs2.Chunk[Byte]('\n')
+  private val LF = ByteString('\n')
   private val heartbeatChunk = LF
 
   object implicits:
@@ -260,28 +264,29 @@ object PekkoHttpServerUtils:
   def completeWithStream(contentType: ContentType)(stream: Stream[IO, ByteString])
     (using IORuntime)
   : Route =
-    ioRoute:
-      completeWithIOStream(contentType)(stream)
+    accept(contentType.mediaType):
+      ioRoute:
+        completeWithIOStream(contentType)(stream)
 
   private def completeWithIOStream(contentType: ContentType)(stream: Stream[IO, ByteString])
     (using IORuntime)
   : IO[Route] =
-    // TODO Use streamToResponseMarshallable ?
-    logger.logStart(LogLevel.Trace, "completeWithStream")
-    val since = Deadline.now
-    val deferredRelease = Deferred.unsafe[IO, Resource.ExitCase => IO[Unit]]
-    stream
-      .onFinalizeCase: exitCase =>
-        deferredRelease.get.flatMap(_(exitCase))
-      .toPekkoSourceForHttpResponse
-      .allocated
-      .flatTap: (_, release) =>
-        deferredRelease.complete: exitCase =>
-          logger.logOutcome(LogLevel.Trace, "completeWithStream", since.elapsed,
-            exitCase.toOutcome[IO])
-          release
-      .map: (source, _) =>
-        accept(contentType.mediaType):
+    // TODO Include encodeAndHeartbeatStream ?
+    IO.defer:
+      val deferredRelease = Deferred.unsafe[IO, ExitCase => IO[Unit]]
+      stream
+        .onFinalizeCase: exitCase =>
+          deferredRelease.get.flatMap(_(exitCase))
+        .toPekkoSourceForHttpResponse
+        .allocated // Resource is released in background !!!
+        .flatTap: (_, release) =>
+          deferredRelease.complete: exitCase =>
+            logger.traceIO(s"completeWithIOStream: onFinalizeCase ${exitCase.toOutcome[IO]} release"):
+              release
+                .whenItTakesLongerThan(3.s)(IO:
+                  logger.warn("completeWithIOStream: release of Pekko Stream takes longer than 3s"))
+                .start.void
+        .map: (source, _) =>
           complete:
             HttpEntity(contentType, source)
 
@@ -317,8 +322,8 @@ object PekkoHttpServerUtils:
                 }
           })
 
-  // TODO Fix the name
-  def streamToResponseMarshallable[A: Encoder : Tag](
+  // Was observableToResponseMarshallable in v2.6
+  def encodeAndHeartbeatStream[A: Encoder : Tag](
     stream: Stream[IO, A],
     shutdownSignaled: IO[Either[Throwable, Unit]],
     chunkSize: Int,
@@ -326,13 +331,10 @@ object PekkoHttpServerUtils:
     (using IORuntime)
   : Stream[IO, ByteString] =
     val chunks = stream
-      .parEvalMapUnbounded(a => IO:
-        a.asJson.toByteSequence[fs2.Chunk[Byte]] ++ LF)
-      //??? Monix: .mapParallelBatch(responsive = true)(_
-      //  .asJson
-      //  .toByteSequence[ByteString]
-      //  .concat(LF))
-      //? .splitByteSequences(chunkSize)
+      .mapParallelBatch(/*responsive = true*/)(_
+        .asJson
+        .toByteSequence[ByteString]
+        .concat(LF))
       .chunkLimit(chunkSize)
       .unchunks
 

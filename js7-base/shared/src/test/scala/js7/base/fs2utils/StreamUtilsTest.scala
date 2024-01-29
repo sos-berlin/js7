@@ -41,7 +41,7 @@ final class StreamUtilsTest extends OurAsyncTestSuite:
         IO.both(program(reader), test(writer))
           .map(_._2)
 
-  "blockingChannelToByteStream" in:
+  "inputStreamToByteStream" in:
     val buffer = mutable.Buffer[ByteArray]()
 
     def program(in: InputStream) =

@@ -57,9 +57,9 @@ extends Writable[ByteSeq], Monoid[ByteSeq], Eq[ByteSeq], Show[ByteSeq]:
 
   def fromByteArray(byteArray: ByteArray): ByteSeq
 
-  def fromByteBuffer(buffer: ByteBuffer): ByteSeq =
+  def readByteBuffer(buffer: ByteBuffer): ByteSeq =
     val array = new Array[Byte](buffer.remaining)
-    buffer.get(buffer.position, array)
+    buffer.get(array)
     unsafeWrap(array)
 
   def fromSeq(bytes: collection.Seq[Byte]): ByteSeq =
@@ -214,7 +214,7 @@ extends Writable[ByteSeq], Monoid[ByteSeq], Eq[ByteSeq], Show[ByteSeq]:
   //        i += 1
   //      ArraySeq.unsafeWrapArray(array)
 
-  def chunk[F[_]](byteSeq: ByteSeq, maxSize: Int): fs2.Stream[F, ByteSeq] =
+  def chunkStream[F[_]](byteSeq: ByteSeq, maxSize: Int): fs2.Stream[F, ByteSeq] =
     assertThat(maxSize >= 1)
     length(byteSeq) match
       case 0 => fs2.Stream.empty
@@ -232,7 +232,7 @@ extends Writable[ByteSeq], Monoid[ByteSeq], Eq[ByteSeq], Show[ByteSeq]:
       case _ =>
         unsafeWrappedArray(byteSeq) match
           case None =>
-            chunk(byteSeq, chunkSize)
+            chunkStream(byteSeq, chunkSize)
               .map(byteSeq => fs2.Chunk.array(unsafeArray(byteSeq)))
               .unchunks
           case Some(array) =>
@@ -378,8 +378,8 @@ object ByteSequence:
       typeClassInstance.++(self, tail)
 
     /** Split ByteSeq to parts of chunkSize and stream them (by copying). */
-    def chunk[F[_]](chunkSize: Int): fs2.Stream[F, ByteSeq] =
-      typeClassInstance.chunk(self, chunkSize)
+    def chunkStream[F[_]](chunkSize: Int): fs2.Stream[F, ByteSeq] =
+      typeClassInstance.chunkStream(self, chunkSize)
 
     /** Fast only when ByteSeq wraps a single Array. */
     def toChunk: fs2.Chunk[Byte] =

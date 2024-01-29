@@ -6,11 +6,10 @@ import fs2.Stream
 import java.util.ConcurrentModificationException
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.catsutils.UnsafeMemoizable.given
-import js7.base.fs2utils.StreamExtensions.takeUntilEval
 import js7.base.generic.Completed
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
-import js7.base.monixlike.MonixLikeExtensions.tapError
+import js7.base.monixlike.MonixLikeExtensions.{takeUntilEval, tapError}
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger

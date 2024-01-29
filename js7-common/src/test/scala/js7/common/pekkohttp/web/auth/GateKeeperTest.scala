@@ -1,5 +1,6 @@
 package js7.common.pekkohttp.web.auth
 
+import cats.effect.unsafe.IORuntime
 import io.circe.Json
 import js7.base.auth.Permission.toStringToPermission
 import js7.base.auth.User.UserDoesNotHavePermissionProblem
@@ -34,6 +35,8 @@ import scala.language.implicitConversions
 final class GateKeeperTest extends OurTestSuite, TestCatsEffect, ScalatestRouteTest
 {
   import GateKeeperTest.ImplicitGateKeeper
+
+  private given IORuntime = ioRuntime
 
   override def testConfig = config"pekko.loglevel = warning"
     .withFallback(super.testConfig)

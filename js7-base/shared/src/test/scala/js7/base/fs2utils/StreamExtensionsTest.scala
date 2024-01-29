@@ -1,7 +1,8 @@
 package js7.base.fs2utils
 
+import cats.effect.kernel.Resource.ExitCase
 import cats.effect.testkit.TestControl
-import cats.effect.{Deferred, IO}
+import cats.effect.{IO, Resource}
 import fs2.concurrent.SignallingRef
 import fs2.{Chunk, Pure, Stream}
 import js7.base.catsutils.CatsDeadline
@@ -12,6 +13,7 @@ import js7.base.test.{OurAsyncTestSuite, TestCatsEffect}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.*
+import scala.concurrent.duration.FiniteDuration
 
 final class StreamExtensionsTest extends OurAsyncTestSuite:
 
@@ -29,23 +31,6 @@ final class StreamExtensionsTest extends OurAsyncTestSuite:
 
       val anyStream = Stream(2, 3).prependOne("one")
       assert(anyStream.toList == List("one", 2, 3))
-
-    "takeUntil" in:
-      pending // See takeUntilEval
-
-    "takeUntilEval" in:
-      val started = Deferred.unsafe[IO, Unit]
-      val stop = Deferred.unsafe[IO, Unit]
-      Stream
-        .fromIterator[IO](Iterator.from(1), chunkSize = 1)
-        .delayBy(1.ms)
-        .evalTap(i => IO.whenA(i == 3)(started.complete(()).void))
-        .takeUntilEval(stop.get)
-        .compile
-        .count
-        .both(
-          started.get *> IO.sleep(100.ms) *> stop.complete(()))
-        .flatMap((n, _) => IO(assert(n >= 3)))
 
     "onlyNewest" - {
       "onlyNewest" in:
@@ -225,6 +210,35 @@ final class StreamExtensionsTest extends OurAsyncTestSuite:
             assert(result == List(heartbeat, heartbeat, 1, 2, 3, 4, heartbeat) -> ())
     }
 
+    "mapParallelBatch" - {
+      val n = 1009 // Prime number
+      val nRange = 1 to n
+
+      "Empty" in:
+        for
+          list <- Stream.empty.covaryAll[IO, Int].mapParallelBatch()(_ + 1).compile.toList
+        yield
+          assert(list.isEmpty)
+
+      "Simple case" in:
+        for
+          list <- Stream.iterable(nRange)
+            .chunkN(3).unchunks
+            .covary[IO]
+            .mapParallelBatch()(_ + 1)
+            .compile.toList
+        yield
+          assert(list == List.from(nRange.map(_ + 1)))
+
+      "Early terminated stream" in:
+        val limit = 919 // prime number
+        val stream = Stream.iterable(nRange) ++ Stream.never[IO] ++ Stream(1010)
+        for
+          list <- stream.mapParallelBatch()(_ + 1).take(limit).compile.toList
+        yield
+          assert(list == List.from(nRange.map(_ + 1).take(limit)))
+    }
+
     "onStart" in:
       val subscribed = Atomic(0)
       val stream: Stream[IO, Int] =
@@ -239,6 +253,23 @@ final class StreamExtensionsTest extends OurAsyncTestSuite:
         b <- stream.compile.toList
         _ <- IO(assert(subscribed.get == 2 && a == List(1, 2, 3) && a == b))
       yield succeed
+
+
+    "logTiming" in:
+      val n = 7777
+      var duration: FiniteDuration = null
+      var count: Long = 0
+      var exitCase: ExitCase = null
+      Stream
+        .iterable(0 until n)
+        .covary[IO]
+        .logTiming(_ => 2, (d, n, e) => IO:
+          duration = d
+          count = n
+          exitCase = e)
+        .compile.drain
+        .map: _ =>
+          assert(duration.isPositive && count == 2 * n && exitCase == ExitCase.Succeeded)
 
     "onErrorEvalTap" in:
       val throwable = new Exception("TEST")

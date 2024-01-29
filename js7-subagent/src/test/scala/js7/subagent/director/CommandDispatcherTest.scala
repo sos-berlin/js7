@@ -9,8 +9,12 @@ import js7.data.command.CommonCommand
 import js7.data.subagent.SubagentRunId
 import js7.subagent.director.CommandDispatcherTest.*
 import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 
 final class CommandDispatcherTest extends OurTestSuite, TestCatsEffect:
+
+  private given IORuntime = ioRuntime
+
   "test" in:
     val dispatcher = new CommandDispatcher:
       type Command = CommandDispatcherTest.Command

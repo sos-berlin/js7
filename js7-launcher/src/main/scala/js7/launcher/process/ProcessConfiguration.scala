@@ -26,7 +26,7 @@ final case class ProcessConfiguration(
 
   for id <- maybeTaskId do require(id.nonEmpty)
 
-  def idArgumentOption = maybeTaskId.map(o => s"--agent-io-id=${o.string}")
+  def idArgumentOption = maybeTaskId.map(o => s"--agent-task-id=${o.string}")
 
   def toKillScriptCommandArgumentsOption(pid: Option[Pid]) =
     for

@@ -1,10 +1,13 @@
 package js7.base.catsutils
 
+import cats.effect.unsafe.IORuntime
 import js7.base.test.TestCatsEffect
 import js7.base.time.ScalaTime.*
 import org.scalatest.freespec.AnyFreeSpec
 
 final class SyncDeadlineTest extends AnyFreeSpec, TestCatsEffect:
+
+  private given IORuntime = ioRuntime
 
   private val now = SyncDeadline.fromIORuntime
   private val early = now - 1.h

@@ -13,6 +13,7 @@ import js7.base.catsutils.CatsEffectExtensions.left
 import js7.base.circeutils.CirceUtils.RichCirceString
 import js7.base.configutils.Configs.*
 import js7.base.data.ByteArray
+import js7.base.fs2utils.StreamExtensions.mapParallelBatch
 import js7.base.log.Logger
 import js7.base.monixlike.MonixLikeExtensions.scheduleOnce
 import js7.base.problem.Checked.{CheckedOption, Ops}
@@ -242,9 +243,7 @@ extends AutoCloseable,
 
   def snapshotAfter(after: EventId) =
     rawSnapshotAfter(after)
-      .map(_.parEvalMapUnbounded(byteArray => IO:
-        byteArray.parseJsonAs(journalLocation.snapshotObjectJsonCodec).orThrow))
-      //.map(_.mapParallelBatch()(_.parseJsonAs(journalLocation.snapshotObjectJsonCodec).orThrow))
+      .map(_.mapParallelBatch()(_.parseJsonAs(journalLocation.snapshotObjectJsonCodec).orThrow))
 
   def rawSnapshotAfter(after: EventId) =
     maybeCurrentEventReader match

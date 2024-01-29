@@ -22,11 +22,15 @@ import js7.data.value.expression.Expression.{Argument, StringConstant}
 import js7.data.value.expression.scopes.FileValueScope.functionName
 import js7.data.value.expression.scopes.FileValueScopeTest.*
 import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import js7.base.monixlike.MonixLikeExtensions.parTraverse
 import scala.concurrent.duration.Deadline.now
 import scala.util.Random
 
 final class FileValueScopeTest extends OurTestSuite, TestCatsEffect:
+  
+  private given IORuntime = ioRuntime
+  
   "IOException" in:
     val dir = Paths.get("/tmp/FileValueScopeTest-NonExistant")
     autoClosing(new FileValueState(dir)) { fileValueState =>

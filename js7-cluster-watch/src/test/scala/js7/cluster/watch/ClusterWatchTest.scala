@@ -2,6 +2,7 @@ package js7.cluster.watch
 
 import cats.effect.IO
 import cats.effect.testkit.TestControl
+import cats.effect.unsafe.IORuntime
 import js7.base.log.CorrelId
 import js7.base.problem.Checked
 import js7.base.problem.Checked.*
@@ -26,6 +27,8 @@ import scala.concurrent.duration.FiniteDuration
 final class ClusterWatchTest extends OurAsyncTestSuite
 {
   ProblemCodeMessages.initialize()
+  
+  private given IORuntime = ioRuntime
 
   private val correlId = CorrelId("TEST")
   private val aId = NodeId("A")

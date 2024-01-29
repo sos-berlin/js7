@@ -14,7 +14,7 @@ import js7.data.job.CommandLine
 import js7.launcher.StdObservers
 import js7.launcher.forwindows.WindowsProcess
 import js7.launcher.forwindows.WindowsProcess.StartWindowsProcess
-import js7.launcher.process.InputStreamToStream.copyInputStreamToStream
+import js7.launcher.process.CopyInputStreamToStringChannel.copyInputStreamToStringChannel
 import fs2.concurrent.Channel
 import js7.base.catsutils.CatsEffectExtensions.joinStd
 import scala.concurrent.Promise
@@ -69,7 +69,7 @@ object ShellScriptProcess:
               in: InputStream,
               channel: Channel[IO, Either[Throwable, String]])
             : IO[Unit] =
-              copyInputStreamToStream(in, channel, encoding, charBufferSize)
+              copyInputStreamToStringChannel(outErr, in, channel, encoding, charBufferSize)
                 .recover {
                   case t: IOException if isKilling /*Happens under Windows*/ => logger.warn(
                     s"While killing the process, $outErr become unreadable: ${t.toStringWithCauses}")
@@ -85,8 +85,8 @@ object ShellScriptProcess:
                 errFiber <- copyToStream(Stderr, process.stderr, stdObservers.errChannel).start
                 _ <- IO.race(
                   sigkilled.delayBy(stdoutAndStderrDetachDelay).map { _ =>
-                    if false then Try(process.stdout.close()) // FIXME
-                    if false then Try(process.stderr.close()) // FIXME
+                    if false then Try(process.stdout.close()) // TODO ?
+                    if false then Try(process.stderr.close()) // TODO ?
                     if process.isAlive then {
                       logger.debug("destroyForcibly")
                       process.destroyForcibly()
