@@ -6,6 +6,7 @@ import cats.effect.unsafe.Scheduler
 import js7.base.catsutils.CatsEffectExtensions.unsafeScheduler
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
+import js7.base.monixlike.SyncCancelable
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import scala.concurrent.duration.FiniteDuration
@@ -52,7 +53,7 @@ object TestAlarmClock:
 
     override def scheduleOnce(delay: FiniteDuration)(callback: => Unit)
       (using fullName: sourcecode.FullName)
-    : Runnable =
+    : SyncCancelable =
       logger.trace(s"scheduleOnce ${delay.pretty} for ${fullName.value}")
       super.scheduleOnce(delay):
         logger.trace(s"🔔 scheduled ${delay.pretty}")
@@ -60,7 +61,7 @@ object TestAlarmClock:
 
     override def scheduleAt(at: Timestamp)(callback: => Unit)
       (using fullName: sourcecode.FullName)
-    : Runnable =
+    : SyncCancelable =
       logger.trace(s"scheduleAt $at for ${fullName.value}")
       super.scheduleAt(at):
         logger.trace(s"🔔 scheduled $at for ${fullName.value}")

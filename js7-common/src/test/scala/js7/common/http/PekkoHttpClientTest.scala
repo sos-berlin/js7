@@ -1,15 +1,18 @@
 package js7.common.http
 
+import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import cats.syntax.option.*
-import fs2.Stream
+import fs2.{Chunk, Stream}
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.auth.SessionToken
 import js7.base.circeutils.CirceUtils.*
 import js7.base.configutils.Configs.HoconStringInterpolator
+import js7.base.data.ByteSequence
+import js7.base.fs2utils.StreamExtensions.fromString
 import js7.base.io.https.HttpsConfig
 import js7.base.log.CorrelId
 import js7.base.problem.Problem
@@ -25,7 +28,7 @@ import js7.base.web.Uri
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.PekkoHttpClient.{HttpException, `x-js7-correlation-id`, `x-js7-request-id`, toPrettyProblem}
 import js7.common.http.PekkoHttpClientTest.*
-import js7.common.pekkohttp.PekkoHttpServerUtils.completeWithStream
+import js7.common.pekkohttp.PekkoHttpServerUtils.{completeWithByteStream, completeWithStream}
 import js7.common.pekkohttp.web.PekkoWebServer
 import js7.common.pekkohttp.{CirceJsonSupport, PekkoHttpServerUtils}
 import js7.common.pekkoutils.Pekkos
@@ -121,8 +124,11 @@ final class PekkoHttpClientTest extends OurTestSuite, BeforeAndAfterAll, TestCat
           } ~
             get {
               path("STREAM") {
-                completeWithStream(`application/x-ndjson`):
-                  Stream("ONE\n", "TWO\n").map(ByteString(_))
+                completeWithByteStream(`application/x-ndjson`):
+                  Stream("ONE\n", "TWO\n")
+                    .map(_.toCharArray.map(_.toByte))
+                    .map(Chunk.array)
+                    .unchunks
               } ~
               path("IDLE-TIMEOUT"):
                 completeWithStream(`application/x-ndjson`):

@@ -2,6 +2,7 @@ package js7.base.time
 
 import cats.effect.unsafe.Scheduler
 import cats.effect.{IO, Resource, Sync}
+import js7.base.monixlike.SyncCancelable
 import js7.base.time.ScalaTime.*
 import scala.concurrent.duration.*
 
@@ -12,10 +13,10 @@ trait AlarmClock extends WallClock:
   def stop(): Unit
 
   def scheduleOnce(delay: FiniteDuration)(callback: => Unit)(using sourcecode.FullName)
-  : Runnable
+  : SyncCancelable
 
   def scheduleAt(timestamp: Timestamp)(callback: => Unit)(using sourcecode.FullName)
-  : Runnable
+  : SyncCancelable
 
   final def sleep(duration: FiniteDuration): IO[Unit] =
     sleepX(scheduleOnce(duration))
@@ -23,14 +24,17 @@ trait AlarmClock extends WallClock:
   final def sleepUntil(timestamp: Timestamp): IO[Unit] =
     sleepX(scheduleAt(timestamp))
 
-  private def sleepX(schedule: (=> Unit) => Runnable): IO[Unit] =
+  private def sleepX(schedule: (=> Unit) => SyncCancelable): IO[Unit] =
     IO.async: onComplete =>
       IO:
         val cancelable = schedule(onComplete(Right(())))
-        Some(IO(cancelable.run()))
+        Some(IO(cancelable.cancel()))
 
   /** TestAlarmClock synchronizes time query and time change. */
   final def lock[A](body: IO[A]): IO[A] =
+    body
+
+  final def lock[A](body: A): A =
     body
 
 
@@ -57,14 +61,14 @@ object AlarmClock:
 
     def stop() = {}
 
-    def scheduleOnce(delay: FiniteDuration)(callback: => Unit)(using sourcecode.FullName)
-    : Runnable =
-      scheduler.sleep(delay, () => callback)
+    def scheduleOnce(delay: FiniteDuration)(callback: => Unit)(using sourcecode.FullName) =
+      SyncCancelable:
+        scheduler.sleep(delay, () => callback)
 
-    def scheduleAt(timestamp: Timestamp)(callback: => Unit)(using sourcecode.FullName)
-    : Runnable =
+    def scheduleAt(timestamp: Timestamp)(callback: => Unit)(using sourcecode.FullName) =
       val delay = (timestamp - now()) max ZeroDuration
-      scheduler.sleep(delay, () => callback)
+      SyncCancelable:
+        scheduler.sleep(delay, () => callback)
 
 
   private final class StandardAlarmClock()

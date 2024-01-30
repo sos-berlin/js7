@@ -1,6 +1,6 @@
 package js7.base.test
 
-import cats.effect.unsafe.IORuntime
+import cats.effect.unsafe.{IORuntime, Scheduler}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.Base64
 import js7.base.catsutils.OurIORuntime
@@ -15,6 +15,9 @@ trait TestCatsEffect:
 
   protected def executionContext: ExecutionContext =
     ioRuntime.compute
+
+  protected def scheduler: Scheduler =
+    ioRuntime.scheduler
 
 
 object TestCatsEffect:

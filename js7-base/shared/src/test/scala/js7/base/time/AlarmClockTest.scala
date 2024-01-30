@@ -176,11 +176,10 @@ final class AlarmClockTest extends OurAsyncTestSuite:
       val e = clock.scheduleAt(start + 20.minutes) { x += 20 }
       val f = clock.scheduleAt(start + 20.minutes) { x += 40 }
 
-      // Cancel timers:
-      a.run()
-      c.run()
-      b.run()
-      e.run()
+      a.cancel()
+      c.cancel()
+      b.cancel()
+      e.cancel()
 
       for
         _ <- clock.tick(20.minutes)

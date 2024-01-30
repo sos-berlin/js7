@@ -1,9 +1,10 @@
 package js7.common.pekkohttp
 
+import org.apache.pekko.http.scaladsl.model.HttpEntity.Chunk as PekkoChunk
 import cats.effect.kernel.Resource.ExitCase
 import cats.effect.unsafe.IORuntime
 import cats.effect.{Deferred, IO, Resource}
-import fs2.Stream
+import fs2.{Chunk, Stream}
 import io.circe.Encoder
 import io.circe.syntax.EncoderOps
 import izumi.reflect.Tag
@@ -31,6 +32,7 @@ import org.apache.pekko.http.scaladsl.server.{ContentNegotiator, Directive, Dire
 import org.apache.pekko.util.ByteString
 import scala.annotation.tailrec
 import scala.concurrent.duration.{Deadline, FiniteDuration}
+import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 
 /**
   * @author Joacim Zschimmer
@@ -38,7 +40,7 @@ import scala.concurrent.duration.{Deadline, FiniteDuration}
 object PekkoHttpServerUtils:
 
   private val logger = Logger[this.type]
-  private val LF = ByteString('\n')
+  private val LF = fs2.Chunk.singleton('\n'.toByte)
   private val heartbeatChunk = LF
 
   object implicits:
@@ -261,6 +263,12 @@ object PekkoHttpServerUtils:
         case Left(problem) => IO.pure(complete(problem))
         case Right(stream) => completeWithIOStream(contentType)(stream)
 
+  def completeWithByteStream(contentType: ContentType)(stream: Stream[IO, Byte])
+    (using IORuntime)
+  : Route =
+    completeWithStream(contentType):
+      stream.chunks.map(_.toByteString)
+
   def completeWithStream(contentType: ContentType)(stream: Stream[IO, ByteString])
     (using IORuntime)
   : Route =
@@ -268,7 +276,7 @@ object PekkoHttpServerUtils:
       ioRoute:
         completeWithIOStream(contentType)(stream)
 
-  private def completeWithIOStream(contentType: ContentType)(stream: Stream[IO, ByteString])
+  def completeWithIOStream(contentType: ContentType)(stream: Stream[IO, ByteString])
     (using IORuntime)
   : IO[Route] =
     // TODO Include encodeAndHeartbeatStream ?
@@ -330,19 +338,33 @@ object PekkoHttpServerUtils:
     keepAlive: Option[FiniteDuration] = None)
     (using IORuntime)
   : Stream[IO, ByteString] =
-    val chunks = stream
+    val encoded = encodeStream(stream, chunkSize)
+    heartbeatStream(encoded, keepAlive)
+      .map(_.toByteString)
+      .interruptWhen(shutdownSignaled)
+
+  def encodeStream[A: Encoder : Tag](stream: Stream[IO, A], chunkSize: Int)
+    (using IORuntime)
+  : Stream[IO, Chunk[Byte]] =
+    stream
       .mapParallelBatch(/*responsive = true*/)(_
         .asJson
-        .toByteSequence[ByteString]
-        .concat(LF))
-      .chunkLimit(chunkSize)
+        .toByteSequence[fs2.Chunk[Byte]]
+        .++(LF))
       .unchunks
+      .chunkLimit(chunkSize)
 
+  /** Each Chunk[Byte] contains JSON document. */
+  private def heartbeatStream(
+    stream: Stream[IO, Chunk[Byte]],
+    keepAlive: Option[FiniteDuration] = None)
+    (using IORuntime)
+  : Stream[IO, Chunk[Byte]] =
     keepAlive
-      .fold(chunks): keepAlive =>
+      .fold(stream): keepAlive =>
         for
           terminated <- Stream.eval(Deferred[IO, Unit])
-          chunk <- chunks
+          chunk <- stream
             .onFinalize(terminated.complete(()).void)
             .merge(Stream
               // Is this insertHeartbeatsOnSlowUpstream ???
@@ -351,5 +373,3 @@ object PekkoHttpServerUtils:
               .delayBy(keepAlive)
               .takeUntilEval(terminated.get))
         yield chunk
-      .map(_.toByteString)
-      .interruptWhen(shutdownSignaled)

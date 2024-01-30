@@ -12,7 +12,7 @@ import scala.concurrent.Future
 import scala.concurrent.duration.*
 
 /** Some examples for FS2. */
-final class yFs2Test extends OurAsyncTestSuite:
+final class Fs2Test extends OurAsyncTestSuite:
 
   "Pull" - {
     "take(n)" in:

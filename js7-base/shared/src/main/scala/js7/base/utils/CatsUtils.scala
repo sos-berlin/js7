@@ -58,6 +58,10 @@ object CatsUtils:
         underlying
 
     extension[A](underlying: IO[A])
+      def logAndIgnoreError(what: => String): IO[Unit] =
+        underlying.void.recover: t =>
+          IO(logger.error(s"$what => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+
       def logWhenItTakesLonger(using enclosing: sourcecode.Enclosing): IO[A] =
         logWhenItTakesLonger2("in", "continues", enclosing.value)
 

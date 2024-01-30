@@ -1,6 +1,5 @@
 package js7.base.time
 
-import js7.base.catsutils.SerialCancelRunnable
 import js7.base.monixlike.MonixLikeExtensions.scheduleAtFixedRate
 import js7.base.monixlike.{SerialSyncCancelable, SyncCancelable}
 import js7.base.time.ScalaTime.*
@@ -21,7 +20,7 @@ private[time] trait ClockChecking extends Runnable:
   // Same as epochMilliToAlarms.headOption.fold(Long.MaxValue)(_._1).
   // Can be read unsynchronized.
   @volatile private var nextMilli = Long.MaxValue
-  private val timer = SerialCancelRunnable()
+  private val timer = SerialSyncCancelable()
 
   // We tick to check if clock time has been changed, as long as we have an alarm
   private lazy val tickInterval = clockCheckInterval.toMillis
@@ -40,13 +39,13 @@ private[time] trait ClockChecking extends Runnable:
   final def scheduleOnce(delay: FiniteDuration)(callback: => Unit)(using sourcecode.FullName) =
     scheduleAt(now() + delay)(callback)
 
-  final def scheduleAt(at: Timestamp)(callback: => Unit)(using sourcecode.FullName): Runnable =
+  final def scheduleAt(at: Timestamp)(callback: => Unit)(using sourcecode.FullName) =
     val milli = at.toEpochMilli
     val alarm = new Alarm(milli, callback)
     self.synchronized:
       epochMilliToAlarms.update(milli, epochMilliToAlarms.getOrElse(milli, Vector.empty) :+ alarm)
       scheduleNext()
-    alarm
+    SyncCancelable(alarm)
 
   private def scheduleNext(): Unit =
     if !stopped then epochMilliToAlarms.headOption match

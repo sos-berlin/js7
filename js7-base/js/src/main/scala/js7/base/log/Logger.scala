@@ -44,53 +44,61 @@ object Logger
           logger.log(logLevelToScribe(level), message, Some(throwable))
         }
 
-      def debugIO[A](io: IO[A])/*(implicit src: sourcecode.Name)*/: IO[A] =
+      inline def debugIO[A](io: IO[A])/*(implicit src: sourcecode.Name)*/: IO[A] =
         io
 
-      def debugIO[A](functionName: String, args: => Any = "")(io: IO[A]): IO[A] =
+      inline def debugIO[A](functionName: String, inline args: => Any = "")(io: IO[A]): IO[A] =
         io
 
-      def debugIOWithResult[A](io: IO[A])/*(implicit src: sourcecode.Name)*/: IO[A] =
+      inline def debugIOWithResult[A](io: IO[A])/*(implicit src: sourcecode.Name)*/: IO[A] =
         io
 
-      def debugIOWithResult[A](
-        function: String,
-        args: => Any = "",
-        result: A => Any = identity[A](_))
+      inline def debugIOWithResult[A](
+        inline function: String,
+        inline args: => Any = "",
+        inline result: A => Any = identity[A](_))
         (io: IO[A])
       : IO[A] =
         io
 
-      def traceIO[A](io: IO[A])/*(implicit src: sourcecode.Name)*/: IO[A] =
+      inline def traceIO[A](io: IO[A])/*(implicit src: sourcecode.Name)*/: IO[A] =
         io
 
-      def traceIO[A](function: String, args: => Any = "")(io: IO[A]): IO[A] =
+      inline def traceIO[A](function: String, inline args: => Any = "")(io: IO[A]): IO[A] =
         io
 
-      def traceIOWithResult[A](io: IO[A])(implicit src: sourcecode.Name): IO[A] =
-        traceIOWithResult[A](src.value)(io)
+      inline def traceIOWithResult[A](io: IO[A]): IO[A] =
+        io //traceIOWithResult[A](src.value)(io)
 
-      def traceIOWithResult[A](
-        function: String,
-        args: => Any = "",
-        result: A => Any = identity[A](_))
+      inline def traceIOWithResult[A](
+        inline function: String,
+        inline args: => Any = "",
+        inline result: A => Any = identity[A](_))
         (io: IO[A])
       : IO[A] =
         io
 
-      def debugResource[A](resource: Resource[IO, A])(implicit src: sourcecode.Name)
+      inline def debugResource[A](resource: Resource[IO, A])
       : Resource[IO, A] =
-        debugResource(src.value)(resource)
+        resource //debugResource(src.value)(resource)
 
-      def debugResource[A](function: String, args: => Any = "")(resource: Resource[IO, A])
+      inline def debugResource[A](function: String, inline args: => Any = "")
+        (resource: Resource[IO, A])
       : Resource[IO, A] =
         resource
 
-      def debugStream[A](stream: Stream[IO, A])/*(implicit src: sourcecode.Name)*/
+      inline def debugStream[A](stream: Stream[IO, A]): Stream[IO, A] =
+        stream
+
+      inline def debugStream[A](inline function: String, inline args: => Any = "")
+        (stream: Stream[IO, A])
       : Stream[IO, A] =
         stream
 
-      def debugStream[A](function: String, args: => Any = "")(stream: Stream[IO, A])
+      inline def traceStream[A](stream: Stream[IO, A]): Stream[IO, A] =
+        stream
+
+      inline def traceStream[A](function: String, inline args: => Any = "")(stream: Stream[IO, A])
       : Stream[IO, A] =
         stream
     }

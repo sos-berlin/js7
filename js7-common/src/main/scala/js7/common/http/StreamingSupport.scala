@@ -26,7 +26,7 @@ object StreamingSupport:
       logger.traceResource:
         toPekkoSourceResource.map(logPekkoStreamErrorToWebLogAndIgnore)
 
-    def toPekkoSourceResource(using A: Tag[A]): Resource[IO, Source[A, NotUsed]] =
+    def toPekkoSourceResource: Resource[IO, Source[A, NotUsed]] =
       stream
         .toUnicastPublisher
         .map(Source.fromPublisher)

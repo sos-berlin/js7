@@ -1,0 +1,287 @@
+package js7.controller.agent
+
+import cats.effect.Resource
+import cats.effect.kernel.Deferred
+import js7.agent.client.AgentClient
+import js7.agent.data.commands.AgentCommand
+import js7.agent.data.commands.AgentCommand.CoupleController
+import js7.agent.data.event.AgentEvent
+import js7.base.generic.Completed
+import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
+import js7.base.catsutils.CatsEffectUtils.*
+import js7.base.catsutils.CatsEffectExtensions.*
+import js7.base.problem.{Checked, Problem}
+import js7.base.service.Service
+import js7.base.time.ScalaTime.*
+import js7.base.utils.Assertions.assertThat
+import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.{AsyncLock, Atomic}
+import js7.common.http.RecouplingStreamReader
+import js7.controller.agent.AgentDriver.DecoupledProblem
+import js7.controller.agent.DirectorDriver.*
+import js7.data.agent.AgentRefStateEvent.{AgentCoupled, AgentReset}
+import js7.data.agent.Problems.AgentNotDedicatedProblem
+import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
+import js7.data.cluster.ClusterEvent
+import js7.data.controller.{ControllerRunId, ControllerState}
+import js7.data.delegate.DelegateCouplingState.{Coupled, Resetting}
+import js7.data.event.KeyedEvent.NoKey
+import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, Stamped}
+import js7.data.item.BasicItemEvent.ItemAttachable
+import js7.data.item.InventoryItemEvent
+import js7.data.order.{OrderEvent, OrderId}
+import js7.data.orderwatch.OrderWatchEvent
+import js7.data.subagent.SubagentItemStateEvent
+import js7.journal.state.Journal
+import cats.effect.IO
+import fs2.Stream
+import js7.base.monixlike.MonixLikeExtensions.{completedL, flatMapLoop, raceFold, takeUntilEval}
+import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
+import scala.util.chaining.scalaUtilChainingOps
+
+private[agent] final class DirectorDriver private(
+  agentDriver: AgentDriver,
+  agentPath: AgentPath,
+  initialEventId: EventId,
+  client: AgentClient,
+  dedicateAgentIfNeeded: DirectorDriver => IO[Checked[(AgentRunId, EventId)]],
+  onCouplingFailed_ : Problem => IO[Boolean],
+  onCoupled_ : Set[OrderId] => IO[Unit],
+  onDecoupled_ : IO[Unit],
+  adoptEvents: Seq[Stamped[AnyKeyedEvent]] => IO[Unit],
+  journal: Journal[ControllerState],
+  conf: AgentDriverConfiguration)
+extends Service.StoppableByRequest:
+  directorDriver =>
+
+  private val index = DirectorDriver.index.incrementAndGet()
+  private val logger = Logger.withPrefix[this.type](agentPath.toString + " #" + index)
+  private var adoptedEventId = initialEventId
+  private val untilFetchingStopped = Deferred.unsafe[IO, Unit]
+  private val onFetchedEventsLock = AsyncLock() // Fence for super.isStopping
+
+  logger.trace(s"initialEventId=$initialEventId")
+
+  protected def start =
+    startService(
+      continuallyFetchEvents *>
+        IO(assertThat(isStopping)) *>
+        onFetchedEventsLock.lock(IO.unit) *>
+        stopEventFetcher)
+
+  private def stopEventFetcher: IO[Unit] =
+    eventFetcher.terminateAndLogout *>
+      untilFetchingStopped.get
+
+  private val eventFetcher = new RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], AgentClient](
+      _.eventId, conf.recouplingStreamReader):
+
+    private var attachedOrderIds: Set[OrderId] = null
+
+    override protected def couple(eventId: EventId) =
+      journal.state
+        .map(_.keyTo(AgentRefState).checked(agentPath))
+        .flatMapT(agentRefState =>
+          ((agentRefState.couplingState, agentRefState.agentRunId) match {
+            case (Resetting(false), None) =>
+              IO.pure(Left(Problem.pure("Resetting, but no AgentRunId?"))) // Invalid state
+
+            case (Resetting(force), maybeAgentRunId) if force || maybeAgentRunId.isDefined =>
+              executeCommand(AgentCommand.Reset(maybeAgentRunId))
+                .map {
+                  case Left(AgentNotDedicatedProblem) => Checked.unit // Already reset
+                  case o => o
+                }
+                .flatMapT(_ =>
+                  journal.persistKeyedEvent(agentPath <-: AgentReset))
+
+            case _ =>
+              IO.pure(Checked.unit)
+          }))
+        .flatMapT(_ => dedicateAgentIfNeeded(directorDriver))
+        .flatMapT { case (agentRunId, agentEventId) =>
+          val coupleController = CoupleController(agentPath, agentRunId, eventId = agentEventId,
+            ControllerRunId(journal.journalId))
+          executeCommand(coupleController)
+            .flatMapT { case CoupleController.Response(orderIds) =>
+              logger.trace(s"CoupleController returned attached OrderIds={${orderIds.toSeq.sorted.mkString(" ")}}")
+              attachedOrderIds = orderIds
+              journal
+                .lock(agentPath)(
+                  journal.persist(controllerState =>
+                    for a <- controllerState.keyTo(AgentRefState).checked(agentPath) yield
+                      Seq(
+                        (a.couplingState != Coupled || a.problem.nonEmpty) ?
+                          (agentPath <-: AgentCoupled),
+                        // The coupled Agent may not yet have an AgentRef (containing the
+                        // processLimit). So we need to check this:
+                        !controllerState.itemToAgentToAttachedState.contains(agentPath) ?
+                          (NoKey <-: ItemAttachable(agentPath, agentPath))
+                      ).flatten))
+                .flatTapT { case (stamped, state) =>
+                  IO
+                    .whenA(stamped.exists(_.value.event.isInstanceOf[ItemAttachable]))(
+                      state.keyToItem(AgentRef).get(agentPath).fold(IO.unit)(agentRef =>
+                        agentDriver.send(AgentDriver.Queueable.AttachUnsignedItem(agentRef))))
+                    .as(Checked.unit)
+                }
+                .rightAs(agentEventId)
+            }
+        }
+
+    protected def getStream(api: AgentClient, after: EventId) =
+      IO {logger.debug(s"getStream(after=$after)")} *>
+        api.eventStream(EventRequest[Event](EventClasses, after = after,
+          timeout = Some(requestTimeout)))
+
+    override protected def onCouplingFailed(api: AgentClient, problem: Problem) =
+      onCouplingFailed_(problem)
+
+    override protected def onCoupled(api: AgentClient, after: EventId) =
+      IO.defer:
+        logger.info(s"Coupled with $api after=${EventId.toString(after)}")
+        assertThat(attachedOrderIds != null)
+        onCoupled_(attachedOrderIds)
+          .*>(IO {
+            attachedOrderIds = null
+          })
+          .as(Completed)
+
+    override protected def onDecoupled =
+      IO.defer:
+        logger.debug("onDecoupled")
+        onDecoupled_
+          .as(Completed)
+
+    protected def stopRequested = directorDriver.isStopping
+
+  private def continuallyFetchEvents: IO[Unit] =
+    observeAndConsumeEvents
+      .recover(t => logger.error(t.toStringWithCauses, t))
+      .flatMapLoop(())((_, _, again) =>
+        eventFetcher.decouple
+          .*>(eventFetcher
+            .pauseBeforeNextTry(conf.recouplingStreamReader.delay)
+            .raceFold(untilStopRequested))
+          .void
+          .recover(t => logger.error(t.toStringWithCauses, t))
+          .*>(IO.defer(IO.unlessA(isStopping)(
+            again(())))))
+      .guarantee(untilFetchingStopped.complete(()).void)
+
+  private def observeAndConsumeEvents: IO[Unit] =
+    logger.traceIO(IO.defer {
+      val delay = conf.eventBufferDelay max conf.commitDelay
+      eventFetcher.observe(client, after = adoptedEventId)
+        .pipe(stream =>
+          if delay.isZeroOrBelow then
+            stream.chunks
+          else stream
+            .groupWithin(
+              chunkSize = conf.eventBufferSize,
+              conf.eventBufferDelay max conf.commitDelay) // ticks
+            .filter(_.nonEmpty)) // Ignore empty ticks
+        .takeUntilEval(untilStopRequested) // Cancels the stream above
+        .flatMap(o => Stream
+          // When the other cluster node may have failed-over,
+          // wait until we know that it hasn't (or this node is aborted).
+          // Avoids "Unknown OrderId" failures due to double activation.
+          .eval(journal.whenNoFailoverByOtherNode
+            .logWhenItTakesLonger("whenNoFailoverByOtherNode"))
+          .map(_ => o))
+        .map(_.toVector)
+        .evalMap(onEventsFetched)
+        .completedL
+    })
+
+  private def onEventsFetched(stampedEvents: Seq[Stamped[AnyKeyedEvent]]): IO[Unit] =
+    onFetchedEventsLock.lock(logger.traceIO(IO.defer {
+      assertThat(stampedEvents.nonEmpty)
+      if isStopping then
+        IO(logger.debug(
+          s"❌Late onEventsFetched(${stampedEvents.size} events) suppressed due to isStopping"))
+      else {
+        val reducedStampedEvents = stampedEvents dropWhile { stamped =>
+          val drop = stamped.eventId <= adoptedEventId
+          if drop then logger.debug(s"Drop duplicate received event: $stamped")
+          drop
+        }
+        IO.whenA(reducedStampedEvents.nonEmpty) {
+          val lastEventId = stampedEvents.last.eventId
+          // The events must be journaled and handled by ControllerOrderKeeper
+          adoptedEventId = lastEventId
+          adoptEvents(reducedStampedEvents)
+        }
+      }
+    }))
+
+  def resetAgentAndStop(agentRunId: Option[AgentRunId]): IO[Checked[Unit]] =
+    // TODO If stopEventFetcher would not send a Logout, it could run concurrently
+    resetAgent(agentRunId)
+      .flatTapT(_ => stop.map(Right(_)))
+
+  private def resetAgent(agentRunId: Option[AgentRunId]): IO[Checked[Unit]] =
+    logger.debugIO(
+      executeCommand(client, AgentCommand.Reset(agentRunId))
+        .logWhenItTakesLonger
+        .rightAs(()))
+
+  def executeCommand(command: AgentCommand, mustBeCoupled: Boolean = false)
+  : IO[Checked[command.Response]] =
+    if mustBeCoupled then
+      eventFetcher.coupledApi
+        .map(_.toRight(DecoupledProblem))
+        .flatMapT(executeCommand(_, command))
+    else
+      executeCommand(client, command)
+
+  private def executeCommand(client: AgentClient, command: AgentCommand)
+  : IO[Checked[command.Response]] =
+    IO
+      .race(
+        untilStopRequested.delayBy(10.s/*because AgentDriver stops on SwitchOver*/),
+        client.retryIfSessionLost()(
+          client.commandExecute(command)))
+      .map:
+        case Left(()) => Left(DirectorDriverStoppedProblem(agentPath))
+        case Right(o) => o
+
+  override def toString = s"DirectorDriver($agentPath #$index)"
+
+
+private[agent] object DirectorDriver:
+  private val index = Atomic(0)
+
+  private val EventClasses = Set[Class[? <: Event]](
+    classOf[OrderEvent],
+    classOf[AgentEvent.AgentReady],
+    AgentEvent.AgentShutDown.getClass,
+    classOf[SubagentItemStateEvent],
+    classOf[InventoryItemEvent],
+    classOf[OrderWatchEvent],
+    classOf[ClusterEvent])
+
+  def resource(
+    agentDriver: AgentDriver,
+    agentPath: AgentPath,
+    initialEventId: EventId,
+    client: AgentClient,
+    dedicateAgentIfNeeded: DirectorDriver => IO[Checked[(AgentRunId, EventId)]],
+    onCouplingFailed: Problem => IO[Boolean],
+    onCoupled: Set[OrderId] => IO[Unit],
+    onDecoupled: IO[Unit],
+    adoptEvents: Seq[Stamped[AnyKeyedEvent]] => IO[Unit],  // TODO Stream
+    journal: Journal[ControllerState],
+    conf: AgentDriverConfiguration)
+  : Resource[IO, DirectorDriver] =
+    Service.resource(IO(
+      new DirectorDriver(
+        agentDriver, agentPath, initialEventId, client,
+        dedicateAgentIfNeeded,
+        onCouplingFailed, onCoupled, onDecoupled, adoptEvents,
+        journal, conf)))
+
+  final case class DirectorDriverStoppedProblem(agentPath: AgentPath)
+  extends Problem.Coded:
+    def arguments = Map("agentPath" -> agentPath.string)

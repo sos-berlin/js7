@@ -18,6 +18,28 @@ import scala.concurrent.duration.{Deadline, FiniteDuration}
 import scala.concurrent.{ExecutionContext, Future, TimeoutException}
 import scala.util.{Failure, Success, Try}
 
+/*
+ * ——— Some parts originate from Monix ———
+ *
+ * Copyright (c) 2014-2021 by The Monix Project Developers.
+ * See the project homepage at: https://monix.io
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/** Some descriptions and some small code parts originate from Monix.
+ *
+ * @see https://github.com/monix/monix
+ */
 object MonixLikeExtensions:
 
   extension (scheduler: Scheduler)
@@ -126,6 +148,32 @@ object MonixLikeExtensions:
 
     def foreach(f: A => Unit)(using IORuntime): Future[Unit] =
       io.flatMap(a => IO(f(a))).unsafeToFuture()
+
+    /** Describes flatMap-driven loops, as an alternative to recursive functions.
+     *
+     * Sample:
+     *
+     * {{{
+     *   import scala.util.Random
+     *
+     *   val random = Task(Random.nextInt())
+     *   val loop = random.flatMapLoop(Vector.empty[Int]) { (a, list, continue) =>
+     *     val newList = list :+ a
+     *     if (newList.length < 5)
+     *       continue(newList)
+     *     else
+     *       Task.now(newList)
+     *   }
+     * }}}
+     *
+     * @param seed initializes the result of the loop
+     * @param f    is the function that updates the result
+     *             on each iteration, returning a `Task`.
+     * @return a new [[Task]] that contains the result of the loop.
+     */
+    def flatMapLoop[S](seed: S)(f: (A, S, S => IO[S]) => IO[S]): IO[S] =
+      io.flatMap: a =>
+        f(a, seed, flatMapLoop(_)(f))
 
 
   extension (x: IO.type)

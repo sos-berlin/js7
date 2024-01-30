@@ -251,7 +251,7 @@ final class ScheduleCalculatorTest extends OurTestSuite, ScheduleTester
       assert(times == Seq(
         Timestamp("2021-10-31T00:00:00Z"),
         Timestamp("2021-10-31T00:30:00Z"),
-        Timestamp("2021-10-31T02:00:00Z")))  // An hour is skipped!!
+        Timestamp("2021-10-31T02:00:00Z")))  // An hour is skipped!!!
     }
   }
 

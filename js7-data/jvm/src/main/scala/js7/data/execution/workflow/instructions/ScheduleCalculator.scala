@@ -90,7 +90,7 @@ extends ScheduleSimulator:
     val localPeriodStart = localMilli / p * p
     val localMilliOfPeriod = localMilli % p
 
-    // Slow??
+    // Slow???
     val nextTimestamps = Iterator.from(0)
       .flatMap(i => scheduleMillis.map(_ + i * p))
       .filter(t =>

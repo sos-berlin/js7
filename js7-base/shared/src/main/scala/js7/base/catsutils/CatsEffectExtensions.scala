@@ -129,4 +129,9 @@ object CatsEffectExtensions:
       clock.monotonic.map(CatsDeadline.fromMonotonic)
 
 
+  extension(scheduler: Scheduler)
+    def now(): SyncDeadline =
+      SyncDeadline.fromNanos(scheduler.monotonicNanos())
+
+
   final class FiberCanceledException extends RuntimeException("Fiber has been canceled")

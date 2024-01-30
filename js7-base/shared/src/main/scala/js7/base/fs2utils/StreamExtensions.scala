@@ -122,9 +122,6 @@ object StreamExtensions:
           .onFinalizeCase: exitCase =>
             onComplete(startedAt.elapsed, count, exitCase)
 
-    def toListL(using Compiler[F, F]): F[List[A]] =
-      stream.compile.toList
-
 
   extension[F[_]](stream: Stream[F, String])
     def stringToChar: Stream[F, Char] =

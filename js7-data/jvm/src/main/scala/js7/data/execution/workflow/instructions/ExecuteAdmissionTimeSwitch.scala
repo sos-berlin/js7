@@ -2,8 +2,8 @@ package js7.data.execution.workflow.instructions
 
 import cats.effect.IO
 import java.time.ZoneId
-import js7.base.catsutils.SerialCancelRunnable
 import js7.base.log.Logger
+import js7.base.monixlike.SerialSyncCancelable
 import js7.base.time.AdmissionTimeSchemeForJavaTime.*
 import js7.base.time.{AdmissionTimeScheme, AlarmClock, TimeInterval, Timestamp}
 import js7.base.utils.ScalaUtils.syntax.*
@@ -16,7 +16,7 @@ final class ExecuteAdmissionTimeSwitch(
   onSwitch: Option[TimeInterval] => Unit):
 
   @volatile private var _nextTime: Option[Timestamp] = None
-  private val _timer = SerialCancelRunnable()
+  private val _timer = SerialSyncCancelable()
 
   @TestOnly
   private[instructions] def nextTime = _nextTime
