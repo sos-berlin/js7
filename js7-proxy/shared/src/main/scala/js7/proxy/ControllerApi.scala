@@ -1,6 +1,6 @@
 package js7.proxy
 
-import cats.effect.Resource
+import cats.effect.{IO, Resource, ResourceIO}
 import io.circe.{Json, JsonObject}
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.crypt.Signed
@@ -32,7 +32,6 @@ import js7.proxy.ControllerApi.*
 import js7.proxy.JournaledProxy.EndOfEventStreamException
 import js7.proxy.configuration.ProxyConf
 import js7.proxy.data.event.{EventAndState, ProxyEvent}
-import cats.effect.IO
 import fs2.Stream
 import js7.base.fs2utils.StreamExtensions.+:
 import js7.base.monixlike.MonixLikeExtensions.{dematerialize, materialize, onErrorRestartLoop}
@@ -89,11 +88,17 @@ extends ControllerApiWithHttp:
     proxyEventBus: StandardEventBus[ProxyEvent] = new StandardEventBus,
     eventBus: JournaledStateEventBus[ControllerState] = new JournaledStateEventBus[ControllerState])
   : IO[ControllerProxy] =
-    CorrelId.bindIfEmpty(logger.debugIO:
+    proxyResource(proxyEventBus, eventBus)
+      .allocated // Caller must stop the ControllerProxy
+      .map(_._1)
+
+  def proxyResource(
+    proxyEventBus: StandardEventBus[ProxyEvent] = new StandardEventBus,
+    eventBus: JournaledStateEventBus[ControllerState] = new JournaledStateEventBus[ControllerState])
+  : ResourceIO[ControllerProxy] =
+    CorrelId.bindIfEmpty(logger.debugResource:
       ControllerProxy
-        .resource(this, apisResource, proxyEventBus, eventBus, proxyConf)
-        .allocated // Caller must stop the ControllerProxy
-        .map(_._1))
+        .resource(this, apisResource, proxyEventBus, eventBus, proxyConf))
 
   def clusterAppointNodes(idToUri: Map[NodeId, Uri], activeId: NodeId)
   : IO[Checked[Accepted]] =

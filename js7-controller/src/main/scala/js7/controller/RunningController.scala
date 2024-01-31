@@ -212,7 +212,7 @@ object RunningController:
         }
 
   def resource(conf: ControllerConfiguration, testWiring: TestWiring = TestWiring.empty)
-    (implicit ioRuntime: IORuntime)
+    (using ioRuntime: IORuntime)
   : Resource[IO, RunningController] = {
     given Scheduler = ioRuntime.scheduler
 

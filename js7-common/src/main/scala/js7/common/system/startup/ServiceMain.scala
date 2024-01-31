@@ -175,7 +175,7 @@ object ServiceMain:
     //  logger.warn(s"Trying to shut down $allocatedService due to Java shutdown")
     //  val stop = logger.debugIO("onJavaShutDown stop service")(
     //    allocatedService.release)
-    //  for t <- stop.attempt.runSyncUnsafe().left do
+    //  for t <- stop.attempt.unsafeRunSync().left do
     //    logger.error(s"onJavaShutdown: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
     //
     //private def shutdownHookResource[F[_] : Sync](name: String)(onJavaShutdown: => Unit)

@@ -33,101 +33,20 @@ import js7.proxy.data.event.{EventAndState, ProxyEvent, ProxyStarted}
 import scala.concurrent.duration.FiniteDuration
 import scala.util.chaining.scalaUtilChainingOps
 
-private final class JournaledProxy[S <: SnapshotableState[S]] private[JournaledProxy](
-  inputStream: Stream[IO, EventAndState[Event, S]],
-  onEvent: EventAndState[Event, S] => Unit,
-  proxyConf: ProxyConf,
-  topic: Topic[IO, EventAndState[Event, S]])
-  (using S: SnapshotableState.Companion[S])
-extends Service.StoppableByRequest:
+trait JournaledProxy[S <: SnapshotableState[S]]:
 
-  //private val observing = SetOnce[SyncCancelable]("connectableObservingCompleted")
-  //private val observingStopped = Deferred.unsafe[IO, Unit]
+  def currentState: S
 
-  @volatile private var _currentState = S.empty
-
-  protected def start =
-    startService:
-      val whenStarted = Deferred.unsafe[IO, Unit]
-      Supervisor[IO](await = false).use: supervisor =>
-        supervisor
-          .supervise:
-            readInputStream(whenStarted)
-          .flatMap: fiber =>
-            whenStarted.get *>
-              untilStopRequested *>
-              fiber.joinStd
-
-  private def readInputStream(whenStarted: Deferred[IO, Unit]): IO[Unit] =
-    inputStream
-      .evalTap(eventAndState => IO.defer:
-        _currentState = eventAndState.state
-        whenStarted.complete(()))
-      .map: eventAndState =>
-        onEvent(eventAndState)
-        eventAndState
-      .interruptWhen(untilStopRequested.attempt)
-      .through(topic.publish)
-      .compile
-      .drain
-
-  //private def startObserving: IO[Unit] =
-  //  IO.defer:
-  //    val cancelable = SerialSyncCancelable()
-  //    val stream = topic.subscribe(maxQueued = proxyConf.eventQueueSize)
-  //    observing := stream
-  //    cancelable := stream
-  //    val whenCompleted = topic.completedL.unsafeToFuture()
-  //    observingStopped.completeWith(whenCompleted)
-  //    whenCompleted.onComplete:
-  //      case Success(()) =>
-  //        if !stopRequested.isCompleted then
-  //          logger.error("Stream has terminated")
-  //        // ???
-  //      case Failure(t) =>
-  //        logger.error(t.toStringWithCauses, t.nullIfNoStackTrace)
-  //        // ???
-  //    CancelableFuture(
-  //      currentStateFilled.future,
-  //      () =>
-  //        logger.debug("startObserving: cancelling")
-  //        whenCompleted.cancel()
-  //        cancelable.cancel())
+  @deprecated("Prefer subscribe?")
+  def stream(maxQueued: Option[Int] = None): Stream[IO, EventAndState[Event, S]]
 
   def subscribe(maxQueued: Option[Int] = None)
-  : ResourceIO[Stream[IO, EventAndState[Event, S]]] =
-    topic.subscribeAwait(maxQueued = maxQueued getOrElse proxyConf.eventQueueSize)
+  : Resource[IO, Stream[IO, EventAndState[Event, S]]]
 
-  @deprecated("Prefer subscribe")
-  def stream(maxQueued: Option[Int] = None): Stream[IO, EventAndState[Event, S]] =
-    topic.subscribe(maxQueued = maxQueued getOrElse proxyConf.eventQueueSize)
-
-  def sync(eventId: EventId): IO[Unit] =
-    IO.defer:
-      IO.unlessA(currentState.eventId >= eventId):
-        subscribe().use:
-          _.dropWhile(_.stampedEvent.eventId < eventId)
-            .merge:
-              Stream.fixedRateStartImmediately[IO](proxyConf.syncPolling)
-            .dropWhile(_ => currentState.eventId < eventId)
-            .compile
-            .last
-            .flatMap:
-              case None => IO.raiseError(new NoSuchElementException:
-                s"JournaledProxy#sync: Requested eventId=${EventId.toString(eventId)} not found")
-              case Some(_) => IO.unit
+  def sync(eventId: EventId): IO[Unit]
 
   /** For testing: wait for a condition in the running event stream. * */
-  def when(predicate: EventAndState[Event, S] => Boolean): IO[EventAndState[Event, S]] =
-    subscribe().use:
-      _.filter(predicate)
-        .head.compile.last
-        .map(_.getOrElse(throw new EndOfEventStreamException))
-
-  def currentState: S =
-    _currentState match
-      case null => throw new IllegalStateException("JournaledProxy has not yet started")
-      case o => o
+  def when(predicate: EventAndState[Event, S] => Boolean): IO[EventAndState[Event, S]]
 
 
 object JournaledProxy:
@@ -136,20 +55,13 @@ object JournaledProxy:
 
   private val logger = Logger[this.type]
 
-  private[proxy] def resource[S <: SnapshotableState[S]](
+  def resource[S <: SnapshotableState[S]](
     baseStream: Stream[IO, EventAndState[Event, S]],
     proxyConf: ProxyConf,
     onEvent: EventAndState[Event, S] => Unit)
     (using SnapshotableState.Companion[S])
   : ResourceIO[JournaledProxy[S]] =
-    for
-      topic <- Resource.make(
-        acquire = Topic[IO, EventAndState[Event, S]])(
-        release = _.close.void)
-      journaledProxy <- Service.resource(IO:
-        new JournaledProxy[S](baseStream, onEvent, proxyConf, topic))
-    yield
-      journaledProxy
+    JournaledProxyImpl.resource[S](baseStream, proxyConf, onEvent)
 
   def stream[S <: JournaledState[S]](
     apisResource: ResourceIO[Nel[RequiredApi_[S]]],
@@ -286,13 +198,12 @@ object JournaledProxy:
     def stopRequested = false
 
 
-  trait Delegate[S <: SnapshotableState[S]]:
+  trait Delegate[S <: SnapshotableState[S]] extends JournaledProxy[S]:
     protected val journaledProxy: JournaledProxy[S]
 
     def currentState: S =
       journaledProxy.currentState
 
-    @deprecated("Use subscribe")
     def stream(maxQueued: Option[Int] = None): Stream[IO, EventAndState[Event, S]] =
       journaledProxy.stream(maxQueued = maxQueued)
 
