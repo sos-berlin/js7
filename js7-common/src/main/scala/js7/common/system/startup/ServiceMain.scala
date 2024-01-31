@@ -50,7 +50,7 @@ object ServiceMain:
     useLockFile: Boolean = false)
     (toServiceResource: Conf => Resource[IO, S],
     use: (Conf, S) => IO[ProgramTermination] =
-    (_: Conf, state: S) => state.untilTerminated)
+    (_: Conf, service: S) => service.untilTerminated)
   : IO[ExitCode] =
     IO
       .defer:

@@ -1,8 +1,9 @@
 package js7.agent.scheduler.order
 
 import cats.effect.unsafe.IORuntime
-import cats.syntax.parallel.*
+import cats.effect.{Fiber, IO}
 import cats.syntax.flatMap.*
+import cats.syntax.parallel.*
 import com.softwaremill.tagging.{@@, Tagger}
 import io.circe.syntax.EncoderOps
 import java.time.ZoneId
@@ -12,11 +13,14 @@ import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.{AttachItem, AttachOrder, AttachSignedItem, DetachItem, DetachOrder, MarkOrder, OrderCommand, ReleaseEvents, Response}
 import js7.agent.data.event.AgentEvent.{AgentReady, AgentShutDown}
 import js7.agent.scheduler.order.AgentOrderKeeper.*
+import js7.base.catsutils.CatsEffectExtensions.{joinStd, left, materializeIntoChecked, right}
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.crypt.Signed
 import js7.base.generic.Completed
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.{BlockingSymbol, CorrelId, Logger}
+import js7.base.monixlike.MonixLikeExtensions.{deferFuture, foreach, materialize, scheduleAtFixedRate}
+import js7.base.monixlike.{FutureCancelable, SyncCancelable}
 import js7.base.monixutils.AsyncVariable
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
@@ -24,6 +28,7 @@ import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.JavaTime.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.{AdmissionTimeScheme, AlarmClock, TimeInterval}
+import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.CatsUtils.{PureFiberIO, continueWithLast}
 import js7.base.utils.Collections.implicits.InsertableMutableMap
 import js7.base.utils.ScalaUtils.syntax.*
@@ -63,11 +68,6 @@ import js7.journal.{JournalActor, MainJournalingActor}
 import js7.launcher.configuration.Problems.SignedInjectionNotAllowed
 import js7.subagent.Subagent
 import js7.subagent.director.SubagentKeeper
-import cats.effect.{Fiber, IO}
-import js7.base.catsutils.CatsEffectExtensions.{joinStd, left, materializeIntoChecked, right}
-import js7.base.monixlike.{FutureCancelable, SyncCancelable}
-import js7.base.monixlike.MonixLikeExtensions.{deferFuture, foreach, materialize, scheduleAtFixedRate}
-import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import org.apache.pekko.actor.{ActorRef, DeadLetterSuppression, Stash, Terminated}
 import org.apache.pekko.pattern.{ask, pipe}
 import scala.annotation.tailrec
@@ -96,10 +96,10 @@ final class AgentOrderKeeper(
   (implicit protected val ioRuntime: IORuntime)
 extends MainJournalingActor[AgentState, Event], Stash:
 
-  import ioRuntime.scheduler
   import conf.implicitPekkoAskTimeout
   import context.{actorOf, watch}
   import forDirector.{iox, subagent as localSubagent}
+  import ioRuntime.scheduler
 
   private given ExecutionContext = ioRuntime.compute
 

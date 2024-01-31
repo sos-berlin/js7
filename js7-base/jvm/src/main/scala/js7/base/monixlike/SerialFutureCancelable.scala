@@ -1,7 +1,7 @@
 package js7.base.monixlike
 
 import js7.base.monixlike.FutureCancelableBlocking.blockingCancel
-import js7.base.utils.Atomic
+import js7.base.utils.{Atomic, CancelableFuture}
 import scala.annotation.targetName
 import scala.concurrent.Future
 
@@ -35,6 +35,12 @@ extends FutureCancelable:
   def cancelToFuture(): Future[Unit] =
     canceled = true
     state.get().cancelToFuture()
+
+  @targetName("set")
+  def :=(future: CancelableFuture[?])
+    (using sourcecode.Enclosing, sourcecode.FileName, sourcecode.Line)
+  : this.type =
+    this := (() => future.cancelToFuture())
 
   @targetName("set")
   def :=(cancelable: () => Future[Unit])

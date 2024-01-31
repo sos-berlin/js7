@@ -409,7 +409,7 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll, TestC
       awaitAndAssert { jsons.size == 5 }
       assert(jsons(4).as[Stamped[KeyedEvent[Event]]] == Right(Stamped(3L, "3" <-: A1)))
 
-      observing.unsafeCancelAndForget()
+      observing.cancelAndForget()
       if isWindows then sleep(100.ms)  // Let observing close the read file to allow deletion
     }
   }

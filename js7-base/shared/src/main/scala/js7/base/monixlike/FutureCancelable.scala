@@ -6,7 +6,7 @@ trait FutureCancelable:
 
   def cancelToFuture(): Future[Unit]
 
-  final def unsafeCancelAndForget(): Unit =
+  final def cancelAndForget(): Unit =
     cancelToFuture()
 
 

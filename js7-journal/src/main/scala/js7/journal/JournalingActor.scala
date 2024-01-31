@@ -56,7 +56,7 @@ extends Actor, Stash, ActorLogging, ReceiveLoggingActor:
     super.become(stateName)(journaling orElse receive)
 
   override def postStop(): Unit =
-    journalingTimer.unsafeCancelAndForget()
+    journalingTimer.cancelAndForget()
     super.postStop()
 
   // TODO Inhibit bedeutet gehemmt, beeintrichtigt. Besser etwas wie 'stop'
@@ -268,7 +268,7 @@ extends Actor, Stash, ActorLogging, ReceiveLoggingActor:
       throw new RuntimeException(msg)
     stashingCount -= 1
     if stashingCount == 0 then
-      journalingTimer.unsafeCancelAndForget()
+      journalingTimer.cancelAndForget()
       unstashAll()
       persistStatistics.endStashing()
       if TraceLog then logger.trace(s"»$toString« unbecome")

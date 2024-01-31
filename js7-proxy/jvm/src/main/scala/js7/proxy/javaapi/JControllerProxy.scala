@@ -81,12 +81,13 @@ final class JControllerProxy private[proxy](
   @Nonnull
   private def runOrderForTest(@Nonnull order: JFreshOrder): CompletableFuture[Stamped[KeyedEvent[OrderTerminated]]] =
     requireNonNull(order)
-    val whenOrderTerminated = asScala.stream()
-      .collect:
-        case EventAndState(stamped @ Stamped(_, _, KeyedEvent(orderId, _: OrderTerminated)), _, _)
-          if orderId == order.id =>
-          stamped.asInstanceOf[Stamped[KeyedEvent[OrderTerminated]]]
-      .headL
+    val whenOrderTerminated = asScala
+      .subscribe().use:
+        _.collect:
+          case EventAndState(stamped @ Stamped(_, _, KeyedEvent(orderId, _: OrderTerminated)), _, _)
+            if orderId == order.id =>
+            stamped.asInstanceOf[Stamped[KeyedEvent[OrderTerminated]]]
+        .headL
       .unsafeToCompletableFuture()
 
     val isAdded = api.asScala.addOrder(order.asScala)

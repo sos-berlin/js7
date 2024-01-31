@@ -132,7 +132,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
   def stop: IO[Unit] =
     logger.debugIO(IO.defer {
       stopRequested = true
-      fetchingAcks.unsafeCancelAndForget()
+      fetchingAcks.cancelAndForget()
       clusterWatchSynchronizerOnce.toOption.fold(IO.unit)(_.stop)
     })
 
@@ -658,7 +658,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
               o.asInstanceOf[Stamped[KeyedEvent[ClusterEvent]]]
           state.clusterState match
             case Empty | _: NodesAppointed =>
-            case _: HasNodes => sendingClusterStartBackupNode.unsafeCancelAndForget()
+            case _: HasNodes => sendingClusterStartBackupNode.cancelAndForget()
           val events = clusterStampedEvents.map(_.value.event)
           (events, state.clusterState) match
             case (Seq(event), clusterState: HasNodes) =>

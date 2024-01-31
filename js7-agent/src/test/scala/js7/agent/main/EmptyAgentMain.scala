@@ -1,16 +1,17 @@
 package js7.agent.main
 
 import cats.effect.unsafe.IORuntime
-import cats.effect.{ExitCode, IO, IOApp}
+import cats.effect.{ExitCode, IO}
 import js7.agent.TestAgent
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.tests.TestAgentDirectoryProvider
+import js7.base.catsutils.{OurApp, OurIORuntime}
 import js7.common.system.startup.ProgramTerminationExtensions.toExitCode
 
 /** For testing only.
   * @author Joacim Zschimmer
   */
-object EmptyAgentMain extends IOApp:
+object EmptyAgentMain extends OurApp:
 
   private given IORuntime = runtime
 

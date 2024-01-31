@@ -1,11 +1,11 @@
 package js7.controller
 
-import cats.Monad.ops.toAllMonadOps
 import cats.effect.unsafe.Scheduler
 import org.apache.pekko.actor.{ActorRef, ActorSystem, Props}
 import org.apache.pekko.pattern.ask
 import org.apache.pekko.util.Timeout
 import cats.effect.{Resource, Sync, SyncIO}
+import cats.syntax.monad.*
 import cats.syntax.traverse.*
 import cats.syntax.parallel.*
 import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize

@@ -1,6 +1,5 @@
 package js7.controller.web.controller.api.log
 
-import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import com.typesafe.config.Config
 import java.nio.file.Files.{isReadable, isRegularFile}
@@ -8,23 +7,17 @@ import java.nio.file.Path
 import js7.base.auth.ValidUserPermission
 import js7.base.time.JavaTimeConverters.*
 import js7.base.utils.FutureCompletion
-import js7.base.utils.FutureCompletion.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.files.GrowingFileStream
 import js7.common.files.GrowingFileStream.growingFileStream
-import js7.common.http.StreamingSupport.*
-import js7.common.pekkohttp.PekkoHttpServerUtils.{completeWithByteStream, completeWithStream, passIf}
-import js7.common.pekkoutils.ByteStrings.syntax.*
+import js7.common.pekkohttp.PekkoHttpServerUtils
+import js7.common.pekkohttp.PekkoHttpServerUtils.{completeWithByteStream, passIf}
 import js7.controller.web.common.ControllerRouteProvider
 import js7.controller.web.controller.api.log.LogRoute.*
 import org.apache.pekko.http.scaladsl.model.ContentTypes.`text/plain(UTF-8)`
-import org.apache.pekko.http.scaladsl.model.HttpEntity
 import org.apache.pekko.http.scaladsl.server.Route
 import org.apache.pekko.http.scaladsl.server.directives.ParameterDirectives.*
 import org.apache.pekko.http.scaladsl.server.directives.PathDirectives.pathEnd
-import org.apache.pekko.http.scaladsl.server.directives.RouteDirectives.complete
-import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
-import js7.common.pekkohttp.PekkoHttpServerUtils
 
 trait LogRoute extends ControllerRouteProvider:
   protected def ioRuntime: IORuntime

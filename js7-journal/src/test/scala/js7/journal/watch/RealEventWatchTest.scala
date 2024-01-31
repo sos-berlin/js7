@@ -41,7 +41,7 @@ final class RealEventWatchTest extends OurTestSuite, TestCatsEffect:
       .compile.toList
       .unsafeToCancelableFuture()
     intercept[TornException] { stream await 99.s }
-    stream.unsafeCancelAndForget()
+    stream.cancelAndForget()
 
     assert:
       eventWatch

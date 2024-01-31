@@ -96,7 +96,7 @@ final class MemoryJournalTest extends OurTestSuite, TestCatsEffect:
       Stamped(1001, "B" <-: TestEvent.Added("B")),
       Stamped(1002, "C" <-: TestEvent.Added("C"))))
 
-    observing.unsafeCancelAndForget()
+    observing.cancelAndForget()
 
     assert(eventWatch.tornEventId == EventId.BeforeFirst)
     journal.releaseEvents(1001).await(99.s).orThrow
@@ -149,7 +149,7 @@ final class MemoryJournalTest extends OurTestSuite, TestCatsEffect:
       awaitAndAssert(lastObserved.contains(1000L + size + i) && journal.queueLength == 3)
 
     persisting.await(9.s)
-    observing.unsafeCancelAndForget(): Unit
+    observing.cancelAndForget(): Unit
 
   "persist more than size events at once" in:
     val size = 3

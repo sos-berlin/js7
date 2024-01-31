@@ -87,7 +87,7 @@ object FutureCompletion:
       : CancelableFuture[A] =
         val entry = futureCompletion.add()
         entry.future.onComplete { _ =>
-          future.unsafeCancelAndForget()
+          future.cancelAndForget()
         }
         future.transform { tried =>
           entry.close()

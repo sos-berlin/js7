@@ -1,10 +1,11 @@
 package js7.agent.client.main
 
 import cats.effect.unsafe.IORuntime
-import cats.effect.{ExitCode, IO, IOApp}
+import cats.effect.{ExitCode, IO}
 import java.nio.file.{Files, Path}
 import js7.agent.client.PekkoHttpAgentTextApi
 import js7.base.auth.SessionToken
+import js7.base.catsutils.{OurApp, OurIORuntime}
 import js7.base.convert.AsJava.StringAsPath
 import js7.base.generic.SecretString
 import js7.base.io.process.ReturnCode
@@ -19,7 +20,7 @@ import scala.util.control.NonFatal
 /**
  * @author Joacim Zschimmer
  */
-object AgentClientMain extends IOApp:
+object AgentClientMain extends OurApp:
 
   private val logger = Logger[this.type]
   private given IORuntime = runtime
