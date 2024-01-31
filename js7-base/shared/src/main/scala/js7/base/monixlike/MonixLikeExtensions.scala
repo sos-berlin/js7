@@ -19,7 +19,7 @@ import scala.concurrent.{ExecutionContext, Future, TimeoutException}
 import scala.util.{Failure, Success, Try}
 
 /*
- * ——— Some parts originate from Monix ———
+ * ——— SOME PARTS ORIGINATE FROM MONIX ———
  *
  * Copyright (c) 2014-2021 by The Monix Project Developers.
  * See the project homepage at: https://monix.io
@@ -129,10 +129,6 @@ object MonixLikeExtensions:
         case Failure(t) => F.raiseError(t)
         case Success(a) => F.pure(a)
 
-    @deprecated("NOT IMPLEMENTED")
-    def onCancelRaiseError(throwable: => Throwable): F[A] =
-      ???
-
 
   extension [A](io: IO[A])
     def onErrorTap(pf: PartialFunction[Throwable, IO[Unit]]): IO[A] =
@@ -142,6 +138,11 @@ object MonixLikeExtensions:
       io.attemptTap:
         case Right(_) => IO.unit
         case Left(t) => pf.applyOrElse(t, _ => IO.unit)
+
+    @deprecated("NOT IMPLEMENTED")
+    def onCancelRaiseError(throwable: => Throwable): IO[A] =
+      //?io.onCancel(IO.raiseError(throwable))
+      ???
 
     def unsafeToCancelableFuture()(using IORuntime): CancelableFuture[A] =
       CancelableFuture.fromPair(io.unsafeToFutureCancelable())
@@ -177,11 +178,9 @@ object MonixLikeExtensions:
 
 
   extension (x: IO.type)
-    @deprecated("Monix compatibility")
     def parMap2[A, B, C](a: IO[A], b: IO[B])(f: (A, B) => C): IO[C] =
       IO.both(a, b).map((a, b) => f(a, b))
 
-    @deprecated("Use IO.both")
     def parZip2[A, B](a: IO[A], b: IO[B]): IO[(A, B)] =
       IO.both(a, b)
 
@@ -196,10 +195,12 @@ object MonixLikeExtensions:
     : IO[M[B]] =
       in.toSeq.parTraverse(f).map(_.to(factory))
 
+    def deferAction[A](toIO: ExecutionContext => IO[A]): IO[A] =
+      IO.executionContext.flatMap(toIO)
+
     def deferFuture[A](future: => Future[A]): IO[A] =
       IO.fromFuture(IO(future))
 
-    //@deprecated("Use more Cats-like fromFutureWithEC", "v2.7")
     def deferFutureAction[A](future: ExecutionContext => Future[A]): IO[A] =
       IO.fromFutureWithEC(ec => IO(future(ec)))
 

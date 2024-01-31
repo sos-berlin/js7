@@ -9,6 +9,7 @@ import js7.base.utils.CatsUtils.Nel
 import scala.jdk.CollectionConverters.*
 
 object RecouplingStreamReaderConfs:
+
   def fromConfig(config: Config): Checked[RecouplingStreamReaderConf] =
     catchExpected[ConfigException]:
       RecouplingStreamReaderConf(

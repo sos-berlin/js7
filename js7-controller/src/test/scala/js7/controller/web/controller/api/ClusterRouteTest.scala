@@ -1,5 +1,8 @@
 package js7.controller.web.controller.api
 
+import cats.effect.unsafe.IORuntime
+import cats.effect.{Deferred, IO}
+import js7.base.catsutils.CatsEffectExtensions.right
 import js7.base.test.{OurTestSuite, TestCatsEffect}
 import js7.cluster.web.ClusterRoute
 import js7.common.pekkohttp.CirceJsonSupport.jsonUnmarshaller
@@ -9,14 +12,10 @@ import js7.controller.web.controller.api.test.RouteTester
 import js7.data.cluster.{ClusterCommand, ClusterNodeState, ClusterState, ClusterWatchingCommand}
 import js7.data.event.Stamped
 import js7.data.node.NodeId
-import cats.effect.{Deferred, IO}
-import cats.effect.unsafe.IORuntime
-import js7.base.catsutils.CatsEffectExtensions.right
 import org.apache.pekko.http.scaladsl.model.MediaTypes.`application/json`
 import org.apache.pekko.http.scaladsl.model.StatusCodes.OK
 import org.apache.pekko.http.scaladsl.model.headers.Accept
 import org.apache.pekko.http.scaladsl.server.Route
-import scala.concurrent.Future
 
 /**
   * @author Joacim Zschimmer

@@ -3,6 +3,7 @@ package js7.base.log
 import cats.effect.{IO, Resource, Sync}
 import cats.syntax.functor.*
 import js7.base.log.CorrelId.generate
+import js7.base.utils.CancelableFuture
 import scala.annotation.{implicitNotFound, unused}
 import scala.concurrent.Future
 import scala.util.NotGiven
@@ -29,6 +30,9 @@ object CanBindCorrelId:
 
   implicit def future[R]: CanBindCorrelId[Future[R]] =
     FutureCan.asInstanceOf[CanBindCorrelId[Future[R]]]
+
+  implicit def cancelableFuture[R]: CanBindCorrelId[CancelableFuture[R]] =
+    CancelableFutureCan.asInstanceOf[CanBindCorrelId[CancelableFuture[R]]]
 
   @inline implicit def forUnit: CanBindCorrelId[Unit] =
     synchronous[Unit]
@@ -83,6 +87,7 @@ object CanBindCorrelId:
         bind(generate())(future)
 
   private object FutureCan extends FutureCan[Future, Any]
+  private object CancelableFutureCan extends FutureCan[CancelableFuture, Any]
 
   implicit def resourceCan[F[_], x, A](implicit F: Sync[F], canBind: CanBindCorrelId[F[x]])
   : CanBindCorrelId[Resource[F, A]] =

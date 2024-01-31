@@ -1,16 +1,12 @@
 package js7.launcher.process
 
 import cats.effect.unsafe.IORuntime
-import cats.effect.{IO, Resource}
+import cats.effect.IO
 import cats.syntax.traverse.*
-import fs2.{Chunk, Stream}
-import java.io.{BufferedOutputStream, FileOutputStream, OutputStreamWriter}
+import fs2.io.file.{Files as Fs2Files, Path as Fs2Path}
+import fs2.Stream
 import java.nio.file.Files.*
 import java.nio.file.Path
-import fs2.io.file.Files as Fs2Files
-import fs2.io.file.Path as Fs2Path
-import java.nio.charset.StandardCharsets
-import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.catsutils.CatsEffectExtensions.joinStd
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.FileUtils.temporaryDirectory

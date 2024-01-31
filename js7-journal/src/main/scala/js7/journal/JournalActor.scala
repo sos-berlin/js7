@@ -3,8 +3,8 @@ package js7.journal
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import js7.base.fs2utils.StreamExtensions.mapParallelBatch
-import js7.base.monixlike.{FutureCancelable, SerialSyncCancelable, SyncCancelable}
 import js7.base.monixlike.MonixLikeExtensions.{scheduleAtFixedRates, scheduleOnce}
+import js7.base.monixlike.{SerialSyncCancelable, SyncCancelable}
 import org.apache.pekko.actor.{Actor, ActorRef, DeadLetterSuppression, Props, Stash}
 //diffx import com.softwaremill.diffx
 import io.circe.syntax.EncoderOps
@@ -15,7 +15,6 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.eventbus.EventPublisher
 import js7.base.generic.Completed
 import js7.base.log.{BlockingSymbol, CorrelId, Logger}
-import js7.base.monixlike.SerialFutureCancelable
 import js7.base.problem.Checked
 import js7.base.problem.Checked.*
 import js7.base.time.ScalaTime.*
@@ -41,9 +40,9 @@ import js7.journal.log.JournalLogger.Loggable
 import js7.journal.watch.JournalingObserver
 import js7.journal.write.{EventJournalWriter, SnapshotJournalWriter}
 import scala.collection.mutable
+import scala.concurrent.Promise
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Deadline, FiniteDuration}
-import scala.concurrent.Promise
 import scala.util.control.NonFatal
 
 /**

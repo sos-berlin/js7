@@ -11,7 +11,6 @@ import js7.base.log.Logger
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.web.Uri
 import js7.common.commandline.CommandLineArguments
-import js7.common.system.startup.JavaMain
 import js7.controller.client.PekkoHttpControllerTextApi
 import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal

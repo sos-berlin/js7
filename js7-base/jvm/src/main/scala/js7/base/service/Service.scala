@@ -120,8 +120,8 @@ object Service:
     runDelays: Seq[FiniteDuration] = defaultRestartDelays)
     (serviceResource: Resource[IO, S])
   : Resource[IO, RestartAfterFailureService[S]] =
-      resource(IO(
-        new RestartAfterFailureService(startDelays, runDelays)(serviceResource)))
+    resource(IO(
+      new RestartAfterFailureService(startDelays, runDelays)(serviceResource)))
 
   trait StoppableByRequest extends Service, js7.base.service.StoppableByRequest
 

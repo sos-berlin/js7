@@ -2,6 +2,7 @@ package js7.journal.web
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
+import cats.syntax.applicativeError.*
 import fs2.Stream
 import izumi.reflect.Tag
 import js7.base.auth.{UserId, ValidUserPermission}

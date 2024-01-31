@@ -14,9 +14,9 @@ import js7.base.io.process.Processes.{RobustlyStartProcess, processToPidOption}
 import js7.base.io.process.{Pid, Processes}
 import js7.base.log.Logger
 import js7.base.system.OperatingSystem.{isMac, isSolaris, isUnix, isWindows}
-import js7.base.test.{OurAsyncTestSuite, OurTestSuite}
-import js7.base.thread.Futures.implicits.*
+import js7.base.test.OurAsyncTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
+import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.data.job.TaskId

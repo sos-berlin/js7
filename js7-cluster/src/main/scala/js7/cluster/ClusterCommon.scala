@@ -10,7 +10,6 @@ import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
-import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{OneTimeToken, OneTimeTokenProvider, SetOnce}

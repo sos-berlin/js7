@@ -1,6 +1,7 @@
 package js7.common.http
 
 import cats.effect.{Deferred, IO, Outcome, Resource}
+import cats.syntax.applicativeError.*
 import fs2.Stream
 import io.circe.syntax.*
 import io.circe.{Decoder, Encoder, Json}
@@ -53,7 +54,6 @@ import org.apache.pekko.http.scaladsl.{ConnectionContext, Http}
 import org.apache.pekko.stream.Materializer
 import org.apache.pekko.util.ByteString
 import org.jetbrains.annotations.TestOnly
-import scala.concurrent.Future
 import scala.concurrent.duration.Deadline.now
 import scala.reflect.ClassTag
 import scala.util.Success

@@ -16,7 +16,7 @@ import js7.base.auth.Admission
 import js7.base.configutils.Configs.*
 import js7.base.crypt.Signed
 import js7.base.io.file.FileUtils.syntax.*
-import js7.base.log.{CorrelId, CorrelIdWrapped, Logger}
+import js7.base.log.{CorrelId, CorrelIdWrapped}
 import js7.base.monixlike.MonixLikeExtensions.{headL, toListL}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}

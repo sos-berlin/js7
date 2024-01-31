@@ -16,7 +16,7 @@ import js7.base.configutils.Configs.*
 import js7.base.io.file.FileUtils.implicits.*
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryFile
-import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
@@ -24,7 +24,6 @@ import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegment
 import js7.common.http.StreamingSupport.*
 import js7.controller.web.controller.api.test.RouteTester
 import cats.effect.unsafe.IORuntime
-import scala.concurrent.Future
 import scala.concurrent.duration.*
 
 /**

@@ -14,7 +14,6 @@ import org.apache.pekko.http.scaladsl.model.MediaTypes.`application/json`
 import org.apache.pekko.http.scaladsl.model.StatusCodes.PayloadTooLarge
 import org.apache.pekko.http.scaladsl.model.headers.Accept
 import org.apache.pekko.http.scaladsl.server.Route
-import scala.concurrent.Future
 
 /**
   * @author Joacim Zschimmer

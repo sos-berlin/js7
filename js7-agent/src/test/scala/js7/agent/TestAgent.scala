@@ -1,7 +1,7 @@
 package js7.agent
 
 import org.apache.pekko.actor.ActorSystem
-import cats.effect.{IO, Outcome, Resource, kernel}
+import cats.effect.{IO, Resource, kernel}
 import js7.agent.RunningAgent.TestWiring
 import js7.agent.TestAgent.*
 import js7.agent.configuration.AgentConfiguration

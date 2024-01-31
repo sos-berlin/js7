@@ -13,7 +13,7 @@ import js7.data.order.Outcome
 import js7.data_for_java.vavr.VavrConverters.*
 import js7.launcher.OrderProcess
 import cats.effect.IO
-import js7.base.catsutils.CatsEffectExtensions.materializeIntoChecked
+import js7.base.catsutils.CatsEffectExtensions.catchIntoChecked
 import scala.reflect.ClassTag
 import scala.util.control.NonFatal
 
@@ -25,7 +25,7 @@ private[internal] final class InternalJobAdapterHelper[J: ClassTag: Tag]:
       .flatMapT(jInternalJob =>
         call(jInternalJob)
           .map(_.toScala.rightAs(()))
-          .materializeIntoChecked
+          .catchIntoChecked
           .flatTap(checked => IO {
             checkedJobOnce := checked.map(_ => jInternalJob)
             checked

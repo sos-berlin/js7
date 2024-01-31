@@ -3,10 +3,11 @@ package js7.base.fs2utils
 import cats.effect.kernel.Resource.ExitCase
 import cats.effect.std.Queue
 import cats.effect.{Concurrent, IO, Ref, Resource, Sync}
+import cats.syntax.applicativeError.*
 import cats.syntax.apply.*
 import cats.syntax.option.*
 import cats.syntax.parallel.*
-import cats.{Applicative, Eq, effect}
+import cats.{Applicative, ApplicativeError, Eq, effect}
 import fs2.{Chunk, Compiler, RaiseThrowable, Stream}
 import js7.base.time.ScalaTime.RichDeadline
 import scala.concurrent.duration.Deadline.now
@@ -93,10 +94,6 @@ object StreamExtensions:
     //          val pair = chunk(i)
     //          pair._1.nonEmpty ? pair
 
-    /** Like IO recoverWith. */
-    def recoverWith(pf: PartialFunction[Throwable, Stream[F, A]])(using F: RaiseThrowable[F])
-    : Stream[F, A] =
-      stream.handleErrorWith(pf orElse (t => Stream.raiseError[F](t)))
 
     def onErrorEvalTap(pf: PartialFunction[Throwable, F[Unit]])(using F: Sync[F]): Stream[F, A] =
       stream.handleErrorWith(t =>
@@ -106,6 +103,11 @@ object StreamExtensions:
     /** Like Monix Observable doOnSubscribe. */
     def onStart(onStart: F[Unit]): Stream[F, A] =
       Stream.exec(onStart) ++ stream
+
+    def interruptWhenF[F2[x] >: F[x]](haltOnCompletion: F2[Unit])
+      (using ApplicativeError[F2, Throwable])
+    : Stream[F2, A] =
+      stream.interruptWhen(haltOnCompletion.attempt)
 
     def logTiming(
       toCount: A => Long = simpleCount,

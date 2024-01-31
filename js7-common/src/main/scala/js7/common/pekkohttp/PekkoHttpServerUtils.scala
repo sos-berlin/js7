@@ -1,6 +1,5 @@
 package js7.common.pekkohttp
 
-import org.apache.pekko.http.scaladsl.model.HttpEntity.Chunk as PekkoChunk
 import cats.effect.kernel.Resource.ExitCase
 import cats.effect.unsafe.IORuntime
 import cats.effect.{Deferred, IO, Resource}
@@ -9,14 +8,14 @@ import io.circe.Encoder
 import io.circe.syntax.EncoderOps
 import izumi.reflect.Tag
 import js7.base.circeutils.CirceUtils.RichJson
+import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.fs2utils.StreamExtensions.mapParallelBatch
+import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.log.{LogLevel, Logger}
 import js7.base.monixlike.MonixLikeExtensions.takeUntilEval
 import js7.base.problem.Checked
-import js7.base.time.ScalaTime.{DurationRichInt, RichDeadline}
-import js7.base.utils.CatsUtils.syntax.{logWhenItTakesLonger, whenItTakesLongerThan}
-import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
+import js7.base.time.ScalaTime.*
+import js7.base.utils.CatsUtils.syntax.whenItTakesLongerThan
 import js7.common.http.PekkoHttpClient.`x-js7-request-id`
 import js7.common.http.StreamingSupport.*
 import js7.common.pekkohttp.StandardDirectives.ioRoute
@@ -24,6 +23,7 @@ import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkoutils.ByteStrings.*
 import js7.common.pekkoutils.ByteStrings.syntax.*
 import org.apache.pekko.http.scaladsl.marshalling.{ToResponseMarshallable, ToResponseMarshaller}
+import org.apache.pekko.http.scaladsl.model.HttpEntity.Chunk as PekkoChunk
 import org.apache.pekko.http.scaladsl.model.headers.Accept
 import org.apache.pekko.http.scaladsl.model.{ContentType, HttpEntity, HttpHeader, MediaType, Uri}
 import org.apache.pekko.http.scaladsl.server.Directives.*
@@ -32,7 +32,6 @@ import org.apache.pekko.http.scaladsl.server.{ContentNegotiator, Directive, Dire
 import org.apache.pekko.util.ByteString
 import scala.annotation.tailrec
 import scala.concurrent.duration.{Deadline, FiniteDuration}
-import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 
 /**
   * @author Joacim Zschimmer

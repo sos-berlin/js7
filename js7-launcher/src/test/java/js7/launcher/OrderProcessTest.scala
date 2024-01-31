@@ -11,7 +11,7 @@ import js7.base.time.ScalaTime.*
 import js7.data.job.JobKey
 import js7.data.order.{OrderId, Outcome}
 import js7.tester.ScalaTestUtils.awaitAndAssert
-import scala.concurrent.{Await, ExecutionContext}
+import scala.concurrent.Await
 import scala.util.Try
 
 final class OrderProcessTest extends OurAsyncTestSuite:

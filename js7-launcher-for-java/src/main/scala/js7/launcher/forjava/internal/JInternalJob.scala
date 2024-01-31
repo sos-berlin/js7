@@ -10,7 +10,6 @@ import js7.data_for_java.common.JavaUtils.Void
 import js7.launcher.StdWriter
 import js7.launcher.forjava.internal.JInternalJob.*
 import js7.launcher.internal.{InternalJob, InternalJobAdapter}
-import scala.compat.java8.FutureConverters.*
 
 @InternalJobAdapter(classOf[JInternalJobAdapter])
 trait JInternalJob:

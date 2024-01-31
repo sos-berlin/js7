@@ -29,7 +29,6 @@ import js7.data.workflow.position.Position
 import cats.effect.IO
 import cats.effect.kernel.Deferred
 import cats.effect.unsafe.IORuntime
-import scala.concurrent.Future
 
 /**
   * @author Joacim Zschimmer

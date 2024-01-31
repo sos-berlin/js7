@@ -1,6 +1,6 @@
 package js7.journal
 
-import js7.base.time.{TestWallClock, Timestamp, WallClock}
+import js7.base.time.WallClock
 
 /**
   * @author Joacim Zschimmer

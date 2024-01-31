@@ -41,7 +41,6 @@ import js7.journal.web.JournalRoute
 import js7.journal.write.{EventJournalWriter, SnapshotJournalWriter}
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import scala.collection.mutable
-import scala.concurrent.Future
 import scala.concurrent.duration.*
 
 /**
