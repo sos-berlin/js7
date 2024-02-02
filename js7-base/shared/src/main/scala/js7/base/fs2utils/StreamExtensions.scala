@@ -39,22 +39,27 @@ object StreamExtensions:
     def +:(stream: Stream[F, A]): Stream[F, B] =
       stream.prependOne(b)
 
-  extension[F[_], A](stream: Stream[F, A])
-    //def +:[A1 >: A](a: A1): Stream[F, A1] =
-    //  prependOne(a)
 
-    def prependOne[A1 >: A](a: A1): Stream[F, A1] =
+  extension[F[_], O](stream: Stream[F, O])
+
+    def prepend[F2[x] >: F[x], O2 >: O](other: Stream[F2, O2]): Stream[F2, O2] =
+      other ++ stream
+
+    def prependOne[A1 >: O](a: A1): Stream[F, A1] =
       Stream.emit[F, A1](a) ++ stream
 
-    def appendOne[A1 >: A](a: A1): Stream[F, A1] =
+    def appendOne[A1 >: O](a: A1): Stream[F, A1] =
       stream ++ Stream.emit[F, A1](a)
 
-    def tapEach(f: A => Unit)(using F: Sync[F]): Stream[F, A] =
+    def onStart(onStart: F[Unit]): Stream[F, O] =
+      Stream.exec(onStart) ++ stream
+
+    def tapEach(f: O => Unit)(using F: Sync[F]): Stream[F, O] =
       stream.evalMap(a => F.delay:
         f(a)
         a)
 
-    def tapEachChunk(f: Chunk[A] => Unit)(using F: Sync[F]): Stream[F, A] =
+    def tapEachChunk(f: Chunk[O] => Unit)(using F: Sync[F]): Stream[F, O] =
       stream
         .chunks
         .evalMap(chunk => F.delay:
@@ -66,9 +71,9 @@ object StreamExtensions:
      *
      * Consecutive equal elements are collapsed to one.
      */
-    def onlyNewest(using Concurrent[F], Eq[A]): Stream[F, A] =
+    def onlyNewest(using Concurrent[F], Eq[O]): Stream[F, O] =
       for
-        last <- Stream.eval(Ref[F].of(none[A]))
+        last <- Stream.eval(Ref[F].of(none[O]))
         output <-
           stream.chunks
             .flatMap(chunk => Stream.fromOption[F](chunk.last))
@@ -81,7 +86,7 @@ object StreamExtensions:
             .changes
       yield output
 
-    //def splitBigByteSeqs[ByteSeq: ByteSequence](chunkSize: Int)(using ByteSeq =:= A): Stream[F, ByteSeq] =
+    //def splitBigByteSeqs[ByteSeq: ByteSequence](chunkSize: Int)(using ByteSeq =:= O): Stream[F, ByteSeq] =
     //  stream.asInstanceOf[Stream[F, ByteSeq]]
     //    .flatMap: byteSeq =>
     //      if byteSeq.length <= chunkSize then
@@ -94,27 +99,34 @@ object StreamExtensions:
     //          val pair = chunk(i)
     //          pair._1.nonEmpty ? pair
 
+    def updateStateWhileInclusive[S](seed: S)(predicate: S => Boolean)(f: (S, O) => S)
+    : Stream[F, O] =
+      updateState(seed)(f)
+        .takeThrough(o => predicate(o._1))
+        .map(_._2)
 
-    def onErrorEvalTap(pf: PartialFunction[Throwable, F[Unit]])(using F: Sync[F]): Stream[F, A] =
+    def updateState[S](seed: S)(f: (S, O) => S): Stream[F, (S, O)] =
+      stream
+        .scan((seed, null.asInstanceOf[O])):
+          case ((state, _), a) => f(state, a) -> a
+        .drop(1) // Drop initial null dummy
+
+    def onErrorEvalTap(pf: PartialFunction[Throwable, F[Unit]])(using F: Sync[F]): Stream[F, O] =
       stream.handleErrorWith(t =>
         Stream.eval:
           pf.applyOrElse(t, _ => F.unit) *> F.raiseError(t))
 
-    /** Like Monix Observable doOnSubscribe. */
-    def onStart(onStart: F[Unit]): Stream[F, A] =
-      Stream.exec(onStart) ++ stream
-
     def interruptWhenF[F2[x] >: F[x]](haltOnCompletion: F2[Unit])
       (using ApplicativeError[F2, Throwable])
-    : Stream[F2, A] =
+    : Stream[F2, O] =
       stream.interruptWhen(haltOnCompletion.attempt)
 
     def logTiming(
-      toCount: A => Long = simpleCount,
+      toCount: O => Long = simpleCount,
       onComplete: (FiniteDuration, Long, ExitCase) => F[Unit],
       startedAt: Deadline = now)
       (using Applicative[F])
-    : Stream[F, A] =
+    : Stream[F, O] =
       Stream.suspend:
         var count = 0L
         stream
@@ -177,6 +189,7 @@ object StreamExtensions:
             yield a
       yield result
 
+    // TODO ---> Try fs2.keepAlive <---
     def insertHeartbeatsOnSlowUpstream(delay: FiniteDuration, heartbeat: A): Stream[IO, A] =
       for
         queue <- Stream.eval:
@@ -228,13 +241,6 @@ object StreamExtensions:
               .map(_.flatten)
               .map(Chunk.from)
         .unchunks
-
-
-  extension(x: Stream.type)
-    /** Like Monix Observable fromAsyncStateAction. */
-    @deprecated("Use unfold")
-    def fromAsyncStateAction[S, A](f: S => IO[(A, S)])(seed: => S): Stream[IO, A] =
-      Stream.unfoldEval(seed)(s => f(s).map(Some(_)))
 
 
   //extension [A](underlying: IO[Stream[IO, A]])

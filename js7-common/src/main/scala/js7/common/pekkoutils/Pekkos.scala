@@ -45,14 +45,14 @@ object Pekkos:
       actorSystem.settings.config.getDuration("js7.pekko.shutdown-timeout").toFiniteDuration)
 
   def terminateAndWait(actorSystem: ActorSystem, timeout: FiniteDuration): Unit =
-    logger.debugCall("terminateAndWait", actorSystem.name)(
+    logger.debugCall(s"terminateAndWait ActorSystem:${actorSystem.name}")(
       try terminateFuture(actorSystem).await(timeout)
       catch { case NonFatal(t) =>
-        logger.warn(s"ActorSystem('${actorSystem.name}').terminate(): ${t.toStringWithCauses}")
+        logger.warn(s"ActorSystem:${actorSystem.name} .terminate(): ${t.toStringWithCauses}")
       })
 
   def terminate(actorSystem: ActorSystem): IO[Unit] =
-    logger.debugIO(s"terminate ActorSystem('${actorSystem.name}')")(
+    logger.debugIO(s"terminate ActorSystem:${actorSystem.name}")(
       IO.fromFuture(IO:
         terminateFuture(actorSystem)
       ).void)
@@ -77,14 +77,14 @@ object Pekkos:
         timeoutPromise.future)
       ).flatMap { _ =>
         if timeoutPromise.isCompleted then
-          logger.debug(s"ActorSystem('${actorSystem.name}') shutdownAllConnectionPools() timed out after ${poolShutdownTimeout.pretty}")
+          logger.debug(s"ActorSystem:${actorSystem.name} shutdownAllConnectionPools() timed out after ${poolShutdownTimeout.pretty}")
         timer.cancel()
         actorSystem.terminate()
       }
 
   def shutDownHttpConnectionPools(actorSystem: ActorSystem): Future[Unit] =
     if actorSystem.hasExtension(Http) then
-      logger.debug(s"ActorSystem('${actorSystem.name}') shutdownAllConnectionPools()")
+      logger.debug(s"ActorSystem:${actorSystem.name} shutdownAllConnectionPools()")
       Http(actorSystem).shutdownAllConnectionPools()
     else
       Future.successful(())

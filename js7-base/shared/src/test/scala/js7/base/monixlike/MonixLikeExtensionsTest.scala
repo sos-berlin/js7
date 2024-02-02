@@ -2,6 +2,7 @@ package js7.base.monixlike
 
 import cats.effect.{Deferred, IO}
 import cats.effect.testkit.TestControl
+import cats.implicits.catsSyntaxApplicativeError
 import cats.syntax.option.*
 import fs2.Stream
 import js7.base.log.Logger
@@ -9,6 +10,7 @@ import js7.base.monixlike.MonixLikeExtensions.*
 import js7.base.monixlike.MonixLikeExtensionsTest.*
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
+import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import js7.base.utils.Tests
 import js7.base.utils.Tests.isIntelliJIdea
 import scala.concurrent.TimeoutException
@@ -86,7 +88,7 @@ final class MonixLikeExtensionsTest extends OurAsyncTestSuite:
       def runStream(stream: Stream[IO, Any]): IO[Vector[Any]] =
         stream
           .timeoutOnSlowUpstream(3.s)
-          .handleErrorWith:
+          .recoverWith:
             case t: TimeoutException => Stream.emit(t.getMessage)
           .compile
           .toVector
@@ -138,6 +140,29 @@ final class MonixLikeExtensionsTest extends OurAsyncTestSuite:
               "java.util.NoSuchElementException: .lastL on empty stream")
       }
     }
+  }
+
+  "Stream object" - {
+    "fromAsyncStateAction" in:
+      case class State(i: Int):
+        def next = State(i + 1)
+
+      def f(state: State): IO[(Int, State)] =
+        IO:
+          val next = state.next
+          state.i -> next
+
+      val stream = Stream.fromAsyncStateAction(f)(State(0))
+      for list <- stream.take(3).compile.toList yield
+        assert(list == List(0, 1, 2))
+
+    "unfoldChunk (similar to fromAsyncStateAction)" in:
+      val list =
+        Stream
+          .unfold(0): i =>
+            (i < 3) ? (i, i + 1)
+          .toList
+      assert(list == List(0, 1, 2))
   }
 
 object MonixLikeExtensionsTest:

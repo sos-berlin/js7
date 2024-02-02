@@ -135,7 +135,7 @@ final class ActivationInhibitorTest extends OurAsyncTestSuite
           _ <- for s <- inhibitor.state yield assert(s == None)
 
           _ <- IO.sleep(1.s)
-          _ <- b.join map:
+          _ <- b.join.map:
             case Outcome.Errored(t) if t.toString == "java.lang.RuntimeException: TEST" => succeed
             case o => fail(s"Unexpected $o")
           _ <- for s <- inhibitor.state yield assert(s == Some(Passive))
@@ -195,7 +195,7 @@ final class ActivationInhibitorTest extends OurAsyncTestSuite
         b <- succeedingActivation(inhibitor, Right(true)).start
         _ <- IO.sleep(1.ms)
         inhibiting <- inhibitor.inhibitActivation(2.s).start
-        _ <- for o <- inhibiting.join.timeoutTo(1.ms, IO("TIMEOUT")) yield assert(o == "TIMEOUT")
+        _ <- for o <- inhibiting.joinStd.timeoutTo(1.ms, IO("TIMEOUT")) yield assert(o == "TIMEOUT")
         _ <- IO.sleep(1.s)
         _ <- for b <- b.joinStd.timeout(1.ms) yield assert(b == Right(true))
         _ <- for o <- inhibiting.joinStd.timeout(1.ms) yield assert(o == Right(false))

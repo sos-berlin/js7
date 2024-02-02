@@ -4,7 +4,7 @@ import cats.effect.unsafe.Scheduler
 import org.apache.pekko.actor.{ActorRef, ActorSystem, Props}
 import org.apache.pekko.pattern.ask
 import org.apache.pekko.util.Timeout
-import cats.effect.{Resource, Sync, SyncIO}
+import cats.effect.{Resource, Sync}
 import cats.syntax.monad.*
 import cats.syntax.traverse.*
 import cats.syntax.parallel.*

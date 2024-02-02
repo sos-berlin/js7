@@ -16,6 +16,7 @@ import js7.proxy.data.event.ProxyEvent
 
 final class ControllerProxy private[ControllerProxy](
   protected val journaledProxy: JournaledProxy[ControllerState],
+  val eventBus: JournaledStateEventBus[ControllerState],
   api: ControllerApi)
 extends
   Service.StoppableByRequest, JournaledProxy.Delegate[ControllerState]:
@@ -47,6 +48,6 @@ object ControllerProxy:
           JournaledProxy.stream(apisResource, fromEventId = None, proxyEventBus.publish, proxyConf),
           proxyConf,
           eventBus.publish)
-        controllerProxy <- Service.resource(IO(new ControllerProxy(journaledProxy, api)))
+        controllerProxy <- Service.resource(IO(new ControllerProxy(journaledProxy, eventBus, api)))
       yield
         controllerProxy

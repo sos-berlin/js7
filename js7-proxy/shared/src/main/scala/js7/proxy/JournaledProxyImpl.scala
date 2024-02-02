@@ -12,13 +12,14 @@ import js7.base.catsutils.CatsEffectUtils
 import js7.base.catsutils.CatsEffectUtils.durationOfIO
 import js7.base.generic.Completed
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.problem.Checked.*
 import js7.base.problem.{Problem, ProblemException}
 import js7.base.service.Service
 import js7.base.session.SessionApi
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.Nel
-import js7.base.utils.ScalaUtils.checkedCast
+import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.HttpClient
 import js7.cluster.watch.api.{ActiveClusterNodeSelector, HttpClusterNodeApi}
@@ -27,24 +28,12 @@ import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventApi, EventId, EventRequest, EventSeqTornProblem, JournaledState, SnapshotableState, Stamped}
 import js7.proxy.JournaledProxy.*
+import js7.proxy.JournaledProxyImpl.*
 import js7.proxy.configuration.ProxyConf
 import js7.proxy.data.event.ProxyEvent.{ProxyCoupled, ProxyCouplingError, ProxyDecoupled}
 import js7.proxy.data.event.{EventAndState, ProxyEvent, ProxyStarted}
 import scala.concurrent.duration.FiniteDuration
 import scala.util.chaining.scalaUtilChainingOps
-import cats.effect.std.Supervisor
-import cats.effect.{Deferred, IO, ResourceIO}
-import fs2.Stream
-import fs2.concurrent.Topic
-import js7.proxy.JournaledProxyImpl.*
-import js7.base.log.Logger
-import js7.base.service.Service
-import js7.base.utils.ScalaUtils.*
-import js7.base.utils.ScalaUtils.syntax.*
-import js7.data.event.{Event, EventId, SnapshotableState}
-import js7.proxy.JournaledProxy.EndOfEventStreamException
-import js7.proxy.configuration.ProxyConf
-import js7.proxy.data.event.EventAndState
 
 private final class JournaledProxyImpl[S <: SnapshotableState[S]] private[JournaledProxyImpl](
   underlyingStream: Stream[IO, EventAndState[Event, S]],
@@ -86,8 +75,9 @@ extends Service.StoppableByRequest, JournaledProxy[S]:
     topic.subscribeAwait(maxQueued = maxQueued getOrElse proxyConf.eventQueueSize)
 
   @deprecated("Prefer subscribe")
-  def stream(maxQueued: Option[Int] = None): Stream[IO, EventAndState[Event, S]] =
-    topic.subscribe(maxQueued = maxQueued getOrElse proxyConf.eventQueueSize)
+  def stream(queueSize: Option[Int] = None): Stream[IO, EventAndState[Event, S]] =
+    logger.debugStream(s"Stream[IO, EventAndState[Event, $S]"):
+      topic.subscribe(maxQueued = queueSize getOrElse proxyConf.eventQueueSize)
 
   def sync(eventId: EventId): IO[Unit] =
     IO.defer:
@@ -118,6 +108,8 @@ extends Service.StoppableByRequest, JournaledProxy[S]:
 
 
 object JournaledProxyImpl:
+
+  private val logger = Logger[this.type]
 
   def resource[S <: SnapshotableState[S]](
     baseStream: Stream[IO, EventAndState[Event, S]],

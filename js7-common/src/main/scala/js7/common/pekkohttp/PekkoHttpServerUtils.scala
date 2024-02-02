@@ -16,6 +16,8 @@ import js7.base.monixlike.MonixLikeExtensions.takeUntilEval
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.syntax.whenItTakesLongerThan
+import js7.common.http.JsonStreamingSupport
+import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.PekkoHttpClient.`x-js7-request-id`
 import js7.common.http.StreamingSupport.*
 import js7.common.pekkohttp.StandardDirectives.ioRoute
@@ -31,7 +33,7 @@ import org.apache.pekko.http.scaladsl.server.PathMatcher.{Matched, Unmatched}
 import org.apache.pekko.http.scaladsl.server.{ContentNegotiator, Directive, Directive0, Directive1, MalformedHeaderRejection, MissingHeaderRejection, PathMatcher, PathMatcher0, Route, UnacceptedResponseContentTypeRejection, ValidationRejection}
 import org.apache.pekko.util.ByteString
 import scala.annotation.tailrec
-import scala.concurrent.duration.{Deadline, FiniteDuration}
+import scala.concurrent.duration.FiniteDuration
 
 /**
   * @author Joacim Zschimmer
@@ -252,6 +254,15 @@ object PekkoHttpServerUtils:
             Matched(path drop prefix.length, ())
           else
             Unmatched
+
+  def completeWithCheckedJsonStream[A: Encoder: Tag](chunkSize: Int)
+    (stream: IO[Checked[Stream[IO, A]]])
+    (using IORuntime)
+  : Route =
+    completeWithCheckedStream(`application/x-ndjson`):
+      stream.map(_.map: stream =>
+        encodeStream(stream, chunkSize = chunkSize)
+          .map(_.toByteString))
 
   def completeWithCheckedStream(contentType: ContentType)
     (checkedStream: IO[Checked[Stream[IO, ByteString]]])

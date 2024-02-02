@@ -96,7 +96,7 @@ extends ControllerApiWithHttp:
     proxyEventBus: StandardEventBus[ProxyEvent] = new StandardEventBus,
     eventBus: JournaledStateEventBus[ControllerState] = new JournaledStateEventBus[ControllerState])
   : ResourceIO[ControllerProxy] =
-    CorrelId.bindIfEmpty(logger.debugResource:
+    /*CorrelId.bindIfEmpty???*/(logger.debugResource:
       ControllerProxy
         .resource(this, apisResource, proxyEventBus, eventBus, proxyConf))
 

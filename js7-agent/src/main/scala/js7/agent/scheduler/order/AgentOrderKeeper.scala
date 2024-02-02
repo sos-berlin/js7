@@ -505,7 +505,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
     changeSubagentAndClusterNodeAndProceedFiber
       .update { fiber =>
         changeSubagentAndClusterNodeAndProceedFiberStop = true
-        fiber.join *>
+        fiber.joinStd *>
           IO.defer:
             changeSubagentAndClusterNodeAndProceedFiberStop = false
             tryForeverChangeSubagentAndClusterNodeAndProceed(event)

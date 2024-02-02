@@ -1,26 +1,28 @@
 package js7.controller.web.controller.api
 
-import org.apache.pekko.http.scaladsl.model.HttpEntity
-import org.apache.pekko.http.scaladsl.model.HttpEntity.Chunk as PekkoChunk
-import org.apache.pekko.http.scaladsl.server.Directives.{complete, get, pathEndOrSingleSlash}
-import org.apache.pekko.http.scaladsl.server.Route
-import org.apache.pekko.http.scaladsl.server.directives.ParameterDirectives.*
-import org.apache.pekko.util.ByteString
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
+import fs2.Stream
+import io.circe.Encoder
 import io.circe.syntax.*
 import js7.base.auth.ValidUserPermission
+import js7.base.catsutils.CatsEffectExtensions.{left, right}
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.data.ByteSequence.ops.*
-import js7.base.log.Logger
-import js7.base.fs2utils.StreamExtensions.*
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
+import js7.base.fs2utils.StreamExtensions.*
+import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.utils.FutureCompletion
 import js7.base.utils.FutureCompletion.syntax.*
-import js7.common.pekkohttp.PekkoHttpServerUtils.{accept, completeIO, completeWithCheckedStream, completeWithIOStream, encodeStream}
-import js7.common.pekkohttp.ByteSequenceStreamExtensions.*
-import js7.common.pekkohttp.StandardMarshallers.*
-import js7.common.pekkoutils.ByteStrings.syntax.*
+import js7.base.utils.ScalaUtils.syntax.RichEitherF
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
+import js7.common.pekkohttp.ByteSequenceStreamExtensions.*
+import js7.common.pekkohttp.PekkoHttpServerUtils.{accept, completeIO, completeWithCheckedJsonStream, completeWithCheckedStream, completeWithIOStream, encodeStream}
+import js7.common.pekkohttp.StandardDirectives.ioRoute
+import js7.common.pekkohttp.StandardMarshallers.*
+import js7.common.pekkohttp.{PekkoHttpServerUtils, StandardDirectives}
+import js7.common.pekkoutils.ByteStrings.syntax.*
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.web.common.ControllerRouteProvider
 import js7.controller.web.controller.api.SnapshotRoute.*
@@ -28,17 +30,13 @@ import js7.data.Problems.SnapshotForUnknownEventIdProblem
 import js7.data.controller.ControllerState
 import js7.data.event.EventId
 import js7.journal.watch.FileEventWatch
-import cats.effect.IO
-import cats.effect.unsafe.IORuntime
-import fs2.Stream
-import io.circe.Encoder
-import js7.base.catsutils.CatsEffectExtensions.{left, right}
-import js7.base.utils.ScalaUtils.syntax.RichEitherF
-import js7.common.pekkohttp.StandardDirectives.ioRoute
-import js7.common.pekkohttp.{PekkoHttpServerUtils, StandardDirectives}
-//import js7.base.data.ByteSequence.nonInheritedOps.toByteSequenceOps
+import org.apache.pekko.http.scaladsl.model.HttpEntity
+import org.apache.pekko.http.scaladsl.model.HttpEntity.Chunk as PekkoChunk
+import org.apache.pekko.http.scaladsl.server.Directives.{complete, get, pathEndOrSingleSlash}
+import org.apache.pekko.http.scaladsl.server.Route
+import org.apache.pekko.http.scaladsl.server.directives.ParameterDirectives.*
+import org.apache.pekko.util.ByteString
 import js7.base.fs2utils.Fs2ChunkByteSequence.*
-import js7.common.http.StreamingSupport.toPekkoSourceForHttpResponse
 
 trait SnapshotRoute extends ControllerRouteProvider:
 
@@ -65,13 +63,12 @@ trait SnapshotRoute extends ControllerRouteProvider:
   //      for state <- checkedState yield
   //        snapshotToHttpEntity(state, filter))
 
-  private def currentSnapshot(filter: SnapshotFilter): Route =
-    completeWithCheckedStream(`application/x-ndjson`):
+  private def currentSnapshot(filter: SnapshotFilter)(using IORuntime): Route =
+    given Encoder[Any] = ControllerState.snapshotObjectJsonCodec
+    completeWithCheckedJsonStream(chunkSize = chunkSize):
       controllerState.flatMapT: controllerState =>
-        given Encoder[Any] = ControllerState.snapshotObjectJsonCodec
         IO.right:
-          encodeStream(filter(controllerState.toSnapshotStream), chunkSize = chunkSize)
-            .map(_.toByteString)
+          filter(controllerState.toSnapshotStream)
             .interruptWhen(shutdownSignaled)
 
   private def historicSnapshot(eventId: EventId): Route =

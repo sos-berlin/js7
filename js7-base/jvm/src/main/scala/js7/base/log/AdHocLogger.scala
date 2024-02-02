@@ -25,6 +25,9 @@ transparent trait AdHocLogger:
   inline def debug(inline msg: String)(using sourcecode.Enclosing): Unit =
     logger.debug(msg)
 
+  inline def trace(inline msg: String)(using sourcecode.Enclosing): Unit =
+    logger.trace(msg)
+
   inline def isEnabled(level: LogLevel)(using sourcecode.Enclosing): Boolean =
     logger.isEnabled(level)
 

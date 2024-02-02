@@ -1,6 +1,7 @@
 package js7.common.http
 
 import cats.effect.IO
+import cats.implicits.catsSyntaxApplicativeError
 import cats.syntax.flatMap.*
 import fs2.Stream
 import izumi.reflect.Tag
@@ -241,7 +242,7 @@ abstract class RecouplingStreamReader[
           .map(_.map(obs =>
             idleTimeout.fold(obs)(idleTimeout => obs
               .timeoutOnSlowUpstream(idleTimeout)  // cancels upstream!
-              .handleErrorWith { case t: UpstreamTimeoutException =>
+              .recoverWith { case t: UpstreamTimeoutException =>
                 logger.debug(s"💥 $api: ${t.toString}")
                 // This should let Akka close the TCP connection to abort the stream
                 Stream.empty

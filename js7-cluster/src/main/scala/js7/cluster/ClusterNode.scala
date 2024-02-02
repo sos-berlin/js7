@@ -98,7 +98,7 @@ extends Service.StoppableByRequest:
             logger.debug(prblm.toString)
         .start
         .flatMap(fiber =>
-          IO.race(recoveryStopRequested.get, fiber.join))
+          IO.race(recoveryStopRequested.get, fiber.joinStd))
         .*>(untilStopRequested)
         .guaranteeCaseLazy(outcome =>
           stopRecovery(ProgramTermination()/*???*/) *>

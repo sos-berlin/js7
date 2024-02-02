@@ -25,7 +25,7 @@ import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.bytesPerSecondString
-import js7.base.utils.CatsUtils.syntax.whenItTakesLonger
+import js7.base.utils.CatsUtils.syntax.{logWhenItTakesLonger, whenItTakesLonger}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Atomic, ByteSequenceToLinesStream}
 import js7.base.web.{HttpClient, Uri}
@@ -54,6 +54,7 @@ import org.apache.pekko.http.scaladsl.{ConnectionContext, Http}
 import org.apache.pekko.stream.Materializer
 import org.apache.pekko.util.ByteString
 import org.jetbrains.annotations.TestOnly
+import scala.concurrent.duration.Deadline
 import scala.concurrent.duration.Deadline.now
 import scala.reflect.ClassTag
 import scala.util.Success
@@ -110,9 +111,9 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
     get_[HttpResponse](uri, StreamingJsonHeaders)
       .map(_.entity.withoutSizeLimit.dataBytes.toFs2Stream)
       .pipeIf(logger.underlying.isDebugEnabled)(_.map(_
-        .logTiming(_.size, (d, s, _) => IO:
-          if d >= 1.s && s > 10_000_000 then
-            logger.debug(s"get $uri: ${bytesPerSecondString(d, s)}"))))
+        .logTiming(_.size, (d, n, _) => IO:
+          if d >= 1.s && n > 10_000_000 then
+            logger.debug(s"get $uri: ${bytesPerSecondString(d, n)}"))))
       .map(_
         .flatMap(new ByteSequenceToLinesStream))
       .map(_.recoverWith(ignoreIdleTimeout orElse endStreamOnNoMoreElementNeeded))
@@ -282,7 +283,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
                 case _ => http.defaultClientHttpsContext
               val future = http.singleRequest(req, httpsCtx)
               val cancel = IO.executionContext.flatMap(implicit ec => IO:
-                logger.debug(s"    ⚫️ $responseLogPrefix cancel ...")
+                logger.debug(s"    ⚫️$responseLogPrefix cancel ...")
                 // TODO Pekko's max-open-requests may be exceeded when new requests are opened
                 //  while many canceled requests are still not completed by Pekko
                 //  until the server has responded or some Pekko (idle connection) timed out.

@@ -227,19 +227,19 @@ object MonixLikeExtensions:
         .takeWhile(_.isRight)
         .map(_.asInstanceOf[Right[Unit, A]].value)
 
-    def headL(using fs2.Compiler[F, F])(using Functor[F]): F[A] =
+    def headL(using fs2.Compiler[F, F], Functor[F]): F[A] =
       stream.head.compile.last
         .map(_.getOrElse(throw new NoSuchElementException(".headL on empty stream")))
 
-    def lastL(using fs2.Compiler[F, F])(using Functor[F]): F[A] =
+    def lastL(using fs2.Compiler[F, F], Functor[F]): F[A] =
       stream.last.compile.last
         .map(_.flatten)
         .map(_.getOrElse(throw new NoSuchElementException(".lastL on empty stream")))
 
-    def toListL(using fs2.Compiler[F, F])(using Functor[F]): F[List[A]] =
+    def toListL(using fs2.Compiler[F, F], Functor[F]): F[List[A]] =
       stream.compile.toList
 
-    def completedL(using fs2.Compiler[F, F])(using Functor[F]): F[Unit] =
+    def completedL(using fs2.Compiler[F, F], Functor[F]): F[Unit] =
       stream.compile.drain
 
 
@@ -260,5 +260,13 @@ object MonixLikeExtensions:
                 case None => Pull.done
           go(timedPull)
         .stream
+
+
+  extension(x: Stream.type)
+    /** Like Monix Observable fromAsyncStateAction. */
+    def fromAsyncStateAction[S, A](f: S => IO[(A, S)])(seed: => S): Stream[IO, A] =
+      Stream.unfoldEval(seed): s =>
+        f(s).map(Some(_))
+
 
   final class UpstreamTimeoutException(msg: String) extends TimeoutException(msg)

@@ -3,7 +3,7 @@ package js7.common.http
 import cats.effect
 import cats.effect.{IO, Resource}
 import fs2.Stream
-import fs2.interop.reactivestreams.*
+import fs2.interop.reactivestreams.{PublisherOps, StreamOps}
 import izumi.reflect.Tag
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
@@ -48,9 +48,8 @@ object StreamingSupport:
 
 
   extension [Out, Mat](source: Source[Out, Mat])
-    def toFs2Stream(implicit m: Materializer): Stream[IO, Out] =
-      val publisher = source.runWith(Sink.asPublisher(fanout = false))
-      fromPublisher[IO, Out](publisher, bufferSize = 1)
-        .onFinalizeCase:
-          case Resource.ExitCase.Succeeded => IO.unit
-          case exitCase => IO { logger.trace(s"toFs2Stream: $exitCase") }
+    def toFs2Stream(using Tag[Out], Materializer): Stream[IO, Out] =
+      logger.traceStream:
+        Stream.suspend:
+          val publisher = source.runWith(Sink.asPublisher(fanout = false))
+          publisher.toStreamBuffered[IO](bufferSize = 1)

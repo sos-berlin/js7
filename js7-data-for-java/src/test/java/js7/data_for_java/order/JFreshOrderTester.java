@@ -19,6 +19,17 @@ final class JFreshOrderTester {
     private JFreshOrderTester() {}
 
     static void test() {
+        test1();
+        test2();
+    }
+
+    private static void test1() {
+        JFreshOrder order = JFreshOrder.of(OrderId.of("ORDER"), WorkflowPath.of("WORKFLOW"));
+        assertThat(order.id(), equalTo(OrderId.of("ORDER")));
+        assertThat(order.asScala().workflowPath(), equalTo(WorkflowPath.of("WORKFLOW")));
+    }
+
+    private static void test2() {
         Optional<JPositionOrLabel> startPosition =
             Optional.of(getOrThrow(JPosition.fromList(asList(1))));
         Set<JPositionOrLabel> stopPositions = new HashSet<>(Arrays.<JPositionOrLabel>asList(

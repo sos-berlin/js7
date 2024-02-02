@@ -25,12 +25,46 @@ final class StreamExtensionsTest extends OurAsyncTestSuite:
       val stream = ("one" +: Stream[Pure, Int](2, 3))
       assert(stream.toList == List("one", 2, 3))
 
+    "prepend" in:
+      val intStream: Stream[Pure, Int] = Stream(3, 4).prepend(Stream(1, 2))
+      assert(intStream.compile.to(Seq) == Seq(1, 2, 3, 4))
+
+      val anyStream = Stream(3, 4).prepend(Stream("one", "two"))
+      assert(anyStream.toList == List("one", "two", 3, 4))
+
+      locally:
+        val stream = Stream(1, 2)
+        val empty = Stream.empty
+        val result = stream.prepend(empty)
+        assert(result.toList == stream.toList)
+        //does not compile: assert(Stream(1, 2).prepend(Stream.empty) == Stream(1, 2))
+
     "prependOne" in:
-      val intStream: Stream[Pure, Int] = Stream(2, 3).prependOne(1)
-      assert(intStream.compile.to(Seq) == Seq(1, 2, 3))
+      val intStream = Stream(2, 3).prependOne(1)
+      assert(intStream.toList == List(1, 2, 3))
 
       val anyStream = Stream(2, 3).prependOne("one")
       assert(anyStream.toList == List("one", 2, 3))
+
+    "appendOne" in:
+      val intStream = Stream(1, 2).appendOne(3)
+      assert(intStream.toList == List(1, 2, 3))
+
+      val anyStream = Stream(1, 2).appendOne("three")
+      assert(anyStream.toList == List(1, 2, "three"))
+
+    "onStart" in:
+      val subscribed = Atomic(0)
+      val stream: Stream[IO, Int] =
+        Stream(1, 2, 3).covary[IO]
+          .onStart:
+            IO:
+              subscribed += 1
+      for
+        a <- stream.compile.toList
+        b <- stream.compile.toList
+        _ <- IO(assert(subscribed.get == 2 && a == List(1, 2, 3) && a == b))
+      yield succeed
 
     "onlyNewest" - {
       "onlyNewest" in:
@@ -238,22 +272,6 @@ final class StreamExtensionsTest extends OurAsyncTestSuite:
         yield
           assert(list == List.from(nRange.map(_ + 1).take(limit)))
     }
-
-    "onStart" in:
-      val subscribed = Atomic(0)
-      val stream: Stream[IO, Int] =
-        Stream(1, 2, 3)
-          .covary[IO]
-          .onStart:
-            IO:
-              subscribed += 1
-
-      for
-        a <- stream.compile.toList
-        b <- stream.compile.toList
-        _ <- IO(assert(subscribed.get == 2 && a == List(1, 2, 3) && a == b))
-      yield succeed
-
 
     "logTiming" in:
       val n = 7777

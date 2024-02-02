@@ -8,7 +8,8 @@ import izumi.reflect.Tag
 import java.util.concurrent.TimeoutException
 import js7.base.catsutils.SyncDeadline
 import js7.base.catsutils.SyncDeadline.now
-import js7.base.fs2utils.StreamExtensions.{+:, fromAsyncStateAction}
+import js7.base.fs2utils.StreamExtensions.+:
+import js7.base.monixlike.MonixLikeExtensions.fromAsyncStateAction
 import js7.base.fs2utils.StreamUtils
 import js7.base.fs2utils.StreamUtils.closeableIteratorToStream
 import js7.base.log.Logger
@@ -56,53 +57,57 @@ trait RealEventWatch extends EventWatch:
     onlyAcks: Boolean)
   : Stream[IO, Stamped[KeyedEvent[E]]] =
     val originalTimeout = request.timeout
-    var deadline = none[SyncDeadline]
 
-    def next(lazyRequest: () => EventRequest[E])
-    : IO[(Option[Stream[IO, Stamped[KeyedEvent[E]]]], () => EventRequest[E])] =
-      SyncDeadline.now.flatMap(now => IO.defer:
-        val request = lazyRequest()  // Access now in previous iteration computed values lastEventId and limit (see below)
-        // Timeout is renewed after every fetched event
-        deadline = request.timeout.map(t => now + (t min EventRequest.LongTimeout))
-        if request.limit <= 0 then
-          NoMoreStream
-        else
-          when[E](request, predicate).flatMap:
-            case TearableEventSeq.Torn(tornAfter) =>
-              IO.raiseError:
-                if onlyAcks && isActiveNode then
-                  AckFromActiveClusterNodeProblem.throwable
-                else
-                  new TornException(after = request.after, tornEventId = tornAfter)
+    val streamOfStreams = Stream
+      .unfoldEval(IO.pure(request)): lazyRequest =>
+        lazyRequest.flatMap: request =>
+          SyncDeadline
+            .useNow: now ?=>
+              request.timeout.map(t => now + (t min EventRequest.LongTimeout))
+            .flatMap: deadline =>
+              // Access now the in previous iteration computed values lastEventId and limit (see below)
+              // Timeout is renewed after every fetched event
+              if request.limit <= 0 then
+                IO.none
+              else
+                when[E](request, predicate).flatMap:
+                  case TearableEventSeq.Torn(tornAfter) =>
+                    IO.raiseError:
+                      if onlyAcks && isActiveNode then
+                        AckFromActiveClusterNodeProblem.throwable
+                      else
+                        new TornException(after = request.after, tornEventId = tornAfter)
 
-            case EventSeq.Empty(lastEventId) =>
-              SyncDeadline.use(implicit now =>
-                val remaining = deadline.map(_.timeLeft)
-                (remaining.forall(_.isPositive) ? Stream.empty,
-                  () => request.copy[E](
-                    after = lastEventId,
-                    timeout = deadline.map(_.timeLeftOrZero))))
+                  case EventSeq.Empty(lastEventId) =>
+                    SyncDeadline
+                      .useNow: now ?=>
+                        deadline.map(_.timeLeft)
+                      .map: remaining =>
+                        remaining.forall(_.isPositive) ?
+                          (Stream.empty,
+                            SyncDeadline.useNow: now ?=>
+                              request.copy[E](
+                                after = lastEventId,
+                                timeout = deadline.map(_.timeLeftOrZero)))
 
-            case EventSeq.NonEmpty(events) =>
-              IO:
-                if events.isEmpty then throw new IllegalStateException("EventSeq.NonEmpty(EMPTY)")  // Do not loop
-                val iterator = if onlyAcks then lastOfIterator(events) else events
-                var lastEventId = request.after
-                var limit = request.limit
-                val stream = closeableIteratorToStream(iterator)
-                  .map { o =>
-                    lastEventId = o.eventId
-                    limit -= 1
-                    o
-                  }
-                // Closed-over lastEventId and limit are updated as stream is consumed,
-                // therefore defer access to final values (see above)
-                (Some(stream),
-                  () => request.copy[E](after = lastEventId, limit = limit, timeout = originalTimeout)))
-
-    Stream.fromAsyncStateAction(next)(() => request)
-      .takeWhile(_.nonEmpty)  // Take until limit reached (NoMoreStream) or timeout elapsed
-      .map(_.get).flatten
+                  case EventSeq.NonEmpty(events) =>
+                    IO:
+                      if events.isEmpty then
+                        throw new IllegalStateException("EventSeq.NonEmpty(EMPTY)")  // Avoid loop
+                      val iterator = if onlyAcks then lastOfIterator(events) else events
+                      var lastEventId = request.after
+                      var limit = request.limit
+                      val stream = closeableIteratorToStream(iterator)
+                        .map: o =>
+                          lastEventId = o.eventId
+                          limit -= 1
+                          o
+                      // Closed-over lastEventId and limit are updated as stream is consumed,
+                      // therefore defer access to final values (see above)
+                      Some((stream,
+                        IO(request.copy[E](after = lastEventId, limit = limit,
+                          timeout = originalTimeout))))
+    streamOfStreams.flatten
 
   final def observeEventIds(maybeTimeout: Option[FiniteDuration])
   : IO[Checked[Stream[IO, EventId]]] =
@@ -118,27 +123,28 @@ trait RealEventWatch extends EventWatch:
 
     def next(lazyAfter: () => (EventId, Option[FiniteDuration]))
     : IO[(Option[Stream[IO, EventId]], () => (EventId, Option[FiniteDuration]))] =
-      SyncDeadline.use(implicit now =>
-        // Timeout is renewed after every fetched event
-        val (after, maybeTimeout) = lazyAfter()
-        deadline = maybeTimeout.map(t => now + (t min EventRequest.LongTimeout))
-        after
-      ).flatMap: after =>
-        committedEventIdSync.whenAvailable(after, deadline.map(_.toCatsDeadline))
-          .flatMap:
-            case false =>
-              SyncDeadline.use(implicit now =>
-                val remaining = deadline.map(_.timeLeft)
-                logger.debug("committedEventIdSync.whenAvailable returned false" +
-                  remaining.fold("")(o => ", remaining=" + o.pretty))
-                (remaining.forall(_.isPositive) ? Stream.empty,
-                  () => after -> deadline.map(_.timeLeftOrZero)))
+      SyncDeadline
+        .useNow: now ?=>
+          // Timeout is renewed after every fetched event
+          val (after, maybeTimeout) = lazyAfter()
+          deadline = maybeTimeout.map(t => now + (t min EventRequest.LongTimeout))
+          after
+        .flatMap: after =>
+          committedEventIdSync.whenAvailable(after, deadline.map(_.toCatsDeadline))
+            .flatMap:
+              case false =>
+                SyncDeadline.useNow: now ?=>
+                  val remaining = deadline.map(_.timeLeft)
+                  logger.debug("committedEventIdSync.whenAvailable returned false" +
+                    remaining.fold("")(o => ", remaining=" + o.pretty))
+                  (remaining.forall(_.isPositive) ? Stream.empty,
+                    () => after -> deadline.map(_.timeLeftOrZero))
 
-            case true =>
-              IO:
-                val lastEventId = lastAddedEventId
-                (Some(Stream.emit(lastEventId)),
-                  () => lastEventId -> originalTimeout)
+              case true =>
+                IO:
+                  val lastEventId = lastAddedEventId
+                  (Some(Stream.emit(lastEventId)),
+                    () => lastEventId -> originalTimeout)
 
     val lastEventId = lastAddedEventId
 
@@ -198,9 +204,9 @@ trait RealEventWatch extends EventWatch:
     collect: PartialFunction[AnyKeyedEvent, A])
   : IO[TearableEventSeq[CloseableIterator, A]] =
     SyncDeadline
-      .use(implicit now =>
+      .useNow: now ?=>
         // Protected against Timestamp overflow
-        request.timeout.map(t => now + t.min(EventRequest.LongTimeout)))
+        request.timeout.map(t => now + t.min(EventRequest.LongTimeout))
       .flatMap: deadline =>
         whenAnyKeyedEvents2(request.after, deadline, request.delay, collect, request.limit,
           maybeTornOlder = request.tornOlder)
@@ -243,9 +249,9 @@ trait RealEventWatch extends EventWatch:
               }
 
             case empty @ EventSeq.Empty(lastEventId) =>
-              SyncDeadline.now.flatMap(implicit now => IO.defer:
-                if deadline.forall(_.hasTimeLeft) then
-                  val preventOverheating =
+              SyncDeadline
+                .useNow: now ?=>
+                  deadline.forall(_.hasTimeLeft) ? (
                     if lastEventId < committedEventIdSync.last then
                       // May happen due to race condition ???
                       val delay = overheatingDurations.next()
@@ -255,11 +261,12 @@ trait RealEventWatch extends EventWatch:
                         s" unexpected $empty, delaying ${delay.pretty}")
                       delay
                     else
-                      ZeroDuration
-
-                  untilNonEmpty(lastEventId).delayBy(preventOverheating)
-                else
-                  IO.pure(EventSeq.Empty(lastEventId)))
+                      ZeroDuration)
+                .flatMap:
+                  case Some(preventOverheating) =>
+                    untilNonEmpty(lastEventId).delayBy(preventOverheating) // Brake
+                  case None =>
+                    IO.pure(EventSeq.Empty(lastEventId)) // Repeat without delay
 
           case o: TearableEventSeq.Torn =>
             IO.pure(o)
@@ -346,7 +353,6 @@ trait RealEventWatch extends EventWatch:
 
 
 object RealEventWatch:
-  private val NoMoreStream = IO.pure((None, () => throw new NoSuchElementException/*dead code*/))
   private val logger = Logger[this.type]
 
   private def lastOfIterator[A <: AnyRef](iterator: CloseableIterator[A]): CloseableIterator[A] =

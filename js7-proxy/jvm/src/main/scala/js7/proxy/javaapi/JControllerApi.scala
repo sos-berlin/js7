@@ -322,17 +322,23 @@ final class JControllerApi(val asScala: ControllerApi, config: Config)
 
   @Nonnull
   def runClusterWatch(@Nonnull clusterWatchId: ClusterWatchId): CompletableFuture[Void] =
-    startClusterWatch(clusterWatchId, _ => ())
-      .thenCompose(_
-        .untilStopped
+    runIO:
+      startClusterWatch_(clusterWatchId, _ => ())
+        .flatTap(_.untilStopped)
         .as(Void)
-        .unsafeToCompletableFuture())
 
   @Nonnull
   def startClusterWatch(
     @Nonnull clusterWatchId: ClusterWatchId,
     @Nonnull onUndecidableClusterNodeLoss: Consumer[ClusterNodeLossNotConfirmedProblem])
   : CompletableFuture[ClusterWatchService] =
+    runIO:
+      startClusterWatch_(clusterWatchId, onUndecidableClusterNodeLoss)
+
+  private def startClusterWatch_(
+    clusterWatchId: ClusterWatchId,
+    onUndecidableClusterNodeLoss: Consumer[ClusterNodeLossNotConfirmedProblem])
+  : IO[ClusterWatchService] =
     clusterWatchService
       .update:
         case Some(service) => IO.some(service)
@@ -346,7 +352,6 @@ final class JControllerApi(val asScala: ControllerApi, config: Config)
             .toAllocated
             .map(Some(_))
       .map(_.get.allocatedThing)
-      .unsafeToCompletableFuture()
 
   @Nonnull
   def stopClusterWatch: CompletableFuture[Void] =
@@ -361,13 +366,12 @@ final class JControllerApi(val asScala: ControllerApi, config: Config)
   @javaApi
   def manuallyConfirmNodeLoss(lostNodeId: NodeId, confirmer: String)
   : CompletableFuture[VEither[Problem, Void]] =
-    clusterWatchService.value
-      .flatMap:
-        case None => IO.left(Problem("No ClusterWatchService"))
-        case Some(allo) => allo.allocatedThing.manuallyConfirmNodeLoss(lostNodeId, confirmer)
-      .map(_.toVoidVavr)
-      .unsafeToCompletableFuture()
-
+    runIO:
+      clusterWatchService.value
+        .flatMap:
+          case None => IO.left(Problem("No ClusterWatchService"))
+          case Some(allo) => allo.allocatedThing.manuallyConfirmNodeLoss(lostNodeId, confirmer)
+        .map(_.toVoidVavr)
 
   private def runIO[A](io: IO[A]): CompletableFuture[A] =
-    CorrelId.bindNew(io.unsafeToCancelableFuture()).asCompletableFuture
+    CorrelId.bindNew(io).unsafeToCompletableFuture()

@@ -1,20 +1,18 @@
 package js7.proxy
 
-import cats.effect.std.Supervisor
-import cats.effect.{Deferred, IO, Resource, ResourceIO}
+import cats.effect.{IO, Resource, ResourceIO}
 import cats.syntax.applicativeError.*
 import cats.syntax.flatMap.*
 import cats.syntax.option.*
 import fs2.Stream
-import fs2.concurrent.Topic
-import js7.base.catsutils.CatsEffectExtensions.{joinStd, right}
-import js7.base.catsutils.CatsEffectUtils
+import izumi.reflect.Tag
+import js7.base.catsutils.CatsEffectExtensions.right
 import js7.base.catsutils.CatsEffectUtils.durationOfIO
 import js7.base.generic.Completed
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.problem.Checked.*
 import js7.base.problem.{Problem, ProblemException}
-import js7.base.service.Service
 import js7.base.session.SessionApi
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.Nel
@@ -30,15 +28,17 @@ import js7.proxy.JournaledProxy.*
 import js7.proxy.configuration.ProxyConf
 import js7.proxy.data.event.ProxyEvent.{ProxyCoupled, ProxyCouplingError, ProxyDecoupled}
 import js7.proxy.data.event.{EventAndState, ProxyEvent, ProxyStarted}
+import org.apache.pekko
 import scala.concurrent.duration.FiniteDuration
 import scala.util.chaining.scalaUtilChainingOps
+import scala.util.control.NonFatal
 
 trait JournaledProxy[S <: SnapshotableState[S]]:
 
   def currentState: S
 
   @deprecated("Prefer subscribe?")
-  def stream(maxQueued: Option[Int] = None): Stream[IO, EventAndState[Event, S]]
+  def stream(queueSize: Option[Int] = None): Stream[IO, EventAndState[Event, S]]
 
   def subscribe(maxQueued: Option[Int] = None)
   : Resource[IO, Stream[IO, EventAndState[Event, S]]]
@@ -97,16 +97,17 @@ object JournaledProxy:
                       dropEventsUntilRequestedEventIdAndReinsertProxyStarted(obs, _)
                   .map(Right.apply)
                   .recoverWith:
-                    case t if fromEventId.isEmpty || !isTorn(t) =>
+                    case t: pekko.stream.AbruptTerminationException => Stream.raiseError(t)
+                    case NonFatal(t) if fromEventId.isEmpty || !isTorn(t) => Stream.suspend:
                       val continueWithState =
                         if isTorn(t) then
                           logger.error(t.toStringWithCauses)
-                          logger.warn("Restarting observation from a new snapshot, loosing some events")
+                          logger.warn("Restarting stream from a new snapshot, loosing some events")
                           None
                         else
                           logger.warn(t.toStringWithCauses)
                           if t.getStackTrace.nonEmpty then logger.debug(t.toStringWithCauses, t)
-                          logger.debug("Restarting observation and try to continue seamlessly after=" +
+                          logger.debug("Restarting stream and try to continue seamlessly after=" +
                             EventId.toString(state.eventId))
                           Some(lastState)
                       Stream.emit(Left(continueWithState))
@@ -204,8 +205,8 @@ object JournaledProxy:
     def currentState: S =
       journaledProxy.currentState
 
-    def stream(maxQueued: Option[Int] = None): Stream[IO, EventAndState[Event, S]] =
-      journaledProxy.stream(maxQueued = maxQueued)
+    def stream(queueSize: Option[Int] = None): Stream[IO, EventAndState[Event, S]] =
+      journaledProxy.stream(queueSize = queueSize)
 
     def subscribe(maxQueued: Option[Int] = None)
     : Resource[IO, Stream[IO, EventAndState[Event, S]]] =

@@ -6,6 +6,7 @@ import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.catsutils.OurIORuntime
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.system.startup.StartUp
 import js7.base.utils.CatsUtils.*
 import js7.base.utils.{HasCloser, Lazy}
@@ -43,8 +44,8 @@ extends HasCloser:
   private lazy val actorSystem = actorSystemLazy()
 
   onClose:
-    logger.debug("close JS7 JProxyContext")
-    for a <- actorSystemLazy do Pekkos.terminateAndWait(a)
+    logger.debugCall("close JS7 JProxyContext"):
+      for a <- actorSystemLazy do Pekkos.terminateAndWait(a)
 
   @javaApi @Nonnull
   def newControllerApi(

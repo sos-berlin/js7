@@ -37,5 +37,5 @@ object CopyInputStreamToStringChannel:
             channel.closeWithElement(Left(t)).void
 
           case Outcome.Canceled() =>
-            logger.debug("Canceled")
+            logger.debug(s"$outerr canceled")
             channel.close.void

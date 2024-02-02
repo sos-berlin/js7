@@ -31,22 +31,24 @@ final class StreamingSupportTest extends OurAsyncTestSuite:
         yield assert:
           result == 6 && closed == 1)
 
-  "Terminate a Stream originating from Future" in:
-    val config = config"pekko.scheduler.tick-duration = 1.ms"
-    actorSystemResource("StreamingSupportTest", config = config)
-      .use { implicit actorSystem =>
-        var last = -1
-        for
-          stream <- IO.fromFuture(IO(Future:
-            Source
-              .tick(0.s, 1.ms, ())
-              .zip(Source(1 to Int.MaxValue))
-              .map(_._2)
-              .map: i =>
-                last = i
-                i
-              .toFs2Stream))
-          list <- stream.take(3).compile.toList
-        yield
-          assert(list == List(1, 2, 3) && last == 3)
-      }
+  "toFs2Stream" - {
+    "Terminate a Stream originating from a Future" in:
+      val config = config"pekko.scheduler.tick-duration = 1.ms"
+      actorSystemResource("StreamingSupportTest", config = config)
+        .use { implicit actorSystem =>
+          var last = -1
+          for
+            stream <- IO.fromFuture(IO(Future:
+              Source
+                .tick(0.s, 1.ms, ())
+                .zip(Source(1 to Int.MaxValue))
+                .map(_._2)
+                .map: i =>
+                  last = i
+                  i
+                .toFs2Stream))
+            list <- stream.take(3).compile.toList
+          yield
+            assert(list == List(1, 2, 3) && last == 3)
+        }
+  }

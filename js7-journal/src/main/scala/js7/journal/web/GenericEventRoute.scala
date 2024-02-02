@@ -115,8 +115,7 @@ trait GenericEventRoute extends RouteProvider:
       (implicit s: JsonEntityStreamingSupport)
     : Route =
       parameter("timeout" ? defaultJsonSeqChunkTimeout) { timeout =>
-        implicit val x: ToEntityMarshaller[EventId] = jsonSeqMarshaller
-
+        //implicit val x: ToEntityMarshaller[EventId] = jsonSeqMarshaller
         completeWithCheckedStream(`application/x-ndjson`):
           eventWatch
             .observeEventIds(Some(timeout))
@@ -164,6 +163,7 @@ trait GenericEventRoute extends RouteProvider:
             val tailRequest = request.copy[Event](
               after = head.eventId,
               limit = request.limit - 1,
+              // FIXME it should be max, not min:
               delay = (request.delay - runningSince.elapsed) min ZeroDuration)
 
             Right(encodeAndHeartbeatStream(

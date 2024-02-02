@@ -161,8 +161,7 @@ extends AutoCloseable:
   : Stream[IO, PositionAnd[ByteArray]] =
     for
       jsonSeqReader <- Stream.resource(InputStreamJsonSeqReader.resource(journalFile))
-      now <- Stream.eval(SyncDeadline.now)
-      until = now + timeout
+      until <- Stream.eval(SyncDeadline.useNow(now ?=> now + timeout))
       o <- observeFile2(jsonSeqReader, position, until, markEOF, onlyAcks)
     yield
       o

@@ -9,18 +9,19 @@ import cats.syntax.flatMap.*
 import com.typesafe.scalalogging.Logger as ScalaLogger
 import fs2.Stream
 import izumi.reflect.Tag
-import js7.base.fs2utils.StreamExtensions.tapEachChunk
+import js7.base.fs2utils.StreamExtensions.onStart
 import js7.base.log.Log4j.{initialize, shutdown}
 import js7.base.log.Slf4jUtils.syntax.*
 import js7.base.problem.Problem
 import js7.base.system.startup.StartUp
-import js7.base.time.ScalaTime.{DurationRichLong, RichDuration}
+import js7.base.time.ScalaTime.{DurationRichLong, RichDeadline, RichDuration}
+import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichThrowable}
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.base.utils.{Once, Tests}
 import org.slf4j.{LoggerFactory, Marker, MarkerFactory}
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.{Deadline, FiniteDuration}
 import scala.reflect.ClassTag
 
 object Logger extends AdHocLogger:
@@ -233,9 +234,9 @@ object Logger extends AdHocLogger:
       : Stream[IO, A] =
         logStream[A](logger, LogLevel.Info, function, args)(stream)
 
-      def debugStream[A](stream: Stream[IO, A])(implicit src: sourcecode.Name)
+      def debugStream[A](stream: Stream[IO, A])(implicit src: sourcecode.Name, A: Tag[A])
       : Stream[IO, A] =
-        debugStream(src.value + ": Stream")(stream)
+        debugStream(s"${src.value}: Stream[IO, ${A.tag.shortName}]")(stream)
 
       def debugStream[A](function: String, args: => Any = "")(stream: Stream[IO, A])
       : Stream[IO, A] =
@@ -243,7 +244,7 @@ object Logger extends AdHocLogger:
 
       def traceStream[A](stream: Stream[IO, A])(implicit src: sourcecode.Name, A: Tag[A])
       : Stream[IO, A] =
-        traceStream(s"${src.value}: Stream[${A.tag.shortName}]")(stream)
+        traceStream(s"${src.value}: Stream[IO, ${A.tag.shortName}]")(stream)
 
       def traceStream[A](function: String, args: => Any = "")(stream: Stream[IO, A])
       : Stream[IO, A] =
@@ -328,23 +329,23 @@ object Logger extends AdHocLogger:
       (stream: Stream[IO, A])
     : Stream[IO, A] =
       Stream.suspend:
-        var chunkCount, elemCount = 0L
-        Stream
-          .eval:
-            IO.whenA(logger.isEnabled(logLevel))(IO:
+        if !logger.isEnabled(logLevel) then
+          stream
+        else
+          var n, chunks = 0L
+          val startedAt = Deadline.now
+          stream
+            .onStart(IO:
               Logger.logStart(logger, logLevel, function, args))
-          .drop(1)
-          .asInstanceOf[Stream[IO, A]]
-          .tapEachChunk: chunk =>
-            chunkCount += 1
-            elemCount += chunk.size
-          .append:
-            stream
-              .onFinalizeCase: exitCase =>
-                IO.whenA(logger.isEnabled(logLevel))(IO:
-                  Logger.logOutcome(logger, logLevel, function, args, duration = "",
-                    exitCase.toOutcome[IO],
-                    result = s"$chunkCount chunks, $elemCount elements"))
+            .mapChunks: chunk =>
+              n += chunk.size
+              chunks += 1
+              chunk
+            .onFinalizeCase(exitCase => IO:
+              Logger.logOutcome(logger, logLevel, function, args, duration = "",
+                exitCase.toOutcome[IO],
+                result =
+                  s"$chunks chunks, ${itemsPerSecondString(startedAt.elapsed, n, "elems")}"))
 
   private final class StartReturnLogContext(logger: ScalaLogger, logLevel: LogLevel,
     function: String, args: => Any = ""):
@@ -398,15 +399,15 @@ object Logger extends AdHocLogger:
     outcome: Outcome[F, Throwable, A],
     result: => String = "")
   : Unit =
+    lazy val result_ = result
+    def res = result_.nonEmpty ?? " • " + result_
     outcome match
       case Outcome.Errored(t) =>
-        logReturn(logger, logLevel, function, args, duration, "💥️", t.toStringWithCauses)
+        logReturn(logger, logLevel, function, args, duration, "💥️", t.toStringWithCauses + res)
       case Outcome.Canceled() =>
-        logReturn(logger, logLevel, function, args, duration, "⚫️", "Canceled")
+        logReturn(logger, logLevel, function, args, duration, "⚫️", "Canceled" + res)
       case Outcome.Succeeded(_) =>
-        val res = result
-        logReturn(logger, logLevel, function, args, duration, "", "Completed" +
-          (res.nonEmpty ?? " · " + res))
+        logReturn(logger, logLevel, function, args, duration, "", "Completed" + res)
 
   private def logReturn(
     logger: ScalaLogger,
