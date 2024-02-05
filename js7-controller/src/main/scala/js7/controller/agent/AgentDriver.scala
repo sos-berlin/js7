@@ -423,17 +423,18 @@ extends Service.StoppableByRequest:
         .void)
 
   private def directorDriverResource: Resource[IO, DirectorDriver] =
-    for
-      client <- activeClientResource
-      //adoptedEventId <- Resource.eval(IO(state.adoptedEventId))
-      afterEventId <- Resource.eval(agentRefState.map(_.eventId))
-      directorDriver <- DirectorDriver.resource(
-        agentDriver, agentPath, afterEventId,
-        client,
-        dedicateAgentIfNeeded, onCouplingFailed, onCoupled, onDecoupled,
-        onEventsFetched,
-        journal, conf)
-    yield directorDriver
+    logger.traceResource:
+      for
+        client <- activeClientResource
+        //adoptedEventId <- Resource.eval(IO(state.adoptedEventId))
+        afterEventId <- Resource.eval(agentRefState.map(_.eventId))
+        directorDriver <- DirectorDriver.resource(
+          agentDriver, agentPath, afterEventId,
+          client,
+          dedicateAgentIfNeeded, onCouplingFailed, onCoupled, onDecoupled,
+          onEventsFetched,
+          journal, conf)
+      yield directorDriver
 
   private def clusterWatchResource: Resource[IO, ClusterWatchService] =
     for

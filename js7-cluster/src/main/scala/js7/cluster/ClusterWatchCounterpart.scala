@@ -276,7 +276,7 @@ extends Service.StoppableByRequest:
     def isStillAlive(using SyncDeadline.Now): Boolean =
       expires.hasTimeLeft
 
-    override def toString = s"$clusterWatchId($expires)"
+    override def toString = clusterWatchId.toString
 
 
 object ClusterWatchCounterpart:

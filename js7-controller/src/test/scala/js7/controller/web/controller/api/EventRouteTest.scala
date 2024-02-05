@@ -16,7 +16,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.http.JsonStreamingSupport
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.PekkoHttpUtils.{RichHttpResponse, RichResponseEntity}
-import js7.common.http.StreamingSupport.toFs2Stream
+import js7.common.http.StreamingSupport.asFs2Stream
 import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegments
 import js7.common.pekkoutils.ByteStrings.syntax.*
 import js7.controller.web.controller.api.EventRouteTest.*
@@ -226,7 +226,7 @@ final class EventRouteTest extends OurTestSuite, RouteTester, EventRoute
     Get(uri) ~> Accept(`application/x-ndjson`) ~> route ~> check {
       if status != OK then fail(s"$status - ${responseEntity.toStrict(timeout).value}")
       response.entity.withoutSizeLimit.dataBytes
-        .toFs2Stream
+        .asFs2Stream
         .flatMap(ByteSequenceToLinesStream())
         .map(_.parseJsonAs[Stamped[KeyedEvent[OrderEvent]]].orThrow)
         .compile.toList

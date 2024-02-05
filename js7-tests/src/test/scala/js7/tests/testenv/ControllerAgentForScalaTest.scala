@@ -6,13 +6,14 @@ import js7.agent.TestAgent
 import cats.syntax.traverse.*
 import js7.base.configutils.Configs.*
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.problem.Checked
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.WallClock
 import js7.base.utils.CatsBlocking.*
 import js7.base.utils.CatsUtils.syntax.RichResource
-import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.ScalaUtils.syntax.{RichJavaClass, *}
 import js7.base.utils.{Allocated, SetOnce}
 import js7.cluster.watch.ClusterWatchService
 import js7.data.controller.ControllerState
@@ -82,34 +83,38 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest:
     new OrderObstacleCalculator(controllerState)
 
   override def beforeAll() =
-    super.beforeAll()
+    logger.debugCall:
+      super.beforeAll()
 
-    idToAllocatedSubagent
-    agents
-    for service <- clusterWatchServiceResource do
-      clusterWatchServiceOnce := service.toAllocated.await(99.s)
-    controller
+      idToAllocatedSubagent
+      agents
+      for service <- clusterWatchServiceResource do
+        clusterWatchServiceOnce := service.toAllocated.await(99.s)
+      controller
 
-    if waitUntilReady then
-      controller.waitUntilReady()
-      if !doNotAddItems then
-        for subagentItem <- directoryProvider.subagentItems do
-          eventWatch.await[SubagentCoupled](_.key == subagentItem.id)
+      if waitUntilReady then
+        controller.waitUntilReady()
+        if !doNotAddItems then
+          for subagentItem <- directoryProvider.subagentItems do
+            eventWatch.await[SubagentCoupled](_.key == subagentItem.id)
 
   override def afterAll() =
-    val ios = Seq(
-      Seq(controller.terminate().void),
-      clusterWatchServiceOnce.toOption.map(_.release).toList,
-      agents.map(_.terminate().void),
-      idToAllocatedSubagent.values.map(_.release)
-    ).flatten
-    ios.map(_.recoverWith: t =>
-        logger.error(t.toStringWithCauses, t)
-        IO.raiseError(t))
-      .sequence
-      .await(99.s)
+    logger.debugCall(s"${getClass.shortClassName} afterAll"):
+      val ios = Seq(
+        Seq(controller.terminate().void),
+        clusterWatchServiceOnce.toOption.map(_.release).toList,
+        agents.map(_.terminate().void),
+        idToAllocatedSubagent.values.map(_.release)
+      ).flatten
+      ios
+        .map(_.recoverWith(t => IO.defer:
+          logger.error(t.toStringWithCauses, t)
+          IO.raiseError(t)))
+        .map(io => logger.traceIO(s"### terminate")(io))
+        .sequence
+        .await(99.s)
 
-    super.afterAll()
+      super.afterAll()
 
   private val usedVersionIds = mutable.Set[VersionId]()
 

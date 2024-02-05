@@ -42,7 +42,7 @@ object PekkoHttpUtils:
       underlying
         .withoutSizeLimit
         .dataBytes
-        .toFs2Stream
+        .asFs2Stream
         .foldMonoid
         .head
         .compile

@@ -29,7 +29,8 @@ object ReactorConverters:
         .flux
         .flatMap(jIdentity)
 
+
   extension [A](flux: Flux[A])
     /** Convert this Reactor Flux to a FS2 Stream. */
-    def asStream: Stream[IO, A] =
+    def asFs2Stream: Stream[IO, A] =
       flux.toStreamBuffered[IO](bufferSize = 1)

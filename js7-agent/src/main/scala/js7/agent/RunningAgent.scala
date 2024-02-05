@@ -358,7 +358,7 @@ object RunningAgent:
           case cmd: ShutDown =>
             if cmd.clusterAction.nonEmpty && !clusterNode.isWorkingNode then
               IO.left(PassiveClusterNodeShutdownNotAllowedProblem)
-            else {
+            else IO.defer:
               logger.info(s"❗ $cmd")
               //⚒️if (cmd.dontNotifyActiveNode && clusterNode.isPassive) {
               //⚒️  clusterNode.dontNotifyActiveNodeAboutShutdown()
@@ -386,7 +386,6 @@ object RunningAgent:
                     case Right(api) =>
                       api(meta).commandExecute(cmd)
                   }
-            }
 
           case _ =>
             currentMainActor

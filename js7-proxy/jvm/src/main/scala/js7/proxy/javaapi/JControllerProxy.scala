@@ -57,7 +57,7 @@ final class JControllerProxy private[proxy](
   /** Like JControllerApi addOrders, but waits until the Proxy mirrors the added orders. */
   @Nonnull
   def addOrders(@Nonnull orders: Flux[JFreshOrder]): CompletableFuture[VEither[Problem, AddOrdersResponse]] =
-    asScala.addOrders(orders.asStream.map(_.asScala))
+    asScala.addOrders(orders.asFs2Stream.map(_.asScala))
       .map(_.toVavr)
       .unsafeToCompletableFuture()
 

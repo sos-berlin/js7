@@ -1,20 +1,25 @@
 package js7.controller.agent
 
-import cats.effect.Resource
 import cats.effect.kernel.Deferred
+import cats.effect.{IO, Resource}
+import cats.syntax.option.*
+import fs2.Stream
 import js7.agent.client.AgentClient
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.CoupleController
 import js7.agent.data.event.AgentEvent
+import js7.base.catsutils.CatsEffectExtensions.*
+import js7.base.configutils.Configs.RichConfig
+import js7.base.fs2utils.StreamExtensions.interruptWhenF
 import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.catsutils.CatsEffectUtils.*
-import js7.base.catsutils.CatsEffectExtensions.*
+import js7.base.monixlike.MonixLikeExtensions.{completedL, flatMapLoop, raceFold}
 import js7.base.problem.{Checked, Problem}
 import js7.base.service.Service
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{AsyncLock, Atomic}
 import js7.common.http.RecouplingStreamReader
@@ -26,18 +31,15 @@ import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
 import js7.data.cluster.ClusterEvent
 import js7.data.controller.{ControllerRunId, ControllerState}
 import js7.data.delegate.DelegateCouplingState.{Coupled, Resetting}
+import js7.data.event.JournalSeparators.HeartbeatMarker
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, Stamped}
+import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, JournalSeparators, Stamped}
 import js7.data.item.BasicItemEvent.ItemAttachable
 import js7.data.item.InventoryItemEvent
 import js7.data.order.{OrderEvent, OrderId}
 import js7.data.orderwatch.OrderWatchEvent
 import js7.data.subagent.SubagentItemStateEvent
 import js7.journal.state.Journal
-import cats.effect.IO
-import fs2.Stream
-import js7.base.monixlike.MonixLikeExtensions.{completedL, flatMapLoop, raceFold, takeUntilEval}
-import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import scala.util.chaining.scalaUtilChainingOps
 
 private[agent] final class DirectorDriver private(
@@ -60,19 +62,23 @@ extends Service.StoppableByRequest:
   private var adoptedEventId = initialEventId
   private val untilFetchingStopped = Deferred.unsafe[IO, Unit]
   private val onFetchedEventsLock = AsyncLock() // Fence for super.isStopping
+  private val keepAlive = conf.config.finiteDuration("js7.web.client.keep-alive").orThrow
 
   logger.trace(s"initialEventId=$initialEventId")
 
   protected def start =
     startService(
-      continuallyFetchEvents *>
-        IO(assertThat(isStopping)) *>
-        onFetchedEventsLock.lock(IO.unit) *>
-        stopEventFetcher)
+      (untilStopRequested *> eventFetcher.stopStreaming)
+        .background.surround:
+          continuallyFetchEvents *>
+            IO(assertThat(isStopping)) *>
+            onFetchedEventsLock.lock(IO.unit) *>
+            stopEventFetcher)
 
   private def stopEventFetcher: IO[Unit] =
-    eventFetcher.terminateAndLogout *>
-      untilFetchingStopped.get
+    logger.traceIO:
+      eventFetcher.terminateAndLogout *>
+        untilFetchingStopped.get
 
   private val eventFetcher = new RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], AgentClient](
       _.eventId, conf.recouplingStreamReader):
@@ -132,8 +138,18 @@ extends Service.StoppableByRequest:
 
     protected def getStream(api: AgentClient, after: EventId) =
       IO {logger.debug(s"getStream(after=$after)")} *>
-        api.eventStream(EventRequest[Event](EventClasses, after = after,
-          timeout = Some(requestTimeout)))
+        api
+          // A Pekko HTTP stream seems not to be cancelable with interruptWhen.
+          // So we use a fast heartbeat and stop at the next stream element.
+          .eventStream(
+            EventRequest[Event](EventClasses, after = after, timeout = requestTimeout.some),
+            heartbeat = keepAlive.some)
+          .map(_.map(_
+            .interruptWhenF(untilStopRequested)))
+          .race(untilStopRequested)
+          .flatMap:
+            case Left(checkedStream) => IO.pure(checkedStream)
+            case Right(()) => IO.right(Stream.empty)
 
     override protected def onCouplingFailed(api: AgentClient, problem: Problem) =
       onCouplingFailed_(problem)
@@ -157,6 +173,7 @@ extends Service.StoppableByRequest:
     protected def stopRequested = directorDriver.isStopping
 
   private def continuallyFetchEvents: IO[Unit] =
+   logger.traceIO:
     observeAndConsumeEvents
       .recover(t => logger.error(t.toStringWithCauses, t))
       .flatMapLoop(())((_, _, again) =>
@@ -177,12 +194,8 @@ extends Service.StoppableByRequest:
         .pipe(stream =>
           if delay.isZeroOrBelow then
             stream.chunks
-          else stream
-            .groupWithin(
-              chunkSize = conf.eventBufferSize,
-              conf.eventBufferDelay max conf.commitDelay) // ticks
-            .filter(_.nonEmpty)) // Ignore empty ticks
-        .takeUntilEval(untilStopRequested) // Cancels the stream above
+          else
+            stream.groupWithin(chunkSize = conf.eventBufferSize, delay))
         .flatMap(o => Stream
           // When the other cluster node may have failed-over,
           // wait until we know that it hasn't (or this node is aborted).

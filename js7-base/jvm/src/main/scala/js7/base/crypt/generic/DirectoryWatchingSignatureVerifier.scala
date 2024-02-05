@@ -66,7 +66,8 @@ extends SignatureVerifier, Service.StoppableByRequest:
               observeDirectory(companion, directory, directoryState)
                 .onErrorRestartLoop(()) { (t, _, retry) =>
                   logger.error(s"${companion.typeName}: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
-                  retry(()).delayBy(10.s)
+                  IO.unlessA(isStopping):
+                    retry(()).delayBy(10.s)
                 })
           }
           .parSequence
@@ -79,7 +80,6 @@ extends SignatureVerifier, Service.StoppableByRequest:
   : IO[Unit] =
     DirectoryWatch
       .stream(directory, directoryState, settings, isRelevantFile)
-      .takeUntilEval(untilStopRequested)
       .debounce(settings.directorySilence)
       .map(Seq(_))//monix .bufferIntrospective(1024)
       .tapEach(events => logger.info(
@@ -87,6 +87,7 @@ extends SignatureVerifier, Service.StoppableByRequest:
           events.distinct.mkString(", ")}"))
       .foreach: _ =>
         rereadDirectory(directory)
+      .interruptWhenF(untilStopRequested)
       .compile
       .drain
 

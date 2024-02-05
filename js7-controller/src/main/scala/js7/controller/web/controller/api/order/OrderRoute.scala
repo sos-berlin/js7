@@ -62,7 +62,7 @@ extends ControllerRouteProvider, EntitySizeLimitProvider:
                   var byteCount = 0L
                   httpEntity
                     .dataBytes
-                    .toFs2Stream
+                    .asFs2Stream
                     .pipeIf(logger.underlying.isDebugEnabled)(_.map { o => byteCount += o.length; o })
                     .flatMap(new ByteSequenceToLinesStream)
                     .mapParallelBatch()(_
@@ -136,7 +136,7 @@ extends ControllerRouteProvider, EntitySizeLimitProvider:
           completeIO(
             httpEntity
               .dataBytes
-              .toFs2Stream
+              .asFs2Stream
               .flatMap(new ByteSequenceToLinesStream)
               .mapParallelBatch()(_
                 .parseJsonAs[OrderId].orThrow)

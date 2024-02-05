@@ -16,7 +16,7 @@ import scala.concurrent.Future
   */
 final class StreamingSupportTest extends OurAsyncTestSuite:
 
-  "Stream toPekkoSource" in:
+  "toPekkoSourceForHttpResponse" in:
     actorSystemResource("StreamingSupportTest")
       .use(implicit actorSystem =>
         var closed = 0
@@ -24,14 +24,14 @@ final class StreamingSupportTest extends OurAsyncTestSuite:
           closed += 1)
         for
           result <- stream
-            .toPekkoSourceResource
+            .toPekkoSourceForHttpResponse
             .use: source =>
               IO.fromFuture(IO:
                 source.runFold(0)(_ + _))
         yield assert:
           result == 6 && closed == 1)
 
-  "toFs2Stream" - {
+  "asFs2Stream" - {
     "Terminate a Stream originating from a Future" in:
       val config = config"pekko.scheduler.tick-duration = 1.ms"
       actorSystemResource("StreamingSupportTest", config = config)
@@ -46,7 +46,7 @@ final class StreamingSupportTest extends OurAsyncTestSuite:
                 .map: i =>
                   last = i
                   i
-                .toFs2Stream))
+                .asFs2Stream))
             list <- stream.take(3).compile.toList
           yield
             assert(list == List(1, 2, 3) && last == 3)

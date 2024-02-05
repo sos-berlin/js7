@@ -62,7 +62,7 @@ final class LogRouteTest extends OurTestSuite, RouteTester, LogRoute:
           assert(status == OK)
           val queue = new ArrayBlockingQueue[String](100)
           val completed = response.entity.dataBytes
-            .toFs2Stream
+            .asFs2Stream
             .map(_.decodeString(UTF_8))
             .foreach(string => IO:
               queue.add(string))

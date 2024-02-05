@@ -16,7 +16,8 @@ final case class AgentDriverConfiguration(
   commandBatchDelay: FiniteDuration,
   commandErrorDelay: FiniteDuration,
   commandParallelism: Int,
-  releaseEventsPeriod: FiniteDuration)
+  releaseEventsPeriod: FiniteDuration,
+  config: Config)
 
 
 object AgentDriverConfiguration:
@@ -33,5 +34,6 @@ object AgentDriverConfiguration:
             commandBatchDelay   = config.getDuration("js7.controller.agent-driver.command-batch-delay").toFiniteDuration,
             commandErrorDelay   = config.getDuration("js7.controller.agent-driver.command-error-delay").toFiniteDuration,
             commandParallelism  = config.getInt     ("js7.controller.agent-driver.command-parallelism"),
-            releaseEventsPeriod = config.getDuration("js7.controller.agent-driver.release-events-period").toFiniteDuration)
+            releaseEventsPeriod = config.getDuration("js7.controller.agent-driver.release-events-period").toFiniteDuration,
+            config)
         })

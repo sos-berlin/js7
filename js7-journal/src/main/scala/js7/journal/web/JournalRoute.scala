@@ -16,6 +16,7 @@ import js7.common.pekkohttp.PekkoHttpServerUtils.completeWithCheckedStream
 import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkohttp.web.session.RouteProvider
 import js7.common.pekkoutils.ByteStrings.syntax.*
+import js7.data.event.JournalSeparators.HeartbeatMarkerIO
 import org.apache.pekko.http.scaladsl.server.Directives.*
 import org.apache.pekko.http.scaladsl.server.Route
 import scala.concurrent.ExecutionContext
@@ -78,7 +79,7 @@ trait JournalRoute extends RouteProvider:
                           .interruptWhen(shutdownSignaled)
                           .map(if returnAck then toLength else toContent)
                           .pipeIf(heartbeat.isDefined)(_
-                            .insertHeartbeatsOnSlowUpstream(heartbeat.get, HeartbeatMarker))
+                            .keepAlive(heartbeat.get, HeartbeatMarkerIO))
                           .map(_.toChunk)
                           .chunkLimit(chunkSize)
                           .map(_.flatten)

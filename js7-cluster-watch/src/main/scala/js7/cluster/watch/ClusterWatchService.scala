@@ -5,7 +5,7 @@ import cats.effect.{IO, Resource}
 import com.typesafe.config.Config
 import fs2.Stream
 import js7.base.configutils.Configs.RichConfig
-import js7.base.fs2utils.StreamExtensions.onStart
+import js7.base.fs2utils.StreamExtensions.{interruptWhenF, onStart}
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.monixlike.MonixLikeExtensions.takeUntilEval
@@ -73,7 +73,7 @@ extends MainService, Service.StoppableByRequest:
         request.correlId.bind(
           nodeWatch.processRequest(request))
       }
-      .takeUntilEval(untilStopRequested)
+      .interruptWhenF(untilStopRequested)
       .compile
       .drain
 
@@ -96,6 +96,7 @@ extends MainService, Service.StoppableByRequest:
               Stream.empty
             }
         }
+        //.interruptWhenF(untilStopRequested)
 
     private def clusterWatchRequestStream: Stream[IO, ClusterWatchRequest] =
       logger.traceStream("clusterWatchRequestStream", nodeApi)(
@@ -103,7 +104,9 @@ extends MainService, Service.StoppableByRequest:
           .eval(nodeApi
             .retryUntilReachable()(
               nodeApi.retryIfSessionLost()(
-                nodeApi.clusterWatchRequestStream(clusterWatchId, keepAlive = Some(keepAlive))))
+                nodeApi
+                  .clusterWatchRequestStream(clusterWatchId, keepAlive = Some(keepAlive))
+                  /*.map(_.interruptWhenF(untilStopRequested))*/))
             .attempt.map {
               case Left(t: HttpException) if t.statusInt == 503 /*Service unavailable*/ =>
                 Left(t) // Trigger onErrorRestartLoop
@@ -143,7 +146,7 @@ extends MainService, Service.StoppableByRequest:
   def clusterNodeLossEventToBeConfirmed(lostNodeId: NodeId): Option[ClusterNodeLostEvent] =
     clusterWatch.clusterNodeLossEventToBeConfirmed(lostNodeId)
 
-  override def toString = clusterWatchId.toString
+  override def toString = s"ClusterWatchService($clusterWatchId)"
 
   def clusterState(): Checked[ClusterState] =
     clusterWatch.clusterState()

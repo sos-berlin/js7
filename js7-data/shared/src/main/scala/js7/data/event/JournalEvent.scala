@@ -1,5 +1,6 @@
 package js7.data.event
 
+import cats.effect.IO
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.auth.UserId
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
@@ -19,6 +20,8 @@ object JournalEvent :
 
   final val StampedHeartbeat: Stamped[KeyedEvent[JournalEvent]] =
     Stamped(0, Heartbeat)
+  final val StampedHeartbeatIO: IO[Stamped[KeyedEvent[JournalEvent]]] =
+    IO.pure(StampedHeartbeat)
 
   implicit val jsonCodec: TypedJsonCodec[JournalEvent] = TypedJsonCodec(
     Subtype(SnapshotTaken),

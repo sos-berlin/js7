@@ -1,13 +1,17 @@
 package js7.base.log
 
+import cats.effect.kernel.Sync
 import cats.effect.{IO, Resource}
 import fs2.Stream
+import js7.base.log.Logger.syntax.logF
 import js7.base.utils.ScalaUtils.implicitClass
 import scala.reflect.ClassTag
 import sourcecode.{FileName, Line, Name, Pkg}
 
 object Logger
 {
+  type Underlying = scribe.Logger
+
   val empty: scribe.Logger =
     scribe.Logger.empty
 
@@ -44,6 +48,16 @@ object Logger
           logger.log(logLevelToScribe(level), message, Some(throwable))
         }
 
+      def infoF[F[_], A](body: F[A])(using F: Sync[F], src: sourcecode.Name)
+      : F[A] =
+        infoF[F, A](functionName = src.value)(body)
+
+      def infoF[F[_], A](functionName: String, args: => Any = "")
+        (body: F[A])
+        (using F: Sync[F])
+      : F[A] =
+        logF[F, A](logger, LogLevel.Info, functionName, args)(body)
+
       inline def debugIO[A](io: IO[A])/*(implicit src: sourcecode.Name)*/: IO[A] =
         io
 
@@ -61,6 +75,14 @@ object Logger
       : IO[A] =
         io
 
+      def debugF[F[_], A](body: F[A])(using F: Sync[F], src: sourcecode.Name)
+      : F[A] =
+        debugF[F, A](functionName = src.value)(body)
+
+      def debugF[F[_], A](functionName: String, args: => Any = "")(body: F[A])(implicit F: Sync[F])
+      : F[A] =
+        logF[F, A](logger, LogLevel.Debug, functionName, args)(body)
+
       inline def traceIO[A](io: IO[A])/*(implicit src: sourcecode.Name)*/: IO[A] =
         io
 
@@ -77,6 +99,14 @@ object Logger
         (io: IO[A])
       : IO[A] =
         io
+
+      def traceF[F[_], A](body: F[A])(using F: Sync[F], src: sourcecode.Name)
+      : F[A] =
+        traceF(functionName = src.value)(body)
+
+      def traceF[F[_], A](functionName: String, args: => Any = "")(body: F[A])(implicit F: Sync[F])
+      : F[A] =
+        logF[F, A](logger, LogLevel.Trace, functionName, args)(body)
 
       inline def debugResource[A](resource: Resource[IO, A])
       : Resource[IO, A] =
@@ -103,6 +133,17 @@ object Logger
         stream
     }
   }
+
+  private def logF[F[_], A](
+    logger: ScalaLogger,
+    logLevel: LogLevel,
+    function: String,
+    args: => Any = "",
+    resultToLoggable: A => Any = null)
+    (body: F[A])
+    (implicit F: Sync[F])
+  : F[A] =
+    body
 
   private def logLevelToScribe(logLevel: LogLevel): scribe.Level =
     logLevel match {

@@ -10,7 +10,7 @@ import cats.syntax.parallel.*
 import cats.{ApplicativeError, Functor, MonadError}
 import fs2.{Pull, Stream}
 import js7.base.catsutils.CatsEffectExtensions.fromFutureWithEC
-import js7.base.fs2utils.StreamExtensions.onStart
+import js7.base.fs2utils.StreamExtensions.{interruptWhenF, onStart}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.{CancelableFuture, emptyRunnable}
 import scala.collection.Factory
@@ -215,17 +215,13 @@ object MonixLikeExtensions:
     inline def doAfterSubscribe(afterSubscribe: F[Unit]): Stream[F, A] =
       stream.onStart(afterSubscribe)
 
-    def takeUntilEval[X](completed: F[X])(using Concurrent[F]): Stream[F, A] =
-      takeUntil(Stream.eval(completed))
+    def takeUntilEval[F2[x] >: F[x]](haltOnCompletion: F2[Unit])
+      (using ApplicativeError[F2, Throwable])
+    : Stream[F2, A] =
+      stream.interruptWhenF(haltOnCompletion)
 
-    // TODO use interruptWhen
-    def takeUntil[X](completed: Stream[F, X])(using Concurrent[F]): Stream[F, A] =
-      stream
-        .map(Right(_))
-        .merge:
-          completed.as(Left(()))
-        .takeWhile(_.isRight)
-        .map(_.asInstanceOf[Right[Unit, A]].value)
+    def takeUntil[X](other: Stream[F, X])(using Concurrent[F]): Stream[F, A] =
+      stream.interruptWhen(other.as(true))
 
     def headL(using fs2.Compiler[F, F], Functor[F]): F[A] =
       stream.head.compile.last

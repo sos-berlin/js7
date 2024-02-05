@@ -11,6 +11,7 @@ import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.circeutils.CirceUtils.implicits.*
 import js7.base.circeutils.CirceUtils.{RichCirceString, RichJson}
 import js7.base.configutils.Configs.RichConfig
+import js7.base.convert.As.StringAsBoolean
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.*
 import js7.base.exceptions.HasIsIgnorableStackTrace
@@ -18,21 +19,22 @@ import js7.base.fs2utils.StreamExtensions.*
 import js7.base.generic.SecretString
 import js7.base.io.https.Https.loadSSLContext
 import js7.base.io.https.HttpsConfig
-import js7.base.log.{CorrelId, Logger}
+import js7.base.log.LogLevel.LogNone
+import js7.base.log.{CorrelId, LogLevel, Logger}
 import js7.base.monixlike.MonixLikeExtensions.{onErrorTap, takeUntilEval}
 import js7.base.problem.Checked.*
 import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.bytesPerSecondString
-import js7.base.utils.CatsUtils.syntax.{logWhenItTakesLonger, whenItTakesLonger}
+import js7.base.utils.CatsUtils.syntax.whenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Atomic, ByteSequenceToLinesStream}
 import js7.base.web.{HttpClient, Uri}
 import js7.common.http.JsonStreamingSupport.{StreamingJsonHeader, StreamingJsonHeaders, `application/x-ndjson`}
 import js7.common.http.PekkoHttpClient.*
 import js7.common.http.PekkoHttpUtils.{RichPekkoAsUri, RichPekkoUri, RichResponseEntity, decompressResponse, encodeGzip}
-import js7.common.http.StreamingSupport.{toFs2Stream, *}
+import js7.common.http.StreamingSupport.{asFs2Stream, toPekkoSourceResource}
 import js7.common.pekkohttp.ByteSequenceStreamExtensions.*
 import js7.common.pekkohttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
 import js7.common.pekkoutils.ByteStrings.syntax.*
@@ -95,12 +97,11 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
     closed = true
 
   final def getDecodedLinesStream[A: Decoder](uri: Uri, responsive: Boolean = false)
-    (implicit s: IO[Option[SessionToken]])
+    (using IO[Option[SessionToken]])
   : IO[Stream[IO, A]] =
     getRawLinesStream(uri)
       .map(_
-        // Ignore empty keep-alives
-        .collect { case o if o != EmptyLine => o }
+        .filter(_ != EmptyLine/*used as keep-alive*/)
         .mapParallelBatch(
           /*batchSize = jsonReadAhead / sys.runtime.availableProcessors,
           responsive = responsive*/)(
@@ -109,7 +110,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
   final def getRawLinesStream(uri: Uri)(implicit s: IO[Option[SessionToken]])
   : IO[Stream[IO, ByteArray]] =
     get_[HttpResponse](uri, StreamingJsonHeaders)
-      .map(_.entity.withoutSizeLimit.dataBytes.toFs2Stream)
+      .map(_.entity.withoutSizeLimit.dataBytes.asFs2Stream)
       .pipeIf(logger.underlying.isDebugEnabled)(_.map(_
         .logTiming(_.size, (d, n, _) => IO:
           if d >= 1.s && n > 10_000_000 then
@@ -128,7 +129,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
 
   private def ignoreIdleTimeout: PartialFunction[Throwable, Stream[IO, Nothing]] =
     case t: pekko.stream.scaladsl.TcpIdleTimeoutException =>
-      // Idle timeout is silently ignored !!!  Maybe something is weird.
+      // Idle timeout is ignored !!!
       // We issue a warning, because the caller should make this not happen.
       logger.warn(s"Ignore ${t.toString}")
       if hasRelevantStackTrace(t) then logger.debug(s"Ignore $t", t)
@@ -274,7 +275,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
         lazy val logPrefix = s"#$number$nameString${sessionToken.fold("")(o => " " + o.short)}"
         lazy val responseLog0 = s"$logPrefix ${requestToString(req, logData, isResponse = true)} "
         def responseLogPrefix = responseLog0 + since.elapsed.pretty
-        logger.trace(s">-->  $logPrefix ${requestToString(req, logData)}")
+        logger.trace(s"${if request.entity.isChunked then ">-->" else "|-->"}  $logPrefix ${requestToString(req, logData)}")
         IO
           .fromFutureCancelable:
             IO:
@@ -296,8 +297,8 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
                         tried.fold(_.toStringWithCauses, _ => "ok")))
                   .map((_: Done) => ())
                   .recover(_ => ())
-                () // Forget the started Future, discard the remaining entities in background
-              )
+                ()) // Forget the started Future, discard the remaining entities in background
+
               future -> cancel
           .recoverWith:
             case t if canceled => IO:
@@ -385,7 +386,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
       } catch {
         case NonFatal(_) => ""
       })
-    val arrow = if response.entity.isChunked then "<-<-" else "<--<"
+    val arrow = if response.entity.isChunked then "<--<" else "<--|"
     logger.debug(s"$arrow$sym$responseLogPrefix => ${response.status}$suffix")
 
   // >-->  request
@@ -404,7 +405,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
           .withEntity(chunked.copy(
             chunks = chunked.chunks
               .map { chunk =>
-                if chunk.isLastChunk then {
+                if LogData || chunk.isLastChunk then {
                   val arrow = if chunk.isLastChunk then "<--|  " else "<-<-  "
                   val data =
                     if isUtf8 then
@@ -415,7 +416,10 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
                   logger.trace(s"$arrow$responseLogPrefix $data")
                 }
                 chunk
-              })))
+              }
+              .mapError: t =>
+                logger.trace(s"<~~💥 $responseLogPrefix ${t.toStringWithCauses}")
+                t)))
       case _ => response
 
   private def unmarshal[A: FromResponseUnmarshaller](method: HttpMethod, uri: Uri)(httpResponse: HttpResponse) =
@@ -488,6 +492,14 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
 
 object PekkoHttpClient:
   private val EmptyLine = ByteArray("\n")
+
+  private val LogData: Boolean =
+    val key = "js7.PekkoHttpClient.log-data"
+    val value = sys.props.get(key)
+    try value.fold(false)(StringAsBoolean(_))
+    catch case NonFatal(_) =>
+      logger.error(s"Invalid property key $key=$value")
+      false
 
   def resource(
     uri: Uri,

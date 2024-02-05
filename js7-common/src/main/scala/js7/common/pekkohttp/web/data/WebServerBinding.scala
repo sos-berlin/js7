@@ -33,6 +33,9 @@ object WebServerBinding:
   def http(port: Int): Http =
     WebServerBinding.Http(new InetSocketAddress("0.0.0.0", port))
 
+  def localhostHttp(port: Int): Http =
+    WebServerBinding.Http(new InetSocketAddress("127.0.0.1", port))
+
   sealed trait Scheme:
     def name: String
     // Workaround for Scala 3, which does not allow to override toString in subclasses (?)

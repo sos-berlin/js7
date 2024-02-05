@@ -90,7 +90,7 @@ final class PekkoWebServerHttpsChangeTest extends OurTestSuite, BeforeAndAfterAl
   override def beforeAll() =
     webServer
 
-  override def afterAll() = 
+  override def afterAll() =
     webServer.release.await(99.s)
     Pekkos.terminateAndWait(actorSystem, 10.s)
     deleteDirectoryRecursively(directory)

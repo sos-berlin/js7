@@ -11,7 +11,6 @@ import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.fs2utils.StreamExtensions.mapParallelBatch
 import js7.base.log.Logger
-import js7.base.log.Logger.syntax.*
 import js7.base.monixlike.MonixLikeExtensions.takeUntilEval
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime.*
@@ -25,7 +24,6 @@ import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkoutils.ByteStrings.*
 import js7.common.pekkoutils.ByteStrings.syntax.*
 import org.apache.pekko.http.scaladsl.marshalling.{ToResponseMarshallable, ToResponseMarshaller}
-import org.apache.pekko.http.scaladsl.model.HttpEntity.Chunk as PekkoChunk
 import org.apache.pekko.http.scaladsl.model.headers.Accept
 import org.apache.pekko.http.scaladsl.model.{ContentType, HttpEntity, HttpHeader, MediaType, Uri}
 import org.apache.pekko.http.scaladsl.server.Directives.*
@@ -42,7 +40,7 @@ object PekkoHttpServerUtils:
 
   private val logger = Logger[this.type]
   private val LF = fs2.Chunk.singleton('\n'.toByte)
-  private val heartbeatChunk = LF
+  private val heartbeatChunk = IO.pure(LF)
 
   object implicits:
     implicit final class RichOption[A](private val delegate: Option[A]) extends AnyVal:
@@ -299,11 +297,11 @@ object PekkoHttpServerUtils:
         .allocated // Resource is released in background !!!
         .flatTap: (_, release) =>
           deferredRelease.complete: exitCase =>
-            logger.traceIO(s"completeWithIOStream: onFinalizeCase ${exitCase.toOutcome[IO]} release"):
-              release
-                .whenItTakesLongerThan(3.s)(IO:
-                  logger.warn("completeWithIOStream: release of Pekko Stream takes longer than 3s"))
-                .start.void
+            logger.trace(s"completeWithIOStream: ${exitCase.toOutcome[IO]}")
+            release
+              .whenItTakesLongerThan(3.s)(IO:
+                logger.warn("completeWithIOStream: release of Pekko Stream takes longer than 3s"))
+              .start.void
         .map: (source, _) =>
           complete:
             HttpEntity(contentType, source)
@@ -370,16 +368,4 @@ object PekkoHttpServerUtils:
     keepAlive: Option[FiniteDuration] = None)
     (using IORuntime)
   : Stream[IO, Chunk[Byte]] =
-    keepAlive
-      .fold(stream): keepAlive =>
-        for
-          terminated <- Stream.eval(Deferred[IO, Unit])
-          chunk <- stream
-            .onFinalize(terminated.complete(()).void)
-            .merge(Stream
-              // Is this insertHeartbeatsOnSlowUpstream ???
-              .constant(heartbeatChunk, chunkSize = 1)
-              .covary[IO]
-              .delayBy(keepAlive)
-              .takeUntilEval(terminated.get))
-        yield chunk
+    keepAlive.fold(stream)(stream.keepAlive(_, heartbeatChunk))

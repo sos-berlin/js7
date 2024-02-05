@@ -34,6 +34,7 @@ import org.apache.pekko.http.scaladsl.server.Route
 import org.jetbrains.annotations.TestOnly
 import scala.collection.mutable
 import scala.concurrent.duration.{Deadline, FiniteDuration}
+import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
 /**

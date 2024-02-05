@@ -1,7 +1,6 @@
 package js7.base.service
 
 import cats.effect.{Deferred, IO, Outcome, Resource}
-import com.typesafe.scalalogging.Logger as ScalaLogger
 import izumi.reflect.Tag
 import js7.base.catsutils.CatsDeadline
 import js7.base.log.Logger.syntax.*
@@ -34,7 +33,7 @@ trait Service:
         stopped.get.flatMap(_
           .fold(IO.raiseError, IO(_)))
 
-  protected final def startServiceAndLog(logger: ScalaLogger, args: String = "")(run: IO[Unit])
+  protected final def startServiceAndLog(logger: Logger.Underlying, args: String = "")(run: IO[Unit])
   : IO[Started] =
     startService(
       logInfoStartAndStop(logger, service.toString, args)(
@@ -102,7 +101,7 @@ object Service:
           .logWhenItTakesLonger(s"stopping $service"))
 
   private def logInfoStartAndStop[A](
-    logger: ScalaLogger,
+    logger: Logger.Underlying,
     serviceName: String,
     args: String = "")
     (body: IO[A])

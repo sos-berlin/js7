@@ -1,14 +1,12 @@
 package js7.common.system.startup
 
-import cats.effect.unsafe.IORuntime
 import cats.effect.{ExitCode, IO, ResourceIO}
 import izumi.reflect.Tag
-import js7.base.catsutils.{OurApp, OurIORuntime}
+import js7.base.catsutils.OurApp
 import js7.base.service.MainService
 import js7.base.utils.ProgramTermination
 import js7.common.commandline.CommandLineArguments
 import js7.common.configuration.BasicConfiguration
-import js7.common.system.startup.ServiceMain
 
 trait ServiceApp extends OurApp:
 

@@ -1,6 +1,8 @@
 package js7.agent.client
 
-import cats.effect.Resource
+import cats.effect.{IO, Resource}
+import cats.syntax.flatMap.*
+import fs2.Stream
 import js7.agent.client.AgentClient.*
 import js7.agent.data.AgentState.keyedEventJsonCodec
 import js7.agent.data.commands.AgentCommand
@@ -8,9 +10,11 @@ import js7.agent.data.commands.AgentCommand.*
 import js7.agent.data.views.AgentOverview
 import js7.agent.data.web.AgentUris
 import js7.base.auth.Admission
+import js7.base.catsutils.CatsEffectExtensions.right
 import js7.base.io.https.HttpsConfig
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{BlockingSymbol, Logger}
+import js7.base.monixlike.MonixLikeExtensions.tapError
 import js7.base.problem.Checked
 import js7.base.session.SessionApi
 import js7.base.time.ScalaTime.DurationRichInt
@@ -20,11 +24,6 @@ import js7.common.http.PekkoHttpClient
 import js7.data.Problems.ClusterNodeIsNotReadyProblem
 import js7.data.event.{Event, EventRequest, KeyedEvent, Stamped}
 import js7.data.session.HttpSessionApi
-import cats.effect.IO
-import cats.syntax.flatMap.*
-import fs2.Stream
-import js7.base.catsutils.CatsEffectExtensions.right
-import js7.base.monixlike.MonixLikeExtensions.tapError
 import org.apache.pekko.actor.ActorSystem
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.FiniteDuration
@@ -79,11 +78,15 @@ extends HttpSessionApi, PekkoHttpClient, SessionApi.HasUserAndPassword, HttpClus
 
   final def overview: IO[AgentOverview] = get[AgentOverview](agentUris.overview)
 
-  final def eventStream(request: EventRequest[Event])
+  final def eventStream(
+    request: EventRequest[Event],
+    heartbeat: Option[FiniteDuration] = None)
   : IO[Checked[Stream[IO, Stamped[KeyedEvent[Event]]]]] =
     liftProblem(
       getDecodedLinesStream[Stamped[KeyedEvent[Event]]](
-        agentUris.controllersEvents(request),
+        agentUris.controllersEvents(
+          request,
+          heartbeat = heartbeat),
         responsive = true))
 
 

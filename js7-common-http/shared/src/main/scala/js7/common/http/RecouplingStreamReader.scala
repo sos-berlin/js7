@@ -1,6 +1,6 @@
 package js7.common.http
 
-import cats.effect.IO
+import cats.effect.{Deferred, IO}
 import cats.implicits.catsSyntaxApplicativeError
 import cats.syntax.flatMap.*
 import fs2.Stream
@@ -8,7 +8,7 @@ import izumi.reflect.Tag
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.catsutils.UnsafeMemoizable.given
 import js7.base.exceptions.HasIsIgnorableStackTrace
-import js7.base.fs2utils.StreamExtensions.+:
+import js7.base.fs2utils.StreamExtensions.{+:, interruptWhenF}
 import js7.base.generic.Completed
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{BlockingSymbol, Logger}
@@ -91,6 +91,7 @@ abstract class RecouplingStreamReader[
         s" || !inUse.get()=${!inUse.get()}")
     is
 
+  private val stopped = Deferred.unsafe[IO, Unit]
   private val coupledApiVar = new CoupledApiVar[Api]
   private val recouplingPause = new RecouplingPause
   private val inUse = Atomic(false)
@@ -118,9 +119,14 @@ abstract class RecouplingStreamReader[
           }))
 
   final def terminateAndLogout: IO[Unit] =
-    decouple
-      .*>(coupledApiVar.terminate)
-      .logWhenItTakesLonger
+    logger.traceIO:
+      stopStreaming
+        .*>(coupledApiVar.terminate)
+        .logWhenItTakesLonger
+
+  def stopStreaming: IO[Unit] =
+    logger.traceIO:
+      stopped.complete(()).void
 
   final def decouple: IO[Completed] =
     coupledApiVar.isTerminated.flatMap(
@@ -227,9 +233,8 @@ abstract class RecouplingStreamReader[
                 }))
 
     private def getStreamX(after: I): IO[Checked[Stream[IO, V]]] =
-      IO {
+      logger.traceIO("getStreamX", s"after=$after")(IO.defer:
         sinceLastTry = now
-      } *>
         getStream(api, after = after)
           //.timeout(idleTimeout)
           .recoverWith:
@@ -246,7 +251,7 @@ abstract class RecouplingStreamReader[
                 logger.debug(s"💥 $api: ${t.toString}")
                 // This should let Akka close the TCP connection to abort the stream
                 Stream.empty
-              })))
+              }))))
 
     private def coupleIfNeeded(after: I): IO[I] =
       coupledApiVar.tryRead.flatMap:

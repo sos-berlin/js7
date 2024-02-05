@@ -48,7 +48,7 @@ object StreamingSupport:
 
 
   extension [Out, Mat](source: Source[Out, Mat])
-    def toFs2Stream(using Tag[Out], Materializer): Stream[IO, Out] =
+    def asFs2Stream(using Tag[Out], Materializer): Stream[IO, Out] =
       logger.traceStream:
         Stream.suspend:
           val publisher = source.runWith(Sink.asPublisher(fanout = false))

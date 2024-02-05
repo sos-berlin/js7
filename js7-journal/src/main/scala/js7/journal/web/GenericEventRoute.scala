@@ -20,8 +20,9 @@ import js7.common.pekkohttp.StandardDirectives
 import js7.common.pekkohttp.StandardDirectives.ioRoute
 import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkohttp.web.session.RouteProvider
-import js7.data.event.JournalEvent.StampedHeartbeat
-import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, EventSeqTornProblem, KeyedEvent, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}
+import js7.data.event.JournalEvent.{StampedHeartbeat, StampedHeartbeatIO}
+import js7.data.event.JournalSeparators.HeartbeatMarkerIO
+import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, EventSeqTornProblem, JournalSeparators, KeyedEvent, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}
 import js7.journal.watch.{ClosedException, EventWatch}
 import js7.journal.web.EventDirectives.eventRequest
 import js7.journal.web.GenericEventRoute.*
@@ -37,6 +38,7 @@ import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
 import scala.util.chaining.*
 import scala.util.control.NonFatal
+import Logger.syntax.*
 
 /**
   * @author Joacim Zschimmer
@@ -182,9 +184,10 @@ trait GenericEventRoute extends RouteProvider:
       eventWatch: EventWatch)
     : Stream[IO, Stamped[AnyKeyedEvent]] =
       // TODO Check if torn then return IO.raiseError
-      StampedHeartbeat +:
-        eventStream(request, isRelevantEvent, eventWatch)
-          .insertHeartbeatsOnSlowUpstream(heartbeat, StampedHeartbeat)
+      logger.traceStream("### heartbeatingStream", s"heartbeat=$heartbeat"):
+        StampedHeartbeat +:
+          eventStream(request, isRelevantEvent, eventWatch)
+            .keepAlive(heartbeat, StampedHeartbeatIO)
 
     private def eventStream(
       request: EventRequest[Event],
@@ -226,4 +229,3 @@ object GenericEventRoute:
       Stream[IO, Stamped[KeyedEvent[Event]]]
 
   private val logger = Logger[this.type]
-  private val LF = ByteString("\n")

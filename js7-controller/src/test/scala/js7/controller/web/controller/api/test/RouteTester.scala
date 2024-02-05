@@ -28,7 +28,7 @@ trait RouteTester extends ScalatestRouteTest, TestCatsEffect, ExceptionHandling:
   private implicit val routeTestTimeout: RouteTestTimeout = RouteTestTimeout(9.s)
 
   private given IORuntime = ioRuntime
-  
+
   protected final lazy val gateKeeper = new GateKeeper(
     WebServerBinding.Http,
     GateKeeper.Configuration.fromConfig(

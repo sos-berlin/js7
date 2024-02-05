@@ -1,6 +1,5 @@
 package js7.base.log
 
-import cats.Applicative
 import cats.effect.{IO, Resource, Sync}
 import com.typesafe.scalalogging.Logger as ScalaLogger
 import fs2.Stream
@@ -150,54 +149,55 @@ transparent trait AdHocLogger:
   : A =
     logger.traceCallWithResult(function, args, result, body)
 
-  inline def infoResource[A](function: String, args: => Any = "")(resource: Resource[IO, A])
-    (using sourcecode.Enclosing)
-  : Resource[IO, A] =
-    logger.infoResource(function, args)(resource)
-
-  inline def debugResource[A](resource: Resource[IO, A])
-    (using sourcecode.Name, sourcecode.Enclosing)
-  : Resource[IO, A] =
-    logger.debugResource(resource)
-
-  inline def debugResource[A](function: String, args: => Any = "")(resource: Resource[IO, A])
-    (using sourcecode.Enclosing)
-  : Resource[IO, A] =
-    logger.debugResource(function, args)(resource)
-
-  inline def traceResource[F[_], A](resource: Resource[F, A])
-    (using Applicative[F] & Sync[F], sourcecode.Name, sourcecode.Enclosing)
+  def infoResource[F[_], A](function: String, args: => Any = "")(resource: Resource[F, A])
+    (using Sync[F])
   : Resource[F, A] =
-    logger.traceResource(resource)
+    logger.infoResource[F, A](function, args)(resource)
 
-  inline def traceResource[F[_], A](function: String, args: => Any = "")(resource: Resource[F, A])
-    (using Applicative[F] & Sync[F], sourcecode.Enclosing)
+  def debugResource[F[_], A](resource: Resource[F, A])
+    (using Sync[F], Tag[A], sourcecode.Name)
   : Resource[F, A] =
-    logger.traceResource(function, args)(resource)
+    logger.debugResource[F, A](resource)
 
-  inline def infoStream[A](function: String, args: => Any = "")(stream: Stream[IO, A])
-    (using sourcecode.Enclosing)
-  : Stream[IO, A] =
-    logger.infoStream(function, args)(stream)
+  def debugResource[F[_], A](function: String, args: => Any = "")(resource: Resource[F, A])
+    (using Sync[F], Tag[A], sourcecode.Name)
+  : Resource[F, A] =
+    logger.debugResource[F, A](function, args)(resource)
 
-  inline def debugStream[A](stream: Stream[IO, A])(using sourcecode.Name, sourcecode.Enclosing)
-  : Stream[IO, A] =
-    logger.debugStream(stream)
+  def traceResource[F[_], A](resource: Resource[F, A])
+    (using Sync[F], Tag[A], sourcecode.Name)
+  : Resource[F, A] =
+    logger.debugResource[F, A](resource)
 
-  inline def debugStream[A](function: String, args: => Any = "")(stream: Stream[IO, A])
-    (using sourcecode.Enclosing)
-  : Stream[IO, A] =
-    logger.debugStream(function, args)(stream)
+  def traceResource[F[_], A](function: String, args: => Any = "")(resource: Resource[F, A])
+    (using Sync[F])
+  : Resource[F, A] =
+    logger.traceResource[F, A](function, args)(resource)
 
-  inline def traceStream[A](stream: Stream[IO, A])
-    (using sourcecode.Name, sourcecode.Enclosing, Tag[A])
-  : Stream[IO, A] =
-    logger.traceStream(stream)
+  def infoStream[F[_], A](function: String, args: => Any = "")(stream: Stream[F, A])
+    (using Sync[F])
+  : Stream[F, A] =
+    logger.infoStream[F, A](function, args)(stream)
 
-  inline def traceStream[A](function: String, args: => Any = "")(stream: Stream[IO, A])
-    (using sourcecode.Enclosing)
-  : Stream[IO, A] =
-    logger.traceStream(function, args)(stream)
+  def debugStream[F[_], A](stream: Stream[F, A])
+    (using Sync[F], Tag[A], sourcecode.Name)
+  : Stream[F, A] =
+    logger.debugStream[F, A](stream)
+
+  def debugStream[F[_], A](function: String, args: => Any = "")(stream: Stream[F, A])
+    (using Sync[F])
+  : Stream[F, A] =
+    logger.debugStream[F, A](function, args)(stream)
+
+  def traceStream[F[_], A](stream: Stream[F, A])
+    (using Sync[F], sourcecode.Name, Tag[A])
+  : Stream[F, A] =
+    logger.traceStream[F, A](stream)
+
+  def traceStream[F[_], A](function: String, args: => Any = "")(stream: Stream[F, A])
+    (using Sync[F])
+  : Stream[F, A] =
+    logger.traceStream[F, A](function, args)(stream)
 
   private val nameRegex = """#\$.*$""".r
 

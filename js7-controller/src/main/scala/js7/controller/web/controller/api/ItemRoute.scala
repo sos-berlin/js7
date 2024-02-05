@@ -13,7 +13,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}
 import js7.base.utils.ScalaUtils.syntax.{RichAny, RichEitherF}
 import js7.base.utils.{ByteSequenceToLinesStream, FutureCompletion}
-import js7.common.http.StreamingSupport.{toFs2Stream, *}
+import js7.common.http.StreamingSupport.{asFs2Stream, *}
 import js7.common.pekkohttp.CirceJsonSupport.jsonMarshaller
 import js7.common.pekkoutils.ByteStrings.syntax.*
 import js7.controller.item.ItemUpdater
@@ -55,7 +55,7 @@ extends ControllerRouteProvider, EntitySizeLimitProvider:
                 var byteCount = 0L
                 val operations = httpEntity
                   .dataBytes
-                  .toFs2Stream
+                  .asFs2Stream
                   .pipeIf(logger.underlying.isDebugEnabled)(_.map { o => byteCount += o.length; o })
                   .flatMap(new ByteSequenceToLinesStream)
                   .mapParallelBatch()(_

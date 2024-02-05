@@ -46,7 +46,7 @@ object StreamExtensions:
       other ++ stream
 
     def prependOne[A1 >: O](a: A1): Stream[F, A1] =
-      Stream.emit[F, A1](a) ++ stream
+      prepend(Stream.emit[F, A1](a))
 
     def appendOne[A1 >: O](a: A1): Stream[F, A1] =
       stream ++ Stream.emit[F, A1](a)

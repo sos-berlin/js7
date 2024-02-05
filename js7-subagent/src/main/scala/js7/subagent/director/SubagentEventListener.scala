@@ -57,6 +57,7 @@ private trait SubagentEventListener:
   protected def emitSubagentCouplingFailed(maybeProblem: Option[Problem]): IO[Unit]
   protected def isCoupled: Boolean
   protected def isLocal: Boolean
+  protected def untilStopRequested: IO[Unit]
 
   private val logger = Logger.withPrefix[SubagentEventListener](subagentId.toString)
   private lazy val stdoutCommitOptions = CommitOptions(delay = subagentConf.stdoutCommitDelay)  // TODO Use it!
@@ -189,7 +190,7 @@ private trait SubagentEventListener:
           })
 
       protected def getStream(api: SubagentApi, after: EventId) =
-        logger.debugIO(s"getObservable(after=$after)")(
+        logger.debugIO("getStream", s"after=$after")(
           journal.state.map(_.idToSubagentItemState.checked(subagentId).map(_.subagentRunId))
             .flatMapT {
               case None => IO.left(Problem.pure("Subagent not yet dedicated"))

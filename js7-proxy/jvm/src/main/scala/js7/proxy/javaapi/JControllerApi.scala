@@ -163,7 +163,7 @@ final class JControllerApi(val asScala: ControllerApi, config: Config)
   def updateItems(@Nonnull operations: Flux[JUpdateItemOperation])
   : CompletableFuture[VEither[Problem, Void]] =
     runIO(asScala
-      .updateItems(operations.asStream.map(_.asScala))
+      .updateItems(operations.asFs2Stream.map(_.asScala))
       .map(_.toVoidVavr))
 
   /** @return true iff added, false iff not added because of duplicate OrderId. */
@@ -187,7 +187,7 @@ final class JControllerApi(val asScala: ControllerApi, config: Config)
   def addOrders(@Nonnull orders: Flux[JFreshOrder])
   : CompletableFuture[VEither[Problem, AddOrdersResponse]] =
     runIO(asScala
-      .addOrders(orders.asStream.map(_.asScala))
+      .addOrders(orders.asFs2Stream.map(_.asScala))
       .map(_.toVavr))
 
   @Nonnull
@@ -239,7 +239,7 @@ final class JControllerApi(val asScala: ControllerApi, config: Config)
   def deleteOrdersWhenTerminated(@Nonnull orderIds: Flux[OrderId])
   : CompletableFuture[VEither[Problem, Void]] =
     runIO(asScala
-      .deleteOrdersWhenTerminated(orderIds.asStream)
+      .deleteOrdersWhenTerminated(orderIds.asFs2Stream)
       .map(_.toVoidVavr))
 
   @Nonnull

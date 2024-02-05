@@ -9,7 +9,7 @@ import js7.base.utils.{Atomic, Lazy}
 
 /** Typeclass for Monix Task like unsafe memoize for Cats Effect. */
 trait UnsafeMemoizable[F[_]]:
-  extension[A](underlying: F[A])
+  extension[A](x: F[A])
     def unsafeMemoize: F[A]
 
 
@@ -18,24 +18,16 @@ object UnsafeMemoizable:
   given [F[_]](using F: Async[F]): UnsafeMemoizable[F] with
     extension[A](underlying: F[A])
       def unsafeMemoize: F[A] =
-        val triggered = Atomic(false)
-        val deferred = Deferred.unsafe[F, Either[Throwable, A]]
-        F.defer:
-          if triggered.getAndSet(true) then
-            deferred.get.flatMap(F.fromEither)
-          else
-            underlying
-              .attempt
-              .flatMap(tried =>
-                deferred.complete(tried) >> F.fromEither(tried))
-              .uncancelable // TODO Allow cancellation, then synchronize `triggered`
+        unsafeMemoizeAsync(underlying)
+
 
   // Only to allow IntelliJ to get the proper result type:
   extension [F[_], A](underlying: F[A])(using F: Async[F])
     def unsafeMemoize: F[A] =
       unsafeMemoizeAsync[F, A](underlying)
 
-  private def unsafeMemoizeAsync[F[_], A](underlying: F[A])(using F: Async[F]) =
+
+  private def unsafeMemoizeAsync[F[_], A](underlying: F[A])(using F: Async[F]): F[A] =
     val triggered = Atomic(false)
     val deferred = Deferred.unsafe[F, Either[Throwable, A]]
     F.defer:
@@ -44,8 +36,8 @@ object UnsafeMemoizable:
       else
         underlying
           .attempt
-          .flatMap(tried =>
-            deferred.complete(tried) >> F.fromEither(tried))
+          .flatMap: tried =>
+            deferred.complete(tried) >> F.fromEither(tried)
           .uncancelable // TODO Allow cancellation, then synchronize `triggered`
 
 

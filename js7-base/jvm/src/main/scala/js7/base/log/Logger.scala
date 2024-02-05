@@ -26,6 +26,8 @@ import scala.reflect.ClassTag
 
 object Logger extends AdHocLogger:
 
+  type Underlying = ScalaLogger
+
   private val ifNotInitialized = new Once
 
   Slf4jUtils.initialize()
@@ -208,47 +210,55 @@ object Logger extends AdHocLogger:
         logF[SyncIO, A](logger, LogLevel.Trace, function, args, result)(SyncIO(body))
           .unsafeRunSync()
 
-      def infoResource[A](function: String, args: => Any = "")(resource: Resource[IO, A])
-      : Resource[IO, A] =
-        logResourceUse[IO, A](logger, LogLevel.Info, function, args)(resource)
+      def infoResource[F[_], A](function: String, args: => Any = "")(resource: Resource[F, A])
+        (using F: Sync[F])
+      : Resource[F, A] =
+        logResourceUse[F, A](logger, LogLevel.Info, function, args)(resource)
 
-      def debugResource[A](resource: Resource[IO, A])(implicit src: sourcecode.Name)
-      : Resource[IO, A] =
-        debugResource(src.value + ".use")(resource)
+      def debugResource[F[_], A](resource: Resource[F, A])
+        (using F: Sync[F], tag: Tag[A], src: sourcecode.Name)
+      : Resource[F, A] =
+        logResourceUse[F, A](logger, LogLevel.Debug)(resource)
 
-      def debugResource[A](function: String, args: => Any = "")(resource: Resource[IO, A])
-      : Resource[IO, A] =
-        logResourceUse[IO, A](logger, LogLevel.Debug, function, args)(resource)
+      def debugResource[F[_], A](function: String, args: => Any = "")(resource: Resource[F, A])
+        (using F: Sync[F])
+      : Resource[F, A] =
+        logResourceUse[F, A](logger, LogLevel.Debug, function, args)(resource)
 
       def traceResource[F[_], A](resource: Resource[F, A])
-        (implicit F: Applicative[F] & Sync[F], src: sourcecode.Name)
+        (using F: Sync[F], tag: Tag[A], src: sourcecode.Name)
       : Resource[F, A] =
-        traceResource(src.value + ".use")(resource)
+        logResourceUse[F, A](logger, LogLevel.Trace)(resource)
 
       def traceResource[F[_], A](function: String, args: => Any = "")(resource: Resource[F, A])
-        (implicit F: Applicative[F] & Sync[F])
+        (implicit F: Sync[F])
       : Resource[F, A] =
         logResourceUse[F, A](logger, LogLevel.Trace, function, args)(resource)
 
-      def infoStream[A](function: String, args: => Any = "")(stream: Stream[IO, A])
-      : Stream[IO, A] =
-        logStream[A](logger, LogLevel.Info, function, args)(stream)
+      def infoStream[F[_], A](function: String, args: => Any = "")(stream: Stream[F, A])
+        (using F: Sync[F])
+      : Stream[F, A] =
+        logStream[F, A](logger, LogLevel.Info, function, args)(stream)
 
-      def debugStream[A](stream: Stream[IO, A])(implicit src: sourcecode.Name, A: Tag[A])
-      : Stream[IO, A] =
-        debugStream(s"${src.value}: Stream[IO, ${A.tag.shortName}]")(stream)
+      def debugStream[F[_], A](stream: Stream[F, A])
+        (using F: Sync[F], A: Tag[A], src: sourcecode.Name)
+      : Stream[F, A] =
+        debugStream(s"${src.value}: Stream[_,${A.tag.shortName}]")(stream)
 
-      def debugStream[A](function: String, args: => Any = "")(stream: Stream[IO, A])
-      : Stream[IO, A] =
-        logStream[A](logger, LogLevel.Debug, function, args)(stream)
+      def debugStream[F[_], A](function: String, args: => Any = "")(stream: Stream[F, A])
+        (using F: Sync[F])
+      : Stream[F, A] =
+        logStream[F, A](logger, LogLevel.Debug, function, args)(stream)
 
-      def traceStream[A](stream: Stream[IO, A])(implicit src: sourcecode.Name, A: Tag[A])
-      : Stream[IO, A] =
-        traceStream(s"${src.value}: Stream[IO, ${A.tag.shortName}]")(stream)
+      def traceStream[F[_], A](stream: Stream[F, A])
+        (using F: Sync[F], src: sourcecode.Name, A: Tag[A])
+      : Stream[F, A] =
+        traceStream(s"${src.value}: Stream[_,${A.tag.shortName}]")(stream)
 
-      def traceStream[A](function: String, args: => Any = "")(stream: Stream[IO, A])
-      : Stream[IO, A] =
-        logStream[A](logger, LogLevel.Trace, function, args)(stream)
+      def traceStream[F[_], A](function: String, args: => Any = "")(stream: Stream[F, A])
+        (using F: Sync[F])
+      : Stream[F, A] =
+        logStream[F, A](logger, LogLevel.Trace, function, args)(stream)
 
       def logStart(logLevel: LogLevel, function: String, args: => Any = ""): Unit =
         Logger.logStart(logger, logLevel, function, args)
@@ -307,10 +317,17 @@ object Logger extends AdHocLogger:
               case Outcome.Succeeded(_) => F.unit
               case outcome => F.delay(ctx.logOutcome(outcome))
 
+    private def logResourceUse[F[_], A](logger: ScalaLogger, logLevel: LogLevel)
+      (resource: Resource[F, A])
+      (using F: Sync[F], tag: Tag[A], src: sourcecode.Name)
+    : Resource[F, A] =
+        logResourceUse[F, A](logger, logLevel, s"${src.value} :Resource[_,${tag.tag}]"):
+          resource
+
     private def logResourceUse[F[_], A](logger: ScalaLogger, logLevel: LogLevel, function: String,
       args: => Any = "")
       (resource: Resource[F, A])
-      (implicit F: Applicative[F] & Sync[F])
+      (implicit F: Sync[F])
     : Resource[F, A] =
       Resource
         .makeCase(
@@ -324,10 +341,11 @@ object Logger extends AdHocLogger:
               for ctx <- maybeCtx do ctx.logOutcome(exitCase.toOutcome)))
         .*>(resource)
 
-    private def logStream[A](logger: ScalaLogger, logLevel: LogLevel, function: String,
+    private def logStream[F[_], A](logger: ScalaLogger, logLevel: LogLevel, function: String,
       args: => Any = "")
-      (stream: Stream[IO, A])
-    : Stream[IO, A] =
+      (stream: Stream[F, A])
+      (using F: Sync[F])
+    : Stream[F, A] =
       Stream.suspend:
         if !logger.isEnabled(logLevel) then
           stream
@@ -335,15 +353,15 @@ object Logger extends AdHocLogger:
           var n, chunks = 0L
           val startedAt = Deadline.now
           stream
-            .onStart(IO:
+            .onStart(F.delay:
               Logger.logStart(logger, logLevel, function, args))
             .mapChunks: chunk =>
               n += chunk.size
               chunks += 1
               chunk
-            .onFinalizeCase(exitCase => IO:
+            .onFinalizeCase(exitCase => F.delay:
               Logger.logOutcome(logger, logLevel, function, args, duration = "",
-                exitCase.toOutcome[IO],
+                exitCase.toOutcome[F],
                 result =
                   s"$chunks chunks, ${itemsPerSecondString(startedAt.elapsed, n, "elems")}"))
 

@@ -15,7 +15,7 @@ object ThreadPoolsBase:
 
   def newBlockingExecutor(config: Config, name: String): ExecutorService =
     val keepAlive = config.getDuration("js7.thread-pools.io.keep-alive").toFiniteDuration
-    val virtualAllowed = config.optionAs[String]("js7.thread-pools.virtual")
+    val virtualAllowed = config.optionAs[String]("js7.thread-pools.blocking.virtual")
       .exists(Set("", "true"))
     if virtualAllowed then
       newBlockingExecutor(name, keepAlive)
