@@ -1,6 +1,6 @@
 package js7.base.test
 
-import js7.base.log.{Log4j, Logger}
+import js7.base.log.Logger
 import js7.base.utils.ScalaUtils.syntax.*
 import org.scalactic.source
 import org.scalatest.Assertions.fail
@@ -16,7 +16,7 @@ import scala.util.Try
  **/
 trait LoggingAnyFreeSpec extends AnyFreeSpec:
 
-  Log4j.initialize("JS7 Tests")
+  Logger.initialize("JS7 Tests")
 
   private val testAdder = new LoggingTestAdder(getClass.shortClassName)
 

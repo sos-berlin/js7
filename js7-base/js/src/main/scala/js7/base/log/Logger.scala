@@ -3,7 +3,6 @@ package js7.base.log
 import cats.effect.kernel.Sync
 import cats.effect.{IO, Resource}
 import fs2.Stream
-import js7.base.log.Logger.syntax.logF
 import js7.base.utils.ScalaUtils.implicitClass
 import scala.reflect.ClassTag
 import sourcecode.{FileName, Line, Name, Pkg}
@@ -15,7 +14,7 @@ object Logger
   val empty: scribe.Logger =
     scribe.Logger.empty
 
-  def initialize() = {}
+  def initialize(name: String) = {}
 
   def apply[A: ClassTag]: scribe.Logger =
     apply(implicitClass[A])
@@ -47,6 +46,12 @@ object Logger
         if (level != LogLevel.LogNone) {
           logger.log(logLevelToScribe(level), message, Some(throwable))
         }
+
+      inline def infoIO[A](io: IO[A])/*(implicit src: sourcecode.Name)*/: IO[A] =
+        io
+
+      inline def infoIO[A](functionName: String, inline args: => Any = "")(io: IO[A]): IO[A] =
+        io
 
       def infoF[F[_], A](body: F[A])(using F: Sync[F], src: sourcecode.Name)
       : F[A] =
@@ -135,7 +140,7 @@ object Logger
   }
 
   private def logF[F[_], A](
-    logger: ScalaLogger,
+    logger: Underlying,
     logLevel: LogLevel,
     function: String,
     args: => Any = "",

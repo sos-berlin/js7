@@ -10,7 +10,6 @@ import js7.base.catsutils.CatsEffectExtensions.right
 import js7.base.catsutils.CatsEffectUtils.durationOfIO
 import js7.base.generic.Completed
 import js7.base.log.Logger
-import js7.base.log.Logger.syntax.*
 import js7.base.problem.Checked.*
 import js7.base.problem.{Problem, ProblemException}
 import js7.base.session.SessionApi
@@ -28,7 +27,6 @@ import js7.proxy.JournaledProxy.*
 import js7.proxy.configuration.ProxyConf
 import js7.proxy.data.event.ProxyEvent.{ProxyCoupled, ProxyCouplingError, ProxyDecoupled}
 import js7.proxy.data.event.{EventAndState, ProxyEvent, ProxyStarted}
-import org.apache.pekko
 import scala.concurrent.duration.FiniteDuration
 import scala.util.chaining.scalaUtilChainingOps
 import scala.util.control.NonFatal
@@ -97,7 +95,9 @@ object JournaledProxy:
                       dropEventsUntilRequestedEventIdAndReinsertProxyStarted(obs, _)
                   .map(Right.apply)
                   .recoverWith:
-                    case t: pekko.stream.AbruptTerminationException => Stream.raiseError(t)
+                    case t if t.getClass.getName ==
+                      "org.apache.pekko.stream.AbruptTerminationException" =>
+                      Stream.raiseError(t)
                     case NonFatal(t) if fromEventId.isEmpty || !isTorn(t) => Stream.suspend:
                       val continueWithState =
                         if isTorn(t) then
