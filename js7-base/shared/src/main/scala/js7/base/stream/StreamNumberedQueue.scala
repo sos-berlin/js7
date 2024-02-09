@@ -33,7 +33,6 @@ final class StreamNumberedQueue[V: Tag]:
         queue :+= Numbered(nextNumber, command)
         lastNumber = nextNumber
         nextNumber += 1
-      end for
       _state = s.copy(queue = queue, nextNumber = nextNumber)
       if lastNumber != -1 then
         sync.onAdded(lastNumber))
@@ -50,20 +49,19 @@ final class StreamNumberedQueue[V: Tag]:
           queue :+= command
           lastNumber = command.number
           nextNumber = command.number + 1
-        end for
         _state = s.copy(queue = queue, nextNumber = nextNumber)
         if lastNumber != -1 then
           sync.onAdded(lastNumber))
 
   def stream: Stream[IO, Numbered[V]] =
-    stream_(after = _state.torn)
+    stream2(after = _state.torn)
 
   def stream(after: Long): Stream[IO, Numbered[V]] =
     Stream.suspend:
       _state.checkAfter(after).orThrow
-      stream_(after)
+      stream2(after)
 
-  private def stream_(after: Long): Stream[IO, Numbered[V]] =
+  private def stream2(after: Long): Stream[IO, Numbered[V]] =
     Stream.unfoldChunkEval(after): after =>
       IO
         .race(
@@ -75,13 +73,13 @@ final class StreamNumberedQueue[V: Tag]:
           case Right(Left(StoppedProblem)) => IO.none
           case Right(Left(problem)) => IO.raiseError(problem.throwable)
 
-          case Right(Right(Vector())) => // Race condition ???
-            logger.warn:
-              s"Internal: sync.whenAvailable($after) triggered but no command available - delay 1s"
-            IO.some(Chunk.empty -> after).delayBy(1.s)
-
           case Right(Right(values)) =>
-            IO.some(Chunk.from(values) -> values.last.number)
+            if values.isEmpty then // Race condition ???
+              logger.warn:
+                s"Internal: sync.whenAvailable($after) triggered but no command available - delay 1s"
+              IO.some(Chunk.empty -> after).delayBy(1.s)
+            else
+              IO.some(Chunk.from(values) -> values.last.number)
 
   def release(after: Long): IO[Checked[Unit]] =
     mutex.lock(IO:
@@ -135,9 +133,10 @@ final class StreamNumberedQueue[V: Tag]:
           Right(q.drop(index + found.toInt))
 
     def requireValidNumber(after: Long): IO[Unit] =
-      val last = queue.lastOption.map(_.number)
-      IO.whenA(after < torn || last.exists(_ < after)):
-        IO.raiseError(unknownAfterProblem(after).throwable)
+      IO.defer:
+        val last = queue.lastOption.map(_.number)
+        IO.raiseWhen(after < torn || last.exists(_ < after)):
+          unknownAfterProblem(after).throwable
 
     def checkAfter(after: Long): Checked[Unit] =
       notStopped *>

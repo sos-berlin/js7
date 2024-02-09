@@ -190,7 +190,6 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
       OrderProcessingStarted(Some(subagentId), stick)
 
   sealed trait OrderStdWritten extends OrderEvent:
-
     def stdoutStderr: StdoutOrStderr
     def chunk: String
 

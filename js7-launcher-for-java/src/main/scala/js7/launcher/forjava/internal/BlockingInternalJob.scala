@@ -100,6 +100,7 @@ object BlockingInternalJob:
       asScala.env
         .map(_.view.mapValues(_.toJava).asJava)
         .toVavr
+
   object Step:
     def apply(asScala: InternalJob.Step)(using IORuntime): Step =
       Step(

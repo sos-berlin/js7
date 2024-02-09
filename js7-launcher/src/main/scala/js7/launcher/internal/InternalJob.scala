@@ -3,7 +3,7 @@ package js7.launcher.internal
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import java.nio.charset.Charset
-import js7.base.io.process.StdoutOrStderr
+import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
 import js7.base.problem.Checked
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.thread.IOExecutor
@@ -66,10 +66,16 @@ object InternalJob:
 
     @deprecated("Use write")
     def send(outErr: StdoutOrStderr, string: String): IO[Unit] =
-      write(outErr, string)
+      write(outErr, string).void
 
-    def write(outErr: StdoutOrStderr, string: String): IO[Unit] =
-      processOrder.stdObservers.write(outErr, string)
+    def writeOut(string: String): IO[Boolean] =
+      write(Stdout, string)
+
+    def writeErr(string: String): IO[Boolean] =
+      write(Stderr, string)
+
+    def write(outErr: StdoutOrStderr, string: String): IO[Boolean] =
+      writer(outErr).write(string)
 
     def writer(outErr: StdoutOrStderr): StdWriter =
       processOrder.stdObservers.writer(outErr)

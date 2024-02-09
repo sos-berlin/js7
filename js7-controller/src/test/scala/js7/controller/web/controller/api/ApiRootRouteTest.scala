@@ -1,9 +1,10 @@
 package js7.controller.web.controller.api
 
+import cats.effect.{Deferred, IO}
 import js7.base.BuildInfo
 import js7.base.auth.UserId
 import js7.base.system.startup.StartUp
-import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.test.OurTestSuite
 import js7.base.time.{Timestamp, Timezone}
 import js7.common.pekkohttp.CirceJsonSupport.jsonUnmarshaller
 import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegment
@@ -11,12 +12,9 @@ import js7.controller.web.controller.api.test.RouteTester
 import js7.data.cluster.ClusterState
 import js7.data.controller.{ControllerId, ControllerMetaState, ControllerOverview, ControllerState}
 import js7.data.event.{EventId, JournalState, SnapshotableState}
-import cats.effect.{Deferred, IO}
-import cats.effect.unsafe.IORuntime
 import org.apache.pekko.http.scaladsl.model.MediaTypes.`application/json`
 import org.apache.pekko.http.scaladsl.model.headers.Accept
 import org.apache.pekko.http.scaladsl.server.Route
-import scala.concurrent.Future
 import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
 
@@ -27,8 +25,6 @@ final class ApiRootRouteTest extends OurTestSuite, RouteTester, ApiRootRoute:
 
   protected val controllerId = ControllerId("TEST-CONTROLLER")
   protected val whenShuttingDown = Deferred.unsafe
-
-  private given IORuntime = ioRuntime
 
   protected def controllerState = IO.pure(Right(ControllerState.empty.copy(
     eventId = EventId(1001),

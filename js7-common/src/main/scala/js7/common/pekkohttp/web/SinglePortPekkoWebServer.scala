@@ -112,6 +112,7 @@ private object SinglePortPekkoWebServer:
           for
             routeDelegator <- DelayedRouteDelegator.start(binding, boundRoute, bindingString)
             pekkoBinding <- IO.fromFutureWithEC(implicit ec => IO:
+              // fromFuture is uncancelable!
               val whenBound = serverBuilder.bind(routeDelegator.webServerRoute)
               whenBound
                 .flatMap(_.whenTerminationSignalIssued)
@@ -173,7 +174,7 @@ private object SinglePortPekkoWebServer:
     def stop: IO[Unit] =
       logger
         .debugIO(s"Terminate $toString"):
-          IO.fromFuture(IO:
+          IO.fromFutureDummyCancelable(IO:
             pekkoBinding.terminate(hardDeadline = shutdownTimeout))
         .void
 

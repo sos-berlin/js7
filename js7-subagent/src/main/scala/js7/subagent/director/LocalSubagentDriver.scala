@@ -87,7 +87,7 @@ extends SubagentDriver, Service.StoppableByRequest:
   // TODO Similar to SubagentEventListener
   private def observeAfter(eventId: EventId): IO[Unit] =
     subagent.journal.eventWatch
-      .observe(EventRequest.singleClass[Event](after = eventId, timeout = None))
+      .stream(EventRequest.singleClass[Event](after = eventId, timeout = None))
       .evalMap(handleEvent)
       .evalMap:
         case (maybeStampedEvent, followUp) =>

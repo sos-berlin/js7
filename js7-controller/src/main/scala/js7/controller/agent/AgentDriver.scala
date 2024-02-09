@@ -1,24 +1,25 @@
 package js7.controller.agent
 
 import cats.data.NonEmptyList
-import cats.effect.Resource
+import cats.effect.{IO, Resource}
+import cats.effect.unsafe.{IORuntime, Scheduler}
 import cats.syntax.foldable.*
 import cats.syntax.option.*
 import cats.syntax.traverse.*
 import com.typesafe.config.ConfigUtil
 import js7.agent.client.AgentClient
-import js7.base.utils.Atomic.extensions.*
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.DedicateAgentDirector
 import js7.base.auth.{Admission, UserAndPassword}
+import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.crypt.Signed
 import js7.base.generic.{Completed, SecretString}
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
+import js7.base.monixlike.MonixLikeExtensions.{raceFold, scheduleOnce}
+import js7.base.monixlike.SyncCancelable
 import js7.base.monixutils.AsyncVariable
-import js7.base.catsutils.CatsEffectUtils.*
-import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.problem.Checked.*
 import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.problem.{Checked, Problem, ProblemException}
@@ -26,7 +27,9 @@ import js7.base.service.Service
 import js7.base.session.SessionApi
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
-import js7.base.utils.CatsUtils.{Nel, PureFiber, PureFiberIO}
+import js7.base.utils.Atomic.extensions.*
+import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
+import js7.base.utils.CatsUtils.{Nel, PureFiberIO}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{AsyncLock, Atomic, MutableAllocated}
 import js7.base.web.Uri
@@ -52,11 +55,6 @@ import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderDetached}
 import js7.data.order.{Order, OrderId, OrderMark}
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.journal.state.Journal
-import cats.effect.IO
-import cats.effect.unsafe.{IORuntime, Scheduler}
-import js7.base.monixlike.MonixLikeExtensions.{raceFold, scheduleOnce}
-import js7.base.monixlike.SyncCancelable
-import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import org.apache.pekko.actor.ActorSystem
 
 final class AgentDriver private(

@@ -74,13 +74,13 @@ public final class TestJInternalJob implements JInternalJob
                 () -> null,
                 delayedExecutor(delayMillis, MILLISECONDS))
             .thenCompose(o -> step
-                .sendOut("TEST FOR OUT" + lineSeparator())
+                .writeOut("TEST FOR OUT" + lineSeparator())
                 .thenApply(x -> o))
             .thenCompose(o -> step
-                .sendOut("FROM " + TestJInternalJob.class.getName() + lineSeparator())
+                .writeOut("FROM " + TestJInternalJob.class.getName() + lineSeparator())
                 .thenApply(x -> o))
             .thenCompose(o -> step
-                .sendErr("TEST FOR ERR" + lineSeparator())
+                .writeErr("TEST FOR ERR" + lineSeparator())
                 .thenApply(x -> o))
             .thenApply(o ->
                 process(step)));

@@ -1,10 +1,13 @@
 package js7.launcher.process
 
-import cats.effect.{FiberIO, IO}
+import cats.effect.{Deferred, FiberIO, IO}
+import fs2.concurrent.Channel
 import java.io.{IOException, InputStream}
 import java.lang.ProcessBuilder.Redirect.PIPE
+import js7.base.catsutils.CatsEffectExtensions.joinStd
+import js7.base.catsutils.UnsafeMemoizable.given
 import js7.base.io.process.Processes.*
-import js7.base.io.process.{JavaProcess, Js7Process, Stderr, Stdout, StdoutOrStderr}
+import js7.base.io.process.{JavaProcess, Js7Process, ReturnCode, Stderr, Stdout, StdoutOrStderr}
 import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.thread.IOExecutor
@@ -15,12 +18,7 @@ import js7.launcher.StdObservers
 import js7.launcher.forwindows.WindowsProcess
 import js7.launcher.forwindows.WindowsProcess.StartWindowsProcess
 import js7.launcher.process.CopyInputStreamToStringChannel.copyInputStreamToStringChannel
-import fs2.concurrent.Channel
-import js7.base.catsutils.CatsEffectExtensions.joinStd
-import scala.concurrent.Promise
 import scala.jdk.CollectionConverters.*
-import scala.util.Try
-import js7.base.catsutils.UnsafeMemoizable.given
 
 abstract class ShellScriptProcess private(
   processConfiguration: ProcessConfiguration,
@@ -30,15 +28,17 @@ extends RichProcess(processConfiguration, process):
 
   stdin.close() // Process gets an empty stdin
 
-  private val _sigkilled = Promise[Unit]()
+  private val sigkilled = Deferred.unsafe[IO, Unit]
 
-  final val sigkilled: IO[Unit] =
-    IO.fromFuture(IO.pure(_sigkilled.future)).unsafeMemoize
+  protected final val whenSigkilled: IO[Unit] =
+    sigkilled.get
 
-  override protected def onSigkill(): Unit =
+  def watchProcess: IO[ReturnCode]
+
+  override protected def onSigkill =
     // We do not super.onSigkill(), because Process.destroyForcibly closes stdout and stderr
     // leading to blocked child processes trying to write to stdout (as observed by a customer).
-    _sigkilled.trySuccess(())
+    sigkilled.complete(()).void
 
 
 object ShellScriptProcess:
@@ -79,23 +79,26 @@ object ShellScriptProcess:
               fiber.joinStd
                 .handleError(t => logger.warn(outerr.toString + ": " + t.toStringWithCauses))
 
-            override val terminated =
-              (for
+            val watchProcess: IO[ReturnCode] =
+              watchProcess2.unsafeMemoize
+
+            override val terminated = watchProcess
+
+            private def watchProcess2: IO[ReturnCode] =
+              for
                 outFiber <- copyToStream(Stdout, process.stdout, stdObservers.outChannel).start
                 errFiber <- copyToStream(Stderr, process.stderr, stdObservers.errChannel).start
                 _ <- IO.race(
-                  sigkilled.delayBy(stdoutAndStderrDetachDelay).map { _ =>
-                    if false then Try(process.stdout.close()) // TODO ?
-                    if false then Try(process.stderr.close()) // TODO ?
-                    if process.isAlive then {
-                      logger.debug("destroyForcibly")
-                      process.destroyForcibly()
-                    }
-                  },
-                  await(Stdout, outFiber) *> await(Stderr, errFiber))
+                  whenSigkilled /*.delayBy(stdoutAndStderrDetachDelay)???*/.map: _ =>
+                    if process.isAlive then
+                      logger.debug(s"destroyForcibly $process")
+                      process.destroyForcibly(),
+                  IO.both(
+                    await(Stdout, outFiber),
+                    await(Stderr, errFiber)))
                 returnCode <- super.terminated
                 _ <- whenTerminated
-              yield returnCode).unsafeMemoize
+              yield returnCode
           }
         })
 

@@ -10,6 +10,7 @@ import js7.journal.watch.EventWatch.*
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import fs2.Stream
+import js7.base.catsutils.CatsEffectExtensions.fromFutureDummyCancelable
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.Future
 import scala.concurrent.duration.*
@@ -21,17 +22,17 @@ import js7.base.catsutils.UnsafeMemoizable.given
   */
 trait EventWatch:
   val started: IO[this.type] =
-    IO.fromFuture(IO(whenStarted)).unsafeMemoize.asInstanceOf[IO[this.type]]
+    IO.fromFutureDummyCancelable(IO(whenStarted)).unsafeMemoize.asInstanceOf[IO[this.type]]
 
   def whenStarted: Future[this.type] = Future.successful(this)
 
-  def observe[E <: Event](
+  def stream[E <: Event](
     request: EventRequest[E],
     predicate: KeyedEvent[E] => Boolean = Every,
     onlyAcks: Boolean = false)
   : Stream[IO, Stamped[KeyedEvent[E]]]
 
-  def observeEventIds(timeout: Option[FiniteDuration]): IO[Checked[Stream[IO, EventId]]]
+  def streamEventIds(timeout: Option[FiniteDuration]): IO[Checked[Stream[IO, EventId]]]
 
   def when[E <: Event](request: EventRequest[E], predicate: KeyedEvent[E] => Boolean = Every)
   : IO[TearableEventSeq[CloseableIterator, KeyedEvent[E]]]
@@ -56,7 +57,7 @@ trait EventWatch:
     after: EventId,
     timeout: Option[FiniteDuration])
   : IO[Seq[Stamped[KeyedEvent[E]]]] =
-    observe(EventRequest.singleClass[E](after = after, timeout = timeout))
+    stream(EventRequest.singleClass[E](after = after, timeout = timeout))
       .filter(stamped => predicate(stamped.value))
       .mapAccumulate(Set.from(keys)) { (keys, stamped) =>
         val minishedKeys = keys - stamped.value.key.asInstanceOf[E.Key]

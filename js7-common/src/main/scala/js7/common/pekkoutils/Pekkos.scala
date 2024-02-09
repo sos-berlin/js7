@@ -2,6 +2,7 @@ package js7.common.pekkoutils
 
 import cats.effect.{IO, Resource, Sync}
 import com.typesafe.config.{Config, ConfigException, ConfigFactory}
+import js7.base.catsutils.CatsEffectExtensions.fromFutureDummyCancelable
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.thread.Futures.implicits.SuccessFuture
@@ -53,7 +54,7 @@ object Pekkos:
 
   def terminate(actorSystem: ActorSystem): IO[Unit] =
     logger.debugIO(s"terminate ActorSystem:${actorSystem.name}")(
-      IO.fromFuture(IO:
+      IO.fromFutureDummyCancelable(IO:
         terminateFuture(actorSystem)
       ).void)
 

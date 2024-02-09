@@ -1,8 +1,8 @@
 package js7.launcher.process
 
-import cats.effect.{Deferred, FiberIO, IO}
+import cats.effect.{FiberIO, IO}
 import cats.syntax.traverse.*
-import js7.base.generic.Completed
+import js7.base.catsutils.CatsEffectExtensions.startAndForget
 import js7.base.io.process.ProcessSignal
 import js7.base.log.Logger
 import js7.base.monixlike.MonixLikeExtensions.materialize
@@ -36,7 +36,7 @@ final class ProcessDriver(
     jobLauncherConf.tmpDirectory,
     jobLauncherConf.systemEncoding,
     v1Compatible = conf.v1Compatible)
-  private val terminatedPromise = Deferred.unsafe[IO, Either[Throwable, Completed]]
+  //private val terminatedPromise = Deferred.unsafe[IO, Either[Throwable, Completed]]
   private val richProcessOnce = SetOnce[RichProcess]
   private val startProcessLock = AsyncLock(orderId.toString)
   @volatile private var killedBeforeStart: Option[ProcessSignal] = None
@@ -84,14 +84,10 @@ final class ProcessDriver(
                   richProcessOnce := richProcess
                   logger.info(
                     s"$orderId: Process $richProcess started, ${conf.jobKey}: ${conf.commandLine}")
-                  richProcess.terminated.attempt
-                    .flatMap: attempted =>
-                      terminatedPromise.complete(attempted.rightAs(Completed))
-                    .start/*AndForget*/
+                  richProcess.watchProcess
+                    .startAndForget
                     .flatTap: _ =>
-                      killedBeforeStart
-                        .traverse(sendProcessSignal(richProcess, _))
-                          .as(Right(richProcess))
+                      killedBeforeStart.traverse(sendProcessSignal(richProcess, _))
                     .as(Right(()))
                 }))
     }
@@ -105,8 +101,8 @@ final class ProcessDriver(
           s"$orderId: Process $richProcess terminated with $rc after ${richProcess.duration.pretty}")
         IO.fromTry(tried)
       }
-      .map { returnCode =>
-        fetchReturnValuesThenDeleteFile() match
+      .flatMap { returnCode =>
+        IO.interruptible(fetchReturnValuesThenDeleteFile()).map:
           case Left(problem) =>
             Outcome.Failed.fromProblem(
               problem.withPrefix("Reading return values failed:"),
@@ -115,7 +111,7 @@ final class ProcessDriver(
           case Right(namedValues) =>
             conf.toOutcome(namedValues, returnCode)
       }
-      .guarantee(IO {
+      .guarantee(IO.interruptible {
         returnValuesProvider.tryDeleteFile()
       })
 
@@ -129,10 +125,9 @@ final class ProcessDriver(
     startProcessLock.lock("kill")(IO.defer {
       richProcessOnce.toOption match {
         case None =>
-          killedBeforeStart = Some(signal)
-          logger.debug(s"$orderId: Kill before start")
-          terminatedPromise.complete(Left(new RuntimeException(s"$taskId killed before start")))
-            .void
+          IO:
+            killedBeforeStart = Some(signal)
+            logger.debug(s"$orderId: Kill before start")
         case Some(richProcess) =>
           sendProcessSignal(richProcess, signal)
       }

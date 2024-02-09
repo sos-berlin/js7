@@ -39,7 +39,7 @@ final class MemoryJournalTest extends OurTestSuite, TestCatsEffect:
       "A" -> TestAggregate("A", "a"))))
     assert(eventWatch.tornEventId == EventId.BeforeFirst)
     assert(eventWatch.lastAddedEventId == 1000)
-    assert(eventWatch.observe(EventRequest.singleClass[TestEvent](0)).compile.toList.await(99.s) == List(
+    assert(eventWatch.stream(EventRequest.singleClass[TestEvent](0)).compile.toList.await(99.s) == List(
       Stamped(1000, "A" <-: TestEvent.Added("a"))))
 
     journal.persistKeyedEvent("A" <-: TestEvent.Appended('1')).await(99.s).orThrow
@@ -48,12 +48,12 @@ final class MemoryJournalTest extends OurTestSuite, TestCatsEffect:
     assert(eventWatch.tornEventId == EventId.BeforeFirst)
     assert(eventWatch.lastAddedEventId == 1001)
 
-    assert(eventWatch.observe(EventRequest.singleClass[TestEvent](0)).compile.toList.await(99.s) == List(
+    assert(eventWatch.stream(EventRequest.singleClass[TestEvent](0)).compile.toList.await(99.s) == List(
       Stamped(1000, "A" <-: TestEvent.Added("a")),
       Stamped(1001, "A" <-: TestEvent.Appended('1'))))
-    assert(eventWatch.observe(EventRequest.singleClass[TestEvent](1000)).compile.toList.await(99.s) == List(
+    assert(eventWatch.stream(EventRequest.singleClass[TestEvent](1000)).compile.toList.await(99.s) == List(
       Stamped(1001, "A" <-: TestEvent.Appended('1'))))
-    assert(eventWatch.observe(EventRequest.singleClass[TestEvent](1001)).compile.toList.await(99.s).isEmpty)
+    assert(eventWatch.stream(EventRequest.singleClass[TestEvent](1001)).compile.toList.await(99.s).isEmpty)
 
   "test" in:
     val journal = newJournal()
@@ -61,7 +61,7 @@ final class MemoryJournalTest extends OurTestSuite, TestCatsEffect:
 
     val observed = mutable.Buffer.empty[Stamped[KeyedEvent[TestEvent]]]
     val observing = eventWatch
-      .observe(EventRequest.singleClass[TestEvent](
+      .stream(EventRequest.singleClass[TestEvent](
         after = EventId.BeforeFirst,
         timeout = Some(99.s)))
       .foreach(o => IO(synchronized:
@@ -103,7 +103,7 @@ final class MemoryJournalTest extends OurTestSuite, TestCatsEffect:
     assert(eventWatch.tornEventId == 1001)
 
     assert(eventWatch
-      .observe(EventRequest.singleClass[TestEvent](
+      .stream(EventRequest.singleClass[TestEvent](
         after = EventId.BeforeFirst))
       .compile.toList
       .materialize
@@ -112,7 +112,7 @@ final class MemoryJournalTest extends OurTestSuite, TestCatsEffect:
       .exists(_.isInstanceOf[TornException]))
 
     assert(eventWatch
-      .observe(EventRequest.singleClass[TestEvent](
+      .stream(EventRequest.singleClass[TestEvent](
         after = 1001))
       .compile.toList
       .await(99.s) == Seq(Stamped(1002, "C" <-: TestEvent.Added("C"))))
@@ -124,7 +124,7 @@ final class MemoryJournalTest extends OurTestSuite, TestCatsEffect:
 
     val observed = mutable.Buffer.empty[Stamped[KeyedEvent[TestEvent]]]
     val observing = eventWatch
-      .observe(EventRequest.singleClass[TestEvent](
+      .stream(EventRequest.singleClass[TestEvent](
         after = EventId.BeforeFirst,
         timeout = Some(99.s)))
       .foreach(o => IO(synchronized:
@@ -162,7 +162,7 @@ final class MemoryJournalTest extends OurTestSuite, TestCatsEffect:
       .await(99.s)
     assert(journal.queueLength == 3 * size)
     assert(eventWatch
-      .observe(EventRequest.singleClass[TestEvent](after = EventId.BeforeFirst))
+      .stream(EventRequest.singleClass[TestEvent](after = EventId.BeforeFirst))
       .map(_.value)
       .compile.toList
       .await(99.s) == events)

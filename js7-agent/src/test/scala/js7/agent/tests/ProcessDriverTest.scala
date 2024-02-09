@@ -81,7 +81,7 @@ final class ProcessDriverTest
 
       val io =
         for
-          stdObservers <- StdObservers.resource(charBufferSize = 7, keepLastErrLine = false)
+          stdObservers <- StdObservers.resource(charBufferSize = 7)
           taskRunner = new ProcessDriver(order.id, taskConfiguration, jobLauncherConf)
         yield for
           outFiber <- stdObservers.outStream.compile.foldMonoid.start

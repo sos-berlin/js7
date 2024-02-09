@@ -5,7 +5,7 @@ import cats.effect.{ExitCode, IO}
 import java.nio.file.{Files, Path}
 import js7.agent.client.PekkoHttpAgentTextApi
 import js7.base.auth.SessionToken
-import js7.base.catsutils.{OurApp, OurIORuntime}
+import js7.base.catsutils.OurApp
 import js7.base.convert.AsJava.StringAsPath
 import js7.base.generic.SecretString
 import js7.base.io.process.ReturnCode

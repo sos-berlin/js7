@@ -45,7 +45,7 @@ final class RecouplingStreamReaderTest extends OurAsyncTestSuite:
                 .map(_.toString)
               Right(Stream.fromIterator[IO](iterator, chunkSize = 1))
 
-      RecouplingStreamReader.observe[Long, String, TestSessionApi](
+      RecouplingStreamReader.stream[Long, String, TestSessionApi](
         toIndex = _.toLong,
         api,
         recouplingStreamReaderConf,

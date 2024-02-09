@@ -1,9 +1,10 @@
 package js7.controller.client.main
 
+import cats.effect.{ExitCode, IO}
 import cats.effect.unsafe.IORuntime
-import cats.effect.ExitCode
 import java.nio.file.{Files, Path}
 import js7.base.auth.SessionToken
+import js7.base.catsutils.OurApp
 import js7.base.convert.AsJava.StringAsPath
 import js7.base.generic.SecretString
 import js7.base.io.process.ReturnCode
@@ -14,8 +15,6 @@ import js7.common.commandline.CommandLineArguments
 import js7.controller.client.PekkoHttpControllerTextApi
 import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
-import cats.effect.IO
-import js7.base.catsutils.{OurApp, OurIORuntime}
 
 /**
  * @author Joacim Zschimmer

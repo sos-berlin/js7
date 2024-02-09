@@ -21,7 +21,6 @@ import cats.effect.unsafe.{IORuntime, Scheduler}
 
 final class AddOrderTest extends OurTestSuite, TestCatsEffect, ControllerAgentForScalaTest:
 
-  private given IORuntime = ioRuntime
   private given Scheduler = scheduler
 
   override protected val controllerConfig = config"""

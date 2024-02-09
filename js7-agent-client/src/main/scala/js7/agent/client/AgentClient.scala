@@ -78,7 +78,7 @@ extends HttpSessionApi, PekkoHttpClient, SessionApi.HasUserAndPassword, HttpClus
 
   final def overview: IO[AgentOverview] = get[AgentOverview](agentUris.overview)
 
-  final def eventStream(
+  final def agentEventStream(
     request: EventRequest[Event],
     heartbeat: Option[FiniteDuration] = None)
   : IO[Checked[Stream[IO, Stamped[KeyedEvent[Event]]]]] =

@@ -31,9 +31,8 @@ import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
 import js7.data.cluster.ClusterEvent
 import js7.data.controller.{ControllerRunId, ControllerState}
 import js7.data.delegate.DelegateCouplingState.{Coupled, Resetting}
-import js7.data.event.JournalSeparators.HeartbeatMarker
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, JournalSeparators, Stamped}
+import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, JournalEvent, Stamped}
 import js7.data.item.BasicItemEvent.ItemAttachable
 import js7.data.item.InventoryItemEvent
 import js7.data.order.{OrderEvent, OrderId}
@@ -141,10 +140,11 @@ extends Service.StoppableByRequest:
         api
           // A Pekko HTTP stream seems not to be cancelable with interruptWhen.
           // So we use a fast heartbeat and stop at the next stream element.
-          .eventStream(
+          .agentEventStream(
             EventRequest[Event](EventClasses, after = after, timeout = requestTimeout.some),
             heartbeat = keepAlive.some)
           .map(_.map(_
+            .filter(_ != JournalEvent.StampedHeartbeat)
             .interruptWhenF(untilStopRequested)))
           .race(untilStopRequested)
           .flatMap:
@@ -190,7 +190,7 @@ extends Service.StoppableByRequest:
   private def observeAndConsumeEvents: IO[Unit] =
     logger.traceIO(IO.defer {
       val delay = conf.eventBufferDelay max conf.commitDelay
-      eventFetcher.observe(client, after = adoptedEventId)
+      eventFetcher.stream(client, after = adoptedEventId)
         .pipe(stream =>
           if delay.isZeroOrBelow then
             stream.chunks

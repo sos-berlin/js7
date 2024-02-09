@@ -3,7 +3,7 @@ package js7.common.http
 import cats.effect.kernel.Resource.ExitCase
 import cats.effect.unsafe.IORuntime
 import cats.effect.{Deferred, IO, ResourceIO}
-import fs2.{Pipe, Stream}
+import fs2.Stream
 import js7.base.auth.SessionToken
 import js7.base.catsutils.CatsDeadline
 import js7.base.configutils.Configs.HoconStringInterpolator
@@ -13,7 +13,6 @@ import js7.base.fs2utils.StreamExtensions.{interruptWhenF, onStart}
 import js7.base.log.Logger
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
-import js7.base.utils.Tests
 import js7.base.web.Uri
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.StreamingSupportRouteTest.*

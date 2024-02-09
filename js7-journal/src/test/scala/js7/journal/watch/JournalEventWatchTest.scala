@@ -66,7 +66,7 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll, TestC
         def when(after: EventId) =
           eventWatch.when(EventRequest.singleClass[MyEvent](after = after, timeout = Some(30.s))).await(99.s).strict
         def observeFile(journalPosition: JournalPosition): List[Json] =
-          eventWatch.observeFile(journalPosition, timeout = 0.s)
+          eventWatch.streamFile(journalPosition, timeout = 0.s)
             .await(99.s)
             .orThrow
             .map(o => o.value.utf8String.parseJson.orThrow)
@@ -253,10 +253,10 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll, TestC
       }
     }
 
-    "observe" in {
+    "stream" in {
       withJournalEventWatch(lastEventId = EventId.BeforeFirst) { (writer, eventWatch) =>
         val stampeds = mutable.Buffer[Stamped[KeyedEvent[AEvent]]]()
-        val observed = eventWatch.observe(EventRequest.singleClass[AEvent](limit = 3, timeout = Some(99.s)))
+        val observed = eventWatch.stream(EventRequest.singleClass[AEvent](limit = 3, timeout = Some(99.s)))
           .foreach(stamped => IO(stampeds += stamped))
           .compile.drain.unsafeToFuture()
         assert(stampeds.isEmpty)
@@ -279,12 +279,12 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll, TestC
       }
     }
 
-    "observe Torn" in {
+    "stream Torn" in {
       // Wie geben wir am besten 'Torn' zurück? Als Ende des Streams, als Exception oder als eigenes Objekt?
       withJournalEventWatch(lastEventId = EventId(1000)) { (_, eventWatch) =>
         val e = intercept[TornException] {
           eventWatch
-            .observe(EventRequest.singleClass[AEvent](after = EventId(10), timeout = Some(99.s)))
+            .stream(EventRequest.singleClass[AEvent](after = EventId(10), timeout = Some(99.s)))
             .compile.count
             .await(99.s)
         }
@@ -292,7 +292,7 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll, TestC
       }
     }
 
-    "observe after=(unknown EventId)" in {
+    "stream after=(unknown EventId)" in {
       withJournalMeta { journalLocation =>
         withJournal(journalLocation, lastEventId = EventId(100)) { (writer, eventWatch) =>
           writer.writeEvents(MyEvents1)
@@ -300,7 +300,7 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll, TestC
           writer.onCommitted(writer.fileLengthAndEventId, MyEvents1.length)
 
           val e = intercept[TornException] {
-            eventWatch.observe(EventRequest
+            eventWatch.stream(EventRequest
               .singleClass[AEvent](after = EventId(115), timeout = Some(99.s)))
               .compile.count.await(99.s)
           }
@@ -308,7 +308,7 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll, TestC
 
           val stampeds = mutable.Buffer[Stamped[KeyedEvent[AEvent]]]()
           eventWatch
-            .observe(EventRequest.singleClass[AEvent](after = EventId(110), timeout = Some(500.ms)))
+            .stream(EventRequest.singleClass[AEvent](after = EventId(110), timeout = Some(500.ms)))
             .foreach(stamped => IO(stampeds += stamped))
             .compile.drain.await(99.s)
           assert(stampeds == MyEvents1(1) :: Nil)
@@ -376,13 +376,13 @@ final class JournalEventWatchTest extends OurTestSuite, BeforeAndAfterAll, TestC
     // Mit TakeSnapshot prüfen
   }
 
-  "observeFile" in {
+  "streamFile" in {
     withJournalEventWatch(lastEventId = EventId.BeforeFirst) { (writer, eventWatch) =>
-      assert(eventWatch.observeFile(JournalPosition(123L, 0), timeout = 99.s).await(99.s)
+      assert(eventWatch.streamFile(JournalPosition(123L, 0), timeout = 99.s).await(99.s)
         == Left(Problem("Unknown journal file=123")))
 
       val jsons = mutable.Buffer[Json]()
-      val observing = eventWatch.observeFile(JournalPosition(EventId.BeforeFirst, 0), timeout = 99.s)
+      val observing = eventWatch.streamFile(JournalPosition(EventId.BeforeFirst, 0), timeout = 99.s)
         .await(99.s)
         .orThrow
         .handleErrorWith:

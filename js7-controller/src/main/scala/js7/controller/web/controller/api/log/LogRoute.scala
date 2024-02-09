@@ -6,7 +6,6 @@ import java.nio.file.Files.{isReadable, isRegularFile}
 import java.nio.file.Path
 import js7.base.auth.ValidUserPermission
 import js7.base.time.JavaTimeConverters.*
-import js7.base.utils.FutureCompletion
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.files.GrowingFileStream
 import js7.common.files.GrowingFileStream.growingFileStream

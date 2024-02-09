@@ -1,20 +1,20 @@
 package js7.provider.scheduledorder
 
+import cats.effect.IO
+import cats.effect.unsafe.{IORuntime, Scheduler}
 import com.typesafe.config.Config
 import js7.base.generic.Completed
 import js7.base.log.Logger
+import js7.base.monixlike.MonixLikeExtensions.{scheduleOnce, unsafeToCancelableFuture}
+import js7.base.monixlike.{SerialFutureCancelable, SyncCancelable}
 import js7.base.time.JavaTimeConverters.*
 import js7.base.time.JavaTimestamp.specific.*
 import js7.base.time.Timestamp
+import js7.base.utils.Atomic
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.order.FreshOrder
 import js7.provider.scheduledorder.OrderScheduleGenerator.*
 import js7.provider.scheduledorder.oldruntime.InstantInterval
-import cats.effect.IO
-import js7.base.utils.Atomic
-import cats.effect.unsafe.{IORuntime, Scheduler}
-import js7.base.monixlike.MonixLikeExtensions.{scheduleOnce, unsafeToCancelableFuture}
-import js7.base.monixlike.{SerialFutureCancelable, SerialSyncCancelable, SyncCancelable}
 import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success}
 

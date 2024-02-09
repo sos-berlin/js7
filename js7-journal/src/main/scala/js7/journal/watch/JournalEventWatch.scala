@@ -307,7 +307,7 @@ extends AutoCloseable,
   def journalPosition =
     checkedCurrentEventReader.map(_.journalPosition)
 
-  def observeFile(journalPosition: JournalPosition,
+  def streamFile(journalPosition: JournalPosition,
     timeout: FiniteDuration, markEOF: Boolean, onlyAcks: Boolean)
   : IO[Checked[Stream[IO, PositionAnd[ByteArray]]]] =
     IO.defer:
@@ -319,12 +319,12 @@ extends AutoCloseable,
         announcedEventReaderPromise match
           case Some((`fileEventId`, promise)) =>
             if !promise.isCompleted then
-              logger.debug(s"observeFile($fileEventId): waiting for this new journal file")
+              logger.debug(s"streamFile($fileEventId): waiting for this new journal file")
             IO.fromFuture(IO.pure(promise.future)).map:
               case None =>
                 Right(Stream.empty) // JournalEventWatch has been closed
               case Some(currentEventReader) =>
-                Right(currentEventReader.observeFile(position, timeout, markEOF = markEOF, onlyAcks = onlyAcks))
+                Right(currentEventReader.streamFile(position, timeout, markEOF = markEOF, onlyAcks = onlyAcks))
 
           case _ =>
             val maybeEventReader = maybeCurrentEventReader
@@ -332,14 +332,14 @@ extends AutoCloseable,
               .orElse(fileEventIdToHistoric.get(fileEventId).map(_.eventReader))
             maybeEventReader match
               case None =>
-                logger.debug(s"observeFile($journalPosition): announcedEventReaderPromise=$announcedEventReaderPromise " +
+                logger.debug(s"streamFile($journalPosition): announcedEventReaderPromise=$announcedEventReaderPromise " +
                   s"maybeCurrentEventReader=$maybeCurrentEventReader " +
                   s"fileEventIdToHistoric=${fileEventIdToHistoric.keys.toVector.sorted.mkString(",")}")
                 IO.pure(Left(Problem(s"Unknown journal file=$fileEventId")))
 
               case Some(eventReader) =>
                 IO(Right(eventReader
-                  .observeFile(position, timeout, markEOF = markEOF, onlyAcks = onlyAcks)
+                  .streamFile(position, timeout, markEOF = markEOF, onlyAcks = onlyAcks)
                   .pipeIf(onlyAcks)(_
                     // Never acknowledge events written by this active cluster node
                     // to other wanna-be active nodes!

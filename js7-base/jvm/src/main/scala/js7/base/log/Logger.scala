@@ -1,6 +1,5 @@
 package js7.base.log
 
-import cats.Applicative
 import cats.effect.implicits.monadCancelOps
 import cats.effect.kernel.Sync
 import cats.effect.{IO, Outcome, Resource, SyncIO}

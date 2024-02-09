@@ -23,6 +23,7 @@ final case class JobLauncherConf(
   killForWindows: Seq[String],
   killScript: Option[ProcessKillScript],
   scriptInjectionAllowed: Boolean,
+  errorLineLengthMax: Int,
   recouplingStreamReaderConf: RecouplingStreamReaderConf,
   iox: IOExecutor,
   blockingJobScheduler: ExecutionContext,
@@ -32,7 +33,6 @@ final case class JobLauncherConf(
 
 
 object JobLauncherConf:
-  val ErrLineLengthMaximum = 4096  // Has to fit into the journal
 
   def checked(
     executablesDirectory: Path,
@@ -70,6 +70,7 @@ object JobLauncherConf:
         killForWindows = config.seqAs[String](sigkillWindowsName),
         killScript = killScript,
         scriptInjectionAllowed = scriptInjectionAllowed,
+        errorLineLengthMax = config.getInt("js7.job.execution.used-error-line-length"),
         RecouplingStreamReaderConfs.fromConfig(config).orThrow,
         iox,
         blockingJobScheduler = blockingJobEC,

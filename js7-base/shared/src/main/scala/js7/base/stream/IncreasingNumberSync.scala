@@ -1,7 +1,6 @@
 package js7.base.stream
 
 import cats.effect.IO
-import cats.syntax.flatMap.*
 import cats.syntax.traverse.*
 import js7.base.catsutils.CatsDeadline
 import js7.base.catsutils.CatsEffectExtensions.*
@@ -30,13 +29,14 @@ final class IncreasingNumberSync(initial: Long, valueToString: Long => String):
         for promise <- valueToPromise.remove(valueToPromise.firstKey) do
           promise.success(())
 
-  // TODO Memory leak when whenAvailable `after` will never be added.
-  //  The promise cannot be removed from `valueToPromise` because
-  //  it may be in use other calls `whenAvailable` (with different `until`).
-  //  No memory leak is expected if used properly.
-  /**
+  /** Wait until the expected EventId has occurred or overpaced.
+   *
+   * Call whenAvailable only with an `after` value which will be arrived,
+   * for only then the registered promise will be removed again.
+   * Do not call with `after` values in far future, which will never be arrived./**
     * @param delay When waiting for events, don't succeed after the first event but wait for further events
     */
+   */
   def whenAvailable(after: Long, until: Option[CatsDeadline], delay: FiniteDuration = ZeroDuration)
   : IO[Boolean] =
     //def argsString =
@@ -52,27 +52,30 @@ final class IncreasingNumberSync(initial: Long, valueToString: Long => String):
             if maybeTimeLeft.exists(_.isZero) then
               IO.False // Timeout
             else
-              val io = whenAvailable2(after) <*
-                IO.sleep(delay min maybeTimeLeft.getOrElse(FiniteDuration.MaxValue))
+              val io = whenAvailable2(after)
+                .andWait(delay min maybeTimeLeft.getOrElse(FiniteDuration.MaxValue))
               maybeTimeLeft.fold(io)(t => io.timeoutTo(t, IO.False))
 
-  private def whenAvailable2(after: Long): IO[Boolean] =
-    ().tailRecM: _ =>
-      if after < _last then
-        RightTrue
-      else synchronized:
+  private def whenAvailable2(after: Long): IO[true] =
+    if after < _last then
+      trueIO
+    else
+      synchronized:
         if after < _last then
-          RightTrue
+          trueIO
         else
           val promise = valueToPromise.getOrElseUpdate(after, Promise())
-          IO.fromFutureCancelable(IO.pure(promise.future -> IO.unit))
-            .as(Left(()))  // Check again
+          IO.fromFutureCancelable(IO.pure:
+            promise.future ->
+              /*onCancel=*/ IO.unit) // TODO Use Deferred instread of Promise to avoid leaks!
+            .as(true)
 
   def last = _last
 
   @TestOnly
-  private[stream] def waitingCount = valueToPromise.size
-
+  private[stream] def waitingCount =
+    synchronized:
+      valueToPromise.size
 
 object IncreasingNumberSync:
-  private val RightTrue = IO.right(true)
+  private val trueIO = IO.pure[true](true)

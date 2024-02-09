@@ -12,13 +12,13 @@ import js7.base.log.Logger
 import js7.launcher.StdObservers.*
 
 /** Provides a process' stdout and stdin as streams. */
-final class StdObservers(
+final class StdObservers private(
   private[launcher] val outChannel: Channel[IO, Elem],
   private[launcher] val errChannel: Channel[IO, Elem],
   val charBufferSize: Int,
-  keepLastErrLine: Boolean):
+  useErrorLineLengthMax: Option[Int]):
 
-  private val lastLineKeeper = keepLastErrLine ? new LastLineKeeper
+  private val lastLineKeeper = useErrorLineLengthMax.map(LastLineKeeper(_))
 
   val out: StdWriter = StdWriter(outChannel)
   val err: StdWriter = StdWriter(errChannel)
@@ -27,13 +27,11 @@ final class StdObservers(
     outChannel.stream.rethrow
 
   private[js7] val errStream: Stream[IO, String] =
-    lastLineKeeper.fold(errChannel.stream.rethrow)(o => errChannel.stream.rethrow.through(o))
+    errChannel.stream.rethrow.through:
+      lastLineKeeper getOrElse identity
 
   private[js7] def errorLine: Option[String] =
     lastLineKeeper.flatMap(_.lastLine)
-
-  def write(outerr: StdoutOrStderr, string: String): IO[Unit] =
-    writer(outerr).write(string).void
 
   def writer(outerr: StdoutOrStderr): StdWriter =
     outerr match
@@ -64,13 +62,17 @@ object StdObservers:
 
   private val logger = Logger[this.type]
 
-  def resource(charBufferSize: Int, keepLastErrLine: Boolean): Resource[IO, StdObservers] =
+  def resource(
+    charBufferSize: Int,
+    queueSize: Int = 1,
+    useErrorLineLengthMax: Option[Int] = None)
+  : Resource[IO, StdObservers] =
     Resource.make(
       acquire =
         for
-          outChannel <- Channel.bounded[IO, Elem](capacity = 1)
-          errChannel <- Channel.bounded[IO, Elem](capacity = 1)
+          outChannel <- Channel.bounded[IO, Elem](capacity = queueSize)
+          errChannel <- Channel.bounded[IO, Elem](capacity = queueSize)
         yield
-          new StdObservers(outChannel, errChannel, charBufferSize, keepLastErrLine))(
+          new StdObservers(outChannel, errChannel, charBufferSize, useErrorLineLengthMax))(
       release =
         _.close)

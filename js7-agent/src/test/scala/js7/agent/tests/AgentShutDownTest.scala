@@ -1,6 +1,5 @@
 package js7.agent.tests
 
-import cats.syntax.traverse.*
 import cats.effect.unsafe.IORuntime
 import js7.agent.TestAgent
 import js7.agent.client.AgentClient

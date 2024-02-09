@@ -30,14 +30,14 @@ final class RealEventWatchTest extends OurTestSuite, TestCatsEffect:
       onEventsCommitted(events.last.eventId)
       def journalInfo = throw new NotImplementedError
     val a = eventWatch
-      .observe(EventRequest.singleClass[TestEvent](limit = 1))
+      .stream(EventRequest.singleClass[TestEvent](limit = 1))
       .compile.toList
       .unsafeToFuture() await 99.s
     assert(a == events)
 
     // Event from 1970-01-01 is older than 1s
     val stream = eventWatch
-      .observe(EventRequest.singleClass[TestEvent](tornOlder = Some(1.s)))
+      .stream(EventRequest.singleClass[TestEvent](tornOlder = Some(1.s)))
       .compile.toList
       .unsafeToCancelableFuture()
     intercept[TornException] { stream await 99.s }
@@ -45,16 +45,16 @@ final class RealEventWatchTest extends OurTestSuite, TestCatsEffect:
 
     assert:
       eventWatch
-        .observe(EventRequest.singleClass[TestEvent](limit = 7, after = 1L, tornOlder = Some(1.s)))
+        .stream(EventRequest.singleClass[TestEvent](limit = 7, after = 1L, tornOlder = Some(1.s)))
         .compile.toList
         .await(99.s).isEmpty
 
-  "observe without stack overflow" in:
+  "stream without stack overflow" in:
     val eventWatch = new EndlessEventWatch()
     var expectedNext = Stamped(1L, 1 <-: TestEvent(1))
     val events = mutable.Buffer[Stamped[KeyedEvent[TestEvent]]]()
     val n = 100000
-    eventWatch.observe(EventRequest.singleClass[TestEvent](limit = n, timeout = Some(99.s)), onlyAcks = false)
+    eventWatch.stream(EventRequest.singleClass[TestEvent](limit = n, timeout = Some(99.s)), onlyAcks = false)
       .foreach(stamped => IO:
         assert(stamped == expectedNext)
         expectedNext = Stamped(stamped.eventId + 1, (stamped.value.key + 1) <-: TestEvent(stamped.value.event.number + 1))

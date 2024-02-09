@@ -41,7 +41,7 @@ import scala.util.control.NonFatal
 trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest:
   this: org.scalatest.Suite =>
 
-  private given IORuntime = ioRuntime
+  protected given IORuntime = ioRuntime
 
   protected final lazy val agents: Seq[TestAgent] = directoryProvider.startAgents(agentTestWiring)
     .await(99.s)
@@ -110,7 +110,6 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest:
         .map(_.recoverWith(t => IO.defer:
           logger.error(t.toStringWithCauses, t)
           IO.raiseError(t)))
-        .map(io => logger.traceIO(s"### terminate")(io))
         .sequence
         .await(99.s)
 

@@ -3,7 +3,7 @@ package js7.subagent.configuration
 import cats.effect.{ExitCode, IO}
 import fs2.{Chunk, Stream}
 import java.nio.file.Paths
-import js7.base.catsutils.{OurApp, OurIORuntime}
+import js7.base.catsutils.OurApp
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import scala.concurrent.duration.Deadline

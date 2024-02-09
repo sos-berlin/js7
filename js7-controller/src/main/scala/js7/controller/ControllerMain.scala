@@ -2,9 +2,8 @@ package js7.controller
 
 import cats.effect.unsafe.IORuntime
 import cats.effect.{ExitCode, IO}
-import js7.base.catsutils.{OurApp, OurIORuntime}
 import js7.base.utils.ProgramTermination
-import js7.common.system.startup.{ServiceApp, ServiceMain}
+import js7.common.system.startup.ServiceApp
 import js7.controller.configuration.ControllerConfiguration
 
 object ControllerMain extends ServiceApp:

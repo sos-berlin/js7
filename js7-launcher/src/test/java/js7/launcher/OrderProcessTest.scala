@@ -21,7 +21,7 @@ final class OrderProcessTest extends OurAsyncTestSuite:
   "Run an OrderProcess" in:
     val orderProcess = OrderProcess(IO(Outcome.succeeded))
     StdObservers
-      .resource(100, keepLastErrLine = false)
+      .resource(100, useErrorLineLengthMax = None)
       .use: stdObservers =>
         for
           running <- orderProcess.start(OrderId("ORDER"), JobKey.forTest("JOB"), stdObservers)
@@ -60,7 +60,7 @@ final class OrderProcessTest extends OurAsyncTestSuite:
     val orderProcess = OrderProcess(semaphore.flatMap(_.acquire).as(Outcome.succeeded))
 
     StdObservers
-      .resource(100, keepLastErrLine = false)
+      .resource(charBufferSize = 100)
       .use: stdObservers =>
         IO:
           val future = orderProcess.start(OrderId("ORDER"), JobKey.forTest("JOB"), stdObservers)

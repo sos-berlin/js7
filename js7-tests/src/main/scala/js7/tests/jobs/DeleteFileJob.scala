@@ -4,7 +4,6 @@ import cats.effect.IO
 import cats.syntax.traverse.*
 import java.nio.file.Files.deleteIfExists
 import java.nio.file.{Path, Paths}
-import js7.base.io.process.Stderr
 import js7.base.log.Logger
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.order.Outcome
@@ -15,13 +14,14 @@ import js7.launcher.internal.InternalJob.JobContext
 import js7.tests.jobs.DeleteFileJob.logger
 
 final class DeleteFileJob(jobContext: JobContext) extends InternalJob:
+
   def toOrderProcess(step: Step) =
     OrderProcess(
       step.arguments.checked("file")
         .orElse(step.order.arguments.checked(FileArgumentName))
         .flatMap(_.toStringValueString)
         .map(Paths.get(_))
-        .traverse(deleteFile(_, step.send(Stderr, _).void))
+        .traverse(deleteFile(_, step.writeErr(_).void))
         .rightAs(Outcome.succeeded)
         .map(Outcome.Completed.fromChecked))
 

@@ -10,7 +10,6 @@ import com.typesafe.config.Config
 import java.nio.file.Files.exists
 import java.nio.file.{Path, Paths}
 import js7.base.Problems.UnknownSignatureTypeProblem
-import js7.base.monixlike.MonixLikeExtensions.{onErrorRestartLoop, takeUntilEval}
 import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier.{State, logger}
 import js7.base.crypt.{GenericSignature, SignatureVerifier, SignerId}
 import js7.base.data.ByteArray
@@ -19,6 +18,7 @@ import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.watch.{DirectoryState, DirectoryStateJvm, DirectoryWatch, DirectoryWatchSettings}
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
+import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
 import js7.base.problem.Checked.{catchNonFatal, catchNonFatalFlatten}
 import js7.base.problem.{Checked, Problem}
 import js7.base.service.Service

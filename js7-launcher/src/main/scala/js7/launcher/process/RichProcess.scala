@@ -36,10 +36,7 @@ abstract class RichProcess protected[process](
 
   protected final def isKilling = _isKilling
 
-  protected def onSigkill(): Unit =
-    if process.isAlive then
-      logger.debug("destroyForcibly")
-      process.destroyForcibly()
+  protected def onSigkill: IO[Unit]
 
   private val _terminated: IO[ReturnCode] =
     IO.defer {
@@ -69,15 +66,13 @@ abstract class RichProcess protected[process](
                   s"Cannot start kill script command '$args': ${t.toStringWithCauses}"))
                 .<*(kill)
             }
-        ).guarantee(IO {
-          // The process may have terminated
-          // while long running child processes inheriting the file handles
-          // still use these.
+        ).guarantee:
+          // The process may have terminated while long running child processes have inherited the
+          // file handles and still use them.
           // So we forcibly close stdout and stderr.
           // The child processes write operations will fail with EPIPE or may block !!!
           // Let destroyForcibly try to close the handles (implementation dependent)
-          onSigkill()
-        })
+          onSigkill
 
   private def executeKillScript(args: Seq[String]): IO[Unit] =
     ifAlive("executeKillScript")(

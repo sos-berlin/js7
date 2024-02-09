@@ -3,13 +3,12 @@ package js7.agent.scheduler.order
 import cats.effect.IO
 import cats.instances.vector.*
 import cats.syntax.foldable.*
-import cats.syntax.functor.*
 import cats.syntax.monoid.*
 import cats.syntax.parallel.*
 import cats.syntax.traverse.*
 import com.typesafe.config.Config
 import fs2.concurrent.{Signal, SignallingRef}
-import fs2.{Chunk, Stream}
+import fs2.Chunk
 import java.nio.file.{Path, Paths}
 import java.util.regex.Matcher
 import js7.agent.data.AgentState

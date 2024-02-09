@@ -3,8 +3,6 @@ package js7.common.pekkohttp
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.log.Logger
 import js7.base.test.OurTestSuite
-import js7.base.utils.Atomic
-import js7.base.utils.Atomic.extensions.*
 import js7.common.pekkohttp.PekkoHttpServerUtils.*
 import org.apache.pekko.http.scaladsl.model.Uri
 import org.apache.pekko.http.scaladsl.server.Directives.*

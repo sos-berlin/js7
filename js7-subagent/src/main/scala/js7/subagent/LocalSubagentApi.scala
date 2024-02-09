@@ -28,7 +28,7 @@ extends SubagentApi, SessionApi.Dummy:
     (implicit kd: Decoder[KeyedEvent[E]])
   : IO[Stream[IO, Stamped[KeyedEvent[E]]]] =
     IO.pure(
-      subagent.journal.eventWatch.observe(request))
+      subagent.journal.eventWatch.stream(request))
 
   def executeSubagentCommand[A <: SubagentCommand](numbered: Numbered[A])
   : IO[Checked[numbered.value.Response]] =

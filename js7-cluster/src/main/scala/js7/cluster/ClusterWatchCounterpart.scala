@@ -70,7 +70,7 @@ extends Service.StoppableByRequest:
           ).map(_.map(Some(_))))
 
   private def initializeCurrentClusterWatchId(clusterState: HasNodes): IO[Unit] =
-    SyncDeadline.useNow: now ?=>
+    SyncDeadline.usingNow: now ?=>
       if currentClusterWatchId.isEmpty then
         for clusterWatchId <- clusterState.setting.clusterWatchId do
           // Set expiration time on start to inhibit change of registered ClusterWatchId when
@@ -134,7 +134,7 @@ extends Service.StoppableByRequest:
           case (RequestTimeoutException, _, retry) =>
             sym.onWarn()
             SyncDeadline
-              .useNow: now ?=>
+              .usingNow: now ?=>
                 logger.warn(sym.toString +
                   " Still trying to get a confirmation from " +
                   clusterWatchId.fold("any ClusterWatch")(id =>
@@ -149,16 +149,16 @@ extends Service.StoppableByRequest:
             IO(logger.warn(s"⛔ ClusterWatch rejected ${request.toShortString}: $problem"))
 
           case Right(confirmation) =>
-            SyncDeadline.useNow: now ?=>
+            SyncDeadline.usingNow: now ?=>
               if sym.warnLogged then logger.info(
                 s"🟢 ${confirmation.clusterWatchId} finally confirmed ${
                   request.toShortString} after ${since.elapsed.pretty}")
         .guaranteeCase:
-          case Outcome.Errored(t) if sym.warnLogged => SyncDeadline.useNow: now ?=>
+          case Outcome.Errored(t) if sym.warnLogged => SyncDeadline.usingNow: now ?=>
             logger.warn(
               s"💥 ${request.toShortString} => ${t.toStringWithCauses} · after ${since.elapsed.pretty}")
 
-          case Outcome.Canceled() if sym.warnLogged => SyncDeadline.useNow: now ?=>
+          case Outcome.Canceled() if sym.warnLogged => SyncDeadline.usingNow: now ?=>
             logger.info(
               s"⚫ ${request.toShortString} => Canceled after ${since.elapsed.pretty}")
 
@@ -192,7 +192,7 @@ extends Service.StoppableByRequest:
             requested.confirm(confirmation)
       }
       .flatMapT { _ =>
-        SyncDeadline.useNow: now ?=>
+        SyncDeadline.usingNow: now ?=>
           for o <- currentClusterWatchId do o.touch(confirm.clusterWatchId)
           Checked.unit
       }

@@ -4,6 +4,7 @@ import izumi.reflect.Tag
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
 import cats.effect.IO
+import js7.base.catsutils.CatsEffectExtensions.fromFutureDummyCancelable
 import scala.concurrent.{Future, Promise}
 import scala.util.Success
 import js7.base.catsutils.UnsafeMemoizable.given
@@ -17,8 +18,9 @@ final class SetOnce[A](label: => String, notYetSetProblem: Problem):
 
   protected[this] val promise = Promise[A]()
 
+  /** May leak on cancel, until SetOnce is garbage-collected. */
   lazy val io: IO[A] =
-    IO.fromFuture(IO.pure(future)).unsafeMemoize
+    IO.fromFutureDummyCancelable(IO.pure(future)).unsafeMemoize
 
   override def toString = toStringOr(s"SetOnce[$label](not yet set)")
 

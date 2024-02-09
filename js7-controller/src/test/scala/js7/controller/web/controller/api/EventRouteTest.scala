@@ -1,5 +1,6 @@
 package js7.controller.web.controller.api
 
+import cats.effect.IO
 import cats.effect.kernel.Deferred
 import cats.effect.unsafe.IORuntime
 import js7.base.circeutils.CirceUtils.RichCirceString

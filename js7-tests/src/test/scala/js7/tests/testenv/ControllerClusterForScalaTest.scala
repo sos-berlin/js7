@@ -1,6 +1,7 @@
 package js7.tests.testenv
 
-import cats.effect.{Resource, SyncIO}
+import cats.effect.unsafe.IORuntime
+import cats.effect.{IO, Resource}
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
@@ -10,20 +11,20 @@ import js7.base.configutils.Configs.*
 import js7.base.eventbus.StandardEventBus
 import js7.base.generic.SecretString
 import js7.base.io.https.HttpsConfig
+import js7.base.monixlike.MonixLikeExtensions.deferFuture
 import js7.base.problem.Checked.*
+import js7.base.test.TestCatsEffect
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsBlocking.*
 import js7.base.utils.CatsUtils.{Nel, combine}
 import js7.base.utils.Closer.syntax.*
 import js7.base.utils.Closer.withCloser
 import js7.base.utils.ProgramTermination
-import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatchService
 import js7.common.auth.SecretStringGenerator
 import js7.common.configuration.Js7Configuration
 import js7.common.message.ProblemCodeMessages
-import js7.common.system.ThreadPools
 import js7.common.utils.FreeTcpPortFinder.{findFreeTcpPort, findFreeTcpPorts}
 import js7.data.agent.AgentPath
 import js7.data.cluster.ClusterEvent.ClusterCoupled
@@ -35,10 +36,6 @@ import js7.data.job.RelativePathExecutable
 import js7.data.node.NodeId
 import js7.tests.testenv.ControllerClusterForScalaTest.*
 import js7.tests.testenv.DirectoryProvider.script
-import cats.effect.IO
-import cats.effect.unsafe.IORuntime
-import js7.base.monixlike.MonixLikeExtensions.deferFuture
-import js7.base.test.TestCatsEffect
 import org.jetbrains.annotations.TestOnly
 
 @TestOnly

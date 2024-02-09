@@ -46,7 +46,7 @@ final class ClusterWatch(
     import request.{from, clusterState as reportedClusterState}
 
     val checkedClusterState: IO[Checked[(Option[String], HasNodes)]] =
-      SyncDeadline.useNow: now ?=>
+      SyncDeadline.usingNow: now ?=>
         lazy val opString = s"${request.maybeEvent.fold("")(o => s"$o --> ")}$reportedClusterState"
         logger.trace(s"$from: $opString${
           _state.fold("")(o => ", after " + o.lastHeartbeat.elapsed.pretty)}")
@@ -75,7 +75,7 @@ final class ClusterWatch(
     checkedClusterState.flatMap:
       case Left(problem: ClusterNodeLossNotConfirmedProblem) =>
         SyncDeadline
-          .useNow: now ?=>
+          .usingNow: now ?=>
             _nodeToLossRejected(problem.event.lostNodeId) = LossRejected(problem.event)
             _state = _state.map(state => state.copy(
               lastHeartbeat = // Update lastHeartbeat only when `from` is active

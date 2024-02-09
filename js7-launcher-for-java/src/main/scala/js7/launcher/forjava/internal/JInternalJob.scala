@@ -33,11 +33,19 @@ object JInternalJob:
 
   final case class Step(asScala: InternalJob.Step)(using IORuntime)
   extends JavaJobStep:
+    @deprecated("Use writeOut")
     def sendOut(string: String): CompletionStage[Void] =
-      send(string, asScala.writer(Stdout))
+      writeOut(string)
 
+    @deprecated("Use writeErr")
     def sendErr(string: String): CompletionStage[Void] =
-      send(string, asScala.writer(Stderr))
+      writeErr(string)
 
-    private def send(string: String, stdWriter: StdWriter): CompletionStage[Void] =
+    def writeOut(string: String): CompletionStage[Void] =
+      write(string, asScala.writer(Stdout))
+
+    def writeErr(string: String): CompletionStage[Void] =
+      write(string, asScala.writer(Stderr))
+
+    private def write(string: String, stdWriter: StdWriter): CompletionStage[Void] =
       stdWriter.write(string).as(Void).unsafeToCompletableFuture()

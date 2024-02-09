@@ -49,7 +49,7 @@ final class InternalJobLauncherTest extends OurAsyncTestSuite:
 
 
     StdObservers
-      .resource(charBufferSize = 4096, keepLastErrLine = false)
+      .resource(charBufferSize = 4096)
       .use(stdObservers => IO.defer:
         val orderId = OrderId("TEST")
         val jobKey = JobKey.Named(WorkflowBranchPath(WorkflowPath("WORKFLOW"), Nil), WorkflowJob.Name("TEST-JOB"))

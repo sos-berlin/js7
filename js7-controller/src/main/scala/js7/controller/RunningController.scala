@@ -1,22 +1,25 @@
 package js7.controller
 
+import cats.effect.Resource
 import cats.effect.unsafe.Scheduler
-import org.apache.pekko.actor.{ActorRef, ActorSystem, Props}
-import org.apache.pekko.pattern.ask
-import org.apache.pekko.util.Timeout
-import cats.effect.{Resource, Sync}
-import cats.syntax.monad.*
 import cats.syntax.traverse.*
-import cats.syntax.parallel.*
+import js7.base.catsutils.CatsEffectExtensions.fromFutureDummyCancelable
 import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 import js7.base.monixlike.MonixLikeExtensions.{deferFuture, tapError}
 import js7.base.utils.CatsBlocking.BlockingIOResource
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
+import org.apache.pekko.actor.{ActorRef, ActorSystem, Props}
+import org.apache.pekko.pattern.ask
+import org.apache.pekko.util.Timeout
 import scala.concurrent.ExecutionContext
 //diffx import com.softwaremill.diffx.generic.auto.given
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import com.softwaremill.tagging.{@@, Tagger}
 import com.typesafe.config.Config
+import fs2.Stream
 import js7.base.auth.SimpleUser
+import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier
 import js7.base.eventbus.{EventPublisher, StandardEventBus}
@@ -24,21 +27,18 @@ import js7.base.generic.{Completed, SecretString}
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
-import js7.base.catsutils.CatsEffectUtils.*
-import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.problem.Checked.*
 import js7.base.problem.Problems.ShuttingDownProblem
 import js7.base.problem.{Checked, Problem}
 import js7.base.service.{MainService, Service}
+import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.IOExecutor
-import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.AlarmClock
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.SyncResource.syntax.RichSyncResource
 import js7.base.utils.{Allocated, ProgramTermination}
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatchService
@@ -46,7 +46,6 @@ import js7.cluster.{ClusterNode, WorkingClusterNode}
 import js7.common.pekkohttp.web.PekkoWebServer
 import js7.common.pekkohttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.pekkoutils.Pekkos.actorSystemResource
-import js7.common.system.ThreadPools
 import js7.controller.RunningController.logger
 import js7.controller.client.PekkoHttpControllerApi
 import js7.controller.command.ControllerCommandExecutor
@@ -71,9 +70,6 @@ import js7.journal.state.FileJournal
 import js7.journal.watch.StrictEventWatch
 import js7.journal.{EventIdClock, JournalActor}
 import js7.license.LicenseCheckContext
-import cats.effect.IO
-import cats.effect.unsafe.IORuntime
-import fs2.Stream
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{Future, Promise}
@@ -110,7 +106,7 @@ extends MainService, Service.StoppableByRequest:
     webServer.localUri
 
   val untilTerminated =
-    IO.fromFuture(IO.pure(terminated))
+    IO.fromFutureDummyCancelable(IO.pure(terminated))
 
   protected def start =
     startService(
@@ -177,7 +173,7 @@ extends MainService, Service.StoppableByRequest:
 
   @TestOnly
   def waitUntilReady(): Unit =
-    IO.fromFuture(IO(whenReady))
+    IO.fromFutureDummyCancelable(IO(whenReady))
       .logWhenItTakesLonger
       .await(99.s)
 

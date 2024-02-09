@@ -48,9 +48,12 @@ object CatsEffectExtensions:
         case Outcome.Succeeded(_) => IO.unit
         case _ => finalizer
 
+    /** Extra name to detect unjoined fibers in code. */
     def startAndForget: IO[Unit] =
       io.start.void
 
+
+  private val fromFutureSimpleCancel = IO(logger.trace("fromFutureDummyCancelable ignores cancel"))
 
   extension [A](io: IO[Checked[A]])
 
@@ -97,6 +100,15 @@ object CatsEffectExtensions:
 
     inline def completed: IO[Completed] =
       completedIO
+
+    def fromOutcome[A](outcome: OutcomeIO[A]): IO[A] =
+      outcome match
+        case Outcome.Succeeded(a) => a
+        case Outcome.Errored(t) => IO.raiseError(t)
+        case Outcome.Canceled() => IO.raiseError(new FiberCanceledException)
+
+    def fromFutureDummyCancelable[A](future: IO[Future[A]]): IO[A] =
+      IO.fromFutureCancelable(future.map(_ -> fromFutureSimpleCancel))
 
     def fromFutureWithEC[A](io: ExecutionContext => IO[Future[A]]): IO[A] =
       for

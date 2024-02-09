@@ -4,21 +4,15 @@ import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import fs2.Stream
 import io.circe.Encoder
-import io.circe.syntax.*
 import js7.base.auth.ValidUserPermission
-import js7.base.catsutils.CatsEffectExtensions.{left, right}
-import js7.base.circeutils.CirceUtils.RichJson
+import js7.base.catsutils.CatsEffectExtensions.right
 import js7.base.data.ByteSequence.ops.*
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
-import js7.base.fs2utils.StreamExtensions.*
 import js7.base.log.Logger
 import js7.base.problem.Checked
-import js7.base.utils.FutureCompletion
-import js7.base.utils.FutureCompletion.syntax.*
 import js7.base.utils.ScalaUtils.syntax.RichEitherF
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
-import js7.common.pekkohttp.ByteSequenceStreamExtensions.*
-import js7.common.pekkohttp.PekkoHttpServerUtils.{accept, completeIO, completeWithCheckedJsonStream, completeWithCheckedStream, completeWithIOStream, encodeStream}
+import js7.common.pekkohttp.PekkoHttpServerUtils.{accept, completeWithCheckedJsonStream, completeWithIOStream}
 import js7.common.pekkohttp.StandardDirectives.ioRoute
 import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkohttp.{PekkoHttpServerUtils, StandardDirectives}
@@ -30,13 +24,10 @@ import js7.data.Problems.SnapshotForUnknownEventIdProblem
 import js7.data.controller.ControllerState
 import js7.data.event.EventId
 import js7.journal.watch.FileEventWatch
-import org.apache.pekko.http.scaladsl.model.HttpEntity
-import org.apache.pekko.http.scaladsl.model.HttpEntity.Chunk as PekkoChunk
 import org.apache.pekko.http.scaladsl.server.Directives.{complete, get, pathEndOrSingleSlash}
 import org.apache.pekko.http.scaladsl.server.Route
 import org.apache.pekko.http.scaladsl.server.directives.ParameterDirectives.*
 import org.apache.pekko.util.ByteString
-import js7.base.fs2utils.Fs2ChunkByteSequence.*
 
 trait SnapshotRoute extends ControllerRouteProvider:
 

@@ -74,6 +74,7 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite, TestCatsEffect,
           killForWindows = ProcessConfiguration.forTest.killForWindows,
           None,
           scriptInjectionAllowed = true,
+          errorLineLengthMax = 1024,
           RecouplingStreamReaderConf.forTest,
           globalIOX, blockingJobExecutionContext,
           null: AlarmClock/*AlarmClock()*/)
@@ -139,7 +140,7 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite, TestCatsEffect,
     val jobKey = launcher.jobConf.jobKey
 
     (for
-      stdObservers <- StdObservers.resource(4096, keepLastErrLine = false)
+      stdObservers <- StdObservers.resource(4096)
       dir <- temporaryDirectoryResource[IO]("InternalJobLauncherForJavaTest-")
       fileValueScope <- Resource
         .fromAutoCloseable(IO(new FileValueState(dir)))

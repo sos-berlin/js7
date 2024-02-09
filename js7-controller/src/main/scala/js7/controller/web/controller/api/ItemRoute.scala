@@ -5,15 +5,13 @@ import js7.base.auth.{Permission, UpdateItemPermission, ValidUserPermission}
 import js7.base.crypt.SignedString
 import js7.base.generic.Completed
 import js7.base.log.Logger
-import js7.base.catsutils.CatsEffectUtils.*
-import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}
 import js7.base.utils.ScalaUtils.syntax.{RichAny, RichEitherF}
-import js7.base.utils.{ByteSequenceToLinesStream, FutureCompletion}
-import js7.common.http.StreamingSupport.{asFs2Stream, *}
+import js7.base.utils.ByteSequenceToLinesStream
+import js7.common.http.StreamingSupport.*
 import js7.common.pekkohttp.CirceJsonSupport.jsonMarshaller
 import js7.common.pekkoutils.ByteStrings.syntax.*
 import js7.controller.item.ItemUpdater

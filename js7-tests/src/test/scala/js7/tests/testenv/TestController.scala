@@ -148,7 +148,7 @@ final class TestController(allocated: Allocated[IO, RunningController], admissio
       val eventId = eventWatch.lastAddedEventId
       addOrderBlocking(order)
       eventWatch
-        .observe(EventRequest.singleClass[OrderEvent](eventId, Some(timeout + 9.s)))
+        .stream(EventRequest.singleClass[OrderEvent](eventId, Some(timeout + 9.s)))
         .filter(_.value.key == order.id)
         .map(o => o.copy(value = o.value.event))
         .takeThrough { case Stamped(_, _, event) =>

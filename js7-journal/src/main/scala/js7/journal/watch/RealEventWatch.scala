@@ -7,7 +7,6 @@ import fs2.Stream
 import izumi.reflect.Tag
 import java.util.concurrent.TimeoutException
 import js7.base.catsutils.SyncDeadline
-import js7.base.catsutils.SyncDeadline.now
 import js7.base.fs2utils.StreamExtensions.+:
 import js7.base.monixlike.MonixLikeExtensions.fromAsyncStateAction
 import js7.base.fs2utils.StreamUtils
@@ -36,11 +35,11 @@ import scala.reflect.ClassTag
   */
 trait RealEventWatch extends EventWatch:
 
-  protected def scheduler: Scheduler
-
   protected def eventsAfter(after: EventId): Option[CloseableIterator[Stamped[KeyedEvent[Event]]]]
 
   protected def isActiveNode: Boolean
+
+  protected def scheduler: Scheduler
 
   given Scheduler = scheduler
 
@@ -51,7 +50,7 @@ trait RealEventWatch extends EventWatch:
   private[journal] final def onEventsCommitted(eventId: EventId): Unit =
     committedEventIdSync.onAdded(eventId)
 
-  final def observe[E <: Event](
+  final def stream[E <: Event](
     request: EventRequest[E],
     predicate: KeyedEvent[E] => Boolean,
     onlyAcks: Boolean)
@@ -59,17 +58,18 @@ trait RealEventWatch extends EventWatch:
     val originalTimeout = request.timeout
 
     val streamOfStreams = Stream
-      .unfoldEval(IO.pure(request)): lazyRequest =>
-        lazyRequest.flatMap: request =>
-          SyncDeadline
-            .useNow: now ?=>
-              request.timeout.map(t => now + (t min EventRequest.LongTimeout))
-            .flatMap: deadline =>
-              // Access now the in previous iteration computed values lastEventId and limit (see below)
-              // Timeout is renewed after every fetched event
-              if request.limit <= 0 then
-                IO.none
-              else
+      .unfoldEval(IO.pure(request)): (getRequest: IO[EventRequest[E]]) =>
+        // Access the in previous iteration computed values lastEventId and limit (see below)
+        // Timeout is renewed after every fetched event
+        getRequest.flatMap: request =>
+          logger.trace(s"### stream unfoldEval: $request")
+          if request.limit <= 0 then
+            IO.none
+          else
+            SyncDeadline
+              .usingNow: now ?=>
+                request.timeout.map(t => now + (t min EventRequest.LongTimeout))
+              .flatMap: deadline =>
                 when[E](request, predicate).flatMap:
                   case TearableEventSeq.Torn(tornAfter) =>
                     IO.raiseError:
@@ -80,15 +80,17 @@ trait RealEventWatch extends EventWatch:
 
                   case EventSeq.Empty(lastEventId) =>
                     SyncDeadline
-                      .useNow: now ?=>
+                      .usingNow:
                         deadline.map(_.timeLeft)
-                      .map: remaining =>
-                        remaining.forall(_.isPositive) ?
-                          (Stream.empty,
-                            SyncDeadline.useNow: now ?=>
+                      .map: timeLeft =>
+                        timeLeft.forall(_.isPositive) ? {
+                          val nextGetRequest = // Will be executed in the next iteration
+                            SyncDeadline.usingNow:
                               request.copy[E](
                                 after = lastEventId,
-                                timeout = deadline.map(_.timeLeftOrZero)))
+                                timeout = deadline.map(_.timeLeftOrZero))
+                          Stream.empty -> nextGetRequest
+                        }
 
                   case EventSeq.NonEmpty(events) =>
                     IO:
@@ -109,22 +111,22 @@ trait RealEventWatch extends EventWatch:
                           timeout = originalTimeout))))
     streamOfStreams.flatten
 
-  final def observeEventIds(maybeTimeout: Option[FiniteDuration])
+  final def streamEventIds(maybeTimeout: Option[FiniteDuration])
   : IO[Checked[Stream[IO, EventId]]] =
     IO:
       if isActiveNode then
         Left(AckFromActiveClusterNodeProblem)
       else
-        Right(observeEventIds2(maybeTimeout))
+        Right(streamEventIds2(maybeTimeout))
 
-  private def observeEventIds2(maybeTimeout: Option[FiniteDuration]): Stream[IO, EventId] =
+  private def streamEventIds2(maybeTimeout: Option[FiniteDuration]): Stream[IO, EventId] =
     val originalTimeout = maybeTimeout
     var deadline = none[SyncDeadline]
 
     def next(lazyAfter: () => (EventId, Option[FiniteDuration]))
     : IO[(Option[Stream[IO, EventId]], () => (EventId, Option[FiniteDuration]))] =
       SyncDeadline
-        .useNow: now ?=>
+        .usingNow: now ?=>
           // Timeout is renewed after every fetched event
           val (after, maybeTimeout) = lazyAfter()
           deadline = maybeTimeout.map(t => now + (t min EventRequest.LongTimeout))
@@ -133,7 +135,7 @@ trait RealEventWatch extends EventWatch:
           committedEventIdSync.whenAvailable(after, deadline.map(_.toCatsDeadline))
             .flatMap:
               case false =>
-                SyncDeadline.useNow: now ?=>
+                SyncDeadline.usingNow: now ?=>
                   val remaining = deadline.map(_.timeLeft)
                   logger.debug("committedEventIdSync.whenAvailable returned false" +
                     remaining.fold("")(o => ", remaining=" + o.pretty))
@@ -141,8 +143,8 @@ trait RealEventWatch extends EventWatch:
                     () => after -> deadline.map(_.timeLeftOrZero))
 
               case true =>
+                val lastEventId = lastAddedEventId
                 IO:
-                  val lastEventId = lastAddedEventId
                   (Some(Stream.emit(lastEventId)),
                     () => lastEventId -> originalTimeout)
 
@@ -204,7 +206,7 @@ trait RealEventWatch extends EventWatch:
     collect: PartialFunction[AnyKeyedEvent, A])
   : IO[TearableEventSeq[CloseableIterator, A]] =
     SyncDeadline
-      .useNow: now ?=>
+      .usingNow: now ?=>
         // Protected against Timestamp overflow
         request.timeout.map(t => now + t.min(EventRequest.LongTimeout))
       .flatMap: deadline =>
@@ -250,7 +252,7 @@ trait RealEventWatch extends EventWatch:
 
             case empty @ EventSeq.Empty(lastEventId) =>
               SyncDeadline
-                .useNow: now ?=>
+                .usingNow: now ?=>
                   deadline.forall(_.hasTimeLeft) ? (
                     if lastEventId < committedEventIdSync.last then
                       // May happen due to race condition ???

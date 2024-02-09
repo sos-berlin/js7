@@ -12,7 +12,7 @@ import js7.base.web.HttpClient
 import js7.provider.Observing.*
 import cats.effect.IO
 import fs2.Stream
-import js7.base.monixlike.MonixLikeExtensions.{dematerialize, onErrorRestartLoop, takeUntilEval}
+import js7.base.monixlike.MonixLikeExtensions.{dematerialize, onErrorRestartLoop}
 
 /**
   * @author Joacim Zschimmer

@@ -12,8 +12,6 @@ import scala.jdk.CollectionConverters.*
 
 final class LockKeeperTest extends OurAsyncTestSuite:
 
-  private given IORuntime = ioRuntime
-
   "LockKeeper.lockResource" in:
     val keys = 0 until 8
     val lockKeeper = new LockKeeper[Int]
@@ -34,7 +32,6 @@ final class LockKeeperTest extends OurAsyncTestSuite:
         assert(keyToMap.asScala.toMap == keys.map(k => k -> n).toMap)
       }
     }).map(_.head/*Only the Assertion type is relevant, not the value*/)
-      .unsafeToFuture()
 
 
 object LockKeeperTest:

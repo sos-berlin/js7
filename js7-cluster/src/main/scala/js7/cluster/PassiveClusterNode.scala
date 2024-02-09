@@ -368,7 +368,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
         assertThat(continuation.fileLength == size(f))
 
       // TODO Eine Zeile davor lesen und sicherstellen, dass sie gleich unserer letzten Zeile ist
-      recouplingStreamReader.observe(activeNodeApi, after = continuation.fileLength)
+      recouplingStreamReader.stream(activeNodeApi, after = continuation.fileLength)
         // TODO Aktiver kann JournalFileIsNotReady melden, sendet keinen Herzschlag, ist aber irgendwie am Leben.
         //  observe könnte selbst Ausfall des Aktiven anzeigen, gdw er nicht erreichbar ist
         //  (zB Login klappt nicht, isTemporaryUnreachable).

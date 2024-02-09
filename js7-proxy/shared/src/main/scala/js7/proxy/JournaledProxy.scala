@@ -122,7 +122,7 @@ object JournaledProxy:
       val recouplingStreamReader = new MyRecouplingStreamReader(onProxyEvent, stateFetchDuration,
         tornOlder = (fromEventId.isEmpty ? proxyConf.tornOlder).flatten,
         proxyConf.recouplingStreamReaderConf)
-      recouplingStreamReader.observe(api, after = state.eventId)
+      recouplingStreamReader.stream(api, after = state.eventId)
         .onFinalize(recouplingStreamReader.decouple.map(_ => ()))
         .scan(seed)((s, stampedEvent) =>
           EventAndState(stampedEvent,

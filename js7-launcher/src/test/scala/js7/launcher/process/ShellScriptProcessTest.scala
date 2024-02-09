@@ -180,7 +180,7 @@ final class ShellScriptProcessTest extends OurAsyncTestSuite:
   : IO[ShellScriptProcess] =
     IO.defer:
       StdObservers
-        .resource(charBufferSize = 4096, keepLastErrLine = false)
+        .resource(charBufferSize = 4096)
         .allocated // startPipedShellScript will release it at end of stdout and stderr
         .flatMap: (stdObservers, _) =>
           def processOutErr(stream: Stream[IO, String], outerr: StdoutOrStderr): IO[Unit] =

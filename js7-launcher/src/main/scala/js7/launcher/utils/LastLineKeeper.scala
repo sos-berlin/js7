@@ -3,17 +3,16 @@ package js7.launcher.utils
 import cats.effect.IO
 import fs2.Pipe
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.launcher.configuration.JobLauncherConf.ErrLineLengthMaximum
-import js7.base.fs2utils.StreamExtensions.*
 
-private[launcher] final class LastLineKeeper extends Pipe[IO, String, String]:
+private[launcher] final class LastLineKeeper(lengthLengthMax: Int)
+extends Pipe[IO, String, String]:
 
   private var _lastLine = ""
   private var nonEmpty = false
   private var hasLineEnd = false
 
   def lastLine: Option[String] =
-    nonEmpty ? _lastLine.trim.truncateWithEllipsis(ErrLineLengthMaximum)
+    nonEmpty ? _lastLine.trim.truncateWithEllipsis(lengthLengthMax)
 
   private[utils] def testLastErrLine =
     _lastLine
@@ -44,4 +43,4 @@ private[launcher] final class LastLineKeeper extends Pipe[IO, String, String]:
           hasLineEnd = true
 
   private def set(string: String): Unit =
-    _lastLine = string.take(ErrLineLengthMaximum + 1)
+    _lastLine = string.take(lengthLengthMax + 1)

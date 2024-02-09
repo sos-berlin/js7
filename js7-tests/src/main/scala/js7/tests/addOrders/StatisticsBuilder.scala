@@ -9,7 +9,6 @@ import js7.data.order.OrderEvent.{OrderAddedX, OrderCancelled, OrderDeleted, Ord
 import js7.data.order.OrderId
 import scala.collection.mutable
 import scala.concurrent.duration.Deadline.now
-import scala.util.Success
 
 private final class StatisticsBuilder(
   isOurOrder: Set[OrderId],

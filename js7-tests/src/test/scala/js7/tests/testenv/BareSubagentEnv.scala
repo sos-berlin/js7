@@ -1,7 +1,7 @@
 package js7.tests.testenv
 
 import cats.effect.unsafe.IORuntime
-import cats.effect.{Resource, ResourceIO}
+import cats.effect.ResourceIO
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Path
 import js7.base.crypt.SignatureVerifier

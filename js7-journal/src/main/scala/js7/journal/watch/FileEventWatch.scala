@@ -9,8 +9,8 @@ import fs2.Stream
 import scala.concurrent.duration.FiniteDuration
 
 trait FileEventWatch extends EventWatch:
-  
-  def observeFile(journalPosition: JournalPosition,
+
+  def streamFile(journalPosition: JournalPosition,
     timeout: FiniteDuration, markEOF: Boolean = false, onlyAcks: Boolean = false)
   : IO[Checked[Stream[IO, PositionAnd[ByteArray]]]]
 

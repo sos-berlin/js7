@@ -33,12 +33,12 @@ final class StrictEventWatch(val underlying: FileEventWatch):
   def fileEventIds: Seq[EventId] =
     underlying.fileEventIds
 
-  def observe[E <: Event](
+  def stream[E <: Event](
     request: EventRequest[E],
     predicate: KeyedEvent[E] => Boolean = (_: KeyedEvent[E]) => true,
     onlyAcks: Boolean = false)
   : Stream[IO, Stamped[KeyedEvent[E]]] =
-    underlying.observe(request, predicate, onlyAcks)
+    underlying.stream(request, predicate, onlyAcks)
 
   def when[E <: Event](request: EventRequest[E], predicate: KeyedEvent[E] => Boolean = Every)
   : IO[TearableEventSeq[Seq, KeyedEvent[E]]] =

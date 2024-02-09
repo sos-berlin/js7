@@ -3,23 +3,18 @@ package js7.provider
 import cats.Show
 import cats.effect.IO
 import cats.effect.kernel.Resource.ExitCase
-import java.nio.file.StandardWatchEventKinds.*
-import java.nio.file.{ClosedWatchServiceException, Path, WatchEvent}
-import js7.base.generic.Completed
-import js7.base.log.Logger
-import js7.base.thread.IOExecutor
-import js7.base.thread.IOExecutor.ioFuture
-import js7.base.time.ScalaTime.*
-import js7.base.utils.AutoClosing.closeOnError
-import js7.base.utils.ScalaUtils.syntax.RichThrowable
-import js7.provider.DirectoryWatcher.*
-import js7.base.utils.Atomic
 import cats.effect.unsafe.IORuntime
 import fs2.Stream
-import scala.concurrent.Future
+import java.nio.file.StandardWatchEventKinds.*
+import java.nio.file.{Path, WatchEvent}
+import js7.base.log.Logger
+import js7.base.thread.IOExecutor
+import js7.base.time.ScalaTime.*
+import js7.base.utils.Atomic
+import js7.base.utils.AutoClosing.closeOnError
+import js7.provider.DirectoryWatcher.*
 import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.*
-import scala.util.{Failure, Success}
 
 /**
   * @author Joacim Zschimmer
@@ -29,7 +24,6 @@ extends AutoCloseable:
 
   private val watchService = directory.getFileSystem.newWatchService()
   private val closed = Atomic(false)
-  private val subscribed = Atomic(false)
 
   closeOnError(watchService):
     // Register early to get the events from now

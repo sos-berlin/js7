@@ -6,7 +6,8 @@ import cats.effect.{Fiber, FiberIO, IO, Outcome, Resource}
 import cats.syntax.all.*
 import fs2.Stream
 import js7.base.catsutils.CatsEffectExtensions.{guaranteeExceptWhenSucceeded, joinStd}
-import js7.base.fs2utils.StreamExtensions.{charToString, onStart, stringToChar}
+import js7.base.data.ByteArray
+import js7.base.fs2utils.StreamExtensions.onStart
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.io.process.{ProcessSignal, Stderr, Stdout, StdoutOrStderr}
 import js7.base.log.Logger
@@ -283,10 +284,12 @@ extends Service.StoppableByRequest:
 
   private def stdObserversResource(orderId: OrderId, keepLastErrLine: Boolean)
   : Resource[IO, StdObservers] =
-    import subagentConf.{outerrCharBufferSize, stdouterr}
+    import subagentConf.{outerrCharBufferSize, outerrQueueSize}
     for
-      stdObservers <- StdObservers
-        .resource(charBufferSize = outerrCharBufferSize, keepLastErrLine = keepLastErrLine)
+      stdObservers <- StdObservers.resource(
+        charBufferSize = outerrCharBufferSize,
+        queueSize = outerrQueueSize,
+        useErrorLineLengthMax = keepLastErrLine ? jobLauncherConf.errorLineLengthMax)
       triple <- Resource.make(
         acquire = IO.defer:
           val outErrStatistics = Map[StdoutOrStderr, OutErrStatistics](
@@ -300,10 +303,14 @@ extends Service.StoppableByRequest:
           def writeStreamAsEvents(outerr: StdoutOrStderr, stream: Stream[IO, String]) =
             stream
               .onStart(observingStarted(outerr).complete(()).void)
-              .stringToChar // TODO Prefer Chunk[Char] over String
-              .groupWithin(stdouterr.chunkSize, stdouterr.delay)
-              .unchunks
-              .charToString
+              .evalTap(o => IO(logger.trace(s"### $orderId $outerr <--- a) ${ByteArray(o)}")))
+              // Collect multiple chunks arriving in a short period into one StdWrittenEvent.
+              // TODO groupWithin chops the first chunk (why?).
+              //  We need an own implementation!
+              //.stringToChar
+              //.groupWithin(stdouterr.chunkSize, stdouterr.delay)
+              //.map(_.convertToString)
+              //.evalTap(o => IO(logger.trace(s"### $orderId $outerr <--- b) ${ByteArray(o)}")))
               .foreach(chunk =>
                 outErrStatistics(outerr).count(
                   chunk.length,
@@ -323,7 +330,8 @@ extends Service.StoppableByRequest:
           for
             observingOutErr <- observeOutErr.start
             _ <- observingStarted.values.toSeq.traverse(_.get)
-          yield (stdObservers, outErrStatistics, observingOutErr))(
+          yield
+            (stdObservers, outErrStatistics, observingOutErr))(
         release = (stdObservers, outErrStatistics, observingOutErr) =>
           for
             _ <- stdObservers.close /*may already have been stopped by OrderProcess/JobDriver*/

@@ -15,7 +15,7 @@ import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.generic.SecretString
 import js7.base.io.process.ProcessSignal
 import js7.base.log.Logger.syntax.*
-import js7.base.log.{CorrelId, Logger}
+import js7.base.log.Logger
 import js7.base.monixlike.MonixLikeExtensions.headL
 import js7.base.monixutils.{AsyncMap, AsyncVariable}
 import js7.base.problem.Checked.*

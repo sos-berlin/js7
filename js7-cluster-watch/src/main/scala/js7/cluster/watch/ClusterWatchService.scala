@@ -8,7 +8,6 @@ import js7.base.configutils.Configs.RichConfig
 import js7.base.fs2utils.StreamExtensions.{interruptWhenF, onStart}
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.monixlike.MonixLikeExtensions.takeUntilEval
 import js7.base.problem.Checked
 import js7.base.service.{MainService, Service}
 import js7.base.time.JavaTimeConverters.AsScalaDuration

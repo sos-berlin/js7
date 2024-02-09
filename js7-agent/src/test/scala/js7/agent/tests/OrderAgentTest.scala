@@ -1,7 +1,6 @@
 package js7.agent.tests
 
 import cats.effect.IO
-import cats.syntax.flatMap.*
 import cats.effect.unsafe.IORuntime
 import js7.agent.TestAgent
 import js7.agent.client.AgentClient
@@ -117,7 +116,7 @@ final class OrderAgentTest extends OurTestSuite, TestCatsEffect:
 
           // Await OrderDetachable
           agentClient
-            .eventStream(EventRequest.singleClass[Event](timeout = Some(10.s)))
+            .agentEventStream(EventRequest.singleClass[Event](timeout = Some(10.s)))
             .flatMap(_
               .orThrow
               .collectFirst:
@@ -181,7 +180,7 @@ final class OrderAgentTest extends OurTestSuite, TestCatsEffect:
           val ready = mutable.Set.empty[OrderId]
           while ready != awaitedOrderIds do
             ready ++= agentClient
-              .eventStream(EventRequest.singleClass[Event](timeout = Some(timeout)))
+              .agentEventStream(EventRequest.singleClass[Event](timeout = Some(timeout)))
               .map(_.orThrow)
               .await(99.s)
               .map(_.value)

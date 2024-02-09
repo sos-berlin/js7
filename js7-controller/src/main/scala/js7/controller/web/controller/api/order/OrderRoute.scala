@@ -7,7 +7,6 @@ import org.apache.pekko.http.scaladsl.model.headers.Location
 import org.apache.pekko.http.scaladsl.model.{HttpEntity, Uri}
 import org.apache.pekko.http.scaladsl.server.Directives.*
 import org.apache.pekko.http.scaladsl.server.{Directive, Route}
-import cats.syntax.flatMap.*
 import cats.syntax.traverse.*
 import io.circe.Json
 import js7.base.auth.{SimpleUser, ValidUserPermission}

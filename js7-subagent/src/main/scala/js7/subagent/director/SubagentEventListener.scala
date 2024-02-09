@@ -98,7 +98,7 @@ private trait SubagentEventListener:
       val recouplingStreamReader = newEventListener()
       val bufferDelay = conf.eventBufferDelay max conf.commitDelay
       logger.debugIO(recouplingStreamReader
-        .observe(
+        .stream(
           api,
           after = journal.unsafeCurrentState().idToSubagentItemState(subagentId).eventId)
         .takeUntilEval(stopObserving.flatMap(_.read))

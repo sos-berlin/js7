@@ -20,7 +20,7 @@ import js7.base.generic.Completed
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.{BlockingSymbol, CorrelId, Logger}
 import js7.base.monixlike.MonixLikeExtensions.{deferFuture, foreach, materialize, scheduleAtFixedRate}
-import js7.base.monixlike.{FutureCancelable, SyncCancelable}
+import js7.base.monixlike.SyncCancelable
 import js7.base.monixutils.AsyncVariable
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}

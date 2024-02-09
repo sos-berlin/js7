@@ -5,7 +5,7 @@ import cats.effect.{ExitCode, IO}
 import js7.agent.TestAgent
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.tests.TestAgentDirectoryProvider
-import js7.base.catsutils.{OurApp, OurIORuntime}
+import js7.base.catsutils.OurApp
 import js7.common.system.startup.ProgramTerminationExtensions.toExitCode
 
 /** For testing only.

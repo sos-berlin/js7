@@ -5,7 +5,6 @@ import js7.base.auth.ValidUserPermission
 import js7.base.data.ByteSequence.ops.*
 import js7.base.data.{ByteArray, ByteSequence}
 import js7.base.fs2utils.Fs2ChunkByteSequence.*
-import js7.base.fs2utils.StreamExtensions.insertHeartbeatsOnSlowUpstream
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.JavaTimeConverters.AsScalaDuration
@@ -23,7 +22,7 @@ import scala.concurrent.ExecutionContext
 //?import js7.common.http.StreamingSupport.PekkoStream
 import cats.effect.unsafe.IORuntime
 import js7.common.jsonseq.PositionAnd
-import js7.data.event.JournalSeparators.{EndOfJournalFileMarker, HeartbeatMarker}
+import js7.data.event.JournalSeparators.EndOfJournalFileMarker
 import js7.data.event.{EventId, JournalPosition}
 import js7.journal.watch.FileEventWatch
 import js7.journal.web.JournalRoute.*
@@ -73,7 +72,7 @@ trait JournalRoute extends RouteProvider:
                   case Right((journalPosition, returnAck)) =>
                     completeWithCheckedStream(JournalContentType):
                       eventWatch
-                        .observeFile(journalPosition, timeout,
+                        .streamFile(journalPosition, timeout,
                           markEOF = markEOF, onlyAcks = returnAck)
                         .map(_.map(_
                           .interruptWhen(shutdownSignaled)

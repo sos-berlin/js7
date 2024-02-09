@@ -2,38 +2,17 @@ package js7.proxy
 
 import cats.effect.std.Supervisor
 import cats.effect.{Deferred, IO, Resource, ResourceIO}
-import cats.syntax.applicativeError.*
-import cats.syntax.flatMap.*
-import cats.syntax.option.*
 import fs2.Stream
 import fs2.concurrent.Topic
-import js7.base.catsutils.CatsEffectExtensions.{joinStd, right}
-import js7.base.catsutils.CatsEffectUtils
-import js7.base.catsutils.CatsEffectUtils.durationOfIO
-import js7.base.generic.Completed
+import js7.base.catsutils.CatsEffectExtensions.joinStd
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.problem.Checked.*
-import js7.base.problem.{Problem, ProblemException}
 import js7.base.service.Service
-import js7.base.session.SessionApi
-import js7.base.time.ScalaTime.*
-import js7.base.utils.CatsUtils.Nel
-import js7.base.utils.ScalaUtils.*
-import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.web.HttpClient
-import js7.cluster.watch.api.{ActiveClusterNodeSelector, HttpClusterNodeApi}
-import js7.common.http.RecouplingStreamReader
-import js7.common.http.configuration.RecouplingStreamReaderConf
-import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{AnyKeyedEvent, Event, EventApi, EventId, EventRequest, EventSeqTornProblem, JournaledState, SnapshotableState, Stamped}
+import js7.data.event.{Event, EventId, SnapshotableState}
 import js7.proxy.JournaledProxy.*
 import js7.proxy.JournaledProxyImpl.*
 import js7.proxy.configuration.ProxyConf
-import js7.proxy.data.event.ProxyEvent.{ProxyCoupled, ProxyCouplingError, ProxyDecoupled}
-import js7.proxy.data.event.{EventAndState, ProxyEvent, ProxyStarted}
-import scala.concurrent.duration.FiniteDuration
-import scala.util.chaining.scalaUtilChainingOps
+import js7.proxy.data.event.EventAndState
 
 private final class JournaledProxyImpl[S <: SnapshotableState[S]] private[JournaledProxyImpl](
   underlyingStream: Stream[IO, EventAndState[Event, S]],

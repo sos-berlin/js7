@@ -5,9 +5,10 @@ import cats.effect.unsafe.IORuntime
 import cats.syntax.applicativeError.*
 import fs2.Stream
 import izumi.reflect.Tag
-import js7.base.auth.{UserId, ValidUserPermission}
+import js7.base.auth.ValidUserPermission
 import js7.base.fs2utils.StreamExtensions.*
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.problem.Problems.ShuttingDownProblem
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.JavaTimeConverters.AsScalaDuration
@@ -21,14 +22,11 @@ import js7.common.pekkohttp.StandardDirectives.ioRoute
 import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkohttp.web.session.RouteProvider
 import js7.data.event.JournalEvent.{StampedHeartbeat, StampedHeartbeatIO}
-import js7.data.event.JournalSeparators.HeartbeatMarkerIO
-import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, EventSeqTornProblem, JournalSeparators, KeyedEvent, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}
+import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, EventSeqTornProblem, KeyedEvent, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}
 import js7.journal.watch.{ClosedException, EventWatch}
 import js7.journal.web.EventDirectives.eventRequest
 import js7.journal.web.GenericEventRoute.*
 import org.apache.pekko.actor.ActorRefFactory
-import org.apache.pekko.http.scaladsl.common.JsonEntityStreamingSupport
-import org.apache.pekko.http.scaladsl.marshalling.{ToEntityMarshaller, ToResponseMarshallable}
 import org.apache.pekko.http.scaladsl.model.StatusCodes.ServiceUnavailable
 import org.apache.pekko.http.scaladsl.server.Directives.*
 import org.apache.pekko.http.scaladsl.server.{Directive, Directive1, ExceptionHandler, Route}
@@ -38,7 +36,6 @@ import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
 import scala.util.chaining.*
 import scala.util.control.NonFatal
-import Logger.syntax.*
 
 /**
   * @author Joacim Zschimmer
@@ -96,8 +93,7 @@ trait GenericEventRoute extends RouteProvider:
                 }
               }
 
-    private def jsonSeqEvents(eventWatch: EventWatch)
-      (implicit userId: UserId, s: JsonEntityStreamingSupport): Route =
+    private def jsonSeqEvents(eventWatch: EventWatch): Route =
       parameter("onlyAcks" ? false) { onlyAcks =>
         parameter("heartbeat".as[FiniteDuration].?) { maybeHeartbeat =>  // Echo last EventId as a heartbeat
           if onlyAcks then
@@ -114,13 +110,12 @@ trait GenericEventRoute extends RouteProvider:
       }
 
     private def eventIdRoute(maybeHeartbeat: Option[FiniteDuration], eventWatch: EventWatch)
-      (implicit s: JsonEntityStreamingSupport)
     : Route =
       parameter("timeout" ? defaultJsonSeqChunkTimeout) { timeout =>
         //implicit val x: ToEntityMarshaller[EventId] = jsonSeqMarshaller
         completeWithCheckedStream(`application/x-ndjson`):
           eventWatch
-            .observeEventIds(Some(timeout))
+            .streamEventIds(Some(timeout))
             .map(_.map(_
               .pipe(o => maybeHeartbeat.fold(o)(o.echoRepeated))
               .map((eventId: EventId) => ByteString(eventId.toString))))
@@ -135,7 +130,7 @@ trait GenericEventRoute extends RouteProvider:
         completeWithCheckedStream(`application/x-ndjson`):
           maybeHeartbeat match
             case None =>
-              // Await the first event to check for Torn and convert it to a proper error message, otherwise continue with observe
+              // Await the first event to check for Torn and convert it to a proper error message, otherwise continue with stream
               awaitFirstEventStream(request, eventWatch)
 
             case Some(heartbeat) =>
@@ -196,7 +191,7 @@ trait GenericEventRoute extends RouteProvider:
     : Stream[IO, Stamped[AnyKeyedEvent]] =
       filterStream(
         eventWatch  // Continue with an Stream, skipping the already read event
-          .observe(request, predicate)
+          .stream(request, predicate)
       ) .recoverWith:
         case NonFatal(e) =>
           logger.warn(e.toStringWithCauses)

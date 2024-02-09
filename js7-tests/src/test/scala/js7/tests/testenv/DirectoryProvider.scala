@@ -1,14 +1,17 @@
 package js7.tests.testenv
 
-import cats.effect.Resource
+import cats.effect.{IO, Resource}
+import cats.effect.unsafe.IORuntime
 import cats.syntax.parallel.*
 import cats.syntax.traverse.*
 import com.typesafe.config.{Config, ConfigFactory}
+import fs2.Stream
 import java.nio.file.Files.{createDirectory, createTempDirectory}
 import java.nio.file.Path
 import js7.agent.{RunningAgent, TestAgent}
 import js7.base.auth.Admission
 import js7.base.crypt.{DocumentSigner, SignatureVerifier, Signed, SignedString}
+import js7.base.fs2utils.StreamExtensions.+:
 import js7.base.generic.SecretString
 import js7.base.io.JavaResource
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
@@ -20,12 +23,12 @@ import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.closeOnError
-import js7.base.utils.CatsBlocking.{BlockingIOResource, *}
+import js7.base.utils.CatsBlocking.*
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.Closer.syntax.{RichClosersAny, RichClosersAutoCloseable}
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{Allocated, HasCloser}
+import js7.base.utils.{Allocated, Atomic, HasCloser}
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatch.OnUndecidableClusterNodeLoss
 import js7.cluster.watch.ClusterWatchService
@@ -48,12 +51,6 @@ import js7.proxy.ControllerApi
 import js7.service.pgp.PgpSigner
 import js7.subagent.Subagent
 import js7.tests.testenv.DirectoryProvider.*
-import cats.effect.IO
-import cats.effect.unsafe.IORuntime
-import cats.effect.unsafe.IORuntime
-import js7.base.utils.Atomic
-import fs2.Stream
-import js7.base.fs2utils.StreamExtensions.+:
 import org.jetbrains.annotations.TestOnly
 import scala.collection.immutable.{Iterable, Map}
 import scala.concurrent.ExecutionContext

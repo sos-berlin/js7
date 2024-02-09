@@ -156,18 +156,18 @@ extends AutoCloseable:
     JournalReader.rawSnapshot(journalLocation.S, journalFile, expectedJournalId)
 
   /** Observes a journal file lines and length. */
-  final def observeFile(position: Long, timeout: FiniteDuration,
+  final def streamFile(position: Long, timeout: FiniteDuration,
     markEOF: Boolean = false, onlyAcks: Boolean)
   : Stream[IO, PositionAnd[ByteArray]] =
     for
       jsonSeqReader <- Stream.resource(InputStreamJsonSeqReader.resource(journalFile))
-      until <- Stream.eval(SyncDeadline.useNow(now ?=> now + timeout))
-      o <- observeFile2(jsonSeqReader, position, until, markEOF, onlyAcks)
+      until <- Stream.eval(SyncDeadline.usingNow(now ?=> now + timeout))
+      o <- streamFile2(jsonSeqReader, position, until, markEOF, onlyAcks)
     yield
       o
 
   /** Observes a journal file lines and length. */
-  private def observeFile2(jsonSeqReader: InputStreamJsonSeqReader,
+  private def streamFile2(jsonSeqReader: InputStreamJsonSeqReader,
     position: Long, until: SyncDeadline, markEOF: Boolean = false, onlyAcks: Boolean)
   : Stream[IO, PositionAnd[ByteArray]] =
     jsonSeqReader.seek(position)

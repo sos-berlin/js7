@@ -23,7 +23,7 @@ import cats.effect.unsafe.{IORuntime, Scheduler}
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.catsutils.SyncDeadline
 import js7.base.monixlike.MonixLikeExtensions.*
-import js7.base.monixlike.{SerialFutureCancelable, SerialSyncCancelable}
+import js7.base.monixlike.SerialSyncCancelable
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import scala.concurrent.Promise
 import js7.data.order.OrderOutcome
@@ -123,13 +123,12 @@ private final class JobDriver(
         orderProcess.start(processOrder.order.id, jobKey, processOrder.stdObservers)
           .flatMap { runningProcess =>
             val whenCompleted = runningProcess.unsafeToFuture()
-            entry.terminated.completeWith(whenCompleted)
             val maybeKillAfterStart = entry.killSignal.traverse(killOrder(entry, _))
             val awaitTermination = IO.defer:
               entry.runningSince = SyncDeadline.fromScheduler
               scheduleTimeout(entry)
               IO
-                .fromFuture(IO(whenCompleted))
+                .fromFuture(IO.pure(whenCompleted))
                 .map(entry.modifyOutcome)
                 .map:
                   case outcome: Succeeded =>
@@ -250,7 +249,6 @@ private final class JobDriver(
 private object JobDriver:
   private final class Entry(val orderId: OrderId):
     var orderProcess: Option[OrderProcess] = None
-    val terminated = Promise[OrderOutcome.Completed]()
     var killSignal: Option[ProcessSignal] = None
     val timeoutSchedule = SerialSyncCancelable()
     var runningSince: SyncDeadline = null

@@ -1,22 +1,24 @@
 package js7.base.utils
 
-import cats.effect.{IO, Resource}
-import js7.base.log.{BlockingSymbol, CorrelId, Logger}
+import cats.effect.{Deferred, IO, Resource}
+import cats.syntax.option.*
+import js7.base.log.Logger.syntax.*
+import js7.base.log.{BlockingSymbol, CorrelId, LogLevel, Logger}
 import js7.base.time.ScalaTime.{RichDeadline, RichDuration}
 import js7.base.utils.CatsUtils.syntax.whenItTakesLonger
 import js7.base.utils.LockKeeper.*
 import js7.base.utils.ScalaUtils.syntax.*
 import scala.collection.mutable
-import scala.concurrent.Promise
 import scala.concurrent.duration.Deadline.now
+
 
 // TODO Timeout, web service for inspection ?
 
 final class LockKeeper[K]:
 
   // keyToQueue.contains(key): key is locked
-  // keyToQueue(key).length: Number of clients waiting to get the lock
-  private val keyToQueue = mutable.Map.empty[Any, mutable.Queue[Promise[Token]]]
+  // keyToQueue(key).length: Number of clients waiting for the lock
+  private val keyToQueue = mutable.Map.empty[Any, mutable.Queue[Deferred[IO, Token]]]
 
   def lock[A](key: K)(body: IO[A])(implicit enclosing: sourcecode.Enclosing): IO[A] =
     lockResource(key).surround(body)
@@ -26,7 +28,9 @@ final class LockKeeper[K]:
 
   private def acquire(key: K)(implicit enclosing: sourcecode.Enclosing): IO[Token] =
     IO.defer:
-      var wasQueued, info = false
+      val since = now
+      var waitingLogLevel = none[LogLevel]
+
       val result = synchronized:
         keyToQueue.get(key) match
           case None =>
@@ -34,38 +38,35 @@ final class LockKeeper[K]:
             IO.pure(new Token(key))
 
           case Some(queue) =>
-            val since = now
-            wasQueued = true
-            val promise = Promise[Token]()
-            queue += promise
+            waitingLogLevel = LogLevel.Debug.some
+            logger.debug(s"🟠 Waiting for $key (in ${enclosing.value})")
+            val deferred = Deferred.unsafe[IO, Token]
+            queue += deferred
             val sym = new BlockingSymbol
-            logger.debug(s"🟡 Waiting for $key (in ${enclosing.value})")
             CorrelId.current.bind(
-              IO.fromFuture(IO.pure(promise.future))
+              deferred.get
                 .whenItTakesLonger()(_ => IO {
+                  waitingLogLevel = LogLevel.Info.some
                   sym.onInfo()
-                  info = true
-                  logger.info(s"$sym Still waiting for $key (in ${enclosing.value}) since ${since.elapsed.pretty}")
+                  logger.info:
+                    s"$sym Still waiting for $key (in ${enclosing.value}) since ${since.elapsed.pretty}"
                 }))
-      if info then
-        logger.info(s"🟢 Acquired lock '$key' (${enclosing.value})")
-      else {
-        //logger.trace(s"↙ Acquired lock '$key' (${enclosing.value})")
-      }
-      result
+
+      result.flatTap(_ => IO:
+        waitingLogLevel.foreach: logLevel =>
+          logger.log(logLevel,
+            s"🟢 Acquired lock '$key' (${enclosing.value}) after ${since.elapsed.pretty}"))
 
   private def release(token: Token): IO[Unit] =
-    IO:
-      if !token.released.getAndSet(true) then
+    IO.defer:
+      IO.unlessA(token.released.getAndSet(true)):
         import token.key
-        val handedOver = synchronized:
-          keyToQueue(key).dequeueFirst(_ => true) match
-            case None =>
-              keyToQueue.remove(key)
-              false
-            case Some(promise) =>
-              promise.success(new Token(key))
-              true
+        val dequeued = synchronized:
+          val x = keyToQueue(key).dequeueFirst(_ => true)
+          if x.isEmpty then keyToQueue.remove(key)
+          x
+        dequeued.fold(IO.unit): deferred =>
+          deferred.complete(new Token(key)).void
         // Log late, but outside the synchronized block
         //if (!handedOver)
         //  logger.trace(s"↙ Released lock '$key'")

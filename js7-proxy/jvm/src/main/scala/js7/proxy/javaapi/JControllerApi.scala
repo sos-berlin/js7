@@ -1,5 +1,7 @@
 package js7.proxy.javaapi
 
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import com.typesafe.config.Config
 import io.vavr.control.Either as VEither
 import java.time.Instant
@@ -9,6 +11,7 @@ import java.util.function.Consumer
 import java.util.{Optional, OptionalLong}
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
+import js7.base.catsutils.CatsEffectExtensions.left
 import js7.base.log.CorrelId
 import js7.base.monixutils.AsyncVariable
 import js7.base.problem.Problem
@@ -36,11 +39,6 @@ import js7.proxy.ControllerApi
 import js7.proxy.data.event.ProxyEvent
 import js7.proxy.javaapi.data.controller.JEventAndControllerState
 import js7.proxy.javaapi.eventbus.{JControllerEventBus, JStandardEventBus}
-import cats.effect.IO
-import cats.effect.unsafe.IORuntime
-import js7.base.catsutils.CatsEffectExtensions.left
-import js7.base.monixlike.MonixLikeExtensions.unsafeToCancelableFuture
-import js7.base.utils.FutureJvm.asCompletableFuture
 import reactor.core.publisher.Flux
 import scala.concurrent.ExecutionContext
 import scala.jdk.CollectionConverters.*

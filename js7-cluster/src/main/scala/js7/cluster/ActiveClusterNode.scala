@@ -519,7 +519,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
             Admission(passiveUri, passiveNodeUserAndPassword),
             "acknowledgements"))
         .flatMap(api =>
-          observeEventIds(api, Some(timing.heartbeat))
+          streamEventIds(api, Some(timing.heartbeat))
             .onlyNewest
             .filter(_ => !clusterConf.testAckLossPropertyKey.fold(false)(k => sys.props(k).toBoolean)) // for testing
             .detectPauses(timing.passiveLostTimeout)
@@ -549,7 +549,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
       .clusterNodeApi(Admission(passiveUri, passiveNodeUserAndPassword), "awaitAcknowledgement")
       .use(api => HttpClient
         .liftProblem(
-          observeEventIds(api, heartbeat = None)
+          streamEventIds(api, heartbeat = None)
             .dropWhile(_ < eventId)
             .head
             .compile
@@ -559,10 +559,10 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
         .map(_.flatten))
       .logWhenItTakesLonger("passive cluster node acknowledgement"))
 
-  private def observeEventIds(api: ClusterNodeApi, heartbeat: Option[FiniteDuration])
+  private def streamEventIds(api: ClusterNodeApi, heartbeat: Option[FiniteDuration])
   : Stream[IO, EventId] =
     RecouplingStreamReader
-      .observe[EventId, EventId, ClusterNodeApi](
+      .stream[EventId, EventId, ClusterNodeApi](
         toIndex = identity,
         api,
         clusterConf.recouplingStreamReader,

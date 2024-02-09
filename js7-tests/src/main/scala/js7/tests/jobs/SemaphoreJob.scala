@@ -1,31 +1,30 @@
 package js7.tests.jobs
 
-import cats.effect.Outcome
+import cats.effect.{IO, Outcome}
+import cats.effect.std.Semaphore
+import cats.effect.unsafe.IORuntime
+import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 import js7.base.log.Logger
+import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.order.OrderOutcome
 import js7.launcher.OrderProcess
 import js7.launcher.internal.InternalJob
 import js7.tests.jobs.SemaphoreJob.*
-import cats.effect.IO
-import cats.effect.std.Semaphore
-import cats.effect.unsafe.IORuntime
-import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 import scala.concurrent.TimeoutException
 import scala.concurrent.duration.Deadline.now
 import scala.reflect.ClassTag
-import js7.base.io.process.Stdout
-import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
 
 abstract class SemaphoreJob(companion: SemaphoreJob.Companion[? <: SemaphoreJob])
 extends InternalJob:
+
   final def toOrderProcess(step: Step) =
     val orderId = step.order.id
     val semaName = s"${getClass.shortClassName}($orderId) semaphore"
     OrderProcess(
       for
-        _ <- step.write(Stdout, companion.stdoutLine)
+        _ <- step.writeOut(companion.stdoutLine)
         sema <- companion.semaphore
         acquired <- sema.tryAcquire
         count <- sema.count

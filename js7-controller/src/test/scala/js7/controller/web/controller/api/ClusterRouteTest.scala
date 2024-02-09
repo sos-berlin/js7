@@ -1,9 +1,8 @@
 package js7.controller.web.controller.api
 
-import cats.effect.unsafe.IORuntime
 import cats.effect.{Deferred, IO}
 import js7.base.catsutils.CatsEffectExtensions.right
-import js7.base.test.{OurTestSuite, TestCatsEffect}
+import js7.base.test.OurTestSuite
 import js7.cluster.web.ClusterRoute
 import js7.common.pekkohttp.CirceJsonSupport.jsonUnmarshaller
 import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegment

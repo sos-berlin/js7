@@ -8,7 +8,7 @@ import izumi.reflect.Tag
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.catsutils.UnsafeMemoizable.given
 import js7.base.exceptions.HasIsIgnorableStackTrace
-import js7.base.fs2utils.StreamExtensions.{+:, interruptWhenF}
+import js7.base.fs2utils.StreamExtensions.+:
 import js7.base.generic.Completed
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{BlockingSymbol, Logger}
@@ -100,8 +100,8 @@ abstract class RecouplingStreamReader[
   private var sinceLastTry = now - 1.hour
 
   /** Observes endlessly, recoupling and repeating when needed. */
-  final def observe(api: Api, after: I): Stream[IO, V] =
-    logger.debugStream("observe", s"$api after=$after")(
+  final def stream(api: Api, after: I): Stream[IO, V] =
+    logger.debugStream("stream", s"$api after=$after")(
       Stream.eval(
         inUseVar.flatMap(_.put(()))
           .*>(IO:
@@ -111,7 +111,7 @@ abstract class RecouplingStreamReader[
           .*>(decouple)
       ) >>
         new ForApi(api, after)
-          .observeAgainAndAgain
+          .streamAgainAndAgain
           .onFinalize(IO.defer {
             logger.trace(s"$api: inUse := false")
             inUse := false
@@ -155,7 +155,7 @@ abstract class RecouplingStreamReader[
   private final class ForApi(api: Api, initialAfter: I):
     @volatile private var lastIndex = initialAfter
 
-    def observeAgainAndAgain: Stream[IO, V] =
+    def streamAgainAndAgain: Stream[IO, V] =
       logger.traceStream:
         initialAfter
           .tailRecM/*Memory leak ???*/: after =>
@@ -309,7 +309,7 @@ object RecouplingStreamReader:
   private val PauseGranularity = 500.ms
   private val logger = Logger[this.type]
 
-  def observe[
+  def stream[
     @specialized(Long/*EventId or file position*/) I,
     V: Tag,
     Api <: SessionApi.HasUserAndPassword & HasIsIgnorableStackTrace
@@ -328,7 +328,7 @@ object RecouplingStreamReader:
       def getStream(api: Api, after: I) = getStream_(after)
       override def eof(index: I) = eof_(index)
       def stopRequested = stopRequested_()
-    }.observe(api, after)
+    }.stream(api, after)
 
   private def isSevereProblem(problem: Problem) =
     problem.is(EventSeqTornProblem) || problem.is(AckFromActiveClusterNodeProblem)

@@ -41,6 +41,7 @@ final case class SubagentConf(
   killScript: Option[ProcessKillScript],
   stdouterr: StdouterrConf,
   outerrCharBufferSize: Int,
+  outerrQueueSize: Int,
   stdoutCommitDelay: FiniteDuration,
   name: String,
   config: Config)
@@ -226,6 +227,8 @@ object SubagentConf:
       outErrConf,
       outerrCharBufferSize = config.memorySizeAsInt("js7.order.stdout-stderr.char-buffer-size")
         .orThrow.min(outErrConf.chunkSize),
+      outerrQueueSize = config.memorySizeAsInt("js7.order.stdout-stderr.queue-size")
+        .orThrow.max(1),
       stdoutCommitDelay = config.finiteDuration("js7.order.stdout-stderr.commit-delay").orThrow,
       name = name,
       config)
