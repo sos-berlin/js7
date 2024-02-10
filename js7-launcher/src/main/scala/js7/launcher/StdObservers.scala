@@ -1,15 +1,19 @@
 package js7.launcher
 
-import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
-import js7.base.utils.ScalaUtils.syntax.*
-import js7.launcher.utils.LastLineKeeper
-import cats.effect.IO
-import cats.effect.Resource
+import cats.effect.kernel.Resource.ExitCase
+import cats.effect.std.CyclicBarrier
+import cats.effect.{IO, Resource, ResourceIO}
 import fs2.Stream
 import fs2.concurrent.Channel
+import js7.base.catsutils.CatsEffectExtensions.joinStd
 import js7.base.catsutils.UnsafeMemoizable.given
+import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
 import js7.base.log.Logger
+import js7.base.utils.CatsUtils.syntax.RichResource
+import js7.base.utils.ScalaUtils.syntax.*
+import js7.data.order.OrderId
 import js7.launcher.StdObservers.*
+import js7.launcher.utils.LastLineKeeper
 
 /** Provides a process' stdout and stdin as streams. */
 final class StdObservers private(
@@ -50,10 +54,19 @@ final class StdObservers private(
       case Stdout => outChannel
       case Stderr => errChannel
 
-  private[js7] val close: IO[Unit] =
+  private[js7] val closeChannels: IO[Unit] =
     IO.both(outChannel.close, errChannel.close)
       .as(())
       .unsafeMemoize
+
+  def useInBackground(readOutErrStreams: IO[Unit]): ResourceIO[Unit] =
+    Resource
+      .makeCase(
+        acquire = readOutErrStreams.start)(
+        release =
+          case (fiber, ExitCase.Succeeded) => closeChannels *> fiber.joinStd
+          case (fiber, _) => fiber.cancel)
+      .void
 
 
 object StdObservers:
@@ -75,4 +88,4 @@ object StdObservers:
         yield
           new StdObservers(outChannel, errChannel, charBufferSize, useErrorLineLengthMax))(
       release =
-        _.close)
+        _.closeChannels)

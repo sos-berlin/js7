@@ -3,6 +3,7 @@ package js7.launcher
 import cats.effect.std.Semaphore
 import cats.effect.unsafe.IORuntime
 import cats.effect.{FiberIO, IO}
+import js7.base.catsutils.CatsEffectExtensions.joinStd
 import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 import js7.base.test.OurAsyncTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
@@ -22,10 +23,10 @@ final class OrderProcessTest extends OurAsyncTestSuite:
     val orderProcess = OrderProcess(IO(Outcome.succeeded))
     StdObservers
       .resource(100, useErrorLineLengthMax = None)
-      .use: stdObservers =>
+      .surround:
         for
-          running <- orderProcess.start(OrderId("ORDER"), JobKey.forTest("JOB"), stdObservers)
-          outcome <- running
+          running <- orderProcess.start(OrderId("ORDER"), JobKey.forTest("JOB"))
+          outcome <- running.joinStd
         yield assert(outcome == Outcome.succeeded)
 
   "Intermediate test: cancel a Fiber" in:
@@ -61,10 +62,11 @@ final class OrderProcessTest extends OurAsyncTestSuite:
 
     StdObservers
       .resource(charBufferSize = 100)
-      .use: stdObservers =>
+      .surround:
         IO:
-          val future = orderProcess.start(OrderId("ORDER"), JobKey.forTest("JOB"), stdObservers)
-            .flatten.unsafeToFuture()
+          val future = orderProcess.start(OrderId("ORDER"), JobKey.forTest("JOB"))
+            .flatMap(_.joinStd)
+            .unsafeToFuture()
 
           // One waiting acquirer
           awaitAndAssert(count == -1)

@@ -8,13 +8,13 @@ import js7.data.event.{Event, KeyedEvent, Stamped}
 import js7.data.order.OrderEvent.{OrderAddedX, OrderCancelled, OrderDeleted, OrderFailed, OrderFailedInFork, OrderForked, OrderJoined, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten, OrderTerminated}
 import js7.data.order.OrderId
 import scala.collection.mutable
-import scala.concurrent.duration.Deadline.now
+import scala.concurrent.duration.Deadline
 
 private final class StatisticsBuilder(
   isOurOrder: Set[OrderId],
-  onStatistics: Statistics => IO[Unit]):
+  tryEmit: Statistics => IO[Boolean]):
 
-  private val since = now
+  private val since = Deadline.now
   private val orderIdToStarted = mutable.Map.empty[OrderId, Timestamp]
   private val orderIdToProcessingStarted = mutable.Map.empty[OrderId, Timestamp]
   private val orderToChildren = mutable.Map.empty[OrderId, Seq[OrderId]]
@@ -35,66 +35,78 @@ private final class StatisticsBuilder(
 
   object obs:
     private val pause = 100.ms
-    private var next = now
+    private var next = Deadline.now
 
     def tryPublish(): IO[Unit] =
-      IO.whenA(now >= next):
-        onStatistics(toStatistics) *>
-          IO:
-            next = now + pause
+      IO.defer:
+        val now = Deadline.now
+        IO.whenA(now >= next):
+          tryEmit(toStatistics)
+            .map: _ =>
+              next = now + pause
 
-  def count(stampedEvent: Stamped[KeyedEvent[Event]]): IO[this.type] =
-    IO
-      .defer:
-        import stampedEvent.timestamp
-        eventCount += 1
-        stampedEvent.value match
-          case KeyedEvent(orderId: OrderId, event) if isOurOrder(orderId.root) =>
-            event match
-              case event: OrderStdWritten => IO:
-                stdWritten += event.chunk.getBytes(UTF_8).size
+  //obs.tryPublish()  // Initial empty Statistics
 
-              case _: OrderAddedX => IO.defer:
-                orderAddedCount += 1
-                obs.tryPublish()
+  def count(stampedEvent: Stamped[KeyedEvent[Event]]): IO[Unit] =
+    import stampedEvent.timestamp
 
-              case OrderDeleted => IO.defer:
-                _deletedOrderCount += 1
-                obs.tryPublish()
+    IO.defer:
+      eventCount += 1
+      stampedEvent.value match
+        case KeyedEvent(orderId: OrderId, event) if isOurOrder(orderId.root) =>
+          event match
+            case event: OrderStdWritten =>
+              stdWritten += event.chunk.getBytes(UTF_8).size
+              IO.unit
 
-              case _: OrderStarted => IO:
-                orderIdToStarted(orderId) = timestamp
+            case _: OrderAddedX =>
+              orderAddedCount += 1
+              obs.tryPublish()
 
-              case _: OrderTerminated => IO:
-                for start <- orderIdToStarted.remove(orderId) do
-                  val duration = timestamp - start
-                  totalOrderDuration += duration
-                  maximumOrderDuration = maximumOrderDuration max duration
+            case OrderDeleted =>
+              _deletedOrderCount += 1
+              obs.tryPublish()
 
-              case _: OrderProcessingStarted => IO:
-                orderIdToProcessingStarted(orderId) = timestamp
+            case _: OrderStarted =>
+              orderIdToStarted(orderId) = timestamp
+              IO.unit
 
-              case _: OrderProcessed => IO:
-                for start <- orderIdToProcessingStarted.remove(orderId) do
-                  processedCount += 1
-                  val duration = timestamp - start
-                  totalProcessDuration += duration
-                  maximumProcessDuration = maximumProcessDuration max duration
+            case _: OrderTerminated =>
+              for start <- orderIdToStarted.remove(orderId) do
+                val duration = timestamp - start
+                totalOrderDuration += duration
+                maximumOrderDuration = maximumOrderDuration max duration
+              IO.unit
 
-              case OrderForked(children) => IO:
-                orderToChildren(orderId) = children.map(_.orderId)
+            case _: OrderProcessingStarted =>
+              orderIdToProcessingStarted(orderId) = timestamp
+              IO.unit
 
-              case _: OrderJoined => IO.defer:
-                for children <- orderToChildren.remove(orderId) do
-                  completedForkedOrderCount += children.size
-                obs.tryPublish()
+            case _: OrderProcessed =>
+              for start <- orderIdToProcessingStarted.remove(orderId) do
+                processedCount += 1
+                val duration = timestamp - start
+                totalProcessDuration += duration
+                maximumProcessDuration = maximumProcessDuration max duration
+              IO.unit
 
-              case _: OrderCancelled | _: OrderFailed | _: OrderFailedInFork => IO:
-                failedOrderCount += 1
+            case OrderForked(children) =>
+              orderToChildren(orderId) = children.map(_.orderId)
+              IO.unit
 
-              case _ => IO.unit
-          case _ => IO.unit
-      .as(this)
+            case _: OrderJoined =>
+              for children <- orderToChildren.remove(orderId) do
+                completedForkedOrderCount += children.size
+              obs.tryPublish()
+
+            case _: OrderCancelled | _: OrderFailed | _: OrderFailedInFork =>
+              failedOrderCount += 1
+              IO.unit
+
+            case _ =>
+              IO.unit
+        case _ =>
+          IO.unit
 
   def toStatistics = Statistics(
     since.elapsed,

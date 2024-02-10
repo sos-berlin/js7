@@ -120,15 +120,13 @@ private final class JobDriver(
       .flatMapT { orderProcess =>
         entry.orderProcess = Some(orderProcess)
         // Start the orderProcess. The future completes the stdObservers (stdout, stderr)
-        orderProcess.start(processOrder.order.id, jobKey, processOrder.stdObservers)
+        orderProcess.start(processOrder.order.id, jobKey)
           .flatMap { runningProcess =>
-            val whenCompleted = runningProcess.unsafeToFuture()
             val maybeKillAfterStart = entry.killSignal.traverse(killOrder(entry, _))
             val awaitTermination = IO.defer:
               entry.runningSince = SyncDeadline.fromScheduler
               scheduleTimeout(entry)
-              IO
-                .fromFuture(IO.pure(whenCompleted))
+              runningProcess.joinStd
                 .map(entry.modifyOutcome)
                 .map:
                   case outcome: Succeeded =>

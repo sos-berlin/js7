@@ -10,13 +10,14 @@ import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Path
 import java.util.Base64
 import js7.base.circeutils.CirceUtils.*
-import js7.base.data.ByteSequence.{byteToPrintable, maxShowLength}
+import js7.base.data.ByteSequence.maxShowLength
 import js7.base.problem.{Checked, Problem}
 import js7.base.system.Java8Polyfill.*
-import js7.base.utils.Assertions
+import js7.base.utils.Ascii.{byteToPrintableChar, toPrintableChar}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.{Ascii, Assertions}
 import scala.annotation.targetName
 import scala.collection.immutable
 import scala.collection.immutable.ArraySeq
@@ -116,7 +117,7 @@ extends Writable[ByteSeq], Monoid[ByteSeq], Eq[ByteSeq], Show[ByteSeq]:
     val len = length(byteSeq)
     val prefix = take(byteSeq, maxShowLength)
     if iterator(prefix).forall(o => o >= ' ' && o < '\u007f' || o == '\n' || o == '\r') then
-      "»" + unsafeArray(byteSeq).map(byteToPrintable).mkString + "«" +
+      "»" + unsafeArray(byteSeq).map(byteToPrintableChar).mkString + "«" +
         (len > maxShowLength) ?? (s" ($len bytes)")
     else
       typeName + "(" +
@@ -127,7 +128,7 @@ extends Writable[ByteSeq], Monoid[ByteSeq], Eq[ByteSeq], Show[ByteSeq]:
   def toStringAndHexRaw(byteSeq: ByteSeq, n: Int = Int.MaxValue, withEllipsis: Boolean = false) =
     nonEmpty(byteSeq) ??
       ("»" +
-        iterator(byteSeq).take(n).grouped(8).map(_.map(byteToPrintable).mkString).mkString +
+        iterator(byteSeq).take(n).grouped(8).map(_.map(byteToPrintableChar).mkString).mkString +
         ((withEllipsis || lengthIs(byteSeq) > n) ?? "…") +
         "« " +
         toHexRaw(byteSeq, n, withEllipsis))
@@ -462,12 +463,5 @@ object ByteSequence:
       new AllOps[ByteSeq]:
         val self = target
         val typeClassInstance = tc
-
-  private def byteToPrintable(byte: Byte): Char =
-    byte match
-      case byte if byte >= 0x20 && byte < 0x7f => byte.toChar
-      case byte if byte >= 0 && byte < 0x20 => ('\u2400' + byte).toChar  // Control character representation
-      case 0x7f => '\u2421'
-      case _ => '�' // or ␦
 
   java8Polyfill()

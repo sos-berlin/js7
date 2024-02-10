@@ -1,16 +1,18 @@
 package js7.tests.addOrders
 
-import cats.effect.IO
 import cats.effect.std.Queue
-import cats.effect.unsafe.IORuntime
+import cats.effect.{Deferred, FiberIO, IO}
+import cats.syntax.option.*
 import com.typesafe.config.ConfigFactory
-import js7.base.catsutils.CatsEffectExtensions.catchAsChecked
-import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
+import fs2.Stream
+import js7.base.catsutils.CatsEffectExtensions.joinStd
 import js7.base.fs2utils.StreamExtensions.onStart
+import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
-import js7.base.utils.MVar
+import js7.base.time.Stopwatch.durationAndPerSecondString
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.pekkoutils.Pekkos
 import js7.controller.client.PekkoHttpControllerApi.admissionsToApiResource
@@ -20,118 +22,122 @@ import js7.proxy.configuration.ProxyConfs
 import js7.tests.addOrders.TestAddOrders.*
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Deadline, FiniteDuration}
-import fs2.Stream
 
 final class TestAddOrders private(controllerApi: ControllerApi, settings: Settings):
-
   import settings.{orderCount, workflowPath}
 
   /**
     * @return Tuple with
-    *         - Public Observable returning the duration of adding all orders
-    *         - Public Observable returning the changed number of main orders.
+    *         - Public Queue returning the duration of adding all orders
+    *         - Public Queue returning the changed number of main orders.
     *         - The complete IO returning `Statistics`.
     */
-  private def run
-  : IO[(Stream[IO, FiniteDuration], Stream[IO, Statistics], IO[Checked[Statistics]])] =
+  private def run()
+  : IO[(IO[FiniteDuration], Stream[IO, Statistics], FiberIO[Checked[Statistics]])] =
     for
-      allOrdersAddedQueue <- Queue.bounded[IO, Option[FiniteDuration]](100)
-      statisticsQueue <- Queue.bounded[IO, Option[Statistics]](100)
-      allOrdersAddedStream = Stream.fromQueueNoneTerminated(allOrdersAddedQueue)
-      statisticsStream = Stream.fromQueueNoneTerminated(statisticsQueue)
-      untilCompleted =
-        run2(o => allOrdersAddedQueue.offer(Some(o)), o => statisticsQueue.offer(Some(o)))
-          .guarantee(IO
-            .both(
-              allOrdersAddedQueue.offer(None),
-              statisticsQueue.offer(None))
-            .void)
+      allOrdersAdded <- Deferred[IO, FiniteDuration]
+      statisticsQueue <- Queue.bounded[IO, Option[Statistics]](1)
+      fiber <- IO.defer:
+        val orderIds = 1 to orderCount map toOrderId
+        val isOurOrder = orderIds.toSet
+        val streamingStarted = Deferred.unsafe[IO, Deadline]
+        val statisticsBuilder =
+          new StatisticsBuilder(isOurOrder, o => statisticsQueue.tryOffer(o.some))
+
+        val awaitOrderCompletion = controllerApi
+          .eventAndStateStream()
+          .onStart:
+            streamingStarted.complete(now).void
+          .evalScan(statisticsBuilder): (s, es) =>
+            s.count(es.stampedEvent).as(s)
+          .takeThrough(_.deletedOrderCount < orderCount)
+          .compile
+          .last.map(_.get) /*always nonEmpty*/
+          .map(_.toStatistics)
+          .map: statistics =>
+            if statistics.completedOrderCount != orderCount then
+              Left(Problem.pure("eventAndStateStream terminated unexpectedly, " +
+                s"${statistics.completedOrderCount} orders run"))
+            else
+              Right(statistics)
+
+        val add = streamingStarted.get
+          .flatMap: since =>
+            addOrders(Stream.iterable(orderIds))
+              .flatTap:
+                case Right(_) => allOrdersAdded.complete(since.elapsed).void
+                case Left(_) => IO.unit
+
+        IO
+          .both(
+            awaitOrderCompletion.map(_.orThrow),
+            add.map(_.orThrow))
+          .map(_._1)
+          .attempt.map(Checked.fromThrowableEither)
+          .flatTap: _ =>
+            statisticsQueue.offer(None)
+          .start
     yield
-      (allOrdersAddedStream, statisticsStream, untilCompleted)
-
-  private def run2(
-    onAllOrdersAdded: FiniteDuration => IO[Unit],
-    onStatistics: Statistics => IO[Unit])
-  : IO[Checked[Statistics]] =
-    IO.defer:
-      val orderIds = 1 to orderCount map toOrderId
-      val isOurOrder = orderIds.toSet
-      val observationStarted = MVar.empty[IO, Deadline].unsafeMemoize
-
-      val statisticsBuilder = new StatisticsBuilder(isOurOrder, onStatistics)
-      val untilCompleted = controllerApi
-        .eventAndStateStream()
-        .onStart(observationStarted.flatMap(_.put(now)))
-        .evalTap(_ => onStatistics(statisticsBuilder.toStatistics)) // Initial value
-        .evalScan(statisticsBuilder): (s, es) =>
-          s.count(es.stampedEvent)
-        .takeThrough(_.deletedOrderCount < orderCount)
-        .compile.last
-        .flatMap:
-          case None => IO.raiseError(new NoSuchElementException("TestAddOrders isEmpty"))
-          case Some(o) => IO.pure(o)
-        .map(_.toStatistics)
-        .map: statistics =>
-          if statistics.completedOrderCount != orderCount then
-            Left(Problem.pure("eventAndStateStream terminated unexpectedly, " +
-              s"${statistics.completedOrderCount} orders run"))
-          else
-            Right(statistics)
-
-      val add = observationStarted
-        .flatMap(_.read)
-        .flatMap: since =>
-          addOrders(Stream.iterable(orderIds))
-            .flatTap: result =>
-              IO.unlessA(result.isLeft):
-                onAllOrdersAdded(since.elapsed)
-
-      IO
-        .both(
-          untilCompleted.map(_.orThrow),
-          add.map(_.orThrow))
-        .map(_._1)
-        .catchAsChecked
+      (allOrdersAdded.get, Stream.fromQueueNoneTerminated(statisticsQueue, 1), fiber)
 
   private def addOrders(orderIds: Stream[IO, OrderId]): IO[Checked[Unit]] =
-    controllerApi
-      .addOrders(
-        orderIds.map(FreshOrder(_, workflowPath)))
-      .flatMapT(_ =>
-        controllerApi.deleteOrdersWhenTerminated(orderIds))
-      .rightAs(())
+    logger.debugIO:
+      controllerApi
+        .addOrders:
+          orderIds.map(FreshOrder(_, workflowPath, deleteWhenTerminated = true))
+        .rightAs(())
 
 
 object TestAddOrders:
 
-  private[addOrders] def run(
-    settings: Settings,
-    onStatisticsUpdate: Statistics => Unit,
-    onOrdersAdded: FiniteDuration => Unit)
-    (using IORuntime)
+  private[addOrders] val logger = Logger[this.type]
+  private val ClearLine = "\u001B[K"
+
+  private[addOrders] def run(settings: Settings, logToStdout: Boolean = false)
   : IO[Checked[Statistics]] =
-    val config = ConfigFactory.systemProperties.withFallback(ProxyConfs.defaultConfig)
-    Pekkos.actorSystemResource("TestAddOrders", config)
-      .flatMap: actorSystem =>
-        ControllerApi.resource(
-          admissionsToApiResource(settings.admissions)(actorSystem),
-          ProxyConfs.fromConfig(config))
-      .use: controllerApi =>
-        val testAddOrders = new TestAddOrders(controllerApi, settings)
-        for
-          tuple <- testAddOrders.run
-          (allOrdersAddedStream, statisticsStream, untilCompleted) = tuple
 
-          _ <- allOrdersAddedStream
-            .foreach(o => IO(onOrdersAdded(o)))
-            .compile.drain
-            .start
+    def myPrint(line: => String): Unit =
+      if logToStdout then
+        println(line)
 
-          _ <- statisticsStream
-            .foreach(o => IO(onStatisticsUpdate(o)))
-            .compile.drain
-            .start
-          statistics <- untilCompleted
-        yield statistics
+    def onOrdersAdded(duration: FiniteDuration) =
+      IO:
+        myPrint("\r" + ClearLine +
+          durationAndPerSecondString(duration, settings.orderCount, "orders added") +
+          ClearLine + "\n" + ClearLine)
+
+    def onStatisticsUpdate(statistics: Statistics) =
+      IO.whenA(statistics.totalOrderCount > 0):
+        IO:
+          logger.info(s"${statistics.lastOrderCount} orders")
+          myPrint(s"\r${statistics.toLine}  $ClearLine")
+
+    run2(settings, onOrdersAdded, onStatisticsUpdate)
+      .flatTap:
+        case Left(problem) => IO:
+          myPrint(s"\r$ClearLine\n")
+
+        case Right(statistics) => IO:
+          myPrint(s"\r$ClearLine\n" +
+            statistics.logLines.map(line => s"$line$ClearLine\n").mkString)
+
+  private def run2(
+      settings: Settings,
+      onOrdersAdded: FiniteDuration => IO[Unit],
+      onStatisticsUpdate: Statistics => IO[Unit])
+    : IO[Checked[Statistics]] =
+      val config = ConfigFactory.systemProperties.withFallback(ProxyConfs.defaultConfig)
+      Pekkos.actorSystemResource("TestAddOrders", config)
+        .flatMap: actorSystem =>
+          ControllerApi.resource(
+            admissionsToApiResource(settings.admissions)(actorSystem),
+            ProxyConfs.fromConfig(config))
+        .use: controllerApi =>
+          val testAddOrders = new TestAddOrders(controllerApi, settings)
+          testAddOrders.run()
+            .flatMap: (whenAllOrdersAdded, statisticsQueue, running) =>
+              whenAllOrdersAdded.flatMap(onOrdersAdded)
+                .*>(statisticsQueue.foreach(onStatisticsUpdate).compile.drain)
+                .*>(running.joinStd)
 
   private def toOrderId(i: Int) = OrderId(s"TestAddOrders-$i")

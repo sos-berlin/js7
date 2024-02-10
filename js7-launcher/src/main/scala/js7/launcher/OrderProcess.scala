@@ -19,17 +19,15 @@ trait OrderProcess:
   def cancel(immediately: Boolean): IO[Unit]
 
   /** Returns an IO for the started and running process. */
-  final def start(orderId: OrderId, jobKey: JobKey, stdObservers: StdObservers)
-  : IO[IO[Outcome.Completed]] =
-    for fiber <- run yield
+  final def start(orderId: OrderId, jobKey: JobKey): IO[FiberIO[Outcome.Completed]] =
+    run.flatMap: fiber =>
       onStarted(fiber)
       fiber
         .joinWith(onCancel = IO.pure(CanceledOutcome))
-        .guarantee(stdObservers.close)
         .handleError: t =>
           logger.warn(s"$orderId in $jobKey: ${t.toStringWithCauses}", t)
           Outcome.Failed.fromThrowable(t)
-
+        .start
 
 object OrderProcess:
   private val logger = Logger[this.type]

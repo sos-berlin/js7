@@ -104,7 +104,7 @@ private[time] trait ClockChecking extends Runnable:
 
 
   private final class Alarm(epochMilli: Long, callback: => Unit)
-    extends Runnable:
+  extends Runnable:
     private val called = Atomic(false)
 
     def call(): Unit =

@@ -14,7 +14,7 @@ import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.job.{InternalExecutable, JobConf, JobKey}
-import js7.data.order.{Order, OrderId, Outcome}
+import js7.data.order.{Order, OrderId, OrderOutcome, Outcome}
 import js7.data.subagent.SubagentId
 import js7.data.value.expression.Expression.{NamedValue, NumericConstant}
 import js7.data.value.expression.Scope
@@ -50,7 +50,7 @@ final class InternalJobLauncherTest extends OurAsyncTestSuite:
 
     StdObservers
       .resource(charBufferSize = 4096)
-      .use(stdObservers => IO.defer:
+      .use: stdObservers =>
         val orderId = OrderId("TEST")
         val jobKey = JobKey.Named(WorkflowBranchPath(WorkflowPath("WORKFLOW"), Nil), WorkflowJob.Name("TEST-JOB"))
         for
@@ -70,15 +70,16 @@ final class InternalJobLauncherTest extends OurAsyncTestSuite:
               stdObservers,
               fileValueScope = Scope.empty))
             .map(_.orThrow)
-          outcome <- orderProcess.start(orderId, jobKey, stdObservers).flatten
-          _ = assert(outcome == Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(2))))
-          _ <- stdObservers.outChannel.close
-          _ <- stdObservers.outChannel.close
+          fiber <- orderProcess.start(orderId, jobKey)
+          orderOutcome <- fiber.joinStd
+          _ = assert:
+            orderOutcome == OrderOutcome.Succeeded(NamedValues("RESULT" -> NumberValue(2)))
+          _ <- stdObservers.closeChannels
           outString <- outStringFiber.joinStd
           errString <- errStringFiber.joinStd
         yield assert:
           outString == "OUT 1/" + "OUT 2" &&
-          errString == "ERR 1/" + "ERR 2")
+          errString == "ERR 1/" + "ERR 2"
 
 
 object InternalJobLauncherTest:

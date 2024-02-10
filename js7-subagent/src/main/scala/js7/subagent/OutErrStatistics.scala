@@ -13,7 +13,7 @@ private final class OutErrStatistics:
   private var messageCount = 0
   private var size = 0L
 
-  def count[A](length: Int, io: IO[A]): IO[A] =
+  def count[A](length: Int)(io: IO[A]): IO[A] =
     messageCount += 1
     size += length
     io.timed.map { case (duration, a) =>

@@ -13,6 +13,7 @@ import js7.base.exceptions.PublicException
 import js7.base.log.Logger
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.problem.{Checked, Problem, ProblemException}
+import js7.base.utils.Ascii.toPrintableChar
 import js7.base.utils.ScalaUtils.syntax.RichString
 import js7.base.utils.StackTraces.StackTraceThrowable
 import scala.annotation.tailrec
@@ -666,9 +667,7 @@ object ScalaUtils:
 
           var i = 0
           while i < truncateAt do
-            var c = underlying(i)
-            if c.isControl then c = '·'
-            sb.append(c)
+            sb.append(toPrintableChar(underlying(i)))
             i += 1
 
           if quote then sb.append('«')

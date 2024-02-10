@@ -492,13 +492,13 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
 object PekkoHttpClient:
   private val EmptyLine = ByteArray("\n")
 
-  private val LogData: Boolean =
-    val key = "js7.PekkoHttpClient.log-data"
-    val value = sys.props.get(key)
-    try value.fold(false)(StringAsBoolean(_))
-    catch case NonFatal(_) =>
-      logger.error(s"Invalid property key $key=$value")
-      false
+  private val LogData: Boolean = true
+    //val key = "js7.PekkoHttpClient.log-data"
+    //val value = sys.props.get(key)
+    //try value.fold(false)(StringAsBoolean(_))
+    //catch case NonFatal(_) =>
+    //  logger.error(s"Invalid property key $key=$value")
+    //  false
 
   def resource(
     uri: Uri,

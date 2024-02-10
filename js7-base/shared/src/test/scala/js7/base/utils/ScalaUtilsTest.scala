@@ -790,7 +790,7 @@ final class ScalaUtilsTest extends OurTestSuite
       assert("A\nXYZ".truncateWithEllipsis(6, firstLineOnly = true) == "A...")
       assert("\nXYZ".truncateWithEllipsis(6, firstLineOnly = true) == "...")
 
-      assert("\n\t\u0000\u0080".truncateWithEllipsis(99) == "····")
+      assert("\n\t\u0000\u0080".truncateWithEllipsis(99) == "␊␉␀�")
     }
 
     "replaceChar" in {

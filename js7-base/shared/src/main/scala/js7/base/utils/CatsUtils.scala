@@ -141,6 +141,12 @@ object CatsUtils:
 
     implicit final class RichResource[F[_], A](private val resource: Resource[F, A])
     extends AnyVal:
+      def void: Resource[F, Unit] =
+        resource.as(())
+
+      def as[B](b: B): Resource[F, B] =
+        resource.map(_ => b)
+
       def toAllocated[G[x] >: F[x], B >: A](
         using Functor[F], MonadCancel[F, Throwable], UnsafeMemoizable[G], Tag[B])
       : G[Allocated[G, B]] =

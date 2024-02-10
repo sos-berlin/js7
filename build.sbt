@@ -210,7 +210,8 @@ lazy val `js7-install` = project
   .dependsOn(
     `js7-engine`,
     `js7-provider`,
-    `js7-license-fake`)
+    `js7-license-fake`,
+    `js7-tests`)
   .settings(commonSettings)
   .enablePlugins(JavaAppPackaging, UniversalDeployPlugin)
   .settings {
@@ -256,7 +257,8 @@ lazy val `js7-engine` = project.in(file("target/js7-engine"))
     `js7-subagent`,
     `js7-launcher-for-java`,
     `js7-launcher-for-windows`,
-    `js7-service-pgp`)
+    `js7-service-pgp`,
+    `js7-tests`)
   .settings(commonSettings)
   .settings(
     Compile / resourceGenerators += Def.task {

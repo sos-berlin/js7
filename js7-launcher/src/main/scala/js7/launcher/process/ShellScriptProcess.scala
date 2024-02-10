@@ -72,7 +72,8 @@ object ShellScriptProcess:
               copyInputStreamToStringChannel(outErr, in, channel, encoding, charBufferSize)
                 .recover {
                   case t: IOException if isKilling /*Happens under Windows*/ => logger.warn(
-                    s"While killing the process, $outErr become unreadable: ${t.toStringWithCauses}")
+                    s"While killing the process, $outErr become unreadable: ${t.toStringWithCauses}",
+                    t)
                 }
 
             def await(outerr: StdoutOrStderr, fiber: FiberIO[Unit]): IO[Unit] =
@@ -96,6 +97,7 @@ object ShellScriptProcess:
                   IO.both(
                     await(Stdout, outFiber),
                     await(Stderr, errFiber)))
+                _ <- stdObservers.closeChannels
                 returnCode <- super.terminated
                 _ <- whenTerminated
               yield returnCode

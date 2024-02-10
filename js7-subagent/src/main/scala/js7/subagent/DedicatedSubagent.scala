@@ -1,12 +1,13 @@
 package js7.subagent
 
 import cats.effect.kernel.Deferred
+import cats.effect.kernel.Resource.ExitCase
+import cats.effect.std.CyclicBarrier
 import cats.effect.unsafe.IORuntime
-import cats.effect.{Fiber, FiberIO, IO, Outcome, Resource}
+import cats.effect.{Fiber, FiberIO, IO, Outcome, Resource, ResourceIO}
 import cats.syntax.all.*
 import fs2.Stream
 import js7.base.catsutils.CatsEffectExtensions.{guaranteeExceptWhenSucceeded, joinStd}
-import js7.base.data.ByteArray
 import js7.base.fs2utils.StreamExtensions.onStart
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.io.process.{ProcessSignal, Stderr, Stdout, StdoutOrStderr}
@@ -42,6 +43,7 @@ import js7.launcher.configuration.JobLauncherConf
 import js7.launcher.internal.JobLauncher
 import js7.subagent.DedicatedSubagent.*
 import js7.subagent.configuration.SubagentConf
+import scala.util.chaining.scalaUtilChainingOps
 
 final class DedicatedSubagent private(
   val subagentId: SubagentId,
@@ -290,58 +292,59 @@ extends Service.StoppableByRequest:
         charBufferSize = outerrCharBufferSize,
         queueSize = outerrQueueSize,
         useErrorLineLengthMax = keepLastErrLine ? jobLauncherConf.errorLineLengthMax)
-      triple <- Resource.make(
-        acquire = IO.defer:
-          val outErrStatistics = Map[StdoutOrStderr, OutErrStatistics](
-            Stdout -> new OutErrStatistics,
-            Stderr -> new OutErrStatistics)
-
-          val observingStarted = Map[StdoutOrStderr, Deferred[IO, Unit]](
-            Stdout -> Deferred.unsafe[IO, Unit],
-            Stderr -> Deferred.unsafe[IO, Unit])
-
-          def writeStreamAsEvents(outerr: StdoutOrStderr, stream: Stream[IO, String]) =
-            stream
-              .onStart(observingStarted(outerr).complete(()).void)
-              .evalTap(o => IO(logger.trace(s"### $orderId $outerr <--- a) ${ByteArray(o)}")))
-              // Collect multiple chunks arriving in a short period into one StdWrittenEvent.
-              // TODO groupWithin chops the first chunk (why?).
-              //  We need an own implementation!
-              //.stringToChar
-              //.groupWithin(stdouterr.chunkSize, stdouterr.delay)
-              //.map(_.convertToString)
-              //.evalTap(o => IO(logger.trace(s"### $orderId $outerr <--- b) ${ByteArray(o)}")))
-              .foreach(chunk =>
-                outErrStatistics(outerr).count(
-                  chunk.length,
-                  persistStdouterr(orderId, outerr, chunk)))
-              .compile
-              .drain
-              .recover: t =>
-                IO(logger.error(s"$orderId $outerr: ${t.toStringWithCauses}")) *>
-                  persistStdouterr(orderId, outerr, s"\n\n--- ERROR: ${t.toStringWithCauses} ---")
-
-          val observeOutErr = IO
-            .both(
-              writeStreamAsEvents(Stdout, stdObservers.outStream),
-              writeStreamAsEvents(Stderr, stdObservers.errStream))
-            .void
-
-          for
-            observingOutErr <- observeOutErr.start
-            _ <- observingStarted.values.toSeq.traverse(_.get)
-          yield
-            (stdObservers, outErrStatistics, observingOutErr))(
-        release = (stdObservers, outErrStatistics, observingOutErr) =>
-          for
-            _ <- stdObservers.close /*may already have been stopped by OrderProcess/JobDriver*/
-            _ <- observingOutErr.joinStd
-          yield
-            if outErrStatistics(Stdout).isRelevant || outErrStatistics(Stderr).isRelevant then
-              logger.debug(
-                s"stdout: ${outErrStatistics(Stdout)}, stderr: ${outErrStatistics(Stderr)}"))
+      outErrStatistics <- outErrStatisticsResource
+      _ <- copyOutErrToJournalInBackground(orderId, stdObservers, outErrStatistics)
     yield
-      triple._1
+      stdObservers
+
+  /** Logs some stdout and stderr statistics. */
+  private def outErrStatisticsResource: Resource[IO, Map[StdoutOrStderr, OutErrStatistics]] =
+    Resource
+      .make(
+        acquire = IO:
+          Map[StdoutOrStderr, OutErrStatistics](
+            Stdout -> new OutErrStatistics,
+            Stderr -> new OutErrStatistics))(
+        release = outErrStatistics => IO:
+          if outErrStatistics(Stdout).isRelevant || outErrStatistics(Stderr).isRelevant then
+            logger.debug(
+              s"stdout: ${outErrStatistics(Stdout)}, stderr: ${outErrStatistics(Stderr)}"))
+
+  private def copyOutErrToJournalInBackground(
+    orderId: OrderId,
+    stdObservers: StdObservers,
+    outErrStatistics: Map[StdoutOrStderr, OutErrStatistics])
+  : ResourceIO[Unit] =
+    Resource.suspend:
+      CyclicBarrier[IO](3).map: startBarrier =>
+
+        def writeStreamAsEvents(outerr: StdoutOrStderr, stream: Stream[IO, String]) =
+          stream
+            .onStart:
+              startBarrier.await
+            // Collect multiple chunks arriving in a short period in one StdWrittenEvent.
+            // TODO groupWithin chops the first chunk (why?).
+            //  We need an own implementation!
+            //.stringToChar
+            //.groupWithin(stdouterr.chunkSize, stdouterr.delay)
+            //.map(_.convertToString)
+            .foreach: chunk =>
+              outErrStatistics(outerr).count(chunk.length):
+                persistStdouterr(orderId, outerr, chunk)
+            .compile
+            .drain
+            .recover: t =>
+              IO(logger.error(s"$orderId $outerr: ${t.toStringWithCauses}")) *>
+                persistStdouterr(orderId, outerr, s"\n\n--- ERROR: ${t.toStringWithCauses} ---")
+
+        stdObservers
+          .useInBackground:
+            IO.both(
+                writeStreamAsEvents(Stdout, stdObservers.outStream),
+                writeStreamAsEvents(Stderr, stdObservers.errStream))
+              .void
+          .evalTap: _ =>
+            startBarrier.await
 
   def detachProcessedOrder(orderId: OrderId): IO[Checked[Unit]] =
     orderToProcessing.remove(orderId)
