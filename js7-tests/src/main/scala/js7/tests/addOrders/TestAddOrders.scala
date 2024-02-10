@@ -109,8 +109,10 @@ object TestAddOrders:
     def onStatisticsUpdate(statistics: Statistics) =
       IO.whenA(statistics.totalOrderCount > 0):
         IO:
-          logger.info(s"${statistics.lastOrderCount} orders")
-          myPrint(s"\r${statistics.toLine}  $ClearLine")
+          if logToStdout then
+            print(s"\r${statistics.toLine}  $ClearLine")
+          else
+            logger.info(s"${statistics.lastOrderCount} orders")
 
     run2(settings, onOrdersAdded, onStatisticsUpdate)
       .flatTap:
