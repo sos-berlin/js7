@@ -2,7 +2,7 @@ package js7.base.catsutils
 
 import cats.effect.kernel.{MonadCancel, Resource}
 import cats.effect.kernel.Resource.ExitCase
-import cats.effect.unsafe.Scheduler
+import cats.effect.unsafe.{IORuntime, Scheduler}
 import cats.effect.{Clock, Fiber, IO, Outcome, OutcomeIO}
 import cats.syntax.functor.*
 import cats.{Defer, Functor, effect}
@@ -119,6 +119,9 @@ object CatsEffectExtensions:
 
     def unsafeScheduler: IO[Scheduler] =
       IO.unsafeRuntime.map(_.scheduler)
+
+    def unsafeRuntime: IO[IORuntime] =
+      IO.pure(OurIORuntime.ioRuntime)
 
     //def fromCancelableFutureWithEC[A](io: ExecutionContext => IO[CancelableFuture[A]]): IO[A] =
     //  for
