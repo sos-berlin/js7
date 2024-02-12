@@ -1,32 +1,32 @@
 package js7.subagent
 
-import cats.effect.{FiberIO, IO, Resource}
+import cats.effect.unsafe.{IORuntime, Scheduler}
+import cats.effect.{IO, Resource}
 import cats.syntax.foldable.*
 import cats.syntax.traverse.*
 import java.util.Objects.requireNonNull
+import js7.base.catsutils.CatsEffectExtensions.*
+import js7.base.catsutils.SyncDeadline
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
+import js7.base.monixlike.MonixLikeExtensions.*
+import js7.base.monixlike.SerialSyncCancelable
 import js7.base.monixutils.AsyncMap
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime.*
+import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.job.{JobConf, JobResource, JobResourcePath}
 import js7.data.order.OrderOutcome.Succeeded
-import js7.data.order.{Order, OrderId}
+import js7.data.order.{Order, OrderId, OrderOutcome}
 import js7.data.value.expression.Expression
 import js7.data.value.expression.scopes.FileValueState
 import js7.launcher.internal.JobLauncher
 import js7.launcher.{OrderProcess, ProcessOrder, StdObservers}
 import js7.subagent.JobDriver.*
-import cats.effect.unsafe.{IORuntime, Scheduler}
-import js7.base.catsutils.CatsEffectExtensions.*
-import js7.base.catsutils.SyncDeadline
-import js7.base.monixlike.MonixLikeExtensions.*
-import js7.base.monixlike.SerialSyncCancelable
-import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import scala.concurrent.Promise
-import js7.data.order.OrderOutcome
 
 private final class JobDriver(
   jobConf: JobConf,
@@ -35,9 +35,9 @@ private final class JobDriver(
   fileValueState: FileValueState)
   (using ioRuntime: IORuntime):
 
+  import SyncDeadline.Now.given_Now
   import ioRuntime.scheduler
   import jobConf.{jobKey, sigkillDelay, workflow, workflowJob}
-  import SyncDeadline.Now.given_Now
 
   private given Scheduler = scheduler
 
@@ -80,23 +80,22 @@ private final class JobDriver(
         })
 
   /** Starts the process and returns a Fiber returning the process' outcome. */
-  def startOrderProcess(
+  def runOrderProcess(
     order: Order[Order.Processing],
     executeArguments: Map[String, Expression],
     stdObservers: StdObservers)
-  : IO[FiberIO[OrderOutcome]] =
+  : IO[OrderOutcome] =
     val entry = new Entry(order.id)
     IO(checkedJobLauncher)
       .flatTapT(_ =>
         orderToProcess.insert(order.id, entry))
       .flatMap:
         case Left(problem) =>
-          IO.pure(OrderOutcome.Disrupted(problem): OrderOutcome).start
+          IO.pure(OrderOutcome.Disrupted(problem): OrderOutcome)
 
         case Right(jobLauncher: JobLauncher) =>
           processOrder(order, executeArguments, stdObservers, jobLauncher, entry)
             .guarantee(removeEntry(entry))
-            .start
 
   private def processOrder(
     order: Order[Order.Processing],
@@ -115,6 +114,7 @@ private final class JobDriver(
 
   private def processOrder2(jobLauncher: JobLauncher, processOrder: ProcessOrder, entry: Entry)
   : IO[Checked[OrderOutcome]] =
+   logger.traceIO("### processOrder2"):
     jobLauncher.startIfNeeded
       .flatMapT(_ => jobLauncher.toOrderProcess(processOrder))
       .flatMapT { orderProcess =>
@@ -122,7 +122,7 @@ private final class JobDriver(
         // Start the orderProcess. The future completes the stdObservers (stdout, stderr)
         orderProcess.start(processOrder.order.id, jobKey)
           .flatMap { runningProcess =>
-            val maybeKillAfterStart = entry.killSignal.traverse(killOrder(entry, _))
+            val maybeKillAfterStart = logger.traceIO("### maybeKillAfterStart")(entry.killSignal.traverse(killOrder(entry, _)))
             val awaitTermination = IO.defer:
               entry.runningSince = SyncDeadline.fromScheduler
               scheduleTimeout(entry)

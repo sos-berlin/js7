@@ -25,7 +25,7 @@ import scala.util.Try
 import scala.util.chaining.*
 
 object ScalaUtils:
-  private val Ellipsis = "..."
+
   val RightUnit: Either[Nothing, Unit] = Right(())
   private val spaceArray = (" " * 64).toCharArray
   private lazy val logger = Logger[this.type]
@@ -658,12 +658,11 @@ object ScalaUtils:
         else
           val sb = new StringBuilder(n + 2 * quote.toInt)
           if quote then sb.append('»')
-          val suffix = if showLength then s"$Ellipsis(length ${underlying.length})" else Ellipsis
-          val nn = max(/*suffix.length*/3, n)
+          val suffix = if showLength then s"...(length ${underlying.length})" else "..."
+          val nn = max(/*suffix.length*/3 , n)
           val firstLine = if firstLineOnly then underlying.firstLineLengthN(nn) else underlying.length
           val truncate = (nn min firstLine) < underlying.length
-          val truncateAt =
-            if truncate then nn - suffix.length min firstLineLength else underlying.length
+          val truncateAt = if truncate then (nn - suffix.length) min firstLine else underlying.length
 
           var i = 0
           while i < truncateAt do

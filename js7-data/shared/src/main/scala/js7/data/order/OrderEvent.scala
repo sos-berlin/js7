@@ -10,7 +10,6 @@ import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
-import js7.base.utils.Ascii.toPrintableChar
 import js7.base.utils.{Ascii, Big}
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.*
@@ -195,10 +194,9 @@ object OrderEvent extends Event.CompanionForKey[OrderId, OrderEvent]:
     def chunk: String
 
     override def toString = getClass.simpleScalaName + "(" +
-      chunk
-        .truncateWithEllipsis(
-          300/*for error lines with long (file path) prefix*/,
-          showLength = true) + ")"
+      chunk.truncateWithEllipsis(
+        300/*for error lines with long (file path) prefix*/,
+        showLength = true) + ")"
   object OrderStdWritten:
     def apply(t: StdoutOrStderr): String => OrderStdWritten =
       t match

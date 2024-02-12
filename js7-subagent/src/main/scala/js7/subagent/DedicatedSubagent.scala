@@ -269,15 +269,13 @@ extends Service.StoppableByRequest:
           .*>(
             stdObserversResource(order.id, keepLastErrLine = workflowJob.failOnErrWritten)
               .allocated)
-          .flatMap { case (stdObservers, releaseStdObservers) =>
-            jobDriver.startOrderProcess(order, executeDefaultArguments, stdObservers)
-              .flatMap(_
-                .joinStd // Process terminated
-                .guarantee(releaseStdObservers)
-                .guarantee(releaseAssignment)
-                .start
-                .guaranteeExceptWhenSucceeded(releaseStdObservers))
-          }
+          .flatMap: (stdObservers, releaseStdObservers) =>
+            jobDriver
+              .runOrderProcess(order, executeDefaultArguments, stdObservers)
+              .guarantee(releaseStdObservers)
+              .guarantee(releaseAssignment)
+              .start
+              .guaranteeExceptWhenSucceeded(releaseStdObservers)
           .guaranteeExceptWhenSucceeded(releaseAssignment)
           .recoverWith:
             case ProblemException(problem) if orderIdToJobDriver.isStoppingWith(problem) =>

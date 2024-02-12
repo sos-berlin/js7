@@ -142,10 +142,10 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
       .flatMapT(order =>
         forProcessingOrder(order.id, subagentDriver, onEvents)(
           subagentDriver.startOrderProcessing(order)))
-      .handleError { t =>
-        logger.error(s"startOrderProcess ${order.id} => ${t.toStringWithCauses}", t.nullIfNoStackTrace)
-        Left(Problem.fromThrowable(t))
-      }
+      .handleErrorWith(t => IO:
+        logger.error(s"processOrderAndForwardEvents ${order.id} => ${t.toStringWithCauses}",
+          t.nullIfNoStackTrace)
+        Left(Problem.fromThrowable(t)))
       .containsType[Checked[FiberIO[OrderProcessed]]]
       .rightAs(())
 
