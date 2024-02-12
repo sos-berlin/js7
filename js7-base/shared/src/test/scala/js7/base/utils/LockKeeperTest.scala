@@ -1,7 +1,6 @@
 package js7.base.utils
 
 import cats.effect.IO
-import cats.effect.unsafe.IORuntime
 import cats.syntax.traverse.*
 import java.util.concurrent.ConcurrentHashMap
 import js7.base.log.Logger

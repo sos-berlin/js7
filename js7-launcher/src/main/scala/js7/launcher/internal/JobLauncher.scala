@@ -18,7 +18,7 @@ import js7.launcher.{OrderProcess, ProcessOrder}
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import scala.util.Try
-import js7.base.catsutils.UnsafeMemoizable.given
+import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 
 trait JobLauncher:
   protected val jobConf: JobConf

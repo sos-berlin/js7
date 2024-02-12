@@ -1,6 +1,7 @@
 package js7.cluster.watch.api
 
-import cats.effect.Resource
+import cats.effect.{IO, Resource}
+import fs2.Stream
 import io.circe.Decoder
 import js7.base.auth.Admission
 import js7.base.data.ByteArray
@@ -10,10 +11,9 @@ import js7.base.session.SessionApi
 import js7.base.web.HttpClient.liftProblem
 import js7.base.web.{HttpClient, Uri}
 import js7.data.cluster.{ClusterCommand, ClusterNodeApi, ClusterNodeState, ClusterState, ClusterWatchId, ClusterWatchRequest, ClusterWatchingCommand}
+import js7.data.event.JournalEvent.StampedHeartbeat
 import js7.data.event.{Event, EventId, EventRequest, JournalPosition, KeyedEvent, Stamped}
 import js7.data.session.HttpSessionApi
-import cats.effect.IO
-import fs2.Stream
 import scala.concurrent.duration.*
 
 trait HttpClusterNodeApi
@@ -37,12 +37,17 @@ extends ClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
   final def clusterNodeState: IO[ClusterNodeState] =
     httpClient.get[ClusterNodeState](uris.clusterNodeState)
 
-  final def eventStream[E <: Event](request: EventRequest[E])
+  final def eventStream[E <: Event](
+    request: EventRequest[E],
+    heartbeat: Option[FiniteDuration] = None)
     (implicit kd: Decoder[KeyedEvent[E]])
   : IO[Stream[IO, Stamped[KeyedEvent[E]]]] =
-    httpClient.getDecodedLinesStream[Stamped[KeyedEvent[E]]](
-      uris.events(request),
-      responsive = true)
+    httpClient
+      .getDecodedLinesStream[Stamped[KeyedEvent[E]]](
+        uris.events(request, heartbeat = heartbeat),
+        responsive = true)
+      .map(_
+        .filter(_ != StampedHeartbeat))
 
   final def eventIdStream[E <: Event](
     timeout: Option[FiniteDuration] = None,

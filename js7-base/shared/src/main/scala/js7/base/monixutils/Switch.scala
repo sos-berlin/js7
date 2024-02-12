@@ -1,7 +1,7 @@
 package js7.base.monixutils
 
 import cats.effect.IO
-import js7.base.catsutils.UnsafeMemoizable.given
+import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 import js7.base.utils.MVar
 
 final class Switch private(initiallyOn: Boolean)

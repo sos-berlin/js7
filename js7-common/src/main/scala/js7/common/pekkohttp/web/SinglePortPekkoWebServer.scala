@@ -3,7 +3,7 @@ package js7.common.pekkohttp.web
 import cats.effect.{Deferred, IO, Resource}
 import cats.syntax.all.*
 import js7.base.catsutils.CatsEffectExtensions.*
-import js7.base.catsutils.UnsafeMemoizable.given
+import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 import js7.base.io.https.Https.loadSSLContext
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*

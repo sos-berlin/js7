@@ -193,13 +193,13 @@ extends OurTestSuite:
   "show" in:
     assert(ByteSeq.empty.show == "»«")
     assert(ByteSeq("SHORT").show == "»SHORT«")
-    assert(ByteSeq("SHORT\n").show == "»SHORT␊«")
-    assert(ByteSeq("SHORT\r\n").show == "»SHORT␍␊«")
+    assert(ByteSeq("SHORT\n").show == "»SHORT⏎«")
+    assert(ByteSeq("SHORT\r\n").show == "»SHORT␍⏎«")
     assert(ByteSeq(0x41, 0xf0, 0xf1, 0xf2, 0xf3).show == ByteSeq.typeName + "(»A����« 41f0f1f2 f3)")
     assert(ByteSeq("abcdefghijklmnopqrstuvwxyzÄÖ\nABCDEFGHIJKLMNOPQRSTUVWXYZ").show ==
       ByteSeq.typeName + "(" +
-        "»abcdefghijklmnopqrstuvwxyz����␊A…« " +
-        "61626364 65666768 696a6b6c 6d6e6f70 71727374 75767778 797ac384 c3960a41..., 57 bytes)")
+        "»abcdefghijklmnopqrstuvwxyz����⏎A…« " +
+         "61626364 65666768 696a6b6c 6d6e6f70 71727374 75767778 797ac384 c3960a41..., 57 bytes)")
 
   "toStringAndHexRaw" in:
     assert(ByteSeq("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ").toStringAndHexRaw() ==

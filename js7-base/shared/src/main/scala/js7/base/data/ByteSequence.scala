@@ -13,7 +13,7 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.data.ByteSequence.maxShowLength
 import js7.base.problem.{Checked, Problem}
 import js7.base.system.Java8Polyfill.*
-import js7.base.utils.Ascii.{byteToPrintableChar, toPrintableChar}
+import js7.base.utils.Ascii.byteToPrintableChar
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.*

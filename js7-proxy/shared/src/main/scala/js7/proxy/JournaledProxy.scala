@@ -135,8 +135,9 @@ object JournaledProxy:
       onProxyEvent(ProxyCouplingError(Problem.fromThrowable(throwable)))
 
     stream2
-      .evalTap(o => IO:
-        logger.trace(s"stream => ${o.stampedEvent.toString.truncateWithEllipsis(200)}"))
+      //PekkoHttpClient logs, too:
+      //.evalTap(o => IO:
+      //  logger.trace(s"stream => ${o.stampedEvent.toString.truncateWithEllipsis(200)}"))
 
   /** Drop all events until the requested one and
     * replace the first event by ProxyStarted.
@@ -175,10 +176,10 @@ object JournaledProxy:
         .eventStream(
           EventRequest.singleClass[Event](after = after, delay = 1.s,
             tornOlder = tornOlder.map(o => (o + addToTornOlder).roundUpToNext(100.ms)),
-            timeout = Some(recouplingStreamReaderConf.timeout)))
+            timeout = Some(recouplingStreamReaderConf.timeout)),
+          heartbeat = recouplingStreamReaderConf.keepAlive.some)
         .flatTap(_ => IO:
           addToTornOlder = ZeroDuration))
-
 
     override def onCoupled(api: RequiredApi_[S], after: EventId) =
       IO:

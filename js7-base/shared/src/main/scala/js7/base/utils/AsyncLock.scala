@@ -3,7 +3,7 @@ package js7.base.utils
 import cats.effect.{IO, Resource, kernel}
 import cats.syntax.flatMap.*
 import java.lang.System.nanoTime
-import js7.base.catsutils.UnsafeMemoizable.given
+import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{BlockingSymbol, CorrelId, Logger}
 import js7.base.time.ScalaTime.*

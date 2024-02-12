@@ -7,7 +7,7 @@ import cats.effect.IO
 import js7.base.catsutils.CatsEffectExtensions.fromFutureDummyCancelable
 import scala.concurrent.{Future, Promise}
 import scala.util.Success
-import js7.base.catsutils.UnsafeMemoizable.given
+import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 
 /**
  * Variable which can be set only once. Thread-safe.

@@ -20,6 +20,7 @@ import js7.base.generic.SecretString
 import js7.base.io.https.Https.loadSSLContext
 import js7.base.io.https.HttpsConfig
 import js7.base.log.{CorrelId, Logger}
+import Logger.syntax.*
 import js7.base.monixlike.MonixLikeExtensions.{onErrorTap, takeUntilEval}
 import js7.base.problem.Checked.*
 import js7.base.problem.Problems.InvalidSessionTokenProblem
@@ -76,7 +77,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
   private lazy val http = Http(actorSystem)
   private lazy val basePekkoUri = PekkoUri(baseUri.string)
   private lazy val useCompression = http.system.settings.config.getBoolean("js7.web.client.compression")
-  private lazy val jsonReadAhead = http.system.settings.config.getInt("js7.web.client.json-read-ahead")
+  private lazy val jsonReadAhead = http.system.settings.config.getInt("js7.web.client.json-prefetch")
   private lazy val chunkSize = http.system.settings.config.memorySizeAsInt("js7.web.chunk-size").orThrow
   @volatile private var closed = false
 
@@ -101,6 +102,8 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
     getRawLinesStream(uri)
       .map(_
         .filter(_ != EmptyLine/*used as keep-alive*/)
+        .pipeIf(jsonReadAhead > 0):
+          _.prefetchN(jsonReadAhead)
         .mapParallelBatch(
           /*batchSize = jsonReadAhead / sys.runtime.availableProcessors,
           responsive = responsive*/)(
@@ -110,7 +113,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
   : IO[Stream[IO, ByteArray]] =
     get_[HttpResponse](uri, StreamingJsonHeaders)
       .map(_.entity.withoutSizeLimit.dataBytes.asFs2Stream)
-      .pipeIf(logger.underlying.isDebugEnabled)(_.map(_
+      .pipeIf(logger.isDebugEnabled)(_.map(_
         .logTiming(_.size, (d, n, _) => IO:
           if d >= 1.s && n > 10_000_000 then
             logger.debug(s"get $uri: ${bytesPerSecondString(d, n)}"))))
@@ -308,14 +311,13 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
               HttpResponse(GatewayTimeout, entity = "CANCELED")
             case t: pekko.stream.StreamTcpException => IO.raiseError(makePekkoExceptionLegible(t))
           .map(decompressResponse)
-          .pipeIf(logger.underlying.isDebugEnabled):
+          .pipeIf(logger.isDebugEnabled):
             logResponding(request, _, responseLogPrefix)
               .map: response =>
-                lazy val prefix = "#" + number
-                if !logger.underlying.isTraceEnabled then
-                  response
+                if logger.isTraceEnabled then
+                  logResponseStream(response, responseLogPrefix = "#" + number)
                 else
-                  logResponseStream(response, prefix)
+                  response
           .guaranteeCaseLazy:
             case Outcome.Canceled() => IO:
               canceled = true
@@ -400,7 +402,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
       case chunked: Chunked =>
         val isUtf8 = (chunked.contentType.charsetOption.contains(`UTF-8`)
           || chunked.contentType.mediaType.toString == `application/x-ndjson`.toString)
-        response.pipeIf(logger.underlying.isTraceEnabled)(_
+        response.pipeIf(logger.isTraceEnabled)(_
           .withEntity(chunked.copy(
             chunks = chunked.chunks
               .map { chunk =>

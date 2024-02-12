@@ -136,7 +136,10 @@ object TestAgent:
           try body(testAgent)
           catch { case NonFatal(t) =>
             logger.debug(s"💥 ${t.toStringWithCauses}", t.nullIfNoStackTrace)
-            agent.terminate(terminateProcessesWith).await(99.s)
+            try agent.terminate(terminateProcessesWith).await(99.s)
+            catch case NonFatal(t2) => logger.error(
+              s"agent.terminate while handling an exception: ${t.toStringWithCauses}",
+              t.nullIfNoStackTrace)
             throw t
           }
           agent.terminate(terminateProcessesWith).await(99.s)

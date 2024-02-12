@@ -2,7 +2,7 @@ package js7.common.http
 
 import cats.effect.IO
 import cats.syntax.flatMap.*
-import js7.base.catsutils.UnsafeMemoizable.given
+import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.problem.Checked

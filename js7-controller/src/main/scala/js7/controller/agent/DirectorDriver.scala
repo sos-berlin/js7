@@ -61,7 +61,6 @@ extends Service.StoppableByRequest:
   private var adoptedEventId = initialEventId
   private val untilFetchingStopped = Deferred.unsafe[IO, Unit]
   private val onFetchedEventsLock = AsyncLock() // Fence for super.isStopping
-  private val keepAlive = conf.config.finiteDuration("js7.web.client.keep-alive").orThrow
 
   logger.trace(s"initialEventId=$initialEventId")
 
@@ -142,9 +141,8 @@ extends Service.StoppableByRequest:
           // So we use a fast heartbeat and stop at the next stream element.
           .agentEventStream(
             EventRequest[Event](EventClasses, after = after, timeout = requestTimeout.some),
-            heartbeat = keepAlive.some)
+            heartbeat = conf.recouplingStreamReader.keepAlive.some)
           .map(_.map(_
-            .filter(_ != JournalEvent.StampedHeartbeat)
             .interruptWhenF(untilStopRequested)))
           .race(untilStopRequested)
           .flatMap:

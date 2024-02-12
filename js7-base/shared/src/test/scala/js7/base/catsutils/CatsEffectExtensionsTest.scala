@@ -1,9 +1,13 @@
 package js7.base.catsutils
 
-import cats.effect.{IO, OutcomeIO}
+import cats.effect.Resource.ExitCase
+import cats.effect.{IO, OutcomeIO, Resource}
+import cats.syntax.option.*
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
+import js7.base.utils.Atomic
+import js7.base.utils.Atomic.extensions.*
 import scala.collection.mutable
 
 final class CatsEffectExtensionsTest extends OurAsyncTestSuite:
@@ -74,4 +78,35 @@ final class CatsEffectExtensionsTest extends OurAsyncTestSuite:
           case Left(t: FiberCanceledException) => assert(t.toString ==
             "js7.base.catsutils.CatsEffectExtensions$FiberCanceledException: Fiber has been canceled")
           case _ => fail("Unexpected result vom .joinStd")
+  }
+
+  "Resource" - {
+    "makeCancelable" in:
+      val canceled = Atomic(false)
+      val resource = Resource.makeCancelable[IO, Unit](
+        acquire = IO.never.onCancel(IO(canceled := true)))(
+        release = _ => IO.unit)
+
+      for
+        fiber <- resource.surround(IO.unit).start
+        _ <- IO.sleep(100.ms)
+        _ <- fiber.cancel
+        _ <- fiber.joinWithUnit
+      yield
+        assert(canceled.get)
+
+    "makeCaseCancelable" in:
+      val canceled = Atomic(false)
+      val releaseExitCase = Atomic(none[ExitCase])
+      val resource = Resource.makeCaseCancelable[IO, Unit](
+        acquire = IO.never.onCancel(IO(canceled := true)))(
+        release = (_, exitCase) => IO(releaseExitCase := exitCase.some))
+
+      for
+        fiber <- resource.surround(IO.unit).start
+        _ <- IO.sleep(100.ms)
+        _ <- fiber.cancel
+        _ <- fiber.joinWithUnit
+      yield
+        assert(canceled.get && releaseExitCase.get == None)
   }

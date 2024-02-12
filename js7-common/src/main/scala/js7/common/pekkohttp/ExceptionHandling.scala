@@ -33,7 +33,8 @@ trait ExceptionHandling:
   private lazy val respondWithException = config.getBoolean("js7.web.server.verbose-error-messages")
 
   protected final lazy val isShuttingDown: IO[Option[Deadline]] =
-    whenShuttingDown.get.map(Some(_)).timeoutTo(ZeroDuration, IO.none)
+    whenShuttingDown.get.map(Some(_))
+      .timeoutTo(ZeroDuration, IO.none) // TODO Is this reliable? Maybe use SignallingRef
 
   protected final lazy val shutdownSignaled: IO[Either[Throwable, Unit]] =
     whenShuttingDown.get.as(().asRight[Throwable])

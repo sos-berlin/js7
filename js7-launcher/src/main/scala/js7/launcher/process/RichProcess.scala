@@ -5,7 +5,7 @@ import java.io.OutputStream
 import java.lang.ProcessBuilder.Redirect.INHERIT
 import java.nio.file.Files.delete
 import java.nio.file.Path
-import js7.base.catsutils.UnsafeMemoizable.given
+import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.io.process.Processes.*
 import js7.base.io.process.{JavaProcess, Js7Process, Pid, ProcessSignal, ReturnCode}
@@ -59,13 +59,12 @@ abstract class RichProcess protected[process](
         ifAlive("sendProcessSignal SIGKILL")(
           processConfiguration
             .toKillScriptCommandArgumentsOption(pidOption)
-            .fold(kill) { args =>
+            .fold(destroy(force = true)): args =>
               _isKilling = true
               executeKillScript(args ++ pidOption.map(o => s"--pid=${o.string}"))
                 .handleError(t => logger.error(
                   s"Cannot start kill script command '$args': ${t.toStringWithCauses}"))
-                .<*(kill)
-            }
+                .<*(destroy(force = true))
         ).guarantee:
           // The process may have terminated while long running child processes have inherited the
           // file handles and still use them.
@@ -99,9 +98,6 @@ abstract class RichProcess protected[process](
                 logger.log(logLevel, s"Kill script '${args(0)}' has returned exit code $exitCode")
               })
         })
-
-  private def kill: IO[Unit] =
-    destroy(force = true)
 
   private def destroy(force: Boolean): IO[Unit] =
     (process, pidOption) match

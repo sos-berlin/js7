@@ -13,7 +13,7 @@ import java.nio.file.Files.size
 import java.nio.file.Path
 import js7.base.catsutils.CatsDeadline
 import js7.base.catsutils.CatsDeadline.now
-import js7.base.catsutils.UnsafeMemoizable.given
+import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 import js7.base.io.file.watch
 import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted, FileModified}
 import js7.base.io.file.watch.DirectoryEventDelayer.*

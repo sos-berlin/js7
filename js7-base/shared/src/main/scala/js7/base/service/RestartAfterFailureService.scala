@@ -5,7 +5,7 @@ import cats.syntax.flatMap.*
 import cats.syntax.option.*
 import izumi.reflect.Tag
 import js7.base.catsutils.CatsEffectExtensions.right
-import js7.base.catsutils.UnsafeMemoizable.given
+import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 import js7.base.log.Logger
 import js7.base.service.RestartAfterFailureService.*
 import js7.base.time.ScalaTime.*

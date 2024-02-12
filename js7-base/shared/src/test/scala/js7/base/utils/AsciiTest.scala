@@ -17,5 +17,10 @@ final class AsciiTest extends AnyFreeSpec:
     assert(toPrintableChar('Ж') == 'Ж')
     assert(toPrintableChar('\u7fff') == '\u7fff')
     assert(toPrintableChar('\u0000') == '␀')
-    assert(toPrintableChar('\n') == '␊')
+    assert(toPrintableChar('\r') == '␍')
+    assert(toPrintableChar('\t') == '⟶')
+    assert(toPrintableChar('\n') == '⏎')
+    assert(toPrintableChar('\u0081') == '�')
     assert(toPrintableChar('\u007f') == '␡')
+
+    assert("line\nline\r\ntab\ttab\ttab\n".map(toPrintableChar) == "line⏎line␍⏎tab⟶tab⟶tab⏎")

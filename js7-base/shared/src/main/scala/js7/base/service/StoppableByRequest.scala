@@ -1,7 +1,7 @@
 package js7.base.service
 
 import cats.effect.{Deferred, FiberIO, IO}
-import js7.base.catsutils.UnsafeMemoizable.given
+import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.monixlike.MonixLikeExtensions.raceFold

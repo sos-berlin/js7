@@ -23,8 +23,10 @@ final class LoggingFreeSpecStringWrapper[OwnResult, ScalaTestResult, T](
     underlying.in:
       executeTest(ctx, testBody)
 
-  //infix def ignore(f: => Unit): Unit =
-  //  underlying ignore f
+  infix def ignore(testBody: => OwnResult): Unit =
+    val ctx = testAdder.freezeContext(name)
+    underlying ignore:
+      executeTest(ctx, testBody)
 
   //infix def is(f: => PendingStatement): Unit =
   //  underlying is f
@@ -57,7 +59,7 @@ object LoggingFreeSpecStringWrapper:
     def in(testBody: => R): Unit
 
     //def is(pending: => PendingStatement): Unit
-    //def ignore(testBody: => R): Unit
+    def ignore(testBody: => R): Unit
     def taggedAs(tag: Tag, more: Tag*): TaggedAs[R]
 
 

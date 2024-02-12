@@ -1,6 +1,6 @@
 package js7.launcher
 
-import cats.effect.{IO, Resource, ResourceIO}
+import cats.effect.{IO, Resource}
 import cats.syntax.semigroup.*
 import cats.syntax.traverse.*
 import js7.base.problem.Checked
@@ -15,7 +15,6 @@ import js7.data.value.{MissingValue, Value}
 import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.launcher.ProcessOrder.evalEnv
-import cats.effect.IO
 import scala.collection.MapView
 
 final case class ProcessOrder(

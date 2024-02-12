@@ -4,7 +4,6 @@ import cats.effect.IO
 import cats.syntax.apply.*
 import fs2.{Chunk, Stream}
 import izumi.reflect.Tag
-import js7.base.catsutils.UnsafeMemoizable.given
 import js7.base.log.Logger
 import js7.base.monixutils.Latch
 import js7.base.problem.{Checked, Problem}
@@ -160,6 +159,7 @@ final class StreamNumberedQueue[V: Tag]:
       else
         Right(this)
   end State
+
 
 object StreamNumberedQueue:
   private val logger = Logger[this.type]

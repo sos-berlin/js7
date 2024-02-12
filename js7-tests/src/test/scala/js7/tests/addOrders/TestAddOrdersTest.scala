@@ -7,7 +7,6 @@ import js7.base.log.{CorrelId, CorrelIdLog4jThreadContextMap, Logger}
 import js7.base.problem.Checked.*
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
-import js7.base.utils.Tests
 import js7.data.agent.AgentPath
 import js7.data.order.OrderEvent.OrderDeleted
 import js7.data.workflow.{Workflow, WorkflowPath}

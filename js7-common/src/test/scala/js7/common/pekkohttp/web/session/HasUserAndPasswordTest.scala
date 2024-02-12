@@ -14,7 +14,7 @@ import js7.data.session.HttpSessionApi
 import js7.base.utils.MVar
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
-import js7.base.catsutils.UnsafeMemoizable.given
+import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 
 final class HasUserAndPasswordTest extends OurTestSuite, SessionRouteTester, TestCatsEffect:
 

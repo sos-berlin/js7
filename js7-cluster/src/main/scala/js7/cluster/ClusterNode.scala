@@ -18,7 +18,7 @@ import izumi.reflect.Tag
 import java.nio.file.Path
 import js7.base.auth.{Admission, UserId}
 import js7.base.catsutils.UnsafeMemoizable
-import js7.base.catsutils.UnsafeMemoizable.given
+import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 import js7.base.eventbus.EventPublisher
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*

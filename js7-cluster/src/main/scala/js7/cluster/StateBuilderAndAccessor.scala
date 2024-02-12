@@ -2,7 +2,7 @@ package js7.cluster
 
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
-import js7.base.catsutils.UnsafeMemoizable.given
+import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 import js7.base.log.Logger
 import js7.base.thread.Futures.syntax.RichFuture
 import js7.base.utils.MVar

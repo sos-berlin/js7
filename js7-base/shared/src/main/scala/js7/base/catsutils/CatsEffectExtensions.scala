@@ -1,6 +1,7 @@
 package js7.base.catsutils
 
-import cats.effect.kernel.MonadCancel
+import cats.effect.kernel.{MonadCancel, Resource}
+import cats.effect.kernel.Resource.ExitCase
 import cats.effect.unsafe.Scheduler
 import cats.effect.{Clock, Fiber, IO, Outcome, OutcomeIO}
 import cats.syntax.functor.*
@@ -135,6 +136,18 @@ object CatsEffectExtensions:
     : F[A] =
       fiber.joinWith(F.defer(F.raiseError(new FiberCanceledException)))
 
+
+  extension(resource: Resource.type)
+
+    def makeCancelable[F[_], A](acquire: F[A])(release: A => F[Unit])
+      (using F: Functor[F])
+    : Resource[F, A] =
+      Resource.makeFull[F, A](_(acquire))(release)
+
+    def makeCaseCancelable[F[_], A](acquire: F[A])(release: (A, ExitCase) => F[Unit])
+      (using F: Functor[F])
+    : Resource[F, A] =
+      Resource.makeCaseFull[F, A](_(acquire))(release)
 
   extension[F[_]](clock: Clock[F])
     def monotonicTime(using Functor[F]): F[CatsDeadline] =

@@ -26,6 +26,7 @@ final class ClusterConfTest extends OurTestSuite
         js7.journal.cluster.heartbeat-timeout = 5s
         js7.journal.cluster.watch.uniqueness-memory-size = 100
         js7.web.client.idle-get-timeout = 50s
+        js7.web.client.keep-alive = 1s
         js7.web.client.polling-delay = 1s
         js7.web.client.failure-delays = [ 5s ]
         """.withFallback(JournalConfTest.config)
@@ -38,6 +39,7 @@ final class ClusterConfTest extends OurTestSuite
           None,
           RecouplingStreamReaderConf(
             timeout = 6.s,  // Between 5s and 7s
+            keepAlive = 1.s,
             delay = 1.s,
             failureDelays = Nel.one(5.s)),
           ClusterTiming(7.s, 5.s),
@@ -57,6 +59,7 @@ final class ClusterConfTest extends OurTestSuite
         js7.journal.cluster.heartbeat = 7s
         js7.journal.cluster.heartbeat-timeout = 5s
         js7.web.client.idle-get-timeout = 50s
+        js7.web.client.keep-alive = 1s
         js7.web.client.polling-delay = 1s
         js7.web.client.failure-delays = [ 5s ]
         """.withFallback(JournalConfTest.config)
@@ -75,6 +78,7 @@ final class ClusterConfTest extends OurTestSuite
             clusterWatchId = None)),
           RecouplingStreamReaderConf(
             timeout = 6.s,  // Between 5s and 7s
+            keepAlive = 1.s,
             delay = 1.s,
             failureDelays = Nel.one(5.s)),
           ClusterTiming(7.s, 5.s),

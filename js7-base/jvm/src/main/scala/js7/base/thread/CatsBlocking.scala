@@ -32,7 +32,7 @@ object CatsBlocking:
         inline def name = makeBlockingWaitingString[A]("IO", duration)
         try
           logger
-            .traceIO(name):
+            .noLogIO/*traceIO*/(name):
               io
                 .pipeIf(duration != Duration.Inf):
                   _.timeoutTo(
@@ -61,7 +61,7 @@ object CatsBlocking:
       : F[A] =
         inline def name = makeBlockingWaitingString(fTag.tag.toString, duration)
         logger
-          .traceIO(name):
+          .noLogIO/*traceIO*/(name):
             iterable.sequence
               .timeoutTo(duration,
                 IO.raiseError(new TimeoutException(name + " timed out")))

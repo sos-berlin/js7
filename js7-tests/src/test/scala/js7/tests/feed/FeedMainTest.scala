@@ -26,5 +26,5 @@ final class FeedMainTest extends OurTestSuite, ControllerAgentForScalaTest:
     val ops = Vector[Any](AddOrChangeSimple(Lock(LockPath("TEST"))))
     implicit val opJsonCodec = Feed.opJsonCodec
     val in = Resource.eval(IO.pure(ByteArray(ops.asJson.compactPrint).toInputStream))
-    FeedMain.run(Array(s"--controller=${controller.localUri}", "--user=TEST-USER:TEST-PASSWORD"), in)
+    FeedMain.run(Seq(s"--controller=${controller.localUri}", "--user=TEST-USER:TEST-PASSWORD"), in)
       .await(99.s).orThrow

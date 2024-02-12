@@ -7,6 +7,7 @@ import js7.base.session.SessionApi
 import js7.base.web.{HttpClient, Uri}
 import cats.effect.IO
 import fs2.Stream
+import scala.concurrent.duration.FiniteDuration
 
 trait EventApi
 extends SessionApi, HasIsIgnorableStackTrace:
@@ -15,7 +16,9 @@ extends SessionApi, HasIsIgnorableStackTrace:
 
   def baseUri: Uri
 
-  def eventStream[E <: Event](request: EventRequest[E])
+  def eventStream[E <: Event](
+    request: EventRequest[E],
+    heartbeat: Option[FiniteDuration] = None)
     (implicit kd: Decoder[KeyedEvent[E]])
   : IO[Stream[IO, Stamped[KeyedEvent[E]]]]
 

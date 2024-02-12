@@ -79,7 +79,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
 
   private given ExecutionContext = ioRuntime.compute
 
-  private val jsonReadAhead = config.getInt("js7.web.client.json-read-ahead")
+  private val jsonReadAhead = config.getInt("js7.web.client.json-prefetch")
   private val shutdown = Deferred.unsafe[IO, Unit]
 
   assertThat(activeId != ownId && setting.passiveId == ownId)

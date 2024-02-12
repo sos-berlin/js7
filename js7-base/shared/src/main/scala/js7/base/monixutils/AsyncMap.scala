@@ -3,7 +3,7 @@ package js7.base.monixutils
 import cats.effect.{Deferred, IO}
 import cats.syntax.apply.*
 import izumi.reflect.Tag
-import js7.base.catsutils.UnsafeMemoizable.given
+import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}

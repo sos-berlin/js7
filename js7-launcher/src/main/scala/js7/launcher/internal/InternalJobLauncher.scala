@@ -20,7 +20,7 @@ import cats.effect.IO
 import scala.util.control.NonFatal
 import Logger.syntax.*
 import cats.effect.unsafe.IORuntime
-import js7.base.catsutils.UnsafeMemoizable.given
+import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 import scala.concurrent.ExecutionContext
 
 final class InternalJobLauncher(

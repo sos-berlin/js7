@@ -202,7 +202,7 @@ final class ShellScriptProcessTest extends OurAsyncTestSuite:
               CommandLine(List(executable.toString)),
               processConfiguration,
               stdObservers,
-              whenTerminated = outErrFut.joinStd.void)
+              onTerminated = outErrFut.joinStd.void)
           yield checkedProcess.orThrow
 
   private def withScriptFile[A](body: Path => A): A =

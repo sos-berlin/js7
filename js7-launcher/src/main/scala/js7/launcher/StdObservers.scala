@@ -1,17 +1,15 @@
 package js7.launcher
 
 import cats.effect.kernel.Resource.ExitCase
-import cats.effect.std.CyclicBarrier
 import cats.effect.{IO, Resource, ResourceIO}
 import fs2.Stream
 import fs2.concurrent.Channel
-import js7.base.catsutils.CatsEffectExtensions.joinStd
-import js7.base.catsutils.UnsafeMemoizable.given
+import js7.base.catsutils.CatsEffectExtensions.{joinStd, makeCaseCancelable}
+import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
 import js7.base.log.Logger
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.data.order.OrderId
 import js7.launcher.StdObservers.*
 import js7.launcher.utils.LastLineKeeper
 
@@ -29,6 +27,7 @@ final class StdObservers private(
 
   private[js7] val outStream: Stream[IO, String] =
     outChannel.stream.rethrow
+      .evalTap(o => IO(logger.debug(s"### outStream => »$o«")))
 
   private[js7] val errStream: Stream[IO, String] =
     errChannel.stream.rethrow.through:
@@ -55,13 +54,14 @@ final class StdObservers private(
       case Stderr => errChannel
 
   private[js7] val closeChannels: IO[Unit] =
+    IO(logger.trace(s"### closeChannels")) *>
     IO.both(outChannel.close, errChannel.close)
       .as(())
       .unsafeMemoize
 
   def useInBackground(readOutErrStreams: IO[Unit]): ResourceIO[Unit] =
     Resource
-      .makeCase(
+      .makeCaseCancelable(
         acquire = readOutErrStreams.start)(
         release =
           case (fiber, ExitCase.Succeeded) => closeChannels *> fiber.joinStd
@@ -88,4 +88,5 @@ object StdObservers:
         yield
           new StdObservers(outChannel, errChannel, charBufferSize, useErrorLineLengthMax))(
       release =
-        _.closeChannels)
+        _ => IO.unit)
+        //???_.closeChannels)

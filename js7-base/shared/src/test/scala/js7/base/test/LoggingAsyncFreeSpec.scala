@@ -70,13 +70,16 @@ trait LoggingAsyncFreeSpec extends AsyncFreeSpec:
       def in(testBody: => Future[Assertion]) =
         stringWrapper in testBody
 
+      def ignore(testBody: => Future[Assertion]) =
+        stringWrapper ignore testBody
+
       def taggedAs(tag: Tag, more: Tag*): LoggingFreeSpecStringWrapper.TaggedAs[Future[Assertion]] =
         new LoggingFreeSpecStringWrapper.TaggedAs[Future[Assertion]]:
           def in(testBody: => Future[Assertion]) =
             testBody
 
           def ignore(testBody: => Future[Assertion]) =
-            Future.failed(new RuntimeException(("Test ignored")))  // Not expected to be thrown
+            Future.failed(new RuntimeException("Test ignored"))  // Not expected to be thrown
 
           def is(pending: => PendingStatement) =
             pending

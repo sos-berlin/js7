@@ -4,7 +4,7 @@ import cats.effect.std.Semaphore
 import cats.effect.unsafe.Scheduler
 import cats.effect.{IO, Resource}
 import cats.syntax.traverse.*
-import js7.base.catsutils.UnsafeMemoizable.given
+import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 import js7.base.log.CorrelId
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat

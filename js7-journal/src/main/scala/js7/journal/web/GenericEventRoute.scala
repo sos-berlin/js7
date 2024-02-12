@@ -6,9 +6,9 @@ import cats.syntax.applicativeError.*
 import fs2.Stream
 import izumi.reflect.Tag
 import js7.base.auth.ValidUserPermission
+import js7.base.catsutils.CatsEffectExtensions.right
 import js7.base.fs2utils.StreamExtensions.*
 import js7.base.log.Logger
-import js7.base.log.Logger.syntax.*
 import js7.base.problem.Problems.ShuttingDownProblem
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.JavaTimeConverters.AsScalaDuration
@@ -16,11 +16,11 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.http.JsonStreamingSupport.*
-import js7.common.pekkohttp.PekkoHttpServerUtils.{accept, completeWithCheckedStream, encodeAndHeartbeatStream}
-import js7.common.pekkohttp.StandardDirectives
+import js7.common.pekkohttp.PekkoHttpServerUtils.{accept, completeWithCheckedStream, encodeParallel}
 import js7.common.pekkohttp.StandardDirectives.ioRoute
 import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkohttp.web.session.RouteProvider
+import js7.common.pekkohttp.{PekkoHttpServerUtils, StandardDirectives}
 import js7.data.event.JournalEvent.{StampedHeartbeat, StampedHeartbeatIO}
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, EventSeqTornProblem, KeyedEvent, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}
 import js7.journal.watch.{ClosedException, EventWatch}
@@ -46,6 +46,8 @@ trait GenericEventRoute extends RouteProvider:
 
   private given IORuntime = ioRuntime
   private given ExecutionContext = ioRuntime.compute
+
+  private lazy val jsonPrefetch = config.getInt("js7.web.server.json-prefetch")
 
   private lazy val defaultJsonSeqChunkTimeout =
     config.getDuration("js7.web.server.services.event.streaming.chunk-timeout").toFiniteDuration
@@ -87,7 +89,6 @@ trait GenericEventRoute extends RouteProvider:
                 onSuccess(eventWatch.whenStarted) { eventWatch =>
                   for o <- waitingSince do logger.debug("Journal has become ready after " +
                     o.elapsed.pretty + ", continuing event web service")
-                  implicit val s = NdJsonStreamingSupport
                   Route.seal(
                     jsonSeqEvents(eventWatch))
                 }
@@ -126,20 +127,19 @@ trait GenericEventRoute extends RouteProvider:
       maybeHeartbeat: Option[FiniteDuration],
       eventWatch: EventWatch)
     : Route =
-      extractRequest { httpRequest =>
-        completeWithCheckedStream(`application/x-ndjson`):
-          maybeHeartbeat match
-            case None =>
-              // Await the first event to check for Torn and convert it to a proper error message, otherwise continue with stream
-              awaitFirstEventStream(request, eventWatch)
+      completeWithCheckedStream(`application/x-ndjson`):
+        maybeHeartbeat match
+          case None =>
+            // Await the first event to check for Torn and convert it to a proper error message, otherwise continue with stream
+            awaitFirstEventStream(request, eventWatch)
 
-            case Some(heartbeat) =>
-              IO.pure(Right(
-                encodeAndHeartbeatStream(
-                  heartbeatingStream(request, heartbeat, eventWatch),
-                  shutdownSignaled, chunkSize = chunkSize
-                ).interruptWhen(shutdownSignaled)))
-      }
+          case Some(heartbeat) =>
+            IO.right:
+              eventStream(request, isRelevantEvent, eventWatch)
+                .prependOne(StampedHeartbeat)
+                .keepAlive(heartbeat, StampedHeartbeatIO)
+                .through(encodeParallel(chunkSize))
+                .interruptWhen(shutdownSignaled)
 
     private def awaitFirstEventStream(request: EventRequest[Event], eventWatch: EventWatch)
     : IO[Checked[Stream[IO, ByteString]]] =
@@ -163,15 +163,11 @@ trait GenericEventRoute extends RouteProvider:
               // FIXME it should be max, not min:
               delay = (request.delay - runningSince.elapsed) min ZeroDuration)
 
-            Right(encodeAndHeartbeatStream(
-              head +: eventStream(tailRequest, isRelevantEvent, eventWatch),
-              shutdownSignaled, chunkSize = chunkSize))
-
-    //private def emptyResponseMarshallable(implicit s: JsonEntityStreamingSupport)
-    //: ToResponseMarshallable =
-    //  implicit val x: ToEntityMarshaller[Unit] = jsonSeqMarshaller
-    //  streamToMarshallable(
-    //    Stream.empty)
+            Right:
+              Stream.emit(head)
+                .append(eventStream(tailRequest, isRelevantEvent, eventWatch))
+                .through(encodeParallel(chunkSize))
+                .interruptWhen(shutdownSignaled)
 
     private def heartbeatingStream(
       request: EventRequest[Event],
@@ -179,10 +175,9 @@ trait GenericEventRoute extends RouteProvider:
       eventWatch: EventWatch)
     : Stream[IO, Stamped[AnyKeyedEvent]] =
       // TODO Check if torn then return IO.raiseError
-      logger.traceStream("### heartbeatingStream", s"heartbeat=$heartbeat"):
-        StampedHeartbeat +:
-          eventStream(request, isRelevantEvent, eventWatch)
-            .keepAlive(heartbeat, StampedHeartbeatIO)
+      StampedHeartbeat +:
+        eventStream(request, isRelevantEvent, eventWatch)
+          .keepAlive(heartbeat, StampedHeartbeatIO)
 
     private def eventStream(
       request: EventRequest[Event],

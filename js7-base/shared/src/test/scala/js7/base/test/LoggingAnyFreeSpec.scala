@@ -55,6 +55,9 @@ trait LoggingAnyFreeSpec extends AnyFreeSpec:
       def in(testBody: => Any) =
         stringWrapper in testBody
 
+      def ignore(testBody: => Any) =
+        stringWrapper ignore testBody
+
       def taggedAs(tag: Tag, more: Tag*) =
         new LoggingFreeSpecStringWrapper.TaggedAs[Any]:
           def in(testBody: => Any) =

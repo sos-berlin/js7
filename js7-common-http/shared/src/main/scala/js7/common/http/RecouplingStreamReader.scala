@@ -6,7 +6,7 @@ import cats.syntax.flatMap.*
 import fs2.Stream
 import izumi.reflect.Tag
 import js7.base.catsutils.CatsEffectExtensions.*
-import js7.base.catsutils.UnsafeMemoizable.given
+import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 import js7.base.exceptions.HasIsIgnorableStackTrace
 import js7.base.fs2utils.StreamExtensions.+:
 import js7.base.generic.Completed

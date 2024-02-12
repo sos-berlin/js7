@@ -23,7 +23,6 @@ import js7.base.utils.ProgramTermination
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatchService
 import js7.common.auth.SecretStringGenerator
-import js7.common.configuration.Js7Configuration
 import js7.common.message.ProblemCodeMessages
 import js7.common.utils.FreeTcpPortFinder.{findFreeTcpPort, findFreeTcpPorts}
 import js7.data.agent.AgentPath

@@ -25,7 +25,8 @@ final class ClusterNodeUris private(prefixedUri: Uri):
           ("clusterWatchId" -> clusterWatchId.string) ::
             keepAlive.map("keepAlive" -> _.toDecimalString).toList))
 
-  def events[E <: Event](request: EventRequest[E],
+  def events[E <: Event](
+    request: EventRequest[E],
     heartbeat: Option[FiniteDuration] = None)
   : Uri =
     events_[E]("/event", request, heartbeat = heartbeat)

@@ -13,9 +13,9 @@ private final class OutErrStatistics:
   private var messageCount = 0
   private var size = 0L
 
-  def count[A](length: Int)(io: IO[A]): IO[A] =
-    messageCount += 1
-    size += length
+  def count[A](totalLength: Int, n: Int = 1)(io: IO[A]): IO[A] =
+    messageCount += n
+    size += totalLength
     io.timed.map { case (duration, a) =>
       blockedNanos += duration.toNanos
       a

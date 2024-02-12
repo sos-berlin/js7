@@ -22,7 +22,7 @@ import js7.base.web.Uri
 import js7.cluster.watch.api.HttpClusterNodeApi
 import js7.common.http.PekkoHttpClient
 import js7.data.Problems.ClusterNodeIsNotReadyProblem
-import js7.data.event.{Event, EventRequest, KeyedEvent, Stamped}
+import js7.data.event.{Event, EventRequest, JournalEvent, KeyedEvent, Stamped}
 import js7.data.session.HttpSessionApi
 import org.apache.pekko.actor.ActorSystem
 import scala.concurrent.duration.Deadline.now
@@ -87,7 +87,9 @@ extends HttpSessionApi, PekkoHttpClient, SessionApi.HasUserAndPassword, HttpClus
         agentUris.controllersEvents(
           request,
           heartbeat = heartbeat),
-        responsive = true))
+        responsive = true
+      ).map(_
+        .filter(_ != JournalEvent.StampedHeartbeat)))
 
 
 object AgentClient:

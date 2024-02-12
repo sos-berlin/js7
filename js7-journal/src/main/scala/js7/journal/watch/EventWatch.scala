@@ -15,7 +15,7 @@ import org.jetbrains.annotations.TestOnly
 import scala.concurrent.Future
 import scala.concurrent.duration.*
 import scala.reflect.ClassTag
-import js7.base.catsutils.UnsafeMemoizable.given
+import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 
 /**
   * @author Joacim Zschimmer

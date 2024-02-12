@@ -20,7 +20,8 @@ final class RecouplingStreamReaderTest extends OurAsyncTestSuite:
   "RecouplingStreamReader" in:
     val userAndPassword = UserAndPassword(UserId("USER"), SecretString("PASSWORD"))
     val api = new TestSessionApi(Some(userAndPassword))
-    val recouplingStreamReaderConf = RecouplingStreamReaderConf(timeout = 5.s, delay = 1.s,
+    val recouplingStreamReaderConf = RecouplingStreamReaderConf(
+      timeout = 5.s, keepAlive = 1.s, delay = 1.s,
       failureDelays = Nel.one(5.s))
 
     val stream = Stream.suspend:

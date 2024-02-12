@@ -20,6 +20,7 @@ import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichThrowable}
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.base.utils.{Once, Tests}
 import org.slf4j.{LoggerFactory, Marker, MarkerFactory}
+import scala.annotation.unused
 import scala.concurrent.duration.{Deadline, FiniteDuration}
 import scala.reflect.ClassTag
 
@@ -209,30 +210,38 @@ object Logger extends AdHocLogger:
         logF[SyncIO, A](logger, LogLevel.Trace, function, args, result)(SyncIO(body))
           .unsafeRunSync()
 
+      /** Log nothing, usable as a equivalent replacement to temporarily suppress logging. */
+      inline def noLogF[F[_], A](inline a: F[A]): F[A] = a
+
+      /** Log nothing, usable as a equivalent replacement to temporarily suppress logging. */
+      inline def noLogIO[A](@unused inline functionName: String, @unused inline args: => Any = "")
+        (inline a: IO[A])
+      : IO[A] = a
+
       def infoResource[F[_], A](function: String, args: => Any = "")(resource: Resource[F, A])
         (using F: Sync[F])
       : Resource[F, A] =
-        logResourceUse[F, A](logger, LogLevel.Info, function, args)(resource)
+        logResource[F, A](logger, LogLevel.Info, function, args)(resource)
 
       def debugResource[F[_], A](resource: Resource[F, A])
         (using F: Sync[F], tag: Tag[A], src: sourcecode.Name)
       : Resource[F, A] =
-        logResourceUse[F, A](logger, LogLevel.Debug)(resource)
+        logResource[F, A](logger, LogLevel.Debug)(resource)
 
       def debugResource[F[_], A](function: String, args: => Any = "")(resource: Resource[F, A])
         (using F: Sync[F])
       : Resource[F, A] =
-        logResourceUse[F, A](logger, LogLevel.Debug, function, args)(resource)
+        logResource[F, A](logger, LogLevel.Debug, function, args)(resource)
 
       def traceResource[F[_], A](resource: Resource[F, A])
         (using F: Sync[F], tag: Tag[A], src: sourcecode.Name)
       : Resource[F, A] =
-        logResourceUse[F, A](logger, LogLevel.Trace)(resource)
+        logResource[F, A](logger, LogLevel.Trace)(resource)
 
       def traceResource[F[_], A](function: String, args: => Any = "")(resource: Resource[F, A])
         (implicit F: Sync[F])
       : Resource[F, A] =
-        logResourceUse[F, A](logger, LogLevel.Trace, function, args)(resource)
+        logResource[F, A](logger, LogLevel.Trace, function, args)(resource)
 
       def infoStream[F[_], A](function: String, args: => Any = "")(stream: Stream[F, A])
         (using F: Sync[F])
@@ -286,7 +295,7 @@ object Logger extends AdHocLogger:
         logger.underlying.isTraceEnabled
 
 
-    private def logF[F[_], A](
+    private[log] def logF[F[_], A](
       logger: ScalaLogger,
       logLevel: LogLevel,
       function: String,
@@ -316,29 +325,34 @@ object Logger extends AdHocLogger:
               case Outcome.Succeeded(_) => F.unit
               case outcome => F.delay(ctx.logOutcome(outcome))
 
-    private def logResourceUse[F[_], A](logger: ScalaLogger, logLevel: LogLevel)
+    private def logResource[F[_], A](logger: ScalaLogger, logLevel: LogLevel)
       (resource: Resource[F, A])
       (using F: Sync[F], tag: Tag[A], src: sourcecode.Name)
     : Resource[F, A] =
-        logResourceUse[F, A](logger, logLevel, s"${src.value} :Resource[_,${tag.tag}]"):
+        logResource[F, A](logger, logLevel, s"${src.value} :Resource[_,${tag.tag}]"):
           resource
 
-    private def logResourceUse[F[_], A](logger: ScalaLogger, logLevel: LogLevel, function: String,
-      args: => Any = "")
+    private def logResource[F[_], A](
+      logger: ScalaLogger, logLevel: LogLevel, function: String, args: => Any = "")
       (resource: Resource[F, A])
-      (implicit F: Sync[F])
+      (using F: Sync[F])
     : Resource[F, A] =
+      loggingResource[F](logger, logLevel, function, args)
+        .*>(resource)
+        .<*(loggingResource[F](logger, logLevel, function + ".use", args))
+
+    private def loggingResource[F[_]](
+      logger: ScalaLogger, logLevel: LogLevel, function: String, args: => Any = "")
+      (using F: Sync[F])
+    : Resource[F, Unit] =
       Resource
         .makeCase(
-          acquire = F.delay(
-            if !logger.isEnabled(logLevel) then
-              None
-            else
-              Some(new StartReturnLogContext(logger, logLevel, function, args))))(
-          release = (maybeCtx, exitCase) =>
-            F.delay(
-              for ctx <- maybeCtx do ctx.logOutcome(exitCase.toOutcome)))
-        .*>(resource)
+          acquire = F.delay:
+            logger.isEnabled(logLevel) ?
+              new StartReturnLogContext(logger, logLevel, function, args))(
+          release = (maybeCtx, exitCase) => F.delay:
+            for ctx <- maybeCtx do ctx.logOutcome(exitCase.toOutcome))
+        .map(_ => ())
 
     private def logStream[F[_], A](logger: ScalaLogger, logLevel: LogLevel, function: String,
       args: => Any = "")

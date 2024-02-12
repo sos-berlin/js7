@@ -3,7 +3,7 @@ package js7.common.pekkohttp
 import cats.effect.kernel.Resource.ExitCase
 import cats.effect.unsafe.IORuntime
 import cats.effect.{Deferred, IO, Resource}
-import fs2.{Chunk, Stream}
+import fs2.{Pipe, Stream}
 import io.circe.Encoder
 import io.circe.syntax.EncoderOps
 import izumi.reflect.Tag
@@ -22,6 +22,7 @@ import js7.common.pekkohttp.StandardDirectives.ioRoute
 import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkoutils.ByteStrings.*
 import js7.common.pekkoutils.ByteStrings.syntax.*
+import js7.data.event.JournalEvent
 import org.apache.pekko.http.scaladsl.marshalling.{ToResponseMarshallable, ToResponseMarshaller}
 import org.apache.pekko.http.scaladsl.model.headers.Accept
 import org.apache.pekko.http.scaladsl.model.{ContentType, HttpEntity, HttpHeader, MediaType, Uri}
@@ -38,7 +39,7 @@ import scala.concurrent.duration.FiniteDuration
 object PekkoHttpServerUtils:
 
   private val logger = Logger[this.type]
-  private val LF = fs2.Chunk.singleton('\n'.toByte)
+  val LF = ByteString("\n")
   private val heartbeatChunk = IO.pure(LF)
 
   object implicits:
@@ -257,9 +258,8 @@ object PekkoHttpServerUtils:
     (using IORuntime)
   : Route =
     completeWithCheckedStream(`application/x-ndjson`):
-      stream.map(_.map: stream =>
-        encodeStream(stream, chunkSize = chunkSize)
-          .map(_.toByteString))
+      stream.map(_.map:
+        _.through(encodeParallel(chunkSize)))
 
   def completeWithCheckedStream(contentType: ContentType)
     (checkedStream: IO[Checked[Stream[IO, ByteString]]])
@@ -338,33 +338,18 @@ object PekkoHttpServerUtils:
           })
 
   // Was observableToResponseMarshallable in v2.6
-  def encodeAndHeartbeatStream[A: Encoder : Tag](
-    stream: Stream[IO, A],
-    shutdownSignaled: IO[Either[Throwable, Unit]],
+  def encodeAndHeartbeat[A: Encoder : Tag](
     chunkSize: Int,
-    keepAlive: Option[FiniteDuration] = None)
+    keepAlive: FiniteDuration)
     (using IORuntime)
-  : Stream[IO, ByteString] =
-    val encoded = encodeStream(stream, chunkSize)
-    heartbeatStream(encoded, keepAlive)
-      .map(_.toByteString)
-      .interruptWhen(shutdownSignaled)
+  : Pipe[IO, A, ByteString] =
+    _.through(encodeParallel(chunkSize))
+      .keepAlive(keepAlive, heartbeatChunk)
 
-  def encodeStream[A: Encoder : Tag](stream: Stream[IO, A], chunkSize: Int)
+  def encodeParallel[A: Encoder : Tag](chunkSize: Int)
     (using IORuntime)
-  : Stream[IO, Chunk[Byte]] =
-    stream
-      .mapParallelBatch(/*responsive = true*/)(_
+  : Pipe[IO, A, ByteString] =
+    _.mapParallelBatch(/*responsive = true*/)(_
         .asJson
-        .toByteSequence[fs2.Chunk[Byte]]
-        .++(LF))
-      .unchunks
-      .chunkLimit(chunkSize)
-
-  /** Each Chunk[Byte] contains JSON document. */
-  private def heartbeatStream(
-    stream: Stream[IO, Chunk[Byte]],
-    keepAlive: Option[FiniteDuration] = None)
-    (using IORuntime)
-  : Stream[IO, Chunk[Byte]] =
-    keepAlive.fold(stream)(stream.keepAlive(_, heartbeatChunk))
+        .toByteSequence[ByteString] ++ LF)
+      .chunkLimit(chunkSize).unchunks

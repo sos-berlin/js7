@@ -21,7 +21,7 @@ final class IOLocalTest extends OurAsyncTestSuite:
 
     //"non-monadic use via jailbreak" in:
     //  import cats.effect.unsafe.IORuntime
-    //  import js7.base.catsutils.UnsafeMemoizable.given
+    //  import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
     //  import scala.annotation.unused
     //
     //  val local: IO[IOLocal[String]] = IOLocal("initial").unsafeMemoize
