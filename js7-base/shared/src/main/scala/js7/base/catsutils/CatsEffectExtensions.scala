@@ -120,9 +120,6 @@ object CatsEffectExtensions:
     def unsafeScheduler: IO[Scheduler] =
       IO.unsafeRuntime.map(_.scheduler)
 
-    def unsafeRuntime: IO[IORuntime] =
-      IO.pure(OurIORuntime.ioRuntime)
-
     //def fromCancelableFutureWithEC[A](io: ExecutionContext => IO[CancelableFuture[A]]): IO[A] =
     //  for
     //    ec <- IO.executionContext
