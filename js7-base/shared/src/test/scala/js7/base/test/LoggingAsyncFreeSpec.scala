@@ -13,7 +13,7 @@ import org.scalatest.{Assertion, PendingStatement, Tag}
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{Future, TimeoutException}
 import scala.language.implicitConversions
-import scala.util.{Failure, Left, Success, Try}
+import scala.util.{Failure, Success, Try}
 
 /**
  * Extends `AnyFreeSpec` with logging of test names and their outcomes.
@@ -52,12 +52,14 @@ trait LoggingAsyncFreeSpec extends AsyncFreeSpec:
       suppressCorrelId = suppressTestCorrelId)
 
   private def run(name: String)(io: IO[Assertion]): Assertion =
-    io.syncStep(Int.MaxValue)
-      .unsafeRunSync() match
-        case Left(io) =>
-          logger.trace(s"Asynchronous boundary in $suiteName · $name")
-          io.unsafeRunSync()
-        case Right(assertion) => assertion
+    io.unsafeRunSync()
+    // It is always asynchronous due to timeout and logWhenItTakesLonger:
+    //io.syncStep(Int.MaxValue)
+    //  .unsafeRunSync() match
+    //    case Left(io) =>
+    //      //logger.trace(s"Asynchronous boundary in $suiteName · $name")
+    //      io.unsafeRunSync()
+    //    case Right(assertion) => assertion
 
   private def toUnified(stringWrapper: FreeSpecStringWrapper) =
     new LoggingFreeSpecStringWrapper.UnifiedStringWrapper[

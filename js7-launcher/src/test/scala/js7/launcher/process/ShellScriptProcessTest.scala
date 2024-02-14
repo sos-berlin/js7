@@ -1,25 +1,19 @@
 package js7.launcher.process
 
-import cats.effect.unsafe.IORuntime
 import cats.effect.IO
-import cats.syntax.traverse.*
-import fs2.io.file.{Files as Fs2Files, Path as Fs2Path}
-import fs2.Stream
+import cats.effect.unsafe.IORuntime
 import java.nio.file.Files.*
 import java.nio.file.Path
-import js7.base.catsutils.CatsEffectExtensions.joinStd
 import js7.base.io.file.FileUtils.syntax.RichPath
-import js7.base.io.file.FileUtils.temporaryDirectory
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.io.process.Processes.{newLogFile, newTemporaryShellFile, temporaryShellFileResource}
-import js7.base.io.process.{Processes, ReturnCode, Stderr, Stdout, StdoutOrStderr}
+import js7.base.io.process.{Processes, ReturnCode, StdoutOrStderr}
 import js7.base.system.OperatingSystem.{isMac, isSolaris, isUnix, isWindows}
 import js7.base.system.ServerOperatingSystem.KernelSupportsNestedShebang
 import js7.base.test.OurAsyncTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.time.ScalaTime.*
-import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.Closer.withCloser
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.job.{CommandLine, TaskId}
@@ -44,7 +38,7 @@ final class ShellScriptProcessTest extends OurAsyncTestSuite:
     val processConfig = ProcessConfiguration.forTest.copy(additionalEnvironment = Map(envName -> Some(envValue)))
     withScriptFile { scriptFile =>
       scriptFile.writeUtf8Executable((isWindows ?? "@") + s"exit $exitCode")
-      val shellProcess = startShellScript(processConfig, scriptFile, Map.empty)
+      val (shellProcess, sink) = startShellScript(processConfig, scriptFile)
         .await(99.s)
       val returnCode = shellProcess.terminated await 99.s
       assert(returnCode == ReturnCode(exitCode))
@@ -59,13 +53,12 @@ final class ShellScriptProcessTest extends OurAsyncTestSuite:
           (isWindows ?? "@echo off\n") +
             """echo TEST-SCRIPT-1
               |echo TEST-SCRIPT-2""".stripMargin)
-        stdFileMap = createStdFiles(temporaryDirectory, id = s"ShellScriptProcessTest-stdout")
-        shellProcess <- startShellScript(ProcessConfiguration.forTest, scriptFile, stdFileMap)
+        pair <- startShellScript(ProcessConfiguration.forTest, scriptFile)
+        (shellProcess, sink) = pair
         rc <- shellProcess.terminated
       yield
         assert(rc == ReturnCode(0) &&
-          stdFileMap(Stdout).contentString == "TEST-SCRIPT-1\nTEST-SCRIPT-2\n")
-        RichProcess.tryDeleteFiles(stdFileMap.values)
+          sink.out.await(99.s) == "TEST-SCRIPT-1\nTEST-SCRIPT-2\n")
         succeed
 
   if isUnix then
@@ -86,16 +79,14 @@ final class ShellScriptProcessTest extends OurAsyncTestSuite:
               s"""#! $interpreter
                  |echo TEST-SCRIPT
                  |""".stripMargin)
-            val stdFileMap = createStdFiles(temporaryDirectory, id = s"ShellScriptProcessTest-shebang")
-            val shellProcess = startShellScript(ProcessConfiguration.forTest, scriptFile, stdFileMap)
+            val (shellProcess, sink) = startShellScript(ProcessConfiguration.forTest, scriptFile)
               .await(99.s)
             shellProcess.terminated await 99.s
-            assert(stdFileMap(Stdout).contentString ==
+            assert(sink.out.await(99.s) ==
               """INTERPRETER-START
                 |TEST-SCRIPT
                 |INTERPRETER-END
                 |""".stripMargin)
-            RichProcess.tryDeleteFiles(stdFileMap.values)
             succeed
           }
         }
@@ -115,7 +106,6 @@ final class ShellScriptProcessTest extends OurAsyncTestSuite:
           else
             "echo SCRIPT-ARGUMENTS=$*; sleep 6")
         withCloser { closer =>
-          val stdFileMap = createStdFiles(temporaryDirectory, id = "ShellScriptProcessTest-kill")
           val killScriptOutputFile = createTempFile("test-", ".tmp")
           val killScriptFile = newTemporaryShellFile("TEST-KILL-SCRIPT")
           killScriptFile := (
@@ -124,14 +114,12 @@ final class ShellScriptProcessTest extends OurAsyncTestSuite:
             else
               s"echo KILL-ARGUMENTS=$$* >$killScriptOutputFile\n")
           closer.onClose:
-            waitForCondition(15.s, 1.s):
-              RichProcess.tryDeleteFiles(stdFileMap.values)
             delete(killScriptOutputFile)
             delete(killScriptFile)
           val processConfig = ProcessConfiguration.forTest.copy(
             maybeTaskId = Some(taskId),
             killScriptOption = Some(ProcessKillScript(killScriptFile)))
-          val shellProcess = startShellScript(processConfig, scriptFile, stdFileMap).await(99.s)
+          val (shellProcess, sink) = startShellScript(processConfig, scriptFile).await(99.s)
           sleep(3.s)
           assert(shellProcess.isAlive)
           shellProcess.sendProcessSignal(SIGKILL).await(99.s)
@@ -142,8 +130,8 @@ final class ShellScriptProcessTest extends OurAsyncTestSuite:
             else if isSolaris then ReturnCode(SIGKILL.number)  // Solaris: No difference between exit 9 and kill !!!
             else ReturnCode(SIGKILL)))
 
-          assert(stdFileMap(Stdout).contentString contains "SCRIPT-ARGUMENTS=")
-          assert(stdFileMap(Stdout).contentString contains s"SCRIPT-ARGUMENTS=--agent-task-id=${taskId.string}")
+          assert(sink.out.await(99.s) contains "SCRIPT-ARGUMENTS=")
+          assert(sink.out.await(99.s) contains s"SCRIPT-ARGUMENTS=--agent-task-id=${taskId.string}")
           assert(killScriptOutputFile.contentString contains s"KILL-ARGUMENTS=--kill-agent-task-id=${taskId.string}")
         }
       }
@@ -157,7 +145,7 @@ final class ShellScriptProcessTest extends OurAsyncTestSuite:
         withScriptFile { scriptFile =>
           scriptFile.writeUtf8Executable(
             "trap 'exit 7' SIGTERM; sleep 1; sleep 1; sleep 1;sleep 1; sleep 1; sleep 1;sleep 1; sleep 1; sleep 1; exit 3")
-          val shellProcess = startShellScript(ProcessConfiguration.forTest, scriptFile)
+          val (shellProcess, sink) = startShellScript(ProcessConfiguration.forTest, scriptFile)
             .await(99.s)
           sleep(3.s)
           assert(shellProcess.isAlive)
@@ -175,35 +163,19 @@ final class ShellScriptProcessTest extends OurAsyncTestSuite:
 
   private def startShellScript(
     processConfiguration: ProcessConfiguration,
-    executable: Path,
-    stdFileMap: Map[StdoutOrStderr, Path] = Map.empty)
-  : IO[ShellScriptProcess] =
-    IO.defer:
-      StdObservers
-        .resource(charBufferSize = 4096)
-        .allocated // startPipedShellScript will release it at end of stdout and stderr
-        .flatMap: (stdObservers, _) =>
-          def processOutErr(stream: Stream[IO, String], outerr: StdoutOrStderr): IO[Unit] =
-            stdFileMap.get(outerr)
-              .fold(stream): file =>
-                stream
-                  .through(fs2.text.utf8.encode)
-                  .through(Fs2Files[IO].writeAll(file.toFs2))
-              .compile.drain
-
-          for
-            outErrFut <-
-              Seq(
-                processOutErr(stdObservers.outStream, Stdout),
-                processOutErr(stdObservers.errStream, Stderr)
-              ).sequence.start
-
-            checkedProcess <- startPipedShellScript(
-              CommandLine(List(executable.toString)),
-              processConfiguration,
-              stdObservers,
-              onTerminated = outErrFut.joinStd.void)
-          yield checkedProcess.orThrow
+    executable: Path)
+  : IO[(ShellScriptProcess, StdObservers.TestSink)] =
+    StdObservers
+      .testSink(name = "ShellScriptProcessTest")
+      .use: testSink =>
+        for
+          checkedProcess <- startPipedShellScript(
+            CommandLine(List(executable.toString)),
+            processConfiguration,
+            testSink.stdObservers,
+            name = "ShellScriptProcessTest")
+        yield
+          checkedProcess.orThrow -> testSink
 
   private def withScriptFile[A](body: Path => A): A =
     val file = newTemporaryShellFile("ShellScriptProcessTest")

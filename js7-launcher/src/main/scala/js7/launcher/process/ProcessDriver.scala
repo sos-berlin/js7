@@ -5,11 +5,13 @@ import cats.syntax.traverse.*
 import js7.base.catsutils.CatsEffectExtensions.startAndForget
 import js7.base.io.process.ProcessSignal
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.monixlike.MonixLikeExtensions.materialize
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.time.ScalaTime.*
+import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{AsyncLock, SetOnce}
 import js7.data.job.TaskId.newGenerator
@@ -41,12 +43,14 @@ final class ProcessDriver(
   private val startProcessLock = AsyncLock(orderId.toString)
   @volatile private var killedBeforeStart: Option[ProcessSignal] = None
 
-  def startAndRunProcess(env: Map[String, Option[String]], stdObservers: StdObservers)
-  : IO[FiberIO[Outcome.Completed]] =
+  def runProcess(env: Map[String, Option[String]], stdObservers: StdObservers)
+  : IO[Outcome.Completed] =
     startProcess(env, stdObservers)
       .flatMap:
-        case Left(problem) => IO.pure(Outcome.Failed.fromProblem(problem): Outcome.Completed).start
-        case Right(richProcess) => outcomeOf(richProcess).start
+        case Left(problem) => IO.pure(Outcome.Failed.fromProblem(problem): Outcome.Completed)
+        case Right(richProcess) => outcomeOf(richProcess)
+      //.guarantee:
+      //  stdObservers.closeChannels // Close stdout and stderr streams (only for internal jobs)
 
   private def startProcess(env: Map[String, Option[String]], stdObservers: StdObservers)
   : IO[Checked[RichProcess]] =
@@ -79,7 +83,8 @@ final class ProcessDriver(
             startProcessLock.lock("startProcess")(
               globalStartProcessLock
                 .lock(orderId.toString)(
-                  startPipedShellScript(conf.commandLine, processConfiguration, stdObservers))
+                  startPipedShellScript(conf.commandLine, processConfiguration, stdObservers,
+                    name = s"$orderId ${conf.jobKey}"))
                 .flatTapT { richProcess =>
                   richProcessOnce := richProcess
                   logger.info(
@@ -102,7 +107,7 @@ final class ProcessDriver(
         IO.fromTry(tried)
       }
       .flatMap { returnCode =>
-        IO.interruptible(fetchReturnValuesThenDeleteFile()).map:
+        fetchReturnValuesThenDeleteFile.map:
           case Left(problem) =>
             Outcome.Failed.fromProblem(
               problem.withPrefix("Reading return values failed:"),
@@ -115,11 +120,16 @@ final class ProcessDriver(
         returnValuesProvider.tryDeleteFile()
       })
 
-  private def fetchReturnValuesThenDeleteFile(): Checked[NamedValues] =
-    catchNonFatal:
-      val result = returnValuesProvider.read()
-      returnValuesProvider.tryDeleteFile()
-      result
+  private def fetchReturnValuesThenDeleteFile: IO[Checked[NamedValues]] =
+    logger
+      .traceIO("### fetchReturnValuesThenDeleteFile", orderId):
+        IO.interruptible:
+          logger.trace("### fetchReturnValuesThenDeleteFile!")
+          catchNonFatal:
+            val result = returnValuesProvider.read()
+            returnValuesProvider.tryDeleteFile()
+            result
+      .logWhenItTakesLonger(s"fetchReturnValuesThenDeleteFile $orderId") // Because IO.interruptible does not execute ?
 
   def kill(signal: ProcessSignal): IO[Unit] =
     startProcessLock.lock("kill")(IO.defer {

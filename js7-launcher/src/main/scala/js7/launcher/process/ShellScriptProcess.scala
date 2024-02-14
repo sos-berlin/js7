@@ -1,11 +1,9 @@
 package js7.launcher.process
 
-import fs2.Stream
 import cats.effect.{Deferred, FiberIO, IO}
-import fs2.concurrent.Channel
 import java.io.{IOException, InputStream}
 import java.lang.ProcessBuilder.Redirect.PIPE
-import js7.base.catsutils.CatsEffectExtensions.joinStd
+import js7.base.catsutils.CatsEffectExtensions.{joinStd, startAndForget}
 import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 import js7.base.io.process.Processes.*
 import js7.base.io.process.{JavaProcess, Js7Process, ReturnCode, Stderr, Stdout, StdoutOrStderr}
@@ -13,13 +11,15 @@ import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.problem.Checked
 import js7.base.thread.IOExecutor
-import js7.base.time.ScalaTime.DurationRichInt
+import js7.base.time.ScalaTime.*
+import js7.base.utils.Atomic
+import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.job.CommandLine
 import js7.launcher.StdObservers
 import js7.launcher.forwindows.WindowsProcess
 import js7.launcher.forwindows.WindowsProcess.StartWindowsProcess
-import js7.launcher.process.CopyInputStreamToStringChannel.copyInputStreamToStringChannel
+import scala.concurrent.duration.Deadline
 import scala.jdk.CollectionConverters.*
 
 abstract class ShellScriptProcess private(
@@ -46,11 +46,13 @@ extends RichProcess(processConfiguration, process):
 object ShellScriptProcess:
   private val logger = Logger[this.type]
   private val stdoutAndStderrDetachDelay = 1.s  // Grace period between kill and destroyForcibly
+  private val pumpFiberCount = Atomic(0)
 
   def startPipedShellScript(
     commandLine: CommandLine,
     conf: ProcessConfiguration,
     stdObservers: StdObservers,
+    name: String,
     onTerminated: IO[Unit] = IO.unit)
     (implicit iox: IOExecutor)
   : IO[Checked[ShellScriptProcess]] =
@@ -66,85 +68,67 @@ object ShellScriptProcess:
             val watchProcess = watchProcess2.unsafeMemoize
             override val terminated = watchProcess
 
-            private def copyToStream(
-              outErr: StdoutOrStderr,
-              in: InputStream,
-              channel: Channel[IO, Either[Throwable, String]])
-            : IO[Unit] =
-              copyInputStreamToStringChannel(outErr, in, channel, conf.encoding, stdObservers.charBufferSize)
-                .recover {
-                  case t: IOException if isKilling /*Happens under Windows*/ => logger.warn(
-                    s"While killing the process, $outErr become unreadable: ${t.toStringWithCauses}",
-                    t)
-                }
+            private def pumpOutErrToSink(outErr: StdoutOrStderr, in: InputStream): IO[Unit] =
+              stdObservers
+                .pumpInputStreamToSink(outErr, in, conf.encoding)
+                .handleErrorWith:
+                  case t: IOException if isKilling /*Happens under Windows*/ => IO:
+                    logger.warn(
+                      s"$name: While killing the process, $outErr become unreadable: ${t.toStringWithCauses}",
+                      t)
+                  case t => IO:
+                    logger.warn(s"$name $outErr: ${t.toStringWithCauses}")
 
-            def await(outerr: StdoutOrStderr, fiber: FiberIO[Unit]): IO[Unit] =
-              fiber.joinStd
-                .handleError(t => logger.warn(outerr.toString + ": " + t.toStringWithCauses))
+            private def pumpBothStdoutAndStderrToSink: IO[Unit] =
+              logger.traceIO("pumpBothStdoutAndStderrToSink", name)(IO
+                .both(
+                  pumpOutErrToSink(Stdout, process.stdout),
+                  pumpOutErrToSink(Stderr, process.stderr))
+                .void)
 
             private def watchProcess2: IO[ReturnCode] =
               for
-                outFiber <- copyToStream(Stdout, process.stdout, stdObservers.outChannel).start
-                errFiber <- copyToStream(Stderr, process.stderr, stdObservers.errChannel).start
                 _ <-
-                  IO.race(
-                    // Sometimes, the process is not really killed.
-                    // Then we destroyForcibly. Because this closes stdout and stderr, we
-                    // wait a short while to allow the last outstanding data to handled by
-                    // copyToStream. See also RichProcess superclass.
-                    whenSigkilled.delayBy(stdoutAndStderrDetachDelay).map: _ =>
-                      IO.whenA(process.isAlive):
-                        IO(logger.debug(s"destroyForcibly $process")) *>
-                        IO.blocking(process.destroyForcibly()),
-                    IO.both(
-                      await(Stdout, outFiber),
-                      await(Stderr, errFiber)))
-                _ <- stdObservers.closeChannels
+                  IO
+                    .racePair(
+                      // Sometimes, the process is not really killed.
+                      // Then we destroyForcibly. Because this closes stdout and stderr, we
+                      // wait a short while to allow the last outstanding data to handled by
+                      // the InputStream pump. See also RichProcess superclass.
+                      logger.traceIO(s"### $name: whenSigkilled ..."):
+                        whenSigkilled
+                          .andWait(stdoutAndStderrDetachDelay)
+                          .map: _ =>
+                            //IO.whenA(process.isAlive):
+                              IO(logger.debug(s"$name destroyForcibly $process")) *>
+                              IO.blocking(process.destroyForcibly()),
+                      pumpBothStdoutAndStderrToSink)
+                    .flatMap:
+                      case Left((_, pumpFiber)) => joinFiberInBackground(pumpFiber, name)
+                      case Right((whenSigkilledFiber, _)) => whenSigkilledFiber.cancel
                 returnCode <- super.terminated
                 _ <- onTerminated
               yield returnCode)
 
-            //private def watchProcess2: IO[ReturnCode] =
-            //  IO
-            //    .both(
-            //      copyToStream(Stdout, process.stdout),
-            //      copyToStream(Stderr, process.stderr))
-            //    .background.use: outErrStreaming =>
-            //      for
-            //        _ <-
-            //          IO.race(
-            //            whenSigkilled
-            //              // Sometimes, the process is not really killed.
-            //              // Then we destroyForcibly. Because this closes stdout and stderr, we
-            //              // wait a short while to allow the last outstanding data to handled by
-            //              // copyToStream. See also RichProcess superclass.
-            //              .andWait(stdoutAndStderrDetachDelay)
-            //              .flatTap: _ =>
-            //                IO.whenA(process.isAlive)(IO.defer:
-            //                    logger.debug(s"destroyForcibly $process")
-            //                    IO.blocking:
-            //                      process.destroyForcibly())
-            //                  .*>(stdObservers.closeChannels),
-            //            outErrStreaming)
-            //        //_ <-
-            //        //  whenSigkilled
-            //        //    // Sometimes, the process is not really killed.
-            //        //    // Then we destroyForcibly. Because this closes stdout and stderr, we
-            //        //    // wait a short while to allow the last outstanding data to handled by
-            //        //    // copyToStream. See also RichProcess superclass.
-            //        //    .andWait(stdoutAndStderrDetachDelay)
-            //        //    .flatTap: _ =>
-            //        //      IO.whenA(process.isAlive)(IO.defer:
-            //        //        logger.debug(s"destroyForcibly $process")
-            //        //        IO.blocking:
-            //        //          process.destroyForcibly())
-            //        //      .*>(stdObservers.closeChannels)
-            //        //  .background.surround:
-            //        //    outErrStreaming
-            //        _ <- stdObservers.closeChannels
-            //        returnCode <- super.terminated
-            //        _ <- onTerminated
-            //      yield returnCode)
+  private def joinFiberInBackground(fiber: FiberIO[Unit], name: String): IO[Unit] =
+    val since = Deadline.now
+    @volatile var logged = false
+    IO
+      .race(
+        fiber.joinStd *> IO:
+          pumpFiberCount -= 1
+          if logged then
+            logger.info:
+              s"⚪️ $name pumpBothStdoutAndStderrToSink has finally completed after ${
+                since.elapsed.pretty} ($pumpFiberCount)",
+        IO.defer:
+          pumpFiberCount += 1  // Maybe not reliable
+          IO.sleep(3.s) *> IO:
+            logged = true
+            logger.warn:
+              s"🟤 $name pumpBothStdoutAndStderrToSink is still running after process termination ${
+                since.elapsed.pretty} ago ($pumpFiberCount)")
+      .startAndForget
 
   private def startProcess(args: Seq[String], conf: ProcessConfiguration)
   : IO[Checked[Js7Process]] =

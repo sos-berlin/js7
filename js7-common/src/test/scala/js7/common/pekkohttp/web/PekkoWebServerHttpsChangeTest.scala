@@ -147,7 +147,7 @@ final class PekkoWebServerHttpsChangeTest extends OurTestSuite, BeforeAndAfterAl
 
       restarted
       testEventBus.subscribe[PekkoWebServer.RestartedEvent.type](_ =>
-        restarted.success(()))
+        restarted.trySuccess(()))
 
       writtenLength = 3
       certFile := changedCert.take(writtenLength)

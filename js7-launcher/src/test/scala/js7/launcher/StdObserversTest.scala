@@ -1,6 +1,5 @@
 package js7.launcher
 
-import js7.base.catsutils.CatsEffectExtensions.joinStd
 import js7.base.test.OurAsyncTestSuite
 import js7.base.utils.ScalaUtils.syntax.*
 
@@ -14,12 +13,13 @@ final class StdObserversTest extends OurAsyncTestSuite:
 
   private def runExample(keepLastErrLine: Boolean, expectErrLine: Option[String]) =
     StdObservers
-      .resource(charBufferSize = 4096, useErrorLineLengthMax = keepLastErrLine ?  1024)
-      .use: stdObservers =>
+      .testSink(useErrorLineLengthMax = keepLastErrLine ?  1024, name = "StdObserversTest")
+      .use: testSink =>
         for
-          draining <- stdObservers.errStream.compile.toList.start
-          _ <- stdObservers.err.write("LAST\n")
-          _ <- stdObservers.errChannel.close
-          errList <- draining.joinStd
-        yield assert:
-          errList == List("LAST\n") && stdObservers.errorLine == expectErrLine
+          _ <- testSink.stdObservers.err.write("LAST\n")
+        yield
+          // Return result delayed in an IO
+          testSink.err.map(_ -> testSink.stdObservers.errorLine)
+      .flatten
+      .map: (err, errorLine) =>
+        assert(err == "LAST\n" && errorLine == expectErrLine)

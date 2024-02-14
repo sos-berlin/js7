@@ -6,7 +6,7 @@ import cats.effect.std.CyclicBarrier
 import cats.effect.unsafe.IORuntime
 import cats.effect.{Fiber, FiberIO, IO, Outcome, Resource, ResourceIO}
 import cats.syntax.all.*
-import fs2.Stream
+import fs2.{Pipe, Stream}
 import js7.base.catsutils.CatsEffectExtensions.{guaranteeExceptWhenSucceeded, joinStd}
 import js7.base.fs2utils.StreamExtensions.onStart
 import js7.base.io.process.ProcessSignal.SIGTERM
@@ -267,7 +267,7 @@ extends Service.StoppableByRequest:
         orderIdToJobDriver
           .put(order.id, jobDriver)
           .*>(
-            stdObserversResource(order.id, keepLastErrLine = workflowJob.failOnErrWritten)
+            stdObserversResource(order, keepLastErrLine = workflowJob.failOnErrWritten)
               .allocated)
           .flatMap: (stdObservers, releaseStdObservers) =>
             jobDriver
@@ -282,16 +282,17 @@ extends Service.StoppableByRequest:
               val processLost = OrderOutcome.processLost(SubagentShutDownBeforeProcessStartProblem)
               IO.pure(processLost: OrderOutcome).start
 
-  private def stdObserversResource(orderId: OrderId, keepLastErrLine: Boolean)
+  private def stdObserversResource(order: Order[Order.Processing], keepLastErrLine: Boolean)
   : Resource[IO, StdObservers] =
     import subagentConf.{outerrCharBufferSize, outerrQueueSize}
     for
+      outErrStatistics <- outErrStatisticsResource
       stdObservers <- StdObservers.resource(
+        outErrToJournalSink(order.id, outErrStatistics),
         charBufferSize = outerrCharBufferSize,
         queueSize = outerrQueueSize,
-        useErrorLineLengthMax = keepLastErrLine ? jobLauncherConf.errorLineLengthMax)
-      outErrStatistics <- outErrStatisticsResource
-      _ <- copyOutErrToJournalInBackground(orderId, stdObservers, outErrStatistics)
+        useErrorLineLengthMax = keepLastErrLine ? jobLauncherConf.errorLineLengthMax,
+        name = s"${order.id} ${order.workflowPosition}")
     yield
       stdObservers
 
@@ -308,42 +309,6 @@ extends Service.StoppableByRequest:
             logger.debug(
               s"stdout: ${outErrStatistics(Stdout)}, stderr: ${outErrStatistics(Stderr)}"))
 
-  private def copyOutErrToJournalInBackground(
-    orderId: OrderId,
-    stdObservers: StdObservers,
-    outErrStatistics: Map[StdoutOrStderr, OutErrStatistics])
-  : ResourceIO[Unit] =
-    Resource.suspend:
-      CyclicBarrier[IO](3).map: startBarrier =>
-
-        def writeStreamAsEvents(outerr: StdoutOrStderr, stream: Stream[IO, String]) =
-          stream
-            .onStart:
-              startBarrier.await
-            // Collect multiple chunks arriving in a short period in one StdWrittenEvent.
-            // TODO groupWithin chops the first chunk (why?).
-            //  We need an own implementation!
-            //.stringToChar
-            //.groupWithin(stdouterr.chunkSize, stdouterr.delay)
-            //.map(_.convertToString)
-            .foreach: chunk =>
-              outErrStatistics(outerr).count(chunk.length):
-                persistStdouterr(orderId, outerr, chunk)
-            .compile
-            .drain
-            .recover: t =>
-              IO(logger.error(s"$orderId $outerr: ${t.toStringWithCauses}")) *>
-                persistStdouterr(orderId, outerr, s"\n\n--- ERROR: ${t.toStringWithCauses} ---")
-
-        stdObservers
-          .useInBackground:
-            IO.both(
-                writeStreamAsEvents(Stdout, stdObservers.outStream),
-                writeStreamAsEvents(Stderr, stdObservers.errStream))
-              .void
-          .evalTap: _ =>
-            startBarrier.await
-
   def detachProcessedOrder(orderId: OrderId): IO[Checked[Unit]] =
     orderToProcessing.remove(orderId)
       .flatMap(_.fold(IO.unit)(_.acknowldeged.complete(())))
@@ -351,12 +316,23 @@ extends Service.StoppableByRequest:
 
   private val stdoutCommitDelay = CommitOptions(delay = subagentConf.stdoutCommitDelay)
 
-  private def persistStdouterr(orderId: OrderId, t: StdoutOrStderr, chunk: String): IO[Unit] =
-    journal
-      .persistKeyedEventsLater((orderId <-: OrderStdWritten(t)(chunk)) :: Nil, stdoutCommitDelay)
-      .map:
-        case Left(problem) => logger.error(s"Emission of OrderStdWritten event failed: $problem")
-        case Right(_) =>
+  private def outErrToJournalSink(
+    orderId: OrderId,
+    outErrStatistics: Map[StdoutOrStderr, OutErrStatistics])
+    (outErr: StdoutOrStderr)
+  : Pipe[IO, String, Nothing] =
+    _.chunks
+      .flatMap: chunk =>
+        Stream.exec:
+          val events = chunk.toIArray.map: string =>
+            orderId <-: OrderStdWritten(outErr)(string)
+          outErrStatistics(outErr)
+            .count(n = chunk.size, totalLength = chunk.iterator.map(_.length).sum):
+              journal.persistKeyedEventsLater(events, stdoutCommitDelay)
+            .map:
+              case Left(problem) => logger.error(s"Emission of OrderStdWritten event failed: $problem")
+              case Right(_) =>
+            .void
 
   // Create the JobDriver if needed
   private def jobDriver(workflowPosition: WorkflowPosition)

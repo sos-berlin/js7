@@ -73,7 +73,7 @@ object JobLauncher:
           lazy val scope = NowScope() |+| EnvScope
           for jobArguments <- evalExpressionMap(executable.jobArguments, scope)
             yield new InternalJobLauncher(executable, jobConf, jobArguments,
-              launcherConf.blockingJobScheduler, launcherConf.clock)
+              launcherConf.blockingJobEC, launcherConf.clock)
 
   private[launcher] def warnIfNotExecutable(file: Path): Unit =
     if !exists(file) then

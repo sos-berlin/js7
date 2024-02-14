@@ -3,7 +3,7 @@ package js7.base.catsutils
 import cats.effect.kernel.{MonadCancel, Resource}
 import cats.effect.kernel.Resource.ExitCase
 import cats.effect.unsafe.{IORuntime, Scheduler}
-import cats.effect.{Clock, Fiber, IO, Outcome, OutcomeIO}
+import cats.effect.{Clock, Fiber, IO, Outcome, OutcomeIO, Sync}
 import cats.syntax.functor.*
 import cats.{Defer, Functor, effect}
 import js7.base.generic.Completed
@@ -140,7 +140,10 @@ object CatsEffectExtensions:
       fiber.joinWith(F.defer(F.raiseError(new FiberCanceledException)))
 
 
-  extension(resource: Resource.type)
+  extension(x: Resource.type)
+
+    def defer[F[_], A](resource: => Resource[F, A])(using F: Sync[F]): Resource[F, A] =
+      Resource.suspend(F.delay(resource))
 
     def makeCancelable[F[_], A](acquire: F[A])(release: A => F[Unit])
       (using F: Functor[F])

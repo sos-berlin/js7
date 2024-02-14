@@ -7,12 +7,12 @@ import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Paths
 import js7.base.catsutils.CatsEffectExtensions.{joinStd, left}
 import js7.base.io.file.FileUtils.temporaryDirectoryResource
+import js7.base.log.Logger
 import js7.base.monixlike.MonixLikeExtensions.parSequence
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.test.{OurTestSuite, TestCatsEffect}
 import js7.base.thread.CatsBlocking.syntax.*
-import js7.base.thread.Futures.implicits.*
 import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.thread.VirtualThreads
 import js7.base.time.AlarmClock
@@ -40,7 +40,6 @@ import js7.launcher.internal.{InternalJobLauncher, JobLauncher}
 import js7.launcher.process.ProcessConfiguration
 import js7.launcher.{ProcessOrder, StdObservers}
 import org.scalatest.BeforeAndAfterAll
-import scala.concurrent.Future
 
 final class InternalJobLauncherForJavaTest extends OurTestSuite, TestCatsEffect, BeforeAndAfterAll
 {
@@ -48,11 +47,11 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite, TestCatsEffect,
 
   private val blockingThreadPoolName =
     if (VirtualThreads.isEnabled) "" else "InternalJobLauncherForJavaTest"
-  private val blockingJobExecutionContext =
+  private val blockingJobEC =
     newUnlimitedNonVirtualExecutionContext(name = blockingThreadPoolName)
 
   override def afterAll() = {
-    blockingJobExecutionContext.shutdown()
+    blockingJobEC.shutdown()
     super.afterAll()
   }
 
@@ -76,7 +75,7 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite, TestCatsEffect,
           scriptInjectionAllowed = true,
           errorLineLengthMax = 1024,
           RecouplingStreamReaderConf.forTest,
-          globalIOX, blockingJobExecutionContext,
+          globalIOX, blockingJobEC = blockingJobEC,
           null: AlarmClock/*AlarmClock()*/)
 
         val jobConf = JobConf(
@@ -124,31 +123,30 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite, TestCatsEffect,
         if testClass == classOf[TestJInternalJob] then {
           assert(TestJInternalJob.stoppedCalled.containsKey(blockingThreadPoolName))
         } else if testClass == classOf[TestBlockingInternalJob] then {
+          logger.info(s"TestBlockingInternalJob.stoppedCalled=${TestBlockingInternalJob.stoppedCalled}")
           assert(TestBlockingInternalJob.stoppedCalled.containsKey(blockingThreadPoolName))
         }
       }
 
-      def assertOutErr(out: Future[String], err: Future[String]): Unit = {
-        assert(out.await(99.s) == s"TEST FOR OUT${nl}FROM ${testClass.getName}$nl" &&
-               err.await(99.s) == s"TEST FOR ERR$nl")
+      def assertOutErr(out: String, err: String): Unit = {
+        assert(out == s"TEST FOR OUT${nl}FROM ${testClass.getName}$nl" &&
+               err == s"TEST FOR ERR$nl")
       }
     }
 
   private def processOrder(arg: Expression)(implicit launcher: InternalJobLauncher)
-  : IO[Checked[(Outcome, Future[String], Future[String])]] =
+  : IO[Checked[(Outcome, String, String)]] =
     val orderId = OrderId("TEST")
     val jobKey = launcher.jobConf.jobKey
 
     (for
-      stdObservers <- StdObservers.resource(4096)
+      testSink <- StdObservers.testSink(4096, name = "InternalJobLauncherForJavaTest")
       dir <- temporaryDirectoryResource[IO]("InternalJobLauncherForJavaTest-")
       fileValueScope <- Resource
         .fromAutoCloseable(IO(new FileValueState(dir)))
         .flatMap(FileValueScope.resource)
-    yield (stdObservers, fileValueScope))
-      .use: (stdObservers, fileValueScope) =>
-        val outFuture = stdObservers.outStream.compile.foldMonoid.unsafeToFuture()
-        val errFuture = stdObservers.errStream.compile.foldMonoid.unsafeToFuture()
+    yield (testSink, fileValueScope))
+      .use: (testSink, fileValueScope) =>
         for
           orderProcess <- launcher
             .start
@@ -163,18 +161,22 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite, TestCatsEffect,
                 executeArguments = Map.empty,
                 jobArguments = Map("ORDER_ARG" -> arg),
                 ControllerId("CONTROLLER"),
-                stdObservers,
+                testSink.stdObservers,
                 fileValueScope))
             .map(_.orThrow)
           orderOutcome <- orderProcess
             .start(orderId, jobKey)
             .flatMap(_.joinStd)
+          _ <- testSink.stdObservers.closeChannels
+          out <- testSink.out
+          err <- testSink.err
         yield
-          Right((orderOutcome, outFuture, errFuture))
+          Right((orderOutcome, out, err))
 }
 
 
 object InternalJobLauncherForJavaTest
 {
   private val workflow = Workflow(WorkflowPath("WORKFLOW") ~ "1", Vector.empty)
+  private val logger = Logger[this.type]
 }

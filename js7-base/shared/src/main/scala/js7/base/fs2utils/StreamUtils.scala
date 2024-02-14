@@ -12,8 +12,10 @@ import java.util
 import js7.base.data.ByteSequence
 import js7.base.fs2utils.Fs2ChunkByteSequence.*
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.system.Java8Polyfill.*
 import js7.base.utils.CloseableIterator
+import scala.util.control.NonFatal
 
 object StreamUtils:
 
@@ -46,10 +48,15 @@ object StreamUtils:
       val buffer = ByteBuffer.allocateDirect(BufferSize)
       Stream
         .repeatEval:
+         logger.traceIOWithResult("### channel.read", body =
           IO
             .interruptible:
               buffer.clear()
-              channel.read(buffer)
+              try channel.read(buffer)
+              catch case NonFatal(e) => // InterruptedException, ClosedByInterruptionException etc.
+                logger.trace(s"### blockingChannelToByteStream channel.read => $e")
+                throw e
+          )
             .map:
               case -1 =>
                 null

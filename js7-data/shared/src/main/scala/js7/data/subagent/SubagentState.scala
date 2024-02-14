@@ -1,13 +1,18 @@
 package js7.data.subagent
 
+import cats.syntax.option.*
+import js7.base.problem.Checked
+import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.event.JournalEvent.Heartbeat
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{Event, EventId, ItemContainer, JournalEvent, JournaledState, KeyedEvent, KeyedEventTypedJsonCodec, NoKeyEvent}
 import js7.data.item.{InventoryItem, InventoryItemKey}
-import js7.data.job.{JobResource, JobResourcePath}
+import js7.data.job.{JobKey, JobResource, JobResourcePath}
 import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten, OrderStderrWritten, OrderStdoutWritten}
 import js7.data.subagent.SubagentEvent.{SubagentItemAttached, SubagentShutdown}
+import js7.data.workflow.instructions.Execute
+import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Workflow, WorkflowId}
 import scala.collection.{MapView, View}
 
@@ -51,6 +56,12 @@ extends JournaledState[SubagentState], ItemContainer:
   lazy val items: View[InventoryItem] =
     idToWorkflow.values.view ++
       pathToJobResource.values.view
+
+  def workflowPositionToJobKey(workflowPosition: WorkflowPosition): Checked[JobKey] =
+    for
+      workflow <- idToWorkflow.checked(workflowPosition.workflowId)
+      jobKey <- workflow.positionToJobKey(workflowPosition.position)
+    yield jobKey
 
 
 object SubagentState

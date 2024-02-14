@@ -1,7 +1,7 @@
 package js7.subagent
 
 import cats.effect.unsafe.{IORuntime, Scheduler}
-import cats.effect.{IO, Resource}
+import cats.effect.{Deferred, IO, Resource}
 import cats.syntax.foldable.*
 import cats.syntax.traverse.*
 import java.util.Objects.requireNonNull
@@ -43,7 +43,7 @@ private final class JobDriver(
 
   private val logger = Logger.withPrefix[this.type](jobKey.name)
   private val orderToProcess = AsyncMap.empty[OrderId, Entry]
-  @volatile private var lastProcessTerminated: Promise[Unit] = null
+  @volatile private var lastProcessTerminated: Deferred[IO, Unit] = null
 
   for launcher <- checkedJobLauncher do
     // TODO JobDriver.start(): IO[Checked[JobDriver]]
@@ -54,19 +54,18 @@ private final class JobDriver(
   def stop(signal: ProcessSignal): IO[Unit] =
     IO.defer:
       logger.debug("Stop")
-      lastProcessTerminated = Promise()
+      lastProcessTerminated = Deferred.unsafe
       (if orderToProcess.isEmpty then
         IO.unit
       else
         killAll(signal)
-          .map(_ =>
-            if signal != SIGKILL then {
-              scheduler.scheduleOnce(sigkillDelay) {
-                killAll(SIGKILL).unsafeRunAndForget()
-              }
-            })
-          .flatMap(_ =>
-            IO.fromFuture(IO(lastProcessTerminated.future)))
+          .flatMap: _ =>
+            IO.unlessA(signal == SIGKILL):
+              (IO.sleep(sigkillDelay) *> killAll(SIGKILL))
+                // TODO Cancel Fiber when process has terminated before sigkillDelay
+                .startAndForget
+          .flatMap: _ =>
+            lastProcessTerminated.get
           .logWhenItTakesLonger(s"'killing all $jobKey processes'")
       ).flatMap(_ =>
         checkedJobLauncher.toOption.fold(IO.unit) { jobLauncher =>
@@ -114,24 +113,26 @@ private final class JobDriver(
 
   private def processOrder2(jobLauncher: JobLauncher, processOrder: ProcessOrder, entry: Entry)
   : IO[Checked[OrderOutcome]] =
-   logger.traceIO("### processOrder2"):
     jobLauncher.startIfNeeded
       .flatMapT(_ => jobLauncher.toOrderProcess(processOrder))
       .flatMapT { orderProcess =>
         entry.orderProcess = Some(orderProcess)
         // Start the orderProcess. The future completes the stdObservers (stdout, stderr)
-        orderProcess.start(processOrder.order.id, jobKey)
+        orderProcess
+          .start(processOrder.order.id, jobKey)
           .flatMap { runningProcess =>
-            val maybeKillAfterStart = logger.traceIO("### maybeKillAfterStart")(entry.killSignal.traverse(killOrder(entry, _)))
-            val awaitTermination = IO.defer:
-              entry.runningSince = SyncDeadline.fromScheduler
-              scheduleTimeout(entry)
-              runningProcess.joinStd
-                .map(entry.modifyOutcome)
-                .map:
-                  case outcome: Succeeded =>
-                    readErrorLine(processOrder).getOrElse(outcome)
-                  case outcome => outcome
+            val maybeKillAfterStart = entry.killSignal.traverse(killOrder(entry, _))
+            val awaitTermination =
+              //processOrder.stdObservers.closeChannels *>
+                IO.defer:
+                  entry.runningSince = SyncDeadline.fromScheduler
+                  scheduleTimeout(entry)
+                  runningProcess.joinStd
+                    .map(entry.modifyOutcome)
+                    .map:
+                      case outcome: Succeeded =>
+                        readErrorLine(processOrder).getOrElse(outcome)
+                      case outcome => outcome
             IO.both(maybeKillAfterStart, awaitTermination).map((_, outcome) => outcome)
           }
           .handleError { t =>
@@ -179,10 +180,9 @@ private final class JobDriver(
       entry.timeoutSchedule.cancel()
       orderToProcess
         .remove(orderId)
-        .map(_ =>
-          if orderToProcess.isEmpty && lastProcessTerminated != null then {
-            lastProcessTerminated.trySuccess(())
-          })
+        .flatMap: _ =>
+          IO.whenA(orderToProcess.isEmpty && lastProcessTerminated != null):
+            lastProcessTerminated.complete(()).void
 
   private def killOrderAndForget(entry: Entry, signal: ProcessSignal): Unit =
     killOrder(entry, signal)
@@ -198,16 +198,15 @@ private final class JobDriver(
           killOrder(_, signal)))
 
   private def killOrder(entry: Entry, signal_ : ProcessSignal): IO[Unit] =
-    val signal = if sigkillDelay.isZeroOrBelow then SIGKILL else signal_
-    entry.killSignal = Some(signal)
-    killProcess(entry, signal)
-      .map(_ =>
-        if signal != SIGKILL then {
-          scheduler.scheduleOnce(sigkillDelay) {
-            killProcess(entry, SIGKILL)
-              .unsafeRunAndForget()
-          }
-        })
+    IO.defer:
+      val signal = if sigkillDelay.isZeroOrBelow then SIGKILL else signal_
+      entry.killSignal = Some(signal)
+      killProcess(entry, signal)
+        .flatMap: _ =>
+          IO.unlessA(signal == SIGKILL):
+            (IO.sleep(sigkillDelay) *> killProcess(entry, SIGKILL))
+              // TODO Cancel Fiber when process has terminated before sigkillDelay
+              .startAndForget
 
   private def killAll(signal: ProcessSignal): IO[Unit] =
     IO.defer:
@@ -223,7 +222,7 @@ private final class JobDriver(
 
   private def killProcess(entry: Entry, signal: ProcessSignal): IO[Unit] =
     IO.defer:
-      if signal == SIGKILL && entry.sigkilled then
+      if  signal == SIGKILL && entry.sigkilled then
         IO.unit
       else
         entry.orderProcess match

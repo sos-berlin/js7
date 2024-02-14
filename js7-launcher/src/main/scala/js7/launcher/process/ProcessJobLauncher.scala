@@ -3,6 +3,8 @@ package js7.launcher.process
 import cats.effect.{FiberIO, IO}
 import java.util.Locale.ROOT
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
+import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.problem.Checked
 import js7.data.job.{CommandLine, ProcessExecutable}
 import js7.data.order.Outcome
@@ -41,7 +43,7 @@ trait ProcessJobLauncher extends JobLauncher:
           case Left(problem) =>
             IO.pure(Outcome.Failed.fromProblem(problem): Outcome.Completed).start
           case Right(env) =>
-            processDriver.startAndRunProcess(env, processOrder.stdObservers)
+            processDriver.runProcess(env, processOrder.stdObservers).start
 
       def cancel(immediately: Boolean) =
         processDriver.kill(if immediately then SIGKILL else SIGTERM)

@@ -57,11 +57,6 @@ extends Actor, Stash, ActorLogging, ReceiveLoggingActor:
     journalingTimer.cancelAndForget()
     super.postStop()
 
-  // TODO Inhibit bedeutet gehemmt, beeintrichtigt. Besser etwas wie 'stop'
-  protected def inhibitJournaling(): Unit =
-    if stashingCount > 0 then throw new IllegalStateException("inhibitJournaling called while a persist operation is active?")
-    stashingCount = Inhibited
-
   protected final def persistKeyedEventIO[A](keyedEvent: KeyedEvent[E], async: Boolean = false)
     (callback: (Stamped[KeyedEvent[E]], S) => A)
   : IO[Checked[A]] =

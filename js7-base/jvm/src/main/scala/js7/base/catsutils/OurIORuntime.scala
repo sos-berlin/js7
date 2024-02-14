@@ -16,7 +16,13 @@ object OurIORuntime:
   private lazy val logger = Logger[this.type]
 
   private var _ioRuntime: IORuntime =
+    //val blockingExecutorService = newBlockingNonVirtualExecutor("js7-virtual")
     IORuntime.builder()
+      //.setBlocking(
+      //  ExecutionContext.fromExecutorService(
+      //    blockingExecutorService,
+      //    uncaughtExceptionReporter),
+      //  () => blockingExecutorService.shutdown())
       .setFailureReporter(uncaughtExceptionReporter)
       .addShutdownHook: () =>
         _ioRuntime = null
@@ -35,7 +41,7 @@ object OurIORuntime:
     Resource.eval(F.delay(ioRuntime))
     // How to shutdown a self-built IORuntime ?
 
-  private def uncaughtExceptionReporter(throwable: Throwable) =
+  private def uncaughtExceptionReporter(throwable: Throwable): Unit =
     def msg = s"Uncaught exception in thread ${currentThread.threadId} '${
       currentThread.getName}': ${throwable.toStringWithCauses}"
 

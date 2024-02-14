@@ -21,7 +21,7 @@ private[internal] final class InternalJobAdapterHelper[J: ClassTag: Tag]:
   private val checkedJobOnce = SetOnce[Checked[J]]  // SetOnce for late arriving Scheduler
 
   def callStart(jJobContext: JavaJobContext, call: J => IO[VEither[Problem, Void]]): IO[Checked[Unit]] =
-    IO(instantiate(jJobContext))
+    IO.blocking(instantiate(jJobContext))
       .flatMapT(jInternalJob =>
         call(jInternalJob)
           .map(_.toScala.rightAs(()))

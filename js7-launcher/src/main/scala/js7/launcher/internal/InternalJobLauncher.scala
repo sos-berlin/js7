@@ -27,7 +27,7 @@ final class InternalJobLauncher(
   executable: InternalExecutable,
   val jobConf: JobConf,
   val jobArguments: NamedValues,
-  blockingJobScheduler: ExecutionContext,
+  blockingJobEC: ExecutionContext,
   clock: AlarmClock)
   (implicit ioRuntime: IORuntime, iox: IOExecutor)
 extends JobLauncher:
@@ -55,11 +55,13 @@ extends JobLauncher:
     }.unsafeMemoize
 
   def toOrderProcess(processOrder: ProcessOrder) =
-    IO:
-      for
-        internalJob <- internalJobLazy()
-        step <- toStep(processOrder)
-      yield internalJob.toOrderProcess(step)
+    IO
+      .blocking:
+        for
+          internalJob <- internalJobLazy()
+          step <- toStep(processOrder)
+        yield internalJob.toOrderProcess(step)
+      .evalOn(blockingJobEC)  
 
   private def toStep(processOrder: ProcessOrder): Checked[InternalJob.Step] =
     for args <- evalExpressionMap(executable.arguments, processOrder.scope) yield
@@ -92,7 +94,7 @@ extends JobLauncher:
           () => construct(con, toJobContext(cls)))
 
   private def toJobContext(cls: Class[?]) =
-    JobContext(cls, executable, jobArguments, jobConf, ioRuntime, iox, blockingJobScheduler, clock,
+    JobContext(cls, executable, jobArguments, jobConf, ioRuntime, iox, blockingJobEC, clock,
       jobConf.systemEncoding)
 
   override def toString = s"InternalJobLauncher(${jobConf.jobKey} ${executable.className})"

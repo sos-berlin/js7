@@ -15,7 +15,7 @@ import js7.base.system.OperatingSystem.{isMac, isWindows}
 import js7.base.thread.IOExecutor
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.launcher.process.RichProcess.*
+import js7.launcher.process.RichProcess.{logger, *}
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.Deadline.now
 import scala.jdk.CollectionConverters.*
@@ -41,9 +41,8 @@ abstract class RichProcess protected[process](
   private val _terminated: IO[ReturnCode] =
     IO.defer {
       process.returnCode.map(IO.pure)
-        .getOrElse(iox(IO {
+        .getOrElse:
           waitForProcessTermination(process)
-        }))
     }.unsafeMemoize
 
   def duration = runningSince.elapsed
@@ -89,14 +88,11 @@ abstract class RichProcess protected[process](
           processBuilder
             .startRobustly()
             .evalOn(iox.executionContext)
-            .flatMap(onKillProcess =>
-              iox(IO {
-                waitForProcessTermination(JavaProcess(onKillProcess))
-              }) >> IO {
-                val exitCode = onKillProcess.exitValue
-                val logLevel = if exitCode == 0 then LogLevel.Debug else LogLevel.Warn
-                logger.log(logLevel, s"Kill script '${args(0)}' has returned exit code $exitCode")
-              })
+            .flatMap: onKillProcess =>
+              waitForProcessTermination(JavaProcess(onKillProcess))
+            .flatMap(returnCode => IO:
+              val logLevel = if returnCode.isSuccess then LogLevel.Debug else LogLevel.Warn
+              logger.log(logLevel, s"Kill script '${args(0)}' has returned $returnCode"))
         })
 
   private def destroy(force: Boolean): IO[Unit] =
@@ -118,7 +114,7 @@ abstract class RichProcess protected[process](
       if argsPattern.isEmpty then
         IO(destroyWithJava(force))
       else if !argsPattern.contains("$pid") then
-        logger.error("Missing '$pid' in configured kill command")
+        logger.error(s"Missing '$pid' in configured kill command")
         IO(destroyWithJava(force))
       else
         val args = argsPattern.map:
@@ -151,11 +147,8 @@ abstract class RichProcess protected[process](
       processBuilder
         .startRobustly()
         .evalOn(iox.executionContext)
-        .flatMap(killProcess =>
-          iox(IO {
-            waitForProcessTermination(JavaProcess(killProcess))
-            ReturnCode(killProcess.exitValue)
-          }))
+        .flatMap: killProcess =>
+          waitForProcessTermination(JavaProcess(killProcess))
 
   private def destroyWithJava(force: Boolean): Unit =
     if force then
@@ -168,6 +161,12 @@ abstract class RichProcess protected[process](
   @TestOnly
   private[process] final def isAlive = process.isAlive
 
+  private def waitForProcessTermination(process: Js7Process): IO[ReturnCode] =
+    logger.traceIOWithResult(s"waitFor $process", body =
+      IO.interruptible:
+        process.waitFor())
+      .evalOn(iox.executionContext)
+
   final def stdin: OutputStream =
     process.stdin
 
@@ -177,12 +176,6 @@ abstract class RichProcess protected[process](
 
 object RichProcess:
   private val logger = Logger[this.type]
-
-  private def waitForProcessTermination(process: Js7Process): ReturnCode =
-    logger.trace(s"waitFor $process ...")
-    val rc = process.waitFor()
-    logger.trace(s"waitFor $process exitCode=$rc")
-    rc
 
   def tryDeleteFile(file: Path) = tryDeleteFiles(file :: Nil)
 

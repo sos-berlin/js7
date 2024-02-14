@@ -21,13 +21,10 @@ final class OrderProcessTest extends OurAsyncTestSuite:
 
   "Run an OrderProcess" in:
     val orderProcess = OrderProcess(IO(Outcome.succeeded))
-    StdObservers
-      .resource(100, useErrorLineLengthMax = None)
-      .surround:
-        for
-          running <- orderProcess.start(OrderId("ORDER"), JobKey.forTest("JOB"))
-          outcome <- running.joinStd
-        yield assert(outcome == Outcome.succeeded)
+    for
+      running <- orderProcess.start(OrderId("ORDER"), JobKey.forTest("JOB"))
+      outcome <- running.joinStd
+    yield assert(outcome == Outcome.succeeded)
 
   "Intermediate test: cancel a Fiber" in:
     val semaphore = Semaphore[IO](0).unsafeMemoize
@@ -60,19 +57,15 @@ final class OrderProcessTest extends OurAsyncTestSuite:
 
     val orderProcess = OrderProcess(semaphore.flatMap(_.acquire).as(Outcome.succeeded))
 
-    StdObservers
-      .resource(charBufferSize = 100)
-      .surround:
-        IO:
-          val future = orderProcess.start(OrderId("ORDER"), JobKey.forTest("JOB"))
-            .flatMap(_.joinStd)
-            .unsafeToFuture()
+    val future = orderProcess.start(OrderId("ORDER"), JobKey.forTest("JOB"))
+      .flatMap(_.joinStd)
+      .unsafeToFuture()
 
-          // One waiting acquirer
-          awaitAndAssert(count == -1)
+    // One waiting acquirer
+    awaitAndAssert(count == -1)
 
-          orderProcess.cancel(false).await(99.s)
-          assert(future.await(99.s) == Outcome.Failed(Some("Canceled")))
+    orderProcess.cancel(false).await(99.s)
+    assert(future.await(99.s) == Outcome.Failed(Some("Canceled")))
 
-          // No waiting acquirer
-          awaitAndAssert(count == 0)
+    // No waiting acquirer
+    awaitAndAssert(count == 0)

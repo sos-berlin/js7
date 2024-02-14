@@ -13,28 +13,40 @@ extends InternalJob:
   private val helper = new InternalJobAdapterHelper[BlockingInternalJob]
 
   override def start: IO[Checked[Unit]] =
-    helper.callStart(BlockingInternalJob.JobContext(jobContext), job => IO(job.start()))
-      .evalOn(jobContext.blockingJobScheduler)
+    helper
+      .callStart(
+        BlockingInternalJob.JobContext(jobContext),
+        job => IO
+          .blocking:
+            job.start()
+          .evalOn(jobContext.blockingJobEC))
 
   override def stop: IO[Unit] =
-    helper.callStop(job => IO(job.stop()))
-      .evalOn(jobContext.blockingJobScheduler)
+    helper
+      .callStop(job => IO
+        .blocking:
+          job.stop()
+        .evalOn(jobContext.blockingJobEC))
 
   def toOrderProcess(step: Step) =
     val jStep = BlockingInternalJob.Step(step)(using jobContext.ioRuntime)
 
     helper.callProcessOrder { jInternalJob =>
       val orderProcessIO: IO[BlockingInternalJob.OrderProcess] =
-        IO { jInternalJob.toOrderProcess(jStep) }
-          .evalOn(jobContext.blockingJobScheduler)
+        IO
+          .blocking:
+            jInternalJob.toOrderProcess(jStep)
+          .evalOn(jobContext.blockingJobEC)
           .unsafeMemoize
 
       new OrderProcess:
         protected def run =
           for
             orderProcess <- orderProcessIO
-            fiber <- IO(orderProcess.run())
-              .evalOn(jobContext.blockingJobScheduler)
+            fiber <- IO
+              .blocking:
+                orderProcess.run()
+              .evalOn(jobContext.blockingJobEC)
               .map(_.asScala)
               .start
           yield
@@ -42,8 +54,10 @@ extends InternalJob:
 
         def cancel(immediately: Boolean) =
           orderProcessIO.flatMap(orderProcess =>
-            IO(orderProcess.cancel(immediately))
-              .evalOn(jobContext.blockingJobScheduler))
+            IO
+              .blocking:
+                orderProcess.cancel(immediately)
+              .evalOn(jobContext.blockingJobEC))
 
         override def toString =
           s"BlockingINternalJob(${jobContext.implementationClass.scalaName}) OrderProcess"

@@ -310,17 +310,18 @@ object Logger extends AdHocLogger:
         else
           val ctx = new StartReturnLogContext(logger, logLevel, function, args)
           body
-            .flatTap: (result: A) =>
-              result match
-                case left @ Left(_: Throwable | _: Problem) =>
-                  F.delay(ctx.logReturn("❓", left))
-                case result =>
-                  F.delay(ctx.logReturn(
+            .flatTap:
+              case left @ Left(_: Throwable | _: Problem) =>
+                F.delay:
+                  ctx.logReturn("❓", left)
+              case result =>
+                F.delay:
+                  ctx.logReturn(
                     "",
                     if resultToLoggable eq null then
                       "Completed"
                     else
-                      "· " + resultToLoggable(result)))
+                      "· " + resultToLoggable(result))
             .guaranteeCase:
               case Outcome.Succeeded(_) => F.unit
               case outcome => F.delay(ctx.logOutcome(outcome))

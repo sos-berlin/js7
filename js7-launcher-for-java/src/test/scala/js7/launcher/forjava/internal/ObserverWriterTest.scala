@@ -13,8 +13,8 @@ final class ObserverWriterTest extends OurAsyncTestSuite:
 
   "ObserverWriter" in:
     for
-      channel <- Channel.bounded[IO, Either[Throwable, String]](1)
-      resultFiber <- channel.stream.rethrow.compile.toList.start
+      channel <- Channel.bounded[IO, String](1)
+      resultFiber <- channel.stream.compile.toList.start
       _ <- IO.interruptible:
         val w = BlockingStdWriter(StdWriter(channel))
         w.write("EINS")

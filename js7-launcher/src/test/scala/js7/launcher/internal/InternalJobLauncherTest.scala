@@ -1,6 +1,7 @@
 package js7.launcher.internal
 
 import cats.effect.IO
+import cats.effect.kernel.Resource
 import cats.effect.unsafe.IORuntime
 import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.catsutils.CatsEffectExtensions.joinStd
@@ -44,39 +45,37 @@ final class InternalJobLauncherTest extends OurAsyncTestSuite:
         sigkillDelay = 0.s,
         UTF_8),
       Map.empty,
-      blockingJobScheduler = globalIOX.executionContext,
+      blockingJobEC = globalIOX.executionContext,
       null: AlarmClock)
 
-
     StdObservers
-      .resource(charBufferSize = 4096)
-      .use: stdObservers =>
+      .testSink(name = "InternalJobLauncherTest")
+      .use: testSink =>
         val orderId = OrderId("TEST")
-        val jobKey = JobKey.Named(WorkflowBranchPath(WorkflowPath("WORKFLOW"), Nil), WorkflowJob.Name("TEST-JOB"))
+        val jobKey = JobKey.Named(
+          WorkflowBranchPath(WorkflowPath("WORKFLOW"), Nil),
+          WorkflowJob.Name("TEST-JOB"))
         for
-          outStringFiber <- stdObservers.outStream.foldMonoid.compile.last.map(_.get).start
-          errStringFiber <- stdObservers.errStream.foldMonoid.compile.last.map(_.get).start
           orderProcess <- executor
-            .toOrderProcess(
+            .toOrderProcess:
               ProcessOrder(
-              Order(orderId, workflow.id /: Position(0), Order.Processing(SubagentId("SUBAGENT"))),
-              workflow,
-              jobKey,
-              workflowJob,
-              jobResources = Nil,
-              executeArguments = Map.empty,
-              jobArguments = Map("ARG" -> NumericConstant(1)),
-              ControllerId("CONTROLLER"),
-              stdObservers,
-              fileValueScope = Scope.empty))
+                Order(orderId, workflow.id /: Position(0), Order.Processing(SubagentId("SUBAGENT"))),
+                workflow,
+                jobKey,
+                workflowJob,
+                jobResources = Nil,
+                executeArguments = Map.empty,
+                jobArguments = Map("ARG" -> NumericConstant(1)),
+                ControllerId("CONTROLLER"),
+                testSink.stdObservers,
+                fileValueScope = Scope.empty)
             .map(_.orThrow)
           fiber <- orderProcess.start(orderId, jobKey)
           orderOutcome <- fiber.joinStd
           _ = assert:
             orderOutcome == OrderOutcome.Succeeded(NamedValues("RESULT" -> NumberValue(2)))
-          _ <- stdObservers.closeChannels
-          outString <- outStringFiber.joinStd
-          errString <- errStringFiber.joinStd
+          outString <- testSink.out
+          errString <- testSink.err
         yield assert:
           outString == "OUT 1/" + "OUT 2" &&
           errString == "ERR 1/" + "ERR 2"

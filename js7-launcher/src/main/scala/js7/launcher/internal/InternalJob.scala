@@ -44,7 +44,7 @@ object InternalJob:
     jobConf: JobConf,
     ioRuntime: IORuntime,
     ioExecutor: IOExecutor,
-    blockingJobScheduler: ExecutionContext,
+    blockingJobEC: ExecutionContext,
     clock: AlarmClock,
     systemEncoding: Charset):
 

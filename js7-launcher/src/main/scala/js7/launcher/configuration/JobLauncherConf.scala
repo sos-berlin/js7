@@ -26,7 +26,7 @@ final case class JobLauncherConf(
   errorLineLengthMax: Int,
   recouplingStreamReaderConf: RecouplingStreamReaderConf,
   iox: IOExecutor,
-  blockingJobScheduler: ExecutionContext,
+  blockingJobEC: ExecutionContext,
   clock: AlarmClock):
 
   implicit def implicitIox: IOExecutor = iox
@@ -73,5 +73,5 @@ object JobLauncherConf:
         errorLineLengthMax = config.getInt("js7.job.execution.used-error-line-length"),
         RecouplingStreamReaderConfs.fromConfig(config).orThrow,
         iox,
-        blockingJobScheduler = blockingJobEC,
+        blockingJobEC = blockingJobEC,
         clock))
