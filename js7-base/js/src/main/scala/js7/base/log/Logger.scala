@@ -75,10 +75,10 @@ object Logger
       inline def debugIOWithResult[A](
         inline function: String,
         inline args: => Any = "",
-        inline result: A => Any = identity[A](_))
-        (io: IO[A])
+        inline result: A => Any = identity[A](_),
+        inline body: IO[A])
       : IO[A] =
-        io
+        body
 
       def debugF[F[_], A](body: F[A])(using F: Sync[F], src: sourcecode.Name)
       : F[A] =
@@ -100,10 +100,10 @@ object Logger
       inline def traceIOWithResult[A](
         inline function: String,
         inline args: => Any = "",
-        inline result: A => Any = identity[A](_))
-        (io: IO[A])
+        inline result: A => Any = identity[A](_),
+        inline body: IO[A])
       : IO[A] =
-        io
+        body
 
       def traceF[F[_], A](body: F[A])(using F: Sync[F], src: sourcecode.Name)
       : F[A] =
