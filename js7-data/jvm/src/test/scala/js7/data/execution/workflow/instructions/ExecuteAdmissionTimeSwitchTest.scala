@@ -6,7 +6,7 @@ import cats.effect.unsafe.Scheduler
 import java.time.DayOfWeek.{MONDAY, SUNDAY}
 import java.time.ZoneOffset.UTC
 import java.time.{LocalTime, ZoneId}
-import js7.base.catsutils.CatsEffectExtensions.unsafeScheduler
+import js7.base.catsutils.CatsEffectExtensions.{unsafeRuntime, unsafeScheduler}
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.test.OurAsyncTestSuite
@@ -29,8 +29,8 @@ final class ExecuteAdmissionTimeSwitchTest extends OurAsyncTestSuite:
     val switch = new ExecuteAdmissionTimeSwitch(AdmissionTimeScheme.always, UTC, _ => ())
 
     TestControl.executeEmbed:
-      IO.unsafeRuntime.flatMap: ioRuntime =>
-        given Scheduler = ioRuntime.scheduler
+      IO.unsafeScheduler.flatMap: scheduler =>
+        given Scheduler = scheduler
         given alarmClock: AlarmClock = TestAlarmClock(now)
         for
           _ <- switch.updateAndCheck(sys.error("FAILED"))
