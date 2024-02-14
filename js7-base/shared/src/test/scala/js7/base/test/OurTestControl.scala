@@ -1,3 +1,23 @@
+/*
+ * ————————————————————————————————————————————————————————
+ *  This is a manipulated copy of cats-effect TestControl.
+ *  It gives access to the Scheduler.
+ * ————————————————————————————————————————————————————————
+ *
+ * Copyright 2020-2023 Typelevel
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package js7.base.test
 
 import cats.effect.IO
@@ -7,6 +27,7 @@ import TestControl.NonTerminationException
 import cats.effect.unsafe.{IORuntime, IORuntimeConfig, Scheduler}
 import cats.{Id, ~>}
 import java.util.concurrent.atomic.AtomicReference
+import js7.base.catsutils.OurIORuntimeRegister
 import js7.base.log.Logger
 import js7.base.test.OurTestControl.*
 import js7.base.utils.ScalaUtils.*
@@ -299,20 +320,22 @@ object OurTestControl:
     }
 
   def execute[A](
-      program: IO[A],
-      config: IORuntimeConfig = IORuntimeConfig(),
-      seed: Option[String] = None)
+    program: IO[A],
+    config: IORuntimeConfig = IORuntimeConfig(),
+    seed: Option[String] = None)
   : IO[OurTestControl[A]] =
-    IO.defer:
-      val ctx = OurTestControl.newTestContext(seed = seed)
-      val ioRuntime = OurTestControl.newIORuntime(ctx, OurTestControl.newScheduler(ctx), config)
-      execute_(ctx, ioRuntime)(program)
+    IO
+      .defer:
+        val ctx = OurTestControl.newTestContext(seed = seed)
+        val ioRuntime = OurTestControl.newIORuntime(ctx, OurTestControl.newScheduler(ctx), config)
+        execute_(ctx, ioRuntime)(program)
 
-  def execute_[A](ctx: TestContext, runtime: IORuntime)(program: IO[A])
+  def execute_[A](ctx: TestContext, ioRuntime: IORuntime)(program: IO[A])
   : IO[OurTestControl[A]] =
     IO {
       val results = new AtomicReference[Option[Outcome[Id, Throwable, A]]](None)
-      program.unsafeRunAsyncOutcome(oc => results.set(Some(oc)))(runtime)
+      program.unsafeRunAsyncOutcome(oc => results.set(Some(oc)))(ioRuntime)
+      OurIORuntimeRegister.add(ctx, ioRuntime) // Will never be removed
       new OurTestControl(ctx, results)
     }
 

@@ -1,15 +1,14 @@
 package js7.data.execution.workflow.instructions
 
 import cats.effect.IO
-import cats.effect.testkit.TestControl
 import cats.effect.unsafe.Scheduler
 import java.time.DayOfWeek.{MONDAY, SUNDAY}
 import java.time.ZoneOffset.UTC
 import java.time.{LocalTime, ZoneId}
-import js7.base.catsutils.CatsEffectExtensions.{unsafeRuntime, unsafeScheduler}
+import js7.base.catsutils.CatsEffectExtensions.unsafeScheduler
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.test.OurAsyncTestSuite
+import js7.base.test.{OurAsyncTestSuite, OurTestControl}
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.JavaTimestamp.specific.RichJavaTimestamp
 import js7.base.time.ScalaTime.*
@@ -28,7 +27,7 @@ final class ExecuteAdmissionTimeSwitchTest extends OurAsyncTestSuite:
     val now = Timestamp("2021-01-01T12:00:00Z")
     val switch = new ExecuteAdmissionTimeSwitch(AdmissionTimeScheme.always, UTC, _ => ())
 
-    TestControl.executeEmbed:
+    OurTestControl.executeEmbed:
       IO.unsafeScheduler.flatMap: scheduler =>
         given Scheduler = scheduler
         given alarmClock: AlarmClock = TestAlarmClock(now)
@@ -44,7 +43,7 @@ final class ExecuteAdmissionTimeSwitchTest extends OurAsyncTestSuite:
           assert(isEnterable)
 
   "UTC" in:
-    TestControl.executeEmbed:
+    OurTestControl.executeEmbed:
       check(ZoneId.of("UTC"))
 
   // --> Mariehamn switched to daylight saving time at 2021-03-28 03:00 <-- !!!
@@ -53,7 +52,7 @@ final class ExecuteAdmissionTimeSwitchTest extends OurAsyncTestSuite:
 
   "Europe/Mariehamn" - {
     "Daylight saving time" in:
-      TestControl.executeEmbed:
+      OurTestControl.executeEmbed:
         implicit val zone = mariehamnZoneId
         assert(local("2021-03-28T02:59") == Timestamp("2021-03-28T00:59:00Z"))
         assert(local("2021-03-28T04:00") == Timestamp("2021-03-28T01:00:00Z"))
@@ -65,7 +64,7 @@ final class ExecuteAdmissionTimeSwitchTest extends OurAsyncTestSuite:
       WeekdayPeriod(SUNDAY, LocalTime.of(3, 0), 1.h)))
 
     "Week without a period due to daylight saving time gap" in:
-      TestControl.executeEmbed:
+      OurTestControl.executeEmbed:
         for
           tester <- Tester(admissionTimeScheme)
           _ <-

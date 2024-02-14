@@ -190,6 +190,9 @@ final class AlarmClockTest extends OurAsyncTestSuite:
         assert(clock.toString == s"ClockCheckingTestAlarmClock(${clock.now()}, no alarm)")
 
   private def testWithAlarmClock(body: TestAlarmClock => IO[Assertion]): IO[Assertion] =
+    //val ctx = OurTestControl.newTestContext(seed = seed)
+    //val scheduler = OurTestControl.newScheduler(ctx)
+    //val ioRuntime = OurTestControl.newIORuntime(ctx, scheduler, config)
     OurTestControl.executeEmbed:
       for
         ec <- IO.executionContext

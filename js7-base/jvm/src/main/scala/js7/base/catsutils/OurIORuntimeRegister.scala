@@ -4,9 +4,9 @@ import cats.effect.unsafe.IORuntime
 import java.util.concurrent.ConcurrentHashMap
 import scala.concurrent.ExecutionContext
 
-/** Normally contains one the IORuntime, but tests may add their own IORuntimes. */
+/** Only used for tests having their own IORuntimes. */
 object OurIORuntimeRegister:
-                            
+
   private val ecToRuntime = new ConcurrentHashMap[ExecutionContext, IORuntime]
 
   def toIORuntime(ec: ExecutionContext): Option[IORuntime] =

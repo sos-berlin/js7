@@ -8,6 +8,7 @@ import js7.base.log.Logger
 import js7.base.system.Java8Polyfill.*
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
+import scala.concurrent.ExecutionContext
 import scala.util.control.NonFatal
 
 object OurIORuntime:
@@ -16,13 +17,10 @@ object OurIORuntime:
   private lazy val logger = Logger[this.type]
 
   private var _ioRuntime: IORuntime =
-    //val blockingExecutorService = newBlockingNonVirtualExecutor("js7-virtual")
+    val (blockingEC, shutdownBlockingEC) = IORuntime.createDefaultBlockingExecutionContext()
+    //val blockingEC = newBlockingNonVirtualExecutor("js7-virtual")
     IORuntime.builder()
-      //.setBlocking(
-      //  ExecutionContext.fromExecutorService(
-      //    blockingExecutorService,
-      //    uncaughtExceptionReporter),
-      //  () => blockingExecutorService.shutdown())
+      .setBlocking(blockingEC, shutdownBlockingEC)
       .setFailureReporter(uncaughtExceptionReporter)
       .addShutdownHook: () =>
         _ioRuntime = null
