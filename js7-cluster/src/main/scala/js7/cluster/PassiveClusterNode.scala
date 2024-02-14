@@ -351,12 +351,15 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
         clusterConf.recouplingStreamReader):
         protected def getStream(api: ClusterNodeApi, position: Long) =
           HttpClient.liftProblem(
-            api.journalStream(
-              JournalPosition(continuation.fileEventId, position),
-              heartbeat = Some(setting.timing.heartbeat),
-              markEOF = true
-            ).map(_.scan(PositionAnd(position, ByteArray.empty/*unused*/))((s, line) =>
-              PositionAnd(s.position + (if line == HeartbeatMarker then 0 else line.length), line))))
+            api
+              .journalStream(
+                JournalPosition(continuation.fileEventId, position),
+                heartbeat = Some(setting.timing.heartbeat),
+                markEOF = true)
+              .map(_
+                .scan(PositionAnd(position, ByteArray.empty/*unused*/)): (s, line) =>
+                  PositionAnd(s.position + (if line == HeartbeatMarker then 0 else line.length), line)
+                .drop(1)))
 
         protected def stopRequested = stopped
 
