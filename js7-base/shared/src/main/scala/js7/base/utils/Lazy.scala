@@ -1,5 +1,7 @@
 package js7.base.utils
 
+import java.util.concurrent.locks.ReentrantLock
+import js7.base.utils.ScalaUtils.use
 import scala.concurrent
 import scala.concurrent.blocking
 
@@ -9,8 +11,9 @@ import scala.concurrent.blocking
   *
   * @author Joacim Zschimmer
   */
-final class Lazy[A] private(eval: => A):
+private class Lazy[A] private(eval: => A, block: => Option[A] => Option[A]):
 
+  private val lock = new ReentrantLock()
   @volatile
   private var state: State = NotEvaluated
 
@@ -28,8 +31,8 @@ final class Lazy[A] private(eval: => A):
     state match
       case Evaluated(a) => Some(a)
       case _ =>
-        blocking:
-          synchronized:
+        block:
+          lock.use:
             state match
               case Evaluated(a) => Some(a)
               case Evaluating => None
@@ -67,5 +70,14 @@ final class Lazy[A] private(eval: => A):
 
 
 object Lazy:
+
   def apply[A](eval: => A): Lazy[A] =
-    new Lazy(eval)
+    blocking(eval)
+
+  def blocking[A](eval: => A): Lazy[A] =
+    new Lazy(eval, scala.concurrent.blocking(_))
+
+  /** For very fast evaluations.
+   * During evaluation other threads accessing the value are blocked. */
+  def nonBlocking[A](eval: => A): Lazy[A] =
+    new Lazy(eval, o => o)

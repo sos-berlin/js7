@@ -106,6 +106,12 @@ object Logger extends AdHocLogger:
       def log(level: LogLevel, marker: Marker, message: => String): Unit =
         logger.underlying.log(level, marker, message)
 
+      def infoCall[A](body: => A)(implicit src: sourcecode.Name): A =
+        infoCall[A](src.value)(body)
+
+      def infoCall[A](functionName: String, args: => Any = "")(body: => A): A =
+        logF[SyncIO, A](logger, LogLevel.Info, functionName, args)(SyncIO(body)).unsafeRunSync()
+
       def infoIO[A](body: IO[A])(using src: sourcecode.Name): IO[A] =
         infoF(functionName = src.value)(body)
 

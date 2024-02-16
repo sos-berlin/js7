@@ -9,6 +9,7 @@ import js7.base.fs2utils.StreamExtensions.mapParallelBatch
 import js7.base.monixutils.RefCountedResource
 import js7.base.monixutils.StreamPauseDetector.detectPauses
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
+import js7.common.http.{PekkoHttpClient, PekkoHttpUtils}
 import scala.concurrent.ExecutionContext
 //diffx import com.softwaremill.diffx
 import cats.effect.IO
@@ -486,8 +487,9 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
 
           case Right((fileLength, line, journalRecord)) =>
             out.write(line.toByteBuffer)
-            logger.trace(s"Replicated ${continuation.fileEventId}:$fileLength " +
-              s"${line.utf8StringTruncateAt(200).trim}")
+            if !PekkoHttpClient.LogData/*avoid duplicate logging*/ then
+              logger.trace(s"Replicated ${continuation.fileEventId}:$fileLength " +
+                s"${line.utf8StringTruncateAt(200).trim}")
             val isSnapshotTaken = isReplicatingHeadOfFile && (journalRecord match {
               case Stamped(_, _, KeyedEvent(_, _: SnapshotTaken)) => true
               case _ => false

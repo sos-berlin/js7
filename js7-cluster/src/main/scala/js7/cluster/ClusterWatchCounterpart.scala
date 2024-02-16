@@ -154,11 +154,11 @@ extends Service.StoppableByRequest:
                 s"🟢 ${confirmation.clusterWatchId} finally confirmed ${
                   request.toShortString} after ${since.elapsed.pretty}")
         .guaranteeCase:
-          case Outcome.Errored(t) if sym.warnLogged => SyncDeadline.usingNow: now ?=>
+          case Outcome.Errored(t) if sym.warnLogged => SyncDeadline.usingNow:
             logger.warn(
               s"💥 ${request.toShortString} => ${t.toStringWithCauses} · after ${since.elapsed.pretty}")
 
-          case Outcome.Canceled() if sym.warnLogged => SyncDeadline.usingNow: now ?=>
+          case Outcome.Canceled() if sym.warnLogged => SyncDeadline.usingNow: 
             logger.info(
               s"⚫ ${request.toShortString} => Canceled after ${since.elapsed.pretty}")
 
@@ -192,7 +192,7 @@ extends Service.StoppableByRequest:
             requested.confirm(confirmation)
       }
       .flatMapT { _ =>
-        SyncDeadline.usingNow: now ?=>
+        SyncDeadline.usingNow: 
           for o <- currentClusterWatchId do o.touch(confirm.clusterWatchId)
           Checked.unit
       }
@@ -304,7 +304,6 @@ object ClusterWatchCounterpart:
 
     def confirm(confirm: Checked[ClusterWatchConfirmation]): IO[Checked[Unit]] =
       confirmation.complete(confirm)
-        .attempt/*Ignore duplicate complete*/
         .as(Checked.unit)
 
     override def toString =

@@ -19,12 +19,12 @@ import scala.util.control.NonFatal
 
 object StreamUtils:
 
-  private val BufferSize = 8192
+  private val DefaultBufferSize = 8192
   private val logger = Logger[this.type]
 
-  def readerToCharStream(reader: Reader): Stream[IO, Char] =
+  def readerToCharStream(reader: Reader, bufferSize: Int = DefaultBufferSize): Stream[IO, Char] =
     Stream.suspend:
-      val buffer = new Array[Char](BufferSize)
+      val buffer = new Array[Char](bufferSize)
       Stream
         .repeatEval:
           IO
@@ -40,12 +40,14 @@ object StreamUtils:
         .takeWhile(_ != null)
         .unchunks
 
-  def inputStreamToByteStream(in: InputStream): Stream[IO, Byte] =
-    blockingChannelToByteStream(newChannel(in))
+  def inputStreamToByteStream(in: InputStream, bufferSize: Int = DefaultBufferSize)
+  : Stream[IO, Byte] =
+    blockingChannelToByteStream(newChannel(in), bufferSize)
 
-  def blockingChannelToByteStream(channel: ReadableByteChannel): Stream[IO, Byte] =
+  def blockingChannelToByteStream(channel: ReadableByteChannel, bufferSize: Int = DefaultBufferSize)
+  : Stream[IO, Byte] =
     Stream.suspend:
-      val buffer = ByteBuffer.allocateDirect(BufferSize)
+      val buffer = ByteBuffer.allocateDirect(bufferSize)
       Stream
         .repeatEval:
          logger.traceIOWithResult("### channel.read", body =

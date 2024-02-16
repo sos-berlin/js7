@@ -136,7 +136,7 @@ extends MainService, Service.StoppableByRequest:
     yield checkedChecked.flatten
 
   private def executeCommand(command: ControllerCommand, meta: CommandMeta): IO[Checked[command.Response]] =
-    logger.debugIO("executeCommand", command.toShortString)(
+    logger.debugIO(s"executeCommand ${command.toShortString}")(
       commandExecutor.executeCommand(command, meta))
         //.executeOn(scheduler))
 

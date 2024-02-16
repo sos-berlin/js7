@@ -35,14 +35,12 @@ import js7.data.subagent.SubagentState.keyedEventJsonCodec
 import js7.data.subagent.{SubagentDirectorState, SubagentEvent, SubagentId, SubagentRunId}
 import js7.journal.CommitOptions
 import js7.journal.state.Journal
-import js7.subagent.configuration.SubagentConf
 import js7.subagent.director.SubagentEventListener.*
 import scala.util.chaining.scalaUtilChainingOps
 
 private trait SubagentEventListener:
 
   protected def subagentId: SubagentId
-  protected def subagentConf: SubagentConf
   protected def conf: RemoteSubagentDriver.Conf
   protected def recouplingStreamReaderConf: RecouplingStreamReaderConf
   protected def api: SubagentApi
@@ -60,7 +58,6 @@ private trait SubagentEventListener:
   protected def untilStopRequested: IO[Unit]
 
   private val logger = Logger.withPrefix[SubagentEventListener](subagentId.toString)
-  private lazy val stdoutCommitOptions = CommitOptions(delay = subagentConf.stdoutCommitDelay)  // TODO Use it!
   private val stopObserving = MVar.empty[IO, Unit].unsafeMemoize
   @volatile private var observing: FiberIO[Unit] = PureFiberIO(())
   private val _isHeartbeating = Atomic(false)
@@ -102,7 +99,7 @@ private trait SubagentEventListener:
           api,
           after = journal.unsafeCurrentState().idToSubagentItemState(subagentId).eventId)
         .takeUntilEval(stopObserving.flatMap(_.read))
-        .pipe(stream =>
+        .pipe: stream =>
           if !bufferDelay.isPositive then
             stream.chunks
           else
@@ -110,10 +107,9 @@ private trait SubagentEventListener:
               .groupWithin( // ticks
                 conf.eventBufferSize,
                 conf.eventBufferDelay max conf.commitDelay)
-              .filter(_.nonEmpty)) // Ignore empty ticks
         .evalMap(_
           .traverse(handleEvent)
-          .flatMap { updatedStampedChunk0 =>
+          .flatMap: updatedStampedChunk0 =>
             val (updatedStampedSeqSeq, followUps) = updatedStampedChunk0.toArraySeq.unzip
             val updatedStampedSeq = updatedStampedSeqSeq.flatten
             val lastEventId = updatedStampedSeq.lastOption.map(_.eventId)
@@ -131,8 +127,7 @@ private trait SubagentEventListener:
                 .collect { case Stamped(_, _, KeyedEvent(o: OrderId, _: OrderProcessed)) => o }
                 .traverse(detachProcessedOrder))
               .*>(lastEventId.traverse(releaseEvents))
-              .*>(followUps.combineAll)
-          })
+              .*>(followUps.combineAll))
         .onFinalize(recouplingStreamReader
           .terminateAndLogout
           .logWhenItTakesLonger)
@@ -203,9 +198,9 @@ private trait SubagentEventListener:
             .eventStream(
               EventRequest.singleClass[Event](after = after, timeout = None),
               subagentRunId,
-              heartbeat = Some(heartbeatTiming.heartbeat))
+              heartbeat = Some(conf.heartbeatTiming.heartbeat))
             .map(_
-              .detectPauses(heartbeatTiming.longHeartbeatTimeout, PauseDetected)
+              .detectPauses(conf.heartbeatTiming.longHeartbeatTimeout, PauseDetected)
               .flatTap:
                 case PauseDetected =>
                   val problem = Problem.pure(s"Missing heartbeat from $subagentId")
@@ -278,4 +273,3 @@ private trait SubagentEventListener:
 
 private object SubagentEventListener:
   private val PauseDetected: Stamped[KeyedEvent[Event]] = Stamped(0L, null)
-  private[subagent] val heartbeatTiming = HeartbeatTiming(3.s, 10.s)  // TODO

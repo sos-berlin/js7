@@ -29,24 +29,22 @@ final class ExecuteAdmissionTimeSwitch(
   /** Update the state with the current or next admission time and set a _timer.
    * @return true iff an AdmissionTimeInterval is effective now. */
   def updateAndCheck(onAdmissionStart: => Unit)(using clock: AlarmClock): IO[Boolean] =
-    Logger.infoIO:
-     clock
-      .lock(IO:
-        val now = clock.now()
-        admissionTimeScheme.findTimeInterval(now, zone, dateOffset = ExecuteExecutor.noDateOffset)
-        match
-          case None =>
-            _timer.cancel()
-            false // Not enterable now
+    clock.lock(IO:
+      val now = clock.now()
+      admissionTimeScheme.findTimeInterval(now, zone, dateOffset = ExecuteExecutor.noDateOffset)
+      match
+        case None =>
+          _timer.cancel()
+          false // Not enterable now
 
-          case Some(interval) =>
-            if !_nextTime.contains(interval.start) then
-              onSwitch((interval != TimeInterval.never) ? interval)
-              // Also set _timer if clock has been adjusted
-              if now < interval.start then
-                _nextTime = Some(interval.start)
-                _timer := clock.scheduleAt(interval.start):
-                  _nextTime = None
-                  onAdmissionStart
+        case Some(interval) =>
+          if !_nextTime.contains(interval.start) then
+            onSwitch((interval != TimeInterval.never) ? interval)
+            // Also set _timer if clock has been adjusted
+            if now < interval.start then
+              _nextTime = Some(interval.start)
+              _timer := clock.scheduleAt(interval.start):
+                _nextTime = None
+                onAdmissionStart
 
-            interval.contains(now)) // Has admission now?
+          interval.contains(now)) // Has admission now?

@@ -9,6 +9,7 @@ import izumi.reflect.macrortti.LightTypeTag
 import java.io.{ByteArrayInputStream, InputStream, PrintWriter, StringWriter}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.locks.ReentrantLock
 import js7.base.exceptions.PublicException
 import js7.base.log.Logger
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
@@ -645,7 +646,29 @@ object ScalaUtils:
             t.fillInStackTrace()
             Left(if t.getStackTrace.nonEmpty then t else new IllegalStateException(s"$t", t))
 
+    extension (char: Char)
+      inline def utf8Length: Int =
+        ScalaUtils.utf8Length(char)
+
     implicit final class RichString(private val underlying: String) extends AnyVal:
+      /** Counts bytes of UTF-16 to UTF-8 encoding, the result may be bigger. */
+      def estimateUtf8Length: Int =
+        var byteCount = 0
+        val len = underlying.length
+        var i = 0
+        while i < len do
+          byteCount += underlying.charAt(i).utf8Length
+          i += 1
+        byteCount
+
+      //Java 9:
+      //def utf8Length: Int =
+      //  var byteCount = 0
+      //  val iterator = underlying.codePoints.iterator
+      //  while iterator.hasNext do
+      //    byteCount += ScalaUtils.utf8Length(iterator.next())
+      //  byteCount
+
       /** Truncate to `n`, replacing the tail with ellipsis and, if the string is long, the total character count. */
       def truncateWithEllipsis(
         n: Int,
@@ -698,7 +721,8 @@ object ScalaUtils:
           i += 1
         n
 
-    implicit final class RichStringuilder(private val sb: StringBuilder) extends AnyVal:
+
+    implicit final class RichStringBuilder(private val sb: StringBuilder) extends AnyVal:
       /** Right-adjust (moves) the text written by body and fill the left-side up with spaces. */
       def fillLeft(width: Int)(body: => Unit): Unit =
         val insert = sb.length()
@@ -727,6 +751,12 @@ object ScalaUtils:
         var i = 0
         while i < len && underlying(i) != byte do i = i + 1
         if i == len then -1 else i
+
+  extension (lock: ReentrantLock)
+    def use[A](body: => A): A =
+      lock.lock()
+      try body
+      finally lock.unlock()
 
   @inline
   def reuseIfEqual[A <: AnyRef](a: A)(f: A => A): A =
@@ -872,3 +902,10 @@ object ScalaUtils:
 
   /** Only to let the compiler check the body, nothing is executed. */
   inline def compilable(inline body: Any): Unit = {}
+
+  def utf8Length(char: Int): Int =
+    val c = char & 0x7fffffff
+    if c <= 0x7f then 1
+    else if c <= 0x07ff then 2
+    else if c <= 0xffff then 3
+    else 4

@@ -1,14 +1,11 @@
 package js7.subagent
 
 import cats.effect.kernel.Deferred
-import cats.effect.kernel.Resource.ExitCase
-import cats.effect.std.CyclicBarrier
 import cats.effect.unsafe.IORuntime
-import cats.effect.{Fiber, FiberIO, IO, Outcome, Resource, ResourceIO}
+import cats.effect.{Fiber, FiberIO, IO, Outcome, Resource}
 import cats.syntax.all.*
 import fs2.{Pipe, Stream}
 import js7.base.catsutils.CatsEffectExtensions.{guaranteeExceptWhenSucceeded, joinStd}
-import js7.base.fs2utils.StreamExtensions.onStart
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.io.process.{ProcessSignal, Stderr, Stdout, StdoutOrStderr}
 import js7.base.log.Logger
@@ -43,7 +40,6 @@ import js7.launcher.configuration.JobLauncherConf
 import js7.launcher.internal.JobLauncher
 import js7.subagent.DedicatedSubagent.*
 import js7.subagent.configuration.SubagentConf
-import scala.util.chaining.scalaUtilChainingOps
 
 final class DedicatedSubagent private(
   val subagentId: SubagentId,
@@ -284,12 +280,14 @@ extends Service.StoppableByRequest:
 
   private def stdObserversResource(order: Order[Order.Processing], keepLastErrLine: Boolean)
   : Resource[IO, StdObservers] =
-    import subagentConf.{outerrCharBufferSize, outerrQueueSize}
+    import subagentConf.{outerrCharBufferSize, outerrQueueSize, stdouterr}
     for
       outErrStatistics <- outErrStatisticsResource
       stdObservers <- StdObservers.resource(
         outErrToJournalSink(order.id, outErrStatistics),
         charBufferSize = outerrCharBufferSize,
+        chunkSize = stdouterr.chunkSize,
+        delay = stdouterr.delay,
         queueSize = outerrQueueSize,
         useErrorLineLengthMax = keepLastErrLine ? jobLauncherConf.errorLineLengthMax,
         name = s"${order.id} ${order.workflowPosition}")
@@ -314,7 +312,7 @@ extends Service.StoppableByRequest:
       .flatMap(_.fold(IO.unit)(_.acknowldeged.complete(())))
       .as(Checked.unit)
 
-  private val stdoutCommitDelay = CommitOptions(delay = subagentConf.stdoutCommitDelay)
+  private val stdoutCommitDelayOptions = CommitOptions(delay = subagentConf.stdoutCommitDelay)
 
   private def outErrToJournalSink(
     orderId: OrderId,
@@ -322,13 +320,15 @@ extends Service.StoppableByRequest:
     (outErr: StdoutOrStderr)
   : Pipe[IO, String, Nothing] =
     _.chunks
-      .flatMap: chunk =>
+      .map: chunk =>
+        chunk.toIArray.map: string =>
+          orderId <-: OrderStdWritten(outErr)(string)
+      .flatMap: events =>
         Stream.exec:
-          val events = chunk.toIArray.map: string =>
-            orderId <-: OrderStdWritten(outErr)(string)
+          val totalLength = events.iterator.map(_.event.chunk.estimateUtf8Length).sum
           outErrStatistics(outErr)
-            .count(n = chunk.size, totalLength = chunk.iterator.map(_.length).sum):
-              journal.persistKeyedEventsLater(events, stdoutCommitDelay)
+            .count(n = events.size, totalLength = totalLength):
+              journal.persistKeyedEventsLater(events, stdoutCommitDelayOptions)
             .map:
               case Left(problem) => logger.error(s"Emission of OrderStdWritten event failed: $problem")
               case Right(_) =>

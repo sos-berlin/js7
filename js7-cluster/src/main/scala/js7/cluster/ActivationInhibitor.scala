@@ -55,12 +55,12 @@ private[cluster] final class ActivationInhibitor:
               activate
                 .guaranteeCaseLazy {
                   case Outcome.Succeeded(_) => IO.unit
-                  case outcome =>
+                  case outcome => IO.defer:
                     logger.debug(s"tryToActivate: Passive — due to $outcome")
                     mvar.put(Passive)
                 }
                 .flatTap {
-                  case o @ (Left(_) | Right(false)) =>
+                  case o @ (Left(_) | Right(false)) => IO.defer:
                     logger.debug(s"tryToActivate: Passive — due to $o")
                     mvar.put(Passive)
                   case Right(true) =>
@@ -68,7 +68,7 @@ private[cluster] final class ActivationInhibitor:
                     mvar.put(Active)
                 }
 
-            case o: Inhibited =>
+            case o: Inhibited => IO.defer:
               logger.debug(s"tryToActivate: $o")
               mvar.put(o) *>
                 IO { logger.info("Activation inhibited") } *>

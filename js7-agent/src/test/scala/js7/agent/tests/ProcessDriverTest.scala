@@ -31,6 +31,7 @@ import js7.data.value.{NamedValues, NumberValue, StringValue}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Position
 import js7.launcher.StdObservers
+import js7.launcher.StdObserversForTest.testSink
 import js7.launcher.configuration.{JobLauncherConf, TaskConfiguration}
 import js7.launcher.process.{ProcessDriver, RichProcess}
 import js7.subagent.configuration.SubagentConf

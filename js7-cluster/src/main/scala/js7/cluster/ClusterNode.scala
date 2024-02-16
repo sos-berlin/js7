@@ -162,7 +162,7 @@ extends Service.StoppableByRequest:
       .toRight(ClusterNodeIsNotActiveProblem)
 
   def executeCommand(command: ClusterCommand): IO[Checked[ClusterCommand.Response]] =
-    logger.infoIO(command.getClass.simpleScalaName)(
+    logger.infoIO(s"executeCommand ${command.toShortString}")(
       command match {
         case command: ClusterCommand.ClusterStartBackupNode =>
           IO {

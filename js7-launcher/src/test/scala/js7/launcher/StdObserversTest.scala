@@ -2,6 +2,7 @@ package js7.launcher
 
 import js7.base.test.OurAsyncTestSuite
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.launcher.StdObserversForTest.testSink
 
 final class StdObserversTest extends OurAsyncTestSuite:
 

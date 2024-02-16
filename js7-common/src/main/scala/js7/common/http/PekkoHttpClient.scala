@@ -321,7 +321,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
           .guaranteeCaseLazy:
             case Outcome.Canceled() => IO:
               canceled = true
-              logger.debug(s"<~~ ⚫️$responseLogPrefix => canceled")
+              logger.debug(s"<~~⚫️$responseLogPrefix => canceled")
 
             case Outcome.Errored(throwable) => IO.defer:
               val sym = throwable match
@@ -334,7 +334,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
                 case _ => "💥"
 
               logger.debug:
-                s"<~~ $sym$responseLogPrefix => failed with ${throwable.toStringWithCauses}"
+                s"<~~$sym $responseLogPrefix => failed with ${throwable.toStringWithCauses}"
               IO.raiseError(toPrettyProblem(throwable).throwable)
 
             case Outcome.Succeeded(_) => IO.unit
@@ -346,7 +346,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
   : IO[HttpResponse] =
     if request.headers.contains(StreamingJsonHeader) then
       untilResponded.map: response =>
-        logResponse(response, responseLogPrefix, " ✔")
+        logResponse(response, responseLogPrefix, "✔")
         response
     else
       var waitingLogged = false
@@ -357,7 +357,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
           logger.debug(
             s"... $sym$responseLogPrefix => Still waiting for response${closed ?? " (closed)"}"))
         .flatTap(response => IO:
-          logResponse(response, responseLogPrefix, if waitingLogged then "🔵" else " ✔"))
+          logResponse(response, responseLogPrefix, if waitingLogged then "🔵" else "✔"))
 
   private def logResponse(response: HttpResponse, responseLogPrefix: String, good: String): Unit =
     val sym =
@@ -388,13 +388,13 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
         case NonFatal(_) => ""
       })
     val arrow = if response.entity.isChunked then "<--<" else "<--|"
-    logger.debug(s"$arrow$sym$responseLogPrefix => ${response.status}$suffix")
+    logger.debug(s"$arrow$sym $responseLogPrefix => ${response.status}$suffix")
 
-  // >-->  request
-  // <--<  non-chunked response
-  // <-<- ✔header of chunked response
-  // <-<-  chunk
-  // <--|  last chunk
+  // |-->  non-chunked request
+  // <--|✔ non-chunked response, ok
+  // <-<-✔ header of chunked response, ok
+  // <-<-  chunk of stream
+  // <--|  last chunk of stream
 
   private def logResponseStream(response: HttpResponse, responseLogPrefix: => String)
   : HttpResponse =
@@ -494,7 +494,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
 object PekkoHttpClient:
   private val EmptyLine = ByteArray("\n")
 
-  private val LogData: Boolean = true
+  val LogData: Boolean = true
     //val key = "js7.PekkoHttpClient.log-data"
     //val value = sys.props.get(key)
     //try value.fold(false)(StringAsBoolean(_))

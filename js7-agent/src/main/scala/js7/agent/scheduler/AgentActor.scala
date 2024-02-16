@@ -43,7 +43,7 @@ import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import js7.base.catsutils.CatsEffectExtensions.{materializeIntoChecked, right}
 import org.apache.pekko.actor.{Actor, ActorRef, Props, Stash, Terminated}
-import org.apache.pekko.pattern.ask
+import org.apache.pekko.pattern.{AskTimeoutException, ask}
 import scala.concurrent.{ExecutionContext, Future, Promise}
 
 /**
@@ -61,7 +61,7 @@ private[agent] final class AgentActor(
 extends Actor, Stash, SimpleStateActor:
 
   private given ExecutionContext = ioRuntime.compute
-  
+
   import agentConf.{implicitPekkoAskTimeout, journalLocation}
   import context.{actorOf, watch}
   val journal = journalAllocated.allocatedThing
@@ -145,12 +145,18 @@ extends Actor, Stash, SimpleStateActor:
             if terminating then
               response.success(Right(AgentCommand.Response.Accepted/*???*/))
             else
+              import agentConf.directorConf.subagentDriverConf.subagentResetTimeout
               dedicated.toOption
                 .fold(IO.unit)(dedicated => IO
                   .fromFuture(IO(
                     (dedicated.actor ? AgentOrderKeeper.Input.ResetAllSubagents)(
-                      RemoteSubagentDriver.subagentResetTimeout)))
+                      subagentResetTimeout)))
                   .void)
+                .recoverWith:
+                  case e: AskTimeoutException => IO:
+                    logger.debug(s"💥 ${e.toStringWithCauses}")
+                    logger.error:
+                      s"Subagents could not be reset within $subagentResetTimeout"
                 .*>(journal
                   .persist(_.clusterState match {
                     case _: ClusterState.Coupled =>

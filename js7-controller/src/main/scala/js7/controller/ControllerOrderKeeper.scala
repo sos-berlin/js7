@@ -191,8 +191,8 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
             .toVector
             .parTraverse(agentDriver =>
               agentDriver.terminate()
-                .recover(t => logger.error(
-                  s"$agentDriver.terminate => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+                .recoverWith(t => IO(logger.error(
+                  s"$agentDriver.terminate => ${t.toStringWithCauses}", t.nullIfNoStackTrace)))
                 .logWhenItTakesLonger(s"$agentDriver.terminate"))
             .unsafeRunAndForget() // TODO
         if runningAgentDriverCount == 0 then
@@ -661,8 +661,8 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
         agentRegister.values.map(_.agentDriver) foreach { agentDriver =>
           agentDriver
             .terminate(noJournal = true)
-            .recover(t => logger.error(
-              s"$agentDriver.terminate => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+            .recoverWith(t => IO(logger.error(
+              s"$agentDriver.terminate => ${t.toStringWithCauses}", t.nullIfNoStackTrace)))
             .logWhenItTakesLonger(s"$agentDriver.terminate")
             .unsafeRunAndForget() // TODO
         }
@@ -861,7 +861,7 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
                               handleEvents(stampedEvents, updatedState)
                               agentEntry
                                 .agentDriver.reset(force = force)
-                                .tapError(t => IO(
+                                .onError(t => IO(
                                   logger.error("ResetAgent: " + t.toStringWithCauses, t)))
                                 .materializeIntoChecked
                                 .flatMapT(_ =>
@@ -1180,8 +1180,8 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
         val agentDriver = agentRegister(agentRef.path).agentDriver
         agentDriver
           .changeAgentRef(agentRef)
-          .recover(t => logger.error(
-            s"$agentDriver.changeAgentRef => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+          .recoverWith(t => IO(logger.error(
+            s"$agentDriver.changeAgentRef => ${t.toStringWithCauses}", t.nullIfNoStackTrace)))
           .logWhenItTakesLonger(s"$agentDriver.changeAgentRef")
           .awaitInfinite // TODO
 
@@ -1190,8 +1190,8 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
           val agentDriver = agentRegister(agentRef.path).agentDriver
           agentDriver
             .changeAgentRef(agentRef)
-            .recover(t => logger.error(
-              s"$agentDriver.changeAgentRef => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+            .recoverWith(t => IO(logger.error(
+              s"$agentDriver.changeAgentRef => ${t.toStringWithCauses}", t.nullIfNoStackTrace)))
             .logWhenItTakesLonger(s"$agentDriver.changeAgentRef")
             .awaitInfinite // TODO
 
@@ -1204,8 +1204,8 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
           entry.isDeleted = true
           val agentDriver = entry.agentDriver
           agentDriver.terminate(reset = true)
-            .recover(t => logger.error(
-              s"$agentDriver.terminate(reset) => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+            .recoverWith(t => IO(logger.error(
+              s"$agentDriver.terminate(reset) => ${t.toStringWithCauses}", t.nullIfNoStackTrace)))
             .logWhenItTakesLonger(s"$agentDriver.terminate(reset)")
             .unsafeRunAndForget() // TODO
           // Actor terminates asynchronously, so do not add an AgentRef immediately after deletion!
@@ -1229,8 +1229,8 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
                         for signedItem <- _controllerState.keyToSignedItem.get(itemKey) do
                           agentDriver
                             .send(AgentDriver.Queueable.AttachSignedItem(signedItem))
-                            .recover(t => logger.error(
-                              s"$agentDriver.send(AttachSignedItem) => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+                            .recoverWith(t => IO(logger.error(
+                              s"$agentDriver.send(AttachSignedItem) => ${t.toStringWithCauses}", t.nullIfNoStackTrace)))
                             .logAndIgnoreError(s"$agentDriver.send(AttachSignedItem)")
                             .awaitInfinite // TODO
 
@@ -1239,8 +1239,8 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
                           val unsignedItem = item.asInstanceOf[UnsignedItem]
                           agentDriver
                             .send(AgentDriver.Queueable.AttachUnsignedItem(unsignedItem))
-                            .recover(t => logger.error(
-                              s"$agentDriver.send(AttachUnsignedItem) => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+                            .recoverWith(t => IO(logger.error(
+                              s"$agentDriver.send(AttachUnsignedItem) => ${t.toStringWithCauses}", t.nullIfNoStackTrace)))
                             .logAndIgnoreError(s"$agentDriver.send(AttachUnsignedItem)")
                             .awaitInfinite // TODO
 
@@ -1249,8 +1249,8 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
                       agentEntry.detachingItems += itemKey
                       agentDriver
                         .send(AgentDriver.Queueable.DetachItem(itemKey))
-                        .recover(t => logger.error(
-                          s"$agentDriver.send(DetachItem) => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+                        .recoverWith(t => IO(logger.error(
+                          s"$agentDriver.send(DetachItem) => ${t.toStringWithCauses}", t.nullIfNoStackTrace)))
                         .logWhenItTakesLonger(s"$agentDriver.send(DetachItem)")
                         .awaitInfinite // TODO
 
@@ -1266,8 +1266,8 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
               for agentDriver <- agentRegister.get(subagentItemState.item.agentPath).map(_.agentDriver) do
                 agentDriver
                   .send(AgentDriver.Queueable.ResetSubagent(subagentId, force))
-                  .recover(t => logger.error(
-                    s"$agentDriver.send(ResetSubagent) => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+                  .recoverWith(t => IO(logger.error(
+                    s"$agentDriver.send(ResetSubagent) => ${t.toStringWithCauses}", t.nullIfNoStackTrace)))
                   .logWhenItTakesLonger(s"$agentDriver.send(ResetSubagent)")
                   .awaitInfinite // TODO
             case _ =>
@@ -1360,8 +1360,8 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
             val agentDriver = agentEntry.agentDriver
             agentDriver
               .send(AgentDriver.Queueable.MarkOrder(order.id, mark))
-              .recover(t => logger.error(
-                s"$agentDriver.send(MarkOrder(${order.id})) => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+              .recoverWith(t => IO(logger.error(
+                s"$agentDriver.send(MarkOrder(${order.id})) => ${t.toStringWithCauses}", t.nullIfNoStackTrace)))
               .logWhenItTakesLonger(s"$agentDriver.send(MarkOrder(${order.id}))")
               .awaitInfinite // TODO
 
@@ -1430,8 +1430,8 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
           (attachSignedItems ++ attachUnsignedItems :+ attachOrder)
             .sequence
             .map(_.combineAll)
-            .recover(t => logger.error(
-              s"tryAttachOrderToAgent(${order.id}) => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+            .recoverWith(t => IO(logger.error(
+              s"tryAttachOrderToAgent(${order.id}) => ${t.toStringWithCauses}", t.nullIfNoStackTrace)))
             .logWhenItTakesLonger(s"tryAttachOrderToAgent(${order.id})")
             .awaitInfinite // TODO
 
@@ -1498,8 +1498,8 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
                 orderEntry.isDetaching = true
                 agentDriver
                   .send(AgentDriver.Queueable.DetachOrder(orderId))
-                  .recover(t => logger.error(
-                    s"detachOrderFromAgent($orderId) => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+                  .recoverWith(t => IO(logger.error(
+                    s"detachOrderFromAgent($orderId) => ${t.toStringWithCauses}", t.nullIfNoStackTrace)))
                   .logWhenItTakesLonger(s"detachOrderFromAgent($orderId)")
                   .awaitInfinite // TODO
           }

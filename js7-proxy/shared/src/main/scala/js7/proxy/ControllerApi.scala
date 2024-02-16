@@ -157,7 +157,7 @@ extends ControllerApiWithHttp:
       .mapt((_: ControllerCommand.Response.Accepted) => Completed)
 
   def executeCommand(command: ControllerCommand): IO[Checked[command.Response]] =
-    logger.debugIO("executeCommand", command.toShortString)(
+    logger.debugIO(s"executeCommand ${command.toShortString}")(
       untilReachable(_.executeCommand(command)))
 
   //def executeAgentCommand(agentPath: AgentPath, command: AgentCommand)

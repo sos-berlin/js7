@@ -45,6 +45,7 @@ private final class DirectoryWatch(
           .takeWhile(_.nonEmpty))
         .scan(state -> Seq.empty[DirectoryEvent])((pair, events) =>
           pair._1.applyAndReduceEvents(events).swap)
+        .drop(1) // Drop initial value
         .map(_.swap)
         .filter(_._1.nonEmpty)
 

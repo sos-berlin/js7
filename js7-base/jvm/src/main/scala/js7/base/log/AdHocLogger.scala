@@ -46,8 +46,12 @@ transparent trait AdHocLogger:
   : Unit =
     logger.log(level, marker, message)
 
-  inline def infoIO[A](body: IO[A])(using sourcecode.Name, sourcecode.Enclosing): IO[A] =
-    logger.infoIO(body)
+  inline def infoCall[A](inline body: => A)(implicit inline src: sourcecode.Name): A =
+    logger.infoCall[A](body)
+
+  inline def infoCall[A](inline functionName: String, inline args: => Any = "")(inline body: => A)
+  : A =
+    logger.infoCall(functionName, args)(body)
 
   inline def infoIO[A](functionName: String, args: => Any = "")(body: IO[A])
     (using sourcecode.Enclosing)

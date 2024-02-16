@@ -743,7 +743,22 @@ final class ScalaUtilsTest extends OurTestSuite
     assert(in.read() == -1)
   }
 
+  "Char" - {
+    "utf8Length" in:
+      assert('\u0000'.utf8Length == 1)
+      assert('A'.utf8Length == 1)
+      assert('\u007f'.utf8Length == 1)
+      assert('\u0080'.utf8Length == 2)
+      assert('\u6771'.utf8Length == 3)
+      assert('\uffff'.utf8Length == 3)
+  }
+
   "String" - {
+    //"utf8Length" in:
+    //  for base <- 0 to 0x10ffff by 0x10000 do withClue(s"base=$base: "):
+    //    val string = (base to base + 0xffff).map(_.toChar).mkString
+    //    assert(string.estimatedUtf8Length == string.getBytes(UTF_8).length)
+
     "truncateWithEllipsis" in {
       assert("".truncateWithEllipsis(0) == "")
       assert("".truncateWithEllipsis(1) == "")

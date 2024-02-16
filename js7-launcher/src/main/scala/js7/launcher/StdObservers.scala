@@ -3,24 +3,20 @@ package js7.launcher
 import cats.effect.kernel.Resource.ExitCase
 import cats.effect.{IO, Resource, ResourceIO}
 import fs2.concurrent.Channel
-import fs2.{Pipe, Stream}
+import fs2.{Chunk, Pipe, Stream}
 import java.io.InputStream
 import java.nio.charset.Charset
-import js7.base.catsutils.CatsEffectExtensions.{defer, joinStd, startAndForget}
-import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
+import js7.base.catsutils.CatsEffectExtensions.{joinStd, startAndForget}
 import js7.base.fs2utils.StreamUtils
 import js7.base.fs2utils.StreamUtils.inputStreamToByteStream
 import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.syntax.{RichResource, logWhenItTakesLonger}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.launcher.StdObservers.*
 import js7.launcher.utils.LastLineKeeper
-import org.jetbrains.annotations.TestOnly
-import scala.collection.mutable
-import scala.concurrent.duration.Deadline
+import scala.concurrent.duration.FiniteDuration
 
 /** Provides a process' stdout and stdin as streams.
  *
@@ -31,8 +27,9 @@ final class StdObservers private(
   outErrToSink: OutErrToSink,
   outChannel: Channel[IO, String],
   errChannel: Channel[IO, String],
-  @deprecated("Still used?")
-  val charBufferSize: Int,
+  chunkSize: Int,
+  charBufferSize: Int,
+  delay: FiniteDuration,
   useErrorLineLengthMax: Option[Int],
   name: String):
 
@@ -55,9 +52,7 @@ final class StdObservers private(
       case Stderr => errChannel
 
   val closeChannels: IO[Unit] =
-     IO.both(outChannel.close, errChannel.close)
-      .as(())
-      .unsafeMemoize
+     IO.both(outChannel.close, errChannel.close).void
 
   private def pumpChannelsToSinkResource: Resource[IO, Unit] =
     Resource
@@ -106,12 +101,13 @@ final class StdObservers private(
     // Uninterruptible when waiting for next read (does it matter, do we cancel this?)
     //fs2.io
     //  .readInputStream(IO.pure(in), chunkSize = charBufferSize /*byte???*/)
-    inputStreamToByteStream(in)
+    inputStreamToByteStream(in, bufferSize = charBufferSize/*TODO used for bytes*/)
       .onFinalizeCase:
         case exitCase @ ExitCase.Canceled =>
           // FIXME When cancelling the stream, io.blocking happens to block itself.
-          //  It does not execute its body and instead wats forever.
-          //  Why?
+          //  It does not execute its body and instead wats forever. Why?
+          //  ShellScriptProcess inhibits cancellation and instead waits (forever) for
+          //  stream termination.
           IO.blocking(())
             .logWhenItTakesLonger:
               s"### $name $outErr $exitCase   🔥🔥🔥 IO.blocking(()) is blocking itself 🔥🔥🔥"
@@ -136,6 +132,14 @@ final class StdObservers private(
   private def pumpToSink(outErr: StdoutOrStderr)(stream: Stream[IO, String]): IO[Unit] =
     outErrToSink(outErr)(
       stream
+        //.evalTap(string => IO(logger.info(s"### string =${ByteArray(string)}")))
+        // TODO .grouped tears surrogate pairs apart!
+        .map(string => Chunk.iterator(string.grouped(chunkSize))) // SLOW ???
+        .unchunks
+        //.evalTap(string => IO(logger.info(s"### slice  =${ByteArray(string)}")))
+        .groupWithin(chunkSize, delay)
+        .map(chunk => chunk.toArray.mkString)
+        //.evalTap(string => IO(logger.info(s"### grouped=${ByteArray(string)}")))
         .pipeIf(outErr == Stderr):
           _.through:
             lastLineKeeper getOrElse identity
@@ -151,6 +155,8 @@ object StdObservers:
   def resource(
     outErrToSink: OutErrToSink,
     charBufferSize: Int,
+    chunkSize: Int,
+    delay: FiniteDuration,
     queueSize: Int = 0,
     useErrorLineLengthMax: Option[Int] = None,
     name: String)
@@ -161,38 +167,9 @@ object StdObservers:
           outChannel <- Channel.bounded[IO, String](capacity = queueSize)
           errChannel <- Channel.bounded[IO, String](capacity = queueSize)
         yield
-          StdObservers(outErrToSink, outChannel, errChannel, charBufferSize, useErrorLineLengthMax,
-            name)
+          StdObservers(outErrToSink, outChannel, errChannel,
+            charBufferSize, chunkSize, delay,
+            useErrorLineLengthMax, name)
       _ <- stdObservers.pumpChannelsToSinkResource
     yield
       stdObservers
-
-  @TestOnly
-  def testSink(
-    charBufferSize: Int = 8192,
-    useErrorLineLengthMax: Option[Int] = None,
-    name: String)
-  : ResourceIO[TestSink] =
-    Resource.defer:
-      val out = mutable.Buffer.empty[String]
-      val err = mutable.Buffer.empty[String]
-      val outErrToSink: OutErrToSink = Map(
-        Stdout -> (stream => stream.evalTap(string => IO(out.append(string))).drain),
-        Stderr -> (stream => stream.evalTap(string => IO(err.append(string))).drain))
-      for
-        stdObservers <- resource(outErrToSink, charBufferSize,
-          useErrorLineLengthMax = useErrorLineLengthMax,
-          name = name)
-      yield
-        new TestSink(
-          stdObservers,
-          out = stdObservers.closeChannels *> IO(out.mkString),
-          err = stdObservers.closeChannels *> IO(err.mkString))
-
-  /** Provides an OutErrToSink which collects stdout and stderr each in a String. */
-  @TestOnly
-  final class TestSink private[StdObservers](
-    val stdObservers: StdObservers,
-    /** out and err implicitly close the channels via closeChannels. */
-    val out: IO[String],
-    val err: IO[String])

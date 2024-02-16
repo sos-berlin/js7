@@ -25,6 +25,7 @@ import js7.data.workflow.position.{Position, WorkflowBranchPath}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.launcher.internal.InternalJobLauncherTest.*
 import js7.launcher.{OrderProcess, ProcessOrder, StdObservers}
+import js7.launcher.StdObserversForTest.testSink
 
 final class InternalJobLauncherTest extends OurAsyncTestSuite:
 

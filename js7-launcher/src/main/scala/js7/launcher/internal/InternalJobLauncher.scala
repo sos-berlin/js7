@@ -61,7 +61,7 @@ extends JobLauncher:
           internalJob <- internalJobLazy()
           step <- toStep(processOrder)
         yield internalJob.toOrderProcess(step)
-      .evalOn(blockingJobEC)  
+      .evalOn(blockingJobEC)
 
   private def toStep(processOrder: ProcessOrder): Checked[InternalJob.Step] =
     for args <- evalExpressionMap(executable.arguments, processOrder.scope) yield

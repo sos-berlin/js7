@@ -59,8 +59,6 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
       using ioRuntime.scheduler)
     .orThrow
   private lazy val legacyLocalSubagentId = SubagentId.legacyLocalFromAgentPath(agentPath) // COMPATIBLE with v2.2
-  private val driverConf = RemoteSubagentDriver.Conf.fromConfig(directorConf.config,
-    commitDelay = directorConf.journalConf.delay)
   /** defaultPrioritized is used when no SubagentSelectionId is given. */
   private val defaultPrioritized = Prioritized.empty[SubagentId](
     toPriority = _ => 0/*same priority for each entry, round-robin*/)
@@ -282,15 +280,16 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
           })
 
   def resetAllSubagents(except: Set[SubagentId]): IO[Unit] =
-    stateVar.value
-      .flatMap(state =>
-        state.subagentToEntry.values
-          .toVector
-          .map(_.driver)
-          .collect { case driver: RemoteSubagentDriver => driver }
-          .filterNot(driver => except(driver.subagentId))
-          .parUnorderedTraverse(_.reset(force = false, dontContinue = true))
-          .map(_.combineAll))
+    logger.traceIO:
+      stateVar.value
+        .flatMap(state =>
+          state.subagentToEntry.values
+            .toVector
+            .map(_.driver)
+            .collect { case driver: RemoteSubagentDriver => driver }
+            .filterNot(driver => except(driver.subagentId))
+            .parUnorderedTraverse(_.reset(force = false, dontContinue = true))
+            .map(_.combineAll))
 
   def startResetSubagent(subagentId: SubagentId, force: Boolean = false): IO[Checked[Unit]] =
     stateVar.value
@@ -468,8 +467,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
           api,
           journal,
           controllerId,
-          driverConf,
-          directorConf.subagentConf,
+          directorConf.subagentDriverConf,
           directorConf.recouplingStreamReaderConf)
         .evalTap(driver => IO.whenA(processingStarted)(
           driver.startObserving))

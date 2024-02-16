@@ -321,7 +321,7 @@ trait RealEventWatch extends EventWatch:
     predicate: KeyedEvent[E] => Boolean,
     after: EventId,
     timeout: FiniteDuration)
-    (using IORuntime)
+    (using IORuntime, sourcecode.Enclosing, sourcecode.FileName, sourcecode.Line)
   : Vector[Stamped[KeyedEvent[E]]] =
     awaitAsync[E](predicate, after, timeout)
       .await(timeout + 1.s)

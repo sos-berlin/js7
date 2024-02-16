@@ -163,7 +163,7 @@ private final class ClusterWatchSynchronizer(
 
   // forEvent = true: do not check and wait ClusterState after an event has applied.
   // We suppress this to simplify testing.
-  def continueHeartbeating(
+  private def continueHeartbeating(
     clusterState: HasNodes,
     registerClusterWatchId: RegisterClusterWatchId,
     forEvent: Boolean)
@@ -179,7 +179,7 @@ private final class ClusterWatchSynchronizer(
             .*>(h.start.void)
         }))
 
-  def startHeartbeating(
+  private def startHeartbeating(
     clusterState: HasNodes,
     registerClusterWatchId: RegisterClusterWatchId)
   : IO[Completed] =
@@ -190,13 +190,13 @@ private final class ClusterWatchSynchronizer(
         .*>(h.start)
     })
 
-  def stopHeartbeating(implicit enclosing: sourcecode.Enclosing): IO[Unit] =
+  private def stopHeartbeating(implicit enclosing: sourcecode.Enclosing): IO[Unit] =
     IO.defer:
       logger.trace(s"stopHeartbeating called by ${enclosing.value}")
       heartbeat.getAndSet(None)
         .fold(IO.unit)(_.stop)
 
-  def changeClusterState(clusterState: HasNodes): Unit =
+  private def changeClusterState(clusterState: HasNodes): Unit =
     @tailrec def loop(maybeHeartbeat: Option[Heartbeat]): Unit =
       maybeHeartbeat match
         case None =>
@@ -252,10 +252,10 @@ private final class ClusterWatchSynchronizer(
     def stop(implicit enclosing: sourcecode.Enclosing): IO[Unit] =
       logger.traceIO(s"Heartbeat ($nr) stop, called by ${enclosing.value}")(
         stopping
-          .flatMap(_.tryPut(()))
+          .flatMap(_.tryPut(()).logWhenItTakesLonger("### tryPut"))
           .flatMap(_ => heartbeat)
-          .flatMap(_.tryTake)
-          .flatMap(_.fold(IO.unit)(_.joinStd))
+          .flatMap(_.tryTake.logWhenItTakesLonger("### tryTake"))
+          .flatMap(_.fold(IO.unit)(_.joinStd.logWhenItTakesLonger("### joinStd")))
           .logWhenItTakesLonger)
 
     def changeClusterState(clusterState: HasNodes): Unit =
@@ -264,17 +264,15 @@ private final class ClusterWatchSynchronizer(
     private def sendHeartbeats: IO[Unit] =
       Stream
         .awakeEvery[IO](timing.clusterWatchHeartbeat)
-        //Monix .whileBusyBuffer(DropNew(bufferSize = 2))
         // takeUntilEval before doAHeartbeat otherwise a heartbeat sticking in network congestion
         // would continue independently and arrive out of order (bad).
         .takeUntilEval(stopping.flatMap(_.read))
-        .flatMap(_ => Stream.eval(
+        .evalMap: _ =>
           doAHeartbeat
-            .handleErrorWith { t =>
+            .handleErrorWith: t =>
               logger.warn(s"sendHeartbeats: ${t.toStringWithCauses}",
                 if t.isInstanceOf[AskTimeoutException] then null else t.nullIfNoStackTrace)
               IO.raiseError(t)
-            }))
         // Again takeUntilEval to cancel a sticking doAHeartbeat
         .takeUntilEval(stopping.flatMap(_.read))
         .compile.drain

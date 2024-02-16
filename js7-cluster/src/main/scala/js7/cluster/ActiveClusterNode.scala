@@ -58,7 +58,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
   (implicit ioRuntime: IORuntime):
 
   private implicit val askTimeout: Timeout = common.journalActorAskTimeout
-  private val clusterStateLock = AsyncLock("ClusterState")
+  private val clusterStateLock = AsyncLock()
   private val journalActor = journal.journalActor
   private val isFetchingAcks = Atomic(false)
   private val fetchingAcks = SerialFutureCancelable()

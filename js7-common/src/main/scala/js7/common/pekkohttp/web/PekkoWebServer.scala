@@ -51,22 +51,23 @@ extends WebServerBinding.HasLocalUris, Service.StoppableByRequest:
   protected val webServerPorts =
     bindingAndResources.map(_.webServerBinding.toWebServerPort)
 
-  private val portWebServerAllocated =
+  private val portWebServersAllocated =
     AsyncVariable[Vector[Option[Allocated[IO, SinglePortPekkoWebServer]]]](Vector.empty)
 
   protected def start =
     bindingAndResources
       .traverse(_.resource.toAllocated.map(Some(_)))
-      .flatMap(portWebServerAllocated.set)
+      .flatMap(portWebServersAllocated.set)
       .*>(startService(
         untilStopRequested))
 
 
-  @TestOnly def stopSingleWebServers: IO[Unit] =
-    portWebServerAllocated.value
-      .map(_.flatMap(_.map(_.release)))
-      .flatMap(_.sequence)
-      .map(_.combineAll)
+  @TestOnly def stopPortWebServers: IO[Unit] =
+    logger.traceIO:
+      portWebServersAllocated.value
+        .map(_.flatMap(_.map(_.release)))
+        .flatMap(_.sequence)
+        .map(_.combineAll)
 
   def restartWhenHttpsChanges(implicit iox: IOExecutor): Resource[IO,Unit] =
     HttpsDirectoryWatch
@@ -80,7 +81,7 @@ extends WebServerBinding.HasLocalUris, Service.StoppableByRequest:
     logger.debugIO(IO.defer {
       testEventBus.publish(BeforeRestartEvent)
 
-      portWebServerAllocated
+      portWebServersAllocated
         .update(sequence =>
           sequence
             .zip(bindingAndResources)

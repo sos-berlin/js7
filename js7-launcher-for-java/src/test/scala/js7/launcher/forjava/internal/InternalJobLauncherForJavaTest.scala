@@ -1,5 +1,6 @@
 package js7.launcher.forjava.internal
 
+import js7.launcher.StdObserversForTest.testSink
 import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, Resource}
 import java.lang.System.lineSeparator as nl

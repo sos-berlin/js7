@@ -353,7 +353,7 @@ object RunningAgent:
 
     def executeCommand(cmd: AgentCommand, meta: CommandMeta)
     : IO[Checked[AgentCommand.Response]] =
-      logger.debugIO("executeCommand", cmd.getClass.shortClassName)(cmd
+      logger.debugIO(s"executeCommand ${cmd.getClass.shortClassName}")(cmd
         .match {
           case cmd: ShutDown =>
             if cmd.clusterAction.nonEmpty && !clusterNode.isWorkingNode then

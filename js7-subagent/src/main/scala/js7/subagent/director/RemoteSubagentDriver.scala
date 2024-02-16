@@ -32,12 +32,12 @@ import js7.data.item.{InventoryItemKey, ItemRevision, SignableItem}
 import js7.data.job.JobKey
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId, Outcome}
+import js7.data.other.HeartbeatTiming
 import js7.data.subagent.Problems.{ProcessLostDueToResetProblem, ProcessLostDueToRestartProblem, ProcessLostProblem, SubagentIsShuttingDownProblem, SubagentNotDedicatedProblem, SubagentShutDownBeforeProcessStartProblem}
 import js7.data.subagent.SubagentCommand.{AttachSignedItem, CoupleDirector, DedicateSubagent, KillProcess, StartOrderProcess}
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCouplingFailed, SubagentDedicated, SubagentDied, SubagentReset, SubagentRestarted}
 import js7.data.subagent.{SubagentCommand, SubagentDirectorState, SubagentItem, SubagentItemState, SubagentRunId}
 import js7.journal.state.Journal
-import js7.subagent.configuration.SubagentConf
 import js7.subagent.director.RemoteSubagentDriver.*
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.FiniteDuration
@@ -54,7 +54,6 @@ private final class RemoteSubagentDriver private(
   protected val journal: Journal[? <: SubagentDirectorState[?]],
   controllerId: ControllerId,
   protected val conf: RemoteSubagentDriver.Conf,
-  protected val subagentConf: SubagentConf,
   protected val recouplingStreamReaderConf: RecouplingStreamReaderConf)
 extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
 
@@ -112,7 +111,6 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
       // TODO stop RemoteSubagentDriver jobs (and detach Workflows and JobResources!)
     }
 
-
   def reset(force: Boolean, dontContinue: Boolean = false): IO[Unit] =
     logger.debugIO(
       resetLock.lock(IO.defer {
@@ -131,7 +129,7 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
       }))
 
   private def suppressResetShutdown =
-    subagentConf.config.hasPath("js7.tests.RemoteSubagentDriver.suppressResetShutdown")
+    conf.config.hasPath("js7.tests.RemoteSubagentDriver.suppressResetShutdown")
 
   def tryShutdown: IO[Unit] =
     logger.debugIO(IO.defer {
@@ -155,8 +153,8 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
         .executeSubagentCommand(Numbered(0,
           SubagentCommand.ShutDown(processSignal, dontWaitForDirector = dontWaitForDirector,
             restart = true)))
-        .timeoutTo(subagentResetTimeout, IO {
-          logger.error(s"$subagentId did not reponse to Reset command for ${subagentResetTimeout}")
+        .timeoutTo(conf.subagentResetTimeout, IO {
+          logger.error(s"$subagentId did not reponse to Reset command for ${conf.subagentResetTimeout}")
           Checked.unit
         })
         .orThrow
@@ -198,8 +196,7 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
 
   private def couple(subagentRunId: SubagentRunId, eventId: EventId): IO[EventId] =
     logger.traceIO(cancelAndFailWhenStopping {
-      val cmd = CoupleDirector(subagentId, subagentRunId, eventId,
-        SubagentEventListener.heartbeatTiming)
+      val cmd = CoupleDirector(subagentId, subagentRunId, eventId, conf.heartbeatTiming)
       api.login(onlyIfNotLoggedIn = true)
         .*>(api.executeSubagentCommand(Numbered(0, cmd)).orThrow)
         .as(subagentRunId -> eventId)
@@ -598,33 +595,40 @@ extends SubagentDriver, Service.StoppableByRequest, SubagentEventListener:
 object RemoteSubagentDriver:
   private val reconnectErrorDelay = 5.s/*TODO*/
   private val tryPostErrorDelay = 5.s/*TODO*/
-  val subagentResetTimeout = 2.s/*TODO*/
 
   private[director] def resource[S <: SubagentDirectorState[S]](
     subagentItem: SubagentItem,
     api: HttpSubagentApi,
     journal: Journal[S],
     controllerId: ControllerId,
-    conf: Conf,
-    subagentConf: SubagentConf,
+    conf: RemoteSubagentDriver.Conf,
     recouplingStreamReaderConf: RecouplingStreamReaderConf)
   : Resource[IO, RemoteSubagentDriver] =
     Service.resource(IO {
       new RemoteSubagentDriver(
-        subagentItem, api, journal, controllerId,
-        conf, subagentConf, recouplingStreamReaderConf)
+        subagentItem, api, journal, controllerId, conf, recouplingStreamReaderConf)
     })
 
   final case class Conf(
     eventBufferDelay: FiniteDuration,
     eventBufferSize: Int,
-    commitDelay: FiniteDuration)
+    commitDelay: FiniteDuration,
+    heartbeatTiming: HeartbeatTiming,
+    subagentResetTimeout: FiniteDuration,
+    config: Config)
   object Conf:
     def fromConfig(config: Config, commitDelay: FiniteDuration) =
       new Conf(
         eventBufferDelay = config.finiteDuration("js7.subagent-driver.event-buffer-delay").orThrow,
         eventBufferSize = config.getInt("js7.subagent-driver.event-buffer-size"),
-        commitDelay = commitDelay)
+        commitDelay = commitDelay,
+        HeartbeatTiming(
+          heartbeat =
+            config.finiteDuration("js7.subagent-driver.heartbeat").orThrow
+              .min(config.finiteDuration("js7.web.client.keep-alive").orThrow),
+          heartbeatTimeout = config.finiteDuration("js7.subagent-driver.heartbeat-timeout").orThrow),
+        subagentResetTimeout = config.finiteDuration("js7.subagent-driver.reset-timeout").orThrow,
+        config)
 
   //final case class SubagentDriverStoppedProblem(subagentId: SubagentId) extends Problem.Coded {
   //  def arguments = Map("subagentId" -> subagentId.string)

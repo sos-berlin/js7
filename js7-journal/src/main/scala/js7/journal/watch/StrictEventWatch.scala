@@ -57,7 +57,7 @@ final class StrictEventWatch(val underlying: FileEventWatch):
     predicate: KeyedEvent[E] => Boolean = Every,
     after: EventId = _lastWatchedEventId,
     timeout: FiniteDuration = 99.s)
-    (using ioRuntime: IORuntime, E: Tag[E])
+    (using IORuntime, Tag[E], sourcecode.Enclosing, sourcecode.FileName, sourcecode.Line)
   : Vector[Stamped[KeyedEvent[E]]] = {
     val r = await(predicate, after, timeout)
     _lastWatchedEventId = r.last.eventId
@@ -70,7 +70,8 @@ final class StrictEventWatch(val underlying: FileEventWatch):
     predicate: KeyedEvent[E] => Boolean = Every,
     after: EventId = tornEventId,
     timeout: FiniteDuration = 99.s)
-    (using ioRuntime: IORuntime, E: Tag[E])
+    (using IORuntime, Tag[E],
+      sourcecode.Enclosing, sourcecode.FileName, sourcecode.Line)
   : Vector[Stamped[KeyedEvent[E]]] =
     underlying.await(predicate, after, timeout)
 
@@ -108,13 +109,14 @@ final class StrictEventWatch(val underlying: FileEventWatch):
 
   /** TEST ONLY - Blocking. */
   @TestOnly
-  def expect[E <: Event : ClassTag, A](
+  def expect[E <: Event](
     predicate: KeyedEvent[E] => Boolean = Every,
     timeout: FiniteDuration = 99.s)
-    (using ioRuntime: IORuntime, E: Tag[E])
+    (using IORuntime, ClassTag[E], Tag[E],
+      sourcecode.Enclosing, sourcecode.FileName, sourcecode.Line)
   : Expect[E] =
-    val eventId = this._lastWatchedEventId
-    new Expect(await(predicate, after = eventId, timeout))
+    val eventId = lastAddedEventId
+    Expect(await(predicate, after = eventId, timeout))
 
   final class Expect[E <: Event : ClassTag] private[StrictEventWatch](await: => Any):
     def apply[A](body: => A): A =
