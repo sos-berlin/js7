@@ -15,9 +15,14 @@ agentOptions=()
 javaOptions=(-XX:+UseStringDeduplication)
 log4Async=false
 terminateCommand='{ "TYPE": "ShutDown" }'
+execOptions=()
 
-for arg in "$@"; do
+for arg in "$@"; do :
   case "$arg" in
+    --arg0=*)
+      a="${arg#*=}"
+      execOptions=("-a" "${arg#*=}")
+      ;;
     --rmx-port=*)
       a="${arg#*=}"
       javaOptions+=(
@@ -142,7 +147,7 @@ while true; do
     "${agentOptions[@]}")
 
   log "${execute[@]}"
-  "${execute[@]}" &
+  exec "${execOptions[@]}" "${execute[@]}" &
 
   pid=$!
   log "PID $pid"

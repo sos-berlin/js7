@@ -14,4 +14,4 @@ docker run \
   --network=js7_default \
   --rm --name=TestAddOrders \
   js7 \
-  testAddOrders "$@"
+  testAddOrders "--arg0=docker:TestAddOrders" "$@"
