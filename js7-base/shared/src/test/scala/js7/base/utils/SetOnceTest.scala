@@ -8,6 +8,7 @@ import js7.base.utils.SetOnceTest.*
  * @author Joacim Zschimmer
  */
 final class SetOnceTest extends OurTestSuite:
+
   "SetOnce" in:
     val a = SetOnce[Int]
     assert(a.isEmpty)
@@ -42,6 +43,18 @@ final class SetOnceTest extends OurTestSuite:
     assert(a.checked == Left(Problem.pure("SetOnce[Int] promise has not been kept so far")))
     a := 7
     assert(a.checked == Right(7))
+
+  "toOption" in:
+    val a = SetOnce[Int]
+    assert(a.toOption == None)
+    a := 7
+    assert(a.toOption == Some(7))
+
+  "fold" in:
+    val a = SetOnce[Int]
+    assert(a.fold(0)(_ * 3) == 0)
+    a := 7
+    assert(a.fold(0)(_ * 3) == 21)
 
   "toString" in:
     val a = SetOnce[Int]

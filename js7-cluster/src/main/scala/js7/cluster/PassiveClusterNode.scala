@@ -80,7 +80,6 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
 
   private given ExecutionContext = ioRuntime.compute
 
-  private val jsonReadAhead = config.getInt("js7.web.client.json-prefetch")
   private val shutdown = Deferred.unsafe[IO, Unit]
 
   assertThat(activeId != ownId && setting.passiveId == ownId)
@@ -315,7 +314,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
         case None => FileChannel.open(file, APPEND)
         case Some(tmp) => FileChannel.open(tmp, CREATE, WRITE, TRUNCATE_EXISTING)
       var isReplicatingHeadOfFile = maybeTmpFile.isDefined
-      val startedAt = SyncDeadline.fromIORuntime
+      val startedAt = SyncDeadline.now()
       val replicatedFirstEventPosition = SetOnce.fromOption(continuation.firstEventPosition, "replicatedFirstEventPosition")
       var replicatedFileLength = continuation.fileLength
       var lastProperEventPosition = continuation.lastProperEventPosition

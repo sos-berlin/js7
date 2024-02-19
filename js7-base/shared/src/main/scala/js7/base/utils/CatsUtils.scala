@@ -31,8 +31,7 @@ object CatsUtils:
   val DefaultWorryDurations: Seq[FiniteDuration] =
     Seq(3.s, 7.s) ++ Seq.fill(((1.h - 10.s) / 10.s).toInt)(10.s) :+ 60.s
 
-  val InfoWorryDuration: FiniteDuration =
-    DefaultWorryDurations.last
+  val InfoWorryDuration: FiniteDuration = 30.s
 
   def combine[A: Monoid](as: A*): A =
     as.combineAll
@@ -222,9 +221,12 @@ object CatsUtils:
       val last = seq.last
       seq ++: LazyList.continually(last)
 
+  def pureFiberIO[A](a: A): FiberIO[A] =
+    PureFiberIO(a)
+
 
   /** Fiber immediately returns the given value, not cancelable. */
-  final case class PureFiber[F[_], E, A](a: A)(using F: Applicative[F])
+  final class PureFiber[F[_], E, A](a: A)(using F: Applicative[F])
     extends Fiber[F, E, A]:
 
     def cancel: F[Unit] =
@@ -233,7 +235,25 @@ object CatsUtils:
     def join: F[Outcome[F, E, A]] =
       F.pure(Outcome.Succeeded(F.pure(a)))
 
+
   type PureFiberIO[A] = PureFiber[IO, Throwable, A]
   object PureFiberIO:
+    val unit: FiberIO[Unit] = PureFiberIO(())
+
     def apply[A](a: A): FiberIO[A] =
       PureFiber(a)
+
+
+  private val canceledFiberIO_ : FiberIO[Unit] = new CanceledFiber[IO, Throwable, Unit]
+
+  def canceledFiberIO[A]: FiberIO[A] =
+    canceledFiberIO_.asInstanceOf[FiberIO[A]]
+
+  final class CanceledFiber[F[_], E, A](using F: Applicative[F])
+    extends Fiber[F, E, A]:
+
+    def cancel: F[Unit] =
+      F.unit
+
+    def join: F[Outcome[F, E, A]] =
+      F.pure(Outcome.Canceled())

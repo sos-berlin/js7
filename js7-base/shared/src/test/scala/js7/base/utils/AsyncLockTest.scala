@@ -4,7 +4,7 @@ import cats.effect.{Deferred, IO}
 import cats.syntax.flatMap.*
 import cats.syntax.parallel.*
 import fs2.Stream
-import js7.base.monixlike.MonixLikeExtensions.{onErrorRestartLoop}
+import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
 import js7.base.catsutils.CatsEffectExtensions.{left, right}
 import js7.base.log.Logger
 import js7.base.test.OurAsyncTestSuite
@@ -33,14 +33,18 @@ final class AsyncLockTest extends OurAsyncTestSuite:
 
   private def addTests(n: Int, suppressLog: Boolean): Unit = {
     "AsyncLock, concurrent" in {
+      var retryCount = 0
       val lock = AsyncLock("TEST", logWorryDurations = Nil, suppressLog = suppressLog)
       doTest(lock.lock(_))
         .map(o => assert(o == Vector.fill(n)(initial)))
         // High probability to fail once
         .onErrorRestartLoop(100_000) {
           case (t, 0, _) => IO.raiseError(t)
-          case (_, i, retry) => IO.sleep(1.ms) *> retry(i - 1)
+          case (_, i, retry) =>
+            retryCount += 1
+            IO.sleep(1.ms) *> retry(i - 1)
         }
+        .<*(IO(logger.info(s"$retryCount retries")))
     }
 
     "No AsyncLock, concurrent" in {

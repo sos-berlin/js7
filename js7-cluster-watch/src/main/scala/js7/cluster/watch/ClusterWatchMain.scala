@@ -12,7 +12,13 @@ object ClusterWatchMain extends OurApp:
   def run(args: List[String]) =
     run2(args)(_.untilTerminated)
 
-  def run2(args: List[String])(use: ClusterWatchService => IO[ProgramTermination]): IO[ExitCode] =
-    ServiceMain.runAsMain(args, "JS7 ClusterWatch", ClusterWatchConf.fromCommandLine)(
-      conf => ClusterWatchService.completeResource(conf),
-      use = (_, service: ClusterWatchService) => use(service))
+  def run2(args: List[String], suppressShutdownLogging: Boolean = false)
+    (use: ClusterWatchService => IO[ProgramTermination])
+  : IO[ExitCode] =
+    ServiceMain
+      .runAsMain(
+        args, "JS7 ClusterWatch",
+        ClusterWatchConf.fromCommandLine,
+        suppressShutdownLogging = suppressShutdownLogging
+      )(conf => ClusterWatchService.completeResource(conf),
+        use = (_, service: ClusterWatchService) => use(service))

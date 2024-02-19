@@ -1,8 +1,8 @@
 /*
- * ————————————————————————————————————————————————————————
- *  This is a manipulated copy of cats-effect TestControl.
+ * ——————————————————————————————————————————————————————————————————————————
+ *  This is a manipulated copy of cats-effect TestControl to be used in JS7.
  *  It gives access to the Scheduler.
- * ————————————————————————————————————————————————————————
+ * ——————————————————————————————————————————————————————————————————————————
  *
  * Copyright 2020-2023 Typelevel
  *
@@ -20,18 +20,13 @@
  */
 package js7.base.test
 
-import cats.effect.IO
-import cats.effect.Outcome
+import cats.effect.{IO, Outcome}
+import cats.effect.testkit.TestControl.NonTerminationException
 import cats.effect.testkit.{TestContext, TestControl}
-import TestControl.NonTerminationException
 import cats.effect.unsafe.{IORuntime, IORuntimeConfig, Scheduler}
 import cats.{Id, ~>}
 import java.util.concurrent.atomic.AtomicReference
 import js7.base.catsutils.OurIORuntimeRegister
-import js7.base.log.Logger
-import js7.base.test.OurTestControl.*
-import js7.base.utils.ScalaUtils.*
-import js7.base.utils.ScalaUtils.syntax.*
 import scala.concurrent.CancellationException
 import scala.concurrent.duration.{Duration, FiniteDuration}
 
@@ -126,9 +121,9 @@ import scala.concurrent.duration.{Duration, FiniteDuration}
  * runtime will detect this situation as an asynchronous deadlock.
  *
  * @see
- * [[cats.effect.kernel.Clock]]
+ *   [[cats.effect.kernel.Clock]]
  * @see
- * [[tickAll]]
+ *   [[tickAll]]
  */
 final class OurTestControl[A] private(
   ctx: TestContext,
@@ -179,11 +174,11 @@ final class OurTestControl[A] private(
    * In most cases, [[tickFor]] will provide a more intuitive execution semantic.
    *
    * @see
-   * [[advance]]
+   *   [[advance]]
    * @see
-   * [[tick]]
+   *   [[tick]]
    * @see
-   * [[tickFor]]
+   *   [[tickFor]]
    */
   def advanceAndTick(time: FiniteDuration): IO[Unit] =
     IO(ctx.advanceAndTick(time))
@@ -201,9 +196,9 @@ final class OurTestControl[A] private(
    * time.
    *
    * @see
-   * [[advance]]
+   *   [[advance]]
    * @see
-   * [[tickAll]]
+   *   [[tickAll]]
    */
   val tick: IO[Unit] =
     IO(ctx.tick())
@@ -220,7 +215,7 @@ final class OurTestControl[A] private(
    * NIO) will be considered deadlocked for the purposes of this runtime.
    *
    * @see
-   * [[tick]]
+   *   [[tick]]
    */
   val tickAll: IO[Unit] =
     IO(ctx.tickAll())
@@ -256,9 +251,9 @@ final class OurTestControl[A] private(
    * only ticks as much as necessary each time.
    *
    * @see
-   * [[tick]]
+   *   [[tick]]
    * @see
-   * [[advance]]
+   *   [[advance]]
    */
   def tickFor(time: FiniteDuration): IO[Unit] =
     tick *> nextInterval flatMap { next =>
@@ -296,29 +291,78 @@ final class OurTestControl[A] private(
 
 object OurTestControl:
 
-  def executeEmbed[A](
-    program: IO[A],
-    config: IORuntimeConfig = IORuntimeConfig(),
-    seed: Option[String] = None)
-  : IO[A] =
-    IO.defer:
-      val ctx = OurTestControl.newTestContext(seed = seed)
-      val ioRuntime = OurTestControl.newIORuntime(ctx, OurTestControl.newScheduler(ctx), config)
-      executeEmbed_(ctx, ioRuntime)(program)
-
-  def executeEmbed_[A](ctx: TestContext, runtime: IORuntime)(program: IO[A]): IO[A] =
-    execute_(ctx, runtime)(program) flatMap { c =>
-      val nt = new(Id ~> IO) {
-        def apply[E](e: E) = IO.pure(e)
-      }
-
-      val onCancel = IO.defer(IO.raiseError(new CancellationException()))
-      val onNever = IO.raiseError(new NonTerminationException())
-      val embedded = c.results.flatMap(_.map(_.mapK(nt).embed(onCancel)).getOrElse(onNever))
-
-      c.tickAll *> embedded
-    }
-
+  /**
+   * Executes a given [[IO]] under fully mocked runtime control. Produces a `TestControl` which
+   * can be used to manipulate the mocked runtime and retrieve the results. Note that the outer
+   * `IO` (and the `IO`s produced by the `TestControl`) do ''not'' evaluate under mocked runtime
+   * control and must be evaluated by some external harness, usually some test framework
+   * integration.
+   *
+   * A simple example (returns an `IO` which must, itself, be run) using MUnit assertion syntax:
+   *
+   * {{{
+   *   val program = for {
+   *     first <- IO.realTime   // IO.monotonic also works
+   *     _ <- IO.println("it is currently " + first)
+   *
+   *     _ <- IO.sleep(100.milis)
+   *     second <- IO.realTime
+   *     _ <- IO.println("we slept and now it is " + second)
+   *
+   *     _ <- IO.sleep(1.hour).timeout(1.minute)
+   *     third <- IO.realTime
+   *     _ <- IO.println("we slept a second time and now it is " + third)
+   *   } yield ()
+   *
+   *   TestControl.execute(program) flatMap { control =>
+   *     for {
+   *       first <- control.results
+   *       _ <- IO(assert(first == None))   // we haven't finished yet
+   *
+   *       _ <- control.tick
+   *       // at this point, the "it is currently ..." line will have printed
+   *
+   *       next1 <- control.nextInterval
+   *       _ <- IO(assert(next1 == 100.millis))
+   *
+   *       _ <- control.advance(100.millis)
+   *       // nothing has happened yet!
+   *       _ <- control.tick
+   *       // now the "we slept and now it is ..." line will have printed
+   *
+   *       second <- control.results
+   *       _ <- IO(assert(second == None))  // we're still not done yet
+   *
+   *       next2 <- control.nextInterval
+   *       _ <- IO(assert(next2 == 1.minute))   // we need to wait one minute for our next task, since we will hit the timeout
+   *
+   *       _ <- control.advance(15.seconds)
+   *       _ <- control.tick
+   *       // nothing happens!
+   *
+   *       next3 <- control.nextInterval
+   *       _ <- IO(assert(next3 == 45.seconds))   // haven't gone far enough to hit the timeout
+   *
+   *       _ <- control.advanceAndTick(45.seconds)
+   *       // at this point, nothing will print because we hit the timeout exception!
+   *
+   *       third <- control.results
+   *
+   *       _ <- IO {
+   *         assert(third.isDefined)
+   *         assert(third.get.isError)   // an exception, not a value!
+   *         assert(third.get.fold(false, _.isInstanceOf[TimeoutException], _ => false))
+   *       }
+   *     } yield ()
+   *   }
+   * }}}
+   *
+   * The above will run to completion within milliseconds.
+   *
+   * If your assertions are entirely intrinsic (within the program) and the test is such that
+   * time should advance in an automatic fashion, [[executeEmbed]] may be a more convenient
+   * option.
+   */
   def execute[A](
     program: IO[A],
     config: IORuntimeConfig = IORuntimeConfig(),
@@ -338,18 +382,6 @@ object OurTestControl:
       OurIORuntimeRegister.add(ctx, ioRuntime) // Will never be removed
       new OurTestControl(ctx, results)
     }
-
-  def newIORuntime(
-    ctx: TestContext,
-    scheduler: Scheduler,
-    config: IORuntimeConfig = IORuntimeConfig())
-  : IORuntime =
-    IORuntime(
-      ctx,
-      ctx.deriveBlocking(),
-      scheduler,
-      () => (),
-      config)
 
   def newTestContext(seed: Option[String] = None): TestContext =
     seed match {
@@ -372,4 +404,58 @@ object OurTestControl:
 
       def monotonicNanos() =
         ctx.now().toNanos
+    }
+
+  def newIORuntime(
+    ctx: TestContext,
+    scheduler: Scheduler,
+    config: IORuntimeConfig = IORuntimeConfig())
+  : IORuntime =
+    IORuntime(
+      ctx,
+      ctx.deriveBlocking(),
+      scheduler,
+      () => (),
+      config)
+
+  /**
+   * Executes an [[IO]] under fully mocked runtime control, returning the final results. This is
+   * very similar to calling `unsafeRunSync` on the program and wrapping it in an `IO`, except
+   * that the scheduler will use a mocked and quantized notion of time, all while executing on a
+   * singleton worker thread. This can cause some programs to deadlock which would otherwise
+   * complete normally, but it also allows programs which involve [[IO.sleep(delay*]] s of any
+   * length to complete almost instantly with correct semantics.
+   *
+   * Note that any program which involves an [[IO.async]] that waits for some external thread
+   * (including [[IO.evalOn]]) will be detected as a deadlock and will result in the
+   * `executeEmbed` effect immediately producing a [[NonTerminationException]].
+   *
+   * @return
+   *   An `IO` which runs the given program under a mocked runtime, producing the result or an
+   *   error if the program runs to completion. If the program is canceled, a
+   *   [[scala.concurrent.CancellationException]] will be raised within the `IO`. If the program
+   *   fails to terminate with either a result or an error, a [[NonTerminationException]] will
+   *   be raised.
+   */
+  def executeEmbed[A](
+    program: (IORuntime, Scheduler) ?=> IO[A],
+    config: IORuntimeConfig = IORuntimeConfig(),
+    seed: Option[String] = None)
+  : IO[A] =
+    IO.defer:
+      val ctx = OurTestControl.newTestContext(seed = seed)
+      val ioRuntime = OurTestControl.newIORuntime(ctx, OurTestControl.newScheduler(ctx), config)
+      executeEmbed_(ctx, ioRuntime)(program(using ioRuntime, ioRuntime.scheduler))
+
+  def executeEmbed_[A](ctx: TestContext, runtime: IORuntime)(program: IO[A]): IO[A] =
+    execute_(ctx, runtime)(program) flatMap { c =>
+      val nt = new(Id ~> IO) {
+        def apply[E](e: E) = IO.pure(e)
+      }
+
+      val onCancel = IO.defer(IO.raiseError(new CancellationException()))
+      val onNever = IO.raiseError(new NonTerminationException())
+      val embedded = c.results.flatMap(_.map(_.mapK(nt).embed(onCancel)).getOrElse(onNever))
+
+      c.tickAll *> embedded
     }

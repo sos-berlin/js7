@@ -55,7 +55,8 @@ extends ClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
   : IO[Stream[IO, EventId]] =
     httpClient.getDecodedLinesStream[EventId](
       uris.eventIds(timeout, heartbeat = heartbeat),
-      responsive = true)
+      responsive = true,
+      jsonReadAhead = 0)
 
   /** Stream for a journal file.
     * @param journalPosition start of observation

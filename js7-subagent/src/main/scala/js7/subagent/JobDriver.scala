@@ -26,7 +26,6 @@ import js7.data.value.expression.scopes.FileValueState
 import js7.launcher.internal.JobLauncher
 import js7.launcher.{OrderProcess, ProcessOrder, StdObservers}
 import js7.subagent.JobDriver.*
-import scala.concurrent.Promise
 
 private final class JobDriver(
   jobConf: JobConf,
@@ -125,7 +124,7 @@ private final class JobDriver(
             val awaitTermination =
               //processOrder.stdObservers.closeChannels *>
                 IO.defer:
-                  entry.runningSince = SyncDeadline.fromScheduler
+                  entry.runningSince = SyncDeadline.now()
                   scheduleTimeout(entry)
                   runningProcess.joinStd
                     .map(entry.modifyOutcome)

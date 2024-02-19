@@ -16,7 +16,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.http.JsonStreamingSupport.*
-import js7.common.pekkohttp.PekkoHttpServerUtils.{accept, completeWithCheckedStream, encodeParallel}
+import js7.common.pekkohttp.PekkoHttpServerUtils.{LF, accept, completeWithCheckedStream, encodeParallel}
 import js7.common.pekkohttp.StandardDirectives.ioRoute
 import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkohttp.web.session.RouteProvider
@@ -46,8 +46,6 @@ trait GenericEventRoute extends RouteProvider:
 
   private given IORuntime = ioRuntime
   private given ExecutionContext = ioRuntime.compute
-
-  private lazy val jsonPrefetch = config.getInt("js7.web.server.json-prefetch")
 
   private lazy val defaultJsonSeqChunkTimeout =
     config.getDuration("js7.web.server.services.event.streaming.chunk-timeout").toFiniteDuration
@@ -113,13 +111,12 @@ trait GenericEventRoute extends RouteProvider:
     private def eventIdRoute(maybeHeartbeat: Option[FiniteDuration], eventWatch: EventWatch)
     : Route =
       parameter("timeout" ? defaultJsonSeqChunkTimeout) { timeout =>
-        //implicit val x: ToEntityMarshaller[EventId] = jsonSeqMarshaller
         completeWithCheckedStream(`application/x-ndjson`):
           eventWatch
             .streamEventIds(Some(timeout))
             .map(_.map(_
               .pipe(o => maybeHeartbeat.fold(o)(o.echoRepeated))
-              .map((eventId: EventId) => ByteString(eventId.toString))))
+              .map((eventId: EventId) => ByteString(eventId.toString) ++ LF)))
       }
 
     private def eventRoute(
@@ -138,7 +135,7 @@ trait GenericEventRoute extends RouteProvider:
               eventStream(request, isRelevantEvent, eventWatch)
                 .prependOne(StampedHeartbeat)
                 .keepAlive(heartbeat, StampedHeartbeatIO)
-                .through(encodeParallel(chunkSize))
+                .through(encodeParallel(chunkSize = chunkSize, prefetch = prefetch))
                 .interruptWhen(shutdownSignaled)
 
     private def awaitFirstEventStream(request: EventRequest[Event], eventWatch: EventWatch)
@@ -166,7 +163,7 @@ trait GenericEventRoute extends RouteProvider:
             Right:
               Stream.emit(head)
                 .append(eventStream(tailRequest, isRelevantEvent, eventWatch))
-                .through(encodeParallel(chunkSize))
+                .through(encodeParallel(chunkSize = chunkSize, prefetch = prefetch))
                 .interruptWhen(shutdownSignaled)
 
     private def heartbeatingStream(

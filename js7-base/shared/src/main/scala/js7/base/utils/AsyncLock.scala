@@ -1,5 +1,6 @@
 package js7.base.utils
 
+import cats.effect.kernel.Resource.ExitCase
 import cats.effect.{IO, Resource, kernel}
 import cats.syntax.flatMap.*
 import java.lang.System.nanoTime
@@ -93,20 +94,20 @@ final class AsyncLock private(
       )
     })
 
-  private def release(locked: Locked, exitCase: Resource.ExitCase): IO[Unit] =
+  private def release(locked: Locked, exitCase: ExitCase): IO[Unit] =
     IO.defer:
       logRelease(locked, exitCase)
       lockM.flatMap(_.take).void
 
-  private def logRelease(locked: Locked, exitCase: Resource.ExitCase): Unit =
+  private def logRelease(locked: Locked, exitCase: ExitCase): Unit =
     if logMinor then exitCase match
-      case Resource.ExitCase.Succeeded =>
+      case ExitCase.Succeeded =>
         log.trace(s"↙ ⚪️${locked.nr} $name released by ${locked.acquirer} ↙")
 
-      case Resource.ExitCase.Canceled =>
+      case ExitCase.Canceled =>
         log.trace(s"↙ ⚫${locked.nr} $name released by ${locked.acquirer} · Canceled ↙")
 
-      case Resource.ExitCase.Errored(t) =>
+      case ExitCase.Errored(t) =>
         log.trace(s"↙ 💥${locked.nr} $name released by ${locked.acquirer} · ${t.toStringWithCauses} ↙")
 
   override def toString = s"AsyncLock:$name"

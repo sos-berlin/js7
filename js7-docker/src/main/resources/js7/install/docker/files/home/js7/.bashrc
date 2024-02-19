@@ -4,4 +4,4 @@ fi
 
 cd
 export PATH="$HOME/bin:/opt/js7/bin:$JAVA_HOME/bin:$PATH"
-export LESS="-RS"
+export LESS="-RSc"

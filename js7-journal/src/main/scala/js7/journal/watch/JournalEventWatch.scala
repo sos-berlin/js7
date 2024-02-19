@@ -8,7 +8,7 @@ import fs2.Stream
 import java.io.IOException
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.{delete, exists, size}
-import java.nio.file.Path
+import java.nio.file.{Files, Path}
 import js7.base.catsutils.CatsEffectExtensions.left
 import js7.base.circeutils.CirceUtils.RichCirceString
 import js7.base.configutils.Configs.*
@@ -23,7 +23,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AutoClosing.autoClosing
-import js7.base.utils.ByteUnits.toKBGB
+import js7.base.utils.ByteUnits.{toKBGB, toKiBGiB}
 import js7.base.utils.Collections.implicits.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Atomic, CloseableIterator, SetOnce}
@@ -409,7 +409,9 @@ extends AutoCloseable,
       val reader = _eventReader.get()
       reader != null && !reader.isInUse
 
-    override def toString = "HistoricJournalFile:" + file.getFileName
+    override def toString =
+      val fileSize = Try(" " + toKiBGiB(size(file))) getOrElse ""
+      s"HistoricJournalFile:${file.getFileName}$fileSize"
 
   private def checkedCurrentEventReader: Checked[CurrentEventReader] =
     maybeCurrentEventReader.toChecked(JournalFileIsNotReadyProblem(journalLocation.fileBase))

@@ -45,12 +45,13 @@ import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.*
 
 @javaApi
-final class JControllerApi(val asScala: ControllerApi, config: Config)
+final class JControllerApi(val asScala: ControllerApi, val config: Config)
   (using ioRuntime: IORuntime):
 
   private given ExecutionContext = ioRuntime.compute
 
   private val clusterWatchService = AsyncVariable[Option[Allocated[IO, ClusterWatchService]]](None)
+  protected val prefetch = config.getInt("js7.web.client.prefetch")
 
   def stop: CompletableFuture[Void] =
     runIO(
@@ -161,7 +162,7 @@ final class JControllerApi(val asScala: ControllerApi, config: Config)
   def updateItems(@Nonnull operations: Flux[JUpdateItemOperation])
   : CompletableFuture[VEither[Problem, Void]] =
     runIO(asScala
-      .updateItems(operations.asFs2Stream.map(_.asScala))
+      .updateItems(operations.asFs2Stream(bufferSize = prefetch).map(_.asScala))
       .map(_.toVoidVavr))
 
   /** @return true iff added, false iff not added because of duplicate OrderId. */
@@ -185,7 +186,7 @@ final class JControllerApi(val asScala: ControllerApi, config: Config)
   def addOrders(@Nonnull orders: Flux[JFreshOrder])
   : CompletableFuture[VEither[Problem, AddOrdersResponse]] =
     runIO(asScala
-      .addOrders(orders.asFs2Stream.map(_.asScala))
+      .addOrders(orders.asFs2Stream(bufferSize = prefetch).map(_.asScala))
       .map(_.toVavr))
 
   @Nonnull
@@ -237,7 +238,7 @@ final class JControllerApi(val asScala: ControllerApi, config: Config)
   def deleteOrdersWhenTerminated(@Nonnull orderIds: Flux[OrderId])
   : CompletableFuture[VEither[Problem, Void]] =
     runIO(asScala
-      .deleteOrdersWhenTerminated(orderIds.asFs2Stream)
+      .deleteOrdersWhenTerminated(orderIds.asFs2Stream(bufferSize = prefetch))
       .map(_.toVoidVavr))
 
   @Nonnull

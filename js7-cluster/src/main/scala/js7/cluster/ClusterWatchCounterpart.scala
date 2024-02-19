@@ -4,15 +4,15 @@ import cats.effect.kernel.Deferred
 import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, Outcome, Resource}
 import js7.base.catsutils.CatsEffectExtensions.*
-import js7.base.catsutils.SyncDeadline
+import js7.base.catsutils.{CatsDeadline, SyncDeadline}
 import js7.base.eventbus.EventPublisher
 import js7.base.fs2utils.Fs2PubSub
 import js7.base.log.Logger.syntax.*
-import js7.base.log.{BlockingSymbol, CorrelId, Logger}
+import js7.base.log.{BlockingSymbol, CorrelId, LogLevel, Logger}
 import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
 import js7.base.problem.Checked
 import js7.base.service.Service
-import js7.base.time.ScalaTime.RichDuration
+import js7.base.time.ScalaTime.{RichDeadline, RichDuration}
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isTest
@@ -26,6 +26,7 @@ import js7.data.cluster.ClusterWatchRequest.RequestId
 import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
 import js7.data.cluster.{ClusterEvent, ClusterTiming, ClusterWatchCheckEvent, ClusterWatchCheckState, ClusterWatchId, ClusterWatchRequest}
 import scala.annotation.tailrec
+import scala.concurrent.duration.Deadline
 import scala.util.Random
 
 final class ClusterWatchCounterpart private(
@@ -61,13 +62,19 @@ extends Service.StoppableByRequest:
       && !clusterState.isInstanceOf[FailedOver] then
       IO.right(None)
     else
-      initializeCurrentClusterWatchId(clusterState) *>
-        CorrelId.use(correlId =>
-          check(
-            clusterState.setting.clusterWatchId,
-            ClusterWatchCheckState(_, correlId, ownId, clusterState),
-            clusterWatchIdChangeAllowed = clusterWatchIdChangeAllowed
-          ).map(_.map(Some(_))))
+      val since = Deadline.now
+      initializeCurrentClusterWatchId(clusterState)
+        .flatMap: _ =>
+          CorrelId.use(correlId =>
+            check(
+              clusterState.setting.clusterWatchId,
+              ClusterWatchCheckState(_, correlId, ownId, clusterState),
+              clusterWatchIdChangeAllowed = clusterWatchIdChangeAllowed
+            ).map(_.map(Some(_))))
+        .guaranteeCase:
+          case Outcome.Succeeded(_) => IO.unit
+          case outcome => IO:
+            logger.logOutcome(LogLevel.Debug, "checkClusterState", since.elapsed, outcome)
 
   private def initializeCurrentClusterWatchId(clusterState: HasNodes): IO[Unit] =
     SyncDeadline.usingNow: now ?=>
@@ -158,7 +165,7 @@ extends Service.StoppableByRequest:
             logger.warn(
               s"💥 ${request.toShortString} => ${t.toStringWithCauses} · after ${since.elapsed.pretty}")
 
-          case Outcome.Canceled() if sym.warnLogged => SyncDeadline.usingNow: 
+          case Outcome.Canceled() if sym.warnLogged => SyncDeadline.usingNow:
             logger.info(
               s"⚫ ${request.toShortString} => Canceled after ${since.elapsed.pretty}")
 
@@ -192,7 +199,7 @@ extends Service.StoppableByRequest:
             requested.confirm(confirmation)
       }
       .flatMapT { _ =>
-        SyncDeadline.usingNow: 
+        SyncDeadline.usingNow:
           for o <- currentClusterWatchId do o.touch(confirm.clusterWatchId)
           Checked.unit
       }
@@ -254,8 +261,8 @@ extends Service.StoppableByRequest:
               Right(requested)
 
   def onClusterWatchRegistered(clusterWatchId: ClusterWatchId): IO[Unit] =
-    IO:
-      currentClusterWatchId = Some(CurrentClusterWatchId(clusterWatchId, summon[SyncDeadline.Now]))
+    SyncDeadline.usingNow: now ?=>
+      currentClusterWatchId = Some(CurrentClusterWatchId(clusterWatchId, now))
 
   def newStream: IO[fs2.Stream[IO, ClusterWatchRequest]] =
     pubsub.newStream // TODO Delete all but the last request at a time. At push-side?

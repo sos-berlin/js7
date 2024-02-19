@@ -46,7 +46,7 @@ final class StreamingSupportTest extends OurAsyncTestSuite:
                 .map: i =>
                   last = i
                   i
-                .asFs2Stream))
+                .asFs2Stream()))
             list <- stream.take(3).compile.toList
           yield
             assert(list == List(1, 2, 3) && last == 3)

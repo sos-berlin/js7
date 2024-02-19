@@ -1,7 +1,6 @@
 package js7.base.time
 
-import cats.effect.{IO, IOLocal}
-import cats.effect.testkit.TestControl
+import cats.effect.IO
 import js7.base.catsutils.OurIORuntime
 import js7.base.test.{OurAsyncTestSuite, OurTestControl}
 import js7.base.time.ScalaTime.*
@@ -190,9 +189,6 @@ final class AlarmClockTest extends OurAsyncTestSuite:
         assert(clock.toString == s"ClockCheckingTestAlarmClock(${clock.now()}, no alarm)")
 
   private def testWithAlarmClock(body: TestAlarmClock => IO[Assertion]): IO[Assertion] =
-    //val ctx = OurTestControl.newTestContext(seed = seed)
-    //val scheduler = OurTestControl.newScheduler(ctx)
-    //val ioRuntime = OurTestControl.newIORuntime(ctx, scheduler, config)
     OurTestControl.executeEmbed:
       for
         ec <- IO.executionContext

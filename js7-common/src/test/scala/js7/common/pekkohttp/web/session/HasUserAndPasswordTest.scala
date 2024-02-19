@@ -15,6 +15,7 @@ import js7.base.utils.MVar
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
+import js7.base.configutils.Configs.HoconStringInterpolator
 
 final class HasUserAndPasswordTest extends OurTestSuite, SessionRouteTester, TestCatsEffect:
 

@@ -48,8 +48,8 @@ object StreamingSupport:
 
 
   extension [Out, Mat](source: Source[Out, Mat])
-    def asFs2Stream(using Tag[Out], Materializer): Stream[IO, Out] =
+    def asFs2Stream(bufferSize: Int = 1)(using Tag[Out], Materializer): Stream[IO, Out] =
       logger.traceStream:
         Stream.suspend:
           val publisher = source.runWith(Sink.asPublisher(fanout = false))
-          publisher.toStreamBuffered[IO](bufferSize = 1)
+          publisher.toStreamBuffered[IO](bufferSize = bufferSize)

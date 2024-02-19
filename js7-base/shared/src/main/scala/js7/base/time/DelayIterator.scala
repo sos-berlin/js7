@@ -21,11 +21,11 @@ extends AbstractIterator[FiniteDuration]:
     it.next()
 
   def reset(): Iterator[FiniteDuration] =
-    val start = SyncDeadline.fromScheduler
+    val start = SyncDeadline.fromScheduler()
     val result = durations.iterator
       .concat(Iterator.continually(last))
       .scanLeft(Duration.Zero)((sum, d) => sum + d)
       .drop(1)
-      .map(d => start + d - SyncDeadline.fromScheduler max Duration.Zero)
+      .map(d => start + d - SyncDeadline.fromScheduler() max Duration.Zero)
     it = result
     result

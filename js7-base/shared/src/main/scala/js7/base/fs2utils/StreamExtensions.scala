@@ -9,13 +9,16 @@ import cats.syntax.option.*
 import cats.syntax.parallel.*
 import cats.{Applicative, ApplicativeError, Eq, effect}
 import fs2.{Chunk, Compiler, RaiseThrowable, Stream}
+import js7.base.log.Logger
 import js7.base.time.ScalaTime.RichDeadline
+import js7.base.utils.ScalaUtils.syntax.RichAny
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Deadline, FiniteDuration}
 
 object StreamExtensions:
 
   val DefaultBatchSizeMin = 256
+  private val logger = Logger[this.type]
 
   extension (chunk: Chunk[Char])
     def convertToString: String =
@@ -77,12 +80,14 @@ object StreamExtensions:
         output <-
           stream.chunks
             .flatMap(chunk => Stream.fromOption[F](chunk.last))
-            .evalTap(a => last.set(Some(a)))
+            .evalTap: a =>
+              last.set(Some(a))
             .noneTerminate
             .hold1
             .flatMap(_.discrete)
             .unNoneTerminate
-            .append(Stream.eval(last.get).unNoneTerminate)
+            .append:
+              Stream.eval(last.get).unNoneTerminate
             .changes
       yield output
 
@@ -153,41 +158,43 @@ object StreamExtensions:
      * otherwise if timeout passes without the source emitting anything new
      * then the Stream will start emitting the last item repeatedly.
      *
-     * — <i>Taken from Monix Observable</i>
+     * — <i>Description taken from Monix Observable</i>
      */
     def echoRepeated(delay: FiniteDuration): Stream[IO, A] =
       for
-        queue <- Stream.eval(Queue.bounded[IO, Option[Either[Throwable, Chunk[A]]]](capacity = 1))
+        queue <- Stream.eval(Queue.bounded[IO, Option[Either[Throwable, Chunk[A]]]](capacity = 0))
         _ <- Stream.supervise:
           stream.chunks
             .filter(_.nonEmpty) // The processing below requires non-empty chunks
             .attempt
             .enqueueNoneTerminated(queue)
             .compile.drain
-        maybeFirst <- Stream.eval(queue.take)
-        result <- maybeFirst match
-          case None => Stream.empty // End
+        firstOrEnd <- Stream.eval(queue.take)
+        chunk <- firstOrEnd match
+          case None /*end*/ => Stream.empty
           case Some(Left(error)) => Stream.raiseError[IO](error)
           case Some(Right(firstChunk)) =>
             for
-              // Above we assured that firstChunk.isNonEmpty
+              // We assured above that firstChunk.isNonEmpty
               lastRef <- Stream.eval(Ref.of[IO, A](firstChunk.last.get))
-              a <- Stream
-                .chunk(firstChunk)
+              chunk <- Stream
+                .emit(firstChunk)
                 .append(Stream
                   .eval:
                     queue.take
                       .timeoutTo(delay, lastRef.get.map(last => Some(Right(Chunk(last)))))
                       .flatTap(_
+                        // Update lastRef:
+                        // combine Option and Either, then return the last element of the Chunk
                         .flatMap(_.toOption)
                         .flatMap(_.last)
                         .fold(IO.none)(lastRef.set))
                   .repeat
                   .unNoneTerminate
-                  .rethrow
-                  .unchunks)
-            yield a
-      yield result
+                  .rethrow)
+            yield chunk
+        a <- Stream.chunk(chunk)
+      yield a
 
     // TODO ---> Try fs2.keepAlive <---
     def insertHeartbeatsOnSlowUpstream(delay: FiniteDuration, heartbeat: A): Stream[IO, A] =
@@ -222,20 +229,26 @@ object StreamExtensions:
 
     def mapParallelBatch[B](
       batchSizeMin: Int = DefaultBatchSizeMin,
-      parallelism: Int = sys.runtime.availableProcessors)
+      parallelism: Int = sys.runtime.availableProcessors,
+      prefetch: Int = 0)
+      (using file: sourcecode.FileName, line: sourcecode.Line)
       (f: A => B)
     : Stream[IO, B] =
       stream
+        .pipeIf(prefetch > 0):
+          _.prefetchN(prefetch)
         .chunks
         .evalMap: chunk =>
           val n = chunk.size
           if n < batchSizeMin.max(2) then
             // Small chunks are not worth to parallelize
+            //logger.debug(s"### mapParallelBatch ${file.value}:${line.value} prefetch=$prefetch batchSize=$batchSizeMin chunk.size=$n")
             IO(chunk.map(f))
           else
             val chunkSize = (n + parallelism - 1) / parallelism
+            //logger.debug(s"### mapParallelBatch ${file.value}:${line.value} prefetch=$prefetch batchSize=$batchSizeMin chunk.size=$n chunkSize=$chunkSize concurrency=${(n + chunkSize - 1) / chunkSize}")
             chunk.iterator
-              .sliding(chunkSize, step = chunkSize)
+              .grouped(chunkSize)
               .toVector
               .parTraverse(chunk => IO(chunk.map(f)))
               .map(_.flatten)

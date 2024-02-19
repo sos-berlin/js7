@@ -1,15 +1,20 @@
 package js7.cluster
 
 import cats.effect.unsafe.IORuntime
+import cats.effect.{Deferred, FiberIO}
 import cats.syntax.monoid.*
 import js7.base.catsutils.CatsEffectExtensions.*
-import js7.base.catsutils.SyncDeadline
-import js7.base.fs2utils.StreamExtensions.onlyNewest
+import js7.base.catsutils.CatsExtensions.{tryIt, untry}
+import js7.base.catsutils.{FiberVar, SyncDeadline}
+import js7.base.configutils.Configs.RichConfig
+import js7.base.fs2utils.StreamExtensions.{interruptWhenF, onlyNewest}
 import js7.base.monixlike.MonixLikeExtensions.*
+import js7.base.utils.CatsUtils
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import org.apache.pekko.pattern.ask
 import org.apache.pekko.util.Timeout
 import scala.concurrent.ExecutionContext
+import scala.util.Try
 //diffx import com.softwaremill.diffx
 import cats.effect.IO
 import fs2.Stream
@@ -17,7 +22,6 @@ import js7.base.auth.{Admission, UserAndPassword}
 import js7.base.generic.Completed
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
-import js7.base.monixlike.SerialFutureCancelable
 import js7.base.monixutils.StreamPauseDetector.*
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem, ProblemException}
@@ -45,7 +49,6 @@ import js7.data.item.BasicItemEvent.ItemAttachedToMe
 import js7.data.node.NodeId
 import js7.journal.JournalActor
 import js7.journal.state.FileJournal
-import scala.concurrent.Promise
 import scala.concurrent.duration.*
 import scala.util.{Failure, Success}
 
@@ -57,15 +60,17 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
   clusterConf: ClusterConf)
   (implicit ioRuntime: IORuntime):
 
+  private val keepAlive = clusterConf.config.finiteDuration("js7.web.client.keep-alive").orThrow
   private implicit val askTimeout: Timeout = common.journalActorAskTimeout
   private val clusterStateLock = AsyncLock()
   private val journalActor = journal.journalActor
   private val isFetchingAcks = Atomic(false)
-  private val fetchingAcks = SerialFutureCancelable()
-  private val fetchingAcksTerminatedUnexpectedlyPromise = Promise[Checked[Completed]]()
+  private val fetchingAcks = new FiberVar[Unit]
+  private val fetchingAcksTerminatedUnexpectedlyPromise =
+    Deferred.unsafe[IO, Try[Checked[Completed]]]
   private val startingBackupNode = Atomic(false)
-  private val sendingClusterStartBackupNode = SerialFutureCancelable()
-  @volatile private var noMoreJournaling = false
+  private val sendingClusterStartBackupNode = SetOnce[FiberIO[Unit]]
+  private val stopJournaling = Deferred.unsafe[IO, Unit]
   @volatile private var stopRequested = false
   private val clusterWatchSynchronizerOnce = SetOnce[ClusterWatchSynchronizer]
 
@@ -130,11 +135,14 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
       case _ => IO.right(Completed)
 
   def stop: IO[Unit] =
-    logger.debugIO(IO.defer {
+    logger.debugIO(IO.defer:
       stopRequested = true
-      fetchingAcks.cancelAndForget()
-      clusterWatchSynchronizerOnce.toOption.fold(IO.unit)(_.stop)
-    })
+      IO.both(
+        logger.traceIO("fetchingAcks cancel"):
+          fetchingAcks.cancel,
+        logger.traceIO("clusterWatchSynchronizerOnce stop"):
+          clusterWatchSynchronizerOnce.toOption.fold(IO.unit)(_.stop)
+      ).void)
 
   def beforeJournalingStarts: IO[Checked[Unit]] =
     IO.defer:
@@ -331,7 +339,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
                   .void))
           .timeoutTo(passiveNodeCouplingResponseTimeout, IO.left(Problem(
             s"Passive node did not respond within ${passiveNodeCouplingResponseTimeout.pretty}")))
-          .recover { throwable =>
+          .handleError { throwable =>
             val msg = s"A passive cluster node wanted to couple but $passiveUri does not respond"
             logger.error(s"$msg: ${throwable.toStringWithCauses}")
             Left(Problem(msg))
@@ -345,10 +353,9 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
         case state =>
           Left(Problem.pure("Switchover is possible only for the active and coupled cluster node," +
             s" but cluster state is: $state"))
-      } .map(_.map { case (_: Seq[Stamped[?]], _) =>
-          noMoreJournaling = true
-          Completed
-        }))
+      } .flatMapT: (_: Seq[Stamped[?]], _) =>
+          stopJournaling.complete(())
+            .as(Right(Completed)))
 
   def shutDownThisNode: IO[Checked[Completed]] =
     clusterStateLock.lock(
@@ -357,10 +364,9 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
           Right(Some(ClusterActiveNodeShutDown))
         case _ =>
           Right(None)
-      } .map(_.map { case (_: (Seq[Stamped[?]], ?)) =>
-        noMoreJournaling = true
-        Completed
-      }))
+      } .flatMapT: (_: (Seq[Stamped[?]], ?)) =>
+        stopJournaling.complete(())
+          .as(Right(Completed)))
 
   private def proceed(state: ClusterState): IO[Completed] =
     state match
@@ -376,59 +382,60 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
     logger.traceIO(
       clusterState match {
         case clusterState: NodesAppointed =>
-          IO {
-            if !startingBackupNode.getAndSet(true) then {
-              startSendingClusterStartBackupNode(clusterState)
-            }
-            Completed
-          }
+          IO.unlessA(startingBackupNode.getAndSet(true)):
+            startSendingClusterStartBackupNode(clusterState)
+          .as(Completed)
 
         case _ =>
           IO.completed
       })
 
-  private def startSendingClusterStartBackupNode(clusterState: NodesAppointed): Unit =
-    val sending =
-      journal.eventWatch.started
-        .*>(journal.state)
-        .flatMap(state => common
-          .tryEndlesslyToSendCommand(
-            Admission(clusterState.passiveUri, passiveNodeUserAndPassword),
-            ClusterStartBackupNode(
-              clusterState.setting,
-              fileEventId = journal.eventWatch.lastFileEventId,
-              activeNodeName =
-                state.clusterNodeIdToName(clusterState.activeId).orThrow,
-              passiveNodeUserId =
-                state.clusterNodeToUserId(clusterState.passiveId).orThrow)))
-        .unsafeToCancelableFuture()
-    sending.onComplete:
-      case Success(()) =>
-      case Failure(t) => /*unexpected*/
+  private def startSendingClusterStartBackupNode(clusterState: NodesAppointed): IO[Unit] =
+    journal.eventWatch.started
+      .*>(journal.state)
+      .flatMap(state => common
+        .tryEndlesslyToSendCommand(
+          Admission(clusterState.passiveUri, passiveNodeUserAndPassword),
+          ClusterStartBackupNode(
+            clusterState.setting,
+            fileEventId = journal.eventWatch.lastFileEventId,
+            activeNodeName =
+              state.clusterNodeIdToName(clusterState.activeId).orThrow,
+            passiveNodeUserId =
+              state.clusterNodeToUserId(clusterState.passiveId).orThrow)))
+      .handleError: t =>
+        // Bad
         logger.error(s"Sending ClusterStartBackupNode command to backup node failed: $t", t)
-
-    sendingClusterStartBackupNode := sending
+      .start
+      .flatMap: fiber =>
+        IO:
+          sendingClusterStartBackupNode := fiber
+          ()
 
   private def proceedCoupled(state: Coupled): IO[Completed] =
     startFetchAndHandleAcknowledgedEventIds(state)
 
   private def startFetchAndHandleAcknowledgedEventIds(initialState: Coupled): IO[Completed] =
-    IO:
+    IO.defer:
       if isFetchingAcks.getAndSet(true) then
         logger.debug("fetchAndHandleAcknowledgedEventIds: already isFetchingAcks")
+        IO.pure(Completed)
       else
         import initialState.{passiveId, passiveUri, timing}
-        val future =
-          CorrelId.bindNew(
+        CorrelId
+          .bindNew:
             fetchAndHandleAcknowledgedEventIds(passiveId, passiveUri, timing)
-          ).unsafeToCancelableFuture()
-        fetchingAcks := future
-        future.onComplete:
-          case Success(Left(_: MissingPassiveClusterNodeHeartbeatProblem)) =>
-          case tried =>
-            // Completes only when not cancelled and then it is a failure
-            fetchingAcksTerminatedUnexpectedlyPromise.complete(tried)
-      Completed
+          .tryIt
+          .flatTap:
+            case Success(Left(_: MissingPassiveClusterNodeHeartbeatProblem)) =>
+              IO.unit
+            case tried =>
+              // Completes only when not cancelled and then it is a failure
+              fetchingAcksTerminatedUnexpectedlyPromise.complete(tried)
+          .void
+          .start
+          .flatMap(fetchingAcks.set)
+          .as(Completed)
 
   private def fetchAndHandleAcknowledgedEventIds(
     passiveId: NodeId,
@@ -519,11 +526,13 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
             Admission(passiveUri, passiveNodeUserAndPassword),
             "acknowledgements"))
         .flatMap(api =>
-          streamEventIds(api, Some(timing.heartbeat))
-            .onlyNewest
-            .filter(_ => !clusterConf.testAckLossPropertyKey.fold(false)(k => sys.props(k).toBoolean)) // for testing
+          streamEventIds(api, Some(timing.heartbeat min keepAlive))
+            .through: stream =>
+              clusterConf.testAckLossPropertyKey.fold(stream): k =>  // Testing only
+                stream.filter(_ => sys.props(k).toBoolean)
             .detectPauses(timing.passiveLostTimeout)
-            .takeWhile(_ => !noMoreJournaling)  // Race condition: may be set too late
+            .onlyNewest
+            .interruptWhenF(stopJournaling.get)  // Race condition: may be set too late
             .evalMap {
               case Left(noHeartbeatSince) =>
                 val problem: Problem =
@@ -533,7 +542,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
 
               case Right(eventId) =>
                 IO.fromFuture(IO:
-                  // Possible dead letter when `noMoreJournaling` is detected too late !!!
+                  // Possible dead letter when `stopJournaling` is detected too late !!!
                   // because after JournalActor has committed SwitchedOver (after ack), JournalActor stops.
                   (journalActor ? JournalActor.Input.PassiveNodeAcknowledged(eventId = eventId))
                     .mapTo[Completed]
@@ -631,7 +640,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
           Right(hasNodes.setting.clusterWatchId contains clusterWatchId)
 
   def onTerminatedUnexpectedly: IO[Checked[Completed]] =
-    IO.fromFuture(IO.pure(fetchingAcksTerminatedUnexpectedlyPromise.future))
+    fetchingAcksTerminatedUnexpectedlyPromise.get.untry
 
   private def persist()(toEvents: ClusterState => Checked[Option[ClusterEvent]])
   : IO[Checked[(Seq[Stamped[KeyedEvent[ClusterEvent]]], ClusterState)]] =
@@ -651,40 +660,43 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
             case maybeEvent =>
               Right(extraEvent.toList ::: maybeEvent.toList)
           })
-        .flatMapT { case (stampedEvents, state) =>
-          assertThat(!clusterWatchSynchronizer.isHeartbeating)
-          val clusterStampedEvents = stampedEvents.collect:
-            case o @ Stamped(_, _, KeyedEvent(_, _: ClusterEvent)) =>
-              o.asInstanceOf[Stamped[KeyedEvent[ClusterEvent]]]
-          state.clusterState match
-            case Empty | _: NodesAppointed =>
-            case _: HasNodes => sendingClusterStartBackupNode.cancelAndForget()
-          val events = clusterStampedEvents.map(_.value.event)
-          (events, state.clusterState) match
-            case (Seq(event), clusterState: HasNodes) =>
-              clusterWatchSynchronizer
-                .applyEvent(
-                  event, clusterState,
-                  clusterWatchIdChangeAllowed =
-                    events == Seq(ClusterPassiveLost(clusterState.passiveId)))
-                .flatMapT {
-                  case Some(confirmation)
-                    // After SwitchOver this ClusterNode is no longer active
-                    if clusterState.isNonEmptyActive(ownId) =>
-                    // JS-2092 We depend on the ClusterWatch,
-                    // that it confirms the event only if it is taught about the ClusterState.
-                    // Then, a ClusterWatch change is allowed.
-                    registerClusterWatchId(confirmation, alreadyLocked = true)
-                  case _ => IO.right(())
-                }
-                .rightAs(clusterStampedEvents -> clusterState)
+        .flatMapT: (stampedEvents, state) =>
+          IO
+            .defer:
+              assertThat(!clusterWatchSynchronizer.isHeartbeating)
+              state.clusterState match
+                case Empty | _: NodesAppointed => IO.unit
+                case _: HasNodes => sendingClusterStartBackupNode.fold(IO.unit)(_.cancel)
+            .flatMap: _ =>
+              IO.defer:
+                val clusterStampedEvents = stampedEvents.collect:
+                  case o @ Stamped(_, _, KeyedEvent(_, _: ClusterEvent)) =>
+                    o.asInstanceOf[Stamped[KeyedEvent[ClusterEvent]]]
+                val events = clusterStampedEvents.map(_.value.event)
+                (events, state.clusterState) match
+                  case (Seq(event), clusterState: HasNodes) =>
+                    clusterWatchSynchronizer
+                      .applyEvent(
+                        event, clusterState,
+                        clusterWatchIdChangeAllowed =
+                          events == Seq(ClusterPassiveLost(clusterState.passiveId)))
+                      .flatMapT {
+                        case Some(confirmation)
+                          // After SwitchOver this ClusterNode is no longer active
+                          if clusterState.isNonEmptyActive(ownId) =>
+                          // JS-2092 We depend on the ClusterWatch,
+                          // that it confirms the event only if it is taught about the ClusterState.
+                          // Then, a ClusterWatch change is allowed.
+                          registerClusterWatchId(confirmation, alreadyLocked = true)
+                        case _ => IO.right(())
+                      }
+                      .rightAs(clusterStampedEvents -> clusterState)
 
-            case (Seq(), clusterState) =>
-              IO.right(clusterStampedEvents -> clusterState)
+                  case (Seq(), clusterState) =>
+                    IO.right(clusterStampedEvents -> clusterState)
 
-            case _ =>
-              IO.left(Problem.pure("persistWithoutTouchingHeartbeat does not match"))
-        }
+                  case _ =>
+                    IO.left(Problem.pure("persistWithoutTouchingHeartbeat does not match"))
 
   private def suspendHeartbeat[A](forEvent: Boolean = false)(io: IO[Checked[A]])
     (implicit enclosing: sourcecode.Enclosing)

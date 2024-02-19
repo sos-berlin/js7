@@ -8,12 +8,13 @@ import js7.base.catsutils.CatsEffectExtensions.joinStd
 import js7.base.problem.{Problem, ProblemException}
 import js7.base.test.OurAsyncTestSuite
 import js7.base.utils.CatsUtils.*
+import js7.base.time.ScalaTime.*
 
 /**
   * @author Joacim Zschimmer
   */
 final class CatsUtilsTest extends OurAsyncTestSuite:
-  
+
   "combine" in:
     assert(combine(1, 2, 3, 4) == 10)
     assert(combine("a", "-", "b") == "a-b")

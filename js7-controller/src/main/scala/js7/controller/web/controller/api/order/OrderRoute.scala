@@ -16,7 +16,7 @@ import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}
-import js7.base.utils.ByteSequenceToLinesStream
+import js7.base.utils.{ByteSequenceToLinesStream, Tests}
 import js7.base.utils.ScalaUtils.syntax.{RichAny, RichEitherF}
 import js7.common.pekkohttp.PekkoHttpServerUtils.completeIO
 import js7.common.pekkohttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
@@ -35,6 +35,7 @@ import js7.data.order.{FreshOrder, OrderId}
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import js7.base.fs2utils.StreamExtensions.mapParallelBatch
+import js7.base.utils.Tests.isTest
 import scala.concurrent.duration.Deadline.now
 
 /**
@@ -61,11 +62,14 @@ extends ControllerRouteProvider, EntitySizeLimitProvider:
                   var byteCount = 0L
                   httpEntity
                     .dataBytes
-                    .asFs2Stream
+                    .asFs2Stream(bufferSize = prefetch)
+                    .chunks.evalTap(chunk => IO(logger.trace(s"### chunk.size=${chunk.size}"))).unchunks
                     .pipeIf(logger.underlying.isDebugEnabled)(_.map { o => byteCount += o.length; o })
                     .flatMap(new ByteSequenceToLinesStream)
-                    .mapParallelBatch()(_
+                    .mapParallelBatch(prefetch = prefetch)(_
                       .parseJsonAs[FreshOrder])
+                    //.pipeIf(isTest):
+                    //  _.chunks.evalTap(_ => IO.sleep(1.ms)).unchunks // FIXME TEST ONLY
                     .compile
                     .toVector
                     .map(_.sequence)
@@ -135,7 +139,7 @@ extends ControllerRouteProvider, EntitySizeLimitProvider:
           completeIO(
             httpEntity
               .dataBytes
-              .asFs2Stream
+              .asFs2Stream(bufferSize = prefetch)
               .flatMap(new ByteSequenceToLinesStream)
               .mapParallelBatch()(_
                 .parseJsonAs[OrderId].orThrow)

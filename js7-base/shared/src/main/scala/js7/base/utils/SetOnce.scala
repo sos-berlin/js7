@@ -42,6 +42,9 @@ final class SetOnce[A](label: => String, notYetSetProblem: Problem):
               promise.success(value)
               value
 
+  def fold[B](ifEmpty: => B)(f: A => B): B =
+    toOption.fold(ifEmpty)(f)
+
   def toOption: Option[A] =
     promise.future.value.map(_.get)
 

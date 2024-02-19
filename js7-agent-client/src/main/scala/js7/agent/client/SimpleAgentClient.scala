@@ -27,7 +27,8 @@ extends HasCloser, AgentClient:
   protected val actorSystem =
     newActorSystem("SimpleAgentClient", config"pekko.log-dead-letters = 0")
       .withCloser(Pekkos.terminateAndWait(_, 10.s/*!!!*/))
-
+  protected val chunkSize = 0
+  
   onClose { super[AgentClient].close() }
 
   override def close() =

@@ -8,6 +8,7 @@ import js7.base.utils.StackTraces.StackTraceThrowable
 import cats.effect.IO
 import fs2.Stream
 import js7.base.monixlike.MonixLikeExtensions.{dematerialize, materialize}
+import js7.base.utils.UseDefault
 import org.jetbrains.annotations.TestOnly
 import scala.util.{Failure, Success, Try}
 
@@ -16,7 +17,10 @@ import scala.util.{Failure, Success, Try}
   */
 trait HttpClient:
 
-  def getDecodedLinesStream[A: Decoder](uri: Uri, responsive: Boolean = false)
+  def getDecodedLinesStream[A: Decoder](
+    uri: Uri,
+    responsive: Boolean = false,
+    jsonReadAhead: Int | UseDefault = UseDefault)
     (implicit s: IO[Option[SessionToken]])
   : IO[Stream[IO, A]]
 

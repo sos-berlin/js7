@@ -85,9 +85,14 @@ final class StreamExtensionsTest extends OurAsyncTestSuite:
         val e = new IllegalStateException("TEST ERROR")
         TestControl.executeEmbed:
           for
-            result <- Stream.raiseError[IO](e).covaryOutput[Long].onlyNewest.attempt.compile.toList
+            result <- Stream
+              .raiseError[IO](e)
+              .covaryOutput[Long]
+              .onlyNewest
+              .attempt
+              .compile.toList
           yield
-            assert(result.size == 1 && result.head.left.toOption.get.eq(e))
+            assert(result.size == 1 && result == List(Left(e)))
     }
 
     //"splitBigByteSeqs" in:

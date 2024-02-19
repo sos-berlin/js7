@@ -38,7 +38,6 @@ import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.state.FileJournal
 import js7.subagent.Subagent
-import js7.subagent.director.RemoteSubagentDriver
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import js7.base.catsutils.CatsEffectExtensions.{materializeIntoChecked, right}

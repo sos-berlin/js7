@@ -29,7 +29,7 @@ final class Fs2PubSub[F[_]: UnsafeMemoizable, A <: AnyRef] private(
     streamResource.allocated.map(_._1)
 
   def streamResource: Resource[F, Stream[F, A]] =
-    Resource.eval(topic).flatMap(_.subscribeAwait(maxQueued = 1))
+    Resource.eval(topic).flatMap(_.subscribeAwait(maxQueued = 0))
 
 object Fs2PubSub:
   @deprecated("Besser Fs2PubSub als Resource nutzen!")

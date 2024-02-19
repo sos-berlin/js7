@@ -3,20 +3,20 @@ package js7.base.monixlike
 import cats.effect.unsafe.{IORuntime, Scheduler}
 import cats.effect.{Concurrent, GenSpawn, IO}
 import cats.syntax.applicativeError.*
-import cats.syntax.flatMap.*
 import cats.syntax.functor.*
 import cats.syntax.monadError.*
 import cats.syntax.parallel.*
 import cats.{ApplicativeError, Functor, MonadError}
 import fs2.{Pull, Stream}
 import js7.base.catsutils.CatsEffectExtensions.fromFutureWithEC
+import js7.base.catsutils.CatsExtensions.*
 import js7.base.fs2utils.StreamExtensions.{interruptWhenF, onStart}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.{CancelableFuture, emptyRunnable}
 import scala.collection.Factory
 import scala.concurrent.duration.{Deadline, FiniteDuration}
 import scala.concurrent.{ExecutionContext, Future, TimeoutException}
-import scala.util.{Failure, Success, Try}
+import scala.util.Try
 
 /*
  * ——— SOME PARTS ORIGINATE FROM MONIX ———
@@ -105,11 +105,11 @@ object MonixLikeExtensions:
     def onErrorRestartLoop[S](initial: S)(onError: (Throwable, S, S => F[A]) => F[A])
       (using ApplicativeError[F, Throwable])
     : F[A] =
-      underlying.handleErrorWith(throwable =>
+      underlying.handleErrorWith: throwable =>
         onError(
           throwable,
           initial,
-          state => underlying.onErrorRestartLoop(state)(onError)))
+          state => underlying.onErrorRestartLoop(state)(onError))
 
     def raceFold[B >: A, E](canceler: F[B])(using F: GenSpawn[F, E] & Functor[F]): F[B] =
       F.race(canceler, underlying)
@@ -120,14 +120,12 @@ object MonixLikeExtensions:
     //  underlying.onError(PartialFunction.fromFunction(F.delay(tap)))
 
     // For compatibility with Monix
-    def materialize(using MonadError[F, Throwable]): F[Try[A]] =
-      underlying.attempt.map(_.toTry)
+    def materialize(using ApplicativeError[F, Throwable]): F[Try[A]] =
+      underlying.tryIt
 
     // For compatibility with Monix
-    def dematerialize[A1](using F: MonadError[F, Throwable], ev: A =:= Try[A1]): F[A1] =
-      underlying.asInstanceOf[F[Try[A1]]].flatMap:
-        case Failure(t) => F.raiseError(t)
-        case Success(a) => F.pure(a)
+    def dematerialize[A1](using MonadError[F, Throwable], A =:= Try[A1]): F[A1] =
+      underlying.untry
 
 
   extension [A](io: IO[A])
@@ -138,11 +136,6 @@ object MonixLikeExtensions:
       io.attemptTap:
         case Right(_) => IO.unit
         case Left(t) => pf.applyOrElse(t, _ => IO.unit)
-
-    @deprecated("NOT IMPLEMENTED")
-    def onCancelRaiseError(throwable: => Throwable): IO[A] =
-      //?io.onCancel(IO.raiseError(throwable))
-      ???
 
     def unsafeToCancelableFuture()(using IORuntime): CancelableFuture[A] =
       CancelableFuture.fromPair(io.unsafeToFutureCancelable())

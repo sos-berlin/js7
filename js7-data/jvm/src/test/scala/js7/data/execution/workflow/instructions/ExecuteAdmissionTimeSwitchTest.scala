@@ -28,19 +28,17 @@ final class ExecuteAdmissionTimeSwitchTest extends OurAsyncTestSuite:
     val switch = new ExecuteAdmissionTimeSwitch(AdmissionTimeScheme.always, UTC, _ => ())
 
     OurTestControl.executeEmbed:
-      IO.unsafeScheduler.flatMap: scheduler =>
-        given Scheduler = scheduler
-        given alarmClock: AlarmClock = TestAlarmClock(now)
-        for
-          _ <- switch.updateAndCheck(sys.error("FAILED"))
-          _ = assert(switch.nextTime == None)
-          isEnterable <- switch.updateAndCheck(sys.error("FAILED"))
-          _ = assert(isEnterable)
-          _ = assert(switch.nextTime == None)
-          _ <- IO.sleep(99*365*24.h)
-          isEnterable <- switch.updateAndCheck(sys.error("FAILED"))
-        yield
-          assert(isEnterable)
+      given alarmClock: AlarmClock = TestAlarmClock(now)
+      for
+        _ <- switch.updateAndCheck(sys.error("FAILED"))
+        _ = assert(switch.nextTime == None)
+        isEnterable <- switch.updateAndCheck(sys.error("FAILED"))
+        _ = assert(isEnterable)
+        _ = assert(switch.nextTime == None)
+        _ <- IO.sleep(99*365*24.h)
+        isEnterable <- switch.updateAndCheck(sys.error("FAILED"))
+      yield
+        assert(isEnterable)
 
   "UTC" in:
     OurTestControl.executeEmbed:

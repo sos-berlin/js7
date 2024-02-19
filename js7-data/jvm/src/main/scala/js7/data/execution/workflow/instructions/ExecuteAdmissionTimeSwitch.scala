@@ -2,7 +2,6 @@ package js7.data.execution.workflow.instructions
 
 import cats.effect.IO
 import java.time.ZoneId
-import js7.base.log.Logger
 import js7.base.monixlike.SerialSyncCancelable
 import js7.base.time.AdmissionTimeSchemeForJavaTime.*
 import js7.base.time.{AdmissionTimeScheme, AlarmClock, TimeInterval, Timestamp}

@@ -1,7 +1,6 @@
 package js7.subagent.director
 
 import cats.syntax.option.*
-import js7.base.log.Logger
 import js7.base.test.OurTestSuite
 import js7.subagent.director.Prioritized.prioritySort
 import js7.subagent.director.PrioritizedTest.*

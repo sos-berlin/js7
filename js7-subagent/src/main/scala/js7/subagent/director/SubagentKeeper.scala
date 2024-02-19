@@ -246,9 +246,9 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]: Tag](
   : Resource[IO, Deferred[IO, Unit]] =
     Resource
       .eval(Deferred[IO, Unit])
-      .flatMap(canceledPromise =>
+      .flatMap(canceledDeferred =>
         Resource.make(
-          acquire = orderToWaitForSubagent.put(orderId, canceledPromise))(
+          acquire = orderToWaitForSubagent.put(orderId, canceledDeferred))(
           release = _ => orderToWaitForSubagent.remove(orderId).void))
 
   private def selectSubagentDriver(maybeSelectionId: Option[SubagentSelectionId])

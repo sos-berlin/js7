@@ -121,14 +121,12 @@ final class ProcessDriver(
       })
 
   private def fetchReturnValuesThenDeleteFile: IO[Checked[NamedValues]] =
-    logger
-      .traceIO("### fetchReturnValuesThenDeleteFile", orderId):
-        IO.interruptible:
-          logger.trace("### fetchReturnValuesThenDeleteFile!")
-          catchNonFatal:
-            val result = returnValuesProvider.read()
-            returnValuesProvider.tryDeleteFile()
-            result
+    IO
+      .interruptible:
+        catchNonFatal:
+          val result = returnValuesProvider.read()
+          returnValuesProvider.tryDeleteFile()
+          result
       .logWhenItTakesLonger(s"fetchReturnValuesThenDeleteFile $orderId") // Because IO.interruptible does not execute ?
 
   def kill(signal: ProcessSignal): IO[Unit] =

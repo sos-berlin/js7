@@ -27,6 +27,7 @@ import js7.data.session.HttpSessionApi
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
+import js7.base.configutils.Configs.HoconStringInterpolator
 import org.scalatest.matchers.should.Matchers.*
 import scala.concurrent.duration.Deadline.now
 
@@ -423,6 +424,7 @@ extends OurTestSuite, TestCatsEffect, SessionRouteTester
       def uriPrefixPath = ""
       override val standardHeaders = idsOrUserOrHeaders.toOption.toList.flatten ::: super.standardHeaders
       def httpsConfig = HttpsConfig.empty
+      protected val chunkSize = 0
     }
     autoClosing(api) { _ =>
       val saved = preAuthenticateResult

@@ -25,8 +25,8 @@ object StdObserversForTest:
         out <- Resource.eval(Deferred[IO, String])
         err <- Resource.eval(Deferred[IO, String])
         outErrToSink: OutErrToSink = Map(
-          Stdout -> (_.evalTap(o => IO(Logger.info(s"### stdout $o"))).foldMonoid.evalMap(out.complete).drain),
-          Stderr -> (_.evalTap(o => IO(Logger.info(s"### stderr $o"))).foldMonoid.evalMap(err.complete).drain))
+          Stdout -> (_.foldMonoid.evalMap(out.complete).drain),
+          Stderr -> (_.foldMonoid.evalMap(err.complete).drain))
         stdObservers <- resource(outErrToSink, charBufferSize, chunkSize, delay,
           useErrorLineLengthMax = useErrorLineLengthMax,
           name = name)

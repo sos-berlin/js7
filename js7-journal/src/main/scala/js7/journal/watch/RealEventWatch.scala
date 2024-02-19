@@ -58,11 +58,10 @@ trait RealEventWatch extends EventWatch:
     val originalTimeout = request.timeout
 
     val streamOfStreams = Stream
-      .unfoldEval(IO.pure(request)): (getRequest: IO[EventRequest[E]]) =>
+      .unfoldEval(IO.pure(request)): getRequest =>
         // Access the in previous iteration computed values lastEventId and limit (see below)
         // Timeout is renewed after every fetched event
         getRequest.flatMap: request =>
-          logger.trace(s"### stream unfoldEval: $request")
           if request.limit <= 0 then
             IO.none
           else
@@ -70,6 +69,7 @@ trait RealEventWatch extends EventWatch:
               .usingNow: now ?=>
                 request.timeout.map(t => now + (t min EventRequest.LongTimeout))
               .flatMap: deadline =>
+               logger.traceIOWithResult("### stream when", request, body=
                 when[E](request, predicate).flatMap:
                   case TearableEventSeq.Torn(tornAfter) =>
                     IO.raiseError:
@@ -83,14 +83,11 @@ trait RealEventWatch extends EventWatch:
                       .usingNow:
                         deadline.map(_.timeLeft)
                       .map: timeLeft =>
-                        timeLeft.forall(_.isPositive) ? {
-                          val nextGetRequest = // Will be executed in the next iteration
-                            SyncDeadline.usingNow:
-                              request.copy[E](
-                                after = lastEventId,
-                                timeout = deadline.map(_.timeLeftOrZero))
-                          Stream.empty -> nextGetRequest
-                        }
+                        timeLeft.forall(_.isPositive).thenSome:
+                          Stream.empty -> IO: /*This will be getRequest for the next iteration:*/
+                            request.copy[E](
+                              after = lastEventId,
+                              timeout = timeLeft)
 
                   case EventSeq.NonEmpty(events) =>
                     IO:
@@ -109,6 +106,7 @@ trait RealEventWatch extends EventWatch:
                       Some((stream,
                         IO(request.copy[E](after = lastEventId, limit = limit,
                           timeout = originalTimeout))))
+               )
     streamOfStreams.flatten
 
   final def streamEventIds(maybeTimeout: Option[FiniteDuration])

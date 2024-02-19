@@ -11,7 +11,6 @@ import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.circeutils.CirceUtils.implicits.*
 import js7.base.circeutils.CirceUtils.{RichCirceString, RichJson}
 import js7.base.configutils.Configs.RichConfig
-import js7.base.convert.As.StringAsBoolean
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.*
 import js7.base.exceptions.HasIsIgnorableStackTrace
@@ -19,8 +18,8 @@ import js7.base.fs2utils.StreamExtensions.*
 import js7.base.generic.SecretString
 import js7.base.io.https.Https.loadSSLContext
 import js7.base.io.https.HttpsConfig
+import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
-import Logger.syntax.*
 import js7.base.monixlike.MonixLikeExtensions.{onErrorTap, takeUntilEval}
 import js7.base.problem.Checked.*
 import js7.base.problem.Problems.InvalidSessionTokenProblem
@@ -29,7 +28,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.bytesPerSecondString
 import js7.base.utils.CatsUtils.syntax.whenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{Atomic, ByteSequenceToLinesStream}
+import js7.base.utils.{Atomic, ByteSequenceToLinesStream, UseDefault}
 import js7.base.web.{HttpClient, Uri}
 import js7.common.http.JsonStreamingSupport.{StreamingJsonHeader, StreamingJsonHeaders, `application/x-ndjson`}
 import js7.common.http.PekkoHttpClient.*
@@ -77,8 +76,8 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
   private lazy val http = Http(actorSystem)
   private lazy val basePekkoUri = PekkoUri(baseUri.string)
   private lazy val useCompression = http.system.settings.config.getBoolean("js7.web.client.compression")
-  private lazy val jsonReadAhead = http.system.settings.config.getInt("js7.web.client.json-prefetch")
   private lazy val chunkSize = http.system.settings.config.memorySizeAsInt("js7.web.chunk-size").orThrow
+  final lazy val prefetch = actorSystem.settings.config.getInt("js7.web.client.prefetch")
   @volatile private var closed = false
 
   protected def httpsConfig: HttpsConfig
@@ -96,23 +95,23 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
     logger.trace(s"$toString: close")
     closed = true
 
-  final def getDecodedLinesStream[A: Decoder](uri: Uri, responsive: Boolean = false)
+  final def getDecodedLinesStream[A: Decoder](
+    uri: Uri,
+    responsive: Boolean = false,
+    jsonReadAhead: Int | UseDefault = UseDefault)
     (using IO[Option[SessionToken]])
   : IO[Stream[IO, A]] =
+    val readAhead = jsonReadAhead getOrElse this.prefetch: Int
     getRawLinesStream(uri)
       .map(_
-        .filter(_ != EmptyLine/*used as keep-alive*/)
-        .pipeIf(jsonReadAhead > 0):
-          _.prefetchN(jsonReadAhead)
-        .mapParallelBatch(
-          /*batchSize = jsonReadAhead / sys.runtime.availableProcessors,
-          responsive = responsive*/)(
-          _.parseJsonAs[A].orThrow))
+        .filter(_ != EmptyLine/*keep-alive chunk*/)
+        .mapParallelBatch(prefetch = readAhead):
+          _.parseJsonAs[A].orThrow)
 
   final def getRawLinesStream(uri: Uri)(implicit s: IO[Option[SessionToken]])
   : IO[Stream[IO, ByteArray]] =
     get_[HttpResponse](uri, StreamingJsonHeaders)
-      .map(_.entity.withoutSizeLimit.dataBytes.asFs2Stream)
+      .map(_.entity.withoutSizeLimit.dataBytes.asFs2Stream())
       .pipeIf(logger.isDebugEnabled)(_.map(_
         .logTiming(_.size, (d, n, _) => IO:
           if d >= 1.s && n > 10_000_000 then
@@ -158,7 +157,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
 
   final def postStream[A: Encoder, B: Decoder](
     uri: Uri,
-    data: Stream[IO, A],
+    stream: Stream[IO, A],
     responsive: Boolean = false,
     terminateStreamOnCancel: Boolean = false)
     (implicit s: IO[Option[SessionToken]])
@@ -167,10 +166,10 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
 
     val chunks: Stream[IO, ByteString] =
       if responsive then
-        for a <- data yield toNdJson(a)
+        for a <- stream yield toNdJson(a)
       else
-        data
-          .mapParallelBatch(/*responsive = responsive*/): a =>
+        stream
+          .mapParallelBatch(prefetch = prefetch): a =>
             toNdJson(a).chunkStream(chunkSize).toVector
           .flatMap(Stream.iterable)
 
@@ -277,7 +276,9 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
         lazy val logPrefix = s"#$number$nameString${sessionToken.fold("")(o => " " + o.short)}"
         lazy val responseLog0 = s"$logPrefix ${requestToString(req, logData, isResponse = true)} "
         def responseLogPrefix = responseLog0 + since.elapsed.pretty
-        logger.trace(s"${if request.entity.isChunked then ">-->" else "|-->"}  $logPrefix ${requestToString(req, logData)}")
+        locally:
+          def arrow = if request.entity.isChunked then ">-->" else "|-->"
+          logger.trace(s"$arrow  $logPrefix ${requestToString(req, logData)}")
         IO
           .fromFutureCancelable:
             IO:

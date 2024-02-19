@@ -47,7 +47,8 @@ object ServiceMain:
     args: Seq[String],
     name: String,
     argsToConf: CommandLineArguments => Conf,
-    useLockFile: Boolean = false)
+    useLockFile: Boolean = false,
+    suppressShutdownLogging: Boolean = false)
     (toServiceResource: Conf => Resource[IO, S],
     use: (Conf, S) => IO[ProgramTermination] =
     (_: Conf, service: S) => service.untilTerminated)
@@ -69,8 +70,9 @@ object ServiceMain:
           .attempt.map:
             case Left(throwable) => logging.throwableToExitCode(throwable)
             case Right(termination) => logging.onProgramTermination(name, termination)
-      .guarantee(IO:
-        Log4j.shutdown())
+      .guarantee:
+        IO.unlessA(suppressShutdownLogging)(IO:
+          Log4j.shutdown())
 
   def blockingRun[S <: MainService](
     name: String,

@@ -802,8 +802,8 @@ final class ScalaUtilsTest extends OurTestSuite
       assert(expected.length == 50)
 
       assert("ABCDEFGH\nXYZ".truncateWithEllipsis(6, firstLineOnly = true) == "ABC...")
-      assert("A\nXYZ".truncateWithEllipsis(6, firstLineOnly = true) == "A...")
-      assert("\nXYZ".truncateWithEllipsis(6, firstLineOnly = true) == "...")
+      assert("A\nXYZ".truncateWithEllipsis(6, firstLineOnly = true) == "A⏎...")
+      assert("\nXYZ".truncateWithEllipsis(6, firstLineOnly = true) == "⏎...")
 
       assert("line\n\ttab\u0000\u0080".truncateWithEllipsis(99) == "line⏎⟶tab␀�")
     }
@@ -826,18 +826,20 @@ final class ScalaUtilsTest extends OurTestSuite
 
     "firstLineLength" in {
       assert("".firstLineLength == 0)
-      assert("\n".firstLineLength == 0)
-      assert("\n\n".firstLineLength == 0)
-      assert("123\n".firstLineLength == 3)
-      assert("123\r\n456".firstLineLength == 3)
-      assert("123\n456".firstLineLength == 3)
-      assert("123\n456\n".firstLineLength == 3)
+      assert("\n".firstLineLength == 1)
+      assert("\n\n".firstLineLength == 1)
+      assert("123\n".firstLineLength == 4)
+      assert("123\r\n456".firstLineLength == 5)
+      assert("123\n456".firstLineLength == 4)
+      assert("123\n456\n".firstLineLength == 4)
     }
 
     "firstLineLengthN" in {
       assert("".firstLineLengthN(2) == 0)
-      assert("\n".firstLineLengthN(2) == 0)
-      assert("\n\n".firstLineLengthN(2) == 0)
+      assert("\n".firstLineLengthN(2) == 1)
+      assert("\n\n".firstLineLengthN(2) == 1)
+      assert("1\n".firstLineLengthN(2) == 2)
+      assert("123".firstLineLengthN(2) == 2)
       assert("123\n".firstLineLengthN(2) == 2)
       assert("123\n456".firstLineLengthN(2) == 2)
       assert("123\n456\n".firstLineLengthN(2) == 2)

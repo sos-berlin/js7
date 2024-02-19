@@ -51,7 +51,10 @@ trait ClusterWatchRequestRoute extends RouteProvider:
                   completeWithStream(`application/x-ndjson`):
                     stream
                       .through:
-                        encodeAndHeartbeat(chunkSize = chunkSize, keepAlive = keepAlive)
+                        encodeAndHeartbeat(
+                          chunkSize = chunkSize,
+                          prefetch = prefetch,
+                          keepAlive = keepAlive)
                       .interruptWhen(shutdownSignaled)
             }))))
 

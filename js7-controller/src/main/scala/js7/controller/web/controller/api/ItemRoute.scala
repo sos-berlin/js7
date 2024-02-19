@@ -53,7 +53,7 @@ extends ControllerRouteProvider, EntitySizeLimitProvider:
                 var byteCount = 0L
                 val operations = httpEntity
                   .dataBytes
-                  .asFs2Stream
+                  .asFs2Stream(bufferSize = prefetch)
                   .pipeIf(logger.underlying.isDebugEnabled)(_.map { o => byteCount += o.length; o })
                   .flatMap(new ByteSequenceToLinesStream)
                   .mapParallelBatch()(_

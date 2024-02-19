@@ -6,6 +6,7 @@ import fs2.Stream
 import java.util.ConcurrentModificationException
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
+import js7.base.fs2utils.StreamExtensions.prependOne
 import js7.base.generic.Completed
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
@@ -220,24 +221,25 @@ private final class ClusterWatchSynchronizer(
       MVar.empty[IO, FiberIO[Unit]].unsafeMemoize
 
     def start: IO[Completed] =
-      CorrelId.bindNew(logger.debugIO(s"Heartbeat ($nr) fiber")(
-        sendHeartbeats
-          .guaranteeCase {
-            case Outcome.Errored(t) =>
-              logger.warn(s"Sending heartbeat to ClusterWatch failed: ${t.toStringWithCauses}",
-                t.nullIfNoStackTrace)
-              haltJava(
-                s"🔥 HALT after sending heartbeat to ClusterWatch failed: ${t.toStringWithCauses}",
-                restart = true)
+      CorrelId
+        .bindNew(logger.debugIO(s"Heartbeat ($nr) fiber")(
+          sendHeartbeats
+            .guaranteeCase {
+              case Outcome.Errored(t) =>
+                logger.warn(s"Sending heartbeat to ClusterWatch failed: ${t.toStringWithCauses}",
+                  t.nullIfNoStackTrace)
+                haltJava(
+                  s"🔥 HALT after sending heartbeat to ClusterWatch failed: ${t.toStringWithCauses}",
+                  restart = true)
 
-            case Outcome.Canceled() =>
-              IO.unit
+              case Outcome.Canceled() =>
+                IO.unit
 
-            case Outcome.Succeeded(_) =>
-              stopping.flatMap(_.tryRead).map { maybe =>
-                if maybe.isEmpty then logger.error("Heartbeat stopped by itself")
-              }
-          })
+              case Outcome.Succeeded(_) =>
+                stopping.flatMap(_.tryRead).map { maybe =>
+                  if maybe.isEmpty then logger.error("Heartbeat stopped by itself")
+                }
+            })
         .start
         .flatTap(fiber =>
           heartbeat
@@ -252,10 +254,10 @@ private final class ClusterWatchSynchronizer(
     def stop(implicit enclosing: sourcecode.Enclosing): IO[Unit] =
       logger.traceIO(s"Heartbeat ($nr) stop, called by ${enclosing.value}")(
         stopping
-          .flatMap(_.tryPut(()).logWhenItTakesLonger("### tryPut"))
+          .flatMap(_.tryPut(()))
           .flatMap(_ => heartbeat)
-          .flatMap(_.tryTake.logWhenItTakesLonger("### tryTake"))
-          .flatMap(_.fold(IO.unit)(_.joinStd.logWhenItTakesLonger("### joinStd")))
+          .flatMap(_.tryTake)
+          .flatMap(_.fold(IO.unit)(_.joinStd))
           .logWhenItTakesLonger)
 
     def changeClusterState(clusterState: HasNodes): Unit =
@@ -263,7 +265,8 @@ private final class ClusterWatchSynchronizer(
 
     private def sendHeartbeats: IO[Unit] =
       Stream
-        .awakeEvery[IO](timing.clusterWatchHeartbeat)
+        .fixedRate[IO](timing.clusterWatchHeartbeat)
+        .prependOne(())
         // takeUntilEval before doAHeartbeat otherwise a heartbeat sticking in network congestion
         // would continue independently and arrive out of order (bad).
         .takeUntilEval(stopping.flatMap(_.read))

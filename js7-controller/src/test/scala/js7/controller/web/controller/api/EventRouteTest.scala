@@ -56,6 +56,8 @@ final class EventRouteTest extends OurTestSuite, RouteTester, EventRoute
 
   override protected def config = config"""
     js7.web.chunk-size = 1MiB
+    js7.web.client.prefetch = 0
+    js7.web.server.prefetch = 0
     pekko.actor.default-dispatcher.fork-join-executor {
       parallelism-min = 1
       parallelism-factor = 0
@@ -227,7 +229,7 @@ final class EventRouteTest extends OurTestSuite, RouteTester, EventRoute
     Get(uri) ~> Accept(`application/x-ndjson`) ~> route ~> check {
       if status != OK then fail(s"$status - ${responseEntity.toStrict(timeout).value}")
       response.entity.withoutSizeLimit.dataBytes
-        .asFs2Stream
+        .asFs2Stream()
         .flatMap(ByteSequenceToLinesStream())
         .map(_.parseJsonAs[Stamped[KeyedEvent[OrderEvent]]].orThrow)
         .compile.toList

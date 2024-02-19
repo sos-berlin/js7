@@ -77,10 +77,12 @@ object EventDirectives:
                         after = after,
                         timeout = timeoutAccess.map(_.timeoutAccess.timeout) match {
                           case Some(pekkoTimeout: FiniteDuration) =>
-                            maybeTimeout.map(t =>
-                              if pekkoTimeout > PekkoTimeoutTolerance && t > pekkoTimeout - PekkoTimeoutTolerance then
-                                t - PekkoTimeoutTolerance  // Requester's timeout before Pekkos pekko.http.server.request-timeout
-                              else t)
+                            maybeTimeout.map: t =>
+                              if t > pekkoTimeout - PekkoTimeoutTolerance then
+                                // Requester's timeout before Pekkos pekko.http.server.request-timeout
+                                (pekkoTimeout - PekkoTimeoutTolerance) max PekkoTimeoutTolerance
+                              else
+                                t
                           case _ => maybeTimeout
                         },
                         delay = delay max (defaultDelay min MinimumDelay),

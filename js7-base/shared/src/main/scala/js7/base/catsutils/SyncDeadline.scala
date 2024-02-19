@@ -2,6 +2,7 @@ package js7.base.catsutils
 
 import cats.effect.IO
 import cats.effect.unsafe.{IORuntime, Scheduler}
+import cats.kernel.Eq
 import js7.base.catsutils.SyncDeadline.*
 import js7.base.time.ScalaTime.*
 import scala.concurrent.duration.FiniteDuration
@@ -85,26 +86,32 @@ object SyncDeadline:
   final class Now private[SyncDeadline](nanos: Long) extends SyncDeadline(nanos)
 
   object Now:
-    def fromIORuntime(using ioRuntime: IORuntime): Now =
-      fromScheduler(using ioRuntime.scheduler)
+    def apply()(using IORuntime): Now =
+      fromIORuntime()
 
-    def fromScheduler(using scheduler: Scheduler): Now =
+    def apply(nanosSinceZero: Long): Now =
+      new Now(nanosSinceZero)
+
+    def fromIORuntime()(using ioRuntime: IORuntime): Now =
+      fromScheduler()(using ioRuntime.scheduler)
+
+    def fromScheduler()(using scheduler: Scheduler): Now =
       Now(scheduler.monotonicNanos())
 
     given (using ioRuntime: IORuntime): Now =
-      fromIORuntime
+      fromIORuntime()
+
+  def fromIORuntime()(using ioRuntime: IORuntime): Now =
+    fromScheduler()(using ioRuntime.scheduler)
+
+  def fromScheduler()(using scheduler: Scheduler): Now =
+    Now(scheduler.monotonicNanos())
 
   def fromNanos(nanos: Long): SyncDeadline =
     new SyncDeadline(nanos)
 
   def fromMonotonic(duration: FiniteDuration): SyncDeadline =
     SyncDeadline(duration.toNanos)
-
-  def fromScheduler(implicit scheduler: Scheduler): Now =
-    Now(scheduler.monotonicNanos())
-
-  def fromIORuntime(implicit ioRuntime: IORuntime): Now =
-    fromScheduler(ioRuntime.scheduler)
 
   def fromCatsDeadline(catsDeadline: CatsDeadline) =
     fromNanos(catsDeadline.nanosSinceZero)
@@ -113,8 +120,13 @@ object SyncDeadline:
     for d <- IO.monotonic yield
       Now(d.toNanos)
 
+  def now()(using IORuntime): SyncDeadline =
+    Now.fromIORuntime()
+
   def usingNow[A](body: Now ?=> A): IO[A] =
     now.map(now => body(using now))
 
-  implicit object SyncDeadline2IsOrdered extends Ordering[SyncDeadline]:
-    def compare(a: SyncDeadline, b: SyncDeadline) = a compare b
+  //implicit object SyncDeadline2IsOrdered extends Ordering[SyncDeadline]:
+  //  def compare(a: SyncDeadline, b: SyncDeadline) = a compare b
+
+  given Eq[SyncDeadline] = _ equals _

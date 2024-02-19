@@ -53,6 +53,8 @@ extends HasCloser,
         .map(TrustStoreRef.fromKeyStore)
         .toSeq)
 
+  //override def prefetch = super[PekkoHttpClient].prefetch
+
   closer.onClose { super.close() }
 
   override def close() =

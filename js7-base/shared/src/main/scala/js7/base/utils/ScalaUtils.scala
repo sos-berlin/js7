@@ -710,14 +710,14 @@ object ScalaUtils:
         while i > 0 && predicate(underlying(i - 1)) do i = i -1
         underlying.substring(0, i)
 
+      /** Length of the first line, including \n. */
       def firstLineLength = firstLineLengthN(Int.MaxValue)
 
       def firstLineLengthN(until: Int): Int =
         val n = until min underlying.length
         var i = 0
         while i < n do
-          if underlying.charAt(i) == '\n' then
-            return if i > 0 && underlying.charAt(i - 1) == '\r' then i - 1 else i
+          if underlying.charAt(i) == '\n' then return i + 1
           i += 1
         n
 

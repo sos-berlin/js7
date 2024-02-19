@@ -4,11 +4,9 @@ import cats.effect.Async
 import cats.syntax.flatMap.*
 import cats.syntax.functor.*
 import io.github.timwspence.cats.stm.STM
-import js7.base.log.Logger
 import js7.base.utils.MVar.*
 
-// TODO Replace by AtomicCell
-final class MVar[F[_], A] private(stm: STM[F])(tmvar: stm.TMVar[A])/*(using F: Async[F])*/:
+final class MVar[F[_], A] private(stm: STM[F])(tmvar: stm.TMVar[A]):
 
   def put(a: A): F[Unit] =
     stm.commit:
@@ -40,15 +38,14 @@ final class MVar[F[_], A] private(stm: STM[F])(tmvar: stm.TMVar[A])/*(using F: A
 
 
 object MVar:
-  private val logger = Logger[this.type]
 
   def apply[F[_]]: Builder[F] =
     new Builder[F]
 
   final class Builder[F[_]] private[MVar]:
     def of[A](initial: A)(using F: Async[F]): F[MVar[F, A]] =
-      empty[A]
-        .flatMap(mvar => mvar.tryPut(initial).as(mvar))
+      empty[A].flatMap: mvar =>
+        mvar.tryPut(initial).as(mvar)
 
     def empty[A](using F: Async[F]): F[MVar[F, A]] =
       MVar.empty[F, A]
@@ -59,4 +56,5 @@ object MVar:
       mvar <- stm.commit:
         for tmvar <- stm.TMVar.empty[A] yield
           new MVar[F, A](stm)(tmvar)
-    yield mvar
+    yield
+      mvar

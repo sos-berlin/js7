@@ -1,5 +1,6 @@
 package js7.subagent.director
 
+import js7.base.log.Logger
 import js7.subagent.director.Prioritized.prioritySort
 
 private final class Prioritized[A] private(
@@ -40,7 +41,9 @@ private final class Prioritized[A] private(
       val next = fixedPriority.next(
         n = highest.size,
         isEquivalent = (i, j) => toPriority(orderedValues(i)) == toPriority(orderedValues(j)))
-      highest.drop(next).headOption orElse highest.headOption
+      val r = highest.drop(next).headOption orElse highest.headOption
+      Logger.trace(s"### selectNext: highestPrio=$highestPrio highest=$highest next=$next result=$r")
+      r
 
   private def copy(orderedKeys: Vector[A]) =
     if orderedKeys == this.orderedKeys then

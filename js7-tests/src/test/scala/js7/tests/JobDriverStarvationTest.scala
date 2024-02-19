@@ -16,7 +16,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.JobDriverStarvationTest.*
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.testenv.ControllerAgentForScalaTest
-import fs2.Stream
+import fs2.{Chunk, Stream}
 import js7.base.monixlike.MonixLikeExtensions.completedL
 import scala.concurrent.duration.Deadline.now
 
@@ -32,7 +32,7 @@ final class JobDriverStarvationTest extends OurTestSuite, ControllerAgentForScal
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(workflow)
 
-  "Add a order to start AgentDriver CommandQueue" in:
+  "Add an order to start AgentDriver CommandQueue" in:
     val zeroOrderId = OrderId("0")
     controller.addOrderBlocking(FreshOrder(zeroOrderId, workflow.path, deleteWhenTerminated = true))
     TestJob.continue()
@@ -70,8 +70,9 @@ final class JobDriverStarvationTest extends OurTestSuite, ControllerAgentForScal
     var t = now
     controller.api
       .addOrders(Stream
-        .iterable(orderIds)
-        .map(FreshOrder(_, workflow.path, deleteWhenTerminated = true)))
+        .chunk(Chunk.from(orderIds))
+        .mapChunks(_.map:
+          FreshOrder(_, workflow.path, deleteWhenTerminated = true)))
       .await(99.s).orThrow
     firstOrdersProcessing.await(99.s)
     logger.info("🔷 " + itemsPerSecondString(t.elapsed, n, "started"))
