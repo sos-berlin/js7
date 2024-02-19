@@ -62,7 +62,7 @@ private[time] trait ClockChecking extends Runnable:
         else
           stopTicking()
         //logger.trace(s"scheduleOnce ${delay.ms.pretty} (${Timestamp.ofEpochMilli(now)})")
-        timer := scheduler.sleep(delay.ms, this)
+        timer := scheduler.sleep(delay.ms max ZeroDuration, this)
         nextMilli = firstMilli
 
   private def startTicking(tickInterval: FiniteDuration) =

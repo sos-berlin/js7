@@ -50,7 +50,7 @@ object MonixLikeExtensions:
       (using sourcecode.FullName)
     : SyncCancelable =
       SyncCancelable:
-        scheduler.sleep(after, () => callback)
+        scheduler.sleep(after max ZeroDuration, () => callback)
 
     def scheduleAtFixedRate(delay: FiniteDuration, repeat: FiniteDuration)(body: => Unit)
     : SyncCancelable =
@@ -66,9 +66,9 @@ object MonixLikeExtensions:
             finally
               t += repeatNanos
               _currentCancelable =
-                scheduler.sleep((t - scheduler.monotonicNanos()).ns, callback)
+                scheduler.sleep((t - scheduler.monotonicNanos()).ns max ZeroDuration, callback)
 
-      _currentCancelable = scheduler.sleep(delay, callback)
+      _currentCancelable = scheduler.sleep(delay max ZeroDuration, callback)
       SyncCancelable: () =>
         _stop = true
         _currentCancelable.run()

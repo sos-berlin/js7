@@ -63,12 +63,12 @@ object AlarmClock:
 
     def scheduleOnce(delay: FiniteDuration)(callback: => Unit)(using sourcecode.FullName) =
       SyncCancelable:
-        scheduler.sleep(delay, () => callback)
+        scheduler.sleep(delay max ZeroDuration, () => callback)
 
     def scheduleAt(timestamp: Timestamp)(callback: => Unit)(using sourcecode.FullName) =
       val delay = (timestamp - now()) max ZeroDuration
       SyncCancelable:
-        scheduler.sleep(delay, () => callback)
+        scheduler.sleep(delay max ZeroDuration, () => callback)
 
 
   private final class StandardAlarmClock()
