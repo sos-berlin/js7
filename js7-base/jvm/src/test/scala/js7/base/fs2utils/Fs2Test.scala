@@ -2,7 +2,7 @@ package js7.base.fs2utils
 
 import cats.effect.*
 import fs2.concurrent.SignallingRef
-import fs2.{Pipe, Pull, Stream}
+import fs2.{Chunk, Pipe, Pull, Stream}
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Tests
@@ -57,6 +57,12 @@ final class Fs2Test extends OurAsyncTestSuite:
         .toList
       assert(list == List("2", "5", "6"))
       succeed
+
+    "chunkMin" in :
+      val stream = Stream(1) ++ Stream(2, 3) ++ Stream(4, 5, 6) ++ Stream(7, 8, 9, 10) ++
+        Stream(11, 12) ++ Stream(13) ++ Stream(14, 15)
+      assert(stream.chunkMin(3).toList == List(
+        Chunk(1, 2, 3), Chunk(4, 5, 6), Chunk(7, 8, 9, 10), Chunk(11, 12, 13), Chunk(14, 15)))
   }
 
   "Signal" - {

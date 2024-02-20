@@ -8,7 +8,7 @@ import cats.syntax.apply.*
 import cats.syntax.option.*
 import cats.syntax.parallel.*
 import cats.{Applicative, ApplicativeError, Eq, effect}
-import fs2.{Chunk, Compiler, RaiseThrowable, Stream}
+import fs2.{Chunk, Compiler, Pull, RaiseThrowable, Stream}
 import js7.base.log.Logger
 import js7.base.time.ScalaTime.RichDeadline
 import js7.base.utils.ScalaUtils.syntax.RichAny
@@ -48,11 +48,17 @@ object StreamExtensions:
     def prepend[F2[x] >: F[x], O2 >: O](other: Stream[F2, O2]): Stream[F2, O2] =
       other ++ stream
 
-    def prependOne[A1 >: O](a: A1): Stream[F, A1] =
-      prepend(Stream.emit[F, A1](a))
+    def prependOne[O1 >: O](a: O1): Stream[F, O1] =
+      prepend(Stream.emit[F, O1](a))
 
-    def appendOne[A1 >: O](a: A1): Stream[F, A1] =
-      stream ++ Stream.emit[F, A1](a)
+    def appendOne[O1 >: O](a: O1): Stream[F, O1] =
+      stream ++ Stream.emit[F, O1](a)
+
+    def fillUpChunks(limit: Int): Stream[F, Chunk[O]] =
+      stream.repeatPull:
+        _.unconsMin(limit, allowFewerTotal = true).flatMap:
+          case Some((hd, tl)) => Pull.output1(hd).as(Some(tl))
+          case None           => Pull.pure(None)
 
     def onStart(onStart: F[Unit]): Stream[F, O] =
       Stream.exec(onStart) ++ stream

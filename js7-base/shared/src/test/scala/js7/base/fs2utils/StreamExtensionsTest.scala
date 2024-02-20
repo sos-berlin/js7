@@ -53,6 +53,19 @@ final class StreamExtensionsTest extends OurAsyncTestSuite:
       val anyStream = Stream(1, 2).appendOne("three")
       assert(anyStream.toList == List(1, 2, "three"))
 
+    "fillUpChunks" in:
+      val stream: Stream[Pure, Int] = Stream(1) ++ Stream(2, 3) ++ Stream(4, 5, 6) ++ Stream(7, 8, 9, 10) ++
+        Stream(11, 12) ++ Stream(13) ++ Stream(14, 15)
+      val filledUp = stream.chunkMin(3)
+      assert(filledUp.toList == List(
+        Chunk(1, 2, 3), Chunk(4, 5, 6), Chunk(7, 8, 9, 10), Chunk(11, 12, 13), Chunk(14, 15)))
+
+      // Does not compile ???
+      //  Found:    (stream : fs2.Stream[fs2.Pure, Int])
+      //  Required: fs2.Stream[Nothing, Int]
+      //assert(stream.fillUpChunks(limit = 3).chunks.toList == List(
+      //  Chunk(1, 2, 3), Chunk(4, 5, 6), Chunk(7, 8, 9, 10), Chunk(11, 12, 13), Chunk(14, 15)))
+
     "onStart" in:
       val subscribed = Atomic(0)
       val stream: Stream[IO, Int] =

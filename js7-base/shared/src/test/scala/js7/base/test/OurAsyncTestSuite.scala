@@ -8,7 +8,7 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration
 
 abstract class OurAsyncTestSuite
-extends AsyncFreeSpec, LoggingAsyncFreeSpec, TestStandards, TestCatsEffect:
+extends AsyncFreeSpec, LoggingAsyncFreeSpec, TestMixin, TestCatsEffect:
 
   override implicit def executionContext: ExecutionContext =
     super[TestCatsEffect].executionContext
@@ -17,3 +17,9 @@ extends AsyncFreeSpec, LoggingAsyncFreeSpec, TestStandards, TestCatsEffect:
     (using F: GenTemporal[F, Throwable])
   : F[Assertion] =
     test.timeout(timeout)
+
+  //protected final def repeatTest[F[_]](n: Int)(body: Int => F[Assertion]): F[Assertion] =
+  //  for i <- 1 to n do
+  //    Logger(getClass.scalaName).debugF(s"Test #$i"):
+  //      //? withClue(s"#$i: "):
+  //        body(i)

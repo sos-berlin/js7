@@ -8,7 +8,6 @@ import java.nio.file.{Path, Paths}
 import js7.base.configutils.Configs.*
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.FileUtils.{WorkingDirectory, deleteDirectoryRecursively}
-import js7.base.log.Logger
 import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.test.{OurTestSuite, TestCatsEffect}

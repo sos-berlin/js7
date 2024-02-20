@@ -1,46 +1,59 @@
 package js7.base.catsutils
 
-import cats.effect.{IO, Outcome}
+import cats.effect.{Deferred, FiberIO, IO}
+import cats.instances.vector.*
+import cats.syntax.foldable.*
+import cats.syntax.traverse.*
 import js7.base.test.OurAsyncTestSuite
+import js7.base.time.ScalaTime.*
+import org.scalatest.Assertion
 
 final class FiberVarTest extends OurAsyncTestSuite:
 
   "FiberVar" in:
-    val fiberVar = new FiberVar[Int]
-    assert(!fiberVar.isCanceled)
+    Vector.tabulate(100)(identity).traverse(myTest).map(_.combineAll)
 
-    def newFiber(onCancel: => Unit) =
-      IO.never.as(1)
-        .guaranteeCase:
-          case Outcome.Canceled() => IO(onCancel)
-          case _ => IO.unit
-        .start
+  private def myTest(i: Int): IO[Assertion] =
+    IO.defer:
+      val fiberVar = new FiberVar[Int]
 
-    var canceled1, canceled2, canceled3, canceled4 = false
-    for
-      // Initial set
-      fiber <- newFiber { canceled1 = true }
-      _ <- fiberVar.set(fiber)
-      _ = assert(!canceled1)
+      def newFiber(onCancel: => Unit): IO[FiberIO[Int]] =
+        for
+          whenStarted <- Deferred[IO, Unit]
+          fiber <- whenStarted
+            .complete(())
+            .*>(IO.never)
+            .as(1)
+            .onCancel(IO(onCancel))
+            .start
+          _ <- whenStarted.get
+        yield fiber
 
-      // Second set cancels the first fiber
-      fiber <- newFiber { canceled2 = true }
-      _ <- fiberVar.set(fiber)
-      _ = assert(canceled1 && !canceled2)
+      @volatile var canceled1, canceled2, canceled3, canceled4 = false
+      for
+        // Initial set
+        fiber <- newFiber { canceled1 = true }
+        _ <- fiberVar.set(fiber)
+        _ = assert(!canceled1)
 
-      // Cancel the last fiber
-      _ <- fiberVar.set()
-      _ = assert(canceled2)
+        // Second set cancels the first fiber
+        fiber <- newFiber { canceled2 = true }
+        _ <- fiberVar.set(fiber)
+        _ = assert(canceled1 && !canceled2)
 
-      // Cancel the fiberVar itself and any future fiber
-      fiber <- newFiber { canceled3 = true }
-      _ <- fiberVar.set(fiber)
-      _ <- fiberVar.cancel
-      _ = assert(canceled3)
+        // Cancel the last fiber
+        _ <- fiberVar.set()
+        _ = assert(canceled2)
 
-      // Because fiberVar itself has been canceled, any new Fiber will be canceled immediately
-      fiber <- newFiber { canceled4 = true }
-      _ <- fiberVar.set(fiber)
-      _ = assert(canceled4)
-    yield
-      succeed
+        // Cancel the fiberVar itself and any future fiber
+        fiber <- newFiber { canceled3 = true }
+        _ <- fiberVar.set(fiber)
+        _ <- fiberVar.cancel
+        _ = assert(canceled3)
+
+        // Because fiberVar itself has been canceled, any new Fiber will be canceled immediately
+        fiber <- newFiber { canceled4 = true }
+        _ <- fiberVar.set(fiber)
+        _ = assert(canceled4)
+      yield
+        succeed

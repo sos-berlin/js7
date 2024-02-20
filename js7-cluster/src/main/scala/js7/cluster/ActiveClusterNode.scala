@@ -529,7 +529,13 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
           streamEventIds(api, Some(timing.heartbeat min keepAlive))
             .through: stream =>
               clusterConf.testAckLossPropertyKey.fold(stream): k =>  // Testing only
-                stream.filter(_ => sys.props(k).toBoolean)
+                var logged = false
+                stream.filter: _ =>
+                  val suppress = sys.props(k).toBoolean
+                  if suppress then
+                    logger.warn(s"🚫 Acknowledgement receiving is suppressed by js7.journal.cluster.TEST-ACK-LOSS=$k")
+                    logged = true
+                  !suppress
             .detectPauses(timing.passiveLostTimeout)
             .onlyNewest
             .interruptWhenF(stopJournaling.get)  // Race condition: may be set too late

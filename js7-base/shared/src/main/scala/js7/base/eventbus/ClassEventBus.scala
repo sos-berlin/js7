@@ -81,14 +81,14 @@ trait ClassEventBus[E] extends EventPublisher[E], AutoCloseable:
       oneShotFilterMap(f)(promise.success)
       promise.future)
 
+  @deprecated("Use when")
   final def whenFuture[C <: Classifier : ClassTag]: Future[ClassifierToEvent[C]] =
     whenFuture_[C](_ => true)
 
+  @deprecated("Use when_")
   final def whenFuture_[C <: Classifier : ClassTag](predicate: ClassifierToEvent[C] => Boolean)
   : Future[ClassifierToEvent[C]] =
-    val promise = Promise[ClassifierToEvent[C]]()
-    oneShot[C](predicate)(promise.success)
-    promise.future
+    when_(predicate)
 
   final def whenPFFuture[C <: Classifier: ClassTag, D](pf: PartialFunction[ClassifierToEvent[C], D])
   : Future[D] =

@@ -15,19 +15,19 @@ private final class StateBuilderAndAccessor[S <: SnapshotableState[S]](
   initialState: S)
   (implicit S: SnapshotableState.Companion[S]):
 
-  private val getStateMVarIO: IO[MVar[IO, S]] = MVar[IO].of(initialState).unsafeMemoize
-  val state: IO[S] = getStateMVarIO.flatMap(_.read)
+  private val getStateMVarIO: IO[MVar[IO, IO[S]]] = MVar[IO].of(IO.pure(initialState)).unsafeMemoize
+  val state: IO[S] = getStateMVarIO.flatMap(_.read.flatten)
 
   @deprecated("Return IO!")
   def newStateBuilder()(using ioRuntime: IORuntime): SnapshotableStateBuilder[S] =
     given ExecutionContext = ioRuntime.compute
     val builder = S.newBuilder()
     (for
-        mVar <- getStateMVarIO
-        s <- IO.fromFuture(IO.pure(builder.synchronizedStateFuture)).flatten  // May wait, but getStateMVarIO has a value anyway
-        _ <- mVar.take
-        _ <- mVar.put(s)
-      yield ()
+      mVar <- getStateMVarIO
+      sIO <- IO.fromFuture(IO.pure(builder.synchronizedStateFuture)) // May wait, but getStateMVarIO has a value anyway
+      _ <- mVar.take
+      _ <- mVar.put(sIO)
+     yield ()
     ).unsafeToFuture()/*asynchronous ???*/
       .onFailure { case t =>
         logger.error(s"PassiveClusterNode StateBuilderAndAccessor failed: ${t.toStringWithCauses}")
@@ -39,9 +39,9 @@ private final class StateBuilderAndAccessor[S <: SnapshotableState[S]](
       val builder = S.newBuilder()
       (for
         mVar <- getStateMVarIO
-        s <- IO.fromFuture(IO.pure(builder.synchronizedStateFuture)).flatten // May wait, but getStateMVarIO has a value anyway
+        sIO <- IO.fromFuture(IO.pure(builder.synchronizedStateFuture)) // May wait, but getStateMVarIO has a value anyway
         _ <- mVar.take
-        _ <- mVar.put(s)
+        _ <- mVar.put(sIO)
       yield ())
         .onError(t => IO:
           logger.error(s"PassiveClusterNode StateBuilderAndAccessor failed: ${t.toStringWithCauses}"))

@@ -1,5 +1,7 @@
 package js7.data.order
 
+import cats.syntax.traverse.*
+import cats.instances.option.*
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
 import js7.base.circeutils.CirceUtils.*
@@ -90,8 +92,11 @@ object FreshOrder:
     startPosition: Option[PositionOrLabel] = None,
     stopPositions: Set[PositionOrLabel] = Set.empty)
   : Checked[FreshOrder] =
-    for checkedId <- id.checkedNameSyntax
-      yield new FreshOrder(checkedId, workflowPath, arguments, scheduledFor,
+    for
+      checkedId <- id.checkedNameSyntax
+      _ <- scheduledFor.traverse(_.checkFiniteDurationCompatible)
+    yield
+      new FreshOrder(checkedId, workflowPath, arguments, scheduledFor,
         deleteWhenTerminated, forceJobAdmission,
         innerBlock, startPosition, stopPositions)
 

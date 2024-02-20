@@ -37,6 +37,7 @@ import js7.common.http.StreamingSupport.{asFs2Stream, toPekkoSourceResource}
 import js7.common.pekkohttp.ByteSequenceStreamExtensions.*
 import js7.common.pekkohttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
 import js7.common.pekkoutils.ByteStrings.syntax.*
+import js7.data.event.JournalEvent
 import org.apache.pekko
 import org.apache.pekko.Done
 import org.apache.pekko.actor.ActorSystem
@@ -98,14 +99,14 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
   final def getDecodedLinesStream[A: Decoder](
     uri: Uri,
     responsive: Boolean = false,
-    jsonReadAhead: Int | UseDefault = UseDefault)
+    prefetch: Int | UseDefault = UseDefault)
     (using IO[Option[SessionToken]])
   : IO[Stream[IO, A]] =
-    val readAhead = jsonReadAhead getOrElse this.prefetch: Int
+    val myPrefetch = prefetch getOrElse this.prefetch: Int
     getRawLinesStream(uri)
       .map(_
-        .filter(_ != EmptyLine/*keep-alive chunk*/)
-        .mapParallelBatch(prefetch = readAhead):
+        .filter(_ != HeartbeatByteArray)
+        .mapParallelBatch(prefetch = myPrefetch):
           _.parseJsonAs[A].orThrow)
 
   final def getRawLinesStream(uri: Uri)(implicit s: IO[Option[SessionToken]])
@@ -285,9 +286,11 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
               val httpsCtx = req.uri.scheme match
                 case "https" => httpsConnectionContext
                 case _ => http.defaultClientHttpsContext
+              //————————————————————————————————————————————
               val future = http.singleRequest(req, httpsCtx)
+              //————————————————————————————————————————————
               val cancel = IO.executionContext.flatMap(implicit ec => IO:
-                logger.debug(s"    ⚫️$responseLogPrefix cancel ...")
+                logger.debug(s"🗑    ↘$responseLogPrefix cancel ...")
                 // TODO Pekko's max-open-requests may be exceeded when new requests are opened
                 //  while many canceled requests are still not completed by Pekko
                 //  until the server has responded or some Pekko (idle connection) timed out.
@@ -295,9 +298,10 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
                 // TODO Maybe manage own connection pool? Or switch to http4s?
                 future
                   .flatMap(_
-                    .discardEntityBytes().future.andThen: tried =>
-                      logger.debug(s"    🗑️ $responseLogPrefix discardEntityBytes => " +
-                        tried.fold(_.toStringWithCauses, _ => "ok")))
+                    .discardEntityBytes().future)
+                  .andThen: tried =>
+                    logger.debug(s"🗑 <-|↙$responseLogPrefix canceled with discardEntityBytes => " +
+                      tried.fold(_.toStringWithCauses, _ => "OK"))
                   .map((_: Done) => ())
                   .recover(_ => ())
                 ()) // Forget the started Future, discard the remaining entities in background
@@ -322,7 +326,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
           .guaranteeCaseLazy:
             case Outcome.Canceled() => IO:
               canceled = true
-              logger.debug(s"<~~⚫️$responseLogPrefix => canceled")
+              logger.debug(s"<~~⚫️ $responseLogPrefix => canceled")
 
             case Outcome.Errored(throwable) => IO.defer:
               val sym = throwable match
@@ -347,7 +351,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
   : IO[HttpResponse] =
     if request.headers.contains(StreamingJsonHeader) then
       untilResponded.map: response =>
-        logResponse(response, responseLogPrefix, "✔")
+        logResponse(response, responseLogPrefix, " ✔")
         response
     else
       var waitingLogged = false
@@ -358,7 +362,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
           logger.debug(
             s"... $sym$responseLogPrefix => Still waiting for response${closed ?? " (closed)"}"))
         .flatTap(response => IO:
-          logResponse(response, responseLogPrefix, if waitingLogged then "🔵" else "✔"))
+          logResponse(response, responseLogPrefix, if waitingLogged then "🔵" else " ✔"))
 
   private def logResponse(response: HttpResponse, responseLogPrefix: String, good: String): Unit =
     val sym =
@@ -389,7 +393,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
         case NonFatal(_) => ""
       })
     val arrow = if response.entity.isChunked then "<--<" else "<--|"
-    logger.debug(s"$arrow$sym $responseLogPrefix => ${response.status}$suffix")
+    logger.debug(s"$arrow$sym$responseLogPrefix => ${response.status}$suffix")
 
   // |-->  non-chunked request
   // <--|✔ non-chunked response, ok
@@ -408,14 +412,18 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
             chunks = chunked.chunks
               .map { chunk =>
                 if LogData || chunk.isLastChunk then {
-                  val arrow = if chunk.isLastChunk then "<--|  " else "<-<-  "
-                  val data =
+                  def arrow = if chunk.isLastChunk then "<--|  " else "<-<-  "
+                  def data =
                     if isUtf8 then
                       chunk.data.utf8String.truncateWithEllipsis(
                         200, showLength = true, firstLineOnly = true, quote = true)
                     else
                       s"${chunk.data.length} bytes"
-                  logger.trace(s"$arrow$responseLogPrefix $data")
+                  if chunk.data == HeartbeatByteString /*Empty line is regarded as heartbeat*/
+                    || chunk.data == StampedHeartbeatByteString then
+                    loggerHeartbeat.trace(s"$arrow$responseLogPrefix $data")
+                  else
+                    loggerStream.trace(s"$arrow$responseLogPrefix $data")
                 }
                 chunk
               }
@@ -493,7 +501,9 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
 
 
 object PekkoHttpClient:
-  private val EmptyLine = ByteArray("\n")
+  val HeartbeatByteArray = ByteArray("\n")
+  private val HeartbeatByteString = HeartbeatByteArray.toByteSequence[ByteString]
+  private val StampedHeartbeatByteString = ByteString(JournalEvent.StampedHeartbeatString)
 
   val LogData: Boolean = true
     //val key = "js7.PekkoHttpClient.log-data"
@@ -571,6 +581,8 @@ object PekkoHttpClient:
       CorrelId.checked(asciiString).map(`x-js7-correlation-id`(_)).asTry
 
   private val logger = Logger[this.type]
+  private val loggerStream = Logger(getClass.scalaName + ".stream")
+  private val loggerHeartbeat = Logger(getClass.scalaName + ".heartbeat")
   private val LF = ByteString("\n")
   private val AcceptJson = Accept(MediaTypes.`application/json`) :: Nil
   private val requestCounter = Atomic(0L)

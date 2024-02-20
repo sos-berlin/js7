@@ -4,7 +4,6 @@ import izumi.reflect.Tag
 import js7.base.configutils.Configs.*
 import js7.base.io.process.Processes.ShellFileExtension as sh
 import js7.base.log.Logger
-import js7.base.log.Logger.syntax.*
 import js7.base.problem.Checked.Ops
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.test.OurTestSuite
@@ -372,15 +371,7 @@ extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
       }
     }
   }
-
-  private def repeatTest(n: Int)(body: Int => Any): Unit = {
-    for (i <- 1 to n) {
-      logger.debugCall(s"#$i", "")(
-        withClue(s"#$i: ")(
-          body(i)))
-    }
-  }
-
+  
   "JS-2105 Cancel while retrying (Engine has to synchronize OrderDetachable with ongoing events)" in
     repeatTest(if (isIntelliJIdea) 100 else 10) { testIndex =>
       // No more InapplicableEventProblem!

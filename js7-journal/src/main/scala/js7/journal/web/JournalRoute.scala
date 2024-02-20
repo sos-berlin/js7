@@ -79,9 +79,8 @@ trait JournalRoute extends RouteProvider:
                           .map(if returnAck then toLength else toContent)
                           .pipeIf(heartbeat.isDefined)(_
                             .keepAlive(heartbeat.get, HeartbeatMarkerIO))
-                          .map(_.toChunk)
+                          .map(_.toChunk).unchunks
                           .chunkLimit(chunkSize)
-                          .map(_.flatten)
                           .map(_.toByteString)
                           //.splitBigByteSeqs(chunkSize)
                           //FIXME ? .chunk(chunkSize) --> byteStrings.sum(_.length) <= chunkSize

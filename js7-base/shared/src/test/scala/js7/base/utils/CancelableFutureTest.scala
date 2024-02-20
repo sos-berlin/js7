@@ -6,7 +6,6 @@ import cats.syntax.foldable.*
 import cats.syntax.parallel.*
 import js7.base.monixlike.MonixLikeExtensions.unsafeToCancelableFuture
 import js7.base.test.OurAsyncTestSuite
-import js7.base.test.ScalaTestForCats.given
 import js7.base.time.ScalaTime.*
 import org.scalatest.compatible.Assertion
 import scala.concurrent.ExecutionContext

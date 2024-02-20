@@ -18,6 +18,7 @@ import js7.common.http.JsonStreamingSupport
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.PekkoHttpClient.`x-js7-request-id`
 import js7.common.http.StreamingSupport.*
+import js7.common.pekkohttp.ByteSequenceStreamExtensions.*
 import js7.common.pekkohttp.StandardDirectives.ioRoute
 import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkoutils.ByteStrings.*
@@ -31,6 +32,8 @@ import org.apache.pekko.http.scaladsl.server.{ContentNegotiator, Directive, Dire
 import org.apache.pekko.util.ByteString
 import scala.annotation.tailrec
 import scala.concurrent.duration.FiniteDuration
+import js7.common.pekkoutils.ByteStrings.syntax.byteStringByteSequence
+import js7.base.data.ByteSequence.ops.*
 
 /**
   * @author Joacim Zschimmer
@@ -351,5 +354,7 @@ object PekkoHttpServerUtils:
   : Pipe[IO, A, ByteString] =
     _.mapParallelBatch(/*responsive = true,*/ prefetch = prefetch)(_
         .asJson
-        .toByteSequence[ByteString] ++ LF)
-      .chunkLimit(chunkSize).unchunks
+        .toByteSequence[fs2.Chunk[Byte]] ++ fs2.Chunk.singleton('\n'.toByte))
+      .unchunks
+      .chunkLimit(chunkSize)
+      .map(_.toByteSequence[ByteString])

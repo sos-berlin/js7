@@ -22,6 +22,7 @@ object JournalEvent :
     Stamped(0, Heartbeat)
   final val StampedHeartbeatIO: IO[Stamped[KeyedEvent[JournalEvent]]] =
     IO.pure(StampedHeartbeat)
+  val StampedHeartbeatString = """{"eventId":0,"TYPE":"Heartbeat"}\n"""
 
   implicit val jsonCodec: TypedJsonCodec[JournalEvent] = TypedJsonCodec(
     Subtype(SnapshotTaken),

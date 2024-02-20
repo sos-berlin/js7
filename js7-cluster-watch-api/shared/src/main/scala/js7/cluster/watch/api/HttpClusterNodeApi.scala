@@ -53,11 +53,15 @@ extends ClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
     timeout: Option[FiniteDuration] = None,
     heartbeat: Option[FiniteDuration] = None)
   : IO[Stream[IO, EventId]] =
-    httpClient.getDecodedLinesStream[EventId](
-      uris.eventIds(timeout, heartbeat = heartbeat),
-      responsive = true,
-      jsonReadAhead = 0)
-
+    httpClient
+      .getDecodedLinesStream[EventId](
+        uris.eventIds(timeout, heartbeat = heartbeat),
+        responsive = true,
+        prefetch = 1000)
+      .map(_
+        .mapChunks: chunk =>
+          // Only the lastest EventId in chunk
+          fs2.Chunk.fromOption(chunk.last))
   /** Stream for a journal file.
     * @param journalPosition start of observation
     * @param markEOF mark EOF with the special line `JournalSeparators.EndOfJournalFileMarker`

@@ -6,7 +6,6 @@ import cats.instances.vector.*
 import cats.syntax.foldable.*
 import cats.syntax.traverse.*
 import java.util.concurrent.Executor
-import js7.base.log.Logger
 import js7.base.test.{OurTestSuite, TestCatsEffect}
 import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.thread.Futures.implicits.*

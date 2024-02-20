@@ -101,6 +101,16 @@ object SyncDeadline:
     given (using ioRuntime: IORuntime): Now =
       fromIORuntime()
 
+  def now: IO[Now] =
+    for d <- IO.monotonic yield
+      Now(d.toNanos)
+
+  def now()(using IORuntime): SyncDeadline =
+    fromIORuntime()
+
+  def usingNow[A](body: Now ?=> A): IO[A] =
+    now.map(now => body(using now))
+
   def fromIORuntime()(using ioRuntime: IORuntime): Now =
     fromScheduler()(using ioRuntime.scheduler)
 
@@ -115,16 +125,6 @@ object SyncDeadline:
 
   def fromCatsDeadline(catsDeadline: CatsDeadline) =
     fromNanos(catsDeadline.nanosSinceZero)
-
-  def now: IO[Now] =
-    for d <- IO.monotonic yield
-      Now(d.toNanos)
-
-  def now()(using IORuntime): SyncDeadline =
-    Now.fromIORuntime()
-
-  def usingNow[A](body: Now ?=> A): IO[A] =
-    now.map(now => body(using now))
 
   //implicit object SyncDeadline2IsOrdered extends Ordering[SyncDeadline]:
   //  def compare(a: SyncDeadline, b: SyncDeadline) = a compare b

@@ -7,7 +7,6 @@ import cats.syntax.option.*
 import java.nio.charset.StandardCharsets.US_ASCII
 import java.nio.file.Files.createTempDirectory
 import js7.agent.tests.ProcessDriverTest.TestScript
-import js7.base.catsutils.CatsEffectExtensions.joinStd
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax.RichPath

@@ -40,3 +40,10 @@ extends (ByteSeq => Stream[IO, ByteArray]):
       val result = Stream.emits(lines.result())
       lines.clear()
       result
+
+
+//object ByteSequenceToLinesStream:
+//
+//  extension [F[_], I: ByteSequence](stream: Stream[F, I])
+//    def linesTo[O: ByteSequence]: Stream[F, O] =
+//      stream.through(new ByteSequenceToLinesStream[F, I, O]()) .................

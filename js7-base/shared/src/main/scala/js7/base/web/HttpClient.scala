@@ -20,7 +20,7 @@ trait HttpClient:
   def getDecodedLinesStream[A: Decoder](
     uri: Uri,
     responsive: Boolean = false,
-    jsonReadAhead: Int | UseDefault = UseDefault)
+    prefetch: Int | UseDefault = UseDefault)
     (implicit s: IO[Option[SessionToken]])
   : IO[Stream[IO, A]]
 

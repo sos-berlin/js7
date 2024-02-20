@@ -1,5 +1,8 @@
 package js7.base.time
 
+import js7.base.utils.emptyRunnable
+import ClockChecking.*
+import js7.base.log.Logger
 import js7.base.monixlike.MonixLikeExtensions.scheduleAtFixedRate
 import js7.base.monixlike.{SerialSyncCancelable, SyncCancelable}
 import js7.base.time.ScalaTime.*
@@ -8,6 +11,7 @@ import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
 import scala.collection.mutable
 import scala.concurrent.duration.*
+import scala.util.{Failure, Success, Try}
 
 /** Checks the clock for change and corrects the schedule. */
 private[time] trait ClockChecking extends Runnable:
@@ -61,8 +65,16 @@ private[time] trait ClockChecking extends Runnable:
           startTicking(tickInterval.ms)
         else
           stopTicking()
+
         //logger.trace(s"scheduleOnce ${delay.ms.pretty} (${Timestamp.ofEpochMilli(now)})")
-        timer := scheduler.sleep(delay.ms max ZeroDuration, this)
+        timer :=
+          (Try((delay max 0).ms) match
+            case Failure(t) =>
+              logger.error(s"scheduleNext: delay=${delay}ms is out of range for FiniteDuration")
+              emptyRunnable
+            case Success(delay) =>
+              scheduler.sleep(delay, this))
+
         nextMilli = firstMilli
 
   private def startTicking(tickInterval: FiniteDuration) =
@@ -122,3 +134,6 @@ private[time] trait ClockChecking extends Runnable:
           else
             epochMilliToAlarms -= epochMilli
             scheduleNext()
+
+object ClockChecking:
+  private val logger = Logger[this.type]

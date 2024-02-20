@@ -196,9 +196,12 @@ object CirceUtils:
 
   implicit final class CirceUtilsChecked[A](private val underlying: Checked[A]) extends AnyVal:
     def toDecoderResult(history: => List[CursorOp]): Decoder.Result[A] =
-      underlying match
-        case Right(o) => Right(o)
-        case Left(o) => Left(DecodingFailure(o.toString, history))  // Ignoring stacktrace ???
+      CirceUtils.toDecoderResult(history)(underlying)
+
+  def toDecoderResult[A](history: => List[CursorOp])(checked: Checked[A]): Decoder.Result[A] =
+    checked match
+      case Right(o) => Right(o)
+      case Left(o) => Left(DecodingFailure(o.toString, history)) // Ignoring stacktrace ???
 
   implicit final class RichCirceDecoder[A](private val decoder: Decoder[A]) extends AnyVal:
     def checked(check: A => Checked[A]): Decoder[A] =

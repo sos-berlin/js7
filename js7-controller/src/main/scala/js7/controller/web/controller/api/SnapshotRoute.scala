@@ -73,8 +73,8 @@ trait SnapshotRoute extends ControllerRouteProvider:
             completeWithIOStream(`application/x-ndjson`):
               stream
                 .map(_.toChunk)
-                .chunkLimit(chunkSize)  // TODO Maybe fill-up chunks
                 .unchunks
+                .chunkLimit(chunkSize)  // TODO Maybe fill-up chunks
                 .map(_.toByteString)
                 .interruptWhen(shutdownSignaled)
 

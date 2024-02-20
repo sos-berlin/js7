@@ -246,8 +246,9 @@ extends Service.StoppableByRequest:
               workingClusterNodeAllocated.allocatedThing.executeClusterWatchConfirm(cmd)
             case _ =>
               common.clusterWatchCounterpart.executeClusterWatchConfirm(cmd)
-          .flatTap(result => IO(
-            common.testEventBus.publish(ClusterWatchConfirmed(cmd, result))))
+          .flatTap(result => IO:
+            logger.trace(s"### ClusterWatchConfirmed($cmd, $result)")
+            common.testEventBus.publish(ClusterWatchConfirmed(cmd, result)))
 
   def clusterWatchRequestStream: IO[fs2.Stream[IO, ClusterWatchRequest]] =
     common.clusterWatchCounterpart.newStream

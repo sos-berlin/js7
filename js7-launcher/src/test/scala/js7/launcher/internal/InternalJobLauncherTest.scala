@@ -1,7 +1,6 @@
 package js7.launcher.internal
 
 import cats.effect.IO
-import cats.effect.kernel.Resource
 import cats.effect.unsafe.IORuntime
 import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.catsutils.CatsEffectExtensions.joinStd
@@ -23,9 +22,9 @@ import js7.data.value.{NamedValues, NumberValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.{Position, WorkflowBranchPath}
 import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.launcher.StdObserversForTest.testSink
 import js7.launcher.internal.InternalJobLauncherTest.*
 import js7.launcher.{OrderProcess, ProcessOrder, StdObservers}
-import js7.launcher.StdObserversForTest.testSink
 
 final class InternalJobLauncherTest extends OurAsyncTestSuite:
 
