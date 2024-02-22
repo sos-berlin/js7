@@ -6,7 +6,7 @@ import js7.base.time.ScalaTime.*
 
 final class SyncCancelableTest extends OurTestSuite, TestCatsEffect:
 
-  private val scheduler = ioRuntime.scheduler
+  private lazy val scheduler = ioRuntime.scheduler
 
   "cancel" in:
     var scheduled = false

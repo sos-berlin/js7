@@ -62,7 +62,7 @@ final class SessionRegisterTest extends OurAsyncTestSuite, TestCatsEffect:
     assert(session eq sessionRegister.session(sessionToken, Left(Set(AUser.id))).await(99.s).orThrow)
 
   "But late authentication is allowed, changing from anonymous to non-anonymous User" in:
-    val mySystem = newActorSystem("SessionRegisterTest")
+    val mySystem = newActorSystem("SessionRegisterTest", executionContext = ioRuntime.compute)
     val mySessionRegister =
       SessionRegister.forTest(MySession.apply, SessionRegister.TestConfig)
     val sessionToken = mySessionRegister.login(SimpleUser.TestAnonymous, Some(Js7Version))

@@ -284,13 +284,17 @@ final class AsyncMapTest extends OurAsyncTestSuite
       }
     }
 
-    val asyncMap = AsyncMap.stoppable[Int, String]()
+    lazy val asyncMap = AsyncMap.stoppable[Int, String]()
 
     "non empty" - {
-      asyncMap.insert(1, "EINS")
-        .as(succeed).unsafeToFuture()
+      lazy val fillAsyncMap =
+        asyncMap.insert(1, "EINS")
+          .as(succeed).unsafeToFuture()
+
 
       "update is allowed" in {
+        fillAsyncMap
+
         (for
           checked <- asyncMap.insert(1, "EINS")
           _ = IO(assert(checked.isRight))

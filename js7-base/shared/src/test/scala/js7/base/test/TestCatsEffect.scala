@@ -1,26 +1,61 @@
 package js7.base.test
 
-import cats.effect.unsafe.{IORuntime, Scheduler}
+import cats.effect.SyncIO
+import cats.effect.unsafe.IORuntime
+import cats.syntax.option.*
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.Base64
-import js7.base.catsutils.OurIORuntime
+import java.util.concurrent.locks.ReentrantLock
+import js7.base.catsutils.{Js7IORuntime, OwnIORuntime}
 import js7.base.data.ByteArray
+import js7.base.test.TestCatsEffect.*
+import js7.base.utils.Atomic.extensions.*
+import js7.base.utils.CatsUtils.syntax.RichResource
+import js7.base.utils.ScalaUtils.syntax.RichJavaClass
+import js7.base.utils.{Allocated, Atomic}
+import org.scalatest.{BeforeAndAfterAll, Suite}
 import scala.concurrent.ExecutionContext
 
-trait TestCatsEffect:
+trait TestCatsEffect extends BeforeAndAfterAll:
+  this: Suite =>
 
-  // Or use own IORuntime for each test class ???
-  protected final def ioRuntime: IORuntime =
-    OurIORuntime.ioRuntime
+  private val _ioRuntime = Atomic(none[Allocated[SyncIO, IORuntime]])
+  private var afterAllMayBeCalled = false
+  private val lock = new ReentrantLock
+
+  protected final lazy val ioRuntime: IORuntime =
+    if !afterAllMayBeCalled then
+      throw new IllegalStateException("IORuntime used but beforeAll() has not yet executed")
+    else if !useOwnIORuntime then
+      Js7IORuntime.ioRuntime
+    else
+      lock.lockInterruptibly()
+      try
+        val allocated =
+          OwnIORuntime
+            .resource[SyncIO](name = getClass.shortClassName)
+            .toAllocated
+            .unsafeRunSync()
+        _ioRuntime := allocated.some
+        allocated.allocatedThing
+      finally
+        lock.unlock()
+
+  override protected def beforeAll(): Unit =
+    afterAllMayBeCalled = true
+    super.beforeAll()
+
+  override protected def afterAll(): Unit =
+    try for release <- _ioRuntime.get.map(_.release) do release.unsafeRunSync()
+    finally super.afterAll()
 
   protected def executionContext: ExecutionContext =
     ioRuntime.compute
 
-  protected def scheduler: Scheduler =
-    ioRuntime.scheduler
-
 
 object TestCatsEffect:
+
+  val useOwnIORuntime = sys.props.contains("js7.test.ownIORuntime")
 
   /** Make a seed for Cats Effect TestControl. */
   def toSeed(number: Long) =

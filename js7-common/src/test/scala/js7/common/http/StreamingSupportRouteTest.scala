@@ -34,6 +34,7 @@ final class StreamingSupportRouteTest extends OurAsyncTestSuite:
 
   private val config = config"""
     js7.web.server.shutdown-timeout = 10s
+    js7.web.server.shutdown-delay = 500ms
     js7.web.server.auth.https-client-authentication = off
     pekko.http.server.idle-timeout = 2s  # In case, a stream is not cancelable
     """.withFallback(WebLogDirectives.TestConfig)

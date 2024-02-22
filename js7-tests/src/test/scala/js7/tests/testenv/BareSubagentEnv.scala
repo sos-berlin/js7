@@ -23,7 +23,6 @@ final class BareSubagentEnv private[testenv](
   protected val provideClientCertificate: Boolean = false,
   override protected val suppressSignatureKeys: Boolean = false,
   protected val extraConfig: Config = ConfigFactory.empty)
-  (using IORuntime)
 extends SubagentEnv:
   type Program = Subagent
 
@@ -39,10 +38,10 @@ extends SubagentEnv:
      |}
      |""".stripMargin
 
-  def programResource: ResourceIO[Subagent] =
+  def programResource(using IORuntime): ResourceIO[Subagent] =
     subagentResource
 
-  def subagentResource: ResourceIO[Subagent] =
+  def subagentResource(using IORuntime): ResourceIO[Subagent] =
     Subagent.resource(subagentConf, new StandardEventBus[Any])
 
   override def toString = s"BareSubagentEnv($name)"

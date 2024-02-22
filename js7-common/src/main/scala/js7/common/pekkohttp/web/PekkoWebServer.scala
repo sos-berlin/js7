@@ -59,14 +59,15 @@ extends WebServerBinding.HasLocalUris, Service.StoppableByRequest:
       .traverse(_.resource.toAllocated.map(Some(_)))
       .flatMap(portWebServersAllocated.set)
       .*>(startService(
-        untilStopRequested))
+        untilStopRequested
+          .guarantee(stopPortWebServers)))
 
 
-  @TestOnly def stopPortWebServers: IO[Unit] =
+  def stopPortWebServers: IO[Unit] =
     logger.traceIO:
       portWebServersAllocated.value
         .map(_.flatMap(_.map(_.release)))
-        .flatMap(_.sequence)
+        .flatMap(_.parSequence)
         .map(_.combineAll)
 
   def restartWhenHttpsChanges(implicit iox: IOExecutor): Resource[IO,Unit] =
@@ -165,6 +166,7 @@ object PekkoWebServer:
   private[web] val testConfig = config"""
     js7.web.server.auth.https-client-authentication = off
     js7.web.server.shutdown-timeout = 10s
+    js7.web.server.shutdown-delay = 500ms
     """
 
   @TestOnly
@@ -203,6 +205,7 @@ object PekkoWebServer:
   : Resource[IO, PekkoWebServer] =
     Resource.suspend(IO {
       val shutdownTimeout = config.finiteDuration("js7.web.server.shutdown-timeout").orThrow
+      val shutdownDelay = config.finiteDuration("js7.web.server.shutdown-delay").orThrow
       val httpsClientAuthRequired = config.getBoolean(
         "js7.web.server.auth.https-client-authentication")
 
@@ -215,6 +218,7 @@ object PekkoWebServer:
                 webServerBinding,
                 toBoundRoute(_),
                 shutdownTimeout = shutdownTimeout,
+                shutdownDelay = shutdownDelay,
                 httpsClientAuthRequired = httpsClientAuthRequired)),
           config)))
     })

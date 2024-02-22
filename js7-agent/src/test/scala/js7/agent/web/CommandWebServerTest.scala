@@ -82,5 +82,6 @@ private object CommandWebServerTest:
     config"""
       js7.web.server.auth.public = on
       js7.web.server.shutdown-timeout = 10s
+      js7.web.server.shutdown-delay = 500ms    
       pekko.http.client.parsing.max-content-length = 100MB
     """.withFallback(AgentConfiguration.DefaultConfig)

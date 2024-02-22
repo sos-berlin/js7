@@ -34,11 +34,11 @@ trait WebServiceTest extends HasCloser, BeforeAndAfterAll, ScalatestRouteTest:
 
   protected def uriPathPrefix = ""
 
-  protected final val gateKeeper = new GateKeeper(
+  protected final lazy val gateKeeper = new GateKeeper(
     WebServerBinding.Http,
     GateKeeper.Configuration.fromConfig(testConfig, SimpleUser.apply))
 
-  protected final val sessionRegister = SessionRegister.forTest[SubagentSession](
+  protected final lazy val sessionRegister = SessionRegister.forTest[SubagentSession](
     SubagentSession.apply, SessionRegister.TestConfig)
 
   override def testConfig =

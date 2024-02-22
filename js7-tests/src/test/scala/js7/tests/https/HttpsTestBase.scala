@@ -178,12 +178,15 @@ extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest, ProvideAct
     super.beforeAll()
 
   override def afterAll() =
-    // Don't use (unavailable) HTTPS to shutdown Controller, use direct call:
-    controller.runningController.shutdown(ControllerCommand.ShutDown()).await(99.s)
+    try
+      // Don't use (unavailable) HTTPS to shutdown Controller, use direct call:
+      controller.runningController.shutdown(ControllerCommand.ShutDown()).await(99.s)
+  
+      close()
+      delete(clientKeyStore)
+    finally 
+      super.afterAll()
 
-    close()
-    delete(clientKeyStore)
-    super.afterAll()
     if useCluster then
       backupController.stop.await(99.s)
       backupDirectoryProvider.close()

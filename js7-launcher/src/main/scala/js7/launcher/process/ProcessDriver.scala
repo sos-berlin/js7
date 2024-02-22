@@ -1,11 +1,10 @@
 package js7.launcher.process
 
-import cats.effect.{FiberIO, IO}
+import cats.effect.IO
 import cats.syntax.traverse.*
 import js7.base.catsutils.CatsEffectExtensions.startAndForget
 import js7.base.io.process.ProcessSignal
 import js7.base.log.Logger
-import js7.base.log.Logger.syntax.*
 import js7.base.monixlike.MonixLikeExtensions.materialize
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}

@@ -100,7 +100,7 @@ extends OurTestSuite, BeforeAndAfterAll, TestCatsEffect, ProvideActorSystem, Gen
   protected val whenShuttingDown = Deferred.unsafe
 
   private lazy val eventCollector = SimpleEventCollector[OrderEvent]().closeWithCloser
-  protected val eventWatch: JournalEventWatch = eventCollector.eventWatch
+  protected lazy val eventWatch: JournalEventWatch = eventCollector.eventWatch
 
   private lazy val allocatedServer = PekkoWebServer
     .resource(
@@ -132,11 +132,12 @@ extends OurTestSuite, BeforeAndAfterAll, TestCatsEffect, ProvideActorSystem, Gen
     allocatedServer
   }
 
-  override def afterAll() = {
-    allocatedServer.release.await(99.s)
-    Pekkos.terminateAndWait(actorSystem, 99.s)
-    super.afterAll()
-  }
+  override def afterAll() =
+    try
+      allocatedServer.release.await(99.s)
+      Pekkos.terminateAndWait(actorSystem, 99.s)
+    finally
+      super.afterAll()
 
   "Read event stream with getDecodedLinesStream" - {
     "empty, timeout=0" in {

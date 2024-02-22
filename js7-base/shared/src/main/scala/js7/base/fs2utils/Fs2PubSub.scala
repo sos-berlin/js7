@@ -8,35 +8,32 @@ import fs2.Stream
 import fs2.concurrent.Topic
 import js7.base.catsutils.UnsafeMemoizable
 
-final class Fs2PubSub[F[_]: UnsafeMemoizable, A <: AnyRef] private(
-  using F: Concurrent[F] & Sync[F]):
-
-  private val topic: F[Topic[F, A]] =
-    Topic[F, A].unsafeMemoize
+final class Fs2PubSub[F[_], A <: AnyRef] private(topic: Topic[F, A])
+  (using F: Concurrent[F] & Sync[F]):
 
   def publish(a: A): F[Unit] =
-    topic.flatMap(_.publish1(a).void)
+    topic.publish1(a).void
 
   @deprecated("Use close")
   def complete: F[Unit] =
     close
 
   def close: F[Unit] =
-    topic.flatMap(_.close.void)
+    topic.close.void
 
-  @deprecated("Use streamResource")
-  def newStream: F[Stream[F, A]] =
-    streamResource.allocated.map(_._1)
+  def newStream: Stream[F, A] =
+    topic.subscribe(maxQueued = 1)
 
   def streamResource: Resource[F, Stream[F, A]] =
-    Resource.eval(topic).flatMap(_.subscribeAwait(maxQueued = 0))
+    topic.subscribeAwait(maxQueued = 0)
 
 object Fs2PubSub:
-  @deprecated("Besser Fs2PubSub als Resource nutzen!")
-  def apply[F[_]: UnsafeMemoizable, A <: AnyRef](using Concurrent[F] & Sync[F])
-  : Fs2PubSub[F, A] =
-    new Fs2PubSub[F, A]
-
   def resource[F[_]: UnsafeMemoizable, A <: AnyRef](using F: Concurrent[F] & Sync[F])
   : Resource[F, Fs2PubSub[F, A]] =
-    Resource.make(F.delay(new Fs2PubSub[F, A]))(_.close)
+    for
+      topic <- Resource.eval(Topic[F, A])
+      pubSub <- Resource.make(
+        acquire = F.delay(new Fs2PubSub[F, A](topic)))(
+        release = _.close)
+    yield
+      pubSub

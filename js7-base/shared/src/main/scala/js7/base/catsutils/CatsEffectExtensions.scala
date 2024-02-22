@@ -9,7 +9,6 @@ import cats.{Defer, Functor, effect}
 import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.problem.Checked
-import js7.base.utils.Tests.isTest
 import scala.annotation.unchecked.uncheckedVariance
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -124,14 +123,10 @@ object CatsEffectExtensions:
     def unsafeRuntime: IO[IORuntime] =
       for
         ec <- IO.executionContext
-        rt <- OurIORuntimeRegister.toIORuntime(ec).map(IO.pure).getOrElse:
-          if isTest then
-            val msg =
-              "IO.runsafeRuntime: current ExecutionContext is not registered in OurIORuntimeRegister"
-            logger.error(msg)
-            IO.raiseError(new RuntimeException(msg))
-          else
-            IO.pure(OurIORuntime.ioRuntime)
+        rt <- OwnIORuntimeRegister.toIORuntime(ec).map(IO.pure).getOrElse:
+          val msg = "IO.runsafeRuntime: current IORuntime is not registered in OwnIORuntimeRegister"
+          logger.error(msg)
+          IO.raiseError(new RuntimeException(msg))
       yield rt
 
     //def fromCancelableFutureWithEC[A](io: ExecutionContext => IO[CancelableFuture[A]]): IO[A] =

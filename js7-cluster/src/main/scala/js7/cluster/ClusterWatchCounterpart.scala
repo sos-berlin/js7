@@ -30,6 +30,7 @@ import scala.concurrent.duration.Deadline
 import scala.util.Random
 
 final class ClusterWatchCounterpart private(
+  pubsub: Fs2PubSub[IO, ClusterWatchRequest],
   clusterConf: ClusterConf,
   timing: ClusterTiming,
   testEventPublisher: EventPublisher[Any])
@@ -43,18 +44,18 @@ extends Service.StoppableByRequest:
       / 1000_000 * 1000_000)
   private val lock = AsyncLock()
   private val _requested = Atomic(None: Option[Requested])
-  private val pubsub = Fs2PubSub[IO, ClusterWatchRequest]
 
   private val clusterWatchUniquenessChecker = new ClusterWatchUniquenessChecker(
     clusterConf.clusterWatchUniquenessMemorySize)
   @volatile private var currentClusterWatchId: Option[CurrentClusterWatchId] = None
 
   protected def start =
-    startService(
-      untilStopRequested *> pubsub.close)
+    startService:
+      untilStopRequested
 
   def checkClusterState(clusterState: HasNodes, clusterWatchIdChangeAllowed: Boolean)
   : IO[Checked[Option[ClusterWatchConfirmation]]] =
+   logger.traceIO(s"### checkClusterState $clusterState"):
     if !clusterState.setting.clusterWatchId.isDefined
       && !clusterWatchIdChangeAllowed
       && !clusterState.isInstanceOf[Coupled]
@@ -77,6 +78,7 @@ extends Service.StoppableByRequest:
             logger.logOutcome(LogLevel.Debug, "checkClusterState", since.elapsed, outcome)
 
   private def initializeCurrentClusterWatchId(clusterState: HasNodes): IO[Unit] =
+   logger.traceIO("### initializeCurrentClusterWatchId"):
     SyncDeadline.usingNow: now ?=>
       if currentClusterWatchId.isEmpty then
         for clusterWatchId <- clusterState.setting.clusterWatchId do
@@ -106,6 +108,7 @@ extends Service.StoppableByRequest:
     toRequest: RequestId => ClusterWatchRequest,
     clusterWatchIdChangeAllowed: Boolean)
   : IO[Checked[ClusterWatchConfirmation]] =
+   logger.traceIO("### check", clusterWatchId):
     if !clusterWatchIdChangeAllowed && !clusterWatchId.isDefined then
       IO.left(NoClusterWatchProblem)
     else
@@ -125,10 +128,12 @@ extends Service.StoppableByRequest:
     request: ClusterWatchRequest,
     requested: Requested)
   : IO[Checked[ClusterWatchConfirmation]] =
+   logger.traceIO("### check2"):
     SyncDeadline.now.flatMap(since => IO.defer:
       _requested.set(Some(requested))
       val sym = new BlockingSymbol
-      pubsub.publish(request)
+      logger.traceIO("### publish", request)(
+      pubsub.publish(request))
         .logWhenItTakesLonger(s"ClusterWatch.send($request)")
         .*>(IO(
           testEventPublisher.publish(WaitingForConfirmation(request))))
@@ -264,7 +269,7 @@ extends Service.StoppableByRequest:
     SyncDeadline.usingNow: now ?=>
       currentClusterWatchId = Some(CurrentClusterWatchId(clusterWatchId, now))
 
-  def newStream: IO[fs2.Stream[IO, ClusterWatchRequest]] =
+  def newStream: fs2.Stream[IO, ClusterWatchRequest] =
     pubsub.newStream // TODO Delete all but the last request at a time. At push-side?
 
   override def toString = "ClusterWatchCounterpart"
@@ -295,8 +300,12 @@ object ClusterWatchCounterpart:
     testEventPublisher: EventPublisher[Any])
     (implicit ioRuntime: IORuntime)
   : Resource[IO, ClusterWatchCounterpart] =
-    Service.resource(IO(
-      new ClusterWatchCounterpart(clusterConf, timing, testEventPublisher)(ioRuntime)))
+    for
+      pubsub <- Fs2PubSub.resource[IO, ClusterWatchRequest]
+      service <- Service.resource(IO:
+        new ClusterWatchCounterpart(pubsub, clusterConf, timing, testEventPublisher)(ioRuntime))
+    yield
+      service
 
   /** A request to ClusterWatch yet to be responded. */
   private final class Requested(
@@ -307,7 +316,8 @@ object ClusterWatchCounterpart:
     private val confirmation = Deferred.unsafe[IO, Checked[ClusterWatchConfirmation]]
 
     def untilConfirmed: IO[Checked[ClusterWatchConfirmation]] =
-      confirmation.get
+      logger.traceIOWithResult("### untilConfirmed", body =
+      confirmation.get)
 
     def confirm(confirm: Checked[ClusterWatchConfirmation]): IO[Checked[Unit]] =
       confirmation.complete(confirm)

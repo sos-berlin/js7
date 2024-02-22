@@ -21,7 +21,7 @@ import cats.effect.unsafe.{IORuntime, Scheduler}
 
 final class AddOrderTest extends OurTestSuite, TestCatsEffect, ControllerAgentForScalaTest:
 
-  private given Scheduler = scheduler
+  private given Scheduler = ioRuntime.scheduler
 
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
@@ -32,7 +32,7 @@ final class AddOrderTest extends OurTestSuite, TestCatsEffect, ControllerAgentFo
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on"""
 
-  private val alarmClock = TestAlarmClock(Timestamp("2099-01-01T00:00:00Z"))
+  private lazy val alarmClock = TestAlarmClock(Timestamp("2099-01-01T00:00:00Z"))
 
   override protected def controllerTestWiring = RunningController.TestWiring(
     alarmClock = Some(alarmClock))

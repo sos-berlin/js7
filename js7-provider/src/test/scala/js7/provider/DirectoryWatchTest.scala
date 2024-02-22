@@ -31,16 +31,16 @@ final class DirectoryWatchTest extends OurTestSuite, TestCatsEffect, BeforeAndAf
     stream.map(_ => counter += 1).compile.drain.unsafeToCancelableFuture()
   private var counter = 0
 
-  override def beforeAll() = {
-    streamFuture
+  override def beforeAll() =
     super.beforeAll()
-  }
+    streamFuture
 
-  override def afterAll() = {
-    directoryWatcher.close()
-    deleteDirectoryRecursively(dir)
-    super.afterAll()
-  }
+  override def afterAll() =
+    try
+      directoryWatcher.close()
+      deleteDirectoryRecursively(dir)
+    finally
+      super.afterAll()
 
   if isMac then {
     "Java's WatchService does not work properly under MacOS" in {

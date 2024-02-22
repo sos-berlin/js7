@@ -27,7 +27,7 @@ object Pekkos:
   def newActorSystem(
     name: String,
     config: Config = ConfigFactory.empty,
-    executionContext: ExecutionContext = ExecutionContext.global)
+    executionContext: ExecutionContext)
   : ActorSystem =
     logger.debugCall("newActorSystem", name):
       val myConfig = ConfigFactory.systemProperties

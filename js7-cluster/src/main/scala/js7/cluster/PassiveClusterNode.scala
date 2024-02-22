@@ -9,7 +9,7 @@ import js7.base.fs2utils.StreamExtensions.mapParallelBatch
 import js7.base.monixutils.RefCountedResource
 import js7.base.monixutils.StreamPauseDetector.detectPauses
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
-import js7.common.http.{PekkoHttpClient, PekkoHttpUtils}
+import js7.common.http.PekkoHttpClient
 import scala.concurrent.ExecutionContext
 //diffx import com.softwaremill.diffx
 import cats.effect.IO
@@ -74,7 +74,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
     nodeNameToPassword: NodeNameToPassword[S],
     ioRuntime: IORuntime):
 
-  import clusterConf.{config, journalConf}
+  import clusterConf.journalConf
   import recovered.{eventWatch, journalLocation}
   import setting.{activeId, idToUri}
 

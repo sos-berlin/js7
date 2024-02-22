@@ -1,8 +1,9 @@
 package js7.journal.watch
 
+import cats.effect.unsafe.IORuntime
 import java.nio.file.Files
 import js7.base.io.file.FileUtils
-import js7.base.test.OurTestSuite
+import js7.base.test.{OurTestSuite, TestCatsEffect}
 import js7.data.event.{EventId, Stamped}
 import js7.journal.data.JournalLocation
 import js7.journal.files.JournalFiles.JournalMetaOps
@@ -12,8 +13,10 @@ import js7.journal.watch.TestData.{AEvent, TestState, journalId, writeJournal}
 /**
   * @author Joacim Zschimmer
   */
-final class FileEventIteratorPoolTest extends OurTestSuite:
-  
+final class FileEventIteratorPoolTest extends OurTestSuite, TestCatsEffect:
+
+  private given IORuntime = ioRuntime
+
   "FileEventIteratorPool" in:
     FileUtils.withTemporaryDirectory("FileEventIteratorPoolTest-") { dir =>
       val journalLocation = JournalLocation(TestState, dir resolve "test")

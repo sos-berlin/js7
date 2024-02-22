@@ -1,10 +1,11 @@
 package js7.common.pekkohttp
 
-import cats.effect.IO
 import cats.effect.unsafe.IORuntime
+import cats.effect.IO
 import js7.base.problem.{Checked, CheckedString}
 import js7.base.utils.Collections.implicits.*
 import js7.data.item.VersionedItemPath
+import org.apache.pekko.http.scaladsl.model.HttpEntity
 import org.apache.pekko.http.scaladsl.model.Uri.Path
 import org.apache.pekko.http.scaladsl.model.headers.CacheDirectives.{`max-age`, `public`, immutableDirective}
 import org.apache.pekko.http.scaladsl.model.headers.{ETag, `Cache-Control`}
@@ -51,12 +52,31 @@ object StandardDirectives:
 
   def ioRoute(routeIO: IO[Route])(using ioRuntime: IORuntime): Route =
     implicit val ec: ExecutionContext = ioRuntime.compute
-    // TODO Check migration to Cats Effect :
-    ctx => routeIO.unsafeToFuture().flatMap(_(ctx))
+    ctx => routeIO.unsafeToFuture().flatMap(route => route(ctx))
 
   //// For completeWithStream if it returned a Resource:
-  //private def resourceRoute(resource: Resource[IO, Route])(using ioRuntime: IORuntime): Route =
-  //  ???
+  //def resourceRoute(resource: ResourceIO[Route])(using ioRuntime: IORuntime): Route =
+  //  ctx =>
+  //    resource
+  //      .allocated
+  //      .flatMap: (route, release) =>
+  //        IO
+  //          .fromFuture(IO.pure(route(ctx)))
+  //          .attempt
+  //          .map:
+  //            case Left(t) => release *> IO.raiseError(t)
+  //            case Right(o: RouteResult.Rejected) => release.as(o)
+  //            case Right(RouteResult.Complete(httpResponse)) =>
+  //              httpResponse.withEntity:
+  //                httpResponse.entity match
+  //                  case chunked: HttpEntity.Chunked =>
+  //                    chunked.transformDataBytes(transformer => transformer.)
+  //                    release.as(o)
+  //                  case o => release.as(o)
+  //
+  //      .unsafeToFuture()
+  //      .flatMap(_(ctx))
+
 
   //def routeFuture(routeFuture: Future[Route])(using ioRuntime: IORuntime): Route =
   //  ctx => routeFuture.flatMap(_(ctx))

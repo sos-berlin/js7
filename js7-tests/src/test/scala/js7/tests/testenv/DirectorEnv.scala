@@ -32,7 +32,6 @@ final class DirectorEnv(
   override protected val suppressSignatureKeys: Boolean = false,
   protected val otherSubagentIds: Seq[SubagentId] = Nil,
   protected val extraConfig: Config = ConfigFactory.empty)
-  (using IORuntime)
 extends SubagentEnv, ProgramEnv.WithFileJournal:
 
   type Program = RunningAgent
@@ -94,16 +93,16 @@ extends SubagentEnv, ProgramEnv.WithFileJournal:
        |}
        |""".stripMargin
 
-  def programResource: ResourceIO[RunningAgent] =
+  def programResource(using IORuntime): ResourceIO[RunningAgent] =
     directorResource
 
-  def directorResource: ResourceIO[RunningAgent] =
+  def directorResource(using IORuntime): ResourceIO[RunningAgent] =
     Resource.suspend/*delay access to agentConf*/(IO:
       RunningAgent
         .resource(agentConf)
         .flatTap(programRegistering))
 
-  def restartableDirectorResource: ResourceIO[RestartableDirector] =
+  def restartableDirectorResource(using IORuntime): ResourceIO[RestartableDirector] =
     Resource.suspend/*delay access to agentConf*/(IO:
       RunningAgent.restartable(agentConf))
 

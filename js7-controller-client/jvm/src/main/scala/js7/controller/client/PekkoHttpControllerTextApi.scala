@@ -13,6 +13,7 @@ import js7.common.http.{PekkoHttpClient, TextApi}
 import js7.common.pekkoutils.ProvideActorSystem
 import js7.controller.client.PekkoHttpControllerTextApi.*
 import js7.data.session.HttpSessionApi
+import scala.concurrent.ExecutionContext
 
 /**
   * @author Joacim Zschimmer
@@ -22,6 +23,7 @@ private[controller] final class PekkoHttpControllerTextApi(
   protected val userAndPassword: Option[UserAndPassword],
   protected val print: String => Unit,
   configDirectory: Option[Path] = None)
+  (using protected val executionContext: ExecutionContext)
 extends HasCloser,
   ProvideActorSystem, TextApi, HttpSessionApi, PekkoHttpClient, SessionApi.HasUserAndPassword:
 

@@ -53,12 +53,13 @@ private[journal] trait TestJournalMixin extends BeforeAndAfterAll, TestCatsEffec
   protected val journalLocation = testJournalMeta(directory / "test")
 
   override def afterAll() =
-    deleteDirectoryRecursively(directory)
-    super.afterAll()
+    try deleteDirectoryRecursively(directory)
+    finally super.afterAll()
 
   protected def withTestActor(config: Config = ConfigFactory.empty)(body: (ActorSystem, ActorRef) => Unit): Unit =
     val config_ = config withFallback TestConfig
-    val actorSystem = newActorSystem(getClass.simpleScalaName, config_)
+    val actorSystem = newActorSystem(getClass.simpleScalaName, config_,
+      executionContext = ioRuntime.compute)
     try
       DeadLetterActor.subscribe(actorSystem, (logLevel,  msg) => logger.log(logLevel, msg()))
       val whenJournalStopped = Promise[Unit]()

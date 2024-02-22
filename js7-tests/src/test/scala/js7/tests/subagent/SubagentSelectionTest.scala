@@ -62,9 +62,11 @@ final class SubagentSelectionTest extends OurTestSuite, SubagentTester, Blocking
     myAgent = agent
 
   override def afterAll() =
-    idToRelease.values.toVector.sequence.await(99.s)
-    myAgent.terminate().await(99.s)
-    super.afterAll()
+    try
+      idToRelease.values.toVector.sequence.await(99.s)
+      myAgent.terminate().await(99.s)
+    finally
+      super.afterAll()
 
   "Start and attach Subagents and SubagentSelection" in:
     // Start Subagents

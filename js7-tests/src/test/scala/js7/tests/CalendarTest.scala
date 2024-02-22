@@ -3,7 +3,6 @@ package js7.tests
 import fs2.Stream
 import java.time.ZoneId
 import js7.agent.RunningAgent
-import js7.base.catsutils.OurIORuntime
 import js7.base.configutils.Configs.*
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
@@ -35,6 +34,8 @@ final class CalendarTest extends OurTestSuite, ControllerAgentForScalaTest:
 
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(calendar, workflow)
+
+  private lazy val clock = TestAlarmClock(local("2021-10-01T00:00"))(using ioRuntime.scheduler)
 
   override protected def controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
@@ -110,7 +111,6 @@ object CalendarTest:
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)
   private implicit val zone: ZoneId = ZoneId.of("Europe/Mariehamn")
-  private val clock = TestAlarmClock(local("2021-10-01T00:00"))(using OurIORuntime.scheduler)
 
   private val calendar = Calendar(
     CalendarPath("CALENDAR"),

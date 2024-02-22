@@ -26,7 +26,7 @@ import cats.effect.testkit.{TestContext, TestControl}
 import cats.effect.unsafe.{IORuntime, IORuntimeConfig, Scheduler}
 import cats.{Id, ~>}
 import java.util.concurrent.atomic.AtomicReference
-import js7.base.catsutils.OurIORuntimeRegister
+import js7.base.catsutils.OwnIORuntimeRegister
 import scala.concurrent.CancellationException
 import scala.concurrent.duration.{Duration, FiniteDuration}
 
@@ -377,9 +377,13 @@ object OurTestControl:
   def execute_[A](ctx: TestContext, ioRuntime: IORuntime)(program: IO[A])
   : IO[OurTestControl[A]] =
     IO {
+      OwnIORuntimeRegister.add(ctx, ioRuntime)
       val results = new AtomicReference[Option[Outcome[Id, Throwable, A]]](None)
-      program.unsafeRunAsyncOutcome(oc => results.set(Some(oc)))(ioRuntime)
-      OurIORuntimeRegister.add(ctx, ioRuntime) // Will never be removed
+      given IORuntime = ioRuntime
+      program.unsafeRunAsyncOutcome: outcome =>
+        results.set(Some(outcome))
+        OwnIORuntimeRegister.remove(ctx)
+
       new OurTestControl(ctx, results)
     }
 

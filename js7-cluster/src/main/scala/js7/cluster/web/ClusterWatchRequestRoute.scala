@@ -19,6 +19,7 @@ import js7.data.event.Stamped
 import js7.data.node.NodeId
 import js7.journal.watch.EventWatch
 import org.apache.pekko.http.scaladsl.server.Directives.*
+import Logger.syntax.*
 import org.apache.pekko.http.scaladsl.server.Route
 import scala.concurrent.duration.FiniteDuration
 import scala.util.control.NoStackTrace
@@ -28,35 +29,32 @@ trait ClusterWatchRequestRoute extends RouteProvider:
   private given IORuntime = ioRuntime
 
   protected def checkedClusterState: IO[Checked[Stamped[ClusterState]]]
-  protected def clusterWatchRequestStream: IO[fs2.Stream[IO, ClusterWatchRequest]]
+  protected def clusterWatchRequestStream: fs2.Stream[IO, ClusterWatchRequest]
   protected def eventWatch: EventWatch
   protected def nodeId: NodeId
 
   protected final def clusterWatchMessageRoute(userId: UserId): Route =
-    Route.seal(
-      accept(`application/x-ndjson`)(
-        extractRequest(request =>
-          parameter("keepAlive".as[FiniteDuration])(keepAlive =>
-            ioRoute {
-              clusterWatchRequestStream
-                .map(_
-                  .handleErrorWith { throwable =>
-                    // The streaming event web service doesn't have an error channel,
-                    // so we simply end the stream
-                    logger.warn(throwable.toStringWithCauses)
-                    if throwable.getStackTrace.nonEmpty then logger.debug(throwable.toStringWithCauses, throwable)
-                    Stream.empty
-                  })
-                .map: stream =>
-                  completeWithStream(`application/x-ndjson`):
-                    stream
-                      .through:
-                        encodeAndHeartbeat(
-                          chunkSize = chunkSize,
-                          prefetch = prefetch,
-                          keepAlive = keepAlive)
-                      .interruptWhen(shutdownSignaled)
-            }))))
+    Route.seal:
+      accept(`application/x-ndjson`):
+        extractRequest: request =>
+          parameter("keepAlive".as[FiniteDuration]): keepAlive =>
+            completeWithStream(`application/x-ndjson`):
+             logger.traceStream("### stream"):
+               clusterWatchRequestStream
+                 .handleErrorWith: throwable =>
+                   // The streaming event web service doesn't have an error channel,
+                   // so we simply log the error and end the stream
+                   logger.warn(throwable.toStringWithCauses)
+                   if throwable.getStackTrace.nonEmpty then
+                     logger.debug(throwable.toStringWithCauses, throwable)
+                   Stream.empty
+                 .evalTap(o => IO(logger.trace(s"### $o")))
+                 .through:
+                    encodeAndHeartbeat(
+                      chunkSize = chunkSize,
+                      prefetch = prefetch,
+                      keepAlive = keepAlive)
+                  .interruptWhen(shutdownSignaled)
 
   //private val emptyResponseMarshallable: ToResponseMarshallable =
   //  streamToMarshallable(Stream.empty)

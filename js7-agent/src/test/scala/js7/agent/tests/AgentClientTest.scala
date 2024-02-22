@@ -22,12 +22,13 @@ final class AgentClientTest extends OurTestSuite, TestCatsEffect, ScalaFutures, 
   override implicit val patienceConfig = PatienceConfig(timeout = 10.s)
 
   override lazy val agentConfiguration = newAgentConfiguration()
-  private implicit lazy val actorSystem: ActorSystem = newActorSystem("AgentClientTest")
+  private implicit lazy val actorSystem: ActorSystem =
+    newActorSystem("AgentClientTest", executionContext = ioRuntime.compute)
   private lazy val client = AgentClient(Admission(agent.localUri))
 
   override def afterAll(): Unit =
-    actorSystem.terminate().await(99.s)
-    super.afterAll()
+    try actorSystem.terminate().await(99.s)
+    finally super.afterAll()
 
   "get /" in:
     val overview = client.overview await 99.s

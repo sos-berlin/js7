@@ -4,5 +4,4 @@ import cats.effect.IOApp
 
 trait OurApp extends IOApp:
 
-  override protected final val runtime = OurIORuntime.ioRuntime
-
+  override protected final lazy val runtime = Js7IORuntime.ioRuntime

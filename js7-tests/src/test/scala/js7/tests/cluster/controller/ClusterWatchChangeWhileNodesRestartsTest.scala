@@ -17,10 +17,11 @@ final class ClusterWatchChangeWhileNodesRestartsTest extends ControllerClusterTe
 
   private given IORuntime = ioRuntime
 
-  override protected def primaryControllerConfig =
-    // Short timeout because something blocks web server shutdown occasionally
-    config"""js7.web.server.shutdown-timeout = 0.5s"""
-      .withFallback(super.primaryControllerConfig)
+  override protected def primaryControllerConfig = config"""
+      # Short timeout because something blocks web server shutdown occasionally
+      js7.web.server.shutdown-timeout = 500ms
+      js7.web.server.shutdown-delay = 500ms
+      """.withFallback(super.primaryControllerConfig)
 
   "Start ClusterWatch first" in:
     withControllerAndBackup(suppressClusterWatch = true) { (primary, _, backup, _, _) =>

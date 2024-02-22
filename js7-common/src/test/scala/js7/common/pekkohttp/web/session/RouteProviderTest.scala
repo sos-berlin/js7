@@ -35,11 +35,13 @@ final class RouteProviderTest extends OurTestSuite, RouteProvider, TestCatsEffec
 
   protected def whenShuttingDown = Deferred.unsafe
   protected val config = config"js7.web.server.verbose-error-messages = on"
+
   protected lazy val sessionRegister =
     SessionRegister.forTest(SimpleSession.apply, SessionRegister.TestConfig)
+
   private implicit val routeTestTimeout: RouteTestTimeout = RouteTestTimeout(99.s)
 
-  protected val gateKeeper = new GateKeeper(
+  protected lazy val gateKeeper = new GateKeeper(
     WebServerBinding.Http,
     GateKeeper.Configuration[SimpleUser](
       realm = "TEST-REALM",

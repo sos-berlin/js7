@@ -13,6 +13,7 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.base.web.Uri
 import js7.common.commandline.CommandLineArguments
 import js7.controller.client.PekkoHttpControllerTextApi
+import scala.concurrent.ExecutionContext
 import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
 
@@ -23,6 +24,7 @@ object ControllerClientMain extends OurApp:
 
   private lazy val logger = Logger[this.type]
   private given IORuntime = runtime
+  private given ExecutionContext = runtime.compute
 
   def run(args: List[String]) =
     IO:

@@ -9,6 +9,7 @@ import js7.base.utils.HasCloser
 import js7.base.web.Uri
 import js7.common.pekkoutils.Pekkos
 import js7.common.pekkoutils.Pekkos.newActorSystem
+import scala.concurrent.ExecutionContext
 
 /**
  * Simple client for JS7 Agent.
@@ -21,11 +22,12 @@ final class SimpleAgentClient(
   val baseUri: Uri,
   protected val userAndPassword: Option[UserAndPassword],
   protected val httpsConfig: HttpsConfig = HttpsConfig.empty)
+  (using ec: ExecutionContext)
 extends HasCloser, AgentClient:
 
   protected val name = "SimpleAgentClient"
   protected val actorSystem =
-    newActorSystem("SimpleAgentClient", config"pekko.log-dead-letters = 0")
+    newActorSystem("SimpleAgentClient", config"pekko.log-dead-letters = 0", ec)
       .withCloser(Pekkos.terminateAndWait(_, 10.s/*!!!*/))
 
   onClose { super[AgentClient].close() }

@@ -18,9 +18,7 @@ import js7.journal.write.{EventJournalWriter, SnapshotJournalWriter}
 /**
   * @author Joacim Zschimmer
   */
-private[watch] object TestData extends TestCatsEffect:
-  
-  private given IORuntime = ioRuntime
+private[watch] object TestData:
 
   val journalId = JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))
 
@@ -42,7 +40,8 @@ private[watch] object TestData extends TestCatsEffect:
       KeyedSubtype.singleton(using TestEvent)(AEvent),
       KeyedSubtype.singleton(using TestEvent)(BEvent))
 
-  def writeJournalSnapshot[E <: Event](journalLocation: JournalLocation, after: EventId, snapshotObjects: Seq[Any]): Path =
+  def writeJournalSnapshot[E <: Event](journalLocation: JournalLocation, after: EventId, snapshotObjects: Seq[Any])
+    (using IORuntime): Path =
     autoClosing(SnapshotJournalWriter.forTest(journalLocation, after = after)) { writer =>
       writer.writeHeader(JournalHeaders.forTest(TestState.name, journalId, eventId = after))
       writer.beginSnapshotSection()
@@ -56,6 +55,7 @@ private[watch] object TestData extends TestCatsEffect:
 
   def writeJournal(journalLocation: JournalLocation, after: EventId, stampedEvents: Seq[Stamped[KeyedEvent[Event]]],
     journalId: JournalId = this.journalId)
+    (using IORuntime)
   : Path =
     autoClosing(EventJournalWriter.forTest(journalLocation, after = after, journalId)) { writer =>
       writer.writeHeader(JournalHeaders.forTest(TestState.name, journalId, eventId = after))

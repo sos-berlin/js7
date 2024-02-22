@@ -26,7 +26,7 @@ trait ProgramEnv extends AutoCloseable:
 
   val directory: Path
   protected def confFilename: String
-  def programResource: ResourceIO[Program]
+  def programResource(using IORuntime): ResourceIO[Program]
   protected def verifier: SignatureVerifier
   protected def suppressSignatureKeys: Boolean = false
 

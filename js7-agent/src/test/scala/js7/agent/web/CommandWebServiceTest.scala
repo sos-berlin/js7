@@ -25,7 +25,7 @@ import org.apache.pekko.http.scaladsl.model.headers.Accept
 /**
  * @author Joacim Zschimmer
  */
-final class CommandWebServiceTest 
+final class CommandWebServiceTest
   extends OurTestSuite, TestCatsEffect, WebServiceTest, CommandWebService:
 
   private given IORuntime = ioRuntime
@@ -42,7 +42,7 @@ final class CommandWebServiceTest
         case _ => fail()
       })
 
-  private val route =
+  private lazy val route =
     pathSegments("agent/api/command"):
       commandRoute
 
@@ -72,6 +72,7 @@ final class CommandWebServiceTest
       testSessionHeader ~>
       Accept(`application/json`) ~>
       route
+
 
 private object CommandWebServiceTest:
   private val TestCommand = ShutDown(None)

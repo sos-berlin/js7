@@ -30,9 +30,11 @@ final class SubagentRestartTest extends OurTestSuite, SubagentTester:
     myAgent = agent
 
   override def afterAll() =
-    controller.terminate().await(99.s)
-    for a <- Option(myAgent) do a.terminate().await(99.s)
-    super.afterAll()
+    try
+      controller.terminate().await(99.s)
+      for a <- Option(myAgent) do a.terminate().await(99.s)
+    finally
+      super.afterAll()
 
   "Reject items if no signature keys are installed" in:
     val eventId = eventWatch.lastAddedEventId

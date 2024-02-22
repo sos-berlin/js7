@@ -37,7 +37,7 @@ final class EventRouteTest extends OurTestSuite, TestCatsEffect, AgentTester:
   protected val pekkoAskTimeout = 99.s
 
   implicit private lazy val actorSystem: ActorSystem = agent.actorSystem
-  private val agentClient = AgentClient(Admission(agent.localUri, Some(TestUserAndPassword)))
+  private lazy val agentClient = AgentClient(Admission(agent.localUri, Some(TestUserAndPassword)))
     .closeWithCloser
   private lazy val controllerRunId = ControllerRunId(JournalId.random())
   private var agentRunId: AgentRunId = _

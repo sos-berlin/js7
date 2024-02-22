@@ -63,7 +63,7 @@ final class PekkosTest extends OurTestSuite, TestCatsEffect:
     assert(ActorPath.fromString("pekko://ActorSystem/%F0%9F%94%BA%7C%F0%9F%A5%95").pretty == "pekko://ActorSystem/🔺|🥕")
 
   "SupervisorStrategy" in:
-    val actorSystem = newActorSystem("PekkosTest")
+    val actorSystem = newActorSystem("PekkosTest", executionContext = ioRuntime.compute)
     try
       actorSystem.actorOf(Props { new Actor {
         def receive = {

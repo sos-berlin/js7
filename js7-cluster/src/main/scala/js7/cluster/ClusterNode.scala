@@ -250,7 +250,7 @@ extends Service.StoppableByRequest:
             logger.trace(s"### ClusterWatchConfirmed($cmd, $result)")
             common.testEventBus.publish(ClusterWatchConfirmed(cmd, result)))
 
-  def clusterWatchRequestStream: IO[fs2.Stream[IO, ClusterWatchRequest]] =
+  def clusterWatchRequestStream: fs2.Stream[IO, ClusterWatchRequest] =
     common.clusterWatchCounterpart.newStream
 
   /** Is the active or non-cluster (Empty, isPrimary) node or is becoming active. */

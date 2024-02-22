@@ -1,6 +1,6 @@
 package js7.base.catsutils
 
-import cats.effect.unsafe.{IORuntime, Scheduler}
+import cats.effect.unsafe.IORuntime
 import cats.effect.{Resource, Sync}
 import java.lang.Thread.currentThread
 import js7.base.log.Logger
@@ -8,7 +8,7 @@ import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
 import scala.util.control.NonFatal
 
-object OurIORuntime:
+object Js7IORuntime:
 
   // Lazy, to allow proper initialisation of logging
   private lazy val logger = Logger[this.type]
@@ -25,9 +25,6 @@ object OurIORuntime:
     _ioRuntime
 
   given IORuntime = ioRuntime
-
-  def scheduler: Scheduler =
-    ioRuntime.scheduler
 
   /** For now, we return always the same global IORuntime and never shuts it down*/
   def resource[F[_]](using F: Sync[F]): Resource[F, IORuntime] =

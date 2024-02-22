@@ -59,7 +59,7 @@ final class JournalRouteTest extends OurTestSuite, RouteTester, JournalRoute
   override protected def config = config"js7.web.chunk-size = 1MiB"
     .withFallback(JournalEventWatch.TestConfig)
     .withFallback(super.config)
-  protected var eventWatch: JournalEventWatch = new JournalEventWatch(journalLocation, config)
+  protected var eventWatch: JournalEventWatch = null
   private val journalId = JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))
   private var eventWriter: EventJournalWriter = null
 
@@ -83,12 +83,13 @@ final class JournalRouteTest extends OurTestSuite, RouteTester, JournalRoute
     eventWriter.onJournalingStarted()
   }
 
-  override def afterAll() = {
-    allocatedWebServer.release.await(99.s)
-    eventWriter.close()
-    deleteDirectoryRecursively(directory)
-    super.afterAll()
-  }
+  override def afterAll() =
+    try
+      allocatedWebServer.release.await(99.s)
+      eventWriter.close()
+      deleteDirectoryRecursively(directory)
+    finally
+      super.afterAll()
 
   implicit private val sessionToken: IO[Option[SessionToken]] = IO.pure(None)
   private lazy val file0 = journalLocation.file(0L)

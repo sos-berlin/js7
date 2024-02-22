@@ -59,6 +59,7 @@ private final class ClusterWatchSynchronizer(
     clusterState: HasNodes,
     registerClusterWatchId: RegisterClusterWatchId)
   : IO[Checked[Completed]] =
+   logger.traceIO:
     IO.defer:
       assertThat(clusterState.activeId == ownId)
       val logAsInfo = clusterState.isInstanceOf[HasNodes]
@@ -306,6 +307,7 @@ private final class ClusterWatchSynchronizer(
     clusterWatchIdChangeAllowed: Boolean,
     alreadyLocked: Boolean = false)
   : IO[Checked[Option[ClusterWatchConfirmation]]] =
+   logger.traceIO("doACheckedHeartbeat", clusterState):
     clusterWatch
       .checkClusterState(
         clusterState,

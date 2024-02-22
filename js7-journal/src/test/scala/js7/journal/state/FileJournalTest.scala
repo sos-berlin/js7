@@ -53,11 +53,12 @@ final class FileJournalTest extends OurTestSuite, BeforeAndAfterAll, TestCatsEff
   protected lazy val directory = createTempDirectory("FileJournalTest-")
   private lazy val journalLocation = testJournalMeta(fileBase = directory)
 
-  override def afterAll() = {
-    deleteDirectoryRecursively(directory)
-    //Monix: scheduler.shutdown()
-    super.afterAll()
-  }
+  override def afterAll() =
+    try
+      deleteDirectoryRecursively(directory)
+      //Monix: scheduler.shutdown()
+    finally
+      super.afterAll()
 
   private val n = 100
   private val keys = for o <- 'A' to 'D' yield NumberKey(o.toString)
@@ -137,8 +138,12 @@ final class FileJournalTest extends OurTestSuite, BeforeAndAfterAll, TestCatsEff
     }
   }
 
-  private class RunningJournal extends ProvideActorSystem {
+  private class RunningJournal(
+    using protected val executionContext: ExecutionContext)
+  extends ProvideActorSystem:
+
     protected def config = TestConfig
+
     private var journalAllocated: Allocated[IO, FileJournal[TestState]] = null
     def journal = journalAllocated.allocatedThing
 
@@ -162,7 +167,6 @@ final class FileJournalTest extends OurTestSuite, BeforeAndAfterAll, TestCatsEff
       journalAllocated.release.await(99.s)
       close()
     }
-  }
 }
 
 private object FileJournalTest

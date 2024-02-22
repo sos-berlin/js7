@@ -54,8 +54,8 @@ final class SubagentDisabledTest extends OurTestSuite, SubagentTester:
     eventWatch.await[ItemAttached](_.event.key == bSubagentId)
 
   override def afterAll() =
-    IO.parZip2(aSubagentRelease, bSubagentRelease).await(99.s)
-    super.afterAll()
+    try IO.parZip2(aSubagentRelease, bSubagentRelease).await(99.s)
+    finally super.afterAll()
 
   "All Subagents are enabled" in:
     runOrderAndCheck(localSubagentId)

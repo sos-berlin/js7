@@ -84,7 +84,6 @@ final class DirectoryProvider(
   testName: Option[String] = None,
   useDirectory: Option[Path] = None,
   doNotAddItems: Boolean = false)
-  (using IORuntime)
 extends HasCloser:
   private lazy val controllerPort_ = controllerPort
 
@@ -161,7 +160,7 @@ extends HasCloser:
   def controllerAdmission(runningController: RunningController): Admission =
     Admission(runningController.localUri, Some(controllerEnv.userAndPassword))
 
-  def run[A](body: (TestController, IndexedSeq[TestAgent]) => A): A =
+  def run[A](body: (TestController, IndexedSeq[TestAgent]) => A)(using IORuntime): A =
     runAgents()(agents =>
       runController()(controller =>
         body(controller, agents)))
@@ -171,6 +170,7 @@ extends HasCloser:
     dontWaitUntilReady: Boolean = false,
     config: Config = ConfigFactory.empty)
     (body: TestController => A)
+    (using IORuntime)
   : A =
     testControllerResource(httpPort = httpPort, config = config)
       .blockingUse(99.s) { testController =>
@@ -202,6 +202,7 @@ extends HasCloser:
     config: Config = ConfigFactory.empty,
     httpPort: Option[Int] = Some(controllerPort_),
     httpsPort: Option[Int] = None)
+    (using IORuntime)
   : TestController =
     testControllerResource(testWiring, config, httpPort, httpsPort)
       .allocated
@@ -213,6 +214,7 @@ extends HasCloser:
     config: Config = ConfigFactory.empty,
     httpPort: Option[Int] = Some(controllerPort_),
     httpsPort: Option[Int] = None)
+    (using IORuntime)
   : Resource[IO, TestController] =
     Resource.make(
       runningControllerResource(testWiring, config, httpPort, httpsPort)
@@ -228,6 +230,7 @@ extends HasCloser:
     config: Config = ConfigFactory.empty,
     httpPort: Option[Int] = Some(controllerPort_),
     httpsPort: Option[Int] = None)
+    (using IORuntime)
   : Resource[IO, RunningController] =
     val conf = ControllerConfiguration.forTest(
       configAndData = controllerEnv.directory,
@@ -270,6 +273,7 @@ extends HasCloser:
   def runAgents[A](
     agentPaths: Seq[AgentPath] = DirectoryProvider.this.agentPaths)(
     body: Vector[TestAgent] => A)
+    (using IORuntime)
   : A =
     val agents = agentEnvs
       .filter(o => agentPaths.contains(o.agentPath))
@@ -291,18 +295,20 @@ extends HasCloser:
     result
 
   def startAgents(testWiring: RunningAgent.TestWiring = RunningAgent.TestWiring.empty)
+    (using IORuntime)
   : IO[Seq[TestAgent]] =
     agentEnvs.parTraverse(a => startAgent(a.agentPath, testWiring))
 
   def startAgent(
     agentPath: AgentPath,
     testWiring: RunningAgent.TestWiring = RunningAgent.TestWiring.empty)
+    (using IORuntime)
   : IO[TestAgent] =
     TestAgent.start(
       agentToEnv(agentPath).agentConf,
       testWiring)
 
-  def startBareSubagents(): IO[Map[SubagentId, Allocated[IO, Subagent]]] =
+  def startBareSubagents()(using IORuntime): IO[Map[SubagentId, Allocated[IO, Subagent]]] =
     bareSubagentItems
       .parTraverse(subagentItem =>
         bareSubagentResource(subagentItem, config = agentConfig)
@@ -315,6 +321,7 @@ extends HasCloser:
     versionId: VersionId,
     change: Seq[VersionedItem] = Nil,
     delete: Seq[VersionedItemPath] = Nil)
+    (using IORuntime)
   : Unit =
     controller.updateItemsAsSystemUser(
       AddVersion(versionId) +:
@@ -339,6 +346,7 @@ extends HasCloser:
     isClusterBackup: Boolean = false,
     suppressSignatureKeys: Boolean = false,
     extraConfig: Config = ConfigFactory.empty)
+    (using IORuntime)
   : Resource[IO, DirectorEnv] =
     Resource
       .fromAutoCloseable(IO(
@@ -374,6 +382,7 @@ extends HasCloser:
     config: Config = ConfigFactory.empty,
     suffix: String = "",
     suppressSignatureKeys: Boolean = false)
+    (using IORuntime)
   : Resource[IO, Subagent] =
     for
       env <- bareSubagentEnvResource(subagentItem,
@@ -390,6 +399,7 @@ extends HasCloser:
     suffix: String = "",
     suppressSignatureKeys: Boolean = false,
     extraConfig: Config = ConfigFactory.empty)
+    (using IORuntime)
   : Resource[IO, BareSubagentEnv] =
     Resource
       .fromAutoCloseable(IO(

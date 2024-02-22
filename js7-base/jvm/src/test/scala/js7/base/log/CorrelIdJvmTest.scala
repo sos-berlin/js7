@@ -22,7 +22,7 @@ final class CorrelIdJvmTest extends OurTestSuite, BeforeAndAfterAll, TestCatsEff
 
   private given IORuntime = ioRuntime
   private given ExecutionContext = ioRuntime.compute
-  
+
   private val ioBatchSize = 3
 
   //private lazy val underlyingScheduler =

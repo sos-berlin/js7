@@ -1,12 +1,12 @@
 package js7.launcher.forjava.internal
 
-import js7.launcher.StdObserversForTest.testSink
 import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, Resource}
 import java.lang.System.lineSeparator as nl
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Paths
 import js7.base.catsutils.CatsEffectExtensions.{joinStd, left}
+import js7.base.catsutils.Js7IORuntime
 import js7.base.io.file.FileUtils.temporaryDirectoryResource
 import js7.base.log.Logger
 import js7.base.monixlike.MonixLikeExtensions.parSequence
@@ -15,10 +15,9 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.test.{OurTestSuite, TestCatsEffect}
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.thread.IOExecutor.Implicits.globalIOX
-import js7.base.thread.VirtualThreads
 import js7.base.time.AlarmClock
 import js7.base.time.ScalaTime.*
-import js7.base.utils.ScalaUtils.syntax.{RichEitherF, RichEitherIterable, RichPartialFunction}
+import js7.base.utils.ScalaUtils.syntax.{RichEitherF, RichEitherIterable, RichJavaClass, RichPartialFunction}
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.common.system.ThreadPools
 import js7.common.system.ThreadPools.newUnlimitedNonVirtualExecutionContext
@@ -34,6 +33,7 @@ import js7.data.value.{NamedValues, NumberValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.{Position, WorkflowBranchPath}
 import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.launcher.StdObserversForTest.testSink
 import js7.launcher.configuration.JobLauncherConf
 import js7.launcher.forjava.internal.InternalJobLauncherForJavaTest.*
 import js7.launcher.forjava.internal.tests.{TestBlockingInternalJob, TestJInternalJob}
@@ -47,14 +47,18 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite, TestCatsEffect,
   private given IORuntime = ioRuntime
 
   private val blockingThreadPoolName =
-    if (VirtualThreads.isEnabled) "" else "InternalJobLauncherForJavaTest"
+    /*if (VirtualThreads.isEnabled) "" else*/
+    if TestCatsEffect.useOwnIORuntime then
+      getClass.shortClassName
+    else
+      Js7IORuntime.threadPrefix // with suffix -blocking-N or -compute-blocker-N
+
   private val blockingJobEC =
     newUnlimitedNonVirtualExecutionContext(name = blockingThreadPoolName)
 
-  override def afterAll() = {
-    blockingJobEC.shutdown()
-    super.afterAll()
-  }
+  override def afterAll() =
+    try blockingJobEC.shutdown()
+    finally super.afterAll()
 
   for testClass <- Seq(classOf[TestJInternalJob], classOf[TestBlockingInternalJob]) do
     testClass.getSimpleName - {

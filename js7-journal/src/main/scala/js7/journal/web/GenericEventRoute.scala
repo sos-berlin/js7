@@ -45,7 +45,6 @@ trait GenericEventRoute extends RouteProvider:
   protected def eventWatch: EventWatch
 
   private given IORuntime = ioRuntime
-  private given ExecutionContext = ioRuntime.compute
 
   private lazy val defaultJsonSeqChunkTimeout =
     config.getDuration("js7.web.server.services.event.streaming.chunk-timeout").toFiniteDuration
@@ -166,16 +165,6 @@ trait GenericEventRoute extends RouteProvider:
                 .through(encodeParallel(chunkSize = chunkSize, prefetch = prefetch))
                 .interruptWhen(shutdownSignaled)
 
-    private def heartbeatingStream(
-      request: EventRequest[Event],
-      heartbeat: FiniteDuration,
-      eventWatch: EventWatch)
-    : Stream[IO, Stamped[AnyKeyedEvent]] =
-      // TODO Check if torn then return IO.raiseError
-      StampedHeartbeat +:
-        eventStream(request, isRelevantEvent, eventWatch)
-          .keepAlive(heartbeat, StampedHeartbeatIO)
-
     private def eventStream(
       request: EventRequest[Event],
       predicate: AnyKeyedEvent => Boolean,
@@ -202,12 +191,6 @@ trait GenericEventRoute extends RouteProvider:
           defaultTimeout = defaultTimeout,
           defaultReturnType = defaultReturnType.map(_.simpleScalaName))
         .apply(eventRequest => inner(Tuple1(eventRequest))))
-
-  //private def streamToMarshallable[A: Tag](stream: Stream[IO, A])
-  //  (implicit q: Source[A, NotUsed] => ToResponseMarshallable)
-  //: ToResponseMarshallable =
-  //  monixStreamToMarshallable(
-  //    stream.interruptWhen(shutdownSignaled))
 
 
 object GenericEventRoute:

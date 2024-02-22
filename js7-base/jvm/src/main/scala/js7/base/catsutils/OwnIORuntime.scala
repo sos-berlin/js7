@@ -1,47 +1,55 @@
 package js7.base.catsutils
 
-import cats.effect.unsafe.{IORuntime, Scheduler}
+import cats.effect.unsafe.IORuntime
 import cats.effect.{Resource, Sync}
-import com.typesafe.config.Config
 import java.lang.Thread.currentThread
 import js7.base.log.Logger
 import js7.base.system.Java8Polyfill.*
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
-import scala.concurrent.ExecutionContext
 import scala.util.control.NonFatal
 
-object OurIORuntime:
+object OwnIORuntime:
 
-  // Lazy, to allow proper initialisation of logging
+  // Lazy, to allow proper initialisation of logging first
   private lazy val logger = Logger[this.type]
 
-  private var _ioRuntime: IORuntime =
-    val (blockingEC, shutdownBlockingEC) = IORuntime.createDefaultBlockingExecutionContext()
-    //val blockingEC = newBlockingNonVirtualExecutor("js7-virtual")
-    IORuntime.builder()
-      .setBlocking(blockingEC, shutdownBlockingEC)
-      .setFailureReporter(uncaughtExceptionReporter)
-      .addShutdownHook: () =>
-        _ioRuntime = null
-      .build()
+  def resource[F[_]](
+    name: String,
+    shutdownHooks: Seq[() => Unit] = Nil)
+    (using F: Sync[F])
+  : Resource[F, IORuntime] =
+    val computePrefix = s"$name-compute"
+    val computeBlockerPrefix = s"$computePrefix-blocker"
+    val blockingPrefix = s"$name-blocking"
+    for
+      pair <- Resource.eval(F.delay:
+        IORuntime.createWorkStealingComputeThreadPool(
+          threadPrefix = computePrefix,
+          blockerThreadPrefix = computeBlockerPrefix,
+          reportFailure = reportFailure))
+      (compute, shutdownCompute) = pair
+      _ <- Resource.onFinalize(F.delay(shutdownCompute()))
 
-  def ioRuntime: IORuntime =
-    _ioRuntime
+      pair <- Resource.eval(F.delay:
+        IORuntime.createDefaultBlockingExecutionContext(threadPrefix = blockingPrefix))
+      (blockingEC, shutdownBlocking) = pair
+      _ <- Resource.onFinalize(F.delay(shutdownBlocking()))
+      ioRuntime <- Resource.pure:
+        val builder = IORuntime.builder()
+          .setCompute(compute, shutdownCompute)
+          .setBlocking(blockingEC, shutdownBlocking)
+          .setFailureReporter(reportFailure)
+        for hook <- shutdownHooks do builder.addShutdownHook(hook)
+        builder.build()
+      _ <- OwnIORuntimeRegister.register(compute, ioRuntime)
+    yield
+      ioRuntime
 
-  given IORuntime = ioRuntime
-
-  def scheduler: Scheduler =
-    ioRuntime.scheduler
-
-  /** For now, we return always the same global IORuntime and never shuts it down*/
-  def resource[F[_]](name: String, config: Config)(using F: Sync[F]): Resource[F, IORuntime] =
-    Resource.eval(F.delay(ioRuntime))
-    // How to shutdown a self-built IORuntime ?
-
-  private def uncaughtExceptionReporter(throwable: Throwable): Unit =
+  def reportFailure(throwable: Throwable): Unit =
     def msg = s"Uncaught exception in thread ${currentThread.threadId} '${
-      currentThread.getName}': ${throwable.toStringWithCauses}"
+      currentThread.getName
+    }': ${throwable.toStringWithCauses}"
 
     throwable match
       //case _: pekko.stream.StreamTcpException | _: org.apache.pekko.http.scaladsl.model.EntityStreamException =>

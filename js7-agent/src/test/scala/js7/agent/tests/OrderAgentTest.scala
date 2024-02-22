@@ -154,7 +154,8 @@ final class OrderAgentTest extends OurTestSuite, TestCatsEffect:
       val timeout = 1.hour
       TestAgent.blockingRun(agentConf, timeout) { agent =>
         withCloser { implicit closer =>
-          implicit val actorSystem: ActorSystem = newActorSystem(getClass.getSimpleName)
+          implicit val actorSystem: ActorSystem = 
+            newActorSystem(getClass.getSimpleName, executionContext = ioRuntime.compute)
           val agentClient = AgentClient(Admission(agent.localUri, Some(TestUserAndPassword)))
             .closeWithCloser
           agentClient.login() await 99.s

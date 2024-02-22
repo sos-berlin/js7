@@ -23,8 +23,10 @@ final class FileUtilsTest extends OurAsyncTestSuite, BeforeAndAfterAll
 {
   private lazy val path = createTempFile("FileUtilTest-", ".tmp")
 
-  override def afterAll() = delete(path)
-
+  override def afterAll() = 
+    try delete(path)
+    finally super.afterAll()
+  
   "implicit fileToPath" in:
     new File("/a"): Path
     succeed

@@ -14,6 +14,7 @@ import js7.base.utils.Closer.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.SideEffect.ImplicitSideEffect
 import org.scalatest.concurrent.ScalaFutures
+import scala.concurrent.ExecutionContext
 
 /**
  * @author Joacim Zschimmer
@@ -22,6 +23,7 @@ final class AgentClientCommandMarshallingTest
 extends OurTestSuite, TestCatsEffect, ScalaFutures, AgentTester:
 
   private given IORuntime = ioRuntime
+  private given ExecutionContext = ioRuntime.compute
 
   //override protected val agentTestWiring = RunningAgent.TestWiring(
   //  commandHandler = Some(new CommandHandler {

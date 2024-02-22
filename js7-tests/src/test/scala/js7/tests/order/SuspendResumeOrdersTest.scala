@@ -64,10 +64,9 @@ final class SuspendResumeOrdersTest
     controller.eventWatch.await[AgentReady]()
   }
 
-  override def afterAll() = {
-    deleteIfExists(triggerFile)
-    super.afterAll()
-  }
+  override def afterAll() = 
+    try deleteIfExists(triggerFile)
+    finally super.afterAll()
 
   "Suspend and resume a fresh order" in {
     deleteIfExists(triggerFile)

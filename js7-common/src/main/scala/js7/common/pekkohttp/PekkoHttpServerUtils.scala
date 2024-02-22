@@ -288,7 +288,6 @@ object PekkoHttpServerUtils:
   def completeWithIOStream(contentType: ContentType)(stream: Stream[IO, ByteString])
     (using IORuntime)
   : IO[Route] =
-    // TODO Include encodeAndHeartbeatStream ?
     IO.defer:
       val deferredRelease = Deferred.unsafe[IO, ExitCase => IO[Unit]]
       stream

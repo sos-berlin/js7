@@ -58,5 +58,5 @@ trait RouteTester extends ScalatestRouteTest, TestCatsEffect, ExceptionHandling:
     super.beforeAll()
 
   override def afterAll() =
-    cleanUp()
-    super.afterAll()
+    try cleanUp()
+    finally super.afterAll()

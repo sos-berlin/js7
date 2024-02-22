@@ -46,7 +46,7 @@ final class PekkoWebServerHttpsChangeTest extends OurTestSuite, BeforeAndAfterAl
   private given IORuntime = ioRuntime
 
   private implicit lazy val actorSystem: ActorSystem =
-    newActorSystem("PekkoWebServerHttpsChangeTest")
+    newActorSystem("PekkoWebServerHttpsChangeTest", executionContext = ioRuntime.compute)
   private lazy val List(httpPort, httpsPort) = findFreeTcpPorts(2)
   private lazy val directory = createTempDirectory("PekkoWebServerHttpsChangeTest-")
   private lazy val http = Http()
@@ -75,6 +75,7 @@ final class PekkoWebServerHttpsChangeTest extends OurTestSuite, BeforeAndAfterAl
       config"""
         js7.web.server.auth.https-client-authentication = off
         js7.web.server.shutdown-timeout = 10s
+        js7.web.server.shutdown-delay = 500ms
         js7.directory-watcher.watch-delay = 10ms
         js7.directory-watcher.directory-silence = 10ms
         """.withFallback(Js7Configuration.defaultConfig),
@@ -88,12 +89,16 @@ final class PekkoWebServerHttpsChangeTest extends OurTestSuite, BeforeAndAfterAl
     .await(99.s)
 
   override def beforeAll() =
+    super.beforeAll()
     webServer
 
   override def afterAll() =
-    webServer.release.await(99.s)
-    Pekkos.terminateAndWait(actorSystem, 10.s)
-    deleteDirectoryRecursively(directory)
+    try
+      webServer.release.await(99.s)
+      Pekkos.terminateAndWait(actorSystem, 10.s)
+      deleteDirectoryRecursively(directory)
+    finally
+      super.afterAll()
 
   "HTTP" in {
     val response = http.singleRequest(HttpRequest(GET, s"http://127.0.0.1:$httpPort/TEST"))

@@ -211,7 +211,11 @@ extends MainJournalingActor[AgentState, Event], Stash:
   override def postStop() =
     // TODO Use Resource (like the Subagent starter)
     // TODO Blocking!
-    Try(subagentKeeper.stop.uncancelable.timeout(3.s).logWhenItTakesLonger.await(99.s))
+    try
+      subagentKeeper.stop.uncancelable.timeout(3.s)
+        .logWhenItTakesLonger("subagentKeeper.stop")
+        .await(99.s)
+    catch case NonFatal(t) => logger.error(s"subagentKeeper.stop => ${t.toStringWithCauses}")
 
     fileWatchManager.stop.unsafeRunAndForget()
     shutdown.close()

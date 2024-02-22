@@ -16,7 +16,7 @@ import scala.util.control.NoStackTrace
 /**
   * @author Joacim Zschimmer
   */
-final class ExceptionHandlingTest 
+final class ExceptionHandlingTest
 extends OurTestSuite, TestCatsEffect, ScalatestRouteTest, ExceptionHandling:
 
   protected val config = config"js7.web.server.verbose-error-messages = true"

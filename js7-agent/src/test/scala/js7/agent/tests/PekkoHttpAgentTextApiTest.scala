@@ -25,6 +25,7 @@ import org.apache.pekko.http.scaladsl.model.StatusCodes.*
 import org.scalatest.Assertions.*
 import org.scalatest.BeforeAndAfterAll
 import scala.collection.mutable
+import scala.concurrent.ExecutionContext
 
 /**
  * @author Joacim Zschimmer
@@ -33,7 +34,8 @@ final class PekkoHttpAgentTextApiTest
 extends OurTestSuite, BeforeAndAfterAll, TestCatsEffect, HasCloser, TestAgentProvider:
 
   private given IORuntime = ioRuntime
-  
+  private given ExecutionContext = ioRuntime.compute
+
   override protected lazy val agentConfiguration = AgentConfiguration.forTest(
     configAndData = agentDirectory,
     name = "PekkoHttpAgentTextApiTest",

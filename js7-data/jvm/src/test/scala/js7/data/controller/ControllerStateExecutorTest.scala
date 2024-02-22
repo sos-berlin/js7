@@ -41,7 +41,7 @@ final class ControllerStateExecutorTest extends OurTestSuite, TestCatsEffect
   import ControllerStateExecutorTest.itemSigner.sign
 
   private given IORuntime = ioRuntime
-  
+
   "resetAgent" in {
     pending // TODO
   }
@@ -200,9 +200,9 @@ final class ControllerStateExecutorTest extends OurTestSuite, TestCatsEffect
   }
 
   "addOrders" - {
-    val aOrderId = OrderId("A")
-    val bOrderId = OrderId("B")
-    val executor = new Executor(ControllerState.empty)
+    lazy val aOrderId = OrderId("A")
+    lazy val bOrderId = OrderId("B")
+    lazy val executor = new Executor(ControllerState.empty)
 
     "addOrder for unknown workflow is rejected" in {
       assert(executor.controllerState.addOrders(Seq(FreshOrder(aOrderId, aWorkflow.path))) ==
@@ -276,7 +276,7 @@ final class ControllerStateExecutorTest extends OurTestSuite, TestCatsEffect
     "After VersionedItemRemoved or VersionItemChanged, the unused workflows are deleted" - {
       val a2Workflow = aWorkflow.withVersion(v2)
       val a4Workflow = aWorkflow.withVersion(v4)
-      val executor = new Executor(ControllerState.empty)
+      lazy val executor = new Executor(ControllerState.empty)
 
       "v1 VersionItemAdded" in {
         val keyedEvents = executor.applyEventsAndReturnSubsequentEvents(Seq(

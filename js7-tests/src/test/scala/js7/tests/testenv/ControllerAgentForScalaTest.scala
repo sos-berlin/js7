@@ -100,20 +100,21 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest:
 
   override def afterAll() =
     logger.debugCall(s"${getClass.shortClassName} afterAll"):
-      val ios = Seq(
-        Seq(controller.terminate().void),
-        clusterWatchServiceOnce.toOption.map(_.release).toList,
-        agents.map(_.terminate().void),
-        idToAllocatedSubagent.values.map(_.release)
-      ).flatten
-      ios
-        .map(_.recoverWith(t => IO.defer:
-          logger.error(t.toStringWithCauses, t)
-          IO.raiseError(t)))
-        .sequence
-        .await(99.s)
-
-      super.afterAll()
+      try 
+        val ios = Seq(
+          Seq(controller.terminate().void),
+          clusterWatchServiceOnce.toOption.map(_.release).toList,
+          agents.map(_.terminate().void),
+          idToAllocatedSubagent.values.map(_.release)
+        ).flatten
+        ios
+          .map(_.recoverWith(t => IO.defer:
+            logger.error(t.toStringWithCauses, t)
+            IO.raiseError(t)))
+          .sequence
+          .await(99.s)
+      finally 
+        super.afterAll()
 
   private val usedVersionIds = mutable.Set[VersionId]()
 

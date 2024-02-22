@@ -122,8 +122,8 @@ public final class TestBlockingInternalJob implements BlockingInternalJob
             ", expectedThreadPoolName=" + expectedBlockingThreadPoolName);
         assertThat("thread=" + currentThread().getName() + ", but expectedThreadPoolName=" + expectedBlockingThreadPoolName,
             // TODO Check blocking thread name!
-            currentThread().getName().startsWith("io-compute-blocker-"/*expectedBlockingThreadPoolName*/) ||
-            currentThread().getName().startsWith("io-blocking-"/*expectedBlockingThreadPoolName*/),
+                currentThread().getName().startsWith(expectedBlockingThreadPoolName + "-blocking-") ||
+                currentThread().getName().startsWith(expectedBlockingThreadPoolName + "-compute-blocker-"),
             equalTo(true));
     }
 
