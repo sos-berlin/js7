@@ -134,6 +134,7 @@ extends MainService, Service.StoppableByRequest:
           CommandMeta(SimpleUser.System)
         ).map(_.orThrow)
       })
+      .evalOn(ioRuntime.compute) // Only for TestAgent
 
   private def terminating(body: IO[Unit]): IO[DirectorTermination] =
     IO.defer:
@@ -165,24 +166,24 @@ object RunningAgent:
     testWiring: TestWiring = TestWiring.empty)
     (using ioRuntime: IORuntime)
   : Resource[IO, RunningAgent] =
-    locally {
+    locally:
       for
         subagent <- subagentResource(conf)
         director <- director(subagent, conf, testWiring)
       yield director
-    }//? .executeOn(scheduler)
+    .evalOn(ioRuntime.compute)
 
   def restartable(
     conf: AgentConfiguration,
     testWiring: TestWiring = TestWiring.empty)
     (using ioRuntime: IORuntime)
   : Resource[IO, RestartableDirector] =
-    locally {
+    locally:
       for
         subagent <- subagentResource(conf)
         director <- RestartableDirector(subagent, conf, testWiring)
       yield director
-    }//? .executeOn(scheduler)
+    .evalOn(ioRuntime.compute)
 
   def subagentResource(conf: AgentConfiguration)(implicit ioRuntime: IORuntime)
   : Resource[IO, Subagent] =
@@ -196,7 +197,7 @@ object RunningAgent:
         })
         subagent <- Subagent.resource(conf.subagentConf, testEventBus)
       yield subagent
-    })//? .executeOn(scheduler)
+    }).evalOn(ioRuntime.compute)
 
   def director(
     subagent: Subagent,

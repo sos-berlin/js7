@@ -2,6 +2,7 @@ package js7.base.catsutils
 
 import cats.effect.unsafe.IORuntime
 import cats.effect.{Resource, Sync}
+import com.typesafe.config.{Config, ConfigFactory}
 import java.lang.Thread.currentThread
 import js7.base.log.Logger
 import js7.base.system.Java8Polyfill.*
@@ -16,6 +17,7 @@ object OwnIORuntime:
 
   def resource[F[_]](
     name: String,
+    config: Config = ConfigFactory.empty,
     shutdownHooks: Seq[() => Unit] = Nil)
     (using F: Sync[F])
   : Resource[F, IORuntime] =
@@ -46,7 +48,7 @@ object OwnIORuntime:
     yield
       ioRuntime
 
-  def reportFailure(throwable: Throwable): Unit =
+  private def reportFailure(throwable: Throwable): Unit =
     def msg = s"Uncaught exception in thread ${currentThread.threadId} '${
       currentThread.getName
     }': ${throwable.toStringWithCauses}"

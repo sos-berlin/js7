@@ -146,6 +146,13 @@ object CatsEffectExtensions:
       fiber.joinWith(F.defer(F.raiseError(new FiberCanceledException)))
 
 
+  extension [F[_], A](resource: Resource[F, Option[A]])
+    def orIfNone(alternative: Resource[F, A]): Resource[F, A] =
+      resource.flatMap:
+        case None => alternative
+        case Some(a) => Resource.pure(a)
+
+
   extension(x: Resource.type)
 
     def defer[F[_], A](resource: => Resource[F, A])(using F: Sync[F]): Resource[F, A] =

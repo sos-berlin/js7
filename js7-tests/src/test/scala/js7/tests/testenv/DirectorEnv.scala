@@ -3,7 +3,6 @@ package js7.tests.testenv
 import cats.effect
 import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, Resource, ResourceIO}
-import cats.syntax.flatMap.*
 import com.typesafe.config.ConfigUtil.quoteString
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Path
@@ -11,6 +10,7 @@ import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.agent.{RestartableDirector, RunningAgent}
 import js7.base.auth.{UserAndPassword, UserId}
+import js7.base.catsutils.OwnIORuntime
 import js7.base.configutils.Configs.{HoconStringInterpolator, configIf}
 import js7.base.crypt.SignatureVerifier
 import js7.base.generic.SecretString
@@ -96,14 +96,23 @@ extends SubagentEnv, ProgramEnv.WithFileJournal:
   def programResource(using IORuntime): ResourceIO[RunningAgent] =
     directorResource
 
-  def directorResource(using IORuntime): ResourceIO[RunningAgent] =
-    Resource.suspend/*delay access to agentConf*/(IO:
-      RunningAgent
-        .resource(agentConf)
-        .flatTap(programRegistering))
+  def directorResource: ResourceIO[RunningAgent] =
+    for
+      given IORuntime <- ioRuntimeResource
+      agent <- RunningAgent.resource(agentConf)
+      _ <- programRegistering(agent)
+    yield
+      agent
 
-  def restartableDirectorResource(using IORuntime): ResourceIO[RestartableDirector] =
+  def restartableDirectorResource: ResourceIO[RestartableDirector] =
+    for
+      given IORuntime <- ioRuntimeResource
+      agent <- RunningAgent.restartable(agentConf)
+    yield
+      agent
+
+  private def ioRuntimeResource: ResourceIO[IORuntime] =
     Resource.suspend/*delay access to agentConf*/(IO:
-      RunningAgent.restartable(agentConf))
+      OwnIORuntime.resource[IO](agentConf.name, agentConf.config))
 
   override def toString = s"DirectorEnv($name)"

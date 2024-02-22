@@ -48,7 +48,7 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite, TestCatsEffect,
 
   private val blockingThreadPoolName =
     /*if (VirtualThreads.isEnabled) "" else*/
-    if TestCatsEffect.useOwnIORuntime then
+    if !TestCatsEffect.useCommonIORuntime then
       getClass.shortClassName
     else
       Js7IORuntime.threadPrefix // with suffix -blocking-N or -compute-blocker-N

@@ -1,7 +1,7 @@
 package js7.base.catsutils
 
 import cats.effect.Resource.ExitCase
-import cats.effect.{IO, OutcomeIO, Resource}
+import cats.effect.{IO, OutcomeIO, Resource, SyncIO}
 import cats.syntax.option.*
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.test.OurAsyncTestSuite
@@ -81,6 +81,21 @@ final class CatsEffectExtensionsTest extends OurAsyncTestSuite:
   }
 
   "Resource" - {
+    "orIfNone" in:
+      var aAcquired, bAcquired, aReleased, bReleased = 0
+
+      def aResource(a: Option[Int]) =
+        Resource.make(SyncIO { aAcquired += 1; a })(_ => SyncIO { aReleased += 1 } )
+
+      def bResource(b: Int) =
+        Resource.make(SyncIO { bAcquired += 1; b })(_ => SyncIO { bReleased += 1 } )
+
+      assert(aResource(1.some).orIfNone(bResource(2)).use(SyncIO(_)).unsafeRunSync() == 1)
+      assert(aAcquired == 1 && aReleased == 1 && bAcquired == 0 && bReleased == 0)
+
+      assert(aResource(none).orIfNone(bResource(2)).use(SyncIO(_)).unsafeRunSync() == 2)
+      assert(aAcquired == 2 && aReleased == 2 && bAcquired == 1 && bReleased == 1)
+
     "makeCancelable" in:
       val canceled = Atomic(false)
       val resource = Resource.makeCancelable[IO, Unit](

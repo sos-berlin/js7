@@ -19,14 +19,14 @@ import scala.concurrent.ExecutionContext
 trait TestCatsEffect extends BeforeAndAfterAll:
   this: Suite =>
 
+  private val lock = new ReentrantLock
   private val _ioRuntime = Atomic(none[Allocated[SyncIO, IORuntime]])
   private var afterAllMayBeCalled = false
-  private val lock = new ReentrantLock
 
   protected final lazy val ioRuntime: IORuntime =
     if !afterAllMayBeCalled then
       throw new IllegalStateException("IORuntime used but beforeAll() has not yet executed")
-    else if !useOwnIORuntime then
+    else if useCommonIORuntime then
       Js7IORuntime.ioRuntime
     else
       lock.lockInterruptibly()
@@ -55,7 +55,8 @@ trait TestCatsEffect extends BeforeAndAfterAll:
 
 object TestCatsEffect:
 
-  val useOwnIORuntime = sys.props.contains("js7.test.ownIORuntime")
+  val useCommonIORuntime = sys.props.contains("js7.test.commonIORuntime")
+    || sys.props.contains("test.speed")
 
   /** Make a seed for Cats Effect TestControl. */
   def toSeed(number: Long) =

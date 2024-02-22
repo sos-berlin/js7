@@ -100,7 +100,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest:
 
   override def afterAll() =
     logger.debugCall(s"${getClass.shortClassName} afterAll"):
-      try 
+      try
         val ios = Seq(
           Seq(controller.terminate().void),
           clusterWatchServiceOnce.toOption.map(_.release).toList,
@@ -113,7 +113,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest:
             IO.raiseError(t)))
           .sequence
           .await(99.s)
-      finally 
+      finally
         super.afterAll()
 
   private val usedVersionIds = mutable.Set[VersionId]()

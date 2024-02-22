@@ -35,7 +35,9 @@ final class CalendarTest extends OurTestSuite, ControllerAgentForScalaTest:
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(calendar, workflow)
 
-  private lazy val clock = TestAlarmClock(local("2021-10-01T00:00"))(using ioRuntime.scheduler)
+  private lazy val clock =
+    given ZoneId = CalendarTest.zone
+    TestAlarmClock(local("2021-10-01T00:00"))(using ioRuntime.scheduler)
 
   override protected def controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]

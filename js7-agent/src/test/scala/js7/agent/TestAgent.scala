@@ -1,6 +1,8 @@
 package js7.agent
 
-import org.apache.pekko.actor.ActorSystem
+import cats.effect.Resource.ExitCase
+import cats.effect.kernel.Sync
+import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, Resource, kernel}
 import js7.agent.RunningAgent.TestWiring
 import js7.agent.TestAgent.*
@@ -9,11 +11,13 @@ import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.ShutDown
 import js7.base.auth.SessionToken
+import js7.base.catsutils.OwnIORuntime
 import js7.base.eventbus.StandardEventBus
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
+import js7.base.monixlike.MonixLikeExtensions.tapError
 import js7.base.problem.Checked
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -25,11 +29,9 @@ import js7.base.web.Uri
 import js7.common.system.startup.ServiceMain
 import js7.core.command.CommandMeta
 import js7.journal.watch.EventWatch
-import cats.effect.unsafe.IORuntime
-import js7.base.monixlike.MonixLikeExtensions.tapError
+import org.apache.pekko.actor.ActorSystem
 import scala.concurrent.duration.FiniteDuration
 import scala.util.control.NonFatal
-import Resource.ExitCase
 
 final class TestAgent(
   allocated: Allocated[IO, RunningAgent],
@@ -114,12 +116,13 @@ object TestAgent:
     conf: AgentConfiguration,
     testWiring: TestWiring = TestWiring.empty,
     terminateProcessesWith: Option[ProcessSignal] = None)
-    (using ioRuntime: IORuntime)
   : IO[TestAgent] =
-    CorrelId.bindNew(
-      RunningAgent.resource(conf, testWiring)(using ioRuntime))
-        .toAllocated
-        .map(new TestAgent(_, terminateProcessesWith))
+    CorrelId.bindNew:
+      ioRuntimeResource[IO](conf).flatMap(implicit ioRuntime =>
+        RunningAgent
+          .resource(conf, testWiring)(using ioRuntime))
+          .toAllocated
+          .map(new TestAgent(_, terminateProcessesWith))
 
   def blockingRun(
     conf: AgentConfiguration,
@@ -165,3 +168,8 @@ object TestAgent:
             .timeoutTo(3.s, IO.unit)
             .tapError(t => IO(
               logger.error(t.toStringWithCauses, t.nullIfNoStackTrace)))))
+
+
+  private def ioRuntimeResource[F[_]](conf: AgentConfiguration)(implicit F: Sync[F])
+  : Resource[F, IORuntime] =
+    OwnIORuntime.resource[F](conf.name, conf.config)

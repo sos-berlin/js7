@@ -20,8 +20,8 @@ object SyncResource:
     implicit final class RichSyncResource[A](private val underlying: Resource[SyncIO, A])
     extends AnyVal:
       /** Like `SyncIO`'s `use`, but synchronously. */
-      def useSync[B](f: A => B)(implicit F: MonadError[SyncIO, Throwable], A: Tag[A]): B =
-        underlying.toAllocated.unsafeRunSync().blockingUse(f)
+      def useSync[B](f: A => B)(using Tag[A]): B =
+        underlying.toAllocated[SyncIO, A].unsafeRunSync().blockingUse(f)
 
     implicit final class ByteArrayAsResource[A](private val underlying: Array[Byte]) extends AnyVal:
       def asResource: Resource[SyncIO, InputStream] = byteArrayToResource(underlying)

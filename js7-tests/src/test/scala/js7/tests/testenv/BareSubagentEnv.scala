@@ -1,9 +1,10 @@
 package js7.tests.testenv
 
 import cats.effect.unsafe.IORuntime
-import cats.effect.ResourceIO
+import cats.effect.{IO, ResourceIO}
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Path
+import js7.base.catsutils.OwnIORuntime
 import js7.base.crypt.SignatureVerifier
 import js7.base.eventbus.StandardEventBus
 import js7.base.io.file.FileUtils.syntax.*
@@ -41,7 +42,11 @@ extends SubagentEnv:
   def programResource(using IORuntime): ResourceIO[Subagent] =
     subagentResource
 
-  def subagentResource(using IORuntime): ResourceIO[Subagent] =
-    Subagent.resource(subagentConf, new StandardEventBus[Any])
+  def subagentResource: ResourceIO[Subagent] =
+    for
+      given IORuntime <- OwnIORuntime.resource[IO](subagentConf.name, subagentConf.config)
+      subagent <- Subagent.resource(subagentConf, new StandardEventBus[Any])
+    yield
+      subagent
 
   override def toString = s"BareSubagentEnv($name)"

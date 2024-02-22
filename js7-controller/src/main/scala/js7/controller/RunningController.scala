@@ -1,13 +1,15 @@
 package js7.controller
 
-import cats.effect.Resource
+import cats.effect.{Resource, Sync, SyncIO}
 import cats.effect.unsafe.Scheduler
 import cats.syntax.traverse.*
 import js7.base.catsutils.CatsEffectExtensions.fromFutureDummyCancelable
+import js7.base.catsutils.OwnIORuntime
 import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 import js7.base.monixlike.MonixLikeExtensions.{deferFuture, tapError}
 import js7.base.utils.CatsBlocking.BlockingIOResource
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
+import js7.base.utils.SyncResource.syntax.RichSyncResource
 import org.apache.pekko.actor.{ActorRef, ActorSystem, Props}
 import org.apache.pekko.pattern.ask
 import org.apache.pekko.util.Timeout
@@ -138,12 +140,12 @@ extends MainService, Service.StoppableByRequest:
   private def executeCommand(command: ControllerCommand, meta: CommandMeta): IO[Checked[command.Response]] =
     logger.debugIO(s"executeCommand ${command.toShortString}")(
       commandExecutor.executeCommand(command, meta))
-        //.executeOn(scheduler))
+        .evalOn(ioRuntime.compute)
 
   def updateUnsignedSimpleItemsAsSystemUser(items: Seq[UnsignedSimpleItem]): IO[Checked[Completed]] =
     sessionRegister.systemUser
       .flatMapT(updateUnsignedSimpleItems(_, items))
-      //.executeOn(scheduler)
+      .evalOn(ioRuntime.compute)
 
   private def updateUnsignedSimpleItems(user: SimpleUser, items: Seq[UnsignedSimpleItem]): IO[Checked[Completed]] =
     VerifiedUpdateItems
@@ -153,7 +155,7 @@ extends MainService, Service.StoppableByRequest:
         _ => Left(Problem.pure("updateUnsignedSimpleItems and verify?")),
         user)
       .flatMapT(itemUpdater.updateItems)
-      //.executeOn(scheduler)
+      .evalOn(ioRuntime.compute)
 
   def updateItemsAsSystemUser(operations: Stream[IO, ItemOperation]): IO[Checked[Completed]] =
     sessionRegister.systemUser
@@ -163,7 +165,7 @@ extends MainService, Service.StoppableByRequest:
     VerifiedUpdateItems
       .fromOperations(operations, itemUpdater.signedItemVerifier.verify, user)
       .flatMapT(itemUpdater.updateItems)
-      //.executeOn(scheduler)
+      .evalOn(ioRuntime.compute)
 
   @TestOnly
   def addOrder(order: FreshOrder): IO[Checked[Unit]] =
@@ -198,14 +200,13 @@ object RunningController:
   @TestOnly
   def blockingRun(conf: ControllerConfiguration, timeout: FiniteDuration)
     (whileRunning: RunningController => Unit)
-    (using IORuntime)
   : ProgramTermination =
-    //threadPoolResource[SyncIO](conf).useSync(implicit scheduler =>
+    ioRuntimeResource[SyncIO](conf).useSync(implicit ioRuntime =>
       resource(conf)
         .blockingUse(timeout) { runningController =>
           whileRunning(runningController)
           runningController.terminated.awaitInfinite
-        }
+        })
 
   def resource(conf: ControllerConfiguration, testWiring: TestWiring = TestWiring.empty)
     (using ioRuntime: IORuntime)
@@ -227,7 +228,7 @@ object RunningController:
         given IOExecutor = iox
         resource(conf, alarmClock, eventIdClock)
     yield runningController
-  }//.executeOn(scheduler)
+  }.evalOn(ioRuntime.compute)
 
   private def resource(
     conf: ControllerConfiguration,
@@ -365,6 +366,10 @@ object RunningController:
         runningController <- runningControllerResource(webServer, sessionRegister)
       yield runningController
     }
+
+  def ioRuntimeResource[F[_]](conf: ControllerConfiguration)(implicit F: Sync[F])
+  : Resource[F, IORuntime] =
+    OwnIORuntime.resource[F](conf.name, conf.config)
 
   private def itemVerifierResource(
     config: Config,

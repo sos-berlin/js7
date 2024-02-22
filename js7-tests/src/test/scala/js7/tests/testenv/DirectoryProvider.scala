@@ -10,6 +10,7 @@ import java.nio.file.Files.{createDirectory, createTempDirectory}
 import java.nio.file.Path
 import js7.agent.{RunningAgent, TestAgent}
 import js7.base.auth.Admission
+import js7.base.catsutils.CatsEffectExtensions.{orIfNone, unsafeRuntime}
 import js7.base.crypt.{DocumentSigner, SignatureVerifier, Signed, SignedString}
 import js7.base.fs2utils.StreamExtensions.+:
 import js7.base.generic.SecretString
@@ -53,6 +54,7 @@ import js7.subagent.Subagent
 import js7.tests.testenv.DirectoryProvider.*
 import org.jetbrains.annotations.TestOnly
 import scala.collection.immutable.{Iterable, Map}
+import scala.concurrent
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.*
 import scala.util.control.NonFatal
@@ -83,7 +85,8 @@ final class DirectoryProvider(
   val verifier: SignatureVerifier = defaultVerifier,
   testName: Option[String] = None,
   useDirectory: Option[Path] = None,
-  doNotAddItems: Boolean = false)
+  doNotAddItems: Boolean = false,
+  commonIORuntime: Option[IORuntime] = None)
 extends HasCloser:
   private lazy val controllerPort_ = controllerPort
 
@@ -230,7 +233,6 @@ extends HasCloser:
     config: Config = ConfigFactory.empty,
     httpPort: Option[Int] = Some(controllerPort_),
     httpsPort: Option[Int] = None)
-    (using IORuntime)
   : Resource[IO, RunningController] =
     val conf = ControllerConfiguration.forTest(
       configAndData = controllerEnv.directory,
@@ -239,7 +241,7 @@ extends HasCloser:
       httpsPort = httpsPort,
       name = controllerName)
 
-    def startForTest(runningController: RunningController)(using ExecutionContext): Unit =
+    def startForTest(runningController: RunningController)(using ioRuntime: IORuntime): Unit =
       if !doNotAddItems && !isBackup && (agentRefs.nonEmpty || items.nonEmpty) then
         if !itemsHaveBeenAdded.getAndSet(true) then
           runningController.waitUntilReady()
@@ -257,18 +259,20 @@ extends HasCloser:
                     .map(itemSigner.toSignedString)
                     .map(ItemOperation.AddOrChangeSigned.apply))
               .await(99.s).orThrow
+      given ExecutionContext = ioRuntime.compute
       for t <- runningController.terminated.failed do
         logger.error(s"💥💥💥 ${t.toStringWithCauses}", t.nullIfNoStackTrace)
         logger.debug(t.toStringWithCauses, t)
 
     CorrelId.bindNew:
-      RunningController
-        .resource(conf, testWiring)
-        .evalTap: runningController =>
-          for
-            given ExecutionContext <- IO.executionContext
-            _ <- IO(startForTest(runningController))
-          yield ()
+      Resource.eval(IO.pure(commonIORuntime))
+        .orIfNone:
+          RunningController.ioRuntimeResource[IO](conf)
+        .flatMap(implicit ioRuntime =>
+          RunningController
+            .resource(conf, testWiring)(using ioRuntime)
+            .evalTap: runningController =>
+              IO(startForTest(runningController)))
 
   def runAgents[A](
     agentPaths: Seq[AgentPath] = DirectoryProvider.this.agentPaths)(

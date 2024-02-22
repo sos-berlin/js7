@@ -3,7 +3,6 @@ package js7.launcher
 import cats.effect.{Deferred, IO, Resource, ResourceIO}
 import fs2.Stream
 import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
-import js7.base.log.Logger
 import js7.base.time.ScalaTime.*
 import js7.launcher.StdObservers.*
 import org.jetbrains.annotations.TestOnly
@@ -33,8 +32,8 @@ object StdObserversForTest:
       yield
         TestSink(
           stdObservers,
-          out = IO(Logger.info(s"### CLOSE out")) *> stdObservers.closeChannels *> out.get,
-          err = IO(Logger.info(s"### CLOSE err")) *> stdObservers.closeChannels *> err.get)
+          out = stdObservers.closeChannels *> out.get,
+          err = stdObservers.closeChannels *> err.get)
 
 
   /** Provides an OutErrToSink which collects stdout and stderr each in a String. */
