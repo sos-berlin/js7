@@ -55,7 +55,7 @@ extends Service.StoppableByRequest:
 
   def checkClusterState(clusterState: HasNodes, clusterWatchIdChangeAllowed: Boolean)
   : IO[Checked[Option[ClusterWatchConfirmation]]] =
-   logger.traceIO(s"### checkClusterState $clusterState"):
+   logger.traceIOWithResult("checkClusterState", clusterState, body =
     if !clusterState.setting.clusterWatchId.isDefined
       && !clusterWatchIdChangeAllowed
       && !clusterState.isInstanceOf[Coupled]
@@ -75,7 +75,7 @@ extends Service.StoppableByRequest:
         .guaranteeCase:
           case Outcome.Succeeded(_) => IO.unit
           case outcome => IO:
-            logger.logOutcome(LogLevel.Debug, "checkClusterState", since.elapsed, outcome)
+            logger.logOutcome(LogLevel.Debug, "checkClusterState", since.elapsed, outcome))
 
   private def initializeCurrentClusterWatchId(clusterState: HasNodes): IO[Unit] =
    logger.traceIO("### initializeCurrentClusterWatchId"):
@@ -89,6 +89,7 @@ extends Service.StoppableByRequest:
   def applyEvent(event: ClusterEvent, clusterState: HasNodes,
     clusterWatchIdChangeAllowed: Boolean = false)
   : IO[Checked[Option[ClusterWatchConfirmation]]] =
+   logger.traceIOWithResult("applyEvent", clusterState, body =
     CorrelId.use { correlId =>
       event match
         case _: ClusterNodesAppointed | _: ClusterCouplingPrepared
@@ -101,7 +102,7 @@ extends Service.StoppableByRequest:
             ClusterWatchCheckEvent(_, correlId, ownId, event, clusterState),
             clusterWatchIdChangeAllowed = clusterWatchIdChangeAllowed
           ).map(_.map(Some(_)))
-    }
+    })
 
   private def check(
     clusterWatchId: Option[ClusterWatchId],
@@ -128,12 +129,10 @@ extends Service.StoppableByRequest:
     request: ClusterWatchRequest,
     requested: Requested)
   : IO[Checked[ClusterWatchConfirmation]] =
-   logger.traceIO("### check2"):
     SyncDeadline.now.flatMap(since => IO.defer:
       _requested.set(Some(requested))
       val sym = new BlockingSymbol
-      logger.traceIO("### publish", request)(
-      pubsub.publish(request))
+      pubsub.publish(request)
         .logWhenItTakesLonger(s"ClusterWatch.send($request)")
         .*>(IO(
           testEventPublisher.publish(WaitingForConfirmation(request))))

@@ -48,7 +48,7 @@ final class AsyncLock private(
     lockM.flatMap(mvar => IO.defer {
       mvar.tryPut(locked).flatMap(hasAcquired =>
         if hasAcquired then
-          if logMinor then log.trace(s"↘ ⚪️${locked.nr} $name acquired by ${locked.who} ↘")
+          if logMinor then log.trace(s"↘ ⚪️${locked.nrString} $name acquired by ${locked.who} ↘")
           locked.startMetering()
           IO.unit
         else
@@ -63,19 +63,19 @@ final class AsyncLock private(
                   val sym = new BlockingSymbol
                   sym.onDebug()
                   log.debug(/*spaces are for column alignment*/
-                    s"⟲ $sym${locked.nr} $name enqueues    ${locked.who} (currently acquired by ${lockedBy.withCorrelId}) ...")
+                    s"⟲ $sym${locked.nrString} $name enqueues    ${locked.who} (currently acquired by ${lockedBy.withCorrelId}) ...")
                   mvar.put(locked)
                     .whenItTakesLonger(warnTimeouts) { _ =>
                       for lockedBy <- mvar.tryRead yield
                         sym.onInfo()
                         logger.info(
-                          s"⟲ $sym${locked.nr} $name: ${locked.who} is still waiting" +
+                          s"⟲ $sym${locked.nrString} $name: ${locked.who} is still waiting" +
                             s" for ${waitingSince.elapsed.pretty}," +
                             s" currently acquired by ${lockedBy getOrElse "None"} ...")
                     }
                     .map { _ =>
                       log.log(sym.releasedLogLevel,
-                        s"↘ 🟢${locked.nr} $name acquired by ${locked.who} after ${waitingSince.elapsed.pretty} ↘")
+                        s"↘ 🟢${locked.nrString} $name acquired by ${locked.who} after ${waitingSince.elapsed.pretty} ↘")
                       locked.startMetering()
                       Right(())
                   }
@@ -86,7 +86,7 @@ final class AsyncLock private(
                       Left(())  // Locked again by someone else, so try again
                     else {
                       // "…" denotes just-in-time availability
-                      if logMinor then log.trace(s"↘ ⚪️${locked.nr} $name acquired by…${locked.who} ↘")
+                      if logMinor then log.trace(s"↘ ⚪️${locked.nrString} $name acquired by…${locked.who} ↘")
                       locked.startMetering()
                       Right(())  // The lock is ours!
                     }
@@ -102,13 +102,13 @@ final class AsyncLock private(
   private def logRelease(locked: Locked, exitCase: ExitCase): Unit =
     if logMinor then exitCase match
       case ExitCase.Succeeded =>
-        log.trace(s"↙ ⚪️${locked.nr} $name released by ${locked.acquirer} ↙")
+        log.trace(s"↙ ⚪️${locked.nrString} $name released by ${locked.acquirer} ↙")
 
       case ExitCase.Canceled =>
-        log.trace(s"↙ ⚫${locked.nr} $name released by ${locked.acquirer} · Canceled ↙")
+        log.trace(s"↙ ⚫${locked.nrString} $name released by ${locked.acquirer} · Canceled ↙")
 
       case ExitCase.Errored(t) =>
-        log.trace(s"↙ 💥${locked.nr} $name released by ${locked.acquirer} · ${t.toStringWithCauses} ↙")
+        log.trace(s"↙ 💥${locked.nrString} $name released by ${locked.acquirer} · ${t.toStringWithCauses} ↙")
 
   override def toString = s"AsyncLock:$name"
 
@@ -137,7 +137,9 @@ final class AsyncLock private(
         s"$acquirer $duration ago"
 
     override def toString =
-      s"$asyncLock acquired by $who"
+      s"$asyncLock $nrString acquired by $who"
+
+    def nrString = s"†$nr"
 
 
 object AsyncLock:

@@ -62,7 +62,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
 
   private val keepAlive = clusterConf.config.finiteDuration("js7.web.client.keep-alive").orThrow
   private implicit val askTimeout: Timeout = common.journalActorAskTimeout
-  private val clusterStateLock = AsyncLock()
+  private val clusterStateLock = AsyncLock(logMinor = true)
   private val journalActor = journal.journalActor
   private val isFetchingAcks = Atomic(false)
   private val fetchingAcks = new FiberVar[Unit]
@@ -110,6 +110,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
               IO.defer {
                 clusterWatchSynchronizerOnce :=
                   common.initialClusterWatchSynchronizer(initialClusterState)
+                // clusterStateLock must be locked:
                 clusterWatchSynchronizer.start(currentClusterState, registerClusterWatchId)
               },
               awaitAcknowledgmentIfCoupled(initialClusterState, eventId)
@@ -604,7 +605,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
   // Called back by clusterWatchCounterpart.executeClusterWatchConfirm
   private def registerClusterWatchId(confirmation: ClusterWatchConfirmation, alreadyLocked: Boolean)
   : IO[Checked[Unit]] =
-    logger.traceIO(IO.defer {
+    logger.traceIO("registerClusterWatchId", confirmation)(IO.defer {
       if alreadyLocked then
         nonLockingRegisterClusterWatchId(confirmation)
       else

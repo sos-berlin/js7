@@ -332,7 +332,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
           .guaranteeCaseLazy:
             case Outcome.Canceled() => IO:
               canceled = true
-              logger.debug(s"<~~⚫️ $responseLogPrefix => canceled")
+              logger.debug(s"<~~ ⚫️$responseLogPrefix => canceled")
 
             case Outcome.Errored(throwable) => IO.defer:
               val sym = throwable match
@@ -345,7 +345,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
                 case _ => "💥"
 
               logger.debug:
-                s"<~~$sym $responseLogPrefix => failed with ${throwable.toStringWithCauses}"
+                s"<~~ $sym$responseLogPrefix => failed with ${throwable.toStringWithCauses}"
               IO.raiseError(toPrettyProblem(throwable).throwable)
 
             case Outcome.Succeeded(_) => IO.unit
@@ -433,7 +433,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
                 chunk
               }
               .mapError: t =>
-                logger.trace(s"<~~💥 $responseLogPrefix ${t.toStringWithCauses}")
+                logger.trace(s"<~~ 💥$responseLogPrefix ${t.toStringWithCauses}")
                 t)))
       case _ => response
 

@@ -259,7 +259,6 @@ extends Service.StoppableByRequest:
             case _ =>
               common.clusterWatchCounterpart.executeClusterWatchConfirm(cmd)
           .flatTap(result => IO:
-            logger.trace(s"### ClusterWatchConfirmed($cmd, $result)")
             common.testEventBus.publish(ClusterWatchConfirmed(cmd, result)))
 
   def clusterWatchRequestStream: fs2.Stream[IO, ClusterWatchRequest] =

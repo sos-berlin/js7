@@ -233,8 +233,8 @@ trait ControllerClusterForScalaTest extends TestCatsEffect:
   protected final def clusterWatchServiceResource(clusterWatchId: ClusterWatchId)
   : Resource[IO, (ClusterWatchService, StandardEventBus[ClusterNodeLossNotConfirmedProblem])] =
     for
-      eventbus <- Resource.fromAutoCloseable(IO(
-        new StandardEventBus[ClusterNodeLossNotConfirmedProblem]))
+      eventbus <- Resource.fromAutoCloseable(IO:
+        new StandardEventBus[ClusterNodeLossNotConfirmedProblem])
       clusterWatch <- DirectoryProvider.clusterWatchServiceResource(
         clusterWatchId,
         controllerAdmissions,
@@ -252,7 +252,7 @@ trait ControllerClusterForScalaTest extends TestCatsEffect:
       .api.executeCommand(
         ShutDown(clusterAction = Some(ShutDown.ClusterAction.Failover)))
       .map(_.orThrow)
-      .flatMap(_ => IO.deferFuture(controller.terminated))
+      .flatMap(_ => controller.untilTerminated)
       .map((_: ProgramTermination) => ())
 
 
