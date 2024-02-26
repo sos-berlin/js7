@@ -11,7 +11,6 @@ import js7.base.session.SessionApi
 import js7.base.web.HttpClient.liftProblem
 import js7.base.web.{HttpClient, Uri}
 import js7.data.cluster.{ClusterCommand, ClusterNodeApi, ClusterNodeState, ClusterState, ClusterWatchId, ClusterWatchRequest, ClusterWatchingCommand}
-import js7.data.event.JournalEvent.StampedHeartbeat
 import js7.data.event.{Event, EventId, EventRequest, JournalPosition, KeyedEvent, Stamped}
 import js7.data.session.HttpSessionApi
 import scala.concurrent.duration.*
@@ -46,17 +45,18 @@ extends ClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
       .getDecodedLinesStream[Stamped[KeyedEvent[E]]](
         uris.events(request, heartbeat = heartbeat),
         responsive = true)
-      .map(_
-        .filter(_ != StampedHeartbeat))
 
   final def eventIdStream[E <: Event](
     timeout: Option[FiniteDuration] = None,
-    heartbeat: Option[FiniteDuration] = None)
-  : IO[Stream[IO, EventId]] =
+    heartbeat: Option[FiniteDuration] = None,
+    returnHeartbeatAs: Option[EventId] = None)
+  : IO[Stream[IO, Checked[EventId]]] =
+    import EventId.given_Codec_Checked
     httpClient
-      .getDecodedLinesStream[EventId](
+      .getDecodedLinesStream[Checked[EventId]](
         uris.eventIds(timeout, heartbeat = heartbeat),
         responsive = true,
+        returnHeartbeatAs = for h <- returnHeartbeatAs yield ByteArray(h.toString),
         prefetch = 1000)
       .map(_
         .mapChunks: chunk =>
@@ -68,12 +68,16 @@ extends ClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
     */
   final def journalStream(
     journalPosition: JournalPosition,
-    heartbeat: Option[FiniteDuration] = None, timeout: Option[FiniteDuration] = None,
-    markEOF: Boolean = false, returnAck: Boolean = false)
+    heartbeat: Option[FiniteDuration] = None,
+    returnHeartbeatAs: Option[ByteArray] = None,
+    timeout: Option[FiniteDuration] = None,
+    markEOF: Boolean = false,
+    returnAck: Boolean = false)
   : IO[Stream[IO, ByteArray]] =
     httpClient.getRawLinesStream(
       uris.journal(journalPosition, heartbeat = heartbeat,
-        timeout = timeout, markEOF = markEOF, returnAck = returnAck))
+        timeout = timeout, markEOF = markEOF, returnAck = returnAck),
+      returnHeartbeatAs = returnHeartbeatAs)
 
   /** Stream for the growing flushed (and maybe synced) length of a journal file.
     * @param journalPosition start of observation

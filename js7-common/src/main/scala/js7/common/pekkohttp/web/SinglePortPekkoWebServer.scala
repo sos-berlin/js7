@@ -152,7 +152,7 @@ private object SinglePortPekkoWebServer:
             val serviceName = boundRoute.serviceName.emptyToNone.fold("")(_ + " ")
             val securityHint = boundRoute.startupSecurityHint(binding.scheme)
             logger.info(s"$name ${serviceName}web services are available$securityHint"))
-        .start.void
+        .startAndForget
 
     def webServerRoute: Route =
       extractRequest/*force recalculation with each call*/(_ =>
@@ -197,10 +197,10 @@ private object SinglePortPekkoWebServer:
             logger.debugIO(s"$webServerBinding unbind"):
               IO(pekkoBinding.unbind()),
           IO(Deadline.now).flatMap: now =>
-            whenTerminating.complete(now + shutdownTimeout)
-              .*>(IO(logger.debug:
-                s"Delay web server termination for ${shutdownDelay.pretty} ..."))
-              .andWait(shutdownDelay))
+            whenTerminating.complete(now + shutdownTimeout) *>
+              IO.whenA(shutdownDelay.isPositive):
+                IO(logger.debug(s"Delay web server termination for ${shutdownDelay.pretty} ..."))
+                  .andWait(shutdownDelay))
         .void
 
     override def toString = webServerPort.toString

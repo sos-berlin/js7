@@ -181,10 +181,10 @@ extends OurTestSuite, BeforeAndAfterAll, ControllerAgentForScalaTest, ProvideAct
     try
       // Don't use (unavailable) HTTPS to shutdown Controller, use direct call:
       controller.runningController.shutdown(ControllerCommand.ShutDown()).await(99.s)
-  
+
       close()
       delete(clientKeyStore)
-    finally 
+    finally
       super.afterAll()
 
     if useCluster then

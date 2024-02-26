@@ -34,20 +34,19 @@ private final class DirectoryWatch(
 
   private[watch] def readDirectoryThenStream(state: DirectoryState)
   : Stream[IO, (Seq[DirectoryEvent], DirectoryState)] =
-    logger.traceStream:
-      Stream
-        .eval(readDirectory map state.diffTo)
-        .filter(_.nonEmpty)
-        .++(directoryEventStream
-          // BasicDirectoryWatch yields Nil when poll() timed out.
-          // Then we end, allowing the caller to restart and
-          // to handle an exchanged directory.
-          .takeWhile(_.nonEmpty))
-        .scan(state -> Seq.empty[DirectoryEvent])((pair, events) =>
-          pair._1.applyAndReduceEvents(events).swap)
-        .drop(1) // Drop initial value
-        .map(_.swap)
-        .filter(_._1.nonEmpty)
+    Stream
+      .eval(readDirectory map state.diffTo)
+      .filter(_.nonEmpty)
+      .++(directoryEventStream
+        // BasicDirectoryWatch yields Nil when poll() timed out.
+        // Then we end, allowing the caller to restart and
+        // to handle an exchanged directory.
+        .takeWhile(_.nonEmpty))
+      .scan(state -> Seq.empty[DirectoryEvent])((pair, events) =>
+        pair._1.applyAndReduceEvents(events).swap)
+      .drop(1) // Drop initial value
+      .map(_.swap)
+      .filter(_._1.nonEmpty)
 
 
 object DirectoryWatch:

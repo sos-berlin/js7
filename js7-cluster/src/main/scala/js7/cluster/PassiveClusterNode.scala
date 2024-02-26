@@ -3,13 +3,15 @@ package js7.cluster
 import cats.effect.kernel.Deferred
 import cats.effect.unsafe.IORuntime
 import cats.syntax.flatMap.*
-import js7.base.catsutils.CatsEffectExtensions.{left, right}
+import js7.base.catsutils.CatsEffectExtensions.{left, right, startAndForget}
 import js7.base.catsutils.SyncDeadline
 import js7.base.fs2utils.StreamExtensions.mapParallelBatch
 import js7.base.monixutils.RefCountedResource
 import js7.base.monixutils.StreamPauseDetector.detectPauses
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.common.http.PekkoHttpClient
+import js7.data.event.JournalEvent
+import js7.data.event.JournalEvent.StampedHeartbeatByteArray
 import scala.concurrent.ExecutionContext
 //diffx import com.softwaremill.diffx
 import cats.effect.IO
@@ -49,7 +51,6 @@ import js7.data.cluster.ClusterState.{Coupled, IsDecoupled, PreparedToBeCoupled}
 import js7.data.cluster.ClusterWatchProblems.{ClusterFailOverWhilePassiveLostProblem, NoClusterWatchProblem, UntaughtClusterWatchProblem}
 import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeApi, ClusterSetting, ClusterState}
 import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
-import js7.data.event.JournalSeparators.HeartbeatMarker
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{ClusterableState, EventId, JournalId, JournalPosition, JournalSeparators, KeyedEvent, SnapshotableStateBuilder, Stamped}
 import js7.data.node.{NodeId, NodeName, NodeNameToPassword}
@@ -245,7 +246,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
         case Right(()) =>
           logger.debug(
             "Active cluster node has been notified about restart of this passive node")
-      .start.void
+      .startAndForget
 
   private def tryEndlesslyToSendCommand(toCommand: OneTimeToken => ClusterCommand)
   : IO[Unit] =
@@ -355,10 +356,13 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
               .journalStream(
                 JournalPosition(continuation.fileEventId, position),
                 heartbeat = Some(setting.timing.heartbeat),
+                returnHeartbeatAs = Some(StampedHeartbeatByteArray),
                 markEOF = true)
               .map(_
                 .scan(PositionAnd(position, ByteArray.empty/*unused*/)): (s, line) =>
-                  PositionAnd(s.position + (if line == HeartbeatMarker then 0 else line.length), line)
+                  PositionAnd(
+                    s.position + (if line == StampedHeartbeatByteArray then 0 else line.length),
+                    line)
                 .drop(1)))
 
         protected def stopRequested = stopped
@@ -473,8 +477,9 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
                   "clusterState=" + clusterState)
                 Stream.empty  // Ignore
 
-          case Right((_, HeartbeatMarker, _)) =>
-            logger.trace(HeartbeatMarker.utf8String.trim)
+          case Right((_, h @ StampedHeartbeatByteArray, _)) =>
+            if !PekkoHttpClient.LogData then
+              logger.trace(h.utf8String.trim)
             Stream.empty
 
           case Right((fileLength, JournalSeparators.EndOfJournalFileMarker, _)) =>
@@ -646,7 +651,7 @@ private[cluster] final class PassiveClusterNode[S <: ClusterableState[S]/*: diff
 
   private def testHeartbeatSuppressor(tuple: (Long, ByteArray, Any)): Boolean =
     tuple match
-      case (_, HeartbeatMarker, _)
+      case (_, StampedHeartbeatByteArray, _)
       if clusterConf.testHeartbeatLossPropertyKey.fold(false)(k => sys.props(k).toBoolean) =>
         logger.warn("TEST: Suppressing the received heartbeat")
         false

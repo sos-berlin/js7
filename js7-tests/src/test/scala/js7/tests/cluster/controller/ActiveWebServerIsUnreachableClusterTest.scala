@@ -19,7 +19,7 @@ final class ActiveWebServerIsUnreachableClusterTest extends ControllerClusterTes
 
       primaryController.eventWatch.await[ClusterWatchRegistered]()
       primaryController.eventWatch.await[ClusterCoupled]()
-
+      sleep(500.ms) // Await ClusterWatchCheckEvent(ClusterCoupled) (???)
       primaryController.runningController.webServer.stopPortWebServers.await(99.s)
 
       backupController.eventWatch.await[ClusterFailedOver](_.key == NoKey)

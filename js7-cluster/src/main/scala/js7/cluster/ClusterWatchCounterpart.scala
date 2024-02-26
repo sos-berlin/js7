@@ -4,7 +4,7 @@ import cats.effect.kernel.Deferred
 import cats.effect.unsafe.IORuntime
 import cats.effect.{IO, Outcome, Resource}
 import js7.base.catsutils.CatsEffectExtensions.*
-import js7.base.catsutils.SyncDeadline 
+import js7.base.catsutils.SyncDeadline
 import js7.base.eventbus.EventPublisher
 import js7.base.fs2utils.Fs2PubSub
 import js7.base.log.Logger.syntax.*

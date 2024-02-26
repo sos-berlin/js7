@@ -1,5 +1,8 @@
 package js7.data.event
 
+import io.circe.{Codec, Encoder}
+import io.circe.syntax.EncoderOps
+import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
 
 object EventId:
@@ -10,6 +13,9 @@ object EventId:
   // 2 ** 53 = 9.007.199.254.740.992µs = 285 years. This is good until year 2255, for a million events/s.
   private[event] val JavascriptMaxValue = EventId(1L << 53)  // 2^53 == 9007199254740992L
   private[js7] val MaxValue = EventId(JavascriptMaxValue)
+
+  /** Pseudo EventId for a heartbeat — not a real EventId.*/
+  val Heartbeat: EventId = -1L
 
   def apply(eventId: String) = eventId.toLong
 
@@ -42,3 +48,17 @@ object EventId:
           sb += ('0' + micros / 10 % 10).toChar
           sb += ('0' + micros % 10).toChar
           sb.toString
+
+  /** The Cluster acknowledgment stream of EventIds may terminate with a Problem. */
+  given Codec[Checked[EventId]] =
+    given Encoder[Problem] = Problem.typedJsonEncoder
+    Codec.from(
+      decodeA = c =>
+        if c.value.isObject then
+          for problem <- c.as[Problem] yield Left(problem)
+        else
+          for eventId <- c.as[Long] yield Right(eventId),
+
+      encodeA =
+        case Left(problem) => problem.asJson
+        case Right(eventId) => eventId.asJson)

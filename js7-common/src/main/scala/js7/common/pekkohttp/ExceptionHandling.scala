@@ -39,7 +39,6 @@ trait ExceptionHandling:
 
   protected final lazy val shutdownSignaled: IO[Either[Throwable, Unit]] =
     whenShuttingDown.get
-      .flatTap(o => IO(Logger[this.type].trace("### whenShuttingDown.get !")))
       .as(().asRight[Throwable])
 
   implicit protected final lazy val exceptionHandler: ExceptionHandler =

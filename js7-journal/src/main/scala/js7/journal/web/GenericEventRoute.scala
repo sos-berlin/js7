@@ -7,21 +7,24 @@ import fs2.Stream
 import izumi.reflect.Tag
 import js7.base.auth.ValidUserPermission
 import js7.base.catsutils.CatsEffectExtensions.right
+import js7.base.circeutils.CirceUtils.RichJsonObject
 import js7.base.fs2utils.StreamExtensions.*
 import js7.base.log.Logger
 import js7.base.problem.Problems.ShuttingDownProblem
-import js7.base.problem.{Checked, Problem}
+import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.http.JsonStreamingSupport.*
-import js7.common.pekkohttp.PekkoHttpServerUtils.{LF, accept, completeWithCheckedStream, encodeParallel}
+import js7.common.http.PekkoHttpClient.HttpHeartbeatByteString
+import js7.common.pekkohttp.PekkoHttpServerUtils.{accept, completeWithCheckedStream, encodeParallel}
+import js7.common.pekkohttp.StandardDirectives
 import js7.common.pekkohttp.StandardDirectives.ioRoute
 import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkohttp.web.session.RouteProvider
-import js7.common.pekkohttp.{PekkoHttpServerUtils, StandardDirectives}
-import js7.data.event.JournalEvent.{StampedHeartbeat, StampedHeartbeatIO}
+import js7.common.pekkoutils.ByteStrings.syntax.ByteStringToByteSequence
+import js7.data.Problems.AckFromActiveClusterNodeProblem
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, EventSeqTornProblem, KeyedEvent, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}
 import js7.journal.watch.{ClosedException, EventWatch}
 import js7.journal.web.EventDirectives.eventRequest
@@ -31,7 +34,6 @@ import org.apache.pekko.http.scaladsl.model.StatusCodes.ServiceUnavailable
 import org.apache.pekko.http.scaladsl.server.Directives.*
 import org.apache.pekko.http.scaladsl.server.{Directive, Directive1, ExceptionHandler, Route}
 import org.apache.pekko.util.ByteString
-import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
 import scala.util.chaining.*
@@ -48,7 +50,7 @@ trait GenericEventRoute extends RouteProvider:
 
   private lazy val defaultJsonSeqChunkTimeout =
     config.getDuration("js7.web.server.services.event.streaming.chunk-timeout").toFiniteDuration
-  private lazy val defaultStreamingDelay =
+  private lazy val minimumStreamingDelay =
     config.getDuration("js7.web.server.services.event.streaming.delay").toFiniteDuration
 
   protected trait GenericEventRouteProvider:
@@ -97,13 +99,8 @@ trait GenericEventRoute extends RouteProvider:
           if onlyAcks then
             eventIdRoute(maybeHeartbeat, eventWatch)
           else
-            eventDirective(
-              eventWatch.lastAddedEventId,
-              defaultTimeout = defaultJsonSeqChunkTimeout,
-              defaultDelay = defaultStreamingDelay
-            ) { request =>
+            eventDirective(eventWatch.lastAddedEventId): request =>
               eventRoute(request, maybeHeartbeat, eventWatch)
-            }
         }
       }
 
@@ -114,8 +111,14 @@ trait GenericEventRoute extends RouteProvider:
           eventWatch
             .streamEventIds(Some(timeout))
             .map(_.map(_
-              .pipe(o => maybeHeartbeat.fold(o)(o.echoRepeated))
-              .map((eventId: EventId) => ByteString(eventId.toString) ++ LF)))
+              .map((eventId: EventId) => ByteString(eventId.toString) ++ LF)
+              .recover:
+                case ProblemException(problem @ AckFromActiveClusterNodeProblem) =>
+                  logger.trace(s"### journalRoute => $problem")
+                  Problem.typedJsonEncoder.encodeObject(problem).toByteArray.toByteString
+              .pipe: stream =>
+                maybeHeartbeat.fold(stream): h =>
+                  stream.keepAlive(h, IO.pure(HttpHeartbeatByteString))))
       }
 
     private def eventRoute(
@@ -126,15 +129,16 @@ trait GenericEventRoute extends RouteProvider:
       completeWithCheckedStream(`application/x-ndjson`):
         maybeHeartbeat match
           case None =>
-            // Await the first event to check for Torn and convert it to a proper error message, otherwise continue with stream
+            // Await the first event to check for Torn and convert it to a proper error message,
+            // otherwise continue with stream
             awaitFirstEventStream(request, eventWatch)
 
           case Some(heartbeat) =>
             IO.right:
               eventStream(request, isRelevantEvent, eventWatch)
-                .prependOne(StampedHeartbeat)
-                .keepAlive(heartbeat, StampedHeartbeatIO)
                 .through(encodeParallel(chunkSize = chunkSize, prefetch = prefetch))
+                .keepAlive(heartbeat, IO.pure(HttpHeartbeatByteString))
+                .prependOne(HttpHeartbeatByteString)
                 .interruptWhen(shutdownSignaled)
 
     private def awaitFirstEventStream(request: EventRequest[Event], eventWatch: EventWatch)
@@ -155,9 +159,8 @@ trait GenericEventRoute extends RouteProvider:
 
             val tailRequest = request.copy[Event](
               after = head.eventId,
-              limit = request.limit - 1,
-              // FIXME it should be max, not min:
-              delay = (request.delay - runningSince.elapsed) min ZeroDuration)
+              limit = request.limit - 1 max 0,
+              delay = (request.delay - runningSince.elapsed) max ZeroDuration)
 
             Right:
               Stream.emit(head)
@@ -179,16 +182,13 @@ trait GenericEventRoute extends RouteProvider:
           if e.getStackTrace.nonEmpty then logger.debug(e.toStringWithCauses, e)
           Stream.empty  // The streaming event web service doesn't have an error channel, so we simply end the tail
 
-    private def eventDirective(
-      defaultAfter: EventId,
-      defaultTimeout: FiniteDuration = EventDirectives.DefaultTimeout,
-      defaultDelay: FiniteDuration = EventDirectives.DefaultDelay)
+    private def eventDirective(defaultAfter: EventId)
     : Directive1[EventRequest[Event]] =
       Directive(inner =>
         eventRequest[Event](
           defaultAfter = Some(defaultAfter),
-          defaultDelay = defaultDelay,
-          defaultTimeout = defaultTimeout,
+          minimumDelay = minimumStreamingDelay,
+          defaultTimeout = defaultJsonSeqChunkTimeout,
           defaultReturnType = defaultReturnType.map(_.simpleScalaName))
         .apply(eventRequest => inner(Tuple1(eventRequest))))
 
@@ -199,3 +199,4 @@ object GenericEventRoute:
       Stream[IO, Stamped[KeyedEvent[Event]]]
 
   private val logger = Logger[this.type]
+  private val LF = ByteString("\n")

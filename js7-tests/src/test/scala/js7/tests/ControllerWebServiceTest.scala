@@ -1,7 +1,6 @@
 package js7.tests
 
 import cats.effect.IO
-import com.typesafe.config.Config
 import fs2.Stream
 import io.circe.syntax.EncoderOps
 import io.circe.{Json, JsonObject}
@@ -51,8 +50,8 @@ import org.apache.pekko.http.scaladsl.model.{HttpEntity, HttpHeader, Uri as Pekk
 import org.apache.pekko.stream.Materializer
 import org.scalactic.source
 import org.scalatest.BeforeAndAfterAll
-import scala.util.Try
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.util.Try
 
 /**
   * @author Joacim Zschimmer

@@ -6,7 +6,6 @@ import java.lang.System.lineSeparator as nl
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Paths
 import js7.base.catsutils.CatsEffectExtensions.{joinStd, left}
-import js7.base.catsutils.Js7IORuntime
 import js7.base.io.file.FileUtils.temporaryDirectoryResource
 import js7.base.log.Logger
 import js7.base.monixlike.MonixLikeExtensions.parSequence
@@ -46,15 +45,8 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite, TestCatsEffect,
 {
   private given IORuntime = ioRuntime
 
-  private val blockingThreadPoolName =
-    /*if (VirtualThreads.isEnabled) "" else*/
-    if !TestCatsEffect.useCommonIORuntime then
-      getClass.shortClassName
-    else
-      Js7IORuntime.threadPrefix // with suffix -blocking-N or -compute-blocker-N
-
   private val blockingJobEC =
-    newUnlimitedNonVirtualExecutionContext(name = blockingThreadPoolName)
+    newUnlimitedNonVirtualExecutionContext(name = blockingThreadNamePrefix)
 
   override def afterAll() =
     try blockingJobEC.shutdown()
@@ -65,7 +57,7 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite, TestCatsEffect,
       lazy val executable = InternalExecutable(
         testClass.getName,
         script = "TEST SCRIPT",
-        jobArguments = Map("blockingThreadPoolName" -> StringConstant(blockingThreadPoolName)),
+        jobArguments = Map("blockingThreadNamePrefix" -> StringConstant(blockingThreadNamePrefix)),
         arguments = Map("STEP_ARG" -> NamedValue("ORDER_ARG")))
 
       implicit lazy val executor: InternalJobLauncher = {
@@ -126,10 +118,10 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite, TestCatsEffect,
       "stop" in {
         executor.stop.await(99.s)
         if testClass == classOf[TestJInternalJob] then {
-          assert(TestJInternalJob.stoppedCalled.containsKey(blockingThreadPoolName))
+          assert(TestJInternalJob.stoppedCalled.containsKey(blockingThreadNamePrefix))
         } else if testClass == classOf[TestBlockingInternalJob] then {
           logger.info(s"TestBlockingInternalJob.stoppedCalled=${TestBlockingInternalJob.stoppedCalled}")
-          assert(TestBlockingInternalJob.stoppedCalled.containsKey(blockingThreadPoolName))
+          assert(TestBlockingInternalJob.stoppedCalled.containsKey(blockingThreadNamePrefix))
         }
       }
 

@@ -5,7 +5,7 @@ import js7.base.log.{CorrelId, Logger}
 import js7.base.test.LoggingFreeSpecStringWrapper.UnifiedStringWrapper
 import js7.base.test.LoggingTestAdder.*
 import js7.base.time.ScalaTime.*
-import js7.base.utils.ScalaUtils.syntax.{RichString, RichThrowable}
+import js7.base.utils.ScalaUtils.syntax.{RichJavaClass, RichString, RichThrowable}
 import js7.base.utils.Tests.isSbt
 import org.scalatest.exceptions.TestPendingException
 import scala.collection.mutable
@@ -13,9 +13,12 @@ import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.FiniteDuration
 import scala.util.{Failure, Success, Try}
 
-private final class LoggingTestAdder(suiteName: String):
+private final class LoggingTestAdder(testClass: Class[?]):
 
-  logger.info(s"$magenta${"━" * barLength} $bold↘ $suiteName$resetColor")
+  private val suiteName = testClass.shortClassName
+  private val longSuiteName = testClass.scalaName
+
+  logger.info(s"$magenta${"━" * barLength} $bold↘ $longSuiteName$resetColor")
 
   private lazy val since = now
   private val outerNames = Seq(suiteName).to(mutable.Stack)
@@ -54,7 +57,7 @@ private final class LoggingTestAdder(suiteName: String):
     new TestContext(this, outerNames.toVector, testName)
 
   def afterAll(): Unit =
-    logger.info(s"$suiteName · " +
+    logger.info(s"$longSuiteName · " +
       (if succeededCount == 0 then failureMarkup
       else if succeededCount > 0 then successMarkup
       else bold) +
@@ -63,7 +66,7 @@ private final class LoggingTestAdder(suiteName: String):
       (if pendingCount == 0 then "" else s" · $pendingMarkup🚧 $pendingCount pending$resetColor") +
       (if failedCount == 0 && pendingCount == 0 then s" $successMarkup✔︎$resetColor " else " · ") +
       since.elapsed.pretty)
-    logger.info(s"$magenta${"▲" * barLength} $bold↙ $suiteName$resetColor\n")
+    logger.info(s"$magenta${"▲" * barLength} $bold↙ $longSuiteName$resetColor\n")
 
 
 private object LoggingTestAdder:

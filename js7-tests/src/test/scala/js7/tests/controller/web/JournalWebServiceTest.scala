@@ -21,7 +21,7 @@ import js7.controller.client.PekkoHttpControllerApi
 import js7.data.agent.AgentPath
 import js7.data.agent.AgentRefStateEvent.{AgentDedicated, AgentEventsObserved, AgentReady}
 import js7.data.controller.ControllerCommand
-import js7.data.event.JournalSeparators
+import js7.data.event.{JournalEvent, JournalSeparators}
 import js7.data.event.JournalSeparators.EndOfJournalFileMarker
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.OrderFinished
@@ -36,6 +36,7 @@ import js7.tests.testenv.DirectoryProvider.script
 import cats.effect.IO
 import js7.base.fs2utils.StreamExtensions.onErrorEvalTap
 import js7.base.monixlike.MonixLikeExtensions.{timeoutOnSlowUpstream, toListL}
+import js7.common.http.PekkoHttpClient
 import org.scalatest.BeforeAndAfterAll
 import scala.collection.mutable
 
@@ -135,13 +136,18 @@ final class JournalWebServiceTest extends OurTestSuite, BeforeAndAfterAll, Contr
     var observedLines = Vector.empty[String]
     val fileAfter = controller.eventWatch.lastFileEventId
     val u = Uri(s"$uri/controller/api/journal?markEOF=true&file=$fileAfter&position=0")
-    httpClient.getRawLinesStream(u).await(99.s)
+    httpClient
+      .getRawLinesStream(u, returnHeartbeatAs = Some(JournalEvent.StampedHeartbeatByteArray))
+      .await(99.s)
       .foreach(o => IO:
         lines :+= o.utf8String)
       .compile.drain
       .unsafeRunAndForget()
     val observeWithHeartbeat = httpClient
-      .getRawLinesStream(Uri(u.string + "&heartbeat=0.1")).await(99.s)
+      .getRawLinesStream(
+        Uri(u.string + "&heartbeat=0.1"),
+        returnHeartbeatAs = Some(JournalEvent.StampedHeartbeatByteArray))
+      .await(99.s)
       .timeoutOnSlowUpstream(2.s/*sometimes 1s is too short*/)  // Check heartbeat
       .onErrorEvalTap(t => IO(logger.error(t.toString)))
       .foreach(bytes => IO:
@@ -160,8 +166,8 @@ final class JournalWebServiceTest extends OurTestSuite, BeforeAndAfterAll, Contr
     awaitAndAssert(observedLines.exists(_ contains "OrderFinished"))
     assert(observedLines.exists(_ contains "OrderFinished"))
 
-    assert(observedLines.count(_ == JournalSeparators.HeartbeatMarker.utf8String) > 1)
-    assert(observedLines.filterNot(_ == JournalSeparators.HeartbeatMarker.utf8String) == lines)
+    assert(observedLines.count(_ == JournalEvent.StampedHeartbeatString) > 1)
+    assert(observedLines.filterNot(_ == JournalEvent.StampedHeartbeatString) == lines)
 
 
 object JournalWebServiceTest:

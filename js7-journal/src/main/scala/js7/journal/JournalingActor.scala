@@ -261,7 +261,7 @@ extends Actor, Stash, ActorLogging, ReceiveLoggingActor:
       throw new RuntimeException(msg)
     stashingCount -= 1
     if stashingCount == 0 then
-      journalingTimer.cancelAndForget()
+      journalingTimer := FutureCancelable.empty
       unstashAll()
       persistStatistics.endStashing()
       if TraceLog then logger.trace(s"»$toString« unbecome")

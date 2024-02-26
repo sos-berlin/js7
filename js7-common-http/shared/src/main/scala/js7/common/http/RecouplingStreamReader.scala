@@ -8,7 +8,7 @@ import izumi.reflect.Tag
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 import js7.base.exceptions.HasIsIgnorableStackTrace
-import js7.base.fs2utils.StreamExtensions.+:
+import js7.base.fs2utils.StreamExtensions.{+:, interruptWhenF}
 import js7.base.generic.Completed
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{BlockingSymbol, Logger}
@@ -112,6 +112,7 @@ abstract class RecouplingStreamReader[
       ) >>
         new ForApi(api, after)
           .streamAgainAndAgain
+          .interruptWhenF(stopped.get.void)
           .onFinalize(IO.defer {
             logger.trace(s"$api: inUse := false")
             inUse := false
@@ -187,7 +188,7 @@ abstract class RecouplingStreamReader[
         .eval(
           tryEndlesslyToGetStream(after)
             .<*(IO {
-              if sym.called then logger.info(s"🟢 Observing $api ...")
+              if sym.called then logger.info(s"🟢 Streaming $api ...")
             }))
         .flatten
         .map { v =>
@@ -199,8 +200,9 @@ abstract class RecouplingStreamReader[
     private def tryEndlesslyToGetStream(after: I): IO[Stream[IO, V]] =
       ().tailRecM(_ =>
         if isStopped then
-          IO.right(Stream.raiseError[IO](
-            new IllegalStateException(s"RecouplingStreamReader($api) has been stopped")))
+          IO.right(Stream.empty)
+          //IO.right(Stream.raiseError[IO](
+          //  new IllegalStateException(s"RecouplingStreamReader($api) has been stopped")))
         else
           coupleIfNeeded(after = after)
             .flatMap(after => /*`after` may have changed after initial AgentDedicated.*/
@@ -249,7 +251,7 @@ abstract class RecouplingStreamReader[
               .timeoutOnSlowUpstream(idleTimeout)  // cancels upstream!
               .recoverWith { case t: UpstreamTimeoutException =>
                 logger.debug(s"💥 $api: ${t.toString}")
-                // This should let Akka close the TCP connection to abort the stream
+                // This should let Pekko close the TCP connection to abort the stream
                 Stream.empty
               }))))
 

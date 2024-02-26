@@ -1,6 +1,5 @@
 package js7.base.utils
 
-import cats.MonadError
 import cats.effect.{Resource, SyncIO}
 import izumi.reflect.Tag
 import java.io.{ByteArrayInputStream, InputStream}

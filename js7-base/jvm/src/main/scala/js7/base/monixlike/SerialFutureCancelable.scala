@@ -34,7 +34,7 @@ extends FutureCancelable:
 
   def cancelToFuture(): Future[Unit] =
     canceled = true
-    state.get().cancelToFuture()
+    state.getAndSet(FutureCancelable.empty).cancelToFuture()
 
   @targetName("set")
   def :=(future: CancelableFuture[?])

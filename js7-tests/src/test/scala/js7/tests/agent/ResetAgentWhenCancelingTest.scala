@@ -14,7 +14,7 @@ import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, Or
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.workflow.position.{InstructionNr, Position}
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.agent.ResetAgentWhenCancelingTest.*
+import js7.tests.agent.ResetAgentWhenCancelingTest.{agentPath, *}
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
@@ -47,7 +47,7 @@ final class ResetAgentWhenCancelingTest
     eventWatch.await[OrderStdoutWritten](_.key == orderId)
 
     val agentTerminated = agent.terminate().unsafeToFuture()
-    sleep(500.ms) // Give terminate some time to take effect !!!
+    sleep(500.ms) // Give terminate some time to start !!!
     TestJob.continue()
     // May wait forever and fail when second job has been started while terminating !!!
     agentTerminated.await(99.s)
@@ -68,6 +68,10 @@ final class ResetAgentWhenCancelingTest
       .map {
         // OrderFailed(Position(1)) when OrderMoved has been emitted
         case OrderFailed(Position(Nil, InstructionNr(1)), None) => OrderFailed(Position(0))
+        //?case OrderProcessed(outcome)
+        //?  // While resetting, the order may start the second job
+        //?  if outcome == Outcome.Disrupted(AgentResetProblem(`agentPath`)) =>
+        //?  OrderProcessed(Outcome.succeeded)
         case e => e
       } ==
       Seq(
@@ -77,7 +81,7 @@ final class ResetAgentWhenCancelingTest
         OrderStarted,
         OrderProcessingStarted(subagentId),
         OrderStdoutWritten("TestJob\n"),
-        OrderProcessed(Outcome.succeeded),
+        OrderProcessed(Outcome.succeeded), // See .map above
         //OrderCancellationMarked(FreshOrStarted(None)),
         OrderDetached,
         OrderOutcomeAdded(Outcome.Disrupted(AgentResetProblem(agentPath))),

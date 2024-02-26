@@ -35,7 +35,6 @@ import js7.data.order.{FreshOrder, OrderId}
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import js7.base.fs2utils.StreamExtensions.mapParallelBatch
-import js7.base.utils.Tests.isTest
 import scala.concurrent.duration.Deadline.now
 
 /**

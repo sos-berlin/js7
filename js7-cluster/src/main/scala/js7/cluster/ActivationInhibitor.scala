@@ -112,8 +112,7 @@ private[cluster] final class ActivationInhibitor:
           s"setInhibitionTimer: ${throwable.toStringWithCauses}", throwable.nullIfNoStackTrace)
         case Right(()) =>
       .delayBy(duration)
-      .start
-      .void
+      .startAndForget
 
   @TestOnly
   private[cluster] def state: IO[Option[State]] =

@@ -15,6 +15,7 @@ import js7.controller.agent.DirectorDriver.DirectorDriverStoppedProblem
 import js7.data.agent.AgentPath
 import js7.data.order.OrderId
 import cats.effect.IO
+import js7.base.catsutils.CatsEffectExtensions.startAndForget
 import js7.base.monixlike.MonixLikeExtensions.materialize
 import scala.collection.{View, mutable}
 import scala.concurrent.duration.Deadline.now
@@ -153,7 +154,7 @@ private[agent] abstract class CommandQueue(
         delayNextCommand
           .*>(sendNow(queueables))
           .recover(t => logger.error(t.toStringWithCauses, t))
-          .start.void
+          .startAndForget.void
       })
     }))
 

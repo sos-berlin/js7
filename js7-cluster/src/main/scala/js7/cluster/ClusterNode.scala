@@ -28,7 +28,7 @@ import js7.base.service.Service.Started
 import js7.base.service.{MainServiceTerminationException, Service}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
-import js7.base.utils.CatsUtils.syntax.RichResource
+import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, ProgramTermination}
 import js7.cluster.ClusterConf.ClusterProductName
@@ -90,7 +90,7 @@ extends Service.StoppableByRequest:
             Left(ProgramTermination(restart = true)))
 
   protected def start: IO[Started] =
-    startService(
+    startService:
       untilWorkingNodeStarted
         .recover:
           case ProblemException(prblm @ PassiveClusterNodeResetProblem) =>
@@ -100,9 +100,9 @@ extends Service.StoppableByRequest:
         .flatMap(fiber =>
           IO.race(recoveryStopRequested.get, fiber.joinStd))
         .*>(untilStopRequested)
-        .guaranteeCaseLazy(outcome =>
+        .guaranteeCaseLazy: outcome =>
           stopRecovery(ProgramTermination()/*???*/) *>
-            IO.defer:
+            IO.defer {
               (passiveOrWorkingNode.get(), outcome) match
                 case (Some(Left(passiveClusterNode)), Outcome.Succeeded(_)) =>
                   passiveClusterNode.onShutdown(_testDontNotifyActiveNodeAboutShutdown)
@@ -110,7 +110,19 @@ extends Service.StoppableByRequest:
                 case (Some(Right(workingClusterNodeAllocated)), _) =>
                   workingClusterNodeAllocated.release
 
-                case _ => IO.unit))
+                case _ => IO.unit
+            }
+            //? *> stopWorkingClusterNode
+
+  private def stopWorkingClusterNode: IO[Unit] =
+    logger.traceIO:
+      workingNodeStarted.get
+        .timeoutTo(10.ms, IO.none) // Maybe unreliable ???
+        .flatMap:
+          case Success(Right(workingClusterNode)) =>
+            workingClusterNode.stop
+              .logWhenItTakesLonger("workingClusterNode.stop")
+          case _ => IO.unit
 
   private def untilWorkingNodeStarted: IO[Unit] =
     logger.debugIO(untilRecovered

@@ -79,7 +79,7 @@ import js7.journal.{CommitOptions, JournalActor, MainJournalingActor}
 import cats.effect.IO
 import cats.effect.unsafe.{IORuntime, Scheduler}
 import js7.base.catsutils.CatsEffectExtensions.{materializeIntoChecked, now}
-import js7.base.monixlike.MonixLikeExtensions.{dematerialize, materialize, scheduleAtFixedRates, scheduleOnce, tapError}
+import js7.base.monixlike.MonixLikeExtensions.{dematerialize, materialize, scheduleAtFixedRates, scheduleOnce}
 import js7.base.monixlike.{SerialSyncCancelable, SyncCancelable}
 import org.apache.pekko.actor.{DeadLetterSuppression, Stash, Status, Terminated}
 import org.apache.pekko.pattern.{ask, pipe}
@@ -405,9 +405,14 @@ extends Stash, MainJournalingActor[ControllerState, Event]:
     case Internal.Ready(Right(Completed)) =>
       logger.info(ServiceMain.readyMessageWithLine(s"${_controllerState.controllerId} is ready"))
       testEventPublisher.publish(ControllerReadyTestIncident)
-      clusterNode.onTerminatedUnexpectedly.unsafeToFuture() onComplete { tried =>
-        self ! Internal.ClusterModuleTerminatedUnexpectedly(tried)
-      }
+      clusterNode
+        .onTerminatedUnexpectedly // Happens while isTest suppresses Halt after AckFromActiveClusterNode
+        // Then we must stop ActiveClusterNode which may stick in ClusterWatch confirmation loop
+        // (when ClusterWatch does not access this Controller)
+        .<*(clusterNode.stop)
+        .unsafeToFuture()
+        .onComplete: tried =>
+          self ! Internal.ClusterModuleTerminatedUnexpectedly(tried)
       become("Ready")(ready orElse handleExceptionalMessage)
       unstashAll()
 

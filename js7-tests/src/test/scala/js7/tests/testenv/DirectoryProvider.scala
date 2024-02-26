@@ -1,7 +1,7 @@
 package js7.tests.testenv
 
-import cats.effect.{IO, Resource}
 import cats.effect.unsafe.IORuntime
+import cats.effect.{IO, Resource}
 import cats.syntax.parallel.*
 import cats.syntax.traverse.*
 import com.typesafe.config.{Config, ConfigFactory}
@@ -10,7 +10,7 @@ import java.nio.file.Files.{createDirectory, createTempDirectory}
 import java.nio.file.Path
 import js7.agent.{RunningAgent, TestAgent}
 import js7.base.auth.Admission
-import js7.base.catsutils.CatsEffectExtensions.{orIfNone, unsafeRuntime}
+import js7.base.catsutils.CatsEffectExtensions.orIfNone
 import js7.base.crypt.{DocumentSigner, SignatureVerifier, Signed, SignedString}
 import js7.base.fs2utils.StreamExtensions.+:
 import js7.base.generic.SecretString

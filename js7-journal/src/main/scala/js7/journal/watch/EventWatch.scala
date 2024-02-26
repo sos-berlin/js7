@@ -51,6 +51,7 @@ trait EventWatch:
 
   def journalInfo: JournalInfo
 
+  @TestOnly
   def untilAllKeys[E <: Event : ClassTag](using E: Event.KeyCompanion[? >: E])(
     keys: IterableOnce[E.Key],
     predicate: KeyedEvent[E] => Boolean = Every,

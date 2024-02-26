@@ -468,14 +468,14 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
                 val passiveLost = ClusterPassiveLost(passiveId)
                 suspendHeartbeat(forEvent = true)(
                   common.ifClusterWatchAllowsActivation(clusterState, passiveLost)(
-                    IO.fromFuture(IO {
+                    IO.fromFuture(IO:
                       // Release a concurrent persist operation, which waits for the missing acknowledgement and
                       // blocks the persist lock. Avoid a deadlock.
                       // This does not hurt if the concurrent persist operation is a ClusterEvent, too,
                       // because we are leaving ClusterState.Coupled anyway.
                       logger.debug(s"JournalActor.Input.PassiveLost($passiveLost)")
                       journalActor ? JournalActor.Input.PassiveLost(passiveLost)
-                    }) >>
+                    ) >>
                       persistWithoutTouchingHeartbeat() {
                         case _: Coupled => Right(Some(passiveLost))
                         case _ => Right(None)  // Ignore when ClusterState has changed (no longer Coupled)
@@ -501,7 +501,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
 
         case Failure(t: ProblemException) if t.problem is AckFromActiveClusterNodeProblem =>
           if isTest then
-            throw new RuntimeException(s"🟥 Halt suppressed for resting: ${t.problem}")
+            throw new RuntimeException(s"🟥 Halt suppressed for testing: ${t.problem}")
           else
             Halt.haltJava("🟥 HALT because other cluster node has become active",
               restart = true)
@@ -521,41 +521,42 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
   : IO[Checked[Completed]] =
     logger.debugIO(HttpClient
       .liftProblem(Stream
-        .resource(
+        .resource:
           common.clusterNodeApi(
             Admission(passiveUri, passiveNodeUserAndPassword),
-            "acknowledgements"))
-        .flatMap(api =>
-          streamEventIds(api, Some(timing.heartbeat min keepAlive))
+            "acknowledgements")
+        .flatMap: api =>
+          streamEventIds(api, timing.heartbeat min keepAlive, Some(EventId.Heartbeat))
             .through: stream =>
               clusterConf.testAckLossPropertyKey.fold(stream): k =>  // Testing only
                 var logged = false
                 stream.filter: _ =>
                   val suppress = sys.props(k).toBoolean
                   if suppress then
-                    logger.warn(s"🚫 Acknowledgement receiving is suppressed by js7.journal.cluster.TEST-ACK-LOSS=$k")
+                    logger.warn(
+                      s"🚫 Acknowledgement receiving is suppressed by js7.journal.cluster.TEST-ACK-LOSS=$k")
                     logged = true
                   !suppress
             .detectPauses(timing.passiveLostTimeout)
+            .filter(_ != Right(EventId.Heartbeat))
             .onlyNewest
             .interruptWhenF(stopJournaling.get)  // Race condition: may be set too late
-            .evalMap {
+            .flatMap: // Turn into Stream[,Problem]
               case Left(noHeartbeatSince) =>
-                val problem: Problem =
+                val problem =
                   MissingPassiveClusterNodeHeartbeatProblem(passiveId, noHeartbeatSince.elapsed)
-                logger.trace(problem.toString)
-                IO.left(problem)
+                logger.debug(s"💥 $problem")
+                Stream.emit(problem)
 
               case Right(eventId) =>
-                IO.fromFuture(IO:
-                  // Possible dead letter when `stopJournaling` is detected too late !!!
-                  // because after JournalActor has committed SwitchedOver (after ack), JournalActor stops.
-                  (journalActor ? JournalActor.Input.PassiveNodeAcknowledged(eventId = eventId))
-                    .mapTo[Completed]
-                ).map(_ => Right(Completed))
-            }
-            .collect { case Left(problem) => problem })
-        .head.compile.last
+                Stream.exec:
+                  IO
+                    .fromFuture(IO:
+                      // Possible dead letter when `stopJournaling` is detected too late !!!
+                      // because after JournalActor has committed SwitchedOver (after ack), JournalActor stops.
+                      journalActor ? JournalActor.Input.PassiveNodeAcknowledged(eventId = eventId))
+                    .void
+        .head.compile.last // The first problem, if any
         .map(_.toLeft(Completed)))
       .map(_.flatten))
 
@@ -564,7 +565,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
       .clusterNodeApi(Admission(passiveUri, passiveNodeUserAndPassword), "awaitAcknowledgement")
       .use(api => HttpClient
         .liftProblem(
-          streamEventIds(api, heartbeat = None)
+          streamEventIds(api, heartbeat = keepAlive)
             .dropWhile(_ < eventId)
             .head
             .compile
@@ -574,8 +575,11 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
         .map(_.flatten))
       .logWhenItTakesLonger("passive cluster node acknowledgement"))
 
-  private def streamEventIds(api: ClusterNodeApi, heartbeat: Option[FiniteDuration])
-  : Stream[IO, EventId] =
+  private def streamEventIds(
+    api: ClusterNodeApi,
+    heartbeat: FiniteDuration,
+    returnHeartbeatAs: Option[EventId] = None)
+  : Stream[IO, EventId]=
     RecouplingStreamReader
       .stream[EventId, EventId, ClusterNodeApi](
         toIndex = identity,
@@ -583,8 +587,15 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
         clusterConf.recouplingStreamReader,
         after = -1L/*unused, web service returns always the newest EventIds*/,
         getStream = (_: EventId) =>
-          HttpClient.liftProblem(
-            api.eventIdStream(heartbeat = heartbeat)),
+          HttpClient.liftProblem(api
+            .eventIdStream(
+              heartbeat = Some(heartbeat),
+              returnHeartbeatAs = returnHeartbeatAs)
+            .map(_.flatMap:
+              case Left(problem) =>
+                logger.trace(s"### streamEventIds => $problem")
+                Stream.raiseError(problem.throwable)
+              case Right(eventId) => Stream.emit(eventId))),
         stopRequested = () => stopRequested)
 
   def executeClusterWatchConfirm(cmd: ClusterWatchConfirm): IO[Checked[Unit]] =

@@ -23,6 +23,15 @@ trait TestCatsEffect extends BeforeAndAfterAll:
   private val _ioRuntime = Atomic(none[Allocated[SyncIO, IORuntime]])
   private var afterAllMayBeCalled = false
 
+  /** For tests that check the thread where blocking operations are executed. */
+  final lazy val blockingThreadNamePrefix: String =
+    // Suffix will be "-blocking-N" or "-compute-blocker-N"
+    /*if (VirtualThreads.isEnabled) "" else*/
+    if useCommonIORuntime then
+      Js7IORuntime.threadPrefix
+    else
+      getClass.shortClassName
+
   protected final lazy val ioRuntime: IORuntime =
     if !afterAllMayBeCalled then
       throw new IllegalStateException("IORuntime used but beforeAll() has not yet executed")
@@ -55,8 +64,8 @@ trait TestCatsEffect extends BeforeAndAfterAll:
 
 object TestCatsEffect:
 
-  val useCommonIORuntime = sys.props.contains("js7.test.commonIORuntime")
-    || sys.props.contains("test.speed")
+  private val useCommonIORuntime: Boolean =
+    sys.props.contains("js7.test.commonIORuntime") || sys.props.contains("test.speed")
 
   /** Make a seed for Cats Effect TestControl. */
   def toSeed(number: Long) =

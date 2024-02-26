@@ -37,7 +37,6 @@ import js7.common.http.StreamingSupport.{asFs2Stream, toPekkoSourceResource}
 import js7.common.pekkohttp.ByteSequenceStreamExtensions.*
 import js7.common.pekkohttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
 import js7.common.pekkoutils.ByteStrings.syntax.*
-import js7.data.event.JournalEvent
 import org.apache.pekko
 import org.apache.pekko.Done
 import org.apache.pekko.actor.ActorSystem
@@ -99,27 +98,34 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
   final def getDecodedLinesStream[A: Decoder](
     uri: Uri,
     responsive: Boolean = false,
+    returnHeartbeatAs: Option[ByteArray] = None,
     prefetch: Int | UseDefault = UseDefault)
     (using IO[Option[SessionToken]])
   : IO[Stream[IO, A]] =
     val myPrefetch = prefetch getOrElse this.prefetch: Int
-    getRawLinesStream(uri)
-      .map(_
-        .filter(_ != HeartbeatByteArray)
+    for stream <- getRawLinesStream(uri, returnHeartbeatAs) yield
+      stream
         .mapParallelBatch(prefetch = myPrefetch):
-          _.parseJsonAs[A].orThrow)
+          _.parseJsonAs[A].orThrow
 
-  final def getRawLinesStream(uri: Uri)(implicit s: IO[Option[SessionToken]])
+  final def getRawLinesStream(
+    uri: Uri,
+    returnHeartbeatAs: Option[ByteArray] = None)
+    (using s: IO[Option[SessionToken]])
   : IO[Stream[IO, ByteArray]] =
+    val heartbeatAsStream = Stream.fromOption[IO](returnHeartbeatAs)
     get_[HttpResponse](uri, StreamingJsonHeaders)
-      .map(_.entity.withoutSizeLimit.dataBytes.asFs2Stream())
-      .pipeIf(logger.isDebugEnabled)(_.map(_
-        .logTiming(_.size, (d, n, _) => IO:
-          if d >= 1.s && n > 10_000_000 then
-            logger.debug(s"get $uri: ${bytesPerSecondString(d, n)}"))))
       .map(_
-        .flatMap(new ByteSequenceToLinesStream))
-      .map(_.recoverWith(ignoreIdleTimeout orElse endStreamOnNoMoreElementNeeded))
+        .entity.withoutSizeLimit.dataBytes.asFs2Stream()
+        .pipeIf(logger.isDebugEnabled)(_
+          .logTiming(_.size, (d, n, _) => IO:
+            if d >= 1.s && n > 10_000_000 then
+              logger.debug(s"get $uri: ${bytesPerSecondString(d, n)}")))
+        .flatMap(new ByteSequenceToLinesStream)
+        .flatMap:
+          case HttpHeartbeatByteArray => heartbeatAsStream
+          case o => Stream.emit(o)
+        .recoverWith(ignoreIdleTimeout orElse endStreamOnNoMoreElementNeeded))
       .recover(ignoreIdleTimeout)
 
   private def endStreamOnNoMoreElementNeeded: PartialFunction[Throwable, Stream[IO, Nothing]] =
@@ -419,8 +425,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
                         200, showLength = true, firstLineOnly = true, quote = true)
                     else
                       s"${chunk.data.length} bytes"
-                  if chunk.data == HeartbeatByteString /*Empty line is regarded as heartbeat*/
-                    || chunk.data == StampedHeartbeatByteString then
+                  if chunk.data == HttpHeartbeatByteString then
                     loggerHeartbeat.trace(s"$arrow$responseLogPrefix $data")
                   else
                     loggerStream.trace(s"$arrow$responseLogPrefix $data")
@@ -501,9 +506,8 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
 
 
 object PekkoHttpClient:
-  val HeartbeatByteArray = ByteArray("\n")
-  private val HeartbeatByteString = HeartbeatByteArray.toByteSequence[ByteString]
-  private val StampedHeartbeatByteString = ByteString(JournalEvent.StampedHeartbeatString)
+  val HttpHeartbeatByteArray = ByteArray("\n")
+  val HttpHeartbeatByteString = HttpHeartbeatByteArray.toByteSequence[ByteString]
 
   val LogData: Boolean = true
     //val key = "js7.PekkoHttpClient.log-data"

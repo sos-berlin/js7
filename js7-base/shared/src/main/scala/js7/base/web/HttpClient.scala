@@ -20,11 +20,15 @@ trait HttpClient:
   def getDecodedLinesStream[A: Decoder](
     uri: Uri,
     responsive: Boolean = false,
+    returnHeartbeatAs: Option[ByteArray] = None,
     prefetch: Int | UseDefault = UseDefault)
-    (implicit s: IO[Option[SessionToken]])
+    (using s: IO[Option[SessionToken]])
   : IO[Stream[IO, A]]
 
-  def getRawLinesStream(uri: Uri)(implicit s: IO[Option[SessionToken]])
+  def getRawLinesStream(
+    uri: Uri,
+    returnHeartbeatAs: Option[ByteArray] = None)
+    (using s: IO[Option[SessionToken]])
   : IO[Stream[IO, ByteArray]]
 
   def get[A: Decoder](uri: Uri)(implicit s: IO[Option[SessionToken]]): IO[A]

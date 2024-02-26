@@ -6,7 +6,6 @@ import java.util.UUID
 import js7.base.circeutils.CirceUtils.RichJsonObject
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.data.ByteArray
-import js7.base.test.TestCatsEffect
 import js7.base.utils.AutoClosing.autoClosing
 import js7.data.event.JournalEvent.SnapshotTaken
 import js7.data.event.KeyedEvent.NoKey

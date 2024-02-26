@@ -6,7 +6,6 @@ import js7.base.number.Numbers.{addSaturating, subtractSaturating}
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp.*
-import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import scala.concurrent.duration.*
 
 /**

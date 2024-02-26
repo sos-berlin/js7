@@ -12,7 +12,7 @@ import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.WallClock
 import js7.base.utils.CatsBlocking.*
-import js7.base.utils.CatsUtils.syntax.RichResource
+import js7.base.utils.CatsUtils.syntax.{RichResource, logWhenItTakesLonger}
 import js7.base.utils.ScalaUtils.syntax.{RichJavaClass, *}
 import js7.base.utils.{Allocated, SetOnce}
 import js7.cluster.watch.ClusterWatchService
@@ -102,10 +102,14 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest:
     logger.debugCall(s"${getClass.shortClassName} afterAll"):
       try
         val ios = Seq(
-          Seq(controller.terminate().void),
-          clusterWatchServiceOnce.toOption.map(_.release).toList,
-          agents.map(_.terminate().void),
-          idToAllocatedSubagent.values.map(_.release)
+          Seq(controller.terminate().void.logWhenItTakesLonger("controller.terminate")),
+          clusterWatchServiceOnce.toOption.map(_
+            .release.logWhenItTakesLonger("clusterWatchServiceOnce.release"))
+            .toList,
+          agents.map(_
+            .terminate().void.logWhenItTakesLonger("agent.terminate")),
+          idToAllocatedSubagent.values.map(_
+            .release.logWhenItTakesLonger("Subagent release"))
         ).flatten
         ios
           .map(_.recoverWith(t => IO.defer:

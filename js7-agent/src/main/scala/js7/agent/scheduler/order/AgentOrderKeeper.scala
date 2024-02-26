@@ -212,7 +212,9 @@ extends MainJournalingActor[AgentState, Event], Stash:
     // TODO Use Resource (like the Subagent starter)
     // TODO Blocking!
     try
-      subagentKeeper.stop.uncancelable.timeout(3.s)
+      subagentKeeper.stop
+        .uncancelable // TOOD Deadlock possible, probably due to stopped Journal. We time-out:
+        .start.flatMap(_.joinStd).timeout(3.s)
         .logWhenItTakesLonger("subagentKeeper.stop")
         .await(99.s)
     catch case NonFatal(t) => logger.error(s"subagentKeeper.stop => ${t.toStringWithCauses}")

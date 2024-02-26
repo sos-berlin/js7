@@ -1,21 +1,25 @@
 package js7.journal.web
 
-import cats.syntax.flatMap.*
+import cats.effect.IO
+import cats.syntax.applicativeError.*
 import js7.base.auth.ValidUserPermission
+import js7.base.circeutils.CirceUtils.RichJsonObject
 import js7.base.data.ByteSequence.ops.*
 import js7.base.data.{ByteArray, ByteSequence}
 import js7.base.fs2utils.Fs2ChunkByteSequence.*
+import js7.base.fs2utils.StreamExtensions.onErrorEvalTap
 import js7.base.log.Logger
-import js7.base.problem.{Checked, Problem}
+import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
+import js7.common.http.PekkoHttpClient
 import js7.common.pekkohttp.PekkoHttpServerUtils
 import js7.common.pekkohttp.PekkoHttpServerUtils.completeWithCheckedStream
 import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkohttp.web.session.RouteProvider
 import js7.common.pekkoutils.ByteStrings.syntax.*
-import js7.data.event.JournalSeparators.HeartbeatMarkerIO
+import js7.data.Problems.AckFromActiveClusterNodeProblem
 import org.apache.pekko.http.scaladsl.server.Directives.*
 import org.apache.pekko.http.scaladsl.server.Route
 import scala.concurrent.ExecutionContext
@@ -78,7 +82,7 @@ trait JournalRoute extends RouteProvider:
                           .interruptWhen(shutdownSignaled)
                           .map(if returnAck then toLength else toContent)
                           .pipeIf(heartbeat.isDefined)(_
-                            .keepAlive(heartbeat.get, HeartbeatMarkerIO))
+                            .keepAlive(heartbeat.get, IO.pure(PekkoHttpClient.HttpHeartbeatByteArray)))
                           .map(_.toChunk).unchunks
                           .chunkLimit(chunkSize)
                           .map(_.toByteString)

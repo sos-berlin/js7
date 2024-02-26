@@ -12,8 +12,8 @@ trait FutureCancelable:
 
 object FutureCancelable:
 
-  val empty: StandardFutureCancelable =
-    StandardFutureCancelable(() => Future.successful(()))
+  val empty: FutureCancelable =
+    EmptyFutureCancelable
 
   def apply(cancel: () => Future[Unit]): StandardFutureCancelable =
     StandardFutureCancelable(cancel)
@@ -23,3 +23,8 @@ final class StandardFutureCancelable(f: () => Future[Unit]) extends FutureCancel
 
   def cancelToFuture(): Future[Unit] =
     f()
+
+
+object EmptyFutureCancelable extends FutureCancelable:
+
+  def cancelToFuture() = Future.successful(())

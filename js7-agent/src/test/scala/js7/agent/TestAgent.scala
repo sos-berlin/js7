@@ -38,10 +38,13 @@ final class TestAgent(
   terminateProcessesWith: Option[ProcessSignal] = None):
 
   val agent = allocated.allocatedThing
+  @volatile private var released = false
 
   def stop: IO[Unit] =
     agent.terminate(terminateProcessesWith).void *>
-      allocated.release
+      logger.traceIO("allocated.release"):
+        allocated.release *> IO:
+          released = true
 
   def killForFailOver: IO[ProgramTermination] =
     terminate(
@@ -53,9 +56,15 @@ final class TestAgent(
     clusterAction: Option[ShutDown.ClusterAction] = None,
     suppressSnapshot: Boolean = false)
   : IO[ProgramTermination] =
-    agent
-      .terminate(processSignal, clusterAction, suppressSnapshot)
-      .guarantee(stop)
+    IO.defer:
+      if released then
+        // The Agent's own test IORuntime have have been shutdown
+        IO.pure(ProgramTermination())
+      else
+        logger.traceIO:
+          agent
+            .terminate(processSignal, clusterAction, suppressSnapshot)
+            .guarantee(stop)
 
   def untilTerminated: IO[ProgramTermination] =
     agent.untilTerminated <*

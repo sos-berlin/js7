@@ -1,6 +1,7 @@
 package js7.common.http
 
 import cats.effect
+import cats.effect.kernel.Resource.ExitCase
 import cats.effect.{IO, Resource}
 import fs2.Stream
 import fs2.interop.reactivestreams.{PublisherOps, StreamOps}
@@ -24,27 +25,41 @@ object StreamingSupport:
   extension [A](stream: Stream[IO, A])
     def toPekkoSourceForHttpResponse(using A: Tag[A]): Resource[IO, Source[A, NotUsed]] =
       logger.traceResource:
-        toPekkoSourceResource.map(logPekkoStreamErrorToWebLogAndIgnore)
+        stream
+          .handleErrorWith: throwable =>
+            logStreamError(throwable)
+            Stream.empty
+          .toPekkoSourceResource.map(logPekkoStreamErrorToWebLogAndIgnore)
 
     def toPekkoSourceResource: Resource[IO, Source[A, NotUsed]] =
       stream
+        .onFinalizeCase:
+          case ExitCase.Canceled => IO(logger.debug(s"⚫️ toPekkoSourceResource stream canceled"))
+          case exitCase => IO(logger.trace(s"### toPekkoSourceResource stream $exitCase"))
         .toUnicastPublisher
         .map(Source.fromPublisher)
 
-  def logPekkoStreamErrorToWebLogAndIgnore[A: Tag](source: Source[A, NotUsed]): Source[A, NotUsed] =
-    source.recoverWithRetries(1, throwable =>
+    private def logPekkoStreamErrorToWebLogAndIgnore(source: Source[A, NotUsed])(using Tag[A])
+    : Source[A, NotUsed] =
+      source.recoverWithRetries(1, throwable =>
+        logStreamError(throwable)
+
+        // Letting the throwable pass would close the connection,
+        // and the HTTP client sees only: The request's encoding is corrupt:
+        // The connection closed with error: Connection reset by peer.
+        // => So it seems best to end the stream silently.
+        Source.empty)
+
+    private def logStreamError(throwable: Throwable)(using tag: Tag[A]): Unit =
       // These are the only messages logged
       val isDebug = throwable.isInstanceOf[pekko.stream.AbruptTerminationException]
-      val msg = s"Terminating Source[${implicitly[Tag[A]].tag}] stream due to error: ${throwable.toStringWithCauses}"
-      if isDebug then webLogger.debug(msg)
-      else webLogger.warn(msg)
-      if throwable.getStackTrace.nonEmpty then logger.debug(msg, throwable)
-
-      // Letting the throwable pass would close the connection,
-      // and the HTTP client sees only: The request's encoding is corrupt:
-      // The connection closed with error: Connection reset by peer.
-      // => So it seems best to end the stream silently.
-      Source.empty)
+      val msg = s"Terminating Source[${tag.tag}] stream due to error: ${throwable.toStringWithCauses}"
+      if isDebug then
+        webLogger.debug(msg)
+      else
+        webLogger.warn(msg)
+      if throwable.getStackTrace.nonEmpty then
+        logger.debug(msg, throwable)
 
 
   extension [Out, Mat](source: Source[Out, Mat])

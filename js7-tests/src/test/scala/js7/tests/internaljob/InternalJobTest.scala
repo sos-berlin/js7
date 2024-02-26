@@ -1,11 +1,18 @@
 package js7.tests.internaljob
 
+import cats.effect.IO
+import cats.effect.std.Semaphore
+import fs2.Stream
+import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 import js7.base.configutils.Configs.*
+import js7.base.fs2utils.StreamExtensions.tapEach
 import js7.base.log.Logger
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.Atomic
+import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax.{RichEither, RichPartialFunction}
 import js7.data.agent.AgentPath
@@ -28,21 +35,13 @@ import js7.launcher.forjava.internal.tests.{EmptyBlockingInternalJob, EmptyJInte
 import js7.launcher.internal.InternalJob
 import js7.launcher.internal.InternalJob.JobContext
 import js7.tester.ScalaTestUtils.awaitAndAssert
-import js7.tests.internaljob.InternalJobTest.*
+import js7.tests.internaljob.InternalJobTest.{getClass, *}
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
-import cats.effect.std.Semaphore
-import cats.effect.IO
-import js7.base.utils.Atomic
-import js7.base.utils.Atomic.extensions.*
-import fs2.Stream
 import org.scalactic.source
 import org.scalatest.Assertions.*
 import scala.collection.mutable
 import scala.reflect.ClassTag
-import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
-import js7.base.fs2utils.StreamExtensions.tapEach
-import js7.base.thread.VirtualThreads
 
 final class InternalJobTest
   extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
@@ -117,8 +116,6 @@ final class InternalJobTest
     Execute(WorkflowJob(agentPath, InternalExecutable(classOf[EmptyBlockingInternalJob].getName))),
     expectedOutcome = Outcome.Succeeded(NamedValues.empty))
 
-  private val blockingThreadPoolName = if VirtualThreads.isEnabled then "" else "JS7 blocking job"
-
   for jobClass <- Seq(classOf[TestJInternalJob], classOf[TestBlockingInternalJob]) do
     jobClass.getName - {
       val n = 10
@@ -129,7 +126,7 @@ final class InternalJobTest
           InternalExecutable(
             jobClass.getName,
             script = "TEST SCRIPT",
-            jobArguments = Map("blockingThreadPoolName" -> StringConstant(blockingThreadPoolName)),
+            jobArguments = Map("blockingThreadNamePrefix" -> StringConstant(blockingThreadNamePrefix)),
             arguments = Map("STEP_ARG" -> NamedValue("ORDER_ARG"))),
           processLimit = n)),
         indexedOrderIds
@@ -177,8 +174,8 @@ final class InternalJobTest
     controller.terminate() await 99.s
     agent.terminate() await 99.s
     assert(SimpleJob.stopped)
-    assert(TestJInternalJob.stoppedCalled.containsKey(blockingThreadPoolName))
-    assert(TestBlockingInternalJob.stoppedCalled.containsKey(blockingThreadPoolName))
+    assert(TestJInternalJob.stoppedCalled.containsKey(blockingThreadNamePrefix))
+    assert(TestBlockingInternalJob.stoppedCalled.containsKey(blockingThreadNamePrefix))
 
   private def addInternalJobTest(
     execute: Execute,

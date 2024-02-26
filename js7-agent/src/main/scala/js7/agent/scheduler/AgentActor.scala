@@ -1,5 +1,7 @@
 package js7.agent.scheduler
 
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import cats.syntax.traverse.*
 import java.util.Objects.requireNonNull
 import js7.agent.DirectorTermination
@@ -11,6 +13,7 @@ import js7.agent.data.event.AgentEvent.AgentDedicated
 import js7.agent.scheduler.AgentActor.*
 import js7.agent.scheduler.order.AgentOrderKeeper
 import js7.base.auth.UserId
+import js7.base.catsutils.CatsEffectExtensions.{materializeIntoChecked, right}
 import js7.base.generic.Completed
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger.syntax.*
@@ -38,9 +41,6 @@ import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.state.FileJournal
 import js7.subagent.Subagent
-import cats.effect.IO
-import cats.effect.unsafe.IORuntime
-import js7.base.catsutils.CatsEffectExtensions.{materializeIntoChecked, right}
 import org.apache.pekko.actor.{Actor, ActorRef, Props, Stash, Terminated}
 import org.apache.pekko.pattern.{AskTimeoutException, ask}
 import scala.concurrent.{ExecutionContext, Future, Promise}

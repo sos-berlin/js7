@@ -29,6 +29,9 @@ extends OurTestSuite:
     intercept[RuntimeException](byteSeq(-1))
     intercept[RuntimeException](byteSeq(2))
 
+  "one" in:
+    assert(ByteSeq.one(0xff.toByte) == ByteSeq(0xff.toByte))
+
   "fromString" in:
     assert(ByteSeq.fromString("å").unsafeArray sameElements Array(0xc3.toByte, 0xa5.toByte))
     assert(ByteSeq.fromString("A") == ByteSeq("A"))
@@ -195,6 +198,8 @@ extends OurTestSuite:
     assert(ByteSeq("SHORT").show == "»SHORT«")
     assert(ByteSeq("SHORT\n").show == "»SHORT⏎«")
     assert(ByteSeq("SHORT\r\n").show == "»SHORT␍⏎«")
+    assert(ByteSeq("Å").show == s"${ByteSeq.typeName}(»��« c385)")
+    assert(ByteSeq("♠️").show == s"${ByteSeq.typeName}(»������« e299a0ef b88f)")
     assert(ByteSeq(0x41, 0xf0, 0xf1, 0xf2, 0xf3).show == ByteSeq.typeName + "(»A����« 41f0f1f2 f3)")
     assert(ByteSeq("abcdefghijklmnopqrstuvwxyzÄÖ\nABCDEFGHIJKLMNOPQRSTUVWXYZ").show ==
       ByteSeq.typeName + "(" +

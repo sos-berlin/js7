@@ -9,15 +9,13 @@ import js7.data.event.{Event, EventRequest, KeyedEvent, Stamped}
 import js7.data.subagent.{SubagentCommand, SubagentRunId}
 import cats.effect.IO
 import fs2.Stream
-import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
 
 trait SubagentApi extends SessionApi.HasUserAndPassword, HasIsIgnorableStackTrace:
 
   def eventStream[E <: Event: ClassTag](
     request: EventRequest[E],
-    subagentRunId: SubagentRunId,
-    heartbeat: Option[FiniteDuration] = None)
+    subagentRunId: SubagentRunId)
     (implicit kd: Decoder[KeyedEvent[E]])
   : IO[Stream[IO, Stamped[KeyedEvent[E]]]]
 

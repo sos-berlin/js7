@@ -45,7 +45,7 @@ public final class TestJInternalJob implements JInternalJob
 
     public TestJInternalJob(JobContext jobContext) {
         Map<String,Value> arguments = jobContext.jobArguments();
-        blockingThreadPoolName = arguments.get("blockingThreadPoolName").convertToString();
+        blockingThreadPoolName = arguments.get("blockingThreadNamePrefix").convertToString();
     }
 
     @Override

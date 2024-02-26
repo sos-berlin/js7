@@ -10,9 +10,9 @@ object UseDefault:
     def toOption: Option[A] =
       underlying match
         case UseDefault => None
-        case a: A => Some(a)
+        case a: A @unchecked => Some(a)
 
     def getOrElse[B >: A](b: B): B =
       underlying match
         case UseDefault => b
-        case a: A => a
+        case a: A @unchecked => a

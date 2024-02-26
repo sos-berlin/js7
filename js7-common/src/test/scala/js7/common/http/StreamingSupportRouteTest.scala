@@ -6,6 +6,7 @@ import cats.effect.{Deferred, IO, ResourceIO}
 import fs2.Stream
 import js7.base.auth.SessionToken
 import js7.base.catsutils.CatsDeadline
+import js7.base.catsutils.CatsEffectExtensions.startAndForget
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.toAllByteSequenceOps
@@ -120,7 +121,7 @@ final class StreamingSupportRouteTest extends OurAsyncTestSuite:
             .evalTap(o => IO(logger.info(s"<-<- $o")))
             .filter(_ != heartbeatChunk)
             .onStart:
-              (IO.sleep(interruptAfter) *> deferred.complete(())).start.void
+              (IO.sleep(interruptAfter) *> deferred.complete(())).startAndForget
             .interruptWhenF:
               deferred.get *> IO(logger.info("🔺interruptWhen is being triggered"))
             .compile.toList

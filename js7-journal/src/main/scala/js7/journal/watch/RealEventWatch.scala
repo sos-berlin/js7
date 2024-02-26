@@ -62,6 +62,7 @@ trait RealEventWatch extends EventWatch:
         // Access the in previous iteration computed values lastEventId and limit (see below)
         // Timeout is renewed after every fetched event
         getRequest.flatMap: request =>
+         logger.traceIO("### stream unfold", request):
           if request.limit <= 0 then
             IO.none
           else
@@ -74,6 +75,7 @@ trait RealEventWatch extends EventWatch:
                   case TearableEventSeq.Torn(tornAfter) =>
                     IO.raiseError:
                       if onlyAcks && isActiveNode then
+                        logger.trace("### stream if isActiveNode => AckFromActiveClusterNodeProblem")
                         AckFromActiveClusterNodeProblem.throwable
                       else
                         new TornException(after = request.after, tornEventId = tornAfter)
@@ -113,6 +115,7 @@ trait RealEventWatch extends EventWatch:
   : IO[Checked[Stream[IO, EventId]]] =
     IO:
       if isActiveNode then
+        logger.trace("### streamEventIds if isActiveNode => AckFromActiveClusterNodeProblem")
         Left(AckFromActiveClusterNodeProblem)
       else
         Right(streamEventIds2(maybeTimeout))
@@ -157,6 +160,7 @@ trait RealEventWatch extends EventWatch:
   private def mustNotBeActive(stream: Stream[IO, EventId]): Stream[IO, EventId] =
     stream
       .evalTap(_ => IO.whenA(isActiveNode):
+        logger.trace("### mustNotBeActive => AckFromActiveClusterNodeProblem")
         IO.raiseError(AckFromActiveClusterNodeProblem.throwable))
 
   final def when[E <: Event](request: EventRequest[E], predicate: KeyedEvent[E] => Boolean)

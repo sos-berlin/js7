@@ -53,7 +53,6 @@ extends Service.StoppableByRequest, JournaledProxy[S]:
   : ResourceIO[Stream[IO, EventAndState[Event, S]]] =
     topic.subscribeAwait(maxQueued = maxQueued getOrElse proxyConf.eventQueueSize)
 
-  @deprecated("Prefer subscribe")
   def stream(queueSize: Option[Int] = None): Stream[IO, EventAndState[Event, S]] =
     logger.debugStream(s"Stream[IO, EventAndState[Event, $S]"):
       topic.subscribe(maxQueued = queueSize getOrElse proxyConf.eventQueueSize)

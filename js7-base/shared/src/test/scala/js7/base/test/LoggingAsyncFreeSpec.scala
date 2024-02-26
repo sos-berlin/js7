@@ -26,7 +26,7 @@ trait LoggingAsyncFreeSpec extends AsyncFreeSpec:
   protected implicit def ioRuntime: IORuntime
 
   private val suiteName = getClass.shortClassName
-  private val testAdder = new LoggingTestAdder(suiteName)
+  private val testAdder = new LoggingTestAdder(getClass)
 
   protected def suppressTestCorrelId = false
 

@@ -24,6 +24,7 @@ extends SessionApi.HasUserAndPassword, HasIsIgnorableStackTrace:
   def journalStream(
     journalPosition: JournalPosition,
     heartbeat: Option[FiniteDuration] = None,
+    returnHeartbeatAs: Option[ByteArray] = None,
     timeout: Option[FiniteDuration] = None,
     markEOF: Boolean = false,
     returnAck: Boolean = false)
@@ -38,8 +39,9 @@ extends SessionApi.HasUserAndPassword, HasIsIgnorableStackTrace:
 
   def eventIdStream[E <: Event](
     timeout: Option[FiniteDuration] = None,
-    heartbeat: Option[FiniteDuration] = None)
-  : IO[Stream[IO, EventId]]
+    heartbeat: Option[FiniteDuration] = None,
+    returnHeartbeatAs: Option[EventId] = None)
+  : IO[Stream[IO, Checked[EventId]]]
 
   def clusterWatchRequestStream(
     clusterWatchId: ClusterWatchId,

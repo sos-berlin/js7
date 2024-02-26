@@ -31,15 +31,15 @@ public final class TestBlockingInternalJob implements BlockingInternalJob
 
     private static final Logger logger = LoggerFactory.getLogger(TestBlockingInternalJob.class);
 
-    private final String expectedBlockingThreadPoolName;
+    private final String expectedBlockingThreadNamePrefix;
     private boolean startCalled = false;
 
     public TestBlockingInternalJob(JobContext jobContext) {
         assert jobContext.asScala().executable().script().equals("TEST SCRIPT");
         java.util.Map<String, js7.data.value.Value> a = jobContext.jobArguments();
-        Value b = a.get("blockingThreadPoolName");
-        expectedBlockingThreadPoolName = b.convertToString();
-        //expectedBlockingThreadPoolName = jobContext.jobArguments().get("blockingThreadPoolName").convertToString();
+        Value b = a.get("blockingThreadNamePrefix");
+        expectedBlockingThreadNamePrefix = b.convertToString();
+        //expectedBlockingThreadPoolName = jobContext.jobArguments().get("blockingThreadNamePrefix").convertToString();
         assertSpecialThread();
         String name = jobContext.jobKey().name();
         if (!name.equals("WORKFLOW~1:JOB")
@@ -57,7 +57,7 @@ public final class TestBlockingInternalJob implements BlockingInternalJob
     // Implement optionally
     @Override public void stop() {
         logger.info("stop");
-        stoppedCalled.put(expectedBlockingThreadPoolName, true);
+        stoppedCalled.put(expectedBlockingThreadNamePrefix, true);
     }
 
     public OrderProcess toOrderProcess(Step step) {
@@ -119,11 +119,12 @@ public final class TestBlockingInternalJob implements BlockingInternalJob
     private void assertSpecialThread() {
         // Test only: this blocking call runs in a JS7 I/O thread
         logger.info("thread=" + currentThread().getName() +
-            ", expectedThreadPoolName=" + expectedBlockingThreadPoolName);
-        assertThat("thread=" + currentThread().getName() + ", but expectedThreadPoolName=" + expectedBlockingThreadPoolName,
+            ", expectedThreadPoolName=" + expectedBlockingThreadNamePrefix);
+        assertThat("thread=" + currentThread().getName() + ", but expectedThreadPoolName=" + expectedBlockingThreadNamePrefix,
             // TODO Check blocking thread name!
-                currentThread().getName().startsWith(expectedBlockingThreadPoolName + "-blocking-") ||
-                currentThread().getName().startsWith(expectedBlockingThreadPoolName + "-compute-blocker-"),
+            currentThread().getName().startsWith(expectedBlockingThreadNamePrefix + "-") &&
+                (currentThread().getName().contains("-blocking-") ||
+                    currentThread().getName().contains("-compute-blocker-")),
             equalTo(true));
     }
 

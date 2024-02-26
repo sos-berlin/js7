@@ -15,7 +15,7 @@ transparent trait TestMixin:
 
 object TestMixin:
 
-  /** Only for Succeeded. */
+  /** Only for Succeeded value, not for FixtureContext. */
   given assertionMonoid: Monoid[Assertion] =
     new Monoid[Assertion]:
       def empty = Succeeded

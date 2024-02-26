@@ -9,7 +9,6 @@ import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.CoupleController
 import js7.agent.data.event.AgentEvent
 import js7.base.catsutils.CatsEffectExtensions.*
-import js7.base.configutils.Configs.RichConfig
 import js7.base.fs2utils.StreamExtensions.interruptWhenF
 import js7.base.generic.Completed
 import js7.base.log.Logger
@@ -32,7 +31,7 @@ import js7.data.cluster.ClusterEvent
 import js7.data.controller.{ControllerRunId, ControllerState}
 import js7.data.delegate.DelegateCouplingState.{Coupled, Resetting}
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, JournalEvent, Stamped}
+import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, Stamped}
 import js7.data.item.BasicItemEvent.ItemAttachable
 import js7.data.item.InventoryItemEvent
 import js7.data.order.{OrderEvent, OrderId}

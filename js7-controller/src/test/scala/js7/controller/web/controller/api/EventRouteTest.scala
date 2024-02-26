@@ -4,7 +4,7 @@ import cats.effect.IO
 import cats.effect.kernel.Deferred
 import cats.effect.unsafe.IORuntime
 import js7.base.circeutils.CirceUtils.RichCirceString
-import js7.base.configutils.Configs.HoconStringInterpolator
+import js7.base.configutils.Configs.{HoconStringInterpolator, RichConfig}
 import js7.base.monixlike.MonixLikeExtensions.scheduleOnce
 import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurTestSuite
@@ -13,7 +13,7 @@ import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.ByteSequenceToLinesStream
-import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.common.http.JsonStreamingSupport
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.PekkoHttpUtils.{RichHttpResponse, RichResponseEntity}
@@ -64,6 +64,9 @@ final class EventRouteTest extends OurTestSuite, RouteTester, EventRoute
       parallelism-factor = 0
       parallelism-max = 2
     }""" withFallback super.config
+
+  private lazy val defaultDelay =
+    config.finiteDuration("js7.web.server.services.event.streaming.delay").orThrow
 
   private val route = pathSegments("event")(eventRoute)
 
@@ -197,7 +200,7 @@ final class EventRouteTest extends OurTestSuite, RouteTester, EventRoute
       }
       val stampedSeq = getEvents("/event?timeout=1&after=180")
       assert(stampedSeq == stamped :: Nil)
-      assert(runningSince.elapsed >= 100.millis + EventDirectives.DefaultDelay)
+      assert(runningSince.elapsed >= 100.millis + defaultDelay)
     }
 
     "/event?delay=0 MinimumDelay" in {

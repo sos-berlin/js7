@@ -35,7 +35,6 @@ trait JournaledProxy[S <: SnapshotableState[S]]:
 
   def currentState: S
 
-  @deprecated("Prefer subscribe?")
   def stream(queueSize: Option[Int] = None): Stream[IO, EventAndState[Event, S]]
 
   def subscribe(maxQueued: Option[Int] = None)

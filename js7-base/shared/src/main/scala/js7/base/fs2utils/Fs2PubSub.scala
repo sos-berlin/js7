@@ -2,7 +2,6 @@ package js7.base.fs2utils
 
 import cats.effect
 import cats.effect.{Concurrent, Resource, Sync}
-import cats.syntax.flatMap.*
 import cats.syntax.functor.*
 import fs2.Stream
 import fs2.concurrent.Topic

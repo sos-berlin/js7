@@ -1,12 +1,13 @@
 package js7.tests.testenv
 
 import cats.effect.unsafe.IORuntime
-import cats.effect.{IO, Resource}
+import cats.effect.{IO, Resource, SyncIO}
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import js7.agent.TestAgent
 import js7.base.auth.{Admission, UserAndPassword, UserId}
+import js7.base.catsutils.OwnIORuntime
 import js7.base.configutils.Configs.*
 import js7.base.eventbus.StandardEventBus
 import js7.base.generic.SecretString
@@ -20,9 +21,11 @@ import js7.base.utils.CatsUtils.{Nel, combine}
 import js7.base.utils.Closer.syntax.*
 import js7.base.utils.Closer.withCloser
 import js7.base.utils.ProgramTermination
+import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatchService
 import js7.common.auth.SecretStringGenerator
+import js7.common.configuration.Js7Configuration
 import js7.common.message.ProblemCodeMessages
 import js7.common.utils.FreeTcpPortFinder.{findFreeTcpPort, findFreeTcpPorts}
 import js7.data.agent.AgentPath
@@ -216,8 +219,16 @@ trait ControllerClusterForScalaTest extends TestCatsEffect:
     clusterWatchId: ClusterWatchId = ControllerClusterForScalaTest.clusterWatchId)
     (body: (ClusterWatchService, StandardEventBus[ClusterNodeLossNotConfirmedProblem]) => A)
   : A =
-    clusterWatchServiceResource(clusterWatchId)
-      .blockingUse(99.s)(body.tupled)
+    OwnIORuntime
+      .resource[SyncIO](
+        s"${getClass.simpleScalaName}-${clusterWatchId.string}",
+        Js7Configuration.defaultConfig)
+      .use: ioRuntime =>
+        given IORuntime = ioRuntime
+        SyncIO:
+          clusterWatchServiceResource(clusterWatchId)
+            .blockingUse(99.s)(body.tupled)
+      .unsafeRunSync()
 
   protected final def clusterWatchServiceResource(clusterWatchId: ClusterWatchId)
   : Resource[IO, (ClusterWatchService, StandardEventBus[ClusterNodeLossNotConfirmedProblem])] =

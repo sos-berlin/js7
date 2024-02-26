@@ -23,9 +23,8 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{AsyncLock, Atomic, MVar}
 import js7.common.http.RecouplingStreamReader
 import js7.common.http.configuration.RecouplingStreamReaderConf
-import js7.data.event.JournalEvent.StampedHeartbeat
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, Stamped}
+import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, JournalEvent, KeyedEvent, Stamped}
 import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten}
 import js7.data.order.{OrderEvent, OrderId}
 import js7.data.subagent.Problems.{ProcessLostDueToShutdownProblem, ProcessLostProblem}
@@ -42,7 +41,7 @@ private trait SubagentEventListener:
   protected def subagentId: SubagentId
   protected def conf: RemoteSubagentDriver.Conf
   protected def recouplingStreamReaderConf: RecouplingStreamReaderConf
-  protected def api: SubagentApi
+  protected def api: HttpSubagentApi
   protected def journal: Journal[? <: SubagentDirectorState[?]]
   protected def detachProcessedOrder(orderId: OrderId): IO[Unit]
   protected def releaseEvents(eventId: EventId): IO[Unit]
@@ -167,7 +166,7 @@ private trait SubagentEventListener:
         IO.pure(None -> IO.unit)
 
   private def newEventListener() =
-    new RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], SubagentApi](
+    new RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], HttpSubagentApi](
       _.eventId, recouplingStreamReaderConf):
       private var lastProblem: Option[Problem] = None
       override protected def idleTimeout = None  // SubagentEventListener itself detects heartbeat loss
@@ -183,7 +182,7 @@ private trait SubagentEventListener:
             lastProblem = None
           })
 
-      protected def getStream(api: SubagentApi, after: EventId) =
+      protected def getStream(api: HttpSubagentApi, after: EventId) =
         logger.debugIO("getStream", s"after=$after")(
           journal.state.map(_.idToSubagentItemState.checked(subagentId).map(_.subagentRunId))
             .flatMapT {
@@ -191,7 +190,7 @@ private trait SubagentEventListener:
               case Some(subagentRunId) => getStream(api, after, subagentRunId)
             })
 
-      private def getStream(api: SubagentApi, after: EventId, subagentRunId: SubagentRunId) =
+      private def getStream(api: HttpSubagentApi, after: EventId, subagentRunId: SubagentRunId) =
         api.login(onlyIfNotLoggedIn = true) *>
           api
             .eventStream(
@@ -207,7 +206,7 @@ private trait SubagentEventListener:
                   Stream.eval(onSubagentDecoupled(Some(problem)))
                 case _ =>
                   onHeartbeatStarted
-              .filter(_ != StampedHeartbeat)
+              .filter(_ != JournalEvent.StampedHeartbeat)
               .takeWhile(_ ne PauseDetected))
               //.guaranteeCase(exitCase => IO.defer {
               //  // guaranteeCase runs concurrently, maybe with onDecoupled ?
@@ -230,7 +229,7 @@ private trait SubagentEventListener:
               //}))
             .map(Right(_))
 
-      override protected def onCouplingFailed(api: SubagentApi, problem: Problem) =
+      override protected def onCouplingFailed(api: HttpSubagentApi, problem: Problem) =
         stopObserving.flatMap(_.tryRead).map(_.isDefined)
           .flatMap(stopped =>
             if stopped then

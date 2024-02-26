@@ -199,7 +199,7 @@ transparent trait AdHocLogger:
     logger.traceStream[F, A](stream)
 
   def traceStream[F[_], A](function: String, args: => Any = "")(stream: Stream[F, A])
-    (using Sync[F])
+    (using Sync[F], sourcecode.Name, Tag[A])
   : Stream[F, A] =
     logger.traceStream[F, A](function, args)(stream)
 

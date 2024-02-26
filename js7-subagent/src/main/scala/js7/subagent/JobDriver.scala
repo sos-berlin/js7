@@ -10,7 +10,6 @@ import js7.base.catsutils.SyncDeadline
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.log.Logger
-import js7.base.log.Logger.syntax.*
 import js7.base.monixlike.MonixLikeExtensions.*
 import js7.base.monixlike.SerialSyncCancelable
 import js7.base.monixutils.AsyncMap

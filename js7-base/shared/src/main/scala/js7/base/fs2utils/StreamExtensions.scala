@@ -124,8 +124,8 @@ object StreamExtensions:
 
     def onErrorEvalTap(pf: PartialFunction[Throwable, F[Unit]])(using F: Sync[F]): Stream[F, O] =
       stream.handleErrorWith(t =>
-        Stream.eval:
-          pf.applyOrElse(t, _ => F.unit) *> F.raiseError(t))
+        Stream.eval(pf.applyOrElse(t, _ => F.unit))
+          *> Stream.raiseError(t))
 
     def interruptWhenF[F2[x] >: F[x]](haltOnCompletion: F2[Unit])
       (using ApplicativeError[F2, Throwable])

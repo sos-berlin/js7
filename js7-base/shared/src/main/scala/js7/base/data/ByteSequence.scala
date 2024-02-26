@@ -48,6 +48,9 @@ extends Writable[ByteSeq], Monoid[ByteSeq], Eq[ByteSeq], Show[ByteSeq]:
   def apply(string: String) =
     fromString(string)
 
+  def one(byte: Byte) =
+    unsafeWrap(Array(byte))
+
   def fromArray(bytes: Array[Byte]): ByteSeq
 
   def fromArray(bytes: Array[Byte], from: Int, until: Int) =
@@ -249,6 +252,10 @@ extends Writable[ByteSeq], Monoid[ByteSeq], Eq[ByteSeq], Show[ByteSeq]:
 
   def utf8StringTruncateAt(byteSeq: ByteSeq, truncateAt: Int): String =  // TODO Truncate big byte sequence before decoding
     utf8String(byteSeq).truncateWithEllipsis(truncateAt)
+
+  //def tryUtf8String(byteSeq: ByteSeq): Option[String] =
+  //  try Some(UTF_8.newDecoder().decode(ByteBuffer.wrap(barr)))
+  //  catch case _: CharacterCodingException => None
 
   def toArray(byteSeq: ByteSeq): Array[Byte]
 

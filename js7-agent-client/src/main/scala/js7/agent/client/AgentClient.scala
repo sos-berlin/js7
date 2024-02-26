@@ -88,9 +88,7 @@ extends HttpSessionApi, PekkoHttpClient, SessionApi.HasUserAndPassword, HttpClus
         agentUris.controllersEvents(
           request,
           heartbeat = heartbeat),
-        responsive = true
-      ).map(_
-        .filter(_ != JournalEvent.StampedHeartbeat)))
+        responsive = true))
 
 
 object AgentClient:

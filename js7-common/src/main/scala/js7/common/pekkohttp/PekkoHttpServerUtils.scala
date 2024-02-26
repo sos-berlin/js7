@@ -1,27 +1,26 @@
 package js7.common.pekkohttp
 
-import cats.effect.kernel.Resource.ExitCase
 import cats.effect.unsafe.IORuntime
-import cats.effect.{Deferred, IO, Resource}
+import cats.effect.{Deferred, IO}
 import fs2.{Pipe, Stream}
 import io.circe.Encoder
 import io.circe.syntax.EncoderOps
 import izumi.reflect.Tag
+import js7.base.catsutils.CatsEffectExtensions.startAndForget
 import js7.base.circeutils.CirceUtils.RichJson
+import js7.base.data.ByteSequence.ops.*
 import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.fs2utils.StreamExtensions.mapParallelBatch
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.problem.Checked
-import js7.base.time.ScalaTime.*
-import js7.base.utils.CatsUtils.syntax.whenItTakesLongerThan
-import js7.common.http.JsonStreamingSupport
+import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
-import js7.common.http.PekkoHttpClient.`x-js7-request-id`
+import js7.common.http.PekkoHttpClient.{HttpHeartbeatByteString, `x-js7-request-id`}
 import js7.common.http.StreamingSupport.*
-import js7.common.pekkohttp.ByteSequenceStreamExtensions.*
+import js7.common.http.{JsonStreamingSupport, PekkoHttpClient}
 import js7.common.pekkohttp.StandardDirectives.ioRoute
 import js7.common.pekkohttp.StandardMarshallers.*
-import js7.common.pekkoutils.ByteStrings.*
 import js7.common.pekkoutils.ByteStrings.syntax.*
 import org.apache.pekko.http.scaladsl.marshalling.{ToResponseMarshallable, ToResponseMarshaller}
 import org.apache.pekko.http.scaladsl.model.headers.Accept
@@ -32,8 +31,6 @@ import org.apache.pekko.http.scaladsl.server.{ContentNegotiator, Directive, Dire
 import org.apache.pekko.util.ByteString
 import scala.annotation.tailrec
 import scala.concurrent.duration.FiniteDuration
-import js7.common.pekkoutils.ByteStrings.syntax.byteStringByteSequence
-import js7.base.data.ByteSequence.ops.*
 
 /**
   * @author Joacim Zschimmer
@@ -41,8 +38,6 @@ import js7.base.data.ByteSequence.ops.*
 object PekkoHttpServerUtils:
 
   private val logger = Logger[this.type]
-  val LF = ByteString("\n")
-  private val heartbeatChunk = IO.pure(LF)
 
   object implicits:
     implicit final class RichOption[A](private val delegate: Option[A]) extends AnyVal:
@@ -289,22 +284,22 @@ object PekkoHttpServerUtils:
     (using IORuntime)
   : IO[Route] =
     IO.defer:
-      val deferredRelease = Deferred.unsafe[IO, ExitCase => IO[Unit]]
+      val deferredRelease = Deferred.unsafe[IO, IO[Unit]]
       stream
         .onFinalizeCase: exitCase =>
-          deferredRelease.get.flatMap(_(exitCase))
+          deferredRelease.get
+            .flatMap: release =>
+              logger
+                .traceIO(s"completeWithIOStream deferred release: ${exitCase.toOutcome[IO]}"):
+                  release
+                .logWhenItTakesLonger("toPekkoSourceForHttpResponse.release")
+            .startAndForget // Release in asynchronously, otherwise we will stick in a deadlock !!!
         .toPekkoSourceForHttpResponse
-        .allocated // Resource is released in background !!!
-        .flatTap: (_, release) =>
-          deferredRelease.complete: exitCase =>
-            logger.trace(s"completeWithIOStream: ${exitCase.toOutcome[IO]}")
-            release
-              .whenItTakesLongerThan(3.s)(IO:
-                logger.warn("completeWithIOStream: release of Pekko Stream takes longer than 3s"))
-              .start.void
-        .map: (source, _) =>
-          complete:
-            HttpEntity(contentType, source)
+        .allocated
+        .flatMap: (source, release) =>
+          deferredRelease.complete(release)
+            .as:
+              complete(HttpEntity(contentType, source))
 
   def completeIO[A: ToResponseMarshaller](io: IO[A])(using IORuntime): Route =
     optionalAttribute(WebLogDirectives.CorrelIdAttributeKey):
@@ -346,7 +341,7 @@ object PekkoHttpServerUtils:
     (using IORuntime)
   : Pipe[IO, A, ByteString] =
     _.through(encodeParallel(chunkSize = chunkSize, prefetch = prefetch))
-      .keepAlive(keepAlive, heartbeatChunk)
+      .keepAlive(keepAlive, IO.pure(HttpHeartbeatByteString))
 
   def encodeParallel[A: Encoder : Tag](chunkSize: Int, prefetch: Int = 0)
     (using IORuntime)

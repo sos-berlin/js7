@@ -27,7 +27,7 @@ import js7.common.pekkoutils.{Pekkos, ProvideActorSystem}
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.data.Problems.AckFromActiveClusterNodeProblem
 import js7.data.controller.ControllerState
-import js7.data.event.{Event, EventId, EventRequest, JournalEvent, KeyedEvent, Stamped}
+import js7.data.event.{Event, EventId, EventRequest, KeyedEvent, Stamped}
 import js7.data.order.OrderEvent.OrderAdded
 import js7.data.order.{OrderEvent, OrderId}
 import js7.data.workflow.WorkflowPath
@@ -38,8 +38,11 @@ import js7.tests.core.GenericEventRouteTest.*
 import cats.effect.{Deferred, IO}
 import cats.effect.unsafe.IORuntime
 import fs2.Stream
+import js7.base.data.ByteArray
 import js7.base.fs2utils.StreamExtensions.onStart
 import js7.base.monixlike.MonixLikeExtensions.{completedL, toListL, unsafeToCancelableFuture}
+import js7.base.utils.Tests
+import js7.base.utils.Tests.isIntelliJIdea
 import org.apache.pekko.actor.ActorSystem
 import org.scalatest.BeforeAndAfterAll
 import scala.collection.mutable
@@ -70,6 +73,7 @@ extends OurTestSuite, BeforeAndAfterAll, TestCatsEffect, ProvideActorSystem, Gen
       web.server {
         verbose-error-messages = on
         shutdown-timeout = 10s
+        shutdown-delay = 0s
         auth {
           https-client-authentication = off
           realm = "TEST Server"
@@ -91,7 +95,12 @@ extends OurTestSuite, BeforeAndAfterAll, TestCatsEffect, ProvideActorSystem, Gen
           }
         }
       }
-    }"""
+    }
+    pekko.loglevel = DEBUG
+    pekko.actor.debug.autoreceive = on
+    pekko.actor.debug.lifecycle = on
+    pekko.actor.debug.unhandled = on
+    """
 
   protected lazy val gateKeeper = new GateKeeper(WebServerBinding.Http,
     GateKeeper.Configuration.fromConfig(config, SimpleUser.apply))
@@ -189,7 +198,7 @@ extends OurTestSuite, BeforeAndAfterAll, TestCatsEffect, ProvideActorSystem, Gen
       }
 
       "Repeatedly" in {
-        for _ <- 1 to 1000 do {
+        for _ <- 1 to (if isIntelliJIdea then 10_000 else 1000) do {
           locally {
             val stampedSeq = getEventsByUri(Uri("/event?limit=3&after=30"))
             assert(stampedSeq.head.eventId == 40)
@@ -260,13 +269,17 @@ extends OurTestSuite, BeforeAndAfterAll, TestCatsEffect, ProvideActorSystem, Gen
       val wasActive = eventWatch.isActiveNode
       eventWatch.isActiveNode = false
 
+      val heartbeat = -1L
       val uri = Uri("/event?onlyAcks=true&heartbeat=0.1&timeout=3")
-      val events = Stream.eval(api.getDecodedLinesStream[EventId](uri))
+      val events = Stream
+        .eval:
+          api.getDecodedLinesStream[EventId](uri,
+            returnHeartbeatAs = Some(ByteArray(heartbeat.toString)))
         .flatten
         .take(3)
         .toListL
         .await(99.s)
-      assert(events == Seq(180, 180/*heartbeat*/, 180/*heartbeat*/))
+      assert(events == Seq(180, heartbeat, heartbeat))
 
       eventWatch.isActiveNode = wasActive
     }
@@ -318,15 +331,17 @@ extends OurTestSuite, BeforeAndAfterAll, TestCatsEffect, ProvideActorSystem, Gen
           encodeQuery(("heartbeat" -> "1"/*allows early cancellation*/) +:
             eventRequest.toQueryParameters)),
         responsive = true)
-      .map(_
-        .filter(_ != JournalEvent.StampedHeartbeat))
   }
 
   private def getEventsByUri(uri: Uri): Seq[Stamped[KeyedEvent[OrderEvent]]] =
     getDecodedLinesStream[Stamped[KeyedEvent[OrderEvent]]](uri)
 
   private def getDecodedLinesStream[A: Decoder: Tag](uri: Uri): Seq[A] =
-    Stream.eval(api.getDecodedLinesStream[A](uri, responsive = true))
+    // TODO Without heartbeat the stream does not terminate before TCP idle timeout
+    //  in about one of 1000 requests.
+    //  With heartbeat the delay is until the next heartbeat.
+    val heartbeatUri = Uri(s"$uri&heartbeat=1")
+    Stream.eval(api.getDecodedLinesStream[A](heartbeatUri, responsive = true))
       .flatten
       .toListL
       .await(99.s)
