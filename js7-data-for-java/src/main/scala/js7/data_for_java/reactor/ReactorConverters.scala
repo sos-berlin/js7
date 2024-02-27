@@ -33,4 +33,4 @@ object ReactorConverters:
   extension [A](flux: Flux[A])
     /** Convert this Reactor Flux to a FS2 Stream. */
     def asFs2Stream(bufferSize: Int = 1): Stream[IO, A] =
-      flux.toStreamBuffered[IO](bufferSize = 1)
+      flux.toStreamBuffered[IO](bufferSize = bufferSize)

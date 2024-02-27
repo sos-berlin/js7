@@ -88,9 +88,10 @@ extends ControllerApiWithHttp:
     proxyEventBus: StandardEventBus[ProxyEvent] = new StandardEventBus,
     eventBus: JournaledStateEventBus[ControllerState] = new JournaledStateEventBus[ControllerState])
   : IO[ControllerProxy] =
-    proxyResource(proxyEventBus, eventBus)
-      .allocated // Caller must stop the ControllerProxy
-      .map(_._1)
+    logger.traceIO:
+      proxyResource(proxyEventBus, eventBus)
+        .allocated // Caller must stop the ControllerProxy
+        .map(_._1)
 
   def proxyResource(
     proxyEventBus: StandardEventBus[ProxyEvent] = new StandardEventBus,

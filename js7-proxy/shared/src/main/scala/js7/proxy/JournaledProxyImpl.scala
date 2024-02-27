@@ -4,7 +4,6 @@ import cats.effect.std.Supervisor
 import cats.effect.{Deferred, IO, Resource, ResourceIO}
 import fs2.Stream
 import fs2.concurrent.Topic
-import js7.base.catsutils.CatsEffectExtensions.joinStd
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.service.Service
@@ -18,36 +17,41 @@ private final class JournaledProxyImpl[S <: SnapshotableState[S]] private[Journa
   underlyingStream: Stream[IO, EventAndState[Event, S]],
   onEvent: EventAndState[Event, S] => Unit,
   proxyConf: ProxyConf,
-  topic: Topic[IO, EventAndState[Event, S]])
+  topic: Topic[IO, EventAndState[Event, S]],
+  supervisor: Supervisor[IO])
   (using S: SnapshotableState.Companion[S])
 extends Service.StoppableByRequest, JournaledProxy[S]:
 
-  @volatile private var _currentState = S.empty
+  @volatile private var _currentState: S = null.asInstanceOf[S]
 
   protected def start =
-    startService:
-      val whenStarted = Deferred.unsafe[IO, Unit]
-      Supervisor[IO](await = false).use: supervisor =>
-        supervisor
-          .supervise:
-            readInputStream(whenStarted)
-          .flatMap: fiber =>
-            whenStarted.get *>
-              untilStopRequested *>
-              fiber.joinStd
+    Deferred[IO, Unit].flatMap: whenInitialState =>
+      supervisor
+        .supervise:
+          readAndPublishUnderlyingStream(whenInitialState)
+        .flatMap: fiber =>
+          // A started JournalProxy immediately provides `currentState: S`.
+          // Wait until initial S has been read. This may take a long time !!!
+          whenInitialState.get *>
+            startService:
+              untilStopRequested
+                .guarantee:
+                  fiber.cancel
 
-  private def readInputStream(whenStarted: Deferred[IO, Unit]): IO[Unit] =
-    underlyingStream
-      .evalTap(eventAndState => IO.defer:
-        _currentState = eventAndState.state
-        whenStarted.complete(()))
-      .map: eventAndState =>
-        onEvent(eventAndState)
-        eventAndState
-      .interruptWhen(untilStopRequested.attempt)
-      .through(topic.publish)
-      .compile
-      .drain
+  private def readAndPublishUnderlyingStream(initialStateRead: Deferred[IO, Unit]): IO[Unit] =
+    logger.traceIO:
+      underlyingStream
+        .evalTap(eventAndState => IO.defer:
+          _currentState = eventAndState.state
+          logger.trace(s"Initial $S fetched")
+          initialStateRead.complete(()))
+        .map: eventAndState =>
+          onEvent(eventAndState)
+          eventAndState
+        .interruptWhen(untilStopRequested.attempt)
+        .through(topic.publish)
+        .compile
+        .drain
 
   def subscribe(maxQueued: Option[Int] = None)
   : ResourceIO[Stream[IO, EventAndState[Event, S]]] =
@@ -58,6 +62,7 @@ extends Service.StoppableByRequest, JournaledProxy[S]:
       topic.subscribe(maxQueued = queueSize getOrElse proxyConf.eventQueueSize)
 
   def sync(eventId: EventId): IO[Unit] =
+   logger.traceIO("sync", EventId.toString(eventId)):
     IO.defer:
       IO.unlessA(currentState.eventId >= eventId):
         subscribe().use:
@@ -65,11 +70,11 @@ extends Service.StoppableByRequest, JournaledProxy[S]:
             .merge:
               Stream.fixedRateStartImmediately[IO](proxyConf.syncPolling)
             .dropWhile(_ => currentState.eventId < eventId)
-            .compile
-            .last
+            .head
+            .compile.last
             .flatMap:
-              case None => IO.raiseError(new NoSuchElementException:
-                s"JournaledProxy#sync: Requested eventId=${EventId.toString(eventId)} not found")
+              case None => IO.raiseError(new NoSuchElementException(
+                s"JournaledProxy#sync: Requested eventId=${EventId.toString(eventId)} not found"))
               case Some(_) => IO.unit
 
   /** For testing: wait for a condition in the running event stream. * */
@@ -96,10 +101,11 @@ object JournaledProxyImpl:
     (using SnapshotableState.Companion[S])
   : ResourceIO[JournaledProxy[S]] =
     for
+      supervisor <- Supervisor[IO]
       topic <- Resource.make(
         acquire = Topic[IO, EventAndState[Event, S]])(
         release = _.close.void)
       journaledProxy <- Service.resource(IO:
-        new JournaledProxyImpl[S](baseStream, onEvent, proxyConf, topic))
+        new JournaledProxyImpl[S](baseStream, onEvent, proxyConf, topic, supervisor))
     yield
       journaledProxy

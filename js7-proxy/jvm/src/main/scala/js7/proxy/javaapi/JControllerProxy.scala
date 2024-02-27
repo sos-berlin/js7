@@ -37,7 +37,7 @@ final class JControllerProxy private[proxy](
   val controllerEventBus: JControllerEventBus)
   (using ioRuntime: IORuntime):
 
-  private val prefetch = api.config.getInt("js7.web.client.json-prefetch")
+  private val prefetch = api.config.getInt("js7.web.server.prefetch")
 
   /** Listen to the already running event stream. */
   @Nonnull
@@ -59,7 +59,9 @@ final class JControllerProxy private[proxy](
   /** Like JControllerApi addOrders, but waits until the Proxy mirrors the added orders. */
   @Nonnull
   def addOrders(@Nonnull orders: Flux[JFreshOrder]): CompletableFuture[VEither[Problem, AddOrdersResponse]] =
-    asScala.addOrders(orders.asFs2Stream(bufferSize = prefetch).map(_.asScala))
+    asScala
+      .addOrders:
+        orders.asFs2Stream(bufferSize = prefetch).map(_.asScala)
       .map(_.toVavr)
       .unsafeToCompletableFuture()
 

@@ -456,9 +456,9 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
           //  Journal Lock in die Anwendungsebene (hier) heben
           //  -- Nicht nötig durch die Abfrage auf initialState ?
           // FIXME (2) Deadlock when called immediately after start of Controller, before Journal has been started ?
-          //  journal.awaitCurrentState may not response GetJournalState.
+          //  journal.awaitCurrentState may not respond to GetJournalState.
           /*
-            ClusterPassiveLost kann während eines persist passieren, dass auf Ack des Passiven
+            ClusterPassiveLost kann während eines persist passieren, das auf Ack des Passiven
             wartet.
             Während eines ClusterCoupled ?
             Kein lock hier, wegen möglichen Deadlocks !!!

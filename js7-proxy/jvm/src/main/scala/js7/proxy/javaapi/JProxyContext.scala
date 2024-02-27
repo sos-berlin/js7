@@ -58,7 +58,7 @@ extends HasCloser:
       actorSystem)
     new JControllerApi(
       new ControllerApi(apiResources, proxyConf),
-      config)
+      config_)
 
 
 object JProxyContext:

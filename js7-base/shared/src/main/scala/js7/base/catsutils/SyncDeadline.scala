@@ -109,7 +109,7 @@ object SyncDeadline:
     fromIORuntime()
 
   def usingNow[A](body: Now ?=> A): IO[A] =
-    now.map(now => body(using now))
+    now.flatMap(now => IO(body(using now)))
 
   def fromIORuntime()(using ioRuntime: IORuntime): Now =
     fromScheduler()(using ioRuntime.scheduler)

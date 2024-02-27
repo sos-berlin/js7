@@ -237,8 +237,8 @@ object StreamExtensions:
       batchSizeMin: Int = DefaultBatchSizeMin,
       parallelism: Int = sys.runtime.availableProcessors,
       prefetch: Int = 0)
-      (using file: sourcecode.FileName, line: sourcecode.Line)
       (f: A => B)
+      //(using file: sourcecode.FileName, line: sourcecode.Line)
     : Stream[IO, B] =
       stream
         .pipeIf(prefetch > 0):

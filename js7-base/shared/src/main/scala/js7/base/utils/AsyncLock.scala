@@ -63,7 +63,7 @@ final class AsyncLock private(
                   val sym = new BlockingSymbol
                   sym.onDebug()
                   log.debug(/*spaces are for column alignment*/
-                    s"⟲ $sym${locked.nrString} $name enqueues    ${locked.who} (currently acquired by ${lockedBy.withCorrelId}) ...")
+                    s"⟲ $sym${locked.nrString} $name enqueues    ${locked.who} (currently acquired by ${lockedBy.nrString} ${lockedBy.withCorrelId}) ...")
                   mvar.put(locked)
                     .whenItTakesLonger(warnTimeouts) { _ =>
                       for lockedBy <- mvar.tryRead yield
@@ -112,11 +112,7 @@ final class AsyncLock private(
 
   override def toString = s"AsyncLock:$name"
 
-  final class Locked private[AsyncLock](
-    correlId: CorrelId,
-    private[AsyncLock] val nr: Int,
-    acquirerToString: => String):
-
+  final class Locked private[AsyncLock](correlId: CorrelId, nr: Int, acquirerToString: => String):
     private[AsyncLock] lazy val acquirer = acquirerToString
     private var lockedSince: Long = 0
 

@@ -37,7 +37,7 @@ extends Service:
         currentAllocatedService.get().fold(IO.unit)(_.release)
     }.unsafeMemoize
 
-  protected def start: IO[Service.Started] =
+  protected def start =
     for
       service <- startUnderlyingService
       started <- startService(runUnderlyingService(service))

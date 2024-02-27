@@ -6,15 +6,17 @@ import fs2.Stream
 import js7.base.fs2utils.StreamExtensions.+:
 import js7.base.log.Logger
 import js7.base.test.OurAsyncTestSuite
+import js7.base.thread.CatsBlocking.syntax.await
 import js7.base.time.ScalaTime
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Atomic
 import js7.base.utils.Atomic.extensions.*
-import js7.data_for_java.reactor.ReactorConverters.asFlux
+import js7.data_for_java.reactor.ReactorConverters.{asFlux, asFs2Stream}
 import js7.data_for_java.reactor.ReactorConvertersTest.*
 import js7.tester.ScalaTestUtils
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import org.scalatest.Assertions.assert
+import reactor.core.publisher.Flux
 import scala.jdk.CollectionConverters.*
 
 final class ReactorConvertersTest extends OurAsyncTestSuite:
@@ -61,6 +63,12 @@ final class ReactorConvertersTest extends OurAsyncTestSuite:
       disposable.dispose()
       // dispose() cancels in background. So we wait for the outcome:
       awaitAndAssert(acquired.get == 1 && released.get == 1 && last.get == 1)
+  }
+
+  "asFs2Stream" in {
+    assert(Flux.just(1, 2, 3).asFs2Stream().compile.toList.await(9.s) == List(1, 2, 3))
+    assert(Flux.just(1, 2, 3).asFs2Stream(bufferSize = 9).compile.toList.await(9.s) == List(1, 2, 3))
+    assert(Flux.just(1, 2, 3).asFs2Stream().asFlux.toIterable().asScala.toList == List(1, 2, 3))
   }
 
 

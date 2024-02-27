@@ -78,12 +78,12 @@ extends Service.StoppableByRequest:
             logger.logOutcome(LogLevel.Debug, "checkClusterState", since.elapsed, outcome))
 
   private def initializeCurrentClusterWatchId(clusterState: HasNodes): IO[Unit] =
-   logger.traceIO("### initializeCurrentClusterWatchId"):
     SyncDeadline.usingNow: now ?=>
       if currentClusterWatchId.isEmpty then
         for clusterWatchId <- clusterState.setting.clusterWatchId do
           // Set expiration time on start to inhibit change of registered ClusterWatchId when
           // another ClusterWatch tries to confirm, too.
+          logger.trace(s"initializeCurrentClusterWatchId $clusterWatchId")
           currentClusterWatchId = Some(CurrentClusterWatchId(clusterWatchId, now))
 
   def applyEvent(event: ClusterEvent, clusterState: HasNodes,
@@ -266,6 +266,7 @@ extends Service.StoppableByRequest:
 
   def onClusterWatchRegistered(clusterWatchId: ClusterWatchId): IO[Unit] =
     SyncDeadline.usingNow: now ?=>
+      logger.trace(s"onClusterWatchRegistered $clusterWatchId")
       currentClusterWatchId = Some(CurrentClusterWatchId(clusterWatchId, now))
 
   def newStream: fs2.Stream[IO, ClusterWatchRequest] =

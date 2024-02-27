@@ -96,7 +96,7 @@ extends MainService, Service.StoppableByRequest:
   def agentState: IO[Checked[AgentState]] =
     clusterNode.currentState
 
-  protected def start: IO[Service.Started] =
+  protected def start =
     startService(
       forDirector.subagent.untilTerminated
         .flatTap(termination => IO {

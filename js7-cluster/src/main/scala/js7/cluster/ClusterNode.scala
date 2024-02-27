@@ -89,7 +89,7 @@ extends Service.StoppableByRequest:
             logger.info(t.getMessage)
             Left(ProgramTermination(restart = true)))
 
-  protected def start: IO[Started] =
+  protected def start =
     startService:
       untilWorkingNodeStarted
         .recover:

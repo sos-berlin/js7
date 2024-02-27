@@ -17,10 +17,10 @@ extends JournalingActor[S, E]:
 
   protected def key: E.Key
 
-  protected final def persistIO[A](event: E, async: Boolean = false)
-    (callback: (Stamped[KeyedEvent[E]], S) => A)
-  : IO[Checked[A]] =
-    persistKeyedEventIO(toKeyedEvent(event), async = async)(callback)
+  //protected final def persistIO[A](event: E, async: Boolean = false)
+  //  (callback: (Stamped[KeyedEvent[E]], S) => A)
+  //: IO[Checked[A]] =
+  //  persistKeyedEventIO(toKeyedEvent(event), async = async)(callback)
 
   protected final def persist[EE <: E, A](event: EE, async: Boolean = false)(callback: (EE, S) => A): Future[A] =
     super.persistKeyedEvent(toKeyedEvent(event), async = async) { (stampedEvent, journaledState) =>
