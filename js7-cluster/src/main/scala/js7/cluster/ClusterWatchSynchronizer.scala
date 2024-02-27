@@ -6,11 +6,11 @@ import fs2.Stream
 import java.util.ConcurrentModificationException
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
-import js7.base.fs2utils.StreamExtensions.prependOne
+import js7.base.fs2utils.StreamExtensions.{interruptWhenF, prependOne}
 import js7.base.generic.Completed
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
-import js7.base.monixlike.MonixLikeExtensions.{takeUntilEval, tapError}
+import js7.base.monixlike.MonixLikeExtensions.tapError
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
@@ -215,9 +215,10 @@ private final class ClusterWatchSynchronizer(
   private final class Heartbeat(
     initialClusterState: HasNodes,
     registerClusterWatchId: RegisterClusterWatchId):
+
     @volatile private var clusterState = initialClusterState
     private val nr = heartbeatSessionNr.next()
-    private val stopping: IO[MVar[IO, Unit]] = MVar.empty[IO, Unit].unsafeMemoize
+    private val stopping = MVar.empty[IO, Unit].unsafeMemoize
     private val heartbeat: IO[MVar[IO, FiberIO[Unit]]] =
       MVar.empty[IO, FiberIO[Unit]].unsafeMemoize
 
@@ -270,15 +271,15 @@ private final class ClusterWatchSynchronizer(
         .prependOne(())
         // takeUntilEval before doAHeartbeat otherwise a heartbeat sticking in network congestion
         // would continue independently and arrive out of order (bad).
-        .takeUntilEval(stopping.flatMap(_.read))
+        .interruptWhenF(stopping.flatMap(_.read))
         .evalMap: _ =>
           doAHeartbeat
             .handleErrorWith: t =>
               logger.warn(s"sendHeartbeats: ${t.toStringWithCauses}",
                 if t.isInstanceOf[AskTimeoutException] then null else t.nullIfNoStackTrace)
               IO.raiseError(t)
-        // Again takeUntilEval to cancel a sticking doAHeartbeat
-        .takeUntilEval(stopping.flatMap(_.read))
+        // Again interruptWhenF() to cancel a sticking doAHeartbeat
+        .interruptWhenF(stopping.flatMap(_.read))
         .compile.drain
         .as(Completed)
 
@@ -288,18 +289,25 @@ private final class ClusterWatchSynchronizer(
         case None =>
           val clusterState = this.clusterState
           //logger.trace(s"Heartbeat ($nr) $clusterState")
-          doACheckedHeartbeat(
-            clusterState, registerClusterWatchId, clusterWatchIdChangeAllowed = true
-          ).flatMap:
-            case Left(problem) =>
-              stopping.flatMap(_.tryRead).map:
-                case Some(()) => Completed
-                case None =>
-                  haltJava(s"🔥 HALT because ClusterWatch heartbeat failed: $problem",
-                    restart = true)
+          IO
+            .race(
+              stopping.flatMap(_.read),
+              doACheckedHeartbeat(
+                clusterState, registerClusterWatchId, clusterWatchIdChangeAllowed = true))
+            .flatMap:
+              case Left(()) => IO:
+                logger.trace("⚫️ doACheckedHeartbeat canceled due to `stopping`")
+                Completed
 
-            case Right(_) =>
-              IO.pure(Completed)
+              case Right(Left(problem)) =>
+                stopping.flatMap(_.tryRead).map:
+                  case Some(()) => Completed
+                  case None =>
+                    haltJava(s"🔥 HALT because ClusterWatch heartbeat failed: $problem",
+                      restart = true)
+
+              case Right(Right(_)) =>
+                IO.pure(Completed)
 
   private def doACheckedHeartbeat(
     clusterState: HasNodes,
