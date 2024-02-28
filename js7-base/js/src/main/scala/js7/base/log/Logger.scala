@@ -122,6 +122,15 @@ object Logger
       : Resource[IO, A] =
         resource
 
+      inline def traceResource[A](resource: Resource[IO, A])
+      : Resource[IO, A] =
+        resource //traceResource(src.value)(resource)
+
+      inline def traceResource[A](function: String, inline args: => Any = "")
+        (resource: Resource[IO, A])
+      : Resource[IO, A] =
+        resource
+
       inline def debugStream[A](stream: Stream[IO, A]): Stream[IO, A] =
         stream
 

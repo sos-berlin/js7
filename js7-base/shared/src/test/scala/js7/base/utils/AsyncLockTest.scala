@@ -4,14 +4,16 @@ import cats.effect.{Deferred, IO}
 import cats.syntax.flatMap.*
 import cats.syntax.parallel.*
 import fs2.Stream
-import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
 import js7.base.catsutils.CatsEffectExtensions.{left, right}
 import js7.base.log.Logger
+import js7.base.monixlike.MonixLikeExtensions.onErrorRestartLoop
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
 import js7.base.utils.AsyncLockTest.*
 import js7.base.utils.Atomic.extensions.*
+import js7.base.utils.Tests.isIntelliJIdea
+import org.scalatest.{Assertion, Assertions}
 import scala.concurrent.duration.FiniteDuration
 import scala.util.Random
 
@@ -105,12 +107,12 @@ final class AsyncLockTest extends OurAsyncTestSuite:
   }
 
   "Cancel releases lock only after io has been canceled" in:
-    val lock = AsyncLock("CANCEL", logWorryDurations = Nil)
+    val lock = AsyncLock("CANCEL-BODY", logWorryDurations = Nil)
     val ioStarted = Deferred.unsafe[IO, Unit]
     @volatile var isCompleted = false
     //Monix: val continue = Deferred.unsafe[IO, Unit]
 
-    val run = IO.defer:
+    val run =
       lock.lock:
         for
           _ <- ioStarted.complete(())
@@ -122,10 +124,51 @@ final class AsyncLockTest extends OurAsyncTestSuite:
     for
       fiber <- run.start
       _ <- ioStarted.get
-      _ <- IO.sleep(100.ms) // Delay until .onCancel has been called
+      _ <- IO.sleep(100.ms) // Delay until .onCancel has been started
+      _ = assert(!isCompleted)
       _ <- fiber.cancel // Blocks until cancellation is completed
     yield
       assert(isCompleted)
+
+  "isLocked" in:
+    val lock = AsyncLock("IS-LOCKED", logWorryDurations = Nil)
+    for
+      _ <- lock.isLocked.map(is => assert(!is))
+      _ <- lock.lock(lock.isLocked.map(is => assert(is)))
+      _ <- lock.isLocked.map(is => assert(!is))
+    yield succeed
+
+  //"apply" in:
+  //  val lock = AsyncLock("APPLY", logWorryDurations = Nil)
+  //  for
+  //    _ <- lock.isLocked.map(is => assert(!is))
+  //    _ <- lock(lock.isLocked.map(is => assert(is)))
+  //    _ <- lock.isLocked.map(is => assert(!is))
+  //  yield succeed
+
+  "Lock acquisition is cancelable" - {
+    "suppressLog=false" in:
+      runMyTest(AsyncLock("CANCEL-ACQUIRE", suppressLog = false))
+
+    "suppressLog=true" in:
+      runMyTest(AsyncLock("CANCEL-ACQUIRE", suppressLog = true))
+
+    def runMyTest(lock: AsyncLock): IO[Assertion] =
+      Deferred[IO, Unit]
+        .flatMap { locked => IO
+          .race(
+            lock.lock:
+              locked.complete(()) *> lock.lock(IO.never),
+            locked.get *>
+              IO.defer(IO.sleep((2 << Random.nextInt(14)).µs)) *>
+                lock.isLocked.map(is => assert(is)))
+          .void
+          .*>(lock.isLocked.map(is => assert(!is)))
+          .*>(lock.lock(IO.unit))
+        }
+        .replicateA_(if isIntelliJIdea then 1000 else 100)
+        .as(succeed)
+  }
 
 
 object AsyncLockTest:

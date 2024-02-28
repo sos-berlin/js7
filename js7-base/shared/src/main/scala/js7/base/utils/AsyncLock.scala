@@ -1,5 +1,6 @@
 package js7.base.utils
 
+import cats.effect.kernel.Poll
 import cats.effect.kernel.Resource.ExitCase
 import cats.effect.{IO, Resource, kernel}
 import cats.syntax.flatMap.*
@@ -26,6 +27,13 @@ final class AsyncLock private(
   private val lockM: IO[MVar[IO, Locked]] = MVar[IO].empty[Locked].unsafeMemoize
   private val log = if noLog then Logger.empty else logger
 
+  // IntelliJ cannot find references:
+  //def apply[A](io: IO[A])(implicit src: sourcecode.Enclosing): IO[A] =
+  //  lock(io)
+  //
+  //def apply[A](acquirer: => String)(io: IO[A]): IO[A] =
+  //  lock(acquirer)(io)
+
   def lock[A](io: IO[A])(implicit src: sourcecode.Enclosing): IO[A] =
     lock(src.value)(io)
 
@@ -36,15 +44,21 @@ final class AsyncLock private(
     resource(src.value)
 
   def resource(acquirer: => String): Resource[IO, Locked] =
-    Resource.makeCase(
-      acquire = IO.defer {
-        val locked = new Locked(CorrelId.current, waitCounter.incrementAndGet(), acquirer)
-        acquire(locked).as(locked)
-      })(
+    Resource.makeCaseFull[IO, Locked](
+      acquire = interruptible =>
+        IO.defer:
+          val locked = new Locked(CorrelId.current, waitCounter.incrementAndGet(), acquirer)
+          acquire(locked, interruptible).as(locked))(
       release = (locked, exitCase) =>
         release(locked, exitCase))
 
-  private def acquire(locked: Locked): IO[Unit] =
+  def isLocked: IO[Boolean] =
+    locked.map(_.isDefined)
+
+  def locked: IO[Option[Locked]] =
+    lockM.flatMap(_.tryRead)
+
+  private def acquire(locked: Locked, interruptible: Poll[IO]): IO[Unit] =
     lockM.flatMap(mvar => IO.defer {
       mvar.tryPut(locked).flatMap(hasAcquired =>
         if hasAcquired then
@@ -53,8 +67,9 @@ final class AsyncLock private(
           IO.unit
         else
           if noLog then
-            mvar.put(locked)
-              .as(Right(()))
+            interruptible:
+              mvar.put(locked)
+                .as(Right(()))
           else
             val waitingSince = now
             ().tailRecM(_ =>
@@ -63,22 +78,23 @@ final class AsyncLock private(
                   val sym = new BlockingSymbol
                   sym.onDebug()
                   log.debug(/*spaces are for column alignment*/
-                    s"⟲ $sym${locked.nrString} $name enqueues    ${locked.who} (currently acquired by ${lockedBy.nrString} ${lockedBy.withCorrelId}) ...")
-                  mvar.put(locked)
-                    .whenItTakesLonger(warnTimeouts) { _ =>
+                    s"⟲ $sym${locked.nrString} $name enqueues    ${locked.who} (currently acquired by ${lockedBy.nrString} ${lockedBy.withCorrelId}) ⟲")
+                  interruptible(mvar.put(locked))
+                    .whenItTakesLonger(warnTimeouts): _ =>
                       for lockedBy <- mvar.tryRead yield
                         sym.onInfo()
                         logger.info(
                           s"⟲ $sym${locked.nrString} $name: ${locked.who} is still waiting" +
                             s" for ${waitingSince.elapsed.pretty}," +
                             s" currently acquired by ${lockedBy getOrElse "None"} ...")
-                    }
-                    .map { _ =>
+                    .onCancel(IO:
+                      log.debug:
+                        s"⚫️${locked.nrString} $name acquisition canceled after ${waitingSince.elapsed.pretty} ↙")
+                    .map: _ =>
                       log.log(sym.releasedLogLevel,
                         s"↘ 🟢${locked.nrString} $name acquired by ${locked.who} after ${waitingSince.elapsed.pretty} ↘")
                       locked.startMetering()
                       Right(())
-                  }
 
                 case None =>  // Lock has just become available
                   for hasAcquired <- mvar.tryPut(locked) yield
