@@ -109,7 +109,6 @@ extends Service.StoppableByRequest:
     toRequest: RequestId => ClusterWatchRequest,
     clusterWatchIdChangeAllowed: Boolean)
   : IO[Checked[ClusterWatchConfirmation]] =
-   logger.traceIO("### check", clusterWatchId):
     if !clusterWatchIdChangeAllowed && !clusterWatchId.isDefined then
       IO.left(NoClusterWatchProblem)
     else
@@ -316,8 +315,7 @@ object ClusterWatchCounterpart:
     private val confirmation = Deferred.unsafe[IO, Checked[ClusterWatchConfirmation]]
 
     def untilConfirmed: IO[Checked[ClusterWatchConfirmation]] =
-      logger.traceIOWithResult("### untilConfirmed", body =
-      confirmation.get)
+      confirmation.get
 
     def confirm(confirm: Checked[ClusterWatchConfirmation]): IO[Checked[Unit]] =
       confirmation.complete(confirm)

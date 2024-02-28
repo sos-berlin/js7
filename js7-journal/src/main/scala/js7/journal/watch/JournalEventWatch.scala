@@ -314,7 +314,7 @@ extends AutoCloseable,
       import journalPosition.{fileEventId, position}
 
       if onlyAcks && _isActiveNode then
-        logger.trace("### IO.left(AckFromActiveClusterNodeProblem)")
+        logger.debug("🚫 AckFromActiveClusterNode")
         IO.left(AckFromActiveClusterNodeProblem)
       else
         announcedEventReaderPromise match
@@ -348,7 +348,7 @@ extends AutoCloseable,
                     // because the wanna-be active node should shut down immediately.
                     //.takeWhile(_ => !_isActiveNode)
                     .evalTap(_ => IO.whenA(isActiveNode):
-                      logger.trace("### IO.raiseError(AckFromActiveClusterNodeProblem.throwable)")
+                      logger.debug("🚫 AckFromActiveClusterNode")
                       IO.raiseError(AckFromActiveClusterNodeProblem.throwable)))))
 
   private def lastEventId =

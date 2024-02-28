@@ -3,7 +3,7 @@ package js7.common.files
 import cats.syntax.foldable.*
 import cats.syntax.monoid.*
 import js7.base.data.{ByteArray, ByteSequence}
-import js7.base.fs2utils.Fs2ChunkByteSequence.*
+import js7.base.fs2utils.Fs2ChunkByteSequence.implicitByteSequence
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryFile
 import js7.base.test.OurTestSuite

@@ -114,7 +114,6 @@ trait GenericEventRoute extends RouteProvider:
               .map((eventId: EventId) => ByteString(eventId.toString) ++ LF)
               .recover:
                 case ProblemException(problem @ AckFromActiveClusterNodeProblem) =>
-                  logger.trace(s"### journalRoute => $problem")
                   Problem.typedJsonEncoder.encodeObject(problem).toByteArray.toByteString
               .pipe: stream =>
                 maybeHeartbeat.fold(stream): h =>

@@ -7,6 +7,8 @@ import org.scalatest.{Assertion, Succeeded}
 
 transparent trait TestMixin:
 
+  js7.base.log.Logger.initialize("JS7 Tests")
+
   /** For use as AdHocLogger. */
   protected final val Logger = js7.base.log.Logger
 

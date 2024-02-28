@@ -255,10 +255,8 @@ private final class ClusterWatchSynchronizer(
 
     def stop(implicit enclosing: sourcecode.Enclosing): IO[Unit] =
       logger.traceIO(s"Heartbeat ($nr) stop, called by ${enclosing.value}")(
-        stopping
-          .flatMap(_.tryPut(()))
-          .flatMap(_ => heartbeat)
-          .flatMap(_.tryTake)
+        stopping.flatMap(_.tryPut(()))
+          .flatMap(_ => heartbeat).flatMap(_.tryTake)
           .flatMap(_.fold(IO.unit)(_.joinStd))
           .logWhenItTakesLonger)
 
@@ -329,6 +327,8 @@ private final class ClusterWatchSynchronizer(
           if clusterState.setting.clusterWatchId contains confirmation.clusterWatchId then
             IO.right(Some(confirmation))
           else if clusterWatchIdChangeAllowed then
+            IO(logger.trace:
+              s"doACheckedHeartbeat: registerClusterWatchId(alreadyLocked=$alreadyLocked)") *>
             registerClusterWatchId(confirmation, alreadyLocked)
               .rightAs(Some(confirmation))
           else

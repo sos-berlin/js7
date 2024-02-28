@@ -9,10 +9,12 @@ import js7.base.utils.Atomic.extensions.*
 final class OnceTest extends OurAsyncTestSuite:
 
   private given IORuntime = ioRuntime
-  
+
   "parallel" in:
     val number = Atomic(0)
     val once = new Once
+
+    assert(!once.isInitialized)
 
     (1 to 1000_000)
       .toVector
@@ -20,5 +22,5 @@ final class OnceTest extends OurAsyncTestSuite:
         number += 1
       }))
       .void
-      .*>(IO(assert(number.get() == 1)))
+      .*>(IO(assert(number.get() == 1 && once.isInitialized)))
       .unsafeToFuture()

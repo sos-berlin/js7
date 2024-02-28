@@ -41,18 +41,17 @@ final class CommandWebServerTest extends OurAsyncTestSuite:
     EventId.BeforeFirst,
     ControllerRunId(JournalId.random()))
   private lazy val clientResource = for
-    as <- actorSystemResource("CommandWebServerTest", testConfig)
-    webServer <- PekkoWebServer.httpResource(findFreeTcpPort(), testConfig, route(as))(as)
+    given ActorSystem <- actorSystemResource("CommandWebServerTest", testConfig)
+    webServer <- PekkoWebServer.httpResource(findFreeTcpPort(), testConfig, route)
     client <- Resource.fromAutoCloseable(IO(AgentClient(
-      Admission(Uri(s"${webServer.localUri}"), userAndPassword = None))(
-      as)))
+      Admission(Uri(s"${webServer.localUri}"), userAndPassword = None))))
   yield client
 
   "Big response" in:
     clientResource.use(_.commandExecute(coupleController))
       .map(response => assert(response == Right(CoupleController.Response(orderIds))))
 
-  private def route(implicit actorSystem: ActorSystem) =
+  private def route =
     decodeRequest/*decompress*/ :
       pathSegments("agent/api/command"):
         new CommandWebService {
@@ -82,6 +81,6 @@ private object CommandWebServerTest:
     config"""
       js7.web.server.auth.public = on
       js7.web.server.shutdown-timeout = 10s
-      js7.web.server.shutdown-delay = 500ms    
+      js7.web.server.shutdown-delay = 500ms
       pekko.http.client.parsing.max-content-length = 100MB
     """.withFallback(AgentConfiguration.DefaultConfig)

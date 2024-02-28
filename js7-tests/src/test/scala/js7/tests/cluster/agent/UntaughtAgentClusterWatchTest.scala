@@ -1,5 +1,7 @@
 package js7.tests.cluster.agent
 
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import js7.agent.data.commands.AgentCommand
 import js7.agent.{RunningAgent, TestAgent}
 import js7.base.configutils.Configs.HoconStringInterpolator
@@ -27,9 +29,6 @@ import js7.tests.cluster.agent.UntaughtAgentClusterWatchTest.*
 import js7.tests.cluster.controller.ControllerClusterTester.*
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.testenv.DirectoryProviderForScalaTest
-
-import cats.effect.IO
-import cats.effect.unsafe.IORuntime
 
 final class UntaughtAgentClusterWatchTest extends OurTestSuite, DirectoryProviderForScalaTest:
 
@@ -101,6 +100,10 @@ final class UntaughtAgentClusterWatchTest extends OurTestSuite, DirectoryProvide
             ClusterNodeLossNotConfirmedProblem(
               NodeId.primary, ClusterPassiveLost(NodeId.backup)))
           assert(nodeToClusterWatchConfirmationRequired(NodeId.backup).event.isInstanceOf[ClusterFailedOver])
+
+          // FIXME Delay until AgentOrderKeeper does not persist anything,
+          // because it cannot be terminated while persisting and we would stick in a deadlock.
+          sleep(1.s)
 
           // Now, the user (we) kill the primary node and confirm this to the ClusterWatch:
           primaryDirector

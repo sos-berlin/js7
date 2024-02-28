@@ -95,13 +95,12 @@ object ShellScriptProcess:
                       // Then we destroyForcibly. Because this closes stdout and stderr, we
                       // wait a short while to allow the last outstanding data to handled by
                       // the InputStream pump. See also RichProcess superclass.
-                      logger.traceIO(s"### $name: whenSigkilled ..."):
-                        whenSigkilled
-                          .andWait(stdoutAndStderrDetachDelay)
-                          .map: _ =>
-                            //IO.whenA(process.isAlive):
-                              IO(logger.debug(s"$name destroyForcibly $process")) *>
-                              IO.blocking(process.destroyForcibly()),
+                      whenSigkilled
+                        .andWait(stdoutAndStderrDetachDelay)
+                        .map: _ =>
+                          //IO.whenA(process.isAlive):
+                            IO(logger.debug(s"$name destroyForcibly $process")) *>
+                            IO.blocking(process.destroyForcibly()),
                       pumpBothStdoutAndStderrToSink)
                     .flatMap:
                       case Left((_, pumpFiber)) => joinFiberInBackground(pumpFiber, name)

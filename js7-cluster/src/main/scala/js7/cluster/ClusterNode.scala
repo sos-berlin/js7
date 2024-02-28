@@ -24,7 +24,6 @@ import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.problem.Checked.CheckedOption
 import js7.base.problem.{Checked, Problem, ProblemException}
-import js7.base.service.Service.Started
 import js7.base.service.{MainServiceTerminationException, Service}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat

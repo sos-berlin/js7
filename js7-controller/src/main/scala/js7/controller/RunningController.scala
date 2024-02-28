@@ -1,7 +1,7 @@
 package js7.controller
 
-import cats.effect.{Resource, Sync, SyncIO}
 import cats.effect.unsafe.Scheduler
+import cats.effect.{Resource, Sync, SyncIO}
 import cats.syntax.traverse.*
 import js7.base.catsutils.CatsEffectExtensions.fromFutureDummyCancelable
 import js7.base.catsutils.OwnIORuntime
@@ -368,7 +368,7 @@ object RunningController:
     }
 
   def ioRuntimeResource[F[_]](conf: ControllerConfiguration)(implicit F: Sync[F])
-  : Resource[F, IORuntime] =
+  : Resource[F, IORuntime] = 
     OwnIORuntime.resource[F](conf.name, conf.config)
 
   private def itemVerifierResource(

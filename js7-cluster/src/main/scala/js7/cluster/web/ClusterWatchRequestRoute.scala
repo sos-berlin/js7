@@ -39,22 +39,20 @@ trait ClusterWatchRequestRoute extends RouteProvider:
         extractRequest: request =>
           parameter("keepAlive".as[FiniteDuration]): keepAlive =>
             completeWithStream(`application/x-ndjson`):
-             logger.traceStream("### stream"):
-               clusterWatchRequestStream
-                 .handleErrorWith: throwable =>
-                   // The streaming event web service doesn't have an error channel,
-                   // so we simply log the error and end the stream
-                   logger.warn(throwable.toStringWithCauses)
-                   if throwable.getStackTrace.nonEmpty then
-                     logger.debug(throwable.toStringWithCauses, throwable)
-                   Stream.empty
-                 .evalTap(o => IO(logger.trace(s"### $o")))
-                 .through:
-                    encodeAndHeartbeat(
-                      chunkSize = chunkSize,
-                      prefetch = prefetch,
-                      keepAlive = keepAlive)
-                  .interruptWhen(shutdownSignaled)
+              clusterWatchRequestStream
+                .handleErrorWith: throwable =>
+                  // The streaming event web service doesn't have an error channel,
+                  // so we simply log the error and end the stream
+                  logger.warn(throwable.toStringWithCauses)
+                  if throwable.getStackTrace.nonEmpty then
+                    logger.debug(throwable.toStringWithCauses, throwable)
+                  Stream.empty
+                .through:
+                  encodeAndHeartbeat(
+                    chunkSize = chunkSize,
+                    prefetch = prefetch,
+                    keepAlive = keepAlive)
+                .interruptWhen(shutdownSignaled)
 
   //private val emptyResponseMarshallable: ToResponseMarshallable =
   //  streamToMarshallable(Stream.empty)

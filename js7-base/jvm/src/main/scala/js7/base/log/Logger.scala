@@ -47,6 +47,9 @@ object Logger extends AdHocLogger:
       Logger[this.type].info(StartUp.startUpLine(name))
       Tests.log()
 
+  def isInitialized: Boolean =
+    ifNotInitialized.isInitialized
+
   //val Timing: Marker = MarkerFactory.getMarker("Timing")
   //val Event: Marker = MarkerFactory.getMarker("Event")
   val Actor: Marker = MarkerFactory.getMarker("Actor")

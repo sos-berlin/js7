@@ -4,7 +4,9 @@ import cats.effect.unsafe.IORuntime
 import cats.effect.{Resource, Sync}
 import com.typesafe.config.{Config, ConfigFactory}
 import java.lang.Thread.currentThread
+import js7.base.catsutils.CatsEffectExtensions.defer
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.system.Java8Polyfill.*
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
@@ -16,6 +18,21 @@ object OwnIORuntime:
   private lazy val logger = Logger[this.type]
 
   def resource[F[_]](
+    name: String,
+    config: Config = ConfigFactory.empty,
+    shutdownHooks: Seq[() => Unit] = Nil)
+    (using F: Sync[F])
+  : Resource[F, IORuntime] =
+    val resource = resource2[F](name, config, shutdownHooks)
+    Resource.defer:
+      // Do not log for the initial IORuntime, before logging has been initialized.
+      if Logger.isInitialized then
+        logger.traceResource(s"$name Resource[,IORuntime]"):
+          resource
+      else
+        resource
+
+  private def resource2[F[_]](
     name: String,
     config: Config = ConfigFactory.empty,
     shutdownHooks: Seq[() => Unit] = Nil)

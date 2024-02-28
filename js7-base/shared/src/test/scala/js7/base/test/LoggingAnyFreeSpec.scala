@@ -16,8 +16,6 @@ import scala.util.Try
  **/
 trait LoggingAnyFreeSpec extends AnyFreeSpec:
 
-  Logger.initialize("JS7 Tests")
-
   private val testAdder = new LoggingTestAdder(getClass)
 
   protected def suppressTestCorrelId = false

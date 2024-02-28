@@ -1,35 +1,29 @@
 package js7.journal.web
 
 import cats.effect.IO
-import cats.syntax.applicativeError.*
+import cats.effect.unsafe.IORuntime
 import js7.base.auth.ValidUserPermission
-import js7.base.circeutils.CirceUtils.RichJsonObject
+import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.*
-import js7.base.data.{ByteArray, ByteSequence}
 import js7.base.fs2utils.Fs2ChunkByteSequence.*
-import js7.base.fs2utils.StreamExtensions.onErrorEvalTap
 import js7.base.log.Logger
-import js7.base.problem.{Checked, Problem, ProblemException}
+import js7.base.problem.{Checked, Problem}
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.PekkoHttpClient
+import js7.common.jsonseq.PositionAnd
 import js7.common.pekkohttp.PekkoHttpServerUtils
 import js7.common.pekkohttp.PekkoHttpServerUtils.completeWithCheckedStream
 import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkohttp.web.session.RouteProvider
 import js7.common.pekkoutils.ByteStrings.syntax.*
-import js7.data.Problems.AckFromActiveClusterNodeProblem
-import org.apache.pekko.http.scaladsl.server.Directives.*
-import org.apache.pekko.http.scaladsl.server.Route
-import scala.concurrent.ExecutionContext
-//?import js7.common.http.StreamingSupport.PekkoStream
-import cats.effect.unsafe.IORuntime
-import js7.common.jsonseq.PositionAnd
 import js7.data.event.JournalSeparators.EndOfJournalFileMarker
 import js7.data.event.{EventId, JournalPosition}
 import js7.journal.watch.FileEventWatch
 import js7.journal.web.JournalRoute.*
+import org.apache.pekko.http.scaladsl.server.Directives.*
+import org.apache.pekko.http.scaladsl.server.Route
 import scala.concurrent.duration.FiniteDuration
 
 // TODO Similar to GenericEventRoute
@@ -45,7 +39,6 @@ trait JournalRoute extends RouteProvider:
   protected def eventWatch: FileEventWatch
 
   private given IORuntime = ioRuntime
-  private given ExecutionContext = ioRuntime.compute
 
   private lazy val defaultJsonSeqChunkTimeout = config
     .getDuration("js7.web.server.services.event.streaming.chunk-timeout")

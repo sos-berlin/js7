@@ -2,7 +2,6 @@ package js7.base.catsutils
 
 import cats.effect.unsafe.IORuntime
 import cats.effect.{Resource, Sync}
-import java.lang.Thread.currentThread
 import js7.base.log.Logger
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*

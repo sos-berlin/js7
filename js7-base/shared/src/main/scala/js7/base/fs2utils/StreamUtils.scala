@@ -50,15 +50,10 @@ object StreamUtils:
       val buffer = ByteBuffer.allocateDirect(bufferSize)
       Stream
         .repeatEval:
-         logger.traceIOWithResult("### channel.read", body =
           IO
             .interruptible:
               buffer.clear()
-              try channel.read(buffer)
-              catch case NonFatal(e) => // InterruptedException, ClosedByInterruptionException etc.
-                logger.trace(s"### blockingChannelToByteStream channel.read => $e")
-                throw e
-          )
+              channel.read(buffer)
             .map:
               case -1 =>
                 null

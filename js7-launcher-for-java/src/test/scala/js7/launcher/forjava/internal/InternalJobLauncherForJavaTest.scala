@@ -16,7 +16,7 @@ import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.time.AlarmClock
 import js7.base.time.ScalaTime.*
-import js7.base.utils.ScalaUtils.syntax.{RichEitherF, RichEitherIterable, RichJavaClass, RichPartialFunction}
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.common.system.ThreadPools
 import js7.common.system.ThreadPools.newUnlimitedNonVirtualExecutionContext

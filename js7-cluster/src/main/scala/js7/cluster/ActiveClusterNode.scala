@@ -593,9 +593,7 @@ final class ActiveClusterNode[S <: ClusterableState[S]/*: diffx.Diff*/] private[
               heartbeat = Some(heartbeat),
               returnHeartbeatAs = returnHeartbeatAs)
             .map(_.flatMap:
-              case Left(problem) =>
-                logger.trace(s"### streamEventIds => $problem")
-                Stream.raiseError(problem.throwable)
+              case Left(problem) => Stream.raiseError(problem.throwable)
               case Right(eventId) => Stream.emit(eventId))),
         stopRequested = () => stopRequested)
 

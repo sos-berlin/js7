@@ -1,6 +1,5 @@
 package js7.data.event
 
-import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurTestSuite

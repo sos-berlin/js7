@@ -4,6 +4,9 @@ final class Once:
 
   private var once = false
 
+  def isInitialized: Boolean =
+    once
+
   def apply(body: => Unit): Unit =
     if !once then
       synchronized:

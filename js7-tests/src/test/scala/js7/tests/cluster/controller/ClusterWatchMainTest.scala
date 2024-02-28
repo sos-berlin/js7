@@ -6,7 +6,6 @@ import cats.effect.unsafe.IORuntime
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.temporaryDirectoryResource
-import js7.base.log.Logger
 import js7.base.test.OurAsyncTestSuite
 import js7.base.utils.ProgramTermination
 import js7.cluster.watch.ClusterWatchMain

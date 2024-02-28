@@ -181,4 +181,4 @@ object TestAgent:
 
   private def ioRuntimeResource[F[_]](conf: AgentConfiguration)(implicit F: Sync[F])
   : Resource[F, IORuntime] =
-    OwnIORuntime.resource[F](conf.name, conf.config)
+      OwnIORuntime.resource[F](conf.name, conf.config)

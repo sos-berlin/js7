@@ -25,6 +25,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.Problems.AckFromActiveClusterNodeProblem
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import js7.data.problems.UnknownEventIdProblem
+import js7.journal.watch.JournalEventWatch.logger
 import js7.journal.watch.RealEventWatch.*
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.*
@@ -160,7 +161,7 @@ trait RealEventWatch extends EventWatch:
   private def mustNotBeActive(stream: Stream[IO, EventId]): Stream[IO, EventId] =
     stream
       .evalTap(_ => IO.whenA(isActiveNode):
-        logger.trace("### mustNotBeActive => AckFromActiveClusterNodeProblem")
+        logger.debug("🚫 AckFromActiveClusterNodeProblem")
         IO.raiseError(AckFromActiveClusterNodeProblem.throwable))
 
   final def when[E <: Event](request: EventRequest[E], predicate: KeyedEvent[E] => Boolean)

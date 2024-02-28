@@ -1,10 +1,10 @@
 package js7.tests.controller.proxy
 
-import fs2.Stream
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import cats.syntax.flatMap.*
 import com.typesafe.config.ConfigFactory
+import fs2.Stream
 import io.circe.syntax.EncoderOps
 import java.time.LocalDateTime
 import js7.base.BuildInfo
@@ -20,11 +20,11 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.Nel
 import js7.base.web.Uri
 import js7.common.commandline.CommandLineArguments
-import js7.common.http.JsonStreamingSupport.{NdJsonStreamingSupport, `application/x-ndjson`, jsonSeqMarshaller}
+import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.pekkohttp.PekkoHttpServerUtils
-import js7.common.pekkohttp.PekkoHttpServerUtils.{completeIO, completeWithIOStream, completeWithStream, pathSegments}
+import js7.common.pekkohttp.PekkoHttpServerUtils.{completeWithStream, pathSegments}
 import js7.common.pekkohttp.web.PekkoWebServer
-import js7.common.pekkoutils.ByteStrings.syntax.{ByteStringToByteSequence, byteStringByteSequence}
+import js7.common.pekkoutils.ByteStrings.syntax.ByteStringToByteSequence
 import js7.common.pekkoutils.Pekkos
 import js7.controller.client.PekkoHttpControllerApi
 import js7.data.controller.ControllerState
@@ -32,9 +32,7 @@ import js7.data.event.{Event, EventId}
 import js7.proxy.data.event.ProxyEvent
 import js7.proxy.{ControllerApi, JournaledStateEventBus}
 import js7.tests.controller.proxy.TestControllerProxy.*
-import org.apache.pekko.http.scaladsl.common.JsonEntityStreamingSupport
-import org.apache.pekko.http.scaladsl.marshalling.ToEntityMarshaller
-import org.apache.pekko.http.scaladsl.server.Directives.{complete, get, pathSingleSlash}
+import org.apache.pekko.http.scaladsl.server.Directives.{get, pathSingleSlash}
 import scala.util.Try
 
 private final class TestControllerProxy(controllerUri: Uri, httpPort: Int)
