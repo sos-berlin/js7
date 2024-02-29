@@ -1,10 +1,15 @@
 package js7.tests.subagent
 
+import cats.effect.IO
+import cats.instances.option.*
+import fs2.Stream
 import java.util.concurrent.TimeoutException
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.test.OurTestSuite
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
+import js7.base.utils.CatsUtils.syntax.RichResource
+import js7.base.utils.Lazy
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.common.utils.FreeTcpPortFinder.findFreeLocalUri
 import js7.data.item.BasicItemEvent.ItemAttached
@@ -17,12 +22,10 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.EmptyJob
 import js7.tests.subagent.SubagentDisabledTest.*
 import js7.tests.subagent.SubagentTester.agentPath
+import js7.tests.testenv.BlockingItemUpdater
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import cats.effect.IO
-import fs2.Stream
-import js7.base.monixlike.MonixLikeExtensions.parZip2
 
-final class SubagentDisabledTest extends OurTestSuite, SubagentTester:
+final class SubagentDisabledTest extends OurTestSuite, SubagentTester, BlockingItemUpdater:
 
   override protected def agentConfig = config"""
     js7.auth.subagents.A-SUBAGENT = "$localSubagentId's PASSWORD"
@@ -30,32 +33,40 @@ final class SubagentDisabledTest extends OurTestSuite, SubagentTester:
     """.withFallback(super.agentConfig)
 
   protected val agentPaths = Seq(agentPath)
-  protected def items = Seq(workflow, aSubagentItem, bSubagentItem)
+  protected def items = Seq(workflow, aSubagentItem)
 
   private lazy val aSubagentItem = newSubagentItem(aSubagentId)
   private lazy val bSubagentItem = newSubagentItem(bSubagentId)
 
   private val nextOrderId = Iterator.from(1).map(i => OrderId(s"ORDER-$i")).next _
 
-  private lazy val (aSubagent, aSubagentRelease) =
+  private lazy val aSubagent = Lazy:
     subagentResource(aSubagentItem, director = toLocalSubagentId(agentPath))
-      .allocated
+      .toAllocated
       .await(99.s)
-  private lazy val (bSubagent, bSubagentRelease) =
+  private lazy val bSubagent = Lazy:
     subagentResource(bSubagentItem, director = toLocalSubagentId(agentPath))
-      .allocated
+      .toAllocated
       .await(99.s)
 
   override def beforeAll() =
     super.beforeAll()
-    aSubagent
-    bSubagent
+    aSubagent()
     eventWatch.await[ItemAttached](_.event.key == aSubagentId)
-    eventWatch.await[ItemAttached](_.event.key == bSubagentId)
 
   override def afterAll() =
-    try IO.parZip2(aSubagentRelease, bSubagentRelease).await(99.s)
+    try
+      IO
+        .both(
+          aSubagent.whenDefined(_.release),
+          bSubagent.whenDefined(_.release))
+        .await(99.s)
     finally super.afterAll()
+
+  s"Add $bSubagentId" in:
+    updateItem(bSubagentItem)
+    eventWatch.await[ItemAttached](_.event.key == bSubagentId)
+    bSubagent()
 
   "All Subagents are enabled" in:
     runOrderAndCheck(localSubagentId)

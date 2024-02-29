@@ -4,6 +4,7 @@ import cats.effect.std.Supervisor
 import cats.effect.{Deferred, IO, Resource, ResourceIO}
 import fs2.Stream
 import fs2.concurrent.Topic
+import js7.base.fs2utils.StreamExtensions.{evalTapFirst, onStart}
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.service.Service
@@ -25,26 +26,28 @@ extends Service.StoppableByRequest, JournaledProxy[S]:
   @volatile private var _currentState: S = null.asInstanceOf[S]
 
   protected def start =
-    Deferred[IO, Unit].flatMap: whenInitialState =>
+    Deferred[IO, Unit].flatMap: whenStateFetched =>
       supervisor
         .supervise:
-          readAndPublishUnderlyingStream(whenInitialState)
+          readAndPublishUnderlyingStream(whenStateFetched)
         .flatMap: fiber =>
           // A started JournalProxy immediately provides `currentState: S`.
           // Wait until initial S has been read. This may take a long time !!!
-          whenInitialState.get *>
-            startService:
-              untilStopRequested
-                .guarantee:
-                  fiber.cancel
+          logger
+            .debugIO("whenStateFetched"):
+              whenStateFetched.get
+            .productR:
+              startService:
+                untilStopRequested
+                  .guarantee:
+                    fiber.cancel
 
-  private def readAndPublishUnderlyingStream(initialStateRead: Deferred[IO, Unit]): IO[Unit] =
+  private def readAndPublishUnderlyingStream(whenStateFetched: Deferred[IO, Unit]): IO[Unit] =
     logger.traceIO:
       underlyingStream
         .evalTap(eventAndState => IO.defer:
           _currentState = eventAndState.state
-          logger.trace(s"Initial $S fetched")
-          initialStateRead.complete(()))
+          whenStateFetched.complete(()).void)
         .map: eventAndState =>
           onEvent(eventAndState)
           eventAndState
@@ -89,8 +92,10 @@ extends Service.StoppableByRequest, JournaledProxy[S]:
       case null => throw new IllegalStateException("JournaledProxy has not yet started")
       case o => o
 
+  override def toString = s"JournaledProxyImpl[$S]"
 
-object JournaledProxyImpl:
+
+private object JournaledProxyImpl:
 
   private val logger = Logger[this.type]
 

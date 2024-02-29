@@ -1,13 +1,14 @@
 package js7.base.utils
 
+import cats.InvariantMonoidal
+import cats.effect.IO
 import izumi.reflect.Tag
+import js7.base.catsutils.CatsEffectExtensions.fromFutureDummyCancelable
+import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
-import cats.effect.IO
-import js7.base.catsutils.CatsEffectExtensions.fromFutureDummyCancelable
 import scala.concurrent.{Future, Promise}
 import scala.util.Success
-import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 
 /**
  * Variable which can be set only once. Thread-safe.
@@ -41,6 +42,9 @@ final class SetOnce[A](label: => String, notYetSetProblem: Problem):
               val value = lazyValue
               promise.success(value)
               value
+
+  def whenDefined[F[_]](f: A => F[Unit])(using F: InvariantMonoidal[F]): F[Unit] =
+    toOption.fold(F.unit)(f)
 
   def fold[B](ifEmpty: => B)(f: A => B): B =
     toOption.fold(ifEmpty)(f)

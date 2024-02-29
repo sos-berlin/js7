@@ -5,12 +5,14 @@ import cats.effect.std.Queue
 import cats.effect.{Concurrent, IO, Ref, Resource, Sync}
 import cats.syntax.applicativeError.*
 import cats.syntax.apply.*
+import cats.syntax.functor.*
 import cats.syntax.option.*
 import cats.syntax.parallel.*
 import cats.{Applicative, ApplicativeError, Eq, effect}
 import fs2.{Chunk, Compiler, Pull, RaiseThrowable, Stream}
 import js7.base.log.Logger
 import js7.base.time.ScalaTime.RichDeadline
+import js7.base.utils.Atomic
 import js7.base.utils.ScalaUtils.syntax.RichAny
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Deadline, FiniteDuration}
@@ -63,10 +65,18 @@ object StreamExtensions:
     def onStart(onStart: F[Unit]): Stream[F, O] =
       Stream.exec(onStart) ++ stream
 
+
     def tapEach(f: O => Unit)(using F: Sync[F]): Stream[F, O] =
       stream.evalMap(a => F.delay:
         f(a)
         a)
+
+    def evalTapFirst(f: O => F[Unit])(using F: Sync[F]): Stream[F, O] =
+      Stream.suspend:
+        val used = Atomic(false)
+        stream.evalMap: o =>
+          F.unlessA(used.getAndSet(true))(f(o))
+            .as(o)
 
     def tapEachChunk(f: Chunk[O] => Unit)(using F: Sync[F]): Stream[F, O] =
       stream

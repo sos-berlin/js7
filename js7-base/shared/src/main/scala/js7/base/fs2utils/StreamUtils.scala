@@ -12,10 +12,8 @@ import java.util
 import js7.base.data.ByteSequence
 import js7.base.fs2utils.Fs2ChunkByteSequence.*
 import js7.base.log.Logger
-import js7.base.log.Logger.syntax.*
 import js7.base.system.Java8Polyfill.*
 import js7.base.utils.CloseableIterator
-import scala.util.control.NonFatal
 
 object StreamUtils:
 

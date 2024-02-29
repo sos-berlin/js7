@@ -19,6 +19,7 @@ import js7.tests.jobs.SemaphoreJob
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import cats.effect.unsafe.IORuntime
+import js7.agent.data.commands.AgentCommand
 
 final class ResetAgentWhenCancelingTest
   extends OurTestSuite, ControllerAgentForScalaTest, BlockingItemUpdater:
@@ -46,7 +47,7 @@ final class ResetAgentWhenCancelingTest
     controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
     eventWatch.await[OrderStdoutWritten](_.key == orderId)
 
-    val agentTerminated = agent.terminate().unsafeToFuture()
+    val agentTerminated = agent.terminate(clusterAction = Some(AgentCommand.ShutDown.ClusterAction.Failover)).unsafeToFuture()
     sleep(500.ms) // Give terminate some time to start !!!
     TestJob.continue()
     // May wait forever and fail when second job has been started while terminating !!!
@@ -66,12 +67,7 @@ final class ResetAgentWhenCancelingTest
       .filter(e => !e.isInstanceOf[OrderCancellationMarked]/*unreliable ordering*/)
       .filter(e => !e.isInstanceOf[OrderMoved]/*may occur after OrderProcessed*/)
       .map {
-        // OrderFailed(Position(1)) when OrderMoved has been emitted
         case OrderFailed(Position(Nil, InstructionNr(1)), None) => OrderFailed(Position(0))
-        //?case OrderProcessed(outcome)
-        //?  // While resetting, the order may start the second job
-        //?  if outcome == Outcome.Disrupted(AgentResetProblem(`agentPath`)) =>
-        //?  OrderProcessed(Outcome.succeeded)
         case e => e
       } ==
       Seq(
@@ -81,8 +77,8 @@ final class ResetAgentWhenCancelingTest
         OrderStarted,
         OrderProcessingStarted(subagentId),
         OrderStdoutWritten("TestJob\n"),
-        OrderProcessed(Outcome.succeeded), // See .map above
-        //OrderCancellationMarked(FreshOrStarted(None)),
+        OrderProcessed(Outcome.Disrupted(AgentResetProblem(agentPath))),
+        //OrderProcessed(Outcome.succeeded), // Until v2.6 (Monix), only when non-parallel tested
         OrderDetached,
         OrderOutcomeAdded(Outcome.Disrupted(AgentResetProblem(agentPath))),
         OrderFailed(Position(0)),

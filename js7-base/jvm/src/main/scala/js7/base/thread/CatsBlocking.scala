@@ -30,20 +30,18 @@ object CatsBlocking:
           src: sourcecode.Enclosing, file: sourcecode.FileName, line: sourcecode.Line)
       : A =
         inline def name = makeBlockingWaitingString[A]("IO", duration)
-        try
-          logger
-            .noLogIO/*traceIO*/(name):
-              io
-                .pipeIf(duration != Duration.Inf):
-                  _.timeoutTo(
-                    duration,
-                    IO.defer(IO.raiseError(throw new TimeoutException(name + " timed out"))))
-            .syncStep(Int.MaxValue)
-            .unsafeRunSync() match
-              case Left(io) =>
-                io.logWhenItTakesLonger(name).unsafeRunSync()
-              case Right(a) => a
 
+        try
+          io
+            .pipeIf(duration != Duration.Inf):
+              _.timeoutTo(
+                duration,
+                IO.defer(IO.raiseError(throw new TimeoutException(name + " timed out"))))
+            .syncStep(Int.MaxValue)
+            .unsafeRunSync()
+            .match
+              case Left(io) => io.logWhenItTakesLonger(name).unsafeRunSync()
+              case Right(a) => a
         catch case NonFatal(t) =>
           if t.getStackTrace.forall(_.getClassName != getClass.getName) then
             t.appendCurrentStackTrace

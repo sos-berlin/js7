@@ -1,5 +1,7 @@
 package js7.base.utils
 
+import cats.InvariantMonoidal
+import cats.instances.option.*
 import java.util.concurrent.locks.ReentrantLock
 import js7.base.utils.ScalaUtils.use
 import scala.concurrent
@@ -41,6 +43,12 @@ private class Lazy[A] private(eval: => A, block: => Option[A] => Option[A]):
                 val a = eval
                 state = Evaluated(a)
                 Some(a)
+
+  def whenDefined[F[_]](f: A => F[Unit])(using F: InvariantMonoidal[F]): F[Unit] =
+    toOption.fold(F.unit)(f)
+
+  def fold[B](ifEmpty: => B)(f: A => B): B =
+    toOption.fold(ifEmpty)(f)
 
   def toOption: Option[A] =
     state match

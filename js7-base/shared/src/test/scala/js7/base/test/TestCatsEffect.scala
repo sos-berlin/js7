@@ -6,11 +6,8 @@ import cats.syntax.option.*
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.Base64
 import java.util.concurrent.locks.ReentrantLock
-import js7.base.catsutils.OwnIORuntime.logger
 import js7.base.catsutils.{Js7IORuntime, OwnIORuntime}
 import js7.base.data.ByteArray
-import js7.base.log.Logger
-import js7.base.log.Logger.syntax.*
 import js7.base.test.TestCatsEffect.*
 import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.CatsUtils.syntax.RichResource
@@ -43,12 +40,10 @@ trait TestCatsEffect extends BeforeAndAfterAll:
     else
       lock.lockInterruptibly()
       try
-        val allocated =
-          logger
-            .traceResource:
-              OwnIORuntime.resource[SyncIO](name = getClass.shortClassName)
-            .toAllocated
-            .unsafeRunSync()
+        val allocated = OwnIORuntime
+          .resource[SyncIO](name = getClass.shortClassName)
+          .toAllocated
+          .unsafeRunSync()
         _ioRuntime := allocated.some
         allocated.allocatedThing
       finally
@@ -67,8 +62,6 @@ trait TestCatsEffect extends BeforeAndAfterAll:
 
 
 object TestCatsEffect:
-  private lazy val logger = Logger[this.type]
-  
   private val useCommonIORuntime: Boolean =
     sys.props.contains("js7.test.commonIORuntime") || sys.props.contains("test.speed")
 
