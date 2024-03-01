@@ -11,7 +11,6 @@ import js7.cluster.web.ClusterWatchRequestRoute.*
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.pekkohttp.PekkoHttpServerUtils
 import js7.common.pekkohttp.PekkoHttpServerUtils.{accept, completeWithStream, encodeAndHeartbeat}
-import js7.common.pekkohttp.StandardDirectives.ioRoute
 import js7.common.pekkohttp.StandardMarshallers.*
 import js7.common.pekkohttp.web.session.RouteProvider
 import js7.data.cluster.{ClusterState, ClusterWatchRequest}
@@ -19,7 +18,6 @@ import js7.data.event.Stamped
 import js7.data.node.NodeId
 import js7.journal.watch.EventWatch
 import org.apache.pekko.http.scaladsl.server.Directives.*
-import Logger.syntax.*
 import org.apache.pekko.http.scaladsl.server.Route
 import scala.concurrent.duration.FiniteDuration
 import scala.util.control.NoStackTrace

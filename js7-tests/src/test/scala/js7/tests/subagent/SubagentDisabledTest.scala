@@ -1,7 +1,6 @@
 package js7.tests.subagent
 
 import cats.effect.IO
-import cats.instances.option.*
 import fs2.Stream
 import java.util.concurrent.TimeoutException
 import js7.base.configutils.Configs.HoconStringInterpolator
@@ -64,6 +63,8 @@ final class SubagentDisabledTest extends OurTestSuite, SubagentTester, BlockingI
     finally super.afterAll()
 
   s"Add $bSubagentId" in:
+    // Add bSubagentId late to be sure it will be listed as the second one.
+    // This test depends on this, because then bSubagentId will be selected with after aSubagentId.
     updateItem(bSubagentItem)
     eventWatch.await[ItemAttached](_.event.key == bSubagentId)
     bSubagent()

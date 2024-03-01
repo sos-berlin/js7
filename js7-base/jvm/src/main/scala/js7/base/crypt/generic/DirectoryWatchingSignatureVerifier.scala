@@ -33,6 +33,7 @@ final class DirectoryWatchingSignatureVerifier private(
   companionToDirectory: Map[SignatureVerifier.Companion, Path],
   settings: DirectoryWatchSettings,
   onUpdated: () => Unit)
+  (using iox: IOExecutor)
 extends SignatureVerifier, Service.StoppableByRequest:
 
   @volatile private var state = State(Map.empty)

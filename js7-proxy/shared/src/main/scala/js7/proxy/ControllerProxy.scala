@@ -15,11 +15,13 @@ import js7.proxy.configuration.ProxyConf
 import js7.proxy.data.event.ProxyEvent
 
 final class ControllerProxy private[ControllerProxy](
-  protected val journaledProxy: JournaledProxy[ControllerState],
+  journaledProxy: JournaledProxy[ControllerState],
   val eventBus: JournaledStateEventBus[ControllerState],
   api: ControllerApi)
 extends
-  Service.StoppableByRequest, JournaledProxy.Delegate[ControllerState]:
+  Service.StoppableByRequest, JournaledProxy[ControllerState]:
+
+  export journaledProxy.*
 
   protected def start =
     startService(untilStopRequested)

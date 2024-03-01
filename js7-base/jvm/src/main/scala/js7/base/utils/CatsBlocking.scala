@@ -12,7 +12,7 @@ object CatsBlocking:
 
   implicit final class BlockingIOResource[A](private val resource: Resource[IO, A]) extends AnyVal:
     @TestOnly
-    def blockingUse[R](timeout: Duration)(block: A => R)
+    def blockingUse[R](timeout: Duration = Duration.Inf)(block: A => R)
       (implicit aTag: Tag[A], rt: IORuntime, src: sourcecode.Enclosing)
     : R =
       autoClosing(ResourceAutoCloseable(resource, timeout))(o =>

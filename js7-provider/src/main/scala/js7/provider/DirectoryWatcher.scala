@@ -53,23 +53,25 @@ extends AutoCloseable:
    * @return true, iff A matches `pathMatches` or the event OVERFLOW has occurred or the time is over.
    */
   private def waitForNextChange(timeout: Duration): IO[Boolean] =
-    IO.interruptible:
-      val remainingMillis = timeout.toMillis
-      remainingMillis <= 0 || {
-        logger.trace(s"$directory: poll ${timeout.pretty} ...")
-        val watchKey = watchService.poll(remainingMillis, MILLISECONDS)
-        if watchKey == null then
-          logger.trace(s"$directory: poll timed out")
-          false
-        else
-          try
-            val events = watchKey.pollEvents()
-            logger.whenTraceEnabled:
-              if events.isEmpty then logger.trace(s"$directory: poll returned no events")
-              else events.asScala foreach { o => logger.trace(s"$directory: ${watchEventShow.show(o)}") }
-          finally watchKey.reset()
-          true
-      }
+    IO
+      .interruptible:
+        val remainingMillis = timeout.toMillis
+        remainingMillis <= 0 || {
+          logger.trace(s"$directory: poll ${timeout.pretty} ...")
+          val watchKey = watchService.poll(remainingMillis, MILLISECONDS)
+          if watchKey == null then
+            logger.trace(s"$directory: poll timed out")
+            false
+          else
+            try
+              val events = watchKey.pollEvents()
+              logger.whenTraceEnabled:
+                if events.isEmpty then logger.trace(s"$directory: poll returned no events")
+                else events.asScala foreach { o => logger.trace(s"$directory: ${watchEventShow.show(o)}") }
+            finally watchKey.reset()
+            true
+        }
+      .evalOn(summon[IOExecutor].executionContext)
 
 
 object DirectoryWatcher:

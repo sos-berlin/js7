@@ -4,7 +4,6 @@ import cats.effect.std.Supervisor
 import cats.effect.{Deferred, IO, Resource, ResourceIO}
 import fs2.Stream
 import fs2.concurrent.Topic
-import js7.base.fs2utils.StreamExtensions.{evalTapFirst, onStart}
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.service.Service
@@ -16,8 +15,8 @@ import js7.proxy.data.event.EventAndState
 
 private final class JournaledProxyImpl[S <: SnapshotableState[S]] private[JournaledProxyImpl](
   underlyingStream: Stream[IO, EventAndState[Event, S]],
-  onEvent: EventAndState[Event, S] => Unit,
   proxyConf: ProxyConf,
+  onEvent: EventAndState[Event, S] => Unit,
   topic: Topic[IO, EventAndState[Event, S]],
   supervisor: Supervisor[IO])
   (using S: SnapshotableState.Companion[S])
@@ -31,10 +30,10 @@ extends Service.StoppableByRequest, JournaledProxy[S]:
         .supervise:
           readAndPublishUnderlyingStream(whenStateFetched)
         .flatMap: fiber =>
-          // A started JournalProxy immediately provides `currentState: S`.
-          // Wait until initial S has been read. This may take a long time !!!
           logger
             .debugIO("whenStateFetched"):
+              // A started JournalProxy immediately provides `currentState: S`.
+              // Wait until initial S has been read. This may take a long time !!!
               whenStateFetched.get
             .productR:
               startService:
@@ -47,10 +46,8 @@ extends Service.StoppableByRequest, JournaledProxy[S]:
       underlyingStream
         .evalTap(eventAndState => IO.defer:
           _currentState = eventAndState.state
-          whenStateFetched.complete(()).void)
-        .map: eventAndState =>
-          onEvent(eventAndState)
-          eventAndState
+          whenStateFetched.complete(()).void *>
+            IO(onEvent(eventAndState)))
         .interruptWhen(untilStopRequested.attempt)
         .through(topic.publish)
         .compile
@@ -111,6 +108,6 @@ private object JournaledProxyImpl:
         acquire = Topic[IO, EventAndState[Event, S]])(
         release = _.close.void)
       journaledProxy <- Service.resource(IO:
-        new JournaledProxyImpl[S](baseStream, onEvent, proxyConf, topic, supervisor))
+        new JournaledProxyImpl[S](baseStream, proxyConf, onEvent, topic, supervisor))
     yield
       journaledProxy

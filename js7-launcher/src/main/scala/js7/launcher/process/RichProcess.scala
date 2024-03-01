@@ -161,9 +161,10 @@ abstract class RichProcess protected[process](
   private[process] final def isAlive = process.isAlive
 
   private def waitForProcessTermination(process: Js7Process): IO[ReturnCode] =
-    logger.traceIOWithResult(s"waitFor $process", body =
-      IO.interruptible:
-        process.waitFor())
+    logger
+      .traceIOWithResult(s"waitFor $process", body =
+        IO.interruptible:
+          process.waitFor())
       .evalOn(iox.executionContext)
 
   final def stdin: OutputStream =

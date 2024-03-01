@@ -199,25 +199,4 @@ object JournaledProxy:
     def stopRequested = false
 
 
-  trait Delegate[S <: SnapshotableState[S]] extends JournaledProxy[S]:
-    protected val journaledProxy: JournaledProxy[S]
-
-    def currentState: S =
-      journaledProxy.currentState
-
-    def stream(queueSize: Option[Int] = None): Stream[IO, EventAndState[Event, S]] =
-      journaledProxy.stream(queueSize = queueSize)
-
-    def subscribe(maxQueued: Option[Int] = None)
-    : Resource[IO, Stream[IO, EventAndState[Event, S]]] =
-      journaledProxy.subscribe(maxQueued = maxQueued)
-
-    def sync(eventId: EventId): IO[Unit] =
-      journaledProxy.sync(eventId)
-
-    /** For testing: wait for a condition in the running event stream. * */
-    def when(predicate: EventAndState[Event, S] => Boolean): IO[EventAndState[Event, S]] =
-      journaledProxy.when(predicate)
-
-
   final class EndOfEventStreamException extends RuntimeException("Event stream terminated unexpectedly")

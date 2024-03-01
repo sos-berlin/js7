@@ -12,7 +12,6 @@ import js7.base.configutils.Configs.*
 import js7.base.eventbus.StandardEventBus
 import js7.base.generic.SecretString
 import js7.base.io.https.HttpsConfig
-import js7.base.monixlike.MonixLikeExtensions.deferFuture
 import js7.base.problem.Checked.*
 import js7.base.test.TestCatsEffect
 import js7.base.time.ScalaTime.*

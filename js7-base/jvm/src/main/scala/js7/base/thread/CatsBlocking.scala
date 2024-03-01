@@ -5,8 +5,6 @@ import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import cats.syntax.traverse.*
 import izumi.reflect.Tag
-import js7.base.log.Logger
-import js7.base.log.Logger.syntax.*
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.Futures.makeBlockingWaitingString
 import js7.base.time.ScalaTime.*
@@ -21,7 +19,6 @@ import scala.util.control.NonFatal
   * @author Joacim Zschimmer
   */
 object CatsBlocking:
-  private val logger = Logger[this.type]
 
   object syntax:
     extension [A](io: IO[A])
@@ -58,12 +55,11 @@ object CatsBlocking:
           enc: sourcecode.Enclosing, file: sourcecode.FileName, line: sourcecode.Line)
       : F[A] =
         inline def name = makeBlockingWaitingString(fTag.tag.toString, duration)
-        logger
-          .noLogIO/*traceIO*/(name):
-            iterable.sequence
-              .timeoutTo(duration,
-                IO.raiseError(new TimeoutException(name + " timed out")))
-              .logWhenItTakesLonger(name)
+        iterable
+          .sequence
+          .timeoutTo(duration,
+            IO.raiseError(new TimeoutException(name + " timed out")))
+          .logWhenItTakesLonger(name)
           .unsafeRunSync()
 
       def awaitInfinite(using IORuntime, Traverse[F], Tag[F[A]],
