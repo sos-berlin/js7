@@ -1,5 +1,6 @@
 package js7.tests.cluster.agent
 
+import cats.effect.IO
 import js7.agent.{RunningAgent, TestAgent}
 import js7.base.log.Logger
 import js7.base.thread.CatsBlocking.syntax.*
@@ -26,16 +27,12 @@ import js7.tests.cluster.controller.ControllerClusterTester.*
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.testenv.DirectorEnv
 import js7.tests.testenv.ProgramEnvTester.assertEqualJournalFiles
-import cats.effect.IO
-import cats.effect.unsafe.IORuntime
 import scala.util.control.NonFatal
 
 final class SimpleAgentClusterTest extends ControllerClusterTester:
-  
+
   protected override val agentPaths = Nil
 
-  private given IORuntime = ioRuntime
-  
   private lazy val subagentItems = Seq(
     SubagentItem(SubagentId("SUBAGENT-0"), agentPath, findFreeLocalUri()),
     SubagentItem(SubagentId("SUBAGENT-1"), agentPath, findFreeLocalUri()))

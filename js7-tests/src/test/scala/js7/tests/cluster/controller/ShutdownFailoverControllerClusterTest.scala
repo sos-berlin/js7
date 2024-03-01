@@ -1,7 +1,6 @@
 package js7.tests.cluster.controller
 
 import cats.effect.IO
-import cats.effect.unsafe.IORuntime
 import js7.base.problem.Checked.*
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.thread.Futures.implicits.*
@@ -15,8 +14,6 @@ import js7.data.controller.ControllerCommand.ShutDown
 import js7.data.controller.ControllerCommand.ShutDown.ClusterAction
 
 final class ShutdownFailoverControllerClusterTest extends ControllerClusterTester:
-
-  private given IORuntime = ioRuntime
 
   protected override val clusterTiming = ClusterTiming(heartbeat = 500.ms, heartbeatTimeout = 5.s)
 

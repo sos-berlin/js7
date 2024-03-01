@@ -5,11 +5,8 @@ import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterWatchRegistered}
 import js7.data.event.KeyedEvent.NoKey
-import cats.effect.unsafe.IORuntime
 
 final class ActiveWebServerIsUnreachableClusterTest extends ControllerClusterTester:
-
-  private given IORuntime = ioRuntime
 
   "Only the active node's web server is unreachable" in:
     sys.props(testHeartbeatLossPropertyKey) = "false"

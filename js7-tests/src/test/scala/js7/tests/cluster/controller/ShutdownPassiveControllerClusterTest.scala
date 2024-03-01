@@ -8,12 +8,9 @@ import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterPassiveLost, Cluste
 import js7.data.cluster.ClusterTiming
 import js7.data.controller.ControllerCommand.ShutDown
 import js7.data.controller.ControllerCommand.ShutDown.ClusterAction
-import cats.effect.unsafe.IORuntime
 
 final class ShutdownPassiveControllerClusterTest extends ControllerClusterTester:
-  
-  private given IORuntime = ioRuntime
-  
+
   protected override val clusterTiming = ClusterTiming(heartbeat = 500.ms, heartbeatTimeout = 5.s)
 
   override protected def removeObsoleteJournalFiles = false

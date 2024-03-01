@@ -10,12 +10,9 @@ import js7.data.controller.ControllerCommand.ShutDown
 import js7.data.order.{FreshOrder, OrderId}
 import js7.tests.cluster.controller.ClusterWatchChangeWhileNodesRestartsTest.*
 import js7.tests.cluster.controller.ControllerClusterTester.TestWorkflow
-import cats.effect.unsafe.IORuntime
 
 // Both cluster nodes restart after hard stop while ClusterWatch changes
 final class ClusterWatchChangeWhileNodesRestartsTest extends ControllerClusterTester:
-
-  private given IORuntime = ioRuntime
 
   override protected def primaryControllerConfig = config"""
       # Short timeout because something blocks web server shutdown occasionally

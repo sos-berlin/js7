@@ -14,12 +14,9 @@ import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
 import js7.tests.cluster.controller.ControllerClusterTester.*
 import js7.tests.testenv.ProgramEnvTester.assertEqualJournalFiles
-import cats.effect.unsafe.IORuntime
 import js7.base.monixlike.MonixLikeExtensions.{completedL, headL}
 
 final class SimpleControllerClusterTest extends ControllerClusterTester:
-
-  private given IORuntime = ioRuntime
 
   override protected def shellScript = s"echo '${"-" * 100}'\n" *
     (if sys.props.contains("test.speed") then 10000 else 1)

@@ -15,12 +15,9 @@ import js7.data.controller.ControllerCommand.ShutDown
 import js7.data.node.NodeId
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.cluster.controller.UntaughtClusterWatchAndFailOverControllerClusterTest.*
-import cats.effect.unsafe.IORuntime
 
 // Connection between cluster nodes is broken, leading to ClusterPassiveLost and ClusterFailedOver.
 final class UntaughtClusterWatchAndFailOverControllerClusterTest extends ControllerClusterTester:
-
-  private given IORuntime = ioRuntime
 
   protected override def agentPaths = Nil // No Agent needed
   protected override def items = Nil // No Workflow needed

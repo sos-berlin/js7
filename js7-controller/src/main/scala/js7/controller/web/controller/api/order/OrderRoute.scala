@@ -16,7 +16,7 @@ import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}
-import js7.base.utils.{ByteSequenceToLinesStream, Tests}
+import js7.base.utils.ByteSequenceToLinesStream
 import js7.base.utils.ScalaUtils.syntax.{RichAny, RichEitherF}
 import js7.common.pekkohttp.PekkoHttpServerUtils.completeIO
 import js7.common.pekkohttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}

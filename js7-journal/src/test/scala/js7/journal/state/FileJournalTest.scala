@@ -105,7 +105,7 @@ final class FileJournalTest extends OurTestSuite, BeforeAndAfterAll, TestCatsEff
         Future {
           for i <- 0 until n yield
             journal.persistKeyedEvent(key <-: NumberSlowlyIncremented(i * 1000))
-              .unsafeToFuture().await(99.s)
+              .await(99.s)
         }
       assert(keyFutures.await(99.s).flatten.collectFirst { case Left(problem) => problem }.isEmpty)
     }

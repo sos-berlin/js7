@@ -15,13 +15,10 @@ import js7.data.order.{FreshOrder, OrderId}
 import js7.tests.cluster.controller.ControllerClusterTester.*
 import js7.tests.cluster.controller.SwitchOverControllerClusterTest.*
 import js7.tests.testenv.TestController
-import cats.effect.unsafe.IORuntime
 import fs2.Stream
 import scala.util.Try
 
 final class SwitchOverControllerClusterTest extends ControllerClusterTester:
-
-  private given IORuntime = ioRuntime
 
   override protected def removeObsoleteJournalFiles = false
   private lazy val manyOrdersCount = sys.props.get("SwitchOverControllerClusterTest").map(_.toInt) getOrElse 1

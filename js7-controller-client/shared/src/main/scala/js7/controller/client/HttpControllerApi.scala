@@ -41,12 +41,12 @@ extends EventApi, HttpClusterNodeApi, HttpSessionApi, HasIsIgnorableStackTrace:
   final def post[A: Encoder, B: Decoder](uriTail: String, data: A): IO[B] =
     httpClient.post[A, B](baseUri /? uriTail, data)
 
-  final def postStream[A: Encoder: Tag, B: Decoder](uriTail: String, data: Stream[IO, A]): IO[B] =
-    httpClient.postStream[A, B](baseUri /? uriTail, data)
+  final def postStream[A: Encoder: Tag, B: Decoder](uriTail: String, stream: Stream[IO, A]): IO[B] =
+    httpClient.postStream[A, B](baseUri /? uriTail, stream)
 
   @TestOnly
-  final def postJsonStringStream(uriTail: String, data: Stream[IO, String]): IO[Json] =
-    httpClient.postJsonStringStream(baseUri /? uriTail, data)
+  final def postJsonStringStream(uriTail: String, stream: Stream[IO, String]): IO[Json] =
+    httpClient.postJsonStringStream(baseUri /? uriTail, stream)
 
   final def get[B: Decoder](uriTail: String): IO[B] =
     httpClient.get[B](baseUri /? uriTail)

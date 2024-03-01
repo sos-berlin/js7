@@ -7,8 +7,8 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger
 import js7.base.problem.Checked.Ops
-import js7.base.thread.Futures.implicits.*
 import js7.base.thread.CatsBlocking.syntax.*
+import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
 import js7.cluster.ClusterCommon.{ClusterWatchAgreedToActivation, ClusterWatchDisagreedToActivation}
 import js7.cluster.ClusterNode.RestartAfterJournalTruncationException
@@ -24,16 +24,13 @@ import js7.data.order.{FreshOrder, OrderId}
 import js7.data.value.NumberValue
 import js7.journal.files.JournalFiles
 import js7.journal.files.JournalFiles.JournalMetaOps
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.cluster.controller.ControllerClusterTester.*
 import js7.tests.cluster.controller.FailoverControllerClusterTest.*
 import js7.tests.testenv.ProgramEnvTester.assertEqualJournalFiles
-import js7.tester.ScalaTestUtils.awaitAndAssert
-import cats.effect.unsafe.IORuntime
 import scala.concurrent.duration.Deadline.now
 
 abstract class FailoverControllerClusterTest protected extends ControllerClusterTester:
-
-  private given IORuntime = ioRuntime
 
   override protected def primaryControllerConfig =
     // Short timeout because something blocks web server shutdown occasionally

@@ -8,11 +8,8 @@ import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.data.Problems.PrimaryClusterNodeMayNotBecomeBackupProblem
 import js7.data.controller.ControllerCommand.ClusterAppointNodes
-import cats.effect.unsafe.IORuntime
 
 final class TwoPrimaryControllerClusterNodesTest extends OurTestSuite, ControllerClusterTester:
-
-  private given IORuntime = ioRuntime
 
   override protected def configureClusterNodes = false
 

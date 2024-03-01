@@ -21,12 +21,9 @@ import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.cluster.controller.ControllerClusterTester.*
 import js7.tests.cluster.controller.UntaughtClusterWatchFailoverControllerClusterTest.*
-import cats.effect.unsafe.IORuntime
 import scala.concurrent.duration.Deadline.now
 
 final class UntaughtClusterWatchFailoverControllerClusterTest extends ControllerClusterTester:
-
-  private given IORuntime = ioRuntime
 
   override protected def primaryControllerConfig =
     // Short timeout because something blocks web server shutdown occasionally

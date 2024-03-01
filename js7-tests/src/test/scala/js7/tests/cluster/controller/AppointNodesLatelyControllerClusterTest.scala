@@ -15,11 +15,8 @@ import js7.data.order.OrderEvent.{OrderFinished, OrderStarted}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.journal.files.JournalFiles.listJournalFiles
 import js7.tests.cluster.controller.ControllerClusterTester.*
-import cats.effect.unsafe.IORuntime
 
 final class AppointNodesLatelyControllerClusterTest extends OurTestSuite, ControllerClusterTester:
-
-  private given IORuntime = ioRuntime
 
   override protected def configureClusterNodes = false
 

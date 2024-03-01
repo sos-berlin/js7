@@ -9,13 +9,10 @@ import js7.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.value.NumberValue
 import js7.tests.cluster.controller.ControllerClusterTester.*
-import cats.effect.unsafe.IORuntime
 
 final class PassiveLostControllerClusterTest extends ControllerClusterTester:
 
   override protected def configureClusterNodes = false
-
-  private given IORuntime = ioRuntime
 
   "Passive lost" in:
     withControllerAndBackup() { (primary, _, backup, _, clusterSetting) =>
