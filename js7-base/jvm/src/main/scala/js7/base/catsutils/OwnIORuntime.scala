@@ -4,6 +4,7 @@ import cats.effect.unsafe.IORuntime
 import cats.effect.{Resource, Sync}
 import com.typesafe.config.{Config, ConfigFactory}
 import java.lang.Thread.currentThread
+import java.util.concurrent.ConcurrentHashMap
 import js7.base.catsutils.CatsEffectExtensions.defer
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
@@ -16,6 +17,7 @@ object OwnIORuntime:
 
   // Lazy, to allow proper initialisation of logging first
   private lazy val logger = Logger[this.type]
+  private val usedNames = new ConcurrentHashMap[String, Int]
 
   def resource[F[_]](
     name: String,
@@ -23,11 +25,12 @@ object OwnIORuntime:
     shutdownHooks: Seq[() => Unit] = Nil)
     (using F: Sync[F])
   : Resource[F, IORuntime] =
-    val resource = resource2[F](name, config, shutdownHooks)
+    val indexedName = toIndexedName(name)
+    val resource = resource2[F](indexedName, config, shutdownHooks)
     Resource.defer:
       // Do not log for the initial IORuntime, before logging has been initialized.
       if Logger.isInitialized then
-        logger.traceResource(s"$name Resource[,IORuntime]"):
+        logger.traceResource(s"$indexedName Resource[,IORuntime]"):
           resource
       else
         resource
@@ -64,6 +67,13 @@ object OwnIORuntime:
       _ <- OwnIORuntimeRegister.register(compute, ioRuntime)
     yield
       ioRuntime
+
+  /** Testing only: Differentiate a repeated name with an index. */
+  private def toIndexedName(name: String): String =
+    usedNames.computeIfAbsent(name, _ => 0)
+    usedNames.compute(name, (_, i) => i + 1) match
+      case 1 => name
+      case i => s"$name-#$i"
 
   private def reportFailure(throwable: Throwable): Unit =
     def msg = s"Uncaught exception in thread ${currentThread.threadId} '${
