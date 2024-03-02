@@ -2,6 +2,7 @@ package js7.base.fs2utils
 
 import cats.effect.kernel.Resource.ExitCase
 import cats.effect.testkit.TestControl
+import cats.syntax.traverse.*
 import cats.effect.{IO, Resource, SyncIO}
 import fs2.concurrent.SignallingRef
 import fs2.{Chunk, Pure, Stream}
@@ -11,8 +12,8 @@ import js7.base.fs2utils.StreamExtensionsTest.*
 import js7.base.log.Logger
 import js7.base.test.{OurAsyncTestSuite, TestCatsEffect}
 import js7.base.time.ScalaTime.*
-import js7.base.utils.{Atomic, SetOnce}
 import js7.base.utils.Atomic.extensions.*
+import js7.base.utils.{Atomic, SetOnce}
 import scala.concurrent.duration.FiniteDuration
 
 final class StreamExtensionsTest extends OurAsyncTestSuite:
@@ -193,6 +194,59 @@ final class StreamExtensionsTest extends OurAsyncTestSuite:
           yield
             assert(result == List(1, 2, 3, 4, 4) -> ())
     }
+
+    "addAfterIdle" in:
+      TestControl.executeEmbed:
+        val silence = 3.s
+        val stream = Stream(
+          Chunk("A", "B"),
+          2.s, Chunk("C"), Chunk("D"),
+          2.s, Chunk("E", "F", "G"),
+          3.s, Chunk("H"),
+          10.s, Chunk("I", "J"),
+          1.s, Chunk("K"))
+        stream
+          .flatMap:
+            case d: FiniteDuration => Stream.sleep_[IO](d)
+            case o: Chunk[String] => Stream.emit(o)
+          .unchunks
+          .addAfterIdle(silence, IO.pure("TIMEOUT"))
+          .chunks
+          .compile.toVector
+          .map: result =>
+            assert(result == Vector(
+              Chunk("A", "B"),
+              Chunk("C"),
+              Chunk("D"),
+              Chunk("E", "F", "G"),
+              Chunk("TIMEOUT"),
+              Chunk("H"),
+              Chunk("TIMEOUT"),
+              Chunk("I", "J"),
+              Chunk("K")))
+
+    "collectAndFlushOnSilence" in:
+      TestControl.executeEmbed:
+        val silence = 3.s
+        val stream = Stream(
+          "A", "B",
+          2.s, "C",
+          2.s, "D", "E", "F",
+          3.s, "G",
+          4.s, "H", "I",
+          1.s, "J")
+        stream
+          .covary[IO]
+          .flatMap:
+            case d: FiniteDuration => Stream.sleep_[IO](d)
+            case o: String => Stream(o)
+          .collectAndFlushOnSilence(silence)
+          .compile.toVector
+          .map: result =>
+            assert(result == Vector(
+              Chunk("A", "B", "C", "D", "E", "F"),
+              Chunk("G"),
+              Chunk("H", "I", "J")))
 
     "insertHeartbeatsOnSlowUpstream" - {
       val heartbeat = -99

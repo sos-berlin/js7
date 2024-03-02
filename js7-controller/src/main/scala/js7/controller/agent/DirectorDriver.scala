@@ -200,7 +200,7 @@ extends Service.StoppableByRequest:
           .eval(journal.whenNoFailoverByOtherNode
             .logWhenItTakesLonger("whenNoFailoverByOtherNode"))
           .map(_ => o))
-        .map(_.toVector)
+        .map(_.asSeq)
         .evalMap(onEventsFetched)
         .completedL
     })

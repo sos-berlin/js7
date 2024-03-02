@@ -105,7 +105,7 @@ private object LoggingTestAdder:
     private val prefix = nesting.view.reverse.mkString("", " · ", " · ")
 
     def beforeTest(): Unit =
-      logger.info(eager(s"↘ $magenta$bold$prefix$testName$resetColor"))
+      logger.info(eager(s"""↘ $magenta$bold$prefix"$testName"$resetColor"""))
       since
 
     def afterTest[A](tried: Try[A]): Unit =
@@ -147,25 +147,25 @@ private object LoggingTestAdder:
     def toLogLine: String =
       tried match
         case Success(_) =>
-          s"$successMarkup↙ $prefix$testName$resetColor $prettyDuration"
+          s"""$successMarkup↙ $prefix"$testName"$resetColor $prettyDuration"""
 
         case Failure(_: TestPendingException) =>
-          s"$pendingMarkup↙ 🚧 $prefix$testName (PENDING)$resetColor $prettyDuration"
+          s"""$""pendingMarkup↙ 🚧 $prefix"$testName" (PENDING)$resetColor $prettyDuration"""
 
         case Failure(t) =>
-          s"$failureMarkup↙ 💥 $prefix$testName 💥$resetColor $prettyDuration"
+          s"""$failureMarkup↙ 💥 $prefix"$testName" 💥$resetColor $prettyDuration"""
 
     def toSummaryLine: String =
       val shortTestName = testName.truncateWithEllipsis(100) // Replaces \n
       tried match
         case Success(_) =>
-          f"✔️  $prettyDuration%-7s $successMarkup$prefix$shortTestName$resetColor"
+          f"""✔️  $prettyDuration%-7s $successMarkup$prefix"$shortTestName"$resetColor"""
 
         case Failure(_: TestPendingException) =>
-          f"🚧 $prettyDuration%-7s $pendingMarkup$prefix$shortTestName (PENDING)$resetColor"
+          f"""🚧 $prettyDuration%-7s $pendingMarkup$prefix"$shortTestName" (PENDING)$resetColor"""
 
         case Failure(t) =>
-          f"💥 $prettyDuration%-7s $failureMarkup$prefix$shortTestName 💥$resetColor"
+          f"""💥 $prettyDuration%-7s $failureMarkup$prefix"$shortTestName" 💥$resetColor"""
 
   private def clipStackTrace(t: Throwable): Unit =
     val st = t.getStackTrace

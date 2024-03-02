@@ -1,5 +1,6 @@
 package js7.base.crypt.generic
 
+import cats.effect
 import cats.effect.{IO, Resource}
 import cats.instances.either.*
 import cats.instances.vector.*
@@ -13,7 +14,7 @@ import js7.base.Problems.UnknownSignatureTypeProblem
 import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier.{State, logger}
 import js7.base.crypt.{GenericSignature, SignatureVerifier, SignerId}
 import js7.base.data.ByteArray
-import js7.base.fs2utils.StreamExtensions.*
+import js7.base.fs2utils.StreamExtensions.collectAndFlushOnSilence
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.watch.{DirectoryState, DirectoryStateJvm, DirectoryWatch, DirectoryWatchSettings}
 import js7.base.log.Logger.syntax.*
@@ -34,7 +35,7 @@ final class DirectoryWatchingSignatureVerifier private(
   settings: DirectoryWatchSettings,
   onUpdated: () => Unit)
   (using iox: IOExecutor)
-extends SignatureVerifier, Service.StoppableByRequest:
+extends SignatureVerifier, Service.StoppableByCancel:
 
   @volatile private var state = State(Map.empty)
 
@@ -63,13 +64,13 @@ extends SignatureVerifier, Service.StoppableByRequest:
         companionToDir
           .toVector
           .map { case (companion, (directory, directoryState)) =>
-            CorrelId.bindNew(
+            CorrelId.bindNew:
               observeDirectory(companion, directory, directoryState)
-                .onErrorRestartLoop(()) { (t, _, retry) =>
-                  logger.error(s"${companion.typeName}: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
-                  IO.unlessA(isStopping):
+                .onErrorRestartLoop(()): (t, _, retry) =>
+                  IO.defer:
+                    logger.error(s"${companion.typeName}: ${t.toStringWithCauses}",
+                      t.nullIfNoStackTrace)
                     retry(()).delayBy(10.s)
-                })
           }
           .parSequence
           .map(_.combineAll))
@@ -81,14 +82,12 @@ extends SignatureVerifier, Service.StoppableByRequest:
   : IO[Unit] =
     DirectoryWatch
       .stream(directory, directoryState, settings, isRelevantFile)
-      .debounce(settings.directorySilence)
-      .map(Seq(_))//monix .bufferIntrospective(1024)
-      .tapEach(events => logger.info(
+      .collectAndFlushOnSilence(settings.directorySilence)
+      .evalTap(events => IO(logger.info:
         s"Rereading signature keys of ${companion.typeName} type due to ${
-          events.distinct.mkString(", ")}"))
+          events.asSeq.mkString(", ")}"))
       .foreach: _ =>
         rereadDirectory(directory)
-      .interruptWhenF(untilStopRequested)
       .compile
       .drain
 
@@ -108,7 +107,6 @@ extends SignatureVerifier, Service.StoppableByRequest:
         .map: updated =>
           // Update state atomically:
           state = State(state.companionToVerifier ++ updated)
-
           try onUpdated()
           catch case NonFatal(t) =>
             logger.error(s"onUpdated => ${t.toStringWithCauses}", t.nullIfNoStackTrace))

@@ -1,7 +1,10 @@
 package js7.base.catsutils
 
+import cats.effect
 import cats.effect.Resource.ExitCase
-import cats.effect.{IO, OutcomeIO, Resource, SyncIO}
+import cats.effect.kernel.Outcome
+import cats.effect.testkit.TestControl
+import cats.effect.{Deferred, IO, OutcomeIO, Resource, SyncIO}
 import cats.syntax.option.*
 import js7.base.catsutils.CatsEffectExtensions.*
 import js7.base.test.OurAsyncTestSuite
@@ -56,6 +59,17 @@ final class CatsEffectExtensionsTest extends OurAsyncTestSuite:
           .map: _ =>
             assert(!canceledEvaluated)
     }
+
+    "cancelWhen" in:
+      TestControl.executeEmbed:
+        for
+          notCanceled <- IO(7).cancelWhen(IO.never)
+          trigger <- Deferred[IO, Unit]
+          io = IO(7).delayBy(2.s).cancelWhen(trigger.get)
+          fiber <- IO.both(trigger.complete(()).delayBy(1.s), io.start).map(_._2)
+          canceledOutcome <- fiber.join
+        yield
+          assert(notCanceled == 7 && canceledOutcome == Outcome.Canceled())
   }
 
   "Fiber" - {

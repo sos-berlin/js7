@@ -16,7 +16,7 @@ services:
     image: js7
     container_name: js7-controller
     hostname: controller
-    command: ["js7-controller", "--arg0=controller", "-J-Xmx200m"]
+    command: ["js7-controller", "--arg0=js7-controller", "-J-Xmx200m"]
     networks:
     - default
     ports:
@@ -41,7 +41,7 @@ services:
     image: js7
     container_name: js7-backup-controller
     hostname: backup-controller
-    command: ["js7-controller", "--arg0=backup-controller", "-J-Xmx200m"]
+    command: ["js7-controller", "--arg0=js7-backup-controller", "-J-Xmx200m"]
     networks:
     - default
     #ports:
@@ -61,7 +61,7 @@ services:
     image: js7
     container_name: js7-provider
     hostname: provider
-    command: ["js7-provider", "--arg0=provider", "-J-Xmx100m", "--controller-uri=https://controller:4443"]
+    command: ["js7-provider", "--arg0=js7-provider", "-J-Xmx100m", "--controller-uri=https://controller:4443"]
     working_dir: /home/js7
     volumes:
       - ./volumes/provider/config:/var/opt/js7/provider/config:ro
@@ -76,7 +76,7 @@ services:
     hostname: cluster-watch
     command: [
       "js7-cluster-watch",
-      "--arg0=cluster-watch",
+      "--arg0=js7-cluster-watch",
       "-J-Xmx50m",
       "--cluster-watch-id=CLUSTER-WATCH",
       "--cluster-node-uri=https://controller:4443",
@@ -95,7 +95,7 @@ services:
     hostname: cluster-watch-b
     command: [
       "js7-cluster-watch",
-      "--arg0=cluster-watch-b",
+      "--arg0=js7-cluster-watch-b",
       "-J-Xmx50m",
       "--cluster-watch-id=CLUSTER-WATCH-B",
       "--cluster-node-uri=https://controller:4443",
@@ -116,7 +116,7 @@ services:
     image: js7
     container_name: js7-subagent-1-a
     hostname: subagent-1-a
-    command: ["js7-subagent", "--arg0=subagent-1-a", "-J-Xmx200m"]
+    command: ["js7-subagent", "--arg0=js7-subagent-1-a", "-J-Xmx200m"]
     working_dir: /home/js7
     volumes:
       - ./volumes/subagent-1-a/config:/var/opt/js7/agent/config:ro
@@ -132,7 +132,7 @@ services:
     image: js7
     container_name: js7-subagent-1-b
     hostname: subagent-1-b
-    command: ["js7-subagent", "--arg0=subagent-1-b", "-J-Xmx200m"]
+    command: ["js7-subagent", "--arg0=js7-subagent-1-b", "-J-Xmx200m"]
     working_dir: /home/js7
     volumes:
       - ./volumes/subagent-1-b/config:/var/opt/js7/agent/config:ro
@@ -148,7 +148,7 @@ services:
     image: js7
     container_name: js7-subagent-2-a
     hostname: subagent-2-a
-    command: ["js7-subagent", "--arg0=subagent-2-b", "-J-Xmx200m"]
+    command: ["js7-subagent", "--arg0=js7-subagent-2-b", "-J-Xmx200m"]
     working_dir: /home/js7
     volumes:
       - ./volumes/subagent-2-a/config:/var/opt/js7/agent/config:ro

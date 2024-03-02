@@ -77,7 +77,8 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
   private lazy val basePekkoUri = PekkoUri(baseUri.string)
   private lazy val useCompression = http.system.settings.config.getBoolean("js7.web.client.compression")
   private lazy val chunkSize = http.system.settings.config.memorySizeAsInt("js7.web.chunk-size").orThrow
-  final lazy val prefetch = actorSystem.settings.config.getInt("js7.web.client.prefetch")
+  private final lazy val httpPrefetch = actorSystem.settings.config.getInt("js7.web.client.prefetch")
+  private final lazy val jsonPrefetch = actorSystem.settings.config.getInt("js7.web.server.prefetch")
   @volatile private var closed = false
 
   protected def httpsConfig: HttpsConfig
@@ -102,7 +103,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
     prefetch: Int | UseDefault = UseDefault)
     (using IO[Option[SessionToken]])
   : IO[Stream[IO, A]] =
-    val myPrefetch = prefetch getOrElse this.prefetch: Int
+    val myPrefetch = prefetch getOrElse this.httpPrefetch: Int
     for stream <- getRawLinesStream(uri, returnHeartbeatAs) yield
       stream
         .mapParallelBatch(prefetch = myPrefetch):
@@ -172,11 +173,11 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
     def toNdJson(a: A): ByteString = a.asJson.toByteSequence[ByteString] ++ LF
 
     val chunks: Stream[IO, ByteString] =
-      if responsive then
-        for a <- stream yield toNdJson(a)
-      else
+      //if responsive then
+      //  for a <- stream yield toNdJson(a)
+      //else
         stream
-          .mapParallelBatch(prefetch = prefetch): a =>
+          .mapParallelBatch(prefetch = jsonPrefetch): a =>
             toNdJson(a).chunkStream(chunkSize).toVector
           .flatMap(Stream.iterable)
 
@@ -271,12 +272,16 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
         if closed then
           logger.debug(s"(WARN) PekkoHttpClient has actually been closed: ${requestToString(request, logData)}")
         val number = requestCounter.incrementAndGet()
-        val headers = sessionToken.map(token => `x-js7-session`(token)).toList :::
-          `x-js7-request-id`(number) ::
-          CorrelId.current.toOption.map(`x-js7-correlation-id`(_)).toList :::
-          request.headers.toList :::
-          standardHeaders
-        val req = request.withHeaders(headers).pipeIf(useCompression)(encodeGzip)
+
+        val req =
+          logRequestStream("#" + number):
+            val headers = sessionToken.map(token => `x-js7-session`(token)).toList :::
+              `x-js7-request-id`(number) ::
+              CorrelId.current.toOption.map(`x-js7-correlation-id`(_)).toList :::
+              request.headers.toList :::
+              standardHeaders
+            request.withHeaders(headers).pipeIf(useCompression)(encodeGzip)
+
         @volatile var canceled = false
         //var responseFuture: Future[HttpResponse] = null
         val since = now
@@ -326,7 +331,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
             logResponding(request, _, responseLogPrefix)
               .map: response =>
                 if logger.isTraceEnabled then
-                  logResponseStream(response, responseLogPrefix = "#" + number)
+                  logResponseStream("#" + number)(response)
                 else
                   response
           .guaranteeCaseLazy:
@@ -407,13 +412,44 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
   // <-<-  chunk of stream
   // <--|  last chunk of stream
 
-  private def logResponseStream(response: HttpResponse, responseLogPrefix: => String)
+  // TODO Similar to logRestreamStream
+  private def logRequestStream(requestLogPrefix: => String)(request: HttpRequest)
+  : HttpRequest =
+    request.entity match
+      case chunked: Chunked =>
+        val isUtf8 = (chunked.contentType.charsetOption.contains(`UTF-8`)
+          || chunked.contentType.mediaType.toString == `application/x-ndjson`.toString)
+        request
+          .withEntity(chunked.copy(
+            chunks = chunked.chunks
+              .map { chunk =>
+                if LogData || chunk.isLastChunk then {
+                  def arrow = if chunk.isLastChunk then "|-->  " else "->->  "
+                  def data =
+                    if isUtf8 then
+                      chunk.data.utf8String.truncateWithEllipsis(
+                        200, showLength = true, firstLineOnly = true, quote = true)
+                    else
+                      s"${chunk.data.length} bytes"
+                  if chunk.data == HttpHeartbeatByteString then
+                    loggerHeartbeat.trace(s"$arrow$requestLogPrefix $data")
+                  else
+                    loggerStream.trace(s"$arrow$requestLogPrefix $data")
+                }
+                chunk
+              }
+              .mapError: t =>
+                logger.trace(s"~~> 💥$requestLogPrefix ${t.toStringWithCauses}")
+                t))
+      case _ => request
+
+  private def logResponseStream(responseLogPrefix: => String)(response: HttpResponse)
   : HttpResponse =
     response.entity match
       case chunked: Chunked =>
         val isUtf8 = (chunked.contentType.charsetOption.contains(`UTF-8`)
           || chunked.contentType.mediaType.toString == `application/x-ndjson`.toString)
-        response.pipeIf(logger.isTraceEnabled)(_
+        response
           .withEntity(chunked.copy(
             chunks = chunked.chunks
               .map { chunk =>
@@ -434,7 +470,7 @@ trait PekkoHttpClient extends AutoCloseable, HttpClient, HasIsIgnorableStackTrac
               }
               .mapError: t =>
                 logger.trace(s"<~~ 💥$responseLogPrefix ${t.toStringWithCauses}")
-                t)))
+                t))
       case _ => response
 
   private def unmarshal[A: FromResponseUnmarshaller](method: HttpMethod, uri: Uri)(httpResponse: HttpResponse) =

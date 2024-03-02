@@ -1,6 +1,7 @@
 package js7.base.service
 
-import cats.effect.{Deferred, FiberIO, IO}
+import cats.effect.{Deferred, FiberIO, IO, Outcome}
+import js7.base.catsutils.CatsEffectExtensions.fromOutcome
 import js7.base.catsutils.UnsafeMemoizable.unsafeMemoize
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
@@ -12,6 +13,8 @@ import js7.base.utils.ScalaUtils.syntax.RichBoolean
 trait StoppableByRequest:
   self =>
 
+  protected[service] val stoppableByCancel = false
+
   private final val fiber = Deferred.unsafe[IO, FiberIO[Unit]]
   private val stopRequested = Deferred.unsafe[IO, Unit]
   @volatile private var _isStopping = false
@@ -19,7 +22,7 @@ trait StoppableByRequest:
   protected final def isStopping: Boolean =
     _isStopping
 
-  private[service] final def onFiberStarted(fiber: FiberIO[Unit]): IO[Unit] =
+  private[service] def onFiberStarted(fiber: FiberIO[Unit]): IO[Unit] =
     this.fiber.complete(fiber).void
 
   protected final def untilStopRequested: IO[Unit] =
@@ -32,12 +35,12 @@ trait StoppableByRequest:
           _isStopping = true
           stopRequested.complete(())
             .*>(fiber.get)
-            .flatMap(_.joinWith(raiseCanceled))
-            .void
+            .flatMap: fiber =>
+              IO.whenA(stoppableByCancel)(fiber.cancel) *>
+                fiber.join.flatMap:
+                  case Outcome.Canceled() => IO.unit
+                  case o => IO.fromOutcome(o)
         .unsafeMemoize
-
-  private def raiseCanceled =
-    IO.defer(IO.raiseError(new RuntimeException(s"$self has been canceled"))) // ?
 
   protected def stop: IO[Unit] =
     memoizedStop

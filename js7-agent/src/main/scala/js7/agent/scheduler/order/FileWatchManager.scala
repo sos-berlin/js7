@@ -207,7 +207,7 @@ final class FileWatchManager(
               dirEventSeqs
                 // In case of DirectoryWatch error recovery, duplicate DirectoryEvent may occur.
                 // We check this here.
-                .toVector
+                .asSeq
                 .flatMap(dirEvent =>
                   agentState.keyTo(FileWatchState)
                     .get(fileWatch.path)

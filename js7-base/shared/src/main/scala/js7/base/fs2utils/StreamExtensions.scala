@@ -1,7 +1,8 @@
 package js7.base.fs2utils
 
 import cats.effect.kernel.Resource.ExitCase
-import cats.effect.std.Queue
+import cats.effect.kernel.Temporal
+import cats.effect.std.{AtomicCell, Queue}
 import cats.effect.{Concurrent, IO, Ref, Resource, Sync}
 import cats.syntax.applicativeError.*
 import cats.syntax.apply.*
@@ -11,16 +12,19 @@ import cats.syntax.parallel.*
 import cats.{Applicative, ApplicativeError, Eq, effect}
 import fs2.{Chunk, Compiler, Pull, RaiseThrowable, Stream}
 import js7.base.log.Logger
-import js7.base.time.ScalaTime.RichDeadline
+import js7.base.time.ScalaTime.{RichDeadline, RichFiniteDurationCompanion}
 import js7.base.utils.Atomic
 import js7.base.utils.ScalaUtils.syntax.RichAny
+import scala.collection.immutable.VectorBuilder
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Deadline, FiniteDuration}
+import scala.reflect.ClassTag
 
 object StreamExtensions:
 
-  val DefaultBatchSizeMin = 256
   private val logger = Logger[this.type]
+  val DefaultBatchSizeMin = 256
+  private object Beat
 
   extension (chunk: Chunk[Char])
     def convertToString: String =
@@ -46,6 +50,48 @@ object StreamExtensions:
 
 
   extension[F[_], O](stream: Stream[F, O])
+    /** Like FS2's keepAlive, but adds only a single beat after maxIdle has elapsed. */
+    def addAfterIdle[F2[x] >: F[x]: Temporal, B](maxIdle: FiniteDuration, beat: F2[B])
+    : Stream[F2, O | B] =
+      stream
+        .covaryAll[F2, O | B]
+        .pull
+        .timed: timedPull =>
+          def go(timedPull: Pull.Timed[F2, O | B]): Pull[F2, O | B, Unit] =
+            timedPull.uncons.flatMap:
+              case Some((Right(chunk), next)) =>
+                Pull.output(chunk)
+                  >> timedPull.timeout(maxIdle - FiniteDuration.Epsilon)
+                  >> go(next)
+              case Some((_, next)) =>
+                Pull.eval(beat).flatMap(Pull.output1) >> go(next)
+              case None =>
+                Pull.done
+          
+          go(timedPull)
+        .stream
+
+    def collectAndFlushOnSilence(duration: FiniteDuration)(using F: Temporal[F])
+    : Stream[F, Chunk[O]] =
+      Stream
+        .eval(AtomicCell[F].of(VectorBuilder[O]()))
+        .flatMap: cell =>
+          stream
+            .chunks
+            .evalTap: chunk =>
+              cell.getAndUpdate(_ ++= chunk.asSeq)
+            // Emit a Beat after the required period of silence
+            .addAfterIdle(duration - FiniteDuration.Epsilon, F.pure(Beat))
+            // Add a Beat to the end to emit the remaining elements
+            .appendOne(Beat)
+            // Emit the Chunk[O] after the period of silence
+            .flatMap:
+              case Beat => Stream
+                .eval(cell
+                  .getAndSet(VectorBuilder())
+                  .map(builder => Chunk.from(builder.result())))
+                .filter(_.nonEmpty)
+              case _ => Stream.empty
 
     def prepend[F2[x] >: F[x], O2 >: O](other: Stream[F2, O2]): Stream[F2, O2] =
       other ++ stream
@@ -105,7 +151,8 @@ object StreamExtensions:
             .append:
               Stream.eval(last.get).unNoneTerminate
             .changes
-      yield output
+      yield
+        output
 
     //def splitBigByteSeqs[ByteSeq: ByteSequence](chunkSize: Int)(using ByteSeq =:= O): Stream[F, ByteSeq] =
     //  stream.asInstanceOf[Stream[F, ByteSeq]]
@@ -156,7 +203,6 @@ object StreamExtensions:
             a
           .onFinalizeCase: exitCase =>
             onComplete(startedAt.elapsed, count, exitCase)
-
 
   extension[F[_]](stream: Stream[F, String])
     def stringToChar: Stream[F, Char] =

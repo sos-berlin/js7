@@ -1,6 +1,6 @@
 package js7.base.service
 
-import cats.effect.{Deferred, IO, Outcome, Resource}
+import cats.effect.{Deferred, FiberIO, IO, Outcome, Resource}
 import izumi.reflect.Tag
 import js7.base.catsutils.CatsDeadline
 import js7.base.log.Logger.syntax.*
@@ -123,6 +123,9 @@ object Service:
       new RestartAfterFailureService(startDelays, runDelays)(serviceResource)))
 
   trait StoppableByRequest extends Service, js7.base.service.StoppableByRequest
+
+  trait StoppableByCancel extends StoppableByRequest:
+    override protected[service] val stoppableByCancel = true
 
   /** Marker type to ensure call of `startFiber`. */
   final class Started private[Service]:

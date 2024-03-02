@@ -7,6 +7,8 @@ import js7.base.log.Logger.syntax.*
 import js7.base.service.ServiceTest.*
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.DurationRichInt
+import js7.base.utils.Atomic
+import js7.base.utils.Atomic.extensions.*
 import js7.base.utils.Tests.isIntelliJIdea
 import org.scalatest.Assertion
 import scala.concurrent.Future
@@ -96,6 +98,20 @@ final class ServiceTest extends OurAsyncTestSuite:
             assert(isRunning)))
       .*>(IO:
         assert(!isRunning))
+
+
+  "Service.StoppableByCancel" in:
+    val started = Deferred.unsafe[IO, Unit]
+    val canceled = Atomic(false)
+    class CancelableService extends Service.StoppableByCancel:
+      protected def start = startService:
+        started.complete(()) *>
+          IO.never.onCancel(IO:
+            canceled := true)
+
+    Service.resource(IO(new CancelableService)).surround(started.get)
+      .map: _ =>
+        assert(canceled.get)
 
   private class MyService(setRunning: Boolean => Unit)
   extends Service.StoppableByRequest:

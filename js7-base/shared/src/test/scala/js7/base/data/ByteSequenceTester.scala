@@ -154,7 +154,7 @@ extends OurTestSuite:
     assert(chunk.asInstanceOf[Chunk.ArraySlice[Byte]].length == a.length)
 
     a(2) = 33
-    assert(chunk.toVector == Vector[Byte](1, 2, 33))
+    assert(chunk == Chunk[Byte](1, 2, 33))
 
   "equality" in:
     assert(ByteArray.empty == ByteArray(""))

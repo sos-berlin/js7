@@ -972,6 +972,7 @@ extends MainJournalingActor[AgentState, Event], Stash:
 
   override def toString = "AgentOrderKeeper"
 
+
 object AgentOrderKeeper:
   private val logger = Logger[this.type]
 

@@ -10,7 +10,7 @@ import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.problem.Checked
 import scala.annotation.unchecked.uncheckedVariance
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{CancellationException, ExecutionContext, Future}
 
 object CatsEffectExtensions:
 
@@ -52,6 +52,13 @@ object CatsEffectExtensions:
     /** Extra name to detect unjoined fibers in code. */
     def startAndForget: IO[Unit] =
       io.start.void
+
+    def cancelWhen(trigger: IO[Unit]): IO[A] =
+      IO
+        .race(trigger, io)
+        .flatMap:
+          case Left(()) => IO.canceled.asInstanceOf[IO[A]]
+          case Right(a) => IO.pure(a)
 
 
   private val fromFutureSimpleCancel = IO(logger.trace("fromFutureDummyCancelable ignores cancel"))
@@ -178,4 +185,4 @@ object CatsEffectExtensions:
       SyncDeadline.fromNanos(scheduler.monotonicNanos())
 
 
-  final class FiberCanceledException extends RuntimeException("Fiber has been canceled")
+  final class FiberCanceledException extends CancellationException("Fiber has been canceled")
