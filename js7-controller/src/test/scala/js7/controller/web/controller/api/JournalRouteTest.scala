@@ -16,8 +16,9 @@ import js7.base.thread.Futures.implicits.*
 import js7.base.thread.CatsBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
-import js7.base.utils.CancelableFuture
+import js7.base.utils.{CancelableFuture, Tests}
 import js7.base.utils.CatsUtils.syntax.RichResource
+import js7.base.utils.Tests.isIntelliJIdea
 import js7.base.web.{HttpClient, Uri}
 import js7.common.pekkohttp.PekkoHttpServerUtils.pathSegments
 import js7.common.pekkohttp.web.PekkoWebServer
@@ -56,7 +57,10 @@ final class JournalRouteTest extends OurTestSuite, RouteTester, JournalRoute
 
   private lazy val directory = createTempDirectory("JournalRouteTest-")
   private lazy val journalLocation = JournalLocation(ControllerState, directory / "test")
-  override protected def config = config"js7.web.chunk-size = 1MiB"
+  override protected def config = config"""
+    js7.web.chunk-size = 1MiB
+    pekko.loglevel = debug
+    """
     .withFallback(JournalEventWatch.TestConfig)
     .withFallback(super.config)
   protected var eventWatch: JournalEventWatch = null
@@ -94,11 +98,10 @@ final class JournalRouteTest extends OurTestSuite, RouteTester, JournalRoute
   implicit private val sessionToken: IO[Option[SessionToken]] = IO.pure(None)
   private lazy val file0 = journalLocation.file(0L)
 
-  "/journal from start" in {
+  "/journal from start" in repeatTest(if isIntelliJIdea then 100_000 else 1000): _ =>
     val lines = client.getRawLinesStream(Uri(s"$uri/journal?timeout=0&file=0&position=0"))
-      .await(99.s).toListL.await(99.s)
+      .flatMap(_.compile.toList).await(99.s)
     assert(lines.map(_.utf8String).mkString == file0.contentString)
-  }
 
   "/journal from end of file" in {
     val fileLength = size(file0)

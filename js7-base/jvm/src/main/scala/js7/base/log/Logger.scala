@@ -3,6 +3,7 @@ package js7.base.log
 import cats.effect.implicits.monadCancelOps
 import cats.effect.kernel.Sync
 import cats.effect.{IO, Outcome, Resource, SyncIO}
+import cats.syntax.functor.*
 import cats.syntax.flatMap.*
 import com.typesafe.scalalogging.Logger as ScalaLogger
 import fs2.Stream
@@ -350,9 +351,14 @@ object Logger extends AdHocLogger:
       (using F: Sync[F])
     : Resource[F, A] =
       for
-        _ <- loggingResource[F](logger, logLevel, function, args)
-        a <- resource
-        _ <- loggingResource[F](logger, logLevel, function + ".use", args)
+        a <- Resource:
+          logF(logger, logLevel, function + ".acquire", args):
+            resource.allocated
+          .map: pair =>
+            pair._1 ->
+              logF(logger, logLevel, function + ".release", args):
+                pair._2
+        //_ <- loggingResource[F](logger, logLevel, function + ".use", args)
       yield
         a
 

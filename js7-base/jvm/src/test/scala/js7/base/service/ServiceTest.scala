@@ -19,17 +19,6 @@ final class ServiceTest extends OurAsyncTestSuite:
   private val delay = 200.ms
   private val iterations = if isIntelliJIdea then 100 else 10
 
-  private def repeat(n: Int)(body: => IO[Assertion]): IO[Assertion] =
-    (1).tailRecM(i => logger
-      .debugIO(s"#$i")(
-          /*withClue(s"#$i: ")*/(
-            body))
-      .map(result =>
-        if i < n then
-          Left(i + 1)
-        else
-          Right(result)))
-
   "Resource.release does not suppresses exceptions" in:
     Resource
       .make(IO.unit)(_ => IO.raiseError(new IllegalStateException))
@@ -39,7 +28,7 @@ final class ServiceTest extends OurAsyncTestSuite:
         case Left(_: IllegalStateException) => IO(succeed)
         case other => fail(s"UNEXPECTED: $other")
 
-  "Service terminates while still in use" in repeat(iterations):
+  "Service terminates while still in use" in repeatTest(iterations): _ =>
     var isRunning = false
     MyService.resource(isRunning = _)
       .use(service =>
@@ -49,7 +38,7 @@ final class ServiceTest extends OurAsyncTestSuite:
           IO(assert(!isRunning))
             .as(succeed))
 
-  "Service fails while still in use" in repeat(iterations):
+  "Service fails while still in use" in repeatTest(iterations): _ =>
     val serviceFailed = Deferred.unsafe[IO, Unit]
     FailingService
       .resource(onFailed = serviceFailed.complete(()).void)
@@ -60,7 +49,7 @@ final class ServiceTest extends OurAsyncTestSuite:
         case Left(FailingService.exception) => succeed
         case o => fail(s"Unexpected $o")
 
-  "Use ends when service has stopped" in repeat(iterations):
+  "Use ends when service has stopped" in repeatTest(iterations): _ =>
     // General use case. Similar to the test above.
     val serviceFailed = Deferred.unsafe[IO, Unit]
     FailingService
@@ -71,7 +60,7 @@ final class ServiceTest extends OurAsyncTestSuite:
         case Left(FailingService.exception) => succeed
         case o => fail(s"Unexpected $o")
 
-  "Service usage terminates before service would die" in repeat(iterations):
+  "Service usage terminates before service would die" in repeatTest(iterations): _ =>
     val serviceFailed = Deferred.unsafe[IO, Unit]
     FailingService
       .resource(
@@ -79,7 +68,7 @@ final class ServiceTest extends OurAsyncTestSuite:
         onFailed = serviceFailed.complete(()).void)
       .use(_ => IO.pure(succeed))
 
-  "Service fails while usage is terminating (race)" in repeat(iterations):
+  "Service fails while usage is terminating (race)" in repeatTest(iterations): _ =>
     val failService = Deferred.unsafe[IO, Unit]
     FailingService
       .resource(whenFail = failService.get)
@@ -89,7 +78,7 @@ final class ServiceTest extends OurAsyncTestSuite:
       .recover:
         case FailingService.exception => succeed
 
-  "No failure " in repeat(iterations):
+  "No failure " in repeatTest(iterations): _ =>
     var isRunning = false
     MyService.resource(isRunning = _)
       .use(service =>

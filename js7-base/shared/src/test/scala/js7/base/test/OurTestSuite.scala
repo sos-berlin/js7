@@ -9,7 +9,6 @@ abstract class OurTestSuite extends AnyFreeSpec, LoggingAnyFreeSpec, TestMixin:
 
   protected final def repeatTest(n: Int)(body: Int => Any): Unit =
     for i <- 1 to n do
-      Logger(getClass.scalaName).debugCall(s"Test #$i", ""):
-        withClue(s"#$i: "):
-          body(i)
-
+      Logger(getClass.scalaName).info(s"╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌ repeatTest #$i")
+      withClue(s"#$i: "):
+        body(i)

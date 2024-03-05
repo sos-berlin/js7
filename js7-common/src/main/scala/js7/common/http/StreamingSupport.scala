@@ -2,12 +2,15 @@ package js7.common.http
 
 import cats.effect
 import cats.effect.kernel.Resource.ExitCase
-import cats.effect.{IO, Resource}
+import cats.effect.{Deferred, IO, Resource}
 import fs2.Stream
 import fs2.interop.reactivestreams.{PublisherOps, StreamOps}
 import izumi.reflect.Tag
+import js7.base.catsutils.CatsEffectExtensions.startAndForget
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
+import js7.base.time.ScalaTime.DurationRichInt
+import js7.base.utils.CatsUtils.syntax.logWhenItTakesLonger
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.common.pekkohttp.ExceptionHandling.webLogger
 import org.apache.pekko
@@ -23,6 +26,25 @@ object StreamingSupport:
   private val logger = Logger[this.type]
 
   extension [A](stream: Stream[IO, A])
+
+    def toPekkoSourceForHttpResponseX(using Tag[A]): IO[Source[A, NotUsed]] =
+      Deferred[IO, IO[Unit]].flatMap: deferredRelease =>
+        stream
+          .onFinalizeCase: exitCase =>
+            deferredRelease.get
+              .flatMap: release =>
+                logger
+                  .traceIO(s"toPekkoSourceForHttpResponseX deferred release: ${exitCase.toOutcome[IO]}"):
+                    release
+                  .logWhenItTakesLonger("toPekkoSourceForHttpResponseX.release")
+              .delayBy(100.ms) // FIXME Otherwise, the Pekko stream may not be completed
+              .startAndForget // Release in asynchronously, otherwise we will stick in a deadlock !!!
+          .toPekkoSourceForHttpResponse
+          .allocated
+          .flatMap: (source, release) =>
+            deferredRelease.complete(release)
+              .as(source)
+
     def toPekkoSourceForHttpResponse(using A: Tag[A]): Resource[IO, Source[A, NotUsed]] =
       logger.traceResource:
         stream

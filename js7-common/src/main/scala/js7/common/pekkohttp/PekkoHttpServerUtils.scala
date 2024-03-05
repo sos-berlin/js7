@@ -280,26 +280,9 @@ object PekkoHttpServerUtils:
       ioRoute:
         completeWithIOStream(contentType)(stream)
 
-  def completeWithIOStream(contentType: ContentType)(stream: Stream[IO, ByteString])
-    (using IORuntime)
-  : IO[Route] =
-    IO.defer:
-      val deferredRelease = Deferred.unsafe[IO, IO[Unit]]
-      stream
-        .onFinalizeCase: exitCase =>
-          deferredRelease.get
-            .flatMap: release =>
-              logger
-                .traceIO(s"completeWithIOStream deferred release: ${exitCase.toOutcome[IO]}"):
-                  release
-                .logWhenItTakesLonger("toPekkoSourceForHttpResponse.release")
-            .startAndForget // Release in asynchronously, otherwise we will stick in a deadlock !!!
-        .toPekkoSourceForHttpResponse
-        .allocated
-        .flatMap: (source, release) =>
-          deferredRelease.complete(release)
-            .as:
-              complete(HttpEntity(contentType, source))
+  def completeWithIOStream(contentType: ContentType)(stream: Stream[IO, ByteString]): IO[Route] =
+    stream.toPekkoSourceForHttpResponseX.map: source =>
+      complete(HttpEntity(contentType, source))
 
   def completeIO[A: ToResponseMarshaller](io: IO[A])(using IORuntime): Route =
     optionalAttribute(WebLogDirectives.CorrelIdAttributeKey):
